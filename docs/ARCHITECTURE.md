@@ -117,7 +117,8 @@ Rules
 | `debug, params, t` | `?debug`, URL params, i18n |
 
 HUD slots (`ctx.ui.hud`): `setMarker(id, bearingDeg|null, color)` (compass markers),
-`prompt(key, text)`, `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
+`prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
+one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
 `setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `toast`.
 
 ## 6. Events (core)
@@ -191,6 +192,10 @@ reachable clue). `content/examples/` is placeholder content (`ex.*` ids) showing
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- E2E per feature (`e2e/{hunt,fx,chronik,story}.spec.ts`) and `e2e/integration.spec.ts`: the
+  prologue across all four systems (new game → hub → Chronik → objective → scan → clues → Q →
+  shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`.
+  `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → "Laterne entzünden" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.
@@ -204,7 +209,92 @@ reachable clue). `content/examples/` is placeholder content (`ex.*` ids) showing
 - Running dev server helpers: `VIEWS='[{"name":"a","x":1138,"z":-1120,"yaw":90,"era":"1789"}]'
   node scripts/dev/shots.mjs <outdir>`.
 
-## 12. Licences
+## 12. Feature systems
+
+Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`, `fx`,
+`chronik`, `story`. They talk only through the events in `src/systems/contracts.ts` (plus the
+private ones listed below) and `ctx.state`. How the four work together:
+
+```
+story ──threat:configure──▶ hunt (pack, lantern seconds)   fx (fire, oblivion)
+story ──shift:request─────▶ fx ──shift:begin / era.set + shift:midpoint / shift:done──▶ everyone
+hunt, fx ──player:caught──▶ story (curtain, threats off, instant return to today, checkpoint beat)
+                            chronik (drops unconfirmed finds unless gentle mode)
+story (hub Pinnwand) ──chronik:open──▶ chronik board      chronik ──dialogue:say (laub)──▶ story presenter
+chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
+story:give ──clue:found / noun:learned (story clue ids, written to state.inventory)──▶ everyone
+```
+
+Ownership rules that came out of integration:
+- **Q (era shift)** belongs to the story: press inside the anchor (`flags shift.allowed/target/x/z/r`,
+  no x/z = anywhere), hold 1.2 s in the past to return; ignored while an fx transition runs. fx
+  only reads Q itself when no `story` system is registered.
+- **Caught screen** belongs to the story. hunt plays its rush and fades to black, then hands over
+  at `player:caught` (no title of its own, sequence ends when the story resumes); fx shows its
+  smoke/oblivion card only without a story system.
+- **The pack lives in one era**: hunt stops on every `era:change` (reason `'era'`); the story
+  re-issues `threat:configure` when a beat (or a load / caught resume) wants it again. fx stops
+  fire outside 1793-07 and oblivion outside 1796 by itself.
+- **Echo lines** (dialogue with trigger `{event:'echo:start'}`) are played by the Chronik; the
+  story's trigger runner skips `echo:*` events, and dialogue from `placeholder` packs unless `?placeholder`.
+
+### hunt (`src/systems/hunt/`) – die Meute, der Pikeur, the lantern
+- Starts only via `threat:configure {kind:'pack'}` (extra fields `hounds?, pikeur?, sight?, seed?`)
+  or `kq.hunt.start`; `seconds` sets the lantern burn time. Stops on `active:false`, caught,
+  `hub:enter` (also refills oil) and `era:change`. Gentle mode / Rauhnacht (`settings.rauhnacht` or
+  `flags.rauhnacht`) retune it.
+- Emits `hunt:alert`, `hunt:horn`, `hunt:start`, `hunt:end {reason}`, `lantern:toggle/oil/empty`,
+  `player:caught {by:'pack'}` (2.0 s into the caught sequence). Writes `flags.lanternLit` and
+  `player.stats.lanternLit`; HUD threat meter, lantern gauge, screen-edge arrows
+  (`settings.soundIndicators`), captions (`settings.subtitles`).
+- State `systems.hunt {alert, lantern {oil, lit, seconds}, caught}` (an active pack is not saved).
+- Hooks `kq.hunt.start/stop/state/setState/place/placeInView/freeze/horn/catch/events/sim`,
+  `kq.lantern.toggle/setOil/refill/setSeconds/state`.
+
+### fx (`src/systems/fx/`) – era shift, scan pulse, ambience, fire, Steinfraß
+- `shift:request {to, instant?}` → 3.5 s LiDAR transition (1.4 s crossfade in reduced motion,
+  none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`; counts
+  `meta.shifts`. `scan:mode` 1–3 → scan pulse. Era particles always.
+- `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
+  `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
+  pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
+  `player:caught {by:'fire'|'oblivion'}`. Patches the palace shader at runtime (`palacePatch.ts`),
+  adds `uHeat` to `render/post.ts`.
+- State `systems.fx {fire, oblivion}` (running threats resume after a load). URL `?fxq=low|high`.
+- Hooks `kq.fx.shift/shiftAt/freeze/fire/fireTime/oblivion/oblivionT/pulse/quality/state`.
+
+### chronik (`src/systems/chronik/`) – clues, echoes, case board, codex
+- Clue markers + E examine card (`clue:found`, `noun:learned`, `codex:unlocked`); relief clues
+  need the right scan mode, lantern clues a lit lantern; hold E on an echo → ghosts + subtitles
+  (`echo:start/end`, `echo:play {id}` starts one). Board on J/Tab or `chronik:open`: fill blanks,
+  "Prüfen" confirms batches of three only in `today` (`chronik:fill`, `chronik:batch`,
+  `chronik:case-complete`, `chronik:opened/closed`). Readings → `state.chronik[case].readings`
+  and `flags['reading.<case>.<entry>']`. Laub's hints after 4/8/12 min stuck → `dialogue:say`
+  (speaker `laub`; plain subtitle only when no story/dialogue system exists). On `player:caught`
+  drops finds since the last confirmation (`chronik:lost`), not in gentle mode.
+- Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
+  real content exists or with `?placeholder`.
+- State `state.chronik`, `state.inventory`, `state.codex` + `systems.chronik {since, hints, marks,
+  seen, echoes, lastCase}`.
+- Hooks `kq.chronik.open/close/tab/grantAll/fill/check/solve/examine/listen/skipEcho/advanceEcho/
+  echo/status/target/markers/caught/stuck/slice/content/isOpen`.
+
+### story (`src/systems/story/`) – chapters, dialogue, field station, objectives, endings
+- Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by
+  `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
+  endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
+- Emits `story:chapter/beat/ending`, `objective:set`, `threat:configure`, `shift:request`,
+  `dialogue:say`, `hub:enter/leave`, `chronik:open`, and private `hub:use {item}`,
+  `story:cue {id,data?}`, `story:credits`. Presents every `dialogue:say` (portrait card, typing,
+  murmur voice) and ContentDB dialogue triggers. Owns the title flow (warning, name, lantern),
+  the field station at (760, −915) with the hub overlay, the Bussole/objective HUD, the caught
+  curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
+- State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
+  threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the prologue.
+- Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
+  epilogue/choose/look`.
+
+## 13. Licences
 
 Code: project licence. Fonts: IM Fell English (Igino Marini) and Caveat, SIL OFL 1.1 (texts in
 `src/ui/fonts`). Data: © GeoBasis-DE/LVGL-SL dl-de/by-2-0 (DTM, CHM, historic maps), OSM ODbL,

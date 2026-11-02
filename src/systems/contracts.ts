@@ -11,6 +11,13 @@
  *  - hunt    : hunt:*, lantern:*, player:caught (by 'pack')
  *  - chronik : clue:found, noun:learned, chronik:batch, chronik:case-complete, codex:unlocked, echo:*
  *  - fx also emits player:caught (by 'fire' | 'oblivion')
+ *
+ * Integration rules (see docs/ARCHITECTURE.md §12):
+ *  - The Q key belongs to the story (anchor flags shift.allowed/target/x/z/r, hold Q in the past
+ *    to return); fx performs the transition. fx reads Q itself only without a story system.
+ *  - The caught screen belongs to the story; hunt/fx hand over at player:caught.
+ *  - The pack is bound to its era: hunt stops on era:change; the story re-issues threat:configure.
+ *  - Dialogue triggered by echo:* events is played by the Chronik, not the story runner.
  */
 import type { Era } from '../core/era';
 

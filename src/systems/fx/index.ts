@@ -4,7 +4,8 @@
  *  1. Era SHIFT on 'shift:request' {to, instant?}: ~3.5 s LiDAR scan-wave transition (reduced
  *     motion: 1.4 s crossfade; instant: none). Emits shift:begin → shift:midpoint (era already
  *     switched with ctx.era.set) → shift:done. Counts state.meta.shifts.
- *     Q key: fx emits 'shift:request' only if the STORY allows it, via state flags:
+ *     Q key (only when no story system is registered; otherwise the story owns Q):
+ *     fx emits 'shift:request' only if the STORY allows it, via state flags:
  *        flags['shift.allowed'] === true  and  flags['shift.target'] = an Era ('1789', …)
  *     If flags['shift.allowed'] === false, Q shows "Die Bussole schweigt hier." (undefined: Q is
  *     silent, free for the story's own use, e.g. "hold Q to return").
@@ -243,8 +244,9 @@ export default defineSystem({
   },
 
   update(dt, ctx) {
-    // Q: the story decides whether the compass may shift here
-    if (ctx.input.wasPressed('shift') && !shift.active) {
+    // Q: the story decides whether the compass may shift here. With a story system present the
+    // story owns the key itself (anchor radius, "hold Q to return") and sends 'shift:request'.
+    if (!ctx.systems.get('story') && ctx.input.wasPressed('shift') && !shift.active) {
       const flags = ctx.state.state.flags;
       const target = flags['shift.target'];
       if (flags['shift.allowed'] === true && isEra(target)) {

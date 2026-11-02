@@ -210,7 +210,7 @@ function examine(ctx: GameContext, clue: ChronikClue): boolean {
 
 function startEcho(ctx: GameContext, clue: ChronikClue): boolean {
   if (!director || director.active) return false;
-  ctx.ui.hud.prompt(null);
+  ctx.ui.hud.prompt(null, undefined, 'chronik');
   promptKey = '';
   director.start(clue);
   return true;
@@ -430,8 +430,8 @@ function updatePrompt(ctx: GameContext): void {
   }
   const k = `${key}|${text}`;
   if (k === promptKey) return;
-  if (key) ctx.ui.hud.prompt(key, text);
-  else if (promptKey) ctx.ui.hud.prompt(null);
+  if (key) ctx.ui.hud.prompt(key, text, 'chronik');
+  else if (promptKey) ctx.ui.hud.prompt(null, undefined, 'chronik');
   promptKey = key ? k : '';
 }
 

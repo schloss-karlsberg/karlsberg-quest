@@ -141,7 +141,10 @@ test.describe('hunt', () => {
     });
     expect(caught.caught).not.toBeNull();
     await shot(page, 'hunt-caught-rush');
-    await page.evaluate(() => window.kq!.step(60));
+    // ≈ 2.1 s: player:caught; with the story feature present its curtain carries the title
+    await page.evaluate(() => window.kq!.step(72));
+    if (await page.evaluate(() => !!window.kq!.story)) await expect(page.getByTestId('story-curtain')).toHaveClass(/kqs-down/);
+    await page.waitForTimeout(1300);
     await shot(page, 'hunt-caught');
     const after = await page.evaluate(() => {
       const k = window.kq!;

@@ -4,6 +4,8 @@
  * - Activation ONLY via 'threat:configure' {kind:'pack'} from the story (or kq.hunt.start()).
  * - The AI is a deterministic simulation (sim.ts) stepped in the fixed update; visuals, sound,
  *   captions and HUD follow it. Caught → ≈2 s sequence → 'player:caught' {by:'pack'} → pack ends.
+ *   With a story system the story's curtain takes over at that point (no hunt title).
+ * - The pack ends on 'era:change' (it belongs to the era it was configured in) and 'hub:enter'.
  * - The lantern (L) lights the world through atmosphere.uLantern*, drains oil while lit, raises
  *   the pack's sight range; oil persists in the 'hunt' state slice and refills on 'hub:enter'.
  *
@@ -59,7 +61,7 @@ declare module '../../core/events' {
     /** The pack appeared (threat:configure or kq.hunt.start). */
     'hunt:start': { x: number; z: number; radius: number; hounds: number; pikeur: boolean };
     /** The pack is gone (configured off, caught the player, hub, debug). */
-    'hunt:end': { reason: 'configure' | 'caught' | 'hub' | 'debug' };
+    'hunt:end': { reason: 'configure' | 'caught' | 'hub' | 'era' | 'debug' };
   }
 }
 
@@ -171,6 +173,9 @@ class Hunt {
       this.stop('hub');
       this.refill();
     });
+    // the pack belongs to the era it was configured in: a shift (or the return after being caught)
+    // ends it; the story re-issues threat:configure when the beat wants it again
+    ev.on('era:change', () => this.stop('era'));
     ev.on('save:loaded', () => this.syncLantern(true));
     ev.on('settings:change', ({ key }) => {
       if (this.sim && (key === 'gentleMode' || key === 'rauhnacht')) this.sim.retune(this.mode());
@@ -309,7 +314,7 @@ class Hunt {
     return this.sim;
   }
 
-  stop(reason: 'configure' | 'caught' | 'hub' | 'debug', silent = false): void {
+  stop(reason: 'configure' | 'caught' | 'hub' | 'era' | 'debug', silent = false): void {
     const s = this.sim;
     if (!s) return;
     this.sim = null;
@@ -578,8 +583,18 @@ class Hunt {
     this.slice().caught++;
   }
 
+  /** A story system shows the caught curtain and returns the player: hunt hands over at CAUGHT_EMIT. */
+  private storyOwnsCaught(): boolean {
+    return !!this.ctx.systems.get('story');
+  }
+
   private updateCaught(dt: number): void {
     const ctx = this.ctx;
+    // the story paused the game for its curtain and has moved the player by now: done here
+    if (this.caughtEmitted && this.storyOwnsCaught()) {
+      this.endCaught();
+      return;
+    }
     this.caughtT += dt;
     if (this.caughtT >= CAUGHT_EMIT && !this.caughtEmitted) {
       this.caughtEmitted = true;
@@ -684,7 +699,7 @@ class Hunt {
     });
     const showGauge = L.lit || L.oil < 0.999 || !!sim || ctx.era.info.night;
     ctx.ui.hud.setLantern(showGauge ? L.oil : null, L.lit);
-    this.overlay.frame({ dt, alert: this.hudAlert, reducedMotion, caught: this.caughtT, showArrows: ctx.settings.state.soundIndicators !== false });
+    this.overlay.frame({ dt, alert: this.hudAlert, reducedMotion, caught: this.caughtT, handoff: this.storyOwnsCaught(), showArrows: ctx.settings.state.soundIndicators !== false });
   }
 
   // ---- debug hooks --------------------------------------------------------------------------

@@ -143,6 +143,15 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await expect(page.getByTestId('hub')).toBeVisible();
   await shot(page, 'hub');
   await page.getByTestId('hub-chronik').click();
+  // the Pinnwand sends chronik:open: with the Chronik feature present its board replaces the hub
+  if (await page.evaluate(() => !!window.kq!.chronik)) {
+    await expect(page.locator('.ck-board')).toBeVisible();
+    await page.evaluate(() => {
+      window.kq!.chronik!.close();
+      window.kq!.press('KeyE', 2);
+    });
+    await expect(page.getByTestId('hub')).toBeVisible();
+  }
   await page.getByTestId('hub-shelf').click();
   await page.getByTestId('hub-back').click();
   await page.getByTestId('hub-drawer').click();

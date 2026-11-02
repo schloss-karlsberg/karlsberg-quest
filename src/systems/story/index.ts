@@ -9,7 +9,7 @@
 import './story.css';
 import { RADIO_LINES } from './strings';
 import type { GameContext } from '../../core/context';
-import type { Era } from '../../core/era';
+import { type Era, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { t } from '../../i18n';
 import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
@@ -111,6 +111,8 @@ export function lookFor(time: 'day' | 'dusk' | 'night'): EraLook {
 }
 
 const CAUGHT_KEY: Record<ThreatKind, string> = { pack: 'story.caught.pack', fire: 'story.caught.fire', oblivion: 'story.caught.oblivion' };
+/** Dialogue triggered by these events belongs to the Chronik's echo scenes (it shows the subtitles). */
+const ECHO_EVENTS = new Set(['echo:start', 'echo:play', 'echo:end']);
 const QUIET_EVENTS = new Set(['player:step', 'dialogue:say', 'hunt:alert', 'lantern:oil', 'fire:progress', 'oblivion:progress']);
 
 interface Scheduled {
@@ -139,14 +141,17 @@ class StoryRuntime {
   private hubToastShown = false;
   private storyPrompt = false;
   private hubPrompt = false;
-  private anchor: { to: Era; x: number; z: number; r: number } | null = null;
   private shiftPending: { to: Era; age: number } | null = null;
   private qHold = 0;
+  /** An fx transition is running (between shift:begin and shift:done). */
+  private shifting = false;
+  /** A Chronik echo is playing (between echo:start and echo:end). */
+  private echoHold = false;
   private caughtBusy = false;
   private radioIndex = 0;
   private lastSaid = new Map<string, number>();
-  /** Dialogue of the reference packs in content/examples is never spoken in the game. */
-  private readonly exampleLines: Set<string>;
+  /** Dialogue that is never spoken by the trigger runner (example packs, placeholder packs). */
+  private readonly mutedLines: Set<string>;
   private stationPlaced = false;
   private hooksInstalled = false;
   private quietCard = false;
@@ -161,7 +166,7 @@ class StoryRuntime {
         ctx.events.emit('story:beat', { chapter: ch, beat: b.id });
         if (!o.resume) this.pendingAutosave = true;
         if (this.storyPrompt) {
-          ctx.ui.hud.prompt(null);
+          ctx.ui.hud.prompt(null, undefined, 'story');
           this.storyPrompt = false;
         }
       },
@@ -170,7 +175,13 @@ class StoryRuntime {
       },
     });
 
-    this.exampleLines = new Set(ctx.content.packs.filter((p) => p.file.includes('/examples/')).flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)));
+    // example packs never speak; placeholder packs (content/test) only with ?placeholder
+    const placeholder = ctx.params.has('placeholder');
+    this.mutedLines = new Set(
+      ctx.content.packs
+        .filter((p) => p.file.includes('/examples/') || (p.pack.placeholder && !placeholder))
+        .flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)),
+    );
     this.layer = ctx.ui.layer('story');
     this.layer.classList.remove('kq-hidden');
     this.voice = new Voice(ctx.audio);
@@ -256,7 +267,14 @@ class StoryRuntime {
         this.applyLook();
       }
     });
-    ctx.events.on('shift:begin', () => (this.shiftPending = null));
+    ctx.events.on('shift:begin', () => {
+      this.shiftPending = null;
+      this.shifting = true;
+    });
+    ctx.events.on('shift:done', () => (this.shifting = false));
+    // while the Chronik plays an echo (ghosts + its own subtitles) the presenter waits out of sight
+    ctx.events.on('echo:start', () => (this.echoHold = true));
+    ctx.events.on('echo:end', () => (this.echoHold = false));
     window.addEventListener('keydown', this.onKey);
     // window.kq appears right after all systems are initialised
     const iv = window.setInterval(() => {
@@ -299,10 +317,6 @@ class StoryRuntime {
     const s = this.slice;
     this.objectives.set(s.objective);
     this.applyLook();
-    this.anchor = null;
-    const f = this.ctx.state.state.flags;
-    if (f['shift.allowed'] && typeof f['shift.target'] === 'string')
-      this.anchor = { to: f['shift.target'] as Era, x: Number(f['shift.x']), z: Number(f['shift.z']), r: Number(f['shift.r']) || 30 };
   }
 
   start(name: string): void {
@@ -448,10 +462,10 @@ class StoryRuntime {
         return;
       case 'prompt':
         if (!a.key && !a.text) {
-          if (this.storyPrompt) ctx.ui.hud.prompt(null);
+          if (this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
           this.storyPrompt = false;
         } else {
-          ctx.ui.hud.prompt(a.key ?? null, a.text ?? '');
+          ctx.ui.hud.prompt(a.key ?? null, a.text ?? '', 'story');
           this.storyPrompt = true;
         }
         return;
@@ -507,7 +521,6 @@ class StoryRuntime {
   }
 
   private setAnchor(a: { to: Era; x: number; z: number; r: number } | null): void {
-    this.anchor = a;
     this.ctx.state.update((st) => {
       if (!a) {
         for (const k of ['shift.allowed', 'shift.target', 'shift.x', 'shift.z', 'shift.r']) delete st.flags[k];
@@ -577,8 +590,9 @@ class StoryRuntime {
   private onEvent(name: string, payload: unknown): void {
     if (QUIET_EVENTS.has(name)) return;
     this.engine.onEvent(name, payload);
-    // ContentDB dialogue triggers
-    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.exampleLines.has(l.id));
+    // ContentDB dialogue triggers (echo lines are played by the Chronik's echo director itself)
+    if (ECHO_EVENTS.has(name)) return;
+    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id));
     if (!lines.length) return;
     const s = this.slice;
     const line = pickLine(lines, name, payload, { era: this.ctx.era.current, flags: this.ctx.state.state.flags, chapter: s.chapter, beat: s.beat }, new Set(s.said), this.lastSaid, this.time);
@@ -626,8 +640,8 @@ class StoryRuntime {
     const showPrompt = inside && !this.storyPrompt && !this.hub.open;
     if (showPrompt !== this.hubPrompt) {
       this.hubPrompt = showPrompt;
-      if (showPrompt) ctx.ui.hud.prompt('E', t('story.hub.prompt'));
-      else if (!this.storyPrompt) ctx.ui.hud.prompt(null);
+      if (showPrompt) ctx.ui.hud.prompt('E', t('story.hub.prompt'), 'story');
+      else if (!this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
     }
     if (inside && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0) this.hub.show();
   }
@@ -721,18 +735,37 @@ class StoryRuntime {
     }
   }
 
-  /** Q without an fx feature: press at the anchor to cross, hold in the past to return. */
+  /**
+   * The shift anchor lives in the state flags (persisted; the same protocol fx documents):
+   * shift.allowed === true, shift.target = era, optional shift.x/z/r (no x/z: anywhere).
+   */
+  private anchorFromFlags(): { to: Era; x: number; z: number; r: number; anywhere: boolean } | null {
+    const f = this.ctx.state.state.flags;
+    const to = f['shift.target'];
+    if (f['shift.allowed'] !== true || !isEra(to)) return null;
+    const x = f['shift.x'] === undefined ? NaN : Number(f['shift.x']);
+    const z = f['shift.z'] === undefined ? NaN : Number(f['shift.z']);
+    return { to, x, z, r: Number(f['shift.r']) || 30, anywhere: !Number.isFinite(x) || !Number.isFinite(z) };
+  }
+
+  /**
+   * Q (the story owns the key; fx only performs the transition): press at the anchor to cross,
+   * hold in the past to return.
+   */
   private updateShiftKey(dt: number): void {
     const ctx = this.ctx;
-    if (ctx.systems.get('fx')) return;
+    if (this.caughtBusy || this.shiftPending || this.shifting) {
+      this.qHold = 0;
+      return;
+    }
     const era = ctx.era.current;
     const p = ctx.player.position;
     if (era === 'today') {
       this.qHold = 0;
       if (!ctx.input.wasPressed('shift')) return;
-      const a = this.anchor;
-      if (a && Math.hypot(p.x - a.x, p.z - a.z) <= a.r) this.requestShift(a.to, 'anchor');
-      else if (a) ctx.ui.toast(t('story.shift.notHere'), 2200);
+      const a = this.anchorFromFlags();
+      if (a && (a.anywhere || Math.hypot(p.x - a.x, p.z - a.z) <= a.r)) this.requestShift(a.to, 'anchor');
+      else if (a || ctx.state.state.flags['shift.allowed'] === false) ctx.ui.toast(t('story.shift.notHere'), 2200);
       return;
     }
     if (ctx.input.isDown('shift')) {
@@ -748,7 +781,7 @@ class StoryRuntime {
     const ctx = this.ctx;
     if (!this.hooksInstalled && window.kq) this.installHooks();
     const paused = ctx.pause.paused;
-    this.presenter.update(paused ? 0 : dt);
+    this.presenter.update(paused || this.echoHold ? 0 : dt);
     this.overlays.tickChoice(dt);
     const p = ctx.player.position;
     const heading = ((-ctx.player.yaw * 180) / Math.PI + 360) % 360;
@@ -760,7 +793,7 @@ class StoryRuntime {
     this.station.setVisible(today);
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
-    this.presenter.el.style.visibility = hudVisible ? '' : 'hidden';
+    this.presenter.el.style.visibility = hudVisible && !this.echoHold ? '' : 'hidden';
   }
 
   private installHooks(): void {

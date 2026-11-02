@@ -872,13 +872,6 @@
           "to": null
         },
         {
-          "do": "threat",
-          "kind": "oblivion",
-          "active": true,
-          "intensity": 0.15,
-          "seconds": 90
-        },
-        {
           "do": "say",
           "id": "diener.p.zufuss",
           "speaker": "diener",
@@ -969,11 +962,6 @@
           "do": "prompt",
           "key": null,
           "text": null
-        },
-        {
-          "do": "threat",
-          "kind": "oblivion",
-          "active": false
         }
       ]
     },

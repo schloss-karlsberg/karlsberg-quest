@@ -348,7 +348,8 @@ export class OblivionController {
     if (done) {
       this.caughtCooldown = 6;
       ctx.events.emit('player:caught', { by: 'oblivion' });
-      this.ui.showCard(ctx.t('fx.caught.oblivion'));
+      // the story shows its own caught curtain; the card is only for a game without one
+      if (!ctx.systems.get('story')) this.ui.showCard(ctx.t('fx.caught.oblivion'));
       return true;
     }
     return false;

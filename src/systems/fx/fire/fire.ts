@@ -209,7 +209,8 @@ export class FireController {
     if (full) {
       this.caughtCooldown = 6;
       ctx.events.emit('player:caught', { by: 'fire' });
-      this.ui.showCard(ctx.t('fx.caught.fire'));
+      // the story shows its own caught curtain; the card is only for a game without one
+      if (!ctx.systems.get('story')) this.ui.showCard(ctx.t('fx.caught.fire'));
       return true;
     }
     return false;

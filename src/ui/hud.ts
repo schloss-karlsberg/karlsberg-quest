@@ -112,15 +112,23 @@ export class Hud {
     m.style.display = Math.abs(d) > 70 ? 'none' : '';
   }
 
-  /** Bottom prompt, e.g. prompt('E', 'Lauschen'). Null hides it. */
-  prompt(key: string | null, text?: string): void {
-    if (!key && !text) {
+  /**
+   * Bottom prompt, e.g. prompt('E', 'Lauschen'). Null hides it. Several features can hold a prompt
+   * at once (`owner`, e.g. the story's "Q – Zeitwechsel" and the Chronik's "E – Untersuchen"): the
+   * most recently set one is shown, and clearing yours reveals the one below instead of hiding all.
+   */
+  prompt(key: string | null, text?: string, owner = '_'): void {
+    this.prompts.delete(owner);
+    if (key || text) this.prompts.set(owner, { key, text: text ?? '' });
+    const top = [...this.prompts.values()].pop();
+    if (!top) {
       this.promptEl.classList.remove('show');
       return;
     }
-    this.promptEl.replaceChildren(...(key ? [h('kbd', key)] : []), text ?? '');
+    this.promptEl.replaceChildren(...(top.key ? [h('kbd', top.key)] : []), top.text);
     this.promptEl.classList.add('show');
   }
+  private readonly prompts = new Map<string, { key: string | null; text: string }>();
 
   /** Show a subtitle line; returns a function that removes it early. */
   subtitle(speaker: string | null, text: string, ms = 4000, fiction = false): () => void {

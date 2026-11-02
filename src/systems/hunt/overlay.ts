@@ -128,7 +128,11 @@ export class HuntOverlay {
     }
   }
 
-  frame(o: { dt: number; alert: number; reducedMotion: boolean; caught: number; showArrows: boolean }): void {
+  /**
+   * `handoff`: a story system shows its own caught curtain (title + wake-up) from CAUGHT_EMIT on;
+   * the overlay then only fades to black and leaves the words to the story.
+   */
+  frame(o: { dt: number; alert: number; reducedMotion: boolean; caught: number; showArrows: boolean; handoff?: boolean }): void {
     const dt = Math.min(0.1, o.dt);
     this.pulse = Math.max(0, this.pulse - dt * 3.2);
     const base = Math.max(0, (o.alert - 0.25) / 0.75) * 0.75;
@@ -157,9 +161,9 @@ export class HuntOverlay {
       this.caughtEl.style.opacity = '0';
       return;
     }
-    const black = t < 0.9 ? 0 : t < 1.7 ? (t - 0.9) / 0.8 : t < 3.4 ? 1 : Math.max(0, 1 - (t - 3.4) / 1.2);
+    const black = t < 0.9 ? 0 : t < 1.7 ? (t - 0.9) / 0.8 : t < 3.4 || o.handoff ? 1 : Math.max(0, 1 - (t - 3.4) / 1.2);
     this.caughtEl.style.opacity = black.toFixed(3);
-    const title = t < 1.3 ? 0 : t < 1.9 ? (t - 1.3) / 0.6 : t < 3.3 ? 1 : Math.max(0, 1 - (t - 3.3) / 0.9);
+    const title = o.handoff ? 0 : t < 1.3 ? 0 : t < 1.9 ? (t - 1.3) / 0.6 : t < 3.3 ? 1 : Math.max(0, 1 - (t - 3.3) / 0.9);
     this.caughtTitle.style.opacity = title.toFixed(3);
     this.caughtTitle.style.transform = `translateY(${((1 - Math.min(1, title)) * 6).toFixed(1)}px)`;
     this.caughtRule.style.opacity = (title * 0.9).toFixed(3);
