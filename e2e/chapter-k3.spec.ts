@@ -233,17 +233,14 @@ async function examineAt(page: Page, id: string, at: [number, number], o: { floo
         k.ctx.player.position.set(k.ctx.player.position.x, o.floor + 0.05, k.ctx.player.position.z);
       }
       const w = h.walk([[at[0], at[1], 0.6]], { chunk: 8 });
-      k.step(3);
-      return { target: null as string | null, status: k.chronik.status(id), w };
+      // the Chronik picks its E target in the render frame, every 0.2 s: each step() call renders
+      // one frame of 1/60 s, so draw 15 of them (rAF may stall on a busy software renderer)
+      for (let i = 0; i < 15; i++) k.step(1);
+      return { target: k.chronik.target() as string | null, status: k.chronik.status(id), w };
     },
     { id, at, o },
   );
   expect(r.status, `${id} available at ${at}`).toBe('available');
-  // the Chronik picks its E target in the render frame (every 0.2 s): let a few frames draw
-  r.target = await page
-    .waitForFunction((id) => (window.kq as Any).chronik.target() === id, id, { timeout: 30_000 })
-    .then(() => id)
-    .catch(() => page.evaluate(() => (window.kq as Any).chronik.target() as string | null));
   expect(r.target, `${id} is the E target at ${JSON.stringify(r.w)}`).toBe(id);
   await page.evaluate((id) => {
     const k = window.kq as Any;
@@ -451,6 +448,7 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
         const k = window.kq as Any;
         k.tools.measure.at(a[0], a[1], b[0], b[1], 350.5, 350.5);
         k.step(90);
+        k.tools.measure.stop(); // R: put the tape away again
         k.ctx.ui.modals.closeAll();
         (window as Any).k3h.settle(30);
       },
@@ -509,7 +507,7 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
   // ---- 3.8 Hinauf: into the burning vestibule, up the Prunktreppe ------------------------------------
   const toVest = await page.evaluate(() => (window as Any).k3h.walk([[1250, -1125], [1254.8, -1125, 0.5], [1258.5, -1126.5]], { sprint: true, chunk: 4 }));
   expect(toVest.room, JSON.stringify(toVest)).toBe('B01.1.eg-vestibuel');
-  await page.evaluate(() => (window as Any).k3h.look(1262, -1130.3, 10));
+  await page.evaluate(() => (window as Any).k3h.look(1261.5, -1140, 12));
   await shot(page, '11-vestibuel-brennt');
   // up the imperial stair: the middle flight, the half landing, the east flight to the Festsaal door
   const up = await page.evaluate(() =>
@@ -632,9 +630,9 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
     // from inside the gate: Hanne, and behind her the burning palace
     const k = window.kq as Any;
     const n = k.npc.list().find((f: Any) => f.npc === 'hanne');
-    k.teleport(n.x + 1.2, n.z - 4.5, 0, 0);
+    k.teleport(n.x + 1, n.z - 3.6, 0, 0);
     k.step(2);
-    (window as Any).k3h.look(n.x - 0.6, n.z, 3);
+    (window as Any).k3h.look(n.x - 0.4, n.z, -3);
   });
   await shot(page, '15-pforte-hanne');
   await page.evaluate(() => {
@@ -660,9 +658,14 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.step(30);
-    const j = k.menagerie.state().find((a: Any) => a.kind === 'jaguar');
-    if (j) (window as Any).k3h.look(j.x, j.z, 0);
-    else (window as Any).k3h.look(1276, -1418, 0);
+    // screenshot staging: the jaguar at the edge of the lantern light, on the path ahead
+    const p = k.ctx.player.position;
+    const j = k.menagerie.state().find((a: Any) => a.id === 'k3.jaguar');
+    if (j) {
+      k.menagerie.place('k3.jaguar', p.x + 1.5, p.z - 8, 180);
+      k.step(2);
+    }
+    (window as Any).k3h.look(p.x + 1.5, p.z - 8, -4);
   });
   await shot(page, '16-jaguar');
   const north2 = await page.evaluate(() => {
@@ -719,7 +722,7 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
   const coverage = await page.evaluate(() => {
     const k = window.kq as Any;
     const known = new Set(k.state().inventory.nouns as string[]);
-    const cs = k.ctx.content.packs.flatMap((p: Any) => p.cases ?? []).find((c: Any) => c.id === 'case.k3');
+    const cs = k.ctx.content.cases.get('case.k3');
     const missing: string[] = [];
     for (const e of cs.entries) for (const b of e.blanks) if (b.correct && !known.has(b.correct)) missing.push(`${e.id}:${b.correct}`);
     const readings = cs.entries.filter((e: Any) => e.kind === 'reading').flatMap((e: Any) => e.blanks.flatMap((b: Any) => b.accepts.filter((n: string) => known.has(n))));

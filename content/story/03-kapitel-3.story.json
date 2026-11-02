@@ -125,7 +125,7 @@
           "id": "zum-kommissaer",
           "when": { "all": [{ "era": "1793-07" }, { "any": [{ "have": { "clue": "clue.k3.papier" } }, { "timer": 150 }, { "flag": "k3.fackel_gesehen" }] }] },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k3.kommissaer", "text": "Im Ehrenhof: beim Kommissär E halten. Wenn du bereit bist", "x": 1225, "z": -1118, "delay": 2 }]
+          "do": [{ "do": "objective", "id": "k3.kommissaer", "text": "Im Ehrenhof beim Kommissär E halten, wenn du bereit bist. Danach brennt das Schloss", "x": 1225, "z": -1118, "delay": 2 }]
         },
         {
           "id": "heute",
@@ -328,9 +328,9 @@
         { "do": "grant", "clue": "clue.k3.jost", "delay": 1 },
         { "do": "cue", "id": "menagerie:clear", "data": { "id": "k3.jaguar" }, "delay": 2 },
         { "do": "say", "line": "beat.k3.hunde", "delay": 10 },
-        { "do": "npc", "op": "despawn", "npc": "jost", "delay": 3 },
         { "do": "sound", "sound": "horn", "signal": "verloren", "x": 1150, "z": -1700, "caption": "[Horn, weit weg: falsch und zu hoch]", "delay": 3 },
-        { "do": "objective", "id": "k3.heim", "text": "Zurück ins Heute (Q halten)", "delay": 2 }
+        { "do": "objective", "id": "k3.heim", "text": "Zurück ins Heute (Q halten)", "delay": 2 },
+        { "do": "npc", "op": "despawn", "npc": "jost", "delay": 12 }
       ],
       "complete": { "era": "today" },
       "exit": [
