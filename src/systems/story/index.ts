@@ -76,7 +76,8 @@ export interface StoryHooks {
   credits(): void;
   epilogue(id: EndingId): Epilogue | null;
   choose(index: number): boolean;
-  look(time: LookTime): void;
+  /** Time of day today, or (with `era`) of that past era like the `look` action. */
+  look(time: LookTime, era?: Era): void;
   /** Story meters (copy; value 0 empty … 1 full). */
   meters(): Record<string, MeterState>;
   /** Set a meter's value (tests). */
@@ -1195,8 +1196,9 @@ class StoryRuntime {
       credits: () => this.endings.credits(),
       epilogue: (id) => this.epilogue(id),
       choose: (i) => this.overlays.pickChoice(i),
-      look: (time) => {
-        this.slice.look = time;
+      look: (time, era) => {
+        if (era && era !== 'today') this.slice.lookPast = time === 'day' ? null : { era, time };
+        else this.slice.look = time;
         this.applyLook();
       },
       meters: () => structuredClone(this.slice.meters),

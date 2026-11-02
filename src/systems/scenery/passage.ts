@@ -13,7 +13,8 @@ import { C } from './props';
 
 /** The door (from the interiors' plan) and its outward axis. */
 export const TEMPEL_DOOR = { x: 1270.34, z: -1226.78, nx: 0.98643, nz: -0.16416, floor: 348.8 };
-export const PASSAGE = { from: 0.25, to: 11.6, half: 1.45, y0: 346.6, y1: 351.7 };
+/** Along the door's axis: from just outside the door to KB-B07's garden facade (s ≈ 10.65). */
+export const PASSAGE = { from: 0.25, to: 10.8, half: 1.45, y0: 346.6, y1: 351.7 };
 
 /** Point at distance s along the passage axis. */
 export function passageAt(s: number, side = 0): [number, number] {
@@ -77,13 +78,14 @@ export function buildPassage(k: Kit, groundAt: (x: number, z: number) => number)
     k.box(PASSAGE.half * 2, Math.max(0.05, h - PASSAGE.y0), 0.62, 0, PASSAGE.y0, PASSAGE.from + 0.4 + i * 0.62, C.sandstonePale);
   }
   k.box(PASSAGE.half * 2, Math.max(0.05, low - PASSAGE.y0 + 0.02), len - 2.2, 0, PASSAGE.y0, PASSAGE.from + 2.2 + (len - 2.2) / 2, 0xb8aa98);
-  // the portal on the garden side: an arch frame proud of the facade
-  const pz = PASSAGE.to - 0.1;
-  for (const sx of [-1, 1]) k.box(0.55, spring - low + 0.1, 0.5, sx * (PASSAGE.half + 0.3), low - 0.1, pz, C.sandstonePale);
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 6) * Math.PI;
-    k.box(0.5, 0.35, 0.5, Math.cos(a) * (R + 0.25), spring + Math.sin(a) * (R + 0.25) - 0.17, pz, C.sandstonePale, [0, 0, a - Math.PI / 2]);
-  }
+  // the portal on the garden side: sandstone jambs, a lintel with a keystone, flush with the facade
+  const pz = PASSAGE.to - 0.05;
+  const jambH = PASSAGE.y1 - low + 0.1;
+  for (const sx of [-1, 1]) k.box(0.5, jambH, 0.4, sx * (PASSAGE.half + 0.25), low - 0.1, pz, C.sandstonePale);
+  k.box(PASSAGE.half * 2 + 1.0, 0.55, 0.42, 0, PASSAGE.y1 - 0.05, pz, C.sandstonePale);
+  k.box(0.5, 0.7, 0.48, 0, PASSAGE.y1 - 0.2, pz, 0xcfc4b0);
+  // a step down onto the gravel
+  k.box(PASSAGE.half * 2 + 0.6, Math.max(0.05, low - g0 + 0.05), 0.5, 0, g0 - 0.05, PASSAGE.to + 0.25, C.sandstonePale);
 }
 
 const DECL = /* glsl */ `

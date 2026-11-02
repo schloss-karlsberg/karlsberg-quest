@@ -5,6 +5,11 @@
  * its foot and a low band of hills behind — at its real bearing and distance, its height a little
  * exaggerated so it reads against the sky. Drawn with its own thin aerial perspective so it
  * stands out at dawn and dusk and melts into fog and night.
+ *
+ * It lies beyond the terrain data, where the mirrored apron (world/terrain.ts) would hide it, so
+ * it is drawn scaled towards the camera (`uPull`, which keeps its on-screen shape exactly) to just
+ * past the edge of the real terrain in its direction: in front of the fogged apron, behind all
+ * real ground. Lighting and haze use the true position.
  */
 import { BufferAttribute, BufferGeometry, Color, Mesh, ShaderMaterial } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
@@ -154,6 +159,7 @@ export function hohenburgGeometry(): BufferGeometry {
 
 const VERT = /* glsl */ `
 attribute vec3 color;
+uniform float uPull;
 varying vec3 vWp;
 varying vec3 vN;
 varying vec3 vCol;
@@ -162,9 +168,34 @@ void main() {
   vWp = wp.xyz;
   vN = normalize(mat3(modelMatrix) * normal);
   vCol = color;
-  gl_Position = projectionMatrix * viewMatrix * wp;
+  // scaled about the eye: same silhouette on screen, nearer in depth
+  vec3 drawn = cameraPosition + (wp.xyz - cameraPosition) * uPull;
+  gl_Position = projectionMatrix * viewMatrix * vec4(drawn, 1.0);
 }
 `;
+
+/** The terrain data's extent (x0, z0, x1, z1): beyond it only the apron. */
+export type Extent = [number, number, number, number];
+
+/**
+ * How far to pull the Hohenburg towards the eye: to `margin` m past the point where the ray from
+ * the camera towards it leaves the terrain extent (1 = not at all).
+ */
+export function pullFactor(camX: number, camZ: number, ext: Extent, margin = 25): number {
+  const dx = HOHENBURG.x - camX;
+  const dz = HOHENBURG.z - camZ;
+  const d = Math.hypot(dx, dz);
+  if (d < 1) return 1;
+  const ux = dx / d;
+  const uz = dz / d;
+  let t = Infinity;
+  if (ux < 0) t = Math.min(t, (ext[0] - camX) / ux);
+  if (ux > 0) t = Math.min(t, (ext[2] - camX) / ux);
+  if (uz < 0) t = Math.min(t, (ext[1] - camZ) / uz);
+  if (uz > 0) t = Math.min(t, (ext[3] - camZ) / uz);
+  if (!Number.isFinite(t) || t < 0) t = 0;
+  return Math.max(0.02, Math.min(1, (t + margin) / d));
+}
 
 const FRAG = /* glsl */ `
 precision highp float;
@@ -200,7 +231,7 @@ export class Hohenburg {
     this.material = new ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,
-      uniforms: { ...atmosphere, uVis: { value: 0.5 }, uHorizon: { value: new Color() } },
+      uniforms: { ...atmosphere, uVis: { value: 0.5 }, uHorizon: { value: new Color() }, uPull: { value: 1 } },
     });
     this.mesh = new Mesh(hohenburgGeometry(), this.material);
     this.mesh.name = 'scenery-hohenburg';
@@ -209,7 +240,8 @@ export class Hohenburg {
   }
 
   /** 0..1 how clearly it stands out; horizon = the sky's horizon colour (linear). */
-  set(vis: number, horizon: Color): void {
+  set(vis: number, horizon: Color, pull = 1): void {
+    this.material.uniforms.uPull!.value = pull;
     this.material.uniforms.uVis!.value = vis;
     (this.material.uniforms.uHorizon!.value as Color).copy(horizon);
   }

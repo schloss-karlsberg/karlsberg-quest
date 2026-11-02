@@ -23,7 +23,7 @@ import type { PassZone, Solid } from '../../world/collision';
 import { clink } from './audio';
 import { type BuiltSet, SetBuilder } from './builder';
 import { FIREWORKS_ECHO, Fireworks, type FireworksPhase } from './fireworks';
-import { HOHENBURG, Hohenburg } from './hohenburg';
+import { type Extent, HOHENBURG, Hohenburg, pullFactor } from './hohenburg';
 import { Kit } from './kit';
 import { propMaterial } from './material';
 import { buildPassage, passageCollision, patchPalace, setPassageCut } from './passage';
@@ -236,7 +236,16 @@ function updateHohenburg(ctx: GameContext, dt: number): void {
   const west = Math.hypot(p.x - 200, p.z + 905);
   if (era === '1796' && west < 260) vis = Math.max(vis, 0.95 - (west / 260) * 0.3);
   hohVis += (vis - hohVis) * Math.min(1, dt * 1.5);
-  hohenburg.set(hohVis, ctx.world.sky.uniforms.uHorizon!.value as Color);
+  const cam = ctx.camera.position;
+  hohenburg.set(hohVis, ctx.world.sky.uniforms.uHorizon!.value as Color, pullFactor(cam.x, cam.z, terrainExtent(ctx)));
+}
+
+let extent: Extent | null = null;
+function terrainExtent(ctx: GameContext): Extent {
+  if (extent) return extent;
+  const b = ctx.world.heightfield.bounds;
+  extent = [b.x0, b.z0, b.x1, b.z1];
+  return extent;
 }
 
 type EchoProbe = () => { id: string | null; t: number; total: number; line: number };
@@ -350,7 +359,8 @@ export default defineSystem({
       applyEra(ctx);
     });
   },
-  frame(dt, ctx) {
+  // fixed steps (deterministic with `kq.step`): sets, collision, strikes, Hohenburg, fireworks
+  update(dt, ctx) {
     installHooks(ctx);
     const era = ctx.era.current;
     if (era !== lastEra) {
@@ -368,11 +378,15 @@ export default defineSystem({
       if (!live.has(def.id) && here && d < def.range) buildSet(ctx, def, era);
     }
     syncSolids(ctx);
-    const reduced = ctx.settings.state.reducedMotion;
-    for (const l of live.values()) for (const m of l.built.materials) if (m.uniforms.uMotion) m.uniforms.uMotion.value = reduced ? 0.6 : 1;
     playStrikes(ctx);
     updateHohenburg(ctx, dt);
     updateFireworks(ctx, dt);
+  },
+  // per rendered frame: hooks (also while `?manual` holds the fixed steps) and motion settings
+  frame(_dt, ctx) {
+    installHooks(ctx);
+    const reduced = ctx.settings.state.reducedMotion;
+    for (const l of live.values()) for (const m of l.built.materials) if (m.uniforms.uMotion) m.uniforms.uMotion.value = reduced ? 0.6 : 1;
   },
   dispose() {
     for (const id of [...live.keys()]) dropSet(id);

@@ -370,7 +370,7 @@ export class Fireworks {
     this.burst(c, white, 900, 34, 'peony');
     this.burst(c.clone().add(new Vector3(0, 8, 0)), PALETTE[1]!, 500, 22, 'willow');
     for (let i = 0; i < 26; i++) this.launch(true, false);
-    this.light.setRGB(3.4, 2.4, 1.4).multiplyScalar(reduced ? 1.2 : 7);
+    this.light.setRGB(3.4, 2.4, 1.4).multiplyScalar(reduced ? 1.2 : 4.5);
     this.lightPos.copy(c);
     this.flash = reduced ? 0 : 0.9;
     this.scaffold.visible = false;

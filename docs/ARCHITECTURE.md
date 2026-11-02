@@ -103,7 +103,7 @@ Rules
 | `post` | `post.uniforms.uShift` (era-shift warp 0..1), `uFlash` (white flash), `uDesaturate` |
 | `player` | `position`, `yaw/pitch`, `stance`, `flying`, `stats {noise, visibility, speed, lanternLit, noiseBoost, onSlopeLimit}`, `teleport(x,z,yaw?)`, `setStance`, `setFlying`, `forward()` |
 | `input` | actions, `simulate(code, down)`, `enabled`, pointer lock |
-| `world` | `heightAt(x,z)`, `surfaceAt` (meadow/forest/water/…), `coverAt`, `bounds()`, `heightfield` (`slopeDeg`, `normalAt`), `collider.footprintAt`, `palace.setMode`, `palace.uniforms.uRuin/uChar`, `setScanMode`, `setScanArea`, `setMapMix`, `forest`, `sky` |
+| `world` | `heightAt(x,z)`, `surfaceAt` (meadow/forest/water/…), `coverAt`, `bounds()`, `heightfield` (`slopeDeg`, `normalAt`), `collider.footprintAt` / `setSolids(owner, list)` / `setPassZones(owner, list)` / `solidAt` / `keep`, `palace.setMode`, `palace.uniforms.uRuin/uChar`, `setScanMode`, `setScanArea`, `setMapMix`, `forest`, `sky` |
 | `data` | `meta`, `heights`, `ground`, `canopy`, `footprints`, `rooms` (114 room polygons), `pois`, `paths` (graph), `attribution` |
 | `state` | `GameStateStore`: `.state` (readonly), `.mutable`, `.update(fn, reason)`, `.subscribe`, `.slice(id, init)` |
 | `settings` | `SettingsStore` (volume per bus, mouseSensitivity, invertY, fov, subtitleSize, gentleMode, reducedMotion) persisted at `kq.settings.v1` |
@@ -235,7 +235,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
-`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`. They talk only through the events in `src/systems/contracts.ts` (plus the
+`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`, `scenery`. They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below), `ctx.state` and a few additive world hooks. How they work together:
 
 ```
@@ -256,6 +256,9 @@ barks ──dialogue:say──▶ story presenter
 story(skill) ──state.skills──▶ skills ──skill:unlocked──▶ anyone     story/chronik ──skill:grant──▶ skills
 tools ──measure:done {building?, room?}──▶ story (event condition), chronik (measuring clues)
 interiors ──world.groundOverride / roomAnchor──▶ player, npc, chronik markers (storeys)
+story ──story:cue 'scenery:windows' / 'scenery:gate'──▶ scenery (lit windows, Ehrenhof gate)
+chronik ──echo:start / echo:end (clue.k1.feuerwerk)──▶ scenery (fireworks; phases follow kq.chronik.echo())
+scenery ──world.collider.setSolids / setPassZones──▶ player, hunt, menagerie (props, gate, passage)
 ```
 
 Ownership rules that came out of integration:
@@ -320,6 +323,20 @@ Round-3 (campaign) integration rules:
   at})`); the chapter specs boot a chapter directly, `e2e/campaign.spec.ts` chains them from the
   title screen (with a save / reload / continue in chapter 1) and keeps each chapter's starting save
   in `test-results/campaign-saves/` (`CAMPAIGN_FROM=k2` resumes there).
+
+Round-4 (polish: set dressing) integration rules:
+- **Extra solids**: set dressing registers circles / oriented boxes per owner with
+  `world.collider.setSolids(owner, list)`; they are resolved after the footprints in every era
+  (also while the footprints are off in the ruin). Gates in footprints are pass zones
+  (`setPassZones(owner, [{poly, x, z, r}])`: inside the circle that footprint's edges do not block).
+  Keep props clear of anchors, checkpoints, NPC places and clue spots — `era.set` pushes the player
+  out of anything solid (`SetDef.keepFree`, checked in `tests/scenery.test.ts`).
+- **Ruin keep**: in 1796 `collider.keep` holds the footprints that still stand (`RUIN_KEEP` in
+  `world/palace.ts`: the Baumagazin and the valley guard houses); the rest of the ruin is open.
+- **Weather indoors**: fx masks its era particles and mist under the roofs of the buildings with
+  rooms (+ KB-B07) while the palace stands (`roofQuads`, `AmbientParticles.sheltered`).
+- **Time of day**: the story's `look` action knows `day | dawn | dusk | night`; `dawn`
+  (Morgengrauen) is used at chapter 4's end and the endings.
 
 ### hunt (`src/systems/hunt/`) – die Meute, der Pikeur, the lantern
 - Starts only via `threat:configure {kind:'pack'}` (extra fields, declared by declaration merging in
@@ -457,7 +474,7 @@ Round-3 (campaign) integration rules:
   assembled from the endings pack's `epilog:line` blocks. Test chapters (`"test": true`) load only
   with `?storytest`. Closing the Chronik opened from the Pinnwand reopens the hub.
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
-  epilogue/choose/look/meters/meter/room/choice`.
+  epilogue/choose/look/meters/meter/room/choice` (`look(time, era?)`: `day | dawn | dusk | night`).
 
 ### npc (`src/systems/npc/`) – ghostly people, conversations
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
@@ -509,6 +526,31 @@ Round-3 (campaign) integration rules:
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
+
+### scenery (`src/systems/scenery/`) – set dressing, Hohenburg, fireworks, lit windows, passage
+- Sets (`sets.ts`, built with `builder.ts` / `kit.ts` / `props.ts` / `linear.ts`, one merged mesh
+  per set): 1796 quarry at the Baumagazin (carts, heaps, dressed blocks, tools, the scale, wood,
+  fire pit with smoke), the road at the valley entrance and the roofless Ehrenhof; 1789 building
+  site at the gallery's east pavilion (scaffolds, hoist, lodge); the kennels by the Zwinger; the
+  park fence with its broken stretches and the barrier at the Carlsluster Torhaus; the Ehrenhof
+  railing with the two-winged gate; the Orangerie court in 1793-02. Built within `range` of the
+  player in their eras, dropped on era change / far away; solids to the collider (owner
+  `scenery`). Ghost workers (`workers.ts`) swing on the GPU; their strikes clink within 45 m.
+- Hohenburg (`hohenburg.ts`): silhouette at its real bearing beyond the terrain data, drawn scaled
+  towards the eye (`pullFactor`) so the mirrored apron does not hide it; clearest at dawn / dusk
+  and from the west edge in 1796.
+- Fireworks (`fireworks.ts`) while the Chronik plays `clue.k1.feuerwerk`: festive rockets and
+  terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
+  return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
+  `settings.reducedFlash` (or `reducedMotion` while that setting does not exist).
+- Lit windows (`windows.ts`, the interiors' `extractOpenings`): cue `{do:'cue', id:'scenery:windows',
+  data:{building, era?, on?, share?}}` (chapter 2 lights KB-B10); Ehrenhof gate `scenery:gate
+  {open}` (closed by default; open adds a pass zone through KB-B39).
+- Passage (`passage.ts`): from the Tempelzimmer's glass doors through KB-B07 into the garden
+  (intact eras): palace shader cut (`uKqPassA/B/Bld`), walls / vault / steps / portal, pass zones +
+  side-wall solids. Chapter 3's way out (c).
+- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate}`.
+  Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage`.
 
 ### How to wire a chapter (story files, round 3)
 
