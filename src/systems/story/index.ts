@@ -260,7 +260,7 @@ class StoryRuntime {
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
     ctx.events.on('save:loaded', () => this.resync());
-    ctx.events.on('player:caught', ({ by }) => this.caught(by));
+    ctx.events.on('player:caught', ({ by, soft }) => this.caught(by, soft === true));
     ctx.events.on('era:change', ({ to }) => {
       if (to === 'today') {
         this.placeStation();
@@ -419,9 +419,12 @@ class StoryRuntime {
         ctx.events.emit('objective:set', { text: a.text ?? null, x: a.x, z: a.z, id: a.id });
         return;
       }
-      case 'threat':
-        this.configureThreat({ kind: a.kind, active: a.active, intensity: a.intensity, center: a.center, radius: a.radius, seconds: a.seconds });
+      case 'threat': {
+        // every ThreatConfig field passes through (feature-declared extras: pack mode, target …)
+        const { do: _do, delay: _delay, onResume: _onResume, ...cfg } = a;
+        this.configureThreat(cfg);
         return;
+      }
       case 'flag':
         ctx.state.update((st) => {
           for (const [k, v] of Object.entries(a.set)) {
@@ -492,10 +495,8 @@ class StoryRuntime {
 
   private configureThreat(c: ThreatConfig): void {
     const clean: ThreatConfig = { kind: c.kind, active: c.active };
-    if (c.intensity !== undefined) clean.intensity = c.intensity;
-    if (c.center) clean.center = c.center;
-    if (c.radius !== undefined) clean.radius = c.radius;
-    if (c.seconds !== undefined) clean.seconds = c.seconds;
+    // all defined fields, incl. feature extras (hunt: mode, target, via, from, hounds …); JSON-safe
+    for (const [k, v] of Object.entries(c)) if (v !== undefined && k !== 'kind' && k !== 'active') (clean as unknown as Record<string, unknown>)[k] = v;
     this.slice.threats[c.kind] = clean;
     this.ctx.events.emit('threat:configure', clean);
   }
@@ -652,13 +653,15 @@ class StoryRuntime {
 
   private caughtHold = 2400;
 
-  caught(by: ThreatKind): void {
+  caught(by: ThreatKind, soft = false): void {
     if (this.caughtBusy) return;
     this.caughtBusy = true;
     const ctx = this.ctx;
     this.cancelScheduled();
     this.presenter.clear();
-    this.overlays.curtainDown(t(CAUGHT_KEY[by] ?? CAUGHT_KEY.pack), t('story.caught.sub'));
+    // soft (Ch. 4 drive): "Die Meute hat dich heimgebracht" — nothing lost
+    if (soft) this.overlays.curtainDown(t('ui.homed.title'), t('ui.homed.body'));
+    else this.overlays.curtainDown(t(CAUGHT_KEY[by] ?? CAUGHT_KEY.pack), t('story.caught.sub'));
     ctx.pause.push('story-caught');
     window.setTimeout(() => {
       for (const [kind, cfg] of Object.entries(this.slice.threats)) if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });

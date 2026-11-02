@@ -249,4 +249,48 @@ export class HuntAudio {
     o.start(t + 1.6);
     o.stop(t + 3.5);
   }
+
+  /** A hound lies down: a long, low exhale through the nose and a faint settling whine. */
+  sigh(p: V3, pitch = 1): void {
+    const ctx = this.am.ctx;
+    if (!ctx || !this.on) return;
+    const s = this.src(p, 3, 4000);
+    if (!s) return;
+    noiseBurst(this.am, s.input, { freq: 700 * pitch, q: 1.4, duration: 1.3, gain: 0.07, attack: 0.25, type: 'bandpass' });
+    noiseBurst(this.am, s.input, { freq: 260, q: 0.7, duration: 0.35, gain: 0.05, attack: 0.02, type: 'lowpass', when: 0.05 });
+    const t = ctx.currentTime + 0.4;
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(520 * pitch, t);
+    o.frequency.exponentialRampToValueAtTime(330 * pitch, t + 0.9);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.018, t + 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
+    o.connect(g).connect(s.input);
+    o.start(t);
+    o.stop(t + 1);
+  }
+
+  /** Brought home (drive mode): no stinger, a soft swell of wind and breath. */
+  homed(): void {
+    const ctx = this.am.ctx;
+    const bus = this.am.bus('sfx');
+    const buf = this.am.noise();
+    if (!ctx || !bus || !buf || !this.on) return;
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(400, t);
+    lp.frequency.exponentialRampToValueAtTime(1400, t + 1.8);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 1.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3);
+    src.connect(lp).connect(g).connect(bus);
+    src.start(t, 0.3);
+    src.stop(t + 3.1);
+  }
 }

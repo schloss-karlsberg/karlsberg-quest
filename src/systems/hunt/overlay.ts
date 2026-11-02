@@ -31,6 +31,7 @@ const CSS = `
 .kq-hunt-caught p {
   font-family: var(--hand); font-size: clamp(18px, 2vw, 26px); color: #b9a57c; margin: 14px 0 0; opacity: 0;
 }
+.kq-hunt-blink { position: absolute; inset: 0; background: #000; opacity: 0; }
 .kq-hunt-caught .rule { width: min(420px, 50vw); height: 1px; margin-top: 18px; background: linear-gradient(90deg, transparent, rgba(185,165,124,0.6), transparent); opacity: 0; }
 `;
 
@@ -59,6 +60,10 @@ export class HuntOverlay {
   private readonly caughtRule: HTMLElement;
   private readonly arrows: Arrow[] = [];
   private pulse = 0;
+  private readonly blinkEl: HTMLElement;
+  /** Seconds into a fade-out-and-in (−1 = none). */
+  private blinkT = -1;
+  private readonly defaults: { caught: string; caughtSub: string };
 
   constructor(layer: HTMLElement, text: { caught: string; caughtSub: string }) {
     if (!document.getElementById('kq-hunt-css')) {
@@ -93,8 +98,28 @@ export class HuntOverlay {
       this.root.append(el);
       this.arrows.push({ el, label, key: '', life: 0, ttl: 1, angle: 0, kind: 'hound' });
     }
-    this.root.append(this.caughtEl);
+    this.blinkEl = document.createElement('div');
+    this.blinkEl.className = 'kq-hunt-blink';
+    this.root.append(this.caughtEl, this.blinkEl);
     layer.append(this.root);
+    this.defaults = { ...text };
+  }
+
+  /** Caught title/subtitle for the next sequence (null = the defaults). */
+  setCaughtText(t: { caught: string; caughtSub: string } | null): void {
+    const v = t ?? this.defaults;
+    this.caughtTitle.textContent = v.caught;
+    this.caughtSub.textContent = v.caughtSub;
+  }
+
+  /** Fade to black and back (≈ 1.4 s; full black at 0.45–0.75 s). */
+  blink(): void {
+    this.blinkT = 0;
+  }
+
+  /** True while the blink is fully black (move the player then). */
+  get blinkBlack(): boolean {
+    return this.blinkT >= 0.45 && this.blinkT < 0.75;
   }
 
   /** Heartbeat: a pulse of the vignette (skipped in reduced motion). */
@@ -134,6 +159,16 @@ export class HuntOverlay {
    */
   frame(o: { dt: number; alert: number; reducedMotion: boolean; caught: number; showArrows: boolean; handoff?: boolean }): void {
     const dt = Math.min(0.1, o.dt);
+    if (this.blinkT >= 0) {
+      this.blinkT += dt;
+      const b = this.blinkT;
+      const op = b < 0.45 ? b / 0.45 : b < 0.75 ? 1 : Math.max(0, 1 - (b - 0.75) / 0.65);
+      this.blinkEl.style.opacity = op.toFixed(3);
+      if (b > 1.4) {
+        this.blinkT = -1;
+        this.blinkEl.style.opacity = '0';
+      }
+    }
     this.pulse = Math.max(0, this.pulse - dt * 3.2);
     const base = Math.max(0, (o.alert - 0.25) / 0.75) * 0.75;
     const p = o.reducedMotion ? 0 : this.pulse * this.pulse * 0.35 * Math.min(1, o.alert * 1.5);

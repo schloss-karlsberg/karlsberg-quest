@@ -27,6 +27,38 @@ addStrings('de', {
   // caught
   'hunt.caught.title': 'Die Meute hat dich gestellt …',
   'hunt.caught.sub': 'Gestellt ist nicht gerissen.',
+  // brought home (Kapitel 4, die Meute treibt; texts: 09-ui-texte ui.homed.*)
+  'hunt.homed.title': 'Die Meute hat dich heimgebracht …',
+  'hunt.homed.sub': 'Nichts verloren. Nur zurückgebracht.',
+  'hunt.sound.homed': '[Die Meute schließt den Kreis]',
+  // snow tracks (Kapitel 2, Spur im Raureif)
+  'hunt.track.on': '[Die Hunde nehmen deine Spur auf]',
+  'hunt.track.on.meaning': '[Die Hunde nehmen deine Spur im Schnee auf – Wasser, Stein oder Weg brechen sie]',
+  'hunt.track.off.water': '[Die Spur reißt am Wasser ab]',
+  'hunt.track.off.stone': '[Die Spur reißt auf dem Stein ab]',
+  'hunt.track.off.road': '[Die Spur reißt auf dem Weg ab]',
+  'hunt.track.off.rock': '[Die Spur reißt am Fels ab]',
+  'hunt.track.off': '[Die Hunde verlieren deine Spur]',
+  // Spurenleser: reading the pack's prints
+  'hunt.read.paw': '[Pfotenspuren im Schnee]',
+  'hunt.read.hoof': '[Hufspuren im Schnee]',
+  'hunt.read.paw.1': '[Pfotenspuren, {age} – nach {dir}]',
+  'hunt.read.hoof.1': '[Hufspuren, {age} – nach {dir}]',
+  'hunt.read.2': '[Spuren von {count}{rider}, {age} – nach {dir}]',
+  'hunt.read.rider': ' und einem Pferd',
+  'hunt.read.n1': 'einem Hund',
+  'hunt.read.n': '{n} Hunden',
+  'hunt.read.only_rider': 'einem Pferd',
+  // drive / par force / finale
+  'hunt.drive.horn': '[Horn von hinten – sie treiben]',
+  'hunt.goal.bank': '[Die Meute bleibt am Ufer stehen]',
+  'hunt.rest': '[Die Hunde haben die Witterung verloren – Atem holen]',
+  'hunt.finale.prompt': 'Hinlegen · [L] Laterne an',
+  'hunt.finale.prompt.one': 'Hinlegen',
+  'hunt.finale.lie': '[Ein Hund legt sich hin]',
+  'hunt.finale.eyes': '[Die Augen gehen aus, eins nach dem anderen]',
+  'hunt.finale.silence': '[Stille]',
+  'hunt.finale.return': '[Die Meute bringt dich in den Kreis zurück]',
   // states (debug / screen readers)
   'hunt.state.calm': 'ruhig',
   'hunt.state.suspicious': 'wittert',

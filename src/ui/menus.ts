@@ -25,6 +25,8 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
     [t('settings.fov'), range(55, 95, 1, s.fov, (v) => set((d) => (d.fov = v), 'fov'), t('settings.fov'))],
     [t('settings.gentle'), check(s.gentleMode, (v) => set((d) => (d.gentleMode = v), 'gentleMode'), t('settings.gentle'))],
     [t('settings.reducedMotion'), check(s.reducedMotion, (v) => set((d) => (d.reducedMotion = v), 'reducedMotion'), t('settings.reducedMotion'))],
+    // accessibility (bible 09 ui.set.one_key; declared by the hunt system): lying flat lights the lantern too
+    [t('ui.set.one_key'), check(s.oneKey === true, (v) => set((d) => (d.oneKey = v), 'oneKey'), t('ui.set.one_key'))],
   ];
   const radios = h('div.radios');
   for (const size of ['s', 'm', 'l'] as const) {

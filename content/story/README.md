@@ -34,10 +34,19 @@ Source of the texts: `content/bible/*.md`. Placeholder chapters/beats carry `"pl
 their reading time) and `onResume` (repeat when a beat is resumed; default: everything except
 `say/shift/teleport/card/sound/toast/cue/chronik/ending`):
 `say {id, speaker, text | line}` (`{Name}` = player name, `id` lines are spoken once),
-`objective {text|null, x?, z?}`, `threat {kind, active, intensity, center, radius, seconds}`,
+`objective {text|null, x?, z?}`, `threat {kind, active, intensity, center, radius, seconds, …}` (every
+ThreatConfig field passes through; pack extras: `mode` patrol|drive|finale|parforce, `target`, `via`,
+`from`, `headStart`, `goalRadius`, `snow`, `hounds`, `pikeur`, `sight`, `seed` — see docs/ARCHITECTURE.md §12),
 `flag {set}`, `shift {to}`, `anchor {to|null, x, z, r}`, `skill {id, tier}`, `give {clue|noun|item, kind, toast}`,
 `toast`, `teleport`, `card {title, sub}`, `sound {sound, x?, z?, caption, signal}` (howl/horn need a caption),
-`look {time: day|dusk|night}`, `prompt {key, text}`, `cue {id}` (→ `story:cue`), `chronik {caseId}`,
+`look {time: day|dusk|night}`, `prompt {key, text}`, `cue {id, data?}` (→ `story:cue`; `menagerie:spawn`
+with `data {animal, x, z, id?, heading?, count?}` / `menagerie:clear {id?}` place the escaped animals), `chronik {caseId}`,
 `unlock {chapter}`, `ending`, `autosave`, `choice {id, prompt, options[{label, set}], seconds, fallback}`.
 
 Debug in the browser console: `kq.story.goto('prolog', 'p9')`, `kq.story.state()`, `kq.story.skip()`.
+
+Example beats for the pack modes, snow tracks and the menagerie (a test file, not loaded by the
+game, validated in `tests/hunt-ext.test.ts`): `content/test/hunt-menagerie.test.story.json`.
+Useful conditions: `{"event":"hunt:goal","match":{"mode":"drive"}}`,
+`{"event":"hunt:finale","match":{"outcome":"faded"}}`, `{"event":"hunt:tracking","match":{"on":false,"why":"water"}}`,
+`{"event":"player:caught","match":{"soft":true}}`, `{"event":"menagerie:yield","match":{"id":"dromedare"}}`.

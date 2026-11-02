@@ -9,8 +9,16 @@
  * - The lantern (L) lights the world through atmosphere.uLantern*, drains oil while lit, raises
  *   the pack's sight range; oil persists in the 'hunt' state slice and refills on 'hub:enter'.
  *
- * Contract events emitted: hunt:alert, hunt:horn, lantern:toggle, lantern:oil, lantern:empty,
- * player:caught. Feature-private: hunt:start, hunt:end (declared below).
+ * - Snow (1793-02 or a snowy look): footprints of the player, the hounds and the horse persist as
+ *   decals; the pack TRACKS your prints until the trail breaks (water, stone, road, rock); the
+ *   player reads the pack's prints (Spurenleser) when crouching / standing over them.
+ * - Modes via threat:configure {kind:'pack', mode}: 'patrol' (default), 'drive' (Ch. 4, herds you
+ *   to `target` over `via`), 'finale' (W8 at the kennel), 'parforce' (Ch. 2 long chase to `target`).
+ *   See modes.ts. An active pack config is saved in the slice and restored after a load.
+ *
+ * Contract events emitted: hunt:alert, hunt:horn, hunt:finale, lantern:toggle, lantern:oil,
+ * lantern:empty, player:caught ({soft:true} = brought home, nothing lost). Feature-private:
+ * hunt:start, hunt:end, hunt:tracking, hunt:goal, hunt:rest, hunt:read (declared below).
  */
 import './strings';
 import type { GameContext } from '../../core/context';
@@ -24,8 +32,11 @@ import { LanternView } from './lantern';
 import { type LanternState, drain, newLantern, refill, toggle } from './lanternLogic';
 import { type ArrowKind, HuntOverlay } from './overlay';
 import type { PlayerSense } from './perception';
+import { DriveMode, FinaleMode, ParforceMode, makeMode } from './modes';
 import { hashSeed } from './rng';
-import { type Agent, type HornSignal, type PackOptions, PackSim, type PackState, type SimEvent, type SimWorld, headingTo } from './sim';
+import { type Agent, type HornSignal, type PackMode, type PackOptions, PackSim, type PackState, type SimEvent, type SimWorld, type XZ, headingTo } from './sim';
+import { TrackVisuals } from './trackVisuals';
+import { type PackReading, TrackField, type TrailBreak, ageWord, compassWord } from './tracks';
 import { PackVisuals } from './visuals';
 
 export interface HuntSlice {
@@ -35,6 +46,14 @@ export interface HuntSlice {
   lantern?: LanternState;
   /** How often the pack has caught the player (stats, story may read it). */
   caught?: number;
+  /** The active pack (configuration + era); restored after a load, cleared when it ends. */
+  pack?: SavedPack | null;
+}
+
+/** JSON-safe pack configuration as saved in the slice. */
+export interface SavedPack {
+  era: string;
+  opts: HuntStartOptions;
 }
 
 declare module '../../core/state' {
@@ -53,6 +72,29 @@ declare module '../contracts' {
     sight?: number;
     /** pack only: RNG seed (default derived from the area → reproducible beats). */
     seed?: number;
+    /**
+     * pack only: behaviour (default 'patrol').
+     *  'drive'    the pack herds the player towards `target` (over `via`), never stalls him;
+     *             pushing back past them = soft catch ("heimgebracht", player:caught {soft}).
+     *  'finale'   W8: gathers in a circle around the player (or `target`), calms down once the
+     *             player lies flat with the lantern lit (one-key / gentle: lying is enough) →
+     *             'hunt:finale' {outcome: gathered | returned | calmed | faded}.
+     *  'parforce' Ch. 2 long chase from `from` with `headStart` s, paced (surges, breathers, the
+     *             Pikeur riding in from a flank); ends at `target` / water ('hunt:goal').
+     */
+    mode?: 'patrol' | 'drive' | 'finale' | 'parforce';
+    /** pack drive/parforce/finale: the goal (drive, parforce) or circle centre (finale). */
+    target?: { x: number; z: number };
+    /** pack drive: waypoints on the way to the target. */
+    via?: { x: number; z: number }[];
+    /** pack parforce: where the hounds are let go. */
+    from?: { x: number; z: number };
+    /** pack parforce: seconds of head start (default 6, gentle 8). */
+    headStart?: number;
+    /** pack drive/parforce: arrival radius around `target` (drive 18, parforce 25). */
+    goalRadius?: number;
+    /** pack: snow tracks on/off (default: on in 1793-02 or a snowy look). */
+    snow?: boolean;
   }
 }
 
@@ -60,10 +102,20 @@ declare module '../../core/events' {
   interface GameEvents {
     /** The pack appeared (threat:configure or kq.hunt.start). */
     'hunt:start': { x: number; z: number; radius: number; hounds: number; pikeur: boolean };
-    /** The pack is gone (configured off, caught the player, hub, debug). */
-    'hunt:end': { reason: 'configure' | 'caught' | 'hub' | 'era' | 'debug' };
+    /** The pack is gone (configured off, caught the player, hub, era, escaped at the goal, debug). */
+    'hunt:end': { reason: HuntEndReason };
+    /** Snow: the pack picked up / lost the player's trail (why: what broke it). */
+    'hunt:tracking': { on: boolean; x: number; z: number; why?: 'water' | 'stone' | 'road' | 'rock' };
+    /** drive: the player arrived at the target; parforce: escaped (water / target). */
+    'hunt:goal': { mode: 'drive' | 'parforce'; x: number; z: number };
+    /** parforce pacing: a breather starts / ends. */
+    'hunt:rest': { on: boolean };
+    /** Spurenleser: the player read the pack's prints. */
+    'hunt:read': { kind: 'paw' | 'hoof'; age: number; count: number; heading: number };
   }
 }
+
+export type HuntEndReason = 'configure' | 'caught' | 'hub' | 'era' | 'escaped' | 'debug';
 
 declare module '../../core/save' {
   interface Settings {
@@ -73,6 +125,8 @@ declare module '../../core/save' {
     subtitles?: boolean;
     /** Direction arrows at the screen edge for threat sounds (default on). */
     soundIndicators?: boolean;
+    /** "Eine Taste für Aktionen": lying flat in the finale lights the lantern too (bible 05 §9). */
+    oneKey?: boolean;
   }
 }
 
@@ -85,6 +139,14 @@ export interface HuntStartOptions {
   pikeur?: boolean;
   seed?: number;
   sight?: number;
+  mode?: PackMode;
+  target?: XZ;
+  via?: XZ[];
+  from?: XZ;
+  headStart?: number;
+  goalRadius?: number;
+  /** Snow tracks (default: by era / look). */
+  snow?: boolean;
 }
 
 export interface HuntHooks {
@@ -107,6 +169,18 @@ export interface HuntHooks {
   events(): { name: string; payload: unknown; tick: number }[];
   /** Raw simulation (tests). */
   sim(): PackSim | null;
+  /** Apply a threat configuration as the story would (kind 'pack' implied). */
+  configure(c: Omit<ThreatConfig, 'kind'> & { kind?: 'pack' }): void;
+  /** Snow prints: counts per kind, the trail segment and the clock. */
+  tracks(): { boot: number; paw: number; hoof: number; seg: number; now: number; snow: number; tracking: boolean };
+  /** Lay a line of player prints (debug / screenshots): from x0/z0 to x1/z1, one per `step` m. */
+  walkPrints(x0: number, z0: number, x1: number, z1: number, step?: number): number;
+  /** Spurenleser: what the pack's prints at the player tell (null = none). */
+  readTracks(): (PackReading & { text: string }) | null;
+  /** Finale / drive / parforce controller state. */
+  mode(): { mode: PackMode; phase?: string; calm?: number; pressure?: number; rests?: number; rideIns?: number } | null;
+  /** The saved pack configuration (slice). */
+  saved(): SavedPack | null;
 }
 
 export interface LanternHooks {
@@ -123,6 +197,8 @@ declare module '../../debug/hooks' {
     lantern?: LanternHooks;
   }
 }
+
+const NUM_DE = ['null', 'einem', 'zwei', 'drei', 'vier', 'fünf', 'sechs'];
 
 /** Seconds from caught to 'player:caught' (the sequence itself). */
 const CAUGHT_EMIT = 2.0;
@@ -154,11 +230,28 @@ class Hunt {
   private lowWarned = false;
   private lastLit = false;
   private hooksInstalled = false;
+  /** Prints in the snow (player trail + the pack's). */
+  readonly tracks = new TrackField();
+  readonly trackVis = new TrackVisuals();
+  private lastStep: XZ | null = null;
+  private stepSide = 1;
+  private readT = 0;
+  private roads: { grid: Uint8Array; x0: number; z0: number; cols: number; rows: number } | null = null;
+  /** A saved pack waits for the first update after init / load. */
+  private restorePending = false;
+  /** Seconds since the parforce goal (the pack stops a little later). */
+  private escapedT = -1;
+  /** Finale: bring the player back at full black (centre). */
+  private returnTo: XZ | null = null;
+  private returnT = 0;
+  private finalePromptShown = false;
+  private caughtSoft = false;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new HuntAudio(ctx.audio);
     this.lanternView = new LanternView(ctx.scene);
     ctx.scene.add(this.visuals.object);
+    ctx.scene.add(this.trackVis.mesh);
     this.visuals.object.visible = false;
     this.overlay = new HuntOverlay(ctx.ui.layer('hunt'), { caught: ctx.t('hunt.caught.title'), caughtSub: ctx.t('hunt.caught.sub') });
     const ev = ctx.events;
@@ -175,10 +268,22 @@ class Hunt {
     });
     // the pack belongs to the era it was configured in: a shift (or the return after being caught)
     // ends it; the story re-issues threat:configure when the beat wants it again
-    ev.on('era:change', () => this.stop('era'));
-    ev.on('save:loaded', () => this.syncLantern(true));
+    ev.on('era:change', () => {
+      this.stop('era');
+      this.tracks.clear();
+      this.lastStep = null;
+    });
+    ev.on('save:loaded', () => {
+      this.syncLantern(true);
+      if (this.sim) this.stop('debug', true);
+      this.restorePending = true;
+    });
+    ev.on('player:step', ({ x, z, running }) => this.footprint(x, z, running));
+    ev.on('player:teleport', () => (this.lastStep = null));
+    // a pack that was out when the game was saved comes back (first update, all systems ready)
+    this.restorePending = true;
     ev.on('settings:change', ({ key }) => {
-      if (this.sim && (key === 'gentleMode' || key === 'rauhnacht')) this.sim.retune(this.mode());
+      if (this.sim && (key === 'gentleMode' || key === 'rauhnacht' || key === 'oneKey')) this.sim.retune({ ...this.mode(), oneKey: this.oneKey() });
     });
     this.syncLantern(true);
   }
@@ -186,11 +291,115 @@ class Hunt {
   // ---- state --------------------------------------------------------------------------------
 
   slice(): Required<HuntSlice> {
-    const s = this.ctx.state.slice('hunt', () => ({ alert: 0, lantern: newLantern(), caught: 0 }));
+    const s = this.ctx.state.slice('hunt', () => ({ alert: 0, lantern: newLantern(), caught: 0, pack: null }));
     if (!s.lantern || typeof s.lantern.oil !== 'number') s.lantern = newLantern();
     if (typeof s.caught !== 'number') s.caught = 0;
     if (typeof s.alert !== 'number') s.alert = 0;
+    if (s.pack === undefined) s.pack = null;
     return s as Required<HuntSlice>;
+  }
+
+  /** One key for actions (settings) or gentle mode: lying flat is enough in the finale. */
+  oneKey(): boolean {
+    return this.ctx.settings.state.oneKey === true || this.ctx.settings.state.gentleMode;
+  }
+
+  // ---- snow ---------------------------------------------------------------------------------
+
+  /** 0..1 snow on the ground: the frost night of 1793-02, or any snowy look. */
+  snowAmount(): number {
+    if (this.snowOverride !== null) return this.snowOverride ? 1 : 0;
+    if (this.ctx.era.current === '1793-02') return 1;
+    const sn = this.ctx.world.look.snow;
+    return sn > 0.3 ? Math.min(1, sn / 0.85) : 0;
+  }
+
+  private snowOverride: boolean | null = null;
+
+  /** Where a trail breaks: water, stone (cobbles / terrace paving, inside a building), a road, steep rock. */
+  readonly trailBreakAt = (x: number, z: number): TrailBreak => {
+    const w = this.ctx.world;
+    const s = w.surfaceAt(x, z);
+    if (s === 'water') return 'water';
+    // a snowed-over gravel avenue still takes prints; paving (cobbles, terraces) and floors don't
+    if (s === 'cobbles' || s === 'building') return 'stone';
+    if (w.collider.enabled && w.collider.footprintAt(x, z) >= 0) return 'stone';
+    if (this.ctx.era.current === 'today' && this.roadAt(x, z)) return 'road';
+    if (w.heightfield.slopeDeg(x, z) > 32) return 'rock';
+    return null;
+  };
+
+  /** Within ~2.5 m of an OSM road (only meaningful today; historic eras have ground classes). */
+  private roadAt(x: number, z: number): boolean {
+    if (!this.roads) {
+      const P = this.ctx.data.paths;
+      const road = P.kinds.indexOf('road');
+      const b = this.ctx.world.bounds();
+      const cell = 2;
+      const cols = Math.ceil((b.x1 - b.x0) / cell) + 1;
+      const rows = Math.ceil((b.z1 - b.z0) / cell) + 1;
+      const grid = new Uint8Array(cols * rows);
+      const N = P.nodes;
+      for (let k = 0; k + 3 < P.edges.length; k += 4) {
+        if (P.edges[k + 2] !== road) continue;
+        const a = P.edges[k]!;
+        const c = P.edges[k + 1]!;
+        const ax = N[a * 3]!;
+        const az = N[a * 3 + 2]!;
+        const bx = N[c * 3]!;
+        const bz = N[c * 3 + 2]!;
+        const len = Math.hypot(bx - ax, bz - az);
+        const n = Math.max(1, Math.ceil(len / 1));
+        for (let i = 0; i <= n; i++) {
+          const px = ax + ((bx - ax) * i) / n;
+          const pz = az + ((bz - az) * i) / n;
+          for (let dz = -1; dz <= 1; dz++)
+            for (let dx = -1; dx <= 1; dx++) {
+              const cc = Math.round((px - b.x0) / cell) + dx;
+              const rr = Math.round((pz - b.z0) / cell) + dz;
+              if (cc >= 0 && rr >= 0 && cc < cols && rr < rows) grid[rr * cols + cc] = 1;
+            }
+        }
+      }
+      this.roads = { grid, x0: b.x0, z0: b.z0, cols, rows };
+    }
+    const R = this.roads;
+    const c = Math.round((x - R.x0) / 2);
+    const r = Math.round((z - R.z0) / 2);
+    return c >= 0 && r >= 0 && c < R.cols && r < R.rows && R.grid[r * R.cols + c] === 1;
+  }
+
+  /** A footstep of the player: a print in the snow (or the trail breaks here). */
+  private footprint(x: number, z: number, running: boolean): void {
+    const pl = this.ctx.player;
+    if (pl.flying || this.snowAmount() < 0.3) {
+      this.lastStep = null;
+      return;
+    }
+    const prev = this.lastStep;
+    const h = prev && Math.hypot(x - prev.x, z - prev.z) > 0.15 ? headingTo(x - prev.x, z - prev.z) : pl.yaw;
+    this.lastStep = { x, z };
+    this.stepSide = -this.stepSide;
+    const rx = Math.cos(h);
+    const rz = -Math.sin(h);
+    const px = x + rx * 0.11 * this.stepSide;
+    const pz = z + rz * 0.11 * this.stepSide;
+    const depth = running ? 1 : pl.stance === 'stand' ? 0.7 : pl.stance === 'crouch' ? 0.45 : 0.3;
+    this.tracks.addPlayer(px, pz, h, this.tracks.now, this.stepSide, depth, this.trailBreakAt(px, pz));
+  }
+
+  /** Spurenleser: what the pack's prints at x/z say, as a caption text (by skill tier). */
+  private readingText(r: PackReading): string {
+    const t = this.ctx.t;
+    const tier = Math.max((this.ctx.state.state.skills['spurenleser'] ?? 0) as number, this.ctx.settings.state.gentleMode ? 1 : 0);
+    const age = ageWord(r.age);
+    const dir = compassWord(r.heading);
+    if (tier >= 2) {
+      const n = r.kind === 'hoof' ? t('hunt.read.only_rider') : r.count === 1 ? t('hunt.read.n1') : t('hunt.read.n', { n: NUM_DE[r.count] ?? String(r.count) });
+      return t('hunt.read.2', { count: n, rider: r.hasPikeur && r.kind === 'paw' ? t('hunt.read.rider') : '', age, dir });
+    }
+    if (tier >= 1) return t(`hunt.read.${r.kind}.1`, { age, dir });
+    return t(`hunt.read.${r.kind}`);
   }
 
   mode(): { gentle: boolean; rauhnacht: boolean } {
@@ -253,16 +462,36 @@ class Hunt {
 
   private configure(c: ThreatConfig): void {
     if (c.kind !== 'pack') return;
+    this.restorePending = false; // the story (re)configures: that wins over a saved pack
     if (typeof c.seconds === 'number' && c.seconds > 0) this.slice().lantern.seconds = c.seconds;
     if (!c.active) {
       this.stop('configure');
       return;
     }
     const o: HuntStartOptions = { intensity: c.intensity, radius: c.radius, hounds: c.hounds, pikeur: c.pikeur, sight: c.sight, seed: c.seed, x: c.center?.x, z: c.center?.z };
+    if (c.mode) o.mode = c.mode;
+    if (c.target) o.target = { x: c.target.x, z: c.target.z };
+    if (c.via) o.via = c.via.map((v) => ({ x: v.x, z: v.z }));
+    if (c.from) o.from = { x: c.from.x, z: c.from.z };
+    if (c.headStart !== undefined) o.headStart = c.headStart;
+    if (c.goalRadius !== undefined) o.goalRadius = c.goalRadius;
+    if (c.snow !== undefined) o.snow = c.snow;
     const s = this.sim;
-    if (s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && c.hounds === undefined && c.pikeur === undefined) {
-      // same beat, new difficulty
-      s.retune({ intensity: c.intensity ?? s.opt.intensity, ...this.mode() });
+    const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && c.hounds === undefined && c.pikeur === undefined;
+    if (s && sameArea) {
+      const mode = c.mode ?? s.mode;
+      const sameTarget = !c.target || (s.opt.target && Math.hypot(c.target.x - s.opt.target.x, c.target.z - s.opt.target.z) < 1);
+      if (mode === s.mode && sameTarget) {
+        // same beat, new difficulty
+        s.retune({ intensity: c.intensity ?? s.opt.intensity, ...this.mode() });
+        return;
+      }
+      // same pack, new behaviour (drive → finale at the kennel): they stay where they are
+      s.switchMode({ mode, target: o.target ?? s.opt.target ?? null, via: o.via ?? [], from: o.from ?? null, headStart: o.headStart, goalRadius: o.goalRadius, oneKey: this.oneKey(), intensity: c.intensity ?? s.opt.intensity }, makeMode);
+      const saved = this.slice().pack;
+      if (saved) saved.opts = { ...saved.opts, ...o, mode };
+      this.escapedT = -1;
+      this.clearFinalePrompt();
       return;
     }
     this.start(o);
@@ -286,8 +515,9 @@ class Hunt {
     const x = o.x ?? p.x;
     const z = o.z ?? p.z;
     const radius = Math.max(30, o.radius ?? 160);
-    const hounds = Math.max(3, Math.min(6, Math.round(o.hounds ?? 3 + intensity * 2 + (mode.rauhnacht ? 1 : 0))));
-    const pikeur = o.pikeur ?? (intensity >= 0.6 || mode.rauhnacht);
+    const special = o.mode === 'drive' || o.mode === 'finale';
+    const hounds = Math.max(3, Math.min(6, Math.round(o.hounds ?? (special ? 5 : 3 + intensity * 2 + (mode.rauhnacht ? 1 : 0)))));
+    const pikeur = o.pikeur ?? (special || o.mode === 'parforce' || intensity >= 0.6 || mode.rauhnacht);
     const sense = this.senseDefaults(mode.rauhnacht);
     const opts: PackOptions = {
       x,
@@ -301,27 +531,64 @@ class Hunt {
       beacon: sense.beacon,
       gentle: mode.gentle,
       rauhnacht: mode.rauhnacht,
+      mode: o.mode ?? 'patrol',
+      target: o.target ?? null,
+      via: o.via ?? [],
+      from: o.from ?? null,
+      headStart: o.headStart,
+      goalRadius: o.goalRadius,
+      oneKey: this.oneKey(),
     };
+    this.snowOverride = o.snow ?? null;
+    const snow = this.snowAmount() >= 0.3;
     this.graph ??= new PathGraph(ctx.data.paths);
-    this.sim = new PackSim(this.simWorld(x, z, radius), this.graph, opts, { x: p.x, z: p.z });
+    this.sim = new PackSim(this.simWorld(x, z, radius), this.graph, opts, { x: p.x, z: p.z }, snow ? this.tracks : null, makeMode);
     this.fading = null;
     this.visuals.clear();
     this.agentAudio.clear();
     this.overlay.clearArrows();
     this.needPrewarm = true;
     this.lastAlert = { level: -1, state: '', at: -1 };
+    this.escapedT = -1;
+    this.returnTo = null;
+    this.clearFinalePrompt();
+    // remembered for a reload (JSON only)
+    this.slice().pack = { era: ctx.era.current, opts: JSON.parse(JSON.stringify({ ...o, x, z, radius, intensity, hounds, pikeur })) as HuntStartOptions };
     ctx.events.emit('hunt:start', { x, z, radius, hounds, pikeur });
     return this.sim;
   }
 
-  stop(reason: 'configure' | 'caught' | 'hub' | 'era' | 'debug', silent = false): void {
+  stop(reason: HuntEndReason, silent = false): void {
     const s = this.sim;
+    this.slice().pack = null;
+    this.snowOverride = null;
+    this.clearFinalePrompt();
+    this.escapedT = -1;
+    this.returnTo = null;
     if (!s) return;
     this.sim = null;
     this.slice().alert = 0;
     if (!silent) this.fading = { agents: s.agents, state: s.state, t: 0 };
     this.ctx.events.emit('hunt:alert', { level: 0, state: 'calm' });
     this.ctx.events.emit('hunt:end', { reason });
+  }
+
+  private clearFinalePrompt(): void {
+    if (!this.finalePromptShown) return;
+    this.finalePromptShown = false;
+    this.ctx.ui.hud.prompt(null, undefined, 'hunt');
+  }
+
+  /** A saved pack (slice) comes back after a load, in the era it was out in. */
+  private restore(): void {
+    this.restorePending = false;
+    const saved = this.slice().pack;
+    if (!saved || this.sim) return;
+    if (saved.era !== this.ctx.era.current) {
+      this.slice().pack = null;
+      return;
+    }
+    this.start(saved.opts);
   }
 
   /** Terrain, cover, water, buildings (as sight blockers and colliders) for the simulation. */
@@ -335,6 +602,7 @@ class Hunt {
       obstacleAt: obstacle,
       collide: (x, z, r) => w.collider.resolve(x, z, r),
       bounds: () => w.bounds(),
+      trailBreakAt: this.trailBreakAt,
     };
   }
 
@@ -395,14 +663,18 @@ class Hunt {
 
   update(dt: number): void {
     this.installHooks();
+    if (this.restorePending) this.restore();
     this.updateLantern(dt);
     const sim = this.sim;
+    if (!sim || !sim.tracks) this.tracks.tick(dt); // else the simulation advances the clock
     if (sim) {
       const evs = sim.update(dt, this.playerSense());
       for (const e of evs) this.onSimEvent(e, sim);
       this.sounds(dt, sim);
       this.emitAlert(sim);
+      this.updateModes(dt, sim);
     }
+    this.readTracks(dt);
     if (this.fading) {
       this.fading.t += dt / 2.4;
       if (this.fading.t >= 1) {
@@ -422,6 +694,54 @@ class Hunt {
         this.overlay.beat();
       }
     } else this.hbT = 0.3;
+  }
+
+  /** Finale prompt, bringing the player back into the circle, the end of a par force hunt. */
+  private updateModes(dt: number, sim: PackSim): void {
+    const ctx = this.ctx;
+    const ctl = sim.ctl;
+    if (ctl instanceof FinaleMode) {
+      // no time pressure; after a while a quiet reminder of the keys (accessibility)
+      const want = ctl.phase === 'wait' && ctl.t > 7;
+      if (want && !this.finalePromptShown) {
+        this.finalePromptShown = true;
+        ctx.ui.hud.prompt('X', ctx.t(this.oneKey() ? 'hunt.finale.prompt.one' : 'hunt.finale.prompt'), 'hunt');
+      } else if (!want && this.finalePromptShown) this.clearFinalePrompt();
+      // the eyes go out one by one (caption once, when the first ones have dimmed)
+      if (ctl.phase === 'calm' && sim.hounds.filter((h) => h.dim > 0.6).length === 2) this.caption('eyes', ctx.t('hunt.finale.eyes'), 30, 3600);
+    }
+    if (this.returnTo) this.returnT += dt;
+    // at full black (or after a moment without frames, e.g. a hidden tab)
+    if (this.returnTo && (this.overlay.blinkBlack || this.returnT > 0.9)) {
+      const c = this.returnTo;
+      this.returnTo = null;
+      const p = ctx.player.position;
+      // back inside the circle, a step from the centre, facing it
+      const d = Math.hypot(p.x - c.x, p.z - c.z) || 1;
+      const x = c.x + ((p.x - c.x) / d) * 1.5;
+      const z = c.z + ((p.z - c.z) / d) * 1.5;
+      ctx.player.teleport(x, z, headingTo(c.x - x, c.z - z));
+    }
+    if (this.escapedT >= 0) {
+      this.escapedT += dt;
+      if (this.escapedT > 6) this.stop('escaped');
+    }
+  }
+
+  /** Spurenleser: crouching / standing still over the pack's prints reads them (caption). */
+  private readTracks(dt: number): void {
+    this.readT -= dt;
+    if (this.readT > 0) return;
+    this.readT = 0.5;
+    const pl = this.ctx.player;
+    if (pl.flying || this.snowAmount() < 0.3 || (pl.stance === 'stand' && pl.stats.speed > 0.8)) return;
+    const r = this.tracks.readPack(pl.position.x, pl.position.z, 2.4, this.tracks.now);
+    if (!r || r.age > this.tracks.life * 0.9) return;
+    const key = 'tracks-read';
+    const last = this.captionAt.get(key);
+    if (last !== undefined && this.ctx.loop.time - last < 14) return;
+    this.caption(key, this.readingText(r), 14, 4200);
+    this.ctx.events.emit('hunt:read', { kind: r.kind, age: Math.round(r.age), count: r.count, heading: r.heading });
   }
 
   private emitAlert(sim: PackSim): void {
@@ -483,7 +803,9 @@ class Hunt {
         this.hornGlowDur = Math.max(0.8, dur || (e.signal === 'search' ? 2.8 : e.signal === 'call-off' ? 3.5 : e.signal === 'lost' ? 2.6 : 0.8));
         this.hornGlowT = this.hornGlowDur;
         const meaning = (ctx.state.state.skills['spurenleser'] ?? 0) >= 1 || ctx.settings.state.gentleMode;
-        this.caption(`horn-${e.signal}`, ctx.t(`hunt.horn.${e.signal}${meaning ? '.meaning' : ''}`), 1.5, 4200);
+        // driving pack: the beaters' horn from behind (not "the hunt begins")
+        const hornText = sim?.mode === 'drive' && e.signal === 'search' ? ctx.t('hunt.drive.horn') : ctx.t(`hunt.horn.${e.signal}${meaning ? '.meaning' : ''}`);
+        this.caption(`horn-${e.signal}`, hornText, 1.5, 4200);
         // the glowing brass horn of a Pikeur in plain view is its own visual cue
         this.arrow('horn', e.x, e.z, ctx.t('hunt.arrow.horn'), 3.2, !sim?.pikeur);
         break;
@@ -501,11 +823,52 @@ class Hunt {
       }
       case 'caught': {
         this.caughtBy = sim.agents[e.by] ?? null;
-        this.beginCaught();
+        this.beginCaught(e.soft === true);
         break;
       }
       case 'state':
         break;
+      case 'tracking': {
+        ctx.events.emit('hunt:tracking', e.why ? { on: e.on, x: e.x, z: e.z, why: e.why } : { on: e.on, x: e.x, z: e.z });
+        const meaning = (ctx.state.state.skills['spurenleser'] ?? 0) >= 1 || ctx.settings.state.gentleMode;
+        if (e.on) this.caption('track-on', ctx.t(meaning ? 'hunt.track.on.meaning' : 'hunt.track.on'), 8, 4200);
+        else if (e.why) this.caption('track-off', ctx.t(`hunt.track.off.${e.why}`), 6, 3600);
+        break;
+      }
+      case 'goal': {
+        const mode = sim.mode === 'parforce' ? 'parforce' : 'drive';
+        ctx.events.emit('hunt:goal', { mode, x: e.x, z: e.z });
+        if (mode === 'parforce') {
+          this.escapedT = 0;
+          this.caption('goal', ctx.t('hunt.goal.bank'), 6, 4000);
+        }
+        break;
+      }
+      case 'rest':
+        ctx.events.emit('hunt:rest', { on: e.on });
+        if (e.on) this.caption('rest', ctx.t('hunt.rest'), 10, 3600);
+        break;
+      case 'lie': {
+        const a = sim.agents[e.idx];
+        if (!a) break;
+        this.audio.sigh(this.pos3(a.x, a.z, 0.4), 0.9 + (a.idx % 5) * 0.05);
+        this.caption('lie', ctx.t('hunt.finale.lie'), 6, 2600);
+        break;
+      }
+      case 'finale': {
+        ctx.events.emit('hunt:finale', { outcome: e.outcome });
+        if (e.outcome === 'returned') {
+          this.returnTo = { x: e.x, z: e.z };
+          this.returnT = 0;
+          this.overlay.blink();
+          this.caption('return', ctx.t('hunt.finale.return'), 4, 3000);
+        } else if (e.outcome === 'calmed') {
+          this.clearFinalePrompt();
+          // one key: lying flat lights the lantern too
+          if (!this.slice().lantern.lit) this.setLit(true, false);
+        } else if (e.outcome === 'faded') this.caption('silence', ctx.t('hunt.finale.silence'), 30, 3000);
+        break;
+      }
     }
   }
 
@@ -514,7 +877,8 @@ class Hunt {
     const ctx = this.ctx;
     const p = ctx.player.position;
     const frost = ctx.era.current === '1793-02' || ctx.world.look.snow > 0.3;
-    const hounds = sim.agents.filter((a) => a.kind === 'hound').map((a) => ({ a, d: Math.hypot(a.x - p.x, a.z - p.z) }));
+    // lying / faded hounds (finale) are silent
+    const hounds = sim.agents.filter((a) => a.kind === 'hound' && a.lie < 0.3 && a.gone < 0.5).map((a) => ({ a, d: Math.hypot(a.x - p.x, a.z - p.z) }));
     hounds.sort((u, v) => u.d - v.d);
     hounds.forEach(({ a, d }, rank) => {
       let st = this.agentAudio.get(a);
@@ -563,13 +927,21 @@ class Hunt {
 
   // ---- caught -------------------------------------------------------------------------------
 
-  private beginCaught(): void {
+  private beginCaught(soft = false): void {
     const ctx = this.ctx;
     this.caughtT = 0;
     this.caughtEmitted = false;
+    this.caughtSoft = soft;
     ctx.player.frozen = true;
     ctx.player.lookLocked = true;
     this.prevDesat = ctx.post.uniforms.uDesaturate!.value as number;
+    this.overlay.setCaughtText(soft ? { caught: ctx.t('hunt.homed.title'), caughtSub: ctx.t('hunt.homed.sub') } : null);
+    if (soft) {
+      // brought home: no stinger, no rush — the circle closes
+      this.audio.homed();
+      this.caption('rush', ctx.t('hunt.sound.homed'), 1, 2400);
+      return;
+    }
     this.audio.rush();
     const s = this.sim;
     const by = this.caughtBy ?? s?.agents[0];
@@ -599,7 +971,7 @@ class Hunt {
     if (this.caughtT >= CAUGHT_EMIT && !this.caughtEmitted) {
       this.caughtEmitted = true;
       this.stop('caught');
-      ctx.events.emit('player:caught', { by: 'pack' });
+      ctx.events.emit('player:caught', this.caughtSoft ? { by: 'pack', soft: true } : { by: 'pack' });
     }
     if (this.caughtT >= 3.0) {
       ctx.player.frozen = false;
@@ -621,7 +993,7 @@ class Hunt {
   private caughtFrame(dt: number): void {
     const ctx = this.ctx;
     const t = this.caughtT;
-    const reduced = ctx.settings.state.reducedMotion;
+    const reduced = ctx.settings.state.reducedMotion || this.caughtSoft;
     const by = this.caughtBy;
     if (by && t < 0.8 && !reduced) {
       const want = headingTo(by.x - ctx.player.position.x, by.z - ctx.player.position.z);
@@ -656,11 +1028,12 @@ class Hunt {
         camera: ctx.camera,
         viewportH: window.innerHeight,
         hornGlow: this.hornGlowT > 0 ? Math.min(1, this.hornGlowT / Math.min(0.4, this.hornGlowDur)) * (0.6 + 0.4 * Math.sin(ctx.loop.time * 30)) : 0,
-        caught: this.caughtT >= 0 && this.caughtT < 2.2 ? { t: this.caughtT } : null,
+        caught: this.caughtT >= 0 && this.caughtT < 2.2 && !this.caughtSoft ? { t: this.caughtT } : null,
         mist: ctx.era.current === '1793-02' ? 1 : ctx.era.info.night ? 0.55 : 0.3,
         reducedMotion,
         heightAt: (x: number, z: number) => ctx.world.heightAt(x, z),
         snap,
+        settle: sim?.ctl instanceof FinaleMode ? sim.ctl.calm : 0,
       };
       if (this.needPrewarm) {
         this.needPrewarm = false;
@@ -669,6 +1042,15 @@ class Hunt {
       this.visuals.update(input);
     } else this.visuals.object.visible = false;
     if (this.caughtT >= 0) this.caughtFrame(dt);
+    // prints in the snow
+    const hf = ctx.world.heightfield;
+    this.trackVis.frame({
+      tracks: this.tracks,
+      snow: this.snowAmount(),
+      highlight: (ctx.state.state.skills['spurenleser'] ?? 0) >= 2 ? 1 : 0,
+      heightAt: (x, z) => ctx.world.heightAt(x, z),
+      normalAt: (x, z) => hf.normalAt(x, z),
+    });
     // HUD threat meter (only while we own it, so fire/oblivion can use the slot too)
     const target = this.caughtT >= 0 ? 1 : sim ? sim.alert : 0;
     this.hudAlert += (target - this.hudAlert) * (snap ? 1 : Math.min(1, dt * 4));
@@ -764,6 +1146,39 @@ class Hunt {
       sim() {
         return self.sim;
       },
+      configure(c) {
+        self.configure({ ...c, kind: 'pack' } as ThreatConfig);
+      },
+      tracks() {
+        const T = self.tracks;
+        const n = { boot: 0, paw: 0, hoof: 0 };
+        for (const p of T.prints) n[p.kind]++;
+        return { ...n, seg: T.seg, now: T.now, snow: self.snowAmount(), tracking: self.sim?.tracking ?? false };
+      },
+      walkPrints(x0, z0, x1, z1, step = 0.7) {
+        const d = Math.hypot(x1 - x0, z1 - z0);
+        const n = Math.max(1, Math.floor(d / step));
+        self.lastStep = null;
+        for (let i = 0; i <= n; i++) self.footprint(x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n, false);
+        return n + 1;
+      },
+      readTracks() {
+        const p = ctx.player.position;
+        const r = self.tracks.readPack(p.x, p.z, 2.4, self.tracks.now);
+        return r ? { ...r, text: self.readingText(r) } : null;
+      },
+      mode() {
+        const s = self.sim;
+        if (!s) return null;
+        const c = s.ctl;
+        if (c instanceof FinaleMode) return { mode: s.mode, phase: c.phase, calm: c.calm };
+        if (c instanceof DriveMode) return { mode: s.mode, pressure: c.pressure };
+        if (c instanceof ParforceMode) return { mode: s.mode, phase: c.phase, rests: c.stats.rests, rideIns: c.stats.rideIns };
+        return { mode: s.mode };
+      },
+      saved() {
+        return self.slice().pack;
+      },
     };
     window.kq.lantern = {
       toggle(on) {
@@ -790,6 +1205,8 @@ class Hunt {
   dispose(): void {
     this.visuals.object.removeFromParent();
     this.visuals.dispose();
+    this.trackVis.mesh.removeFromParent();
+    this.trackVis.dispose();
     this.lanternView.dispose();
     this.overlay.dispose();
   }

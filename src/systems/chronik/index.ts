@@ -588,7 +588,10 @@ export default defineSystem({
         const c = content.clues.get(id);
         if (c) startEcho(ctx, c);
       }),
-      ev.on('player:caught', () => onCaught(ctx)),
+      // soft (brought home by the driving pack, Ch. 4): nothing is lost
+      ev.on('player:caught', ({ soft }) => {
+        if (!soft) onCaught(ctx);
+      }),
       ev.on('settings:change', () => board?.render()),
     );
     announcePages(ctx);

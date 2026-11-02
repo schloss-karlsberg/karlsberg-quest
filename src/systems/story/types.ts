@@ -12,7 +12,7 @@
  *                  "complete": { "enter": { "x": 819, "z": -875, "r": 25 } } } ] }
  */
 import type { Era } from '../../core/era';
-import type { ThreatKind } from '../contracts';
+import type { ThreatConfig, ThreatKind } from '../contracts';
 
 export type FlagValue = boolean | number | string;
 
@@ -188,7 +188,8 @@ export interface ObjectiveAction extends ActionBase {
   z?: number;
   id?: string;
 }
-export interface ThreatAction extends ActionBase {
+/** Extra ThreatConfig fields (declared by the feature systems, e.g. pack mode/target) pass through. */
+export interface ThreatAction extends ActionBase, Omit<ThreatConfig, 'kind' | 'active'> {
   do: 'threat';
   kind: ThreatKind;
   active: boolean;
