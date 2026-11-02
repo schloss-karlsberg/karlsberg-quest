@@ -1,0 +1,142 @@
+/* fx system: compass whirl, threat gauges, caught card. Field-book look (see src/ui/styles.css). */
+.kq-fx-layer {
+  pointer-events: none !important;
+}
+.kq-fx-layer * {
+  pointer-events: none !important;
+}
+
+/* ---- era shift: the brass compass whirls in the middle of the screen ---- */
+.kq-fx-compass {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(36vh, 300px);
+  height: min(36vh, 300px);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  filter: drop-shadow(0 0 14px rgba(255, 196, 108, 0.75)) drop-shadow(0 0 42px rgba(255, 150, 60, 0.35));
+  mix-blend-mode: screen;
+}
+.kq-fx-compass svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.kq-fx-compass .ring {
+  fill: none;
+  stroke: #e3b964;
+  stroke-width: 1.6;
+}
+.kq-fx-compass .ring.thin {
+  stroke-width: 0.6;
+  stroke-dasharray: 1.2 3.6;
+}
+.kq-fx-compass .tick {
+  stroke: #f1d79a;
+  stroke-width: 1;
+}
+.kq-fx-compass .lbl {
+  fill: #f6e2b0;
+  font-family: var(--sc);
+  font-size: 13px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.kq-fx-compass .needle-n {
+  fill: #ffcf7a;
+}
+.kq-fx-compass .needle-s {
+  fill: #7a5524;
+}
+.kq-fx-compass .hub {
+  fill: #2a2118;
+  stroke: #e3b964;
+}
+.kq-fx-compass .era {
+  fill: #f6e2b0;
+  font-family: var(--hand);
+  font-size: 22px;
+  text-anchor: middle;
+}
+
+/* ---- threat gauges (smoke instead of oil; oblivion) ---- */
+.kq-fx-gauges {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  color: #efe6d2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.kq-fx-gauge {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  transition: opacity 0.6s;
+}
+.kq-fx-gauge.off {
+  opacity: 0;
+}
+.kq-fx-gauge-tube {
+  width: 16px;
+  height: 84px;
+  border: 1.5px solid rgba(239, 230, 210, 0.75);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  background: rgba(14, 11, 8, 0.35);
+}
+.kq-fx-gauge-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  transition: height 0.25s;
+}
+.kq-fx-gauge.smoke .kq-fx-gauge-fill {
+  background: linear-gradient(0deg, #3b332c, #8d8277);
+}
+.kq-fx-gauge.oblivion .kq-fx-gauge-fill {
+  background: linear-gradient(0deg, #6e6c66, #d6d2c8);
+}
+.kq-fx-gauge.warn .kq-fx-gauge-tube {
+  border-color: #e9a25a;
+  animation: kq-fx-pulse 0.9s ease-in-out infinite;
+}
+.kq-fx-gauge-label {
+  font-size: 14px;
+  font-style: italic;
+  opacity: 0.85;
+}
+@keyframes kq-fx-pulse {
+  50% {
+    box-shadow: 0 0 10px rgba(233, 162, 90, 0.8);
+  }
+}
+
+/* ---- caught card ---- */
+.kq-fx-card {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  font-family: var(--hand);
+  font-size: 40px;
+  color: #efe6d2;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  transition: opacity 0.8s;
+  white-space: nowrap;
+}
+.kq-fx-card.show {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kq-fx-gauge.warn .kq-fx-gauge-tube {
+    animation: none;
+  }
+}

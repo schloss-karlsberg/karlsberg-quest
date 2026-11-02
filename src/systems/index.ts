@@ -9,4 +9,5 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./survey'),
   () => import('./footsteps'),
   () => import('./ambience'),
+  () => import('./fx'),
 ];
