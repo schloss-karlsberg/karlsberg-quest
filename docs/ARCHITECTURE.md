@@ -156,9 +156,10 @@ Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 di
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
 Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m around the player;
 `?scanall` = everywhere); trees inside the bubble sink away (ground points only). The 1840 map
-overlay (`setMapMix`) uses the same lens.
+overlay (`setMapMix`) uses the same lens; the survey system swaps the 1935–40 Messtischblatt into
+the same `uMap` uniform (M cycles off → 1840 → 1935 → off, gated by the Kartograf skill).
 
-## 9. Data (`public/data`, 8.0 MiB, `pnpm prepare-data`)
+## 9. Data (`public/data`, 11.4 MiB, `pnpm prepare-data`)
 
 Derived by `scripts/prepare-data.ts` from the sister projects (read only; override root with
 `KQ_SISTER=/path`). Formats are documented at the top of the script and in `manifest.json`.
@@ -171,6 +172,8 @@ Derived by `scripts/prepare-data.ts` from the sister projects (read only; overri
 | `terrain/ground.u8.deflate` | 1789 ground classes (meadow, lawn, gravel, cobbles, sand, water, forest, building) |
 | `terrain/canopy.u8.deflate` | 2025 canopy height (0.25 m units), LoD2 buildings removed |
 | `maps/hist1840.jpg` | Bavarian survey 1836–41 at 2 m/px, aligned to the grid |
+| `maps/hist1935.jpg` | Messtischblatt / TK25 1935–40 at 2 m/px (sister `hist_1935` chunks, 1 m/px AOI first), `meta.hist1935` |
+| `pointcloud/ground.kqp.deflate` | Röntgenblick: 2025 ALS ground/bridge/water points (classes 2/6/9/24, ≈ 1.03 M, 2.6 MB) in 20 m cells; format `kq-pts-v1` in `meta.pointcloud` and `src/systems/tools/xrayData.ts` (u32 cell offsets, u16 dx/dz 2 cm, i8 residual 2 cm over the 2025 DTM, u8 class) |
 | `palace/buildings.glb` | 1789 reconstruction, meshopt (4.5 MB) |
 | `palace/footprints.json`, `rooms.json` | 91 footprints (base, eaves, ridge, confidence), 114 room polygons (local frame) |
 | `pois.json`, `paths.json` | 44 POIs (16 in area), path graph (3135 nodes, 3161 edges, kinds path/track/road) + water/barrier lines |
@@ -207,7 +210,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
-- E2E per feature (`e2e/{hunt,fx,chronik,story}.spec.ts`) and `e2e/integration.spec.ts`: the
+- E2E per feature (`e2e/{hunt,fx,chronik,story,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
   prologue across all four systems (new game → hub → Chronik → objective → scan → clues → Q →
   shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`.
   `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
@@ -227,7 +230,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`, `fx`,
-`chronik`, `story`, `interiors`, `npc`, `barks`. They talk only through the events in `src/systems/contracts.ts` (plus the
+`chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`. They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below) and `ctx.state`. How the four work together:
 
 ```
@@ -305,6 +308,44 @@ Ownership rules that came out of integration:
   seen, echoes, lastCase}`.
 - Hooks `kq.chronik.open/close/tab/grantAll/fill/check/solve/examine/listen/skipEcho/advanceEcho/
   echo/status/target/markers/caught/stuck/slice/content/isOpen`.
+
+### skills (`src/systems/skills/`) – Relief-Blick, Kartograf, Baumeister, Röntgenblick, Spurenleser
+- Levels in `state.skills[id]` (never lowered). Ids and tiers (rules: `logic.ts`, pure + tested):
+  `relief` 1–3 (scan modes 1–3) · `kartograf` 1 map 1840, 2 map 1935, 3 Messen (R) ·
+  `baumeister` 1 Planblatt (B) + room names in memories, 2 Konfidenzansicht, 3 Raumfolge ·
+  `roentgen` 1 Röntgenblick (V / 4) · `spurenleser` 1 horn captions say what the call means,
+  2 pack routes. Aliases (`kartograph`, `xray`, `tracker`, …) and specs `'kartograf:3'` / `'kartograf3'`.
+- Raise a skill: story action `{do:'skill', id, tier}` or event `skill:grant {skill, level, quiet?}`.
+  Every increase (except load/new game and quiet grants) shows the unlock card (brass medal,
+  tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
+  `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
+  once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
+  story card is open.
+- **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
+  `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
+- Also owns the extra settings rows (Rauhnacht, Geräusch-Untertitel, Richtungspfeile, Grafik
+  niedrig/hoch → pixel ratio 1, fx quality low, sparser point cloud) and key-help rows.
+- Hooks `kq.skills.grant/all/reset/levels/gate/free/card/said`.
+
+### tools (`src/systems/tools/`) – Messen, Röntgenblick, Planblatt, Fährtenlinien
+- **R Messen** (Kartograf 3): click A, click B (crosshair; picks terrain, the palace per building
+  with the ruin cut, any mesh with `userData.measurable`). Tape + poles + field-book sheet with
+  distance, horizontal, rise, grade and terrain height profile (`measure-*` testids). On B:
+  `measure:done {a, b, distance, horizontal, rise, building?, room?}` and
+  `flags['measured.<building>'] = distance`. Gallery KB-B06 reads ≈ 78–83 m from the model.
+- **V / 4 Röntgenblick** (Röntgenblick 1): the 2025 ground points within 70 m (52 m on low
+  graphics), height-ramped glow, trees fade in the disc (forest shader patch `forestClear.ts`);
+  a fictional paw trail Ehrenhof → Zwinger is labelled as fiction on screen.
+- **B Planblatt / Konfidenz** (Baumeister): footprints as chalk lines on the ground of every era
+  (a faint second pass shows them through canopy and roofs), building labels (decluttered),
+  low confidence dashed; the confidence view colours the palace Okabe-Ito (high #009E73,
+  medium #E69F00, low #CC79A7 striped) and shows it as a ghost where the era has none.
+- **Fährtenlinien** (Spurenleser 2): leader route and hound trails while a pack runs, read through
+  the duck-typed accessor `window.kq.hunt.sim()` (no import of the hunt system).
+- Shift suspends the plan sheet; `game:start` resets the tools.
+- Hooks `kq.tools.measure.{start,stop,click,at,pick,state}`, `kq.tools.xray(on)`,
+  `kq.tools.plans(view)`, `kq.tools.tracks(on)`, `kq.tools.state()`; `kq.survey.map(0|1840|1935)`.
+- Keys: R measure, V / 4 Röntgenblick, B plans, M maps, 0–3 relief (all listed on the controls page).
 
 ### story (`src/systems/story/`) – chapters, dialogue, field station, objectives, endings
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by

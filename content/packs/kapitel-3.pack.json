@@ -444,7 +444,7 @@
         ]
       },
       "requires": {
-        "skill": "kartograf3"
+        "skill": "kartograf:3"
       },
       "fiction": false,
       "chapter": "k3"

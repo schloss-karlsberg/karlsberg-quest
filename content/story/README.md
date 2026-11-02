@@ -139,6 +139,14 @@ Lines with `step` play in order as one sequence. Who speaks what:
 takes the line whose `value` equals the flag (reading flags: `n.r_x` ≡ `x`), else its `offen`
 line (`nichts` for the object). Without such lines the story file's `epilogue` data is used.
 
+## Skills and survey tools
+
+**Skills** (`skill {id, tier}`, system `skills`): ids `relief` (1–3), `kartograf` (1 map 1840, 2 map 1935,
+3 Messen R), `baumeister` (1 Planblatt B, 2 Konfidenzansicht, 3 Raumfolge), `roentgen` (1 Röntgenblick V),
+`spurenleser` (1 horn meaning, 2 pack routes). Each raise shows the unlock card; Laub comments once
+`flag {set: {"story.laub": true}}` has been set. Measuring: `{event: 'measure:done', match: {building: 'KB-B06'}}`
+or `flag measured.KB-B06` (the measured distance). Chronik clue requirements use `skill: 'kartograf:3'`.
+
 ## Test chapter
 
 `99-test.story.json` (`"test": true`) exercises the NPC talk, inline + modal choices, meters,

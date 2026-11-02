@@ -24,7 +24,11 @@ export type Action =
   | 'scan2'
   | 'scan3'
   | 'journal'
-  | 'pause';
+  | 'pause'
+  /** Röntgenblick (point cloud under the canopy), tools system. */
+  | 'xray'
+  /** Baumeister: plan sheet / confidence view, tools system. */
+  | 'plans';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -49,6 +53,8 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   scan3: ['Digit3'],
   journal: ['KeyJ', 'Tab'],
   pause: ['Escape', 'KeyP'],
+  xray: ['KeyV', 'Digit4'],
+  plans: ['KeyB'],
 };
 
 export class Input {

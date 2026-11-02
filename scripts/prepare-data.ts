@@ -12,6 +12,8 @@
  *   terrain/ground.u8.deflate        2 m land-cover classes (catalogue classes 0..7)
  *   terrain/canopy.u8.deflate        2 m canopy height today (DOM − DGM, max-pooled), 0.25 m units
  *   maps/hist1840.jpg                Bavarian survey 1836–41, 2 m/px, crop-aligned
+ *   maps/hist1935.jpg                TK25 1935–40 ("Messtischblatt"), 2 m/px, crop-aligned (karlsberg AOI, overall fallback)
+ *   pointcloud/ground.kqp.deflate    ALS 2025 ground points around the palace (Röntgenblick), see the section below
  *   palace/buildings.glb             1789 light model (copied verbatim, meshopt)
  *   palace/footprints.json           91 footprints (local x/z) + heights/confidence
  *   palace/rooms.json                114 named rooms, polygons converted to local x/z
@@ -39,6 +41,7 @@ const SRC = {
   catalogue: join(SISTER, 'schloss-karlsberg/model/catalogue.json'),
   pois: join(SISTER, 'app/public/data/pois.geojson'),
   overall: join(SISTER, 'app/public/data/overall'),
+  karlsberg: join(SISTER, 'app/public/data/karlsberg'),
 };
 
 const E0 = 381000;
@@ -225,6 +228,64 @@ for (let r = 0; r < rows; r++) {
 write('maps/hist1840.jpg', Buffer.from(jpeg.encode({ data: histRGBA, width: cols, height: rows }, 82).data));
 log(`hist1840: ${((100 * histCovered) / (cols * rows)).toFixed(1)} % covered`);
 
+// 1935 map (TK25 1935–40, "Messtischblatt") at 2 m/px, same crop as the 1840 map. Primary source
+// is the karlsberg AOI (1 px/m chunks, 500 m), cells outside it fall back to the overall AOI.
+const kbm = readJson(join(SRC.karlsberg, 'manifest.json'));
+const hist35 = kbm.layers.hist_1935;
+const hist35o = om.layers.hist_1935;
+if (!hist35 || hist35.encoding !== 'rgb') throw new Error('karlsberg manifest: hist_1935 layer missing');
+const kbE0 = kbm.origin.E0 as number;
+const kbNorth = (kbm.origin.N0 as number) + kbm.size.height * kbm.cellSize;
+const kbcs = kbm.chunkSize as number;
+const kbCache = new Map<string, { w: number; h: number; data: Uint8Array } | null>();
+function sampleKarlsberg(template: string, E: number, N: number, pxPerChunk: number): Uint8Array | null {
+  const cx = E - kbE0;
+  const cy = kbNorth - N;
+  if (cx < 0 || cy < 0 || cx >= kbm.size.width * kbm.cellSize || cy >= kbm.size.height * kbm.cellSize) return null;
+  const i = Math.floor(cx / kbcs);
+  const j = Math.floor(cy / kbcs);
+  const key = `${template}|${i}_${j}`;
+  let ch = kbCache.get(key);
+  if (ch === undefined) {
+    const p = join(SRC.karlsberg, template.replace('{i}', String(i)).replace('{j}', String(j)));
+    ch = null;
+    if (existsSync(p)) {
+      const img = jpeg.decode(readFileSync(p), { useTArray: true, formatAsRGBA: true });
+      ch = { w: img.width, h: img.height, data: img.data };
+    }
+    kbCache.set(key, ch);
+  }
+  if (!ch) return null;
+  const s = pxPerChunk / kbcs;
+  const px = Math.min(ch.w - 1, Math.floor((cx - i * kbcs) * s));
+  const py = Math.min(ch.h - 1, Math.floor((cy - j * kbcs) * s));
+  const o = (py * ch.w + px) * 4;
+  return ch.data.subarray(o, o + 4);
+}
+const h35RGBA = Buffer.alloc(cols * rows * 4);
+let h35Covered = 0;
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < cols; c++) {
+    const E = west + (c + 0.5) * CELL;
+    const N = north - (r + 0.5) * CELL;
+    const px = sampleKarlsberg(hist35.path, E, N, hist35.pixelsPerChunk) ?? (hist35o ? sampleOverall(hist35o.path, E, N, hist35o.pixelsPerChunk) : null);
+    const o = (r * cols + c) * 4;
+    if (px) {
+      h35RGBA[o] = px[0]!;
+      h35RGBA[o + 1] = px[1]!;
+      h35RGBA[o + 2] = px[2]!;
+      h35Covered++;
+    } else {
+      h35RGBA[o] = 236;
+      h35RGBA[o + 1] = 232;
+      h35RGBA[o + 2] = 220;
+    }
+    h35RGBA[o + 3] = 255;
+  }
+}
+write('maps/hist1935.jpg', Buffer.from(jpeg.encode({ data: h35RGBA, width: cols, height: rows }, 82).data));
+log(`hist1935: ${((100 * h35Covered) / (cols * rows)).toFixed(1)} % covered`);
+
 // ---------------------------------------------------------------------------------------------
 // Height sampling helper for vectors (bilinear on the 2 m 2025 grid)
 // ---------------------------------------------------------------------------------------------
@@ -245,6 +306,105 @@ function heightAt(a: Float32Array, x: number, zz: number): number {
   return h00 * (1 - tx) * (1 - ty) + h10 * tx * (1 - ty) + h01 * (1 - tx) * ty + h11 * tx * ty;
 }
 const toLocal = (E: number, N: number): P2 => [E - E0, -(N - N0)];
+
+// ---------------------------------------------------------------------------------------------
+// Röntgenblick: ground points of the 2025 ALS cloud around the palace (sle-pts-v1 → kq-pts-v1)
+// ---------------------------------------------------------------------------------------------
+// Source tiles: 100 m, header 16 B ('SLEP', u16 version, u16 0, u32 count, f32 hBase), records of
+// 10 B (u16 dE cm, u16 dN cm from the tile's lower-left corner, u16 h cm above hBase, i16 agl cm,
+// u8 class, u8 intensity), points shuffled (any prefix is a uniform subsample).
+// Output (all little endian, one zlib stream), points sorted by 20 m cell (row-major, north row
+// first) then by z, x:
+//   u32 offsets[cells + 1]         first point of each cell
+//   u16 dx[n]                      x in 2 cm units from x0, delta-coded mod 2^16 against the previous point
+//   u16 dz[n]                      z in 2 cm units from z0, likewise
+//   i8  res[n]                     height above the quantised 2 m 2025 DTM (bilinear) in 2 cm units
+//   u8  cls[n]                     LAS class (2 ground, 6 building, 9 water, 24 cellar)
+// The game rebuilds y = heightAt(x, z) + res of the current era's heightfield.
+const pcm = kbm.pointclouds;
+const pcArea = pcm?.areas?.[0];
+let pointMeta: Record<string, unknown> | null = null;
+if (pcm?.format === 'sle-pts-v1' && pcArea) {
+  const KEEP = 0.82; // fraction of ground points kept (budget ≤ 3 MB)
+  const PCELL = 20;
+  const ts = pcm.tileSize as number;
+  const [bw, bs, be, bn] = pcArea.bbox as number[];
+  const px0 = bw! - E0;
+  const pz0 = -(bn! - N0);
+  const pnc = Math.round((be! - bw!) / PCELL);
+  const pnr = Math.round((bn! - bs!) / PCELL);
+  const hq = new Float32Array(cols * rows);
+  for (let i = 0; i < hq.length; i++) hq[i] = hMin + q2025[i]! * 0.01;
+  const keepClasses = new Set([2, 6, 9, 24]);
+  const pts: { cell: number; X: number; Z: number; res: number; cls: number }[] = [];
+  let seen = 0;
+  for (const [tx, ty] of pcArea.tiles as [number, number, number][]) {
+    const p = join(SRC.karlsberg, (pcArea.path as string).replace('{tx}', String(tx)).replace('{ty}', String(ty)));
+    if (!existsSync(p)) continue;
+    const b = readFileSync(p);
+    const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    if (String.fromCharCode(b[0]!, b[1]!, b[2]!, b[3]!) !== 'SLEP') throw new Error(`pointcloud: bad magic in ${p}`);
+    const n = dv.getUint32(8, true);
+    const hb = dv.getFloat32(12, true);
+    for (let k = 0; k < n; k++) {
+      const o = 16 + k * 10;
+      const cls = dv.getUint8(o + 8);
+      if (!keepClasses.has(cls)) continue;
+      // deterministic thinning (Knuth hash of a running index)
+      if ((Math.imul(seen++, 2654435761) >>> 0) % 1000 >= KEEP * 1000) continue;
+      const E = bw! + tx * ts + dv.getUint16(o, true) / 100;
+      const N = bs! + ty * ts + dv.getUint16(o + 2, true) / 100;
+      const h = hb + dv.getUint16(o + 4, true) / 100;
+      const [x, zz] = toLocal(E, N);
+      const X = Math.round((x - px0) * 50);
+      const Z = Math.round((zz - pz0) * 50);
+      if (X < 0 || Z < 0 || X >= pnc * PCELL * 50 || Z >= pnr * PCELL * 50) continue;
+      const cell = Math.floor(Z / (PCELL * 50)) * pnc + Math.floor(X / (PCELL * 50));
+      const res = Math.max(-127, Math.min(127, Math.round((h - heightAt(hq, x, zz)) / 0.02)));
+      pts.push({ cell, X, Z, res, cls });
+    }
+  }
+  pts.sort((a, b) => a.cell - b.cell || a.Z - b.Z || a.X - b.X);
+  const n = pts.length;
+  const cells = pnc * pnr;
+  const offs = new Uint32Array(cells + 1);
+  for (const p of pts) offs[p.cell + 1]!++;
+  for (let i = 0; i < cells; i++) offs[i + 1]! += offs[i]!;
+  const dX = new Uint16Array(n);
+  const dZ = new Uint16Array(n);
+  const res = new Int8Array(n);
+  const cl = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = pts[i]!;
+    const prev = i > 0 ? pts[i - 1]! : { X: 0, Z: 0 };
+    dX[i] = (p.X - prev.X) & 0xffff;
+    dZ[i] = (p.Z - prev.Z) & 0xffff;
+    res[i] = p.res;
+    cl[i] = p.cls;
+  }
+  const buf = Buffer.concat([offs, dX, dZ, res, cl].map((a) => Buffer.from(a.buffer, a.byteOffset, a.byteLength)));
+  write('pointcloud/ground.kqp.deflate', deflateSync(buf, { level: 9 }));
+  pointMeta = {
+    format: 'kq-pts-v1',
+    path: 'pointcloud/ground.kqp.deflate',
+    count: n,
+    x0: px0,
+    z0: pz0,
+    cell: PCELL,
+    cols: pnc,
+    rows: pnr,
+    xyScale: 0.02,
+    resScale: 0.02,
+    classes: { 2: 'Boden', 6: 'Gebäude', 9: 'Wasser', 24: 'Keller' },
+    keep: KEEP,
+    source: `${pcArea.name_de}: ${(pcArea.source as string[]).join(', ')}`,
+    attribution: pcm.attribution,
+    encoding: 'zlib(u32 offsets[cols*rows+1] | u16 dx[n] | u16 dz[n] (2 cm, delta mod 2^16) | i8 res[n] (2 cm above 2025 DTM) | u8 class[n])',
+  };
+  log(`pointcloud: ${n} ground points (${((100 * n) / Math.max(1, seen)).toFixed(0)} % of ${seen})`);
+} else {
+  log('pointcloud: karlsberg manifest has no sle-pts-v1 area, skipped');
+}
 const extent = { x0: west - E0, x1: g.east - E0, z0: -(north - N0), z1: -(g.south - N0) };
 const inside = (x: number, zz: number, m = 0) => x >= extent.x0 + m && x <= extent.x1 - m && zz >= extent.z0 + m && zz <= extent.z1 - m;
 
@@ -516,6 +676,8 @@ const terrainMeta = {
     canopy: { path: 'terrain/canopy.u8.deflate', encoding: 'zlib(uint8 canopy height in 0.25 m)', note: 'today (ALS 2025 DOM - DGM), max of 1 m cells, LoD2 building cells removed' },
   },
   hist1840: { path: 'maps/hist1840.jpg', covered: histCovered / (cols * rows), note: 'georeferencing off by tens of metres in places' },
+  hist1935: { path: 'maps/hist1935.jpg', covered: h35Covered / (cols * rows), note: 'TK25 1935–40, ≈ 10–15 m off near the palace' },
+  ...(pointMeta ? { pointcloud: pointMeta } : {}),
 };
 write('terrain/meta.json', JSON.stringify(terrainMeta, null, 1));
 write('palace/footprints.json', JSON.stringify({ format: 'kq-footprints-v1', disclaimer_de: reconIndex.disclaimer_de, anchor: { x: r2(reconIndex.anchor.E - E0), z: r2(-(reconIndex.anchor.N - N0)) }, buildings: footprints }));
@@ -530,6 +692,8 @@ const attribution = {
     { id: 'terrain1789', label_de: 'Gelände 1789', text: '1789-Gelände = Hypothese des Teilprojekts schloss-karlsberg (Generator-Regeln aus dem Katalog), abgeleitet aus GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0', licence: 'dl-de/by-2-0' },
     { id: 'canopy', label_de: 'Vegetationshöhe', text: '© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet (DOM1 − DGM1)', licence: 'dl-de/by-2-0' },
     { id: 'hist1840', label_de: hist.label_de, text: hist.attribution, source: hist.source, licence: 'dl-de/by-2-0' },
+    { id: 'hist1935', label_de: hist35.label_de, text: hist35.attribution, source: hist35.source, licence: 'dl-de/by-2-0' },
+    ...(pointMeta ? [{ id: 'pointcloud', label_de: 'Punktwolke (ALS 2025, Bodenpunkte)', text: String(pointMeta.attribution), source: String(pointMeta.source), licence: 'dl-de/by-2-0' }] : []),
     { id: 'recon', label_de: 'Rekonstruktion 1789', text: reconIndex.attribution, disclaimer_de: reconIndex.disclaimer_de, licence: 'CC BY-SA 2.0 DE (Grundrisse teils nach schloss-carlsberg.de); Modell: Teilprojekt schloss-karlsberg' },
     { id: 'osm', label_de: 'Wege & Gewässer', text: '© OpenStreetMap-Mitwirkende, ODbL', source: om.vectors.osm.source, licence: 'ODbL 1.0', url: 'https://www.openstreetmap.org/copyright' },
     { id: 'pois', label_de: 'Orte', text: poiGeo.attribution, licence: 'ODbL / siehe Quelle je Ort' },
@@ -545,6 +709,8 @@ const files = [
   'terrain/ground.u8.deflate',
   'terrain/canopy.u8.deflate',
   'maps/hist1840.jpg',
+  'maps/hist1935.jpg',
+  ...(pointMeta ? ['pointcloud/ground.kqp.deflate'] : []),
   'palace/buildings.glb',
   'palace/footprints.json',
   'palace/rooms.json',

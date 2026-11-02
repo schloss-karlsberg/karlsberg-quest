@@ -16,4 +16,6 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./interiors'),
   () => import('./npc'),
   () => import('./barks'),
+  () => import('./skills'),
+  () => import('./tools'),
 ];

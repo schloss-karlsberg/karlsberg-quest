@@ -20,6 +20,24 @@ export interface TerrainMeta {
     canopy: { path: string };
   };
   hist1840: { path: string; covered: number };
+  /** TK25 1935–40 (Kartograf 2), same crop as hist1840. */
+  hist1935?: { path: string; covered: number };
+  /** ALS 2025 ground points around the palace (Röntgenblick), format kq-pts-v1 (scripts/prepare-data.ts). */
+  pointcloud?: PointCloudMeta;
+}
+
+export interface PointCloudMeta {
+  format: 'kq-pts-v1';
+  path: string;
+  count: number;
+  /** Local x/z of the north-west corner; cells of `cell` m, `cols` × `rows`, row 0 = north. */
+  x0: number;
+  z0: number;
+  cell: number;
+  cols: number;
+  rows: number;
+  xyScale: number;
+  resScale: number;
 }
 
 /** Land-cover classes of ground.u8 (catalogue classes). */

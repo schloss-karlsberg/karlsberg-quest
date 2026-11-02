@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-02T01:08:01.503Z",
+ "generated": "2026-11-02T04:10:11.443Z",
  "items": [
   {
    "id": "dgm",
@@ -25,6 +25,20 @@
    "label_de": "Karte 1836–41 (Bayer. Positionsblätter)",
    "text": "© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet (Historische Karten)",
    "source": "WMS SL Historische Karten (Geoportal Saarland, WMS-ID 2597), Layer 1: Bayrische Originalpositionsblätter 1:25 000, Ausgabe 1836–1841; abgerufen 2026-11-01",
+   "licence": "dl-de/by-2-0"
+  },
+  {
+   "id": "hist1935",
+   "label_de": "TK25 1935–40",
+   "text": "© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet (Historische Karten)",
+   "source": "WMS SL Historische Karten (Geoportal Saarland, WMS-ID 2597), Layer 5: TK25 Ausgaben 1935–1940; abgerufen 2026-11-01",
+   "licence": "dl-de/by-2-0"
+  },
+  {
+   "id": "pointcloud",
+   "label_de": "Punktwolke (ALS 2025, Bodenpunkte)",
+   "text": "© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet",
+   "source": "Schloss Karlsberg: 3dm_32_381_5465_1_SL_2025_050.laz, 3dm_32_382_5465_1_SL_2025_050.laz, 3dm_32_381_5466_1_SL_2025_050.laz, 3dm_32_382_5466_1_SL_2025_050.laz",
    "licence": "dl-de/by-2-0"
   },
   {
