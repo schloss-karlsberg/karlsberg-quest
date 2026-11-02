@@ -181,7 +181,12 @@ void main() {
   vExtra = iExtra;
   vWorld = iPos;
   vFragY = wp.y;
-  gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
+  // body smoke that reaches the camera fades out instead of filling the screen (overdraw);
+  // the black rush smoke (kind 2) is meant to come close
+  float vd = -(viewMatrix * vec4(iPos, 1.0)).z;
+  float nearFade = iExtra.x < 1.5 ? smoothstep(0.5, 1.4, vd) : 1.0;
+  vData.y *= nearFade;
+  gl_Position = nearFade <= 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * vec4(wp, 1.0);
 }
 `;
 
@@ -218,7 +223,9 @@ void main() {
     col = kqLight(vec3(0.85, 0.88, 0.95), vec3(0.0, 1.0, 0.0), vWorld, 1.0, 1.0) + uFogColor * 0.35;
     col = kqFog(col, vWorld);
   } else {
-    float n = kqFbm(vUv * 1.4 + vData.z * 23.0 + vec2(uTime * 0.5, -uTime * 0.7));
+    // two octaves only: the rush covers the whole view, keep it cheap
+    vec2 bp = vUv * 1.4 + vData.z * 23.0 + vec2(uTime * 0.5, -uTime * 0.7);
+    float n = 0.5 * kqNoise(bp) + 0.25 * kqNoise(bp * 2.03 + vec2(17.1, 9.7)) + 0.1;
     a = smoothstep(1.0, 0.15, r * (0.65 + 0.8 * n)) * vData.y;
     col = vec3(0.004, 0.003, 0.003) + vec3(0.25, 0.05, 0.0) * vData.w * (1.0 - r);
   }
@@ -920,8 +927,8 @@ export class PackVisuals {
       const rz = O.fx;
       const inten = (0.7 + 1.5 * k) * Math.min(1, (t - r.delay) * 4);
       for (const s of [-1, 1]) this.glowFront.push(x + rx * s * 0.06, y, z + rz * s * 0.06, 0.08, inten, 0, 1.35);
-      for (let j = 0; j < 4; j++) {
-        const back = 0.3 + j * 0.4;
+      for (let j = 0; j < 3; j++) {
+        const back = 0.3 + j * 0.55;
         this.smoke.push(x - O.fx * back + rx * Math.sin(r.seed * 40 + j) * 0.2, y + Math.sin(r.seed * 31 + j) * 0.15, z - O.fz * back + rz * Math.sin(r.seed * 40 + j) * 0.2, 0.5 + k * 1.7 + j * 0.25, 0.75 * Math.min(1, k * 3 + 0.2), (r.seed + j * 0.17) % 1, j === 0 ? 0.6 : 0, K_BLACK);
       }
     }

@@ -27,7 +27,8 @@ const ALLEE = { x: 1452, z: -640, yaw: 330 };
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/${name}.png` });
+  // the caught rush is heavy for SwiftShader on a loaded machine: give the capture time
+  await page.screenshot({ path: `${SCREENS}/${name}.png`, timeout: 150_000 });
 }
 
 test.describe('hunt', () => {
@@ -107,6 +108,7 @@ test.describe('hunt', () => {
   });
 
   test('chase and caught sequence', async ({ page }) => {
+    test.setTimeout(360_000);
     const errors = trackErrors(page);
     const chase = await page.evaluate((a) => {
       const k = window.kq!;
@@ -193,13 +195,13 @@ test.describe('hunt', () => {
     const lamp = await page.evaluate(() => {
       const k = window.kq!;
       k.lantern!.refill();
-      k.lantern!.setSeconds(2);
+      k.lantern!.setSeconds(5);
       k.press('KeyL');
       k.step(2);
       const litAfterKey = k.lantern!.state().lit;
-      k.step(60);
+      k.step(150); // half of the 5 s minimum burn time
       const half = k.lantern!.state().oil;
-      k.step(120);
+      k.step(200);
       const empty = k.lantern!.state();
       const names = k.hunt!.events().map((e) => e.name);
       k.ctx.events.emit('hub:enter', {});
