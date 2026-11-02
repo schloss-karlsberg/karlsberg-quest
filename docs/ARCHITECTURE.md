@@ -152,6 +152,17 @@ Spirit view (F, free flight) only today. Light/sky/fog/grade per era: `src/world
 (night eras use the "sun" slot for the moon; 1793-07 has a fire glow at the palace that lights
 terrain, trees and fog via `uGlowColor/uGlowPos`).
 
+Forest (`src/world/forest.ts`, procedural, no assets): 3 species (beech, spruce, oak — oak picked
+by a second noise in `generateTrees`) × 3 LODs = at most 9 instanced batches
+(`trees-<species>-<near|mid|far>`) sharing one ShaderMaterial. Near (< 60 m) and mid (< 180 m,
+scaled by tree height) are built meshes (bark tubes with root flare, limbs, leaf cards with
+spherical shading normals; spruce whorls of needle cards around a core cone); far is a
+camera-facing impostor quad whose silhouette and fake normal come from the shader. Attributes
+`aPart` (0 bark, 1 leaf, 2 needle, 4 core, 5 impostor) and `aEx` (seed, ao, upness); `aInst/aVar`
+stay for the point-cloud and `forestClear.ts` patches. Seasons per era in the shader: summer 1789,
+autumn today, bare frosted twigs and snow 1793-02, sparse 1796 (`leafDensity`, `twigShow`).
+`forest.stats` = `{near, mid, far, total, drawCalls}` (debug panel shows them).
+
 Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 diverging local
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
 Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m around the player;
@@ -210,6 +221,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Art polish (`e2e/polish-art.spec.ts`): ghost costumes by day / night, forest LOD stats and the
+  eras' seasons, the Festsaal on arrival (heat) and burning, hounds in fog at 30–60 m; screenshots
+  `pol-art-*.png`.
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
   prologue across all four systems (new game → hub → Chronik → objective → scan → clues → Q →
   shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`;
@@ -352,6 +366,12 @@ Round-3 (campaign) integration rules:
   (`settings.soundIndicators`), captions (`settings.subtitles`).
 - State `systems.hunt {alert, lantern {oil, lit, seconds}, caught, pack}`: `pack {era, opts}` is the
   active pack configuration; it comes back after a load in the same era (a story re-configure wins).
+- Visuals (`visuals.ts`, `PackVisuals`): bodies of sorted fbm smoke billboards; ember eyes as
+  additive sprites with a minimum on-screen size that pierce the fog. Readable in fog at 30–60 m:
+  the body keeps most of its dark silhouette out to ~55 m before sinking into the distance fog, a
+  fog-lit rim frays the edge of each puff, pale breath vapour puffs from the muzzle on every
+  exhale (faster on the run), and the ground mist is its own pool drawn before the pack so the
+  hounds stand out of the fog bank.
 - Hooks `kq.hunt.start/stop/state/setState/place/placeInView/freeze/horn/catch/events/sim/
   configure/tracks/walkPrints/readTracks/mode/saved`, `kq.lantern.toggle/setOil/refill/setSeconds/state`.
 
@@ -462,9 +482,15 @@ Round-3 (campaign) integration rules:
 ### npc (`src/systems/npc/`) – ghostly people, conversations
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
   (story `npc` action). `room` places the ghost in a palace room on that room's storey (centre
-  unless x/z are given); spawned at the player it keeps the player's storey. A figure: merged capsules/cones, two shader passes (sepia smoke body with screen-space
-  hatching that writes depth, additive fresnel glow), idle motion per body part, feet dissolving
-  into smoke, motes, a light pool; warm amber for Hanne, cold flicker for the others, era tint;
+  unless x/z are given); spawned at the player it keeps the player's storey. A figure
+  (`figure.ts`): a period costume from the roster's `look` (`roster.ts`: `outfit` maid / official /
+  livery / carter / mason, `hat` tricorn / huntcap / mobcap / slouch, `hair` wig / queue / short,
+  `prop`, `tint`, `seed`) built from lathe-revolved skirts and coats, tubes and capsules, merged
+  into one geometry (`aPart` head/torso/arms/legs/hat/prop/skirts, `aPivot`, `aShade`). One
+  premultiplied ShaderMaterial plus a depth-only prepass sharing its uniforms (`uPrepass`):
+  fresnel rim, flowing bands, a blank face with dark eye hollows, the lower body dissolving into
+  mist, an occasional slice glitch, skirt swing; around the feet 9 camera-facing mist puffs (thin
+  out near the camera) and motes. Warm amber for Hanne, cold flicker for the others, era tint;
   visible only in its era; turns towards the player. Reduced motion calms it.
 - E within 2.8 m → conversation (modal page at the bottom; typing on the UI clock; keys 1–n,
   E/Enter/Space advance): `greet`, topics from the pack's `npc:talk` lines, `bye`. Emits `npc:talk`,
@@ -502,8 +528,15 @@ Round-3 (campaign) integration rules:
   player's height — or the caller's `yHint` — picks the storey), `world.surfaceOverride` (footsteps
   on parquet / stone) and `world.roomAnchor(id)` (centre + floor of a room, for NPCs).
 - Fire: `fire:room {roomId, state}` (room or building id) → smoke layer under the ceiling, flames,
-  embers, flames and smoke through the doors; `collapsed` → ceiling gone, debris, doors blocked
-  once the player is out (caption for the sound). Cleared on `threat:configure {fire, active:false}`
+  embers, flames and smoke through the doors. Burning rooms: flame tongues licking up wall
+  surfaces (plaster, panelling, damask, curtains), rolling sheets of flame on the ceiling, charred
+  joists glowing in thin cracks (looted 1793-07 rooms, `aux.w = 7`, drawn only while burning),
+  falling embers, smoke puffs lit from below (`flames.ts`), the 4 nearest fire tongues as point
+  lights ahead of the candles. Rooms of a burning building that are not burning yet get *heat*
+  (`uRoomHeat`; more when a lower storey burns): glowing floor cracks, an orange underlight and
+  smoke creeping in slowly — the Festsaal already threatens on arrival. The player's room drives
+  the post heat shimmer (`ctx.post.uniforms.uHeat`). Per-room uniforms `uRoomFire/Smoke/Heat/Floor`.
+  `collapsed` → ceiling gone, debris, doors blocked once the player is out (caption for the sound). Cleared on `threat:configure {fire, active:false}`
   and era change. Gentle mode thins the smoke; reduced motion slows flames and stops flicker.
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.

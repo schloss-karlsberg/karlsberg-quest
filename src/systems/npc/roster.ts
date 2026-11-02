@@ -6,6 +6,17 @@
 
 export type Mood = 'warm' | 'eerie' | 'neutral';
 
+/**
+ * Period costume, built procedurally in `figure.ts` (fiction; shapes after 18th-century dress):
+ * - `maid`     bodice, fichu over the shoulders, full skirt with folds, linen apron, mob cap
+ * - `official` justaucorps with flared, pleated skirts open at the front, long waistcoat with a
+ *              button row, turned-back cuffs, jabot, breeches and stockings
+ * - `livery`   hunting livery: shorter coat, cross-belt with the Parforcehorn, riding boots
+ * - `carter`   short open jacket over a shirt, neckerchief, breeches
+ * - `mason`    shirt with rolled sleeves, leather apron to the knee
+ */
+export type Outfit = 'maid' | 'official' | 'livery' | 'carter' | 'mason';
+
 export interface NpcLook {
   id: string;
   /** Fallback display name (the speakers pack wins). */
@@ -14,10 +25,12 @@ export interface NpcLook {
   /** Body height (m) and build (shoulder width factor). */
   height: number;
   build: number;
-  hat: 'none' | 'tricorn' | 'cap' | 'bonnet';
-  /** Long skirt / apron (Hanne), coat tails, short jacket (boys). */
-  dress: 'skirt' | 'coat' | 'jacket';
-  /** Holds something: ledger (Soll), basket (Hanne), stick (Jost). */
+  outfit: Outfit;
+  /** Headwear: tricorn, hunting cap with a peak, mob cap (Hanne), slouch hat, bare head. */
+  hat: 'none' | 'tricorn' | 'huntcap' | 'mobcap' | 'slouch';
+  /** Hair under / instead of the hat: powdered wig with side rolls and a queue, a plain queue, short hair. */
+  hair: 'wig' | 'queue' | 'short' | 'none';
+  /** Holds something: ledger (Soll), basket (Hanne), stick (Jost), horn (the Pikeur). */
   prop: 'ledger' | 'basket' | 'stick' | 'none';
   /** sRGB tint of the light inside the smoke. */
   tint: number;
@@ -26,22 +39,25 @@ export interface NpcLook {
 }
 
 export const ROSTER: Record<string, NpcLook> = {
-  hanne: { id: 'hanne', name: 'Hanne', mood: 'warm', height: 1.62, build: 0.92, hat: 'bonnet', dress: 'skirt', prop: 'basket', tint: 0xffc477, seed: 3 },
-  soll: { id: 'soll', name: 'Kanzlist Gottlob Soll', mood: 'eerie', height: 1.7, build: 0.95, hat: 'tricorn', dress: 'coat', prop: 'ledger', tint: 0xa9c8de, seed: 7 },
-  jost: { id: 'jost', name: 'Jost', mood: 'eerie', height: 1.42, build: 0.82, hat: 'cap', dress: 'jacket', prop: 'stick', tint: 0xb7d3c4, seed: 11 },
-  peter: { id: 'peter', name: 'Peter', mood: 'eerie', height: 1.74, build: 1.0, hat: 'cap', dress: 'jacket', prop: 'none', tint: 0xc3b7dc, seed: 17 },
-  matthes: { id: 'matthes', name: 'Matthes', mood: 'eerie', height: 1.78, build: 1.08, hat: 'none', dress: 'jacket', prop: 'none', tint: 0xb9c4cf, seed: 23 },
+  hanne: { id: 'hanne', name: 'Hanne', mood: 'warm', height: 1.62, build: 0.92, outfit: 'maid', hat: 'mobcap', hair: 'none', prop: 'basket', tint: 0xffc477, seed: 3 },
+  soll: { id: 'soll', name: 'Kanzlist Gottlob Soll', mood: 'eerie', height: 1.7, build: 0.95, outfit: 'official', hat: 'tricorn', hair: 'wig', prop: 'ledger', tint: 0xa9c8de, seed: 7 },
+  jost: { id: 'jost', name: 'Jost', mood: 'eerie', height: 1.5, build: 0.84, outfit: 'livery', hat: 'huntcap', hair: 'queue', prop: 'stick', tint: 0xb7d3c4, seed: 11 },
+  pikeur: { id: 'pikeur', name: 'Der Pikeur', mood: 'eerie', height: 1.76, build: 1.02, outfit: 'livery', hat: 'tricorn', hair: 'queue', prop: 'none', tint: 0xc9d6e0, seed: 13 },
+  peter: { id: 'peter', name: 'Peter', mood: 'eerie', height: 1.68, build: 0.94, outfit: 'carter', hat: 'slouch', hair: 'short', prop: 'none', tint: 0xc3b7dc, seed: 17 },
+  matthes: { id: 'matthes', name: 'Matthes', mood: 'eerie', height: 1.78, build: 1.08, outfit: 'mason', hat: 'none', hair: 'short', prop: 'none', tint: 0xb9c4cf, seed: 23 },
 };
 
 export function lookFor(id: string, mood?: Mood): NpcLook {
-  const base = ROSTER[id] ?? { id, name: id, mood: 'neutral' as Mood, height: 1.7, build: 1, hat: 'none' as const, dress: 'coat' as const, prop: 'none' as const, tint: 0xd8d2c4, seed: 29 };
+  const base = ROSTER[id] ?? { id, name: id, mood: 'neutral' as Mood, height: 1.7, build: 1, outfit: 'official' as const, hat: 'tricorn' as const, hair: 'queue' as const, prop: 'none' as const, tint: 0xd8d2c4, seed: 29 };
   return mood ? { ...base, mood } : base;
 }
 
 /** Era tint multiplied into the figure light (sepia past, cold Steinfraß, fire glow). */
 export const ERA_TINT: Record<string, number> = {
   '1789': 0xffe2b8,
+  '1793-02': 0xc8d6ff,
   '1793-07': 0xffb48a,
+  '1796': 0xd6dce6,
   '1815': 0xd6dce6,
   today: 0xe8eef2,
 };

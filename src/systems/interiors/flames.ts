@@ -25,6 +25,7 @@ attribute float iSeed;
 uniform float uTime;
 uniform float uRoomFire[${MAX_ROOMS}];
 uniform float uRoomSmoke[${MAX_ROOMS}];
+uniform float uRoomHeat[${MAX_ROOMS}];
 uniform float uCandles;
 uniform float uMotion;
 varying vec2 vUv;
@@ -37,10 +38,12 @@ void main() {
   if (iKind > 0.5) {
     float fire = 0.0;
     float smoke = 0.0;
+    float heat = 0.0;
     for (int i = 0; i < ${MAX_ROOMS}; i++) {
-      if (i == room) { fire = uRoomFire[i]; smoke = uRoomSmoke[i]; }
+      if (i == room) { fire = uRoomFire[i]; smoke = uRoomSmoke[i]; heat = uRoomHeat[i]; }
     }
-    amt = iKind > 2.5 ? max(smoke, fire * 0.8) : fire;
+    // embers drift up through the floorboards before the flames come; smoke seeps in with the heat
+    amt = iKind > 2.5 ? max(max(smoke, fire * 0.8), heat * 0.5) : iKind > 1.5 ? max(fire, heat * (iSeed > 1.5 ? 0.0 : 0.55)) : fire;
   } else {
     amt = uCandles;
   }
@@ -59,7 +62,13 @@ void main() {
   if (iKind < 0.5) sz *= 0.9 + 0.12 * sin(t * 13.0 + iSeed * 40.0) + 0.06 * sin(t * 31.0 + iSeed * 9.0);
   if (iKind > 0.5 && iKind < 1.5) sz.y *= (0.55 + 0.45 * amt) * (0.9 + 0.15 * sin(t * 4.0 + iSeed * 20.0));
   vec3 base = iPos;
-  if (iKind > 2.5) base.y += 0.3 * sin(t * 0.4 + iSeed * 10.0);
+  // smoke rolls: drifts sideways and bobs under the ceiling
+  if (iKind > 2.5) {
+    base.y += 0.3 * sin(t * 0.4 + iSeed * 10.0);
+    base.x += 0.8 * sin(t * 0.13 + iSeed * 17.0);
+    base.z += 0.8 * cos(t * 0.11 + iSeed * 23.0);
+    sz *= 0.85 + 0.3 * sin(t * 0.21 + iSeed * 5.0);
+  }
   vec3 p = base + right * (position.x * sz.x) + up * ((position.y + (iKind > 2.5 ? 0.0 : 0.5)) * sz.y);
   if (iKind < 0.5) p += right * 0.004 * sin(t * 7.0 + iSeed * 30.0) * (position.y + 0.5);
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
@@ -108,31 +117,38 @@ void main() {
     body *= smoothstep(0.25, 0.6, tongues + (1.0 - q.y) * 0.45);
     body *= smoothstep(0.0, 0.08, q.y);
     float core = smoothstep(0.55, 0.95, body) * (1.0 - q.y);
-    vec3 c = mix(vec3(0.75, 0.12, 0.01), vec3(1.0, 0.45, 0.08), smoothstep(0.1, 0.6, body));
-    c = mix(c, vec3(1.0, 0.68, 0.3), core * 0.8);
-    gl_FragColor = vec4(c * body * 0.62 * vAmt, body);
+    vec3 c = mix(vec3(0.75, 0.1, 0.0), vec3(1.0, 0.4, 0.06), smoothstep(0.2, 0.8, body));
+    c = mix(c, vec3(1.0, 0.68, 0.3), core * 0.7);
+    // HDR core: the post's heat shimmer wobbles the air above the brightest flames
+    gl_FragColor = vec4(c * body * (0.38 + 0.8 * core) * vAmt, body);
     return;
   }
   if (vKind < 2.5) {
-    // embers: sparks rising through the area
+    // embers: sparks rising through the area (seed ≥ 2: glowing bits falling from the ceiling)
+    float fall = step(1.5, vSeed);
+    float sd = fract(vSeed);
     float acc = 0.0;
     for (int i = 0; i < 9; i++) {
       float fi = float(i);
-      float sx = hh(vec2(fi, vSeed * 17.0));
-      float sp = 0.15 + 0.25 * hh(vec2(fi, vSeed * 3.0 + 1.0));
-      float sy = fract(hh(vec2(fi + 4.0, vSeed)) + t * sp);
-      vec2 c = vec2(sx + 0.05 * sin(t * 2.0 + fi), sy);
-      float d = length((uv - c) * vec2(1.0, 0.45));
-      acc += (1.0 - smoothstep(0.0, 0.012, d)) * (1.0 - sy);
+      float sx = hh(vec2(fi, sd * 17.0 + fall));
+      float sp = (0.15 + 0.25 * hh(vec2(fi, sd * 3.0 + 1.0))) * (1.0 + fall * 0.8);
+      float ph = fract(hh(vec2(fi + 4.0, sd)) + t * sp);
+      float sy = mix(ph, 1.0 - ph * ph, fall);
+      vec2 c = vec2(sx + (0.05 + 0.04 * fall) * sin(t * 2.0 + fi), sy);
+      float d = length((uv - c) * vec2(1.0, mix(0.45, 0.35, fall)));
+      acc += (1.0 - smoothstep(0.0, 0.012 + 0.004 * fall, d)) * mix(1.0 - sy, 0.4 + 0.6 * sy, fall);
     }
-    gl_FragColor = vec4(vec3(1.0, 0.5, 0.12) * acc * 2.0 * vAmt, acc);
+    gl_FragColor = vec4(vec3(1.0, 0.5, 0.12) * acc * (2.0 + 1.5 * fall) * vAmt, acc);
     return;
   }
-  // smoke puff
+  // smoke puff: billowing, lit orange from below by the fire
   vec2 q = uv - 0.5;
   float n = fbm(uv * 3.0 + vec2(vSeed * 7.0, -t * 0.25));
-  float a = (1.0 - smoothstep(0.15, 0.5, length(q) + (n - 0.5) * 0.3)) * 0.6 * vAmt;
-  gl_FragColor = vec4(vec3(0.07, 0.065, 0.06) * (0.6 + 0.6 * n), a);
+  float n2 = fbm(uv * 6.0 - vec2(t * 0.1, vSeed * 3.0));
+  float a = (1.0 - smoothstep(0.12, 0.5, length(q) + (n - 0.5) * 0.35 + (n2 - 0.5) * 0.12)) * 0.62 * vAmt;
+  vec3 sc = vec3(0.06, 0.055, 0.05) * (0.6 + 0.6 * n);
+  sc += vec3(0.32, 0.09, 0.015) * smoothstep(0.6, 0.0, uv.y) * vAmt * (0.6 + 0.4 * n2);
+  gl_FragColor = vec4(sc, a);
 }
 `;
 
@@ -143,7 +159,7 @@ export class FlameLayer {
   private readonly matS: ShaderMaterial;
   private readonly geo: InstancedBufferGeometry;
 
-  constructor(spots: FlameSpot[], roomFire: number[], roomSmoke: number[]) {
+  constructor(spots: FlameSpot[], roomFire: number[], roomSmoke: number[], roomHeat: number[]) {
     const plane = new PlaneGeometry(1, 1);
     const g = new InstancedBufferGeometry();
     g.index = plane.index;
@@ -174,6 +190,7 @@ export class FlameLayer {
       uTime: { value: 0 },
       uRoomFire: { value: roomFire },
       uRoomSmoke: { value: roomSmoke },
+      uRoomHeat: { value: roomHeat },
       uCandles: { value: 1 },
       uMotion: { value: 1 },
       uSmokeLayer: { value: 0 },

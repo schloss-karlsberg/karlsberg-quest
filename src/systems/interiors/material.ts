@@ -82,6 +82,8 @@ uniform float uRoomSmoke[${MAX_ROOMS}];
 uniform float uRoomChar[${MAX_ROOMS}];
 uniform float uRoomGone[${MAX_ROOMS}];
 uniform float uRoomCeil[${MAX_ROOMS}];
+uniform float uRoomHeat[${MAX_ROOMS}];
+uniform float uRoomFloor[${MAX_ROOMS}];
 uniform float uOpenSky;
 uniform float uFade;
 uniform float uIndoor;
@@ -198,7 +200,9 @@ void main() {
   float smoke = 0.0;
   float charr = 0.0;
   float gone = 0.0;
+  float heat = 0.0;
   float ceil = vWorld.y + 10.0;
+  float rfloor = vWorld.y - 1.0;
   if (hasRoom) {
     for (int i = 0; i < ${MAX_ROOMS}; i++) {
       if (i == room) {
@@ -207,10 +211,14 @@ void main() {
         charr = uRoomChar[i];
         gone = uRoomGone[i];
         ceil = uRoomCeil[i];
+        heat = uRoomHeat[i];
+        rfloor = uRoomFloor[i];
       }
     }
   }
   if (m == ${M.CEILING} && gone > 0.5) discard;
+  // exposed joists of a burning ceiling: only there while the room burns
+  if (vAux.w > 6.5 && (fire < 0.15 || gone > 0.5)) discard;
 
   vec3 n = normalize(vNormal);
   if (!gl_FrontFacing) n = -n;
@@ -417,8 +425,13 @@ void main() {
   } else if (m == ${M.CHARRED}) {
     float c = vnoise(vec2(uv.x * 4.0, uv.y * 14.0));
     alb = vec3(0.03, 0.028, 0.026) * (0.6 + 0.8 * c);
-    float ember = smoothstep(0.82, 0.95, vnoise(uv * 7.0 + uTime * 0.05));
-    emis = vec3(1.0, 0.25, 0.04) * ember * fire * 1.5;
+    float beam = step(6.5, vAux.w);
+    float ember = smoothstep(0.82 - 0.04 * beam, 0.95 - 0.03 * beam, vnoise(uv * vec2(7.0, 7.0 - 4.0 * beam) + uTime * 0.05));
+    float pulse = 0.75 + 0.25 * sin(uTime * 3.1 + uv.x * 5.0) * sin(uTime * 1.7 + uv.y * 3.0);
+    emis = vec3(1.4, 0.32, 0.05) * ember * max(fire, heat * 0.4) * (1.5 - 1.2 * beam) * pulse;
+    // glowing cracks along a burning joist
+    float ck = abs(vnoise(vec2(uv.x * 14.0, uv.y * 2.2) + vec2(0.0, uTime * 0.05)) - 0.5);
+    emis += beam * vec3(1.5, 0.36, 0.04) * fire * (1.0 - smoothstep(0.0, 0.03, ck)) * pulse;
   } else if (m == ${M.MOSS}) {
     vec2 q = uv / vec2(0.5, 0.3);
     vec2 f = fract(q + vec2(floor(q.y) * 0.5, 0.0));
@@ -485,17 +498,55 @@ void main() {
     col += alb * uGlowColor * 0.12 * (sky + 0.1);
   }
   // a burning room lights itself from below, flickering
+  float hgt = vWorld.y - rfloor;
+  float roomH = max(2.5, ceil - rfloor);
+  float tt = uTime;
+  float fl = 0.75 + 0.15 * sin(tt * 11.0 + vWorld.x * 1.3) + 0.1 * sin(tt * 23.0 + vWorld.z * 2.1);
   if (fire > 0.0) {
-    float fl = 0.75 + 0.15 * sin(uTime * 11.0 + vWorld.x * 1.3) + 0.1 * sin(uTime * 23.0 + vWorld.z * 2.1);
     float low = 1.0 - smoothstep(0.0, 3.5, vWorld.y - (ceil - 5.0));
-    float patchy = 0.45 + 0.8 * kqNoise(vWorld.xz * 0.45 + vec2(uTime * 0.2, -uTime * 0.13));
+    float patchy = 0.45 + 0.8 * kqNoise(vWorld.xz * 0.45 + vec2(tt * 0.2, -tt * 0.13));
     col += alb * vec3(0.7, 0.23, 0.05) * fire * fl * (0.12 + 0.88 * low) * patchy;
+    // flames licking up the walls (panelling, curtains, wallpaper), patchy along the wall
+    bool wallish = m == ${M.PLASTER} || m == ${M.BOISERIE} || m == ${M.DAMASK} || m == ${M.FABRIC} || m == ${M.MASONRY} || m == ${M.PAPER} || m == ${M.CANVAS};
+    if (abs(n.y) < 0.45 && wallish && hasRoom) {
+      float along = dot(vWorld.xz, vec2(-n.z, n.x));
+      float rise = clamp(hgt / roomH, 0.0, 1.2);
+      // separate tongues: each column reaches its own height, licks break up as they rise
+      float reach = fire * (0.3 + 0.7 * kqNoise(vec2(along * 0.3 + 3.0, tt * 0.12)));
+      float colN = kqNoise(vec2(along * 1.5, tt * 0.7));
+      float lick = kqFbm(vec2(along * 2.4, hgt * 1.3 - tt * 2.6));
+      float topH = reach * roomH * (0.2 + 0.8 * colN) * (0.7 + 0.6 * lick);
+      float up01 = clamp(hgt / max(topH, 0.05), 0.0, 1.5);
+      float tongue = (1.0 - smoothstep(0.55, 1.0, up01)) * smoothstep(0.3, 0.6, lick + 0.45 * (1.0 - up01));
+      vec3 fc = mix(vec3(2.2, 0.85, 0.16), vec3(0.9, 0.12, 0.01), smoothstep(0.1, 0.9, up01));
+      emis += fc * tongue * fl * fire * 0.9;
+      // scorched black above the flames
+      col *= 1.0 - 0.5 * fire * smoothstep(0.3, 0.9, rise);
+    }
+    // the ceiling burns: rolling sheets of flame
+    if (m == ${M.CEILING}) {
+      vec2 q = vWorld.xz * 0.3;
+      float R = kqFbm(q + vec2(tt * 0.22, tt * 0.11)) * 0.7 + kqFbm(q * 2.3 - vec2(tt * 0.35, -tt * 0.2)) * 0.45;
+      float roll = smoothstep(0.86 - 0.42 * fire, 1.02 - 0.32 * fire, R);
+      emis += mix(vec3(0.8, 0.12, 0.01), vec3(2.2, 0.8, 0.16), roll) * roll * fire * fl * 0.8;
+    }
+  }
+  // heat before the flames (the storey below burns): glowing cracks in the floor, an orange underlight
+  if (heat > 0.0 && hasRoom && uOpenSky < 0.5) {
+    if (n.y > 0.6 && hgt < 0.35) {
+      float c1 = abs(kqNoise(vWorld.xz * 1.6) - 0.5);
+      float c2 = abs(kqNoise(vWorld.xz * 4.3 + 7.0) - 0.5);
+      float crack = (1.0 - smoothstep(0.0, 0.022, c1)) * 0.9 + (1.0 - smoothstep(0.0, 0.016, c2)) * 0.5;
+      emis += vec3(2.0, 0.42, 0.05) * crack * heat * fl * (0.55 + 0.45 * sin(tt * 2.3 + vWorld.x * 0.7));
+    }
+    col += alb * vec3(0.6, 0.17, 0.03) * heat * fl * (1.0 - smoothstep(0.0, 2.4, hgt)) * 0.7;
   }
   col += emis;
 
   // smoke layer under the ceiling: the part of the view ray above the smoke line
   if (smoke > 0.0) {
-    float hs = ceil - 0.4 - 2.4 * smoke;
+    float wob = (kqFbm(vWorld.xz * 0.22 + vec2(uTime * 0.05, -uTime * 0.04)) - 0.5) * 1.1;
+    float hs = ceil - 0.4 - 2.4 * smoke + wob * smoke;
     vec3 rd = vWorld - uCamPos;
     float len = length(rd);
     float y0 = uCamPos.y;
@@ -504,9 +555,12 @@ void main() {
     if (y0 >= hs && y1 >= hs) above = 1.0;
     else if (y0 < hs && y1 < hs) above = 0.0;
     else above = (max(y0, y1) - hs) / max(abs(y1 - y0), 1e-3);
-    float dens = smoke * (0.5 + 0.6 * kqFbm(vWorld.xz * 0.35 + vec2(uTime * 0.07, uTime * 0.03)));
-    float sOp = 1.0 - exp(-len * above * dens * 0.55);
-    vec3 sCol = mix(vec3(0.018, 0.016, 0.016), vec3(0.22, 0.07, 0.015), fire * 0.45 * (1.0 - above * 0.6));
+    float roll = kqFbm(vWorld.xz * 0.35 + vec2(uTime * 0.07, uTime * 0.03) + vec2(vWorld.y * 0.3, 0.0));
+    float dens = smoke * (0.45 + 0.75 * roll);
+    float sOp = 1.0 - exp(-len * above * dens * 0.6);
+    // the underside of the smoke bank is lit by the fire, the bank itself is black
+    vec3 lit = vec3(0.2, 0.055, 0.012) * (0.5 + 0.8 * roll) * (0.85 + 0.15 * fl);
+    vec3 sCol = mix(vec3(0.018, 0.016, 0.016), lit, clamp(fire * 0.6 + heat * 0.25, 0.0, 1.0) * (1.0 - above * 0.55));
     col = mix(col, sCol, clamp(sOp, 0.0, 0.97));
     // and a thin haze everywhere
     col = mix(col, sCol, smoke * 0.08 * min(len / 12.0, 1.0));
@@ -538,6 +592,8 @@ export function makeInteriorMaterial(lightMap: DataTexture, lmBox: Vector4, lmSp
       uRoomChar: { value: new Array<number>(MAX_ROOMS).fill(0) },
       uRoomGone: { value: new Array<number>(MAX_ROOMS).fill(0) },
       uRoomCeil: { value: new Array<number>(MAX_ROOMS).fill(1000) },
+      uRoomHeat: { value: new Array<number>(MAX_ROOMS).fill(0) },
+      uRoomFloor: { value: new Array<number>(MAX_ROOMS).fill(-1000) },
       uOpenSky: { value: 0 },
       uFade: { value: 1 },
       uIndoor: { value: 1 },
