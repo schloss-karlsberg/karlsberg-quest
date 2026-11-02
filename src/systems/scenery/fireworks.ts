@@ -362,7 +362,7 @@ export class Fireworks {
       setTimeout(() => {
         if (this.phase !== 'climax') return;
         fireworkSound(this.ctx.audio, 'cannon', c.x + (i - 2) * 6, c.y, c.z, 1);
-        this.light.setRGB(3, 1.6, 0.6).multiplyScalar(this.reduced() ? 0.5 : 1.5);
+        this.light.setRGB(3, 1.6, 0.6).multiplyScalar(this.reduced() ? 0.5 : 1.1);
         this.lightPos.copy(c);
         if (!this.reduced()) this.flash = Math.max(this.flash, 0.12);
       }, i * 380);
@@ -376,7 +376,8 @@ export class Fireworks {
     this.burst(c, white, 900, 34, 'peony');
     this.burst(c.clone().add(new Vector3(0, 8, 0)), PALETTE[1]!, 500, 22, 'willow');
     for (let i = 0; i < 26; i++) this.launch(true, false);
-    this.light.setRGB(3.4, 2.4, 1.4).multiplyScalar(reduced ? 1.2 : 4.5);
+    // warm and strong, but the snowy slope must not burn out to white (it reads as a flash otherwise)
+    this.light.setRGB(3.4, 2.2, 1.1).multiplyScalar(reduced ? 0.9 : 2.2);
     this.lightPos.copy(c);
     this.flash = reduced ? 0 : 0.9;
     this.scaffold.visible = false;
@@ -464,7 +465,7 @@ export class Fireworks {
     su.uScale!.value = scale;
     su.uAlpha!.value = 0.85 * Math.min(1, this.winter * 1.5) * (this.phase === 'dark' ? 0.35 : 1);
     // ---- light on the land: the last bursts tint terrain, trees, snow and fog (shared glow)
-    this.light.multiplyScalar(Math.exp(-dt * (this.phase === 'climax' ? 1.2 : 2.6)));
+    this.light.multiplyScalar(Math.exp(-dt * (this.phase === 'climax' ? 1.5 : 2.6)));
     atmosphere.uGlowColor.value.copy(this.light);
     atmosphere.uGlowPos.value.copy(this.lightPos);
     // white flash (post), off in reduced flash

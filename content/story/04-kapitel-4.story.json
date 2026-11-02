@@ -303,9 +303,9 @@
               "goalRadius": 22
             },
             { "do": "objective", "id": "k4.nebel", "text": "Nicht ins Grau. Dahin, wohin die Meute dich lässt" },
-            { "do": "say", "line": "laub.k4.erkenntnis", "delay": 7 },
-            { "do": "say", "line": "laub.k4.herr", "delay": 12 },
-            { "do": "say", "line": "laub.k4.abgeblasen", "delay": 10 }
+            { "do": "say", "line": "laub.k4.erkenntnis", "delay": 5 },
+            { "do": "say", "line": "laub.k4.herr", "delay": 6 },
+            { "do": "say", "line": "laub.k4.abgeblasen", "delay": 5 }
           ]
         },
         {
@@ -317,7 +317,11 @@
           ]
         }
       ],
-      "complete": { "any": [{ "event": "hunt:goal", "match": { "mode": "drive" } }, { "enter": { "x": 1216, "z": -1571, "r": 22, "era": "today" } }] }
+      "complete": { "any": [{ "event": "hunt:goal", "match": { "mode": "drive" } }, { "enter": { "x": 1216, "z": -1571, "r": 22, "era": "today" } }] },
+      "exit": [
+        { "do": "say", "line": "laub.k4.herr" },
+        { "do": "say", "line": "laub.k4.abgeblasen", "delay": 1 }
+      ]
     },
     {
       "id": "k4_10",

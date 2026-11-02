@@ -761,7 +761,7 @@ void main() {
   float ang = aPuff.x + t * (0.05 + 0.06 * aPuff.w);
   vec3 c = vec3(cos(ang) * aPuff.y, 0.12 + 0.18 * aPuff.w + 0.05 * sin(t * 0.4 + aPuff.w * 9.0), sin(ang) * aPuff.y);
   vec4 mv = modelViewMatrix * vec4(c, 1.0);
-  mv.xy += position.xy * aPuff.z * vec2(1.6, 0.7);
+  mv.xy += position.xy * aPuff.z * vec2(1.15, 0.6); // compact: neighbours must not merge into one band
   vUv = position.xy;
   vSeed = aPuff.w;
   // puffs right at the camera thin out (no flat sprite edge cutting the view or the ground)
