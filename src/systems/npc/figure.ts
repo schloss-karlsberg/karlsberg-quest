@@ -750,6 +750,7 @@ uniform float uMotion;
 attribute vec4 aPuff; // angle, radius, size, seed
 varying vec2 vUv;
 varying float vSeed;
+varying float vNear;
 void main() {
   float t = uTime * uMotion;
   float ang = aPuff.x + t * (0.05 + 0.06 * aPuff.w);
@@ -758,6 +759,8 @@ void main() {
   mv.xy += position.xy * aPuff.z * vec2(1.6, 0.7);
   vUv = position.xy;
   vSeed = aPuff.w;
+  // puffs right at the camera thin out (no flat sprite edge cutting the view or the ground)
+  vNear = smoothstep(1.0, 4.0, -mv.z);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -769,6 +772,7 @@ uniform float uTime;
 uniform float uMotion;
 varying vec2 vUv;
 varying float vSeed;
+varying float vNear;
 float ph(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float pn(vec2 p) {
   vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -779,7 +783,7 @@ void main() {
   float r = length(vUv);
   if (r > 1.0) discard;
   float n = 0.6 * pn(vUv * 2.2 + vec2(vSeed * 17.0 + t * 0.12, -t * 0.05)) + 0.4 * pn(vUv * 4.7 + vSeed * 5.0 - t * 0.09);
-  float a = uAlpha * 0.2 * smoothstep(1.0, 0.2, r + (n - 0.5) * 0.5) * smoothstep(-1.0, 0.2, vUv.y);
+  float a = uAlpha * 0.2 * smoothstep(1.0, 0.2, r + (n - 0.5) * 0.5) * smoothstep(-1.0, 0.2, vUv.y) * vNear;
   if (a < 0.003) discard;
   vec3 mist = uFogColor * 0.85 + uTint * 0.12;
   gl_FragColor = vec4((mist + uTint * 0.25 * (1.0 - r)) * a, a);
