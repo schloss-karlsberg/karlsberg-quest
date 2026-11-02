@@ -1,0 +1,1518 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "kapitel-4",
+  "nouns": [
+    {
+      "id": "n.vierzehn",
+      "label_de": "14",
+      "category": "other"
+    },
+    {
+      "id": "n.9_millionen",
+      "label_de": "9 Millionen",
+      "category": "other"
+    },
+    {
+      "id": "n.abreissen",
+      "label_de": "abzureißen",
+      "category": "action"
+    },
+    {
+      "id": "n.wiederaufbauen",
+      "label_de": "wieder aufzubauen",
+      "category": "action"
+    },
+    {
+      "id": "n.verkaufen",
+      "label_de": "zu verkaufen",
+      "category": "action"
+    },
+    {
+      "id": "n.aufforsten",
+      "label_de": "aufzuforsten",
+      "category": "action"
+    },
+    {
+      "id": "n.hohenburg",
+      "label_de": "Hohenburg",
+      "category": "place"
+    },
+    {
+      "id": "n.jaegersburg",
+      "label_de": "Jägersburg",
+      "category": "place"
+    },
+    {
+      "id": "n.merburg",
+      "label_de": "Merburg",
+      "category": "place"
+    },
+    {
+      "id": "n.baumagazin",
+      "label_de": "Baumagazin",
+      "category": "object"
+    },
+    {
+      "id": "n.zwingerhaus",
+      "label_de": "Zwingerhaus",
+      "category": "object"
+    },
+    {
+      "id": "n.r_franzosen",
+      "label_de": "die Franzosen",
+      "category": "group"
+    },
+    {
+      "id": "n.r_herzog_selbst",
+      "label_de": "der Herzog selbst",
+      "category": "person"
+    },
+    {
+      "id": "n.r_steintraeger",
+      "label_de": "die Steinträger aus Homburg",
+      "category": "group"
+    },
+    {
+      "id": "n.r_vergessen",
+      "label_de": "das Vergessen",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_herr_suchen",
+      "label_de": "sie ihren Herrn sucht",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_chronik_bewachen",
+      "label_de": "sie die Chronik bewacht",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_heimtreiben",
+      "label_de": "sie uns heimtreibt",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_nie_abgeblasen",
+      "label_de": "sie nie abgeblasen wurde",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_raub",
+      "label_de": "Raub",
+      "category": "object"
+    },
+    {
+      "id": "n.r_lohn_steine",
+      "label_de": "Lohn",
+      "category": "object"
+    },
+    {
+      "id": "n.r_neuanfang",
+      "label_de": "ein Neuanfang",
+      "category": "object"
+    },
+    {
+      "id": "n.r_nur_steine",
+      "label_de": "nur Steine",
+      "category": "object"
+    }
+  ],
+  "clues": [
+    {
+      "id": "clue.k4.marlene",
+      "title_de": "Marlenes Zettel",
+      "kind": "document",
+      "text_de": "„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Kern FAKT: Steine der Ruine in Homburger Häusern, RLS.)",
+      "where": {
+        "x": 760,
+        "z": -930,
+        "radius": 30,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_neuanfang"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.karren",
+      "title_de": "Erinnerung: Die Karren",
+      "kind": "echo",
+      "text_de": "Die Wachhäuser am Taleingang stehen noch, ohne Wache. Auf der Straße rollen Karren nach Westen, beladen mit behauenen Steinen. Automatisch.",
+      "where": {
+        "x": 497,
+        "z": -900,
+        "radius": 25,
+        "era": "1796",
+        "anchor": "KB-B63"
+      },
+      "reveals": {
+        "nouns": [
+          "n.homburg",
+          "n.r_steintraeger"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.hohenburg",
+      "title_de": "Blick zur Hohenburg",
+      "kind": "dialogue",
+      "text_de": "Am Westrand des Spielbereichs. Im Südwesten, etwa zwei Kilometer weit, ein Berg mit Mauerresten über einer kleinen Stadt (stilisierte Silhouette, nicht Gelände).",
+      "where": {
+        "x": 200,
+        "z": -905,
+        "radius": 20,
+        "era": "1796",
+        "anchor": "loc.k4.westblick"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hohenburg"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.jaegersburg",
+      "title_de": "Holz aus Jägersburg",
+      "kind": "dialogue",
+      "text_de": "Laub, nach dem Blick zur Hohenburg.",
+      "where": {
+        "x": 200,
+        "z": -905,
+        "radius": 20,
+        "era": "1796",
+        "anchor": "loc.k4.westblick"
+      },
+      "reveals": {
+        "nouns": [
+          "n.jaegersburg"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k4.hohenburg"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.merburg",
+      "title_de": "Die Merburg im Süden",
+      "kind": "dialogue",
+      "text_de": "Laub, wenn man vom Westrand nach Süden schaut.",
+      "where": {
+        "x": 200,
+        "z": -905,
+        "radius": 20,
+        "era": "1796",
+        "anchor": "loc.k4.westblick"
+      },
+      "reveals": {
+        "nouns": [
+          "n.merburg"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "echo.k4.rueckwaerts",
+      "title_de": "Erinnerung: Rückwärts",
+      "kind": "echo",
+      "text_de": "E halten. Die Karren auf der Straße rollen rückwärts, die Steine fahren bergauf, die Jahre laufen zurück bis etwa 1780. Ganz kurz der Karlsberg mit Gerüsten. Auf dem vordersten Karren ein Quader, dessen Zeichen immer blasser wird, bis es fehlt. Dann wieder vorwärts. Wandernde Steine 3/4.",
+      "where": {
+        "x": 200,
+        "z": -905,
+        "radius": 20,
+        "era": "1796",
+        "anchor": "loc.k4.westblick"
+      },
+      "reveals": {
+        "flags": [
+          "flag.stein_3"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k4.hohenburg"
+        ]
+      },
+      "fiction": true,
+      "echoDate_de": "um 1780",
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.baumagazin",
+      "title_de": "Das Baumagazin",
+      "kind": "dialogue",
+      "text_de": "Das einzige Gebäude, das ganz steht. Im Hof Steinhaufen, Holzstapel, eine Waage. (Heute Karlsberger Hof, privat: im Heute kein Trigger, nur der Blick von der Straße.)",
+      "where": {
+        "x": 511,
+        "z": -827,
+        "radius": 25,
+        "era": "1796",
+        "anchor": "KB-B29"
+      },
+      "reveals": {
+        "nouns": [
+          "n.baumagazin"
+        ],
+        "facts": [
+          "cx.32"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.pacht",
+      "title_de": "Der Pachtbrief",
+      "kind": "document",
+      "text_de": "„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut FIKTION; Inhalt nach HIB.)",
+      "where": {
+        "x": 509,
+        "z": -830,
+        "radius": 6,
+        "era": "1796",
+        "anchor": "KB-B29"
+      },
+      "reveals": {
+        "nouns": [
+          "n.vierzehn"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.soll",
+      "title_de": "Soll führt Buch für die Pächter",
+      "kind": "dialogue",
+      "text_de": "Soll sitzt an einem Tisch im Tor, alt geworden, die Ärmelschoner abgewetzt.",
+      "where": {
+        "x": 509,
+        "z": -830,
+        "radius": 6,
+        "era": "1796",
+        "anchor": "KB-B29"
+      },
+      "reveals": {
+        "nouns": [
+          "n.vierzehn",
+          "n.r_raub",
+          "n.r_chronik_bewachen",
+          "n.r_franzosen"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.peter",
+      "title_de": "Peter, der Fuhrmann",
+      "kind": "dialogue",
+      "text_de": "Peter, Hannes Sohn, fünfzehn, lädt Steine auf seinen Karren.",
+      "where": {
+        "x": 516,
+        "z": -822,
+        "radius": 8,
+        "era": "1796",
+        "anchor": "KB-B29"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_herzog_selbst"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.stein_karren",
+      "title_de": "Ein Quader auf Peters Karren",
+      "kind": "object",
+      "text_de": "Das Zeichen von Matthes: offener Winkel, drei Punkte. Wandernde Steine 2/4.",
+      "where": {
+        "x": 516,
+        "z": -822,
+        "radius": 4,
+        "era": "1796",
+        "anchor": "KB-B29"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_lohn_steine"
+        ],
+        "flags": [
+          "flag.stein_2"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.anschlag",
+      "title_de": "Ein Anschlag am Pfeiler",
+      "kind": "document",
+      "text_de": "Ein angeschlagenes Blatt, vom Regen halb gelöst: „Nachdem Seine Hochfürstliche Durchlaucht Herzog Carl August am 1. April 1795 verstorben, werden alle, so Forderungen an die herzogliche Cammer haben, aufgefordert …“ Darunter mit Kohle: „über 9 Millionen. Viel Glück.“ (Wortlaut FIKTION; Datum und Summe FAKT nach WP-K2A.)",
+      "where": {
+        "x": 1195,
+        "z": -1112,
+        "radius": 3,
+        "era": "1796",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.9_millionen"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.napoleon",
+      "title_de": "Die Bedingung",
+      "kind": "dialogue",
+      "text_de": "Laub im Ehrenhof, nach dem ersten Steinfraß.",
+      "where": {
+        "x": 1216,
+        "z": -1114,
+        "radius": 35,
+        "era": "1796",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.abreissen",
+          "n.wiederaufbauen",
+          "n.verkaufen",
+          "n.aufforsten"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.graben",
+      "title_de": "Ein Ausbruchgraben",
+      "kind": "object",
+      "text_de": "Ein langer Graben, wo eben noch eine Mauer stand. Unten Mörtelbrocken und Splitter, die keiner haben will.",
+      "where": {
+        "x": 1240,
+        "z": -1193,
+        "radius": 20,
+        "era": "1796",
+        "anchor": "KB-06"
+      },
+      "reveals": {
+        "nouns": [
+          "n.ausbruchgraben"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.graben_heute",
+      "title_de": "Die Rinne im Relief",
+      "kind": "relief",
+      "text_de": "Relief-Blick 3: eine schmale Rinne mit zwei kleinen Wällen daneben, genau dort, wo 1796 der Graben war. (LIDAR-Auswertung KB-06.)",
+      "where": {
+        "x": 1240,
+        "z": -1193,
+        "radius": 20,
+        "era": "today",
+        "anchor": "KB-06"
+      },
+      "reveals": {
+        "nouns": [
+          "n.ausbruchgraben"
+        ],
+        "facts": [
+          "rm.05"
+        ]
+      },
+      "requires": {
+        "scanMode": 3
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.laub_1840",
+      "title_de": "Erinnerung: Standpunkt siebzehn",
+      "kind": "echo",
+      "text_de": "E halten. Nacht, Wald, Novemberregen. Ein Mann im Mantel, ein Theodolit auf dem Stativ, eine Laterne auf dem Brunnenrand. (Ganz erfunden.)",
+      "where": {
+        "x": 1386,
+        "z": -1477,
+        "radius": 12,
+        "era": "1796",
+        "anchor": "KB-51"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_herr_suchen",
+          "n.r_nie_abgeblasen"
+        ],
+        "flags": [
+          "flag.k4_kein_verlust"
+        ]
+      },
+      "fiction": true,
+      "echoDate_de": "November 1840",
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.zwingerhaus",
+      "title_de": "Was vom Zwinger blieb",
+      "kind": "dialogue",
+      "text_de": "Auf dem Weg zum Zwinger, heute, Nacht, Nebel.",
+      "where": {
+        "x": 1216,
+        "z": -1556,
+        "radius": 15,
+        "era": "today",
+        "anchor": "KB-B23"
+      },
+      "reveals": {
+        "nouns": [
+          "n.zwingerhaus"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.jost",
+      "title_de": "Der Pikeur",
+      "kind": "dialogue",
+      "text_de": "Finale (nur nach der 2. Bestätigung). X (hinlegen) und L (Laterne an), in beliebiger Reihenfolge, kein Zeitdruck. Der Pikeur steigt ab und nimmt den Hut ab: Jost, alt. Bodendenkmal: keine Grab- oder Suchhandlung.",
+      "where": {
+        "x": 1216,
+        "z": -1571,
+        "radius": 20,
+        "era": "today",
+        "anchor": "KB-B23"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_heimtreiben",
+          "n.r_vergessen"
+        ],
+        "flags": [
+          "flag.horn"
+        ]
+      },
+      "requires": {
+        "flags": [
+          "flag.k4_finale"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.nur_steine",
+      "title_de": "Nur Steine",
+      "kind": "dialogue",
+      "text_de": "Feldstation, nach dem Finale, vor der Wahl.",
+      "where": {
+        "x": 760,
+        "z": -930,
+        "radius": 30,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_nur_steine"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k4.jost"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    },
+    {
+      "id": "clue.k4.foto",
+      "title_de": "Ein Foto auf Marlenes Handy",
+      "kind": "object",
+      "text_de": "Der Stein über der Kellertür von Marlenes Schwager in der Homburger Altstadt: ein Winkel mit drei Punkten. (FIKTION: Kein echtes Haus ist gemeint.) Wandernde Steine 4/4.",
+      "where": {
+        "x": 760,
+        "z": -930,
+        "radius": 30,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "flags": [
+          "flag.stein_4"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k4.jost"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k4"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case.k4",
+      "title_de": "Der Steinbruch",
+      "intro_de": "1796. Das Schloss ist drei Jahre tot. Wohin gingen seine Steine, und was blieb?",
+      "entries": [
+        {
+          "id": "entry.k4.1",
+          "kind": "fact",
+          "factId": "cx.30",
+          "text_de": "1796 pachteten {wieviel} Bürger aus Homburg das Recht, Holz und Steine der Ruine zu verkaufen.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.vierzehn",
+              "accepts": [
+                "n.vierzehn",
+                "n.neunzehn",
+                "n.tausend",
+                "n.zwoelf"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.2",
+          "kind": "fact",
+          "factId": "cx.29",
+          "text_de": "Als der Herzog am 1. April 1795 starb, hinterließ er über {wieviel} Gulden Schulden.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.9_millionen",
+              "accepts": [
+                "n.9_millionen",
+                "n.zahl_14mio",
+                "n.zahl_800000",
+                "n.zahl_35000"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.3",
+          "kind": "fact",
+          "factId": "cx.30",
+          "text_de": "Unter Napoleon erhielt die Witwe des Herzogs die Ruine zurück, unter der Bedingung, sie {wie}.",
+          "blanks": [
+            {
+              "id": "wie",
+              "category": "action",
+              "correct": "n.abreissen",
+              "accepts": [
+                "n.abreissen",
+                "n.wiederaufbauen",
+                "n.verkaufen",
+                "n.aufforsten"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.4",
+          "kind": "fact",
+          "factId": "cx.31",
+          "text_de": "Schon für den Bau des Schlosses hatte man Steine von der {wo} geholt.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.hohenburg",
+              "accepts": [
+                "n.hohenburg",
+                "n.jaegersburg",
+                "n.merburg"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.5",
+          "kind": "fact",
+          "factId": "cx.32",
+          "text_de": "Das einzige Gebäude des Karlsbergs, das bis heute steht, ist {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.baumagazin",
+              "accepts": [
+                "n.baumagazin",
+                "n.eiskeller",
+                "n.zwingerhaus"
+              ],
+              "labels_de": {
+                "n.baumagazin": "das Baumagazin",
+                "n.eiskeller": "der Eiskeller",
+                "n.zwingerhaus": "das Zwingerhaus"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.6",
+          "kind": "fact",
+          "factId": "cx.34",
+          "text_de": "Wo man die Grundmauern herausholte, sieht man im Laserscan heute {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.ausbruchgraben",
+              "plural": true,
+              "accepts": [
+                "n.ausbruchgraben",
+                "n.hohlweg",
+                "n.meilerplatz",
+                "n.wassergraben"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.7",
+          "kind": "reading",
+          "flag": "flag.k4_zerstoerer",
+          "text_de": "Den Karlsberg zerstörten am Ende {wer}.",
+          "blanks": [
+            {
+              "id": "wer",
+              "accepts": [
+                "n.r_franzosen",
+                "n.r_herzog_selbst",
+                "n.r_steintraeger",
+                "n.r_vergessen"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.8",
+          "kind": "reading",
+          "flag": "flag.k4_meute",
+          "text_de": "Die Meute jagte, weil {warum}.",
+          "blanks": [
+            {
+              "id": "warum",
+              "accepts": [
+                "n.r_herr_suchen",
+                "n.r_chronik_bewachen",
+                "n.r_heimtreiben",
+                "n.r_nie_abgeblasen"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k4.9",
+          "kind": "reading",
+          "flag": "flag.k4_steine",
+          "text_de": "Die Karlsberg-Steine in den Homburger Häusern sind {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "accepts": [
+                "n.r_raub",
+                "n.r_lohn_steine",
+                "n.r_neuanfang",
+                "n.r_nur_steine"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "marlene.k4.zettel",
+      "speaker": "marlene",
+      "text_de": "Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.marlene",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "P: Steine der Ruine in Homburger Häusern"
+        }
+      ]
+    },
+    {
+      "id": "marlene.k4.zettel_2",
+      "speaker": "marlene",
+      "text_de": "PS: Wenn ein altes Schloss in Homburg in hundert Häusern steckt, ist es dann weg oder überall? Frag ich mich nur so.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.marlene",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.gestaendnis_1",
+      "speaker": "laub",
+      "text_de": "Ich habe Ihnen etwas verschwiegen. Ich bin nicht verschollen, weil ich mich verlaufen habe. Ich war am alten Forsthaus, Standpunkt siebzehn. Am Tag vorher hatte ich in einem Graben eine Seite gefunden, alt, angesengt, mit Namen drauf. ‚Was der Hof schuldig blieb.‘ Ich dachte, wenn ich vermesse, wo die Seiten liegen, finde ich den Rest. Ein Geometer findet alles, wenn man ihm genug Standpunkte gibt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.0"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k4.taleingang",
+      "speaker": "laub",
+      "text_de": "1796. Das Schloss ist drei Jahre tot, und die Leute holen sich ihr Geld zurück. In Steinen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.1"
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.karren.01",
+      "speaker": "fuhrmann",
+      "text_de": "Hü! Für das Fenstergewände da kriegt der Bäcker in Homburg eine neue Haustür.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.karren",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.karren.02",
+      "speaker": "fuhrmann2",
+      "text_de": "Und der Schmied einen Kamin. Und ich krieg zwei Kreuzer.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.karren",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.karren.03",
+      "speaker": "fuhrmann",
+      "text_de": "Mehr als der Herzog je gezahlt hat.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.karren",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.karren.04",
+      "speaker": "fuhrmann2",
+      "text_de": "Wir tragen das Schloss halt nach Haus. Stein für Stein. Einer muss es ja tun.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.karren",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.westblick",
+      "speaker": "laub",
+      "text_de": "Sehen Sie den Berg da im Südwesten, über der Stadt? Die Hohenburg. Die Festung hat man 1714 geschleift, und der Herzog hat ihre Trümmer als Steinbruch benutzt. Die Steine sind zweimal umgezogen: von der Burg aufs Schloss, vom Schloss in die Stadt. Steine haben kein Zuhause. Nur eine Adresse auf Zeit.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.hohenburg"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Hohenburg_Castle_(Homburg)",
+          "label": "en.wikipedia: Hohenburg Castle (Homburg)",
+          "note": "P"
+        },
+        {
+          "url": "https://www.burgenwelt.org/deutschland/hohenburg/burgenwelt-hohenburg-objektseite.pdf",
+          "label": "Burgenwelt: Hohenburg",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "laub.k4.jaegersburg",
+      "speaker": "laub",
+      "text_de": "Und das Holz kam aus Jägersburg, dem alten Jagdschloss. Täfelungen, Möbel, angeblich ein ganzer Stall. Der Herzog hat sich auch bei sich selbst bedient.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jaegersburg"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)",
+          "note": "P"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_J%C3%A4gersburg",
+          "label": "de.wikipedia: Schloss Jägersburg",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "laub.k4.merburg",
+      "speaker": "laub",
+      "text_de": "Im Süden, da hinten, die Merburg. Auch eine Ruine, aber eine ehrliche. Die ist von allein alt geworden.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.merburg"
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.rueckwaerts.01",
+      "speaker": "geraeusch",
+      "text_de": "[Die Karren rollen rückwärts, bergauf. Die Bussole tickt wie eine Uhr.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.k4.rueckwaerts"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.baumagazin",
+      "speaker": "laub",
+      "text_de": "Das Baumagazin. Das Lager für Baumaterial. Das einzige Haus, das stehen bleibt. Alles andere wird selbst zu Baumaterial. Man hat später gesagt, das Schloss sei eine Baustoffhandlung geworden. Die Verwaltung nennt so etwas Kreislauf.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.baumagazin"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "P"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "soll.k4.01",
+      "speaker": "soll",
+      "text_de": "Ah. Sie. Sie sind auch nicht jünger geworden. Doch, Sie schon.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k4.02",
+      "speaker": "soll",
+      "text_de": "Ich führe jetzt Buch für die Pächter. Vierzehn Bürger aus Homburg haben das Recht gepachtet, Holz und Steine zu verkaufen. Vierzehn. Ich habe nachgezählt. Ein Fenstergewände zwölf Kreuzer, ein Treppenstein zwanzig, ein Wappen gar nichts, das will keiner.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "pacht"
+      },
+      "sources": [
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
+          "note": "Zahl 14; Preise erfunden"
+        }
+      ]
+    },
+    {
+      "id": "soll.k4.03",
+      "speaker": "soll",
+      "text_de": "Zum ersten Mal in meinem Leben wird am Karlsberg alles bezahlt. Bar. Sofort. Es ist entsetzlich.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "geld"
+      }
+    },
+    {
+      "id": "soll.k4.04",
+      "speaker": "soll",
+      "text_de": "Raub ist das. Erst haben sie dem Land das Geld genommen und Steine draus gemacht, jetzt nimmt das Land die Steine zurück. Ein Raub am Raub. Ob das wieder gerade wird, weiß ich nicht. Buchhalterisch ist es eine Null.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "raub"
+      }
+    },
+    {
+      "id": "soll.k4.05",
+      "speaker": "soll",
+      "text_de": "Die Franzosen haben ihn angezündet. Aber abgerissen haben ihn wir. Das schreib ich auch auf.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "schuld"
+      }
+    },
+    {
+      "id": "soll.k4.06",
+      "speaker": "soll",
+      "text_de": "Mein Buch? Die Seiten sind verweht. Manchmal denke ich, die Hunde passen drauf auf. Die laufen immer da, wo eine liegt.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "buch"
+      }
+    },
+    {
+      "id": "soll.k4.07",
+      "speaker": "soll",
+      "text_de": "Wenn Sie die Seiten finden: Tragen Sie die Summe nicht zusammen. Die Summe ist nicht wichtig. Die Namen sind wichtig.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k4",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "peter.k4.01",
+      "speaker": "peter",
+      "text_de": "Platz da. Der Karren ist voll.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "peter",
+        "chapter": "k4",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "peter.k4.02",
+      "speaker": "peter",
+      "text_de": "Mutter? Die wohnt jetzt in Homburg. Sie sagt, ich soll was Gescheites fahren. Keine Steine. Ich fahr Steine.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "peter",
+        "chapter": "k4",
+        "topic": "hanne"
+      }
+    },
+    {
+      "id": "peter.k4.03",
+      "speaker": "peter",
+      "text_de": "Das ist von meinem Vater. Den hab ich extra rausgesucht. Der kommt nach Homburg, über unsere Tür. Er hat ihn gehauen. Bezahlt hat ihn keiner. Jetzt gehört er uns. Das ist der Lohn.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.stein_karren"
+      },
+      "once": true
+    },
+    {
+      "id": "peter.k4.04",
+      "speaker": "peter",
+      "text_de": "Wer das Schloss kaputt gemacht hat? Der Herzog. Wer so baut, muss sich nicht wundern.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "peter",
+        "chapter": "k4",
+        "topic": "schuld"
+      }
+    },
+    {
+      "id": "peter.k4.05",
+      "speaker": "peter",
+      "text_de": "Hü.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "peter",
+        "chapter": "k4",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "laub.k4.steinfrass",
+      "speaker": "laub",
+      "text_de": "Das ist nicht das Feuer. Das ist schlimmer. Das ist, wenn keiner mehr weiß, wo etwas stand. Dann frisst es der Berg.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.4"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "marlene.k4.ruf",
+      "speaker": "marlene",
+      "text_de": "{name}? {name}! Die Suppe wird kalt!",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.4-ruf"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.napoleon",
+      "speaker": "laub",
+      "text_de": "Ein paar Jahre später, unter Napoleon, bekommt die Witwe des Herzogs die Ruine zurück. Unter einer Bedingung: abreißen, bis auf den Grund. Wieder aufbauen wollte niemand. Verkauft wurde ohnehin schon. Und aufgeforstet hat man erst, als nichts mehr zu sehen war.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.napoleon"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "laub.k4.graben",
+      "speaker": "laub",
+      "text_de": "Ein Ausbruchgraben. Wenn man eine Mauer bis auf den letzten Stein herausholt, bleibt ein Graben in ihrer Form. Die ‚Mauerzüge‘, die Sie im Scan sehen, sind keine Mauern. Es sind die Löcher, in denen Mauern waren. Ich habe hier die Seite gefunden. In so einem Loch.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.graben"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); KB-06"
+        }
+      ]
+    },
+    {
+      "id": "echo.k4.laub_1840.01",
+      "speaker": "laub",
+      "text_de": "(1840, schreibt, murmelt) Standpunkt siebzehn. Richtung Ruine, hundertneunundneunzig Grad und …",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.02",
+      "speaker": "geraeusch",
+      "text_de": "[Ein Horn, ein langer Ton. Laub hebt den Kopf.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.03",
+      "speaker": "laub",
+      "text_de": "(1840) Jäger? Um die Zeit? Es ist keine Jagd angesagt. Ich hätte das wissen müssen, ich habe die Liste.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.04",
+      "speaker": "geraeusch",
+      "text_de": "[Augen gehen im Nebel an, zwölf Stück, in Kniehöhe.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.05",
+      "speaker": "stimme",
+      "text_de": "Leg dich hin.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 5
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.06",
+      "speaker": "laub",
+      "text_de": "(1840) Ich bin königlich bayerischer Geometer. Ich lege mich nicht in den Dreck.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 6
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.07",
+      "speaker": "stimme",
+      "text_de": "Leg dich hin. Bitte.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 7
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k4.laub_1840.08",
+      "speaker": "geraeusch",
+      "text_de": "[Laub nimmt die Laterne und rennt. Die Augen folgen. Das Bild bricht ab. Nur der Theodolit bleibt stehen.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k4.laub_1840",
+        "step": 8
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.gestaendnis_2",
+      "speaker": "laub",
+      "text_de": "Sie haben es gesehen. Ich habe mich nicht hingelegt. Ich dachte, sie reißen mich. Sie wollten mich stellen, und ich bin gerannt, in den Nebel hinein, zu weit, bis dahin, wo nichts mehr ist. Seitdem bin ich in diesem Messing. Mein Tagegeld für den letzten Tag ist übrigens auch noch offen.",
+      "trigger": {
+        "event": "echo:end",
+        "id": "clue.k4.laub_1840"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k4.erkenntnis",
+      "speaker": "laub",
+      "text_de": "Sehen Sie, wo sie stehen? Nicht vor Ihnen. Zwischen Ihnen und dem Grau. Die jagen Sie nicht. Die treiben Sie.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.7"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k4.heimgebracht",
+      "speaker": "laub",
+      "text_de": "Sehen Sie? Nichts verloren. Nie gewesen, wenn man’s genau nimmt. Nur zurückgebracht.",
+      "trigger": {
+        "event": "player:caught",
+        "by": "pack",
+        "flag": "flag.k4_kein_verlust"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k4.herr",
+      "speaker": "laub",
+      "text_de": "Vielleicht suchen sie nur ihren Herrn. Der ist nach Mannheim gefahren und hat keinem gesagt, dass die Jagd vorbei ist.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.7",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.abgeblasen",
+      "speaker": "laub",
+      "text_de": "Eine Jagd, die keiner abbläst, hört nicht auf. Das steht in keinem Reglement. Aber es steht in jeder Sage.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.7",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.noch_nicht",
+      "speaker": "laub",
+      "text_de": "Noch nicht. Wir wissen noch nicht genug, um uns hinzulegen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.8-gesperrt"
+      },
+      "priority": 5
+    },
+    {
+      "id": "laub.k4.weiter",
+      "speaker": "laub",
+      "text_de": "Weiter.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.bestaetigt-1"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.zwingerhaus",
+      "speaker": "laub",
+      "text_de": "Vom Zwingerhaus steht heute ein Rest im Relief, ein Rechteck, eine Kante. Kein Haus. Der Eiskeller ist ein Loch mit einem Ring. Stehen geblieben ist nur das Lager.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.zwingerhaus"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); KB-B23/KB-B35"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "beat.k4.sammeln",
+      "speaker": "geraeusch",
+      "text_de": "[Das Horn: drei lange Töne. Sammeln.]",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.9",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.finale_1",
+      "speaker": "laub",
+      "text_de": "Jetzt. Hinlegen. Und machen Sie das Licht an. Die sollen sehen, dass wir nicht weglaufen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.9",
+        "step": 2
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k4.nicht_noch_einmal",
+      "speaker": "laub",
+      "text_de": "Nicht noch einmal. Bitte.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.9-weggerannt"
+      },
+      "priority": 10
+    },
+    {
+      "id": "beat.k4.hinlegen",
+      "speaker": "geraeusch",
+      "text_de": "[Ein Hund nach dem anderen legt sich. Ihre Augen gehen aus wie Lampen in einem Haus. Hufschlag, dann Stille.]",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.9-hingelegt",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.finale_2",
+      "speaker": "laub",
+      "text_de": "(sehr leise) Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.9-hingelegt",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.01",
+      "speaker": "jost",
+      "text_de": "Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.02",
+      "speaker": "jost",
+      "text_de": "Die Meute reißt nicht. Sie stellt. Das hab ich dir gesagt, da war ich dreizehn.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.03",
+      "speaker": "jost",
+      "text_de": "Ich hab sie rausgelassen, in der Nacht vom Feuer. Dann bin ich ihnen nach. Ich hab sie nie wieder eingefangen. Wer nicht abgeblasen wird, läuft weiter. Und ich bin mitgelaufen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.04",
+      "speaker": "jost",
+      "text_de": "Was keiner mehr weiß, frisst der Berg. Wer zu lang drin ist in dem, was keiner mehr weiß, den frisst er mit. Wir haben jeden heimgetrieben, bevor es so weit war. Jeden.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.05",
+      "speaker": "jost",
+      "text_de": "Nur den Geometer nicht. Der hat sich nicht hingelegt.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 5
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.06",
+      "speaker": "jost",
+      "text_de": "Jetzt hat er’s. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 6
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.07",
+      "speaker": "jost",
+      "text_de": "Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.jost",
+        "step": 7
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k4.08",
+      "speaker": "jost",
+      "text_de": "Die Chronik ist voll, glaub ich. Was du damit machst, ist deine Sache. Ich hab nur aufgepasst.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.9-horn"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k4.nur_steine",
+      "speaker": "laub",
+      "text_de": "Die Steine in Homburg? Das sind nur Steine. Was daran hängt, hängen wir dran.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.nur_steine"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k4.foto",
+      "speaker": "marlene",
+      "text_de": "Guck. Mein Schwager hat mir das geschickt. Der Stein über seiner Kellertür in der Altstadt. Da ist so ein komisches Zeichen drauf. Ein Winkel mit drei Punkten. Sagt dir das was?",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k4.foto"
+      },
+      "once": true
+    }
+  ],
+  "hints": [
+    {
+      "id": "hint.k4.1",
+      "caseId": "case.k4",
+      "level": 1,
+      "text_de": "Zahlen. Die Pächter zählt der Kanzlist am Baumagazin, die Schulden stehen am Pfeiler im Ehrenhof. Verwechseln Sie nicht, was gebaut, was eingenommen und was geschuldet wurde. Das waren drei verschiedene Unglücke.",
+      "afterSeconds": 240
+    },
+    {
+      "id": "hint.k4.2",
+      "caseId": "case.k4",
+      "level": 2,
+      "text_de": "Woher kamen die Steine? Schauen Sie vom Westrand aus nach Südwesten. Das Holz kam aus einem anderen Schloss, die Steine von einer Burg. Und was heute noch steht, sehen Sie unten im Tal, wenn Sie den Leuten mit den Karren zusehen.",
+      "afterSeconds": 480
+    },
+    {
+      "id": "hint.k4.3",
+      "caseId": "case.k4",
+      "level": 3,
+      "text_de": "Die Mauerzüge im Scan. Gehen Sie zu den Gräben am Küchenhof, einmal 1796 und einmal heute. Was die Männer dort zurücklassen, haben Sie im Prolog schon im Handbuch gesehen.",
+      "afterSeconds": 720
+    }
+  ]
+}

@@ -39,6 +39,8 @@ export interface Noun {
   id: string;
   label_de: string;
   category: 'person' | 'place' | 'object' | 'cause' | 'time' | 'action' | 'group' | 'other';
+  /** Plural display form, used by blanks with `plural: true` (e.g. "Ausbruchgräben"). */
+  plural_de?: string;
 }
 
 export interface ClueWhere {
@@ -64,6 +66,12 @@ export interface Clue {
   /** Preconditions (skills, scan mode, other clues). */
   requires?: { clues?: string[]; skill?: string; scanMode?: 1 | 2 | 3; flags?: string[] };
   fiction?: boolean;
+  /** Echo shown at a date that is not a playable era (e.g. "November 1840"); `where.era` is the nearest playable era. */
+  echoDate_de?: string;
+  /** Only findable with the lantern lit. */
+  needsLantern?: boolean;
+  /** Story chapter this clue belongs to (e.g. 'p', 'k1' … 'k4'); for tooling and story flow. */
+  chapter?: string;
 }
 
 export interface Blank {
@@ -74,6 +82,12 @@ export interface Blank {
   accepts?: string[];
   /** Fact entries: the correct noun. Readings: omitted (no right answer). */
   correct?: string;
+  /** Fact entries: further nouns that also count as correct (e.g. a more specific place). */
+  alsoCorrect?: string[];
+  /** Show the nouns' `plural_de` instead of `label_de` in this blank. */
+  plural?: boolean;
+  /** Per-blank display override by noun id (e.g. with article/case: "dem Naturalienkabinett"). */
+  labels_de?: Record<string, string>;
 }
 
 export interface CaseEntry {
@@ -85,6 +99,8 @@ export interface CaseEntry {
   blanks: Blank[];
   /** Codex card unlocked when this fact entry is confirmed. */
   factId?: string;
+  /** Reading entries: story flag set to the chosen noun id (or 'offen' if left empty). */
+  flag?: string;
 }
 
 export interface ChronikCase {

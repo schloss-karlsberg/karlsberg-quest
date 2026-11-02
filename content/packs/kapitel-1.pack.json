@@ -1,0 +1,1864 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "kapitel-1",
+  "facts": [
+    {
+      "id": "entry.k1.gedenk",
+      "title_de": "Gedenkzeile: 19. Dezember 1785",
+      "text_de": "Am 19. Dezember 1785 explodierte in der Karlslust das Feuerwerk zur Hochzeit des Prinzen Max. Nach Mannlichs Bericht traf es Major Magnier und elf seiner Arbeiter. Der Major starb; von den Arbeitern lebten zwei schwer verbrannt, für zwei weitere bestand keine Hoffnung. Die Namen der Arbeiter sind nicht überliefert.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 391 f."
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg",
+          "note": "„mehrere Menschen“"
+        }
+      ],
+      "tags": [
+        "gedenkzeile",
+        "case:case.k1",
+        "label:FAKT",
+        "see:cx.14"
+      ],
+      "licence": "eigener Text"
+    }
+  ],
+  "nouns": [
+    {
+      "id": "n.herzog",
+      "label_de": "der Herzog",
+      "category": "person"
+    },
+    {
+      "id": "n.minister",
+      "label_de": "der Minister",
+      "category": "person"
+    },
+    {
+      "id": "n.herzogin",
+      "label_de": "die Herzogin",
+      "category": "person"
+    },
+    {
+      "id": "n.baudirektor",
+      "label_de": "der Baudirektor",
+      "category": "person"
+    },
+    {
+      "id": "n.zwei_tage",
+      "label_de": "zwei Tage",
+      "category": "time"
+    },
+    {
+      "id": "n.eine_woche",
+      "label_de": "eine Woche",
+      "category": "time"
+    },
+    {
+      "id": "n.ein_tag",
+      "label_de": "einen Tag",
+      "category": "time"
+    },
+    {
+      "id": "n.zahl_14mio",
+      "label_de": "14 Millionen",
+      "category": "other"
+    },
+    {
+      "id": "n.zahl_35000",
+      "label_de": "35 000",
+      "category": "other"
+    },
+    {
+      "id": "n.zahl_800000",
+      "label_de": "800 000",
+      "category": "other"
+    },
+    {
+      "id": "n.tausend",
+      "label_de": "tausend",
+      "category": "other"
+    },
+    {
+      "id": "n.sechshundert",
+      "label_de": "sechshundert",
+      "category": "other"
+    },
+    {
+      "id": "n.zweihundert",
+      "label_de": "zweihundert",
+      "category": "other"
+    },
+    {
+      "id": "n.jagdrevier",
+      "label_de": "JagdRevier",
+      "category": "object"
+    },
+    {
+      "id": "n.thiergarten",
+      "label_de": "Thiergarten",
+      "category": "object"
+    },
+    {
+      "id": "n.feenschloss",
+      "label_de": "Feen-Schloß",
+      "category": "object"
+    },
+    {
+      "id": "n.neunzehn",
+      "label_de": "19",
+      "category": "other"
+    },
+    {
+      "id": "n.zwoelf",
+      "label_de": "zwölf",
+      "category": "other"
+    },
+    {
+      "id": "n.herzogsterrassen",
+      "label_de": "den Herzogsterrassen",
+      "category": "place"
+    },
+    {
+      "id": "n.amphitheater",
+      "label_de": "dem Amphitheater",
+      "category": "place"
+    },
+    {
+      "id": "n.insel",
+      "label_de": "der Insel",
+      "category": "place"
+    },
+    {
+      "id": "n.karlslust",
+      "label_de": "Karlslust",
+      "category": "place"
+    },
+    {
+      "id": "n.orangeriehof",
+      "label_de": "Orangeriehof",
+      "category": "place"
+    },
+    {
+      "id": "n.zweibruecken",
+      "label_de": "Zweibrücken",
+      "category": "place"
+    },
+    {
+      "id": "n.einziges_geruest",
+      "label_de": "ein einziges Gerüst",
+      "category": "action"
+    },
+    {
+      "id": "n.drei_abteilungen",
+      "label_de": "drei getrennte Abteilungen",
+      "category": "action"
+    },
+    {
+      "id": "n.vulkan",
+      "label_de": "den Vulkan",
+      "category": "action"
+    },
+    {
+      "id": "n.kaskade",
+      "label_de": "die Kaskade",
+      "category": "action"
+    },
+    {
+      "id": "n.r_will_nicht",
+      "label_de": "der Herzog nicht zahlen will",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_creuzer",
+      "label_de": "der Präsident die Kassen geleert hat",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_hunde_bilder",
+      "label_de": "das Geld in Hunde und Bilder geht",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_getaeuscht",
+      "label_de": "man den Herzog täuschte",
+      "category": "cause"
+    },
+    {
+      "id": "n.gulden",
+      "label_de": "Gulden",
+      "category": "object"
+    },
+    {
+      "id": "n.louisdor",
+      "label_de": "Louis d’or",
+      "category": "object"
+    }
+  ],
+  "clues": [
+    {
+      "id": "clue.k1.wache",
+      "title_de": "Erinnerung: Die Wache am Gitter",
+      "kind": "echo",
+      "text_de": "Die Wache am Ehrenhofgitter, automatisch beim Betreten.",
+      "where": {
+        "x": 1199,
+        "z": -1115,
+        "radius": 12,
+        "era": "1789",
+        "anchor": "KB-B39"
+      },
+      "reveals": {
+        "nouns": [
+          "n.herzog"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.fluegel",
+      "title_de": "Blick auf die Flügel",
+      "kind": "dialogue",
+      "text_de": "Vom Ehrenhof nach Osten: rechts der Südflügel der Herzogin, links der Nordflügel des Herzogs, dazwischen der Hof.",
+      "where": {
+        "x": 1222,
+        "z": -1116,
+        "radius": 20,
+        "era": "1789",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.herzogin"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.rechenbrett",
+      "title_de": "Das Rechenbrett",
+      "kind": "object",
+      "text_de": "Eine Schiefertafel mit drei Zahlen in Kreide, ohne Beschriftung: „35 000“, „800 000“, „14 000 000“. Beim dritten steht ein Fragezeichen.",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1789",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "nouns": [
+          "n.zahl_35000",
+          "n.zahl_800000",
+          "n.zahl_14mio"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.kaufbrief",
+      "title_de": "Abschrift eines Kaufbriefs",
+      "kind": "document",
+      "text_de": "„Abschrift. Kauf des Louisenhofes auf dem Buchenberg, den 27. Julii 1777: fünfunddreißigtausend Gulden und sechzig neue Louis d’or.“ (Wortlaut erfunden, Inhalt nach de.wikipedia und homburg-im-bild.)",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1789",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "nouns": [
+          "n.zahl_35000",
+          "n.louisdor"
+        ],
+        "facts": [
+          "cx.02"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.soll_einnahmen",
+      "title_de": "Die mittlere Zahl",
+      "kind": "dialogue",
+      "text_de": "Soll erklärt die mittlere Zahl auf dem Rechenbrett.",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1789",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "nouns": [
+          "n.zahl_800000"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k1.rechenbrett"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.schloezer",
+      "title_de": "Ein beschlagnahmtes Heft",
+      "kind": "document",
+      "text_de": "Ein Heft der Stats-Anzeigen von 1782. Unterstrichen: „ganz und gar gleichsam ein einziges JagdRevier“ und „ganze Regimenter JagdHunde“.",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1789",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "nouns": [
+          "n.jagdrevier"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.gegenbuch",
+      "title_de": "Das graue Buch",
+      "kind": "object",
+      "text_de": "Ein dünnes Buch in grauem Pappband unter dem Hauptbuch. Auf der ersten Seite steht „Was der Hof schuldig blieb“, dieselbe Überschrift wie auf der Seite in der Bussole. Soll klappt es zu: „Das ist privat.“",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1789",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k1_gegenbuch_gesehen"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.soll",
+      "title_de": "Gespräch mit dem Kanzlisten",
+      "kind": "dialogue",
+      "text_de": "Kanzlist Gottlob Soll zwischen Regalen, Ärmelschoner, zählt.",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1789",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "nouns": [
+          "n.minister",
+          "n.r_creuzer"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.hanne",
+      "title_de": "Gespräch mit Hanne",
+      "kind": "dialogue",
+      "text_de": "Am Ostende der neuen Galerie wird gebaut: Bauhütte, Steinstaub, Gerüst. Hanne steht hier jeden Morgen.",
+      "where": {
+        "x": 1287,
+        "z": -1228,
+        "radius": 20,
+        "era": "1789",
+        "anchor": "KB-B07"
+      },
+      "reveals": {
+        "nouns": [
+          "n.zwei_tage",
+          "n.eine_woche",
+          "n.r_will_nicht",
+          "n.gulden"
+        ],
+        "facts": [
+          "cx.09"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.zeichen",
+      "title_de": "Ein Steinmetzzeichen",
+      "kind": "object",
+      "text_de": "An einem Quader am Fuß der Galerie ein eingehauenes Zeichen: offener Winkel, darunter drei Punkte. (Erfundenes Steinmetzzeichen.) Wandernde Steine 1/4.",
+      "where": {
+        "x": 1262,
+        "z": -1218,
+        "radius": 3,
+        "era": "1789",
+        "anchor": "KB-B06"
+      },
+      "reveals": {
+        "flags": [
+          "flag.stein_1"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.festplan",
+      "title_de": "Mannlichs Festpläne von 1785",
+      "kind": "document",
+      "text_de": "Drei Blätter: „Plan d[e] la foire executé au d[ecem]bre 1785 au Carlsberg / Mannlich“. Ein Blatt zeigt den Orangeriehof mit Buden im Kreis („Jahrmarkt in Venedig“). Das zweite zeigt die Karlslust oberhalb der Großen Kaskade, mit einem Vulkan hinter der Kaskade, dem Hymentempel und dem Volk auf Stufen am Hang. Das dritte zeigt den Hofgarten in Zweibrücken. Am Rand des zweiten Blattes: „Feuerwerk in drei Abteilungen, durch Zwischenräume getrennt.“",
+      "where": {
+        "x": 1241.9,
+        "z": -967.1,
+        "radius": 10,
+        "era": "1789",
+        "anchor": "B10.1.s-pfeilersaal"
+      },
+      "reveals": {
+        "nouns": [
+          "n.orangeriehof",
+          "n.karlslust",
+          "n.zweibruecken",
+          "n.drei_abteilungen",
+          "n.vulkan",
+          "n.kaskade"
+        ],
+        "facts": [
+          "cx.15"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.feenschloss",
+      "title_de": "Ein „Feen-Schloß“",
+      "kind": "dialogue",
+      "text_de": "Laub beim Blick in den Pfeilersaal.",
+      "where": {
+        "x": 1241.9,
+        "z": -967.1,
+        "radius": 10,
+        "era": "1789",
+        "anchor": "B10.1.s-pfeilersaal"
+      },
+      "reveals": {
+        "nouns": [
+          "n.feenschloss"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.mannlich",
+      "title_de": "Erinnerung: Mannlichs Bauliste",
+      "kind": "echo",
+      "text_de": "E halten. Mannlich als Silhouette am Fenster, ruhig, ein wenig müde. Zitate aus seinen Lebenserinnerungen.",
+      "where": {
+        "x": 1241.9,
+        "z": -967.1,
+        "radius": 10,
+        "era": "1789",
+        "anchor": "B10.1.s-pfeilersaal"
+      },
+      "reveals": {
+        "nouns": [
+          "n.baudirektor",
+          "n.tausend",
+          "n.sechshundert"
+        ],
+        "facts": [
+          "cx.04"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.mannlich_lohn",
+      "title_de": "Erinnerung: Der unbezahlte Lohn",
+      "kind": "echo",
+      "text_de": "Zweites E halten. Mannlich über den Herzog und die Untergebenen, „denen man ihren Lohn nicht bezahlte“.",
+      "where": {
+        "x": 1241.9,
+        "z": -967.1,
+        "radius": 10,
+        "era": "1789",
+        "anchor": "B10.1.s-pfeilersaal"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_getaeuscht"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k1.mannlich"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.jost",
+      "title_de": "Gespräch mit Jost",
+      "kind": "dialogue",
+      "text_de": "Hinter dem Marstall bellt es aus einem ummauerten Hof. Der Hundejunge Jost füttert.",
+      "where": {
+        "x": 1177,
+        "z": -1571,
+        "radius": 12,
+        "era": "1789",
+        "anchor": "KB-B23"
+      },
+      "reveals": {
+        "nouns": [
+          "n.tausend",
+          "n.zweihundert",
+          "n.ein_tag",
+          "n.r_hunde_bilder"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.gagern",
+      "title_de": "Gagern über den Zwinger",
+      "kind": "dialogue",
+      "text_de": "Laub zitiert Hans Christoph von Gagern.",
+      "where": {
+        "x": 1177,
+        "z": -1571,
+        "radius": 12,
+        "era": "1789",
+        "anchor": "KB-B23"
+      },
+      "reveals": {
+        "nouns": [
+          "n.thiergarten"
+        ],
+        "facts": [
+          "cx.37"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "echo.k1.mannlich_menagerie",
+      "title_de": "Erinnerung: Die Menagerie",
+      "kind": "echo",
+      "text_de": "E halten am Amphitheater. Mannlich erinnert sich an einen Rundgang mit dem Herzog.",
+      "where": {
+        "x": 1935,
+        "z": 87,
+        "radius": 35,
+        "era": "1789",
+        "anchor": "KL-B40"
+      },
+      "reveals": {
+        "nouns": [
+          "n.amphitheater"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.amphitheater",
+      "title_de": "Die Häuschen im Rund",
+      "kind": "object",
+      "text_de": "Häuschen zählen: Neunzehn kleine Häuser mit Schieferdach im Kreis um einen Wassergraben, in der Mitte eine Insel mit Pavillon. (19 Häuser nach Saarpfalz-Touristik; Form nach Katalog KL-B40, Hypothese.)",
+      "where": {
+        "x": 1935,
+        "z": 87,
+        "radius": 35,
+        "era": "1789",
+        "anchor": "KL-B40"
+      },
+      "reveals": {
+        "nouns": [
+          "n.neunzehn",
+          "n.amphitheater"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.insel",
+      "title_de": "Die Insel",
+      "kind": "dialogue",
+      "text_de": "Blick zur Insel mit dem Pavillon.",
+      "where": {
+        "x": 1935,
+        "z": 87,
+        "radius": 35,
+        "era": "1789",
+        "anchor": "KL-B41"
+      },
+      "reveals": {
+        "nouns": [
+          "n.insel"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.baerenkaesten",
+      "title_de": "Die Bären-Kästen",
+      "kind": "object",
+      "text_de": "Mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
+      "where": {
+        "x": 2037,
+        "z": 164,
+        "radius": 60,
+        "era": "1789",
+        "anchor": "KL-B43"
+      },
+      "reveals": {
+        "nouns": [
+          "n.herzogsterrassen"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.kasuar",
+      "title_de": "Der Kasuar",
+      "kind": "object",
+      "text_de": "Ein großer schwarzer Vogel mit blauem Hals und einem Helm auf dem Kopf starrt dich an und weicht keinen Schritt. (Optional; Sammlung „Tiere der Menagerie“.)",
+      "where": {
+        "x": 1966,
+        "z": 92,
+        "radius": 8,
+        "era": "1789",
+        "anchor": "KL-B40"
+      },
+      "reveals": {
+        "flags": [
+          "flag.tier_kasuar"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.feuerwerk",
+      "title_de": "Erinnerung: Das Feuerwerk",
+      "kind": "echo",
+      "text_de": "E halten am Rondell. Der Sommer wird zu Winter, Lämpchen am Hang, eine Menge ist zu hören, aber nicht zu sehen. Keine Bilder von Verletzten, keine Stimme der Opfer. Gedenkort: sichere Zone, solange das Echo läuft. (Enthält auch clue.k1.kanonen.)",
+      "where": {
+        "x": 1815,
+        "z": 348,
+        "radius": 20,
+        "era": "1789",
+        "anchor": "TF-36"
+      },
+      "reveals": {
+        "nouns": [
+          "n.einziges_geruest",
+          "n.karlslust",
+          "n.zwoelf"
+        ],
+        "facts": [
+          "entry.k1.gedenk"
+        ]
+      },
+      "fiction": true,
+      "echoDate_de": "19. Dezember 1785",
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.seite",
+      "title_de": "Eine Chronikseite auf den Stufen",
+      "kind": "document",
+      "text_de": "Eine Chronikseite. Oben in großer, ungelenker Schrift: „Diane. Sultan. Fanfare. Rauhreif. Bijou.“ Darunter in feiner Kanzleischrift: „Hanne, Witwe des Steinhauers Matthes. Lohn: offen.“ Sobald man sie aufhebt, bläst das Horn zweimal kurz.",
+      "where": {
+        "x": 1811,
+        "z": 363,
+        "radius": 4,
+        "era": "1789",
+        "anchor": "KL-B49"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k1_seite"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k1.feuerwerk"
+        ]
+      },
+      "fiction": true,
+      "needsLantern": true,
+      "chapter": "k1"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case.k1",
+      "title_de": "Der Hof",
+      "intro_de": "Warum bekommt Hanne den Lohn ihres Mannes nicht?",
+      "entries": [
+        {
+          "id": "entry.k1.1",
+          "kind": "fact",
+          "factId": "cx.11",
+          "text_de": "Nur {wer} durfte zum Schloss hinauffahren; alle anderen gingen zu Fuß.",
+          "blanks": [
+            {
+              "id": "wer",
+              "category": "person",
+              "correct": "n.herzog",
+              "accepts": [
+                "n.herzog",
+                "n.minister",
+                "n.herzogin",
+                "n.baudirektor"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.2",
+          "kind": "fact",
+          "factId": "cx.08",
+          "text_de": "Ein Geselle musste {wielange} arbeiten, um einen Gulden zu verdienen.",
+          "blanks": [
+            {
+              "id": "wielange",
+              "category": "time",
+              "correct": "n.zwei_tage",
+              "accepts": [
+                "n.zwei_tage",
+                "n.eine_woche",
+                "n.ein_tag"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.3",
+          "kind": "fact",
+          "factId": "cx.07",
+          "text_de": "Bau und Betrieb des Karlsbergs kosteten fast {wieviel} Gulden; das ganze Land nahm im Jahr etwa 800 000 ein.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.zahl_14mio",
+              "accepts": [
+                "n.zahl_14mio",
+                "n.zahl_35000",
+                "n.zahl_800000"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.4",
+          "kind": "fact",
+          "factId": "cx.06",
+          "text_de": "Mannlich sollte einen Zwinger für {wieviel} Hunde bauen.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.tausend",
+              "accepts": [
+                "n.tausend",
+                "n.sechshundert",
+                "n.zweihundert"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.5",
+          "kind": "fact",
+          "factId": "cx.05",
+          "text_de": "Eine Zeitschrift nannte das Land 1782 ‚{was}‘.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.jagdrevier",
+              "accepts": [
+                "n.jagdrevier",
+                "n.thiergarten",
+                "n.feenschloss"
+              ],
+              "labels_de": {
+                "n.jagdrevier": "ein einziges JagdRevier",
+                "n.thiergarten": "ein einziger Thiergarten",
+                "n.feenschloss": "ein einziges Feen-Schloß"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.6",
+          "kind": "fact",
+          "factId": "cx.12",
+          "text_de": "Die Tiere der Menagerie lebten in {wieviel} kleinen Häusern im Kreis um einen Wassergraben.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.neunzehn",
+              "accepts": [
+                "n.neunzehn",
+                "n.zwoelf",
+                "n.tausend"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.7",
+          "kind": "fact",
+          "factId": "cx.13",
+          "text_de": "Die eisernen Bären-Kästen von 1786 standen auf {wo}.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.herzogsterrassen",
+              "accepts": [
+                "n.herzogsterrassen",
+                "n.amphitheater",
+                "n.insel"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.8",
+          "kind": "fact",
+          "factId": "cx.14",
+          "text_de": "Im Dezember 1785 explodierte das Feuerwerk {wo}.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.karlslust",
+              "accepts": [
+                "n.karlslust",
+                "n.orangeriehof",
+                "n.zweibruecken"
+              ],
+              "labels_de": {
+                "n.karlslust": "in der Karlslust",
+                "n.orangeriehof": "im Orangeriehof",
+                "n.zweibruecken": "in Zweibrücken"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.9",
+          "kind": "fact",
+          "factId": "cx.14",
+          "text_de": "Gegen den Rat des Feuerwerkers lagen alle Raketen auf {wie}.",
+          "blanks": [
+            {
+              "id": "wie",
+              "category": "action",
+              "correct": "n.einziges_geruest",
+              "accepts": [
+                "n.einziges_geruest",
+                "n.drei_abteilungen",
+                "n.vulkan",
+                "n.kaskade"
+              ],
+              "labels_de": {
+                "n.einziges_geruest": "einem einzigen Gerüst",
+                "n.drei_abteilungen": "drei getrennten Abteilungen",
+                "n.vulkan": "dem Vulkan",
+                "n.kaskade": "der Kaskade"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.k1.10",
+          "kind": "reading",
+          "flag": "flag.k1_lohn",
+          "text_de": "Hanne bekommt den Lohn ihres Mannes nicht, weil {warum}.",
+          "blanks": [
+            {
+              "id": "warum",
+              "accepts": [
+                "n.r_will_nicht",
+                "n.r_creuzer",
+                "n.r_hunde_bilder",
+                "n.r_getaeuscht"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "echo.k1.wache.01",
+      "speaker": "wache",
+      "text_de": "Absteigen! Hinauf fährt nur Serenissimus.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.wache",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "echo.k1.wache.02",
+      "speaker": "wache",
+      "text_de": "Und der fährt auch nur, wenn er nicht gerade jagt.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.wache",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k1.01",
+      "speaker": "soll",
+      "text_de": "Nicht stören. Ich bin bei den Millionen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k1.02",
+      "speaker": "soll",
+      "text_de": "Matthes, Steinhauer, Galerieflügel. Lohnrest: angewiesen. Nicht ausgezahlt. Das ist ein großer Unterschied, mein Herr, meine Dame, mein … Sie. Angewiesen heißt, dass jemand will. Ausgezahlt heißt, dass jemand kann.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "matthes"
+      }
+    },
+    {
+      "id": "soll.k1.03",
+      "speaker": "soll",
+      "text_de": "Weil die Kasse leer ist. Alle Kassen. Auch die der Witwen und Waisen. Die hat der Herr Präsident Creuzer geleert, um Bilder und Vögel zu kaufen, und als das nicht reichte, hat er die einen mit Versprechungen bezahlt.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "warum",
+        "step": 1
+      },
+      "once": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 377"
+        }
+      ]
+    },
+    {
+      "id": "soll.k1.04",
+      "speaker": "soll",
+      "text_de": "Und dann ist er bei Nacht verreist. Vorher hat er ein paar Stöße Papier verbrannt und beinahe das Haus angesteckt. Andere hat er in sichere Hände gegeben. (Er sieht auf seine eigenen Hände.) Welche Hände, steht nirgends.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "warum",
+        "step": 2
+      },
+      "once": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 396 f."
+        }
+      ]
+    },
+    {
+      "id": "soll.k1.05",
+      "speaker": "soll",
+      "text_de": "Der Herr Minister fährt auch nicht hinauf. Der wird gefahren. Das ist etwas völlig anderes.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "minister"
+      }
+    },
+    {
+      "id": "soll.k1.06",
+      "speaker": "soll",
+      "text_de": "Nicht anfassen. Die Große ist noch nicht fertig.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.rechenbrett"
+      }
+    },
+    {
+      "id": "soll.k1.07",
+      "speaker": "soll",
+      "text_de": "Achthunderttausend im Jahr. Das ganze Herzogtum. Jedes Dorf, jede Mühle, jeder Zoll. Achthunderttausend.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.soll_einnahmen"
+      },
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · Einl. S. XXXIV (Stollreither)"
+        }
+      ]
+    },
+    {
+      "id": "soll.k1.schloezer",
+      "speaker": "soll",
+      "text_de": "Beschlagnahmt. Lesen verboten. Ich lese es jeden Tag, damit ich weiß, was verboten ist.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.schloezer"
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k1.08",
+      "speaker": "soll",
+      "text_de": "Das ist privat. (Pause.) Jemand muss ja aufschreiben, was nicht bezahlt wird. Sonst war es nie.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "graues_buch"
+      }
+    },
+    {
+      "id": "soll.k1.09",
+      "speaker": "soll",
+      "text_de": "Wenn Sie die Witwe sehen: Sagen Sie ihr, es ist angewiesen. Nein. Sagen Sie ihr nichts. Sie weiß es ja.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "hanne.k1.01",
+      "speaker": "hanne",
+      "text_de": "Sie sind nicht vom Hof. Sie gucken nicht über mich weg.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k1.02",
+      "speaker": "hanne",
+      "text_de": "Mein Mann war Steinhauer. Matthes. Er hat die Quader für die Galerie gehauen, letzten Herbst. Dann ist er vom Gerüst gefallen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "matthes",
+        "step": 1
+      },
+      "once": false
+    },
+    {
+      "id": "hanne.k1.03",
+      "speaker": "hanne",
+      "text_de": "Zwei Tage hat ein Geselle für einen Gulden geschafft. Zwei Tage. Und den letzten Gulden hat er nie gekriegt.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "matthes",
+        "step": 2
+      },
+      "once": false,
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "hanne.k1.04",
+      "speaker": "hanne",
+      "text_de": "Seit einer Woche steh ich hier jeden Morgen. Der Schreiber sagt, es ist angewiesen. Ich sag ihm, ‚angewiesen‘ kann ich nicht essen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "warten"
+      }
+    },
+    {
+      "id": "hanne.k1.05",
+      "speaker": "hanne",
+      "text_de": "Die Leute nennen den Berg den Tränenberg. Ob das so heißt, weiß ich nicht. Geweint wird jedenfalls.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "berg"
+      },
+      "sources": [
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
+          "note": "Legende, unbelegt"
+        }
+      ]
+    },
+    {
+      "id": "hanne.k1.06",
+      "speaker": "hanne",
+      "text_de": "Weil der Herzog nicht will. Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "warum"
+      }
+    },
+    {
+      "id": "hanne.k1.07",
+      "speaker": "hanne",
+      "text_de": "Wenn Sie in die Schreibstube kommen, fragen Sie nach Matthes. Und schauen Sie, ob da einer Namen aufschreibt. Bei unsereins schreibt keiner was auf.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "hanne.k1.08",
+      "speaker": "hanne",
+      "text_de": "Das ist seins. Das hat er in jeden Stein gehauen, damit man weiß, wer ihn gemacht hat.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.zeichen"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k1.09",
+      "speaker": "hanne",
+      "text_de": "Angewiesen. Dann warte ich halt weiter. Warten kann ich. Das zahlt mir auch keiner.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k1",
+        "topic": "greet",
+        "hasClue": "clue.k1.soll"
+      },
+      "once": true,
+      "priority": 5
+    },
+    {
+      "id": "jost.k1.01",
+      "speaker": "jost",
+      "text_de": "Du bist nicht von hier. Du riechst nach Regen von morgen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k1.02",
+      "speaker": "jost",
+      "text_de": "Die da drin sind keine Schoßhunde, das ist die Meute. Hirschmeute, Saumeute, Hühnerhunde, Spürhunde. Tausend, sagt der Herr Baudirektor. Ich hab nie über zweihundert gezählt, weil ich bei zweihundert immer Hunger krieg.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "meute"
+      },
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 365"
+        }
+      ]
+    },
+    {
+      "id": "jost.k1.03",
+      "speaker": "jost",
+      "text_de": "Im Hof vom Jägerhaus gibt’s eine Bäckerei und eine Metzgerei, nur für die Hunde. Die Steinhauer kriegen Versprechen. Die Hunde kriegen Fleisch. Und die Bilder kriegen Gold drumrum.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "futter"
+      },
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · Einl. S. XXXIII f. (Molitor)"
+        }
+      ]
+    },
+    {
+      "id": "jost.k1.04",
+      "speaker": "jost",
+      "text_de": "Lass die einen Tag hungern, und sie fressen dir den Zwinger auf.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "hunger"
+      }
+    },
+    {
+      "id": "jost.k1.05",
+      "speaker": "jost",
+      "text_de": "Wenn du das Horn hörst, legst du dich hin. Ganz flach.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "verstecken",
+        "step": 1
+      },
+      "once": false
+    },
+    {
+      "id": "jost.k1.06",
+      "speaker": "jost",
+      "text_de": "Nicht rennen. Rennen hören die über den halben Berg. Schleich.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "verstecken",
+        "step": 2
+      },
+      "once": false
+    },
+    {
+      "id": "jost.k1.07",
+      "speaker": "jost",
+      "text_de": "Und mach dein Licht aus. Ein Licht im Dunkeln ist für die wie eine Glocke.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "verstecken",
+        "step": 3
+      },
+      "once": false
+    },
+    {
+      "id": "jost.k1.08",
+      "speaker": "jost",
+      "text_de": "Durch Wasser verlieren sie dich. Im Hohlweg auch, da liegt die Luft still. Hinter den großen Sandsteinbrocken an den Dämmen sehen sie dich nicht.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "verstecken",
+        "step": 4
+      },
+      "once": false
+    },
+    {
+      "id": "jost.k1.09",
+      "speaker": "jost",
+      "text_de": "Das ist Diane, die führt. Sultan, der ist dumm, aber laut. Fanfare. Rauhreif, die Weiße. Und Bijou, der Kleine, der glaubt, er ist ein Hirsch.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "namen",
+        "step": 1
+      },
+      "once": false
+    },
+    {
+      "id": "jost.k1.10",
+      "speaker": "jost",
+      "text_de": "Der Herzog kennt keinen von denen beim Namen. Er kennt die Zahl. Ich schreib die Namen auf. Der Kanzlist hat mir das Schreiben beigebracht.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "namen",
+        "step": 2
+      },
+      "once": false
+    },
+    {
+      "id": "jost.k1.11",
+      "speaker": "jost",
+      "text_de": "Die Meute reißt nicht. Sie stellt. Reißen tut, was danach kommt.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "stellen"
+      }
+    },
+    {
+      "id": "jost.k1.12",
+      "speaker": "jost",
+      "text_de": "Heut Nacht laufen sie in der Karlslust. Wenn du dahin gehst: Bleib am Wasser.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k1",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "laub.k1.start",
+      "speaker": "laub",
+      "text_de": "1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.1"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k1.fluegel",
+      "speaker": "laub",
+      "text_de": "Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.fluegel"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.registratur",
+      "speaker": "laub",
+      "text_de": "Eine Registratur. Mein natürlicher Lebensraum. Halten Sie sich an den Mann mit den Ärmelschonern.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.2"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.gegenbuch",
+      "speaker": "laub",
+      "text_de": "Haben Sie die Überschrift gesehen? (Pause.) Ich auch.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.gegenbuch"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.bauplatz",
+      "speaker": "laub",
+      "text_de": "Die Galerie ist nagelneu und schon wird angebaut. Ein Schloss, das nie fertig wird, ist die teuerste Art, eines zu haben.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.3"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)",
+          "note": "Das Schloss wurde nie fertig"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.orangerie",
+      "speaker": "laub",
+      "text_de": "Hier hat der Baudirektor gewohnt. Über den Orangen. Ein Maler, der Ställe bauen musste. Ich mag ihn. Er hat auch nie bekommen, was ihm zustand.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.4"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 421: Leibrente ab 1791 nicht gezahlt"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.feenschloss",
+      "speaker": "laub",
+      "text_de": "Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.feenschloss"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · Einl. S. XXXIV (Knigge)"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.gagern",
+      "speaker": "laub",
+      "text_de": "Ein Herr von Gagern hat es später so aufgeschrieben: ‚tausend Pferde im Marstall, noch mehr Hunde in den Zwingern, das ganze Land ein Thiergarten zum Verderben der Unterthanen!‘ Er war Diplomat. Das ist für einen Diplomaten sehr deutlich.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.gagern"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · Einl. S. XXXV (Gagern)"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.flug",
+      "speaker": "laub",
+      "text_de": "Die Karlslust liegt eine gute Stunde zu Fuß im Süden. Im Heute fliegen Sie. Taste F. Ich hasse es.",
+      "trigger": {
+        "event": "chronik:batch",
+        "caseId": "case.k1",
+        "correct": true,
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k1.flug",
+      "speaker": "marlene",
+      "text_de": "Die Karlslust? Das ist da, wo heute der Bärenzwinger ist und die Schwanenweiher. Schöne Ecke. Nimm den Überflug, zu Fuß bist du ewig unterwegs.",
+      "trigger": {
+        "event": "chronik:batch",
+        "caseId": "case.k1",
+        "correct": true,
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k1.baerenzwinger",
+      "speaker": "marlene",
+      "text_de": "Die Leute sagen Bärenzwinger. Ob da je Bären drin waren, weiß keiner so genau.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.6"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.karlslust",
+      "speaker": "laub",
+      "text_de": "Von hier hat der Hof zugesehen. Im Dezember 1785.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.7"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 389 ff.: „von dem gegenüberliegenden Pavillon auf dem Berge“"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.insel",
+      "speaker": "laub",
+      "text_de": "Auf der Insel stand ein Pavillon. Seine Grundmauern hat man 2016 wiedergefunden. Ich hätte ihn 1840 finden können, wenn man mich gelassen hätte.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.insel"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+          "label": "Saarpfalz-Touristik: Bärenzwinger",
+          "note": "Fund 2016"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.baerenkaesten",
+      "speaker": "laub",
+      "text_de": "Bären-Kästen. Geheizt von außen, damit der Bär nicht friert und der Heizer nicht gefressen wird. Das ist die einzige Stelle am Hof, an der jemand an alle gedacht hat.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.baerenkaesten"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.kasuar",
+      "speaker": "laub",
+      "text_de": "Der Kasuar. Das einzige Lebewesen am Hof, das dem Herzog nicht gehorcht hat. Vermutlich.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k1.kasuar"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.nach_rondell",
+      "speaker": "laub",
+      "text_de": "Mannlich war schon am Fuß des Berges, als es geschah. Er hat das Licht gesehen und es schön gefunden. So steht es bei ihm. Das ist das Schlimmste daran.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.11-nach"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 391"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.ende",
+      "speaker": "laub",
+      "text_de": "Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.14"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k1.morgen",
+      "speaker": "marlene",
+      "text_de": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.",
+      "trigger": {
+        "event": "story:chapter",
+        "id": "k1"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k1.abend",
+      "speaker": "marlene",
+      "text_de": "Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl’s mir morgen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "B-zurueck"
+      },
+      "once": true
+    },
+    {
+      "id": "mannlich.01",
+      "speaker": "mannlich",
+      "text_de": "Ich hatte also einen Stall für tausend Pferde und eine ungeheure Reitbahn zu ihrer Dressur und Bewegung zu bauen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.mannlich",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 365"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.02",
+      "speaker": "mannlich",
+      "text_de": "Ich wiegte mich in der Hoffnung, daß der Herzog des Bauens endlich überdrüssig werden würde. Wie sah ich mich aber in meiner Rechnung betrogen!",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.mannlich",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 365, gekürzt"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.03",
+      "speaker": "mannlich",
+      "text_de": "Kasernen für sechshundert Gardisten und Wohnungen für die Offiziere mußten errichtet werden; ein Zwinger für tausend Hunde (von den Wölfen abgesehen), die Hirsch- und Wildschweinmeute, Hühner- und Spürhunde, kurz – ohne Übertreibung – für die Hunde aller Erdteile.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.mannlich",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 365"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.04",
+      "speaker": "mannlich",
+      "text_de": "Man urteile indes nicht zu ungünstig über den Charakter des Herzogs und lege die Unbesonnenheit, mit der er sich seinen Liebhabereien hingab, nicht als Gefühllosigkeit, Leichtsinn und Grausamkeit gegen seine Untergebenen aus, denen man ihren Lohn nicht bezahlte. Man schmeichelte ihm und täuschte ihn.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.mannlich_lohn",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 369, gekürzt"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.mannlich_lohn",
+      "speaker": "laub",
+      "text_de": "Merken Sie sich das. Der Baudirektor findet, der Herzog sei getäuscht worden. Der Baudirektor wurde vom Herzog bezahlt. Meistens.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.mannlich_lohn",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "mannlich.05",
+      "speaker": "mannlich",
+      "text_de": "Unweit davon erhob sich ein Gebäude, das wie ein antikes Amphitheater aussah und die Vierfüßler und Raubvögel beherbergte.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.k1.mannlich_menagerie",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 384"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.06",
+      "speaker": "mannlich",
+      "text_de": "Der Herzog führte uns flüchtig an allen Einzelkäfigen vorüber, nur jener mit den Affen hielt uns länger zurück.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.k1.mannlich_menagerie",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 384"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.07",
+      "speaker": "mannlich",
+      "text_de": "Der Major brachte alle Feuerwerkskörper auf einem einzigen, und zwar dem höchsten Gerüste unter, anstatt sie auf drei zu verteilen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.feuerwerk",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 389"
+        }
+      ]
+    },
+    {
+      "id": "echo.k1.feuerwerk.02",
+      "speaker": "feuerwerker",
+      "text_de": "Ich möchte nicht dreißig Schritt von diesem Gerüst entfernt sein und es nicht um alles Gold der Welt besteigen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.feuerwerk",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 389"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.08",
+      "speaker": "mannlich",
+      "text_de": "Dicht dabei standen nicht weniger als zehn bis zwölf Kanonen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.feuerwerk",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 390"
+        }
+      ]
+    },
+    {
+      "id": "echo.k1.feuerwerk.04",
+      "speaker": "esebeck",
+      "text_de": "Bleiben Sie ferne! Ich beschwöre Sie.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.feuerwerk",
+        "step": 4
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 390"
+        }
+      ]
+    },
+    {
+      "id": "echo.k1.feuerwerk.05",
+      "speaker": "geraeusch",
+      "text_de": "[Stille. Dann, wie von weit unten am Berg: Kanonenschüsse, ein Licht, das den ganzen Himmel aufflammen lässt, das Knattern von Raketen.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.feuerwerk",
+        "step": 5
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 391"
+        }
+      ]
+    },
+    {
+      "id": "echo.k1.feuerwerk.06",
+      "speaker": "geraeusch",
+      "text_de": "[Das Licht erlischt. Schnee fällt rückwärts nach oben. Der Sommer kehrt zurück.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k1.feuerwerk",
+        "step": 6
+      },
+      "once": true
+    }
+  ],
+  "hints": [
+    {
+      "id": "hint.k1.1",
+      "caseId": "case.k1",
+      "level": 1,
+      "text_de": "Zahlen lügen nicht, sie sind nur schlecht beschriftet. Wenn Sie drei Zahlen haben und für zwei davon einen Namen, dann gehört die dritte zum Rest. Das ist keine Mathematik, das ist Verwaltung.",
+      "afterSeconds": 240
+    },
+    {
+      "id": "hint.k1.2",
+      "caseId": "case.k1",
+      "level": 2,
+      "text_de": "Mannlich hat drei Feste geplant, und nur eines ist explodiert. Seine Pläne liegen in der Orangerie. Was in der Karlslust geschah, hören Sie dort, wo die Kaskade oben endet. Gehen Sie leise hin.",
+      "afterSeconds": 480
+    },
+    {
+      "id": "hint.k1.3",
+      "caseId": "case.k1",
+      "level": 3,
+      "text_de": "Zählen Sie die Häuschen im Rund selbst. Wo die Bären wohnten, sieht man nicht im Rund, sondern weiter oben auf den Terrassen. Und das Jagdrevier steht in einem Zeitschriftenheft von 1782, das der Kanzlist in der Schublade hat. Der Thiergarten ist von Gagern, und der kam später.",
+      "afterSeconds": 720
+    }
+  ]
+}

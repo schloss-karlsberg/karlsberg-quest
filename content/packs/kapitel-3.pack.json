@@ -1,0 +1,1818 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "kapitel-3",
+  "nouns": [
+    {
+      "id": "n.28_juli",
+      "label_de": "28. Juli",
+      "category": "time"
+    },
+    {
+      "id": "n.24_juli",
+      "label_de": "24. Juli",
+      "category": "time"
+    },
+    {
+      "id": "n.lothringen",
+      "label_de": "Lothringen",
+      "category": "place"
+    },
+    {
+      "id": "n.metz",
+      "label_de": "Metz",
+      "category": "place"
+    },
+    {
+      "id": "n.kaiserslautern",
+      "label_de": "Kaiserslautern",
+      "category": "place"
+    },
+    {
+      "id": "n.homburg",
+      "label_de": "Homburg",
+      "category": "place"
+    },
+    {
+      "id": "n.erdgeschoss",
+      "label_de": "Erdgeschoss",
+      "category": "place"
+    },
+    {
+      "id": "n.dachstuhl",
+      "label_de": "Dachstuhl",
+      "category": "place"
+    },
+    {
+      "id": "n.keller",
+      "label_de": "Keller",
+      "category": "place"
+    },
+    {
+      "id": "n.festsaal",
+      "label_de": "Festsaal",
+      "category": "place"
+    },
+    {
+      "id": "n.nation",
+      "label_de": "Nation",
+      "category": "object"
+    },
+    {
+      "id": "n.republik",
+      "label_de": "Republik",
+      "category": "object"
+    },
+    {
+      "id": "n.freiheit",
+      "label_de": "Freiheit",
+      "category": "object"
+    },
+    {
+      "id": "n.dorfbewohner",
+      "label_de": "Dorfbewohner",
+      "category": "group"
+    },
+    {
+      "id": "n.preussen",
+      "label_de": "preußischen Soldaten",
+      "category": "group"
+    },
+    {
+      "id": "n.hofbediente",
+      "label_de": "Hofbedienten",
+      "category": "group"
+    },
+    {
+      "id": "n.koenig_preussen",
+      "label_de": "König von Preußen",
+      "category": "person"
+    },
+    {
+      "id": "n.kaiser",
+      "label_de": "Kaiser",
+      "category": "person"
+    },
+    {
+      "id": "n.kommissaer",
+      "label_de": "Kommissär",
+      "category": "person"
+    },
+    {
+      "id": "n.buechsenmacher",
+      "label_de": "Büchsenmachers",
+      "category": "person"
+    },
+    {
+      "id": "n.mundkoch",
+      "label_de": "Mundkochs",
+      "category": "person"
+    },
+    {
+      "id": "n.hofgaertner",
+      "label_de": "Hofgärtners",
+      "category": "person"
+    },
+    {
+      "id": "n.fachwerk",
+      "label_de": "Fachwerkbauten",
+      "category": "object"
+    },
+    {
+      "id": "n.wirtschaftsgebaeude",
+      "label_de": "Wirtschaftsgebäude",
+      "category": "object"
+    },
+    {
+      "id": "n.gewoelbe",
+      "label_de": "Gewölbe",
+      "category": "object"
+    },
+    {
+      "id": "n.hundert_schritt",
+      "label_de": "hundert Schritt",
+      "category": "other"
+    },
+    {
+      "id": "n.hundert_fuss",
+      "label_de": "hundert Fuß",
+      "category": "other"
+    },
+    {
+      "id": "n.hundert_klafter",
+      "label_de": "hundert Klafter",
+      "category": "other"
+    },
+    {
+      "id": "n.r_schuld",
+      "label_de": "nahmen sich, was man ihnen schuldete",
+      "category": "action"
+    },
+    {
+      "id": "n.r_stahlen",
+      "label_de": "stahlen",
+      "category": "action"
+    },
+    {
+      "id": "n.r_retteten",
+      "label_de": "retteten, was zu retten war",
+      "category": "action"
+    },
+    {
+      "id": "n.r_alle",
+      "label_de": "taten, was alle taten",
+      "category": "action"
+    }
+  ],
+  "clues": [
+    {
+      "id": "clue.k3.marlene",
+      "title_de": "Marlene erzählt von einer Ausstellung",
+      "kind": "dialogue",
+      "text_de": "Marlene erzählt von der Ausstellung „Steinerne Macht“ (2018).",
+      "where": {
+        "x": 760,
+        "z": -930,
+        "radius": 30,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k3_ausstellung"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.stroh",
+      "title_de": "Erinnerung: Stroh aus Metz",
+      "kind": "echo",
+      "text_de": "Sommer, später Nachmittag, Staub. Im Hof stehen Karren voller Stroh, Soldaten in blauen Röcken laden ab und tragen Bündel ins Erdgeschoss. Automatisch.",
+      "where": {
+        "x": 1210,
+        "z": -1114,
+        "radius": 35,
+        "era": "1793-07",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.lothringen",
+          "n.metz",
+          "n.28_juli",
+          "n.dachstuhl"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.horstmann",
+      "title_de": "Horstmann notiert",
+      "kind": "dialogue",
+      "text_de": "Laub im Ehrenhof.",
+      "where": {
+        "x": 1210,
+        "z": -1114,
+        "radius": 35,
+        "era": "1793-07",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.28_juli",
+          "n.24_juli"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k3.stroh"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.lehnstuhl",
+      "title_de": "Der Mann mit dem Lehnstuhl",
+      "kind": "object",
+      "text_de": "Ein vergoldeter Lehnstuhl mit grünem Damastbezug und Goldfransen auf dem Kopf eines Mannes, der barfuß geht.",
+      "where": {
+        "x": 1205,
+        "z": -1110,
+        "radius": 15,
+        "era": "1793-07",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.dorfbewohner"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.kuechenhof",
+      "title_de": "Erinnerung: Freigegeben",
+      "kind": "echo",
+      "text_de": "E halten im Küchenhof. Hier wird geplündert: Kupferkessel, Vorhänge, Fensterblei. Mehrere Stimmen, keine Gesichter scharf.",
+      "where": {
+        "x": 1212,
+        "z": -1180,
+        "radius": 25,
+        "era": "1793-07",
+        "anchor": "TF-02"
+      },
+      "reveals": {
+        "nouns": [
+          "n.dorfbewohner",
+          "n.homburg",
+          "n.keller",
+          "n.mundkoch",
+          "n.freiheit",
+          "n.r_retteten"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.hanne",
+      "title_de": "Hanne mit dem leeren Korb",
+      "kind": "dialogue",
+      "text_de": "Hanne steht im Küchenhof, mit einem leeren Korb.",
+      "where": {
+        "x": 1215,
+        "z": -1185,
+        "radius": 8,
+        "era": "1793-07",
+        "anchor": "TF-02"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hofbediente",
+          "n.r_schuld"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.soll",
+      "title_de": "Soll in der leeren Registratur",
+      "kind": "dialogue",
+      "text_de": "Die Regale sind leer. Soll sitzt auf dem Boden zwischen losen Blättern und zählt, was fehlt.",
+      "where": {
+        "x": 1201.7,
+        "z": -1152.7,
+        "radius": 6,
+        "era": "1793-07",
+        "anchor": "B03.1.eg-registratur"
+      },
+      "reveals": {
+        "nouns": [
+          "n.buechsenmacher",
+          "n.preussen",
+          "n.republik",
+          "n.r_stahlen"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.waffen",
+      "title_de": "Die leere Waffensammlung",
+      "kind": "object",
+      "text_de": "Leere Haken in Reihen, auf dem Boden die Abdrücke von Gewehrkolben im Staub, eine einzelne Schraube.",
+      "where": {
+        "x": 1185.3,
+        "z": -1197.1,
+        "radius": 6,
+        "era": "1793-07",
+        "anchor": "B04.1.eg-waffensammlung"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k3_waffen_gesehen"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.kisten",
+      "title_de": "Gepackte Kisten",
+      "kind": "object",
+      "text_de": "Zwölf große Kisten, vernagelt, mit Kreide beschriftet: „Naturalien-Cabinet. Nach Kaiserslautern.“ Darunter, mit anderer Kreide durchgestrichen und überschrieben: „Abbestellt.“ (Wortlaut erfunden; Inhalt nach M1910 S. 454 f.)",
+      "where": {
+        "x": 1188.5,
+        "z": -1177.9,
+        "radius": 7,
+        "era": "1793-07",
+        "anchor": "B04.2.og-naturalienkabinett"
+      },
+      "reveals": {
+        "nouns": [
+          "n.kaiserslautern",
+          "n.naturalienkabinett"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.holandre",
+      "title_de": "Holandres Vogelkatalog",
+      "kind": "document",
+      "text_de": "„Catalogue des oiseaux … des Deux-Ponts, 1785“. Jemand hat am Rand gezählt: 1187. (Holandre 1785, 1 187 Vögel, nach Schwan 2012 Anm. 30.)",
+      "where": {
+        "x": 1188.5,
+        "z": -1177.9,
+        "radius": 7,
+        "era": "1793-07",
+        "anchor": "B04.2.og-naturalienkabinett"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k3_holandre_gesehen"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.koenig",
+      "title_de": "Erinnerung: Der König verspricht",
+      "kind": "echo",
+      "text_de": "E halten. Zwei Herren gehen schnell durch den Raum, ohne stehen zu bleiben. Man sieht nur ihre Rücken.",
+      "where": {
+        "x": 1188.5,
+        "z": -1177.9,
+        "radius": 7,
+        "era": "1793-07",
+        "anchor": "B04.2.og-naturalienkabinett"
+      },
+      "reveals": {
+        "nouns": [
+          "n.koenig_preussen",
+          "n.kaiser"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.galerie",
+      "title_de": "Erinnerung: Die Galerie",
+      "kind": "echo",
+      "text_de": "E halten. Für die Dauer des Echos hängen die Bilder wieder. Ein Mann im Schlafrock geht mit einem Leuchter die Wand entlang und bleibt vor jedem Bild stehen.",
+      "where": {
+        "x": 1230.1,
+        "z": -1220,
+        "radius": 40,
+        "era": "1793-07",
+        "anchor": "B06.1.bildergalerie"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hundert_fuss",
+          "n.fachwerk"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.messen",
+      "title_de": "Die Galerie messen",
+      "kind": "object",
+      "text_de": "Mit R von einem Ende zum anderen messen. Die Messlinie zeigt rund 80 m (Modelllänge, nicht fest).",
+      "where": {
+        "x": 1230.1,
+        "z": -1220,
+        "radius": 40,
+        "era": "1793-07",
+        "anchor": "B06.1.bildergalerie"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hundert_schritt",
+          "n.hundert_klafter"
+        ]
+      },
+      "requires": {
+        "skill": "kartograf3"
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.falltuer",
+      "title_de": "Ein loses Brett",
+      "kind": "object",
+      "text_de": "Am Westende der Galerie gibt ein Brett im Parkett nach. Darunter eine Klappe mit Eisenring, darunter Dunkelheit und der Geruch von Öl und Eisen. (Die Falltür ist belegt, ihr genauer Ort nicht.)",
+      "where": {
+        "x": 1200,
+        "z": -1218,
+        "radius": 2,
+        "era": "1793-07",
+        "anchor": "B06.1.bildergalerie"
+      },
+      "reveals": {
+        "nouns": [
+          "n.buechsenmacher"
+        ],
+        "facts": [
+          "cx.26"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.chronik",
+      "title_de": "Das graue Buch",
+      "kind": "document",
+      "text_de": "Das graue Buch. Beim Berühren fliegen die Seiten davon, wie Asche durch die Galerie, zu den Fenstern hinaus. Eine bleibt: die Fallseite „Die Nacht“. Auf ihrer Rückseite in Solls Schrift: „Was der Hof schuldig blieb. Fortsetzung folgt nicht.“",
+      "where": {
+        "x": 1200,
+        "z": -1218,
+        "radius": 2,
+        "era": "1793-07",
+        "anchor": "B06.1.bildergalerie"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k3_chronik_zerstreut"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k3.falltuer"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.papier",
+      "title_de": "Marmor aus Papier",
+      "kind": "object",
+      "text_de": "Marmor, der unter dem Fingerknöchel hohl klingt. Eine Ecke des Papiers hat sich gelöst. (Papierimitation von Marmor und Granit ab 1789, Schwan 2012 nach dem Schadensetat.) Glastüren, drei Stufen in den Garten: der Notausgang für Teil B.",
+      "where": {
+        "x": 1266.6,
+        "z": -1226.1,
+        "radius": 5,
+        "era": "1793-07",
+        "anchor": "B06.1.kabinett-ost"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k3_papier"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.gaertner",
+      "title_de": "Das Schild an der Pforte",
+      "kind": "document",
+      "text_de": "Ein Schild an der Pforte der Holländischen Gärtnerei: „Hof-Gärtnerey. Eintritt nur mit Erlaubnis des Hofgärtners.“ (Erfunden.)",
+      "where": {
+        "x": 1267,
+        "z": -1290,
+        "radius": 6,
+        "era": "1793-07",
+        "anchor": "KB-B27"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hofgaertner"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.fackel",
+      "title_de": "Erinnerung: Im Namen der Nation",
+      "kind": "echo",
+      "text_de": "E halten beim Kommissär (möglich ab sechs Substantiven dieses Kapitels oder nach der ersten Bestätigung). Abenddämmerung, eine dichte Menge, ein Mann mit Schärpe und brennender Fackel auf einem Karren. Die Fackel fliegt durch ein offenes Fenster ins Erdgeschoss.",
+      "where": {
+        "x": 1225,
+        "z": -1118,
+        "radius": 4,
+        "era": "1793-07",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.nation",
+          "n.kommissaer",
+          "n.erdgeschoss"
+        ]
+      },
+      "requires": {
+        "flags": [
+          "flag.k3_teil_b"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.feuer",
+      "title_de": "Von unten nach oben",
+      "kind": "dialogue",
+      "text_de": "Automatisch, sobald das Obergeschoss brennt.",
+      "where": {
+        "x": 1263,
+        "z": -1126,
+        "radius": 30,
+        "era": "1793-07",
+        "anchor": "KB-B01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.erdgeschoss",
+          "n.gewoelbe"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k3.fackel"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.festsaal",
+      "title_de": "Der Festsaal",
+      "kind": "dialogue",
+      "text_de": "Die Wände sind halb leer: Wo Täfelungen schon abgenommen und fortgebracht wurden, sind hellere Flächen. Rauch unter der Decke, der letzte Kronleuchter klirrt.",
+      "where": {
+        "x": 1265.8,
+        "z": -1126.8,
+        "radius": 6,
+        "era": "1793-07",
+        "anchor": "B01.2.og-festsaal"
+      },
+      "reveals": {
+        "nouns": [
+          "n.festsaal"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k3.fackel"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.retten",
+      "title_de": "Eines retten",
+      "kind": "object",
+      "text_de": "Hanne steht in der Mitte mit einem Türgriff in der Hand. Drei Dinge sind zu retten, und man kann nur eines tragen: den Türgriff aus Hannes Hand, einen Dukaten mit dem Bild des Schlosses im Fensterbrett, eine vergoldete Uhr mit Alabaster auf einer Konsole, die noch tickt. 40 s; danach nimmt Hanne dich am Arm. Setzt flag.k3_objekt = tuergriff / dukat / uhr / nichts.",
+      "where": {
+        "x": 1265.8,
+        "z": -1126.8,
+        "radius": 6,
+        "era": "1793-07",
+        "anchor": "B01.2.og-festsaal"
+      },
+      "reveals": {
+        "facts": [
+          "cx.27"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k3.festsaal"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.wirtschaft",
+      "title_de": "Was morgen noch steht",
+      "kind": "dialogue",
+      "text_de": "Im Garten, Blick nach Norden auf Marstall und Ställe.",
+      "where": {
+        "x": 1272,
+        "z": -1250,
+        "radius": 15,
+        "era": "1793-07",
+        "anchor": "KB-B07"
+      },
+      "reveals": {
+        "nouns": [
+          "n.wirtschaftsgebaeude"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k3"
+    },
+    {
+      "id": "clue.k3.jost",
+      "title_de": "Jost öffnet den Zwinger",
+      "kind": "dialogue",
+      "text_de": "Jost reißt die Gittertüren auf. Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Jost nimmt das Horn vom Haken und rennt ihnen nach.",
+      "where": {
+        "x": 1177,
+        "z": -1571,
+        "radius": 12,
+        "era": "1793-07",
+        "anchor": "KB-B23"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_alle"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k3.fackel"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k3"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case.k3",
+      "title_de": "Die Nacht",
+      "intro_de": "Sonntag, 28. Juli 1793. Was geschah mit dem Schloss und seinen Sammlungen?",
+      "entries": [
+        {
+          "id": "entry.k3.1",
+          "kind": "fact",
+          "factId": "cx.22",
+          "text_de": "Der Karlsberg wurde am Sonntag, dem {wann} 1793, angezündet.",
+          "blanks": [
+            {
+              "id": "wann",
+              "category": "time",
+              "correct": "n.28_juli",
+              "accepts": [
+                "n.28_juli",
+                "n.24_juli",
+                "n.9_februar",
+                "n.25_februar"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.2",
+          "kind": "fact",
+          "factId": "cx.22",
+          "text_de": "Das Stroh für den Brand ließ man bis aus {wo} herbeischaffen.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.lothringen",
+              "alsoCorrect": [
+                "n.metz"
+              ],
+              "accepts": [
+                "n.lothringen",
+                "n.metz",
+                "n.kaiserslautern",
+                "n.mannheim",
+                "n.homburg"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.3",
+          "kind": "fact",
+          "factId": "cx.22",
+          "text_de": "Mit dem Stroh stopfte man alle Gemächer im {wo} aus.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.erdgeschoss",
+              "accepts": [
+                "n.erdgeschoss",
+                "n.dachstuhl",
+                "n.keller",
+                "n.festsaal"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.4",
+          "kind": "fact",
+          "factId": "cx.22",
+          "text_de": "Der Kommissär setzte das Schloss ‚im Namen der {was}‘ in Brand.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.nation",
+              "accepts": [
+                "n.nation",
+                "n.republik",
+                "n.freiheit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.5",
+          "kind": "fact",
+          "factId": "cx.23",
+          "text_de": "Die abziehenden Franzosen gaben das Schloss zur Plünderung frei, auch für die {wer} der Umgebung.",
+          "blanks": [
+            {
+              "id": "wer",
+              "category": "group",
+              "correct": "n.dorfbewohner",
+              "accepts": [
+                "n.dorfbewohner",
+                "n.preussen",
+                "n.hofbediente"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.6",
+          "kind": "fact",
+          "factId": "cx.21",
+          "text_de": "Die Kisten mit {was} standen gepackt; der Herzog bestellte die Wagen ab, weil der {wer} ihm versicherte, die Franzosen kämen nicht wieder.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.naturalienkabinett",
+              "accepts": [
+                "n.naturalienkabinett",
+                "n.galerie_sammlung",
+                "n.bibliothek"
+              ],
+              "labels_de": {
+                "n.naturalienkabinett": "dem Naturalienkabinett",
+                "n.galerie_sammlung": "der Galerie",
+                "n.bibliothek": "der Bibliothek"
+              }
+            },
+            {
+              "id": "wer",
+              "category": "person",
+              "correct": "n.koenig_preussen",
+              "accepts": [
+                "n.koenig_preussen",
+                "n.kaiser",
+                "n.kommissaer"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.7",
+          "kind": "fact",
+          "factId": "cx.20",
+          "text_de": "Vor dem Abtransport versteckte Mannlich die schönsten Bilder durch eine geheime Falltür in der Werkstatt des {wer}.",
+          "blanks": [
+            {
+              "id": "wer",
+              "category": "person",
+              "correct": "n.buechsenmacher",
+              "accepts": [
+                "n.buechsenmacher",
+                "n.mundkoch",
+                "n.hofgaertner"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.8",
+          "kind": "fact",
+          "factId": "cx.28",
+          "text_de": "Das Feuer zerstörte vor allem die Residenz des Herzogs und die {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.fachwerk",
+              "accepts": [
+                "n.fachwerk",
+                "n.wirtschaftsgebaeude",
+                "n.gewoelbe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.9",
+          "kind": "fact",
+          "factId": "cx.25",
+          "text_de": "Mannlich schrieb, die Galerie sei ‚cent pas‘ lang gewesen: {wieviel}.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.hundert_schritt",
+              "accepts": [
+                "n.hundert_schritt",
+                "n.hundert_fuss",
+                "n.hundert_klafter"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k3.10",
+          "kind": "reading",
+          "flag": "flag.k3_pluenderer",
+          "text_de": "Die Leute aus den Dörfern {wie}.",
+          "blanks": [
+            {
+              "id": "wie",
+              "accepts": [
+                "n.r_schuld",
+                "n.r_stahlen",
+                "n.r_retteten",
+                "n.r_alle"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "marlene.k3.morgen",
+      "speaker": "marlene",
+      "text_de": "Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.",
+      "trigger": {
+        "event": "story:chapter",
+        "id": "k3"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k3.ausstellung",
+      "speaker": "marlene",
+      "text_de": "2018 war in Saarbrücken eine Ausstellung, ‚Steinerne Macht‘. Da lag vom Karlsberg fast nichts. Ein Türgriff, eine Uhr mit Alabaster, ein Dukat mit dem Schloss drauf, eine Pistole und ein Jagdmesser. Ein ganzes Schloss, und übrig bleibt ein Türgriff.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.marlene"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rheinpfalz.de/lokal/kreis-suedwestpfalz_artikel,-zerst%C3%B6rte-pracht-jetzt-wieder-sichtbar-_arid,1312894.html",
+          "label": "Die Rheinpfalz 2018: Zerstörte Pracht jetzt wieder sichtbar",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.start",
+      "speaker": "laub",
+      "text_de": "Juli dreiundneunzig. Ich war nicht dabei. Ich bin erst vierzehn Jahre später geboren worden. Und trotzdem habe ich das Gefühl, ich sollte mich entschuldigen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.0"
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k3.stroh.01",
+      "speaker": "soldat",
+      "text_de": "Drei Tage von Metz hierher, mit Stroh! Wir hätten Wein fahren können.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.stroh",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg",
+          "note": "P: Stroh aus der Gegend von Metz"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.stroh.02",
+      "speaker": "soldat2",
+      "text_de": "Lothringer Stroh brennt besser als Lothringer Wein.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.stroh",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k3.stroh.03",
+      "speaker": "soldat",
+      "text_de": "Alles ins Erdgeschoss, sagt der Kommissär. Nicht unters Dach. Wenn’s oben anfängt, geht’s langsam.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.stroh",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k3.stroh.04",
+      "speaker": "soldat2",
+      "text_de": "Heut ist Sonntag. Am achtundzwanzigsten. Ich hätt mir einen anderen Sonntag gewünscht.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.stroh",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.ehrenhof",
+      "speaker": "laub",
+      "text_de": "Das Stroh ist vom Feind, das Feuer ist vom Feind, und die Leute, die die Löffel heraustragen, sind von hier. Schreiben Sie das alles auf. Nicht nur das Bequeme.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.1"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.horstmann",
+      "speaker": "laub",
+      "text_de": "Horstmann, unser Regierungsrat, schreibt den 28. Juli. Vier Tage vorher, am 24., haben sie Petersheim angezündet. Er notiert beides, als wäre es Wetter.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.horstmann"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 461 Anm. 39"
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.lehnstuhl",
+      "speaker": "laub",
+      "text_de": "Einer von hundertvier aus der Galerie. Bleiben hundertdrei. Er wird darin sitzen, bis er hundert ist, und es wird der beste Stuhl im Dorf sein.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.lehnstuhl"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 374"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.kuechenhof.01",
+      "speaker": "frau",
+      "text_de": "Freigegeben, hat der Offizier gesagt. Was frei ist, darf man nehmen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.kuechenhof",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg",
+          "note": "P: Freigabe zur Plünderung"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.kuechenhof.02",
+      "speaker": "mann",
+      "text_de": "Wir sind aus Homburg, und die da aus dem Sanddorf. Die Keller sind schon leer, da waren die anderen schneller.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.kuechenhof",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k3.kuechenhof.03",
+      "speaker": "junge",
+      "text_de": "Die Wohnung vom Mundkoch ist auch leer. Der hat seine Töpfe mitgenommen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.kuechenhof",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k3.kuechenhof.04",
+      "speaker": "frau",
+      "text_de": "Besser bei uns als im Feuer.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.kuechenhof",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k3.kuechenhof.05",
+      "speaker": "soldat",
+      "text_de": "Freiheit, Bürger! Nimm, so viel du tragen kannst.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.kuechenhof",
+        "step": 5
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.01",
+      "speaker": "hanne",
+      "text_de": "Gucken Sie nicht so. Ich nehm mir nur, was man uns schuldet. Fünf Jahre Zinsen auf einen Gulden.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.02",
+      "speaker": "hanne",
+      "text_de": "Die vom Hof waren zuerst da. Die Hofbedienten wissen, wo das Silber stand. Wir kriegen die Vorhänge.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3",
+        "topic": "pluenderung"
+      }
+    },
+    {
+      "id": "hanne.k3.03",
+      "speaker": "hanne",
+      "text_de": "Peter ist jetzt zwölf. Er will Fuhrmann werden. Ich hab gesagt, dann fahr was Gescheites. Keine Steine.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3",
+        "topic": "peter"
+      }
+    },
+    {
+      "id": "hanne.k3.04",
+      "speaker": "hanne",
+      "text_de": "Die Galerie da drüben, die Wand am Ende, das war er. Ob die steht, wenn’s brennt? Steine brennen nicht. Sagt man.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3",
+        "topic": "matthes"
+      }
+    },
+    {
+      "id": "soll.k3.01",
+      "speaker": "soll",
+      "text_de": "Leer. Alles leer. Die Akten nach Mannheim, die Möbel nach Mannheim, die Bilder nach Mannheim. Mannheim muss sehr voll sein.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k3.02",
+      "speaker": "soll",
+      "text_de": "Erst die Preußen, dann die Franzosen, dann wieder die Preußen. Alle haben etwas mitgenommen. Ich hab Buch geführt. Die preußischen Soldaten nehmen Uhren, die französischen nehmen Türen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "pluenderung"
+      }
+    },
+    {
+      "id": "soll.k3.03",
+      "speaker": "soll",
+      "text_de": "Im März haben sie das Siegel der Republik an jede Tür geklebt. Ich habe gefragt, ob das Siegel auch auf die Löhne kommt. Man hat mich nicht verstanden.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "siegel"
+      },
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 431, 437: Türen versiegelt, „Siegel der Republik“"
+        }
+      ]
+    },
+    {
+      "id": "soll.k3.04",
+      "speaker": "soll",
+      "text_de": "Unter dem Boden der Galerie. Am Westende, wo der Büchsenmacher seine Falltür hat. Da hat Herr Mannlich die Bilder durchgetragen. Wo schon einmal etwas gerettet wurde, dachte ich, ist es vielleicht eine Gewohnheit.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "buch"
+      },
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 431"
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.wissen",
+      "speaker": "laub",
+      "text_de": "Wissen wir.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "buch",
+        "flag": "flag.k2_versteck_gesehen",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k3.05",
+      "speaker": "soll",
+      "text_de": "Ach. Wissen Sie. Natürlich. Die Herren von der Landesaufnahme wissen alles, nur nicht, wann man anklopft.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "buch",
+        "flag": "flag.k2_versteck_gesehen",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "soll.k3.06",
+      "speaker": "soll",
+      "text_de": "Das ist Diebstahl, mit Verlaub. Auch wenn man den Diebstahl freigibt. Freigegebener Diebstahl ist immer noch Diebstahl, nur mit Stempel.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "pluenderer"
+      }
+    },
+    {
+      "id": "soll.k3.07",
+      "speaker": "soll",
+      "text_de": "Ich gehe jetzt. Ich habe alles aufgeschrieben, was der Hof schuldig blieb. Was das Land dem Hof schuldig bleibt, schreibt ein anderer.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k3",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "laub.k3.waffen",
+      "speaker": "laub",
+      "text_de": "Die Waffen hat Mannlich schon fortgebracht. Die Waffensammlung ist leer, das Naturalienkabinett nicht. Merken Sie sich, wer welche Zusage bekam.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.waffen"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.holandre",
+      "speaker": "laub",
+      "text_de": "Tausendhundertsiebenundachtzig Vögel, jeder an seinen Zweig gebunden und geklebt. Mannlich sagt zwölfhundert Arten. Mannlich rundet gern auf.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.holandre"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 437"
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "Anm. 30"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.10",
+      "speaker": "mannlich",
+      "text_de": "Beim Durchschreiten der Gemächer des Schlosses bemerkten sie die reisefertigen Kisten mit unserem herrlichen Naturalienkabinett. Die Wagen, die sie fortschaffen sollten, waren bereits in Kaiserslautern bestellt; der König gab jedoch dem Herzog die bestimmtesten Versicherungen, daß die Franzosen den Karlsberg nicht mehr betreten würden, und dieser glaubte nun Gegenbefehl erteilen und unsere prachtvolle Sammlung den Zufällen der Ereignisse anheimstellen zu müssen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.koenig",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 454 f."
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.koenig",
+      "speaker": "laub",
+      "text_de": "Der König von Preußen. Nicht der Kaiser, nicht der Herzog selbst. Ein König verspricht, und ein Herzog glaubt. Und die Vögel bleiben im Haus.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.koenig",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.galerie_leer",
+      "speaker": "laub",
+      "text_de": "Hören Sie das? Das ist ein Raum, der für Bilder gebaut wurde und jetzt nur noch für Schritte da ist.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.5"
+      },
+      "once": true
+    },
+    {
+      "id": "mannlich.11",
+      "speaker": "mannlich",
+      "text_de": "Die Mauern waren mit Brettern verschalt, und diese mit grünem, von Arabesken durchzogenem Damast bespannt, der nach meinen Skizzen in Lyon angefertigt wurde. Zwanzig schöne Kristallüster hingen von der Decke hernieder.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.galerie",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 374"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.12",
+      "speaker": "mannlich",
+      "text_de": "Hundertundvier Lehnstühle aus vergoldetem Holz, eine Art kurulischer Sessel, von dem gleichen Damast wie die Wände bezogen und mit Goldfransen behangen, bildeten die Einrichtung dieses geräumigen Saales, der, an hundert Fuß lang, in eine offene, durch eine Kolonnade abgeschlossene Rotunde auslief.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.galerie",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 374"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.13",
+      "speaker": "mannlich",
+      "text_de": "Als man endlich so weit war, daß die Bilder angehängt werden konnten, verließ er kaum mehr den Saal, stand selbst während der Nacht drei- bis viermal auf und erschien im Schlafrock.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.galerie",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 374 f."
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.galerie.04",
+      "speaker": "hoefling",
+      "text_de": "Obacht auf die Bilder!",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.galerie",
+        "step": 4
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 374"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.galerie.05",
+      "speaker": "geraeusch",
+      "text_de": "[Die Bilder verblassen. Der Mann im Schlafrock ist fort. Die Rechtecke bleiben.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.galerie",
+        "step": 5
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.fachwerk",
+      "speaker": "laub",
+      "text_de": "Er hat die Galerie aus einem hölzernen Gang machen lassen. Bretter und Fachwerk, damit es schnell geht. Was schnell geht, brennt schnell.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.galerie",
+        "step": 6
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "P: Galerie 1788 aus einem hölzernen Verbindungsgang"
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.messen",
+      "speaker": "laub",
+      "text_de": "Achtzig Meter. Hundert Fuß wären keine dreiunddreißig. Hundert Klafter wären fast zweihundert. Hundert Schritt, das kommt hin. Mannlich hat französisch geschrieben: ‚cent pas‘. Der Übersetzer von 1910 hat Fuß daraus gemacht.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.messen"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "P: Anm. 47"
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.falltuer",
+      "speaker": "laub",
+      "text_de": "Die Falltür in die Werkstatt des Büchsenmachers. Mannlich und ein alter Diener namens Burger haben hier die schönsten Bilder hinuntergetragen, am hellen Tag, in aller Stille, und hinter den leeren Schränken versteckt.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.falltuer"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 431 f."
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.chronik",
+      "speaker": "laub",
+      "text_de": "So war das also. (Lange Pause.) Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.chronik"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k3.papier",
+      "speaker": "laub",
+      "text_de": "Papier. Marmor aus Papier, Granit aus Papier. Das ganze Zimmer wiegt weniger als ich.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.papier"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "Papierimitation nach dem Schadensetat"
+        }
+      ]
+    },
+    {
+      "id": "laub.k3.gaertner",
+      "speaker": "laub",
+      "text_de": "Der Hofgärtner Petri hat auch Notizen hinterlassen. Ein Gärtner, der aufschreibt, wie kalt es war, während um ihn herum alles brennt. Ich mag ihn.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.gaertner"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 427 Anm. 1 (Petri)"
+        }
+      ]
+    },
+    {
+      "id": "mannlich.14",
+      "speaker": "mannlich",
+      "text_de": "Man hatte bis von Lothringen Stroh herbeischleppen lassen, um damit alle seine Gemächer zu ebener Erde auszustopfen. Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen, unter dem Beifall einer tausendköpfigen Schar von Sansculottes und dem Gesange ihres schrecklichen: Ça ira! (Mannlich war nicht dabei. Er schreibt nach Berichten.)",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.fackel",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 461"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.fackel.02",
+      "speaker": "kommissaer",
+      "text_de": "Im Namen der Nation!",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.fackel",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 461"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.fackel.03",
+      "speaker": "menge",
+      "text_de": "Ça ira",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.fackel",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 461; Liedtext „Ah! ça ira“ 1790, gemeinfrei"
+        }
+      ]
+    },
+    {
+      "id": "echo.k3.fackel.04",
+      "speaker": "geraeusch",
+      "text_de": "[Die Fackel fliegt. Ein Fenster im Erdgeschoss leuchtet auf, dann das nächste.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.fackel",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.hinauf",
+      "speaker": "laub",
+      "text_de": "Hinauf. Jetzt, nicht gleich.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.8"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.k3.feuer",
+      "speaker": "laub",
+      "text_de": "(hustend) Von unten nach oben. Erst das Stroh im Erdgeschoss, dann die Treppen, dann der Saal. Die gewölbte Küche brennt zuletzt. Gewölbe sind geduldig.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.feuer"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.festsaal",
+      "speaker": "laub",
+      "text_de": "Der Festsaal. Hier oben liegt kein Stroh. Hier kommt das Feuer erst an, wenn unten nichts mehr übrig ist.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.festsaal"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.05",
+      "speaker": "hanne",
+      "text_de": "Der war an der Tür zum Saal. Matthes hat die Wand drumrum gemacht. Nimm, was du willst. Irgendwas soll übrig bleiben.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.retten",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.festsaal_wahl",
+      "speaker": "laub",
+      "text_de": "Eins. Nur eins. Nehmen Sie, was Sie tragen können, nicht, was am meisten wert ist.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.retten",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.06",
+      "speaker": "hanne",
+      "text_de": "Raus jetzt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.9-gewaehlt"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.07",
+      "speaker": "hanne",
+      "text_de": "Den behältst du. Ich hab die Wand im Kopf, das reicht mir.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.10-draussen",
+        "flag": "flag.k3_objekt",
+        "value": "tuergriff"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.08",
+      "speaker": "hanne",
+      "text_de": "Ein Dukat. Den hat der Bauer aus Rohrbach auch gekriegt. Hoffentlich.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.10-draussen",
+        "flag": "flag.k3_objekt",
+        "value": "dukat"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.09",
+      "speaker": "hanne",
+      "text_de": "Die Uhr. Die geht noch. Die weiß nicht, was passiert ist.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.10-draussen",
+        "flag": "flag.k3_objekt",
+        "value": "uhr"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k3.10",
+      "speaker": "hanne",
+      "text_de": "Nichts. Ist auch eine Antwort.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.10-draussen",
+        "flag": "flag.k3_objekt",
+        "value": "nichts"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.wirtschaft",
+      "speaker": "laub",
+      "text_de": "Die Wirtschaftsgebäude da drüben, Ställe, Remisen, die Kasernen: die stehen morgen noch fast alle. Was brennt, ist das, was schnell gebaut wurde.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.wirtschaft"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "jost.k3.01",
+      "speaker": "jost",
+      "text_de": "Raus! Lauft! Die Hunde verbrennen nicht. Nicht meine.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.jost",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k3.02",
+      "speaker": "jost",
+      "text_de": "Diane, du führst. Sultan, halt die Klappe und lauf. Bijou, das ist kein Hirsch, das ist Feuer!",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.jost",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k3.03",
+      "speaker": "jost",
+      "text_de": "Die finden den Weg allein. Bloß nicht zurück.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.jost",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k3.04",
+      "speaker": "jost",
+      "text_de": "Einer muss sie ja wieder heimholen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.jost",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "beat.k3.horn",
+      "speaker": "geraeusch",
+      "text_de": "[Das Horn bläst einmal, weit weg, falsch und zu hoch.]",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.jost",
+        "step": 5
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.alle",
+      "speaker": "laub",
+      "text_de": "Die Franzosen, die Preußen, die Leute aus den Dörfern, der Hof selbst. Jeder hat etwas mitgenommen. Man könnte sagen, sie taten, was alle taten.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.jost",
+        "step": 6
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k3.abend",
+      "speaker": "marlene",
+      "text_de": "Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. (Pause.) Doch, ich frag. Morgen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.12-zurueck"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.ende",
+      "speaker": "laub",
+      "text_de": "Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.13"
+      },
+      "once": true
+    }
+  ],
+  "hints": [
+    {
+      "id": "hint.k3.1",
+      "caseId": "case.k3",
+      "level": 1,
+      "text_de": "Das Datum hat der Regierungsrat notiert. Die Soldaten sagen es auch, wenn man ihnen beim Abladen zuhört. Und der Kommissär sagt, in wessen Namen er anzündet, aber erst, wenn Sie ihn lassen.",
+      "afterSeconds": 240
+    },
+    {
+      "id": "hint.k3.2",
+      "caseId": "case.k3",
+      "level": 2,
+      "text_de": "Gehen Sie in den Sammlungsflügel hinauf. Die Kisten erzählen, wohin sie sollten, und das Echo dort, wer sie aufgehalten hat. Die Falltür kennt der Kanzlist. Er erzählt es gern, wenn man ihn nicht unterbricht.",
+      "afterSeconds": 480
+    },
+    {
+      "id": "hint.k3.3",
+      "caseId": "case.k3",
+      "level": 3,
+      "text_de": "Messen Sie die Galerie. Hundert Fuß sind keine dreiunddreißig Meter, hundert Klafter fast zweihundert. Und schauen Sie vom Garten aus nach Norden auf die Ställe: Was morgen noch steht, hat nicht gebrannt.",
+      "afterSeconds": 720
+    }
+  ]
+}

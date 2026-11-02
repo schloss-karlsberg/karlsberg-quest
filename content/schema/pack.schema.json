@@ -48,7 +48,8 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "label_de": { "type": "string" },
-        "category": { "enum": ["person", "place", "object", "cause", "time", "action", "group", "other"] }
+        "category": { "enum": ["person", "place", "object", "cause", "time", "action", "group", "other"] },
+        "plural_de": { "type": "string", "minLength": 1, "description": "Plural display form for blanks with plural: true" }
       }
     },
     "clue": {
@@ -87,7 +88,10 @@
             "flags": { "type": "array", "items": { "type": "string" } }
           }
         },
-        "fiction": { "type": "boolean" }
+        "fiction": { "type": "boolean" },
+        "echoDate_de": { "type": "string", "minLength": 1, "description": "Echo date outside the playable eras, e.g. 'November 1840'; where.era = nearest playable era" },
+        "needsLantern": { "type": "boolean" },
+        "chapter": { "type": "string", "minLength": 1, "description": "Story chapter, e.g. 'p', 'k1'" }
       }
     },
     "case": {
@@ -108,6 +112,7 @@
               "kind": { "enum": ["fact", "reading"] },
               "text_de": { "type": "string", "description": "Sentence with {blankId} placeholders" },
               "factId": { "type": "string" },
+              "flag": { "type": "string", "minLength": 1, "description": "Reading entries: story flag set to the chosen noun id" },
               "blanks": {
                 "type": "array",
                 "minItems": 1,
@@ -118,7 +123,10 @@
                     "id": { "type": "string" },
                     "category": { "enum": ["person", "place", "object", "cause", "time", "action", "group", "other"] },
                     "accepts": { "type": "array", "items": { "type": "string" } },
-                    "correct": { "type": "string", "description": "Fact entries only" }
+                    "correct": { "type": "string", "description": "Fact entries only" },
+                    "alsoCorrect": { "type": "array", "items": { "type": "string" }, "description": "Fact entries only: further nouns that also count as correct" },
+                    "plural": { "type": "boolean", "description": "Show the nouns' plural_de" },
+                    "labels_de": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 }, "description": "Per-blank display override by noun id" }
                   }
                 }
               }

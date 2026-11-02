@@ -187,6 +187,21 @@ unknown references (nouns, facts, clues, speakers, cases), duplicate ids, clues 
 unreachable clues (require cycles) and **unsolvable cases** (a correct noun not revealed by any
 reachable clue). `content/examples/` is placeholder content (`ex.*` ids) showing every field.
 
+The campaign lives in `content/packs/` (prolog, kapitel-1…4, enden, codex, speakers, voices),
+transcribed from `content/bible/`. Optional fields used there: `Noun.plural_de` + `Blank.plural`
+(plural display), `Blank.labels_de` (per-blank display with article/case), `Blank.alsoCorrect`
+(further correct nouns), `CaseEntry.flag` (reading → story flag = chosen noun id or `offen`),
+`Clue.echoDate_de` (echo date outside the playable eras; `where.era` = nearest era),
+`Clue.needsLantern`, `Clue.chapter` (`p`, `k1` … `k4`). Fact labels and secondary unlocks are
+tags (`label:FAKT|STRITTIG|LEGENDE|FIKTION`, `reliefmuster`, `unlock:<when>`). Dialogue
+triggers match payload fields by equality; extra keys: `step` (order within a sequence),
+`flag` + `value` (story flag condition), `below` (threshold for `lantern:oil`). Custom events:
+`npc:talk {npc, chapter, topic}`, `bark:idle`, `bark:enter-fire`, `bark:npc-near {npc, era?}`,
+`epilog:line {ending?, block, flag?, value?}`. `tests/content-packs.test.ts` checks the campaign
+(playthrough solvability with story flags, decoys obtainable, codex 40 + 8, hints, events,
+placement against terrain water and room/footprint polygons). UI texts from the bible are
+`ui.*` keys in `src/i18n/de.content.ts`.
+
 ## 11. Testing
 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,

@@ -1,0 +1,1155 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "codex",
+  "facts": [
+    {
+      "id": "cx.01",
+      "title_de": "Der Ehrenhof",
+      "text_de": "Die große, ebene Lichtung im Wald ist der Ehrenhof des Schlosses. Im Laserscan liegt sie auf rund 344,8 m, eine in den Hang geschnittene Terrasse, an drei Seiten von geraden Kanten begrenzt: Dort standen das Corps de logis und die beiden Flügel. Heute ist nur die Fläche geblieben, und wer sie kennt, sieht das Schloss darin.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.homburg.de/media/scllyew0/schlossbergtour.pdf",
+          "label": "Stadt Homburg: Faltblatt Schlossbergtour"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmal KB-01"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:entry.p.1"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.02",
+      "title_de": "Der Louisenhof",
+      "text_de": "Am 27. Juli 1777 kaufte Herzog Karl II. August den Louisenhof auf dem Buchenberg. Aus dem Hofgut wurde in wenigen Jahren das Schloss Karlsberg. Nach Mannlich drängte die Mätresse des Herzogs, Caroline von Esebeck, eine Cousine des Besitzers, auf den Kauf.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle"
+        },
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg"
+        }
+      ],
+      "contested_de": "Kaufpreis 35 000 Gulden und 60 Louis d’or (de.wikipedia, homburg-im-bild) oder 23 000 Gulden (en.wikipedia).",
+      "tags": [
+        "label:STRITTIG",
+        "unlock:entry.k1.3"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.03",
+      "title_de": "Karl II. August",
+      "text_de": "Karl II. August (1746–1795) regierte Pfalz-Zweibrücken von 1775 bis 1795. Der Diplomat Hans Christoph von Gagern nannte ihn „ein finsterer, wollüstiger, zur Härte geneigter eigensinniger Mann“, gestand ihm aber Sinn für Rang und Pflicht zu. Die ADB sieht eine „merkwürdige Mischung von Esprit und bizarrer Pedanterie“. Im Spiel ist er nie zu sehen, nur zu hören, und er sagt nur, was Mannlich überliefert.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        },
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+          "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:first-shift"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.04",
+      "title_de": "Johann Christian von Mannlich",
+      "text_de": "Mannlich (1741–1822) war Hofmaler und musste als Baudirektor Ställe, Kasernen und einen Zwinger bauen. Er schrieb seine Lebenserinnerungen auf Französisch; die deutsche Ausgabe von 1910 ist gekürzt und übersetzt. Fast jedes Zitat in diesem Spiel stammt aus ihr. Er war kein neutraler Zeuge: Er verehrte den Herzog, und er erinnerte sich Jahre später, manchmal ungenau.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)"
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:entry.k1.4"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.05",
+      "title_de": "„Ein einziges JagdRevier“",
+      "text_de": "1782 erschien in August Ludwig Schlözers Stats-Anzeigen ein bissiger Text über ein Land, das „ganz und gar gleichsam ein einziges JagdRevier“ sei, mit „ganze[n] Regimenter[n] JagdHunde“. Gemeint war Pfalz-Zweibrücken. Die Untertanen trugen die Last: Wildzäune, Parforcejagden und das Futter für die Meuten.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.06",
+      "title_de": "Der Zwinger für tausend Hunde",
+      "text_de": "Mannlich sollte „einen Zwinger für tausend Hunde (von den Wölfen abgesehen)“ bauen, für Hirsch- und Saumeute, Hühner- und Spürhunde, „für die Hunde aller Erdteile“. Der Hundezwinger entstand 1780–83 nördlich des Marstalls. Gagern schrieb später von „tausend Pferde[n] im Marstall, noch mehr Hunde[n] in den Zwingern“. Die Namen der Hunde sind nicht überliefert; die im Spiel sind erfunden.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 365 und Einl. S. XXXV"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; Zitat nach M1910"
+    },
+    {
+      "id": "cx.07",
+      "title_de": "Vierzehn Millionen",
+      "text_de": "Bau und Betrieb des Karlsbergs kosteten nach der ADB fast 14 Millionen Gulden. Das ganze Herzogtum nahm im Jahr etwa 800 000 Gulden ein. Ein Reisender, Adolph von Knigge, nannte das Ganze 1792 ein „Feen-Schloß“.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+          "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)"
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Einl. S. XXXIV"
+        },
+        {
+          "url": "https://www.literaturland-saar.de/orte/homburg/",
+          "label": "Literaturland Saar: Homburg"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.08",
+      "title_de": "Zwei Tage für einen Gulden",
+      "text_de": "Ein Geselle musste zwei Tage arbeiten, um einen Gulden zu verdienen. Am Karlsberg waren über Jahre sechs bis zehn Baustellen gleichzeitig offen. Mannlich schreibt selbst von Untergebenen, „denen man ihren Lohn nicht bezahlte“. Wie viele Arbeiter es waren und wie viel ihnen geschuldet blieb, ist nicht bekannt.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle"
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 369"
+        },
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.09",
+      "title_de": "Der Tränenberg",
+      "text_de": "Eine Hobbyseite erzählt, die Arbeiter und die Homburger hätten den Karlsberg „Tränenberg“ genannt, weil die Löhne spät oder gar nicht kamen. Die Erben hätten die Schulden bis etwa 1850 abgezahlt. Beides ist nicht belegt. Im Spiel sagt Hanne darum: „Ob das so heißt, weiß ich nicht.“",
+      "confidence": "U",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
+          "note": "Hobbyseite, ohne Beleg"
+        }
+      ],
+      "tags": [
+        "label:LEGENDE"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.10",
+      "title_de": "Leere Kassen",
+      "text_de": "Nach Mannlich leerte der Finanzpräsident Creuzer „alle Kassen, sogar die der Witwen und Waisen“, und bezahlte „die einen mit Versprechungen“. Vor seiner Flucht verbrannte er Papiere und gab andere in „sichere Hände“. Schon 1785 hatte Baudirektor Hautt in einem vernichtenden Gutachten über die Baustelle dem Bauverwalter Schäfer und Creuzer Misswirtschaft vorgeworfen. Aus den „sicheren Händen“ macht das Spiel den Kanzlisten Soll, und der ist erfunden.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 377, 396 f."
+        },
+        {
+          "url": "https://www.deutsche-biographie.de/sfz28384.html",
+          "label": "Deutsche Biographie: Christian Ludwig Hautt"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:reading.entry.k1.10"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.11",
+      "title_de": "Zu Fuß, außer einem",
+      "text_de": "Nur der Herzog durfte zum Schloss hinauffahren, alle anderen gingen zu Fuß. Singen war streng verboten. Ein Zeitgenosse fand die Gegend „wie betäubt“. So berichtet es ein Artikel der Rosa-Luxemburg-Stiftung von 2015.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1789",
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.12",
+      "title_de": "Die Menagerie im Rund",
+      "text_de": "In der Karlslust standen 19 kleine Häuser mit Schieferdach im Kreis um einen Wassergraben, in der Mitte eine Insel mit Pavillon; dessen Grundmauern wurden 2016 wiedergefunden. Dort lebten nach den Quellen unter anderem Papageien, Pelikane, Kasuare, Affen, Wölfe, kanadische Füchse, zwei Dromedare und Stachelschweine. Mannlich beschreibt ein Gebäude „wie ein antikes Amphitheater“ für „Vierfüßler und Raubvögel“.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+          "label": "Saarpfalz-Touristik: Bärenzwinger"
+        },
+        {
+          "url": "https://www.urlaub.saarland/attraktion/baerenzwinger-1986e52928",
+          "label": "urlaub.saarland: Bärenzwinger"
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 384"
+        },
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.13",
+      "title_de": "Bärenzwinger oder nicht?",
+      "text_de": "Das Rund in der Karlslust heißt heute „Bärenzwinger“. Wahrscheinlich war es eher eine Voliere und Menagerie für kleinere Tiere. Die eisernen „Bären-Kästen“ von 1786, von außen beheizt, standen auf den Herzogsterrassen. Ob dort je Bären lebten, ist nicht sicher belegt.",
+      "confidence": "I",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+          "label": "Saarpfalz-Touristik: Bärenzwinger"
+        },
+        {
+          "url": "https://www.urlaub.saarland/attraktion/baerenzwinger-1986e52928",
+          "label": "urlaub.saarland: Bärenzwinger"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+        }
+      ],
+      "contested_de": "Nutzung des Runds (Bären oder Vögel); Zweck des 1780–83 gebauten „Zwingers“ (Hunde oder Bären).",
+      "tags": [
+        "label:STRITTIG"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.14",
+      "title_de": "Der 19. Dezember 1785",
+      "text_de": "Zur Hochzeit des Pfalzgrafen Maximilian Joseph, des späteren Königs Max I. von Bayern, gab es im Dezember 1785 Feste am Karlsberg. In der Karlslust oberhalb der Großen Kaskade explodierte das Feuerwerk. Gegen den Rat eines Feuerwerkers aus Straßburg lagen alle Raketen auf einem einzigen Gerüst statt auf drei getrennten. Nach Mannlich traf es Major Magnier und elf seiner Arbeiter; der Major starb, mehrere Arbeiter wurden schwer verbrannt. Die Namen der Arbeiter sind nicht überliefert.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 386–392"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "gedenkort"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.15",
+      "title_de": "Der Festplan von 1785",
+      "text_de": "Mannlich schickte Blätter seiner Festbauten an den Landgrafen von Hessen-Darmstadt; sie liegen heute in der ULB Darmstadt und sind frei (CC0). Im Orangeriehof stand ein „Jahrmarkt“ aus Buden im Kreis und eine Rotunde aus Holz und Leinwand, die nach der Hochzeit wieder abgerissen wurde. Gezeigt wurden auch ein künstlicher Vulkan und ein Tempel des Hymenaios.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://nbn-resolving.org/urn:nbn:de:tuda-tudigit-84275",
+          "label": "ULB Darmstadt: Mannlich, Plan d[e] la foire … 1785 (CC0)"
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 386–391"
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; Bild (falls genutzt) CC0"
+    },
+    {
+      "id": "cx.16",
+      "title_de": "Die Warnung",
+      "text_de": "Ein Bauer kam atemlos auf den Karlsberg: Französische Reiter seien durch die Wälder in sein Dorf gekommen und suchten einen Führer, um nachts auf Umwegen zum Schloss zu gelangen. Er hatte sich durch seinen Garten in den Wald geschlichen und war über den Parkzaun geklettert. Der Herzog hielt die Nachricht zuerst für „unglaubwürdig“ und wollte ihm einen Dukaten geben. Wikipedia nennt den Bauern Nikel (Nicolaus) Pfeiffer, Bauer und Postbote aus Rohrbach, heute St. Ingbert. Von ihm selbst sind keine Worte überliefert.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 422 f."
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1793-02",
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.17",
+      "title_de": "Wann war die Flucht?",
+      "text_de": "Der Zweibrücker Regierungsrat Ludwig Philipp Horstmann notierte Flucht und Ankunft General Landremonts in der Nacht des 9. Februar 1793. Die ADB nennt den 3. Februar. Mannlich erinnerte sich an „gegen Ende Februar“. Das Spiel folgt Horstmann, weil er zeitnah schrieb.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 422 und S. 427 Anm. 1"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        },
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+          "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)"
+        }
+      ],
+      "contested_de": "9. Februar (Horstmann, de.wikipedia) / 3. Februar (ADB) / Ende Februar (Mannlich).",
+      "tags": [
+        "label:STRITTIG"
+      ],
+      "era": "1793-02",
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.18",
+      "title_de": "„Über meine Galerie zu wachen“",
+      "text_de": "Vor der Abfahrt ließ der Herzog Mannlich zurück, „um über meine Galerie zu wachen und sie zu retten, wenn es Ihm möglich ist“, und empfahl ihm danach das Naturalienkabinett und die Bibliothek. Er nahm ein kleines Jagdmesser vom Tisch. Gegen 10 Uhr abends fuhr er ab.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 423 f."
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1793-02",
+      "licence": "eigener Text; Zitat nach M1910"
+    },
+    {
+      "id": "cx.19",
+      "title_de": "„Das sind Kalköfen“",
+      "text_de": "Kurz nach der Abfahrt sprengte General Landremont mit seinen Jägern heran und fragte: „Was bedeuten denn die Feuer, die ich dort unten im Walde habe leuchten sehen?“ Ein Handwerker antwortete, ohne stehenzubleiben: „Das sind Kalköfen.“ Was die Lichter wirklich waren, schreibt Mannlich nicht. Eine Lokalüberlieferung erzählt von Fackelträgern, die den Herzog begleitet hätten; das ist nicht belegt.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 427 f."
+        },
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
+          "note": "Überlieferung, unbelegt"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1793-02",
+      "licence": "eigener Text; Zitat nach M1910"
+    },
+    {
+      "id": "cx.20",
+      "title_de": "Die Rettung der Sammlungen",
+      "text_de": "Während der französischen Besetzung trug Mannlich mit dem alten Diener Burger die schönsten Bilder durch eine geheime Falltür in die Werkstatt des Büchsenmachers und versteckte sie dort. Später ließen er und dreißig Handwerker die Galerie, die Bibliothek, Möbel und Wandverkleidungen verpacken und über Kaiserslautern nach Mannheim bringen. Die Bilder wurden ein Grundstock der Alten Pinakothek in München; die Bibliothek liegt heute in Bamberg.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 431 f., 437"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.21",
+      "title_de": "Das abbestellte Naturalienkabinett",
+      "text_de": "Die Kisten mit dem Naturalienkabinett standen gepackt, die Wagen waren in Kaiserslautern bestellt. Dann versicherte der König von Preußen dem Herzog, die Franzosen würden den Karlsberg nicht mehr betreten, und der Herzog gab Gegenbefehl. Die Sammlung verbrannte im Juli 1793, darunter nach einem Katalog von 1785 1 187 Vögel.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 437, 454 f., 461 f."
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "Anm. 30 (Holandre 1785)"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.22",
+      "title_de": "Der Brand",
+      "text_de": "Am Sonntag, dem 28. Juli 1793, zündeten abziehende französische Truppen den Karlsberg an. Nach Mannlich hatte man Stroh „bis von Lothringen“ herangeschafft (andere Quellen: bis zu 100 Wagen aus der Gegend von Metz), um alle Räume im Erdgeschoss damit zu füllen. Ein Kommissär setzte es „im Namen der Nation mit brennender Fackel“ in Brand, und die Menge sang „Ça ira“. Mannlich war nicht dabei und schreibt nach Berichten.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 461 f. mit Anm. 39"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "nach Remling"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1793-07",
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.23",
+      "title_de": "Die Plünderung",
+      "text_de": "Die abziehenden Franzosen gaben das Schloss zur allgemeinen Plünderung frei, auch für die Leute aus den umliegenden Dörfern. Am Morgen nach dem Brand plünderten Einheimische, was übrig war. Eine literaturgeschichtliche Quelle spricht von „breite[r] Unterstützung bei der heimischen Bevölkerung“. Wer was nahm und warum, bleibt im Spiel eine LESART.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle"
+        },
+        {
+          "url": "https://www.literaturland-saar.de/orte/homburg/",
+          "label": "Literaturland Saar: Homburg"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1793-07",
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.24",
+      "title_de": "Wo lag die Bibliothek?",
+      "text_de": "Der Sammlungsflügel westlich des Küchenhofs enthielt Bibliothek, Naturalienkabinett und Waffensammlung. Nach Schwan (2012) lag die Bibliothek im Erdgeschoss, vier Räume in einer Reihe, und Naturalienkabinett und Waffensammlung im Obergeschoss. Das Modell, auf dem dieses Spiel steht, hat die Waffensammlung im Erdgeschoss und die Bibliothek oben. Das Spiel folgt dem Modell, damit die Räume zusammenpassen.",
+      "confidence": "I",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "und Katalog schloss-karlsberg/model/catalogue.json v2 (Schwesterprojekt)"
+        }
+      ],
+      "contested_de": "Geschossverteilung im Sammlungsflügel (Schwan 2012 gegen Katalog v2).",
+      "tags": [
+        "label:STRITTIG",
+        "unlock:skill.baumeister1"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.25",
+      "title_de": "Die Bildergalerie",
+      "text_de": "Mannlich baute die Galerie 1788 von Mitte Februar bis August, aus einem hölzernen Verbindungsgang heraus. Die Wände waren mit Brettern verschalt und mit grünem Damast aus Lyon bespannt; zwanzig Kristalllüster hingen von der Decke, und 104 vergoldete Lehnstühle standen darin. Mannlich nannte sie „cent pas“ lang, hundert Schritt; die deutsche Ausgabe von 1910 übersetzt falsch „hundert Fuß“. Vorher hingen die Bilder in allen Vorzimmern, und wer seinen Stuhl zu nah an die Wand rückte, hörte: „Obacht auf die Bilder!“",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 374 f."
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "Anm. 47, Bauakten"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.26",
+      "title_de": "Die Falltür",
+      "text_de": "Mannlich und der Diener Burger wussten von einer „geheimen Falltür, die aus der Bildergalerie in die Werkstätte des herzoglichen Büchsenmachers führte“. Durch sie retteten sie Bilder. Wo genau sie lag, ist nicht bekannt. Dass der Kanzlist Soll dort ein Buch versteckte, ist erfunden.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 431 f."
+        },
+        {
+          "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+          "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+          "note": "Anm. 62"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; Zitat nach M1910"
+    },
+    {
+      "id": "cx.27",
+      "title_de": "Ein Türgriff, ein Dukat, eine Uhr",
+      "text_de": "In der Ausstellung „Steinerne Macht“ im Historischen Museum Saar (17. November 2018 bis 23. Juni 2019) lagen vom Karlsberg unter anderem eine vergoldete Uhr mit Alabaster, ein Dukat mit Schlossansicht, eine Pistole, ein Jagdmesser und ein Türgriff. Ob der Gegenstand, den du im Spiel gerettet hast, „dieser“ war, weiß niemand.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.rheinpfalz.de/lokal/kreis-suedwestpfalz_artikel,-zerst%C3%B6rte-pracht-jetzt-wieder-sichtbar-_arid,1312894.html",
+          "label": "Die Rheinpfalz 2018: Zerstörte Pracht jetzt wieder sichtbar"
+        },
+        {
+          "url": "https://www.historisches-museum.org/steinerne-macht",
+          "label": "Historisches Museum Saar: Steinerne Macht"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.28",
+      "title_de": "Was schnell gebaut wurde",
+      "text_de": "Das Feuer zerstörte vor allem die Residenz des Herzogs und die Fachwerkbauten. Viele Bauten waren verputztes Fachwerk, schnell und billig errichtet. Die meisten Wirtschafts- und Hofgebäude überstanden den Brand. Noch im November 1793 wurden auf dem Karlsberg Kinder geboren, und Hofrechnungen laufen bis 1797.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+          "label": "en.wikipedia: Karlsberg Castle"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.29",
+      "title_de": "Tod und Schulden",
+      "text_de": "Karl II. August starb am 1. April 1795 im Exil nach einem Schlaganfall. Er hinterließ seinem Bruder Maximilian über 9 Millionen Gulden Schulden. Sein Sarkophag steht in der Wittelsbacher Gruft von St. Michael in München.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        },
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+          "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)"
+        },
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_vita_karl_ii_august_christia.html",
+          "label": "homburg-im-bild (Hobbyseite): Vita Karl II. August"
+        }
+      ],
+      "contested_de": "Sterbeort Mannheim (ADB, Wikipedia) oder Rohrbach bei Heidelberg (homburg-im-bild).",
+      "tags": [
+        "label:STRITTIG"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.30",
+      "title_de": "Pacht und Abriss",
+      "text_de": "1796 pachteten 14 Homburger Bürger das Recht, Holz und Steine der Ruine zu verkaufen. Unter Napoleon erhielt die Witwe des Herzogs die Ruine zurück, mit der Bedingung, sie bis auf den Grund abzureißen. Anfang des 19. Jahrhunderts war das Schloss bis auf die Fundamente abgetragen.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+          "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        }
+      ],
+      "contested_de": "Die Zahl 14 stammt nur von einer Hobbyseite (homburg-im-bild).",
+      "tags": [
+        "label:FAKT"
+      ],
+      "era": "1796",
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.31",
+      "title_de": "Steine auf Wanderschaft",
+      "text_de": "Die Hohenburg über Homburg, eine Burg des 12. Jahrhunderts und später eine Festung, wurde 1714 geschleift. Ihre Trümmer dienten dem Herzog als Steinbruch für den Karlsberg. Aus dem Jagdschloss Jägersburg kamen Täfelungen, Möbel und angeblich ein ganzer Stall. Nach 1793 wanderten die Steine weiter, in die Häuser von Homburg. Das Steinmetzzeichen im Spiel ist erfunden.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Hohenburg_Castle_(Homburg)",
+          "label": "en.wikipedia: Hohenburg Castle (Homburg)"
+        },
+        {
+          "url": "https://www.burgenwelt.org/deutschland/hohenburg/burgenwelt-hohenburg-objektseite.pdf",
+          "label": "Burgenwelt: Hohenburg"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_J%C3%A4gersburg",
+          "label": "de.wikipedia: Schloss Jägersburg"
+        },
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.32",
+      "title_de": "Das Baumagazin",
+      "text_de": "Vom ganzen Karlsberg steht nur noch ein Gebäude: das ehemalige Baumagazin am Fuß des Berges, das Lager für Baumaterial. Es war später Brauerei, Forsthaus und Villa eines Brauereidirektors und heißt heute Karlsberger Hof. Es ist Privatbesitz und nur von der Straße aus zu sehen. Der Rest des Schlosses wurde selbst zur „Baustoffhandlung“.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.33",
+      "title_de": "Die Karte von 1836–41",
+      "text_de": "Seit 1816 gehörte die Gegend als Rheinkreis zu Bayern. Die Bayerischen Originalpositionsblätter 1:25 000 von 1836–41 zeigen „Ruine Carlsberg“, „Carlsbergerhof“ und „Sanddorf“. In der heutigen georeferenzierten Fassung liegt das Schloss rund 50 m zu weit im Osten, mit örtlichen Abweichungen bis etwa 30 m. Den Geometer Laub, der behauptet, er habe die Karte aufgenommen, gab es nicht.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://geoportal.saarland.de/mapbender/php/mod_showMetadata.php?languageCode=de&resource=wms&id=2597",
+          "label": "Geoportal Saarland: WMS Historische Karten (dl-de/by-2-0)"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Abschnitt 1 Nr. 8"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; Kartenbild dl-de/by-2-0, © GeoBasis-DE/LVGL-SL"
+    },
+    {
+      "id": "cx.34",
+      "title_de": "Der Laserscan von 2025",
+      "text_de": "2025 hat das Saarland aus der Luft mit Laser vermessen, im Winter ohne Laub. Seit Januar 2026 sind die Daten frei. Rechnet man Bäume und Häuser heraus, bleibt das Gelände: das Geländemodell DGM1 mit einem Messpunkt pro Meter. Relief-Ansichten wie Schummerung, Lokales Relief und VAT machen sichtbar, was unter dem Wald liegt: Terrassen, Gruben, Hohlwege, Ausbruchgräben.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LVGL Saarland: Geobasisdaten (DGM1 2025, Open Data)"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich)"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:entry.p.1"
+      ],
+      "licence": "eigener Text; Daten dl-de/by-2-0, © GeoBasis-DE/LVGL-SL"
+    },
+    {
+      "id": "cx.35",
+      "title_de": "Schauen, nicht graben",
+      "text_de": "Der Karlsberg ist ein Bodendenkmal. Was im Boden liegt, ist geschützt: Graben, Sondeln und Mitnehmen sind ohne Genehmigung verboten, und Funde müssen der Denkmalbehörde gemeldet werden. Der Laserscan ist dafür da, dass man schauen kann, ohne zu graben. Dieses Spiel zeigt keine Fundstellen und keine Grabtipps.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://umwelt-online.de/recht/bau/laender/saarland/dschg18.htm",
+          "label": "Saarländisches Denkmalschutzgesetz"
+        },
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:always"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.36",
+      "title_de": "Die Wilde Jagd",
+      "text_de": "In vielen deutschen Sagen reitet in den Rauhnächten eine geisterhafte Jagd über den Himmel; wer sie sieht, soll sich zu Boden werfen. Eine saarländische Fassung nennt einen „wilden Jäger“ Maltitz, verdammt, weil er an Karfreitag jagte. Keine Quelle verbindet Karl II. August mit der Wilden Jagd. Die Meute im Spiel ist erfunden.",
+      "confidence": "U",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Wilde_Jagd",
+          "label": "de.wikipedia: Wilde Jagd"
+        }
+      ],
+      "tags": [
+        "label:LEGENDE",
+        "unlock:hunt-first"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.37",
+      "title_de": "„Hundskarl“",
+      "text_de": "Der Spitzname „Hundskarl“ wurde 1923 durch den Heimatforscher Fritz Schunck bekannt, nach dem Ende der bayerischen Monarchie. Eine Hobbyseite erzählt dazu eine Geschichte von einem Hund, einem Jungen und einem herzoglichen Satz; sie ist nicht belegt, und das Spiel erzählt sie nicht nach.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+        },
+        {
+          "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_vita_karl_ii_august_christia.html",
+          "label": "homburg-im-bild (Hobbyseite): Vita Karl II. August",
+          "note": "unbelegte Anekdote"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "unlock:entry.k1.4"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.38",
+      "title_de": "Was in diesem Spiel erfunden ist",
+      "text_de": "Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.",
+      "confidence": "D",
+      "fiction": true,
+      "sources": [],
+      "tags": [
+        "label:FIKTION",
+        "unlock:always"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.39",
+      "title_de": "Der Karlsberg heute",
+      "text_de": "Seit 2008 ist der Karlsberg ein WaldPark, seit 2007 führt ein Hörpfad von 5,5 km durch das Gelände, und 2009–2013 wurden die Ruinen gesichert. Sichtbar sind die Reste der Orangerie, die Lichtung des Ehrenhofs, Weiher, Brunnen und das Rund des „Bärenzwingers“. Die „Herzogskastanien“ gelten als über 200 Jahre alte Naturdenkmale; ob sie den Sturm Wiebke 1990 überstanden, ist widersprüchlich überliefert.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.homburg.de/media/scllyew0/schlossbergtour.pdf",
+          "label": "Stadt Homburg: Faltblatt Schlossbergtour"
+        },
+        {
+          "url": "https://schloss-karlsberg.de/hoerpfad-schloss-karlsberg/",
+          "label": "Hörpfad Schloss Karlsberg"
+        },
+        {
+          "url": "https://www.outdooractive.com/de/poi/saarpfalz-kreis/waldpark-schloss-karlsberg/61542782/",
+          "label": "WaldPark Schloss Karlsberg (outdooractive)"
+        },
+        {
+          "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+          "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+        }
+      ],
+      "contested_de": "Zustand der Herzogskastanien (Sturm Wiebke 1990).",
+      "tags": [
+        "label:FAKT",
+        "unlock:end"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.40",
+      "title_de": "Die Orangerie",
+      "text_de": "Die Orangerie entstand ab 1780 aus der früheren Schweizerei; im Pfeilersaal standen im Winter die Kübelpflanzen, und Mannlich wohnte im Obergeschoss. Im Laserscan ist ihre Stützmauer eine schnurgerade Kante von rund 81 m mit einer Stufe von 5,3 m. Ihre Reste gehören heute zu den wenigen sichtbaren Mauern am Karlsberg.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.homburg.de/media/scllyew0/schlossbergtour.pdf",
+          "label": "Stadt Homburg: Faltblatt Schlossbergtour"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+          "label": "de.wikipedia: Schloss Karlsberg"
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmal KB-30"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.01",
+      "title_de": "Terrasse und Planie",
+      "text_de": "Im Relief: Eine auffällig ebene Fläche mit geraden Kanten, an einer Seite in den Hang geschnitten, an der anderen aufgeschüttet. Im Lokalen Relief hell an der Böschungsoberkante, dunkel am Fuß. Verwechslung: Forstwege-Kehren, Holzlagerplätze (meist jünger, ohne rechte Winkel). Am Karlsberg: der Ehrenhof auf 344,8 m und die Stufe zum Nordplateau.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmale KB-01, KB-07"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.02",
+      "title_de": "Grube mit Ringwall (Eiskeller)",
+      "text_de": "Im Relief: Eine runde Grube, ein bis zwei Meter tief, mit einem flachen Wall rundherum: ein eingestürzter Keller, dessen Gewölbe nachgegeben hat. Verwechslung: Bombentrichter (kein sauberer Ring), Meilerplatz (flach statt tief). Am Karlsberg: der Eiskeller östlich des Schlosses, 10 × 10 m, 1,8 m tief.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmal KB-50"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.03",
+      "title_de": "Meilerplatz (Kohlplatte)",
+      "text_de": "Im Relief: Eine kreisrunde, fast ebene Plattform von 8–15 m Durchmesser, am Hang oft mit einer kleinen Stufe hangabwärts. Dort brannten Köhler Holzkohle. Im Boden ist die Erde schwarz. Verwechslung: Eiskeller (tief, nicht flach), Wegekehren. Am Karlsberg: im Spiel nur als Motiv am Hang unter der Orangerie; ein bestimmter Meilerplatz ist nicht belegt.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.04",
+      "title_de": "Hohlweg",
+      "text_de": "Im Relief: Ein Weg, der sich durch Räder, Hufe und Regen über Jahrhunderte in den Boden gegraben hat: eine Rinne mit steilen Seiten, oft mehrere nebeneinander (Fächer). Verwechslung: Wassergraben (gerader, gleichmäßiger), Ausbruchgraben (kurz und eckig). Am Karlsberg: der Hohlweg westlich des Schlosses, 249 m lang, genau dort, wo die Karte von 1836–41 eine gerade Straße zeigt.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmale KB-10, KB-11"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.05",
+      "title_de": "Ausbruchgraben",
+      "text_de": "Im Relief: Ein schmaler, gerader Graben in der Form einer Mauer, oft als geschlossenes Rechteck, manchmal mit einem leicht erhöhten Kern aus Schutt in der Mitte. Hier wurde eine Mauer bis auf den letzten Stein ausgebrochen; was man im Scan als „Mauerzug“ sieht, ist das Loch. Verwechslung: Fundament (erhöht statt vertieft), Hohlweg. Am Karlsberg: am Küchenhof, ein Rechteck von 28 × 13 m.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmal KB-06"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.06",
+      "title_de": "Bombentrichter",
+      "text_de": "Im Relief: Runde Trichter mit unregelmäßigem Auswurfwall, oft in Reihen oder Gruppen, selten allein. Aus dem 20. Jahrhundert. Verwechslung: Eiskeller (sauberer Ringwall, Einzelstück), Pingen (Bergbau). Am Karlsberg: im Spiel nur als Köder. Achtung: Wo Trichter sind, kann Munition liegen. Nicht betreten, nicht graben, melden.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.07",
+      "title_de": "Fundament und Mauerzug",
+      "text_de": "Im Relief: Gerade Kanten, rechte Winkel, schmale Rücken, die sich nicht nach dem Gelände richten. Der Wald macht keine rechten Winkel. Verwechslung: Ausbruchgraben, alte Flurgrenzen, Forstzäune. Am Karlsberg: das kleine Rechteck neben dem Damm des Karlsbergweihers und die Orangerie-Stützmauer.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich)"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "rm.08",
+      "title_de": "Weiher und Damm",
+      "text_de": "Im Relief: Eine glatte, völlig ebene Fläche (Wasser liefert im Laserscan oft keine Punkte und wird flach gefüllt), an einer Seite ein gerader Damm quer zum Tal. Verwechslung: Wiesen in Talauen, trockengefallene Teiche (dann sieht man den Damm ohne Wasser). Am Karlsberg: der Karlsbergweiher mit Damm an der Westseite, die Schwanenweiher und das Tosbecken in der Karlslust.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+          "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmale KB-40, KB-42"
+        }
+      ],
+      "tags": [
+        "label:FAKT",
+        "reliefmuster",
+        "unlock:clue.p.handbuch"
+      ],
+      "licence": "eigener Text"
+    }
+  ]
+}

@@ -1,0 +1,930 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "prolog",
+  "nouns": [
+    {
+      "id": "n.ehrenhof",
+      "label_de": "Ehrenhof",
+      "category": "place"
+    },
+    {
+      "id": "n.exerzierplatz",
+      "label_de": "Exerzierplatz",
+      "category": "place"
+    },
+    {
+      "id": "n.reitbahn",
+      "label_de": "Reitbahn",
+      "category": "place"
+    },
+    {
+      "id": "n.orangerie",
+      "label_de": "Orangerie",
+      "category": "place"
+    },
+    {
+      "id": "n.galerie",
+      "label_de": "Galerie",
+      "category": "place"
+    },
+    {
+      "id": "n.marstall",
+      "label_de": "Marstall",
+      "category": "place"
+    },
+    {
+      "id": "n.hohlweg",
+      "label_de": "Hohlweg",
+      "category": "object",
+      "plural_de": "Hohlwege"
+    },
+    {
+      "id": "n.wassergraben",
+      "label_de": "Wassergraben",
+      "category": "object",
+      "plural_de": "Wassergräben"
+    },
+    {
+      "id": "n.ausbruchgraben",
+      "label_de": "Ausbruchgraben",
+      "category": "object",
+      "plural_de": "Ausbruchgräben"
+    },
+    {
+      "id": "n.eiskeller",
+      "label_de": "Eiskeller",
+      "category": "object",
+      "plural_de": "Eiskeller"
+    },
+    {
+      "id": "n.bombentrichter",
+      "label_de": "Bombentrichter",
+      "category": "object",
+      "plural_de": "Bombentrichter"
+    },
+    {
+      "id": "n.meilerplatz",
+      "label_de": "Meilerplatz",
+      "category": "object",
+      "plural_de": "Meilerplätze"
+    },
+    {
+      "id": "n.jahr_1840",
+      "label_de": "1840",
+      "category": "time"
+    },
+    {
+      "id": "n.jahr_1789",
+      "label_de": "1789",
+      "category": "time"
+    },
+    {
+      "id": "n.jahr_1935",
+      "label_de": "1935",
+      "category": "time"
+    },
+    {
+      "id": "n.versatz_50",
+      "label_de": "50",
+      "category": "other"
+    },
+    {
+      "id": "n.versatz_15",
+      "label_de": "15",
+      "category": "other"
+    },
+    {
+      "id": "n.versatz_500",
+      "label_de": "500",
+      "category": "other"
+    },
+    {
+      "id": "n.hunde",
+      "label_de": "Hunde",
+      "category": "group"
+    },
+    {
+      "id": "n.wild",
+      "label_de": "Wild",
+      "category": "group"
+    },
+    {
+      "id": "n.messfehler",
+      "label_de": "einen Messfehler",
+      "category": "other"
+    }
+  ],
+  "clues": [
+    {
+      "id": "clue.p.lageplan",
+      "title_de": "Lageplan an der Pinnwand",
+      "kind": "document",
+      "text_de": "Ein großer Ausdruck „Lageplan Schloss Karlsberg, Forschungsstand 2006 (Nachzeichnung)“, darunter klein: „Grundlage: schloss-carlsberg.de, CC BY-SA 2.0 DE“. Die Legende nennt Ehrenhof, Corps de logis, Galerie, Orangerie, Marstall, Reithalle, Exerzierplatz, Zwinger, Eiskeller. Den Ehrenhof umschließen drei Flügel. Reithalle und Exerzierplatz liegen weit im Norden. Der Titelstempel lautet „Rekonstruktion Sommer 1789 – Hypothese“.",
+      "where": {
+        "x": 758,
+        "z": -929,
+        "radius": 2.5,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.ehrenhof",
+          "n.exerzierplatz",
+          "n.reitbahn",
+          "n.orangerie",
+          "n.galerie",
+          "n.marstall",
+          "n.eiskeller",
+          "n.jahr_1789"
+        ]
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.messtischblatt",
+      "title_de": "Messtischblatt an der Pinnwand",
+      "kind": "map",
+      "text_de": "Fotokopie eines Messtischblatts. Bleistift von Marlene: „1935 – liegt nur 10–15 m daneben, gut brauchbar.“",
+      "where": {
+        "x": 759,
+        "z": -931,
+        "radius": 2.5,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.jahr_1935",
+          "n.versatz_15"
+        ]
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.handbuch",
+      "title_de": "Reliefmuster-Handbuch des Forstamts",
+      "kind": "document",
+      "text_de": "Das Reliefmuster-Handbuch des Forstamts im Regal, acht Karten. Die Karten stehen ab jetzt im Codex.",
+      "where": {
+        "x": 762,
+        "z": -931,
+        "radius": 2.5,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hohlweg",
+          "n.wassergraben",
+          "n.ausbruchgraben",
+          "n.bombentrichter",
+          "n.meilerplatz"
+        ],
+        "facts": [
+          "rm.01",
+          "rm.02",
+          "rm.03",
+          "rm.04",
+          "rm.05",
+          "rm.06",
+          "rm.07",
+          "rm.08"
+        ]
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.laubblatt",
+      "title_de": "Kartendruck in der Schublade",
+      "kind": "map",
+      "text_de": "Druck eines bayerischen Positionsblatts mit gestochener Schrift „Ruine Carlsberg“, „Carlsbergerhof“, „Sanddorf“. Am Rand steht in Bleistift und sehr ordentlicher Kurrentschrift: „Aufgen. Nov. 1840. Q. L. – Standpunkt 17 am alten Forsthaus.“ Daneben liegt eine Messing-Bussole, kalt und still.",
+      "where": {
+        "x": 761,
+        "z": -928,
+        "radius": 2.5,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.jahr_1840"
+        ],
+        "flags": [
+          "flag.tool_map"
+        ]
+      },
+      "fiction": true,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.mauerrest",
+      "title_de": "Mauerrest am Weiher",
+      "kind": "relief",
+      "text_de": "Ein kleines Rechteck aus geraden Kanten neben dem Damm.",
+      "where": {
+        "x": 813,
+        "z": -903,
+        "radius": 15,
+        "era": "today",
+        "anchor": "r03-03"
+      },
+      "reveals": {
+        "facts": [
+          "rm.07"
+        ]
+      },
+      "requires": {
+        "scanMode": 2
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.orangeriemauer",
+      "title_de": "Stützmauer der Orangerie",
+      "kind": "relief",
+      "text_de": "Eine schnurgerade Kante, 81 m lang, darunter eine Bank, die 5,3 m tiefer liegt. Darüber eine ebene Fläche.",
+      "where": {
+        "x": 1237,
+        "z": -966,
+        "radius": 40,
+        "era": "today",
+        "anchor": "KB-30"
+      },
+      "reveals": {
+        "nouns": [
+          "n.orangerie"
+        ]
+      },
+      "requires": {
+        "scanMode": 3
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.ehrenhof",
+      "title_de": "Die ebene Lichtung",
+      "kind": "relief",
+      "text_de": "Eine ebene Fläche auf 344,8 m Höhe. Im Süden, Osten und Norden ziehen flache Mauerzüge herum, nach Westen ist sie offen.",
+      "where": {
+        "x": 1216,
+        "z": -1114,
+        "radius": 35,
+        "era": "today",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "facts": [
+          "rm.01"
+        ]
+      },
+      "requires": {
+        "scanMode": 2
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.nordterrasse",
+      "title_de": "Die Nordterrasse",
+      "kind": "relief",
+      "text_de": "Eine zweite, noch größere ebene Fläche, 190 × 95 m, auf fast derselben Höhe (344,1 m). Steile Kanten im Süden und Osten, keine Flügel.",
+      "where": {
+        "x": 1227,
+        "z": -1466,
+        "radius": 60,
+        "era": "today",
+        "anchor": "KB-20"
+      },
+      "reveals": {
+        "nouns": [
+          "n.reitbahn"
+        ]
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.kartenvergleich",
+      "title_de": "Laubs Karte über dem Relief",
+      "kind": "map",
+      "text_de": "Laubs Karte über dem Relief. Die roten Gebäudezeichen sitzen ein Stück östlich der Mauerzüge. Ein Messlineal erscheint automatisch: rund 50 m.",
+      "where": {
+        "x": 1216,
+        "z": -1114,
+        "radius": 35,
+        "era": "today",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.versatz_50",
+          "n.versatz_500"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.p.laubblatt"
+        ]
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.hohlweg",
+      "title_de": "Der Hohlweg",
+      "kind": "relief",
+      "text_de": "Ein Weg, 2 bis 3 m tief eingeschnitten, schnurgerade nach Norden. Er folgt keinem Bach.",
+      "where": {
+        "x": 1172,
+        "z": -1238,
+        "radius": 20,
+        "era": "today",
+        "anchor": "KB-10"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hohlweg"
+        ],
+        "facts": [
+          "rm.04"
+        ]
+      },
+      "requires": {
+        "scanMode": 2
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.eiskeller",
+      "title_de": "Die Grube mit Ringwall",
+      "kind": "relief",
+      "text_de": "Eine runde Grube, 10 m breit, 1,8 m tief, mit einem Ringwall darum. Sie liegt einzeln, ohne Nachbarn.",
+      "where": {
+        "x": 1508,
+        "z": -1296,
+        "radius": 15,
+        "era": "today",
+        "anchor": "KB-50"
+      },
+      "reveals": {
+        "nouns": [
+          "n.eiskeller"
+        ],
+        "facts": [
+          "rm.02"
+        ]
+      },
+      "requires": {
+        "scanMode": 3
+      },
+      "fiction": false,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.punktwolke",
+      "title_de": "Ausschnitt aus der Punktwolke",
+      "kind": "object",
+      "text_de": "Bodenpunkte unter dem Kronendach. Quer über den Ehrenhof eine Reihe von Abdrücken, etwa 8 cm groß, paarweise, im Abstand eines Trabs.",
+      "where": {
+        "x": 1216,
+        "z": -1114,
+        "radius": 40,
+        "era": "today",
+        "anchor": "portable"
+      },
+      "reveals": {
+        "nouns": [
+          "n.hunde",
+          "n.wild",
+          "n.messfehler"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.p.ehrenhof"
+        ]
+      },
+      "fiction": true,
+      "chapter": "p"
+    },
+    {
+      "id": "clue.p.seite_eins",
+      "title_de": "Eine Seite im Deckel der Bussole",
+      "kind": "document",
+      "text_de": "Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts, Überschrift: „Was der Hof schuldig blieb“. Darunter nur Spalten: „Wem – Was – Wann – Wo“. Unten ein Satz, in anderer Tinte und in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“",
+      "where": {
+        "x": 1216,
+        "z": -1114,
+        "radius": 40,
+        "era": "today",
+        "anchor": "portable"
+      },
+      "reveals": {
+        "flags": [
+          "flag.chronik_offen"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.p.punktwolke"
+        ]
+      },
+      "fiction": true,
+      "chapter": "p"
+    },
+    {
+      "id": "echo.p.diener",
+      "title_de": "Erinnerung: Zu Fuß, Monsieur!",
+      "kind": "echo",
+      "text_de": "Beim ersten Wechsel automatisch. Ein Diener ruft über den Hof, ein Gärtner summt, ein zweiter zischt ihn an. Fern im Norden heult ein einzelner Hund.",
+      "where": {
+        "x": 1216,
+        "z": -1114,
+        "radius": 35,
+        "era": "1789",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "facts": [
+          "cx.03"
+        ],
+        "flags": [
+          "flag.p_erster_wechsel"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.p.seite_eins"
+        ]
+      },
+      "fiction": true,
+      "chapter": "p"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case.p",
+      "title_de": "Vermessung",
+      "intro_de": "Was der Hof schuldig blieb. Wem – Was – Wann – Wo. Fortgesetzt Nov. 1840. Nicht vollendet.",
+      "entries": [
+        {
+          "id": "entry.p.1",
+          "kind": "fact",
+          "factId": "cx.01",
+          "text_de": "Die eingeebnete Fläche zwischen den drei Mauerzügen ist {wo} des Schlosses.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.ehrenhof",
+              "accepts": [
+                "n.ehrenhof",
+                "n.exerzierplatz",
+                "n.reitbahn"
+              ],
+              "labels_de": {
+                "n.ehrenhof": "der Ehrenhof",
+                "n.exerzierplatz": "der Exerzierplatz",
+                "n.reitbahn": "die Reitbahn"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.p.2",
+          "kind": "fact",
+          "factId": "cx.40",
+          "text_de": "Die über fünf Meter hohe Stufe südlich des Schlosses ist die Stützmauer {wo}.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.orangerie",
+              "accepts": [
+                "n.orangerie",
+                "n.galerie",
+                "n.marstall"
+              ],
+              "labels_de": {
+                "n.orangerie": "der Orangerie",
+                "n.galerie": "der Galerie",
+                "n.marstall": "des Marstalls"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.p.3",
+          "kind": "fact",
+          "factId": "rm.04",
+          "text_de": "Der tief eingeschnittene Weg westlich des Schlosses ist ein {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.hohlweg",
+              "accepts": [
+                "n.hohlweg",
+                "n.wassergraben",
+                "n.ausbruchgraben"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.p.4",
+          "kind": "fact",
+          "factId": "rm.02",
+          "text_de": "Die runde Grube mit Ringwall östlich des Schlosses war ein {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.eiskeller",
+              "accepts": [
+                "n.eiskeller",
+                "n.bombentrichter",
+                "n.meilerplatz"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.p.5",
+          "kind": "fact",
+          "factId": "cx.33",
+          "text_de": "Auf der bayerischen Karte von {wann} heißt der Ort ‚Ruine Carlsberg‘.",
+          "blanks": [
+            {
+              "id": "wann",
+              "category": "time",
+              "correct": "n.jahr_1840",
+              "accepts": [
+                "n.jahr_1840",
+                "n.jahr_1789",
+                "n.jahr_1935"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.p.6",
+          "kind": "fact",
+          "factId": "cx.33",
+          "text_de": "Auf der heutigen Fassung dieser Karte liegt das Schloss rund {wieviel} Meter zu weit im Osten.",
+          "blanks": [
+            {
+              "id": "wieviel",
+              "category": "other",
+              "correct": "n.versatz_50",
+              "accepts": [
+                "n.versatz_50",
+                "n.versatz_15",
+                "n.versatz_500"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.p.7",
+          "kind": "reading",
+          "flag": "flag.p_spuren",
+          "text_de": "Die Spuren in der Punktwolke stammen von {wer}.",
+          "blanks": [
+            {
+              "id": "wer",
+              "accepts": [
+                "n.hunde",
+                "n.wild",
+                "n.messfehler"
+              ],
+              "labels_de": {
+                "n.hunde": "Hunden",
+                "n.messfehler": "einem Messfehler"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "marlene.p.01",
+      "speaker": "marlene",
+      "text_de": "{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter. Wir wollen wissen, was unter dem Wald liegt, bevor wir dort Wege bauen. Und bevor du fragst: Ja, da oben war mal ein Schloss. Der Wald steht drauf.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P1"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.02",
+      "speaker": "marlene",
+      "text_de": "Ach, die Bussole. Die lag schon im Wagen, als wir ihn gekauft haben. Die zeigt nicht nach Norden, hab ich festgestellt. Behalt sie trotzdem, sie bringt Glück, sagt der Kollege. Er hat sie nie angefasst.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.laubblatt"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.damm",
+      "speaker": "marlene",
+      "text_de": "Siehst du den Weiher? Das ist kein Naturteich, das ist Barock. Schalt mal auf Lokales Relief, dann siehst du mehr.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P2"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.mauerrest",
+      "speaker": "marlene",
+      "text_de": "Gerade Linien und rechte Winkel macht der Wald nicht. Das war mal eine Mauer.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.mauerrest"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.weg",
+      "speaker": "marlene",
+      "text_de": "Und, {Name}: Wir schauen, wir graben nicht. Nichts anfassen, nichts mitnehmen. Was da im Boden liegt, gehört dem Land, und es ist geschützt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.hohlweg",
+      "speaker": "marlene",
+      "text_de": "Das ist ein Hohlweg. Karren, Hufe, Regen, ein paar hundert Jahre, und der Weg frisst sich in den Boden. Bei Nebel ist das der dunkelste Ort im ganzen Revier. Und der stillste.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.hohlweg"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.punkte",
+      "speaker": "marlene",
+      "text_de": "Ich schick dir was aufs Tablet. Das hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P7"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.punktwolke",
+      "speaker": "marlene",
+      "text_de": "Wildschweine machen andere Spuren. Und Hunde waren da nicht, der Wald war gesperrt.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.punktwolke",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "kollege.p.punktwolke",
+      "speaker": "kollege",
+      "text_de": "Mehrfachreflexion. Ein Messfehler.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.punktwolke",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.punktwolke",
+      "speaker": "laub",
+      "text_de": "Hunde. Fragen Sie nicht. Füllen Sie die Seite aus.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.punktwolke",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.abend",
+      "speaker": "marlene",
+      "text_de": "Du bist ja ganz blass. Mach dir einen Tee. Morgen früh komm ich mit Brötchen vorbei.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P10"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.intro",
+      "speaker": "laub",
+      "text_de": "Fünf Meter dreißig. Für Orangen. Erschrecken Sie nicht, das ist schlecht für die Messgenauigkeit. Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt. Sie vermessen den Berg? Gut. Dann sind wir zu zweit. Ich bin der Kleinere.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.orangeriemauer"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.p.intro2",
+      "speaker": "laub",
+      "text_de": "Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3b"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.versatz",
+      "speaker": "laub",
+      "text_de": "Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war. Die Herrschaften, die es zweihundert Jahre später auf ihre Koordinaten genagelt haben, die hatten offenbar einen schlechten Tag. Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer. Und ein Geometer merkt es ewig.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.kartenvergleich"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.ehrenhof",
+      "speaker": "laub",
+      "text_de": "Drei Flügel, offen zur Straße. So baut man, wenn man gesehen werden will.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.ehrenhof",
+        "hasClue": "clue.p.lageplan"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.nordterrasse",
+      "speaker": "laub",
+      "text_de": "Auch eben. Aber da haben keine Flügel gestanden, da sind Pferde im Kreis gelaufen. Vermutlich. Ich war nicht eingeladen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.nordterrasse"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.eiskeller",
+      "speaker": "laub",
+      "text_de": "Bombentrichter kommen selten allein, sagt Ihr Handbuch. Und Köhler bauen ihre Meiler nicht in Löcher, sondern auf Platten.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.eiskeller",
+        "hasClue": "clue.p.handbuch"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln",
+      "speaker": "laub",
+      "text_de": "So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick. Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal. Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q. Zweitens: Ihre Laterne brennt dort drüben auf Kosten Ihrer Zeit. Wenn das Öl aus ist, sind Sie wieder hier. Unsanft. Drittens: Wenn Sie ein Horn hören, legen Sie sich hin. Nicht diskutieren. Hinlegen. Viertens: Wenn Sie zurück wollen, halten Sie Q. Es geht nicht, solange Sie jemand ansieht.",
+      "trigger": {
+        "event": "chronik:batch",
+        "caseId": "case.p",
+        "correct": true
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.p.1789",
+      "speaker": "laub",
+      "text_de": "Sehen Sie. Kein Wald. Den hat man erst hinterher gepflanzt, als es nichts mehr zu sehen gab.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.p.zurueck",
+      "speaker": "laub",
+      "text_de": "Zurück. Jetzt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9-heulen"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.p.ende",
+      "speaker": "laub",
+      "text_de": "Machen Sie die Laterne aus. Und dann schlafen Sie. Morgen ist 1789.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P11"
+      },
+      "once": true
+    },
+    {
+      "id": "echo.p.diener.01",
+      "speaker": "diener",
+      "text_de": "Zu Fuß, Monsieur! Hinauf fährt nur Serenissimus.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.p.diener",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "echo.p.diener.02",
+      "speaker": "geraeusch",
+      "text_de": "[Ein Gärtner an der Rabatte summt ein Lied.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.p.diener",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.p.diener.03",
+      "speaker": "gaertner",
+      "text_de": "Pst. Willst du Prügel?",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.p.diener",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "echo.p.diener.04",
+      "speaker": "geraeusch",
+      "text_de": "[Das Summen bricht ab. Fern im Norden ein einzelnes langes Heulen.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "echo.p.diener",
+        "step": 4
+      },
+      "once": true
+    }
+  ],
+  "hints": [
+    {
+      "id": "hint.p.1",
+      "caseId": "case.p",
+      "level": 1,
+      "text_de": "Ein Geometer schaut zuerst, und erst dann liest er, was andere hingeschrieben haben. Gehen Sie zu den Stellen. Danach an die Pinnwand.",
+      "afterSeconds": 240
+    },
+    {
+      "id": "hint.p.2",
+      "caseId": "case.p",
+      "level": 2,
+      "text_de": "Der Lageplan kennt die Namen, das Gelände kennt die Formen. Legen Sie beides übereinander. Die Taste M, falls Ihnen das Wort ‚Überlagerung‘ zu modern ist. Und lesen Sie das Handbuch. Ich habe es auch gelesen, heimlich, nachts.",
+      "afterSeconds": 480
+    },
+    {
+      "id": "hint.p.3",
+      "caseId": "case.p",
+      "level": 3,
+      "text_de": "Die Grube mit dem Ringwall liegt dort, wo der Plan ‚Eiskeller‘ schreibt. Bomben fallen selten so ordentlich. Zu meiner Karte: Messen Sie vom Hof auf dem Papier bis zum Hof im Boden. Und dann entschuldigen Sie sich bei mir.",
+      "afterSeconds": 720
+    }
+  ]
+}

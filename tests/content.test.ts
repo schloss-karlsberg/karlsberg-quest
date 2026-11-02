@@ -67,6 +67,41 @@ describe('content validator', () => {
     expect(messages(run(p))).toMatch(/historical person/);
   });
 
+  it('accepts the optional display / story fields and rejects malformed ones', () => {
+    const ok = example();
+    ok.nouns![1]!.plural_de = 'Franzosen';
+    const fb = ok.cases![0]!.entries[0]!.blanks[0]!;
+    fb.accepts = ['ex.noun.french', 'ex.noun.greed'];
+    fb.plural = true;
+    fb.labels_de = { 'ex.noun.french': 'die Franzosen' };
+    fb.alsoCorrect = ['ex.noun.greed'];
+    ok.cases![0]!.entries[1]!.flag = 'flag.ex_why';
+    Object.assign(ok.clues![0]!, { echoDate_de: 'November 1840', needsLantern: true, chapter: 'p' });
+    const r = run(ok);
+    expect(messages(r)).toBe('');
+    expect(r.warnings.map((w) => w.message).join('\n')).toMatch(/plural but noun 'ex.noun.greed' has no plural_de/);
+
+    const bad = example();
+    bad.nouns![0]!.plural_de = '';
+    const bb = bad.cases![0]!.entries[0]!.blanks[0]!;
+    bb.accepts = ['ex.noun.french', 'ex.noun.greed'];
+    bb.labels_de = { 'ex.noun.ghost': 'x', 'ex.noun.straw': 'y' };
+    bb.alsoCorrect = ['ex.noun.hunger'];
+    bad.cases![0]!.entries[1]!.blanks[0]!.alsoCorrect = ['ex.noun.greed'];
+    bad.cases![0]!.entries[0]!.flag = 'flag.not-on-facts';
+    Object.assign(bad.clues![0]!, { echoDate_de: 3, needsLantern: 'yes', chapter: '' });
+    const m = messages(run(bad));
+    expect(m).toMatch(/plural_de/);
+    expect(m).toMatch(/labels_de for unknown noun 'ex.noun.ghost'/);
+    expect(m).toMatch(/labels_de for noun 'ex.noun.straw' that is not in accepts/);
+    expect(m).toMatch(/alsoCorrect noun 'ex.noun.hunger' is not in accepts/);
+    expect(m).toMatch(/"alsoCorrect" is only allowed in fact entries/);
+    expect(m).toMatch(/"flag" is only allowed on reading entries/);
+    expect(m).toMatch(/echoDate_de/);
+    expect(m).toMatch(/needsLantern/);
+    expect(m).toMatch(/"chapter"/);
+  });
+
   it('respects game-area bounds for clues', () => {
     const r = validateContent([{ file: 't', pack: example() }], { bounds: { x0: 0, z0: 0, x1: 10, z1: 10 } });
     expect(messages(r)).toMatch(/outside the game area/);
