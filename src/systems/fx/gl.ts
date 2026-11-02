@@ -9,18 +9,22 @@ import {
   type WebGLRenderer,
 } from 'three';
 
-/** Full-screen triangle drawn straight into the HDR scene target (before tone mapping). */
-export function makeScreenPass(fragmentShader: string, uniforms: Record<string, { value: unknown }>, renderOrder: number): Mesh {
+/**
+ * Full-screen triangle drawn straight into the HDR scene target (before tone mapping).
+ * `skyOnly`: drawn at the far plane with depth test, so it only covers pixels nothing wrote depth
+ * to (the sky dome and the clear colour).
+ */
+export function makeScreenPass(fragmentShader: string, uniforms: Record<string, { value: unknown }>, renderOrder: number, skyOnly = false): Mesh {
   const g = new BufferGeometry();
   g.setAttribute('position', new Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
   const m = new ShaderMaterial({
     vertexShader: /* glsl */ `
       varying vec2 vUv;
-      void main() { vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+      void main() { vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, ${skyOnly ? '0.99999' : '0.0'}, 1.0); }`,
     fragmentShader,
     uniforms,
     transparent: true,
-    depthTest: false,
+    depthTest: skyOnly,
     depthWrite: false,
   });
   const mesh = new Mesh(g, m);

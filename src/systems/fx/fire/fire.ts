@@ -13,7 +13,9 @@ import type { Quality } from '../quality';
 import type { FxUI } from '../ui';
 import { ATMOS_GLSL } from '../../../world/atmosphere';
 import { SRC_STRIDE, buildEmitters } from './emitters';
-import { FIRE_BASE_SECONDS, FIRE_CENTER, type FireUnit, createFireSchedule } from './schedule';
+import { FireMap, rasterizeUnits } from './firemap';
+import { PalaceFireGlow } from './palaceGlow';
+import { FIRE_BASE_SECONDS, FIRE_CENTER, type FireUnit, createFireSchedule, sootAt } from './schedule';
 import { type Exposure, FireSim } from './sim';
 import { FireVisuals } from './visuals';
 
@@ -52,6 +54,7 @@ export interface FireSlice {
 export class FireController {
   sim: FireSim | null = null;
   visuals: FireVisuals | null = null;
+  private glow: PalaceFireGlow | null = null;
   units: FireUnit[] = [];
   exposure: Exposure = { inside: -1, state: 'none', density: 0, heat: 0, nearest: Infinity };
   /** Camera heat 0..1 (shimmer). */
@@ -69,7 +72,7 @@ export class FireController {
   private roars: { src: Source3D; loop: Loop }[] = [];
   private shake = 0;
   private readonly screen: Mesh;
-  private readonly glowBase = new Color('#ff6a1f').multiplyScalar(2.2);
+  private readonly glowBase = new Color('#ff5a14').multiplyScalar(1.5);
   private readonly tmp = new Vector3();
   private pendingCollapses: number[] = [];
 
@@ -103,6 +106,7 @@ export class FireController {
     const d = this.ctx.data;
     this.units = createFireSchedule(d.rooms, d.footprints.buildings, { center: cfg.center, radius: cfg.radius });
     this.sim = new FireSim(this.units, cfg.seconds);
+    this.glow = new PalaceFireGlow(this.ctx.world.palace.material, new FireMap(rasterizeUnits(this.units)));
     this.buildVisuals();
     const changes = this.sim.setClock(clock);
     for (const c of changes) this.ctx.events.emit('fire:room', { roomId: c.unit.id, state: c.state });
@@ -118,7 +122,7 @@ export class FireController {
       this.visuals.dispose();
     }
     const em = buildEmitters(this.units, this.ctx.data.footprints.buildings);
-    this.visuals = new FireVisuals(em, this.units.length, this.quality.high);
+    this.visuals = new FireVisuals(em, this.units.length, this.quality.high, !this.glow?.ok);
     this.ctx.scene.add(this.visuals.object);
   }
 
@@ -140,6 +144,9 @@ export class FireController {
       setTimeout(() => r.src.dispose(), 2000);
     }
     this.roars = [];
+    this.glow?.dispose();
+    this.glow = null;
+    this.ctx.world.palace.uniforms.uChar!.value = 0;
     this.screen.visible = false;
     this.ui.setGauge('smoke', null);
     this.heat = 0;
@@ -266,11 +273,15 @@ export class FireController {
       }
     }
     vis.frame(dt, pointScale(ctx.camera, ctx.renderer));
+    if (this.glow) {
+      const k = sim.clock;
+      this.glow.update((i) => sim.intensity(i), (i) => sootAt(this.units[i]!, k, sim.seconds), 1);
+    }
     this.blaze = Math.min(1, sum / 30);
     const flick = 0.82 + 0.1 * Math.sin(now * 7.3) + 0.08 * Math.sin(now * 13.1 + 1.3) + 0.06 * Math.sin(now * 2.1);
     if (sum > 0) {
       atmosphere.uGlowPos.value.set(gx / sum, gy / sum + 6, gz / sum);
-      atmosphere.uGlowColor.value.copy(this.glowBase).multiplyScalar((0.25 + 1.1 * this.blaze) * flick);
+      atmosphere.uGlowColor.value.copy(this.glowBase).multiplyScalar((0.2 + 0.7 * this.blaze) * flick);
     } else {
       atmosphere.uGlowColor.value.copy(this.glowBase).multiplyScalar(0.12);
     }

@@ -61,6 +61,8 @@ export class FireVisuals {
     readonly emitters: FireEmitters,
     readonly unitCount: number,
     high: boolean,
+    /** Draw window glow quads (only when the palace shader can't light its own windows). */
+    windowQuads = true,
   ) {
     this.object.name = 'fx-fire';
     const n = Math.max(1, unitCount);
@@ -73,7 +75,7 @@ export class FireVisuals {
     const shared = { ...atmosphere, uState: { value: this.stateTex }, uWind: { value: this.wind } };
 
     // windows
-    {
+    if (windowQuads) {
       const c = emitters.counts.windows;
       const W = emitters.windows;
       const g = quadInstanced();

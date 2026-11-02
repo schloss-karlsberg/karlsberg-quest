@@ -88,6 +88,7 @@ export class ShiftEffect {
   private readonly veil: Mesh;
   private readonly veilMat: ShaderMaterial;
   private readonly fade: Mesh;
+  private readonly skyCover: Mesh;
   private readonly layers: Points[] = [];
   private treesOld: Points | null = null;
   private treesNew: Points | null = null;
@@ -115,7 +116,8 @@ export class ShiftEffect {
     this.veil.renderOrder = 900;
     this.veil.visible = false;
     this.fade = makeScreenPass(FADE_FRAG, { uColor: { value: VOID.clone() }, uAlpha: { value: 0 } }, 901);
-    ctx.scene.add(this.veil, this.fade);
+    this.skyCover = makeScreenPass(FADE_FRAG, { uColor: { value: VOID.clone() }, uAlpha: { value: 0 } }, 899, true);
+    ctx.scene.add(this.veil, this.fade, this.skyCover);
   }
 
   /** Begin a shift to `to`. Resolves when the effect is done. */
@@ -156,29 +158,29 @@ export class ShiftEffect {
     const cx = this.center.x;
     const cz = this.center.z;
     // terrain with both reliefs (2025 ↔ 1789 morph at the midpoint)
-    const tg = buildTerrainCloud(w.heightfields[fromI.terrain], w.heightfields[toI.terrain], cx, cz, 360, hi ? 150_000 : 55_000);
-    this.addLayer(new Points(tg, cloudMaterial(0, 0.16)));
+    const tg = buildTerrainCloud(w.heightfields[fromI.terrain], w.heightfields[toI.terrain], cx, cz, 360, hi ? 900 : 500, hi ? 1.03 : 1.05);
+    this.addLayer(new Points(tg, cloudMaterial(0, 0.22)));
     // palace surface points (only if either era shows the palace)
     if (fromI.palace !== 'hidden' || toI.palace !== 'hidden') {
       const s = palaceSamples(w.palace.object);
       if (s) {
         this.palaceGeo = palaceCloudGeometry(s);
         if (!hi) this.palaceGeo.setDrawRange(0, Math.floor(s.count * 0.45));
-        this.addLayer(new Points(this.palaceGeo, cloudMaterial(1, 0.12)));
+        this.addLayer(new Points(this.palaceGeo, cloudMaterial(1, 0.3)));
       }
     }
     // trees of the old era (the new ones are sampled once the forest has switched)
     const trees = buildTreeCloud(w.forest.object, cx, cz, 300, hi ? 2600 : 1000, hi ? 30 : 18);
-    this.treesOld = new Points(trees, cloudMaterial(2, 0.14));
+    this.treesOld = new Points(trees, cloudMaterial(2, 0.22));
     this.addLayer(this.treesOld);
     // time-rewind streaks
-    const n = hi ? 1600 : 600;
+    const n = hi ? 500 : 260;
     const r = rng(99);
     const seed = new Float32Array(n * 2 * 4);
     const tail = new Float32Array(n * 2);
     const pos = new Float32Array(n * 2 * 3);
     for (let i = 0; i < n; i++) {
-      const s = [r() * Math.PI * 2, 2.5 + Math.pow(r(), 1.7) * 60, -1 + r() * 9, 0.6 + r() * 1.2];
+      const s = [r() * Math.PI * 2, 6 + Math.pow(r(), 1.5) * 50, -1 + r() * 9, 0.6 + r() * 1.2];
       for (let k = 0; k < 2; k++) {
         seed.set(s, (i * 2 + k) * 4);
         tail[i * 2 + k] = k;
@@ -255,7 +257,7 @@ export class ShiftEffect {
     if (this.pendingNewTrees >= 0 && this.pendingNewTrees-- === 0) {
       const hi = this.quality.high;
       const g = buildTreeCloud(ctx.world.forest.object, this.center.x, this.center.z, 300, hi ? 2600 : 1000, hi ? 30 : 18, 4);
-      this.treesNew = new Points(g, cloudMaterial(2, 0.14));
+      this.treesNew = new Points(g, cloudMaterial(2, 0.22));
       (this.treesNew.material as ShaderMaterial).uniforms.uTreeNew!.value = 1;
       this.addLayer(this.treesNew);
     }
@@ -281,7 +283,11 @@ export class ShiftEffect {
     }
     vm.uniforms.uAlpha!.value = c.veilAlpha;
     // the sky is not in the depth buffer: cover it before the veil goes 'full'
-    const fadeA = c.veil === 'out' ? Math.min(1, Math.max(0, (this.t - 1.0) / 0.45)) : 0;
+    // the sky dims into the void as the wave runs out, and comes back with the reassembly
+    const skyA = Math.min(1, Math.max(0, (this.t - 0.1) / 0.8)) * (1 - Math.min(1, Math.max(0, (this.t - 2.6) / 0.8)));
+    this.skyCover.visible = skyA > 0.001;
+    (this.skyCover.material as ShaderMaterial).uniforms.uAlpha!.value = skyA;
+    const fadeA = c.veil === 'out' ? Math.min(1, Math.max(0, (this.t - 1.15) / 0.3)) : 0;
     this.fade.visible = fadeA > 0.001;
     (this.fade.material as ShaderMaterial).uniforms.uAlpha!.value = fadeA;
     // point cloud
@@ -308,7 +314,7 @@ export class ShiftEffect {
     if (this.rewind) {
       const u = (this.rewind.material as ShaderMaterial).uniforms;
       u.uTime!.value = this.t;
-      u.uAlpha!.value = c.rewind * 0.75;
+      u.uAlpha!.value = c.rewind * 0.35;
     }
     // post: warp, brass flash, a touch of desaturation in the void
     pu.uShift!.value = c.warp;
@@ -326,6 +332,7 @@ export class ShiftEffect {
     this.frozen = false;
     this.veil.visible = false;
     this.fade.visible = false;
+    this.skyCover.visible = false;
     for (const p of this.layers) {
       ctx.scene.remove(p);
       if (p.geometry !== this.palaceGeo) p.geometry.dispose();
@@ -362,7 +369,7 @@ export class ShiftEffect {
 
   dispose(): void {
     this.finish();
-    this.ctx.scene.remove(this.veil, this.fade);
+    this.ctx.scene.remove(this.veil, this.fade, this.skyCover);
     this.veil.geometry.dispose();
     this.veilMat.dispose();
   }

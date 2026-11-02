@@ -55,19 +55,21 @@ void main() {
   float t = uTime;
   float n = kqFbm(vec2(vUv.x * 2.6 + vSeed * 17.0, y * 1.9 - t * 2.4 - vSeed * 5.0));
   float n2 = kqNoise(vec2(vUv.x * 6.5 - vSeed * 3.0, y * 4.5 - t * 5.2));
-  float xd = x + (n - 0.5) * 1.1 * y;
-  float width = mix(0.92, 0.04, pow(y, 0.75)) * (0.7 + 0.6 * n);
-  float shape = 1.0 - smoothstep(width * 0.45, width, abs(xd));
-  shape *= smoothstep(0.0, 0.12, y);
-  float top = 1.0 - smoothstep(0.25 + 0.5 * n, 0.95, y + (n2 - 0.5) * 0.3);
-  float heat = shape * top * (0.55 + 0.7 * n2);
+  // ragged tongues: the centre line sways, the width breathes, gaps tear through the tips
+  float xd = x + (n - 0.5) * 1.5 * y + sin(y * 6.0 - t * 7.0 + vSeed * 20.0) * 0.14 * y;
+  float width = mix(0.85, 0.02, pow(y, 0.6)) * (0.55 + 0.9 * n);
+  float shape = 1.0 - smoothstep(width * 0.3, width, abs(xd));
+  shape *= smoothstep(0.0, 0.1, y);
+  float top = 1.0 - smoothstep(0.2 + 0.5 * n, 0.95, y + (n2 - 0.5) * 0.35);
+  float torn = smoothstep(0.18, 0.5, n2 + (1.0 - y) * 0.45);
+  float heat = shape * top * torn * (0.55 + 0.7 * n2);
   if (heat < 0.015) discard;
   vec3 c1 = vec3(0.75, 0.07, 0.01);
   vec3 c2 = vec3(1.0, 0.36, 0.04);
   vec3 c3 = vec3(1.0, 0.78, 0.38);
   vec3 col = mix(c1, c2, smoothstep(0.1, 0.45, heat));
   col = mix(col, c3, smoothstep(0.5, 0.95, heat * (1.15 - y * 0.6)));
-  float lum = heat * (2.2 + 2.6 * (1.0 - y));
+  float lum = heat * (1.1 + 1.5 * (1.0 - y));
   gl_FragColor = vec4(col * lum * vI * vFog, 1.0);
 }
 `;
@@ -150,13 +152,13 @@ void main() {
   float life = aSeed.w;
   float age = fract(uTime / life + aSeed.y);
   float r2 = fract(aSeed.z * 7.31);
-  vec3 base = aSrc.xyz + vec3((aSeed.z - 0.5) * aSrc.w, -2.0, (r2 - 0.5) * aSrc.w);
+  vec3 base = aSrc.xyz + vec3((aSeed.z - 0.5) * aSrc.w * 0.7, -2.0, (r2 - 0.5) * aSrc.w * 0.7);
   float rise = age * (34.0 + 26.0 * aSeed.z) * (0.55 + 0.55 * min(I, 1.0));
   vec3 c = base + vec3(0.0, rise, 0.0);
   c.xz += uWind * age * age * (70.0 + 40.0 * r2);
   c.x += sin(uTime * 0.37 + aSeed.z * 30.0) * age * 6.0;
   c.z += cos(uTime * 0.29 + r2 * 30.0) * age * 6.0;
-  float size = mix(5.0, 34.0 + 16.0 * r2, pow(age, 0.7)) * (0.55 + 0.45 * min(I, 1.0)) * (1.0 + st.b * 0.6);
+  float size = mix(4.0, 22.0 + 14.0 * r2, pow(age, 0.8)) * (0.55 + 0.45 * min(I, 1.0)) * (1.0 + st.b * 0.6);
   vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
   vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
   // slow rotation of each puff
@@ -166,7 +168,7 @@ void main() {
   vec3 p = c + right * q.x * size + up * q.y * size;
   vUv = position.xy;
   vAlpha = min(I, 1.0) * smoothstep(0.0, 0.1, age) * (1.0 - smoothstep(0.5, 1.0, age));
-  vLit = exp(-rise / 14.0) * st.r + st.b * 0.6 * exp(-rise / 30.0);
+  vLit = exp(-rise / 9.0) * st.r + st.b * 0.6 * exp(-rise / 24.0);
   vSeed = aSeed.z;
   vAge = age;
   float d = length(p - cameraPosition);
@@ -191,11 +193,11 @@ void main() {
   float puff = smoothstep(0.5, 0.08, r + (n - 0.5) * 0.35);
   float a = puff * vAlpha * uDensity * (0.55 + 0.6 * n);
   if (a < 0.004) discard;
-  vec3 smoke = mix(vec3(0.028, 0.024, 0.022), vec3(0.075, 0.065, 0.06), n);
+  vec3 smoke = mix(vec3(0.014, 0.012, 0.011), vec3(0.045, 0.038, 0.034), n);
   // lit from below by the fire; the shaded upper side catches the moon a little
-  vec3 lit = vec3(1.6, 0.55, 0.14) * (0.6 + 0.8 * n) * smoothstep(0.35, -0.2, q.y + (n - 0.5) * 0.3);
-  vec3 col = smoke + uSunColor * 0.02 * smoothstep(-0.1, 0.4, q.y) + lit * vLit + uGlowColor * 0.015;
-  col = mix(col, uFogColor * 0.6, vFog * 0.6);
+  vec3 lit = vec3(1.3, 0.38, 0.08) * (0.5 + 0.8 * n) * smoothstep(0.3, -0.25, q.y + (n - 0.5) * 0.3);
+  vec3 col = smoke + uSunColor * 0.012 * smoothstep(-0.1, 0.4, q.y) + lit * vLit + uGlowColor * 0.006;
+  col = mix(col, uFogColor * 0.3, vFog * 0.35);
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -280,7 +282,7 @@ varying float vI;
 void main() {
   vec4 st = unitState(aSeed.x);
   vI = clamp(st.r + st.b, 0.0, 1.5) * (0.85 + 0.15 * sin(uTime * 3.0 + aSeed.y * 20.0));
-  float size = (26.0 + aSrc.w * 2.5) * (0.6 + 0.4 * min(vI, 1.0));
+  float size = (12.0 + aSrc.w * 1.2) * (0.6 + 0.4 * min(vI, 1.0));
   vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
   vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
   vec3 c = aSrc.xyz + vec3(0.0, 2.0, 0.0);
@@ -296,6 +298,6 @@ varying float vI;
 void main() {
   vec2 q = vUv - 0.5;
   float g = exp(-dot(q, q) * 14.0);
-  gl_FragColor = vec4(vec3(1.0, 0.38, 0.08) * g * vI * 0.55, 1.0);
+  gl_FragColor = vec4(vec3(1.0, 0.34, 0.06) * g * vI * 0.14, 1.0);
 }
 `;

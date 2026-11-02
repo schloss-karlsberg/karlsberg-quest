@@ -36,7 +36,7 @@ void main() {
   vec3 p = position;
   float d = length(p.xz - uCenter.xz);
   // points appear behind the outgoing scan wave, a bright brass line rides on its front
-  float behind = 1.0 - smoothstep(uWaveR - 8.0, uWaveR, d);
+  float behind = 1.0 - smoothstep(uWaveR - 2.5, uWaveR, d);
   float front = exp(-pow((d - uWaveR) / 2.5, 2.0));
   // the reassembly wave hands each point back to the solid world
   float rebuilt = uInR > 0.0 ? smoothstep(uInR - 30.0, uInR - 2.0, d) : 1.0;
@@ -50,9 +50,10 @@ void main() {
   h += sin(uMorph * 3.14159) * (0.4 + 1.6 * aRand) * (0.5 + 0.5 * sin(d * 0.08 - uTime * 4.0));
   p.y = h + 0.2;
   float band = smoothstep(0.86, 1.0, fract(h / 2.5));
-  col = mix(vec3(0.08, 0.28, 0.42), vec3(0.62, 0.86, 1.0), aShade) * (0.45 + 0.55 * aShade);
-  col += vec3(0.5, 0.4, 0.25) * band * 0.6;
-  col *= 1.0 - 0.55 * smoothstep(60.0, 340.0, d);
+  float sh = aShade * aShade;
+  col = mix(vec3(0.05, 0.2, 0.34), vec3(0.75, 0.95, 1.15), sh) * (0.35 + 0.9 * sh);
+  col += vec3(0.6, 0.45, 0.25) * band * 0.7;
+  col *= 1.0 - 0.6 * smoothstep(80.0, 360.0, d);
   a *= behind * rebuilt;
   col += brass * (front * 1.6 + inFront * 1.2);
 #elif KIND == 1
@@ -62,13 +63,13 @@ void main() {
   float vis = 1.0 - smoothstep(uPalCut - 0.2, uPalCut + 0.2, rel);
   // points under the solid walls hand over (avoids sparkle on the surface)
   float under = smoothstep(uPalSolid - 0.6, uPalSolid + 0.6, rel);
-  col = conf * 0.7 + brass * line * 2.2;
+  col = conf * 1.25 + brass * line * 2.6;
   a *= vis * behind * mix(0.15, 1.0, under);
 #else
   float rel = aRel;
   float alive = uTreeNew > 0.5 ? 1.0 - smoothstep(uTreeCut - 0.04, uTreeCut, rel) : smoothstep(uTreeCut, uTreeCut + 0.04, rel);
   float edge = exp(-pow((rel - uTreeCut) / 0.03, 2.0)) * step(0.001, uTreeCut) * step(uTreeCut, 0.999);
-  col = mix(vec3(0.12, 0.42, 0.3), vec3(0.4, 0.8, 0.55), aRand) * 0.65 + brass * edge * 0.9;
+  col = mix(vec3(0.18, 0.62, 0.42), vec3(0.55, 1.0, 0.7), aRand) * (0.55 + 0.6 * rel) + brass * edge * 1.2;
   a *= alive * behind * rebuilt;
   col += brass * (front + inFront);
 #endif
@@ -77,7 +78,7 @@ void main() {
   vAlpha = a;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float size = uSize * (0.7 + 0.6 * aRand);
-  gl_PointSize = a < 0.003 ? 0.0 : clamp(size * uScale / max(-mv.z, 0.5), 1.0, 5.0);
+  gl_PointSize = a < 0.003 ? 0.0 : clamp(size * uScale / max(-mv.z, 0.5), 1.0, 7.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -135,7 +136,7 @@ vec3 at(float t) {
   return uCenter + vec3(cos(ang) * r, y, sin(ang) * r);
 }
 void main() {
-  float t = uTime - aTail * (0.07 + 0.05 * aSeed.w);
+  float t = uTime - aTail * (0.025 + 0.02 * aSeed.w);
   vec3 p = at(t);
   vAlpha = uAlpha * (1.0 - aTail);
   vTail = aTail;
@@ -147,7 +148,7 @@ export const REWIND_FRAG = /* glsl */ `
 varying float vAlpha;
 varying float vTail;
 void main() {
-  vec3 col = mix(vec3(2.2, 1.6, 0.8), vec3(0.8, 0.4, 0.15), vTail);
+  vec3 col = mix(vec3(1.8, 1.3, 0.7), vec3(0.6, 0.3, 0.1), vTail);
   gl_FragColor = vec4(col, vAlpha);
 }
 `;

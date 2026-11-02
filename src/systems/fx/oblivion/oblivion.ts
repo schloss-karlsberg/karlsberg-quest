@@ -4,7 +4,6 @@
  * through, and a grey ash fog closes in from the edge of the world. Full meter = caught.
  */
 import {
-  AdditiveBlending,
   BackSide,
   Color,
   type Mesh,
@@ -20,6 +19,7 @@ import type { GameContext } from '../../../core/context';
 import { ATMOS_GLSL, atmosphere } from '../../../world/atmosphere';
 import { grainLoop } from '../audio';
 import { makeScreenPass, pointScale } from '../gl';
+import { patchPalace } from '../palacePatch';
 import { lerp, smoothstep } from '../geom';
 import type { Quality } from '../quality';
 import { buildTerrainCloud, palaceCloudGeometry, palaceSamples } from '../shift/pointcloud';
@@ -28,6 +28,25 @@ import type { FxUI } from '../ui';
 import { OblivionSim, oblivionRadius } from './sim';
 
 const ASH = new Color('#9c9a94');
+/** Spatial dissolve: walls between NEAR·R and FAR·R from the player sink by up to DROP m. */
+const DROP = 6;
+const NEAR = '0.3';
+const FAR = '0.8';
+
+const PALACE_PATCH = {
+  id: 'uOblR',
+  decl: /* glsl */ `
+uniform vec3 uOblC;
+uniform float uOblR;
+uniform float uOblOn;
+`,
+  before: [
+    [
+      'if (vWorld.y > stub) discard;',
+      /* glsl */ `if (uOblOn > 0.0) stub -= uOblOn * ${DROP.toFixed(1)} * smoothstep(uOblR * ${NEAR}, uOblR * ${FAR}, length(vWorld.xz - uOblC.xz));`,
+    ] as [string, string],
+  ],
+};
 
 const SHELL_VERT = /* glsl */ `
 varying vec3 vDir;
@@ -61,6 +80,8 @@ void main() {
 const GRAIN_VERT = /* glsl */ `
 uniform float uTime;
 uniform float uCut;
+uniform vec3 uCenter;
+uniform float uR;
 uniform float uAlpha;
 uniform float uScale;
 attribute float aBase;
@@ -68,17 +89,19 @@ attribute float aRand;
 varying float vAlpha;
 void main() {
   float rel = position.y - aBase;
-  // the top layer of what is left comes loose; what is already gone keeps streaming from the cut
-  float loose = smoothstep(uCut - 1.4, uCut - 0.2, rel);
+  // the same cut as the palace shader: lower towards the grey edge
+  float cut = uCut - ${DROP.toFixed(1)} * smoothstep(uR * ${NEAR}, uR * ${FAR}, length(position.xz - uCenter.xz));
+  // the top layer of what is left comes loose; what is already gone stops streaming
+  float loose = smoothstep(cut - 2.4, cut - 0.2, rel) * smoothstep(-1.2, 0.0, cut);
   float life = 3.5 + 4.0 * aRand;
   float age = fract(uTime / life + aRand * 7.31);
   vec3 p = position;
-  p.y = aBase + min(rel, uCut) + age * age * (5.0 + 9.0 * aRand) + age * 1.5;
+  p.y = aBase + min(rel, cut) + age * age * (8.0 + 16.0 * aRand) + age * 2.0;
   p.x += sin(uTime * 0.7 + aRand * 40.0) * age * 1.6;
   p.z += cos(uTime * 0.6 + aRand * 33.0) * age * 1.6;
   vAlpha = uAlpha * loose * smoothstep(0.0, 0.12, age) * (1.0 - age);
   vec4 mv = viewMatrix * vec4(p, 1.0);
-  gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp((0.07 + 0.08 * aRand) * uScale / max(-mv.z, 0.5), 1.0, 4.0);
+  gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp((0.2 + 0.2 * aRand) * uScale / max(-mv.z, 0.5), 1.5, 7.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -88,7 +111,8 @@ varying float vAlpha;
 void main() {
   vec2 c = gl_PointCoord - 0.5;
   if (dot(c, c) > 0.25) discard;
-  gl_FragColor = vec4(vec3(0.62, 0.6, 0.57), vAlpha);
+  float k = 1.0 - dot(c, c) * 2.5;
+  gl_FragColor = vec4(vec3(0.93, 0.91, 0.86) * k, vAlpha);
 }
 `;
 
@@ -104,12 +128,12 @@ varying float vAlpha;
 varying float vShade;
 void main() {
   vec3 p = position;
-  p.y += 0.25;
+  p.y += 0.4;
   float d = length(p.xz - uCenter.xz);
-  vAlpha = uAlpha * smoothstep(uR * 0.45, uR * 0.8, d) * (1.0 - smoothstep(uR * 0.98, uR * 1.02, d));
+  vAlpha = uAlpha * smoothstep(uR * 0.25, uR * 0.55, d) * (1.0 - smoothstep(uR * 0.9, uR * 1.0, d));
   vShade = aShade;
   vec4 mv = viewMatrix * vec4(p, 1.0);
-  gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp(0.16 * uScale / max(-mv.z, 0.5), 1.0, 3.0);
+  gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp(0.3 * uScale / max(-mv.z, 0.5), 1.0, 4.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -120,7 +144,7 @@ varying float vShade;
 void main() {
   vec2 c = gl_PointCoord - 0.5;
   if (dot(c, c) > 0.25) discard;
-  gl_FragColor = vec4(mix(vec3(0.14, 0.15, 0.17), vec3(0.85, 0.85, 0.82), vShade), vAlpha);
+  gl_FragColor = vec4(mix(vec3(0.05, 0.055, 0.07), vec3(0.5, 0.51, 0.5), vShade), vAlpha);
 }
 `;
 
@@ -160,6 +184,7 @@ export class OblivionController {
   /** Smoothed visual amount (0..1) so remembering eases the grey back instead of snapping. */
   vis = 0;
   private stillTime = 0;
+  private patched = false;
 
   constructor(
     private readonly ctx: GameContext,
@@ -199,6 +224,11 @@ export class OblivionController {
       this.sim.seconds = seconds;
       return;
     }
+    const pal = this.ctx.world.palace;
+    pal.uniforms.uOblC ??= { value: new Vector3() };
+    pal.uniforms.uOblR ??= { value: 700 };
+    pal.uniforms.uOblOn ??= { value: 0 };
+    this.patched = patchPalace(pal.material, PALACE_PATCH);
     this.sim = new OblivionSim(seconds);
     this.sim.t = t;
     this.vis = t;
@@ -223,10 +253,10 @@ export class OblivionController {
       new ShaderMaterial({
         vertexShader: GRAIN_VERT,
         fragmentShader: GRAIN_FRAG,
-        uniforms: { uTime: atmosphere.uTime, uCut: { value: 3 }, uAlpha: { value: 0 }, uScale: { value: 500 } },
+        uniforms: { uTime: atmosphere.uTime, uCut: { value: 3 }, uCenter: { value: new Vector3() }, uR: { value: 700 }, uAlpha: { value: 0 }, uScale: { value: 500 } },
         transparent: true,
         depthWrite: false,
-        blending: AdditiveBlending,
+        blending: NormalBlending,
       }),
     );
     this.grains.frustumCulled = false;
@@ -241,7 +271,7 @@ export class OblivionController {
       this.relief.geometry.dispose();
     }
     const hf = w.heightfields['2025'];
-    const g = buildTerrainCloud(hf, hf, x, z, 380, this.quality.high ? 90_000 : 35_000, 21);
+    const g = buildTerrainCloud(hf, hf, x, z, 380, this.quality.high ? 600 : 320, this.quality.high ? 1.03 : 1.05, 21);
     const mat = this.relief?.material as ShaderMaterial | undefined;
     this.relief = new Points(
       g,
@@ -280,6 +310,7 @@ export class OblivionController {
     // restore the era look (fog) and the ruin
     this.ctx.world.applyLook();
     this.ctx.world.palace.setMode(this.ctx.era.info.palace);
+    if (this.ctx.world.palace.uniforms.uOblOn) this.ctx.world.palace.uniforms.uOblOn.value = 0;
     this.vis = 0;
   }
 
@@ -335,10 +366,10 @@ export class OblivionController {
     const L = ctx.world.look;
     const a = atmosphere;
     const k = smoothstep(0.02, 0.6, t);
-    a.uFogDensity.value = Math.max(L.fog.density, lerp(L.fog.density, 2.3 / R, k));
+    a.uFogDensity.value = Math.max(L.fog.density, lerp(L.fog.density, 1.5 / R, k));
     a.uFogColor.value.set(L.fog.color).lerp(ASH, k);
     a.uFogSunColor.value.set(L.fog.sunColor).lerp(ASH, k);
-    a.uFogHeightDensity.value = L.fog.heightDensity * (1 + 3 * t);
+    a.uFogHeightDensity.value = L.fog.heightDensity * (1 + 1.5 * t);
     // the shells: an inner veil of curtains and the opaque edge of the world
     this.shells.forEach((s, i) => {
       s.visible = t > 0.01;
@@ -347,12 +378,22 @@ export class OblivionController {
       (s.material as ShaderMaterial).uniforms.uAlpha!.value = (i === 0 ? 0.97 : 0.4) * smoothstep(0.0, 0.08, t);
     });
     // the ruin dissolves: walls cut lower and lower (they rise as grains from the cut)
-    const cut = lerp(2.6, -3, smoothstep(0.08, 0.95, t));
-    if (ctx.era.info.palace !== 'hidden') ctx.world.palace.uniforms.uRuin!.value = Math.max(1, ruinForCut(cut));
+    const cut = lerp(2.6, 0.6, smoothstep(0.08, 0.95, t));
+    const pal = ctx.world.palace;
+    if (ctx.era.info.palace !== 'hidden') {
+      pal.uniforms.uRuin!.value = Math.max(1, ruinForCut(cut));
+      if (this.patched) {
+        (pal.uniforms.uOblC!.value as Vector3).copy(cam);
+        pal.uniforms.uOblR!.value = R;
+        pal.uniforms.uOblOn!.value = smoothstep(0.02, 0.12, t);
+      }
+    }
     const scale = pointScale(ctx.camera, ctx.renderer);
     if (this.grains) {
       const u = (this.grains.material as ShaderMaterial).uniforms;
       u.uCut!.value = Math.min(4.2, cut + 0.6);
+      (u.uCenter!.value as Vector3).copy(cam);
+      u.uR!.value = this.patched ? R : 1e6;
       u.uAlpha!.value = smoothstep(0.02, 0.15, t) * 0.9;
       u.uScale!.value = scale;
       this.grains.visible = ctx.era.info.palace !== 'hidden';
@@ -363,11 +404,11 @@ export class OblivionController {
       const u = (this.relief.material as ShaderMaterial).uniforms;
       (u.uCenter!.value as Vector3).copy(cam);
       u.uR!.value = R;
-      u.uAlpha!.value = 0.55 * smoothstep(0.05, 0.3, t);
+      u.uAlpha!.value = 0.75 * smoothstep(0.05, 0.3, t);
       u.uScale!.value = scale;
     }
     const vu = (this.vignette.material as ShaderMaterial).uniforms;
-    vu.uAmount!.value = Math.pow(t, 1.3);
+    vu.uAmount!.value = 0.85 * Math.pow(t, 1.6);
     this.vignette.visible = t > 0.01;
     this.ui.setGauge('oblivion', sim.t);
     this.loop?.setIntensity(0.25 + 0.75 * t);

@@ -241,6 +241,12 @@ export function burnIntensity(u: FireUnit, t: number, seconds = FIRE_BASE_SECOND
   return v;
 }
 
+/** Soot on the walls 0..1: blackens over the first 45 s (300 s base) of burning. */
+export function sootAt(u: FireUnit, t: number, seconds = FIRE_BASE_SECONDS): number {
+  const k = seconds / FIRE_BASE_SECONDS;
+  return Math.max(0, Math.min(1, (t - u.ignite * k) / (45 * k)));
+}
+
 /** Smoke density 0..1 inside a unit. */
 export function smokeDensity(u: FireUnit, t: number, seconds = FIRE_BASE_SECONDS): number {
   const k = seconds / FIRE_BASE_SECONDS;

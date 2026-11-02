@@ -73,14 +73,16 @@ export function buildEmitters(units: FireUnit[], footprints: Footprint[], opts: 
         nz = -nz;
       }
       const count = Math.max(1, Math.floor((len - 1.2) / winSp));
+      // the facade is the building outline; room walls sit up to a wall's thickness inside it
+      const out = u.kind === 'room' && pointInPolygon(mx, mz, ring) ? Math.min(1.6, distToOutline(mx, mz, ring)) : 0;
       for (const [f0, f1] of levels) {
         const hgt = f1 - f0;
         const wh = Math.min(2.5, Math.max(1.2, hgt * 0.52));
         const wy = f0 + Math.min(hgt * 0.5, 0.9 + wh / 2);
         for (let k = 0; k < count; k++) {
           const s = (k + 0.5) / count;
-          const x = ax + (bx - ax) * s;
-          const z = az + (bz - az) * s;
+          const x = ax + (bx - ax) * s + nx * out;
+          const z = az + (bz - az) * s + nz * out;
           windows.push(x + nx * 0.14, wy, z + nz * 0.14, nx, nz, 1.25, wh, ui);
           // a flame licking out of every other window, up the facade
           if (r() < 0.55) flames.push(x + nx * 0.6, wy + wh * 0.35, z + nz * 0.6, 1.8 + r() * 0.9, 3.2 + r() * 2.4, ui, r(), 1);

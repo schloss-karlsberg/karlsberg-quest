@@ -42,6 +42,8 @@ async function place(page: Page, v: { era: string; x: number; z: number; yaw: nu
 }
 
 test.describe('fx', () => {
+  // software WebGL: the point-cloud and fire scenes take a few seconds per frame
+  test.describe.configure({ timeout: 300_000 });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.fx !== undefined, null, { timeout: 90_000 });
@@ -50,8 +52,8 @@ test.describe('fx', () => {
 
   test('era shift: today → 1789, the palace rises out of the LiDAR ground', async ({ page }) => {
     const errors = trackErrors(page);
-    // Ehrenhof clearing (bible anchor TF-01), looking east at the Corps de logis
-    await place(page, { era: 'today', x: 1190, z: -1112, yaw: 96, pitch: 4 });
+    // west of the Ehrenhof (bible anchor TF-01), looking east at where the Corps de logis stood
+    await place(page, { era: 'today', x: 1150, z: -1118, yaw: 88, pitch: 4 });
     await shot(page, 'shift-0-before');
     const events: string[] = await page.evaluate(() => {
       const k = window.kq!;
@@ -97,7 +99,15 @@ test.describe('fx', () => {
       k.fx!.shiftAt(1.2);
     });
     await shot(page, 'shift-air-cloud');
-    await page.evaluate(() => window.kq!.fx!.shiftAt(2.7));
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.fx!.shiftAt(2.7);
+      // the midpoint re-grounds the player: lift the camera again
+      for (let i = 0; i < 2; i++) {
+        k.ctx.player.position.y = k.ctx.world.heightAt(1110, -1190) + 45;
+        k.step(1);
+      }
+    });
     await shot(page, 'shift-air-ruin');
     const r = await page.evaluate(async () => {
       const k = window.kq!;
@@ -200,14 +210,14 @@ test.describe('fx', () => {
     await page.evaluate(() => window.kq!.step(20));
     await shot(page, 'fire-3-ehrenhof');
     // the whole palace from above the gardens
-    await place(page, { era: '1793-07', x: 1150, z: -1260, yaw: 55, pitch: -12, lift: 55 });
+    await place(page, { era: '1793-07', x: 1100, z: -1000, yaw: 50, pitch: -15, lift: 60 });
     await page.evaluate(() => {
       const k = window.kq!;
       k.fx!.fireTime(270);
       k.step(30);
-      k.ctx.player.position.y = k.ctx.world.heightAt(1150, -1260) + 55;
+      k.ctx.player.position.y = k.ctx.world.heightAt(1100, -1000) + 60;
       k.step(1);
-      k.ctx.player.position.y = k.ctx.world.heightAt(1150, -1260) + 55;
+      k.ctx.player.position.y = k.ctx.world.heightAt(1100, -1000) + 60;
     });
     await shot(page, 'fire-4-air');
     // smoke: stand inside the burning Corps de logis until the smoke throws you back
@@ -218,7 +228,7 @@ test.describe('fx', () => {
       k.fx!.fireTime(60);
       k.ctx.world.collider.enabled = false;
       k.teleport(1262, -1126, 90, 0);
-      for (let i = 0; i < 40 && by.length === 0; i++) k.step(30);
+      for (let i = 0; i < 6 && by.length === 0; i++) k.step(600);
       return { by, smoke: k.fx!.state().fire.smoke };
     });
     await shot(page, 'fire-5-smoke');
@@ -235,7 +245,7 @@ test.describe('fx', () => {
 
   test('Steinfraß: the ruin dissolves, the grey closes in, oblivion catches the player', async ({ page }) => {
     const errors = trackErrors(page);
-    await place(page, { era: '1796', x: 1190, z: -1112, yaw: 96, pitch: 4 });
+    await place(page, { era: '1796', x: 1200, z: -1112, yaw: 92, pitch: 2 });
     await page.evaluate(() => {
       const k = window.kq!;
       k.ctx.events.emit('threat:configure', { kind: 'oblivion', active: true, seconds: 120 });
@@ -258,7 +268,7 @@ test.describe('fx', () => {
       k.fx!.oblivionT(0.9);
       k.ctx.events.emit('clue:found', { id: 'x', kind: 'object' });
       const afterClue = k.fx!.state().oblivion.t;
-      for (let i = 0; i < 60 && by.length === 0; i++) k.step(60);
+      for (let i = 0; i < 8 && by.length === 0; i++) k.step(450);
       return { by, afterClue, prog: prog.length };
     });
     expect(r.afterClue).toBeLessThan(0.8);

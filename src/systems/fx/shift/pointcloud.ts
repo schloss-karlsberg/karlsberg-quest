@@ -7,34 +7,50 @@ import { BufferAttribute, BufferGeometry, Float32BufferAttribute, type Instanced
 import type { Heightfield } from '../../../world/heightfield';
 import { rng } from '../geom';
 
-/** Terrain points around (cx, cz): denser near the centre. Heights of both eras for the morph. */
-export function buildTerrainCloud(hfA: Heightfield, hfB: Heightfield, cx: number, cz: number, radius: number, count: number, seed = 7): BufferGeometry {
+/**
+ * Terrain points around (cx, cz) in the concentric-ring pattern of a terrestrial laser scanner
+ * standing at the player: rings grow geometrically (`ringGrowth`) from 2 m out to `radius`, each
+ * with `perRing` points, so density falls off with distance like a real scan. Heights of both eras
+ * are stored for the morph; a strong hillshade makes the relief read like a LiDAR viewer.
+ */
+export function buildTerrainCloud(
+  hfA: Heightfield,
+  hfB: Heightfield,
+  cx: number,
+  cz: number,
+  radius: number,
+  perRing: number,
+  ringGrowth = 1.03,
+  seed = 7,
+): BufferGeometry {
   const r = rng(seed);
+  const radii: number[] = [];
+  for (let rr = 2; rr <= radius; rr *= ringGrowth) radii.push(rr);
+  const count = radii.length * perRing;
   const pos = new Float32Array(count * 3);
   const h2 = new Float32Array(count);
   const shade = new Float32Array(count);
   const rand = new Float32Array(count);
   const b = hfA.bounds;
   let n = 0;
-  for (let i = 0; i < count * 2 && n < count; i++) {
-    const rr = radius * Math.pow(r(), 0.75);
-    const a = r() * Math.PI * 2;
-    const x = cx + Math.cos(a) * rr;
-    const z = cz + Math.sin(a) * rr;
-    if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
-    pos[n * 3] = x;
-    pos[n * 3 + 1] = hfA.heightAt(x, z);
-    pos[n * 3 + 2] = z;
-    h2[n] = hfB.heightAt(x, z);
-    // multi-directional hillshade with 2.5× exaggeration: relief reads like a LiDAR viewer
-    const [nx, ny, nz] = hfA.normalAt(x, z);
-    const ex = nx * 2.5;
-    const ez = nz * 2.5;
-    const len = Math.hypot(ex, ny, ez);
-    // light from the north-west, 45° up
-    shade[n] = Math.max(0, Math.min(1, (-0.5 * ex + 0.707 * ny - 0.5 * ez) / len));
-    rand[n] = r();
-    n++;
+  for (let k = 0; k < radii.length; k++) {
+    const rr = radii[k]!;
+    const phase = r() * Math.PI * 2;
+    for (let i = 0; i < perRing; i++) {
+      const a = phase + (i / perRing) * Math.PI * 2;
+      // a scanner's rings are slightly wobbly where the beam hits uneven ground
+      const rj = rr * (1 + (r() - 0.5) * 0.004);
+      const x = cx + Math.cos(a) * rj;
+      const z = cz + Math.sin(a) * rj;
+      if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
+      pos[n * 3] = x;
+      pos[n * 3 + 1] = hfA.heightAt(x, z);
+      pos[n * 3 + 2] = z;
+      h2[n] = hfB.heightAt(x, z);
+      shade[n] = hillshade(hfA, x, z);
+      rand[n] = r();
+      n++;
+    }
   }
   const g = new BufferGeometry();
   g.setAttribute('position', new BufferAttribute(pos.subarray(0, n * 3), 3));
@@ -43,6 +59,15 @@ export function buildTerrainCloud(hfA: Heightfield, hfB: Heightfield, cx: number
   g.setAttribute('aRand', new BufferAttribute(rand.subarray(0, n), 1));
   g.boundingSphere = null;
   return g;
+}
+
+/** Hillshade 0..1 with 4× vertical exaggeration, light from the north-west 45° up. */
+export function hillshade(hf: Pick<Heightfield, 'normalAt'>, x: number, z: number): number {
+  const [nx, ny, nz] = hf.normalAt(x, z);
+  const ex = nx * 4;
+  const ez = nz * 4;
+  const len = Math.hypot(ex, ny, ez);
+  return Math.max(0, Math.min(1, (-0.5 * ex + 0.707 * ny - 0.5 * ez) / len));
 }
 
 export interface PalaceSamples {
