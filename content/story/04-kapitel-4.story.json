@@ -1,0 +1,105 @@
+{
+  "chapter": "k4",
+  "order": 4,
+  "title_de": "Der Steinbruch",
+  "sub_de": "Kapitel 4 · 1796 → 1840 → heute",
+  "era": "1796",
+  "placeholder": true,
+  "start": "k4_0",
+  "next": "enden",
+  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "beats": [
+    {
+      "id": "k4_0",
+      "title_de": "Das Geständnis, Teil 1",
+      "placeholder": true,
+      "enter": [
+        { "do": "look", "time": "night" },
+        { "do": "say", "id": "laub.k4.gestaendnis_1", "speaker": "laub", "text": "Ich habe Ihnen etwas verschwiegen. Ich bin nicht verschollen, weil ich mich verlaufen habe. Ich war am alten Forsthaus, Standpunkt siebzehn.", "delay": 2.5 },
+        { "do": "say", "id": "laub.k4.gestaendnis_1b", "speaker": "laub", "text": "Am Tag vorher hatte ich in einem Graben eine Seite gefunden, alt, angesengt, mit Namen drauf. ‚Was der Hof schuldig blieb.‘" },
+        { "do": "say", "id": "laub.k4.gestaendnis_1c", "speaker": "laub", "text": "Ich dachte, wenn ich vermesse, wo die Seiten liegen, finde ich den Rest. Ein Geometer findet alles, wenn man ihm genug Standpunkte gibt." },
+        { "do": "anchor", "to": "1796", "x": 497, "z": -900, "r": 25 },
+        { "do": "objective", "id": "k4.taleingang", "text": "Zu den Wachhäusern am Taleingang. Q – Zeitwechsel nach 1796", "x": 497, "z": -900, "delay": 1 }
+      ],
+      "complete": { "era": "1796" }
+    },
+    {
+      "id": "k4_1",
+      "title_de": "Der Taleingang",
+      "placeholder": true,
+      "checkpoint": "k4_0",
+      "enter": [
+        { "do": "say", "id": "laub.k4.taleingang", "speaker": "laub", "text": "1796. Das Schloss ist drei Jahre tot, und die Leute holen sich ihr Geld zurück. In Steinen.", "delay": 2.5 },
+        { "do": "objective", "id": "k4.baumagazin", "text": "Das Baumagazin: das einzige Gebäude, das ganz steht", "x": 511, "z": -827, "delay": 1 }
+      ],
+      "complete": { "enter": { "x": 511, "z": -827, "r": 25, "era": "1796" } }
+    },
+    {
+      "id": "k4_2",
+      "title_de": "Das Baumagazin",
+      "placeholder": true,
+      "checkpoint": "k4_0",
+      "enter": [
+        { "do": "say", "id": "soll.k4.01", "speaker": "soll", "text": "Ah. Sie. Sie sind auch nicht jünger geworden. Doch, Sie schon." },
+        { "do": "anchor", "to": "1796", "x": 1216, "z": -1114, "r": 35 },
+        { "do": "objective", "id": "k4.ehrenhof", "text": "Hinauf zum Ehrenhof – der Steinplatz", "x": 1216, "z": -1114, "delay": 3 }
+      ],
+      "complete": { "enter": { "x": 1216, "z": -1114, "r": 35, "era": "1796" } }
+    },
+    {
+      "id": "k4_3",
+      "title_de": "Die Steine lösen sich auf",
+      "placeholder": true,
+      "checkpoint": "k4_0",
+      "enter": [
+        { "do": "threat", "kind": "oblivion", "active": true, "intensity": 0.5, "center": { "x": 1216, "z": -1114 }, "radius": 200, "seconds": 300 },
+        { "do": "say", "id": "laub.k4.steinfrass", "speaker": "laub", "text": "Das ist nicht das Feuer. Das ist schlimmer. Das ist, wenn keiner mehr weiß, wo etwas stand. Dann frisst es der Berg.", "delay": 4 },
+        { "do": "say", "id": "marlene.k4.ruf", "speaker": "marlene", "text": "{Name}? {Name}! Die Suppe wird kalt!", "delay": 6 },
+        { "do": "objective", "id": "k4.brunnen", "text": "Nach Südosten: der Brunnen am alten Forsthaus, Standpunkt 17 (E)", "x": 1386, "z": -1477, "delay": 1 }
+      ],
+      "complete": { "any": [{ "event": "echo:end", "match": { "id": "echo.k4.laub_1840" } }, { "enter": { "x": 1386, "z": -1477, "r": 12 } }] },
+      "exit": [
+        { "do": "say", "id": "laub.k4.gestaendnis_2", "speaker": "laub", "text": "Sie haben es gesehen. Ich habe mich nicht hingelegt. Ich dachte, sie reißen mich. Sie wollten mich stellen, und ich bin gerannt, in den Nebel hinein, zu weit, bis dahin, wo nichts mehr ist.", "delay": 2 },
+        { "do": "say", "id": "laub.k4.gestaendnis_2b", "speaker": "laub", "text": "Seitdem bin ich in diesem Messing. Mein Tagegeld für den letzten Tag ist übrigens auch noch offen." }
+      ]
+    },
+    {
+      "id": "k4_4",
+      "title_de": "Die Meute treibt",
+      "placeholder": true,
+      "checkpoint": "k4_3",
+      "enter": [
+        { "do": "threat", "kind": "oblivion", "active": false },
+        { "do": "shift", "to": "today", "reason": "oblivion" },
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.3, "center": { "x": 1200, "z": -1400 }, "radius": 400, "delay": 2 },
+        { "do": "say", "id": "laub.k4.erkenntnis", "speaker": "laub", "text": "Sehen Sie, wo sie stehen? Nicht vor Ihnen. Zwischen Ihnen und dem Grau. Die jagen Sie nicht. Die treiben Sie.", "delay": 6 },
+        { "do": "objective", "id": "k4.zwinger", "text": "Durch den Hohlweg und die Allee nach Norden – zum Zwinger", "x": 1216, "z": -1571, "delay": 1 }
+      ],
+      "complete": { "all": [{ "era": "today" }, { "enter": { "x": 1216, "z": -1571, "r": 20 } }, { "any": [{ "confirmed": { "prefix": "entry.k4.", "n": 6 } }, { "caseComplete": "case.k4" }, { "flag": "debug.k4" }] }] }
+    },
+    {
+      "id": "k4_5",
+      "title_de": "Sich stellen",
+      "placeholder": true,
+      "checkpoint": "k4_4",
+      "enter": [
+        { "do": "sound", "sound": "horn", "signal": "sammeln", "x": 1216, "z": -1600, "caption": "[Horn: drei lange Töne – Sammeln]", "delay": 1 },
+        { "do": "say", "id": "laub.k4.finale_1", "speaker": "laub", "text": "Jetzt. Hinlegen. Und machen Sie das Licht an. Die sollen sehen, dass wir nicht weglaufen.", "delay": 3 },
+        { "do": "prompt", "key": "X", "text": "hinlegen · L: Laterne an" }
+      ],
+      "complete": { "all": [{ "stance": "prone" }, { "lantern": true }] },
+      "exit": [
+        { "do": "prompt", "key": null, "text": null },
+        { "do": "threat", "kind": "pack", "active": false },
+        { "do": "cue", "id": "k4.finale" },
+        { "do": "say", "id": "laub.k4.finale_2", "speaker": "laub", "text": "Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Pünktlich ist auch nur ein Wort.", "delay": 5 },
+        { "do": "say", "id": "jost.k4.01", "speaker": "jost_alt", "text": "Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.", "delay": 3 },
+        { "do": "say", "id": "jost.k4.02", "speaker": "jost_alt", "text": "Die Meute reißt nicht. Sie stellt. Das hab ich dir gesagt, da war ich dreizehn." },
+        { "do": "say", "id": "jost.k4.05", "speaker": "jost_alt", "text": "Nur den Geometer nicht. Der hat sich nicht hingelegt." },
+        { "do": "say", "id": "jost.k4.07", "speaker": "jost_alt", "text": "Da. Abblasen musst du. Ich kann's nicht. Ich hab's nie gelernt, ich kann nur anblasen." },
+        { "do": "give", "item": "item.horn", "toast": "Das Horn, das Mundstück zuerst" },
+        { "do": "flag", "set": { "flag.k4_finale": true } }
+      ]
+    }
+  ]
+}

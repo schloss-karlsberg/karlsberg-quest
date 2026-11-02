@@ -7,6 +7,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ContentPack } from '../src/content/types.ts';
 import { type LoadedPack, formatIssues, validateContent } from '../src/content/validate.ts';
+import { checkStories } from '../src/systems/story/validate-cli.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,6 +49,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (parseErrors.length) console.log(parseErrors.join('\n'));
   if (out) console.log(out);
   console.log(`\n${packs.length} pack(s): ${Object.entries(r.stats).map(([k, v]) => `${v} ${k}`).join(', ')}`);
+  const story = checkStories(ROOT, packs, !!process.env.STORY_VERBOSE);
+  if (!story.ok) {
+    console.log('✗ story files invalid');
+    process.exit(1);
+  }
   if (!r.ok || parseErrors.length) {
     console.log(`✗ content invalid: ${r.errors.length + parseErrors.length} error(s), ${r.warnings.length} warning(s)`);
     process.exit(1);

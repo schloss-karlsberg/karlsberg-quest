@@ -1,0 +1,98 @@
+{
+  "chapter": "k2",
+  "order": 2,
+  "title_de": "Die Flucht",
+  "sub_de": "Kapitel 2 · Nacht vom 9. auf den 10. Februar 1793",
+  "era": "1793-02",
+  "placeholder": true,
+  "start": "k2_0",
+  "next": "k3",
+  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "beats": [
+    {
+      "id": "k2_0",
+      "title_de": "Feldstation",
+      "placeholder": true,
+      "enter": [
+        { "do": "look", "time": "day" },
+        { "do": "say", "id": "marlene.k2.morgen", "speaker": "marlene", "text": "Morgen. Frost heute Nacht, die Pfützen sind zu. Deine Bussole war beschlagen, von innen. Das geht doch gar nicht.", "delay": 2 },
+        { "do": "say", "id": "laub.k2.start", "speaker": "laub", "text": "Februar. Ich mag den Februar nicht. Im November geht man verloren, im Februar wird man gesucht.", "delay": 1.5 },
+        { "do": "anchor", "to": "1793-02", "x": 1680, "z": -400, "r": 30 },
+        { "do": "objective", "id": "k2.zaun", "text": "Zum Parkzaun am Carlsluster Torhaus. Q – Zeitwechsel", "x": 1680, "z": -400, "delay": 1 }
+      ],
+      "complete": { "era": "1793-02" }
+    },
+    {
+      "id": "k2_1",
+      "title_de": "Der Parkzaun",
+      "placeholder": true,
+      "checkpoint": "k2_0",
+      "enter": [
+        { "do": "objective", "id": "k2.allee", "text": "Der Spur im Raureif die Apfelallee hinauf folgen", "x": 1500, "z": -520, "delay": 2 }
+      ],
+      "complete": { "enter": { "x": 1500, "z": -520, "r": 18, "era": "1793-02" } }
+    },
+    {
+      "id": "k2_2",
+      "title_de": "Augen im Nebel",
+      "placeholder": true,
+      "checkpoint": "k2_0",
+      "enter": [
+        { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1560, "z": -480, "caption": "[Horn: ein langer Ton]" },
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.4, "center": { "x": 1450, "z": -620 }, "radius": 250, "delay": 1 },
+        { "do": "objective", "id": "k2.wachhaus", "text": "Leise weiter – zum Wachhaus am Ehrenhof", "x": 1171, "z": -1123, "delay": 2 }
+      ],
+      "complete": { "enter": { "x": 1171, "z": -1123, "r": 10, "era": "1793-02" } }
+    },
+    {
+      "id": "k2_3",
+      "title_de": "Das Schreibkabinett",
+      "placeholder": true,
+      "checkpoint": "k2_0",
+      "enter": [
+        { "do": "threat", "kind": "pack", "active": false },
+        { "do": "objective", "id": "k2.kabinett", "text": "Zur Tür des Schreibkabinetts (E: lauschen)", "x": 1269, "z": -1110 }
+      ],
+      "complete": { "any": [{ "event": "echo:end", "match": { "id": "echo.k2.warnung" } }, { "enter": { "x": 1269, "z": -1110, "r": 6, "era": "1793-02" } }] },
+      "exit": [
+        { "do": "anchor", "to": "1793-02", "x": 1192, "z": -1115, "r": 35 },
+        { "do": "say", "id": "laub.k2.sichern", "speaker": "laub", "text": "Wenn Sie jetzt zurückgehen, behalten Sie, was Sie gefunden haben. Wenn Sie bleiben, sehen Sie die Abfahrt. Ich würde zurückgehen. Ich bin damals geblieben.", "delay": 2 }
+      ]
+    },
+    {
+      "id": "k2_4",
+      "title_de": "Die Parforcejagd",
+      "placeholder": true,
+      "checkpoint": "k2_3",
+      "enter": [
+        { "do": "objective", "id": "k2.abfahrt", "text": "Die Abfahrt im Ehrenhof", "x": 1192, "z": -1115, "delay": 1 }
+      ],
+      "on": [
+        {
+          "id": "jagd",
+          "when": { "enter": { "x": 1192, "z": -1115, "r": 30, "era": "1793-02" } },
+          "do": [
+            { "do": "sound", "sound": "horn", "signal": "faehrte", "x": 1216, "z": -1571, "caption": "[Horn: zwei kurze Töne – sie haben eine Fährte]", "delay": 8 },
+            { "do": "threat", "kind": "pack", "active": true, "intensity": 0.85, "center": { "x": 1200, "z": -1200 }, "radius": 500 },
+            { "do": "objective", "id": "k2.damm", "text": "Über den Damm des Karlsbergweihers – fließendes Wasser hält den Pikeur auf", "x": 819, "z": -875 }
+          ]
+        }
+      ],
+      "complete": { "enter": { "x": 819, "z": -875, "r": 25, "era": "1793-02" } },
+      "exit": [{ "do": "threat", "kind": "pack", "active": false }]
+    },
+    {
+      "id": "k2_5",
+      "title_de": "Feldstation",
+      "placeholder": true,
+      "enter": [
+        { "do": "objective", "id": "k2.ende", "text": "Zurück (Q halten). Die Fallseite „Die Flucht“ fertigstellen." }
+      ],
+      "complete": { "all": [{ "era": "today" }, { "any": [{ "caseComplete": "case.k2" }, { "confirmed": { "prefix": "entry.k2.", "n": 6 } }, { "flag": "debug.k2" }] }] },
+      "exit": [
+        { "do": "say", "id": "laub.k2.ende", "speaker": "laub", "text": "Vierundzwanzig Wochen und einen Tag später.", "delay": 1.5, "ms": 3500 },
+        { "do": "say", "id": "laub.k2.ende.b", "speaker": "laub", "text": "Im Juli brennt Stroh am besten.", "delay": 1.2, "ms": 4500 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,203 @@
+/**
+ * Field-station hub overlay (field-book spread): Chronik pin board, radio (Marlene), shelf
+ * (collections), map table (chapter select / continue), field bed (rest = save) and the drawer.
+ * Every use emits `hub:use { item }` (story-private event) so beats can react to it.
+ */
+import { t } from '../../../i18n';
+import { h, svg } from '../../../ui/dom';
+import type { ModalHandle, ModalManager } from '../../../ui/modal';
+import { portraitSvg } from '../dialogue/portraits';
+import type { HubItem } from '../types';
+
+export interface HubChapter {
+  id: string;
+  title: string;
+  sub: string;
+  unlocked: boolean;
+  completed: boolean;
+  current: boolean;
+  placeholder: boolean;
+}
+
+export interface HubDeps {
+  modals: ModalManager;
+  use(item: HubItem): void;
+  chapters(): HubChapter[];
+  currentBeatTitle(): string;
+  goto(chapter: string): void;
+  rest(): boolean;
+  counts(): { codex: number; codexTotal: number; clues: number; nouns: number; items: number; confirmed: number };
+  /** Next radio line (Marlene) or null. */
+  radioLine(): string | null;
+  drawerState(): 'full' | 'empty';
+  blip(): void;
+  reducedMotion(): boolean;
+  onClose(): void;
+}
+
+const ICON: Record<HubItem, string> = {
+  chronik: `<svg viewBox="0 0 64 64"><rect x="6" y="8" width="52" height="44" rx="2" fill="#b98f5a" stroke="#2a2118" stroke-width="1.6"/><rect x="6" y="8" width="52" height="44" fill="url(#kqs-h1)" opacity=".35"/><rect x="11" y="13" width="17" height="21" fill="#efe6d0" stroke="#2a2118" transform="rotate(-6 19 23)"/><rect x="33" y="15" width="19" height="15" fill="#efe6d0" stroke="#2a2118" transform="rotate(4 42 22)"/><rect x="24" y="33" width="20" height="15" fill="#e3d4b0" stroke="#2a2118" transform="rotate(-3 34 40)"/><path d="M19 16L42 18L34 36L19 16" fill="none" stroke="#a33a24" stroke-width="1.1"/><g fill="#a33a24"><circle cx="19" cy="16" r="1.8"/><circle cx="42" cy="18" r="1.8"/><circle cx="34" cy="36" r="1.8"/></g><path d="M14 20h9M14 24h8M14 28h10M36 21h12M36 25h9" stroke="#2a2118" stroke-width=".6"/></svg>`,
+  radio: '',
+  shelf: `<svg viewBox="0 0 64 64"><path d="M8 6v52M56 6v52M8 22h48M8 40h48M8 57h48" stroke="#2a2118" stroke-width="2" fill="none"/><g stroke="#2a2118" stroke-width=".9"><rect x="11" y="9" width="5" height="13" fill="#7c3022"/><rect x="16" y="11" width="4" height="11" fill="#45563a"/><rect x="20" y="8" width="6" height="14" fill="#b58b3d"/><rect x="27" y="12" width="3" height="10" fill="#efe6d0" transform="rotate(12 28 17)"/><rect x="38" y="27" width="14" height="13" fill="#efe6d0"/><rect x="12" y="29" width="5" height="11" fill="#2d4d6b"/><rect x="17" y="27" width="5" height="13" fill="#7a5634"/><circle cx="46" cy="16" r="5" fill="url(#kqs-brass)"/><rect x="12" y="46" width="22" height="11" fill="url(#kqs-h2)"/><rect x="40" y="47" width="10" height="10" rx="2" fill="#c3cba6"/></g></svg>`,
+  map: `<svg viewBox="0 0 64 64"><path d="M6 40h52M12 40l-4 18M52 40l4 18" stroke="#2a2118" stroke-width="2" fill="none"/><path d="M10 38L16 18H52L56 38Z" fill="#efe6d0" stroke="#2a2118" stroke-width="1.3"/><path d="M18 24c8 2 10 8 18 6s10 4 16 3M16 31c6-2 12 3 18 1M30 20l-4 18M40 20l2 18" stroke="#2a2118" stroke-width=".6" fill="none"/><path d="M38 26h6v5h-6z" fill="#a33a24" opacity=".7"/><path d="M24 12l8 22M24 12l-4 22" stroke="#2a2118" stroke-width="1.4"/><circle cx="24" cy="12" r="2" fill="url(#kqs-brass)" stroke="#2a2118"/></svg>`,
+  bed: `<svg viewBox="0 0 64 64"><path d="M6 46h52M8 46v10M56 46v10M8 34v12" stroke="#2a2118" stroke-width="2" fill="none"/><path d="M8 36h48v10H8z" fill="#45563a" stroke="#2a2118" stroke-width="1.2"/><path d="M8 36h48v10H8z" fill="url(#kqs-h2)" opacity=".5"/><ellipse cx="17" cy="33" rx="8" ry="4" fill="#efe6d0" stroke="#2a2118"/><path d="M30 34c6-3 14-3 26 0" stroke="#2a2118" stroke-width=".8" fill="none"/><path d="M44 20c2-4 7-4 8 0" stroke="#2a2118" stroke-width=".8" fill="none"/><text x="46" y="18" font-family="Caveat, cursive" font-size="9" fill="#2a2118">z</text><text x="51" y="12" font-family="Caveat, cursive" font-size="7" fill="#2a2118">z</text></svg>`,
+  drawer: `<svg viewBox="0 0 64 64"><path d="M6 20h52v34H6z" fill="#7a5634" stroke="#2a2118" stroke-width="1.6"/><path d="M6 20h52v34H6z" fill="url(#kqs-h1)" opacity=".35"/><path d="M10 28h44v22H10z" fill="#6f4a2c" stroke="#2a2118"/><rect x="26" y="36" width="12" height="4" rx="2" fill="url(#kqs-brass)" stroke="#2a2118"/><path d="M10 20l6-10h32l6 10" fill="#5a3c22" stroke="#2a2118"/><circle class="kqs-drawer-compass" cx="32" cy="15" r="6" fill="url(#kqs-brass)" stroke="#2a2118"/></svg>`,
+};
+
+export class HubOverlay {
+  private m: ModalHandle | null = null;
+  private radioTimer = 0;
+
+  constructor(private readonly d: HubDeps) {}
+
+  get open(): boolean {
+    return !!this.m && !this.m.closed;
+  }
+
+  show(): void {
+    if (this.open) return;
+    this.m = this.d.modals.open({ title: t('story.hub.title'), wide: true, className: 'kqs-hub', onClose: () => this.closed() });
+    this.m.el.dataset.testid = 'hub';
+    this.main();
+  }
+
+  close(): void {
+    this.m?.close();
+  }
+
+  private closed(): void {
+    window.clearInterval(this.radioTimer);
+    this.m = null;
+    this.d.onClose();
+  }
+
+  private tile(item: HubItem, label: string, status: string, onClick: () => void): HTMLElement {
+    const icon = item === 'radio' ? portraitSvg('radio') : ICON[item];
+    return h('button.kqs-hub-tile', { 'data-testid': `hub-${item}`, onclick: onClick }, [
+      h('span.kqs-hub-icon', svg(icon)),
+      h('span.kqs-hub-label', label),
+      h('span.kqs-hub-status', status),
+    ]);
+  }
+
+  private main(): void {
+    const m = this.m;
+    if (!m) return;
+    const c = this.d.counts();
+    const transcript = h('div.kqs-hub-radio', { 'data-testid': 'hub-transcript' }, [h('span.kqs-hub-radio-hint', t('story.hub.radio.idle'))]);
+    const grid = h('div.kqs-hub-grid', [
+      this.tile('chronik', t('story.hub.chronik'), t('story.hub.chronik.status', { n: c.confirmed }), () => this.d.use('chronik')),
+      this.tile('radio', t('story.hub.radio'), t('story.hub.radio.status'), () => {
+        this.d.use('radio');
+        this.radio(transcript);
+      }),
+      this.tile('shelf', t('story.hub.shelf'), t('story.hub.shelf.status', { n: c.codex, total: c.codexTotal }), () => {
+        this.d.use('shelf');
+        this.shelf();
+      }),
+      this.tile('map', t('story.hub.map'), this.d.currentBeatTitle(), () => {
+        this.d.use('map');
+        this.mapTable();
+      }),
+      this.tile('bed', t('story.hub.bed'), t('story.hub.bed.status'), () => {
+        this.d.use('bed');
+        const ok = this.d.rest();
+        bed.querySelector('.kqs-hub-status')!.textContent = ok ? t('story.hub.bed.saved') : t('story.hub.bed.nosave');
+        bed.classList.add('kqs-done');
+      }),
+      this.tile('drawer', t('story.hub.drawer'), this.d.drawerState() === 'full' ? t('story.hub.drawer.full') : t('story.hub.drawer.empty'), () => {
+        this.d.use('drawer');
+        drawer.classList.add('kqs-done');
+        drawer.querySelector('.kqs-hub-status')!.textContent = t('story.hub.drawer.taken');
+      }),
+    ]);
+    const bed = grid.querySelector('[data-testid="hub-bed"]') as HTMLElement;
+    const drawer = grid.querySelector('[data-testid="hub-drawer"]') as HTMLElement;
+    if (this.d.drawerState() === 'empty') drawer.classList.add('kqs-empty');
+    m.setBody([h('p.kqs-hub-sub', t('story.hub.sub')), grid, transcript, h('div.actions', h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'hub-leave' }, t('story.hub.leave')))], t('story.hub.title'));
+  }
+
+  private radio(box: HTMLElement): void {
+    const line = this.d.radioLine();
+    window.clearInterval(this.radioTimer);
+    const text = line ?? t('story.hub.radio.silent');
+    const who = h('span.kqs-who', line ? t('story.hub.radio.marlene') : '');
+    const span = h('span.kqs-typed');
+    box.replaceChildren(who, span);
+    if (this.d.reducedMotion()) {
+      span.textContent = text;
+      return;
+    }
+    let i = 0;
+    this.radioTimer = window.setInterval(() => {
+      i = Math.min(text.length, i + 2);
+      span.textContent = text.slice(0, i);
+      if (line && i % 6 === 0) this.d.blip();
+      if (i >= text.length) window.clearInterval(this.radioTimer);
+    }, 40);
+  }
+
+  private shelf(): void {
+    const m = this.m;
+    if (!m) return;
+    const c = this.d.counts();
+    const row = (k: string, v: string) => h('div.kqs-shelf-row', [h('span', k), h('span.kqs-shelf-val', v)]);
+    m.setBody(
+      [
+        h('p.kqs-hub-sub', t('story.hub.shelf.sub')),
+        h('div.kqs-shelf', [
+          row(t('story.hub.shelf.codex'), `${c.codex} / ${c.codexTotal}`),
+          row(t('story.hub.shelf.clues'), String(c.clues)),
+          row(t('story.hub.shelf.nouns'), String(c.nouns)),
+          row(t('story.hub.shelf.items'), String(c.items)),
+          row(t('story.hub.shelf.confirmed'), String(c.confirmed)),
+        ]),
+        h('div.actions', h('button.kq-btn', { onclick: () => this.main(), 'data-testid': 'hub-back' }, t('settings.back'))),
+      ],
+      t('story.hub.shelf'),
+    );
+  }
+
+  private mapTable(): void {
+    const m = this.m;
+    if (!m) return;
+    const list = h(
+      'ol.kqs-chapters',
+      this.d.chapters().map((ch) =>
+        h(`li${ch.current ? '.current' : ''}${ch.unlocked ? '' : '.locked'}`, [
+          h('button.kqs-chapter', {
+            disabled: !ch.unlocked,
+            'data-testid': `chapter-${ch.id}`,
+            onclick: () => {
+              if (ch.current) {
+                m.close();
+                return;
+              }
+              void this.d.modals.confirm(t('story.hub.map.confirm', { title: ch.title })).then((yes) => {
+                if (!yes) return;
+                m.close();
+                this.d.goto(ch.id);
+              });
+            },
+          }, [
+            h('span.kqs-ch-title', ch.unlocked ? ch.title : t('story.hub.map.locked')),
+            h('span.kqs-ch-sub', ch.unlocked ? ch.sub : '· · ·'),
+            ch.current ? h('span.kqs-ch-tag', t('story.hub.map.current')) : ch.completed ? h('span.kqs-ch-tag.done', t('story.hub.map.done')) : null,
+            ch.placeholder && ch.unlocked ? h('span.kqs-ch-tag.ph', t('story.placeholder')) : null,
+          ]),
+        ]),
+      ),
+    );
+    m.setBody(
+      [
+        h('p.kqs-hub-sub', t('story.hub.map.sub')),
+        list,
+        h('div.actions', [
+          h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'hub-continue' }, t('story.hub.map.continue', { beat: this.d.currentBeatTitle() })),
+          h('button.kq-btn', { onclick: () => this.main(), 'data-testid': 'hub-back' }, t('settings.back')),
+        ]),
+      ],
+      t('story.hub.map'),
+    );
+  }
+}

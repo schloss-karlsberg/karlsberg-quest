@@ -12,4 +12,5 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./hunt'),
   () => import('./fx'),
   () => import('./chronik'),
+  () => import('./story'),
 ];

@@ -65,12 +65,17 @@ test('title screen loads, lights the lantern and starts the game', async ({ page
   const errors = trackErrors(page);
   await page.goto('./?nosave&fresh');
   await expect(page.getByTestId('title')).toBeVisible();
-  const btn = page.getByTestId('light-lantern');
-  await expect(btn).toBeEnabled({ timeout: 90_000 });
+  const start = page.getByTestId('title-new');
+  await expect(start).toBeEnabled({ timeout: 90_000 });
   await expect(page.getByTestId('title')).toContainText('Karlsberg');
   await page.waitForTimeout(500); // let the backdrop draw a few frames
   await page.screenshot({ path: `${SCREENS}/title.png` });
 
+  // new game: content warning → name → light the lantern (story feature's title flow)
+  await start.click();
+  await page.getByTestId('warning-accept').click();
+  await page.getByTestId('name-confirm').click();
+  const btn = page.getByTestId('light-lantern');
   await btn.click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 5_000 });
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
