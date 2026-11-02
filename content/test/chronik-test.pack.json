@@ -1,0 +1,343 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "chronik-test",
+  "placeholder": true,
+  "facts": [
+    {
+      "id": "ct.cx.01",
+      "title_de": "Der Ehrenhof",
+      "text_de": "PLATZHALTER (nach Bibel cx.01). Die große, ebene Lichtung im Wald ist der Ehrenhof des Schlosses. Im Laserscan liegt sie auf rund 344,8 m, eine in den Hang geschnittene Terrasse, an drei Seiten von geraden Kanten begrenzt: Dort standen das Corps de logis und die beiden Flügel.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        { "url": "https://www.homburg.de/media/scllyew0/schlossbergtour.pdf", "label": "Stadt Homburg: Faltblatt Schlossbergtour" },
+        { "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg", "label": "de.wikipedia: Schloss Karlsberg" }
+      ],
+      "tags": ["prolog"],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "ct.cx.40",
+      "title_de": "Die Orangerie",
+      "text_de": "PLATZHALTER (nach Bibel cx.40). Die Orangerie entstand ab 1780 aus der früheren Schweizerei; im Pfeilersaal standen im Winter die Kübelpflanzen. Im Laserscan ist ihre Stützmauer eine schnurgerade Kante von rund 81 m mit einer Stufe von 5,3 m.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        { "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg", "label": "de.wikipedia: Schloss Karlsberg" },
+        { "url": "https://archive.org/details/eindeutschermale00mann", "label": "Mannlich, Lebenserinnerungen (1910)" }
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "ct.cx.33",
+      "title_de": "Die Karte von 1836–41",
+      "text_de": "PLATZHALTER (nach Bibel cx.33). Die Bayerischen Originalpositionsblätter 1:25 000 von 1836–41 zeigen „Ruine Carlsberg“, „Carlsbergerhof“ und „Sanddorf“. In der heutigen georeferenzierten Fassung liegt das Schloss rund 50 m zu weit im Osten.",
+      "confidence": "D",
+      "fiction": false,
+      "contested_de": "Örtliche Abweichungen bis etwa 30 m; der Versatz ist nicht überall gleich.",
+      "sources": [
+        { "url": "https://geoportal.saarland.de/mapbender/php/mod_showMetadata.php?languageCode=de&resource=wms&id=2597", "label": "Geoportal Saarland, Historische Karten" }
+      ],
+      "licence": "eigener Text; Kartenbild dl-de/by-2-0"
+    },
+    {
+      "id": "ct.cx.03",
+      "title_de": "Karl II. August",
+      "text_de": "PLATZHALTER (nach Bibel cx.03). Karl II. August (1746–1795) regierte Pfalz-Zweibrücken von 1775 bis 1795. Der Diplomat Gagern nannte ihn „ein finsterer, wollüstiger, zur Härte geneigter eigensinniger Mann“.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        { "url": "https://de.wikipedia.org/wiki/Karl_II._August", "label": "de.wikipedia: Karl II. August" },
+        { "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung", "label": "RLS 2015" }
+      ]
+    },
+    {
+      "id": "ct.cx.laub",
+      "title_de": "Geometer Quirin Laub",
+      "text_de": "PLATZHALTER. Laub, Quirin, königlich bayerischer Geometer, seit November 1840 „verwaltungstechnisch verschollen“. Spricht aus einer Messing-Bussole. Erfunden für dieses Spiel.",
+      "confidence": "U",
+      "fiction": true,
+      "sources": []
+    },
+    {
+      "id": "ct.rm.02",
+      "title_de": "Grube mit Ringwall (Eiskeller)",
+      "text_de": "PLATZHALTER (nach Bibel rm.02). Eine runde Grube, ein bis zwei Meter tief, mit einem flachen Wall rundherum: ein eingestürzter Keller, dessen Gewölbe nachgegeben hat. Verwechslung: Bombentrichter (kein sauberer Ring), Meilerplatz (flach statt tief).",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf", "label": "LfD Hessen: Bodendenkmäler unter Wald" }],
+      "tags": ["relief-pattern"]
+    },
+    {
+      "id": "ct.rm.04",
+      "title_de": "Hohlweg",
+      "text_de": "PLATZHALTER (nach Bibel rm.04). Ein Weg, der sich durch Räder, Hufe und Regen über Jahrhunderte in den Boden gegraben hat: eine Rinne mit steilen Seiten, oft mehrere nebeneinander. Verwechslung: Wassergraben (gerader), Ausbruchgraben (kurz und eckig).",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf", "label": "LfD Hessen: Bodendenkmäler unter Wald" }],
+      "tags": ["relief-pattern"]
+    },
+    {
+      "id": "ct.rm.03",
+      "title_de": "Meilerplatz (Kohlplatte)",
+      "text_de": "PLATZHALTER (nach Bibel rm.03). Eine kreisrunde, fast ebene Plattform von 8–15 m Durchmesser, am Hang oft mit einer kleinen Stufe hangabwärts. Dort brannten Köhler Holzkohle.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf", "label": "LfD Hessen: Bodendenkmäler unter Wald" }],
+      "tags": ["relief-pattern"]
+    },
+    {
+      "id": "ct.rm.06",
+      "title_de": "Bombentrichter",
+      "text_de": "PLATZHALTER (nach Bibel rm.06). Runde Trichter mit unregelmäßigem Auswurfwall, oft in Reihen oder Gruppen, selten allein. Achtung: Wo Trichter sind, kann Munition liegen. Nicht betreten, nicht graben, melden.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf", "label": "LfD Hessen: Bodendenkmäler unter Wald" }],
+      "tags": ["relief-pattern"]
+    },
+    {
+      "id": "ct.rm.07",
+      "title_de": "Fundament und Mauerzug",
+      "text_de": "PLATZHALTER (nach Bibel rm.07). Gerade Kanten, rechte Winkel, schmale Rücken, die sich nicht nach dem Gelände richten. Der Wald macht keine rechten Winkel.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf", "label": "LfD Hessen: Bodendenkmäler unter Wald" }],
+      "tags": ["relief-pattern"]
+    },
+    {
+      "id": "ct.rm.08",
+      "title_de": "Weiher und Damm",
+      "text_de": "PLATZHALTER (nach Bibel rm.08). Eine glatte, völlig ebene Fläche (Wasser liefert im Laserscan oft keine Punkte), an einer Seite ein gerader Damm quer zum Tal.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf", "label": "LfD Hessen: Bodendenkmäler unter Wald" }],
+      "tags": ["relief-pattern"]
+    },
+    {
+      "id": "ct.cx.serenissimus",
+      "title_de": "Nur Serenissimus fährt",
+      "text_de": "PLATZHALTER. Nur der Herzog durfte zum Schloss hinauffahren; alle anderen gingen zu Fuß. Singen war den Gärtnern verboten.",
+      "confidence": "I",
+      "fiction": false,
+      "sources": [{ "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung", "label": "RLS 2015" }],
+      "era": "1789"
+    }
+  ],
+  "nouns": [
+    { "id": "ct.n.ehrenhof", "label_de": "Ehrenhof", "category": "place" },
+    { "id": "ct.n.exerzierplatz", "label_de": "Exerzierplatz", "category": "place" },
+    { "id": "ct.n.reitbahn", "label_de": "Reitbahn", "category": "place" },
+    { "id": "ct.n.orangerie", "label_de": "Orangerie", "category": "place" },
+    { "id": "ct.n.galerie", "label_de": "Galerie", "category": "place" },
+    { "id": "ct.n.marstall", "label_de": "Marstall", "category": "place" },
+    { "id": "ct.n.hohlweg", "label_de": "Hohlweg", "category": "object" },
+    { "id": "ct.n.wassergraben", "label_de": "Wassergraben", "category": "object" },
+    { "id": "ct.n.ausbruchgraben", "label_de": "Ausbruchgraben", "category": "object" },
+    { "id": "ct.n.eiskeller", "label_de": "Eiskeller", "category": "object" },
+    { "id": "ct.n.bombentrichter", "label_de": "Bombentrichter", "category": "object" },
+    { "id": "ct.n.meilerplatz", "label_de": "Meilerplatz", "category": "object" },
+    { "id": "ct.n.jahr_1840", "label_de": "1840", "category": "time" },
+    { "id": "ct.n.jahr_1836_41", "label_de": "1836–41", "category": "time" },
+    { "id": "ct.n.jahr_1789", "label_de": "1789", "category": "time" },
+    { "id": "ct.n.jahr_1935", "label_de": "1935", "category": "time" },
+    { "id": "ct.n.versatz_50", "label_de": "50", "category": "other" },
+    { "id": "ct.n.versatz_15", "label_de": "15", "category": "other" },
+    { "id": "ct.n.versatz_500", "label_de": "500", "category": "other" },
+    { "id": "ct.n.hunde", "label_de": "Hunden", "category": "group" },
+    { "id": "ct.n.wild", "label_de": "Wild", "category": "group" },
+    { "id": "ct.n.messfehler", "label_de": "einem Messfehler", "category": "cause" },
+    { "id": "ct.n.serenissimus", "label_de": "Serenissimus", "category": "person" }
+  ],
+  "clues": [
+    {
+      "id": "ct.clue.lageplan",
+      "title_de": "Lageplan an der Pinnwand",
+      "text_de": "Ein großer Ausdruck „Lageplan Schloss Karlsberg, Forschungsstand 2006 (Nachzeichnung)“. Die Legende nennt Ehrenhof, Corps de logis, Galerie, Orangerie, Marstall, Reithalle, Exerzierplatz, Zwinger, Eiskeller. Den Ehrenhof umschließen drei Flügel. Der Titelstempel lautet „Rekonstruktion Sommer 1789 – Hypothese“.",
+      "kind": "document",
+      "prop": "paper",
+      "where": { "x": 1150, "z": -1131, "radius": 3, "era": "today", "anchor": "loc.p.station" },
+      "reveals": { "nouns": ["ct.n.ehrenhof", "ct.n.exerzierplatz", "ct.n.reitbahn", "ct.n.orangerie", "ct.n.galerie", "ct.n.marstall", "ct.n.eiskeller", "ct.n.jahr_1789"] }
+    },
+    {
+      "id": "ct.clue.messtischblatt",
+      "title_de": "Messtischblatt (Fotokopie)",
+      "text_de": "Fotokopie eines Messtischblatts. Bleistift von Marlene: „1935 – liegt nur 10–15 m daneben, gut brauchbar.“",
+      "kind": "map",
+      "where": { "x": 1156, "z": -1126, "radius": 3, "era": "today", "anchor": "loc.p.station" },
+      "reveals": { "nouns": ["ct.n.jahr_1935", "ct.n.versatz_15"] }
+    },
+    {
+      "id": "ct.clue.handbuch",
+      "title_de": "Reliefmuster-Handbuch des Forstamts",
+      "text_de": "Acht Karten in einer Klarsichthülle: Terrasse, Grube mit Ringwall, Meilerplatz, Hohlweg, Ausbruchgraben, Bombentrichter, Mauerzug, Weiher. Auf der Rückseite, dick unterstrichen: „Schauen, nicht graben.“",
+      "kind": "document",
+      "prop": "book",
+      "where": { "x": 1161, "z": -1133, "radius": 3, "era": "today", "anchor": "loc.p.station" },
+      "reveals": {
+        "nouns": ["ct.n.hohlweg", "ct.n.wassergraben", "ct.n.ausbruchgraben", "ct.n.bombentrichter", "ct.n.meilerplatz"],
+        "facts": ["ct.rm.02", "ct.rm.03", "ct.rm.04", "ct.rm.06", "ct.rm.07", "ct.rm.08"]
+      }
+    },
+    {
+      "id": "ct.clue.laubblatt",
+      "title_de": "Die Schublade",
+      "text_de": "Eine Messing-Bussole, kalt und still, und ein vergilbter Kartendruck mit gestochener Schrift: „Ruine Carlsberg“, „Carlsbergerhof“, „Sanddorf“. Am Rand in sehr ordentlicher Kurrentschrift: „Aufgen. Nov. 1840. Q. L. – Standpunkt 17 am alten Forsthaus.“",
+      "kind": "object",
+      "prop": "compass",
+      "where": { "x": 1144, "z": -1124, "radius": 3, "era": "today", "anchor": "loc.p.station" },
+      "reveals": { "nouns": ["ct.n.jahr_1840", "ct.n.jahr_1836_41"], "facts": ["ct.cx.laub"], "flags": ["ct.flag.map"] },
+      "fiction": true
+    },
+    {
+      "id": "ct.clue.hohlweg",
+      "title_de": "Ein Weg im Boden",
+      "text_de": "Ein Weg, 2 bis 3 m tief eingeschnitten, schnurgerade nach Norden. Er folgt keinem Bach.",
+      "kind": "relief",
+      "where": { "x": 1172, "z": -1238, "radius": 14, "era": "today", "anchor": "KB-10" },
+      "reveals": { "nouns": ["ct.n.hohlweg"] },
+      "requires": { "scanMode": 2 }
+    },
+    {
+      "id": "ct.clue.eiskeller",
+      "title_de": "Runde Grube mit Ringwall",
+      "text_de": "Eine runde Grube, 10 m breit, 1,8 m tief, mit einem Ringwall darum. Sie liegt einzeln, ohne Nachbarn.",
+      "kind": "relief",
+      "where": { "x": 1508, "z": -1296, "radius": 12, "era": "today", "anchor": "KB-50" },
+      "reveals": { "nouns": ["ct.n.eiskeller"] },
+      "requires": { "scanMode": 3 }
+    },
+    {
+      "id": "ct.clue.orangeriemauer",
+      "title_de": "Eine gerade, hohe Stufe",
+      "text_de": "Eine schnurgerade Kante, 81 m lang, darunter eine Bank, die 5,3 m tiefer liegt. Darüber eine ebene Fläche.",
+      "kind": "relief",
+      "where": { "x": 1237, "z": -966, "radius": 18, "era": "today", "anchor": "KB-30" },
+      "reveals": { "nouns": ["ct.n.orangerie"] },
+      "requires": { "scanMode": 3 }
+    },
+    {
+      "id": "ct.clue.nordterrasse",
+      "title_de": "Die zweite Ebene",
+      "text_de": "Eine zweite, noch größere ebene Fläche, 190 × 95 m, auf fast derselben Höhe. Steile Kanten im Süden und Osten, keine Flügel.",
+      "kind": "relief",
+      "where": { "x": 1227, "z": -1466, "radius": 30, "era": "today", "anchor": "KB-20" },
+      "reveals": { "nouns": ["ct.n.reitbahn"] },
+      "requires": { "scanMode": 1 }
+    },
+    {
+      "id": "ct.clue.kartenvergleich",
+      "title_de": "Laubs Karte über dem Relief",
+      "text_de": "Die roten Gebäudezeichen der alten Karte sitzen ein Stück östlich der Mauerzüge. Ein Messlineal: rund 50 m. „Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer.“",
+      "kind": "map",
+      "prop": "scroll",
+      "where": { "x": 1216, "z": -1114, "radius": 10, "era": "today", "anchor": "TF-01" },
+      "reveals": { "nouns": ["ct.n.versatz_50", "ct.n.versatz_500"], "facts": ["ct.cx.33"] },
+      "requires": { "flags": ["ct.flag.map"] }
+    },
+    {
+      "id": "ct.clue.punktwolke",
+      "title_de": "Abdrücke in der Punktwolke",
+      "text_de": "Bodenpunkte unter dem Kronendach. Quer über den Ehrenhof eine Reihe von Abdrücken, etwa 8 cm groß, paarweise, im Abstand eines Trabs. Marlene: „Wildschweine machen andere Spuren.“ Ein Kollege im Funk: „Mehrfachreflexion. Ein Messfehler.“",
+      "kind": "object",
+      "prop": "tablet",
+      "where": { "x": 1226, "z": -1104, "radius": 4, "era": "today", "anchor": "TF-01" },
+      "reveals": { "nouns": ["ct.n.hunde", "ct.n.wild", "ct.n.messfehler"] },
+      "requires": { "clues": ["ct.clue.kartenvergleich"] },
+      "fiction": true
+    },
+    {
+      "id": "ct.echo.diener",
+      "title_de": "Echo: Zu Fuß, Monsieur!",
+      "text_de": "Ein Diener ruft quer über den Hof. Ein Gärtner summt an der Rabatte, bis ihn ein zweiter zum Schweigen bringt.",
+      "kind": "echo",
+      "where": { "x": 1222, "z": -1112, "radius": 10, "era": ["1789", "today"], "anchor": "TF-01" },
+      "reveals": { "nouns": ["ct.n.serenissimus"], "facts": ["ct.cx.serenissimus"] },
+      "fiction": true
+    },
+    {
+      "id": "ct.clue.wachbuch",
+      "title_de": "Wachbuch am Nordtor",
+      "text_de": "Ein aufgeschlagenes Wachbuch, die Tinte noch feucht. Letzter Eintrag, eilig: „Serenissimus abgereist. Ohne Gefolge. Hunde nicht abgeblasen.“ Darunter nichts mehr.",
+      "kind": "document",
+      "prop": "book",
+      "where": { "x": 1171, "z": -1123, "radius": 4, "era": "1793-02", "anchor": "KB-B38" },
+      "reveals": { "nouns": ["ct.n.serenissimus"], "facts": ["ct.cx.03"] },
+      "requires": { "lantern": true },
+      "fiction": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "ct.case.vermessung",
+      "title_de": "Vermessung",
+      "intro_de": "Was der Hof schuldig blieb. Wem – Was – Wann – Wo. Fortgesetzt Nov. 1840. Nicht vollendet.",
+      "entries": [
+        {
+          "id": "p1",
+          "kind": "fact",
+          "text_de": "Die eingeebnete Fläche zwischen den drei Mauerzügen ist der {wo} des Schlosses.",
+          "blanks": [{ "id": "wo", "category": "place", "correct": "ct.n.ehrenhof" }],
+          "factId": "ct.cx.01"
+        },
+        {
+          "id": "p2",
+          "kind": "fact",
+          "text_de": "Die über fünf Meter hohe Stufe südlich des Schlosses ist die Stützmauer der {wo}.",
+          "blanks": [{ "id": "wo", "category": "place", "correct": "ct.n.orangerie" }],
+          "factId": "ct.cx.40"
+        },
+        {
+          "id": "p3",
+          "kind": "fact",
+          "text_de": "Der tief eingeschnittene Weg westlich des Schlosses ist ein {was}.",
+          "blanks": [{ "id": "was", "category": "object", "correct": "ct.n.hohlweg" }],
+          "factId": "ct.rm.04"
+        },
+        {
+          "id": "p4",
+          "kind": "fact",
+          "text_de": "Die runde Grube mit Ringwall östlich des Schlosses war ein {was}.",
+          "blanks": [{ "id": "was", "category": "object", "correct": "ct.n.eiskeller" }],
+          "factId": "ct.rm.02"
+        },
+        {
+          "id": "p5",
+          "kind": "fact",
+          "text_de": "Auf der bayerischen Karte von {wann} heißt der Ort ‚Ruine Carlsberg‘.",
+          "blanks": [{ "id": "wann", "category": "time", "correct": "ct.n.jahr_1840", "also": ["ct.n.jahr_1836_41"] }],
+          "factId": "ct.cx.33"
+        },
+        {
+          "id": "p6",
+          "kind": "fact",
+          "text_de": "Auf der heutigen Fassung dieser Karte liegt das Schloss rund {wieviel} Meter zu weit im Osten.",
+          "blanks": [{ "id": "wieviel", "category": "other", "correct": "ct.n.versatz_50" }]
+        },
+        {
+          "id": "p7",
+          "kind": "reading",
+          "text_de": "Die Spuren in der Punktwolke stammen von {wer}.",
+          "blanks": [{ "id": "wer", "accepts": ["ct.n.hunde", "ct.n.wild", "ct.n.messfehler"] }]
+        }
+      ]
+    }
+  ],
+  "speakers": [
+    { "id": "ct.diener", "name_de": "Diener", "historical": false },
+    { "id": "ct.gaertner", "name_de": "Gärtner", "historical": false },
+    { "id": "ct.gaertner2", "name_de": "Zweiter Gärtner", "historical": false },
+    { "id": "ct.erinnerung", "name_de": "Erinnerung", "historical": false }
+  ],
+  "dialogue": [
+    { "id": "ct.echo.diener.1", "speaker": "ct.diener", "text_de": "Zu Fuß, Monsieur! Hinauf fährt nur Serenissimus.", "trigger": { "event": "echo:start", "id": "ct.echo.diener", "seq": 1 } },
+    { "id": "ct.echo.diener.2", "speaker": "ct.erinnerung", "text_de": "(Ein Gärtner an der Rabatte summt ein Lied.)", "trigger": { "event": "echo:start", "id": "ct.echo.diener", "seq": 2 } },
+    { "id": "ct.echo.diener.3", "speaker": "ct.gaertner", "text_de": "Mm-hm, mm-hm … die Rosen, die blühen …", "trigger": { "event": "echo:start", "id": "ct.echo.diener", "seq": 3 } },
+    { "id": "ct.echo.diener.4", "speaker": "ct.gaertner2", "text_de": "Pst. Willst du Prügel?", "trigger": { "event": "echo:start", "id": "ct.echo.diener", "seq": 4 } },
+    { "id": "ct.echo.diener.5", "speaker": "ct.erinnerung", "text_de": "(Das Summen bricht ab. Dann, fern im Norden, ein einzelnes langes Heulen.)", "trigger": { "event": "echo:start", "id": "ct.echo.diener", "seq": 5 } }
+  ],
+  "hints": [
+    { "id": "ct.hint.1", "caseId": "ct.case.vermessung", "level": 1, "afterSeconds": 240, "text_de": "Ein Geometer schaut zuerst, und erst dann liest er, was andere hingeschrieben haben. Gehen Sie zu den Stellen. Danach an die Pinnwand." },
+    { "id": "ct.hint.2", "caseId": "ct.case.vermessung", "level": 2, "afterSeconds": 480, "text_de": "Der Lageplan kennt die Namen, das Gelände kennt die Formen. Legen Sie beides übereinander. Die Taste M, falls Ihnen das Wort ‚Überlagerung‘ zu modern ist." },
+    { "id": "ct.hint.3", "caseId": "ct.case.vermessung", "entryId": "p4", "level": 3, "afterSeconds": 720, "text_de": "Die Grube mit dem Ringwall liegt dort, wo der Plan ‚Eiskeller‘ schreibt. Bomben fallen selten so ordentlich." }
+  ]
+}
