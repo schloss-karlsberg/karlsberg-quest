@@ -129,8 +129,8 @@ export function buildCover(g: GridDesc, inp: CoverInputs): Uint8Array {
       B[i] = inp.paths ? inp.paths[i]! : 0;
     } else {
       R[i] = cls === GROUND.forest ? 1 : 0;
-      B[i] = cls === GROUND.gravel || cls === GROUND.cobbles || cls === GROUND.sand ? 1 : cls === GROUND.building ? 0.8 : 0;
-      A[i] = cls === GROUND.lawn ? 1 : 0;
+      B[i] = cls === GROUND.gravel || cls === GROUND.cobbles || cls === GROUND.sand || cls === GROUND.parterre_sand ? 1 : cls === GROUND.building ? 0.8 : 0;
+      A[i] = cls === GROUND.lawn || cls === GROUND.kitchen_garden ? 1 : 0;
     }
   }
   const out = new Uint8Array(n * 4);

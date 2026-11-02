@@ -159,7 +159,7 @@ Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m arou
 overlay (`setMapMix`) uses the same lens; the survey system swaps the 1935–40 Messtischblatt into
 the same `uMap` uniform (M cycles off → 1840 → 1935 → off, gated by the Kartograf skill).
 
-## 9. Data (`public/data`, 11.4 MiB, `pnpm prepare-data`)
+## 9. Data (`public/data`, 12.3 MiB, `pnpm prepare-data`)
 
 Derived by `scripts/prepare-data.ts` from the sister projects (read only; override root with
 `KQ_SISTER=/path`). Formats are documented at the top of the script and in `manifest.json`.
@@ -168,8 +168,8 @@ Derived by `scripts/prepare-data.ts` from the sister projects (read only; overri
 |---|---|
 | `terrain/meta.json` | grid (1075 × 1325, 2 m, origin), `hMin`, `heightScale` 0.01, `extentLocal` |
 | `terrain/h2025.u16.deflate` | 2025 DTM, uint16 cm, int16 left-delta, zlib (1.4 MB) |
-| `terrain/h1789.u16.deflate` | 1789 reconstruction as int16 cm diff to 2025 (57 KB) |
-| `terrain/ground.u8.deflate` | 1789 ground classes (meadow, lawn, gravel, cobbles, sand, water, forest, building) |
+| `terrain/h1789.u16.deflate` | 1789 reconstruction as int16 cm diff to 2025 (revised sister DTM, 1.0 MB) |
+| `terrain/ground.u8.deflate` | 1789 ground classes 0–12 (meadow, lawn, gravel, cobbles, sand, water, forest, building, field, vineyard, kitchen garden, hay, parterre sand; `GROUND` / `GROUND_NAMES` in `src/data/types.ts` map 8–12 onto meadow / lawn / sand surfaces) |
 | `terrain/canopy.u8.deflate` | 2025 canopy height (0.25 m units), LoD2 buildings removed |
 | `maps/hist1840.jpg` | Bavarian survey 1836–41 at 2 m/px, aligned to the grid |
 | `maps/hist1935.jpg` | Messtischblatt / TK25 1935–40 at 2 m/px (sister `hist_1935` chunks, 1 m/px AOI first), `meta.hist1935` |

@@ -68,11 +68,31 @@
     },
     "6": {
      "name": "forest",
-     "label_de": "Wald (heutiger Bestand als Annahme)"
+     "label_de": "Wald (1789: Landbedeckung nach research/11 S1; 2025: heutiger Bestand)"
     },
     "7": {
      "name": "building",
      "label_de": "Gebäudegrund"
+    },
+    "8": {
+     "name": "field",
+     "label_de": "Acker (Getreide, Juli)"
+    },
+    "9": {
+     "name": "vineyard",
+     "label_de": "Weinberg"
+    },
+    "10": {
+     "name": "kitchen_garden",
+     "label_de": "Küchen- und Baumschulgarten"
+    },
+    "11": {
+     "name": "hay",
+     "label_de": "Heuwiese (Juli, teils gemäht)"
+    },
+    "12": {
+     "name": "parterre_sand",
+     "label_de": "Feiner Parterresand"
     }
    }
   },

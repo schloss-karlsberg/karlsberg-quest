@@ -1,12 +1,12 @@
 {
  "format": "kq-data-v1",
- "generated": "2026-11-02T04:10:11.444Z",
- "totalBytes": 11908723,
+ "generated": "2026-11-02T05:48:02.379Z",
+ "totalBytes": 12853824,
  "files": {
-  "terrain/meta.json": 2649,
+  "terrain/meta.json": 3112,
   "terrain/h2025.u16.deflate": 1434991,
-  "terrain/h1789.u16.deflate": 58234,
-  "terrain/ground.u8.deflate": 57111,
+  "terrain/h1789.u16.deflate": 1038146,
+  "terrain/ground.u8.deflate": 21837,
   "terrain/canopy.u8.deflate": 1131004,
   "maps/hist1840.jpg": 838312,
   "maps/hist1935.jpg": 870352,

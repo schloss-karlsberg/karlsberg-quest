@@ -50,8 +50,18 @@ export const GROUND = {
   water: 5,
   forest: 6,
   building: 7,
+  // 1789 land cover (research/11, prepare-data since round 2)
+  field: 8,
+  vineyard: 9,
+  kitchen_garden: 10,
+  hay: 11,
+  parterre_sand: 12,
 } as const;
-export const GROUND_NAMES = ['meadow', 'lawn', 'gravel', 'cobbles', 'sand', 'water', 'forest', 'building'] as const;
+/**
+ * Surface name per class for footsteps, tracks and hunt rules. The 1789 farm classes walk like
+ * meadow / lawn / sand, so systems keep one small vocabulary.
+ */
+export const GROUND_NAMES = ['meadow', 'lawn', 'gravel', 'cobbles', 'sand', 'water', 'forest', 'building', 'meadow', 'meadow', 'lawn', 'meadow', 'sand'] as const;
 
 export interface Footprint {
   id: string;
