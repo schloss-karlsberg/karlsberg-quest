@@ -3,9 +3,21 @@ import { clue, noun, say, seq, hints, src, write } from './common.mjs';
 const ch = 'k4';
 const E = '1796';
 const STATION = [760, -930];
+// Marlene's note lies on the step of the Bauwagen (spawn 760/−902 faces it), so E there finds it
+// before the other chapters' station notes (760/−930, r 30)
+const STUFE = [760, -908];
 const TAL = [497, -900];
 const WEST = [200, -905];
-const BAU = [511, -827];
+const BAU = [503, -836];
+// the yard WEST of the long Baumagazin (KB-B29): the bible's 509/-830 and 516/-822 lie inside the
+// building's footprint, so table, cart and wood stack stand in the open yard in front of it
+const TISCH = [495, -845];
+const SOLL = [496, -842];
+const KARREN = [496.5, -822];
+const PETER = [494, -826];
+const HOLZ = [490, -834];
+// the southern brow of the Westblick knoll (look south to the Merburg)
+const SUEDBLICK = [198, -884];
 const EH = [1216, -1114];
 const GRAEBEN = [1240, -1193];
 const BRUNNEN = [1386, -1477];
@@ -13,7 +25,7 @@ const ZW = [1216, -1571];
 
 const clues = [
   clue('clue.k4.marlene', {
-    title: 'Marlenes Zettel', kind: 'document', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
+    title: 'Marlenes Zettel', kind: 'document', at: STUFE, r: 6, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
     text: '„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Kern FAKT: Steine der Ruine in Homburger Häusern, RLS.)',
     nouns: ['n.r_neuanfang'],
   }),
@@ -28,11 +40,11 @@ const clues = [
     nouns: ['n.hohenburg'],
   }),
   clue('clue.k4.jaegersburg', {
-    title: 'Holz aus Jägersburg', kind: 'dialogue', at: WEST, r: 20, era: E, anchor: 'loc.k4.westblick', chapter: ch, fiction: false,
-    text: 'Laub, nach dem Blick zur Hohenburg.', nouns: ['n.jaegersburg'], req: { clues: ['clue.k4.hohenburg'] },
+    title: 'Holz aus Jägersburg', kind: 'dialogue', at: HOLZ, r: 4, era: E, anchor: 'KB-B29', chapter: ch, fiction: false,
+    text: 'Laub am Holzstapel im Hof des Baumagazins, nach dem Blick zur Hohenburg.', nouns: ['n.jaegersburg'], req: { clues: ['clue.k4.hohenburg'] },
   }),
   clue('clue.k4.merburg', {
-    title: 'Die Merburg im Süden', kind: 'dialogue', at: WEST, r: 20, era: E, anchor: 'loc.k4.westblick', chapter: ch, fiction: false,
+    title: 'Die Merburg im Süden', kind: 'dialogue', at: SUEDBLICK, r: 8, era: E, anchor: 'loc.k4.westblick', chapter: ch, fiction: false,
     text: 'Laub, wenn man vom Westrand nach Süden schaut.', nouns: ['n.merburg'],
   }),
   clue('echo.k4.rueckwaerts', {
@@ -47,21 +59,21 @@ const clues = [
     nouns: ['n.baumagazin'], facts: ['cx.32'],
   }),
   clue('clue.k4.pacht', {
-    title: 'Der Pachtbrief', kind: 'document', at: [509, -830], r: 6, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
+    title: 'Der Pachtbrief', kind: 'document', at: TISCH, r: 3.5, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
     text: '„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut FIKTION; Inhalt nach HIB.)',
     nouns: ['n.vierzehn'],
   }),
   clue('clue.k4.soll', {
-    title: 'Soll führt Buch für die Pächter', kind: 'dialogue', at: [509, -830], r: 6, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
+    title: 'Soll führt Buch für die Pächter', kind: 'dialogue', at: SOLL, r: 6, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
     text: 'Soll sitzt an einem Tisch im Tor, alt geworden, die Ärmelschoner abgewetzt.',
     nouns: ['n.vierzehn', 'n.r_raub', 'n.r_chronik_bewachen', 'n.r_franzosen'],
   }),
   clue('clue.k4.peter', {
-    title: 'Peter, der Fuhrmann', kind: 'dialogue', at: [516, -822], r: 8, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
+    title: 'Peter, der Fuhrmann', kind: 'dialogue', at: PETER, r: 8, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
     text: 'Peter, Hannes Sohn, fünfzehn, lädt Steine auf seinen Karren.', nouns: ['n.r_herzog_selbst'],
   }),
   clue('clue.k4.stein_karren', {
-    title: 'Ein Quader auf Peters Karren', kind: 'object', at: [516, -822], r: 4, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
+    title: 'Ein Quader auf Peters Karren', kind: 'object', at: KARREN, r: 3.5, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
     text: 'Das Zeichen von Matthes: offener Winkel, drei Punkte. Wandernde Steine 2/4.',
     nouns: ['n.r_lohn_steine'], flags: ['flag.stein_2'],
   }),
@@ -235,15 +247,14 @@ const dialogue = [
   say('laub.k4.nicht_noch_einmal', 'laub', 'Nicht noch einmal. Bitte.', beat('4.9-weggerannt'), { priority: 10 }),
   say('beat.k4.hinlegen', 'geraeusch', '[Ein Hund nach dem anderen legt sich. Ihre Augen gehen aus wie Lampen in einem Haus. Hufschlag, dann Stille.]', beat('4.9-hingelegt', { step: 1 }), { once: true }),
   say('laub.k4.finale_2', 'laub', '(sehr leise) Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.', beat('4.9-hingelegt', { step: 2 }), { once: true }),
-  ...seq(found('clue.k4.jost'), [
-    ['jost.k4.01', 'jost', 'Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.'],
-    ['jost.k4.02', 'jost', 'Die Meute reißt nicht. Sie stellt. Das hab ich dir gesagt, da war ich dreizehn.'],
-    ['jost.k4.03', 'jost', 'Ich hab sie rausgelassen, in der Nacht vom Feuer. Dann bin ich ihnen nach. Ich hab sie nie wieder eingefangen. Wer nicht abgeblasen wird, läuft weiter. Und ich bin mitgelaufen.'],
-    ['jost.k4.04', 'jost', 'Was keiner mehr weiß, frisst der Berg. Wer zu lang drin ist in dem, was keiner mehr weiß, den frisst er mit. Wir haben jeden heimgetrieben, bevor es so weit war. Jeden.'],
-    ['jost.k4.05', 'jost', 'Nur den Geometer nicht. Der hat sich nicht hingelegt.'],
-    ['jost.k4.06', 'jost', 'Jetzt hat er’s. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.'],
-    ['jost.k4.07', 'jost', 'Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.'],
-  ]),
+  // the old Pikeur (npc 'pikeur', ghost at the kennel after the finale): a conversation, the horn last
+  say('jost.k4.01', 'jost', 'Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.', talk('pikeur', 'greet'), { once: true }),
+  say('jost.k4.02', 'jost', 'Die Meute reißt nicht. Sie stellt. Das hab ich dir gesagt, da war ich dreizehn.', talk('pikeur', 'stellen')),
+  say('jost.k4.03', 'jost', 'Ich hab sie rausgelassen, in der Nacht vom Feuer. Dann bin ich ihnen nach. Ich hab sie nie wieder eingefangen. Wer nicht abgeblasen wird, läuft weiter. Und ich bin mitgelaufen.', talk('pikeur', 'meute')),
+  say('jost.k4.04', 'jost', 'Was keiner mehr weiß, frisst der Berg. Wer zu lang drin ist in dem, was keiner mehr weiß, den frisst er mit. Wir haben jeden heimgetrieben, bevor es so weit war. Jeden.', talk('pikeur', 'berg', { step: 1 })),
+  say('jost.k4.05', 'jost', 'Nur den Geometer nicht. Der hat sich nicht hingelegt.', talk('pikeur', 'berg', { step: 2 })),
+  say('jost.k4.06', 'jost', 'Jetzt hat er’s. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.', talk('pikeur', 'namen')),
+  say('jost.k4.07', 'jost', 'Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.', talk('pikeur', 'bye')),
   say('jost.k4.08', 'jost', 'Die Chronik ist voll, glaub ich. Was du damit machst, ist deine Sache. Ich hab nur aufgepasst.', beat('4.9-horn'), { once: true }),
   // After the finale (station)
   say('laub.k4.nur_steine', 'laub', 'Die Steine in Homburg? Das sind nur Steine. Was daran hängt, hängen wir dran.', found('clue.k4.nur_steine'), { once: true }),
@@ -252,6 +263,8 @@ const dialogue = [
 
 write('kapitel-4', {
   pack: 'kapitel-4',
+  // the Pikeur of the finale takes off his hat: Jost, old (npc 'pikeur', generic ghost without hat)
+  speakers: [{ id: 'pikeur', name_de: 'Jost', historical: false }],
   nouns,
   clues,
   cases,

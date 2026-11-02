@@ -44,6 +44,7 @@ uniform float uRuin;       // 0 intact .. 1 ruin (walls cut down to stubs)
 uniform float uChar;       // 0 .. 1 soot/charring (fire)
 uniform float uConfMix;    // 0 material colours .. 1 confidence colours
 uniform float uOpacity;    // dissolve (era shift); 1 = solid
+uniform float uKeep[4];    // building indices that stay standing in the ruin (RUIN_KEEP)
 varying vec3 vWorld;
 varying vec3 vNormal;
 varying vec3 vColor;
@@ -52,7 +53,11 @@ varying float vConf;
 varying float vBld;
 void main() {
   float n = kqFbm(vWorld.xz * 0.35 + vWorld.y * 0.21 + vBld * 3.1);
-  if (uRuin > 0.0) {
+  bool kept = false;
+  for (int i = 0; i < 4; i++) if (abs(vBld - uKeep[i]) < 0.5) kept = true;
+  // kept buildings stand through the ruin and the Steinfraß (uRuin ≤ 1.05); only a shift that
+  // grows the world out of the ground (uRuin ≈ 1.14 → 1) cuts them like the rest
+  if (uRuin > 0.0 && (!kept || uRuin > 1.08)) {
     float stub = vBase + mix(40.0, 0.8 + 3.2 * n, uRuin);
     if (vWorld.y > stub) discard;
   }
@@ -73,6 +78,12 @@ void main() {
   gl_FragColor = vec4(kqFog(col, vWorld), 1.0);
 }
 `;
+
+/**
+ * Buildings that still stand in the 1796 ruin (bible 05-kapitel-4: the Baumagazin is the only
+ * building that survives, FAKT; the two guard houses at the valley entrance still stand).
+ */
+export const RUIN_KEEP = ['KB-B29', 'KB-B63', 'KB-B64'];
 
 export interface PalaceBuilding {
   id: string;
@@ -123,6 +134,7 @@ export class Palace {
         uChar: { value: 0 },
         uConfMix: { value: 0 },
         uOpacity: { value: 1 },
+        uKeep: { value: [-1, -1, -1, -1] },
       },
     });
   }
@@ -201,5 +213,7 @@ export class Palace {
   setMode(mode: 'hidden' | 'intact' | 'ruin'): void {
     this.object.visible = mode !== 'hidden';
     this.uniforms.uRuin!.value = mode === 'ruin' ? 1 : 0;
+    const keep = RUIN_KEEP.map((id) => this.buildings.find((b) => b.id === id)?.index ?? -1);
+    this.uniforms.uKeep!.value = [...keep, -1, -1, -1, -1].slice(0, 4);
   }
 }

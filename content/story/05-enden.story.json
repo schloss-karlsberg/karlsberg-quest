@@ -5,31 +5,103 @@
   "sub_de": "heute · Morgengrauen",
   "era": "today",
   "start": "e1",
-  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "checkpoint": {
+    "x": 760,
+    "z": -902,
+    "yaw": 0,
+    "era": "today"
+  },
+  "on": [
+    {
+      "id": "behalten-q",
+      "when": {
+        "all": [
+          {
+            "flag": "flag.end",
+            "eq": "behalten"
+          },
+          {
+            "flag": "story.credits"
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "flag",
+          "set": {
+            "shift.allowed": true,
+            "shift.target": "1789"
+          }
+        },
+        {
+          "do": "toast",
+          "text": "Q bleibt offen. Die Hunde laufen jetzt hinter dir, nicht vor dir weg.",
+          "ms": 5200,
+          "delay": 2
+        }
+      ]
+    }
+  ],
   "beats": [
     {
       "id": "e1",
-      "title_de": "Morgengrauen",
+      "title_de": "Die Wahl",
       "enter": [
-        { "do": "threat", "kind": "pack", "active": false },
-        { "do": "anchor", "to": null },
-        { "do": "shift", "to": "today", "instant": true, "reason": "ending" },
-        { "do": "teleport", "x": 760, "z": -902, "yaw": 0 },
-        { "do": "look", "time": "dusk" },
-        { "do": "objective", "text": null },
-        { "do": "say", "id": "marlene.end.morgen", "speaker": "marlene", "text": "Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen.", "delay": 2.5 },
-        { "do": "say", "id": "marlene.end.morgen.b", "speaker": "marlene", "text": "Das war ein Witz. Kalköfen gibt's hier keine mehr.", "delay": 0.8 },
-        { "do": "say", "id": "laub.end.morgen", "speaker": "laub", "text": "Sagen Sie ihr nichts. Oder alles. Sie wird es ohnehin aufschreiben." },
-        { "do": "say", "id": "laub.end.vorher", "speaker": "laub", "text": "Es ist Ihr Buch jetzt. Soll hätte gesagt: Hauptsache, die Namen stimmen.", "delay": 1.5 },
-        { "do": "ending", "delay": 1.2 }
+        {
+          "do": "threat",
+          "kind": "pack",
+          "active": false
+        },
+        {
+          "do": "anchor",
+          "to": null
+        },
+        {
+          "do": "shift",
+          "to": "today",
+          "instant": true,
+          "reason": "ending"
+        },
+        {
+          "do": "look",
+          "time": "dusk"
+        },
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "say",
+          "line": "laub.end.vorher",
+          "delay": 2.5
+        },
+        {
+          "do": "ending",
+          "delay": 1.2
+        }
       ],
-      "complete": { "event": "story:ending" }
+      "complete": {
+        "event": "story:ending"
+      }
     },
     {
       "id": "e2",
       "title_de": "Epilog und Abspann",
-      "enter": [{ "do": "autosave" }],
-      "complete": { "flag": "story.credits" }
+      "enter": [
+        {
+          "do": "autosave"
+        }
+      ],
+      "complete": {
+        "flag": "story.credits"
+      },
+      "exit": [
+        {
+          "do": "look",
+          "time": "day",
+          "delay": 1
+        }
+      ]
     }
   ],
   "epilogue": {
@@ -42,8 +114,15 @@
       {
         "id": "p_spuren",
         "entry": "entry.p.7",
-        "flags": ["flag.p_spuren", "p_spuren"],
-        "nouns": { "n.hunde": "hunde", "n.wild": "wild", "n.messfehler": "messfehler" },
+        "flags": [
+          "flag.p_spuren",
+          "p_spuren"
+        ],
+        "nouns": {
+          "n.hunde": "hunde",
+          "n.wild": "wild",
+          "n.messfehler": "messfehler"
+        },
         "text": {
           "hunde": "In der Punktwolke von 2025 liefen Spuren durch den Wald, und ich habe sie für Hunde gehalten.",
           "wild": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Wild, dachte ich zuerst.",
@@ -54,7 +133,10 @@
       {
         "id": "k1_lohn",
         "entry": "entry.k1.10",
-        "flags": ["flag.k1_lohn", "k1_lohn"],
+        "flags": [
+          "flag.k1_lohn",
+          "k1_lohn"
+        ],
         "text": {
           "will_nicht": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil der Herzog nicht zahlen wollte.",
           "creuzer": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil ein Präsident die Kassen geleert hatte, auch die der Witwen und Waisen.",
@@ -66,7 +148,10 @@
       {
         "id": "k2_pfeiffer",
         "entry": "entry.k2.8",
-        "flags": ["flag.k2_pfeiffer", "k2_pfeiffer"],
+        "flags": [
+          "flag.k2_pfeiffer",
+          "k2_pfeiffer"
+        ],
         "text": {
           "treu": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald und kletterte über den Zaun, aus Treue.",
           "dorf": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, damit die Reiter sein Dorf schneller wieder verließen.",
@@ -78,7 +163,10 @@
       {
         "id": "k2_stelle",
         "entry": "entry.k2.9",
-        "flags": ["flag.k2_stelle", "k2_stelle"],
+        "flags": [
+          "flag.k2_stelle",
+          "k2_stelle"
+        ],
         "text": {
           "gewarnt": "Ich hätte es auch getan.",
           "geschwiegen": "Ich hätte geschwiegen, und ich weiß nicht, ob ich mich dafür schäme.",
@@ -88,7 +176,10 @@
       },
       {
         "id": "k2_tor",
-        "flags": ["flag.k2_tor", "k2_tor"],
+        "flags": [
+          "flag.k2_tor",
+          "k2_tor"
+        ],
         "text": {
           "leuchten": "Als die Wagen abfuhren, habe ich ihnen geleuchtet.",
           "dunkel": "Als die Wagen abfuhren, stand ich im Dunkeln.",
@@ -98,7 +189,10 @@
       {
         "id": "k3_pluenderer",
         "entry": "entry.k3.10",
-        "flags": ["flag.k3_pluenderer", "k3_pluenderer"],
+        "flags": [
+          "flag.k3_pluenderer",
+          "k3_pluenderer"
+        ],
         "text": {
           "schuld": "Am 28. Juli 1793 nahmen die Leute aus den Dörfern sich, was man ihnen schuldete.",
           "stahlen": "Am 28. Juli 1793 stahlen die Leute aus den Dörfern, was nicht niet- und nagelfest war, und dann die Nägel.",
@@ -110,8 +204,13 @@
       {
         "id": "k4_zerstoerer",
         "entry": "entry.k4.7",
-        "flags": ["flag.k4_zerstoerer", "k4_zerstoerer"],
-        "nouns": { "n.r_herzog_selbst": "herzog" },
+        "flags": [
+          "flag.k4_zerstoerer",
+          "k4_zerstoerer"
+        ],
+        "nouns": {
+          "n.r_herzog_selbst": "herzog"
+        },
         "text": {
           "franzosen": "Angezündet haben ihn die Franzosen.",
           "herzog": "Zerstört hat ihn am Ende der, der ihn so gebaut hat.",
@@ -123,8 +222,13 @@
       {
         "id": "k4_steine",
         "entry": "entry.k4.9",
-        "flags": ["flag.k4_steine", "k4_steine"],
-        "nouns": { "n.r_lohn_steine": "lohn" },
+        "flags": [
+          "flag.k4_steine",
+          "k4_steine"
+        ],
+        "nouns": {
+          "n.r_lohn_steine": "lohn"
+        },
         "text": {
           "raub": "Die Steine in Homburg sind Raub am Raub.",
           "lohn": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn.",
@@ -136,8 +240,14 @@
       {
         "id": "k4_meute",
         "entry": "entry.k4.8",
-        "flags": ["flag.k4_meute", "k4_meute"],
-        "nouns": { "n.r_herr_suchen": "herr", "n.r_chronik_bewachen": "chronik" },
+        "flags": [
+          "flag.k4_meute",
+          "k4_meute"
+        ],
+        "nouns": {
+          "n.r_herr_suchen": "herr",
+          "n.r_chronik_bewachen": "chronik"
+        },
         "text": {
           "herr": "Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.",
           "chronik": "Die Hunde liefen dort, wo eine Seite lag.",
@@ -149,7 +259,10 @@
       }
     ],
     "object": {
-      "flags": ["flag.k3_objekt", "k3_objekt"],
+      "flags": [
+        "flag.k3_objekt",
+        "k3_objekt"
+      ],
       "text": {
         "tuergriff": {
           "museum": "Daneben: ein Türgriff. Er war an der Tür zum Festsaal. Die Wand dahinter hat Matthes gemauert.",
