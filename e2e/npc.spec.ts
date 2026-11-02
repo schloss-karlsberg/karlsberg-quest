@@ -185,11 +185,11 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   await expect(page.getByTestId('dialogue')).toContainText(/Nach (zweihundert\S+|über zweihundert) Jahren, Mara\./);
   expect(await page.evaluate(() => window.kq!.barks!.state().quiet)).toBe('memorial:test.gedenk');
   await page.evaluate(() => {
-    window.kq!.story!.room('test.saal');
+    window.kq!.story!.room('B03.1.eg-registratur');
     window.kq!.step(2);
   });
   s = await story(page);
-  expect(s.room).toBe('test.saal');
+  expect(s.room).toBe('B03.1.eg-registratur');
   expect(s.beat).toBe('t6');
   expect(await page.evaluate(() => window.kq!.npc!.list())).toEqual([]);
   expect((await flags(page))['npc.owns.clue.k1.hanne']).toBeUndefined();

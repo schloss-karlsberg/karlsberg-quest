@@ -227,7 +227,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`, `fx`,
-`chronik`, `story`, `npc`, `barks`. They talk only through the events in `src/systems/contracts.ts` (plus the
+`chronik`, `story`, `interiors`, `npc`, `barks`. They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below) and `ctx.state`. How the four work together:
 
 ```
@@ -345,6 +345,34 @@ Ownership rules that came out of integration:
   `flags['barks.quiet']`). Requests wait 8 s for a quiet moment.
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
 - State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
+
+### interiors (`src/systems/interiors/`) – walkable palace rooms
+- Rooms of the footprints marked `interior: 'detailed'` (KB-B01…B06, B10) from
+  `public/data/palace/rooms.json`. `layout.ts` (pure, unit-tested) turns the catalogue quads into a
+  plan per palace state (`intact` 1789–1793, `ruin` 1796, `today`): doors between facing rooms
+  and into neighbouring wings, entrances (model door leaves, carriage passages, vestibules, garden
+  doors) with outdoor steps to the terrain, windows where the model has glass, stair ramps
+  (straight / dog-leg / imperial) in the halls of KB-B01 and KB-B04 whose upper floors are walkable
+  (Festsaal, Naturalienkabinett), ruin stubs, height-aware collision walls and floor zones.
+- `builder.ts` + `props.ts`: one mesh (single draw call, `material.ts` procedural finishes, baked
+  window light `lightmap.ts`, nearest 12 candles/chandeliers) per building and era, built within
+  60 m of the player, dropped beyond 85 m. 1789 candle-lit; 1793-02 dark, dust sheets, one candle
+  in the Kabinett; 1793-07 looted (bible ch. 3) and burning; 1796 broken masonry, rubble, open
+  sky; today low mossy foundations only (no collision).
+- Shell (`shell.ts`, runtime patch of the palace shader like fx): glass of built buildings cut
+  away, door boxes cut through the facade, other model parts poking into a built room clipped,
+  the ruin shell dissolved into the interior's own stubs.
+- World hooks (additive): `world.collider.overlay` (detailed footprints become passable, the plan's
+  walls take over, also in the ruin era), `world.groundOverride` (floors, stairs, steps; the
+  player's height picks the storey) and `world.surfaceOverride` (footsteps on parquet / stone).
+- Fire: `fire:room {roomId, state}` (room or building id) → smoke layer under the ceiling, flames,
+  embers, flames and smoke through the doors; `collapsed` → ceiling gone, debris, doors blocked
+  once the player is out (caption for the sound). Cleared on `threat:configure {fire, active:false}`
+  and era change. Gentle mode thins the smoke; reduced motion slows flames and stops flicker.
+- Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
+  `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
+  Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
+- Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
 ## 13. Licences
 

@@ -1140,8 +1140,12 @@ class StoryRuntime {
       room: (id) => {
         const cur = this.slice.room;
         const ev = this.ctx.events as unknown as { emit(n: string, p: unknown): void };
-        if (cur && cur !== id) ev.emit('room:leave', { roomId: cur });
-        if (id) ev.emit('room:enter', { roomId: id });
+        const full = (r: string) => {
+          const building = `KB-${r.split('.')[0] ?? ''}`;
+          return { roomId: r, building, id: `${building}/${r}` };
+        };
+        if (cur && cur !== id) ev.emit('room:leave', full(cur));
+        if (id) ev.emit('room:enter', { ...full(id), name: id });
       },
       choice: () => this.overlays.choiceId,
     };

@@ -111,8 +111,10 @@ export interface ManualCond {
   manual: true;
 }
 /**
- * Inside a room of the palace catalogue (event `room:enter {roomId}` from the interiors feature,
- * `room:leave {roomId}` ends it). Also true when the room was entered while the beat ran (latched).
+ * The player stands in a walkable palace room (interiors): catalogue id ('B06.1.bildergalerie'),
+ * full id ('KB-B06/B06.1.bildergalerie') or building id ('KB-B06'). Reads the flags
+ * 'interior.room' / 'interior.building' kept by the interiors system (and `room:enter/leave`).
+ * Also true when a matching room was entered while the beat ran (latched).
  */
 export interface RoomCond {
   room: string;

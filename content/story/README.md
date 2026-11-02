@@ -51,13 +51,16 @@ Exactly one key per condition object. Event-like conditions are latched while th
 | `era`, `scan` (≥ mode), `map`, `stance`, `lantern` | world / player state |
 | `have {clue\|noun\|item}`, `confirmed {case?\|prefix?, n}`, `caseComplete` | inventory and Chronik |
 | `hub` | a field-station item was used |
-| `room` | the player is in that room (`room:enter {roomId}` from the interiors feature; `room:leave` ends it; latched) |
+| `room` | the player stands in a walkable palace room: catalogue id `"B06.1.bildergalerie"`, full id `"KB-B06/B06.1.bildergalerie"` or a building `"KB-B06"` (interiors flags `interior.room` / `interior.building`); also latched when a matching `room:enter {roomId, building, id, name}` happened in the beat |
 | `talked {npc, chapter?, topic?}` | an NPC was spoken to (flags `talked.<chapter>.<npc>[.<topic>]`; chapter defaults to the running one) |
 | `reading` (+ `eq?`) | a reading was chosen: the entry's story flag (`CaseEntry.flag`, e.g. `flag.k1_lohn`) or its entry id; `eq` = noun id or bare key (`n.r_will_nicht` ≡ `will_nicht`, `offen`) |
 | `meter {id, gte?, lte?, full?}` | a story meter's value (0 empty … 1 full) |
 | `chosen` (+ `option?`) | a choice was answered (flag `choice.<id>` = option key or index) |
 | `all`, `any`, `not` | combinations |
 | `manual` | never (only `kq.story.skip()`) |
+
+Entering / leaving a room is also an event: `{ "event": "room:enter", "match": { "roomId": "B01.2.og-festsaal" } }`
+(payload `roomId`, `building`, `id`, `name`; `room:leave` without `name`).
 
 ## Actions
 

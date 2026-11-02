@@ -33,6 +33,11 @@ function closestOnSeg(px: number, pz: number, e: Edge): [number, number] {
 export class FootprintCollider {
   private readonly cells = new Map<string, Edge[]>();
   enabled = true;
+  /**
+   * Optional overlay (interiors system): footprints in `passable` stop blocking and `resolve`
+   * runs after the footprint pass (also while the footprints are disabled, e.g. ruin walls).
+   */
+  overlay: { passable: ReadonlySet<number>; resolve(x: number, z: number, radius: number): { x: number; z: number; hit: boolean } } | null = null;
 
   constructor(
     readonly rings: Ring[],
@@ -78,12 +83,21 @@ export class FootprintCollider {
     return -1;
   }
 
-  /** Push a circle (x, z, radius) out of all footprints. */
+  /** Push a circle (x, z, radius) out of all footprints (then out of the overlay's walls). */
   resolve(x: number, z: number, radius: number): { x: number; z: number; hit: boolean } {
+    const o = this.overlay;
+    const base = this.resolveRings(x, z, radius, o?.passable);
+    if (!o) return base;
+    const r = o.resolve(base.x, base.z, radius);
+    return { x: r.x, z: r.z, hit: base.hit || r.hit };
+  }
+
+  private resolveRings(x: number, z: number, radius: number, passable?: ReadonlySet<number>): { x: number; z: number; hit: boolean } {
     if (!this.enabled) return { x, z, hit: false };
     let hit = false;
     for (let iter = 0; iter < 3; iter++) {
-      const edges = this.nearby(x, z, radius + 0.5);
+      const all = this.nearby(x, z, radius + 0.5);
+      const edges = passable?.size ? all.filter((e) => !passable.has(e.poly)) : all;
       if (!edges.length) break;
       let moved = false;
       // inside a footprint: move to the nearest edge, then out by the radius

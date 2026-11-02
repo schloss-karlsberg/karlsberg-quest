@@ -106,13 +106,24 @@ export class World {
     return this.hf;
   }
 
+  /**
+   * Optional ground override (interiors system): floor height at x/z (storeys, stairs, door
+   * steps) or null for the terrain. Additive hook; null = plain terrain.
+   */
+  groundOverride: ((x: number, z: number, terrain: number) => number | null) | null = null;
+  /** Optional surface override (interiors: parquet / stone floors), null = land cover. */
+  surfaceOverride: ((x: number, z: number) => string | null) | null = null;
+
   /** Ground height (m) at local x/z in the current era. */
   heightAt(x: number, z: number): number {
-    return this.hf.heightAt(x, z);
+    const h = this.hf.heightAt(x, z);
+    return this.groundOverride?.(x, z, h) ?? h;
   }
 
   /** Land-cover class name at x/z ('forest', 'water', …) in the current era. */
   surfaceAt(x: number, z: number): string {
+    const o = this.surfaceOverride?.(x, z);
+    if (o) return o;
     if (this.era === 'today') {
       const c = this.coverAt(x, z);
       if (classAt(this.grid, this.data.ground, x, z) === 5) return 'water';

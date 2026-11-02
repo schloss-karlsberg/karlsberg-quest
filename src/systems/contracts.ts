@@ -11,6 +11,7 @@
  *  - hunt    : hunt:*, lantern:*, player:caught (by 'pack')
  *  - chronik : clue:found, noun:learned, chronik:batch, chronik:case-complete, codex:unlocked, echo:*
  *  - fx also emits player:caught (by 'fire' | 'oblivion')
+ *  - interiors: room:enter, room:leave
  *
  * Integration rules (see docs/ARCHITECTURE.md §12):
  *  - The Q key belongs to the story (anchor flags shift.allowed/target/x/z/r, hold Q in the past
@@ -103,6 +104,15 @@ declare module '../core/events' {
     'memorial:set': { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string };
     /** story → hunt: light / douse the lantern (oil timer meters), optionally refilled first. */
     'lantern:request': { lit: boolean; refill?: boolean };
+
+    // ---- interiors (owner: interiors) -----------------------------------------------------
+    /**
+     * The player stepped into / out of a walkable palace room. roomId = catalogue id
+     * ('B06.1.bildergalerie'), id = full id ('KB-B06/B06.1.bildergalerie'), building = 'KB-B06'.
+     * Mirrored in the flags 'interior.room' / 'interior.building' ('' outside).
+     */
+    'room:enter': { roomId: string; building: string; id: string; name: string };
+    'room:leave': { roomId: string; building: string; id: string };
   }
 }
 

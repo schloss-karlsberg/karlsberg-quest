@@ -150,7 +150,25 @@ export function walkEvents(c: Condition, key: string, fn: (ev: EventCond, key: s
   else if ('event' in c) fn(c, key);
   else if ('hub' in c) fn({ event: 'hub:use', match: { item: c.hub } }, key);
   else if ('caseComplete' in c) fn({ event: 'chronik:case-complete', match: { caseId: c.caseComplete } }, key);
-  else if ('room' in c) fn({ event: 'room:enter', match: { roomId: c.room } }, key);
+  else if ('room' in c) fn({ event: 'room:enter', match: { [roomMatchKey(c.room)]: c.room } }, key);
+}
+
+/** Which `room:enter` payload field a room condition id names: full id, building or catalogue id. */
+export function roomMatchKey(id: string): 'id' | 'building' | 'roomId' {
+  if (id.includes('/')) return 'id';
+  return /^KB-[A-Z0-9]+$/.test(id) ? 'building' : 'roomId';
+}
+
+/** Does a room condition id match the room the player is in (catalogue id / full id / building)? */
+export function roomIdMatches(want: string, room: string, building: string): boolean {
+  if (!room) return false;
+  if (want === room) return true;
+  if (room.includes('/')) {
+    // a full id in the slice ('KB-B06/B06.1.x')
+    const [b, r] = room.split('/');
+    return want === b || want === r;
+  }
+  return !!building && (want === building || want === `${building}/${room}`);
 }
 
 export function eventMatches(ev: EventCond, name: string, payload: unknown): boolean {
@@ -207,7 +225,13 @@ export function evaluate(c: Condition, env: StoryEnv, latched: Record<string, nu
   if ('map' in c) return env.map;
   if ('stance' in c) return env.stance === c.stance;
   if ('lantern' in c) return env.lantern === c.lantern;
-  if ('room' in c) return env.room === c.room || (latched[key] ?? 0) >= 1;
+  if ('room' in c) {
+    const room = env.flags['interior.room'];
+    const bld = env.flags['interior.building'];
+    if (room && roomIdMatches(c.room, String(room), String(bld ?? ''))) return true;
+    if (env.room && roomIdMatches(c.room, env.room, '')) return true;
+    return (latched[key] ?? 0) >= 1;
+  }
   if ('talked' in c) {
     const t = c.talked;
     const ch = t.chapter ?? env.chapter ?? '';

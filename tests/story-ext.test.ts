@@ -130,7 +130,7 @@ describe('story validator (round 2)', () => {
             { do: 'say', speaker: 'laub', text: 'x', text_by_era: { today: 'y {jahre:1793}' } },
             { do: 'choice', id: 'k2.tor', modal: false, prompt: 'Tor', options: [{ label: 'a', key: 'leuchten', set: {}, when: { lantern: true } }, { label: 'b', key: 'dunkel', set: {}, when: { lantern: false }, then: [{ do: 'toast', text: 'dunkel' }] }] },
           ],
-          complete: { all: [{ room: 'r' }, { talked: { npc: 'hanne' } }, { reading: 'flag.k1_lohn', eq: 'creuzer' }, { meter: { id: 'oil', gte: 0.5 } }, { chosen: 'k2.tor', option: 'dunkel' }, { chapterTimer: 3 }] },
+          complete: { all: [{ room: 'B03.1.eg-registratur' }, { talked: { npc: 'hanne' } }, { reading: 'flag.k1_lohn', eq: 'creuzer' }, { meter: { id: 'oil', gte: 0.5 } }, { chosen: 'k2.tor', option: 'dunkel' }, { chapterTimer: 3 }] },
         },
       ]),
     ]);

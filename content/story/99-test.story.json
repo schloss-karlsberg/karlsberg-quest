@@ -78,7 +78,7 @@
         { "do": "say", "id": "test.jahre", "speaker": "laub", "text": "TEST: Nach {jahre:1793} Jahren, {Name}.", "text_by_era": { "today": "TEST: Heute, {Name}." } },
         { "do": "memorial", "id": "test.gedenk", "x": 1281, "z": -1219, "r": 12, "era": "1789" }
       ],
-      "complete": { "room": "test.saal" },
+      "complete": { "room": "B03.1.eg-registratur" },
       "next": "t6"
     },
     {
