@@ -51,6 +51,8 @@ export class World {
     };
     this.hf = this.heightfields['2025'];
     this.terrain = new Terrain(m.cols, m.rows, m.cell, m.origin.x, m.origin.z);
+    // trees vanish inside the relief-scan / map-lens radius (bare ground): share the uniforms
+    for (const k of ['uScanMix', 'uMapMix', 'uScanCenter', 'uScanRadius'] as const) this.forest.material.uniforms[k] = this.terrain.uniforms[k]!;
     const ds = (key: '2025' | '1789'): TerrainDataset => {
       const hf = this.heightfields[key];
       return {

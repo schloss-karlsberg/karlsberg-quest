@@ -96,6 +96,7 @@ void main() {
   float dist = length(vWorld - uCamPos);
 
   // --- micro detail near the camera (leaf litter, grass clumps)
+  vec3 n0 = n; // data normal without the procedural micro detail (used by the scan modes)
   float near = 1.0 - smoothstep(25.0, 90.0, dist);
   float nz1 = kqNoise(vWorld.xz * 1.7);
   float nz2 = kqFbm(vWorld.xz * 0.11);
@@ -119,11 +120,13 @@ void main() {
   float season = uSeason;
   vec3 meadow = season < 1.0 ? mix(meadowSummer, meadowAutumn, season) : mix(meadowAutumn, meadowWinter, season - 1.0);
   meadow *= 0.8 + 0.35 * nz2;
-  vec3 litterAutumn = mix(srgb(vec3(0.36, 0.25, 0.16)), srgb(vec3(0.28, 0.22, 0.15)), nz3);
+  vec3 litterAutumn = mix(srgb(vec3(0.33, 0.24, 0.16)), srgb(vec3(0.25, 0.21, 0.16)), smoothstep(0.3, 0.7, nz3 * 0.6 + nz2 * 0.6 - 0.1));
   vec3 litterSummer = srgb(vec3(0.24, 0.25, 0.15));
   vec3 litter = mix(litterSummer, litterAutumn, clamp(season, 0.0, 1.0)) * (0.7 + 0.45 * nz1 * nz2 + 0.2 * nz3);
   // moss and ivy patches on the forest floor
-  litter = mix(litter, srgb(vec3(0.2, 0.27, 0.13)), smoothstep(0.55, 0.75, kqFbm(vWorld.xz * 0.045 + 3.0)) * 0.7);
+  litter = mix(litter, srgb(vec3(0.2, 0.27, 0.13)), smoothstep(0.5, 0.72, kqFbm(vWorld.xz * 0.045 + 3.0)) * 0.75);
+  // darker damp hollows and twig/leaf clumps break up the floor
+  litter *= mix(0.7, 1.05, smoothstep(-0.6, 0.6, slrm)) * (0.85 + 0.3 * kqNoise(vWorld.xz * 0.35));
   vec3 lawnC = srgb(vec3(0.33, 0.47, 0.2)) * (0.9 + 0.2 * nz2);
   vec3 path = mix(srgb(vec3(0.5, 0.43, 0.34)), srgb(vec3(0.62, 0.55, 0.44)), uHistoric) * (0.85 + 0.3 * nz1);
   vec3 rock = srgb(vec3(0.52, 0.33, 0.26)) * (0.8 + 0.4 * nz2);
@@ -173,15 +176,17 @@ void main() {
 
   // --- relief scan modes (survey look), drawn over the lit terrain inside the scan radius
   if (uScanMode > 0 && uScanMix > 0.001) {
-    float hs = hillshadeMD(n);
+    // vertical exaggeration so that 30 cm banks and ditches read at walking distance
+    vec3 nx = normalize(vec3(n0.x * 2.5, n0.y, n0.z * 2.5));
+    float hs = hillshadeMD(nx);
     vec3 sc;
     if (uScanMode == 1) {
-      sc = vec3(0.96, 0.93, 0.86) * (0.08 + 1.05 * hs);
+      sc = vec3(0.96, 0.93, 0.86) * (0.06 + 1.1 * hs);
     } else if (uScanMode == 2) {
       float t = clamp(0.5 + slrm / 2.4 + fine * 0.25, 0.0, 1.0);
       sc = diverging(t) * (0.55 + 0.6 * hs);
     } else {
-      float slopeT = 1.0 - smoothstep(0.0, 40.0, slope);
+      float slopeT = 1.0 - smoothstep(0.0, 25.0, degrees(acos(clamp(nx.y, -1.0, 1.0))));
       float openT = clamp(0.5 + fine * 1.3 + slrm * 0.35, 0.0, 1.0);
       float v = clamp(hs * 0.45 + slopeT * 0.25 + openT * 0.45 - 0.05, 0.0, 1.0);
       sc = mix(vec3(0.12, 0.1, 0.09), vec3(0.98, 0.95, 0.88), v);
@@ -193,7 +198,7 @@ void main() {
       vec3 ink = srgb(vec3(0.24, 0.16, 0.1));
       sc = mix(sc, ink, max(c5 * 0.35, c25 * 0.6) * uContours);
     }
-    float fogS = 1.0 - exp(-dist * uFogDensity * 0.45);
+    float fogS = 1.0 - exp(-dist * uFogDensity * 0.3);
     sc = mix(sc, uFogColor, clamp(fogS, 0.0, 0.85));
     float r = length(vWorld.xz - uScanCenter.xz);
     float reveal = uScanMix * (1.0 - smoothstep(uScanRadius * 0.9, uScanRadius, r));

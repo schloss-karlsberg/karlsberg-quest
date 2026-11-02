@@ -10,6 +10,7 @@ import {
   InstancedBufferGeometry,
   Mesh,
   ShaderMaterial,
+  Vector3,
   type PerspectiveCamera,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -163,6 +164,10 @@ attribute float aPart;
 attribute vec4 aInst;   // x, y, z, height
 attribute vec3 aVar;    // rotation, variation, kind
 uniform float uFar;
+uniform float uScanMix;
+uniform float uMapMix;
+uniform vec3 uScanCenter;
+uniform float uScanRadius;
 varying vec3 vWorld;
 varying vec3 vNormal;
 varying float vPart;
@@ -173,6 +178,9 @@ void main() {
   vec3 camd = aInst.xyz - uCamPos;
   float dist = length(camd.xz);
   float fade = 1.0 - smoothstep(uFar * 0.82, uFar, dist);
+  // relief scan / 1840 map lens = bare ground: vegetation inside the scan radius sinks away
+  float sr = length(aInst.xz - uScanCenter.xz);
+  fade *= 1.0 - smoothstep(0.0, 0.8, max(uScanMix, uMapMix)) * (1.0 - smoothstep(uScanRadius * 0.85, uScanRadius, sr));
   float c = cos(aVar.x), s = sin(aVar.x);
   vec3 p = position;
   float wide = 0.85 + 0.35 * aVar.y;
@@ -263,7 +271,15 @@ export class Forest {
     this.material = new ShaderMaterial({
       vertexShader: TREE_VERT,
       fragmentShader: TREE_FRAG,
-      uniforms: { ...atmosphere, uFar: { value: this.farDist } },
+      uniforms: {
+        ...atmosphere,
+        uFar: { value: this.farDist },
+        // replaced by the terrain's scan uniforms (shared objects) in World
+        uScanMix: { value: 0 },
+        uMapMix: { value: 0 },
+        uScanCenter: { value: new Vector3() },
+        uScanRadius: { value: 1e6 },
+      },
     });
     const make = (g: BufferGeometry, max: number, name: string): Batch => {
       const geo = new InstancedBufferGeometry();

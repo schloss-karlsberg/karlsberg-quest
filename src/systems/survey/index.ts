@@ -6,6 +6,9 @@ import type { ScanMode } from '../../world/world';
  * Starter system: relief scan modes (keys 0–3) and the 1840 map overlay (M).
  * Later the Relief-Blick / Kartograf skill gating can live here (check ctx.state.skills).
  */
+/** Radius (m) of the relief scan around the player; trees inside it are hidden (ground points only). */
+export const SCAN_RADIUS = 160;
+
 function updateStatus(ctx: GameContext): void {
   const parts: string[] = [];
   if (ctx.world.scanMode > 0) parts.push(ctx.t(`scan.${ctx.world.scanMode}`));
@@ -39,5 +42,10 @@ export default defineSystem({
       ctx.ui.toast(ctx.t(on ? 'map.on' : 'map.off'));
       updateStatus(ctx);
     }
+  },
+  frame(_dt, ctx) {
+    // the scan bubble follows the player (debug flag ?scanall shows the whole map)
+    const p = ctx.player.position;
+    ctx.world.setScanArea(p.x, p.z, ctx.params.has('scanall') ? 1e6 : SCAN_RADIUS);
   },
 });
