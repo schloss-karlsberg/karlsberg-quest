@@ -19,4 +19,5 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./barks'),
   () => import('./skills'),
   () => import('./tools'),
+  () => import('./scenery'),
 ];

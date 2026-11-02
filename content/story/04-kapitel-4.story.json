@@ -435,7 +435,7 @@
       "title_de": "Morgengrauen",
       "enter": [
         { "do": "flag", "set": { "barks.quiet": false } },
-        { "do": "look", "time": "dusk", "delay": 1 },
+        { "do": "look", "time": "dawn", "delay": 1 },
         { "do": "say", "line": "geraeusch.end.morgen", "delay": 1 },
         { "do": "card", "title": "Morgengrauen", "sub": "Feldstation · heute", "seconds": 3.5, "delay": 1 },
         { "do": "teleport", "x": 760, "z": -902, "yaw": 0, "delay": 0.6 },

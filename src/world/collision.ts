@@ -30,9 +30,59 @@ function closestOnSeg(px: number, pz: number, e: Edge): [number, number] {
   return [e.ax + t * dx, e.az + t * dz];
 }
 
+/** Extra solid (set dressing): a circle or an oriented box (centre, unit axis u, half extents). */
+export type Solid = { kind: 'circle'; x: number; z: number; r: number } | { kind: 'box'; x: number; z: number; ux: number; uz: number; hu: number; hv: number };
+
+/** A place where one footprint does not block (a gate in a wall): inside the circle its edges are ignored. */
+export interface PassZone {
+  poly: number;
+  x: number;
+  z: number;
+  r: number;
+}
+
+/** Push a circle out of an oriented box (2D); null when not touching. */
+export function pushOutOfBox(x: number, z: number, radius: number, b: Extract<Solid, { kind: 'box' }>): [number, number] | null {
+  const dx = x - b.x;
+  const dz = z - b.z;
+  const vx = -b.uz;
+  const vz = b.ux;
+  const u = dx * b.ux + dz * b.uz;
+  const v = dx * vx + dz * vz;
+  const cu = Math.max(-b.hu, Math.min(b.hu, u));
+  const cv = Math.max(-b.hv, Math.min(b.hv, v));
+  const inside = cu === u && cv === v;
+  if (inside) {
+    // out through the nearest side
+    const pu = b.hu - Math.abs(u);
+    const pv = b.hv - Math.abs(v);
+    let nu = u;
+    let nv = v;
+    if (pu < pv) nu = Math.sign(u || 1) * (b.hu + radius);
+    else nv = Math.sign(v || 1) * (b.hv + radius);
+    return [b.x + nu * b.ux + nv * vx, b.z + nu * b.uz + nv * vz];
+  }
+  const ex = u - cu;
+  const ev = v - cv;
+  const d = Math.hypot(ex, ev);
+  if (d >= radius || d < 1e-9) return null;
+  const nu = cu + (ex / d) * radius;
+  const nv = cv + (ev / d) * radius;
+  return [b.x + nu * b.ux + nv * vx, b.z + nu * b.uz + nv * vz];
+}
+
 export class FootprintCollider {
   private readonly cells = new Map<string, Edge[]>();
   enabled = true;
+  /**
+   * Footprints that stay solid while `enabled` is false (the buildings that survive in the 1796
+   * ruin: world/palace.ts `RUIN_KEEP`).
+   */
+  keep: ReadonlySet<number> = new Set();
+  /** Set dressing solids by owner (props, gates); resolved after the footprints, in every era. */
+  private readonly solids = new Map<string, Solid[]>();
+  /** Gates in footprints (by owner): inside a zone that footprint's edges do not block. */
+  private readonly passZones = new Map<string, PassZone[]>();
   /**
    * Optional overlay (interiors system): footprints in `passable` stop blocking and `resolve`
    * runs after the footprint pass (also while the footprints are disabled, e.g. ruin walls).
@@ -83,21 +133,97 @@ export class FootprintCollider {
     return -1;
   }
 
+  /** Replace the solids of one owner ([] removes them). */
+  setSolids(owner: string, list: Solid[]): void {
+    if (list.length) this.solids.set(owner, list);
+    else this.solids.delete(owner);
+  }
+
+  /** Replace the pass zones (gates) of one owner ([] removes them). */
+  setPassZones(owner: string, list: PassZone[]): void {
+    if (list.length) this.passZones.set(owner, list);
+    else this.passZones.delete(owner);
+  }
+
+  /** Is the point inside one of the set-dressing solids (grown by `radius`)? */
+  solidAt(x: number, z: number, radius = 0): boolean {
+    for (const list of this.solids.values()) {
+      for (const s of list) {
+        if (s.kind === 'circle') {
+          if (Math.hypot(x - s.x, z - s.z) < s.r + radius) return true;
+        } else {
+          const dx = x - s.x;
+          const dz = z - s.z;
+          if (Math.abs(dx * s.ux + dz * s.uz) < s.hu + radius && Math.abs(-dx * s.uz + dz * s.ux) < s.hv + radius) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /** Push a circle (x, z, radius) out of all footprints (then out of the overlay's walls). */
   resolve(x: number, z: number, radius: number): { x: number; z: number; hit: boolean } {
     const o = this.overlay;
-    const base = this.resolveRings(x, z, radius, o?.passable);
+    let base = this.resolveRings(x, z, radius, o?.passable);
+    if (this.solids.size) {
+      const s = this.resolveSolids(base.x, base.z, radius);
+      if (s.hit) base = { x: s.x, z: s.z, hit: true };
+    }
     if (!o) return base;
     const r = o.resolve(base.x, base.z, radius);
     return { x: r.x, z: r.z, hit: base.hit || r.hit };
   }
 
+  private resolveSolids(x: number, z: number, radius: number): { x: number; z: number; hit: boolean } {
+    let hit = false;
+    for (let iter = 0; iter < 2; iter++) {
+      let moved = false;
+      for (const list of this.solids.values()) {
+        for (const s of list) {
+          if (s.kind === 'circle') {
+            const dx = x - s.x;
+            const dz = z - s.z;
+            const d = Math.hypot(dx, dz);
+            const min = s.r + radius;
+            if (d < min) {
+              const k = d > 1e-6 ? min / d : 0;
+              x = d > 1e-6 ? s.x + dx * k : s.x + min;
+              z = d > 1e-6 ? s.z + dz * k : z;
+              moved = hit = true;
+            }
+          } else {
+            const q = pushOutOfBox(x, z, radius, s);
+            if (q) {
+              x = q[0];
+              z = q[1];
+              moved = hit = true;
+            }
+          }
+        }
+      }
+      if (!moved) break;
+    }
+    return { x, z, hit };
+  }
+
+  /** Footprints passable at x/z (gates): a zone of that footprint contains the point. */
+  private gated(x: number, z: number): Set<number> | null {
+    let out: Set<number> | null = null;
+    for (const list of this.passZones.values()) {
+      for (const g of list) {
+        if (Math.hypot(x - g.x, z - g.z) < g.r) (out ??= new Set()).add(g.poly);
+      }
+    }
+    return out;
+  }
+
   private resolveRings(x: number, z: number, radius: number, passable?: ReadonlySet<number>): { x: number; z: number; hit: boolean } {
-    if (!this.enabled) return { x, z, hit: false };
+    if (!this.enabled && !this.keep.size) return { x, z, hit: false };
     let hit = false;
     for (let iter = 0; iter < 3; iter++) {
       const all = this.nearby(x, z, radius + 0.5);
-      const edges = passable?.size ? all.filter((e) => !passable.has(e.poly)) : all;
+      const gated = this.passZones.size ? this.gated(x, z) : null;
+      const edges = all.filter((e) => (this.enabled || this.keep.has(e.poly)) && !passable?.has(e.poly) && !gated?.has(e.poly));
       if (!edges.length) break;
       let moved = false;
       // inside a footprint: move to the nearest edge, then out by the radius
