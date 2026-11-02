@@ -22,8 +22,17 @@ export class PlanQuery {
   private readonly solids = new Map<string, Wall[]>();
   private solidList: Wall[] = [];
 
+  /** Bounds of the ground rects (door passages, steps) for a cheap rejection. */
+  private readonly groundBox: Float64Array;
+
   constructor(readonly plan: Plan) {
     for (const w of plan.walls) this.insert(w);
+    this.groundBox = new Float64Array(plan.ground.length * 4);
+    plan.ground.forEach((g, i) => {
+      const xs = g.poly.map((p) => p[0]);
+      const zs = g.poly.map((p) => p[1]);
+      this.groundBox.set([Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)], i * 4);
+    });
   }
 
   private key(cx: number, cz: number): number {
@@ -129,7 +138,10 @@ export class PlanQuery {
         if (prefer?.has(ri)) preferred = h;
       }
     }
-    for (const g of this.plan.ground) {
+    const gb = this.groundBox;
+    for (let i = 0; i < this.plan.ground.length; i++) {
+      if (x < gb[i * 4]! || z < gb[i * 4 + 1]! || x > gb[i * 4 + 2]! || z > gb[i * 4 + 3]!) continue;
+      const g = this.plan.ground[i]!;
       if (!pointInPoly(x, z, g.poly)) continue;
       if (g.stoop) {
         const t = Math.min(1, Math.max(0, ((x - g.ox) * g.dx + (z - g.oz) * g.dz) / g.k));
@@ -164,22 +176,6 @@ export class PlanQuery {
       }
     }
     return found;
-  }
-
-  /** Inside a building ring but not on any floor (stuck in the wall mass)? Nearest safe spot. */
-  rescue(x: number, z: number, y: number): { x: number; z: number } | null {
-    for (const b of this.plan.buildings) {
-      if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || !pointInPoly(x, z, b.ring)) continue;
-      if (this.floorAt(x, z, y, -1e9) !== null) return null;
-      let best: { x: number; z: number; d: number } | null = null;
-      for (const ri of b.rooms) {
-        const r = this.plan.rooms[ri]!;
-        const d = Math.hypot(r.cx - x, r.cz - z) + Math.abs(r.floor - y) * 3;
-        if (!best || d < best.d) best = { x: r.cx, z: r.cz, d };
-      }
-      return best;
-    }
-    return null;
   }
 
   /** Block (or reopen) every door of a room, e.g. when it collapses in the fire. */

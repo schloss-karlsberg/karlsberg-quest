@@ -38,13 +38,6 @@ import './strings';
 
 export type FireState = 'smoke' | 'burning' | 'collapsed';
 
-declare module '../../core/events' {
-  interface GameEvents {
-    /** (interiors) Debug / tests: a room's fire state was set directly. */
-    'interiors:fire': { roomId: string; state: FireState | 'none' };
-  }
-}
-
 export interface InteriorHooks {
   /** Walkable rooms of the current era's plan. */
   list(): { id: string; roomId: string; building: string; name: string; kind: string; storey: number; floor: number }[];
@@ -465,12 +458,32 @@ function frame(ctx: GameContext, dt: number): void {
 
 // ---- world hooks --------------------------------------------------------------------------------------
 
+/** Rooms that hold a clue in the current era (their floor wins for things placed from afar). */
+function anchorRooms(ctx: GameContext, plan: FullPlan): Set<number> {
+  const out = new Set<number>();
+  for (const c of ctx.content.clues.values()) {
+    const w = c.where;
+    if (!w?.anchor) continue;
+    const eras = Array.isArray(w.era) ? w.era : [w.era];
+    if (!eras.includes(ctx.era.current)) continue;
+    for (const r of plan.rooms) if (r.roomId === w.anchor || r.id === w.anchor) out.add(r.index);
+  }
+  return out;
+}
+
+let anchors: { plan: FullPlan; era: Era; set: Set<number> } | null = null;
+
 function installWorldHooks(ctx: GameContext): void {
   const w = ctx.world;
   w.groundOverride = (x, z, terrain) => {
     const cur = current();
     if (!cur || !rt || rt.mode === 'today') return null;
-    return cur.query.floorAt(x, z, ctx.player.position.y, terrain);
+    const p = ctx.player.position;
+    // the player (and probes around them): the storey they are on; anything placed from afar
+    // (clue markers, echo figures): the clue room's floor, else the ground floor
+    if (Math.hypot(x - p.x, z - p.z) < 2.5) return cur.query.floorAt(x, z, p.y, terrain);
+    if (!anchors || anchors.plan !== cur.plan || anchors.era !== ctx.era.current) anchors = { plan: cur.plan, era: ctx.era.current, set: anchorRooms(ctx, cur.plan) };
+    return cur.query.floorAt(x, z, -1e9, terrain, anchors.set);
   };
   w.surfaceOverride = (x, z) => {
     const cur = current();

@@ -123,6 +123,9 @@ describe('interiors collision + floors', () => {
     expect(q.floorAt(fest.cx, fest.cz, fest.floor, 0)).toBeCloseTo(fest.floor, 3);
     const below = q.floorAt(fest.cx, fest.cz, fest.floor - 5, 0)!;
     expect(below).toBeLessThan(fest.floor - 2);
+    // placed from afar: the clue room's storey wins, else the ground floor
+    expect(q.floorAt(fest.cx, fest.cz, -1e9, 0, new Set([fest.index]))).toBeCloseTo(fest.floor, 3);
+    expect(q.floorAt(fest.cx, fest.cz, -1e9, 0)).toBeCloseTo(below, 3);
     // the ramp rises monotonically along a flight
     const st = room(intact, 'B01.1.eg-prunktreppe');
     const fl = st.stair!.zones.find((z) => z.kind === 'flight')!;
