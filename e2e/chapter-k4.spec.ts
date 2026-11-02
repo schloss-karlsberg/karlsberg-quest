@@ -18,7 +18,8 @@ import { type Page, expect, test } from '@playwright/test';
  */
 const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
-test.describe.configure({ timeout: 900_000 });
+// software WebGL on a busy machine: the full chapter takes 13–20 min headless
+test.describe.configure({ timeout: 1_800_000 });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
