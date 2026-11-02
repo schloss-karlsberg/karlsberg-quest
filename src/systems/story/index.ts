@@ -1108,7 +1108,11 @@ class StoryRuntime {
       return;
     }
     if (ctx.input.isDown('shift')) {
-      if (this.packChasing) {
+      // bible rule (Laub, prologue): "Es geht nicht, solange Sie jemand ansieht" — no way home
+      // while the pack is on you: chasing state from hunt:alert, or alert ≥ 0.8 (mid-catch);
+      // a breather or hiding opens it again
+      const hunt = ctx.state.state.systems['hunt'] as { alert?: unknown } | undefined;
+      if (this.packChasing || (typeof hunt?.alert === 'number' && hunt.alert >= 0.8)) {
         this.qHold = 0;
         if (this.time - this.blockedToastAt > 3) {
           this.blockedToastAt = this.time;

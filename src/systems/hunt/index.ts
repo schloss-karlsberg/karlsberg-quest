@@ -250,6 +250,9 @@ class Hunt {
   private returnT = 0;
   private finalePromptShown = false;
   private caughtSoft = false;
+  /** Story cue 'hunt:hold': freeze the pack for `seconds` (waits ≤ 2 s while a hound is close). */
+  private holdReq: { seconds: number; waited: number } | null = null;
+  private holdLeft = 0;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new HuntAudio(ctx.audio);
@@ -286,6 +289,14 @@ class Hunt {
       this.syncLantern(true);
       if (this.sim) this.stop('debug', true);
       this.restorePending = true;
+    });
+    // story set pieces (ch. 2): the Warner's trail in the hoarfrost; the pack holds still during W4
+    ev.on('story:cue', ({ id, data }) => {
+      if (id === 'hunt:trail') this.layTrail(data ?? {});
+      else if (id === 'hunt:hold') {
+        const s = data?.['seconds'];
+        this.holdReq = { seconds: typeof s === 'number' && s > 0 ? s : 8, waited: 0 };
+      }
     });
     ev.on('player:step', ({ x, z, running }) => this.footprint(x, z, running));
     ev.on('player:teleport', () => (this.lastStep = null));
@@ -560,6 +571,8 @@ class Hunt {
     this.lastAlert = { level: -1, state: '', at: -1 };
     this.escapedT = -1;
     this.returnTo = null;
+    this.holdReq = null;
+    this.holdLeft = 0;
     this.clearFinalePrompt();
     // remembered for a reload (JSON only)
     this.slice().pack = { era: ctx.era.current, opts: JSON.parse(JSON.stringify({ ...o, x, z, radius, intensity, hounds, pikeur })) as HuntStartOptions };
@@ -653,6 +666,52 @@ class Hunt {
     };
   }
 
+  /**
+   * Story cue 'hunt:hold' (bible ch. 2, W4 "Das sind Kalköfen"): the pack stands still for a few
+   * seconds while a memory plays. Never right before a catch: it waits while a hound is closer
+   * than 15 m, at most 2 s. Frozen agents do not catch (sim.checkCaught).
+   */
+  private updateHold(dt: number, sim: PackSim): void {
+    const req = this.holdReq;
+    if (req) {
+      const p = this.ctx.player.position;
+      let near = Infinity;
+      for (const a of sim.agents) near = Math.min(near, Math.hypot(a.x - p.x, a.z - p.z));
+      req.waited += dt;
+      if (near >= 15 || req.waited >= 2) {
+        this.holdReq = null;
+        this.holdLeft = req.seconds;
+        sim.frozen = true;
+      }
+    }
+    if (this.holdLeft > 0) {
+      this.holdLeft -= dt;
+      if (this.holdLeft <= 0) {
+        this.holdLeft = 0;
+        sim.frozen = false;
+      }
+    }
+  }
+
+  /** Story cue 'hunt:trail' {path: "x,z x,z …", step?, depth?, hold?}: someone else's prints in the snow. */
+  private layTrail(data: Record<string, unknown>): void {
+    const raw = typeof data['path'] === 'string' ? data['path'] : '';
+    const path = raw
+      .trim()
+      .split(/\s+/)
+      .map((s) => s.split(',').map(Number))
+      .filter((v) => v.length === 2 && v.every(Number.isFinite))
+      .map(([x, z]) => ({ x: x!, z: z! }));
+    if (path.length < 2) {
+      console.warn('[hunt] cue hunt:trail needs data {path: "x,z x,z …"}', data);
+      return;
+    }
+    const num = (k: string, d: number) => (typeof data[k] === 'number' ? (data[k] as number) : d);
+    // only where the ground takes a print (no water, stone, floors)
+    const T = this.tracks;
+    T.addTrail(path, T.now, num('step', 1.4), num('depth', 1), num('hold', 0), (x, z) => !this.trailBreakAt(x, z));
+  }
+
   private playerSense(): PlayerSense {
     const pl = this.ctx.player;
     return {
@@ -676,6 +735,7 @@ class Hunt {
     this.updateLantern(dt);
     const sim = this.sim;
     if (!sim || !sim.tracks) this.tracks.tick(dt); // else the simulation advances the clock
+    if (sim) this.updateHold(dt, sim);
     if (sim) {
       const evs = sim.update(dt, this.playerSense());
       for (const e of evs) this.onSimEvent(e, sim);
