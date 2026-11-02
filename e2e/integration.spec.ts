@@ -171,23 +171,35 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     const k = window.kq!;
     k.ctx.ui.modals.closeAll(); // the wall-remains card (p2 exit)
     k.story!.goto('prolog', 'p5');
-    k.teleport(1166, -1232, 135, -26);
+    k.teleport(1163, -1230, 135, -26); // 12 m off: the story's stand-on fallback (r 9) leaves the find to E
     k.setScanMode(2);
     k.step(30);
   });
   expect(await page.evaluate(() => window.kq!.chronik!.status('ct.clue.hohlweg'))).toBe('available');
   await expect(page.locator('.kq-prompt')).toContainText('Untersuchen');
   await page.evaluate(() => window.kq!.press('KeyE', 2));
+  // the real prologue pack has its own hollow way on the same spot: read that card, then the test one
+  await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', /hohlweg$/);
+  if ((await page.getByTestId('chronik-card').getAttribute('data-clue')) === 'clue.p.hohlweg')
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.ctx.ui.modals.closeAll();
+      k.step(2);
+      k.press('KeyE', 2);
+    });
   await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', 'ct.clue.hohlweg');
   expect(await payloads(page, 'clue:found')).toContainEqual({ id: 'ct.clue.hohlweg', kind: 'relief' });
   await shot(page, '06-clue');
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
+    k.teleport(1168, -1236, 135, -26);
+    k.step(4);
+    k.ctx.ui.modals.closeAll(); // the story's own hollow-way card
     k.setScanMode(0);
     k.step(4);
   });
-  // the same spot is the story's hollow way (scan 2 + place): beat p5 completes
+  // the same spot is the story's hollow way (scan 2 + standing in it): beat p5 completes
   expect((await story(page)).beat).toBe('p6');
 
   // ---- 6. Q at the anchor (story owns the key) → shift:request → fx transition → 1789 ---------

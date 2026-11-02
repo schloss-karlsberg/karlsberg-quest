@@ -15,8 +15,8 @@
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "laub.silent": true } },
         { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen" },
-        { "do": "objective", "id": "station", "text": "Im Bauwagen umsehen: Pinnwand, Regal, Schublade (E an der Tür)", "x": 760.6, "z": -910.4, "delay": 2.5 },
-        { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.6 },
+        { "do": "objective", "id": "station", "text": "Im Bauwagen umsehen: Pinnwand, Regal, Schublade (E an der Tür)", "x": 760.6, "z": -910.4, "delay": 1.4 },
+        { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.4 },
         { "do": "say", "line": "marlene.p.01", "delay": 0.6 },
         { "do": "say", "line": "marlene.p.01b" },
         { "do": "say", "line": "marlene.p.bauwagen", "delay": 0.3 }
@@ -147,6 +147,7 @@
       "id": "p4",
       "title_de": "Der Ehrenhof",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "id": "ehrenhof", "text": "Weiter hinauf: eine ebene Lichtung auf der Terrasse", "x": 1216, "z": -1114, "delay": 1 },
         { "do": "say", "line": "laub.p.intro2", "delay": 16 }
       ],
@@ -189,6 +190,7 @@
       "id": "p5",
       "title_de": "Der Hohlweg",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "id": "hohlweg", "text": "Westlich des Schlosses: ein Weg tief im Boden (Relief 2 oder 3, E)", "x": 1172, "z": -1238, "delay": 6 }
       ],
       "complete": {
@@ -203,6 +205,7 @@
       "id": "p6",
       "title_de": "Die Grube",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "id": "eiskeller", "text": "Östlich des Schlosses, an einer Wegkreuzung: eine runde Grube mit Ringwall (VAT, E)", "x": 1508, "z": -1296, "delay": 3 }
       ],
       "complete": {
@@ -217,6 +220,7 @@
       "id": "p7",
       "title_de": "Die Punktwolke",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "text": null },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät knackt]", "delay": 4 },
         { "do": "say", "line": "marlene.p.punkte", "delay": 0.5 },
@@ -235,6 +239,7 @@
       "id": "p8",
       "title_de": "Die Chronik öffnet sich",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "prompt", "key": "Tab", "text": "Chronik öffnen" },
         { "do": "objective", "id": "chronik", "text": "Chronik (Tab): drei Sätze der Fallseite „Vermessung“ füllen, dann „Prüfen“. Bestätigt wird nur im Heute." }
       ],
@@ -264,6 +269,7 @@
       "id": "p9",
       "title_de": "Der erste Wechsel",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "anchor", "to": "1789", "x": 1218, "z": -1118, "r": 18 },
         { "do": "objective", "id": "wechsel", "text": "In die Mitte des Ehrenhofs. Dort: Q – Zeitwechsel", "x": 1218, "z": -1118 }
       ],
@@ -298,6 +304,7 @@
       "title_de": "Sommer 1789",
       "checkpoint": "p10",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "text": null },
         { "do": "anchor", "to": null },
         { "do": "flag", "set": { "barks.quiet": true } },
@@ -354,6 +361,7 @@
       "id": "p10",
       "title_de": "Zurück",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "flag", "set": { "barks.quiet": null, "story.p.heulen": null } },
         { "do": "meter", "id": "oil", "active": false },
         { "do": "prompt", "key": null, "text": null },
@@ -384,6 +392,7 @@
       "id": "p11",
       "title_de": "Neue Punkte",
       "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "look", "time": "night" },
         { "do": "objective", "text": null },
         { "do": "unlock", "chapter": "k1" },
