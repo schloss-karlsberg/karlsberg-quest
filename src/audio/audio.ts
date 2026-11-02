@@ -1,7 +1,7 @@
 import type { Camera } from 'three';
 import { Vector3 } from 'three';
 
-export type Bus = 'music' | 'sfx' | 'ambience';
+export type Bus = 'music' | 'sfx' | 'ambience' | 'voice';
 
 export interface Source3D {
   /** Connect your synth output here. */
@@ -12,7 +12,7 @@ export interface Source3D {
 }
 
 /**
- * Web Audio manager: master → {music, sfx, ambience} buses, 3D sources (PannerNode, HRTF),
+ * Web Audio manager: master → {music, sfx, ambience, voice} buses, 3D sources (PannerNode, HRTF),
  * listener bound to the camera. The AudioContext is created on `unlock()`, which must run
  * inside a user gesture (the "Laterne entzünden" click). Before that, `ctx` is null and helpers
  * no-op, so systems can call them freely.
@@ -24,7 +24,7 @@ export class AudioManager {
   private readonly unlockHandlers: ((ctx: AudioContext) => void)[] = [];
   private readonly fwd = new Vector3();
   private readonly up = new Vector3();
-  volumes = { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8 };
+  volumes = { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8, voice: 0.9 };
   private noiseBuf: AudioBuffer | null = null;
 
   get unlocked(): boolean {
@@ -44,7 +44,7 @@ export class AudioManager {
         comp.threshold.value = -12;
         comp.ratio.value = 3;
         this.master.connect(comp).connect(ctx.destination);
-        for (const b of ['music', 'sfx', 'ambience'] as Bus[]) {
+        for (const b of ['music', 'sfx', 'ambience', 'voice'] as Bus[]) {
           const g = ctx.createGain();
           g.connect(this.master);
           this.buses.set(b, g);

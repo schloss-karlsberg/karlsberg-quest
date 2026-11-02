@@ -264,7 +264,17 @@ export class Forest {
   private lastZ = Infinity;
   private dirty = true;
   farDist = 700;
-  readonly stats = { near: 0, far: 0, total: 0 };
+  /** Ring with the detailed tree models (m); graphics preset. */
+  nearDist = NEAR_DIST;
+  readonly stats = { near: 0, far: 0, total: 0, culled: 0 };
+  /** View direction the instance lists were built for (sector culling). */
+  private lastYaw = 0;
+  private lastDown = false;
+  private lastFov = 0;
+  private readonly counts = [0, 0, 0, 0];
+  private readonly dir = new Vector3();
+  /** Sector culling on (debug / tests can switch it off). */
+  cull = true;
   /** Circles kept free of trees (feature buildings such as the field station). */
   private readonly clearings: { x: number; z: number; r: number }[] = [];
 
@@ -321,13 +331,44 @@ export class Forest {
     this.dirty = true;
   }
 
+  /** Near (detailed) and far ring of the instanced trees (graphics preset). */
+  setDistances(near: number, far: number): void {
+    if (near === this.nearDist && far === this.farDist) return;
+    this.nearDist = near;
+    this.setFarDistance(far);
+  }
+
+  /**
+   * Rebuild the instance lists when the camera moved 12 m or turned 20°. Trees outside a sector
+   * around the view direction (horizontal half-FOV + 40°, everything within 30 m) are left out;
+   * looking steeply down (from the air) keeps the full ring.
+   */
   update(camera: PerspectiveCamera): void {
     const p = camera.position;
-    if (!this.dirty && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 12) return;
+    camera.getWorldDirection(this.dir);
+    const down = this.dir.y < -0.55;
+    const yaw = Math.atan2(this.dir.x, -this.dir.z);
+    let dYaw = Math.abs(yaw - this.lastYaw);
+    if (dYaw > Math.PI) dYaw = 2 * Math.PI - dYaw;
+    const turned = this.cull && !down && dYaw > 0.35;
+    if (!this.dirty && !turned && down === this.lastDown && camera.fov === this.lastFov && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 12) return;
     this.dirty = false;
     this.lastX = p.x;
     this.lastZ = p.z;
-    const counts = [0, 0, 0, 0];
+    this.lastYaw = yaw;
+    this.lastDown = down;
+    this.lastFov = camera.fov;
+    // horizontal view direction and the sector's cosine limit
+    const hl = Math.hypot(this.dir.x, this.dir.z) || 1;
+    const fx = this.dir.x / hl;
+    const fz = this.dir.z / hl;
+    const halfH = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
+    const sector = halfH + 0.7;
+    const cosLimit = this.cull && !down && sector < Math.PI ? Math.cos(sector) : -2;
+    const nearR = this.nearDist;
+    const counts = this.counts;
+    counts.fill(0);
+    let culled = 0;
     const far = this.farDist;
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
@@ -342,9 +383,13 @@ export class Forest {
           const dz = arr[k + 2]! - p.z;
           const d = Math.hypot(dx, dz);
           if (d > far) continue;
-          if (this.clearings.length && this.clearings.some((c) => Math.hypot(arr[k]! - c.x, arr[k + 2]! - c.z) < c.r)) continue;
+          if (d > 30 && (dx * fx + dz * fz) < cosLimit * d) {
+            culled++;
+            continue;
+          }
+          if (this.clearings.length && this.inClearing(arr[k]!, arr[k + 2]!)) continue;
           const kind = arr[k + 5]!;
-          const bi = (d < NEAR_DIST ? 0 : 2) + kind;
+          const bi = (d < nearR ? 0 : 2) + kind;
           const b = this.batches[bi]!;
           const n = counts[bi]!;
           if (n >= b.max) continue;
@@ -361,17 +406,25 @@ export class Forest {
         }
       }
     }
-    this.batches.forEach((b, i) => {
+    for (let i = 0; i < this.batches.length; i++) {
+      const b = this.batches[i]!;
       b.geo.instanceCount = counts[i]!;
-      for (const a of [b.inst, b.vary]) {
-        a.clearUpdateRanges();
-        a.addUpdateRange(0, counts[i]! * a.itemSize);
-        a.needsUpdate = true;
-      }
+      b.inst.clearUpdateRanges();
+      b.inst.addUpdateRange(0, counts[i]! * b.inst.itemSize);
+      b.inst.needsUpdate = true;
+      b.vary.clearUpdateRanges();
+      b.vary.addUpdateRange(0, counts[i]! * b.vary.itemSize);
+      b.vary.needsUpdate = true;
       b.mesh.visible = counts[i]! > 0;
-    });
+    }
     this.stats.near = counts[0]! + counts[1]!;
     this.stats.far = counts[2]! + counts[3]!;
+    this.stats.culled = culled;
+  }
+
+  private inClearing(x: number, z: number): boolean {
+    for (const c of this.clearings) if (Math.hypot(x - c.x, z - c.z) < c.r) return true;
+    return false;
   }
 
   /** Keep a circle free of trees in every era (e.g. a feature's building). */

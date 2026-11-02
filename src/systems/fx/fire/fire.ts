@@ -249,7 +249,7 @@ export class FireController {
     // collapses queued by the fixed step: sparks, rumble, caption, shake
     for (const i of this.pendingCollapses) {
       const u = this.units[i]!;
-      vis.collapse(i, u.cx, u.eaves + 1, u.cz, now);
+      vis.collapse(i, u.cx, u.eaves + 1, u.cz, now, this.ctx.settings.state.reducedFlash ? 0.2 : 1);
       const d = this.tmp.set(u.cx, u.eaves, u.cz).distanceTo(ctx.camera.position);
       const src = ctx.audio.createSource3D('sfx', { refDistance: 25, rolloff: 0.7 });
       if (src) {
@@ -260,7 +260,7 @@ export class FireController {
       if (d < 260) {
         this.ui.caption('fx.cap.collapse', 4, 2800);
         this.shake = Math.max(this.shake, Math.max(0, 1 - d / 160));
-        this.flash = Math.max(this.flash, Math.max(0.2, 1 - d / 200));
+        this.flash = Math.max(this.flash, Math.max(0.2, 1 - d / 200) * (this.ctx.settings.state.reducedFlash ? 0.25 : 1));
       }
     }
     this.pendingCollapses.length = 0;

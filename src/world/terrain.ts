@@ -125,6 +125,9 @@ export class Terrain {
   private readonly box = new Box3();
   private readonly m4 = new Matrix4();
   readonly stats = { chunks: 0, triangles: 0 };
+  /** LOD distance factor (graphics preset): < 1 switches to coarser chunks sooner. */
+  lodScale = 1;
+  private readonly counts = [0, 0, 0, 0];
   readonly nx: number;
   readonly nz: number;
 
@@ -163,6 +166,7 @@ export class Terrain {
         uForestFar: { value: 700 },
         uHistoric: { value: 0 },
         uTreeShade: { value: 0.55 },
+        uPalette: { value: 0 },
       },
     });
     for (const step of LOD_STEPS) {
@@ -225,8 +229,10 @@ export class Terrain {
     camera.updateMatrixWorld();
     this.m4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.m4);
-    const counts = [0, 0, 0, 0];
+    const counts = this.counts;
+    counts.fill(0);
     const cam = camera.position;
+    const ls = this.lodScale;
     const size = CHUNK * this.cell;
     let tris = 0;
     for (let k = 0; k < this.chunks.length; k++) {
@@ -239,7 +245,7 @@ export class Terrain {
       const d = this.box.distanceToPoint(cam);
       if (d > camera.far) continue;
       let lod = 0;
-      while (d > LOD_DIST[lod]!) lod++;
+      while (d > LOD_DIST[lod]! * ls) lod++;
       if (ch.apron) lod = Math.max(lod, 2);
       const L = this.lods[lod]!;
       const n = counts[lod]!;
@@ -251,14 +257,15 @@ export class Terrain {
       tris += q * q * 2;
     }
     let total = 0;
-    this.lods.forEach((L, i) => {
+    for (let i = 0; i < this.lods.length; i++) {
+      const L = this.lods[i]!;
       L.geo.instanceCount = counts[i]!;
       L.attr.clearUpdateRanges();
       L.attr.addUpdateRange(0, counts[i]! * 3);
       L.attr.needsUpdate = true;
       L.mesh.visible = counts[i]! > 0;
       total += counts[i]!;
-    });
+    }
     this.stats.chunks = total;
     this.stats.triangles = tris;
   }

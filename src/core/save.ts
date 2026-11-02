@@ -38,14 +38,39 @@ export function defaultStorage(): KeyValueStorage {
   }
 }
 
+export type GraphicsLevel = 'low' | 'medium' | 'high';
+
 export interface Settings {
   mouseSensitivity: number; // 0.2 .. 3, 1 = default
   invertY: boolean;
+  /** Invert horizontal mouse look. */
+  invertX: boolean;
   gentleMode: boolean;
   reducedMotion: boolean;
-  subtitleSize: 's' | 'm' | 'l';
-  volume: { master: number; music: number; sfx: number; ambience: number };
+  /**
+   * No bright full-screen flashes (era-shift brass flash, fire collapse flashes, flicker). Read by
+   * every system that flashes; the post pass also scales `uFlash` down (render/post.ts).
+   */
+  reducedFlash: boolean;
+  /** High-contrast HUD: solid backings, larger crosshair, thicker outlines (CSS `html[data-kq-contrast]`). */
+  highContrast: boolean;
+  /** Colour-blind safe palettes for the relief scan (blue ↔ orange instead of blue ↔ red). */
+  colorblind: boolean;
+  subtitleSize: 's' | 'm' | 'l' | 'xl';
+  /** Opacity of the subtitle backing 0..1. */
+  subtitleBg: number;
+  volume: { master: number; music: number; sfx: number; ambience: number; voice: number };
   fov: number;
+  /** Graphics preset (render/quality.ts). Unset = 'high' with auto-downgrade. */
+  graphics?: GraphicsLevel;
+  /** Render resolution scale of the 3D scene, 0.5 .. 1 (UI stays sharp). */
+  resolutionScale: number;
+  /** Lower the preset by itself when the frame time stays high. */
+  autoQuality: boolean;
+  /** Show the performance overlay (also F3). */
+  perfHud: boolean;
+  /** Remapped actions: key codes that replace the default keys of that action (player/input.ts `effectiveBindings`). */
+  bindings: Record<string, string[]>;
 }
 
 export function defaultSettings(): Settings {
@@ -54,10 +79,19 @@ export function defaultSettings(): Settings {
     mouseSensitivity: 1,
     invertY: false,
     gentleMode: false,
+    invertX: false,
     reducedMotion: reduced,
+    reducedFlash: reduced,
+    highContrast: typeof matchMedia === 'function' && matchMedia('(prefers-contrast: more)').matches,
+    colorblind: false,
     subtitleSize: 'm',
-    volume: { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8 },
+    subtitleBg: 0.62,
+    volume: { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8, voice: 0.9 },
     fov: 70,
+    resolutionScale: 1,
+    autoQuality: true,
+    perfHud: false,
+    bindings: {},
   };
 }
 
@@ -71,7 +105,7 @@ export class SettingsStore extends Store<Settings> {
     } catch {
       /* ignore corrupt settings */
     }
-    super({ ...base, ...loaded, volume: { ...base.volume, ...(loaded.volume ?? {}) } });
+    super({ ...base, ...loaded, volume: { ...base.volume, ...(loaded.volume ?? {}) }, bindings: { ...(loaded.bindings ?? {}) } });
     this.subscribe((s) => {
       try {
         this.storage.setItem(SETTINGS_KEY, JSON.stringify(s));

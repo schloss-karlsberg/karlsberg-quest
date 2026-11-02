@@ -37,6 +37,7 @@ uniform float uShift;      // 0..1 era-shift distortion (feature hook)
 uniform vec3 uFlash;       // additive full-screen tint (damage, fire flash)
 uniform float uDesaturate; // extra desaturation (threat, memory)
 uniform float uHeat;       // 0..1 heat shimmer above bright (burning) areas (fx system)
+uniform float uFlashScale; // settings.reducedFlash: full-screen flashes are scaled down here
 varying vec2 vUv;
 
 vec3 aces(vec3 x) {
@@ -68,7 +69,7 @@ void main() {
   }
   vec3 col = texture2D(tScene, uv).rgb;
   if (uShift > 0.0) {
-    float ca = 0.004 * uShift;
+    float ca = 0.004 * uShift * uFlashScale;
     col.r = texture2D(tScene, uv + vec2(ca, 0.0)).r;
     col.b = texture2D(tScene, uv - vec2(ca, 0.0)).b;
   }
@@ -85,7 +86,7 @@ void main() {
   q.x *= uResolution.x / uResolution.y;
   float v = smoothstep(0.95, 0.25, length(q));
   col *= mix(1.0, v, uVignette);
-  col += uFlash;
+  col += uFlash * uFlashScale;
   // film grain
   float g = hash(vUv * uResolution + fract(uTime * 7.13) * 100.0) - 0.5;
   col += g * uGrain;
@@ -126,6 +127,7 @@ export class PostFX {
         uFlash: { value: new Color(0, 0, 0) },
         uDesaturate: { value: 0 },
         uHeat: { value: 0 },
+        uFlashScale: { value: 1 },
       },
     });
     const g = new BufferGeometry();
@@ -141,6 +143,17 @@ export class PostFX {
   setSize(w: number, h: number, dpr: number): void {
     this.target.setSize(Math.max(1, Math.floor(w * dpr)), Math.max(1, Math.floor(h * dpr)));
     (this.material.uniforms.uResolution!.value as Vector2).set(w * dpr, h * dpr);
+  }
+
+  /** MSAA samples of the HDR target (0 = off). Re-creates the target's buffers on the next render. */
+  setSamples(n: number): void {
+    if (this.target.samples === n) return;
+    this.target.samples = n;
+    this.target.dispose();
+  }
+
+  get samples(): number {
+    return this.target.samples;
   }
 
   render(renderer: WebGLRenderer, scene: Scene, camera: Camera, time: number): void {

@@ -209,7 +209,7 @@ export class EchoDirector {
       ctx.ui.hud.subtitle(name, c.text, c.dur * 1000, !!c.speaker && (clue.fiction ?? true));
       const fig = this.figures[c.figure];
       if (fig && c.speaker) {
-        const src = ctx.audio.createSource3D('sfx', { refDistance: 2.5 });
+        const src = ctx.audio.createSource3D('voice', { refDistance: 2.5 });
         if (src) {
           src.setPosition(fig.pos.x, ctx.world.heightAt(fig.pos.x, fig.pos.z) + 1.6, fig.pos.z);
           whisper(ctx.audio, src.input, c.dur * 0.75, c.start * 13 + c.figure, 0.2);

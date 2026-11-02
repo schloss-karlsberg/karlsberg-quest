@@ -142,8 +142,10 @@ export class Hud {
     };
   }
 
-  setSubtitleSize(size: 's' | 'm' | 'l'): void {
-    document.documentElement.style.setProperty('--sub-size', size === 's' ? '18px' : size === 'l' ? '28px' : '22px');
+  setSubtitleSize(size: 's' | 'm' | 'l' | 'xl'): void {
+    const px = { s: 18, m: 22, l: 28, xl: 36 }[size] ?? 22;
+    document.documentElement.style.setProperty('--sub-size', `${px}px`);
+    document.documentElement.style.setProperty('--sub-scale', String(px / 22));
   }
 
   /** 0..1 threat; the eye opens, the screen edge reddens above 0.6. */

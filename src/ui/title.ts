@@ -37,7 +37,7 @@ export class TitleScreen {
     ]);
     this.newBtn = h('button.kq-btn.kq-lantern-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => void this.newGame() }, [svg(LANTERN_SVG), h('span', t('title.newGame'))]);
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
-    this.loadingEl = h('div.loading', t('title.loading', { pct: 0 }));
+    this.loadingEl = h('div.loading', { role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0', 'data-testid': 'title-loading' }, t('title.loading', { pct: 0 }));
     const page = h('div.kq-title-page.kq-paper', [
       h('h1', t('game.title')),
       h('p.sub', t('game.subtitle')),
@@ -51,7 +51,10 @@ export class TitleScreen {
   }
 
   setProgress(frac: number): void {
-    this.loadingEl.textContent = t('title.loading', { pct: Math.round(frac * 100) });
+    const pct = Math.max(0, Math.min(100, Math.round(frac * 100)));
+    this.loadingEl.textContent = t('title.loading', { pct });
+    this.loadingEl.setAttribute('aria-valuenow', String(pct));
+    this.loadingEl.style.setProperty('--p', `${pct}%`);
   }
 
   setFailed(msg: string): void {
@@ -64,6 +67,8 @@ export class TitleScreen {
     this.startBtn.disabled = false;
     this.newBtn.disabled = false;
     this.loadingEl.textContent = '';
+    this.loadingEl.classList.add('done');
+    this.loadingEl.removeAttribute('role');
     (this.startBtn.lastElementChild as HTMLElement).textContent = t('title.continue');
     (this.newBtn.lastElementChild as HTMLElement).textContent = t('title.newGame');
     this.startBtn.classList.toggle('kq-hidden', !hasSave);

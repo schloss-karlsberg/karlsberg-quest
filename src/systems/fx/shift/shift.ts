@@ -303,7 +303,7 @@ export class ShiftEffect {
       u.uPalLine!.value = c.palLine;
       u.uPalSolid!.value = c.palSolid;
       u.uScale!.value = scale;
-      u.uFlash!.value = c.flash * 0.6;
+      u.uFlash!.value = c.flash * (ctx.settings.state.reducedFlash ? 0.08 : 0.6);
       u.uTreeCut!.value = p === this.treesNew ? c.treesIn : c.treesOut;
     }
     if (this.treesOld) this.treesOld.visible = !this.midDone || c.treesOut < 1;
