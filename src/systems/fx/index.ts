@@ -25,10 +25,10 @@
  */
 import { Color } from 'three';
 import type { GameContext } from '../../core/context';
-import { type Era, isEra } from '../../core/era';
+import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import type { ThreatConfig } from '../contracts';
-import { AmbientParticles } from './ambient/ambient';
+import { AmbientParticles, roofQuads } from './ambient/ambient';
 import { scanPing } from './audio';
 import { type FireSlice, FireController, fireConfig } from './fire/fire';
 import { smoothstep } from './geom';
@@ -217,6 +217,8 @@ export default defineSystem({
     fire = new FireController(ctx, ui, quality);
     obl = new OblivionController(ctx, ui, quality);
     ambient = new AmbientParticles(ctx.world);
+    // no snow in the rooms: the buildings with interiors (and the passage pavilion) keep it out
+    ambient.setRoofs(roofQuads(ctx.data.footprints.buildings, ['KB-B07']));
     ctx.scene.add(ambient.object);
     quality.onChange(() => fire.rebuild());
     // settings → Grafikqualität (skills system's settings rows): low/high pins the level, unset = auto
@@ -288,6 +290,7 @@ export default defineSystem({
     obl.frame(dt);
     // ambience: era layers, hidden in the void of a shift, ash rising in the Steinfraß
     ambient.setEra(ctx.era.current, quality.high);
+    ambient.sheltered = ERA_INFO[ctx.era.current].palace === 'intact';
     let fade = 1;
     if (shift.active) fade = 1 - smoothstep(0.5, 1.1, shift.t) + smoothstep(2.4, 3.2, shift.t);
     ambient.up = obl.active ? smoothstep(0.05, 0.3, obl.vis) : 0;

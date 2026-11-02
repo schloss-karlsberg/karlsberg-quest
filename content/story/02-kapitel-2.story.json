@@ -14,6 +14,24 @@
   },
   "on": [
     {
+      "id": "k2-mannlich",
+      "when": {
+        "era": "1793-02"
+      },
+      "repeat": true,
+      "do": [
+        {
+          "do": "cue",
+          "id": "scenery:windows",
+          "data": {
+            "building": "KB-B10",
+            "era": "1793-02",
+            "share": 0.55
+          }
+        }
+      ]
+    },
+    {
       "id": "k2-oel",
       "when": {
         "era": "1793-02"

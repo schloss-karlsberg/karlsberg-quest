@@ -8,7 +8,7 @@
 import type { Era } from '../../core/era';
 import type { ThreatConfig } from '../contracts';
 import { valueKey } from '../../content/triggers';
-import type { Action, Beat, Condition, EndingId, EventCond, FlagValue, Reaction, StoryFile } from './types';
+import type { Action, Beat, Condition, EndingId, EventCond, FlagValue, LookTime, Reaction, StoryFile } from './types';
 
 export interface ObjectiveState {
   text: string;
@@ -40,9 +40,9 @@ export interface StorySlice {
   /** Last threat configuration per kind (re-sent after a reload). */
   threats: Record<string, ThreatConfig>;
   /** Present-day time of day at the field station. */
-  look: 'day' | 'dusk' | 'night';
+  look: LookTime;
   /** Time of day of one past era (look action with `era`); null = that era's preset. */
-  lookPast?: { era: string; time: 'dusk' | 'night' } | null;
+  lookPast?: { era: string; time: Exclude<LookTime, 'day'> } | null;
   ending: EndingId | null;
   /** Credits seen. */
   finished: boolean;

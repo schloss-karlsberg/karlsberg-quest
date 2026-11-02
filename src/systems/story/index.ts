@@ -31,7 +31,7 @@ import { StoryOverlays } from './overlays';
 import { playStorySound } from './sfx';
 import { loadBundledStories } from './stories';
 import { installTitleFlow } from './title/flow';
-import type { Action, ChoiceAction, EndingId, FlagValue, HubItem, MeterAction, StoryFile } from './types';
+import type { Action, ChoiceAction, EndingId, FlagValue, HubItem, LookTime, MeterAction, StoryFile } from './types';
 import type { DialogueItem } from './dialogue/presenter';
 
 // ---- story-private state & events (declaration merging; see contracts.ts) -------------------
@@ -76,7 +76,8 @@ export interface StoryHooks {
   credits(): void;
   epilogue(id: EndingId): Epilogue | null;
   choose(index: number): boolean;
-  look(time: 'day' | 'dusk' | 'night'): void;
+  /** Time of day today, or (with `era`) of that past era like the `look` action. */
+  look(time: LookTime, era?: Era): void;
   /** Story meters (copy; value 0 empty … 1 full). */
   meters(): Record<string, MeterState>;
   /** Set a meter's value (tests). */
@@ -94,7 +95,15 @@ declare module '../../debug/hooks' {
 
 // ---- looks for the present day at the field station -----------------------------------------
 type LookPatch = { [K in keyof EraLook]?: Partial<EraLook[K]> } & { disc?: EraLook['disc'] };
-const LOOKS: Record<'dusk' | 'night', LookPatch> = {
+const LOOKS: Record<Exclude<LookTime, 'day'>, LookPatch> = {
+  // Morgengrauen: the sun just up in the east, pink horizon, mist lying in the valleys
+  dawn: {
+    sun: { azimuth: 104, elevation: 3, color: '#ffb07e', intensity: 1.25 },
+    sky: { zenith: '#2c3856', horizon: '#e2a088', below: '#3d3a3e', clouds: 0.5, cloudColor: '#d3978e', stars: 0.2 },
+    ambient: { sky: '#6a7795', ground: '#37322f', intensity: 0.6 },
+    fog: { color: '#8a8792', sunColor: '#f2b48e', density: 0.0012, heightDensity: 0.011, ground: 0.016 },
+    grade: { exposure: 1.16, saturation: 0.76, contrast: 1.05, lift: '#0c0b12', gain: '#ffe9dc', vignette: 0.42 },
+  },
   dusk: {
     sun: { azimuth: 238, elevation: 3.5, color: '#ff9455', intensity: 1.5 },
     sky: { zenith: '#25304a', horizon: '#d58a5c', below: '#3a3430', clouds: 0.6, cloudColor: '#c98a6e', stars: 0.15 },
@@ -112,7 +121,7 @@ const LOOKS: Record<'dusk' | 'night', LookPatch> = {
   },
 };
 
-export function lookFor(time: 'day' | 'dusk' | 'night', era: Era = 'today'): EraLook {
+export function lookFor(time: LookTime, era: Era = 'today'): EraLook {
   const base = structuredClone(ERA_LOOKS[era]);
   if (time === 'day') return base;
   const p = LOOKS[time];
@@ -1187,8 +1196,9 @@ class StoryRuntime {
       credits: () => this.endings.credits(),
       epilogue: (id) => this.epilogue(id),
       choose: (i) => this.overlays.pickChoice(i),
-      look: (time) => {
-        this.slice.look = time;
+      look: (time, era) => {
+        if (era && era !== 'today') this.slice.lookPast = time === 'day' ? null : { era, time };
+        else this.slice.look = time;
         this.applyLook();
       },
       meters: () => structuredClone(this.slice.meters),

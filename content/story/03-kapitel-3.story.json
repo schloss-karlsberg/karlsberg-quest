@@ -242,12 +242,28 @@
           "z": -1150
         }
       ],
+      "on": [
+        {
+          "id": "tempel",
+          "when": { "have": { "clue": "clue.k3.papier" } },
+          "do": [
+            {
+              "do": "objective",
+              "id": "k3.hinaus",
+              "text": "Hinaus in den Garten! Prunktreppe, Dienertreppe Süd – oder zurück durch die Galerie zum Tempelzimmer: seine Glastüren führen in den Garten. Der längste Weg, aber die Galerie brennt zuletzt",
+              "x": 1285,
+              "z": -1150
+            }
+          ]
+        }
+      ],
       "complete": {
         "all": [
           { "era": "1793-07" },
           { "not": { "flag": "interior.building" } },
           {
             "any": [
+              { "enter": { "x": 1284, "z": -1229, "r": 5 } },
               { "enter": { "x": 1300, "z": -1170, "r": 58 } },
               { "enter": { "x": 1215, "z": -1120, "r": 22 } },
               { "enter": { "x": 1215, "z": -1187, "r": 16 } },
