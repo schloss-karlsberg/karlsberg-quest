@@ -27,7 +27,7 @@
 
 **2.4 – Das Wachhaus.** Die Spur endet am nördlichen Wachhaus an der Mündung des Ehrenhofs. Ein Wachfeuer in einer Eisenpfanne. Auf dem Tisch liegt das Wachbuch (`clue.k2.wachbuch`), und die Wache redet (`echo.k2.wache`). Hinter dem Gitter steht der Hof voller Wagen.
 
-**2.5 – Optional: die Galerie.** Durch die Fenster der Bildergalerie fällt ein einzelnes Kerzenlicht. Drinnen kniet Gottlob Soll und hebt ein Bodenbrett unter einem Bild an (`clue.k2.soll`). Er sieht dich nicht. Er legt ein graues Buch hinein und klopft das Brett mit dem Handballen fest. Setzt `flag.k2_versteck_gesehen`. Kein Fallsubstantiv; Kapitel 3 wird dadurch leichter (Laub weiß dann, wo man suchen muss).
+**2.5 – Optional: die Galerie.** Durch die Fenster der Bildergalerie fällt ein einzelnes Kerzenlicht. Drinnen kniet Gottlob Soll am Westende der Galerie und hebt ein Bodenbrett neben der Falltür des Büchsenmachers an (`clue.k2.soll`). Er sieht dich nicht. Er legt ein graues Buch hinein und klopft das Brett mit dem Handballen fest. Setzt `flag.k2_versteck_gesehen`. Kein Fallsubstantiv; Kapitel 3 wird dadurch leichter (Laub weiß dann, wo man suchen muss).
 
 **2.6 – Das Schreibkabinett.** Durch das Vestibül, die Antichambre, den Gelben Salon und das Schlafzimmer des Herzogs. Die Tür zum Schreibkabinett ist angelehnt, Licht fällt in einem Streifen heraus. Man sieht Schatten, aber nie den Herzog. E halten an der Tür: `echo.k2.warnung` (Wow-Moment ohne Bild: nur Stimmen). Danach: `echo.k2.abschied`. Mit dem ersten Echo wird der Anker B (Ehrenhof 1793-02) frei. Laub schlägt vor, jetzt zurückzugehen und zu sichern (`laub.k2.sichern`), denn danach wird es laut.
 
@@ -51,7 +51,7 @@
 | `loc.k2.apfelallee` | Apfelallee, Augen im Nebel | TF-14, LiDAR KB-14 | Linie 1575/−408 → 1271/−953 | | 10 | 1793-02 | W3 bei 1500/−520 (r 15) |
 | `loc.k2.orangerie` | Orangeriehof und -parterre | KB-B10, TF-06, TF-15 | 1275 | −960 | 30 | 1793-02 | `echo.k2.orangerie` (Hinweg), W4 (Jagd) |
 | `loc.k2.wachhaus` | Wachhaus Nord an der Ehrenhofmündung | KB-B38 | 1171 | −1123 | 8 | 1793-02 | Wachbuch, `echo.k2.wache` |
-| `loc.k2.galerie` | Bildergalerie (optional) | B06.1.bildergalerie (KB-B06) | 1230 | −1220 | Raumpolygon | 1793-02 | Soll am Bodenbrett (Brett bei 1236/−1222, r 2) |
+| `loc.k2.galerie` | Bildergalerie (optional) | B06.1.bildergalerie (KB-B06) | 1230 | −1220 | Raumpolygon | 1793-02 | Soll am Bodenbrett am Westende, bei der Falltür (1200/−1218, r 2) |
 | `loc.k2.kabinett` | Schreibkabinett des Herzogs (Tür vom Schlafzimmer aus) | B01.1.eg-kabinett, B01.1.eg-schlafzimmer | 1269 / 1268 | −1110 / −1115 | Raumpolygon | 1793-02 | `echo.k2.warnung`, `echo.k2.abschied`; schaltet Anker B frei |
 | `loc.k2.ehrenhof` | Ehrenhof mit Wagen, Gitter | TF-01, KB-B39 | 1192 | −1115 | 35 | 1793-02 | Anker B; Abfahrt; Wahl am Tor (Gitter 1192/−1115, r 6) |
 | `loc.k2.durchfahrt` | Durchfahrt im Südflügel | B02.1.eg-durchfahrt | 1234 | −1092 | Raumpolygon | 1793-02 | Fluchtweg |
