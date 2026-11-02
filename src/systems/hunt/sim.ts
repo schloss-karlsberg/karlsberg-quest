@@ -25,7 +25,7 @@ import type { TrackField, TrailBreak } from './tracks';
 
 export type PackState = 'calm' | 'suspicious' | 'searching' | 'chasing';
 export type HornSignal = 'search' | 'found' | 'lost' | 'call-off';
-export type PackMode = 'patrol' | 'drive' | 'finale' | 'parforce';
+export type PackMode = 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow';
 export type FinaleOutcome = 'gathered' | 'returned' | 'calmed' | 'faded';
 
 export interface SimWorld extends SenseWorld {
@@ -68,6 +68,12 @@ export interface PackOptions {
   headStart?: number;
   /** drive / parforce: radius (m) around the target that counts as arrived. */
   goalRadius?: number;
+  /** parforce: the gap (m) the hounds settle at behind a runner (default 9). */
+  heel?: number;
+  /** parforce: how hard they come out of the release (rubber-band factor beyond the heel, default 1). */
+  burst?: number;
+  /** parforce: at the heel they match a runner's pace (whoever keeps running is not caught). */
+  keepPace?: boolean;
   /** finale: lying flat alone is enough (one-key option / gentle mode; the lantern lights itself). */
   oneKey?: boolean;
 }

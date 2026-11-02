@@ -142,6 +142,17 @@ export class SaveManager {
     return true;
   }
 
+  /** Read a slot without loading it (null when empty or unreadable). */
+  peek(slot = 'auto'): GameState | null {
+    const raw = this.storage.getItem(SAVE_KEY(slot));
+    if (!raw) return null;
+    try {
+      return deserializeState(raw);
+    } catch {
+      return null;
+    }
+  }
+
   delete(slot = 'auto'): void {
     this.storage.removeItem(SAVE_KEY(slot));
   }

@@ -25,7 +25,7 @@ export interface StoryRefs {
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/i;
 const isEra = (v: unknown) => typeof v === 'string' && (ERAS as readonly string[]).includes(v);
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-const PACK_MODES = new Set(['patrol', 'drive', 'finale', 'parforce']);
+const PACK_MODES = new Set(['patrol', 'drive', 'finale', 'parforce', 'follow']);
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
 /** Palace room ids: catalogue 'B01.2.og-festsaal', full 'KB-B01/B01.2.og-festsaal' or building 'KB-B01'. */
 const ROOM_RE = /^(KB-[A-Z0-9]+|(KB-[A-Z0-9]+\/)?B[0-9]+\.[0-9]+\.[a-z0-9-]+)$/;
@@ -84,6 +84,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       else if (chapterReactions.has(r.id)) err(file, ch, `duplicate reaction id '${r.id}'`);
       else chapterReactions.add(r.id);
       checkCond(r.when, file, `${ch}:on/${r.id}`, err);
+      if (r.cooldown !== undefined && (!isNum(r.cooldown) || r.cooldown < 0 || !r.repeat)) err(file, ch, `reaction '${r.id}': cooldown needs repeat and a number ≥ 0`);
       lines += checkActions(r.do, file, `${ch}:on/${r.id}`, err, warn, refs, chapters);
     }
     for (const b of s.beats) {
@@ -92,6 +93,11 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       const where = `${ch}/${b.id}`;
       if (b.next !== undefined && !beatIds.has(b.next)) err(file, where, `next: unknown beat '${b.next}'`);
       if (b.checkpoint !== undefined && !beatIds.has(b.checkpoint)) err(file, where, `checkpoint: unknown beat '${b.checkpoint}'`);
+      if (b.wake !== undefined) {
+        checkPoint(b.wake, file, `${where}:wake`, err);
+        if (b.wake.era !== undefined && b.wake.era !== 'today') err(file, where, 'wake: the curtain always lifts in the present (era today)');
+        if (b.wake.text !== undefined && !isStr(b.wake.text)) err(file, where, 'wake: text must be a string');
+      }
       if (b.complete === undefined) err(file, where, 'missing "complete" condition');
       else checkCond(b.complete, file, where, err);
       lines += checkActions(b.enter, file, `${where}:enter`, err, warn, refs, chapters);
@@ -102,6 +108,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
         else if (rids.has(r.id)) err(file, where, `duplicate reaction id '${r.id}'`);
         else rids.add(r.id);
         checkCond(r.when, file, `${where}:on/${r.id}`, err);
+        if (r.cooldown !== undefined && (!isNum(r.cooldown) || r.cooldown < 0 || !r.repeat)) err(file, where, `reaction '${r.id}': cooldown needs repeat and a number ≥ 0`);
         lines += checkActions(r.do, file, `${where}:on/${r.id}`, err, warn, refs, chapters);
       }
     }
@@ -203,6 +210,11 @@ function checkCond(c: Condition | undefined, file: string, where: string, err: R
       if (!q || typeof q !== 'object' || !isStr(q.npc)) err(file, where, 'talked needs { npc, chapter?, topic? }');
       break;
     }
+    case 'speed': {
+      const q = r.speed as Record<string, unknown>;
+      if (!q || typeof q !== 'object' || (q.gte === undefined && q.lte === undefined) || (q.gte !== undefined && !isNum(q.gte)) || (q.lte !== undefined && !isNum(q.lte))) err(file, where, 'speed needs numeric gte and/or lte');
+      break;
+    }
     case 'reading':
       if (!isStr(r.reading)) err(file, where, 'reading needs a story flag or entry id');
       if (r.eq !== undefined && !isStr(r.eq)) err(file, where, 'reading: eq must be a string');
@@ -243,6 +255,10 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         lines++;
         if (a.line) {
           if (refs.dialogue && !refs.dialogue.has(a.line)) warn(file, where, `say: dialogue line '${a.line}' not in ContentDB (yet)`);
+        } else if (a.variants !== undefined) {
+          if (!Array.isArray(a.variants) || !a.variants.length || !a.variants.every(isStr)) err(file, where, 'say: variants must be a non-empty list of texts');
+          if (!isStr(a.id)) err(file, where, 'say: variants need an id (the count is kept per id)');
+          if (!isStr(a.speaker)) err(file, where, 'say: variants need a speaker');
         } else if (!isStr(a.speaker) || !isStr(a.text)) err(file, where, 'say needs speaker + text, or line');
         if (a.id !== undefined && !ID_RE.test(a.id)) err(file, where, `say: malformed id '${a.id}'`);
         if (a.text_by_era !== undefined) {

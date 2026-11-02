@@ -145,7 +145,9 @@ export class Plans {
     this.sheetNote = h('div.kqt-plan-note', { 'data-testid': 'plan-note' }, [h('span.kqt-plan-kicker', ctx.t('tools.plan.kicker')), ctx.t('tools.plan.note')]);
     this.labels = h('div.kqt-labels');
     this.roomTag = h('div.kqt-room', { 'data-testid': 'room-tag' });
-    layer.append(this.labels, this.legend, this.sheetNote, this.roomTag);
+    layer.append(this.labels, this.legend, this.sheetNote);
+    // the room name sits in the HUD's top-left column, above the objective (no overlap)
+    ctx.ui.hud.stack(this.roomTag, 20);
     patchConfColours(ctx);
   }
 

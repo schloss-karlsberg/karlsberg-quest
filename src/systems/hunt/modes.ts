@@ -15,7 +15,8 @@
  *            a long chase paced in waves: surges with the rubber-banded pack at your heels,
  *            breathers when the scent drifts (falling horn), the Pikeur riding in from a flank
  *            (telegraphed by his horn) and sheering off; it never calls off — it ends at the
- *            water / the target.
+ *            water / the target. `heel` / `burst` tune the rubber band (chapter 1's short chase).
+ *  follow    Ending C: harmless; the hounds walk in your footsteps at a distance and never catch.
  */
 import type { PlayerSense } from './perception';
 import { type Agent, type MakeController, type ModeController, type PackMode, type PackSim, type XZ, headingTo } from './sim';
@@ -404,7 +405,8 @@ export class ParforceMode implements ModeController {
 
   constructor(private readonly sim: PackSim) {
     const o = sim.opt;
-    this.releaseLeft = o.headStart ?? (o.gentle ? 8 : 6);
+    // gentle mode: three seconds more than the story asks for (bible: 6 s, gentle 9 s)
+    this.releaseLeft = (o.headStart ?? 6) + (o.gentle ? 3 : 0);
     this.nextRest = this.restGap();
     this.pikT = sim.rng.range(0, 6);
     this.pikSide = sim.rng.next() < 0.5 ? -1 : 1;
@@ -586,8 +588,21 @@ export class ParforceMode implements ModeController {
   chaseSpeed(a: Agent, p: PlayerSense): number {
     if (a.kind === 'pikeur') return 1;
     const d = dist(a, p);
-    // rubber band: they never fall far behind, and don't snap at your heels for long
-    return d > 30 ? 1.2 : d > 14 ? 1.06 : d > 9 ? 1 : 0.9;
+    // rubber band: they never fall far behind, and don't snap at your heels for long. `heel` is
+    // the gap they settle at behind a runner (default 9 m), `burst` how hard they come out of
+    // the release (a short chase: they must catch up within seconds to be felt)
+    const heel = this.sim.opt.heel ?? 9;
+    const b = this.sim.opt.burst ?? 1;
+    if (d > heel + 21) return 1.2 * b;
+    if (d > heel + 5) return 1.06 * Math.sqrt(b);
+    if (d > heel) return 1;
+    if (this.sim.opt.keepPace && !p.flying) {
+      // at the heel: a runner who keeps going (≥ 4 m/s) is not run down — they hold the gap; one
+      // who stops to look back sees them falter and bay before they close (a long stop still ends it)
+      if (p.speed >= 4) return Math.min(0.9, (p.speed * 0.97) / this.sim.tune.speed.chase);
+      if (p.speed < 1) return 0.55;
+    }
+    return 0.9;
   }
 
   /** The Pikeur rides on a flank, parallel; every cycle he rides in (horn first) and sheers off. */
@@ -637,9 +652,112 @@ export class ParforceMode implements ModeController {
   }
 }
 
+// =============================================================================================
+// follow
+// =============================================================================================
+
+/** Gaps (m) the hounds keep behind the player in follow mode; they back off inside `shy`. */
+export const FOLLOW = { first: 16, step: 4.5, shy: 11, crumb: 1.2, keep: 260 };
+
+/**
+ * Ending C ("Behalten"): the pack follows you through the night, harmless. The hounds walk in your
+ * footsteps (a breadcrumb trail of where you went) at 16 m and more behind, one after another;
+ * turn round and walk at them and they back off and sit; they never catch (mayCatch false), the
+ * threat meter barely moves, now and then one of them gives tongue.
+ */
+export class FollowMode implements ModeController {
+  readonly mode: PackMode = 'follow';
+  private readonly trail: XZ[] = [];
+  private bayT: number;
+
+  constructor(
+    private readonly sim: PackSim,
+    fresh = true,
+  ) {
+    this.bayT = sim.rng.range(8, 16);
+    for (const a of sim.agents) a.awareness = 0.45;
+    if (!fresh) return;
+    // they come out of the dark behind you, wherever that is
+    const p = sim.origin;
+    const base = sim.rng.range(0, Math.PI * 2);
+    sim.agents.forEach((_a, i) => {
+      const th = base + (i - (sim.agents.length - 1) / 2) * 0.35;
+      const r = sim.rng.range(30, 40);
+      const x = p.x + Math.cos(th) * r;
+      const z = p.z + Math.sin(th) * r;
+      sim.place(i, x, z, headingTo(p.x - x, p.z - z));
+    });
+  }
+
+  /** The point `back` metres behind the player along the trail he walked (null: not that long yet). */
+  behind(back: number): XZ | null {
+    let left = back;
+    for (let i = this.trail.length - 1; i > 0; i--) {
+      const a = this.trail[i]!;
+      const b = this.trail[i - 1]!;
+      const l = dist(a, b);
+      if (l >= left) {
+        const k = left / Math.max(1e-6, l);
+        return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k };
+      }
+      left -= l;
+    }
+    return null;
+  }
+
+  step(dt: number, p: PlayerSense): boolean {
+    const sim = this.sim;
+    const T = sim.tune;
+    const last = this.trail[this.trail.length - 1];
+    if (!last || dist(last, p) >= FOLLOW.crumb) {
+      this.trail.push({ x: p.x, z: p.z });
+      if (this.trail.length > FOLLOW.keep) this.trail.shift();
+    }
+    sim.agents.forEach((a, i) => {
+      const gap = FOLLOW.first + i * FOLLOW.step;
+      const d = dist(a, p);
+      if (d < FOLLOW.shy && !p.flying) {
+        // you came at them: they give way, then sit and watch
+        const k = (FOLLOW.shy + 3) / Math.max(0.5, d);
+        sim.moveToward(a, p.x + (a.x - p.x) * k, p.z + (a.z - p.z) * k, T.speed.trot, dt, 6, 0.5);
+        a.sniffing = false;
+        return;
+      }
+      // in your footsteps, each a little further back (a short trail: straight towards you)
+      const side = (i % 2 ? 1 : -1) * 0.9;
+      const spot = this.behind(gap) ?? (d > gap + 2 ? { x: p.x + ((a.x - p.x) / d) * gap, z: p.z + ((a.z - p.z) / d) * gap } : null);
+      const sd = spot ? Math.hypot(spot.x - a.x, spot.z - a.z) : 0;
+      if (spot && sd > 1.2) {
+        const v = Math.min(T.speed.chase * 1.1, Math.max(T.speed.patrol, sd * 0.9));
+        sim.moveToward(a, spot.x + side, spot.z - side, v, dt, 5, 0.6);
+        a.sniffing = v < T.speed.trot && i % 2 === 0;
+      } else {
+        sim.halt(a, dt, 4);
+        sim.face(a, p.x - a.x, p.z - a.z, dt);
+        a.sniffing = false;
+      }
+      a.awareness = 0.45;
+    });
+    this.bayT -= dt;
+    if (this.bayT <= 0 && sim.hounds.length) {
+      this.bayT = sim.rng.range(14, 28);
+      sim.emit({ type: 'bay', idx: sim.agents.indexOf(sim.rng.pick(sim.hounds)), kind: sim.rng.next() < 0.5 ? 'howl' : 'bark' });
+    }
+    sim.setState('calm', true);
+    sim.alert = 0.08;
+    return true;
+  }
+
+  mayCatch(): boolean {
+    return false;
+  }
+}
+
 /** Controller factory for PackSim (null = patrol). */
 export const makeMode: MakeController = (sim, fresh) => {
   switch (sim.opt.mode) {
+    case 'follow':
+      return new FollowMode(sim, fresh);
     case 'drive':
       return new DriveMode(sim, fresh);
     case 'finale':

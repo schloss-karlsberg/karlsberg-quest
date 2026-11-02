@@ -2,7 +2,8 @@
 .kqk-cards {
   position: fixed;
   left: 22px;
-  top: 84px;
+  /* below the HUD's top-left column (era, status, room, objective, gauges; see src/ui/hud.ts) */
+  top: calc(var(--kq-tl-bottom, 72px) + 14px);
   z-index: 16;
   pointer-events: none;
   perspective: 900px;

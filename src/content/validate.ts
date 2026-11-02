@@ -125,6 +125,11 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
     if (c.echoDate_de !== undefined && !isStr(c.echoDate_de)) err(file, c.id, 'clue: "echoDate_de" must be a non-empty string');
     if (c.needsLantern !== undefined && typeof c.needsLantern !== 'boolean') err(file, c.id, 'clue: "needsLantern" must be true or false');
     if (c.chapter !== undefined && !isStr(c.chapter)) err(file, c.id, 'clue: "chapter" must be a non-empty string');
+    if (c.sketch !== undefined) {
+      const sk = c.sketch;
+      if (!sk || !isNum(sk.x) || !isNum(sk.z) || (sk.size !== undefined && (!isNum(sk.size) || sk.size <= 0))) err(file, c.id, 'clue: "sketch" needs numeric x, z (and size > 0)');
+      else if (b && (sk.x < b.x0 || sk.x > b.x1 || sk.z < b.z0 || sk.z > b.z1)) err(file, c.id, `clue: sketch (${sk.x}, ${sk.z}) is outside the game area`);
+    }
   }
 
   // reachable clues: fixed point over `requires.clues` (cycles are unreachable)

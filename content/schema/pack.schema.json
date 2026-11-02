@@ -91,7 +91,13 @@
         "fiction": { "type": "boolean" },
         "echoDate_de": { "type": "string", "minLength": 1, "description": "Echo date outside the playable eras, e.g. 'November 1840'; where.era = nearest playable era" },
         "needsLantern": { "type": "boolean" },
-        "chapter": { "type": "string", "minLength": 1, "description": "Story chapter, e.g. 'p', 'k1'" }
+        "chapter": { "type": "string", "minLength": 1, "description": "Story chapter, e.g. 'p', 'k1'" },
+        "sketch": {
+          "type": "object",
+          "required": ["x", "z"],
+          "description": "Centre (and size in m) of the card's relief sketch when it is not the find spot (e.g. a printout of the Ehrenhof found at the field station)",
+          "properties": { "x": { "type": "number" }, "z": { "type": "number" }, "size": { "type": "number", "exclusiveMinimum": 0 } }
+        }
       }
     },
     "case": {

@@ -81,6 +81,8 @@ export function clue(id, o) {
   if (o.echoDate) c.echoDate_de = o.echoDate;
   if (o.lantern) c.needsLantern = true;
   c.chapter = o.chapter;
+  // the card's relief sketch shows another place than the find spot (a printout of the Ehrenhof …)
+  if (o.sketch) c.sketch = { x: o.sketch[0], z: o.sketch[1], ...(o.sketch[2] ? { size: o.sketch[2] } : {}) };
   return c;
 }
 

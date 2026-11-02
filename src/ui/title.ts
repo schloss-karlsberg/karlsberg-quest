@@ -17,6 +17,17 @@ export interface TitleHooks {
   /** Runs before a new game starts; render into `host` (the title root). Resolve false to cancel. */
   beforeNewGame?(host: HTMLElement): Promise<boolean>;
   openSettings?(): void;
+  /**
+   * Extra main-menu entries, asked for each time the title becomes ready (e.g. the story's "Ende
+   * noch einmal wählen" once an ending was reached). `run` prepares the state (e.g. loads a slot);
+   * resolve true to continue into the game, false to stay on the title.
+   */
+  extraActions?(): TitleAction[];
+}
+export interface TitleAction {
+  label: string;
+  testid: string;
+  run(): boolean | Promise<boolean>;
 }
 export const titleHooks: TitleHooks = {};
 
@@ -26,6 +37,7 @@ export class TitleScreen {
   private readonly startBtn: HTMLButtonElement;
   private readonly newBtn: HTMLButtonElement;
   private readonly settingsBtn: HTMLButtonElement;
+  private readonly extrasEl: HTMLElement;
   private readonly loadingEl: HTMLElement;
   private hasSave = false;
   private busy = false;
@@ -38,11 +50,12 @@ export class TitleScreen {
     this.newBtn = h('button.kq-btn.kq-lantern-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => void this.newGame() }, [svg(LANTERN_SVG), h('span', t('title.newGame'))]);
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
     this.loadingEl = h('div.loading', t('title.loading', { pct: 0 }));
+    this.extrasEl = h('div.kq-title-extras');
     const page = h('div.kq-title-page.kq-paper', [
       h('h1', t('game.title')),
       h('p.sub', t('game.subtitle')),
       h('p.note', t('title.headphones')),
-      h('div.actions', [this.startBtn, this.newBtn, this.settingsBtn, this.loadingEl]),
+      h('div.actions', [this.startBtn, this.newBtn, this.extrasEl, this.settingsBtn, this.loadingEl]),
       h('p.motto', t('title.motto')),
       h('p.controls', t('title.hint')),
       h('button.kq-link', { onclick: () => cb.onLicences() }, t('title.licences')),
@@ -69,7 +82,30 @@ export class TitleScreen {
     this.startBtn.classList.toggle('kq-hidden', !hasSave);
     this.newBtn.classList.toggle('primary', !hasSave);
     this.settingsBtn.classList.toggle('kq-hidden', !titleHooks.openSettings);
+    this.renderExtras();
     (hasSave ? this.startBtn : this.newBtn).focus();
+  }
+
+  private renderExtras(): void {
+    const list = titleHooks.extraActions?.() ?? [];
+    this.extrasEl.replaceChildren(
+      ...list.map((a) =>
+        h('button.kq-btn', {
+          'data-testid': a.testid,
+          onclick: async () => {
+            if (this.busy || this.startBtn.disabled) return;
+            this.busy = true;
+            const go = await Promise.resolve(a.run()).catch((err) => {
+              console.error('[title] action failed', err);
+              return false;
+            });
+            this.busy = false;
+            if (go) this.start(false);
+          },
+        }, a.label),
+      ),
+    );
+    this.extrasEl.classList.toggle('kq-hidden', !list.length);
   }
 
   private async newGame(): Promise<void> {

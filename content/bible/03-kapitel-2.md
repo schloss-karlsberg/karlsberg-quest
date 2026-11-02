@@ -19,6 +19,8 @@
 
 **2.0 – Feldstation.** Der Deckel der Bussole ist von innen beschlagen, darauf Eisblumen. Marlene bringt Kaffee und erzählt vom Warner aus Rohrbach (`marlene.k2.pfeiffer`). Laub ist ungewöhnlich still (`laub.k2.start`).
 
+**Unterwegs (2.0, der Kilometer zum Parkzaun).** Etwa 380 m hinter der Station schlägt fern im Tal ein Hofhund an, ein Hund von heute (Untertitel), und Laub: „Nur ein Hofhund, einer von heute. Merk dir trotzdem, wie das klingt. Drüben, im Februar dreiundneunzig, sind es andere, und die schlagen nicht bloß an.“ (`laub.k2.weg1`). Rund 260 m vor dem Zaun: „Wenn wir drüben sind: schau auf den Boden. Raureif verrät jeden Schritt. Seine. Und deine auch.“ (`laub.k2.weg2`).
+
 **2.1 – Der Parkzaun.** Wechsel am Carlsluster Torhaus. Nacht, Frost, Nebel bis zur Hüfte. Ein Lattenzaun mit Pfählen, dahinter das Wachhäuschen an der Parkschranke (FAKT: Wachhäuser an den Parkschranken, Pleine vue 1791). Am Zaun hängt ein Fetzen grober Wolle, und auf der Innenseite führen Fußspuren durch den Raureif hangaufwärts (`clue.k2.zaun`). Sie leuchten schwach, solange man den Relief-Blick an hat. Laub wundert sich über die Richtung (`laub.k2.richtung`).
 
 **2.2 – Die Apfelallee (Wow W3).** Die Spur folgt der Allee hinauf nach Nordwesten. Nach etwa 200 m: das Horn, ein langer Ton. Rechts im Nebel gehen Augen an, zwei, dann sechs, dann zwölf. Sie bewegen sich nicht, bis du dich bewegst. **Schleich-Abschnitt** (siehe Abschnitt 9): Laterne aus, schleichen, dann verschwinden die Augen. Wer rennt, löst eine kurze Hatz aus, die an der Orangerie-Stützmauer endet.
@@ -315,7 +317,8 @@ Die Köder „Gulden“ und „Louis d'or“ in 2-4 sind Substantive aus Kapitel
   - Fuß der Orangerie-Stützmauer (KB-30): Liegen (X) im Mauerschatten = unsichtbar auf mehr als 6 m.
   - Hohlweg KB-10 (1172/−1238), falls man nach Norden flieht: Die Luft steht, Gehör der Hunde halbiert. Danach das Becken am Marstall als Wasserziel.
 - **Fließendes Wasser:** Der Überlauf am Damm des Karlsbergweihers und das Becken am Marstall. Der Pikeur kommt nicht hinüber, die Hunde verlieren die Spur. Das ist das Ende der Jagd.
-- **Gestellt:** Ein Hund hat 2 s Sicht auf dich und ist näher als 4 m, oder der Pikeur ist näher als 6 m. Text: „Die Meute hat dich gestellt …“ Du wachst in der Feldstation auf. Ab dem zweiten Versuch kann man mit Anker B (Ehrenhof 1793-02) direkt vor der Abfahrt beginnen.
+- **Gestellt:** Ein Hund hat 2 s Sicht auf dich und ist näher als 4 m, oder der Pikeur ist näher als 6 m. Text: „Die Meute hat dich gestellt …“ Du wachst nicht in der Feldstation auf, sondern am Anker des Abschnitts, im Heute (Beat-Feld `wake`): bis zum Wachbuch (2.1–2.4) am Parkzaun, ab dann (2.5–2.10) am Ehrenhof, direkt an Anker B. Q bringt dich sofort zurück.
+- **Nochmal (zweiter Versuch):** Hanne und Jost stehen wieder am Gitter und sind ansprechbar (Reaktion `k2_10-wieder`). Das Horn wartet, bis das Gespräch mit Jost endet, bis du zur Durchfahrt gehst oder höchstens 20 s (Flag `k2.jagd_los`). Jost wiederholt seine Ansage nicht (Zeilen mit id fallen weg und kosten keine Lesezeit). Wer ins Heute geht, setzt den Versuch zurück (`k2-jagd-aus`).
 - Die W4-Sequenz (8 s) friert die Meute ein. Sie darf nie direkt vor einem Stellen ausgelöst werden (Mindestabstand 15 m zum nächsten Hund, sonst 2 s verzögern).
 
 **Tuning-Ziel:** Die Jagd dauert 60–90 s. Ein Spieler, der zur Orangerie und dann zum Damm rennt und einmal im Mauerschatten liegt, kommt beim ersten oder zweiten Versuch durch. Im sanften Modus sind Hunde und Pikeur 30 % langsamer, und die Jagd endet schon am Fuß der Orangerie.

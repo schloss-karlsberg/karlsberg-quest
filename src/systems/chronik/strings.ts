@@ -96,6 +96,7 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.card.openChronik': 'Chronik öffnen',
   'chronik.card.transcript': 'Mitschrift',
   'chronik.card.scale': '20 m',
+  'chronik.card.scale100': '100 m',
 
   'chronik.found.toast': 'Notiert: {title}',
   'chronik.lost.toast': 'Gestellt. {n} unbestätigte Funde sind verloren.',

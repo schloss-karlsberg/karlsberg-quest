@@ -85,8 +85,9 @@ declare module '../contracts' {
      *             'hunt:finale' {outcome: gathered | returned | calmed | faded}.
      *  'parforce' Ch. 2 long chase from `from` with `headStart` s, paced (surges, breathers, the
      *             Pikeur riding in from a flank); ends at `target` / water ('hunt:goal').
+     *  'follow'   Ending C: the hounds walk in the player's footsteps at a distance, harmless.
      */
-    mode?: 'patrol' | 'drive' | 'finale' | 'parforce';
+    mode?: 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow';
     /** pack drive/parforce/finale: the goal (drive, parforce) or circle centre (finale). */
     target?: { x: number; z: number };
     /** pack drive: waypoints on the way to the target. */
@@ -97,6 +98,15 @@ declare module '../contracts' {
     headStart?: number;
     /** pack drive/parforce: arrival radius around `target` (drive 18, parforce 25). */
     goalRadius?: number;
+    /** pack parforce: gap (m) the hounds settle at behind a runner (default 9). */
+    heel?: number;
+    /** pack parforce: rubber-band factor beyond the heel (a short chase that must be felt, default 1). */
+    burst?: number;
+    /**
+     * pack parforce: at the heel the hounds keep a runner's pace instead of overtaking — whoever
+     * keeps running is not caught (chapter 1's first chase is won by running; default false).
+     */
+    keepPace?: boolean;
     /** pack: snow tracks on/off (default: on in 1793-02 or a snowy look). */
     snow?: boolean;
   }
@@ -149,6 +159,9 @@ export interface HuntStartOptions {
   from?: XZ;
   headStart?: number;
   goalRadius?: number;
+  heel?: number;
+  burst?: number;
+  keepPace?: boolean;
   /** Snow tracks (default: by era / look). */
   snow?: boolean;
 }
@@ -495,6 +508,9 @@ class Hunt {
     if (c.from) o.from = { x: c.from.x, z: c.from.z };
     if (c.headStart !== undefined) o.headStart = c.headStart;
     if (c.goalRadius !== undefined) o.goalRadius = c.goalRadius;
+    if (c.heel !== undefined) o.heel = c.heel;
+    if (c.burst !== undefined) o.burst = c.burst;
+    if (c.keepPace !== undefined) o.keepPace = c.keepPace;
     if (c.snow !== undefined) o.snow = c.snow;
     const s = this.sim;
     const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && c.hounds === undefined && c.pikeur === undefined;
@@ -557,6 +573,9 @@ class Hunt {
       from: o.from ?? null,
       headStart: o.headStart,
       goalRadius: o.goalRadius,
+      heel: o.heel,
+      burst: o.burst,
+      keepPace: o.keepPace,
       oneKey: this.oneKey(),
     };
     this.snowOverride = o.snow ?? null;

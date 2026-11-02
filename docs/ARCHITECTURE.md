@@ -107,7 +107,7 @@ Rules
 | `data` | `meta`, `heights`, `ground`, `canopy`, `footprints`, `rooms` (114 room polygons), `pois`, `paths` (graph), `attribution` |
 | `state` | `GameStateStore`: `.state` (readonly), `.mutable`, `.update(fn, reason)`, `.subscribe`, `.slice(id, init)` |
 | `settings` | `SettingsStore` (volume per bus, mouseSensitivity, invertY, fov, subtitleSize, gentleMode, reducedMotion) persisted at `kq.settings.v1` |
-| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `delete`; keys `kq.save.v1.<slot>` |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'ambience')`, `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
 | `ui` | `hud`, `modals`, `toast(text)`, `layer(id)`, `add(el)` |
@@ -119,7 +119,22 @@ Rules
 HUD slots (`ctx.ui.hud`): `setMarker(id, bearingDeg|null, color)` (compass markers),
 `prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
 one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
-`setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `toast`.
+`setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `toast`,
+`stack(el, order)`.
+
+**Top-left column** (`div.kq-tl`, testid `hud-topleft`, max-width min(430 px, 50vw − 56 px)): the
+era label (order 0) and the status line (10), then features' elements put there with
+`hud.stack(el, order)` — the room name (tools, 20), the objective (story, 30), the story gauges
+(story, 40). They stack, never overlap; an element that is hidden takes no room. A
+ResizeObserver writes the column's bottom edge to `--kq-tl-bottom`; the skill cards sit below it.
+The fx gauges sit above the Bussole; the dialogue card leaves 190 px on each side; subtitles move
+up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused).
+`e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
+
+**Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
+(`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
+einmal wählen" (testid `title-ending-again`) once the auto save's story has an ending and the
+`ending` slot exists.
 
 ## 6. Events (core)
 
@@ -369,7 +384,11 @@ Round-4 (polish: set dressing) integration rules:
   `hunt:finale {outcome: gathered|returned|calmed|faded}`); `parforce` (Ch. 2 long chase from `from`
   to `target`/water: release horn + head start, surges with a rubber-banded pack, breathers
   `hunt:rest`, the Pikeur riding in from a flank, `hunt:goal` → `hunt:end {reason:'escaped'}`;
-  fairness checked by simulated runs in `tests/hunt-ext.test.ts`).
+  fairness checked by simulated runs in `tests/hunt-ext.test.ts`; `headStart`, `heel` (gap they
+  settle at, default 9 m), `burst` (rubber band beyond the heel, default 1) and `keepPace` (at the
+  heel they match a runner's pace and falter when you stop; Ch. 1's first chase, checked in
+  `tests/hunt-k1.test.ts`) tune it); `follow` (ending C's afterword: the hounds walk your
+  footsteps 16 m+ behind, back off when you turn on them, bay now and then, never catch).
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
   240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
@@ -432,6 +451,11 @@ Round-4 (polish: set dressing) integration rules:
   drops finds since the last confirmation (`chronik:lost`), not in gentle mode.
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
   real content exists or with `?placeholder`.
+- Markers of a past chapter's unfound clues retire (`clueRetired`, chapter order p → k1 … k4 →
+  enden): the world stops pointing at old business; E on the spot still works. Clues of the
+  running chapter win E over others. A clue's card sketch shows `clue.sketch {x, z, size?}` when
+  the clue is about another place than where it is found (the station printouts), with a 100 m
+  bar on large sketches.
 - State `state.chronik`, `state.inventory`, `state.codex` + `systems.chronik {since, hints, marks,
   seen, echoes, lastCase}`.
 - Hooks `kq.chronik.open/close/tab/grantAll/fill/check/solve/examine/listen/skipEcho/advanceEcho/
@@ -493,6 +517,19 @@ Round-4 (polish: set dressing) integration rules:
   `then` (`choice.<id>` flags, `story:choice`). Mirrors `CaseEntry.flag` on `chronik:fill`. Epilogue
   assembled from the endings pack's `epilog:line` blocks. Test chapters (`"test": true`) load only
   with `?storytest`. Closing the Chronik opened from the Pinnwand reopens the hub.
+- Flow rules (polish round): action runs carry their beat (`RunOptions.beat`: enter + beat
+  reactions → the beat, `exit` → the next beat, chapter reactions → none). When a beat begins,
+  delayed actions of other beats retire: presentation (`say`, `toast`, `sound`, `card`, `prompt`,
+  `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
+  once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
+  caps waiting lines at 6 (barks / skill remarks first), drops barks after 14 s, gives lines of an
+  ended beat 6 s, never cuts a playing sequence, and skips a trigger line about a place the player
+  has left. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
+  player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
+  `slice.sayCount`). Beats take `wake {x, z, yaw, era:'today', text}`: being caught / an empty
+  meter brings you to the present there instead of the field station. Ending choice: the field
+  book before the table is saved to slot `ending` (`ENDING_SLOT`); the title offers it again.
+  Ending C ("keep", finished): the past is at night and a `follow` pack of five comes along.
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
   epilogue/choose/look/meters/meter/room/choice` (`look(time, era?)`: `day | dawn | dusk | night`).
 

@@ -140,7 +140,12 @@
         ]
       },
       "fiction": false,
-      "chapter": "p"
+      "chapter": "p",
+      "sketch": {
+        "x": 1195,
+        "z": -1095,
+        "size": 260
+      }
     },
     {
       "id": "clue.p.messtischblatt",
@@ -161,7 +166,12 @@
         ]
       },
       "fiction": false,
-      "chapter": "p"
+      "chapter": "p",
+      "sketch": {
+        "x": 1195,
+        "z": -1095,
+        "size": 320
+      }
     },
     {
       "id": "clue.p.handbuch",
@@ -218,7 +228,12 @@
         ]
       },
       "fiction": true,
-      "chapter": "p"
+      "chapter": "p",
+      "sketch": {
+        "x": 1195,
+        "z": -1095,
+        "size": 320
+      }
     },
     {
       "id": "clue.p.mauerrest",
@@ -413,7 +428,12 @@
         ]
       },
       "fiction": true,
-      "chapter": "p"
+      "chapter": "p",
+      "sketch": {
+        "x": 1216,
+        "z": -1114,
+        "size": 80
+      }
     },
     {
       "id": "clue.p.seite_eins",
@@ -438,7 +458,12 @@
         ]
       },
       "fiction": true,
-      "chapter": "p"
+      "chapter": "p",
+      "sketch": {
+        "x": 1216,
+        "z": -1114,
+        "size": 80
+      }
     },
     {
       "id": "echo.p.diener",

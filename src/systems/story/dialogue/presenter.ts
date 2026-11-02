@@ -9,9 +9,12 @@ import { h, svg } from '../../../ui/dom';
 import { t } from '../../../i18n';
 import { ensurePortraitDefs, portraitSvg } from './portraits';
 import type { SpeakerMeta } from './speakers';
+import { LineQueue, type QueuedLine } from './queue';
 import { type Voice, syllableStarts } from './voice';
 
-export interface DialogueItem {
+export { LOW_TTL, MAX_QUEUE, STALE_GRACE } from './queue';
+
+export interface DialogueItem extends QueuedLine {
   id?: string;
   speaker: string;
   text: string;
@@ -20,6 +23,8 @@ export interface DialogueItem {
   fiction?: boolean;
   /** Source label for historical quotes. */
   source?: string;
+  /** The place the line is about: skipped if the player is far from it when its turn comes. */
+  where?: { x: number; z: number; r: number } | null;
 }
 
 interface Active {
@@ -42,6 +47,8 @@ export interface PresenterOptions {
   name: () => string;
   /** Called when a line starts showing. */
   onShow?: (item: DialogueItem) => void;
+  /** Is a queued line still worth saying (place, era …)? Checked when its turn comes. */
+  valid?: (item: DialogueItem) => boolean;
 }
 
 const CHARS_PER_S = 42;
@@ -65,13 +72,14 @@ export class DialoguePresenter {
   private readonly typedEl: HTMLElement;
   private readonly restEl: HTMLElement;
   private readonly srcEl: HTMLElement;
-  private readonly queue: DialogueItem[] = [];
+  /** Waiting lines (cap, stale and place rules: ./queue.ts). */
+  private readonly queue: LineQueue<DialogueItem>;
   private cur: Active | null = null;
   private hideTimer = 0;
   private mouthTimer = 0;
   private lastPortrait = '';
-
   constructor(private readonly o: PresenterOptions) {
+    this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
     ensurePortraitDefs();
     this.portraitEl = h('div.kqs-portrait');
     this.whoEl = h('span.kqs-who');
@@ -106,13 +114,23 @@ export class DialoguePresenter {
     return this.queue.length;
   }
 
+  /** Lines dropped as stale, invalid or over the cap (tests / debug). */
+  get dropped(): number {
+    return this.queue.dropped;
+  }
+
   enqueue(item: DialogueItem): void {
     this.queue.push(item);
     if (!this.cur) this.next();
   }
 
+  /** A beat began: waiting lines of other beats retire (./queue.ts). */
+  retireBeat(beat: string): void {
+    this.queue.retireBeat(beat);
+  }
+
   clear(): void {
-    this.queue.length = 0;
+    this.queue.clear();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');
   }
@@ -135,7 +153,7 @@ export class DialoguePresenter {
   }
 
   private next(): void {
-    const item = this.queue.shift();
+    const item = this.queue.take();
     if (!item) {
       this.cur = null;
       this.el.classList.remove('kqs-speaking');
@@ -176,6 +194,7 @@ export class DialoguePresenter {
 
   /** Advance typing / hold (seconds of game time). */
   update(dt: number): void {
+    this.queue.tick(dt);
     if (this.mouthTimer > 0) {
       this.mouthTimer -= dt;
       if (this.mouthTimer <= 0) this.portraitEl.classList.remove('kqs-m');

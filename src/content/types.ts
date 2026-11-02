@@ -72,6 +72,11 @@ export interface Clue {
   needsLantern?: boolean;
   /** Story chapter this clue belongs to (e.g. 'p', 'k1' … 'k4'); for tooling and story flow. */
   chapter?: string;
+  /**
+   * What the card's "Lageskizze" shows, when that is not where the clue is found (a printout at the
+   * field station showing the Ehrenhof): centre and optional size (m, default 70).
+   */
+  sketch?: { x: number; z: number; size?: number };
 }
 
 export interface Blank {

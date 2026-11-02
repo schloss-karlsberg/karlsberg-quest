@@ -13,7 +13,8 @@
   position: absolute;
   left: 50%;
   bottom: 92px;
-  width: min(820px, 92vw);
+  /* leaves 190 px each side: the Bussole and the fx gauges above it stay clear (1024 px and up) */
+  width: min(820px, 92vw, calc(100vw - 380px));
   display: flex;
   gap: 18px;
   align-items: flex-end;
@@ -1201,4 +1202,85 @@
   .kqs-end-fire {
     animation: none !important;
   }
+}
+
+/* ---- endings: the button to the next page never needs a scroll ----
+   The modal scrolls (long epilogues on small screens); the page's own action row sticks to its
+   bottom edge over a fade in the page colour. Short screens get tighter type. */
+.kq-modal.kqs-ending {
+  --end-bg: var(--paper);
+}
+.kq-modal.kqs-ending.kqs-end-burn {
+  --end-bg: #cfc6b3;
+}
+.kq-modal.kqs-ending.kqs-end-keep {
+  --end-bg: #0e1119;
+}
+.kq-modal.kqs-ending:not(.kqs-end-credits) .kq-modal-body > .actions {
+  position: sticky;
+  bottom: -26px;
+  z-index: 2;
+  justify-content: flex-end;
+  margin: 10px -34px -26px -82px;
+  padding: 26px 34px 18px 82px;
+  background: linear-gradient(to bottom, transparent, var(--end-bg) 42%);
+}
+@media (max-height: 820px) {
+  .kq-modal.kqs-ending {
+    max-height: 96vh;
+    padding-top: 22px;
+  }
+  .kqs-end-title {
+    font-size: 32px !important;
+  }
+  .kqs-end-intro,
+  .kqs-end-scene {
+    font-size: 17px !important;
+  }
+  .kqs-epilogue {
+    padding: 0;
+  }
+  .kqs-epi-plate {
+    padding: 14px 30px 8px;
+  }
+  .kq-modal .kqs-epi-plate p {
+    font-size: 16.5px;
+    line-height: 1.38;
+    margin: 0 0 7px;
+  }
+  .kq-modal .kqs-epi-plate .kqs-epi-intro {
+    font-size: 19px !important;
+  }
+  .kq-modal .kqs-epi-plate .kqs-epi-coda {
+    font-size: 21px !important;
+  }
+  .kqs-end-obj svg {
+    width: 112px;
+    height: 84px;
+  }
+}
+
+/* ---- HUD column: the objective and the story gauges sit in the HUD's top-left stack ---- */
+.kq-tl > .kqs-objective {
+  position: relative;
+  top: auto;
+  left: auto;
+  max-width: 100%;
+  margin-top: 2px;
+}
+.kq-tl > .kqs-objective:not(.kqs-show) {
+  display: none;
+}
+.kq-tl > .kqs-gauges {
+  position: relative;
+  top: auto;
+  left: auto;
+  margin-top: 4px;
+}
+.kq-tl > .kqs-gauges:empty {
+  display: none;
+}
+/* a dialogue card on screen: hunt / sound captions move above it instead of under it */
+.kq-root:has(.kqs-dlg.kqs-show) .kq-subtitles {
+  bottom: 262px;
 }

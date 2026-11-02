@@ -435,7 +435,9 @@ export class ChronikBoard {
     if (!list.length) grid.append(h('p', { style: 'color:#e9dcc0;font-style:italic;font-size:15px;margin:0' }, t('chronik.evidence.none')));
     for (const c of list.slice(0, 6)) {
       const canvas = h('canvas', { width: 120, height: 120 });
-      if (this.api.heightAt) drawRelief(canvas, this.api.heightAt, c.where.x, c.where.z, { px: 120, size: 60, north: false, contour: 1 });
+      // the sketch shows what the clue is about (`sketch`), else its find spot
+      const at = c.sketch ?? c.where;
+      if (this.api.heightAt) drawRelief(canvas, this.api.heightAt, at.x, at.z, { px: 120, size: c.sketch?.size ? c.sketch.size * 0.85 : 60, north: false, contour: 1 });
       grid.append(h('figure.ck-ev', { dataset: { clue: c.id } }, [h('span.ck-pin.red'), canvas, c.title_de, c.fiction ? h('div.fic', t('chronik.fiction')) : null]));
     }
     side.append(grid);
