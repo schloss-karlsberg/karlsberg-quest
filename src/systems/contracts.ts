@@ -11,6 +11,8 @@
  *  - hunt    : hunt:*, lantern:*, player:caught (by 'pack')
  *  - chronik : clue:found, noun:learned, chronik:batch, chronik:case-complete, codex:unlocked, echo:*
  *  - fx also emits player:caught (by 'fire' | 'oblivion')
+ *  - skills  : skill:unlocked (story / chronik emit skill:grant)
+ *  - tools   : measure:done
  *
  * Integration rules (see docs/ARCHITECTURE.md §12):
  *  - The Q key belongs to the story (anchor flags shift.allowed/target/x/z/r, hold Q in the past
@@ -82,6 +84,31 @@ declare module '../core/events' {
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
     'chronik:case-complete': { caseId: string };
     'codex:unlocked': { factId: string };
+
+    // ---- skills / survey tools (owner: skills, tools) -------------------------------------
+    /**
+     * Raise a skill to `level` (never lowers it): story/chronik emit it, the skills system writes
+     * `state.skills[skill]` and shows the unlock card (+ a Laub line once Laub talks). Skill ids:
+     * relief, kartograf, baumeister, roentgen, spurenleser (see src/systems/skills/logic.ts).
+     * `quiet` skips the card (loads, debug).
+     */
+    'skill:grant': { skill: string; level: number; quiet?: boolean };
+    /** The skills system has shown a new level (after state.skills changed, by any writer). */
+    'skill:unlocked': { skill: string; level: number };
+    /**
+     * A measurement (R, Kartograf 3) was completed. a/b in the local frame (y = height), distance
+     * = 3D length in m. `building` / `room` are set when both ends lie on/in the same palace
+     * footprint / catalogue room (e.g. 'KB-B06', 'B06.1.bildergalerie').
+     */
+    'measure:done': {
+      a: { x: number; y: number; z: number };
+      b: { x: number; y: number; z: number };
+      distance: number;
+      horizontal: number;
+      rise: number;
+      building?: string;
+      room?: string;
+    };
   }
 }
 

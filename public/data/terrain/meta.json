@@ -86,5 +86,32 @@
   "path": "maps/hist1840.jpg",
   "covered": 1,
   "note": "georeferencing off by tens of metres in places"
+ },
+ "hist1935": {
+  "path": "maps/hist1935.jpg",
+  "covered": 1,
+  "note": "TK25 1935–40, ≈ 10–15 m off near the palace"
+ },
+ "pointcloud": {
+  "format": "kq-pts-v1",
+  "path": "pointcloud/ground.kqp.deflate",
+  "count": 1028235,
+  "x0": 700,
+  "z0": -1600,
+  "cell": 20,
+  "cols": 50,
+  "rows": 50,
+  "xyScale": 0.02,
+  "resScale": 0.02,
+  "classes": {
+   "2": "Boden",
+   "6": "Gebäude",
+   "9": "Wasser",
+   "24": "Keller"
+  },
+  "keep": 0.82,
+  "source": "Schloss Karlsberg: 3dm_32_381_5465_1_SL_2025_050.laz, 3dm_32_382_5465_1_SL_2025_050.laz, 3dm_32_381_5466_1_SL_2025_050.laz, 3dm_32_382_5466_1_SL_2025_050.laz",
+  "attribution": "© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet",
+  "encoding": "zlib(u32 offsets[cols*rows+1] | u16 dx[n] | u16 dz[n] (2 cm, delta mod 2^16) | i8 res[n] (2 cm above 2025 DTM) | u8 class[n])"
  }
 }

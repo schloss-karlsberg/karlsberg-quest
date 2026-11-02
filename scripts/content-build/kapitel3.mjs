@@ -72,7 +72,7 @@ const clues = [
   clue('clue.k3.messen', {
     title: 'Die Galerie messen', kind: 'object', room: GAL, r: 40, era: E, chapter: ch, fiction: false,
     text: 'Mit R von einem Ende zum anderen messen. Die Messlinie zeigt rund 80 m (Modelllänge, nicht fest).',
-    nouns: ['n.hundert_schritt', 'n.hundert_klafter'], req: { skill: 'kartograf3' },
+    nouns: ['n.hundert_schritt', 'n.hundert_klafter'], req: { skill: 'kartograf:3' },
   }),
   clue('clue.k3.falltuer', {
     title: 'Ein loses Brett', kind: 'object', at: FALLTUER, r: 2, era: E, anchor: GAL, chapter: ch, fiction: false,

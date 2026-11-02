@@ -588,6 +588,28 @@ body {
   display: flex;
   gap: 12px;
 }
+.kq-form .radios label {
+  white-space: nowrap;
+}
+/* key help (pause → Steuerung): ui.keys.* from the bible */
+.kq-keys {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 17px;
+  line-height: 1.35;
+}
+.kq-keys td {
+  padding: 5px 10px 5px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.kq-keys td.k {
+  font-family: var(--sc);
+  white-space: nowrap;
+  color: var(--accent);
+  width: 1%;
+  padding-right: 18px;
+}
 .kq-attrib li {
   font-size: 15px !important;
   margin-bottom: 8px;

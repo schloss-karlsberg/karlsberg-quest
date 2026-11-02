@@ -40,4 +40,10 @@ their reading time) and `onResume` (repeat when a beat is resumed; default: ever
 `look {time: day|dusk|night}`, `prompt {key, text}`, `cue {id}` (→ `story:cue`), `chronik {caseId}`,
 `unlock {chapter}`, `ending`, `autosave`, `choice {id, prompt, options[{label, set}], seconds, fallback}`.
 
+**Skills** (`skill {id, tier}`, system `skills`): ids `relief` (1–3), `kartograf` (1 map 1840, 2 map 1935,
+3 Messen R), `baumeister` (1 Planblatt B, 2 Konfidenzansicht, 3 Raumfolge), `roentgen` (1 Röntgenblick V),
+`spurenleser` (1 horn meaning, 2 pack routes). Each raise shows the unlock card; Laub comments once
+`flag {set: {"story.laub": true}}` has been set. Measuring: `{event: 'measure:done', match: {building: 'KB-B06'}}`
+or `flag measured.KB-B06` (the measured distance). Chronik clue requirements use `skill: 'kartograf:3'`.
+
 Debug in the browser console: `kq.story.goto('prolog', 'p9')`, `kq.story.state()`, `kq.story.skip()`.

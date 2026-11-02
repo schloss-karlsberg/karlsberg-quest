@@ -218,6 +218,13 @@ export default defineSystem({
     ambient = new AmbientParticles(ctx.world);
     ctx.scene.add(ambient.object);
     quality.onChange(() => fire.rebuild());
+    // settings → Grafikqualität (skills system's settings rows): low/high pins the level, unset = auto
+    const applyGraphics = () => {
+      const g = (ctx.settings.state as { graphics?: 'low' | 'high' }).graphics;
+      if (g === 'low' || g === 'high') quality.set(g);
+    };
+    if (!ctx.params.has('fxq')) applyGraphics();
+    ctx.events.on('settings:change', ({ key }) => key === 'graphics' && applyGraphics());
 
     ctx.events.on('shift:request', ({ to, instant }) => {
       if (!isEra(to)) return;

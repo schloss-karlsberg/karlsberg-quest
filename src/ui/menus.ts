@@ -12,6 +12,28 @@ export interface MenuDeps {
   toTitle: () => void;
 }
 
+/** A settings row: label + control. Feature systems add rows with `addSettingsRows` (shown below the core rows). */
+export type SettingsRow = [string, HTMLElement];
+const settingsExtensions: ((settings: SettingsStore) => SettingsRow[])[] = [];
+export function addSettingsRows(fn: (settings: SettingsStore) => SettingsRow[]): void {
+  settingsExtensions.push(fn);
+}
+
+/** Key help: `ui.keys.<id>` (description) + `ui.keys.<id>.key` (key label) from the bible, in this order. */
+export const CONTROL_KEYS: string[] = ['move', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'chronik', 'measure', 'pause'];
+/** Feature systems append their own control ids (strings `ui.keys.<id>` / `.key` registered via addStrings). */
+export function addControlKeys(...ids: string[]): void {
+  for (const id of ids) if (!CONTROL_KEYS.includes(id)) CONTROL_KEYS.push(id);
+}
+
+export function controlsBody(): HTMLElement {
+  return h(
+    'table.kq-keys',
+    { 'data-testid': 'key-help' },
+    CONTROL_KEYS.map((id) => h('tr', [h('td.k', t(`ui.keys.${id}.key`)), h('td', t(`ui.keys.${id}`))])),
+  );
+}
+
 export function settingsForm(settings: SettingsStore): HTMLElement {
   const s = settings.state;
   const set = (fn: (d: Settings) => void, key: string) => settings.update(fn, key);
@@ -36,6 +58,7 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
     );
   }
   rows.push([t('settings.subtitles'), radios]);
+  for (const ext of settingsExtensions) rows.push(...ext(settings));
   for (const bus of ['master', 'music', 'sfx', 'ambience'] as const) {
     rows.push([t(`settings.volume.${bus}`), range(0, 1, 0.01, s.volume[bus], (v) => set((d) => (d.volume[bus] = v), 'volume'), t(`settings.volume.${bus}`))]);
   }
@@ -74,8 +97,8 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
     m.setBody(
       h('div.kq-menu', [
         h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'resume' }, t('pause.resume')),
-        h('button.kq-btn', { onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
-        h('button.kq-btn', { onclick: () => sub(t('controls.title'), h('p', t('controls.body'))) }, t('pause.controls')),
+        h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
+        h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody()) }, t('pause.controls')),
         h('button.kq-btn', { onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),
         h('button.kq-btn', { onclick: () => sub(t('licences.title'), licencesBody(deps.attribution())) }, t('pause.licences')),
         h('button.kq-link', { onclick: () => { m.close(); deps.toTitle(); } }, t('pause.toTitle')),

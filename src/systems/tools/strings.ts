@@ -1,0 +1,40 @@
+import { addStrings } from '../../i18n';
+
+/** Survey tools (measure, Röntgenblick, plan sheet / confidence view, pack routes). */
+addStrings('de', {
+  'tools.measure.title': 'Messung',
+  'tools.measure.live': 'läuft',
+  'tools.measure.empty': 'Klicke den Anfangspunkt an.',
+  'tools.measure.distance': 'Strecke',
+  'tools.measure.horizontal': 'waagrecht',
+  'tools.measure.rise': 'Höhenunterschied',
+  'tools.measure.grade': 'Steigung',
+  'tools.measure.profile': 'Höhenprofil des Geländes zwischen A und B',
+  'tools.measure.on': 'Gemessen an: {name}',
+  'tools.measure.hint.a': '[Klick] Anfang setzen · [R] Messen beenden',
+  'tools.measure.hint.b': '[Klick] Ende setzen · [R] Messen beenden',
+  'tools.measure.hint.done': '[Klick] neue Messung · [R] Messen beenden',
+  'tools.measure.on.toast': 'Messen: Klicke Anfang und Ende.',
+  'tools.measure.off.toast': 'Messband eingerollt',
+
+  'tools.xray.on': 'Röntgenblick: Bodenpunkte von 2025',
+  'tools.xray.off': 'Röntgenblick aus',
+  'tools.xray.loading': 'Punktwolke wird geladen …',
+  'tools.xray.none': 'Hier gibt es keine Punktwolke.',
+  'tools.xray.badge': 'Röntgenblick · Punktwolke 2025 (ALS, Bodenpunkte)',
+  'tools.xray.paws': 'Spuren in der Punktwolke: Fiktion',
+
+  'tools.plan.on': 'Planblatt: Grundrisse 1789',
+  'tools.conf.on': 'Konfidenzansicht',
+  'tools.plan.off': 'Pläne weggelegt',
+  'tools.plan.kicker': 'Planblatt',
+  'tools.plan.note': 'Grundrisse der Rekonstruktion 1789 · gestrichelt: vermutet',
+  'tools.conf.title': 'Konfidenz der Rekonstruktion',
+  'tools.conf.high': 'hoch',
+  'tools.conf.high.note': 'belegt (Plan, Befund)',
+  'tools.conf.med': 'mittel',
+  'tools.conf.med.note': 'erschlossen',
+  'tools.conf.low': 'niedrig',
+  'tools.conf.low.note': 'vermutet',
+  'tools.conf.foot': 'Farben nach Okabe & Ito, farbenblind-sicher',
+});

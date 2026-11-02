@@ -15,6 +15,7 @@
 import './strings';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
+import { hasString } from '../../i18n';
 import type { Stance } from '../../player/stance';
 import { pointInRing } from '../../world/collision';
 import type { ThreatConfig } from '../contracts';
@@ -27,6 +28,9 @@ import type { PlayerSense } from './perception';
 import { hashSeed } from './rng';
 import { type Agent, type HornSignal, type PackOptions, PackSim, type PackState, type SimEvent, type SimWorld, headingTo } from './sim';
 import { PackVisuals } from './visuals';
+
+/** Horn signal → call id of the bible captions (ui.horn.<call>, ui.horn.<call>.tracker). */
+const HORN_CALL: Record<HornSignal, string> = { search: 'anblasen', found: 'faehrte', lost: 'verloren', 'call-off': 'sammeln' };
 
 export interface HuntSlice {
   /** Current pack alert 0..1 (mirror of the last 'hunt:alert'; 0 when no pack is out). */
@@ -483,7 +487,10 @@ class Hunt {
         this.hornGlowDur = Math.max(0.8, dur || (e.signal === 'search' ? 2.8 : e.signal === 'call-off' ? 3.5 : e.signal === 'lost' ? 2.6 : 0.8));
         this.hornGlowT = this.hornGlowDur;
         const meaning = (ctx.state.state.skills['spurenleser'] ?? 0) >= 1 || ctx.settings.state.gentleMode;
-        this.caption(`horn-${e.signal}`, ctx.t(`hunt.horn.${e.signal}${meaning ? '.meaning' : ''}`), 1.5, 4200);
+        // bible captions (09-ui-texte §6): ui.horn.<call>[.tracker] with Spurenleser 1; own strings as fallback
+        const call = HORN_CALL[e.signal];
+        const uiKey = `ui.horn.${call}${meaning ? '.tracker' : ''}`;
+        this.caption(`horn-${e.signal}`, hasString(uiKey) ? ctx.t(uiKey) : ctx.t(`hunt.horn.${e.signal}${meaning ? '.meaning' : ''}`), 1.5, 4200);
         // the glowing brass horn of a Pikeur in plain view is its own visual cue
         this.arrow('horn', e.x, e.z, ctx.t('hunt.arrow.horn'), 3.2, !sim?.pikeur);
         break;

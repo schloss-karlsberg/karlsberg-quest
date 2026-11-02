@@ -1,0 +1,394 @@
+/* Survey tools: field-book sheets (measure, legend), reticle, labels. Tokens: src/ui/styles.css. */
+.kq-layer[data-layer='tools'] {
+  pointer-events: none !important;
+}
+.kq-layer[data-layer='tools'] * {
+  pointer-events: none;
+}
+
+.kqt-sheet {
+  position: absolute;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(255, 250, 235, 0.55), transparent 60%),
+    repeating-linear-gradient(180deg, transparent 0 21px, var(--rule) 21px 22px),
+    linear-gradient(172deg, #efe3c6, var(--paper) 60%, var(--paper-2));
+  border-left: 3px double var(--margin);
+  border-radius: 2px 6px 6px 2px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  padding: 10px 16px 12px 16px;
+  opacity: 0;
+  transform: translateY(12px) rotate(0.6deg);
+  transition:
+    opacity 0.35s,
+    transform 0.45s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.kqt-sheet.kqt-show {
+  opacity: 1;
+  transform: translateY(0) rotate(0.6deg);
+}
+.kqt-sheet-title {
+  font-family: var(--sc);
+  font-size: 22px;
+  line-height: 1.1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  border-bottom: 1px solid var(--ink-faint);
+  padding-bottom: 3px;
+  margin-bottom: 6px;
+}
+.kqt-sheet-foot {
+  font-family: var(--hand);
+  font-size: 16px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.kqt-sheet-empty {
+  font-family: var(--hand);
+  font-size: 20px;
+  margin: 2px 0;
+}
+
+/* measuring sheet, bottom right */
+.kqt-measure {
+  right: 22px;
+  bottom: 22px;
+  width: min(400px, 46vw);
+}
+.kqt-live {
+  font-family: var(--hand);
+  font-size: 17px;
+  color: var(--accent);
+}
+.kqt-figs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+.kqt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.kqt-row span {
+  min-width: 0;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.kqt-row b {
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 6px;
+  font-family: var(--hand);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--ink);
+}
+.kqt-row:first-child b {
+  font-size: 30px;
+  color: var(--accent);
+}
+.kqt-where {
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.kqt-profile {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 4px;
+  overflow: visible;
+}
+.kqt-profile .g {
+  stroke: rgba(84, 110, 140, 0.35);
+  stroke-width: 0.6;
+}
+.kqt-profile .ax {
+  font-family: var(--serif);
+  font-size: 9.5px;
+  fill: var(--ink-soft);
+}
+.kqt-profile .gr {
+  fill: rgba(90, 74, 55, 0.16);
+  stroke: none;
+}
+.kqt-profile .pl {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+}
+.kqt-profile .sl {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+.kqt-profile .pt {
+  fill: var(--accent);
+  stroke: var(--paper);
+  stroke-width: 1;
+}
+.kqt-profile .lab {
+  font-family: var(--sc);
+  font-size: 12px;
+  fill: var(--accent);
+}
+.kqt-sheet.kqt-live .kqt-profile .pl {
+  stroke-dasharray: 3 2;
+}
+
+/* crosshair reticle while measuring: a surveyor's cross with ticks */
+.kqt-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background:
+    linear-gradient(#f4d36b, #f4d36b) center / 2px 14px no-repeat,
+    linear-gradient(#f4d36b, #f4d36b) center / 14px 2px no-repeat;
+  border: 1.5px solid rgba(244, 211, 107, 0.85);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 6px rgba(0, 0, 0, 0.6) inset;
+}
+.kqt-reticle::before,
+.kqt-reticle::after {
+  content: '';
+  position: absolute;
+  background: rgba(244, 211, 107, 0.9);
+}
+.kqt-reticle::before {
+  left: 50%;
+  top: -8px;
+  bottom: -8px;
+  width: 1px;
+  background: linear-gradient(rgba(244, 211, 107, 0.9) 0 8px, transparent 8px calc(100% - 8px), rgba(244, 211, 107, 0.9) calc(100% - 8px));
+}
+.kqt-reticle::after {
+  top: 50%;
+  left: -8px;
+  right: -8px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(244, 211, 107, 0.9) 0 8px, transparent 8px calc(100% - 8px), rgba(244, 211, 107, 0.9) calc(100% - 8px));
+}
+.kqt-reticle.kqt-show {
+  opacity: 1;
+}
+.kqt-measure-hint {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 40px);
+  transform: translateX(-50%);
+  font-family: var(--hand);
+  font-size: 19px;
+  color: #f2e6c8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.kqt-measure-hint.kqt-show {
+  opacity: 0.9;
+}
+.kqt-tape-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--hand);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--ink);
+  background: rgba(244, 216, 120, 0.94);
+  border: 1px solid rgba(60, 40, 10, 0.6);
+  border-radius: 3px;
+  padding: 0 10px;
+  box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  opacity: 0;
+}
+.kqt-tape-label.kqt-show {
+  opacity: 1;
+}
+
+/* plan sheet: building labels + note; confidence legend */
+.kqt-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.kqt-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--hand);
+  font-size: 19px;
+  line-height: 1;
+  color: #2a1d12;
+  background: rgba(239, 227, 198, 0.86);
+  border: 1px solid rgba(42, 29, 18, 0.35);
+  padding: 2px 8px 3px;
+  border-radius: 2px;
+  box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.kqt-label span {
+  font-family: var(--serif);
+  font-size: 10px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+}
+.kqt-label:not(.kqt-show) {
+  opacity: 0 !important;
+}
+.kqt-label.kqt-conf {
+  border-left: 6px solid #888;
+}
+.kqt-label.kqt-conf[data-conf='high'] {
+  border-left-color: #009e73;
+}
+.kqt-label.kqt-conf[data-conf='med'] {
+  border-left-color: #e69f00;
+}
+.kqt-label.kqt-conf[data-conf='low'] {
+  border-left-color: #cc79a7;
+  border-left-style: dashed;
+}
+.kqt-legend {
+  right: 22px;
+  bottom: 22px;
+  width: 290px;
+}
+.kqt-legend ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.kqt-legend li {
+  display: grid;
+  grid-template-columns: 26px 66px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.kqt-legend li b {
+  font-family: var(--sc);
+  font-weight: 400;
+  font-size: 17px;
+}
+.kqt-legend li span:last-child {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.kqt-sw {
+  width: 22px;
+  height: 14px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(42, 29, 18, 0.5);
+}
+.kqt-legend li:last-child .kqt-sw {
+  background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(239, 227, 198, 0.9) 5px 8px) !important;
+  background-color: #cc79a7;
+}
+.kqt-plan-note {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  max-width: 320px;
+  font-family: var(--hand);
+  font-size: 19px;
+  line-height: 1.15;
+  color: var(--ink);
+  background: rgba(239, 227, 198, 0.92);
+  border-left: 3px double var(--margin);
+  padding: 6px 12px 7px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: rotate(-0.8deg);
+  transition: opacity 0.3s;
+}
+.kqt-plan-note.kqt-show {
+  opacity: 1;
+}
+.kqt-plan-kicker {
+  display: block;
+  font-family: var(--sc);
+  font-size: 18px;
+}
+
+/* room name in memories (Baumeister 1) */
+.kqt-room {
+  position: absolute;
+  top: 70px;
+  left: 22px;
+  font-family: var(--sc);
+  font-size: 19px;
+  color: #f0e4c6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  border-bottom: 1px solid rgba(240, 228, 198, 0.5);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.kqt-room.kqt-show {
+  opacity: 0.92;
+}
+
+/* Röntgenblick badge */
+.kqt-xray-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--sc);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: #bfe8ff;
+  text-shadow:
+    0 0 8px rgba(80, 180, 255, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.kqt-xray-badge small {
+  font-family: var(--hand);
+  font-size: 15px;
+  color: #ffd98a;
+  letter-spacing: 0;
+}
+.kqt-xray-badge.kqt-show {
+  opacity: 1;
+}
+.kqt-xray-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(4, 10, 24, 0) 40%, rgba(4, 10, 24, 0.55) 100%);
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.kqt-xray-vignette.kqt-show {
+  opacity: 1;
+}
+
+/* measuring sheet and the plan legend share the bottom-right corner */
+.kqt-measuring .kqt-legend,
+.kqt-measuring .kqt-plan-note {
+  bottom: 330px;
+}
