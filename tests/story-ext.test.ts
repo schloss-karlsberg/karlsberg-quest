@@ -127,6 +127,7 @@ describe('story validator (round 2)', () => {
             { do: 'memorial', id: 'rondell', x: 1815, z: 348, r: 20 },
             { do: 'readings', fill: 'offen' },
             { do: 'grant', clue: 'clue.k1.soll' },
+            { do: 'look', time: 'night', era: '1789' },
             { do: 'say', speaker: 'laub', text: 'x', text_by_era: { today: 'y {jahre:1793}' } },
             { do: 'choice', id: 'k2.tor', modal: false, prompt: 'Tor', options: [{ label: 'a', key: 'leuchten', set: {}, when: { lantern: true } }, { label: 'b', key: 'dunkel', set: {}, when: { lantern: false }, then: [{ do: 'toast', text: 'dunkel' }] }] },
           ],
@@ -147,6 +148,7 @@ describe('story validator (round 2)', () => {
             { do: 'meter', id: 'atem', active: true } as Action,
             { do: 'memorial', id: 'm' } as Action,
             { do: 'readings', fill: 'alles' } as unknown as Action,
+            { do: 'look', time: 'night', era: '1666' } as unknown as Action,
             { do: 'say', speaker: 'laub', text: 'x', text_by_era: { morgen: 'y' } } as unknown as Action,
             { do: 'choice', id: 'c', prompt: 'p', options: [{ label: 'a', set: {}, when: { nonsense: 1 } }, { label: 'b', set: {} }] } as unknown as Action,
           ],
@@ -159,6 +161,7 @@ describe('story validator (round 2)', () => {
     expect(msgs).toMatch(/meter 'atem' needs seconds/);
     expect(msgs).toMatch(/memorial needs x\/z/);
     expect(msgs).toMatch(/readings needs fill/);
+    expect(msgs).toMatch(/look: unknown era '1666'/);
     expect(msgs).toMatch(/text_by_era\.morgen/);
     expect(msgs).toMatch(/condition needs exactly one/);
     expect(msgs).toMatch(/meter 'oil' needs gte, lte or full/);
@@ -282,6 +285,7 @@ describe('npc conversations', () => {
     expect(clueFor('k1', 'jost')).toBe('clue.k1.jost');
     expect([...askedTopics({ 'talked.k1.hanne.berg': true }, 'k1', 'hanne', ['berg', 'warum'])]).toEqual(['berg']);
     expect(topicLabel('verstecken')).toBe('Wie versteckt man sich?');
+    expect(topicLabel('zahl')).toBe('Was bedeutet die mittlere Zahl?');
     expect(topicLabel('neu_thema')).toBe('Nach neu thema fragen');
     expect(lookFor('hanne').mood).toBe('warm');
     expect(lookFor('soll').mood).toBe('eerie');

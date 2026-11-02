@@ -313,10 +313,14 @@ export interface SoundAction extends ActionBase {
   /** Horn signal: anblasen (one long), fährte (two short), verloren (falling), sammeln (three long). */
   signal?: 'anblasen' | 'faehrte' | 'verloren' | 'sammeln';
 }
-/** Time of day for the present-day era (field station evenings). */
+/**
+ * Time of day for the present-day era (field station evenings). With `era` (a past era) the time
+ * of day of that memory instead (e.g. 1789 dusk / night in the Karlslust); `day` restores its preset.
+ */
 export interface LookAction extends ActionBase {
   do: 'look';
   time: 'day' | 'dusk' | 'night';
+  era?: Era;
 }
 /** Prompt line at the bottom of the HUD (null clears). */
 export interface PromptAction extends ActionBase {

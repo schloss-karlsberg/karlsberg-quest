@@ -208,7 +208,7 @@
       "kind": "echo",
       "text_de": "Die Wache am Ehrenhofgitter, automatisch beim Betreten.",
       "where": {
-        "x": 1199,
+        "x": 1201,
         "z": -1115,
         "radius": 12,
         "era": "1789",
@@ -220,7 +220,8 @@
         ]
       },
       "fiction": true,
-      "chapter": "k1"
+      "chapter": "k1",
+      "auto": true
     },
     {
       "id": "clue.k1.fluegel",
@@ -248,9 +249,9 @@
       "kind": "object",
       "text_de": "Eine Schiefertafel mit drei Zahlen in Kreide, ohne Beschriftung: „35 000“, „800 000“, „14 000 000“. Beim dritten steht ein Fragezeichen.",
       "where": {
-        "x": 1201.7,
-        "z": -1152.7,
-        "radius": 6,
+        "x": 1204.1,
+        "z": -1155,
+        "radius": 1.3,
         "era": "1789",
         "anchor": "B03.1.eg-registratur"
       },
@@ -262,7 +263,8 @@
         ]
       },
       "fiction": true,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "tablet"
     },
     {
       "id": "clue.k1.kaufbrief",
@@ -270,9 +272,9 @@
       "kind": "document",
       "text_de": "„Abschrift. Kauf des Louisenhofes auf dem Buchenberg, den 27. Julii 1777: fünfunddreißigtausend Gulden und sechzig neue Louis d’or.“ (Wortlaut erfunden, Inhalt nach de.wikipedia und homburg-im-bild.)",
       "where": {
-        "x": 1201.7,
-        "z": -1152.7,
-        "radius": 6,
+        "x": 1205.4,
+        "z": -1151.5,
+        "radius": 1.4,
         "era": "1789",
         "anchor": "B03.1.eg-registratur"
       },
@@ -286,7 +288,8 @@
         ]
       },
       "fiction": true,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "paper"
     },
     {
       "id": "clue.k1.soll_einnahmen",
@@ -319,9 +322,9 @@
       "kind": "document",
       "text_de": "Ein Heft der Stats-Anzeigen von 1782. Unterstrichen: „ganz und gar gleichsam ein einziges JagdRevier“ und „ganze Regimenter JagdHunde“.",
       "where": {
-        "x": 1201.7,
-        "z": -1152.7,
-        "radius": 6,
+        "x": 1201.6,
+        "z": -1155.8,
+        "radius": 1.2,
         "era": "1789",
         "anchor": "B03.1.eg-registratur"
       },
@@ -331,7 +334,8 @@
         ]
       },
       "fiction": false,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "book"
     },
     {
       "id": "clue.k1.gegenbuch",
@@ -339,9 +343,9 @@
       "kind": "object",
       "text_de": "Ein dünnes Buch in grauem Pappband unter dem Hauptbuch. Auf der ersten Seite steht „Was der Hof schuldig blieb“, dieselbe Überschrift wie auf der Seite in der Bussole. Soll klappt es zu: „Das ist privat.“",
       "where": {
-        "x": 1201.7,
-        "z": -1152.7,
-        "radius": 6,
+        "x": 1202.9,
+        "z": -1155.7,
+        "radius": 1.2,
         "era": "1789",
         "anchor": "B03.1.eg-registratur"
       },
@@ -351,7 +355,8 @@
         ]
       },
       "fiction": true,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "book"
     },
     {
       "id": "clue.k1.soll",
@@ -407,8 +412,8 @@
       "text_de": "An einem Quader am Fuß der Galerie ein eingehauenes Zeichen: offener Winkel, darunter drei Punkte. (Erfundenes Steinmetzzeichen.) Wandernde Steine 1/4.",
       "where": {
         "x": 1262,
-        "z": -1218,
-        "radius": 3,
+        "z": -1218.5,
+        "radius": 2.5,
         "era": "1789",
         "anchor": "KB-B06"
       },
@@ -418,7 +423,8 @@
         ]
       },
       "fiction": true,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "stone"
     },
     {
       "id": "clue.k1.festplan",
@@ -426,9 +432,9 @@
       "kind": "document",
       "text_de": "Drei Blätter: „Plan d[e] la foire executé au d[ecem]bre 1785 au Carlsberg / Mannlich“. Ein Blatt zeigt den Orangeriehof mit Buden im Kreis („Jahrmarkt in Venedig“). Das zweite zeigt die Karlslust oberhalb der Großen Kaskade, mit einem Vulkan hinter der Kaskade, dem Hymentempel und dem Volk auf Stufen am Hang. Das dritte zeigt den Hofgarten in Zweibrücken. Am Rand des zweiten Blattes: „Feuerwerk in drei Abteilungen, durch Zwischenräume getrennt.“",
       "where": {
-        "x": 1241.9,
-        "z": -967.1,
-        "radius": 10,
+        "x": 1243.6,
+        "z": -970.5,
+        "radius": 1.6,
         "era": "1789",
         "anchor": "B10.1.s-pfeilersaal"
       },
@@ -446,7 +452,8 @@
         ]
       },
       "fiction": false,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "scroll"
     },
     {
       "id": "clue.k1.feenschloss",
@@ -474,9 +481,9 @@
       "kind": "echo",
       "text_de": "E halten. Mannlich als Silhouette am Fenster, ruhig, ein wenig müde. Zitate aus seinen Lebenserinnerungen.",
       "where": {
-        "x": 1241.9,
-        "z": -967.1,
-        "radius": 10,
+        "x": 1245.4,
+        "z": -958.5,
+        "radius": 3.5,
         "era": "1789",
         "anchor": "B10.1.s-pfeilersaal"
       },
@@ -499,9 +506,9 @@
       "kind": "echo",
       "text_de": "Zweites E halten. Mannlich über den Herzog und die Untergebenen, „denen man ihren Lohn nicht bezahlte“.",
       "where": {
-        "x": 1241.9,
-        "z": -967.1,
-        "radius": 10,
+        "x": 1245.4,
+        "z": -958.5,
+        "radius": 3.5,
         "era": "1789",
         "anchor": "B10.1.s-pfeilersaal"
       },
@@ -572,7 +579,7 @@
       "where": {
         "x": 1935,
         "z": 87,
-        "radius": 35,
+        "radius": 42,
         "era": "1789",
         "anchor": "KL-B40"
       },
@@ -587,12 +594,12 @@
     {
       "id": "clue.k1.amphitheater",
       "title_de": "Die Häuschen im Rund",
-      "kind": "object",
+      "kind": "dialogue",
       "text_de": "Häuschen zählen: Neunzehn kleine Häuser mit Schieferdach im Kreis um einen Wassergraben, in der Mitte eine Insel mit Pavillon. (19 Häuser nach Saarpfalz-Touristik; Form nach Katalog KL-B40, Hypothese.)",
       "where": {
         "x": 1935,
         "z": 87,
-        "radius": 35,
+        "radius": 42,
         "era": "1789",
         "anchor": "KL-B40"
       },
@@ -613,7 +620,7 @@
       "where": {
         "x": 1935,
         "z": 87,
-        "radius": 35,
+        "radius": 42,
         "era": "1789",
         "anchor": "KL-B41"
       },
@@ -629,11 +636,11 @@
       "id": "clue.k1.baerenkaesten",
       "title_de": "Die Bären-Kästen",
       "kind": "object",
-      "text_de": "Mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
+      "text_de": "Am Fuß der Terrassenmauer, hinaufgezogen auf die erste Stufe: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
       "where": {
-        "x": 2037,
-        "z": 164,
-        "radius": 60,
+        "x": 1958,
+        "z": 146,
+        "radius": 4,
         "era": "1789",
         "anchor": "KL-B43"
       },
@@ -643,7 +650,8 @@
         ]
       },
       "fiction": false,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "chest"
     },
     {
       "id": "clue.k1.kasuar",
@@ -715,7 +723,8 @@
       },
       "fiction": true,
       "needsLantern": true,
-      "chapter": "k1"
+      "chapter": "k1",
+      "prop": "paper"
     }
   ],
   "cases": [
@@ -1042,8 +1051,11 @@
       "speaker": "soll",
       "text_de": "Achthunderttausend im Jahr. Das ganze Herzogtum. Jedes Dorf, jede Mühle, jeder Zoll. Achthunderttausend.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k1.soll_einnahmen"
+        "event": "npc:talk",
+        "npc": "soll",
+        "chapter": "k1",
+        "topic": "zahl",
+        "hasClue": "clue.k1.rechenbrett"
       },
       "sources": [
         {
@@ -1071,7 +1083,8 @@
         "event": "npc:talk",
         "npc": "soll",
         "chapter": "k1",
-        "topic": "graues_buch"
+        "topic": "graues_buch",
+        "hasClue": "clue.k1.gegenbuch"
       }
     },
     {
@@ -1601,8 +1614,9 @@
       "speaker": "marlene",
       "text_de": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.",
       "trigger": {
-        "event": "story:chapter",
-        "id": "k1"
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0"
       },
       "once": true
     },

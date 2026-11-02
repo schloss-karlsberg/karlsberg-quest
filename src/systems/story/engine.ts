@@ -41,6 +41,8 @@ export interface StorySlice {
   threats: Record<string, ThreatConfig>;
   /** Present-day time of day at the field station. */
   look: 'day' | 'dusk' | 'night';
+  /** Time of day of one past era (look action with `era`); null = that era's preset. */
+  lookPast?: { era: string; time: 'dusk' | 'night' } | null;
   ending: EndingId | null;
   /** Credits seen. */
   finished: boolean;

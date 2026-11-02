@@ -89,6 +89,10 @@ describe('clue status', () => {
     const book = clues().get('ct.clue.wachbuch')!;
     expect(clueStatus(book, env())).toBe('needs-lantern');
     expect(clueStatus(book, env({ lanternLit: true }))).toBe('available');
+    // packs write the lantern rule as `needsLantern` (content schema), not requires.lantern
+    const packLantern: ChronikClue = { ...book, requires: undefined, needsLantern: true };
+    expect(clueStatus(packLantern, env())).toBe('needs-lantern');
+    expect(clueStatus(packLantern, env({ lanternLit: true }))).toBe('available');
     const skilled: ChronikClue = { ...book, requires: { skill: 'relief:2' } };
     expect(clueStatus(skilled, env({ skills: { relief: 1 } }))).toBe('hidden');
     expect(clueStatus(skilled, env({ skills: { relief: 2 } }))).toBe('available');

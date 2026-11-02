@@ -101,7 +101,7 @@ export function clueStatus(c: ChronikClue, env: ClueEnv): ClueStatus {
   if (!skillMet(r?.skill, env.skills)) return 'hidden';
   const scan = requiredScan(c);
   if (scan > 0 && env.scanMode < scan) return 'needs-scan';
-  if (r?.lantern && !env.lanternLit) return 'needs-lantern';
+  if ((r?.lantern || c.needsLantern) && !env.lanternLit) return 'needs-lantern';
   return 'available';
 }
 

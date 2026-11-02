@@ -8,41 +8,51 @@ const ZW = [1177, -1571]; // west side of the Zwinger (KB-B23 is a solid walled 
 const AMPH = [1935, 87];
 const RONDELL = [1815, 348];
 
+/**
+ * Placement inside the rooms and props (k1 wiring, story 01-kapitel-1.story.json): the room clues
+ * sit on their own spot of the room (desk, shelf, drawer) instead of the room centre, far enough
+ * from Soll (≥ 4.3 m) that E never means both "talk" and "examine". `prop` picks the 3D object.
+ */
+// (the Mannlich echoes stand by the east windows: the Pfeiler run down the middle of the hall)
+const at = (c, x, z, r, extra = {}) => ({ ...c, ...extra, where: { ...c.where, x, z, radius: r } });
+
+const PROPS = { 'clue.k1.baerenkaesten': 'chest', 'clue.k1.seite': 'paper' };
+
 const clues = [
   // Teil A – am Schloss
-  clue('clue.k1.wache', {
+  at(clue('clue.k1.wache', {
     title: 'Erinnerung: Die Wache am Gitter', kind: 'echo', at: [1199, -1115], r: 12, era: E, anchor: 'KB-B39', chapter: ch, fiction: true,
     text: 'Die Wache am Ehrenhofgitter, automatisch beim Betreten.', nouns: ['n.herzog'],
-  }),
+  }), 1201, -1115, 12, { auto: true }),
   clue('clue.k1.fluegel', {
     title: 'Blick auf die Flügel', kind: 'dialogue', at: [1222, -1116], r: 20, era: E, anchor: 'TF-01', chapter: ch, fiction: false,
     text: 'Vom Ehrenhof nach Osten: rechts der Südflügel der Herzogin, links der Nordflügel des Herzogs, dazwischen der Hof.',
     nouns: ['n.herzogin'],
   }),
-  clue('clue.k1.rechenbrett', {
+  at(clue('clue.k1.rechenbrett', {
     title: 'Das Rechenbrett', kind: 'object', room: REG, r: 6, era: E, chapter: ch, fiction: true,
     text: 'Eine Schiefertafel mit drei Zahlen in Kreide, ohne Beschriftung: „35 000“, „800 000“, „14 000 000“. Beim dritten steht ein Fragezeichen.',
     nouns: ['n.zahl_35000', 'n.zahl_800000', 'n.zahl_14mio'],
-  }),
-  clue('clue.k1.kaufbrief', {
+  }), 1204.1, -1155, 1.3, { prop: 'tablet' }),
+  at(clue('clue.k1.kaufbrief', {
     title: 'Abschrift eines Kaufbriefs', kind: 'document', room: REG, r: 6, era: E, chapter: ch, fiction: true,
     text: '„Abschrift. Kauf des Louisenhofes auf dem Buchenberg, den 27. Julii 1777: fünfunddreißigtausend Gulden und sechzig neue Louis d’or.“ (Wortlaut erfunden, Inhalt nach de.wikipedia und homburg-im-bild.)',
     nouns: ['n.zahl_35000', 'n.louisdor'], facts: ['cx.02'],
-  }),
+  }), 1205.4, -1151.5, 1.4, { prop: 'paper' }),
   clue('clue.k1.soll_einnahmen', {
     title: 'Die mittlere Zahl', kind: 'dialogue', room: REG, r: 6, era: E, chapter: ch, fiction: true,
     text: 'Soll erklärt die mittlere Zahl auf dem Rechenbrett.', nouns: ['n.zahl_800000'], req: { clues: ['clue.k1.rechenbrett'] },
   }),
-  clue('clue.k1.schloezer', {
+  at(clue('clue.k1.schloezer', {
     title: 'Ein beschlagnahmtes Heft', kind: 'document', room: REG, r: 6, era: E, chapter: ch, fiction: false,
     text: 'Ein Heft der Stats-Anzeigen von 1782. Unterstrichen: „ganz und gar gleichsam ein einziges JagdRevier“ und „ganze Regimenter JagdHunde“.',
     nouns: ['n.jagdrevier'],
-  }),
-  clue('clue.k1.gegenbuch', {
+  }), 1201.6, -1155.8, 1.2, { prop: 'book' }),
+  at(clue('clue.k1.gegenbuch', {
     title: 'Das graue Buch', kind: 'object', room: REG, r: 6, era: E, chapter: ch, fiction: true,
     text: 'Ein dünnes Buch in grauem Pappband unter dem Hauptbuch. Auf der ersten Seite steht „Was der Hof schuldig blieb“, dieselbe Überschrift wie auf der Seite in der Bussole. Soll klappt es zu: „Das ist privat.“',
     flags: ['flag.k1_gegenbuch_gesehen'],
-  }),
+  }), 1202.9, -1155.7, 1.2, { prop: 'book' }),
   clue('clue.k1.soll', {
     title: 'Gespräch mit dem Kanzlisten', kind: 'dialogue', room: REG, r: 6, era: E, chapter: ch, fiction: true,
     text: 'Kanzlist Gottlob Soll zwischen Regalen, Ärmelschoner, zählt.', nouns: ['n.minister', 'n.r_creuzer'],
@@ -52,30 +62,30 @@ const clues = [
     text: 'Am Ostende der neuen Galerie wird gebaut: Bauhütte, Steinstaub, Gerüst. Hanne steht hier jeden Morgen.',
     nouns: ['n.zwei_tage', 'n.eine_woche', 'n.r_will_nicht', 'n.gulden'], facts: ['cx.09'],
   }),
-  clue('clue.k1.zeichen', {
+  at(clue('clue.k1.zeichen', {
     title: 'Ein Steinmetzzeichen', kind: 'object', at: [1262, -1218], r: 3, era: E, anchor: 'KB-B06', chapter: ch, fiction: true,
     text: 'An einem Quader am Fuß der Galerie ein eingehauenes Zeichen: offener Winkel, darunter drei Punkte. (Erfundenes Steinmetzzeichen.) Wandernde Steine 1/4.',
     flags: ['flag.stein_1'],
-  }),
-  clue('clue.k1.festplan', {
+  }), 1262, -1218.5, 2.5, { prop: 'stone' }),
+  at(clue('clue.k1.festplan', {
     title: 'Mannlichs Festpläne von 1785', kind: 'document', room: PFS, r: 10, era: E, chapter: ch, fiction: false,
     text: 'Drei Blätter: „Plan d[e] la foire executé au d[ecem]bre 1785 au Carlsberg / Mannlich“. Ein Blatt zeigt den Orangeriehof mit Buden im Kreis („Jahrmarkt in Venedig“). Das zweite zeigt die Karlslust oberhalb der Großen Kaskade, mit einem Vulkan hinter der Kaskade, dem Hymentempel und dem Volk auf Stufen am Hang. Das dritte zeigt den Hofgarten in Zweibrücken. Am Rand des zweiten Blattes: „Feuerwerk in drei Abteilungen, durch Zwischenräume getrennt.“',
     nouns: ['n.orangeriehof', 'n.karlslust', 'n.zweibruecken', 'n.drei_abteilungen', 'n.vulkan', 'n.kaskade'], facts: ['cx.15'],
-  }),
+  }), 1243.6, -970.5, 1.6, { prop: 'scroll' }),
   clue('clue.k1.feenschloss', {
     title: 'Ein „Feen-Schloß“', kind: 'dialogue', room: PFS, r: 10, era: E, chapter: ch, fiction: false,
     text: 'Laub beim Blick in den Pfeilersaal.', nouns: ['n.feenschloss'],
   }),
-  clue('clue.k1.mannlich', {
+  at(clue('clue.k1.mannlich', {
     title: 'Erinnerung: Mannlichs Bauliste', kind: 'echo', room: PFS, r: 10, era: E, chapter: ch, fiction: true,
     text: 'E halten. Mannlich als Silhouette am Fenster, ruhig, ein wenig müde. Zitate aus seinen Lebenserinnerungen.',
     nouns: ['n.baudirektor', 'n.tausend', 'n.sechshundert'], facts: ['cx.04'],
-  }),
-  clue('clue.k1.mannlich_lohn', {
+  }), 1245.4, -958.5, 3.5),
+  at(clue('clue.k1.mannlich_lohn', {
     title: 'Erinnerung: Der unbezahlte Lohn', kind: 'echo', room: PFS, r: 10, era: E, chapter: ch, fiction: true,
     text: 'Zweites E halten. Mannlich über den Herzog und die Untergebenen, „denen man ihren Lohn nicht bezahlte“.',
     nouns: ['n.r_getaeuscht'], req: { clues: ['clue.k1.mannlich'] },
-  }),
+  }), 1245.4, -958.5, 3.5),
   clue('clue.k1.jost', {
     title: 'Gespräch mit Jost', kind: 'dialogue', at: ZW, r: 12, era: E, anchor: 'KB-B23', chapter: ch, fiction: true,
     text: 'Hinter dem Marstall bellt es aus einem ummauerten Hof. Der Hundejunge Jost füttert.',
@@ -87,21 +97,23 @@ const clues = [
   }),
   // Teil B – Karlslust
   clue('echo.k1.mannlich_menagerie', {
-    title: 'Erinnerung: Die Menagerie', kind: 'echo', at: AMPH, r: 35, era: E, anchor: 'KL-B40', chapter: ch, fiction: true,
+    title: 'Erinnerung: Die Menagerie', kind: 'echo', at: AMPH, r: 42, era: E, anchor: 'KL-B40', chapter: ch, fiction: true,
     text: 'E halten am Amphitheater. Mannlich erinnert sich an einen Rundgang mit dem Herzog.', nouns: ['n.amphitheater'],
   }),
+  // counted on a walk around the Rund (story k1_9): Laub keeps the tally, so it is his line
   clue('clue.k1.amphitheater', {
-    title: 'Die Häuschen im Rund', kind: 'object', at: AMPH, r: 35, era: E, anchor: 'KL-B40', chapter: ch, fiction: false,
+    title: 'Die Häuschen im Rund', kind: 'dialogue', at: AMPH, r: 42, era: E, anchor: 'KL-B40', chapter: ch, fiction: false,
     text: 'Häuschen zählen: Neunzehn kleine Häuser mit Schieferdach im Kreis um einen Wassergraben, in der Mitte eine Insel mit Pavillon. (19 Häuser nach Saarpfalz-Touristik; Form nach Katalog KL-B40, Hypothese.)',
     nouns: ['n.neunzehn', 'n.amphitheater'],
   }),
   clue('clue.k1.insel', {
-    title: 'Die Insel', kind: 'dialogue', at: AMPH, r: 35, era: E, anchor: 'KL-B41', chapter: ch, fiction: false,
+    title: 'Die Insel', kind: 'dialogue', at: AMPH, r: 42, era: E, anchor: 'KL-B41', chapter: ch, fiction: false,
     text: 'Blick zur Insel mit dem Pavillon.', nouns: ['n.insel'],
   }),
+  // at the foot of the lowest terrace wall (the terraces KL-B43 are one solid block in the model)
   clue('clue.k1.baerenkaesten', {
-    title: 'Die Bären-Kästen', kind: 'object', at: [2037, 164], r: 60, era: E, anchor: 'KL-B43', chapter: ch, fiction: false,
-    text: 'Mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)',
+    title: 'Die Bären-Kästen', kind: 'object', at: [1958, 146], r: 4, era: E, anchor: 'KL-B43', chapter: ch, fiction: false,
+    text: 'Am Fuß der Terrassenmauer, hinaufgezogen auf die erste Stufe: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)',
     nouns: ['n.herzogsterrassen'],
   }),
   clue('clue.k1.kasuar', {
@@ -120,7 +132,7 @@ const clues = [
     text: 'Eine Chronikseite. Oben in großer, ungelenker Schrift: „Diane. Sultan. Fanfare. Rauhreif. Bijou.“ Darunter in feiner Kanzleischrift: „Hanne, Witwe des Steinhauers Matthes. Lohn: offen.“ Sobald man sie aufhebt, bläst das Horn zweimal kurz.',
     flags: ['flag.k1_seite'], req: { clues: ['clue.k1.feuerwerk'] },
   }),
-];
+].map((c) => (PROPS[c.id] ? { ...c, prop: PROPS[c.id] } : c));
 
 const nouns = [
   noun('n.herzog', 'der Herzog', 'person'),
@@ -222,9 +234,9 @@ const dialogue = [
   ], { once: false }),
   say('soll.k1.05', 'soll', 'Der Herr Minister fährt auch nicht hinauf. Der wird gefahren. Das ist etwas völlig anderes.', talk('soll', 'minister')),
   say('soll.k1.06', 'soll', 'Nicht anfassen. Die Große ist noch nicht fertig.', found('clue.k1.rechenbrett')),
-  say('soll.k1.07', 'soll', 'Achthunderttausend im Jahr. Das ganze Herzogtum. Jedes Dorf, jede Mühle, jeder Zoll. Achthunderttausend.', found('clue.k1.soll_einnahmen'), { src: [P('Einl. S. XXXIV (Stollreither)')] }),
+  say('soll.k1.07', 'soll', 'Achthunderttausend im Jahr. Das ganze Herzogtum. Jedes Dorf, jede Mühle, jeder Zoll. Achthunderttausend.', { ...talk('soll', 'zahl'), hasClue: 'clue.k1.rechenbrett' }, { src: [P('Einl. S. XXXIV (Stollreither)')] }),
   say('soll.k1.schloezer', 'soll', 'Beschlagnahmt. Lesen verboten. Ich lese es jeden Tag, damit ich weiß, was verboten ist.', found('clue.k1.schloezer'), { once: true }),
-  say('soll.k1.08', 'soll', 'Das ist privat. (Pause.) Jemand muss ja aufschreiben, was nicht bezahlt wird. Sonst war es nie.', talk('soll', 'graues_buch')),
+  say('soll.k1.08', 'soll', 'Das ist privat. (Pause.) Jemand muss ja aufschreiben, was nicht bezahlt wird. Sonst war es nie.', { ...talk('soll', 'graues_buch'), hasClue: 'clue.k1.gegenbuch' }),
   say('soll.k1.09', 'soll', 'Wenn Sie die Witwe sehen: Sagen Sie ihr, es ist angewiesen. Nein. Sagen Sie ihr nichts. Sie weiß es ja.', talk('soll', 'bye')),
   // Hanne
   say('hanne.k1.01', 'hanne', 'Sie sind nicht vom Hof. Sie gucken nicht über mich weg.', talk('hanne', 'greet'), { once: true }),
@@ -276,7 +288,7 @@ const dialogue = [
   say('laub.k1.nach_rondell', 'laub', 'Mannlich war schon am Fuß des Berges, als es geschah. Er hat das Licht gesehen und es schön gefunden. So steht es bei ihm. Das ist das Schlimmste daran.', beat('1.11-nach'), { once: true, src: [P('S. 391')] }),
   say('laub.k1.ende', 'laub', 'Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.', beat('1.14'), { once: true }),
   // Marlene
-  say('marlene.k1.morgen', 'marlene', 'Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.', { event: 'story:chapter', id: ch }, { once: true }),
+  say('marlene.k1.morgen', 'marlene', 'Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.', beat('1.0'), { once: true }),
   say('marlene.k1.abend', 'marlene', 'Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl’s mir morgen.', beat('B-zurueck'), { once: true }),
   // Echos mit Mannlich-Zitaten
   ...seq(echo('clue.k1.mannlich'), [

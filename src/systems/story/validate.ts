@@ -303,6 +303,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'look':
         if (!['day', 'dusk', 'night'].includes(a.time)) err(file, where, `look: unknown time '${String(a.time)}'`);
+        if (a.era !== undefined && !isEra(a.era)) err(file, where, `look: unknown era '${String(a.era)}'`);
         break;
       case 'cue':
         if (!isStr(a.id)) err(file, where, 'cue needs an id');
