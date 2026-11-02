@@ -459,7 +459,9 @@ Round-2 integration rules:
 - Rules (`rules.ts`, bible 08-stimmen): random line per group, same line not within 600 s, one bark
   per 45 s, groups answering the same event take turns; quiet during echoes, dialogue, conversations,
   modals, the curtain, a chapter's first 12 s, at memorials (Rondell built in, `memorial:set`,
-  `flags['barks.quiet']`). Requests wait 8 s for a quiet moment.
+  `flags['barks.quiet']`). Requests wait 8 s for a quiet moment. `flags['laub.silent']` (the
+  prologue before the compass first speaks at the Orangerie) mutes Laub's barks and the Chronik's
+  hint ladder (its clock waits).
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
 - State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
 
@@ -531,7 +533,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 | `flag` | `set {k: v \| null}` | flags |
 | `shift` / `anchor` | `to, instant?, reason?` / `to \| null, x, z, r` | era shift now / Q allowed here |
 | `skill` | `id: relief \| kartograf \| baumeister \| roentgen \| spurenleser, tier` | unlock card (+ Laub once `story.laub`) |
-| `give` / `grant` | `clue \| noun \| item, kind?, toast?` / `clue` | inventory / Chronik discovery without card |
+| `give` / `grant` | `clue \| noun \| item, kind?, toast?` / `clue, card?` | inventory (no nouns!) / Chronik discovery (nouns, facts); `card: true` shows the field-book card (on top of the hub) |
 | `npc` | `op: spawn \| despawn, npc (hanne, jost, soll, … \| *), x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | ghost + conversation from pack `npc:talk` lines |
 | `meter` | `id: oil \| smoke \| vergessen \| <custom>, active, seconds?, label?, full?: return \| caught \| none, text?, lossless?, still?, intensity?, center?, radius?` | timers on game time |
 | `echo` | `id` | play a Chronik echo |

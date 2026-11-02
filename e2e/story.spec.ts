@@ -153,18 +153,24 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await expect(page.getByTestId('hub')).toBeVisible();
   await shot(page, 'hub');
   await page.getByTestId('hub-chronik').click();
-  // the Pinnwand sends chronik:open: with the Chronik feature present its board replaces the hub
+  // prologue p1: the Pinnwand hands out two cards (Messtischblatt, Lageplan) on top of the hub;
+  // the Chronik board itself opens from the Pinnwand once the cards are read (p8: Tab)
   if (await page.evaluate(() => !!window.kq!.chronik)) {
-    await expect(page.locator('.ck-board')).toBeVisible();
-    await page.evaluate(() => {
-      window.kq!.chronik!.close();
-      window.kq!.press('KeyE', 2);
-    });
+    await expect(page.getByTestId('chronik-card').last()).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('hub')).toBeVisible();
   }
   await page.getByTestId('hub-shelf').click();
+  await page.evaluate(() => {
+    // the Handbuch card on top of the shelf page
+    if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+  });
   await page.getByTestId('hub-back').click();
   await page.getByTestId('hub-drawer').click();
+  await page.evaluate(() => {
+    if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+  });
   await page.getByTestId('hub-radio').click();
   await page.waitForTimeout(1500);
   await shot(page, 'hub-radio');
@@ -218,8 +224,8 @@ test('story: caught by the pack → back at the field station', async ({ page })
   expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
   expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(5);
-  // resumed at the checkpoint beat (p9: the first shift)
-  expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p9');
+  // resumed at the checkpoint beat (p10: back at the station at dusk; the prologue's 1789 visit is over)
+  expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p10');
 
   // a timed choice in the burning hall (chapter 3): field-book modal with a fuse
   await page.evaluate(() => {

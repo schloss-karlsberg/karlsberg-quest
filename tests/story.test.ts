@@ -239,22 +239,30 @@ describe('story files', () => {
     const step = (e: Partial<StoryEnv>, n = 1) => {
       for (let i = 0; i < n; i++) h.engine.tick(0.5, env(e));
     };
+    // clues are state: the engine grants them (clue:grant), the harness keeps the inventory
+    const clues: string[] = [];
+    const inv = (...add: string[]) => {
+      clues.push(...add);
+      return { inventory: { clues: [...clues], nouns: [], items: [] } };
+    };
     for (const item of ['chronik', 'shelf', 'drawer']) h.engine.onEvent('hub:use', { item });
-    step({ inventory: { clues: ['clue.p.lageplan', 'clue.p.laubblatt', 'clue.p.handbuch'], nouns: [], items: [] } });
+    step(inv('clue.p.lageplan', 'clue.p.laubblatt', 'clue.p.handbuch'));
     expect(h.slice.beat).toBe('p2');
-    step({ x: 813, z: -903, scan: 2 });
+    step({ ...inv(), x: 813, z: -903, scan: 2 });
     expect(h.slice.beat).toBe('p3');
-    step({ x: 1237, z: -966, scan: 3 });
+    step({ ...inv('clue.p.mauerrest'), x: 1237, z: -966, scan: 3 });
     expect(h.slice.beat).toBe('p4');
-    step({ x: 1216, z: -1114, map: true });
+    // the Ehrenhof clue first, then the 1840 map overlay grants the Kartenvergleich
+    step({ ...inv('clue.p.orangeriemauer', 'clue.p.ehrenhof'), x: 1216, z: -1114, map: true });
+    step({ ...inv('clue.p.kartenvergleich'), x: 1216, z: -1114 });
     expect(h.slice.beat).toBe('p5');
-    step({ x: 1172, z: -1238, scan: 2 });
-    step({ x: 1508, z: -1296, scan: 2 });
+    step({ ...inv(), x: 1172, z: -1238, scan: 2 });
+    expect(h.slice.beat).toBe('p6');
+    step({ ...inv('clue.p.hohlweg'), x: 1508, z: -1296, scan: 3 });
     expect(h.slice.beat).toBe('p7');
-    step({}, 50);
+    step(inv('clue.p.eiskeller', 'clue.p.punktwolke', 'clue.p.seite_eins'), 50);
     expect(h.slice.beat).toBe('p8');
-    h.engine.onEvent('chronik:batch', { caseId: 'case.p', correct: true, confirmed: ['entry.p.1', 'entry.p.2', 'entry.p.3'] });
-    step({});
+    step({ chronik: { 'case.p': { confirmed: ['entry.p.1', 'entry.p.2', 'entry.p.3'] } } });
     expect(h.slice.beat).toBe('p9');
     step({ era: '1789', x: 1216, z: -1114 });
     expect(h.slice.beat).toBe('p9b');
@@ -262,7 +270,12 @@ describe('story files', () => {
     expect(h.slice.beat).toBe('p10');
     const six = ['1', '2', '3', '4', '5', '6'].map((n) => `entry.p.${n}`);
     step({ chronik: { 'case.p': { confirmed: six } } });
+    expect(h.slice.beat).toBe('p10'); // the case alone is not enough: back home to the station
+    step({ chronik: { 'case.p': { confirmed: six } }, x: 760, z: -905 });
     expect(h.slice.beat).toBe('p11');
+    step({}, 20);
+    expect(h.slice.chapter).toBe('prolog'); // the night lasts a little
+    h.engine.onEvent('hub:use', { item: 'bed' });
     step({}, 60);
     expect(h.slice.chapter).toBe('k1');
     expect(h.slice.completed).toContain('prolog');
