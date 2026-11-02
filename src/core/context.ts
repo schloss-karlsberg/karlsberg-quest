@@ -5,7 +5,9 @@ import type { GameData } from '../data/types';
 import type { t } from '../i18n';
 import type { Input } from '../player/input';
 import type { Player } from '../player/player';
+import type { PerfMonitor } from '../render/perf';
 import type { PostFX } from '../render/post';
+import type { QualityManager } from '../render/quality';
 import type { UI } from '../ui/ui';
 import type { World } from '../world/world';
 import type { Era, EraInfo } from './era';
@@ -40,6 +42,10 @@ export interface GameContext {
   camera: PerspectiveCamera;
   /** Post-processing (grade, vignette, grain; `uShift`, `uFlash`, `uDesaturate` for effects). */
   post: PostFX;
+  /** Per-frame counters (fps, frame / CPU ms, draw calls, triangles); `kq.perf()`, F3 overlay. */
+  perf: PerfMonitor;
+  /** Graphics preset (pixel ratio, MSAA, terrain LOD, tree rings) and the auto-downgrade. */
+  quality: QualityManager;
   player: Player;
   input: Input;
   world: World;

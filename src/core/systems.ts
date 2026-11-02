@@ -30,8 +30,10 @@ export function defineSystem<S extends GameSystem>(s: S): S {
 interface Entry {
   sys: GameSystem;
   failed: boolean;
-  /** Accumulated update time in ms (debug panel). */
+  /** Smoothed update time in ms (debug panel, perf overlay). */
   ms: number;
+  /** Smoothed frame (visuals) time in ms. */
+  frameMs: number;
 }
 
 export class SystemRegistry {
@@ -41,7 +43,7 @@ export class SystemRegistry {
 
   registerSystem(sys: GameSystem): void {
     if (this.entries.some((e) => e.sys.id === sys.id)) throw new Error(`system '${sys.id}' registered twice`);
-    this.entries.push({ sys, failed: false, ms: 0 });
+    this.entries.push({ sys, failed: false, ms: 0, frameMs: 0 });
     this.ordered = sortByDeps(this.entries);
   }
 
@@ -53,8 +55,8 @@ export class SystemRegistry {
     return this.ordered.map((e) => e.sys.id);
   }
 
-  stats(): { id: string; failed: boolean; ms: number }[] {
-    return this.ordered.map((e) => ({ id: e.sys.id, failed: e.failed, ms: e.ms }));
+  stats(): { id: string; failed: boolean; ms: number; frameMs: number }[] {
+    return this.ordered.map((e) => ({ id: e.sys.id, failed: e.failed, ms: e.ms, frameMs: e.frameMs }));
   }
 
   async initAll(ctx: GameContext): Promise<void> {
@@ -100,12 +102,14 @@ export class SystemRegistry {
   frame(dt: number, ctx: GameContext): void {
     for (const e of this.ordered) {
       if (e.failed || !e.sys.frame) continue;
+      const t0 = performance.now();
       try {
         e.sys.frame(dt, ctx);
       } catch (err) {
         e.failed = true;
         console.error(`[systems] '${e.sys.id}' threw in frame and is disabled`, err);
       }
+      e.frameMs = e.frameMs * 0.95 + (performance.now() - t0) * 0.05;
     }
   }
 

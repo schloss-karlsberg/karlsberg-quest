@@ -51,6 +51,26 @@ export class ModalManager {
       },
       true,
     );
+    // keyboard focus stays inside the top panel (Tab / Shift+Tab wrap around)
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'Tab' || e.defaultPrevented || !this.stack.length) return;
+      const top = this.stack[this.stack.length - 1]!.el;
+      const f = [...top.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])')].filter(
+        (el) => !el.hasAttribute('disabled') && el.offsetParent !== null,
+      );
+      if (!f.length) return;
+      const a = document.activeElement as HTMLElement | null;
+      if (!a || !top.contains(a)) {
+        e.preventDefault();
+        (e.shiftKey ? f[f.length - 1]! : f[0]!).focus();
+      } else if (!e.shiftKey && a === f[f.length - 1]) {
+        e.preventDefault();
+        f[0]!.focus();
+      } else if (e.shiftKey && a === f[0]) {
+        e.preventDefault();
+        f[f.length - 1]!.focus();
+      }
+    });
   }
 
   get count(): number {

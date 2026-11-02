@@ -51,6 +51,7 @@ uniform float uContours;
 uniform float uForestFar;
 uniform float uHistoric;   // 0 today, 1 historic eras (palette)
 uniform float uTreeShade;  // how much the canopy shades the forest floor
+uniform float uPalette;    // 0 default, 1 colour-blind safe (settings.colorblind)
 varying vec3 vWorld;
 varying float vOutside;
 
@@ -72,10 +73,11 @@ float hillshadeMD(vec3 n) {
 }
 
 vec3 diverging(float t) {
-  // RdBu_r: blue (low) → paper white → red (high)
-  vec3 blue = vec3(0.13, 0.32, 0.62);
+  // RdBu_r: blue (low) → paper white → red (high); colour-blind safe: Okabe-Ito blue → white →
+  // orange (distinct for protan / deutan / tritan), with a lightness ramp that reads without hue
+  vec3 blue = uPalette > 0.5 ? vec3(0.0, 0.3, 0.62) : vec3(0.13, 0.32, 0.62);
   vec3 white = vec3(0.96, 0.94, 0.9);
-  vec3 red = vec3(0.7, 0.12, 0.12);
+  vec3 red = uPalette > 0.5 ? vec3(0.9, 0.55, 0.0) : vec3(0.7, 0.12, 0.12);
   return t < 0.5 ? mix(blue, white, smoothstep(0.0, 0.5, t)) : mix(white, red, smoothstep(0.5, 1.0, t));
 }
 
@@ -94,9 +96,15 @@ void main() {
   float slrm = (s.b - 0.5) * 6.0;   // m, local relief ±3
   float fine = (s.a - 0.5) * 2.0;   // m, fine relief ±1
   float dist = length(vWorld - uCamPos);
+  vec3 n0 = n; // data normal without the procedural micro detail (used by the scan modes)
+  // relief scan coverage first: where the scan paints the ground completely, the lit terrain
+  // underneath (≈ 15 noise evaluations, lighting, fog) is never seen and is skipped
+  float scanR = length(vWorld.xz - uScanCenter.xz);
+  float reveal = (uScanMode > 0 && uScanMix > 0.001) ? uScanMix * (1.0 - smoothstep(uScanRadius * 0.9, uScanRadius, scanR)) : 0.0;
+  vec3 col = uFogColor;
+  if (reveal < 0.999) {
 
   // --- micro detail near the camera (leaf litter, grass clumps)
-  vec3 n0 = n; // data normal without the procedural micro detail (used by the scan modes)
   float near = 1.0 - smoothstep(25.0, 90.0, dist);
   float nz1 = kqNoise(vWorld.xz * 1.7);
   float nz2 = kqFbm(vWorld.xz * 0.11);
@@ -120,13 +128,17 @@ void main() {
   float season = uSeason;
   vec3 meadow = season < 1.0 ? mix(meadowSummer, meadowAutumn, season) : mix(meadowAutumn, meadowWinter, season - 1.0);
   meadow *= 0.8 + 0.35 * nz2;
-  vec3 litterAutumn = mix(srgb(vec3(0.33, 0.24, 0.16)), srgb(vec3(0.25, 0.21, 0.16)), smoothstep(0.3, 0.7, nz3 * 0.6 + nz2 * 0.6 - 0.1));
-  vec3 litterSummer = srgb(vec3(0.24, 0.25, 0.15));
-  vec3 litter = mix(litterSummer, litterAutumn, clamp(season, 0.0, 1.0)) * (0.7 + 0.45 * nz1 * nz2 + 0.2 * nz3);
-  // moss and ivy patches on the forest floor
-  litter = mix(litter, srgb(vec3(0.2, 0.27, 0.13)), smoothstep(0.5, 0.72, kqFbm(vWorld.xz * 0.045 + 3.0)) * 0.75);
-  // darker damp hollows and twig/leaf clumps break up the floor
-  litter *= mix(0.7, 1.05, smoothstep(-0.6, 0.6, slrm)) * (0.85 + 0.3 * kqNoise(vWorld.xz * 0.35));
+  // forest floor (only where there is forest: saves an fbm and a noise on open ground)
+  vec3 litter = vec3(0.0);
+  if (forest > 0.002) {
+    vec3 litterAutumn = mix(srgb(vec3(0.33, 0.24, 0.16)), srgb(vec3(0.25, 0.21, 0.16)), smoothstep(0.3, 0.7, nz3 * 0.6 + nz2 * 0.6 - 0.1));
+    vec3 litterSummer = srgb(vec3(0.24, 0.25, 0.15));
+    litter = mix(litterSummer, litterAutumn, clamp(season, 0.0, 1.0)) * (0.7 + 0.45 * nz1 * nz2 + 0.2 * nz3);
+    // moss and ivy patches on the forest floor
+    litter = mix(litter, srgb(vec3(0.2, 0.27, 0.13)), smoothstep(0.5, 0.72, kqFbm(vWorld.xz * 0.045 + 3.0)) * 0.75);
+    // darker damp hollows and twig/leaf clumps break up the floor
+    litter *= mix(0.7, 1.05, smoothstep(-0.6, 0.6, slrm)) * (0.85 + 0.3 * kqNoise(vWorld.xz * 0.35));
+  }
   vec3 lawnC = srgb(vec3(0.33, 0.47, 0.2)) * (0.9 + 0.2 * nz2);
   vec3 path = mix(srgb(vec3(0.5, 0.43, 0.34)), srgb(vec3(0.62, 0.55, 0.44)), uHistoric) * (0.85 + 0.3 * nz1);
   vec3 rock = srgb(vec3(0.52, 0.33, 0.26)) * (0.8 + 0.4 * nz2);
@@ -139,12 +151,14 @@ void main() {
 
   // --- forest canopy seen from afar (beyond the instanced trees)
   float farF = smoothstep(uForestFar * 0.8, uForestFar, dist) * forest;
-  vec3 canopySummer = srgb(vec3(0.17, 0.24, 0.12));
-  vec3 canopyAutumn = mix(srgb(vec3(0.42, 0.25, 0.1)), srgb(vec3(0.16, 0.2, 0.12)), smoothstep(0.35, 0.65, nz3 + 0.2 * nz2));
-  vec3 canopyWinter = srgb(vec3(0.27, 0.24, 0.22));
-  vec3 canopy = season < 1.0 ? mix(canopySummer, canopyAutumn, season) : mix(canopyAutumn, canopyWinter, season - 1.0);
-  canopy *= 0.7 + 0.6 * kqFbm(vWorld.xz * 0.08);
-  alb = mix(alb, canopy, farF);
+  if (farF > 0.0) {
+    vec3 canopySummer = srgb(vec3(0.17, 0.24, 0.12));
+    vec3 canopyAutumn = mix(srgb(vec3(0.42, 0.25, 0.1)), srgb(vec3(0.16, 0.2, 0.12)), smoothstep(0.35, 0.65, nz3 + 0.2 * nz2));
+    vec3 canopyWinter = srgb(vec3(0.27, 0.24, 0.22));
+    vec3 canopy = season < 1.0 ? mix(canopySummer, canopyAutumn, season) : mix(canopyAutumn, canopyWinter, season - 1.0);
+    canopy *= 0.7 + 0.6 * kqFbm(vWorld.xz * 0.08);
+    alb = mix(alb, canopy, farF);
+  }
 
   // --- snow on flat ground
   float snow = uSnow * smoothstep(42.0, 20.0, slope) * (1.0 - forest * 0.5) * (0.85 + 0.15 * nz1);
@@ -153,7 +167,7 @@ void main() {
   // --- lighting
   float ao = clamp(1.0 + slrm * 0.22 + fine * 0.25, 0.5, 1.2);
   float shade = mix(1.0, 1.0 - uTreeShade, forest * (1.0 - farF));
-  vec3 col = kqLight(alb, n, vWorld, ao * mix(1.0, 0.8, forest), shade);
+  col = kqLight(alb, n, vWorld, ao * mix(1.0, 0.8, forest), shade);
 
   // --- water: dark, reflective
   if (water > 0.01) {
@@ -173,6 +187,7 @@ void main() {
   }
 
   col = kqFog(col, vWorld);
+  } // reveal < 0.999
 
   // --- relief scan modes (survey look), drawn over the lit terrain inside the scan radius
   if (uScanMode > 0 && uScanMix > 0.001) {
@@ -200,8 +215,7 @@ void main() {
     }
     float fogS = 1.0 - exp(-dist * uFogDensity * 0.3);
     sc = mix(sc, uFogColor, clamp(fogS, 0.0, 0.85));
-    float r = length(vWorld.xz - uScanCenter.xz);
-    float reveal = uScanMix * (1.0 - smoothstep(uScanRadius * 0.9, uScanRadius, r));
+    float r = scanR;
     // thin ink ring at the scan edge
     float ring = (1.0 - smoothstep(0.0, 2.5, abs(r - uScanRadius * 0.95))) * step(r, uScanRadius) * uScanMix * step(uScanRadius, 5000.0);
     col = mix(col, sc, reveal);

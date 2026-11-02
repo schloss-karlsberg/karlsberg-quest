@@ -62,6 +62,9 @@ export class Player {
   lookLocked = false;
   mouseSensitivity = 1;
   invertY = false;
+  invertX = false;
+  /** Keyboard look speed (rad/s at full sensitivity), see lookLeft/… actions. */
+  keyLookSpeed = 1.9;
   reducedMotion = false;
 
   constructor(
@@ -110,7 +113,7 @@ export class Player {
     const { dx, dy } = this.input.takeMouse();
     if (this.lookLocked) return;
     const k = 0.0022 * this.mouseSensitivity;
-    this.yaw -= dx * k;
+    this.yaw -= dx * k * (this.invertX ? -1 : 1);
     this.pitch -= dy * k * (this.invertY ? -1 : 1);
     const lim = this.stance === 'prone' && !this.flying ? 0.9 : 1.45;
     this.pitch = Math.max(-lim, Math.min(lim, this.pitch));
@@ -119,6 +122,17 @@ export class Player {
   update(dt: number): void {
     this.prev.copy(this.position);
     const inp = this.input;
+    if (!this.lookLocked) {
+      // keyboard look (Komma / Punkt, Bild↑ / Bild↓, Ziffernblock): play without a mouse
+      const kl = this.keyLookSpeed * Math.sqrt(this.mouseSensitivity) * dt;
+      const h = (inp.isDown('lookLeft') ? 1 : 0) - (inp.isDown('lookRight') ? 1 : 0);
+      const v = (inp.isDown('lookUp') ? 1 : 0) - (inp.isDown('lookDown') ? 1 : 0);
+      if (h || v) {
+        this.yaw += h * kl * (this.invertX ? -1 : 1);
+        const lim = this.stance === 'prone' && !this.flying ? 0.9 : 1.45;
+        this.pitch = Math.max(-lim, Math.min(lim, this.pitch + v * kl * 0.7 * (this.invertY ? -1 : 1)));
+      }
+    }
     if (!this.frozen) {
       if (inp.wasPressed('fly')) this.setFlying(!this.flying);
       if (!this.flying) {

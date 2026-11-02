@@ -1,8 +1,13 @@
 import type { GameContext } from '../core/context';
 import { type Era, isEra } from '../core/era';
 import type { GameState } from '../core/state';
+import type { PerspectiveCamera } from 'three';
+import type { PerfMonitor, PerfSummary } from '../render/perf';
+import type { QualityManager } from '../render/quality';
 import type { ScanMode } from '../world/world';
+import { type BenchOptions, type BenchResult, runBench } from './bench';
 import { DebugPanel } from './panel';
+import { PerfHud } from './perfHud';
 
 /** Test/debug API on `window.kq` (always installed; the stats panel only with ?debug). */
 export interface KqHooks {
@@ -20,7 +25,20 @@ export interface KqHooks {
   screenshotReady(): Promise<void>;
   /** Simulate a key press (code like 'KeyW') for n steps. */
   press(code: string, steps?: number): void;
+  /** Frame statistics of the last ≈ 240 frames (fps, frame / CPU ms, draw calls, triangles, memory). */
+  perf(): PerfSummary;
+  /** Scripted benchmark route over all eras (see src/debug/bench.ts); also Shift+F3. */
+  bench(opts?: BenchOptions): Promise<BenchResult>;
+  /** Result of the last bench run. */
+  lastBench: BenchResult | null;
+  /** Show / hide the performance overlay (F3). */
+  perfHud(on?: boolean): boolean;
+  /** Switch the polish round's render optimisations off (bench "before" numbers). */
+  baseline(): void;
 }
+
+/** Further baseline switches registered by optimised modules (see `baseline()`). */
+export const baselineHooks: ((ctx: GameContext) => void)[] = [];
 
 declare global {
   interface Window {
@@ -30,7 +48,19 @@ declare global {
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-export function installDebug(ctx: GameContext, info: { frames: () => number }): KqHooks {
+export interface DebugInfo {
+  frames: () => number;
+  perf: PerfMonitor;
+  quality: QualityManager;
+  /** Install / clear a per-frame camera override (bench). */
+  setCamera: (fn: ((cam: PerspectiveCamera) => void) | null) => void;
+  /** Resolves when the streamed assets (palace model) are in. */
+  ready: Promise<unknown>;
+}
+
+export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
+  const hud = new PerfHud(ctx, info.perf, info.quality);
+  let benchRunning = false;
   const hooks: KqHooks = {
     ctx,
     teleport(x, z, yawDeg, pitchDeg) {
@@ -56,6 +86,7 @@ export function installDebug(ctx: GameContext, info: { frames: () => number }): 
       return structuredClone(ctx.state.state) as GameState;
     },
     async screenshotReady() {
+      await info.ready.catch(() => {});
       const f0 = info.frames();
       // three frames: instance buffers and textures uploaded, LODs settled for the current view
       while (info.frames() < f0 + 3) await nextFrame();
@@ -65,8 +96,46 @@ export function installDebug(ctx: GameContext, info: { frames: () => number }): 
       ctx.loop.step(steps);
       ctx.input.simulate(code, false);
     },
+    perf() {
+      return info.perf.summary();
+    },
+    async bench(opts) {
+      if (benchRunning) throw new Error('bench already running');
+      benchRunning = true;
+      if (hud.visible) hud.showBench(null, true);
+      try {
+        const r = await runBench(hooks as never, info.perf, info.setCamera, opts);
+        hooks.lastBench = r;
+        if (hud.visible) hud.showBench(r);
+        return r;
+      } finally {
+        benchRunning = false;
+      }
+    },
+    lastBench: null,
+    perfHud(on) {
+      hud.show(on ?? !hud.visible);
+      return hud.visible;
+    },
+    baseline() {
+      // switch this round's render optimisations off (before/after numbers in docs/PERFORMANCE.md)
+      ctx.world.forest.cull = false;
+      ctx.world.forest.invalidate();
+      for (const fn of baselineHooks) fn(ctx);
+    },
   };
   window.kq = hooks;
   if (ctx.debug) new DebugPanel(ctx, info.frames);
+  // F3: performance overlay, Shift+F3: run the bench (also settings → Leistungsanzeige, ?perf)
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'F3') return;
+    e.preventDefault();
+    if (e.shiftKey) {
+      hud.show(true);
+      void hooks.bench({ frames: 120 }).catch((err) => console.warn('[bench]', err));
+    } else hud.show(!hud.visible);
+  });
+  hud.show(ctx.params.has('perf') || ctx.settings.state.perfHud);
+  ctx.events.on('settings:change', ({ key }) => key === 'perfHud' && hud.show(ctx.settings.state.perfHud));
   return hooks;
 }

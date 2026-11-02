@@ -22,13 +22,15 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/data/` | Data types, pure decoders, loader for `public/data` |
 | `src/world/` | Terrain (chunked, LOD, shader), sky, forest (instanced), palace (glb), collision, atmosphere (shared uniforms + GLSL), era looks |
 | `src/player/` | Input (bindings, pointer lock, `simulate`), stances, Player controller |
-| `src/render/post.ts` | Post FX: MSAA HDR target, ACES, colour grade, vignette, grain, `uShift/uFlash/uDesaturate` |
-| `src/audio/` | `AudioManager` (buses, HRTF 3D sources), `synth.ts` (procedural wind, footsteps, horn, chirp, drone) |
-| `src/ui/` | Field-book UI: HUD, modals, title, pause/settings, licences; fonts (OFL) in `src/ui/fonts` |
+| `src/render/post.ts` | Post FX: MSAA HDR target (`setSamples(n)`), ACES, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing) |
+| `src/render/perf.ts` | `PERF_BUDGET` (draw calls, triangles, CPU ms, frame ms), `PerfMonitor` (per-frame CPU/GPU time, calls, triangles; ring buffer), `frameStats` |
+| `src/render/quality.ts` | Graphics presets Niedrig/Mittel/Hoch (`QUALITY_PRESETS`: max pixel ratio, MSAA, terrain LOD scale, tree rings), first-run guess from the GPU name, `QualityManager` (applies the preset, auto-downgrade) |
+| `src/audio/` | `AudioManager` (buses master/music/sfx/voice/ambience, HRTF 3D sources), `synth.ts` (procedural wind, footsteps, horn, chirp, drone) |
+| `src/ui/` | Field-book UI: HUD, modals (focus trap), title (load progress bar), pause, `settings.ts` (sectioned settings page + key remapping), licences; fonts (OFL) in `src/ui/fonts` |
 | `src/i18n/` | `t(key, params)`, German strings in `de.ts`, `addStrings()` for features |
 | `src/content/` | Content types, validator, `ContentDB` (all packs bundled via `import.meta.glob`) |
 | `src/systems/` | **Feature systems**, one folder each, registered in `src/systems/index.ts` |
-| `src/debug/` | `window.kq` hooks, `?debug` stats panel |
+| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route) |
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `scripts/dev/` screenshot helpers for a running dev server |
@@ -46,7 +48,17 @@ debug hooks take degrees with `90 = east`. Palace Corps de logis ≈ (1195, −1
 `FixedStepLoop` (60 Hz) → `update(dt)`: `player.update` → `systems.update` (registration/dep
 order) → player state written to `GameState` → `input.endStep()`. Once per animation frame →
 `render`: camera interpolation → `systems.frame` → `world.frame` (LOD, trees, transitions,
-shared uniforms) → audio listener → HUD compass → post FX render.
+shared uniforms) → audio listener → HUD compass → post FX render. `ctx.perf.begin()/end()`
+wrap the render (CPU ms, draw calls and triangles of the whole frame incl. post; `systems.stats()`
+times every system's `update` and `frame`), then `ctx.quality.frame(ms, playing)` feeds the
+auto-downgrade.
+
+Boot order (marks in `window.__kqReady`, ms since navigation): `boot` → `data` (terrain rasters
+streamed with byte progress on the title bar) → `world` → `systems` → `ready` (title takes
+input). The palace glb (4.5 MB, only visible in the past eras) loads in parallel and does **not**
+block the title (`palace` mark); `?notitle` / skip-title still waits for it. After it arrives a
+shader warm-up (`renderer.compileAsync`, mark `warm`) compiles all scene materials while the
+title is shown (skipped under WebDriver unless `?warm`).
 
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop but rendering continues. `?manual` stops the real-time simulation entirely; only
@@ -93,7 +105,14 @@ Rules
   `ATMOS_GLSL` (`kqLight`, `kqFog`, noise) so they match lighting, fog, lantern and fire glow.
 - Gameplay input: `ctx.input.wasPressed('listen')`, `isDown('sprint')` (actions in
   `DEFAULT_BINDINGS`: forward/back/left/right, sprint, crouch, prone, fly, up/down, interact,
-  listen E, lantern L, map M, measure R, shift Q, scan0–3, journal J/Tab, pause Esc/P).
+  listen E, lantern L, map M, measure R, shift Q, scan0–3, journal J/Tab, pause Esc/P, keyboard
+  look lookLeft/lookRight/lookUp/lookDown on Comma/Period/PageUp/PageDown and Numpad 4/6/8/2).
+  Bindings are physical `KeyboardEvent.code`s (layout-independent; AZERTY "forward" is on Z).
+  Players remap the actions in `REBINDABLE` (settings → Steuerung → Tastenbelegung);
+  `settings.bindings` stores only the overrides, `effectiveBindings(overrides)` merges them,
+  `bindKey` takes a key away from other actions (except the shared crouch/down pair on C,
+  `SHARED_KEYS`), `ctx.input.setBindings()` applies them. Feature systems must read actions, never
+  raw key codes, and show key names via the settings' `keyLabel(code)` where possible.
 
 ## 5. GameContext (`ctx`, also `window.kq.ctx`)
 
@@ -106,10 +125,12 @@ Rules
 | `world` | `heightAt(x,z)`, `surfaceAt` (meadow/forest/water/…), `coverAt`, `bounds()`, `heightfield` (`slopeDeg`, `normalAt`), `collider.footprintAt` / `setSolids(owner, list)` / `setPassZones(owner, list)` / `solidAt` / `keep`, `palace.setMode`, `palace.uniforms.uRuin/uChar`, `setScanMode`, `setScanArea`, `setMapMix`, `forest`, `sky` |
 | `data` | `meta`, `heights`, `ground`, `canopy`, `footprints`, `rooms` (114 room polygons), `pois`, `paths` (graph), `attribution` |
 | `state` | `GameStateStore`: `.state` (readonly), `.mutable`, `.update(fn, reason)`, `.subscribe`, `.slice(id, init)` |
-| `settings` | `SettingsStore` (volume per bus, mouseSensitivity, invertY, fov, subtitleSize, gentleMode, reducedMotion) persisted at `kq.settings.v1` |
+| `settings` | `SettingsStore` persisted at `kq.settings.v1` (older saves gain new fields with defaults): `volume {master, music, sfx, voice, ambience}`, `mouseSensitivity`, `invertY/invertX`, `fov`, `subtitleSize s/m/l/xl`, `subtitleBg`, `gentleMode`, `reducedMotion`, `reducedFlash`, `highContrast`, `colorblind`, `graphics low/medium/high`, `resolutionScale`, `autoQuality`, `perfHud`, `bindings` (see §4). `reducedMotion`/`reducedFlash` default to `prefers-reduced-motion`, `highContrast` to `prefers-contrast: more` |
+| `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
+| `quality` | `QualityManager`: `level`, `preset`, `apply()`, `hold(seconds)` (pause the auto-downgrade around loads / shifts) |
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
-| `audio` | `bus('sfx'|'music'|'ambience')`, `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
+| `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
 | `ui` | `hud`, `modals`, `toast(text)`, `layer(id)`, `add(el)` |
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
@@ -135,6 +156,24 @@ up above the dialogue card while it shows. Title cards and skill cards count gam
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
 einmal wählen" (testid `title-ending-again`) once the auto save's story has an ending and the
 `ending` slot exists.
+
+Settings rows: `addSettingsRows((settings) => [[label, control, section?, help?], …])` from
+`src/ui/settings.ts` (re-exported by `ui/menus.ts`); `section` is one of `game`, `controls`,
+`graphics`, `access`, `audio` (default `game`), `help` is a sentence shown under the row. Give
+controls a `data-testid` and an `id` (the label's `for` is set from it).
+
+Accessibility contract for feature systems:
+- **Flashes**: when `settings.reducedFlash` is on, keep full-screen flashes ≤ 25 % (the post pass
+  already scales `uFlash` by 0.2 and the shift's chromatic aberration), no strobing light
+  (interiors stop candle/fire flicker, fx damps collapse and shift flashes).
+- **Motion**: `settings.reducedMotion` → shorter / calmer transitions, no camera shake.
+- **Root attributes** for CSS: `html[data-kq-contrast]`, `[data-kq-reduced-motion]`,
+  `[data-kq-reduced-flash]`, `[data-kq-colorblind]`; `--sub-bg` (subtitle backing opacity),
+  `--sub-scale`. Feature CSS should add a high-contrast rule for its HUD pieces (solid backing,
+  ≥ 4.5 : 1 text).
+- **Colour**: never encode meaning in red vs green alone; with `settings.colorblind` the relief
+  scan uses the Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`).
+- **Audio**: speech on the `voice` bus, so players can turn music down and voices up.
 
 ## 6. Events (core)
 
@@ -184,6 +223,14 @@ Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m arou
 `?scanall` = everywhere); trees inside the bubble sink away (ground points only). The 1840 map
 overlay (`setMapMix`) uses the same lens; the survey system swaps the 1935–40 Messtischblatt into
 the same `uMap` uniform (M cycles off → 1840 → 1935 → off, gated by the Kartograf skill).
+With `settings.colorblind` mode 2 uses blue ↔ orange (`uPalette` 1). Inside the bubble where the
+reveal is complete the terrain shader skips the lit/era colouring entirely (cheaper scan modes).
+
+Cost knobs (set by `ctx.quality` from the preset): `terrain.lodScale` scales the LOD rings
+(200 / 450 / 1000 m at 1); `forest.setDistances(near, far)` sets the detailed and far tree rings.
+The forest culls instanced trees by sector (outside the horizontal FOV + margin, all trees within
+30 m kept, off while looking steeply down), rebuilt after 12 m of movement or a 20° turn;
+`forest.cull = false` disables it (`kq.baseline()`).
 
 ## 9. Data (`public/data`, 12.3 MiB, `pnpm prepare-data`)
 
@@ -257,7 +304,17 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Debug hooks (`window.kq`, always installed): `teleport(x, z, yawDeg, pitchDeg)`, `setEra`,
   `setScanMode`, `setMapMix`, `step(n)`, `state()`, `press(code, steps)`, `screenshotReady()`.
   URL flags: `debug`, `notitle`, `nosave`, `fresh`, `manual`, `nomsaa`, `preserve`,
-  `era=1789`, `x=…&z=…&yaw=…`, `scanall`.
+  `era=1789`, `x=…&z=…&yaw=…`, `scanall`, `perf` (overlay), `autoq` (auto-downgrade also under
+  WebDriver), `warm` (shader warm-up also under WebDriver).
+- Performance (see `docs/PERFORMANCE.md`): `kq.perf()` (summary), `kq.bench(opts?)` runs the
+  fixed route `BENCH_SCENES` (9 views over all eras, pack, fire, ruin, scan 3) and returns per
+  scene frame/CPU/GPU ms, calls, triangles, `withinBudget` (also `kq.lastBench`, console table),
+  `kq.perfHud(on)` / F3 toggles the overlay, Shift+F3 runs the bench, `kq.baseline()` switches
+  the optimisations off for before/after numbers (modules register switches in
+  `baselineHooks`). `e2e/perf.spec.ts`: bench within budget (`PERF_LABEL`, `PERF_BASELINE=1`,
+  `PERF_FRAMES` → `test-results/perf/bench-<label>.json`), bytes and time before the first input
+  (`load-<label>.json`), presets, settings page by keyboard, key remapping, contrast/colour-blind
+  screenshots `pol-perf-*.png`.
 - Running dev server helpers: `VIEWS='[{"name":"a","x":1138,"z":-1120,"yaw":90,"era":"1789"}]'
   node scripts/dev/shots.mjs <outdir>`.
 
@@ -475,8 +532,11 @@ Round-4 (polish: set dressing) integration rules:
   story card is open.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
-- Also owns the extra settings rows (Rauhnacht, Geräusch-Untertitel, Richtungspfeile, Grafik
-  niedrig/hoch → pixel ratio 1, fx quality low, sparser point cloud) and key-help rows.
+- Also owns the extra settings rows (Rauhnacht under "Spiel",
+  Geräusch-Untertitel and Richtungspfeile under "Barrierefreiheit") and key-help rows. The
+  graphics preset itself belongs to the core (`render/quality.ts`, row "Grafik" under "Bild &
+  Leistung"); fx reads `settings.graphics` (Niedrig → low particle level), tools thin the point
+  cloud on Niedrig.
 - Hooks `kq.skills.grant/all/reset/levels/gate/free/card/said`.
 
 ### tools (`src/systems/tools/`) – Messen, Röntgenblick, Planblatt, Fährtenlinien
@@ -591,7 +651,11 @@ Round-4 (polish: set dressing) integration rules:
   smoke creeping in slowly — the Festsaal already threatens on arrival. The player's room drives
   the post heat shimmer (`ctx.post.uniforms.uHeat`). Per-room uniforms `uRoomFire/Smoke/Heat/Floor`.
   `collapsed` → ceiling gone, debris, doors blocked once the player is out (caption for the sound). Cleared on `threat:configure {fire, active:false}`
-  and era change. Gentle mode thins the smoke; reduced motion slows flames and stops flicker.
+  and era change. Gentle mode thins the smoke; reduced motion slows flames and stops flicker
+  (so does reduced flashing).
+- Per-frame cost: `frame()` allocates nothing; the light sort is cached and redone after the
+  camera moved ≥ 1 m, shell cut/clip boxes are cached per building and plan (WeakMaps) and
+  re-selected after ≥ 0.5 m of movement or when the built set changes (< 0.05 ms per frame).
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.

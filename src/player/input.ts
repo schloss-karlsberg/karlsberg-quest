@@ -28,7 +28,12 @@ export type Action =
   /** Röntgenblick (point cloud under the canopy), tools system. */
   | 'xray'
   /** Baumeister: plan sheet / confidence view, tools system. */
-  | 'plans';
+  | 'plans'
+  /** Keyboard look (play without a mouse). */
+  | 'lookLeft'
+  | 'lookRight'
+  | 'lookUp'
+  | 'lookDown';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -55,7 +60,59 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   pause: ['Escape', 'KeyP'],
   xray: ['KeyV', 'Digit4'],
   plans: ['KeyB'],
+  lookLeft: ['Comma', 'Numpad4'],
+  lookRight: ['Period', 'Numpad6'],
+  lookUp: ['PageUp', 'Numpad8'],
+  lookDown: ['PageDown', 'Numpad2'],
 };
+
+/** Actions that may share a key (C: crouch on foot, down while flying). */
+export const SHARED_KEYS: [Action, Action][] = [['crouch', 'down']];
+
+/** Actions the player can rebind in the settings, in display order. */
+export const REBINDABLE: Action[] = [
+  'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
+  'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans', 'journal',
+  'lookLeft', 'lookRight', 'lookUp', 'lookDown',
+];
+
+/**
+ * Effective bindings: defaults with the player's per-action overrides (`settings.bindings`, full
+ * code lists). Pure; tested.
+ */
+export function effectiveBindings(overrides: Partial<Record<string, string[]>> = {}): Record<Action, string[]> {
+  const out = structuredClone(DEFAULT_BINDINGS);
+  for (const a of Object.keys(out) as Action[]) {
+    const o = overrides[a];
+    if (Array.isArray(o)) out[a] = o.filter((c) => typeof c === 'string');
+  }
+  return out;
+}
+
+/**
+ * Add `code` to `action` and take it away from every other action (except the allowed shared
+ * pairs). Returns the new override map (only the actions that differ from the defaults).
+ */
+export function bindKey(overrides: Partial<Record<string, string[]>>, action: Action, code: string): Record<string, string[]> {
+  const eff = effectiveBindings(overrides);
+  const shared = (a: Action, b: Action) => SHARED_KEYS.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+  for (const a of Object.keys(eff) as Action[]) {
+    if (a !== action && !shared(a, action)) eff[a] = eff[a].filter((c) => c !== code);
+  }
+  if (!eff[action].includes(code)) eff[action] = [...eff[action], code];
+  return diffBindings(eff);
+}
+
+/** Only the actions whose codes differ from the defaults. */
+export function diffBindings(eff: Record<Action, string[]>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const a of Object.keys(eff) as Action[]) {
+    const d = DEFAULT_BINDINGS[a];
+    const e = eff[a];
+    if (e.length !== d.length || e.some((c, i) => c !== d[i])) out[a] = [...e];
+  }
+  return out;
+}
 
 export class Input {
   bindings: Record<Action, string[]> = structuredClone(DEFAULT_BINDINGS);
@@ -113,6 +170,11 @@ export class Input {
 
   releaseLock(): void {
     if (this.locked) document.exitPointerLock();
+  }
+
+  /** Apply the player's overrides (settings.bindings) on top of the defaults. */
+  setBindings(overrides: Partial<Record<string, string[]>>): void {
+    this.bindings = effectiveBindings(overrides);
   }
 
   isDown(a: Action): boolean {

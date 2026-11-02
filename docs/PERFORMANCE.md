@@ -1,0 +1,186 @@
+# Karlsberg Quest – Performance, loading, accessibility
+
+How fast the game is, how we measure it, what the graphics presets do, and which accessibility
+settings exist. Numbers below were measured on 2026-11-02; re-measure after render changes and
+update the tables (how: §2).
+
+## 1. Budgets
+
+`src/render/perf.ts` → `PERF_BUDGET`. The bench (§2) checks every scene against the first two;
+the e2e test fails when a scene is over.
+
+| Budget | Value | Why |
+|---|---|---|
+| Draw calls per frame (all passes) | ≤ 300 | WebGL call overhead on mid laptops; we use 12–48 |
+| Triangles per frame (all passes) | ≤ 1.5 M | integrated GPUs at 1080p; we use 0.55–0.7 M |
+| CPU per rendered frame | ≤ 8 ms | systems.frame + world.frame + issuing GL calls, leaves room for GC and audio |
+| Frame time | 16.7 ms (60 fps) on a mid laptop GPU | target; the auto-downgrade steps in above 25 ms |
+| Data before the first input | ≤ 20 MB | PRD D-007; we fetch 4.5 MB critical + 4.6 MB palace in parallel |
+
+## 2. Measuring
+
+- **Overlay**: F3 (or settings → Bild & Leistung → Leistungsanzeige, or `?perf`): frame-time graph,
+  frame/CPU/GPU ms (avg, p95), draw calls, triangles, geometries/textures/programs, preset, terrain
+  chunks, visible/culled trees, the five most expensive systems (update + frame ms).
+- **Bench route**: Shift+F3 or `await kq.bench({frames, warmup})` in the console. Nine fixed views
+  (`src/debug/bench.ts` → `BENCH_SCENES`): today-fly, today-forest, 1789-fly, 1789-ehrenhof,
+  1789-night-pack (1793-02, pack running, lantern lit), 1793-07-festsaal-fire (inside the burning
+  hall), 1793-07-fire-outside, 1796-ruin, scan3-fly. Per scene: frame/CPU ms percentiles, GPU ms
+  (`EXT_disjoint_timer_query_webgl2`, when the browser exposes it), max calls and triangles,
+  geometries/textures/programs, within budget. Result in `kq.lastBench` and as a console table.
+- **Before/after**: `kq.baseline()` switches this round's render optimisations off (forest sector
+  culling; modules can register more switches in `baselineHooks`), then run the bench again.
+- **E2E**: `PERF_LABEL=after npx playwright test e2e/perf.spec.ts` writes
+  `test-results/perf/bench-<label>.json` and `load-<label>.json`; `PERF_BASELINE=1` runs the
+  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader (CPU
+  rasteriser): frame times there are 50–100× a real GPU and say little; calls, triangles, CPU
+  time and bytes are exact.
+- **Real GPU, headless**: Chromium with `--enable-gpu --ignore-gpu-blocklist --use-angle=metal`
+  (add `--disable-gpu-vsync --disable-frame-rate-limit` for uncapped timing) and call `kq.bench()`.
+
+## 3. Results
+
+### 3.1 Real GPU (Apple M5 Pro, ANGLE Metal, 1920×1080, pixel ratio 1, Hoch, uncapped)
+
+GPU ms from timer queries, 90 frames per scene after 15 warm-up frames. Apple GPUs clock up and
+down (DVFS) under light load, so single GPU numbers vary ±30 % between runs; triangles and calls
+are exact.
+
+| Scene | Triangles before | after | GPU ms before | after | CPU ms after | Calls |
+|---|---:|---:|---:|---:|---:|---:|
+| today-fly | 887 k | **564 k** | 2.5 | 2.4 | 0.60 | 15 |
+| today-forest | 877 k | **546 k** | 2.0 | 1.8 | 0.28 | 17 |
+| 1789-fly | 791 k | **629 k** | 2.8 | 1.9 | 0.23 | 12 |
+| 1789-ehrenhof | 699 k | 686 k | 3.6 | 2.1 | 0.22 | 36 |
+| 1789-night-pack | 700 k | 687 k | 4.7 | 3.1 | 0.55 | 40 |
+| 1793-07-festsaal-fire | 718 k | 701 k | 4.9 | 4.0 | 0.98 | 40 |
+| 1793-07-fire-outside | 673 k | 668 k | 2.9 | 3.6 | 2.27 | 48 |
+| 1796-ruin | 681 k | 672 k | 2.4 | 2.4 | 0.78 | 22 |
+| scan3-fly | 948 k | **621 k** | 2.4 | 2.4 | 0.79 | 29 |
+
+"Before" = `kq.baseline()` (forest culling off). It does not undo the CPU work below, so the CPU
+column is "after" only. Every scene is far inside the budget on this machine (≤ 5 ms GPU at
+1080p); the most expensive views are the fire and the night pack (particles, smoke, lantern).
+
+Presets on the same machine (GPU ms / triangles):
+
+| Scene | Niedrig | Mittel | Hoch |
+|---|---|---|---|
+| today-fly | 1.9 / 300 k | 1.7 / 455 k | 2.4 / 564 k |
+| 1789-fly | 1.0 / 524 k | 2.4 / 606 k | 1.9 / 629 k |
+| 1789-night-pack | 3.8 / 577 k | 2.4 / 654 k | 3.1 / 687 k |
+| 1793-07-festsaal-fire | 3.1 / 567 k | 3.5 / 653 k | 4.0 / 701 k |
+| scan3-fly | 1.3 / 326 k | 1.8 / 485 k | 2.4 / 621 k |
+
+On a fast GPU the presets differ little in time (noise dominates); the triangle count and MSAA
+(fill rate, see 3.2) are what saves time on integrated GPUs.
+
+### 3.2 SwiftShader (headless e2e, 1280×720, pixel ratio 1, Hoch, 8 frames per scene)
+
+| Scene | Triangles before | after | Frame ms before | after | CPU ms before | after |
+|---|---:|---:|---:|---:|---:|---:|
+| today-fly | 879 k | 554 k | 373 | 366 | 1.39 | 1.34 |
+| today-forest | 876 k | 550 k | 422 | 382 | 0.75 | 1.21 |
+| 1789-fly | 788 k | 622 k | 360 | 346 | 0.66 | 0.64 |
+| 1789-ehrenhof | 699 k | 686 k | 552 | 632 | 0.56 | 0.66 |
+| 1789-night-pack | 696 k | 680 k | 441 | 518 | 1.00 | 1.11 |
+| 1793-07-festsaal-fire | 715 k | 698 k | 616 | 470 | 1.18 | 1.24 |
+| 1793-07-fire-outside | 671 k | 669 k | 390 | 369 | 1.10 | 1.17 |
+| 1796-ruin | 681 k | 671 k | 654 | 452 | 151 ¹ | 119 ¹ |
+| scan3-fly | 941 k | 614 k | 589 | 475 | 1.37 | 1.09 |
+
+¹ First render of the ruin compiles its shaders inside the measured frame (SwiftShader compiles
+serially); on a GPU the warm-up (§4) does this behind the title.
+
+Where SwiftShader's time goes (fill-bound, measured by switching parts off): 4× MSAA ≈ half of the
+frame, terrain 100–120 ms, palace 100–150 ms, forest 36–150 ms. That is the reason Niedrig turns
+MSAA off and Mittel uses 2×.
+
+### 3.3 CPU per frame (systems)
+
+Measured with the per-system timers (`systems.stats()`, overlay "Systeme"):
+
+| | before | after |
+|---|---|---|
+| interiors `frame()` near the palace | 1.2–2.5 ms, garbage every frame (arrays, closures, light sort, shell box rebuild) | < 0.05 ms, no allocations |
+| forest rebuild | closures per rebuild | reused buffers, rebuild after 12 m / 20° only |
+| terrain LOD pass | new count array per frame | reused |
+
+The whole rendered frame stays ≤ 1 ms CPU in most scenes on the M5 Pro, 2.3 ms at the burning
+palace from outside (fire particles).
+
+## 4. Loading
+
+Measured with `e2e/perf.spec.ts` (preview build on localhost, cold cache, SwiftShader).
+
+| | before | after |
+|---|---|---|
+| Bytes until the title takes input | 9.15 MB (palace awaited) | **4.5 MB** critical; the palace (4.6 MB) streams in parallel and is not awaited |
+| Total fetched while the title shows | 8.73 MiB (9.15 MB) | 9.15 MB (same files) |
+| Title ready | 557 ms | 507 ms (local; the gain grows with slower connections, where the 4.6 MB palace no longer blocks) |
+| Progress | text only | bar with streamed byte progress of the four terrain rasters (`role=progressbar`) |
+
+Timeline (marks in `window.__kqReady`, after): boot 26 ms → data 108 ms → world 362 ms → systems
+500 ms → ready 507 ms; palace 507 ms. Largest files: palace `buildings.glb` 4.6 MB, `h2025` 1.4 MB,
+`canopy` 1.1 MB, `h1789` 1.0 MB, main JS 285 KB gzip, four fonts 250 KB. The palace is only shown
+in the past eras, so the first minutes of play never need it; a resumed save in 1789 sees it pop in
+within the download time.
+
+Shader warm-up: once the palace is in, `renderer.compileAsync(scene, camera)` compiles every
+material while the title is shown (parallel compile where the driver offers
+`KHR_parallel_shader_compile`). Without it the first 1789 frame took 2.5 s in SwiftShader (47
+programs); later era first frames ~85 ms. Not run under WebDriver (keeps e2e timing as before);
+`?warm` forces it.
+
+## 5. Graphics presets and the auto-downgrade
+
+`src/render/quality.ts`. Settings → Bild & Leistung → Grafik: Niedrig / Mittel / Hoch.
+
+| | Niedrig | Mittel | Hoch |
+|---|---|---|---|
+| Max pixel ratio | 1 | 1.25 | 1.5 |
+| MSAA | off | 2× | 4× |
+| Terrain LOD distance | 0.6 | 0.8 | 1 (200 / 450 / 1000 m) |
+| Tree rings near / far | 110 / 480 m | 140 / 600 m | 170 / 700 m |
+| fx particles | low | high | high |
+| Point cloud (Röntgenblick) | sparser | full | full |
+
+- **Auflösung der 3D-Ansicht** (50–100 %) scales the 3D resolution under the preset's pixel-ratio cap; the UI
+  stays sharp.
+- **First run** guesses a preset from the GPU name (`WEBGL_debug_renderer_info`): software
+  rasterisers, phones and tablets → Niedrig; Intel / AMD integrated → Mittel; else Hoch.
+- **Grafik automatisch anpassen** (on by default): when the average frame time stays above 25 ms for six
+  seconds in a row while playing, the preset goes one step down (Hoch → Mittel → Niedrig → 75 %
+  resolution), with a toast saying so. Stalls > 250 ms (shader compiles, loading rooms, tab
+  switches), era shifts and the first seconds are ignored. Off under WebDriver and `?manual`.
+
+## 6. Accessibility settings
+
+Settings page (`src/ui/settings.ts`): five sections with a sticky jump bar (Spiel, Steuerung,
+Bild & Leistung, Barrierefreiheit, Ton), every control labelled (`<label for>`), sliders announce
+their value (`aria-valuetext`), help text under rows that need it, Tab/Shift+Tab stay inside the
+open dialog, visible focus outlines.
+
+| Setting | Effect |
+|---|---|
+| Sanfter Modus | slower pack, no knock-downs, thinner smoke, finds kept (with explanation) |
+| Maus-Y / Maus-X umkehren, Mausempfindlichkeit, Sichtfeld | camera |
+| Tastenbelegung | remap every action (physical keys, layout-aware names via the Keyboard Map API), × removes a key, reset; keyboard look on Komma / Punkt / Bild↑ / Bild↓ / Numpad 4 6 8 2 (play without a mouse) |
+| Untertitelgröße klein / mittel / groß / sehr groß, Untertitel-Hintergrund 0–100 % | subtitles readable on any scene |
+| Keine Lichtblitze | era-shift flash, fire collapse flashes, candle and fire flicker damped to ≤ 25 % (default from `prefers-reduced-motion`) |
+| Weniger Bewegung | no head bob, calm transitions (existing) |
+| Kontrastreiche Anzeige | solid dark backings behind every HUD element, larger crosshair, bolder text (default from `prefers-contrast: more`) |
+| Farbenblind-sichere Farben | relief scan in Okabe-Ito blue ↔ orange instead of blue ↔ red |
+| Gesamtlautstärke, Musik, Geräusche, Stimmen, Umgebung | voices (dialogue, echo whispers) on their own bus; the music slider now also drives the dread drone |
+
+## 7. Known gaps
+
+- No measurement on a real mid-range laptop (Intel Iris Xe / AMD 680M); the Mittel/Niedrig guess
+  for those GPUs is a heuristic, the auto-downgrade is the safety net.
+- GPU timer numbers on Apple silicon are noisy (DVFS); compare triangles/calls first.
+- The palace fragment shader (fbm stone and roof detail) is the largest remaining GPU cost in
+  1789 views; not optimised this round.
+- Chapter content packs are bundled into the story chunk (~100 KB gzip), not lazy-loaded per
+  chapter.
+- The shader warm-up cannot be verified headless (SwiftShader compiles serially).
+- The key-help page lists the bible's default key names; it does not yet follow remapped keys.

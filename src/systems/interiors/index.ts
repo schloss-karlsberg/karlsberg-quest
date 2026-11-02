@@ -31,7 +31,7 @@ import { FlameLayer } from './flames';
 import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
 import { MAX_LIGHTS, MAX_ROOMS, makeInteriorMaterial } from './material';
-import { type CutBox, MAX_CLIPS, MAX_CUTS, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
+import { type CutBox, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
 import type { BuildingPlan, InteriorMode, ShellOpening } from './types';
 import { t } from '../../i18n';
 import './strings';
@@ -443,30 +443,56 @@ function frame(ctx: GameContext, dt: number): void {
   const cam = ctx.camera.position;
   const px = ctx.player.position.x;
   const pz = ctx.player.position.z;
-  // lazy build (one per frame) / drop
+  // lazy build (one per frame) / drop; buildings sorted by distance in a reused array
   let builtOne = false;
-  const order = [...rt.brt.values()].map((b) => ({ b, d: distTo(b.bp, px, pz) })).sort((a, c) => a.d - c.d);
-  for (const { b, d } of order) {
+  const order = frameOrder;
+  order.length = 0;
+  for (const b of rt.brt.values()) {
+    order.push(b);
+    dist.set(b, distTo(b.bp, px, pz));
+  }
+  order.sort((a, c) => dist.get(a)! - dist.get(c)!);
+  for (const b of order) {
+    const d = dist.get(b)!;
     if (!b.mesh && d < BUILD_DIST && !builtOne) {
       build(ctx, b);
       builtOne = true;
     } else if (b.mesh && d > DROP_DIST) drop(ctx, b);
   }
   animateFire(ctx, dt);
-  // shell: open the built buildings, cut the nearest doors
-  const reduced = ctx.settings.state.reducedMotion;
-  const open: { index: number; fade: number; y0: number; y1: number }[] = [];
-  const cuts: CutBox[] = [];
-  const clips: (CutBox & { d: number })[] = [];
+  // shell: open the built buildings, cut the nearest doors. The cut / clip boxes of a building
+  // are fixed per plan: cached, and the nearest ones re-chosen only when the player moved
+  // ≥ 0.5 m or the set of built buildings changed (no per-frame garbage).
+  const reduced = ctx.settings.state.reducedMotion || ctx.settings.state.reducedFlash === true;
   const cur = current();
-  for (const { b } of order) {
+  let nOpen = 0;
+  let builtKey = '';
+  for (const b of order) {
     if (!b.mesh || !b.mat) continue;
+    builtKey += b.id;
     b.fade = Math.min(1, b.fade + dt / 0.5);
     b.mat.uniforms.uFade!.value = b.fade;
-    if (open.length < MAX_OPEN && b.index >= 0) open.push({ index: b.index, fade: b.fade, y0: b.glassY[0], y1: b.glassY[1] });
-    // lights: the nearest ones, flickering
+    if (nOpen < MAX_OPEN && b.index >= 0) {
+      const o = openPool[nOpen++]!;
+      o.index = b.index;
+      o.fade = b.fade;
+      o.y0 = b.glassY[0];
+      o.y1 = b.glassY[1];
+    }
+    // lights: the nearest ones (re-sorted when the camera moved ≥ 1 m), flickering
     const lights = b.built!.lights;
-    const sorted = lights.length > MAX_LIGHTS ? [...lights].sort((p, q) => (p.x - cam.x) ** 2 + (p.y - cam.y) ** 2 + (p.z - cam.z) ** 2 - ((q.x - cam.x) ** 2 + (q.y - cam.y) ** 2 + (q.z - cam.z) ** 2)) : lights;
+    let lc = lightCache.get(b);
+    if (!lc || lc.src !== lights) {
+      lc = { src: lights, sorted: [...lights], x: Infinity, y: 0, z: 0 };
+      lightCache.set(b, lc);
+    }
+    if (lights.length > MAX_LIGHTS && (cam.x - lc.x) ** 2 + (cam.y - lc.y) ** 2 + (cam.z - lc.z) ** 2 > 1) {
+      lc.x = cam.x;
+      lc.y = cam.y;
+      lc.z = cam.z;
+      lc.sorted.sort((p, q) => (p.x - cam.x) ** 2 + (p.y - cam.y) ** 2 + (p.z - cam.z) ** 2 - ((q.x - cam.x) ** 2 + (q.y - cam.y) ** 2 + (q.z - cam.z) ** 2));
+    }
+    const sorted = lc.sorted;
     const LP = b.mat.uniforms.uLightPos!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     const LC = b.mat.uniforms.uLightCol!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     // the fire lights the room: the nearest burning flame spots become flickering lights
@@ -497,28 +523,74 @@ function frame(ctx: GameContext, dt: number): void {
         if (pu.uHeat && h > (pu.uHeat.value as number)) pu.uHeat.value = h;
       }
     }
-    if (cur) {
-      for (const ri of b.bp.rooms) {
-        const r = cur.plan.rooms[ri]!;
-        const f = r.frame;
-        const top = rt.mode === 'ruin' ? r.floor + 40 : r.ceiling - 0.02;
-        clips.push({ x: f.ox + f.ux * (f.L / 2) + f.vx * (f.W / 2), z: f.oz + f.uz * (f.L / 2) + f.vz * (f.W / 2), ux: f.ux, uz: f.uz, hu: f.L / 2 + 0.12, hv: f.W / 2 + 0.12, y0: (r.stair ? r.stair.low : r.floor) - 0.02, y1: top, d: Math.hypot(r.cx - px, r.cz - pz) });
-      }
-    }
-    if (cur && rt.mode === 'intact') {
-      for (const d of cur.plan.doors) {
-        if (d.building !== b.id || d.kind === 'inner') continue;
-        cuts.push({ x: d.cx + d.nx * (d.depth / 2), z: d.cz + d.nz * (d.depth / 2), ux: d.nx, uz: d.nz, hu: d.depth / 2 + 0.75, hv: d.width / 2, y0: d.floor - 0.05, y1: d.top });
-      }
-    }
   }
   if (rt.cut?.ok && ctx.era.info.palace !== 'hidden') {
-    rt.cut.setOpen(open, rt.mode === 'ruin');
-    cuts.sort((a, c) => Math.hypot(a.x - px, a.z - pz) - Math.hypot(c.x - px, c.z - pz));
-    rt.cut.setCuts(cuts.slice(0, MAX_CUTS));
-    clips.sort((a, c) => a.d - c.d);
-    rt.cut.setClips(clips.slice(0, MAX_CLIPS));
+    openList.length = nOpen;
+    for (let i = 0; i < nOpen; i++) openList[i] = openPool[i]!;
+    rt.cut.setOpen(openList, rt.mode === 'ruin');
+    const key = rt.mode + builtKey;
+    if (key !== shellSel.key || (px - shellSel.x) ** 2 + (pz - shellSel.z) ** 2 > 0.25) {
+      shellSel.key = key;
+      shellSel.x = px;
+      shellSel.z = pz;
+      const cuts = shellSel.cuts;
+      const clips = shellSel.clips;
+      cuts.length = 0;
+      clips.length = 0;
+      for (const b of order) {
+        if (!b.mesh || !b.mat || !cur) continue;
+        const boxes = shellBoxes(b, cur.plan, rt.mode);
+        for (const c of boxes.clips) {
+          c.d = Math.hypot(c.cx - px, c.cz - pz);
+          clips.push(c);
+        }
+        for (const c of boxes.cuts) {
+          c.d = Math.hypot(c.cx - px, c.cz - pz);
+          cuts.push(c);
+        }
+      }
+      cuts.sort(byD);
+      clips.sort(byD);
+      // setCuts / setClips read only the first MAX_CUTS / MAX_CLIPS entries
+      rt.cut.setCuts(cuts);
+      rt.cut.setClips(clips);
+    }
   }
+}
+
+type ShellBox = CutBox & { d: number; cx: number; cz: number };
+const byD = (a: { d: number }, c: { d: number }) => a.d - c.d;
+const frameOrder: BRT[] = [];
+const dist = new Map<BRT, number>();
+const openPool = Array.from({ length: MAX_OPEN }, () => ({ index: 0, fade: 0, y0: 0, y1: 0 }));
+const openList: { index: number; fade: number; y0: number; y1: number }[] = [];
+const lightCache = new WeakMap<BRT, { src: Built['lights']; sorted: Built['lights']; x: number; y: number; z: number }>();
+const shellSel = { key: '', x: Infinity, z: Infinity, cuts: [] as ShellBox[], clips: [] as ShellBox[] };
+const shellCache = new WeakMap<BRT, { plan: FullPlan; mode: InteriorMode; cuts: ShellBox[]; clips: ShellBox[] }>();
+
+/** The clip boxes of a building's rooms and the cut boxes of its outer doors (cached per plan). */
+function shellBoxes(b: BRT, plan: FullPlan, mode: InteriorMode): { cuts: ShellBox[]; clips: ShellBox[] } {
+  const hit = shellCache.get(b);
+  if (hit && hit.plan === plan && hit.mode === mode) return hit;
+  const clips: ShellBox[] = [];
+  for (const ri of b.bp.rooms) {
+    const r = plan.rooms[ri]!;
+    const f = r.frame;
+    const top = mode === 'ruin' ? r.floor + 40 : r.ceiling - 0.02;
+    clips.push({ x: f.ox + f.ux * (f.L / 2) + f.vx * (f.W / 2), z: f.oz + f.uz * (f.L / 2) + f.vz * (f.W / 2), ux: f.ux, uz: f.uz, hu: f.L / 2 + 0.12, hv: f.W / 2 + 0.12, y0: (r.stair ? r.stair.low : r.floor) - 0.02, y1: top, d: 0, cx: r.cx, cz: r.cz });
+  }
+  const cuts: ShellBox[] = [];
+  if (mode === 'intact') {
+    for (const d of plan.doors) {
+      if (d.building !== b.id || d.kind === 'inner') continue;
+      const x = d.cx + d.nx * (d.depth / 2);
+      const z = d.cz + d.nz * (d.depth / 2);
+      cuts.push({ x, z, ux: d.nx, uz: d.nz, hu: d.depth / 2 + 0.75, hv: d.width / 2, y0: d.floor - 0.05, y1: d.top, d: 0, cx: x, cz: z });
+    }
+  }
+  const out = { plan, mode, cuts, clips };
+  shellCache.set(b, out);
+  return out;
 }
 
 // ---- world hooks --------------------------------------------------------------------------------------

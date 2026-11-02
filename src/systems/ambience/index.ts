@@ -26,7 +26,8 @@ export default defineSystem({
   init(ctx) {
     ctx.audio.onUnlock(() => {
       wind = windLoop(ctx.audio, ctx.audio.bus('ambience'), 0.3);
-      dread = drone(ctx.audio, ctx.audio.bus('ambience'), 49);
+      // the low night drone is the score's bed: it follows the music slider
+      dread = drone(ctx.audio, ctx.audio.bus('music'), 49);
       const tg = target(ctx);
       wind.setIntensity(tg.wind, 3);
       dread.setIntensity(tg.dread, 3);

@@ -13,7 +13,9 @@ import { installDebug } from './debug/hooks';
 import { t } from './i18n';
 import { Input } from './player/input';
 import { Player } from './player/player';
+import { PerfMonitor } from './render/perf';
 import { PostFX } from './render/post';
+import { QualityManager, gpuName, suggestLevel } from './render/quality';
 import { SYSTEM_LOADERS } from './systems';
 import { openLicences, openPause } from './ui/menus';
 import { TitleScreen } from './ui/title';
@@ -28,6 +30,10 @@ import { World } from './world/world';
 export async function boot(container: HTMLElement): Promise<GameContext> {
   const params = new URLSearchParams(location.search);
   const debug = params.has('debug');
+  // load timeline (ms since navigation start) for docs/PERFORMANCE.md and e2e/perf.spec.ts
+  const ready: Record<string, number> = { boot: Math.round(performance.now()) };
+  (window as unknown as { __kqReady: Record<string, number> }).__kqReady = ready;
+  const mark = (k: string) => (ready[k] = Math.round(performance.now()));
   const skipTitle = debug || params.has('notitle');
 
   // ---- renderer, scene, camera
@@ -40,6 +46,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
   const post = new PostFX(params.has('nomsaa') ? 0 : 4);
+  const perf = new PerfMonitor(renderer);
   const resize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -109,7 +116,26 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     title.setFailed((err as Error).message);
     throw err;
   }
+  mark('data');
   const world = new World(data, scene, post);
+  mark('world');
+  const quality = new QualityManager({
+    renderer,
+    post,
+    world,
+    settings,
+    resize,
+    notify: (level) => ui.toast(t('settings.graphics.auto', { level: t(`settings.graphics.${level}`) }), 5200),
+  });
+  quality.noMsaa = params.has('nomsaa');
+  if (!settings.state.graphics && !navigator.webdriver) {
+    // first run: guess a preset from the GPU (Hoch / Mittel / Niedrig); the auto-downgrade corrects it
+    const guess = suggestLevel(gpuName(renderer.getContext()), matchMedia('(pointer: coarse)').matches, navigator.hardwareConcurrency ?? 0);
+    settings.update((d) => (d.graphics = guess), 'graphics');
+  }
+  // never under WebDriver (e2e screenshots stay comparable) or in deterministic ?manual runs
+  quality.autoAllowed = !params.has('manual') && (!navigator.webdriver || params.has('autoq'));
+  quality.apply();
   const palaceReady = world.loadPalace().catch((err) => console.error('[palace] failed to load', err));
 
   // ---- input + player
@@ -130,14 +156,26 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     const s = settings.state;
     player.mouseSensitivity = s.mouseSensitivity;
     player.invertY = s.invertY;
+    player.invertX = s.invertX === true;
     player.reducedMotion = s.reducedMotion;
     camera.fov = s.fov;
     camera.updateProjectionMatrix();
     audio.setVolumes(s.volume);
     ui.hud.setSubtitleSize(s.subtitleSize);
+    input.setBindings(s.bindings ?? {});
+    // accessibility switches as root attributes, so every feature's CSS can follow them
+    const root = document.documentElement;
+    root.toggleAttribute('data-kq-contrast', s.highContrast === true);
+    root.toggleAttribute('data-kq-reduced-motion', s.reducedMotion);
+    root.toggleAttribute('data-kq-reduced-flash', s.reducedFlash === true);
+    root.toggleAttribute('data-kq-colorblind', s.colorblind === true);
+    root.style.setProperty('--sub-bg', String(Math.max(0, Math.min(1, s.subtitleBg ?? 0.62))));
+    post.uniforms.uFlashScale!.value = s.reducedFlash ? 0.2 : 1;
+    world.terrain.uniforms.uPalette!.value = s.colorblind ? 1 : 0;
   };
   settings.subscribe((_, key) => {
     applySettings();
+    if (key === 'graphics' || key === 'resolutionScale') quality.apply();
     events.emit('settings:change', { key });
   });
   applySettings();
@@ -160,6 +198,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       state.mutable.era = e;
       ui.hud.setEraLabel(t(ERA_INFO[e].labelKey));
       if (from !== e) {
+        quality.hold();
         events.emit('era:change', { from, to: e });
         if (started) save.autosave('era', true);
       }
@@ -192,8 +231,10 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       input.endStep();
     },
     render: (frameDt, alpha) => {
+      perf.begin();
       if (!pause.paused) player.look();
       player.applyCamera(camera, alpha, frameDt);
+      cameraOverride?.(camera);
       if (reasons.has('title')) {
         // title backdrop: slow drift of the view
         const tt = performance.now() / 1000;
@@ -205,6 +246,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       audio.updateListener(camera);
       ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
       post.render(renderer, scene, camera, loop.time);
+      perf.end();
+      quality.frame(frameDt * 1000, started && !pause.paused && !document.hidden);
       frames++;
     },
   });
@@ -212,12 +255,15 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   sync();
   if (params.has('manual')) loop.manual = true;
   let frames = 0;
+  let cameraOverride: ((cam: PerspectiveCamera) => void) | null = null;
 
   const ctx: GameContext = {
     renderer,
     scene,
     camera,
     post,
+    perf,
+    quality,
     player,
     input,
     world,
@@ -283,6 +329,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && started) save.autosave('hidden', true);
+    perf.resetClock();
+    quality.hold();
   });
   window.setInterval(() => started && !pause.paused && save.autosave('interval'), 60_000);
 
@@ -326,16 +374,37 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     }
   }
   await systems.initAll(ctx);
+  mark('systems');
 
-  await palaceReady;
-  installDebug(ctx, { frames: () => frames });
+  installDebug(ctx, { frames: () => frames, perf, quality, setCamera: (fn) => (cameraOverride = fn), ready: palaceReady });
   loop.start();
 
   if (debug) {
     const r = ctx.content.validate(world.bounds());
     if (!r.ok) console.warn('[content] validation errors', r.errors);
   }
-  if (skipTitle) startGame(false);
-  else title.setReady(save.has());
+  const palaceLoaded = palaceReady.then(() => mark('palace'));
+  if (skipTitle) {
+    await palaceLoaded;
+    startGame(false);
+  } else {
+    // the title takes input while the palace model (4.5 MB, only shown in the past eras) still
+    // streams in: the lantern flow alone takes longer than the download on any usual connection
+    title.setReady(save.has());
+  }
+  mark('ready');
+  // shader warm-up while the title is shown: compile every material in the scene in parallel
+  // (KHR_parallel_shader_compile), so the first era shift does not hitch. Not under WebDriver
+  // (SwiftShader compiles serially; e2e timing stays as it was) unless ?warm.
+  if (!navigator.webdriver || params.has('warm')) {
+    void palaceLoaded.then(() =>
+      window.setTimeout(() => {
+        renderer.compileAsync(scene, camera).then(
+          () => mark('warm'),
+          (err: unknown) => console.warn('[boot] shader warm-up failed', err),
+        );
+      }, 400),
+    );
+  }
   return ctx;
 }

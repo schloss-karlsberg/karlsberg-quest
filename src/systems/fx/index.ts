@@ -221,10 +221,10 @@ export default defineSystem({
     ambient.setRoofs(roofQuads(ctx.data.footprints.buildings, ['KB-B07']));
     ctx.scene.add(ambient.object);
     quality.onChange(() => fire.rebuild());
-    // settings → Grafikqualität (skills system's settings rows): low/high pins the level, unset = auto
+    // settings → Grafik (core preset, render/quality.ts): Niedrig = low, Mittel / Hoch = high; unset = auto
     const applyGraphics = () => {
-      const g = (ctx.settings.state as { graphics?: 'low' | 'high' }).graphics;
-      if (g === 'low' || g === 'high') quality.set(g);
+      const g = ctx.settings.state.graphics;
+      if (g) quality.set(g === 'low' ? 'low' : 'high');
     };
     if (!ctx.params.has('fxq')) applyGraphics();
     ctx.events.on('settings:change', ({ key }) => key === 'graphics' && applyGraphics());

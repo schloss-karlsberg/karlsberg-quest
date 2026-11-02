@@ -218,8 +218,8 @@ export class FireVisuals {
   }
 
   /** A roof / stair falls in: sparks, a dust-and-smoke surge. */
-  collapse(i: number, x: number, y: number, z: number, now: number): void {
-    this.flash[i] = 1;
+  collapse(i: number, x: number, y: number, z: number, now: number, strength = 1): void {
+    this.flash[i] = strength;
     const b = this.bursts[this.nextBurst]!;
     b.set(x, y, z, now);
     this.nextBurst = (this.nextBurst + 1) % this.bursts.length;

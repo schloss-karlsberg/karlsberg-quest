@@ -86,9 +86,6 @@ addStrings('de', {
   'settings.rauhnacht': 'Rauhnacht (schwer: schnellere Meute, weniger Öl, der Pikeur reitet früher)',
   'settings.subtitlesOn': 'Untertitel für Geräusche (Horn, Hunde, Umgebung)',
   'settings.soundIndicators': 'Richtungspfeile für Geräusche am Bildrand',
-  'settings.graphics': 'Grafikqualität',
-  'settings.graphics.low': 'niedrig',
-  'settings.graphics.high': 'hoch',
 
   // key help: tools added by this round (bible style)
   'ui.keys.xray': 'Röntgenblick: Bodenpunkte unter den Bäumen (Röntgenblick)',

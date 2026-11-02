@@ -1,4 +1,4 @@
-import type { Settings, SettingsStore } from '../core/save';
+import type { SettingsStore } from '../core/save';
 import type { AttributionItem } from '../data/types';
 import { t } from '../i18n';
 import { h } from './dom';
@@ -12,12 +12,8 @@ export interface MenuDeps {
   toTitle: () => void;
 }
 
-/** A settings row: label + control. Feature systems add rows with `addSettingsRows` (shown below the core rows). */
-export type SettingsRow = [string, HTMLElement];
-const settingsExtensions: ((settings: SettingsStore) => SettingsRow[])[] = [];
-export function addSettingsRows(fn: (settings: SettingsStore) => SettingsRow[]): void {
-  settingsExtensions.push(fn);
-}
+export { SETTINGS_SECTIONS, type SettingsRow, type SettingsSection, addSettingsRows, settingsForm } from './settings';
+import { settingsForm } from './settings';
 
 /** Key help: `ui.keys.<id>` (description) + `ui.keys.<id>.key` (key label) from the bible, in this order. */
 export const CONTROL_KEYS: string[] = ['move', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'chronik', 'measure', 'pause'];
@@ -32,39 +28,6 @@ export function controlsBody(): HTMLElement {
     { 'data-testid': 'key-help' },
     CONTROL_KEYS.map((id) => h('tr', [h('td.k', t(`ui.keys.${id}.key`)), h('td', t(`ui.keys.${id}`))])),
   );
-}
-
-export function settingsForm(settings: SettingsStore): HTMLElement {
-  const s = settings.state;
-  const set = (fn: (d: Settings) => void, key: string) => settings.update(fn, key);
-  const range = (min: number, max: number, step: number, value: number, on: (v: number) => void, label: string) =>
-    h('input', { type: 'range', min, max, step, value, 'aria-label': label, oninput: (e: Event) => on(Number((e.target as HTMLInputElement).value)) });
-  const check = (value: boolean, on: (v: boolean) => void, label: string) =>
-    h('input', { type: 'checkbox', checked: value, 'aria-label': label, onchange: (e: Event) => on((e.target as HTMLInputElement).checked) });
-  const rows: [string, HTMLElement][] = [
-    [t('settings.mouse'), range(0.2, 3, 0.05, s.mouseSensitivity, (v) => set((d) => (d.mouseSensitivity = v), 'mouseSensitivity'), t('settings.mouse'))],
-    [t('settings.invertY'), check(s.invertY, (v) => set((d) => (d.invertY = v), 'invertY'), t('settings.invertY'))],
-    [t('settings.fov'), range(55, 95, 1, s.fov, (v) => set((d) => (d.fov = v), 'fov'), t('settings.fov'))],
-    [t('settings.gentle'), check(s.gentleMode, (v) => set((d) => (d.gentleMode = v), 'gentleMode'), t('settings.gentle'))],
-    [t('settings.reducedMotion'), check(s.reducedMotion, (v) => set((d) => (d.reducedMotion = v), 'reducedMotion'), t('settings.reducedMotion'))],
-    // accessibility (bible 09 ui.set.one_key; declared by the hunt system): lying flat lights the lantern too
-    [t('ui.set.one_key'), check(s.oneKey === true, (v) => set((d) => (d.oneKey = v), 'oneKey'), t('ui.set.one_key'))],
-  ];
-  const radios = h('div.radios');
-  for (const size of ['s', 'm', 'l'] as const) {
-    radios.append(
-      h('label', [
-        h('input', { type: 'radio', name: 'kq-sub', value: size, checked: s.subtitleSize === size, onchange: () => set((d) => (d.subtitleSize = size), 'subtitleSize') }),
-        ` ${t(`settings.subtitles.${size}`)}`,
-      ]),
-    );
-  }
-  rows.push([t('settings.subtitles'), radios]);
-  for (const ext of settingsExtensions) rows.push(...ext(settings));
-  for (const bus of ['master', 'music', 'sfx', 'ambience'] as const) {
-    rows.push([t(`settings.volume.${bus}`), range(0, 1, 0.01, s.volume[bus], (v) => set((d) => (d.volume[bus] = v), 'volume'), t(`settings.volume.${bus}`))]);
-  }
-  return h('div.kq-form', rows.flatMap(([label, input]) => [h('label', label), input]));
 }
 
 export function licencesBody(items: AttributionItem[]): HTMLElement[] {
