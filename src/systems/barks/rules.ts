@@ -106,10 +106,15 @@ export interface MemorialZone {
 /** Built-in memorial places (bible 02-kapitel-1 §1.11: the Rondell, TF-36, 1815/348 r 20). */
 export const BUILTIN_MEMORIALS: MemorialZone[] = [{ id: 'rondell', x: 1815, z: 348, r: 20 }];
 
-export function memorialAt(zones: Iterable<MemorialZone>, x: number, z: number, era: string, room: string | null): string | null {
+/**
+ * The memorial the player stands in, or null. `room`: the current room's ids (catalogue id, full id,
+ * building id — a memorial `room` may name any of them).
+ */
+export function memorialAt(zones: Iterable<MemorialZone>, x: number, z: number, era: string, room: string | readonly string[] | null): string | null {
+  const rooms = room === null ? [] : typeof room === 'string' ? [room] : room;
   for (const m of zones) {
     if (m.era && m.era !== era) continue;
-    if (m.room && room === m.room) return m.id;
+    if (m.room && rooms.includes(m.room)) return m.id;
     if (m.x !== undefined && m.z !== undefined && Math.hypot(x - m.x, z - m.z) <= (m.r ?? 20)) return m.id;
   }
   return null;

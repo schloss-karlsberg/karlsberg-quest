@@ -248,6 +248,8 @@ export default defineSystem({
     ctx.events.on('echo:start', () => obl.remember(0.1));
     ctx.events.on('oblivion:remember', ({ amount }) => obl.remember(amount ?? 0.15));
     ctx.events.on('save:loaded', () => resume(ctx));
+    // a fire resumed during init ran before later systems (interiors) listened: tell them again
+    ctx.events.on('game:start', () => fire.replay());
     resume(ctx);
   },
 

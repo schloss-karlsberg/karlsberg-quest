@@ -80,10 +80,10 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | `toast`, `teleport`, `card`, `look`, `prompt`, `sound` | as before | presentation |
 | `cue`, `chronik`, `unlock`, `ending`, `autosave` | `cue {id, data?}` | `story:cue`, open the board, map table, endings. `cue menagerie:spawn` with `data {animal, x, z, id?, heading?, count?}` / `menagerie:clear {id?}` places the escaped animals |
 | `choice` | `id, prompt, note?, options[], seconds?, fallback?, modal?` | see below |
-| `npc` | `op: spawn \| despawn, npc, x?, z?, era?, yaw?, chapter?, topics?, mood?` | place / remove a ghost (`npc:spawn` / `npc:despawn`; x/z default to the player, era to the current one, chapter to the running one; `npc: "*"` removes all) |
+| `npc` | `op: spawn \| despawn, npc, x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | place / remove a ghost (`npc:spawn` / `npc:despawn`; x/z default to the player (on the player's storey), era to the current one, chapter to the running one; `room` = a palace room id: its centre and its storey, upstairs too; `npc: "*"` removes all) |
 | `meter` | `id, active, seconds?, label?, full?, text?, lossless?, still?, intensity?, center?, radius?` | see below |
 | `echo` | `id` | play a Chronik echo (`echo:play`) |
-| `memorial` | `id, active?, x?, z?, r?, era?, room?` | a memorial place: no barks there (`memorial:set`) |
+| `memorial` | `id, active?, x?, z?, r?, era?, room?` | a memorial place: no barks there (`memorial:set`; `room` = catalogue id, full id or building) |
 | `readings` | `fill: "offen", cases?` | every reading without an answer becomes `offen` ("Leer lassen") |
 
 **Choices.** `modal` (default) is a field-book card that pauses the game; options are picked by
@@ -158,8 +158,11 @@ Example beats (a test file, not loaded by the game, validated in `tests/hunt-ext
 ## Test chapter
 
 `99-test.story.json` (`"test": true`) exercises the NPC talk, inline + modal choices, meters,
-readings, rooms, memorials and the epilogue (`e2e/npc.spec.ts`): `?storytest`, then
-`kq.story.goto('test')`.
+readings, rooms, memorials and the epilogue (beats t1–t6, `e2e/npc.spec.ts`) and the round-2
+tour (beats r1–r4: Festsaal doorway, a ghost upstairs, Kartograf 3 + measuring the gallery, snow
+tracks; `e2e/integration.spec.ts`): `?storytest`, then `kq.story.goto('test')` / `goto('test', 'r1')`.
+The full list of actions, conditions and recipes for wiring chapters: `docs/ARCHITECTURE.md` §12
+"How to wire a chapter".
 
 ## Debug (browser console)
 

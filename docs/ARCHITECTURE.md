@@ -212,7 +212,12 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   forest determinism, validator (good + each failure class), ContentDB.
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
   prologue across all four systems (new game → hub → Chronik → objective → scan → clues → Q →
-  shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`.
+  shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`;
+  and the round-2 tour over the test chapter's beats r1–r4 (`?storytest`): doorway into the
+  Festsaal 1789 → story `room` condition → a ghost on the upper storey, E → conversation →
+  `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
+  Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
+  (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
   `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → "Laterne entzünden" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
@@ -231,7 +236,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
 `menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`. They talk only through the events in `src/systems/contracts.ts` (plus the
-private ones listed below) and `ctx.state`. How the four work together:
+private ones listed below), `ctx.state` and a few additive world hooks. How they work together:
 
 ```
 story ──threat:configure──▶ hunt (pack, lantern seconds)   fx (fire, oblivion)
@@ -245,8 +250,12 @@ story:give ──clue:found / noun:learned (story clue ids, written to state.inv
 story ──npc:spawn/despawn──▶ npc ──npc:talk / npc:conversation / bark:npc-near──▶ story, barks
 npc, story(grant) ──clue:grant──▶ chronik (discover without a card)
 story(meter oil) ──lantern:request──▶ hunt      story(memorial) ──memorial:set──▶ barks
-interiors ──room:enter/leave {roomId}──▶ story (room condition), barks (burning rooms, memorial rooms)
+interiors ──room:enter/leave {roomId, building, id}──▶ story (room condition), barks (burning rooms, memorial rooms)
+fx ──fire:room {roomId: full id | building}──▶ interiors (smoke, flames, collapse), barks
 barks ──dialogue:say──▶ story presenter
+story(skill) ──state.skills──▶ skills ──skill:unlocked──▶ anyone     story/chronik ──skill:grant──▶ skills
+tools ──measure:done {building?, room?}──▶ story (event condition), chronik (measuring clues)
+interiors ──world.groundOverride / roomAnchor──▶ player, npc, chronik markers (storeys)
 ```
 
 Ownership rules that came out of integration:
@@ -268,6 +277,33 @@ Ownership rules that came out of integration:
   advance in `update` (headless `kq.step` is deterministic); a modal choice's fuse burns in real time
   while the modal pauses the game. Being carried home (`shift:request {reason:'caught'}`) does not
   count in `meta.shifts`.
+
+Round-2 integration rules:
+- **Room ids**: catalogue id `B01.2.og-festsaal` (interiors `room:enter.roomId`, flag
+  `interior.room`, measure `room`), full id `KB-B01/B01.2.og-festsaal` (fx `fire:room`, rooms.json
+  `id`) and building `KB-B01`. Every consumer (story `room` condition, npc `room`, barks memorials
+  and burning rooms, the Chronik's measuring clues) accepts all three; the validator checks the format.
+- **Storeys**: `world.heightAt(x, z, yHint?)`. Without a hint the interiors answer the player's
+  storey near the player and clue-anchor rooms / the ground floor elsewhere; things that know their
+  storey pass a hint (NPCs placed in a room keep `y` from `world.roomAnchor(id)`). NPC talk needs
+  the same storey (|Δy| < 2.4 m) as well as 2.8 m.
+- **Fire**: fx owns the schedule and the smoke meter; interiors only draw what `fire:room` says and
+  clear on `threat:configure {fire, active:false}` / era change. A fire resumed from a save during
+  init is re-announced at `game:start` (`fire.replay()`), so the interiors catch up.
+- **Caught softly**: `player:caught {soft:true}` (drive) and the story's lossless meters
+  (`flags['chronik.noLoss']`) both show the bible's `ui.homed.*` curtain and lose nothing.
+- **Skills**: the story's `skill` action writes `state.skills`; the skills system shows the card
+  (the action's `toast` is only used without a skills system). Measuring clues (`requires.skill
+  'kartograf:3'`, e.g. `clue.k3.messen`) are found by a `measure:done` on their anchor room /
+  building or inside their radius in their era (card after 1.2 s).
+- **Horn lines**: `hunt:horn` carries the pack `mode`; Laub's "Die Jagd beginnt" answers only
+  patrol / par force horns (the drive's horn is the beaters' horn from behind).
+- **Keys** (`DEFAULT_BINDINGS`, unit-tested for clashes): R measure, V / 4 Röntgenblick, B plans,
+  M maps, 0–3 relief, E listen / talk / examine, L lantern, Q shift, J / Tab Chronik, X prone,
+  C crouch (and down while flying — the only shared code). Number keys inside a modal choice or a
+  conversation are captured by that card and never reach relief / Röntgenblick.
+- **Data**: `public/data` is regenerated by `pnpm prepare-data` (sister data read only); 1789 land
+  cover now has classes 8–12, mapped onto meadow / lawn / sand surfaces in `GROUND_NAMES`.
 
 ### hunt (`src/systems/hunt/`) – die Meute, der Pikeur, the lantern
 - Starts only via `threat:configure {kind:'pack'}` (extra fields, declared by declaration merging in
@@ -293,7 +329,7 @@ Ownership rules that came out of integration:
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
-- Emits `hunt:alert`, `hunt:horn`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
+- Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
   `player:caught {by:'pack', soft?}` (2.0 s into the caught sequence). Writes `flags.lanternLit`
   and `player.stats.lanternLit`; HUD threat meter, lantern gauge, screen-edge arrows
@@ -408,8 +444,9 @@ Ownership rules that came out of integration:
   epilogue/choose/look/meters/meter/room/choice`.
 
 ### npc (`src/systems/npc/`) – ghostly people, conversations
-- `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?}` / `npc:despawn {npc}` (story `npc`
-  action). A figure: merged capsules/cones, two shader passes (sepia smoke body with screen-space
+- `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
+  (story `npc` action). `room` places the ghost in a palace room on that room's storey (centre
+  unless x/z are given); spawned at the player it keeps the player's storey. A figure: merged capsules/cones, two shader passes (sepia smoke body with screen-space
   hatching that writes depth, additive fresnel glow), idle motion per body part, feet dissolving
   into smoke, motes, a light pool; warm amber for Hanne, cold flicker for the others, era tint;
   visible only in its era; turns towards the player. Reduced motion calms it.
@@ -444,7 +481,8 @@ Ownership rules that came out of integration:
   the ruin shell dissolved into the interior's own stubs.
 - World hooks (additive): `world.collider.overlay` (detailed footprints become passable, the plan's
   walls take over, also in the ruin era), `world.groundOverride` (floors, stairs, steps; the
-  player's height picks the storey) and `world.surfaceOverride` (footsteps on parquet / stone).
+  player's height — or the caller's `yHint` — picks the storey), `world.surfaceOverride` (footsteps
+  on parquet / stone) and `world.roomAnchor(id)` (centre + floor of a room, for NPCs).
 - Fire: `fire:room {roomId, state}` (room or building id) → smoke layer under the ceiling, flames,
   embers, flames and smoke through the doors; `collapsed` → ceiling gone, debris, doors blocked
   once the player is out (caption for the sound). Cleared on `threat:configure {fire, active:false}`
@@ -453,6 +491,91 @@ Ownership rules that came out of integration:
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
+
+### How to wire a chapter (story files, round 3)
+
+A chapter is one `content/story/<nn>-<id>.story.json` (schema: `content/story/README.md`, checked
+by `pnpm validate`; `"test": true` files load only with `?storytest`). Beats run `enter` actions,
+wait for `complete`, run `exit`, go to `next`; `on` reactions fire inside a beat or chapter-wide.
+Lines come from the content packs by trigger, or from `say` actions. Worked examples:
+`content/story/99-test.story.json` (t1–t6 story features, r1–r4 the round-2 tour in
+`e2e/integration.spec.ts`), `content/test/hunt-menagerie.test.story.json`,
+`content/test/interiors-test.story.json`.
+
+**Conditions** (one key per object; event-like ones latch while the beat runs):
+
+| Condition | True when | Typical use |
+| --- | --- | --- |
+| `enter {x,z,r,era?}` / `leave {x,z,r}` | inside / outside a circle | reach a place |
+| `event` + `match` / `gte` / `lte` / `times` | any event with that payload happened | see the event list below |
+| `flag` (+ `eq`) | a flag is truthy / equals | `measured.KB-B06`, `interior.room`, `choice.*`, `flag.k3_objekt` |
+| `timer` / `chapterTimer` | seconds in the beat / chapter (game time) | pacing |
+| `era`, `scan` (≥), `map`, `stance`, `lantern` | world / player state | `{stance:'prone'}`, `{lantern:true}` |
+| `have {clue\|noun\|item}`, `confirmed {case?\|prefix?, n}`, `caseComplete` | inventory, Chronik | gates on findings |
+| `hub` | a field-station item was used | Pinnwand, map table |
+| `room` | in a palace room: `"B01.2.og-festsaal"`, `"KB-B01/B01.2.og-festsaal"` or `"KB-B01"` | interiors objectives |
+| `talked {npc, chapter?, topic?}` | an NPC conversation / topic happened | after a ghost |
+| `reading` (+ `eq`) | a reading was chosen (entry flag or entry id) | branch on LESARTEN |
+| `meter {id, gte?\|lte?\|full?}` | a story meter's value | oil, smoke, Atem |
+| `chosen` (+ `option`) | a choice was answered | k2 gate, k3 object |
+| `all`, `any`, `not`, `manual` | combinations / never | |
+
+**Actions** (`delay` seconds; `onResume` repeats on resume — one-shots: say, shift, teleport,
+card, sound, toast, cue, chronik, ending, echo, grant):
+
+| Action | Fields | Effect |
+| --- | --- | --- |
+| `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?` | spoken line; `{Name}`, `{jahre:1793}`, `{jahr}` |
+| `objective` | `text \| null, x?, z?, id?` | objective + Bussole |
+| `threat` | `kind: pack \| fire \| oblivion, active, intensity?, center?, radius?, seconds?` + pack `mode` (patrol / drive / finale / parforce), `target`, `via`, `from`, `headStart`, `goalRadius`, `snow`, `hounds`, `pikeur`, `sight`, `seed` | hunt / fx threats |
+| `flag` | `set {k: v \| null}` | flags |
+| `shift` / `anchor` | `to, instant?, reason?` / `to \| null, x, z, r` | era shift now / Q allowed here |
+| `skill` | `id: relief \| kartograf \| baumeister \| roentgen \| spurenleser, tier` | unlock card (+ Laub once `story.laub`) |
+| `give` / `grant` | `clue \| noun \| item, kind?, toast?` / `clue` | inventory / Chronik discovery without card |
+| `npc` | `op: spawn \| despawn, npc (hanne, jost, soll, … \| *), x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | ghost + conversation from pack `npc:talk` lines |
+| `meter` | `id: oil \| smoke \| vergessen \| <custom>, active, seconds?, label?, full?: return \| caught \| none, text?, lossless?, still?, intensity?, center?, radius?` | timers on game time |
+| `echo` | `id` | play a Chronik echo |
+| `memorial` | `id, active?, x?, z?, r?, era?, room?` | no barks there |
+| `readings` | `fill: "offen", cases?` | fill empty readings |
+| `choice` | `id, prompt, options [{label, key?, set, when?, then?}], seconds?, fallback?, modal?, note?` | modal card or inline (`when`) |
+| `cue` | `id, data?` (`menagerie:spawn {animal, x, z, id?, heading?, count?}`, `menagerie:clear {id?}`) | set pieces, animals |
+| `toast`, `card`, `teleport`, `look`, `prompt`, `sound` | as in the README | presentation |
+| `chronik`, `unlock`, `ending`, `autosave` | | board, map table, endings, save |
+
+**Events worth waiting for** (`{ "event": …, "match": {…} }`): `room:enter {roomId, building, id}`,
+`npc:talk {npc, topic}`, `measure:done {building, room}`, `skill:unlocked {skill, level}`,
+`hunt:goal {mode}`, `hunt:finale {outcome}`, `hunt:tracking {on, why}`, `hunt:read`,
+`player:caught {by, soft}`, `menagerie:seen / knockdown / yield {id}`, `clue:found {id}`,
+`echo:end {id}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
+`story:choice {id, option}`, `story:meter-full {id}`, `bark:idle`.
+
+**Recipes**
+- *Into a room*: `{ "complete": { "room": "B01.2.og-festsaal" } }`. Walkable entries: Registratur
+  (B03), Pfeilersaal (B10), Kabinett (B01 EG), Waffensammlung, Bildergalerie, Tempelzimmer; the
+  Festsaal via vestibule + Prunktreppe, the Naturalienkabinett via B04's north stair. 1796: ground
+  floors only.
+- *A ghost in a room*: `{ "do": "npc", "op": "spawn", "npc": "hanne", "room": "B01.2.og-festsaal",
+  "era": "1789", "chapter": "k1" }` → `{ "talked": { "npc": "hanne" } }`.
+- *Measure the gallery (k3)*: `{ "do": "skill", "id": "kartograf", "tier": 3 }`, then
+  `{ "event": "measure:done", "match": { "building": "KB-B06" } }` (or flag `measured.KB-B06`);
+  measuring in 1793-07 also discovers `clue.k3.messen`.
+- *Snow tracks (k2 W5)*: in 1793-02 `{ "do": "threat", "kind": "pack", "active": true,
+  "intensity": 0.4, "center": {…}, "radius": 250 }`, complete on
+  `{ "event": "hunt:tracking", "match": { "on": false, "why": "water" } }`.
+- *Par force (k2_4)*: `"mode": "parforce", "from": {…}, "target": {…}, "goalRadius": 25,
+  "headStart": 6` → `{ "event": "hunt:goal", "match": { "mode": "parforce" } }`.
+- *Drive and finale (k4_4 / k4_5)*: `"mode": "drive", "via": [...], "target": ZWINGER` →
+  `hunt:goal {mode:'drive'}`; re-issue the same area with `"mode": "finale"` →
+  `{ "event": "hunt:finale", "match": { "outcome": "faded" } }`, then the threat `active: false`.
+  Bible 4.6: a `meter` with `lossless: true` (or `player:caught {soft}`) loses nothing.
+- *Fire (k3)*: `{ "do": "meter", "id": "smoke", "active": true, "seconds": …, "center": {…},
+  "radius": … }` drives fx's fire, which the interiors show room by room.
+- *Choices*: k2 gate inline with `when: {lantern: true|false}`; k3 object modal setting
+  `flag.k3_objekt` (the epilogue reads it).
+- *Animals*: `{ "do": "cue", "id": "menagerie:spawn", "data": { "animal": "cassowary", "x": 1966,
+  "z": 92, "id": "kasuar" } }` (1789); dromedaries / jaguar in 1793-07.
+- *Quiet*: `memorial` for W5 in the Festsaal (`"room": "B01.2.og-festsaal"`), flag `barks.quiet`
+  for the finale.
 
 ## 13. Licences
 

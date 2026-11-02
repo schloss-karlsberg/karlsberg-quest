@@ -387,6 +387,11 @@ export interface NpcAction extends ActionBase {
   chapter?: string;
   topics?: string[];
   mood?: 'warm' | 'eerie' | 'neutral';
+  /**
+   * A walkable palace room (catalogue id 'B01.2.og-festsaal' or full id): x/z default to its
+   * centre and the ghost stands on that room's storey (upper floors too).
+   */
+  room?: string;
 }
 /**
  * Chapter meters. `oil`: the lantern burns `seconds` (hunt's lantern: lit + refilled; empty =

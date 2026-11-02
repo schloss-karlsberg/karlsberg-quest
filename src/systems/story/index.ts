@@ -504,7 +504,8 @@ class StoryRuntime {
         return;
       case 'skill':
         ctx.state.update((st) => (st.skills[a.id] = Math.max(st.skills[a.id] ?? 0, a.tier)), 'story');
-        if (a.toast) ctx.ui.toast(a.toast);
+        // the skills system shows its unlock card for every raise: the toast would say it twice
+        if (a.toast && !ctx.systems.get('skills')) ctx.ui.toast(a.toast);
         return;
       case 'give':
         this.give(a.clue, a.noun, a.item, a.kind);
@@ -559,7 +560,13 @@ class StoryRuntime {
           ctx.events.emit('npc:despawn', { npc: a.npc });
           return;
         }
-        const p: NpcPlacement = { npc: a.npc, x: a.x ?? ctx.player.position.x, z: a.z ?? ctx.player.position.z, era: a.era ?? ctx.era.current };
+        // in a room: its centre and storey (resolved by the npc system); else at the player, on the player's storey
+        const anchor = a.room ? ctx.world.roomAnchor?.(a.room) ?? null : null;
+        const atPlayer = a.x === undefined && a.z === undefined && !anchor;
+        const p: NpcPlacement = { npc: a.npc, x: a.x ?? anchor?.x ?? ctx.player.position.x, z: a.z ?? anchor?.z ?? ctx.player.position.z, era: a.era ?? ctx.era.current };
+        if (a.room) p.room = a.room;
+        if (atPlayer) p.y = ctx.player.position.y;
+        else if (anchor && a.x === undefined) p.y = anchor.y;
         const chapter = a.chapter ?? s.chapter;
         if (chapter) p.chapter = chapter;
         if (a.yaw !== undefined) p.yaw = a.yaw;

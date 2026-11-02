@@ -370,3 +370,192 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
 
   expect(errors).toEqual([]);
 });
+
+/**
+ * Round 2 tour, driven by the test chapter's r1–r4 beats (content/story/99-test.story.json,
+ * `?storytest`, real content packs): walk through a doorway into the Festsaal 1789 (interiors
+ * room:enter → story `room` condition), talk to a ghost placed in that upstairs room (npc on the
+ * room's storey), the story's `skill` action → unlock card, measure the gallery in 1793-07
+ * (measure:done → story event condition + the Chronik's measuring clue), and the story's pack in
+ * 1793-02 leaving snow tracks. Screenshots: test-results/screens/int-r2-*.png.
+ */
+test('integration: round 2 tour (interiors, npc, skills/tools, snow tracks)', async ({ page }) => {
+  test.setTimeout(600_000);
+  const errors = trackErrors(page);
+  await page.goto('./?notitle&nosave&fresh&manual&storytest');
+  await page.waitForFunction(
+    () => !!window.kq?.story && !!window.kq?.interiors && !!window.kq?.npc && !!window.kq?.tools && !!window.kq?.skills && !!window.kq?.hunt && !!window.kq?.chronik,
+    null,
+    { timeout: 180_000 },
+  );
+  await recordEvents(page);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.state.mutable.flags['barks.quiet'] = true; // clean pictures
+    k.story!.start('Alex');
+    k.story!.goto('test', 'r1');
+    k.step(4);
+  });
+  let s = await story(page);
+  expect(s.beat).toBe('r1');
+  expect(s.era).toBe('1789');
+  // the ghost stands on the Festsaal's (upper) storey
+  const fest = await page.evaluate(() => window.kq!.interiors!.list().find((r) => r.roomId === 'B01.2.og-festsaal')!);
+  const npc = await page.evaluate(() => window.kq!.npc!.list()[0]!);
+  expect(npc.npc).toBe('hanne');
+  expect(Math.abs(npc.y - fest.floor)).toBeLessThan(0.3);
+
+  // ---- 1. through the doorway from the Gardesaal into the Festsaal ------------------------------
+  const door = await page.evaluate(() => window.kq!.interiors!.doors().find((d) => d.from === 'B01.2.og-festsaal' && d.to === 'B01.2.og-gardesaal')!);
+  expect(door).toBeTruthy();
+  await page.evaluate(
+    ({ d }) => {
+      const k = window.kq!;
+      const back = d.depth + 3;
+      const x0 = d.x + d.nx * back;
+      const z0 = d.z + d.nz * back;
+      // stand on the Gardesaal floor (same storey), facing the door
+      k.ctx.player.position.set(x0, d.floor + 0.05, z0);
+      k.teleport(x0, z0, (-Math.atan2(d.nx, d.nz) * 180) / Math.PI, 2);
+      k.step(2);
+      k.interiors!.build();
+      k.step(2);
+    },
+    { d: door },
+  );
+  expect(await page.evaluate(() => window.kq!.interiors!.room()?.roomId)).toBe('B01.2.og-gardesaal');
+  // let a story-start unlock card leave the picture
+  await page.waitForFunction(() => window.kq!.skills!.card() === null, null, { timeout: 120_000 });
+  await shot(page, 'r2-01-doorway');
+  const walked = await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 60 && k.interiors!.room()?.roomId !== 'B01.2.og-festsaal'; i++) k.press('KeyW', 5);
+    k.press('KeyW', 20);
+    k.step(3);
+    return { room: k.interiors!.room()?.roomId ?? null, y: k.ctx.player.position.y };
+  });
+  expect(walked.room).toBe('B01.2.og-festsaal');
+  expect(Math.abs(walked.y - fest.floor)).toBeLessThan(0.3);
+  const enters = (await payloads(page, 'room:enter')) as { roomId: string; building: string; id: string }[];
+  expect(enters.at(-1)).toMatchObject({ roomId: 'B01.2.og-festsaal', building: 'KB-B01', id: 'KB-B01/B01.2.og-festsaal' });
+  expect((await page.evaluate(() => window.kq!.state().flags))['interior.room']).toBe('B01.2.og-festsaal');
+  s = await story(page);
+  expect(s.beat).toBe('r2'); // the story's { room: 'KB-B01/…festsaal' } condition held
+
+  // ---- 2. the ghost in the Festsaal: same storey, E opens the conversation ----------------------
+  const hanne = await page.evaluate(() => {
+    const k = window.kq!;
+    const n = k.npc!.list()[0]!;
+    const p = k.ctx.player.position;
+    // two metres in front of her, from the door side
+    const dx = p.x - n.x;
+    const dz = p.z - n.z;
+    const l = Math.hypot(dx, dz) || 1;
+    const x = n.x + (dx / l) * 2.1;
+    const z = n.z + (dz / l) * 2.1;
+    k.teleport(x, z, (Math.atan2(n.x - x, -(n.z - z)) * 180) / Math.PI, 4);
+    k.ctx.player.lookLocked = false;
+    k.step(2);
+    return { near: k.npc!.state().near, py: k.ctx.player.position.y };
+  });
+  expect(hanne.near).toBe('hanne');
+  expect(Math.abs(hanne.py - fest.floor)).toBeLessThan(0.3);
+  await page.waitForFunction(() => window.kq!.npc!.list()[0]!.alpha > 0.95, null, { timeout: 30_000 });
+  await shot(page, 'r2-02-festsaal-hanne');
+  await page.evaluate(() => window.kq!.press('KeyE', 1));
+  await expect(page.getByTestId('npc-talk')).toBeVisible();
+  await page.evaluate(() => {
+    const n = window.kq!.npc!;
+    n.finish();
+    n.drain();
+  });
+  await shot(page, 'r2-03-conversation');
+  await page.evaluate(() => {
+    const n = window.kq!.npc!;
+    n.ask('bye');
+    n.drain();
+    window.kq!.step(4);
+  });
+  await expect(page.getByTestId('npc-talk')).toBeHidden();
+  expect((await page.evaluate(() => window.kq!.state().flags))['talked.k1.hanne']).toBe(true);
+  expect(await page.evaluate(() => window.kq!.state().inventory.clues)).toContain('clue.k1.hanne');
+
+  // ---- 3. the story grants Kartograf 3 (unlock card, no second toast) and goes to 1793-07 --------
+  await page.evaluate(() => window.kq!.step(6));
+  s = await story(page);
+  expect(s.beat).toBe('r3');
+  expect(s.era).toBe('1793-07');
+  expect(await page.evaluate(() => window.kq!.npc!.list())).toEqual([]);
+  expect(await page.evaluate(() => window.kq!.state().skills['kartograf'])).toBe(3);
+  expect(await payloads(page, 'skill:unlocked')).toContainEqual({ skill: 'kartograf', level: 3 });
+  await expect(page.getByTestId('skill-card')).toBeVisible();
+  await expect(page.locator('.kq-toast', { hasText: 'TEST: Messen' })).toHaveCount(0);
+  await page.waitForFunction(() => window.kq!.skills!.card() === null, null, { timeout: 120_000 });
+
+  // ---- 4. measure the gallery facade (KB-B06) → story beat + the Chronik's measuring clue --------
+  const ring = await page.evaluate(() => window.kq!.ctx.data.footprints.buildings.find((b) => b.id === 'KB-B06')!.ring);
+  const [p3, p2] = [ring[3]!, ring[2]!];
+  const at = (t: number) => ({ x: p3[0]! + (p2[0]! - p3[0]!) * t, z: p3[1]! + (p2[1]! - p3[1]!) * t - 0.4 });
+  await page.evaluate(
+    ({ a, b, m }) => {
+      const k = window.kq!;
+      k.teleport(1236, -1300, 180, 0);
+      k.step(2);
+      k.tools!.measure.at(a.x, a.z, b.x, b.z, 354.5, 354.5);
+      // look at the tape along the facade
+      const cam = k.ctx.camera.position;
+      const yaw = (Math.atan2(m.x - cam.x, -(m.z - cam.z)) * 180) / Math.PI;
+      k.teleport(1236, -1300, yaw, 4);
+      k.step(1);
+    },
+    { a: at(0.02), b: at(0.98), m: at(0.5) },
+  );
+  const done = (await payloads(page, 'measure:done')) as { building?: string; distance: number }[];
+  expect(done).toHaveLength(1);
+  expect(done[0]!.building).toBe('KB-B06');
+  expect(done[0]!.distance).toBeGreaterThan(70);
+  expect((await page.evaluate(() => window.kq!.state().flags))['measured.KB-B06']).toBeGreaterThan(70);
+  expect(await page.evaluate(() => window.kq!.ctx.era.current)).toBe('1793-07');
+  await shot(page, 'r2-04-measure-gallery');
+  // the Chronik's measuring clue: its card comes 1.2 s (game time) after the tape
+  await page.evaluate(() => window.kq!.step(90));
+  const card = page.getByTestId('chronik-card');
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  await expect(card).toHaveAttribute('data-clue', 'clue.k3.messen');
+  expect(await payloads(page, 'clue:found')).toContainEqual({ id: 'clue.k3.messen', kind: 'object' });
+  await shot(page, 'r2-05-measure-clue');
+  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
+
+  // ---- 5. 1793-02: the story's pack (threat action) and snow tracks --------------------------------
+  await page.evaluate(() => window.kq!.step(4));
+  s = await story(page);
+  expect(s.beat).toBe('r4');
+  expect(s.era).toBe('1793-02');
+  const tracks = await page.evaluate(() => {
+    const k = window.kq!;
+    k.hunt!.freeze(true);
+    const sim = k.hunt!.sim();
+    if (sim) for (const ag of sim.agents) ag.x += 400; // keep the pack out of the picture
+    k.teleport(1452, -640, 330, -30);
+    k.lantern!.toggle(true);
+    k.step(2);
+    k.press('KeyW', 300);
+    // turn round and look at the trail
+    const p = k.ctx.player;
+    k.teleport(p.position.x, p.position.z, 150, -34);
+    k.step(4);
+    return { tracks: k.hunt!.tracks(), active: !!sim };
+  });
+  expect(tracks.active).toBe(true);
+  expect(await page.evaluate(() => window.kq!.tools!.state().measure)).toBe('off'); // the tape stayed in 1793-07
+  await page.evaluate(() => window.kq!.story!.flush());
+  await page.addStyleTag({ content: '[data-testid="dialogue"]{display:none!important}' });
+  expect(tracks.tracks.snow).toBe(1);
+  expect(tracks.tracks.boot).toBeGreaterThan(10);
+  await shot(page, 'r2-06-snow-tracks');
+
+  // the story's threat config reached the hunt with every field (snow / seed pass through)
+  const conf = (await payloads(page, 'threat:configure')) as { kind: string; active: boolean; snow?: boolean; seed?: number }[];
+  expect(conf).toContainEqual(expect.objectContaining({ kind: 'pack', active: true, snow: true, seed: 3 }));
+  expect(errors).toEqual([]);
+});

@@ -89,6 +89,45 @@
         { "do": "npc", "op": "despawn", "npc": "hanne" }
       ],
       "complete": { "manual": true }
+    },
+    {
+      "id": "r1",
+      "title_de": "TEST: In den Festsaal (Runde 2, e2e/integration.spec.ts)",
+      "enter": [
+        { "do": "npc", "op": "spawn", "npc": "hanne", "room": "B01.2.og-festsaal", "era": "1789", "chapter": "k1", "yaw": 270 },
+        { "do": "objective", "text": "TEST: Geh in den Festsaal.", "id": "test.festsaal" }
+      ],
+      "complete": { "room": "KB-B01/B01.2.og-festsaal" },
+      "next": "r2"
+    },
+    {
+      "id": "r2",
+      "title_de": "TEST: Hanne im Festsaal",
+      "enter": [{ "do": "objective", "text": "TEST: Sprich mit Hanne." }],
+      "complete": { "all": [{ "room": "KB-B01" }, { "talked": { "npc": "hanne", "chapter": "k1" } }] },
+      "exit": [{ "do": "npc", "op": "despawn", "npc": "hanne" }],
+      "next": "r3"
+    },
+    {
+      "id": "r3",
+      "title_de": "TEST: Die Galerie messen",
+      "enter": [
+        { "do": "skill", "id": "kartograf", "tier": 3, "toast": "TEST: Messen (R)" },
+        { "do": "objective", "text": "TEST: Miss die Galerie (R)." },
+        { "do": "shift", "to": "1793-07", "instant": true }
+      ],
+      "complete": { "all": [{ "event": "measure:done", "match": { "building": "KB-B06" } }, { "have": { "clue": "clue.k3.messen" } }] },
+      "next": "r4"
+    },
+    {
+      "id": "r4",
+      "title_de": "TEST: Spuren im Raureif",
+      "enter": [
+        { "do": "shift", "to": "1793-02", "instant": true },
+        { "do": "objective", "text": "TEST: Spuren im Schnee." },
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.3, "center": { "x": 1452, "z": -640 }, "radius": 150, "snow": true, "seed": 3 }
+      ],
+      "complete": { "manual": true }
     }
   ]
 }

@@ -101,6 +101,8 @@ export default defineSystem({
       shifting = false;
       plans?.suspend(false);
     });
+    // a tape belongs to the era it was laid in (another era has other walls)
+    ctx.events.on('era:change', () => measure?.stop());
     ctx.events.on('game:start', () => {
       measure?.stop();
       xray?.set(false);

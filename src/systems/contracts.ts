@@ -73,7 +73,8 @@ declare module '../core/events' {
     // ---- hunt (owner: hunt) ---------------------------------------------------------------
     /** 0 calm … 1 hunting you. */
     'hunt:alert': { level: number; state: 'calm' | 'suspicious' | 'searching' | 'chasing' };
-    'hunt:horn': { signal: 'search' | 'found' | 'lost' | 'call-off'; x: number; z: number };
+    /** mode: the pack mode that blew it (patrol / drive / finale / parforce); dialogue triggers may match it. */
+    'hunt:horn': { signal: 'search' | 'found' | 'lost' | 'call-off'; x: number; z: number; mode?: string };
     'lantern:toggle': { lit: boolean };
     'lantern:oil': { oil: number };
     'lantern:empty': Record<string, never>;
@@ -182,6 +183,13 @@ export interface NpcPlacement {
   topics?: string[];
   /** Override the roster mood: warm (Hanne) / eerie / neutral. */
   mood?: 'warm' | 'eerie' | 'neutral';
+  /**
+   * Inside the palace: a walkable room (catalogue or full id). x/z default to the room's centre
+   * and the figure stands on that room's storey (interiors `world.roomAnchor`).
+   */
+  room?: string;
+  /** Storey hint (local height, m): the figure stands on the floor at most a step above it. */
+  y?: number;
 }
 
 export {};

@@ -93,6 +93,8 @@ let hud: HTMLElement | null = null;
 let holdRing: SVGSVGElement | null = null;
 let lanternLit = false;
 let refreshIn = 0;
+/** A measuring clue waiting for its card (game seconds, so the tape shows first). */
+let measured: { clue: ChronikClue; t: number } | null = null;
 let target: { clue: ChronikClue; status: ClueStatus } | null = null;
 let promptKey = '';
 let holding: { t: number; clue: ChronikClue | null; tap: ChronikClue | null } | null = null;
@@ -206,6 +208,33 @@ function examine(ctx: GameContext, clue: ChronikClue): boolean {
   const d = doDiscover(ctx, clue);
   showCard(ctx, clue, d);
   return true;
+}
+
+/**
+ * A measuring clue (requires the Messen tool, `skill: 'kartograf:3'`) is found by measuring at its
+ * place: a `measure:done` on its anchor room / building, or with the tape's middle inside its radius.
+ */
+function onMeasured(ctx: GameContext, m: { a: { x: number; z: number }; b: { x: number; z: number }; building?: string; room?: string }): void {
+  const era = ctx.era.current;
+  const mx = (m.a.x + m.b.x) / 2;
+  const mz = (m.a.z + m.b.z) / 2;
+  for (const c of content.clues.values()) {
+    const req = c.requires?.skill;
+    if (!req || !/^kartograf:3$/.test(req)) continue;
+    const w = c.where;
+    const eras = Array.isArray(w.era) ? w.era : [w.era];
+    if (!eras.includes(era)) continue;
+    const anchor = w.anchor ?? '';
+    const anchorBuilding = anchor ? `KB-${anchor.split('/').pop()!.split('.')[0]}` : '';
+    const onSpot =
+      (!!m.room && (anchor === m.room || anchor.endsWith(`/${m.room}`))) ||
+      (!!m.building && anchorBuilding === m.building) ||
+      Math.hypot(mx - w.x, mz - w.z) <= (w.radius ?? 20);
+    if (!onSpot || statusOf(ctx, c) !== 'available') continue;
+    // let the field-book sheet with the figure show for a moment (game time), then the card
+    measured = { clue: c, t: 1.2 };
+    return;
+  }
 }
 
 function startEcho(ctx: GameContext, clue: ChronikClue): boolean {
@@ -560,6 +589,7 @@ export default defineSystem({
   after: ['survey'],
   init(ctx) {
     ctxRef = ctx;
+    measured = null;
     const include = !hasRealContent(ctx.content.packs) || ctx.params.has('placeholder');
     content = buildContent(ctx.content.packs, include);
     slice(ctx);
@@ -601,6 +631,8 @@ export default defineSystem({
       ev.on('player:caught', ({ soft }) => {
         if (!soft) onCaught(ctx);
       }),
+      // round 2: measuring clues (clue.k3.messen) are found with the tape
+      ev.on('measure:done', (m) => onMeasured(ctx, m)),
       // round 2: npc conversations / story `grant` discover a clue without the card
       ev.on('clue:grant', ({ id }) => {
         const c = content.clues.get(id);
@@ -613,6 +645,11 @@ export default defineSystem({
 
   update(dt, ctx) {
     const inp = ctx.input;
+    if (measured && (measured.t -= dt) <= 0 && ctx.ui.modals.count === 0) {
+      const c = measured.clue;
+      measured = null;
+      if (statusOf(ctx, c) === 'available') examine(ctx, c);
+    }
     if (inp.wasPressed('journal') && !director?.active) {
       openBoard(ctx);
       return;

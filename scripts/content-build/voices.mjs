@@ -72,7 +72,8 @@ const dialogue = [
     'Das hätte ich 1840 gern gehabt. Ich hatte nur Schritte und eine Kette.',
   ]),
   // Horn comments (§1.2): once, at the first time each call is heard.
-  say('laub.horn.search', 'laub', 'Ein langer Ton. Die Jagd beginnt.', { event: 'hunt:horn', signal: 'search' }, { once: true, priority: 5 }),
+  // not for the driving pack of chapter 4 (its 'search' is the beaters' horn from behind)
+  say('laub.horn.search', 'laub', 'Ein langer Ton. Die Jagd beginnt.', { event: 'hunt:horn', signal: 'search', mode: ['patrol', 'parforce'] }, { once: true, priority: 5 }),
   say('laub.horn.found', 'laub', 'Zwei kurze. Die haben etwas gefunden. Vermutlich uns.', { event: 'hunt:horn', signal: 'found' }, { once: true, priority: 5 }),
   say('laub.horn.lost', 'laub', 'Ein fallender Ton. Sie wissen nicht mehr, wo wir sind. Ich auch nicht, aber ich gebe es nicht zu.', { event: 'hunt:horn', signal: 'lost' }, { once: true, priority: 5 }),
   say('laub.horn.call_off', 'laub', 'Drei lange. Sie gehen zurück. Diesmal.', { event: 'hunt:horn', signal: 'call-off' }, { once: true, priority: 5 }),

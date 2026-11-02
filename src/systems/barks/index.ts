@@ -90,7 +90,8 @@ class BarksRuntime {
   private conversation = false;
   private dialogueUntil = 0;
   private curtainUntil = 0;
-  private room: string | null = null;
+  /** Ids of the room the player is in (catalogue id, full id, building), null outside. */
+  private room: string[] | null = null;
   private readonly burning = new Set<string>();
   private lastInput = { x: 0, z: 0, yaw: 0, pitch: 0 };
   private readonly spoken: { id: string; t: number }[] = [];
@@ -141,6 +142,7 @@ class BarksRuntime {
       if (c.kind === 'fire' && c.active) ev.emit('bark:enter-fire', {});
       if (c.kind === 'fire' && !c.active) this.burning.clear();
     });
+    ev.on('era:change', () => this.burning.clear());
     window.addEventListener('keydown', this.onInput, true);
     window.addEventListener('mousedown', this.onInput, true);
   }
@@ -165,12 +167,14 @@ class BarksRuntime {
   private onEvent(name: string, payload: unknown): void {
     if (NOISE.has(name)) return;
     if (name === 'room:enter' || name === 'room:leave') {
-      const p = (payload ?? {}) as { roomId?: unknown };
+      // fx names burning rooms by full id ('KB-B01/B01.2.og-festsaal') or building; interiors by catalogue id
+      const p = (payload ?? {}) as { roomId?: unknown; id?: unknown; building?: unknown };
       const id = typeof p.roomId === 'string' ? p.roomId : null;
+      const ids = [p.roomId, p.id, p.building].filter((v): v is string => typeof v === 'string' && v !== '');
       if (name === 'room:enter') {
-        this.room = id;
-        if (id && this.burning.has(id)) this.ctx.events.emit('bark:enter-fire', { roomId: id });
-      } else if (this.room === id) this.room = null;
+        this.room = ids.length ? ids : null;
+        if (id && ids.some((v) => this.burning.has(v))) this.ctx.events.emit('bark:enter-fire', { roomId: id });
+      } else if (id && this.room?.[0] === id) this.room = null;
     }
     if (this.now < this.introUntil) return;
     const lines = this.ctx.content.dialogueFor(name).filter((l) => isBarkLine(l.id) && !this.mutedLines.has(l.id));

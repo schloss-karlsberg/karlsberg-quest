@@ -52,7 +52,8 @@ declare module '../../core/state' {
 }
 
 export interface NpcHooks {
-  list(): { npc: string; x: number; z: number; era: string; visible: boolean; alpha: number; dist: number }[];
+  /** y = the floor the figure stands on (its storey inside the palace). */
+  list(): { npc: string; x: number; z: number; y: number; era: string; visible: boolean; alpha: number; dist: number }[];
   spawn(p: NpcPlacement): void;
   despawn(npc: string): void;
   /** Open the conversation with an NPC (ignores the distance). */
@@ -120,8 +121,14 @@ class NpcRuntime {
   // ---- placement ----------------------------------------------------------------------------
 
   spawn(p: NpcPlacement): void {
-    if (!p.npc || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return;
-    const placed = { ...p, era: p.era ?? this.ctx.era.current };
+    if (!p.npc) return;
+    // inside the palace: stand in that room, on its storey (interiors' room anchor)
+    const anchor = p.room ? this.ctx.world.roomAnchor?.(p.room) ?? null : null;
+    const x = Number.isFinite(p.x) ? p.x : anchor?.x;
+    const z = Number.isFinite(p.z) ? p.z : anchor?.z;
+    if (x === undefined || z === undefined || !Number.isFinite(x) || !Number.isFinite(z)) return;
+    const placed: NpcPlacement & { era: string } = { ...p, x, z, era: p.era ?? this.ctx.era.current };
+    if (placed.y === undefined && anchor) placed.y = anchor.y;
     const prev = this.slice.placed[p.npc];
     if (prev) this.own(prev, false);
     this.slice.placed[p.npc] = placed;
@@ -174,6 +181,11 @@ class NpcRuntime {
     fig.alpha = 0;
     this.ctx.scene.add(fig.object);
     this.figs.set(p.npc, { p, fig, yaw: yawRad(p.yaw), nearT: 0, barked: false });
+  }
+
+  /** Floor under the figure; a placement with a storey hint (`y`, rooms upstairs) keeps its storey. */
+  private figY(f: Placed): number {
+    return this.ctx.world.heightAt(f.p.x, f.p.z, f.p.y);
   }
 
   private rebuild(): void {
@@ -281,11 +293,22 @@ class NpcRuntime {
     let best: string | null = null;
     let bestD = TALK_R;
     for (const [id, f] of this.figs) {
+      // placed in a room before the interiors could answer: move to the room once they can
+      if (f.p.room && f.p.y === undefined) {
+        const a = ctx.world.roomAnchor?.(f.p.room);
+        if (a) {
+          f.p.x = a.x;
+          f.p.z = a.z;
+          f.p.y = a.y;
+        }
+      }
       if (!this.visible(f)) {
         f.nearT = 0;
         continue;
       }
-      const d = Math.hypot(p.x - f.p.x, p.z - f.p.z);
+      // another storey (the Festsaal above the Kabinett) is not "near"
+      const dy = Math.abs(p.y - this.figY(f));
+      const d = dy > 2.4 ? Infinity : Math.hypot(p.x - f.p.x, p.z - f.p.z);
       if (d < bestD) {
         bestD = d;
         best = id;
@@ -329,7 +352,7 @@ class NpcRuntime {
       const vis = this.visible(f);
       f.fig.target = vis ? 1 : 0;
       const o = f.fig.object;
-      o.position.set(f.p.x, ctx.world.heightAt(f.p.x, f.p.z), f.p.z);
+      o.position.set(f.p.x, this.figY(f), f.p.z);
       // turn towards the player who comes close (and while talking)
       const d = Math.hypot(p.x - f.p.x, p.z - f.p.z);
       const want = d < 8 || this.talking?.npc === id ? Math.atan2(p.x - f.p.x, p.z - f.p.z) : yawRad(f.p.yaw);
@@ -352,6 +375,7 @@ class NpcRuntime {
           npc,
           x: f.p.x,
           z: f.p.z,
+          y: this.figY(f),
           era: f.p.era,
           visible: this.visible(f),
           alpha: f.fig.alpha,

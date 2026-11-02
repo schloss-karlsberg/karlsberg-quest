@@ -110,14 +110,24 @@ export class World {
    * Optional ground override (interiors system): floor height at x/z (storeys, stairs, door
    * steps) or null for the terrain. Additive hook; null = plain terrain.
    */
-  groundOverride: ((x: number, z: number, terrain: number) => number | null) | null = null;
+  groundOverride: ((x: number, z: number, terrain: number, yHint?: number) => number | null) | null = null;
+  /**
+   * Optional room lookup (interiors system): centre and floor height of a walkable palace room by
+   * catalogue id ('B01.2.og-festsaal') or full id, null when unknown. Used to place things (NPCs)
+   * on the right storey.
+   */
+  roomAnchor: ((id: string) => { x: number; z: number; y: number; roomId: string; building: string } | null) | null = null;
   /** Optional surface override (interiors: parquet / stone floors), null = land cover. */
   surfaceOverride: ((x: number, z: number) => string | null) | null = null;
 
-  /** Ground height (m) at local x/z in the current era. */
-  heightAt(x: number, z: number): number {
+  /**
+   * Ground height (m) at local x/z in the current era. `yHint` (optional) picks the storey inside
+   * a walkable building (the highest floor at most a step above it); without it the interiors
+   * decide (the player's storey near the player, else clue rooms / the ground floor).
+   */
+  heightAt(x: number, z: number, yHint?: number): number {
     const h = this.hf.heightAt(x, z);
-    return this.groundOverride?.(x, z, h) ?? h;
+    return this.groundOverride?.(x, z, h, yHint) ?? h;
   }
 
   /** Land-cover class name at x/z ('forest', 'water', …) in the current era. */

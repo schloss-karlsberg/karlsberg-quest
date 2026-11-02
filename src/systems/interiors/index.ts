@@ -475,15 +475,27 @@ let anchors: { plan: FullPlan; era: Era; set: Set<number> } | null = null;
 
 function installWorldHooks(ctx: GameContext): void {
   const w = ctx.world;
-  w.groundOverride = (x, z, terrain) => {
+  w.groundOverride = (x, z, terrain, yHint) => {
     const cur = current();
     if (!cur || !rt || rt.mode === 'today') return null;
+    // a caller that knows its storey (an NPC placed in an upper room)
+    if (yHint !== undefined) return cur.query.floorAt(x, z, yHint, terrain);
     const p = ctx.player.position;
     // the player (and probes around them): the storey they are on; anything placed from afar
     // (clue markers, echo figures): the clue room's floor, else the ground floor
     if (Math.hypot(x - p.x, z - p.z) < 2.5) return cur.query.floorAt(x, z, p.y, terrain);
     if (!anchors || anchors.plan !== cur.plan || anchors.era !== ctx.era.current) anchors = { plan: cur.plan, era: ctx.era.current, set: anchorRooms(ctx, cur.plan) };
     return cur.query.floorAt(x, z, -1e9, terrain, anchors.set);
+  };
+  w.roomAnchor = (id) => {
+    const cur = current();
+    const ri = findRoom(id);
+    if (!cur || ri < 0) return null;
+    const r = cur.plan.rooms[ri]!;
+    // the catalogue floor does not depend on the era's plan (a ghost for 1789 placed while it is today)
+    const cat = ctx.data.rooms.find((c) => c.id === r.id);
+    const y = r.stair ? r.stair.low : cat?.floor_h ?? r.floor;
+    return { x: r.cx, z: r.cz, y, roomId: r.roomId, building: r.building };
   };
   w.surfaceOverride = (x, z) => {
     const cur = current();
@@ -658,6 +670,7 @@ export default defineSystem({
     ctx.world.collider.overlay = null;
     ctx.world.groundOverride = null;
     ctx.world.surfaceOverride = null;
+    ctx.world.roomAnchor = null;
     rt = null;
   },
 });

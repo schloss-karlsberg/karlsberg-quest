@@ -807,7 +807,7 @@ class Hunt {
     const p = ctx.player.position;
     switch (e.type) {
       case 'horn': {
-        ctx.events.emit('hunt:horn', { signal: e.signal, x: e.x, z: e.z });
+        ctx.events.emit('hunt:horn', { signal: e.signal, x: e.x, z: e.z, mode: sim.mode });
         const dur = this.audio.horn(e.signal, this.pos3(e.x, e.z, 2.6));
         this.hornGlowDur = Math.max(0.8, dur || (e.signal === 'search' ? 2.8 : e.signal === 'call-off' ? 3.5 : e.signal === 'lost' ? 2.6 : 0.8));
         this.hornGlowT = this.hornGlowDur;
@@ -964,7 +964,7 @@ class Hunt {
     const by = this.caughtBy ?? s?.agents[0];
     if (by) {
       // the horn: found — sounds right behind the pack
-      ctx.events.emit('hunt:horn', { signal: 'found', x: by.x, z: by.z });
+      ctx.events.emit('hunt:horn', { signal: 'found', x: by.x, z: by.z, mode: s?.mode ?? 'patrol' });
       this.audio.horn('found', this.pos3(by.x, by.z, 2.6));
       this.hornGlowT = this.hornGlowDur = 0.8;
     }

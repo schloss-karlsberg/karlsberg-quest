@@ -164,6 +164,17 @@ export class FireController {
     this.handleChanges(changes);
   }
 
+  /**
+   * Re-announce every room that is not 'none' (`fire:room`): systems that were not listening when
+   * a saved fire resumed during init (interiors) catch up at game:start.
+   */
+  replay(): void {
+    if (!this.sim) return;
+    this.sim.states.forEach((s, i) => {
+      if (s !== 'none') this.ctx.events.emit('fire:room', { roomId: this.units[i]!.id, state: s });
+    });
+  }
+
   setHold(hold: boolean): void {
     if (this.sim) this.sim.hold = hold;
   }

@@ -399,7 +399,11 @@
       "text_de": "Ein langer Ton. Die Jagd beginnt.",
       "trigger": {
         "event": "hunt:horn",
-        "signal": "search"
+        "signal": "search",
+        "mode": [
+          "patrol",
+          "parforce"
+        ]
       },
       "once": true,
       "priority": 5

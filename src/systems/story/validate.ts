@@ -25,7 +25,11 @@ export interface StoryRefs {
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/i;
 const isEra = (v: unknown) => typeof v === 'string' && (ERAS as readonly string[]).includes(v);
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const PACK_MODES = new Set(['patrol', 'drive', 'finale', 'parforce']);
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
+/** Palace room ids: catalogue 'B01.2.og-festsaal', full 'KB-B01/B01.2.og-festsaal' or building 'KB-B01'. */
+const ROOM_RE = /^(KB-[A-Z0-9]+|(KB-[A-Z0-9]+\/)?B[0-9]+\.[0-9]+\.[a-z0-9-]+)$/;
+const isRoomId = (v: unknown): v is string => isStr(v) && ROOM_RE.test(v);
 const THREATS = new Set(['pack', 'fire', 'oblivion']);
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match']);
 const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
@@ -192,7 +196,7 @@ function checkCond(c: Condition | undefined, file: string, where: string, err: R
       if (!HUB.has(String(r.hub))) err(file, where, `unknown hub item '${String(r.hub)}'`);
       break;
     case 'room':
-      if (!isStr(r.room) || !/^(KB-[A-Z0-9]+)?(\/?B[0-9]+\.[0-9]+\.[a-z0-9-]+)?$/.test(r.room as string) || !(r.room as string)) err(file, where, `room: malformed room id '${String(r.room)}'`);
+      if (!isRoomId(r.room)) err(file, where, `room: malformed room id '${String(r.room)}'`);
       break;
     case 'talked': {
       const q = r.talked as Record<string, unknown>;
@@ -253,6 +257,16 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
       case 'threat':
         if (!THREATS.has(a.kind)) err(file, where, `threat: unknown kind '${String(a.kind)}'`);
         if (typeof a.active !== 'boolean') err(file, where, 'threat needs active: true/false');
+        {
+          // pack extras declared by the hunt (docs/ARCHITECTURE.md §12): mode + its places
+          const x = a as unknown as Record<string, unknown>;
+          const pt = (v: unknown) => !!v && typeof v === 'object' && isNum((v as Record<string, unknown>).x) && isNum((v as Record<string, unknown>).z);
+          if (x.mode !== undefined && !PACK_MODES.has(String(x.mode))) err(file, where, `threat: unknown pack mode '${String(x.mode)}'`);
+          if (x.mode !== undefined && a.kind !== 'pack') err(file, where, 'threat: mode only for kind pack');
+          if ((x.mode === 'drive' || x.mode === 'parforce') && !pt(x.target)) err(file, where, `threat: mode ${String(x.mode)} needs target {x, z}`);
+          for (const k of ['target', 'from', 'center'] as const) if (x[k] !== undefined && !pt(x[k])) err(file, where, `threat: ${k} needs {x, z}`);
+          if (x.via !== undefined && (!Array.isArray(x.via) || !x.via.every(pt))) err(file, where, 'threat: via needs [{x, z}, …]');
+        }
         break;
       case 'flag':
         if (!a.set || typeof a.set !== 'object') err(file, where, 'flag needs a "set" object');
@@ -312,6 +326,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (a.op === 'spawn' && ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z))))) err(file, where, 'npc spawn needs both numeric x and z (or neither: at the player)');
         if (a.era !== undefined && !isEra(a.era)) err(file, where, `npc: unknown era '${String(a.era)}'`);
         if (a.mood !== undefined && !['warm', 'eerie', 'neutral'].includes(a.mood)) err(file, where, `npc: unknown mood '${String(a.mood)}'`);
+        if (a.room !== undefined && (!isRoomId(a.room) || !a.room.includes('.'))) err(file, where, `npc: room needs a room id (not a building): '${String(a.room)}'`);
         break;
       case 'meter':
         if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'meter needs an id');
@@ -328,6 +343,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (!isStr(a.id)) err(file, where, 'memorial needs an id');
         if (a.active !== false && !isStr(a.room) && (!isNum(a.x) || !isNum(a.z))) err(file, where, 'memorial needs x/z (+ r) or a room');
         if (a.era !== undefined && !isEra(a.era)) err(file, where, `memorial: unknown era '${String(a.era)}'`);
+        if (a.room !== undefined && !isRoomId(a.room)) err(file, where, `memorial: malformed room id '${String(a.room)}'`);
         break;
       case 'readings':
         if (a.fill !== 'offen') err(file, where, "readings needs fill: 'offen'");
