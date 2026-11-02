@@ -36,6 +36,7 @@ uniform float uTime;
 uniform float uShift;      // 0..1 era-shift distortion (feature hook)
 uniform vec3 uFlash;       // additive full-screen tint (damage, fire flash)
 uniform float uDesaturate; // extra desaturation (threat, memory)
+uniform float uHeat;       // 0..1 heat shimmer above bright (burning) areas (fx system)
 varying vec2 vUv;
 
 vec3 aces(vec3 x) {
@@ -57,6 +58,13 @@ void main() {
     vec2 c = uv - 0.5;
     float r = length(c);
     uv += c * sin(r * 18.0 - uTime * 6.0) * 0.012 * uShift;
+  }
+  if (uHeat > 0.0) {
+    // hot air rises above bright (HDR) fire pixels: wobble what lies just above them
+    float hot = smoothstep(1.2, 5.0, dot(texture2D(tScene, uv - vec2(0.0, 0.045)).rgb, vec3(0.33)));
+    hot = max(hot, 0.6 * smoothstep(1.2, 5.0, dot(texture2D(tScene, uv - vec2(0.0, 0.11)).rgb, vec3(0.33))));
+    vec2 w = vec2(sin(uv.y * 120.0 - uTime * 11.0 + sin(uv.x * 40.0)), cos(uv.x * 90.0 + uTime * 8.0));
+    uv += w * 0.0022 * uHeat * hot;
   }
   vec3 col = texture2D(tScene, uv).rgb;
   if (uShift > 0.0) {
@@ -87,7 +95,7 @@ void main() {
 
 /**
  * Scene → HDR render target (MSAA) → one full-screen pass doing tone mapping, colour grading,
- * vignette and grain. Feature systems tweak `post.uniforms` (uShift, uFlash, uDesaturate, …).
+ * vignette and grain. Feature systems tweak `post.uniforms` (uShift, uFlash, uDesaturate, uHeat …).
  */
 export class PostFX {
   readonly target: WebGLRenderTarget;
@@ -117,6 +125,7 @@ export class PostFX {
         uShift: { value: 0 },
         uFlash: { value: new Color(0, 0, 0) },
         uDesaturate: { value: 0 },
+        uHeat: { value: 0 },
       },
     });
     const g = new BufferGeometry();

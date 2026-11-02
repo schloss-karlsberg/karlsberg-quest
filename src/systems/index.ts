@@ -10,4 +10,5 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./footsteps'),
   () => import('./ambience'),
   () => import('./hunt'),
+  () => import('./fx'),
 ];
