@@ -1,0 +1,181 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "speakers",
+  "speakers": [
+    {
+      "id": "laub",
+      "name_de": "Quirin Laub",
+      "historical": false
+    },
+    {
+      "id": "marlene",
+      "name_de": "Marlene",
+      "historical": false
+    },
+    {
+      "id": "soll",
+      "name_de": "Kanzlist Gottlob Soll",
+      "historical": false
+    },
+    {
+      "id": "hanne",
+      "name_de": "Hanne",
+      "historical": false
+    },
+    {
+      "id": "jost",
+      "name_de": "Jost",
+      "historical": false
+    },
+    {
+      "id": "peter",
+      "name_de": "Peter",
+      "historical": false
+    },
+    {
+      "id": "kollege",
+      "name_de": "Ein Kollege (Funk)",
+      "historical": false
+    },
+    {
+      "id": "stimme",
+      "name_de": "Eine Stimme aus dem Nebel",
+      "historical": false
+    },
+    {
+      "id": "diener",
+      "name_de": "Diener",
+      "historical": false
+    },
+    {
+      "id": "diener2",
+      "name_de": "Zweiter Diener",
+      "historical": false
+    },
+    {
+      "id": "gaertner",
+      "name_de": "Zweiter Gärtner",
+      "historical": false
+    },
+    {
+      "id": "wache",
+      "name_de": "Wache",
+      "historical": false
+    },
+    {
+      "id": "wache2",
+      "name_de": "Zweite Wache",
+      "historical": false
+    },
+    {
+      "id": "soldat",
+      "name_de": "Soldat",
+      "historical": false
+    },
+    {
+      "id": "soldat2",
+      "name_de": "Zweiter Soldat",
+      "historical": false
+    },
+    {
+      "id": "frau",
+      "name_de": "Eine Frau",
+      "historical": false
+    },
+    {
+      "id": "mann",
+      "name_de": "Ein Mann",
+      "historical": false
+    },
+    {
+      "id": "junge",
+      "name_de": "Ein Junge",
+      "historical": false
+    },
+    {
+      "id": "fuhrmann",
+      "name_de": "Fuhrmann",
+      "historical": false
+    },
+    {
+      "id": "fuhrmann2",
+      "name_de": "Zweiter Fuhrmann",
+      "historical": false
+    },
+    {
+      "id": "menge",
+      "name_de": "Die Menge",
+      "historical": false
+    },
+    {
+      "id": "epilog",
+      "name_de": "Epilog",
+      "historical": false
+    },
+    {
+      "id": "geraeusch",
+      "name_de": "Geräusch",
+      "historical": false
+    },
+    {
+      "id": "mannlich",
+      "name_de": "Johann Christian von Mannlich",
+      "historical": true
+    },
+    {
+      "id": "herzog",
+      "name_de": "Herzog Karl II. August",
+      "historical": true
+    },
+    {
+      "id": "schuegens",
+      "name_de": "Schügens, der Leibjäger",
+      "historical": true
+    },
+    {
+      "id": "pfeffel",
+      "name_de": "Pfeffel",
+      "historical": true
+    },
+    {
+      "id": "rose",
+      "name_de": "Rosé, der Leibarzt",
+      "historical": true
+    },
+    {
+      "id": "salabert",
+      "name_de": "Abbé Salabert",
+      "historical": true
+    },
+    {
+      "id": "esebeck",
+      "name_de": "Freiherr von Esebeck",
+      "historical": true
+    },
+    {
+      "id": "feuerwerker",
+      "name_de": "Ein Feuerwerker aus Straßburg",
+      "historical": true
+    },
+    {
+      "id": "landremont",
+      "name_de": "General Landremont",
+      "historical": true
+    },
+    {
+      "id": "handwerker",
+      "name_de": "Ein Handwerker",
+      "historical": true
+    },
+    {
+      "id": "kommissaer",
+      "name_de": "Der Kommissär",
+      "historical": true
+    },
+    {
+      "id": "hoefling",
+      "name_de": "Ein Höfling",
+      "historical": true
+    }
+  ]
+}

@@ -1,0 +1,925 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "enden",
+  "dialogue": [
+    {
+      "id": "geraeusch.end.morgen",
+      "speaker": "geraeusch",
+      "text_de": "[Es wird hell. Die Hunde sind fort, nur ihre Abdrücke liegen im Raureif, im Kreis um die Stelle, an der du gelegen hast.]",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "end",
+        "beat": "end.morgen",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.end.morgen",
+      "speaker": "marlene",
+      "text_de": "Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. (Pause.) Das war ein Witz. Kalköfen gibt’s hier keine mehr.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "end",
+        "beat": "end.morgen",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.morgen",
+      "speaker": "laub",
+      "text_de": "Sagen Sie ihr nichts. Oder alles. Sie wird es ohnehin aufschreiben.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "end",
+        "beat": "end.morgen",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.luecken",
+      "speaker": "laub",
+      "text_de": "Sie haben noch Lücken gelassen. Das darf man. Aber man muss es wollen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "end",
+        "beat": "end.luecken"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.vorher",
+      "speaker": "laub",
+      "text_de": "Es ist Ihr Buch jetzt. Soll hätte gesagt: Hauptsache, die Namen stimmen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "end",
+        "beat": "end.wahl"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "laub.end.museum_1",
+      "speaker": "laub",
+      "text_de": "Abgeblasen. Nach zweihundertdreiunddreißig Jahren. Ich werde das als Überstunden einreichen.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "museum",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.museum_2",
+      "speaker": "laub",
+      "text_de": "Eine Akte, die geschlossen wird, ist eine Akte, die man lesen kann. Bringen Sie sie dahin, wo man nachschaut, bevor man glaubt. Mit Quellen. Auch die, die mir nicht gefallen.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "museum",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.museum_3",
+      "speaker": "laub",
+      "text_de": "Und schreiben Sie auf das Schild, dass ich die fünfzig Meter nicht verschuldet habe.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "museum",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "geraeusch.end.museum",
+      "speaker": "geraeusch",
+      "text_de": "[Die Nadel der Bussole dreht sich ruhig nach Norden und bleibt dort.]",
+      "trigger": {
+        "event": "story:ending",
+        "id": "museum",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.end.museum",
+      "speaker": "marlene",
+      "text_de": "Ich fahr’s nächste Woche hin. Und dem Forstamt sag ich, sie sollen die Gräben dem Denkmalamt melden. Gucken ja, graben nein. Das hast du mir beigebracht.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "museum",
+        "step": 5
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://umwelt-online.de/recht/bau/laender/saarland/dschg18.htm",
+          "label": "Saarländisches Denkmalschutzgesetz",
+          "note": "P: Fundmeldepflicht; cx.35"
+        }
+      ]
+    },
+    {
+      "id": "laub.end.verbrennen_1",
+      "speaker": "laub",
+      "text_de": "Gut. Sie haben lange genug gesucht. Die Hunde und ich.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "burn",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.verbrennen_2",
+      "speaker": "laub",
+      "text_de": "Was im Buch stand, steht auch woanders. Bei Mannlich, in den Akten, im Boden. Nur die Namen nicht. Die Namen tragen jetzt Sie.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "burn",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.verbrennen_3",
+      "speaker": "laub",
+      "text_de": "Machen Sie das Licht aus, wenn Sie gehen. Das habe ich nie gelernt.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "burn",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.end.verbrennen",
+      "speaker": "marlene",
+      "text_de": "Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier. (Pause.) Hast du gut gemacht. Ich weiß nicht, was, aber gut.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "burn",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.behalten_1",
+      "speaker": "laub",
+      "text_de": "Sie behalten uns. Das ist unvernünftig. Ich bin sehr gerührt.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "keep",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.behalten_2",
+      "speaker": "laub",
+      "text_de": "Dann bleibt die Jagd offen. Die Hunde laufen weiter, aber jetzt hinter Ihnen her, nicht vor Ihnen weg. Das ist ein Unterschied, den man spürt, wenn es dunkel wird.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "keep",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.end.behalten_3",
+      "speaker": "laub",
+      "text_de": "Und ich bleibe im Dienst. Ohne Tagegeld. Wie gehabt.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "keep",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.end.behalten",
+      "speaker": "marlene",
+      "text_de": "Lass das Horn da hängen. Das passt zum Bauwagen. Aber blas nicht drauf, wenn ich schlafe.",
+      "trigger": {
+        "event": "story:ending",
+        "id": "keep",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "epilog.intro.museum",
+      "speaker": "epilog",
+      "text_de": "Karlsberg bei Homburg, 1777–1793. Was das Feuer nicht fraß. Diese Seiten führte ein Kanzlist neben den Rechnungen des Hofes. Er schrieb auf, was der Hof schuldig blieb.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "intro",
+        "ending": "museum"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.intro.burn",
+      "speaker": "epilog",
+      "text_de": "Was ich weiß, schreibe ich hier einmal hin, und dann nicht wieder.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "intro",
+        "ending": "burn"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.intro.keep",
+      "speaker": "epilog",
+      "text_de": "Fortgesetzt im November, wie das letzte Mal. Q. L. und ich.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "intro",
+        "ending": "keep"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.spuren.hunde",
+      "speaker": "epilog",
+      "text_de": "In der Punktwolke von 2025 liefen Spuren durch den Wald, und ich habe sie für Hunde gehalten.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "spuren",
+        "flag": "flag.p_spuren",
+        "value": "n.hunde"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.spuren.wild",
+      "speaker": "epilog",
+      "text_de": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Wild, dachte ich zuerst.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "spuren",
+        "flag": "flag.p_spuren",
+        "value": "n.wild"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.spuren.messfehler",
+      "speaker": "epilog",
+      "text_de": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Ein Messfehler, dachte ich zuerst. Das denkt man immer zuerst.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "spuren",
+        "flag": "flag.p_spuren",
+        "value": "n.messfehler"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.spuren.offen",
+      "speaker": "epilog",
+      "text_de": "Was die Spuren in der Punktwolke waren, habe ich nicht entschieden.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "spuren",
+        "flag": "flag.p_spuren",
+        "value": "offen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.lohn.will_nicht",
+      "speaker": "epilog",
+      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil der Herzog nicht zahlen wollte.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "lohn",
+        "flag": "flag.k1_lohn",
+        "value": "n.r_will_nicht"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.lohn.creuzer",
+      "speaker": "epilog",
+      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil ein Präsident die Kassen geleert hatte, auch die der Witwen und Waisen.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "lohn",
+        "flag": "flag.k1_lohn",
+        "value": "n.r_creuzer"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.lohn.hunde_bilder",
+      "speaker": "epilog",
+      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil das Geld in tausend Hunde und tausend Bilder ging.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "lohn",
+        "flag": "flag.k1_lohn",
+        "value": "n.r_hunde_bilder"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.lohn.getaeuscht",
+      "speaker": "epilog",
+      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Man sagt, der Herzog sei getäuscht worden. Bezahlt hat er trotzdem nicht.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "lohn",
+        "flag": "flag.k1_lohn",
+        "value": "n.r_getaeuscht"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.lohn.offen",
+      "speaker": "epilog",
+      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Warum, ist eine Frage, die ich offenlasse.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "lohn",
+        "flag": "flag.k1_lohn",
+        "value": "offen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.warner.treu",
+      "speaker": "epilog",
+      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald und kletterte über den Zaun, aus Treue.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner",
+        "flag": "flag.k2_pfeiffer",
+        "value": "n.r_treu"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.warner.dorf",
+      "speaker": "epilog",
+      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, damit die Reiter sein Dorf schneller wieder verließen.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner",
+        "flag": "flag.k2_pfeiffer",
+        "value": "n.r_dorf"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.warner.lohn",
+      "speaker": "epilog",
+      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Der Herzog glaubte, für Geld. Er bekam einen Dukaten.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner",
+        "flag": "flag.k2_pfeiffer",
+        "value": "n.r_lohn"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.warner.angst",
+      "speaker": "epilog",
+      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, weil er Angst hatte. Angst ist auch ein Grund, das Richtige zu tun.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner",
+        "flag": "flag.k2_pfeiffer",
+        "value": "n.r_angst"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.warner.offen",
+      "speaker": "epilog",
+      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Warum, hat er niemandem aufgeschrieben.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner",
+        "flag": "flag.k2_pfeiffer",
+        "value": "offen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.stelle.gewarnt",
+      "speaker": "epilog",
+      "text_de": "Ich hätte es auch getan.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner-stelle",
+        "flag": "flag.k2_stelle",
+        "value": "n.r_gewarnt"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.stelle.geschwiegen",
+      "speaker": "epilog",
+      "text_de": "Ich hätte geschwiegen, und ich weiß nicht, ob ich mich dafür schäme.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner-stelle",
+        "flag": "flag.k2_stelle",
+        "value": "n.r_geschwiegen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.stelle.gefuehrt",
+      "speaker": "epilog",
+      "text_de": "Ich hätte die Reiter geführt. Das schreibe ich hier auf, damit es wenigstens einer weiß.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner-stelle",
+        "flag": "flag.k2_stelle",
+        "value": "n.r_gefuehrt"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.tor.leuchten",
+      "speaker": "epilog",
+      "text_de": "Als die Wagen abfuhren, habe ich ihnen geleuchtet.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner-tor",
+        "flag": "flag.k2_tor",
+        "value": "leuchten"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.tor.dunkel",
+      "speaker": "epilog",
+      "text_de": "Als die Wagen abfuhren, stand ich im Dunkeln.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "warner-tor",
+        "flag": "flag.k2_tor",
+        "value": "dunkel"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.pluenderer.schuld",
+      "speaker": "epilog",
+      "text_de": "Am 28. Juli 1793 nahmen die Leute aus den Dörfern sich, was man ihnen schuldete.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "pluenderer",
+        "flag": "flag.k3_pluenderer",
+        "value": "n.r_schuld"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.pluenderer.stahlen",
+      "speaker": "epilog",
+      "text_de": "Am 28. Juli 1793 stahlen die Leute aus den Dörfern, was nicht niet- und nagelfest war, und dann die Nägel.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "pluenderer",
+        "flag": "flag.k3_pluenderer",
+        "value": "n.r_stahlen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.pluenderer.retteten",
+      "speaker": "epilog",
+      "text_de": "Am 28. Juli 1793 retteten die Leute aus den Dörfern, was zu retten war. Ein Stuhl steht heute vielleicht noch in einer Stube.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "pluenderer",
+        "flag": "flag.k3_pluenderer",
+        "value": "n.r_retteten"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.pluenderer.alle",
+      "speaker": "epilog",
+      "text_de": "Am 28. Juli 1793 taten die Leute aus den Dörfern, was alle taten.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "pluenderer",
+        "flag": "flag.k3_pluenderer",
+        "value": "n.r_alle"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.pluenderer.offen",
+      "speaker": "epilog",
+      "text_de": "Was die Leute aus den Dörfern am 28. Juli 1793 taten, mag ich nicht in ein Wort fassen.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "pluenderer",
+        "flag": "flag.k3_pluenderer",
+        "value": "offen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.zerstoerer.franzosen",
+      "speaker": "epilog",
+      "text_de": "Angezündet haben ihn die Franzosen.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer",
+        "flag": "flag.k4_zerstoerer",
+        "value": "n.r_franzosen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.zerstoerer.herzog_selbst",
+      "speaker": "epilog",
+      "text_de": "Zerstört hat ihn am Ende der, der ihn so gebaut hat.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer",
+        "flag": "flag.k4_zerstoerer",
+        "value": "n.r_herzog_selbst"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.zerstoerer.steintraeger",
+      "speaker": "epilog",
+      "text_de": "Abgetragen haben ihn die Leute aus Homburg, Stein für Stein.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer",
+        "flag": "flag.k4_zerstoerer",
+        "value": "n.r_steintraeger"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.zerstoerer.vergessen",
+      "speaker": "epilog",
+      "text_de": "Zerstört hat ihn am Ende das Vergessen. Dagegen hilft nur Aufschreiben.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer",
+        "flag": "flag.k4_zerstoerer",
+        "value": "n.r_vergessen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.zerstoerer.offen",
+      "speaker": "epilog",
+      "text_de": "Wer ihn zerstört hat, weiß jeder anders.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer",
+        "flag": "flag.k4_zerstoerer",
+        "value": "offen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.steine.raub",
+      "speaker": "epilog",
+      "text_de": "Die Steine in Homburg sind Raub am Raub.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer-steine",
+        "flag": "flag.k4_steine",
+        "value": "n.r_raub"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.steine.lohn_steine",
+      "speaker": "epilog",
+      "text_de": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer-steine",
+        "flag": "flag.k4_steine",
+        "value": "n.r_lohn_steine"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.steine.neuanfang",
+      "speaker": "epilog",
+      "text_de": "Das Schloss steckt in hundert Häusern. Es ist nicht weg, es ist überall.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer-steine",
+        "flag": "flag.k4_steine",
+        "value": "n.r_neuanfang"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.steine.nur_steine",
+      "speaker": "epilog",
+      "text_de": "Es sind nur Steine. Was daran hängt, hängen wir dran.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "zerstoerer-steine",
+        "flag": "flag.k4_steine",
+        "value": "n.r_nur_steine"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute.herr_suchen",
+      "speaker": "epilog",
+      "text_de": "Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute",
+        "flag": "flag.k4_meute",
+        "value": "n.r_herr_suchen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute.chronik_bewachen",
+      "speaker": "epilog",
+      "text_de": "Die Hunde liefen dort, wo eine Seite lag.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute",
+        "flag": "flag.k4_meute",
+        "value": "n.r_chronik_bewachen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute.heimtreiben",
+      "speaker": "epilog",
+      "text_de": "Die Hunde haben jeden heimgetrieben, der sich zu lange im Vergessen aufhielt. Fast jeden.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute",
+        "flag": "flag.k4_meute",
+        "value": "n.r_heimtreiben"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute.nie_abgeblasen",
+      "speaker": "epilog",
+      "text_de": "Die Jagd wurde nie abgeblasen. So einfach war das.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute",
+        "flag": "flag.k4_meute",
+        "value": "n.r_nie_abgeblasen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute.offen",
+      "speaker": "epilog",
+      "text_de": "Warum die Hunde liefen, weiß Jost. Ich habe ihn nicht gefragt.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute",
+        "flag": "flag.k4_meute",
+        "value": "offen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute.namen",
+      "speaker": "epilog",
+      "text_de": "Sie hießen Diane, Sultan, Fanfare, Rauhreif und Bijou.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute-namen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.tuergriff.museum",
+      "speaker": "epilog",
+      "text_de": "Daneben: ein Türgriff. Er war an der Tür zum Festsaal. Die Wand dahinter hat Matthes gemauert.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "museum",
+        "flag": "flag.k3_objekt",
+        "value": "tuergriff"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.tuergriff.burn",
+      "speaker": "epilog",
+      "text_de": "Den Türgriff habe ich behalten. Eine Tür, die es nicht mehr gibt, braucht trotzdem einen Griff.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "burn",
+        "flag": "flag.k3_objekt",
+        "value": "tuergriff"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.tuergriff.keep",
+      "speaker": "epilog",
+      "text_de": "Der Türgriff liegt in der Schublade bei der Bussole. Manchmal fasse ich ihn an, bevor ich hinausgehe.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "keep",
+        "flag": "flag.k3_objekt",
+        "value": "tuergriff"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.dukat.museum",
+      "speaker": "epilog",
+      "text_de": "Daneben: ein Dukat mit dem Bild des Schlosses. Einen solchen bekam ein Bauer aus Rohrbach, oder auch nicht.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "museum",
+        "flag": "flag.k3_objekt",
+        "value": "dukat"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.dukat.burn",
+      "speaker": "epilog",
+      "text_de": "Den Dukaten habe ich Marlene gegeben. Sie sagt, sie kauft sich nichts davon.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "burn",
+        "flag": "flag.k3_objekt",
+        "value": "dukat"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.dukat.keep",
+      "speaker": "epilog",
+      "text_de": "Der Dukat liegt in der Schublade. Er ist das einzige Geld, das der Hof je zurückgezahlt hat, und auch nur an mich.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "keep",
+        "flag": "flag.k3_objekt",
+        "value": "dukat"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.uhr.museum",
+      "speaker": "epilog",
+      "text_de": "Daneben: eine vergoldete Uhr mit Alabaster. Sie geht noch. Sie weiß nicht, was passiert ist.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "museum",
+        "flag": "flag.k3_objekt",
+        "value": "uhr"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.uhr.burn",
+      "speaker": "epilog",
+      "text_de": "Die Uhr steht im Bauwagen und geht. Ich ziehe sie jeden Sonntag auf.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "burn",
+        "flag": "flag.k3_objekt",
+        "value": "uhr"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.uhr.keep",
+      "speaker": "epilog",
+      "text_de": "Die Uhr tickt in der Schublade, neben der Bussole. Laub sagt, sie geht vor.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "keep",
+        "flag": "flag.k3_objekt",
+        "value": "uhr"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.nichts.museum",
+      "speaker": "epilog",
+      "text_de": "Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: ‚Was nicht gerettet wurde.‘",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "museum",
+        "flag": "flag.k3_objekt",
+        "value": "nichts"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.nichts.burn",
+      "speaker": "epilog",
+      "text_de": "Gerettet habe ich nichts. Das ist auch eine Antwort.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "burn",
+        "flag": "flag.k3_objekt",
+        "value": "nichts"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.objekt.nichts.keep",
+      "speaker": "epilog",
+      "text_de": "In der Schublade ist Platz für etwas, das ich nicht genommen habe.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "objekt",
+        "ending": "keep",
+        "flag": "flag.k3_objekt",
+        "value": "nichts"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.schluss.museum",
+      "speaker": "epilog",
+      "text_de": "Quellen: Mannlich, Lebenserinnerungen. Die Akten. Der Boden. Und ein Geometer, der auf seinen fünfzig Metern besteht.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "schluss",
+        "ending": "museum"
+      },
+      "once": false
+    },
+    {
+      "id": "laub.end.museum_4",
+      "speaker": "laub",
+      "text_de": "Ich bestehe darauf.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "schluss-nachsatz",
+        "ending": "museum"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.schluss.burn",
+      "speaker": "epilog",
+      "text_de": "Jetzt ist es still. Gute Nacht, Laub. Gute Nacht, Diane, Sultan, Fanfare, Rauhreif, Bijou.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "schluss",
+        "ending": "burn"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.schluss.keep",
+      "speaker": "epilog",
+      "text_de": "Wird fortgesetzt.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "schluss",
+        "ending": "keep"
+      },
+      "once": false
+    },
+    {
+      "id": "jost.end.keep",
+      "speaker": "jost",
+      "text_de": "Jost war auch da.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "schluss-nachsatz",
+        "ending": "keep"
+      },
+      "once": false
+    }
+  ]
+}

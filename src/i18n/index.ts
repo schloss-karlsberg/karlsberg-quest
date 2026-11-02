@@ -1,4 +1,5 @@
 import { de } from './de';
+import { deContent } from './de.content';
 
 /**
  * Tiny i18n layer. German only for now; English is planned for 1.0.
@@ -41,3 +42,6 @@ export function t(key: string, params?: Record<string, string | number>): string
   if (params) s = s.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m));
   return s;
 }
+
+// UI texts from the content bible (09-ui-texte.md); 'ui.*' keys, registered like any feature's strings.
+addStrings('de', deContent);

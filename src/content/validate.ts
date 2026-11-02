@@ -100,7 +100,9 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
   for (const [file, n] of all.nouns) {
     if (!isStr(n.label_de)) err(file, n.id, 'noun: missing label_de');
     if (!NOUN_CATS.has(n.category)) err(file, n.id, `noun: unknown category '${n.category}'`);
+    if (n.plural_de !== undefined && !isStr(n.plural_de)) err(file, n.id, 'noun: "plural_de" must be a non-empty string');
   }
+  const nounById = new Map(all.nouns.map(([, n]) => [n.id, n]));
 
   // ---- clues
   const b = opts.bounds;
@@ -118,6 +120,11 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
     for (const f of c.reveals?.facts ?? []) if (!ids.facts.has(f)) err(file, c.id, `clue: reveals unknown fact '${f}'`);
     for (const r of c.requires?.clues ?? []) if (!ids.clues.has(r)) err(file, c.id, `clue: requires unknown clue '${r}'`);
     if (!(c.reveals?.nouns?.length || c.reveals?.facts?.length || c.reveals?.flags?.length)) warn(file, c.id, 'clue: reveals nothing');
+    if (c.requires?.scanMode !== undefined && ![1, 2, 3].includes(c.requires.scanMode)) err(file, c.id, 'clue: requires.scanMode must be 1, 2 or 3');
+    for (const fl of [...(c.requires?.flags ?? []), ...(c.reveals?.flags ?? [])]) if (!isStr(fl)) err(file, c.id, 'clue: flags must be non-empty strings');
+    if (c.echoDate_de !== undefined && !isStr(c.echoDate_de)) err(file, c.id, 'clue: "echoDate_de" must be a non-empty string');
+    if (c.needsLantern !== undefined && typeof c.needsLantern !== 'boolean') err(file, c.id, 'clue: "needsLantern" must be true or false');
+    if (c.chapter !== undefined && !isStr(c.chapter)) err(file, c.id, 'clue: "chapter" must be a non-empty string');
   }
 
   // reachable clues: fixed point over `requires.clues` (cycles are unreachable)
@@ -164,6 +171,27 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
         inText.delete(bl.id);
         for (const a of bl.accepts ?? []) if (!ids.nouns.has(a)) err(file, where, `blank '${bl.id}' accepts unknown noun '${a}'`);
         if (bl.category && !NOUN_CATS.has(bl.category)) err(file, where, `blank '${bl.id}': unknown category '${bl.category}'`);
+        if (bl.plural !== undefined && typeof bl.plural !== 'boolean') err(file, where, `blank '${bl.id}': "plural" must be true or false`);
+        if (bl.plural === true)
+          for (const a of bl.accepts ?? []) if (nounById.has(a) && !nounById.get(a)!.plural_de) warn(file, where, `blank '${bl.id}' is plural but noun '${a}' has no plural_de`);
+        if (bl.labels_de !== undefined) {
+          if (!bl.labels_de || typeof bl.labels_de !== 'object' || Array.isArray(bl.labels_de)) err(file, where, `blank '${bl.id}': "labels_de" must be an object`);
+          else
+            for (const [n, lbl] of Object.entries(bl.labels_de)) {
+              if (!ids.nouns.has(n)) err(file, where, `blank '${bl.id}': labels_de for unknown noun '${n}'`);
+              else if (bl.accepts && !bl.accepts.includes(n)) err(file, where, `blank '${bl.id}': labels_de for noun '${n}' that is not in accepts`);
+              if (!isStr(lbl)) err(file, where, `blank '${bl.id}': labels_de['${n}'] must be a non-empty string`);
+            }
+        }
+        if (bl.alsoCorrect !== undefined) {
+          if (e.kind !== 'fact') err(file, where, `blank '${bl.id}': "alsoCorrect" is only allowed in fact entries`);
+          if (!Array.isArray(bl.alsoCorrect)) err(file, where, `blank '${bl.id}': "alsoCorrect" must be an array`);
+          else
+            for (const a of bl.alsoCorrect) {
+              if (!ids.nouns.has(a)) err(file, where, `blank '${bl.id}': alsoCorrect unknown noun '${a}'`);
+              else if (bl.accepts && !bl.accepts.includes(a)) err(file, where, `blank '${bl.id}': alsoCorrect noun '${a}' is not in accepts`);
+            }
+        }
         if (e.kind === 'fact') {
           if (!isStr(bl.correct)) err(file, where, `fact blank '${bl.id}' has no correct noun`);
           else if (!ids.nouns.has(bl.correct)) err(file, where, `blank '${bl.id}': correct noun '${bl.correct}' is unknown`);
@@ -178,6 +206,10 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
         }
       }
       for (const left of inText) err(file, where, `text_de uses {${left}} but there is no such blank`);
+      if (e.flag !== undefined) {
+        if (!isStr(e.flag)) err(file, where, 'case entry: "flag" must be a non-empty string');
+        if (e.kind !== 'reading') err(file, where, 'case entry: "flag" is only allowed on reading entries');
+      }
       if (e.kind === 'fact') {
         facts++;
         if (e.factId !== undefined && !ids.facts.has(e.factId)) err(file, where, `entry unlocks unknown fact '${e.factId}'`);

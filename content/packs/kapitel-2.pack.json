@@ -1,0 +1,1689 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "kapitel-2",
+  "nouns": [
+    {
+      "id": "n.9_februar",
+      "label_de": "9. Februar",
+      "category": "time"
+    },
+    {
+      "id": "n.3_februar",
+      "label_de": "3. Februar",
+      "category": "time"
+    },
+    {
+      "id": "n.ende_februar",
+      "label_de": "Ende Februar",
+      "category": "time"
+    },
+    {
+      "id": "n.25_februar",
+      "label_de": "25. Februar",
+      "category": "time"
+    },
+    {
+      "id": "n.pfeiffer",
+      "label_de": "Nikel Pfeiffer",
+      "category": "person"
+    },
+    {
+      "id": "n.schuegens",
+      "label_de": "Schügens, der Leibjäger",
+      "category": "person"
+    },
+    {
+      "id": "n.pfeffel",
+      "label_de": "Pfeffel",
+      "category": "person"
+    },
+    {
+      "id": "n.salabert",
+      "label_de": "Abbé Salabert",
+      "category": "person"
+    },
+    {
+      "id": "n.parkzaun",
+      "label_de": "den Parkzaun",
+      "category": "place"
+    },
+    {
+      "id": "n.ehrenhofgitter",
+      "label_de": "das Ehrenhofgitter",
+      "category": "place"
+    },
+    {
+      "id": "n.gartenmauer",
+      "label_de": "die Gartenmauer",
+      "category": "place"
+    },
+    {
+      "id": "n.unglaubwuerdig",
+      "label_de": "unglaubwürdig",
+      "category": "action"
+    },
+    {
+      "id": "n.nur_zu_wahr",
+      "label_de": "nur zu wahr",
+      "category": "action"
+    },
+    {
+      "id": "n.anschlag",
+      "label_de": "einen perfiden Anschlag",
+      "category": "action"
+    },
+    {
+      "id": "n.dukaten",
+      "label_de": "Dukaten",
+      "category": "object"
+    },
+    {
+      "id": "n.taler",
+      "label_de": "Taler",
+      "category": "object"
+    },
+    {
+      "id": "n.galerie_sammlung",
+      "label_de": "Galerie",
+      "category": "object"
+    },
+    {
+      "id": "n.naturalienkabinett",
+      "label_de": "Naturalienkabinett",
+      "category": "object"
+    },
+    {
+      "id": "n.bibliothek",
+      "label_de": "Bibliothek",
+      "category": "object"
+    },
+    {
+      "id": "n.kalkoefen",
+      "label_de": "Kalköfen",
+      "category": "object"
+    },
+    {
+      "id": "n.fackeln",
+      "label_de": "Fackeln",
+      "category": "object"
+    },
+    {
+      "id": "n.wachfeuer",
+      "label_de": "Wachfeuer",
+      "category": "object"
+    },
+    {
+      "id": "n.koehlermeiler",
+      "label_de": "Köhlermeiler",
+      "category": "object"
+    },
+    {
+      "id": "n.r_laterne",
+      "label_de": "meine Laterne",
+      "category": "object"
+    },
+    {
+      "id": "n.mannheim",
+      "label_de": "Mannheim",
+      "category": "place"
+    },
+    {
+      "id": "n.r_treu",
+      "label_de": "er dem Herzog treu war",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_dorf",
+      "label_de": "er sein Dorf schützen wollte",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_lohn",
+      "label_de": "er auf Lohn hoffte",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_angst",
+      "label_de": "er Angst hatte",
+      "category": "cause"
+    },
+    {
+      "id": "n.r_gewarnt",
+      "label_de": "ihn auch gewarnt",
+      "category": "action"
+    },
+    {
+      "id": "n.r_geschwiegen",
+      "label_de": "geschwiegen",
+      "category": "action"
+    },
+    {
+      "id": "n.r_gefuehrt",
+      "label_de": "die Reiter geführt",
+      "category": "action"
+    }
+  ],
+  "clues": [
+    {
+      "id": "clue.k2.marlene",
+      "title_de": "Marlene erzählt vom Warner",
+      "kind": "dialogue",
+      "text_de": "Marlene bringt Kaffee und erzählt von einem Bauern aus Rohrbach.",
+      "where": {
+        "x": 760,
+        "z": -930,
+        "radius": 30,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.pfeiffer",
+          "n.3_februar"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.zaun",
+      "title_de": "Ein Fetzen am Parkzaun",
+      "kind": "object",
+      "text_de": "Ein Fetzen graubrauner Wolle an einer Zaunlatte. Auf der Parkseite Fußspuren im Raureif, tief und weit auseinander: Da ist jemand gerannt. Kein Tor in der Nähe. (Die Spur leuchtet schwach im Relief-Blick; ihr Laufweg ist erfunden.)",
+      "where": {
+        "x": 1672,
+        "z": -408,
+        "radius": 4,
+        "era": "1793-02",
+        "anchor": "KB-B84"
+      },
+      "reveals": {
+        "nouns": [
+          "n.parkzaun"
+        ]
+      },
+      "fiction": true,
+      "needsLantern": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.orangerie",
+      "title_de": "Erinnerung: Gepackte Wagen",
+      "kind": "echo",
+      "text_de": "In Mannlichs Fenstern brennt Licht. Unten im Hof werden Kisten auf einen Wagen geladen. Automatisch auf dem Hinweg.",
+      "where": {
+        "x": 1275,
+        "z": -960,
+        "radius": 30,
+        "era": "1793-02",
+        "anchor": "TF-15"
+      },
+      "reveals": {
+        "nouns": [
+          "n.mannheim"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.wache",
+      "title_de": "Erinnerung: Die Wache am Feuer",
+      "kind": "echo",
+      "text_de": "Ein Wachfeuer in einer Eisenpfanne am nördlichen Wachhaus. Hinter dem Gitter steht der Hof voller Wagen.",
+      "where": {
+        "x": 1171,
+        "z": -1123,
+        "radius": 10,
+        "era": "1793-02",
+        "anchor": "KB-B38"
+      },
+      "reveals": {
+        "nouns": [
+          "n.ehrenhofgitter",
+          "n.wachfeuer"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.wachbuch",
+      "title_de": "Das Wachbuch",
+      "kind": "document",
+      "text_de": "Ein aufgeschlagenes Wachbuch. Die letzte Zeile in einer zittrigen Hand: „Sambstag d. 9ten Febr. 1793. Gegen 8 Uhr ein Bauer, außer Athem, wollte zu Serenissimo. Dem Leibjäger übergeben.“ (Wortlaut erfunden; Datum nach Horstmann, M1910 S. 427 Anm. 1.)",
+      "where": {
+        "x": 1171,
+        "z": -1123,
+        "radius": 8,
+        "era": "1793-02",
+        "anchor": "KB-B38"
+      },
+      "reveals": {
+        "nouns": [
+          "n.9_februar",
+          "n.schuegens"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.horstmann",
+      "title_de": "Der Regierungsrat Horstmann",
+      "kind": "dialogue",
+      "text_de": "Laub beim Lesen des Wachbuchs.",
+      "where": {
+        "x": 1171,
+        "z": -1123,
+        "radius": 8,
+        "era": "1793-02",
+        "anchor": "KB-B38"
+      },
+      "reveals": {
+        "nouns": [
+          "n.9_februar"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.wachbuch"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.gaertnerei",
+      "title_de": "Die Mauer der Gärtnerei",
+      "kind": "object",
+      "text_de": "Eine mannshohe Mauer, oben glatt und vereist. Keine Spuren davor. (Nur, wenn man von der Spur abweicht.)",
+      "where": {
+        "x": 1266,
+        "z": -1320,
+        "radius": 8,
+        "era": "1793-02",
+        "anchor": "KB-B27"
+      },
+      "reveals": {
+        "nouns": [
+          "n.gartenmauer"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.soll",
+      "title_de": "Kerzenlicht in der Galerie",
+      "kind": "object",
+      "text_de": "Durch die Fenster der Bildergalerie fällt ein einzelnes Kerzenlicht. Drinnen kniet Gottlob Soll am Westende und hebt ein Bodenbrett neben der Falltür des Büchsenmachers an. Er legt ein graues Buch hinein und klopft das Brett mit dem Handballen fest. Er sieht dich nicht. (Optional.)",
+      "where": {
+        "x": 1205,
+        "z": -1207,
+        "radius": 6,
+        "era": "1793-02",
+        "anchor": "KB-B06"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k2_versteck_gesehen"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.warnung",
+      "title_de": "Erinnerung: Die Warnung",
+      "kind": "echo",
+      "text_de": "E halten an der Tür zum Schreibkabinett. Man hört nur Stimmen; durch den Türspalt Schatten an der Wand: ein sitzender Mann, der hustet, und mehrere stehende. Nikel Pfeiffer ist nicht im Raum, er wartet unten.",
+      "where": {
+        "x": 1268.5,
+        "z": -1110,
+        "radius": 6,
+        "era": "1793-02",
+        "anchor": "B01.1.eg-kabinett"
+      },
+      "reveals": {
+        "nouns": [
+          "n.unglaubwuerdig",
+          "n.nur_zu_wahr",
+          "n.anschlag",
+          "n.dukaten",
+          "n.taler",
+          "n.pfeffel",
+          "n.salabert",
+          "n.r_lohn",
+          "n.schuegens",
+          "n.parkzaun"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.abschied",
+      "title_de": "Erinnerung: Der Abschied",
+      "kind": "echo",
+      "text_de": "Zweites E halten. Ein Schatten öffnet einen Schreibtisch, steckt Papiere ein und setzt sich. Lange Stille.",
+      "where": {
+        "x": 1268.5,
+        "z": -1110,
+        "radius": 6,
+        "era": "1793-02",
+        "anchor": "B01.1.eg-kabinett"
+      },
+      "reveals": {
+        "nouns": [
+          "n.galerie_sammlung",
+          "n.naturalienkabinett",
+          "n.bibliothek",
+          "n.ende_februar"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.warnung"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.jagdmesser",
+      "title_de": "Ein leerer Umriss im Staub",
+      "kind": "object",
+      "text_de": "Ein Tisch, auf dem ein Gegenstand fehlt: ein heller Umriss im Staub, schmal und gebogen. Daneben ein Stapel Papiere, aus dem die obersten fehlen.",
+      "where": {
+        "x": 1268.5,
+        "z": -1110,
+        "radius": 6,
+        "era": "1793-02",
+        "anchor": "B01.1.eg-kabinett"
+      },
+      "reveals": {
+        "flags": [
+          "flag.k2_jagdmesser_gesehen"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.abschied"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.fackeln",
+      "title_de": "Fackeln bei der Abfahrt",
+      "kind": "object",
+      "text_de": "Diener mit Fackeln laufen neben den ersten Wagen her, bis zur Allee, und kommen ohne sie zurück. (Erfunden; angeregt von einer unbelegten Lokalüberlieferung.)",
+      "where": {
+        "x": 1205,
+        "z": -1115,
+        "radius": 30,
+        "era": "1793-02",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.fackeln"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.abschied"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.esebeck",
+      "title_de": "Der Minister bleibt",
+      "kind": "dialogue",
+      "text_de": "Laub nach der Abfahrt.",
+      "where": {
+        "x": 1205,
+        "z": -1115,
+        "radius": 30,
+        "era": "1793-02",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.25_februar"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.fackeln"
+        ]
+      },
+      "fiction": false,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.hanne",
+      "title_de": "Hanne am Gitter",
+      "kind": "dialogue",
+      "text_de": "Hanne steht am Gitter und sieht den Wagen nach.",
+      "where": {
+        "x": 1198,
+        "z": -1112,
+        "radius": 8,
+        "era": "1793-02",
+        "anchor": "KB-B39"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_geschwiegen",
+          "n.r_dorf"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.abschied"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.jost",
+      "title_de": "Jost kommt vom Zwinger",
+      "kind": "dialogue",
+      "text_de": "Jost, jetzt siebzehn, kommt vom Zwinger gelaufen.",
+      "where": {
+        "x": 1205,
+        "z": -1125,
+        "radius": 8,
+        "era": "1793-02",
+        "anchor": "TF-01"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_angst",
+          "n.r_gefuehrt"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.abschied"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.landremont",
+      "title_de": "Erinnerung: „Das sind Kalköfen“",
+      "kind": "echo",
+      "text_de": "Während der Jagd, am Orangerie-Parterre (8 s, die Meute hält inne). Ein Reiter mit gezogenem Säbel, weitere Reiter hinter ihm. Ein Mann mit einem Werkzeugsack geht ruhig vorbei. Die Kamera schwenkt den Hang hinab: Zwischen den Bäumen schwanken Lichter.",
+      "where": {
+        "x": 1275,
+        "z": -960,
+        "radius": 30,
+        "era": "1793-02",
+        "anchor": "TF-15"
+      },
+      "reveals": {
+        "nouns": [
+          "n.kalkoefen"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.fackeln"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.laterne",
+      "title_de": "Eines der Lichter",
+      "kind": "dialogue",
+      "text_de": "Eines der Lichter unten im Wald ist deine Laterne von vorhin, oder, wenn du am Tor geleuchtet hast, die Laternen der Wagen im Nebel. (Automatisch nach dem Echo.)",
+      "where": {
+        "x": 1275,
+        "z": -960,
+        "radius": 30,
+        "era": "1793-02",
+        "anchor": "portable"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_laterne"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.landremont"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.koehler",
+      "title_de": "Ein Köhlerplatz am Hang",
+      "kind": "relief",
+      "text_de": "Am Hang unterhalb der Orangerie eine runde, ebene Fläche mit schwarzer Erde. (Motiv; ein bestimmter Meilerplatz ist nicht belegt.)",
+      "where": {
+        "x": 1150,
+        "z": -935,
+        "radius": 15,
+        "era": "1793-02",
+        "anchor": "rm.03"
+      },
+      "reveals": {
+        "nouns": [
+          "n.koehlermeiler"
+        ],
+        "facts": [
+          "rm.03"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    },
+    {
+      "id": "clue.k2.laub_treue",
+      "title_de": "Laub über den Warner",
+      "kind": "dialogue",
+      "text_de": "Laub in der Feldstation, nach dem ersten Wechsel.",
+      "where": {
+        "x": 760,
+        "z": -930,
+        "radius": 30,
+        "era": "today",
+        "anchor": "loc.p.station"
+      },
+      "reveals": {
+        "nouns": [
+          "n.r_treu",
+          "n.r_gewarnt"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k2.zaun"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k2"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case.k2",
+      "title_de": "Die Flucht",
+      "intro_de": "Nacht vom 9. auf den 10. Februar 1793. Wer hat gewarnt, und wem hat es genützt?",
+      "entries": [
+        {
+          "id": "entry.k2.1",
+          "kind": "fact",
+          "factId": "cx.17",
+          "text_de": "Nach den Notizen des Regierungsrats Horstmann floh der Herzog in der Nacht {wann} 1793.",
+          "blanks": [
+            {
+              "id": "wann",
+              "category": "time",
+              "correct": "n.9_februar",
+              "accepts": [
+                "n.9_februar",
+                "n.3_februar",
+                "n.ende_februar",
+                "n.25_februar"
+              ],
+              "labels_de": {
+                "n.9_februar": "des 9. Februar",
+                "n.3_februar": "des 3. Februar",
+                "n.ende_februar": "gegen Ende Februar",
+                "n.25_februar": "des 25. Februar"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.2",
+          "kind": "fact",
+          "factId": "cx.16",
+          "text_de": "Gewarnt wurde der Herzog von einem Bauern aus Rohrbach: {wer}.",
+          "blanks": [
+            {
+              "id": "wer",
+              "category": "person",
+              "correct": "n.pfeiffer",
+              "accepts": [
+                "n.pfeiffer",
+                "n.schuegens",
+                "n.pfeffel",
+                "n.salabert"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.3",
+          "kind": "fact",
+          "factId": "cx.16",
+          "text_de": "Um schneller ans Ziel zu kommen, kletterte der Bauer über {wo}.",
+          "blanks": [
+            {
+              "id": "wo",
+              "category": "place",
+              "correct": "n.parkzaun",
+              "accepts": [
+                "n.parkzaun",
+                "n.ehrenhofgitter",
+                "n.gartenmauer"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.4",
+          "kind": "fact",
+          "factId": "cx.16",
+          "text_de": "Der Herzog nannte die Nachricht zuerst {wie} und wollte dem Bauern einen {was} geben.",
+          "blanks": [
+            {
+              "id": "wie",
+              "category": "action",
+              "correct": "n.unglaubwuerdig",
+              "accepts": [
+                "n.unglaubwuerdig",
+                "n.nur_zu_wahr",
+                "n.anschlag"
+              ]
+            },
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.dukaten",
+              "accepts": [
+                "n.dukaten",
+                "n.taler",
+                "n.gulden",
+                "n.louisdor"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.5",
+          "kind": "fact",
+          "factId": "cx.18",
+          "text_de": "Beim Abschied ließ der Herzog Mannlich zurück, um vor allem über {was} zu wachen.",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.galerie_sammlung",
+              "accepts": [
+                "n.galerie_sammlung",
+                "n.naturalienkabinett",
+                "n.bibliothek"
+              ],
+              "labels_de": {
+                "n.galerie_sammlung": "seine Galerie",
+                "n.naturalienkabinett": "sein Naturalienkabinett",
+                "n.bibliothek": "seine Bibliothek"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.6",
+          "kind": "fact",
+          "factId": "cx.19",
+          "text_de": "Als der General nach den Feuern im Wald fragte, antwortete ein Handwerker: ‚Das sind {was}.‘",
+          "blanks": [
+            {
+              "id": "was",
+              "category": "object",
+              "correct": "n.kalkoefen",
+              "accepts": [
+                "n.kalkoefen",
+                "n.fackeln",
+                "n.wachfeuer",
+                "n.koehlermeiler"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.7",
+          "kind": "reading",
+          "flag": "flag.k2_lichter",
+          "text_de": "Die Lichter im Wald waren in Wahrheit {was}.",
+          "blanks": [
+            {
+              "id": "was",
+              "accepts": [
+                "n.kalkoefen",
+                "n.fackeln",
+                "n.wachfeuer",
+                "n.r_laterne"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.8",
+          "kind": "reading",
+          "flag": "flag.k2_pfeiffer",
+          "text_de": "Nikel Pfeiffer rannte durch die Nacht, weil {warum}.",
+          "blanks": [
+            {
+              "id": "warum",
+              "accepts": [
+                "n.r_treu",
+                "n.r_dorf",
+                "n.r_lohn",
+                "n.r_angst"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry.k2.9",
+          "kind": "reading",
+          "flag": "flag.k2_stelle",
+          "text_de": "An seiner Stelle hätte ich {wie}.",
+          "blanks": [
+            {
+              "id": "wie",
+              "accepts": [
+                "n.r_gewarnt",
+                "n.r_geschwiegen",
+                "n.r_gefuehrt"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "dialogue": [
+    {
+      "id": "marlene.k2.morgen",
+      "speaker": "marlene",
+      "text_de": "Morgen. Frost heute Nacht, die Pfützen sind zu. Deine Bussole war beschlagen, von innen. Das geht doch gar nicht.",
+      "trigger": {
+        "event": "story:chapter",
+        "id": "k2"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k2.pfeiffer",
+      "speaker": "marlene",
+      "text_de": "Rohrbach? Da kommt mein Schwager her. Die haben da einen Nikel Pfeiffer, Bauer und Postbote, der den Herzog gewarnt haben soll. Im Internet steht einmal der neunte Februar und einmal der dritte. Such dir einen aus.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.marlene",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+          "label": "de.wikipedia: Karl II. August",
+          "note": "P"
+        },
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+          "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)",
+          "note": "P"
+        }
+      ]
+    },
+    {
+      "id": "marlene.k2.rohrbach",
+      "speaker": "marlene",
+      "text_de": "In Rohrbach gibt’s, glaub ich, eine Straße, die nach ihm heißt. Ich müsste meinen Schwager fragen. Der weiß auch nicht alles, sagt aber alles.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.marlene",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.start",
+      "speaker": "laub",
+      "text_de": "Februar. Ich mag den Februar nicht. Im November geht man verloren, im Februar wird man gesucht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.0"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.zaun",
+      "speaker": "laub",
+      "text_de": "Über den Zaun. Nicht durchs Tor. Wer durchs Tor geht, muss erklären, wer er ist.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.zaun"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.richtung",
+      "speaker": "laub",
+      "text_de": "Rohrbach liegt im Südwesten. Die Spur kommt aus dem Südosten. Entweder hat er einen Umweg gemacht, oder die Erinnerung. Erinnerungen nehmen gern den schönen Weg.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.1"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.augen",
+      "speaker": "laub",
+      "text_de": "Nicht bewegen. Licht aus. Die sehen das Licht, nicht Sie.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.2"
+      },
+      "once": true,
+      "priority": 10
+    },
+    {
+      "id": "echo.k2.orangerie.01",
+      "speaker": "diener",
+      "text_de": "Die Wagen sind gepackt, seit drei Tagen schon. Und Pferde zum Wechseln stehen auf dem ganzen Weg nach Mannheim.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.orangerie",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 422"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.orangerie.02",
+      "speaker": "diener2",
+      "text_de": "Und der Herzog?",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.orangerie",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.orangerie.03",
+      "speaker": "diener",
+      "text_de": "Hat Schnupfen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.orangerie",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 422: „starkem Schnupfen mit etwas Fieber“"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.wache.01",
+      "speaker": "wache",
+      "text_de": "Ein Bauer, ganz außer Atem. Kam nicht durchs Gitter, kam von hinten aus dem Park.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.wache",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.wache.02",
+      "speaker": "wache2",
+      "text_de": "Und?",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.wache",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.wache.03",
+      "speaker": "wache",
+      "text_de": "Der Leibjäger hat ihn hinaufgebracht. Wenn’s ein Spinner ist, kriegt er einen Tritt. Wenn’s keiner ist, kriegen wir einen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.wache",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.wache.04",
+      "speaker": "wache2",
+      "text_de": "Leg Holz nach. Das Wachfeuer sieht man bis Homburg, dann wissen die wenigstens, dass wir wach sind.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.wache",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.wache",
+      "speaker": "laub",
+      "text_de": "Ein Wachfeuer im Ehrenhof. Damit der Feind weiß, wo er hinmuss.",
+      "trigger": {
+        "event": "echo:end",
+        "id": "clue.k2.wache"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.horstmann",
+      "speaker": "laub",
+      "text_de": "Ein Regierungsrat namens Horstmann hat sich das Datum notiert, Tag für Tag, wie ein ordentlicher Mensch. Der neunte. Mannlich schreibt in seinen Erinnerungen ‚gegen Ende Februar‘. Mannlich hat Jahre später geschrieben und schöner. Ich glaube dem Regierungsrat.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.horstmann"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 422 und S. 427 Anm. 1"
+        }
+      ]
+    },
+    {
+      "id": "laub.k2.gaertnerei",
+      "speaker": "laub",
+      "text_de": "Hier ist er nicht drüber. Zu glatt, zu hoch. Gärtner bauen bessere Mauern als Herzöge Zäune.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.gaertnerei"
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.warnung.01",
+      "speaker": "schuegens",
+      "text_de": "Durchlaucht, ein Bauer ist atemlos angelangt. Die französische Kavallerie ist durch die Wälder in sein Dorf gekommen, ohne der Landstraße zu folgen. Sie lassen dort ihre Pferde rasten und verlangen einen Führer, der sie auf Umwegen zum Karlsberg bringt. Erst nachts wollen sie ankommen. Er hat sich durch seinen Garten in den Wald geschlichen und ist über den Zaun des Parkes geklettert.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 422 f."
+        }
+      ]
+    },
+    {
+      "id": "herzog.01",
+      "speaker": "herzog",
+      "text_de": "Diese Nachricht scheint mir unglaubwürdig; der gute Mann will einige Taler verdienen, das ist alles. Gib ihm einen Dukaten, und er ziehe in Frieden!",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.warnung.03",
+      "speaker": "geraeusch",
+      "text_de": "[Eine Tür. Schritte. Pause. Ein langer Husten.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.warnung.04",
+      "speaker": "rose",
+      "text_de": "Durchlaucht sollten zu Bett gehen und Tee trinken.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 4
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.warnung.05",
+      "speaker": "pfeffel",
+      "text_de": "Ich beschwöre Durchlaucht, auf der Stelle abzufahren. Es ist nur zu wahr. Diese Schurken haben einen perfiden Anschlag gegen die Person des Herzogs geplant.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 5
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.warnung.06",
+      "speaker": "rose",
+      "text_de": "Bett. Und Tee.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 6
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 423: „der noch beim Weggehen Bett und Tee empfahl“"
+        }
+      ]
+    },
+    {
+      "id": "herzog.02",
+      "speaker": "herzog",
+      "text_de": "Da wir abreisen müssen, so wollen wir es tun! Aber, Abbé, Ihn nehme ich mit mir.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 7
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.warnung.08",
+      "speaker": "salabert",
+      "text_de": "Das ist ein neuer Beweis von Güte, Durchlaucht. Aber ich habe nur bei mir, was ich am Leibe trage. Ich sollte wenigstens Wäsche holen und mein Geld, das ich den Sansculottes nicht gerne überlassen möchte.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 8
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "herzog.03",
+      "speaker": "herzog",
+      "text_de": "Hole Er sich Hemden, da Er sie nun einmal braucht; ich gebe Ihm eine halbe Stunde Zeit dazu. Gehe Er!",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.warnung",
+        "step": 9
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "laub.k2.schnupfen",
+      "speaker": "laub",
+      "text_de": "Bett und Tee. Die Kavallerie kommt durch den Wald, und der Leibarzt verschreibt Bett und Tee. Er hätte es weit gebracht in der Landesaufnahme.",
+      "trigger": {
+        "event": "echo:end",
+        "id": "clue.k2.warnung",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.dukat",
+      "speaker": "laub",
+      "text_de": "Einen Dukaten für den Mann, der ihm das Leben rettet. Hanne hat für den Lohn ihres Mannes nicht mal einen Gulden bekommen. Sie sehen, der Herzog konnte großzügig sein.",
+      "trigger": {
+        "event": "echo:end",
+        "id": "clue.k2.warnung",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "herzog.04",
+      "speaker": "herzog",
+      "text_de": "Ich lasse Ihn hier, mein lieber Mannlich, um über meine Galerie zu wachen und sie zu retten, wenn es Ihm möglich ist. Ich weiß, wem ich sie anvertraue; desgleichen empfehle ich Ihm mein Naturalienkabinett, meine Bibliothek und alles, was ich nicht habe mit mir nehmen können.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.abschied",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 423"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.abschied.02",
+      "speaker": "geraeusch",
+      "text_de": "[Stille. Ein Gegenstand wird vom Tisch genommen.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.abschied",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "herzog.05",
+      "speaker": "herzog",
+      "text_de": "Adieu, mein lieber Mannlich, ich hoffe Ihn bald wiederzusehen. Bleibe Er stets mein Freund!",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.abschied",
+        "step": 3
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 424"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.abschied.04",
+      "speaker": "geraeusch",
+      "text_de": "[Schritte entfernen sich.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.abschied",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "mannlich.09",
+      "speaker": "mannlich",
+      "text_de": "Wenn ich mich recht entsinne, gelangte zu uns gegen Ende Februar 1793 die Nachricht …",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.abschied",
+        "step": 5
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 422, gekürzt"
+        }
+      ]
+    },
+    {
+      "id": "laub.k2.entsinnt",
+      "speaker": "laub",
+      "text_de": "Er entsinnt sich nicht recht. Merken Sie sich trotzdem, was er sagt.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.abschied",
+        "step": 6
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.sichern",
+      "speaker": "laub",
+      "text_de": "Wenn Sie jetzt zurückgehen, behalten Sie, was Sie gefunden haben. Wenn Sie bleiben, sehen Sie die Abfahrt. Ich würde zurückgehen. Ich bin damals geblieben.",
+      "trigger": {
+        "event": "echo:end",
+        "id": "clue.k2.abschied"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.jagdmesser",
+      "speaker": "laub",
+      "text_de": "Er hat ein kleines Jagdmesser mitgenommen. Für die Reise. (Pause.) Von seinen tausend Hunden hat er keinen mitgenommen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.jagdmesser"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 423 f."
+        }
+      ]
+    },
+    {
+      "id": "hanne.k2.01",
+      "speaker": "hanne",
+      "text_de": "Da fährt er. Mit Schnupfen, hab ich gehört. Wir bleiben mit allem anderen hier.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k2.02",
+      "speaker": "hanne",
+      "text_de": "Der Bauer, der ihn gewarnt hat, sitzt unten in der Küche und kriegt eine Suppe. Einen Dukaten soll er kriegen. Ob er den kriegt, wird man sehen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "bauer"
+      }
+    },
+    {
+      "id": "hanne.k2.03",
+      "speaker": "hanne",
+      "text_de": "Ich hätt geschwiegen. Was hat der für uns getan? Aber ich bin auch nicht durch den Wald gerannt. Wer rennt, entscheidet.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "warnen"
+      }
+    },
+    {
+      "id": "hanne.k2.04",
+      "speaker": "hanne",
+      "text_de": "Die aus Rohrbach haben Angst gehabt, dass die Reiter durchs Dorf kommen und alles mitnehmen. Ich glaub, der ist gerannt, damit sie schneller wieder weg sind.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "rohrbach"
+      }
+    },
+    {
+      "id": "hanne.k2.05",
+      "speaker": "hanne",
+      "text_de": "Mein Peter schläft. Gut so. Der soll sich das nicht merken.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "peter"
+      }
+    },
+    {
+      "id": "hanne.k2.06",
+      "speaker": "hanne",
+      "text_de": "Der Kanzlist war vorhin in der Galerie. Mit einer Kerze, um die Zeit. Der hat was versteckt. Ich frag nicht, was.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "galerie",
+        "flag": "flag.k2_versteck_gesehen"
+      }
+    },
+    {
+      "id": "jost.k2.01",
+      "speaker": "jost",
+      "text_de": "Du schon wieder. Du riechst immer noch nach Regen von morgen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k2",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k2.02",
+      "speaker": "jost",
+      "text_de": "Der Bauer? Der hatte Angst, das hab ich gesehen. Wer Angst hat, rennt schneller als einer, der treu ist.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k2",
+        "topic": "bauer"
+      }
+    },
+    {
+      "id": "jost.k2.03",
+      "speaker": "jost",
+      "text_de": "Die Reiter wollten einen aus dem Dorf, der sie führt. Hätte er ja machen können. Für Geld. Hat er nicht.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k2",
+        "topic": "fuehrer"
+      },
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 423: „einen Führer verlangt“"
+        }
+      ]
+    },
+    {
+      "id": "laub.k2.esebeck",
+      "speaker": "laub",
+      "text_de": "Der Minister Esebeck bleibt. Am 25. Februar holen sie ihn ab, die Sansculotten vorn und hinten als Eskorte. Er kommt im September zurück.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.esebeck"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 437 mit Anm. 10"
+        }
+      ]
+    },
+    {
+      "id": "jost.k2.04",
+      "speaker": "jost",
+      "text_de": "Und die Hunde? Hat er was von den Hunden gesagt?",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.8",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k2.05",
+      "speaker": "jost",
+      "text_de": "Wer bläst ab, wenn er nicht da ist?",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.8",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "beat.k2.horn",
+      "speaker": "geraeusch",
+      "text_de": "[Horn vom Zwinger: zwei kurze Töne.]",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.8",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "jost.k2.06",
+      "speaker": "jost",
+      "text_de": "Das bin nicht ich. Lauf.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.8",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.pikeur",
+      "speaker": "laub",
+      "text_de": "Ein Pikeur. Der führt die Meute. Er hat kein Gesicht, oder er zeigt es nicht. Laufen Sie trotzdem.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.8",
+        "step": 5
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.landremont.01",
+      "speaker": "landremont",
+      "text_de": "Was bedeuten denn die Feuer, die ich dort unten im Walde habe leuchten sehen?",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.landremont",
+        "step": 1
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 427 f."
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.landremont.02",
+      "speaker": "handwerker",
+      "text_de": "Das sind Kalköfen.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.landremont",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 428"
+        }
+      ]
+    },
+    {
+      "id": "echo.k2.landremont.03",
+      "speaker": "geraeusch",
+      "text_de": "[Die Reiter sprengen zum Schloss.]",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.landremont",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.koehler",
+      "speaker": "laub",
+      "text_de": "Ein Köhlermeiler. Die gibt es hier überall im Wald. Ein Meiler glimmt, er leuchtet nicht. Aber der General kommt aus Saarbrücken, was weiß der.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.koehler"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.keller",
+      "speaker": "laub",
+      "text_de": "Hier unten bleibt man, bis man vergessen wird. Raus.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-keller"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.wasser",
+      "speaker": "laub",
+      "text_de": "Fließendes Wasser. Darüber kommt er nicht. Das steht in jeder Sage und in keinem Dienstreglement. Heute gilt die Sage.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.kalkoefen",
+      "speaker": "laub",
+      "text_de": "Mannlich schreibt, die Antwort habe ihn gefreut. Mich auch.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10",
+        "step": 2
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 428"
+        }
+      ]
+    },
+    {
+      "id": "laub.k2.tor_licht",
+      "speaker": "laub",
+      "text_de": "Sie haben ihm heimgeleuchtet. Das war freundlich. Sie wissen, wem.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10",
+        "step": 3,
+        "flag": "flag.k2_tor",
+        "value": "leuchten"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.tor_dunkel",
+      "speaker": "laub",
+      "text_de": "Sie haben im Dunkeln gestanden. Die Pferde haben Sie trotzdem gesehen. Pferde sehen alles.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10",
+        "step": 3,
+        "flag": "flag.k2_tor",
+        "value": "dunkel"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.treue",
+      "speaker": "laub",
+      "text_de": "Man wird später sagen, er war treu. Vielleicht. Er hätte auch schweigen können. Er hat gewarnt. Mehr wissen wir nicht.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.laub_treue"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.k2.abend",
+      "speaker": "marlene",
+      "text_de": "Du bist ja ganz durchgefroren. Und du riechst nach Pferd. Ich frag nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-zurueck"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.ende",
+      "speaker": "laub",
+      "text_de": "Vierundzwanzig Wochen und einen Tag später. (Pause.) Im Juli brennt Stroh am besten.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.11"
+      },
+      "once": true
+    }
+  ],
+  "hints": [
+    {
+      "id": "hint.k2.1",
+      "caseId": "case.k2",
+      "level": 1,
+      "text_de": "Ein Datum, ein Name, ein Zaun. Das Datum steht im Wachbuch, der Name nicht. Den Namen kennt man in Rohrbach. Fragen Sie jemanden, der Schwäger hat.",
+      "afterSeconds": 240
+    },
+    {
+      "id": "hint.k2.2",
+      "caseId": "case.k2",
+      "level": 2,
+      "text_de": "Hören Sie an der Tür des Kabinetts genau hin. Drei Leute reden, aber nur einer davon ist der Herzog. Was die anderen sagen, ist nicht, was er sagt. Und was er zuerst nennt, ist ihm am liebsten.",
+      "afterSeconds": 480
+    },
+    {
+      "id": "hint.k2.3",
+      "caseId": "case.k2",
+      "level": 3,
+      "text_de": "Der General kommt nach der Abfahrt, nicht vorher. Bleiben Sie im Ehrenhof, bis die Wagen weg sind, und laufen Sie dann zur Orangerie. Sie werden sowieso laufen.",
+      "afterSeconds": 720
+    }
+  ]
+}
