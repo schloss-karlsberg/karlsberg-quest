@@ -1,0 +1,123 @@
+{
+  "chapter": "k1",
+  "order": 1,
+  "title_de": "Der Hof",
+  "sub_de": "Kapitel 1 · Sommer 1789",
+  "era": "1789",
+  "placeholder": true,
+  "start": "k1_0",
+  "next": "k2",
+  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "beats": [
+    {
+      "id": "k1_0",
+      "title_de": "Morgen in der Feldstation",
+      "placeholder": true,
+      "enter": [
+        { "do": "look", "time": "day" },
+        { "do": "say", "id": "marlene.k1.morgen", "speaker": "marlene", "text": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.", "delay": 2 },
+        { "do": "anchor", "to": "1789", "x": 1192, "z": -1115, "r": 40 },
+        { "do": "objective", "id": "k1.ehrenhof", "text": "Zum Ehrenhof. Q – Zeitwechsel nach 1789", "x": 1192, "z": -1115, "delay": 1 }
+      ],
+      "complete": { "era": "1789" }
+    },
+    {
+      "id": "k1_1",
+      "title_de": "Ankunft",
+      "placeholder": true,
+      "checkpoint": "k1_0",
+      "enter": [
+        { "do": "say", "id": "laub.k1.start", "speaker": "laub", "text": "1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.", "delay": 2.5 },
+        { "do": "say", "id": "laub.k1.fluegel", "speaker": "laub", "text": "Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.", "delay": 1 },
+        { "do": "objective", "id": "k1.registratur", "text": "Die Registratur im Nordflügel", "x": 1202, "z": -1153, "delay": 1 }
+      ],
+      "complete": { "enter": { "x": 1202, "z": -1153, "r": 10, "era": "1789" } }
+    },
+    {
+      "id": "k1_2",
+      "title_de": "Die Registratur",
+      "placeholder": true,
+      "checkpoint": "k1_0",
+      "enter": [
+        { "do": "say", "id": "soll.k1.01", "speaker": "soll", "text": "Nicht stören. Ich bin bei den Millionen." },
+        { "do": "objective", "id": "k1.bauplatz", "text": "Der Bauplatz am Ostende der Galerie", "x": 1276, "z": -1228, "delay": 3 }
+      ],
+      "complete": { "enter": { "x": 1276, "z": -1228, "r": 25, "era": "1789" } }
+    },
+    {
+      "id": "k1_3",
+      "title_de": "Der Bauplatz",
+      "placeholder": true,
+      "checkpoint": "k1_0",
+      "enter": [
+        { "do": "say", "id": "hanne.k1.01", "speaker": "hanne", "text": "Sie sind nicht vom Hof. Sie gucken nicht über mich weg." },
+        { "do": "objective", "id": "k1.zwinger", "text": "Hinter dem Marstall: der Zwinger", "x": 1216, "z": -1571, "delay": 3 }
+      ],
+      "complete": { "enter": { "x": 1216, "z": -1571, "r": 35, "era": "1789" } }
+    },
+    {
+      "id": "k1_4",
+      "title_de": "Der Zwinger",
+      "placeholder": true,
+      "checkpoint": "k1_0",
+      "enter": [
+        { "do": "say", "id": "jost.k1.01", "speaker": "jost", "text": "Du bist nicht von hier. Du riechst nach Regen von morgen." },
+        { "do": "say", "id": "jost.k1.nacht", "speaker": "jost", "text": "Heut Nacht laufen sie in der Karlslust.", "delay": 1 },
+        { "do": "objective", "id": "k1.zurueck", "text": "Zurück zur Feldstation (Q halten) und die Chronik füllen", "delay": 1 }
+      ],
+      "complete": { "all": [{ "era": "today" }, { "any": [{ "confirmed": { "prefix": "entry.k1.", "n": 3 } }, { "flag": "debug.k1a" }] }] }
+    },
+    {
+      "id": "k1_5",
+      "title_de": "Die Karlslust",
+      "placeholder": true,
+      "enter": [
+        { "do": "say", "id": "marlene.k1.flug", "speaker": "marlene", "text": "Die Karlslust? Das ist da, wo heute der Bärenzwinger ist und die Schwanenweiher. Schöne Ecke. Nimm den Überflug, zu Fuß bist du ewig unterwegs.", "delay": 1 },
+        { "do": "anchor", "to": "1789", "x": 1822, "z": 49, "r": 20 },
+        { "do": "objective", "id": "k1.tschifflik", "text": "Zur Tschifflik-Terrasse in der Karlslust (Geisterblick F)", "x": 1822, "z": 49 }
+      ],
+      "complete": { "all": [{ "era": "1789" }, { "enter": { "x": 1822, "z": 49, "r": 60 } }] }
+    },
+    {
+      "id": "k1_6",
+      "title_de": "Die Nacht kommt",
+      "placeholder": true,
+      "checkpoint": "k1_5",
+      "enter": [
+        { "do": "say", "id": "laub.k1.zugesehen", "speaker": "laub", "text": "Von hier hat der Hof zugesehen. Im Dezember 1785.", "delay": 2 },
+        { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1575, "z": -408, "caption": "[Horn: ein langer Ton – die Jagd beginnt]", "delay": 6 },
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.35, "center": { "x": 1850, "z": 150 }, "radius": 320 },
+        { "do": "objective", "id": "k1.rondell", "text": "Das Rondell über der Kaskade", "x": 1815, "z": 348, "delay": 1 }
+      ],
+      "complete": { "enter": { "x": 1815, "z": 348, "r": 20, "era": "1789" } }
+    },
+    {
+      "id": "k1_7",
+      "title_de": "Das Rondell",
+      "placeholder": true,
+      "checkpoint": "k1_5",
+      "enter": [
+        { "do": "threat", "kind": "pack", "active": false },
+        { "do": "cue", "id": "k1.feuerwerk" },
+        { "do": "objective", "id": "k1.flucht", "text": "Zum Tosbecken hinunter – Wasser verwischt die Spur", "x": 1807, "z": 189, "delay": 20 },
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.5, "center": { "x": 1815, "z": 300 }, "radius": 260, "delay": 0.1 }
+      ],
+      "complete": { "enter": { "x": 1807, "z": 189, "r": 30, "era": "1789" } }
+    },
+    {
+      "id": "k1_8",
+      "title_de": "Die Seite",
+      "placeholder": true,
+      "checkpoint": "k1_5",
+      "enter": [
+        { "do": "objective", "id": "k1.ende", "text": "Zurück zur Feldstation (Q halten). Die Fallseite „Der Hof“ fertigstellen." }
+      ],
+      "complete": { "all": [{ "era": "today" }, { "any": [{ "caseComplete": "case.k1" }, { "confirmed": { "prefix": "entry.k1.", "n": 9 } }, { "flag": "debug.k1" }] }] },
+      "exit": [
+        { "do": "threat", "kind": "pack", "active": false },
+        { "do": "sound", "sound": "frost", "caption": "[Auf dem Deckel der Bussole bildet sich Raureif]" },
+        { "do": "say", "id": "laub.k1.ende", "speaker": "laub", "text": "Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.", "delay": 1.5, "ms": 6500 }
+      ]
+    }
+  ]
+}

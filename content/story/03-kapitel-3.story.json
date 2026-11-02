@@ -1,0 +1,113 @@
+{
+  "chapter": "k3",
+  "order": 3,
+  "title_de": "Die Nacht",
+  "sub_de": "Kapitel 3 · Sonntag, 28. Juli 1793",
+  "era": "1793-07",
+  "placeholder": true,
+  "start": "k3_0",
+  "next": "k4",
+  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "beats": [
+    {
+      "id": "k3_0",
+      "title_de": "Feldstation",
+      "placeholder": true,
+      "enter": [
+        { "do": "look", "time": "day" },
+        { "do": "say", "id": "marlene.k3.morgen", "speaker": "marlene", "text": "Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.", "delay": 2 },
+        { "do": "say", "id": "laub.k3.start", "speaker": "laub", "text": "Juli dreiundneunzig. Ich war nicht dabei. Ich bin erst vierzehn Jahre später geboren worden. Und trotzdem habe ich das Gefühl, ich sollte mich entschuldigen.", "delay": 1.5 },
+        { "do": "anchor", "to": "1793-07", "x": 1210, "z": -1114, "r": 35 },
+        { "do": "objective", "id": "k3.ehrenhof", "text": "Zum Ehrenhof. Q – Zeitwechsel in den Juli 1793", "x": 1210, "z": -1114, "delay": 1 }
+      ],
+      "complete": { "era": "1793-07" }
+    },
+    {
+      "id": "k3_1",
+      "title_de": "Der Nachmittag",
+      "placeholder": true,
+      "checkpoint": "k3_0",
+      "enter": [
+        { "do": "objective", "id": "k3.galerie", "text": "Die Galerie: am Westende ist ein Brett im Parkett lose", "x": 1200, "z": -1218, "delay": 2 }
+      ],
+      "complete": { "any": [{ "have": { "clue": "clue.k3.chronik" } }, { "enter": { "x": 1200, "z": -1218, "r": 4, "era": "1793-07" } }] },
+      "exit": [
+        { "do": "flag", "set": { "flag.k3_chronik_zerstreut": true } },
+        { "do": "say", "id": "laub.k3.sowar", "speaker": "laub", "text": "So war das also.", "delay": 2, "ms": 3500 }
+      ]
+    },
+    {
+      "id": "k3_2",
+      "title_de": "Die Fackel",
+      "placeholder": true,
+      "checkpoint": "k3_0",
+      "enter": [
+        { "do": "objective", "id": "k3.kommissaer", "text": "Zurück in den Ehrenhof, zum Kommissär (E)", "x": 1225, "z": -1118, "delay": 1 }
+      ],
+      "complete": { "any": [{ "event": "echo:end", "match": { "id": "echo.k3.fackel" } }, { "enter": { "x": 1225, "z": -1118, "r": 5, "era": "1793-07" } }] },
+      "exit": [
+        { "do": "anchor", "to": "1793-07", "x": 1221, "z": -1296, "r": 25 },
+        { "do": "threat", "kind": "fire", "active": true, "intensity": 0.6, "center": { "x": 1262, "z": -1126 }, "radius": 60, "seconds": 240 }
+      ]
+    },
+    {
+      "id": "k3_3",
+      "title_de": "Der brennende Festsaal",
+      "placeholder": true,
+      "checkpoint": "k3_2",
+      "enter": [
+        { "do": "objective", "id": "k3.festsaal", "text": "Hinauf in den Festsaal. Jetzt, nicht gleich.", "x": 1266, "z": -1127, "delay": 1 }
+      ],
+      "complete": { "enter": { "x": 1266, "z": -1127, "r": 9, "era": "1793-07" } },
+      "exit": [
+        {
+          "do": "choice",
+          "id": "k3.objekt",
+          "prompt": "Drei Dinge sind zu retten. Tragen kannst du eines.",
+          "seconds": 40,
+          "fallback": 3,
+          "options": [
+            { "label": "Den Türgriff aus Hannes Hand", "set": { "flag.k3_objekt": "tuergriff" } },
+            { "label": "Den Dukaten im Fensterbrett", "set": { "flag.k3_objekt": "dukat" } },
+            { "label": "Die vergoldete Uhr mit Alabaster, die noch tickt", "set": { "flag.k3_objekt": "uhr" } },
+            { "label": "Nichts. Hinaus.", "set": { "flag.k3_objekt": "nichts" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "k3_4",
+      "title_de": "Hinaus",
+      "placeholder": true,
+      "checkpoint": "k3_2",
+      "enter": [
+        { "do": "objective", "id": "k3.gaertnerei", "text": "Hinaus – zur ummauerten Holländischen Gärtnerei", "x": 1221, "z": -1296, "delay": 1 },
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.6, "center": { "x": 1230, "z": -1250 }, "radius": 300, "delay": 3 }
+      ],
+      "complete": { "enter": { "x": 1221, "z": -1296, "r": 25, "era": "1793-07" } }
+    },
+    {
+      "id": "k3_5",
+      "title_de": "Der Zwinger",
+      "placeholder": true,
+      "checkpoint": "k3_2",
+      "enter": [
+        { "do": "threat", "kind": "fire", "active": false },
+        { "do": "objective", "id": "k3.zwinger", "text": "Nach Norden, zum Zwinger", "x": 1216, "z": -1571, "delay": 1 }
+      ],
+      "complete": { "enter": { "x": 1216, "z": -1571, "r": 30, "era": "1793-07" } },
+      "exit": [{ "do": "threat", "kind": "pack", "active": false }]
+    },
+    {
+      "id": "k3_6",
+      "title_de": "Feldstation",
+      "placeholder": true,
+      "enter": [{ "do": "objective", "id": "k3.ende", "text": "Zurück (Q halten). Die Fallseite „Die Nacht“ fertigstellen." }],
+      "complete": { "all": [{ "era": "today" }, { "any": [{ "caseComplete": "case.k3" }, { "confirmed": { "prefix": "entry.k3.", "n": 9 } }, { "flag": "debug.k3" }] }] },
+      "exit": [
+        { "do": "sound", "sound": "compass", "caption": "[Die Bussole riecht nach kaltem Rauch]" },
+        { "do": "say", "id": "laub.k3.ende", "speaker": "laub", "text": "Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.", "delay": 1.5, "ms": 6500 }
+      ]
+    }
+  ]
+}

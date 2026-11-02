@@ -1,0 +1,1093 @@
+{
+  "chapter": "prolog",
+  "order": 0,
+  "title_de": "Vermessung",
+  "sub_de": "Prolog · heute, ein Novembernachmittag",
+  "era": "today",
+  "start": "p1",
+  "next": "k1",
+  "checkpoint": {
+    "x": 760,
+    "z": -902,
+    "yaw": 0,
+    "era": "today"
+  },
+  "on": [
+    {
+      "id": "nordterrasse",
+      "when": {
+        "enter": {
+          "x": 1227,
+          "z": -1466,
+          "r": 60,
+          "era": "today"
+        }
+      },
+      "do": [
+        {
+          "do": "give",
+          "clue": "clue.p.nordterrasse",
+          "kind": "relief"
+        },
+        {
+          "do": "say",
+          "id": "laub.p.nordterrasse",
+          "speaker": "laub",
+          "text": "Auch eben. Aber da haben keine Flügel gestanden, da sind Pferde im Kreis gelaufen. Vermutlich. Ich war nicht eingeladen."
+        }
+      ]
+    },
+    {
+      "id": "hohlweg-early",
+      "when": {
+        "all": [
+          {
+            "enter": {
+              "x": 1172,
+              "z": -1238,
+              "r": 22,
+              "era": "today"
+            }
+          },
+          {
+            "scan": 2
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "give",
+          "clue": "clue.p.hohlweg",
+          "kind": "relief"
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.hohlweg",
+          "speaker": "marlene",
+          "text": "Das ist ein Hohlweg. Karren, Hufe, Regen, ein paar hundert Jahre, und der Weg frisst sich in den Boden. Bei Nebel ist das der dunkelste Ort im ganzen Revier. Und der stillste."
+        }
+      ]
+    },
+    {
+      "id": "eiskeller-early",
+      "when": {
+        "all": [
+          {
+            "enter": {
+              "x": 1508,
+              "z": -1296,
+              "r": 18,
+              "era": "today"
+            }
+          },
+          {
+            "scan": 2
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "give",
+          "clue": "clue.p.eiskeller",
+          "kind": "relief"
+        },
+        {
+          "do": "say",
+          "id": "laub.p.eiskeller",
+          "speaker": "laub",
+          "text": "Bombentrichter kommen selten allein, sagt Ihr Handbuch. Und Köhler bauen ihre Meiler nicht in Löcher, sondern auf Platten."
+        }
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "p1",
+      "title_de": "Die Feldstation",
+      "enter": [
+        {
+          "do": "look",
+          "time": "day"
+        },
+        {
+          "do": "skill",
+          "id": "relief",
+          "tier": 1
+        },
+        {
+          "do": "sound",
+          "sound": "radio",
+          "caption": "[Das Funkgerät rauscht]",
+          "delay": 1.5
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.01",
+          "speaker": "marlene",
+          "text": "{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter.",
+          "delay": 0.6
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.01b",
+          "speaker": "marlene",
+          "text": "Wir wollen wissen, was unter dem Wald liegt, bevor wir dort Wege bauen. Und bevor du fragst: Ja, da oben war mal ein Schloss. Der Wald steht drauf."
+        },
+        {
+          "do": "objective",
+          "id": "station",
+          "text": "Den Bauwagen untersuchen: Pinnwand, Regal, Schublade",
+          "x": 760,
+          "z": -915,
+          "delay": 0.5
+        }
+      ],
+      "on": [
+        {
+          "id": "pinnwand",
+          "when": {
+            "hub": "chronik"
+          },
+          "do": [
+            {
+              "do": "give",
+              "clue": "clue.p.lageplan",
+              "kind": "document",
+              "toast": "Lageplan Schloss Karlsberg (Rekonstruktion 1789, Hypothese)"
+            },
+            {
+              "do": "give",
+              "clue": "clue.p.messtischblatt",
+              "kind": "map",
+              "toast": "Messtischblatt 1935 – Marlenes Bleistift: „liegt nur 10–15 m daneben“"
+            }
+          ]
+        },
+        {
+          "id": "regal",
+          "when": {
+            "hub": "shelf"
+          },
+          "do": [
+            {
+              "do": "give",
+              "clue": "clue.p.handbuch",
+              "kind": "document",
+              "toast": "Reliefmuster-Handbuch des Forstamts (8 Karten)"
+            }
+          ]
+        },
+        {
+          "id": "schublade",
+          "when": {
+            "hub": "drawer"
+          },
+          "do": [
+            {
+              "do": "give",
+              "clue": "clue.p.laubblatt",
+              "kind": "map",
+              "toast": "Bayerisches Positionsblatt, „Aufgen. Nov. 1840. Q. L.“"
+            },
+            {
+              "do": "give",
+              "item": "item.bussole"
+            },
+            {
+              "do": "flag",
+              "set": {
+                "story.compass": true
+              }
+            },
+            {
+              "do": "skill",
+              "id": "kartograf",
+              "tier": 1,
+              "toast": "Karte vergleichen (M) freigeschaltet"
+            },
+            {
+              "do": "say",
+              "id": "marlene.p.02",
+              "speaker": "marlene",
+              "text": "Ach, die Bussole. Die lag schon im Wagen, als wir ihn gekauft haben. Die zeigt nicht nach Norden, hab ich festgestellt. Behalt sie trotzdem, sie bringt Glück, sagt der Kollege. Er hat sie nie angefasst.",
+              "delay": 1.2
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "all": [
+          {
+            "any": [
+              {
+                "have": {
+                  "clue": "clue.p.laubblatt"
+                }
+              },
+              {
+                "event": "clue:found",
+                "match": {
+                  "id": "clue.p.laubblatt"
+                }
+              }
+            ]
+          },
+          {
+            "any": [
+              {
+                "have": {
+                  "clue": "clue.p.lageplan"
+                }
+              },
+              {
+                "event": "clue:found",
+                "match": {
+                  "id": "clue.p.lageplan"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "title_de": "Der Damm",
+      "enter": [
+        {
+          "do": "objective",
+          "id": "damm",
+          "text": "Zum Damm des Karlsbergweihers (Relief-Blick: Taste 1)",
+          "x": 819,
+          "z": -875,
+          "delay": 1
+        }
+      ],
+      "on": [
+        {
+          "id": "am-damm",
+          "when": {
+            "enter": {
+              "x": 819,
+              "z": -875,
+              "r": 32,
+              "era": "today"
+            }
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "marlene.p.damm",
+              "speaker": "marlene",
+              "text": "Siehst du den Weiher? Das ist kein Naturteich, das ist Barock. Schalt mal auf Lokales Relief, dann siehst du mehr."
+            },
+            {
+              "do": "skill",
+              "id": "relief",
+              "tier": 2,
+              "toast": "Relief-Blick 2 (Lokales Relief, Taste 2) freigeschaltet"
+            },
+            {
+              "do": "objective",
+              "id": "mauerrest",
+              "text": "Lokales Relief (2): Gerade Kanten neben dem Damm",
+              "x": 813,
+              "z": -903
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "all": [
+          {
+            "enter": {
+              "x": 813,
+              "z": -903,
+              "r": 26,
+              "era": "today"
+            }
+          },
+          {
+            "scan": 2
+          }
+        ]
+      },
+      "exit": [
+        {
+          "do": "give",
+          "clue": "clue.p.mauerrest",
+          "kind": "relief",
+          "toast": "Reliefmuster entdeckt: Fundament und Mauerzug"
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.mauerrest",
+          "speaker": "marlene",
+          "text": "Gerade Linien und rechte Winkel macht der Wald nicht. Das war mal eine Mauer."
+        }
+      ]
+    },
+    {
+      "id": "p3",
+      "title_de": "Der Weg nach oben",
+      "enter": [
+        {
+          "do": "objective",
+          "id": "orangerie",
+          "text": "Den Waldweg hinauf nach Osten: die hohe Stufe im Wald",
+          "x": 1237,
+          "z": -966,
+          "delay": 1.5
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.weg",
+          "speaker": "marlene",
+          "text": "Und, {Name}: Wir schauen, wir graben nicht. Nichts anfassen, nichts mitnehmen. Was da im Boden liegt, gehört dem Land, und es ist geschützt.",
+          "delay": 9
+        }
+      ],
+      "on": [
+        {
+          "id": "vat",
+          "when": {
+            "enter": {
+              "x": 1237,
+              "z": -966,
+              "r": 70,
+              "era": "today"
+            }
+          },
+          "do": [
+            {
+              "do": "skill",
+              "id": "relief",
+              "tier": 3,
+              "toast": "Relief-Blick 3 (VAT, Taste 3) freigeschaltet"
+            },
+            {
+              "do": "objective",
+              "id": "orangerie",
+              "text": "VAT (3): Die Kante vermessen",
+              "x": 1237,
+              "z": -966
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "all": [
+          {
+            "enter": {
+              "x": 1237,
+              "z": -966,
+              "r": 42,
+              "era": "today"
+            }
+          },
+          {
+            "scan": 3
+          }
+        ]
+      },
+      "exit": [
+        {
+          "do": "give",
+          "clue": "clue.p.orangeriemauer",
+          "kind": "relief",
+          "toast": "Eine schnurgerade Kante, 81 m lang, 5,3 m hoch"
+        },
+        {
+          "do": "sound",
+          "sound": "compass",
+          "caption": "[Die Bussole zittert in deiner Tasche]",
+          "delay": 1.2
+        },
+        {
+          "do": "flag",
+          "set": {
+            "story.laub": true
+          }
+        },
+        {
+          "do": "say",
+          "id": "laub.p.intro",
+          "speaker": "laub",
+          "text": "Fünf Meter dreißig. Für Orangen.",
+          "delay": 1.4,
+          "ms": 3800
+        },
+        {
+          "do": "say",
+          "id": "laub.p.intro.b",
+          "speaker": "laub",
+          "text": "Erschrecken Sie nicht, das ist schlecht für die Messgenauigkeit. Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.intro.c",
+          "speaker": "laub",
+          "text": "Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.intro.d",
+          "speaker": "laub",
+          "text": "Sie vermessen den Berg? Gut. Dann sind wir zu zweit. Ich bin der Kleinere."
+        }
+      ]
+    },
+    {
+      "id": "p4",
+      "title_de": "Der Ehrenhof",
+      "enter": [
+        {
+          "do": "objective",
+          "id": "ehrenhof",
+          "text": "Die ebene Lichtung oberhalb: der Ehrenhof",
+          "x": 1216,
+          "z": -1114,
+          "delay": 1
+        },
+        {
+          "do": "say",
+          "id": "laub.p.intro2",
+          "speaker": "laub",
+          "text": "Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.",
+          "delay": 12
+        }
+      ],
+      "on": [
+        {
+          "id": "hof",
+          "when": {
+            "enter": {
+              "x": 1216,
+              "z": -1114,
+              "r": 36,
+              "era": "today"
+            }
+          },
+          "do": [
+            {
+              "do": "give",
+              "clue": "clue.p.ehrenhof",
+              "kind": "relief"
+            },
+            {
+              "do": "say",
+              "id": "laub.p.ehrenhof",
+              "speaker": "laub",
+              "text": "Drei Flügel, offen zur Straße. So baut man, wenn man gesehen werden will."
+            },
+            {
+              "do": "objective",
+              "id": "ehrenhof",
+              "text": "Laubs Karte von 1840 darüberlegen (M)",
+              "x": 1216,
+              "z": -1114,
+              "delay": 1
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "all": [
+          {
+            "enter": {
+              "x": 1216,
+              "z": -1114,
+              "r": 60,
+              "era": "today"
+            }
+          },
+          {
+            "map": true
+          }
+        ]
+      },
+      "exit": [
+        {
+          "do": "give",
+          "clue": "clue.p.kartenvergleich",
+          "kind": "map",
+          "toast": "Kartenvergleich: rund 50 m Versatz nach Osten"
+        },
+        {
+          "do": "say",
+          "id": "laub.p.versatz",
+          "speaker": "laub",
+          "text": "Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war.",
+          "delay": 1
+        },
+        {
+          "do": "say",
+          "id": "laub.p.versatz.b",
+          "speaker": "laub",
+          "text": "Die Herrschaften, die es zweihundert Jahre später auf ihre Koordinaten genagelt haben, die hatten offenbar einen schlechten Tag."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.versatz.c",
+          "speaker": "laub",
+          "text": "Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer. Und ein Geometer merkt es ewig."
+        }
+      ]
+    },
+    {
+      "id": "p5",
+      "title_de": "Der Hohlweg",
+      "enter": [
+        {
+          "do": "objective",
+          "id": "hohlweg",
+          "text": "Westlich des Schlosses: ein Weg tief im Boden (Relief 2 oder 3)",
+          "x": 1172,
+          "z": -1238,
+          "delay": 4
+        }
+      ],
+      "complete": {
+        "any": [
+          {
+            "have": {
+              "clue": "clue.p.hohlweg"
+            }
+          },
+          {
+            "all": [
+              {
+                "enter": {
+                  "x": 1172,
+                  "z": -1238,
+                  "r": 22,
+                  "era": "today"
+                }
+              },
+              {
+                "scan": 2
+              }
+            ]
+          }
+        ]
+      },
+      "exit": [
+        {
+          "do": "give",
+          "clue": "clue.p.hohlweg",
+          "kind": "relief"
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.hohlweg",
+          "speaker": "marlene",
+          "text": "Das ist ein Hohlweg. Karren, Hufe, Regen, ein paar hundert Jahre, und der Weg frisst sich in den Boden. Bei Nebel ist das der dunkelste Ort im ganzen Revier. Und der stillste."
+        }
+      ]
+    },
+    {
+      "id": "p6",
+      "title_de": "Die Grube",
+      "enter": [
+        {
+          "do": "objective",
+          "id": "eiskeller",
+          "text": "Östlich des Schlosses, an einer Wegkreuzung: eine runde Grube mit Ringwall",
+          "x": 1508,
+          "z": -1296,
+          "delay": 3
+        }
+      ],
+      "complete": {
+        "any": [
+          {
+            "have": {
+              "clue": "clue.p.eiskeller"
+            }
+          },
+          {
+            "all": [
+              {
+                "enter": {
+                  "x": 1508,
+                  "z": -1296,
+                  "r": 18,
+                  "era": "today"
+                }
+              },
+              {
+                "scan": 2
+              }
+            ]
+          }
+        ]
+      },
+      "exit": [
+        {
+          "do": "give",
+          "clue": "clue.p.eiskeller",
+          "kind": "relief",
+          "toast": "Runde Grube, 10 m breit, 1,8 m tief, mit Ringwall"
+        },
+        {
+          "do": "say",
+          "id": "laub.p.eiskeller",
+          "speaker": "laub",
+          "text": "Bombentrichter kommen selten allein, sagt Ihr Handbuch. Und Köhler bauen ihre Meiler nicht in Löcher, sondern auf Platten."
+        }
+      ]
+    },
+    {
+      "id": "p7",
+      "title_de": "Die Punktwolke",
+      "enter": [
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "sound",
+          "sound": "radio",
+          "caption": "[Das Funkgerät knackt]",
+          "delay": 4
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.punkte",
+          "speaker": "marlene",
+          "text": "Ich schick dir was aufs Tablet. Das hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.",
+          "delay": 0.5
+        },
+        {
+          "do": "sound",
+          "sound": "beep",
+          "caption": "[Das Tablet piept: eine neue Datei]",
+          "delay": 1
+        },
+        {
+          "do": "give",
+          "clue": "clue.p.punktwolke",
+          "kind": "document",
+          "toast": "Punktwolke: Abdrücke quer über den Ehrenhof, paarweise, im Trab"
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.punkte.b",
+          "speaker": "marlene",
+          "text": "Wildschweine machen andere Spuren. Und Hunde waren da nicht, der Wald war gesperrt.",
+          "delay": 1.5
+        },
+        {
+          "do": "say",
+          "id": "kollege.p.messfehler",
+          "speaker": "kollege",
+          "text": "Mehrfachreflexion. Ein Messfehler."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.punktwolke",
+          "speaker": "laub",
+          "text": "Hunde.",
+          "ms": 3200
+        },
+        {
+          "do": "say",
+          "id": "laub.p.punktwolke.b",
+          "speaker": "laub",
+          "text": "Fragen Sie nicht. Füllen Sie die Seite aus."
+        },
+        {
+          "do": "sound",
+          "sound": "compass",
+          "caption": "[Der Deckel der Bussole springt auf]",
+          "delay": 1
+        },
+        {
+          "do": "give",
+          "clue": "clue.p.seite_eins",
+          "kind": "document",
+          "toast": "Eine angesengte Seite: „Was der Hof schuldig blieb“"
+        },
+        {
+          "do": "toast",
+          "text": "Die Chronik ist offen (Tab)",
+          "ms": 4200
+        }
+      ],
+      "complete": {
+        "timer": 24
+      }
+    },
+    {
+      "id": "p8",
+      "title_de": "Die Chronik öffnet sich",
+      "enter": [
+        {
+          "do": "objective",
+          "id": "chronik",
+          "text": "Die Fallseite „Vermessung“ füllen (Tab). Bestätigt wird nur im Heute."
+        }
+      ],
+      "complete": {
+        "any": [
+          {
+            "confirmed": {
+              "prefix": "entry.p.",
+              "n": 3
+            }
+          },
+          {
+            "event": "chronik:batch",
+            "match": {
+              "correct": true
+            }
+          }
+        ]
+      },
+      "exit": [
+        {
+          "do": "sound",
+          "sound": "compass",
+          "caption": "[Die Nadel der Bussole schwingt zum Ehrenhof]"
+        },
+        {
+          "do": "say",
+          "id": "laub.p.regeln",
+          "speaker": "laub",
+          "text": "So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick.",
+          "delay": 0.8
+        },
+        {
+          "do": "say",
+          "id": "laub.p.regeln.b",
+          "speaker": "laub",
+          "text": "Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.regeln.c",
+          "speaker": "laub",
+          "text": "Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.regeln.d",
+          "speaker": "laub",
+          "text": "Zweitens: Ihre Laterne brennt dort drüben auf Kosten Ihrer Zeit. Wenn das Öl aus ist, sind Sie wieder hier. Unsanft."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.regeln.e",
+          "speaker": "laub",
+          "text": "Drittens: Wenn Sie ein Horn hören, legen Sie sich hin. Nicht diskutieren. Hinlegen."
+        },
+        {
+          "do": "say",
+          "id": "laub.p.regeln.f",
+          "speaker": "laub",
+          "text": "Viertens: Wenn Sie zurück wollen, halten Sie Q. Es geht nicht, solange Sie jemand ansieht."
+        }
+      ]
+    },
+    {
+      "id": "p9",
+      "title_de": "Der erste Wechsel",
+      "enter": [
+        {
+          "do": "anchor",
+          "to": "1789",
+          "x": 1216,
+          "z": -1114,
+          "r": 35
+        },
+        {
+          "do": "objective",
+          "id": "wechsel",
+          "text": "Zum Ehrenhof. Dort: Q – Zeitwechsel",
+          "x": 1216,
+          "z": -1114
+        }
+      ],
+      "on": [
+        {
+          "id": "am-anker",
+          "when": {
+            "enter": {
+              "x": 1216,
+              "z": -1114,
+              "r": 35,
+              "era": "today"
+            }
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "prompt",
+              "key": "Q",
+              "text": "Zeitwechsel: 1789"
+            }
+          ]
+        },
+        {
+          "id": "weg-vom-anker",
+          "when": {
+            "leave": {
+              "x": 1216,
+              "z": -1114,
+              "r": 38
+            }
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "prompt",
+              "key": null,
+              "text": null
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "era": "1789"
+      },
+      "exit": [
+        {
+          "do": "prompt",
+          "key": null,
+          "text": null
+        }
+      ]
+    },
+    {
+      "id": "p9b",
+      "title_de": "Sommer 1789",
+      "checkpoint": "p9",
+      "enter": [
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "anchor",
+          "to": null
+        },
+        {
+          "do": "threat",
+          "kind": "oblivion",
+          "active": true,
+          "intensity": 0.15,
+          "seconds": 90
+        },
+        {
+          "do": "say",
+          "id": "diener.p.zufuss",
+          "speaker": "diener",
+          "echo": true,
+          "text": "Zu Fuß, Monsieur! Hinauf fährt nur Serenissimus.",
+          "delay": 3
+        },
+        {
+          "do": "say",
+          "id": "laub.p.1789",
+          "speaker": "laub",
+          "text": "Sehen Sie. Kein Wald. Den hat man erst hinterher gepflanzt, als es nichts mehr zu sehen gab.",
+          "delay": 3
+        },
+        {
+          "do": "say",
+          "id": "gaertner.p.summen",
+          "speaker": "gaertner",
+          "echo": true,
+          "text": "(Ein Gärtner an der Rabatte summt ein Lied.)",
+          "delay": 2
+        },
+        {
+          "do": "say",
+          "id": "gaertner.p.pst",
+          "speaker": "gaertner2",
+          "echo": true,
+          "text": "Pst. Willst du Prügel?"
+        },
+        {
+          "do": "sound",
+          "sound": "howl",
+          "x": 1216,
+          "z": -1571,
+          "caption": "[Fern im Norden heult ein einzelner Hund]",
+          "delay": 4
+        },
+        {
+          "do": "sound",
+          "sound": "compass",
+          "caption": "[Die Bussole ruckt]",
+          "delay": 2.5
+        },
+        {
+          "do": "say",
+          "id": "laub.p.zurueck",
+          "speaker": "laub",
+          "text": "Zurück. Jetzt.",
+          "ms": 3000
+        },
+        {
+          "do": "prompt",
+          "key": "Q",
+          "text": "halten: zurück zur Feldstation"
+        }
+      ],
+      "on": [
+        {
+          "id": "oel-aus",
+          "when": {
+            "timer": 90
+          },
+          "do": [
+            {
+              "do": "toast",
+              "text": "Das Öl ist aus. Die Erinnerung lässt dich los."
+            },
+            {
+              "do": "shift",
+              "to": "today",
+              "reason": "lantern"
+            },
+            {
+              "do": "teleport",
+              "x": 760,
+              "z": -902,
+              "yaw": 0,
+              "delay": 1.2
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "era": "today"
+      },
+      "exit": [
+        {
+          "do": "prompt",
+          "key": null,
+          "text": null
+        },
+        {
+          "do": "threat",
+          "kind": "oblivion",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "p10",
+      "title_de": "Zurück",
+      "enter": [
+        {
+          "do": "look",
+          "time": "dusk"
+        },
+        {
+          "do": "say",
+          "id": "laub.bark.return.1",
+          "speaker": "laub",
+          "text": "Wieder im November. Ich mag den November. Im November ist alles, was passieren konnte, schon passiert.",
+          "delay": 2
+        },
+        {
+          "do": "say",
+          "id": "marlene.p.abend",
+          "speaker": "marlene",
+          "text": "Du bist ja ganz blass. Mach dir einen Tee. Morgen früh komm ich mit Brötchen vorbei.",
+          "delay": 1.5
+        },
+        {
+          "do": "objective",
+          "id": "chronik",
+          "text": "Die Fallseite „Vermessung“ zu Ende füllen (Tab)",
+          "x": 760,
+          "z": -915,
+          "delay": 1
+        },
+        {
+          "do": "autosave"
+        }
+      ],
+      "complete": {
+        "any": [
+          {
+            "confirmed": {
+              "prefix": "entry.p.",
+              "n": 6
+            }
+          },
+          {
+            "caseComplete": "case.p"
+          },
+          {
+            "caseComplete": "fall.p"
+          }
+        ]
+      }
+    },
+    {
+      "id": "p11",
+      "title_de": "Neue Punkte",
+      "enter": [
+        {
+          "do": "look",
+          "time": "night"
+        },
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "sound",
+          "sound": "beep",
+          "caption": "[Der Laptop piept]",
+          "delay": 2
+        },
+        {
+          "do": "say",
+          "id": "laptop.p.neu",
+          "speaker": "laptop",
+          "text": "Neue Punkte in der Punktwolke vom Februar 2025. Die Spur läuft vom Ehrenhof den Hang herunter, über den Damm, bis an die Tür des Bauwagens. Dort hört sie auf.",
+          "delay": 0.8,
+          "ms": 7500
+        },
+        {
+          "do": "sound",
+          "sound": "frost",
+          "caption": "[Am Fenster knistert Reif. Draußen hat es acht Grad.]",
+          "delay": 1.5
+        },
+        {
+          "do": "sound",
+          "sound": "horn",
+          "signal": "anblasen",
+          "x": 1227,
+          "z": -1466,
+          "caption": "[Ganz fern: ein Horn, ein langer Ton]",
+          "delay": 3
+        },
+        {
+          "do": "say",
+          "id": "laub.p.ende",
+          "speaker": "laub",
+          "text": "Machen Sie die Laterne aus. Und dann schlafen Sie. Morgen ist 1789.",
+          "delay": 4,
+          "ms": 6000
+        },
+        {
+          "do": "unlock",
+          "chapter": "k1"
+        },
+        {
+          "do": "autosave"
+        }
+      ],
+      "complete": {
+        "timer": 26
+      }
+    }
+  ]
+}

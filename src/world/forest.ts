@@ -265,6 +265,8 @@ export class Forest {
   private dirty = true;
   farDist = 700;
   readonly stats = { near: 0, far: 0, total: 0 };
+  /** Circles kept free of trees (feature buildings such as the field station). */
+  private readonly clearings: { x: number; z: number; r: number }[] = [];
 
   constructor() {
     this.object.name = 'forest';
@@ -340,6 +342,7 @@ export class Forest {
           const dz = arr[k + 2]! - p.z;
           const d = Math.hypot(dx, dz);
           if (d > far) continue;
+          if (this.clearings.length && this.clearings.some((c) => Math.hypot(arr[k]! - c.x, arr[k + 2]! - c.z) < c.r)) continue;
           const kind = arr[k + 5]!;
           const bi = (d < NEAR_DIST ? 0 : 2) + kind;
           const b = this.batches[bi]!;
@@ -369,6 +372,12 @@ export class Forest {
     });
     this.stats.near = counts[0]! + counts[1]!;
     this.stats.far = counts[2]! + counts[3]!;
+  }
+
+  /** Keep a circle free of trees in every era (e.g. a feature's building). */
+  addClearing(x: number, z: number, r: number): void {
+    this.clearings.push({ x, z, r });
+    this.dirty = true;
   }
 
   /** Force an instance rebuild on the next update (after teleports). */
