@@ -14,6 +14,7 @@
  *  - interiors: room:enter, room:leave
  *  - skills  : skill:unlocked (story / chronik emit skill:grant)
  *  - tools   : measure:done
+ *  - menagerie: menagerie:* (the escaped animals of 1789 / 1793-07; story spawns them)
  *
  * Integration rules (see docs/ARCHITECTURE.md §12):
  *  - The Q key belongs to the story (anchor flags shift.allowed/target/x/z/r, hold Q in the past
@@ -25,6 +26,9 @@
 import type { Era } from '../core/era';
 
 export type ThreatKind = 'pack' | 'fire' | 'oblivion';
+
+/** The escaped animals of the Karlsberg menagerie (codex cx.12). */
+export type MenagerieAnimal = 'cassowary' | 'dromedary' | 'jaguar';
 
 export interface ThreatConfig {
   kind: ThreatKind;
@@ -74,8 +78,28 @@ declare module '../core/events' {
     'lantern:oil': { oil: number };
     'lantern:empty': Record<string, never>;
 
-    /** Any threat got the player. story handles the return to the field station. */
-    'player:caught': { by: ThreatKind };
+    /**
+     * W8 finale at the kennel (pack mode 'finale'): 'gathered' (circle closed), 'returned' (ran
+     * off, faded back into the circle), 'calmed' (lay flat with the light: hounds lie down),
+     * 'faded' (the last eyes went out, the horn is silent — the beat may end).
+     */
+    'hunt:finale': { outcome: 'gathered' | 'returned' | 'calmed' | 'faded' };
+
+    /**
+     * Any threat got the player. story handles the return to the field station.
+     * soft: brought home without loss (Ch. 4 drive: "Die Meute hat dich heimgebracht").
+     */
+    'player:caught': { by: ThreatKind; soft?: boolean };
+
+    // ---- menagerie (owner: menagerie; story emits spawn / clear) ---------------------------
+    /**
+     * Put an escaped animal into the current era at x/z (local frame). heading in radians
+     * (player-yaw convention), count for a group (dromedaries), id to address / clear it later.
+     * Also accepted as story action `{"do":"cue","id":"menagerie:spawn","data":{animal,x,z,…}}`.
+     */
+    'menagerie:spawn': { animal: MenagerieAnimal; x: number; z: number; id?: string; heading?: number; count?: number };
+    /** Remove one animal (id) or all of them. */
+    'menagerie:clear': { id?: string };
 
     // ---- chronik (owner: chronik) ---------------------------------------------------------
     'clue:found': { id: string; kind: string };

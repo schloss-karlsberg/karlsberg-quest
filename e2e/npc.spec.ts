@@ -198,7 +198,7 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   // ---- caught under the lossless rule: game-time curtain, nothing lost, no extra shift -------------
   await page.evaluate(() => window.kq!.story!.caught('pack', 2000));
   await expect(page.getByTestId('story-curtain')).toHaveClass(/kqs-down/);
-  await expect(page.getByTestId('story-curtain')).toContainText('Die Meute hat dich heimgebracht.');
+  await expect(page.getByTestId('story-curtain')).toContainText('Die Meute hat dich heimgebracht');
   await page.waitForTimeout(400);
   // no real time passes for the curtain in manual mode
   expect((await story(page)).era).toBe('1789');

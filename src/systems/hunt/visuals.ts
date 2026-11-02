@@ -528,6 +528,8 @@ export interface VisualInput {
   mist: number;
   /** Snap to the simulation (manual stepping / screenshots). */
   snap: boolean;
+  /** 0..1 finale calm-down: the mist settles low and thick around the resting pack. */
+  settle?: number;
 }
 
 const MAX_SMOKE = 1500;
@@ -536,6 +538,10 @@ const MAX_WISPS = 420;
 const MIST_N = 80;
 const MIST_R = 72;
 const _m = new Matrix4();
+const smooth01 = (v: number) => {
+  const c = Math.max(0, Math.min(1, v));
+  return c * c * (3 - 2 * c);
+};
 const _v = new Vector3();
 
 export class PackVisuals {
@@ -662,9 +668,10 @@ export class PackVisuals {
         v.vz = -Math.cos(a.heading) * a.speed;
       }
       // presence: fade in on spawn, out when dissolving (staggered per agent)
-      let target = 1;
-      if (o.dissolve >= 0) target = o.dissolve < (a.idx + (a.kind === 'pikeur' ? n : 0) + 1) / (n + 2) ? 1 : 0;
+      let target = 1 - a.gone;
+      if (o.dissolve >= 0) target = Math.min(target, o.dissolve < (a.idx + (a.kind === 'pikeur' ? n : 0) + 1) / (n + 2) ? 1 : 0);
       v.presence += (target - v.presence) * (o.snap && o.dissolve < 0 ? 1 : Math.min(1, dt * (target > v.presence ? 1.2 : 2.5)));
+      if (a.gone > 0) v.presence = Math.min(v.presence, 1 - a.gone);
       v.sniff += ((a.sniffing ? 1 : 0) - v.sniff) * (o.snap ? 1 : Math.min(1, dt * 4));
       // blinking
       v.blinkT -= dt;
@@ -738,6 +745,9 @@ export class PackVisuals {
     const chase = o.state === 'chasing' ? 1 : 0;
     const eyeOn = v.eye * v.blink * v.presence;
     const sn = v.sniff * (pik ? 0.4 : 1);
+    // finale: lying down (body sinks, forelegs stretch forward, hind legs fold, head on the paws)
+    const lie = pik ? 0 : smooth01(a.lie);
+    const drop = lie * 0.4 * S;
     for (const p of v.template) {
       let x = p.x;
       let y = p.y;
@@ -751,6 +761,15 @@ export class PackVisuals {
         x = p.hip[0];
         y = p.hip[1] - d * Math.cos(ang) + lift;
         z = p.hip[2] * (1 + 0.15 * run) + d * Math.sin(ang);
+        if (lie > 0) {
+          const front = L < 2;
+          const lx = p.hip[0] * (front ? 1.1 : 1.9);
+          const ly = 0.07 * S + (1 - p.f) * 0.06 * S;
+          const lz = p.hip[2] + (front ? p.f * 0.36 * S : -p.f * 0.08 * S);
+          x += (lx - x) * lie;
+          y += (ly - y) * lie;
+          z += (lz - z) * lie;
+        }
       } else {
         z *= 1 + 0.14 * run; // stretched at full gallop
         if (p.bone === HEAD) {
@@ -765,7 +784,15 @@ export class PackVisuals {
           x += Math.sin(t * 1.7 + p.seed * 9) * 0.05 * p.f;
         }
         y += bob * (p.bone === RIDER || p.bone === CLOAK ? 1.4 : 1);
+        if (lie > 0) {
+          if (p.bone === HEAD) {
+            y -= lie * 0.5 * S;
+            z += lie * 0.05 * S;
+          } else if (p.bone === TAIL) y -= lie * (0.45 + 0.2 * p.f) * S;
+          else y -= drop;
+        }
       }
+      if (lie > 0.9 && p.bone === BODY && !o.reducedMotion) y += Math.sin(t * 1.6 + a.idx) * 0.012 * (1 - a.dim);
       // smoky turbulence
       x += Math.sin(t * 1.7 + p.seed * 37) * 0.02;
       y += Math.sin(t * 1.3 + p.seed * 53) * 0.025 + rise;
@@ -779,7 +806,7 @@ export class PackVisuals {
       this.smoke.push(wx, wy, wz, p.size * (1 + 0.12 * Math.sin(t * 0.9 + p.seed * 10)), alphaBase * (0.7 + 0.3 * p.seed), p.seed, heat);
     }
     // emit wisps: a constant seep, a trail when running
-    v.emit += o.dt * (pik ? 9 + speed * 7 : 4 + speed * 8) * v.presence;
+    v.emit += o.dt * (pik ? 9 + speed * 7 : 4 + speed * 8) * v.presence * (1 - 0.6 * lie);
     while (v.emit >= 1) {
       v.emit -= 1;
       const p = v.template[Math.floor(this.rng.next() * v.template.length)]!;
@@ -793,14 +820,18 @@ export class PackVisuals {
     const dc = Math.hypot(toCamX, toCamZ) || 1;
     const facing = (-sh * toCamX - ch * toCamZ) / dc;
     const face = 0.15 + 0.85 * Math.max(0, Math.min(1, (facing + 0.3) / 0.8));
-    const ez = (pik ? 1.6 : 0.72 * S * (1 + 0.14 * run)) + sn * 0.06 * S;
-    const ey = pik ? 2.13 - sn * 0.3 : (0.895 - sn * 0.6 - chase * 0.08) * S;
+    const ez = (pik ? 1.6 : 0.72 * S * (1 + 0.14 * run)) + sn * 0.06 * S + lie * 0.05 * S;
+    const ey = (pik ? 2.13 - sn * 0.3 : (0.895 - sn * 0.6 - chase * 0.08) * S) - lie * 0.5 * S;
+    // the eyes go out like lamps in a house: a last flicker, then dark
+    const dim = a.dim;
+    const flick = dim > 0 && dim < 0.75 && !o.reducedMotion ? 0.75 + 0.25 * Math.sin(t * 37 + a.idx * 5) * Math.sin(t * 11.3 + a.idx) : 1;
+    const eyeDim = (1 - smooth01(dim)) * flick;
     const sep = pik ? 0.11 : 0.05 * S;
     for (const s of [-1, 1]) {
       const x = s * sep;
       const wx = v.x + ch * x - sh * ez;
       const wz = v.z - sh * x - ch * ez;
-      const inten = eyeOn * face * (pik ? 0.5 : 1);
+      const inten = eyeOn * face * (pik ? 0.5 : 1) * eyeDim;
       if (inten > 0.01) this.glowFront.push(wx, v.y + ey + ez * slope + bob + rise, wz, pik ? 0.09 : 0.075, inten, 0, 1.35);
     }
     // the rider's cold glow (no lantern, but something shines through the smoke)
@@ -837,7 +868,8 @@ export class PackVisuals {
 
   /** Low ground mist around the player that comes and goes with the pack. */
   private drawMist(o: VisualInput, dt: number): void {
-    const target = o.dissolve >= 0 ? 0 : o.mist;
+    const settle = o.settle ?? 0;
+    const target = o.dissolve >= 0 ? 0 : Math.min(1.4, o.mist * (1 + 0.5 * settle));
     this.mistLevel += (target - this.mistLevel) * (o.snap ? 1 : Math.min(1, dt * 0.4));
     if (this.mistLevel < 0.01) return;
     const c = o.camera.position;
@@ -869,7 +901,7 @@ export class PackVisuals {
       const d = Math.sqrt(dx * dx + dz * dz);
       const near = Math.max(0, Math.min(1, (d - 3) / 6)); // no puffs in the face
       const g = o.heightAt(m.x, m.z);
-      this.smoke.push(m.x, g + m.size * 0.16, m.z, m.size, m.alpha * this.mistLevel * near, m.seed, 0, K_MIST, g);
+      this.smoke.push(m.x, g + m.size * (0.16 - 0.08 * settle), m.z, m.size * (1 + 0.25 * settle), m.alpha * this.mistLevel * near, m.seed, 0, K_MIST, g);
     }
   }
 

@@ -210,7 +210,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
-- E2E per feature (`e2e/{hunt,fx,chronik,story,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
+- E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
   prologue across all four systems (new game → hub → Chronik → objective → scan → clues → Q →
   shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`.
   `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
@@ -229,15 +229,16 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 12. Feature systems
 
-Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`, `fx`,
-`chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`. They talk only through the events in `src/systems/contracts.ts` (plus the
+Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
+`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`. They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below) and `ctx.state`. How the four work together:
 
 ```
 story ──threat:configure──▶ hunt (pack, lantern seconds)   fx (fire, oblivion)
 story ──shift:request─────▶ fx ──shift:begin / era.set + shift:midpoint / shift:done──▶ everyone
 hunt, fx ──player:caught──▶ story (curtain, threats off, instant return to today, checkpoint beat)
-                            chronik (drops unconfirmed finds unless gentle mode)
+                            chronik (drops unconfirmed finds unless gentle mode or {soft:true})
+story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
 story (hub Pinnwand) ──chronik:open──▶ chronik board      chronik ──dialogue:say (laub)──▶ story presenter
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
 story:give ──clue:found / noun:learned (story clue ids, written to state.inventory)──▶ everyone
@@ -269,17 +270,55 @@ Ownership rules that came out of integration:
   count in `meta.shifts`.
 
 ### hunt (`src/systems/hunt/`) – die Meute, der Pikeur, the lantern
-- Starts only via `threat:configure {kind:'pack'}` (extra fields `hounds?, pikeur?, sight?, seed?`)
-  or `kq.hunt.start`; `seconds` sets the lantern burn time. Stops on `active:false`, caught,
-  `hub:enter` (also refills oil) and `era:change`. Gentle mode / Rauhnacht (`settings.rauhnacht` or
-  `flags.rauhnacht`) retune it.
-- Emits `hunt:alert`, `hunt:horn`, `hunt:start`, `hunt:end {reason}`, `lantern:toggle/oil/empty`,
-  `player:caught {by:'pack'}` (2.0 s into the caught sequence). Writes `flags.lanternLit` and
-  `player.stats.lanternLit`; HUD threat meter, lantern gauge, screen-edge arrows
+- Starts only via `threat:configure {kind:'pack'}` (extra fields, declared by declaration merging in
+  `hunt/index.ts`: `hounds?, pikeur?, sight?, seed?, mode?, target?, via?, from?, headStart?,
+  goalRadius?, snow?`) or `kq.hunt.start`; `seconds` sets the lantern burn time. The story passes
+  every ThreatConfig field through (`threat` action). Stops on `active:false`, caught, `hub:enter`
+  (also refills oil), `era:change` and a par force escape. Gentle mode / Rauhnacht
+  (`settings.rauhnacht` or `flags.rauhnacht`) retune it. Re-configuring the same area with another
+  `mode` switches the running pack in place (drive → finale at the kennel: they stay where they are).
+- **Modes** (`modes.ts`, pure): `patrol` (default); `drive` (Ch. 4: arc of hounds 12–20 m behind and
+  beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
+  = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
+  heimgebracht", chronik loses nothing); `finale` (W8 at the kennel: 6 m circle, X + L in any order,
+  one key — `settings.oneKey` or gentle — X alone; hounds lie down, eyes dim, mist settles, they and
+  the Pikeur fade; > 10 m away = faded back into the circle; emits contract event
+  `hunt:finale {outcome: gathered|returned|calmed|faded}`); `parforce` (Ch. 2 long chase from `from`
+  to `target`/water: release horn + head start, surges with a rubber-banded pack, breathers
+  `hunt:rest`, the Pikeur riding in from a flank, `hunt:goal` → `hunt:end {reason:'escaped'}`;
+  fairness checked by simulated runs in `tests/hunt-ext.test.ts`).
+- **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
+  prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
+  240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
+  pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
+  break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
+  rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
+- Emits `hunt:alert`, `hunt:horn`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
+  `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
+  `player:caught {by:'pack', soft?}` (2.0 s into the caught sequence). Writes `flags.lanternLit`
+  and `player.stats.lanternLit`; HUD threat meter, lantern gauge, screen-edge arrows
   (`settings.soundIndicators`), captions (`settings.subtitles`).
-- State `systems.hunt {alert, lantern {oil, lit, seconds}, caught}` (an active pack is not saved).
-- Hooks `kq.hunt.start/stop/state/setState/place/placeInView/freeze/horn/catch/events/sim`,
-  `kq.lantern.toggle/setOil/refill/setSeconds/state`.
+- State `systems.hunt {alert, lantern {oil, lit, seconds}, caught, pack}`: `pack {era, opts}` is the
+  active pack configuration; it comes back after a load in the same era (a story re-configure wins).
+- Hooks `kq.hunt.start/stop/state/setState/place/placeInView/freeze/horn/catch/events/sim/
+  configure/tracks/walkPrints/readTracks/mode/saved`, `kq.lantern.toggle/setOil/refill/setSeconds/state`.
+
+### menagerie (`src/systems/menagerie/`) – the escaped animals (1789, 1793-07)
+- Spawned by `menagerie:spawn {animal: cassowary|dromedary|jaguar, x, z, id?, heading?, count?}`
+  (contract) or story `{"do":"cue","id":"menagerie:spawn","data":{…}}`; `menagerie:clear {id?}` /
+  cue `menagerie:clear`. An animal belongs to the era it was spawned in. Suggested places in
+  `MENAGERIE_PLACES` (Kasuar 1966/92 at the amphitheatre, dromedaries on the Karlsbergweiher dam,
+  jaguar at the Holländische Gärtnerei).
+- Pure behaviour in `logic.ts`: cassowary notices → booms → display → charges (slow turn rate, a
+  side-step makes it miss) ≤ 3 times → bored (26 s); a hit = knockdown. Dromedaries stand across the
+  path (solid), grumble when shoved, amble aside after ~14 s of calm waiting (`menagerie:yield`).
+  Jaguar circles outside the lantern light, creeps in when it's dark, shoves you over, retreats;
+  light drives it off. No catching: a knockdown freezes you prone for 1.8–3.2 s (view tips to the
+  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter, the jaguar never shoves.
+- Procedural low-poly rigs (`models.ts`, kqLight / kqFog), eyeshine sprites, Web Audio calls with captions.
+- State `systems.menagerie {animals: [{animal, x, z, id, heading?, count?, era}]}`.
+- Hooks `kq.menagerie.spawn/spawnInView/clear/state/down/setState/place/freeze/events/places`.
+- Example beats (test only, not loaded): `content/test/hunt-menagerie.test.story.json`.
 
 ### fx (`src/systems/fx/`) – era shift, scan pulse, ambience, fire, Steinfraß
 - `shift:request {to, instant?}` → 3.5 s LiDAR transition (1.4 s crossfade in reduced motion,

@@ -1,0 +1,110 @@
+{
+  "chapter": "test.hunt-menagerie",
+  "order": 900,
+  "title_de": "TEST – Meute & Menagerie",
+  "sub_de": "Testkapitel (nicht im Spiel geladen) · Beispiel-Beats für Spuren, Treibjagd, Finale, Parforcejagd und die Tiere der Menagerie",
+  "placeholder": true,
+  "start": "t1",
+  "checkpoint": { "x": 1192, "z": -1115, "yaw": 0, "era": "1793-02" },
+  "beats": [
+    {
+      "id": "t1",
+      "title_de": "TEST · Spur im Raureif (Kap. 2, Frostnacht)",
+      "placeholder": true,
+      "enter": [
+        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.4, "center": { "x": 1450, "z": -620 }, "radius": 250, "snow": true },
+        { "do": "objective", "id": "test.spur", "text": "Die Spur bricht am Wasser, auf Stein, auf der Straße", "x": 1380, "z": -700 }
+      ],
+      "complete": { "any": [{ "event": "hunt:tracking", "match": { "on": false, "why": "water" } }, { "timer": 240 }] },
+      "exit": [{ "do": "threat", "kind": "pack", "active": false }]
+    },
+    {
+      "id": "t2",
+      "title_de": "TEST · Die Parforcejagd (Kap. 2, Die Flucht)",
+      "placeholder": true,
+      "enter": [
+        { "do": "sound", "sound": "horn", "signal": "faehrte", "x": 1216, "z": -1571, "caption": "[Horn: zwei kurze Töne – sie haben eine Fährte]" },
+        {
+          "do": "threat",
+          "kind": "pack",
+          "active": true,
+          "mode": "parforce",
+          "intensity": 0.7,
+          "center": { "x": 1100, "z": -1100 },
+          "radius": 500,
+          "from": { "x": 1216, "z": -1571 },
+          "target": { "x": 819, "z": -875 },
+          "goalRadius": 25,
+          "headStart": 6
+        },
+        { "do": "objective", "id": "test.damm", "text": "Über den Damm des Karlsbergweihers", "x": 819, "z": -875 }
+      ],
+      "complete": { "event": "hunt:goal", "match": { "mode": "parforce" } },
+      "exit": [{ "do": "threat", "kind": "pack", "active": false, "delay": 5 }]
+    },
+    {
+      "id": "t3",
+      "title_de": "TEST · Die Meute treibt (Kap. 4)",
+      "placeholder": true,
+      "enter": [
+        {
+          "do": "threat",
+          "kind": "pack",
+          "active": true,
+          "mode": "drive",
+          "intensity": 0.3,
+          "center": { "x": 1200, "z": -1400 },
+          "radius": 400,
+          "via": [{ "x": 1210, "z": -1300 }],
+          "target": { "x": 1216, "z": -1571 },
+          "goalRadius": 20
+        },
+        { "do": "objective", "id": "test.zwinger", "text": "Zum Zwinger – sie treiben, sie jagen nicht", "x": 1216, "z": -1571 }
+      ],
+      "on": [
+        { "id": "heimgebracht", "when": { "event": "player:caught", "match": { "soft": true } }, "do": [{ "do": "toast", "text": "TEST: heimgebracht (nichts verloren)" }], "repeat": true }
+      ],
+      "complete": { "event": "hunt:goal", "match": { "mode": "drive" } }
+    },
+    {
+      "id": "t4",
+      "title_de": "TEST · Sich stellen (W8 am Zwinger)",
+      "placeholder": true,
+      "enter": [
+        { "do": "threat", "kind": "pack", "active": true, "mode": "finale", "center": { "x": 1200, "z": -1400 }, "radius": 400, "target": { "x": 1216, "z": -1571 } },
+        { "do": "say", "id": "test.laub.finale", "speaker": "laub", "text": "Jetzt. Hinlegen. Und machen Sie das Licht an.", "delay": 3 }
+      ],
+      "on": [
+        { "id": "zurueck", "when": { "event": "hunt:finale", "match": { "outcome": "returned" } }, "do": [{ "do": "say", "speaker": "laub", "text": "Nicht noch einmal. Bitte." }], "repeat": true }
+      ],
+      "complete": { "event": "hunt:finale", "match": { "outcome": "faded" } },
+      "exit": [{ "do": "threat", "kind": "pack", "active": false, "delay": 1.5 }]
+    },
+    {
+      "id": "t5",
+      "title_de": "TEST · Der Kasuar (1789, Amphitheater)",
+      "placeholder": true,
+      "enter": [
+        { "do": "shift", "to": "1789" },
+        { "do": "cue", "id": "menagerie:spawn", "data": { "animal": "cassowary", "x": 1966, "z": 92, "id": "kasuar", "heading": 1.6 }, "delay": 1 },
+        { "do": "objective", "id": "test.kasuar", "text": "Am Rand des Amphitheaters", "x": 1935, "z": 87 }
+      ],
+      "complete": { "any": [{ "event": "menagerie:knockdown" }, { "event": "menagerie:seen", "match": { "animal": "cassowary" }, "times": 1 }] }
+    },
+    {
+      "id": "t6",
+      "title_de": "TEST · Nach dem Brand (1793-07): Dromedare am Damm, Jaguar an der Gärtnerei",
+      "placeholder": true,
+      "enter": [
+        { "do": "shift", "to": "1793-07" },
+        { "do": "cue", "id": "menagerie:spawn", "data": { "animal": "dromedary", "x": 819, "z": -875, "id": "dromedare", "heading": 0.3, "count": 2 }, "delay": 1 },
+        { "do": "cue", "id": "menagerie:spawn", "data": { "animal": "jaguar", "x": 1221, "z": -1296, "id": "jaguar" } },
+        { "do": "objective", "id": "test.damm2", "text": "Über den Damm – wenn sie dich lassen", "x": 819, "z": -875 }
+      ],
+      "complete": { "event": "menagerie:yield", "match": { "id": "dromedare" } },
+      "exit": [
+        { "do": "cue", "id": "menagerie:clear", "data": { "id": "jaguar" } }
+      ]
+    }
+  ]
+}

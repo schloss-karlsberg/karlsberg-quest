@@ -597,7 +597,10 @@ export default defineSystem({
         const c = content.clues.get(id);
         if (c) startEcho(ctx, c);
       }),
-      ev.on('player:caught', () => onCaught(ctx)),
+      // soft (brought home by the driving pack, Ch. 4): nothing is lost (onCaught also honours chronik.noLoss)
+      ev.on('player:caught', ({ soft }) => {
+        if (!soft) onCaught(ctx);
+      }),
       // round 2: npc conversations / story `grant` discover a clue without the card
       ev.on('clue:grant', ({ id }) => {
         const c = content.clues.get(id);

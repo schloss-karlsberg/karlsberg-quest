@@ -296,7 +296,7 @@ class StoryRuntime {
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
     ctx.events.on('save:loaded', () => this.resync());
-    ctx.events.on('player:caught', ({ by }) => this.caught(by));
+    ctx.events.on('player:caught', ({ by, soft }) => this.caught(by, { soft: soft === true }));
     ctx.events.on('era:change', ({ to }) => {
       if (to === 'today') {
         this.placeStation();
@@ -482,9 +482,12 @@ class StoryRuntime {
         ctx.events.emit('objective:set', { text: a.text ?? null, x: a.x, z: a.z, id: a.id });
         return;
       }
-      case 'threat':
-        this.configureThreat({ kind: a.kind, active: a.active, intensity: a.intensity, center: a.center, radius: a.radius, seconds: a.seconds });
+      case 'threat': {
+        // every ThreatConfig field passes through (feature-declared extras: pack mode, target …)
+        const { do: _do, delay: _delay, onResume: _onResume, ...cfg } = a;
+        this.configureThreat(cfg);
         return;
+      }
       case 'flag':
         ctx.state.update((st) => {
           for (const [k, v] of Object.entries(a.set)) {
@@ -707,7 +710,7 @@ class StoryRuntime {
     this.ctx.events.emit('story:meter-full', { id: m.id });
     if (m.full === 'none' || this.caughtBusy) return;
     if (m.full === 'caught') this.ctx.events.emit('player:caught', { by: 'pack' });
-    else this.caught('pack', m.text ?? t('story.meter.return'), t('story.meter.returnSub'));
+    else this.caught('pack', { text: m.text ?? t('story.meter.return'), sub: t('story.meter.returnSub') });
   }
 
   private tickMeters(dt: number): void {
@@ -725,10 +728,8 @@ class StoryRuntime {
 
   private configureThreat(c: ThreatConfig): void {
     const clean: ThreatConfig = { kind: c.kind, active: c.active };
-    if (c.intensity !== undefined) clean.intensity = c.intensity;
-    if (c.center) clean.center = c.center;
-    if (c.radius !== undefined) clean.radius = c.radius;
-    if (c.seconds !== undefined) clean.seconds = c.seconds;
+    // all defined fields, incl. feature extras (hunt: mode, target, via, from, hounds …); JSON-safe
+    for (const [k, v] of Object.entries(c)) if (v !== undefined && k !== 'kind' && k !== 'active') (clean as unknown as Record<string, unknown>)[k] = v;
     this.slice.threats[c.kind] = clean;
     this.ctx.events.emit('threat:configure', clean);
   }
@@ -913,9 +914,10 @@ class StoryRuntime {
   /**
    * The curtain: down at once, the threats stop, the player stands still; after `caughtHold` of
    * GAME time (kq.step advances it) the player wakes at the checkpoint. `text` overrides the line
-   * (meters returning the player); with the lossless rule (chronik.noLoss) the pack "brings you home".
+   * (meters returning the player). Brought home softly (hunt drive, `player:caught {soft}`) or under
+   * the lossless rule (chronik.noLoss): "Die Meute hat dich heimgebracht …" (bible ui.homed.*).
    */
-  caught(by: ThreatKind, text?: string, sub?: string): void {
+  caught(by: ThreatKind, opts: { text?: string; sub?: string; soft?: boolean } = {}): void {
     if (this.caughtBusy) return;
     this.caughtBusy = true;
     const ctx = this.ctx;
@@ -925,8 +927,9 @@ class StoryRuntime {
     this.choiceAction = null;
     this.wakeLines = [];
     const noLoss = ctx.state.state.flags['chronik.noLoss'] === true;
-    const line = text ?? (noLoss && by === 'pack' ? t('story.caught.home') : t(CAUGHT_KEY[by] ?? CAUGHT_KEY.pack));
-    this.overlays.curtainDown(line, sub ?? (noLoss ? t('story.caught.homeSub') : t('story.caught.sub')));
+    const homed = opts.soft === true || (noLoss && by === 'pack');
+    const line = opts.text ?? (homed ? t('ui.homed.title') : t(CAUGHT_KEY[by] ?? CAUGHT_KEY.pack));
+    this.overlays.curtainDown(line, opts.sub ?? (homed ? t('ui.homed.body') : t('story.caught.sub')));
     for (const [kind, cfg] of Object.entries(this.slice.threats)) if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });
     ctx.player.frozen = true;
     this.caughtT = 0;

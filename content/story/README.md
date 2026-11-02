@@ -72,13 +72,13 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | --- | --- | --- |
 | `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?` | a spoken line (`id` lines once). `text_by_era {era: text}` wins in that era. Placeholders: `{Name}`/`{name}`, `{jahre:1793}` (years since 1793 in words; "über zweihundert" when the clock is implausible), `{jahr}` |
 | `objective` | `text \| null, x?, z?, id?` | objective + Bussole target |
-| `threat` | `kind, active, intensity?, center?, radius?, seconds?` | `threat:configure` |
+| `threat` | `kind, active, intensity?, center?, radius?, seconds?, …` | `threat:configure`; every ThreatConfig field passes through. Pack extras: `mode` patrol \| drive \| finale \| parforce, `target`, `via`, `from`, `headStart`, `goalRadius`, `snow`, `hounds`, `pikeur`, `sight`, `seed` (docs/ARCHITECTURE.md §12) |
 | `flag` | `set {flag: value \| null}` | write / delete flags |
 | `shift`, `anchor` | `to, reason?, instant?` / `to \| null, x, z, r` | era shift / Q anchor |
 | `skill`, `give` | `id, tier` / `clue \| noun \| item, kind?, toast?` | skills, inventory |
 | `grant` | `clue` | discover a clue the Chronik way (`clue:grant`: nouns, codex, flags; no card) |
 | `toast`, `teleport`, `card`, `look`, `prompt`, `sound` | as before | presentation |
-| `cue`, `chronik`, `unlock`, `ending`, `autosave` | | `story:cue`, open the board, map table, endings |
+| `cue`, `chronik`, `unlock`, `ending`, `autosave` | `cue {id, data?}` | `story:cue`, open the board, map table, endings. `cue menagerie:spawn` with `data {animal, x, z, id?, heading?, count?}` / `menagerie:clear {id?}` places the escaped animals |
 | `choice` | `id, prompt, note?, options[], seconds?, fallback?, modal?` | see below |
 | `npc` | `op: spawn \| despawn, npc, x?, z?, era?, yaw?, chapter?, topics?, mood?` | place / remove a ghost (`npc:spawn` / `npc:despawn`; x/z default to the player, era to the current one, chapter to the running one; `npc: "*"` removes all) |
 | `meter` | `id, active, seconds?, label?, full?, text?, lossless?, still?, intensity?, center?, radius?` | see below |
@@ -146,6 +146,14 @@ line (`nichts` for the object). Without such lines the story file's `epilogue` d
 `spurenleser` (1 horn meaning, 2 pack routes). Each raise shows the unlock card; Laub comments once
 `flag {set: {"story.laub": true}}` has been set. Measuring: `{event: 'measure:done', match: {building: 'KB-B06'}}`
 or `flag measured.KB-B06` (the measured distance). Chronik clue requirements use `skill: 'kartograf:3'`.
+
+## Hunt modes, snow tracks and the menagerie
+
+Example beats (a test file, not loaded by the game, validated in `tests/hunt-ext.test.ts`):
+`content/test/hunt-menagerie.test.story.json`. Useful conditions:
+`{"event":"hunt:goal","match":{"mode":"drive"}}`, `{"event":"hunt:finale","match":{"outcome":"faded"}}`,
+`{"event":"hunt:tracking","match":{"on":false,"why":"water"}}`, `{"event":"player:caught","match":{"soft":true}}`,
+`{"event":"menagerie:yield","match":{"id":"dromedare"}}`.
 
 ## Test chapter
 
