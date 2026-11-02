@@ -149,8 +149,11 @@ describe('batch of three', () => {
     expect(caseComplete(theCase(), p)).toBe(false);
     // confirmed entries are locked
     expect(setBlank(p, entry('p1'), 'wo', 'ct.n.galerie')).toBe(false);
-    fill(p, { p4: ['was', 'ct.n.eiskeller'], p6: ['wieviel', 'ct.n.versatz_50'] });
-    expect(evaluateBatch(theCase(), p).ready).toBe(false); // only two pending
+    fill(p, { p4: ['was', 'ct.n.eiskeller'] });
+    expect(evaluateBatch(theCase(), p).ready).toBe(false); // one of the two left
+    // the last two of a case may be checked on their own (else four confirmed would be a dead end)
+    fill(p, { p6: ['wieviel', 'ct.n.versatz_50'] });
+    expect(evaluateBatch(theCase(), p).ready).toBe(true);
   });
 
   it('completes a case when every fact entry is confirmed', () => {

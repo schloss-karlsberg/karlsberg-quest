@@ -1080,6 +1080,15 @@ class StoryRuntime {
       return;
     }
     if (ctx.input.isDown('shift')) {
+      // bible rule (Laub, prologue): "Es geht nicht, solange Sie jemand ansieht" — no way home
+      // while the pack is on you (hunt alert ≥ 0.8 = chasing); a breather or hiding opens it again
+      const hunt = ctx.state.state.systems['hunt'] as { alert?: unknown } | undefined;
+      if (typeof hunt?.alert === 'number' && hunt.alert >= 0.8) {
+        if (this.qHold >= 0) ctx.ui.toast(t('ui.hud.return_blocked'), 2200);
+        this.qHold = -1;
+        return;
+      }
+      if (this.qHold < 0) this.qHold = 0;
       this.qHold += dt;
       if (this.qHold > 1.2) {
         this.qHold = 0;

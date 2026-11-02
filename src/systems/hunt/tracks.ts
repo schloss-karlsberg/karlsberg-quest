@@ -109,6 +109,38 @@ export class TrackField {
     this.push({ x, z, h, t, kind, side, depth, seg: -1, seq: -1, agent });
   }
 
+  /**
+   * Someone else's boot prints (Ch. 2: the Warner's trail): a line through `path`, one print per
+   * `step` m, alternating feet. Not part of the player's trail (agent −2): the pack never tracks
+   * them. `hold` s are added to their life (t in the future keeps them fresh that much longer).
+   */
+  addTrail(path: readonly { x: number; z: number }[], t: number, step = 1.4, depth = 1, hold = 0, ok: (x: number, z: number) => boolean = () => true): number {
+    let side = 1;
+    let n = 0;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1]!;
+      const b = path[i]!;
+      const d = Math.hypot(b.x - a.x, b.z - a.z);
+      if (d < 1e-3) continue;
+      const h = Math.atan2(-(b.x - a.x), -(b.z - a.z));
+      const rx = Math.cos(h);
+      const rz = -Math.sin(h);
+      const k = Math.max(1, Math.floor(d / step));
+      for (let j = i === 1 ? 0 : 1; j <= k; j++) {
+        const f = j / k;
+        // a runner's stride wanders a little; deterministic (no RNG in the field)
+        const wob = Math.sin((n + 1) * 2.399) * 0.06;
+        const x = a.x + (b.x - a.x) * f + rx * (0.13 * side + wob);
+        const z = a.z + (b.z - a.z) * f + rz * (0.13 * side + wob);
+        side = -side;
+        if (!ok(x, z)) continue;
+        this.push({ x, z, h, t: t + hold, kind: 'boot', side: -side, depth, seg: -1, seq: -1, agent: -2 });
+        n++;
+      }
+    }
+    return n;
+  }
+
   private push(p: Print): void {
     this.prints.push(p);
     if (this.prints.length > this.max) this.prints.splice(0, this.prints.length - this.max);
@@ -154,7 +186,7 @@ export class TrackField {
     for (let i = this.prints.length - 1; i >= 0; i--) {
       const p = this.prints[i]!;
       if (now - p.t > maxAge) break; // older from here on
-      if (p.kind !== 'boot') continue;
+      if (p.kind !== 'boot' || p.agent !== -1) continue;
       if ((p.x - x) ** 2 + (p.z - z) ** 2 > r2) continue;
       if (!best || p.seq > best.seq) best = p;
     }

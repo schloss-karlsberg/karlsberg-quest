@@ -228,7 +228,7 @@ export function setBlank(p: CaseProgress, e: CaseEntry, blankId: string, nounId:
 }
 
 export interface BatchResult {
-  /** At least three complete, unconfirmed fact entries: the "Prüfen" button is active. */
+  /** At least three complete, unconfirmed fact entries (or all that are left): the "Prüfen" button is active. */
   ready: boolean;
   /** Complete, unconfirmed fact entries (the batch). */
   pending: string[];
@@ -244,8 +244,10 @@ export const BATCH = 3;
 
 /** The batch-of-three rule: confirm only if every filled fact entry of the batch is right. */
 export function evaluateBatch(cs: ChronikCase, p: CaseProgress): BatchResult {
-  const pending = cs.entries.filter((e) => e.kind === 'fact' && !p.confirmed.includes(e.id) && entryComplete(p, e)).map((e) => e.id);
-  const ready = pending.length >= BATCH;
+  const open = cs.entries.filter((e) => e.kind === 'fact' && !p.confirmed.includes(e.id));
+  const pending = open.filter((e) => entryComplete(p, e)).map((e) => e.id);
+  // the last one or two entries of a case (fewer than three left) may be checked on their own
+  const ready = pending.length >= Math.min(BATCH, open.length) && pending.length > 0;
   const byId = new Map(cs.entries.map((e) => [e.id, e]));
   const rightOnes = pending.filter((id) => entryCorrect(p, byId.get(id)!));
   const correct = ready && rightOnes.length === pending.length;

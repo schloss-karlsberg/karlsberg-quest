@@ -101,6 +101,10 @@ export interface Agent {
   off: { r: number; f: number };
   node: number;
   stuck: number;
+  /** Seconds pressed against a wall while chasing (→ follow the scent line instead). */
+  wallT: number;
+  /** Index into PackSim.scent while following the player's path around walls (−1 = off). */
+  scentI: number;
   /** 0 standing … 1 lying down (finale). */
   lie: number;
   /** 0 eyes lit … 1 eyes out (finale). */
@@ -294,6 +298,8 @@ export class PackSim {
       off,
       node: -1,
       stuck: 0,
+      wallT: 0,
+      scentI: -1,
       lie: 0,
       dim: 0,
       gone: 0,
@@ -395,6 +401,8 @@ export class PackSim {
       a.target = null;
       a.wait = 0;
       a.sniffing = false;
+      a.scentI = -1;
+      a.wallT = 0;
     }
     if (to !== 'searching' && this.trail) this.endTrail(false);
     if (to === 'chasing') {
@@ -425,6 +433,7 @@ export class PackSim {
     this.time += dt;
     this.stateTime += dt;
     this.tracks?.tick(dt);
+    this.layScent(p);
     const before = this.agents.map((a) => a.dist);
     if (this.caught) {
       this.caught.t += dt;
@@ -738,6 +747,7 @@ export class PackSim {
         const tgt = this.lastKnown ?? { x: p.x, z: p.z };
         const mul = this.ctl?.chaseSpeed?.(a, p) ?? 1;
         if (pik) {
+          if (this.followScent(a, p, T.pikeurSpeed.chase * mul, dt)) break;
           if (Math.hypot(tgt.x - a.x, tgt.z - a.z) > 2) this.moveToward(a, tgt.x, tgt.z, T.pikeurSpeed.chase * mul, dt, 3);
           else this.face(a, p.x - a.x, p.z - a.z, dt);
           break;
@@ -750,6 +760,7 @@ export class PackSim {
           this.investigate(a, tgt, dt, T.speed.trot, 5);
           break;
         }
+        if (this.followScent(a, p, T.speed.chase * mul, dt)) break;
         // flank: converge from the sides, closing in as they get near
         const side = (a.idx % 2 === 0 ? -1 : 1) * Math.min(4, d * 0.2) * (a.idx === 0 ? 0 : 1);
         const tx = tgt.x + (-dz / Math.max(d, 1e-3)) * side;
@@ -857,6 +868,60 @@ export class PackSim {
    * Steer towards (tx, tz): turn-rate limited, accelerate, avoid water (try deflections), stay out
    * of buildings. Returns true when within `arrive` metres.
    */
+  /**
+   * The scent line: where the player went (a point every 2 m, the last ~600 m). Hunting by
+   * straight lines gets a hound stuck behind the first wing between it and the player; a hound
+   * pressed against a wall for a moment follows the line instead (round the corner, through the
+   * passage the player took) until it is close again or at the line's end.
+   */
+  readonly scent: { x: number; z: number }[] = [];
+  private layScent(p: PlayerSense): void {
+    if (p.flying) return;
+    const l = this.scent[this.scent.length - 1];
+    if (l && Math.hypot(p.x - l.x, p.z - l.z) < 2) return;
+    if (l && Math.hypot(p.x - l.x, p.z - l.z) > 40) {
+      // a jump (teleport, shift): the old line leads nowhere
+      this.scent.length = 0;
+      for (const a of this.agents) a.scentI = -1;
+    }
+    this.scent.push({ x: p.x, z: p.z });
+    if (this.scent.length > 300) {
+      this.scent.splice(0, 50);
+      for (const a of this.agents) if (a.scentI >= 0) a.scentI = Math.max(0, a.scentI - 50);
+    }
+  }
+
+  /** Chasing around walls along the scent line; false = run straight at the player. */
+  private followScent(a: Agent, p: PlayerSense, speed: number, dt: number): boolean {
+    const line = this.scent;
+    const dP = Math.hypot(p.x - a.x, p.z - a.z);
+    if (a.scentI < 0) {
+      if (a.wallT < 0.6 || dP < 6 || line.length < 2) return false;
+      // pick up the line at its point nearest to the hound
+      let best = -1;
+      let bd = Infinity;
+      for (let i = 0; i < line.length; i++) {
+        const d = Math.hypot(line[i]!.x - a.x, line[i]!.z - a.z);
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
+      }
+      a.scentI = best;
+      a.wallT = 0;
+    }
+    // close again, or at the end of the line: straight at the quarry
+    if (dP < 7 || a.scentI >= line.length - 2) {
+      a.scentI = -1;
+      a.wallT = 0;
+      return false;
+    }
+    let c = line[a.scentI]!;
+    while (a.scentI < line.length - 2 && Math.hypot(c.x - a.x, c.z - a.z) < 2.2) c = line[++a.scentI]!;
+    this.moveToward(a, c.x, c.z, speed, dt, 8, 0.3);
+    return true;
+  }
+
   moveToward(a: Agent, tx: number, tz: number, maxSpeed: number, dt: number, turnRate: number, arrive = 0.6): boolean {
     const dx = tx - a.x;
     const dz = tz - a.z;
@@ -882,6 +947,9 @@ export class PackSim {
       if (this.isWater(nx, nz)) continue;
       if (this.world.collide) {
         const c = this.world.collide(nx, nz, a.kind === 'pikeur' ? 0.9 : 0.4);
+        // pushed back by a wall: count the seconds (chasing hounds then take the scent line)
+        if (Math.abs(c.x - nx) + Math.abs(c.z - nz) > 1e-3) a.wallT += dt;
+        else a.wallT = Math.max(0, a.wallT - dt * 0.5);
         nx = c.x;
         nz = c.z;
       }
@@ -909,7 +977,7 @@ export class PackSim {
   // ---------------------------------------------------------------------------------------------
 
   private checkCaught(dt: number, p: PlayerSense): void {
-    if (this.state !== 'chasing' || p.flying || this.isWater(p.x, p.z) || this.ctl?.mayCatch?.() === false) {
+    if (this.state !== 'chasing' || this.frozen || p.flying || this.isWater(p.x, p.z) || this.ctl?.mayCatch?.() === false) {
       for (const a of this.agents) a.closeSee = 0;
       return;
     }

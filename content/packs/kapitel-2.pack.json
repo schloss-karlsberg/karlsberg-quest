@@ -193,7 +193,7 @@
       "where": {
         "x": 1672,
         "z": -408,
-        "radius": 4,
+        "radius": 5,
         "era": "1793-02",
         "anchor": "KB-B84"
       },
@@ -232,9 +232,9 @@
       "kind": "echo",
       "text_de": "Ein Wachfeuer in einer Eisenpfanne am nördlichen Wachhaus. Hinter dem Gitter steht der Hof voller Wagen.",
       "where": {
-        "x": 1171,
-        "z": -1123,
-        "radius": 10,
+        "x": 1180,
+        "z": -1120,
+        "radius": 8,
         "era": "1793-02",
         "anchor": "KB-B38"
       },
@@ -253,9 +253,9 @@
       "kind": "document",
       "text_de": "Ein aufgeschlagenes Wachbuch. Die letzte Zeile in einer zittrigen Hand: „Sambstag d. 9ten Febr. 1793. Gegen 8 Uhr ein Bauer, außer Athem, wollte zu Serenissimo. Dem Leibjäger übergeben.“ (Wortlaut erfunden; Datum nach Horstmann, M1910 S. 427 Anm. 1.)",
       "where": {
-        "x": 1171,
-        "z": -1123,
-        "radius": 8,
+        "x": 1179.5,
+        "z": -1123.5,
+        "radius": 4,
         "era": "1793-02",
         "anchor": "KB-B38"
       },
@@ -274,9 +274,9 @@
       "kind": "dialogue",
       "text_de": "Laub beim Lesen des Wachbuchs.",
       "where": {
-        "x": 1171,
-        "z": -1123,
-        "radius": 8,
+        "x": 1179.5,
+        "z": -1123.5,
+        "radius": 4,
         "era": "1793-02",
         "anchor": "KB-B38"
       },
@@ -417,12 +417,12 @@
     },
     {
       "id": "clue.k2.fackeln",
-      "title_de": "Fackeln bei der Abfahrt",
-      "kind": "object",
+      "title_de": "Erinnerung: Fackeln bei der Abfahrt",
+      "kind": "echo",
       "text_de": "Diener mit Fackeln laufen neben den ersten Wagen her, bis zur Allee, und kommen ohne sie zurück. (Erfunden; angeregt von einer unbelegten Lokalüberlieferung.)",
       "where": {
-        "x": 1205,
-        "z": -1115,
+        "x": 1212,
+        "z": -1117,
         "radius": 30,
         "era": "1793-02",
         "anchor": "TF-01"
@@ -994,7 +994,7 @@
       "speaker": "laub",
       "text_de": "Ein Wachfeuer im Ehrenhof. Damit der Feind weiß, wo er hinmuss.",
       "trigger": {
-        "event": "echo:end",
+        "event": "clue:found",
         "id": "clue.k2.wache"
       },
       "once": true
@@ -1065,7 +1065,7 @@
     {
       "id": "echo.k2.warnung.03",
       "speaker": "geraeusch",
-      "text_de": "[Eine Tür. Schritte. Pause. Ein langer Husten.]",
+      "text_de": "(Eine Tür. Schritte. Pause. Ein langer Husten.)",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.warnung",
@@ -1186,7 +1186,7 @@
       "speaker": "laub",
       "text_de": "Bett und Tee. Die Kavallerie kommt durch den Wald, und der Leibarzt verschreibt Bett und Tee. Er hätte es weit gebracht in der Landesaufnahme.",
       "trigger": {
-        "event": "echo:end",
+        "event": "clue:found",
         "id": "clue.k2.warnung",
         "step": 1
       },
@@ -1197,7 +1197,7 @@
       "speaker": "laub",
       "text_de": "Einen Dukaten für den Mann, der ihm das Leben rettet. Hanne hat für den Lohn ihres Mannes nicht mal einen Gulden bekommen. Sie sehen, der Herzog konnte großzügig sein.",
       "trigger": {
-        "event": "echo:end",
+        "event": "clue:found",
         "id": "clue.k2.warnung",
         "step": 2
       },
@@ -1224,7 +1224,7 @@
     {
       "id": "echo.k2.abschied.02",
       "speaker": "geraeusch",
-      "text_de": "[Stille. Ein Gegenstand wird vom Tisch genommen.]",
+      "text_de": "(Stille. Ein Gegenstand wird vom Tisch genommen.)",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.abschied",
@@ -1253,7 +1253,7 @@
     {
       "id": "echo.k2.abschied.04",
       "speaker": "geraeusch",
-      "text_de": "[Schritte entfernen sich.]",
+      "text_de": "(Schritte entfernen sich.)",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.abschied",
@@ -1295,7 +1295,7 @@
       "speaker": "laub",
       "text_de": "Wenn Sie jetzt zurückgehen, behalten Sie, was Sie gefunden haben. Wenn Sie bleiben, sehen Sie die Abfahrt. Ich würde zurückgehen. Ich bin damals geblieben.",
       "trigger": {
-        "event": "echo:end",
+        "event": "clue:found",
         "id": "clue.k2.abschied"
       },
       "once": true
@@ -1303,10 +1303,11 @@
     {
       "id": "laub.k2.jagdmesser",
       "speaker": "laub",
-      "text_de": "Er hat ein kleines Jagdmesser mitgenommen. Für die Reise. (Pause.) Von seinen tausend Hunden hat er keinen mitgenommen.",
+      "text_de": "Er hat ein kleines Jagdmesser mitgenommen. Für die Reise.",
       "trigger": {
         "event": "clue:found",
-        "id": "clue.k2.jagdmesser"
+        "id": "clue.k2.jagdmesser",
+        "step": 1
       },
       "once": true,
       "sources": [
@@ -1316,6 +1317,17 @@
           "note": "P · S. 423 f."
         }
       ]
+    },
+    {
+      "id": "laub.k2.jagdmesser.b",
+      "speaker": "laub",
+      "text_de": "Von seinen tausend Hunden hat er keinen mitgenommen.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.jagdmesser",
+        "step": 2
+      },
+      "once": true
     },
     {
       "id": "hanne.k2.01",
@@ -1427,6 +1439,61 @@
       ]
     },
     {
+      "id": "echo.k2.fackeln.01",
+      "speaker": "geraeusch",
+      "text_de": "(Räder knirschen im Raureif. Pferde schnauben.)",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.fackeln",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.fackeln.02",
+      "speaker": "diener",
+      "text_de": "Fackeln an die ersten Wagen! Bis zur Allee, dann zurück.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.fackeln",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.fackeln.03",
+      "speaker": "diener2",
+      "text_de": "Und die Fackeln?",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.fackeln",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.fackeln.04",
+      "speaker": "diener",
+      "text_de": "Die nimmt er mit. Wir bleiben.",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.fackeln",
+        "step": 4
+      },
+      "once": true
+    },
+    {
+      "id": "echo.k2.fackeln.05",
+      "speaker": "geraeusch",
+      "text_de": "(Hufschlag nach Norden, immer leiser.)",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k2.fackeln",
+        "step": 5
+      },
+      "once": true
+    },
+    {
       "id": "laub.k2.esebeck",
       "speaker": "laub",
       "text_de": "Der Minister Esebeck bleibt. Am 25. Februar holen sie ihn ab, die Sansculotten vorn und hinten als Eskorte. Er kommt im September zurück.",
@@ -1470,7 +1537,7 @@
     {
       "id": "beat.k2.horn",
       "speaker": "geraeusch",
-      "text_de": "[Horn vom Zwinger: zwei kurze Töne.]",
+      "text_de": "(Horn vom Zwinger: zwei kurze Töne.)",
       "trigger": {
         "event": "story:beat",
         "chapter": "k2",
@@ -1542,7 +1609,7 @@
     {
       "id": "echo.k2.landremont.03",
       "speaker": "geraeusch",
-      "text_de": "[Die Reiter sprengen zum Schloss.]",
+      "text_de": "(Die Reiter sprengen zum Schloss.)",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.landremont",
@@ -1654,11 +1721,213 @@
     {
       "id": "laub.k2.ende",
       "speaker": "laub",
-      "text_de": "Vierundzwanzig Wochen und einen Tag später. (Pause.) Im Juli brennt Stroh am besten.",
+      "text_de": "Vierundzwanzig Wochen und einen Tag später.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k2",
-        "beat": "2.11"
+        "beat": "2.11",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.ende.b",
+      "speaker": "laub",
+      "text_de": "Im Juli brennt Stroh am besten.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.11",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.weg",
+      "speaker": "laub",
+      "text_de": "Weg. Die suchen jetzt etwas, das leuchtet. Bleiben Sie dunkel, bis die Allee zu Ende ist.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.2-weg"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.lauf",
+      "speaker": "laub",
+      "text_de": "Gut, dann laufen Sie. Aber richtig. Bis zur Mauer der Orangerie, da kommen sie nicht hinauf.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.2-lauf"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.gitter",
+      "speaker": "laub",
+      "text_de": "Zu. Nachts ist das Gitter immer zu, deshalb ist er ja über den Zaun. In den Hof kommt man durch die Flügel. Der Südflügel hat eine Durchfahrt, von der Terrasse aus.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.5-gitter"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.vestibuel",
+      "speaker": "laub",
+      "text_de": "Durchs Vestibül, dann durch die Zimmer, bis eine Tür nur angelehnt ist. Leise. Heute Nacht ist hier jeder wach.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.6"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.tor",
+      "speaker": "laub",
+      "text_de": "Die Wagen kommen. Sie stehen im Licht oder im Dunkeln, das entscheiden Sie. Ich sage nichts. Noch nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.7-tor"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.durchfahrt",
+      "speaker": "laub",
+      "text_de": "Durch die Durchfahrt, auf die Terrasse, dann hinunter. Nicht nach Norden, da kommen sie her.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.8-durchfahrt"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.hang",
+      "speaker": "laub",
+      "text_de": "Den Hang hinunter, nach Westen, zum Weiher. Auf dem Damm rauscht der Überlauf.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-hang"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.lichter_licht",
+      "speaker": "laub",
+      "text_de": "Da unten im Nebel, das sind die Wagenlaternen. Denen haben Sie am Tor geleuchtet. Der General sieht Feuer. Jeder sieht, was er sucht.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.laterne",
+        "flag": "flag.k2_tor",
+        "value": "leuchten"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.lichter_dunkel",
+      "speaker": "laub",
+      "text_de": "Das Licht da unten, das schwankt: Das ist Ihre Laterne. Die von vorhin, aus der Allee. Fragen Sie nicht, wie. Erinnerungen räumen nicht auf.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k2.laterne",
+        "flag": "flag.k2_tor",
+        "value": "dunkel"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.spur_ende",
+      "speaker": "laub",
+      "text_de": "Hier hört seine Spur auf. Ab hier hat ihn jemand geführt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.4"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.sicher",
+      "speaker": "laub",
+      "text_de": "Sie sind drüben. Halten Sie Q, bevor er es sich anders überlegt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-q"
+      },
+      "once": true
+    },
+    {
+      "id": "hanne.k2.07",
+      "speaker": "hanne",
+      "text_de": "Gehen Sie. Und stellen Sie sich nicht vor die Wagen. Die halten heute für keinen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k2",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "jost.k2.07",
+      "speaker": "jost",
+      "text_de": "Ich muss zum Zwinger. Die Hunde sind unruhig, seit die Wagen stehen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "jost",
+        "chapter": "k2",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "laub.k2.fehlt.warnung",
+      "speaker": "laub",
+      "text_de": "Was der Herzog über den Bauern gesagt hat, fehlt Ihnen noch. Das hört man nur an der Tür des Kabinetts. Anker B bringt Sie in den Ehrenhof.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.11-fehlt-warnung"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.fehlt.abschied",
+      "speaker": "laub",
+      "text_de": "Was er Mannlich anvertraut hat, wissen Sie noch nicht. Hören Sie im Kabinett ein zweites Mal hin.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.11-fehlt-abschied"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.fehlt.kalkoefen",
+      "speaker": "laub",
+      "text_de": "Die Antwort des Handwerkers fehlt. Am Orangerie-Parterre hängt sie noch in der Luft, im Februar 1793. Ohne Hunde diesmal.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.11-fehlt-kalkoefen"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.fehlt.datum",
+      "speaker": "laub",
+      "text_de": "Das Datum steht im Wachbuch, am Wachhaus vor dem Gitter. Der Regierungsrat schreibt ordentlich.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.11-fehlt-datum"
       },
       "once": true
     }
