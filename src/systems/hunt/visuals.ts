@@ -543,6 +543,8 @@ export interface VisualInput {
   hornGlow: number;
   caught: { t: number } | null;
   reducedMotion: boolean;
+  /** No strobing light (ember eyes stop flickering). */
+  reducedFlash?: boolean;
   heightAt(x: number, z: number): number;
   /** 0..1 how much ground mist the pack brings (frost fog = 1). */
   mist: number;
@@ -871,7 +873,7 @@ export class PackVisuals {
     const ey = (pik ? 2.13 - sn * 0.3 : (0.895 - sn * 0.6 - chase * 0.08) * S) - lie * 0.5 * S;
     // the eyes go out like lamps in a house: a last flicker, then dark
     const dim = a.dim;
-    const flick = dim > 0 && dim < 0.75 && !o.reducedMotion ? 0.75 + 0.25 * Math.sin(t * 37 + a.idx * 5) * Math.sin(t * 11.3 + a.idx) : 1;
+    const flick = dim > 0 && dim < 0.75 && !o.reducedMotion && !o.reducedFlash ? 0.75 + 0.25 * Math.sin(t * 37 + a.idx * 5) * Math.sin(t * 11.3 + a.idx) : 1;
     const eyeDim = (1 - smooth01(dim)) * flick;
     const sep = pik ? 0.11 : 0.05 * S;
     for (const s of [-1, 1]) {

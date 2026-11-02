@@ -9,8 +9,8 @@
  *     then black and still, one light high up that slowly goes out;
  *  C  (the last line) the snow falls upwards and the summer comes back.
  * No people are shown hurt and nobody is heard; the picture is only light. Flashes respect
- * `settings.reducedFlash` (or reduced motion when that setting does not exist): no white-out, no
- * strobing, slower and dimmer light.
+ * `settings.reducedFlash` (and reduced motion): no white-out, no strobing, slower and dimmer
+ * light; the graphics preset Niedrig halves the sparks.
  */
 import {
   AdditiveBlending,
@@ -259,10 +259,15 @@ export class Fireworks {
     return n;
   }
 
+  /** Reduced flashing (settings → Barrierefreiheit; reduced motion implies it here). */
   private reduced(): boolean {
-    const s = this.ctx.settings.state as unknown as Record<string, unknown>;
-    if (typeof s.reducedFlash === 'boolean') return s.reducedFlash;
-    return !!s.reducedMotion;
+    const s = this.ctx.settings.state;
+    return s.reducedFlash === true || s.reducedMotion;
+  }
+
+  /** Spark budget of the graphics preset: Niedrig halves every burst. */
+  private sparkScale(): number {
+    return this.ctx.settings.state.graphics === 'low' ? 0.5 : 1;
   }
 
   start(): void {
@@ -323,6 +328,7 @@ export class Fireworks {
   private burst(p: Vector3, color: Color, n: number, speed: number, kind: 'peony' | 'willow' | 'ring' = 'peony'): void {
     const r = this.r;
     const axis = new Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize();
+    n = Math.round(n * this.sparkScale());
     for (let i = 0; i < n; i++) {
       const d = new Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1);
       if (kind === 'ring') d.sub(axis.clone().multiplyScalar(d.dot(axis)));

@@ -511,6 +511,7 @@ export function figureGeometry(look: NpcLook): BufferGeometry {
 const FIG_VERT = /* glsl */ `
 uniform float uTime;
 uniform float uMotion;
+uniform float uStutter;
 uniform float uSeed;
 uniform float uTalk;
 uniform float uHeight;
@@ -578,7 +579,7 @@ void main() {
   p.z += 0.014 * sin(t * 0.38 + 1.3) * h;
   // an eerie figure stutters: thin slices jump sideways for a frame, like a bad memory
   float slice = floor(p.y * 14.0);
-  float g = step(0.985 - 0.02 * uEerie, vh(vec2(floor(uTime * 7.0), slice + uSeed))) * uEerie * uMotion;
+  float g = step(0.985 - 0.02 * uEerie, vh(vec2(floor(uTime * 7.0), slice + uSeed))) * uEerie * uMotion * uStutter;
   p.x += g * 0.035 * (vh(vec2(slice, floor(uTime * 7.0))) - 0.5) * 2.0;
   // the feet are already mist: they curl and spread
   float foot = 1.0 - smoothstep(0.0, 0.32, p.y / uHeight);
@@ -601,6 +602,7 @@ uniform float uAlpha;
 uniform float uEerie;
 uniform float uSeed;
 uniform float uMotion;
+uniform float uStutter;
 uniform float uPrepass;
 varying vec3 vN;
 varying vec3 vWp;
@@ -626,7 +628,7 @@ float flicker() {
   float t = uTime * uMotion;
   float f = 0.86 + 0.14 * sin(t * 1.9 + uSeed);
   // eerie figures stutter like a bad memory
-  float s = step(0.93, kqHash12(vec2(floor(t * 9.0), uSeed)));
+  float s = step(0.93, kqHash12(vec2(floor(t * 9.0), uSeed))) * uStutter;
   return mix(1.0, f * (1.0 - 0.45 * s), uEerie) * (0.92 + 0.08 * sin(t * 0.8));
 }
 
@@ -678,6 +680,7 @@ export function figureMaterials(look: NpcLook): { body: ShaderMaterial; depth: S
     uEerie: { value: look.mood === 'eerie' ? 1 : look.mood === 'neutral' ? 0.4 : 0 },
     uSeed: { value: look.seed },
     uMotion: { value: 1 },
+    uStutter: { value: 1 },
     uTalk: { value: 0 },
     uHeight: { value: look.height },
     uFace: { value: 0 },
@@ -714,6 +717,7 @@ export function figureMaterials(look: NpcLook): { body: ShaderMaterial; depth: S
 const MOTE_VERT = /* glsl */ `
 uniform float uTime;
 uniform float uMotion;
+uniform float uStutter;
 uniform float uHeight;
 uniform float uAlpha;
 uniform float uPix;
@@ -747,6 +751,7 @@ void main() {
 const POOL_VERT = /* glsl */ `
 uniform float uTime;
 uniform float uMotion;
+uniform float uStutter;
 attribute vec4 aPuff; // angle, radius, size, seed
 varying vec2 vUv;
 varying float vSeed;
@@ -770,6 +775,7 @@ uniform vec3 uFogColor;
 uniform float uAlpha;
 uniform float uTime;
 uniform float uMotion;
+uniform float uStutter;
 varying vec2 vUv;
 varying float vSeed;
 varying float vNear;
@@ -895,7 +901,7 @@ export class GhostFigure {
    * Per frame: fade, talking gesture, reduced motion, face the player (yaw radians in world).
    * `px` = pixels per metre at distance 1 (point sizes).
    */
-  frame(dt: number, o: { reducedMotion: boolean; px: number; face: number }): void {
+  frame(dt: number, o: { reducedMotion: boolean; reducedFlash?: boolean; px: number; face: number }): void {
     const k = Math.min(1, dt * 1.6);
     this.alpha += (this.target - this.alpha) * k;
     if (Math.abs(this.target - this.alpha) < 0.002) this.alpha = this.target;
@@ -903,6 +909,8 @@ export class GhostFigure {
     const u = this.body.uniforms;
     u.uAlpha!.value = this.alpha;
     u.uMotion!.value = motion;
+    // the eerie stutter (slices jumping, alpha dropping out) is a strobe: off with reduced flashing
+    if (u.uStutter) u.uStutter.value = o.reducedFlash || o.reducedMotion ? 0 : 1;
     u.uTalk!.value += ((this.talk ? 1 : 0) - (u.uTalk!.value as number)) * Math.min(1, dt * 3);
     u.uFace!.value = o.face;
     this.motes.uniforms.uAlpha!.value = this.alpha * 0.55;

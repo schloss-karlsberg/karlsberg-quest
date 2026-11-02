@@ -361,7 +361,7 @@ class NpcRuntime {
       f.yaw += diff * Math.min(1, dt * (reduced ? 8 : 1.6));
       o.rotation.y = f.yaw;
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
-      f.fig.frame(dt, { reducedMotion: reduced, px, face: 0 });
+      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0 });
     }
   }
 

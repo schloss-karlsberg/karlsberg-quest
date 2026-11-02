@@ -165,7 +165,9 @@ controls a `data-testid` and an `id` (the label's `for` is set from it).
 Accessibility contract for feature systems:
 - **Flashes**: when `settings.reducedFlash` is on, keep full-screen flashes ≤ 25 % (the post pass
   already scales `uFlash` by 0.2 and the shift's chromatic aberration), no strobing light
-  (interiors stop candle/fire flicker, fx damps collapse and shift flashes).
+  (interiors stop candle/fire flicker, fx damps collapse and shift flashes, the fireworks echo
+  drops its white-out and spark twinkle, ghosts lose their eerie stutter (`uStutter`), the
+  hounds' ember eyes and horn glow stop flickering).
 - **Motion**: `settings.reducedMotion` → shorter / calmer transitions, no camera shake.
 - **Root attributes** for CSS: `html[data-kq-contrast]`, `[data-kq-reduced-motion]`,
   `[data-kq-reduced-flash]`, `[data-kq-colorblind]`; `--sub-bg` (subtitle backing opacity),
@@ -215,7 +217,7 @@ camera-facing impostor quad whose silhouette and fake normal come from the shade
 `aPart` (0 bark, 1 leaf, 2 needle, 4 core, 5 impostor) and `aEx` (seed, ao, upness); `aInst/aVar`
 stay for the point-cloud and `forestClear.ts` patches. Seasons per era in the shader: summer 1789,
 autumn today, bare frosted twigs and snow 1793-02, sparse 1796 (`leafDensity`, `twigShow`).
-`forest.stats` = `{near, mid, far, total, drawCalls}` (debug panel shows them).
+`forest.stats` = `{near, mid, far, total, drawCalls, culled}` (debug panel and F3 overlay show them).
 
 Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 diverging local
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
@@ -227,9 +229,10 @@ With `settings.colorblind` mode 2 uses blue ↔ orange (`uPalette` 1). Inside th
 reveal is complete the terrain shader skips the lit/era colouring entirely (cheaper scan modes).
 
 Cost knobs (set by `ctx.quality` from the preset): `terrain.lodScale` scales the LOD rings
-(200 / 450 / 1000 m at 1); `forest.setDistances(near, far)` sets the detailed and far tree rings.
+(200 / 450 / 1000 m at 1); `forest.setDistances(near, far)` sets the far ring and scales the near / mid LOD rings by
+`near / 170` (`forest.lodScale`: Hoch 60 / 180 m, Mittel ≈ 49 / 148 m, Niedrig ≈ 39 / 116 m).
 The forest culls instanced trees by sector (outside the horizontal FOV + margin, all trees within
-30 m kept, off while looking steeply down), rebuilt after 12 m of movement or a 20° turn;
+30 m kept, off while looking steeply down), rebuilt after 8 m of movement or a 20° turn;
 `forest.cull = false` disables it (`kq.baseline()`).
 
 ## 9. Data (`public/data`, 12.3 MiB, `pnpm prepare-data`)
@@ -676,7 +679,7 @@ Round-4 (polish: set dressing) integration rules:
 - Fireworks (`fireworks.ts`) while the Chronik plays `clue.k1.feuerwerk`: festive rockets and
   terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
   return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
-  `settings.reducedFlash` (or `reducedMotion` while that setting does not exist).
+  `settings.reducedFlash` or `reducedMotion`; the graphics preset Niedrig halves the sparks.
 - Lit windows (`windows.ts`, the interiors' `extractOpenings`): cue `{do:'cue', id:'scenery:windows',
   data:{building, era?, on?, share?}}` (chapter 2 lights KB-B10); Ehrenhof gate `scenery:gate
   {open}` (closed by default; open adds a pass zone through KB-B39).
