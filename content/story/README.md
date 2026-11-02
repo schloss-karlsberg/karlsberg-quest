@@ -46,6 +46,10 @@ terrace, Parkzaun) so Q takes you straight back.
 chapter reactions to none). When a new beat begins, the old beat's delayed presentation
 (`say/toast/sound/card/prompt/echo/choice`) is dropped and its delayed state changes run at once;
 waiting dialogue lines of the old beat get 6 s to start (barks are dropped).
+So a line the player must hear goes early in a reaction (short delays) or into the beat's
+`exit` (lines already said stay silent, see k4_9). A beat that completes on a clue its own script
+grants: put a `say` of the clue's triggered line right after the `grant` — it stays silent (the
+clue already said it) but reserves its reading time, so the next grant does not cut it off (k4_14).
 | `epilogue?` | fallback epilogue data (the endings pack's `epilog:line` lines win, see below) |
 
 ## Conditions

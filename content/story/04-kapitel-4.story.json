@@ -448,7 +448,8 @@
         { "do": "say", "line": "marlene.end.morgen", "delay": 3 },
         { "do": "say", "line": "laub.end.morgen" },
         { "do": "grant", "clue": "clue.k4.foto", "delay": 0.5 },
-        { "do": "grant", "clue": "clue.k4.nur_steine", "delay": 7 }
+        { "do": "say", "line": "marlene.k4.foto" },
+        { "do": "grant", "clue": "clue.k4.nur_steine", "delay": 3 }
       ],
       "complete": { "have": { "clue": "clue.k4.nur_steine" } }
     },
