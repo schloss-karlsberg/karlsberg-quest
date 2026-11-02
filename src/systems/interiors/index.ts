@@ -538,7 +538,8 @@ function installHooks(ctx: GameContext): void {
         const dz = f.oz + f.uz * u + f.vz * v - z;
         yaw = Math.atan2(-dx, -dz);
       }
-      ctx.player.position.y = floor + 0.05;
+      // stand there first: the ground hook picks the storey from the player's own height
+      ctx.player.position.set(x, floor + 0.05, z);
       ctx.player.teleport(x, z, yaw);
       if (opts.pitch !== undefined) ctx.player.pitch = (opts.pitch * Math.PI) / 180;
       ctx.world.forest.invalidate();
