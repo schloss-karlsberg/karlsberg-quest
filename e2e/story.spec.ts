@@ -228,12 +228,18 @@ test('story: caught by the pack → back at the field station', async ({ page })
   expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p10');
 
   // a timed choice in the burning hall (chapter 3): field-book modal with a fuse
+  // (chapter 3 as wired: up the stairs into the Festsaal, Hanne and Laub speak, then the choice)
+  await page.waitForFunction(() => !!window.kq?.interiors && !!window.kq?.npc && !!window.kq?.fx, null, { timeout: 180_000 });
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.goto('k3', 'k3_3');
     k.setEra('1793-07');
-    k.teleport(1266, -1129, 0);
     k.step(4);
+    k.ctx.events.emit('threat:configure', { kind: 'fire', active: true, seconds: 300 });
+    k.ctx.state.mutable.inventory.clues.push('clue.k3.fackel');
+    k.interiors!.enter('B01.2.og-festsaal', { u: 0.5, v: 0.3 });
+    k.step(6);
+    for (let i = 0; i < 80 && !k.story!.choice(); i++) k.step(30);
   });
   await expect(page.getByTestId('story-choice')).toBeVisible({ timeout: 20_000 });
   await shot(page, 'choice');

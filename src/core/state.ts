@@ -134,7 +134,8 @@ function mergeDefaults<T>(base: T, src: unknown): T {
   const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
   for (const [k, v] of Object.entries(src)) {
     const b = (base as Record<string, unknown>)[k];
-    if (b === undefined) out[k] = v;
+    // (a null default takes any saved value: meta.savedAt was dropped, so "Weiterspielen" never resumed)
+    if (b === undefined || b === null) out[k] = v;
     else if (isObj(b)) out[k] = isObj(v) ? mergeDefaults(b, v) : b;
     else if (Array.isArray(b)) out[k] = Array.isArray(v) ? v : b;
     else out[k] = typeof v === typeof b ? v : b;

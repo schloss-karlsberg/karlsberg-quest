@@ -9,7 +9,7 @@ import type { CaseProgress } from '../../../core/state';
 import type { ChronikCase, CaseEntry, Noun } from '../../../content/types';
 import type { ModalHandle } from '../../../ui/modal';
 import { h, svg } from '../../../ui/dom';
-import { CATEGORY_QUESTION, type BatchResult, type ChronikContent, caseComplete, caseRatio, entryComplete, entryValues, evaluateBatch, factEntries, nounFits } from '../logic';
+import { BATCH, CATEGORY_QUESTION, type BatchResult, type ChronikContent, caseComplete, caseRatio, entryComplete, entryValues, evaluateBatch, factEntries, nounFits } from '../logic';
 import type { ChronikBlank, ChronikClue } from '../types';
 import { renderCodex } from './codex';
 import { drawRelief, type HeightFn } from './sketch';
@@ -383,8 +383,17 @@ export class ChronikBoard {
     const r = evaluateBatch(cs, p);
     const allow = this.api.canConfirm();
     const count = r.pending.length;
-    const boxes = h('span.boxes', [0, 1, 2].map((i) => h('i', i < count ? '✓' : '')));
-    const status = !allow ? t('chronik.check.era') : r.ready ? t('chronik.check.ready', { n: count }) : t('chronik.check.need', { n: count });
+    // a batch is three entries, or the last one or two of a case (evaluateBatch)
+    const open = cs.entries.filter((e) => e.kind === 'fact' && !p.confirmed.includes(e.id)).length;
+    const need = Math.max(1, Math.min(BATCH, open));
+    const boxes = h('span.boxes', Array.from({ length: need }, (_, i) => h('i', i < count ? '✓' : '')));
+    const status = !allow
+      ? t('chronik.check.era')
+      : r.ready
+        ? t('chronik.check.ready', { n: count })
+        : need < BATCH
+          ? t('chronik.check.needLast', { n: count, m: need })
+          : t('chronik.check.need', { n: count });
     const btn = h(
       `button.kq-btn.primary.ck-btn-check${r.ready && allow ? '.ready' : ''}`,
       { type: 'button', disabled: !r.ready || !allow ? true : undefined, dataset: { testid: 'chronik-check' }, onclick: () => this.doCheck(cs) },

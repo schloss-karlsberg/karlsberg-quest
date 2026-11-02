@@ -1232,8 +1232,9 @@
       "speaker": "laub",
       "text_de": "Sie haben es gesehen. Ich habe mich nicht hingelegt. Ich dachte, sie reißen mich. Sie wollten mich stellen, und ich bin gerannt, in den Nebel hinein, zu weit, bis dahin, wo nichts mehr ist. Seitdem bin ich in diesem Messing. Mein Tagegeld für den letzten Tag ist übrigens auch noch offen.",
       "trigger": {
-        "event": "echo:end",
-        "id": "clue.k4.laub_1840"
+        "event": "story:beat",
+        "chapter": "k4",
+        "beat": "4.6"
       },
       "once": true,
       "priority": 10

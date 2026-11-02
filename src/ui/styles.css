@@ -468,6 +468,10 @@ body {
   font-size: 22px;
   opacity: 0.85;
 }
+/* the lantern oil gauge and its label sit bottom-left too: the stance moves past them */
+.kq-oil:not(.kq-hidden) + .kq-stance {
+  left: 132px;
+}
 .kq-toasts {
   position: absolute;
   top: 90px;

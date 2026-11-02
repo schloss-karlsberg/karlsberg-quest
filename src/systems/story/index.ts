@@ -405,6 +405,15 @@ class StoryRuntime {
     const ctx = this.ctx;
     ctx.events.emit('story:chapter', { id: f.chapter });
     if (resume) return;
+    // the previous chapter's queued lines and delayed actions end with it: the new title card
+    // starts clean (in a campaign Laub's prologue rules ran on into "Der Hof")
+    this.cancelScheduled();
+    this.presenter.clear();
+    // a new chapter (a new day) starts on your feet, not still prone from the last chase
+    if (ctx.player.stance !== 'stand') ctx.player.setStance('stand');
+    // … and with the new chapter's own objective, not the last one of the previous chapter
+    this.slice.objective = null;
+    this.objectives.set(null);
     // switch threats of the previous chapter off
     for (const [kind, cfg] of Object.entries(this.slice.threats)) {
       if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });

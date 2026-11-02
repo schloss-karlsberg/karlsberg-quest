@@ -77,7 +77,8 @@ test('title screen loads, lights the lantern and starts the game', async ({ page
   await page.getByTestId('name-confirm').click();
   const btn = page.getByTestId('light-lantern');
   await btn.click();
-  await expect(page.getByTestId('title')).toBeHidden({ timeout: 5_000 });
+  // (the fade-out runs on real time: generous on a busy machine with software WebGL)
+  await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
   expect(errors).toEqual([]);
 });

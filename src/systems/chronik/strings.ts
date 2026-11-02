@@ -16,6 +16,7 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.check': 'Prüfen',
   'chronik.check.ready': '{n} Einträge ausgefüllt – bereit zur Prüfung.',
   'chronik.check.need': 'Drei ausgefüllte Fakt-Einträge braucht es zur Prüfung ({n}/3).',
+  'chronik.check.needLast': 'Die letzten Fakt-Einträge dieser Seite lassen sich allein prüfen ({n}/{m}).',
   'chronik.check.wrong': 'Mindestens eine Angabe stimmt nicht.',
   'chronik.check.wrongGentle': 'Mindestens eine Angabe stimmt nicht. Sanfter Modus: Die richtigen Einträge sind abgehakt.',
   'chronik.check.ok': 'Bestätigt: {n} Einträge.',

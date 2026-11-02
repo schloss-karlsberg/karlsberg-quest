@@ -81,8 +81,11 @@ describe('GameState + SaveManager', () => {
     s.era = '1793-07';
     s.inventory.clues.push('c1');
     s.systems.hunt = { alert: 0.5 };
+    // a null default (savedAt) must take the saved value: "Weiterspielen" checks it to resume
+    s.meta.savedAt = '2026-11-02T12:00:00.000Z';
     const back = deserializeState(serializeState(s));
     expect(back).toEqual(s);
+    expect(back.meta.savedAt).toBe('2026-11-02T12:00:00.000Z');
 
     const old = deserializeState(JSON.stringify({ version: 0, era: 'nonsense', player: { x: 5 } }));
     expect(old.era).toBe('today');

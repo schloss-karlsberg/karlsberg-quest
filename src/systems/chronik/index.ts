@@ -132,6 +132,13 @@ function reachedChapters(ctx: GameContext): Set<string> | null {
   return story?.active && story.chapter === 'prolog' ? new Set(['p', 'prolog']) : null;
 }
 
+/** The clue `chapter` key of the running story chapter ('p' for the prologue), or null without a story. */
+function runningChapter(ctx: GameContext): string | null {
+  const story = (ctx.state.state.systems as Record<string, unknown>).story as { active?: boolean; chapter?: string | null } | undefined;
+  if (!story?.active || !story.chapter) return null;
+  return story.chapter === 'prolog' ? 'p' : story.chapter;
+}
+
 function env(ctx: GameContext) {
   const s = ctx.state.state;
   return {
@@ -321,7 +328,8 @@ function check(ctx: GameContext, caseId: string, force = false): (BatchResult & 
   if (r.correct) {
     let facts: string[] = [];
     ctx.state.update((s) => {
-      facts = applyBatch(cs, p, r).filter((f) => !s.codex.facts.includes(f));
+      // (two entries of one batch may reveal the same codex fact: one unlock, one toast)
+      facts = [...new Set(applyBatch(cs, p, r))].filter((f) => !s.codex.facts.includes(f));
       for (const f of facts) s.codex.facts.push(f);
       sl.since = { clues: [], nouns: [], facts: [] };
       (sl.hints[caseId] ??= { stuck: 0, given: [] }).stuck = 0;
@@ -449,12 +457,16 @@ function refreshMarkers(ctx: GameContext): void {
   // (ctx.content.cluesAt is the shared spatial query; our content view filters placeholder packs)
   target = null;
   let best = Infinity;
+  const running = runningChapter(ctx);
   for (const raw of ctx.content.cluesAt(p.x, p.z, era)) {
     const c = content.clues.get(raw.id);
     if (!c || npcOwnsTalk(ctx, c)) continue;
     const st = clueStatus(c, e);
     if (st !== 'available' && st !== 'needs-lantern') continue;
-    const d = clueDistance(c, p.x, p.z) / c.where.radius;
+    // overlapping clues: the running chapter's come first (a prologue echo missed on the Ehrenhof
+    // must not take E from chapter 1's guard echo at the gate, nor keep that one from starting)
+    const other = running !== null && c.chapter !== undefined && c.chapter !== running ? 1 : 0;
+    const d = clueDistance(c, p.x, p.z) / c.where.radius + other;
     if (d < best) {
       best = d;
       target = { clue: c, status: st };

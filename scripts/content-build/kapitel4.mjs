@@ -231,7 +231,7 @@ const dialogue = [
     ['echo.k4.laub_1840.07', 'stimme', 'Leg dich hin. Bitte.'],
     ['echo.k4.laub_1840.08', 'geraeusch', '[Laub nimmt die Laterne und rennt. Die Augen folgen. Das Bild bricht ab. Nur der Theodolit bleibt stehen.]'],
   ]),
-  say('laub.k4.gestaendnis_2', 'laub', 'Sie haben es gesehen. Ich habe mich nicht hingelegt. Ich dachte, sie reißen mich. Sie wollten mich stellen, und ich bin gerannt, in den Nebel hinein, zu weit, bis dahin, wo nichts mehr ist. Seitdem bin ich in diesem Messing. Mein Tagegeld für den letzten Tag ist übrigens auch noch offen.', { event: 'echo:end', id: 'clue.k4.laub_1840' }, { once: true, priority: 10 }),
+  say('laub.k4.gestaendnis_2', 'laub', 'Sie haben es gesehen. Ich habe mich nicht hingelegt. Ich dachte, sie reißen mich. Sie wollten mich stellen, und ich bin gerannt, in den Nebel hinein, zu weit, bis dahin, wo nichts mehr ist. Seitdem bin ich in diesem Messing. Mein Tagegeld für den letzten Tag ist übrigens auch noch offen.', beat('4.6'), { once: true, priority: 10 }),
   // 4.7 Die Meute treibt
   say('laub.k4.erkenntnis', 'laub', 'Sehen Sie, wo sie stehen? Nicht vor Ihnen. Zwischen Ihnen und dem Grau. Die jagen Sie nicht. Die treiben Sie.', beat('4.7'), { once: true, priority: 10 }),
   say('laub.k4.heimgebracht', 'laub', 'Sehen Sie? Nichts verloren. Nie gewesen, wenn man’s genau nimmt. Nur zurückgebracht.', { event: 'player:caught', by: 'pack', flag: 'flag.k4_kein_verlust' }, { once: true, priority: 10 }),
