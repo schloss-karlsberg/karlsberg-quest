@@ -112,6 +112,8 @@ export class FireSim {
    */
   breathe(dt: number, e: Exposure, low: boolean, gentle: boolean): boolean {
     let rate = 0;
+    // story hold (W5): the timeline stands still, and so does the smoke; the player gets their breath back
+    if (this.hold) e = { ...e, inside: -1, state: 'none', nearest: Infinity };
     if (e.inside >= 0 && e.state !== 'none') {
       rate = e.state === 'collapsed' ? SMOKE_RATES.collapsed : e.state === 'burning' ? SMOKE_RATES.burning : SMOKE_RATES.smoke * (0.5 + e.density);
     } else if (e.nearest < 6) {

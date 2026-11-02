@@ -4,110 +4,401 @@
   "title_de": "Die Nacht",
   "sub_de": "Kapitel 3 · Sonntag, 28. Juli 1793",
   "era": "1793-07",
-  "placeholder": true,
   "start": "k3_0",
   "next": "k4",
   "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "on": [
+    {
+      "id": "teil-b",
+      "when": { "any": [{ "have": { "clue": "clue.k3.chronik" } }, { "confirmed": { "prefix": "entry.k3.", "n": 3 } }] },
+      "do": [{ "do": "flag", "set": { "flag.k3_teil_b": true } }]
+    },
+    { "id": "satz-1", "when": { "confirmed": { "prefix": "entry.k3.", "n": 3 } }, "do": [{ "do": "skill", "id": "baumeister", "tier": 1 }] },
+    { "id": "satz-2", "when": { "confirmed": { "prefix": "entry.k3.", "n": 6 } }, "do": [{ "do": "skill", "id": "baumeister", "tier": 2 }] },
+    { "id": "satz-3", "when": { "confirmed": { "prefix": "entry.k3.", "n": 9 } }, "do": [{ "do": "skill", "id": "roentgen", "tier": 1 }] },
+    {
+      "id": "horstmann",
+      "when": { "all": [{ "have": { "clue": "clue.k3.stroh" } }, { "not": { "have": { "clue": "clue.k3.horstmann" } } }, { "era": "1793-07" }] },
+      "do": [{ "do": "grant", "clue": "clue.k3.horstmann", "delay": 1.5 }]
+    },
+    {
+      "id": "feuer",
+      "when": { "all": [{ "have": { "clue": "clue.k3.fackel" } }, { "room": "KB-B01" }, { "era": "1793-07" }] },
+      "do": [{ "do": "grant", "clue": "clue.k3.feuer" }]
+    },
+    {
+      "id": "jaguar-gesehen",
+      "when": { "event": "menagerie:seen", "match": { "animal": "jaguar" } },
+      "do": [{ "do": "say", "line": "laub.k3.jaguar" }]
+    },
+    {
+      "id": "jaguar-stoss",
+      "when": { "event": "menagerie:knockdown", "match": { "animal": "jaguar" } },
+      "do": [{ "do": "say", "line": "laub.k3.jaguar_down", "delay": 1.5 }]
+    }
+  ],
   "beats": [
     {
       "id": "k3_0",
       "title_de": "Feldstation",
-      "placeholder": true,
       "enter": [
         { "do": "look", "time": "day" },
-        { "do": "say", "id": "marlene.k3.morgen", "speaker": "marlene", "text": "Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.", "delay": 2 },
-        { "do": "say", "id": "laub.k3.start", "speaker": "laub", "text": "Juli dreiundneunzig. Ich war nicht dabei. Ich bin erst vierzehn Jahre später geboren worden. Und trotzdem habe ich das Gefühl, ich sollte mich entschuldigen.", "delay": 1.5 },
+        { "do": "flag", "set": { "story.laub": true } },
+        { "do": "skill", "id": "kartograf", "tier": 3 },
+        { "do": "say", "line": "marlene.k3.morgen", "delay": 2 },
+        { "do": "grant", "clue": "clue.k3.marlene", "delay": 0.5 },
+        { "do": "say", "line": "laub.k3.start", "delay": 1.5 },
         { "do": "anchor", "to": "1793-07", "x": 1210, "z": -1114, "r": 35 },
-        { "do": "objective", "id": "k3.ehrenhof", "text": "Zum Ehrenhof. Q – Zeitwechsel in den Juli 1793", "x": 1210, "z": -1114, "delay": 1 }
+        { "do": "objective", "id": "k3.ehrenhof", "text": "Zum Ehrenhof. Dort: Q – Zeitwechsel in den Juli 1793", "x": 1210, "z": -1114, "delay": 1 }
       ],
-      "complete": { "era": "1793-07" }
+      "on": [
+        {
+          "id": "am-anker",
+          "when": { "enter": { "x": 1210, "z": -1114, "r": 35, "era": "today" } },
+          "repeat": true,
+          "do": [{ "do": "prompt", "key": "Q", "text": "Zeitwechsel: 28. Juli 1793" }]
+        },
+        {
+          "id": "weg-vom-anker",
+          "when": { "leave": { "x": 1210, "z": -1114, "r": 38 } },
+          "repeat": true,
+          "do": [{ "do": "prompt", "key": null, "text": null }]
+        }
+      ],
+      "complete": { "era": "1793-07" },
+      "exit": [{ "do": "prompt", "key": null, "text": null }]
     },
     {
       "id": "k3_1",
       "title_de": "Der Nachmittag",
-      "placeholder": true,
       "checkpoint": "k3_0",
       "enter": [
-        { "do": "objective", "id": "k3.galerie", "text": "Die Galerie: am Westende ist ein Brett im Parkett lose", "x": 1200, "z": -1218, "delay": 2 }
+        { "do": "meter", "id": "oil", "active": true, "seconds": 420, "text": "Die Laterne ist leer. Die Erinnerung lässt dich los …" },
+        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1215, "z": -1185, "era": "1793-07", "chapter": "k3", "yaw": 200, "mood": "warm" },
+        { "do": "npc", "op": "spawn", "npc": "soll", "room": "B03.1.eg-registratur", "x": 1202.2, "z": -1150.5, "era": "1793-07", "chapter": "k3", "yaw": 180 },
+        { "do": "say", "line": "laub.k3.ehrenhof", "delay": 3 },
+        { "do": "objective", "id": "k3.kuechenhof", "text": "Stroh im Ehrenhof (E halten: erinnern). Dann durch die Durchfahrt im Nordflügel in den Küchenhof", "x": 1218, "z": -1159, "delay": 1 }
       ],
-      "complete": { "any": [{ "have": { "clue": "clue.k3.chronik" } }, { "enter": { "x": 1200, "z": -1218, "r": 4, "era": "1793-07" } }] },
+      "on": [
+        {
+          "id": "im-kuechenhof",
+          "when": { "any": [{ "enter": { "x": 1215, "z": -1185, "r": 16, "era": "1793-07" } }, { "talked": { "npc": "hanne" } }] },
+          "do": [{ "do": "objective", "id": "k3.registratur", "text": "Die Registratur im Nordflügel: Soll zählt, was fehlt (E: sprechen)", "x": 1201.7, "z": -1152.7, "delay": 1 }]
+        },
+        {
+          "id": "nach-soll",
+          "when": { "any": [{ "talked": { "npc": "soll" } }, { "room": "KB-B04" }] },
+          "do": [
+            {
+              "do": "objective",
+              "id": "k3.galerie",
+              "text": "Das graue Buch: am Westende der Galerie, bei der Falltür. Durch den Sammlungsflügel, Treppe Nord hinauf",
+              "x": 1201.5,
+              "z": -1216.6,
+              "delay": 2
+            }
+          ]
+        },
+        {
+          "id": "galerie",
+          "when": { "room": "B06.1.bildergalerie" },
+          "do": [{ "do": "say", "line": "laub.k3.galerie_leer", "delay": 1 }]
+        }
+      ],
+      "complete": { "have": { "clue": "clue.k3.chronik" } },
       "exit": [
-        { "do": "flag", "set": { "flag.k3_chronik_zerstreut": true } },
-        { "do": "say", "id": "laub.k3.sowar", "speaker": "laub", "text": "So war das also.", "delay": 2, "ms": 3500 }
+        { "do": "say", "line": "laub.k3.seite_offen", "delay": 6 },
+        { "do": "autosave" }
       ]
     },
     {
       "id": "k3_2",
-      "title_de": "Die Fackel",
-      "placeholder": true,
-      "checkpoint": "k3_0",
+      "title_de": "Der Kommissär",
+      "checkpoint": "k3_2",
       "enter": [
-        { "do": "objective", "id": "k3.kommissaer", "text": "Zurück in den Ehrenhof, zum Kommissär (E)", "x": 1225, "z": -1118, "delay": 1 }
+        { "do": "anchor", "to": "1793-07", "x": 1210, "z": -1114, "r": 35 },
+        { "do": "meter", "id": "oil", "active": true, "seconds": 420, "text": "Die Laterne ist leer. Die Erinnerung lässt dich los …" },
+        { "do": "objective", "id": "k3.tempel", "text": "Am Ostende der Galerie: das Tempelzimmer. Danach in den Ehrenhof, zum Kommissär", "x": 1266.6, "z": -1226.1, "delay": 1 }
       ],
-      "complete": { "any": [{ "event": "echo:end", "match": { "id": "echo.k3.fackel" } }, { "enter": { "x": 1225, "z": -1118, "r": 5, "era": "1793-07" } }] },
+      "on": [
+        {
+          "id": "zum-kommissaer",
+          "when": { "all": [{ "era": "1793-07" }, { "any": [{ "have": { "clue": "clue.k3.papier" } }, { "timer": 150 }, { "flag": "k3.fackel_gesehen" }] }] },
+          "repeat": true,
+          "do": [{ "do": "objective", "id": "k3.kommissaer", "text": "Im Ehrenhof: beim Kommissär E halten. Wenn du bereit bist", "x": 1225, "z": -1118, "delay": 2 }]
+        },
+        {
+          "id": "heute",
+          "when": { "era": "today" },
+          "repeat": true,
+          "do": [{ "do": "objective", "id": "k3.ehrenhof2", "text": "Zum Ehrenhof. Q – zurück in den Juli 1793", "x": 1210, "z": -1114 }]
+        },
+        {
+          "id": "kommissaer-sehen",
+          "when": { "enter": { "x": 1220, "z": -1120, "r": 24, "era": "1793-07" } },
+          "do": [{ "do": "say", "line": "laub.k3.kommissaer", "delay": 0.5 }]
+        }
+      ],
+      "complete": {
+        "any": [
+          { "all": [{ "have": { "clue": "clue.k3.fackel" } }, { "event": "echo:end", "match": { "id": "clue.k3.fackel" } }, { "era": "1793-07" }] },
+          { "all": [{ "flag": "k3.fackel_gesehen" }, { "enter": { "x": 1225, "z": -1118, "r": 4, "era": "1793-07" } }] }
+        ]
+      },
       "exit": [
-        { "do": "anchor", "to": "1793-07", "x": 1221, "z": -1296, "r": 25 },
-        { "do": "threat", "kind": "fire", "active": true, "intensity": 0.6, "center": { "x": 1262, "z": -1126 }, "radius": 60, "seconds": 240 }
+        { "do": "flag", "set": { "k3.fackel_gesehen": true, "fire.hold": false } },
+        { "do": "meter", "id": "oil", "active": true, "seconds": 900 },
+        { "do": "meter", "id": "smoke", "active": true, "seconds": 300, "lossless": true },
+        { "do": "say", "line": "laub.k3.hinauf", "delay": 1.5 },
+        { "do": "autosave" }
       ]
     },
     {
       "id": "k3_3",
-      "title_de": "Der brennende Festsaal",
-      "placeholder": true,
+      "title_de": "Hinauf",
       "checkpoint": "k3_2",
       "enter": [
-        { "do": "objective", "id": "k3.festsaal", "text": "Hinauf in den Festsaal. Jetzt, nicht gleich.", "x": 1266, "z": -1127, "delay": 1 }
+        { "do": "flag", "set": { "fire.hold": false } },
+        { "do": "objective", "id": "k3.festsaal", "text": "Hinauf in den Festsaal: durchs Vestibül, die Prunktreppe. Geduckt (C) atmest du weniger Rauch", "x": 1265.8, "z": -1126.8 }
       ],
-      "complete": { "enter": { "x": 1266, "z": -1127, "r": 9, "era": "1793-07" } },
-      "exit": [
-        {
-          "do": "choice",
-          "id": "k3.objekt",
-          "prompt": "Drei Dinge sind zu retten. Tragen kannst du eines.",
-          "seconds": 40,
-          "fallback": 3,
-          "options": [
-            { "label": "Den Türgriff aus Hannes Hand", "set": { "flag.k3_objekt": "tuergriff" } },
-            { "label": "Den Dukaten im Fensterbrett", "set": { "flag.k3_objekt": "dukat" } },
-            { "label": "Die vergoldete Uhr mit Alabaster, die noch tickt", "set": { "flag.k3_objekt": "uhr" } },
-            { "label": "Nichts. Hinaus.", "set": { "flag.k3_objekt": "nichts" } }
-          ]
-        }
-      ]
+      "complete": { "any": [{ "room": "B01.2.og-festsaal" }, { "chosen": "k3.objekt" }] }
     },
     {
       "id": "k3_4",
-      "title_de": "Hinaus",
-      "placeholder": true,
+      "title_de": "Der Festsaal",
       "checkpoint": "k3_2",
       "enter": [
-        { "do": "objective", "id": "k3.gaertnerei", "text": "Hinaus – zur ummauerten Holländischen Gärtnerei", "x": 1221, "z": -1296, "delay": 1 },
-        { "do": "threat", "kind": "pack", "active": true, "intensity": 0.6, "center": { "x": 1230, "z": -1250 }, "radius": 300, "delay": 3 }
+        { "do": "flag", "set": { "fire.hold": true } },
+        { "do": "memorial", "id": "k3.festsaal", "room": "B01.2.og-festsaal" },
+        { "do": "npc", "op": "spawn", "npc": "hanne", "room": "B01.2.og-festsaal", "era": "1793-07", "chapter": "k3h", "yaw": 250, "mood": "warm" },
+        { "do": "grant", "clue": "clue.k3.festsaal", "delay": 0.5 },
+        { "do": "objective", "id": "k3.wahl", "text": "Der Festsaal. Hanne steht in der Mitte" }
       ],
-      "complete": { "enter": { "x": 1221, "z": -1296, "r": 25, "era": "1793-07" } }
+      "on": [
+        {
+          "id": "wahl",
+          "when": { "all": [{ "not": { "chosen": "k3.objekt" } }, { "timer": 1 }] },
+          "do": [
+            { "do": "say", "line": "hanne.k3.05", "delay": 7 },
+            { "do": "say", "line": "laub.k3.festsaal_wahl", "delay": 0.8 },
+            {
+              "do": "choice",
+              "id": "k3.objekt",
+              "prompt": "Drei Dinge sind zu retten. Tragen kannst du eines.",
+              "note": "Hanne: „Nimm, was du willst. Irgendwas soll übrig bleiben.“ Nach 40 Sekunden nimmt sie dich am Arm.",
+              "seconds": 40,
+              "fallback": 3,
+              "delay": 2,
+              "options": [
+                {
+                  "label": "Den Türgriff aus Hannes Hand",
+                  "key": "tuergriff",
+                  "set": { "flag.k3_objekt": "tuergriff" },
+                  "then": [{ "do": "toast", "text": "Du nimmst ihr den Türgriff ab. Messing, noch warm von ihrer Hand.", "ms": 4200 }]
+                },
+                {
+                  "label": "Den Dukaten im Fensterbrett, mit dem Schloss darauf",
+                  "key": "dukat",
+                  "set": { "flag.k3_objekt": "dukat" },
+                  "then": [{ "do": "toast", "text": "Der Dukat. Auf einer Seite das Schloss, das gerade brennt.", "ms": 4200 }]
+                },
+                {
+                  "label": "Die vergoldete Uhr mit Alabaster, die noch tickt",
+                  "key": "uhr",
+                  "set": { "flag.k3_objekt": "uhr" },
+                  "then": [{ "do": "toast", "text": "Die Uhr ist schwerer, als sie aussieht. Sie tickt weiter.", "ms": 4200 }]
+                },
+                {
+                  "label": "Nichts. Hinaus.",
+                  "key": "nichts",
+                  "set": { "flag.k3_objekt": "nichts" },
+                  "then": [{ "do": "toast", "text": "Du nimmst nichts. Hanne nimmt dich am Arm.", "ms": 4200 }]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "complete": { "chosen": "k3.objekt" },
+      "exit": [
+        { "do": "grant", "clue": "clue.k3.retten" },
+        { "do": "memorial", "id": "k3.festsaal", "active": false },
+        { "do": "flag", "set": { "fire.hold": false } },
+        { "do": "say", "line": "hanne.k3.06", "delay": 0.3 },
+        { "do": "npc", "op": "despawn", "npc": "hanne", "delay": 1.5 }
+      ]
     },
     {
       "id": "k3_5",
-      "title_de": "Der Zwinger",
-      "placeholder": true,
+      "title_de": "Hinaus",
       "checkpoint": "k3_2",
       "enter": [
-        { "do": "threat", "kind": "fire", "active": false },
-        { "do": "objective", "id": "k3.zwinger", "text": "Nach Norden, zum Zwinger", "x": 1216, "z": -1571, "delay": 1 }
+        { "do": "flag", "set": { "fire.hold": false } },
+        {
+          "do": "objective",
+          "id": "k3.hinaus",
+          "text": "Hinaus in den Garten! Die Prunktreppe hinunter, solange sie hält, oder die schmale Dienertreppe Süd. Rennen (Shift) ist kürzer im Rauch",
+          "x": 1285,
+          "z": -1150
+        }
       ],
-      "complete": { "enter": { "x": 1216, "z": -1571, "r": 30, "era": "1793-07" } },
-      "exit": [{ "do": "threat", "kind": "pack", "active": false }]
+      "complete": {
+        "all": [
+          { "era": "1793-07" },
+          { "not": { "flag": "interior.building" } },
+          {
+            "any": [
+              { "enter": { "x": 1300, "z": -1170, "r": 58 } },
+              { "enter": { "x": 1215, "z": -1120, "r": 22 } },
+              { "enter": { "x": 1215, "z": -1187, "r": 16 } },
+              { "leave": { "x": 1232, "z": -1165, "r": 75 } }
+            ]
+          }
+        ]
+      },
+      "exit": [{ "do": "autosave" }]
     },
     {
       "id": "k3_6",
-      "title_de": "Feldstation",
-      "placeholder": true,
-      "enter": [{ "do": "objective", "id": "k3.ende", "text": "Zurück (Q halten). Die Fallseite „Die Nacht“ fertigstellen." }],
-      "complete": { "all": [{ "era": "today" }, { "any": [{ "caseComplete": "case.k3" }, { "confirmed": { "prefix": "entry.k3.", "n": 9 } }, { "flag": "debug.k3" }] }] },
+      "title_de": "Der Garten",
+      "checkpoint": "k3_6",
+      "enter": [
+        { "do": "anchor", "to": "1793-07", "x": 1292, "z": -1175, "r": 25 },
+        { "do": "say", "line": "laub.k3.draussen", "delay": 1.5 },
+        { "do": "cue", "id": "menagerie:spawn", "data": { "animal": "jaguar", "x": 1276, "z": -1418, "id": "k3.jaguar" } },
+        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1270.5, "z": -1293, "era": "1793-07", "chapter": "k3g", "yaw": 150, "mood": "warm" },
+        { "do": "objective", "id": "k3.pforte", "text": "Zur Pforte der Holländischen Gärtnerei. Leise: die Hunde jagen nach Gehör (C: schleichen)", "x": 1270, "z": -1293, "delay": 1 }
+      ],
+      "on": [
+        {
+          "id": "meute",
+          "when": { "all": [{ "era": "1793-07" }, { "not": { "enter": { "x": 1270, "z": -1293, "r": 7 } } }] },
+          "repeat": true,
+          "do": [{ "do": "threat", "kind": "pack", "active": true, "hounds": 5, "pikeur": false, "intensity": 0.45, "sight": 16, "center": { "x": 1302, "z": -1262 }, "radius": 42, "seed": 31, "delay": 2 }]
+        },
+        {
+          "id": "heute",
+          "when": { "era": "today" },
+          "repeat": true,
+          "do": [{ "do": "objective", "id": "k3.garten-anker", "text": "Östlich vom Schloss: Q – zurück in den Garten, Juli 1793", "x": 1292, "z": -1175 }]
+        }
+      ],
+      "complete": { "enter": { "x": 1270, "z": -1293, "r": 6, "era": "1793-07" } },
       "exit": [
-        { "do": "sound", "sound": "compass", "caption": "[Die Bussole riecht nach kaltem Rauch]" },
-        { "do": "say", "id": "laub.k3.ende", "speaker": "laub", "text": "Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.", "delay": 1.5, "ms": 6500 }
+        { "do": "threat", "kind": "pack", "active": false },
+        { "do": "say", "line": "laub.k3.pforte", "delay": 1 },
+        { "do": "autosave" }
       ]
+    },
+    {
+      "id": "k3_7",
+      "title_de": "Zum Zwinger",
+      "checkpoint": "k3_7",
+      "enter": [
+        { "do": "anchor", "to": "1793-07", "x": 1272, "z": -1300, "r": 25 },
+        { "do": "objective", "id": "k3.zwinger", "text": "Nach Norden zum Zwinger, zwischen Marstall und Remisen hindurch", "x": 1258, "z": -1566, "delay": 6 }
+      ],
+      "on": [
+        {
+          "id": "meute",
+          "when": { "all": [{ "era": "1793-07" }, { "leave": { "x": 1270, "z": -1293, "r": 22 } }] },
+          "repeat": true,
+          "do": [{ "do": "threat", "kind": "pack", "active": true, "hounds": 3, "pikeur": false, "intensity": 0.45, "sight": 16, "center": { "x": 1268, "z": -1470 }, "radius": 40, "seed": 47 }]
+        },
+        {
+          "id": "heute",
+          "when": { "era": "today" },
+          "repeat": true,
+          "do": [{ "do": "objective", "id": "k3.pforte-anker", "text": "Zur Gärtnerei. Q – zurück in den Juli 1793", "x": 1272, "z": -1300 }]
+        }
+      ],
+      "complete": { "enter": { "x": 1258, "z": -1566, "r": 14, "era": "1793-07" } },
+      "exit": [
+        { "do": "threat", "kind": "pack", "active": false },
+        { "do": "npc", "op": "despawn", "npc": "hanne" }
+      ]
+    },
+    {
+      "id": "k3_8",
+      "title_de": "Der Zwinger",
+      "checkpoint": "k3_7",
+      "enter": [
+        { "do": "npc", "op": "spawn", "npc": "jost", "x": 1250, "z": -1568, "era": "1793-07", "chapter": "k3z", "yaw": 90, "mood": "warm" },
+        { "do": "sound", "sound": "howl", "x": 1232, "z": -1572, "caption": "[Im Zwinger bellen Hunde. Gittertüren schlagen auf.]" },
+        { "do": "grant", "clue": "clue.k3.jost", "delay": 1 },
+        { "do": "cue", "id": "menagerie:clear", "data": { "id": "k3.jaguar" }, "delay": 2 },
+        { "do": "say", "line": "beat.k3.hunde", "delay": 10 },
+        { "do": "npc", "op": "despawn", "npc": "jost", "delay": 3 },
+        { "do": "sound", "sound": "horn", "signal": "verloren", "x": 1150, "z": -1700, "caption": "[Horn, weit weg: falsch und zu hoch]", "delay": 3 },
+        { "do": "objective", "id": "k3.heim", "text": "Zurück ins Heute (Q halten)", "delay": 2 }
+      ],
+      "complete": { "era": "today" },
+      "exit": [
+        { "do": "meter", "id": "smoke", "active": false },
+        { "do": "meter", "id": "oil", "active": false }
+      ]
+    },
+    {
+      "id": "k3_9",
+      "title_de": "Heimweg",
+      "enter": [
+        { "do": "look", "time": "dusk" },
+        { "do": "anchor", "to": null },
+        { "do": "say", "line": "marlene.k3.abend", "delay": 3 },
+        { "do": "objective", "id": "k3.station", "text": "Zur Feldstation", "x": 760.6, "z": -910.4, "delay": 1 }
+      ],
+      "complete": { "any": [{ "event": "hub:enter" }, { "enter": { "x": 760, "z": -915, "r": 15, "era": "today" } }] }
+    },
+    {
+      "id": "k3_10",
+      "title_de": "Auf dem Tisch",
+      "enter": [{ "do": "objective", "id": "k3.ende", "text": "Die Fallseite „Die Nacht“ an der Pinnwand bestätigen (Tab)", "delay": 8 }],
+      "on": [
+        {
+          "id": "tuergriff",
+          "when": { "flag": "flag.k3_objekt", "eq": "tuergriff" },
+          "do": [
+            { "do": "give", "item": "item.k3.tuergriff", "toast": "Auf dem Tisch, neben der Bussole: ein Türgriff aus Messing.", "delay": 1 },
+            { "do": "say", "line": "laub.k3.heute.tuergriff", "delay": 1 }
+          ]
+        },
+        {
+          "id": "dukat",
+          "when": { "flag": "flag.k3_objekt", "eq": "dukat" },
+          "do": [
+            { "do": "give", "item": "item.k3.dukat", "toast": "Auf dem Tisch, neben der Bussole: ein Dukat mit dem Schloss darauf.", "delay": 1 },
+            { "do": "say", "line": "laub.k3.heute.dukat", "delay": 1 }
+          ]
+        },
+        {
+          "id": "uhr",
+          "when": { "flag": "flag.k3_objekt", "eq": "uhr" },
+          "do": [
+            { "do": "give", "item": "item.k3.uhr", "toast": "Auf dem Tisch, neben der Bussole: die vergoldete Uhr. Sie tickt.", "delay": 1 },
+            { "do": "say", "line": "laub.k3.heute.uhr", "delay": 1 }
+          ]
+        },
+        {
+          "id": "nichts",
+          "when": { "not": { "any": [{ "flag": "flag.k3_objekt", "eq": "tuergriff" }, { "flag": "flag.k3_objekt", "eq": "dukat" }, { "flag": "flag.k3_objekt", "eq": "uhr" }] } },
+          "do": [
+            { "do": "toast", "text": "Der Tisch neben der Bussole ist leer.", "delay": 1 },
+            { "do": "say", "line": "laub.k3.heute.nichts", "delay": 1 }
+          ]
+        }
+      ],
+      "complete": { "all": [{ "era": "today" }, { "any": [{ "caseComplete": "case.k3" }, { "confirmed": { "prefix": "entry.k3.", "n": 9 } }, { "flag": "debug.k3" }] }] }
+    },
+    {
+      "id": "k3_11",
+      "title_de": "Kalter Rauch",
+      "enter": [
+        { "do": "look", "time": "night" },
+        { "do": "sound", "sound": "compass", "caption": "[Die Bussole riecht nach kaltem Rauch]", "delay": 1.5 },
+        { "do": "say", "line": "laub.k3.ende", "delay": 1.5 },
+        { "do": "autosave" }
+      ],
+      "complete": { "timer": 14 }
     }
   ]
 }

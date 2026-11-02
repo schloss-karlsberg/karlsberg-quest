@@ -7,8 +7,12 @@ const EH = [1210, -1114];
 const REG = 'B03.1.eg-registratur';
 const NAT = 'B04.2.og-naturalienkabinett';
 const GAL = 'B06.1.bildergalerie';
-const FALLTUER = [1200, -1218]; // west end of the gallery, inside B06.1.bildergalerie, above KB-B40
-const ZW = [1177, -1571];
+// west end of the gallery, under the hanging wall (north), near the Vorraum door; inside B06.1.bildergalerie, above KB-B40
+const FALLTUER = [1201.5, -1216.6];
+// east side of the Zwinger (KB-B23), between the kennel wall and the peat sheds: where the escape route from the garden arrives
+const ZW = [1258, -1566];
+// the gate of the walled Holländische Gärtnerei (east wall, KB-B27): the safe place of part B
+const PFORTE = [1267, -1290];
 
 const clues = [
   clue('clue.k3.marlene', {
@@ -18,12 +22,12 @@ const clues = [
   // Teil A
   clue('clue.k3.stroh', {
     title: 'Erinnerung: Stroh aus Metz', kind: 'echo', at: EH, r: 35, era: E, anchor: 'TF-01', chapter: ch, fiction: true,
-    text: 'Sommer, später Nachmittag, Staub. Im Hof stehen Karren voller Stroh, Soldaten in blauen Röcken laden ab und tragen Bündel ins Erdgeschoss. Automatisch.',
+    text: 'Sommer, später Nachmittag, Staub. Im Hof stehen Karren voller Stroh, Soldaten in blauen Röcken laden ab und tragen Bündel ins Erdgeschoss.',
     nouns: ['n.lothringen', 'n.metz', 'n.28_juli', 'n.dachstuhl'],
   }),
   clue('clue.k3.horstmann', {
     title: 'Horstmann notiert', kind: 'dialogue', at: EH, r: 35, era: E, anchor: 'TF-01', chapter: ch, fiction: false,
-    text: 'Laub im Ehrenhof.', nouns: ['n.28_juli', 'n.24_juli'], req: { clues: ['clue.k3.stroh'] },
+    text: 'Laub kennt die Akten: Regierungsrat Horstmann hat den Tag notiert, und den Brand vier Tage vorher gleich mit.', nouns: ['n.28_juli', 'n.24_juli'], req: { clues: ['clue.k3.stroh'] },
   }),
   clue('clue.k3.lehnstuhl', {
     title: 'Der Mann mit dem Lehnstuhl', kind: 'object', at: [1205, -1110], r: 15, era: E, anchor: 'TF-01', chapter: ch, fiction: true,
@@ -32,7 +36,7 @@ const clues = [
   }),
   clue('clue.k3.kuechenhof', {
     title: 'Erinnerung: Freigegeben', kind: 'echo', at: [1212, -1180], r: 25, era: E, anchor: 'TF-02', chapter: ch, fiction: true,
-    text: 'E halten im Küchenhof. Hier wird geplündert: Kupferkessel, Vorhänge, Fensterblei. Mehrere Stimmen, keine Gesichter scharf.',
+    text: 'Im Küchenhof wird geplündert: Kupferkessel, Vorhänge, Fensterblei. Mehrere Stimmen, keine Gesichter scharf.',
     nouns: ['n.dorfbewohner', 'n.homburg', 'n.keller', 'n.mundkoch', 'n.freiheit', 'n.r_retteten'],
   }),
   clue('clue.k3.hanne', {
@@ -50,28 +54,28 @@ const clues = [
     flags: ['flag.k3_waffen_gesehen'],
   }),
   clue('clue.k3.kisten', {
-    title: 'Gepackte Kisten', kind: 'object', room: NAT, r: 7, era: E, chapter: ch, fiction: true,
+    title: 'Gepackte Kisten', kind: 'object', at: [1188.6, -1178.2], anchor: NAT, r: 3.2, era: E, chapter: ch, fiction: true,
     text: 'Zwölf große Kisten, vernagelt, mit Kreide beschriftet: „Naturalien-Cabinet. Nach Kaiserslautern.“ Darunter, mit anderer Kreide durchgestrichen und überschrieben: „Abbestellt.“ (Wortlaut erfunden; Inhalt nach M1910 S. 454 f.)',
     nouns: ['n.kaiserslautern', 'n.naturalienkabinett'],
   }),
   clue('clue.k3.holandre', {
-    title: 'Holandres Vogelkatalog', kind: 'document', room: NAT, r: 7, era: E, chapter: ch, fiction: false,
+    title: 'Holandres Vogelkatalog', kind: 'document', at: [1192.4, -1176.4], anchor: NAT, r: 2.2, era: E, chapter: ch, fiction: false,
     text: '„Catalogue des oiseaux … des Deux-Ponts, 1785“. Jemand hat am Rand gezählt: 1187. (Holandre 1785, 1 187 Vögel, nach Schwan 2012 Anm. 30.)',
     flags: ['flag.k3_holandre_gesehen'],
   }),
   clue('clue.k3.koenig', {
-    title: 'Erinnerung: Der König verspricht', kind: 'echo', room: NAT, r: 7, era: E, chapter: ch, fiction: true,
-    text: 'E halten. Zwei Herren gehen schnell durch den Raum, ohne stehen zu bleiben. Man sieht nur ihre Rücken.',
+    title: 'Erinnerung: Der König verspricht', kind: 'echo', at: [1184.6, -1177.3], anchor: NAT, r: 2.8, era: E, chapter: ch, fiction: true,
+    text: 'Zwei Herren gehen schnell durch den Raum, ohne stehen zu bleiben. Man sieht nur ihre Rücken.',
     nouns: ['n.koenig_preussen', 'n.kaiser'],
   }),
   clue('clue.k3.galerie', {
     title: 'Erinnerung: Die Galerie', kind: 'echo', room: GAL, r: 40, era: E, chapter: ch, fiction: true,
-    text: 'E halten. Für die Dauer des Echos hängen die Bilder wieder. Ein Mann im Schlafrock geht mit einem Leuchter die Wand entlang und bleibt vor jedem Bild stehen.',
+    text: 'Für die Dauer der Erinnerung hängen die Bilder wieder. Ein Mann im Schlafrock geht mit einem Leuchter die Wand entlang und bleibt vor jedem Bild stehen.',
     nouns: ['n.hundert_fuss', 'n.fachwerk'],
   }),
   clue('clue.k3.messen', {
     title: 'Die Galerie messen', kind: 'object', room: GAL, r: 40, era: E, chapter: ch, fiction: false,
-    text: 'Mit R von einem Ende zum anderen messen. Die Messlinie zeigt rund 80 m (Modelllänge, nicht fest).',
+    text: 'Die Messlinie von einem Ende der Galerie zum anderen. Rund achtzig Meter, im Modell gemessen.',
     nouns: ['n.hundert_schritt', 'n.hundert_klafter'], req: { skill: 'kartograf:3' },
   }),
   clue('clue.k3.falltuer', {
@@ -90,19 +94,19 @@ const clues = [
     flags: ['flag.k3_papier'],
   }),
   clue('clue.k3.gaertner', {
-    title: 'Das Schild an der Pforte', kind: 'document', at: [1267, -1290], r: 6, era: E, anchor: 'KB-B27', chapter: ch, fiction: true,
-    text: 'Ein Schild an der Pforte der Holländischen Gärtnerei: „Hof-Gärtnerey. Eintritt nur mit Erlaubnis des Hofgärtners.“ (Erfunden.)',
+    title: 'Das Schild an der Pforte', kind: 'document', at: PFORTE, r: 3, era: E, anchor: 'KB-B27', chapter: ch, fiction: true,
+    text: 'Ein Schild an der Pforte der Holländischen Gärtnerei: „Hof-Gärtnerey. Eintritt nur mit Erlaubnis des Hofgärtners.“ (Der Wortlaut ist erfunden.)',
     nouns: ['n.hofgaertner'],
   }),
   // Teil B
   clue('clue.k3.fackel', {
-    title: 'Erinnerung: Im Namen der Nation', kind: 'echo', at: [1225, -1118], r: 4, era: E, anchor: 'TF-01', chapter: ch, fiction: true,
-    text: 'E halten beim Kommissär (möglich ab sechs Substantiven dieses Kapitels oder nach der ersten Bestätigung). Abenddämmerung, eine dichte Menge, ein Mann mit Schärpe und brennender Fackel auf einem Karren. Die Fackel fliegt durch ein offenes Fenster ins Erdgeschoss.',
+    title: 'Erinnerung: Im Namen der Nation', kind: 'echo', at: [1225, -1118], r: 5, era: E, anchor: 'TF-01', chapter: ch, fiction: true,
+    text: 'Abenddämmerung, eine dichte Menge, ein Mann mit Schärpe und brennender Fackel auf einem Karren. Die Fackel fliegt durch ein offenes Fenster ins Erdgeschoss. Mannlich war nicht dabei; er schreibt nach Berichten.',
     nouns: ['n.nation', 'n.kommissaer', 'n.erdgeschoss'], req: { flags: ['flag.k3_teil_b'] },
   }),
   clue('clue.k3.feuer', {
     title: 'Von unten nach oben', kind: 'dialogue', at: [1263, -1126], r: 30, era: E, anchor: 'KB-B01', chapter: ch, fiction: true,
-    text: 'Automatisch, sobald das Obergeschoss brennt.', nouns: ['n.erdgeschoss', 'n.gewoelbe'], req: { clues: ['clue.k3.fackel'] },
+    text: 'Laub hustet, obwohl er nicht atmen muss. Das Feuer steigt von unten nach oben: erst das Stroh im Erdgeschoss, dann die Treppen, dann der Saal.', nouns: ['n.erdgeschoss', 'n.gewoelbe'], req: { clues: ['clue.k3.fackel'] },
   }),
   clue('clue.k3.festsaal', {
     title: 'Der Festsaal', kind: 'dialogue', room: 'B01.2.og-festsaal', r: 6, era: E, chapter: ch, fiction: true,
@@ -111,15 +115,15 @@ const clues = [
   }),
   clue('clue.k3.retten', {
     title: 'Eines retten', kind: 'object', room: 'B01.2.og-festsaal', r: 6, era: E, chapter: ch, fiction: true,
-    text: 'Hanne steht in der Mitte mit einem Türgriff in der Hand. Drei Dinge sind zu retten, und man kann nur eines tragen: den Türgriff aus Hannes Hand, einen Dukaten mit dem Bild des Schlosses im Fensterbrett, eine vergoldete Uhr mit Alabaster auf einer Konsole, die noch tickt. 40 s; danach nimmt Hanne dich am Arm. Setzt flag.k3_objekt = tuergriff / dukat / uhr / nichts.',
+    text: 'Hanne steht in der Mitte mit einem Türgriff in der Hand. Drei Dinge sind zu retten, und man kann nur eines tragen: den Türgriff aus Hannes Hand, einen Dukaten mit dem Bild des Schlosses im Fensterbrett, eine vergoldete Uhr mit Alabaster auf einer Konsole, die noch tickt. Wer zu lange wählt, den nimmt Hanne am Arm.',
     facts: ['cx.27'], req: { clues: ['clue.k3.festsaal'] },
   }),
   clue('clue.k3.wirtschaft', {
-    title: 'Was morgen noch steht', kind: 'dialogue', at: [1272, -1250], r: 15, era: E, anchor: 'KB-B07', chapter: ch, fiction: false,
-    text: 'Im Garten, Blick nach Norden auf Marstall und Ställe.', nouns: ['n.wirtschaftsgebaeude'],
+    title: 'Was morgen noch steht', kind: 'dialogue', at: [1275, -1306], r: 9, era: E, anchor: 'KB-B27', chapter: ch, fiction: false,
+    text: 'Von der Pforte der Gärtnerei der Blick nach Norden: Marstall, Reithalle, Ställe. Dunkle Dächer vor dem Feuerschein.', nouns: ['n.wirtschaftsgebaeude'],
   }),
   clue('clue.k3.jost', {
-    title: 'Jost öffnet den Zwinger', kind: 'dialogue', at: ZW, r: 12, era: E, anchor: 'KB-B23', chapter: ch, fiction: true,
+    title: 'Jost öffnet den Zwinger', kind: 'dialogue', at: ZW, r: 14, era: E, anchor: 'KB-B23', chapter: ch, fiction: true,
     text: 'Jost reißt die Gittertüren auf. Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Jost nimmt das Horn vom Haken und rennt ihnen nach.',
     nouns: ['n.r_alle'], req: { clues: ['clue.k3.fackel'] },
   }),
@@ -200,7 +204,7 @@ const MANNLICH_NICHT_DABEI = 'Mannlich war nicht dabei. Er schreibt nach Bericht
 
 const dialogue = [
   // Feldstation
-  say('marlene.k3.morgen', 'marlene', 'Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.', { event: 'story:chapter', id: ch }, { once: true }),
+  say('marlene.k3.morgen', 'marlene', 'Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.', beat('3.0'), { once: true }),
   say('marlene.k3.ausstellung', 'marlene', '2018 war in Saarbrücken eine Ausstellung, ‚Steinerne Macht‘. Da lag vom Karlsberg fast nichts. Ein Türgriff, eine Uhr mit Alabaster, ein Dukat mit dem Schloss drauf, eine Pistole und ein Jagdmesser. Ein ganzes Schloss, und übrig bleibt ein Türgriff.', found('clue.k3.marlene'), { once: true, src: [src('RP18', 'P')] }),
   say('laub.k3.start', 'laub', 'Juli dreiundneunzig. Ich war nicht dabei. Ich bin erst vierzehn Jahre später geboren worden. Und trotzdem habe ich das Gefühl, ich sollte mich entschuldigen.', beat('3.0'), { once: true }),
   // Ehrenhof
@@ -255,7 +259,10 @@ const dialogue = [
   say('laub.k3.messen', 'laub', 'Achtzig Meter. Hundert Fuß wären keine dreiunddreißig. Hundert Klafter wären fast zweihundert. Hundert Schritt, das kommt hin. Mannlich hat französisch geschrieben: ‚cent pas‘. Der Übersetzer von 1910 hat Fuß daraus gemacht.', found('clue.k3.messen'), { once: true, src: [src('SCHWAN12', 'P: Anm. 47')] }),
   say('laub.k3.falltuer', 'laub', 'Die Falltür in die Werkstatt des Büchsenmachers. Mannlich und ein alter Diener namens Burger haben hier die schönsten Bilder hinuntergetragen, am hellen Tag, in aller Stille, und hinter den leeren Schränken versteckt.', found('clue.k3.falltuer'), { once: true, src: [P('S. 431 f.')] }),
   say('laub.k3.chronik', 'laub', 'So war das also. (Lange Pause.) Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.', found('clue.k3.chronik'), { once: true, priority: 10 }),
-  say('laub.k3.papier', 'laub', 'Papier. Marmor aus Papier, Granit aus Papier. Das ganze Zimmer wiegt weniger als ich.', found('clue.k3.papier'), { once: true, src: [src('SCHWAN12', 'Papierimitation nach dem Schadensetat')] }),
+  ...seq(found('clue.k3.papier'), [
+    ['laub.k3.papier', 'laub', 'Papier. Marmor aus Papier, Granit aus Papier. Das ganze Zimmer wiegt weniger als ich.', [src('SCHWAN12', 'Papierimitation nach dem Schadensetat')]],
+    ['laub.k3.glastueren', 'laub', 'Und Glastüren. Dahinter steht der Pavillon, Wand an Wand: ein Notausgang ohne Ausgang. Merken Sie sich das, falls es heute Abend eng wird. Hinaus geht es durch die Dienertreppe oder die große Treppe.'],
+  ]),
   say('laub.k3.gaertner', 'laub', 'Der Hofgärtner Petri hat auch Notizen hinterlassen. Ein Gärtner, der aufschreibt, wie kalt es war, während um ihn herum alles brennt. Ich mag ihn.', found('clue.k3.gaertner'), { once: true, src: [src('M1910', 'S. 427 Anm. 1 (Petri)')] }),
   // Teil B: Die Fackel
   ...seq(echo('clue.k3.fackel'), [
@@ -267,15 +274,17 @@ const dialogue = [
   say('laub.k3.hinauf', 'laub', 'Hinauf. Jetzt, nicht gleich.', beat('3.8'), { once: true, priority: 10 }),
   say('laub.k3.feuer', 'laub', '(hustend) Von unten nach oben. Erst das Stroh im Erdgeschoss, dann die Treppen, dann der Saal. Die gewölbte Küche brennt zuletzt. Gewölbe sind geduldig.', found('clue.k3.feuer'), { once: true }),
   say('laub.k3.festsaal', 'laub', 'Der Festsaal. Hier oben liegt kein Stroh. Hier kommt das Feuer erst an, wenn unten nichts mehr übrig ist.', found('clue.k3.festsaal'), { once: true }),
-  ...seq(found('clue.k3.retten'), [
-    ['hanne.k3.05', 'hanne', 'Der war an der Tür zum Saal. Matthes hat die Wand drumrum gemacht. Nimm, was du willst. Irgendwas soll übrig bleiben.'],
-    ['laub.k3.festsaal_wahl', 'laub', 'Eins. Nur eins. Nehmen Sie, was Sie tragen können, nicht, was am meisten wert ist.'],
-  ]),
+  // W5: Hanne stands in the burning hall (npc chapter 'k3f'); the story speaks Laub's line before the choice
+  say('hanne.k3.05', 'hanne', 'Der war an der Tür zum Saal. Matthes hat die Wand drumrum gemacht. Nimm, was du willst. Irgendwas soll übrig bleiben.', { event: 'npc:talk', npc: 'hanne', chapter: 'k3f', topic: 'greet' }),
+  say('laub.k3.festsaal_wahl', 'laub', 'Eins. Nur eins. Nehmen Sie, was Sie tragen können, nicht, was am meisten wert ist.', beat('3.9'), { once: true }),
   say('hanne.k3.06', 'hanne', 'Raus jetzt.', beat('3.9-gewaehlt'), { once: true }),
-  say('hanne.k3.07', 'hanne', 'Den behältst du. Ich hab die Wand im Kopf, das reicht mir.', beat('3.10-draussen', { flag: 'flag.k3_objekt', value: 'tuergriff' }), { once: true }),
-  say('hanne.k3.08', 'hanne', 'Ein Dukat. Den hat der Bauer aus Rohrbach auch gekriegt. Hoffentlich.', beat('3.10-draussen', { flag: 'flag.k3_objekt', value: 'dukat' }), { once: true }),
-  say('hanne.k3.09', 'hanne', 'Die Uhr. Die geht noch. Die weiß nicht, was passiert ist.', beat('3.10-draussen', { flag: 'flag.k3_objekt', value: 'uhr' }), { once: true }),
-  say('hanne.k3.10', 'hanne', 'Nichts. Ist auch eine Antwort.', beat('3.10-draussen', { flag: 'flag.k3_objekt', value: 'nichts' }), { once: true }),
+  // outside (npc chapter 'k3g'): Hanne's answer depends on what was carried out of the Festsaal
+  ...[
+    ['hanne.k3.07', 'Den behältst du. Ich hab die Wand im Kopf, das reicht mir.', 'tuergriff'],
+    ['hanne.k3.08', 'Ein Dukat. Den hat der Bauer aus Rohrbach auch gekriegt. Hoffentlich.', 'dukat'],
+    ['hanne.k3.09', 'Die Uhr. Die geht noch. Die weiß nicht, was passiert ist.', 'uhr'],
+    ['hanne.k3.10', 'Nichts. Ist auch eine Antwort.', 'nichts'],
+  ].map(([id, text, value]) => say(id, 'hanne', text, { event: 'npc:talk', npc: 'hanne', chapter: 'k3g', topic: 'greet', flag: 'flag.k3_objekt', value })),
   say('laub.k3.wirtschaft', 'laub', 'Die Wirtschaftsgebäude da drüben, Ställe, Remisen, die Kasernen: die stehen morgen noch fast alle. Was brennt, ist das, was schnell gebaut wurde.', found('clue.k3.wirtschaft'), { once: true, src: [src('EN-KC', 'P')] }),
   // Zwinger
   ...seq(found('clue.k3.jost'), [
@@ -288,6 +297,20 @@ const dialogue = [
   ]),
   say('marlene.k3.abend', 'marlene', 'Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. (Pause.) Doch, ich frag. Morgen.', beat('3.12-zurueck'), { once: true }),
   say('laub.k3.ende', 'laub', 'Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.', beat('3.13'), { once: true }),
+  // ---- Runde 3 (Verdrahtung): Zeilen, die die Bibel nicht ausschreibt. Fiktion, im Ton von 08-stimmen;
+  // gesprochen von content/story/03-kapitel-3.story.json (Trigger '3.x' feuern nie von selbst).
+  say('laub.k3.seite_offen', 'laub', 'Die Seite ist offen. Eintragen können Sie hier, bestätigen nur im Heute. Der Kommissär wartet im Ehrenhof. Er hat Zeit. Wir auch. Noch.', beat('3.5-seite'), { once: true }),
+  say('laub.k3.kommissaer', 'laub', 'Der Kommissär ist da. Wenn Sie ihn lassen, sagt er, in wessen Namen. Danach brennt es. Gehen Sie hin, wenn Sie bereit sind, nicht vorher.', beat('3.7'), { once: true }),
+  say('laub.k3.draussen', 'laub', 'Taghell. Und die Meute ist da, angelockt vom Lärm. Im Feuerschein sieht keiner Ihre Laterne. Aber jeder hört Ihre Schritte.', beat('3.11'), { once: true }),
+  say('laub.k3.pforte', 'laub', 'Die Mauer hält sie ab. Hunde gehen nicht, wo Gärtner schimpfen. Atmen Sie. Dann nach Norden, zum Zwinger.', beat('3.11-pforte'), { once: true }),
+  say('laub.k3.jaguar', 'laub', 'Augen. Gelb, auf Kniehöhe. Das ist kein Hund, das ist der Jaguar aus der Menagerie. Der Herzog hat ihn kommen lassen, damit man ihn ansieht. Jetzt sieht er uns an. Laterne an. Licht mag er nicht.', beat('3.11-jaguar'), { once: true }),
+  say('laub.k3.jaguar_down', 'laub', 'Er wollte nur wissen, ob Sie echt sind. Sie sind es. Aufstehen. Leise.', beat('3.11-jaguar-down'), { once: true }),
+  say('beat.k3.hunde', 'geraeusch', '[Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Keiner sieht sich um.]', beat('3.12-hunde'), { once: true }),
+  // 3.13: the rescued object, found again today in the field station (06-enden §6.3: it lies on the table next to the Bussole)
+  say('laub.k3.heute.tuergriff', 'laub', 'Ein Türgriff. Messing, angelaufen, und er riecht nach Rauch. Fragen Sie mich nicht, wie er hierherkommt. Ich wohne in einer Bussole, ich stelle solche Fragen nicht mehr.', beat('3.13-objekt'), { once: true }),
+  say('laub.k3.heute.dukat', 'laub', 'Ein Dukat mit dem Schloss darauf. Er ist noch warm. Fragen Sie mich nicht, wie er hierherkommt. Ausgeben würde ich ihn nicht.', beat('3.13-objekt'), { once: true }),
+  say('laub.k3.heute.uhr', 'laub', 'Hören Sie das? Die Uhr mit dem Alabaster. Sie tickt. Sie geht nach, um ungefähr zweihundert Jahre, aber sie geht.', beat('3.13-objekt'), { once: true }),
+  say('laub.k3.heute.nichts', 'laub', 'Der Tisch ist leer. Nichts, hat sie gesagt, ist auch eine Antwort. Ich trage es so ein.', beat('3.13-objekt'), { once: true }),
 ];
 
 write('kapitel-3', {
