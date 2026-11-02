@@ -6,6 +6,7 @@
  */
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
+import type { Hud } from '../../ui/hud';
 import type { ModalManager } from '../../ui/modal';
 import type { ChoiceAction } from './types';
 
@@ -25,7 +26,8 @@ interface OpenChoice {
 
 export class StoryOverlays {
   private cardEl: HTMLElement | null = null;
-  private cardTimer = 0;
+  /** Seconds the title card has left on screen (game time: it waits while the game is paused). */
+  private cardLeft = 0;
   readonly curtain: HTMLElement;
   private readonly curtainText: HTMLElement;
   private readonly curtainSub: HTMLElement;
@@ -36,18 +38,20 @@ export class StoryOverlays {
   constructor(
     private readonly layer: HTMLElement,
     private readonly modals: ModalManager,
+    hud?: Hud,
   ) {
     this.curtainText = h('p.kqs-curtain-text');
     this.curtainSub = h('p.kqs-curtain-sub');
     this.curtain = h('div.kqs-curtain', { 'data-testid': 'story-curtain' }, [this.curtainText, this.curtainSub]);
     this.gaugeBox = h('div.kqs-gauges', { 'data-testid': 'story-gauges' });
-    layer.append(this.gaugeBox, this.curtain);
+    // gauges stack under the objective in the HUD's top-left column (no overlap at any size)
+    if (hud) hud.stack(this.gaugeBox, 40);
+    layer.append(...(hud ? [] : [this.gaugeBox]), this.curtain);
   }
 
   /** Chapter / place card: "Prolog · Vermessung". */
   card(title: string, sub?: string, note?: string, seconds = 5.5): void {
     this.cardEl?.remove();
-    window.clearTimeout(this.cardTimer);
     const el = h('div.kqs-card', { 'data-testid': 'story-card' }, [
       sub ? h('div.kqs-card-sub', sub) : null,
       h('div.kqs-card-title', title),
@@ -57,11 +61,21 @@ export class StoryOverlays {
     this.layer.append(el);
     this.cardEl = el;
     requestAnimationFrame(() => el.classList.add('kqs-show'));
-    this.cardTimer = window.setTimeout(() => {
-      el.classList.remove('kqs-show');
-      window.setTimeout(() => el.remove(), 1400);
-      if (this.cardEl === el) this.cardEl = null;
-    }, seconds * 1000);
+    this.cardLeft = seconds;
+  }
+
+  /**
+   * Advance the title card (seconds of game time — 0 while the game is paused, so a card is never
+   * missed behind the pause menu or a modal).
+   */
+  tickCard(dt: number): void {
+    const el = this.cardEl;
+    if (!el || dt <= 0) return;
+    this.cardLeft -= dt;
+    if (this.cardLeft > 0) return;
+    el.classList.remove('kqs-show');
+    window.setTimeout(() => el.remove(), 1400);
+    this.cardEl = null;
   }
 
   get cardVisible(): boolean {

@@ -156,7 +156,8 @@ export default defineSystem({
     if (!cards) return;
     const storyCard = typeof document !== 'undefined' && !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show');
     const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard;
-    cards.frame(Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
+    // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
+    cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
   },
   dispose() {
     cards?.clear();

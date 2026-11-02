@@ -24,7 +24,10 @@ export interface CardDeps {
 export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | null, transcript?: TranscriptLine[]): ModalHandle {
   const t = d.t;
   const canvas = h('canvas', { width: 240, height: 240 });
-  if (d.heightAt) drawRelief(canvas, d.heightAt, clue.where.x, clue.where.z, { px: 240, size: 70, scaleBar: 20, scaleLabel: t('chronik.card.scale') });
+  // a printout at the station shows the Ehrenhof, not the trailer: `sketch` wins over the find spot
+  const at = clue.sketch ?? clue.where;
+  const size = clue.sketch?.size ?? 70;
+  if (d.heightAt) drawRelief(canvas, d.heightAt, at.x, at.z, { px: 240, size, scaleBar: size > 150 ? 100 : 20, scaleLabel: t(size > 150 ? 'chronik.card.scale100' : 'chronik.card.scale') });
   const textKids: HTMLElement[] = [];
   if (transcript?.length) {
     textKids.push(h('p', { style: 'font-style:italic;color:var(--ink-soft)' }, t('chronik.card.transcript')));
@@ -39,7 +42,7 @@ export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | 
   const facts = (found?.newFacts ?? []).map((id) => d.content.facts.get(id)?.title_de ?? id);
   const body = h('div.ck-card', { dataset: { testid: 'chronik-card', clue: clue.id } }, [
     h('div.ck-card-kind', [h('span', t(`chronik.card.kind.${clue.kind}`)), clue.fiction ? h('span.ck-fic', t('chronik.fiction')) : null]),
-    h('div.ck-card-grid', [h('figure', [canvas, h('figcaption', `${t('chronik.card.sketch')} · ${Math.round(clue.where.x)} / ${Math.round(clue.where.z)}`)]), h('div.ck-card-text', textKids)]),
+    h('div.ck-card-grid', [h('figure', [canvas, h('figcaption', `${t('chronik.card.sketch')} · ${Math.round(at.x)} / ${Math.round(at.z)}`)]), h('div.ck-card-text', textKids)]),
     nouns.length ? h('div.ck-chips', [h('span', `${t('chronik.card.new')}:`), ...nouns.map((n, i) => chip(n, i))]) : null,
     facts.length ? h('div.ck-chips', [h('span', `${t('chronik.card.codex')}:`), ...facts.map((n, i) => chip(n, i, true))]) : null,
   ]);

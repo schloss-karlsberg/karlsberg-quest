@@ -27,6 +27,7 @@ import {
   caseVisible,
   clueDistance,
   clueEras,
+  clueRetired,
   clueStatus,
   discover,
   dueHint,
@@ -447,8 +448,11 @@ function refreshMarkers(ctx: GameContext): void {
   const p = ctx.player.position;
   const e = env(ctx);
   const list: { clue: ChronikClue; status: ClueStatus }[] = [];
+  const running = runningChapter(ctx);
   for (const c of content.clues.values()) {
     if (!clueEras(c).includes(era) || npcOwnsTalk(ctx, c)) continue;
+    // a past chapter's clue left unfound: no marker any more (E on the spot still works)
+    if (clueRetired(c, running)) continue;
     if (clueDistance(c, p.x, p.z) > MARKER_RANGE + c.where.radius) continue;
     list.push({ clue: c, status: clueStatus(c, e) });
   }
@@ -457,7 +461,6 @@ function refreshMarkers(ctx: GameContext): void {
   // (ctx.content.cluesAt is the shared spatial query; our content view filters placeholder packs)
   target = null;
   let best = Infinity;
-  const running = runningChapter(ctx);
   for (const raw of ctx.content.cluesAt(p.x, p.z, era)) {
     const c = content.clues.get(raw.id);
     if (!c || npcOwnsTalk(ctx, c)) continue;

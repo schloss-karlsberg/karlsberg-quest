@@ -392,3 +392,13 @@
 .kqt-measuring .kqt-plan-note {
   bottom: 330px;
 }
+
+/* in the HUD's top-left column (src/ui/hud.ts stack): under era and status, above the objective */
+.kq-tl > .kqt-room {
+  position: relative;
+  top: auto;
+  left: auto;
+}
+.kq-tl > .kqt-room:not(.kqt-show) {
+  display: none;
+}

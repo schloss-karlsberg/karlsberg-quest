@@ -77,7 +77,8 @@
         },
         {
           "do": "ending",
-          "delay": 1.2
+          "delay": 1.2,
+          "onResume": true
         }
       ],
       "complete": {

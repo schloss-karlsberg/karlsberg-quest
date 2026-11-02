@@ -63,7 +63,8 @@
 /* ---- threat gauges (smoke instead of oil; oblivion) ---- */
 .kq-fx-gauges {
   position: absolute;
-  right: 22px;
+  /* left of Laub's Bussole (bottom right, 104 px) */
+  right: 140px;
   bottom: 22px;
   display: flex;
   gap: 16px;

@@ -169,7 +169,16 @@ export type Condition =
   | ReadingCond
   | MeterCond
   | ChosenCond
-  | ChapterTimerCond;
+  | ChapterTimerCond
+  | SpeedCond;
+
+/**
+ * The player's horizontal speed (m/s, flying excluded) is at least `gte` / at most `lte`.
+ * Walking ≈ 3.2, running (Shift) ≈ 6.2: `{ "speed": { "gte": 4.5 } }` = running.
+ */
+export interface SpeedCond {
+  speed: { gte?: number; lte?: number };
+}
 
 export const CONDITION_KEYS = [
   'enter',
@@ -196,6 +205,7 @@ export const CONDITION_KEYS = [
   'meter',
   'chosen',
   'chapterTimer',
+  'speed',
 ] as const;
 
 // ---------------------------------------------------------------------------------------------
@@ -231,6 +241,12 @@ export interface SayAction extends ActionBase {
    * zweihundert" when the clock's year is implausible), {jahr} (current year).
    */
   text_by_era?: Partial<Record<Era, string>>;
+  /**
+   * A running joke: with an `id`, the n-th time this action runs speaks `variants[n]` (counted per
+   * id in the story slice); after the last variant it stays silent, or repeats the last with
+   * `repeat`. `text` is not needed.
+   */
+  variants?: string[];
 }
 export interface ObjectiveAction extends ActionBase {
   do: 'objective';
@@ -514,8 +530,10 @@ export interface Reaction {
   id: string;
   when: Condition;
   do: Action[];
-  /** May fire again after `cooldown` seconds (default: once per beat / chapter run). */
+  /** Fires on every rising edge of `when` (default: once per beat / chapter run). */
   repeat?: boolean;
+  /** With `repeat`: not again within this many seconds (game time) of the last firing. */
+  cooldown?: number;
 }
 
 export interface Beat {
@@ -530,6 +548,12 @@ export interface Beat {
   next?: string;
   /** After being caught, resume at this beat (default: this beat). */
   checkpoint?: string;
+  /**
+   * Where the player comes to after being caught / a meter returning them while this beat runs
+   * (the resumed beat's `wake` wins, else this one's, else the chapter checkpoint). `text` replaces
+   * the curtain's "Du wachst in der Feldstation auf" line.
+   */
+  wake?: Checkpoint & { text?: string };
   on?: Reaction[];
 }
 

@@ -111,6 +111,22 @@ export function clueStatus(c: ChronikClue, env: ClueEnv): ClueStatus {
   return 'available';
 }
 
+/** Story chapters in play order, as `Clue.chapter` ids ('enden' has no clues of its own). */
+export const CHAPTER_ORDER: readonly string[] = ['p', 'k1', 'k2', 'k3', 'k4', 'enden'];
+
+/**
+ * A clue of a chapter the story has already left (the prologue's optional notes while chapter 2
+ * runs): its marker retires so the world does not keep pointing at old business. E on the spot
+ * still works — nothing becomes unreachable. `running`: the running chapter's clue id ('p' …), or
+ * null without a story (sandbox, tests): nothing retires.
+ */
+export function clueRetired(c: { chapter?: string }, running: string | null): boolean {
+  if (!c.chapter || !running) return false;
+  const a = CHAPTER_ORDER.indexOf(c.chapter);
+  const b = CHAPTER_ORDER.indexOf(running);
+  return a >= 0 && b >= 0 && a < b;
+}
+
 /** Distance on the x/z plane. */
 export function clueDistance(c: Clue, x: number, z: number): number {
   return Math.hypot(c.where.x - x, c.where.z - z);

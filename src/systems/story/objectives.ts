@@ -58,7 +58,9 @@ export class ObjectiveView {
     this.el = h('div.kqs-objective', { 'data-testid': 'objective' }, [h('span.kqs-obj-mark', '◆'), this.textEl, this.distEl]);
     this.bussole = h('div.kqs-bussole', { 'data-testid': 'bussole' }, svg(BUSSOLE));
     this.needle = this.bussole.querySelector('.kqs-b-needle') as SVGGElement;
-    parent.append(this.el, this.bussole);
+    // the objective line lives in the HUD's top-left column (under era, status and room name)
+    hud.stack(this.el, 30);
+    parent.append(this.bussole);
   }
 
   set(o: ObjectiveState | null): void {

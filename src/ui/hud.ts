@@ -23,6 +23,8 @@ export class Hud {
   private readonly stanceEl: HTMLElement;
   private readonly toastsEl: HTMLElement;
   private readonly clickEl: HTMLElement;
+  /** Top-left column: era label, status, then feature lines (room, objective, gauges) — never overlapping. */
+  private readonly tl: HTMLElement;
   private heading = 0;
 
   constructor() {
@@ -57,12 +59,21 @@ export class Hud {
     this.stanceEl = h('div.kq-stance');
     this.toastsEl = h('div.kq-toasts');
     this.clickEl = h('div.kq-click-to-play.kq-hidden', t('hud.clickToPlay'));
+    this.eraEl.style.order = '0';
+    this.statusEl.style.order = '10';
+    this.tl = h('div.kq-tl', { 'data-testid': 'hud-topleft' }, [this.eraEl, this.statusEl]);
+    // features' panels below the column (skill cards) read its bottom edge from --kq-tl-bottom
+    if (typeof ResizeObserver === 'function' && typeof document !== 'undefined') {
+      new ResizeObserver(() => {
+        const r = this.tl.getBoundingClientRect();
+        if (r.height > 0) document.documentElement.style.setProperty('--kq-tl-bottom', `${Math.round(r.bottom)}px`);
+      }).observe(this.tl);
+    }
     this.el = h('div.kq-hud.kq-hidden', [
       this.threatEdge,
       this.compass,
       this.threatEl,
-      this.eraEl,
-      this.statusEl,
+      this.tl,
       h('div.kq-crosshair'),
       this.subsEl,
       this.promptEl,
@@ -164,6 +175,16 @@ export class Hud {
     this.oilEl.classList.remove('kq-hidden');
     this.oilEl.classList.toggle('unlit', !lit);
     this.oilFill.style.height = `${Math.round(Math.max(0, Math.min(1, oil)) * 100)}%`;
+  }
+
+  /**
+   * Put a feature's element into the top-left column (below the era label and the status line).
+   * `order`: 20 room name, 30 objective, 40 story gauges; elements that should take no room while
+   * hidden collapse via CSS (`display: none`).
+   */
+  stack(el: HTMLElement, order: number): void {
+    el.style.order = String(order);
+    this.tl.append(el);
   }
 
   setEraLabel(text: string): void {

@@ -50,6 +50,8 @@ export interface StorySlice {
   meters: Record<string, MeterState>;
   /** Room the player is in (room:enter / room:leave from the interiors feature). */
   room: string | null;
+  /** How often a `say` with `variants` was told, by id (running jokes). */
+  sayCount?: Record<string, number>;
 }
 
 /** A chapter meter (persisted). value 0 = empty gauge … 1 = full (out of time). */
@@ -117,6 +119,8 @@ export interface StoryEnv {
   meters?: Readonly<Record<string, number>>;
   /** Reading entry id → its story flag (CaseEntry.flag), for `reading` conditions by entry id. */
   readingFlag?(entryId: string): string | null;
+  /** Horizontal speed of the player (m/s; 0 while flying). */
+  speed?: number;
 }
 
 export interface RunOptions {
@@ -124,6 +128,14 @@ export interface RunOptions {
   resume: boolean;
   /** Debug label, e.g. "prolog/p3:enter". */
   source: string;
+  /**
+   * The beat these actions belong to: a beat's `enter` and its reactions → that beat; its `exit`
+   * → the beat that follows (exit lines bridge into it); chapter reactions → null (chapter-wide).
+   * The host retires delayed actions and queued lines of a beat when it ends.
+   */
+  beat?: string | null;
+  /** The place a reaction is about (its first `enter` circle): lines about it go stale elsewhere. */
+  where?: { x: number; z: number; r: number } | null;
 }
 
 export interface StoryHost {
@@ -171,6 +183,24 @@ export function roomIdMatches(want: string, room: string, building: string): boo
     return want === b || want === r;
   }
   return !!building && (want === building || want === `${building}/${room}`);
+}
+
+/** The first `enter` circle of a condition (not under a `not`): where a reaction happens. */
+export function whereOf(c: Condition): { x: number; z: number; r: number } | null {
+  if ('enter' in c) return { x: c.enter.x, z: c.enter.z, r: c.enter.r };
+  if ('all' in c) {
+    for (const s of c.all) {
+      const w = whereOf(s);
+      if (w) return w;
+    }
+    return null;
+  }
+  if ('any' in c) {
+    // every alternative must name a place, else the reaction is not bound to one
+    const ws = c.any.map(whereOf);
+    return ws.length && ws.every((w) => w) ? ws[0]! : null;
+  }
+  return null;
 }
 
 export function eventMatches(ev: EventCond, name: string, payload: unknown): boolean {
@@ -257,6 +287,10 @@ export function evaluate(c: Condition, env: StoryEnv, latched: Record<string, nu
     return c.option === undefined || String(v) === String(c.option);
   }
   if ('chapterTimer' in c) return (env.chapterTime ?? 0) >= c.chapterTimer;
+  if ('speed' in c) {
+    const v = env.speed ?? 0;
+    return (c.speed.gte === undefined || v >= c.speed.gte) && (c.speed.lte === undefined || v <= c.speed.lte);
+  }
   return false;
 }
 
@@ -270,6 +304,8 @@ export class StoryEngine {
   readonly order: StoryFile[];
   /** Last value of repeatable reactions (edge detection; not persisted). */
   private readonly edges = new Map<string, boolean>();
+  /** Last firing time (chapter seconds) of repeatable reactions with a cooldown (not persisted). */
+  private readonly lastFired = new Map<string, number>();
 
   constructor(
     files: StoryFile[],
@@ -335,7 +371,7 @@ export class StoryEngine {
     for (const k of Object.keys(s.latched)) if (!k.startsWith('c:')) delete s.latched[k];
     s.fired = s.fired.filter((r) => r.startsWith('c:'));
     this.host.beatEntered(f.chapter, b, { resume });
-    if (b.enter?.length) this.host.run(b.enter, { resume, source: `${f.chapter}/${b.id}:enter` });
+    if (b.enter?.length) this.host.run(b.enter, { resume, source: `${f.chapter}/${b.id}:enter`, beat: id });
   }
 
   /** Force the current beat complete (debug / `kq.story.skip()`). */
@@ -349,9 +385,10 @@ export class StoryEngine {
     const s = this.s;
     const tag = `${f.chapter}/${b.id}`;
     if (!s.doneBeats.includes(tag)) s.doneBeats.push(tag);
-    if (b.exit?.length) this.host.run(b.exit, { resume: false, source: `${tag}:exit` });
     const idx = f.beats.indexOf(b);
     const next = b.next ?? f.beats[idx + 1]?.id;
+    // exit actions bridge into the following beat (a delayed exit line belongs to it)
+    if (b.exit?.length) this.host.run(b.exit, { resume: false, source: `${tag}:exit`, beat: next ?? null });
     if (next) {
       this.enterBeat(next, false);
       return;
@@ -406,16 +443,21 @@ export class StoryEngine {
       const key = scope === 'c' ? `c:${r.id}` : `br:${r.id}`;
       const now = evaluate(r.when, env, s.latched, key, time);
       if (r.repeat) {
-        // repeatable reactions fire on the rising edge only
+        // repeatable reactions fire on the rising edge only (and not again within `cooldown` s)
         const was = this.edges.get(tag) ?? false;
         this.edges.set(tag, now);
         if (!now || was) continue;
         for (const k of Object.keys(s.latched)) if (k === key || k.startsWith(`${key}.`)) delete s.latched[k];
+        if (r.cooldown) {
+          const last = this.lastFired.get(tag);
+          if (last !== undefined && s.chapterTime - last < r.cooldown && s.chapterTime >= last) continue;
+          this.lastFired.set(tag, s.chapterTime);
+        }
       } else {
         if (!now) continue;
         s.fired.push(tag);
       }
-      this.host.run(r.do, { resume: false, source: `${this.s.chapter}/${tag}` });
+      this.host.run(r.do, { resume: false, source: `${this.s.chapter}/${tag}`, beat: scope === 'b' ? s.beat : null, where: whereOf(r.when) });
     }
   }
 }

@@ -174,6 +174,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   };
   if (!params.has('fresh') && save.has()) save.load();
   restore();
+  // any later load (e.g. the title's "Ende noch einmal wählen") puts the world where the state is
+  events.on('save:loaded', () => restore());
   // URL overrides (debug / e2e / sharing a spot)
   const qEra = params.get('era');
   if (isEra(qEra)) era.set(qEra);

@@ -9,6 +9,7 @@ import {
   caseComplete,
   caseRatio,
   caseVisible,
+  clueRetired,
   clueStatus,
   discover,
   dueHint,
@@ -255,5 +256,30 @@ describe('Laub hints', () => {
     expect(askHint(h, 120, [], false)).toEqual({ hint: h[0], fresh: true });
     expect(askHint(h, 130, ['ct.hint.1'], false)).toEqual({ hint: h[0], fresh: false });
     expect(askHint(h, 240, ['ct.hint.1'], false)?.hint.id).toBe('ct.hint.2');
+  });
+});
+
+describe('past chapters retire their markers', () => {
+  it('only clues of an earlier chapter than the running one retire', () => {
+    expect(clueRetired({ chapter: 'p' }, 'k2')).toBe(true);
+    expect(clueRetired({ chapter: 'k1' }, 'k2')).toBe(true);
+    expect(clueRetired({ chapter: 'k2' }, 'k2')).toBe(false);
+    expect(clueRetired({ chapter: 'k3' }, 'k2')).toBe(false);
+    expect(clueRetired({ chapter: 'k4' }, 'enden')).toBe(true);
+    // no story (sandbox / tests), clues without a chapter, unknown chapters: nothing retires
+    expect(clueRetired({ chapter: 'p' }, null)).toBe(false);
+    expect(clueRetired({}, 'k4')).toBe(false);
+    expect(clueRetired({ chapter: 'p' }, 'test')).toBe(false);
+  });
+
+  it('no clue depends on a clue of an earlier chapter (a retired marker blocks nothing)', () => {
+    const packs = ['prolog', 'kapitel-1', 'kapitel-2', 'kapitel-3', 'kapitel-4'].map(
+      (n) => JSON.parse(readFileSync(`content/packs/${n}.pack.json`, 'utf8')) as ContentPack,
+    );
+    const chapterOf = new Map<string, string | undefined>();
+    for (const p of packs) for (const c of p.clues ?? []) chapterOf.set(c.id, c.chapter);
+    for (const p of packs)
+      for (const c of p.clues ?? [])
+        for (const r of c.requires?.clues ?? []) expect(clueRetired({ chapter: chapterOf.get(r) }, c.chapter ?? null), `${c.id} needs ${r}`).toBe(false);
   });
 });
