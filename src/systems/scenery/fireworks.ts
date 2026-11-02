@@ -336,7 +336,9 @@ export class Fireworks {
       this.spawn(p, d, r() < 0.15 ? PALETTE[3]! : color, kind === 'willow' ? 3.2 + r() * 1.4 : 1.6 + r() * 1.0, kind === 'willow' ? 0.7 : 1);
     }
     const reduced = this.reduced();
-    const k = reduced ? 0.35 : 1;
+    // coloured light on the snow; during the climax many flat rockets burst at once and the
+    // night grade (exposure 1.6) would wash the slope out to white, so each adds less
+    const k = (reduced ? 0.35 : 1) * (this.phase === 'climax' ? 0.3 : 0.65);
     this.light.copy(color).multiplyScalar(0.9 * k);
     this.lightPos.copy(p);
     this.lastLight = p.clone();
@@ -377,7 +379,7 @@ export class Fireworks {
     this.burst(c.clone().add(new Vector3(0, 8, 0)), PALETTE[1]!, 500, 22, 'willow');
     for (let i = 0; i < 26; i++) this.launch(true, false);
     // warm and strong, but the snowy slope must not burn out to white (it reads as a flash otherwise)
-    this.light.setRGB(3.4, 2.2, 1.1).multiplyScalar(reduced ? 0.9 : 2.2);
+    this.light.setRGB(3.4, 2.2, 1.1).multiplyScalar(reduced ? 0.6 : 1.3);
     this.lightPos.copy(c);
     this.flash = reduced ? 0 : 0.9;
     this.scaffold.visible = false;
@@ -465,7 +467,7 @@ export class Fireworks {
     su.uScale!.value = scale;
     su.uAlpha!.value = 0.85 * Math.min(1, this.winter * 1.5) * (this.phase === 'dark' ? 0.35 : 1);
     // ---- light on the land: the last bursts tint terrain, trees, snow and fog (shared glow)
-    this.light.multiplyScalar(Math.exp(-dt * (this.phase === 'climax' ? 1.5 : 2.6)));
+    this.light.multiplyScalar(Math.exp(-dt * (this.phase === 'climax' ? 2.0 : 2.6)));
     atmosphere.uGlowColor.value.copy(this.light);
     atmosphere.uGlowPos.value.copy(this.lightPos);
     // white flash (post), off in reduced flash
