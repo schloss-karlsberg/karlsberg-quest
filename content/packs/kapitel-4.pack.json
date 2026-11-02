@@ -1,6 +1,13 @@
 {
   "$schema": "../schema/pack.schema.json",
   "pack": "kapitel-4",
+  "speakers": [
+    {
+      "id": "pikeur",
+      "name_de": "Jost",
+      "historical": false
+    }
+  ],
   "nouns": [
     {
       "id": "n.vierzehn",
@@ -126,8 +133,8 @@
       "text_de": "„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Kern FAKT: Steine der Ruine in Homburger Häusern, RLS.)",
       "where": {
         "x": 760,
-        "z": -930,
-        "radius": 30,
+        "z": -908,
+        "radius": 6,
         "era": "today",
         "anchor": "loc.p.station"
       },
@@ -184,13 +191,13 @@
       "id": "clue.k4.jaegersburg",
       "title_de": "Holz aus Jägersburg",
       "kind": "dialogue",
-      "text_de": "Laub, nach dem Blick zur Hohenburg.",
+      "text_de": "Laub am Holzstapel im Hof des Baumagazins, nach dem Blick zur Hohenburg.",
       "where": {
-        "x": 200,
-        "z": -905,
-        "radius": 20,
+        "x": 490,
+        "z": -834,
+        "radius": 4,
         "era": "1796",
-        "anchor": "loc.k4.westblick"
+        "anchor": "KB-B29"
       },
       "reveals": {
         "nouns": [
@@ -211,9 +218,9 @@
       "kind": "dialogue",
       "text_de": "Laub, wenn man vom Westrand nach Süden schaut.",
       "where": {
-        "x": 200,
-        "z": -905,
-        "radius": 20,
+        "x": 198,
+        "z": -884,
+        "radius": 8,
         "era": "1796",
         "anchor": "loc.k4.westblick"
       },
@@ -257,8 +264,8 @@
       "kind": "dialogue",
       "text_de": "Das einzige Gebäude, das ganz steht. Im Hof Steinhaufen, Holzstapel, eine Waage. (Heute Karlsberger Hof, privat: im Heute kein Trigger, nur der Blick von der Straße.)",
       "where": {
-        "x": 511,
-        "z": -827,
+        "x": 503,
+        "z": -836,
         "radius": 25,
         "era": "1796",
         "anchor": "KB-B29"
@@ -280,9 +287,9 @@
       "kind": "document",
       "text_de": "„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut FIKTION; Inhalt nach HIB.)",
       "where": {
-        "x": 509,
-        "z": -830,
-        "radius": 6,
+        "x": 495,
+        "z": -845,
+        "radius": 3.5,
         "era": "1796",
         "anchor": "KB-B29"
       },
@@ -300,8 +307,8 @@
       "kind": "dialogue",
       "text_de": "Soll sitzt an einem Tisch im Tor, alt geworden, die Ärmelschoner abgewetzt.",
       "where": {
-        "x": 509,
-        "z": -830,
+        "x": 496,
+        "z": -842,
         "radius": 6,
         "era": "1796",
         "anchor": "KB-B29"
@@ -323,8 +330,8 @@
       "kind": "dialogue",
       "text_de": "Peter, Hannes Sohn, fünfzehn, lädt Steine auf seinen Karren.",
       "where": {
-        "x": 516,
-        "z": -822,
+        "x": 494,
+        "z": -826,
         "radius": 8,
         "era": "1796",
         "anchor": "KB-B29"
@@ -343,9 +350,9 @@
       "kind": "object",
       "text_de": "Das Zeichen von Matthes: offener Winkel, drei Punkte. Wandernde Steine 2/4.",
       "where": {
-        "x": 516,
+        "x": 496.5,
         "z": -822,
-        "radius": 4,
+        "radius": 3.5,
         "era": "1796",
         "anchor": "KB-B29"
       },
@@ -1388,9 +1395,10 @@
       "speaker": "jost",
       "text_de": "Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 1
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "greet"
       },
       "once": true
     },
@@ -1399,66 +1407,68 @@
       "speaker": "jost",
       "text_de": "Die Meute reißt nicht. Sie stellt. Das hab ich dir gesagt, da war ich dreizehn.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 2
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "stellen"
+      }
     },
     {
       "id": "jost.k4.03",
       "speaker": "jost",
       "text_de": "Ich hab sie rausgelassen, in der Nacht vom Feuer. Dann bin ich ihnen nach. Ich hab sie nie wieder eingefangen. Wer nicht abgeblasen wird, läuft weiter. Und ich bin mitgelaufen.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 3
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "meute"
+      }
     },
     {
       "id": "jost.k4.04",
       "speaker": "jost",
       "text_de": "Was keiner mehr weiß, frisst der Berg. Wer zu lang drin ist in dem, was keiner mehr weiß, den frisst er mit. Wir haben jeden heimgetrieben, bevor es so weit war. Jeden.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 4
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "berg",
+        "step": 1
+      }
     },
     {
       "id": "jost.k4.05",
       "speaker": "jost",
       "text_de": "Nur den Geometer nicht. Der hat sich nicht hingelegt.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 5
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "berg",
+        "step": 2
+      }
     },
     {
       "id": "jost.k4.06",
       "speaker": "jost",
       "text_de": "Jetzt hat er’s. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 6
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "namen"
+      }
     },
     {
       "id": "jost.k4.07",
       "speaker": "jost",
       "text_de": "Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.jost",
-        "step": 7
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "pikeur",
+        "chapter": "k4",
+        "topic": "bye"
+      }
     },
     {
       "id": "jost.k4.08",
