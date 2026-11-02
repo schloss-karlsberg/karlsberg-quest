@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-kirrberg.github.io/karlsberg-quest/schema/pack.schema.json",
+  "title": "Karlsberg Quest content pack",
+  "description": "Editor support only. The authority is src/content/validate.ts (pnpm validate), which also checks references and case solvability.",
+  "type": "object",
+  "required": ["pack"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "pack": { "type": "string", "minLength": 1 },
+    "placeholder": { "type": "boolean" },
+    "facts": { "type": "array", "items": { "$ref": "#/$defs/fact" } },
+    "nouns": { "type": "array", "items": { "$ref": "#/$defs/noun" } },
+    "clues": { "type": "array", "items": { "$ref": "#/$defs/clue" } },
+    "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
+    "speakers": { "type": "array", "items": { "$ref": "#/$defs/speaker" } },
+    "dialogue": { "type": "array", "items": { "$ref": "#/$defs/dialogue" } },
+    "hints": { "type": "array", "items": { "$ref": "#/$defs/hint" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "era": { "enum": ["today", "1789", "1793-02", "1793-07", "1796"] },
+    "source": {
+      "type": "object",
+      "required": ["url"],
+      "properties": { "url": { "type": "string", "pattern": "^https?://" }, "label": { "type": "string" }, "note": { "type": "string" } }
+    },
+    "fact": {
+      "type": "object",
+      "required": ["id", "title_de", "text_de", "confidence", "fiction", "sources"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title_de": { "type": "string", "minLength": 1 },
+        "text_de": { "type": "string", "minLength": 1 },
+        "confidence": { "enum": ["D", "I", "N", "U"], "description": "D documented, I inferred, N period norm, U unknown" },
+        "fiction": { "type": "boolean" },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" }, "description": "At least one for non-fiction facts" },
+        "contested_de": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "era": { "$ref": "#/$defs/era" },
+        "licence": { "type": "string" }
+      }
+    },
+    "noun": {
+      "type": "object",
+      "required": ["id", "label_de", "category"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label_de": { "type": "string" },
+        "category": { "enum": ["person", "place", "object", "cause", "time", "action", "group", "other"] }
+      }
+    },
+    "clue": {
+      "type": "object",
+      "required": ["id", "title_de", "kind", "where", "reveals"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title_de": { "type": "string" },
+        "text_de": { "type": "string" },
+        "kind": { "enum": ["object", "echo", "document", "relief", "map", "dialogue"] },
+        "where": {
+          "type": "object",
+          "required": ["x", "z", "radius", "era"],
+          "properties": {
+            "x": { "type": "number", "description": "local x = E - 381000" },
+            "z": { "type": "number", "description": "local z = -(N - 5465000)" },
+            "radius": { "type": "number", "exclusiveMinimum": 0 },
+            "era": { "oneOf": [{ "$ref": "#/$defs/era" }, { "type": "array", "items": { "$ref": "#/$defs/era" }, "minItems": 1 }] },
+            "anchor": { "type": "string" }
+          }
+        },
+        "reveals": {
+          "type": "object",
+          "properties": {
+            "nouns": { "type": "array", "items": { "type": "string" } },
+            "facts": { "type": "array", "items": { "type": "string" } },
+            "flags": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "requires": {
+          "type": "object",
+          "properties": {
+            "clues": { "type": "array", "items": { "type": "string" } },
+            "skill": { "type": "string" },
+            "scanMode": { "enum": [1, 2, 3] },
+            "flags": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "fiction": { "type": "boolean" }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["id", "title_de", "entries"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title_de": { "type": "string" },
+        "intro_de": { "type": "string" },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "kind", "text_de", "blanks"],
+            "properties": {
+              "id": { "type": "string" },
+              "kind": { "enum": ["fact", "reading"] },
+              "text_de": { "type": "string", "description": "Sentence with {blankId} placeholders" },
+              "factId": { "type": "string" },
+              "blanks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "category": { "enum": ["person", "place", "object", "cause", "time", "action", "group", "other"] },
+                    "accepts": { "type": "array", "items": { "type": "string" } },
+                    "correct": { "type": "string", "description": "Fact entries only" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "speaker": {
+      "type": "object",
+      "required": ["id", "name_de", "historical"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name_de": { "type": "string" }, "historical": { "type": "boolean" } }
+    },
+    "dialogue": {
+      "type": "object",
+      "required": ["id", "speaker", "text_de", "trigger"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "speaker": { "type": "string" },
+        "text_de": { "type": "string" },
+        "trigger": { "type": "object", "required": ["event"], "properties": { "event": { "type": "string" } } },
+        "once": { "type": "boolean" },
+        "priority": { "type": "number" },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } }
+      }
+    },
+    "hint": {
+      "type": "object",
+      "required": ["id", "caseId", "level", "text_de"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "caseId": { "type": "string" },
+        "entryId": { "type": "string" },
+        "level": { "enum": [1, 2, 3] },
+        "text_de": { "type": "string" },
+        "afterSeconds": { "type": "number" }
+      }
+    }
+  }
+}

@@ -1,0 +1,339 @@
+import { NoToneMapping, PerspectiveCamera, Scene, SRGBColorSpace, WebGLRenderer } from 'three';
+import { AudioManager } from './audio/audio';
+import { loadBundledContent } from './content/db';
+import type { EraController, GameContext, PauseController } from './core/context';
+import { ERA_INFO, type Era, isEra } from './core/era';
+import { EventBus } from './core/events';
+import { FixedStepLoop } from './core/loop';
+import { SaveManager, SettingsStore, defaultStorage } from './core/save';
+import { DEFAULT_SPAWN, GameStateStore, createInitialState } from './core/state';
+import { SystemRegistry } from './core/systems';
+import { loadGameData } from './data/loader';
+import { installDebug } from './debug/hooks';
+import { t } from './i18n';
+import { Input } from './player/input';
+import { Player } from './player/player';
+import { PostFX } from './render/post';
+import { SYSTEM_LOADERS } from './systems';
+import { openLicences, openPause } from './ui/menus';
+import { TitleScreen } from './ui/title';
+import { UI } from './ui/ui';
+import { World } from './world/world';
+
+/**
+ * Wires everything together. main.ts only calls `boot()`.
+ * Order: renderer + UI (title visible at once) → data → world → state/save → player →
+ * feature systems → loop. Gameplay starts on "Laterne entzünden" (or at once with ?debug).
+ */
+export async function boot(container: HTMLElement): Promise<GameContext> {
+  const params = new URLSearchParams(location.search);
+  const debug = params.has('debug');
+  const skipTitle = debug || params.has('notitle');
+
+  // ---- renderer, scene, camera
+  const renderer = new WebGLRenderer({ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: params.has('preserve') });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.outputColorSpace = SRGBColorSpace;
+  renderer.toneMapping = NoToneMapping;
+  renderer.domElement.tabIndex = 0;
+  container.append(renderer.domElement);
+  const scene = new Scene();
+  const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
+  const post = new PostFX(params.has('nomsaa') ? 0 : 4);
+  const resize = () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    post.setSize(w, h, renderer.getPixelRatio());
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  };
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---- core services
+  const events = new EventBus();
+  const storage = defaultStorage();
+  const settings = new SettingsStore(storage);
+  const state = new GameStateStore(createInitialState());
+  const save = new SaveManager(state, storage, events);
+  if (params.has('nosave')) save.enabled = false;
+  const audio = new AudioManager();
+  const ui = new UI(document.body);
+  const content = loadBundledContent();
+  const systems = new SystemRegistry();
+
+  let started = false;
+  let modalOpen = 0;
+  const reasons = new Set<string>();
+  // the loop is created below; pause needs a late reference
+  let loopRef: FixedStepLoop | null = null;
+  const pause: PauseController = {
+    push(r) {
+      reasons.add(r);
+      sync();
+    },
+    pop(r) {
+      reasons.delete(r);
+      sync();
+    },
+    get paused() {
+      return reasons.size > 0;
+    },
+    reasons,
+  };
+  const sync = () => {
+    const was = loopRef?.paused ?? false;
+    if (loopRef) loopRef.paused = reasons.size > 0;
+    if (loopRef && was !== loopRef.paused) {
+      events.emit('game:pause', { paused: loopRef.paused });
+      audio.setPaused(loopRef.paused);
+    }
+  };
+  pause.push('title');
+
+  // ---- title screen (shown immediately while data loads)
+  let ctxRef: GameContext | null = null;
+  const title = new TitleScreen({
+    onStart: (fresh) => startGame(fresh),
+    onLicences: () => openLicences({ modals: ui.modals, attribution: () => ctxRef?.data.attribution.items ?? [] }),
+    confirm: (text) => ui.modals.confirm(text),
+  });
+  if (!skipTitle) ui.add(title.el);
+
+  // ---- data + world
+  let data;
+  try {
+    data = await loadGameData(undefined, (d, n) => title.setProgress(d / n));
+  } catch (err) {
+    title.setFailed((err as Error).message);
+    throw err;
+  }
+  const world = new World(data, scene, post);
+  const palaceReady = world.loadPalace().catch((err) => console.error('[palace] failed to load', err));
+
+  // ---- input + player
+  const input = new Input(renderer.domElement);
+  const player = new Player(
+    {
+      heightAt: (x, z) => world.heightAt(x, z),
+      collide: (x, z, r) => world.collider.resolve(x, z, r),
+      bounds: () => world.bounds(),
+      surfaceAt: (x, z) => world.surfaceAt(x, z),
+      coverAt: (x, z) => world.coverAt(x, z),
+      canFly: () => ERA_INFO[world.currentEra].spiritView,
+    },
+    input,
+    events,
+  );
+  const applySettings = () => {
+    const s = settings.state;
+    player.mouseSensitivity = s.mouseSensitivity;
+    player.invertY = s.invertY;
+    player.reducedMotion = s.reducedMotion;
+    camera.fov = s.fov;
+    camera.updateProjectionMatrix();
+    audio.setVolumes(s.volume);
+    ui.hud.setSubtitleSize(s.subtitleSize);
+  };
+  settings.subscribe((_, key) => {
+    applySettings();
+    events.emit('settings:change', { key });
+  });
+  applySettings();
+
+  // ---- era controller
+  const era: EraController = {
+    get current() {
+      return world.currentEra;
+    },
+    get info() {
+      return ERA_INFO[world.currentEra];
+    },
+    set(e: Era) {
+      const from = world.currentEra;
+      world.setEra(e);
+      if (player.flying && !ERA_INFO[e].spiritView) player.setFlying(false);
+      // re-ground the player (terrain differs between eras) and step out of buildings
+      const p = world.collider.resolve(player.position.x, player.position.z, 0.6);
+      player.teleport(p.x, p.z);
+      state.mutable.era = e;
+      ui.hud.setEraLabel(t(ERA_INFO[e].labelKey));
+      if (from !== e) {
+        events.emit('era:change', { from, to: e });
+        if (started) save.autosave('era', true);
+      }
+    },
+  };
+
+  // ---- state: continue a save or start fresh
+  const restore = () => {
+    const s = state.state;
+    era.set(s.era);
+    player.readState(s.player);
+  };
+  if (!params.has('fresh') && save.has()) save.load();
+  restore();
+  // URL overrides (debug / e2e / sharing a spot)
+  const qEra = params.get('era');
+  if (isEra(qEra)) era.set(qEra);
+  if (params.has('x') && params.has('z')) player.teleport(Number(params.get('x')), Number(params.get('z')), params.has('yaw') ? (Number(params.get('yaw')) * Math.PI) / 180 : undefined);
+  ui.hud.setEraLabel(t(ERA_INFO[world.currentEra].labelKey));
+
+  // ---- loop
+  const loop = new FixedStepLoop({
+    update: (dt) => {
+      player.update(dt);
+      systems.update(dt, ctx);
+      player.writeState(state.mutable.player);
+      state.mutable.meta.playSeconds += dt;
+      input.endStep();
+    },
+    render: (frameDt, alpha) => {
+      if (!pause.paused) player.look();
+      player.applyCamera(camera, alpha, frameDt);
+      if (reasons.has('title')) {
+        // title backdrop: slow drift of the view
+        const tt = performance.now() / 1000;
+        camera.rotation.y += Math.sin(tt * 0.07) * 0.08;
+        camera.rotation.x = -0.02 + Math.sin(tt * 0.05) * 0.02;
+      }
+      systems.frame(frameDt, ctx);
+      world.frame(camera, frameDt, loop.time + (reasons.has('title') ? performance.now() / 1000 : 0));
+      audio.updateListener(camera);
+      ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
+      post.render(renderer, scene, camera, loop.time);
+      frames++;
+    },
+  });
+  loopRef = loop;
+  sync();
+  if (params.has('manual')) loop.manual = true;
+  let frames = 0;
+
+  const ctx: GameContext = {
+    renderer,
+    scene,
+    camera,
+    post,
+    player,
+    input,
+    world,
+    data,
+    state,
+    settings,
+    save,
+    events,
+    audio,
+    ui,
+    era,
+    content,
+    systems,
+    loop,
+    pause,
+    debug,
+    params,
+    t,
+  };
+  ctxRef = ctx;
+
+  // ---- HUD wiring for core events
+  events.on('player:stance', ({ stance }) => ui.hud.setStance(stance === 'stand' ? '' : t(`stance.${stance}`)));
+  events.on('player:fly', ({ flying }) => ui.toast(t(flying ? 'fly.on' : 'fly.off')));
+  events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
+
+  // ---- modals pause the game and free the mouse
+  ui.modals.onChange = (n) => {
+    modalOpen = n;
+    input.enabled = n === 0 && started;
+    if (n > 0) {
+      pause.push('modal');
+      input.releaseLock();
+    } else {
+      pause.pop('modal');
+      if (started) input.requestLock();
+    }
+  };
+
+  // ---- pause menu: Escape or losing pointer lock
+  const menuDeps = {
+    modals: ui.modals,
+    settings,
+    attribution: () => data.attribution.items,
+    save: () => save.save('auto', 'manual'),
+    toTitle: () => toTitle(),
+  };
+  let pauseMenuOpen = false;
+  const openPauseMenu = () => {
+    if (!started || pauseMenuOpen || modalOpen > 0) return;
+    pauseMenuOpen = true;
+    openPause(menuDeps, () => (pauseMenuOpen = false));
+  };
+  document.addEventListener('pointerlockchange', () => {
+    if (!input.locked && started && modalOpen === 0 && !debug) openPauseMenu();
+    ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0);
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' && started && modalOpen === 0) openPauseMenu();
+  });
+  renderer.domElement.addEventListener('click', () => {
+    if (started && modalOpen === 0) input.requestLock();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && started) save.autosave('hidden', true);
+  });
+  window.setInterval(() => started && !pause.paused && save.autosave('interval'), 60_000);
+
+  function startGame(fresh: boolean): void {
+    audio.unlock();
+    if (fresh) {
+      save.delete();
+      state.replace(createInitialState(), 'new');
+      restore();
+      player.teleport(DEFAULT_SPAWN.x, DEFAULT_SPAWN.z, DEFAULT_SPAWN.yaw);
+    }
+    started = true;
+    title.hide();
+    ui.hud.show(true);
+    input.enabled = true;
+    pause.pop('title');
+    input.requestLock();
+    events.emit('game:start', { resumed: !fresh && state.state.meta.savedAt !== null });
+    save.autosave('start', true);
+  }
+
+  function toTitle(): void {
+    save.autosave('title', true);
+    started = false;
+    input.enabled = false;
+    input.releaseLock();
+    ui.hud.show(false);
+    pause.push('title');
+    if (!title.el.isConnected) ui.add(title.el);
+    title.show();
+    title.setReady(save.has());
+  }
+
+  // ---- feature systems
+  for (const load of SYSTEM_LOADERS) {
+    try {
+      const mod = await load();
+      systems.registerSystem(mod.default);
+    } catch (err) {
+      console.error('[systems] failed to load a system module', err);
+    }
+  }
+  await systems.initAll(ctx);
+
+  await palaceReady;
+  installDebug(ctx, { frames: () => frames });
+  loop.start();
+
+  if (debug) {
+    const r = ctx.content.validate(world.bounds());
+    if (!r.ok) console.warn('[content] validation errors', r.errors);
+  }
+  if (skipTitle) startGame(false);
+  else title.setReady(save.has());
+  return ctx;
+}

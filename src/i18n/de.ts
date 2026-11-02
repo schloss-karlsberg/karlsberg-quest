@@ -1,0 +1,88 @@
+/**
+ * German UI strings. Keys are dotted, grouped by area. Feature systems add their own keys in
+ * their folder via `addStrings('de', {...})` (see src/i18n/index.ts) to avoid merge conflicts here.
+ */
+export const de: Record<string, string> = {
+  'game.title': 'Karlsberg Quest',
+  'game.subtitle': 'Das Land erinnert sich',
+  'title.light': 'Laterne entzünden',
+  'title.continue': 'Weiter vermessen',
+  'title.newGame': 'Neues Feldbuch beginnen',
+  'title.loading': 'Gelände wird geladen … {pct} %',
+  'title.loadFailed': 'Die Geländedaten konnten nicht geladen werden.',
+  'title.licences': 'Lizenzen & Quellen',
+  'title.motto': 'Fakten mit Quelle. Fiktion als Fiktion gekennzeichnet. Schauen, nicht graben.',
+  'title.hint': 'Maus: umsehen · WASD: gehen · Umschalt: rennen · C: ducken · X: hinlegen · F: Geistersicht · Esc: Pause',
+  'title.headphones': 'Mit Kopfhörern spielen.',
+  'title.confirmNew': 'Das bisherige Feldbuch wird überschrieben. Wirklich neu beginnen?',
+
+  'era.today': 'Heute · 2025',
+  'era.1789': 'Sommer 1789',
+  'era.1793-02': '9. Februar 1793, nachts',
+  'era.1793-07': '28. Juli 1793, nachts',
+  'era.1796': '1796 · Die Ruine',
+
+  'pause.title': 'Pause',
+  'pause.resume': 'Weiter',
+  'pause.settings': 'Einstellungen',
+  'pause.licences': 'Lizenzen & Quellen',
+  'pause.save': 'Feldbuch sichern',
+  'pause.saved': 'Feldbuch gesichert.',
+  'pause.toTitle': 'Zum Titelbild',
+  'pause.controls': 'Steuerung',
+
+  'settings.title': 'Einstellungen',
+  'settings.mouse': 'Mausempfindlichkeit',
+  'settings.invertY': 'Maus-Y umkehren',
+  'settings.fov': 'Sichtfeld',
+  'settings.gentle': 'Sanfter Modus (langsamere Jagd, keine verlorenen Hinweise)',
+  'settings.reducedMotion': 'Weniger Bewegung (kein Kopfwippen, sanfte Übergänge)',
+  'settings.subtitles': 'Untertitelgröße',
+  'settings.subtitles.s': 'klein',
+  'settings.subtitles.m': 'mittel',
+  'settings.subtitles.l': 'groß',
+  'settings.volume.master': 'Gesamtlautstärke',
+  'settings.volume.music': 'Musik',
+  'settings.volume.sfx': 'Geräusche',
+  'settings.volume.ambience': 'Umgebung',
+  'settings.back': 'Zurück',
+
+  'licences.title': 'Lizenzen & Quellen',
+  'licences.intro': 'Dieses Spiel steht auf echten, offenen Geodaten. Die Rekonstruktion von 1789 ist eine Hypothese, kein Befund.',
+  'licences.fonts': 'Schriften: IM Fell English (Igino Marini) und Caveat (The Caveat Project Authors), SIL Open Font License 1.1.',
+  'licences.audio': 'Alle Klänge werden im Browser erzeugt (Web Audio), keine fremden Aufnahmen.',
+  'licences.code': 'Programmcode: Karlsberg Quest (Open-Kirrberg).',
+
+  'controls.title': 'Steuerung',
+  'controls.body':
+    'WASD / Pfeile: gehen · Maus: umsehen · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · F: Geistersicht (nur heute) · 1–3: Relief-Blick · 0: Relief aus · M: Karte 1840 · Esc: Pause',
+
+  'hud.compass.n': 'N',
+  'hud.compass.e': 'O',
+  'hud.compass.s': 'S',
+  'hud.compass.w': 'W',
+  'hud.oil': 'Lampenöl',
+  'hud.threat': 'Gefahr',
+  'hud.clickToPlay': 'Klicken, um weiterzuspielen',
+
+  'scan.0': 'Relief aus',
+  'scan.1': 'Relief-Blick: Schummerung',
+  'scan.2': 'Relief-Blick: Lokales Relief',
+  'scan.3': 'Relief-Blick: VAT',
+  'map.on': 'Karte 1836–41 eingeblendet',
+  'map.off': 'Karte ausgeblendet',
+
+  'toast.noSpirit': 'Die Geistersicht trägt nur in der Gegenwart.',
+  'toast.saved': 'Feldbuch gesichert.',
+  'stance.stand': 'Stehen',
+  'stance.crouch': 'Geduckt',
+  'stance.prone': 'Liegend',
+  'fly.on': 'Geistersicht',
+  'fly.off': 'Zurück auf dem Boden',
+
+  'modal.close': 'Schließen',
+  'modal.ok': 'Gut',
+  'modal.cancel': 'Abbrechen',
+  'common.yes': 'Ja',
+  'common.no': 'Nein',
+};

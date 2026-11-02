@@ -1,0 +1,148 @@
+import type { EventBus } from './events';
+import { type GameState, type GameStateStore, Store, deserializeState, serializeState } from './state';
+
+/** All localStorage keys of this game start with this prefix (shared origin with the explorer). */
+export const STORAGE_PREFIX = 'kq.';
+export const SAVE_KEY = (slot: string) => `${STORAGE_PREFIX}save.v1.${slot}`;
+export const SETTINGS_KEY = `${STORAGE_PREFIX}settings.v1`;
+
+/** The subset of the Web Storage API we use (lets tests inject a Map-backed fake). */
+export interface KeyValueStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+export class MemoryStorage implements KeyValueStorage {
+  readonly map = new Map<string, string>();
+  getItem(k: string) {
+    return this.map.get(k) ?? null;
+  }
+  setItem(k: string, v: string) {
+    this.map.set(k, v);
+  }
+  removeItem(k: string) {
+    this.map.delete(k);
+  }
+}
+
+export function defaultStorage(): KeyValueStorage {
+  try {
+    const ls = globalThis.localStorage;
+    const probe = `${STORAGE_PREFIX}probe`;
+    ls.setItem(probe, '1');
+    ls.removeItem(probe);
+    return ls;
+  } catch {
+    return new MemoryStorage(); // private mode / blocked storage: play without persistence
+  }
+}
+
+export interface Settings {
+  mouseSensitivity: number; // 0.2 .. 3, 1 = default
+  invertY: boolean;
+  gentleMode: boolean;
+  reducedMotion: boolean;
+  subtitleSize: 's' | 'm' | 'l';
+  volume: { master: number; music: number; sfx: number; ambience: number };
+  fov: number;
+}
+
+export function defaultSettings(): Settings {
+  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return {
+    mouseSensitivity: 1,
+    invertY: false,
+    gentleMode: false,
+    reducedMotion: reduced,
+    subtitleSize: 'm',
+    volume: { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8 },
+    fov: 70,
+  };
+}
+
+export class SettingsStore extends Store<Settings> {
+  constructor(private readonly storage: KeyValueStorage) {
+    const base = defaultSettings();
+    let loaded: Partial<Settings> = {};
+    try {
+      const raw = storage.getItem(SETTINGS_KEY);
+      if (raw) loaded = JSON.parse(raw) as Partial<Settings>;
+    } catch {
+      /* ignore corrupt settings */
+    }
+    super({ ...base, ...loaded, volume: { ...base.volume, ...(loaded.volume ?? {}) } });
+    this.subscribe((s) => {
+      try {
+        this.storage.setItem(SETTINGS_KEY, JSON.stringify(s));
+      } catch {
+        /* quota */
+      }
+    });
+  }
+}
+
+/**
+ * Save slots in localStorage. `autosave(reason)` is the API features call at meaningful moments
+ * (era shift, clue confirmed); it is throttled so it can be called freely.
+ */
+export class SaveManager {
+  private lastAuto = -Infinity;
+  /** Minimum ms between autosaves (forced saves ignore it). */
+  minIntervalMs = 5000;
+  /** Disable all writes (e.g. e2e screenshots, `?nosave`). */
+  enabled = true;
+
+  constructor(
+    private readonly store: GameStateStore,
+    private readonly storage: KeyValueStorage,
+    private readonly events?: EventBus,
+    private readonly now: () => number = () => Date.now(),
+  ) {}
+
+  has(slot = 'auto'): boolean {
+    return this.storage.getItem(SAVE_KEY(slot)) !== null;
+  }
+
+  save(slot = 'auto', reason = 'manual'): boolean {
+    if (!this.enabled) return false;
+    const s = this.store.mutable;
+    s.meta.savedAt = new Date(this.now()).toISOString();
+    try {
+      this.storage.setItem(SAVE_KEY(slot), serializeState(s));
+    } catch (err) {
+      console.warn('[save] write failed', err);
+      return false;
+    }
+    this.events?.emit('save:written', { slot, reason });
+    return true;
+  }
+
+  /** Throttled save to the 'auto' slot. Returns true if written. */
+  autosave(reason: string, force = false): boolean {
+    const t = this.now();
+    if (!force && t - this.lastAuto < this.minIntervalMs) return false;
+    this.lastAuto = t;
+    return this.save('auto', reason);
+  }
+
+  /** Load a slot into the store. Returns false when the slot is empty or unreadable. */
+  load(slot = 'auto'): boolean {
+    const raw = this.storage.getItem(SAVE_KEY(slot));
+    if (!raw) return false;
+    let s: GameState;
+    try {
+      s = deserializeState(raw);
+    } catch (err) {
+      console.warn('[save] unreadable save, ignoring', err);
+      return false;
+    }
+    this.store.replace(s, 'load');
+    this.events?.emit('save:loaded', { slot });
+    return true;
+  }
+
+  delete(slot = 'auto'): void {
+    this.storage.removeItem(SAVE_KEY(slot));
+  }
+}

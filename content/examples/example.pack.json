@@ -1,0 +1,84 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "examples",
+  "placeholder": true,
+  "facts": [
+    {
+      "id": "ex.fact.fire-1793",
+      "title_de": "Beispiel: Der Brand vom 28. Juli 1793",
+      "text_de": "PLATZHALTER. Französische Truppen plünderten das Schloss und steckten es in Brand.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [{ "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg", "label": "de.wikipedia: Schloss Karlsberg" }],
+      "era": "1793-07"
+    },
+    {
+      "id": "ex.fact.compass",
+      "title_de": "Beispiel: Der sprechende Kompass",
+      "text_de": "PLATZHALTER. Erfunden für das Spiel.",
+      "confidence": "U",
+      "fiction": true,
+      "sources": []
+    }
+  ],
+  "nouns": [
+    { "id": "ex.noun.straw", "label_de": "Stroh", "category": "object" },
+    { "id": "ex.noun.french", "label_de": "französische Truppen", "category": "group" },
+    { "id": "ex.noun.festsaal", "label_de": "Festsaal", "category": "place" },
+    { "id": "ex.noun.greed", "label_de": "Gier", "category": "cause" },
+    { "id": "ex.noun.hunger", "label_de": "Hunger", "category": "cause" }
+  ],
+  "clues": [
+    {
+      "id": "ex.clue.wagon-ruts",
+      "title_de": "Beispiel: Spurrillen",
+      "kind": "relief",
+      "where": { "x": 1150, "z": -1120, "radius": 12, "era": ["today", "1789"] },
+      "reveals": { "nouns": ["ex.noun.straw"] },
+      "requires": { "scanMode": 2 }
+    },
+    {
+      "id": "ex.clue.echo-court",
+      "title_de": "Beispiel: Echo im Ehrenhof",
+      "kind": "echo",
+      "where": { "x": 1222, "z": -1119, "radius": 8, "era": "1793-07", "anchor": "TF-01" },
+      "reveals": { "nouns": ["ex.noun.french", "ex.noun.festsaal", "ex.noun.greed", "ex.noun.hunger"], "facts": ["ex.fact.fire-1793"] },
+      "requires": { "clues": ["ex.clue.wagon-ruts"] },
+      "fiction": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "ex.case.night",
+      "title_de": "Beispielfall (Platzhalter)",
+      "entries": [
+        {
+          "id": "e1",
+          "kind": "fact",
+          "text_de": "{who} brachten {what} in den {where}.",
+          "blanks": [
+            { "id": "who", "category": "group", "correct": "ex.noun.french" },
+            { "id": "what", "category": "object", "correct": "ex.noun.straw" },
+            { "id": "where", "category": "place", "correct": "ex.noun.festsaal" }
+          ],
+          "factId": "ex.fact.fire-1793"
+        },
+        {
+          "id": "e2",
+          "kind": "reading",
+          "text_de": "Die Dörfler plünderten aus {why}.",
+          "blanks": [{ "id": "why", "accepts": ["ex.noun.greed", "ex.noun.hunger"] }]
+        }
+      ]
+    }
+  ],
+  "speakers": [
+    { "id": "ex.laub", "name_de": "Quirin Laub (Beispiel)", "historical": false }
+  ],
+  "dialogue": [
+    { "id": "ex.line.start", "speaker": "ex.laub", "text_de": "PLATZHALTER: Eine Zeile des Kompasses.", "trigger": { "event": "game:start" }, "once": true }
+  ],
+  "hints": [
+    { "id": "ex.hint.1", "caseId": "ex.case.night", "entryId": "e1", "level": 1, "text_de": "PLATZHALTER: Ein sanfter Hinweis." }
+  ]
+}
