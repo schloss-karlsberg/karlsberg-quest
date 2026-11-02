@@ -94,6 +94,9 @@ export class UnlockCards {
       return;
     }
     const c = this.current;
+    // a story title card came up while this card showed: step aside and wait (they would overlap)
+    c.el.classList.toggle('kqk-held', hold);
+    if (hold) return;
     c.t += dt;
     if (!this.stamped && c.t >= 1.15) {
       this.stamped = true;

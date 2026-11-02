@@ -154,6 +154,32 @@ test.describe('skills and survey tools', () => {
     expect(errors).toEqual([]);
   });
 
+  test('an unlock card steps aside while a story title card shows (no overlap)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.evaluate(() => window.kq!.teleport(1150, -1050, 120, -4));
+    await page.evaluate(() => window.kq!.ctx.events.emit('skill:grant', { skill: 'relief', level: 2 }));
+    const card = page.getByTestId('skill-card');
+    await expect(card).toHaveClass(/kqk-in/);
+    // a chapter title card comes up (the story's .kqs-card): the unlock card hides and waits
+    await page.evaluate(() => {
+      const el = document.createElement('div');
+      el.className = 'kqs-card kqs-show';
+      el.id = 'fake-title';
+      document.body.append(el);
+      window.kq!.step(30);
+    });
+    await expect(card).toHaveClass(/kqk-held/);
+    const held = await page.evaluate(() => window.kq!.skills!.card());
+    expect(held).toMatchObject({ skill: 'relief', level: 2 });
+    await page.evaluate(() => {
+      document.getElementById('fake-title')!.remove();
+      window.kq!.step(2);
+    });
+    await expect(card).not.toHaveClass(/kqk-held/);
+    await shot(page, 'card-after-title');
+    expect(errors).toEqual([]);
+  });
+
   test('measuring the gallery (Kartograf 3) gives the model length', async ({ page }) => {
     const errors = trackErrors(page);
     await record(page, ['measure:done']);

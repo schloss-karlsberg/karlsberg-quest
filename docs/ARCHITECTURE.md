@@ -149,7 +149,8 @@ era label (order 0) and the status line (10), then features' elements put there 
 (story, 40). They stack, never overlap; an element that is hidden takes no room. A
 ResizeObserver writes the column's bottom edge to `--kq-tl-bottom`; the skill cards sit below it.
 The fx gauges sit above the Bussole; the dialogue card leaves 190 px on each side; subtitles move
-up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused).
+up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused); an unlock card already on
+screen steps aside (`kqk-held`, its clock stops) while a story title card or the curtain shows.
 `e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
 
 **Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
