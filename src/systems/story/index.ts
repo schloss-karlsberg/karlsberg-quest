@@ -112,8 +112,8 @@ const LOOKS: Record<'dusk' | 'night', LookPatch> = {
   },
 };
 
-export function lookFor(time: 'day' | 'dusk' | 'night'): EraLook {
-  const base = structuredClone(ERA_LOOKS.today);
+export function lookFor(time: 'day' | 'dusk' | 'night', era: Era = 'today'): EraLook {
+  const base = structuredClone(ERA_LOOKS[era]);
   if (time === 'day') return base;
   const p = LOOKS[time];
   const out = base as unknown as Record<string, unknown>;
@@ -301,10 +301,8 @@ class StoryRuntime {
     ctx.events.on('save:loaded', () => this.resync());
     ctx.events.on('player:caught', ({ by, soft }) => this.caught(by, { soft: soft === true }));
     ctx.events.on('era:change', ({ to }) => {
-      if (to === 'today') {
-        this.placeStation();
-        this.applyLook();
-      }
+      if (to === 'today') this.placeStation();
+      if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
     });
     ctx.events.on('shift:begin', () => {
       this.shiftPending = null;
@@ -529,7 +527,8 @@ class StoryRuntime {
         this.sound(a.sound, a.x, a.z, a.caption, a.signal);
         return;
       case 'look':
-        s.look = a.time;
+        if (a.era && a.era !== 'today') s.lookPast = a.time === 'day' ? null : { era: a.era, time: a.time };
+        else s.look = a.time;
         this.applyLook();
         return;
       case 'prompt':
@@ -791,7 +790,9 @@ class StoryRuntime {
       // fx may have switched synchronously
       if (ctx.era.current !== to) ctx.era.set(to);
       this.shiftPending = null;
-    } else this.shiftPending = { to, age: 0 };
+      // fx answered synchronously ('shift:begin' already ran): no fallback timer, or Q stays
+      // dead for 1.5 s after every shift
+    } else if (!this.shifting && ctx.era.current !== to) this.shiftPending = { to, age: 0 };
   }
 
   private sound(kind: Parameters<typeof playStorySound>[1], x?: number, z?: number, caption?: string, signal?: Parameters<typeof playStorySound>[3]): void {
@@ -819,8 +820,10 @@ class StoryRuntime {
 
   private applyLook(): void {
     const ctx = this.ctx;
-    if (ctx.era.current !== 'today') return;
-    ctx.world.look = lookFor(this.slice.look);
+    const past = this.slice.lookPast;
+    if (ctx.era.current === 'today') ctx.world.look = lookFor(this.slice.look);
+    else if (past && past.era === ctx.era.current) ctx.world.look = lookFor(past.time, ctx.era.current);
+    else return;
     ctx.world.applyLook();
   }
 

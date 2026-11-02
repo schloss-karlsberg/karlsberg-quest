@@ -54,6 +54,7 @@ export const TOPIC_LABELS: Record<string, string> = {
   warum: 'Warum wird nicht bezahlt?',
   minister: 'Nach dem Minister fragen',
   graues_buch: 'Was steht im grauen Buch?',
+  zahl: 'Was bedeutet die mittlere Zahl?',
   warten: 'Worauf wartest du?',
   berg: 'Nach dem Berg fragen',
   meute: 'Nach der Meute fragen',
