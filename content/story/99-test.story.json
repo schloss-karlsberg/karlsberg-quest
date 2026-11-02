@@ -1,0 +1,94 @@
+{
+  "chapter": "test",
+  "order": 99,
+  "test": true,
+  "title_de": "Probekapitel",
+  "sub_de": "TEST · nur mit ?storytest (e2e/npc.spec.ts)",
+  "era": "1789",
+  "start": "t1",
+  "checkpoint": { "x": 1281, "z": -1219, "yaw": 150, "era": "1789" },
+  "beats": [
+    {
+      "id": "t1",
+      "title_de": "TEST: Hanne am Bauplatz",
+      "enter": [
+        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1287, "z": -1228, "era": "1789", "chapter": "k1", "yaw": 330 },
+        { "do": "meter", "id": "oil", "active": true, "seconds": 90 },
+        { "do": "objective", "text": "TEST: Sprich mit Hanne.", "x": 1287, "z": -1228, "id": "test.hanne" }
+      ],
+      "complete": { "talked": { "npc": "hanne", "chapter": "k1" } },
+      "next": "t2"
+    },
+    {
+      "id": "t2",
+      "title_de": "TEST: Das Tor",
+      "enter": [
+        {
+          "do": "choice",
+          "id": "test.tor",
+          "modal": false,
+          "prompt": "TEST: Am Tor – leuchten oder dunkel?",
+          "note": "Die Laterne entscheidet.",
+          "seconds": 20,
+          "fallback": 1,
+          "options": [
+            { "label": "Laterne leuchten lassen", "key": "leuchten", "set": { "flag.test_tor": "leuchten" }, "when": { "lantern": true } },
+            { "label": "Im Dunkeln bleiben", "key": "dunkel", "set": { "flag.test_tor": "dunkel" }, "when": { "lantern": false } }
+          ]
+        }
+      ],
+      "complete": { "chosen": "test.tor" },
+      "next": "t3"
+    },
+    {
+      "id": "t3",
+      "title_de": "TEST: Was du rettest",
+      "enter": [
+        {
+          "do": "choice",
+          "id": "test.objekt",
+          "prompt": "TEST: Was nimmst du mit?",
+          "seconds": 30,
+          "fallback": 0,
+          "options": [
+            { "label": "Den Türgriff", "key": "tuergriff", "set": { "flag.k3_objekt": "tuergriff" }, "then": [{ "do": "toast", "text": "TEST: Türgriff" }] },
+            { "label": "Den Dukaten", "key": "dukat", "set": { "flag.k3_objekt": "dukat" } },
+            { "label": "Die Uhr", "key": "uhr", "set": { "flag.k3_objekt": "uhr" } }
+          ]
+        }
+      ],
+      "complete": { "chosen": "test.objekt", "option": "tuergriff" },
+      "next": "t4"
+    },
+    {
+      "id": "t4",
+      "title_de": "TEST: Der Atem",
+      "enter": [
+        { "do": "meter", "id": "oil", "active": false },
+        { "do": "meter", "id": "atem", "active": true, "seconds": 10, "label": "Atem", "full": "none", "lossless": true }
+      ],
+      "complete": { "meter": { "id": "atem", "full": true } },
+      "next": "t5"
+    },
+    {
+      "id": "t5",
+      "title_de": "TEST: Der Saal",
+      "enter": [
+        { "do": "readings", "fill": "offen" },
+        { "do": "say", "id": "test.jahre", "speaker": "laub", "text": "TEST: Nach {jahre:1793} Jahren, {Name}.", "text_by_era": { "today": "TEST: Heute, {Name}." } },
+        { "do": "memorial", "id": "test.gedenk", "x": 1281, "z": -1219, "r": 12, "era": "1789" }
+      ],
+      "complete": { "room": "test.saal" },
+      "next": "t6"
+    },
+    {
+      "id": "t6",
+      "title_de": "TEST: Ende",
+      "enter": [
+        { "do": "memorial", "id": "test.gedenk", "active": false },
+        { "do": "npc", "op": "despawn", "npc": "hanne" }
+      ],
+      "complete": { "manual": true }
+    }
+  ]
+}

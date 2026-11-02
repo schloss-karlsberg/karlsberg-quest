@@ -82,7 +82,45 @@ declare module '../core/events' {
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
     'chronik:case-complete': { caseId: string };
     'codex:unlocked': { factId: string };
+
+    // ---- round 2: NPCs, barks, story meters (owners noted per event) ------------------------
+    /** story → npc: place a ghostly NPC (era: only visible in that era; chapter: whose lines). */
+    'npc:spawn': NpcPlacement;
+    /** story → npc: remove an NPC ('*' = all). */
+    'npc:despawn': { npc: string };
+    /**
+     * npc: the player asked an NPC about a topic (greet / <topic> / bye). The npc system plays the
+     * dialogue lines with trigger { event: 'npc:talk', npc, chapter, topic, step? } itself.
+     */
+    'npc:talk': { npc: string; chapter: string; topic: string };
+    /** npc: a conversation opened / closed (barks stay quiet meanwhile). */
+    'npc:conversation': { npc: string; open: boolean };
+    /** npc → barks: the player lingers near an NPC (bark:npc-near lines). */
+    'bark:npc-near': { npc: string; era: string };
+    /** npc/story → chronik: discover a clue as if examined (nouns, facts, flags; no card). */
+    'clue:grant': { id: string };
+    /** story → barks: a memorial place where nobody jokes (bible: Rondell 1785, Festsaal W5). */
+    'memorial:set': { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string };
+    /** story → hunt: light / douse the lantern (oil timer meters), optionally refilled first. */
+    'lantern:request': { lit: boolean; refill?: boolean };
   }
+}
+
+/** A ghostly NPC placed by the story (`npc` action). */
+export interface NpcPlacement {
+  npc: string;
+  x: number;
+  z: number;
+  /** Visible only in this era (default: the era when spawned). */
+  era?: string;
+  /** Degrees, 0 = north, 90 = east. */
+  yaw?: number;
+  /** Chapter whose npc:talk lines apply (default: the running story chapter). */
+  chapter?: string;
+  /** Optional explicit topic order (default: every topic of the chapter's npc:talk lines). */
+  topics?: string[];
+  /** Override the roster mood: warm (Hanne) / eerie / neutral. */
+  mood?: 'warm' | 'eerie' | 'neutral';
 }
 
 export {};

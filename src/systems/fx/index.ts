@@ -108,14 +108,15 @@ function slice(ctx: GameContext): FxSlice {
   return ctx.state.slice('fx', () => ({ fire: null, oblivion: null }));
 }
 
-function doShift(ctx: GameContext, to: Era, instant: boolean, reduced: boolean): Promise<void> {
+function doShift(ctx: GameContext, to: Era, instant: boolean, reduced: boolean, reason?: string): Promise<void> {
   if (instant) {
     if (shift.active) shift.finish();
     const from = ctx.era.current;
     ctx.events.emit('shift:begin', { from, to });
     ctx.era.set(to);
     ctx.events.emit('shift:midpoint', { from, to });
-    ctx.state.mutable.meta.shifts++;
+    // being carried home after a capture is not a shift the player made (round 2)
+    if (reason !== 'caught') ctx.state.mutable.meta.shifts++;
     ctx.events.emit('shift:done', { from, to });
     return Promise.resolve();
   }
@@ -219,10 +220,10 @@ export default defineSystem({
     ctx.scene.add(ambient.object);
     quality.onChange(() => fire.rebuild());
 
-    ctx.events.on('shift:request', ({ to, instant }) => {
+    ctx.events.on('shift:request', ({ to, instant, reason }) => {
       if (!isEra(to)) return;
       if (shift.active && !instant) return; // one shift at a time
-      void doShift(ctx, to, !!instant, ctx.settings.state.reducedMotion);
+      void doShift(ctx, to, !!instant, ctx.settings.state.reducedMotion, reason);
     });
     ctx.events.on('scan:mode', ({ mode }) => {
       if (mode < 1 || mode > 3) return;

@@ -377,6 +377,14 @@ function openBoard(ctx: GameContext, caseId?: string | null, tab: 'board' | 'cod
 // ---------------------------------------------------------------------------------------------
 // world: markers, target, prompt
 
+/**
+ * Round 2: a dialogue clue whose NPC stands in the world (npc feature, flag `npc.owns.<clueId>`)
+ * is granted in the conversation ('clue:grant'): no marker, no E here.
+ */
+function npcOwnsTalk(ctx: GameContext, c: ChronikClue): boolean {
+  return c.kind === 'dialogue' && ctx.state.state.flags[`npc.owns.${c.id}`] === true;
+}
+
 function refreshMarkers(ctx: GameContext): void {
   if (!markers) return;
   const era = ctx.era.current;
@@ -384,7 +392,7 @@ function refreshMarkers(ctx: GameContext): void {
   const e = env(ctx);
   const list: { clue: ChronikClue; status: ClueStatus }[] = [];
   for (const c of content.clues.values()) {
-    if (!clueEras(c).includes(era)) continue;
+    if (!clueEras(c).includes(era) || npcOwnsTalk(ctx, c)) continue;
     if (clueDistance(c, p.x, p.z) > MARKER_RANGE + c.where.radius) continue;
     list.push({ clue: c, status: clueStatus(c, e) });
   }
@@ -395,7 +403,7 @@ function refreshMarkers(ctx: GameContext): void {
   let best = Infinity;
   for (const raw of ctx.content.cluesAt(p.x, p.z, era)) {
     const c = content.clues.get(raw.id);
-    if (!c) continue;
+    if (!c || npcOwnsTalk(ctx, c)) continue;
     const st = clueStatus(c, e);
     if (st !== 'available' && st !== 'needs-lantern') continue;
     const d = clueDistance(c, p.x, p.z) / c.where.radius;
@@ -466,7 +474,8 @@ function tickHints(ctx: GameContext, dt: number): void {
 }
 
 function onCaught(ctx: GameContext): void {
-  if (ctx.settings.state.gentleMode) {
+  // flag chronik.noLoss: the story's lossless meters (bible 4.6: "nothing is lost any more")
+  if (ctx.settings.state.gentleMode || ctx.state.state.flags['chronik.noLoss'] === true) {
     ctx.ui.toast(ctx.t('chronik.lost.none'));
     return;
   }
@@ -589,6 +598,11 @@ export default defineSystem({
         if (c) startEcho(ctx, c);
       }),
       ev.on('player:caught', () => onCaught(ctx)),
+      // round 2: npc conversations / story `grant` discover a clue without the card
+      ev.on('clue:grant', ({ id }) => {
+        const c = content.clues.get(id);
+        if (c) doDiscover(ctx, c, true);
+      }),
       ev.on('settings:change', () => board?.render()),
     );
     announcePages(ctx);

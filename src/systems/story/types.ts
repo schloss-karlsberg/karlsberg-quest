@@ -110,6 +110,38 @@ export interface NotCond {
 export interface ManualCond {
   manual: true;
 }
+/**
+ * Inside a room of the palace catalogue (event `room:enter {roomId}` from the interiors feature,
+ * `room:leave {roomId}` ends it). Also true when the room was entered while the beat ran (latched).
+ */
+export interface RoomCond {
+  room: string;
+}
+/** An NPC was talked to (flag `talked.<chapter>.<npc>[.<topic>]`, set by the npc system). */
+export interface TalkedCond {
+  talked: { npc: string; chapter?: string; topic?: string };
+}
+/**
+ * A reading (LESART) was chosen in the Chronik: `reading` = the entry's story flag
+ * (CaseEntry.flag, e.g. "flag.k1_lohn") or the entry id; `eq` = noun id / variant ("will_nicht").
+ */
+export interface ReadingCond {
+  reading: string;
+  eq?: string;
+}
+/** A story meter (oil, smoke, vergessen, custom) is at least `gte` / at most `lte` (0..1) or full. */
+export interface MeterCond {
+  meter: { id: string; gte?: number; lte?: number; full?: boolean };
+}
+/** A choice was answered (any option, or the option with `option` key / index). */
+export interface ChosenCond {
+  chosen: string;
+  option?: string | number;
+}
+/** Seconds since the chapter started (game time). */
+export interface ChapterTimerCond {
+  chapterTimer: number;
+}
 
 export type Condition =
   | EnterCond
@@ -129,7 +161,13 @@ export type Condition =
   | AllCond
   | AnyCond
   | NotCond
-  | ManualCond;
+  | ManualCond
+  | RoomCond
+  | TalkedCond
+  | ReadingCond
+  | MeterCond
+  | ChosenCond
+  | ChapterTimerCond;
 
 export const CONDITION_KEYS = [
   'enter',
@@ -150,6 +188,12 @@ export const CONDITION_KEYS = [
   'any',
   'not',
   'manual',
+  'room',
+  'talked',
+  'reading',
+  'meter',
+  'chosen',
+  'chapterTimer',
 ] as const;
 
 // ---------------------------------------------------------------------------------------------
@@ -179,6 +223,12 @@ export interface SayAction extends ActionBase {
   echo?: boolean;
   /** Repeat even if already said. */
   repeat?: boolean;
+  /**
+   * Era-dependent text: the entry for the current era wins, else `text`. Placeholders in any text:
+   * {Name}/{name} (player name), {jahre:1793} (years since 1793 in words; fallback "über
+   * zweihundert" when the clock's year is implausible), {jahr} (current year).
+   */
+  text_by_era?: Partial<Record<Era, string>>;
 }
 export interface ObjectiveAction extends ActionBase {
   do: 'objective';
@@ -293,14 +343,99 @@ export interface EndingAction extends ActionBase {
 export interface AutosaveAction extends ActionBase {
   do: 'autosave';
 }
-/** A field-book choice card (sets flags). After `seconds` the `fallback` option is taken. */
+/**
+ * A choice. `modal` (default): a field-book card that pauses the game, picked with a click or
+ * keys 1–n. `modal: false`: an inline card in the HUD (the game runs on) resolved by the options'
+ * `when` conditions (e.g. the gate in ch. 2: lantern lit = "leuchten", dark = "dunkel").
+ * After `seconds` (game time) the `fallback` option is taken. The answer is stored as
+ * `choice.<id>` = option key (or index) plus the option's `set` flags; `then` actions run.
+ */
+export interface ChoiceOption {
+  label: string;
+  set: Record<string, FlagValue>;
+  /** Stable key (stored in `choice.<id>`; default: the index). */
+  key?: string;
+  /** Inline choices: the option is taken as soon as this holds. */
+  when?: Condition;
+  /** Actions after this option was chosen. */
+  then?: Action[];
+}
 export interface ChoiceAction extends ActionBase {
   do: 'choice';
   id: string;
   prompt: string;
-  options: { label: string; set: Record<string, FlagValue> }[];
+  options: ChoiceOption[];
   seconds?: number;
   fallback?: number;
+  modal?: boolean;
+  /** Small handwritten note under the prompt. */
+  note?: string;
+}
+/** Place / remove a ghostly NPC (npc system). */
+export interface NpcAction extends ActionBase {
+  do: 'npc';
+  op: 'spawn' | 'despawn';
+  npc: string;
+  x?: number;
+  z?: number;
+  era?: Era;
+  yaw?: number;
+  /** Chapter of the npc:talk lines (default: the running chapter). */
+  chapter?: string;
+  topics?: string[];
+  mood?: 'warm' | 'eerie' | 'neutral';
+}
+/**
+ * Chapter meters. `oil`: the lantern burns `seconds` (hunt's lantern: lit + refilled; empty =
+ * the memory lets go → back to the station). `smoke`: the fire's smoke meter (fx fire threat).
+ * `vergessen`: the Steinfraß / oblivion meter (fx). Any other id: a story gauge that fills over
+ * `seconds` of game time (paused during echoes and conversations; `still` fills faster while
+ * standing still). Full → `full` (default 'return': curtain with `text`, back to the station).
+ * `lossless`: being caught / returned loses nothing (bible 4.6). `active: false` stops it.
+ */
+export interface MeterAction extends ActionBase {
+  do: 'meter';
+  id: string;
+  active: boolean;
+  seconds?: number;
+  label?: string;
+  full?: 'return' | 'caught' | 'none';
+  /** Curtain line when full ('return'). */
+  text?: string;
+  lossless?: boolean;
+  /** Custom gauges: fill this much faster while the player stands still. */
+  still?: number;
+  /** fx threats (smoke, vergessen): forwarded intensity / center / radius. */
+  intensity?: number;
+  center?: { x: number; z: number };
+  radius?: number;
+}
+/** Play a Chronik echo (emits echo:play; its lines are the pack's echo:start lines). */
+export interface EchoAction extends ActionBase {
+  do: 'echo';
+  id: string;
+}
+/** A memorial place: no barks, no jokes (circle and/or room). `active: false` lifts it. */
+export interface MemorialAction extends ActionBase {
+  do: 'memorial';
+  id: string;
+  active?: boolean;
+  x?: number;
+  z?: number;
+  r?: number;
+  era?: Era;
+  room?: string;
+}
+/** Readings: fill every unset reading flag (of `cases`, default all) with 'offen' ("Leer lassen"). */
+export interface ReadingsAction extends ActionBase {
+  do: 'readings';
+  fill: 'offen';
+  cases?: string[];
+}
+/** Grant a clue the Chronik way (nouns, codex, flags) — e.g. a talk outside the npc system. */
+export interface GrantAction extends ActionBase {
+  do: 'grant';
+  clue: string;
 }
 
 export type Action =
@@ -323,7 +458,13 @@ export type Action =
   | UnlockAction
   | EndingAction
   | AutosaveAction
-  | ChoiceAction;
+  | ChoiceAction
+  | NpcAction
+  | MeterAction
+  | EchoAction
+  | MemorialAction
+  | ReadingsAction
+  | GrantAction;
 
 export const ACTION_KINDS = [
   'say',
@@ -346,6 +487,12 @@ export const ACTION_KINDS = [
   'ending',
   'autosave',
   'choice',
+  'npc',
+  'meter',
+  'echo',
+  'memorial',
+  'readings',
+  'grant',
 ] as const;
 
 /** Reaction inside a beat or chapter: when `when` becomes true, run `do` once. */
@@ -382,6 +529,8 @@ export interface StoryFile {
   era?: Era;
   /** Placeholder/skeleton chapter. */
   placeholder?: boolean;
+  /** Test chapter (e2e / examples): not loaded unless the URL has `?storytest`. */
+  test?: boolean;
   start: string;
   /** Where the chapter starts (teleport + era) when chosen at the map table. */
   checkpoint?: Checkpoint;

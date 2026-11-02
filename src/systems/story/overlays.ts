@@ -1,12 +1,27 @@
 /**
  * Full-screen story overlays in the story layer: chapter title cards (field-book stamp), the
- * "caught" curtain (fade to black, a line of text, wake up in the field station) and timed choices
- * (a field-book modal with a burning-down fuse; the fallback option is taken when it runs out).
+ * "caught" curtain (fade to black, a line of text, wake up in the field station), timed choices
+ * (a field-book modal or an inline card with a burning-down fuse; the fallback option is taken
+ * when it runs out) and the story gauges (custom meters).
  */
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
-import type { ModalHandle, ModalManager } from '../../ui/modal';
-import type { ChoiceAction, FlagValue } from './types';
+import type { ModalManager } from '../../ui/modal';
+import type { ChoiceAction } from './types';
+
+interface OpenChoice {
+  id: string;
+  modal: boolean;
+  el: HTMLElement;
+  left: number;
+  total: number;
+  fuse: HTMLElement;
+  label: HTMLElement;
+  fallback: () => void;
+  pick: (i: number) => boolean;
+  close: () => void;
+  dispose: () => void;
+}
 
 export class StoryOverlays {
   private cardEl: HTMLElement | null = null;
@@ -14,7 +29,9 @@ export class StoryOverlays {
   readonly curtain: HTMLElement;
   private readonly curtainText: HTMLElement;
   private readonly curtainSub: HTMLElement;
-  private choice: { m: ModalHandle; left: number; total: number; fuse: HTMLElement; label: HTMLElement; fallback: () => void } | null = null;
+  private choice: OpenChoice | null = null;
+  private readonly gauges = new Map<string, { el: HTMLElement; fill: HTMLElement }>();
+  private readonly gaugeBox: HTMLElement;
 
   constructor(
     private readonly layer: HTMLElement,
@@ -23,7 +40,8 @@ export class StoryOverlays {
     this.curtainText = h('p.kqs-curtain-text');
     this.curtainSub = h('p.kqs-curtain-sub');
     this.curtain = h('div.kqs-curtain', { 'data-testid': 'story-curtain' }, [this.curtainText, this.curtainSub]);
-    layer.append(this.curtain);
+    this.gaugeBox = h('div.kqs-gauges', { 'data-testid': 'story-gauges' });
+    layer.append(this.gaugeBox, this.curtain);
   }
 
   /** Chapter / place card: "Prolog · Vermessung". */
@@ -50,7 +68,7 @@ export class StoryOverlays {
     return !!this.cardEl;
   }
 
-  /** Fade to black with a line; returns after `hold` seconds (the caller moves the player meanwhile). */
+  /** Fade to black with a line (the caller moves the player meanwhile and lifts it). */
   curtainDown(text: string, sub: string): void {
     this.curtainText.textContent = text;
     this.curtainSub.textContent = sub;
@@ -75,33 +93,105 @@ export class StoryOverlays {
     return this.curtain.classList.contains('kqs-down');
   }
 
-  /** A timed choice. `apply` receives the chosen option's flags. */
-  openChoice(a: ChoiceAction, apply: (set: Record<string, FlagValue>, index: number) => void): void {
-    this.choice?.m.close();
+  // ---- story gauges (custom meters) --------------------------------------------------------
+
+  /** Show / update a gauge (0..1); null removes it. */
+  gauge(id: string, label: string, value: number | null): void {
+    let g = this.gauges.get(id);
+    if (value === null) {
+      if (g) {
+        g.el.remove();
+        this.gauges.delete(id);
+      }
+      return;
+    }
+    if (!g) {
+      const fill = h('div.kqs-gauge-fill');
+      const el = h('div.kqs-gauge', { 'data-testid': `gauge-${id}`, 'data-meter': id }, [h('span.kqs-gauge-label', label), h('div.kqs-gauge-bar', fill)]);
+      this.gaugeBox.append(el);
+      g = { el, fill };
+      this.gauges.set(id, g);
+    }
+    const v = Math.max(0, Math.min(1, value));
+    g.fill.style.transform = `scaleX(${v.toFixed(3)})`;
+    g.el.classList.toggle('kqs-warn', v > 0.75);
+  }
+
+  // ---- choices -----------------------------------------------------------------------------
+
+  /**
+   * A choice. Modal (default): field-book card, pauses the game, click or keys 1–n. Inline
+   * (`modal: false`): a card in the story layer while the game runs on, resolved by the host
+   * (option conditions) or `pickChoice`. `apply` receives the chosen option's index.
+   * The fuse runs on the clock passed to `tickChoice` (game time; see StoryRuntime.uiTick).
+   */
+  openChoice(a: ChoiceAction, apply: (index: number) => void): void {
+    this.closeChoice();
     let done = false;
-    const pick = (i: number) => {
-      if (done) return;
-      done = true;
-      apply(a.options[i]!.set, i);
-      this.choice = null;
-    };
+    const modal = a.modal !== false;
     const fuse = h('div.kqs-fuse-fill');
     const label = h('span.kqs-fuse-label');
-    const body = h('div.kqs-choice', [
-      h('p.kqs-choice-prompt', a.prompt),
-      a.seconds ? h('div.kqs-fuse', [fuse, label]) : null,
-      h(
-        'div.kqs-choice-options',
-        a.options.map((o, i) => h('button.kq-btn.kqs-choice-btn', { 'data-testid': `choice-${i}`, onclick: () => (pick(i), m.close()) }, [h('span.kqs-choice-n', String(i + 1)), o.label])),
-      ),
-    ]);
-    const m = this.modals.open({ body, closable: false, className: 'kqs-choice-modal' });
-    m.el.dataset.testid = 'story-choice';
-    const fallback = () => {
-      pick(Math.min(a.options.length - 1, Math.max(0, a.fallback ?? 0)));
-      m.close();
+    let close: () => void = () => {};
+    const pick = (i: number): boolean => {
+      if (done || i < 0 || i >= a.options.length) return false;
+      done = true;
+      const c = this.choice;
+      this.choice = null;
+      c?.dispose();
+      close();
+      apply(i);
+      return true;
     };
-    this.choice = { m, left: a.seconds ?? 0, total: a.seconds ?? 0, fuse, label, fallback };
+    const options = a.options.map((o, i) =>
+      h(`${modal ? 'button.kq-btn' : 'div'}.kqs-choice-btn`, { 'data-testid': `choice-${i}`, onclick: () => pick(i) }, [h('span.kqs-choice-n', modal ? String(i + 1) : '•'), o.label]),
+    );
+    const body = h(`div.kqs-choice${modal ? '' : '.kqs-choice-inline'}`, [
+      h('p.kqs-choice-prompt', a.prompt),
+      a.note ? h('p.kqs-choice-note', a.note) : null,
+      a.seconds ? h('div.kqs-fuse', [fuse, label]) : null,
+      h('div.kqs-choice-options', options),
+    ]);
+    let el: HTMLElement;
+    if (modal) {
+      const m = this.modals.open({ body, closable: false, className: 'kqs-choice-modal' });
+      m.el.dataset.testid = 'story-choice';
+      close = () => m.close();
+      el = m.el;
+    } else {
+      el = h('div.kqs-choice-card', { 'data-testid': 'story-choice' }, body);
+      this.layer.append(el);
+      requestAnimationFrame(() => el.classList.add('kqs-show'));
+      close = () => {
+        el.removeAttribute('data-testid');
+        el.classList.remove('kqs-show');
+        window.setTimeout(() => el.remove(), 600);
+      };
+    }
+    const keys = (e: KeyboardEvent) => {
+      const n = /^(Digit|Numpad)(\d)$/.exec(e.code);
+      const i = n ? Number(n[2]) - 1 : -1;
+      if (i < 0 || i >= a.options.length) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      pick(i);
+    };
+    if (modal) window.addEventListener('keydown', keys, true);
+    this.choice = {
+      id: a.id,
+      modal,
+      el,
+      left: a.seconds ?? 0,
+      total: a.seconds ?? 0,
+      fuse,
+      label,
+      fallback: () => pick(Math.min(a.options.length - 1, Math.max(0, a.fallback ?? 0))),
+      pick,
+      close: () => {
+        done = true;
+        close();
+      },
+      dispose: () => window.removeEventListener('keydown', keys, true),
+    };
     this.tickChoice(0);
   }
 
@@ -109,7 +199,16 @@ export class StoryOverlays {
     return !!this.choice;
   }
 
-  /** Real-time tick (the game is paused while the choice is open). */
+  /** Id of the open choice (inline or modal). */
+  get choiceId(): string | null {
+    return this.choice?.id ?? null;
+  }
+
+  get choiceInline(): boolean {
+    return !!this.choice && !this.choice.modal;
+  }
+
+  /** Advance the fuse (seconds of game time, or real time while a modal pauses the game). */
   tickChoice(dt: number): void {
     const c = this.choice;
     if (!c || c.total <= 0) return;
@@ -119,11 +218,18 @@ export class StoryOverlays {
     if (c.left <= 0) c.fallback();
   }
 
-  /** Pick an option programmatically (tests / debug). */
+  /** Pick an option programmatically (tests / debug / inline conditions). */
   pickChoice(i: number): boolean {
-    const btn = this.choice?.m.el.querySelector(`[data-testid="choice-${i}"]`) as HTMLButtonElement | null;
-    btn?.click();
-    return !!btn;
+    return this.choice?.pick(i) ?? false;
+  }
+
+  /** Close an open choice without an answer (caught, chapter switch). */
+  closeChoice(): void {
+    const c = this.choice;
+    if (!c) return;
+    this.choice = null;
+    c.dispose();
+    c.close();
   }
 
   clear(): void {

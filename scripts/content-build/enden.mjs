@@ -24,7 +24,7 @@ const dialogue = [
   say('laub.end.vorher', 'laub', 'Es ist Ihr Buch jetzt. Soll hätte gesagt: Hauptsache, die Namen stimmen.', beat('end.wahl'), { once: true, priority: 10 }),
   // 3. Ende A: Museum
   ...seq(ending(E.museum), [
-    ['laub.end.museum_1', 'laub', 'Abgeblasen. Nach zweihundertdreiunddreißig Jahren. Ich werde das als Überstunden einreichen.'],
+    ['laub.end.museum_1', 'laub', 'Abgeblasen. Nach {jahre:1793} Jahren. Ich werde das als Überstunden einreichen.'],
     ['laub.end.museum_2', 'laub', 'Eine Akte, die geschlossen wird, ist eine Akte, die man lesen kann. Bringen Sie sie dahin, wo man nachschaut, bevor man glaubt. Mit Quellen. Auch die, die mir nicht gefallen.'],
     ['laub.end.museum_3', 'laub', 'Und schreiben Sie auf das Schild, dass ich die fünfzig Meter nicht verschuldet habe.'],
     ['geraeusch.end.museum', 'geraeusch', '[Die Nadel der Bussole dreht sich ruhig nach Norden und bleibt dort.]'],
