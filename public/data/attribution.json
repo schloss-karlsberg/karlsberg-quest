@@ -1,0 +1,58 @@
+{
+ "generated": "2026-11-02T01:08:01.503Z",
+ "items": [
+  {
+   "id": "dgm",
+   "label_de": "Gelände (DGM1 2025)",
+   "text": "Gelände: GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0; 1789-Gelände = Hypothese (Generator-Regeln)",
+   "licence": "dl-de/by-2-0",
+   "url": "https://www.govdata.de/dl-de/by-2-0"
+  },
+  {
+   "id": "terrain1789",
+   "label_de": "Gelände 1789",
+   "text": "1789-Gelände = Hypothese des Teilprojekts schloss-karlsberg (Generator-Regeln aus dem Katalog), abgeleitet aus GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0",
+   "licence": "dl-de/by-2-0"
+  },
+  {
+   "id": "canopy",
+   "label_de": "Vegetationshöhe",
+   "text": "© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet (DOM1 − DGM1)",
+   "licence": "dl-de/by-2-0"
+  },
+  {
+   "id": "hist1840",
+   "label_de": "Karte 1836–41 (Bayer. Positionsblätter)",
+   "text": "© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet (Historische Karten)",
+   "source": "WMS SL Historische Karten (Geoportal Saarland, WMS-ID 2597), Layer 1: Bayrische Originalpositionsblätter 1:25 000, Ausgabe 1836–1841; abgerufen 2026-11-01",
+   "licence": "dl-de/by-2-0"
+  },
+  {
+   "id": "recon",
+   "label_de": "Rekonstruktion 1789",
+   "text": "Rekonstruktion Schloss Karlsberg 1789 (Hypothese): Teilprojekt schloss-karlsberg, Katalog v2 (research/01-08); Grundrisse teils nach Lageplan 2006, schloss-carlsberg.de (CC BY-SA 2.0 DE); Sockeltiefen: DGM1 GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0",
+   "disclaimer_de": "Hypothetische Rekonstruktion, kein Befund. Schauen, nicht graben.",
+   "licence": "CC BY-SA 2.0 DE (Grundrisse teils nach schloss-carlsberg.de); Modell: Teilprojekt schloss-karlsberg"
+  },
+  {
+   "id": "osm",
+   "label_de": "Wege & Gewässer",
+   "text": "© OpenStreetMap-Mitwirkende, ODbL",
+   "source": "OpenStreetMap (Overpass API, Stand 2026-11-01)",
+   "licence": "ODbL 1.0",
+   "url": "https://www.openstreetmap.org/copyright"
+  },
+  {
+   "id": "pois",
+   "label_de": "Orte",
+   "text": "Koordinaten überwiegend © OpenStreetMap-Mitwirkende (ODbL); siehe source je Objekt",
+   "licence": "ODbL / siehe Quelle je Ort"
+  },
+  {
+   "id": "project",
+   "label_de": "Datenaufbereitung",
+   "text": "Saar LiDAR Explorer / schloss-karlsberg (Open-Kirrberg), MIT",
+   "licence": "MIT"
+  }
+ ]
+}

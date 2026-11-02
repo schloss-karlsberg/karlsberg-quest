@@ -1,0 +1,90 @@
+{
+ "format": "kq-terrain-v1",
+ "crs": "EPSG:25832",
+ "heightDatum": "DHHN2016",
+ "frame": {
+  "E0": 381000,
+  "N0": 5465000,
+  "rule": "x = E - E0, y = h, z = -(N - N0)"
+ },
+ "extentEN": {
+  "west": 381150,
+  "north": 5467150,
+  "east": 383300,
+  "south": 5464500
+ },
+ "extentLocal": {
+  "x0": 150,
+  "x1": 2300,
+  "z0": -2150,
+  "z1": 500
+ },
+ "cell": 2,
+ "cols": 1075,
+ "rows": 1325,
+ "origin": {
+  "x": 151,
+  "z": -2149
+ },
+ "hMin": 238,
+ "hMax": 366,
+ "heightScale": 0.01,
+ "files": {
+  "h2025": {
+   "path": "terrain/h2025.u16.deflate",
+   "encoding": "zlib(int16 left-delta of uint16 cm above hMin)"
+  },
+  "h1789": {
+   "path": "terrain/h1789.u16.deflate",
+   "encoding": "zlib(int16 cm difference to h2025)"
+  },
+  "ground": {
+   "path": "terrain/ground.u8.deflate",
+   "encoding": "zlib(uint8 class)",
+   "classes": {
+    "0": {
+     "name": "meadow",
+     "label_de": "Wiese / Feld (Annahme)"
+    },
+    "1": {
+     "name": "lawn",
+     "label_de": "Rasen (Parterre, Terrasse)"
+    },
+    "2": {
+     "name": "gravel",
+     "label_de": "Kies / Sandsteingrus"
+    },
+    "3": {
+     "name": "cobbles",
+     "label_de": "Pflaster"
+    },
+    "4": {
+     "name": "sand",
+     "label_de": "Sand (Reitplatz)"
+    },
+    "5": {
+     "name": "water",
+     "label_de": "Wasser"
+    },
+    "6": {
+     "name": "forest",
+     "label_de": "Wald (heutiger Bestand als Annahme)"
+    },
+    "7": {
+     "name": "building",
+     "label_de": "Gebäudegrund"
+    }
+   }
+  },
+  "canopy": {
+   "path": "terrain/canopy.u8.deflate",
+   "encoding": "zlib(uint8 canopy height in 0.25 m)",
+   "note": "today (ALS 2025 DOM - DGM), max of 1 m cells, LoD2 building cells removed"
+  }
+ },
+ "hist1840": {
+  "path": "maps/hist1840.jpg",
+  "covered": 1,
+  "note": "georeferencing off by tens of metres in places"
+ }
+}

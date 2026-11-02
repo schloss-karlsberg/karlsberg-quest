@@ -1,0 +1,19 @@
+{
+ "format": "kq-data-v1",
+ "generated": "2026-11-02T01:08:01.504Z",
+ "totalBytes": 8388214,
+ "files": {
+  "terrain/meta.json": 1797,
+  "terrain/h2025.u16.deflate": 1434991,
+  "terrain/h1789.u16.deflate": 58234,
+  "terrain/ground.u8.deflate": 57111,
+  "terrain/canopy.u8.deflate": 1131004,
+  "maps/hist1840.jpg": 838312,
+  "palace/buildings.glb": 4646308,
+  "palace/footprints.json": 24525,
+  "palace/rooms.json": 49358,
+  "pois.json": 19850,
+  "paths.json": 124443,
+  "attribution.json": 2281
+ }
+}
