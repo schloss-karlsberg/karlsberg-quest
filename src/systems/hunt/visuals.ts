@@ -156,11 +156,12 @@ export function pikeurTemplate(seed: number): Part[] {
 const K_SMOKE = 0;
 const K_MIST = 1;
 const K_BLACK = 2;
+const K_BREATH = 3;
 
 const SMOKE_VERT = /* glsl */ `
 attribute vec3 iPos;
 attribute vec4 iData;  // size, alpha, seed, heat
-attribute vec2 iExtra; // kind (0 body smoke, 1 ground mist, 2 black smoke), ground height
+attribute vec2 iExtra; // kind (0 body smoke, 1 ground mist, 2 black smoke, 3 breath), ground height
 uniform float uTime;
 varying vec2 vUv;
 varying vec4 vData;
@@ -184,7 +185,7 @@ void main() {
   // body smoke that reaches the camera fades out instead of filling the screen (overdraw);
   // the black rush smoke (kind 2) is meant to come close
   float vd = -(viewMatrix * vec4(iPos, 1.0)).z;
-  float nearFade = iExtra.x < 1.5 ? smoothstep(0.5, 1.4, vd) : 1.0;
+  float nearFade = abs(iExtra.x - 2.0) > 0.5 ? smoothstep(0.5, 1.4, vd) : 1.0;
   vData.y *= nearFade;
   gl_Position = nearFade <= 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * vec4(wp, 1.0);
 }
@@ -208,11 +209,20 @@ void main() {
     a = smoothstep(1.0, 0.3, r * (0.72 + 0.7 * n)) * vData.y;
     vec3 toCam = normalize(uCamPos - vWorld);
     vec3 N = normalize(mix(toCam, vec3(0.0, 1.0, 0.0), 0.45) + vec3(vUv.x, vUv.y, 0.0) * 0.25);
-    vec3 albedo = vec3(0.07, 0.07, 0.08) * (0.7 + 0.6 * n);
+    vec3 albedo = vec3(0.05, 0.05, 0.06) * (0.7 + 0.6 * n);
     col = kqLight(albedo, N, vWorld, 1.0, 1.0);
     // ember heat around the eyes
     col += vec3(1.0, 0.32, 0.05) * vData.w * (1.0 - r) * (1.0 - r) * 0.5;
-    col = kqFog(col, vWorld);
+    // the pack keeps its silhouette in the fog out to ~60 m (dark shapes are what the eye finds),
+    // only beyond that does it sink into the haze
+    float dist = length(vWorld - uCamPos);
+    vec3 fogged = kqFog(col, vWorld);
+    col = mix(fogged, col, 0.8 * (1.0 - smoothstep(55.0, 120.0, dist)));
+    // rim: the fog glows through the ragged outer edge of each puff (back-lit smoke)
+    float edge = r * (0.72 + 0.7 * n);
+    float rim = smoothstep(0.5, 0.82, edge) * (1.0 - smoothstep(0.82, 1.0, edge));
+    vec3 rimCol = uFogColor * 1.25 + vec3(0.025, 0.028, 0.035) + vec3(0.5, 0.14, 0.02) * vData.w;
+    col = mix(col, rimCol, rim * 0.6);
   } else if (kind < 1.5) {
     float n = kqFbm(vUv * 1.15 + vData.z * 17.0 + vec2(uTime * 0.035, uTime * 0.021));
     a = smoothstep(1.0, 0.0, r * (0.5 + 0.95 * n));
@@ -222,6 +232,14 @@ void main() {
     // moonlit frost fog: pale and a little luminous, warm inside the lantern light
     col = kqLight(vec3(0.85, 0.88, 0.95), vec3(0.0, 1.0, 0.0), vWorld, 1.0, 1.0) + uFogColor * 0.35;
     col = kqFog(col, vWorld);
+  } else if (kind > 2.5) {
+    // breath: pale vapour from the muzzle, luminous in the moonlit fog
+    float n = kqFbm(vUv * 1.6 + vData.z * 13.0 + vec2(uTime * 0.3, -uTime * 0.5));
+    a = smoothstep(1.0, 0.1, r * (0.6 + 0.8 * n));
+    a = a * a * vData.y;
+    col = kqLight(vec3(0.9, 0.92, 0.96), vec3(0.0, 1.0, 0.0), vWorld, 1.0, 1.0) + uFogColor * 1.1 + vec3(0.06);
+    col += vec3(0.6, 0.18, 0.03) * vData.w * (1.0 - r);
+    col = mix(kqFog(col, vWorld), col, 0.4);
   } else {
     // two octaves only: the rush covers the whole view, keep it cheap
     vec2 bp = vUv * 1.4 + vData.z * 23.0 + vec2(uTime * 0.5, -uTime * 0.7);
@@ -273,7 +291,7 @@ void main() {
   if (vData.z < 0.5) {
     float core = smoothstep(0.34, 0.02, r);
     float halo = exp(-r * r * 6.0) * (1.0 - r);
-    col = vec3(1.0, 0.55, 0.16) * core * 1.55 + vec3(1.0, 0.26, 0.03) * halo * 0.95;
+    col = vec3(1.0, 0.58, 0.18) * core * 1.8 + vec3(1.0, 0.26, 0.03) * halo * 1.1;
   } else if (vData.z < 1.5) {
     float g = 1.0 - r;
     col = vec3(0.42, 0.6, 0.58) * g * g * g * 0.5;
@@ -281,7 +299,7 @@ void main() {
     float g = 1.0 - r;
     col = vec3(1.0, 0.68, 0.28) * g * g * g;
   }
-  col *= vData.y * (1.0 - 0.72 * vFog);
+  col *= vData.y * (1.0 - (vData.z < 0.5 ? 0.6 : 0.72) * vFog);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -477,6 +495,8 @@ interface Vis {
   template: Part[];
   /** Eye intensity smoothing. */
   eye: number;
+  /** Breathing phase (0..1, exhale at the wrap). */
+  breath: number;
 }
 
 interface Wisp {
@@ -535,6 +555,7 @@ export interface VisualInput {
 const MAX_SMOKE = 1500;
 const MAX_GLOW = 96;
 const MAX_WISPS = 420;
+const MAX_BREATH = 160;
 const MIST_N = 80;
 const MIST_R = 72;
 const _m = new Matrix4();
@@ -547,6 +568,9 @@ const _v = new Vector3();
 export class PackVisuals {
   readonly object = new Group();
   private readonly smoke: SmokePool;
+  /** The ground mist draws before the pack: hounds stand out of the fog bank instead of drowning in
+   *  it (the pack is meant to be readable at 30–60 m in frost fog; distance fog still applies). */
+  private readonly mistPool: SmokePool;
   private readonly glowBack: GlowPool;
   private readonly glowFront: GlowPool;
   private readonly horn: Mesh;
@@ -556,6 +580,9 @@ export class PackVisuals {
   private readonly vis = new Map<Agent, Vis>();
   private readonly wisps: Wisp[] = [];
   private wispHead = 0;
+  /** Breath vapour puffs from the muzzles (pale, short-lived). */
+  private readonly breath: Wisp[] = [];
+  private breathHead = 0;
   private readonly mist: MistPuff[] = [];
   private mistLevel = 0;
   private readonly rng = new Rng(4242);
@@ -575,7 +602,7 @@ export class PackVisuals {
       const m = new ShaderMaterial({
         vertexShader: GLOW_VERT,
         fragmentShader: GLOW_FRAG,
-        uniforms: { ...atmosphere, uPixel: { value: 0.002 }, uMinPx: { value: 4.5 } },
+        uniforms: { ...atmosphere, uPixel: { value: 0.002 }, uMinPx: { value: 5.5 } },
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -584,9 +611,11 @@ export class PackVisuals {
       return m;
     };
     this.glowBack = new GlowPool(16, glowMat(), 20);
+    this.mistPool = new SmokePool(MIST_N, this.smokeMat, 20.5);
     this.smoke = new SmokePool(MAX_SMOKE, this.smokeMat, 21);
     this.glowFront = new GlowPool(MAX_GLOW, glowMat(), 22);
     for (let i = 0; i < MAX_WISPS; i++) this.wisps.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 1, life: 0, size: 0, alpha: 0 });
+    for (let i = 0; i < MAX_BREATH; i++) this.breath.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 1, life: 0, size: 0, alpha: 0 });
     // the Parforcehorn: a coiled brass ring with a bell
     const ring = new TorusGeometry(0.2, 0.021, 8, 48);
     const bell = new ConeGeometry(0.075, 0.2, 14, 1, true);
@@ -601,12 +630,13 @@ export class PackVisuals {
     this.horn = new Mesh(hornGeo, this.hornMat);
     this.horn.matrixAutoUpdate = false;
     this.horn.visible = false;
-    this.object.add(this.glowBack.mesh, this.smoke.mesh, this.glowFront.mesh, this.horn);
+    this.object.add(this.glowBack.mesh, this.mistPool.mesh, this.smoke.mesh, this.glowFront.mesh, this.horn);
   }
 
   clear(): void {
     this.vis.clear();
     for (const w of this.wisps) w.age = w.life = 1;
+    for (const w of this.breath) w.age = w.life = 1;
     this.rush = [];
     this.mist.length = 0;
     this.mistLevel = 0;
@@ -630,6 +660,7 @@ export class PackVisuals {
         vz: 0,
         template: a.kind === 'pikeur' ? pikeurTemplate(901) : houndTemplate(101 + a.idx * 17),
         eye: 0.5,
+        breath: (a.idx * 0.37) % 1,
       };
       this.vis.set(a, v);
       if (snap) v.presence = 1;
@@ -644,6 +675,7 @@ export class PackVisuals {
     const px = (2 * Math.tan(((cam.fov / 2) * Math.PI) / 180)) / Math.max(1, o.viewportH);
     for (const m of this.glowMats) m.uniforms.uPixel!.value = px;
     this.smoke.begin();
+    this.mistPool.begin();
     this.glowBack.begin();
     this.glowFront.begin();
     let pikeurVis: { v: Vis; a: Agent } | null = null;
@@ -694,6 +726,20 @@ export class PackVisuals {
       const al = w.alpha * Math.pow(1 - t, 1.5) * Math.min(1, w.age / 0.2);
       this.smoke.push(w.x, w.y, w.z, w.size * (1 + 1.6 * t), al, (w.size * 7.13) % 1, 0);
     }
+    // breath
+    for (const w of this.breath) {
+      if (w.age >= w.life) continue;
+      w.age += dt;
+      w.x += w.vx * dt;
+      w.y += w.vy * dt;
+      w.z += w.vz * dt;
+      w.vx *= 1 - dt * 1.6;
+      w.vz *= 1 - dt * 1.6;
+      w.vy += dt * 0.08;
+      const t = w.age / w.life;
+      const al = w.alpha * Math.pow(1 - t, 1.3) * Math.min(1, w.age / 0.12);
+      this.smoke.push(w.x, w.y, w.z, w.size * (1 + 2.6 * t), al, (w.size * 11.7) % 1, 0, K_BREATH);
+    }
     this.drawMist(o, dt);
     // the horn
     if (pikeurVis && pikeurVis.v.presence > 0.02) {
@@ -716,6 +762,7 @@ export class PackVisuals {
     if (o.caught) this.drawRush(o);
     else this.rush = [];
     this.smoke.end(cam.position);
+    this.mistPool.end(cam.position);
     this.glowBack.end();
     this.glowFront.end();
   }
@@ -834,6 +881,33 @@ export class PackVisuals {
       const inten = eyeOn * face * (pik ? 0.5 : 1) * eyeDim;
       if (inten > 0.01) this.glowFront.push(wx, v.y + ey + ez * slope + bob + rise, wz, pik ? 0.09 : 0.075, inten, 0, 1.35);
     }
+    // breath: a pale puff from the muzzle on every exhale, quicker and heavier on the run
+    if (!pik && v.presence > 0.3 && lie < 0.5 && dim < 0.5) {
+      const rate = 0.55 + 0.9 * run + 0.4 * chase;
+      v.breath += o.dt * rate;
+      if (v.breath >= 1) {
+        v.breath %= 1;
+        const mz = ez + 0.08 * S;
+        const my = v.y + ey - 0.05 * S + mz * slope + bob + rise;
+        const fx = -sh;
+        const fz = -ch;
+        for (let i = 0; i < 3; i++) {
+          const w = this.breath[this.breathHead]!;
+          this.breathHead = (this.breathHead + 1) % this.breath.length;
+          const sp = 0.5 + 0.35 * i + 0.6 * run;
+          w.x = v.x - sh * mz + this.rng.range(-0.03, 0.03);
+          w.y = my + this.rng.range(-0.02, 0.02);
+          w.z = v.z - ch * mz + this.rng.range(-0.03, 0.03);
+          w.vx = fx * sp + v.vx * 0.6 + this.rng.range(-0.08, 0.08);
+          w.vy = this.rng.range(0.02, 0.12) - 0.1 * sn;
+          w.vz = fz * sp + v.vz * 0.6 + this.rng.range(-0.08, 0.08);
+          w.age = -i * 0.06;
+          w.life = this.rng.range(1.1, 1.7);
+          w.size = 0.11 * S * (1 + 0.3 * i);
+          w.alpha = (0.62 - 0.1 * i) * v.presence;
+        }
+      }
+    }
     // the rider's cold glow (no lantern, but something shines through the smoke)
     if (pik) this.glowBack.push(v.x, v.y + 2.3, v.z, 2.6, 0.3 * v.presence * (0.85 + 0.15 * Math.sin(o.time * 1.3)), 1, 0.8);
   }
@@ -901,7 +975,7 @@ export class PackVisuals {
       const d = Math.sqrt(dx * dx + dz * dz);
       const near = Math.max(0, Math.min(1, (d - 3) / 6)); // no puffs in the face
       const g = o.heightAt(m.x, m.z);
-      this.smoke.push(m.x, g + m.size * (0.16 - 0.08 * settle), m.z, m.size * (1 + 0.25 * settle), m.alpha * this.mistLevel * near, m.seed, 0, K_MIST, g);
+      this.mistPool.push(m.x, g + m.size * (0.16 - 0.08 * settle), m.z, m.size * (1 + 0.25 * settle), m.alpha * this.mistLevel * near, m.seed, 0, K_MIST, g);
     }
   }
 
@@ -981,6 +1055,7 @@ export class PackVisuals {
 
   dispose(): void {
     this.smoke.geo.dispose();
+    this.mistPool.geo.dispose();
     this.glowBack.geo.dispose();
     this.glowFront.geo.dispose();
     this.smokeMat.dispose();
