@@ -188,7 +188,7 @@
       "id": "clue.k3.stroh",
       "title_de": "Erinnerung: Stroh aus Metz",
       "kind": "echo",
-      "text_de": "Sommer, später Nachmittag, Staub. Im Hof stehen Karren voller Stroh, Soldaten in blauen Röcken laden ab und tragen Bündel ins Erdgeschoss. Automatisch.",
+      "text_de": "Sommer, später Nachmittag, Staub. Im Hof stehen Karren voller Stroh, Soldaten in blauen Röcken laden ab und tragen Bündel ins Erdgeschoss.",
       "where": {
         "x": 1210,
         "z": -1114,
@@ -211,7 +211,7 @@
       "id": "clue.k3.horstmann",
       "title_de": "Horstmann notiert",
       "kind": "dialogue",
-      "text_de": "Laub im Ehrenhof.",
+      "text_de": "Laub kennt die Akten: Regierungsrat Horstmann hat den Tag notiert, und den Brand vier Tage vorher gleich mit.",
       "where": {
         "x": 1210,
         "z": -1114,
@@ -257,7 +257,7 @@
       "id": "clue.k3.kuechenhof",
       "title_de": "Erinnerung: Freigegeben",
       "kind": "echo",
-      "text_de": "E halten im Küchenhof. Hier wird geplündert: Kupferkessel, Vorhänge, Fensterblei. Mehrere Stimmen, keine Gesichter scharf.",
+      "text_de": "Im Küchenhof wird geplündert: Kupferkessel, Vorhänge, Fensterblei. Mehrere Stimmen, keine Gesichter scharf.",
       "where": {
         "x": 1212,
         "z": -1180,
@@ -348,9 +348,9 @@
       "kind": "object",
       "text_de": "Zwölf große Kisten, vernagelt, mit Kreide beschriftet: „Naturalien-Cabinet. Nach Kaiserslautern.“ Darunter, mit anderer Kreide durchgestrichen und überschrieben: „Abbestellt.“ (Wortlaut erfunden; Inhalt nach M1910 S. 454 f.)",
       "where": {
-        "x": 1188.5,
-        "z": -1177.9,
-        "radius": 7,
+        "x": 1188.6,
+        "z": -1178.2,
+        "radius": 3.2,
         "era": "1793-07",
         "anchor": "B04.2.og-naturalienkabinett"
       },
@@ -369,9 +369,9 @@
       "kind": "document",
       "text_de": "„Catalogue des oiseaux … des Deux-Ponts, 1785“. Jemand hat am Rand gezählt: 1187. (Holandre 1785, 1 187 Vögel, nach Schwan 2012 Anm. 30.)",
       "where": {
-        "x": 1188.5,
-        "z": -1177.9,
-        "radius": 7,
+        "x": 1192.4,
+        "z": -1176.4,
+        "radius": 2.2,
         "era": "1793-07",
         "anchor": "B04.2.og-naturalienkabinett"
       },
@@ -387,11 +387,11 @@
       "id": "clue.k3.koenig",
       "title_de": "Erinnerung: Der König verspricht",
       "kind": "echo",
-      "text_de": "E halten. Zwei Herren gehen schnell durch den Raum, ohne stehen zu bleiben. Man sieht nur ihre Rücken.",
+      "text_de": "Zwei Herren gehen schnell durch den Raum, ohne stehen zu bleiben. Man sieht nur ihre Rücken.",
       "where": {
-        "x": 1188.5,
-        "z": -1177.9,
-        "radius": 7,
+        "x": 1184.6,
+        "z": -1177.3,
+        "radius": 2.8,
         "era": "1793-07",
         "anchor": "B04.2.og-naturalienkabinett"
       },
@@ -408,7 +408,7 @@
       "id": "clue.k3.galerie",
       "title_de": "Erinnerung: Die Galerie",
       "kind": "echo",
-      "text_de": "E halten. Für die Dauer des Echos hängen die Bilder wieder. Ein Mann im Schlafrock geht mit einem Leuchter die Wand entlang und bleibt vor jedem Bild stehen.",
+      "text_de": "Für die Dauer der Erinnerung hängen die Bilder wieder. Ein Mann im Schlafrock geht mit einem Leuchter die Wand entlang und bleibt vor jedem Bild stehen.",
       "where": {
         "x": 1230.1,
         "z": -1220,
@@ -429,7 +429,7 @@
       "id": "clue.k3.messen",
       "title_de": "Die Galerie messen",
       "kind": "object",
-      "text_de": "Mit R von einem Ende zum anderen messen. Die Messlinie zeigt rund 80 m (Modelllänge, nicht fest).",
+      "text_de": "Die Messlinie von einem Ende der Galerie zum anderen. Rund achtzig Meter, im Modell gemessen.",
       "where": {
         "x": 1230.1,
         "z": -1220,
@@ -455,8 +455,8 @@
       "kind": "object",
       "text_de": "Am Westende der Galerie gibt ein Brett im Parkett nach. Darunter eine Klappe mit Eisenring, darunter Dunkelheit und der Geruch von Öl und Eisen. (Die Falltür ist belegt, ihr genauer Ort nicht.)",
       "where": {
-        "x": 1200,
-        "z": -1218,
+        "x": 1201.5,
+        "z": -1216.6,
         "radius": 2,
         "era": "1793-07",
         "anchor": "B06.1.bildergalerie"
@@ -478,8 +478,8 @@
       "kind": "document",
       "text_de": "Das graue Buch. Beim Berühren fliegen die Seiten davon, wie Asche durch die Galerie, zu den Fenstern hinaus. Eine bleibt: die Fallseite „Die Nacht“. Auf ihrer Rückseite in Solls Schrift: „Was der Hof schuldig blieb. Fortsetzung folgt nicht.“",
       "where": {
-        "x": 1200,
-        "z": -1218,
+        "x": 1201.5,
+        "z": -1216.6,
         "radius": 2,
         "era": "1793-07",
         "anchor": "B06.1.bildergalerie"
@@ -521,11 +521,11 @@
       "id": "clue.k3.gaertner",
       "title_de": "Das Schild an der Pforte",
       "kind": "document",
-      "text_de": "Ein Schild an der Pforte der Holländischen Gärtnerei: „Hof-Gärtnerey. Eintritt nur mit Erlaubnis des Hofgärtners.“ (Erfunden.)",
+      "text_de": "Ein Schild an der Pforte der Holländischen Gärtnerei: „Hof-Gärtnerey. Eintritt nur mit Erlaubnis des Hofgärtners.“ (Der Wortlaut ist erfunden.)",
       "where": {
         "x": 1267,
         "z": -1290,
-        "radius": 6,
+        "radius": 3,
         "era": "1793-07",
         "anchor": "KB-B27"
       },
@@ -541,11 +541,11 @@
       "id": "clue.k3.fackel",
       "title_de": "Erinnerung: Im Namen der Nation",
       "kind": "echo",
-      "text_de": "E halten beim Kommissär (möglich ab sechs Substantiven dieses Kapitels oder nach der ersten Bestätigung). Abenddämmerung, eine dichte Menge, ein Mann mit Schärpe und brennender Fackel auf einem Karren. Die Fackel fliegt durch ein offenes Fenster ins Erdgeschoss.",
+      "text_de": "Abenddämmerung, eine dichte Menge, ein Mann mit Schärpe und brennender Fackel auf einem Karren. Die Fackel fliegt durch ein offenes Fenster ins Erdgeschoss. Mannlich war nicht dabei; er schreibt nach Berichten.",
       "where": {
         "x": 1225,
         "z": -1118,
-        "radius": 4,
+        "radius": 5,
         "era": "1793-07",
         "anchor": "TF-01"
       },
@@ -568,7 +568,7 @@
       "id": "clue.k3.feuer",
       "title_de": "Von unten nach oben",
       "kind": "dialogue",
-      "text_de": "Automatisch, sobald das Obergeschoss brennt.",
+      "text_de": "Laub hustet, obwohl er nicht atmen muss. Das Feuer steigt von unten nach oben: erst das Stroh im Erdgeschoss, dann die Treppen, dann der Saal.",
       "where": {
         "x": 1263,
         "z": -1126,
@@ -619,7 +619,7 @@
       "id": "clue.k3.retten",
       "title_de": "Eines retten",
       "kind": "object",
-      "text_de": "Hanne steht in der Mitte mit einem Türgriff in der Hand. Drei Dinge sind zu retten, und man kann nur eines tragen: den Türgriff aus Hannes Hand, einen Dukaten mit dem Bild des Schlosses im Fensterbrett, eine vergoldete Uhr mit Alabaster auf einer Konsole, die noch tickt. 40 s; danach nimmt Hanne dich am Arm. Setzt flag.k3_objekt = tuergriff / dukat / uhr / nichts.",
+      "text_de": "Hanne steht in der Mitte mit einem Türgriff in der Hand. Drei Dinge sind zu retten, und man kann nur eines tragen: den Türgriff aus Hannes Hand, einen Dukaten mit dem Bild des Schlosses im Fensterbrett, eine vergoldete Uhr mit Alabaster auf einer Konsole, die noch tickt. Wer zu lange wählt, den nimmt Hanne am Arm.",
       "where": {
         "x": 1265.8,
         "z": -1126.8,
@@ -644,13 +644,13 @@
       "id": "clue.k3.wirtschaft",
       "title_de": "Was morgen noch steht",
       "kind": "dialogue",
-      "text_de": "Im Garten, Blick nach Norden auf Marstall und Ställe.",
+      "text_de": "Von der Pforte der Gärtnerei der Blick nach Norden: Marstall, Reithalle, Ställe. Dunkle Dächer vor dem Feuerschein.",
       "where": {
-        "x": 1272,
-        "z": -1250,
-        "radius": 15,
+        "x": 1275,
+        "z": -1306,
+        "radius": 9,
         "era": "1793-07",
-        "anchor": "KB-B07"
+        "anchor": "KB-B27"
       },
       "reveals": {
         "nouns": [
@@ -666,9 +666,9 @@
       "kind": "dialogue",
       "text_de": "Jost reißt die Gittertüren auf. Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Jost nimmt das Horn vom Haken und rennt ihnen nach.",
       "where": {
-        "x": 1177,
-        "z": -1571,
-        "radius": 12,
+        "x": 1258,
+        "z": -1566,
+        "radius": 14,
         "era": "1793-07",
         "anchor": "KB-B23"
       },
@@ -902,8 +902,9 @@
       "speaker": "marlene",
       "text_de": "Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.",
       "trigger": {
-        "event": "story:chapter",
-        "id": "k3"
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.0"
       },
       "once": true
     },
@@ -1476,7 +1477,8 @@
       "text_de": "Papier. Marmor aus Papier, Granit aus Papier. Das ganze Zimmer wiegt weniger als ich.",
       "trigger": {
         "event": "clue:found",
-        "id": "clue.k3.papier"
+        "id": "clue.k3.papier",
+        "step": 1
       },
       "once": true,
       "sources": [
@@ -1486,6 +1488,17 @@
           "note": "Papierimitation nach dem Schadensetat"
         }
       ]
+    },
+    {
+      "id": "laub.k3.glastueren",
+      "speaker": "laub",
+      "text_de": "Und Glastüren. Dahinter steht der Pavillon, Wand an Wand: ein Notausgang ohne Ausgang. Merken Sie sich das, falls es heute Abend eng wird. Hinaus geht es durch die Dienertreppe oder die große Treppe.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.k3.papier",
+        "step": 2
+      },
+      "once": true
     },
     {
       "id": "laub.k3.gaertner",
@@ -1606,20 +1619,20 @@
       "speaker": "hanne",
       "text_de": "Der war an der Tür zum Saal. Matthes hat die Wand drumrum gemacht. Nimm, was du willst. Irgendwas soll übrig bleiben.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k3.retten",
-        "step": 1
-      },
-      "once": true
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3f",
+        "topic": "greet"
+      }
     },
     {
       "id": "laub.k3.festsaal_wahl",
       "speaker": "laub",
       "text_de": "Eins. Nur eins. Nehmen Sie, was Sie tragen können, nicht, was am meisten wert ist.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k3.retten",
-        "step": 2
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.9"
       },
       "once": true
     },
@@ -1639,52 +1652,52 @@
       "speaker": "hanne",
       "text_de": "Den behältst du. Ich hab die Wand im Kopf, das reicht mir.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "k3",
-        "beat": "3.10-draussen",
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3g",
+        "topic": "greet",
         "flag": "flag.k3_objekt",
         "value": "tuergriff"
-      },
-      "once": true
+      }
     },
     {
       "id": "hanne.k3.08",
       "speaker": "hanne",
       "text_de": "Ein Dukat. Den hat der Bauer aus Rohrbach auch gekriegt. Hoffentlich.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "k3",
-        "beat": "3.10-draussen",
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3g",
+        "topic": "greet",
         "flag": "flag.k3_objekt",
         "value": "dukat"
-      },
-      "once": true
+      }
     },
     {
       "id": "hanne.k3.09",
       "speaker": "hanne",
       "text_de": "Die Uhr. Die geht noch. Die weiß nicht, was passiert ist.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "k3",
-        "beat": "3.10-draussen",
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3g",
+        "topic": "greet",
         "flag": "flag.k3_objekt",
         "value": "uhr"
-      },
-      "once": true
+      }
     },
     {
       "id": "hanne.k3.10",
       "speaker": "hanne",
       "text_de": "Nichts. Ist auch eine Antwort.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "k3",
-        "beat": "3.10-draussen",
+        "event": "npc:talk",
+        "npc": "hanne",
+        "chapter": "k3g",
+        "topic": "greet",
         "flag": "flag.k3_objekt",
         "value": "nichts"
-      },
-      "once": true
+      }
     },
     {
       "id": "laub.k3.wirtschaft",
@@ -1788,6 +1801,127 @@
         "event": "story:beat",
         "chapter": "k3",
         "beat": "3.13"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.seite_offen",
+      "speaker": "laub",
+      "text_de": "Die Seite ist offen. Eintragen können Sie hier, bestätigen nur im Heute. Der Kommissär wartet im Ehrenhof. Er hat Zeit. Wir auch. Noch.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.5-seite"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.kommissaer",
+      "speaker": "laub",
+      "text_de": "Der Kommissär ist da. Wenn Sie ihn lassen, sagt er, in wessen Namen. Danach brennt es. Gehen Sie hin, wenn Sie bereit sind, nicht vorher.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.7"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.draussen",
+      "speaker": "laub",
+      "text_de": "Taghell. Und die Meute ist da, angelockt vom Lärm. Im Feuerschein sieht keiner Ihre Laterne. Aber jeder hört Ihre Schritte.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.11"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.pforte",
+      "speaker": "laub",
+      "text_de": "Die Mauer hält sie ab. Hunde gehen nicht, wo Gärtner schimpfen. Atmen Sie. Dann nach Norden, zum Zwinger.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.11-pforte"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.jaguar",
+      "speaker": "laub",
+      "text_de": "Augen. Gelb, auf Kniehöhe. Das ist kein Hund, das ist der Jaguar aus der Menagerie. Der Herzog hat ihn kommen lassen, damit man ihn ansieht. Jetzt sieht er uns an. Laterne an. Licht mag er nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.11-jaguar"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.jaguar_down",
+      "speaker": "laub",
+      "text_de": "Er wollte nur wissen, ob Sie echt sind. Sie sind es. Aufstehen. Leise.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.11-jaguar-down"
+      },
+      "once": true
+    },
+    {
+      "id": "beat.k3.hunde",
+      "speaker": "geraeusch",
+      "text_de": "[Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Keiner sieht sich um.]",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.12-hunde"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.heute.tuergriff",
+      "speaker": "laub",
+      "text_de": "Ein Türgriff. Messing, angelaufen, und er riecht nach Rauch. Fragen Sie mich nicht, wie er hierherkommt. Ich wohne in einer Bussole, ich stelle solche Fragen nicht mehr.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.13-objekt"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.heute.dukat",
+      "speaker": "laub",
+      "text_de": "Ein Dukat mit dem Schloss darauf. Er ist noch warm. Fragen Sie mich nicht, wie er hierherkommt. Ausgeben würde ich ihn nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.13-objekt"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.heute.uhr",
+      "speaker": "laub",
+      "text_de": "Hören Sie das? Die Uhr mit dem Alabaster. Sie tickt. Sie geht nach, um ungefähr zweihundert Jahre, aber sie geht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.13-objekt"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k3.heute.nichts",
+      "speaker": "laub",
+      "text_de": "Der Tisch ist leer. Nichts, hat sie gesagt, ist auch eine Antwort. Ich trage es so ein.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.13-objekt"
       },
       "once": true
     }
