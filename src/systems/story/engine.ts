@@ -172,6 +172,11 @@ export function evaluate(c: Condition, env: StoryEnv, latched: Record<string, nu
   if ('map' in c) return env.map;
   if ('stance' in c) return env.stance === c.stance;
   if ('lantern' in c) return env.lantern === c.lantern;
+  if ('room' in c) {
+    const room = env.flags['interior.room'];
+    const bld = env.flags['interior.building'];
+    return !!room && (room === c.room || bld === c.room || `${String(bld)}/${String(room)}` === c.room);
+  }
   return false;
 }
 

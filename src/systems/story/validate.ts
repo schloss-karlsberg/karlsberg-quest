@@ -189,6 +189,9 @@ function checkCond(c: Condition | undefined, file: string, where: string, err: R
     case 'hub':
       if (!HUB.has(String(r.hub))) err(file, where, `unknown hub item '${String(r.hub)}'`);
       break;
+    case 'room':
+      if (!isStr(r.room) || !/^(KB-[A-Z0-9]+)?(\/?B[0-9]+\.[0-9]+\.[a-z0-9-]+)?$/.test(r.room as string) || !(r.room as string)) err(file, where, `room: malformed room id '${String(r.room)}'`);
+      break;
     default:
       break;
   }

@@ -106,6 +106,14 @@ export interface AnyCond {
 export interface NotCond {
   not: Condition;
 }
+/**
+ * (interiors) The player stands in a walkable palace room: catalogue id ('B06.1.bildergalerie'),
+ * full id ('KB-B06/B06.1.bildergalerie') or building id ('KB-B06'). Reads the flags
+ * 'interior.room' / 'interior.building' kept by the interiors system.
+ */
+export interface RoomCond {
+  room: string;
+}
 /** Never completes by itself (only via `kq.story.skip()` / a chapter switch). */
 export interface ManualCond {
   manual: true;
@@ -126,6 +134,7 @@ export type Condition =
   | StanceCond
   | LanternCond
   | HubCond
+  | RoomCond
   | AllCond
   | AnyCond
   | NotCond
@@ -146,6 +155,7 @@ export const CONDITION_KEYS = [
   'stance',
   'lantern',
   'hub',
+  'room',
   'all',
   'any',
   'not',
