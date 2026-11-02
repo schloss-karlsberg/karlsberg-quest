@@ -64,6 +64,12 @@ export class StoryOverlays {
     this.cardLeft = seconds;
   }
 
+  /** Let the title card go now (the ending table opens: the chapter card must not return after the credits). */
+  dropCard(): void {
+    this.cardLeft = 0;
+    this.tickCard(1);
+  }
+
   /**
    * Advance the title card (seconds of game time — 0 while the game is paused, so a card is never
    * missed behind the pause menu or a modal).

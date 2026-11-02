@@ -633,6 +633,7 @@ class StoryRuntime {
       case 'ending':
         // the field book before the choice: "Ende noch einmal wählen" in the main menu loads it
         if (!s.ending) ctx.save.save(ENDING_SLOT, 'ending-choice');
+        this.overlays.dropCard();
         this.endings.show();
         return;
       case 'autosave':

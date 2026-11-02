@@ -63,9 +63,9 @@
 /* ---- threat gauges (smoke instead of oil; oblivion) ---- */
 .kq-fx-gauges {
   position: absolute;
-  /* left of Laub's Bussole (bottom right, 104 px) */
-  right: 140px;
-  bottom: 22px;
+  /* above Laub's Bussole (bottom right, 104 px): clear of the dialogue card at any width */
+  right: 22px;
+  bottom: 136px;
   display: flex;
   gap: 16px;
   align-items: flex-end;

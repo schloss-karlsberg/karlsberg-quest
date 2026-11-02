@@ -13,7 +13,8 @@
   position: absolute;
   left: 50%;
   bottom: 92px;
-  width: min(820px, 92vw);
+  /* leaves 190 px each side: the Bussole and the fx gauges above it stay clear (1024 px and up) */
+  width: min(820px, 92vw, calc(100vw - 380px));
   display: flex;
   gap: 18px;
   align-items: flex-end;

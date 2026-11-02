@@ -6,7 +6,8 @@ import { boot, inv, playK1, shiftToPast, shot, story, upd } from './helpers/k1';
  * Chapter 1 "Der Hof", played through headless (`?manual`, driven through window.kq). The
  * playthrough lives in e2e/helpers/k1.ts (shared with e2e/campaign.spec.ts); this spec boots the
  * chapter directly with what the prologue leaves behind.
- * A second test: the lantern running dry in Teil A and being caught in Teil B lose nothing.
+ * A second test: the lantern running dry in Teil A and being caught in Teil B lose nothing; you
+ * wake in the present at that part's anchor (Ehrenhof / Tschifflik terrace), not the station.
  * Screenshots: test-results/screens/ch-k1-*.png.
  */
 test('chapter 1 "Der Hof": the whole chapter, both parts', async ({ page }) => {
@@ -18,7 +19,7 @@ test('chapter 1 "Der Hof": the whole chapter, both parts', async ({ page }) => {
 });
 
 
-test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing', async ({ page }) => {
+test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing, you wake at the anchor', async ({ page }) => {
   test.setTimeout(400_000);
   const errors = trackErrors(page);
   await boot(page);
@@ -26,7 +27,7 @@ test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing', 
     window.kq!.story!.goto('k1', 'k1_3');
     window.kq!.step(4);
   });
-  // Teil A: the lantern runs dry in 1789 → curtain → the station, same beat, the way back is shown
+  // Teil A: the lantern runs dry in 1789 → curtain → the Ehrenhof today (beat `wake`), same beat
   await page.evaluate(() => {
     window.kq!.teleport(1224, -1117, 80, 0);
     window.kq!.step(2);
@@ -44,9 +45,12 @@ test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing', 
   expect(s).toMatchObject({ era: 'today', beat: 'k1_3' });
   expect(s.objective?.id).toBe('k1.zurueck-a');
   expect((await inv(page)).clues).toContain('clue.k1.zeichen');
+  const at = () => page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
+  let p = await at();
+  expect(Math.hypot(p.x - 1222, p.z + 1119)).toBeLessThan(20);
   await shot(page, 'x1-oel-leer');
 
-  // Teil B: caught by the patrol → "heimgebracht", finds kept, the way back to the Karlslust
+  // Teil B: caught by the patrol → "heimgebracht", finds kept, awake at the Tschifflik terrace today
   await page.evaluate(() => {
     // through k1_7 (Teil B's flags: the lossless lantern), then on to the night beat
     window.kq!.story!.goto('k1', 'k1_7');
@@ -66,6 +70,8 @@ test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing', 
   s = await story(page);
   expect(s).toMatchObject({ era: 'today', beat: 'k1_11' });
   expect(s.objective?.id).toBe('k1.zurueck-b');
+  p = await at();
+  expect(Math.hypot(p.x - 1822, p.z - 70)).toBeLessThan(20);
   expect((await inv(page)).clues).toContain('clue.k1.zeichen');
   // no pack in the present; it comes back with the next Wechsel
   expect(await page.evaluate(() => window.kq!.hunt!.state())).toBeNull();

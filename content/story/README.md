@@ -33,8 +33,19 @@ Source of the texts: `content/bible/*.md`. Placeholder chapters/beats carry `"pl
 | `era?`, `checkpoint? {x,z,yaw?,era?}` | chapter era; start position (also where being caught returns to) |
 | `placeholder?` | skeleton chapter (title card says so) |
 | `test?` | test chapter (`99-test.story.json`): validated, but loaded only with `?storytest` |
-| `on?` | chapter-wide reactions `{id, when, do, repeat?}` |
-| `beats` | `{id, title_de?, enter?, complete, exit?, next?, checkpoint?, on?, placeholder?}` |
+| `on?` | chapter-wide reactions `{id, when, do, repeat?, cooldown?}` (`cooldown`: with `repeat`, not again within that many seconds) |
+| `beats` | `{id, title_de?, enter?, complete, exit?, next?, checkpoint?, wake?, on?, placeholder?}` |
+
+**Wake places.** `wake {x, z, yaw?, era: "today", text?}` on a beat: being caught or an empty
+meter while it runs brings you to the present *there* (the resumed beat's `wake` wins, else the
+running beat's, else the chapter `checkpoint`), and `text` replaces "Du wachst in der Feldstation
+auf". Chapters 1 and 2 wake you at the anchor of the part you were in (Ehrenhof, Tschifflik
+terrace, Parkzaun) so Q takes you straight back.
+
+**Beat scope.** Delayed actions belong to the beat that ran them (`exit` actions to the next beat;
+chapter reactions to none). When a new beat begins, the old beat's delayed presentation
+(`say/toast/sound/card/prompt/echo/choice`) is dropped and its delayed state changes run at once;
+waiting dialogue lines of the old beat get 6 s to start (barks are dropped).
 | `epilogue?` | fallback epilogue data (the endings pack's `epilog:line` lines win, see below) |
 
 ## Conditions
@@ -56,6 +67,7 @@ Exactly one key per condition object. Event-like conditions are latched while th
 | `reading` (+ `eq?`) | a reading was chosen: the entry's story flag (`CaseEntry.flag`, e.g. `flag.k1_lohn`) or its entry id; `eq` = noun id or bare key (`n.r_will_nicht` ≡ `will_nicht`, `offen`) |
 | `meter {id, gte?, lte?, full?}` | a story meter's value (0 empty … 1 full) |
 | `chosen` (+ `option?`) | a choice was answered (flag `choice.<id>` = option key or index) |
+| `speed {gte?, lte?}` | the player's speed in m/s (walk 3.2, sprint 6.2; 0 while flying) — e.g. the guard who calls out runners |
 | `all`, `any`, `not` | combinations |
 | `manual` | never (only `kq.story.skip()`) |
 
@@ -70,9 +82,9 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 
 | Action | Fields | Effect |
 | --- | --- | --- |
-| `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?` | a spoken line (`id` lines once). `text_by_era {era: text}` wins in that era. Placeholders: `{Name}`/`{name}`, `{jahre:1793}` (years since 1793 in words; "über zweihundert" when the clock is implausible), `{jahr}` |
+| `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?, variants?` | a spoken line (`id` lines once; a line that will not be spoken costs no reading time in its run). `text_by_era {era: text}` wins in that era. `variants [text…]` (needs `id` and `speaker`): a running joke, the n-th run speaks the n-th text, then silence (or the last again with `repeat`). Placeholders: `{Name}`/`{name}`, `{jahre:1793}` (years since 1793 in words; "über zweihundert" when the clock is implausible), `{jahr}` |
 | `objective` | `text \| null, x?, z?, id?` | objective + Bussole target |
-| `threat` | `kind, active, intensity?, center?, radius?, seconds?, …` | `threat:configure`; every ThreatConfig field passes through. Pack extras: `mode` patrol \| drive \| finale \| parforce, `target`, `via`, `from`, `headStart`, `goalRadius`, `snow`, `hounds`, `pikeur`, `sight`, `seed` (docs/ARCHITECTURE.md §12) |
+| `threat` | `kind, active, intensity?, center?, radius?, seconds?, …` | `threat:configure`; every ThreatConfig field passes through. Pack extras: `mode` patrol \| drive \| finale \| parforce \| follow, `target`, `via`, `from`, `headStart`, `goalRadius`, `heel`, `burst`, `keepPace`, `snow`, `hounds`, `pikeur`, `sight`, `seed` (docs/ARCHITECTURE.md §12) |
 | `flag` | `set {flag: value \| null}` | write / delete flags |
 | `shift`, `anchor` | `to, reason?, instant?` / `to \| null, x, z, r` | era shift / Q anchor |
 | `skill`, `give` | `id, tier` / `clue \| noun \| item, kind?, toast?` | skills, inventory |
