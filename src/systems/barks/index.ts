@@ -10,6 +10,7 @@
  *                        (fire:room 'burning' + room:enter {roomId} from the interiors feature)
  * Quiet: echoes, NPC conversations, story lines on screen, modals, the caught curtain, memorial
  * places (built-in Rondell; story `memorial` action → 'memorial:set'), flag `barks.quiet`.
+ * Flag `laub.silent`: Laub's barks stay silent (the prologue, before the compass first speaks).
  * Spoken through 'dialogue:say' (the story's presenter shows it; subtitles without a story).
  * Debug/test API: window.kq.barks.
  */
@@ -182,7 +183,9 @@ class BarksRuntime {
     const st = this.ctx.state.state;
     const story = (st.systems as Record<string, unknown>).story as { chapter?: string | null; beat?: string | null } | undefined;
     const c = { era: this.ctx.era.current, flags: st.flags, chapter: story?.chapter ?? null, beat: story?.beat ?? null, clues: st.inventory.clues };
-    const matching = lines.filter((l) => matchTrigger(l, name, payload, c));
+    // flag `laub.silent`: the compass does not talk yet (the prologue, before Laub introduces himself)
+    const noLaub = st.flags['laub.silent'] === true;
+    const matching = lines.filter((l) => matchTrigger(l, name, payload, c) && !(noLaub && l.speaker === 'laub'));
     if (!matching.length) return;
     // one waiting request per event
     this.requests = this.requests.filter((r) => r.event !== name);

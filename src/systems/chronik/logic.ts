@@ -68,6 +68,11 @@ export interface ClueEnv {
   skills: Readonly<Record<string, number>>;
   scanMode: number;
   lanternLit: boolean;
+  /**
+   * Clue chapters that are in the world (`Clue.chapter` ids: 'p', 'k1' … 'k4'). A clue of any
+   * other chapter stays hidden (the prologue: no spoilers at the field station). Omitted = all open.
+   */
+  chapters?: ReadonlySet<string> | null;
 }
 
 /**
@@ -95,6 +100,7 @@ export function requiredScan(c: ChronikClue): number {
 
 export function clueStatus(c: ChronikClue, env: ClueEnv): ClueStatus {
   if (has(env.found, c.id)) return 'found';
+  if (c.chapter && env.chapters && !env.chapters.has(c.chapter)) return 'hidden';
   const r = c.requires;
   if (r?.clues?.some((id) => !has(env.found, id))) return 'hidden';
   if (r?.flags?.some((f) => !env.flags[f])) return 'hidden';

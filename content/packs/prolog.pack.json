@@ -121,9 +121,9 @@
       "kind": "document",
       "text_de": "Ein großer Ausdruck „Lageplan Schloss Karlsberg, Forschungsstand 2006 (Nachzeichnung)“, darunter klein: „Grundlage: schloss-carlsberg.de, CC BY-SA 2.0 DE“. Die Legende nennt Ehrenhof, Corps de logis, Galerie, Orangerie, Marstall, Reithalle, Exerzierplatz, Zwinger, Eiskeller. Den Ehrenhof umschließen drei Flügel. Reithalle und Exerzierplatz liegen weit im Norden. Der Titelstempel lautet „Rekonstruktion Sommer 1789 – Hypothese“.",
       "where": {
-        "x": 758,
-        "z": -929,
-        "radius": 2.5,
+        "x": 760,
+        "z": -915,
+        "radius": 1,
         "era": "today",
         "anchor": "loc.p.station"
       },
@@ -148,9 +148,9 @@
       "kind": "map",
       "text_de": "Fotokopie eines Messtischblatts. Bleistift von Marlene: „1935 – liegt nur 10–15 m daneben, gut brauchbar.“",
       "where": {
-        "x": 759,
-        "z": -931,
-        "radius": 2.5,
+        "x": 760,
+        "z": -915,
+        "radius": 1,
         "era": "today",
         "anchor": "loc.p.station"
       },
@@ -169,9 +169,9 @@
       "kind": "document",
       "text_de": "Das Reliefmuster-Handbuch des Forstamts im Regal, acht Karten. Die Karten stehen ab jetzt im Codex.",
       "where": {
-        "x": 762,
-        "z": -931,
-        "radius": 2.5,
+        "x": 760,
+        "z": -915,
+        "radius": 1,
         "era": "today",
         "anchor": "loc.p.station"
       },
@@ -203,9 +203,9 @@
       "kind": "map",
       "text_de": "Druck eines bayerischen Positionsblatts mit gestochener Schrift „Ruine Carlsberg“, „Carlsbergerhof“, „Sanddorf“. Am Rand steht in Bleistift und sehr ordentlicher Kurrentschrift: „Aufgen. Nov. 1840. Q. L. – Standpunkt 17 am alten Forsthaus.“ Daneben liegt eine Messing-Bussole, kalt und still.",
       "where": {
-        "x": 761,
-        "z": -928,
-        "radius": 2.5,
+        "x": 760,
+        "z": -915,
+        "radius": 1,
         "era": "today",
         "anchor": "loc.p.station"
       },
@@ -329,7 +329,8 @@
       },
       "requires": {
         "clues": [
-          "clue.p.laubblatt"
+          "clue.p.laubblatt",
+          "clue.p.ehrenhof"
         ]
       },
       "fiction": false,
@@ -343,7 +344,7 @@
       "where": {
         "x": 1172,
         "z": -1238,
-        "radius": 20,
+        "radius": 22,
         "era": "today",
         "anchor": "KB-10"
       },
@@ -393,9 +394,9 @@
       "kind": "object",
       "text_de": "Bodenpunkte unter dem Kronendach. Quer über den Ehrenhof eine Reihe von Abdrücken, etwa 8 cm groß, paarweise, im Abstand eines Trabs.",
       "where": {
-        "x": 1216,
-        "z": -1114,
-        "radius": 40,
+        "x": 760,
+        "z": -915,
+        "radius": 1,
         "era": "today",
         "anchor": "portable"
       },
@@ -420,9 +421,9 @@
       "kind": "document",
       "text_de": "Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts, Überschrift: „Was der Hof schuldig blieb“. Darunter nur Spalten: „Wem – Was – Wann – Wo“. Unten ein Satz, in anderer Tinte und in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“",
       "where": {
-        "x": 1216,
-        "z": -1114,
-        "radius": 40,
+        "x": 760,
+        "z": -915,
+        "radius": 1,
         "era": "today",
         "anchor": "portable"
       },
@@ -619,7 +620,7 @@
     {
       "id": "marlene.p.01",
       "speaker": "marlene",
-      "text_de": "{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter. Wir wollen wissen, was unter dem Wald liegt, bevor wir dort Wege bauen. Und bevor du fragst: Ja, da oben war mal ein Schloss. Der Wald steht drauf.",
+      "text_de": "{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",
@@ -628,12 +629,35 @@
       "once": true
     },
     {
-      "id": "marlene.p.02",
+      "id": "marlene.p.01b",
       "speaker": "marlene",
-      "text_de": "Ach, die Bussole. Die lag schon im Wagen, als wir ihn gekauft haben. Die zeigt nicht nach Norden, hab ich festgestellt. Behalt sie trotzdem, sie bringt Glück, sagt der Kollege. Er hat sie nie angefasst.",
+      "text_de": "Wir wollen wissen, was unter dem Wald liegt, bevor wir dort Wege bauen. Und bevor du fragst: Ja, da oben war mal ein Schloss. Der Wald steht drauf.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.laubblatt"
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P1"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.bauwagen",
+      "speaker": "marlene",
+      "text_de": "Im Wagen hängt alles, was du brauchst: Lageplan an der Pinnwand, das Handbuch im Regal. Und in der Schublade liegt noch Kram vom Vorbesitzer. Guck ruhig rein.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P1"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.relief",
+      "speaker": "marlene",
+      "text_de": "Auf deinem Tablet ist der Laserscan. Drück mal die Eins. Dann siehst du den Boden, als hätte jemand den Wald weggeräumt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P2"
       },
       "once": true
     },
@@ -649,16 +673,6 @@
       "once": true
     },
     {
-      "id": "marlene.p.mauerrest",
-      "speaker": "marlene",
-      "text_de": "Gerade Linien und rechte Winkel macht der Wald nicht. Das war mal eine Mauer.",
-      "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.mauerrest"
-      },
-      "once": true
-    },
-    {
       "id": "marlene.p.weg",
       "speaker": "marlene",
       "text_de": "Und, {Name}: Wir schauen, wir graben nicht. Nichts anfassen, nichts mitnehmen. Was da im Boden liegt, gehört dem Land, und es ist geschützt.",
@@ -670,12 +684,101 @@
       "once": true
     },
     {
-      "id": "marlene.p.hohlweg",
+      "id": "marlene.p.flug",
       "speaker": "marlene",
-      "text_de": "Das ist ein Hohlweg. Karren, Hufe, Regen, ein paar hundert Jahre, und der Weg frisst sich in den Boden. Bei Nebel ist das der dunkelste Ort im ganzen Revier. Und der stillste.",
+      "text_de": "Der Weg nach oben ist steil. Wenn du’s eilig hast: Mit F fliegst du über die Daten wie mit der Drohne. Nur gucken. Landen nicht vergessen.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.hohlweg"
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.intro",
+      "speaker": "laub",
+      "text_de": "Fünf Meter dreißig. Für Orangen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.intro.b",
+      "speaker": "laub",
+      "text_de": "Erschrecken Sie nicht, das ist schlecht für die Messgenauigkeit. Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.intro.c",
+      "speaker": "laub",
+      "text_de": "Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.intro.d",
+      "speaker": "laub",
+      "text_de": "Sie vermessen den Berg? Gut. Dann sind wir zu zweit. Ich bin der Kleinere.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.intro2",
+      "speaker": "laub",
+      "text_de": "Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P4"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.versatz",
+      "speaker": "laub",
+      "text_de": "Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P4"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.versatz.b",
+      "speaker": "laub",
+      "text_de": "Die Herrschaften, die es zweihundert Jahre später auf ihre Koordinaten genagelt haben, die hatten offenbar einen schlechten Tag.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P4"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.versatz.c",
+      "speaker": "laub",
+      "text_de": "Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer. Und ein Geometer merkt es ewig.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P4"
       },
       "once": true
     },
@@ -695,9 +798,9 @@
       "speaker": "marlene",
       "text_de": "Wildschweine machen andere Spuren. Und Hunde waren da nicht, der Wald war gesperrt.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.punktwolke",
-        "step": 1
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P7"
       },
       "once": true
     },
@@ -706,20 +809,152 @@
       "speaker": "kollege",
       "text_de": "Mehrfachreflexion. Ein Messfehler.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.punktwolke",
-        "step": 2
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P7"
       },
       "once": true
     },
     {
       "id": "laub.p.punktwolke",
       "speaker": "laub",
-      "text_de": "Hunde. Fragen Sie nicht. Füllen Sie die Seite aus.",
+      "text_de": "Hunde.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.punktwolke",
-        "step": 3
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P7"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.punktwolke.b",
+      "speaker": "laub",
+      "text_de": "Fragen Sie nicht. Füllen Sie die Seite aus.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P7"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln",
+      "speaker": "laub",
+      "text_de": "So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P8"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln.b",
+      "speaker": "laub",
+      "text_de": "Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P8"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln.c",
+      "speaker": "laub",
+      "text_de": "Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P8"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln.d",
+      "speaker": "laub",
+      "text_de": "Zweitens: Ihre Laterne brennt dort drüben auf Kosten Ihrer Zeit. Wenn das Öl aus ist, sind Sie wieder hier. Unsanft.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P8"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln.e",
+      "speaker": "laub",
+      "text_de": "Drittens: Wenn Sie ein Horn hören, legen Sie sich hin. Nicht diskutieren. Hinlegen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P8"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.regeln.f",
+      "speaker": "laub",
+      "text_de": "Viertens: Wenn Sie zurück wollen, halten Sie Q. Es geht nicht, solange Sie jemand ansieht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P8"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.blick",
+      "speaker": "laub",
+      "text_de": "Stellen Sie sich so, dass Sie das Corps de logis vor sich haben. Also dort, wo heute die Buchen stehen. Ein Geometer wechselt nie mit dem Rücken zum Objekt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.1789",
+      "speaker": "laub",
+      "text_de": "Sehen Sie. Kein Wald. Den hat man erst hinterher gepflanzt, als es nichts mehr zu sehen gab.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.schloss",
+      "speaker": "laub",
+      "text_de": "Gehen Sie ruhig hinein. Eingeladen hat man Sie nicht. Mich auch nicht, und ich habe das Haus später trotzdem vermessen. Was davon übrig war.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.zurueck",
+      "speaker": "laub",
+      "text_de": "Zurück. Jetzt.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.hinlegen",
+      "speaker": "laub",
+      "text_de": "Das Horn. Drittens, wie besprochen: Hinlegen, X. Licht aus, L. Oder Q halten, solange keiner herschaut.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P9"
       },
       "once": true
     },
@@ -735,34 +970,43 @@
       "once": true
     },
     {
-      "id": "laub.p.intro",
+      "id": "laub.p.ende",
       "speaker": "laub",
-      "text_de": "Fünf Meter dreißig. Für Orangen. Erschrecken Sie nicht, das ist schlecht für die Messgenauigkeit. Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt. Sie vermessen den Berg? Gut. Dann sind wir zu zweit. Ich bin der Kleinere.",
-      "trigger": {
-        "event": "clue:found",
-        "id": "clue.p.orangeriemauer"
-      },
-      "once": true,
-      "priority": 10
-    },
-    {
-      "id": "laub.p.intro2",
-      "speaker": "laub",
-      "text_de": "Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.",
+      "text_de": "Machen Sie die Laterne aus. Und dann schlafen Sie. Morgen ist 1789.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",
-        "beat": "P3b"
+        "beat": "P11"
       },
       "once": true
     },
     {
-      "id": "laub.p.versatz",
-      "speaker": "laub",
-      "text_de": "Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war. Die Herrschaften, die es zweihundert Jahre später auf ihre Koordinaten genagelt haben, die hatten offenbar einen schlechten Tag. Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer. Und ein Geometer merkt es ewig.",
+      "id": "marlene.p.02",
+      "speaker": "marlene",
+      "text_de": "Ach, die Bussole. Die lag schon im Wagen, als wir ihn gekauft haben. Die zeigt nicht nach Norden, hab ich festgestellt. Behalt sie trotzdem, sie bringt Glück, sagt der Kollege. Er hat sie nie angefasst.",
       "trigger": {
         "event": "clue:found",
-        "id": "clue.p.kartenvergleich"
+        "id": "clue.p.laubblatt"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.mauerrest",
+      "speaker": "marlene",
+      "text_de": "Gerade Linien und rechte Winkel macht der Wald nicht. Das war mal eine Mauer.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.mauerrest"
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.hohlweg",
+      "speaker": "marlene",
+      "text_de": "Das ist ein Hohlweg. Karren, Hufe, Regen, ein paar hundert Jahre, und der Weg frisst sich in den Boden. Bei Nebel ist das der dunkelste Ort im ganzen Revier. Und der stillste.",
+      "trigger": {
+        "event": "clue:found",
+        "id": "clue.p.hohlweg"
       },
       "once": true
     },
@@ -799,49 +1043,46 @@
       "once": true
     },
     {
-      "id": "laub.p.regeln",
+      "id": "laub.p.gestellt",
       "speaker": "laub",
-      "text_de": "So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick. Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal. Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q. Zweitens: Ihre Laterne brennt dort drüben auf Kosten Ihrer Zeit. Wenn das Öl aus ist, sind Sie wieder hier. Unsanft. Drittens: Wenn Sie ein Horn hören, legen Sie sich hin. Nicht diskutieren. Hinlegen. Viertens: Wenn Sie zurück wollen, halten Sie Q. Es geht nicht, solange Sie jemand ansieht.",
+      "text_de": "Da sind Sie ja wieder. Gestellt, nicht gerissen. Auf diesem Unterschied bestehe ich.",
       "trigger": {
-        "event": "chronik:batch",
-        "caseId": "case.p",
-        "correct": true
+        "event": "player:caught",
+        "chapter": "prolog",
+        "step": 1
       },
-      "once": true,
-      "priority": 10
+      "once": true
     },
     {
-      "id": "laub.p.1789",
+      "id": "laub.p.gestellt.b",
       "speaker": "laub",
-      "text_de": "Sehen Sie. Kein Wald. Den hat man erst hinterher gepflanzt, als es nichts mehr zu sehen gab.",
+      "text_de": "Was Sie drüben gefunden und noch nicht bestätigt hatten, darf die Meute behalten. Was bestätigt ist, nimmt Ihnen keiner.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "p",
-        "beat": "P9"
+        "event": "player:caught",
+        "chapter": "prolog",
+        "step": 2
       },
-      "once": true,
-      "priority": 10
+      "once": true
     },
     {
-      "id": "laub.p.zurueck",
+      "id": "laub.p.gestellt.c",
       "speaker": "laub",
-      "text_de": "Zurück. Jetzt.",
+      "text_de": "Nächstes Mal: Horn, hinlegen, Licht aus. Oder rechtzeitig Q halten. Ich sage es ungern zweimal. Ich sage es vierzigmal.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "p",
-        "beat": "P9-heulen"
+        "event": "player:caught",
+        "chapter": "prolog",
+        "step": 3
       },
-      "once": true,
-      "priority": 10
+      "once": true
     },
     {
-      "id": "laub.p.ende",
+      "id": "laub.p.oel",
       "speaker": "laub",
-      "text_de": "Machen Sie die Laterne aus. Und dann schlafen Sie. Morgen ist 1789.",
+      "text_de": "Das Öl. Zweitens, wie gesagt. Die Erinnerung hält so lange wie Ihr Licht. Löschen Sie es, wenn Sie es nicht brauchen. Das spart Öl und Hunde.",
       "trigger": {
-        "event": "story:beat",
-        "chapter": "p",
-        "beat": "P11"
+        "event": "lantern:empty",
+        "chapter": "prolog",
+        "era": "1789"
       },
       "once": true
     },

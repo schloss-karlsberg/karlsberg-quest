@@ -79,6 +79,14 @@ describe('clue status', () => {
     expect(clueStatus(c, env({ scanMode: 2, found: ['ct.clue.hohlweg'] }))).toBe('found');
   });
 
+  it('hides clues of chapters that are not in the world (the prologue: no spoilers at the station)', () => {
+    const c: ChronikClue = { ...clues().get('ct.clue.hohlweg')!, chapter: 'k2' };
+    expect(clueStatus(c, env({ scanMode: 2 }))).toBe('available');
+    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['p']) }))).toBe('hidden');
+    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['p', 'k2']) }))).toBe('available');
+    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['p']), found: new Set(['ct.clue.hohlweg']) }))).toBe('found');
+  });
+
   it('hides clues behind flags, clues and skills; lantern clues glint until lit', () => {
     const map = clues().get('ct.clue.kartenvergleich')!;
     expect(clueStatus(map, env())).toBe('hidden');

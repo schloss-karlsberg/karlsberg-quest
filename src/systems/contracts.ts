@@ -125,8 +125,11 @@ declare module '../core/events' {
     'npc:conversation': { npc: string; open: boolean };
     /** npc → barks: the player lingers near an NPC (bark:npc-near lines). */
     'bark:npc-near': { npc: string; era: string };
-    /** npc/story → chronik: discover a clue as if examined (nouns, facts, flags; no card). */
-    'clue:grant': { id: string };
+    /**
+     * npc/story → chronik: discover a clue as if examined (nouns, facts, flags). No card, unless
+     * `card` (story `grant {card: true}`: e.g. the field-station items, the tablet in the prologue).
+     */
+    'clue:grant': { id: string; card?: boolean };
     /** story → barks: a memorial place where nobody jokes (bible: Rondell 1785, Festsaal W5). */
     'memorial:set': { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string };
     /** story → hunt: light / douse the lantern (oil timer meters), optionally refilled first. */

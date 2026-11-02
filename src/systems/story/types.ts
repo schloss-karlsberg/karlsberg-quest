@@ -444,6 +444,8 @@ export interface ReadingsAction extends ActionBase {
 export interface GrantAction extends ActionBase {
   do: 'grant';
   clue: string;
+  /** Show the Chronik's field-book card (as if examined), e.g. for the field-station items. */
+  card?: boolean;
 }
 
 export type Action =

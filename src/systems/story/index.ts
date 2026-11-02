@@ -161,6 +161,9 @@ class StoryRuntime {
   private hubPrompt = false;
   private shiftPending: { to: Era; age: number } | null = null;
   private qHold = 0;
+  /** The pack is chasing the player (hunt:alert): holding Q does not bring you home (bible: "nicht, solange Sie jemand ansieht"). */
+  private packChasing = false;
+  private blockedToastAt = -99;
   /** An fx transition is running (between shift:begin and shift:done). */
   private shifting = false;
   /** A Chronik echo is playing (between echo:start and echo:end). */
@@ -320,6 +323,8 @@ class StoryRuntime {
       if (this.inHub && !this.caughtBusy) queueMicrotask(() => this.ctx.ui.modals.count === 0 && this.hub.show());
     });
     ctx.events.on('npc:conversation', ({ open }) => (this.talking = open));
+    ctx.events.on('hunt:alert', ({ state }) => (this.packChasing = state === 'chasing'));
+    ctx.events.on('hunt:end', () => (this.packChasing = false));
     // wrapped meters mirror their feature's value
     ctx.events.on('lantern:oil', ({ oil }) => this.mirrorMeter('oil', 1 - oil));
     ctx.events.on('fire:progress', ({ t: v }) => this.mirrorMeter('smoke', v));
@@ -595,10 +600,12 @@ class StoryRuntime {
       case 'readings':
         this.fillReadings(a.cases);
         return;
-      case 'grant':
-        if (ctx.systems.get('chronik') && ctx.content.clues.has(a.clue)) ctx.events.emit('clue:grant', { id: a.clue });
-        else this.give(a.clue);
+      case 'grant': {
+        if (ctx.systems.get('chronik') && ctx.content.clues.has(a.clue)) ctx.events.emit('clue:grant', a.card ? { id: a.clue, card: true } : { id: a.clue });
+        // nobody discovered it (no Chronik, or a Chronik on placeholder content): the story keeps it itself
+        if (!ctx.state.state.inventory.clues.includes(a.clue)) this.give(a.clue, undefined, undefined, ctx.content.clues.get(a.clue)?.kind);
         return;
+      }
     }
   }
 
@@ -883,11 +890,23 @@ class StoryRuntime {
   // ------------------------------------------------------------------------------------------
 
   private useHub(item: HubItem): void {
-    this.ctx.events.emit('hub:use', { item });
-    if (item === 'chronik') {
+    const ctx = this.ctx;
+    const modals = ctx.ui.modals.count;
+    const chapter = this.slice.chapter;
+    ctx.events.emit('hub:use', { item });
+    // the hub pauses the game: let the beat react now, so a clue card (grant {card}) opens on top
+    // of the hub instead of after it has been closed
+    if (this.slice.active && !this.caughtBusy) this.engine.tick(0, this.env());
+    if (this.slice.chapter !== chapter) {
+      // the item ended the chapter (the prologue's field bed): out of the trailer, into the next one
+      this.hub.close();
+      return;
+    }
+    // something to read at the Pinnwand first (a card opened): the Chronik board waits for the next visit
+    if (item === 'chronik' && ctx.ui.modals.count <= modals) {
       // the Chronik closes every modal (the hub too) when it opens: come back here afterwards
-      this.reopenHub = !!this.ctx.systems.get('chronik');
-      this.ctx.events.emit('chronik:open', {});
+      this.reopenHub = !!ctx.systems.get('chronik');
+      ctx.events.emit('chronik:open', {});
     }
   }
 
@@ -1020,8 +1039,21 @@ class StoryRuntime {
       }
     }
     this.updateHub();
+    const env = this.env();
+    this.tickMeters(dt);
+    this.updateInlineChoice(env);
+    this.engine.tick(dt, env);
+    if (this.pendingAutosave) {
+      this.pendingAutosave = false;
+      ctx.save.autosave('beat', true);
+    }
+  }
+
+  /** What the story's conditions may look at right now. */
+  private env(): StoryEnv {
+    const ctx = this.ctx;
     const s = ctx.state.state;
-    const env: StoryEnv = {
+    return {
       era: ctx.era.current,
       x: ctx.player.position.x,
       z: ctx.player.position.z,
@@ -1037,13 +1069,6 @@ class StoryRuntime {
       meters: Object.fromEntries(Object.values(this.slice.meters).map((m) => [m.id, m.value])),
       readingFlag: (id) => this.entryFlag(id),
     };
-    this.tickMeters(dt);
-    this.updateInlineChoice(env);
-    this.engine.tick(dt, env);
-    if (this.pendingAutosave) {
-      this.pendingAutosave = false;
-      ctx.save.autosave('beat', true);
-    }
   }
 
   /**
@@ -1080,6 +1105,14 @@ class StoryRuntime {
       return;
     }
     if (ctx.input.isDown('shift')) {
+      if (this.packChasing) {
+        this.qHold = 0;
+        if (this.time - this.blockedToastAt > 3) {
+          this.blockedToastAt = this.time;
+          ctx.ui.toast(t('ui.hud.return_blocked'), 2200);
+        }
+        return;
+      }
       this.qHold += dt;
       if (this.qHold > 1.2) {
         this.qHold = 0;
