@@ -38,7 +38,7 @@ export class DebugPanel {
       `E ${(p.x + 381000).toFixed(0)} N ${(5465000 - p.z).toFixed(0)}  ${c.world.surfaceAt(p.x, p.z)}`,
       `stance ${c.player.stance}${c.player.flying ? ' (fly)' : ''}  noise ${st.noise.toFixed(2)} vis ${st.visibility.toFixed(2)}`,
       `terrain ${c.world.terrain.stats.chunks} chunks ${(c.world.terrain.stats.triangles / 1000).toFixed(0)}k`,
-      `trees near ${c.world.forest.stats.near} far ${c.world.forest.stats.far} / ${c.world.forest.stats.total}`,
+      `trees near ${c.world.forest.stats.near} mid ${c.world.forest.stats.mid} far ${c.world.forest.stats.far} / ${c.world.forest.stats.total}`,
       `palace ${(c.world.palace.triangles / 1000).toFixed(0)}k tris`,
       `tick ${c.loop.tick}${c.loop.paused ? ' paused' : ''}${c.loop.manual ? ' manual' : ''}`,
       `systems:\n  ${sys}`,
