@@ -74,6 +74,10 @@ addStrings('de', {
   'story.caught.oblivion': 'Der Berg hat dich beinahe vergessen.',
   'story.caught.sub': 'Gestellt. Nicht gerissen.',
   'story.caught.wake': 'Du wachst in der Feldstation auf. Was bestätigt ist, bleibt.',
+  'story.caught.home': 'Die Meute hat dich heimgebracht.',
+  'story.caught.homeSub': 'Diesmal fehlt nichts.',
+  'story.meter.return': 'Die Erinnerung lässt dich los.',
+  'story.meter.returnSub': 'Das Licht reicht nicht weiter.',
 
   // shift fallback (when no era-shift feature is installed)
   'story.shift.notHere': 'Die Nadel steht nicht hier.',

@@ -1,0 +1,118 @@
+/* Conversation with a ghost: a field-book page at the bottom, the figure stays visible above. */
+.kq-modal-layer:has(.kqn-modal) {
+  background: linear-gradient(180deg, transparent 45%, rgba(8, 6, 4, 0.55));
+  backdrop-filter: none;
+  align-items: flex-end;
+  padding-bottom: 28px;
+}
+.kq-modal.kqn-modal {
+  width: min(760px, calc(100vw - 32px));
+  max-height: 58vh;
+  padding: 18px 26px 18px 30px;
+}
+.kqn-talk {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: default;
+}
+.kqn-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.kqn-portrait {
+  flex: none;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+.kqn-portrait svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.kqn-names {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.kqn-who {
+  font-family: var(--sc);
+  font-size: 28px;
+}
+.kqn-tag {
+  font-family: var(--hand);
+  font-size: 18px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid currentColor;
+}
+.kqn-tag.fic {
+  color: #8a5a2b;
+}
+.kqn-tag.hist {
+  color: #2f5d7a;
+}
+.kqn-text {
+  font-size: 20px;
+  line-height: 1.5;
+  min-height: 3em;
+}
+.kqn-rest {
+  opacity: 0;
+}
+.kqn-src {
+  font-size: 14px;
+  font-style: italic;
+  opacity: 0.75;
+}
+.kqn-src:empty {
+  display: none;
+}
+.kqn-next {
+  align-self: flex-end;
+  font-family: var(--hand);
+  font-size: 17px;
+  opacity: 0.7;
+}
+.kqn-topics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 6px 10px;
+  margin-top: 4px;
+}
+.kqn-topic {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  text-align: left;
+  font-size: 17px;
+}
+.kqn-topic.kqn-asked {
+  opacity: 0.62;
+}
+.kqn-topic.kqn-bye {
+  font-style: italic;
+}
+.kqn-n {
+  font-family: var(--sc);
+  color: var(--accent);
+}
+.kqn-hidden {
+  display: none !important;
+}
+@media (max-width: 560px) {
+  .kqn-portrait {
+    width: 56px;
+    height: 56px;
+  }
+  .kqn-who {
+    font-size: 22px;
+  }
+  .kqn-text {
+    font-size: 17px;
+  }
+}

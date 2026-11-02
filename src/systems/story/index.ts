@@ -13,12 +13,14 @@ import { type Era, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { t } from '../../i18n';
 import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
-import type { ThreatConfig, ThreatKind } from '../contracts';
+import type { NpcPlacement, ThreatConfig, ThreatKind } from '../contracts';
+import { isBarkLine, pickSequence } from '../../content/triggers';
+import { assembleEpilogue } from './endings/assemble';
+import { isWrapped, newMeter, tickMeter } from './meters';
 import { Voice } from './dialogue/voice';
-import { DialoguePresenter, holdSeconds } from './dialogue/presenter';
+import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { pickLine } from './dialogue/triggers';
-import { StoryEngine, type StoryEnv, type StorySlice, createStorySlice, runsOnResume } from './engine';
+import { type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingScreen } from './endings/ui';
@@ -29,7 +31,7 @@ import { StoryOverlays } from './overlays';
 import { playStorySound } from './sfx';
 import { loadBundledStories } from './stories';
 import { installTitleFlow } from './title/flow';
-import type { Action, EndingId, FlagValue, HubItem, StoryFile } from './types';
+import type { Action, ChoiceAction, EndingId, FlagValue, HubItem, MeterAction, StoryFile } from './types';
 import type { DialogueItem } from './dialogue/presenter';
 
 // ---- story-private state & events (declaration merging; see contracts.ts) -------------------
@@ -46,6 +48,10 @@ declare module '../../core/events' {
     'story:cue': { id: string; data?: Record<string, FlagValue> };
     /** The credits were closed (the story is finished). */
     'story:credits': Record<string, never>;
+    /** A choice was answered (option = the option's key, or its index). */
+    'story:choice': { id: string; option: string };
+    /** A story meter ran full (meter action `full`). */
+    'story:meter-full': { id: string };
   }
 }
 
@@ -71,6 +77,14 @@ export interface StoryHooks {
   epilogue(id: EndingId): Epilogue | null;
   choose(index: number): boolean;
   look(time: 'day' | 'dusk' | 'night'): void;
+  /** Story meters (copy; value 0 empty … 1 full). */
+  meters(): Record<string, MeterState>;
+  /** Set a meter's value (tests). */
+  meter(id: string, value: number): void;
+  /** Stand-in for the interiors feature: emit room:enter (id) / room:leave (null). */
+  room(id: string | null): void;
+  /** Id of the open choice, or null. */
+  choice(): string | null;
 }
 declare module '../../debug/hooks' {
   interface KqHooks {
@@ -111,9 +125,13 @@ export function lookFor(time: 'day' | 'dusk' | 'night'): EraLook {
 }
 
 const CAUGHT_KEY: Record<ThreatKind, string> = { pack: 'story.caught.pack', fire: 'story.caught.fire', oblivion: 'story.caught.oblivion' };
+/** Wrapped meter → the threat it starts (oil drives hunt's lantern via lantern:request). */
+const METER_THREAT: Record<string, ThreatKind> = { smoke: 'fire', vergessen: 'oblivion' };
 /** Dialogue triggered by these events belongs to the Chronik's echo scenes (it shows the subtitles). */
 const ECHO_EVENTS = new Set(['echo:start', 'echo:play', 'echo:end']);
 const QUIET_EVENTS = new Set(['player:step', 'dialogue:say', 'hunt:alert', 'lantern:oil', 'fire:progress', 'oblivion:progress']);
+/** Pack lines of these events are never spoken by the trigger runner (assembled elsewhere). */
+const ASSEMBLED_EVENTS = new Set(['epilog:line']);
 
 interface Scheduled {
   at: number;
@@ -155,10 +173,28 @@ class StoryRuntime {
   private stationPlaced = false;
   private hooksInstalled = false;
   private quietCard = false;
+  /** Seconds the caught curtain has been down (game time); hold = caughtHold / 1000. */
+  private caughtT = 0;
+  private caughtHoldS = 2.4;
+  /** Lines triggered while the curtain is down: spoken when it lifts. */
+  private wakeLines: { speaker: string; text: string; id?: string }[] = [];
+  /** The Chronik was opened from the hub's Pinnwand: reopen the hub when it closes. */
+  private reopenHub = false;
+  /** The open choice (for inline `when` options). */
+  private choiceAction: ChoiceAction | null = null;
+  /** An NPC conversation is open (npc:conversation). */
+  private talking = false;
+  private stillT = 0;
+  private lastPos = { x: 0, z: 0 };
+  /** Facts of hidden packs (examples, placeholders without ?placeholder): not counted in the hub. */
+  private readonly hiddenFacts: Set<string>;
+  private entryFlags: Map<string, string> | null = null;
 
   constructor(private readonly ctx: GameContext) {
     const bundled = loadBundledStories();
-    this.files = bundled.map((b) => b.story);
+    // test chapters (content/story/99-test.story.json, "test": true) only with ?storytest
+    const tests = ctx.params.has('storytest');
+    this.files = bundled.map((b) => b.story).filter((f) => !f.test || tests);
     this.engine = new StoryEngine(this.files, () => this.slice, {
       run: (actions, o) => this.run(actions, o.resume),
       chapterEntered: (f, o) => this.chapterEntered(f, o.resume),
@@ -177,11 +213,9 @@ class StoryRuntime {
 
     // example packs never speak; placeholder packs (content/test) only with ?placeholder
     const placeholder = ctx.params.has('placeholder');
-    this.mutedLines = new Set(
-      ctx.content.packs
-        .filter((p) => p.file.includes('/examples/') || (p.pack.placeholder && !placeholder))
-        .flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)),
-    );
+    const hidden = ctx.content.packs.filter((p) => p.file.includes('/examples/') || (p.pack.placeholder && !placeholder));
+    this.mutedLines = new Set(hidden.flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)));
+    this.hiddenFacts = new Set(hidden.flatMap((p) => (p.pack.facts ?? []).map((f) => f.id)));
     this.layer = ctx.ui.layer('story');
     this.layer.classList.remove('kq-hidden');
     this.voice = new Voice(ctx.audio);
@@ -223,7 +257,9 @@ class StoryRuntime {
         const s = ctx.state.state;
         let confirmed = 0;
         for (const c of Object.values(s.chronik)) confirmed += c.confirmed.length;
-        return { codex: s.codex.facts.length, codexTotal: ctx.content.facts.size, clues: s.inventory.clues.length, nouns: s.inventory.nouns.length, items: s.inventory.items.length, confirmed };
+        const codexTotal = [...ctx.content.facts.keys()].filter((id) => !this.hiddenFacts.has(id)).length;
+        const codex = s.codex.facts.filter((id) => !this.hiddenFacts.has(id)).length;
+        return { codex, codexTotal, clues: s.inventory.clues.length, nouns: s.inventory.nouns.length, items: s.inventory.items.length, confirmed };
       },
       radioLine: () => RADIO_LINES[this.radioIndex++ % RADIO_LINES.length] ?? null,
       drawerState: () => (ctx.state.state.inventory.items.includes('item.bussole') ? 'empty' : 'full'),
@@ -275,6 +311,23 @@ class StoryRuntime {
     // while the Chronik plays an echo (ghosts + its own subtitles) the presenter waits out of sight
     ctx.events.on('echo:start', () => (this.echoHold = true));
     ctx.events.on('echo:end', () => (this.echoHold = false));
+    // readings: mirror the Chronik's reading flag into the entry's story flag (CaseEntry.flag)
+    ctx.events.on('chronik:fill', ({ caseId, entryId }) => this.mirrorReading(caseId, entryId));
+    // Chronik opened from the Pinnwand → back to the hub overlay when it closes
+    ctx.events.on('chronik:closed', () => {
+      if (!this.reopenHub) return;
+      this.reopenHub = false;
+      if (this.inHub && !this.caughtBusy) queueMicrotask(() => this.ctx.ui.modals.count === 0 && this.hub.show());
+    });
+    ctx.events.on('npc:conversation', ({ open }) => (this.talking = open));
+    // wrapped meters mirror their feature's value
+    ctx.events.on('lantern:oil', ({ oil }) => this.mirrorMeter('oil', 1 - oil));
+    ctx.events.on('fire:progress', ({ t: v }) => this.mirrorMeter('smoke', v));
+    ctx.events.on('oblivion:progress', ({ t: v }) => this.mirrorMeter('vergessen', v));
+    ctx.events.on('lantern:empty', () => {
+      const m = this.slice.meters.oil;
+      if (m && ctx.era.current !== 'today') this.meterFull(m);
+    });
     window.addEventListener('keydown', this.onKey);
     // window.kq appears right after all systems are initialised
     const iv = window.setInterval(() => {
@@ -286,7 +339,11 @@ class StoryRuntime {
   }
 
   get slice(): StorySlice {
-    return this.ctx.state.slice('story', createStorySlice);
+    const s = this.ctx.state.slice('story', createStorySlice);
+    // saves from before round 2
+    if (!s.meters) s.meters = {};
+    if (s.room === undefined) s.room = null;
+    return s;
   }
 
   // ------------------------------------------------------------------------------------------
@@ -317,6 +374,7 @@ class StoryRuntime {
     const s = this.slice;
     this.objectives.set(s.objective);
     this.applyLook();
+    this.mirrorAllReadings();
   }
 
   start(name: string): void {
@@ -348,6 +406,11 @@ class StoryRuntime {
     for (const [kind, cfg] of Object.entries(this.slice.threats)) {
       if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });
     }
+    // meters, choices and the lossless rule belong to their chapter
+    for (const id of Object.keys(this.slice.meters)) this.stopMeter(id);
+    this.overlays.closeChoice();
+    this.choiceAction = null;
+    if (ctx.state.state.flags['chronik.noLoss'] !== undefined) ctx.state.update((st) => delete st.flags['chronik.noLoss'], 'story');
     const cp = f.checkpoint;
     if (cp) {
       if (cp.era && ctx.era.current !== cp.era) ctx.era.set(cp.era);
@@ -370,7 +433,7 @@ class StoryRuntime {
       if (at <= 0) this.exec(a);
       else this.schedule(at, () => this.exec(a));
       if (a.do === 'say') {
-        const text = a.text ?? (a.line ? this.ctx.content.dialogue.get(a.line)?.text_de : '') ?? '';
+        const text = a.text_by_era?.[this.ctx.era.current] ?? a.text ?? (a.line ? this.ctx.content.dialogue.get(a.line)?.text_de : '') ?? '';
         if (!(a.id && this.slice.said.includes(a.id) && !a.repeat)) at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
       }
     }
@@ -401,7 +464,7 @@ class StoryRuntime {
     switch (a.do) {
       case 'say': {
         const line = a.line ? ctx.content.dialogue.get(a.line) : undefined;
-        const text = a.text ?? line?.text_de;
+        const text = a.text_by_era?.[ctx.era.current] ?? a.text ?? line?.text_de;
         const speaker = a.speaker ?? line?.speaker;
         if (!text || !speaker) return;
         const id = a.id ?? a.line;
@@ -485,10 +548,180 @@ class StoryRuntime {
         ctx.save.autosave('story', true);
         return;
       case 'choice':
-        this.overlays.openChoice(a, (set) => ctx.state.update((st) => Object.assign(st.flags, set), 'story'));
+        this.choiceAction = a;
+        this.overlays.openChoice(a, (i) => this.applyChoice(a, i));
+        return;
+      case 'npc': {
+        if (a.op === 'despawn') {
+          ctx.events.emit('npc:despawn', { npc: a.npc });
+          return;
+        }
+        const p: NpcPlacement = { npc: a.npc, x: a.x ?? ctx.player.position.x, z: a.z ?? ctx.player.position.z, era: a.era ?? ctx.era.current };
+        const chapter = a.chapter ?? s.chapter;
+        if (chapter) p.chapter = chapter;
+        if (a.yaw !== undefined) p.yaw = a.yaw;
+        if (a.topics) p.topics = a.topics;
+        if (a.mood) p.mood = a.mood;
+        ctx.events.emit('npc:spawn', p);
+        return;
+      }
+      case 'meter':
+        if (a.active) this.startMeter(a);
+        else this.stopMeter(a.id);
+        return;
+      case 'echo':
+        ctx.events.emit('echo:play', { id: a.id });
+        return;
+      case 'memorial': {
+        const m: { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string } = { id: a.id, active: a.active ?? true };
+        if (a.x !== undefined) m.x = a.x;
+        if (a.z !== undefined) m.z = a.z;
+        if (a.r !== undefined) m.r = a.r;
+        if (a.era) m.era = a.era;
+        if (a.room) m.room = a.room;
+        ctx.events.emit('memorial:set', m);
+        return;
+      }
+      case 'readings':
+        this.fillReadings(a.cases);
+        return;
+      case 'grant':
+        if (ctx.systems.get('chronik') && ctx.content.clues.has(a.clue)) ctx.events.emit('clue:grant', { id: a.clue });
+        else this.give(a.clue);
         return;
     }
   }
+
+  // ---- choices ------------------------------------------------------------------------------
+
+  private applyChoice(a: ChoiceAction, i: number): void {
+    if (this.choiceAction === a) this.choiceAction = null;
+    const o = a.options[i];
+    if (!o) return;
+    const key = o.key ?? String(i);
+    this.ctx.state.update((st) => {
+      for (const [k, v] of Object.entries(o.set ?? {})) {
+        if (v === null) delete st.flags[k];
+        else st.flags[k] = v;
+      }
+      st.flags[`choice.${a.id}`] = o.key ?? i;
+    }, 'story');
+    this.ctx.events.emit('story:choice', { id: a.id, option: key });
+    if (o.then?.length) this.run(o.then, false);
+  }
+
+  /** Inline choices: take the first option whose `when` holds. */
+  private updateInlineChoice(env: StoryEnv): void {
+    const a = this.choiceAction;
+    if (!a || !this.overlays.choiceInline || this.overlays.choiceId !== a.id) return;
+    for (let i = 0; i < a.options.length; i++) {
+      const w = a.options[i]!.when;
+      if (w && evaluate(w, env, {}, `choice.${a.id}.${i}`, 0)) {
+        this.overlays.pickChoice(i);
+        return;
+      }
+    }
+  }
+
+  // ---- readings -----------------------------------------------------------------------------
+
+  private entryFlag(entryId: string): string | null {
+    if (!this.entryFlags) {
+      this.entryFlags = new Map();
+      for (const cs of this.ctx.content.cases.values()) for (const e of cs.entries) if (e.flag) this.entryFlags.set(e.id, e.flag);
+    }
+    return this.entryFlags.get(entryId) ?? null;
+  }
+
+  private mirrorReading(caseId: string, entryId: string): void {
+    const e = this.ctx.content.cases.get(caseId)?.entries.find((x) => x.id === entryId);
+    if (!e?.flag) return;
+    const flag = e.flag;
+    const v = this.ctx.state.state.flags[`reading.${caseId}.${entryId}`];
+    this.ctx.state.update((st) => {
+      if (v === undefined) delete st.flags[flag];
+      else st.flags[flag] = v;
+    }, 'story');
+  }
+
+  private mirrorAllReadings(): void {
+    const flags = this.ctx.state.state.flags;
+    const set: Record<string, FlagValue> = {};
+    for (const cs of this.ctx.content.cases.values())
+      for (const e of cs.entries) {
+        const v = flags[`reading.${cs.id}.${e.id}`];
+        if (e.flag && v !== undefined && flags[e.flag] !== v) set[e.flag] = v;
+      }
+    if (Object.keys(set).length) this.ctx.state.update((st) => Object.assign(st.flags, set), 'story');
+  }
+
+  /** "Leer lassen": every reading without an answer becomes 'offen' (bible 06-enden §6). */
+  private fillReadings(cases?: string[]): void {
+    const flags = this.ctx.state.state.flags;
+    const set: Record<string, FlagValue> = {};
+    for (const cs of this.ctx.content.cases.values()) {
+      if (cases && !cases.includes(cs.id)) continue;
+      for (const e of cs.entries) if (e.kind === 'reading' && e.flag && flags[e.flag] === undefined) set[e.flag] = 'offen';
+    }
+    if (Object.keys(set).length) this.ctx.state.update((st) => Object.assign(st.flags, set), 'story');
+  }
+
+  // ---- meters -------------------------------------------------------------------------------
+
+  private startMeter(a: MeterAction): void {
+    const ctx = this.ctx;
+    const s = this.slice;
+    const era = ctx.era.current;
+    const m = newMeter(a.id, { seconds: a.seconds, label: a.label, full: a.full, text: a.text, lossless: a.lossless, still: a.still, era: era === 'today' ? undefined : era });
+    const prev = s.meters[a.id];
+    // a resumed beat re-runs its meter action: keep the running value
+    if (prev && !prev.done && prev.seconds === m.seconds) m.value = prev.value;
+    s.meters[a.id] = m;
+    if (a.lossless) ctx.state.update((st) => (st.flags['chronik.noLoss'] = true), 'story');
+    if (a.id === 'oil') {
+      // hunt's lantern burns `seconds`; the pack (if any) keeps its configuration
+      const pack = s.threats.pack;
+      if (a.seconds) this.configureThreat(pack?.active ? { ...pack, seconds: a.seconds } : { kind: 'pack', active: false, seconds: a.seconds });
+      ctx.events.emit('lantern:request', { lit: true, refill: m.value === 0 });
+    } else if (METER_THREAT[a.id]) {
+      this.configureThreat({ kind: METER_THREAT[a.id]!, active: true, intensity: a.intensity, center: a.center, radius: a.radius, seconds: a.seconds });
+    }
+  }
+
+  private stopMeter(id: string): void {
+    const s = this.slice;
+    if (!s.meters[id]) return;
+    delete s.meters[id];
+    this.overlays.gauge(id, '', null);
+    const kind = METER_THREAT[id];
+    if (kind && s.threats[kind]?.active) this.configureThreat({ kind, active: false });
+  }
+
+  private mirrorMeter(id: string, v: number): void {
+    const m = this.slice.meters[id];
+    if (m && Number.isFinite(v)) m.value = Math.max(0, Math.min(1, v));
+  }
+
+  /** A meter ran full (custom gauge filled, lantern empty in the past). */
+  private meterFull(m: MeterState): void {
+    this.ctx.events.emit('story:meter-full', { id: m.id });
+    if (m.full === 'none' || this.caughtBusy) return;
+    if (m.full === 'caught') this.ctx.events.emit('player:caught', { by: 'pack' });
+    else this.caught('pack', m.text ?? t('story.meter.return'), t('story.meter.returnSub'));
+  }
+
+  private tickMeters(dt: number): void {
+    const ctx = this.ctx;
+    const s = this.slice;
+    const p = ctx.player.position;
+    const speed = Math.hypot(p.x - this.lastPos.x, p.z - this.lastPos.z) / Math.max(1e-4, dt);
+    this.lastPos = { x: p.x, z: p.z };
+    this.stillT = speed < 0.3 ? this.stillT + dt : 0;
+    const st = ctx.settings.state;
+    const e = { era: ctx.era.current, still: this.stillT > 0.5, hold: this.echoHold || this.talking || this.caughtBusy || this.shifting, gentle: st.gentleMode, rauhnacht: st.rauhnacht === true || ctx.state.state.flags['rauhnacht'] === true };
+    for (const m of Object.values(s.meters)) if (tickMeter(m, dt, e)) this.meterFull(m);
+  }
+
 
   private configureThreat(c: ThreatConfig): void {
     const clean: ThreatConfig = { kind: c.kind, active: c.active };
@@ -589,17 +822,38 @@ class StoryRuntime {
 
   private onEvent(name: string, payload: unknown): void {
     if (QUIET_EVENTS.has(name)) return;
+    if (name === 'room:enter' || name === 'room:leave') this.onRoom(name, payload);
     this.engine.onEvent(name, payload);
     // ContentDB dialogue triggers (echo lines are played by the Chronik's echo director itself)
-    if (ECHO_EVENTS.has(name)) return;
-    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id));
+    if (ECHO_EVENTS.has(name) || ASSEMBLED_EVENTS.has(name)) return;
+    const sys = this.ctx.systems;
+    // the npc feature plays its conversations, the barks feature its barks (rules: barks/rules.ts)
+    if (name === 'npc:talk' && sys.get('npc')) return;
+    const barks = !!sys.get('barks');
+    if (barks && name.startsWith('bark:')) return;
+    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id) && !(barks && isBarkLine(l.id)));
     if (!lines.length) return;
     const s = this.slice;
-    const line = pickLine(lines, name, payload, { era: this.ctx.era.current, flags: this.ctx.state.state.flags, chapter: s.chapter, beat: s.beat }, new Set(s.said), this.lastSaid, this.time);
-    if (!line) return;
-    this.lastSaid.set(line.id, this.time);
-    if (line.once && !s.said.includes(line.id)) s.said.push(line.id);
-    this.ctx.events.emit('dialogue:say', { speaker: line.speaker, text: line.text_de, id: line.id });
+    const st = this.ctx.state.state;
+    const seq = pickSequence(lines, name, payload, { era: this.ctx.era.current, flags: st.flags, chapter: s.chapter, beat: s.beat, clues: st.inventory.clues }, new Set(s.said), this.lastSaid, this.time);
+    for (const line of seq) {
+      this.lastSaid.set(line.id, this.time);
+      if (line.once && !s.said.includes(line.id)) s.said.push(line.id);
+      const say = { speaker: line.speaker, text: line.text_de, id: line.id };
+      // lines about being caught wait until the curtain lifts
+      if (this.caughtBusy) this.wakeLines.push(say);
+      else this.ctx.events.emit('dialogue:say', say);
+    }
+  }
+
+  /** room:enter / room:leave { roomId } from the interiors feature (not declared here). */
+  private onRoom(name: string, payload: unknown): void {
+    const p = (payload ?? {}) as { roomId?: unknown; id?: unknown };
+    const id = typeof p.roomId === 'string' ? p.roomId : typeof p.id === 'string' ? p.id : null;
+    if (!id) return;
+    const s = this.slice;
+    if (name === 'room:enter') s.room = id;
+    else if (s.room === id) s.room = null;
   }
 
   private showLine(p: { speaker: string; text: string; ms?: number; fiction?: boolean; id?: string }): void {
@@ -622,7 +876,11 @@ class StoryRuntime {
 
   private useHub(item: HubItem): void {
     this.ctx.events.emit('hub:use', { item });
-    if (item === 'chronik') this.ctx.events.emit('chronik:open', {});
+    if (item === 'chronik') {
+      // the Chronik closes every modal (the hub too) when it opens: come back here afterwards
+      this.reopenHub = !!this.ctx.systems.get('chronik');
+      this.ctx.events.emit('chronik:open', {});
+    }
   }
 
   private updateHub(): void {
@@ -652,32 +910,62 @@ class StoryRuntime {
 
   private caughtHold = 2400;
 
-  caught(by: ThreatKind): void {
+  /**
+   * The curtain: down at once, the threats stop, the player stands still; after `caughtHold` of
+   * GAME time (kq.step advances it) the player wakes at the checkpoint. `text` overrides the line
+   * (meters returning the player); with the lossless rule (chronik.noLoss) the pack "brings you home".
+   */
+  caught(by: ThreatKind, text?: string, sub?: string): void {
     if (this.caughtBusy) return;
     this.caughtBusy = true;
     const ctx = this.ctx;
     this.cancelScheduled();
     this.presenter.clear();
-    this.overlays.curtainDown(t(CAUGHT_KEY[by] ?? CAUGHT_KEY.pack), t('story.caught.sub'));
-    ctx.pause.push('story-caught');
-    window.setTimeout(() => {
-      for (const [kind, cfg] of Object.entries(this.slice.threats)) if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });
-      if (ctx.era.current !== 'today') this.requestShift('today', 'caught', true);
-      const cp = this.engine.chapter()?.checkpoint ?? { x: STATION.spawn.x, z: STATION.spawn.z, yaw: STATION.spawn.yaw };
-      this.teleport(cp.x, cp.z, cp.yaw);
-      this.applyLook();
-      ctx.pause.pop('story-caught');
-      this.engine.resume(true);
-      this.overlays.curtainUp(t('story.caught.wake'));
-      this.caughtBusy = false;
-    }, this.caughtHold);
+    this.overlays.closeChoice();
+    this.choiceAction = null;
+    this.wakeLines = [];
+    const noLoss = ctx.state.state.flags['chronik.noLoss'] === true;
+    const line = text ?? (noLoss && by === 'pack' ? t('story.caught.home') : t(CAUGHT_KEY[by] ?? CAUGHT_KEY.pack));
+    this.overlays.curtainDown(line, sub ?? (noLoss ? t('story.caught.homeSub') : t('story.caught.sub')));
+    for (const [kind, cfg] of Object.entries(this.slice.threats)) if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });
+    ctx.player.frozen = true;
+    this.caughtT = 0;
+    this.caughtHoldS = this.caughtHold / 1000;
     this.caughtHold = 2400;
   }
 
+  private updateCaught(dt: number): void {
+    const ctx = this.ctx;
+    ctx.player.frozen = true;
+    this.caughtT += dt;
+    if (this.caughtT < this.caughtHoldS) return;
+    if (ctx.era.current !== 'today') this.requestShift('today', 'caught', true);
+    const cp = this.engine.chapter()?.checkpoint ?? { x: STATION.spawn.x, z: STATION.spawn.z, yaw: STATION.spawn.yaw };
+    this.teleport(cp.x, cp.z, cp.yaw);
+    this.applyLook();
+    ctx.player.frozen = false;
+    // full meters start over
+    for (const m of Object.values(this.slice.meters)) {
+      if (!isWrapped(m.id)) m.value = 0;
+      m.done = false;
+    }
+    this.caughtBusy = false;
+    this.engine.resume(true);
+    this.overlays.curtainUp(t('story.caught.wake'));
+    const lines = this.wakeLines;
+    this.wakeLines = [];
+    for (const l of lines) ctx.events.emit('dialogue:say', l);
+  }
+
   epilogue(id: EndingId): Epilogue | null {
+    const s = this.ctx.state.state;
+    // the endings pack (epilog:line blocks, bible 06-enden §6) wins; the story file's data is the fallback
+    const lines = [...this.ctx.content.dialogue.values()].filter((l) => !this.mutedLines.has(l.id));
+    const name = this.slice.name;
+    const fromPack = assembleEpilogue(lines, id, s.flags, { fill: (x) => substituteName(x, name) });
+    if (fromPack) return fromPack;
     const f = this.files.find((x) => x.epilogue);
     if (!f?.epilogue) return null;
-    const s = this.ctx.state.state;
     return composeEpilogue(f.epilogue, id, { chronik: s.chronik, flags: s.flags });
   }
 
@@ -688,6 +976,14 @@ class StoryRuntime {
   update(dt: number): void {
     const ctx = this.ctx;
     this.time += dt;
+    // presentation on game time: dialogue typing, the choice fuse, the caught curtain
+    this.presenter.update(this.echoHold ? 0 : dt);
+    this.overlays.tickChoice(dt);
+    if (this.caughtBusy) {
+      this.updateCaught(dt);
+      // under the curtain the story stands still (as the paused game did before)
+      if (this.caughtBusy) return;
+    }
     if (this.queue.length) {
       const due = this.queue.filter((q) => q.at <= this.time);
       if (due.length) {
@@ -727,7 +1023,12 @@ class StoryRuntime {
       stance: ctx.player.stance,
       lantern: ctx.player.stats.lanternLit,
       caseFacts: (id) => ctx.content.cases.get(id)?.entries.filter((e) => e.kind === 'fact').map((e) => e.id) ?? null,
+      room: this.slice.room,
+      meters: Object.fromEntries(Object.values(this.slice.meters).map((m) => [m.id, m.value])),
+      readingFlag: (id) => this.entryFlag(id),
     };
+    this.tickMeters(dt);
+    this.updateInlineChoice(env);
     this.engine.tick(dt, env);
     if (this.pendingAutosave) {
       this.pendingAutosave = false;
@@ -780,9 +1081,9 @@ class StoryRuntime {
   frame(dt: number): void {
     const ctx = this.ctx;
     if (!this.hooksInstalled && window.kq) this.installHooks();
-    const paused = ctx.pause.paused;
-    this.presenter.update(paused || this.echoHold ? 0 : dt);
-    this.overlays.tickChoice(dt);
+    // a modal choice pauses the game: its fuse burns on in real time (kq.step drives it headless)
+    if (ctx.pause.paused && !ctx.loop.manual && this.overlays.choiceOpen && !this.overlays.choiceInline) this.overlays.tickChoice(dt);
+    for (const m of Object.values(this.slice.meters)) if (!isWrapped(m.id)) this.overlays.gauge(m.id, m.label ?? m.id, m.value);
     const p = ctx.player.position;
     const heading = ((-ctx.player.yaw * 180) / Math.PI + 360) % 360;
     const hudVisible = !ctx.ui.hud.el.classList.contains('kq-hidden');
@@ -793,7 +1094,7 @@ class StoryRuntime {
     this.station.setVisible(today);
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
-    this.presenter.el.style.visibility = hudVisible && !this.echoHold ? '' : 'hidden';
+    this.presenter.el.style.visibility = hudVisible && !this.echoHold && !this.talking ? '' : 'hidden';
   }
 
   private installHooks(): void {
@@ -831,6 +1132,18 @@ class StoryRuntime {
         this.slice.look = time;
         this.applyLook();
       },
+      meters: () => structuredClone(this.slice.meters),
+      meter: (id, value) => {
+        const m = this.slice.meters[id];
+        if (m) m.value = Math.max(0, Math.min(1, value));
+      },
+      room: (id) => {
+        const cur = this.slice.room;
+        const ev = this.ctx.events as unknown as { emit(n: string, p: unknown): void };
+        if (cur && cur !== id) ev.emit('room:leave', { roomId: cur });
+        if (id) ev.emit('room:enter', { roomId: id });
+      },
+      choice: () => this.overlays.choiceId,
     };
   }
 

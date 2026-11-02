@@ -169,6 +169,11 @@ class Hunt {
       }
     });
     ev.on('threat:configure', (c) => this.configure(c));
+    // round 2: the story's oil meter lights (and refills) the lantern for a timed beat
+    ev.on('lantern:request', ({ lit, refill }) => {
+      if (refill) this.refill();
+      this.setLit(lit, false);
+    });
     ev.on('hub:enter', () => {
       this.stop('hub');
       this.refill();

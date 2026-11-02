@@ -140,6 +140,16 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   });
   expect(await page.evaluate(() => window.kq!.story!.state().inHub)).toBe(true);
   await page.evaluate(() => window.kq!.press('KeyE', 2));
+  // the station's own clues (Marlene's note and stories from the chapter packs) take E first:
+  // read them, then the hub
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 8 && !document.querySelector('[data-testid="hub"]'); i++) {
+      k.ctx.ui.modals.closeAll();
+      k.step(2);
+      k.press('KeyE', 2);
+    }
+  });
   await expect(page.getByTestId('hub')).toBeVisible();
   await shot(page, 'hub');
   await page.getByTestId('hub-chronik').click();
@@ -202,7 +212,10 @@ test('story: caught by the pack → back at the field station', async ({ page })
   await expect(page.getByTestId('story-curtain')).toHaveClass(/kqs-down/);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SCREENS}/story-caught.png` });
-  await page.waitForFunction(() => window.kq!.story!.state().era === 'today', null, { timeout: 30_000 });
+  // the curtain runs on game time: nothing happens until the loop steps (9 s hold)
+  expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('1789');
+  await page.evaluate(() => window.kq!.step(9 * 60 + 5));
+  expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
   expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(5);
   // resumed at the checkpoint beat (p9: the first shift)

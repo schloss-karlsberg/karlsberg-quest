@@ -191,13 +191,15 @@ describe('story files', () => {
     expect(parseErrors).toEqual([]);
     const r = validateStories(files);
     expect(r.errors.map((e) => `${e.file} ${e.id ?? ''}: ${e.message}`)).toEqual([]);
-    expect(r.stats.chapters).toBe(6);
+    // + the test chapter (99-test.story.json, "test": true; loaded only with ?storytest)
+    expect(r.stats.chapters).toBe(7);
+    expect(files.filter((f) => f.story.test).map((f) => f.story.chapter)).toEqual(['test']);
     expect(r.stats.beats).toBeGreaterThan(35);
     const prolog = files.find((f) => f.story.chapter === 'prolog')!.story;
     expect(prolog.placeholder).toBeFalsy();
     expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
     // chapters chain to the endings
-    const order = files.map((f) => f.story).sort((a, b) => a.order - b.order);
+    const order = files.map((f) => f.story).filter((f) => !f.test).sort((a, b) => a.order - b.order);
     for (let i = 0; i < order.length - 1; i++) expect(order[i]!.next).toBe(order[i + 1]!.chapter);
     expect(order.at(-1)!.epilogue).toBeTruthy();
   });

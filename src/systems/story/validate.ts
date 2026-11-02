@@ -30,6 +30,8 @@ const THREATS = new Set(['pack', 'fire', 'oblivion']);
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match']);
 const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
+const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur']);
+const METER_FULL = new Set(['return', 'caught', 'none']);
 
 export function validateStories(files: { file: string; story: StoryFile }[], refs: StoryRefs = {}): StoryValidation {
   const issues: Issue[] = [];
@@ -189,6 +191,31 @@ function checkCond(c: Condition | undefined, file: string, where: string, err: R
     case 'hub':
       if (!HUB.has(String(r.hub))) err(file, where, `unknown hub item '${String(r.hub)}'`);
       break;
+    case 'room':
+      if (!isStr(r.room)) err(file, where, 'room needs a room id');
+      break;
+    case 'talked': {
+      const q = r.talked as Record<string, unknown>;
+      if (!q || typeof q !== 'object' || !isStr(q.npc)) err(file, where, 'talked needs { npc, chapter?, topic? }');
+      break;
+    }
+    case 'reading':
+      if (!isStr(r.reading)) err(file, where, 'reading needs a story flag or entry id');
+      if (r.eq !== undefined && !isStr(r.eq)) err(file, where, 'reading: eq must be a string');
+      break;
+    case 'meter': {
+      const m = r.meter as Record<string, unknown>;
+      if (!m || !isStr(m.id)) err(file, where, 'meter needs { id, gte? | lte? | full? }');
+      else if (m.gte === undefined && m.lte === undefined && m.full !== true) err(file, where, `meter '${String(m.id)}' needs gte, lte or full: true`);
+      else for (const k of ['gte', 'lte'] as const) if (m[k] !== undefined && (!isNum(m[k]) || (m[k] as number) < 0 || (m[k] as number) > 1)) err(file, where, `meter ${k} must be 0..1`);
+      break;
+    }
+    case 'chosen':
+      if (!isStr(r.chosen)) err(file, where, 'chosen needs a choice id');
+      break;
+    case 'chapterTimer':
+      if (!isNum(r.chapterTimer) || (r.chapterTimer as number) < 0) err(file, where, 'chapterTimer needs seconds ≥ 0');
+      break;
     default:
       break;
   }
@@ -214,6 +241,10 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
           if (refs.dialogue && !refs.dialogue.has(a.line)) warn(file, where, `say: dialogue line '${a.line}' not in ContentDB (yet)`);
         } else if (!isStr(a.speaker) || !isStr(a.text)) err(file, where, 'say needs speaker + text, or line');
         if (a.id !== undefined && !ID_RE.test(a.id)) err(file, where, `say: malformed id '${a.id}'`);
+        if (a.text_by_era !== undefined) {
+          if (!a.text_by_era || typeof a.text_by_era !== 'object') err(file, where, 'say: text_by_era must be an object');
+          else for (const [era, txt] of Object.entries(a.text_by_era)) if (!isEra(era) || !isStr(txt)) err(file, where, `say: text_by_era.${era} needs a known era and text`);
+        }
         break;
       case 'objective':
         if (a.text !== undefined && a.text !== null && !isStr(a.text)) err(file, where, 'objective text must be a string or null');
@@ -264,8 +295,46 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'choice':
         if (!isStr(a.id) || !isStr(a.prompt) || !Array.isArray(a.options) || a.options.length < 2) err(file, where, 'choice needs id, prompt and ≥ 2 options');
-        else for (const o of a.options) if (!isStr(o.label) || !o.set || typeof o.set !== 'object') err(file, where, `choice '${a.id}': option needs label and set`);
+        else
+          for (const o of a.options) {
+            if (!isStr(o.label) || !o.set || typeof o.set !== 'object') err(file, where, `choice '${a.id}': option needs label and set`);
+            if (o.key !== undefined && !ID_RE.test(String(o.key))) err(file, where, `choice '${a.id}': malformed option key '${String(o.key)}'`);
+            if (o.when !== undefined) checkCond(o.when, file, `${where}:choice/${a.id}`, err);
+            if (o.then !== undefined) lines += checkActions(o.then, file, `${where}:choice/${a.id}`, err, warn, refs, chapters);
+          }
         if (a.fallback !== undefined && !(a.fallback >= 0 && a.fallback < (a.options?.length ?? 0))) err(file, where, `choice '${a.id}': fallback out of range`);
+        if (a.modal === false && !a.seconds && !(a.options ?? []).some((o) => o.when)) warn(file, where, `inline choice '${a.id}' has neither seconds nor 'when' options: it can only be picked by kq.story.choose`);
+        break;
+      case 'npc':
+        if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "npc needs op 'spawn' or 'despawn'");
+        if (!isStr(a.npc)) err(file, where, 'npc needs an npc id');
+        else if (a.npc !== '*' && !NPCS.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
+        if (a.op === 'spawn' && ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z))))) err(file, where, 'npc spawn needs both numeric x and z (or neither: at the player)');
+        if (a.era !== undefined && !isEra(a.era)) err(file, where, `npc: unknown era '${String(a.era)}'`);
+        if (a.mood !== undefined && !['warm', 'eerie', 'neutral'].includes(a.mood)) err(file, where, `npc: unknown mood '${String(a.mood)}'`);
+        break;
+      case 'meter':
+        if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'meter needs an id');
+        if (typeof a.active !== 'boolean') err(file, where, 'meter needs active: true/false');
+        if (a.active && a.id !== 'oil' && !isNum(a.seconds) && a.id !== 'smoke' && a.id !== 'vergessen') err(file, where, `meter '${a.id}' needs seconds`);
+        if (a.seconds !== undefined && (!isNum(a.seconds) || a.seconds <= 0)) err(file, where, 'meter seconds must be > 0');
+        if (a.full !== undefined && !METER_FULL.has(a.full)) err(file, where, `meter: unknown full '${String(a.full)}'`);
+        break;
+      case 'echo':
+        if (!isStr(a.id)) err(file, where, 'echo needs a clue id');
+        else if (refs.clues && !refs.clues.has(a.id)) warn(file, where, `echo: clue '${a.id}' not in ContentDB (yet)`);
+        break;
+      case 'memorial':
+        if (!isStr(a.id)) err(file, where, 'memorial needs an id');
+        if (a.active !== false && !isStr(a.room) && (!isNum(a.x) || !isNum(a.z))) err(file, where, 'memorial needs x/z (+ r) or a room');
+        if (a.era !== undefined && !isEra(a.era)) err(file, where, `memorial: unknown era '${String(a.era)}'`);
+        break;
+      case 'readings':
+        if (a.fill !== 'offen') err(file, where, "readings needs fill: 'offen'");
+        break;
+      case 'grant':
+        if (!isStr(a.clue)) err(file, where, 'grant needs a clue');
+        else if (refs.clues && !refs.clues.has(a.clue)) warn(file, where, `grant: clue '${a.clue}' not in ContentDB (yet)`);
         break;
       case 'unlock':
         if (!chapters.has(a.chapter)) err(file, where, `unlock: unknown chapter '${a.chapter}'`);

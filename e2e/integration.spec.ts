@@ -109,6 +109,10 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await shot(page, '03-hub-chronik');
   await page.evaluate(() => window.kq!.chronik!.close());
   await expect(page.locator('.ck-board')).toBeHidden();
+  // opened from the Pinnwand: closing the Chronik returns to the hub overlay
+  await expect(page.getByTestId('hub')).toBeVisible();
+  await page.getByTestId('hub-leave').click();
+  await expect(page.getByTestId('hub')).toBeHidden();
 
   // ---- 3. objective: p1 done (Laub's leaf + Lageplan) → p2, the dam ---------------------------
   await page.evaluate(() => {
@@ -287,10 +291,11 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   // hunt and fx leave the words to the story
   const huntTitle = await page.evaluate(() => Number(getComputedStyle(document.querySelector('.kq-hunt-caught h2')!).opacity));
   expect(huntTitle).toBe(0);
-  // the curtain stays down 2.4 s (real time): capture it without waiting for extra frames
+  // the curtain stays down 2.4 s of game time (manual mode: until the loop steps)
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${SCREENS}/int-12-caught.png` });
-  await page.waitForFunction(() => window.kq!.story!.state().era === 'today', null, { timeout: 60_000 });
+  await page.evaluate(() => window.kq!.step(150));
+  expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   await page.evaluate(() => window.kq!.step(6));
   const back = await page.evaluate(() => ({
     story: window.kq!.story!.state(),

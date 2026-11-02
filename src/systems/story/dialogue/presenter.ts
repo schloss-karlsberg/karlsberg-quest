@@ -1,8 +1,10 @@
 /**
  * Dialogue presenter: a queue of spoken lines shown as a field-book card with an etched portrait,
  * a typing effect and a procedural voice murmur. Enter / click skips (finish typing → next line).
- * Driven by `update(realDt)` from the system's frame() (stops while the game is paused).
+ * Driven by `update(dt)` from the system's fixed update (game time: stops while the game is
+ * paused, and headless `kq.step` advances it deterministically).
  */
+import { fillText } from '../../../content/triggers';
 import { h, svg } from '../../../ui/dom';
 import { t } from '../../../i18n';
 import { ensurePortraitDefs, portraitSvg } from './portraits';
@@ -44,8 +46,9 @@ export interface PresenterOptions {
 
 const CHARS_PER_S = 42;
 
-export function substituteName(text: string, name: string): string {
-  return text.replace(/\{Name\}/g, name || t('story.name.default'));
+/** Placeholders: {Name}/{name}, {jahre:1793}, {jahr} (see content/triggers.ts fillText). */
+export function substituteName(text: string, name: string, year: number | null = new Date().getFullYear()): string {
+  return fillText(text, { name, year, fallbackName: t('story.name.default') });
 }
 
 /** Seconds a fully typed line stays (reading time). */
@@ -171,7 +174,7 @@ export class DialoguePresenter {
     this.el.classList.toggle('kqs-speaking', c.typed < c.text.length);
   }
 
-  /** Real-time update (seconds). Pass 0 while the game is paused. */
+  /** Advance typing / hold (seconds of game time). */
   update(dt: number): void {
     if (this.mouthTimer > 0) {
       this.mouthTimer -= dt;

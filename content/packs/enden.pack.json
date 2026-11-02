@@ -64,7 +64,7 @@
     {
       "id": "laub.end.museum_1",
       "speaker": "laub",
-      "text_de": "Abgeblasen. Nach zweihundertdreiunddreißig Jahren. Ich werde das als Überstunden einreichen.",
+      "text_de": "Abgeblasen. Nach {jahre:1793} Jahren. Ich werde das als Überstunden einreichen.",
       "trigger": {
         "event": "story:ending",
         "id": "museum",

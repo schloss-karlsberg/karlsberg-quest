@@ -441,6 +441,89 @@
   font-size: 18px;
 }
 
+.kqs-choice-note {
+  font-family: var(--hand);
+  font-size: 19px;
+  opacity: 0.8;
+  margin: 4px 0 0;
+}
+/* inline choice (the game runs on): a small field-book slip at the top of the screen */
+.kqs-choice-card {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  transform: translate(-50%, -8px);
+  width: min(440px, calc(100vw - 32px));
+  padding: 14px 18px 6px;
+  background: linear-gradient(#efe4cb, #e2d3b2);
+  color: #2a2118;
+  border: 1px solid rgba(42, 33, 24, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition:
+    opacity 0.5s,
+    transform 0.5s;
+  pointer-events: none;
+}
+.kqs-choice-card.kqs-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.kqs-choice-inline .kqs-choice-prompt {
+  font-size: 19px !important;
+  margin: 0;
+}
+.kqs-choice-inline .kqs-choice-options {
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 16px;
+}
+.kqs-choice-inline .kqs-fuse {
+  margin: 6px 0 24px;
+}
+.kqs-reduced .kqs-choice-card {
+  transition: none;
+}
+
+/* ---------- story gauges (custom meters) ---------- */
+.kqs-gauges {
+  position: absolute;
+  left: 22px;
+  top: 124px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.kqs-gauge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #efe4cb;
+  font-family: var(--hand);
+  font-size: 18px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.kqs-gauge-bar {
+  position: relative;
+  width: 120px;
+  height: 7px;
+  border: 1px solid rgba(239, 228, 203, 0.6);
+  background: rgba(10, 8, 6, 0.45);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.kqs-gauge-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, #c9a76a, #e3b964);
+}
+.kqs-gauge.kqs-warn .kqs-gauge-fill {
+  background: linear-gradient(90deg, #d9832f, #b0402a);
+}
+
 /* ---------- hub overlay ---------- */
 .kq-modal.kqs-hub {
   width: min(900px, 96vw);

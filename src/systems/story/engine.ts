@@ -7,6 +7,7 @@
  */
 import type { Era } from '../../core/era';
 import type { ThreatConfig } from '../contracts';
+import { valueKey } from '../../content/triggers';
 import type { Action, Beat, Condition, EndingId, EventCond, FlagValue, Reaction, StoryFile } from './types';
 
 export interface ObjectiveState {
@@ -43,6 +44,27 @@ export interface StorySlice {
   ending: EndingId | null;
   /** Credits seen. */
   finished: boolean;
+  /** Story meters (oil, smoke, vergessen, custom gauges), see meters.ts. */
+  meters: Record<string, MeterState>;
+  /** Room the player is in (room:enter / room:leave from the interiors feature). */
+  room: string | null;
+}
+
+/** A chapter meter (persisted). value 0 = empty gauge … 1 = full (out of time). */
+export interface MeterState {
+  id: string;
+  value: number;
+  seconds: number;
+  label?: string;
+  full: 'return' | 'caught' | 'none';
+  text?: string;
+  lossless?: boolean;
+  /** Extra fill factor while standing still (custom gauges). */
+  still?: number;
+  /** Era the meter belongs to (it only runs there). */
+  era?: string;
+  /** Already reported full (one return per fill). */
+  done?: boolean;
 }
 
 export function createStorySlice(): StorySlice {
@@ -64,6 +86,8 @@ export function createStorySlice(): StorySlice {
     look: 'day',
     ending: null,
     finished: false,
+    meters: {},
+    room: null,
   };
 }
 
@@ -81,6 +105,16 @@ export interface StoryEnv {
   lantern: boolean;
   /** Fact entry ids of a case (ContentDB), or null when the case is unknown. */
   caseFacts(caseId: string): string[] | null;
+  /** Room the player is in (interiors), null outside. */
+  room?: string | null;
+  /** Seconds since the chapter started. */
+  chapterTime?: number;
+  /** The running chapter (filled in by the engine). */
+  chapter?: string | null;
+  /** Meter values 0..1 by id (story meters and the fx/hunt meters they wrap). */
+  meters?: Readonly<Record<string, number>>;
+  /** Reading entry id → its story flag (CaseEntry.flag), for `reading` conditions by entry id. */
+  readingFlag?(entryId: string): string | null;
 }
 
 export interface RunOptions {
@@ -98,7 +132,7 @@ export interface StoryHost {
 }
 
 /** Actions that are NOT repeated when a beat is resumed (unless `onResume: true`). */
-const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending']);
+const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant']);
 
 export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);
@@ -116,6 +150,7 @@ export function walkEvents(c: Condition, key: string, fn: (ev: EventCond, key: s
   else if ('event' in c) fn(c, key);
   else if ('hub' in c) fn({ event: 'hub:use', match: { item: c.hub } }, key);
   else if ('caseComplete' in c) fn({ event: 'chronik:case-complete', match: { caseId: c.caseComplete } }, key);
+  else if ('room' in c) fn({ event: 'room:enter', match: { roomId: c.room } }, key);
 }
 
 export function eventMatches(ev: EventCond, name: string, payload: unknown): boolean {
@@ -172,6 +207,30 @@ export function evaluate(c: Condition, env: StoryEnv, latched: Record<string, nu
   if ('map' in c) return env.map;
   if ('stance' in c) return env.stance === c.stance;
   if ('lantern' in c) return env.lantern === c.lantern;
+  if ('room' in c) return env.room === c.room || (latched[key] ?? 0) >= 1;
+  if ('talked' in c) {
+    const t = c.talked;
+    const ch = t.chapter ?? env.chapter ?? '';
+    return truthy(env.flags[`talked.${String(ch)}.${t.npc}${t.topic ? `.${t.topic}` : ''}`]);
+  }
+  if ('reading' in c) {
+    const flag = c.reading.startsWith('entry.') ? env.readingFlag?.(c.reading) ?? null : c.reading;
+    const v = flag ? env.flags[flag] : undefined;
+    if (typeof v !== 'string' || !v) return false;
+    return c.eq === undefined || v === c.eq || valueKey(v) === valueKey(c.eq);
+  }
+  if ('meter' in c) {
+    const v = env.meters?.[c.meter.id];
+    if (v === undefined) return false;
+    if (c.meter.full) return v >= 1;
+    return (c.meter.gte === undefined || v >= c.meter.gte) && (c.meter.lte === undefined || v <= c.meter.lte);
+  }
+  if ('chosen' in c) {
+    const v = env.flags[`choice.${c.chosen}`];
+    if (v === undefined) return false;
+    return c.option === undefined || String(v) === String(c.option);
+  }
+  if ('chapterTimer' in c) return (env.chapterTime ?? 0) >= c.chapterTimer;
   return false;
 }
 
@@ -305,6 +364,7 @@ export class StoryEngine {
     if (!f || !b) return;
     s.beatTime += dt;
     s.chapterTime += dt;
+    env = { ...env, chapterTime: s.chapterTime, chapter: s.chapter };
     this.react(f.on ?? [], 'c', env, s.chapterTime);
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return; // a reaction switched beats
     this.react(b.on ?? [], 'b', env, s.beatTime);

@@ -227,7 +227,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`, `fx`,
-`chronik`, `story`. They talk only through the events in `src/systems/contracts.ts` (plus the
+`chronik`, `story`, `npc`, `barks`. They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below) and `ctx.state`. How the four work together:
 
 ```
@@ -238,6 +238,11 @@ hunt, fx ──player:caught──▶ story (curtain, threats off, instant retur
 story (hub Pinnwand) ──chronik:open──▶ chronik board      chronik ──dialogue:say (laub)──▶ story presenter
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
 story:give ──clue:found / noun:learned (story clue ids, written to state.inventory)──▶ everyone
+story ──npc:spawn/despawn──▶ npc ──npc:talk / npc:conversation / bark:npc-near──▶ story, barks
+npc, story(grant) ──clue:grant──▶ chronik (discover without a card)
+story(meter oil) ──lantern:request──▶ hunt      story(memorial) ──memorial:set──▶ barks
+interiors ──room:enter/leave {roomId}──▶ story (room condition), barks (burning rooms, memorial rooms)
+barks ──dialogue:say──▶ story presenter
 ```
 
 Ownership rules that came out of integration:
@@ -252,6 +257,13 @@ Ownership rules that came out of integration:
   fire outside 1793-07 and oblivion outside 1796 by itself.
 - **Echo lines** (dialogue with trigger `{event:'echo:start'}`) are played by the Chronik; the
   story's trigger runner skips `echo:*` events, and dialogue from `placeholder` packs unless `?placeholder`.
+- **Conversations and barks**: `npc:talk` lines are played by the npc system, bark lines
+  (`*.bark.*`, `marlene.gen.*`) by the barks system; the story runner speaks them only when that
+  system is missing. Trigger matching is shared: `src/content/triggers.ts`.
+- **Story presentation runs on game time**: dialogue typing, the choice fuse and the caught curtain
+  advance in `update` (headless `kq.step` is deterministic); a modal choice's fuse burns in real time
+  while the modal pauses the game. Being carried home (`shift:request {reason:'caught'}`) does not
+  count in `meta.shifts`.
 
 ### hunt (`src/systems/hunt/`) – die Meute, der Pikeur, the lantern
 - Starts only via `threat:configure {kind:'pack'}` (extra fields `hounds?, pikeur?, sight?, seed?`)
@@ -306,8 +318,33 @@ Ownership rules that came out of integration:
   curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
   threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the prologue.
+- Round 2: conditions `room`, `talked`, `reading`, `meter`, `chosen`, `chapterTimer`; actions `npc`,
+  `meter` (oil / smoke / vergessen / custom gauges, `lossless` → `flags['chronik.noLoss']`), `echo`,
+  `memorial`, `readings`, `grant`, `say.text_by_era`, choices with `modal:false` + `when` / `key` /
+  `then` (`choice.<id>` flags, `story:choice`). Mirrors `CaseEntry.flag` on `chronik:fill`. Epilogue
+  assembled from the endings pack's `epilog:line` blocks. Test chapters (`"test": true`) load only
+  with `?storytest`. Closing the Chronik opened from the Pinnwand reopens the hub.
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
-  epilogue/choose/look`.
+  epilogue/choose/look/meters/meter/room/choice`.
+
+### npc (`src/systems/npc/`) – ghostly people, conversations
+- `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?}` / `npc:despawn {npc}` (story `npc`
+  action). A figure: merged capsules/cones, two shader passes (sepia smoke body with screen-space
+  hatching that writes depth, additive fresnel glow), idle motion per body part, feet dissolving
+  into smoke, motes, a light pool; warm amber for Hanne, cold flicker for the others, era tint;
+  visible only in its era; turns towards the player. Reduced motion calms it.
+- E within 2.8 m → conversation (modal page at the bottom; typing on the UI clock; keys 1–n,
+  E/Enter/Space advance): `greet`, topics from the pack's `npc:talk` lines, `bye`. Emits `npc:talk`,
+  `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.
+- State `systems.npc {placed, said}`. Hooks `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state`.
+
+### barks (`src/systems/barks/`) – Laub's and Marlene's remarks
+- Rules (`rules.ts`, bible 08-stimmen): random line per group, same line not within 600 s, one bark
+  per 45 s, groups answering the same event take turns; quiet during echoes, dialogue, conversations,
+  modals, the curtain, a chapter's first 12 s, at memorials (Rondell built in, `memorial:set`,
+  `flags['barks.quiet']`). Requests wait 8 s for a quiet moment.
+- Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
+- State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
 
 ## 13. Licences
 
