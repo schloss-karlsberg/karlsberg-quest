@@ -82,6 +82,9 @@ interface BRT {
   char: number[];
   gone: number[];
   ceil: number[];
+  /** Heat before the flames (0..1): the storey below or a neighbour burns. */
+  heat: number[];
+  floor: number[];
   glassY: [number, number];
 }
 
@@ -174,6 +177,8 @@ function switchMode(ctx: GameContext): void {
       char: new Array<number>(MAX_ROOMS).fill(0),
       gone: new Array<number>(MAX_ROOMS).fill(0),
       ceil: Array.from({ length: MAX_ROOMS }, (_, i) => (bp.rooms[i] !== undefined ? cur.plan.rooms[bp.rooms[i]!]!.ceiling : 1000)),
+      heat: new Array<number>(MAX_ROOMS).fill(0),
+      floor: Array.from({ length: MAX_ROOMS }, (_, i) => (bp.rooms[i] !== undefined ? cur.plan.rooms[bp.rooms[i]!]!.floor : -1000)),
       glassY: [bp.floor + 0.2, y1],
     });
   }
@@ -217,6 +222,8 @@ function build(ctx: GameContext, b: BRT): void {
   u.uRoomChar!.value = b.char;
   u.uRoomGone!.value = b.gone;
   u.uRoomCeil!.value = b.ceil;
+  u.uRoomHeat!.value = b.heat;
+  u.uRoomFloor!.value = b.floor;
   u.uOpenSky!.value = rt.mode === 'intact' ? 0 : 1;
   u.uDust!.value = look.sheets ? 0.5 : look.looted ? 0.3 : rt.mode === 'ruin' ? 0.5 : 0;
   u.uFade!.value = 0;
@@ -225,7 +232,7 @@ function build(ctx: GameContext, b: BRT): void {
   mesh.frustumCulled = true;
   mesh.matrixAutoUpdate = false;
   ctx.scene.add(mesh);
-  const flames = new FlameLayer(built.flames, b.fire, b.smoke);
+  const flames = new FlameLayer(built.flames, b.fire, b.smoke, b.heat);
   ctx.scene.add(flames.additive, flames.smoke);
   b.built = built;
   b.mesh = mesh;
@@ -324,6 +331,7 @@ function clearFires(ctx: GameContext): void {
     b.smoke.fill(0);
     b.char.fill(0);
     b.gone.fill(0);
+    b.heat.fill(0);
   }
 }
 
@@ -334,16 +342,31 @@ function animateFire(ctx: GameContext, dt: number): void {
   if (!cur) return;
   const gentle = ctx.settings.state.gentleMode;
   for (const b of rt.brt.values()) {
+    // what burns in this building: the heat reaches the rooms that don't burn yet (more from below)
+    let burnStorey = Infinity;
+    let anyBurn = false;
+    for (const ri of b.bp.rooms) {
+      const st = rt.fires.get(cur.plan.rooms[ri]!.id);
+      if (st === 'burning' || st === 'collapsed') {
+        anyBurn = true;
+        burnStorey = Math.min(burnStorey, cur.plan.rooms[ri]!.storey);
+      }
+    }
     b.bp.rooms.forEach((ri, li) => {
       if (li >= MAX_ROOMS) return;
-      const st = rt!.fires.get(cur.plan.rooms[ri]!.id);
+      const room = cur.plan.rooms[ri]!;
+      const st = rt!.fires.get(room.id);
+      const ambient = anyBurn && !st ? (burnStorey < room.storey ? 0.55 : 0.32) : 0;
       const tf = st === 'burning' ? 1 : st === 'collapsed' ? 0.45 : 0;
-      const ts = (st === 'smoke' ? 0.55 : st === 'burning' ? 1 : st === 'collapsed' ? 0.7 : 0) * (gentle ? 0.6 : 1);
+      const ts = (st === 'smoke' ? 0.55 : st === 'burning' ? 1 : st === 'collapsed' ? 0.7 : ambient * 0.75) * (gentle ? 0.6 : 1);
+      const th = st === 'smoke' ? 0.6 : st ? 0 : ambient;
       const tc = st === 'burning' ? 0.7 : st === 'collapsed' ? 1 : b.char[li]!;
       const tg = st === 'collapsed' ? 1 : 0;
       const k = Math.min(1, dt * 0.6);
       b.fire[li]! += (tf - b.fire[li]!) * k;
-      b.smoke[li]! += (ts - b.smoke[li]!) * k;
+      // the smoke bank creeps down more slowly than the flames take hold
+      b.smoke[li]! += (ts - b.smoke[li]!) * Math.min(1, dt * (ts > b.smoke[li]! ? 0.22 : 0.6));
+      b.heat[li]! += (th - b.heat[li]!) * Math.min(1, dt * 0.5);
       b.char[li]! += (tc - b.char[li]!) * Math.min(1, dt * 0.08);
       b.gone[li] = tg;
     });
@@ -385,6 +408,31 @@ function updateRoom(ctx: GameContext, force = false): void {
   }
 }
 
+/** Up to 4 flickering lights at the flame spots of burning rooms nearest the camera. */
+function fireLightsOf(b: BRT, cam: { x: number; y: number; z: number }, time: number, reduced: boolean): { x: number; y: number; z: number; r: number; g: number; b: number; radius: number; room: number }[] {
+  if (!b.built) return [];
+  const out: { x: number; y: number; z: number; r: number; g: number; b: number; radius: number; room: number; d: number }[] = [];
+  for (const s of b.built.flames) {
+    if (s.kind !== 1 || s.room < 0) continue;
+    const f = b.fire[s.room] ?? 0;
+    if (f < 0.05) continue;
+    const d = (s.x - cam.x) ** 2 + (s.y - cam.y) ** 2 + (s.z - cam.z) ** 2;
+    if (d > 30 * 30) continue;
+    out.push({ x: s.x, y: s.y + 1.2, z: s.z, r: 0, g: 0, b: 0, radius: 9, room: s.room, d });
+  }
+  out.sort((p, q) => p.d - q.d);
+  const top = out.slice(0, 4);
+  top.forEach((l, i) => {
+    const f = b.fire[l.room] ?? 0;
+    const fl = reduced ? 0.9 : 0.7 + 0.2 * Math.sin(time * 9.7 + i * 2.1) + 0.12 * Math.sin(time * 23.1 + i * 5.3) + 0.08 * Math.sin(time * 3.1 + i);
+    const k = f * fl * 1.1;
+    l.r = 1.0 * k;
+    l.g = 0.36 * k;
+    l.b = 0.08 * k;
+  });
+  return top;
+}
+
 // ---- per frame: builds, shell, lights ---------------------------------------------------------------
 
 function frame(ctx: GameContext, dt: number): void {
@@ -421,8 +469,16 @@ function frame(ctx: GameContext, dt: number): void {
     const sorted = lights.length > MAX_LIGHTS ? [...lights].sort((p, q) => (p.x - cam.x) ** 2 + (p.y - cam.y) ** 2 + (p.z - cam.z) ** 2 - ((q.x - cam.x) ** 2 + (q.y - cam.y) ** 2 + (q.z - cam.z) ** 2)) : lights;
     const LP = b.mat.uniforms.uLightPos!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     const LC = b.mat.uniforms.uLightCol!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
-    for (let i = 0; i < MAX_LIGHTS; i++) {
-      const l = sorted[i];
+    // the fire lights the room: the nearest burning flame spots become flickering lights
+    const fireLights = fireLightsOf(b, cam, rt.time, reduced);
+    const nFire = fireLights.length;
+    for (let i = 0; i < nFire; i++) {
+      const f = fireLights[i]!;
+      LP[i]!.set(f.x, f.y, f.z, f.radius);
+      LC[i]!.set(f.r, f.g, f.b, f.room);
+    }
+    for (let i = nFire; i < MAX_LIGHTS; i++) {
+      const l = sorted[i - nFire];
       if (!l) {
         LP[i]!.set(0, 0, 0, 0);
         continue;
@@ -432,6 +488,15 @@ function frame(ctx: GameContext, dt: number): void {
       LC[i]!.set(l.r * fl, l.g * fl, l.b * fl, l.room);
     }
     b.flames?.update(rt.time, reduced, 1);
+    // heat shimmer while standing in a burning room (fx owns uHeat outdoors; take the larger)
+    if (rt.room >= 0 && cur) {
+      const li = b.built!.local.get(rt.room);
+      if (li !== undefined) {
+        const pu = ctx.post.uniforms;
+        const h = Math.max(b.fire[li]!, b.heat[li]! * 0.5) * (reduced ? 0.3 : 0.9);
+        if (pu.uHeat && h > (pu.uHeat.value as number)) pu.uHeat.value = h;
+      }
+    }
     if (cur) {
       for (const ri of b.bp.rooms) {
         const r = cur.plan.rooms[ri]!;

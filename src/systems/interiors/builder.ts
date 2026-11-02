@@ -239,7 +239,8 @@ export function buildInterior(plan: FullPlan, building: string, look: Look, terr
     const li = out.local.get(ri)!;
     buildRoomShell(g, plan, r, li, look);
     furnish({ g, plan, room: r, local: li, look, built: out, terrain });
-    fireSpots(plan, r, li, out);
+    fireSpots(plan, r, li, out, look);
+    if (look.looted) burningBeams(g, r, li);
   }
   // door passages + outdoor steps (once per door, owned by the building of room a)
   for (const d of plan.doors) {
@@ -350,8 +351,9 @@ function buildWindow(g: GeoBuf, e: Edge, w: Win, li: number, r: PlanRoom, look: 
     for (let k = 1; k < panes; k++) g.box(fx, w.y0 + (H * k) / panes - 0.015, fz, e.tx, e.tz, w.width, 0.04, 0.03, bar);
   }
   // curtains in the state rooms (1789, 1793-02)
-  if (!look.looted && (r.kind === 'festsaal' || r.kind === 'salon' || r.kind === 'bedroom' || r.kind === 'dining')) {
-    const cs = S(r.kind === 'festsaal' ? lin(0x7a1e1e) : r.kind === 'bedroom' ? lin(0x34456a) : lin(0x6c2a20), M.FABRIC, li);
+  // 1793-07: the looters left the heavy curtains of the Festsaal and the salons; they burn first
+  if ((!look.looted && (r.kind === 'festsaal' || r.kind === 'salon' || r.kind === 'bedroom' || r.kind === 'dining')) || (look.looted && (r.kind === 'festsaal' || r.kind === 'salon'))) {
+    const cs = S(look.looted ? lin(0x4a1512) : r.kind === 'festsaal' ? lin(0x7a1e1e) : r.kind === 'bedroom' ? lin(0x34456a) : lin(0x6c2a20), M.FABRIC, li);
     for (const [a, b] of [
       [s0 - 0.42, s0 - 0.02],
       [s1 + 0.02, s1 + 0.42],
@@ -552,11 +554,12 @@ function buildDecoFlight(g: GeoBuf, r: PlanRoom, li: number): void {
 
 // ---- fire spots -----------------------------------------------------------------------------------
 
-function fireSpots(plan: FullPlan, r: PlanRoom, li: number, out: Built): void {
+function fireSpots(plan: FullPlan, r: PlanRoom, li: number, out: Built, look: Look): void {
   const f = r.frame;
   const nu = Math.max(1, Math.min(5, Math.round(f.L / 4)));
   const nv = Math.max(1, Math.min(3, Math.round(f.W / 4)));
   const base = seedOf(r.id) % 1000;
+  const roomH = r.ceiling - r.floor;
   for (let i = 0; i < nu; i++)
     for (let j = 0; j < nv; j++) {
       const u = ((i + 0.5) / nu) * f.L + (hash1(base, i, j) - 0.5) * 1.2;
@@ -567,7 +570,34 @@ function fireSpots(plan: FullPlan, r: PlanRoom, li: number, out: Built): void {
       const seed = hash1(base, i * 7 + j, 3);
       out.flames.push({ x, y, z, w: 1.4 + seed, h: 1.6 + 1.6 * seed, kind: 1, room: li, seed });
       out.flames.push({ x, y, z, w: 2.5, h: Math.max(2, r.ceiling - y - 0.3), kind: 2, room: li, seed: seed * 0.7 + 0.1 });
+      // embers raining down from the burning ceiling (seed ≥ 2 = falling)
+      if ((i + j) % 2 === 0) out.flames.push({ x, y, z, w: 3.2, h: Math.max(2, r.ceiling - y - 0.2), kind: 2, room: li, seed: 2 + hash1(base, i, j + 31) });
+      // rolling smoke under the ceiling
+      if (!r.stair) out.flames.push({ x, y: r.ceiling - 0.8, z, w: 3.6, h: 3.6, kind: 3, room: li, seed: hash1(base, i + 3, j + 5) });
     }
+  if (look.mode === 'intact' && !r.stair) {
+    // flames licking up the walls: the curtains at the windows first, then the panelling
+    r.edges.forEach((e, ei) => {
+      const ops = edgeOps(plan, r, ei);
+      for (const o of ops) {
+        if (!o.win) continue;
+        for (const ss of [o.s0 - 0.25, o.s1 + 0.25]) {
+          if (ss < 0.3 || ss > e.len - 0.3) continue;
+          const [x, z] = onEdge(e, ss, 0.32);
+          const seed = hash1(base, ei * 17 + Math.round(ss * 10), 7);
+          out.flames.push({ x, y: r.floor, z, w: 1.1 + 0.4 * seed, h: Math.min(roomH - 0.2, (o.y1 - r.floor) + 0.5), kind: 1, room: li, seed });
+        }
+      }
+      // tongues along the bare stretches of wall
+      for (let s0 = 1.2; s0 < e.len - 1.2; s0 += 3.4) {
+        const seed = hash1(base, ei * 13 + Math.round(s0), 11);
+        if (seed < 0.35) continue;
+        if (ops.some((o) => s0 > o.s0 - 0.6 && s0 < o.s1 + 0.6)) continue;
+        const [x, z] = onEdge(e, s0 + (seed - 0.5), 0.38);
+        out.flames.push({ x, y: r.floor, z, w: 1.5 + seed, h: Math.min(roomH - 0.3, 1.8 + 2.4 * seed), kind: 1, room: li, seed });
+      }
+    });
+  }
   // flames licking out through the doors
   for (const d of plan.doors) {
     if (d.a !== r.index && d.b !== r.index) continue;
@@ -579,6 +609,26 @@ function fireSpots(plan: FullPlan, r: PlanRoom, li: number, out: Built): void {
     // smoke rolling out of the door head into the next room / outside
     const so = d.a === r.index ? d.depth + 0.6 : -0.6;
     out.flames.push({ x: d.cx + d.nx * so, y: d.top - 0.3, z: d.cz + d.nz * so, w: d.width * 1.6, h: 1.6, kind: 3, room: li, seed });
+  }
+}
+
+/** Ceiling joists that show once the plaster falls (1793-07): only drawn while the room burns (aux.w = 7). */
+function burningBeams(g: GeoBuf, r: PlanRoom, li: number): void {
+  if (r.stair) return;
+  const f = r.frame;
+  const across = f.W < f.L; // beams span the short way
+  const span = across ? f.W : f.L;
+  const run = across ? f.L : f.W;
+  if (span > 14 || r.ceiling - r.floor < 2.6) return;
+  const n = Math.max(1, Math.floor(run / 1.6));
+  const surf = S(C.soot, M.CHARRED, li, [0, 0, 0, 7]);
+  for (let k = 0; k < n; k++) {
+    const t = (k + 0.5) * (run / n);
+    const [ax, az] = across ? frameXZ(f, t, 0.15) : frameXZ(f, 0.15, t);
+    const [bx, bz] = across ? frameXZ(f, t, span - 0.15) : frameXZ(f, span - 0.15, t);
+    // a few have broken loose at one end and hang
+    const sag = hash1(seedOf(r.id), k, 21) < 0.2 ? 0.5 + hash1(seedOf(r.id), k, 23) * 0.6 : 0;
+    g.beam([ax, r.ceiling - 0.14, az], [bx, r.ceiling - 0.14 - sag, bz], 0.2, 0.24, surf);
   }
 }
 
