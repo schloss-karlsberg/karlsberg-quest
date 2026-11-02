@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-const PORT = 5281;
+// KQ_E2E_PORT: run several worktrees' suites side by side without reusing each other's server.
+const PORT = Number(process.env.KQ_E2E_PORT ?? 5281);
 
 export default defineConfig({
   testDir: 'e2e',
