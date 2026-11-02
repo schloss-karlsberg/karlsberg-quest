@@ -1,0 +1,154 @@
+import { mkdirSync } from 'node:fs';
+import { type Page, expect, test } from '@playwright/test';
+
+/**
+ * Smoke + visual tests. Screenshots land in test-results/screens/*.png — look at them after a
+ * change to the world look. Deterministic: `?manual` stops the real-time loop, the scene only
+ * advances with `kq.step(n)`; `?nosave&fresh` keeps localStorage out of it.
+ */
+const SCREENS = 'test-results/screens';
+mkdirSync(SCREENS, { recursive: true });
+
+/** Console noise that is not an error of ours (software WebGL perf warnings, pointer lock in headless). */
+const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
+
+function trackErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !IGNORED.some((r) => r.test(m.text()))) errors.push(`console: ${m.text()}`);
+  });
+  page.on('pageerror', (e) => {
+    if (!IGNORED.some((r) => r.test(e.message))) errors.push(`pageerror: ${e.message}`);
+  });
+  page.on('requestfailed', (r) => errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText ?? ''}`));
+  page.on('response', (r) => {
+    if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url()}`);
+  });
+  return errors;
+}
+
+interface View {
+  era?: string;
+  x: number;
+  z: number;
+  /** degrees, 0 = north, 90 = east */
+  yaw: number;
+  pitch?: number;
+  scan?: number;
+  map?: number;
+  /** fly height above ground (spirit view) */
+  fly?: number;
+}
+
+async function show(page: Page, v: View): Promise<void> {
+  await page.evaluate((v) => {
+    const k = window.kq!;
+    k.setEra((v.era ?? 'today') as never);
+    const p = k.ctx.player;
+    // spirit view only exists today; for aerial shots of other eras just lift the camera after the steps
+    p.setFlying(!!v.fly && v.era === 'today');
+    k.teleport(v.x, v.z, v.yaw, v.pitch ?? 0);
+    k.setScanMode(v.scan ?? 0);
+    k.setMapMix(v.map ?? 0);
+    k.step(2);
+    if (v.fly) p.position.y = k.ctx.world.heightAt(v.x, v.z) + v.fly;
+  }, v);
+  await page.evaluate(() => window.kq!.screenshotReady());
+}
+
+async function shoot(page: Page, name: string, v: View): Promise<void> {
+  await show(page, v);
+  await page.screenshot({ path: `${SCREENS}/${name}.png` });
+}
+
+test('title screen loads, lights the lantern and starts the game', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('./?nosave&fresh');
+  await expect(page.getByTestId('title')).toBeVisible();
+  const btn = page.getByTestId('light-lantern');
+  await expect(btn).toBeEnabled({ timeout: 90_000 });
+  await expect(page.getByTestId('title')).toContainText('Karlsberg');
+  await page.waitForTimeout(500); // let the backdrop draw a few frames
+  await page.screenshot({ path: `${SCREENS}/title.png` });
+
+  await btn.click();
+  await expect(page.getByTestId('title')).toBeHidden({ timeout: 5_000 });
+  expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test.describe('world', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('./?notitle&nosave&fresh&manual');
+    await page.waitForFunction(() => window.kq !== undefined, null, { timeout: 90_000 });
+  });
+
+  test('renders every era and scan mode without errors', async ({ page }) => {
+    const errors = trackErrors(page);
+    // today: forest over the ruin of the main palace (POI r03-01)
+    await shoot(page, 'today-ruin', { era: 'today', x: 1240, z: -1060, yaw: 250, pitch: -4 });
+    await shoot(page, 'today-ruin-air', { era: 'today', x: 1000, z: -1100, yaw: 95, pitch: -20, fly: 90 });
+    // 1789: the palace on the avenue axis (default spawn)
+    await shoot(page, '1789-palace', { era: '1789', x: 1138, z: -1120, yaw: 90, pitch: 2 });
+    await shoot(page, '1789-palace-air', { era: '1789', x: 1080, z: -1180, yaw: 60, pitch: -18, fly: 40 });
+    await shoot(page, '1793-02-night', { era: '1793-02', x: 1138, z: -1120, yaw: 90, pitch: 2 });
+    await shoot(page, '1793-07-fire', { era: '1793-07', x: 1125, z: -1120, yaw: 90, pitch: 3 });
+    await shoot(page, '1796-ruin', { era: '1796', x: 1138, z: -1120, yaw: 90, pitch: 0 });
+    // relief scan modes at the ruin (trees inside the scan radius drop away)
+    for (const scan of [1, 2, 3]) await shoot(page, `scan${scan}`, { era: 'today', x: 1150, z: -1050, yaw: 120, pitch: -14, scan });
+    await shoot(page, 'scan1-air', { era: 'today', x: 1100, z: -1050, yaw: 110, pitch: -40, scan: 1, fly: 70 });
+    // 1840 map lens over the palace site (the lens also clears the trees within the scan radius)
+    await shoot(page, 'map1840', { era: 'today', x: 1150, z: -1100, yaw: 100, pitch: -60, map: 0.85, fly: 160 });
+
+    const info = await page.evaluate(() => {
+      const k = window.kq!;
+      return {
+        era: k.state().era,
+        h: k.ctx.world.heightAt(1194.79, -1095.34),
+        trees: k.ctx.world.forest.stats.total,
+        failed: k.ctx.systems.stats().filter((s) => s.failed).map((s) => s.id),
+      };
+    });
+    expect(info.era).toBe('today');
+    expect(info.h).toBeGreaterThan(330); // palace ruin POI ~343 m
+    expect(info.h).toBeLessThan(355);
+    expect(info.trees).toBeGreaterThan(10_000);
+    expect(info.failed).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test('player walks, crouches, uses spirit view only today, and state saves', async ({ page }) => {
+    const errors = trackErrors(page);
+    const r = await page.evaluate(() => {
+      const k = window.kq!;
+      k.setEra('today');
+      k.teleport(1138, -1120, 90, 0);
+      const x0 = k.ctx.player.position.x;
+      k.press('KeyW', 60); // one second walking east
+      const walked = k.ctx.player.position.x - x0;
+      k.press('KeyC');
+      const crouch = k.state().player.stance;
+      k.press('KeyC');
+      k.press('KeyF');
+      const flyToday = k.ctx.player.flying;
+      k.press('KeyF');
+      k.setEra('1789');
+      k.press('KeyF');
+      const fly1789 = k.ctx.player.flying;
+      // save round trip into a throwaway slot
+      const sm = k.ctx.save;
+      sm.enabled = true;
+      sm.save('e2e', 'test');
+      const raw = localStorage.getItem('kq.save.v1.e2e');
+      sm.delete('e2e');
+      return { walked, crouch, flyToday, fly1789, saved: raw !== null && JSON.parse(raw).era === '1789' };
+    });
+    expect(r.walked).toBeGreaterThan(0.8);
+    expect(r.walked).toBeLessThan(4.5); // walk speed ≈ 3.2 m/s
+    expect(r.crouch).toBe('crouch');
+    expect(r.flyToday).toBe(true);
+    expect(r.fly1789).toBe(false);
+    expect(r.saved).toBe(true);
+    expect(errors).toEqual([]);
+  });
+});
