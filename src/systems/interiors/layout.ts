@@ -165,7 +165,7 @@ export function ruinTop(building: string, x: number, z: number, low = false): nu
   if (low) return 0.3 + 0.8 * n;
   // breaches (passable) where the noise is low, tall remains where it is high
   if (n < 0.3) return 0.12 + n * 0.5;
-  return 0.6 + Math.pow((n - 0.3) / 0.7, 1.3) * 3.4;
+  return 0.6 + Math.pow((n - 0.3) / 0.7, 1.2) * 5.2;
 }
 
 /** Floor height of a room at x/z (stair ramps), or null if outside the room's zones. */
@@ -468,7 +468,8 @@ export function buildPlan(inp: LayoutInput): FullPlan {
           const [bx, bz] = along(e, s1);
           const base = { ax, az, bx, bz, kind: 'room' as const, building: r.building };
           if (mode === 'ruin') {
-            if (!op) for (const c of ruinChunks(r.building, ax, az, bx, bz, r.kind === 'gallery')) plan.walls.push({ ...base, ...c.seg, y0: low - 0.3, y1: low + c.h });
+            // partitions fell lower than the outer walls
+            if (!op) for (const c of ruinChunks(r.building, ax, az, bx, bz, !r.ext.some((q) => q.edge === i))) plan.walls.push({ ...base, ...c.seg, y0: low - 0.3, y1: low + c.h });
             return;
           }
           if (!op) plan.walls.push({ ...base, y0: low - 0.3, y1: r.ceiling + 0.2 });
@@ -528,7 +529,7 @@ export function buildPlan(inp: LayoutInput): FullPlan {
           const bz = e.az + (e.bz - e.az) * sg.t1;
           const base = { ax, az, bx, bz, kind: 'ring' as const, building: bp.id };
           if (mode === 'ruin') {
-            if (!sg.door) for (const c of ruinChunks(bp.id, ax, az, bx, bz, bp.id === 'KB-B06')) plan.walls.push({ ...base, ...c.seg, y0: bp.base - 30, y1: bp.floor + c.h });
+            if (!sg.door) for (const c of ruinChunks(bp.id, ax, az, bx, bz)) plan.walls.push({ ...base, ...c.seg, y0: bp.base - 30, y1: bp.floor + c.h });
             else plan.walls.push({ ...base, y0: bp.base - 30, y1: sg.door.floor - 0.6 });
             continue;
           }

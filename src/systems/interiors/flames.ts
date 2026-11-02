@@ -100,12 +100,17 @@ void main() {
     // fire tongue: noise rising, narrowing upwards
     vec2 q = vec2((uv.x - 0.5) * 2.0, uv.y);
     float n = fbm(vec2(q.x * 2.2 + vSeed * 13.0, q.y * 2.5 - t * 2.6));
-    float w = (1.0 - q.y * 0.85) * (0.75 + 0.5 * n);
-    float body = 1.0 - smoothstep(w * 0.55, w, abs(q.x));
-    body *= smoothstep(1.0, 0.25, q.y + (n - 0.5) * 0.5);
+    // separate tongues licking upwards
+    float tongues = fbm(vec2(q.x * 4.5 + vSeed * 31.0, q.y * 1.6 - t * 3.4));
+    float w = (1.0 - q.y * 0.9) * (0.7 + 0.5 * n);
+    float body = 1.0 - smoothstep(w * 0.45, w, abs(q.x));
+    body *= smoothstep(0.95, 0.15, q.y + (n - 0.5) * 0.6);
+    body *= smoothstep(0.25, 0.6, tongues + (1.0 - q.y) * 0.45);
     body *= smoothstep(0.0, 0.08, q.y);
-    vec3 c = mix(vec3(0.9, 0.18, 0.02), vec3(1.0, 0.75, 0.3), smoothstep(0.3, 0.9, body * (1.0 - q.y * 0.6)));
-    gl_FragColor = vec4(c * body * 1.4 * vAmt, body);
+    float core = smoothstep(0.55, 0.95, body) * (1.0 - q.y);
+    vec3 c = mix(vec3(0.75, 0.12, 0.01), vec3(1.0, 0.45, 0.08), smoothstep(0.1, 0.6, body));
+    c = mix(c, vec3(1.0, 0.68, 0.3), core * 0.8);
+    gl_FragColor = vec4(c * body * 0.62 * vAmt, body);
     return;
   }
   if (vKind < 2.5) {

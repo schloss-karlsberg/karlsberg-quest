@@ -13,6 +13,8 @@ import type { ShellOpening } from './types';
 
 export const MAX_OPEN = 8;
 export const MAX_CUTS = 24;
+/** Room boxes of built interiors: any other palace geometry poking into them is clipped. */
+export const MAX_CLIPS = 48;
 
 const isGlass = (r: number, g: number, b: number) => Math.max(r, g, b) < 0.06;
 const isDoor = (r: number, g: number, b: number) => Math.abs(r - 0.15) < 0.025 && Math.abs(g - 0.07) < 0.025 && Math.abs(b - 0.03) < 0.025;
@@ -190,10 +192,21 @@ uniform vec2 uKqIntY[${MAX_OPEN}];
 uniform float uKqIntRuin;
 uniform vec4 uKqCutA[${MAX_CUTS}];
 uniform vec4 uKqCutB[${MAX_CUTS}];
+uniform vec4 uKqClipA[${MAX_CLIPS}];
+uniform vec4 uKqClipB[${MAX_CLIPS}];
+uniform int uKqClipN;
 `;
 
 const CUT = /* glsl */ `
   {
+    // overlapping model parts (neighbouring wings, terraces) inside a built room
+    for (int i = 0; i < ${MAX_CLIPS}; i++) {
+      if (i >= uKqClipN) break;
+      vec4 a = uKqClipA[i];
+      vec4 b = uKqClipB[i];
+      vec2 d = vWorld.xz - a.xy;
+      if (abs(dot(d, a.zw)) < b.x && abs(dot(d, vec2(-a.w, a.z))) < b.y && vWorld.y > b.z && vWorld.y < b.w) discard;
+    }
     float kqOpen = -1.0;
     vec2 kqY = vec2(0.0);
     for (int i = 0; i < ${MAX_OPEN}; i++) {
@@ -234,6 +247,9 @@ export class ShellCut {
     u.uKqIntRuin = { value: 0 };
     u.uKqCutA = { value: Array.from({ length: MAX_CUTS }, () => new Vector4()) };
     u.uKqCutB = { value: Array.from({ length: MAX_CUTS }, () => new Vector4()) };
+    u.uKqClipA = { value: Array.from({ length: MAX_CLIPS }, () => new Vector4()) };
+    u.uKqClipB = { value: Array.from({ length: MAX_CLIPS }, () => new Vector4()) };
+    u.uKqClipN = { value: 0 };
     this.u = u as Record<string, { value: unknown }>;
     let fs = material.fragmentShader;
     if (fs.includes('uKqIntBld')) {
@@ -279,9 +295,23 @@ export class ShellCut {
     }
   }
 
+  /** Room boxes (same layout as CutBox: u along the room's long side). */
+  setClips(boxes: CutBox[]): void {
+    const A = this.u.uKqClipA!.value as Vector4[];
+    const B = this.u.uKqClipB!.value as Vector4[];
+    const n = Math.min(MAX_CLIPS, boxes.length);
+    for (let i = 0; i < n; i++) {
+      const c = boxes[i]!;
+      A[i]!.set(c.x, c.z, c.ux, c.uz);
+      B[i]!.set(c.hu, c.hv, c.y0, c.y1);
+    }
+    this.u.uKqClipN!.value = n;
+  }
+
   dispose(): void {
     this.setOpen([], false);
     this.setCuts([]);
+    this.setClips([]);
   }
 }
 

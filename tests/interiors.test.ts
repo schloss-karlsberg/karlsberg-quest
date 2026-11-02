@@ -6,8 +6,10 @@ import { type FullPlan, buildPlan, classifyRoom, ruinTop } from '../src/systems/
 import { bakeLight } from '../src/systems/interiors/lightmap';
 import { extractOpenings } from '../src/systems/interiors/shell';
 import { frameXZ, stairHeight } from '../src/systems/interiors/stairs';
+import { readFileSync } from 'node:fs';
 import { evaluate } from '../src/systems/story/engine';
-import type { Condition } from '../src/systems/story/types';
+import { validateStories } from '../src/systems/story/validate';
+import type { Condition, StoryFile } from '../src/systems/story/types';
 import { loadPalaceData } from './interiors-fixture';
 
 const d = loadPalaceData();
@@ -79,7 +81,7 @@ describe('interiors layout', () => {
   it('ruin walls are deterministic stubs, some low enough to climb through', () => {
     const hs = Array.from({ length: 200 }, (_, i) => ruinTop('KB-B06', 1180 + i * 0.5, -1220));
     expect(Math.min(...hs)).toBeGreaterThanOrEqual(0.12);
-    expect(Math.max(...hs)).toBeLessThanOrEqual(4.1);
+    expect(Math.max(...hs)).toBeLessThanOrEqual(5.9);
     expect(ruinTop('KB-B06', 1200, -1218)).toBe(ruinTop('KB-B06', 1200, -1218));
     expect(today.walls.length).toBe(0);
   });
@@ -228,5 +230,16 @@ describe('story room condition', () => {
     for (const room of ['B06.1.bildergalerie', 'KB-B06/B06.1.bildergalerie', 'KB-B06']) expect(evaluate({ room } as Condition, e, {}, 'k', 0)).toBe(true);
     expect(evaluate({ room: 'B01.2.og-festsaal' } as Condition, e, {}, 'k', 0)).toBe(false);
     expect(evaluate({ room: 'KB-B06' } as Condition, env('', ''), {}, 'k', 0)).toBe(false);
+  });
+});
+
+describe('story room condition: example beats (content/test, not bundled)', () => {
+  it('validates', () => {
+    const story = JSON.parse(readFileSync(new URL('../content/test/interiors-test.story.json', import.meta.url), 'utf8')) as StoryFile;
+    const r = validateStories([{ file: 'interiors-test.story.json', story }]);
+    expect(r.errors).toEqual([]);
+    const bad = structuredClone(story);
+    (bad.beats[0]!.complete as unknown as { room: string }).room = 'Festsaal!';
+    expect(validateStories([{ file: 'bad.story.json', story: bad }]).errors.length).toBeGreaterThan(0);
   });
 });

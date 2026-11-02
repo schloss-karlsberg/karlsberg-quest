@@ -28,7 +28,11 @@ Source of the texts: `content/bible/*.md`. Placeholder chapters/beats carry `"pl
 `event` (+ `match`, `gte`, `lte`, `times`; any game event, latched while the beat runs), `flag` (+ `eq`),
 `timer` (seconds in the beat / chapter), `era`, `have {clue|noun|item}`, `confirmed {case?|prefix?, n}`,
 `caseComplete`, `scan` (relief mode ≥ n), `map`, `stance`, `lantern`, `hub` (field-station item used),
-`all`, `any`, `not`, `manual` (never; only `kq.story.skip()`).
+`room` (the player stands in a walkable palace room: catalogue id `"B06.1.bildergalerie"`, full id
+`"KB-B06/B06.1.bildergalerie"` or a building `"KB-B06"`; interiors system, reads the flags
+`interior.room` / `interior.building`), `all`, `any`, `not`, `manual` (never; only `kq.story.skip()`).
+Entering / leaving a room is also an event: `{ "event": "room:enter", "match": { "roomId": "B01.2.og-festsaal" } }`
+(payload `roomId`, `building`, `id`, `name`; `room:leave` without `name`).
 
 **Actions** (`do`), each with optional `delay` (seconds after the previous action; spoken lines take
 their reading time) and `onResume` (repeat when a beat is resumed; default: everything except

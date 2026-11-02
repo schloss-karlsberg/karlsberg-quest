@@ -31,7 +31,7 @@ import { FlameLayer } from './flames';
 import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
 import { MAX_LIGHTS, MAX_ROOMS, makeInteriorMaterial } from './material';
-import { type CutBox, MAX_CUTS, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
+import { type CutBox, MAX_CLIPS, MAX_CUTS, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
 import type { BuildingPlan, InteriorMode, ShellOpening } from './types';
 import { t } from '../../i18n';
 import './strings';
@@ -49,7 +49,9 @@ export interface InteriorHooks {
   /** Walkable rooms of the current era's plan. */
   list(): { id: string; roomId: string; building: string; name: string; kind: string; storey: number; floor: number }[];
   /** Teleport into a room (catalogue id, full id or a unique suffix). Optional spot and view. */
-  enter(roomId: string, opts?: { x?: number; z?: number; yaw?: number; pitch?: number; u?: number; v?: number }): boolean;
+  enter(roomId: string, opts?: { x?: number; z?: number; yaw?: number; pitch?: number; u?: number; v?: number; toU?: number; toV?: number }): boolean;
+  /** Doors of the current plan (outer ones carry their outdoor steps). */
+  doors(): { building: string; from: string; to: string | null; kind: string; x: number; z: number; nx: number; nz: number; depth: number; width: number; floor: number; stoop: { length: number; ground: number } | null }[];
   /** The room the player is in, or null. */
   room(): { roomId: string; building: string; id: string } | null;
   /** Build every building near the player now (synchronously). */
@@ -223,7 +225,7 @@ function build(ctx: GameContext, b: BRT): void {
   u.uRoomGone!.value = b.gone;
   u.uRoomCeil!.value = b.ceil;
   u.uOpenSky!.value = rt.mode === 'intact' ? 0 : 1;
-  u.uDust!.value = look.sheets ? 0.5 : look.looted ? 0.3 : 0;
+  u.uDust!.value = look.sheets ? 0.5 : look.looted ? 0.3 : rt.mode === 'ruin' ? 0.5 : 0;
   u.uFade!.value = 0;
   const mesh = new Mesh(geo, mat);
   mesh.name = `interior-${b.id}`;
@@ -414,6 +416,7 @@ function frame(ctx: GameContext, dt: number): void {
   const reduced = ctx.settings.state.reducedMotion;
   const open: { index: number; fade: number; y0: number; y1: number }[] = [];
   const cuts: CutBox[] = [];
+  const clips: (CutBox & { d: number })[] = [];
   const cur = current();
   for (const { b } of order) {
     if (!b.mesh || !b.mat) continue;
@@ -436,6 +439,14 @@ function frame(ctx: GameContext, dt: number): void {
       LC[i]!.set(l.r * fl, l.g * fl, l.b * fl, l.room);
     }
     b.flames?.update(rt.time, reduced, 1);
+    if (cur) {
+      for (const ri of b.bp.rooms) {
+        const r = cur.plan.rooms[ri]!;
+        const f = r.frame;
+        const top = rt.mode === 'ruin' ? r.floor + 40 : r.ceiling - 0.02;
+        clips.push({ x: f.ox + f.ux * (f.L / 2) + f.vx * (f.W / 2), z: f.oz + f.uz * (f.L / 2) + f.vz * (f.W / 2), ux: f.ux, uz: f.uz, hu: f.L / 2 + 0.12, hv: f.W / 2 + 0.12, y0: (r.stair ? r.stair.low : r.floor) - 0.02, y1: top, d: Math.hypot(r.cx - px, r.cz - pz) });
+      }
+    }
     if (cur && rt.mode === 'intact') {
       for (const d of cur.plan.doors) {
         if (d.building !== b.id || d.kind === 'inner') continue;
@@ -447,6 +458,8 @@ function frame(ctx: GameContext, dt: number): void {
     rt.cut.setOpen(open, rt.mode === 'ruin');
     cuts.sort((a, c) => Math.hypot(a.x - px, a.z - pz) - Math.hypot(c.x - px, c.z - pz));
     rt.cut.setCuts(cuts.slice(0, MAX_CUTS));
+    clips.sort((a, c) => a.d - c.d);
+    rt.cut.setClips(clips.slice(0, MAX_CLIPS));
   }
 }
 
@@ -503,13 +516,40 @@ function installHooks(ctx: GameContext): void {
         z = f.oz + f.uz * u + f.vz * v;
       }
       const floor = r.stair ? r.stair.low : r.floor;
+      let yaw = opts.yaw === undefined ? undefined : (-opts.yaw * Math.PI) / 180;
+      if (opts.toU !== undefined || opts.toV !== undefined) {
+        const f = r.frame;
+        const u = (opts.toU ?? 0.5) * f.L;
+        const v = (opts.toV ?? 0.5) * f.W;
+        const dx = f.ox + f.ux * u + f.vx * v - x;
+        const dz = f.oz + f.uz * u + f.vz * v - z;
+        yaw = Math.atan2(-dx, -dz);
+      }
       ctx.player.position.y = floor + 0.05;
-      ctx.player.teleport(x, z, opts.yaw === undefined ? undefined : (-opts.yaw * Math.PI) / 180);
+      ctx.player.teleport(x, z, yaw);
       if (opts.pitch !== undefined) ctx.player.pitch = (opts.pitch * Math.PI) / 180;
       ctx.world.forest.invalidate();
       hooks.build();
       updateRoom(ctx);
       return true;
+    },
+    doors() {
+      const cur = current();
+      if (!cur) return [];
+      return cur.plan.doors.map((d) => ({
+        building: d.building,
+        from: cur.plan.rooms[d.a]!.roomId,
+        to: d.b >= 0 ? cur.plan.rooms[d.b]!.roomId : null,
+        kind: d.kind,
+        x: d.cx,
+        z: d.cz,
+        nx: d.nx,
+        nz: d.nz,
+        depth: d.depth,
+        width: d.width,
+        floor: d.floor,
+        stoop: d.stoop,
+      }));
     },
     room() {
       const cur = current();

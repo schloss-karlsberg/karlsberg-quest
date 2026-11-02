@@ -97,7 +97,7 @@ export const C = {
   marble: lin(0xd6d0c4),
   iron: lin(0x2e2e30),
   masonry: lin(0x948a7a),
-  ruin: lin(0x8f8574),
+  ruin: lin(0x81776a),
   moss: lin(0x737560),
   soot: lin(0x2a2522),
   doorBrown: lin(0x4a2a14),
@@ -586,7 +586,6 @@ function fireSpots(plan: FullPlan, r: PlanRoom, li: number, out: Built): void {
 
 function buildRuin(g: GeoBuf, plan: FullPlan, building: string, terrain: (x: number, z: number) => number, out: Built): void {
   const bp = plan.buildings.find((b) => b.id === building)!;
-  const wallS = (li: number) => S(C.ruin, M.MASONRY, li);
   const cap = S(C.soot, M.CHARRED, -1);
   for (const ri of bp.rooms) {
     const r = plan.rooms[ri]!;
@@ -595,7 +594,7 @@ function buildRuin(g: GeoBuf, plan: FullPlan, building: string, terrain: (x: num
     const f = r.frame;
     const fUV = (x: number, z: number): [number, number] => [x, z];
     // the floor: flags under dust and rubble
-    g.poly(r.poly, r.floor, true, S(r.floorKind === 'parquet' ? C.soot : C.flags, r.floorKind === 'parquet' ? M.CHARRED : M.FLAGS, li), fUV);
+    g.poly(r.poly, r.floor, true, r.floorKind === 'stone' ? S(C.flags, M.FLAGS, li) : S(C.ruin, M.RUBBLE, li), fUV);
     // walls: stubs of the inner face (same chunks as the collision)
     r.edges.forEach((e, ei) => {
       const doors = r.openings.filter((o) => o.edge === ei && o.kind === 'door').sort((p, q) => p.s0 - q.s0);
@@ -609,12 +608,13 @@ function buildRuin(g: GeoBuf, plan: FullPlan, building: string, terrain: (x: num
       for (const [s0, s1] of spans) {
         const [ax, az] = along(e, s0);
         const [bx, bz] = along(e, s1);
-        for (const c of ruinChunks(r.building, ax, az, bx, bz, r.kind === 'gallery')) {
+        for (const c of ruinChunks(r.building, ax, az, bx, bz, !r.ext.some((q) => q.edge === ei))) {
           const L = Math.hypot(c.seg.bx - c.seg.ax, c.seg.bz - c.seg.az);
           const cx = (c.seg.ax + c.seg.bx) / 2 + e.nx * 0.22;
           const cz = (c.seg.az + c.seg.bz) / 2 + e.nz * 0.22;
           const y0 = r.floor - 0.3;
-          g.box(cx, y0, cz, e.tx, e.tz, L + 0.02, 0.44, c.h + 0.3, wallS(li));
+          const tint = 0.8 + 0.28 * hash1(Math.round(cx * 2), Math.round(cz * 2), 5);
+          g.box(cx, y0, cz, e.tx, e.tz, L + 0.02, 0.44, c.h + 0.3, S([C.ruin[0] * tint, C.ruin[1] * tint, C.ruin[2] * tint], M.MASONRY, li));
           if (c.h > 1.2) g.box(cx, r.floor + c.h - 0.04, cz, e.tx, e.tz, L * 0.7, 0.3, 0.06, cap);
         }
       }
@@ -656,7 +656,7 @@ function buildRuin(g: GeoBuf, plan: FullPlan, building: string, terrain: (x: num
     const nx = -tz;
     const nz = tx;
     const cuts = plan.doors.filter((d) => d.b === -1 && d.building === building);
-    for (const c of ruinChunks(building, a[0], a[1], b[0], b[1], building === 'KB-B06')) {
+    for (const c of ruinChunks(building, a[0], a[1], b[0], b[1])) {
       const mx = (c.seg.ax + c.seg.bx) / 2;
       const mz = (c.seg.az + c.seg.bz) / 2;
       if (cuts.some((d) => Math.hypot(d.cx + d.nx * d.depth - mx, d.cz + d.nz * d.depth - mz) < d.width / 2 + 0.3)) continue;
@@ -664,7 +664,11 @@ function buildRuin(g: GeoBuf, plan: FullPlan, building: string, terrain: (x: num
       const t = terrain(mx, mz);
       const y0 = Math.min(t, bp.floor) - 0.6;
       const top = bp.floor + c.h;
-      g.box(mx + nx * 0.45, y0, mz + nz * 0.45, tx, tz, len + 0.02, 0.9, top - y0, S(C.ruin, M.MASONRY, -1));
+      // weathered, here and there blackened by the fire
+      const tint = 0.78 + 0.3 * hash1(Math.round(mx * 2), Math.round(mz * 2), 3);
+      const soot = hash1(Math.round(mx), Math.round(mz), 4) < 0.3 ? 0.55 : 1;
+      const col: RGB = [C.ruin[0] * tint * soot, C.ruin[1] * tint * soot, C.ruin[2] * tint * soot];
+      g.box(mx + nx * 0.45, y0, mz + nz * 0.45, tx, tz, len + 0.02, 0.9, top - y0, S(col, M.MASONRY, -1));
       if (c.h > 1.5) g.box(mx + nx * 0.45, top - 0.03, mz + nz * 0.45, tx, tz, len * 0.8, 0.6, 0.05, S(lin(0x5f6a3a), M.MOSS, -1));
     }
   }

@@ -300,22 +300,59 @@ void main() {
     alb = base * (0.75 + 0.35 * vnoise(uv * 25.0));
     spec = 0.9;
   } else if (m == ${M.CANVAS}) {
-    // a dark old painting: a glazed ground, a lighter figure or landscape suggestion
+    // an old painting under yellowed varnish: landscape, portrait or a dark history piece
     vec2 q = uv;
     float seed = vAux.y;
-    float sky = smoothstep(0.35 + 0.3 * h21(vec2(seed, 1.0)), 1.0, q.y);
-    vec3 g = mix(base * 0.35, base * 0.9 + vec3(0.08, 0.06, 0.02), sky * step(0.5, h21(vec2(seed, 2.0))));
-    float blob = smoothstep(0.32, 0.1, length((q - vec2(0.3 + 0.4 * h21(vec2(seed, 3.0)), 0.45)) * vec2(1.6, 1.0)));
-    g = mix(g, vec3(0.62, 0.45, 0.32) * (0.6 + 0.6 * h21(vec2(seed, 4.0))), blob * 0.7);
-    g *= 0.75 + 0.35 * kqFbm(q * 6.0 + seed);
+    float kind = h21(vec2(seed, 5.0));
+    if (vAux.z > 1.15 && kind >= 0.4 && kind < 0.75) kind = 0.2;
+    vec3 g;
+    if (kind < 0.4) {
+      float hor = 0.32 + 0.2 * h21(vec2(seed, 6.0));
+      float hills = hor + 0.07 * sin(q.x * 6.0 + seed * 10.0) + 0.06 * kqFbm(q * 7.0 + seed);
+      vec3 sky = mix(vec3(0.62, 0.5, 0.32), vec3(0.32, 0.4, 0.48), smoothstep(hor, 1.0, q.y));
+      sky = mix(sky, vec3(0.75, 0.68, 0.55), smoothstep(0.55, 0.75, kqFbm(q * vec2(3.0, 6.0) + seed)) * 0.5);
+      vec3 land = mix(vec3(0.12, 0.11, 0.05), vec3(0.3, 0.25, 0.11), kqFbm(q * 5.0 + seed));
+      g = q.y > hills ? sky : land;
+      float tr = smoothstep(0.52, 0.58, kqFbm(vec2(q.x * 5.0 + seed, q.y * 2.5))) * step(q.y, hills + 0.3) * step(hills - 0.05, q.y);
+      g = mix(g, vec3(0.07, 0.08, 0.04), tr);
+    } else if (kind < 0.75) {
+      g = base * 0.35 + 0.02;
+      vec2 c = vec2(0.5, 0.64);
+      float face = smoothstep(0.13, 0.11, length((q - c) * vec2(1.0, 0.75)));
+      float body = (1.0 - smoothstep(0.0, 0.05, abs(q.x - 0.5) - 0.12 - (0.55 - q.y) * 0.45)) * smoothstep(0.56, 0.5, q.y);
+      vec3 coat = h21(vec2(seed, 8.0)) < 0.5 ? vec3(0.2, 0.05, 0.04) : vec3(0.06, 0.07, 0.12);
+      g = mix(g, coat, body);
+      g = mix(g, vec3(0.78, 0.6, 0.47), face);
+      g = mix(g, vec3(0.85, 0.82, 0.75), smoothstep(0.04, 0.0, abs(q.y - 0.53)) * step(abs(q.x - 0.5), 0.06));
+    } else {
+      g = base * 0.25 + 0.02;
+      for (int k = 0; k < 4; k++) {
+        float fk = float(k);
+        vec2 c = vec2(0.2 + 0.2 * fk + 0.05 * h21(vec2(seed, fk)), 0.35 + 0.1 * h21(vec2(fk, seed)));
+        float fig = smoothstep(0.06, 0.04, length((q - c) * vec2(2.2, 0.8)));
+        float head = smoothstep(0.035, 0.025, length(q - c - vec2(0.0, 0.17)));
+        vec3 robe = mix(vec3(0.5, 0.1, 0.06), vec3(0.15, 0.2, 0.38), h21(vec2(seed + fk, 3.0)));
+        g = mix(g, robe, fig);
+        g = mix(g, vec3(0.75, 0.58, 0.45), head);
+      }
+      g = mix(g, vec3(0.6, 0.5, 0.3), smoothstep(0.75, 1.0, q.y) * 0.4 * kqFbm(q * 4.0 + seed));
+    }
+    g *= 0.72 + 0.4 * kqFbm(q * 6.0 + seed);
+    g = mix(g, g * vec3(1.0, 0.86, 0.6), 0.45);
+    g *= 1.0 - 0.18 * smoothstep(0.95, 1.0, vnoise(q * 90.0));
     alb = g;
-    spec = 0.4;
+    spec = 0.35;
   } else if (m == ${M.MIRROR}) {
+    // a fake reflection of the room: dark floor below the horizon, the pale ceiling above,
+    // candle glints; old mercury glass with speckles
     vec3 v = normalize(vWorld - uCamPos);
     vec3 r = reflect(v, n);
-    float f = 0.5 + 0.5 * kqFbm(r.xz * 2.0 + r.y * 3.0);
-    alb = vec3(0.05, 0.05, 0.05);
-    emis = mix(vec3(0.02, 0.018, 0.015), vec3(0.16, 0.12, 0.07), f) * uIndoor;
+    float up = smoothstep(-0.2, 0.3, r.y);
+    float f = kqFbm(r.xz * 3.0 + r.y * 2.0);
+    vec3 room = mix(vec3(0.14, 0.07, 0.035), vec3(0.5, 0.46, 0.38), up) * (0.75 + 0.5 * f);
+    float glint = smoothstep(0.9, 0.98, kqNoise(r.xz * 16.0 + r.y * 7.0)) * smoothstep(0.0, 0.3, r.y);
+    alb = vec3(0.04);
+    emis = (room * 0.4 + vec3(1.0, 0.75, 0.4) * glint * 0.7) * uIndoor * (0.82 + 0.18 * kqNoise(vUv * 60.0));
     spec = 1.4;
   } else if (m == ${M.MASONRY}) {
     vec2 q = uv / vec2(0.55, 0.28);
@@ -450,8 +487,9 @@ void main() {
   // a burning room lights itself from below, flickering
   if (fire > 0.0) {
     float fl = 0.75 + 0.15 * sin(uTime * 11.0 + vWorld.x * 1.3) + 0.1 * sin(uTime * 23.0 + vWorld.z * 2.1);
-    float low = 1.0 - smoothstep(0.0, 4.5, vWorld.y - (ceil - 4.8));
-    col += alb * vec3(1.6, 0.55, 0.12) * fire * fl * (0.45 + 0.55 * low);
+    float low = 1.0 - smoothstep(0.0, 3.5, vWorld.y - (ceil - 5.0));
+    float patchy = 0.45 + 0.8 * kqNoise(vWorld.xz * 0.45 + vec2(uTime * 0.2, -uTime * 0.13));
+    col += alb * vec3(0.7, 0.23, 0.05) * fire * fl * (0.12 + 0.88 * low) * patchy;
   }
   col += emis;
 
@@ -468,12 +506,14 @@ void main() {
     else above = (max(y0, y1) - hs) / max(abs(y1 - y0), 1e-3);
     float dens = smoke * (0.5 + 0.6 * kqFbm(vWorld.xz * 0.35 + vec2(uTime * 0.07, uTime * 0.03)));
     float sOp = 1.0 - exp(-len * above * dens * 0.55);
-    vec3 sCol = mix(vec3(0.05, 0.045, 0.045), vec3(0.6, 0.25, 0.08), fire * 0.6);
+    vec3 sCol = mix(vec3(0.018, 0.016, 0.016), vec3(0.22, 0.07, 0.015), fire * 0.45 * (1.0 - above * 0.6));
     col = mix(col, sCol, clamp(sOp, 0.0, 0.97));
     // and a thin haze everywhere
-    col = mix(col, sCol, smoke * 0.12 * min(len / 12.0, 1.0));
+    col = mix(col, sCol, smoke * 0.08 * min(len / 12.0, 1.0));
   }
-  gl_FragColor = vec4(kqFog(col, vWorld), 1.0);
+  // indoors the outdoor haze (and the fire-tinted night fog) barely reaches
+  vec3 fogged = kqFog(col, vWorld);
+  gl_FragColor = vec4((uOpenSky < 0.5 && hasRoom) ? mix(col, fogged, 0.15) : fogged, 1.0);
 }
 `;
 

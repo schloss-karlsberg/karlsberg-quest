@@ -125,12 +125,12 @@ class Kit {
   }
 
   flame(x: number, y: number, z: number, size = 1): void {
-    this.out.flames.push({ x, y, z, w: 0.045 * size, h: 0.11 * size, kind: 0, room: -1, seed: hash1(Math.round(x * 50), Math.round(z * 50), 1) });
+    this.out.flames.push({ x, y, z, w: 0.07 * size, h: 0.17 * size, kind: 0, room: -1, seed: hash1(Math.round(x * 50), Math.round(z * 50), 1) });
   }
 
   candle(x: number, y: number, z: number, lit: boolean): void {
     this.g.prism(x, y, z, 0.012, 0.16, 5, this.S(lin(0xf3ead2), M.PAPER));
-    if (lit) this.flame(x, y + 0.2, z);
+    if (lit) this.flame(x, y + 0.165, z);
   }
 
   chandelier(x: number, z: number, size: number, lit: boolean, hang = 1.7): void {
@@ -156,7 +156,7 @@ class Kit {
     // crystal drops
     for (let k = 0; k < n * 2; k++) {
       const a = (k / (n * 2)) * Math.PI * 2 + 0.2;
-      this.g.blob(x + Math.cos(a) * 0.5 * size, y - 0.08 - 0.12 * (k % 3), z + Math.sin(a) * 0.5 * size, 0.025, 0.05, 0.025, this.S(lin(0xc8d0d6), M.GLASS), 0.1, k);
+      this.g.blob(x + Math.cos(a) * 0.5 * size, y - 0.06 - 0.08 * (k % 3), z + Math.sin(a) * 0.5 * size, 0.018, 0.04, 0.018, this.S(lin(0xe9eef0), M.GILT), 0.1, k);
     }
     if (lit) this.light(x, y + 0.1, z, 9 + 5 * size, 1.25 * size);
   }
@@ -184,7 +184,7 @@ class Kit {
     const [cx, cz] = onEdge(e, s, 0.072);
     const hw = w / 2;
     const col = [lin(0x5a3a1c), lin(0x3d4a2c), lin(0x4a3424), lin(0x283040)][Math.floor(seed * 4) % 4]!;
-    this.g.quad([cx - e.tx * hw, yc - h / 2, cz - e.tz * hw], [cx + e.tx * hw, yc - h / 2, cz + e.tz * hw], [cx + e.tx * hw, yc + h / 2, cz + e.tz * hw], [cx - e.tx * hw, yc + h / 2, cz - e.tz * hw], [-e.nx, 0, -e.nz], this.S(col, M.CANVAS, [0, seed * 97, 0, 0]), [
+    this.g.quad([cx - e.tx * hw, yc - h / 2, cz - e.tz * hw], [cx + e.tx * hw, yc - h / 2, cz + e.tz * hw], [cx + e.tx * hw, yc + h / 2, cz + e.tz * hw], [cx - e.tx * hw, yc + h / 2, cz - e.tz * hw], [-e.nx, 0, -e.nz], this.S(col, M.CANVAS, [0, seed * 97, w / h, 0]), [
       [1, 0],
       [0, 0],
       [0, 1],

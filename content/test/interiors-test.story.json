@@ -1,0 +1,32 @@
+{
+  "chapter": "test_interiors",
+  "order": 99,
+  "title_de": "TEST: Innenräume",
+  "sub_de": "Testkapitel (nicht im Spiel) · Beispiele für Raum-Bedingungen",
+  "era": "1789",
+  "placeholder": true,
+  "start": "ti_0",
+  "beats": [
+    {
+      "id": "ti_0",
+      "title_de": "TEST: Hinein in die Registratur",
+      "placeholder": true,
+      "enter": [{ "do": "objective", "id": "ti.registratur", "text": "TEST: Die Registratur im Nordflügel", "x": 1202, "z": -1153 }],
+      "complete": { "room": "B03.1.eg-registratur" }
+    },
+    {
+      "id": "ti_1",
+      "title_de": "TEST: Hinauf in den Festsaal",
+      "placeholder": true,
+      "enter": [{ "do": "objective", "id": "ti.festsaal", "text": "TEST: Über die Prunktreppe in den Festsaal" }],
+      "complete": { "event": "room:enter", "match": { "roomId": "B01.2.og-festsaal" } }
+    },
+    {
+      "id": "ti_2",
+      "title_de": "TEST: Irgendwo in der Galerie",
+      "placeholder": true,
+      "enter": [{ "do": "objective", "id": "ti.galerie", "text": "TEST: Die Bildergalerie" }],
+      "complete": { "all": [{ "room": "KB-B06" }, { "flag": "interior.room", "eq": "B06.1.bildergalerie" }] }
+    }
+  ]
+}
