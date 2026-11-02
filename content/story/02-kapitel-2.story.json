@@ -103,7 +103,9 @@
           "do": "flag",
           "set": {
             "k2.jagd_laeuft": null,
-            "k2.w4": null
+            "k2.w4": null,
+            "k2.jagd_los": null,
+            "k2.wieder_da": null
           }
         }
       ]
@@ -209,6 +211,68 @@
           "delay": 4
         }
       ],
+      "on": [
+        {
+          "id": "k2_0-hund",
+          "when": {
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "leave": {
+                  "x": 760,
+                  "z": -902,
+                  "r": 380
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "sound",
+              "sound": "howl",
+              "x": 1460,
+              "z": -260,
+              "caption": "[Fern, unten im Tal: ein Hofhund schlägt an. Ein Hund von heute.]"
+            },
+            {
+              "do": "say",
+              "id": "laub.k2.weg1",
+              "speaker": "laub",
+              "text": "Nur ein Hofhund, einer von heute. Merk dir trotzdem, wie das klingt. Drüben, im Februar dreiundneunzig, sind es andere, und die schlagen nicht bloß an.",
+              "delay": 2.5,
+              "ms": 7000
+            }
+          ]
+        },
+        {
+          "id": "k2_0-raureif",
+          "when": {
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "enter": {
+                  "x": 1680,
+                  "z": -400,
+                  "r": 260
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k2.weg2",
+              "speaker": "laub",
+              "text": "Wenn wir drüben sind: schau auf den Boden. Raureif verrät jeden Schritt. Seine. Und deine auch.",
+              "ms": 6000
+            }
+          ]
+        }
+      ],
       "complete": {
         "era": "1793-02"
       }
@@ -216,6 +280,13 @@
     {
       "id": "k2_1",
       "title_de": "Der Parkzaun",
+      "wake": {
+        "x": 1676,
+        "z": -392,
+        "yaw": 200,
+        "era": "today",
+        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -315,6 +386,13 @@
     {
       "id": "k2_2",
       "title_de": "Augen im Nebel",
+      "wake": {
+        "x": 1676,
+        "z": -392,
+        "yaw": 200,
+        "era": "today",
+        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -540,6 +618,13 @@
     {
       "id": "k2_3",
       "title_de": "Die Orangerie",
+      "wake": {
+        "x": 1676,
+        "z": -392,
+        "yaw": 200,
+        "era": "today",
+        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -681,6 +766,13 @@
     {
       "id": "k2_4",
       "title_de": "Das Wachhaus",
+      "wake": {
+        "x": 1676,
+        "z": -392,
+        "yaw": 200,
+        "era": "today",
+        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -841,6 +933,13 @@
     {
       "id": "k2_5",
       "title_de": "Ins Schloss",
+      "wake": {
+        "x": 1226,
+        "z": -1122,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -1006,6 +1105,13 @@
     {
       "id": "k2_6",
       "title_de": "Der Abschied",
+      "wake": {
+        "x": 1226,
+        "z": -1122,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -1098,6 +1204,13 @@
     {
       "id": "k2_7",
       "title_de": "Die Abfahrt",
+      "wake": {
+        "x": 1226,
+        "z": -1122,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "npc",
@@ -1195,6 +1308,13 @@
     {
       "id": "k2_8",
       "title_de": "Die Wahl am Tor",
+      "wake": {
+        "x": 1226,
+        "z": -1122,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -1322,6 +1442,13 @@
     {
       "id": "k2_9",
       "title_de": "Hanne und Jost",
+      "wake": {
+        "x": 1226,
+        "z": -1122,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "npc",
@@ -1442,6 +1569,13 @@
     {
       "id": "k2_10",
       "title_de": "Die Parforcejagd",
+      "wake": {
+        "x": 1226,
+        "z": -1122,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
+      },
       "enter": [
         {
           "do": "objective",
@@ -1517,6 +1651,124 @@
           ]
         },
         {
+          "id": "k2_10-wieder",
+          "when": {
+            "all": [
+              {
+                "era": "1793-02"
+              },
+              {
+                "flag": "k2.jagd_versuch"
+              },
+              {
+                "not": {
+                  "flag": "k2.jagd_laeuft"
+                }
+              },
+              {
+                "not": {
+                  "flag": "k2.wieder_da"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k2.wieder_da": true
+              }
+            },
+            {
+              "do": "npc",
+              "op": "spawn",
+              "npc": "hanne",
+              "x": 1201,
+              "z": -1112,
+              "era": "1793-02",
+              "yaw": 270
+            },
+            {
+              "do": "npc",
+              "op": "spawn",
+              "npc": "jost",
+              "x": 1222,
+              "z": -1135,
+              "era": "1793-02",
+              "yaw": 180
+            },
+            {
+              "do": "objective",
+              "id": "k2.jagd",
+              "text": "Hanne und Jost sind noch am Gitter (E: reden). Lange wartet der Pikeur nicht",
+              "x": 1210,
+              "z": -1122,
+              "delay": 0.5
+            },
+            {
+              "do": "flag",
+              "set": {
+                "k2.jagd_los": true
+              },
+              "delay": 20
+            }
+          ]
+        },
+        {
+          "id": "k2_10-wieder-jost",
+          "when": {
+            "all": [
+              {
+                "flag": "k2.wieder_da"
+              },
+              {
+                "event": "npc:conversation",
+                "match": {
+                  "npc": "jost",
+                  "open": false
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k2.jagd_los": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "k2_10-wieder-weg",
+          "when": {
+            "all": [
+              {
+                "flag": "k2.wieder_da"
+              },
+              {
+                "enter": {
+                  "x": 1235,
+                  "z": -1084,
+                  "r": 12,
+                  "era": "1793-02"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k2.jagd_los": true
+              }
+            }
+          ]
+        },
+        {
           "id": "k2_10-horn",
           "when": {
             "all": [
@@ -1532,6 +1784,18 @@
                 "not": {
                   "flag": "k2.jagd_laeuft"
                 }
+              },
+              {
+                "any": [
+                  {
+                    "not": {
+                      "flag": "k2.jagd_versuch"
+                    }
+                  },
+                  {
+                    "flag": "k2.jagd_los"
+                  }
+                ]
               }
             ]
           },
@@ -1540,7 +1804,10 @@
             {
               "do": "flag",
               "set": {
-                "k2.jagd_laeuft": true
+                "k2.jagd_laeuft": true,
+                "k2.jagd_versuch": true,
+                "k2.jagd_los": null,
+                "k2.wieder_da": null
               }
             },
             {

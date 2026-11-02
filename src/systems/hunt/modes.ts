@@ -593,7 +593,16 @@ export class ParforceMode implements ModeController {
     // the release (a short chase: they must catch up within seconds to be felt)
     const heel = this.sim.opt.heel ?? 9;
     const b = this.sim.opt.burst ?? 1;
-    return d > heel + 21 ? 1.2 * b : d > heel + 5 ? 1.06 * Math.sqrt(b) : d > heel ? 1 : 0.9;
+    if (d > heel + 21) return 1.2 * b;
+    if (d > heel + 5) return 1.06 * Math.sqrt(b);
+    if (d > heel) return 1;
+    if (this.sim.opt.keepPace && !p.flying) {
+      // at the heel: a runner who keeps going (≥ 4 m/s) is not run down — they hold the gap; one
+      // who stops to look back sees them falter and bay before they close (a long stop still ends it)
+      if (p.speed >= 4) return Math.min(0.9, (p.speed * 0.97) / this.sim.tune.speed.chase);
+      if (p.speed < 1) return 0.55;
+    }
+    return 0.9;
   }
 
   /** The Pikeur rides on a flank, parallel; every cycle he rides in (horn first) and sheers off. */

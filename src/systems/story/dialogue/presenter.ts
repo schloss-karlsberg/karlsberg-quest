@@ -9,9 +9,12 @@ import { h, svg } from '../../../ui/dom';
 import { t } from '../../../i18n';
 import { ensurePortraitDefs, portraitSvg } from './portraits';
 import type { SpeakerMeta } from './speakers';
+import { LineQueue, type QueuedLine } from './queue';
 import { type Voice, syllableStarts } from './voice';
 
-export interface DialogueItem {
+export { LOW_TTL, MAX_QUEUE, STALE_GRACE } from './queue';
+
+export interface DialogueItem extends QueuedLine {
   id?: string;
   speaker: string;
   text: string;
@@ -20,21 +23,8 @@ export interface DialogueItem {
   fiction?: boolean;
   /** Source label for historical quotes. */
   source?: string;
-  /** Beat the line belongs to (null / undefined = chapter-wide); see `retireBeat`. */
-  beat?: string | null;
   /** The place the line is about: skipped if the player is far from it when its turn comes. */
   where?: { x: number; z: number; r: number } | null;
-  /** 'low' = barks and hints: dropped first, expire after LOW_TTL s in the queue. */
-  priority?: 'low' | 'normal';
-  /** Presenter clock when queued (set by `enqueue`). */
-  queuedAt?: number;
-  /** Dropped if it has not started by this presenter time. */
-  staleAt?: number;
-  /**
-   * Lines emitted together (a trigger's sequence) share a group: once its first line has been
-   * shown, the rest of the group is never dropped as stale (a conversation is not cut off).
-   */
-  group?: number;
 }
 
 interface Active {
@@ -62,12 +52,6 @@ export interface PresenterOptions {
 }
 
 const CHARS_PER_S = 42;
-/** At most this many lines wait behind the current one (Laub must not lag behind a fast player). */
-export const MAX_QUEUE = 6;
-/** Seconds a low-priority line (bark, hint) may wait before it is dropped. */
-export const LOW_TTL = 14;
-/** Seconds a line of a beat that has ended may still wait for its turn. */
-export const STALE_GRACE = 6;
 
 /** Placeholders: {Name}/{name}, {jahre:1793}, {jahr} (see content/triggers.ts fillText). */
 export function substituteName(text: string, name: string, year: number | null = new Date().getFullYear()): string {
@@ -88,17 +72,14 @@ export class DialoguePresenter {
   private readonly typedEl: HTMLElement;
   private readonly restEl: HTMLElement;
   private readonly srcEl: HTMLElement;
-  private readonly queue: DialogueItem[] = [];
+  /** Waiting lines (cap, stale and place rules: ./queue.ts). */
+  private readonly queue: LineQueue<DialogueItem>;
   private cur: Active | null = null;
   private hideTimer = 0;
   private mouthTimer = 0;
   private lastPortrait = '';
-  /** Presenter clock (game seconds, advanced by update). */
-  private clock = 0;
-  /** Lines dropped as stale (tests / debug). */
-  dropped = 0;
-
   constructor(private readonly o: PresenterOptions) {
+    this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
     ensurePortraitDefs();
     this.portraitEl = h('div.kqs-portrait');
     this.whoEl = h('span.kqs-who');
@@ -133,49 +114,23 @@ export class DialoguePresenter {
     return this.queue.length;
   }
 
+  /** Lines dropped as stale, invalid or over the cap (tests / debug). */
+  get dropped(): number {
+    return this.queue.dropped;
+  }
+
   enqueue(item: DialogueItem): void {
-    item.queuedAt = this.clock;
     this.queue.push(item);
-    // cap: drop low-priority lines first, then the oldest waiting line not of the playing group
-    while (this.queue.length > MAX_QUEUE) {
-      let i = this.queue.findIndex((q) => q.priority === 'low' && q !== item);
-      if (i < 0) i = this.queue.findIndex((q) => !this.started(q) && q !== item);
-      this.queue.splice(Math.max(0, i), 1);
-      this.dropped++;
-    }
     if (!this.cur) this.next();
   }
 
-  /** The line's group has already begun (its first line was shown). */
-  private started(q: DialogueItem): boolean {
-    return q.group !== undefined && this.cur?.item.group === q.group;
-  }
-
-  /**
-   * A beat began: waiting lines of other beats are stale. Low-priority ones go at once, the rest
-   * get STALE_GRACE seconds to start; the rest of a sequence that is already playing stays.
-   */
+  /** A beat began: waiting lines of other beats retire (./queue.ts). */
   retireBeat(beat: string): void {
-    for (let i = this.queue.length - 1; i >= 0; i--) {
-      const q = this.queue[i]!;
-      if (q.beat === undefined || q.beat === null || q.beat === beat || this.started(q)) continue;
-      if (q.priority === 'low') {
-        this.queue.splice(i, 1);
-        this.dropped++;
-      } else q.staleAt = Math.min(q.staleAt ?? Infinity, this.clock + STALE_GRACE);
-    }
-  }
-
-  /** Should a waiting line still be said now? */
-  private fresh(q: DialogueItem): boolean {
-    if (this.started(q)) return true;
-    if (q.staleAt !== undefined && this.clock > q.staleAt) return false;
-    if (q.priority === 'low' && this.clock - (q.queuedAt ?? this.clock) > LOW_TTL) return false;
-    return this.o.valid?.(q) ?? true;
+    this.queue.retireBeat(beat);
   }
 
   clear(): void {
-    this.queue.length = 0;
+    this.queue.clear();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');
   }
@@ -198,11 +153,7 @@ export class DialoguePresenter {
   }
 
   private next(): void {
-    let item = this.queue.shift();
-    while (item && !this.fresh(item)) {
-      this.dropped++;
-      item = this.queue.shift();
-    }
+    const item = this.queue.take();
     if (!item) {
       this.cur = null;
       this.el.classList.remove('kqs-speaking');
@@ -243,7 +194,7 @@ export class DialoguePresenter {
 
   /** Advance typing / hold (seconds of game time). */
   update(dt: number): void {
-    this.clock += dt;
+    this.queue.tick(dt);
     if (this.mouthTimer > 0) {
       this.mouthTimer -= dt;
       if (this.mouthTimer <= 0) this.portraitEl.classList.remove('kqs-m');

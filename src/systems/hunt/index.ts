@@ -102,6 +102,11 @@ declare module '../contracts' {
     heel?: number;
     /** pack parforce: rubber-band factor beyond the heel (a short chase that must be felt, default 1). */
     burst?: number;
+    /**
+     * pack parforce: at the heel the hounds keep a runner's pace instead of overtaking — whoever
+     * keeps running is not caught (chapter 1's first chase is won by running; default false).
+     */
+    keepPace?: boolean;
     /** pack: snow tracks on/off (default: on in 1793-02 or a snowy look). */
     snow?: boolean;
   }
@@ -156,6 +161,7 @@ export interface HuntStartOptions {
   goalRadius?: number;
   heel?: number;
   burst?: number;
+  keepPace?: boolean;
   /** Snow tracks (default: by era / look). */
   snow?: boolean;
 }
@@ -504,6 +510,7 @@ class Hunt {
     if (c.goalRadius !== undefined) o.goalRadius = c.goalRadius;
     if (c.heel !== undefined) o.heel = c.heel;
     if (c.burst !== undefined) o.burst = c.burst;
+    if (c.keepPace !== undefined) o.keepPace = c.keepPace;
     if (c.snow !== undefined) o.snow = c.snow;
     const s = this.sim;
     const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && c.hounds === undefined && c.pikeur === undefined;
@@ -568,6 +575,7 @@ class Hunt {
       goalRadius: o.goalRadius,
       heel: o.heel,
       burst: o.burst,
+      keepPace: o.keepPace,
       oneKey: this.oneKey(),
     };
     this.snowOverride = o.snow ?? null;

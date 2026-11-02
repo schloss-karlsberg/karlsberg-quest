@@ -72,6 +72,8 @@ export interface PackOptions {
   heel?: number;
   /** parforce: how hard they come out of the release (rubber-band factor beyond the heel, default 1). */
   burst?: number;
+  /** parforce: at the heel they match a runner's pace (whoever keeps running is not caught). */
+  keepPace?: boolean;
   /** finale: lying flat alone is enough (one-key option / gentle mode; the lantern lights itself). */
   oneKey?: boolean;
 }

@@ -329,7 +329,11 @@
 
 ## 9. Bedrohung (Notizen für Designer)
 
-**Teil A (Tag):** keine Meute. Druck entsteht nur durch den Ölvorrat. Hofleute sind Echos und sehen dich nicht. Einzige Regel mit Humor: Wer im Ehrenhof rennt (Shift), wird von der Wache mit „Langsam! Hier rennt nur das Geld davon.“ angerufen, aber nicht aufgehalten.
+**Teil A (Tag):** keine Meute. Druck entsteht nur durch den Ölvorrat. Hofleute sind Echos und sehen dich nicht. Einzige Regel mit Humor: Wer im Ehrenhof rennt (Shift), wird von der Wache mit „Langsam! Hier rennt nur das Geld davon.“ angerufen, aber nicht aufgehalten. Das ist ein Running Gag (Reaktion `wache-rennen`, Zeile `wache.k1.rennen`, höchstens alle 30 s), der beim wiederholten Rennen eskaliert und nach der vierten Zeile verstummt:
+  1. „Langsam! Hier rennt nur das Geld davon.“
+  2. „Schon wieder? Dem Geld läuft Er so nicht hinterher. Das ist längst über alle Berge.“
+  3. „Ich schreib Ihn auf. Gleich hinter die Baurechnung, da ist noch Platz.“
+  4. „Renn Er nur. Ich steh hier seit sechs Uhr, ich hab Zeit.“
 
 **Teil B (Nacht, Karlslust):** Erste Jagd mit **3 Hunden** (Diane, Sultan, Bijou), **ohne Pikeur**.
 - **Patrouille:** Vom unteren Ende der Apfelallee (≈ 1575/−408) über das Torhaus (1643/−425) zum Weg oberhalb der Schwanenweiher, dann im Kreis um das Amphitheater (Radius ≈ 45 m) und zurück. Auf dem OSM-Wegegraph die nächsten Wege zu diesen Punkten nehmen.
@@ -341,5 +345,6 @@
   - Sandsteinbrocken an den Dämmen (FAKT: Tumulus und Dämme waren mit Findlingen verkleidet): Sichtschutz.
   - Das Rondell während des Echos.
 - **Telegraf:** Ein langer Hornton = die Meute ist los. Zwei kurze = sie hat deine Fährte. Ein fallender Ton = sie hat dich verloren und sucht am letzten Ort. Drei lange = sammeln, die Patrouille geht weiter. Jeder Ruf hat einen Untertitel (siehe `09-ui-texte.md`). Mit Spurenleser 1 sagt der Untertitel auch, was der Ruf bedeutet.
-- **Gestellt:** Wenn ein Hund 2 s lang Sicht auf dich hat und weniger als 4 m entfernt ist. Dann Abblende und Text „Die Meute hat dich gestellt …“, und du wachst in der Feldstation auf.
+- **Gestellt:** Wenn ein Hund 2 s lang Sicht auf dich hat und weniger als 4 m entfernt ist. Dann Abblende und Text „Die Meute hat dich gestellt …“. Du wachst nicht in der Feldstation auf, sondern am Anker des Kapitelteils, im Heute (Beat-Feld `wake`): in Teil B an der Tschifflik-Terrasse („Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt.“), in Teil A (leeres Öl) am Ehrenhof. Q bringt dich sofort zurück; der Kilometer von der Station entfällt.
+- **Die Flucht (1.14):** Parforce ohne Reiter, 5 s Vorsprung. Die Hunde kommen hart aus dem Start (`burst` 1.3), bis sie etwa 9 m hinter dir sind (`heel`), und halten dann dein Tempo (`keepPace`): wer weiterrennt, wird nicht gestellt, sieht sie aber dicht hinter sich. Wer stehen bleibt, sieht sie kurz zögern und anschlagen; wer trödelt oder geht, wird gestellt. Geprüft in `tests/hunt-k1.test.ts`.
 - **Tuning-Ziel:** Ein aufmerksamer Spieler wird beim ersten Mal höchstens einmal gestellt. Die Seite am Rondell (1.12) ist der einzige Moment echter Verfolgung, und das Tosbecken ist nur 160 m entfernt.
