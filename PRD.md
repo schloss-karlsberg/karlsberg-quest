@@ -1,7 +1,7 @@
 # Karlsberg Quest — PRD / Game Design Document (living)
 
-> Version 0.1 · 2026-11-02 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
-> Status: **first full draft**. Next: answer the open questions in §11.2, then start M0.
+> Version 0.2 · 2026-11-02 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
+> Status: **in production**. The owner asked for the complete game to be built (D-006); M0 and content writing are under way.
 
 ## 0. How this document works
 
@@ -14,6 +14,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.2 | 2026-11-02 | Build started: self-contained app with a data-prep step (D-005, answers Q-3); full campaign in one compressed pass (D-006); procedural art and audio (D-007) |
 | 0.1 | 2026-11-02 | First full draft: vision, research summary, gameplay, story, threats, progression, art, tech, MVP slice, milestones M0–M9, risks and open questions. Research notes in `research/` |
 
 ## 1. Vision & pitch
@@ -266,7 +267,7 @@ The hub grows as the player learns: a pin board for the Chronik, a darkroom for 
 
 ## 8. Technical approach
 
-**Lean:** a separate static web app (`karlsberg-quest`) on the same stack as the sister projects. It reads their published data through the data contract and reuses engine modules **by import, never by fork** (see Q-3).
+**Decided (D-005):** a separate, self-contained static web app on the same stack as the sister projects. A data-prep script reads their data read-only and writes compact game assets; no sister source code is imported. §8.2 lists what we derive from them.
 
 ### 8.1 Stack (matches the sister projects)
 
@@ -399,7 +400,7 @@ gantt
 
 - **Q-1 Name:** "Karlsberg Quest", "Die Asche vom Karlsberg", "Hundskarl", or "Saarpfalz-Chroniken"? **Lean:** keep "Karlsberg Quest" as the working title and decide at M4.
 - **Q-2 Rating:** 16+ (D-001) gives room for real dread but loses schools and families, which IDEA.md wanted. A 12+ version would reach them. **Lean:** design for 16+, keep gentle mode, and recheck before M5 what a free browser game needs under German youth-protection law.
-- **Q-3 Engine path:** import the explorer's modules, ask for a shared package, or vendor a pinned copy? **Lean:** request R-1 (a package) and spike the import in M0.
+- ~~**Q-3 Engine path**~~ → answered by D-005.
 - **Q-4 Capacity:** how many hours a week go into this? The milestone dates assume about 20.
 - **Q-5 Art:** own work, open-licence assets, or AI-generated with a licence check? **Lean:** AI-assisted concepts, final portraits by hand or with a clear licence trail.
 - **Q-6 Voice:** text only, or voice for the compass? **Lean:** text until 1.0.
@@ -411,6 +412,9 @@ gantt
 
 | # | Date | Decision | Why | Replaces |
 | --- | --- | --- | --- | --- |
+| D-007 | 2026-11-02 | Art and audio are procedural in v1.0: real terrain, shaders, particles, Web Audio synthesis; no third-party art packs | No licence risk, small payload, no asset pipeline needed; partly answers Q-5 | — |
+| D-006 | 2026-11-02 | Build the complete campaign (prologue, Ch. 1–4, three endings) in one compressed production pass, about 2–3 h of play, instead of slice-first over M0–M9 | Owner request: "build the complete game … loop until it's finished and playable" | §10 schedule (order kept, dates dropped) |
+| D-005 | 2026-11-02 | The game is a self-contained static Vite app. `scripts/prepare-data` reads sister data **read-only** and writes compact assets into `public/data/`; no sister source code is imported | Sister projects are under active development by other agents; importing their modules would couple us to moving code. R-1 becomes optional | Q-3, §8.2 "reuse by import" |
 | D-004 | 2026-11-02 | The living document is `PRD.md` in this repo; no external doc | Agents and humans work from the same file, versioned with the code | — |
 | D-003 | 2026-11-02 | No combat; tension comes from stealth, chases, time pressure and a corrupting threat | Keeps focus on exploration and deduction; no fights against historical people | IDEA.md (no rule) |
 | D-002 | 2026-11-02 | Core genre: mystery-exploration RPG (clues, deduction, eras), keeping quests, skills and codex | Deduction makes learning real facts feel like play | IDEA.md §4 (MMORPG-style quest focus) |
