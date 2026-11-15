@@ -409,6 +409,30 @@ export interface ProgressionSlice {
   taken: string[];
   /** Collections already rewarded. */
   completedSets: string[];
+  /** (progression, additive) Codex facts that already paid their +10 XP. */
+  codexXp?: string[];
+  /** (progression, additive) Glowing world pickups that are out there now, by id (survive saves). */
+  placed?: Record<string, PlacedPickup>;
+  /** (progression, additive) Enemy drops rolled so far (seeds the next loot roll). */
+  drops?: number;
+  /** (progression, additive) Empty loot rolls in a row (bad-luck protection raises the next chance). */
+  dry?: number;
+}
+
+/** (progression, additive) A glowing pickup in the world: the `loot:place` payload, persisted. */
+export interface PlacedPickup {
+  id: string;
+  item: string;
+  x: number;
+  z: number;
+  era: Era;
+  count?: number;
+  /** Storey hint (local height) inside the palace. */
+  y?: number;
+  room?: string;
+  quest?: string;
+  /** Rolled from an enemy's loot table (drifts towards the player, may be pruned when there are many). */
+  drop?: boolean;
 }
 
 /** `state.systems.combat` (owner: combat). */

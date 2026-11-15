@@ -280,6 +280,17 @@ The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); onl
 - **No currency** (PRD: no shop, no grind). Loot is consumables, lore and quest items.
 - **Consumables** (`src/rpg/items.ts`): Kräuterbalsam (heal 45), Riechsalz (Atem), Lampenöl (Bannlicht
   charges + oil), Kalkstaub (thrown: stuns spectral enemies in 6 m — "Das sind Kalköfen"). Stack 5–9.
+- **Loot numbers (progression track, 2026-11-16)**: tables retuned so a small enemy drops about every
+  third kill (`loot.klein` balsam 22 % / oil 10 % / salts 6 %, `loot.licht`, `loot.raff`, `loot.stein`
+  raised, `loot.boss` adds a Kalkstaub); every empty roll in a row adds +6 % to the next (at most
+  +30 %), so a dry streak never lasts. Rolls are seeded (enemy id + drop counter): a reload does not
+  re-roll. `tests/rpg-contracts.test.ts` needed no change (level curve, talents and `deriveStats`
+  untouched).
+- **Additive type changes (progression track)**: `ProgressionSlice` gained the optional `codexXp`
+  (facts that already paid +10 XP), `placed` (world pickups by id, persisted), `drops` (loot seed
+  counter) and `dry` (empty rolls in a row); new `PlacedPickup` (the `loot:place` payload + `drop`).
+  `src/rpg/items.ts` adds `lootTable()` / `collectionDef()`, `src/rpg/stats.ts` adds `talentDef()`,
+  `talentBlock()`, `spentPoints()`, `weaponPower()`. No contract event changed.
 - **Drops**: enemy `loot` tables roll on `enemy:killed`; drops appear as **glowing pickups** (warm
   core + slow bob + motes, era-tinted, visible through fog to 40 m; E or walking over picks up).
   `loot:drop` → `loot:place` → `item:pickup`.
