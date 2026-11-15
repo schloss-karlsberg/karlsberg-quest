@@ -35,13 +35,28 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'item.horn', kind: 'key', name_de: 'Das Horn', text_de: 'Josts Horn, das Mundstück zuerst gereicht. Kalt und echt.' },
 ];
 
+/**
+ * Each entry rolls independently: chance + the player's `loot` stat + bad-luck protection (every
+ * empty roll in a row adds +6 %, at most +30 %; src/systems/progression/logic.ts). Tuned
+ * 2026-11-15 (docs/ACTION-RPG.md §7): a small enemy drops something about every third kill.
+ */
 export const LOOT: readonly LootTable[] = [
-  { id: 'loot.klein', entries: [{ item: 'item.balsam', chance: 0.12 }, { item: 'item.lampenoel', chance: 0.06 }] },
-  { id: 'loot.licht', entries: [{ item: 'item.lampenoel', chance: 0.3 }, { item: 'item.balsam', chance: 0.08 }] },
-  { id: 'loot.raff', entries: [{ item: 'item.balsam', chance: 0.2 }, { item: 'item.riechsalz', chance: 0.1 }] },
-  { id: 'loot.stein', entries: [{ item: 'item.balsam', chance: 0.25 }, { item: 'item.kalkstaub', chance: 0.15 }] },
-  { id: 'loot.boss', entries: [{ item: 'item.balsam', chance: 1, min: 2, max: 3 }, { item: 'item.riechsalz', chance: 1 }, { item: 'item.lampenoel', chance: 1 }] },
+  { id: 'loot.klein', entries: [{ item: 'item.balsam', chance: 0.22 }, { item: 'item.lampenoel', chance: 0.1 }, { item: 'item.riechsalz', chance: 0.06 }] },
+  { id: 'loot.licht', entries: [{ item: 'item.lampenoel', chance: 0.35 }, { item: 'item.balsam', chance: 0.12 }] },
+  { id: 'loot.raff', entries: [{ item: 'item.balsam', chance: 0.3 }, { item: 'item.riechsalz', chance: 0.15 }, { item: 'item.kalkstaub', chance: 0.1 }] },
+  { id: 'loot.stein', entries: [{ item: 'item.balsam', chance: 0.3 }, { item: 'item.kalkstaub', chance: 0.2 }] },
+  { id: 'loot.boss', entries: [{ item: 'item.balsam', chance: 1, min: 2, max: 3 }, { item: 'item.riechsalz', chance: 1 }, { item: 'item.lampenoel', chance: 1 }, { item: 'item.kalkstaub', chance: 1 }] },
 ];
+
+/** A loot table by id. */
+export function lootTable(id: string): LootTable | undefined {
+  return LOOT.find((l) => l.id === id);
+}
+
+/** Collection by id. */
+export function collectionDef(id: string): CollectionSet | undefined {
+  return COLLECTIONS.find((c) => c.id === id);
+}
 
 /**
  * Collections (journal tab "Sammlungen"). Members are declared by the chapters' quest files

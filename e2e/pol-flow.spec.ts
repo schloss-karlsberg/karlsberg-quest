@@ -41,6 +41,14 @@ const boxes = (page: Page) =>
     add('dialogue', document.querySelector('[data-testid="dialogue"].kqs-show'));
     add('subtitles', document.querySelector('.kq-subtitles:not(:empty)'));
     add('fx-gauges', document.querySelector('.kq-fx-gauges'));
+    // Action-RPG docks (docs/ACTION-RPG.md §10): vitals (XP bar, quick slot, combat's bars), boss bar, feed
+    add('hud-vitals', document.querySelector('[data-testid="hud-vitals"]'));
+    add('hud-boss', document.querySelector('[data-testid="hud-boss"]'));
+    add('hud-feed', document.querySelector('[data-testid="hud-feed"]'));
+    add('level-card', document.querySelector('[data-testid="level-card"]'));
+    // the quest tracker (quests track) lives in the top-left column; only check it on its own when it is elsewhere
+    const tracker = document.querySelector('[data-testid="quest-tracker"]');
+    if (tracker && !tracker.closest('[data-testid="hud-topleft"]')) add('quest-tracker', tracker);
     return out;
   });
 
@@ -98,6 +106,8 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
       k.skills!.grant('spurenleser', 1);
       k.story!.say('laub', 'Hier hat er gesessen. Zähl die Fächer, bevor du den Kasten aufmachst; der Kanzlist hat das auch getan.');
       k.ctx.ui.hud.subtitle(null, '[Draußen im Hof: Schritte auf Kies, dann eine Tür]', 8000);
+      // a pickup line in the feed dock (the vitals dock always shows the XP bar)
+      k.progression?.grant('item.balsam', 1);
       k.step(20);
       k.story!.finishTyping();
       k.step(2);
@@ -109,6 +119,7 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
     expect(bs.map((b) => b.name)).toEqual(expect.arrayContaining(['dialogue', 'subtitles']));
     expect(bs.filter((b) => b.name.startsWith('topleft')).length).toBeGreaterThanOrEqual(3); // era, room, objective
     expect(bs.some((b) => b.name.startsWith('skill-card'))).toBe(true);
+    expect(bs.map((b) => b.name)).toEqual(expect.arrayContaining(['hud-vitals', 'hud-feed']));
     expect(overlaps(bs), `${vw}×${vh}: ${JSON.stringify(bs)}`).toEqual([]);
     await shot(page, `hud-${vw}x${vh}`);
     await page.evaluate(() => {

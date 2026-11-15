@@ -118,3 +118,30 @@ export function deriveStats(p: Pick<ProgressionSlice, 'level' | 'talents' | 'equ
   }
   return s;
 }
+
+/** A talent by id. */
+export function talentDef(id: string): TalentDef | undefined {
+  return TALENTS.find((t) => t.id === id);
+}
+
+/** Why a talent cannot be learned now (null = it can). */
+export function talentBlock(p: Pick<ProgressionSlice, 'points' | 'talents'>, id: string): 'unknown' | 'max' | 'points' | 'requires' | null {
+  const t = talentDef(id);
+  if (!t) return 'unknown';
+  if ((p.talents[id] ?? 0) >= t.maxRank) return 'max';
+  if ((t.requires ?? []).some((r) => (p.talents[r] ?? 0) < 1)) return 'requires';
+  if (p.points < 1) return 'points';
+  return null;
+}
+
+/** Talent points spent (sum of ranks). */
+export function spentPoints(talents: Record<string, number>): number {
+  return Object.values(talents).reduce((n, r) => n + Math.max(0, r | 0), 0);
+}
+
+/** How strong a weapon is (light-hit damage against spectral enemies; the sweep counts a little). */
+export function weaponPower(id: string | null | undefined): number {
+  const e = id ? itemDef(id)?.effect : undefined;
+  if (!e) return 0;
+  return (e.damage ?? 0) * (e.spectral ?? 1) * (e.sweep ? 1.05 : 1);
+}

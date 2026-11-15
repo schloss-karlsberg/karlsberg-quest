@@ -813,6 +813,41 @@ quests ──codex:unlocked / skill:grant──▶ codex, skills
 
 Each RPG track adds its own subsection here when it fills its system in.
 
+#### progression (`src/systems/progression/`) – XP, levels, talents, items, loot, pickups
+
+| Module | What |
+|---|---|
+| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request {lit, refill}` for oil / bann items); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
+| `pickups.ts` | three.js pickups: billboard core with a glint (no fog, min. on-screen size, fades past 40 m), spinning token, rising motes, ground pool, light column for quest / lore / weapon / charm items; era tint; pop-in bounce, drops drift towards a player within 3.4 m, take = fly to the bottom of the view + burst (reduced motion: fade only) |
+| `hud.ts` | `hud.dock('vitals', xp, 30)` (level medallion + brass bar with ghost gain, "+50" pop, brass ring pulse on level-up — no flash), `dock('vitals', quick, 40)` (key, glyph, name, count), `dock('feed', lines, 10)` (max 3 lines, fade after 4.2 s), floating "+N EP" at the `xp:grant` x/z |
+| `levelup-card.ts` | "Stufe N" stamp card (centre, `top: max(170px, 24vh)`), merges several level-ups, chime on the stamp; game time; steps aside (`kqp-held`) while a story title card / curtain, a modal or a skill unlock card shows |
+| `journal-tabs.ts` | `addJournalTab` 40 Ausrüstung (weapon, charm slots, supplies with "Auf H" / "Benutzen", quest items, lore with Fiktion / source label, derived numbers), 50 Talente (badge = unspent points; respec only at the field station, `hub:enter` / `hub:leave`) |
+| `icons.ts`, `audio.ts`, `progression.css` | procedural glyphs, Web Audio sounds (pickup, level, use, collection), styles incl. high-contrast and reduced-motion rules |
+
+Rules that came out of it:
+- **Consumable split**: progression only decrements and emits `item:use {item}`; **combat** owns
+  Lebenskraft / Atem / Bannlicht and applies the `ItemEffect` from `src/rpg/items.ts` (heal ×
+  `stats.healing`, stamina, bann, Kalkstaub burst). Lampenöl's lantern refill is the one effect
+  progression sends itself (`lantern:request`).
+- **Stats**: `stats:changed {stats}` at boot, again on `game:start` (systems registered after
+  progression miss the boot one) and whenever `deriveStats(slice, {gentle, rauhnacht})` changes.
+- **Loot**: progression rolls on `enemy:killed`, emits `loot:drop`, then `loot:place` per item
+  (ids `drop.<n>.<i>`); quest pickups come in as `loot:place` from quests / story and leave as
+  `item:pickup {id}`.
+- **E is shared**: walking over a pickup takes it (1.3 m, drops 1.9 m); E (`listen`) within 2.7 m only
+  while the progression prompt is the one on screen — an NPC's or a clue's prompt wins. Pickups with
+  `y` / `room` show only on that storey (|Δy| < 2.4 m).
+- **Docks**: `progression.css` narrows the vitals dock to 168 px (it must clear the 190 px gutter the
+  dialogue card leaves at 1024 px) and the feed to `min(300px, 30vw)`; `e2e/pol-flow.spec.ts` checks
+  `hud-vitals`, `hud-boss`, `hud-feed`, the level card and a quest tracker outside the column.
+- **Journal fallback**: until the quests system's journal modal exists, I (`inventory`) opens a small
+  "Feldbuch" modal with every registered tab (`data-testid=journal-fallback`) — only if no modal and no
+  `[data-testid="journal"]` opened within three fixed steps, so both coexist.
+- **State** `state.systems.progression` (`ProgressionSlice` + additive `codexXp`, `placed`, `drops`,
+  `dry`); rebuilt on `new` / `load` / `replace` (no cards). Hooks `kq.progression.state / xp / level /
+  grant / equip / use / learn / respec / place / pickups / take / stats / card / feed / journal`.
+- Tests: `tests/progression.test.ts`, `e2e/progression.spec.ts` (screens `prg-*.png`).
+
 ## 13. Licences
 
 Code: project licence. Fonts: IM Fell English (Igino Marini) and Caveat, SIL OFL 1.1 (texts in
