@@ -296,8 +296,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   eras' seasons, the Festsaal on arrival (heat) and burning, hounds in fog at 30–60 m; screenshots
   `pol-art-*.png`.
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
-  prologue across all four systems (new game → hub → Chronik → objective → scan → clues → Q →
-  shift → echo → pack → caught → station → batch confirmed → Laub's hint), screenshots `int-*.png`;
+  prologue across all four systems (new game → hub → Pinnwand opens the Journal → objective →
+  scan → clues → Q → shift → echo → pack → caught (nothing lost) → station → Journal codex holds
+  the clue facts), screenshots `int-*.png`; `e2e/quests.spec.ts` (Hanne's test quest, `qst-*.png`);
   and the round-2 tour over the test chapter's beats r1–r4 (`?storytest`): doorway into the
   Festsaal 1789 → story `room` condition → a ghost on the upper storey, E → conversation →
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
@@ -338,9 +339,9 @@ private ones listed below), `ctx.state` and a few additive world hooks. How they
 story ──threat:configure──▶ hunt (pack, lantern seconds)   fx (fire, oblivion)
 story ──shift:request─────▶ fx ──shift:begin / era.set + shift:midpoint / shift:done──▶ everyone
 hunt, fx ──player:caught──▶ story (curtain, threats off, instant return to today, checkpoint beat)
-                            chronik (drops unconfirmed finds unless gentle mode or {soft:true})
+                            chronik (finishes a running echo; nothing is lost since D-008)
 story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
-story (hub Pinnwand) ──chronik:open──▶ chronik board      chronik ──dialogue:say (laub)──▶ story presenter
+story (hub Pinnwand) ──chronik:open──▶ quests (opens the Journal; the Chronik board is gone)
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
 story:give ──clue:found / noun:learned (story clue ids, written to state.inventory)──▶ everyone
 story ──npc:spawn/despawn──▶ npc ──npc:talk / npc:conversation / bark:npc-near──▶ story, barks
@@ -507,15 +508,16 @@ Round-4 (polish: set dressing) integration rules:
 - State `systems.fx {fire, oblivion}` (running threats resume after a load). URL `?fxq=low|high`.
 - Hooks `kq.fx.shift/shiftAt/freeze/fire/fireTime/oblivion/oblivionT/pulse/quality/state`.
 
-### chronik (`src/systems/chronik/`) – clues, echoes, case board, codex
-- Clue markers + E examine card (`clue:found`, `noun:learned`, `codex:unlocked`); relief clues
-  need the right scan mode, lantern clues a lit lantern; hold E on an echo → ghosts + subtitles
-  (`echo:start/end`, `echo:play {id}` starts one). Board on J/Tab or `chronik:open`: fill blanks,
-  "Prüfen" confirms batches of three only in `today` (`chronik:fill`, `chronik:batch`,
-  `chronik:case-complete`, `chronik:opened/closed`). Readings → `state.chronik[case].readings`
-  and `flags['reading.<case>.<entry>']`. Laub's hints after 4/8/12 min stuck → `dialogue:say`
-  (speaker `laub`; plain subtitle only when no story/dialogue system exists). On `player:caught`
-  drops finds since the last confirmation (`chronik:lost`), not in gentle mode.
+### chronik (`src/systems/chronik/`) – clues, echoes (the board is gone, D-008)
+- Clue markers + E examine card (`clue:found`, `noun:learned` kept for story conditions but no
+  longer shown on the card, `codex:unlocked`); relief clues need the right scan mode, lantern
+  clues a lit lantern; hold E on an echo → ghosts + subtitles (`echo:start/end`, `echo:play {id}`
+  starts one). E and the examine prompt step aside while `flags['npc.near']` is set (talk wins).
+- No board, no blanks, no batches, no hint ladder: J/Tab and `chronik:open` open the quests
+  system's Journal (`openJournal()`; `kq.chronik.open/close/tab/isOpen` redirect there, and
+  `chronik:opened/closed` are emitted by the Journal). `check()` only re-evaluates state for
+  older saves (`state.chronik` stays readable). `player:caught` finishes a running echo and loses
+  nothing (`chronik:lost` is no longer emitted).
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
   real content exists or with `?placeholder`.
 - Markers of a past chapter's unfound clues retire (`clueRetired`, chapter order p → k1 … k4 →
@@ -617,9 +619,15 @@ Round-4 (polish: set dressing) integration rules:
   out near the camera) and motes. Warm amber for Hanne, cold flicker for the others, era tint;
   visible only in its era; turns towards the player. Reduced motion calms it.
 - E within 2.8 m → conversation (modal page at the bottom; typing on the UI clock; keys 1–n,
-  E/Enter/Space advance): `greet`, topics from the pack's `npc:talk` lines, `bye`. Emits `npc:talk`,
+  E/Enter/Space advance): `greet`, quest topics first (`npc:topics` from quests, ids `q:<quest>`,
+  marked ! / ?), topics from the pack's `npc:talk` lines, `bye`. A quest offer ends in two buttons
+  (`quest:accept` / `quest:decline`); a turn-in plays the history lines (marked "Was wirklich war",
+  with source and codex note), then the stance prompt "Deine Haltung – eine Meinung, keine Prüfung"
+  (`quest:stance`, no right answer) and `quest:turnin`. Quest glyphs over the head
+  (`glyphs.ts`, `npc:marker`: ! / ringed ! / ? with halo / grey ?), escort `npc:follow`, transient
+  flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.
-- State `systems.npc {placed, said}`. Hooks `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state`.
+- State `systems.npc {placed, said}`. Hooks `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state/mark/choose`.
 
 ### barks (`src/systems/barks/`) – Laub's and Marlene's remarks
 - Rules (`rules.ts`, bible 08-stimmen): random line per group, same line not within 600 s, one bark
@@ -812,6 +820,33 @@ quests ──codex:unlocked / skill:grant──▶ codex, skills
 | Test chapter | `?storytest` + `kq.story.goto('test', 'q1')`: Hanne offers `q.test.lohnzettel`, then Laub `q.test.irrlichter` | e2e entry point for all tracks |
 
 Each RPG track adds its own subsection here when it fills its system in.
+
+#### quests (`src/systems/quests/`) – tasks, tracker, beacons, Journal
+
+- `logic.ts` (pure, `tests/quests.test.ts`): `QuestBook` – offer / accept / progress / complete /
+  fail / reset, availability (`chapter`, `era`, `after`, `level`, `flags`), all objective types
+  (kill, collect with seeded drops or placed pickups, use, talk, examine, echo, calm, room, event,
+  and the positional reach / survive / escort checks in `tick()`), optional objectives with bonus XP, the flag mirror and `reassert()` after a
+  load. Turn-in `npc` (topic at the giver), `auto` (on ready), voice givers (Laub) accept at once.
+  `complete` pays out (`xp:grant`, `item:grant`, `skill:grant`, `codex:unlocked` per history fact),
+  despawns its groups and clears its loot.
+- `index.ts`: event glue (`quest:command`, `quest:accept/decline/turnin/stance`, kills, pickups,
+  `npc:talk`, `room:enter` …), `npc:topics` / `npc:marker` / `npc:follow` to npc, restore on
+  `save:loaded`. State `systems.quests` (`QuestSlice` + `bestiary`).
+- `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready), feed
+  (`hud.dock('feed')`), banner, reward card (EP stamp, items, codex facts with confidence + label).
+- `beacons.ts`: additive era-tinted light column + ground ring over open objective zones
+  (≤ 200 m, fades inside). Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
+  shapes, givers within 150 m).
+- `journal.ts`: the Journal modal (J / Tab, `chronik:open`, testid `journal`), tabs Aufgaben (10,
+  running / done, objectives, Lohn, "Was erzählt wurde" with sources, the player's stance), Codex
+  (20, all / new / relief-pattern filters, confidence D/I/N/U + FAKT/STRITTIG/LEGENDE/FIKTION,
+  sources), Sammlungen (30, item sets + bestiary, all fiction). ←/→ and digits switch tabs.
+  Progression's tabs (40, 50) plug in via `addJournalTab`.
+- `audio.ts`: procedural cues (accept, progress tick, ready, complete). `strings.ts`: German text.
+- Hooks `kq.quests.state/ids/offer/accept/progress/complete/turnin/reset/tracked/topics/mark/
+  journal/closeJournal/journalOpen/reward/beacons/markers`. E2E `e2e/quests.spec.ts` (Hanne's
+  test quest end to end, save/load, reset), `e2e/chronik.spec.ts` (Journal), screenshots `qst-*`.
 
 ## 13. Licences
 

@@ -21,12 +21,14 @@ import { defineSystem } from '../../core/systems';
 import type { DialogueLine } from '../../content/types';
 import type { TriggerContext } from '../../content/triggers';
 import type { NpcPlacement } from '../contracts';
+import type { GiverMark, QuestLine, QuestTopic } from '../../rpg/types';
 import { speakerMeta } from '../story/dialogue/speakers';
 import { Voice } from '../story/dialogue/voice';
 import { GhostFigure } from './figure';
 import { BYE, GREET, answer, askedTopics, availableTopics, clueFor, talkLines, talkedFlag } from './logic';
 import { lookFor, topicLabel } from './roster';
-import { ConversationView, type TalkLine } from './ui';
+import { ConversationView, type TalkLine, type TalkTopic } from './ui';
+import { GiverGlyphs } from './glyphs';
 
 addStrings('de', {
   'npc.prompt': 'Mit {name} sprechen',
@@ -37,6 +39,9 @@ addStrings('de', {
   'npc.bye': 'Auf Wiedersehen',
   'npc.silent': '(Schweigt und sieht dich an.)',
   'npc.nothing': '(Mehr weiß sie dazu nicht.)',
+  'npc.later': 'Später.',
+  'npc.stance.note': 'Deine Haltung – eine Meinung, keine Prüfung.',
+  'npc.codex': 'Codex: {title}',
 });
 
 export interface NpcSlice {
@@ -67,6 +72,10 @@ export interface NpcHooks {
   drain(): void;
   close(): void;
   state(): { open: boolean; npc: string | null; chapter: string | null; line: { id: string; speaker: string; text: string } | null; topics: string[]; busy: boolean; near: string | null };
+  /** Quest glyph over an NPC (from npc:marker) and whether it is on screen. */
+  mark(npc: string): { mark: GiverMark; shown: boolean };
+  /** Choose an answer button by id (qa:<quest>, qd:<quest>, qs:<value>) or index. */
+  choose(id: string | number): boolean;
 }
 
 declare module '../../debug/hooks' {
@@ -93,6 +102,15 @@ class NpcRuntime {
   private readonly view: ConversationView;
   private readonly voice: Voice;
   private talking: { npc: string; chapter: string; lines: DialogueLine[] } | null = null;
+  /** Quest topics per NPC (quests → npc:topics), shown first in the menu. */
+  private readonly questTopics = new Map<string, QuestTopic[]>();
+  /** Glyph over the head per NPC (quests → npc:marker). */
+  private readonly marks = new Map<string, GiverMark>();
+  /** Escorted NPCs walking after the player (quests → npc:follow). */
+  private readonly follow = new Set<string>();
+  private readonly glyphs: GiverGlyphs;
+  /** Inside a quest exchange (accept / stance buttons): topic updates wait. */
+  private inQuest = false;
   private near: string | null = null;
   private prompt: string | null = null;
   private hooks = false;
@@ -108,6 +126,21 @@ class NpcRuntime {
     });
     ev.on('save:loaded', () => this.rebuild());
     ev.on('player:caught', () => this.view.close());
+    ev.on('npc:topics', ({ npc, topics }) => {
+      if (topics.length) this.questTopics.set(npc, topics);
+      else this.questTopics.delete(npc);
+      // an open menu with this NPC shows the new topics at once
+      if (this.talking?.npc === npc && this.view.open && !this.view.busy && !this.inQuest) this.menu();
+    });
+    ev.on('npc:marker', ({ npc, mark }) => {
+      this.marks.set(npc, mark);
+      this.glyphs.set(npc, mark);
+    });
+    ev.on('npc:follow', ({ npc, follow }) => {
+      if (follow) this.follow.add(npc);
+      else this.follow.delete(npc);
+    });
+    this.glyphs = new GiverGlyphs(ctx.ui.layer('npc-glyphs'));
     this.rebuild();
   }
 
@@ -240,7 +273,7 @@ class NpcRuntime {
     const greet = answer(lines, npc, chapter, GREET, this.trig(), new Set(this.slice.said));
     this.remember(greet);
     const say = greet.map((l) => this.toTalk(l));
-    if (!say.length && !lines.length) say.push({ id: 'npc.silent', speaker: meta, text: t('npc.silent') });
+    if (!say.length && !lines.length && !this.questTopics.get(npc)?.length) say.push({ id: 'npc.silent', speaker: meta, text: t('npc.silent') });
     if (say.length) this.view.say(say, () => this.menu());
     else this.menu();
     return true;
@@ -252,14 +285,88 @@ class NpcRuntime {
     const order = this.figs.get(c.npc)?.p.topics;
     const topics = availableTopics(c.lines, c.npc, c.chapter, this.trig(), order);
     const asked = askedTopics(this.ctx.state.state.flags, c.chapter, c.npc, topics);
-    const list = topics.map((id) => ({ id, label: topicLabel(id), asked: asked.has(id) }));
+    const quest: TalkTopic[] = (this.questTopics.get(c.npc) ?? []).map((q) => ({
+      id: `q:${q.quest}`,
+      label: q.label,
+      asked: false,
+      mark: q.kind === 'turnin' ? 'ready' : q.kind === 'progress' ? 'active' : q.main ? 'offer-main' : 'offer',
+    }));
+    const list: TalkTopic[] = [...quest, ...topics.map((id) => ({ id, label: topicLabel(id), asked: asked.has(id) }))];
     list.push({ id: BYE, label: t('npc.bye'), asked: false });
     this.view.setTopics(list, (id) => this.ask(id));
+  }
+
+  private questLine(l: QuestLine, i: number, extra: Partial<TalkLine> = {}): TalkLine {
+    const src = l.sources?.[0];
+    const out: TalkLine = { id: `quest.${i}`, speaker: speakerMeta(l.speaker, this.ctx.content), text: l.text, ...extra };
+    if (src) out.source = src.label ?? src.url;
+    return out;
+  }
+
+  /** A quest topic: offer (accept / later), progress, or the turn-in (history, stance, then the reward). */
+  private askQuest(questId: string): boolean {
+    const c = this.talking;
+    if (!c) return false;
+    const tp = (this.questTopics.get(c.npc) ?? []).find((x) => x.quest === questId);
+    if (!tp) return false;
+    const ev = this.ctx.events;
+    const lines = tp.lines.map((l, i) => this.questLine(l, i));
+    if (tp.kind === 'progress') {
+      this.view.say(lines.length ? lines : [{ id: 'npc.nothing', speaker: speakerMeta(c.npc, this.ctx.content), text: t('npc.nothing') }], () => this.menu());
+      return true;
+    }
+    if (tp.kind === 'offer') {
+      this.inQuest = true;
+      this.view.say(lines, () => {
+        const opts: TalkTopic[] = [{ id: `qa:${questId}`, label: tp.accept ?? 'Ich kümmere mich darum.', asked: false, mark: 'accept' }];
+        if (tp.declinable) opts.push({ id: `qd:${questId}`, label: t('npc.later'), asked: false, mark: 'decline' });
+        this.view.setTopics(opts, (id) => {
+          this.inQuest = false;
+          if (id.startsWith('qa:')) ev.emit('quest:accept', { id: questId, npc: c.npc });
+          else ev.emit('quest:decline', { id: questId, npc: c.npc });
+          this.menu();
+        });
+      });
+      return true;
+    }
+    // turn-in: the giver's words, the history told (sources + codex card), the stance, then hand in
+    this.inQuest = true;
+    const facts = this.ctx.content.facts;
+    const hist = (tp.history ?? []).map((l, i) => {
+      const f = l.fact ? facts.get(l.fact) : undefined;
+      return this.questLine(l, 100 + i, { history: true, note: f ? t('npc.codex', { title: f.title_de }) : undefined });
+    });
+    const finish = () => {
+      this.inQuest = false;
+      ev.emit('quest:turnin', { id: questId, npc: c.npc });
+      this.menu();
+    };
+    this.view.say([...lines, ...hist], () => {
+      const st = tp.stance;
+      if (!st) return finish();
+      this.view.say([{ id: `stance.${st.id}`, speaker: speakerMeta(c.npc, this.ctx.content), text: st.prompt_de }], () => {
+        this.view.setTopics(
+          st.options.map((o) => ({ id: `qs:${o.value}`, label: o.label_de, asked: false, mark: 'stance' as const })),
+          (id) => {
+            const value = id.slice(3);
+            ev.emit('quest:stance', { id: questId, value });
+            const reply = st.options.find((o) => o.value === value)?.reply ?? [];
+            if (reply.length) this.view.say(reply.map((l, i) => this.questLine(l, 200 + i)), finish);
+            else finish();
+          },
+          t('npc.stance.note'),
+        );
+      });
+    });
+    return true;
   }
 
   ask(topic: string): boolean {
     const c = this.talking;
     if (!c || !this.view.open || this.view.busy) return false;
+    // answers inside a quest exchange (accept / later / stance) go through the open buttons
+    if (/^q[ads]:/.test(topic)) return this.view.chooseId(topic);
+    if (topic.startsWith('q:')) return this.askQuest(topic.slice(2));
     const ctx = this.ctx;
     ctx.state.update((s) => (s.flags[talkedFlag(c.chapter, c.npc, topic)] = true), 'npc');
     ctx.events.emit('npc:talk', { npc: c.npc, chapter: c.chapter, topic });
@@ -279,6 +386,7 @@ class NpcRuntime {
   private closed(): void {
     const c = this.talking;
     this.talking = null;
+    this.inQuest = false;
     if (!c) return;
     this.ctx.events.emit('npc:conversation', { npc: c.npc, open: false });
     this.ctx.save.autosave('npc');
@@ -290,6 +398,7 @@ class NpcRuntime {
     const ctx = this.ctx;
     if (!this.hooks && window.kq) this.installHooks();
     const p = ctx.player.position;
+    for (const id of this.follow) this.followStep(id, dt);
     let best: string | null = null;
     let bestD = TALK_R;
     for (const [id, f] of this.figs) {
@@ -326,6 +435,11 @@ class NpcRuntime {
       }
     }
     this.near = best;
+    // a ghost within talk range owns E: the Chronik leaves its examine prompt to the conversation
+    if ((ctx.state.state.flags['npc.near'] ?? '') !== (best ?? '')) {
+      if (best) ctx.state.mutable.flags['npc.near'] = best;
+      else delete ctx.state.mutable.flags['npc.near'];
+    }
     const show = !!best && !this.view.open && ctx.ui.modals.count === 0;
     if (show) {
       // E belongs to the nearest ghost: (re)claim the prompt when it changes or another owner took it
@@ -338,6 +452,29 @@ class NpcRuntime {
       ctx.ui.hud.prompt(null, undefined, 'npc');
       this.prompt = null;
     }
+  }
+
+  /** Escort: walk after the player (2.4 m behind, a little faster than walking), into their era. */
+  private followStep(id: string, dt: number): void {
+    const f = this.figs.get(id);
+    if (!f) return;
+    const ctx = this.ctx;
+    const p = ctx.player.position;
+    if (f.p.era !== ctx.era.current) f.p.era = ctx.era.current;
+    const dx = p.x - f.p.x;
+    const dz = p.z - f.p.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 40) {
+      // left far behind (a shift, a run): catch up out of sight
+      f.p.x = p.x - (dx / d) * 3;
+      f.p.z = p.z - (dz / d) * 3;
+    } else if (d > 2.4) {
+      const step = Math.min(d - 2.4, dt * (d > 8 ? 6.5 : 4.2));
+      f.p.x += (dx / d) * step;
+      f.p.z += (dz / d) * step;
+    }
+    delete f.p.y;
+    delete f.p.room;
   }
 
   frame(dt: number): void {
@@ -363,6 +500,14 @@ class NpcRuntime {
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
       f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0 });
     }
+    // quest glyphs over the heads (hidden while that conversation is open)
+    this.glyphs.frame(
+      dt,
+      cam,
+      [...this.figs.entries()].map(([id, f]) => ({ npc: id, x: f.p.x, y: this.figY(f), z: f.p.z, visible: this.visible(f) && f.fig.alpha > 0.2 && this.talking?.npc !== id })),
+      p,
+      reduced,
+    );
   }
 
   private installHooks(): void {
@@ -394,6 +539,8 @@ class NpcRuntime {
         }
       },
       close: () => this.view.close(),
+      mark: (n) => ({ mark: this.marks.get(n) ?? null, shown: this.glyphs.shown(n) }),
+      choose: (id) => (typeof id === 'number' ? this.view.choose(id) : this.view.chooseId(id)),
       state: () => {
         const l = this.view.current;
         return {
@@ -411,6 +558,7 @@ class NpcRuntime {
 
   dispose(): void {
     this.view.close();
+    this.glyphs.dispose();
     for (const f of this.figs.values()) f.fig.dispose();
     this.figs.clear();
   }

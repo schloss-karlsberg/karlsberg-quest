@@ -5,12 +5,12 @@ import { type Page, expect, test } from '@playwright/test';
  * Integration: the four feature systems (story, fx, hunt, chronik) working together along the
  * prologue, headless and deterministic (`?manual`, driven through window.kq):
  *
- *   new game (title flow) → field station hub → Pinnwand opens the Chronik → objective + Bussole
+ *   new game (title flow) → field station hub → Pinnwand opens the Journal → objective + Bussole
  *   → relief scan (fx pulse) → story clue + Chronik clue → Q at the anchor (story) → fx shift
  *   → 1789 → echo (Chronik subtitles only, no story duplicates) → threat:configure → hunt chase
  *   → caught (hunt hands over to the story curtain) → back at the station, today, beat checkpoint
- *   → hub → Chronik board → batch of three confirmed with the test pack → Laub's hint via the
- *   story's dialogue presenter.
+ *   → hub → Pinnwand opens the Journal, whose codex holds the clue facts (no board, no batches,
+ *   no hint ladder since the Action-RPG rework).
  *
  * Content: the story's prologue + the Chronik test pack (content/test, forced with ?placeholder).
  * Screenshots: test-results/screens/int-*.png.
@@ -18,7 +18,6 @@ import { type Page, expect, test } from '@playwright/test';
 const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 const URL = './?nosave&fresh&manual&placeholder';
-const CASE = 'ct.case.vermessung';
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
@@ -111,18 +110,19 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.getByTestId('hub-shelf').click();
   await readCards();
   await page.getByTestId('hub-back').click();
-  // nothing new to read at the Pinnwand: now it opens the Chronik board
+  // nothing new to read at the Pinnwand: now it opens the Journal (the board is gone)
   await page.getByTestId('hub-chronik').click();
-  // story → chronik:open → the Chronik closes the hub and opens its board
-  await expect(page.locator('.ck-board')).toBeVisible();
+  // story → chronik:open → the hub closes and the Journal opens
+  await expect(page.getByTestId('journal')).toBeVisible();
+  await expect(page.locator('.ck-board')).toHaveCount(0);
   await expect(page.getByTestId('hub')).toBeHidden();
   expect(await payloads(page, 'hub:use')).toEqual(expect.arrayContaining([{ item: 'drawer' }, { item: 'chronik' }, { item: 'shelf' }]));
   expect((await events(page, 'chronik:open')).length).toBe(1);
   expect((await events(page, 'chronik:opened')).length).toBe(1);
   await shot(page, '03-hub-chronik');
   await page.evaluate(() => window.kq!.chronik!.close());
-  await expect(page.locator('.ck-board')).toBeHidden();
-  // opened from the Pinnwand: closing the Chronik returns to the hub overlay
+  await expect(page.getByTestId('journal')).toBeHidden();
+  // opened from the Pinnwand: closing the Journal returns to the hub overlay
   await expect(page.getByTestId('hub')).toBeVisible();
   await page.getByTestId('hub-leave').click();
   await expect(page.getByTestId('hub')).toBeHidden();
@@ -341,13 +341,14 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   const p = await pos(page);
   expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(6);
   expect(await payloads(page, 'hunt:end')).toContainEqual({ reason: 'caught' });
-  // the Chronik drops unconfirmed finds (not in gentle mode)
-  expect(((await payloads(page, 'chronik:lost')) as { clues: string[] }[])[0]?.clues).toEqual(expect.arrayContaining(['ct.clue.hohlweg']));
+  // nothing is lost when caught any more (docs/ACTION-RPG.md §12)
+  expect(await payloads(page, 'chronik:lost')).toEqual([]);
+  expect(await page.evaluate(() => window.kq!.state().inventory.clues)).toContain('ct.clue.hohlweg');
   await page.waitForTimeout(2600); // the curtain lifts
   await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
   await shot(page, '13-station');
 
-  // ---- 10. hub → Chronik board → a batch of three confirmed (test pack) -----------------------
+  // ---- 10. hub → Pinnwand → the Journal: the clue facts are in its codex ------------------------
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
@@ -357,46 +358,24 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   });
   await expect(page.getByTestId('hub')).toBeVisible();
   await page.getByTestId('hub-chronik').click();
-  const board = page.locator('.ck-board');
-  await expect(board).toBeVisible();
-  await page.evaluate(() => window.kq!.chronik!.grantAll());
-  await page.locator(`.ck-case-tab[data-case="${CASE}"]`).click({ force: true });
-  await expect(page.locator(`.ck-page[data-case="${CASE}"]`)).toBeVisible();
-  await page.evaluate((c) => {
-    const k = window.kq!.chronik!;
-    k.fill(c, 'p1', 'wo', 'ct.n.ehrenhof');
-    k.fill(c, 'p2', 'wo', 'ct.n.orangerie');
-    k.fill(c, 'p3', 'was', 'ct.n.hohlweg');
-  }, CASE);
-  const check = page.getByTestId('chronik-check');
-  await expect(check).toBeEnabled();
-  await check.click({ force: true });
-  await expect(page.getByTestId('chronik-msg')).toContainText('Bestätigt');
-  expect(await page.evaluate((c) => window.kq!.state().chronik[c]?.confirmed, CASE)).toEqual(['p1', 'p2', 'p3']);
-  expect(await payloads(page, 'chronik:batch')).toEqual([{ caseId: CASE, correct: true, confirmed: ['p1', 'p2', 'p3'] }]);
-  await page.evaluate(() => document.querySelector('.ck-page-wrap')?.scrollTo(0, 0));
-  await page.waitForTimeout(800);
-  await shot(page, '14-confirmed');
-
-  // ---- 11. Laub's hint: Chronik → dialogue:say → the story's presenter (compass portrait) -----
-  await page.evaluate((c) => {
-    const k = window.kq!;
-    k.chronik!.close();
-    k.ctx.ui.modals.closeAll();
-    k.teleport(757.5, -899, 4, -3);
-    k.chronik!.solve(c, 3); // fill the next three (unchecked) so the case stays open
-    k.chronik!.stuck(c, 250);
-    k.step(4);
-  }, CASE);
-  await page.waitForFunction(() => window.kq!.story!.state().dialogue?.speaker === 'laub', null, { timeout: 20_000 });
-  await page.evaluate(() => window.kq!.story!.finishTyping());
-  await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
-  const hint = ((await payloads(page, 'dialogue:say')) as { speaker: string; id?: string }[]).filter((p) => p.speaker === 'laub' && p.id?.startsWith('ct.hint.'));
-  expect(hint.length).toBeGreaterThan(0);
-  // no second copy of the line as a plain subtitle
-  const hintText = ((await payloads(page, 'dialogue:say')) as { speaker: string; text: string; id?: string }[]).find((p) => p.id?.startsWith('ct.hint.'))!.text;
-  expect(await page.locator('.kq-subtitles').innerText()).not.toContain(hintText.slice(0, 24));
-  await shot(page, '15-laub-hint');
+  await expect(page.getByTestId('journal')).toBeVisible();
+  await page.getByTestId('journal-tab-codex').click();
+  const facts = await page.evaluate(() => window.kq!.state().codex.facts);
+  expect(facts.length).toBeGreaterThan(0);
+  // relief patterns (rm.NN) have their own filter; everything else shows under "Alle"
+  const relief = facts.filter((f) => /(^|\.)rm\.\d+/.test(f));
+  if (relief[0]) {
+    await page.getByTestId('codex-filter-relief').click();
+    await expect(page.getByTestId(`codex-card-${relief[0]}`)).toBeVisible();
+    await page.getByTestId('codex-filter-all').click();
+  }
+  const plain = facts.find((f) => !relief.includes(f));
+  if (plain) await expect(page.getByTestId(`codex-card-${plain}`)).toBeVisible();
+  await shot(page, '14-journal-codex');
+  await page.evaluate(() => window.kq!.chronik!.close());
+  await expect(page.getByTestId('journal')).toBeHidden();
+  // no batches and no hint ladder any more
+  expect(await payloads(page, 'chronik:batch')).toEqual([]);
 
   expect(errors).toEqual([]);
 });

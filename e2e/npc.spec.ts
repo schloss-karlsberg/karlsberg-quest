@@ -4,7 +4,7 @@ import { type Page, expect, test } from '@playwright/test';
 /**
  * Round 2: ghostly NPCs (Hanne at the building site 1789), conversations, story conditions and
  * actions (talked, inline + modal choices, meters, readings, rooms, memorials, lossless capture,
- * epilogue assembly), barks (idle, gap, memorial quiet) and the Chronik → hub return.
+ * epilogue assembly), barks (idle, gap, memorial quiet) and the Journal (Pinnwand) → hub return.
  * Runs the test chapter content/story/99-test.story.json (`?storytest`).
  * Screenshots: test-results/screens/npc-*.png
  */
@@ -218,7 +218,7 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   expect(errors).toEqual([]);
 });
 
-test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; Chronik from the Pinnwand returns to the hub', async ({ page }) => {
+test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; the Journal from the Pinnwand returns to the hub', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   const spoken = () => page.evaluate(() => window.kq!.barks!.state().spoken.map((s) => s.id));
@@ -286,10 +286,12 @@ test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; Chronik from t
   });
   await expect(page.getByTestId('hub')).toBeVisible();
   await page.getByTestId('hub-chronik').click();
-  await expect(page.locator('.ck-board')).toBeVisible();
+  // the Pinnwand opens the Journal (the Chronik board is gone, docs/ACTION-RPG.md §12)
+  await expect(page.getByTestId('journal')).toBeVisible();
+  await expect(page.locator('.ck-board')).toHaveCount(0);
   await expect(page.getByTestId('hub')).toBeHidden();
   await page.evaluate(() => window.kq!.chronik!.close());
-  await expect(page.locator('.ck-board')).toBeHidden();
+  await expect(page.getByTestId('journal')).toBeHidden();
   await expect(page.getByTestId('hub')).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -26,21 +26,57 @@
       "era": "1789",
       "title_de": "TEST: Der Lohnzettel",
       "summary_de": "Hanne braucht den Lohnzettel ihres Mannes. Mahnbriefe flattern am Bauplatz herum und haben ihn verweht.",
-      "giver": { "npc": "hanne" },
+      "giver": {
+        "npc": "hanne"
+      },
       "turnin": "giver",
       "topic_de": "Der Lohnzettel",
       "accept_de": "Ich hole ihn dir.",
       "offer": [
-        { "speaker": "hanne", "text": "TEST: Die Papiere vom Hof fliegen hier herum wie Krähen. Einer davon ist Matthes’ Zettel." },
-        { "speaker": "hanne", "text": "TEST: Hol ihn mir. Die Briefe beißen, pass auf." }
+        {
+          "speaker": "hanne",
+          "text": "TEST: Die Papiere vom Hof fliegen hier herum wie Krähen. Einer davon ist Matthes’ Zettel."
+        },
+        {
+          "speaker": "hanne",
+          "text": "TEST: Hol ihn mir. Die Briefe beißen, pass auf."
+        }
       ],
-      "progress": [{ "speaker": "hanne", "text": "TEST: Noch nicht? Die Briefe sind schneller als du denkst." }],
-      "turnin_lines": [{ "speaker": "hanne", "text": "TEST: Das ist er. Angewiesen. Nicht ausgezahlt." }],
+      "progress": [
+        {
+          "speaker": "hanne",
+          "text": "TEST: Noch nicht? Die Briefe sind schneller als du denkst."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "hanne",
+          "text": "TEST: Das ist er. Angewiesen. Nicht ausgezahlt."
+        }
+      ],
       "history": [
         {
           "speaker": "hanne",
           "text": "TEST: Ein Geselle arbeitet zwei Tage für einen Gulden. Das steht in keinem Brief, das steht in den Rechnungen.",
-          "fact": "cx.08"
+          "fact": "cx.08",
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+              "label": "en.wikipedia: Karlsberg Castle"
+            }
+          ]
+        },
+        {
+          "speaker": "hanne",
+          "text": "TEST: Und die Kassen waren leer, sagt der Maler Mannlich. Für die Pracht war Geld da, für den Lohn nicht.",
+          "fact": "cx.10",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 377, 396 f."
+            }
+          ]
         }
       ],
       "stance": {
@@ -48,9 +84,18 @@
         "prompt_de": "TEST: Warum bekommt Hanne den Lohn nicht, meinst du?",
         "flag": "flag.test_lohn",
         "options": [
-          { "label_de": "Weil der Herzog nicht will.", "value": "will_nicht" },
-          { "label_de": "Weil die Kassen leer sind.", "value": "creuzer" },
-          { "label_de": "Ich weiß es nicht.", "value": "offen" }
+          {
+            "label_de": "Weil der Herzog nicht will.",
+            "value": "will_nicht"
+          },
+          {
+            "label_de": "Weil die Kassen leer sind.",
+            "value": "creuzer"
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen"
+          }
         ]
       },
       "objectives": [
@@ -60,16 +105,38 @@
           "text_de": "Mahnbriefe am Bauplatz zerreißen",
           "enemy": "mahnbrief",
           "count": 3,
-          "where": { "x": 1270, "z": -1215, "r": 12, "era": "1789" },
-          "spawn": [{ "kind": "mahnbrief", "x": 1270, "z": -1215, "era": "1789", "count": 3, "radius": 6 }]
+          "where": {
+            "x": 1270,
+            "z": -1215,
+            "r": 12,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "mahnbrief",
+              "x": 1270,
+              "z": -1215,
+              "era": "1789",
+              "count": 3,
+              "radius": 6
+            }
+          ]
         },
         {
           "id": "zettel",
           "type": "collect",
           "text_de": "Den Lohnzettel aufheben",
           "item": "item.test.zettel",
-          "after": ["briefe"],
-          "place": [{ "x": 1262, "z": -1224, "era": "1789" }]
+          "after": [
+            "briefe"
+          ],
+          "place": [
+            {
+              "x": 1262,
+              "z": -1224,
+              "era": "1789"
+            }
+          ]
         },
         {
           "id": "marke",
@@ -78,10 +145,24 @@
           "item": "item.test.marke",
           "optional": true,
           "bonus_xp": 20,
-          "place": [{ "x": 1280, "z": -1236, "era": "1789" }]
+          "place": [
+            {
+              "x": 1280,
+              "z": -1236,
+              "era": "1789"
+            }
+          ]
         }
       ],
-      "rewards": { "xp": 120, "items": [{ "item": "item.balsam", "count": 2 }], "codex": ["cx.10"] },
+      "rewards": {
+        "xp": 120,
+        "items": [
+          {
+            "item": "item.balsam",
+            "count": 2
+          }
+        ]
+      },
       "next": "q.test.irrlichter"
     },
     {
@@ -90,10 +171,22 @@
       "era": "1789",
       "title_de": "TEST: Lichter über dem Bauplatz",
       "summary_de": "Laub hat zwei Irrlichter gesehen. Ohne Bannlicht geht der Stab durch sie hindurch.",
-      "giver": { "voice": "laub" },
+      "giver": {
+        "voice": "laub"
+      },
       "turnin": "auto",
-      "offer": [{ "speaker": "laub", "text": "TEST: Irrlichter. Erst das Licht drauf, dann der Stab. In dieser Reihenfolge, bitte." }],
-      "turnin_lines": [{ "speaker": "laub", "text": "TEST: Kartiert und gelöscht. Die Bayern wären stolz." }],
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "TEST: Irrlichter. Erst das Licht drauf, dann der Stab. In dieser Reihenfolge, bitte."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "TEST: Kartiert und gelöscht. Die Bayern wären stolz."
+        }
+      ],
       "objectives": [
         {
           "id": "lichter",
@@ -101,12 +194,37 @@
           "text_de": "Irrlichter bannen",
           "enemy": "irrlicht",
           "count": 2,
-          "where": { "x": 1300, "z": -1240, "r": 14, "era": "1789" },
-          "spawn": [{ "kind": "irrlicht", "x": 1300, "z": -1240, "era": "1789", "count": 2, "radius": 5 }]
+          "where": {
+            "x": 1300,
+            "z": -1240,
+            "r": 14,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1300,
+              "z": -1240,
+              "era": "1789",
+              "count": 2,
+              "radius": 5
+            }
+          ]
         }
       ],
-      "rewards": { "xp": 60, "items": [{ "item": "item.lampenoel" }] },
-      "available": { "after": ["q.test.lohnzettel"] }
+      "rewards": {
+        "xp": 60,
+        "items": [
+          {
+            "item": "item.lampenoel"
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.test.lohnzettel"
+        ]
+      }
     }
   ]
 }
