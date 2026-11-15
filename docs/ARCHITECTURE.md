@@ -813,6 +813,38 @@ quests ──codex:unlocked / skill:grant──▶ codex, skills
 
 Each RPG track adds its own subsection here when it fills its system in.
 
+#### combat (`src/systems/combat/`) – Messstab, Bannlicht, spectral enemies, four bosses
+
+| File | Role |
+|---|---|
+| `rules.ts` | pure numbers and rules (costs, combo / Wuchthieb / dodge windows, hit-stop, shake, knockback, damage, armour and frontal checks, cones, attack tokens, leash, idempotent groups, time-of-day gating, boss phases, safe zones); `tests/combat.test.ts` |
+| `sim.ts` | `CombatSim`: deterministic simulation fed a `SimInput` per fixed step (player resources, swings, the dodge with i-frames and the perfect-dodge slow-mo, Bannlicht cone, enemy AI idle → notice → approach → windup (≥ 0.4 s) → strike → recover, flee / blink / flank / swarm / ranged / lunge / charge / lob, leash and reset, max 12 live, ≤ 2 attack tokens — 1 in gentle mode); returns `SimEvent`s |
+| `bosses.ts` | the four bosses' attack choice, cooldowns, weak points (Schuldbuch seal opened by the Bannlicht, Strohmann's back, Steinbrecher's joints, the Pikeur balking at water and leaving with „verloren“), summons |
+| `bodies.ts` + `visuals.ts` | faceless procedural bodies (smoke / mist puffs, glows, instanced solids) per kind; pose from state (rear back in the wind-up, glow, swell); pooled particles (hit family, glance, dissolve into mist / sparks / smoke / ash / paper / rising grit, dust, motes); ground rings (area, rain, landing, gebannt, Bannlicht cone); budget by quality |
+| `viewmodel.ts` | first-person Messstab (red/white ranging pole; stages esche → eisen → silber → bann → lot with Laub's plumb bob on a chain), keyed swings with anticipation and follow-through, motion trail, heavy-charge glow; drawn in the main scene at `renderOrder` 1000 after a tiny mesh that calls `renderer.clearDepth()` |
+| `audio.ts` | procedural sfx on the sfx bus (whoosh, thock + family layer, dissolve, telegraph calls, hurt, heartbeat < 30 %, dodge, Bannlicht shimmer, boss roar, the Pikeur's horn) |
+| `hud.ts` | `hud.dock('vitals', …, 10)` Lebenskraft (notched red-orange) + Atem (pale blue), `dock('vitals', …, 20)` Bannlicht pips, `dock('boss')` boss bar with phase marks and the weak-point hint; layer `combat`: telegraph captions, damage numbers (setting „Schadenszahlen“), HP pips with *gebannt* tag, edge arrows (`soundIndicators`), hit / low-HP vignette (≤ 25 % with reduced flash); high-contrast CSS |
+| `strings.ts` | German captions (one per telegraph), boss hints, info lines |
+| `index.ts` | wiring: events in and out (see the diagram above), slice `state.systems.combat` (hp, stamina, bann, groups, deaths), `stats:changed` / `deriveStats` fallback, equip → weapon stage, `item:use` effects, `xp:grant` per kill, camera shake (none with reducedMotion), the lantern flare, death → `player:died` → `player:caught {by:'combat'}` → full heal on `player:teleport` (or after 8 s), heal on `hub:enter` and at the shift anchor |
+
+- **Interact wins LMB**: an attack from the mouse is ignored while any `.kq-prompt` is shown
+  (npc / chronik / menagerie); K always swings. Attacks are also blocked while measuring, flying,
+  frozen, in a modal or a conversation, and with `flags['combat.disabled']` („Du hebst den Stab nicht.“).
+- **Safe zones** (`safeReason`): `combat.disabled`, the field station (40 m) / hub, active
+  `memorial:set` areas, conversations, modals, 6 m around an NPC placed by `npc:spawn`. Enemies do
+  not engage and swings glance off.
+- **Time of day** for `group.time`: night if the era is a night era, the sky shows the moon or
+  stars ≥ 0.6; dusk below 7° sun elevation.
+- **Hunt** (`hunt/sim.ts` `PackSim.scatter`, `hunt/index.ts`): `combat:bann` scatters hounds in the
+  cone for 4 s (they flee and cannot catch); they are never damageable. `hunt/lantern.ts` exports
+  `lanternPose {side, lift}` — combat holds the lantern on the left and lifts it during a flare.
+- **Menagerie**: attacks pass through animals (combat never targets them). A cassowary that
+  charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
+  drive a jaguar off for good → `menagerie:calmed`; calmed ids persist in `MenagerieSlice.calmed`.
+- **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
+  god(on) groups() enemies() place() windup() freeze() hurt() heal() events() shake() sim()`.
+- **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`).
+
 ## 13. Licences
 
 Code: project licence. Fonts: IM Fell English (Igino Marini) and Caveat, SIL OFL 1.1 (texts in

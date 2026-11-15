@@ -311,6 +311,11 @@ class Hunt {
         this.holdReq = { seconds: typeof s === 'number' && s > 0 ? s : 8, waited: 0 };
       }
     });
+    // the Bannlicht flare scatters the hounds in its cone for 4 s (they are never damaged)
+    ev.on('combat:bann', ({ x, z, yaw, range, angle }) => {
+      const n = this.sim?.scatter(x, z, yaw, range, angle, 4) ?? 0;
+      if (n > 0) this.caption('scatter', ctx.t('combat.hounds'), 30, 2800);
+    });
     ev.on('player:step', ({ x, z, running }) => this.footprint(x, z, running));
     ev.on('player:teleport', () => (this.lastStep = null));
     // a pack that was out when the game was saved comes back (first update, all systems ready)

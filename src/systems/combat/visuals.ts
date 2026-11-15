@@ -1,0 +1,1005 @@
+/**
+ * Visuals of the fight (visual only — reads the simulation, never writes to it):
+ *  - spectral bodies from bodies.ts: depth-sorted smoke / mist billboards (fbm shader, lit by the
+ *    moon and the lantern, fogged like the world but keeping their silhouette to ~50 m), additive
+ *    glows with a minimum on-screen size (eyes, cores, cracks pierce the fog) and instanced solid
+ *    pieces (paper, straw, sandstone, the ledger's covers);
+ *  - telegraph poses (rear back, swell, arms up, eyes flare) and ground rings that fill up;
+ *  - projectiles, the Bannlicht cone on the ground, gebannt rings;
+ *  - particles: hit puffs / sparks / scraps / chips by family and the dissolve (mist, sparks, smoke,
+ *    ash, paper, rising grit) — counts follow the quality preset. Nothing bleeds; nothing stays.
+ *
+ * Four draw calls for everything (puffs, glows, solids, rings), all instanced.
+ */
+import {
+  AdditiveBlending,
+  BoxGeometry,
+  DynamicDrawUsage,
+  Euler,
+  Float32BufferAttribute,
+  Group,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  NormalBlending,
+  DoubleSide,
+  type PerspectiveCamera,
+  Quaternion,
+  ShaderMaterial,
+  Vector3,
+} from 'three';
+import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
+import { type BodyPart, type BodyTemplate, bodyTemplate } from './bodies';
+import type { Enemy, Projectile, Ring } from './sim';
+
+// ---- shaders ------------------------------------------------------------------------------------
+
+const PUFF_VERT = /* glsl */ `
+attribute vec3 iPos;
+attribute vec4 iData;  // size, alpha, seed, style (0 smoke, 1 pale mist)
+attribute vec3 iAlb;
+attribute vec3 iEm;
+uniform float uTime;
+varying vec2 vUv;
+varying vec4 vData;
+varying vec3 vAlb;
+varying vec3 vEm;
+varying vec3 vWorld;
+void main() {
+  vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+  vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+  float rot = iData.z * 6.2831 + uTime * (fract(iData.z * 7.31) - 0.5) * 0.7;
+  float c = cos(rot);
+  float s = sin(rot);
+  vec2 q = mat2(c, -s, s, c) * position.xy;
+  vec3 wp = iPos + (right * q.x + up * q.y) * iData.x;
+  vUv = position.xy;
+  vData = iData;
+  vAlb = iAlb;
+  vEm = iEm;
+  vWorld = iPos;
+  float vd = -(viewMatrix * vec4(iPos, 1.0)).z;
+  vData.y *= smoothstep(0.35, 1.1, vd);
+  gl_Position = vData.y <= 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * vec4(wp, 1.0);
+}
+`;
+
+const PUFF_FRAG = /* glsl */ `
+${ATMOS_GLSL}
+varying vec2 vUv;
+varying vec4 vData;
+varying vec3 vAlb;
+varying vec3 vEm;
+varying vec3 vWorld;
+void main() {
+  float r = length(vUv);
+  if (r > 1.0) discard;
+  float n = kqFbm(vUv * 1.6 + vData.z * 31.0 + vec2(uTime * 0.25, -uTime * 0.4));
+  float edge = r * (0.72 + 0.7 * n);
+  float a;
+  vec3 col;
+  vec3 toCam = normalize(uCamPos - vWorld);
+  vec3 N = normalize(mix(toCam, vec3(0.0, 1.0, 0.0), 0.45) + vec3(vUv.x, vUv.y, 0.0) * 0.25);
+  if (vData.w < 0.5) {
+    a = smoothstep(1.0, 0.3, edge) * vData.y;
+    col = kqLight(vAlb * (0.7 + 0.6 * n), N, vWorld, 1.0, 1.0);
+  } else {
+    a = smoothstep(1.0, 0.05, edge);
+    a = a * a * vData.y * (0.72 + 0.28 * n);
+    // luminous mist: lit, plus a little of its own pale light (reads at night); a darker core
+    col = kqLight(vAlb * (0.68 + 0.5 * n), N, vWorld, 1.0, 1.0) * (0.75 + 0.25 * edge) + vAlb * 0.1 + uFogColor * 0.12;
+  }
+  col += vEm * (1.0 - r) * (1.0 - r) * 1.4;
+  float dist = length(vWorld - uCamPos);
+  col = mix(kqFog(col, vWorld), col, 0.75 * (1.0 - smoothstep(45.0, 110.0, dist)));
+  // fog-lit rim on the ragged edge (back-lit smoke): the silhouette stays readable
+  float rim = smoothstep(0.5, 0.82, edge) * (1.0 - smoothstep(0.82, 1.0, edge));
+  col = mix(col, uFogColor * 1.2 + vec3(0.03) + vEm * 0.3, rim * 0.5 * (1.0 - vData.w));
+  if (a < 0.004) discard;
+  gl_FragColor = vec4(col, a);
+}
+`;
+
+const GLOW_VERT = /* glsl */ `
+${ATMOS_GLSL}
+attribute vec3 iPos;
+attribute vec4 iData; // size, intensity, min px, aspect
+attribute vec3 iCol;
+uniform float uPixel;
+varying vec2 vUv;
+varying vec3 vCol;
+varying float vI;
+varying float vFog;
+void main() {
+  vec4 mv = viewMatrix * vec4(iPos, 1.0);
+  float dist = max(0.05, -mv.z);
+  float size = max(iData.x, iData.z * uPixel * dist);
+  mv.xy += position.xy * size * vec2(iData.w, 1.0);
+  vUv = position.xy;
+  vCol = iCol;
+  vI = iData.y;
+  vec3 v = iPos - uCamPos;
+  float d = length(v);
+  float hAvg = (iPos.y + uCamPos.y) * 0.5;
+  float hf = uFogHeightDensity * exp(-max(hAvg - uFogBase, 0.0) / uFogFalloff);
+  vFog = 1.0 - exp(-d * (uFogDensity + hf) - min(d, 260.0) * uUnderCanopy * uForestFog);
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
+const GLOW_FRAG = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vCol;
+varying float vI;
+varying float vFog;
+void main() {
+  float r = length(vUv);
+  if (r > 1.0) discard;
+  float core = smoothstep(0.36, 0.02, r);
+  float halo = exp(-r * r * 5.0) * (1.0 - r);
+  vec3 col = (mix(vCol, vec3(1.0, 0.97, 0.9), 0.55) * core * 1.6 + vCol * halo * 1.1) * vI * (1.0 - 0.55 * vFog);
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const SOLID_VERT = /* glsl */ `
+attribute vec3 iAlb;
+attribute vec4 iEm; // rgb emissive, w = alpha-ish fade (shrinks to nothing in the dissolve)
+varying vec3 vN;
+varying vec3 vW;
+varying vec3 vAlb;
+varying vec4 vEm;
+void main() {
+  vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+  vW = wp.xyz;
+  vN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
+  vAlb = iAlb;
+  vEm = iEm;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+const SOLID_FRAG = /* glsl */ `
+${ATMOS_GLSL}
+varying vec3 vN;
+varying vec3 vW;
+varying vec3 vAlb;
+varying vec4 vEm;
+void main() {
+  vec3 n = normalize(vN);
+  vec3 v = normalize(uCamPos - vW);
+  // a little grain so flat faces read as stone / paper / straw
+  float g = kqNoise(vW.xz * 9.0 + vW.y * 7.0) * 0.25 + 0.88;
+  vec3 col = kqLight(vAlb * g, n, vW, 1.0, 1.0);
+  float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
+  col += uFogColor * rim * 0.35 + vEm.rgb;
+  float dist = length(vW - uCamPos);
+  col = mix(kqFog(col, vW), col, 0.7 * (1.0 - smoothstep(45.0, 110.0, dist)));
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const RING_VERT = /* glsl */ `
+attribute vec3 iPos;
+attribute vec4 iData;  // radius, fill 0..1, alpha, kind (0 area, 1 rain, 2 landing, 3 gebannt, 4 bann cone)
+attribute vec2 iExtra; // yaw, half angle (cone)
+varying vec2 vUv;
+varying vec4 vData;
+varying vec2 vExtra;
+void main() {
+  vec3 wp = iPos + vec3(position.x, 0.0, position.y) * iData.x * 1.06;
+  vUv = position.xy * 1.06;
+  vData = iData;
+  vExtra = iExtra;
+  gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
+}
+`;
+
+const RING_FRAG = /* glsl */ `
+uniform float uTime;
+varying vec2 vUv;
+varying vec4 vData;
+varying vec2 vExtra;
+void main() {
+  float r = length(vUv);
+  if (r > 1.06) discard;
+  float kind = vData.w;
+  float ang = atan(vUv.x, vUv.y);
+  vec3 col;
+  float a;
+  if (kind > 3.5) {
+    // Bannlicht: a pale cone of light on the ground
+    float d = abs(mod(atan(-vUv.x, -vUv.y) - vExtra.x + 3.14159, 6.28318) - 3.14159);
+    float inCone = 1.0 - smoothstep(vExtra.y - 0.05, vExtra.y, d);
+    a = inCone * (1.0 - smoothstep(0.7, 1.0, r)) * vData.z * (0.55 + 0.45 * vData.y);
+    col = vec3(1.0, 0.86, 0.55) * 1.6;
+  } else if (kind > 2.5) {
+    // gebannt: a pale turning ring of marks under the stunned enemy
+    float marks = step(0.5, fract(ang * 1.909 + uTime * 0.6));
+    float band = smoothstep(0.78, 0.86, r) * (1.0 - smoothstep(0.94, 1.0, r));
+    a = band * (0.55 + 0.45 * marks) * vData.z;
+    col = vec3(0.7, 0.9, 1.0) * 1.4;
+  } else {
+    // telegraph: dashed outline that turns + a disc that fills up towards the strike
+    float dash = step(0.35, fract(ang * 3.183 + uTime * 0.8));
+    float outline = smoothstep(0.9, 0.95, r) * (1.0 - smoothstep(0.99, 1.04, r)) * (0.6 + 0.4 * dash);
+    float fill = vData.y;
+    float disc = (1.0 - smoothstep(fill - 0.02, fill, r)) * 0.2;
+    float front = smoothstep(fill - 0.07, fill - 0.01, r) * (1.0 - smoothstep(fill - 0.01, fill + 0.02, r));
+    // a dark under-edge keeps the outline legible on bright ground
+    float under = smoothstep(0.86, 0.9, r) * (1.0 - smoothstep(1.03, 1.06, r));
+    a = min(0.92, (outline * 0.95 + disc + front * 0.9 + under * 0.25)) * vData.z;
+    col = kind > 1.5 ? vec3(1.0, 0.72, 0.4) : kind > 0.5 ? vec3(1.0, 0.62, 0.15) : vec3(1.0, 0.42, 0.1);
+    col *= (1.0 + fill * 0.6) * mix(0.25, 1.0, clamp(outline + disc * 2.0 + front, 0.0, 1.0));
+  }
+  if (a < 0.003) discard;
+  gl_FragColor = vec4(col * a, a);
+}
+`;
+
+// ---- pools ----------------------------------------------------------------------------------------
+
+function quad(): InstancedBufferGeometry {
+  const g = new InstancedBufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+  g.setIndex([0, 1, 2, 0, 2, 3]);
+  return g;
+}
+
+function dyn(n: number, size: number): InstancedBufferAttribute {
+  const a = new InstancedBufferAttribute(new Float32Array(n * size), size);
+  a.setUsage(DynamicDrawUsage);
+  return a;
+}
+
+function upload(attrs: InstancedBufferAttribute[], n: number): void {
+  for (const a of attrs) {
+    a.needsUpdate = true;
+    a.clearUpdateRanges();
+    a.addUpdateRange(0, Math.max(1, n) * a.itemSize);
+  }
+}
+
+const PUFF_STRIDE = 14;
+
+class PuffPool {
+  readonly mesh: Mesh;
+  private readonly geo = quad();
+  private readonly attrs: Record<'pos' | 'data' | 'alb' | 'em', InstancedBufferAttribute>;
+  private readonly stage: Float32Array;
+  private readonly depth: Float32Array;
+  private order: number[] = [];
+  n = 0;
+  constructor(
+    readonly max: number,
+    mat: ShaderMaterial,
+  ) {
+    this.attrs = { pos: dyn(max, 3), data: dyn(max, 4), alb: dyn(max, 3), em: dyn(max, 3) };
+    this.geo.setAttribute('iPos', this.attrs.pos);
+    this.geo.setAttribute('iData', this.attrs.data);
+    this.geo.setAttribute('iAlb', this.attrs.alb);
+    this.geo.setAttribute('iEm', this.attrs.em);
+    this.geo.instanceCount = 0;
+    this.stage = new Float32Array(max * PUFF_STRIDE);
+    this.depth = new Float32Array(max);
+    this.mesh = new Mesh(this.geo, mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 24;
+  }
+  push(x: number, y: number, z: number, size: number, alpha: number, seed: number, style: number, ar: number, ag: number, ab: number, er = 0, eg = 0, eb = 0): void {
+    if (this.n >= this.max || alpha <= 0.003 || size <= 0.001) return;
+    const o = this.n++ * PUFF_STRIDE;
+    const s = this.stage;
+    s[o] = x;
+    s[o + 1] = y;
+    s[o + 2] = z;
+    s[o + 3] = size;
+    s[o + 4] = alpha;
+    s[o + 5] = seed;
+    s[o + 6] = style;
+    s[o + 7] = ar;
+    s[o + 8] = ag;
+    s[o + 9] = ab;
+    s[o + 10] = er;
+    s[o + 11] = eg;
+    s[o + 12] = eb;
+  }
+  end(cam: Vector3): void {
+    const n = this.n;
+    const s = this.stage;
+    if (this.order.length !== n) this.order = Array.from({ length: n }, (_, i) => i);
+    for (let i = 0; i < n; i++) {
+      const o = i * PUFF_STRIDE;
+      this.depth[i] = (s[o] - cam.x) ** 2 + (s[o + 1] - cam.y) ** 2 + (s[o + 2] - cam.z) ** 2;
+    }
+    this.order.sort((a, b) => this.depth[b] - this.depth[a]);
+    const P = this.attrs.pos.array as Float32Array;
+    const D = this.attrs.data.array as Float32Array;
+    const A = this.attrs.alb.array as Float32Array;
+    const E = this.attrs.em.array as Float32Array;
+    for (let k = 0; k < n; k++) {
+      const o = this.order[k] * PUFF_STRIDE;
+      P[k * 3] = s[o];
+      P[k * 3 + 1] = s[o + 1];
+      P[k * 3 + 2] = s[o + 2];
+      D[k * 4] = s[o + 3];
+      D[k * 4 + 1] = s[o + 4];
+      D[k * 4 + 2] = s[o + 5];
+      D[k * 4 + 3] = s[o + 6];
+      A[k * 3] = s[o + 7];
+      A[k * 3 + 1] = s[o + 8];
+      A[k * 3 + 2] = s[o + 9];
+      E[k * 3] = s[o + 10];
+      E[k * 3 + 1] = s[o + 11];
+      E[k * 3 + 2] = s[o + 12];
+    }
+    this.geo.instanceCount = n;
+    upload(Object.values(this.attrs), n);
+    this.mesh.visible = n > 0;
+  }
+}
+
+class GlowPool {
+  readonly mesh: Mesh;
+  private readonly geo = quad();
+  private readonly pos: InstancedBufferAttribute;
+  private readonly data: InstancedBufferAttribute;
+  private readonly col: InstancedBufferAttribute;
+  n = 0;
+  constructor(
+    readonly max: number,
+    mat: ShaderMaterial,
+  ) {
+    this.pos = dyn(max, 3);
+    this.data = dyn(max, 4);
+    this.col = dyn(max, 3);
+    this.geo.setAttribute('iPos', this.pos);
+    this.geo.setAttribute('iData', this.data);
+    this.geo.setAttribute('iCol', this.col);
+    this.geo.instanceCount = 0;
+    this.mesh = new Mesh(this.geo, mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 26;
+  }
+  push(x: number, y: number, z: number, size: number, intensity: number, r: number, g: number, b: number, minPx = 0, aspect = 1): void {
+    if (this.n >= this.max || intensity <= 0.003) return;
+    const i = this.n++;
+    const P = this.pos.array as Float32Array;
+    const D = this.data.array as Float32Array;
+    const C = this.col.array as Float32Array;
+    P[i * 3] = x;
+    P[i * 3 + 1] = y;
+    P[i * 3 + 2] = z;
+    D[i * 4] = size;
+    D[i * 4 + 1] = intensity;
+    D[i * 4 + 2] = minPx;
+    D[i * 4 + 3] = aspect;
+    C[i * 3] = r;
+    C[i * 3 + 1] = g;
+    C[i * 3 + 2] = b;
+  }
+  end(): void {
+    this.geo.instanceCount = this.n;
+    upload([this.pos, this.data, this.col], this.n);
+    this.mesh.visible = this.n > 0;
+  }
+}
+
+class SolidPool {
+  readonly mesh: InstancedMesh;
+  private readonly alb: InstancedBufferAttribute;
+  private readonly em: InstancedBufferAttribute;
+  n = 0;
+  constructor(readonly max: number) {
+    const geo = new BoxGeometry(1, 1, 1);
+    this.alb = dyn(max, 3);
+    this.em = dyn(max, 4);
+    geo.setAttribute('iAlb', this.alb);
+    geo.setAttribute('iEm', this.em);
+    const mat = new ShaderMaterial({ vertexShader: SOLID_VERT, fragmentShader: SOLID_FRAG, uniforms: { ...atmosphere } });
+    this.mesh = new InstancedMesh(geo, mat, max);
+    this.mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    this.mesh.frustumCulled = false;
+    this.mesh.count = 0;
+    this.mesh.renderOrder = 23;
+  }
+  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0): void {
+    if (this.n >= this.max) return;
+    const i = this.n++;
+    this.mesh.setMatrixAt(i, m);
+    const A = this.alb.array as Float32Array;
+    const E = this.em.array as Float32Array;
+    A[i * 3] = r;
+    A[i * 3 + 1] = g;
+    A[i * 3 + 2] = b;
+    E[i * 4] = er;
+    E[i * 4 + 1] = eg;
+    E[i * 4 + 2] = eb;
+    E[i * 4 + 3] = 1;
+  }
+  end(): void {
+    this.mesh.count = this.n;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.mesh.instanceMatrix.clearUpdateRanges();
+    this.mesh.instanceMatrix.addUpdateRange(0, Math.max(1, this.n) * 16);
+    upload([this.alb, this.em], this.n);
+    this.mesh.visible = this.n > 0;
+  }
+}
+
+class RingPool {
+  readonly mesh: Mesh;
+  private readonly geo = quad();
+  private readonly pos: InstancedBufferAttribute;
+  private readonly data: InstancedBufferAttribute;
+  private readonly extra: InstancedBufferAttribute;
+  readonly mat: ShaderMaterial;
+  n = 0;
+  constructor(readonly max: number) {
+    this.pos = dyn(max, 3);
+    this.data = dyn(max, 4);
+    this.extra = dyn(max, 2);
+    this.geo.setAttribute('iPos', this.pos);
+    this.geo.setAttribute('iData', this.data);
+    this.geo.setAttribute('iExtra', this.extra);
+    this.geo.instanceCount = 0;
+    // normal (premultiplied) blending with a dark under-edge: a telegraph must read on bright grass
+    this.mat = new ShaderMaterial({ vertexShader: RING_VERT, fragmentShader: RING_FRAG, uniforms: { uTime: atmosphere.uTime }, transparent: true, premultipliedAlpha: true, depthWrite: false, blending: NormalBlending, side: DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    this.mesh = new Mesh(this.geo, this.mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 22;
+  }
+  push(x: number, y: number, z: number, r: number, fill: number, alpha: number, kind: number, yaw = 0, half = 0): void {
+    if (this.n >= this.max) return;
+    const i = this.n++;
+    (this.pos.array as Float32Array).set([x, y, z], i * 3);
+    (this.data.array as Float32Array).set([r, fill, alpha, kind], i * 4);
+    (this.extra.array as Float32Array).set([yaw, half], i * 2);
+  }
+  end(): void {
+    this.geo.instanceCount = this.n;
+    upload([this.pos, this.data, this.extra], this.n);
+    this.mesh.visible = this.n > 0;
+  }
+}
+
+// ---- particles -------------------------------------------------------------------------------------
+
+/** 0 dark smoke, 1 pale mist, 2 glow spark, 3 solid chip. */
+interface Particle {
+  type: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  age: number;
+  life: number;
+  size: number;
+  grow: number;
+  r: number;
+  g: number;
+  b: number;
+  /** spark intensity / puff heat. */
+  em: number;
+  /** m/s² (negative rises). */
+  grav: number;
+  drag: number;
+  spin: number;
+  rot: number;
+  seed: number;
+  /** solid aspect (y / x). */
+  aspect: number;
+}
+
+export type DissolveKind = 'mist' | 'sparks' | 'smoke' | 'ash' | 'paper' | 'grit-rising' | 'fade';
+
+/** Family → colours of hit puffs / sparks. */
+const FAMILY_HIT: Record<string, { type: number; col: [number, number, number]; em: number; spark: [number, number, number] }> = {
+  mist: { type: 1, col: [0.7, 0.74, 0.82], em: 0, spark: [0.9, 0.95, 1] },
+  light: { type: 2, col: [0.6, 0.85, 1], em: 1.6, spark: [0.6, 0.85, 1] },
+  hound: { type: 0, col: [0.06, 0.06, 0.07], em: 0.2, spark: [1, 0.5, 0.15] },
+  paper: { type: 3, col: [0.86, 0.8, 0.66], em: 0, spark: [1, 0.3, 0.1] },
+  shade: { type: 0, col: [0.07, 0.06, 0.06], em: 0.15, spark: [1, 0.8, 0.3] },
+  ember: { type: 2, col: [1, 0.45, 0.1], em: 1.4, spark: [1, 0.55, 0.15] },
+  stone: { type: 3, col: [0.52, 0.43, 0.36], em: 0, spark: [1, 0.6, 0.25] },
+};
+
+const _m = new Matrix4();
+const _m2 = new Matrix4();
+const _q = new Quaternion();
+const _e = new Euler();
+const _v = new Vector3();
+const _s = new Vector3();
+const _p = new Vector3();
+const _ax = new Vector3(1, 0, 0);
+const _ay = new Vector3(0, 1, 0);
+const _qa = new Quaternion();
+const _qb = new Quaternion();
+
+interface Vis {
+  t: BodyTemplate;
+  /** smoothed telegraph glow / pose. */
+  tell: number;
+  lean: number;
+  arm: number;
+  swell: number;
+  sink: number;
+  fade: number;
+  dissolved: boolean;
+  phaseFlash: number;
+}
+
+export interface VisualFrame {
+  enemies: readonly Enemy[];
+  projectiles: readonly Projectile[];
+  rings: readonly Ring[];
+  camera: PerspectiveCamera;
+  viewportH: number;
+  time: number;
+  dt: number;
+  /** Hit-stop: bodies hold their pose. */
+  frozen: boolean;
+  heightAt(x: number, z: number): number;
+  reducedFlash: boolean;
+  /** Bannlicht flare 0..1 and its cone. */
+  bann: { t: number; x: number; z: number; yaw: number; range: number; angle: number } | null;
+}
+
+export class CombatVisuals {
+  readonly object = new Group();
+  private readonly puffs: PuffPool;
+  private readonly glows: GlowPool;
+  private readonly solids: SolidPool;
+  private readonly ringPool: RingPool;
+  private readonly puffMat: ShaderMaterial;
+  private readonly glowMat: ShaderMaterial;
+  private readonly vis = new Map<string, Vis>();
+  private readonly parts: Particle[] = [];
+  private maxParticles = 900;
+  private seedN = 1;
+
+  constructor() {
+    this.object.name = 'combat-visuals';
+    this.puffMat = new ShaderMaterial({ vertexShader: PUFF_VERT, fragmentShader: PUFF_FRAG, uniforms: { ...atmosphere }, transparent: true, depthWrite: false });
+    this.glowMat = new ShaderMaterial({ vertexShader: GLOW_VERT, fragmentShader: GLOW_FRAG, uniforms: { ...atmosphere, uPixel: { value: 0.002 } }, transparent: true, depthWrite: false, blending: AdditiveBlending });
+    this.puffs = new PuffPool(1800, this.puffMat);
+    this.glows = new GlowPool(900, this.glowMat);
+    this.solids = new SolidPool(700);
+    this.ringPool = new RingPool(48);
+    this.object.add(this.ringPool.mesh, this.solids.mesh, this.puffs.mesh, this.glows.mesh);
+  }
+
+  /** Quality preset → particle budget. */
+  setQuality(level: string): void {
+    this.maxParticles = level === 'low' ? 300 : level === 'medium' ? 600 : 900;
+  }
+
+  get particleCount(): number {
+    return this.parts.length;
+  }
+
+  private rnd(): number {
+    this.seedN = (this.seedN * 16807) % 2147483647;
+    return this.seedN / 2147483647;
+  }
+
+  private add(p: Omit<Particle, 'age' | 'rot' | 'seed'>): void {
+    if (this.parts.length >= this.maxParticles) this.parts.shift();
+    this.parts.push({ ...p, age: 0, rot: this.rnd() * 6, seed: this.rnd() });
+  }
+
+  private template(e: Enemy): Vis {
+    let v = this.vis.get(e.id);
+    if (!v) {
+      v = { t: bodyTemplate(e.kind, e.seed), tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0 };
+      this.vis.set(e.id, v);
+    }
+    return v;
+  }
+
+  /** Where the HP pips / labels go (top of the body), or null if unknown. */
+  topOf(e: Enemy): number {
+    return this.template(e).t.top;
+  }
+
+  // ---- emitters ------------------------------------------------------------------------------
+
+  /** A staff hit: puffs / sparks / scraps / chips by family, thrown along the hit. */
+  hit(family: string, x: number, y: number, z: number, dirX: number, dirZ: number, heavy: boolean, reducedFlash: boolean): void {
+    const f = FAMILY_HIT[family] ?? FAMILY_HIT.mist;
+    const n = (heavy ? 22 : 12) * (this.maxParticles / 900);
+    for (let i = 0; i < n; i++) {
+      const sp = (heavy ? 4.5 : 3) * (0.4 + this.rnd());
+      const ang = (this.rnd() - 0.5) * 1.8;
+      const c = Math.cos(ang);
+      const s = Math.sin(ang);
+      const vx = (dirX * c - dirZ * s) * sp;
+      const vz = (dirX * s + dirZ * c) * sp;
+      const vy = (this.rnd() * 0.8 + 0.2) * sp * 0.8;
+      const type = i % 3 === 0 ? 2 : f.type;
+      if (type === 2) {
+        const col = i % 3 === 0 ? f.spark : f.col;
+        this.add({ type: 2, x, y, z, vx: vx * 1.6, vy: vy * 1.4, vz: vz * 1.6, life: 0.25 + this.rnd() * 0.35, size: 0.05 + this.rnd() * 0.04, grow: 0, r: col[0], g: col[1], b: col[2], em: reducedFlash ? 1 : 2.2, grav: 9, drag: 2.5, spin: 0, aspect: 1 });
+      } else if (type === 3) {
+        this.add({ type: 3, x, y, z, vx, vy: vy + 1, vz, life: 0.6 + this.rnd() * 0.5, size: 0.05 + this.rnd() * 0.06, grow: 0, r: f.col[0], g: f.col[1], b: f.col[2], em: 0, grav: family === 'paper' ? 2 : 9, drag: family === 'paper' ? 3 : 1, spin: (this.rnd() - 0.5) * 14, aspect: family === 'paper' ? 0.08 : 0.8 });
+      } else {
+        this.add({ type, x, y, z, vx: vx * 0.5, vy: vy * 0.4, vz: vz * 0.5, life: 0.5 + this.rnd() * 0.5, size: 0.2 + this.rnd() * 0.15, grow: 0.9, r: f.col[0], g: f.col[1], b: f.col[2], em: f.em, grav: -0.5, drag: 2.5, spin: 0, aspect: 1 });
+      }
+    }
+  }
+
+  /** Cold sparks glancing off an untouchable Irrlicht (or a safe zone). */
+  glance(x: number, y: number, z: number): void {
+    for (let i = 0; i < 8; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      this.add({ type: 2, x, y, z, vx: Math.cos(a) * 3, vy: 1 + this.rnd() * 2, vz: Math.sin(a) * 3, life: 0.3 + this.rnd() * 0.2, size: 0.04, grow: 0, r: 0.6, g: 0.85, b: 1, em: 1.5, grav: 6, drag: 3, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** The dissolve: the body comes apart along its own parts, everything rises. */
+  dissolve(e: Enemy, style: DissolveKind, reducedFlash: boolean): void {
+    const v = this.template(e);
+    v.dissolved = true;
+    const k = this.maxParticles / 900;
+    const scale = e.boss ? 1 : 0.7;
+    for (const p of v.t.parts) {
+      this.partWorld(e, v, p, _p);
+      const reps = Math.max(1, Math.round((p.kind === 'puff' ? 1.5 : 3) * k * scale * (e.boss ? 2.2 : 1)));
+      for (let i = 0; i < reps; i++) this.dissolveBit(style, _p.x + (this.rnd() - 0.5) * 0.2, _p.y + (this.rnd() - 0.5) * 0.2, _p.z + (this.rnd() - 0.5) * 0.2, p, reducedFlash, e.boss);
+    }
+  }
+
+  private dissolveBit(style: DissolveKind, x: number, y: number, z: number, p: BodyPart, reducedFlash: boolean, big: boolean): void {
+    const r = () => this.rnd() - 0.5;
+    const life = (big ? 2.4 : 1.6) * (0.6 + this.rnd() * 0.6);
+    switch (style) {
+      case 'mist':
+        this.add({ type: 1, x, y, z, vx: r() * 1.2, vy: 0.6 + this.rnd() * 0.8, vz: r() * 1.2, life, size: 0.3 + this.rnd() * 0.3, grow: 1.1, r: 0.72, g: 0.76, b: 0.84, em: 0, grav: -0.3, drag: 1.2, spin: 0, aspect: 1 });
+        break;
+      case 'sparks': {
+        const c = p.kind === 'glow' ? p.col : ([1, 0.55, 0.15] as [number, number, number]);
+        this.add({ type: 2, x, y, z, vx: r() * 3, vy: 1.5 + this.rnd() * 2.5, vz: r() * 3, life: life * 0.6, size: 0.05 + this.rnd() * 0.05, grow: 0, r: c[0], g: c[1], b: c[2], em: reducedFlash ? 1 : 2.4, grav: -0.8, drag: 1.4, spin: 0, aspect: 1 });
+        if (this.rnd() > 0.5) this.add({ type: 0, x, y, z, vx: r() * 0.6, vy: 0.8, vz: r() * 0.6, life, size: 0.25, grow: 1, r: 0.1, g: 0.08, b: 0.07, em: 0.6, grav: -0.4, drag: 1, spin: 0, aspect: 1 });
+        break;
+      }
+      case 'smoke':
+      case 'fade':
+        this.add({ type: 0, x, y, z, vx: r() * 0.8, vy: 0.7 + this.rnd() * 0.7, vz: r() * 0.8, life, size: 0.25 + this.rnd() * 0.25, grow: 1.2, r: 0.07, g: 0.07, b: 0.08, em: style === 'smoke' ? 0.2 : 0, grav: -0.5, drag: 1, spin: 0, aspect: 1 });
+        break;
+      case 'ash':
+        if (this.rnd() > 0.35) this.add({ type: 3, x, y, z, vx: r() * 1.2, vy: 0.5 + this.rnd() * 1.2, vz: r() * 1.2, life: life * 1.2, size: 0.04 + this.rnd() * 0.04, grow: 0, r: 0.32, g: 0.3, b: 0.28, em: 0, grav: -0.6, drag: 1.6, spin: r() * 10, aspect: 0.1 });
+        else this.add({ type: 2, x, y, z, vx: r(), vy: 1 + this.rnd(), vz: r(), life: life * 0.7, size: 0.035, grow: 0, r: 1, g: 0.5, b: 0.15, em: reducedFlash ? 0.8 : 1.6, grav: -0.5, drag: 1, spin: 0, aspect: 1 });
+        break;
+      case 'paper':
+        // scraps whirl up and go grey as they rise
+        this.add({ type: 3, x, y, z, vx: r() * 2.5 + 0.8, vy: 0.8 + this.rnd() * 1.6, vz: r() * 2.5, life: life * 1.3, size: 0.07 + this.rnd() * 0.06, grow: 0, r: 0.86, g: 0.8, b: 0.66, em: 0, grav: -0.4, drag: 1.4, spin: r() * 14, aspect: 0.06 });
+        break;
+      case 'grit-rising':
+        // the stone remembers: grit and chips rise slowly upward instead of falling
+        this.add({ type: 3, x, y, z, vx: r() * 0.4, vy: 0.4 + this.rnd() * 0.7, vz: r() * 0.4, life: life * 1.4, size: 0.04 + this.rnd() * (big ? 0.14 : 0.07), grow: 0, r: 0.55, g: 0.47, b: 0.4, em: 0, grav: -0.25, drag: 0.6, spin: r() * 3, aspect: 0.8 });
+        if (this.rnd() > 0.6) this.add({ type: 1, x, y, z, vx: r() * 0.3, vy: 0.3, vz: r() * 0.3, life, size: 0.3, grow: 0.8, r: 0.6, g: 0.55, b: 0.48, em: 0, grav: -0.2, drag: 1, spin: 0, aspect: 1 });
+        break;
+    }
+  }
+
+  /** The Glutling bursts: a ring of sparks and a puff of smoke. */
+  burst(x: number, y: number, z: number, reducedFlash: boolean): void {
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2;
+      this.add({ type: 2, x, y: y + 0.4, z, vx: Math.cos(a) * 6, vy: 1 + this.rnd() * 2, vz: Math.sin(a) * 6, life: 0.5 + this.rnd() * 0.3, size: 0.07, grow: 0, r: 1, g: 0.55, b: 0.15, em: reducedFlash ? 1 : 2.5, grav: 4, drag: 3, spin: 0, aspect: 1 });
+    }
+    for (let i = 0; i < 6; i++) this.add({ type: 0, x, y: y + 0.4, z, vx: (this.rnd() - 0.5) * 2, vy: 1, vz: (this.rnd() - 0.5) * 2, life: 1.4, size: 0.5, grow: 1.4, r: 0.08, g: 0.07, b: 0.06, em: 0.7, grav: -0.6, drag: 1.4, spin: 0, aspect: 1 });
+  }
+
+  /** Dust thrown up by a slam / landing block. */
+  dust(x: number, y: number, z: number, r: number): void {
+    const n = Math.round(10 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const d = this.rnd() * r;
+      this.add({ type: 1, x: x + Math.cos(a) * d, y: y + 0.2, z: z + Math.sin(a) * d, vx: Math.cos(a) * 2, vy: 0.8 + this.rnd(), vz: Math.sin(a) * 2, life: 1 + this.rnd() * 0.6, size: 0.35 + this.rnd() * 0.3, grow: 1, r: 0.55, g: 0.52, b: 0.48, em: 0, grav: -0.2, drag: 2, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** A block knocked out of the Steinbrecher flies west, towards Homburg. */
+  block(x: number, y: number, z: number): void {
+    this.add({ type: 3, x, y, z, vx: -9 - this.rnd() * 3, vy: 6 + this.rnd() * 3, vz: (this.rnd() - 0.5) * 3, life: 3.2, size: 0.45 + this.rnd() * 0.2, grow: 0, r: 0.5, g: 0.41, b: 0.34, em: 0, grav: 7, drag: 0.05, spin: (this.rnd() - 0.5) * 4, aspect: 0.7 });
+    for (let i = 0; i < 6; i++) this.add({ type: 1, x, y, z, vx: -3 + (this.rnd() - 0.5) * 2, vy: 1, vz: (this.rnd() - 0.5) * 2, life: 1.2, size: 0.4, grow: 1, r: 0.6, g: 0.55, b: 0.5, em: 0, grav: -0.2, drag: 1.5, spin: 0, aspect: 1 });
+  }
+
+  /** The Bannlicht: motes of light thrown along the cone. */
+  bannMotes(x: number, y: number, z: number, yaw: number, range: number, angle: number): void {
+    const n = Math.round(40 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = yaw + (this.rnd() - 0.5) * ((angle * Math.PI) / 180);
+      const sp = range * (0.6 + this.rnd() * 0.8);
+      this.add({ type: 2, x, y: y + 1.2 + (this.rnd() - 0.5) * 0.4, z, vx: -Math.sin(a) * sp, vy: (this.rnd() - 0.3) * 1.5, vz: -Math.cos(a) * sp, life: 0.45 + this.rnd() * 0.35, size: 0.05 + this.rnd() * 0.05, grow: 0, r: 1, g: 0.85, b: 0.55, em: 2, grav: 0, drag: 2.2, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** Trail motes behind a projectile. */
+  private trail(p: Projectile): void {
+    const cold = p.kind.startsWith('irrlicht');
+    const stone = p.kind.startsWith('steinbrecher');
+    if (stone) this.add({ type: 1, x: p.x, y: p.y, z: p.z, vx: 0, vy: 0.3, vz: 0, life: 0.6, size: 0.3, grow: 0.6, r: 0.55, g: 0.5, b: 0.45, em: 0, grav: 0, drag: 1, spin: 0, aspect: 1 });
+    else this.add({ type: 2, x: p.x, y: p.y, z: p.z, vx: (this.rnd() - 0.5) * 0.5, vy: (this.rnd() - 0.5) * 0.5, vz: (this.rnd() - 0.5) * 0.5, life: 0.3, size: 0.06, grow: 0, r: cold ? 0.6 : 1, g: cold ? 0.85 : 0.3, b: cold ? 1 : 0.1, em: 1.4, grav: 0, drag: 1, spin: 0, aspect: 1 });
+  }
+
+  // ---- body pose ---------------------------------------------------------------------------------
+
+  private partWorld(e: Enemy, v: Vis, p: BodyPart, out: Vector3): Vector3 {
+    this.bodyMatrix(e, v, p, _m);
+    return out.set(0, 0, 0).applyMatrix4(_m);
+  }
+
+  /** Matrix of a part (without its own size / local rotation for puffs). */
+  private bodyMatrix(e: Enemy, v: Vis, p: BodyPart, out: Matrix4): Matrix4 {
+    const time = e.t + e.seed * 10;
+    let lx = p.r;
+    let ly = p.y;
+    let lz = -p.f;
+    // bone channels
+    const armSign = p.bone === 'armL' ? 1 : p.bone === 'armR' ? -1 : 0;
+    if (armSign !== 0) {
+      // arms swing up (wind-up) and down (strike) about the shoulder
+      const a = v.arm * (p.bone === 'armR' ? 1 : 0.85);
+      const py = v.t.shoulder;
+      const dy = ly - py;
+      const dz = lz;
+      ly = py + dy * Math.cos(a) - dz * Math.sin(a);
+      lz = dy * Math.sin(a) + dz * Math.cos(a);
+      if (e.kind === 'schuldbuch') {
+        // the covers flap like wings
+        lx *= 1 - 0.25 * Math.sin(v.arm);
+      }
+    }
+    if (p.bone === 'flap') {
+      const fl = Math.sin(time * (e.kind === 'mahnbrief' ? 9 : 2.5) + p.seed * 6);
+      if (e.kind === 'mahnbrief') ly += fl * Math.abs(lx) * 0.6;
+      else {
+        lx += Math.cos(time * 3 + p.seed * 9) * 0.12;
+        ly += fl * 0.12;
+        lz += Math.sin(time * 2.2 + p.seed * 7) * 0.12;
+      }
+    }
+    if (p.bone === 'legs' && (e.state === 'approach' || e.state === 'circle')) ly += Math.abs(Math.sin(time * 6 + p.seed * 3)) * 0.04;
+    if (p.bone === 'core') {
+      ly += Math.sin(time * 2.1) * 0.06;
+    }
+    if (p.bone === 'tail') lx += Math.sin(time * 5) * 0.05;
+    // breathing / bob of the whole body
+    const bob = e.kind === 'irrlicht' || e.kind === 'mahnbrief' ? Math.sin(time * 2.2 + e.seed * 5) * 0.12 : Math.sin(time * 2 + e.seed * 5) * 0.025;
+    const c = v.t.shoulder * 0.5;
+    _v.set(lx, ly - c, lz).multiplyScalar(v.swell);
+    _v.y += c;
+    // lean about the hips (rear back on the wind-up, forward on the strike)
+    _q.setFromAxisAngle(_ax, -v.lean);
+    _v.applyQuaternion(_q);
+    _v.y += bob - v.sink;
+    out.makeRotationY(e.heading);
+    _v.applyMatrix4(out);
+    out.setPosition(e.x + _v.x, e.y + _v.y, e.z + _v.z);
+    return out;
+  }
+
+  // ---- frame -----------------------------------------------------------------------------------
+
+  frame(f: VisualFrame): void {
+    const dt = f.frozen ? 0 : Math.min(0.1, f.dt);
+    const cam = f.camera.position;
+    this.glowMat.uniforms.uPixel!.value = (2 * Math.tan(((f.camera.fov * Math.PI) / 180) / 2)) / Math.max(1, f.viewportH);
+    this.puffs.n = 0;
+    this.glows.n = 0;
+    this.solids.n = 0;
+    this.ringPool.n = 0;
+    const seen = new Set<string>();
+    for (const e of f.enemies) {
+      seen.add(e.id);
+      this.drawEnemy(e, f, dt);
+    }
+    for (const id of [...this.vis.keys()]) if (!seen.has(id)) this.vis.delete(id);
+    // telegraph rings
+    for (const r of f.rings) {
+      const y = this.groundY(f, r.x, r.z, r.r);
+      const fill = Math.min(1, r.t / Math.max(0.01, r.dur));
+      this.ringPool.push(r.x, y, r.z, r.r, fill, f.reducedFlash ? 0.75 : 1, r.kind === 'rain' ? 1 : r.kind === 'landing' ? 2 : 0);
+    }
+    // projectiles
+    for (const p of f.projectiles) {
+      if (!f.frozen) this.trail(p);
+      if (p.kind.startsWith('steinbrecher')) {
+        _q.setFromEuler(_e.set(p.t * 3, p.t * 2, 0));
+        _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.7, 0.55, 0.6));
+        this.solids.push(_m2, 0.5, 0.41, 0.34);
+      } else if (p.kind.startsWith('irrlicht')) this.glows.push(p.x, p.y, p.z, 0.2, 2.2, 0.6, 0.85, 1, 5);
+      else this.glows.push(p.x, p.y, p.z, 0.24, 2.4, 1, 0.3, 0.1, 5);
+    }
+    // the Bannlicht on the ground
+    if (f.bann && f.bann.t > 0) {
+      const b = f.bann;
+      const y = f.heightAt(b.x, b.z) + 0.15;
+      this.ringPool.push(b.x, y, b.z, b.range, b.t, (f.reducedFlash ? 0.35 : 0.6) * b.t, 4, b.yaw, ((b.angle * Math.PI) / 180) / 2);
+    }
+    this.particles(dt, f);
+    this.puffs.end(cam);
+    this.glows.end();
+    this.solids.end();
+    this.ringPool.end();
+  }
+
+  private groundY(f: VisualFrame, x: number, z: number, r: number): number {
+    let y = f.heightAt(x, z);
+    const k = r * 0.7;
+    y = Math.max(y, f.heightAt(x + k, z), f.heightAt(x - k, z), f.heightAt(x, z + k), f.heightAt(x, z - k));
+    return y + 0.12;
+  }
+
+  private drawEnemy(e: Enemy, f: VisualFrame, dt: number): void {
+    const v = this.template(e);
+    // pose targets from the AI state
+    let lean = 0;
+    let arm = 0;
+    let swell = 1;
+    let tell = 0;
+    let sink = 0;
+    switch (e.state) {
+      case 'windup': {
+        const w = Math.min(1, e.t / Math.max(0.01, e.windup));
+        lean = -0.28 * w;
+        arm = 1.6 * w;
+        swell = 1 + 0.08 * w + (e.kind === 'glutling' ? 0.9 * w : 0);
+        tell = 0.5 + 0.5 * w;
+        if (e.kind === 'streuner') sink = 0.22 * w; // crouch before the pounce
+        if (e.attack?.kind === 'summon') arm = 2.2 * w;
+        break;
+      }
+      case 'strike':
+        lean = 0.35;
+        arm = -0.5;
+        tell = 0.6;
+        break;
+      case 'recover':
+        lean = 0.15 * Math.max(0, 1 - e.t * 2);
+        break;
+      case 'stagger':
+        lean = Math.sin(e.t * 28) * 0.12;
+        break;
+      case 'gebannt':
+        sink = e.kind === 'irrlicht' || e.kind === 'mahnbrief' ? 0 : 0.12;
+        lean = 0.2;
+        break;
+      case 'roar':
+        arm = 2.4;
+        lean = -0.3;
+        swell = 1.08;
+        tell = 0.8;
+        break;
+      case 'notice':
+        lean = -0.12;
+        tell = 0.4;
+        break;
+      case 'leave':
+        lean = 0.1;
+        break;
+      default:
+        break;
+    }
+    const k = Math.min(1, dt * 12);
+    v.lean += (lean - v.lean) * k;
+    v.arm += (arm - v.arm) * Math.min(1, dt * (e.state === 'strike' ? 30 : 10));
+    v.swell += (swell - v.swell) * k;
+    v.tell += (tell - v.tell) * Math.min(1, dt * 10);
+    v.sink += (sink - v.sink) * k;
+    const dissolving = e.state === 'dissolve';
+    const leaving = e.state === 'leave';
+    if (dissolving || leaving) v.fade = Math.min(1, v.fade + dt * (leaving ? 0.3 : 1.6));
+    else v.fade = Math.max(0, v.fade - dt * 3);
+    const alpha = 1 - v.fade;
+    if (alpha <= 0.01) return;
+    const stunned = e.stun > 0;
+    const flash = e.flash;
+    const pulse = 0.75 + 0.25 * Math.sin(f.time * 18);
+    const tellK = v.tell * (e.state === 'windup' ? pulse : 1);
+    const wakeK = e.aggro ? 1 : 0.65;
+    // weak point open (seal) / armour broken: glows harder
+    const sealK = e.kind === 'schuldbuch' ? (e.sealOpen > 0 ? 2.4 + Math.sin(f.time * 10) * 0.6 : 0.5) : e.armorBroken > 0 ? 1.8 : 1;
+    const rise = dissolving ? v.fade * 0.8 : 0;
+    for (const p of v.t.parts) {
+      this.bodyMatrix(e, v, p, _m);
+      _p.set(0, 0, 0).applyMatrix4(_m);
+      _p.y += rise * (0.5 + p.seed);
+      if (p.kind === 'puff') {
+        const em = p.em ?? [0, 0, 0];
+        const fl = flash * 0.6;
+        const heat = 1 + tellK * 1.2;
+        const cold = stunned ? 0.35 : 0;
+        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6), (p.alpha ?? 1) * alpha * (stunned ? 0.75 : 1), p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
+      } else if (p.kind === 'glow') {
+        let I = (p.alpha ?? 1) * alpha * wakeK;
+        let size = p.size * v.swell;
+        const isEye = (p.style ?? 0) >= 4;
+        if (isEye || p.bone === 'core') {
+          I *= 1 + tellK * 1.6 + flash;
+          size *= 1 + tellK * 0.6;
+        }
+        if (p.bone === 'seal') I *= sealK * (1 + tellK);
+        if (stunned) I *= p.bone === 'core' ? 0.5 : 0.6;
+        if (f.reducedFlash) I = Math.min(I, 2.2);
+        const col = stunned && p.bone === 'core' ? ([0.7, 0.85, 1] as const) : p.col;
+        this.glows.push(_p.x, _p.y, _p.z, size, I * 1.4, col[0], col[1], col[2], p.style ?? 0);
+      } else {
+        const em = p.em ?? [0, 0, 0];
+        const fl = flash * 0.35;
+        // orientation: heading · lean · arm swing · the part's own tilt
+        const q = _qa.setFromAxisAngle(_ay, e.heading);
+        q.multiply(_qb.setFromAxisAngle(_ax, -v.lean));
+        if (p.bone === 'armL' || p.bone === 'armR') q.multiply(_qb.setFromAxisAngle(_ax, v.arm * (p.bone === 'armR' ? 1 : 0.85)));
+        q.multiply(_q.setFromEuler(_e.set(p.rx ?? 0, p.ry ?? 0, p.rz ?? 0)));
+        const shrink = dissolving ? Math.max(0.01, 1 - v.fade) : 1;
+        _s.set(p.size * v.swell * shrink, (p.sy ?? p.size) * v.swell * shrink, (p.sz ?? p.size) * v.swell * shrink);
+        _m2.compose(_p, q, _s);
+        const seal = p.bone === 'seal' ? sealK : 1;
+        this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5);
+      }
+    }
+    // gebannt: a turning pale ring under it
+    if (stunned && !dissolving) {
+      const y = this.groundY(f, e.x, e.z, e.radius);
+      this.ringPool.push(e.x, y, e.z, e.radius + 0.6, 1, 0.9, 3);
+    }
+  }
+
+  private particles(dt: number, f: VisualFrame): void {
+    const P = this.parts;
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i];
+      p.age += dt;
+      if (p.age >= p.life) {
+        P.splice(i, 1);
+        continue;
+      }
+      const drag = Math.exp(-p.drag * dt);
+      p.vx *= drag;
+      p.vz *= drag;
+      p.vy = p.vy * drag - p.grav * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+      p.rot += p.spin * dt;
+      if (p.grav > 0 && p.type !== 2) {
+        const g = f.heightAt(p.x, p.z) + 0.03;
+        if (p.y < g) {
+          p.y = g;
+          p.vy = Math.abs(p.vy) * 0.25;
+          p.vx *= 0.5;
+          p.vz *= 0.5;
+        }
+      }
+      const t = p.age / p.life;
+      const fade = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+      if (p.type === 2) this.glows.push(p.x, p.y, p.z, p.size * (1 - t * 0.5), p.em * fade, p.r, p.g, p.b, 2);
+      else if (p.type === 3) {
+        _q.setFromEuler(_e.set(p.rot, p.rot * 0.7, p.rot * 0.3));
+        const s = p.size * (t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1);
+        _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(s, s * p.aspect, s));
+        // paper greys as it rises
+        const grey = p.aspect < 0.1 ? t * 0.5 : 0;
+        this.solids.push(_m2, p.r * (1 - grey) + 0.3 * grey, p.g * (1 - grey) + 0.3 * grey, p.b * (1 - grey) + 0.3 * grey);
+      } else this.puffs.push(p.x, p.y, p.z, p.size * (1 + p.grow * t), fade * (p.type === 1 ? 0.7 : 0.85), p.seed, p.type, p.r, p.g, p.b, p.em * 1.0, p.em * 0.35, p.em * 0.08);
+    }
+  }
+
+  dispose(): void {
+    this.object.removeFromParent();
+    this.object.traverse((o) => {
+      if (o instanceof Mesh) o.geometry.dispose();
+    });
+    this.puffMat.dispose();
+    this.glowMat.dispose();
+    this.ringPool.mat.dispose();
+  }
+}

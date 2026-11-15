@@ -16,5 +16,10 @@ addStrings('de', {
   'menagerie.jaguar.growl': '[Knurren, ganz nah]',
   'menagerie.jaguar.hiss': '[Fauchen – es weicht vor dem Licht zurück]',
   'menagerie.jaguar.down': 'Etwas Schweres stößt dich um – und ist fort.',
+  'menagerie.cassowary.tired': '[Der Kasuar steht still und pumpt. Er ist müde – führ ihn heim]',
+  'menagerie.cassowary.lead': 'Den Kasuar heimführen',
+  'menagerie.cassowary.home': 'Ruhig trottet der Kasuar neben dir her, zurück zu seinem Gehege.',
+  'menagerie.jaguar.flare': '[Das Licht schlägt ihn zurück – er faucht]',
+  'menagerie.jaguar.calmed': '[Die Augen erlöschen. Der Jaguar kommt nicht wieder]',
   'menagerie.up': 'Du rappelst dich auf.',
 });

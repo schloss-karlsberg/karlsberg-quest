@@ -117,6 +117,10 @@ export interface Agent {
   dim: number;
   /** 0 present … 1 faded away (finale). */
   gone: number;
+  /** Seconds left scattering from a Bannlicht flare (combat:bann): flees, never catches. */
+  scatterT?: number;
+  scatterX?: number;
+  scatterZ?: number;
   /** Metres since the last print (snow). */
   printAcc: number;
   printSide: number;
@@ -451,7 +455,11 @@ export class PackSim {
     } else if (!this.ctl?.step?.(dt, p)) {
       this.perceive(dt, p);
       if (!this.ctl?.think?.(dt, p)) this.think(dt, p);
-      if (!this.frozen) for (const a of this.agents) if (!this.ctl?.act?.(a, dt, p)) this.act(a, dt, p);
+      if (!this.frozen)
+        for (const a of this.agents) {
+          if (a.scatterT && a.scatterT > 0) this.flee(a, dt);
+          else if (!this.ctl?.act?.(a, dt, p)) this.act(a, dt, p);
+        }
       this.checkCaught(dt, p);
       if (!this.ctl?.alert?.(p)) this.updateAlert(p);
     }
@@ -982,6 +990,41 @@ export class PackSim {
 
   // ---------------------------------------------------------------------------------------------
 
+  /**
+   * The Bannlicht flare (combat:bann) scatters the hounds in its cone for `seconds`: they bolt away
+   * from the flare and cannot catch meanwhile. They are never damaged. Returns how many scattered.
+   */
+  scatter(x: number, z: number, yaw: number, range: number, angleDeg: number, seconds = 4): number {
+    const fx = -Math.sin(yaw);
+    const fz = -Math.cos(yaw);
+    const cosHalf = Math.cos(((angleDeg / 2) * Math.PI) / 180);
+    let n = 0;
+    for (const a of this.agents) {
+      if (a.kind !== 'hound' || a.gone > 0.5) continue;
+      const dx = a.x - x;
+      const dz = a.z - z;
+      const d = Math.hypot(dx, dz);
+      if (d > range + 1.2) continue;
+      if (d > 1.2 && (dx * fx + dz * fz) / d < cosHalf) continue;
+      a.scatterT = seconds;
+      a.scatterX = x;
+      a.scatterZ = z;
+      a.closeSee = 0;
+      a.wait = 0;
+      n++;
+    }
+    return n;
+  }
+
+  private flee(a: Agent, dt: number): void {
+    a.scatterT = Math.max(0, (a.scatterT ?? 0) - dt);
+    const dx = a.x - (a.scatterX ?? a.x);
+    const dz = a.z - (a.scatterZ ?? a.z);
+    const d = Math.hypot(dx, dz) || 1;
+    this.moveToward(a, a.x + (dx / d) * 10, a.z + (dz / d) * 10, this.tune.speed.chase, dt, 2.2, 0);
+    a.closeSee = 0;
+  }
+
   private checkCaught(dt: number, p: PlayerSense): void {
     if (this.state !== 'chasing' || this.frozen || p.flying || this.isWater(p.x, p.z) || this.ctl?.mayCatch?.() === false) {
       for (const a of this.agents) a.closeSee = 0;
@@ -989,6 +1032,7 @@ export class PackSim {
     }
     const T = this.tune;
     for (const a of this.agents) {
+      if (a.scatterT && a.scatterT > 0) continue;
       const d = Math.hypot(p.x - a.x, p.z - a.z);
       if (Math.abs(p.y - a.y) > 3) continue;
       if (a.kind === 'pikeur') {

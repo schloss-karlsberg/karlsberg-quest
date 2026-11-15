@@ -505,6 +505,10 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
 - **Debug** (`window.kq`): `kq.quests`, `kq.combat`, `kq.progression` (each track extends its own:
   e.g. `kq.quests.accept/complete/progress/turnin`, `kq.combat.spawn/hit/kill/god/state`,
   `kq.progression.grant/xp/level/equip/use/state`).
+- **Combat track additions** (no change to `contracts.ts`): event `combat:swing {x, z, yaw, reach}`
+  (declared in `src/systems/combat/index.ts`), setting `Settings.damageNumbers` („Schadenszahlen“,
+  game section, default on), `lanternPose {side, lift}` exported by `src/systems/hunt/lantern.ts`,
+  `PackSim.scatter()` in the hunt, `MenagerieSlice.calmed: string[]`.
 - **Test chapter**: `?storytest`, `kq.story.goto('test', 'q1')` — Hanne offers `q.test.lohnzettel`
   (kill 3 Mahnbriefe → collect the Zettel → turn in with history + stance) and then the side quest
   `q.test.irrlichter` (Laub, two Irrlichter). Every track's e2e can start there.

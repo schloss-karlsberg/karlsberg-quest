@@ -1,0 +1,436 @@
+/**
+ * Combat rules (docs/ACTION-RPG.md §4–§5): pure numbers and functions, no three.js, no DOM.
+ * Everything the unit tests pin down lives here — damage, combo timing, dodge windows, stamina,
+ * the Bannlicht cone, the attack-token limit, leash / reset, group bookkeeping, respawn, boss
+ * phases, safe zones and telegraph times. The simulation (sim.ts) only calls into this file.
+ */
+import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
+
+// ---- tuning --------------------------------------------------------------------------------
+
+/** Atem costs (×stats.staminaCost). Running drains only while in combat. */
+export const COST = { light: 10, heavy: 25, dodge: 20, runPerS: 8 } as const;
+/** Atem regeneration: 25/s after 0.8 s without spending; exhausted at 0 until back to 25. */
+export const STAMINA = { regen: 25, delay: 0.8, recover: 25 } as const;
+/** Lebenskraft: out of combat after 6 s, 4/s. */
+export const HP_REGEN = { delay: 6, perS: 4 } as const;
+
+/** Hieb: 3-hit combo, 0.38 s per swing; the hit lands at `impact` into the swing. */
+export const COMBO = {
+  hits: 3,
+  swing: 0.38,
+  /** Anticipation (the staff goes back) before the arc. */
+  windup: 0.07,
+  /** Seconds into the swing when the arc is resolved. */
+  impact: 0.13,
+  /** After the swing ends, a press within this time continues the combo. */
+  chain: 0.32,
+  /** A press this long before the swing ends is buffered as the next hit. */
+  buffer: 0.2,
+  arcDeg: 70,
+  reach: 2.6,
+  assistDeg: 25,
+  gentleAssistDeg: 40,
+  finisher: 1.4,
+} as const;
+
+/** Wuchthieb: hold 0.45–1.0 s (move ×0.5), release. */
+export const HEAVY = { min: 0.45, full: 1.0, moveScale: 0.5, tap: 0.18, arcDeg: 110, reach: 3.0, sweepReach: 3.4, swing: 0.55, impact: 0.2 } as const;
+
+/** Ausweichen: 0.35 s roll of 4.5 m; i-frames 0.08–0.33 s; perfect in the last 0.15 s before a hit. */
+export const DODGE = { dur: 0.35, dist: 4.5, iStart: 0.08, iEnd: 0.33, perfect: 0.15, slowmo: 0.25, slowScale: 0.3 } as const;
+
+/** Bannlicht: gebannte enemies take ×1.5; the flare lasts 0.45 s on screen. */
+export const BANN = { damageMul: 1.5, flare: 0.45, sealOpen: 4 } as const;
+
+/** Juice (§4.3); halved with reduced motion. */
+export const HITSTOP = { light: 0.06, heavy: 0.11, player: 0.08 } as const;
+export const SHAKE = { light: 0.03, heavy: 0.12, player: 0.15 } as const;
+/** Knockback distance (m) on enemies; the player is pushed 1.2 m. */
+export const KNOCK = { light: 0.4, finisher: 1.2, heavy: 2.6, player: 1.2 } as const;
+
+/** Enemy AI (§4.4). */
+export const AI = {
+  /** At most this many enemies attack at once (gentle: 1). */
+  tokens: 2,
+  gentleTokens: 1,
+  /** Default leash (m) around the group's spawn. */
+  leash: 40,
+  /** Groups materialise within this distance (and leave beyond `materialiseOff`). */
+  materialise: 90,
+  materialiseOff: 130,
+  /** Max enemies alive at once (performance budget). */
+  maxActive: 12,
+  aggro: 15,
+  bossAggro: 26,
+  notice: 0.55,
+  /** Strike phase (s) and the opening after it. */
+  strike: 0.16,
+  recover: 0.7,
+  /** Gentle mode: telegraphs ×1.4, enemy HP ×0.75. */
+  gentleTelegraph: 1.4,
+  gentleHp: 0.75,
+} as const;
+
+/** Safe zones (§4.6). */
+export const SAFE = { stationR: 40, npcR: 6 } as const;
+/** The field station's trailer (local frame; same as story/hub/station.ts STATION, which we may not import). */
+export const STATION_XZ = { x: 760, z: -915 } as const;
+
+/** The Pikeur never reaches 0: at this fraction he blows "verloren" and leaves. */
+export const PIKEUR_LEAVE = 0.12;
+
+// ---- difficulty ----------------------------------------------------------------------------
+
+/** HP of an enemy: ×(1 + 0.35 (tier − 1)), gentle ×0.75; prologue (tier 0) = tier 1 at 60 %. */
+export function enemyHp(def: Pick<EnemyDef, 'hp'>, tier = 1, gentle = false): number {
+  const t = Math.max(0, Math.min(4, tier));
+  const base = t === 0 ? def.hp * 0.6 : def.hp * (1 + 0.35 * (t - 1));
+  return Math.max(1, Math.round(base * (gentle ? AI.gentleHp : 1)));
+}
+
+/** Damage of an enemy attack: ×(1 + 0.25 (tier − 1)) (tier 0 = 60 %) × the player's damageTaken. */
+export function enemyDamage(raw: number, tier = 1, damageTaken = 1): number {
+  const t = Math.max(0, Math.min(4, tier));
+  const k = t === 0 ? 0.6 : 1 + 0.25 * (t - 1);
+  return Math.max(0, Math.round(raw * k * damageTaken * 10) / 10);
+}
+
+/** Wind-up of an attack the player can read (gentle ×1.4); never below 0.4 s. */
+export function telegraphTime(a: Pick<EnemyAttackDef, 'telegraph'>, gentle = false): number {
+  return Math.max(0.4, a.telegraph * (gentle ? AI.gentleTelegraph : 1));
+}
+
+export function attackTokens(gentle: boolean): number {
+  return gentle ? AI.gentleTokens : AI.tokens;
+}
+
+// ---- player damage ---------------------------------------------------------------------------
+
+export interface HitSpec {
+  kind: 'light' | 'heavy';
+  /** Combo index 0..2 (2 = finisher, ×1.4). */
+  combo?: number;
+  /** Heavy charge 0..1 (0.45 s … 1.0 s held). */
+  charge?: number;
+  /** Target is gebannt (stunned by the Bannlicht): ×1.5. */
+  gebannt?: boolean;
+  /** Armour factor of the target for this hit (1 = none) — see `armorFactor`. */
+  armor?: number;
+  /** Konterschritt: the next hit after a perfect dodge counts double. */
+  counter?: boolean;
+  /** Extra multiplier (boss weak points: the open seal, the Strohmann's back). */
+  mul?: number;
+  /** Deterministic ±6 % variation seed (0..1); 0.5 = none. */
+  jitter?: number;
+}
+
+/** Damage of one staff hit from the derived stats. */
+export function hitDamage(stats: Pick<DerivedStats, 'damage' | 'heavy'>, h: HitSpec): number {
+  let d = stats.damage;
+  if (h.kind === 'heavy') d *= heavyMultiplier(stats.heavy, h.charge ?? 1);
+  else if ((h.combo ?? 0) >= COMBO.hits - 1) d *= COMBO.finisher;
+  if (h.gebannt) d *= BANN.damageMul;
+  d *= h.armor ?? 1;
+  if (h.counter) d *= 2;
+  d *= h.mul ?? 1;
+  if (h.jitter !== undefined) d *= 0.94 + 0.12 * Math.max(0, Math.min(1, h.jitter));
+  return Math.max(1, Math.round(d));
+}
+
+/** Wuchthieb multiplier: 75 % of `heavy` at 0.45 s, the full value at 1.0 s held. */
+export function heavyMultiplier(heavy: number, charge: number): number {
+  const c = Math.max(0, Math.min(1, charge));
+  return heavy * (0.75 + 0.25 * c);
+}
+
+/** Charge 0..1 from the hold time (null = a tap / light hit). */
+export function heavyCharge(held: number): number | null {
+  if (held < HEAVY.min) return null;
+  return Math.min(1, (held - HEAVY.min) / (HEAVY.full - HEAVY.min));
+}
+
+/**
+ * Armour: frontal armour (Steinfresser, Steinbrecher) applies only when the hit comes from the
+ * front half; a Wuchthieb breaks it (×1). `facing` = enemy heading, `fromX/Z` = attacker.
+ */
+export function armorFactor(def: Pick<EnemyDef, 'armor' | 'armorFrontal'>, kind: 'light' | 'heavy', enemy: { x: number; z: number; heading: number }, from: { x: number; z: number }, broken = false): number {
+  const a = def.armor ?? 0;
+  if (a <= 0 || broken || kind === 'heavy') return 1;
+  if (!def.armorFrontal) return a;
+  return isFrontal(enemy, from) ? a : 1;
+}
+
+/** Is `from` in front of the enemy (within ±90° of its heading)? Heading: forward = (−sin h, −cos h). */
+export function isFrontal(enemy: { x: number; z: number; heading: number }, from: { x: number; z: number }): boolean {
+  const fx = -Math.sin(enemy.heading);
+  const fz = -Math.cos(enemy.heading);
+  return (from.x - enemy.x) * fx + (from.z - enemy.z) * fz > 0;
+}
+
+// ---- combo / dodge / stamina -----------------------------------------------------------------
+
+/** Next combo index for a press `since` seconds after the last swing ENDED (−1 = never swung). */
+export function nextCombo(last: number, since: number): number {
+  if (last < 0 || since > COMBO.chain || last >= COMBO.hits - 1) return 0;
+  return last + 1;
+}
+
+/** Dodge i-frames: t seconds into the roll. */
+export function dodgeInvulnerable(t: number): boolean {
+  return t >= DODGE.iStart && t <= DODGE.iEnd;
+}
+
+/** A dodge started `before` seconds before an incoming hit lands is perfect if ≤ 0.15 s. */
+export function isPerfectDodge(before: number): boolean {
+  return before >= 0 && before <= DODGE.perfect;
+}
+
+/** Dodge impulse speed so the decaying push covers `dist` in `dur` (linear decay → ½ v·t). */
+export function dodgeSpeed(dist: number = DODGE.dist, dur: number = DODGE.dur): number {
+  return (2 * dist) / dur;
+}
+
+export interface StaminaState {
+  stamina: number;
+  max: number;
+  exhausted: boolean;
+  /** Seconds since the last spend. */
+  idle: number;
+}
+
+/** Can the player afford an action now? Exhausted (hit 0, not yet back to 25) blocks dodge, heavy, running and hits. */
+export function canAct(s: StaminaState, _cost: number): boolean {
+  return !s.exhausted && s.stamina > 0;
+}
+
+/** Spend Atem; at 0 the player is exhausted. */
+export function spend(s: StaminaState, cost: number): void {
+  s.stamina = Math.max(0, s.stamina - cost);
+  s.idle = 0;
+  if (s.stamina <= 0) s.exhausted = true;
+}
+
+/** Regenerate Atem for `dt` s; exhaustion ends at 25. */
+export function regenStamina(s: StaminaState, dt: number): void {
+  s.idle += dt;
+  if (s.idle >= STAMINA.delay) s.stamina = Math.min(s.max, s.stamina + STAMINA.regen * dt);
+  if (s.exhausted && s.stamina >= STAMINA.recover) s.exhausted = false;
+}
+
+// ---- geometry ------------------------------------------------------------------------------
+
+/** Forward vector for a yaw (player convention: yaw 0 looks to −z). */
+export function forwardOf(yaw: number): { x: number; z: number } {
+  return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
+}
+
+export function wrapAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
+
+/** Heading (player-yaw convention) that looks along dx/dz. */
+export function headingOf(dx: number, dz: number): number {
+  return Math.atan2(-dx, -dz);
+}
+
+/**
+ * Cone / arc hit test: is p within `range` (+ `radius` of the target) of the origin and within
+ * ±angle/2 of the yaw? Targets right at the origin always count.
+ */
+export function inCone(ox: number, oz: number, yaw: number, range: number, angleDeg: number, px: number, pz: number, radius = 0): boolean {
+  const dx = px - ox;
+  const dz = pz - oz;
+  const d = Math.hypot(dx, dz);
+  if (d > range + radius) return false;
+  if (d < 0.35 + radius * 0.5) return true;
+  const diff = Math.abs(wrapAngle(headingOf(dx, dz) - yaw));
+  // a big target near the edge still counts if its body reaches into the cone
+  const slack = Math.atan2(radius, Math.max(d, 0.01));
+  return diff <= (angleDeg * Math.PI) / 360 + slack;
+}
+
+/**
+ * Soft aim assist: the yaw to swing along — towards the nearest target within ±assist°, else the
+ * view yaw. Returns the original yaw when nothing qualifies.
+ */
+export function assistYaw(ox: number, oz: number, yaw: number, targets: readonly { x: number; z: number }[], range: number, assistDeg: number): number {
+  let best = -1;
+  let bestD = Infinity;
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i];
+    const dx = t.x - ox;
+    const dz = t.z - oz;
+    const d = Math.hypot(dx, dz);
+    if (d > range + 1.2) continue;
+    const diff = Math.abs(wrapAngle(headingOf(dx, dz) - yaw));
+    if (diff > (assistDeg * Math.PI) / 180) continue;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  if (best < 0) return yaw;
+  const t = targets[best];
+  return headingOf(t.x - ox, t.z - oz);
+}
+
+// ---- tokens ----------------------------------------------------------------------------------
+
+/** At most `max` enemies attack at once; the others circle and wait. */
+export class AttackTokens {
+  private readonly holders = new Set<string>();
+  constructor(public max: number) {}
+  request(id: string): boolean {
+    if (this.holders.has(id)) return true;
+    if (this.holders.size >= this.max) return false;
+    this.holders.add(id);
+    return true;
+  }
+  release(id: string): void {
+    this.holders.delete(id);
+  }
+  has(id: string): boolean {
+    return this.holders.has(id);
+  }
+  get count(): number {
+    return this.holders.size;
+  }
+  clear(): void {
+    this.holders.clear();
+  }
+}
+
+// ---- leash -------------------------------------------------------------------------------------
+
+/** Enemies give up when they or the player stray beyond the leash from the group's spawn. */
+export function leashBroken(home: { x: number; z: number }, enemy: { x: number; z: number }, player: { x: number; z: number }, leash: number = AI.leash): boolean {
+  return Math.hypot(enemy.x - home.x, enemy.z - home.z) > leash || Math.hypot(player.x - home.x, player.z - home.z) > leash + 12;
+}
+
+// ---- groups --------------------------------------------------------------------------------
+
+export type SpawnRequest = Omit<EnemyGroupState, 'killed' | 'count'> & { count?: number };
+
+/**
+ * Idempotent spawn by group id: a new group starts with nothing killed; an existing one keeps what
+ * is already undone (its spec — place, era, count — may be re-declared). Returns true if new.
+ */
+export function upsertGroup(groups: Record<string, EnemyGroupState>, req: SpawnRequest): boolean {
+  const prev = groups[req.group];
+  const g: EnemyGroupState = {
+    group: req.group,
+    kind: req.kind,
+    era: req.era,
+    x: req.x,
+    z: req.z,
+    count: Math.max(1, Math.round(req.count ?? 1)),
+    killed: prev ? Math.min(prev.killed, Math.max(1, Math.round(req.count ?? 1))) : 0,
+  };
+  for (const k of ['radius', 'boss', 'tier', 'leash', 'quest', 'objective', 'respawn', 'time', 'room'] as const) {
+    const v = req[k];
+    if (v !== undefined) (g as unknown as Record<string, unknown>)[k] = v;
+  }
+  groups[req.group] = g;
+  return !prev;
+}
+
+export function remaining(g: EnemyGroupState): number {
+  return Math.max(0, g.count - g.killed);
+}
+
+export function isCleared(g: EnemyGroupState): boolean {
+  return g.killed >= g.count;
+}
+
+/** A cleared group comes back only with `respawn` > 0, that many seconds after its clear. */
+export function shouldRespawn(g: EnemyGroupState, clearedAt: number | undefined, now: number): boolean {
+  if (!isCleared(g) || !g.respawn || g.respawn <= 0 || clearedAt === undefined) return false;
+  return now - clearedAt >= g.respawn;
+}
+
+/**
+ * After the player is undone: nothing is lost. Unfinished groups keep their kills and come back
+ * at full strength (the runtime members are rebuilt; bosses at phase 1); cleared groups stay
+ * cleared. Returns the ids of the groups to rebuild.
+ */
+export function groupsToReset(groups: Record<string, EnemyGroupState>): string[] {
+  return Object.values(groups)
+    .filter((g) => !isCleared(g))
+    .map((g) => g.group);
+}
+
+/** Is a group shown now: its era, and its time of day ('dusk' also holds at night). */
+export function groupActive(g: Pick<EnemyGroupState, 'era' | 'time'>, era: string, time: 'day' | 'dusk' | 'night'): boolean {
+  if (g.era !== era) return false;
+  if (!g.time || g.time === 'any') return true;
+  if (g.time === 'night') return time === 'night';
+  return time === 'dusk' || time === 'night';
+}
+
+// ---- bosses ----------------------------------------------------------------------------------
+
+/** Boss phase (1-based) for an HP fraction and the thresholds (e.g. [0.66, 0.33]). */
+export function bossPhase(frac: number, thresholds: readonly number[] = []): number {
+  let p = 1;
+  for (const t of thresholds) if (frac <= t) p++;
+  return p;
+}
+
+/** HP after damage, honouring the Pikeur's floor (he never reaches 0). */
+export function applyDamage(kind: string, hp: number, max: number, dmg: number): number {
+  const next = hp - dmg;
+  if (kind === 'pikeur') return Math.max(Math.ceil(max * PIKEUR_LEAVE), next);
+  return Math.max(0, next);
+}
+
+/** The Pikeur leaves (blows "verloren") once he is down to his floor. */
+export function pikeurLeaves(hp: number, max: number): boolean {
+  return hp <= Math.ceil(max * PIKEUR_LEAVE);
+}
+
+// ---- safe zones ----------------------------------------------------------------------------
+
+export interface SafeInput {
+  x: number;
+  z: number;
+  era: string;
+  /** flags['combat.disabled'] */
+  disabled?: boolean;
+  /** In the hub (between hub:enter and hub:leave). */
+  hub?: boolean;
+  /** A conversation is open. */
+  talking?: boolean;
+  /** A modal is open. */
+  modal?: boolean;
+  memorials?: readonly { x?: number; z?: number; r?: number; era?: string; room?: string; active: boolean }[];
+  /** Current palace room (interiors) for room memorials. */
+  room?: string;
+  /** Placed NPCs (the 6 m talk radius). */
+  npcs?: readonly { x: number; z: number; era?: string }[];
+}
+
+export type SafeReason = 'disabled' | 'station' | 'memorial' | 'talking' | 'modal' | 'npc' | null;
+
+/** Why no fighting can happen here (null = fighting allowed). */
+export function safeReason(s: SafeInput): SafeReason {
+  if (s.disabled) return 'disabled';
+  if (s.modal) return 'modal';
+  if (s.talking) return 'talking';
+  if (s.hub || (s.era === 'today' && Math.hypot(s.x - STATION_XZ.x, s.z - STATION_XZ.z) <= SAFE.stationR)) return 'station';
+  for (const m of s.memorials ?? []) {
+    if (!m.active) continue;
+    if (m.era && m.era !== s.era) continue;
+    if (m.room) {
+      if (s.room && (s.room === m.room || s.room.endsWith(m.room) || m.room.endsWith(s.room))) return 'memorial';
+      continue;
+    }
+    if (m.x === undefined || m.z === undefined) return 'memorial';
+    if (Math.hypot(s.x - m.x, s.z - m.z) <= (m.r ?? 25)) return 'memorial';
+  }
+  for (const n of s.npcs ?? []) {
+    if (n.era && n.era !== s.era) continue;
+    if (Math.hypot(s.x - n.x, s.z - n.z) <= SAFE.npcR) return 'npc';
+  }
+  return null;
+}
