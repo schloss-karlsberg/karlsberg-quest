@@ -402,6 +402,7 @@ Requests are imperative, facts past tense. Payloads are plain JSON.
 | `quest:offered` / `accepted` / `progress` / `objective` / `ready` / `completed` / `failed` | quests | story (conditions via flags), progression, HUD, barks | see contracts |
 | `npc:topics` | quests | npc | `{npc, topics: QuestTopic[]}` |
 | `npc:marker` | quests | npc | `{npc, mark}` |
+| `npc:follow` | quests (escort objectives) | npc (the ghost walks after the player) | `{npc, follow}` |
 | `quest:accept` / `decline` / `turnin` / `stance` | npc | quests | `{id, npc}` / `{id, value}` |
 | `enemy:spawn` / `enemy:despawn` | quests, story | combat | group spec / `{group}` |
 | `enemy:spawned` / `killed` / `cleared` / `aggro`, `boss:phase` | combat | quests, progression, story, barks | see contracts |
@@ -508,6 +509,15 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
 - **Test chapter**: `?storytest`, `kq.story.goto('test', 'q1')` — Hanne offers `q.test.lohnzettel`
   (kill 3 Mahnbriefe → collect the Zettel → turn in with history + stance) and then the side quest
   `q.test.irrlichter` (Laub, two Irrlichter). Every track's e2e can start there.
+
+### 9.6 Additions by the quests track (additive only)
+
+- `src/rpg/types.ts`: `QuestTopic.history?: QuestHistoryLine[]` and `QuestTopic.stance?: QuestStance`
+  (the turn-in topic carries the history lines and the stance prompt to the npc conversation);
+  `QuestSlice.bestiary?: Record<string, number>` (kills per enemy kind for the journal's bestiary).
+- `src/systems/contracts.ts`: `npc:follow {npc, follow}` (escort objectives; npc moves the ghost).
+- Transient flag `npc.near` (npc): set while a ghost is within talk radius, so the Chronik leaves E
+  and its prompt to the conversation.
 
 ## 10. HUD layout
 

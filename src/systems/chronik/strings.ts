@@ -93,7 +93,7 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.card.new': 'Neu im Feldbuch',
   'chronik.card.codex': 'Neue Codex-Karte',
   'chronik.card.ok': 'Notiert',
-  'chronik.card.openChronik': 'Chronik öffnen',
+  'chronik.card.openChronik': 'Feldbuch öffnen',
   'chronik.card.transcript': 'Mitschrift',
   'chronik.card.scale': '20 m',
   'chronik.card.scale100': '100 m',

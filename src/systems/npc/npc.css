@@ -116,3 +116,186 @@
     font-size: 17px;
   }
 }
+
+/* ---------- quest topics, history lines and the stance (Action-RPG) ---------- */
+.kqn-topic.kqn-q {
+  font-weight: 400;
+  border-width: 2px;
+}
+.kqn-qg {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+  color: #8a5a10;
+  transform: translateY(2px);
+}
+.kqn-qg-offer-main {
+  border: 2px solid #a5782c;
+  border-radius: 50%;
+  font-size: 15px;
+}
+.kqn-qg-ready {
+  color: var(--accent);
+  font-size: 21px;
+}
+.kqn-qg-active {
+  color: #6f6a62;
+  border: 1.5px dashed #6f6a62;
+  border-radius: 50%;
+  font-size: 14px;
+}
+.kqn-qg-accept {
+  color: #2f5a35;
+}
+.kqn-qg-decline {
+  color: var(--ink-soft);
+}
+.kqn-qg-stance {
+  color: var(--brass);
+}
+.kqn-q-ready,
+.kqn-q-offer-main {
+  background: rgba(181, 139, 61, 0.16);
+}
+.kqn-topic.kqn-q-accept,
+.kqn-topic.kqn-q-accept:hover,
+.kqn-topic.kqn-q-accept:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+.kqn-topic.kqn-q-accept:hover,
+.kqn-topic.kqn-q-accept:focus-visible {
+  background: #3b2e21;
+}
+.kqn-q-accept .kqn-qg,
+.kqn-q-accept .kqn-n {
+  color: #e9c46a;
+}
+.kqn-topics.kqn-stance {
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+}
+.kqn-header {
+  font-family: var(--hand);
+  font-size: 19px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.kqn-text.kqn-history::before {
+  content: 'Was wirklich war';
+  display: block;
+  font-family: var(--sc);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.kqn-text.kqn-history {
+  border-left: 3px solid var(--brass);
+  padding-left: 12px;
+  background: linear-gradient(90deg, rgba(181, 139, 61, 0.14), transparent 80%);
+}
+.kqn-note {
+  font-family: var(--sc);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.kqn-note::before {
+  content: '◆ ';
+}
+
+/* glyphs over the heads: shape-coded ! / ringed ! / ? / grey dashed ? */
+.kqn-glyphs {
+  pointer-events: none;
+  overflow: hidden;
+}
+.kqn-glyph {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 90, 0.45)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+}
+.kqn-glyph svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.kqn-glyph .ch {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-weight: 700;
+  font-size: 44px;
+  fill: #ffd25e;
+  stroke: #2a1a08;
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+.kqn-glyph .ring {
+  fill: rgba(30, 20, 8, 0.45);
+  stroke: #e9b44c;
+  stroke-width: 3px;
+}
+.kqn-glyph .ring2 {
+  fill: none;
+  stroke: #2a1a08;
+  stroke-width: 1.5px;
+}
+.kqn-glyph-offer-main .ch {
+  font-size: 34px;
+  transform: translateY(-4px);
+}
+.kqn-glyph .halo {
+  fill: rgba(255, 220, 120, 0.22);
+  stroke: none;
+  transform-origin: 24px 30px;
+  animation: kqn-halo 1.8s ease-in-out infinite;
+}
+.kqn-glyph-ready .ch {
+  fill: #ffe9a0;
+}
+.kqn-glyph-active {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+}
+.kqn-glyph-active .ch {
+  fill: #b9b3a8;
+  stroke-dasharray: 4 2;
+  font-size: 38px;
+}
+.kqn-glyph.kqn-pop svg {
+  animation: kqn-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes kqn-halo {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+@keyframes kqn-pop {
+  from {
+    transform: scale(0.2);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+html[data-kq-reduced-motion] .kqn-glyph .halo,
+html[data-kq-reduced-motion] .kqn-glyph.kqn-pop svg,
+html[data-kq-reduced-flash] .kqn-glyph .halo {
+  animation: none;
+}
+html[data-kq-contrast] .kqn-glyph .ch {
+  stroke: #000;
+  stroke-width: 4px;
+}

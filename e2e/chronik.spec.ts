@@ -2,16 +2,17 @@ import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 
 /**
- * Chronik: clue markers + examine cards, relief finds behind the scan modes, echoes (hold E),
- * the board (batch of three, drag & drop, click-select, gentle marks, present-day rule), the
- * codex, Laub's hints, loss on capture and the save round trip.
+ * Chronik and Journal (Action-RPG rework, docs/ACTION-RPG.md §8.4 / §12): clue markers + examine
+ * cards, relief finds behind the scan modes, echoes (hold E), nothing lost when caught; the
+ * Journal that replaced the deduction board: J / Tab open it, the tabs are keyboard-reachable,
+ * clue facts land in its codex, the Pinnwand at the field station opens it. No board, no blanks,
+ * no noun selection, no batches, no hint ladder.
  * Screenshots: test-results/screens/chronik-*.png. `?placeholder` forces the test pack
  * (content/test/chronik-test.pack.json) even once real content exists.
  */
 const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 const URL = './?notitle&nosave&fresh&manual&placeholder';
-const CASE = 'ct.case.vermessung';
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
@@ -28,7 +29,7 @@ function trackErrors(page: Page): string[] {
 
 async function boot(page: Page): Promise<void> {
   await page.goto(URL);
-  await page.waitForFunction(() => window.kq?.chronik !== undefined, null, { timeout: 120_000 });
+  await page.waitForFunction(() => window.kq?.chronik !== undefined && window.kq?.quests !== undefined, null, { timeout: 120_000 });
   // record every event the Chronik emits or listens to
   await page.evaluate(() => {
     const w = window as unknown as { kqEvents: [string, unknown][] };
@@ -144,162 +145,117 @@ test.describe('chronik', () => {
     await shot(page, 'echo-card');
     await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
 
-    // --- caught: everything since the last confirmation is gone
-    const lost = await page.evaluate(() => {
+    // --- caught: nothing is lost any more (docs/ACTION-RPG.md §12)
+    const kept = await page.evaluate(() => {
       const k = window.kq!;
       k.setEra('today');
       k.chronik!.caught();
-      return { inv: k.state().inventory, since: k.chronik!.slice().since };
+      k.step(2);
+      return k.state().inventory.clues;
     });
-    expect(lost.inv.clues).toEqual([]);
-    expect(lost.inv.nouns).toEqual([]);
-    expect(lost.since).toEqual({ clues: [], nouns: [], facts: [] });
-    const lostEv = (await events(page, 'chronik:lost')) as { clues: string[] }[];
-    expect(lostEv[0]?.clues.sort()).toEqual(['ct.clue.lageplan', 'ct.echo.diener']);
+    expect(kept.sort()).toEqual(['ct.clue.lageplan', 'ct.echo.diener']);
+    expect(await events(page, 'chronik:lost')).toEqual([]);
 
     expect(errors).toEqual([]);
   });
 
-  test('board: batch of three, drag & drop, gentle marks, hints, codex, save', async ({ page }) => {
+  test('journal: J and Tab open it, the tabs are keyboard-reachable, clue facts land in the codex; no board', async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page);
+    // a clue with a codex fact: examined in the world, its card goes to the journal's codex
     await page.evaluate(() => {
       const k = window.kq!;
       k.setEra('today');
-      k.teleport(1150, -1129, 100, -10);
-      k.chronik!.grantAll();
-      k.press('KeyJ', 1);
+      k.setScanMode(0);
+      k.teleport(1150, -1129, 100, -20);
+      k.step(20);
     });
-    const board = page.locator('.ck-board');
-    await expect(board).toBeVisible();
-    expect((await events(page, 'chronik:opened')).length).toBe(1);
-    await page.locator(`.ck-case-tab[data-case="${CASE}"]`).click();
-    await expect(page.locator(`.ck-page[data-case="${CASE}"]`)).toBeVisible();
-    const check = page.getByTestId('chronik-check');
-    const msg = page.getByTestId('chronik-msg');
-    await expect(check).toBeDisabled();
-
-    // three entries, one wrong: nothing is confirmed
-    await page.evaluate((c) => {
-      const k = window.kq!.chronik!;
-      k.fill(c, 'p1', 'wo', 'ct.n.ehrenhof');
-      k.fill(c, 'p2', 'wo', 'ct.n.galerie');
-      k.fill(c, 'p3', 'was', 'ct.n.hohlweg');
-    }, CASE);
-    await expect(check).toBeEnabled();
-    await check.click({ force: true });
-    await expect(msg).toContainText('Mindestens eine Angabe stimmt nicht');
-    await shot(page, 'board-wrong');
-    expect(await events(page, 'chronik:batch')).toEqual([{ caseId: CASE, correct: false, confirmed: [] }]);
-    expect(await page.evaluate((c) => window.kq!.state().chronik[c]?.confirmed, CASE)).toEqual([]);
-    await expect(page.locator('.ck-entry .tick')).toHaveCount(0);
-
-    // gentle mode shows which entries are right
-    await page.evaluate(() => window.kq!.ctx.settings.update((d) => void (d.gentleMode = true), 'gentleMode'));
-    await page.evaluate((c) => window.kq!.chronik!.check(c), CASE);
-    await expect(page.locator('.ck-entry .tick')).toHaveCount(2);
-    await expect(page.locator('.ck-entry[data-entry="p1"] .tick')).toBeVisible();
-    await page.evaluate(() => window.kq!.ctx.settings.update((d) => void (d.gentleMode = false), 'gentleMode'));
-
-    // drag the right noun into the wrong blank
-    const noun = page.locator('.ck-noun[data-noun="ct.n.orangerie"]');
-    const slot = page.locator('.ck-slot[data-entry="p2"]');
-    await noun.scrollIntoViewIfNeeded();
-    await slot.scrollIntoViewIfNeeded();
-    const a = (await noun.boundingBox())!;
-    const b = (await slot.boundingBox())!;
-    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(a.x + 30, a.y - 40, { steps: 4 });
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
-    await expect(page.locator('.ck-drag')).toBeVisible();
-    await page.mouse.up();
-    await expect(slot).toHaveAttribute('data-noun', 'ct.n.orangerie');
-
-    // present-day rule: confirmation only today
-    await page.evaluate(() => window.kq!.setEra('1789'));
-    const blocked = await page.evaluate((c) => window.kq!.chronik!.check(c), CASE);
-    expect(blocked).toMatchObject({ blocked: true, confirmed: [] });
-    await page.evaluate(() => window.kq!.setEra('today'));
-
-    await check.click({ force: true });
-    await expect(msg).toContainText('Bestätigt');
-    await expect(page.locator('.ck-stamp')).toHaveCount(3);
-    expect(await page.evaluate((c) => window.kq!.state().chronik[c]?.confirmed, CASE)).toEqual(['p1', 'p2', 'p3']);
-    const unlocked = ((await events(page, 'codex:unlocked')) as { factId: string }[]).map((e) => e.factId);
-    expect(unlocked).toEqual(expect.arrayContaining(['ct.cx.01', 'ct.cx.40', 'ct.rm.04']));
-    await page.evaluate(() => document.querySelector('.ck-page-wrap')?.scrollTo(0, 0));
-    await page.waitForTimeout(800); // stamps settle
-    await shot(page, 'board-confirmed');
-
-    // a reading by click-select: noun first, then the blank; stored as reading + flag, never confirmed
-    const wild = page.locator('.ck-noun[data-noun="ct.n.wild"]');
-    await wild.scrollIntoViewIfNeeded();
-    await wild.click();
-    await expect(wild).toHaveAttribute('aria-pressed', 'true');
-    const reading = page.locator('.ck-slot[data-entry="p7"]');
-    await reading.scrollIntoViewIfNeeded();
-    await reading.click();
-    const st = await page.evaluate(() => window.kq!.state());
-    expect(st.chronik[CASE]?.readings.p7).toEqual({ wer: 'ct.n.wild' });
-    expect(st.flags[`reading.${CASE}.p7`]).toBe('ct.n.wild');
-
-    // Laub: hint 1 after being stuck, then "Laub fragen" repeats it
-    await page.evaluate((c) => window.kq!.chronik!.stuck(c, 250), CASE);
     await page.evaluate(() => window.kq!.screenshotReady());
-    const note = page.getByTestId('chronik-laub-note');
-    await expect(note).toContainText('Ein Geometer schaut zuerst');
-    const says = (await events(page, 'dialogue:say')) as { speaker: string; id: string }[];
-    expect(says.some((s) => s.speaker === 'laub' && s.id === 'ct.hint.1')).toBe(true);
-    // asked after half of the next delay, Laub gives hint 2 early
-    await page.getByTestId('chronik-ask').click({ force: true });
-    await expect(note).toContainText('Der Lageplan kennt die Namen');
+    await expect.poll(() => page.evaluate(() => { window.kq!.step(2); return window.kq!.chronik!.target(); }), { timeout: 30_000 }).toBe('ct.clue.lageplan');
+    await page.evaluate(() => window.kq!.press('KeyE', 2));
+    await expect(page.getByTestId('chronik-card')).toBeVisible();
+    // the card no longer lists nouns ("Neu im Feldbuch") — no word inventory for the player
+    await expect(page.getByTestId('chronik-card')).not.toContainText('Neu im Feldbuch');
+    await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
+    const facts = await page.evaluate(() => window.kq!.state().codex.facts);
 
-    // finish the case: the rest in one batch
-    await page.evaluate((c) => window.kq!.chronik!.solve(c, 3), CASE);
-    await check.click({ force: true });
-    await expect(page.locator('.ck-stamp')).toHaveCount(6);
-    expect(await events(page, 'chronik:case-complete')).toEqual([{ caseId: CASE }]);
+    // J opens the journal on its first tab
+    await page.evaluate(() => window.kq!.press('KeyJ', 1));
+    const journal = page.getByTestId('journal');
+    await expect(journal).toBeVisible();
+    await expect(page.getByTestId('journal-tab-quests')).toHaveAttribute('aria-selected', 'true');
+    expect(await events(page, 'chronik:opened')).toHaveLength(1);
+    await expect(page.locator('.ck-board')).toHaveCount(0);
+    await expect(page.getByTestId('chronik-check')).toHaveCount(0);
+    await shot(page, 'journal');
 
-    // codex: legend, cards, FIKTION, relief patterns
-    await page.locator('.ck-tab[data-tab="codex"]').click();
-    await expect(page.locator('.ck-legend')).toContainText('belegt');
-    await expect(page.locator('.ck-cx[data-fact="ct.cx.01"]')).toBeVisible();
-    await expect(page.locator('.ck-cx[data-fact="ct.cx.laub"]')).toContainText('Fiktion');
-    await shot(page, 'codex');
-    await page.getByTestId('codex-relief').click();
-    await page.locator('.ck-cx[data-fact="ct.rm.02"]').click();
-    await expect(page.getByTestId('codex-detail')).toContainText('Ringwall');
-    await shot(page, 'codex-relief');
+    // keyboard: → / ← move between tabs, digits jump, focus stays inside (Tab cycles)
+    await page.getByTestId('journal-tab-quests').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByTestId('journal-tab-codex')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('journal-tab-codex')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByTestId('journal-tab-sets')).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByTestId('journal-tab-codex')).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Digit3');
+    await expect(page.getByTestId('journal-panel-sets')).toBeVisible();
+    await page.keyboard.press('Digit2');
+    await expect(page.getByTestId('journal-panel-codex')).toBeVisible();
+    for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="journal"]'))).toBe(true);
 
-    // close (J) and the save round trip
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId('codex-detail')).toBeHidden();
+    // the codex: the examined clue's facts are there, with confidence and label
+    for (const f of facts) await expect(page.getByTestId(`codex-card-${f}`)).toBeVisible();
+    if (facts[0]) {
+      await page.getByTestId(`codex-card-${facts[0]}`).click();
+      await expect(page.getByTestId('codex-detail')).toHaveAttribute('data-fact', facts[0]);
+      await expect(page.getByTestId('codex-detail').locator('.kqq-conf')).toHaveText(/^[DINU]$/);
+    }
+    await shot(page, 'journal-codex');
+
+    // J closes, Tab opens again (both are the journal key), Esc closes
     await page.keyboard.press('KeyJ');
-    await expect(board).toBeHidden();
-    expect((await events(page, 'chronik:closed')).length).toBe(1);
-    const saved = await page.evaluate((c) => {
-      const k = window.kq!;
-      const sm = k.ctx.save;
-      sm.enabled = true;
-      sm.save('e2e-chronik', 'test');
-      const raw = JSON.parse(localStorage.getItem('kq.save.v1.e2e-chronik') ?? '{}');
-      k.chronik!.caught(); // nothing at risk any more after the last confirmation
-      const loaded = sm.load('e2e-chronik');
-      sm.delete('e2e-chronik');
-      sm.enabled = false;
-      const s = k.state();
-      return {
-        raw: raw.chronik?.[c]?.confirmed?.length,
-        rawSlice: !!raw.systems?.chronik,
-        loaded,
-        confirmed: s.chronik[c]?.confirmed.length,
-        reading: s.chronik[c]?.readings.p7,
-        given: k.chronik!.slice().hints[c]?.given,
-      };
-    }, CASE);
-    expect(saved).toEqual({ raw: 6, rawSlice: true, loaded: true, confirmed: 6, reading: { wer: 'ct.n.wild' }, given: ['ct.hint.1', 'ct.hint.2'] });
+    await expect(journal).toBeHidden();
+    expect(await events(page, 'chronik:closed')).toHaveLength(1);
+    await page.evaluate(() => window.kq!.press('Tab', 1));
+    await expect(journal).toBeVisible();
+    await expect(page.getByTestId('journal-tab-codex')).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Escape');
+    await expect(journal).toBeHidden();
+    // the old hooks open the journal too
+    await page.evaluate(() => window.kq!.chronik!.open());
+    await expect(journal).toBeVisible();
+    expect(await page.evaluate(() => window.kq!.chronik!.isOpen())).toBe(true);
+    await page.evaluate(() => window.kq!.chronik!.close());
+    await expect(journal).toBeHidden();
+    // no case batches, no hints from Laub any more
+    expect(await events(page, 'chronik:batch')).toEqual([]);
+    expect(((await events(page, 'dialogue:say')) as { id?: string }[]).filter((d) => /hint/.test(d.id ?? ''))).toEqual([]);
+    expect(errors).toEqual([]);
+  });
 
+  test('journal: the Pinnwand at the field station opens it and returns to the hub', async ({ page }) => {
+    const errors = trackErrors(page);
+    await boot(page);
+    await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.quests, null, { timeout: 180_000 });
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.setEra('today');
+      k.teleport(760, -905, 0);
+      k.step(3);
+      k.ctx.ui.modals.closeAll();
+      k.story!.hub(true);
+    });
+    await expect(page.getByTestId('hub')).toBeVisible();
+    await page.getByTestId('hub-chronik').click();
+    await expect(page.getByTestId('journal')).toBeVisible();
+    await expect(page.getByTestId('hub')).toBeHidden();
+    await expect(page.locator('.ck-board')).toHaveCount(0);
+    await shot(page, 'pinnwand-journal');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('journal')).toBeHidden();
+    await expect(page.getByTestId('hub')).toBeVisible();
     expect(errors).toEqual([]);
   });
 });

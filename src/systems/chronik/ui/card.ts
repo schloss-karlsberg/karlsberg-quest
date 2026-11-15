@@ -38,12 +38,10 @@ export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | 
       ),
     );
   } else if (clue.text_de) for (const para of clue.text_de.split(/\n\n+/)) textKids.push(h('p', para));
-  const nouns = (found?.newNouns ?? []).map((id) => d.content.nouns.get(id)?.label_de ?? id);
   const facts = (found?.newFacts ?? []).map((id) => d.content.facts.get(id)?.title_de ?? id);
   const body = h('div.ck-card', { dataset: { testid: 'chronik-card', clue: clue.id } }, [
     h('div.ck-card-kind', [h('span', t(`chronik.card.kind.${clue.kind}`)), clue.fiction ? h('span.ck-fic', t('chronik.fiction')) : null]),
     h('div.ck-card-grid', [h('figure', [canvas, h('figcaption', `${t('chronik.card.sketch')} · ${Math.round(at.x)} / ${Math.round(at.z)}`)]), h('div.ck-card-text', textKids)]),
-    nouns.length ? h('div.ck-chips', [h('span', `${t('chronik.card.new')}:`), ...nouns.map((n, i) => chip(n, i))]) : null,
     facts.length ? h('div.ck-chips', [h('span', `${t('chronik.card.codex')}:`), ...facts.map((n, i) => chip(n, i, true))]) : null,
   ]);
   return d.open({

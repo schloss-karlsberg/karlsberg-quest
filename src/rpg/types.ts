@@ -240,6 +240,10 @@ export interface QuestTopic {
   lines: QuestLine[];
   accept?: string;
   declinable?: boolean;
+  /** turnin: the history told after `lines` (sourced; each `fact` unlocks its codex card). Added by the quests track. */
+  history?: QuestHistoryLine[];
+  /** turnin: the stance asked after the history (opinion, never graded). Added by the quests track. */
+  stance?: QuestStance;
 }
 
 /** Marker over a giver's head / on the compass. Shape AND colour differ (colour-blind safe). */
@@ -445,6 +449,8 @@ export interface QuestSlice {
   tracked: string[];
   /** Codex / journal entries the player has not opened yet ("neu" stamp). */
   unseen: string[];
+  /** Enemy kinds undone so far (journal bestiary page), kind → count. Added by the quests track. */
+  bestiary?: Record<string, number>;
 }
 
 export interface QuestProgress {

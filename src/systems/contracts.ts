@@ -209,6 +209,12 @@ declare module '../core/events' {
     'npc:topics': { npc: string; topics: QuestTopic[] };
     /** quests → npc: the glyph over an NPC's head ("!" offer, "!" ringed main offer, "?" ready, grey "?" active). */
     'npc:marker': { npc: string; mark: GiverMark };
+    /**
+     * quests → npc: an escorted NPC walks after the player (follow) or stays where it is (false).
+     * The npc system moves the figure and keeps its placement (slice) up to date. Added by the
+     * quests track (escort objectives, docs/ACTION-RPG.md §9.2).
+     */
+    'npc:follow': { npc: string; follow: boolean };
 
     // ---- npc → quests: the player's answers in a conversation ------------------------------
     'quest:accept': { id: string; npc: string };

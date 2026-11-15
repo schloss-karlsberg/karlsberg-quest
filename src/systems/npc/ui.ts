@@ -18,13 +18,22 @@ export interface TalkLine {
   speaker: SpeakerMeta;
   text: string;
   source?: string;
+  /** A history line told at a quest turn-in (styled as told history; `note` names its codex card). */
+  history?: boolean;
+  note?: string;
 }
+
+/** Quest topics carry a shape-coded glyph; answers to a quest (accept / later / stance) are styled. */
+export type TopicMark = 'offer' | 'offer-main' | 'ready' | 'active' | 'accept' | 'decline' | 'stance';
 
 export interface TalkTopic {
   id: string;
   label: string;
   asked: boolean;
+  mark?: TopicMark;
 }
+
+const MARK_GLYPH: Record<TopicMark, string> = { offer: '!', 'offer-main': '!', ready: '?', active: '?', accept: '✓', decline: '…', stance: '◇' };
 
 const CPS = 46;
 
@@ -36,6 +45,8 @@ export class ConversationView {
   private readonly typed = h('span.kqn-typed');
   private readonly rest = h('span.kqn-rest');
   private readonly src = h('div.kqn-src');
+  private readonly note = h('div.kqn-note', { 'data-testid': 'npc-note' });
+  private readonly header = h('div.kqn-header', { 'data-testid': 'npc-header' });
   private readonly hint = h('div.kqn-next', [h('kbd', 'E'), ' ', t('npc.next')]);
   private readonly topicsEl = h('div.kqn-topics');
   private queue: TalkLine[] = [];
@@ -70,7 +81,9 @@ export class ConversationView {
       h('div.kqn-head', [this.portrait, h('div.kqn-names', [this.who, this.tag])]),
       h('div.kqn-text', { 'aria-live': 'polite' }, [this.typed, this.rest]),
       this.src,
+      this.note,
       this.hint,
+      this.header,
       this.topicsEl,
     ]);
     body.addEventListener('mousedown', (e) => {
@@ -98,12 +111,20 @@ export class ConversationView {
     if (!this.cur) this.next();
   }
 
-  setTopics(topics: TalkTopic[], pick: ((id: string) => void) | null): void {
+  /** `header`: a line above the answers (e.g. the stance note "eine Meinung, keine Prüfung"). */
+  setTopics(topics: TalkTopic[], pick: ((id: string) => void) | null, header?: string): void {
     this.topics = topics;
     this.pick = pick;
+    this.header.textContent = header ?? '';
+    this.header.classList.toggle('kqn-hidden', !header || topics.length === 0);
+    this.topicsEl.classList.toggle('kqn-stance', topics.some((x) => x.mark === 'stance'));
     this.topicsEl.replaceChildren(
       ...topics.map((tp, i) =>
-        h(`button.kq-btn.kqn-topic${tp.asked ? '.kqn-asked' : ''}${tp.id === 'bye' ? '.kqn-bye' : ''}`, { 'data-testid': `npc-topic-${tp.id}`, onclick: () => this.choose(i) }, [h('span.kqn-n', String(i + 1)), tp.label]),
+        h(
+          `button.kq-btn.kqn-topic${tp.asked ? '.kqn-asked' : ''}${tp.id === 'bye' ? '.kqn-bye' : ''}${tp.mark ? `.kqn-q.kqn-q-${tp.mark}` : ''}`,
+          { 'data-testid': `npc-topic-${tp.id}`, onclick: () => this.choose(i) },
+          [h('span.kqn-n', String(i + 1)), tp.mark ? h(`span.kqn-qg.kqn-qg-${tp.mark}`, { 'aria-hidden': 'true' }, MARK_GLYPH[tp.mark]) : null, tp.label],
+        ),
       ),
     );
     this.topicsEl.classList.toggle('kqn-hidden', topics.length === 0);
@@ -161,6 +182,9 @@ export class ConversationView {
     this.tag.textContent = m.historical ? t('npc.tag.historical') : t('npc.tag.fiction');
     this.tag.className = `kqn-tag ${m.historical ? 'hist' : 'fic'}`;
     this.src.textContent = line.source ? `${t('npc.source')}: ${line.source}` : '';
+    this.note.textContent = line.note ?? '';
+    this.note.classList.toggle('kqn-hidden', !line.note);
+    this.typed.parentElement?.classList.toggle('kqn-history', !!line.history);
     this.hint.classList.remove('kqn-hidden');
     this.render();
   }
@@ -191,6 +215,8 @@ export class ConversationView {
 
   private readonly onKey = (e: KeyboardEvent): void => {
     if (!this.open) return;
+    // a card over the conversation (the quest reward card) takes the keys while it shows
+    if (document.querySelector('[data-kq-keytrap]')) return;
     const tg = e.target as HTMLElement | null;
     if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA')) return;
     const d = /^(Digit|Numpad)(\d)$/.exec(e.code);
