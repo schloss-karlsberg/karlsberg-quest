@@ -38,6 +38,8 @@ export interface SavedAnimal {
 
 export interface MenagerieSlice {
   animals: SavedAnimal[];
+  /** Animals calmed by the player (combat track: never fought — calmed and led home). */
+  calmed?: string[];
 }
 
 declare module '../../core/state' {
@@ -146,6 +148,26 @@ class MenagerieSystem {
         this.spawn({ animal: animal as MenagerieAnimal, x, z, id: typeof data['id'] === 'string' ? (data['id'] as string) : undefined, heading: num('heading'), count: num('count') });
       } else if (id === 'menagerie:clear') this.clear(typeof data?.['id'] === 'string' ? (data['id'] as string) : undefined);
     });
+    // calming (docs/ACTION-RPG.md §4.6): a cassowary that charged past you three times can be led
+    // home; a jaguar driven back by three Bannlicht flares slinks off for good
+    ev.on('combat:bann', ({ x, z, yaw, range, angle }) => {
+      const fx = -Math.sin(yaw);
+      const fz = -Math.cos(yaw);
+      const cosHalf = Math.cos(((angle / 2) * Math.PI) / 180);
+      for (const a of this.sim.animals) {
+        if (a.kind !== 'jaguar') continue;
+        const dx = a.x - x;
+        const dz = a.z - z;
+        const d = Math.hypot(dx, dz);
+        if (d > range + 4 || (d > 1.5 && (dx * fx + dz * fz) / d < cosHalf * 0.8)) continue;
+        const n = (this.flares.get(a.id) ?? 0) + 1;
+        this.flares.set(a.id, n);
+        a.state = 'retreat' as Animal['state'];
+        this.audio.hiss(this.pos3(a.x, a.z, 0.6), true);
+        if (n >= 3) this.calm(a.id, 'jaguar');
+        else this.caption('jag-flare', ctx.t('menagerie.jaguar.flare'), 2, 2400);
+      }
+    });
     ev.on('era:change', () => {
       this.endDown();
       this.rebuild();
@@ -191,8 +213,10 @@ class MenagerieSystem {
     this.sim.remove();
     this.seen.clear();
     const era = this.ctx.era.current;
+    const calmed = new Set(this.slice().calmed ?? []);
     for (const s of this.slice().animals) {
       if (s.era !== era) continue;
+      if (calmed.has(s.id)) continue;
       const list = this.sim.add({ kind: s.animal, x: s.x, z: s.z, id: s.id, heading: s.heading }, s.count ?? (s.animal === 'dromedary' ? 2 : 1));
       for (const a of list) {
         const rig = a.kind === 'cassowary' ? cassowary(this.mat) : a.kind === 'dromedary' ? dromedary(this.mat, a.idx % 2) : jaguar(this.mat, this.eyeMat);
@@ -235,6 +259,7 @@ class MenagerieSystem {
       this.down.t += dt;
       if (this.down.t >= this.down.dur) this.endDown();
     }
+    this.updateLeadHome();
     if (!this.sim.animals.length) return;
     // eyeshine: bright when the lantern is lit (the eyes catch it), faint in the dark
     this.eyeGlow += ((this.ctx.player.stats.lanternLit ? 1 : 0.35) - this.eyeGlow) * Math.min(1, dt * 3);
@@ -252,6 +277,49 @@ class MenagerieSystem {
         if (r.hit.kind === 'dromedary') this.caption('drom-wait', this.ctx.t('menagerie.dromedary.wait'), 40, 3600);
       }
     }
+  }
+
+  /** Spawn ids (groupId) per counted cassowary misses / jaguar flares. */
+  private readonly misses = new Map<string, number>();
+  private readonly flares = new Map<string, number>();
+  private leadPrompt = false;
+
+  /** A tired cassowary (3 charges past you) lets itself be led home: E within 3 m. */
+  private updateLeadHome(): void {
+    const ctx = this.ctx;
+    const pl = ctx.player.position;
+    let near: Animal | null = null;
+    for (const a of this.sim.animals) {
+      if (a.kind !== 'cassowary' || (this.misses.get(a.id) ?? 0) < 3) continue;
+      if (Math.hypot(a.x - pl.x, a.z - pl.z) < 3.5) near = a;
+    }
+    if (near && !ctx.player.frozen) {
+      if (!this.leadPrompt) ctx.ui.hud.prompt('E', ctx.t('menagerie.cassowary.lead'), 'menagerie');
+      this.leadPrompt = true;
+      if (ctx.input.wasPressed('listen')) {
+        this.calm(near.id, 'cassowary');
+        this.caption('cas-home', ctx.t('menagerie.cassowary.home'), 2, 3600);
+      }
+    } else if (this.leadPrompt) {
+      this.leadPrompt = false;
+      ctx.ui.hud.prompt(null, undefined, 'menagerie');
+    }
+  }
+
+  /** Calmed for good: menagerie:calmed, remembered in the slice, gone from the world. */
+  calm(animalId: string, animal: MenagerieAnimal): void {
+    const sl = this.slice();
+    const id = groupId(animalId);
+    sl.calmed = [...new Set([...(sl.calmed ?? []), id])];
+    this.misses.delete(animalId);
+    this.flares.delete(animalId);
+    if (animal === 'jaguar') this.caption('jag-calm', this.ctx.t('menagerie.jaguar.calmed'), 2, 3600);
+    this.ctx.events.emit('menagerie:calmed', { id, animal });
+    if (this.leadPrompt) {
+      this.leadPrompt = false;
+      this.ctx.ui.hud.prompt(null, undefined, 'menagerie');
+    }
+    this.rebuild();
   }
 
   private onEvent(e: MenagerieEvent): void {
@@ -272,9 +340,13 @@ class MenagerieSystem {
         this.audio.hiss(this.pos3(e.x, e.z, 1.2));
         this.caption('cas-charge', t('menagerie.cassowary.charge'), 4, 2400);
         break;
-      case 'miss':
-        this.caption('cas-miss', t('menagerie.cassowary.miss'), 4, 2000);
+      case 'miss': {
+        const n = (this.misses.get(e.id) ?? 0) + 1;
+        this.misses.set(e.id, n);
+        if (n >= 3) this.caption('cas-tired', t('menagerie.cassowary.tired'), 4, 3200);
+        else this.caption('cas-miss', t('menagerie.cassowary.miss'), 4, 2000);
         break;
+      }
       case 'bored':
         this.caption('cas-bored', t('menagerie.cassowary.bored'), 20);
         break;

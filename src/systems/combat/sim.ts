@@ -1,0 +1,1589 @@
+/**
+ * The combat simulation (docs/ACTION-RPG.md §4–§5): the player's resources and moves, enemy groups,
+ * the AI with its telegraphs, projectiles, ground rings and the bosses. Pure TypeScript — no
+ * three.js, no DOM, no events bus: the system (index.ts) feeds it input and turns its `SimEvent`s
+ * into contract events, sound, particles and HUD. Deterministic for a given input sequence.
+ *
+ * Hit-stop is LOCAL: `freeze` stops this simulation (enemies, projectiles, the swing) for a few
+ * frames; the game loop, the player's walking and every other system keep running.
+ */
+import { ENEMIES, enemyDef } from '../../rpg/enemies';
+import { BASE_STATS } from '../../rpg/stats';
+import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
+import { BOSS_TURN, type BossView, bossCooldown, bossHitMul, chooseBossAttack, sealBolts, sparkRain, summonOf } from './bosses';
+import {
+  AI,
+  AttackTokens,
+  BANN,
+  COMBO,
+  COST,
+  DODGE,
+  HEAVY,
+  HITSTOP,
+  HP_REGEN,
+  KNOCK,
+  type SafeReason,
+  type StaminaState,
+  applyDamage,
+  armorFactor,
+  assistYaw,
+  attackTokens,
+  bossPhase,
+  canAct,
+  dodgeInvulnerable,
+  dodgeSpeed,
+  enemyDamage,
+  enemyHp,
+  forwardOf,
+  groupActive,
+  headingOf,
+  heavyCharge,
+  hitDamage,
+  inCone,
+  isCleared,
+  isPerfectDodge,
+  leashBroken,
+  nextCombo,
+  pikeurLeaves,
+  regenStamina,
+  remaining,
+  shouldRespawn,
+  spend,
+  telegraphTime,
+  wrapAngle,
+} from './rules';
+
+export type EnemyState = 'idle' | 'notice' | 'approach' | 'circle' | 'windup' | 'strike' | 'recover' | 'gebannt' | 'stagger' | 'flee' | 'return' | 'roar' | 'leave' | 'dissolve';
+export type KillBy = 'light' | 'heavy' | 'bann' | 'item' | 'env';
+export type TimeOfDay = 'day' | 'dusk' | 'night';
+
+export interface Enemy {
+  id: string;
+  group: string;
+  kind: string;
+  def: EnemyDef;
+  boss: boolean;
+  tier: number;
+  /** Summoned by a boss (not part of a persisted group). */
+  add: boolean;
+  x: number;
+  y: number;
+  z: number;
+  /** Hover height above ground (Irrlicht, Mahnbrief). */
+  hover: number;
+  heading: number;
+  vx: number;
+  vz: number;
+  radius: number;
+  hp: number;
+  maxHp: number;
+  state: EnemyState;
+  t: number;
+  home: { x: number; z: number };
+  leash: number;
+  attack: EnemyAttackDef | null;
+  windup: number;
+  /** Where a lunge / charge / area is aimed. */
+  aim: { x: number; z: number };
+  dash: { vx: number; vz: number; t: number; hit: boolean } | null;
+  cd: Record<string, number>;
+  stun: number;
+  stagger: number;
+  phase: number;
+  sealOpen: number;
+  armorBroken: number;
+  poise: number;
+  orbit: number;
+  orbitDir: number;
+  /** 0..1 hit flash (visuals). */
+  flash: number;
+  aggro: boolean;
+  /** Raffschatten: fled already (fights when cornered). */
+  fled: number;
+  blinkT: number;
+  /** Seconds since the last token attempt. */
+  tryT: number;
+  seed: number;
+  by: KillBy;
+  quest?: string;
+  objective?: string;
+  /** Rings this enemy owns (removed at strike / interrupt). */
+  rings: number[];
+  /** Boss: the player has been close at least once (boss bar shows). */
+  engaged: boolean;
+}
+
+export interface Projectile {
+  id: number;
+  kind: string;
+  owner: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  t: number;
+  life: number;
+  damage: number;
+  tier: number;
+  /** Lobbed (Quader): lands at tx/tz after `life` s and hits within r. */
+  lob: boolean;
+  tx: number;
+  tz: number;
+  r: number;
+  ring: number;
+}
+
+export interface Ring {
+  id: number;
+  x: number;
+  z: number;
+  r: number;
+  t: number;
+  dur: number;
+  owner: string;
+  kind: 'area' | 'landing' | 'rain';
+}
+
+export interface Swing {
+  kind: 'light' | 'heavy';
+  combo: number;
+  t: number;
+  dur: number;
+  impact: number;
+  yaw: number;
+  charge: number;
+  resolved: boolean;
+  hits: number;
+}
+
+export interface PlayerCombat {
+  hp: number;
+  max: number;
+  st: StaminaState;
+  bann: number;
+  bannMax: number;
+  bannT: number;
+  /** Seconds since the last damage taken (regeneration). */
+  calm: number;
+  inCombat: boolean;
+  swing: Swing | null;
+  lastCombo: number;
+  sinceSwing: number;
+  /** Seconds the attack button is held (−1 = not holding). */
+  hold: number;
+  queued: boolean;
+  charging: boolean;
+  chargeFull: boolean;
+  dodge: { t: number; perfect: boolean } | null;
+  counter: boolean;
+  /** Quick-use animation lock (s). */
+  drink: number;
+  flare: number;
+  dead: boolean;
+  god: boolean;
+}
+
+export type SimEvent =
+  | { type: 'spawned'; e: Enemy }
+  | { type: 'aggro'; e: Enemy; on: boolean }
+  | { type: 'telegraph'; e: Enemy; attack: EnemyAttackDef; dur: number }
+  | { type: 'strike'; e: Enemy; attack: EnemyAttackDef }
+  | { type: 'swing'; kind: 'light' | 'heavy'; combo: number; charge: number }
+  | { type: 'whiff'; kind: 'light' | 'heavy' }
+  | { type: 'hit'; e: Enemy; damage: number; heavy: boolean; finisher: boolean; weak: boolean; armored: boolean; gebannt: boolean; dirX: number; dirZ: number }
+  | { type: 'immune'; e: Enemy }
+  | { type: 'killed'; e: Enemy; by: KillBy }
+  | { type: 'cleared'; group: string; kind: string }
+  | { type: 'playerHit'; damage: number; by: string; x: number; z: number; pushX: number; pushZ: number; heavy: boolean }
+  | { type: 'evade'; by: string }
+  | { type: 'died'; by: string }
+  | { type: 'dodge'; vx: number; vz: number; perfect: boolean }
+  | { type: 'bann'; x: number; z: number; yaw: number; range: number; angle: number; hits: number }
+  | { type: 'stun'; e: Enemy; seconds: number }
+  | { type: 'phase'; e: Enemy; phase: number }
+  | { type: 'summon'; e: Enemy; kind: string; n: number }
+  | { type: 'shot'; p: Projectile }
+  | { type: 'impact'; p: Projectile; hitPlayer: boolean }
+  | { type: 'balk'; e: Enemy }
+  | { type: 'block'; e: Enemy; x: number; y: number; z: number }
+  | { type: 'leave'; e: Enemy }
+  | { type: 'burst'; e: Enemy }
+  | { type: 'blink'; e: Enemy; fromX: number; fromZ: number }
+  | { type: 'tired' }
+  | { type: 'noBann' }
+  | { type: 'charge'; on: boolean }
+  | { type: 'chargeFull' }
+  | { type: 'combat'; on: boolean }
+  | { type: 'heal'; amount: number; by: string }
+  | { type: 'resetGroup'; group: string };
+
+export interface SimWorld {
+  heightAt(x: number, z: number): number;
+  /** Running / standing water (the Pikeur balks at it). */
+  isWater?(x: number, z: number): boolean;
+  /** Can a walking enemy stand here (buildings, steep rock: no)? */
+  walkable?(x: number, z: number): boolean;
+}
+
+export interface SimInput {
+  x: number;
+  /** Feet height. */
+  y: number;
+  z: number;
+  yaw: number;
+  /** Move wish in world space (0,0 = none). */
+  moveX: number;
+  moveZ: number;
+  attackDown: boolean;
+  attackPressed: boolean;
+  bannPressed: boolean;
+  dodgePressed: boolean;
+  /** Sprinting and moving (Atem drain in combat). */
+  running: boolean;
+  /** Attacks / dodge / Bannlicht are ignored (measuring, modal, flying, spirit view, input off, interact target). */
+  blocked: boolean;
+  /** Dodge only (Space) is ignored (e.g. flying). */
+  noDodge?: boolean;
+  safe: SafeReason;
+  era: string;
+  time: TimeOfDay;
+}
+
+export interface SimOptions {
+  gentle: boolean;
+  reducedMotion: boolean;
+  stats: DerivedStats;
+  /** Laubs Lot: the Wuchthieb sweeps all round. */
+  sweep: boolean;
+  /** Talents that change rules (not just numbers). */
+  konter: boolean;
+  waerme: boolean;
+  dritter: boolean;
+}
+
+/** Body radius and hover per kind. */
+const BODY: Record<string, { r: number; hover: number; aggro: number; turn: number }> = {
+  nebelling: { r: 0.55, hover: 0, aggro: 15, turn: 5 },
+  irrlicht: { r: 0.4, hover: 1.7, aggro: 18, turn: 6 },
+  streuner: { r: 0.55, hover: 0, aggro: 22, turn: 7 },
+  mahnbrief: { r: 0.4, hover: 1.35, aggro: 16, turn: 8 },
+  raffschatten: { r: 0.55, hover: 0, aggro: 14, turn: 5 },
+  glutling: { r: 0.4, hover: 0, aggro: 16, turn: 7 },
+  grusling: { r: 0.32, hover: 0, aggro: 14, turn: 8 },
+  steinfresser: { r: 0.95, hover: 0, aggro: 14, turn: 2.2 },
+  schuldbuch: { r: 1.5, hover: 0.6, aggro: 26, turn: BOSS_TURN['schuldbuch']! },
+  pikeur: { r: 1.3, hover: 0, aggro: 30, turn: BOSS_TURN['pikeur']! },
+  strohmann: { r: 1.4, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
+  steinbrecher: { r: 1.9, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
+};
+const bodyOf = (kind: string) => BODY[kind] ?? { r: 0.6, hover: 0, aggro: AI.aggro, turn: 5 };
+
+/** Distance an enemy wants to keep while closing in for `a`. */
+function wantDist(a: EnemyAttackDef): number {
+  switch (a.kind) {
+    case 'melee':
+      return Math.max(1.2, a.range * 0.8);
+    case 'lunge':
+      return Math.max(1.5, a.range * 0.75);
+    case 'area':
+      return Math.max(1.4, a.range * 0.55);
+    case 'ranged':
+      return Math.min(a.range * 0.75, 11);
+    case 'charge':
+      return a.range * 0.6;
+    case 'summon':
+      return 99;
+  }
+}
+
+function hash01(n: number): number {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0) / 4294967296;
+}
+
+export class CombatSim {
+  readonly enemies: Enemy[] = [];
+  readonly projectiles: Projectile[] = [];
+  readonly rings: Ring[] = [];
+  readonly tokens: AttackTokens;
+  readonly p: PlayerCombat;
+  /** Local hit-stop (s): the whole simulation holds still. */
+  freeze = 0;
+  /** Perfect-dodge slow motion (s). */
+  slowmo = 0;
+  time = 0;
+  /** Seconds since start (unscaled); groups cleared at (for respawn). */
+  private readonly clearedAt = new Map<string, number>();
+  private readonly seq = new Map<string, number>();
+  private readonly out: SimEvent[] = [];
+  private idSeq = 0;
+  private tick = 0;
+  /** Last player position seen (for adds and projectiles). */
+  private px = 0;
+  private py = 0;
+  private pz = 0;
+  private safe: SafeReason = null;
+
+  constructor(
+    readonly world: SimWorld,
+    /** Persisted groups (the combat slice's `groups`). */
+    public groups: Record<string, EnemyGroupState>,
+    public opt: SimOptions = { gentle: false, reducedMotion: false, stats: { ...BASE_STATS }, sweep: false, konter: false, waerme: false, dritter: false },
+  ) {
+    this.tokens = new AttackTokens(attackTokens(opt.gentle));
+    const s = opt.stats;
+    this.p = {
+      hp: s.maxHp,
+      max: s.maxHp,
+      st: { stamina: s.maxStamina, max: s.maxStamina, exhausted: false, idle: 9 },
+      bann: s.bannCharges,
+      bannMax: s.bannCharges,
+      bannT: 0,
+      calm: 99,
+      inCombat: false,
+      swing: null,
+      lastCombo: -1,
+      sinceSwing: 99,
+      hold: -1,
+      queued: false,
+      charging: false,
+      chargeFull: false,
+      dodge: null,
+      counter: false,
+      drink: 0,
+      flare: 0,
+      dead: false,
+      god: false,
+    };
+  }
+
+  // ---- options -------------------------------------------------------------------------------
+
+  setStats(stats: DerivedStats): void {
+    this.opt.stats = stats;
+    const p = this.p;
+    const fracHp = p.max > 0 ? p.hp / p.max : 1;
+    p.max = Math.max(1, Math.round(stats.maxHp));
+    p.hp = Math.min(p.max, Math.max(p.dead ? 0 : 1, Math.round(fracHp * p.max)));
+    p.st.max = stats.maxStamina;
+    p.st.stamina = Math.min(p.st.max, p.st.stamina);
+    p.bannMax = Math.max(1, Math.round(stats.bannCharges));
+    p.bann = Math.min(p.bannMax, p.bann);
+  }
+
+  setGentle(on: boolean): void {
+    this.opt.gentle = on;
+    this.tokens.max = attackTokens(on);
+  }
+
+  /** Movement multiplier for the player (charging a Wuchthieb, drinking). */
+  get moveScale(): number {
+    if (this.p.charging) return HEAVY.moveScale;
+    if (this.p.drink > 0) return 0.6;
+    return 1;
+  }
+
+  get canSprint(): boolean {
+    return !this.p.st.exhausted;
+  }
+
+  /** Live (not dissolving) enemies. */
+  live(): Enemy[] {
+    return this.enemies.filter((e) => e.state !== 'dissolve');
+  }
+
+  // ---- groups ------------------------------------------------------------------------------
+
+  /** Remove a group without a fight ('*' = all). */
+  despawn(group: string): void {
+    const all = group === '*';
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const e = this.enemies[i];
+      if (all || e.group === group || e.group === `${group}+adds`) this.removeEnemy(i);
+    }
+    if (all) {
+      for (const k of Object.keys(this.groups)) delete this.groups[k];
+      this.clearedAt.clear();
+    } else {
+      delete this.groups[group];
+      this.clearedAt.delete(group);
+    }
+  }
+
+  /** Drop every runtime enemy (era change, load, death): groups rebuild at full strength. */
+  dematerialise(group?: string): void {
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const e = this.enemies[i];
+      if (group === undefined || e.group === group || e.group === `${group}+adds`) this.removeEnemy(i);
+    }
+    if (group === undefined) {
+      this.projectiles.length = 0;
+      this.rings.length = 0;
+      this.tokens.clear();
+    }
+  }
+
+  private removeEnemy(i: number): void {
+    const e = this.enemies[i];
+    this.tokens.release(e.id);
+    this.dropRings(e);
+    this.enemies.splice(i, 1);
+  }
+
+  private dropRings(e: Enemy): void {
+    for (const id of e.rings) {
+      const k = this.rings.findIndex((r) => r.id === id);
+      if (k >= 0) this.rings.splice(k, 1);
+    }
+    e.rings = [];
+  }
+
+  /** Materialise groups near the player in their era / time; respawn; reinforcements under the cap. */
+  sync(era: string, time: TimeOfDay, px: number, pz: number): void {
+    for (const g of Object.values(this.groups)) {
+      const active = groupActive(g, era, time);
+      const d = Math.hypot(px - g.x, pz - g.z);
+      const live = this.enemies.filter((e) => e.group === g.group && e.state !== 'dissolve');
+      if (!active || d > AI.materialiseOff) {
+        if (live.length) this.dematerialise(g.group);
+        continue;
+      }
+      if (isCleared(g)) {
+        if (shouldRespawn(g, this.clearedAt.get(g.group), this.time)) {
+          g.killed = 0;
+          this.clearedAt.delete(g.group);
+        } else continue;
+      }
+      if (d > AI.materialise && !live.length) continue;
+      let need = remaining(g) - live.length;
+      while (need > 0 && this.live().length < AI.maxActive) {
+        this.makeMember(g);
+        need--;
+      }
+    }
+  }
+
+  private makeMember(g: EnemyGroupState): Enemy | null {
+    const def = enemyDef(g.kind);
+    if (!def) return null;
+    const n = this.seq.get(g.group) ?? 0;
+    this.seq.set(g.group, n + 1);
+    const idx = g.killed + this.enemies.filter((e) => e.group === g.group && e.state !== 'dissolve').length;
+    const count = Math.max(1, g.count);
+    const r = g.count > 1 ? (g.radius ?? 3 + count * 0.8) : 0;
+    const a = (idx / count) * Math.PI * 2 + hashStr(g.group) * 6.283;
+    const rr = r * (0.55 + 0.45 * hash01(idx + hashStr(g.group) * 97));
+    const e = this.makeEnemy(def, `${g.group}#${n}`, g.group, g.x + Math.cos(a) * rr, g.z + Math.sin(a) * rr, { boss: g.boss === true || def.boss === true, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, quest: g.quest, objective: g.objective });
+    return e;
+  }
+
+  private makeEnemy(def: EnemyDef, id: string, group: string, x: number, z: number, o: { boss: boolean; tier: number; leash: number; home: { x: number; z: number }; add?: boolean; quest?: string; objective?: string }): Enemy {
+    const b = bodyOf(def.id);
+    const hp = enemyHp(def, o.tier, this.opt.gentle);
+    const seed = hashStr(id);
+    const e: Enemy = {
+      id,
+      group,
+      kind: def.id,
+      def,
+      boss: o.boss,
+      tier: o.tier,
+      add: o.add === true,
+      x,
+      y: this.world.heightAt(x, z) + b.hover,
+      z,
+      hover: b.hover,
+      heading: seed * Math.PI * 2,
+      vx: 0,
+      vz: 0,
+      radius: b.r,
+      hp,
+      maxHp: hp,
+      state: 'idle',
+      t: 0,
+      home: { ...o.home },
+      leash: o.leash,
+      attack: null,
+      windup: 0,
+      aim: { x, z },
+      dash: null,
+      cd: {},
+      stun: 0,
+      stagger: 0,
+      phase: 1,
+      sealOpen: 0,
+      armorBroken: 0,
+      poise: 0,
+      orbit: seed * Math.PI * 2,
+      orbitDir: seed > 0.5 ? 1 : -1,
+      flash: 0,
+      aggro: false,
+      fled: 0,
+      blinkT: 2 + seed * 3,
+      tryT: 0,
+      seed,
+      by: 'light',
+      rings: [],
+      engaged: false,
+    };
+    if (o.quest) e.quest = o.quest;
+    if (o.objective) e.objective = o.objective;
+    // stagger the first attacks a little so a group doesn't strike in unison
+    for (const a of def.attacks) e.cd[a.id] = a.kind === 'summon' ? a.cooldown * 0.5 : 0.4 + seed * 1.2;
+    this.enemies.push(e);
+    this.out.push({ type: 'spawned', e });
+    return e;
+  }
+
+  /** Debug / tests: an enemy right here, in its own ad-hoc group. */
+  spawnAt(kind: string, x: number, z: number, o: { group?: string; boss?: boolean; tier?: number; era: string; count?: number } = { era: 'today' }): EnemyGroupState | null {
+    const def = enemyDef(kind);
+    if (!def) return null;
+    const group = o.group ?? `debug.${kind}.${this.idSeq++}`;
+    this.groups[group] = { group, kind, era: o.era as EnemyGroupState['era'], x, z, count: o.count ?? 1, killed: 0, boss: o.boss ?? def.boss === true, tier: o.tier ?? 1, radius: 3 };
+    return this.groups[group];
+  }
+
+  // ---- the step ------------------------------------------------------------------------------
+
+  step(dt: number, inp: SimInput): SimEvent[] {
+    this.tick++;
+    this.time += dt;
+    this.px = inp.x;
+    this.py = inp.y;
+    this.pz = inp.z;
+    this.safe = inp.safe;
+    const p = this.p;
+    if (!p.dead) this.playerResources(dt, inp);
+    if (this.freeze > 0) {
+      this.freeze = Math.max(0, this.freeze - dt);
+      return this.flush();
+    }
+    let edt = dt;
+    if (this.slowmo > 0) {
+      this.slowmo = Math.max(0, this.slowmo - dt);
+      edt = dt * DODGE.slowScale;
+    }
+    if (!p.dead) this.playerMoves(dt, inp);
+    this.sync(inp.era, inp.time, inp.x, inp.z);
+    for (const e of [...this.enemies]) this.think(e, edt, inp);
+    this.separate();
+    this.updateProjectiles(edt);
+    for (const r of this.rings) r.t += edt;
+    // combat state
+    const inCombat = !p.dead && this.enemies.some((e) => e.aggro && e.state !== 'dissolve' && e.state !== 'return' && Math.hypot(e.x - inp.x, e.z - inp.z) < 45);
+    if (inCombat !== p.inCombat) {
+      p.inCombat = inCombat;
+      this.out.push({ type: 'combat', on: inCombat });
+    }
+    return this.flush();
+  }
+
+  private flush(): SimEvent[] {
+    const r = this.out.slice();
+    this.out.length = 0;
+    return r;
+  }
+
+  // ---- the player --------------------------------------------------------------------------------
+
+  private playerResources(dt: number, inp: SimInput): void {
+    const p = this.p;
+    const s = this.opt.stats;
+    const runCost = p.inCombat && inp.running && !inp.blocked;
+    if (runCost) spend(p.st, COST.runPerS * s.staminaCost * dt);
+    else regenStamina(p.st, dt);
+    if (p.st.exhausted && runCost) {
+      /* stays exhausted */
+    }
+    // Lebenskraft: out of combat after 6 s
+    p.calm += dt;
+    if (!p.inCombat && p.calm >= HP_REGEN.delay && p.hp < p.max) p.hp = Math.min(p.max, p.hp + HP_REGEN.perS * dt);
+    // Bannlicht charges
+    if (p.bann < p.bannMax) {
+      p.bannT += dt;
+      if (p.bannT >= s.bannRecharge) {
+        p.bannT = 0;
+        p.bann++;
+      }
+    } else p.bannT = 0;
+    if (p.flare > 0) p.flare = Math.max(0, p.flare - dt);
+    if (p.drink > 0) p.drink = Math.max(0, p.drink - dt);
+  }
+
+  private playerMoves(dt: number, inp: SimInput): void {
+    const p = this.p;
+    if (p.dodge) {
+      p.dodge.t += dt;
+      if (p.dodge.t >= DODGE.dur) p.dodge = null;
+    }
+    // the swing runs on (hit-stop holds it: we only get here when not frozen)
+    if (p.swing) {
+      const w = p.swing;
+      w.t += dt;
+      if (!w.resolved && w.t >= w.impact) this.resolveSwing(w, inp);
+      if (w.t >= w.dur) {
+        p.swing = null;
+        p.lastCombo = w.kind === 'light' ? w.combo : -1;
+        p.sinceSwing = 0;
+        if (p.queued) {
+          p.queued = false;
+          this.startLight(inp);
+        }
+      }
+    } else p.sinceSwing += dt;
+    if (inp.blocked) {
+      if (p.hold >= 0) this.endCharge();
+      p.queued = false;
+      return;
+    }
+    if (inp.dodgePressed && !inp.noDodge) this.tryDodge(inp);
+    if (inp.bannPressed) this.tryBann(inp);
+    // attack: tap = Hieb, hold ≥ 0.45 s = Wuchthieb
+    if (inp.attackPressed) {
+      if (p.swing) p.queued = p.swing.kind === 'light' && p.swing.dur - p.swing.t <= COMBO.buffer + 0.15;
+      else if (!inp.attackDown) this.startLight(inp);
+      else p.hold = 0;
+    }
+    if (p.hold >= 0 && !p.swing) {
+      if (inp.attackDown) {
+        p.hold += dt;
+        if (p.hold >= HEAVY.tap && !p.charging) {
+          if (canAct(p.st, COST.heavy)) {
+            p.charging = true;
+            this.out.push({ type: 'charge', on: true });
+          }
+        }
+        if (p.charging && !p.chargeFull && p.hold >= HEAVY.full) {
+          p.chargeFull = true;
+          this.out.push({ type: 'chargeFull' });
+        }
+      } else {
+        const held = p.hold;
+        const charge = heavyCharge(held);
+        const wasCharging = p.charging;
+        this.endCharge();
+        if (charge !== null && wasCharging) this.startHeavy(inp, charge);
+        else this.startLight(inp);
+      }
+    } else if (p.hold >= 0 && p.swing && !inp.attackDown) p.hold = -1;
+  }
+
+  private endCharge(): void {
+    const p = this.p;
+    p.hold = -1;
+    if (p.charging) this.out.push({ type: 'charge', on: false });
+    p.charging = false;
+    p.chargeFull = false;
+  }
+
+  private aimYaw(inp: SimInput, reach: number): number {
+    const deg = this.opt.gentle ? COMBO.gentleAssistDeg : COMBO.assistDeg;
+    const targets = this.enemies.filter((e) => e.state !== 'dissolve' && e.state !== 'leave');
+    return assistYaw(inp.x, inp.z, inp.yaw, targets, reach, deg);
+  }
+
+  private startLight(inp: SimInput): void {
+    const p = this.p;
+    if (!canAct(p.st, COST.light)) {
+      this.out.push({ type: 'tired' });
+      return;
+    }
+    spend(p.st, COST.light * this.opt.stats.staminaCost);
+    const combo = nextCombo(p.lastCombo, p.sinceSwing);
+    p.swing = { kind: 'light', combo, t: 0, dur: COMBO.swing, impact: COMBO.impact, yaw: this.aimYaw(inp, COMBO.reach), charge: 0, resolved: false, hits: 0 };
+    p.drink = 0;
+    this.out.push({ type: 'swing', kind: 'light', combo, charge: 0 });
+  }
+
+  private startHeavy(inp: SimInput, charge: number): void {
+    const p = this.p;
+    if (!canAct(p.st, COST.heavy)) {
+      this.out.push({ type: 'tired' });
+      return;
+    }
+    spend(p.st, COST.heavy * this.opt.stats.staminaCost);
+    p.swing = { kind: 'heavy', combo: 0, t: 0, dur: HEAVY.swing, impact: HEAVY.impact, yaw: this.aimYaw(inp, HEAVY.reach), charge, resolved: false, hits: 0 };
+    p.lastCombo = -1;
+    p.drink = 0;
+    this.out.push({ type: 'swing', kind: 'heavy', combo: 0, charge });
+  }
+
+  private resolveSwing(w: Swing, inp: SimInput): void {
+    w.resolved = true;
+    const heavy = w.kind === 'heavy';
+    const sweep = heavy && this.opt.sweep;
+    const reach = heavy ? (sweep ? HEAVY.sweepReach : HEAVY.reach) : COMBO.reach;
+    const arc = sweep ? 360 : heavy ? HEAVY.arcDeg : COMBO.arcDeg;
+    // re-aim at impact (the target moved during the anticipation)
+    const yaw = this.aimYaw({ ...inp, yaw: w.yaw }, reach);
+    let hits = 0;
+    let killed = false;
+    for (const e of [...this.enemies]) {
+      if (e.state === 'dissolve' || e.state === 'leave') continue;
+      // flying things are reachable (the staff is 2 m long); only very high ones are out of reach
+      if (e.y - inp.y > 3.2) continue;
+      if (!inCone(inp.x, inp.z, yaw, reach, arc, e.x, e.z, e.radius)) continue;
+      hits++;
+      if (this.hitEnemy(e, w, inp)) killed = true;
+    }
+    w.hits = hits;
+    if (!hits) this.out.push({ type: 'whiff', kind: w.kind });
+    else {
+      const rm = this.opt.reducedMotion ? 0.5 : 1;
+      this.freeze = Math.max(this.freeze, (heavy || killed ? HITSTOP.heavy : HITSTOP.light) * rm);
+    }
+  }
+
+  /** Apply one staff hit. Returns true if it undid the enemy. */
+  private hitEnemy(e: Enemy, w: Swing, inp: SimInput): boolean {
+    const p = this.p;
+    const dx = e.x - inp.x;
+    const dz = e.z - inp.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const dirX = dx / d;
+    const dirZ = dz / d;
+    if (this.safe) {
+      this.out.push({ type: 'immune', e });
+      return false;
+    }
+    if (e.def.needsBann && e.stun <= 0) {
+      this.out.push({ type: 'immune', e });
+      this.wake(e);
+      return false;
+    }
+    const heavy = w.kind === 'heavy';
+    const finisher = !heavy && w.combo >= COMBO.hits - 1;
+    let mul = 1;
+    let weak = false;
+    let armored = false;
+    let armor = 1;
+    if (e.boss) {
+      const b = bossHitMul(this.bossView(e), { x: inp.x, z: inp.z }, w.kind);
+      mul = b.mul;
+      weak = b.weak;
+      armored = b.armored;
+    } else {
+      armor = armorFactor(e.def, w.kind, e, { x: inp.x, z: inp.z }, e.armorBroken > 0);
+      armored = armor < 1;
+      if (heavy && e.def.armor && e.def.armorFrontal) e.armorBroken = 6;
+    }
+    const counter = p.counter;
+    p.counter = false;
+    const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt: e.stun > 0 && !e.boss, armor, counter, mul, jitter: hash01(this.tick * 13 + e.seed * 1000) });
+    e.hp = applyDamage(e.kind, e.hp, e.maxHp, dmg);
+    e.flash = 1;
+    e.by = heavy ? 'heavy' : 'light';
+    this.wake(e);
+    // knockback (bosses barely move) and stagger
+    const kb = (heavy ? KNOCK.heavy : finisher ? KNOCK.finisher : KNOCK.light) * (e.boss ? 0.12 : e.kind === 'steinfresser' ? 0.35 : 1);
+    e.vx += dirX * kb * 8;
+    e.vz += dirZ * kb * 8;
+    if (!e.boss && (heavy || (finisher && this.opt.dritter) || (finisher && e.def.hp <= 25))) this.staggerEnemy(e, heavy ? 0.6 : 0.4);
+    if (e.boss) {
+      e.poise += dmg * this.opt.stats.stagger;
+      if (e.poise > e.maxHp * 0.16) {
+        e.poise = 0;
+        this.staggerEnemy(e, 0.9);
+      }
+    }
+    this.out.push({ type: 'hit', e, damage: dmg, heavy, finisher, weak, armored, gebannt: e.stun > 0, dirX, dirZ });
+    if (e.kind === 'steinbrecher' && (weak || heavy) && dmg >= 10) this.out.push({ type: 'block', e, x: e.x, y: e.y + 2.2, z: e.z });
+    if (e.boss) this.checkPhase(e);
+    if (e.kind === 'pikeur' && pikeurLeaves(e.hp, e.maxHp) && e.state !== 'leave') {
+      this.setState(e, 'leave');
+      this.tokens.release(e.id);
+      this.dropRings(e);
+      this.out.push({ type: 'leave', e });
+      return false;
+    }
+    if (e.hp <= 0) {
+      this.kill(e, e.by);
+      return true;
+    }
+    return false;
+  }
+
+  private staggerEnemy(e: Enemy, s: number): void {
+    if (e.state === 'dissolve' || e.state === 'leave' || e.state === 'roar') return;
+    this.tokens.release(e.id);
+    this.dropRings(e);
+    e.dash = null;
+    e.stagger = s;
+    this.setState(e, 'stagger');
+  }
+
+  private tryDodge(inp: SimInput): void {
+    const p = this.p;
+    if (p.dodge) return;
+    if (!canAct(p.st, COST.dodge)) {
+      this.out.push({ type: 'tired' });
+      return;
+    }
+    spend(p.st, COST.dodge * this.opt.stats.staminaCost);
+    let dx = inp.moveX;
+    let dz = inp.moveZ;
+    const l = Math.hypot(dx, dz);
+    if (l < 0.01) {
+      const f = forwardOf(inp.yaw);
+      dx = -f.x;
+      dz = -f.z;
+    } else {
+      dx /= l;
+      dz /= l;
+    }
+    const perfect = this.incomingWithin(inp, DODGE.perfect);
+    p.dodge = { t: 0, perfect };
+    p.drink = 0;
+    if (p.hold >= 0) this.endCharge();
+    const v = dodgeSpeed();
+    if (perfect) {
+      this.slowmo = this.opt.reducedMotion ? 0 : DODGE.slowmo;
+      if (this.opt.konter) p.counter = true;
+    }
+    this.out.push({ type: 'dodge', vx: dx * v, vz: dz * v, perfect });
+  }
+
+  /** Will a telegraphed hit land on the player within `s` seconds (perfect-dodge window)? */
+  private incomingWithin(inp: SimInput, s: number): boolean {
+    for (const e of this.enemies) {
+      if (e.state !== 'windup' || !e.attack) continue;
+      const left = e.windup - e.t;
+      const a = e.attack;
+      const d = Math.hypot(e.x - inp.x, e.z - inp.z);
+      const reach = a.kind === 'area' ? a.range + 0.5 : a.kind === 'ranged' || a.kind === 'summon' ? -1 : a.range + 1.5;
+      if (reach > 0 && d <= reach && isPerfectDodge(left)) return true;
+      if (a.kind === 'area' && e.rings.length && isPerfectDodge(left)) {
+        for (const id of e.rings) {
+          const r = this.rings.find((x) => x.id === id);
+          if (r && Math.hypot(r.x - inp.x, r.z - inp.z) <= r.r + 0.5) return true;
+        }
+      }
+    }
+    for (const e of this.enemies) if (e.dash && !e.dash.hit && Math.hypot(e.x - inp.x, e.z - inp.z) < Math.hypot(e.dash.vx, e.dash.vz) * s + 1.5) return true;
+    for (const pr of this.projectiles) {
+      const left = pr.life - pr.t;
+      if (pr.lob) {
+        if (isPerfectDodge(left) && Math.hypot(pr.tx - inp.x, pr.tz - inp.z) < pr.r + 0.5) return true;
+      } else {
+        const d = Math.hypot(pr.x - inp.x, pr.z - inp.z);
+        const v = Math.hypot(pr.vx, pr.vz) || 1;
+        if (isPerfectDodge(d / v)) return true;
+      }
+    }
+    return false;
+  }
+
+  private tryBann(inp: SimInput): void {
+    const p = this.p;
+    const s = this.opt.stats;
+    if (p.bann < 1) {
+      this.out.push({ type: 'noBann' });
+      return;
+    }
+    p.bann--;
+    p.flare = BANN.flare;
+    let hits = 0;
+    for (const e of this.enemies) {
+      if (e.state === 'dissolve' || e.state === 'leave') continue;
+      if (!inCone(inp.x, inp.z, inp.yaw, s.bannRange, s.bannAngle, e.x, e.z, e.radius)) continue;
+      if (e.y - inp.y > 4) continue;
+      hits++;
+      this.wake(e);
+      if (e.kind === 'schuldbuch') {
+        e.sealOpen = BANN.sealOpen;
+        e.stun = 1.2;
+        this.staggerEnemy(e, 1.2);
+        this.out.push({ type: 'stun', e, seconds: BANN.sealOpen });
+        continue;
+      }
+      if (e.def.bannStun <= 0) continue;
+      const sec = e.def.bannStun * s.bannStun * (e.boss ? 0.6 : 1);
+      e.stun = sec;
+      this.tokens.release(e.id);
+      this.dropRings(e);
+      e.dash = null;
+      this.setState(e, 'gebannt');
+      this.out.push({ type: 'stun', e, seconds: sec });
+      if (this.opt.waerme) {
+        const amt = Math.min(p.max - p.hp, 4);
+        if (amt > 0) {
+          p.hp += amt;
+          this.out.push({ type: 'heal', amount: amt, by: 'laternenwaerme' });
+        }
+      }
+    }
+    this.out.push({ type: 'bann', x: inp.x, z: inp.z, yaw: inp.yaw, range: s.bannRange, angle: s.bannAngle, hits });
+  }
+
+  /** Quick-use animation lock (progression consumed the item). */
+  drink(): void {
+    this.p.drink = 0.6;
+    if (this.p.hold >= 0) this.endCharge();
+  }
+
+  heal(amount: number, by: string): number {
+    const p = this.p;
+    if (p.dead) return 0;
+    const a = Math.max(0, Math.min(p.max - p.hp, amount));
+    p.hp += a;
+    if (a > 0) this.out.push({ type: 'heal', amount: a, by });
+    return a;
+  }
+
+  /** Full heal (field station, anchors, wake). */
+  restore(): void {
+    const p = this.p;
+    p.hp = p.max;
+    p.st.stamina = p.st.max;
+    p.st.exhausted = false;
+    p.bann = p.bannMax;
+    p.dead = false;
+  }
+
+  /** Kalkstaub: stun spectral enemies within r around the player. */
+  burst(r: number): number {
+    let n = 0;
+    for (const e of this.enemies) {
+      if (e.state === 'dissolve' || e.state === 'leave' || e.def.bannStun <= 0) continue;
+      if (Math.hypot(e.x - this.px, e.z - this.pz) > r + e.radius) continue;
+      e.stun = Math.max(e.stun, e.def.bannStun * (e.boss ? 0.5 : 1));
+      this.tokens.release(e.id);
+      this.dropRings(e);
+      this.setState(e, 'gebannt');
+      this.out.push({ type: 'stun', e, seconds: e.stun });
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * Damage the player. Returns the damage dealt (0: evaded, god mode, safe, dead).
+   */
+  hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false): number {
+    const p = this.p;
+    if (p.dead || this.safe) return 0;
+    if (p.dodge && dodgeInvulnerable(p.dodge.t)) {
+      this.out.push({ type: 'evade', by });
+      return 0;
+    }
+    const amount = enemyDamage(raw, tier, this.opt.stats.damageTaken);
+    if (amount <= 0) return 0;
+    let dx = this.px - from.x;
+    let dz = this.pz - from.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    const push = (2 * 1.2) / 0.25;
+    p.calm = 0;
+    p.drink = 0;
+    if (p.hold >= 0) this.endCharge();
+    if (!p.god) p.hp = Math.max(0, p.hp - amount);
+    const rm = this.opt.reducedMotion ? 0.5 : 1;
+    this.freeze = Math.max(this.freeze, HITSTOP.player * rm);
+    this.out.push({ type: 'playerHit', damage: amount, by, x: from.x, z: from.z, pushX: dx * push, pushZ: dz * push, heavy });
+    if (p.hp <= 0) {
+      p.dead = true;
+      p.swing = null;
+      p.dodge = null;
+      p.queued = false;
+      this.out.push({ type: 'died', by });
+    }
+    return amount;
+  }
+
+  // ---- enemies -------------------------------------------------------------------------------
+
+  private setState(e: Enemy, s: EnemyState): void {
+    e.state = s;
+    e.t = 0;
+  }
+
+  /** Being hit / flared wakes an enemy up (aggro). */
+  private wake(e: Enemy): void {
+    if (e.aggro || e.state === 'dissolve' || e.state === 'leave') return;
+    e.aggro = true;
+    if (e.boss) e.engaged = true;
+    this.out.push({ type: 'aggro', e, on: true });
+    if (e.state === 'idle' || e.state === 'return') this.setState(e, 'approach');
+  }
+
+  private bossView(e: Enemy): BossView {
+    return { kind: e.kind, x: e.x, z: e.z, heading: e.heading, phase: e.phase, sealOpen: e.sealOpen, stun: e.stun, cd: e.cd, attacks: e.def.attacks, adds: this.enemies.filter((x) => x.add && x.group === `${e.group}+adds` && x.state !== 'dissolve').length };
+  }
+
+  private checkPhase(e: Enemy): void {
+    const ph = bossPhase(e.hp / e.maxHp, e.def.phases ?? []);
+    if (ph <= e.phase) return;
+    e.phase = ph;
+    this.out.push({ type: 'phase', e, phase: ph });
+    if (e.state !== 'leave' && e.hp > 0) {
+      this.tokens.release(e.id);
+      this.dropRings(e);
+      e.dash = null;
+      this.setState(e, 'roar');
+    }
+  }
+
+  private kill(e: Enemy, by: KillBy): void {
+    if (e.state === 'dissolve') return;
+    this.tokens.release(e.id);
+    this.dropRings(e);
+    // the Pikeur is never undone: he keeps his last strength and rides off
+    if (e.kind !== 'pikeur') e.hp = 0;
+    e.dash = null;
+    e.aggro = false;
+    this.setState(e, 'dissolve');
+    this.out.push({ type: 'killed', e, by });
+    if (!e.add) {
+      const g = this.groups[e.group];
+      if (g) {
+        g.killed = Math.min(g.count, g.killed + 1);
+        if (isCleared(g)) {
+          this.clearedAt.set(g.group, this.time);
+          this.out.push({ type: 'cleared', group: g.group, kind: g.kind });
+        }
+      }
+    }
+    if (e.boss) {
+      // the boss's adds come apart with it
+      for (const a of this.enemies) if (a.add && a.group === `${e.group}+adds` && a.state !== 'dissolve') this.kill(a, 'env');
+    }
+  }
+
+  /** Debug: undo an enemy (or every member of a group). */
+  killNow(target?: string): number {
+    let n = 0;
+    for (const e of [...this.enemies]) {
+      if (e.state === 'dissolve') continue;
+      if (target && e.id !== target && e.group !== target && e.kind !== target) continue;
+      if (e.kind === 'pikeur') {
+        e.hp = Math.ceil(e.maxHp * 0.12);
+        this.setState(e, 'leave');
+        this.out.push({ type: 'leave', e });
+      } else this.kill(e, 'light');
+      n++;
+    }
+    return n;
+  }
+
+  private canAggro(e: Enemy, d: number): boolean {
+    if (this.safe || this.p.dead) return false;
+    return d < bodyOf(e.kind).aggro;
+  }
+
+  private turnTo(e: Enemy, h: number, rate: number, dt: number): void {
+    const diff = wrapAngle(h - e.heading);
+    const m = rate * dt;
+    e.heading = wrapAngle(e.heading + Math.max(-m, Math.min(m, diff)));
+  }
+
+  private moveBy(e: Enemy, mx: number, mz: number): void {
+    const nx = e.x + mx;
+    const nz = e.z + mz;
+    const fly = e.hover > 0.5;
+    if (!fly && this.world.walkable && !this.world.walkable(nx, nz)) {
+      if (this.world.walkable(nx, e.z)) e.x = nx;
+      else if (this.world.walkable(e.x, nz)) e.z = nz;
+      return;
+    }
+    e.x = nx;
+    e.z = nz;
+  }
+
+  private moveToward(e: Enemy, tx: number, tz: number, speed: number, dt: number, arrive = 0.2): number {
+    const dx = tx - e.x;
+    const dz = tz - e.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.05) this.turnTo(e, headingOf(dx, dz), bodyOf(e.kind).turn, dt);
+    if (d <= arrive) return d;
+    const step = Math.min(d - arrive, speed * dt);
+    this.moveBy(e, (dx / d) * step, (dz / d) * step);
+    return d - step;
+  }
+
+  private think(e: Enemy, dt: number, inp: SimInput): void {
+    e.t += dt;
+    e.flash = Math.max(0, e.flash - dt * 5);
+    for (const k in e.cd) if (e.cd[k] > 0) e.cd[k] = Math.max(0, e.cd[k] - dt);
+    if (e.sealOpen > 0) e.sealOpen = Math.max(0, e.sealOpen - dt);
+    if (e.armorBroken > 0) e.armorBroken = Math.max(0, e.armorBroken - dt);
+    // knockback velocity
+    if (Math.abs(e.vx) + Math.abs(e.vz) > 0.01) {
+      this.moveBy(e, e.vx * dt, e.vz * dt);
+      const k = Math.exp(-8 * dt);
+      e.vx *= k;
+      e.vz *= k;
+    }
+    if (e.state === 'dissolve') {
+      if (e.t > 1.6) {
+        const i = this.enemies.indexOf(e);
+        if (i >= 0) this.enemies.splice(i, 1);
+      }
+      return;
+    }
+    const px = inp.x;
+    const pz = inp.z;
+    const dx = px - e.x;
+    const dz = pz - e.z;
+    const d = Math.hypot(dx, dz);
+    const toP = headingOf(dx, dz);
+    const sp = e.def.speed;
+    const ground = this.world.heightAt(e.x, e.z);
+    let hover = e.hover;
+    // gebannt light / paper lies on the ground
+    if (e.stun > 0 && (e.kind === 'irrlicht' || e.kind === 'mahnbrief')) hover = 0.25;
+    e.y += (ground + hover - e.y) * Math.min(1, dt * (e.stun > 0 ? 6 : 4));
+    if (e.stun > 0) {
+      e.stun = Math.max(0, e.stun - dt);
+      if (e.stun <= 0 && e.state === 'gebannt') this.setState(e, e.aggro ? 'approach' : 'idle');
+    }
+    // leash: too far from home, or the player walked away / into safety
+    if (e.aggro && e.state !== 'leave' && e.state !== 'gebannt' && (leashBroken(e.home, e, inp, e.leash) || this.safe)) {
+      e.aggro = false;
+      this.tokens.release(e.id);
+      this.dropRings(e);
+      e.dash = null;
+      this.out.push({ type: 'aggro', e, on: false });
+      this.setState(e, 'return');
+    }
+    switch (e.state) {
+      case 'idle': {
+        // drift about the spawn
+        const wx = e.home.x + Math.cos(e.orbit + this.time * 0.15) * 1.5;
+        const wz = e.home.z + Math.sin(e.orbit + this.time * 0.15) * 1.5;
+        this.moveToward(e, wx, wz, sp * 0.25, dt, 0.3);
+        if (this.canAggro(e, d) && !leashBroken(e.home, e, inp, e.leash)) {
+          e.aggro = true;
+          if (e.boss) e.engaged = true;
+          this.setState(e, 'notice');
+          this.out.push({ type: 'aggro', e, on: true });
+        }
+        break;
+      }
+      case 'notice':
+        this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
+        if (e.t >= AI.notice) this.setState(e, e.kind === 'raffschatten' && e.fled === 0 ? 'flee' : 'approach');
+        break;
+      case 'return': {
+        const left = this.moveToward(e, e.home.x, e.home.z, sp * 1.2, dt, 1);
+        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.5 * dt);
+        if (left <= 1.05 || e.t > 12) {
+          e.hp = e.maxHp;
+          if (e.boss) {
+            e.phase = 1;
+            e.sealOpen = 0;
+          }
+          this.setState(e, 'idle');
+        }
+        break;
+      }
+      case 'flee': {
+        // Raffschatten: runs off with what it grabbed; fights when cornered
+        const away = { x: e.x - dx, z: e.z - dz };
+        this.moveToward(e, away.x, away.z, sp * 1.15, dt, 0);
+        const fromHome = Math.hypot(e.x - e.home.x, e.z - e.home.z);
+        const blocked = this.world.walkable ? !this.world.walkable(e.x - (dx / (d || 1)) * 1.2, e.z - (dz / (d || 1)) * 1.2) : false;
+        if (e.t > 5 || d < 2.2 || blocked || fromHome > e.leash * 0.6) {
+          e.fled++;
+          this.setState(e, 'approach');
+        }
+        break;
+      }
+      case 'approach':
+      case 'circle':
+        this.approach(e, dt, inp, d, toP);
+        break;
+      case 'windup':
+        this.windupStep(e, dt, inp, d, toP);
+        break;
+      case 'strike':
+        this.strikeStep(e, dt, inp);
+        break;
+      case 'recover': {
+        const rec = e.boss ? 0.95 : e.kind === 'streuner' ? 0.85 : e.kind === 'grusling' ? 0.4 : AI.recover;
+        if (e.t >= rec) {
+          this.tokens.release(e.id);
+          this.setState(e, 'approach');
+          // the Raffschatten runs once more when it is hurt
+          if (e.kind === 'raffschatten' && e.fled === 1 && e.hp < e.maxHp * 0.4) this.setState(e, 'flee');
+        }
+        break;
+      }
+      case 'gebannt':
+        // stays put, a little drift; the stun timer above ends it
+        if (e.stun <= 0) this.setState(e, 'approach');
+        break;
+      case 'stagger':
+        e.stagger -= dt;
+        if (e.stagger <= 0) this.setState(e, e.aggro ? 'approach' : 'idle');
+        break;
+      case 'roar':
+        // phase change: rises, calls, summons (invulnerable to nothing — but doesn't attack)
+        this.turnTo(e, toP, 1.5, dt);
+        if (e.t > 1.3) {
+          const s = summonOf(e.kind, e.phase);
+          this.summon(e, s.kind, Math.max(1, s.n - 1));
+          this.setState(e, 'approach');
+        }
+        break;
+      case 'leave': {
+        // Pikeur: "verloren" — rides off into the fog
+        const away = headingOf(-dx, -dz);
+        this.turnTo(e, away, 3, dt);
+        const f = forwardOf(e.heading);
+        e.x += f.x * 9 * dt;
+        e.z += f.z * 9 * dt;
+        if (e.t > 3.2) this.kill(e, e.by);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  private pickAttack(e: Enemy, d: number): EnemyAttackDef | null {
+    if (e.boss) return chooseBossAttack(this.bossView(e), d);
+    let best: EnemyAttackDef | null = null;
+    for (const a of e.def.attacks) {
+      if ((e.cd[a.id] ?? 0) > 0) continue;
+      if (a.kind === 'summon') continue;
+      // prefer the attack whose range fits the distance best
+      if (!best || Math.abs(wantDist(a) - d) < Math.abs(wantDist(best) - d)) best = a;
+    }
+    return best;
+  }
+
+  private approach(e: Enemy, dt: number, inp: SimInput, d: number, toP: number): void {
+    if (!e.aggro) {
+      this.setState(e, 'idle');
+      return;
+    }
+    const sp = e.def.speed;
+    const a = this.pickAttack(e, d);
+    const want = a ? wantDist(a) : 3.5;
+    e.tryT += dt;
+    // Irrlicht: blinks sideways now and then
+    if (e.kind === 'irrlicht') {
+      e.blinkT -= dt;
+      if (e.blinkT <= 0) {
+        e.blinkT = 3 + hash01(this.tick + e.seed * 50) * 2.5;
+        const fx = e.x;
+        const fz = e.z;
+        const side = hash01(this.tick * 3 + e.seed) > 0.5 ? 1 : -1;
+        const r = Math.cos(toP) * side * 4;
+        const q = -Math.sin(toP) * side * 4;
+        e.x += r;
+        e.z += q;
+        this.out.push({ type: 'blink', e, fromX: fx, fromZ: fz });
+      }
+    }
+    const inRange = a ? (a.kind === 'summon' ? true : d <= want + (a.kind === 'ranged' ? 3 : 0.4) && (a.kind !== 'ranged' || d > 3)) : false;
+    if (a && inRange && e.tryT > 0.25) {
+      e.tryT = 0;
+      const token = e.boss || a.kind === 'summon' || this.tokens.request(e.id);
+      if (token) {
+        this.beginWindup(e, a, inp);
+        return;
+      }
+    }
+    // close in, or circle at a distance while somebody else attacks
+    const holding = a && !e.boss && this.tokens.count >= this.tokens.max && !this.tokens.has(e.id);
+    if (holding || (e.state === 'circle' && d < 7)) {
+      if (e.state !== 'circle') this.setState(e, 'circle');
+      e.orbit += e.orbitDir * dt * (sp / Math.max(3, d)) * 0.8;
+      const r = Math.max(want + 1.8, 4.2);
+      const tx = inp.x + Math.cos(e.orbit) * r;
+      const tz = inp.z + Math.sin(e.orbit) * r;
+      this.moveToward(e, tx, tz, sp * 0.6, dt, 0.3);
+      this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
+      if (!holding && e.t > 0.5) this.setState(e, 'approach');
+      return;
+    }
+    if (e.state === 'circle') this.setState(e, 'approach');
+    let tx = inp.x;
+    let tz = inp.z;
+    // Streuner flank: come in at an angle
+    if (e.kind === 'streuner' && d > 4) {
+      const side = e.orbitDir * 3.5;
+      tx += Math.cos(toP) * side;
+      tz += -Math.sin(toP) * side;
+    }
+    if (a && a.kind === 'ranged' && d < want - 2) {
+      // too close for a ranged attacker: back off a little
+      this.moveToward(e, e.x - (inp.x - e.x), e.z - (inp.z - e.z), sp * 0.6, dt, 0);
+      this.turnTo(e, toP, bodyOf(e.kind).turn * 2, dt);
+      return;
+    }
+    const swarm = e.kind === 'grusling' || e.kind === 'mahnbrief';
+    if (swarm) {
+      tx += Math.cos(e.orbit + this.time * 1.7) * 1.1;
+      tz += Math.sin(e.orbit + this.time * 1.7) * 1.1;
+    }
+    if (d > want) this.moveToward(e, tx, tz, sp, dt, want * 0.9);
+    else this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
+  }
+
+  private beginWindup(e: Enemy, a: EnemyAttackDef, inp: SimInput): void {
+    const dur = telegraphTime(a, this.opt.gentle);
+    e.attack = a;
+    e.windup = dur;
+    e.aim = { x: inp.x, z: inp.z };
+    this.setState(e, 'windup');
+    // area attacks draw a ground ring that fills up
+    if (a.kind === 'area') {
+      if (e.kind === 'strohmann') {
+        for (const s of sparkRain(inp.x, inp.z, e.phase, hash01(this.tick + e.seed))) this.addRing(e, s.x, s.z, 2.4, dur, 'rain');
+      } else this.addRing(e, e.x, e.z, a.range, dur, 'area');
+    }
+    this.out.push({ type: 'telegraph', e, attack: a, dur });
+  }
+
+  private addRing(e: Enemy, x: number, z: number, r: number, dur: number, kind: Ring['kind']): number {
+    const id = ++this.idSeq;
+    this.rings.push({ id, x, z, r, t: 0, dur, owner: e.id, kind });
+    e.rings.push(id);
+    return id;
+  }
+
+  private windupStep(e: Enemy, dt: number, inp: SimInput, d: number, toP: number): void {
+    const a = e.attack;
+    if (!a) {
+      this.setState(e, 'approach');
+      return;
+    }
+    // track the player until 70 % of the wind-up, then commit (the dodge window)
+    if (e.t < e.windup * 0.7) {
+      this.turnTo(e, toP, bodyOf(e.kind).turn * 1.5, dt);
+      e.aim = { x: inp.x, z: inp.z };
+    }
+    // area rings follow their owner (self-centred slams)
+    if (a.kind === 'area' && e.kind !== 'strohmann') for (const id of e.rings) {
+      const r = this.rings.find((x) => x.id === id);
+      if (r) {
+        r.x = e.x;
+        r.z = e.z;
+      }
+    }
+    void d;
+    if (e.t >= e.windup) this.strike(e, a, inp);
+  }
+
+  private strike(e: Enemy, a: EnemyAttackDef, inp: SimInput): void {
+    this.setState(e, 'strike');
+    this.out.push({ type: 'strike', e, attack: a });
+    e.cd[a.id] = e.boss ? bossCooldown(a.cooldown, e.phase) : a.cooldown;
+    const by = e.kind;
+    const dmg = a.damage;
+    const d = Math.hypot(inp.x - e.x, inp.z - e.z);
+    switch (a.kind) {
+      case 'melee': {
+        const arc = e.kind === 'strohmann' ? 170 : 110;
+        if (inCone(e.x, e.z, e.heading, a.range + 0.4, arc, inp.x, inp.z, 0.35)) this.hurtPlayer(dmg, by, e, e.tier, e.boss);
+        break;
+      }
+      case 'area': {
+        for (const id of e.rings) {
+          const r = this.rings.find((x) => x.id === id);
+          if (r && Math.hypot(inp.x - r.x, inp.z - r.z) <= r.r + 0.3) {
+            this.hurtPlayer(dmg, by, r, e.tier, true);
+            break;
+          }
+        }
+        this.dropRings(e);
+        if (e.kind === 'glutling') {
+          // it bursts itself
+          this.out.push({ type: 'burst', e });
+          this.kill(e, 'env');
+        }
+        break;
+      }
+      case 'lunge': {
+        const dist = Math.max(1.5, Math.min(a.range + 1, d + 0.8));
+        const T = 0.22;
+        const f = forwardOf(e.heading);
+        e.dash = { vx: (f.x * dist) / T, vz: (f.z * dist) / T, t: T, hit: false };
+        break;
+      }
+      case 'charge': {
+        const dist = Math.max(8, Math.min(a.range, d + 6));
+        const v = 16;
+        const f = forwardOf(headingOf(e.aim.x - e.x, e.aim.z - e.z));
+        e.heading = headingOf(f.x, f.z);
+        e.dash = { vx: f.x * v, vz: f.z * v, t: dist / v, hit: false };
+        break;
+      }
+      case 'ranged':
+        this.shoot(e, a, inp);
+        break;
+      case 'summon': {
+        const s = summonOf(e.kind, e.phase);
+        this.summon(e, s.kind, s.n);
+        break;
+      }
+    }
+  }
+
+  private shoot(e: Enemy, a: EnemyAttackDef, inp: SimInput): void {
+    if (e.kind === 'steinbrecher') {
+      // a block lobbed at where you stand, with a landing ring
+      const life = 1.15;
+      const pr = this.addProjectile(e, a, e.x, e.y + 3.2, e.z, (inp.x - e.x) / life, 4.5, (inp.z - e.z) / life, life, true, inp.x, inp.z, 1.8);
+      pr.ring = this.addRing(e, inp.x, inp.z, 1.8, life, 'landing');
+      e.rings = e.rings.filter((id) => id !== pr.ring);
+      return;
+    }
+    const n = e.kind === 'schuldbuch' ? sealBolts(e.phase) : 1;
+    const speed = e.kind === 'irrlicht' ? 13 : 15;
+    const sy = e.y + (e.boss ? 1.6 : 0.2);
+    const base = headingOf(inp.x - e.x, inp.z - e.z);
+    for (let i = 0; i < n; i++) {
+      const h = base + (n > 1 ? (i / (n - 1) - 0.5) * 0.9 : 0);
+      const f = forwardOf(h);
+      const d = Math.hypot(inp.x - e.x, inp.z - e.z);
+      const life = Math.min(2.2, (a.range + 4) / speed);
+      const vy = (inp.y + 1.3 - sy) / Math.max(0.3, d / speed);
+      this.addProjectile(e, a, e.x + f.x * e.radius, sy, e.z + f.z * e.radius, f.x * speed, vy, f.z * speed, life, false, 0, 0, 0.75);
+    }
+  }
+
+  private addProjectile(e: Enemy, a: EnemyAttackDef, x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, lob: boolean, tx: number, tz: number, r: number): Projectile {
+    const p: Projectile = { id: ++this.idSeq, kind: `${e.kind}.${a.id}`, owner: e.id, x, y, z, vx, vy, vz, t: 0, life, damage: a.damage, tier: e.tier, lob, tx, tz, r, ring: -1 };
+    this.projectiles.push(p);
+    this.out.push({ type: 'shot', p });
+    return p;
+  }
+
+  private updateProjectiles(dt: number): void {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const pr = this.projectiles[i];
+      pr.t += dt;
+      pr.x += pr.vx * dt;
+      pr.z += pr.vz * dt;
+      if (pr.lob) {
+        pr.vy -= 9.81 * dt * 0.8;
+        pr.y += pr.vy * dt;
+        if (pr.t >= pr.life) {
+          const hit = Math.hypot(this.px - pr.tx, this.pz - pr.tz) <= pr.r + 0.3;
+          const dealt = hit ? this.hurtPlayer(pr.damage, pr.kind.split('.')[0], { x: pr.tx, z: pr.tz }, pr.tier, true) : 0;
+          this.out.push({ type: 'impact', p: pr, hitPlayer: dealt > 0 });
+          const k = this.rings.findIndex((r) => r.id === pr.ring);
+          if (k >= 0) this.rings.splice(k, 1);
+          this.projectiles.splice(i, 1);
+        }
+        continue;
+      }
+      pr.y += pr.vy * dt;
+      const g = this.world.heightAt(pr.x, pr.z);
+      if (pr.y < g + 0.6) {
+        pr.y = g + 0.6;
+        pr.vy = 0;
+      }
+      const dy = pr.y - (this.py + 1.2);
+      const hitP = Math.hypot(pr.x - this.px, pr.z - this.pz) < pr.r && Math.abs(dy) < 1.4;
+      if (hitP || pr.t >= pr.life) {
+        const dealt = hitP ? this.hurtPlayer(pr.damage, pr.kind.split('.')[0], { x: pr.x - pr.vx * 0.1, z: pr.z - pr.vz * 0.1 }, pr.tier) : 0;
+        this.out.push({ type: 'impact', p: pr, hitPlayer: dealt > 0 });
+        this.projectiles.splice(i, 1);
+      }
+    }
+  }
+
+  private strikeStep(e: Enemy, dt: number, inp: SimInput): void {
+    const a = e.attack;
+    if (e.dash) {
+      const D = e.dash;
+      const step = Math.min(dt, D.t);
+      const nx = e.x + D.vx * step;
+      const nz = e.z + D.vz * step;
+      // the Pikeur cannot cross running water: his charge balks at the overflow
+      if (e.kind === 'pikeur' && this.world.isWater) {
+        const f = Math.hypot(D.vx, D.vz) || 1;
+        if (this.world.isWater(nx + (D.vx / f) * 1.6, nz + (D.vz / f) * 1.6)) {
+          e.dash = null;
+          this.out.push({ type: 'balk', e });
+          e.stun = 3;
+          this.staggerEnemy(e, 3);
+          return;
+        }
+      }
+      this.moveBy(e, nx - e.x, nz - e.z);
+      D.t -= step;
+      if (!D.hit && Math.hypot(inp.x - e.x, inp.z - e.z) < e.radius + (a?.kind === 'charge' ? 0.9 : 0.6)) {
+        D.hit = true;
+        this.hurtPlayer(a?.damage ?? 8, e.kind, { x: e.x - D.vx * 0.05, z: e.z - D.vz * 0.05 }, e.tier, a?.kind === 'charge');
+      }
+      if (D.t <= 0) e.dash = null;
+      return;
+    }
+    if (e.t >= AI.strike) this.setState(e, 'recover');
+  }
+
+  private summon(e: Enemy, kind: string, n: number): void {
+    const def = enemyDef(kind);
+    if (!def) return;
+    let made = 0;
+    for (let i = 0; i < n; i++) {
+      if (this.live().length >= AI.maxActive) break;
+      const a = e.heading + Math.PI + (i - (n - 1) / 2) * 0.8;
+      const r = e.radius + 2.2;
+      const x = e.x - Math.sin(a) * r;
+      const z = e.z - Math.cos(a) * r;
+      const add = this.makeEnemy(def, `${e.group}+adds#${this.idSeq++}`, `${e.group}+adds`, x, z, { boss: false, tier: e.tier, leash: e.leash, home: { ...e.home }, add: true });
+      add.aggro = true;
+      add.state = 'approach';
+      made++;
+    }
+    if (made) this.out.push({ type: 'summon', e, kind, n: made });
+  }
+
+  /** Keep bodies apart (O(n²), n ≤ 12). */
+  private separate(): void {
+    const L = this.enemies;
+    for (let i = 0; i < L.length; i++)
+      for (let j = i + 1; j < L.length; j++) {
+        const a = L[i];
+        const b = L[j];
+        if (a.state === 'dissolve' || b.state === 'dissolve') continue;
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const d = Math.hypot(dx, dz);
+        const min = (a.radius + b.radius) * 0.9;
+        if (d >= min || d < 1e-4) continue;
+        const push = (min - d) * 0.5;
+        const wa = a.boss ? 0.1 : 1;
+        const wb = b.boss ? 0.1 : 1;
+        a.x -= (dx / d) * push * wa;
+        a.z -= (dz / d) * push * wa;
+        b.x += (dx / d) * push * wb;
+        b.z += (dz / d) * push * wb;
+      }
+  }
+
+  /** Boss currently fought (engaged, nearest) for the boss bar. */
+  boss(): Enemy | null {
+    let best: Enemy | null = null;
+    let bd = Infinity;
+    for (const e of this.enemies) {
+      if (!e.boss || !e.engaged) continue;
+      if (e.state === 'dissolve' && e.t > 1.2) continue;
+      const d = Math.hypot(e.x - this.px, e.z - this.pz);
+      if (d < bd && d < 70) {
+        bd = d;
+        best = e;
+      }
+    }
+    return best;
+  }
+}
+
+/** Every roster id (for debug hooks). */
+export const KINDS: readonly string[] = ENEMIES.map((e) => e.id);

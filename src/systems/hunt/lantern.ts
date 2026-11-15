@@ -46,6 +46,12 @@ void main() {
 }
 `;
 
+/**
+ * Where the first-person lantern is held: side +1 = right (default), −1 = left (combat holds the
+ * Messstab in the right hand); lift 0..1 raises it for the Bannlicht flare. Set by combat each frame.
+ */
+export const lanternPose = { side: 1, lift: 0 };
+
 export class LanternView {
   private readonly prop = new Group();
   private readonly ironMat = new MeshBasicMaterial({ color: 0x16110b, depthTest: false, depthWrite: false, transparent: true });
@@ -116,15 +122,15 @@ export class LanternView {
     const L = atmosphere;
     L.uLantern.value.copy(WARM).multiplyScalar(2.7 * this.level);
     L.uLanternRadius.value = (o.fog ? 9 : 14) * (0.85 + 0.15 * low);
-    this.off.set(0.28, o.prone ? -0.15 : -0.5, -0.35).applyQuaternion(cam.quaternion);
+    this.off.set(0.28 * lanternPose.side, o.prone ? -0.15 : -0.5 + 0.3 * lanternPose.lift, -0.35).applyQuaternion(cam.quaternion);
     L.uLanternPos.value.copy(cam.position).add(this.off);
     // prop: first-person, lower right of the view; rises into view when lit
     this.prop.visible = this.raise > 0.01;
     if (!this.prop.visible) return;
     if (!o.reducedMotion) this.sway += dt * (1.2 + o.moving * 5);
     const sw = o.reducedMotion ? 0 : Math.sin(this.sway) * (0.006 + o.moving * 0.01);
-    const y = -0.6 + 0.29 * easeOut(this.raise);
-    this.off.set(0.27 + sw, y + Math.abs(Math.cos(this.sway)) * o.moving * 0.008, -0.58).applyQuaternion(cam.quaternion);
+    const y = -0.6 + 0.29 * easeOut(this.raise) + 0.12 * lanternPose.lift;
+    this.off.set(0.27 * lanternPose.side + sw, y + Math.abs(Math.cos(this.sway)) * o.moving * 0.008, -0.58).applyQuaternion(cam.quaternion);
     this.prop.position.copy(cam.position).add(this.off);
     this.prop.quaternion.copy(cam.quaternion);
     this.prop.rotateZ(sw * 2);
