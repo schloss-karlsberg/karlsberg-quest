@@ -31,9 +31,9 @@ export function storyRefs(packs: LoadedPack[]) {
 }
 
 /** Validate and print; returns false on errors. Warnings (content not written yet) are summarised. */
-export function checkStories(root: string, packs: LoadedPack[], verbose = false): { ok: boolean; result: StoryValidation } {
+export function checkStories(root: string, packs: LoadedPack[], verbose = false, rpg: { quests?: Set<string>; items?: Set<string> } = {}): { ok: boolean; result: StoryValidation } {
   const { files, parseErrors } = loadStoryFiles(root);
-  const result = validateStories(files, storyRefs(packs));
+  const result = validateStories(files, { ...storyRefs(packs), ...rpg });
   const line = (i: { level: string; file: string; id?: string; message: string }) => `${i.level === 'error' ? 'ERROR' : 'warn '} ${i.file}${i.id ? ` [${i.id}]` : ''}: ${i.message}`;
   for (const e of parseErrors) console.log(e);
   for (const e of result.errors) console.log(line(e));

@@ -71,6 +71,8 @@ Exactly one key per condition object. Event-like conditions are latched while th
 | `reading` (+ `eq?`) | a reading was chosen: the entry's story flag (`CaseEntry.flag`, e.g. `flag.k1_lohn`) or its entry id; `eq` = noun id or bare key (`n.r_will_nicht` ≡ `will_nicht`, `offen`) |
 | `meter {id, gte?, lte?, full?}` | a story meter's value (0 empty … 1 full) |
 | `chosen` (+ `option?`) | a choice was answered (flag `choice.<id>` = option key or index) |
+| `quest {id, state?, objective?, gte?}` | Action-RPG (docs/ACTION-RPG.md §9.3): the quest is in `state` (default `done`; `active` also holds while `ready`; `offered`, `ready`, `failed`), or its `objective` count ≥ `gte` (default 1). Reads flags `quest.<id>` / `quest.<id>.<objective>` |
+| `level` | the player's level (flag `rpg.level`) is at least n (1–12) |
 | `speed {gte?, lte?}` | the player's speed in m/s (walk 3.2, sprint 6.2; 0 while flying) — e.g. the guard who calls out runners |
 | `all`, `any`, `not` | combinations |
 | `manual` | never (only `kq.story.skip()`) |
@@ -102,6 +104,10 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | `echo` | `id` | play a Chronik echo (`echo:play`) |
 | `memorial` | `id, active?, x?, z?, r?, era?, room?` | a memorial place: no barks there (`memorial:set`; `room` = catalogue id, full id or building) |
 | `readings` | `fill: "offen", cases?` | every reading without an answer becomes `offen` ("Leer lassen") |
+| `quest` | `op: offer \| start \| progress \| complete \| fail \| reset, id, objective?, n?` | Action-RPG: `quest:command` to the quests system (`offer`: the giver shows `!`; `start`: active at once; `progress`: +n on an objective, for `manual` objectives). One-shot on resume unless `onResume` |
+| `enemy` | `op: spawn \| despawn, group, kind, x?, z?, era?, count?, radius?, boss?, tier?, leash?, respawn?, time?, room?` | `enemy:spawn` / `enemy:despawn` to combat (kinds: `src/rpg/enemies.ts`; x/z default to the player, era to the current one; `group: "*"` despawns all). Idempotent by group |
+| `loot` | `id, item, x?, z?, era?, count?, room?, clear?` | a glowing pickup (`loot:place`; `clear: true` → `loot:clear`) |
+| `xp`, `item` | `amount, reason?` / `item, count?, quiet?` | XP and items to the progression system (`xp:grant`, `item:grant`; ids: `src/rpg/items.ts` or a quest file's `items`). One-shots |
 
 **Choices.** `modal` (default) is a field-book card that pauses the game; options are picked by
 click or keys 1–n. `modal: false` is an inline card while the game runs on; an option with
@@ -178,6 +184,8 @@ Example beats (a test file, not loaded by the game, validated in `tests/hunt-ext
 readings, rooms, memorials and the epilogue (beats t1–t6, `e2e/npc.spec.ts`) and the round-2
 tour (beats r1–r4: Festsaal doorway, a ghost upstairs, Kartograf 3 + measuring the gallery, snow
 tracks; `e2e/integration.spec.ts`): `?storytest`, then `kq.story.goto('test')` / `goto('test', 'r1')`.
+Beats q1–q2 are the Action-RPG example: Hanne offers `q.test.lohnzettel`
+(`content/quests/99-test.quests.json`), the beat completes on `{quest: {id}}` (`goto('test', 'q1')`).
 The full list of actions, conditions and recipes for wiring chapters: `docs/ARCHITECTURE.md` §12
 "How to wire a chapter".
 

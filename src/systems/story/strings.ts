@@ -72,6 +72,7 @@ addStrings('de', {
   'story.caught.pack': 'Die Meute hat dich gestellt.',
   'story.caught.fire': 'Das Feuer hat dich zurückgeworfen.',
   'story.caught.oblivion': 'Der Berg hat dich beinahe vergessen.',
+  'story.caught.combat': 'Der Nebel hat dich niedergeworfen.',
   'story.caught.sub': 'Gestellt. Nicht gerissen.',
   'story.caught.wake': 'Du wachst in der Feldstation auf. Was bestätigt ist, bleibt.',
   'story.meter.return': 'Die Erinnerung lässt dich los.',

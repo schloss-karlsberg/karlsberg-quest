@@ -6,6 +6,8 @@
  */
 import { ERAS } from '../../core/era';
 import type { Issue } from '../../content/validate';
+import { ENEMY_IDS } from '../../rpg/enemies';
+import { ITEM_IDS } from '../../rpg/items';
 import { ACTION_KINDS, CONDITION_KEYS, type Action, type Condition, type StoryFile } from './types';
 
 export interface StoryValidation {
@@ -20,6 +22,10 @@ export interface StoryRefs {
   nouns?: Set<string>;
   speakers?: Set<string>;
   dialogue?: Set<string>;
+  /** Quest ids (content/quests/*.quests.json); unknown ids in `quest` actions / conditions are errors when given. */
+  quests?: Set<string>;
+  /** Items declared by quest files (`items`), in addition to src/rpg/items.ts. */
+  items?: Set<string>;
 }
 
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/i;
@@ -36,8 +42,12 @@ const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur']);
 const METER_FULL = new Set(['return', 'caught', 'none']);
+const QUEST_OPS = new Set(['offer', 'start', 'progress', 'complete', 'fail', 'reset']);
+const QUEST_COND_STATES = new Set(['offered', 'active', 'ready', 'done', 'failed']);
+const QUEST_ID_RE = /^q\.[a-z0-9]+\.[a-z0-9_-]+$/;
 
 export function validateStories(files: { file: string; story: StoryFile }[], refs: StoryRefs = {}): StoryValidation {
+  condRefs = refs;
   const issues: Issue[] = [];
   const err = (file: string, id: string | undefined, message: string) => issues.push({ level: 'error', file, id, message });
   const warn = (file: string, id: string | undefined, message: string) => issues.push({ level: 'warning', file, id, message });
@@ -132,6 +142,9 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
 }
 
 type Report = (file: string, id: string | undefined, message: string) => void;
+
+/** Refs for the condition checks (set per validateStories run). */
+let condRefs: StoryRefs = {};
 
 function checkPoint(c: { x: unknown; z: unknown; era?: unknown }, file: string, id: string, err: Report): void {
   if (!isNum(c.x) || !isNum(c.z)) err(file, id, 'checkpoint needs numeric x/z');
@@ -231,6 +244,18 @@ function checkCond(c: Condition | undefined, file: string, where: string, err: R
       break;
     case 'chapterTimer':
       if (!isNum(r.chapterTimer) || (r.chapterTimer as number) < 0) err(file, where, 'chapterTimer needs seconds ≥ 0');
+      break;
+    case 'quest': {
+      const q = r.quest as Record<string, unknown>;
+      if (!q || typeof q !== 'object' || !isStr(q.id) || !QUEST_ID_RE.test(q.id as string)) err(file, where, `quest needs { id: "q.<chapter>.<name>", state? | objective? }`);
+      else if (condRefs.quests && !condRefs.quests.has(q.id as string)) err(file, where, `quest: unknown quest '${String(q.id)}'`);
+      if (q?.state !== undefined && !QUEST_COND_STATES.has(String(q.state))) err(file, where, `quest: unknown state '${String(q.state)}'`);
+      if (q?.objective !== undefined && !isStr(q.objective)) err(file, where, 'quest: objective must be an id');
+      if (q?.gte !== undefined && !isNum(q.gte)) err(file, where, 'quest: gte must be a number');
+      break;
+    }
+    case 'level':
+      if (!isNum(r.level) || (r.level as number) < 1 || (r.level as number) > 12) err(file, where, 'level must be 1..12');
       break;
     default:
       break;
@@ -371,6 +396,41 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'unlock':
         if (!chapters.has(a.chapter)) err(file, where, `unlock: unknown chapter '${a.chapter}'`);
+        break;
+      // ---- Action-RPG requests ----
+      case 'quest':
+        if (!QUEST_OPS.has(a.op)) err(file, where, `quest: unknown op '${String(a.op)}'`);
+        if (!isStr(a.id) || !QUEST_ID_RE.test(a.id)) err(file, where, `quest: malformed id '${String(a.id)}' (q.<chapter>.<name>)`);
+        else if (refs.quests && !refs.quests.has(a.id)) err(file, where, `quest: unknown quest '${a.id}'`);
+        if (a.op === 'progress' && !isStr(a.objective)) err(file, where, 'quest progress needs an objective');
+        if (a.n !== undefined && !isNum(a.n)) err(file, where, 'quest: n must be a number');
+        break;
+      case 'enemy':
+        if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "enemy needs op 'spawn' or 'despawn'");
+        if (!isStr(a.group) || (a.group !== '*' && !ID_RE.test(a.group))) err(file, where, 'enemy needs a group id');
+        if (a.op === 'spawn') {
+          if (!isStr(a.kind) || !ENEMY_IDS.has(a.kind)) err(file, where, `enemy: unknown kind '${String(a.kind)}' (src/rpg/enemies.ts)`);
+          if ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z)))) err(file, where, 'enemy spawn needs both numeric x and z (or neither: at the player)');
+          if (a.era !== undefined && !isEra(a.era)) err(file, where, `enemy: unknown era '${String(a.era)}'`);
+          if (a.count !== undefined && (!isNum(a.count) || a.count < 1)) err(file, where, 'enemy: count must be ≥ 1');
+          if (a.room !== undefined && !isRoomId(a.room)) err(file, where, `enemy: malformed room id '${String(a.room)}'`);
+          if (a.time !== undefined && !['any', 'dusk', 'night'].includes(a.time)) err(file, where, `enemy: unknown time '${String(a.time)}'`);
+        }
+        break;
+      case 'loot':
+        if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'loot needs an id');
+        if (!a.clear) {
+          if (!isStr(a.item) || !(ITEM_IDS.has(a.item) || refs.items?.has(a.item))) err(file, where, `loot: unknown item '${String(a.item)}'`);
+          if ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z)))) err(file, where, 'loot needs both numeric x and z (or neither: at the player)');
+          if (a.era !== undefined && !isEra(a.era)) err(file, where, `loot: unknown era '${String(a.era)}'`);
+        }
+        break;
+      case 'xp':
+        if (!isNum(a.amount) || a.amount <= 0) err(file, where, 'xp needs an amount > 0');
+        break;
+      case 'item':
+        if (!isStr(a.item) || !(ITEM_IDS.has(a.item) || refs.items?.has(a.item))) err(file, where, `item: unknown item '${String(a.item)}'`);
+        if (a.count !== undefined && (!isNum(a.count) || a.count < 1)) err(file, where, 'item: count must be ≥ 1');
         break;
       default:
         break;

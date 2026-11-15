@@ -33,7 +33,18 @@ export type Action =
   | 'lookLeft'
   | 'lookRight'
   | 'lookUp'
-  | 'lookDown';
+  | 'lookDown'
+  // ---- Action-RPG (docs/ACTION-RPG.md §3): read by combat / progression / quests ----
+  /** Hieb (tap) / Wuchthieb (hold ≥ 0.45 s, release). Shares LMB with `interact` (measuring wins). */
+  | 'attack'
+  /** Bannlicht: the lantern flares in a cone. */
+  | 'bannlicht'
+  /** Ausweichrolle. Shares Space with `up` (up only matters while flying / to stand up). */
+  | 'dodge'
+  /** Quick-use item (Kräuterbalsam …). */
+  | 'quickUse'
+  /** Journal on the Ausrüstung tab. */
+  | 'inventory';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -64,15 +75,28 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   lookRight: ['Period', 'Numpad6'],
   lookUp: ['PageUp', 'Numpad8'],
   lookDown: ['PageDown', 'Numpad2'],
+  attack: ['Mouse0', 'KeyK'],
+  bannlicht: ['Mouse2', 'KeyG'],
+  dodge: ['Space'],
+  quickUse: ['KeyH'],
+  inventory: ['KeyI'],
 };
 
-/** Actions that may share a key (C: crouch on foot, down while flying). */
-export const SHARED_KEYS: [Action, Action][] = [['crouch', 'down']];
+/**
+ * Actions that may share a key: C (crouch on foot, down while flying), LMB (measure click while
+ * measuring, else attack), Space (dodge on foot, up while flying / to stand up from crouch, prone).
+ */
+export const SHARED_KEYS: [Action, Action][] = [
+  ['crouch', 'down'],
+  ['interact', 'attack'],
+  ['up', 'dodge'],
+];
 
 /** Actions the player can rebind in the settings, in display order. */
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
   'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans', 'journal',
+  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];
 
@@ -152,6 +176,8 @@ export class Input {
       this.down.add(code);
     });
     on(window, 'mouseup', (e) => this.down.delete(`Mouse${(e as MouseEvent).button}`));
+    // the right button is the Bannlicht: no context menu over the game
+    on(canvas, 'contextmenu', (e) => e.preventDefault());
   }
 
   get locked(): boolean {

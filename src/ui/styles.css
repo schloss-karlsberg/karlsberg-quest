@@ -484,6 +484,38 @@ body {
 .kq-oil:not(.kq-hidden) + .kq-stance {
   left: 132px;
 }
+/* ---- Action-RPG docks (hud.dock, docs/ACTION-RPG.md §10) ---- */
+.kq-dock {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+.kq-dock:empty {
+  display: none;
+}
+/* bottom-left, above the lantern oil gauge (84 px + 22 px) and the stance line */
+.kq-dock-vitals {
+  left: 22px;
+  bottom: 122px;
+  width: min(260px, 40vw);
+}
+/* top centre, under the threat eye (top 56 px, 46 px) */
+.kq-dock-boss {
+  top: 108px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, 60vw);
+  align-items: center;
+}
+/* right edge, under the toasts column (top 90 px, ≤ 4 toasts) */
+.kq-dock-feed {
+  right: 22px;
+  top: 300px;
+  align-items: flex-end;
+  max-width: min(320px, 34vw);
+}
 .kq-toasts {
   position: absolute;
   top: 90px;

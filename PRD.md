@@ -1,7 +1,9 @@
 # Karlsberg Quest — PRD / Game Design Document (living)
 
-> Version 0.2 · 2026-11-02 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
-> Status: **in production**. The owner asked for the complete game to be built (D-006); M0 and content writing are under way.
+> Version 0.3 · 2026-11-15 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
+> Status: **in production — action-RPG rework** (D-008). The full campaign is playable (D-006); the owner asked
+> to turn it from a deduction game into an action RPG with quests and fights. The rework's living spec is
+> [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md); where it and this file disagree, the newer decision wins.
 
 ## 0. How this document works
 
@@ -14,6 +16,9 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.3 | 2026-11-15 | **Action-RPG rework** (D-008, supersedes D-003 and the "no XP" rule): quest givers, quests with kill / collect / reach / escort objectives, real-time combat against invented spectral enemies, XP, levels, talents, loot, a journal instead of the Chronik board; history is told at turn-in and lands in the codex. Spec and quest catalogue: `docs/ACTION-RPG.md`. Contracts for the three new systems (quests, combat, progression) are in place |
+| 0.2.2 | 2026-11-02 | Polish rounds 3–4: period ghost costumes, procedural forest with LOD rings, a threatening palace fire, hounds readable in fog; scenery (1796 quarry, Hohenburg, dawn, fireworks echo, lit windows, Tempelzimmer passage); story flow (wake places, fair k1 chase, k2 retry, beat-scoped delays, dialogue queue, ending replay); HUD overlap fixes; performance presets, loading, accessibility (reduced flashing reaches ghosts, hounds and fireworks) and settings with key remapping |
+| 0.2.1 | 2026-11-02 | The full campaign is built and chained: prologue, chapters 1–4 and three endings, walkable interiors, NPCs, barks, skills and survey tools, hunt extensions, menagerie |
 | 0.2 | 2026-11-02 | Build started: self-contained app with a data-prep step (D-005, answers Q-3); full campaign in one compressed pass (D-006); procedural art and audio (D-007) |
 | 0.1 | 2026-11-02 | First full draft: vision, research summary, gameplay, story, threats, progression, art, tech, MVP slice, milestones M0–M9, risks and open questions. Research notes in `research/` |
 
@@ -21,14 +26,14 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 > **On 28 July 1793 the Karlsberg burned. You map the forest that grew over it, and the land remembers everything: the court, the fire, and the duke's hounds, which never stopped hunting.**
 
-Karlsberg Quest is a grim mystery-exploration RPG for adults, set in the real landscape around Homburg, Kirrberg and the Karlsberg. You play a LiDAR surveyor who can step into the land's memory at the place where they stand. There you gather clues, avoid what hunts you, and rebuild the lost chronicle of the palace's last years. The history is real and sourced. The ghosts are fiction, and the game always says which is which.
+Karlsberg Quest is a grim first-person **action RPG** for adults, set in the real landscape around Homburg, Kirrberg and the Karlsberg (D-008). You play a LiDAR surveyor who can step into the land's memory at the place where they stand. The ghosts of the court give you quests: you go into the land and its eras, fight the spectral things that have grown out of debt, greed, fire and stone, collect what was lost, escort and protect — and when you come back, they tell you what really happened. The history is real and sourced and becomes your codex. The ghosts and every enemy are fiction, and the game always says which is which.
 
 ### 1.1 Pillars
 
 1. **The land remembers.** The real 1 m LiDAR terrain is the world. Every era is the same place seen again: calm in 1789, burning in 1793, overgrown today.
-2. **Knowledge is the only key.** There is no XP grind. Reading relief, comparing maps and dating a wall open routes and eras.
-3. **Dread without combat.** You hide, read the land and outrun. You never fight (D-003).
-4. **Grim truth, labelled fiction.** Real cruelty, debt and destruction are told plainly with sources. The supernatural is invented and marked as such. No gore, and the player never commits atrocities.
+2. **People ask, you act.** Every task comes from a person with a reason. Objectives are verbs you do — fight, collect, reach, calm, escort, survive. No quizzes, no word games, no blanks to fill (D-008).
+3. **Short, readable, juicy fights.** Telegraphed attacks, a dodge roll, the lantern's Bannlicht, hit-stop and knockback against invented spectral enemies that dissolve into mist, ash or grit. The hound pack stays a threat you escape, not a fight (D-008 replaces D-003).
+4. **History is the reward.** Turning in a quest earns XP and loot *and* the true story, told by the giver with sources and stored as a codex card. Grim truth, labelled fiction: no gore, no real person is ever an enemy, and the player never commits atrocities.
 5. **Dark world, warm hub.** Each descent into the past ends back at the present-day field station, where knowledge is sorted, people react, and a dry voice finds the joke in power and vanity.
 
 ### 1.2 Audience & rating
@@ -42,7 +47,9 @@ Karlsberg Quest is a grim mystery-exploration RPG for adults, set in the real la
 
 | Goals | Non-goals (v1.0) |
 | --- | --- |
-| A short, finishable campaign (v1.0 target: 5–7 hours, 4 chapters) | Combat of any kind |
+| A short, finishable campaign (v1.0 target: 5–7 hours, 4 chapters) | Fights against real (historical) people, animals of the menagerie or victims; gore |
+| Every chapter is a chain of main quests plus 2–4 side quests with givers, objectives and rewards (D-008) | Quizzes of any kind: fill-in-the-blank, word or noun selection, multiple choice |
+| Combat that feels good (hit-stop, knockback, particles, sound) and honours reduced motion / flashing | Grind: no currency, no shop, no crafting, no respawning farms |
 | Players can explain what LiDAR shows and why you look, not dig (kept from IDEA.md) | Multiplayer, accounts, servers |
 | Every fact in the game has a source and a confidence label | Real-world location mode (safety; IDEA.md §4 hard rules still apply later) |
 | Runs as a static site on GitHub Pages | Digging, metal detecting or "treasure" gameplay |
@@ -85,7 +92,23 @@ The research suggested USK 12 for reach. This draft follows the owner's decision
 
 ## 3. Core gameplay
 
-The core verb is **deduce**: walk the real land, step into its memory, bring back clues, and prove what happened.
+> **Superseded in part (D-008, 2026-11-15).** The core loop is now **quest → go → fight / collect → turn
+> in → hear the history → level up**; the full design (controls, combat, enemies, progression, loot,
+> quests, journal, quest catalogue per chapter) is [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md). §3.1 and
+> §3.3 below describe the 0.2 deduction loop and stay for the record; §3.2 verbs and §3.4 threats remain
+> valid, extended by the combat verbs (Hieb, Wuchthieb, Ausweichen, Bannlicht, Schnellgegenstand).
+
+```mermaid
+flowchart LR
+    H[Field station / anchor] --> G[Quest giver]
+    G --> X[Into the land and its eras]
+    X --> F[Fight · collect · find · escort]
+    F --> T[Turn in: XP, loot, the real history, codex card]
+    T --> L[Level up, talent, survey skill opens a route]
+    L --> G
+```
+
+The original core verb was **deduce**: walk the real land, step into its memory, bring back clues, and prove what happened.
 
 ### 3.1 Core loop
 
@@ -127,7 +150,7 @@ The Chronik is the lost chronicle of the palace's last years, rebuilt page by pa
 - **Hints:** the compass voice gives graded nudges after a set time, never solutions. A gentle mode shows which entries are already correct.
 - **Tooling:** a clue-structure checker (in development) proves that every case can be solved from the clues placed in the world, before any content ships.
 
-### 3.4 Tension without combat
+### 3.4 Tension beyond combat (threats you escape, not fight)
 
 | Pressure | Feeling | Counterplay |
 | --- | --- | --- |
@@ -217,7 +240,11 @@ All fiction, each grown from a sourced fact in [`research/01-regional-history.md
 
 ## 6. Progression, meta & replayability
 
-### 6.1 No XP: knowledge unlocks
+> **Superseded (D-008):** there are now XP, 12 levels, three short talent branches, a weapon upgraded by
+> quests, charms and consumable loot — but still no currency, shop or grind. Survey skills are quest
+> rewards. See `docs/ACTION-RPG.md` §6–7.
+
+### 6.1 No XP: knowledge unlocks (0.2, superseded)
 
 Progress comes only from confirmed Chronik entries. They unlock skills, eras and routes. There are no levels, no stats and no loot grind.
 
@@ -413,10 +440,11 @@ gantt
 
 | # | Date | Decision | Why | Replaces |
 | --- | --- | --- | --- | --- |
+| D-008 | 2026-11-15 | **Action RPG.** Quests from givers (kill / collect / reach / talk / calm / escort / survive objectives), real-time first-person combat against invented spectral enemies with one boss per chapter, XP, levels 1–12, talents, a quest-upgraded weapon, charms and consumable loot; the Chronik board (blanks, nouns, batches of three) leaves the critical path for a journal; history is taught by the giver at turn-in, codex cards, echoes and collectibles; the old readings become stances asked at turn-in. Never: real people, menagerie animals or victims as enemies, gore, quizzes. The hunt, the fire, memorials and the finale stay non-combat. Spec: `docs/ACTION-RPG.md` | Owner request (2026-11-15): "not that much quiz … more like people give you a quest and you need to go and collect some things or kill some things — like in WoW or Witcher … a fun, action learn role play game" | D-003, §6.1 "no XP", §3.3 as the core loop |
 | D-007 | 2026-11-02 | Art and audio are procedural in v1.0: real terrain, shaders, particles, Web Audio synthesis; no third-party art packs | No licence risk, small payload, no asset pipeline needed; partly answers Q-5 | — |
 | D-006 | 2026-11-02 | Build the complete campaign (prologue, Ch. 1–4, three endings) in one compressed production pass, about 2–3 h of play, instead of slice-first over M0–M9 | Owner request: "build the complete game … loop until it's finished and playable" | §10 schedule (order kept, dates dropped) |
 | D-005 | 2026-11-02 | The game is a self-contained static Vite app. `scripts/prepare-data` reads sister data **read-only** and writes compact assets into `public/data/`; no sister source code is imported | Sister projects are under active development by other agents; importing their modules would couple us to moving code. R-1 becomes optional | Q-3, §8.2 "reuse by import" |
 | D-004 | 2026-11-02 | The living document is `PRD.md` in this repo; no external doc | Agents and humans work from the same file, versioned with the code | — |
-| D-003 | 2026-11-02 | No combat; tension comes from stealth, chases, time pressure and a corrupting threat | Keeps focus on exploration and deduction; no fights against historical people | IDEA.md (no rule) |
+| D-003 | 2026-11-02 | **(Superseded by D-008, 2026-11-15)** No combat; tension comes from stealth, chases, time pressure and a corrupting threat | Keeps focus on exploration and deduction; no fights against historical people | IDEA.md (no rule) |
 | D-002 | 2026-11-02 | Core genre: mystery-exploration RPG (clues, deduction, eras), keeping quests, skills and codex | Deduction makes learning real facts feel like play | IDEA.md §4 (MMORPG-style quest focus) |
 | D-001 | 2026-11-02 | Audience: adults 16+, grim tone | Owner wants a darker game; drops the school/family audience as primary target | IDEA.md §9 Q1 (families, schools) |

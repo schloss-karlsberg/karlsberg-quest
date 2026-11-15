@@ -16,6 +16,19 @@
  *  - tools   : measure:done
  *  - menagerie: menagerie:* (the escaped animals of 1789 / 1793-07; story spawns them)
  *
+ * Action-RPG layer (docs/ACTION-RPG.md §9; data shapes in src/rpg/types.ts):
+ *  - quests     : quest:offered/accepted/progress/objective/ready/completed/failed, npc:topics,
+ *                 npc:marker, codex:unlocked (also), and the requests enemy:spawn/despawn,
+ *                 loot:place/clear, xp:grant, item:grant for quest content
+ *  - npc        : quest:accept, quest:turnin, quest:stance (the player's answers in a conversation)
+ *  - story      : quest:command (story action `quest`), and the same requests as quests
+ *                 (story actions `enemy`, `loot`, `xp`, `item`)
+ *  - combat     : enemy:spawned/killed/cleared/aggro, combat:hit/state/bann, player:damaged/
+ *                 healed/died, boss:phase, menagerie:calmed, and player:caught {by:'combat'}
+ *  - progression: xp:gain, level:up, item:pickup/use, loot:drop, equip:change, talent:learned,
+ *                 stats:changed
+ *  Requests are imperative (enemy:spawn, xp:grant), facts are past tense (enemy:killed, xp:gain).
+ *
  * Integration rules (see docs/ARCHITECTURE.md §12):
  *  - The Q key belongs to the story (anchor flags shift.allowed/target/x/z/r, hold Q in the past
  *    to return); fx performs the transition. fx reads Q itself only without a story system.
@@ -24,8 +37,10 @@
  *  - Dialogue triggered by echo:* events is played by the Chronik, not the story runner.
  */
 import type { Era } from '../core/era';
+import type { DerivedStats, GiverMark, QuestTopic } from '../rpg/types';
 
-export type ThreatKind = 'pack' | 'fire' | 'oblivion';
+/** 'combat': the player's Lebenskraft ran out (combat emits player:caught {by:'combat'}). */
+export type ThreatKind = 'pack' | 'fire' | 'oblivion' | 'combat';
 
 /** The escaped animals of the Karlsberg menagerie (codex cx.12). */
 export type MenagerieAnimal = 'cassowary' | 'dromedary' | 'jaguar';
@@ -168,6 +183,133 @@ declare module '../core/events' {
       building?: string;
       room?: string;
     };
+
+    // =====================================================================================
+    // Action-RPG layer (docs/ACTION-RPG.md §9). Plain, serialisable payloads only.
+    // =====================================================================================
+
+    // ---- quests (owner: quests) -----------------------------------------------------------
+    /** A quest became available at its giver (marker "!") — or was spoken by a voice giver. */
+    'quest:offered': { id: string; giver: string; main: boolean };
+    /** The player took the quest (conversation "annehmen", voice giver, or story `quest start`). */
+    'quest:accepted': { id: string };
+    /** An objective counter changed. */
+    'quest:progress': { id: string; objective: string; count: number; need: number };
+    /** An objective is complete (optional ones too). */
+    'quest:objective': { id: string; objective: string; optional: boolean };
+    /** Every required objective is complete: turn in (marker "?"), or completes at once ('auto'). */
+    'quest:ready': { id: string };
+    /** Turned in: rewards granted, history told. xp = the quest's XP reward (before multipliers). */
+    'quest:completed': { id: string; xp: number; main: boolean };
+    'quest:failed': { id: string; reason: string };
+    /**
+     * quests → npc: the quest topics this NPC offers now (replaces the previous list for that npc;
+     * an empty list removes them). The npc system shows them first in the conversation menu.
+     */
+    'npc:topics': { npc: string; topics: QuestTopic[] };
+    /** quests → npc: the glyph over an NPC's head ("!" offer, "!" ringed main offer, "?" ready, grey "?" active). */
+    'npc:marker': { npc: string; mark: GiverMark };
+
+    // ---- npc → quests: the player's answers in a conversation ------------------------------
+    'quest:accept': { id: string; npc: string };
+    'quest:decline': { id: string; npc: string };
+    'quest:turnin': { id: string; npc: string };
+    /** A stance (Haltung) was answered at turn-in: value of the chosen option. */
+    'quest:stance': { id: string; value: string };
+
+    // ---- story → quests (story action `quest`) ---------------------------------------------
+    /**
+     * offer: make it available at its giver · start: accept at once · progress: add `n` to an
+     * objective (manual objectives) · complete: grant rewards now (cut-scenes) · fail · reset.
+     */
+    'quest:command': { op: 'offer' | 'start' | 'progress' | 'complete' | 'fail' | 'reset'; id: string; objective?: string; n?: number };
+
+    // ---- requests to combat (owners: quests, story) ----------------------------------------
+    /**
+     * Spawn (or re-declare) an enemy group. Idempotent by `group`: the combat system keeps every
+     * group in its slice (what is left of it survives saves) and materialises it only in its era,
+     * within ~90 m (or in its `room`). Kills of a group never come back unless `respawn` > 0.
+     */
+    'enemy:spawn': {
+      group: string;
+      kind: string;
+      x: number;
+      z: number;
+      era: Era;
+      count?: number;
+      radius?: number;
+      boss?: boolean;
+      tier?: number;
+      leash?: number;
+      respawn?: number;
+      time?: 'any' | 'dusk' | 'night';
+      room?: string;
+      quest?: string;
+      objective?: string;
+    };
+    /** Remove a group without a fight ('*' = every group). */
+    'enemy:despawn': { group: string };
+
+    // ---- combat (owner: combat) -------------------------------------------------------------
+    'enemy:spawned': { id: string; group: string; kind: string; x: number; z: number; era: Era; boss: boolean };
+    /**
+     * An enemy is undone (dissolved — never "dead" on screen). by: what finished it.
+     * quest/objective echo the group's spawn request.
+     */
+    'enemy:killed': {
+      id: string;
+      group: string;
+      kind: string;
+      x: number;
+      z: number;
+      era: Era;
+      boss: boolean;
+      by: 'light' | 'heavy' | 'bann' | 'item' | 'env';
+      quest?: string;
+      objective?: string;
+    };
+    /** Every member of a group is undone. */
+    'enemy:cleared': { group: string; kind: string };
+    /** An enemy noticed / lost the player. */
+    'enemy:aggro': { id: string; kind: string; on: boolean };
+    /** A boss crossed a phase threshold (phase 1 = start). */
+    'boss:phase': { id: string; kind: string; phase: number; hp: number };
+    /** Any hit landed (for sound / fx / tutorials). target 'enemy' or 'player'. */
+    'combat:hit': { target: 'enemy' | 'player'; id?: string; kind?: string; damage: number; heavy: boolean; x: number; z: number };
+    /** In / out of a fight (barks stay quiet, music swells, sprint costs Atem). */
+    'combat:state': { inCombat: boolean };
+    /** The Bannlicht flared: a cone from x/z along yaw (radians, player convention). hunt / menagerie react. */
+    'combat:bann': { x: number; z: number; yaw: number; range: number; angle: number };
+    'player:damaged': { amount: number; hp: number; max: number; by: string; x?: number; z?: number };
+    'player:healed': { amount: number; hp: number; max: number; by: string };
+    /** Lebenskraft at 0: combat then emits player:caught {by:'combat'} (the story's curtain + wake). */
+    'player:died': { by: string };
+    /** A menagerie animal was calmed / caught (never hurt): the cassowary tired out, the jaguar driven home. */
+    'menagerie:calmed': { id: string; animal: MenagerieAnimal };
+
+    // ---- requests to progression (owners: quests, story, combat) ----------------------------
+    /** Grant XP (quest rewards, kills, codex cards, bonus objectives). */
+    'xp:grant': { amount: number; reason: string; x?: number; z?: number };
+    /** Put items into the inventory (quest rewards, story). quiet: no toast. */
+    'item:grant': { item: string; count?: number; reason?: string; quiet?: boolean };
+    /** Place a glowing pickup in the world (quest collect objectives, lore, story `loot`). Idempotent by id. */
+    'loot:place': { id: string; item: string; x: number; z: number; era: Era; count?: number; y?: number; room?: string; quest?: string };
+    /** Remove pickups placed by id, or all of a quest. */
+    'loot:clear': { id?: string; quest?: string };
+
+    // ---- progression (owner: progression) ---------------------------------------------------
+    'xp:gain': { amount: number; total: number; reason: string };
+    'level:up': { level: number; points: number };
+    /** An item entered the inventory (world pickup, loot, grant). id = the pickup's id, if any. */
+    'item:pickup': { item: string; count: number; total: number; id?: string; x?: number; z?: number };
+    /** A consumable was used (quick-use H or the inventory). */
+    'item:use': { item: string };
+    /** Enemy loot dropped on the ground (pickups follow as loot:place). */
+    'loot:drop': { x: number; z: number; era: Era; items: { item: string; count: number }[]; from?: string };
+    'equip:change': { slot: 'weapon' | 'charm'; item: string | null };
+    'talent:learned': { talent: string; rank: number };
+    /** Derived stats changed (level, talents, equipment, gentle mode). */
+    'stats:changed': { stats: DerivedStats };
   }
 }
 

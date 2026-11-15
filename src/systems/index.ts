@@ -20,4 +20,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./skills'),
   () => import('./tools'),
   () => import('./scenery'),
+  // Action-RPG layer (docs/ACTION-RPG.md): progression before combat before quests
+  () => import('./progression'),
+  () => import('./combat'),
+  () => import('./quests'),
 ];

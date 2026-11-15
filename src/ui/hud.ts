@@ -3,6 +3,8 @@ import { EYE_SVG, h, svg } from './dom';
 
 const PX_PER_DEG = 3.2;
 
+export type HudDockArea = 'vitals' | 'boss' | 'feed';
+
 /**
  * HUD slots. Each is a tiny API so feature systems never touch the DOM structure:
  *   compass (heading + markers), prompt, subtitles, threat, lantern oil, era label, stance, toasts.
@@ -25,6 +27,8 @@ export class Hud {
   private readonly clickEl: HTMLElement;
   /** Top-left column: era label, status, then feature lines (room, objective, gauges) — never overlapping. */
   private readonly tl: HTMLElement;
+  /** Action-RPG docks (docs/ACTION-RPG.md §10): features put their own elements here. */
+  private readonly docks: Record<HudDockArea, HTMLElement>;
   private heading = 0;
 
   constructor() {
@@ -69,8 +73,16 @@ export class Hud {
         if (r.height > 0) document.documentElement.style.setProperty('--kq-tl-bottom', `${Math.round(r.bottom)}px`);
       }).observe(this.tl);
     }
+    this.docks = {
+      vitals: h('div.kq-dock.kq-dock-vitals', { 'data-testid': 'hud-vitals' }),
+      boss: h('div.kq-dock.kq-dock-boss', { 'data-testid': 'hud-boss' }),
+      feed: h('div.kq-dock.kq-dock-feed', { 'data-testid': 'hud-feed' }),
+    };
     this.el = h('div.kq-hud.kq-hidden', [
       this.threatEdge,
+      this.docks.vitals,
+      this.docks.boss,
+      this.docks.feed,
       this.compass,
       this.threatEl,
       this.tl,
@@ -187,6 +199,20 @@ export class Hud {
   stack(el: HTMLElement, order: number): void {
     el.style.order = String(order);
     this.tl.append(el);
+  }
+
+  /**
+   * Put a feature's element into a dock (docs/ACTION-RPG.md §10). Elements stack by `order` and
+   * never overlap; a hidden element (`display: none`) takes no room.
+   * - `vitals` (bottom-left, above the lantern oil): combat's Lebenskraft / Atem (10), Bannlicht
+   *   charges (20), progression's level + XP bar (30) and quick-use slot (40).
+   * - `boss` (top centre, under the threat eye): combat's boss bar.
+   * - `feed` (right edge, under the toasts): progression's pickup feed ("+ Kräuterbalsam"), quests'
+   *   objective ticks.
+   */
+  dock(area: HudDockArea, el: HTMLElement, order = 0): void {
+    el.style.order = String(order);
+    this.docks[area].append(el);
   }
 
   setEraLabel(text: string): void {

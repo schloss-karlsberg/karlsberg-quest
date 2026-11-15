@@ -30,6 +30,8 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/i18n/` | `t(key, params)`, German strings in `de.ts`, `addStrings()` for features |
 | `src/content/` | Content types, validator, `ContentDB` (all packs bundled via `import.meta.glob`) |
 | `src/systems/` | **Feature systems**, one folder each, registered in `src/systems/index.ts` |
+| `src/rpg/` | Action-RPG shared data, pure (no three.js, no DOM): `types.ts` (quests, enemies, items, slices, stats), `enemies.ts` (roster), `items.ts` (items, loot tables, collections), `stats.ts` (level curve, talents, `deriveStats`) — see §12.1 |
+| `content/quests/` | Quest files `<nn>-<chapter>.quests.json` (schema `content/schema/quests.schema.json`, validated by `pnpm validate`) |
 | `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route) |
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
@@ -137,7 +139,10 @@ Rules
 | `systems, loop, pause` | registry, loop (`time`, `tick`, `step`), pause stack |
 | `debug, params, t` | `?debug`, URL params, i18n |
 
-HUD slots (`ctx.ui.hud`): `setMarker(id, bearingDeg|null, color)` (compass markers),
+HUD slots (`ctx.ui.hud`): `dock('vitals' | 'boss' | 'feed', el, order)` (Action-RPG docks: bottom-left
+above the oil gauge, top centre under the threat eye, right edge under the toasts; testids
+`hud-vitals`, `hud-boss`, `hud-feed`; elements stack by order, an empty dock is hidden),
+`setMarker(id, bearingDeg|null, color)` (compass markers),
 `prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
 one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
 `setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `toast`,
@@ -146,7 +151,7 @@ one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, 
 **Top-left column** (`div.kq-tl`, testid `hud-topleft`, max-width min(430 px, 50vw − 56 px)): the
 era label (order 0) and the status line (10), then features' elements put there with
 `hud.stack(el, order)` — the room name (tools, 20), the objective (story, 30), the story gauges
-(story, 40). They stack, never overlap; an element that is hidden takes no room. A
+(story, 40), the quest tracker (quests, 35). They stack, never overlap; an element that is hidden takes no room. A
 ResizeObserver writes the column's bottom edge to `--kq-tl-bottom`; the skill cards sit below it.
 The fx gauges sit above the Bussole; the dialogue card leaves 190 px on each side; subtitles move
 up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused); an unlock card already on
@@ -325,7 +330,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
-`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`, `scenery`. They talk only through the events in `src/systems/contracts.ts` (plus the
+`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`, `scenery`,
+then the Action-RPG systems `progression`, `combat`, `quests` (§12.1). They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below), `ctx.state` and a few additive world hooks. How they work together:
 
 ```
@@ -774,6 +780,38 @@ card, sound, toast, cue, chronik, ending, echo, grant):
   "z": 92, "id": "kasuar" } }` (1789); dromedaries / jaguar in 1793-07.
 - *Quiet*: `memorial` for W5 in the Festsaal (`"room": "B01.2.og-festsaal"`), flag `barks.quiet`
   for the finale.
+
+### 12.1 Action-RPG layer (quests, combat, progression) — docs/ACTION-RPG.md
+
+Since D-008 (2026-11-15) the game is an action RPG; the design and the quest catalogue are in
+[`docs/ACTION-RPG.md`](ACTION-RPG.md). Three systems are registered last in `src/systems/index.ts`:
+`progression`, `combat` (after hunt, menagerie, progression), `quests` (after story, npc, chronik).
+They share only `src/rpg/*` (pure) and the events in `contracts.ts`; none imports another.
+
+```
+story ──quest:command {op,id}──▶ quests ──quest:offered/accepted/progress/objective/ready/completed──▶ everyone
+quests ──npc:topics / npc:marker──▶ npc (topics with ! / ?)   npc ──quest:accept/decline/turnin/stance──▶ quests
+quests, story ──enemy:spawn / enemy:despawn──▶ combat ──enemy:spawned/killed/cleared/aggro, boss:phase──▶ quests, progression, story
+combat ──combat:bann {x,z,yaw,range,angle}──▶ hunt (scatter hounds), menagerie (jaguar backs off)
+combat ──player:damaged/healed/died, player:caught {by:'combat'}──▶ HUD, barks, story (curtain + wake)
+quests, story, combat ──xp:grant / item:grant / loot:place / loot:clear──▶ progression
+progression ──xp:gain, level:up, item:pickup/use, loot:drop, equip:change, talent:learned, stats:changed {stats}──▶ quests, combat, HUD
+quests ──codex:unlocked / skill:grant──▶ codex, skills
+```
+
+| Piece | Where | Notes |
+|---|---|---|
+| Quest files | `content/quests/*.quests.json` | loaded with `import.meta.glob` (`src/systems/quests/data.ts`); `test: true` files only with `?storytest`; validated by `src/systems/quests/validate.ts` (`pnpm validate`, `tests/rpg-contracts.test.ts`) |
+| Flag mirror | `flags['quest.<id>']` = state, `flags['quest.<id>.<objective>']` = count (quests); `flags['rpg.level']` (progression); `flags['combat.disabled']` (story: finale, endings); `flags['tools.measuring']` (tools: LMB belongs to the tape) | story conditions read these |
+| Story actions | `quest {op: offer\|start\|progress\|complete\|fail\|reset, id, objective?, n?}`, `enemy {op: spawn\|despawn, group, kind, x, z, era, count, radius, boss, tier, leash, respawn, time, room}`, `loot {id, item, x, z, era, clear?}`, `xp {amount, reason?}`, `item {item, count?, quiet?}` | `quest`, `xp`, `item` are one-shots on resume |
+| Story conditions | `{quest: {id, state?, objective?, gte?}}` (state defaults to done; `active` also holds while ready), `{level: n}` | `questHolds()` in `story/engine.ts` |
+| Input | actions `attack` (LMB, K), `bannlicht` (RMB, G), `dodge` (Space), `quickUse` (H), `inventory` (I); `SHARED_KEYS` C crouch/down, LMB interact/attack, Space up/dodge; the canvas swallows the context menu | `src/player/input.ts` |
+| Player hooks | `player.moveScale` (×speed), `player.canSprint`, `player.impulse(vx, vz, seconds)` (decaying push through collision and slope rules; cleared by `teleport`), `player.pushed` | owned by combat (additive) |
+| Journal tabs | `addJournalTab({id, label, order, render, badge?, hide?})` in `src/ui/journal.ts`; the quests system owns the modal (J / Tab) and tabs 10–30, progression adds 40 Ausrüstung, 50 Talente | replaces the Chronik board |
+| Debug | `window.kq.quests`, `kq.combat`, `kq.progression` (installed on the first frame: `window.kq` exists only after `initAll`) | each track extends its own |
+| Test chapter | `?storytest` + `kq.story.goto('test', 'q1')`: Hanne offers `q.test.lohnzettel`, then Laub `q.test.irrlichter` | e2e entry point for all tracks |
+
+Each RPG track adds its own subsection here when it fills its system in.
 
 ## 13. Licences
 

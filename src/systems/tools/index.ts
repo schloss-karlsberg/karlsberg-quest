@@ -168,6 +168,10 @@ export default defineSystem({
       }
     }
     if (measure!.active && inp.wasPressed('interact')) measure!.click();
+    // LMB is shared with the combat's attack: while measuring, the click is the tape's (contract)
+    const flags = ctx.state.mutable.flags;
+    if (measure!.active) flags['tools.measuring'] = true;
+    else if (flags['tools.measuring']) delete flags['tools.measuring'];
     if (inp.wasPressed('xray')) {
       if (xray!.active) toggleXray(ctx, false);
       else if (!canXray(g)) ctx.ui.toast(ctx.t('skills.locked.xray'));

@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-kirrberg.github.io/karlsberg-quest/schema/quests.schema.json",
+  "title": "Karlsberg Quest quest file (content/quests/<nn>-<chapter>.quests.json)",
+  "description": "Editor support only. The authority is src/systems/quests/validate.ts (pnpm validate), which also checks references (speakers, codex facts, clues, enemies, items, chapters, playable area). Types: src/rpg/types.ts. Design: docs/ACTION-RPG.md.",
+  "type": "object",
+  "required": ["chapter", "quests"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "chapter": { "type": "string", "description": "Story chapter id: prolog, k1 … k4, enden, test" },
+    "test": { "type": "boolean", "description": "Test file: validated, loaded only with ?storytest" },
+    "quests": { "type": "array", "items": { "$ref": "#/$defs/quest" } },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" } }
+  },
+  "$defs": {
+    "era": { "enum": ["today", "1789", "1793-02", "1793-07", "1796"] },
+    "line": {
+      "type": "object",
+      "required": ["speaker", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "speaker": { "type": "string" },
+        "text": { "type": "string", "minLength": 1 },
+        "fact": { "type": "string", "description": "history lines: codex fact id (cx.NN / rm.NN)" },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url", "label"],
+            "additionalProperties": false,
+            "properties": { "url": { "type": "string", "pattern": "^https?://" }, "label": { "type": "string" }, "note": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } },
+    "place": {
+      "type": "object",
+      "required": ["x", "z"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "z": { "type": "number" },
+        "r": { "type": "number", "exclusiveMinimum": 0 },
+        "era": { "$ref": "#/$defs/era" },
+        "room": { "type": "string" }
+      }
+    },
+    "spawn": {
+      "type": "object",
+      "required": ["kind", "x", "z", "era"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "description": "src/rpg/enemies.ts id" },
+        "x": { "type": "number" },
+        "z": { "type": "number" },
+        "era": { "$ref": "#/$defs/era" },
+        "count": { "type": "integer", "minimum": 1 },
+        "radius": { "type": "number", "minimum": 0 },
+        "group": { "type": "string" },
+        "boss": { "type": "boolean" },
+        "tier": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "leash": { "type": "number" },
+        "time": { "enum": ["any", "dusk", "night"] }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "required": ["id", "type", "text_de"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+        "type": { "enum": ["kill", "collect", "reach", "talk", "room", "examine", "echo", "calm", "escort", "survive", "use", "event", "manual"] },
+        "text_de": { "type": "string", "minLength": 1 },
+        "count": { "type": "integer", "minimum": 1 },
+        "optional": { "type": "boolean" },
+        "bonus_xp": { "type": "number", "minimum": 0 },
+        "after": { "type": "array", "items": { "type": "string" } },
+        "hidden": { "type": "boolean" },
+        "where": { "$ref": "#/$defs/place" },
+        "noMarker": { "type": "boolean" },
+        "enemy": { "type": "string" },
+        "group": { "type": "string" },
+        "spawn": { "type": "array", "items": { "$ref": "#/$defs/spawn" } },
+        "item": { "type": "string" },
+        "place": { "type": "array", "items": { "$ref": "#/$defs/place" } },
+        "drop": {
+          "type": "object",
+          "required": ["enemy", "chance"],
+          "additionalProperties": false,
+          "properties": { "enemy": { "type": "string" }, "chance": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 } }
+        },
+        "npc": { "type": "string" },
+        "topic": { "type": "string" },
+        "room": { "type": "string" },
+        "clue": { "type": "string" },
+        "animal": { "type": "string" },
+        "to": { "$ref": "#/$defs/place" },
+        "seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "event": { "type": "string", "pattern": "^[a-z]+:[a-z-]+$" },
+        "match": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] } }
+      }
+    },
+    "giver": {
+      "oneOf": [
+        { "type": "object", "required": ["npc"], "additionalProperties": false, "properties": { "npc": { "type": "string" } } },
+        { "type": "object", "required": ["voice"], "additionalProperties": false, "properties": { "voice": { "enum": ["laub", "marlene"] } } }
+      ]
+    },
+    "quest": {
+      "type": "object",
+      "required": ["id", "kind", "title_de", "summary_de", "giver", "offer", "objectives"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^q\\.[a-z0-9]+\\.[a-z0-9_-]+$" },
+        "kind": { "enum": ["main", "side"] },
+        "title_de": { "type": "string", "minLength": 1 },
+        "summary_de": { "type": "string", "minLength": 1 },
+        "era": { "$ref": "#/$defs/era" },
+        "giver": { "$ref": "#/$defs/giver" },
+        "turnin": {
+          "oneOf": [
+            { "enum": ["giver", "auto"] },
+            { "type": "object", "required": ["npc"], "additionalProperties": false, "properties": { "npc": { "type": "string" } } },
+            { "type": "object", "required": ["voice"], "additionalProperties": false, "properties": { "voice": { "enum": ["laub", "marlene"] } } }
+          ]
+        },
+        "offer": { "$ref": "#/$defs/lines" },
+        "topic_de": { "type": "string" },
+        "accept_de": { "type": "string" },
+        "declinable": { "type": "boolean" },
+        "progress": { "$ref": "#/$defs/lines" },
+        "turnin_lines": { "$ref": "#/$defs/lines" },
+        "history": { "$ref": "#/$defs/lines" },
+        "stance": {
+          "type": "object",
+          "required": ["id", "prompt_de", "flag", "options"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string" },
+            "prompt_de": { "type": "string" },
+            "flag": { "type": "string" },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "required": ["label_de", "value"],
+                "additionalProperties": false,
+                "properties": { "label_de": { "type": "string" }, "value": { "type": "string" }, "reply": { "$ref": "#/$defs/lines" } }
+              }
+            }
+          }
+        },
+        "objectives": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/objective" } },
+        "rewards": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "xp": { "type": "number", "minimum": 0 },
+            "items": {
+              "type": "array",
+              "items": { "type": "object", "required": ["item"], "additionalProperties": false, "properties": { "item": { "type": "string" }, "count": { "type": "integer", "minimum": 1 } } }
+            },
+            "codex": { "type": "array", "items": { "type": "string" } },
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "tier"],
+                "additionalProperties": false,
+                "properties": { "id": { "enum": ["relief", "kartograf", "baumeister", "roentgen", "spurenleser"] }, "tier": { "type": "integer", "minimum": 1, "maximum": 3 } }
+              }
+            },
+            "flags": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] } },
+            "talentPoints": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "available": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "after": { "type": "array", "items": { "type": "string" } },
+            "flag": { "type": "string" },
+            "era": { "$ref": "#/$defs/era" },
+            "level": { "type": "integer", "minimum": 1, "maximum": 12 }
+          }
+        },
+        "next": { "type": "string" },
+        "quiet": { "type": "boolean" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["id", "kind", "name_de", "text_de"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^item\\.[a-z0-9]+\\.[a-z0-9_-]+$" },
+        "kind": { "enum": ["quest", "lore", "key", "consumable", "charm", "weapon"] },
+        "name_de": { "type": "string" },
+        "text_de": { "type": "string" },
+        "stack": { "type": "integer", "minimum": 1 },
+        "set": { "type": "string", "description": "collection set (src/rpg/items.ts COLLECTIONS)" },
+        "fiction": { "type": "boolean" },
+        "fact": { "type": "string" },
+        "effect": { "type": "object" }
+      }
+    }
+  }
+}

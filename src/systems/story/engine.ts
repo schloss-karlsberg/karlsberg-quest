@@ -146,7 +146,8 @@ export interface StoryHost {
 }
 
 /** Actions that are NOT repeated when a beat is resumed (unless `onResume: true`). */
-const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant']);
+// (RPG: quest commands, xp and items are granted once; enemy groups and pickups are idempotent by id)
+const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant', 'quest', 'xp', 'item']);
 
 export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);
@@ -291,7 +292,20 @@ export function evaluate(c: Condition, env: StoryEnv, latched: Record<string, nu
     const v = env.speed ?? 0;
     return (c.speed.gte === undefined || v >= c.speed.gte) && (c.speed.lte === undefined || v <= c.speed.lte);
   }
+  if ('quest' in c) return questHolds(c.quest, env.flags);
+  if ('level' in c) return Number(env.flags['rpg.level'] ?? 1) >= c.level;
   return false;
+}
+
+/**
+ * The `quest` condition over the quests system's flag mirror (`quest.<id>` = state,
+ * `quest.<id>.<objective>` = count). Default state 'done'; 'active' also holds while 'ready'.
+ */
+export function questHolds(q: { id: string; state?: string; objective?: string; gte?: number }, flags: Readonly<Record<string, FlagValue>>): boolean {
+  if (q.objective) return Number(flags[`quest.${q.id}.${q.objective}`] ?? 0) >= (q.gte ?? 1);
+  const st = String(flags[`quest.${q.id}`] ?? 'hidden');
+  const want = q.state ?? 'done';
+  return st === want || (want === 'active' && st === 'ready');
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -66,6 +66,24 @@ export class Player {
   /** Keyboard look speed (rad/s at full sensitivity), see lookLeft/… actions. */
   keyLookSpeed = 1.9;
   reducedMotion = false;
+  /**
+   * Action-RPG hooks (combat owns them, docs/ACTION-RPG.md §4): `moveScale` multiplies walking
+   * speed (slower while charging a Wuchthieb), `canSprint` false stops running (Atem empty), and
+   * `impulse()` adds a decaying push (dodge roll, knockback) that respects collision and slopes.
+   */
+  moveScale = 1;
+  canSprint = true;
+  private push = { vx: 0, vz: 0, t: 0, dur: 0 };
+
+  /** Push the player with velocity vx/vz (m/s) that decays linearly to 0 over `seconds`. */
+  impulse(vx: number, vz: number, seconds: number): void {
+    this.push = { vx, vz, t: seconds, dur: Math.max(1e-3, seconds) };
+  }
+
+  /** True while an impulse is moving the player. */
+  get pushed(): boolean {
+    return this.push.t > 0;
+  }
 
   constructor(
     private readonly world: PlayerWorld,
@@ -83,6 +101,7 @@ export class Player {
     this.prev.copy(this.position);
     if (yaw !== undefined) this.yaw = yaw;
     this.vy = 0;
+    this.push.t = 0;
     this.events.emit('player:teleport', { x, z });
   }
 
@@ -178,11 +197,19 @@ export class Player {
   }
 
   private updateWalk(dt: number, wx: number, wz: number, moving: boolean): void {
+    // (an impulse counts as moving: slopes and collision apply to it too)
     const st = STANCES[this.stance];
-    const sprinting = this.stance === 'stand' && this.input.isDown('sprint');
-    const v = moving ? (sprinting ? st.sprint : st.speed) : 0;
+    const sprinting = this.stance === 'stand' && this.canSprint && this.input.isDown('sprint');
+    const v = (moving ? (sprinting ? st.sprint : st.speed) : 0) * this.moveScale;
     let nx = this.position.x + wx * v * dt;
     let nz = this.position.z + wz * v * dt;
+    if (this.push.t > 0) {
+      const k = this.push.t / this.push.dur;
+      nx += this.push.vx * k * dt;
+      nz += this.push.vz * k * dt;
+      this.push.t = Math.max(0, this.push.t - dt);
+      moving = true;
+    }
     this.stats.onSlopeLimit = false;
     if (moving) {
       // slope limit: refuse steps that climb too steeply (try sliding along each axis)

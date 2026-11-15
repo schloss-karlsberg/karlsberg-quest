@@ -92,10 +92,10 @@ describe('key remapping', () => {
     // C onto crouch again keeps 'down' (flying) on C
     const c = effectiveBindings(bindKey({}, 'crouch', 'KeyC'));
     expect(c.down).toContain('KeyC');
-    // no key drives two actions except the allowed pair
+    // no key drives two actions except the allowed pairs (C crouch/down, LMB interact/attack, Space up/dodge)
     const owner = new Map<string, string[]>();
     for (const [a, codes] of Object.entries(eff)) for (const k of codes) owner.set(k, [...(owner.get(k) ?? []), a]);
-    expect([...owner].filter(([, a]) => a.length > 1).map(([k]) => k)).toEqual(['KeyC']);
+    expect([...owner].filter(([, a]) => a.length > 1).map(([k]) => k).sort()).toEqual(['KeyC', 'Mouse0', 'Space']);
   });
 
   it('every rebindable action has a default and keyboard look exists', () => {

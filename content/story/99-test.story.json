@@ -128,6 +128,23 @@
         { "do": "threat", "kind": "pack", "active": true, "intensity": 0.3, "center": { "x": 1452, "z": -640 }, "radius": 150, "snow": true, "seed": 3 }
       ],
       "complete": { "manual": true }
-    }
+    },
+    {
+      "id": "q1",
+      "title_de": "TEST: Aufgaben (Action-RPG, docs/ACTION-RPG.md; kq.story.goto('test', 'q1'))",
+      "enter": [
+        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1287, "z": -1228, "era": "1789", "chapter": "test", "yaw": 330 },
+        { "do": "item", "item": "item.stab.esche", "quiet": true },
+        { "do": "quest", "op": "offer", "id": "q.test.lohnzettel", "onResume": true },
+        { "do": "objective", "text": "TEST: Hanne hat eine Aufgabe (!).", "x": 1287, "z": -1228, "id": "test.quest" }
+      ],
+      "complete": { "quest": { "id": "q.test.lohnzettel" } },
+      "exit": [
+        { "do": "objective", "text": null },
+        { "do": "xp", "amount": 10, "reason": "test" }
+      ],
+      "next": "q2"
+    },
+    { "id": "q2", "title_de": "TEST: Aufgaben – Ende", "complete": { "manual": true } }
   ]
 }

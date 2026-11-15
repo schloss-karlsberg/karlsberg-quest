@@ -170,7 +170,25 @@ export type Condition =
   | MeterCond
   | ChosenCond
   | ChapterTimerCond
-  | SpeedCond;
+  | SpeedCond
+  | QuestCond
+  | LevelCond;
+
+/**
+ * Action-RPG (docs/ACTION-RPG.md §9.3): a quest's state (default 'done'), or an objective's count.
+ * Read from the flags the quests system mirrors: `quest.<id>` = state, `quest.<id>.<objective>` = count.
+ *   { "quest": { "id": "q.k1.lohn" } }                          → turned in
+ *   { "quest": { "id": "q.k1.lohn", "state": "active" } }       → exactly that state ('active' also
+ *                                                                  matches 'ready': still running)
+ *   { "quest": { "id": "q.k1.lohn", "objective": "zettel", "gte": 1 } }
+ */
+export interface QuestCond {
+  quest: { id: string; state?: 'offered' | 'active' | 'ready' | 'done' | 'failed'; objective?: string; gte?: number };
+}
+/** The player's level is at least `level` (flag `rpg.level`, mirrored by progression). */
+export interface LevelCond {
+  level: number;
+}
 
 /**
  * The player's horizontal speed (m/s, flying excluded) is at least `gte` / at most `lte`.
@@ -206,6 +224,8 @@ export const CONDITION_KEYS = [
   'chosen',
   'chapterTimer',
   'speed',
+  'quest',
+  'level',
 ] as const;
 
 // ---------------------------------------------------------------------------------------------
@@ -470,7 +490,70 @@ export interface GrantAction extends ActionBase {
   card?: boolean;
 }
 
+// ---- Action-RPG (docs/ACTION-RPG.md §9.3): requests to the quests / combat / progression systems ----
+
+/** Quest control (`quest:command`): offer at its giver, start (accept now), progress a manual objective, complete, fail, reset. */
+export interface QuestAction extends ActionBase {
+  do: 'quest';
+  op: 'offer' | 'start' | 'progress' | 'complete' | 'fail' | 'reset';
+  id: string;
+  objective?: string;
+  n?: number;
+}
+/**
+ * Spawn / remove an enemy group (`enemy:spawn` / `enemy:despawn`). kind = src/rpg/enemies.ts id.
+ * x/z default to the player, era to the current one. Idempotent by `group`.
+ */
+export interface EnemyAction extends ActionBase {
+  do: 'enemy';
+  op: 'spawn' | 'despawn';
+  group: string;
+  kind?: string;
+  x?: number;
+  z?: number;
+  era?: Era;
+  count?: number;
+  radius?: number;
+  boss?: boolean;
+  tier?: number;
+  leash?: number;
+  /** Seconds after a full clear until the group returns (ambient packs). */
+  respawn?: number;
+  time?: 'any' | 'dusk' | 'night';
+  room?: string;
+}
+/** Place a glowing pickup (`loot:place`); `clear: true` removes it (`loot:clear`). */
+export interface LootAction extends ActionBase {
+  do: 'loot';
+  id: string;
+  item?: string;
+  x?: number;
+  z?: number;
+  era?: Era;
+  count?: number;
+  room?: string;
+  clear?: boolean;
+}
+/** Grant XP (`xp:grant`). */
+export interface XpAction extends ActionBase {
+  do: 'xp';
+  amount: number;
+  reason?: string;
+}
+/** Put an RPG item into the inventory (`item:grant`), e.g. the Messstab in the prologue. */
+export interface ItemAction extends ActionBase {
+  do: 'item';
+  item: string;
+  count?: number;
+  quiet?: boolean;
+}
+
 export type Action =
+  | QuestAction
+  | EnemyAction
+  | LootAction
+  | XpAction
+  | ItemAction
   | SayAction
   | ObjectiveAction
   | ThreatAction
@@ -525,6 +608,11 @@ export const ACTION_KINDS = [
   'memorial',
   'readings',
   'grant',
+  'quest',
+  'enemy',
+  'loot',
+  'xp',
+  'item',
 ] as const;
 
 /** Reaction inside a beat or chapter: when `when` becomes true, run `do` once. */

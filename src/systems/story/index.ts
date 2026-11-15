@@ -137,7 +137,7 @@ export function lookFor(time: LookTime, era: Era = 'today'): EraLook {
 /** Save slot with the state before the ending was chosen (bible 06-enden §7.3). */
 export const ENDING_SLOT = 'ending';
 
-const CAUGHT_KEY: Record<ThreatKind, string> = { pack: 'story.caught.pack', fire: 'story.caught.fire', oblivion: 'story.caught.oblivion' };
+const CAUGHT_KEY: Record<ThreatKind, string> = { pack: 'story.caught.pack', fire: 'story.caught.fire', oblivion: 'story.caught.oblivion', combat: 'story.caught.combat' };
 /** Wrapped meter → the threat it starts (oil drives hunt's lantern via lantern:request). */
 const METER_THREAT: Record<string, ThreatKind> = { smoke: 'fire', vergessen: 'oblivion' };
 /** Dialogue triggered by these events belongs to the Chronik's echo scenes (it shows the subtitles). */
@@ -692,6 +692,52 @@ class StoryRuntime {
       case 'readings':
         this.fillReadings(a.cases);
         return;
+      // ---- Action-RPG requests (docs/ACTION-RPG.md §9.3): the RPG systems do the work ----
+      case 'quest': {
+        const cmd: { op: typeof a.op; id: string; objective?: string; n?: number } = { op: a.op, id: a.id };
+        if (a.objective) cmd.objective = a.objective;
+        if (a.n !== undefined) cmd.n = a.n;
+        ctx.events.emit('quest:command', cmd);
+        return;
+      }
+      case 'enemy': {
+        if (a.op === 'despawn') {
+          ctx.events.emit('enemy:despawn', { group: a.group });
+          return;
+        }
+        if (!a.kind) return;
+        const { do: _d, delay: _dl, onResume: _r, op: _op, x, z, era, ...rest } = a;
+        ctx.events.emit('enemy:spawn', { ...rest, kind: a.kind, x: x ?? ctx.player.position.x, z: z ?? ctx.player.position.z, era: era ?? ctx.era.current });
+        return;
+      }
+      case 'loot': {
+        if (a.clear) {
+          ctx.events.emit('loot:clear', { id: a.id });
+          return;
+        }
+        if (!a.item) return;
+        const l: { id: string; item: string; x: number; z: number; era: Era; count?: number; room?: string } = {
+          id: a.id,
+          item: a.item,
+          x: a.x ?? ctx.player.position.x,
+          z: a.z ?? ctx.player.position.z,
+          era: a.era ?? ctx.era.current,
+        };
+        if (a.count !== undefined) l.count = a.count;
+        if (a.room) l.room = a.room;
+        ctx.events.emit('loot:place', l);
+        return;
+      }
+      case 'xp':
+        ctx.events.emit('xp:grant', { amount: a.amount, reason: a.reason ?? `story:${s.chapter ?? ''}` });
+        return;
+      case 'item': {
+        const g: { item: string; count?: number; reason: string; quiet?: boolean } = { item: a.item, reason: `story:${s.chapter ?? ''}` };
+        if (a.count !== undefined) g.count = a.count;
+        if (a.quiet) g.quiet = true;
+        ctx.events.emit('item:grant', g);
+        return;
+      }
       case 'grant': {
         if (ctx.systems.get('chronik') && ctx.content.clues.has(a.clue)) ctx.events.emit('clue:grant', a.card ? { id: a.clue, card: true } : { id: a.clue });
         // nobody discovered it (no Chronik, or a Chronik on placeholder content): the story keeps it itself
