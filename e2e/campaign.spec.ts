@@ -18,7 +18,8 @@ import { newGame, playProlog } from './helpers/prolog';
  *   - every chapter hands over to the next one (completed list, first beat, title card);
  *   - saves are on: in the middle of chapter 1 (Teil A done, at dusk) the page is reloaded, the
  *     title offers "Weiterspielen", and the game continues from the autosave with the same beat,
- *     clues, confirmed Chronik entries, era and evening light; the chapter then plays on;
+ *     clues, quest states (active / done, objective counts), level and XP, era and evening light;
+ *     the chapter then plays on;
  *   - no console errors over the whole run (reload included).
  *
  * A second test plays each of the three endings (museum / burn / keep) from a story shortcut
@@ -78,7 +79,11 @@ interface Snapshot {
   era: string;
   clues: string[];
   nouns: string[];
-  confirmed: Record<string, string[]>;
+  /** quest id → state (the quest log), and the objective counts of the running ones. */
+  quests: Record<string, string>;
+  counts: Record<string, Record<string, number>>;
+  level: number;
+  xp: number;
   skills: Record<string, number>;
   look: string | undefined;
 }
@@ -88,6 +93,17 @@ function savedSnapshot(page: Page): Promise<Snapshot | null> {
   return page.evaluate(() => {
     const raw = localStorage.getItem('kq.save.v1.auto');
     if (!raw) return null;
+    // the quest log: every quest's state, and the counts of those still running
+    const questsOf = (q: unknown) => {
+      const all = ((q as { quests?: Record<string, { state: string; counts: Record<string, number> }> } | undefined)?.quests ?? {}) as Record<string, { state: string; counts: Record<string, number> }>;
+      const quests: Record<string, string> = {};
+      const counts: Record<string, Record<string, number>> = {};
+      for (const [id, p] of Object.entries(all)) {
+        quests[id] = p.state;
+        if (p.state === 'active' || p.state === 'ready') counts[id] = { ...p.counts };
+      }
+      return { quests, counts };
+    };
     // biome-ignore lint/suspicious/noExplicitAny: the raw save
     const s = JSON.parse(raw) as any;
     const st = s.systems?.story ?? {};
@@ -97,7 +113,9 @@ function savedSnapshot(page: Page): Promise<Snapshot | null> {
       era: s.era,
       clues: [...s.inventory.clues].sort(),
       nouns: [...s.inventory.nouns].sort(),
-      confirmed: Object.fromEntries(Object.entries(s.chronik ?? {}).map(([k, v]) => [k, [...((v as { confirmed?: string[] }).confirmed ?? [])].sort()])),
+      ...questsOf(s.systems?.quests),
+      level: s.systems?.progression?.level ?? 1,
+      xp: s.systems?.progression?.xp ?? 0,
       skills: s.skills ?? {},
       look: st.look,
     };
@@ -108,13 +126,26 @@ function liveSnapshot(page: Page): Promise<Snapshot> {
     const k = window.kq!;
     const s = k.state();
     const st = k.story!.state();
+    // the quest log: every quest's state, and the counts of those still running
+    const questsOf = (q: unknown) => {
+      const all = ((q as { quests?: Record<string, { state: string; counts: Record<string, number> }> } | undefined)?.quests ?? {}) as Record<string, { state: string; counts: Record<string, number> }>;
+      const quests: Record<string, string> = {};
+      const counts: Record<string, Record<string, number>> = {};
+      for (const [id, p] of Object.entries(all)) {
+        quests[id] = p.state;
+        if (p.state === 'active' || p.state === 'ready') counts[id] = { ...p.counts };
+      }
+      return { quests, counts };
+    };
     return {
       chapter: st.chapter,
       beat: st.beat,
       era: s.era,
       clues: [...s.inventory.clues].sort(),
       nouns: [...s.inventory.nouns].sort(),
-      confirmed: Object.fromEntries(Object.entries(s.chronik).map(([k, v]) => [k, [...(v?.confirmed ?? [])].sort()])),
+      ...questsOf((s.systems as Record<string, unknown>).quests),
+      level: ((s.systems as Record<string, { level?: number }>).progression?.level ?? 1) as number,
+      xp: ((s.systems as Record<string, { xp?: number }>).progression?.xp ?? 0) as number,
       skills: { ...s.skills } as Record<string, number>,
       look: st.look,
     };
@@ -123,14 +154,14 @@ function liveSnapshot(page: Page): Promise<Snapshot> {
 
 /**
  * Close the tab mid-chapter and come back: no manual save, only what the game autosaved (beat
- * changes and Chronik checks are forced saves). The title offers "Weiterspielen".
+ * changes and quest turn-ins are forced saves). The title offers "Weiterspielen".
  */
 async function reloadAndContinue(page: Page): Promise<void> {
   const live = await liveSnapshot(page);
   const saved = await savedSnapshot(page);
   expect(saved, 'an autosave exists').not.toBeNull();
-  // the beat change / Chronik check just before were forced saves: the slot is up to date
-  expect(saved).toMatchObject({ chapter: live.chapter, beat: live.beat, era: live.era, confirmed: live.confirmed });
+  // the beat change / quest turn-in just before were forced saves: the slot is up to date
+  expect(saved).toMatchObject({ chapter: live.chapter, beat: live.beat, era: live.era, quests: live.quests, level: live.level });
   await page.goto('./?manual');
   const cont = page.getByTestId('title-continue');
   await expect(cont).toBeVisible({ timeout: 180_000 });
@@ -143,7 +174,7 @@ async function reloadAndContinue(page: Page): Promise<void> {
   expect(await resumed, 'game:start reports a resumed game').toBe(true);
   await page.evaluate(() => window.kq!.step(30));
   const after = await liveSnapshot(page);
-  expect(after).toMatchObject({ chapter: saved!.chapter, beat: saved!.beat, era: saved!.era, confirmed: saved!.confirmed, clues: saved!.clues, nouns: saved!.nouns, look: saved!.look });
+  expect(after).toMatchObject({ chapter: saved!.chapter, beat: saved!.beat, era: saved!.era, quests: saved!.quests, counts: saved!.counts, level: saved!.level, xp: saved!.xp, clues: saved!.clues, nouns: saved!.nouns, look: saved!.look });
   expect(after.skills).toMatchObject(saved!.skills);
   // the present-day evening light comes back with the save
   expect(after.look).toBe('dusk');
