@@ -300,4 +300,63 @@ export class CombatAudio {
     this.noise(s?.input ?? null, { f0: 800, f1: 2400, q: 1.5, dur: 0.6, gain: 0.5 });
     this.tone(s?.input ?? null, { type: 'sawtooth', f0: 300, f1: 180, dur: 0.7, gain: 0.25, lp: 1200 });
   }
+
+  // ---- fun pass: stings, the Gnadenstoß, armour ---------------------------------------------------
+
+  /** A boss reveals itself: two drum blows, a low brass chord swelling under a high cold note. */
+  sting(kind: string): void {
+    const b = this.am.unlocked ? (this.am.bus('music') ?? this.bus) : null;
+    // each boss its own chord (minor, heavy): the root in Hz
+    const root = kind === 'pikeur' ? 73.4 : kind === 'strohmann' ? 65.4 : kind === 'steinbrecher' ? 55 : 82.4;
+    this.tone(b, { type: 'sine', f0: 90, f1: 38, dur: 0.9, gain: 0.9 });
+    this.noise(b, { f0: 300, f1: 60, q: 0.6, dur: 0.7, gain: 0.7, type: 'lowpass' });
+    for (const [m, g] of [
+      [1, 0.26],
+      [1.5, 0.18],
+      [2, 0.16],
+      [2.38, 0.12],
+    ] as const)
+      this.tone(b, { type: 'sawtooth', f0: root * m, f1: root * m * 0.995, dur: 2.6, gain: g, lp: 900, attack: 0.35, when: 0.05 });
+    this.tone(b, { type: 'triangle', f0: root * 8, f1: root * 7.9, dur: 2.2, gain: 0.07, attack: 0.6, when: 0.3 });
+    this.tone(b, { type: 'sine', f0: 80, f1: 36, dur: 0.7, gain: 0.7, when: 0.62 });
+  }
+
+  /** A boss comes apart: a long fall under a rising, released chord. */
+  bossDown(): void {
+    const b = this.bus;
+    this.tone(b, { type: 'sine', f0: 70, f1: 28, dur: 2.4, gain: 0.8 });
+    this.noise(b, { f0: 200, f1: 3200, q: 0.6, dur: 2.2, gain: 0.45, attack: 0.4 });
+    for (const [f, w] of [
+      [523, 0.3],
+      [659, 0.5],
+      [784, 0.7],
+      [1047, 0.95],
+    ] as const)
+      this.tone(b, { f0: f, f1: f * 1.002, dur: 2.2, gain: 0.08, attack: 0.2, when: w });
+  }
+
+  /** The Gnadenstoß: a crack, a deep thump and a bell. */
+  finisher(p: V3): void {
+    const s = this.src(p, 8, 3000);
+    const d = s?.input ?? null;
+    this.noise(this.bus, { f0: 2400, f1: 300, q: 0.8, dur: 0.18, gain: 0.7 });
+    this.tone(this.bus, { type: 'sine', f0: 110, f1: 32, dur: 0.6, gain: 0.85 });
+    this.tone(d, { f0: 1175, f1: 1170, dur: 1.4, gain: 0.16, when: 0.08 });
+    this.tone(d, { f0: 1760, f1: 1755, dur: 1.1, gain: 0.1, when: 0.1 });
+  }
+
+  /** The staff glances off armour: a dull clank. */
+  clank(p: V3): void {
+    const s = this.src(p, 6, 1500);
+    this.tone(s?.input ?? null, { type: 'square', f0: 520, f1: 480, dur: 0.08, gain: 0.12, lp: 1800 });
+    this.noise(s?.input ?? null, { f0: 2800, q: 6, dur: 0.06, gain: 0.25 });
+  }
+
+  /** A pack's elite calls them on: a rough, rising cry (a grinding rumble for stone). */
+  eliteCall(p: V3, family: string): void {
+    const s = this.src(p, 14, 3000);
+    const d = s?.input ?? null;
+    if (family === 'stone') this.noise(d, { f0: 90, f1: 220, q: 0.7, dur: 0.9, gain: 0.7, type: 'lowpass', attack: 0.2 });
+    else this.tone(d, { type: 'sawtooth', f0: family === 'hound' ? 160 : 120, f1: family === 'hound' ? 320 : 180, dur: 0.8, gain: 0.25, lp: 1400, attack: 0.1 });
+  }
 }

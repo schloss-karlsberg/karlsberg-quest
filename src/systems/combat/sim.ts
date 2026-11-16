@@ -7,9 +7,10 @@
  * Hit-stop is LOCAL: `freeze` stops this simulation (enemies, projectiles, the swing) for a few
  * frames; the game loop, the player's walking and every other system keep running.
  */
-import { ENEMIES, enemyDef } from '../../rpg/enemies';
+import { ELITES, ENEMIES, enemyDef } from '../../rpg/enemies';
 import { BASE_STATS } from '../../rpg/stats';
 import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
+import { eliteIndex, escortHost, escortsOf } from './packs';
 import { BOSS_TURN, type BossView, bossCooldown, bossHitMul, chooseBossAttack, sealBolts, sparkRain, summonOf } from './bosses';
 import {
   AI,
@@ -55,7 +56,7 @@ import {
   wrapAngle,
 } from './rules';
 
-export type EnemyState = 'idle' | 'notice' | 'approach' | 'circle' | 'windup' | 'strike' | 'recover' | 'gebannt' | 'stagger' | 'flee' | 'return' | 'roar' | 'leave' | 'dissolve';
+export type EnemyState = 'idle' | 'notice' | 'intro' | 'approach' | 'circle' | 'retreat' | 'windup' | 'strike' | 'recover' | 'gebannt' | 'stagger' | 'flee' | 'return' | 'roar' | 'leave' | 'dissolve';
 export type KillBy = 'light' | 'heavy' | 'bann' | 'item' | 'env';
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
@@ -113,6 +114,29 @@ export interface Enemy {
   rings: number[];
   /** Boss: the player has been close at least once (boss bar shows). */
   engaged: boolean;
+  /** The pack's elite (named, glowing, an extra move; finishable below 25 %). */
+  elite: boolean;
+  /** Elite name ("Leithund"), shown over its bar. */
+  title?: string;
+  /** An escort of another kind walking with a group (`<group>+escort`): XP, no objective. */
+  escort: boolean;
+  /** Damage multiplier (elites). */
+  dmgMul: number;
+  /** Visual / body scale (elites). */
+  size: number;
+  /** Bearing (rad, atan2 z/x around the player) this enemy works towards: packs surround. */
+  slot: number;
+  /** Elite below half strength: quicker. */
+  enraged: boolean;
+  /** Elite below a quarter: a Wuchthieb finishes it. */
+  finishable: boolean;
+  /** Nebelweber: seconds until it can slip back again. */
+  slipCd: number;
+  /** Escort without its group: seconds until it drifts off. */
+  orphan: number;
+  /** Direction of the last staff hit (visual flinch). */
+  hitX: number;
+  hitZ: number;
 }
 
 export interface Projectile {
@@ -221,7 +245,19 @@ export type SimEvent =
   | { type: 'chargeFull' }
   | { type: 'combat'; on: boolean }
   | { type: 'heal'; amount: number; by: string }
-  | { type: 'resetGroup'; group: string };
+  | { type: 'resetGroup'; group: string }
+  /** A boss is met for the first time: the reveal (camera, title card, sting). */
+  | { type: 'intro'; e: Enemy; dur: number }
+  /** An elite is low: a Wuchthieb will finish it. */
+  | { type: 'finishable'; e: Enemy }
+  /** The Gnadenstoß: a low elite undone by a Wuchthieb. */
+  | { type: 'finisher'; e: Enemy }
+  /** An elite at half strength turns furious. */
+  | { type: 'enrage'; e: Enemy }
+  /** A pack noticed the player together (one call for all). */
+  | { type: 'packAlert'; e: Enemy; n: number }
+  /** An escort drifts off once its group is undone. */
+  | { type: 'drift'; e: Enemy };
 
 export interface SimWorld {
   heightAt(x: number, z: number): number;
@@ -277,14 +313,26 @@ const BODY: Record<string, { r: number; hover: number; aggro: number; turn: numb
   glutling: { r: 0.4, hover: 0, aggro: 16, turn: 7 },
   grusling: { r: 0.42, hover: 0, aggro: 14, turn: 8 },
   steinfresser: { r: 0.95, hover: 0, aggro: 14, turn: 2.2 },
+  nebelweber: { r: 0.5, hover: 0.35, aggro: 20, turn: 6 },
   schuldbuch: { r: 1.5, hover: 0.6, aggro: 26, turn: BOSS_TURN['schuldbuch']! },
   // big bosses keep a stand-off that matches their size (the camera stays outside the smoke horse,
   // the straw arms, the blocks; playtest round 2); the staff's reach grows with it (inCone + radius)
-  pikeur: { r: 2.1, hover: 0, aggro: 30, turn: BOSS_TURN['pikeur']! },
-  strohmann: { r: 2.0, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
-  steinbrecher: { r: 2.3, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
+  pikeur: { r: 2.2, hover: 0, aggro: 30, turn: BOSS_TURN['pikeur']! },
+  strohmann: { r: 2.4, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
+  steinbrecher: { r: 2.7, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
 };
 const bodyOf = (kind: string) => BODY[kind] ?? { r: 0.6, hover: 0, aggro: AI.aggro, turn: 5 };
+
+/** Seconds of a boss's reveal (it turns, rises and roars; it neither attacks nor takes harm). */
+export const BOSS_INTRO = 2.6;
+/** Kinds that strike and fall back a few metres before they come again (hit and run). */
+const HIT_AND_RUN = new Set(['streuner', 'mahnbrief', 'raffschatten', 'nebelling']);
+/** Kinds that keep their distance and throw (they never take a surround slot). */
+const KITERS = new Set(['nebelweber', 'irrlicht']);
+/** Kinds that drift towards the player's back while closing in (flankers). */
+const FLANKERS = new Set(['streuner', 'raffschatten', 'grusling']);
+/** Gap between two pack wind-ups (s): attacks come in a rhythm, not all at once. */
+const ATTACK_GAP = { min: 0.45, spread: 0.3, gentle: 0.9, land: 0.85, gentleLand: 1.3 } as const;
 
 /** Distance an enemy wants to keep while closing in for `a`. */
 function wantDist(a: EnemyAttackDef): number {
@@ -337,6 +385,16 @@ export class CombatSim {
   private py = 0;
   private pz = 0;
   private safe: SafeReason = null;
+  /** Groups whose escorts are out (rebuilt with the group). */
+  private readonly escorted = new Set<string>();
+  /** Boss groups whose reveal has played (once per session). */
+  private readonly introSeen = new Set<string>();
+  /** No pack wind-up starts before this time (staggered attacks). */
+  private nextAttackAt = 0;
+  /** When the last pack blow lands (s): the next lands at least ATTACK_GAP.land later — one roll each. */
+  private lastLand = -9;
+  /** Player's view yaw (the flankers' "back"). */
+  private pyaw = 0;
 
   constructor(
     readonly world: SimWorld,
@@ -413,14 +471,16 @@ export class CombatSim {
     const all = group === '*';
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
-      if (all || e.group === group || e.group === `${group}+adds`) this.removeEnemy(i);
+      if (all || e.group === group || e.group === `${group}+adds` || e.group === `${group}+escort`) this.removeEnemy(i);
     }
     if (all) {
       for (const k of Object.keys(this.groups)) delete this.groups[k];
       this.clearedAt.clear();
+      this.escorted.clear();
     } else {
       delete this.groups[group];
       this.clearedAt.delete(group);
+      this.escorted.delete(group);
     }
   }
 
@@ -428,13 +488,14 @@ export class CombatSim {
   dematerialise(group?: string): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
-      if (group === undefined || e.group === group || e.group === `${group}+adds`) this.removeEnemy(i);
+      if (group === undefined || e.group === group || e.group === `${group}+adds` || e.group === `${group}+escort`) this.removeEnemy(i);
     }
     if (group === undefined) {
       this.projectiles.length = 0;
       this.rings.length = 0;
       this.tokens.clear();
-    }
+      this.escorted.clear();
+    } else this.escorted.delete(group);
   }
 
   private removeEnemy(i: number): void {
@@ -474,6 +535,29 @@ export class CombatSim {
         this.makeMember(g);
         need--;
       }
+      // mixed packs: the escorts step out with the group (once per materialisation)
+      if (!this.escorted.has(g.group) && remaining(g) >= 2 && this.enemies.some((e) => e.group === g.group && e.state !== 'dissolve')) {
+        this.escorted.add(g.group);
+        this.makeEscorts(g);
+      }
+    }
+  }
+
+  private makeEscorts(g: EnemyGroupState): void {
+    const list = escortsOf(g);
+    let i = 0;
+    const total = list.reduce((n, x) => n + x.n, 0);
+    for (const x of list) {
+      const def = enemyDef(x.kind);
+      if (!def) continue;
+      for (let k = 0; k < x.n; k++, i++) {
+        if (this.live().length >= AI.maxActive) return;
+        // casters stand back, behind the group as seen from its spawn; melee escorts mingle
+        const back = KITERS.has(x.kind) ? 5.5 : 2.4;
+        const a = hashStr(g.group) * 6.283 + Math.PI + ((i + 0.5) / Math.max(1, total) - 0.5) * 2.2;
+        const r = (g.radius ?? 3) + back;
+        this.makeEnemy(def, `${g.group}+escort#${this.idSeq++}`, `${g.group}+escort`, g.x + Math.cos(a) * r, g.z + Math.sin(a) * r, { boss: false, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, add: true, escort: true });
+      }
     }
   }
 
@@ -487,12 +571,17 @@ export class CombatSim {
     const r = g.count > 1 ? (g.radius ?? 3 + count * 0.8) : 0;
     const a = (idx / count) * Math.PI * 2 + hashStr(g.group) * 6.283;
     const rr = r * (0.55 + 0.45 * hash01(idx + hashStr(g.group) * 97));
-    const e = this.makeEnemy(def, `${g.group}#${n}`, g.group, g.x + Math.cos(a) * rr, g.z + Math.sin(a) * rr, { boss: g.boss === true || def.boss === true, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, quest: g.quest, objective: g.objective });
+    const elite = idx === eliteIndex(g);
+    const e = this.makeEnemy(def, `${g.group}#${n}`, g.group, g.x + Math.cos(a) * rr, g.z + Math.sin(a) * rr, { boss: g.boss === true || def.boss === true, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, quest: g.quest, objective: g.objective, elite });
     return e;
   }
 
-  private makeEnemy(def: EnemyDef, id: string, group: string, x: number, z: number, o: { boss: boolean; tier: number; leash: number; home: { x: number; z: number }; add?: boolean; quest?: string; objective?: string }): Enemy {
-    const b = bodyOf(def.id);
+  private makeEnemy(base: EnemyDef, id: string, group: string, x: number, z: number, o: { boss: boolean; tier: number; leash: number; home: { x: number; z: number }; add?: boolean; escort?: boolean; quest?: string; objective?: string; elite?: boolean }): Enemy {
+    const b = bodyOf(base.id);
+    const el = o.elite ? ELITES[base.id] : undefined;
+    // an elite is its kind, stronger, with one move of its own (and three times the XP)
+    const def: EnemyDef = el ? { ...base, hp: base.hp * el.hpMul, xp: base.xp * 3, attacks: [...base.attacks, el.extra] } : base;
+    const size = el ? el.size : 1;
     const hp = enemyHp(def, o.tier, this.opt.gentle);
     const seed = hashStr(id);
     const e: Enemy = {
@@ -510,7 +599,7 @@ export class CombatSim {
       heading: seed * Math.PI * 2,
       vx: 0,
       vz: 0,
-      radius: b.r,
+      radius: b.r * (el ? Math.min(1.35, size) : 1),
       hp,
       maxHp: hp,
       state: 'idle',
@@ -539,7 +628,19 @@ export class CombatSim {
       by: 'light',
       rings: [],
       engaged: false,
+      elite: !!el,
+      escort: o.escort === true,
+      dmgMul: el ? el.dmgMul : 1,
+      size,
+      slot: Math.atan2(z - this.pz, x - this.px),
+      enraged: false,
+      finishable: false,
+      slipCd: 0,
+      orphan: 0,
+      hitX: 0,
+      hitZ: 0,
     };
+    if (el) e.title = el.name_de;
     if (o.quest) e.quest = o.quest;
     if (o.objective) e.objective = o.objective;
     // stagger the first attacks a little so a group doesn't strike in unison
@@ -567,6 +668,7 @@ export class CombatSim {
     this.py = inp.y;
     this.pz = inp.z;
     this.safe = inp.safe;
+    this.pyaw = inp.yaw;
     const p = this.p;
     if (!p.dead) this.playerResources(dt, inp);
     if (this.freeze > 0) {
@@ -580,6 +682,7 @@ export class CombatSim {
     }
     if (!p.dead) this.playerMoves(dt, inp);
     this.sync(inp.era, inp.time, inp.x, inp.z);
+    this.assignSlots(inp, edt);
     for (const e of [...this.enemies]) this.think(e, edt, inp);
     this.separate();
     if (!p.dead && !p.dodge) this.bumpPlayer(inp);
@@ -785,10 +888,26 @@ export class CombatSim {
       armored = armor < 1;
       if (heavy && e.def.armor && e.def.armorFrontal) e.armorBroken = 6;
     }
-    // a boss rising into its next phase (roar) cannot be hurt: every phase gets its moment
-    if (e.boss && e.state === 'roar') {
+    // a boss rising into its next phase (roar) or revealing itself cannot be hurt
+    if (e.boss && (e.state === 'roar' || e.state === 'intro')) {
       this.out.push({ type: 'immune', e });
       return false;
+    }
+    e.hitX = dirX;
+    e.hitZ = dirZ;
+    // the Gnadenstoß: a low elite and a Wuchthieb
+    if (e.elite && e.finishable && heavy && e.state !== 'dissolve') {
+      const dmg = Math.ceil(e.hp);
+      e.hp = 0;
+      e.flash = 1;
+      e.by = 'heavy';
+      p.counter = false;
+      this.freeze = Math.max(this.freeze, HITSTOP.heavy * 1.8 * (this.opt.reducedMotion ? 0.5 : 1));
+      if (!this.opt.reducedMotion) this.slowmo = Math.max(this.slowmo, 0.4);
+      this.out.push({ type: 'hit', e, damage: dmg, heavy: true, finisher: true, weak: true, armored: false, gebannt: e.stun > 0, dirX, dirZ });
+      this.out.push({ type: 'finisher', e });
+      this.kill(e, 'heavy');
+      return true;
     }
     const counter = p.counter;
     p.counter = false;
@@ -804,7 +923,7 @@ export class CombatSim {
     const kb = (heavy ? KNOCK.heavy : finisher ? KNOCK.finisher : KNOCK.light) * (e.boss ? 0.12 : e.kind === 'steinfresser' ? 0.35 : 1);
     e.vx += dirX * kb * 8;
     e.vz += dirZ * kb * 8;
-    if (!e.boss && (heavy || (finisher && this.opt.dritter) || (finisher && e.def.hp <= 25))) this.staggerEnemy(e, heavy ? 0.6 : 0.4);
+    if (!e.boss && (heavy || (finisher && this.opt.dritter) || (finisher && e.def.hp <= 25 && !e.elite))) this.staggerEnemy(e, heavy ? (e.elite ? 0.45 : 0.6) : 0.4);
     if (e.boss) {
       e.poise += dmg * this.opt.stats.stagger;
       if (e.poise > e.maxHp * 0.16) {
@@ -813,6 +932,16 @@ export class CombatSim {
       }
     }
     this.out.push({ type: 'hit', e, damage: dmg, heavy, finisher, weak, armored, gebannt: e.stun > 0, dirX, dirZ });
+    if (e.elite && e.hp > 0) {
+      if (!e.enraged && e.hp <= e.maxHp * 0.5) {
+        e.enraged = true;
+        this.out.push({ type: 'enrage', e });
+      }
+      if (!e.finishable && e.hp <= e.maxHp * 0.25) {
+        e.finishable = true;
+        this.out.push({ type: 'finishable', e });
+      }
+    }
     if (e.kind === 'steinbrecher' && (weak || heavy) && dmg >= 10) this.out.push({ type: 'block', e, x: e.x, y: e.y + 2.2, z: e.z });
     if (e.boss) this.checkPhase(e);
     if (e.kind === 'pikeur' && pikeurLeaves(e.hp, e.maxHp) && e.state !== 'leave') {
@@ -1067,6 +1196,7 @@ export class CombatSim {
     if (!e.add) {
       const g = this.groups[e.group];
       if (g) {
+        if (e.elite) g.eliteDown = true;
         g.killed = Math.min(g.count, g.killed + 1);
         if (isCleared(g)) {
           this.clearedAt.set(g.group, this.time);
@@ -1085,7 +1215,7 @@ export class CombatSim {
     let n = 0;
     for (const e of [...this.enemies]) {
       if (e.state === 'dissolve') continue;
-      if (target && e.id !== target && e.group !== target && e.kind !== target) continue;
+      if (target && e.id !== target && e.group !== target && e.kind !== target && e.group !== `${target}+escort`) continue;
       if (e.kind === 'pikeur') {
         e.hp = Math.ceil(e.maxHp * 0.12);
         this.setState(e, 'leave');
@@ -1137,6 +1267,20 @@ export class CombatSim {
     for (const k in e.cd) if (e.cd[k] > 0) e.cd[k] = Math.max(0, e.cd[k] - dt);
     if (e.sealOpen > 0) e.sealOpen = Math.max(0, e.sealOpen - dt);
     if (e.armorBroken > 0) e.armorBroken = Math.max(0, e.armorBroken - dt);
+    if (e.slipCd > 0) e.slipCd = Math.max(0, e.slipCd - dt);
+    // an escort whose group is undone (or gone) drifts off into the fog
+    if (e.escort && e.state !== 'dissolve') {
+      const host = this.groups[escortHost(e.group) ?? ''];
+      const hostLive = this.enemies.some((x) => x.group === host?.group && x.state !== 'dissolve');
+      if (!host || (isCleared(host) && !hostLive)) {
+        e.orphan += dt;
+        if (e.orphan > 1.1) {
+          this.out.push({ type: 'drift', e });
+          this.kill(e, 'env');
+          return;
+        }
+      } else e.orphan = 0;
+    }
     // knockback velocity
     if (Math.abs(e.vx) + Math.abs(e.vz) > 0.01) {
       this.moveBy(e, e.vx * dt, e.vz * dt);
@@ -1185,8 +1329,14 @@ export class CombatSim {
         if (this.canAggro(e, d) && !leashBroken(e.home, e, inp, e.leash)) {
           e.aggro = true;
           if (e.boss) e.engaged = true;
-          this.setState(e, 'notice');
+          // a boss met for the first time reveals itself (camera, title card, sting)
+          if (e.boss && !this.introSeen.has(e.group)) {
+            this.introSeen.add(e.group);
+            this.setState(e, 'intro');
+            this.out.push({ type: 'intro', e, dur: BOSS_INTRO });
+          } else this.setState(e, 'notice');
           this.out.push({ type: 'aggro', e, on: true });
+          if (!e.boss) this.alertPack(e);
         }
         break;
       }
@@ -1194,6 +1344,19 @@ export class CombatSim {
         this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
         if (e.t >= AI.notice) this.setState(e, e.kind === 'raffschatten' && e.fled === 0 ? 'flee' : 'approach');
         break;
+      case 'intro':
+        // the reveal: it turns to you and rises; nothing hurts it, it hurts nothing
+        this.turnTo(e, toP, 2.2, dt);
+        if (e.t >= BOSS_INTRO) this.setState(e, 'approach');
+        break;
+      case 'retreat': {
+        // hit and run: fall back a few metres, then come again
+        const l = d || 1;
+        this.moveToward(e, e.x - (dx / l) * 3, e.z - (dz / l) * 3, sp * 0.85, dt, 0);
+        this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
+        if (e.t > 0.55 + e.seed * 0.4 || d > 7) this.setState(e, 'approach');
+        break;
+      }
       case 'return': {
         const left = this.moveToward(e, e.home.x, e.home.z, sp * 1.2, dt, 1);
         e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.5 * dt);
@@ -1213,7 +1376,8 @@ export class CombatSim {
         this.moveToward(e, away.x, away.z, sp * 1.15, dt, 0);
         const fromHome = Math.hypot(e.x - e.home.x, e.z - e.home.z);
         const blocked = this.world.walkable ? !this.world.walkable(e.x - (dx / (d || 1)) * 1.2, e.z - (dz / (d || 1)) * 1.2) : false;
-        if (e.t > 5 || d < 2.2 || blocked || fromHome > e.leash * 0.6) {
+        // one short dash away (playtest round 2: a long chase across the field was a chore)
+        if (e.t > 1.4 || d < 2.2 || blocked || fromHome > e.leash * 0.6) {
           e.fled++;
           this.setState(e, 'approach');
         }
@@ -1233,7 +1397,10 @@ export class CombatSim {
         const rec = e.boss ? 0.95 : e.kind === 'streuner' ? 0.85 : e.kind === 'grusling' ? 0.4 : AI.recover;
         if (e.t >= rec) {
           this.tokens.release(e.id);
-          this.setState(e, 'approach');
+          // hit and run: some fall back after a blow and come again from another side
+          const run = HIT_AND_RUN.has(e.kind) && hash01(this.tick * 7 + e.seed * 131) > 0.4;
+          this.setState(e, run ? 'retreat' : 'approach');
+          if (run) e.slot += e.orbitDir * 0.9;
           // the Raffschatten runs only once (a second chase across the field was a chore, playtest round 2)
         }
         break;
@@ -1282,14 +1449,64 @@ export class CombatSim {
     return best;
   }
 
+  /**
+   * Surround (fun pass): the melee enemies near the player spread round them — each works towards
+   * a bearing of its own, pushed apart from its neighbours; flankers lean towards the player's back.
+   * Casters keep their own distance and take no slot.
+   */
+  private assignSlots(inp: SimInput, dt: number): void {
+    const L = this.enemies.filter((e) => e.aggro && !e.boss && !KITERS.has(e.kind) && e.state !== 'dissolve' && e.state !== 'leave' && Math.hypot(e.x - inp.x, e.z - inp.z) < 18);
+    const n = L.length;
+    if (!n) return;
+    const sep = Math.max(0.75, Math.min(2.0, ((Math.PI * 2) / n) * 0.9));
+    // the player's back as a bearing (forward = (−sin yaw, −cos yaw))
+    const back = Math.atan2(Math.cos(this.pyaw), Math.sin(this.pyaw));
+    for (let i = 0; i < n; i++) {
+      const e = L[i]!;
+      const bear = Math.atan2(e.z - inp.z, e.x - inp.x);
+      let want = e.slot;
+      let push = 0;
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const d = wrapAngle(L[j]!.slot - want);
+        const ad = Math.abs(d);
+        if (ad < sep) push -= (d === 0 ? (e.seed > L[j]!.seed ? -1 : 1) : Math.sign(d)) * (sep - ad) * 0.5;
+      }
+      want += push;
+      if (n >= 2 && (FLANKERS.has(e.kind) || e.elite)) want += wrapAngle(back - want) * 0.25;
+      // a slot never runs far from where the body is (it walks round, it does not teleport)
+      want = bear + Math.max(-1.6, Math.min(1.6, wrapAngle(want - bear)));
+      e.slot = wrapAngle(e.slot + wrapAngle(want - e.slot) * Math.min(1, dt * 3));
+    }
+  }
+
+  /** One of a pack noticed the player: the others (and the escorts) come too. */
+  private alertPack(e: Enemy): void {
+    const root = escortHost(e.group) ?? e.group;
+    let n = 0;
+    for (const o of this.enemies) {
+      if (o === e || o.aggro || o.state !== 'idle') continue;
+      if (o.group !== root && o.group !== `${root}+escort`) continue;
+      if (Math.hypot(o.x - e.x, o.z - e.z) > 26) continue;
+      o.aggro = true;
+      this.setState(o, 'notice');
+      o.t = -0.15 - o.seed * 0.35;
+      this.out.push({ type: 'aggro', e: o, on: true });
+      n++;
+    }
+    if (n) this.out.push({ type: 'packAlert', e, n });
+  }
+
   private approach(e: Enemy, dt: number, inp: SimInput, d: number, toP: number): void {
     if (!e.aggro) {
       this.setState(e, 'idle');
       return;
     }
-    const sp = e.def.speed;
+    const sp = e.def.speed * (e.enraged ? 1.25 : 1);
     const a = this.pickAttack(e, d);
-    const want = a ? wantDist(a) : 3.5;
+    let want = a ? wantDist(a) : 3.5;
+    // a boss keeps a stand-off that matches its size (the camera never sits inside it)
+    if (e.boss) want = Math.max(want, e.radius + 1.5);
     e.tryT += dt;
     // Irrlicht: blinks sideways now and then
     if (e.kind === 'irrlicht') {
@@ -1306,50 +1523,86 @@ export class CombatSim {
         this.out.push({ type: 'blink', e, fromX: fx, fromZ: fz });
       }
     }
+    // Nebelweber: come close and it slips back into the fog (retreat and return)
+    if (e.kind === 'nebelweber' && d < 4.2 && e.slipCd <= 0) {
+      const fx = e.x;
+      const fz = e.z;
+      // away from the player, a little to its side
+      const b = Math.atan2(e.z - inp.z, e.x - inp.x) + e.orbitDir * 0.5;
+      let nx = inp.x + Math.cos(b) * 8.5;
+      let nz = inp.z + Math.sin(b) * 8.5;
+      if (this.world.walkable && !this.world.walkable(nx, nz)) {
+        const l = d || 1;
+        nx = e.x + ((e.x - inp.x) / l) * 4;
+        nz = e.z + ((e.z - inp.z) / l) * 4;
+      }
+      e.x = nx;
+      e.z = nz;
+      e.slipCd = 6 + e.seed * 2;
+      this.out.push({ type: 'blink', e, fromX: fx, fromZ: fz });
+      return;
+    }
     const inRange = a ? (a.kind === 'summon' ? true : d <= want + (a.kind === 'ranged' ? 3 : 0.4) && (a.kind !== 'ranged' || d > 3)) : false;
-    if (a && inRange && e.tryT > 0.25) {
+    // attacks come in a rhythm: one pack wind-up at a time starts, the next a moment later
+    const land = a ? this.time + telegraphTime(a, this.opt.gentle) + (a.kind === 'ranged' ? Math.min(1.1, d / 15) : 0) : 0;
+    const gapOk = e.boss || a?.kind === 'summon' || (this.time >= this.nextAttackAt && land >= this.lastLand + (this.opt.gentle ? ATTACK_GAP.gentleLand : ATTACK_GAP.land));
+    if (a && inRange && e.tryT > 0.25 && gapOk) {
       e.tryT = 0;
       const token = e.boss || a.kind === 'summon' || this.tokens.request(e.id);
       if (token) {
         this.beginWindup(e, a, inp);
+        if (!e.boss) {
+          this.nextAttackAt = this.time + (this.opt.gentle ? ATTACK_GAP.gentle : ATTACK_GAP.min + hash01(this.tick + e.seed * 7) * ATTACK_GAP.spread);
+          this.lastLand = Math.max(this.lastLand, land);
+        }
         return;
       }
     }
-    // close in, or circle at a distance while somebody else attacks
-    const holding = a && !e.boss && this.tokens.count >= this.tokens.max && !this.tokens.has(e.id);
+    const kiter = KITERS.has(e.kind);
+    // close in, or wait round the player at its slot while somebody else attacks
+    const holding = a && !e.boss && !kiter && this.tokens.count >= this.tokens.max && !this.tokens.has(e.id);
     if (holding || (e.state === 'circle' && d < 7)) {
       if (e.state !== 'circle') this.setState(e, 'circle');
-      e.orbit += e.orbitDir * dt * (sp / Math.max(3, d)) * 0.8;
-      const r = Math.max(want + 1.8, 4.2);
-      const tx = inp.x + Math.cos(e.orbit) * r;
-      const tz = inp.z + Math.sin(e.orbit) * r;
-      this.moveToward(e, tx, tz, sp * 0.6, dt, 0.3);
+      const r = Math.max(want + 1.4, 3.6);
+      const b = Math.atan2(e.z - inp.z, e.x - inp.x);
+      const nb = b + Math.max(-0.5, Math.min(0.5, wrapAngle(e.slot - b)));
+      this.moveToward(e, inp.x + Math.cos(nb) * r, inp.z + Math.sin(nb) * r, sp * 0.7, dt, 0.3);
       this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
       if (!holding && e.t > 0.5) this.setState(e, 'approach');
       return;
     }
     if (e.state === 'circle') this.setState(e, 'approach');
-    let tx = inp.x;
-    let tz = inp.z;
-    // Streuner flank: come in at an angle
-    if (e.kind === 'streuner' && d > 4) {
-      const side = e.orbitDir * 3.5;
-      tx += Math.cos(toP) * side;
-      tz += -Math.sin(toP) * side;
-    }
     if (a && a.kind === 'ranged' && d < want - 2) {
       // too close for a ranged attacker: back off a little
       this.moveToward(e, e.x - (inp.x - e.x), e.z - (inp.z - e.z), sp * 0.6, dt, 0);
       this.turnTo(e, toP, bodyOf(e.kind).turn * 2, dt);
       return;
     }
+    let tx = inp.x;
+    let tz = inp.z;
+    let arrive = want * 0.9;
+    if (!e.boss && !kiter && d > want + 0.6) {
+      // walk round towards its slot while closing in (the pack surrounds; flankers come from behind)
+      const b = Math.atan2(e.z - inp.z, e.x - inp.x);
+      const nb = b + Math.max(-0.55, Math.min(0.55, wrapAngle(e.slot - b)));
+      const rr = Math.max(want * 0.85, d - 2.2);
+      tx = inp.x + Math.cos(nb) * rr;
+      tz = inp.z + Math.sin(nb) * rr;
+      arrive = 0.1;
+    }
     const swarm = e.kind === 'grusling' || e.kind === 'mahnbrief';
     if (swarm) {
       tx += Math.cos(e.orbit + this.time * 1.7) * 1.1;
       tz += Math.sin(e.orbit + this.time * 1.7) * 1.1;
     }
-    if (d > want) this.moveToward(e, tx, tz, sp, dt, want * 0.9);
-    else this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
+    if (d > want) {
+      this.moveToward(e, tx, tz, sp, dt, arrive);
+      if (arrive < 0.2) this.turnTo(e, toP, bodyOf(e.kind).turn * 0.5, dt);
+    } else {
+      this.turnTo(e, toP, bodyOf(e.kind).turn, dt);
+      // a boss right on top of the player steps back to its stand-off
+      if (e.boss && d < e.radius + 0.9) this.moveToward(e, e.x - (inp.x - e.x), e.z - (inp.z - e.z), sp * 0.5, dt, 0);
+    }
   }
 
   private beginWindup(e: Enemy, a: EnemyAttackDef, inp: SimInput): void {
@@ -1402,9 +1655,9 @@ export class CombatSim {
   private strike(e: Enemy, a: EnemyAttackDef, inp: SimInput): void {
     this.setState(e, 'strike');
     this.out.push({ type: 'strike', e, attack: a });
-    e.cd[a.id] = e.boss ? bossCooldown(a.cooldown, e.phase) : a.cooldown;
+    e.cd[a.id] = e.boss ? bossCooldown(a.cooldown, e.phase) : a.cooldown * (e.enraged ? 0.7 : 1);
     const by = e.kind;
-    const dmg = a.damage;
+    const dmg = a.damage * e.dmgMul;
     const d = Math.hypot(inp.x - e.x, inp.z - e.z);
     switch (a.kind) {
       case 'melee': {
@@ -1455,16 +1708,18 @@ export class CombatSim {
   }
 
   private shoot(e: Enemy, a: EnemyAttackDef, inp: SimInput): void {
-    if (e.kind === 'steinbrecher') {
-      // a block lobbed at where you stand, with a landing ring
-      const life = 1.15;
-      const pr = this.addProjectile(e, a, e.x, e.y + 3.2, e.z, (inp.x - e.x) / life, 4.5, (inp.z - e.z) / life, life, true, inp.x, inp.z, 1.8);
-      pr.ring = this.addRing(e, inp.x, inp.z, 1.8, life, 'landing');
+    if (e.kind === 'steinbrecher' || a.id === 'frostkugel' || a.id === 'brocken') {
+      // a block / a ball of frost lobbed at where you stand, with a landing ring: move!
+      const life = e.kind === 'steinbrecher' ? 1.15 : 1.05;
+      const r = a.id === 'frostkugel' ? 1.9 : 1.8;
+      const pr = this.addProjectile(e, a, e.x, e.y + (e.kind === 'steinbrecher' ? 3.2 : 1.4), e.z, (inp.x - e.x) / life, 4.5, (inp.z - e.z) / life, life, true, inp.x, inp.z, r);
+      pr.damage *= e.dmgMul;
+      pr.ring = this.addRing(e, inp.x, inp.z, r, life, 'landing');
       e.rings = e.rings.filter((id) => id !== pr.ring);
       return;
     }
-    const n = e.kind === 'schuldbuch' ? sealBolts(e.phase) : 1;
-    const speed = e.kind === 'irrlicht' ? 13 : 15;
+    const n = e.kind === 'schuldbuch' ? sealBolts(e.phase) : a.id === 'funkenfaecher' ? 3 : 1;
+    const speed = e.kind === 'irrlicht' ? 13 : a.id === 'eisnadel' ? 18 : 15;
     const sy = e.y + (e.boss ? 1.6 : 0.2);
     const base = headingOf(inp.x - e.x, inp.z - e.z);
     for (let i = 0; i < n; i++) {
@@ -1473,7 +1728,8 @@ export class CombatSim {
       const d = Math.hypot(inp.x - e.x, inp.z - e.z);
       const life = Math.min(2.2, (a.range + 4) / speed);
       const vy = (inp.y + 1.3 - sy) / Math.max(0.3, d / speed);
-      this.addProjectile(e, a, e.x + f.x * e.radius, sy, e.z + f.z * e.radius, f.x * speed, vy, f.z * speed, life, false, 0, 0, 0.75);
+      const pr = this.addProjectile(e, a, e.x + f.x * e.radius, sy, e.z + f.z * e.radius, f.x * speed, vy, f.z * speed, life, false, 0, 0, 0.75);
+      pr.damage *= e.dmgMul;
     }
   }
 
@@ -1541,7 +1797,7 @@ export class CombatSim {
       D.t -= step;
       if (!D.hit && Math.hypot(inp.x - e.x, inp.z - e.z) < e.radius + (a?.kind === 'charge' ? 0.9 : 0.6)) {
         D.hit = true;
-        this.hurtPlayer(a?.damage ?? 8, e.kind, { x: e.x - D.vx * 0.05, z: e.z - D.vz * 0.05 }, e.tier, a?.kind === 'charge');
+        this.hurtPlayer((a?.damage ?? 8) * e.dmgMul, e.kind, { x: e.x - D.vx * 0.05, z: e.z - D.vz * 0.05 }, e.tier, a?.kind === 'charge');
       }
       if (D.t <= 0) e.dash = null;
       return;

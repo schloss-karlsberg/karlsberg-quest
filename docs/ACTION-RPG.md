@@ -141,6 +141,12 @@ Atem costs: Hieb 10 · Wuchthieb 25 · Ausweichen 20 · running 8 / s (only whil
 | Sound (Web Audio, procedural) | dull wooden thock + family layer | crack + whoosh + dissolve | breath + heartbeat at < 30 % | — |
 | Screen | — | — | vignette pulse | no full-screen flash |
 
+Fun pass (2026-11-16): enemies **flinch** away from each staff hit (big bodies barely move), elites
+stagger only on a Wuchthieb, every kill **pops** (a quick swell, a ring and a family-coloured spray)
+before the dissolve; armour **clanks**. Below 25 % an elite **reels** (white double ring, a white
+beating heart, „Gnadenstoß“ on its bar): one Wuchthieb then ends it — the **Gnadenstoß** (long hit-stop,
+0.4 s slow motion, crack + bell; no slow motion with reduced motion).
+
 Hit-stop never uses the global pause stack (`ctx.pause`): combat freezes its own simulation and
 viewmodel for the duration. Optional floating damage numbers (handwritten, small): setting
 "Schadenszahlen" (combat adds the row under "Spiel", default on).
@@ -153,6 +159,22 @@ notice (a short call, `enemy:aggro`) → approach → wind-up → strike → rec
 **gebannt** (stunned) → undone. At most **two enemies attack at once** (token system); the others circle.
 Groups leash to their spawn (`leash`, default 40 m) and reset when the player leaves. Gentle mode:
 telegraphs ×1.4, one attacker at a time, enemy HP ×0.75.
+
+**Pack tactics (fun pass, `sim.ts`):**
+- **Surround**: aggro'd non-boss enemies spread around the player by angular repulsion (`assignSlots`);
+  flankers (Streuner, Raffschatten, Grusling) and elites lean to the player's back. Waiting enemies
+  circle on their slot ring instead of queuing in front.
+- **Rhythm**: besides the two tokens, a blow may only *land* ≥ 0.85 s after the previous one
+  (1.3 s gentle) and wind-ups start ≥ 0.45–0.75 s apart, so a pack's blows come one after another and
+  each can be read and dodged (unit-tested: no two blows within 0.5 s).
+- **Retreat and return**: hit-and-run kinds (Streuner, Mahnbrief, Raffschatten, Nebelling) back off for
+  0.55–0.95 s after ~60 % of their strikes and come back from a shifted angle.
+- **Alert**: one member noticing you wakes the whole pack and its escort; the elite calls („Der
+  Leithund führt sie an!“).
+- **Kiting**: the Nebelweber and Irrlichter keep their distance; the Nebelweber slips ~8.5 m away when
+  you close to 4 m (once every 6–8 s).
+- **Raffschatten** run once per life, for at most 1.4 s, then turn and fight.
+- **Bosses** keep a stand-off matched to their size and are untouchable during their reveal (§5.2).
 
 ### 4.5 Being undone, waking up
 
@@ -192,6 +214,7 @@ All invented, all spectral, all with German names. Data: `src/rpg/enemies.ts` (i
 | `glutling` | Glutling | 1793-07 (burning rooms, Ehrenhof) | leaps, swells, bursts | kill before it swells / dodge the burst | sparks |
 | `grusling` | Grusling | 1796 | crumb swarm from robbed-out trenches | sweep (Wuchthieb, Laubs Lot) | grit rising upward |
 | `steinfresser` | Steinfresser | 1796 | slow, frontal armour, ground slam | Wuchthieb breaks the crust; hit the back | grit rising upward (W7) |
+| `nebelweber` | Nebelweber (fun pass) | 1789, 1793-02, 1793-07, 1796 (escort only) | **caster**: keeps 8–16 m away, spins a slow *Frostkugel* that lands where you stood (landing ring) and quick *Eisnadeln*; slips away when you close in | run it down between casts, dodge sideways off the ring | mist |
 
 ### 5.2 Bosses (one per chapter, the finale excepted)
 
@@ -202,6 +225,27 @@ All invented, all spectral, all with German names. Data: `src/rpg/enemies.ts` (i
 | 3 | **Der Strohmann** (`strohmann`) — the straw of the hundred wagons, risen with arms | Ehrenhof straw carts, 1793-07 dusk (1210/−1114), before the torch | 3 | flail sweeps, spark rain (glowing ground rings), Glutlinge; soft at the back where the bundles are tied | collapses into ash and smoke — the fire still comes (history doesn't change) |
 | 4 | **Der Steinbrecher** (`steinbrecher`) — a giant of robbed-out blocks | Ehrenhof as stone yard, 1796 (1216/−1114) | 3 | block throws, quake rings, Gruslinge; hits on the joints knock blocks loose that **fly west towards Homburg** | falls apart into the empty court → the Steinfraß (W7) takes over |
 | Finale | — (W8: lie down, light the lantern) | Zwinger, today night | — | no fight; combat is disabled | the hounds lie down |
+
+**Reveal (fun pass):** the first time a boss notices you in a session it **reveals itself** for 2.6 s
+(`BOSS_INTRO`, state `intro`): it rises, throws up its arms and flares; the view turns to it and pulls
+back a little (eased in and out; off with reduced motion); a title card in the lower third —
+„DER PIKEUR — Herr der Meute“, „DAS SCHULDBUCH — Was niemand bezahlt hat“, „DER STROHMANN — Das
+Feuer, das noch kommt“, „DER STEINBRECHER — Was von den Mauern blieb“ — and a music sting (two drum
+blows under a low minor brass chord, a root per boss). Nobody can hurt anybody during the reveal.
+A reset boss (after a catch) comes straight at you.
+
+**Death:** 1.4 s at 0.3× speed (not with reduced motion), a ring running 14 m over the ground, a storm
+of its own matter, a column of pale light and a **loot fountain** of golden glints; a long falling
+chord. The caption „… – bezwungen.“ (not for the Pikeur, who leaves).
+
+**Models (procedural, `bodies.ts`):** the Pikeur rides a black ghost horse with a trotting gait, pale
+ghost-fire mane and tail, a tricorn rider with ember eyes, a brass horn loop and the whip, two hounds
+trotting at heel; the Schuldbuch is a floating ledger with brass-cornered covers, pages that turn,
+ribbons, an octagonal glowing seal and orbiting scraps; the Strohmann is a striding giant of bound
+sheaves (≈ 5.7 m) with a crown of straw, **real flame particles** licking from head, shoulders and
+flails, and a soft glowing back; the Steinbrecher strides on separate legs with knees, a chest plate,
+elbows and fists, hot joints only at back and sides. Slabs near the lens dither away (the camera is
+never inside a boss).
 
 ### 5.3 Rules for enemies
 
@@ -221,6 +265,29 @@ quests/logic.ts: prolog 1, k1 1, k2 2, k3 3, k4 4; bosses keep tier 1, their HP 
 (1 + 0.15 (tier − 1)) (2026-11-16: until then every quest spawn ran at tier 1 and the playtests found
 regular fights trivial; `tests/combat-balance.test.ts` keeps a non-dodging bot honest). The player's
 level curve (§6) keeps pace; side quests are optional XP.
+
+### 5.5 Packs, elites, escorts (fun pass, `src/systems/combat/packs.ts`)
+
+A group of **three or more** in the past (not today, not a boss) is a pack:
+- its last member is the **elite** (`ELITES` in `src/rpg/enemies.ts`): a name over its bar, an ember
+  halo on the ground, three circling motes, tinted eyes, ×1.9–2.4 HP, ×1.2–1.3 damage, ×3 XP, bigger,
+  and one **extra move** — Nebelmutter (Frosthauch ring), Sumpflicht (spark fan), **Leithund**
+  (*Hetzjagd* charge), Pfändungsbefehl (seal throw), Goldraffer (gold whirl ring), Glutkern (spark
+  spit), Grusvater (grit blast ring), Mauerbrecher (thrown block with landing ring), Nebelspinnerin
+  (frost ring). An elite turns **rasend** at 50 % (cooldowns ×0.7) and **reels** at 25 % (Gnadenstoß,
+  §4.3). Once undone it stays undone (`EnemyGroupState.eliteDown`, saved).
+- it brings an **escort** of other kinds (mixed groups): Nebelinge + a Nebelweber, Irrlichter + 2–3
+  Nebelinge, Streuner + a Nebelweber, Raffschatten + 2 Glutlinge (+ a Nebelweber), Glutlinge + a
+  Raffschatten, Gruslinge + a Nebelweber, Steinfresser + 3–4 Gruslinge. Escorts live in the group
+  `<group>+escort`, never count for the group or a kill objective (they give XP), and drift off into
+  the fog 1.1 s after their pack is gone. `kq.combat.kill(group)` takes the escort too.
+
+**Balance (`tests/combat-balance.test.ts`):** per chapter, at the intended build (§6), a standard
+encounter (prologue 4 Nebelinge today; K1 3 Streuner 1789; K2 4 Streuner 1793-02 tier 2; K3 4
+Raffschatten tier 3; K4 3 Steinfresser tier 4 — each with its elite and escort from K1 on): a bot that
+never dodges loses ≥ 40 % Lebenskraft (≥ 20 % in the prologue) or is undone; a bot that dodges reads,
+waits for openings and uses the Bannlicht wins every one with Lebenskraft left. Gentle mode: the
+non-dodging bot survives K2.
 
 ## 6. Progression
 
@@ -736,9 +803,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   dialogue card a subtitle strip in fights; stances as two or three spoken replies; missed side quests
   say why; Sie/du and wording fixes; the Hanne greeting before "Angewiesen"; no staff before the
   Messstab.
-- **Playtest round 1, left open (by design or for a later pass):** Mahnbrief waves and Streuner flank
-  AI (the balance test covers numbers, not tactics); enemy HP bars ignore depth; boss intros / visual
-  wind-ups beyond the telegraph ring; fireworks echo timing; Westblick carts; title screen save
+- **Playtest round 1, left open (by design or for a later pass):** Mahnbrief waves (Streuner flank
+  AI, HP bar depth and boss intros: done in the fun pass); fireworks echo timing; Westblick carts; title screen save
   summary; camera clipping into walls at tight corners; pickup pole and crate meshes; stacked sound
   indicators; a number on the Lampenöl gauge; Laub offering side quests by voice; the K2 route gap
   between the Wachhaus and the Orangerie; Festsaal fire decals; Matthes' counter; a quest offer card
@@ -758,8 +824,19 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   clean data credits, no repo paths in source notes (validator); six-second ending vignettes (fog
   lifts and hounds lie down / fire and eras / eyes in the dark); the combat curtain names the
   enemy family; an era change clears combat particles; Raffschatten flee only once.
+- **Combat fun pass (2026-11-16), fixed:** smarter packs (surround with flankers at the back, a
+  rhythm of blows, retreat-and-return, pack alert), Raffschatten run once and briefly, the Nebelweber
+  caster, named elites with an extra move and a Gnadenstoß, mixed escorts, Nebelinge 30 HP, a balance
+  bot per chapter (tank loses ≥ 40 %, dancer wins); boss reveals (camera, title card, sting) and
+  deaths (slow motion, burst, loot fountain), new procedural boss models with gaits, turning pages and
+  flames; rims that contrast with the era's fog, less fog on enemies, HP bars on the crown that shrink
+  with distance (nearer on top) and show the elite's name, red/white telegraph rings with a dark
+  under-edge (sand, snow, night), flinch, kill pop, armour clank.
+- **Combat fun pass, left open:** the Pikeur's black horse still reads pale grey at 12 m+ in the
+  snowy night (lighting, not the rim); the dodging bot needs ~95 s for K2 (cautious bot, not the
+  fight); the Gnadenstoß has no dedicated camera move; the title card is DOM over the frame.
 - **Playtest round 2, left open:** banned Irrlichter drifting,
-  Eiskeller Nebelinge threat, Strohmann phase-2 punish window and Streuner flanking (AI tuning pass);
+  Eiskeller Nebelinge threat, Strohmann phase-2 punish window (AI tuning pass);
   world markers on the death screen; the story.back objective after the K4 catch; Hanne's „Worauf
   warten Sie?“, the duplicate Serenissimus joke, Regal leftovers and the Messstab „(E)“ text (content
   pass); the Talente tab key, codex badge spacing, clue card coordinate captions, the compass waypoint

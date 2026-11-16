@@ -347,6 +347,8 @@ export function upsertGroup(groups: Record<string, EnemyGroupState>, req: SpawnR
     const v = req[k];
     if (v !== undefined) (g as unknown as Record<string, unknown>)[k] = v;
   }
+  // a fallen elite stays fallen when content re-declares the group
+  if (prev?.eliteDown) g.eliteDown = true;
   groups[req.group] = g;
   return !prev;
 }

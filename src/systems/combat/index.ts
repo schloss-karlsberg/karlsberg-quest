@@ -30,13 +30,14 @@ import type { CombatSlice, DerivedStats, EnemyGroupState } from '../../rpg/types
 import { h } from '../../ui/dom';
 import { type SettingsRow, addSettingsRows } from '../../ui/settings';
 import { keyLabel } from '../../ui/settings';
+import { Matrix4, Quaternion, Vector3 } from 'three';
 import { atmosphere } from '../../world/atmosphere';
 import { lanternPose } from '../hunt/lantern';
 import { CombatAudio } from './audio';
 import { CombatHud, type PipTarget } from './hud';
 import { DODGE, SHAKE, type SafeReason, forwardOf, groupsToReset, safeReason, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay } from './sim';
-import { BOSS_HINT, TELL } from './strings';
+import { BOSS_HINT, BOSS_TITLE, TELL } from './strings';
 import { CombatVisuals, type DissolveKind } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
 
@@ -141,6 +142,12 @@ class Combat {
   private hooksInstalled = false;
   private lastCaption = new Map<string, number>();
   private moving = 0;
+  /** A boss's reveal: the camera turns to it for a moment (off with reduced motion). */
+  private introCam: { e: Enemy; t: number; dur: number } | null = null;
+  /** A boss undone: the fight runs slow for a moment (s left; off with reduced motion). */
+  private deathSlow = 0;
+  /** Seconds of game time the boss's title card stays up. */
+  private titleLeft = 0;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new CombatAudio(ctx.audio);
@@ -239,6 +246,10 @@ class Combat {
       this.sim.dematerialise();
       this.hud.clearWorld();
       this.visuals.clearParticles();
+      this.hud.hideTitle(true);
+      this.titleLeft = 0;
+      this.introCam = null;
+      this.deathSlow = 0;
     });
     ev.on('hub:enter', () => {
       this.inHub = true;
@@ -416,7 +427,10 @@ class Combat {
     this.installHooks();
     this.safe = this.safeNow();
     const inp = this.input();
-    const evs = this.frozenAI ? this.stepFrozen(dt, inp) : this.sim.step(dt, inp);
+    // a boss undone: the world of the fight slows for a breath
+    const slowK = this.deathSlow > 0 ? 0.3 : 1;
+    this.deathSlow = Math.max(0, this.deathSlow - dt);
+    const evs = this.frozenAI ? this.stepFrozen(dt * slowK, inp) : this.sim.step(dt * slowK, inp);
     for (const e of evs) this.onEvent(e, inp);
     // the player's movement hooks
     const pl = ctx.player;
@@ -533,6 +547,7 @@ class Combat {
         const y = e.y + Math.max(0.4, Math.min(top * 0.55, 1.6));
         this.visuals.hit(e.def.family, e.x - ev.dirX * e.radius * 0.6, y, e.z - ev.dirZ * e.radius * 0.6, ev.dirX, ev.dirZ, ev.heavy || ev.finisher, st.reducedFlash);
         this.audio.hit(this.posOf(e, 1), e.def.family, ev.heavy, ev.finisher);
+        if (ev.armored) this.audio.clank(this.posOf(e, 1));
         this.addShake(ev.heavy ? SHAKE.heavy : ev.finisher ? SHAKE.heavy * 0.6 : SHAKE.light);
         // at the body (not above the head: at melee range a boss's head projects onto the boss bar)
         if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + Math.min(top * 0.6, 1.5), e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`, e.id);
@@ -552,12 +567,28 @@ class Combat {
       case 'killed': {
         const e = ev.e;
         const style = (DISSOLVE_STYLES as readonly string[]).includes(e.def.dissolve) ? (e.def.dissolve as DissolveKind) : 'mist';
+        const gy = ctx.world.heightAt(e.x, e.z);
+        if (ev.by !== 'env' || e.boss) this.visuals.pop(e, gy, st.reducedFlash);
         this.visuals.dissolve(e, style, st.reducedFlash);
         this.audio.dissolve(this.posOf(e, 1), style, e.boss);
-        this.addShake(e.boss ? SHAKE.heavy * 1.5 : SHAKE.light * 1.5);
+        this.addShake(e.boss ? SHAKE.heavy * 1.5 : e.elite ? SHAKE.heavy : SHAKE.light * 1.5);
+        if (e.boss) {
+          // the wow: slow motion, a burst of its own matter, a column of light, a fountain of loot
+          this.visuals.bossBurst(e, gy, st.reducedFlash);
+          this.visuals.lootFountain(e.x, gy, e.z, st.reducedFlash);
+          this.audio.bossDown();
+          this.hud.hideTitle();
+          this.titleLeft = 0;
+          if (!rm) this.deathSlow = 1.4;
+          this.addShake(0.35);
+          if (e.kind !== 'pikeur') this.captionOnce(`down:${e.id}`, t('combat.bossDown', { name: e.def.name_de }), 'boss', 0, 3200);
+        }
         const g = this.slice().groups[e.group];
+        // an escort that drifted off after its pack was not undone by anyone: no fact to report
+        if (e.escort && ev.by === 'env') break;
         this.emit('enemy:killed', { id: e.id, group: e.group, kind: e.kind, x: e.x, z: e.z, era: ctx.era.current, boss: e.boss, by: ev.by, ...(g?.quest ? { quest: g.quest } : {}), ...(g?.objective ? { objective: g.objective } : {}) });
-        if (!e.add && e.def.xp > 0) this.emit('xp:grant', { amount: e.def.xp, reason: `enemy:${e.kind}`, x: e.x, z: e.z });
+        // escorts give XP too; nothing for what drifted off or burst by itself
+        if ((!e.add || e.escort) && ev.by !== 'env' && e.def.xp > 0) this.emit('xp:grant', { amount: Math.round(e.def.xp), reason: `enemy:${e.kind}`, x: e.x, z: e.z });
         break;
       }
       case 'cleared':
@@ -675,6 +706,42 @@ class Combat {
         break;
       case 'resetGroup':
         break;
+      case 'intro': {
+        const e = ev.e;
+        const [name, epithet] = BOSS_TITLE[e.kind] ?? [e.def.name_de, ''];
+        this.hud.title(name, epithet);
+        this.titleLeft = ev.dur - 0.3;
+        this.audio.sting(e.kind);
+        this.audio.roar(this.posOf(e, 1.5));
+        if (!rm) this.introCam = { e, t: 0, dur: ev.dur };
+        this.addShake(0.12);
+        break;
+      }
+      case 'finishable':
+        this.captionOnce(`finishable:${ev.e.id}`, t('combat.finishable', { name: ev.e.title ?? ev.e.def.name_de }), 'boss', 0, 2200);
+        break;
+      case 'finisher': {
+        const e = ev.e;
+        this.audio.finisher(this.posOf(e, 1));
+        this.captionOnce('finisher', t('combat.finisher'), 'boss', 0.5, 1200);
+        this.addShake(0.3);
+        this.viewmodel.jolt();
+        break;
+      }
+      case 'enrage':
+        this.captionOnce(`enrage:${ev.e.id}`, t('combat.enrage', { name: ev.e.title ?? ev.e.def.name_de }), 'boss', 0, 1600);
+        this.audio.eliteCall(this.posOf(ev.e, 1), ev.e.def.family);
+        break;
+      case 'packAlert': {
+        const lead = this.sim.enemies.find((x) => x.elite && (x.group === ev.e.group || `${x.group}+escort` === ev.e.group) && x.state !== 'dissolve');
+        if (lead) {
+          this.captionOnce(`elite:${lead.id}`, t('combat.elite', { name: lead.title ?? lead.def.name_de }), 'boss', 0, 1800);
+          this.audio.eliteCall(this.posOf(lead, 1), lead.def.family);
+        }
+        break;
+      }
+      case 'drift':
+        break;
     }
     void rm;
   }
@@ -690,6 +757,34 @@ class Combat {
     // within the view (±35°): no arrow needed
     if (Math.abs(rel) < (35 * Math.PI) / 180) return;
     this.hud.arrow(id, rel);
+  }
+
+  /**
+   * A boss's reveal: the view turns to it and pulls back a little, then hands back (the player's
+   * own yaw is untouched; reduced motion skips it). It eases in and out over the intro.
+   */
+  private revealCamera(dt: number): void {
+    const c = this.introCam;
+    if (!c) return;
+    c.t += dt;
+    const e = c.e;
+    if (c.t >= c.dur || e.state === 'dissolve' || this.ctx.settings.state.reducedMotion || !this.sim.enemies.includes(e)) {
+      this.introCam = null;
+      return;
+    }
+    const k = c.t / c.dur;
+    const w = k < 0.22 ? smooth(k / 0.22) : k > 0.78 ? smooth((1 - k) / 0.22) : 1;
+    const cam = this.ctx.camera;
+    const top = this.visuals.topOf(e);
+    _target.set(e.x, e.y + top * 0.62, e.z);
+    // pull back along the line from the boss, and up a little
+    _back.set(cam.position.x - e.x, 0, cam.position.z - e.z).normalize();
+    cam.position.addScaledVector(_back, 1.6 * w);
+    cam.position.y += 0.45 * w;
+    _look.lookAt(cam.position, _target, _up);
+    _qLook.setFromRotationMatrix(_look);
+    cam.quaternion.slerp(_qLook, w * 0.92);
+    cam.updateMatrixWorld();
   }
 
   private addShake(a: number): void {
@@ -720,6 +815,11 @@ class Combat {
       cam.updateMatrixWorld();
       this.shakeNow = k;
     } else this.shakeNow = 0;
+    this.revealCamera(dt);
+    if (this.titleLeft > 0) {
+      this.titleLeft -= dt;
+      if (this.titleLeft <= 0) this.hud.hideTitle();
+    }
     // the Bannlicht flare: the lantern blazes for a moment (local, never a full-screen flash)
     if (this.bannFx) {
       this.bannFx.t = Math.max(0, this.bannFx.t - dt / 0.55);
@@ -741,7 +841,7 @@ class Combat {
       camera: cam,
       viewportH: ctx.renderer.domElement.clientHeight || window.innerHeight,
       time: ctx.loop.time,
-      dt,
+      dt: this.deathSlow > 0 ? dt * 0.3 : dt,
       frozen,
       heightAt: (x, z) => ctx.world.heightAt(x, z),
       reducedFlash: st.reducedFlash,
@@ -782,7 +882,8 @@ class Combat {
       if (e.boss || e.state === 'dissolve') continue;
       const d = Math.hypot(e.x - pl.position.x, e.z - pl.position.z);
       const show = d < 32 && (e.aggro || e.hp < e.maxHp || e.stun > 0);
-      pips.push({ id: e.id, x: e.x, y: e.y + this.visuals.topOf(e) + 0.15, z: e.z, frac: e.hp / e.maxHp, gebannt: e.stun > 0, immune: e.def.needsBann === true && e.stun <= 0, show });
+      // over the body's crown (not floating above it): the bar sits on the silhouette
+      pips.push({ id: e.id, x: e.x, y: e.y + this.visuals.topOf(e) + 0.05, z: e.z, frac: e.hp / e.maxHp, gebannt: e.stun > 0, immune: e.def.needsBann === true && e.stun <= 0, show: show || e.elite, dist: Math.hypot(e.x - cam.position.x, e.z - cam.position.z), title: e.title, finish: e.finishable });
     }
     const lowHp = p.dead ? 0 : Math.max(0, (0.3 - p.hp / p.max) / 0.3);
     this.hud.frame({ dt, camera: cam, reducedFlash: st.reducedFlash, reducedMotion: st.reducedMotion, lowHp, pips });
@@ -911,6 +1012,16 @@ function damageRows(settings: SettingsStore): SettingsRow[] {
   });
   return [[t('settings.damageNumbers'), box, 'game', t('settings.damageNumbers.help')]];
 }
+
+const _target = new Vector3();
+const _back = new Vector3();
+const _up = new Vector3(0, 1, 0);
+const _look = new Matrix4();
+const _qLook = new Quaternion();
+const smooth = (x: number) => {
+  const c = Math.max(0, Math.min(1, x));
+  return c * c * (3 - 2 * c);
+};
 
 let sys: Combat | null = null;
 

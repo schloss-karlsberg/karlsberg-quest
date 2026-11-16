@@ -464,6 +464,8 @@ export interface EnemyGroupState {
   respawn?: number;
   time?: 'any' | 'dusk' | 'night';
   room?: string;
+  /** The pack's elite has been undone (it does not come back when the group is rebuilt). */
+  eliteDown?: boolean;
 }
 
 /** `state.systems.quests` (owner: quests). */
