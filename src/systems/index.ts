@@ -24,4 +24,6 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./progression'),
   () => import('./combat'),
   () => import('./quests'),
+  // world: Vermessungspunkte, fast travel, route POIs, Wegweiser (after combat / quests / story)
+  () => import('./travel'),
 ];

@@ -7,6 +7,7 @@ import { Color, Group, InstancedBufferAttribute, Mesh, type ShaderMaterial } fro
 import type { Solid } from '../../world/collision';
 import { Kit } from './kit';
 import { glowMaterial, propMaterial } from './material';
+import { type SignSpec, signMesh } from './signs';
 import { instancedQuad, type SmokeSource, smokeMesh } from './smoke';
 import { type WorkerSpec, STRIKE_PERIOD, workersMesh } from './workers';
 
@@ -42,6 +43,7 @@ export class SetBuilder {
   readonly workers: WorkerSpec[] = [];
   readonly smoke: SmokeSource[] = [];
   readonly glows: Glow[] = [];
+  readonly signs: SignSpec[] = [];
 
   constructor(readonly heightAt: (x: number, z: number) => number) {}
 
@@ -68,6 +70,12 @@ export class SetBuilder {
 
   worker(w: Omit<WorkerSpec, 'yaw'> & { deg: number }): this {
     this.workers.push({ ...w, yaw: face(w.deg) });
+    return this;
+  }
+
+  /** A lettered board / framed picture face at world x/y/z facing compass `deg` (see signs.ts). */
+  sign(x: number, y: number, z: number, deg: number, w: number, h: number, o: Omit<SignSpec, 'x' | 'y' | 'z' | 'yaw' | 'w' | 'h'>): this {
+    this.signs.push({ x, y, z, yaw: face(deg), w, h, ...o });
     return this;
   }
 
@@ -106,6 +114,12 @@ export class SetBuilder {
       const mesh = smokeMesh(this.smoke);
       group.add(mesh);
       materials.push(mesh.material as ShaderMaterial);
+    }
+    const signs = signMesh(this.signs);
+    if (signs) {
+      signs.name = `scenery-${name}-signs`;
+      group.add(signs);
+      materials.push(signs.material as ShaderMaterial);
     }
     if (this.glows.length) {
       const g = instancedQuad();

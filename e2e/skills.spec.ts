@@ -94,6 +94,8 @@ test.describe('skills and survey tools', () => {
       k.press('KeyR', 2);
       k.press('KeyV', 2);
       k.press('KeyB', 2);
+      // (M opens the travel map now; the survey layer stays off)
+      k.travel?.map(false);
     });
     expect(await events(page, 'scan:mode')).toEqual([]);
     expect(await page.evaluate(() => window.kq!.survey!.state().map)).toBe(0);
@@ -119,7 +121,8 @@ test.describe('skills and survey tools', () => {
     });
     expect(await events(page, 'scan:mode')).toEqual([{ mode: 2 }]);
 
-    // Kartograf 2: M cycles off → 1840 → 1935 → off (seen from the air over the palace site)
+    // Kartograf 2: the map's layer buttons lay off → 1840 → 1935 → off on the terrain (seen from
+    // the air over the palace site; the buttons send survey:show-map)
     await page.evaluate(() => {
       const k = window.kq!;
       k.skills!.grant('kartograf', 2, true);
@@ -129,7 +132,7 @@ test.describe('skills and survey tools', () => {
       k.teleport(1150, -1100, 100, -60);
       k.step(2);
       p.position.y = k.ctx.world.heightAt(1150, -1100) + 160;
-      k.press('KeyM', 2);
+      k.ctx.events.emit('survey:show-map', { layer: 1840 });
       k.step(40);
     });
     expect(await page.evaluate(() => window.kq!.survey!.state().map)).toBe(1840);
@@ -138,7 +141,7 @@ test.describe('skills and survey tools', () => {
     await shot(page, 'map1840');
     await page.evaluate(() => {
       const k = window.kq!;
-      k.press('KeyM', 2);
+      k.ctx.events.emit('survey:show-map', { layer: 1935 });
       k.step(40);
     });
     expect(await page.evaluate(() => window.kq!.survey!.state().map)).toBe(1935);
@@ -149,7 +152,10 @@ test.describe('skills and survey tools', () => {
     await page.evaluate(() => window.kq!.step(2));
     await clearDialogue(page);
     await shot(page, 'map1935');
-    await page.evaluate(() => window.kq!.press('KeyM', 2));
+    await page.evaluate(() => {
+      window.kq!.ctx.events.emit('survey:show-map', { layer: 0 });
+      window.kq!.step(2);
+    });
     expect(await page.evaluate(() => window.kq!.survey!.state().map)).toBe(0);
     expect(errors).toEqual([]);
   });

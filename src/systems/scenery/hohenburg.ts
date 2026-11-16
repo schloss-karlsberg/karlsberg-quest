@@ -11,11 +11,21 @@
  * past the edge of the real terrain in its direction: in front of the fogged apron, behind all
  * real ground. Lighting and haze use the true position.
  */
-import { BufferAttribute, BufferGeometry, Color, Mesh, ShaderMaterial } from 'three';
+import { BufferAttribute, BufferGeometry, Color, Mesh, ShaderMaterial, Vector2, Vector3 } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import { Kit, rng } from './kit';
 
 export const HOHENBURG = { x: -1320, z: 585, base: 228, top: 312 };
+/**
+ * Playtest round 2: from the Westblick the Hohenburg was a smudge on the horizon (it is 2–3 km
+ * away and only ~80 m above its foot). There the castle hill is drawn larger — wider by
+ * `MAG_ACROSS`, taller by `MAG_HEIGHT`, about its foot — like a painter would: the view the
+ * chapter is about. Elsewhere it keeps its real size.
+ */
+export const MAG_ACROSS = 1.8;
+export const MAG_HEIGHT = 3.0;
+/** How far the (magnified) hill reaches from its centre towards the eye (for the pull). */
+export const HILL_REACH = 420;
 
 /** A radial hill: rings of vertices, height by a smooth profile + noise, elongated along `axis`. */
 function hill(cx: number, cz: number, base: number, top: number, rx: number, rz: number, axis: number, seed: number, plateau = 0.18): BufferGeometry {
@@ -62,24 +72,28 @@ function hill(cx: number, cz: number, base: number, top: number, rx: number, rz:
   return g;
 }
 
-function merge(list: BufferGeometry[]): BufferGeometry {
+/** Merge the parts; `mag` per part: 1 = grows with the Westblick magnification (the castle hill). */
+function merge(list: BufferGeometry[], mag: number[]): BufferGeometry {
   const n = list.reduce((s, g) => s + g.getAttribute('position').count, 0);
   const pos = new Float32Array(n * 3);
   const nor = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
+  const mg = new Float32Array(n);
   let o = 0;
-  for (const g of list) {
+  list.forEach((g, i) => {
     const P = g.getAttribute('position');
     pos.set(P.array as Float32Array, o * 3);
     nor.set(g.getAttribute('normal').array as Float32Array, o * 3);
     col.set(g.getAttribute('color').array as Float32Array, o * 3);
+    mg.fill(mag[i] ?? 0, o, o + P.count);
     o += P.count;
     g.dispose();
-  }
+  });
   const out = new BufferGeometry();
   out.setAttribute('position', new BufferAttribute(pos, 3));
   out.setAttribute('normal', new BufferAttribute(nor, 3));
   out.setAttribute('color', new BufferAttribute(col, 3));
+  out.setAttribute('aMag', new BufferAttribute(mg, 1));
   out.computeBoundingSphere();
   return out;
 }
@@ -154,17 +168,24 @@ export function hohenburgGeometry(): BufferGeometry {
   // the kit's geometry carries colour + normals (+ aGlow, unused here)
   fort.deleteAttribute('aGlow');
   parts.push(fort);
-  return merge(parts);
+  // the castle hill, its shoulder and the fortress grow at the Westblick; the far hills do not
+  return merge(parts, parts.map((_, i) => (i < 2 || i === parts.length - 1 ? 1 : 0)));
 }
 
 const VERT = /* glsl */ `
 attribute vec3 color;
+attribute float aMag;
 uniform float uPull;
+// Westblick magnification (x: across, y: height) about the hill's foot (uPivot)
+uniform vec2 uMag;
+uniform vec3 uPivot;
 varying vec3 vWp;
 varying vec3 vN;
 varying vec3 vCol;
 void main() {
   vec4 wp = modelMatrix * vec4(position, 1.0);
+  vec3 m = mix(vec3(1.0), vec3(uMag.x, uMag.y, uMag.x), aMag);
+  wp.xyz = uPivot + (wp.xyz - uPivot) * m;
   vWp = wp.xyz;
   vN = normalize(mat3(modelMatrix) * normal);
   vCol = color;
@@ -181,7 +202,7 @@ export type Extent = [number, number, number, number];
  * How far to pull the Hohenburg towards the eye: to `margin` m past the point where the ray from
  * the camera towards it leaves the terrain extent (1 = not at all).
  */
-export function pullFactor(camX: number, camZ: number, ext: Extent, margin = 25): number {
+export function pullFactor(camX: number, camZ: number, ext: Extent, margin = 25, reach = 0): number {
   const dx = HOHENBURG.x - camX;
   const dz = HOHENBURG.z - camZ;
   const d = Math.hypot(dx, dz);
@@ -194,13 +215,15 @@ export function pullFactor(camX: number, camZ: number, ext: Extent, margin = 25)
   if (uz < 0) t = Math.min(t, (ext[1] - camZ) / uz);
   if (uz > 0) t = Math.min(t, (ext[3] - camZ) / uz);
   if (!Number.isFinite(t) || t < 0) t = 0;
-  return Math.max(0.02, Math.min(1, (t + margin) / d));
+  // `reach`: how far the hill spreads towards the eye from its centre (its near foot stays beyond the edge)
+  return Math.max(0.02, Math.min(1, (t + margin) / Math.max(1, d - reach)));
 }
 
 const FRAG = /* glsl */ `
 precision highp float;
 ${ATMOS_GLSL}
 uniform float uVis;
+uniform float uLift;
 uniform vec3 uHorizon;
 varying vec3 vWp;
 varying vec3 vN;
@@ -212,10 +235,12 @@ void main() {
   vec3 v = normalize(uCamPos - vWp);
   float back = pow(max(dot(-v, uSunDir), 0.0), 4.0);
   float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-  col += uSunColor * rim * back * 0.6;
+  col += uSunColor * rim * back * (0.6 + 1.2 * uLift);
+  // at the Westblick: the ruin's stone catches the light, the wooded slopes read darker
+  col *= 1.0 + uLift * (0.35 * smoothstep(0.55, 0.9, dot(vCol, vec3(0.6))) - 0.15);
   // thin aerial perspective (the far haze is the sky's horizon colour)
   float d = length(vWp - uCamPos);
-  float haze = 1.0 - exp(-d * (uFogDensity * 0.32 + 0.00009));
+  float haze = (1.0 - exp(-d * (uFogDensity * 0.32 + 0.00009))) * (1.0 - 0.7 * uLift);
   vec3 air = mix(uHorizon, uFogColor, 0.5);
   float keep = clamp(uVis * (1.0 - haze), 0.0, 1.0);
   col = mix(air, col, keep);
@@ -231,7 +256,15 @@ export class Hohenburg {
     this.material = new ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,
-      uniforms: { ...atmosphere, uVis: { value: 0.5 }, uHorizon: { value: new Color() }, uPull: { value: 1 } },
+      uniforms: {
+        ...atmosphere,
+        uVis: { value: 0.5 },
+        uLift: { value: 0 },
+        uHorizon: { value: new Color() },
+        uPull: { value: 1 },
+        uMag: { value: new Vector2(1, 1) },
+        uPivot: { value: new Vector3(HOHENBURG.x, HOHENBURG.base - 40, HOHENBURG.z) },
+      },
     });
     this.mesh = new Mesh(hohenburgGeometry(), this.material);
     this.mesh.name = 'scenery-hohenburg';
@@ -239,9 +272,14 @@ export class Hohenburg {
     this.mesh.renderOrder = -10;
   }
 
-  /** 0..1 how clearly it stands out; horizon = the sky's horizon colour (linear). */
-  set(vis: number, horizon: Color, pull = 1): void {
+  /**
+   * 0..1 how clearly it stands out; horizon = the sky's horizon colour (linear); `lift` 0..1 the
+   * Westblick (less haze, the castle hill drawn larger: `MAG_*` at full lift).
+   */
+  set(vis: number, horizon: Color, pull = 1, lift = 0): void {
     this.material.uniforms.uPull!.value = pull;
+    this.material.uniforms.uLift!.value = lift;
+    (this.material.uniforms.uMag!.value as Vector2).set(1 + (MAG_ACROSS - 1) * lift, 1 + (MAG_HEIGHT - 1) * lift);
     this.material.uniforms.uVis!.value = vis;
     (this.material.uniforms.uHorizon!.value as Color).copy(horizon);
   }

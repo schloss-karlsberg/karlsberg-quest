@@ -23,7 +23,10 @@ import type { PassZone, Solid } from '../../world/collision';
 import { clink } from './audio';
 import { type BuiltSet, SetBuilder } from './builder';
 import { FIREWORKS_ECHO, Fireworks, type FireworksPhase } from './fireworks';
-import { type Extent, HOHENBURG, Hohenburg, pullFactor } from './hohenburg';
+import { atmosphere } from '../../world/atmosphere';
+import { Lehnstuhl } from './chair';
+import { CONVOY_ROAD, Convoy } from './convoy';
+import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, pullFactor } from './hohenburg';
 import { Kit } from './kit';
 import { propMaterial } from './material';
 import { buildPassage, passageCollision, patchPalace, setPassageCut } from './passage';
@@ -64,10 +67,16 @@ export interface SceneryHooks {
     stop(): void;
     state(): { phase: FireworksPhase; lamps: number; sparks: number };
   };
-  hohenburg(): { vis: number; x: number; z: number };
+  hohenburg(): { vis: number; x: number; z: number; /** Westblick magnification of the height (1 = real) */ mag: number };
   passage(): { open: boolean; zones: number };
   /** Doors of the Rund counted so far (lit). */
   rundCounted(): number;
+  /** The rolling stone carts of 1796 (positions; empty when not built). */
+  convoy(): [number, number][];
+  /** Peter's armchair (x/z) while it stands beside him. */
+  chair(): [number, number] | null;
+  /** Current Westblick haze lift 0..1. */
+  fogLift(): number;
 }
 
 declare module '../../debug/hooks' {
@@ -91,6 +100,11 @@ let slice: ScenerySlice;
 let root: Group;
 const live = new Map<string, Live>();
 let hohenburg: Hohenburg;
+let fogLift = 0;
+let convoy: Convoy | null = null;
+let convoyT = 0;
+let chair: Lehnstuhl | null = null;
+let fogLiftWritten = false;
 let hohVis = 0.5;
 let fireworks: Fireworks | null = null;
 let fwMaxLine = -1;
@@ -132,7 +146,10 @@ function dropSet(id: string): void {
     const m = o as Mesh;
     if (m.isMesh || (o as { isPoints?: boolean }).isPoints) m.geometry.dispose();
   });
-  for (const m of l.built.materials) m.dispose();
+  for (const m of l.built.materials) {
+    (m.userData.atlas as { dispose(): void } | undefined)?.dispose();
+    m.dispose();
+  }
   live.delete(id);
   solidsDirty = true;
 }
@@ -259,8 +276,55 @@ function updateHohenburg(ctx: GameContext, dt: number): void {
   const west = Math.hypot(p.x - 200, p.z + 905);
   if (era === '1796' && west < 260) vis = Math.max(vis, 0.95 - (west / 260) * 0.3);
   hohVis += (vis - hohVis) * Math.min(1, dt * 1.5);
+  // playtest round 2: from the Westblick the Hohenburg must stand clear — the haze lifts there
+  // (thins to a quarter within 120 m of the edge, eased in over 260 m), and comes back as you leave
+  const lift = era === '1796' ? Math.max(0, Math.min(1, (260 - west) / 140)) : 0;
+  fogLift += (lift - fogLift) * Math.min(1, dt * 1.2);
+  if (fogLift > 0.002 || fogLiftWritten) {
+    const k = 1 - 0.75 * fogLift;
+    atmosphere.uFogDensity.value = L.fog.density * k;
+    atmosphere.uFogHeightDensity.value = L.fog.heightDensity * k;
+    fogLiftWritten = fogLift > 0.002;
+  }
   const cam = ctx.camera.position;
-  hohenburg.set(hohVis, ctx.world.sky.uniforms.uHorizon!.value as Color, pullFactor(cam.x, cam.z, terrainExtent(ctx)));
+  // the magnified castle hill reaches nearer: pull so that its near foot still stays beyond the edge
+  const reach = 330 + (HILL_REACH - 330) * fogLift;
+  hohenburg.set(hohVis, ctx.world.sky.uniforms.uHorizon!.value as Color, pullFactor(cam.x, cam.z, terrainExtent(ctx), 25, reach * (1 + (MAG_ACROSS - 1) * fogLift)), fogLift);
+}
+
+type NpcList = () => { npc: string; x: number; z: number; era: string; visible: boolean }[];
+
+/** Peter's gilded armchair stands beside him in July 1793 (chair.ts). */
+function updateChair(ctx: GameContext, dt: number): void {
+  const list = (window.kq as unknown as { npc?: { list?: NpcList } } | undefined)?.npc?.list;
+  const peter = ctx.era.current === '1793-07' && typeof list === 'function' ? list().find((n) => n.npc === 'peter' && n.visible) : undefined;
+  const p = ctx.player.position;
+  const want = peter && Math.hypot(peter.x - p.x, peter.z - p.z) < 160;
+  if (want && !chair) {
+    chair = new Lehnstuhl();
+    root.add(chair.group);
+  } else if (!want && chair) {
+    chair.dispose();
+    chair = null;
+  }
+  if (chair && peter) chair.follow(peter.x, peter.z, (x, z) => ctx.world.heightfield.heightAt(x, z), dt);
+}
+
+/** The 1796 carts roll while the player is within 450 m of the valley road. */
+function updateConvoy(ctx: GameContext, dt: number): void {
+  const p = ctx.player.position;
+  let near = Infinity;
+  for (const [x, z] of CONVOY_ROAD) near = Math.min(near, Math.hypot(p.x - x, p.z - z));
+  const want = ctx.era.current === '1796' && near < 450;
+  if (want && !convoy) {
+    convoy = new Convoy((x, z) => ctx.world.heightfield.heightAt(x, z));
+    root.add(convoy.group);
+  } else if (!want && convoy) {
+    convoy.dispose();
+    convoy = null;
+  }
+  convoyT += dt;
+  convoy?.update(dt, convoyT);
 }
 
 let extent: Extent | null = null;
@@ -343,8 +407,11 @@ function installHooks(ctx: GameContext): void {
       stop: () => fireworks?.stop(),
       state: () => ({ phase: fireworks?.phase ?? 'off', lamps: fireworks?.lampCount ?? 0, sparks: fireworks?.liveSparks ?? 0 }),
     },
-    hohenburg: () => ({ vis: hohVis, x: HOHENBURG.x, z: HOHENBURG.z }),
+    hohenburg: () => ({ vis: hohVis, x: HOHENBURG.x, z: HOHENBURG.z, mag: 1 + (MAG_HEIGHT - 1) * fogLift }),
     passage: () => ({ open: !!passage && ERA_INFO[ctx.era.current].palace === 'intact', zones: passage?.zones.length ?? 0 }),
+    convoy: () => convoy?.positions() ?? [],
+    chair: () => chair?.position() ?? null,
+    fogLift: () => fogLift,
     rundCounted: () => tally?.counted ?? 0,
   };
 }
@@ -406,6 +473,8 @@ export default defineSystem({
     syncSolids(ctx);
     playStrikes(ctx);
     updateHohenburg(ctx, dt);
+    updateConvoy(ctx, dt);
+    updateChair(ctx, dt);
     updateFireworks(ctx, dt);
     updateTally(ctx, dt);
   },
@@ -418,6 +487,10 @@ export default defineSystem({
   dispose() {
     for (const id of [...live.keys()]) dropSet(id);
     fireworks?.dispose();
+    convoy?.dispose();
+    convoy = null;
+    chair?.dispose();
+    chair = null;
     tally?.dispose();
     tally = null;
     for (const w of lit.values()) w.dispose();
