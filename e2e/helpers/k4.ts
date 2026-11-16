@@ -506,7 +506,8 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await run(page, 12);
   const fl = await page.evaluate(() => window.kq!.state().flags);
   expect(fl['quest.q.k4.zeichen']).toBe('done');
-  expect(fl['flag.k4_zerstoerer']).toBeUndefined();
+  // (the Chronik's old reading flags still read „offen“ after k4_15; nothing reads them any more)
+  expect(['offen', undefined]).toContain(fl['flag.k4_zerstoerer']);
   expect(await page.evaluate(() => window.kq!.story!.choice())).toBeNull();
 
   // ---- the endings chapter ------------------------------------------------------------------------

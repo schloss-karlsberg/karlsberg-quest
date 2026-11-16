@@ -366,6 +366,13 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
     k.npc!.talk('soll');
     k.npc!.drain();
     k.npc!.ask('q:q.k1.registratur');
+    k.npc!.drain();
+    // the turn-in card: „Übergeben“, the reward card away, then the history moment
+    k.npc!.choose('qt:q.k1.registratur');
+    for (let i = 0; i < 6 && k.quests!.reward(); i++) {
+      k.press('KeyE', 1);
+      k.step(2);
+    }
     for (let i = 0; i < 30 && !String(k.npc!.state().line?.id ?? '').startsWith('quest.10'); i++) k.npc!.advance();
     k.npc!.finish();
     k.step(2);
