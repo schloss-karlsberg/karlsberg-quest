@@ -1047,7 +1047,7 @@ class StoryRuntime {
       ms: p.ms,
       fiction: p.fiction,
       source: src ? (src.label ?? src.url) : undefined,
-      beat: sc ? sc.beat : this.slice.beat,
+      beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
       group: sc ? this.lineGroup : ++this.lineGroup,

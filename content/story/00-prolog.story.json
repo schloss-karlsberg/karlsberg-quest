@@ -624,7 +624,7 @@
         }
       ],
       "complete": {
-        "all": [{ "quest": { "id": "q.p.punktwolke" } }, { "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }]
+        "all": [{ "quest": { "id": "q.p.punktwolke" } }, { "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }, { "timer": 9 }]
       },
       "exit": [{ "do": "autosave" }]
     },

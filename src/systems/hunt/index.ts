@@ -757,11 +757,14 @@ class Hunt {
   update(dt: number): void {
     this.installHooks();
     if (this.restorePending) this.restore();
-    this.updateLantern(dt);
+    // a card or conversation on screen (echo transcript, clue card, talk): the oil and the pack
+    // wait (playtest round 2: reading a transcript cost a fifth of the prologue's oil)
+    const held = this.ctx.ui.modals.count > 0 && this.caughtT < 0;
+    if (!held) this.updateLantern(dt);
     const sim = this.sim;
     if (!sim || !sim.tracks) this.tracks.tick(dt); // else the simulation advances the clock
-    if (sim) this.updateHold(dt, sim);
-    if (sim) {
+    if (sim && !held) this.updateHold(dt, sim);
+    if (sim && !held) {
       const evs = sim.update(dt, this.playerSense());
       for (const e of evs) this.onSimEvent(e, sim);
       this.sounds(dt, sim);

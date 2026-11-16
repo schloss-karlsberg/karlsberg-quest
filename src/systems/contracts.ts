@@ -77,6 +77,8 @@ declare module '../core/events' {
       priority?: 'now' | 'normal' | 'low';
       /** A story Condition (story/types.ts): once it holds, the line is no longer worth saying. */
       until?: unknown;
+      /** Not bound to the current beat (quest turn-ins teach history: a beat change never drops them). */
+      keep?: boolean;
     };
     'story:chapter': { id: string };
     'story:beat': { chapter: string; beat: string };

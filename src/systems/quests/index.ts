@@ -415,7 +415,7 @@ class QuestRuntime {
   }
 
   private say(l: QuestLine, until?: unknown): void {
-    this.ctx.events.emit('dialogue:say', { speaker: l.speaker, text: l.text, ms: Math.round(lineSeconds(l.text) * 1000), until });
+    this.ctx.events.emit('dialogue:say', { speaker: l.speaker, text: l.text, ms: Math.round(lineSeconds(l.text) * 1000), until, keep: true });
   }
 
   private later(seconds: number, run: () => void): void {
