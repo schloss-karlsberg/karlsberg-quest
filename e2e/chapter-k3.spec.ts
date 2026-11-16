@@ -51,14 +51,14 @@ test('chapter 3: the Festsaal fuse runs out → "nichts", and the table stays em
     k.ctx.state.mutable.inventory.clues.push('clue.k3.fackel');
     k.interiors.enter('B01.2.og-festsaal', { u: 0.5, v: 0.3 });
     k.step(6);
-    // Hanne speaks first, then Laub; the choice opens after them
-    for (let i = 0; i < 80 && !k.story.choice(); i++) k.step(30);
+    // the four things are placed as the beat opens
+    for (let i = 0; i < 40 && !k.interiors.festsaal().active; i++) k.step(30);
   });
   expect((await story(page)).beat).toBe('k3_4');
-  expect(await page.evaluate(() => (window.kq as Any).story.choice())).toBe('k3.objekt');
+  expect(await page.evaluate(() => (window.kq as Any).interiors.festsaal().active)).toBe(true);
   await page.evaluate(() => {
     const k = window.kq as Any;
-    k.step(41 * 60);
+    k.step(51 * 60);
     k.story.flush();
     k.step(10);
   });

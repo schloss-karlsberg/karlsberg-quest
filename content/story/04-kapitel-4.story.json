@@ -45,6 +45,12 @@
           "id": "laub.k4.x.grau_0",
           "speaker": "laub",
           "text": "Sehen Sie das Grau am Rand? Das ist der Steinfraß. Bleiben Sie in Bewegung, finden Sie Spuren, dann weicht es. Durch den Nordflügel ist eine Bresche, da kommen Sie zu den Gräben."
+        },
+        {
+          "do": "toast",
+          "text": "Steinfraß: Wo das Grau steht, lösen sich die Steine auf. Es frisst vom Rand nach innen. Spuren [E] und Echos drängen es zurück. Ziel: durch die Bresche im Nordflügel zu den Gräben.",
+          "ms": 9000,
+          "delay": 4
         }
       ]
     },
@@ -265,9 +271,7 @@
       "on": [
         {
           "id": "am-tor",
-          "when": {
-            "enter": { "x": 497, "z": -900, "r": 25, "era": "today" }
-          },
+          "when": { "enter": { "x": 497, "z": -900, "r": 25, "era": "today" } },
           "do": [
             {
               "do": "say",
@@ -309,9 +313,7 @@
       "on": [
         {
           "id": "kuppe",
-          "when": {
-            "enter": { "x": 200, "z": -905, "r": 24, "era": "1796" }
-          },
+          "when": { "enter": { "x": 200, "z": -905, "r": 24, "era": "1796" } },
           "do": [
             {
               "do": "say",
@@ -390,13 +392,7 @@
         }
       ],
       "on": [
-        {
-          "id": "hof",
-          "when": {
-            "enter": { "x": 500, "z": -836, "r": 30, "era": "1796" }
-          },
-          "do": [{ "do": "grant", "clue": "clue.k4.baumagazin" }]
-        },
+        { "id": "hof", "when": { "enter": { "x": 500, "z": -836, "r": 30, "era": "1796" } }, "do": [{ "do": "grant", "clue": "clue.k4.baumagazin" }] },
         {
           "id": "soll-hint",
           "when": { "all": [{ "timer": 150 }, { "not": { "talked": { "npc": "soll", "chapter": "k4" } } }] },
@@ -421,11 +417,7 @@
             }
           ]
         },
-        {
-          "id": "angenommen",
-          "when": { "quest": { "id": "q.k4.baumagazin", "state": "active" } },
-          "do": [{ "do": "objective", "text": null }]
-        }
+        { "id": "angenommen", "when": { "quest": { "id": "q.k4.baumagazin", "state": "active" } }, "do": [{ "do": "objective", "text": null }] }
       ],
       "complete": { "quest": { "id": "q.k4.baumagazin", "state": "done" } },
       "exit": [
@@ -447,9 +439,7 @@
         { "do": "anchor", "to": "1796", "x": 1216, "z": -1114, "r": 35 },
         { "do": "quest", "op": "start", "id": "q.k4.steinplatz", "onResume": true, "delay": 1.5 }
       ],
-      "complete": {
-        "enter": { "x": 1216, "z": -1114, "r": 40, "era": "1796" }
-      }
+      "complete": { "enter": { "x": 1216, "z": -1114, "r": 40, "era": "1796" } }
     },
     {
       "id": "k4_6",
@@ -476,7 +466,16 @@
       "id": "k4_7",
       "title_de": "Die Gräben",
       "checkpoint": "k4_5",
-      "enter": [],
+      "enter": [
+        {
+          "do": "objective",
+          "id": "k4.graeben",
+          "text": "Durch die Bresche im Nordflügel zu den Gräben, bevor das Grau dich hat",
+          "x": 1240,
+          "z": -1193,
+          "delay": 3
+        }
+      ],
       "on": [
         {
           "id": "graben-hint",
@@ -514,7 +513,13 @@
           "when": {
             "all": [
               { "enter": { "x": 1386, "z": -1477, "r": 70, "era": "1796" } },
-              { "any": [{ "quest": { "id": "q.k4.pacht", "state": "active" } }, { "quest": { "id": "q.k4.graeben", "state": "active" } }, { "quest": { "id": "q.k4.zeichen", "state": "active" } }] }
+              {
+                "any": [
+                  { "quest": { "id": "q.k4.pacht", "state": "active" } },
+                  { "quest": { "id": "q.k4.graeben", "state": "active" } },
+                  { "quest": { "id": "q.k4.zeichen", "state": "active" } }
+                ]
+              }
             ]
           },
           "do": [
@@ -528,9 +533,7 @@
         },
         {
           "id": "ruhe",
-          "when": {
-            "enter": { "x": 1386, "z": -1477, "r": 18, "era": "1796" }
-          },
+          "when": { "enter": { "x": 1386, "z": -1477, "r": 18, "era": "1796" } },
           "do": [
             { "do": "flag", "set": { "k4.frass": false, "barks.quiet": true } },
             { "do": "meter", "id": "vergessen", "active": false },
@@ -569,9 +572,7 @@
       "on": [
         {
           "id": "treiben",
-          "when": {
-            "enter": { "x": 1386, "z": -1477, "r": 70, "era": "today" }
-          },
+          "when": { "enter": { "x": 1386, "z": -1477, "r": 70, "era": "today" } },
           "do": [
             {
               "do": "threat",
@@ -627,9 +628,7 @@
         { "do": "look", "time": "night" },
         { "do": "quest", "op": "start", "id": "q.k4.stellen", "onResume": true, "delay": 1 }
       ],
-      "complete": {
-        "enter": { "x": 1216, "z": -1571, "r": 20, "era": "today" }
-      }
+      "complete": { "enter": { "x": 1216, "z": -1571, "r": 20, "era": "today" } }
     },
     {
       "id": "k4_12",
@@ -667,7 +666,19 @@
         {
           "id": "hingelegt",
           "when": { "event": "hunt:finale", "match": { "outcome": "calmed" } },
-          "do": [{ "do": "say", "line": "beat.k4.hinlegen", "delay": 2 }]
+          "do": [
+            { "do": "say", "line": "beat.k4.hinlegen", "delay": 2 },
+            {
+              "do": "sound",
+              "sound": "horn",
+              "signal": "sammeln",
+              "x": 1150,
+              "z": -1660,
+              "caption": "[Weit weg ein Horn: Sammeln. Langsam, tief, zum letzten Mal.]",
+              "delay": 4
+            },
+            { "do": "look", "time": "dusk", "delay": 6 }
+          ]
         },
         {
           "id": "licht",
@@ -687,7 +698,8 @@
       "exit": [
         { "do": "threat", "kind": "pack", "active": false },
         { "do": "say", "line": "laub.k4.finale_2", "delay": 1 },
-        { "do": "flag", "set": { "flag.k4_finale": true, "npc.owns.clue.k4.jost": true } }
+        { "do": "flag", "set": { "flag.k4_finale": true, "npc.owns.clue.k4.jost": true } },
+        { "do": "look", "time": "dawn", "delay": 2.5 }
       ]
     },
     {
@@ -700,11 +712,7 @@
         { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "delay": 1.5 }
       ],
       "on": [
-        {
-          "id": "erkannt",
-          "when": { "talked": { "npc": "pikeur", "chapter": "k4" } },
-          "do": [{ "do": "grant", "clue": "clue.k4.jost" }]
-        },
+        { "id": "erkannt", "when": { "talked": { "npc": "pikeur", "chapter": "k4" } }, "do": [{ "do": "grant", "clue": "clue.k4.jost" }] },
         {
           "id": "stumm",
           "when": { "all": [{ "timer": 60 }, { "not": { "talked": { "npc": "pikeur", "chapter": "k4" } } }] },

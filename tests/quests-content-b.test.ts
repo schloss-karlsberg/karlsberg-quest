@@ -114,13 +114,18 @@ describe('contentB: the shape of the chapters', () => {
     expect(r('q.k4.steinplatz').items).toContainEqual({ item: 'item.stab.lot' });
     expect(r('q.k4.zeichen').items).toContainEqual({ item: 'item.charm.winkel' });
     expect(r('q.k4.stellen').items).toContainEqual({ item: 'item.horn' });
-    // the Festsaal choice hands over the charm (nichts: nothing)
-    const choice = actions(S3).find((a) => a.do === 'choice' && a.id === 'k3.objekt') as { options: { key: string; then?: Any[] }[] };
-    for (const o of choice.options) {
-      const items = (o.then ?? []).filter((a) => a.do === 'item').map((a) => a.item);
-      expect(items).toEqual(o.key === 'nichts' ? [] : [`item.charm.${o.key}`]);
-      if (o.key !== 'nichts') expect(ITEMS.some((i) => i.id === `item.charm.${o.key}`)).toBe(true);
+    // the Festsaal choice (four things in the room, `festsaal.took`) hands over the charm (nichts: nothing)
+    const k34 = S3.beats.find((b) => b.id === 'k3_4')!;
+    const took = (k34.on ?? []).filter((r) => (r.when as unknown as Any)?.flag === 'festsaal.took');
+    expect(took.map((r) => (r.when as unknown as Any).eq).sort()).toEqual(['dukat', 'nichts', 'tuergriff', 'uhr']);
+    for (const r of took) {
+      const key = (r.when as unknown as Any).eq as string;
+      const items = (r.do as unknown as Any[]).filter((a) => a.do === 'item').map((a) => a.item);
+      expect(items).toEqual(key === 'nichts' ? [] : [`item.charm.${key}`]);
+      expect((r.do as unknown as Any[]).find((a) => a.do === "flag")!.set).toMatchObject({ 'flag.k3_objekt': key, 'choice.k3.objekt': key });
+      if (key !== 'nichts') expect(ITEMS.some((i) => i.id === `item.charm.${key}`)).toBe(true);
     }
+    expect(k34.complete).toEqual({ flag: 'festsaal.took' });
     // chapter pages and stone marks belong to the collections
     const items = [...Q3.items!, ...Q4.items!];
     expect(items.filter((i) => i.set === 'chronikseiten').map((i) => i.id)).toEqual(['item.k3.seite', 'item.k4.seite']);
