@@ -1,0 +1,983 @@
+{
+  "$schema": "../schema/quests.schema.json",
+  "chapter": "k2",
+  "items": [
+    {
+      "id": "item.k2.kiste",
+      "kind": "quest",
+      "name_de": "Bilderkiste",
+      "text_de": "Eine flache Kiste aus Fichtenholz, mit Stroh ausgeschlagen, oben mit Kreide: „Gal. No.“ und eine Zahl. Schwerer, als sie aussieht.",
+      "fact": "cx.20"
+    }
+  ],
+  "quests": [
+    {
+      "id": "q.k2.spur",
+      "kind": "main",
+      "era": "1793-02",
+      "title_de": "Die Spur im Raureif",
+      "summary_de": "Februar 1793, Nacht. Am Parkzaun hängt ein Fetzen Wolle, und im Raureif läuft eine Spur bergauf: Da ist einer gerannt. Laub will wissen, wohin. Auf halbem Weg hat die Nacht Augen.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Zum Parkzaun am Carlsluster Torhaus. Dort Q. Ich will sehen, wer im Februar über einen Zaun klettert."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "laub",
+          "text": "Der Spur nach. Wenn Sie ein Horn hören: Licht aus, ducken. Sie kennen das."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Die Spur geht weiter, zum Wachhaus. Und Mannlich packt. Wer packt, weiß etwas, das die anderen noch nicht wissen."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Ein Bauer kam atemlos auf den Berg: Französische Reiter suchten in seinem Dorf einen Führer zum Schloss. Er schlich durch seinen Garten in den Wald und kletterte über den Parkzaun. Wikipedia nennt ihn Nikel Pfeiffer, aus Rohrbach. Von ihm selbst ist kein Wort überliefert.",
+          "fact": "cx.16",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 425–427"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+              "label": "de.wikipedia: Karl II. August"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "zaun",
+          "type": "reach",
+          "text_de": "Am Parkzaun beim Carlsluster Torhaus: Q – Februar 1793",
+          "where": {
+            "x": 1680,
+            "z": -400,
+            "r": 30,
+            "era": "1793-02"
+          }
+        },
+        {
+          "id": "fetzen",
+          "type": "examine",
+          "clue": "clue.k2.zaun",
+          "text_de": "Am Zaun hängt etwas (L: Laterne, E)"
+        },
+        {
+          "id": "allee",
+          "type": "reach",
+          "after": [
+            "fetzen"
+          ],
+          "text_de": "Der Spur im Raureif folgen, die Apfelallee hinauf",
+          "where": {
+            "x": 1500,
+            "z": -542,
+            "r": 18,
+            "era": "1793-02"
+          }
+        },
+        {
+          "id": "orangerie",
+          "type": "reach",
+          "after": [
+            "allee"
+          ],
+          "text_de": "Leise weiter, bis zur Orangerie",
+          "where": {
+            "x": 1275,
+            "z": -960,
+            "r": 34,
+            "era": "1793-02"
+          }
+        },
+        {
+          "id": "wagen",
+          "type": "echo",
+          "clue": "clue.k2.orangerie",
+          "text_de": "In Mannlichs Fenstern brennt Licht: zuhören"
+        },
+        {
+          "id": "streuner",
+          "type": "kill",
+          "enemy": "streuner",
+          "group": "k2.spur",
+          "count": 3,
+          "optional": true,
+          "bonus_xp": 40,
+          "after": [
+            "fetzen"
+          ],
+          "text_de": "Bonus: drei Streuner auf der Spur zurückschlagen",
+          "where": {
+            "x": 1347,
+            "z": -817,
+            "r": 26,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1347,
+              "z": -817,
+              "era": "1793-02",
+              "count": 3,
+              "radius": 6,
+              "leash": 40,
+              "group": "k2.spur"
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 200,
+        "skills": [
+          {
+            "id": "spurenleser",
+            "tier": 2
+          }
+        ]
+      },
+      "next": "q.k2.wachbuch"
+    },
+    {
+      "id": "q.k2.wachbuch",
+      "kind": "main",
+      "era": "1793-02",
+      "title_de": "Das Wachbuch",
+      "summary_de": "Am Wachhaus vor dem Gitter endet die Spur. Um das Wachfeuer tanzen Irrlichter, und solange sie da sind, erinnert sich niemand. Im Wachbuch steht, wer heute Abend gekommen ist.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Das Wachhaus. Da hört seine Spur auf. Aber um das Feuer tanzt etwas, das kein Funke ist."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Dem Leibjäger übergeben. Ab hier hat ihn jemand geführt. Ins Schloss."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Der Regierungsrat Horstmann hat Flucht und Ankunft notiert, in der Nacht des 9. Februar 1793. Die ADB sagt der dritte, Mannlich erinnert sich an Ende Februar. Wir folgen Horstmann. Er schrieb, als es geschah.",
+          "fact": "cx.17",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 427 Anm. 1"
+            },
+            {
+              "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+              "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "wachhaus",
+          "type": "reach",
+          "text_de": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof",
+          "where": {
+            "x": 1182,
+            "z": -1122,
+            "r": 14,
+            "era": "1793-02"
+          }
+        },
+        {
+          "id": "lichter",
+          "type": "kill",
+          "enemy": "irrlicht",
+          "count": 4,
+          "group": "k2.wache",
+          "after": [
+            "wachhaus"
+          ],
+          "text_de": "Die Irrlichter am Wachfeuer bannen",
+          "where": {
+            "x": 1182,
+            "z": -1122,
+            "r": 22,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1182,
+              "z": -1122,
+              "era": "1793-02",
+              "count": 4,
+              "radius": 7,
+              "leash": 30,
+              "group": "k2.wache"
+            }
+          ]
+        },
+        {
+          "id": "feuer",
+          "type": "echo",
+          "clue": "clue.k2.wache",
+          "after": [
+            "lichter"
+          ],
+          "text_de": "Die Wache am Feuer: zuhören"
+        },
+        {
+          "id": "buch",
+          "type": "examine",
+          "clue": "clue.k2.wachbuch",
+          "text_de": "Das Wachbuch auf dem Tisch am Wachhaus (E)"
+        }
+      ],
+      "rewards": {
+        "xp": 170
+      },
+      "next": "q.k2.warnung"
+    },
+    {
+      "id": "q.k2.warnung",
+      "kind": "main",
+      "era": "1793-02",
+      "title_de": "Die Warnung",
+      "summary_de": "Der Bauer ist im Schloss, und hinter der angelehnten Tür des Schreibkabinetts wird geredet. Laub will hören, was der Herzog sagt. Zweimal, denn beim zweiten Mal sagt er etwas anderes.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Ins Schloss. Durch die Durchfahrt, durchs Vestibül, bis an die Tür des Kabinetts. Dort hören Sie hin. Anklopfen ist nicht vorgesehen."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "laub",
+          "text": "Noch einmal an die Tür. Beim zweiten Mal spricht er nicht mehr über den Bauern."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Ein kleines Jagdmesser. Mehr hat er nicht selbst mitgenommen. Die Galerie lässt er einem Maler."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Der Herzog hielt die Nachricht zuerst für unglaubwürdig und wollte dem Bauern einen Dukaten geben. Dann kam die Bestätigung, und es wurde gepackt.",
+          "fact": "cx.16",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 425–427"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Mannlich blieb zurück, um über die Galerie zu wachen und sie zu retten, wenn es ihm möglich sei. Gegen zehn Uhr abends fuhr der Herzog ab.",
+          "fact": "cx.18",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 426"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 427"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k2.pfeiffer",
+        "flag": "flag.k2_pfeiffer",
+        "prompt_de": "Laub: Der Bauer ist durch die Nacht gerannt, über einen Zaun, zu einem Herzog, der ihm nicht glaubt. Warum, meinen Sie?",
+        "options": [
+          {
+            "label_de": "Weil er dem Herzog treu war.",
+            "value": "treu",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Treue. Die einzige Münze, die der Hof nie ausgegeben hat. Er hat sie bekommen."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil er sein Dorf schützen wollte.",
+            "value": "dorf",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Wer die Reiter wegschickt, schickt sie woandershin. Vielleicht wusste er das."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil er auf Lohn hoffte.",
+            "value": "lohn",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Ein Dukat. Oder ein Taler. Für eine Nacht im Februar ist das nicht viel. Für einen Bauern schon."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil er Angst hatte.",
+            "value": "angst",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Angst läuft schneller als Treue. Das ist keine Schande, das ist Physik."
+              }
+            ]
+          },
+          {
+            "label_de": "Das sagt keine Quelle.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Richtig. Er hat nichts hinterlassen. Nur eine Spur im Raureif, und die ist erfunden."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "hof",
+          "type": "reach",
+          "text_de": "In den Ehrenhof, durch die Durchfahrt im Südflügel",
+          "where": {
+            "x": 1222,
+            "z": -1118,
+            "r": 22,
+            "era": "1793-02"
+          }
+        },
+        {
+          "id": "tuer",
+          "type": "examine",
+          "clue": "clue.k2.warnung",
+          "text_de": "An der Tür des Kabinetts lauschen (E halten)"
+        },
+        {
+          "id": "abschied",
+          "type": "examine",
+          "clue": "clue.k2.abschied",
+          "text_de": "Noch einmal lauschen (E halten)"
+        }
+      ],
+      "rewards": {
+        "xp": 200
+      }
+    },
+    {
+      "id": "q.k2.parforce",
+      "kind": "main",
+      "era": "1793-02",
+      "title_de": "Die Parforcejagd",
+      "summary_de": "Die Wagen sind fort, und vom Zwinger bläst einer zur Jagd, der nicht Jost ist. Die Meute ist los, und sie jagt dich. Lauf zur Orangerie, den Hang hinab, zum Wasser. Am Damm wartet der Pikeur.",
+      "giver": {
+        "npc": "jost"
+      },
+      "turnin": "auto",
+      "topic_de": "Das Horn",
+      "accept_de": "Ich lauf.",
+      "offer": [
+        {
+          "speaker": "jost",
+          "text": "Wenn die Meute heut Nacht losgeht, gibt’s nur eins: Wasser. Den Hang runter zum Weiher."
+        },
+        {
+          "speaker": "jost",
+          "text": "Über Wasser kommt der Pikeur nicht. Aber am Damm wartet er. Der weiß das auch."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "laub",
+          "text": "Laufen! Die Orangerie, dann den Hang hinab nach Westen. Zum Damm."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Feldstation. Heute. Sie atmen, ich höre es bis hier drinnen."
+        },
+        {
+          "speaker": "laub",
+          "text": "Wollen Sie wissen, was die Lichter im Wald waren? Mannlich weiß es nicht. Ich auch nicht. Und das sage ich ungern."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Kurz nach der Abfahrt sprengte General Landremont heran und fragte nach den Feuern im Wald. Ein Handwerker antwortete im Gehen: Das sind Kalköfen. Was die Lichter waren, schreibt Mannlich nicht. Die Fackelträger der Lokalüberlieferung sind nicht belegt.",
+          "fact": "cx.19",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 427 f."
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 428"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k2.stelle",
+        "flag": "flag.k2_stelle",
+        "prompt_de": "Laub: Sie haben ihn heute rennen sehen. An seiner Stelle, was hätten Sie getan?",
+        "options": [
+          {
+            "label_de": "Ich hätte ihn auch gewarnt.",
+            "value": "gewarnt",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Einen Herzog, der Ihren Lohn schuldig bleibt. Gut. Ich schreibe es auf, ohne Kommentar. Fast."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich hätte geschwiegen.",
+            "value": "geschwiegen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Ehrlich. Die meisten haben geschwiegen. Darüber gibt es keine Quellen, nur Lücken."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich hätte die Reiter geführt.",
+            "value": "gefuehrt",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Irgendeiner hat sie geführt, sonst wären sie nicht gekommen. Seinen Namen kennt auch niemand."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Das weiß keiner, bevor er am Zaun steht."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "kalk",
+          "type": "echo",
+          "clue": "clue.k2.landremont",
+          "text_de": "Am Orangerie-Parterre: der General und die Lichter"
+        },
+        {
+          "id": "pikeur",
+          "type": "kill",
+          "enemy": "pikeur",
+          "group": "k2.pikeur",
+          "count": 1,
+          "after": [
+            "kalk"
+          ],
+          "text_de": "Am Damm: den Pikeur zurückschlagen, bis er abdreht",
+          "where": {
+            "x": 819,
+            "z": -875,
+            "r": 30,
+            "era": "1793-02"
+          }
+        },
+        {
+          "id": "heim",
+          "type": "event",
+          "event": "era:change",
+          "match": {
+            "to": "today"
+          },
+          "after": [
+            "pikeur"
+          ],
+          "text_de": "Q halten: zurück in die Feldstation"
+        }
+      ],
+      "rewards": {
+        "xp": 420,
+        "items": [
+          {
+            "item": "item.stab.silber"
+          }
+        ],
+        "skills": [
+          {
+            "id": "kartograf",
+            "tier": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k2.bodenbrett",
+      "kind": "side",
+      "era": "1793-02",
+      "title_de": "Das Bodenbrett",
+      "summary_de": "Hinter den Fenstern der Bildergalerie brennt eine einzelne Kerze, und davor schweben Irrlichter, die das Licht anziehen. Laub will wissen, wer um diese Zeit noch in der Galerie ist.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "In der Galerie brennt eine Kerze. Um diese Zeit. Sehen Sie nach, aber leise. Vor den Fenstern ist etwas, das Licht mag."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Der Kanzlist. Ein graues Buch unter einem Brett. Ich hätte es auch versteckt. Fragen Sie mich nicht, was drinsteht. Noch nicht."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Die Galerie hat Mannlich 1788 gebaut, in einem halben Jahr: grüner Damast aus Lyon, zwanzig Kristalllüster, hundert Schritt lang. Die Übersetzung von 1910 sagt hundert Fuß. Sie irrt.",
+          "fact": "cx.25",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 380 f."
+            },
+            {
+              "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+              "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Und es gab eine geheime Falltür von der Galerie in die Werkstatt des Büchsenmachers. Wo genau, weiß niemand. Dass Soll dort ein Buch versteckt, ist erfunden. Von mir. Im Voraus.",
+          "fact": "cx.26",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 432"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "lichter",
+          "type": "kill",
+          "enemy": "irrlicht",
+          "count": 2,
+          "group": "k2.galerie",
+          "text_de": "Die Irrlichter vor den Galeriefenstern bannen",
+          "where": {
+            "x": 1205,
+            "z": -1205,
+            "r": 20,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1205,
+              "z": -1205,
+              "era": "1793-02",
+              "count": 2,
+              "radius": 5,
+              "leash": 25,
+              "group": "k2.galerie"
+            }
+          ]
+        },
+        {
+          "id": "kerze",
+          "type": "examine",
+          "clue": "clue.k2.soll",
+          "text_de": "Durchs Fenster: wer kniet da bei der Kerze?"
+        }
+      ],
+      "rewards": {
+        "xp": 80
+      },
+      "available": {
+        "after": [
+          "q.k2.wachbuch"
+        ]
+      }
+    },
+    {
+      "id": "q.k2.lichter",
+      "kind": "side",
+      "era": "1793-02",
+      "title_de": "Lichter im Wald",
+      "summary_de": "Am Hang unterhalb der Orangerie schwanken Lichter zwischen den Bäumen. Kalköfen, wird ein Handwerker später sagen. Laub will es selbst sehen. An jedem Licht wartet etwas, das nicht nach Kalk riecht.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Da unten am Hang. Drei Lichter. Ich will wissen, was sie sind, bevor es mir jemand erklärt. Gehen Sie hin, alle drei."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Ein Meiler, der glimmt. Und drei Lichter, die keine Kohle brauchten. Was wir gesehen haben, steht nicht bei Mannlich."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Köhlerplätze: runde, ebene Teller am Hang, schwarze Erde. Ein Meiler glimmt unter Erde und Laub, er leuchtet nicht weit.",
+          "fact": "rm.03",
+          "sources": [
+            {
+              "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+              "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Das sind Kalköfen, hat der Handwerker dem General gesagt, im Gehen. Was die Lichter wirklich waren, schreibt Mannlich nicht.",
+          "fact": "cx.19",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 428"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k2.lichter",
+        "flag": "flag.k2_lichter",
+        "prompt_de": "Laub: Die Lichter im Wald, in jener Nacht. Was waren sie?",
+        "options": [
+          {
+            "label_de": "Kalköfen. Wie der Handwerker sagt.",
+            "value": "kalkoefen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Dann hat er die Wahrheit gesagt. Ein General hat ihm geglaubt. Das kommt selten vor."
+              }
+            ]
+          },
+          {
+            "label_de": "Fackeln. Die Diener bei den Wagen.",
+            "value": "fackeln",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Das erzählt man im Ort. Belegt ist es nicht. Aber es ist eine freundliche Geschichte."
+              }
+            ]
+          },
+          {
+            "label_de": "Wachfeuer.",
+            "value": "wachfeuer",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Die Wache am Gitter hatte eins. Warum nicht noch mehr am Hang."
+              }
+            ]
+          },
+          {
+            "label_de": "Laternen. Meine war dabei.",
+            "value": "laternen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Eine Erinnerung, in der Sie selbst vorkommen. Ich sage nichts. Ich bin eine Bussole."
+              }
+            ]
+          },
+          {
+            "label_de": "Das sagt keine Quelle.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Nein. Und darum sagen wir es auch nicht."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "licht1",
+          "type": "kill",
+          "enemy": "irrlicht",
+          "count": 2,
+          "group": "k2.lichter.1",
+          "text_de": "Das erste Licht am Hang: die Irrlichter bannen",
+          "where": {
+            "x": 1138,
+            "z": -931,
+            "r": 18,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1138,
+              "z": -931,
+              "era": "1793-02",
+              "count": 2,
+              "radius": 4,
+              "leash": 25,
+              "group": "k2.lichter.1"
+            }
+          ]
+        },
+        {
+          "id": "licht2",
+          "type": "kill",
+          "enemy": "irrlicht",
+          "count": 2,
+          "group": "k2.lichter.2",
+          "text_de": "Das zweite Licht am Hang: die Irrlichter bannen",
+          "where": {
+            "x": 1040,
+            "z": -902,
+            "r": 18,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1040,
+              "z": -902,
+              "era": "1793-02",
+              "count": 2,
+              "radius": 4,
+              "leash": 25,
+              "group": "k2.lichter.2"
+            }
+          ]
+        },
+        {
+          "id": "licht3",
+          "type": "kill",
+          "enemy": "irrlicht",
+          "count": 2,
+          "group": "k2.lichter.3",
+          "text_de": "Das dritte Licht am Hang: die Irrlichter bannen",
+          "where": {
+            "x": 1232,
+            "z": -872,
+            "r": 18,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1232,
+              "z": -872,
+              "era": "1793-02",
+              "count": 2,
+              "radius": 4,
+              "leash": 25,
+              "group": "k2.lichter.3"
+            }
+          ]
+        },
+        {
+          "id": "meiler",
+          "type": "examine",
+          "clue": "clue.k2.koehler",
+          "text_de": "Ein Köhlerplatz am Hang (Relief-Blick)"
+        }
+      ],
+      "rewards": {
+        "xp": 120,
+        "items": [
+          {
+            "item": "item.kalkstaub",
+            "count": 3
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k2.wachbuch"
+        ]
+      }
+    },
+    {
+      "id": "q.k2.kisten",
+      "kind": "side",
+      "era": "1793-02",
+      "title_de": "Kisten für Mannheim",
+      "summary_de": "Im Orangeriehof wird gepackt. Ein Diener des Baudirektors braucht Hände: Vier Bilderkisten müssen auf den Wagen, und zwischen den Kisten streunen Hunde, die nicht in den Zwinger gehören.",
+      "giver": {
+        "npc": "diener"
+      },
+      "turnin": "giver",
+      "topic_de": "Die Kisten",
+      "accept_de": "Ich trage.",
+      "offer": [
+        {
+          "speaker": "diener",
+          "text": "Monsieur, Sie kommen wie gerufen. Der Herr Baudirektor sagt, die Bilder müssen fort, bevor die Franzosen kommen. Vier Kisten noch."
+        },
+        {
+          "speaker": "diener",
+          "text": "Und zwischen den Kisten schnüffeln Hunde herum. Nicht unsere. Ich trage, Sie verscheuchen. Oder umgekehrt, aber ich trage lieber."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "diener",
+          "text": "Vier Kisten, Monsieur. Vorsichtig, da ist ein Rubens drin. Oder ein Rahmen. Ich verwechsle das."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "diener",
+          "text": "Alle vier auf dem Wagen. Der Herr Baudirektor wird sagen, er hat es allein geschafft. Das ist in Ordnung. Ich weiß es."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "diener",
+          "text": "Mit dem alten Burger trägt der Herr Baudirektor die schönsten Bilder durch eine Falltür in die Werkstatt des Büchsenmachers. Später geht alles über Kaiserslautern nach Mannheim. Die Bilder, sagt man, kommen einmal nach München.",
+          "fact": "cx.20",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 432"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "kisten",
+          "type": "collect",
+          "item": "item.k2.kiste",
+          "count": 4,
+          "text_de": "Bilderkisten im Orangeriehof aufheben",
+          "place": [
+            {
+              "x": 1304,
+              "z": -992,
+              "era": "1793-02"
+            },
+            {
+              "x": 1312,
+              "z": -1000,
+              "era": "1793-02"
+            },
+            {
+              "x": 1292,
+              "z": -1006,
+              "era": "1793-02"
+            },
+            {
+              "x": 1320,
+              "z": -984,
+              "era": "1793-02"
+            }
+          ]
+        },
+        {
+          "id": "hunde",
+          "type": "kill",
+          "enemy": "streuner",
+          "count": 4,
+          "group": "k2.kisten",
+          "text_de": "Die Streuner zwischen den Kisten verscheuchen",
+          "where": {
+            "x": 1310,
+            "z": -995,
+            "r": 22,
+            "era": "1793-02"
+          },
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1310,
+              "z": -995,
+              "era": "1793-02",
+              "count": 4,
+              "radius": 8,
+              "leash": 35,
+              "group": "k2.kisten"
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 110,
+        "items": [
+          {
+            "item": "item.riechsalz",
+            "count": 2
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k2.spur"
+        ]
+      }
+    }
+  ]
+}

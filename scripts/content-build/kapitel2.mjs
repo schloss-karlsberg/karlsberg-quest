@@ -1,4 +1,5 @@
-import { clue, noun, say, seq, hints, src, write, Z, P } from './common.mjs';
+import { writeFileSync } from 'node:fs';
+import { clue, noun, say, seq, hints, src, write, Z, P, ROOT } from './common.mjs';
 
 const ch = 'k2';
 const E = '1793-02';
@@ -267,6 +268,12 @@ const dialogue = [
   ]),
   say('laub.k2.koehler', 'laub', 'Ein Köhlermeiler. Die gibt es hier überall im Wald. Ein Meiler glimmt, er leuchtet nicht. Aber der General kommt aus Saarbrücken, was weiß der.', found('clue.k2.koehler'), { once: true }),
   say('laub.k2.keller', 'laub', 'Hier unten bleibt man, bis man vergessen wird. Raus.', beat('2.10-keller'), { once: true }),
+  // Am Damm: the Pikeur stands in the way (Action-RPG); he does not fall, he rides off
+  ...seq(beat('2.10-pikeur'), [
+    ['laub.k2.damm', 'laub', 'Er ist vor Ihnen da. Natürlich. Der Pikeur kennt den Weg zum Wasser besser als Sie.'],
+    ['laub.k2.damm.b', 'laub', 'Bannlicht ins Gesicht, das er nicht zeigt. Dann der Stab. Und bleiben Sie auf dem Damm: Das Wasser ist auf Ihrer Seite.'],
+  ]),
+  say('laub.k2.damm.weg', 'laub', 'Er reitet. Nicht weg, nur fort. Merken Sie sich den Unterschied, er wird ihn auch nicht vergessen.', beat('2.10-weg'), { once: true }),
   // Am Damm (2.10)
   ...seq(beat('2.10'), [
     ['laub.k2.wasser', 'laub', 'Fließendes Wasser. Darüber kommt er nicht. Das steht in jeder Sage und in keinem Dienstreglement. Heute gilt die Sage.'],
@@ -295,11 +302,6 @@ const dialogue = [
   say('laub.k2.sicher', 'laub', 'Sie sind drüben. Halten Sie Q, bevor er es sich anders überlegt.', beat('2.10-q'), { once: true }),
   say('hanne.k2.07', 'hanne', 'Gehen Sie. Und stellen Sie sich nicht vor die Wagen. Die halten heute für keinen.', talk('hanne', 'bye')),
   say('jost.k2.07', 'jost', 'Ich muss zum Zwinger. Die Hunde sind unruhig, seit die Wagen stehen.', talk('jost', 'bye')),
-  // Feldstation: was fehlt (Laub)
-  say('laub.k2.fehlt.warnung', 'laub', 'Was der Herzog über den Bauern gesagt hat, fehlt Ihnen noch. Das hört man nur an der Tür des Kabinetts. Anker B bringt Sie in den Ehrenhof.', beat('2.11-fehlt-warnung'), { once: true }),
-  say('laub.k2.fehlt.abschied', 'laub', 'Was er Mannlich anvertraut hat, wissen Sie noch nicht. Hören Sie im Kabinett ein zweites Mal hin.', beat('2.11-fehlt-abschied'), { once: true }),
-  say('laub.k2.fehlt.kalkoefen', 'laub', 'Die Antwort des Handwerkers fehlt. Am Orangerie-Parterre hängt sie noch in der Luft, im Februar 1793. Ohne Hunde diesmal.', beat('2.11-fehlt-kalkoefen'), { once: true }),
-  say('laub.k2.fehlt.datum', 'laub', 'Das Datum steht im Wachbuch, am Wachhaus vor dem Gitter. Der Regierungsrat schreibt ordentlich.', beat('2.11-fehlt-datum'), { once: true }),
 ];
 
 write('kapitel-2', {
@@ -314,3 +316,245 @@ write('kapitel-2', {
     'Der General kommt nach der Abfahrt, nicht vorher. Bleiben Sie im Ehrenhof, bis die Wagen weg sind, und laufen Sie dann zur Orangerie. Sie werden sowieso laufen.',
   ]),
 });
+
+// =====================================================================================================
+// Quests (docs/ACTION-RPG.md §11.2) → content/quests/02-kapitel-2.quests.json
+// February 1793, one night: follow the runner's trail, the guardhouse, the warning, the departure, the
+// parforce hunt. The hunt is a threat (run, hide, water); the Pikeur stands at the dam and rides off.
+// =====================================================================================================
+const ln = (speaker, text, o = {}) => ({ speaker, text, ...(o.fact ? { fact: o.fact } : {}), ...(o.src ? { sources: o.src } : {}) });
+const place = (x, z, r, era = E) => ({ x, z, ...(r ? { r } : {}), era });
+const spawn = (kind, [x, z], count, radius, extra = {}) => ({ kind, x, z, era: E, count, radius, ...extra });
+
+// Terrain-checked spots (probe.mjs / terrain.mjs, 2026-11-16), all walkable in 1793-02 and outside
+// every footprint of that era.
+export const K2_SPOTS = {
+  allee: [1347, -817], // the Apfelallee on the runner's trail
+  wachhaus: [1182, -1122], // in front of the north guardhouse KB-B38
+  galerie: [1205, -1205], // under the gallery windows (KB-B06)
+  lichter: [[1138, -931], [1040, -902], [1232, -872]], // the lights on the slope below the Orangerie
+  kisten: [[1304, -992], [1312, -1000], [1292, -1006], [1320, -984]], // Orangeriehof, the loading yard
+  kistenhof: [1310, -995],
+  damm: [819, -875], // the dam of the Karlsbergweiher
+};
+const KS2 = K2_SPOTS;
+const LICHT = ['Das erste Licht', 'Das zweite Licht', 'Das dritte Licht'];
+
+const k2Quests = {
+  chapter: 'k2',
+  items: [
+    { id: 'item.k2.kiste', kind: 'quest', name_de: 'Bilderkiste', text_de: 'Eine flache Kiste aus Fichtenholz, mit Stroh ausgeschlagen, oben mit Kreide: „Gal. No.“ und eine Zahl. Schwerer, als sie aussieht.', fact: 'cx.20' },
+  ],
+  quests: [
+    {
+      id: 'q.k2.spur', kind: 'main', era: E,
+      title_de: 'Die Spur im Raureif',
+      summary_de: 'Februar 1793, Nacht. Am Parkzaun hängt ein Fetzen Wolle, und im Raureif läuft eine Spur bergauf: Da ist einer gerannt. Laub will wissen, wohin. Auf halbem Weg hat die Nacht Augen.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [
+        ln('laub', 'Zum Parkzaun am Carlsluster Torhaus. Dort Q. Ich will sehen, wer im Februar über einen Zaun klettert.'),
+      ],
+      progress: [ln('laub', 'Der Spur nach. Wenn Sie ein Horn hören: Licht aus, ducken. Sie kennen das.')],
+      turnin_lines: [ln('laub', 'Die Spur geht weiter, zum Wachhaus. Und Mannlich packt. Wer packt, weiß etwas, das die anderen noch nicht wissen.')],
+      history: [
+        ln('laub', 'Ein Bauer kam atemlos auf den Berg: Französische Reiter suchten in seinem Dorf einen Führer zum Schloss. Er schlich durch seinen Garten in den Wald und kletterte über den Parkzaun. Wikipedia nennt ihn Nikel Pfeiffer, aus Rohrbach. Von ihm selbst ist kein Wort überliefert.', { fact: 'cx.16', src: [P('S. 425–427'), src('WP-K2A')] }),
+      ],
+      objectives: [
+        { id: 'zaun', type: 'reach', text_de: 'Am Parkzaun beim Carlsluster Torhaus: Q – Februar 1793', where: place(1680, -400, 30) },
+        { id: 'fetzen', type: 'examine', clue: 'clue.k2.zaun', text_de: 'Am Zaun hängt etwas (L: Laterne, E)' },
+        { id: 'allee', type: 'reach', after: ['fetzen'], text_de: 'Der Spur im Raureif folgen, die Apfelallee hinauf', where: place(1500, -542, 18) },
+        { id: 'orangerie', type: 'reach', after: ['allee'], text_de: 'Leise weiter, bis zur Orangerie', where: place(1275, -960, 34) },
+        { id: 'wagen', type: 'echo', clue: 'clue.k2.orangerie', text_de: 'In Mannlichs Fenstern brennt Licht: zuhören' },
+        {
+          id: 'streuner', type: 'kill', enemy: 'streuner', group: 'k2.spur', count: 3, optional: true, bonus_xp: 40, after: ['fetzen'],
+          text_de: 'Bonus: drei Streuner auf der Spur zurückschlagen',
+          where: place(...KS2.allee, 26),
+          spawn: [spawn('streuner', KS2.allee, 3, 6, { leash: 40, group: 'k2.spur' })],
+        },
+      ],
+      rewards: { xp: 200, skills: [{ id: 'spurenleser', tier: 2 }] },
+      next: 'q.k2.wachbuch',
+    },
+    {
+      id: 'q.k2.wachbuch', kind: 'main', era: E,
+      title_de: 'Das Wachbuch',
+      summary_de: 'Am Wachhaus vor dem Gitter endet die Spur. Um das Wachfeuer tanzen Irrlichter, und solange sie da sind, erinnert sich niemand. Im Wachbuch steht, wer heute Abend gekommen ist.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Das Wachhaus. Da hört seine Spur auf. Aber um das Feuer tanzt etwas, das kein Funke ist.')],
+      turnin_lines: [ln('laub', 'Dem Leibjäger übergeben. Ab hier hat ihn jemand geführt. Ins Schloss.')],
+      history: [
+        ln('laub', 'Der Regierungsrat Horstmann hat Flucht und Ankunft notiert, in der Nacht des 9. Februar 1793. Die ADB sagt der dritte, Mannlich erinnert sich an Ende Februar. Wir folgen Horstmann. Er schrieb, als es geschah.', { fact: 'cx.17', src: [src('M1910', 'S. 427 Anm. 1'), src('ADB')] }),
+      ],
+      objectives: [
+        { id: 'wachhaus', type: 'reach', text_de: 'Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof', where: place(...KS2.wachhaus, 14) },
+        {
+          id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 4, group: 'k2.wache', after: ['wachhaus'],
+          text_de: 'Die Irrlichter am Wachfeuer bannen',
+          where: place(...KS2.wachhaus, 22),
+          spawn: [spawn('irrlicht', KS2.wachhaus, 4, 7, { leash: 30, group: 'k2.wache' })],
+        },
+        { id: 'feuer', type: 'echo', clue: 'clue.k2.wache', after: ['lichter'], text_de: 'Die Wache am Feuer: zuhören' },
+        { id: 'buch', type: 'examine', clue: 'clue.k2.wachbuch', text_de: 'Das Wachbuch auf dem Tisch am Wachhaus (E)' },
+      ],
+      rewards: { xp: 170 },
+      next: 'q.k2.warnung',
+    },
+    {
+      id: 'q.k2.warnung', kind: 'main', era: E,
+      title_de: 'Die Warnung',
+      summary_de: 'Der Bauer ist im Schloss, und hinter der angelehnten Tür des Schreibkabinetts wird geredet. Laub will hören, was der Herzog sagt. Zweimal, denn beim zweiten Mal sagt er etwas anderes.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Ins Schloss. Durch die Durchfahrt, durchs Vestibül, bis an die Tür des Kabinetts. Dort hören Sie hin. Anklopfen ist nicht vorgesehen.')],
+      progress: [ln('laub', 'Noch einmal an die Tür. Beim zweiten Mal spricht er nicht mehr über den Bauern.')],
+      turnin_lines: [ln('laub', 'Ein kleines Jagdmesser. Mehr hat er nicht selbst mitgenommen. Die Galerie lässt er einem Maler.')],
+      history: [
+        ln('laub', 'Der Herzog hielt die Nachricht zuerst für unglaubwürdig und wollte dem Bauern einen Dukaten geben. Dann kam die Bestätigung, und es wurde gepackt.', { fact: 'cx.16', src: [P('S. 425–427')] }),
+        ln('laub', 'Mannlich blieb zurück, um über die Galerie zu wachen und sie zu retten, wenn es ihm möglich sei. Gegen zehn Uhr abends fuhr der Herzog ab.', { fact: 'cx.18', src: [Z('S. 426'), P('S. 427')] }),
+      ],
+      stance: {
+        id: 'k2.pfeiffer', flag: 'flag.k2_pfeiffer',
+        prompt_de: 'Laub: Der Bauer ist durch die Nacht gerannt, über einen Zaun, zu einem Herzog, der ihm nicht glaubt. Warum, meinen Sie?',
+        options: [
+          { label_de: 'Weil er dem Herzog treu war.', value: 'treu', reply: [ln('laub', 'Treue. Die einzige Münze, die der Hof nie ausgegeben hat. Er hat sie bekommen.')] },
+          { label_de: 'Weil er sein Dorf schützen wollte.', value: 'dorf', reply: [ln('laub', 'Wer die Reiter wegschickt, schickt sie woandershin. Vielleicht wusste er das.')] },
+          { label_de: 'Weil er auf Lohn hoffte.', value: 'lohn', reply: [ln('laub', 'Ein Dukat. Oder ein Taler. Für eine Nacht im Februar ist das nicht viel. Für einen Bauern schon.')] },
+          { label_de: 'Weil er Angst hatte.', value: 'angst', reply: [ln('laub', 'Angst läuft schneller als Treue. Das ist keine Schande, das ist Physik.')] },
+          { label_de: 'Das sagt keine Quelle.', value: 'offen', reply: [ln('laub', 'Richtig. Er hat nichts hinterlassen. Nur eine Spur im Raureif, und die ist erfunden.')] },
+        ],
+      },
+      objectives: [
+        { id: 'hof', type: 'reach', text_de: 'In den Ehrenhof, durch die Durchfahrt im Südflügel', where: place(1222, -1118, 22) },
+        { id: 'tuer', type: 'examine', clue: 'clue.k2.warnung', text_de: 'An der Tür des Kabinetts lauschen (E halten)' },
+        { id: 'abschied', type: 'examine', clue: 'clue.k2.abschied', text_de: 'Noch einmal lauschen (E halten)' },
+      ],
+      rewards: { xp: 200 },
+    },
+    {
+      id: 'q.k2.parforce', kind: 'main', era: E,
+      title_de: 'Die Parforcejagd',
+      summary_de: 'Die Wagen sind fort, und vom Zwinger bläst einer zur Jagd, der nicht Jost ist. Die Meute ist los, und sie jagt dich. Lauf zur Orangerie, den Hang hinab, zum Wasser. Am Damm wartet der Pikeur.',
+      giver: { npc: 'jost' }, turnin: 'auto',
+      topic_de: 'Das Horn', accept_de: 'Ich lauf.',
+      offer: [
+        ln('jost', 'Wenn die Meute heut Nacht losgeht, gibt’s nur eins: Wasser. Den Hang runter zum Weiher.'),
+        ln('jost', 'Über Wasser kommt der Pikeur nicht. Aber am Damm wartet er. Der weiß das auch.'),
+      ],
+      progress: [ln('laub', 'Laufen! Die Orangerie, dann den Hang hinab nach Westen. Zum Damm.')],
+      turnin_lines: [
+        ln('laub', 'Feldstation. Heute. Sie atmen, ich höre es bis hier drinnen.'),
+        ln('laub', 'Wollen Sie wissen, was die Lichter im Wald waren? Mannlich weiß es nicht. Ich auch nicht. Und das sage ich ungern.'),
+      ],
+      history: [
+        ln('laub', 'Kurz nach der Abfahrt sprengte General Landremont heran und fragte nach den Feuern im Wald. Ein Handwerker antwortete im Gehen: Das sind Kalköfen. Was die Lichter waren, schreibt Mannlich nicht. Die Fackelträger der Lokalüberlieferung sind nicht belegt.', { fact: 'cx.19', src: [Z('S. 427 f.'), P('S. 428')] }),
+      ],
+      stance: {
+        id: 'k2.stelle', flag: 'flag.k2_stelle',
+        prompt_de: 'Laub: Sie haben ihn heute rennen sehen. An seiner Stelle, was hätten Sie getan?',
+        options: [
+          { label_de: 'Ich hätte ihn auch gewarnt.', value: 'gewarnt', reply: [ln('laub', 'Einen Herzog, der Ihren Lohn schuldig bleibt. Gut. Ich schreibe es auf, ohne Kommentar. Fast.')] },
+          { label_de: 'Ich hätte geschwiegen.', value: 'geschwiegen', reply: [ln('laub', 'Ehrlich. Die meisten haben geschwiegen. Darüber gibt es keine Quellen, nur Lücken.')] },
+          { label_de: 'Ich hätte die Reiter geführt.', value: 'gefuehrt', reply: [ln('laub', 'Irgendeiner hat sie geführt, sonst wären sie nicht gekommen. Seinen Namen kennt auch niemand.')] },
+          { label_de: 'Ich weiß es nicht.', value: 'offen', reply: [ln('laub', 'Das weiß keiner, bevor er am Zaun steht.')] },
+        ],
+      },
+      objectives: [
+        { id: 'kalk', type: 'echo', clue: 'clue.k2.landremont', text_de: 'Am Orangerie-Parterre: der General und die Lichter' },
+        {
+          id: 'pikeur', type: 'kill', enemy: 'pikeur', group: 'k2.pikeur', count: 1, after: ['kalk'],
+          text_de: 'Am Damm: den Pikeur zurückschlagen, bis er abdreht',
+          where: place(...KS2.damm, 30),
+        },
+        { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['pikeur'], text_de: 'Q halten: zurück in die Feldstation' },
+      ],
+      rewards: { xp: 420, items: [{ item: 'item.stab.silber' }], skills: [{ id: 'kartograf', tier: 3 }] },
+    },
+    // ---- side quests ------------------------------------------------------------------------------
+    {
+      id: 'q.k2.bodenbrett', kind: 'side', era: E,
+      title_de: 'Das Bodenbrett',
+      summary_de: 'Hinter den Fenstern der Bildergalerie brennt eine einzelne Kerze, und davor schweben Irrlichter, die das Licht anziehen. Laub will wissen, wer um diese Zeit noch in der Galerie ist.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'In der Galerie brennt eine Kerze. Um diese Zeit. Sehen Sie nach, aber leise. Vor den Fenstern ist etwas, das Licht mag.')],
+      turnin_lines: [ln('laub', 'Der Kanzlist. Ein graues Buch unter einem Brett. Ich hätte es auch versteckt. Fragen Sie mich nicht, was drinsteht. Noch nicht.')],
+      history: [
+        ln('laub', 'Die Galerie hat Mannlich 1788 gebaut, in einem halben Jahr: grüner Damast aus Lyon, zwanzig Kristalllüster, hundert Schritt lang. Die Übersetzung von 1910 sagt hundert Fuß. Sie irrt.', { fact: 'cx.25', src: [src('M1910', 'S. 380 f.'), src('SCHWAN12')] }),
+        ln('laub', 'Und es gab eine geheime Falltür von der Galerie in die Werkstatt des Büchsenmachers. Wo genau, weiß niemand. Dass Soll dort ein Buch versteckt, ist erfunden. Von mir. Im Voraus.', { fact: 'cx.26', src: [Z('S. 432')] }),
+      ],
+      objectives: [
+        {
+          id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 2, group: 'k2.galerie',
+          text_de: 'Die Irrlichter vor den Galeriefenstern bannen',
+          where: place(...KS2.galerie, 20),
+          spawn: [spawn('irrlicht', KS2.galerie, 2, 5, { leash: 25, group: 'k2.galerie' })],
+        },
+        { id: 'kerze', type: 'examine', clue: 'clue.k2.soll', text_de: 'Durchs Fenster: wer kniet da bei der Kerze?' },
+      ],
+      rewards: { xp: 80 },
+      available: { after: ['q.k2.wachbuch'] },
+    },
+    {
+      id: 'q.k2.lichter', kind: 'side', era: E,
+      title_de: 'Lichter im Wald',
+      summary_de: 'Am Hang unterhalb der Orangerie schwanken Lichter zwischen den Bäumen. Kalköfen, wird ein Handwerker später sagen. Laub will es selbst sehen. An jedem Licht wartet etwas, das nicht nach Kalk riecht.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Da unten am Hang. Drei Lichter. Ich will wissen, was sie sind, bevor es mir jemand erklärt. Gehen Sie hin, alle drei.')],
+      turnin_lines: [ln('laub', 'Ein Meiler, der glimmt. Und drei Lichter, die keine Kohle brauchten. Was wir gesehen haben, steht nicht bei Mannlich.')],
+      history: [
+        ln('laub', 'Köhlerplätze: runde, ebene Teller am Hang, schwarze Erde. Ein Meiler glimmt unter Erde und Laub, er leuchtet nicht weit.', { fact: 'rm.03', src: [src('HE-BW')] }),
+        ln('laub', 'Das sind Kalköfen, hat der Handwerker dem General gesagt, im Gehen. Was die Lichter wirklich waren, schreibt Mannlich nicht.', { fact: 'cx.19', src: [Z('S. 428')] }),
+      ],
+      stance: {
+        id: 'k2.lichter', flag: 'flag.k2_lichter',
+        prompt_de: 'Laub: Die Lichter im Wald, in jener Nacht. Was waren sie?',
+        options: [
+          { label_de: 'Kalköfen. Wie der Handwerker sagt.', value: 'kalkoefen', reply: [ln('laub', 'Dann hat er die Wahrheit gesagt. Ein General hat ihm geglaubt. Das kommt selten vor.')] },
+          { label_de: 'Fackeln. Die Diener bei den Wagen.', value: 'fackeln', reply: [ln('laub', 'Das erzählt man im Ort. Belegt ist es nicht. Aber es ist eine freundliche Geschichte.')] },
+          { label_de: 'Wachfeuer.', value: 'wachfeuer', reply: [ln('laub', 'Die Wache am Gitter hatte eins. Warum nicht noch mehr am Hang.')] },
+          { label_de: 'Laternen. Meine war dabei.', value: 'laternen', reply: [ln('laub', 'Eine Erinnerung, in der Sie selbst vorkommen. Ich sage nichts. Ich bin eine Bussole.')] },
+          { label_de: 'Das sagt keine Quelle.', value: 'offen', reply: [ln('laub', 'Nein. Und darum sagen wir es auch nicht.')] },
+        ],
+      },
+      objectives: [
+        ...KS2.lichter.map(([x, z], i) => ({
+          id: `licht${i + 1}`, type: 'kill', enemy: 'irrlicht', count: 2, group: `k2.lichter.${i + 1}`,
+          text_de: `${LICHT[i]} am Hang: die Irrlichter bannen`,
+          where: place(x, z, 18),
+          spawn: [spawn('irrlicht', [x, z], 2, 4, { leash: 25, group: `k2.lichter.${i + 1}` })],
+        })),
+        { id: 'meiler', type: 'examine', clue: 'clue.k2.koehler', text_de: 'Ein Köhlerplatz am Hang (Relief-Blick)' },
+      ],
+      rewards: { xp: 120, items: [{ item: 'item.kalkstaub', count: 3 }] },
+      available: { after: ['q.k2.wachbuch'] },
+    },
+    {
+      id: 'q.k2.kisten', kind: 'side', era: E,
+      title_de: 'Kisten für Mannheim',
+      summary_de: 'Im Orangeriehof wird gepackt. Ein Diener des Baudirektors braucht Hände: Vier Bilderkisten müssen auf den Wagen, und zwischen den Kisten streunen Hunde, die nicht in den Zwinger gehören.',
+      giver: { npc: 'diener' }, turnin: 'giver',
+      topic_de: 'Die Kisten', accept_de: 'Ich trage.',
+      offer: [
+        ln('diener', 'Monsieur, Sie kommen wie gerufen. Der Herr Baudirektor sagt, die Bilder müssen fort, bevor die Franzosen kommen. Vier Kisten noch.'),
+        ln('diener', 'Und zwischen den Kisten schnüffeln Hunde herum. Nicht unsere. Ich trage, Sie verscheuchen. Oder umgekehrt, aber ich trage lieber.'),
+      ],
+      progress: [ln('diener', 'Vier Kisten, Monsieur. Vorsichtig, da ist ein Rubens drin. Oder ein Rahmen. Ich verwechsle das.')],
+      turnin_lines: [ln('diener', 'Alle vier auf dem Wagen. Der Herr Baudirektor wird sagen, er hat es allein geschafft. Das ist in Ordnung. Ich weiß es.')],
+      history: [
+        ln('diener', 'Mit dem alten Burger trägt der Herr Baudirektor die schönsten Bilder durch eine Falltür in die Werkstatt des Büchsenmachers. Später geht alles über Kaiserslautern nach Mannheim. Die Bilder, sagt man, kommen einmal nach München.', { fact: 'cx.20', src: [Z('S. 432'), src('WP-SK')] }),
+      ],
+      objectives: [
+        { id: 'kisten', type: 'collect', item: 'item.k2.kiste', count: 4, text_de: 'Bilderkisten im Orangeriehof aufheben', place: KS2.kisten.map(([x, z]) => place(x, z)) },
+        {
+          id: 'hunde', type: 'kill', enemy: 'streuner', count: 4, group: 'k2.kisten',
+          text_de: 'Die Streuner zwischen den Kisten verscheuchen',
+          where: place(...KS2.kistenhof, 22),
+          spawn: [spawn('streuner', KS2.kistenhof, 4, 8, { leash: 35, group: 'k2.kisten' })],
+        },
+      ],
+      rewards: { xp: 110, items: [{ item: 'item.riechsalz', count: 2 }] },
+      available: { after: ['q.k2.spur'] },
+    },
+  ],
+};
+
+writeFileSync(`${ROOT}/content/quests/02-kapitel-2.quests.json`, JSON.stringify({ $schema: '../schema/quests.schema.json', ...k2Quests }, null, 2) + '\n');
+console.log('wrote 02-kapitel-2.quests.json');

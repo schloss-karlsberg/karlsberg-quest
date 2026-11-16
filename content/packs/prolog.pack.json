@@ -854,7 +854,7 @@
     {
       "id": "laub.p.punktwolke.b",
       "speaker": "laub",
-      "text_de": "Fragen Sie nicht. Füllen Sie die Seite aus.",
+      "text_de": "Fragen Sie nicht. Gehen Sie hin und sehen Sie selbst.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",
@@ -865,7 +865,7 @@
     {
       "id": "laub.p.regeln",
       "speaker": "laub",
-      "text_de": "So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick.",
+      "text_de": "So. Der Berg kennt Sie jetzt. Das reicht für einen Blick.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",
@@ -1081,7 +1081,7 @@
     {
       "id": "laub.p.gestellt.b",
       "speaker": "laub",
-      "text_de": "Was Sie drüben gefunden und noch nicht bestätigt hatten, darf die Meute behalten. Was bestätigt ist, nimmt Ihnen keiner.",
+      "text_de": "Verloren haben Sie nichts. Was Sie gefunden haben, steht im Feldbuch, und der Stab ist noch da. Nur den Weg gehen Sie noch einmal.",
       "trigger": {
         "event": "player:caught",
         "chapter": "prolog",

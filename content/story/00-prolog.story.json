@@ -7,6 +7,125 @@
   "start": "p1",
   "next": "k1",
   "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "on": [
+    {
+      "id": "trichter-melden",
+      "when": {
+        "all": [{ "quest": { "id": "q.p.trichter", "objective": "finden" } }, { "not": { "quest": { "id": "q.p.trichter", "objective": "melden" } } }]
+      },
+      "do": [
+        { "do": "sound", "sound": "radio", "caption": "[Du drückst die Sprechtaste]", "delay": 1 },
+        {
+          "do": "say",
+          "id": "marlene.p.trichter",
+          "speaker": "marlene",
+          "text": "Ein Trichter, rund, mit Wall? Bleib draußen. Ich hab’s notiert. Nicht reingehen, nicht buddeln, nicht mal reinspucken.",
+          "delay": 0.6,
+          "ms": 6000
+        },
+        { "do": "quest", "op": "progress", "id": "q.p.trichter", "objective": "melden", "n": 1, "delay": 0.5 }
+      ]
+    },
+    {
+      "id": "settle.p.feldstation.lageplan",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.feldstation", "state": "active" } },
+          { "have": { "clue": "clue.p.lageplan" } },
+          { "not": { "quest": { "id": "q.p.feldstation", "objective": "lageplan" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.feldstation", "objective": "lageplan", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.feldstation.handbuch",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.feldstation", "state": "active" } },
+          { "have": { "clue": "clue.p.handbuch" } },
+          { "not": { "quest": { "id": "q.p.feldstation", "objective": "handbuch" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.feldstation", "objective": "handbuch", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.feldstation.schublade",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.feldstation", "state": "active" } },
+          { "have": { "clue": "clue.p.laubblatt" } },
+          { "not": { "quest": { "id": "q.p.feldstation", "objective": "schublade" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.feldstation", "objective": "schublade", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.relief.mauer",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.relief", "state": "active" } },
+          { "have": { "clue": "clue.p.mauerrest" } },
+          { "not": { "quest": { "id": "q.p.relief", "objective": "mauer" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.relief", "objective": "mauer", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.bussole.ehrenhof",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.bussole", "state": "active" } },
+          { "have": { "clue": "clue.p.ehrenhof" } },
+          { "not": { "quest": { "id": "q.p.bussole", "objective": "ehrenhof" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.bussole", "objective": "ehrenhof", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.bussole.karte",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.bussole", "state": "active" } },
+          { "have": { "clue": "clue.p.kartenvergleich" } },
+          { "not": { "quest": { "id": "q.p.bussole", "objective": "karte" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.bussole", "objective": "karte", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.bussole.hohlweg",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.bussole", "state": "active" } },
+          { "have": { "clue": "clue.p.hohlweg" } },
+          { "not": { "quest": { "id": "q.p.bussole", "objective": "hohlweg" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.bussole", "objective": "hohlweg", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.bussole.grube",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.bussole", "state": "active" } },
+          { "have": { "clue": "clue.p.eiskeller" } },
+          { "not": { "quest": { "id": "q.p.bussole", "objective": "grube" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.bussole", "objective": "grube", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.p.punktwolke.wolke",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.p.punktwolke", "state": "active" } },
+          { "have": { "clue": "clue.p.punktwolke" } },
+          { "not": { "quest": { "id": "q.p.punktwolke", "objective": "wolke" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.p.punktwolke", "objective": "wolke", "n": 1, "onResume": true }]
+    }
+  ],
   "beats": [
     {
       "id": "p1",
@@ -14,8 +133,16 @@
       "enter": [
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "laub.silent": true } },
-        { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen" },
-        { "do": "objective", "id": "station", "text": "Im Bauwagen umsehen: Pinnwand, Regal, Schublade (E an der Tür)", "x": 760.6, "z": -910.4, "delay": 1.4 },
+        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "onResume": true },
+        { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen · J: Feldbuch" },
+        {
+          "do": "objective",
+          "id": "station",
+          "text": "Im Bauwagen umsehen: Pinnwand, Regal, Schublade (E an der Tür)",
+          "x": 760.6,
+          "z": -910.4,
+          "delay": 1.4
+        },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.4 },
         { "do": "say", "line": "marlene.p.01", "delay": 0.6 },
         { "do": "say", "line": "marlene.p.01b" },
@@ -24,93 +151,104 @@
       "on": [
         {
           "id": "gegangen",
-          "when": { "any": [{ "leave": { "x": 760, "z": -902, "r": 3 } }, { "timer": 16 }] },
+          "when": {
+            "any": [{ "leave": { "x": 760, "z": -902, "r": 3 } }, { "timer": 16 }]
+          },
           "do": [{ "do": "prompt", "key": null, "text": null }]
         },
         {
           "id": "pinnwand",
           "when": { "hub": "chronik" },
-          "do": [
-            { "do": "grant", "clue": "clue.p.messtischblatt", "card": true },
-            { "do": "grant", "clue": "clue.p.lageplan", "card": true }
-          ]
+          "do": [{ "do": "grant", "clue": "clue.p.messtischblatt", "card": true }, { "do": "grant", "clue": "clue.p.lageplan", "card": true }]
         },
-        {
-          "id": "regal",
-          "when": { "hub": "shelf" },
-          "do": [{ "do": "grant", "clue": "clue.p.handbuch", "card": true }]
-        },
+        { "id": "regal", "when": { "hub": "shelf" }, "do": [{ "do": "grant", "clue": "clue.p.handbuch", "card": true }] },
         {
           "id": "schublade",
           "when": { "hub": "drawer" },
           "do": [
             { "do": "grant", "clue": "clue.p.laubblatt", "card": true },
             { "do": "give", "item": "item.bussole" },
-            { "do": "flag", "set": { "story.compass": true } },
-            { "do": "skill", "id": "kartograf", "tier": 1, "toast": "Karte vergleichen (M) freigeschaltet" }
+            { "do": "flag", "set": { "story.compass": true } }
           ]
         },
         {
           "id": "fehlt-noch",
-          "when": { "all": [{ "have": { "clue": "clue.p.laubblatt" } }, { "timer": 70 }, { "not": { "have": { "clue": "clue.p.handbuch" } } }] },
+          "when": {
+            "all": [{ "have": { "clue": "clue.p.laubblatt" } }, { "timer": 70 }, { "not": { "have": { "clue": "clue.p.handbuch" } } }]
+          },
           "do": [{ "do": "toast", "text": "Im Regal steht noch das Reliefmuster-Handbuch.", "ms": 4000 }]
+        },
+        {
+          "id": "stab",
+          "when": {
+            "all": [
+              { "have": { "clue": "clue.p.lageplan" } },
+              { "have": { "clue": "clue.p.handbuch" } },
+              { "have": { "clue": "clue.p.laubblatt" } },
+              { "not": { "quest": { "id": "q.p.feldstation", "objective": "stab" } } }
+            ]
+          },
+          "do": [
+            { "do": "objective", "id": "station", "text": "Draußen am Wagen lehnt der Messstab: mitnehmen (E)", "x": 763, "z": -900 },
+            { "do": "toast", "text": "Der Messstab: LMB Hieb · gehalten Wuchthieb · Leertaste Ausweichen", "ms": 5000, "delay": 1 }
+          ]
         }
       ],
-      "complete": {
-        "all": [
-          { "have": { "clue": "clue.p.lageplan" } },
-          { "have": { "clue": "clue.p.handbuch" } },
-          { "have": { "clue": "clue.p.laubblatt" } }
-        ]
-      }
+      "complete": { "quest": { "id": "q.p.feldstation" } }
     },
     {
       "id": "p2",
       "title_de": "Der Damm",
       "enter": [
         { "do": "skill", "id": "relief", "tier": 1, "toast": "Relief-Blick 1 (Taste 1) freigeschaltet" },
+        { "do": "quest", "op": "offer", "id": "q.p.relief", "onResume": true },
         { "do": "objective", "id": "damm", "text": "Zum Damm des Karlsbergweihers, hinter dem Bauwagen", "x": 819, "z": -875, "delay": 0.5 },
         { "do": "say", "line": "marlene.p.relief", "delay": 1 },
         { "do": "prompt", "key": "1", "text": "Relief-Blick: der Boden ohne Wald" }
       ],
       "on": [
-        {
-          "id": "relief1",
-          "when": { "scan": 1 },
-          "do": [{ "do": "prompt", "key": null, "text": null }]
-        },
+        { "id": "relief1", "when": { "scan": 1 }, "do": [{ "do": "prompt", "key": null, "text": null }] },
         {
           "id": "am-damm",
           "when": { "enter": { "x": 819, "z": -875, "r": 32, "era": "today" } },
           "do": [
             { "do": "skill", "id": "relief", "tier": 2, "toast": "Relief-Blick 2 (Lokales Relief, Taste 2) freigeschaltet" },
             { "do": "prompt", "key": "2", "text": "Lokales Relief: kleine Kanten werden sichtbar" },
-            { "do": "objective", "id": "mauerrest", "text": "Lokales Relief (2): gerade Kanten unten am Damm – dort E: untersuchen", "x": 813, "z": -903 },
+            {
+              "do": "objective",
+              "id": "mauerrest",
+              "text": "Lokales Relief (2): gerade Kanten unten am Damm – dort E: untersuchen",
+              "x": 813,
+              "z": -903
+            },
             { "do": "say", "line": "marlene.p.damm" }
           ]
         },
         {
           "id": "relief2",
-          "when": { "all": [{ "scan": 2 }, { "enter": { "x": 819, "z": -890, "r": 70 } }] },
+          "when": {
+            "all": [{ "scan": 2 }, { "enter": { "x": 819, "z": -890, "r": 70 } }]
+          },
           "do": [{ "do": "prompt", "key": null, "text": null }]
         }
       ],
       "complete": {
-        "any": [
-          { "have": { "clue": "clue.p.mauerrest" } },
-          { "all": [{ "enter": { "x": 813, "z": -903, "r": 6, "era": "today" } }, { "scan": 2 }] }
-        ]
+        "any": [{ "have": { "clue": "clue.p.mauerrest" } }, { "all": [{ "enter": { "x": 813, "z": -903, "r": 6, "era": "today" } }, { "scan": 2 }] }]
       },
-      "exit": [
-        { "do": "prompt", "key": null, "text": null },
-        { "do": "grant", "clue": "clue.p.mauerrest", "card": true }
-      ]
+      "exit": [{ "do": "prompt", "key": null, "text": null }, { "do": "grant", "clue": "clue.p.mauerrest", "card": true }]
     },
     {
       "id": "p3",
       "title_de": "Der Weg nach oben",
       "enter": [
-        { "do": "objective", "id": "orangerie", "text": "Den Waldweg hinauf nach Osten: eine hohe, gerade Stufe im Wald", "x": 1237, "z": -966, "delay": 1.5 },
+        {
+          "do": "objective",
+          "id": "orangerie",
+          "text": "Den Waldweg hinauf nach Osten: eine hohe, gerade Stufe im Wald",
+          "x": 1237,
+          "z": -966,
+          "delay": 1.5
+        },
         { "do": "say", "line": "marlene.p.weg", "delay": 5 },
         { "do": "say", "line": "marlene.p.flug", "delay": 1.5 },
         { "do": "prompt", "key": "F", "text": "Geisterblick: über den Wald fliegen · F erneut: landen" }
@@ -118,7 +256,9 @@
       "on": [
         {
           "id": "geflogen",
-          "when": { "any": [{ "timer": 40 }, { "enter": { "x": 1237, "z": -966, "r": 75 } }] },
+          "when": {
+            "any": [{ "timer": 40 }, { "enter": { "x": 1237, "z": -966, "r": 75 } }]
+          },
           "do": [{ "do": "prompt", "key": null, "text": null }]
         },
         {
@@ -131,7 +271,9 @@
           ]
         }
       ],
-      "complete": { "all": [{ "enter": { "x": 1237, "z": -966, "r": 42, "era": "today" } }, { "scan": 3 }] },
+      "complete": {
+        "all": [{ "enter": { "x": 1237, "z": -966, "r": 42, "era": "today" } }, { "scan": 3 }, { "quest": { "id": "q.p.relief" } }]
+      },
       "exit": [
         { "do": "prompt", "key": null, "text": null },
         { "do": "grant", "clue": "clue.p.orangeriemauer", "card": true },
@@ -148,6 +290,7 @@
       "title_de": "Der Ehrenhof",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
+        { "do": "quest", "op": "offer", "id": "q.p.bussole", "onResume": true },
         { "do": "objective", "id": "ehrenhof", "text": "Weiter hinauf: eine ebene Lichtung auf der Terrasse", "x": 1216, "z": -1114, "delay": 1 },
         { "do": "say", "line": "laub.p.intro2", "delay": 16 }
       ],
@@ -156,12 +299,20 @@
           "id": "hof",
           "when": { "enter": { "x": 1216, "z": -1114, "r": 38, "era": "today" } },
           "do": [
-            { "do": "objective", "id": "ehrenhof", "text": "Lokales Relief (2): die flachen Mauerzüge um die Lichtung – E: untersuchen", "x": 1216, "z": -1114 }
+            {
+              "do": "objective",
+              "id": "ehrenhof",
+              "text": "Lokales Relief (2): die flachen Mauerzüge um die Lichtung – E: untersuchen",
+              "x": 1216,
+              "z": -1114
+            }
           ]
         },
         {
           "id": "hof-mitte",
-          "when": { "all": [{ "enter": { "x": 1216, "z": -1114, "r": 9, "era": "today" } }, { "scan": 2 }, { "not": { "have": { "clue": "clue.p.ehrenhof" } } }] },
+          "when": {
+            "all": [{ "enter": { "x": 1216, "z": -1114, "r": 9, "era": "today" } }, { "scan": 2 }, { "not": { "have": { "clue": "clue.p.ehrenhof" } } }]
+          },
           "do": [{ "do": "grant", "clue": "clue.p.ehrenhof", "card": true }]
         },
         {
@@ -169,12 +320,20 @@
           "when": { "have": { "clue": "clue.p.ehrenhof" } },
           "do": [
             { "do": "prompt", "key": "M", "text": "Karte vergleichen: Laubs Blatt von 1840 über das Gelände legen", "delay": 4 },
-            { "do": "objective", "id": "ehrenhof", "text": "M: Laubs Karte von 1840 über den Ehrenhof legen. Wo liegt das Schloss?", "x": 1216, "z": -1114 }
+            {
+              "do": "objective",
+              "id": "ehrenhof",
+              "text": "M: Laubs Karte von 1840 über den Ehrenhof legen. Wo liegt das Schloss?",
+              "x": 1216,
+              "z": -1114
+            }
           ]
         },
         {
           "id": "karte",
-          "when": { "all": [{ "have": { "clue": "clue.p.ehrenhof" } }, { "enter": { "x": 1216, "z": -1114, "r": 70, "era": "today" } }, { "map": true }] },
+          "when": {
+            "all": [{ "have": { "clue": "clue.p.ehrenhof" } }, { "enter": { "x": 1216, "z": -1114, "r": 70, "era": "today" } }, { "map": true }]
+          },
           "do": [{ "do": "grant", "clue": "clue.p.kartenvergleich", "card": true }]
         }
       ],
@@ -191,13 +350,17 @@
       "title_de": "Der Hohlweg",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
-        { "do": "objective", "id": "hohlweg", "text": "Westlich des Schlosses: ein Weg tief im Boden (Relief 2 oder 3, E)", "x": 1172, "z": -1238, "delay": 6 }
+        {
+          "do": "objective",
+          "id": "hohlweg",
+          "text": "Westlich des Schlosses: ein Weg tief im Boden (Relief 2 oder 3, E)",
+          "x": 1172,
+          "z": -1238,
+          "delay": 6
+        }
       ],
       "complete": {
-        "any": [
-          { "have": { "clue": "clue.p.hohlweg" } },
-          { "all": [{ "enter": { "x": 1172, "z": -1238, "r": 9, "era": "today" } }, { "scan": 2 }] }
-        ]
+        "any": [{ "have": { "clue": "clue.p.hohlweg" } }, { "all": [{ "enter": { "x": 1172, "z": -1238, "r": 9, "era": "today" } }, { "scan": 2 }] }]
       },
       "exit": [{ "do": "grant", "clue": "clue.p.hohlweg", "card": true }]
     },
@@ -206,15 +369,54 @@
       "title_de": "Die Grube",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
-        { "do": "objective", "id": "eiskeller", "text": "Östlich des Schlosses, an einer Wegkreuzung: eine runde Grube mit Ringwall (VAT, E)", "x": 1508, "z": -1296, "delay": 3 }
+        {
+          "do": "objective",
+          "id": "eiskeller",
+          "text": "Östlich des Schlosses, an einer Wegkreuzung: eine runde Grube mit Ringwall (VAT, E)",
+          "x": 1508,
+          "z": -1296,
+          "delay": 3
+        }
       ],
-      "complete": {
-        "any": [
-          { "have": { "clue": "clue.p.eiskeller" } },
-          { "all": [{ "enter": { "x": 1508, "z": -1296, "r": 7, "era": "today" } }, { "scan": 3 }] }
-        ]
-      },
-      "exit": [{ "do": "grant", "clue": "clue.p.eiskeller", "card": true }]
+      "on": [
+        {
+          "id": "grube",
+          "when": {
+            "all": [{ "enter": { "x": 1508, "z": -1296, "r": 7, "era": "today" } }, { "scan": 3 }, { "not": { "have": { "clue": "clue.p.eiskeller" } } }]
+          },
+          "do": [{ "do": "grant", "clue": "clue.p.eiskeller", "card": true }]
+        },
+        {
+          "id": "nebel",
+          "when": { "have": { "clue": "clue.p.eiskeller" } },
+          "do": [
+            { "do": "sound", "sound": "compass", "caption": "[Aus der Grube steigt Nebel. Er hat Augen.]", "delay": 1.2 },
+            {
+              "do": "say",
+              "id": "laub.p.nebel",
+              "speaker": "laub",
+              "text": "Nebel, der Sie ansieht. Das stand nicht im Handbuch. Den Stab, bitte. Schlagen Sie zu.",
+              "delay": 0.6,
+              "ms": 5200
+            },
+            {
+              "do": "objective",
+              "id": "eiskeller",
+              "text": "Nebelinge! LMB: Hieb · gehalten: Wuchthieb · Leertaste: Ausweichen",
+              "x": 1508,
+              "z": -1296
+            },
+            { "do": "prompt", "key": "LMB", "text": "Hieb · gehalten: Wuchthieb · Leertaste: Ausweichen", "delay": 1 }
+          ]
+        },
+        {
+          "id": "nebel-weg",
+          "when": { "quest": { "id": "q.p.bussole", "objective": "nebel", "gte": 4 } },
+          "do": [{ "do": "prompt", "key": null, "text": null }]
+        }
+      ],
+      "complete": { "quest": { "id": "q.p.bussole" } },
+      "exit": [{ "do": "prompt", "key": null, "text": null }]
     },
     {
       "id": "p7",
@@ -222,6 +424,7 @@
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "text": null },
+        { "do": "quest", "op": "offer", "id": "q.p.punktwolke", "onResume": true },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät knackt]", "delay": 4 },
         { "do": "say", "line": "marlene.p.punkte", "delay": 0.5 },
         { "do": "sound", "sound": "beep", "caption": "[Das Tablet piept: eine neue Datei]", "delay": 0.6 },
@@ -230,30 +433,28 @@
         { "do": "say", "line": "kollege.p.punktwolke" },
         { "do": "say", "line": "laub.p.punktwolke", "ms": 3200 },
         { "do": "say", "line": "laub.p.punktwolke.b" },
-        { "do": "sound", "sound": "compass", "caption": "[Der Deckel der Bussole springt auf. Darin liegt eine Seite, die vorher nicht da war.]", "delay": 0.6 },
-        { "do": "grant", "clue": "clue.p.seite_eins", "card": true, "delay": 1.2 }
+        {
+          "do": "sound",
+          "sound": "compass",
+          "caption": "[Der Deckel der Bussole springt auf. Darin liegt eine Seite, die vorher nicht da war.]",
+          "delay": 0.6
+        },
+        { "do": "grant", "clue": "clue.p.seite_eins", "card": true, "delay": 1.2 },
+        { "do": "item", "item": "item.p.seite" }
       ],
-      "complete": { "all": [{ "have": { "clue": "clue.p.seite_eins" } }, { "timer": 3 }] }
+      "complete": {
+        "all": [{ "have": { "clue": "clue.p.seite_eins" } }, { "timer": 3 }]
+      }
     },
     {
       "id": "p8",
-      "title_de": "Die Chronik öffnet sich",
+      "title_de": "Die Regeln",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
-        { "do": "prompt", "key": "Tab", "text": "Chronik öffnen" },
-        { "do": "objective", "id": "chronik", "text": "Chronik (Tab): drei Sätze der Fallseite „Vermessung“ füllen, dann „Prüfen“. Bestätigt wird nur im Heute." }
+        { "do": "prompt", "key": "J", "text": "Feldbuch: Aufträge, Funde, Codex" },
+        { "do": "toast", "text": "Im Feldbuch (J) stehen deine Aufträge. Was du lernst, landet im Codex: mit Quellen.", "ms": 6000, "delay": 1 }
       ],
-      "on": [
-        {
-          "id": "geoeffnet",
-          "when": { "event": "chronik:opened" },
-          "do": [
-            { "do": "prompt", "key": null, "text": null },
-            { "do": "toast", "text": "Ziehe ein Wort in eine Lücke – oder erst das Wort, dann die Lücke anklicken. Drei richtige Sätze werden zusammen bestätigt.", "ms": 7000 }
-          ]
-        }
-      ],
-      "complete": { "confirmed": { "prefix": "entry.p.", "n": 3 } },
+      "complete": { "timer": 6 },
       "exit": [
         { "do": "prompt", "key": null, "text": null },
         { "do": "sound", "sound": "compass", "caption": "[Die Nadel der Bussole schwingt herum und bleibt auf dem Ehrenhof stehen]" },
@@ -296,42 +497,82 @@
           ]
         }
       ],
-      "complete": { "era": "1789" },
+      "complete": {
+        "any": [{ "era": "1789" }, { "quest": { "id": "q.p.punktwolke", "objective": "streuner" } }]
+      },
       "exit": [{ "do": "prompt", "key": null, "text": null }]
     },
     {
       "id": "p9b",
       "title_de": "Sommer 1789",
-      "checkpoint": "p10",
+      "checkpoint": "p9",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "objective", "text": null },
         { "do": "anchor", "to": null },
         { "do": "flag", "set": { "barks.quiet": true } },
-        { "do": "meter", "id": "oil", "active": true, "seconds": 90, "text": "Die Laterne ist erloschen …" },
+        { "do": "meter", "id": "oil", "active": true, "seconds": 120, "text": "Die Laterne ist erloschen …" },
         { "do": "say", "line": "laub.p.1789", "delay": 3.5 },
         { "do": "echo", "id": "echo.p.diener", "delay": 0.8 }
       ],
       "on": [
         {
           "id": "heulen",
-          "when": { "any": [{ "event": "echo:end", "match": { "id": "echo.p.diener" } }, { "timer": 44 }] },
+          "when": {
+            "any": [{ "event": "echo:end", "match": { "id": "echo.p.diener" } }, { "timer": 44 }]
+          },
           "do": [
             { "do": "flag", "set": { "barks.quiet": null, "story.p.heulen": true } },
-            { "do": "sound", "sound": "howl", "x": 1216, "z": -1571, "caption": "[Fern im Norden heult ein einzelner Hund]" },
-            { "do": "prompt", "key": "Q", "text": "halten: zurück ins Heute", "delay": 2.4 },
+            { "do": "sound", "sound": "howl", "x": 1185, "z": -1112, "caption": "[Ganz nah, am Westrand des Hofs: ein Knurren]" },
+            {
+              "do": "say",
+              "id": "laub.p.streuner",
+              "speaker": "laub",
+              "text": "Ein Streuner. Einer von der Meute, der sich verlaufen hat. Licht drauf, rechte Maustaste. Dann der Stab.",
+              "delay": 0.8,
+              "ms": 5200
+            },
+            { "do": "prompt", "key": "RMB / G", "text": "Bannlicht: blendet, bricht Schutz · dann LMB", "delay": 1.2 }
+          ]
+        },
+        {
+          "id": "gebannt",
+          "when": { "quest": { "id": "q.p.punktwolke", "objective": "streuner" } },
+          "do": [
+            { "do": "prompt", "key": "Q", "text": "halten: zurück ins Heute", "delay": 1.2 },
             { "do": "sound", "sound": "compass", "caption": "[Die Bussole ruckt]" },
             { "do": "say", "line": "laub.p.zurueck", "ms": 3000 }
           ]
         },
+        { "id": "hinein", "when": { "room": "KB-B01" }, "do": [{ "do": "say", "line": "laub.p.schloss" }] },
         {
-          "id": "hinein",
-          "when": { "room": "KB-B01" },
-          "do": [{ "do": "say", "line": "laub.p.schloss" }]
+          "id": "zu-frueh",
+          "when": {
+            "all": [{ "era": "today" }, { "not": { "quest": { "id": "q.p.punktwolke", "objective": "streuner" } } }]
+          },
+          "repeat": true,
+          "do": [
+            { "do": "anchor", "to": "1789", "x": 1218, "z": -1118, "r": 18 },
+            { "do": "objective", "id": "wechsel", "text": "Zurück in die Mitte des Ehrenhofs: Q – der Streuner wartet noch", "x": 1218, "z": -1118 }
+          ]
+        },
+        {
+          "id": "wieder-drueben",
+          "when": {
+            "all": [{ "era": "1789" }, { "flag": "story.p.heulen" }, { "not": { "quest": { "id": "q.p.punktwolke", "objective": "streuner" } } }]
+          },
+          "repeat": true,
+          "do": [
+            { "do": "anchor", "to": null },
+            { "do": "objective", "text": null },
+            { "do": "meter", "id": "oil", "active": true, "seconds": 120, "text": "Die Laterne ist erloschen …" }
+          ]
         },
         {
           "id": "meute",
-          "when": { "all": [{ "flag": "story.p.heulen" }, { "timer": 40 }, { "era": "1789" }] },
+          "when": {
+            "all": [{ "quest": { "id": "q.p.punktwolke", "objective": "streuner" } }, { "timer": 25 }, { "era": "1789" }]
+          },
           "do": [
             {
               "do": "threat",
@@ -350,9 +591,12 @@
           ]
         }
       ],
-      "complete": { "era": "today" },
+      "complete": {
+        "all": [{ "era": "today" }, { "quest": { "id": "q.p.punktwolke", "objective": "streuner" } }]
+      },
       "exit": [
         { "do": "prompt", "key": null, "text": null },
+        { "do": "anchor", "to": null },
         { "do": "threat", "kind": "pack", "active": false },
         { "do": "meter", "id": "oil", "active": false }
       ]
@@ -374,17 +618,14 @@
           "id": "daheim",
           "when": { "enter": { "x": 760, "z": -915, "r": 18, "era": "today" } },
           "do": [
-            { "do": "objective", "id": "chronik", "text": "Die Fallseite „Vermessung“ zu Ende füllen (Tab) und prüfen", "x": 760.6, "z": -910.4 },
+            { "do": "objective", "id": "station", "text": "Feierabend: in den Bauwagen", "x": 760.6, "z": -910.4 },
             { "do": "say", "line": "marlene.p.abend", "delay": 1.5 },
             { "do": "toast", "text": "L: Laterne. Das Öl reicht nicht ewig.", "ms": 4200, "delay": 6 }
           ]
         }
       ],
       "complete": {
-        "all": [
-          { "confirmed": { "prefix": "entry.p.", "n": 6 } },
-          { "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }
-        ]
+        "all": [{ "quest": { "id": "q.p.punktwolke" } }, { "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }]
       },
       "exit": [{ "do": "autosave" }]
     },
@@ -406,12 +647,29 @@
           "ms": 7500
         },
         { "do": "sound", "sound": "frost", "caption": "[Am Fenster knistert Reif. Draußen hat es acht Grad.]", "delay": 1.5 },
-        { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1227, "z": -1466, "caption": "[Ganz fern: ein Horn, ein langer Ton]", "delay": 3 },
+        {
+          "do": "sound",
+          "sound": "horn",
+          "signal": "anblasen",
+          "x": 1227,
+          "z": -1466,
+          "caption": "[Ganz fern: ein Horn, ein langer Ton]",
+          "delay": 3
+        },
         { "do": "say", "line": "laub.p.ende", "delay": 4, "ms": 6000 },
-        { "do": "objective", "id": "bett", "text": "Laterne aus (L). Dann schlafen: das Feldbett im Bauwagen (E an der Tür)", "x": 760.6, "z": -910.4, "delay": 1 },
+        {
+          "do": "objective",
+          "id": "bett",
+          "text": "Laterne aus (L). Dann schlafen: das Feldbett im Bauwagen (E an der Tür)",
+          "x": 760.6,
+          "z": -910.4,
+          "delay": 1
+        },
         { "do": "autosave" }
       ],
-      "complete": { "all": [{ "timer": 22 }, { "any": [{ "hub": "bed" }, { "timer": 150 }] }] },
+      "complete": {
+        "all": [{ "timer": 22 }, { "any": [{ "hub": "bed" }, { "timer": 150 }] }]
+      },
       "exit": [{ "do": "objective", "text": null }]
     }
   ]

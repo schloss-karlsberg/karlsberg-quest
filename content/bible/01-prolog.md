@@ -220,3 +220,18 @@
 ## 9. Bedrohung
 
 Keine. Das Unbehagen kommt nur aus drei Signalen: die Pfotenspur in der Punktwolke, das Heulen im Jahr 1789 und das ferne Horn am Ende. Für Designer: Das Heulen kommt aus Richtung Zwinger (1216/−1571), das Horn aus Richtung Nordterrasse. Die Spuren zeigen auf den Ort, an dem das Spiel endet.
+
+
+## Action-RPG-Umbau (Quests statt Fallakte)
+
+Der Prolog läuft jetzt als Questkette (`content/quests/00-prolog.quests.json`, Katalog in `docs/ACTION-RPG.md` §11.0). Es gibt keine Lückentexte und keine Bestätigung im Chronik-Brett mehr. Was man findet, steht im Feldbuch (J). Die Geschichte kommt bei der Abgabe als Zeile mit Quelle und als Codex-Karte.
+
+- **Die Feldstation** (Marlene): Lageplan, Handbuch, Schublade, dann den **Messstab** aufheben. Kartograf 1 ist jetzt die Belohnung dieser Quest.
+- **Was der Wald verbirgt** (Marlene): Damm, Mauerrest und Orangerie-Stufe mit Relief.
+- **Die Bussole spricht** (Laub): Ehrenhof, Kartenvergleich, Hohlweg, Eiskeller. Aus der Grube steigen bei Dämmerung **vier Nebelinge** auf. Das ist das Kampf-Tutorial (Hieb, Ausweichen, Wuchthieb). Die Nebelinge lösen sich auf, es fließt kein Blut.
+- **Spuren in der Punktwolke** (Marlene): Punktwolke, Q am Ehrenhof, das Echo des Dieners, **ein Streuner** (Bannlicht-Tutorial), Q halten. Am Ende fragt die Haltung „Was hat die Spuren gemacht?“ (Hunde / Wild / Messfehler / offen). Die Antwort steht in `flag.p_spuren`.
+- Nebenquests:
+  - **Kohlplatten**: drei Meilerplatten finden.
+  - **Nicht anfassen**: den Bombentrichter melden, nie berühren.
+  - **Lichter am Weiher**: drei Irrlichter.
+- Die Meute bleibt eine Bedrohung und wird nie zum Gegner. Wer gestellt wird, verliert nichts: Die Quest behält ihre Zählung, und Laub sagt „Verloren haben Sie nichts.“

@@ -348,3 +348,23 @@
 - **Gestellt:** Wenn ein Hund 2 s lang Sicht auf dich hat und weniger als 4 m entfernt ist. Dann Abblende und Text „Die Meute hat dich gestellt …“. Du wachst nicht in der Feldstation auf, sondern am Anker des Kapitelteils, im Heute (Beat-Feld `wake`): in Teil B an der Tschifflik-Terrasse („Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt.“), in Teil A (leeres Öl) am Ehrenhof, beim Zwinger (1.5) am Zwinger; auf dem Heimweg (1.6) in der Station. Q bringt dich sofort zurück; der Kilometer von der Station entfällt.
 - **Die Flucht (1.14):** Parforce ohne Reiter, 5 s Vorsprung. Die Hunde kommen hart aus dem Start (`burst` 1.3), bis sie etwa 9 m hinter dir sind (`heel`), und halten dann dein Tempo (`keepPace`): wer weiterrennt, wird nicht gestellt, sieht sie aber dicht hinter sich. Wer stehen bleibt, sieht sie kurz zögern und anschlagen; wer trödelt oder geht, wird gestellt. Gestellt (oder mit Q ins Heute geflohen) ist die Flucht nicht vorbei: Du kommst an der Tschifflik-Terrasse zu dir, Q bringt dich zurück in die Nacht, und die Meute setzt wieder an; erst das Tosbecken beendet 1.14. Geprüft in `tests/hunt-k1.test.ts`.
 - **Tuning-Ziel:** Ein aufmerksamer Spieler wird beim ersten Mal höchstens einmal gestellt. Die Seite am Rondell (1.12) ist der einzige Moment echter Verfolgung, und das Tosbecken ist nur 160 m entfernt.
+
+
+## Action-RPG-Umbau (Quests statt Fallakte)
+
+Kapitel 1 läuft jetzt als Questkette (`content/quests/01-kapitel-1.quests.json`, Katalog in `docs/ACTION-RPG.md` §11.1). Die Sätze 1–3 und die Lesarten sind entfallen. Die Beats warten auf Quests.
+
+- **Zu Fuß, außer einem** (Laub): Q am Ehrenhof, das Echo der Wache, die Flügel.
+- **Der Kanzlist zählt** (Soll gibt die Quest, über seinem Kopf steht eine Glyphe): Rechenbrett, Kaufbrief, Schlözer-Heft. Danach flattern **sechs Mahnbriefe** in den Küchenhof; das ist komisch, nicht grausam. Bei der Abgabe an Soll kommen die Zahlen als Geschichtszeile mit Quelle. Belohnung: Solls Rechenpfennig.
+- **Matthes' Lohn** (Hanne): Soll nach Matthes fragen, das Steinmetzzeichen ansehen. Bei Dämmerung steigt auf dem Bauplatz **das Schuldbuch** auf (Boss, 1294/−1234). Aus seinen Seiten fällt der **Lohnzettel**. Die Haltung bei Hanne steht in `flag.k1_lohn`. Belohnung: Messstab II.
+- **Tausend Hunde** (Jost): Josts Lehre vom Verstecken, fünf Stück Fleisch zum Zwinger bringen, **drei Streuner**. Belohnung: Hundemarke, Spurenleser 1.
+- **Die Karlslust bei Nacht** (Laub):
+  - die Terrasse, das Rund zählen, die Bärenkästen
+  - **fünf Irrlichter** über dem Schwanenweiher; die Patrouille geht erst danach
+  - das **Rondell** als stiller Ort: keine Gegner, nur das Echo und eine Gedenkzeile
+  - die Chronikseite, dann die Flucht zum Tosbecken
+- Nebenquests:
+  - **Der Kasuar ist los** (der Gärtner): den Kasuar beruhigen, nie bekämpfen.
+  - **Mannlichs Festpläne** (der Diener): vier Mahnbriefe, drei Planblätter, Mannlichs Echos.
+  - **Die Namen der Hunde** (Jost): fünf Marken, jede von einem Streuner bewacht.
+- Historische Personen geben keine Quests. Matthes ist eine Erinnerung und nie ein Gegner.

@@ -255,13 +255,16 @@ describe('chapter content using the flow features', () => {
   it('k1 / k2: being caught wakes you at the part of the chapter you were in, in the present', () => {
     const near = (w: { x: number; z: number } | undefined, x: number, z: number, r: number) => !!w && Math.hypot(w.x - x, w.z - z) < r;
     const wk = (f: StoryFile, id: string) => f.beats.find((b) => b.id === id)?.wake;
-    for (const id of ['k1_1', 'k1_3', 'k1_4']) expect(near(wk(k1, id), 1222, -1119, 20), id).toBe(true);
+    for (const id of ['k1_1', 'k1_2', 'k1_3']) expect(near(wk(k1, id), 1222, -1119, 20), id).toBe(true);
     expect(near(wk(k1, 'k1_5'), 1165, -1571, 20)).toBe(true); // the Zwinger anchor
     expect(wk(k1, 'k1_6')).toBeUndefined(); // on the way home: the station
     for (const id of ['k1_8', 'k1_13', 'k1_14', 'k1_15']) expect(near(wk(k1, id), 1822, 70, 20), id).toBe(true);
     for (const id of ['k2_1', 'k2_4']) expect(near(wk(k2, id), 1680, -400, 20), id).toBe(true);
     for (const id of ['k2_5', 'k2_9', 'k2_10']) expect(near(wk(k2, id), 1222, -1118, 20), id).toBe(true);
+    expect(near(wk(k2, 'k2_11'), 819, -875, 50)).toBe(true); // the dam: the Pikeur waits there
     for (const f of [k1, k2]) for (const b of f.beats) if (b.wake) expect(b.wake.era, b.id).toBe('today');
+    // nothing is lost when you are caught: no Chronik promise in the wake texts any more
+    for (const f of [k1, k2]) for (const b of f.beats) if (b.wake?.text) expect(b.wake.text, b.id).not.toMatch(/bestätigt/);
   });
 
   it('k2: on a retry Hanne and Jost are back and the horn waits (talk, the passage or 20 s)', () => {

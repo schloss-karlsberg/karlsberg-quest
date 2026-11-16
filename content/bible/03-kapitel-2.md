@@ -324,3 +324,22 @@ Die Köder „Gulden“ und „Louis d'or“ in 2-4 sind Substantive aus Kapitel
 **Tuning-Ziel:** Die Jagd dauert 60–90 s. Ein Spieler, der zur Orangerie und dann zum Damm rennt und einmal im Mauerschatten liegt, kommt beim ersten oder zweiten Versuch durch. Im sanften Modus sind Hunde und Pikeur 30 % langsamer, und die Jagd endet schon am Fuß der Orangerie.
 
 **Rauhnacht-Modus:** Pikeur von Anfang an dabei (auch in der Apfelallee), Sicht im Nebel 20 m, keine Keller-Tasche.
+
+
+## Action-RPG-Umbau (Quests statt Fallakte)
+
+Kapitel 2 läuft jetzt als Questkette (`content/quests/02-kapitel-2.quests.json`, Katalog in `docs/ACTION-RPG.md` §11.2). Die zwei Bestätigungsrunden im Chronik-Brett sind entfallen. Spurenleser 2 und Kartograf 3 sind jetzt Questbelohnungen.
+
+- **Die Spur im Raureif** (Laub): Q am Parkzaun, der Wollfetzen, die Apfelallee (Augen im Nebel: schleichen), die Orangerie und ihr Echo. Als Bonus warten **drei Streuner** auf der Spur.
+- **Das Wachbuch**: **Vier Irrlichter** tanzen um die Feuerpfanne der Wache. Erst wenn sie fort sind, kommt die Erinnerung, danach das Buch.
+- **Hinter der Tür**: durch den Südflügel zur Kabinettstür, dann Warnung und Abschied. Im Schloss wird nicht gekämpft. Die Haltung „Warum hat er gewarnt?“ steht in `flag.k2_pfeiffer`.
+- **Die Parforcejagd** (Jost gibt sie am Tor):
+  - Die Jagd wird **gelaufen**, nicht gekämpft. Unterwegs kommt W4 „Das sind Kalköfen“.
+  - Am Damm steht **der Pikeur** (Boss). Man schlägt ihn zurück, bis er „verloren“ bläst und davonreitet. Er stirbt nie.
+  - Zu Hause fragt die Haltung „An seiner Stelle?“; die Antwort steht in `flag.k2_stelle`.
+  - Belohnung: Messstab III, Kartograf 3.
+- Nebenquests:
+  - **Das Bodenbrett**: zwei Irrlichter in der Galerie, Solls Kerze.
+  - **Lichter im Wald**: drei Lichter am Hang und die Köhlerstelle; Haltung in `flag.k2_lichter`.
+  - **Bepackte Wagen** (der Diener): vier Kisten für Mannheim, vier Streuner.
+- Nikel Pfeiffer, Landremont und der Herzog bleiben Erinnerungen und Echos. Sie geben nie Quests und sind nie Gegner.

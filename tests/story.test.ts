@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
@@ -189,7 +190,11 @@ describe('story files', () => {
 
   it('parse and validate (prologue + four chapters + endings)', () => {
     expect(parseErrors).toEqual([]);
-    const r = validateStories(files);
+    // items declared by the quest files (content/quests/*.quests.json) are known to the story
+    const questItems = new Set<string>();
+    for (const f of readdirSync(`${ROOT}content/quests`).filter((n) => n.endsWith('.quests.json')))
+      for (const it of (JSON.parse(readFileSync(`${ROOT}content/quests/${f}`, 'utf8')) as { items?: { id: string }[] }).items ?? []) questItems.add(it.id);
+    const r = validateStories(files, { items: questItems });
     expect(r.errors.map((e) => `${e.file} ${e.id ?? ''}: ${e.message}`)).toEqual([]);
     // + the test chapter (99-test.story.json, "test": true; loaded only with ?storytest)
     expect(r.stats.chapters).toBe(7);
@@ -245,12 +250,23 @@ describe('story files', () => {
       clues.push(...add);
       return { inventory: { clues: [...clues], nouns: [], items: [] } };
     };
+    // quests are state too: the quests system mirrors `quest.<id>` / `quest.<id>.<objective>` into flags
+    const flags: Record<string, string | number> = {};
+    const quest = (id: string, objective?: string, n = 1) => {
+      if (objective) flags[`quest.${id}.${objective}`] = n;
+      else flags[`quest.${id}`] = 'done';
+      return { flags: { ...flags } };
+    };
     for (const item of ['chronik', 'shelf', 'drawer']) h.engine.onEvent('hub:use', { item });
     step(inv('clue.p.lageplan', 'clue.p.laubblatt', 'clue.p.handbuch'));
+    expect(h.slice.beat).toBe('p1'); // the Messstab is still leaning outside
+    step({ ...inv(), ...quest('q.p.feldstation') });
     expect(h.slice.beat).toBe('p2');
     step({ ...inv(), x: 813, z: -903, scan: 2 });
     expect(h.slice.beat).toBe('p3');
     step({ ...inv('clue.p.mauerrest'), x: 1237, z: -966, scan: 3 });
+    expect(h.slice.beat).toBe('p3'); // the step is there, but Marlene's quest wants the dam and the wall first
+    step({ ...inv(), ...quest('q.p.relief'), x: 1237, z: -966, scan: 3 });
     expect(h.slice.beat).toBe('p4');
     // the Ehrenhof clue first, then the 1840 map overlay grants the Kartenvergleich
     step({ ...inv('clue.p.orangeriemauer', 'clue.p.ehrenhof'), x: 1216, z: -1114, map: true });
@@ -259,19 +275,22 @@ describe('story files', () => {
     step({ ...inv(), x: 1172, z: -1238, scan: 2 });
     expect(h.slice.beat).toBe('p6');
     step({ ...inv('clue.p.hohlweg'), x: 1508, z: -1296, scan: 3 });
+    expect(h.slice.beat).toBe('p6'); // the pit is found; the Nebelinge are still in it
+    step({ ...inv('clue.p.eiskeller'), ...quest('q.p.bussole', 'nebel', 4), ...quest('q.p.bussole') });
     expect(h.slice.beat).toBe('p7');
-    step(inv('clue.p.eiskeller', 'clue.p.punktwolke', 'clue.p.seite_eins'), 50);
-    expect(h.slice.beat).toBe('p8');
-    step({ chronik: { 'case.p': { confirmed: ['entry.p.1', 'entry.p.2', 'entry.p.3'] } } });
+    step(inv('clue.p.punktwolke', 'clue.p.seite_eins'), 8);
+    expect(h.slice.beat).toBe('p8'); // the rules: J opens the field book, no board to fill
+    step({ ...inv(), flags: { ...flags } }, 13);
     expect(h.slice.beat).toBe('p9');
-    step({ era: '1789', x: 1216, z: -1114 });
+    step({ ...inv(), flags: { ...flags }, era: '1789', x: 1216, z: -1114 });
     expect(h.slice.beat).toBe('p9b');
-    step({ era: 'today' });
+    step({ ...inv(), flags: { ...flags }, era: 'today' });
+    expect(h.slice.beat).toBe('p9b'); // home too early: the Streuner still waits at the Ehrenhof
+    step({ ...inv(), ...quest('q.p.punktwolke', 'streuner'), era: 'today' });
     expect(h.slice.beat).toBe('p10');
-    const six = ['1', '2', '3', '4', '5', '6'].map((n) => `entry.p.${n}`);
-    step({ chronik: { 'case.p': { confirmed: six } } });
-    expect(h.slice.beat).toBe('p10'); // the case alone is not enough: back home to the station
-    step({ chronik: { 'case.p': { confirmed: six } }, x: 760, z: -905 });
+    step({ ...inv(), ...quest('q.p.punktwolke') });
+    expect(h.slice.beat).toBe('p10'); // the quest alone is not enough: back home to the station
+    step({ ...inv(), flags: { ...flags }, x: 760, z: -905 });
     expect(h.slice.beat).toBe('p11');
     step({}, 20);
     expect(h.slice.chapter).toBe('prolog'); // the night lasts a little

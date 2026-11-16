@@ -1,4 +1,5 @@
-import { clue, noun, say, seq, hints, src, write } from './common.mjs';
+import { writeFileSync } from 'node:fs';
+import { clue, noun, say, seq, hints, src, write, ROOT } from './common.mjs';
 
 const ch = 'p';
 const E = '1789';
@@ -171,10 +172,10 @@ const dialogue = [
     ['marlene.p.punktwolke', 'marlene', 'Wildschweine machen andere Spuren. Und Hunde waren da nicht, der Wald war gesperrt.'],
     ['kollege.p.punktwolke', 'kollege', 'Mehrfachreflexion. Ein Messfehler.'],
     ['laub.p.punktwolke', 'laub', 'Hunde.'],
-    ['laub.p.punktwolke.b', 'laub', 'Fragen Sie nicht. Füllen Sie die Seite aus.'],
+    ['laub.p.punktwolke.b', 'laub', 'Fragen Sie nicht. Gehen Sie hin und sehen Sie selbst.'],
   ]),
   ...story('P8', [
-    ['laub.p.regeln', 'laub', 'So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick.'],
+    ['laub.p.regeln', 'laub', 'So. Der Berg kennt Sie jetzt. Das reicht für einen Blick.'],
     ['laub.p.regeln.b', 'laub', 'Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal.'],
     ['laub.p.regeln.c', 'laub', 'Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q.'],
     ['laub.p.regeln.d', 'laub', 'Zweitens: Ihre Laterne brennt dort drüben auf Kosten Ihrer Zeit. Wenn das Öl aus ist, sind Sie wieder hier. Unsanft.'],
@@ -204,7 +205,7 @@ const dialogue = [
   // the first time the pack gets you (spoken when the curtain lifts in the field station)
   ...seq({ event: 'player:caught', chapter: 'prolog' }, [
     ['laub.p.gestellt', 'laub', 'Da sind Sie ja wieder. Gestellt, nicht gerissen. Auf diesem Unterschied bestehe ich.'],
-    ['laub.p.gestellt.b', 'laub', 'Was Sie drüben gefunden und noch nicht bestätigt hatten, darf die Meute behalten. Was bestätigt ist, nimmt Ihnen keiner.'],
+    ['laub.p.gestellt.b', 'laub', 'Verloren haben Sie nichts. Was Sie gefunden haben, steht im Feldbuch, und der Stab ist noch da. Nur den Weg gehen Sie noch einmal.'],
     ['laub.p.gestellt.c', 'laub', 'Nächstes Mal: Horn, hinlegen, Licht aus. Oder rechtzeitig Q halten. Ich sage es ungern zweimal. Ich sage es vierzigmal.'],
   ]),
   say('laub.p.oel', 'laub', 'Das Öl. Zweitens, wie gesagt. Die Erinnerung hält so lange wie Ihr Licht. Löschen Sie es, wenn Sie es nicht brauchen. Das spart Öl und Hunde.', { event: 'lantern:empty', chapter: 'prolog', era: '1789' }, { once: true }),
@@ -229,3 +230,208 @@ write('prolog', {
     'Die Grube mit dem Ringwall liegt dort, wo der Plan ‚Eiskeller‘ schreibt. Bomben fallen selten so ordentlich. Zu meiner Karte: Messen Sie vom Hof auf dem Papier bis zum Hof im Boden. Und dann entschuldigen Sie sich bei mir.',
   ]),
 });
+
+// =====================================================================================================
+// Quests (docs/ACTION-RPG.md §11.0) → content/quests/00-prolog.quests.json
+// Learning by doing: every objective is a verb (examine, reach, fight, echo); the history is told at
+// the turn-in, with sources, and lands in the codex. No blanks, no word choices, no quizzes.
+// =====================================================================================================
+const T0 = 'today';
+/** A spoken quest line; `fact` = the codex card it unlocks at the turn-in, `src` = its sources. */
+const ln = (speaker, text, o = {}) => ({ speaker, text, ...(o.fact ? { fact: o.fact } : {}), ...(o.src ? { sources: o.src } : {}) });
+const place = (x, z, r, era) => ({ x, z, ...(r ? { r } : {}), ...(era ? { era } : {}) });
+const LIDAR = src('LIDAR');
+
+// Terrain-checked spots (scripts/content-build/probe.mjs + terrain.mjs, 2026-11-16): dry, walkable,
+// outside every footprint of their era, inside the playable area.
+export const P_SPOTS = {
+  stab: [763, -900], // beside the trailer door (flat, today)
+  eiskeller: [1508, -1296], // the pit (KB-50); in 1789 the Eiskeller house KB-B28 stands here — the fight is today
+  streuner: [1185, -1112], // west mouth of the Ehrenhof, 1789 meadow
+  irrlichter: [820, -869], // on the dam of the Karlsbergweiher (not over the water)
+  meiler: [[1138, -931], [1040, -902], [1232, -872]], // the flattest spots on the slope below the Orangerie
+  trichter: [990, -1044], // forest west of the palace terrace (fiction: a crater "in the scan")
+};
+
+const prologQuests = {
+  chapter: 'prolog',
+  items: [
+    {
+      id: 'item.p.seite', kind: 'lore', set: 'chronikseiten', fiction: true,
+      name_de: 'Seite im Deckel der Bussole',
+      text_de: 'Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts: „Was der Hof schuldig blieb“. Darunter Spalten: Wem – Was – Wann – Wo. Unten in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“ (Fiktion)',
+    },
+  ],
+  quests: [
+    {
+      id: 'q.p.feldstation', kind: 'main', era: T0,
+      title_de: 'Die Feldstation',
+      summary_de: 'Marlene will, dass du weißt, womit du arbeitest, bevor du in den Wald gehst: Lageplan, Handbuch, die Schublade des Vorbesitzers. Und der Messstab lehnt draußen am Wagen.',
+      giver: { voice: 'marlene' }, turnin: 'auto',
+      offer: [
+        ln('marlene', 'Bevor du losgehst: Lageplan an der Pinnwand, Handbuch im Regal, und in der Schublade liegt Kram vom Vorbesitzer. Schau dir alles an.'),
+        ln('marlene', 'Und nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald.'),
+      ],
+      turnin_lines: [ln('marlene', 'Hast du alles? Gut. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht.')],
+      history: [
+        ln('marlene', 'Der Laserscan ist vom Winter 2025, ohne Laub an den Bäumen. Seit Januar sind die Daten frei. Ein Punkt pro Meter, und unter den Bäumen liegt der Boden wie ein Abdruck.', { fact: 'cx.34', src: [src('LVGL'), LIDAR] }),
+        ln('marlene', 'Und die eine Regel: Wir schauen, wir graben nicht. Der Karlsberg ist ein Bodendenkmal. Wer etwas findet, meldet es.', { fact: 'cx.35', src: [src('SDSCHG'), src('HE-BW')] }),
+      ],
+      objectives: [
+        { id: 'lageplan', type: 'examine', clue: 'clue.p.lageplan', text_de: 'Den Lageplan an der Pinnwand ansehen' },
+        { id: 'handbuch', type: 'examine', clue: 'clue.p.handbuch', text_de: 'Das Reliefmuster-Handbuch aus dem Regal nehmen' },
+        { id: 'schublade', type: 'examine', clue: 'clue.p.laubblatt', text_de: 'In die Schublade schauen' },
+        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab mitnehmen (draußen am Wagen)', place: [place(...P_SPOTS.stab, 0, T0)] },
+      ],
+      rewards: { xp: 40, skills: [{ id: 'kartograf', tier: 1 }] },
+    },
+    {
+      id: 'q.p.relief', kind: 'main', era: T0,
+      title_de: 'Was der Wald verbirgt',
+      summary_de: 'Marlene will wissen, was unter dem Wald liegt. Erst der Damm hinter dem Wagen, dann der Weg hinauf bis zur großen Stufe im Wald. Der Laserscan zeigt, was die Bäume verdecken.',
+      giver: { voice: 'marlene' }, turnin: 'auto',
+      offer: [ln('marlene', 'Erste Aufgabe: Geh zum Damm hinter dem Wagen und sag mir, was der Wald da versteckt. Dann den Weg hinauf nach Osten, bis zu der hohen Stufe im Wald.')],
+      turnin_lines: [ln('marlene', 'Eine Mauer am Damm und eine Stufe, die keiner gepflanzt hat. Siehst du? Der Wald macht keine rechten Winkel.')],
+      history: [
+        ln('marlene', 'Gerade Kanten, rechte Winkel, schmale Rücken, die sich nicht nach dem Gelände richten: Das sind Fundamente. Der Wald wächst drüber, aber er biegt sie nicht.', { fact: 'rm.07', src: [src('HE-BW'), LIDAR] }),
+        ln('marlene', 'Und der Weiher ist kein Naturteich. Ein gerader Damm quer zum Tal, dahinter eine glatte Fläche: Der Scan findet auf Wasser keine Punkte und füllt es flach.', { fact: 'rm.08', src: [src('HE-BW'), LIDAR] }),
+      ],
+      objectives: [
+        { id: 'damm', type: 'reach', text_de: 'Zum Damm des Karlsbergweihers, hinter dem Wagen', where: place(819, -875, 32, T0) },
+        { id: 'mauer', type: 'examine', clue: 'clue.p.mauerrest', text_de: 'Lokales Relief (2): den Mauerrest am Damm untersuchen' },
+        { id: 'stufe', type: 'reach', after: ['mauer'], text_de: 'Den Waldweg hinauf: die hohe Stufe im Wald', where: place(1237, -966, 70, T0) },
+      ],
+      rewards: { xp: 90 },
+    },
+    {
+      id: 'q.p.bussole', kind: 'main', era: T0,
+      title_de: 'Die Bussole spricht',
+      summary_de: 'Laub, verschollen seit 1840 und neuerdings in einer Bussole, will seine alten Messpunkte noch einmal ablaufen: den Ehrenhof, den Hohlweg, die runde Grube im Osten. Er zeigt, du läufst.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [
+        ln('laub', 'Da Sie nun einmal hier sind: Ich habe diesen Berg 1840 aufgenommen. Gehen wir die Punkte ab. Ehrenhof, Hohlweg, die Grube im Osten.'),
+        ln('laub', 'Ich zeige, Sie laufen. So war das schon immer.'),
+      ],
+      progress: [ln('laub', 'Weiter. Ein Geometer bleibt nicht stehen, er bleibt nur genau.')],
+      turnin_lines: [
+        ln('laub', 'Nebel mit Augen. Notieren Sie: kriecht aus Senken, scheut den Stab. Ich habe so etwas 1840 nicht gesehen. Ich hatte auch keinen Stab. Nur ein Lineal.'),
+      ],
+      history: [
+        ln('laub', 'Der Ehrenhof liegt auf 344,8 Metern, in den Hang geschnitten, an drei Seiten gerade Kanten. Dort standen das Corps de logis und die beiden Flügel. Geblieben ist die Fläche.', { fact: 'cx.01', src: [src('SBT'), src('WP-SK'), src('LIDAR', 'Merkmal KB-01')] }),
+        ln('laub', 'Merken Sie sich das Muster: eine ebene Fläche mit geraden Kanten, an einer Seite in den Hang geschnitten, an der anderen aufgeschüttet. Eine Terrasse. Forstwege machen Kehren, keine rechten Winkel.', { fact: 'rm.01', src: [src('HE-BW'), LIDAR] }),
+        ln('laub', 'Mein Blatt ist ein bayerisches Positionsblatt von 1836 bis 41, „Ruine Carlsberg“ steht darauf. Auf der heutigen Fassung liegt das Schloss fünfzig Meter zu weit im Osten. Ich lege Wert auf die Feststellung: nicht meinetwegen.', { fact: 'cx.33', src: [src('HIST'), src('LIDAR', 'Abschnitt 1 Nr. 8')] }),
+        ln('laub', 'Der Hohlweg: Karren, Hufe, Regen, ein paar Jahrhunderte. Zweihundertneunundvierzig Meter, schnurgerade nach Norden, keinem Bach nach.', { fact: 'rm.04', src: [src('HE-BW'), src('LIDAR', 'Merkmale KB-10, KB-11')] }),
+        ln('laub', 'Und die Grube mit dem Ringwall war ein Keller, dessen Gewölbe nachgegeben hat. Der Lageplan schreibt Eiskeller. Zehn mal zehn Meter, einsfünfundachtzig tief.', { fact: 'rm.02', src: [src('HE-BW'), src('LIDAR', 'Merkmal KB-50')] }),
+      ],
+      objectives: [
+        { id: 'ehrenhof', type: 'examine', clue: 'clue.p.ehrenhof', text_de: 'Den Ehrenhof finden: Lokales Relief (2), dann E' },
+        { id: 'karte', type: 'examine', clue: 'clue.p.kartenvergleich', text_de: 'M: Laubs Karte von 1840 über den Ehrenhof legen' },
+        { id: 'hohlweg', type: 'examine', clue: 'clue.p.hohlweg', text_de: 'Den Hohlweg westlich des Schlosses untersuchen' },
+        { id: 'grube', type: 'examine', clue: 'clue.p.eiskeller', text_de: 'Die runde Grube östlich des Schlosses (VAT, E)' },
+        {
+          id: 'nebel', type: 'kill', enemy: 'nebelling', count: 4, after: ['grube'],
+          text_de: 'Nebelinge aus der Grube zurückschlagen',
+          where: place(...P_SPOTS.eiskeller, 22, T0),
+          spawn: [{ kind: 'nebelling', x: P_SPOTS.eiskeller[0], z: P_SPOTS.eiskeller[1], era: T0, count: 4, radius: 7, leash: 30 }],
+        },
+      ],
+      rewards: { xp: 120, items: [{ item: 'item.balsam', count: 2 }] },
+    },
+    {
+      id: 'q.p.punktwolke', kind: 'main', era: '1789',
+      title_de: 'Spuren in der Punktwolke',
+      summary_de: 'In der Punktwolke vom Februar laufen Abdrücke quer über den Ehrenhof. Der Wald war gesperrt. Marlene will wissen, was da gelaufen ist; Laub weiß es und sagt es nicht. Am Ehrenhof erinnert sich das Land, wenn man Q drückt.',
+      giver: { voice: 'marlene' }, turnin: 'auto',
+      offer: [ln('marlene', 'Schau dir die Datei an und geh dann noch mal zum Ehrenhof. Ich will wissen, was da gelaufen ist. Und komm vor der Dunkelheit zurück, ja?')],
+      progress: [ln('laub', 'In die Mitte des Hofs. Mit dem Gesicht zum Schloss. Dann Q.')],
+      turnin_lines: [
+        ln('laub', 'Sie sind zurück. Mit allen Gliedmaßen, soweit ich das von hier drinnen beurteilen kann.'),
+        ln('laub', 'Das war ein Streuner. Ein einzelner, verirrter Hund der Meute. Seien Sie froh, dass es nur einer war.'),
+      ],
+      history: [
+        ln('laub', 'Das Schloss, das Sie gesehen haben, gehörte Karl dem Zweiten August. Er regierte Pfalz-Zweibrücken von 1775 bis 1795. Ein Diplomat nannte ihn finster und eigensinnig und gestand ihm Sinn für Rang und Pflicht zu.', { fact: 'cx.03', src: [src('WP-K2A'), src('ADB')] }),
+        ln('laub', 'In den Dörfern erzählt man von einer Wilden Jagd, die in den Rauhnächten über den Himmel reitet. Mit dem Herzog verbindet sie keine Quelle. Die Hunde, die Sie hören, sind meine Sorge, nicht die der Historiker.', { fact: 'cx.36', src: [src('WP-WJ')] }),
+        ln('laub', 'Damit wir uns verstehen: Mich gibt es nicht, die Meute nicht und die Nebelinge auch nicht. Den Herzog, das Schloss und die Schulden gab es. Im Codex steht, was erfunden ist.', { fact: 'cx.38' }),
+      ],
+      stance: {
+        id: 'p.spuren', flag: 'flag.p_spuren',
+        prompt_de: 'Laub: Die Abdrücke in der Punktwolke, quer über den Hof. Was war das, Ihrer Meinung nach?',
+        options: [
+          { label_de: 'Hunde.', value: 'hunde', reply: [ln('laub', 'Ich habe nichts gesagt. Ich habe nur genickt. In einer Bussole sieht man das schlecht.')] },
+          { label_de: 'Wild. Wildschweine, Rehe.', value: 'wild', reply: [ln('laub', 'Wild trabt nicht paarweise. Aber bitte. Es ist Ihr Feldbuch.')] },
+          { label_de: 'Ein Messfehler.', value: 'messfehler', reply: [ln('laub', 'Ein Messfehler mit Zähnen. Ich notiere: Messfehler.')] },
+          { label_de: 'Ich weiß es nicht.', value: 'offen', reply: [ln('laub', 'Die vernünftigste Antwort des Tages. Und sie kommt von Ihnen.')] },
+        ],
+      },
+      objectives: [
+        { id: 'wolke', type: 'examine', clue: 'clue.p.punktwolke', text_de: 'Die Punktwolke auf dem Tablet ansehen' },
+        { id: 'wechsel', type: 'reach', after: ['wolke'], text_de: 'Am Ehrenhof: Q – Sommer 1789', where: place(1218, -1118, 30, '1789') },
+        { id: 'echo', type: 'echo', clue: 'echo.p.diener', after: ['wechsel'], text_de: 'Zuhören: der Hof von 1789' },
+        {
+          id: 'streuner', type: 'kill', enemy: 'streuner', count: 1, after: ['echo'],
+          text_de: 'Den Streuner bannen (Bannlicht: rechte Maustaste / G) und zurückschlagen',
+          where: place(...P_SPOTS.streuner, 30, '1789'),
+          spawn: [{ kind: 'streuner', x: P_SPOTS.streuner[0], z: P_SPOTS.streuner[1], era: '1789', count: 1, radius: 2, leash: 45 }],
+        },
+        { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['streuner'], text_de: 'Q halten: zurück ins Heute' },
+      ],
+      rewards: { xp: 130, items: [{ item: 'item.lampenoel' }] },
+    },
+    // ---- side quests ------------------------------------------------------------------------------
+    {
+      id: 'q.p.meiler', kind: 'side', era: T0,
+      title_de: 'Kohlplatten',
+      summary_de: 'Unterhalb der Orangerie haben Köhler gearbeitet. Ihre Kohlplatten sind im Relief runde, flache Teller am Hang. Marlene will an dreien einen Messpunkt. Anfassen, mitnehmen: nein.',
+      giver: { voice: 'marlene' }, turnin: 'auto',
+      offer: [ln('marlene', 'Wenn du schon am Hang bist: Da unten haben Köhler gearbeitet. Ihre Kohlplatten sieht man mit dem VAT, runde flache Teller. Setz mir an dreien einen Messpunkt. Nur hinstellen, nicht buddeln.')],
+      turnin_lines: [ln('marlene', 'Drei Kohlplatten. Da haben Leute im Wald gewohnt, wochenlang, neben einem rauchenden Haufen. Für die Schmieden, für die Kalköfen, fürs Schloss.')],
+      history: [ln('marlene', 'Ein Meilerplatz ist ein runder, fast ebener Teller am Hang, acht bis fünfzehn Meter breit, mit einer kleinen Stufe nach unten. Gräbt man, ist die Erde schwarz. Graben tun wir aber nicht.', { fact: 'rm.03', src: [src('HE-BW')] })],
+      objectives: P_SPOTS.meiler.map(([x, z], i) => ({ id: `platte${i + 1}`, type: 'reach', text_de: `Kohlplatte ${i + 1} von 3: Messpunkt setzen (VAT)`, where: place(x, z, 8, T0) })),
+      rewards: { xp: 50, items: [{ item: 'item.lampenoel' }] },
+      available: { after: ['q.p.relief'] },
+    },
+    {
+      id: 'q.p.trichter', kind: 'side', era: T0,
+      title_de: 'Nicht anfassen',
+      summary_de: 'Westlich des Schlosses ist im Scan ein Trichter, der da nicht hingehört. Marlene will wissen, wo genau. Vom Rand aus. Nicht hineingehen, nichts anfassen, melden.',
+      giver: { voice: 'marlene' }, turnin: 'auto',
+      offer: [ln('marlene', 'Noch was. Westlich vom Schloss ist ein Trichter im Scan, der da nicht hingehört. Schau ihn dir an. Vom Rand. Nicht reingehen, nichts anfassen, und dann ruf mich.')],
+      turnin_lines: [ln('marlene', 'Gut, dass du draußen geblieben bist. Ich ruf den Kampfmittelräumdienst. Die kommen gern, die sehen sonst nur Wiesen.')],
+      history: [
+        ln('marlene', 'Bombentrichter sind rund, mit einem unregelmäßigen Wall, meist in Gruppen. Aus dem letzten Krieg. Wo Trichter sind, kann noch Munition liegen.', { fact: 'rm.06', src: [src('HE-BW')] }),
+        ln('marlene', 'Darum: nicht betreten, nicht graben, melden. Das gilt für Munition und für Mauern. Beides gehört nicht dir.', { fact: 'cx.35', src: [src('SDSCHG')] }),
+      ],
+      objectives: [
+        { id: 'finden', type: 'reach', text_de: 'Den Trichter im Wald finden (nur bis zum Rand)', where: place(...P_SPOTS.trichter, 16, T0) },
+        { id: 'melden', type: 'manual', after: ['finden'], text_de: 'Marlene über Funk Bescheid geben' },
+      ],
+      rewards: { xp: 40 },
+      available: { after: ['q.p.bussole'] },
+    },
+    {
+      id: 'q.p.irrlichter', kind: 'side', era: T0,
+      title_de: 'Lichter am Weiher',
+      summary_de: 'Über dem Damm des Karlsbergweihers schweben Lichter, im November. Laub sagt: erst das Bannlicht drauf, dann der Stab. In dieser Reihenfolge.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [
+        ln('laub', 'Sehen Sie die Lichter über dem Damm? Glühwürmchen sind es nicht, es ist November.'),
+        ln('laub', 'Erst das Bannlicht drauf, rechte Maustaste, dann der Stab. Andersherum ist es nur Gefuchtel.'),
+      ],
+      turnin_lines: [ln('laub', 'Gelöscht. Der Damm ist übrigens älter als der Wald drumherum. Er hat schon andere Lichter gesehen.')],
+      history: [ln('laub', 'Den Weiher hat man aufgestaut, mit einem geraden Damm quer zum Tal. Ein Naturteich hätte keine Kante. Dieser hat eine, und ich habe sie 1840 vermessen.', { fact: 'rm.08', src: [src('HE-BW'), src('LIDAR', 'Merkmale KB-40, KB-42')] })],
+      objectives: [
+        {
+          id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 3,
+          text_de: 'Irrlichter über dem Damm bannen',
+          where: place(...P_SPOTS.irrlichter, 24, T0),
+          spawn: [{ kind: 'irrlicht', x: P_SPOTS.irrlichter[0], z: P_SPOTS.irrlichter[1], era: T0, count: 3, radius: 5, leash: 30 }],
+        },
+      ],
+      rewards: { xp: 50, items: [{ item: 'item.lampenoel', count: 2 }] },
+      available: { after: ['q.p.punktwolke'] },
+    },
+  ],
+};
+
+writeFileSync(`${ROOT}/content/quests/00-prolog.quests.json`, JSON.stringify({ $schema: '../schema/quests.schema.json', ...prologQuests }, null, 2) + '\n');
+console.log('wrote 00-prolog.quests.json');

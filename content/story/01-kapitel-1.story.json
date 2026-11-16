@@ -6,35 +6,103 @@
   "era": "1789",
   "start": "k1_0",
   "next": "k2",
-  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "checkpoint": {
+    "x": 760,
+    "z": -902,
+    "yaw": 0,
+    "era": "today"
+  },
   "on": [
     {
       "id": "oel-a",
-      "when": { "all": [{ "era": "1789" }, { "not": { "flag": "k1.b" } }] },
+      "when": {
+        "all": [
+          {
+            "era": "1789"
+          },
+          {
+            "not": {
+              "flag": "k1.b"
+            }
+          }
+        ]
+      },
       "repeat": true,
       "do": [
-        { "do": "meter", "id": "oil", "active": false },
-        { "do": "meter", "id": "oil", "active": true, "seconds": 360 }
+        {
+          "do": "meter",
+          "id": "oil",
+          "active": false
+        },
+        {
+          "do": "meter",
+          "id": "oil",
+          "active": true,
+          "seconds": 360
+        }
       ]
     },
     {
       "id": "oel-b",
-      "when": { "all": [{ "era": "1789" }, { "flag": "k1.b" }] },
+      "when": {
+        "all": [
+          {
+            "era": "1789"
+          },
+          {
+            "flag": "k1.b"
+          }
+        ]
+      },
       "repeat": true,
       "do": [
-        { "do": "meter", "id": "oil", "active": false },
-        { "do": "meter", "id": "oil", "active": true, "seconds": 420, "lossless": true }
+        {
+          "do": "meter",
+          "id": "oil",
+          "active": false
+        },
+        {
+          "do": "meter",
+          "id": "oil",
+          "active": true,
+          "seconds": 420,
+          "lossless": true
+        }
       ]
     },
     {
       "id": "oel-aus",
-      "when": { "era": "today" },
+      "when": {
+        "era": "today"
+      },
       "repeat": true,
-      "do": [{ "do": "meter", "id": "oil", "active": false }]
+      "do": [
+        {
+          "do": "meter",
+          "id": "oil",
+          "active": false
+        }
+      ]
     },
     {
       "id": "wache-rennen",
-      "when": { "all": [{ "enter": { "x": 1212, "z": -1116, "r": 36, "era": "1789" } }, { "speed": { "gte": 4.8 } }] },
+      "when": {
+        "all": [
+          {
+            "enter": {
+              "x": 1212,
+              "z": -1116,
+              "r": 36,
+              "era": "1789"
+            }
+          },
+          {
+            "speed": {
+              "gte": 4.8
+            }
+          }
+        ]
+      },
       "repeat": true,
       "cooldown": 30,
       "do": [
@@ -54,29 +122,639 @@
     },
     {
       "id": "lauf-zurueck",
-      "when": { "all": [{ "era": "1789" }, { "chapterTimer": 75 }, { "not": { "flag": "k1.tut.return" } }] },
+      "when": {
+        "all": [
+          {
+            "era": "1789"
+          },
+          {
+            "chapterTimer": 75
+          },
+          {
+            "not": {
+              "flag": "k1.tut.return"
+            }
+          }
+        ]
+      },
       "do": [
-        { "do": "flag", "set": { "k1.tut.return": true } },
-        { "do": "toast", "text": "Halte [Q], um ins Heute zurückzukehren. Die Laterne brennt nicht ewig: ist das Öl leer, lässt dich die Erinnerung los.", "ms": 6500 }
+        {
+          "do": "flag",
+          "set": {
+            "k1.tut.return": true
+          }
+        },
+        {
+          "do": "toast",
+          "text": "Halte [Q], um ins Heute zurückzukehren. Die Laterne brennt nicht ewig: ist das Öl leer, lässt dich die Erinnerung los.",
+          "ms": 6500
+        }
       ]
     },
     {
       "id": "soll-zahl",
-      "when": { "talked": { "npc": "soll", "topic": "zahl" } },
-      "do": [{ "do": "grant", "clue": "clue.k1.soll_einnahmen" }]
-    },
-    {
-      "id": "satz-2",
-      "when": { "confirmed": { "prefix": "entry.k1.", "n": 6 } },
+      "when": {
+        "talked": {
+          "npc": "soll",
+          "topic": "zahl"
+        }
+      },
       "do": [
-        { "do": "skill", "id": "spurenleser", "tier": 1, "toast": "Spurenleser 1: Die Untertitel sagen, was ein Hornruf bedeutet" }
+        {
+          "do": "grant",
+          "clue": "clue.k1.soll_einnahmen"
+        }
       ]
     },
     {
-      "id": "satz-3",
-      "when": { "confirmed": { "prefix": "entry.k1.", "n": 9 } },
+      "id": "orangerie-drin",
+      "when": {
+        "room": "B10.1.s-pfeilersaal"
+      },
       "do": [
-        { "do": "skill", "id": "kartograf", "tier": 2, "toast": "Kartograf 2: Messtischblatt 1935 (M)" }
+        {
+          "do": "say",
+          "id": "laub.k1.orangerie",
+          "speaker": "laub",
+          "text": "Hier hat der Baudirektor gewohnt. Über den Orangen. Ein Maler, der Ställe bauen musste. Ich mag ihn. Er hat auch nie bekommen, was ihm zustand."
+        },
+        {
+          "do": "grant",
+          "clue": "clue.k1.feenschloss"
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.feenschloss",
+          "speaker": "laub",
+          "text": "Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.",
+          "delay": 0.6
+        }
+      ]
+    },
+    {
+      "id": "bauplatz-daemmerung",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.lohn",
+              "objective": "soll"
+            }
+          },
+          {
+            "quest": {
+              "id": "q.k1.lohn",
+              "objective": "zeichen"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.lohn",
+                "objective": "buch"
+              }
+            }
+          },
+          {
+            "era": "1789"
+          }
+        ]
+      },
+      "repeat": true,
+      "do": [
+        {
+          "do": "look",
+          "time": "dusk",
+          "era": "1789"
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.schuldbuch",
+          "speaker": "laub",
+          "text": "Es dämmert am Bauplatz. Und da liegt ein Buch im Gras, das sich selbst aufschlägt. Ich kenne diese Handschrift. Es ist meine Branche.",
+          "delay": 1.5,
+          "ms": 6500
+        },
+        {
+          "do": "objective",
+          "id": "k1.schuldbuch",
+          "text": "In der Dämmerung am Bauplatz: das Schuldbuch. Bannlicht bricht das Siegel",
+          "x": 1294,
+          "z": -1234
+        }
+      ]
+    },
+    {
+      "id": "bauplatz-hell",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.lohn",
+              "objective": "buch"
+            }
+          },
+          {
+            "era": "1789"
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "say",
+          "id": "laub.k1.schuldbuch.weg",
+          "speaker": "laub",
+          "text": "Zugeklappt. Die Seiten fliegen davon, nur eine nicht. Heben Sie sie auf, bevor der Wind sie verbucht.",
+          "delay": 1,
+          "ms": 5200
+        },
+        {
+          "do": "look",
+          "time": "day",
+          "era": "1789",
+          "delay": 10
+        }
+      ]
+    },
+    {
+      "id": "zeichen-abrieb",
+      "when": {
+        "have": {
+          "clue": "clue.k1.zeichen"
+        }
+      },
+      "do": [
+        {
+          "do": "item",
+          "item": "item.k1.zeichen"
+        }
+      ]
+    },
+    {
+      "id": "kasuar-los",
+      "when": {
+        "quest": {
+          "id": "q.k1.kasuar",
+          "state": "active"
+        }
+      },
+      "do": [
+        {
+          "do": "cue",
+          "id": "menagerie:spawn",
+          "data": {
+            "animal": "cassowary",
+            "x": 1966,
+            "z": 92,
+            "id": "kasuar"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seite-item",
+      "when": {
+        "have": {
+          "clue": "clue.k1.seite"
+        }
+      },
+      "do": [
+        {
+          "do": "item",
+          "item": "item.k1.seite"
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.ankunft.wache",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.ankunft",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.wache"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.ankunft",
+                "objective": "wache"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.ankunft",
+          "objective": "wache",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.ankunft.fluegel",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.ankunft",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.fluegel"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.ankunft",
+                "objective": "fluegel"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.ankunft",
+          "objective": "fluegel",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.registratur.rechenbrett",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.registratur",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.rechenbrett"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.registratur",
+                "objective": "rechenbrett"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.registratur",
+          "objective": "rechenbrett",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.registratur.kaufbrief",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.registratur",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.kaufbrief"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.registratur",
+                "objective": "kaufbrief"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.registratur",
+          "objective": "kaufbrief",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.registratur.heft",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.registratur",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.schloezer"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.registratur",
+                "objective": "heft"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.registratur",
+          "objective": "heft",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.lohn.zeichen",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.lohn",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.zeichen"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.lohn",
+                "objective": "zeichen"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.lohn",
+          "objective": "zeichen",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.karlslust.rund",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.karlslust",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.amphitheater"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.karlslust",
+                "objective": "rund"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.karlslust",
+          "objective": "rund",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.karlslust.baeren",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.karlslust",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.baerenkaesten"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.karlslust",
+                "objective": "baeren"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.karlslust",
+          "objective": "baeren",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.karlslust.rondell",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.karlslust",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.feuerwerk"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.karlslust",
+                "objective": "rondell"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.karlslust",
+          "objective": "rondell",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.karlslust.seite",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.karlslust",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.seite"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.karlslust",
+                "objective": "seite"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.karlslust",
+          "objective": "seite",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.festplaene.mannlich",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.festplaene",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.mannlich"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.festplaene",
+                "objective": "mannlich"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.festplaene",
+          "objective": "mannlich",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.festplaene.lohn",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.festplaene",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.mannlich_lohn"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.festplaene",
+                "objective": "lohn"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.festplaene",
+          "objective": "lohn",
+          "n": 1,
+          "onResume": true
+        }
       ]
     }
   ],
@@ -85,511 +763,1805 @@
       "id": "k1_0",
       "title_de": "Morgen in der Feldstation",
       "enter": [
-        { "do": "look", "time": "day" },
-        { "do": "look", "time": "day", "era": "1789" },
-        { "do": "flag", "set": { "story.laub": true, "npc.owns.clue.k1.fluegel": true, "npc.owns.clue.k1.soll_einnahmen": true, "npc.owns.clue.k1.feenschloss": true, "npc.owns.clue.k1.gagern": true, "npc.owns.clue.k1.insel": true, "npc.owns.clue.k1.amphitheater": true } },
-        { "do": "npc", "op": "spawn", "npc": "soll", "room": "B03.1.eg-registratur", "x": 1198.8, "z": -1152.6, "era": "1789", "chapter": "k1", "yaw": 90 },
-        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1287, "z": -1228, "era": "1789", "chapter": "k1", "yaw": 300 },
-        { "do": "npc", "op": "spawn", "npc": "jost", "x": 1177, "z": -1571, "era": "1789", "chapter": "k1", "yaw": 270 },
-        { "do": "anchor", "to": "1789", "x": 1222, "z": -1119, "r": 16 },
-        { "do": "say", "id": "marlene.k1.morgen", "speaker": "marlene", "text": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.", "delay": 3 },
-        { "do": "say", "id": "laub.k1.morgen", "speaker": "laub", "text": "Die Bussole zeigt wieder auf den Ehrenhof. Ich nehme an, Sie wollen nicht frühstücken.", "delay": 1 },
-        { "do": "objective", "id": "k1.ehrenhof", "text": "Zum Ehrenhof (F: Geisterblick). Dort Q: Sommer 1789", "x": 1222, "z": -1119, "delay": 0.5 }
+        {
+          "do": "look",
+          "time": "day"
+        },
+        {
+          "do": "look",
+          "time": "day",
+          "era": "1789"
+        },
+        {
+          "do": "item",
+          "item": "item.stab.esche",
+          "quiet": true
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gaertner",
+          "x": 1903,
+          "z": 87,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 90
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "diener",
+          "room": "B10.1.s-pfeilersaal",
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 180
+        },
+        {
+          "do": "flag",
+          "set": {
+            "story.laub": true,
+            "npc.owns.clue.k1.fluegel": true,
+            "npc.owns.clue.k1.soll_einnahmen": true,
+            "npc.owns.clue.k1.feenschloss": true,
+            "npc.owns.clue.k1.gagern": true,
+            "npc.owns.clue.k1.insel": true,
+            "npc.owns.clue.k1.amphitheater": true
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "soll",
+          "room": "B03.1.eg-registratur",
+          "x": 1198.8,
+          "z": -1152.6,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 90
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "hanne",
+          "x": 1287,
+          "z": -1228,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 300
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "jost",
+          "x": 1177,
+          "z": -1571,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 270
+        },
+        {
+          "do": "anchor",
+          "to": "1789",
+          "x": 1222,
+          "z": -1119,
+          "r": 16
+        },
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.ankunft",
+          "onResume": true
+        },
+        {
+          "do": "say",
+          "id": "marlene.k1.morgen",
+          "speaker": "marlene",
+          "text": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.",
+          "delay": 3
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.morgen",
+          "speaker": "laub",
+          "text": "Die Bussole zeigt wieder auf den Ehrenhof. Ich nehme an, Sie wollen nicht frühstücken.",
+          "delay": 1
+        },
+        {
+          "do": "objective",
+          "id": "k1.ehrenhof",
+          "text": "Zum Ehrenhof (F: Geisterblick). Dort Q: Sommer 1789",
+          "x": 1222,
+          "z": -1119,
+          "delay": 0.5
+        }
       ],
       "on": [
         {
           "id": "k1_0.am-hof",
-          "when": { "enter": { "x": 1222, "z": -1119, "r": 16, "era": "today" } },
-          "do": [{ "do": "toast", "text": "Hier erinnert sich das Land. Drücke [Q], um die Zeit zu wechseln.", "ms": 4500 }]
+          "when": {
+            "enter": {
+              "x": 1222,
+              "z": -1119,
+              "r": 16,
+              "era": "today"
+            }
+          },
+          "do": [
+            {
+              "do": "toast",
+              "text": "Hier erinnert sich das Land. Drücke [Q], um die Zeit zu wechseln.",
+              "ms": 4500
+            }
+          ]
         }
       ],
-      "complete": { "era": "1789" }
+      "complete": {
+        "era": "1789"
+      }
     },
     {
       "id": "k1_1",
       "title_de": "Ankunft",
-      "wake": { "x": 1227, "z": -1123, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1227,
+        "z": -1123,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "say", "id": "laub.k1.start", "speaker": "laub", "text": "1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.", "delay": 2.5 }
+        {
+          "do": "say",
+          "id": "laub.k1.start",
+          "speaker": "laub",
+          "text": "1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.",
+          "delay": 2.5
+        }
       ],
       "on": [
         {
           "id": "k1_1.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1222, "z": -1119, "r": 16 }, { "do": "objective", "id": "k1.zurueck-a", "text": "Zurück in den Sommer 1789: Q am Ehrenhof", "x": 1222, "z": -1119 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1222,
+              "z": -1119,
+              "r": 16
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-a",
+              "text": "Zurück in den Sommer 1789: Q am Ehrenhof",
+              "x": 1222,
+              "z": -1119
+            }
+          ]
         },
         {
           "id": "k1_1.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.wache", "text": "Am Gitter: E halten und lauschen", "x": 1201, "z": -1115 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.wache",
+              "text": "Am Gitter: E halten und lauschen",
+              "x": 1201,
+              "z": -1115
+            }
+          ]
+        },
+        {
+          "id": "k1_1.fluegel",
+          "when": {
+            "have": {
+              "clue": "clue.k1.wache"
+            }
+          },
+          "do": [
+            {
+              "do": "grant",
+              "clue": "clue.k1.fluegel"
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.fluegel",
+              "speaker": "laub",
+              "text": "Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.",
+              "delay": 0.8
+            }
+          ]
         }
       ],
-      "complete": { "have": { "clue": "clue.k1.wache" } },
-      "exit": [
-        { "do": "grant", "clue": "clue.k1.fluegel" },
-        { "do": "say", "id": "laub.k1.fluegel", "speaker": "laub", "text": "Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.", "delay": 0.8 }
-      ]
+      "complete": {
+        "quest": {
+          "id": "q.k1.ankunft"
+        }
+      }
     },
     {
       "id": "k1_2",
       "title_de": "Die Registratur",
-      "wake": { "x": 1227, "z": -1123, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1227,
+        "z": -1123,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren."
+      },
       "on": [
         {
           "id": "k1_2.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1222, "z": -1119, "r": 16 }, { "do": "objective", "id": "k1.zurueck-a", "text": "Zurück in den Sommer 1789: Q am Ehrenhof", "x": 1222, "z": -1119 }]
-        },
-        {
-          "id": "k1_2.damals",
-          "when": { "era": "1789" },
-          "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.registratur", "text": "Die Registratur im Nordflügel (durch die Durchfahrt links)", "x": 1202, "z": -1153 }]
-        },
-        {
-          "id": "k1_2.drin",
-          "when": { "room": "B03.1.eg-registratur" },
           "do": [
-            { "do": "say", "id": "laub.k1.registratur", "speaker": "laub", "text": "Eine Registratur. Mein natürlicher Lebensraum. Halten Sie sich an den Mann mit den Ärmelschonern." },
-            { "do": "objective", "id": "k1.registratur-suchen", "text": "Mit Soll sprechen. Pult, Regal und Schublade untersuchen", "x": 1203, "z": -1154 }
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1222,
+              "z": -1119,
+              "r": 16
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-a",
+              "text": "Zurück in den Sommer 1789: Q am Ehrenhof",
+              "x": 1222,
+              "z": -1119
+            }
           ]
         },
         {
-          "id": "k1_2.fast",
-          "when": { "all": [{ "talked": { "npc": "soll" } }, { "have": { "clue": "clue.k1.rechenbrett" } }, { "not": { "all": [{ "have": { "clue": "clue.k1.schloezer" } }, { "have": { "clue": "clue.k1.kaufbrief" } }] } }] },
-          "do": [{ "do": "say", "id": "laub.k1.registratur.mehr", "speaker": "laub", "text": "Ein Kanzlist hat immer eine Schublade, die er nicht erwähnt, und ein Regal, das er nicht mehr sieht. Schauen Sie dort.", "delay": 4 }]
+          "id": "k1_2.damals",
+          "when": {
+            "era": "1789"
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.registratur",
+              "text": "Die Registratur im Nordflügel (durch die Durchfahrt links)",
+              "x": 1202,
+              "z": -1153
+            }
+          ]
+        },
+        {
+          "id": "k1_2.drin",
+          "when": {
+            "room": "B03.1.eg-registratur"
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k1.registratur",
+              "speaker": "laub",
+              "text": "Eine Registratur. Mein natürlicher Lebensraum. Halten Sie sich an den Mann mit den Ärmelschonern."
+            },
+            {
+              "do": "objective",
+              "id": "k1.registratur-suchen",
+              "text": "Mit Soll sprechen. Rechenbrett, Kaufbrief und das Heft im Regal",
+              "x": 1203,
+              "z": -1154
+            }
+          ]
+        },
+        {
+          "id": "k1_2.briefe",
+          "when": {
+            "all": [
+              {
+                "have": {
+                  "clue": "clue.k1.rechenbrett"
+                }
+              },
+              {
+                "have": {
+                  "clue": "clue.k1.kaufbrief"
+                }
+              },
+              {
+                "have": {
+                  "clue": "clue.k1.schloezer"
+                }
+              },
+              {
+                "quest": {
+                  "id": "q.k1.registratur",
+                  "state": "active"
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "sound",
+              "sound": "match",
+              "caption": "[Ein Fenster schlägt auf. Papier flattert hinaus in den Küchenhof.]",
+              "delay": 0.5
+            },
+            {
+              "do": "objective",
+              "id": "k1.briefe",
+              "text": "Die Mahnbriefe! Hinterher, in den Küchenhof hinter dem Nordflügel",
+              "x": 1212,
+              "z": -1180
+            }
+          ]
         }
       ],
       "complete": {
-        "all": [
-          { "talked": { "npc": "soll" } },
-          { "have": { "clue": "clue.k1.rechenbrett" } },
-          { "have": { "clue": "clue.k1.schloezer" } },
-          { "have": { "clue": "clue.k1.kaufbrief" } }
-        ]
-      }
+        "quest": {
+          "id": "q.k1.registratur"
+        }
+      },
+      "enter": [
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.registratur",
+          "onResume": true
+        }
+      ]
     },
     {
       "id": "k1_3",
       "title_de": "Der Bauplatz",
-      "wake": { "x": 1227, "z": -1123, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1227,
+        "z": -1123,
+        "yaw": 270,
+        "era": "today",
+        "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren."
+      },
       "on": [
         {
           "id": "k1_3.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1222, "z": -1119, "r": 16 }, { "do": "objective", "id": "k1.zurueck-a", "text": "Zurück in den Sommer 1789: Q am Ehrenhof", "x": 1222, "z": -1119 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1222,
+              "z": -1119,
+              "r": 16
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-a",
+              "text": "Zurück in den Sommer 1789: Q am Ehrenhof",
+              "x": 1222,
+              "z": -1119
+            }
+          ]
         },
         {
           "id": "k1_3.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.bauplatz", "text": "Der Bauplatz am Ostende der Galerie: Hanne", "x": 1287, "z": -1228 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.bauplatz",
+              "text": "Der Bauplatz am Ostende der Galerie: Hanne",
+              "x": 1287,
+              "z": -1228
+            }
+          ]
         },
         {
           "id": "k1_3.baustelle",
-          "when": { "enter": { "x": 1278, "z": -1226, "r": 32, "era": "1789" } },
-          "do": [{ "do": "say", "id": "laub.k1.bauplatz", "speaker": "laub", "text": "Die Galerie ist nagelneu und schon wird angebaut. Ein Schloss, das nie fertig wird, ist die teuerste Art, eines zu haben." }]
+          "when": {
+            "enter": {
+              "x": 1278,
+              "z": -1226,
+              "r": 32,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k1.bauplatz",
+              "speaker": "laub",
+              "text": "Die Galerie ist nagelneu und schon wird angebaut. Ein Schloss, das nie fertig wird, ist die teuerste Art, eines zu haben."
+            }
+          ]
         },
         {
           "id": "k1_3.nach-hanne",
-          "when": { "all": [{ "talked": { "npc": "hanne" } }, { "not": { "have": { "clue": "clue.k1.zeichen" } } }] },
-          "do": [{ "do": "objective", "id": "k1.zeichen", "text": "Hannes Hinweis: ein Zeichen an einem Quader am Fuß der Galerie", "x": 1262, "z": -1218.5, "delay": 1 }]
+          "when": {
+            "all": [
+              {
+                "talked": {
+                  "npc": "hanne"
+                }
+              },
+              {
+                "not": {
+                  "have": {
+                    "clue": "clue.k1.zeichen"
+                  }
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.zeichen",
+              "text": "Hannes Hinweis: ein Zeichen an einem Quader am Fuß der Galerie",
+              "x": 1262,
+              "z": -1218.5,
+              "delay": 1
+            }
+          ]
         },
         {
           "id": "k1_3.zeichen",
-          "when": { "have": { "clue": "clue.k1.zeichen" } },
-          "do": [{ "do": "toast", "text": "Wandernde Steine: 1 von 4", "ms": 3500, "delay": 1.5 }]
-        }
-      ],
-      "complete": { "all": [{ "talked": { "npc": "hanne" } }, { "have": { "clue": "clue.k1.zeichen" } }] }
-    },
-    {
-      "id": "k1_4",
-      "title_de": "Die Orangerie",
-      "wake": { "x": 1227, "z": -1123, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt." },
-      "on": [
-        {
-          "id": "k1_4.heute",
-          "when": { "era": "today" },
-          "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1222, "z": -1119, "r": 16 }, { "do": "objective", "id": "k1.zurueck-a", "text": "Zurück in den Sommer 1789: Q am Ehrenhof", "x": 1222, "z": -1119 }]
-        },
-        {
-          "id": "k1_4.damals",
-          "when": { "era": "1789" },
-          "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.orangerie", "text": "Die Orangerie südlich des Schlosses: der Pfeilersaal (Tür an der Ostseite)", "x": 1247, "z": -968 }]
-        },
-        {
-          "id": "k1_4.drin",
-          "when": { "room": "B10.1.s-pfeilersaal" },
+          "when": {
+            "have": {
+              "clue": "clue.k1.zeichen"
+            }
+          },
           "do": [
-            { "do": "say", "id": "laub.k1.orangerie", "speaker": "laub", "text": "Hier hat der Baudirektor gewohnt. Über den Orangen. Ein Maler, der Ställe bauen musste. Ich mag ihn. Er hat auch nie bekommen, was ihm zustand." },
-            { "do": "grant", "clue": "clue.k1.feenschloss" },
-            { "do": "say", "id": "laub.k1.feenschloss", "speaker": "laub", "text": "Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.", "delay": 0.6 },
-            { "do": "objective", "id": "k1.festplan", "text": "Mannlichs Pläne auf dem Tisch. Am Fenster: E halten", "x": 1243, "z": -966 }
+            {
+              "do": "toast",
+              "text": "Matthes’ Zeichen: ein Abrieb fürs Feldbuch",
+              "ms": 3500,
+              "delay": 1.5
+            }
           ]
         }
       ],
-      "complete": { "all": [{ "have": { "clue": "clue.k1.festplan" } }, { "have": { "clue": "clue.k1.mannlich" } }] }
+      "complete": {
+        "quest": {
+          "id": "q.k1.lohn"
+        }
+      },
+      "enter": [
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.lohn",
+          "onResume": true
+        },
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.zwinger",
+          "onResume": true
+        }
+      ]
     },
     {
       "id": "k1_5",
       "title_de": "Der Zwinger",
-      "wake": { "x": 1171, "z": -1566, "yaw": 90, "era": "today", "text": "Du kommst am Zwinger zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1171,
+        "z": -1566,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst am Zwinger zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "anchor", "to": "1789", "x": 1165, "z": -1571, "r": 15 }
+        {
+          "do": "anchor",
+          "to": "1789",
+          "x": 1165,
+          "z": -1571,
+          "r": 15
+        },
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.zwinger",
+          "onResume": true
+        }
       ],
       "on": [
         {
           "id": "k1_5.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1165, "z": -1571, "r": 15 }, { "do": "objective", "id": "k1.zurueck-z", "text": "Zurück in den Sommer 1789: Q am Zwinger", "x": 1165, "z": -1571 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1165,
+              "z": -1571,
+              "r": 15
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-z",
+              "text": "Zurück in den Sommer 1789: Q am Zwinger",
+              "x": 1165,
+              "z": -1571
+            }
+          ]
         },
         {
           "id": "k1_5.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.zwinger", "text": "Hinter dem Marstall bellt es: der Zwinger", "x": 1177, "z": -1571 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.zwinger",
+              "text": "Hinter dem Marstall bellt es: der Zwinger",
+              "x": 1177,
+              "z": -1571
+            }
+          ]
         },
         {
           "id": "k1_5.bellen",
-          "when": { "enter": { "x": 1185, "z": -1571, "r": 60, "era": "1789" } },
+          "when": {
+            "enter": {
+              "x": 1185,
+              "z": -1571,
+              "r": 60,
+              "era": "1789"
+            }
+          },
           "do": [
-            { "do": "sound", "sound": "howl", "x": 1216, "z": -1571, "caption": "[Hinter der Mauer: Gebell, viele Hunde]" },
-            { "do": "grant", "clue": "clue.k1.gagern", "delay": 1 },
-            { "do": "say", "id": "laub.k1.gagern", "speaker": "laub", "text": "Ein Herr von Gagern hat es später so aufgeschrieben: ‚tausend Pferde im Marstall, noch mehr Hunde in den Zwingern, das ganze Land ein Thiergarten zum Verderben der Unterthanen!‘ Er war Diplomat. Das ist für einen Diplomaten sehr deutlich." },
-            { "do": "objective", "id": "k1.jost", "text": "Mit Jost sprechen (frag ihn, wie man sich versteckt)", "x": 1177, "z": -1571 }
+            {
+              "do": "sound",
+              "sound": "howl",
+              "x": 1216,
+              "z": -1571,
+              "caption": "[Hinter der Mauer: Gebell, viele Hunde]"
+            },
+            {
+              "do": "grant",
+              "clue": "clue.k1.gagern",
+              "delay": 1
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.gagern",
+              "speaker": "laub",
+              "text": "Ein Herr von Gagern hat es später so aufgeschrieben: ‚tausend Pferde im Marstall, noch mehr Hunde in den Zwingern, das ganze Land ein Thiergarten zum Verderben der Unterthanen!‘ Er war Diplomat. Das ist für einen Diplomaten sehr deutlich."
+            },
+            {
+              "do": "objective",
+              "id": "k1.jost",
+              "text": "Jost am Zwinger: Fleisch tragen, Verstecken lernen",
+              "x": 1177,
+              "z": -1571
+            }
           ]
         },
         {
           "id": "k1_5.tutorial",
-          "when": { "talked": { "npc": "jost", "topic": "verstecken" } },
-          "do": [{ "do": "toast", "text": "[C]: Schleichen. [X]: Hinlegen. [L]: Laterne. Wasser, Hohlwege und große Steine verbergen dich.", "ms": 7000 }]
+          "when": {
+            "talked": {
+              "npc": "jost",
+              "topic": "verstecken"
+            }
+          },
+          "do": [
+            {
+              "do": "toast",
+              "text": "[C]: Schleichen. [X]: Hinlegen. [L]: Laterne. Wasser, Hohlwege und große Steine verbergen dich.",
+              "ms": 7000
+            }
+          ]
         }
       ],
-      "complete": { "talked": { "npc": "jost" } },
+      "complete": {
+        "quest": {
+          "id": "q.k1.zwinger"
+        }
+      },
       "exit": [
-        { "do": "flag", "set": { "k1.a.done": true } },
-        { "do": "say", "id": "laub.k1.nacht", "speaker": "laub", "text": "Heute Nacht laufen sie in der Karlslust, sagt der Junge. Das ist der Teil des Tages, den der Hof nicht bezahlt hat. Gehen wir erst nach Hause und sortieren.", "delay": 1 },
-        { "do": "objective", "id": "k1.heim", "text": "Q halten: zurück ins Heute. Dann die Chronik füllen (Tab)" }
+        {
+          "do": "flag",
+          "set": {
+            "k1.a.done": true
+          }
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.nacht",
+          "speaker": "laub",
+          "text": "Heute Nacht laufen sie in der Karlslust, sagt der Junge. Das ist der Teil des Tages, den der Hof nicht bezahlt hat. Gehen wir erst nach Hause.",
+          "delay": 1
+        },
+        {
+          "do": "objective",
+          "id": "k1.heim",
+          "text": "Q halten: zurück ins Heute"
+        }
       ]
     },
     {
       "id": "k1_6",
       "title_de": "Zurück",
-      "on": [
+      "on": [],
+      "complete": {
+        "era": "today"
+      },
+      "enter": [
         {
-          "id": "k1_6.heute",
-          "when": { "era": "today" },
-          "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.chronik-a", "text": "Die Fallseite „Der Hof“ füllen (Tab): drei Sätze, dann Prüfen" }]
+          "do": "objective",
+          "id": "k1.heim",
+          "text": "Q halten: zurück ins Heute"
         }
       ],
-      "complete": { "all": [{ "era": "today" }, { "confirmed": { "prefix": "entry.k1.", "n": 3 } }] }
+      "exit": [
+        {
+          "do": "say",
+          "line": "laub.k1.flug",
+          "delay": 2
+        },
+        {
+          "do": "say",
+          "line": "marlene.k1.flug",
+          "delay": 0.8
+        }
+      ]
     },
     {
       "id": "k1_7",
       "title_de": "Die Karlslust",
       "enter": [
-        { "do": "look", "time": "dusk" },
-        { "do": "look", "time": "dusk", "era": "1789" },
-        { "do": "flag", "set": { "k1.b": true } },
-        { "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 },
-        { "do": "objective", "id": "k1.tschifflik", "text": "Zur Tschifflik-Terrasse in der Karlslust (F: Geisterblick), dort Q", "x": 1822, "z": 70, "delay": 6 }
+        {
+          "do": "look",
+          "time": "dusk"
+        },
+        {
+          "do": "look",
+          "time": "dusk",
+          "era": "1789"
+        },
+        {
+          "do": "flag",
+          "set": {
+            "k1.b": true
+          }
+        },
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.karlslust",
+          "onResume": true
+        },
+        {
+          "do": "anchor",
+          "to": "1789",
+          "x": 1822,
+          "z": 70,
+          "r": 14
+        },
+        {
+          "do": "objective",
+          "id": "k1.tschifflik",
+          "text": "Zur Tschifflik-Terrasse in der Karlslust (F: Geisterblick), dort Q",
+          "x": 1822,
+          "z": 70,
+          "delay": 6
+        }
       ],
       "on": [
         {
           "id": "k1_7.da",
-          "when": { "enter": { "x": 1822, "z": 70, "r": 14, "era": "today" } },
-          "do": [{ "do": "say", "id": "marlene.k1.baerenzwinger", "speaker": "marlene", "text": "Die Leute sagen Bärenzwinger. Ob da je Bären drin waren, weiß keiner so genau." }]
+          "when": {
+            "enter": {
+              "x": 1822,
+              "z": 70,
+              "r": 14,
+              "era": "today"
+            }
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "marlene.k1.baerenzwinger",
+              "speaker": "marlene",
+              "text": "Die Leute sagen Bärenzwinger. Ob da je Bären drin waren, weiß keiner so genau."
+            }
+          ]
         }
       ],
-      "complete": { "era": "1789" }
+      "complete": {
+        "era": "1789"
+      }
     },
     {
       "id": "k1_8",
       "title_de": "Die Tschifflik-Terrasse",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "say", "id": "laub.k1.karlslust", "speaker": "laub", "text": "Von hier hat der Hof zugesehen. Im Dezember 1785.", "delay": 2 },
-        { "do": "say", "id": "laub.k1.karlslust.2", "speaker": "laub", "text": "Gegenüber die Kaskade, unten das Tosbecken, dahinter die Weiher. Und dort drüben, wo es kreischt, wohnen die Tiere des Herzogs. Besser als die Steinhauer.", "delay": 1 },
-        { "do": "cue", "id": "menagerie:spawn", "data": { "animal": "cassowary", "x": 1966, "z": 92, "id": "kasuar" } }
+        {
+          "do": "say",
+          "id": "laub.k1.karlslust",
+          "speaker": "laub",
+          "text": "Von hier hat der Hof zugesehen. Im Dezember 1785.",
+          "delay": 2
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.karlslust.2",
+          "speaker": "laub",
+          "text": "Gegenüber die Kaskade, unten das Tosbecken, dahinter die Weiher. Und dort drüben, wo es kreischt, wohnen die Tiere des Herzogs. Besser als die Steinhauer.",
+          "delay": 1
+        },
+        {
+          "do": "cue",
+          "id": "menagerie:spawn",
+          "data": {
+            "animal": "cassowary",
+            "x": 1966,
+            "z": 92,
+            "id": "kasuar"
+          }
+        }
       ],
       "on": [
         {
           "id": "k1_8.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse",
+              "x": 1822,
+              "z": 70
+            }
+          ]
         },
         {
           "id": "k1_8.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.amphitheater", "text": "Zum Amphitheater: die Menagerie", "x": 1900, "z": 87 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.amphitheater",
+              "text": "Zum Amphitheater: die Menagerie",
+              "x": 1900,
+              "z": 87
+            }
+          ]
         }
       ],
-      "complete": { "enter": { "x": 1935, "z": 87, "r": 50, "era": "1789" } }
+      "complete": {
+        "enter": {
+          "x": 1935,
+          "z": 87,
+          "r": 50,
+          "era": "1789"
+        }
+      }
     },
     {
       "id": "k1_9",
       "title_de": "Das Amphitheater",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "grant", "clue": "clue.k1.insel" },
-        { "do": "say", "id": "laub.k1.insel", "speaker": "laub", "text": "Auf der Insel stand ein Pavillon. Seine Grundmauern hat man 2016 wiedergefunden. Ich hätte ihn 1840 finden können, wenn man mich gelassen hätte.", "delay": 1 }
+        {
+          "do": "grant",
+          "clue": "clue.k1.insel"
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.insel",
+          "speaker": "laub",
+          "text": "Auf der Insel stand ein Pavillon. Seine Grundmauern hat man 2016 wiedergefunden. Ich hätte ihn 1840 finden können, wenn man mich gelassen hätte.",
+          "delay": 1
+        }
       ],
       "on": [
         {
           "id": "k1_9.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse",
+              "x": 1822,
+              "z": 70
+            }
+          ]
         },
         {
           "id": "k1_9.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.zaehlen", "text": "Die Häuschen zählen: einmal um das Rund herum. Am Rund: E halten", "x": 1935, "z": 50 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.zaehlen",
+              "text": "Die Häuschen zählen: einmal um das Rund herum. Am Rund: E halten",
+              "x": 1935,
+              "z": 50
+            }
+          ]
         },
-        { "id": "k1_9.w", "when": { "enter": { "x": 1900, "z": 87, "r": 10, "era": "1789" } }, "do": [{ "do": "flag", "set": { "k1.zaehl.w": true } }] },
-        { "id": "k1_9.n", "when": { "enter": { "x": 1935, "z": 50, "r": 10, "era": "1789" } }, "do": [{ "do": "flag", "set": { "k1.zaehl.n": true } }] },
-        { "id": "k1_9.o", "when": { "enter": { "x": 1975, "z": 87, "r": 10, "era": "1789" } }, "do": [{ "do": "flag", "set": { "k1.zaehl.o": true } }] },
-        { "id": "k1_9.s", "when": { "enter": { "x": 1935, "z": 124, "r": 10, "era": "1789" } }, "do": [{ "do": "flag", "set": { "k1.zaehl.s": true } }] },
+        {
+          "id": "k1_9.w",
+          "when": {
+            "enter": {
+              "x": 1900,
+              "z": 87,
+              "r": 10,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.w": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "k1_9.n",
+          "when": {
+            "enter": {
+              "x": 1935,
+              "z": 50,
+              "r": 10,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.n": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "k1_9.o",
+          "when": {
+            "enter": {
+              "x": 1975,
+              "z": 87,
+              "r": 10,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.o": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "k1_9.s",
+          "when": {
+            "enter": {
+              "x": 1935,
+              "z": 124,
+              "r": 10,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.s": true
+              }
+            }
+          ]
+        },
         {
           "id": "k1_9.z1",
-          "when": { "any": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.o" }, { "flag": "k1.zaehl.s" }] },
+          "when": {
+            "any": [
+              {
+                "flag": "k1.zaehl.w"
+              },
+              {
+                "flag": "k1.zaehl.n"
+              },
+              {
+                "flag": "k1.zaehl.o"
+              },
+              {
+                "flag": "k1.zaehl.s"
+              }
+            ]
+          },
           "do": [
-            { "do": "toast", "text": "Gezählt: 5 Häuschen", "ms": 2500 },
-            { "do": "say", "id": "laub.k1.zaehl.1", "speaker": "laub", "text": "Fünf auf dieser Seite. Ich zähle mit. Zählen ist das Einzige, was man mir nie verboten hat." }
+            {
+              "do": "toast",
+              "text": "Gezählt: 5 Häuschen",
+              "ms": 2500
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.zaehl.1",
+              "speaker": "laub",
+              "text": "Fünf auf dieser Seite. Ich zähle mit. Zählen ist das Einzige, was man mir nie verboten hat."
+            }
           ]
         },
         {
           "id": "k1_9.z2",
           "when": {
             "any": [
-              { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.n" }] },
-              { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.o" }] },
-              { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.s" }] },
-              { "all": [{ "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.o" }] },
-              { "all": [{ "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.s" }] },
-              { "all": [{ "flag": "k1.zaehl.o" }, { "flag": "k1.zaehl.s" }] }
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.w"
+                  },
+                  {
+                    "flag": "k1.zaehl.n"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.w"
+                  },
+                  {
+                    "flag": "k1.zaehl.o"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.w"
+                  },
+                  {
+                    "flag": "k1.zaehl.s"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.n"
+                  },
+                  {
+                    "flag": "k1.zaehl.o"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.n"
+                  },
+                  {
+                    "flag": "k1.zaehl.s"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.o"
+                  },
+                  {
+                    "flag": "k1.zaehl.s"
+                  }
+                ]
+              }
             ]
           },
           "do": [
-            { "do": "toast", "text": "Gezählt: 10 Häuschen", "ms": 2500 },
-            { "do": "say", "id": "laub.k1.zaehl.2", "speaker": "laub", "text": "Zehn." }
+            {
+              "do": "toast",
+              "text": "Gezählt: 10 Häuschen",
+              "ms": 2500
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.zaehl.2",
+              "speaker": "laub",
+              "text": "Zehn."
+            }
           ]
         },
         {
           "id": "k1_9.z3",
           "when": {
             "any": [
-              { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.o" }] },
-              { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.s" }] },
-              { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.o" }, { "flag": "k1.zaehl.s" }] },
-              { "all": [{ "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.o" }, { "flag": "k1.zaehl.s" }] }
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.w"
+                  },
+                  {
+                    "flag": "k1.zaehl.n"
+                  },
+                  {
+                    "flag": "k1.zaehl.o"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.w"
+                  },
+                  {
+                    "flag": "k1.zaehl.n"
+                  },
+                  {
+                    "flag": "k1.zaehl.s"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.w"
+                  },
+                  {
+                    "flag": "k1.zaehl.o"
+                  },
+                  {
+                    "flag": "k1.zaehl.s"
+                  }
+                ]
+              },
+              {
+                "all": [
+                  {
+                    "flag": "k1.zaehl.n"
+                  },
+                  {
+                    "flag": "k1.zaehl.o"
+                  },
+                  {
+                    "flag": "k1.zaehl.s"
+                  }
+                ]
+              }
             ]
           },
           "do": [
-            { "do": "toast", "text": "Gezählt: 14 Häuschen", "ms": 2500 },
-            { "do": "say", "id": "laub.k1.zaehl.3", "speaker": "laub", "text": "Vierzehn. Der Affe hat zweimal herübergesehen. Ich zähle ihn nicht mit." }
+            {
+              "do": "toast",
+              "text": "Gezählt: 14 Häuschen",
+              "ms": 2500
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.zaehl.3",
+              "speaker": "laub",
+              "text": "Vierzehn. Der Affe hat zweimal herübergesehen. Ich zähle ihn nicht mit."
+            }
           ]
         },
         {
           "id": "k1_9.z4",
-          "when": { "all": [{ "flag": "k1.zaehl.w" }, { "flag": "k1.zaehl.n" }, { "flag": "k1.zaehl.o" }, { "flag": "k1.zaehl.s" }] },
+          "when": {
+            "all": [
+              {
+                "flag": "k1.zaehl.w"
+              },
+              {
+                "flag": "k1.zaehl.n"
+              },
+              {
+                "flag": "k1.zaehl.o"
+              },
+              {
+                "flag": "k1.zaehl.s"
+              }
+            ]
+          },
           "do": [
-            { "do": "grant", "clue": "clue.k1.amphitheater" },
-            { "do": "toast", "text": "Gezählt: 19 Häuschen im Rund", "ms": 3500 },
-            { "do": "say", "id": "laub.k1.zaehl.4", "speaker": "laub", "text": "Neunzehn. Neunzehn Häuschen mit Schieferdach, neunzehn Türen, keine Klinke innen." }
+            {
+              "do": "grant",
+              "clue": "clue.k1.amphitheater"
+            },
+            {
+              "do": "toast",
+              "text": "Gezählt: 19 Häuschen im Rund",
+              "ms": 3500
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.zaehl.4",
+              "speaker": "laub",
+              "text": "Neunzehn. Neunzehn Häuschen mit Schieferdach, neunzehn Türen, keine Klinke innen."
+            }
           ]
         }
       ],
-      "complete": { "have": { "clue": "clue.k1.amphitheater" } }
+      "complete": {
+        "have": {
+          "clue": "clue.k1.amphitheater"
+        }
+      }
     },
     {
       "id": "k1_10",
       "title_de": "Die Terrassen",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "on": [
         {
           "id": "k1_10.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse",
+              "x": 1822,
+              "z": 70
+            }
+          ]
         },
         {
           "id": "k1_10.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.terrassen", "text": "Oberhalb des Runds: die Terrassen. Was steht an der untersten Mauer?", "x": 1958, "z": 146 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.terrassen",
+              "text": "Oberhalb des Runds: die Terrassen. Was steht an der untersten Mauer?",
+              "x": 1958,
+              "z": 146
+            }
+          ]
         }
       ],
-      "complete": { "have": { "clue": "clue.k1.baerenkaesten" } }
+      "complete": {
+        "have": {
+          "clue": "clue.k1.baerenkaesten"
+        }
+      }
     },
     {
       "id": "k1_11",
       "title_de": "Die Nacht kommt",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "look", "time": "night", "era": "1789" },
-        { "do": "say", "id": "laub.k1.dunkel", "speaker": "laub", "text": "Die Sonne ist weg. Hören Sie das? Jetzt laufen sie. Gehen Sie leise und bleiben Sie am Wasser.", "delay": 2.5 }
+        {
+          "do": "look",
+          "time": "night",
+          "era": "1789"
+        }
       ],
       "on": [
         {
           "id": "k1_11.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse",
+              "x": 1822,
+              "z": 70
+            }
+          ]
+        },
+        {
+          "id": "k1_11.lichter",
+          "when": {
+            "all": [
+              {
+                "era": "1789"
+              },
+              {
+                "not": {
+                  "quest": {
+                    "id": "q.k1.karlslust",
+                    "objective": "lichter",
+                    "gte": 5
+                  }
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.lichter",
+              "text": "Über dem Schwanenweiher tanzen Lichter. Bannlicht, dann der Stab",
+              "x": 1852,
+              "z": 248
+            }
+          ]
         },
         {
           "id": "k1_11.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "all": [
+              {
+                "era": "1789"
+              },
+              {
+                "quest": {
+                  "id": "q.k1.karlslust",
+                  "objective": "lichter",
+                  "gte": 5
+                }
+              }
+            ]
+          },
           "repeat": true,
           "do": [
-            { "do": "threat", "kind": "pack", "active": true, "mode": "patrol", "intensity": 0.35, "hounds": 3, "pikeur": false, "sight": 30, "center": { "x": 1910, "z": 215 }, "radius": 90, "from": { "x": 1920, "z": 205 }, "delay": 4 },
-            { "do": "objective", "id": "k1.rondell", "text": "Zum Rondell, wo die Kaskade oben beginnt. Leise, und am Wasser entlang", "x": 1815, "z": 348 }
+            {
+              "do": "say",
+              "id": "laub.k1.dunkel",
+              "speaker": "laub",
+              "text": "Die Lichter sind aus. Hören Sie das? Jetzt laufen sie. Gehen Sie leise und bleiben Sie am Wasser.",
+              "delay": 1.5
+            },
+            {
+              "do": "threat",
+              "kind": "pack",
+              "active": true,
+              "mode": "patrol",
+              "intensity": 0.35,
+              "hounds": 3,
+              "pikeur": false,
+              "sight": 30,
+              "center": {
+                "x": 1910,
+                "z": 215
+              },
+              "radius": 90,
+              "from": {
+                "x": 1920,
+                "z": 205
+              },
+              "delay": 4
+            },
+            {
+              "do": "objective",
+              "id": "k1.rondell",
+              "text": "Zum Rondell, wo die Kaskade oben beginnt. Leise, und am Wasser entlang",
+              "x": 1815,
+              "z": 348
+            }
           ]
         },
         {
           "id": "k1_11.tut",
-          "when": { "timer": 9 },
-          "do": [{ "do": "toast", "text": "[C]: Schleichen. [X]: Hinlegen. [L]: Laterne aus. Wasser verwischt die Spur.", "ms": 6000 }]
+          "when": {
+            "all": [
+              {
+                "quest": {
+                  "id": "q.k1.karlslust",
+                  "objective": "lichter",
+                  "gte": 5
+                }
+              },
+              {
+                "timer": 9
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "toast",
+              "text": "[C]: Schleichen. [X]: Hinlegen. [L]: Laterne aus. Wasser verwischt die Spur.",
+              "ms": 6000
+            }
+          ]
         }
       ],
-      "complete": { "enter": { "x": 1815, "z": 348, "r": 22, "era": "1789" } }
+      "complete": {
+        "all": [
+          {
+            "enter": {
+              "x": 1815,
+              "z": 348,
+              "r": 22,
+              "era": "1789"
+            }
+          },
+          {
+            "quest": {
+              "id": "q.k1.karlslust",
+              "objective": "lichter",
+              "gte": 5
+            }
+          }
+        ]
+      }
     },
     {
       "id": "k1_12",
       "title_de": "Das Rondell",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "threat", "kind": "pack", "active": false },
-        { "do": "memorial", "id": "k1.rondell", "x": 1815, "z": 348, "r": 26, "era": "1789" },
-        { "do": "toast", "text": "Die Hunde bleiben am Rand des Rondells stehen und verwehen.", "ms": 4000 }
+        {
+          "do": "threat",
+          "kind": "pack",
+          "active": false
+        },
+        {
+          "do": "memorial",
+          "id": "k1.rondell",
+          "x": 1815,
+          "z": 348,
+          "r": 26,
+          "era": "1789"
+        },
+        {
+          "do": "toast",
+          "text": "Die Hunde bleiben am Rand des Rondells stehen und verwehen.",
+          "ms": 4000
+        }
       ],
       "on": [
         {
           "id": "k1_12.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse",
+              "x": 1822,
+              "z": 70
+            }
+          ]
         },
         {
           "id": "k1_12.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.feuerwerk", "text": "Das Rondell: E halten", "x": 1815, "z": 348 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.feuerwerk",
+              "text": "Das Rondell: E halten",
+              "x": 1815,
+              "z": 348
+            }
+          ]
         }
       ],
-      "complete": { "have": { "clue": "clue.k1.feuerwerk" } }
+      "complete": {
+        "have": {
+          "clue": "clue.k1.feuerwerk"
+        }
+      }
     },
     {
       "id": "k1_13",
       "title_de": "Die Seite",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "toast", "text": "In der Chronik steht jetzt eine Gedenkzeile.", "ms": 4000, "delay": 2 }
+        {
+          "do": "toast",
+          "text": "Eine Gedenkzeile: Major Magnier und elf Arbeiter. Ihre Namen hat niemand aufgeschrieben.",
+          "ms": 5000,
+          "delay": 2
+        }
       ],
       "on": [
         {
           "id": "k1_13.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Karlslust: Q auf der Tschifflik-Terrasse",
+              "x": 1822,
+              "z": 70
+            }
+          ]
         },
         {
           "id": "k1_13.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k1.seite", "text": "Auf den Stufen des Tempelplatzes liegt etwas. Laterne an [L]", "x": 1811, "z": 363 }]
+          "do": [
+            {
+              "do": "objective",
+              "id": "k1.seite",
+              "text": "Auf den Stufen des Tempelplatzes liegt etwas. Laterne an [L]",
+              "x": 1811,
+              "z": 363
+            }
+          ]
         }
       ],
-      "complete": { "have": { "clue": "clue.k1.seite" } }
+      "complete": {
+        "have": {
+          "clue": "clue.k1.seite"
+        }
+      }
     },
     {
       "id": "k1_14",
       "title_de": "Flucht",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "memorial", "id": "k1.rondell", "active": false }
+        {
+          "do": "memorial",
+          "id": "k1.rondell",
+          "active": false
+        }
       ],
       "on": [
         {
           "id": "k1_14.damals",
-          "when": { "era": "1789" },
+          "when": {
+            "era": "1789"
+          },
           "repeat": true,
           "do": [
-            { "do": "threat", "kind": "pack", "active": true, "mode": "parforce", "intensity": 0.4, "hounds": 3, "pikeur": false, "sight": 30, "center": { "x": 1815, "z": 290 }, "radius": 170, "from": { "x": 1826, "z": 394 }, "target": { "x": 1812, "z": 203 }, "goalRadius": 12, "headStart": 5, "heel": 9, "burst": 1.3, "keepPace": true },
-            { "do": "objective", "id": "k1.flucht", "text": "Hinunter zum Tosbecken! Wasser verwischt die Spur", "x": 1812, "z": 203 },
-            { "do": "toast", "text": "Aufstehen: [Leertaste]. Rennen: [Shift] halten.", "ms": 5000 }
+            {
+              "do": "threat",
+              "kind": "pack",
+              "active": true,
+              "mode": "parforce",
+              "intensity": 0.4,
+              "hounds": 3,
+              "pikeur": false,
+              "sight": 30,
+              "center": {
+                "x": 1815,
+                "z": 290
+              },
+              "radius": 170,
+              "from": {
+                "x": 1826,
+                "z": 394
+              },
+              "target": {
+                "x": 1812,
+                "z": 203
+              },
+              "goalRadius": 12,
+              "headStart": 5,
+              "heel": 9,
+              "burst": 1.3,
+              "keepPace": true
+            },
+            {
+              "do": "objective",
+              "id": "k1.flucht",
+              "text": "Hinunter zum Tosbecken! Wasser verwischt die Spur",
+              "x": 1812,
+              "z": 203
+            },
+            {
+              "do": "toast",
+              "text": "Aufstehen: [Leertaste]. Rennen: [Shift] halten.",
+              "ms": 5000
+            }
           ]
         },
         {
           "id": "k1_14.heute",
-          "when": { "era": "today" },
+          "when": {
+            "era": "today"
+          },
           "repeat": true,
-          "do": [{ "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 }, { "do": "objective", "id": "k1.zurueck-b", "text": "Zurück in die Nacht: Q auf der Tschifflik-Terrasse. Dann zum Tosbecken", "x": 1822, "z": 70 }]
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1822,
+              "z": 70,
+              "r": 14
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-b",
+              "text": "Zurück in die Nacht: Q auf der Tschifflik-Terrasse. Dann zum Tosbecken",
+              "x": 1822,
+              "z": 70
+            }
+          ]
         }
       ],
       "complete": {
         "any": [
-          { "event": "hunt:goal" },
-          { "enter": { "x": 1812, "z": 200, "r": 10, "era": "1789" } }
+          {
+            "event": "hunt:goal"
+          },
+          {
+            "enter": {
+              "x": 1812,
+              "z": 200,
+              "r": 10,
+              "era": "1789"
+            }
+          }
         ]
       }
     },
     {
       "id": "k1_15",
       "title_de": "Am Wasser",
-      "wake": { "x": 1817, "z": 76, "yaw": 90, "era": "today", "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Was bestätigt ist, bleibt." },
+      "wake": {
+        "x": 1817,
+        "z": 76,
+        "yaw": 90,
+        "era": "today",
+        "text": "Du kommst an der Tschifflik-Terrasse zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
-        { "do": "say", "id": "laub.k1.nach_rondell", "speaker": "laub", "text": "Mannlich war schon am Fuß des Berges, als es geschah. Er hat das Licht gesehen und es schön gefunden. So steht es bei ihm. Das ist das Schlimmste daran.", "delay": 3 },
-        { "do": "objective", "id": "k1.heim-b", "text": "Q halten: zurück ins Heute", "delay": 0.5 }
+        {
+          "do": "say",
+          "id": "laub.k1.nach_rondell",
+          "speaker": "laub",
+          "text": "Mannlich war schon am Fuß des Berges, als es geschah. Er hat das Licht gesehen und es schön gefunden. So steht es bei ihm. Das ist das Schlimmste daran.",
+          "delay": 3
+        },
+        {
+          "do": "objective",
+          "id": "k1.heim-b",
+          "text": "Q halten: zurück ins Heute",
+          "delay": 0.5
+        }
       ],
-      "complete": { "era": "today" },
+      "complete": {
+        "era": "today"
+      },
       "exit": [
-        { "do": "threat", "kind": "pack", "active": false }
+        {
+          "do": "threat",
+          "kind": "pack",
+          "active": false
+        }
       ]
     },
     {
       "id": "k1_16",
       "title_de": "Feldstation",
       "enter": [
-        { "do": "look", "time": "night" },
-        { "do": "anchor", "to": "1789", "x": 1822, "z": 70, "r": 14 },
-        { "do": "say", "id": "marlene.k1.abend", "speaker": "marlene", "text": "Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl’s mir morgen.", "delay": 2.5 },
-        { "do": "objective", "id": "k1.chronik-b", "text": "Die Fallseite „Der Hof“ fertigstellen (Tab)", "delay": 1 },
-        { "do": "autosave" }
+        {
+          "do": "look",
+          "time": "night"
+        },
+        {
+          "do": "anchor",
+          "to": "1789",
+          "x": 1822,
+          "z": 70,
+          "r": 14
+        },
+        {
+          "do": "say",
+          "id": "marlene.k1.abend",
+          "speaker": "marlene",
+          "text": "Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl’s mir morgen.",
+          "delay": 2.5
+        },
+        {
+          "do": "objective",
+          "id": "k1.ende",
+          "text": "Feldstation. Durchatmen.",
+          "delay": 1
+        },
+        {
+          "do": "autosave"
+        }
       ],
-      "complete": { "any": [{ "caseComplete": "case.k1" }, { "confirmed": { "prefix": "entry.k1.", "n": 9 } }] },
+      "complete": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.karlslust"
+            }
+          },
+          {
+            "timer": 6
+          }
+        ]
+      },
       "exit": [
-        { "do": "objective", "text": null },
-        { "do": "sound", "sound": "compass", "caption": "[Die Nadel der Bussole dreht sich nach Südosten und bleibt stehen]", "delay": 1.5 },
-        { "do": "sound", "sound": "frost", "caption": "[Auf dem Deckel der Bussole bildet sich Raureif]", "delay": 2 },
-        { "do": "say", "id": "laub.k1.ende", "speaker": "laub", "text": "Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.", "delay": 1.5, "ms": 6500 }
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "sound",
+          "sound": "compass",
+          "caption": "[Die Nadel der Bussole dreht sich nach Südosten und bleibt stehen]",
+          "delay": 1.5
+        },
+        {
+          "do": "sound",
+          "sound": "frost",
+          "caption": "[Auf dem Deckel der Bussole bildet sich Raureif]",
+          "delay": 2
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.ende",
+          "speaker": "laub",
+          "text": "Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.",
+          "delay": 1.5,
+          "ms": 6500
+        }
       ]
     },
     {
       "id": "k1_17",
       "title_de": "Raureif",
       "enter": [
-        { "do": "npc", "op": "despawn", "npc": "soll" },
-        { "do": "npc", "op": "despawn", "npc": "hanne" },
-        { "do": "npc", "op": "despawn", "npc": "jost" },
-        { "do": "cue", "id": "menagerie:clear", "data": { "id": "kasuar" } },
-        { "do": "look", "time": "day", "era": "1789" },
-        { "do": "flag", "set": { "npc.owns.clue.k1.fluegel": null, "npc.owns.clue.k1.soll_einnahmen": null, "npc.owns.clue.k1.feenschloss": null, "npc.owns.clue.k1.gagern": null, "npc.owns.clue.k1.insel": null, "npc.owns.clue.k1.amphitheater": null } },
-        { "do": "autosave" }
+        {
+          "do": "npc",
+          "op": "despawn",
+          "npc": "*"
+        },
+        {
+          "do": "cue",
+          "id": "menagerie:clear",
+          "data": {
+            "id": "kasuar"
+          }
+        },
+        {
+          "do": "look",
+          "time": "day",
+          "era": "1789"
+        },
+        {
+          "do": "flag",
+          "set": {
+            "npc.owns.clue.k1.fluegel": null,
+            "npc.owns.clue.k1.soll_einnahmen": null,
+            "npc.owns.clue.k1.feenschloss": null,
+            "npc.owns.clue.k1.gagern": null,
+            "npc.owns.clue.k1.insel": null,
+            "npc.owns.clue.k1.amphitheater": null
+          }
+        },
+        {
+          "do": "autosave"
+        }
       ],
-      "complete": { "timer": 10 }
+      "complete": {
+        "timer": 10
+      }
     }
   ]
 }

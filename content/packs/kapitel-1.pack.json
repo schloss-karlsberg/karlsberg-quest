@@ -1495,9 +1495,9 @@
       "speaker": "laub",
       "text_de": "Die Karlslust liegt eine gute Stunde zu Fuß im Süden. Im Heute fliegen Sie. Taste F. Ich hasse es.",
       "trigger": {
-        "event": "chronik:batch",
-        "caseId": "case.k1",
-        "correct": true,
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.5-flug",
         "step": 1
       },
       "once": true
@@ -1507,9 +1507,9 @@
       "speaker": "marlene",
       "text_de": "Die Karlslust? Das ist da, wo heute der Bärenzwinger ist und die Schwanenweiher. Schöne Ecke. Nimm den Überflug, zu Fuß bist du ewig unterwegs.",
       "trigger": {
-        "event": "chronik:batch",
-        "caseId": "case.k1",
-        "correct": true,
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.5-flug",
         "step": 2
       },
       "once": true
