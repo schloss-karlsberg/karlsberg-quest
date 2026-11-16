@@ -1162,7 +1162,9 @@ class StoryRuntime {
     let wake = this.wakePlace();
     const anchor = this.anchorFromFlags();
     let atAnchor = false;
-    if (anchor && !anchor.anywhere && (!wake || Math.hypot(wake.x - anchor.x, wake.z - anchor.z) > 150)) {
+    // (not in the prologue: there the station is the lesson, and the way back is short and taught)
+    const prolog = this.engine.chapter()?.chapter === 'prolog';
+    if (anchor && !anchor.anywhere && !prolog && (!wake || Math.hypot(wake.x - anchor.x, wake.z - anchor.z) > 150)) {
       wake = { x: anchor.x + 3, z: anchor.z + 3, yaw: wake?.yaw ?? 0, text: t('story.caught.wakeAnchor') };
       atAnchor = true;
     }

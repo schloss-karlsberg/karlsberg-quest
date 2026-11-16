@@ -65,8 +65,11 @@ test('chapter 4: the threats are fair (Steinfraß catch, soft homecoming, the em
   s = await story(page);
   expect(s.era).toBe('today');
   expect(s.beat).toBe('k4_5');
+  // you wake beside the Ehrenhof anchor, not at the station half a kilometre away (playtest
+  // 2026-11-16): Q takes you straight back
   const p = await page.evaluate(() => window.kq!.ctx.player.position);
-  expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(10);
+  const a = await page.evaluate(() => ({ x: window.kq!.state().flags['shift.x'] as number, z: window.kq!.state().flags['shift.z'] as number }));
+  expect(Math.hypot(p.x - a.x, p.z - a.z)).toBeLessThan(10);
   // the boss stays beaten: the quest kept its count
   expect(await page.evaluate(() => window.kq!.state().flags['quest.q.k4.steinplatz.brecher'])).toBe(1);
   expect(await page.evaluate(() => window.kq!.state().flags['shift.x'])).toBe(1216);
