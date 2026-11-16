@@ -649,6 +649,11 @@ export class CombatVisuals {
     }
   }
 
+  /** Drop every particle (an era change: no grit from 1796 drifting through 2025). */
+  clearParticles(): void {
+    this.parts.length = 0;
+  }
+
   /** The dissolve: the body comes apart along its own parts, everything rises. */
   dissolve(e: Enemy, style: DissolveKind, reducedFlash: boolean): void {
     const v = this.template(e);

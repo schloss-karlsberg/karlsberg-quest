@@ -117,7 +117,7 @@ declare module '../core/events' {
      * Any threat got the player. story handles the return to the field station.
      * soft: brought home without loss (Ch. 4 drive: "Die Meute hat dich heimgebracht").
      */
-    'player:caught': { by: ThreatKind; soft?: boolean };
+    'player:caught': { by: ThreatKind; soft?: boolean; family?: string };
 
     // ---- menagerie (owner: menagerie; story emits spawn / clear) ---------------------------
     /**

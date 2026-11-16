@@ -985,6 +985,9 @@ export class CombatSim {
   /**
    * Damage the player. Returns the damage dealt (0: evaded, god mode, safe, dead).
    */
+  /** Kind of the last enemy that hurt the player (the curtain names the family). */
+  lastHitBy = '';
+
   hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false): number {
     const p = this.p;
     if (p.dead || this.safe) return 0;
@@ -994,6 +997,7 @@ export class CombatSim {
     }
     const amount = enemyDamage(raw, tier, this.opt.stats.damageTaken);
     if (amount <= 0) return 0;
+    this.lastHitBy = by;
     let dx = this.px - from.x;
     let dz = this.pz - from.z;
     const l = Math.hypot(dx, dz) || 1;

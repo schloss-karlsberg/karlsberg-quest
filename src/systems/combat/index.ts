@@ -238,6 +238,7 @@ class Combat {
     ev.on('era:change', () => {
       this.sim.dematerialise();
       this.hud.clearWorld();
+      this.visuals.clearParticles();
     });
     ev.on('hub:enter', () => {
       this.inHub = true;
@@ -437,7 +438,9 @@ class Combat {
         // nothing is lost: unfinished groups come back whole, bosses at phase 1
         for (const g of groupsToReset(this.slice().groups)) this.sim.dematerialise(g);
         this.sim.dematerialise();
-        this.emit('player:caught', { by: 'combat' });
+        // the curtain names what threw you down (by family: mist, paper, stone ...)
+        const fam = enemyDef(this.sim.lastHitBy)?.family;
+        this.emit('player:caught', fam ? { by: 'combat', family: fam } : { by: 'combat' });
       }
       // no story to wake us (or it never teleports): get up after a while
       if (this.caughtSent && this.deadT > 8 && !pl.frozen) this.revive();

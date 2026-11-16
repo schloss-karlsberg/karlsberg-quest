@@ -231,3 +231,12 @@ describe('credits data', () => {
     }
   });
 });
+
+describe('combat curtain', () => {
+  it('names every enemy family that can throw you down', async () => {
+    await import('../src/systems/story/strings');
+    const { hasString } = await import('../src/i18n');
+    const { ENEMIES } = await import('../src/rpg/enemies');
+    for (const e of ENEMIES) expect(hasString(`story.caught.combat.${e.family}`), e.family).toBe(true);
+  });
+});

@@ -11,7 +11,7 @@ import { RADIO_LINES } from './strings';
 import type { GameContext } from '../../core/context';
 import { type Era, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
-import { t } from '../../i18n';
+import { hasString, t } from '../../i18n';
 import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
 import type { NpcPlacement, ThreatConfig, ThreatKind } from '../contracts';
 import { isBarkLine, pickSequence } from '../../content/triggers';
@@ -345,7 +345,10 @@ class StoryRuntime {
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
     ctx.events.on('save:loaded', () => this.resync());
-    ctx.events.on('player:caught', ({ by, soft }) => this.caught(by, { soft: soft === true }));
+    ctx.events.on('player:caught', ({ by, soft, family }) => {
+      const key = family ? `story.caught.combat.${family}` : '';
+      this.caught(by, { soft: soft === true, ...(key && hasString(key) ? { text: t(key) } : {}) });
+    });
     ctx.events.on('era:change', ({ to }) => {
       if (to === 'today') this.placeStation();
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
