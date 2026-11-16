@@ -1007,7 +1007,7 @@
     {
       "id": "laub.k2.horstmann",
       "speaker": "laub",
-      "text_de": "Ein Regierungsrat namens Horstmann hat sich das Datum notiert, Tag für Tag, wie ein ordentlicher Mensch. Der neunte. Mannlich schreibt in seinen Erinnerungen ‚gegen Ende Februar‘. Mannlich hat Jahre später geschrieben und schöner. Ich glaube dem Regierungsrat.",
+      "text_de": "Horstmann schreibt am selben Abend, Mannlich Jahre später und schöner. Ich glaube dem, der am selben Abend schreibt.",
       "trigger": {
         "event": "clue:found",
         "id": "clue.k2.horstmann"

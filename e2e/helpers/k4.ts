@@ -385,7 +385,6 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await run(page, 2);
   await voiceStance(page, 'Der Lohn, der nie gezahlt wurde.');
   expect(await quest(page, 'q.k4.zeichen')).toBe('done');
-  expect((await flags(page))['flag.k4_steine']).toBe('lohn_steine');
   expect((await items(page))['item.charm.winkel']).toBe(1);
 
   // ---- 4.6 Standpunkt 17 ------------------------------------------------------------------------
@@ -432,7 +431,6 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await events(page, 'hunt:goal')).toEqual([expect.objectContaining({ mode: 'drive' })]);
   // Laub's question: who destroyed the Karlsberg? (a stance, never graded)
   await voiceStance(page, 'Die Steinträger aus Homburg.');
-  expect((await flags(page))['flag.k4_zerstoerer']).toBe('steintraeger');
   expect(await quest(page, 'q.k4.standpunkt')).toBe('done');
   await drainLines(page);
   await run(page, 2);
@@ -487,10 +485,9 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   await run(page, 1);
   expect(await quest(page, 'q.k4.stellen')).toBe('ready');
-  await questTalk(page, 'pikeur', 'q.k4.stellen', 'qs:herr_suchen');
+  await questTalk(page, 'pikeur', 'q.k4.stellen');
   await run(page, 2);
   expect(await quest(page, 'q.k4.stellen')).toBe('done');
-  expect((await flags(page))['flag.k4_meute']).toBe('herr_suchen');
   expect((await items(page))['item.horn']).toBe(1);
   expect(await has(page, 'clue.k4.jost')).toBe(true);
   expect(await untilLine(page, 'jost.k4.08', 20)).toBe(true);
@@ -504,12 +501,12 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await untilLine(page, 'laub.k4.nur_steine', 40)).toBe(true);
   expect(await has(page, 'clue.k4.foto')).toBe(true);
 
-  // ---- gaps: no blanks, open stances become "offen" -----------------------------------------------------
+  // ---- the last beat: Laub on the field book (deeds, no blanks) -------------------------------------
   for (let i = 0; i < 30 && (await beat(page)) !== 'k4_15' && (await story(page)).chapter === 'k4'; i++) await run(page, 1);
   await run(page, 12);
   const fl = await page.evaluate(() => window.kq!.state().flags);
-  expect(fl['flag.k4_zerstoerer']).toBe('steintraeger');
-  expect(fl['flag.k3_pluenderer'] ?? 'offen').toBeTruthy();
+  expect(fl['quest.q.k4.zeichen']).toBe('done');
+  expect(fl['flag.k4_zerstoerer']).toBeUndefined();
   expect(await page.evaluate(() => window.kq!.story!.choice())).toBeNull();
 
   // ---- the endings chapter ------------------------------------------------------------------------
@@ -528,8 +525,10 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.getByTestId('ending-next').click();
   await expect(page.getByTestId('epilogue')).toBeVisible();
   const epi = await page.getByTestId('epilogue').innerText();
-  expect(epi).toContain('Abgetragen haben ihn die Leute aus Homburg');
-  expect(epi).toContain('Diane, Sultan, Fanfare, Rauhreif und Bijou');
+  // told from deeds: Matthes' stone (q.k4.zeichen done), the night at the Zwinger; a story, no flags
+  expect(epi).toContain('Matthes’ Zeichen');
+  expect(epi).toContain('Jost nahm den Hut ab');
+  expect(epi).not.toMatch(/Wird fortgesetzt\.|Jost war auch da|Fortgesetzt im November/);
   await shot(page, 'epilog');
   await o.at?.('ending:epilogue');
   await page.getByTestId('ending-credits').click();

@@ -12,7 +12,7 @@ import type { SpeakerMeta } from './speakers';
 import { LineQueue, type QueuedLine } from './queue';
 import { type Voice, syllableStarts } from './voice';
 
-export { LOW_TTL, MAX_QUEUE, STALE_GRACE } from './queue';
+export { LORE_TTL, LOW_TTL, MAX_QUEUE, NORMAL_TTL, STALE_GRACE } from './queue';
 
 export interface DialogueItem extends QueuedLine {
   id?: string;
@@ -49,6 +49,8 @@ export interface PresenterOptions {
   onShow?: (item: DialogueItem) => void;
   /** Is a queued line still worth saying (place, era …)? Checked when its turn comes. */
   valid?: (item: DialogueItem) => boolean;
+  /** Must this line wait now (lore while a fight is on)? It stays queued; later lines go first. */
+  held?: (item: DialogueItem) => boolean;
 }
 
 const CHARS_PER_S = 42;
@@ -156,7 +158,7 @@ export class DialoguePresenter {
   }
 
   private next(): void {
-    const item = this.queue.take();
+    const item = this.queue.take(this.o.held);
     if (!item) {
       this.cur = null;
       this.el.classList.remove('kqs-speaking');
@@ -213,6 +215,11 @@ export class DialoguePresenter {
     if (this.mouthTimer > 0) {
       this.mouthTimer -= dt;
       if (this.mouthTimer <= 0) this.portraitEl.classList.remove('kqs-m');
+    }
+    // a line held back (lore in a fight) may play once the fight is over
+    if (!this.cur && this.queue.length > 0 && (!this.o.held || this.queue.heldCount(this.o.held) < this.queue.length)) {
+      this.next();
+      if (this.cur) return;
     }
     if (!this.cur) {
       if (this.hideTimer > 0) {

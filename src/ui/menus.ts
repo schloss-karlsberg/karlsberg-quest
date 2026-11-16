@@ -55,6 +55,14 @@ export function openLicences(deps: Pick<MenuDeps, 'modals' | 'attribution'>): Mo
   return deps.modals.open({ title: t('licences.title'), body: licencesBody(deps.attribution()), wide: true, actions: [{ label: t('modal.close') }] });
 }
 
+/** Extra pause-menu entries features add (e.g. "Ende noch einmal wählen" after the credits). */
+export interface PauseAction {
+  label: string;
+  testid: string;
+  run(): void;
+}
+export const pauseHooks: { extraActions?(): PauseAction[] } = {};
+
 /** Pause menu with sub-pages (settings, licences, controls). */
 export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
   const m = deps.modals.open({ title: t('pause.title'), onClose, className: 'kq-pause' });
@@ -62,6 +70,7 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
     m.setBody(
       h('div.kq-menu', [
         h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'resume' }, t('pause.resume')),
+        ...(pauseHooks.extraActions?.() ?? []).map((a) => h('button.kq-btn', { 'data-testid': a.testid, onclick: () => (m.close(), a.run()) }, a.label)),
         h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
         h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody()) }, t('pause.controls')),
         h('button.kq-btn', { onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),

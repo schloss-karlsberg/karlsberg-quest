@@ -3,8 +3,9 @@ import { type Page, expect, test } from '@playwright/test';
 
 /**
  * Action-RPG quests (docs/ACTION-RPG.md §8): Hanne gives a task (! over her head) → accept in the
- * conversation → the tracker counts three Mahnbriefe → the Lohnzettel → ? → turn in: the history
- * told with its source, a stance (an opinion, never graded), the reward card → the story moves on
+ * conversation (the quest card: title, giver, pitch, goals, reward) → the tracker counts three
+ * Mahnbriefe → the Lohnzettel → ? → turn in (the turn-in card, „Übergeben“), the reward card, one
+ * history line told with its source, „Erzähl mehr“ for the rest — no stance card → the story moves on
  * → the Journal (J) shows the task, the history and the new codex cards. No Chronik board ever.
  * Test chapter content/story/99-test.story.json + content/quests/99-test.quests.json (?storytest).
  * Screenshots: test-results/screens/qst-*.png
@@ -131,8 +132,17 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await page.getByTestId(`npc-topic-q:${Q}`).click();
   await expect(page.locator('.kqn-typed')).toContainText('TEST: Die Papiere');
   await page.evaluate(() => window.kq!.npc!.drain());
+  // the quest card: title, giver, pitch, goals (the bonus marked), the reward preview
+  const offerCard = page.getByTestId('quest-card-offer');
+  await expect(offerCard).toBeVisible();
+  await expect(offerCard).toContainText('TEST: Der Lohnzettel');
+  await expect(offerCard).toContainText('von Hanne');
+  await expect(offerCard).toContainText('Mahnbriefe am Bauplatz zerreißen');
+  await expect(offerCard).toContainText('Bonus');
+  await expect(offerCard).toContainText('+120 EP');
+  await expect(offerCard).toContainText('Kräuterbalsam');
   // a main task: accept only (no "Später")
-  await expect(page.getByTestId(`npc-topic-qa:${Q}`)).toHaveText(/Ich hole ihn dir\./);
+  await expect(page.getByTestId(`npc-topic-qa:${Q}`)).toHaveText(/Annehmen.*Ich hole ihn dir\./);
   await expect(page.getByTestId(`npc-topic-qd:${Q}`)).toHaveCount(0);
   await shot(page, 'offer');
   await page.getByTestId(`npc-topic-qa:${Q}`).click();
@@ -213,29 +223,16 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.getByTestId(`npc-topic-q:${Q}`).locator('.kqn-qg-ready')).toHaveText('?');
   await page.getByTestId(`npc-topic-q:${Q}`).click();
   await expect(page.locator('.kqn-typed')).toContainText('Angewiesen. Nicht ausgezahlt.');
-  // the history: told with its source and the codex card it opens
-  await page.evaluate(() => {
-    window.kq!.npc!.finish();
-    window.kq!.npc!.advance();
-    window.kq!.npc!.finish();
-  });
-  await expect(page.locator('.kqn-typed')).toContainText('zwei Tage für einen Gulden');
-  await expect(page.locator('.kqn-src')).toHaveText('Quelle: en.wikipedia: Karlsberg Castle');
-  await expect(page.getByTestId('npc-note')).toContainText('Zwei Tage für einen Gulden');
-  await expect(page.locator('.kqn-text')).toHaveClass(/kqn-history/);
-  await shot(page, 'history');
   await page.evaluate(() => window.kq!.npc!.drain());
-  // the stance: an opinion asked in the conversation, its replies are topics (no quiz header since
-  // the 2026-11-16 playtest)
-  await expect(page.locator('.kqn-typed')).toContainText('Warum bekommt Hanne den Lohn nicht');
-  await expect(page.getByTestId('npc-header')).not.toContainText('Prüfung');
-  await expect(page.getByTestId('npc-topic-qs:offen')).toContainText('Ich weiß es nicht.');
-  await expect(page.locator('[data-testid^="npc-topic-qs:"]')).toHaveCount(3);
-  await shot(page, 'stance');
+  // the turn-in card: every goal ticked, the reward, one button — no stance, no quiz
+  const turnCard = page.getByTestId('quest-card-turnin');
+  await expect(turnCard).toBeVisible();
+  await expect(turnCard.locator('.kqn-qc-done')).toHaveCount(3);
+  await expect(page.locator('[data-testid^="npc-topic-qs:"]')).toHaveCount(0);
+  await shot(page, 'turnin-card');
   expect(await events(page, 'quest:completed')).toEqual([]);
-  await page.getByTestId('npc-topic-qs:creuzer').click();
-  expect(await events(page, 'quest:stance')).toEqual([{ id: Q, value: 'creuzer' }]);
-  expect((await flags(page))['flag.test_lohn']).toBe('creuzer');
+  await page.getByTestId(`npc-topic-qt:${Q}`).click();
+  expect((await flags(page))['flag.test_lohn']).toBeUndefined();
 
   // ---- the reward card ------------------------------------------------------------------------
   expect(await events(page, 'quest:turnin')).toEqual([{ id: Q, npc: 'hanne' }]);
@@ -257,6 +254,22 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await page.keyboard.press('KeyE');
   await expect(reward).toBeHidden();
   await expect(page.getByTestId('npc-talk')).toBeVisible();
+  // the turn-in moment: ONE history line, with its source and codex card (no four-line lecture)
+  await page.evaluate(() => window.kq!.npc!.finish());
+  await expect(page.locator('.kqn-typed')).toContainText('zwei Tage für einen Gulden');
+  await expect(page.locator('.kqn-src')).toHaveText('Quelle: en.wikipedia: Karlsberg Castle');
+  await expect(page.getByTestId('npc-note')).toContainText('Zwei Tage für einen Gulden');
+  await expect(page.locator('.kqn-text')).toHaveClass(/kqn-history/);
+  await shot(page, 'history');
+  await page.evaluate(() => window.kq!.npc!.drain());
+  // the rest when the player wants it: „Erzähl mehr“
+  await expect(page.getByTestId(`npc-topic-q:${Q}`)).toContainText('Erzähl mehr');
+  await page.getByTestId(`npc-topic-q:${Q}`).click();
+  await page.evaluate(() => window.kq!.npc!.finish());
+  await expect(page.locator('.kqn-typed')).toContainText('die Kassen waren leer');
+  await page.evaluate(() => window.kq!.npc!.drain());
+  expect(await events(page, 'quest:told')).toEqual([{ id: Q, npc: 'hanne' }]);
+  await expect(page.getByTestId(`npc-topic-q:${Q}`)).toHaveCount(0);
   // the next task: Laub's voice, accepted at once
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.test.irrlichter']?.state)).toBe('active');
   await page.evaluate(() => window.kq!.npc!.close());
@@ -280,7 +293,7 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(detail).toContainText('TEST: Der Lohnzettel');
   await expect(page.getByTestId('journal-history')).toContainText('zwei Tage für einen Gulden');
   await expect(page.getByTestId('journal-history')).toContainText('en.wikipedia: Karlsberg Castle');
-  await expect(detail).toContainText('Deine Haltung: Weil die Kassen leer sind.');
+  await expect(detail).not.toContainText('Deine Haltung');
   await shot(page, 'journal-quests');
   await page.getByTestId('journal-tab-codex').click();
   await expect(page.getByTestId('codex-card-cx.08')).toBeVisible();

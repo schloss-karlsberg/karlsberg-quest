@@ -13,7 +13,11 @@
  *   prepares has passed) is dropped once that holds;
  * - a 'now' line (a tutorial that blocks an action: "Leertaste – zur Seite!") jumps the queue, and
  *   the waiting lines of other groups that are low priority are dropped (playtest round 2: tips
- *   arrived 13 s after the moment).
+ *   arrived 13 s after the moment);
+ * - playtest round 3 (lines 10 s late, lectures in fights): a beat's leftovers get STALE_GRACE (3 s);
+ *   a normal line that has not started within NORMAL_TTL is dropped (its moment is gone); `lore`
+ *   lines (history, long remarks) are HELD while the host says a fight is on (`held`), the lines
+ *   behind them go first, and a lore line that waited longer than LORE_TTL is dropped.
  */
 
 export interface QueuedLine {
@@ -28,6 +32,8 @@ export interface QueuedLine {
   staleAt?: number;
   /** Lines emitted together share a group (see above). */
   group?: number;
+  /** History / lore: held while a fight is on (see above), never a reason to lag. */
+  lore?: boolean;
 }
 
 /** At most this many lines wait behind the current one. */
@@ -35,7 +41,11 @@ export const MAX_QUEUE = 6;
 /** Seconds a low-priority line (bark, hint) may wait before it is dropped. */
 export const LOW_TTL = 14;
 /** Seconds a line of a beat that has ended may still wait for its turn. */
-export const STALE_GRACE = 6;
+export const STALE_GRACE = 3;
+/** Seconds a normal line may wait for its turn (its moment is gone after that). */
+export const NORMAL_TTL = 20;
+/** Seconds a lore line may wait (held through a fight), then it is dropped. */
+export const LORE_TTL = 50;
 
 export class LineQueue<T extends QueuedLine> {
   private readonly items: T[] = [];
@@ -92,14 +102,31 @@ export class LineQueue<T extends QueuedLine> {
     }
   }
 
-  /** The next line still worth saying (stale / invalid ones are dropped on the way). */
-  take(): T | undefined {
-    let item = this.items.shift();
-    while (item && !this.fresh(item)) {
-      this.dropped++;
-      item = this.items.shift();
+  /**
+   * The next line still worth saying (stale / invalid ones are dropped on the way). `held`: lines
+   * that must wait now (lore in a fight) stay in the queue; the first line that may play is taken.
+   */
+  take(held?: (item: T) => boolean): T | undefined {
+    for (let i = 0; i < this.items.length; ) {
+      const item = this.items[i]!;
+      if (!this.fresh(item)) {
+        this.items.splice(i, 1);
+        this.dropped++;
+        continue;
+      }
+      if (held?.(item)) {
+        i++;
+        continue;
+      }
+      this.items.splice(i, 1);
+      return item;
     }
-    return item;
+    return undefined;
+  }
+
+  /** Lines waiting that may not play now (`held`). */
+  heldCount(held: (item: T) => boolean): number {
+    return this.items.filter(held).length;
   }
 
   clear(): void {
@@ -131,7 +158,9 @@ export class LineQueue<T extends QueuedLine> {
     if (q.expired?.()) return false;
     if (this.started(q)) return true;
     if (q.staleAt !== undefined && this.clock > q.staleAt) return false;
-    if (q.priority === 'low' && this.clock - (q.queuedAt ?? this.clock) > LOW_TTL) return false;
+    const waited = this.clock - (q.queuedAt ?? this.clock);
+    if (q.priority === 'low' && waited > LOW_TTL) return false;
+    if (q.lore ? waited > LORE_TTL : q.priority !== 'now' && q.beat !== null && waited > NORMAL_TTL) return false;
     return this.valid?.(q) ?? true;
   }
 }

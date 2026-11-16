@@ -223,7 +223,7 @@ const echo = (id) => ({ event: 'echo:start', id });
 const dialogue = [
   // Echo Wache
   ...seq(echo('clue.k1.wache'), [
-    ['echo.k1.wache.01', 'wache', 'Absteigen! Hinauf fährt nur Serenissimus.', [src('RLS', 'P')]],
+    ['echo.k1.wache.01', 'wache', 'Absteigen! Ab dem Gitter geht jeder zu Fuß.', [src('RLS', 'P')]],
     ['echo.k1.wache.02', 'wache', 'Und der fährt auch nur, wenn er nicht gerade jagt.'],
   ]),
   // Soll

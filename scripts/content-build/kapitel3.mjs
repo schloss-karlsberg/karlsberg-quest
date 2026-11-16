@@ -257,7 +257,7 @@ const dialogue = [
     ['laub.k3.fachwerk', 'laub', 'Er hat die Galerie aus einem hölzernen Gang machen lassen. Bretter und Fachwerk, damit es schnell geht. Was schnell geht, brennt schnell.', [src('SCHWAN12', 'P: Galerie 1788 aus einem hölzernen Verbindungsgang')]],
   ]),
   say('laub.k3.messen', 'laub', 'Achtzig Meter. Hundert Fuß wären keine dreiunddreißig. Hundert Klafter wären fast zweihundert. Hundert Schritt, das kommt hin. Mannlich hat französisch geschrieben: ‚cent pas‘. Der Übersetzer von 1910 hat Fuß daraus gemacht.', found('clue.k3.messen'), { once: true, src: [src('SCHWAN12', 'P: Anm. 47')] }),
-  say('laub.k3.falltuer', 'laub', 'Die Falltür in die Werkstatt des Büchsenmachers. Mannlich und ein alter Diener namens Burger haben hier die schönsten Bilder hinuntergetragen, am hellen Tag, in aller Stille, und hinter den leeren Schränken versteckt.', found('clue.k3.falltuer'), { once: true, src: [P('S. 431 f.')] }),
+  say('laub.k3.falltuer', 'laub', 'Die Falltür, durch die schon einmal etwas gerettet wurde. Diesmal geht ein Buch hinunter, kein Bild. Der Ort hat sich ans Retten gewöhnt.', found('clue.k3.falltuer'), { once: true, src: [P('S. 431 f.')] }),
   say('laub.k3.chronik', 'laub', 'So war das also. (Lange Pause.) Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.', found('clue.k3.chronik'), { once: true, priority: 10 }),
   ...seq(found('clue.k3.papier'), [
     ['laub.k3.papier', 'laub', 'Papier. Marmor aus Papier, Granit aus Papier. Das ganze Zimmer wiegt weniger als ich.', [src('SCHWAN12', 'Papierimitation nach dem Schadensetat')]],

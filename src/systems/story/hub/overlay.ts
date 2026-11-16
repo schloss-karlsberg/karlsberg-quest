@@ -9,6 +9,21 @@ import type { ModalHandle, ModalManager } from '../../../ui/modal';
 import { portraitSvg } from '../dialogue/portraits';
 import type { HubItem } from '../types';
 
+/** The Regal's numbers (RPG stats). */
+export interface HubCounts {
+  codex: number;
+  codexTotal: number;
+  level: number;
+  xp: number;
+  questsDone: number;
+  questsTotal: number;
+  /** Spirits undone (all kinds). */
+  banned: number;
+  sets: number;
+  setsTotal: number;
+  items: number;
+}
+
 export interface HubChapter {
   id: string;
   title: string;
@@ -26,7 +41,7 @@ export interface HubDeps {
   currentBeatTitle(): string;
   goto(chapter: string): void;
   rest(): boolean;
-  counts(): { codex: number; codexTotal: number; clues: number; nouns: number; items: number; confirmed: number };
+  counts(): HubCounts;
   /** Next radio line (Marlene) or null. */
   radioLine(): string | null;
   drawerState(): 'full' | 'empty';
@@ -86,7 +101,7 @@ export class HubOverlay {
     const c = this.d.counts();
     const transcript = h('div.kqs-hub-radio', { 'data-testid': 'hub-transcript' }, [h('span.kqs-hub-radio-hint', t('story.hub.radio.idle'))]);
     const grid = h('div.kqs-hub-grid', [
-      this.tile('chronik', t('story.hub.chronik'), t('story.hub.chronik.status', { n: c.confirmed }), () => this.d.use('chronik')),
+      this.tile('chronik', t('story.hub.chronik'), t('story.hub.chronik.status'), () => this.d.use('chronik')),
       this.tile('radio', t('story.hub.radio'), t('story.hub.radio.status'), () => {
         this.d.use('radio');
         this.radio(transcript);
@@ -146,11 +161,14 @@ export class HubOverlay {
       [
         h('p.kqs-hub-sub', t('story.hub.shelf.sub')),
         h('div.kqs-shelf', [
+          // the field book in RPG terms (playtest round 3: "Begriffe" and "Chronik-Einträge" were
+          // leftovers of the old quiz board)
+          row(t('story.hub.shelf.level'), t('story.hub.shelf.levelVal', { n: c.level, xp: c.xp })),
+          row(t('story.hub.shelf.quests'), `${c.questsDone} / ${c.questsTotal}`),
+          row(t('story.hub.shelf.banned'), String(c.banned)),
           row(t('story.hub.shelf.codex'), `${c.codex} / ${c.codexTotal}`),
-          row(t('story.hub.shelf.clues'), String(c.clues)),
-          row(t('story.hub.shelf.nouns'), String(c.nouns)),
+          row(t('story.hub.shelf.sets'), `${c.sets} / ${c.setsTotal}`),
           row(t('story.hub.shelf.items'), String(c.items)),
-          row(t('story.hub.shelf.confirmed'), String(c.confirmed)),
         ]),
         h('div.actions', h('button.kq-btn', { onclick: () => this.main(), 'data-testid': 'hub-back' }, t('settings.back'))),
       ],

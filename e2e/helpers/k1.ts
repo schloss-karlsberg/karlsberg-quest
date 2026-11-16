@@ -439,7 +439,8 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   await talkQuest(page, 'hanne', 'q.k1.lohn', 'creuzer');
   expect(await untilQuest(page, 'q.k1.lohn', 'done', 6)).toBe('done');
-  expect(await flag(page, 'flag.k1_lohn')).toBe('creuzer');
+  // no stance: the deed is the quest itself (the epilogue reads quest.q.k1.lohn = done)
+  expect(await flag(page, 'flag.k1_lohn')).toBeUndefined();
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBe('item.stab.eisen');
   expect(await until(page, 'k1_5', 8)).toBe('k1_5');
   // the side quests' givers have their glyphs now: the servant in the Pfeilersaal

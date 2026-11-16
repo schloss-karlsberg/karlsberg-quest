@@ -804,7 +804,7 @@
     {
       "id": "laub.k4.taleingang",
       "speaker": "laub",
-      "text_de": "1796. Das Schloss ist drei Jahre tot, und die Leute holen sich ihr Geld zurück. In Steinen.",
+      "text_de": "Die Leute holen sich ihr Geld zurück. In Steinen.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k4",
@@ -957,7 +957,7 @@
     {
       "id": "soll.k4.02",
       "speaker": "soll",
-      "text_de": "Ich führe jetzt Buch für die Pächter. Vierzehn Bürger aus Homburg haben das Recht gepachtet, Holz und Steine zu verkaufen. Vierzehn. Ich habe nachgezählt. Ein Fenstergewände zwölf Kreuzer, ein Treppenstein zwanzig, ein Wappen gar nichts, das will keiner.",
+      "text_de": "Ich führe jetzt Buch für die Pächter. Ein Fenstergewände zwölf Kreuzer, ein Treppenstein zwanzig, ein Wappen gar nichts, das will keiner.",
       "trigger": {
         "event": "npc:talk",
         "npc": "soll",
@@ -968,7 +968,7 @@
         {
           "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
           "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
-          "note": "Zahl 14; Preise erfunden"
+          "note": "Pacht belegt; Preise erfunden"
         }
       ]
     },

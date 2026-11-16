@@ -66,7 +66,7 @@ export const flag = (page: Page, f: string) => page.evaluate((f) => window.kq!.s
 // ---------------------------------------------------------------------------------------------
 
 export interface QuestPlay {
-  /** Close cards and dialogs — never the stance card (it waits for an answer). */
+  /** Close cards and dialogs. */
   tidy(): void;
   /** Game seconds pass in half-second steps (tidying in between). */
   run(seconds: number): void;
@@ -82,7 +82,7 @@ export const QUEST_PLAY = `(() => {
   const h = {};
   h.tidy = () => {
     const stack = k.ctx.ui.modals.stack || [];
-    for (const m of [...stack]) if (!(m.el && m.el.querySelector && (m.el.dataset.testid === 'quest-stance' || m.el.querySelector('[data-testid="quest-stance"]')))) m.close();
+    for (const m of [...stack]) m.close();
     if (k.story) k.story.finishTyping();
   };
   h.run = (seconds) => { for (let t = 0; t < seconds; t += 0.5) { h.tidy(); k.step(30); } };
@@ -95,7 +95,7 @@ export const QUEST_PLAY = `(() => {
 export async function installQuestPlay(page: Page): Promise<void> {
   await page.evaluate(QUEST_PLAY);
 }
-/** Game seconds pass (cards closed, the stance card left open). */
+/** Game seconds pass (cards closed). */
 export const run = (page: Page, seconds: number) => page.evaluate((s) => (window as unknown as QW).__cna.run(s), seconds);
 /** The quest's state (hidden / offered / active / ready / done). */
 export const qs = (page: Page, id: string) => page.evaluate((id) => (window as unknown as QW).__cna.q(id), id);
@@ -126,20 +126,17 @@ export async function until(page: Page, id: string, seconds = 60): Promise<strin
 /** Let game time pass like a player who reads every card (kept for the campaign). */
 export const play = (page: Page, seconds: number) => run(page, seconds);
 
-/** Wait for a voice stance card and pick the option labelled `label`; returns the flag's value. */
-export async function stance(page: Page, label: string, flagId: string): Promise<unknown> {
-  await page.evaluate(() => {
-    const h = (window as unknown as QW).__cna;
-    h.until(() => !!document.querySelector('[data-testid="quest-stance"]'), 40);
-  });
-  const card = page.getByTestId('quest-stance');
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: `» ${label}`, exact: true }).click();
-  await expect(card).toBeHidden();
-  return flag(page, flagId);
+/**
+ * A voice turn-in is a short moment, never a stance card (playtest round 3): no card opens; the
+ * quest's deed is its state. Returns the quest state.
+ */
+export async function turninMoment(page: Page, quest: string): Promise<unknown> {
+  await run(page, 3);
+  expect(await page.locator('[data-testid="quest-stance"]').count()).toBe(0);
+  return qs(page, quest);
 }
 
-/** Talk a quest through with an NPC giver: accept (offer) or hand in, answering the stance with `value`. */
+/** Talk a quest through with an NPC giver: accept (the offer card) or hand in (the turn-in card). */
 export async function talkQuest(page: Page, npc: string, quest: string, value?: string): Promise<void> {
   await page.evaluate(
     ([npc, quest, value]) => {
@@ -151,7 +148,8 @@ export async function talkQuest(page: Page, npc: string, quest: string, value?: 
       for (let i = 0; i < 40 && n.state().busy; i++) n.drain();
       n.drain();
       if (n.state().topics.includes(`qa:${quest}`)) n.choose(`qa:${quest}`);
-      else if (value) n.choose(`qs:${value}`);
+      else if (n.state().topics.includes(`qt:${quest}`)) n.choose(`qt:${quest}`);
+      void value;
       for (let i = 0; i < 20; i++) n.drain();
       if (n.state().open) n.close();
       k.step(2);
@@ -479,7 +477,7 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await holdHome(page);
   expect((await story(page)).era).toBe('today');
   expect(await untilQuest(page, 'q.p.punktwolke', 'done', 10)).toBe('done');
-  expect(await stance(page, 'Hunde.', 'flag.p_spuren')).toBe('hunde');
+  expect(await turninMoment(page, 'q.p.punktwolke')).toBe('done');
   expect(await until(page, 'p10', 10)).toBe('p10');
 
   // ---- p10 / p11: dusk, home, the night, the Feldbett -> chapter 1 ----------------------------------

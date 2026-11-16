@@ -203,7 +203,7 @@ const dialogue = [
     ['echo.k2.wache.04', 'wache2', 'Leg Holz nach. Das Wachfeuer sieht man bis Homburg, dann wissen die wenigstens, dass wir wach sind.'],
   ]),
   say('laub.k2.wache', 'laub', 'Ein Wachfeuer im Ehrenhof. Damit der Feind weiß, wo er hinmuss.', found('clue.k2.wache'), { once: true }),
-  say('laub.k2.horstmann', 'laub', 'Ein Regierungsrat namens Horstmann hat sich das Datum notiert, Tag für Tag, wie ein ordentlicher Mensch. Der neunte. Mannlich schreibt in seinen Erinnerungen ‚gegen Ende Februar‘. Mannlich hat Jahre später geschrieben und schöner. Ich glaube dem Regierungsrat.', found('clue.k2.horstmann'), { once: true, src: [src('M1910', 'S. 422 und S. 427 Anm. 1')] }),
+  say('laub.k2.horstmann', 'laub', 'Horstmann schreibt am selben Abend, Mannlich Jahre später und schöner. Ich glaube dem, der am selben Abend schreibt.', found('clue.k2.horstmann'), { once: true, src: [src('M1910', 'S. 422 und S. 427 Anm. 1')] }),
   say('laub.k2.gaertnerei', 'laub', 'Hier ist er nicht drüber. Zu glatt, zu hoch. Gärtner bauen bessere Mauern als Herzöge Zäune.', found('clue.k2.gaertnerei'), { once: true }),
   // Schreibkabinett: Warnung (historische Personen: nur M1910)
   ...seq(echo('clue.k2.warnung'), [

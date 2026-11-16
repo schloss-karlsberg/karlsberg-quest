@@ -1446,7 +1446,7 @@
     {
       "id": "laub.k3.falltuer",
       "speaker": "laub",
-      "text_de": "Die Falltür in die Werkstatt des Büchsenmachers. Mannlich und ein alter Diener namens Burger haben hier die schönsten Bilder hinuntergetragen, am hellen Tag, in aller Stille, und hinter den leeren Schränken versteckt.",
+      "text_de": "Die Falltür, durch die schon einmal etwas gerettet wurde. Diesmal geht ein Buch hinunter, kein Bild. Der Ort hat sich ans Retten gewöhnt.",
       "trigger": {
         "event": "clue:found",
         "id": "clue.k3.falltuer"

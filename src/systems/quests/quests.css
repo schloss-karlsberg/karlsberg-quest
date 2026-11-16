@@ -202,6 +202,12 @@
   line-height: 1.1;
   margin-top: 4px;
 }
+.kqq-b-sub {
+  margin-top: 8px;
+  font-family: var(--hand);
+  font-size: 21px;
+  opacity: 0.9;
+}
 .kqq-b-rule {
   height: 2px;
   margin: 8px auto 0;
@@ -343,6 +349,12 @@ body:has(.kqs-choice-card.kqs-show) .kqq-reward {
   align-items: center;
   font-size: 17px;
 }
+.kqq-r-more {
+  font-family: var(--hand);
+  font-size: 17px;
+  color: #2f5d7a;
+  margin-top: 6px;
+}
 .kqq-r-next {
   text-align: right;
   font-family: var(--hand);
@@ -456,43 +468,6 @@ body:has(.kqs-choice-card.kqs-show) .kqq-reward {
 .kq-compass-marker.kqq-cm-ready::before {
   content: '?';
   font-size: 17px;
-}
-
-/* ---------- voice stance ---------- */
-.kq-modal.kqq-stance-modal {
-  width: min(560px, calc(100vw - 32px));
-}
-.kq-modal.kqq-stance-modal .actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-/* replies you say: plain lines in the conversation's hand, not answer cards */
-.kq-modal.kqq-stance-modal .actions .kq-btn {
-  text-align: left;
-  font-family: var(--hand);
-  font-size: 20px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px dashed var(--ink-faint);
-  border-radius: 0;
-  padding: 6px 4px;
-  box-shadow: none;
-}
-.kq-modal.kqq-stance-modal .actions .kq-btn:hover,
-.kq-modal.kqq-stance-modal .actions .kq-btn:focus-visible {
-  color: var(--accent);
-  background: rgba(140, 47, 31, 0.06);
-}
-.kqq-st-prompt {
-  font-size: 21px !important;
-  font-style: italic;
-}
-.kqq-st-note {
-  font-family: var(--hand);
-  font-size: 19px !important;
-  color: var(--ink-soft);
 }
 
 /* ---------- the Journal ---------- */
@@ -788,10 +763,6 @@ body:has(.kqs-choice-card.kqs-show) .kqq-reward {
   font-style: italic;
   color: var(--ink-soft);
   margin-top: 4px;
-}
-.kqj-stance {
-  font-family: var(--hand);
-  font-size: 21px !important;
 }
 .kqj-track {
   font-size: 17px;

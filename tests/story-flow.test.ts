@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { makeMode } from '../src/systems/hunt/modes';
 import type { PlayerSense } from '../src/systems/hunt/perception';
 import { PackSim, type SimWorld } from '../src/systems/hunt/sim';
-import { LOW_TTL, LineQueue, MAX_QUEUE, type QueuedLine, STALE_GRACE } from '../src/systems/story/dialogue/queue';
+import { LORE_TTL, LOW_TTL, LineQueue, MAX_QUEUE, NORMAL_TTL, type QueuedLine, STALE_GRACE } from '../src/systems/story/dialogue/queue';
 import { type RunOptions, type StoryEnv, type StorySlice, StoryEngine, createStorySlice, evaluate, whereOf } from '../src/systems/story/engine';
 import type { Action, Condition, StoryFile } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
@@ -209,6 +209,35 @@ describe('dialogue queue rules', () => {
     near = false;
     expect(drain(q)).toEqual([]);
     expect(q.dropped).toBe(1);
+  });
+
+  it('round 3: a beat\'s leftovers get 3 s, a normal line 20 s, chapter-wide (keep) lines stay', () => {
+    expect(STALE_GRACE).toBeLessThanOrEqual(3);
+    const q = mk();
+    q.push({ id: 'late', beat: 'b1' });
+    q.push({ id: 'kept', beat: null });
+    q.tick(NORMAL_TTL + 1);
+    expect(drain(q)).toEqual(['kept']);
+  });
+
+  it('round 3: lore waits out a fight (later lines go first), and is dropped after LORE_TTL', () => {
+    let fight = true;
+    const held = (l: L) => fight && !!l.lore;
+    const q = mk();
+    q.push({ id: 'history', lore: true, beat: null });
+    q.push({ id: 'bark', priority: 'low' });
+    q.push({ id: 'call' });
+    expect(q.take(held)?.id).toBe('bark');
+    expect(q.take(held)?.id).toBe('call');
+    expect(q.take(held)).toBeUndefined();
+    expect(q.heldCount(held)).toBe(1);
+    fight = false;
+    expect(q.take(held)?.id).toBe('history');
+    q.push({ id: 'old-lore', lore: true, beat: null });
+    fight = true;
+    q.tick(LORE_TTL + 1);
+    fight = false;
+    expect(q.take(held)).toBeUndefined();
   });
 });
 

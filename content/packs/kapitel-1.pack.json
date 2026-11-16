@@ -937,7 +937,7 @@
     {
       "id": "echo.k1.wache.01",
       "speaker": "wache",
-      "text_de": "Absteigen! Hinauf fährt nur Serenissimus.",
+      "text_de": "Absteigen! Ab dem Gitter geht jeder zu Fuß.",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k1.wache",

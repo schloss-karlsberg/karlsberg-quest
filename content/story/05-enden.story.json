@@ -119,6 +119,12 @@
           "set": {
             "combat.disabled": false
           }
+        },
+        {
+          "do": "objective",
+          "id": "end.frei",
+          "text": "Frei unterwegs: Sammlungen und Codex im Feldbuch (J) · Esc → „Ende noch einmal wählen“",
+          "delay": 2
         }
       ]
     }

@@ -49,6 +49,11 @@ export class Hud {
     for (const [k, v] of this.action) if (v !== Infinity && v <= this.calmClock) this.action.delete(k);
   }
 
+  /** One reason is on (or lingering): e.g. 'combat' while a fight is engaged. */
+  acting(reason: string): boolean {
+    return this.action.has(reason);
+  }
+
   /** Something action-heavy is on (or just ended): keep the centre of the screen clear. */
   get inAction(): boolean {
     return this.action.size > 0;
