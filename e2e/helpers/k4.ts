@@ -1,6 +1,6 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
-import { type Any, install, killGroup, questTalk, takeAll, voiceStance } from './k3';
+import { type Any, clearCards, install, killGroup, questTalk, takeAll, voiceStance } from './k3';
 
 /**
  * Chapter 4 „Der Steinbruch" + the endings as a chain of quests, played headless through
@@ -50,12 +50,8 @@ export async function shot(page: Page, name: string): Promise<void> {
     await page.evaluate(() => window.kq!.story!.finishTyping());
     return;
   }
+  await clearCards(page);
   await page.evaluate(() => {
-    const k = window.kq as Any;
-    for (let i = 0; i < 4 && k.quests?.reward(); i++) {
-      k.press('KeyE', 1);
-      k.step(4);
-    }
     window.kq!.story!.finishTyping();
     return window.kq!.screenshotReady();
   });
@@ -178,9 +174,16 @@ const quest = (page: Page, id: string) => page.evaluate((id) => (window.kq as An
 const items = (page: Page) => page.evaluate(() => (window.kq as Any).progression.state().inventory as Record<string, number>);
 const flags = (page: Page) => page.evaluate(() => window.kq!.state().flags);
 
+/** Run game time until the quest is in `state` (story actions with delays start them). */
+async function untilQuest(page: Page, id: string, state: string, seconds = 30): Promise<void> {
+  for (let i = 0; i < seconds && (await quest(page, id)) !== state; i++) await run(page, 1);
+  expect(await quest(page, id), id).toBe(state);
+}
+
 /** Q here (either direction), finish the shift. */
 async function shiftQ(page: Page): Promise<void> {
-  await page.evaluate(() => window.kq!.press('KeyQ', 2));
+  // today: a press at the anchor; in the past: hold Q (1.2 s) to come home
+  await page.evaluate(() => window.kq!.press('KeyQ', window.kq!.ctx.era.current === 'today' ? 2 : 90));
   await run(page, 0.5);
   await settleShift(page);
   await run(page, 1);
@@ -198,8 +201,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(s.chapter).toBe('k4');
   expect(s.beat).toBe('k4_0');
   expect(s.era).toBe('today');
-  await run(page, 5);
-  expect(await quest(page, 'q.k4.zettel')).toBe('active');
+  await untilQuest(page, 'q.k4.zettel', 'active');
   await shot(page, '00-station-night');
   await examineHere(page, 'clue.k4.marlene', 760, -906);
   await run(page, 0.5);
@@ -216,7 +218,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await quest(page, 'q.k4.zettel')).toBe('done');
   expect(s.beat).toBe('k4_2');
   await run(page, 2);
-  expect(await quest(page, 'q.k4.karren')).toBe('active');
+  await untilQuest(page, 'q.k4.karren', 'active');
   // the carts echo plays by itself
   for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.chronik!.echo().id)); i++) await run(page, 1);
   expect(await page.evaluate(() => window.kq!.chronik!.echo().id)).toBe('clue.k4.karren');
@@ -272,9 +274,9 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   // ---- 4.3 the Baumagazin: Soll's stock (q.k4.baumagazin) ------------------------------------------
   await walk(page, 485, -838, 15);
   await run(page, 1);
-  expect(await quest(page, 'q.k4.baumagazin')).toBe('offered');
+  await untilQuest(page, 'q.k4.baumagazin', 'offered');
   await questTalk(page, 'soll', 'q.k4.baumagazin', 'qa');
-  expect(await quest(page, 'q.k4.baumagazin')).toBe('active');
+  await untilQuest(page, 'q.k4.baumagazin', 'active');
   await examineHere(page, 'clue.k4.pacht', 495, -845.5);
   await examineHere(page, 'clue.k4.stein_karren', 496.5, -823.5);
   await page.evaluate(() => {
@@ -293,8 +295,8 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await beat(page)).toBe('k4_5');
   // the side quests of the yard: Peter's father's stones, Soll's lost notices
   await run(page, 3);
-  expect(await quest(page, 'q.k4.zeichen')).toBe('offered');
-  expect(await quest(page, 'q.k4.pacht')).toBe('offered');
+  await untilQuest(page, 'q.k4.zeichen', 'offered');
+  await untilQuest(page, 'q.k4.pacht', 'offered');
   await questTalk(page, 'peter', 'q.k4.zeichen', 'qa');
   await run(page, 1);
   // stone 2 was seen on the cart before the task: it counts
@@ -319,7 +321,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await run(page, 2);
   s = await story(page);
   expect(s.beat).toBe('k4_6');
-  expect(await quest(page, 'q.k4.steinplatz')).toBe('active');
+  await untilQuest(page, 'q.k4.steinplatz', 'active');
   await examineHere(page, 'clue.k4.anschlag', 1195, -1110.5);
   await run(page, 2);
   const brecher = await page.evaluate(() => {
@@ -348,6 +350,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   // W7: when it falls, the Steinfraß wakes
   for (let i = 0; i < 10 && !(await page.evaluate(() => window.kq!.fx!.state().oblivion.active)); i++) await run(page, 1);
   expect((await page.evaluate(() => window.kq!.fx!.state())).oblivion.active).toBe(true);
+  for (let i = 0; i < 30 && !(await has(page, 'clue.k4.napoleon')); i++) await run(page, 1);
   expect(await has(page, 'clue.k4.napoleon')).toBe(true);
   await page.evaluate(() => window.kq!.teleport(1236, -1100));
   await run(page, 1);
@@ -364,7 +367,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await drainLines(page);
   // side: Gruslinge in the three trenches (Laub's voice, taken at once)
   await run(page, 3);
-  expect(await quest(page, 'q.k4.graeben')).toBe('active');
+  await untilQuest(page, 'q.k4.graeben', 'active');
   for (const g of ['west', 'nord', 'sued']) await killGroup(page, `q.k4.graeben.${g}`, 5);
   // today: the Relief view 3 over the trench; Peter's fourth stone, from the road
   await shiftQ(page);
@@ -439,7 +442,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await run(page, 2);
   expect(await beat(page)).toBe('k4_12');
   expect((await flags(page))['combat.disabled']).toBe(true);
-  expect(await quest(page, 'q.k4.stellen')).toBe('active');
+  await untilQuest(page, 'q.k4.stellen', 'active');
   await page.evaluate(() => window.kq!.teleport(1214, -1569, 30));
   await run(page, 16);
   expect(await events(page, 'hunt:finale')).toEqual([{ outcome: 'gathered' }]);

@@ -456,8 +456,8 @@
       "exit": [
         { "do": "flag", "set": { "k4.frass": true } },
         { "do": "say", "line": "laub.k4.steinfrass", "delay": 2 },
-        { "do": "say", "line": "marlene.k4.ruf", "delay": 9 },
-        { "do": "grant", "clue": "clue.k4.napoleon", "delay": 4 }
+        { "do": "grant", "clue": "clue.k4.napoleon", "delay": 2 },
+        { "do": "say", "line": "marlene.k4.ruf", "delay": 7 }
       ]
     },
     {
