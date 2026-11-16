@@ -209,7 +209,8 @@ class QuestRuntime {
 
   /**
    * A new chapter: main quests of earlier chapters still running and unaccepted offers leave the
-   * log (a chapter select or story jump skipped them; in a straight run they are all done).
+   * log (a chapter select or story jump skipped them; in a straight run they are all done); side
+   * quests of a past era of an earlier chapter end (ready → paid, active → failed).
    */
   private dropEarlier(chapter: string): void {
     const order = ['prolog', 'k1', 'k2', 'k3', 'k4', 'enden'];
@@ -219,9 +220,15 @@ class QuestRuntime {
       const i = order.indexOf(q.chapter ?? '');
       if (i < 0 || i >= at) continue;
       const st = this.book.state(q.id);
-      // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone; side
-      // quests the player took keep running (chapters fail the ones that cannot outlive them)
+      // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone
       if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.book.reset(q.id);
+      // side quests bound to a past era of that chapter cannot be finished any more: a finished one
+      // pays out (its giver is gone), an open one fails. Present-day side quests (the prologue's)
+      // keep running — the station is visited in every chapter.
+      else if (q.kind === 'side' && q.era && q.era !== 'today') {
+        if (st === 'ready') this.book.complete(q.id, true);
+        else if (st === 'active') this.book.fail(q.id, 'chapter');
+      }
     }
   }
 

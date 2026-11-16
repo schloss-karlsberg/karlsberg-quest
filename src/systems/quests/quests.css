@@ -230,7 +230,9 @@
 
 .kqq-reward {
   position: absolute;
-  left: 50%;
+  /* centred, but right of the top-left column (tracker) as far as the feed dock allows (the
+     same rule as the level card, src/systems/progression/progression.css; the card is 460 px) */
+  left: max(50%, min(calc(min(430px, 50vw - 56px) + 32px + 230px), calc(100vw - 30px - min(300px, 30vw) - 230px)));
   top: 8%;
   width: min(460px, calc(100vw - 32px));
   transform: translateX(-50%) rotate(-0.6deg);
