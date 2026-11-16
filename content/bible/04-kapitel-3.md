@@ -1,5 +1,7 @@
 # Kapitel 3 „Die Nacht“
 
+> **Action-RPG-Umbau (2026-11, docs/ACTION-RPG.md §11.3).** Das Kapitel ist jetzt eine Kette von Aufträgen statt einer Fallseite. Hauptaufträge: `q.k3.nachmittag` (Laub → Hanne: Stroh-Echo, der Lehnstuhl, fünf **Raffschatten** mit Hannes Korb; ihre Frage schreibt `flag.k3_pluenderer`), `q.k3.buch` (Soll: Waffensammlung, Naturalienkabinett, Galerie, Falltür, das graue Buch, **die eine Seite** als Sammelstück; Baumeister 1+2), `q.k3.strohmann` (Dämmerung: das Stroh der hundert Wagen steht als **Strohmann** auf, *danach* die Fackel), `q.k3.festsaal` (Glutlinge auf der Prunktreppe, nie im Festsaal; die W5-Wahl gibt den Gegenstand als Talisman; Abgabe bei Hanne an der Pforte), `q.k3.hunde` (Streuner, Zwinger, Jost kerbt den Stab: **Messstab IV**, Röntgenblick). Nebenaufträge: `q.k3.lehnstuhl` (Peter trägt einen der 104 Stühle für seine Mutter; Begleitung zum Hoftor), `q.k3.kabinett` (Solls Etiketten), `q.k3.jaguar` (beruhigen mit Licht, nie schlagen). Raffschatten sind Gier mit Schultern, keine Menschen: Laub sagt es. Keine Pinnwand, kein Ausfüllen; das Kapitel endet mit dem Gegenstand auf dem Tisch. Die Abschnitte unten beschreiben Ton und Fakten; Fallseite und Hinweisleiter liegen nicht mehr auf dem Weg des Spielers.
+
 | | |
 | --- | --- |
 | Ära | `1793-07`: Sonntag, 28. Juli 1793. Teil A Nachmittag (Plünderung), Teil B Abend und Nacht (Brand) |

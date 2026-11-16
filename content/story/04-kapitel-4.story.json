@@ -37,29 +37,198 @@
       "do": [{ "do": "toast", "text": "Wandernde Steine 4/4 – über einer Kellertür in der Altstadt", "ms": 4200, "delay": 9 }]
     },
     {
-      "id": "bestaetigt-1",
-      "when": { "confirmed": { "prefix": "entry.k4.", "n": 3 } },
-      "do": [{ "do": "say", "line": "laub.k4.weiter", "delay": 1 }]
-    },
-    {
-      "id": "bestaetigt-2",
-      "when": { "confirmed": { "prefix": "entry.k4.", "n": 6 } },
-      "do": [
-        { "do": "say", "id": "laub.k4.x.genug", "speaker": "laub", "text": "Sechs. Jetzt wissen wir genug, um uns hinzulegen. Das ist ein Satz, den ich nie sagen wollte.", "delay": 1.5 }
-      ]
-    },
-    {
       "id": "grau-halb",
       "when": { "all": [{ "era": "1796" }, { "meter": { "id": "vergessen", "gte": 0.5 } }] },
       "do": [
-        { "do": "say", "id": "laub.k4.x.grau_1", "speaker": "laub", "text": "Bleiben Sie nicht stehen. Erinnern Sie sich an etwas. An irgendwas. Notfalls an mich." }
+        {
+          "do": "say",
+          "id": "laub.k4.x.grau_1",
+          "speaker": "laub",
+          "text": "Bleiben Sie nicht stehen. Erinnern Sie sich an etwas. An irgendwas. Notfalls an mich."
+        }
       ]
     },
     {
       "id": "grau-voll",
       "when": { "all": [{ "era": "1796" }, { "meter": { "id": "vergessen", "gte": 0.8 } }] },
       "do": [
-        { "do": "say", "id": "laub.k4.x.grau_2", "speaker": "laub", "text": "Wenn es zu grau wird: Q halten. Im Heute frisst er nicht. Langweilig, aber sicher." }
+        {
+          "do": "say",
+          "id": "laub.k4.x.grau_2",
+          "speaker": "laub",
+          "text": "Wenn es zu grau wird: Q halten. Im Heute frisst er nicht. Langweilig, aber sicher."
+        }
+      ]
+    },
+    {
+      "id": "settle-zettel",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.zettel", "state": "active" } },
+          { "have": { "clue": "clue.k4.marlene" } },
+          { "not": { "quest": { "id": "q.k4.zettel", "objective": "zettel", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.zettel", "objective": "zettel" }]
+    },
+    {
+      "id": "settle-karren",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.karren", "state": "active" } },
+          { "have": { "clue": "clue.k4.karren" } },
+          { "not": { "quest": { "id": "q.k4.karren", "objective": "karren", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.karren", "objective": "karren" }]
+    },
+    {
+      "id": "settle-hohenburg",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.karren", "state": "active" } },
+          { "have": { "clue": "clue.k4.hohenburg" } },
+          { "not": { "quest": { "id": "q.k4.karren", "objective": "hohenburg", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.karren", "objective": "hohenburg" }]
+    },
+    {
+      "id": "settle-rueckwaerts",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.karren", "state": "active" } },
+          { "have": { "clue": "echo.k4.rueckwaerts" } },
+          { "not": { "quest": { "id": "q.k4.karren", "objective": "rueckwaerts", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.karren", "objective": "rueckwaerts" }]
+    },
+    {
+      "id": "settle-pacht",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.baumagazin", "state": "active" } },
+          { "have": { "clue": "clue.k4.pacht" } },
+          { "not": { "quest": { "id": "q.k4.baumagazin", "objective": "pacht", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.baumagazin", "objective": "pacht" }]
+    },
+    {
+      "id": "settle-stein",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.baumagazin", "state": "active" } },
+          { "have": { "clue": "clue.k4.stein_karren" } },
+          { "not": { "quest": { "id": "q.k4.baumagazin", "objective": "stein", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.baumagazin", "objective": "stein" }]
+    },
+    {
+      "id": "settle-anschlag",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.steinplatz", "state": "active" } },
+          { "have": { "clue": "clue.k4.anschlag" } },
+          { "not": { "quest": { "id": "q.k4.steinplatz", "objective": "anschlag", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.steinplatz", "objective": "anschlag" }]
+    },
+    {
+      "id": "settle-graben",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.steinplatz", "state": "active" } },
+          { "have": { "clue": "clue.k4.graben" } },
+          { "not": { "quest": { "id": "q.k4.steinplatz", "objective": "graben", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.steinplatz", "objective": "graben" }]
+    },
+    {
+      "id": "settle-echo1840",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.standpunkt", "state": "active" } },
+          { "have": { "clue": "clue.k4.laub_1840" } },
+          { "not": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.standpunkt", "objective": "echo" }]
+    },
+    {
+      "id": "settle-stein1",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.zeichen", "state": "active" } },
+          { "have": { "clue": "clue.k1.zeichen" } },
+          { "not": { "quest": { "id": "q.k4.zeichen", "objective": "eins", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.zeichen", "objective": "eins" }]
+    },
+    {
+      "id": "settle-stein2",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.zeichen", "state": "active" } },
+          { "have": { "clue": "clue.k4.stein_karren" } },
+          { "not": { "quest": { "id": "q.k4.zeichen", "objective": "zwei", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.zeichen", "objective": "zwei" }]
+    },
+    {
+      "id": "settle-graben-heute",
+      "repeat": true,
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k4.graeben", "state": "active" } },
+          { "have": { "clue": "clue.k4.graben_heute" } },
+          { "not": { "quest": { "id": "q.k4.graeben", "objective": "heute", "gte": 1 } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.graeben", "objective": "heute" }]
+    },
+    {
+      "id": "brecher-steht",
+      "when": { "quest": { "id": "q.k4.steinplatz", "objective": "anschlag", "gte": 1 } },
+      "do": [
+        { "do": "sound", "sound": "howl", "x": 1224, "z": -1116, "caption": "[Quader schieben sich übereinander. Mörtel knirscht wie Zähne.]", "delay": 1 },
+        {
+          "do": "say",
+          "id": "laub.k4.x.brecher",
+          "speaker": "laub",
+          "text": "Hinter Ihnen. Der da ist aus der Hofmauer gemacht. Die Fugen, {Name}! Wo der Mörtel leuchtet.",
+          "delay": 1.5
+        }
+      ]
+    },
+    {
+      "id": "fresser-tal",
+      "when": { "quest": { "id": "q.k4.karren", "objective": "fresser", "gte": 3 } },
+      "do": [
+        {
+          "do": "say",
+          "id": "laub.k4.x.fresser",
+          "speaker": "laub",
+          "text": "Zerbröselt. Gut. Die Wachhäuser stehen noch ein paar Jahre. Länger als das Schloss, das sie bewacht haben.",
+          "delay": 1
+        }
       ]
     }
   ],
@@ -71,37 +240,33 @@
         { "do": "look", "time": "night" },
         { "do": "flag", "set": { "story.laub": true, "story.compass": true } },
         { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt in der Tasche. Sonst ist es still am Bauwagen.]", "delay": 2 },
-        { "do": "objective", "id": "k4.zettel", "text": "Marlene ist heimgegangen. Auf der Stufe des Bauwagens liegt ein Zettel", "x": 760, "z": -915, "delay": 1 }
+        { "do": "quest", "op": "start", "id": "q.k4.zettel", "onResume": true, "delay": 3 }
       ],
-      "on": [
-        {
-          "id": "nudge",
-          "when": { "timer": 45 },
-          "do": [
-            { "do": "say", "id": "laub.k4.x.zettel", "speaker": "laub", "text": "Auf der Stufe liegt Papier. Ich lese keine fremden Briefe. Sie schon, das ist Ihr Beruf." }
-          ]
-        }
-      ],
+      "on": [],
       "complete": { "have": { "clue": "clue.k4.marlene" } },
       "exit": [{ "do": "say", "line": "laub.k4.gestaendnis_1", "delay": 2 }]
     },
     {
       "id": "k4_1",
       "title_de": "Nach 1796",
-      "enter": [
-        { "do": "anchor", "to": "1796", "x": 497, "z": -900, "r": 25 },
-        { "do": "objective", "id": "k4.taleingang", "text": "Hinunter zum Taleingang, zu den beiden Wachhäusern. Dort: Q – nach 1796", "x": 497, "z": -900, "delay": 1 }
-      ],
+      "enter": [{ "do": "anchor", "to": "1796", "x": 497, "z": -900, "r": 25 }],
       "on": [
         {
           "id": "am-tor",
-          "when": { "enter": { "x": 497, "z": -900, "r": 25, "era": "today" } },
+          "when": {
+            "enter": { "x": 497, "z": -900, "r": 25, "era": "today" }
+          },
           "do": [
-            { "do": "say", "id": "laub.k4.x.tor", "speaker": "laub", "text": "Hier. Q. Siebzehnhundertsechsundneunzig, drei Jahre nach dem Feuer. Es ist Frühjahr, und keiner heizt mehr." }
+            {
+              "do": "say",
+              "id": "laub.k4.x.tor",
+              "speaker": "laub",
+              "text": "Hier. Q. Siebzehnhundertsechsundneunzig, drei Jahre nach dem Feuer. Es ist Frühjahr, und keiner heizt mehr."
+            }
           ]
         }
       ],
-      "complete": { "era": "1796" }
+      "complete": { "quest": { "id": "q.k4.zettel", "state": "done" } }
     },
     {
       "id": "k4_2",
@@ -109,12 +274,20 @@
       "checkpoint": "k4_1",
       "enter": [
         { "do": "say", "line": "laub.k4.taleingang", "delay": 2.5 },
-        { "do": "echo", "id": "clue.k4.karren", "delay": 1 }
+        { "do": "quest", "op": "start", "id": "q.k4.karren", "onResume": true, "delay": 1 },
+        { "do": "echo", "id": "clue.k4.karren", "delay": 6 }
       ],
-      "complete": { "any": [{ "have": { "clue": "clue.k4.karren" } }, { "timer": 70 }] },
+      "complete": {
+        "all": [{ "quest": { "id": "q.k4.karren", "objective": "karren", "gte": 1 } }, { "quest": { "id": "q.k4.karren", "objective": "fresser", "gte": 3 } }]
+      },
       "exit": [
-        { "do": "say", "id": "laub.k4.x.westwaerts", "speaker": "laub", "text": "Die Steine fahren nach Westen, in die Stadt. Gehen wir ihnen ein Stück nach. Vom Waldrand drüben sieht man, wo sie waren, bevor sie hier waren.", "delay": 1.5 },
-        { "do": "objective", "id": "k4.westblick", "text": "Den Karren nach, nach Westen: die Kuppe am Waldrand", "x": 200, "z": -905 }
+        {
+          "do": "say",
+          "id": "laub.k4.x.westwaerts",
+          "speaker": "laub",
+          "text": "Die Steine fahren nach Westen, in die Stadt. Gehen wir ihnen ein Stück nach. Vom Waldrand drüben sieht man, wo sie waren, bevor sie hier waren.",
+          "delay": 1.5
+        }
       ]
     },
     {
@@ -124,39 +297,66 @@
       "on": [
         {
           "id": "kuppe",
-          "when": { "enter": { "x": 200, "z": -905, "r": 24, "era": "1796" } },
+          "when": {
+            "enter": { "x": 200, "z": -905, "r": 24, "era": "1796" }
+          },
           "do": [
-            { "do": "say", "id": "laub.k4.x.kuppe", "speaker": "laub", "text": "Schauen Sie nach Südwesten. Über die Stadt hinweg. Nein, weiter links. Der Berg mit den Mauerresten." },
-            { "do": "objective", "id": "k4.westblick", "text": "Von der Kuppe nach Südwesten schauen, über die Stadt (E)", "x": 200, "z": -905 }
+            {
+              "do": "say",
+              "id": "laub.k4.x.kuppe",
+              "speaker": "laub",
+              "text": "Schauen Sie nach Südwesten. Über die Stadt hinweg. Nein, weiter links. Der Berg mit den Mauerresten."
+            }
           ]
         },
         {
           "id": "kuppe-stumm",
           "when": { "all": [{ "timer": 150 }, { "not": { "have": { "clue": "clue.k4.hohenburg" } } }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.kuppe_2", "speaker": "laub", "text": "Ein Geometer steht auf einer Kuppe und schaut. Das ist der ganze Beruf. Die Kuppe ist im Westen, das Schauen geht mit E." }
+            {
+              "do": "say",
+              "id": "laub.k4.x.kuppe_2",
+              "speaker": "laub",
+              "text": "Ein Geometer steht auf einer Kuppe und schaut. Das ist der ganze Beruf. Die Kuppe ist im Westen, das Schauen geht mit E."
+            }
           ]
         },
         {
           "id": "rueckwaerts",
           "when": { "have": { "clue": "clue.k4.hohenburg" } },
           "do": [
-            { "do": "say", "id": "laub.k4.x.rueckwaerts", "speaker": "laub", "text": "Und jetzt halten Sie E. Halten. Ich will Ihnen zeigen, in welche Richtung die Steine früher gefahren sind.", "delay": 2 },
-            { "do": "objective", "id": "k4.westblick", "text": "Auf der Kuppe E halten: die Karren, rückwärts", "x": 200, "z": -905 }
+            {
+              "do": "say",
+              "id": "laub.k4.x.rueckwaerts",
+              "speaker": "laub",
+              "text": "Und jetzt halten Sie E. Halten. Ich will Ihnen zeigen, in welche Richtung die Steine früher gefahren sind.",
+              "delay": 2
+            }
           ]
         }
       ],
-      "complete": { "any": [{ "event": "echo:end", "match": { "id": "echo.k4.rueckwaerts" } }, { "have": { "clue": "echo.k4.rueckwaerts" } }] },
+      "complete": { "quest": { "id": "q.k4.karren", "state": "done" } },
       "exit": [
         { "do": "flag", "set": { "barks.quiet": true } },
         { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt wie eine Uhr. Rückwärts.]" },
         { "do": "teleport", "x": 202, "z": -904, "yaw": 78, "delay": 0.4 },
         { "do": "shift", "to": "1789", "reason": "echo", "delay": 0.3 },
-        { "do": "say", "id": "laub.k4.x.gerueste", "speaker": "laub", "text": "Da steht er. Um 1780, gebaut mit Steinen von der Hohenburg. Für zehn Sekunden sieht er aus, als hätte ihn jemand bezahlt.", "delay": 2.5 },
+        {
+          "do": "say",
+          "id": "laub.k4.x.gerueste",
+          "speaker": "laub",
+          "text": "Da steht er. Um 1780, gebaut mit Steinen von der Hohenburg. Für zehn Sekunden sieht er aus, als hätte ihn jemand bezahlt.",
+          "delay": 2.5
+        },
         { "do": "shift", "to": "1796", "reason": "echo", "delay": 2.5 },
         { "do": "toast", "text": "Wandernde Steine 3/4 – von der Burg aufs Schloss, vom Schloss in die Stadt", "ms": 4200, "delay": 2.2 },
-        { "do": "say", "id": "laub.k4.x.grammatik", "speaker": "laub", "text": "Zurück in die Gegenwart. Also in Ihre Vergangenheit. Also in meine Zukunft. Ich hasse diese Grammatik.", "delay": 0.8 },
-        { "do": "objective", "id": "k4.baumagazin", "text": "Zurück ins Tal, zum Baumagazin: das einzige Haus, das stehen bleibt", "x": 500, "z": -836 },
+        {
+          "do": "say",
+          "id": "laub.k4.x.grammatik",
+          "speaker": "laub",
+          "text": "Zurück in die Gegenwart. Also in Ihre Vergangenheit. Also in meine Zukunft. Ich hasse diese Grammatik.",
+          "delay": 0.8
+        },
         { "do": "flag", "set": { "barks.quiet": false }, "delay": 9 }
       ]
     },
@@ -166,37 +366,65 @@
       "checkpoint": "k4_1",
       "enter": [
         { "do": "npc", "op": "spawn", "npc": "soll", "x": 496, "z": -842, "era": "1796", "yaw": 250, "chapter": "k4" },
-        { "do": "npc", "op": "spawn", "npc": "peter", "x": 494, "z": -826, "era": "1796", "yaw": 160, "chapter": "k4" }
+        { "do": "npc", "op": "spawn", "npc": "peter", "x": 494, "z": -826, "era": "1796", "yaw": 160, "chapter": "k4" },
+        { "do": "quest", "op": "offer", "id": "q.k4.baumagazin", "onResume": true, "delay": 1 },
+        {
+          "do": "objective",
+          "id": "k4.baumagazin",
+          "text": "Zurück ins Tal, zum Baumagazin: Soll führt Buch, Peter lädt Steine",
+          "x": 495,
+          "z": -834,
+          "delay": 1
+        }
       ],
       "on": [
         {
           "id": "hof",
-          "when": { "enter": { "x": 500, "z": -836, "r": 30, "era": "1796" } },
-          "do": [
-            { "do": "grant", "clue": "clue.k4.baumagazin" },
-            { "do": "objective", "id": "k4.baumagazin", "text": "Im Hof vor dem Baumagazin: Soll führt Buch, Peter lädt Steine", "x": 495, "z": -834, "delay": 1 }
-          ]
+          "when": {
+            "enter": { "x": 500, "z": -836, "r": 30, "era": "1796" }
+          },
+          "do": [{ "do": "grant", "clue": "clue.k4.baumagazin" }]
         },
         {
           "id": "soll-hint",
           "when": { "all": [{ "timer": 150 }, { "not": { "talked": { "npc": "soll", "chapter": "k4" } } }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.soll", "speaker": "laub", "text": "Der Mann am Tisch. Ärmelschoner, Tintenfinger. Wenn das nicht Soll ist, fresse ich meinen Theodoliten." }
+            {
+              "do": "say",
+              "id": "laub.k4.x.soll",
+              "speaker": "laub",
+              "text": "Der Mann am Tisch. Ärmelschoner, Tintenfinger. Wenn das nicht Soll ist, fresse ich meinen Theodoliten."
+            }
           ]
         },
         {
           "id": "karren-hint",
           "when": { "all": [{ "timer": 200 }, { "not": { "have": { "clue": "clue.k4.stein_karren" } } }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.karren", "speaker": "laub", "text": "Der Karren, nicht der Junge. Sehen Sie sich die Steine an. Einer davon schaut zurück." }
+            {
+              "do": "say",
+              "id": "laub.k4.x.karren",
+              "speaker": "laub",
+              "text": "Der Karren, nicht der Junge. Sehen Sie sich die Steine an. Einer davon schaut zurück."
+            }
           ]
+        },
+        {
+          "id": "angenommen",
+          "when": { "quest": { "id": "q.k4.baumagazin", "state": "active" } },
+          "do": [{ "do": "objective", "text": null }]
         }
       ],
-      "complete": { "all": [{ "talked": { "npc": "soll", "chapter": "k4" } }, { "have": { "clue": "clue.k4.stein_karren" } }] },
+      "complete": { "quest": { "id": "q.k4.baumagazin", "state": "done" } },
       "exit": [
-        { "do": "say", "id": "laub.k4.x.buch", "speaker": "laub", "text": "Bevor wir hinaufgehen: Was Sie wissen, gehört ins Buch. Unbestätigt ist es nur geliehen. Und da oben frisst etwas, das gern Geliehenes frisst.", "delay": 8 },
-        { "do": "anchor", "to": "1796", "x": 1216, "z": -1114, "r": 35 },
-        { "do": "objective", "id": "k4.ehrenhof", "text": "Hinauf zum Ehrenhof. Zu Fuß durch 1796 – oder Q halten, oben wieder Q", "x": 1216, "z": -1114 }
+        {
+          "do": "say",
+          "id": "laub.k4.x.buch",
+          "speaker": "laub",
+          "text": "Oben im Ehrenhof wird gerade ausgeschlachtet. Und was da oben frisst, frisst nicht nur Steine. Es frisst Erinnerung. Bleiben Sie nicht stehen, wenn es grau wird.",
+          "delay": 4
+        },
+        { "do": "anchor", "to": "1796", "x": 1216, "z": -1114, "r": 35 }
       ]
     },
     {
@@ -205,88 +433,117 @@
       "enter": [
         { "do": "look", "time": "night" },
         { "do": "anchor", "to": "1796", "x": 1216, "z": -1114, "r": 35 },
-        { "do": "objective", "id": "k4.ehrenhof", "text": "Hinauf zum Ehrenhof. Zu Fuß durch 1796 – oder Q halten, oben wieder Q", "x": 1216, "z": -1114 }
+        { "do": "quest", "op": "start", "id": "q.k4.steinplatz", "onResume": true, "delay": 1.5 }
       ],
-      "complete": { "enter": { "x": 1216, "z": -1114, "r": 40, "era": "1796" } }
+      "complete": {
+        "enter": { "x": 1216, "z": -1114, "r": 40, "era": "1796" }
+      }
     },
     {
       "id": "k4_6",
-      "title_de": "Der Steinfraß",
+      "title_de": "Der Steinbrecher",
       "checkpoint": "k4_5",
       "enter": [
-        { "do": "say", "id": "geraeusch.k4.x.brecheisen", "speaker": "geraeusch", "text": "[Brecheisen auf Sandstein. Irgendwo kippt eine Fuhre. Dann wird es still, zu still.]", "delay": 1 },
-        { "do": "flag", "set": { "k4.frass": true } },
-        { "do": "say", "line": "laub.k4.steinfrass", "delay": 3 },
-        { "do": "objective", "id": "k4.anschlag", "text": "Am Hofeingang, an einem Pfeiler: ein angeschlagenes Blatt", "x": 1195, "z": -1112, "delay": 0.5 },
-        { "do": "say", "line": "marlene.k4.ruf", "delay": 9 }
+        {
+          "do": "say",
+          "id": "geraeusch.k4.x.brecheisen",
+          "speaker": "geraeusch",
+          "text": "[Brecheisen auf Sandstein. Irgendwo kippt eine Fuhre. Dann wird es still, zu still.]",
+          "delay": 1
+        }
       ],
-      "complete": { "have": { "clue": "clue.k4.anschlag" } },
-      "exit": [{ "do": "grant", "clue": "clue.k4.napoleon", "delay": 4 }]
+      "complete": { "quest": { "id": "q.k4.steinplatz", "objective": "brecher", "gte": 1 } },
+      "exit": [
+        { "do": "flag", "set": { "k4.frass": true } },
+        { "do": "say", "line": "laub.k4.steinfrass", "delay": 2 },
+        { "do": "grant", "clue": "clue.k4.napoleon", "delay": 2 },
+        { "do": "say", "line": "marlene.k4.ruf", "delay": 7 }
+      ]
     },
     {
       "id": "k4_7",
       "title_de": "Die Gräben",
       "checkpoint": "k4_5",
-      "enter": [
-        { "do": "objective", "id": "k4.graeben", "text": "Nach Norden, zum Küchenhof: wo man die Mauern bis auf den Grund herausholt", "x": 1240, "z": -1193, "delay": 2 }
-      ],
+      "enter": [],
       "on": [
         {
           "id": "graben-hint",
           "when": { "all": [{ "timer": 100 }, { "not": { "have": { "clue": "clue.k4.graben" } } }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.graben", "speaker": "laub", "text": "Lange, gerade Gräben. Da, wo eben noch eine Mauer stand. Die Männer lassen nur Splitter zurück." }
+            {
+              "do": "say",
+              "id": "laub.k4.x.graben",
+              "speaker": "laub",
+              "text": "Lange, gerade Gräben. Da, wo eben noch eine Mauer stand. Die Männer lassen nur Splitter zurück."
+            }
           ]
         }
       ],
-      "complete": { "have": { "clue": "clue.k4.graben" } },
+      "complete": { "quest": { "id": "q.k4.steinplatz", "state": "done" } },
       "exit": [
-        { "do": "say", "id": "laub.k4.x.relief", "speaker": "laub", "text": "Heute, im Relief-Blick drei, ist das eine Rinne mit zwei kleinen Wällen daneben. Wer will, schaut nachher nach. Ich muss jetzt woanders hin. Nach Südosten. Zum Brunnen.", "delay": 2 },
-        { "do": "objective", "id": "k4.brunnen", "text": "Nach Südosten, zum Brunnen am alten Forsthaus. Standpunkt siebzehn", "x": 1386, "z": -1477 }
+        {
+          "do": "say",
+          "id": "laub.k4.x.relief",
+          "speaker": "laub",
+          "text": "Heute, im Relief-Blick drei, ist das eine Rinne mit zwei kleinen Wällen daneben. Wer will, schaut nachher nach. Ich muss jetzt woanders hin. Nach Südosten. Zum Brunnen.",
+          "delay": 2
+        },
+        { "do": "quest", "op": "start", "id": "q.k4.standpunkt", "onResume": true, "delay": 3 }
       ]
     },
     {
       "id": "k4_8",
       "title_de": "Standpunkt siebzehn",
       "checkpoint": "k4_5",
-      "enter": [
-        { "do": "anchor", "to": "1796", "x": 1386, "z": -1477, "r": 60 },
-        { "do": "objective", "id": "k4.brunnen", "text": "Nach Südosten, zum Brunnen am alten Forsthaus. Standpunkt siebzehn", "x": 1386, "z": -1477 }
-      ],
+      "enter": [{ "do": "anchor", "to": "1796", "x": 1386, "z": -1477, "r": 60 }],
       "on": [
         {
           "id": "ruhe",
-          "when": { "enter": { "x": 1386, "z": -1477, "r": 18, "era": "1796" } },
+          "when": {
+            "enter": { "x": 1386, "z": -1477, "r": 18, "era": "1796" }
+          },
           "do": [
             { "do": "flag", "set": { "k4.frass": false, "barks.quiet": true } },
             { "do": "meter", "id": "vergessen", "active": false },
-            { "do": "say", "id": "laub.k4.x.ruhe", "speaker": "laub", "text": "Hier frisst er nicht. Hier erinnere ich mich zu gut. Halten Sie E. Ich halte die Luft an, falls ich welche habe." },
-            { "do": "objective", "id": "k4.brunnen", "text": "Am Brunnen E halten: November 1840", "x": 1386, "z": -1477 }
+            {
+              "do": "say",
+              "id": "laub.k4.x.ruhe",
+              "speaker": "laub",
+              "text": "Hier frisst er nicht. Hier erinnere ich mich zu gut. Halten Sie E. Ich halte die Luft an, falls ich welche habe."
+            }
           ]
         }
       ],
-      "complete": { "any": [{ "event": "echo:end", "match": { "id": "clue.k4.laub_1840" } }, { "have": { "clue": "clue.k4.laub_1840" } }] },
+      "complete": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } },
       "exit": [
         { "do": "flag", "set": { "chronik.noLoss": true, "k4.frass": false, "barks.quiet": true } },
         { "do": "meter", "id": "vergessen", "active": false },
         { "do": "say", "line": "laub.k4.gestaendnis_2", "delay": 1.5 },
-        { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1420, "z": -1440, "caption": "[Ein Horn, ganz nah: ein langer Ton. Anblasen.]", "delay": 0.5 },
+        {
+          "do": "sound",
+          "sound": "horn",
+          "signal": "anblasen",
+          "x": 1420,
+          "z": -1440,
+          "caption": "[Ein Horn, ganz nah: ein langer Ton. Anblasen.]",
+          "delay": 0.5
+        },
         { "do": "shift", "to": "today", "reason": "oblivion", "delay": 1.2 },
-        { "do": "look", "time": "night", "delay": 0.2 }
+        { "do": "look", "time": "night", "delay": 0.2 },
+        { "do": "quest", "op": "fail", "id": "q.k4.graeben" },
+        { "do": "quest", "op": "fail", "id": "q.k4.pacht" }
       ]
     },
     {
       "id": "k4_9",
       "title_de": "Die Meute treibt",
-      "enter": [
-        { "do": "look", "time": "night" },
-        { "do": "anchor", "to": null },
-        { "do": "objective", "id": "k4.nebel", "text": "In den Nebel, zum Brunnen am Forsthaus", "x": 1386, "z": -1477 }
-      ],
+      "enter": [{ "do": "look", "time": "night" }, { "do": "anchor", "to": null }],
       "on": [
         {
           "id": "treiben",
-          "when": { "enter": { "x": 1386, "z": -1477, "r": 70, "era": "today" } },
+          "when": {
+            "enter": { "x": 1386, "z": -1477, "r": 70, "era": "today" }
+          },
           "do": [
             {
               "do": "threat",
@@ -302,7 +559,6 @@
               "target": { "x": 1216, "z": -1571 },
               "goalRadius": 22
             },
-            { "do": "objective", "id": "k4.nebel", "text": "Nicht ins Grau. Dahin, wohin die Meute dich lässt" },
             { "do": "say", "line": "laub.k4.erkenntnis", "delay": 5 },
             { "do": "say", "line": "laub.k4.herr", "delay": 6 },
             { "do": "say", "line": "laub.k4.abgeblasen", "delay": 5 }
@@ -312,47 +568,47 @@
           "id": "allee",
           "when": { "all": [{ "timer": 110 }, { "not": { "enter": { "x": 1216, "z": -1571, "r": 60 } } }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.allee", "speaker": "laub", "text": "Nach Westen treiben sie uns, dann die Allee hinauf. Da oben war der Zwinger. Sie gehen nach Hause, {Name}. Und wir mit." },
-            { "do": "objective", "id": "k4.nebel", "text": "Die Meute treibt nach Nordwesten: zum Zwinger", "x": 1216, "z": -1571 }
+            {
+              "do": "say",
+              "id": "laub.k4.x.allee",
+              "speaker": "laub",
+              "text": "Nach Westen treiben sie uns, dann die Allee hinauf. Da oben war der Zwinger. Sie gehen nach Hause, {Name}. Und wir mit."
+            }
           ]
         }
       ],
       "complete": { "any": [{ "event": "hunt:goal", "match": { "mode": "drive" } }, { "enter": { "x": 1216, "z": -1571, "r": 22, "era": "today" } }] },
       "exit": [
+        { "do": "quest", "op": "progress", "id": "q.k4.standpunkt", "objective": "treiben", "onResume": true },
         { "do": "say", "line": "laub.k4.herr" },
         { "do": "say", "line": "laub.k4.abgeblasen", "delay": 1 }
       ]
     },
     {
       "id": "k4_10",
-      "title_de": "Noch nicht",
-      "on": [
-        {
-          "id": "gesperrt",
-          "when": { "not": { "confirmed": { "prefix": "entry.k4.", "n": 6 } } },
-          "do": [
-            { "do": "threat", "kind": "pack", "active": false },
-            { "do": "say", "line": "laub.k4.noch_nicht", "delay": 1 },
-            { "do": "objective", "id": "k4.chronik", "text": "Die Chronik (J): „Der Steinbruch“ – alle sechs Fakten prüfen. Im Heute geht das überall" }
-          ]
-        }
-      ],
-      "complete": { "confirmed": { "prefix": "entry.k4.", "n": 6 } }
+      "title_de": "Die Frage",
+      "on": [],
+      "complete": { "quest": { "id": "q.k4.standpunkt", "state": "done" } },
+      "enter": [{ "do": "threat", "kind": "pack", "active": false }]
     },
     {
       "id": "k4_11",
       "title_de": "Zum Zwinger",
       "enter": [
+        { "do": "flag", "set": { "combat.disabled": true } },
         { "do": "look", "time": "night" },
-        { "do": "objective", "id": "k4.zwinger", "text": "Zum Zwinger. Und dann nicht weglaufen", "x": 1216, "z": -1571 }
+        { "do": "quest", "op": "start", "id": "q.k4.stellen", "onResume": true, "delay": 1 }
       ],
-      "complete": { "enter": { "x": 1216, "z": -1571, "r": 20, "era": "today" } }
+      "complete": {
+        "enter": { "x": 1216, "z": -1571, "r": 20, "era": "today" }
+      }
     },
     {
       "id": "k4_12",
       "title_de": "Sich stellen",
       "checkpoint": "k4_11",
       "enter": [
+        { "do": "flag", "set": { "combat.disabled": true } },
         { "do": "memorial", "id": "k4.zwinger", "x": 1216, "z": -1571, "r": 80, "era": "today" },
         { "do": "objective", "text": null },
         {
@@ -389,7 +645,12 @@
           "id": "licht",
           "when": { "all": [{ "timer": 30 }, { "stance": "prone" }, { "lantern": false }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.licht", "speaker": "laub", "text": "Ihre Laterne ist leer, oder Sie haben sie vergessen. Nehmen Sie mein Licht. Ich habe es 1840 zum Weglaufen benutzt. Jetzt soll es einmal zum Bleiben taugen." },
+            {
+              "do": "say",
+              "id": "laub.k4.x.licht",
+              "speaker": "laub",
+              "text": "Ihre Laterne ist leer, oder Sie haben sie vergessen. Nehmen Sie mein Licht. Ich habe es 1840 zum Weglaufen benutzt. Jetzt soll es einmal zum Bleiben taugen."
+            },
             { "do": "meter", "id": "oil", "active": true, "full": "none" }
           ]
         }
@@ -406,9 +667,9 @@
       "title_de": "Jost",
       "checkpoint": "k4_11",
       "enter": [
+        { "do": "flag", "set": { "combat.disabled": true } },
         { "do": "flag", "set": { "flag.k4_finale": true, "npc.owns.clue.k4.jost": true } },
-        { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "delay": 1.5 },
-        { "do": "objective", "id": "k4.jost", "text": "Der Pikeur ist abgestiegen und nimmt den Hut ab", "x": 1219, "z": -1566 }
+        { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "delay": 1.5 }
       ],
       "on": [
         {
@@ -420,14 +681,18 @@
           "id": "stumm",
           "when": { "all": [{ "timer": 60 }, { "not": { "talked": { "npc": "pikeur", "chapter": "k4" } } }] },
           "do": [
-            { "do": "say", "id": "laub.k4.x.jost", "speaker": "laub", "text": "Gehen Sie hin. Er wartet seit zweihundert Jahren, dass einer stehen bleibt. Ich weiß, wie das ist." }
+            {
+              "do": "say",
+              "id": "laub.k4.x.jost",
+              "speaker": "laub",
+              "text": "Gehen Sie hin. Er wartet seit zweihundert Jahren, dass einer stehen bleibt. Ich weiß, wie das ist."
+            }
           ]
         }
       ],
-      "complete": { "talked": { "npc": "pikeur", "chapter": "k4", "topic": "bye" } },
+      "complete": { "quest": { "id": "q.k4.stellen", "state": "done" } },
       "exit": [
-        { "do": "objective", "text": null },
-        { "do": "give", "item": "item.horn", "toast": "Das Horn – Mundstück zuerst. Kalt und echt." },
+        { "do": "toast", "text": "Das Horn – Mundstück zuerst. Kalt und echt.", "ms": 4200 },
         { "do": "flag", "set": { "flag.horn": true } },
         { "do": "say", "line": "jost.k4.08", "delay": 1 },
         { "do": "npc", "op": "despawn", "npc": "pikeur", "delay": 2 },
@@ -438,6 +703,10 @@
       "id": "k4_14",
       "title_de": "Morgengrauen",
       "enter": [
+        { "do": "flag", "set": { "combat.disabled": true } },
+        { "do": "quest", "op": "fail", "id": "q.k4.zeichen" },
+        { "do": "quest", "op": "fail", "id": "q.k4.graeben" },
+        { "do": "quest", "op": "fail", "id": "q.k4.pacht" },
         { "do": "flag", "set": { "barks.quiet": false } },
         { "do": "look", "time": "dawn", "delay": 1 },
         { "do": "say", "line": "geraeusch.end.morgen", "delay": 1 },
@@ -456,63 +725,25 @@
     {
       "id": "k4_15",
       "title_de": "Lücken",
-      "enter": [{ "do": "autosave" }],
+      "enter": [{ "do": "flag", "set": { "combat.disabled": true } }, { "do": "autosave" }],
       "on": [
         {
           "id": "luecken",
           "when": {
             "all": [
-              { "timer": 9 },
+              { "timer": 4 },
               {
                 "not": {
                   "all": [
-                    { "reading": "flag.p_spuren" },
-                    { "reading": "flag.k1_lohn" },
-                    { "reading": "flag.k2_lichter" },
-                    { "reading": "flag.k2_pfeiffer" },
-                    { "reading": "flag.k2_stelle" },
-                    { "reading": "flag.k3_pluenderer" },
-                    { "reading": "flag.k4_zerstoerer" },
-                    { "reading": "flag.k4_meute" },
-                    { "reading": "flag.k4_steine" }
-                  ]
-                }
-              }
-            ]
-          },
-          "do": [
-            { "do": "say", "line": "laub.end.luecken" },
-            {
-              "do": "choice",
-              "id": "k4.luecken",
-              "prompt": "Die Chronik hat noch leere Lesarten.",
-              "note": "Leer lassen ist erlaubt. Der Epilog sagt dann, was offen blieb.",
-              "options": [
-                { "key": "fuellen", "label": "Noch füllen", "set": {}, "then": [{ "do": "chronik", "caseId": "case.k4" }] },
-                { "key": "lassen", "label": "Leer lassen", "set": {}, "then": [{ "do": "readings", "fill": "offen" }] }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "nochmal",
-          "repeat": true,
-          "when": {
-            "all": [
-              { "event": "chronik:closed" },
-              { "chosen": "k4.luecken", "option": "fuellen" },
-              {
-                "not": {
-                  "all": [
-                    { "reading": "flag.p_spuren" },
-                    { "reading": "flag.k1_lohn" },
-                    { "reading": "flag.k2_lichter" },
-                    { "reading": "flag.k2_pfeiffer" },
-                    { "reading": "flag.k2_stelle" },
-                    { "reading": "flag.k3_pluenderer" },
-                    { "reading": "flag.k4_zerstoerer" },
-                    { "reading": "flag.k4_meute" },
-                    { "reading": "flag.k4_steine" }
+                    { "flag": "flag.p_spuren" },
+                    { "flag": "flag.k1_lohn" },
+                    { "flag": "flag.k2_lichter" },
+                    { "flag": "flag.k2_pfeiffer" },
+                    { "flag": "flag.k2_stelle" },
+                    { "flag": "flag.k3_pluenderer" },
+                    { "flag": "flag.k4_zerstoerer" },
+                    { "flag": "flag.k4_meute" },
+                    { "flag": "flag.k4_steine" }
                   ]
                 }
               }
@@ -520,33 +751,16 @@
           },
           "do": [
             {
-              "do": "choice",
-              "id": "k4.luecken",
-              "prompt": "Noch immer leere Lesarten.",
-              "note": "Leer lassen ist erlaubt. Der Epilog sagt dann, was offen blieb.",
-              "delay": 0.6,
-              "options": [
-                { "key": "fuellen", "label": "Weiter füllen", "set": {}, "then": [{ "do": "chronik", "caseId": "case.k4" }] },
-                { "key": "lassen", "label": "Leer lassen", "set": {}, "then": [{ "do": "readings", "fill": "offen" }] }
-              ]
-            }
+              "do": "say",
+              "id": "laub.k4.x.luecken",
+              "speaker": "laub",
+              "text": "Ein paar Fragen sind offen geblieben. Das darf man. Ich schreibe „offen“ dahin. Das ist auch eine Antwort, und keine schlechte."
+            },
+            { "do": "readings", "fill": "offen" }
           ]
         }
       ],
-      "complete": {
-        "all": [
-          { "timer": 9 },
-          { "reading": "flag.p_spuren" },
-          { "reading": "flag.k1_lohn" },
-          { "reading": "flag.k2_lichter" },
-          { "reading": "flag.k2_pfeiffer" },
-          { "reading": "flag.k2_stelle" },
-          { "reading": "flag.k3_pluenderer" },
-          { "reading": "flag.k4_zerstoerer" },
-          { "reading": "flag.k4_meute" },
-          { "reading": "flag.k4_steine" }
-        ]
-      }
+      "complete": { "timer": 9 }
     }
   ]
 }

@@ -3,10 +3,10 @@ import { trackErrors } from './helpers/common';
 import { type Any, flags, install, playK3, story } from './helpers/k3';
 
 /**
- * Chapter 3 "Die Nacht", played through headless (`?manual`, driven through window.kq), with the
+ * Chapter 3 "Die Nacht" as a quest chain, played through headless (`?manual`, driven through window.kq), with the
  * real content (story 03-kapitel-3.story.json + kapitel-3 pack). The playthrough lives in
  * e2e/helpers/k3.ts (shared with e2e/campaign.spec.ts).
- * Screenshots: test-results/screens/ch-k3-*.png.
+ * Screenshots: test-results/screens/cnb-k3-*.png.
  */
 test('chapter 3 "Die Nacht": played through', async ({ page }) => {
   test.setTimeout(3_600_000);

@@ -48,6 +48,12 @@
       "title_de": "Die Wahl",
       "enter": [
         {
+          "do": "flag",
+          "set": {
+            "combat.disabled": true
+          }
+        },
+        {
           "do": "threat",
           "kind": "pack",
           "active": false
@@ -90,6 +96,12 @@
       "title_de": "Epilog und Abspann",
       "enter": [
         {
+          "do": "flag",
+          "set": {
+            "combat.disabled": true
+          }
+        },
+        {
           "do": "autosave"
         }
       ],
@@ -101,6 +113,12 @@
           "do": "look",
           "time": "day",
           "delay": 1
+        },
+        {
+          "do": "flag",
+          "set": {
+            "combat.disabled": false
+          }
         }
       ]
     }
@@ -217,7 +235,8 @@
           "herzog": "Zerstört hat ihn am Ende der, der ihn so gebaut hat.",
           "steintraeger": "Abgetragen haben ihn die Leute aus Homburg, Stein für Stein.",
           "vergessen": "Zerstört hat ihn am Ende das Vergessen. Dagegen hilft nur Aufschreiben.",
-          "offen": "Wer ihn zerstört hat, weiß jeder anders."
+          "offen": "Wer ihn zerstört hat, weiß jeder anders.",
+          "herzog_selbst": "Zerstört hat ihn am Ende der, der ihn so gebaut hat."
         }
       },
       {
@@ -235,7 +254,8 @@
           "lohn": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn.",
           "neuanfang": "Das Schloss steckt in hundert Häusern. Es ist nicht weg, es ist überall.",
           "nur_steine": "Es sind nur Steine. Was daran hängt, hängen wir dran.",
-          "offen": ""
+          "offen": "",
+          "lohn_steine": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn."
         }
       },
       {
@@ -254,7 +274,9 @@
           "chronik": "Die Hunde liefen dort, wo eine Seite lag.",
           "heimtreiben": "Die Hunde haben jeden heimgetrieben, der sich zu lange im Vergessen aufhielt. Fast jeden.",
           "nie_abgeblasen": "Die Jagd wurde nie abgeblasen. So einfach war das.",
-          "offen": "Warum die Hunde liefen, weiß Jost. Ich habe ihn nicht gefragt."
+          "offen": "Warum die Hunde liefen, weiß Jost. Ich habe ihn nicht gefragt.",
+          "herr_suchen": "Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.",
+          "chronik_bewachen": "Die Hunde liefen dort, wo eine Seite lag."
         },
         "always": "Sie hießen Diane, Sultan, Fanfare, Rauhreif und Bijou."
       }
