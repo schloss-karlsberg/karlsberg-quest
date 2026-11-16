@@ -1376,7 +1376,8 @@ class StoryRuntime {
     const hudVisible = !ctx.ui.hud.el.classList.contains('kq-hidden');
     const inv = ctx.state.state.inventory;
     const compass = inv.items.includes('item.bussole') || !!ctx.state.state.flags['story.compass'];
-    this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion });
+    const questLed = typeof document !== 'undefined' && !!document.querySelector('.kqq-tracker .kqq-tq.kqq-main');
+    this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed });
     const today = ctx.era.current === 'today';
     this.station.setVisible(today);
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);

@@ -12,7 +12,7 @@
       "id": "steinfrass",
       "repeat": true,
       "when": { "all": [{ "era": "1796" }, { "flag": "k4.frass" }] },
-      "do": [{ "do": "meter", "id": "vergessen", "active": true, "seconds": 240, "intensity": 0.6 }]
+      "do": [{ "do": "meter", "id": "vergessen", "active": true, "seconds": 330, "intensity": 0.6 }]
     },
     {
       "id": "soll-wieder",
@@ -35,6 +35,18 @@
       "id": "stein-4",
       "when": { "have": { "clue": "clue.k4.foto" } },
       "do": [{ "do": "toast", "text": "Wandernde Steine 4/4 – über einer Kellertür in der Altstadt", "ms": 4200, "delay": 9 }]
+    },
+    {
+      "id": "grau-erklaert",
+      "when": { "all": [{ "era": "1796" }, { "meter": { "id": "vergessen", "gte": 0.04 } }] },
+      "do": [
+        {
+          "do": "say",
+          "id": "laub.k4.x.grau_0",
+          "speaker": "laub",
+          "text": "Sehen Sie das Grau am Rand? Das ist der Steinfraß. Bleiben Sie in Bewegung, finden Sie Spuren, dann weicht es. Durch den Nordflügel ist eine Bresche, da kommen Sie zu den Gräben."
+        }
+      ]
     },
     {
       "id": "grau-halb",
@@ -498,6 +510,23 @@
       "enter": [{ "do": "anchor", "to": "1796", "x": 1386, "z": -1477, "r": 60 }],
       "on": [
         {
+          "id": "letzte-chance",
+          "when": {
+            "all": [
+              { "enter": { "x": 1386, "z": -1477, "r": 70, "era": "1796" } },
+              { "any": [{ "quest": { "id": "q.k4.pacht", "state": "active" } }, { "quest": { "id": "q.k4.graeben", "state": "active" } }, { "quest": { "id": "q.k4.zeichen", "state": "active" } }] }
+            ]
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k4.x.letzte",
+              "speaker": "laub",
+              "text": "Bevor wir am Brunnen lauschen: Danach ist dieses Jahr für uns vorbei. Was Sie den Pächtern oder im Graben noch schuldig sind, erledigen Sie jetzt. Später ist es zu spät."
+            }
+          ]
+        },
+        {
           "id": "ruhe",
           "when": {
             "enter": { "x": 1386, "z": -1477, "r": 18, "era": "1796" }
@@ -530,7 +559,6 @@
         },
         { "do": "shift", "to": "today", "reason": "oblivion", "delay": 1.2 },
         { "do": "look", "time": "night", "delay": 0.2 },
-        { "do": "quest", "op": "fail", "id": "q.k4.graeben" },
         { "do": "quest", "op": "fail", "id": "q.k4.pacht" }
       ]
     },

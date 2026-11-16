@@ -371,7 +371,6 @@ const prologQuests = {
           { label_de: 'Hunde.', value: 'hunde', reply: [ln('laub', 'Ich habe nichts gesagt. Ich habe nur genickt. In einer Bussole sieht man das schlecht.')] },
           { label_de: 'Wild. Wildschweine, Rehe.', value: 'wild', reply: [ln('laub', 'Wild trabt nicht paarweise. Aber bitte. Es ist Ihr Feldbuch.')] },
           { label_de: 'Ein Messfehler.', value: 'messfehler', reply: [ln('laub', 'Ein Messfehler mit Zähnen. Ich notiere: Messfehler.')] },
-          { label_de: 'Ich weiß es nicht.', value: 'offen', reply: [ln('laub', 'Die vernünftigste Antwort des Tages. Und sie kommt von Ihnen.')] },
         ],
       },
       objectives: [

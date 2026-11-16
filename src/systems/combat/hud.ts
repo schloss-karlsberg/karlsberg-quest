@@ -158,6 +158,8 @@ export class CombatHud {
     this.layer = layer;
     layer.classList.remove('kq-hidden');
     layer.classList.add('kqc-layer');
+    // under the story layer: damage numbers never print over the dialogue text
+    layer.style.zIndex = '14';
     const bar = (cls: string, label: string) => {
       const row = el('div', `kqc-row ${cls}`);
       row.setAttribute('role', 'meter');

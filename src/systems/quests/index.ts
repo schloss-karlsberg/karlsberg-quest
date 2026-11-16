@@ -128,7 +128,8 @@ class QuestRuntime {
     this.layer = ctx.ui.layer('quests');
     this.layer.classList.remove('kq-hidden');
     this.layer.classList.add('kqq-layer');
-    this.layer.style.zIndex = '31';
+    // above the HUD, below modals (pause menu, clue cards, stance cards: playtest z-order)
+    this.layer.style.zIndex = '17';
     this.layer.style.pointerEvents = 'none';
     this.reward = new RewardCard(this.layer);
     this.journal = new JournalModal(ctx, {
@@ -154,7 +155,14 @@ class QuestRuntime {
         else if (op === 'start') this.book.accept(id);
         else if (op === 'progress' && objective) this.book.progress(id, objective, n ?? 1, true);
         else if (op === 'complete') this.book.complete(id, true);
-        else if (op === 'fail') this.book.fail(id);
+        else if (op === 'fail') {
+          // the story moves on: an offer nobody took is simply withdrawn, a finished quest pays
+          // out, only an accepted, unfinished one is missed (playtest: offers failed with an ×)
+          const st = this.book.state(id);
+          if (st === 'offered' || st === 'hidden') this.book.reset(id);
+          else if (st === 'ready') this.book.complete(id, true);
+          else this.book.fail(id);
+        }
         else if (op === 'reset') this.book.reset(id);
       }),
       ev.on('quest:accept', ({ id }) => this.book.accept(id)),
@@ -381,16 +389,16 @@ class QuestRuntime {
     const s = q.stance;
     if (!s || this.book.progressOf(q.id)?.stance) return;
     const speaker = this.ctx.content.speakers.get(giverOf(q))?.name_de ?? giverOf(q);
+    // a spoken question with two or three replies you say, like the conversation's topics, not a
+    // grid of answer cards (playtest: it read as a quiz)
+    const prompt = s.prompt_de.replace(/^[A-ZÄÖÜ][\wäöüß]+:\s+/, '');
     const m = this.ctx.ui.modals.open({
-      title: `${speaker}: ${t('quest.stance.title')}`,
+      title: speaker,
       className: 'kqq-stance-modal',
       closable: false,
-      body: [
-        Object.assign(document.createElement('p'), { className: 'kqq-st-prompt', textContent: s.prompt_de }),
-        Object.assign(document.createElement('p'), { className: 'kqq-st-note', textContent: t('quest.stance.note') }),
-      ],
+      body: [Object.assign(document.createElement('p'), { className: 'kqq-st-prompt', textContent: `„${prompt}“` })],
       actions: s.options.map((o) => ({
-        label: o.label_de,
+        label: `» ${o.label_de}`,
         onClick: () => {
           this.book.stance(q.id, o.value);
           this.ctx.events.emit('quest:stance', { id: q.id, value: o.value });
@@ -479,6 +487,7 @@ class QuestRuntime {
 
   private renderTracker(): void {
     const list: TrackerQuest[] = [];
+    let first = true;
     for (const id of this.book.tracked()) {
       const q = this.defs.get(id);
       if (!q) continue;
@@ -496,8 +505,12 @@ class QuestRuntime {
         objectives: q.objectives
           .filter((o) => this.book.objectiveActive(q, o) && !(o.hidden && this.book.objectiveDone(q, o)))
           .filter((o) => !ready || (o.optional && !this.book.objectiveDone(q, o)))
-          .map((o) => ({ id: o.id, text: o.text_de, count: this.book.count(id, o.id), need: need(o), done: this.book.objectiveDone(q, o), optional: !!o.optional })),
+          .map((o) => ({ id: o.id, text: o.text_de, count: this.book.count(id, o.id), need: need(o), done: this.book.objectiveDone(q, o), optional: !!o.optional }))
+          // the focused (first) quest lists its objectives; the others only their next open one
+          // (playtest: three quests ran 9+ lines into the vitals)
+          .filter((o, _i, all) => first || (!o.done && o === all.find((x) => !x.done))),
       });
+      first = false;
     }
     this.tracker.render(list);
   }

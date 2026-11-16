@@ -97,14 +97,14 @@ describe('Action-RPG content A: prologue, chapter 1, chapter 2', () => {
     }
   });
 
-  it('the stances the epilogue reads exist, each with "offen"', () => {
+  it('the stances the epilogue reads exist as two or three spoken replies (no "weiß nicht": k4_15 fills "offen")', () => {
     const stances = new Map(data.flatMap((d) => d.q.quests.filter((q) => q.stance).map((q) => [q.stance!.flag, q.stance!.options.map((o) => o.value)] as const)));
     const want: Record<string, string[]> = {
-      'flag.p_spuren': ['hunde', 'wild', 'messfehler', 'offen'],
-      'flag.k1_lohn': ['will_nicht', 'creuzer', 'hunde_bilder', 'getaeuscht', 'offen'],
-      'flag.k2_lichter': ['kalkoefen', 'fackeln', 'wachfeuer', 'laternen', 'offen'],
-      'flag.k2_pfeiffer': ['treu', 'dorf', 'lohn', 'angst', 'offen'],
-      'flag.k2_stelle': ['gewarnt', 'geschwiegen', 'gefuehrt', 'offen'],
+      'flag.p_spuren': ['hunde', 'wild', 'messfehler'],
+      'flag.k1_lohn': ['will_nicht', 'creuzer', 'hunde_bilder'],
+      'flag.k2_lichter': ['kalkoefen', 'fackeln', 'laternen'],
+      'flag.k2_pfeiffer': ['treu', 'dorf', 'angst'],
+      'flag.k2_stelle': ['gewarnt', 'geschwiegen', 'gefuehrt'],
     };
     for (const [flag, values] of Object.entries(want)) expect(stances.get(flag), flag).toEqual(values);
   });

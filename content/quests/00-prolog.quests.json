@@ -519,16 +519,6 @@
                 "text": "Ein Messfehler mit Zähnen. Ich notiere: Messfehler."
               }
             ]
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Die vernünftigste Antwort des Tages. Und sie kommt von Ihnen."
-              }
-            ]
           }
         ]
       },

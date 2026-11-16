@@ -86,12 +86,17 @@ export class ObjectiveView {
   }
 
   /** Per frame. heading = view heading (deg, clockwise from north). */
-  frame(dt: number, px: number, pz: number, heading: number, opts: { compass: boolean; visible: boolean; reducedMotion: boolean }): void {
+  frame(dt: number, px: number, pz: number, heading: number, opts: { compass: boolean; visible: boolean; reducedMotion: boolean; questLed?: boolean }): void {
     this.el.style.display = opts.visible ? '' : 'none';
     this.bussole.classList.toggle('kqs-show', opts.compass && opts.visible);
     const o = this.obj;
+    // one "what to do" line: while the quest tracker leads with a main quest, the story's own line
+    // (and its compass mark) steps back, unless it tells the way through time (Q)
+    const dup = !!opts.questLed && !!o && !/\bQ\b/.test(o.text);
+    this.el.classList.toggle('kqs-dup', dup);
     let target: number | null = null;
-    if (o && o.x !== undefined && o.z !== undefined) {
+    if (dup) this.hud.setMarker('objective', null);
+    else if (o && o.x !== undefined && o.z !== undefined) {
       const b = bearingDeg(px, pz, o.x, o.z);
       const d = Math.hypot(o.x - px, o.z - pz);
       this.hud.setMarker('objective', b, '#e9c46a');

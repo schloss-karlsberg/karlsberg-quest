@@ -419,9 +419,7 @@ const k2Quests = {
         options: [
           { label_de: 'Weil er dem Herzog treu war.', value: 'treu', reply: [ln('laub', 'Treue. Die einzige Münze, die der Hof nie ausgegeben hat. Er hat sie bekommen.')] },
           { label_de: 'Weil er sein Dorf schützen wollte.', value: 'dorf', reply: [ln('laub', 'Wer die Reiter wegschickt, schickt sie woandershin. Vielleicht wusste er das.')] },
-          { label_de: 'Weil er auf Lohn hoffte.', value: 'lohn', reply: [ln('laub', 'Ein Dukat. Oder ein Taler. Für eine Nacht im Februar ist das nicht viel. Für einen Bauern schon.')] },
           { label_de: 'Weil er Angst hatte.', value: 'angst', reply: [ln('laub', 'Angst läuft schneller als Treue. Das ist keine Schande, das ist Physik.')] },
-          { label_de: 'Das sagt keine Quelle.', value: 'offen', reply: [ln('laub', 'Richtig. Er hat nichts hinterlassen. Nur eine Spur im Raureif, und die ist erfunden.')] },
         ],
       },
       objectives: [
@@ -456,7 +454,6 @@ const k2Quests = {
           { label_de: 'Ich hätte ihn auch gewarnt.', value: 'gewarnt', reply: [ln('laub', 'Einen Herzog, der Ihren Lohn schuldig bleibt. Gut. Ich schreibe es auf, ohne Kommentar. Fast.')] },
           { label_de: 'Ich hätte geschwiegen.', value: 'geschwiegen', reply: [ln('laub', 'Ehrlich. Die meisten haben geschwiegen. Darüber gibt es keine Quellen, nur Lücken.')] },
           { label_de: 'Ich hätte die Reiter geführt.', value: 'gefuehrt', reply: [ln('laub', 'Irgendeiner hat sie geführt, sonst wären sie nicht gekommen. Seinen Namen kennt auch niemand.')] },
-          { label_de: 'Ich weiß es nicht.', value: 'offen', reply: [ln('laub', 'Das weiß keiner, bevor er am Zaun steht.')] },
         ],
       },
       objectives: [
@@ -511,9 +508,7 @@ const k2Quests = {
         options: [
           { label_de: 'Kalköfen. Wie der Handwerker sagt.', value: 'kalkoefen', reply: [ln('laub', 'Dann hat er die Wahrheit gesagt. Ein General hat ihm geglaubt. Das kommt selten vor.')] },
           { label_de: 'Fackeln. Die Diener bei den Wagen.', value: 'fackeln', reply: [ln('laub', 'Das erzählt man im Ort. Belegt ist es nicht. Aber es ist eine freundliche Geschichte.')] },
-          { label_de: 'Wachfeuer.', value: 'wachfeuer', reply: [ln('laub', 'Die Wache am Gitter hatte eins. Warum nicht noch mehr am Hang.')] },
           { label_de: 'Laternen. Meine war dabei.', value: 'laternen', reply: [ln('laub', 'Eine Erinnerung, in der Sie selbst vorkommen. Ich sage nichts. Ich bin eine Bussole.')] },
-          { label_de: 'Das sagt keine Quelle.', value: 'offen', reply: [ln('laub', 'Nein. Und darum sagen wir es auch nicht.')] },
         ],
       },
       objectives: [

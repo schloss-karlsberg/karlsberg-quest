@@ -8,7 +8,41 @@
   pointer-events: none;
 }
 
+/* the story's objective line steps back while the quest tracker leads (objectives.ts) */
+.kqs-objective.kqs-dup {
+  display: none !important;
+}
+
 /* ---------- dialogue card ---------- */
+/* in a fight the card becomes a one-line subtitle strip at the very bottom: enemies, telegraphs
+   and loot in the lower third stay visible (playtest) */
+body.kq-in-combat .kqs-dlg {
+  bottom: 10px;
+  width: min(640px, 80vw, calc(100vw - 380px));
+  gap: 10px;
+  align-items: center;
+}
+body.kq-in-combat .kqs-portrait {
+  width: 52px;
+  height: 52px;
+}
+body.kq-in-combat .kqs-dlg-body {
+  padding: 6px 14px 6px 16px;
+  background: rgba(236, 226, 204, 0.86);
+  box-shadow: 0 0 0 1px rgba(60, 40, 20, 0.3), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+body.kq-in-combat .kqs-who {
+  font-size: 16px;
+}
+body.kq-in-combat .kqs-dlg-text {
+  font-size: calc(var(--sub-size) * 0.85);
+  line-height: 1.25;
+}
+body.kq-in-combat .kqs-dlg-foot,
+body.kq-in-combat .kqs-dlg-body::before {
+  display: none;
+}
+
 .kqs-dlg {
   position: absolute;
   left: 50%;

@@ -72,7 +72,7 @@ describe('quest files', () => {
       ["unknown enemy 'drache'", (f) => (f.quests[0]!.objectives[0]!.enemy = 'drache')],
       ["unknown item 'item.gold'", (f) => (f.quests[0]!.rewards!.items = [{ item: 'item.gold' }])],
       ["unknown codex fact 'cx.99'", (f) => (f.quests[0]!.rewards!.codex = ['cx.99'])],
-      ["'offen' option", (f) => (f.quests[0]!.stance!.options = [{ label_de: 'A', value: 'a' }, { label_de: 'B', value: 'b' }])],
+      ['at most four replies', (f) => (f.quests[0]!.stance!.options = ['a', 'b', 'c', 'd', 'e'].map((v) => ({ label_de: v, value: v })))],
       ["unknown speaker 'niemand'", (f) => (f.quests[0]!.offer = [{ speaker: 'niemand', text: 'x' }])],
       ["historical speaker 'mannlich' needs sources", (f) => (f.quests[0]!.offer = [{ speaker: 'mannlich', text: 'x' }])],
       ['outside the playable area', (f) => (f.quests[0]!.objectives[0]!.where = { x: 99999, z: 0 })],

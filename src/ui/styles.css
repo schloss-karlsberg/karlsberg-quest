@@ -382,6 +382,10 @@ body {
 .kq-prompt.show {
   opacity: 1;
 }
+/* in a fight, prompts step back (the boss fight is not the time to read a notice) */
+body.kq-in-combat .kq-prompt.show {
+  opacity: 0.3;
+}
 .kq-prompt kbd {
   font-family: var(--sc);
   border: 1px solid rgba(239, 230, 210, 0.7);

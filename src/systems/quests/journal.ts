@@ -269,6 +269,7 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
       h('h3', q.title_de),
       h('div.kqj-who', [t('journal.quests.giver', { name: giver }), turnin && turnin !== giver ? ` · ${t('journal.quests.turnin', { name: turnin })}` : '']),
       h('p.kqj-summary', q.summary_de),
+      s === 'failed' ? h('p.kqj-missed', { dataset: { testid: 'journal-missed' } }, t(p?.reason === 'chapter' ? 'journal.quests.missedChapter' : 'journal.quests.missedStory')) : null,
       h(
         'ul.kqj-objs',
         objs.map((o) => {

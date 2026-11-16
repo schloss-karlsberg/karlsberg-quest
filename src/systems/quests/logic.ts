@@ -416,6 +416,7 @@ export class QuestBook {
     const q = this.defs.get(id);
     if (!q || this.state(id) === 'done') return false;
     this.setState(id, 'failed');
+    this.prog(id).reason = reason;
     this.cleanup(q);
     this.track(id, false);
     this.env.emit('quest:failed', { id, reason });
@@ -487,6 +488,8 @@ export class QuestBook {
     switch (o.type) {
       case 'kill':
         if (name !== 'enemy:killed') return 0;
+        // undone by nobody (a Glutling bursting by itself, a boss's adds fading with it)
+        if (p.by === 'env') return 0;
         if (p.quest === q.id && p.objective === o.id) return 1;
         if (o.group && p.group === o.group) return 1;
         if (!o.enemy || p.kind !== o.enemy || o.group) return 0;

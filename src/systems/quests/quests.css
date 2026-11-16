@@ -230,7 +230,9 @@
 
 /* a chapter title card (story) takes the stage: the reward card steps aside until it is gone,
    like the level and skill cards do */
-body:has(.kqs-card.kqs-show) .kqq-reward {
+body:has(.kqs-card.kqs-show) .kqq-reward,
+body:has(.kq-modal:not(.kqn-modal)) .kqq-reward,
+body:has(.kqs-choice-card.kqs-show) .kqq-reward {
   opacity: 0;
   pointer-events: none;
 }
@@ -457,13 +459,35 @@ body:has(.kqs-card.kqs-show) .kqq-reward {
 }
 
 /* ---------- voice stance ---------- */
+.kq-modal.kqq-stance-modal {
+  width: min(560px, calc(100vw - 32px));
+}
 .kq-modal.kqq-stance-modal .actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+/* replies you say: plain lines in the conversation's hand, not answer cards */
+.kq-modal.kqq-stance-modal .actions .kq-btn {
+  text-align: left;
+  font-family: var(--hand);
+  font-size: 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--ink-faint);
+  border-radius: 0;
+  padding: 6px 4px;
+  box-shadow: none;
+}
+.kq-modal.kqq-stance-modal .actions .kq-btn:hover,
+.kq-modal.kqq-stance-modal .actions .kq-btn:focus-visible {
+  color: var(--accent);
+  background: rgba(140, 47, 31, 0.06);
 }
 .kqq-st-prompt {
   font-size: 21px !important;
+  font-style: italic;
 }
 .kqq-st-note {
   font-family: var(--hand);
@@ -685,6 +709,11 @@ body:has(.kqs-card.kqs-show) .kqq-reward {
   font-size: 19px !important;
   line-height: 1.5;
   margin: 10px 0;
+}
+.kqj-missed {
+  margin: 4px 0 8px;
+  font-style: italic;
+  color: var(--accent);
 }
 .kqj-objs {
   list-style: none;

@@ -134,7 +134,7 @@ export async function stance(page: Page, label: string, flagId: string): Promise
   });
   const card = page.getByTestId('quest-stance');
   await expect(card).toBeVisible();
-  await card.getByRole('button', { name: label, exact: true }).click();
+  await card.getByRole('button', { name: `» ${label}`, exact: true }).click();
   await expect(card).toBeHidden();
   return flag(page, flagId);
 }

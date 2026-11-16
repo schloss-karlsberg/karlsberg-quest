@@ -84,6 +84,8 @@ describe('interiors layout', () => {
     expect(Math.max(...hs)).toBeLessThanOrEqual(5.9);
     expect(ruinTop('KB-B06', 1200, -1218)).toBe(ruinTop('KB-B06', 1200, -1218));
     expect(today.walls.length).toBe(0);
+    // the K4 route from the Ehrenhof to the trenches stays open through the north wing
+    for (let t = 0; t <= 1; t += 0.05) expect(ruinTop('KB-B03', 1220 + 22 * t, -1126 - 66 * t)).toBeLessThan(0.45);
   });
 });
 

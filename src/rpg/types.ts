@@ -485,4 +485,6 @@ export interface QuestProgress {
   t: number;
   /** Stance answered (value). */
   stance?: string;
+  /** Why a failed quest ended ('story' = the story moved on, 'chapter' = its chapter ended). */
+  reason?: string;
 }

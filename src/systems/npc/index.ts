@@ -344,7 +344,9 @@ class NpcRuntime {
     this.view.say([...lines, ...hist], () => {
       const st = tp.stance;
       if (!st) return finish();
-      this.view.say([{ id: `stance.${st.id}`, speaker: speakerMeta(c.npc, this.ctx.content), text: st.prompt_de }], () => {
+      // the question is part of the conversation (no "Name:" inside the line, no exam note)
+      const prompt = st.prompt_de.replace(/^[A-ZÄÖÜ][\wäöüß]+:\s+/, '');
+      this.view.say([{ id: `stance.${st.id}`, speaker: speakerMeta(c.npc, this.ctx.content), text: prompt }], () => {
         this.view.setTopics(
           st.options.map((o) => ({ id: `qs:${o.value}`, label: o.label_de, asked: false, mark: 'stance' as const })),
           (id) => {
@@ -354,7 +356,6 @@ class NpcRuntime {
             if (reply.length) this.view.say(reply.map((l, i) => this.questLine(l, 200 + i)), finish);
             else finish();
           },
-          t('npc.stance.note'),
         );
       });
     });

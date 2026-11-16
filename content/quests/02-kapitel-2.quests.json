@@ -339,32 +339,12 @@
             ]
           },
           {
-            "label_de": "Weil er auf Lohn hoffte.",
-            "value": "lohn",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Ein Dukat. Oder ein Taler. Für eine Nacht im Februar ist das nicht viel. Für einen Bauern schon."
-              }
-            ]
-          },
-          {
             "label_de": "Weil er Angst hatte.",
             "value": "angst",
             "reply": [
               {
                 "speaker": "laub",
                 "text": "Angst läuft schneller als Treue. Das ist keine Schande, das ist Physik."
-              }
-            ]
-          },
-          {
-            "label_de": "Das sagt keine Quelle.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Richtig. Er hat nichts hinterlassen. Nur eine Spur im Raureif, und die ist erfunden."
               }
             ]
           }
@@ -488,16 +468,6 @@
               {
                 "speaker": "laub",
                 "text": "Irgendeiner hat sie geführt, sonst wären sie nicht gekommen. Seinen Namen kennt auch niemand."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Das weiß keiner, bevor er am Zaun steht."
               }
             ]
           }
@@ -723,32 +693,12 @@
             ]
           },
           {
-            "label_de": "Wachfeuer.",
-            "value": "wachfeuer",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Die Wache am Gitter hatte eins. Warum nicht noch mehr am Hang."
-              }
-            ]
-          },
-          {
             "label_de": "Laternen. Meine war dabei.",
             "value": "laternen",
             "reply": [
               {
                 "speaker": "laub",
                 "text": "Eine Erinnerung, in der Sie selbst vorkommen. Ich sage nichts. Ich bin eine Bussole."
-              }
-            ]
-          },
-          {
-            "label_de": "Das sagt keine Quelle.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Nein. Und darum sagen wir es auch nicht."
               }
             ]
           }

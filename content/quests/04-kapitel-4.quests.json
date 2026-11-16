@@ -165,6 +165,9 @@
           "type": "kill",
           "text_de": "Steinfresser an den Wachhäusern zerschlagen",
           "count": 3,
+          "after": [
+            "karren"
+          ],
           "where": {
             "x": 506,
             "z": -900,
@@ -601,16 +604,6 @@
             ]
           },
           {
-            "label_de": "Der Herzog selbst, der so gebaut hat.",
-            "value": "herzog_selbst",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Wer mit Papier Marmor macht, sollte sich über Feuer nicht beschweren."
-              }
-            ]
-          },
-          {
             "label_de": "Die Steinträger aus Homburg.",
             "value": "steintraeger",
             "reply": [
@@ -627,16 +620,6 @@
               {
                 "speaker": "laub",
                 "text": "Dagegen hilft nur Aufschreiben. Und Zuhören."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Das ist die ehrlichste Antwort, die ich heute bekommen habe."
               }
             ]
           }
@@ -750,7 +733,7 @@
       ],
       "stance": {
         "id": "k4.meute",
-        "prompt_de": "Warum sind wir gelaufen, all die Jahre? Du weißt es jetzt besser als ich.",
+        "prompt_de": "Warum sind wir gelaufen, all die Jahre? Ich hab nie darüber nachgedacht. Du schon, oder?",
         "flag": "flag.k4_meute",
         "options": [
           {
@@ -760,16 +743,6 @@
               {
                 "speaker": "pikeur",
                 "text": "Der ist nach Mannheim. Ohne abzublasen. Ja."
-              }
-            ]
-          },
-          {
-            "label_de": "Sie haben die Chronik bewacht.",
-            "value": "chronik_bewachen",
-            "reply": [
-              {
-                "speaker": "pikeur",
-                "text": "Sie liefen immer da, wo eine Seite lag. Kann sein."
               }
             ]
           },
@@ -790,16 +763,6 @@
               {
                 "speaker": "pikeur",
                 "text": "So einfach. So einfach war das."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "pikeur",
-                "text": "Dann frag ich nicht weiter. Das hab ich von dir gelernt."
               }
             ]
           }
@@ -915,14 +878,6 @@
           {
             "label_de": "Ein Neuanfang: Das Schloss steckt in hundert Häusern.",
             "value": "neuanfang"
-          },
-          {
-            "label_de": "Nur Steine.",
-            "value": "nur_steine"
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen"
           }
         ]
       },

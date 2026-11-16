@@ -145,8 +145,26 @@ export function roomFrame(poly: readonly [number, number][], edgeIndex?: number)
   return { ox: e.ax, oz: e.az, ux: e.tx, uz: e.tz, vx: -e.tz, vz: e.tx, L: e.len, W: next.len };
 }
 
+/**
+ * Paths kept open through the 1796 ruin (world x/z, half width): the chapter-4 route from the
+ * Ehrenhof north through the wing to the Küchenhof trenches (playtest: players stuck on a stub wall
+ * with the Steinfraß running). Every wall chunk on such a path is a breach.
+ */
+export const RUIN_PATHS: readonly { ax: number; az: number; bx: number; bz: number; w: number }[] = [{ ax: 1220, az: -1126, bx: 1242, bz: -1192, w: 2.4 }];
+
+function onRuinPath(x: number, z: number): boolean {
+  for (const p of RUIN_PATHS) {
+    const dx = p.bx - p.ax;
+    const dz = p.bz - p.az;
+    const t = Math.max(0, Math.min(1, ((x - p.ax) * dx + (z - p.az) * dz) / (dx * dx + dz * dz)));
+    if (Math.hypot(x - (p.ax + dx * t), z - (p.az + dz * t)) <= p.w) return true;
+  }
+  return false;
+}
+
 /** Deterministic stub height (m above the floor) of a ruined wall at x/z (1796). */
 export function ruinTop(building: string, x: number, z: number, low = false): number {
+  if (onRuinPath(x, z)) return 0.15;
   const s = seedOf(building) % 1000;
   // two octaves of value noise along the ground, ~4 m and ~1.3 m cells
   const vn = (x0: number, z0: number, sc: number, salt: number) => {

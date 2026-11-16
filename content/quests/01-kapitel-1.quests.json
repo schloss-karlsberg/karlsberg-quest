@@ -434,26 +434,6 @@
                 "text": "Die Hunde kriegen Fleisch, die Bilder kriegen Gold drumrum. Und wir kriegen Zettel."
               }
             ]
-          },
-          {
-            "label_de": "Weil man den Herzog täuscht.",
-            "value": "getaeuscht",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Getäuscht. Kann sein. Bezahlt hat er trotzdem nicht."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Ich auch nicht. Aber ich weiß, dass es fehlt."
-              }
-            ]
           }
         ]
       },

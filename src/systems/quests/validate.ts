@@ -126,7 +126,9 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
         if (!isStr(s.id) || !isStr(s.prompt_de) || !isStr(s.flag)) err(file, qid, 'stance needs id, prompt_de and flag');
         if (!Array.isArray(s.options) || s.options.length < 2) err(file, qid, 'stance needs ≥ 2 options');
         else {
-          if (!s.options.some((o) => o?.value === 'offen')) err(file, qid, "stance needs an 'offen' option (no reading is a reading)");
+          // two or three spoken replies; "offen" is what an unanswered stance becomes (story k4_15),
+          // not a button (playtest: a 'weiß nicht' option made the card read as a quiz)
+          if (s.options.length > 4) err(file, qid, 'stance: at most four replies');
           for (const o of s.options) {
             if (!isStr(o?.label_de) || !isStr(o?.value)) err(file, qid, 'stance option needs label_de and value');
             checkLines(o?.reply, 'stance reply', file, qid, refs, err, warn);

@@ -134,8 +134,10 @@ describe('contentB: the shape of the chapters', () => {
     const pk: Record<string, string> = { 'flag.k3_pluenderer': 'pluenderer', 'flag.k4_zerstoerer': 'zerstoerer', 'flag.k4_steine': 'steine', 'flag.k4_meute': 'meute' };
     for (const s of stances) {
       const values = s.options.map((o) => o.value);
-      expect(values, s.flag).toContain('offen');
+      expect(values.length, s.flag).toBeLessThanOrEqual(3);
+      expect(values, s.flag).not.toContain('offen');
       const reading = S5.epilogue.readings.find((r) => r.flags?.includes(s.flag))!;
+      expect('offen' in reading.text, `${s.flag}: the "offen" fallback`).toBe(true);
       for (const v of values) {
         expect(v in reading.text, `${s.flag}=${v} (fallback)`).toBe(true);
         if (v !== 'offen') expect(lines.has(`epilog.${pk[s.flag]}.${v}`), `${s.flag}=${v} (pack)`).toBe(true);
@@ -264,7 +266,7 @@ function play(files: QuestFile[], ids: string[]) {
       }
     // 'auto' turn-ins pay out at once; the others wait at their npc
     expect(book.state(id), id).toBe(q.turnin === 'auto' ? 'done' : 'ready');
-    if (q.stance) expect(book.stance(id, 'offen')).toBe(true);
+    if (q.stance) expect(book.stance(id, q.stance.options[0]!.value)).toBe(true);
     if (q.turnin !== 'auto') expect(book.complete(id)).not.toBeNull();
     expect(flags[`quest.${id}`]).toBe('done');
   }
@@ -275,10 +277,10 @@ describe('contentB: every quest plays through headless; the level curve', () => 
   const ids = (f: QuestFile, kind?: 'main' | 'side') => f.quests.filter((q) => !kind || q.kind === kind).map((q) => q.id);
   const START = 3600; // end of Ch. 2: L8 (§6.1 target L7–8)
 
-  it('K3 and K4 main + side quests reach ready and pay out; stances default to "offen"', () => {
+  it('K3 and K4 main + side quests reach ready and pay out; stances take a spoken reply', () => {
     const r = play([Q3, Q4], [...ids(Q3), ...ids(Q4)]);
-    expect(r.flags['flag.k3_pluenderer']).toBe('offen');
-    expect(r.flags['flag.k4_meute']).toBe('offen');
+    expect(r.flags['flag.k3_pluenderer']).toBe('schuld');
+    expect(r.flags['flag.k4_meute']).toBe('herr_suchen');
     expect(r.xp).toBeGreaterThan(0);
   });
 

@@ -486,7 +486,9 @@ class Progression {
     this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight);
     const storyCard = !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show');
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
-    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard;
+    // one centre card at a time: the level card waits for the quest reward card and a choice
+    const otherCard = !!document.querySelector('.kqq-reward:not(.kqq-out), .kqs-choice-card.kqs-show');
+    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard;
     this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
   }
 

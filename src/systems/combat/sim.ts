@@ -1415,9 +1415,9 @@ export class CombatSim {
         }
         this.dropRings(e);
         if (e.kind === 'glutling') {
-          // it bursts itself
+          // it bursts itself: the player's kill only if the staff had already struck it
           this.out.push({ type: 'burst', e });
-          this.kill(e, 'env');
+          this.kill(e, e.hp < e.maxHp ? e.by : 'env');
         }
         break;
       }

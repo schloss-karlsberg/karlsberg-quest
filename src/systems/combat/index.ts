@@ -659,6 +659,8 @@ class Combat {
         break;
       case 'combat':
         this.emit('combat:state', { inCombat: ev.on });
+        // the dialogue card shrinks to a subtitle strip while fighting (story.css)
+        if (typeof document !== 'undefined') document.body.classList.toggle('kq-in-combat', ev.on);
         break;
       case 'resetGroup':
         break;

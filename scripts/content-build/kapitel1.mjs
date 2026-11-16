@@ -459,8 +459,6 @@ const k1Quests = {
           { label_de: 'Weil der Herzog nicht zahlen will.', value: 'will_nicht', reply: [ln('hanne', 'Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen. Das sag ich auch.')] },
           { label_de: 'Weil der Präsident die Kassen geleert hat.', value: 'creuzer', reply: [ln('hanne', 'Dann soll er’s zurückbringen. Er wird’s nicht.')] },
           { label_de: 'Weil das Geld in Hunde und Bilder geht.', value: 'hunde_bilder', reply: [ln('hanne', 'Die Hunde kriegen Fleisch, die Bilder kriegen Gold drumrum. Und wir kriegen Zettel.')] },
-          { label_de: 'Weil man den Herzog täuscht.', value: 'getaeuscht', reply: [ln('hanne', 'Getäuscht. Kann sein. Bezahlt hat er trotzdem nicht.')] },
-          { label_de: 'Ich weiß es nicht.', value: 'offen', reply: [ln('hanne', 'Ich auch nicht. Aber ich weiß, dass es fehlt.')] },
         ],
       },
       objectives: [

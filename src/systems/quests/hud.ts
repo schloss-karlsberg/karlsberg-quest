@@ -128,7 +128,8 @@ export class RewardCard {
             h('div.kqq-r-items', v.codex.map((c) => h('span.kqq-r-card', { dataset: { fact: c.id } }, [badge(c.confidence), h('span', c.title), h('span.kqq-lab', { dataset: { l: c.label } }, t(`journal.codex.label.${c.label}`))]))),
           ])
         : null,
-      h('div.kqq-r-next', [h('kbd', 'E'), ` ${t('quest.continue')}`]),
+      // E only dismisses it over a conversation; in open play E is the interact key
+      h('div.kqq-r-next', keys ? [h('kbd', 'E'), ` ${t('quest.continue')}`] : [t('quest.continueClick')]),
     ]);
     this.el.addEventListener('mousedown', (e) => {
       e.stopPropagation();
@@ -147,6 +148,8 @@ export class RewardCard {
   /** UI clock (real seconds). */
   tick(dt: number): void {
     if (!this.el) return;
+    // a modal other than the conversation, or a story choice, holds the card back (CSS hides it)
+    if (typeof document !== 'undefined' && document.querySelector('.kq-modal:not(.kqn-modal), .kqs-choice-card.kqs-show')) return;
     this.timer -= dt;
     if (this.timer <= 0) this.close();
   }

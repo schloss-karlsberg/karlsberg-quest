@@ -129,26 +129,6 @@
                 "text": "Ein Stuhl in einer Stube brennt nicht. Das stimmt."
               }
             ]
-          },
-          {
-            "label_de": "Sie tun, was alle tun.",
-            "value": "alle",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Die Preußen, die Franzosen, die vom Hof. Ja. Alle."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Ich auch nicht. Ich weiß nur, dass mein Korb leer ist."
-              }
-            ]
           }
         ]
       },
@@ -695,11 +675,11 @@
           "spawn": [
             {
               "kind": "glutling",
-              "x": 1258,
-              "z": -1138,
+              "x": 1258.5,
+              "z": -1130,
               "era": "1793-07",
               "count": 4,
-              "radius": 2.5,
+              "radius": 1.6,
               "leash": 14
             }
           ]
