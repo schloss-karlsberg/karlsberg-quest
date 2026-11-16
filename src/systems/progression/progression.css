@@ -337,12 +337,20 @@
 /* ---------------------------------------------------------------- level-up card */
 .kqp-cards {
   position: fixed;
-  left: 50%;
+  /* centred, but pushed right of the top-left column (tracker: 20 px + at most min(430px, 50vw − 56px))
+     as far as the feed dock on the right allows (22 px + min(300px, 30vw)); the card is about 442 px
+     wide. Where both cannot be cleared (narrow screens) it stays centred. */
+  left: max(50%, min(calc(min(430px, 50vw - 56px) + 32px + 221px), calc(100vw - 30px - min(300px, 30vw) - 221px)));
   top: max(170px, 24vh);
   z-index: 16;
+  transition: top 0.3s;
   transform: translateX(-50%);
   pointer-events: none;
   perspective: 900px;
+}
+/* a boss bar (top 108 px, about 80 px with its phase line) keeps the card below it */
+body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
+  top: max(206px, 29vh);
 }
 .kqp-card {
   position: relative;

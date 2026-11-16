@@ -345,6 +345,13 @@ body {
   gap: 6px;
   /* left of the threat eye (centred, 46 px); the first line ends below the compass strip (y 48) */
   max-width: min(430px, calc(50vw - 56px));
+  /* max-height is set from the vitals dock's top edge (hud.ts); only the bottom is cut */
+  overflow-x: visible;
+  overflow-y: clip;
+}
+.kq-tl.kq-tl-clipped {
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 34px), transparent);
 }
 .kq-era-label {
   font-family: var(--hand);

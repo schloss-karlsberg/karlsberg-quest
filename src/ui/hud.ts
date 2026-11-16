@@ -78,6 +78,30 @@ export class Hud {
       boss: h('div.kq-dock.kq-dock-boss', { 'data-testid': 'hud-boss' }),
       feed: h('div.kq-dock.kq-dock-feed', { 'data-testid': 'hud-feed' }),
     };
+    // the top-left column (era, objective, quest tracker) must end above the vitals dock: its
+    // limit follows the dock's top edge, and a clipped column fades out at the bottom
+    if (typeof ResizeObserver === 'function' && typeof window !== 'undefined') {
+      let queued = false;
+      const fit = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          fitNow();
+        });
+      };
+      const fitNow = () => {
+        const v = this.docks.vitals;
+        const top = v.childElementCount > 0 ? v.getBoundingClientRect().top : window.innerHeight - 122;
+        this.tl.style.maxHeight = `${Math.max(120, Math.round(top - 12 - 14))}px`;
+        this.tl.classList.toggle('kq-tl-clipped', this.tl.scrollHeight > this.tl.clientHeight + 1);
+      };
+      const ro = new ResizeObserver(fit);
+      ro.observe(this.docks.vitals);
+      ro.observe(this.tl);
+      new MutationObserver(fit).observe(this.tl, { childList: true, subtree: true });
+      window.addEventListener('resize', fit);
+    }
     this.el = h('div.kq-hud.kq-hidden', [
       this.threatEdge,
       this.docks.vitals,

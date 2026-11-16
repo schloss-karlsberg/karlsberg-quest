@@ -5,6 +5,12 @@
   align-items: flex-end;
   padding-bottom: 28px;
 }
+/* the pickup / objective feed on the right steps back while a conversation page is open: the
+   page (760 px) would cut its lines in half */
+body:has(.kqn-modal) .kq-dock-feed {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
 .kq-modal.kqn-modal {
   width: min(760px, calc(100vw - 32px));
   max-height: 58vh;

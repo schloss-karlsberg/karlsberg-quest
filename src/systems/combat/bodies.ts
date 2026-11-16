@@ -174,11 +174,13 @@ export function raffschatten(seed: number): BodyTemplate {
 }
 
 export function glutling(seed: number): BodyTemplate {
+  // a sooty, nearly black shell with a white-hot heart: it has to read against a burning room,
+  // so the silhouette is dark and the halo small (an ember-coloured body vanishes into the fire)
   const b = new B(seed)
-    .glow([0, 0.38, 0], 0.3, EMBER, { bone: 'core', minPx: 5 })
-    .glow([0, 0.38, 0], 0.9, [0.8, 0.25, 0.05], { bone: 'core', alpha: 0.6 })
-    .blob([0, 0.4, 0], [0.22, 0.2, 0.22], 9, 0.26, [0.08, 0.05, 0.04], { bone: 'core', em: [0.9, 0.3, 0.05] })
-    .eyes(0.48, 0.2, 0.08, 0.05, [1, 0.9, 0.5], 'core');
+    .glow([0, 0.4, 0], 0.16, [1, 0.95, 0.75], { bone: 'core', minPx: 4 })
+    .glow([0, 0.38, 0], 0.55, [0.8, 0.25, 0.05], { bone: 'core', alpha: 0.35 })
+    .blob([0, 0.4, 0], [0.27, 0.25, 0.27], 9, 0.24, [0.025, 0.02, 0.02], { bone: 'core', em: [0.45, 0.12, 0.02] })
+    .eyes(0.5, 0.22, 0.09, 0.06, [1, 0.97, 0.8], 'core');
   return { parts: b.parts, tell: [1, 0.6, 0.15], top: 0.9, shoulder: 0 };
 }
 

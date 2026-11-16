@@ -127,7 +127,16 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.getByTestId('hub-leave').click();
   await expect(page.getByTestId('hub')).toBeHidden();
 
-  // ---- 3. objective: p1 done (Laub's leaf, Lageplan, Handbuch) → p2, the dam ---------------------------
+  // ---- 3. objective: p1 done (Laub's leaf, Lageplan, Handbuch + the Messstab by the trailer:
+  // Marlene's quest "Die Feldstation" turns in by itself) → p2, the dam -------------------------------
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const pr = k.progression!;
+    const stab = pr.pickups().find((x) => x.item === 'item.stab.esche');
+    if (stab) pr.take(stab.id);
+    k.step(4);
+  });
+  await expect.poll(() => page.evaluate(() => window.kq!.quests!.state().quests['q.p.feldstation']?.state), { timeout: 60_000 }).toBe('done');
   await page.evaluate(() => {
     const k = window.kq!;
     k.step(10);
@@ -333,7 +342,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     caughtT: document.querySelector<HTMLElement>('.kq-hunt-caught')!.style.opacity,
     frozen: window.kq!.ctx.player.frozen,
   }));
-  expect(back.story.beat).toBe('p10'); // checkpoint of p9b: dusk at the station
+  expect(back.story.beat).toBe('p9'); // checkpoint of p9b: the first shift again, woken at the station
   expect(back.story.inHub).toBe(true);
   expect(back.hunt).toBeNull();
   expect(back.caughtT).toBe('0');
@@ -497,7 +506,10 @@ test('integration: round 2 tour (interiors, npc, skills/tools, snow tracks)', as
   expect(await page.evaluate(() => window.kq!.npc!.list())).toEqual([]);
   expect(await page.evaluate(() => window.kq!.state().skills['kartograf'])).toBe(3);
   expect(await payloads(page, 'skill:unlocked')).toContainEqual({ skill: 'kartograf', level: 3 });
-  await expect(page.getByTestId('skill-card')).toBeVisible();
+  // the unlock card waits behind the chapter title card, which runs out on rendered frames (slow
+  // under software WebGL on a loaded machine)
+  await page.waitForFunction(() => !document.querySelector('.kqs-card.kqs-show'), null, { timeout: 240_000 });
+  await expect(page.getByTestId('skill-card')).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('.kq-toast', { hasText: 'TEST: Messen' })).toHaveCount(0);
   await page.waitForFunction(() => window.kq!.skills!.card() === null, null, { timeout: 120_000 });
 

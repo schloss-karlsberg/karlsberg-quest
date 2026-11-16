@@ -178,8 +178,17 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await expect(page.getByTestId('chapter-prolog')).toBeVisible();
   await shot(page, 'hub-map');
   await page.getByTestId('hub-continue').click();
+  // the Messstab by the trailer: Marlene's quest "Die Feldstation" is complete
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const pr = k.progression!;
+    const stab = pr.pickups().find((x) => x.item === 'item.stab.esche');
+    if (stab) pr.take(stab.id);
+    k.step(4);
+  });
+  await expect.poll(() => page.evaluate(() => window.kq!.quests!.state().quests['q.p.feldstation']?.state), { timeout: 60_000 }).toBe('done');
   await page.evaluate(() => window.kq!.step(10));
-  // the three items examined → p1 complete → p2 (the dam)
+  // the three items examined and the Messstab taken → p1 complete → p2 (the dam)
   const s = await page.evaluate(() => window.kq!.story!.state());
   expect(s.beat).toBe('p2');
   const inv = await page.evaluate(() => window.kq!.state().inventory);
@@ -224,8 +233,9 @@ test('story: caught by the pack → back at the field station', async ({ page })
   expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
   expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(5);
-  // resumed at the checkpoint beat (p10: back at the station at dusk; the prologue's 1789 visit is over)
-  expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p10');
+  // resumed at the checkpoint beat (p9: the first shift again — the 1789 visit with its Streuner and
+  // the Bannlicht lesson is played once more; contentA moved it from p10)
+  expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p9');
 
   // a timed choice in the burning hall (chapter 3): field-book modal with a fuse
   // (chapter 3 as wired: up the stairs into the Festsaal, Hanne and Laub speak, then the choice)

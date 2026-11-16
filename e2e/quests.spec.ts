@@ -46,8 +46,17 @@ async function boot(page: Page): Promise<void> {
   });
 }
 
+/** Recorded payloads of `name` — without the prologue's quests (story.start offers and takes the
+ * first one, Marlene's voice, before the jump into the test chapter drops it again). */
 async function events(page: Page, name: string): Promise<unknown[]> {
-  return page.evaluate((n) => (window as unknown as { rec: Rec }).rec.filter((e) => e.n === n).map((e) => e.p), name);
+  return page.evaluate(
+    (n) =>
+      (window as unknown as { rec: Rec }).rec
+        .filter((e) => e.n === n)
+        .map((e) => e.p)
+        .filter((p) => !String((p as { id?: unknown } | null)?.id ?? '').startsWith('q.p.')),
+    name,
+  );
 }
 
 async function shot(page: Page, name: string): Promise<void> {
@@ -85,7 +94,8 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('q1');
   expect(await page.evaluate((q) => window.kq!.quests!.state().quests[q]?.state, Q)).toBe('offered');
   expect((await flags(page))[`quest.${Q}`]).toBe('offered');
-  expect(await events(page, 'quest:offered')).toEqual([{ id: Q, giver: 'hanne', main: true }]);
+  // (story.start offered the prologue's first quest before the jump into the test chapter)
+  expect(((await events(page, 'quest:offered')) as { id: string }[]).filter((e) => e.id === Q)).toEqual([{ id: Q, giver: 'hanne', main: true }]);
   expect(await events(page, 'npc:marker')).toContainEqual({ npc: 'hanne', mark: 'offer-main' });
 
   // ---- the giver: ! in a ring over her head ------------------------------------------------------

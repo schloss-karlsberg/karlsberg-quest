@@ -161,7 +161,10 @@ class QuestRuntime {
       ev.on('quest:decline', () => (this.dirty = true)),
       ev.on('quest:stance', ({ id, value }) => this.book.stance(id, value)),
       ev.on('quest:turnin', ({ id }) => this.book.complete(id)),
-      ev.on('story:chapter', () => (this.availIn = 0)),
+      ev.on('story:chapter', ({ id }) => {
+        this.availIn = 0;
+        this.dropEarlier(id);
+      }),
       ev.on('era:change', () => {
         this.availIn = 0;
         this.dirty = true;
@@ -169,6 +172,11 @@ class QuestRuntime {
       ev.on('level:up', () => (this.availIn = 0)),
       ev.on('chronik:open', () => this.journal.show()),
       ev.on('save:loaded', () => this.restore()),
+      // a new game replaces the whole state: the book must follow the new slice, or it keeps
+      // writing into the old one and nothing it records is saved any more
+      ctx.state.subscribe((_s, reason) => {
+        if (reason === 'new' || reason === 'replace') this.restore();
+      }),
       ev.on('codex:unlocked', ({ factId }) => {
         const s = this.book.slice;
         if (!s.unseen.includes(factId)) s.unseen.push(factId);
@@ -197,6 +205,24 @@ class QuestRuntime {
     );
     this.book.onPayout = (p) => this.onPayout(p);
     this.restore();
+  }
+
+  /**
+   * A new chapter: main quests of earlier chapters still running and unaccepted offers leave the
+   * log (a chapter select or story jump skipped them; in a straight run they are all done).
+   */
+  private dropEarlier(chapter: string): void {
+    const order = ['prolog', 'k1', 'k2', 'k3', 'k4', 'enden'];
+    // a chapter outside the campaign (the e2e `test` chapter) comes after all of it
+    const at = order.includes(chapter) ? order.indexOf(chapter) : order.length;
+    for (const q of this.defs.values()) {
+      const i = order.indexOf(q.chapter ?? '');
+      if (i < 0 || i >= at) continue;
+      const st = this.book.state(q.id);
+      // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone; side
+      // quests the player took keep running (chapters fail the ones that cannot outlive them)
+      if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.book.reset(q.id);
+    }
   }
 
   slice(): QuestSlice {
