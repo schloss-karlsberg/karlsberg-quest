@@ -96,6 +96,8 @@ class QuestRuntime {
   private readonly following = new Set<string>();
   private interest = new Set<string>();
   private dirty = true;
+  /** Set when a quest was accepted or an objective closed: clues found earlier settle next tick (Q-15). */
+  private settle = false;
   private availIn = 0;
   private markIn = 0;
   private pending: { at: number; run: () => void }[] = [];
@@ -177,7 +179,10 @@ class QuestRuntime {
         b[kind] = (b[kind] ?? 0) + 1;
       }),
       // own facts → HUD
-      ev.on('quest:accepted', ({ id }) => this.onAccepted(id)),
+      ev.on('quest:accepted', ({ id }) => {
+        this.settle = true;
+        this.onAccepted(id);
+      }),
       ev.on('quest:progress', ({ id, objective, count, need: n }) => this.onProgress(id, objective, count, n)),
       ev.on('quest:objective', ({ id, objective }) => this.onObjective(id, objective)),
       ev.on('quest:ready', ({ id }) => this.onReady(id)),
@@ -288,6 +293,7 @@ class QuestRuntime {
   }
 
   private onObjective(id: string, obj: string): void {
+    this.settle = true;
     const q = this.defs.get(id);
     const o = q?.objectives.find((x) => x.id === obj);
     if (!q || !o) return;
@@ -385,6 +391,11 @@ class QuestRuntime {
     else if (ctx.input.wasPressed('inventory') && journalTabs().some((x) => x.id === 'gear')) this.journal.show('gear');
     const p = ctx.player.position;
     const room = String(ctx.state.state.flags['interior.room'] ?? '');
+    if (this.settle) {
+      // examine / echo objectives that open after their clue was found count at once
+      this.settle = false;
+      this.book.settleKnown((c) => ctx.state.state.inventory.clues.includes(c));
+    }
     this.book.tick(dt, { x: p.x, z: p.z, era: ctx.era.current, room }, (npc) => this.npcDistance(npc));
     if ((this.availIn -= dt) <= 0) {
       this.availIn = 1;

@@ -45,6 +45,10 @@ export const ROSTER: Record<string, NpcLook> = {
   pikeur: { id: 'pikeur', name: 'Der Pikeur', mood: 'eerie', height: 1.76, build: 1.02, outfit: 'livery', hat: 'tricorn', hair: 'queue', prop: 'none', tint: 0xc9d6e0, seed: 13 },
   peter: { id: 'peter', name: 'Peter', mood: 'eerie', height: 1.68, build: 0.94, outfit: 'carter', hat: 'slouch', hair: 'short', prop: 'none', tint: 0xc3b7dc, seed: 17 },
   matthes: { id: 'matthes', name: 'Matthes', mood: 'eerie', height: 1.78, build: 1.08, outfit: 'mason', hat: 'none', hair: 'short', prop: 'none', tint: 0xb9c4cf, seed: 23 },
+  // Side-quest givers (fiction): a Karlslust gardener, a palace servant, a villager from the road.
+  gaertner: { id: 'gaertner', name: 'Der Gärtner', mood: 'warm', height: 1.66, build: 0.98, outfit: 'carter', hat: 'slouch', hair: 'queue', prop: 'basket', tint: 0xc8d9a8, seed: 31 },
+  diener: { id: 'diener', name: 'Ein Diener', mood: 'neutral', height: 1.72, build: 0.9, outfit: 'livery', hat: 'none', hair: 'wig', prop: 'none', tint: 0xd9cdb4, seed: 37 },
+  mann: { id: 'mann', name: 'Ein Mann aus dem Dorf', mood: 'neutral', height: 1.74, build: 1.0, outfit: 'carter', hat: 'slouch', hair: 'short', prop: 'stick', tint: 0xc4c0b2, seed: 41 },
 };
 
 export function lookFor(id: string, mood?: Mood): NpcLook {
