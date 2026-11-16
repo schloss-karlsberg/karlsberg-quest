@@ -351,7 +351,12 @@ class StoryRuntime {
       this.shiftPending = null;
       this.shifting = true;
     });
-    ctx.events.on('shift:done', () => (this.shifting = false));
+    ctx.events.on('shift:done', ({ to }) => {
+      this.shifting = false;
+      // where the oil is not the chapter's timer (no oil meter), every trip into the past starts
+      // with a full lantern (playtest K4: it ran dry mid-chapter and nothing refilled it)
+      if (to !== 'today' && !this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: ctx.player.stats.lanternLit, refill: true });
+    });
     // while the Chronik plays an echo (ghosts + its own subtitles) the presenter waits out of sight
     ctx.events.on('echo:start', () => (this.echoHold = true));
     ctx.events.on('echo:end', () => (this.echoHold = false));

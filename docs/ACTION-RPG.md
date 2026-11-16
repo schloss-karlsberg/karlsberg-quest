@@ -114,7 +114,12 @@ Atem costs: Hieb 10 · Wuchthieb 25 · Ausweichen 20 · running 8 / s (only whil
 - **Hieb**: 3-hit combo (0.38 s each), 70° arc, 2.6 m reach, soft aim assist towards the nearest enemy
   within 25° (gentle mode: 40°). Third hit ×1.4 damage and a knockback push.
 - **Wuchthieb**: hold 0.45–1.0 s (move speed ×0.5, `player.moveScale`), release: ×2.2 damage (talents
-  more), breaks frontal armour (Steinfresser, Steinbrecher, Strohmann's bundles), big stagger.
+  more), breaks frontal armour (Steinfresser, Strohmann's bundles), big stagger. The Steinbrecher's
+  front stays hard even to a Wuchthieb (×0.35): its joints are at the sides and the back.
+- **Cleave** (2026-11-16, playtest): a swing hits the nearest enemy in its arc fully and the next
+  ones at 50 %, at most 2 (Hieb) / 3 (Wuchthieb) / 4 (Laubs Lot sweep) targets (`CLEAVE`, rules.ts).
+- **Bosses** never skip a phase: one hit stops just under the next phase line, and a boss rising into
+  its next phase (`roar`) cannot be hurt.
 - **Ausweichen**: 0.35 s roll of ~4.5 m in the move direction (backwards without one) via
   `player.impulse()`; i-frames 0.08–0.33 s. A dodge in the last 0.15 s before a hit is a **perfect
   dodge** (slow-mo 0.25 s unless reduced motion; talent "Konterschritt": next hit ×2).
@@ -210,8 +215,12 @@ All invented, all spectral, all with German names. Data: `src/rpg/enemies.ts` (i
 
 ### 5.4 Difficulty tiers
 
-`tier` 1–4 = chapter 1–4 (prologue: tier 1 at 60 %). Enemy HP × (1 + 0.35 (tier − 1)), damage ×
-(1 + 0.25 (tier − 1)). The player's level curve (§6) keeps pace; side quests are optional XP.
+`tier` 1–4 = chapter 1–4; a quest spawn without its own `tier` takes its chapter's (`CHAPTER_TIER`,
+quests/logic.ts: prolog 1, k1 1, k2 2, k3 3, k4 4; bosses keep tier 1, their HP is tuned per boss;
+`tier: 0` = 60 %, the prologue's first Nebelling). Enemy HP × (1 + 0.45 (tier − 1)), damage ×
+(1 + 0.15 (tier − 1)) (2026-11-16: until then every quest spawn ran at tier 1 and the playtests found
+regular fights trivial; `tests/combat-balance.test.ts` keeps a non-dodging bot honest). The player's
+level curve (§6) keeps pace; side quests are optional XP.
 
 ## 6. Progression
 
@@ -372,19 +381,22 @@ hint ladders for puzzles, losing knowledge when caught.
 ### 8.6 Stances (Haltungen) — the readings become role-play
 
 The old LESARTEN (open readings) survive as **stances**: at some turn-ins the giver asks what *you*
-think. It is an opinion, never graded, always with "Ich weiß es nicht." (`offen`). The answer writes
+think. It is an opinion, never graded. Since 2026-11-16 (playtest: five answer buttons read as a quiz)
+a stance is **two or three short replies you say**, in the conversation's topic list (npc givers) or
+as a spoken question with reply lines (voice givers), never a grid, no "Ich weiß es nicht." button: a
+stance left unanswered becomes `offen` in `k4_15 Lücken`. The answer writes
 the same epilogue flag as before, so `content/story/05-enden.story.json` and the endings pack keep
 working (the epilogue maps `n.r_x` ≡ `x`).
 
 | Flag | Asked by (quest) | Options (value) |
 | --- | --- | --- |
-| `flag.p_spuren` | Laub, "Spuren in der Punktwolke" | hunde · wild · messfehler · offen |
-| `flag.k1_lohn` | Hanne, "Matthes' Lohn" | will_nicht · creuzer · hunde_bilder · getaeuscht · offen |
-| `flag.k2_lichter` | Laub, "Lichter im Wald" | kalkoefen · fackeln · wachfeuer · laternen · offen |
-| `flag.k2_pfeiffer`, `flag.k2_stelle` | Laub, "Hinter der Tür" | treu · dorf · lohn · angst · offen / gewarnt · geschwiegen · gefuehrt · offen |
-| `flag.k3_pluenderer` | Hanne, "Der Nachmittag" | schuld · stahlen · retteten · alle · offen |
-| `flag.k4_zerstoerer`, `flag.k4_steine` | Laub, "Standpunkt siebzehn"; Peter, "Matthes' Zeichen" (both voice cards: auto turn-in) | franzosen · herzog_selbst · steintraeger · vergessen · offen / raub · lohn_steine · neuanfang · nur_steine · offen |
-| `flag.k4_meute` | Jost, "Sich stellen" | herr_suchen · chronik_bewachen · heimtreiben · nie_abgeblasen · offen |
+| `flag.p_spuren` | Laub, "Spuren in der Punktwolke" | hunde · wild · messfehler |
+| `flag.k1_lohn` | Hanne, "Matthes' Lohn" | will_nicht · creuzer · hunde_bilder |
+| `flag.k2_lichter` | Laub, "Lichter im Wald" | kalkoefen · fackeln · laternen |
+| `flag.k2_pfeiffer`, `flag.k2_stelle` | Laub, "Hinter der Tür" | treu · dorf · angst / gewarnt · geschwiegen · gefuehrt |
+| `flag.k3_pluenderer` | Hanne, "Der Nachmittag" | schuld · stahlen · retteten |
+| `flag.k4_zerstoerer`, `flag.k4_steine` | Laub, "Standpunkt siebzehn"; Peter, "Matthes' Zeichen" (both voice cards: auto turn-in) | franzosen · steintraeger · vergessen / raub · lohn_steine · neuanfang |
+| `flag.k4_meute` | Jost, "Sich stellen" | herr_suchen · heimtreiben · nie_abgeblasen |
 
 Ch. 3–4 write the endings pack's value keys (`herzog_selbst`, `lohn_steine`, `herr_suchen`,
 `chronik_bewachen`, …); the fallback epilogue in `05-enden.story.json` knows both spellings.
@@ -468,8 +480,8 @@ One per chapter (`00-prolog`, `01-kapitel-1` … `04-kapitel-4`; `99-test` is th
 only with `?storytest`). Schema `content/schema/quests.schema.json`; authority
 `src/systems/quests/validate.ts` (run by `pnpm validate` and `tests/rpg-contracts.test.ts`): ids
 `q.<chapter>.<name>` (prolog → `p`, enden → `end`), known speakers (historical speakers need
-sources), codex facts, clues, enemy kinds, items, places inside the playable area, a stance always
-has `offen`, collect objectives have enough places, … The story validator rejects unknown quest ids and
+sources), codex facts, clues, enemy kinds, items, places inside the playable area, a stance has
+at most four replies, collect objectives have enough places, … The story validator rejects unknown quest ids and
 items. Abridged example (full: `content/quests/99-test.quests.json`):
 
 ```jsonc
@@ -715,3 +727,19 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 - ~~**Q-14**~~ (resolved at integration: roster + validator know `gaertner`, `diener`, `mann`) (contentA) The story validator's NPC set (`src/systems/story`) knows soll, hanne, jost, peter, matthes, pikeur but not the side-quest givers `gaertner` and `diener`: their spawns validate as "generic ghost" warnings (k1_0 ×2, k2_0 ×1), and `src/systems/npc/roster.ts` has no look for them yet. Needs: add both to the roster/validator set (src owner).
 - ~~**Q-15**~~ (resolved at integration: settle on accept / objective) (contentA) QuestBook counts a clue only when its objective is open; clues found earlier settle only on restore. The prolog/k1/k2 stories work around it with `settle.<quest>.<obj>` reactions. Nicer: settle known clues on accept in QuestBook.
 - ~~**Q-16**~~ (resolved: `k4_15` fills every open reading with „offen“ when any stance flag is missing, so an unset `flag.k2_lichter` is covered) (contentA) Kapitel 4 still reads `flag.k2_lichter` as before; it is now set by the stance of `q.k2.lichter` (a side quest), so it may be unset — K4 needs an `offen` fallback.
+- **Playtest round 1 (2026-11-16), fixed:** kill objectives count only at their place and era; chapter
+  tiers for quest spawns, steeper tier HP, cleave falloff, bosses never skip a phase, bodies push the
+  player out; a first small fight at the dam in the prologue; the K2 lantern refills on each trip and
+  burns only in the past (Laub warns at half / low), a caught player wakes at the anchor and is told
+  to press Q; outside K2 the lantern is full on every trip into the past; K4 Steinfresser after the
+  carts echo, the 1796 breach opened, Steinfraß explained, 330 s; one centre card at a time, the
+  dialogue card a subtitle strip in fights; stances as two or three spoken replies; missed side quests
+  say why; Sie/du and wording fixes; the Hanne greeting before "Angewiesen"; no staff before the
+  Messstab.
+- **Playtest round 1, left open (by design or for a later pass):** Mahnbrief waves and Streuner flank
+  AI (the balance test covers numbers, not tactics); enemy HP bars ignore depth; boss intros / visual
+  wind-ups beyond the telegraph ring; fireworks echo timing; Westblick carts; title screen save
+  summary; camera clipping into walls at tight corners; pickup pole and crate meshes; stacked sound
+  indicators; a number on the Lampenöl gauge; Laub offering side quests by voice; the K2 route gap
+  between the Wachhaus and the Orangerie; Festsaal fire decals; Matthes' counter; a quest offer card
+  preview of rewards.
