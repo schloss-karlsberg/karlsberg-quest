@@ -95,11 +95,11 @@ export class ObjectiveView {
     const dup = !!opts.questLed && !!o && !/\bQ\b/.test(o.text);
     this.el.classList.toggle('kqs-dup', dup);
     let target: number | null = null;
-    if (dup) this.hud.setMarker('objective', null);
-    else if (o && o.x !== undefined && o.z !== undefined) {
+    if (o && o.x !== undefined && o.z !== undefined) {
+      // the Bussole keeps pointing even when the line steps back; only the compass-strip mark goes
       const b = bearingDeg(px, pz, o.x, o.z);
       const d = Math.hypot(o.x - px, o.z - pz);
-      this.hud.setMarker('objective', b, '#e9c46a');
+      this.hud.setMarker('objective', dup ? null : b, '#e9c46a');
       this.distEl.textContent = d < 8 ? '' : ` · ${d < 1000 ? `${Math.round(d / 5) * 5} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`}`;
       target = angleDiff(b, heading);
     } else this.distEl.textContent = '';
