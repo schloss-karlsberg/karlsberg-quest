@@ -933,7 +933,10 @@ Rules that came out of it:
 - Tests: `tests/quests-content-b.test.ts` (structure, stances vs. epilogue, no fights in the Festsaal /
   finale, a headless run of every quest and the XP curve), `e2e/chapter-k3.spec.ts`,
   `e2e/chapter-k4.spec.ts`, `e2e/campaign.spec.ts` (`CAMPAIGN_FROM=k3` works without a kept save);
-  screens `cnb-k3-*.png`, `cnb-k4-*.png`.
+  screens `cnb-k3-*.png`, `cnb-k4-*.png`. `K3_FROM=strohmann` (development only) lets the K3 spec skip
+  the afternoon; its two afternoon side quests are then not checked.
+- The e2e helpers click a reward card away (`clearCards`) instead of pressing E: in play E is the
+  player's talk / examine key and would reopen the conversation.
 
 ## 13. Licences
 

@@ -599,7 +599,8 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     await page.evaluate(() => (window as Any).k3h.settle(60));
     expect(await quest(page, 'q.k3.buch')).toBe('done');
     expect((await items(page))['item.k3.seite']).toBe(1);
-    expect(await page.evaluate(() => window.kq!.state().skills)).toMatchObject({ baumeister: 2 });
+    // at least 2 (a campaign started from a fresh save may already have every skill)
+    expect((await page.evaluate(() => window.kq!.state().skills)).baumeister ?? 0).toBeGreaterThanOrEqual(2);
     expect(await flags(page)).toMatchObject({ 'flag.k3_teil_b': true });
     const xpBuch = (await events('quest:completed')).find((p: Any) => p.id === 'q.k3.buch');
     expect(xpBuch).toMatchObject({ xp: 400, main: true });
@@ -687,10 +688,10 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     k.step(20);
     const g = k.combat.enemies().filter((e: Any) => e.kind === 'glutling');
     k.combat.freeze(true);
-    // on the first steps of the stair, in front of the player
-    g.forEach((e: Any, i: number) => k.combat.place(e.id, 1259.5 + (i % 2) * 2.2, -1130.5 - Math.floor(i / 2) * 1.6, true));
+    // at the foot of the stair, on the vestibule floor in front of the player
+    g.forEach((e: Any, i: number) => k.combat.place(e.id, 1257.2 + i * 1.3, -1129 - (i % 2) * 0.8, true));
     k.step(2);
-    (window as Any).k3h.look(1260.6, -1131.5, -4);
+    (window as Any).k3h.look(1259, -1129.4, -10);
   });
   expect(await page.evaluate(() => (window.kq as Any).combat.enemies().filter((e: Any) => e.kind === 'glutling').length)).toBe(4);
   await shot(page, 'glutlinge-treppe');
@@ -829,7 +830,9 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.evaluate(() => (window as Any).k3h.settle(30));
   expect(await quest(page, 'q.k3.hunde')).toBe('done');
   expect((await items(page))['item.stab.bann']).toBe(1);
-  expect(await page.evaluate(() => window.kq!.state().skills)).toMatchObject({ baumeister: 2, roentgen: 1 });
+  const sk = await page.evaluate(() => window.kq!.state().skills);
+  expect(sk.baumeister ?? 0).toBeGreaterThanOrEqual(2);
+  expect(sk.roentgen ?? 0).toBeGreaterThanOrEqual(1);
   expect(await said()).toEqual(expect.arrayContaining(['beat.k3.hunde']));
   s = await story(page);
   expect(s.beat).toBe('k3_8b');
