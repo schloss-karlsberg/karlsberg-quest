@@ -26,6 +26,8 @@ export interface PlayerSense {
   lanternLit: boolean;
   speed: number;
   flying: boolean;
+  /** In the i-frames of a dodge roll (Space): a lunging hound sails past. */
+  dodging?: boolean;
 }
 
 export interface SenseTuning {

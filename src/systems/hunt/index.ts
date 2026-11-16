@@ -33,9 +33,9 @@ import { LanternView } from './lantern';
 import { type LanternState, drain, newLantern, refill, toggle } from './lanternLogic';
 import { type ArrowKind, HuntOverlay } from './overlay';
 import type { PlayerSense } from './perception';
-import { DriveMode, FinaleMode, ParforceMode, makeMode } from './modes';
+import { DriveMode, FinaleMode, KennelMode, ParforceMode, StandMode, makeMode } from './modes';
 import { hashSeed } from './rng';
-import { type Agent, type HornSignal, type PackMode, type PackOptions, PackSim, type PackState, type SimEvent, type SimWorld, type XZ, headingTo } from './sim';
+import { type Agent, type HornSignal, MAX_HOUNDS, type PackMode, type PackOptions, PackSim, type PackState, type SimEvent, type SimWorld, type XZ, headingTo } from './sim';
 import { TrackVisuals } from './trackVisuals';
 import { type PackReading, TrackField, type TrailBreak, ageWord, compassWord } from './tracks';
 import { PackVisuals } from './visuals';
@@ -68,7 +68,7 @@ declare module '../../core/state' {
 
 declare module '../contracts' {
   interface ThreatConfig {
-    /** pack only: number of hounds 3–6 (default 3 + 2·intensity, +1 in Rauhnacht). */
+    /** pack only: number of hounds 3–10 (default 3 + 2·intensity, +1 in Rauhnacht). */
     hounds?: number;
     /** pack only: the Pikeur rides along (default: intensity ≥ 0.6 or Rauhnacht). */
     pikeur?: boolean;
@@ -86,8 +86,12 @@ declare module '../contracts' {
      *  'parforce' Ch. 2 long chase from `from` with `headStart` s, paced (surges, breathers, the
      *             Pikeur riding in from a flank); ends at `target` / water ('hunt:goal').
      *  'follow'   Ending C: the hounds walk in the player's footsteps at a distance, harmless.
+     *  'stand'    K1 finale: the pack holds the player at `target` (arc on the `from` side,
+     *             blockers across the way out); breaking out draws lunges, running off = caught.
+     *  'kennel'   K3: the pack paces the kennel yard (`target`, `radius`); cue `hunt:release`
+     *             opens the gates and they run out along `via` into the night.
      */
-    mode?: 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow';
+    mode?: 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow' | 'stand' | 'kennel';
     /** pack drive/parforce/finale: the goal (drive, parforce) or circle centre (finale). */
     target?: { x: number; z: number };
     /** pack drive: waypoints on the way to the target. */
@@ -109,6 +113,14 @@ declare module '../contracts' {
     keepPace?: boolean;
     /** pack: snow tracks on/off (default: on in 1793-02 or a snowy look). */
     snow?: boolean;
+    /** pack parforce: hounds that run ahead on the flanks and cut off the way (lunging from the side). */
+    flankers?: number;
+    /** pack parforce / stand: telegraphed lunges (dodge with Space); bites cost ground, `maxBites` = caught. */
+    lunges?: boolean;
+    /** pack parforce: the Pikeur stays this far off on his flank (seen, never riding in). */
+    pikeurFar?: number;
+    /** pack: bites before the pack has you (default 3, gentle 5). */
+    maxBites?: number;
   }
 }
 
@@ -120,8 +132,10 @@ declare module '../../core/events' {
     'hunt:end': { reason: HuntEndReason };
     /** Snow: the pack picked up / lost the player's trail (why: what broke it). */
     'hunt:tracking': { on: boolean; x: number; z: number; why?: 'water' | 'stone' | 'road' | 'rock' };
-    /** drive: the player arrived at the target; parforce: escaped (water / target). */
-    'hunt:goal': { mode: 'drive' | 'parforce'; x: number; z: number };
+    /** drive: the player arrived at the target; parforce: escaped (water / target); kennel: the pack ran out and is gone. */
+    'hunt:goal': { mode: 'drive' | 'parforce' | 'kennel'; x: number; z: number };
+    /** A lunge landed (n of max; max = caught). */
+    'hunt:bite': { n: number; max: number };
     /** parforce pacing: a breather starts / ends. */
     'hunt:rest': { on: boolean };
     /** Spurenleser: the player read the pack's prints. */
@@ -164,6 +178,10 @@ export interface HuntStartOptions {
   keepPace?: boolean;
   /** Snow tracks (default: by era / look). */
   snow?: boolean;
+  flankers?: number;
+  lunges?: boolean;
+  pikeurFar?: number;
+  maxBites?: number;
 }
 
 export interface HuntHooks {
@@ -195,7 +213,9 @@ export interface HuntHooks {
   /** Spurenleser: what the pack's prints at the player tell (null = none). */
   readTracks(): (PackReading & { text: string }) | null;
   /** Finale / drive / parforce controller state. */
-  mode(): { mode: PackMode; phase?: string; calm?: number; pressure?: number; rests?: number; rideIns?: number } | null;
+  mode(): { mode: PackMode; phase?: string; calm?: number; pressure?: number; rests?: number; rideIns?: number; bites?: number; lunges?: number } | null;
+  /** The staged picture of the endings (cue 'hunt:tableau'): kind and per-hound lie/gone. */
+  tableau(): { kind: string; t: number; lie: number[]; gone: number[] } | null;
   /** The saved pack configuration (slice). */
   saved(): SavedPack | null;
 }
@@ -215,7 +235,7 @@ declare module '../../debug/hooks' {
   }
 }
 
-const NUM_DE = ['null', 'einem', 'zwei', 'drei', 'vier', 'fünf', 'sechs'];
+const NUM_DE = ['null', 'einem', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn'];
 
 /** Seconds from caught to 'player:caught' (the sequence itself). */
 const CAUGHT_EMIT = 2.0;
@@ -266,6 +286,16 @@ class Hunt {
   /** Story cue 'hunt:hold': freeze the pack for `seconds` (waits ≤ 2 s while a hound is close). */
   private holdReq: { seconds: number; waited: number } | null = null;
   private holdLeft = 0;
+  /** Seconds left of a dodge roll's i-frames (Space; combat performs the roll). */
+  private dodgeT = 0;
+  /** Seconds left of the camera kick after a bite. */
+  private biteT = 0;
+  private biteDir = { x: 0, z: 0 };
+  private lungeTaught = false;
+  /** Seconds after the kennel pack ran out (the pack ends a little later). */
+  private releasedT = -1;
+  /** A staged picture without a simulation (story cue 'hunt:tableau', the endings). */
+  private tableau: { kind: 'lie' | 'eyes'; agents: Agent[]; t: number; horn: boolean } | null = null;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new HuntAudio(ctx.audio);
@@ -306,6 +336,13 @@ class Hunt {
     // story set pieces (ch. 2): the Warner's trail in the hoarfrost; the pack holds still during W4
     ev.on('story:cue', ({ id, data }) => {
       if (id === 'hunt:trail') this.layTrail(data ?? {});
+      else if (id === 'hunt:release') {
+        const c = this.sim?.ctl;
+        if (c instanceof KennelMode) {
+          c.release();
+          this.caption('kennel', ctx.t('hunt.kennel.open'), 6, 4200);
+        }
+      } else if (id === 'hunt:tableau') this.setTableau(data ?? {});
       else if (id === 'hunt:hold') {
         const s = data?.['seconds'];
         this.holdReq = { seconds: typeof s === 'number' && s > 0 ? s : 8, waited: 0 };
@@ -518,8 +555,12 @@ class Hunt {
     if (c.burst !== undefined) o.burst = c.burst;
     if (c.keepPace !== undefined) o.keepPace = c.keepPace;
     if (c.snow !== undefined) o.snow = c.snow;
+    if (c.flankers !== undefined) o.flankers = c.flankers;
+    if (c.lunges !== undefined) o.lunges = c.lunges;
+    if (c.pikeurFar !== undefined) o.pikeurFar = c.pikeurFar;
+    if (c.maxBites !== undefined) o.maxBites = c.maxBites;
     const s = this.sim;
-    const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && c.hounds === undefined && c.pikeur === undefined;
+    const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && (c.hounds === undefined || Math.round(c.hounds) === s.hounds.length) && (c.pikeur === undefined || c.pikeur === !!s.pikeur);
     if (s && sameArea) {
       const mode = c.mode ?? s.mode;
       const sameTarget = !c.target || (s.opt.target && Math.hypot(c.target.x - s.opt.target.x, c.target.z - s.opt.target.z) < 1);
@@ -529,7 +570,12 @@ class Hunt {
         return;
       }
       // same pack, new behaviour (drive → finale at the kennel): they stay where they are
-      s.switchMode({ mode, target: o.target ?? s.opt.target ?? null, via: o.via ?? [], from: o.from ?? null, headStart: o.headStart, goalRadius: o.goalRadius, oneKey: this.oneKey(), intensity: c.intensity ?? s.opt.intensity }, makeMode);
+      const extra: Partial<PackOptions> = {};
+      if (o.flankers !== undefined) extra.flankers = o.flankers;
+      if (o.lunges !== undefined) extra.lunges = o.lunges;
+      if (o.pikeurFar !== undefined) extra.pikeurFar = o.pikeurFar;
+      if (o.maxBites !== undefined) extra.maxBites = o.maxBites;
+      s.switchMode({ mode, target: o.target ?? s.opt.target ?? null, via: o.via ?? [], from: o.from ?? null, headStart: o.headStart, goalRadius: o.goalRadius, oneKey: this.oneKey(), intensity: c.intensity ?? s.opt.intensity, ...extra }, makeMode);
       const saved = this.slice().pack;
       if (saved) saved.opts = { ...saved.opts, ...o, mode };
       this.escapedT = -1;
@@ -558,7 +604,7 @@ class Hunt {
     const z = o.z ?? p.z;
     const radius = Math.max(30, o.radius ?? 160);
     const special = o.mode === 'drive' || o.mode === 'finale';
-    const hounds = Math.max(3, Math.min(6, Math.round(o.hounds ?? (special ? 5 : 3 + intensity * 2 + (mode.rauhnacht ? 1 : 0)))));
+    const hounds = Math.max(3, Math.min(MAX_HOUNDS, Math.round(o.hounds ?? (special ? 5 : 3 + intensity * 2 + (mode.rauhnacht ? 1 : 0)))));
     const pikeur = o.pikeur ?? (special || o.mode === 'parforce' || intensity >= 0.6 || mode.rauhnacht);
     const sense = this.senseDefaults(mode.rauhnacht);
     const opts: PackOptions = {
@@ -583,6 +629,10 @@ class Hunt {
       burst: o.burst,
       keepPace: o.keepPace,
       oneKey: this.oneKey(),
+      flankers: o.flankers,
+      lunges: o.lunges,
+      pikeurFar: o.pikeurFar,
+      maxBites: o.maxBites,
     };
     this.snowOverride = o.snow ?? null;
     const snow = this.snowAmount() >= 0.3;
@@ -598,6 +648,8 @@ class Hunt {
     this.returnTo = null;
     this.holdReq = null;
     this.holdLeft = 0;
+    this.releasedT = -1;
+    this.tableau = null;
     this.clearFinalePrompt();
     // remembered for a reload (JSON only)
     this.slice().pack = { era: ctx.era.current, opts: JSON.parse(JSON.stringify({ ...o, x, z, radius, intensity, hounds, pikeur })) as HuntStartOptions };
@@ -749,6 +801,7 @@ class Hunt {
       lanternLit: pl.stats.lanternLit,
       speed: pl.stats.speed,
       flying: pl.flying,
+      dodging: this.dodgeT > 0 && pl.pushed,
     };
   }
 
@@ -761,6 +814,10 @@ class Hunt {
     // wait (playtest round 2: reading a transcript cost a fifth of the prologue's oil)
     const held = this.ctx.ui.modals.count > 0 && this.caughtT < 0;
     if (!held) this.updateLantern(dt);
+    // the dodge roll (combat rolls the player; its i-frames are what a lunge must beat)
+    this.dodgeT = Math.max(0, this.dodgeT - dt);
+    if (this.ctx.input.wasPressed('dodge')) this.dodgeT = 0.36;
+    this.biteT = Math.max(0, this.biteT - dt);
     const sim = this.sim;
     if (!sim || !sim.tracks) this.tracks.tick(dt); // else the simulation advances the clock
     // no pack, no chase: a hunt that ended mid-alert must not keep the HUD busy forever
@@ -824,6 +881,13 @@ class Hunt {
     if (this.escapedT >= 0) {
       this.escapedT += dt;
       if (this.escapedT > 6) this.stop('escaped');
+    }
+    if (this.releasedT >= 0) {
+      this.releasedT += dt;
+      if (this.releasedT > 1.5) {
+        this.releasedT = -1;
+        this.stop('escaped', true);
+      }
     }
   }
 
@@ -945,12 +1009,57 @@ class Hunt {
         break;
       }
       case 'goal': {
+        if (sim.mode === 'kennel') {
+          ctx.events.emit('hunt:goal', { mode: 'kennel', x: e.x, z: e.z });
+          this.caption('kennel-gone', ctx.t('hunt.kennel.gone'), 6, 3600);
+          this.releasedT = 0;
+          break;
+        }
         const mode = sim.mode === 'parforce' ? 'parforce' : 'drive';
         ctx.events.emit('hunt:goal', { mode, x: e.x, z: e.z });
         if (mode === 'parforce') {
           this.escapedT = 0;
           this.caption('goal', ctx.t('hunt.goal.bank'), 6, 4000);
         }
+        break;
+      }
+      case 'lunge': {
+        const a = sim.agents[e.idx];
+        if (!a) break;
+        if (e.phase === 'dodged') {
+          this.caption('dodged', ctx.t('hunt.lunge.dodged'), 2, 1800);
+          break;
+        }
+        // the telegraph: growl (the sim's bay), crouch and flaring eyes (visuals), caption, arrow
+        const first = !this.lungeTaught;
+        this.lungeTaught = true;
+        this.caption(first ? 'lunge-first' : 'lunge', ctx.t(first ? 'hunt.lunge.first' : 'hunt.lunge'), first ? 0 : 3, first ? 3600 : 1400);
+        this.arrow('hound', a.x, a.z, ctx.t('hunt.arrow.hound'), 1.2, true);
+        break;
+      }
+      case 'bite': {
+        const pl = ctx.player;
+        // teeth in the coat: you are pulled off your line (a bite from behind drags you sideways,
+        // never forwards — it must cost ground, not give it)
+        let bx = e.dx;
+        let bz = e.dz;
+        const v = sim.pv;
+        const vl = Math.hypot(v.x, v.z);
+        if (vl > 1 && (bx * v.x + bz * v.z) / vl > 0.2) {
+          const s = (bx * -v.z + bz * v.x) / vl >= 0 ? 1 : -1;
+          bx = (-v.z / vl) * s * 0.8 - (v.x / vl) * 0.6;
+          bz = (v.x / vl) * s * 0.8 - (v.z / vl) * 0.6;
+        }
+        pl.impulse(bx * 5, bz * 5, 0.3);
+        this.biteT = 0.32;
+        this.biteDir = { x: bx, z: bz };
+        const a = sim.agents[e.idx];
+        if (a) this.audio.bay('bark', this.pos3(a.x, a.z, 0.7), 1.25);
+        this.audio.heartbeat(0.55);
+        this.overlay.beat();
+        const left = e.max - e.n;
+        if (left > 0) this.caption('bite', left === 1 ? ctx.t('hunt.bite.last') : ctx.t('hunt.bite', { left: NUM_DE[left] ?? String(left) }), 0, 2600);
+        ctx.events.emit('hunt:bite', { n: e.n, max: e.max });
         break;
       }
       case 'rest':
@@ -1120,6 +1229,100 @@ class Hunt {
     ctx.post.uniforms.uDesaturate!.value = Math.max(this.prevDesat, Math.min(0.7, t * 0.6) * (t < 3.6 ? 1 : Math.max(0, 1 - (t - 3.6))));
   }
 
+  // ---- tableau (the endings) ----------------------------------------------------------------
+
+  /**
+   * Story cue 'hunt:tableau' {kind, n?, x?, z?, r?, face?}: a staged picture of the pack without a
+   * simulation (it runs on rendered frames, also behind a paused game):
+   *  'lie'   n hounds in an arc around x/z (r m) facing it; the horn sounds "Sammeln", then they
+   *          lie down one by one and their eyes go out (museum ending, the W8 echo);
+   *  'eyes'  n hounds in the dark around x/z, facing it; one pair of eyes opens after another
+   *          (keep ending);
+   *  'off'   they dissolve.
+   */
+  private setTableau(d: Record<string, unknown>): void {
+    const kind = d['kind'];
+    if (kind === 'off') {
+      if (this.tableau) this.fading = { agents: this.tableau.agents, state: 'calm', t: 0 };
+      this.tableau = null;
+      return;
+    }
+    if (kind !== 'lie' && kind !== 'eyes') return;
+    if (this.sim) this.stop('debug', true);
+    const num = (k: string, def: number) => (typeof d[k] === 'number' ? (d[k] as number) : def);
+    const p = this.ctx.player.position;
+    const cx = num('x', p.x);
+    const cz = num('z', p.z);
+    const n = Math.max(1, Math.min(MAX_HOUNDS, Math.round(num('n', 5))));
+    const r = num('r', kind === 'lie' ? 9 : 14);
+    // the arc opens towards `face` (degrees, 0 = north; default: the way the player looks)
+    const faceDeg = num('face', (-this.ctx.player.yaw * 180) / Math.PI);
+    const fwd = (faceDeg * Math.PI) / 180;
+    const fx = Math.sin(fwd);
+    const fz = -Math.cos(fwd);
+    const base = Math.atan2(fz, fx);
+    const spread = kind === 'lie' ? 2.2 : 2.9;
+    const agents: Agent[] = [];
+    for (let i = 0; i < n; i++) {
+      const th = base + (n === 1 ? 0 : i / (n - 1) - 0.5) * spread;
+      const rr = r * (kind === 'eyes' ? 0.8 + 0.45 * ((i * 0.618) % 1) : 1);
+      const x = cx + Math.cos(th) * rr;
+      const z = cz + Math.sin(th) * rr;
+      const y = this.ctx.world.heightAt(x, z);
+      agents.push({
+        kind: 'hound', idx: i, name: `t${i}`, x, y, z, heading: headingTo(cx - x, cz - z), speed: 0, dist: i * 0.7, awareness: 1, sees: 0, closeSee: 0,
+        target: null, path: [], pathI: 0, wait: 0, sniffing: false, off: { r: 0, f: 0 }, node: -1, stuck: 0, wallT: 0, scentI: -1,
+        lie: 0, dim: 0, gone: kind === 'eyes' ? 1 : 0, printAcc: 0, printSide: 1,
+      });
+    }
+    this.fading = null;
+    this.visuals.clear();
+    this.tableau = { kind, agents, t: 0, horn: false };
+  }
+
+  private frameTableau(dt: number): void {
+    const T = this.tableau!;
+    const ctx = this.ctx;
+    T.t += Math.min(dt, 0.1);
+    const t = T.t;
+    const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+    T.agents.forEach((a, k) => {
+      if (T.kind === 'lie') {
+        a.lie = clamp01((t - 1.6 - k * 0.85) / 1.3);
+        a.dim = clamp01((t - 2.9 - k * 0.85) / 1.5);
+      } else {
+        // one pair of eyes after another; they never come closer
+        a.gone = 1 - clamp01((t - 0.6 - k * 0.55) / 0.9);
+        a.sniffing = Math.sin(t * 0.8 + k * 2) > 0.85;
+      }
+    });
+    if (!T.horn && t > 0.4) {
+      T.horn = true;
+      const a = T.agents[Math.floor(T.agents.length / 2)]!;
+      if (T.kind === 'lie') {
+        this.audio.horn('call-off', this.pos3(a.x, a.z, 2.6));
+        this.caption('tab-horn', ctx.t('hunt.horn.call-off'), 1, 3600);
+      } else this.audio.bay('growl', this.pos3(a.x, a.z, 0.6), 0.9);
+    }
+    this.visuals.update({
+      agents: T.agents,
+      state: T.kind === 'eyes' ? 'searching' : 'calm',
+      dissolve: -1,
+      time: ctx.loop.time + t,
+      dt,
+      camera: ctx.camera,
+      viewportH: window.innerHeight,
+      hornGlow: 0,
+      caught: null,
+      mist: T.kind === 'eyes' ? 0.8 : 0.5,
+      reducedMotion: ctx.settings.state.reducedMotion,
+      reducedFlash: ctx.settings.state.reducedFlash,
+      heightAt: (x: number, z: number) => ctx.world.heightAt(x, z),
+      snap: false,
+      settle: T.kind === 'lie' ? clamp01(t / 8) : 0,
+    });
+  }
+
   // ---- frame (visuals only) -----------------------------------------------------------------
 
   frame(dt: number): void {
@@ -1152,8 +1355,16 @@ class Hunt {
         this.visuals.prewarm(input);
       }
       this.visuals.update(input);
-    } else this.visuals.object.visible = false;
+    } else if (this.tableau) this.frameTableau(dt);
+    else this.visuals.object.visible = false;
     if (this.caughtT >= 0) this.caughtFrame(dt);
+    // a bite: the view jolts towards the pull (no shake in reduced motion)
+    if (this.biteT > 0 && !reducedMotion) {
+      const k = (this.biteT / 0.32) ** 2 * 0.06;
+      ctx.camera.position.x += this.biteDir.x * k + Math.sin(this.biteT * 70) * k * 0.3;
+      ctx.camera.position.y -= k * 0.8;
+      ctx.camera.position.z += this.biteDir.z * k;
+    }
     // prints in the snow
     const hf = ctx.world.heightfield;
     this.trackVis.frame({
@@ -1285,11 +1496,17 @@ class Hunt {
         const c = s.ctl;
         if (c instanceof FinaleMode) return { mode: s.mode, phase: c.phase, calm: c.calm };
         if (c instanceof DriveMode) return { mode: s.mode, pressure: c.pressure };
-        if (c instanceof ParforceMode) return { mode: s.mode, phase: c.phase, rests: c.stats.rests, rideIns: c.stats.rideIns };
+        if (c instanceof ParforceMode) return { mode: s.mode, phase: c.phase, rests: c.stats.rests, rideIns: c.stats.rideIns, bites: s.bites, lunges: s.lungeStats.started };
+        if (c instanceof StandMode) return { mode: s.mode, phase: c.engaged ? 'engaged' : 'waiting', bites: s.bites, lunges: s.lungeStats.started };
+        if (c instanceof KennelMode) return { mode: s.mode, phase: c.phase };
         return { mode: s.mode };
       },
       saved() {
         return self.slice().pack;
+      },
+      tableau() {
+        const T = self.tableau;
+        return T ? { kind: T.kind, t: T.t, lie: T.agents.map((a) => a.lie), gone: T.agents.map((a) => a.gone) } : null;
       },
     };
     window.kq.lantern = {

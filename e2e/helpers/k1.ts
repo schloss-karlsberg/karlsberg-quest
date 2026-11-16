@@ -584,12 +584,32 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   await upd(page, 20);
   expect(await beat(page)).toBe('k1_14');
   expect(await page.evaluate(() => window.kq!.hunt!.state()?.mode)).toBe('parforce');
+  // the par force hunt: eight hounds, the rider far up the slope, flankers that spring — down the
+  // cascade to the narrows, where the pack stands you; two waves of strays; then the dash to the water
   w = await walk(page, [
-    [1818, 330],
-    [1818, 260],
-    [1814, 214],
-    [1812, 203],
+    [1816, 330],
+    [1812, 300],
+    [1810, 276],
   ], { sprint: true, until: 'k1_14' });
+  expect(w.beat).toBe('k1_14b');
+  expect(await page.evaluate(() => window.kq!.hunt!.state()?.agents.filter((a) => a.kind === 'hound').length)).toBeGreaterThanOrEqual(8);
+  await upd(page, 120);
+  expect(await page.evaluate(() => window.kq!.hunt!.mode())).toMatchObject({ mode: 'stand', phase: 'engaged' });
+  await page.evaluate(() => {
+    (window as unknown as W).__k1.face(1812, 300);
+    window.kq!.step(4);
+  });
+  await shot(page, '02a-enge');
+  await fight(page, 'k1.enge', { hits: 4 });
+  await upd(page, 150);
+  await fight(page, 'k1.enge.2', { hits: 4 });
+  await upd(page, 20);
+  expect(await beat(page)).toBe('k1_14c');
+  expect(await page.evaluate(() => window.kq!.hunt!.state()?.mode)).toBe('parforce');
+  w = await walk(page, [
+    [1812, 240],
+    [1812, 203],
+  ], { sprint: true, until: 'k1_14c' });
   expect(w.beat).toBe('k1_15');
   expect(await qn(page, 'q.k1.karlslust', 'flucht')).toBe(1);
   await shot(page, '02-tosbecken');

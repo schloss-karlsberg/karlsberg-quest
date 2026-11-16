@@ -140,9 +140,9 @@ describe('hunt: pack simulation', () => {
     expect(c.snapshot()).not.toEqual(a.snapshot());
   });
 
-  it('spawns 3–6 hounds (+ Pikeur) away from the player and patrols inside the area', () => {
-    const sim = new PackSim(world, graph, opts({ hounds: 9, pikeur: true }), { x: 0, z: 0 });
-    expect(sim.hounds.length).toBe(6);
+  it('spawns up to 10 hounds (+ Pikeur) away from the player and patrols inside the area', () => {
+    const sim = new PackSim(world, graph, opts({ hounds: 12, pikeur: true }), { x: 0, z: 0 });
+    expect(sim.hounds.length).toBe(10);
     expect(sim.pikeur).not.toBeNull();
     expect(Math.hypot(sim.leader.x, sim.leader.z)).toBeGreaterThan(40);
     const start = sim.agents.map((a) => [a.x, a.z]);
