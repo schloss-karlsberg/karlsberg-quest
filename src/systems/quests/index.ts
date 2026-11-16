@@ -217,13 +217,16 @@ class QuestRuntime {
     this.changed('restore');
   }
 
-  private changed(_why: string): void {
+  private changed(why: string): void {
     this.dirty = true;
     // conversations read their topics at once (accept → progress topic in the same menu)
     this.syncNpcs();
     this.interest = this.computeInterest();
     this.syncFollow();
-    this.ctx.save.autosave('quest');
+    // a restore (boot, save:loaded) changes nothing worth saving — and at boot it would write an
+    // empty save before the title, which then offers "Fortsetzen" on a fresh start
+    // taking, finishing, failing a quest and answering a stance are milestones: forced saves
+    if (why !== 'restore') this.ctx.save.autosave(`quest-${why}`, why === 'accept' || why === 'complete' || why === 'fail' || why === 'stance');
   }
 
   private computeInterest(): Set<string> {
