@@ -228,6 +228,12 @@
   }
 }
 
+/* a chapter title card (story) takes the stage: the reward card steps aside until it is gone,
+   like the level and skill cards do */
+body:has(.kqs-card.kqs-show) .kqq-reward {
+  opacity: 0;
+  pointer-events: none;
+}
 .kqq-reward {
   position: absolute;
   /* centred, but right of the top-left column (tracker) as far as the feed dock allows (the

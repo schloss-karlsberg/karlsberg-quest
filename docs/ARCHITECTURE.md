@@ -923,7 +923,8 @@ Rules that came out of it:
   bottom and `.kq-tl-clipped` fades the last 34 px, so a long tracker never runs into the Lebenskraft
   bars. The level card is pushed right of the column as far as the feed allows
   (`left: max(50%, min(column + 253px, 100vw − feed − 251px))`), and drops below a boss bar
-  (`body:has(.kq-dock-boss:not(:empty))`). The feed fades while a conversation page is open.
+  (`body:has(.kq-dock-boss:not(:empty))`). The quest reward card uses the same horizontal rule and steps
+  aside while a chapter title card shows. The feed fades while a conversation page is open.
 - **Journal**: the quests system's Journal modal (`data-testid=journal`) renders progression's tabs 40 / 50;
   I (`inventory`) opens it on Ausrüstung. Progression keeps a small "Feldbuch" fallback
   (`data-testid=journal-fallback`) that only opens if no modal and no Journal appeared within three
