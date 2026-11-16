@@ -1639,6 +1639,41 @@
       "once": true
     },
     {
+      "id": "laub.k2.damm",
+      "speaker": "laub",
+      "text_de": "Er ist vor Ihnen da. Natürlich. Der Pikeur kennt den Weg zum Wasser besser als Sie.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-pikeur",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.damm.b",
+      "speaker": "laub",
+      "text_de": "Bannlicht ins Gesicht, das er nicht zeigt. Dann der Stab. Und bleiben Sie auf dem Damm: Das Wasser ist auf Ihrer Seite.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-pikeur",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k2.damm.weg",
+      "speaker": "laub",
+      "text_de": "Er reitet. Nicht weg, nur fort. Merken Sie sich den Unterschied, er wird ihn auch nicht vergessen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.10-weg"
+      },
+      "once": true
+    },
+    {
       "id": "laub.k2.wasser",
       "speaker": "laub",
       "text_de": "Fließendes Wasser. Darüber kommt er nicht. Das steht in jeder Sage und in keinem Dienstreglement. Heute gilt die Sage.",
@@ -1886,50 +1921,6 @@
         "chapter": "k2",
         "topic": "bye"
       }
-    },
-    {
-      "id": "laub.k2.fehlt.warnung",
-      "speaker": "laub",
-      "text_de": "Was der Herzog über den Bauern gesagt hat, fehlt Ihnen noch. Das hört man nur an der Tür des Kabinetts. Anker B bringt Sie in den Ehrenhof.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k2",
-        "beat": "2.11-fehlt-warnung"
-      },
-      "once": true
-    },
-    {
-      "id": "laub.k2.fehlt.abschied",
-      "speaker": "laub",
-      "text_de": "Was er Mannlich anvertraut hat, wissen Sie noch nicht. Hören Sie im Kabinett ein zweites Mal hin.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k2",
-        "beat": "2.11-fehlt-abschied"
-      },
-      "once": true
-    },
-    {
-      "id": "laub.k2.fehlt.kalkoefen",
-      "speaker": "laub",
-      "text_de": "Die Antwort des Handwerkers fehlt. Am Orangerie-Parterre hängt sie noch in der Luft, im Februar 1793. Ohne Hunde diesmal.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k2",
-        "beat": "2.11-fehlt-kalkoefen"
-      },
-      "once": true
-    },
-    {
-      "id": "laub.k2.fehlt.datum",
-      "speaker": "laub",
-      "text_de": "Das Datum steht im Wachbuch, am Wachhaus vor dem Gitter. Der Regierungsrat schreibt ordentlich.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k2",
-        "beat": "2.11-fehlt-datum"
-      },
-      "once": true
     }
   ],
   "hints": [

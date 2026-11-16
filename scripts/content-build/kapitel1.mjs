@@ -1,4 +1,5 @@
-import { clue, noun, say, seq, hints, src, write, Z, P } from './common.mjs';
+import { writeFileSync } from 'node:fs';
+import { clue, noun, say, seq, hints, src, write, Z, P, ROOT } from './common.mjs';
 
 const ch = 'k1';
 const E = '1789';
@@ -276,7 +277,8 @@ const dialogue = [
   say('laub.k1.orangerie', 'laub', 'Hier hat der Baudirektor gewohnt. Über den Orangen. Ein Maler, der Ställe bauen musste. Ich mag ihn. Er hat auch nie bekommen, was ihm zustand.', beat('1.4'), { once: true, src: [src('M1910', 'S. 421: Leibrente ab 1791 nicht gezahlt')] }),
   say('laub.k1.feenschloss', 'laub', 'Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.', found('clue.k1.feenschloss'), { once: true, src: [Z('Einl. S. XXXIV (Knigge)')] }),
   say('laub.k1.gagern', 'laub', 'Ein Herr von Gagern hat es später so aufgeschrieben: ‚tausend Pferde im Marstall, noch mehr Hunde in den Zwingern, das ganze Land ein Thiergarten zum Verderben der Unterthanen!‘ Er war Diplomat. Das ist für einen Diplomaten sehr deutlich.', found('clue.k1.gagern'), { once: true, src: [Z('Einl. S. XXXV (Gagern)')] }),
-  ...seq({ event: 'chronik:batch', caseId: 'case.k1', correct: true }, [
+  // spoken by the story on the way home after the Zwinger (k1_6); the Chronik batches are gone
+  ...seq(beat('1.5-flug'), [
     ['laub.k1.flug', 'laub', 'Die Karlslust liegt eine gute Stunde zu Fuß im Süden. Im Heute fliegen Sie. Taste F. Ich hasse es.'],
     ['marlene.k1.flug', 'marlene', 'Die Karlslust? Das ist da, wo heute der Bärenzwinger ist und die Schwanenweiher. Schöne Ecke. Nimm den Überflug, zu Fuß bist du ewig unterwegs.'],
   ]),
@@ -327,3 +329,294 @@ write('kapitel-1', {
     'Zählen Sie die Häuschen im Rund selbst. Wo die Bären wohnten, sieht man nicht im Rund, sondern weiter oben auf den Terrassen. Und das Jagdrevier steht in einem Zeitschriftenheft von 1782, das der Kanzlist in der Schublade hat. Der Thiergarten ist von Gagern, und der kam später.',
   ]),
 });
+
+// =====================================================================================================
+// Quests (docs/ACTION-RPG.md §11.1) → content/quests/01-kapitel-1.quests.json
+// Day → dusk → night: the court at its height, the unpaid wage (and the Schuldbuch at dusk), the kennel,
+// the Karlslust by night with the quiet memorial at the Rondell. The history is told at the turn-ins.
+// =====================================================================================================
+const ln = (speaker, text, o = {}) => ({ speaker, text, ...(o.fact ? { fact: o.fact } : {}), ...(o.src ? { sources: o.src } : {}) });
+const place = (x, z, r, era = E) => ({ x, z, ...(r ? { r } : {}), era });
+const spawn = (kind, [x, z], count, radius, extra = {}) => ({ kind, x, z, era: E, count, radius, ...extra });
+
+// Terrain-checked spots (probe.mjs / terrain.mjs, 2026-11-16): dry, walkable in 1789, outside the
+// 1789 footprints, inside the playable area. The Schuldbuch arena moved 18 m east of the catalogue
+// value (1276/−1228 lies inside the pavilion KB-B07) onto the open Bauplatz lawn.
+export const K1_SPOTS = {
+  kuechenhof: [1212, -1180], // Küchenhof (TF-02), cobbles, behind the north wing
+  bauplatz: [1294, -1234], // the Bauplatz east of the pavilion KB-B07 (Hanne stands at 1287/−1228)
+  fleisch: [[1212, -1626], [1206, -1630], [1216, -1618], [1208, -1612], [1214, -1634]], // the Jägerhaus yard (east of KB-B24)
+  allee: [1169, -1636], // the Allee north of the Jägerhaus
+  schwanufer: [1852, 248], // the north shore of the Schwanenweiher (the water itself is at 1854/214)
+  gaertner: [1903, 87], // west of the Rund KL-B40 (1940/80 is the moat)
+  kasuar: [1966, 92],
+  festgarten: [1274, -986], // the Orangerie garden south of the Pfeilersaal
+  festplaene: [[1282, -971], [1286, -958], [1272, -988]],
+  marken: { diane: [1169, -1636], sultan: [1227, -1466], fanfare: [1264, -1302], rauhreif: [1298, -1016], bijou: [1268, -950] },
+};
+const KS = K1_SPOTS;
+const DOG = { diane: 'Diane', sultan: 'Sultan', fanfare: 'Fanfare', rauhreif: 'Rauhreif', bijou: 'Bijou' };
+const DOG_WHERE = { diane: 'an der Allee', sultan: 'auf der Nordterrasse', fanfare: 'bei der Gärtnerei', rauhreif: 'an der Orangeriemauer', bijou: 'im Orangerie-Parterre' };
+const DOG_TEXT = {
+  diane: 'Die führt. Wenn Diane steht, steht die Meute.',
+  sultan: 'Dumm, aber laut. Bellt, bevor er weiß, warum.',
+  fanfare: 'Hat die schönste Stimme. Der Pikeur hört sie über den halben Berg.',
+  rauhreif: 'Die Weiße. Im Schnee sieht man sie nicht, nur ihren Atem.',
+  bijou: 'Der Kleine. Glaubt, er sei ein Hirsch.',
+};
+const PLAN = {
+  jahrmarkt: ['Festplan: Der Jahrmarkt', 'Ein Blatt mit Buden im Kreis im Orangeriehof, „Jahrmarkt in Venedig“. In der Mitte eine Rotunde aus Holz und Leinwand. (Nach dem Blatt in der ULB Darmstadt.)'],
+  karlslust: ['Festplan: Die Karlslust', 'Die Karlslust oberhalb der Großen Kaskade: hinter der Kaskade ein Vulkan, der Hymentempel, das Volk auf Stufen am Hang. Am Rand: „Feuerwerk in drei Abteilungen, durch Zwischenräume getrennt.“'],
+  hofgarten: ['Festplan: Der Hofgarten', 'Der Hofgarten in Zweibrücken, Wege und Lampenreihen. Ein Fleck, wo jemand Kaffee abgestellt hat.'],
+};
+
+const k1Quests = {
+  chapter: 'k1',
+  items: [
+    { id: 'item.k1.lohnzettel', kind: 'quest', fiction: true, name_de: 'Matthes’ Lohnzettel', text_de: '„Matthes, Steinhauer, Galerieflügel. Lohnrest: 1 fl. 30 kr. Angewiesen.“ Darunter kein Stempel „ausgezahlt“. (Fiktion)' },
+    { id: 'item.k1.fleisch', kind: 'quest', fiction: true, name_de: 'Fleisch für den Zwinger', text_de: 'Ein Stück Pansen aus der Hundemetzgerei am Jägerhaus. Die Hunde fressen vor den Steinhauern.' },
+    { id: 'item.k1.zeichen', kind: 'lore', set: 'steinzeichen', fiction: true, name_de: 'Matthes’ Zeichen I: der Abrieb', text_de: 'Ein Abrieb mit Kohle auf Papier vom Quader am Fuß der Galerie: offener Winkel, darunter drei Punkte. Der Stein bleibt, wo er ist. (Erfundenes Steinmetzzeichen)' },
+    { id: 'item.k1.seite', kind: 'lore', set: 'chronikseiten', fiction: true, name_de: 'Chronikseite: Die Namen', text_de: 'Oben in großer, ungelenker Schrift: „Diane. Sultan. Fanfare. Rauhreif. Bijou.“ Darunter in feiner Kanzleischrift: „Hanne, Witwe des Steinhauers Matthes. Lohn: offen.“ (Fiktion)' },
+    ...Object.entries(PLAN).map(([k, [name, text]]) => ({ id: `item.k1.festplan_${k}`, kind: 'lore', set: 'festplaene', name_de: name, text_de: text, fact: 'cx.15' })),
+    ...Object.keys(DOG).map((k) => ({ id: `item.k1.marke_${k}`, kind: 'lore', set: 'hundemarken', fiction: true, name_de: `Hundemarke „${DOG[k]}“`, text_de: `Eine Blechmarke mit eingeschlagenem Namen: ${DOG[k]}. Jost: „${DOG_TEXT[k]}“ (Fiktion: Die Namen der Hunde sind erfunden.)` })),
+  ],
+  quests: [
+    {
+      id: 'q.k1.ankunft', kind: 'main', era: E,
+      title_de: 'Zu Fuß, außer einem',
+      summary_de: 'Sommer 1789. Laub will, dass du den Hof betrittst wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Heute gehen wir hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht.')],
+      turnin_lines: [ln('laub', 'Merken Sie sich die Wache. Die schreibt Sie auf, wenn Sie rennen.')],
+      history: [ln('laub', 'Nur der Herzog durfte zum Schloss hinauffahren. Alle anderen gingen zu Fuß, und Singen war verboten. Ein Zeitgenosse fand die ganze Gegend „wie betäubt“.', { fact: 'cx.11', src: [src('RLS', 'P')] })],
+      objectives: [
+        { id: 'wechsel', type: 'reach', text_de: 'Am Ehrenhof: Q – Sommer 1789', where: place(1222, -1119, 22) },
+        { id: 'wache', type: 'examine', clue: 'clue.k1.wache', text_de: 'Am Gitter: der Wache zuhören' },
+        { id: 'fluegel', type: 'examine', clue: 'clue.k1.fluegel', text_de: 'Die beiden Flügel ansehen' },
+      ],
+      rewards: { xp: 60 },
+    },
+    {
+      id: 'q.k1.registratur', kind: 'main', era: E,
+      title_de: 'Der Kanzlist zählt',
+      summary_de: 'Kanzlist Gottlob Soll zählt in der Registratur, was der Hof hat und was er ausgibt. Er will, dass jemand seine Zahlen liest. Und dann fliegen ihm die Mahnbriefe durchs offene Fenster davon, in Richtung Herzog.',
+      giver: { npc: 'soll' }, turnin: 'giver',
+      topic_de: 'Die Zahlen', accept_de: 'Zeigen Sie mir Ihre Zahlen.',
+      offer: [
+        ln('soll', 'Sie stehen im Licht. Wenn Sie schon hier sind: Ich zähle. Was der Hof hat, was er ausgibt, was er schuldig bleibt. Das Letzte ist das Längste.'),
+        ln('soll', 'Lesen Sie die Tafel, den Kaufbrief und das Heft im Regal. Dann wissen Sie, warum ich Ärmelschoner trage.'),
+      ],
+      progress: [
+        ln('soll', 'Die Briefe! Sie flattern im Küchenhof herum, hinter dem Nordflügel. Wenn einer davon beim Herzog ankommt, bin ich die längste Zeit Kanzlist gewesen.'),
+      ],
+      turnin_lines: [
+        ln('soll', 'Alle sechs? Zerrissen? Gut. Unbezahlt bleiben sie trotzdem. Aber wenigstens liest sie keiner, der sich darüber ärgern könnte.'),
+        ln('soll', 'Nehmen Sie den Pfennig vom Rechenbrett. Ausgezahlt. Im übertragenen Sinn.'),
+      ],
+      history: [
+        ln('soll', 'Bau und Betrieb, alles zusammen: Am Ende werden es fast vierzehn Millionen Gulden sein. Das ganze Herzogtum nimmt im Jahr etwa achthunderttausend ein. Rechnen Sie. Ich habe es getan. Mehrmals.', { fact: 'cx.07', src: [src('ADB'), P('Einl. S. XXXIV (Stollreither)')] }),
+        ln('soll', 'Das Heft ist beschlagnahmt: Schlözers Stats-Anzeigen von 1782. Ein Land, steht da, „ganz und gar gleichsam ein einziges JagdRevier“, mit ganzen Regimentern Jagdhunden. Gemeint sind wir.', { fact: 'cx.05', src: [src('WP-K2A'), src('RLS')] }),
+        ln('soll', 'Und der Kaufbrief: Am 27. Juli 1777 kaufte Serenissimus den Louisenhof auf dem Buchenberg. Aus dem Hofgut wurde das hier. Warum er kaufte, darüber redet man bei Hof. Ich schreibe nur auf, was es kostete.', { fact: 'cx.02', src: [src('WP-SK'), src('EN-KC'), src('HIB')] }),
+      ],
+      objectives: [
+        { id: 'rechenbrett', type: 'examine', clue: 'clue.k1.rechenbrett', text_de: 'Das Rechenbrett lesen' },
+        { id: 'kaufbrief', type: 'examine', clue: 'clue.k1.kaufbrief', text_de: 'Den Kaufbrief lesen' },
+        { id: 'heft', type: 'examine', clue: 'clue.k1.schloezer', text_de: 'Das beschlagnahmte Heft lesen' },
+        {
+          id: 'briefe', type: 'kill', enemy: 'mahnbrief', count: 6, after: ['rechenbrett', 'kaufbrief', 'heft'],
+          text_de: 'Die entflogenen Mahnbriefe im Küchenhof zerreißen',
+          where: place(...KS.kuechenhof, 18),
+          spawn: [spawn('mahnbrief', KS.kuechenhof, 6, 7, { leash: 35 })],
+        },
+      ],
+      rewards: { xp: 130, items: [{ item: 'item.charm.rechenpfennig' }] },
+      next: 'q.k1.lohn',
+    },
+    {
+      id: 'q.k1.lohn', kind: 'main', era: E,
+      title_de: 'Matthes’ Lohn',
+      summary_de: 'Hanne, Witwe des Steinhauers Matthes, wartet seit einer Woche am Bauplatz auf seinen letzten Lohn. „Angewiesen“, sagt der Kanzlist. Bei Einbruch der Dämmerung steht am Bauplatz etwas auf, das aussieht wie ein Hauptbuch.',
+      giver: { npc: 'hanne' }, turnin: 'giver',
+      topic_de: 'Matthes’ Lohn', accept_de: 'Ich frage nach.',
+      offer: [
+        ln('hanne', 'Sie kommen vom Kanzlisten? Dann fragen Sie ihn, wo der Lohn von meinem Matthes ist. Eine Woche steh ich hier. Mir sagt er nichts.'),
+        ln('hanne', 'Und schauen Sie sich den Quader unten an der Galerie an. Da ist sein Zeichen drauf. Damit Sie wissen, dass es ihn gegeben hat.'),
+      ],
+      progress: [ln('hanne', 'Hat er was gesagt? Angewiesen, ja? Das sagt er immer. Angewiesen kann ich nicht essen.')],
+      turnin_lines: [
+        ln('hanne', 'Das ist sein Zettel. Angewiesen. Nicht ausgezahlt. Ein Zettel, sonst nichts.'),
+        ln('hanne', 'Geben Sie mir den Stab. Matthes hätte den Schuh neu beschlagen. Ich kenn den Schmied, der schuldet mir was.'),
+      ],
+      history: [
+        ln('hanne', 'Zwei Tage arbeitet ein Geselle für einen Gulden. Und hier sind sechs, acht, zehn Baustellen zugleich offen, jahrelang. Wer zählt da die Gesellen? Keiner. Wie viele es waren, weiß heute niemand.', { fact: 'cx.08', src: [src('EN-KC'), src('M1910', 'S. 369'), src('SKD')] }),
+        ln('hanne', 'Der Präsident Creuzer, sagen die Leute, hat alle Kassen geleert, sogar die der Witwen und Waisen. Und die einen bezahlt er mit Versprechungen. So steht es später auch beim Baudirektor.', { fact: 'cx.10', src: [P('S. 377, 396 f.'), src('NDB')] }),
+        ln('hanne', 'Die Leute sagen Tränenberg zu dem Berg hier. Ob das so heißt, weiß ich nicht. Geweint wird jedenfalls.', { fact: 'cx.09', src: [src('HIB', 'Hobbyseite, Legende, unbelegt')] }),
+      ],
+      stance: {
+        id: 'k1.lohn', flag: 'flag.k1_lohn',
+        prompt_de: 'Hanne: Warum krieg ich ihn nicht? Was meinen Sie?',
+        options: [
+          { label_de: 'Weil der Herzog nicht zahlen will.', value: 'will_nicht', reply: [ln('hanne', 'Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen. Das sag ich auch.')] },
+          { label_de: 'Weil der Präsident die Kassen geleert hat.', value: 'creuzer', reply: [ln('hanne', 'Dann soll er’s zurückbringen. Er wird’s nicht.')] },
+          { label_de: 'Weil das Geld in Hunde und Bilder geht.', value: 'hunde_bilder', reply: [ln('hanne', 'Die Hunde kriegen Fleisch, die Bilder kriegen Gold drumrum. Und wir kriegen Zettel.')] },
+          { label_de: 'Weil man den Herzog täuscht.', value: 'getaeuscht', reply: [ln('hanne', 'Getäuscht. Kann sein. Bezahlt hat er trotzdem nicht.')] },
+          { label_de: 'Ich weiß es nicht.', value: 'offen', reply: [ln('hanne', 'Ich auch nicht. Aber ich weiß, dass es fehlt.')] },
+        ],
+      },
+      objectives: [
+        { id: 'soll', type: 'talk', npc: 'soll', topic: 'matthes', text_de: 'Den Kanzlisten nach Matthes fragen' },
+        { id: 'zeichen', type: 'examine', clue: 'clue.k1.zeichen', text_de: 'Matthes’ Zeichen am Quader unten an der Galerie' },
+        {
+          id: 'buch', type: 'kill', enemy: 'schuldbuch', count: 1, after: ['soll', 'zeichen'],
+          text_de: 'In der Dämmerung am Bauplatz: das Schuldbuch bezwingen (Bannlicht bricht das Siegel)',
+          where: place(...KS.bauplatz, 30),
+          spawn: [spawn('schuldbuch', KS.bauplatz, 1, 0, { boss: true, leash: 45 })],
+        },
+        { id: 'zettel', type: 'collect', item: 'item.k1.lohnzettel', after: ['buch'], text_de: 'Matthes’ Lohnzettel aus den Seiten aufheben', drop: { enemy: 'schuldbuch', chance: 1 } },
+      ],
+      rewards: { xp: 260, items: [{ item: 'item.stab.eisen' }] },
+    },
+    {
+      id: 'q.k1.zwinger', kind: 'main', era: E,
+      title_de: 'Tausend Hunde',
+      summary_de: 'Hinter dem Marstall bellt es aus einem ummauerten Hof. Der Hundejunge Jost füttert die Meute, und er braucht Hände. Er weiß auch, wie man sich vor Hunden versteckt. In der Dämmerung schleichen sich Streuner die Allee hinauf.',
+      giver: { npc: 'jost' }, turnin: 'giver',
+      topic_de: 'Die Meute', accept_de: 'Ich trag mit.',
+      offer: [
+        ln('jost', 'Du willst zum Zwinger? Dann trag was. Fleisch liegt drüben am Jägerhaus, fünf Stück. Die Hunde fressen vor uns.'),
+        ln('jost', 'Und frag mich, wie man sich versteckt. Das brauchst du heut Nacht. Glaub mir.'),
+      ],
+      progress: [ln('jost', 'Das Fleisch, zum Zwinger. Und dann hör hin. Drei sind draußen, die gehören nicht dazu.')],
+      turnin_lines: [
+        ln('jost', 'Alle drei liegen? Dann hat’s keiner gehört. Gut.'),
+        ln('jost', 'Nimm die Marke. Die ist für den Hund, den keiner gezählt hat.'),
+      ],
+      history: [
+        ln('jost', 'Einen Zwinger für tausend Hunde, hat der Baudirektor bauen sollen. Hirschmeute, Saumeute, Hühnerhunde, Spürhunde. „Für die Hunde aller Erdteile“, sagt er. Gezählt hab ich nie über zweihundert.', { fact: 'cx.06', src: [Z('S. 365'), src('WP-K2A')] }),
+        ln('laub', 'Fußnote: „Hundskarl“ hat man den Herzog erst 1923 genannt, nach einem Heimatforscher. Die Geschichte, die man dazu erzählt, ist nicht belegt. Ich erzähle sie nicht.', { fact: 'cx.37', src: [src('WP-K2A'), src('RLS')] }),
+      ],
+      objectives: [
+        { id: 'lehre', type: 'talk', npc: 'jost', topic: 'verstecken', text_de: 'Jost fragen, wie man sich versteckt' },
+        { id: 'fleisch', type: 'collect', item: 'item.k1.fleisch', count: 5, text_de: 'Fleisch vom Jägerhaus holen', place: KS.fleisch.map(([x, z]) => place(x, z)) },
+        { id: 'bringen', type: 'reach', after: ['fleisch'], text_de: 'Das Fleisch zum Zwinger bringen', where: place(1177, -1571, 9) },
+        {
+          id: 'streuner', type: 'kill', enemy: 'streuner', count: 3, after: ['bringen'],
+          text_de: 'Drei Streuner an der Allee, bevor die Meute sie hört',
+          where: place(...KS.allee, 26),
+          spawn: [spawn('streuner', KS.allee, 3, 6, { leash: 40 })],
+        },
+      ],
+      rewards: { xp: 160, items: [{ item: 'item.charm.hundemarke' }], skills: [{ id: 'spurenleser', tier: 1 }] },
+    },
+    {
+      id: 'q.k1.karlslust', kind: 'main', era: E,
+      title_de: 'Die Karlslust bei Nacht',
+      summary_de: 'In der Karlslust, eine gute Stunde zu Fuß im Süden, standen die Tiere des Herzogs, die Bären-Kästen, die Kaskade. Und oberhalb der Kaskade ein stiller Ort: das Rondell, wo im Dezember 1785 ein Feuerwerk explodierte. Heute Nacht laufen dort die Hunde.',
+      giver: { voice: 'laub' }, turnin: 'auto', quiet: true,
+      offer: [
+        ln('laub', 'Die Karlslust. Der Teil des Tages, den der Hof nicht bezahlt hat. Wir gehen hin, solange es dämmert.'),
+        ln('laub', 'Oben am Rondell ist ein Ort, an dem man leise ist. Auch Sie. Vor allem Sie.'),
+      ],
+      progress: [ln('laub', 'Am Wasser bleiben. Hunde verlieren dort die Spur, und Geometer die Nerven.')],
+      turnin_lines: [ln('laub', 'Sie sind nass bis an die Knie. Das Wasser hat Sie gerettet. Und eine Seite haben Sie mitgebracht.')],
+      history: [
+        ln('laub', 'Neunzehn Häuschen mit Schieferdach im Kreis um einen Wassergraben, in der Mitte eine Insel mit Pavillon. Papageien, Pelikane, Kasuare, Affen, Wölfe, zwei Dromedare. Die Tiere hatten Schieferdächer. Die Steinhauer nicht.', { fact: 'cx.12', src: [src('SPT'), src('US'), Z('S. 384')] }),
+        ln('laub', '„Bärenzwinger“, sagen die Leute heute zum Rund. Wahrscheinlich war es eine Voliere. Die eisernen Bären-Kästen von 1786 standen oben auf den Terrassen. Ob je ein Bär darin saß, ist nicht sicher belegt.', { fact: 'cx.13', src: [src('SPT'), src('SKD')] }),
+        ln('laub', 'Am 19. Dezember 1785, zur Hochzeit des Prinzen Max, explodierte oberhalb der Kaskade das Feuerwerk. Alle Raketen lagen auf einem einzigen Gerüst, gegen den Rat des Feuerwerkers. Es traf Major Magnier und elf seiner Arbeiter. Der Major starb. Die Namen der Arbeiter hat niemand aufgeschrieben.', { fact: 'cx.14', src: [src('M1910', 'S. 386–392'), src('WP-SK')] }),
+        ln('laub', 'Mannlichs Festpläne liegen heute in Darmstadt, frei für jeden. Auf einem Blatt steht am Rand: Feuerwerk in drei Abteilungen. So war es geplant.', { fact: 'cx.15', src: [src('DA85'), src('M1910', 'S. 386–391')] }),
+      ],
+      objectives: [
+        { id: 'terrasse', type: 'reach', text_de: 'Auf der Tschifflik-Terrasse: Q – die Karlslust 1789', where: place(1822, 70, 16) },
+        { id: 'rund', type: 'examine', clue: 'clue.k1.amphitheater', text_de: 'Einmal um das Rund: die Häuschen zählen' },
+        { id: 'baeren', type: 'examine', clue: 'clue.k1.baerenkaesten', text_de: 'Oben an der Terrassenmauer: die Bären-Kästen' },
+        {
+          id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 5, after: ['baeren'],
+          text_de: 'Irrlichter über dem Schwanenweiher bannen',
+          where: place(...KS.schwanufer, 30),
+          spawn: [spawn('irrlicht', KS.schwanufer, 5, 9, { leash: 40 })],
+        },
+        { id: 'rondell', type: 'examine', clue: 'clue.k1.feuerwerk', text_de: 'Das Rondell, wo die Kaskade beginnt: still sein und zuhören' },
+        { id: 'seite', type: 'examine', clue: 'clue.k1.seite', text_de: 'Auf den Stufen des Tempelplatzes liegt etwas (Laterne an)' },
+        { id: 'flucht', type: 'reach', after: ['seite'], text_de: 'Hinunter zum Tosbecken! Wasser verwischt die Spur', where: place(1812, 203, 12) },
+        { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['flucht'], text_de: 'Q halten: zurück ins Heute' },
+      ],
+      rewards: { xp: 240, skills: [{ id: 'kartograf', tier: 2 }] },
+    },
+    // ---- side quests ------------------------------------------------------------------------------
+    {
+      id: 'q.k1.kasuar', kind: 'side', era: E,
+      title_de: 'Der Kasuar ist los',
+      summary_de: 'Ein Gärtner der Menagerie flüstert: Der Kasuar ist ausgebrochen. Schlagen darf ihn keiner. Man lässt ihn anrennen, bis er müde ist, und dann führt man ihn heim.',
+      giver: { npc: 'gaertner' }, turnin: 'giver',
+      topic_de: 'Der Kasuar', accept_de: 'Ich hole ihn zurück.',
+      offer: [
+        ln('gaertner', 'Pst. Der Kasuar ist raus. Wenn der Herzog das erfährt, gibt’s Prügel, für mich und für den Vogel.'),
+        ln('gaertner', 'Schlagen darfst du ihn nicht, nicht mal anfassen, der tritt wie ein Pferd. Lass ihn anrennen und spring zur Seite, bis er müde ist. Dann geht er von selbst heim.'),
+      ],
+      progress: [ln('gaertner', 'Zur Seite springen, nicht zurückschlagen. Er ist schneller wütend als müde, aber müde wird er.')],
+      turnin_lines: [ln('gaertner', 'Er frisst wieder. Und er hat dir eine Feder gelassen. Freiwillig, glaub ich.')],
+      history: [ln('gaertner', 'Kasuare, Papageien, Pelikane, Affen, Stachelschweine. Aus aller Welt hat der Herzog sie kommen lassen. Neunzehn Häuschen, und jedes hat ein Schieferdach.', { fact: 'cx.12', src: [src('SPT'), Z('S. 384')] })],
+      objectives: [{ id: 'beruhigen', type: 'calm', animal: 'cassowary', text_de: 'Den Kasuar beruhigen: ausweichen, bis er müde ist', where: place(...KS.kasuar, 24) }],
+      rewards: { xp: 90, items: [{ item: 'item.charm.feder' }] },
+      available: { after: ['q.k1.lohn'] },
+    },
+    {
+      id: 'q.k1.festplaene', kind: 'side', era: E,
+      title_de: 'Mannlichs Festpläne',
+      summary_de: 'Ein Diener in der Orangerie ist verzweifelt: Der Wind hat die Festpläne des Baudirektors durchs Fenster getragen, und zwischen den Blättern flattern Mahnbriefe, die beißen.',
+      giver: { npc: 'diener' }, turnin: 'giver',
+      topic_de: 'Die Festpläne', accept_de: 'Ich sammle sie ein.',
+      offer: [
+        ln('diener', 'Monsieur! Die Pläne des Herrn Baudirektors! Das Fenster stand offen, und jetzt liegen sie im Garten verstreut.'),
+        ln('diener', 'Und dazwischen fliegen Briefe herum, die beißen. Ich gehe da nicht hin. Ich bin Diener, nicht Soldat.'),
+      ],
+      progress: [ln('diener', 'Drei Blätter, Monsieur. Und am Fenster drinnen steht der Herr Baudirektor manchmal. Man hört ihn, wenn man lange genug still ist.')],
+      turnin_lines: [ln('diener', 'Alle drei! Der Herr Baudirektor wird es nie erfahren. Das ist das Schönste an meiner Arbeit.')],
+      history: [
+        ln('diener', 'Das eine Blatt zeigt den Jahrmarkt im Orangeriehof, Buden im Kreis und eine Rotunde aus Leinwand. Das andere die Karlslust mit einem Vulkan. Er schickt die Blätter an den Landgrafen nach Darmstadt.', { fact: 'cx.15', src: [src('DA85'), src('M1910', 'S. 386–391')] }),
+        ln('laub', 'Mannlich, Hofmaler, Baudirektor wider Willen. Fast jedes Zitat, das Sie hier hören, stammt aus seinen Erinnerungen. Er verehrte den Herzog. Lesen Sie ihn mit Vorsicht.', { fact: 'cx.04', src: [src('M1910'), src('SCHWAN12')] }),
+        ln('laub', 'Die Orangerie war vorher eine Schweizerei. Im Winter stehen im Pfeilersaal die Kübelpflanzen, oben wohnt Mannlich. Ihre Stützmauer haben Sie im Wald gefunden: einundachtzig Meter.', { fact: 'cx.40', src: [src('SBT'), src('WP-SK'), src('LIDAR', 'Merkmal KB-30')] }),
+      ],
+      objectives: [
+        {
+          id: 'briefe', type: 'kill', enemy: 'mahnbrief', count: 4,
+          text_de: 'Die Mahnbriefe im Orangeriegarten zerreißen',
+          where: place(...KS.festgarten, 20),
+          spawn: [spawn('mahnbrief', KS.festgarten, 4, 7, { leash: 30 })],
+        },
+        ...Object.keys(PLAN).map((k, i) => ({ id: k, type: 'collect', item: `item.k1.festplan_${k}`, text_de: `${PLAN[k][0]} aufheben`, place: [place(...KS.festplaene[i])] })),
+        { id: 'mannlich', type: 'examine', clue: 'clue.k1.mannlich', text_de: 'Im Pfeilersaal am Fenster: Mannlich zuhören (E halten)' },
+        { id: 'lohn', type: 'examine', clue: 'clue.k1.mannlich_lohn', text_de: 'Noch einmal am Fenster: was Mannlich über den Lohn sagt (E halten)' },
+      ],
+      rewards: { xp: 100 },
+      available: { after: ['q.k1.registratur'] },
+    },
+    {
+      id: 'q.k1.hundenamen', kind: 'side', era: E,
+      title_de: 'Die Namen der Hunde',
+      summary_de: 'Fünf von Josts Hunden sind weg, ihre Marken liegen irgendwo am Berg. Wo eine Marke liegt, schnüffelt ein Streuner. Jost will die Namen aufschreiben, weil es sonst keiner tut.',
+      giver: { npc: 'jost' }, turnin: 'giver',
+      topic_de: 'Fünf Marken', accept_de: 'Ich bring sie dir.',
+      offer: [
+        ln('jost', 'Fünf von meinen sind weg. Diane, Sultan, Fanfare, Rauhreif, Bijou. Die Marken liegen irgendwo, das spür ich.'),
+        ln('jost', 'Und wo eine Marke liegt, schnüffelt ein Streuner. Bring mir die Marken. Die Namen schreibt sonst keiner auf.'),
+      ],
+      progress: [ln('jost', 'An der Allee, auf der Nordterrasse, bei der Gärtnerei, an der Orangerie. Die laufen weit, wenn keiner pfeift.')],
+      turnin_lines: [ln('jost', 'Diane. Sultan. Fanfare. Rauhreif. Bijou. Die schreib ich auf. Irgendwo, wo es keiner verbrennt.')],
+      history: [
+        ln('jost', 'Die Bauern müssen die Wildzäune halten und das Futter für die Meuten liefern. Und wenn die Parforcejagd durchs Feld geht, ist das Feld hin. Ein einziges Jagdrevier, hat einer geschrieben.', { fact: 'cx.05', src: [src('WP-K2A'), src('RLS')] }),
+        ln('laub', 'Fußnote: Die Namen der Hunde sind erfunden. Die Hunde nicht.', { fact: 'cx.38' }),
+      ],
+      objectives: Object.keys(DOG).map((k) => ({
+        id: k, type: 'collect', item: `item.k1.marke_${k}`, text_de: `${DOG[k]}s Marke (${DOG_WHERE[k]})`,
+        place: [place(...KS.marken[k])],
+        spawn: [spawn('streuner', KS.marken[k], 1, 3, { leash: 30 })],
+      })),
+      rewards: { xp: 130 },
+      available: { after: ['q.k1.zwinger'] },
+    },
+  ],
+};
+
+writeFileSync(`${ROOT}/content/quests/01-kapitel-1.quests.json`, JSON.stringify({ $schema: '../schema/quests.schema.json', ...k1Quests }, null, 2) + '\n');
+console.log('wrote 01-kapitel-1.quests.json');

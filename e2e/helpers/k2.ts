@@ -1,27 +1,23 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
+import { cna, fight, holdHome, installQuestPlay, qn, qs, stance, talkQuest, untilQuest } from './prolog';
 
 /**
- * Chapter 2 "Die Flucht" (content/story/02-kapitel-2.story.json, bible 03-kapitel-2), played
- * headless through window.kq with the real content packs:
+ * Chapter 2 "Die Flucht" as an action-RPG quest chain (docs/ACTION-RPG.md §11.2), played headless
+ * through window.kq with the real content:
  *
- *   field station (Marlene, anchor A) → Q at the park fence → the Warner's trail in the hoarfrost,
- *   the scrap of wool (lantern) → W3 eyes in the fog (lantern off, crouch: they lose interest) →
- *   Orangerie echo → Wachhaus echo + Wachbuch → round the locked gate, through the south wing's
- *   Durchfahrt and the vestibule to the Kabinett door (walked, not teleported) → the warning, the
- *   farewell → back home, first confirmed set (Spurenleser 2) → anchor B → the departure, the
- *   choice at the gate (lantern) → Hanne and Jost → the par force hunt, run by a bot along the
- *   escape route (Durchfahrt, terrace, round the walls, W4 "Das sind Kalköfen" with the pack
- *   holding still, down the slope to the pond) → the dam → home → case complete → cliffhanger.
+ *   station → "Die Spur im Raureif" (Q at the park fence, the scrap of wool, the trail, eyes in the
+ *   fog: lantern off and crouch, three Streuner on the trail, the Orangerie's memory) → "Das
+ *   Wachbuch" (Irrlichter round the guard fire, then the memory, then the book) → "Die Warnung"
+ *   (walked into the palace, the Kabinett door twice, the stance "warum?") → the departure at the
+ *   gate (lantern) → Jost's "Die Parforcejagd" (the hunt is run, never fought; W4 "Das sind
+ *   Kalköfen"; at the dam the Pikeur stands — struck back, he rides off) → home, the stance "an
+ *   seiner Stelle" → the cliffhanger.
  *
- * A second test: caught by the hunt → the station, the finds since the last confirmation are
- * gone, anchor B leads straight back and the horn sounds again.
- *
- * Used by e2e/chapter-k2.spec.ts and e2e/campaign.spec.ts. Screenshots: test-results/screens/ch-k2-*.png.
+ * Used by e2e/chapter-k2.spec.ts and e2e/campaign.spec.ts. Screenshots: ch-k2-*.png, cna-k2-*.png.
  */
 let SHOTS = true;
 export const URL = './?notitle&nosave&fresh&manual';
-export const CASE = 'case.k2';
 
 
 
@@ -92,15 +88,8 @@ export async function shiftAt(page: Page, x: number, z: number, yaw: number): Pr
 
 /** Hold Q in the past (return home). */
 export async function holdQ(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.ctx.input.simulate('KeyQ', true);
-    k.step(90);
-    k.ctx.input.simulate('KeyQ', false);
-    k.fx!.shiftAt(3.6);
-    k.fx!.freeze(false);
-    k.step(8);
-  });
+  await installQuestPlay(page);
+  await holdHome(page);
 }
 
 /** Listen to an echo with E held (as a player would), then let it play out. */
@@ -200,10 +189,11 @@ export async function walk(page: Page, pts: [number, number][], o: { sprint?: bo
 
 export async function boot(page: Page): Promise<void> {
   await page.goto(URL);
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.fx && !!window.kq?.npc && !!window.kq?.lantern && !!window.kq?.skills, null, {
+  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.fx && !!window.kq?.npc && !!window.kq?.lantern && !!window.kq?.skills && !!window.kq?.quests && !!window.kq?.combat, null, {
     timeout: 180_000,
   });
   await recordEvents(page);
+  await installQuestPlay(page);
   await page.setViewportSize(SMALL);
   await page.evaluate(() => {
     const k = window.kq!;
@@ -212,6 +202,8 @@ export async function boot(page: Page): Promise<void> {
     for (const [id, tier] of [['relief', 2], ['kartograf', 2], ['baumeister', 1], ['spurenleser', 1]] as const) k.skills!.grant(id, tier, true);
     k.story!.start('Alex');
     k.story!.goto('k2', 'k2_0');
+    // a chapter boot: earlier chapters were not played here, their open quests leave the tracker
+    for (const id of k.quests!.ids()) if (/^q\.(p|k1)\./.test(id) && k.quests!.state().quests[id]?.state !== 'done') k.quests!.reset(id);
     k.step(4);
   });
 }
@@ -240,64 +232,74 @@ export const ESCAPE: [number, number][] = [
   [930, -884],
 ];
 
-/** The chapter's main playthrough (moved here from chapter-k2.spec.ts so the campaign can chain it). */
+/** Face an NPC and take the giver picture (its glyph overhead), at full size. */
+async function giverShot(page: Page, npc: string, from: [number, number], name: string): Promise<void> {
+  await page.evaluate(
+    ([npc, x, z]) => {
+      const k = window.kq!;
+      const n = k.npc!.list().find((f) => f.npc === npc)!;
+      k.teleport(x, z, 0, 0);
+      const p = k.ctx.player.position;
+      k.ctx.player.yaw = Math.atan2(-(n.x - p.x), -(n.z - p.z));
+      k.ctx.player.pitch = -0.04;
+      k.step(30);
+      k.story!.flush();
+    },
+    [npc, from[0], from[1]] as const,
+  );
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await cna(page, name);
+  await page.setViewportSize(SMALL);
+}
+async function bigFight(page: Page, target: string, name?: string): Promise<number> {
+  if (name) await page.setViewportSize({ width: 1280, height: 720 });
+  const n = await fight(page, target, { hits: 4, shot: name });
+  await page.setViewportSize(SMALL);
+  return n;
+}
+
+/** The chapter's main playthrough (shared with e2e/campaign.spec.ts). */
 export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   SHOTS = o.shots ?? true;
   await recordEvents(page);
+  await installQuestPlay(page);
   await o.at?.('k2:start');
+  await installQuestPlay(page);
   await page.setViewportSize(SMALL);
-  // ---- 2.0 field station: Marlene, the anchor at the park fence ------------------------------
+  // ---- the field station: Marlene, Laub's quest "Die Spur im Raureif" ------------------------------
   await settle(page, 30);
   let s = await story(page);
   expect(s).toMatchObject({ chapter: 'k2', beat: 'k2_0', era: 'today' });
-  expect(s.objective).toMatchObject({ id: 'k2.zaun', x: 1680, z: -400 });
+  expect(await qs(page, 'q.k2.spur')).toBe('active');
   expect(await clues(page)).toContain('clue.k2.marlene');
-  expect(await said(page)).toEqual(expect.arrayContaining(['marlene.k2.morgen', 'marlene.k2.pfeiffer', 'laub.k2.start']));
-  expect(await page.evaluate(() => window.kq!.state().inventory.nouns)).toEqual(expect.arrayContaining(['n.pfeiffer', 'n.3_februar']));
   await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
   await shot(page, '01-station');
 
-  // ---- 2.1 Q at the fence: the frost night, 7 min of oil, the Warner's trail -----------------
+  // ---- Q at the fence: the frost night, the scrap of wool, the trail -------------------------------
   await shiftAt(page, 1684, -398, 270);
   s = await story(page);
   expect(s.era).toBe('1793-02');
   expect(s.beat).toBe('k2_1');
-  await settle(page, 2);
-  const meters = await page.evaluate(() => window.kq!.story!.meters());
-  expect(meters['oil']).toMatchObject({ id: 'oil', seconds: 420, era: '1793-02' });
-  const tr = await page.evaluate(() => window.kq!.hunt!.tracks());
-  expect(tr.boot).toBeGreaterThan(300); // the Warner's prints, fence → Wachhaus
-  expect(await page.evaluate(() => window.kq!.lantern!.state().lit)).toBe(true);
-  // the scrap of wool needs the lantern; E examines it
+  expect(await qn(page, 'q.k2.spur', 'zaun')).toBe(1);
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1674, -405.5, 323, -24);
-    for (let i = 0; i < 16; i++) k.step(1); // markers refresh per rendered frame
+    for (let i = 0; i < 16; i++) k.step(1);
   });
   expect(await page.evaluate(() => window.kq!.chronik!.status('clue.k2.zaun'))).toBe('available');
-  await shot(page, '02-zaun');
   await page.evaluate(() => {
     window.kq!.press('KeyE', 2);
     window.kq!.step(3);
+    window.kq!.ctx.ui.modals.closeAll();
   });
-  await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', 'clue.k2.zaun');
-  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
   await settle(page, 10);
-  s = await story(page);
-  expect(s.beat).toBe('k2_2');
-  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.zaun', 'laub.k2.richtung']));
-  // the trail up the avenue, seen from the fence (Relief 1 lights the prints)
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1560, -440, 318, -32);
-    k.step(4);
-  });
-  await shot(page, '03-spur');
+  expect(await qn(page, 'q.k2.spur', 'fetzen')).toBe(1);
+  expect((await story(page)).beat).toBe('k2_2');
 
-  // ---- 2.2 W3: the horn, eyes in the fog; lantern off + crouch → they lose interest ----------
+  // ---- eyes in the fog: lantern off, crouch, they lose interest -----------------------------------
   await page.evaluate(() => {
     const k = window.kq!;
-    k.teleport(1532, -484, 330, 0); // further up the avenue, on the trail
+    k.teleport(1532, -484, 330, 0);
     k.step(4);
   });
   const w3 = await walk(page, [
@@ -305,46 +307,31 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
     [1503, -536],
   ]);
   expect(w3.reached).toBe(true);
-  // Laub's warning first, then the eyes open 30 m to the right
+  expect(await qn(page, 'q.k2.spur', 'allee')).toBe(1);
   await page.evaluate(() => {
     const k = window.kq!;
     k.step(120);
     k.story!.finishTyping();
-  });
-  expect(await said(page)).toContain('laub.k2.augen');
-  await page.evaluate(() => {
-    const k = window.kq!;
     k.lantern!.toggle(false);
     k.press('KeyC', 1);
     k.step(240);
   });
-  let hunt = await page.evaluate(() => window.kq!.hunt!.state());
+  const hunt = await page.evaluate(() => window.kq!.hunt!.state());
   expect(hunt?.active).toBe(true);
   expect(hunt?.state).not.toBe('chasing');
-  expect(await page.evaluate(() => window.kq!.state().flags['chronik.noLoss'])).toBe(true);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.ctx.player.yaw = (-48 * Math.PI) / 180;
-    k.step(40);
-  });
-  await shot(page, '04-augen');
   await page.evaluate(() => window.kq!.step(60 * 8));
-  expect(await said(page)).toContain('laub.k2.weg');
   expect(await page.evaluate(() => window.kq!.hunt!.state())).toBeNull();
   await page.evaluate(() => window.kq!.press('KeyC', 1));
 
-  // ---- 2.3 / 2.4: the avenue to the Orangerie (walked), its echo, the Wachhaus ---------------
-  const allee = await walk(page, [
-    [1480, -580],
-    [1460, -615],
-  ]);
-  expect(allee.reached).toBe(true);
-  // (the avenue in between is the same open slope; the last stretch round the wall is walked)
+  // ---- three Streuner on the trail (bonus), the Orangerie, its echo ----------------------------------
   await page.evaluate(() => {
     const k = window.kq!;
-    k.teleport(1347, -817, 330, 0);
-    k.step(4);
+    k.lantern!.toggle(true);
+    k.teleport(1352, -808, 210, -2);
+    (window as unknown as { __cna: { until(f: () => boolean, s: number): boolean } }).__cna.until(() => k.combat!.enemies().filter((e) => e.group === 'k2.spur').length >= 3, 10);
   });
+  expect(await bigFight(page, 'k2.spur')).toBe(3);
+  expect(await qn(page, 'q.k2.spur', 'streuner')).toBe(3);
   const mauer = await walk(page, [
     [1300, -905],
     [1320, -940],
@@ -355,20 +342,18 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
     const k = window.kq!;
     for (let i = 0; i < 40 && !k.chronik!.echo().id; i++) k.step(15);
   });
-  s = await story(page);
-  expect(s.beat).toBe('k2_3');
   expect((await page.evaluate(() => window.kq!.chronik!.echo())).id).toBe('clue.k2.orangerie');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.chronik!.advanceEcho(8);
-    k.step(2);
-  });
-  await shot(page, '05-orangerie');
   await endEcho(page);
-  expect(await clues(page)).toContain('clue.k2.orangerie');
+  expect(await untilQuest(page, 'q.k2.spur', 'done', 10)).toBe('done');
+  expect(await page.evaluate(() => window.kq!.skills!.levels().spurenleser)).toBe(2);
+  // the servant at the loading yard has work for you now
+  expect(await page.evaluate(() => window.kq!.quests!.mark('diener'))).toBe('offer');
+  await giverShot(page, 'diener', [1264, -955], 'k2-giver-diener');
   await settle(page, 3);
   expect((await story(page)).beat).toBe('k2_4');
-  // the trail turns north: round the wall B11, the terrace, past the west end of the south wing
+  expect(await qs(page, 'q.k2.wachbuch')).toBe('active');
+
+  // ---- "Das Wachbuch": lights round the fire, then the memory, then the book ------------------------
   const zurWache = await walk(page, [
     [1272, -990],
     [1287, -1000],
@@ -383,39 +368,34 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(zurWache.reached).toBe(true);
   await page.evaluate(() => {
     const k = window.kq!;
+    (window as unknown as { __cna: { until(f: () => boolean, s: number): boolean } }).__cna.until(() => k.combat!.enemies().filter((e) => e.group === 'k2.wache').length >= 4, 10);
+  });
+  expect(await page.evaluate(() => window.kq!.chronik!.echo().id)).toBeFalsy(); // no memory while the lights dance
+  expect(await bigFight(page, 'k2.wache', 'k2-wachfeuer-irrlichter')).toBe(4);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(1184, -1113, 200, 0);
     for (let i = 0; i < 40 && !k.chronik!.echo().id; i++) {
       k.step(15);
       k.story!.finishTyping();
     }
   });
   expect((await page.evaluate(() => window.kq!.chronik!.echo())).id).toBe('clue.k2.wache');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.chronik!.advanceEcho(10);
-    k.step(2);
-  });
-  await shot(page, '06-wache');
   await endEcho(page);
-  expect(await clues(page)).toContain('clue.k2.wache');
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1181.5, -1121.5, 225, -25);
-    for (let i = 0; i < 16; i++) k.step(1); // markers refresh per rendered frame
+    for (let i = 0; i < 16; i++) k.step(1);
+    k.press('KeyE', 2);
+    k.step(3);
+    k.ctx.ui.modals.closeAll();
   });
-  expect(await page.evaluate(() => window.kq!.chronik!.status('clue.k2.wachbuch'))).toBe('available');
-  await page.evaluate(() => {
-    window.kq!.press('KeyE', 2);
-    window.kq!.step(3);
-  });
-  await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', 'clue.k2.wachbuch');
-  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
-  await settle(page, 20);
-  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.k2.wachbuch', 'clue.k2.horstmann']));
-  s = await story(page);
-  expect(s.beat).toBe('k2_5');
-  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.horstmann', 'laub.k2.gitter']));
+  expect(await untilQuest(page, 'q.k2.wachbuch', 'done', 12)).toBe('done');
+  await settle(page, 6);
+  expect((await story(page)).beat).toBe('k2_5');
+  expect(await qs(page, 'q.k2.warnung')).toBe('active');
 
-  // ---- 2.6 into the palace (walked): Durchfahrt → court → vestibule → bedroom → Kabinett door --
+  // ---- "Die Warnung": into the palace (walked) to the Kabinett door, twice ---------------------------
   const insSchloss = await walk(page, [
     [1186, -1098],
     [1188, -1084],
@@ -432,128 +412,64 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
     [1268, -1113.5],
   ], { sprint: true });
   expect(insSchloss).toMatchObject({ reached: true, room: 'B01.1.eg-schlafzimmer' });
-  expect(((await payloads(page, 'room:enter')) as { roomId: string }[]).map((r) => r.roomId)).toEqual(
-    expect.arrayContaining(['B02.1.eg-durchfahrt', 'B01.1.eg-vestibuel', 'B01.1.eg-schlafzimmer']),
-  );
-  expect(await said(page)).toContain('laub.k2.vestibuel');
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.player.yaw = 0;
     k.step(10);
   });
   await listen(page, 'clue.k2.warnung');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.chronik!.advanceEcho(14);
-    k.step(2);
-  });
-  await shot(page, '07-warnung');
   await endEcho(page);
-  await settle(page, 20);
-  expect(await clues(page)).toContain('clue.k2.warnung');
-  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.schnupfen', 'laub.k2.dukat']));
-  expect(await page.evaluate(() => window.kq!.state().flags['k2.anker_b'])).toBe(true);
+  await settle(page, 12);
   expect((await story(page)).beat).toBe('k2_6');
   await listen(page, 'clue.k2.abschied');
   await endEcho(page);
-  await settle(page, 14);
-  expect(await said(page)).toContain('laub.k2.sichern');
-  expect((await story(page)).beat).toBe('k2_7');
-  // the empty outline in the dust
-  expect(await page.evaluate(() => window.kq!.chronik!.examine('clue.k2.jagdmesser'))).toBe(true);
-  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
+  expect(await untilQuest(page, 'q.k2.warnung', 'done', 10)).toBe('done');
+  await page.setViewportSize({ width: 1280, height: 720 });
+  expect(await stance(page, 'Weil er sein Dorf schützen wollte.', 'flag.k2_pfeiffer')).toBe('dorf');
+  await page.setViewportSize(SMALL);
   await settle(page, 10);
-  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.jagdmesser', 'laub.k2.jagdmesser.b']));
+  expect((await story(page)).beat).toBe('k2_7');
 
-  // ---- Laub's advice: go home and secure → first confirmed set → Spurenleser 2 ----------------
-  await holdQ(page);
-  s = await story(page);
-  expect(s.era).toBe('today');
-  expect(s.objective).toMatchObject({ id: 'k2.heim', x: 1222, z: -1118 });
-  await settle(page, 6);
-  expect(await clues(page)).toContain('clue.k2.laub_treue');
-  const first = await page.evaluate((c) => {
-    const k = window.kq!.chronik!;
-    k.fill(c, 'entry.k2.1', 'wann', 'n.9_februar');
-    k.fill(c, 'entry.k2.2', 'wer', 'n.pfeiffer');
-    k.fill(c, 'entry.k2.3', 'wo', 'n.parkzaun');
-    k.fill(c, 'entry.k2.4', 'wie', 'n.unglaubwuerdig');
-    k.fill(c, 'entry.k2.4', 'was', 'n.dukaten');
-    k.fill(c, 'entry.k2.5', 'was', 'n.galerie_sammlung');
-    return k.check(c);
-  }, CASE);
-  expect(first?.correct).toBe(true);
-  expect(first?.confirmed.length).toBeGreaterThanOrEqual(3);
-  await settle(page, 4);
-  expect(await page.evaluate(() => window.kq!.state().skills['spurenleser'])).toBe(2);
-  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
-  await settle(page, 8); // the unlock card has its moment
-
-  // ---- 2.7 anchor B: the departure, the choice at the gate (lantern up) ------------------------
-  await shiftAt(page, 1214, -1117, 270);
-  await settle(page, 4);
-  s = await story(page);
-  expect(s.era).toBe('1793-02');
-  expect(s.beat).toBe('k2_8');
-  expect(await page.evaluate(() => window.kq!.npc!.list().map((n) => n.npc))).toContain('hanne');
+  // ---- the departure, the gate (lantern up) -----------------------------------------------------------
   await page.evaluate(() => {
     const k = window.kq!;
-    for (let i = 0; i < 40 && !k.chronik!.echo().id; i++) {
+    k.teleport(1222, -1118, 270, 0);
+    k.step(10);
+  });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 60 && !k.chronik!.echo().id; i++) {
       k.step(15);
       k.story!.finishTyping();
     }
+    k.lantern!.toggle(true);
   });
   expect((await page.evaluate(() => window.kq!.chronik!.echo())).id).toBe('clue.k2.fackeln');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.lantern!.toggle(true);
-    k.chronik!.advanceEcho(10);
-    k.step(2);
-  });
-  await expect(page.locator('.kqs-choice')).toBeVisible();
-  await shot(page, '08-abfahrt');
   await endEcho(page);
   await settle(page, 4);
   expect(await page.evaluate(() => window.kq!.state().flags['flag.k2_tor'])).toBe('leuchten');
-  s = await story(page);
-  expect(s.beat).toBe('k2_9');
-  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.k2.fackeln', 'clue.k2.esebeck']));
+  expect((await story(page)).beat).toBe('k2_9');
 
-  // ---- Hanne and Jost: talk (readings), then the horn --------------------------------------------
+  // ---- Jost: "Die Parforcejagd" — the quest from the boy at the gate -------------------------------
   await settle(page, 4);
+  expect(await qs(page, 'q.k2.parforce')).toBe('offered');
+  expect(await page.evaluate(() => window.kq!.quests!.mark('jost'))).toBe('offer-main');
+  await giverShot(page, 'jost', [1218, -1128], 'k2-giver-jost');
+  await talkQuest(page, 'jost', 'q.k2.parforce');
+  expect(await qs(page, 'q.k2.parforce')).toBe('active');
   await page.evaluate(() => {
     const k = window.kq!;
-    k.npc!.talk('hanne');
-    k.npc!.drain();
-    for (const tp of ['bauer', 'warnen', 'rohrbach']) {
-      k.npc!.ask(tp);
-      k.npc!.drain();
-    }
-    k.npc!.close();
-    k.step(10);
-  });
-  expect(await clues(page)).toContain('clue.k2.hanne');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1218, -1126, 160, 0);
     k.npc!.talk('jost');
     k.npc!.drain();
-    for (const tp of ['bauer', 'fuehrer']) {
-      k.npc!.ask(tp);
-      k.npc!.drain();
-    }
-    k.step(2);
-  });
-  await shot(page, '09-jost');
-  await page.evaluate(() => {
-    const k = window.kq!;
+    k.npc!.ask('bye');
+    k.npc!.drain();
     k.npc!.close();
     k.step(10);
   });
-  expect(await clues(page)).toContain('clue.k2.jost');
+  await settle(page, 4);
   expect((await story(page)).beat).toBe('k2_10');
 
-  // ---- 2.8 the par force hunt: horn, five hounds and the Pikeur; run! ---------------------------
+  // ---- the par force hunt: run (the hunt is a threat, never a fight) --------------------------------
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1224, -1116, 200, 0);
@@ -561,22 +477,11 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
       k.step(15);
       k.story!.finishTyping();
     }
-  });
-  hunt = await page.evaluate(() => window.kq!.hunt!.state());
-  expect(hunt?.active).toBe(true);
-  expect(await page.evaluate(() => window.kq!.hunt!.mode()?.mode)).toBe('parforce');
-  expect(await said(page)).toEqual(expect.arrayContaining(['jost.k2.04', 'jost.k2.06']));
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.ctx.player.yaw = (-20 * Math.PI) / 180;
     k.step(150);
   });
-  await shot(page, '10-pikeur');
-  // a player who gets caught wakes at the station and comes straight back through anchor B
-  // (bible 2.8 "Gestellt"); the bot gets three runs, a person usually needs one or two
+  expect(await page.evaluate(() => window.kq!.hunt!.mode()?.mode)).toBe('parforce');
   let escaped = false;
   let runs = 0;
-  let sawHold = false;
   while (!escaped && runs < 3) {
     runs++;
     if (runs > 1) {
@@ -586,9 +491,6 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
         k.step(200);
         k.ctx.ui.modals.closeAll();
       });
-      s = await story(page);
-      expect(s).toMatchObject({ era: 'today', beat: 'k2_10' });
-      expect(s.objective).toMatchObject({ id: 'k2.heim', x: 1222, z: -1118 });
       await shiftAt(page, 1222, -1118, 270);
       await page.evaluate(() => {
         const k = window.kq!;
@@ -599,26 +501,11 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
         }
         k.step(150);
       });
-      expect(await page.evaluate(() => window.kq!.hunt!.mode()?.mode)).toBe('parforce');
     }
     const legA = await walk(page, ESCAPE.slice(0, 9), { sprint: true, dodge: true, chunk: 8 });
-    if (legA.caught) {
-      console.log('[k2] caught (to the parterre):', JSON.stringify(legA));
-      continue;
-    }
-    expect(legA.reached).toBe(true);
-    if (!sawHold) {
-      // W4 fired at the parterre: the pack holds still, the memory plays
-      expect(await payloads(page, 'story:cue')).toContainEqual({ id: 'hunt:hold', data: { seconds: 8 } });
-      expect(await page.evaluate(() => window.kq!.hunt!.sim()?.frozen)).toBe(true);
-      await shot(page, '11-kalkoefen');
-      sawHold = true;
-    }
+    if (legA.caught) continue;
     const legB = await walk(page, ESCAPE.slice(9), { sprint: true, dodge: true, chunk: 8 });
-    if (legB.caught) {
-      console.log('[k2] caught (to the dam):', JSON.stringify(legB));
-      continue;
-    }
+    if (legB.caught) continue;
     escaped = true;
   }
   console.log(`[k2] par force hunt: escaped on run ${runs}`);
@@ -629,62 +516,57 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
     k.ctx.ui.modals.closeAll();
     k.step(30);
   });
-  expect((await payloads(page, 'hunt:goal')).length).toBe(1);
-  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.k2.landremont', 'clue.k2.laterne']));
-  expect(await said(page)).toContain('laub.k2.lichter_licht');
-  s = await story(page);
-  expect(s.beat).toBe('k2_11');
-  await settle(page, 20);
-  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.wasser', 'laub.k2.kalkoefen', 'laub.k2.tor_licht']));
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(905, -900, 60, -4);
-    k.step(4);
-  });
-  await shot(page, '12-damm');
+  expect(await qn(page, 'q.k2.parforce', 'kalk')).toBe(1);
+  expect((await story(page)).beat).toBe('k2_11');
 
-  // ---- 2.10 home: the rest of the case, the cliffhanger ------------------------------------------
-  await holdQ(page);
-  await settle(page, 8);
-  s = await story(page);
-  expect(s.beat).toBe('k2_12');
-  expect(await said(page)).toContain('marlene.k2.abend');
-  const hanne = (await clues(page)).includes('clue.k2.hanne');
-  const second = await page.evaluate(([c, hanne]) => {
-    const k = window.kq!.chronik!;
-    for (const [e, b, n] of [
-      ['entry.k2.1', 'wann', 'n.9_februar'],
-      ['entry.k2.2', 'wer', 'n.pfeiffer'],
-      ['entry.k2.3', 'wo', 'n.parkzaun'],
-      ['entry.k2.4', 'wie', 'n.unglaubwuerdig'],
-      ['entry.k2.4', 'was', 'n.dukaten'],
-      ['entry.k2.5', 'was', 'n.galerie_sammlung'],
-      ['entry.k2.6', 'was', 'n.kalkoefen'],
-      ['entry.k2.7', 'was', 'n.r_laterne'],
-      ['entry.k2.8', 'warum', hanne ? 'n.r_dorf' : 'n.r_treu'], // Hanne's reading is lost if the pack caught you
-      ['entry.k2.9', 'wie', 'n.r_gewarnt'],
-    ] as const)
-      k.fill(c, e, b, n);
-    k.open(c);
-    return k.check(c);
-  }, [CASE, hanne] as const);
-  expect(second?.correct).toBe(true);
-  await page.waitForTimeout(600);
-  await shot(page, '13-chronik');
+  // ---- the dam: the Pikeur waits; struck back, he rides off ------------------------------------------
   await page.evaluate(() => {
     const k = window.kq!;
-    k.chronik!.close();
-    k.ctx.ui.modals.closeAll();
+    k.teleport(842, -878, 270, 0);
+    (window as unknown as { __cna: { until(f: () => boolean, s: number): boolean } }).__cna.until(() => k.combat!.enemies().some((e) => e.kind === 'pikeur'), 12);
   });
-  await settle(page, 6);
-  expect(await page.evaluate(() => window.kq!.state().skills['kartograf'])).toBe(3);
-  s = await story(page);
-  expect(s.beat).toBe('k2_13');
+  expect(await page.evaluate(() => window.kq!.hunt!.state())).toBeNull(); // the pack is gone; one rider stands
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const e = k.combat!.enemies().find((x) => x.kind === 'pikeur')!;
+    k.combat!.place(e.id, 832, -874, true);
+    const p = k.ctx.player.position;
+    k.ctx.player.yaw = Math.atan2(-(832 - p.x), -(-874 - p.z));
+    k.combat!.windup(e.id);
+    k.combat!.freeze(true);
+    k.step(20);
+    k.story!.flush();
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await cna(page, 'k2-pikeur-damm');
+  await page.setViewportSize(SMALL);
+  await page.evaluate(() => window.kq!.combat!.freeze(false));
+  await bigFight(page, 'k2.pikeur');
+  expect(await qn(page, 'q.k2.parforce', 'pikeur')).toBe(1);
+  await settle(page, 12);
+  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.damm.weg', 'laub.k2.wasser']));
+
+  // ---- home: the stance, the cliffhanger ---------------------------------------------------------------
+  await holdQ(page);
+  expect((await story(page)).era).toBe('today');
+  expect(await untilQuest(page, 'q.k2.parforce', 'done', 10)).toBe('done');
+  await page.setViewportSize({ width: 1280, height: 720 });
+  expect(await stance(page, 'Ich hätte ihn auch gewarnt.', 'flag.k2_stelle')).toBe('gewarnt');
+  await page.setViewportSize(SMALL);
+  expect(await page.evaluate(() => window.kq!.skills!.levels().kartograf)).toBe(3);
+  expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBe('item.stab.silber');
   await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
   await settle(page, 4);
+  expect(['k2_12', 'k2_13']).toContain((await story(page)).beat);
   await shot(page, '14-rauch');
-  expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.ende', 'laub.k2.ende.b']));
-  await settle(page, 16);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 240 && k.story!.state().chapter !== 'k3'; i++) {
+      k.step(15);
+      k.story!.finishTyping();
+    }
+  });
+  expect(await said(page)).toContain('laub.k2.ende');
   s = await story(page);
   expect(s.chapter).toBe('k3');
   await page.setViewportSize({ width: 1280, height: 720 });

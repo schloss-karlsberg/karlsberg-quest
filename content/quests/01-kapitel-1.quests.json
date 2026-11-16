@@ -1,0 +1,1339 @@
+{
+  "$schema": "../schema/quests.schema.json",
+  "chapter": "k1",
+  "items": [
+    {
+      "id": "item.k1.lohnzettel",
+      "kind": "quest",
+      "fiction": true,
+      "name_de": "Matthes’ Lohnzettel",
+      "text_de": "„Matthes, Steinhauer, Galerieflügel. Lohnrest: 1 fl. 30 kr. Angewiesen.“ Darunter kein Stempel „ausgezahlt“. (Fiktion)"
+    },
+    {
+      "id": "item.k1.fleisch",
+      "kind": "quest",
+      "fiction": true,
+      "name_de": "Fleisch für den Zwinger",
+      "text_de": "Ein Stück Pansen aus der Hundemetzgerei am Jägerhaus. Die Hunde fressen vor den Steinhauern."
+    },
+    {
+      "id": "item.k1.zeichen",
+      "kind": "lore",
+      "set": "steinzeichen",
+      "fiction": true,
+      "name_de": "Matthes’ Zeichen I: der Abrieb",
+      "text_de": "Ein Abrieb mit Kohle auf Papier vom Quader am Fuß der Galerie: offener Winkel, darunter drei Punkte. Der Stein bleibt, wo er ist. (Erfundenes Steinmetzzeichen)"
+    },
+    {
+      "id": "item.k1.seite",
+      "kind": "lore",
+      "set": "chronikseiten",
+      "fiction": true,
+      "name_de": "Chronikseite: Die Namen",
+      "text_de": "Oben in großer, ungelenker Schrift: „Diane. Sultan. Fanfare. Rauhreif. Bijou.“ Darunter in feiner Kanzleischrift: „Hanne, Witwe des Steinhauers Matthes. Lohn: offen.“ (Fiktion)"
+    },
+    {
+      "id": "item.k1.festplan_jahrmarkt",
+      "kind": "lore",
+      "set": "festplaene",
+      "name_de": "Festplan: Der Jahrmarkt",
+      "text_de": "Ein Blatt mit Buden im Kreis im Orangeriehof, „Jahrmarkt in Venedig“. In der Mitte eine Rotunde aus Holz und Leinwand. (Nach dem Blatt in der ULB Darmstadt.)",
+      "fact": "cx.15"
+    },
+    {
+      "id": "item.k1.festplan_karlslust",
+      "kind": "lore",
+      "set": "festplaene",
+      "name_de": "Festplan: Die Karlslust",
+      "text_de": "Die Karlslust oberhalb der Großen Kaskade: hinter der Kaskade ein Vulkan, der Hymentempel, das Volk auf Stufen am Hang. Am Rand: „Feuerwerk in drei Abteilungen, durch Zwischenräume getrennt.“",
+      "fact": "cx.15"
+    },
+    {
+      "id": "item.k1.festplan_hofgarten",
+      "kind": "lore",
+      "set": "festplaene",
+      "name_de": "Festplan: Der Hofgarten",
+      "text_de": "Der Hofgarten in Zweibrücken, Wege und Lampenreihen. Ein Fleck, wo jemand Kaffee abgestellt hat.",
+      "fact": "cx.15"
+    },
+    {
+      "id": "item.k1.marke_diane",
+      "kind": "lore",
+      "set": "hundemarken",
+      "fiction": true,
+      "name_de": "Hundemarke „Diane“",
+      "text_de": "Eine Blechmarke mit eingeschlagenem Namen: Diane. Jost: „Die führt. Wenn Diane steht, steht die Meute.“ (Fiktion: Die Namen der Hunde sind erfunden.)"
+    },
+    {
+      "id": "item.k1.marke_sultan",
+      "kind": "lore",
+      "set": "hundemarken",
+      "fiction": true,
+      "name_de": "Hundemarke „Sultan“",
+      "text_de": "Eine Blechmarke mit eingeschlagenem Namen: Sultan. Jost: „Dumm, aber laut. Bellt, bevor er weiß, warum.“ (Fiktion: Die Namen der Hunde sind erfunden.)"
+    },
+    {
+      "id": "item.k1.marke_fanfare",
+      "kind": "lore",
+      "set": "hundemarken",
+      "fiction": true,
+      "name_de": "Hundemarke „Fanfare“",
+      "text_de": "Eine Blechmarke mit eingeschlagenem Namen: Fanfare. Jost: „Hat die schönste Stimme. Der Pikeur hört sie über den halben Berg.“ (Fiktion: Die Namen der Hunde sind erfunden.)"
+    },
+    {
+      "id": "item.k1.marke_rauhreif",
+      "kind": "lore",
+      "set": "hundemarken",
+      "fiction": true,
+      "name_de": "Hundemarke „Rauhreif“",
+      "text_de": "Eine Blechmarke mit eingeschlagenem Namen: Rauhreif. Jost: „Die Weiße. Im Schnee sieht man sie nicht, nur ihren Atem.“ (Fiktion: Die Namen der Hunde sind erfunden.)"
+    },
+    {
+      "id": "item.k1.marke_bijou",
+      "kind": "lore",
+      "set": "hundemarken",
+      "fiction": true,
+      "name_de": "Hundemarke „Bijou“",
+      "text_de": "Eine Blechmarke mit eingeschlagenem Namen: Bijou. Jost: „Der Kleine. Glaubt, er sei ein Hirsch.“ (Fiktion: Die Namen der Hunde sind erfunden.)"
+    }
+  ],
+  "quests": [
+    {
+      "id": "q.k1.ankunft",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Zu Fuß, außer einem",
+      "summary_de": "Sommer 1789. Laub will, dass du den Hof betrittst wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Heute gehen wir hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Merken Sie sich die Wache. Die schreibt Sie auf, wenn Sie rennen."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Nur der Herzog durfte zum Schloss hinauffahren. Alle anderen gingen zu Fuß, und Singen war verboten. Ein Zeitgenosse fand die ganze Gegend „wie betäubt“.",
+          "fact": "cx.11",
+          "sources": [
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "wechsel",
+          "type": "reach",
+          "text_de": "Am Ehrenhof: Q – Sommer 1789",
+          "where": {
+            "x": 1222,
+            "z": -1119,
+            "r": 22,
+            "era": "1789"
+          }
+        },
+        {
+          "id": "wache",
+          "type": "examine",
+          "clue": "clue.k1.wache",
+          "text_de": "Am Gitter: der Wache zuhören"
+        },
+        {
+          "id": "fluegel",
+          "type": "examine",
+          "clue": "clue.k1.fluegel",
+          "text_de": "Die beiden Flügel ansehen"
+        }
+      ],
+      "rewards": {
+        "xp": 60
+      }
+    },
+    {
+      "id": "q.k1.registratur",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Der Kanzlist zählt",
+      "summary_de": "Kanzlist Gottlob Soll zählt in der Registratur, was der Hof hat und was er ausgibt. Er will, dass jemand seine Zahlen liest. Und dann fliegen ihm die Mahnbriefe durchs offene Fenster davon, in Richtung Herzog.",
+      "giver": {
+        "npc": "soll"
+      },
+      "turnin": "giver",
+      "topic_de": "Die Zahlen",
+      "accept_de": "Zeigen Sie mir Ihre Zahlen.",
+      "offer": [
+        {
+          "speaker": "soll",
+          "text": "Sie stehen im Licht. Wenn Sie schon hier sind: Ich zähle. Was der Hof hat, was er ausgibt, was er schuldig bleibt. Das Letzte ist das Längste."
+        },
+        {
+          "speaker": "soll",
+          "text": "Lesen Sie die Tafel, den Kaufbrief und das Heft im Regal. Dann wissen Sie, warum ich Ärmelschoner trage."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "soll",
+          "text": "Die Briefe! Sie flattern im Küchenhof herum, hinter dem Nordflügel. Wenn einer davon beim Herzog ankommt, bin ich die längste Zeit Kanzlist gewesen."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "soll",
+          "text": "Alle sechs? Zerrissen? Gut. Unbezahlt bleiben sie trotzdem. Aber wenigstens liest sie keiner, der sich darüber ärgern könnte."
+        },
+        {
+          "speaker": "soll",
+          "text": "Nehmen Sie den Pfennig vom Rechenbrett. Ausgezahlt. Im übertragenen Sinn."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "soll",
+          "text": "Bau und Betrieb, alles zusammen: Am Ende werden es fast vierzehn Millionen Gulden sein. Das ganze Herzogtum nimmt im Jahr etwa achthunderttausend ein. Rechnen Sie. Ich habe es getan. Mehrmals.",
+          "fact": "cx.07",
+          "sources": [
+            {
+              "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+              "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · Einl. S. XXXIV (Stollreither)"
+            }
+          ]
+        },
+        {
+          "speaker": "soll",
+          "text": "Das Heft ist beschlagnahmt: Schlözers Stats-Anzeigen von 1782. Ein Land, steht da, „ganz und gar gleichsam ein einziges JagdRevier“, mit ganzen Regimentern Jagdhunden. Gemeint sind wir.",
+          "fact": "cx.05",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+              "label": "de.wikipedia: Karl II. August"
+            },
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+            }
+          ]
+        },
+        {
+          "speaker": "soll",
+          "text": "Und der Kaufbrief: Am 27. Juli 1777 kaufte Serenissimus den Louisenhof auf dem Buchenberg. Aus dem Hofgut wurde das hier. Warum er kaufte, darüber redet man bei Hof. Ich schreibe nur auf, was es kostete.",
+          "fact": "cx.02",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+              "label": "en.wikipedia: Karlsberg Castle"
+            },
+            {
+              "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+              "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "rechenbrett",
+          "type": "examine",
+          "clue": "clue.k1.rechenbrett",
+          "text_de": "Das Rechenbrett lesen"
+        },
+        {
+          "id": "kaufbrief",
+          "type": "examine",
+          "clue": "clue.k1.kaufbrief",
+          "text_de": "Den Kaufbrief lesen"
+        },
+        {
+          "id": "heft",
+          "type": "examine",
+          "clue": "clue.k1.schloezer",
+          "text_de": "Das beschlagnahmte Heft lesen"
+        },
+        {
+          "id": "briefe",
+          "type": "kill",
+          "enemy": "mahnbrief",
+          "count": 6,
+          "after": [
+            "rechenbrett",
+            "kaufbrief",
+            "heft"
+          ],
+          "text_de": "Die entflogenen Mahnbriefe im Küchenhof zerreißen",
+          "where": {
+            "x": 1212,
+            "z": -1180,
+            "r": 18,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "mahnbrief",
+              "x": 1212,
+              "z": -1180,
+              "era": "1789",
+              "count": 6,
+              "radius": 7,
+              "leash": 35
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 130,
+        "items": [
+          {
+            "item": "item.charm.rechenpfennig"
+          }
+        ]
+      },
+      "next": "q.k1.lohn"
+    },
+    {
+      "id": "q.k1.lohn",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Matthes’ Lohn",
+      "summary_de": "Hanne, Witwe des Steinhauers Matthes, wartet seit einer Woche am Bauplatz auf seinen letzten Lohn. „Angewiesen“, sagt der Kanzlist. Bei Einbruch der Dämmerung steht am Bauplatz etwas auf, das aussieht wie ein Hauptbuch.",
+      "giver": {
+        "npc": "hanne"
+      },
+      "turnin": "giver",
+      "topic_de": "Matthes’ Lohn",
+      "accept_de": "Ich frage nach.",
+      "offer": [
+        {
+          "speaker": "hanne",
+          "text": "Sie kommen vom Kanzlisten? Dann fragen Sie ihn, wo der Lohn von meinem Matthes ist. Eine Woche steh ich hier. Mir sagt er nichts."
+        },
+        {
+          "speaker": "hanne",
+          "text": "Und schauen Sie sich den Quader unten an der Galerie an. Da ist sein Zeichen drauf. Damit Sie wissen, dass es ihn gegeben hat."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "hanne",
+          "text": "Hat er was gesagt? Angewiesen, ja? Das sagt er immer. Angewiesen kann ich nicht essen."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "hanne",
+          "text": "Das ist sein Zettel. Angewiesen. Nicht ausgezahlt. Ein Zettel, sonst nichts."
+        },
+        {
+          "speaker": "hanne",
+          "text": "Geben Sie mir den Stab. Matthes hätte den Schuh neu beschlagen. Ich kenn den Schmied, der schuldet mir was."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "hanne",
+          "text": "Zwei Tage arbeitet ein Geselle für einen Gulden. Und hier sind sechs, acht, zehn Baustellen zugleich offen, jahrelang. Wer zählt da die Gesellen? Keiner. Wie viele es waren, weiß heute niemand.",
+          "fact": "cx.08",
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+              "label": "en.wikipedia: Karlsberg Castle"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 369"
+            },
+            {
+              "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+              "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+            }
+          ]
+        },
+        {
+          "speaker": "hanne",
+          "text": "Der Präsident Creuzer, sagen die Leute, hat alle Kassen geleert, sogar die der Witwen und Waisen. Und die einen bezahlt er mit Versprechungen. So steht es später auch beim Baudirektor.",
+          "fact": "cx.10",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 377, 396 f."
+            },
+            {
+              "url": "https://www.deutsche-biographie.de/sfz28384.html",
+              "label": "Deutsche Biographie: Christian Ludwig Hautt"
+            }
+          ]
+        },
+        {
+          "speaker": "hanne",
+          "text": "Die Leute sagen Tränenberg zu dem Berg hier. Ob das so heißt, weiß ich nicht. Geweint wird jedenfalls.",
+          "fact": "cx.09",
+          "sources": [
+            {
+              "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+              "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
+              "note": "Hobbyseite, Legende, unbelegt"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k1.lohn",
+        "flag": "flag.k1_lohn",
+        "prompt_de": "Hanne: Warum krieg ich ihn nicht? Was meinen Sie?",
+        "options": [
+          {
+            "label_de": "Weil der Herzog nicht zahlen will.",
+            "value": "will_nicht",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen. Das sag ich auch."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil der Präsident die Kassen geleert hat.",
+            "value": "creuzer",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Dann soll er’s zurückbringen. Er wird’s nicht."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil das Geld in Hunde und Bilder geht.",
+            "value": "hunde_bilder",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Die Hunde kriegen Fleisch, die Bilder kriegen Gold drumrum. Und wir kriegen Zettel."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil man den Herzog täuscht.",
+            "value": "getaeuscht",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Getäuscht. Kann sein. Bezahlt hat er trotzdem nicht."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Ich auch nicht. Aber ich weiß, dass es fehlt."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "soll",
+          "type": "talk",
+          "npc": "soll",
+          "topic": "matthes",
+          "text_de": "Den Kanzlisten nach Matthes fragen"
+        },
+        {
+          "id": "zeichen",
+          "type": "examine",
+          "clue": "clue.k1.zeichen",
+          "text_de": "Matthes’ Zeichen am Quader unten an der Galerie"
+        },
+        {
+          "id": "buch",
+          "type": "kill",
+          "enemy": "schuldbuch",
+          "count": 1,
+          "after": [
+            "soll",
+            "zeichen"
+          ],
+          "text_de": "In der Dämmerung am Bauplatz: das Schuldbuch bezwingen (Bannlicht bricht das Siegel)",
+          "where": {
+            "x": 1294,
+            "z": -1234,
+            "r": 30,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "schuldbuch",
+              "x": 1294,
+              "z": -1234,
+              "era": "1789",
+              "count": 1,
+              "radius": 0,
+              "boss": true,
+              "leash": 45
+            }
+          ]
+        },
+        {
+          "id": "zettel",
+          "type": "collect",
+          "item": "item.k1.lohnzettel",
+          "after": [
+            "buch"
+          ],
+          "text_de": "Matthes’ Lohnzettel aus den Seiten aufheben",
+          "drop": {
+            "enemy": "schuldbuch",
+            "chance": 1
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 260,
+        "items": [
+          {
+            "item": "item.stab.eisen"
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k1.zwinger",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Tausend Hunde",
+      "summary_de": "Hinter dem Marstall bellt es aus einem ummauerten Hof. Der Hundejunge Jost füttert die Meute, und er braucht Hände. Er weiß auch, wie man sich vor Hunden versteckt. In der Dämmerung schleichen sich Streuner die Allee hinauf.",
+      "giver": {
+        "npc": "jost"
+      },
+      "turnin": "giver",
+      "topic_de": "Die Meute",
+      "accept_de": "Ich trag mit.",
+      "offer": [
+        {
+          "speaker": "jost",
+          "text": "Du willst zum Zwinger? Dann trag was. Fleisch liegt drüben am Jägerhaus, fünf Stück. Die Hunde fressen vor uns."
+        },
+        {
+          "speaker": "jost",
+          "text": "Und frag mich, wie man sich versteckt. Das brauchst du heut Nacht. Glaub mir."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "jost",
+          "text": "Das Fleisch, zum Zwinger. Und dann hör hin. Drei sind draußen, die gehören nicht dazu."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "jost",
+          "text": "Alle drei liegen? Dann hat’s keiner gehört. Gut."
+        },
+        {
+          "speaker": "jost",
+          "text": "Nimm die Marke. Die ist für den Hund, den keiner gezählt hat."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "jost",
+          "text": "Einen Zwinger für tausend Hunde, hat der Baudirektor bauen sollen. Hirschmeute, Saumeute, Hühnerhunde, Spürhunde. „Für die Hunde aller Erdteile“, sagt er. Gezählt hab ich nie über zweihundert.",
+          "fact": "cx.06",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 365"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+              "label": "de.wikipedia: Karl II. August"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Fußnote: „Hundskarl“ hat man den Herzog erst 1923 genannt, nach einem Heimatforscher. Die Geschichte, die man dazu erzählt, ist nicht belegt. Ich erzähle sie nicht.",
+          "fact": "cx.37",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+              "label": "de.wikipedia: Karl II. August"
+            },
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "lehre",
+          "type": "talk",
+          "npc": "jost",
+          "topic": "verstecken",
+          "text_de": "Jost fragen, wie man sich versteckt"
+        },
+        {
+          "id": "fleisch",
+          "type": "collect",
+          "item": "item.k1.fleisch",
+          "count": 5,
+          "text_de": "Fleisch vom Jägerhaus holen",
+          "place": [
+            {
+              "x": 1212,
+              "z": -1626,
+              "era": "1789"
+            },
+            {
+              "x": 1206,
+              "z": -1630,
+              "era": "1789"
+            },
+            {
+              "x": 1216,
+              "z": -1618,
+              "era": "1789"
+            },
+            {
+              "x": 1208,
+              "z": -1612,
+              "era": "1789"
+            },
+            {
+              "x": 1214,
+              "z": -1634,
+              "era": "1789"
+            }
+          ]
+        },
+        {
+          "id": "bringen",
+          "type": "reach",
+          "after": [
+            "fleisch"
+          ],
+          "text_de": "Das Fleisch zum Zwinger bringen",
+          "where": {
+            "x": 1177,
+            "z": -1571,
+            "r": 9,
+            "era": "1789"
+          }
+        },
+        {
+          "id": "streuner",
+          "type": "kill",
+          "enemy": "streuner",
+          "count": 3,
+          "after": [
+            "bringen"
+          ],
+          "text_de": "Drei Streuner an der Allee, bevor die Meute sie hört",
+          "where": {
+            "x": 1169,
+            "z": -1636,
+            "r": 26,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1169,
+              "z": -1636,
+              "era": "1789",
+              "count": 3,
+              "radius": 6,
+              "leash": 40
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 160,
+        "items": [
+          {
+            "item": "item.charm.hundemarke"
+          }
+        ],
+        "skills": [
+          {
+            "id": "spurenleser",
+            "tier": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k1.karlslust",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Die Karlslust bei Nacht",
+      "summary_de": "In der Karlslust, eine gute Stunde zu Fuß im Süden, standen die Tiere des Herzogs, die Bären-Kästen, die Kaskade. Und oberhalb der Kaskade ein stiller Ort: das Rondell, wo im Dezember 1785 ein Feuerwerk explodierte. Heute Nacht laufen dort die Hunde.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "quiet": true,
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Die Karlslust. Der Teil des Tages, den der Hof nicht bezahlt hat. Wir gehen hin, solange es dämmert."
+        },
+        {
+          "speaker": "laub",
+          "text": "Oben am Rondell ist ein Ort, an dem man leise ist. Auch Sie. Vor allem Sie."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "laub",
+          "text": "Am Wasser bleiben. Hunde verlieren dort die Spur, und Geometer die Nerven."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Sie sind nass bis an die Knie. Das Wasser hat Sie gerettet. Und eine Seite haben Sie mitgebracht."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Neunzehn Häuschen mit Schieferdach im Kreis um einen Wassergraben, in der Mitte eine Insel mit Pavillon. Papageien, Pelikane, Kasuare, Affen, Wölfe, zwei Dromedare. Die Tiere hatten Schieferdächer. Die Steinhauer nicht.",
+          "fact": "cx.12",
+          "sources": [
+            {
+              "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+              "label": "Saarpfalz-Touristik: Bärenzwinger"
+            },
+            {
+              "url": "https://www.urlaub.saarland/attraktion/baerenzwinger-1986e52928",
+              "label": "urlaub.saarland: Bärenzwinger"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 384"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "„Bärenzwinger“, sagen die Leute heute zum Rund. Wahrscheinlich war es eine Voliere. Die eisernen Bären-Kästen von 1786 standen oben auf den Terrassen. Ob je ein Bär darin saß, ist nicht sicher belegt.",
+          "fact": "cx.13",
+          "sources": [
+            {
+              "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+              "label": "Saarpfalz-Touristik: Bärenzwinger"
+            },
+            {
+              "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+              "label": "schloss-karlsberg.de (Dr. Jutta Schwan)"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Am 19. Dezember 1785, zur Hochzeit des Prinzen Max, explodierte oberhalb der Kaskade das Feuerwerk. Alle Raketen lagen auf einem einzigen Gerüst, gegen den Rat des Feuerwerkers. Es traf Major Magnier und elf seiner Arbeiter. Der Major starb. Die Namen der Arbeiter hat niemand aufgeschrieben.",
+          "fact": "cx.14",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 386–392"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Mannlichs Festpläne liegen heute in Darmstadt, frei für jeden. Auf einem Blatt steht am Rand: Feuerwerk in drei Abteilungen. So war es geplant.",
+          "fact": "cx.15",
+          "sources": [
+            {
+              "url": "https://nbn-resolving.org/urn:nbn:de:tuda-tudigit-84275",
+              "label": "ULB Darmstadt: Mannlich, Plan d[e] la foire … 1785 (CC0)"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 386–391"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "terrasse",
+          "type": "reach",
+          "text_de": "Auf der Tschifflik-Terrasse: Q – die Karlslust 1789",
+          "where": {
+            "x": 1822,
+            "z": 70,
+            "r": 16,
+            "era": "1789"
+          }
+        },
+        {
+          "id": "rund",
+          "type": "examine",
+          "clue": "clue.k1.amphitheater",
+          "text_de": "Einmal um das Rund: die Häuschen zählen"
+        },
+        {
+          "id": "baeren",
+          "type": "examine",
+          "clue": "clue.k1.baerenkaesten",
+          "text_de": "Oben an der Terrassenmauer: die Bären-Kästen"
+        },
+        {
+          "id": "lichter",
+          "type": "kill",
+          "enemy": "irrlicht",
+          "count": 5,
+          "after": [
+            "baeren"
+          ],
+          "text_de": "Irrlichter über dem Schwanenweiher bannen",
+          "where": {
+            "x": 1852,
+            "z": 248,
+            "r": 30,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "irrlicht",
+              "x": 1852,
+              "z": 248,
+              "era": "1789",
+              "count": 5,
+              "radius": 9,
+              "leash": 40
+            }
+          ]
+        },
+        {
+          "id": "rondell",
+          "type": "examine",
+          "clue": "clue.k1.feuerwerk",
+          "text_de": "Das Rondell, wo die Kaskade beginnt: still sein und zuhören"
+        },
+        {
+          "id": "seite",
+          "type": "examine",
+          "clue": "clue.k1.seite",
+          "text_de": "Auf den Stufen des Tempelplatzes liegt etwas (Laterne an)"
+        },
+        {
+          "id": "flucht",
+          "type": "reach",
+          "after": [
+            "seite"
+          ],
+          "text_de": "Hinunter zum Tosbecken! Wasser verwischt die Spur",
+          "where": {
+            "x": 1812,
+            "z": 203,
+            "r": 12,
+            "era": "1789"
+          }
+        },
+        {
+          "id": "heim",
+          "type": "event",
+          "event": "era:change",
+          "match": {
+            "to": "today"
+          },
+          "after": [
+            "flucht"
+          ],
+          "text_de": "Q halten: zurück ins Heute"
+        }
+      ],
+      "rewards": {
+        "xp": 240,
+        "skills": [
+          {
+            "id": "kartograf",
+            "tier": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k1.kasuar",
+      "kind": "side",
+      "era": "1789",
+      "title_de": "Der Kasuar ist los",
+      "summary_de": "Ein Gärtner der Menagerie flüstert: Der Kasuar ist ausgebrochen. Schlagen darf ihn keiner. Man lässt ihn anrennen, bis er müde ist, und dann führt man ihn heim.",
+      "giver": {
+        "npc": "gaertner"
+      },
+      "turnin": "giver",
+      "topic_de": "Der Kasuar",
+      "accept_de": "Ich hole ihn zurück.",
+      "offer": [
+        {
+          "speaker": "gaertner",
+          "text": "Pst. Der Kasuar ist raus. Wenn der Herzog das erfährt, gibt’s Prügel, für mich und für den Vogel."
+        },
+        {
+          "speaker": "gaertner",
+          "text": "Schlagen darfst du ihn nicht, nicht mal anfassen, der tritt wie ein Pferd. Lass ihn anrennen und spring zur Seite, bis er müde ist. Dann geht er von selbst heim."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "gaertner",
+          "text": "Zur Seite springen, nicht zurückschlagen. Er ist schneller wütend als müde, aber müde wird er."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "gaertner",
+          "text": "Er frisst wieder. Und er hat dir eine Feder gelassen. Freiwillig, glaub ich."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "gaertner",
+          "text": "Kasuare, Papageien, Pelikane, Affen, Stachelschweine. Aus aller Welt hat der Herzog sie kommen lassen. Neunzehn Häuschen, und jedes hat ein Schieferdach.",
+          "fact": "cx.12",
+          "sources": [
+            {
+              "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+              "label": "Saarpfalz-Touristik: Bärenzwinger"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "Z · S. 384"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "beruhigen",
+          "type": "calm",
+          "animal": "cassowary",
+          "text_de": "Den Kasuar beruhigen: ausweichen, bis er müde ist",
+          "where": {
+            "x": 1966,
+            "z": 92,
+            "r": 24,
+            "era": "1789"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 90,
+        "items": [
+          {
+            "item": "item.charm.feder"
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k1.lohn"
+        ]
+      }
+    },
+    {
+      "id": "q.k1.festplaene",
+      "kind": "side",
+      "era": "1789",
+      "title_de": "Mannlichs Festpläne",
+      "summary_de": "Ein Diener in der Orangerie ist verzweifelt: Der Wind hat die Festpläne des Baudirektors durchs Fenster getragen, und zwischen den Blättern flattern Mahnbriefe, die beißen.",
+      "giver": {
+        "npc": "diener"
+      },
+      "turnin": "giver",
+      "topic_de": "Die Festpläne",
+      "accept_de": "Ich sammle sie ein.",
+      "offer": [
+        {
+          "speaker": "diener",
+          "text": "Monsieur! Die Pläne des Herrn Baudirektors! Das Fenster stand offen, und jetzt liegen sie im Garten verstreut."
+        },
+        {
+          "speaker": "diener",
+          "text": "Und dazwischen fliegen Briefe herum, die beißen. Ich gehe da nicht hin. Ich bin Diener, nicht Soldat."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "diener",
+          "text": "Drei Blätter, Monsieur. Und am Fenster drinnen steht der Herr Baudirektor manchmal. Man hört ihn, wenn man lange genug still ist."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "diener",
+          "text": "Alle drei! Der Herr Baudirektor wird es nie erfahren. Das ist das Schönste an meiner Arbeit."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "diener",
+          "text": "Das eine Blatt zeigt den Jahrmarkt im Orangeriehof, Buden im Kreis und eine Rotunde aus Leinwand. Das andere die Karlslust mit einem Vulkan. Er schickt die Blätter an den Landgrafen nach Darmstadt.",
+          "fact": "cx.15",
+          "sources": [
+            {
+              "url": "https://nbn-resolving.org/urn:nbn:de:tuda-tudigit-84275",
+              "label": "ULB Darmstadt: Mannlich, Plan d[e] la foire … 1785 (CC0)"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 386–391"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Mannlich, Hofmaler, Baudirektor wider Willen. Fast jedes Zitat, das Sie hier hören, stammt aus seinen Erinnerungen. Er verehrte den Herzog. Lesen Sie ihn mit Vorsicht.",
+          "fact": "cx.04",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)"
+            },
+            {
+              "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+              "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Die Orangerie war vorher eine Schweizerei. Im Winter stehen im Pfeilersaal die Kübelpflanzen, oben wohnt Mannlich. Ihre Stützmauer haben Sie im Wald gefunden: einundachtzig Meter.",
+          "fact": "cx.40",
+          "sources": [
+            {
+              "url": "https://www.homburg.de/media/scllyew0/schlossbergtour.pdf",
+              "label": "Stadt Homburg: Faltblatt Schlossbergtour"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg"
+            },
+            {
+              "url": "https://www.shop.lvgl.saarland.de/",
+              "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+              "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmal KB-30"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "briefe",
+          "type": "kill",
+          "enemy": "mahnbrief",
+          "count": 4,
+          "text_de": "Die Mahnbriefe im Orangeriegarten zerreißen",
+          "where": {
+            "x": 1274,
+            "z": -986,
+            "r": 20,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "mahnbrief",
+              "x": 1274,
+              "z": -986,
+              "era": "1789",
+              "count": 4,
+              "radius": 7,
+              "leash": 30
+            }
+          ]
+        },
+        {
+          "id": "jahrmarkt",
+          "type": "collect",
+          "item": "item.k1.festplan_jahrmarkt",
+          "text_de": "Festplan: Der Jahrmarkt aufheben",
+          "place": [
+            {
+              "x": 1282,
+              "z": -971,
+              "era": "1789"
+            }
+          ]
+        },
+        {
+          "id": "karlslust",
+          "type": "collect",
+          "item": "item.k1.festplan_karlslust",
+          "text_de": "Festplan: Die Karlslust aufheben",
+          "place": [
+            {
+              "x": 1286,
+              "z": -958,
+              "era": "1789"
+            }
+          ]
+        },
+        {
+          "id": "hofgarten",
+          "type": "collect",
+          "item": "item.k1.festplan_hofgarten",
+          "text_de": "Festplan: Der Hofgarten aufheben",
+          "place": [
+            {
+              "x": 1272,
+              "z": -988,
+              "era": "1789"
+            }
+          ]
+        },
+        {
+          "id": "mannlich",
+          "type": "examine",
+          "clue": "clue.k1.mannlich",
+          "text_de": "Im Pfeilersaal am Fenster: Mannlich zuhören (E halten)"
+        },
+        {
+          "id": "lohn",
+          "type": "examine",
+          "clue": "clue.k1.mannlich_lohn",
+          "text_de": "Noch einmal am Fenster: was Mannlich über den Lohn sagt (E halten)"
+        }
+      ],
+      "rewards": {
+        "xp": 100
+      },
+      "available": {
+        "after": [
+          "q.k1.registratur"
+        ]
+      }
+    },
+    {
+      "id": "q.k1.hundenamen",
+      "kind": "side",
+      "era": "1789",
+      "title_de": "Die Namen der Hunde",
+      "summary_de": "Fünf von Josts Hunden sind weg, ihre Marken liegen irgendwo am Berg. Wo eine Marke liegt, schnüffelt ein Streuner. Jost will die Namen aufschreiben, weil es sonst keiner tut.",
+      "giver": {
+        "npc": "jost"
+      },
+      "turnin": "giver",
+      "topic_de": "Fünf Marken",
+      "accept_de": "Ich bring sie dir.",
+      "offer": [
+        {
+          "speaker": "jost",
+          "text": "Fünf von meinen sind weg. Diane, Sultan, Fanfare, Rauhreif, Bijou. Die Marken liegen irgendwo, das spür ich."
+        },
+        {
+          "speaker": "jost",
+          "text": "Und wo eine Marke liegt, schnüffelt ein Streuner. Bring mir die Marken. Die Namen schreibt sonst keiner auf."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "jost",
+          "text": "An der Allee, auf der Nordterrasse, bei der Gärtnerei, an der Orangerie. Die laufen weit, wenn keiner pfeift."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "jost",
+          "text": "Diane. Sultan. Fanfare. Rauhreif. Bijou. Die schreib ich auf. Irgendwo, wo es keiner verbrennt."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "jost",
+          "text": "Die Bauern müssen die Wildzäune halten und das Futter für die Meuten liefern. Und wenn die Parforcejagd durchs Feld geht, ist das Feld hin. Ein einziges Jagdrevier, hat einer geschrieben.",
+          "fact": "cx.05",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+              "label": "de.wikipedia: Karl II. August"
+            },
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Fußnote: Die Namen der Hunde sind erfunden. Die Hunde nicht.",
+          "fact": "cx.38"
+        }
+      ],
+      "objectives": [
+        {
+          "id": "diane",
+          "type": "collect",
+          "item": "item.k1.marke_diane",
+          "text_de": "Dianes Marke (an der Allee)",
+          "place": [
+            {
+              "x": 1169,
+              "z": -1636,
+              "era": "1789"
+            }
+          ],
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1169,
+              "z": -1636,
+              "era": "1789",
+              "count": 1,
+              "radius": 3,
+              "leash": 30
+            }
+          ]
+        },
+        {
+          "id": "sultan",
+          "type": "collect",
+          "item": "item.k1.marke_sultan",
+          "text_de": "Sultans Marke (auf der Nordterrasse)",
+          "place": [
+            {
+              "x": 1227,
+              "z": -1466,
+              "era": "1789"
+            }
+          ],
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1227,
+              "z": -1466,
+              "era": "1789",
+              "count": 1,
+              "radius": 3,
+              "leash": 30
+            }
+          ]
+        },
+        {
+          "id": "fanfare",
+          "type": "collect",
+          "item": "item.k1.marke_fanfare",
+          "text_de": "Fanfares Marke (bei der Gärtnerei)",
+          "place": [
+            {
+              "x": 1264,
+              "z": -1302,
+              "era": "1789"
+            }
+          ],
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1264,
+              "z": -1302,
+              "era": "1789",
+              "count": 1,
+              "radius": 3,
+              "leash": 30
+            }
+          ]
+        },
+        {
+          "id": "rauhreif",
+          "type": "collect",
+          "item": "item.k1.marke_rauhreif",
+          "text_de": "Rauhreifs Marke (an der Orangeriemauer)",
+          "place": [
+            {
+              "x": 1298,
+              "z": -1016,
+              "era": "1789"
+            }
+          ],
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1298,
+              "z": -1016,
+              "era": "1789",
+              "count": 1,
+              "radius": 3,
+              "leash": 30
+            }
+          ]
+        },
+        {
+          "id": "bijou",
+          "type": "collect",
+          "item": "item.k1.marke_bijou",
+          "text_de": "Bijous Marke (im Orangerie-Parterre)",
+          "place": [
+            {
+              "x": 1268,
+              "z": -950,
+              "era": "1789"
+            }
+          ],
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1268,
+              "z": -950,
+              "era": "1789",
+              "count": 1,
+              "radius": 3,
+              "leash": 30
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 130
+      },
+      "available": {
+        "after": [
+          "q.k1.zwinger"
+        ]
+      }
+    }
+  ]
+}

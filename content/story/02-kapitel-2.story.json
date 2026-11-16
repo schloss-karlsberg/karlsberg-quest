@@ -6,62 +6,24 @@
   "era": "1793-02",
   "start": "k2_0",
   "next": "k3",
-  "checkpoint": {
-    "x": 760,
-    "z": -902,
-    "yaw": 0,
-    "era": "today"
-  },
+  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
   "on": [
     {
       "id": "k2-mannlich",
-      "when": {
-        "era": "1793-02"
-      },
+      "when": { "era": "1793-02" },
       "repeat": true,
-      "do": [
-        {
-          "do": "cue",
-          "id": "scenery:windows",
-          "data": {
-            "building": "KB-B10",
-            "era": "1793-02",
-            "share": 0.55
-          }
-        }
-      ]
+      "do": [{ "do": "cue", "id": "scenery:windows", "data": { "building": "KB-B10", "era": "1793-02", "share": 0.55 } }]
     },
     {
       "id": "k2-oel",
-      "when": {
-        "era": "1793-02"
-      },
+      "when": { "era": "1793-02" },
       "repeat": true,
-      "do": [
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": true,
-          "seconds": 420,
-          "text": "Das Öl ist aus. Die Erinnerung lässt dich los."
-        }
-      ]
+      "do": [{ "do": "meter", "id": "oil", "active": true, "seconds": 420, "text": "Das Öl ist aus. Die Erinnerung lässt dich los." }]
     },
     {
       "id": "k2-spur",
       "when": {
-        "all": [
-          {
-            "era": "1793-02"
-          },
-          {
-            "not": {
-              "have": {
-                "clue": "clue.k2.wachbuch"
-              }
-            }
-          }
-        ]
+        "all": [{ "era": "1793-02" }, { "not": { "have": { "clue": "clue.k2.wachbuch" } } }]
       },
       "repeat": true,
       "do": [
@@ -81,106 +43,121 @@
     {
       "id": "k2-anker-b",
       "when": {
-        "any": [
-          {
-            "have": {
-              "clue": "clue.k2.wachbuch"
-            }
-          },
-          {
-            "have": {
-              "clue": "clue.k2.warnung"
-            }
-          }
-        ]
+        "any": [{ "have": { "clue": "clue.k2.wachbuch" } }, { "have": { "clue": "clue.k2.warnung" } }]
       },
-      "do": [
-        {
-          "do": "anchor",
-          "to": "1793-02",
-          "x": 1222,
-          "z": -1118,
-          "r": 35
-        },
-        {
-          "do": "flag",
-          "set": {
-            "k2.anker_b": true
-          }
-        }
-      ]
+      "do": [{ "do": "anchor", "to": "1793-02", "x": 1222, "z": -1118, "r": 35 }, { "do": "flag", "set": { "k2.anker_b": true } }]
     },
     {
       "id": "k2-jagd-aus",
-      "when": {
-        "era": "today"
-      },
+      "when": { "era": "today" },
       "repeat": true,
-      "do": [
-        {
-          "do": "flag",
-          "set": {
-            "k2.jagd_laeuft": null,
-            "k2.w4": null,
-            "k2.jagd_los": null,
-            "k2.wieder_da": null
-          }
-        }
-      ]
+      "do": [{ "do": "flag", "set": { "k2.jagd_laeuft": null, "k2.w4": null, "k2.jagd_los": null, "k2.wieder_da": null } }]
     },
     {
       "id": "k2-treue",
       "when": {
+        "all": [{ "era": "today" }, { "have": { "clue": "clue.k2.zaun" } }]
+      },
+      "do": [{ "do": "grant", "clue": "clue.k2.laub_treue", "delay": 4 }]
+    },
+    {
+      "id": "settle.k2.spur.fetzen",
+      "when": {
         "all": [
-          {
-            "era": "today"
-          },
-          {
-            "have": {
-              "clue": "clue.k2.zaun"
-            }
-          }
+          { "quest": { "id": "q.k2.spur", "state": "active" } },
+          { "have": { "clue": "clue.k2.zaun" } },
+          { "not": { "quest": { "id": "q.k2.spur", "objective": "fetzen" } } }
         ]
       },
-      "do": [
-        {
-          "do": "grant",
-          "clue": "clue.k2.laub_treue",
-          "delay": 4
-        }
-      ]
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.spur", "objective": "fetzen", "n": 1, "onResume": true }]
     },
     {
-      "id": "k2-spurenleser",
+      "id": "settle.k2.spur.wagen",
       "when": {
-        "confirmed": {
-          "prefix": "entry.k2.",
-          "n": 3
-        }
+        "all": [
+          { "quest": { "id": "q.k2.spur", "state": "active" } },
+          { "have": { "clue": "clue.k2.orangerie" } },
+          { "not": { "quest": { "id": "q.k2.spur", "objective": "wagen" } } }
+        ]
       },
-      "do": [
-        {
-          "do": "skill",
-          "id": "spurenleser",
-          "tier": 2
-        }
-      ]
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.spur", "objective": "wagen", "n": 1, "onResume": true }]
     },
     {
-      "id": "k2-kartograf",
+      "id": "settle.k2.wachbuch.feuer",
       "when": {
-        "confirmed": {
-          "prefix": "entry.k2.",
-          "n": 6
-        }
+        "all": [
+          { "quest": { "id": "q.k2.wachbuch", "state": "active" } },
+          { "have": { "clue": "clue.k2.wache" } },
+          { "not": { "quest": { "id": "q.k2.wachbuch", "objective": "feuer" } } }
+        ]
       },
-      "do": [
-        {
-          "do": "skill",
-          "id": "kartograf",
-          "tier": 3
-        }
-      ]
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.wachbuch", "objective": "feuer", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.k2.wachbuch.buch",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k2.wachbuch", "state": "active" } },
+          { "have": { "clue": "clue.k2.wachbuch" } },
+          { "not": { "quest": { "id": "q.k2.wachbuch", "objective": "buch" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.wachbuch", "objective": "buch", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.k2.warnung.tuer",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k2.warnung", "state": "active" } },
+          { "have": { "clue": "clue.k2.warnung" } },
+          { "not": { "quest": { "id": "q.k2.warnung", "objective": "tuer" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.warnung", "objective": "tuer", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.k2.warnung.abschied",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k2.warnung", "state": "active" } },
+          { "have": { "clue": "clue.k2.abschied" } },
+          { "not": { "quest": { "id": "q.k2.warnung", "objective": "abschied" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.warnung", "objective": "abschied", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.k2.parforce.kalk",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k2.parforce", "state": "active" } },
+          { "have": { "clue": "clue.k2.landremont" } },
+          { "not": { "quest": { "id": "q.k2.parforce", "objective": "kalk" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.parforce", "objective": "kalk", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.k2.bodenbrett.kerze",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k2.bodenbrett", "state": "active" } },
+          { "have": { "clue": "clue.k2.soll" } },
+          { "not": { "quest": { "id": "q.k2.bodenbrett", "objective": "kerze" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.bodenbrett", "objective": "kerze", "n": 1, "onResume": true }]
+    },
+    {
+      "id": "settle.k2.lichter.meiler",
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k2.lichter", "state": "active" } },
+          { "have": { "clue": "clue.k2.koehler" } },
+          { "not": { "quest": { "id": "q.k2.lichter", "objective": "meiler" } } }
+        ]
+      },
+      "do": [{ "do": "quest", "op": "progress", "id": "q.k2.lichter", "objective": "meiler", "n": 1, "onResume": true }]
     }
   ],
   "beats": [
@@ -188,33 +165,14 @@
       "id": "k2_0",
       "title_de": "Feldstation",
       "enter": [
-        {
-          "do": "look",
-          "time": "day"
-        },
-        {
-          "do": "anchor",
-          "to": "1793-02",
-          "x": 1680,
-          "z": -400,
-          "r": 30
-        },
-        {
-          "do": "sound",
-          "sound": "frost",
-          "caption": "[Der Deckel der Bussole ist von innen beschlagen. Eisblumen.]",
-          "delay": 1
-        },
-        {
-          "do": "say",
-          "line": "marlene.k2.morgen",
-          "delay": 1.5
-        },
-        {
-          "do": "grant",
-          "clue": "clue.k2.marlene",
-          "delay": 0.5
-        },
+        { "do": "look", "time": "day" },
+        { "do": "quest", "op": "offer", "id": "q.k2.spur", "onResume": true },
+        { "do": "item", "item": "item.stab.esche", "quiet": true },
+        { "do": "npc", "op": "spawn", "npc": "diener", "x": 1268, "z": -950, "era": "1793-02", "chapter": "k2", "yaw": 200 },
+        { "do": "anchor", "to": "1793-02", "x": 1680, "z": -400, "r": 30 },
+        { "do": "sound", "sound": "frost", "caption": "[Der Deckel der Bussole ist von innen beschlagen. Eisblumen.]", "delay": 1 },
+        { "do": "say", "line": "marlene.k2.morgen", "delay": 1.5 },
+        { "do": "grant", "clue": "clue.k2.marlene", "delay": 0.5 },
         {
           "do": "objective",
           "id": "k2.zaun",
@@ -223,37 +181,16 @@
           "z": -400,
           "delay": 1
         },
-        {
-          "do": "say",
-          "line": "laub.k2.start",
-          "delay": 4
-        }
+        { "do": "say", "line": "laub.k2.start", "delay": 4 }
       ],
       "on": [
         {
           "id": "k2_0-hund",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "leave": {
-                  "x": 760,
-                  "z": -902,
-                  "r": 380
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "leave": { "x": 760, "z": -902, "r": 380 } }]
           },
           "do": [
-            {
-              "do": "sound",
-              "sound": "howl",
-              "x": 1460,
-              "z": -260,
-              "caption": "[Fern, unten im Tal: ein Hofhund schlägt an. Ein Hund von heute.]"
-            },
+            { "do": "sound", "sound": "howl", "x": 1460, "z": -260, "caption": "[Fern, unten im Tal: ein Hofhund schlägt an. Ein Hund von heute.]" },
             {
               "do": "say",
               "id": "laub.k2.weg1",
@@ -267,18 +204,7 @@
         {
           "id": "k2_0-raureif",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "enter": {
-                  "x": 1680,
-                  "z": -400,
-                  "r": 260
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "enter": { "x": 1680, "z": -400, "r": 260 } }]
           },
           "do": [
             {
@@ -291,43 +217,18 @@
           ]
         }
       ],
-      "complete": {
-        "era": "1793-02"
-      }
+      "complete": { "era": "1793-02" }
     },
     {
       "id": "k2_1",
       "title_de": "Der Parkzaun",
-      "wake": {
-        "x": 1676,
-        "z": -392,
-        "yaw": 200,
-        "era": "today",
-        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
-      "enter": [
-        {
-          "do": "objective",
-          "id": "k2.zaun",
-          "text": "Am Zaun hängt etwas (L: Laterne, E: untersuchen)",
-          "x": 1672,
-          "z": -408
-        }
-      ],
+      "wake": { "x": 1676, "z": -392, "yaw": 200, "era": "today", "text": "Du kommst am Parkzaun zu dir, im Heute. Nichts ist verloren." },
+      "enter": [{ "do": "objective", "id": "k2.zaun", "text": "Am Zaun hängt etwas (L: Laterne, E: untersuchen)", "x": 1672, "z": -408 }],
       "on": [
         {
           "id": "k2_1-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -342,98 +243,33 @@
         },
         {
           "id": "k2_1-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_1-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.zaun",
-              "text": "Am Zaun hängt etwas (L: Laterne, E: untersuchen)",
-              "x": 1672,
-              "z": -408
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.zaun", "text": "Am Zaun hängt etwas (L: Laterne, E: untersuchen)", "x": 1672, "z": -408 }]
         }
       ],
-      "complete": {
-        "have": {
-          "clue": "clue.k2.zaun"
-        }
-      },
+      "complete": { "have": { "clue": "clue.k2.zaun" } },
       "exit": [
-        {
-          "do": "say",
-          "line": "laub.k2.richtung",
-          "delay": 2
-        },
-        {
-          "do": "objective",
-          "id": "k2.allee",
-          "text": "Der Spur im Raureif folgen, die Apfelallee hinauf",
-          "x": 1500,
-          "z": -542,
-          "delay": 0.5
-        }
+        { "do": "say", "line": "laub.k2.richtung", "delay": 2 },
+        { "do": "objective", "id": "k2.allee", "text": "Der Spur im Raureif folgen, die Apfelallee hinauf", "x": 1500, "z": -542, "delay": 0.5 }
       ]
     },
     {
       "id": "k2_2",
       "title_de": "Augen im Nebel",
-      "wake": {
-        "x": 1676,
-        "z": -392,
-        "yaw": 200,
-        "era": "today",
-        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
-      "enter": [
-        {
-          "do": "objective",
-          "id": "k2.allee",
-          "text": "Der Spur im Raureif folgen, die Apfelallee hinauf",
-          "x": 1500,
-          "z": -542
-        }
-      ],
+      "wake": { "x": 1676, "z": -392, "yaw": 200, "era": "today", "text": "Du kommst am Parkzaun zu dir, im Heute. Nichts ist verloren." },
+      "enter": [{ "do": "objective", "id": "k2.allee", "text": "Der Spur im Raureif folgen, die Apfelallee hinauf", "x": 1500, "z": -542 }],
       "on": [
         {
           "id": "k2_2-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -448,81 +284,24 @@
         },
         {
           "id": "k2_2-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_2-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.allee",
-              "text": "Der Spur im Raureif folgen, die Apfelallee hinauf",
-              "x": 1500,
-              "z": -542
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.allee", "text": "Der Spur im Raureif folgen, die Apfelallee hinauf", "x": 1500, "z": -542 }]
         },
         {
           "id": "k2_2-augen",
-          "when": {
-            "enter": {
-              "x": 1500,
-              "z": -542,
-              "r": 16,
-              "era": "1793-02"
-            }
-          },
+          "when": { "enter": { "x": 1500, "z": -542, "r": 16, "era": "1793-02" } },
           "do": [
-            {
-              "do": "flag",
-              "set": {
-                "chronik.noLoss": true,
-                "k2.augen": true
-              }
-            },
-            {
-              "do": "sound",
-              "sound": "horn",
-              "signal": "anblasen",
-              "x": 1560,
-              "z": -470,
-              "caption": "[Horn: ein langer Ton]"
-            },
-            {
-              "do": "say",
-              "line": "laub.k2.augen",
-              "delay": 0.4
-            },
-            {
-              "do": "objective",
-              "id": "k2.leise",
-              "text": "Licht aus (L), ducken (C), langsam weiter",
-              "x": 1275,
-              "z": -960
-            },
+            { "do": "flag", "set": { "chronik.noLoss": true, "k2.augen": true } },
+            { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1560, "z": -470, "caption": "[Horn: ein langer Ton]" },
+            { "do": "say", "line": "laub.k2.augen", "delay": 0.4 },
+            { "do": "objective", "id": "k2.leise", "text": "Licht aus (L), ducken (C), langsam weiter", "x": 1275, "z": -960 },
             {
               "do": "threat",
               "kind": "pack",
@@ -531,14 +310,8 @@
               "intensity": 0.25,
               "hounds": 3,
               "pikeur": false,
-              "from": {
-                "x": 1526,
-                "z": -557
-              },
-              "center": {
-                "x": 1526,
-                "z": -557
-              },
+              "from": { "x": 1526, "z": -557 },
+              "center": { "x": 1526, "z": -557 },
               "radius": 120,
               "delay": 1
             }
@@ -547,125 +320,36 @@
         {
           "id": "k2_2-weg",
           "when": {
-            "all": [
-              {
-                "flag": "k2.augen"
-              },
-              {
-                "lantern": false
-              },
-              {
-                "any": [
-                  {
-                    "stance": "crouch"
-                  },
-                  {
-                    "stance": "prone"
-                  }
-                ]
-              }
-            ]
+            "all": [{ "flag": "k2.augen" }, { "lantern": false }, { "any": [{ "stance": "crouch" }, { "stance": "prone" }] }]
           },
           "do": [
-            {
-              "do": "threat",
-              "kind": "pack",
-              "active": false,
-              "delay": 9
-            },
-            {
-              "do": "say",
-              "line": "laub.k2.weg",
-              "delay": 0.5
-            },
-            {
-              "do": "objective",
-              "id": "k2.orangerie",
-              "text": "Der Spur folgen, bis zur Orangerie",
-              "x": 1275,
-              "z": -960
-            }
+            { "do": "threat", "kind": "pack", "active": false, "delay": 9 },
+            { "do": "say", "line": "laub.k2.weg", "delay": 0.5 },
+            { "do": "objective", "id": "k2.orangerie", "text": "Der Spur folgen, bis zur Orangerie", "x": 1275, "z": -960 }
           ]
         },
         {
           "id": "k2_2-gehetzt",
-          "when": {
-            "event": "hunt:alert",
-            "match": {
-              "state": "chasing"
-            }
-          },
+          "when": { "event": "hunt:alert", "match": { "state": "chasing" } },
           "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.lauf"
-            },
-            {
-              "do": "objective",
-              "id": "k2.lauf",
-              "text": "Lauf! Bis zur Mauer der Orangerie",
-              "x": 1275,
-              "z": -960
-            }
+            { "do": "say", "line": "laub.k2.lauf" },
+            { "do": "objective", "id": "k2.lauf", "text": "Lauf! Bis zur Mauer der Orangerie", "x": 1275, "z": -960 }
           ]
         }
       ],
-      "complete": {
-        "enter": {
-          "x": 1275,
-          "z": -960,
-          "r": 34,
-          "era": "1793-02"
-        }
-      },
-      "exit": [
-        {
-          "do": "threat",
-          "kind": "pack",
-          "active": false
-        },
-        {
-          "do": "flag",
-          "set": {
-            "chronik.noLoss": null,
-            "k2.augen": null
-          }
-        }
-      ]
+      "complete": { "enter": { "x": 1275, "z": -960, "r": 34, "era": "1793-02" } },
+      "exit": [{ "do": "threat", "kind": "pack", "active": false }, { "do": "flag", "set": { "chronik.noLoss": null, "k2.augen": null } }]
     },
     {
       "id": "k2_3",
       "title_de": "Die Orangerie",
-      "wake": {
-        "x": 1676,
-        "z": -392,
-        "yaw": 200,
-        "era": "today",
-        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
-      "enter": [
-        {
-          "do": "objective",
-          "id": "k2.orangerie",
-          "text": "In Mannlichs Fenstern brennt Licht (E halten: lauschen)",
-          "x": 1275,
-          "z": -960
-        }
-      ],
+      "wake": { "x": 1676, "z": -392, "yaw": 200, "era": "today", "text": "Du kommst am Parkzaun zu dir, im Heute. Nichts ist verloren." },
+      "enter": [{ "do": "objective", "id": "k2.orangerie", "text": "In Mannlichs Fenstern brennt Licht (E halten: lauschen)", "x": 1275, "z": -960 }],
       "on": [
         {
           "id": "k2_3-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -680,93 +364,30 @@
         },
         {
           "id": "k2_3-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_3-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.orangerie",
-              "text": "In Mannlichs Fenstern brennt Licht (E halten: lauschen)",
-              "x": 1275,
-              "z": -960
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.orangerie", "text": "In Mannlichs Fenstern brennt Licht (E halten: lauschen)", "x": 1275, "z": -960 }]
         },
         {
           "id": "k2_3-echo",
           "when": {
-            "all": [
-              {
-                "enter": {
-                  "x": 1275,
-                  "z": -960,
-                  "r": 30,
-                  "era": "1793-02"
-                }
-              },
-              {
-                "not": {
-                  "have": {
-                    "clue": "clue.k2.orangerie"
-                  }
-                }
-              }
-            ]
+            "all": [{ "enter": { "x": 1275, "z": -960, "r": 30, "era": "1793-02" } }, { "not": { "have": { "clue": "clue.k2.orangerie" } } }]
           },
-          "do": [
-            {
-              "do": "echo",
-              "id": "clue.k2.orangerie",
-              "delay": 1
-            }
-          ]
+          "do": [{ "do": "echo", "id": "clue.k2.orangerie", "delay": 1 }]
         }
       ],
       "complete": {
         "any": [
+          { "quest": { "id": "q.k2.spur" } },
+          { "have": { "clue": "clue.k2.orangerie" } },
           {
-            "have": {
-              "clue": "clue.k2.orangerie"
-            }
-          },
-          {
-            "all": [
-              {
-                "timer": 20
-              },
-              {
-                "leave": {
-                  "x": 1275,
-                  "z": -960,
-                  "r": 45
-                }
-              }
-            ]
+            "all": [{ "timer": 20 }, { "leave": { "x": 1275, "z": -960, "r": 45 } }]
           }
         ]
       },
@@ -784,36 +405,16 @@
     {
       "id": "k2_4",
       "title_de": "Das Wachhaus",
-      "wake": {
-        "x": 1676,
-        "z": -392,
-        "yaw": 200,
-        "era": "today",
-        "text": "Du kommst am Parkzaun zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
+      "wake": { "x": 1676, "z": -392, "yaw": 200, "era": "today", "text": "Du kommst am Parkzaun zu dir, im Heute. Nichts ist verloren." },
       "enter": [
-        {
-          "do": "objective",
-          "id": "k2.wachhaus",
-          "text": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof",
-          "x": 1180,
-          "z": -1120
-        }
+        { "do": "quest", "op": "offer", "id": "q.k2.wachbuch", "onResume": true },
+        { "do": "objective", "id": "k2.wachhaus", "text": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof", "x": 1180, "z": -1120 }
       ],
       "on": [
         {
           "id": "k2_4-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -828,137 +429,70 @@
         },
         {
           "id": "k2_4-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_4-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.wachhaus",
-              "text": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof",
-              "x": 1180,
-              "z": -1120
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.wachhaus", "text": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof", "x": 1180, "z": -1120 }]
         },
         {
           "id": "k2_4-wache",
           "when": {
             "all": [
-              {
-                "enter": {
-                  "x": 1180,
-                  "z": -1120,
-                  "r": 12,
-                  "era": "1793-02"
-                }
-              },
-              {
-                "not": {
-                  "have": {
-                    "clue": "clue.k2.wache"
-                  }
-                }
-              }
+              { "enter": { "x": 1180, "z": -1120, "r": 26, "era": "1793-02" } },
+              { "not": { "have": { "clue": "clue.k2.wache" } } },
+              { "quest": { "id": "q.k2.wachbuch", "objective": "lichter", "gte": 4 } }
             ]
           },
           "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.spur_ende"
-            },
-            {
-              "do": "echo",
-              "id": "clue.k2.wache",
-              "delay": 0.5
-            },
-            {
-              "do": "objective",
-              "id": "k2.wachbuch",
-              "text": "Das Wachbuch auf dem Tisch am Wachhaus (E)",
-              "x": 1179.5,
-              "z": -1123.5
-            }
+            { "do": "echo", "id": "clue.k2.wache", "delay": 0.5 },
+            { "do": "objective", "id": "k2.wachbuch", "text": "Das Wachbuch auf dem Tisch am Wachhaus (E)", "x": 1179.5, "z": -1123.5 }
           ]
         },
         {
           "id": "k2_4-buch",
           "when": {
+            "all": [{ "enter": { "x": 1180, "z": -1120, "r": 26, "era": "1793-02" } }, { "have": { "clue": "clue.k2.wache" } }]
+          },
+          "do": [{ "do": "objective", "id": "k2.wachbuch", "text": "Das Wachbuch auf dem Tisch am Wachhaus (E)", "x": 1179.5, "z": -1123.5 }]
+        },
+        {
+          "id": "k2_4-irrlichter",
+          "when": {
             "all": [
-              {
-                "enter": {
-                  "x": 1180,
-                  "z": -1120,
-                  "r": 12,
-                  "era": "1793-02"
-                }
-              },
-              {
-                "have": {
-                  "clue": "clue.k2.wache"
-                }
-              }
+              { "enter": { "x": 1180, "z": -1120, "r": 26, "era": "1793-02" } },
+              { "not": { "quest": { "id": "q.k2.wachbuch", "objective": "lichter", "gte": 4 } } }
             ]
           },
           "do": [
+            { "do": "say", "line": "laub.k2.spur_ende" },
             {
-              "do": "objective",
-              "id": "k2.wachbuch",
-              "text": "Das Wachbuch auf dem Tisch am Wachhaus (E)",
-              "x": 1179.5,
-              "z": -1123.5
-            }
+              "do": "say",
+              "id": "laub.k2.irrlichter",
+              "speaker": "laub",
+              "text": "Und um das Feuer tanzt, was kein Funke ist. Solange die Lichter da sind, erinnert sich hier niemand. Löschen Sie sie.",
+              "delay": 0.6,
+              "ms": 5600
+            },
+            { "do": "objective", "id": "k2.irrlichter", "text": "Die Irrlichter am Wachfeuer bannen", "x": 1182, "z": -1122 }
           ]
         }
       ],
       "complete": {
-        "have": {
-          "clue": "clue.k2.wachbuch"
-        }
+        "any": [{ "quest": { "id": "q.k2.wachbuch" } }, { "have": { "clue": "clue.k2.wachbuch" } }]
       },
-      "exit": [
-        {
-          "do": "grant",
-          "clue": "clue.k2.horstmann",
-          "delay": 1.5
-        }
-      ]
+      "exit": [{ "do": "grant", "clue": "clue.k2.horstmann", "delay": 1.5 }]
     },
     {
       "id": "k2_5",
       "title_de": "Ins Schloss",
-      "wake": {
-        "x": 1226,
-        "z": -1122,
-        "yaw": 270,
-        "era": "today",
-        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
+      "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
       "enter": [
+        { "do": "quest", "op": "offer", "id": "q.k2.warnung", "onResume": true },
         {
           "do": "objective",
           "id": "k2.durchfahrt",
@@ -966,26 +500,13 @@
           "x": 1235,
           "z": -1084
         },
-        {
-          "do": "say",
-          "line": "laub.k2.gitter",
-          "delay": 2
-        }
+        { "do": "say", "line": "laub.k2.gitter", "delay": 2 }
       ],
       "on": [
         {
           "id": "k2_5-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -1000,32 +521,13 @@
         },
         {
           "id": "k2_5-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_5-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
           "do": [
             {
@@ -1040,50 +542,15 @@
         {
           "id": "k2_5-hof",
           "when": {
-            "any": [
-              {
-                "room": "B02.1.eg-durchfahrt"
-              },
-              {
-                "enter": {
-                  "x": 1222,
-                  "z": -1118,
-                  "r": 20,
-                  "era": "1793-02"
-                }
-              }
-            ]
+            "any": [{ "room": "B02.1.eg-durchfahrt" }, { "enter": { "x": 1222, "z": -1118, "r": 20, "era": "1793-02" } }]
           },
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.vestibuel",
-              "text": "Ins Schloss: durchs Vestibül",
-              "x": 1255,
-              "z": -1125
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.vestibuel", "text": "Ins Schloss: durchs Vestibül", "x": 1255, "z": -1125 }]
         },
         {
           "id": "k2_5-vestibuel",
-          "when": {
-            "any": [
-              {
-                "room": "B01.1.eg-vestibuel"
-              },
-              {
-                "room": "B01.1.eg-gelber-salon"
-              },
-              {
-                "room": "B01.1.eg-antichambre"
-              }
-            ]
-          },
+          "when": { "any": [{ "room": "B01.1.eg-vestibuel" }, { "room": "B01.1.eg-gelber-salon" }, { "room": "B01.1.eg-antichambre" }] },
           "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.vestibuel"
-            },
+            { "do": "say", "line": "laub.k2.vestibuel" },
             {
               "do": "objective",
               "id": "k2.kabinett",
@@ -1095,65 +562,22 @@
         },
         {
           "id": "k2_5-kerze",
-          "when": {
-            "enter": {
-              "x": 1205,
-              "z": -1207,
-              "r": 22,
-              "era": "1793-02"
-            }
-          },
-          "do": [
-            {
-              "do": "sound",
-              "sound": "match",
-              "x": 1203,
-              "z": -1216,
-              "caption": "[Hinter den Galeriefenstern: eine einzelne Kerze]"
-            }
-          ]
+          "when": { "enter": { "x": 1205, "z": -1207, "r": 22, "era": "1793-02" } },
+          "do": [{ "do": "sound", "sound": "match", "x": 1203, "z": -1216, "caption": "[Hinter den Galeriefenstern: eine einzelne Kerze]" }]
         }
       ],
-      "complete": {
-        "have": {
-          "clue": "clue.k2.warnung"
-        }
-      }
+      "complete": { "have": { "clue": "clue.k2.warnung" } }
     },
     {
       "id": "k2_6",
       "title_de": "Der Abschied",
-      "wake": {
-        "x": 1226,
-        "z": -1122,
-        "yaw": 270,
-        "era": "today",
-        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
-      "enter": [
-        {
-          "do": "objective",
-          "id": "k2.abschied",
-          "text": "Noch einmal an der Tür lauschen (E halten)",
-          "x": 1268.5,
-          "z": -1110,
-          "delay": 2
-        }
-      ],
+      "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
+      "enter": [{ "do": "objective", "id": "k2.abschied", "text": "Noch einmal an der Tür lauschen (E halten)", "x": 1268.5, "z": -1110, "delay": 2 }],
       "on": [
         {
           "id": "k2_6-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -1168,100 +592,34 @@
         },
         {
           "id": "k2_6-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_6-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.abschied",
-              "text": "Noch einmal an der Tür lauschen (E halten)",
-              "x": 1268.5,
-              "z": -1110
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.abschied", "text": "Noch einmal an der Tür lauschen (E halten)", "x": 1268.5, "z": -1110 }]
         }
       ],
       "complete": {
-        "any": [
-          {
-            "have": {
-              "clue": "clue.k2.abschied"
-            }
-          },
-          {
-            "flag": "k2.abfahrt"
-          }
-        ]
+        "any": [{ "quest": { "id": "q.k2.warnung" } }, { "have": { "clue": "clue.k2.abschied" } }, { "flag": "k2.abfahrt" }]
       }
     },
     {
       "id": "k2_7",
       "title_de": "Die Abfahrt",
-      "wake": {
-        "x": 1226,
-        "z": -1122,
-        "yaw": 270,
-        "era": "today",
-        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
+      "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
       "enter": [
-        {
-          "do": "npc",
-          "op": "spawn",
-          "npc": "hanne",
-          "x": 1201,
-          "z": -1112,
-          "era": "1793-02",
-          "yaw": 270
-        },
-        {
-          "do": "objective",
-          "id": "k2.abfahrt",
-          "text": "Die Abfahrt: in den Ehrenhof",
-          "x": 1222,
-          "z": -1118,
-          "delay": 6
-        }
+        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1201, "z": -1112, "era": "1793-02", "yaw": 270 },
+        { "do": "objective", "id": "k2.abfahrt", "text": "Die Abfahrt: in den Ehrenhof", "x": 1222, "z": -1118, "delay": 6 }
       ],
       "on": [
         {
           "id": "k2_7-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -1276,97 +634,33 @@
         },
         {
           "id": "k2_7-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_7-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.abfahrt",
-              "text": "Die Abfahrt: in den Ehrenhof",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.abfahrt", "text": "Die Abfahrt: in den Ehrenhof", "x": 1222, "z": -1118 }]
         }
       ],
-      "complete": {
-        "enter": {
-          "x": 1222,
-          "z": -1118,
-          "r": 22,
-          "era": "1793-02"
-        }
-      }
+      "complete": { "enter": { "x": 1222, "z": -1118, "r": 22, "era": "1793-02" } }
     },
     {
       "id": "k2_8",
       "title_de": "Die Wahl am Tor",
-      "wake": {
-        "x": 1226,
-        "z": -1122,
-        "yaw": 270,
-        "era": "today",
-        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
-      "enter": [
-        {
-          "do": "objective",
-          "id": "k2.tor",
-          "text": "Die Wagen fahren ab. Laterne an oder aus (L)?",
-          "x": 1222,
-          "z": -1118
-        }
-      ],
+      "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
+      "enter": [{ "do": "objective", "id": "k2.tor", "text": "Die Wagen fahren ab. Laterne an oder aus (L)?", "x": 1222, "z": -1118 }],
       "on": [
         {
           "id": "k2_8-wagen",
           "when": {
-            "all": [
-              {
-                "era": "1793-02"
-              },
-              {
-                "not": {
-                  "chosen": "k2.tor"
-                }
-              }
-            ]
+            "all": [{ "era": "1793-02" }, { "not": { "chosen": "k2.tor" } }]
           },
           "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.tor"
-            },
-            {
-              "do": "echo",
-              "id": "clue.k2.fackeln",
-              "delay": 0.5
-            },
+            { "do": "say", "line": "laub.k2.tor" },
+            { "do": "echo", "id": "clue.k2.fackeln", "delay": 0.5 },
             {
               "do": "choice",
               "id": "k2.tor",
@@ -1379,36 +673,14 @@
                 {
                   "label": "Ihnen leuchten (Laterne an)",
                   "key": "leuchten",
-                  "set": {
-                    "flag.k2_tor": "leuchten"
-                  },
-                  "when": {
-                    "all": [
-                      {
-                        "flag": "k2.wagen"
-                      },
-                      {
-                        "lantern": true
-                      }
-                    ]
-                  }
+                  "set": { "flag.k2_tor": "leuchten" },
+                  "when": { "all": [{ "flag": "k2.wagen" }, { "lantern": true }] }
                 },
                 {
                   "label": "Im Dunkeln stehen (Laterne aus)",
                   "key": "dunkel",
-                  "set": {
-                    "flag.k2_tor": "dunkel"
-                  },
-                  "when": {
-                    "all": [
-                      {
-                        "flag": "k2.wagen"
-                      },
-                      {
-                        "lantern": false
-                      }
-                    ]
-                  }
+                  "set": { "flag.k2_tor": "dunkel" },
+                  "when": { "all": [{ "flag": "k2.wagen" }, { "lantern": false }] }
                 }
               ]
             }
@@ -1417,76 +689,21 @@
         {
           "id": "k2_8-vorbei",
           "when": {
-            "any": [
-              {
-                "event": "echo:end",
-                "match": {
-                  "id": "clue.k2.fackeln"
-                }
-              },
-              {
-                "timer": 45
-              }
-            ]
+            "any": [{ "event": "echo:end", "match": { "id": "clue.k2.fackeln" } }, { "timer": 45 }]
           },
-          "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k2.wagen": true
-              }
-            }
-          ]
+          "do": [{ "do": "flag", "set": { "k2.wagen": true } }]
         }
       ],
-      "complete": {
-        "chosen": "k2.tor"
-      },
-      "exit": [
-        {
-          "do": "flag",
-          "set": {
-            "k2.abfahrt": true,
-            "k2.wagen": null
-          }
-        },
-        {
-          "do": "grant",
-          "clue": "clue.k2.esebeck",
-          "delay": 2
-        }
-      ]
+      "complete": { "chosen": "k2.tor" },
+      "exit": [{ "do": "flag", "set": { "k2.abfahrt": true, "k2.wagen": null } }, { "do": "grant", "clue": "clue.k2.esebeck", "delay": 2 }]
     },
     {
       "id": "k2_9",
       "title_de": "Hanne und Jost",
-      "wake": {
-        "x": 1226,
-        "z": -1122,
-        "yaw": 270,
-        "era": "today",
-        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
+      "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
       "enter": [
-        {
-          "do": "npc",
-          "op": "spawn",
-          "npc": "hanne",
-          "x": 1201,
-          "z": -1112,
-          "era": "1793-02",
-          "yaw": 270
-        },
-        {
-          "do": "npc",
-          "op": "spawn",
-          "npc": "jost",
-          "x": 1222,
-          "z": -1135,
-          "era": "1793-02",
-          "yaw": 180,
-          "delay": 3
-        },
+        { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1201, "z": -1112, "era": "1793-02", "yaw": 270 },
+        { "do": "npc", "op": "spawn", "npc": "jost", "x": 1222, "z": -1135, "era": "1793-02", "yaw": 180, "delay": 3 },
         {
           "do": "objective",
           "id": "k2.reden",
@@ -1494,22 +711,14 @@
           "x": 1210,
           "z": -1122,
           "delay": 0.5
-        }
+        },
+        { "do": "quest", "op": "offer", "id": "q.k2.parforce", "onResume": true }
       ],
       "on": [
         {
           "id": "k2_9-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -1524,99 +733,31 @@
         },
         {
           "id": "k2_9-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_9-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.reden",
-              "text": "Hanne steht am Gitter, Jost kommt vom Zwinger (E: reden)",
-              "x": 1210,
-              "z": -1122
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.reden", "text": "Hanne steht am Gitter, Jost kommt vom Zwinger (E: reden)", "x": 1210, "z": -1122 }]
         }
       ],
       "complete": {
-        "any": [
-          {
-            "event": "npc:conversation",
-            "match": {
-              "npc": "jost",
-              "open": false
-            }
-          },
-          {
-            "all": [
-              {
-                "timer": 80
-              },
-              {
-                "era": "1793-02"
-              }
-            ]
-          }
-        ]
+        "any": [{ "event": "npc:conversation", "match": { "npc": "jost", "open": false } }, { "all": [{ "timer": 80 }, { "era": "1793-02" }] }]
       }
     },
     {
       "id": "k2_10",
       "title_de": "Die Parforcejagd",
-      "wake": {
-        "x": 1226,
-        "z": -1122,
-        "yaw": 270,
-        "era": "today",
-        "text": "Du kommst am Ehrenhof zu dir, im Heute. Was bestätigt ist, bleibt."
-      },
-      "enter": [
-        {
-          "do": "objective",
-          "id": "k2.jagd",
-          "text": "Im Ehrenhof",
-          "x": 1222,
-          "z": -1118
-        }
-      ],
+      "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
+      "enter": [{ "do": "objective", "id": "k2.jagd", "text": "Im Ehrenhof", "x": 1222, "z": -1118 }],
       "on": [
         {
           "id": "k2_10-heim-a",
           "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "not": {
-                  "flag": "k2.anker_b"
-                }
-              }
-            ]
+            "all": [{ "era": "today" }, { "not": { "flag": "k2.anker_b" } }]
           },
           "repeat": true,
           "do": [
@@ -1631,91 +772,26 @@
         },
         {
           "id": "k2_10-heim-b",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "flag": "k2.anker_b"
-              }
-            ]
-          },
+          "when": { "all": [{ "era": "today" }, { "flag": "k2.anker_b" }] },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.heim",
-              "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.heim", "text": "Zurück in die Nacht: zum Ehrenhof (F: Geisterblick), dort Q", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_10-nacht",
-          "when": {
-            "era": "1793-02"
-          },
+          "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.jagd",
-              "text": "Im Ehrenhof",
-              "x": 1222,
-              "z": -1118
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.jagd", "text": "Im Ehrenhof", "x": 1222, "z": -1118 }]
         },
         {
           "id": "k2_10-wieder",
           "when": {
-            "all": [
-              {
-                "era": "1793-02"
-              },
-              {
-                "flag": "k2.jagd_versuch"
-              },
-              {
-                "not": {
-                  "flag": "k2.jagd_laeuft"
-                }
-              },
-              {
-                "not": {
-                  "flag": "k2.wieder_da"
-                }
-              }
-            ]
+            "all": [{ "era": "1793-02" }, { "flag": "k2.jagd_versuch" }, { "not": { "flag": "k2.jagd_laeuft" } }, { "not": { "flag": "k2.wieder_da" } }]
           },
           "repeat": true,
           "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k2.wieder_da": true
-              }
-            },
-            {
-              "do": "npc",
-              "op": "spawn",
-              "npc": "hanne",
-              "x": 1201,
-              "z": -1112,
-              "era": "1793-02",
-              "yaw": 270
-            },
-            {
-              "do": "npc",
-              "op": "spawn",
-              "npc": "jost",
-              "x": 1222,
-              "z": -1135,
-              "era": "1793-02",
-              "yaw": 180
-            },
+            { "do": "flag", "set": { "k2.wieder_da": true } },
+            { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1201, "z": -1112, "era": "1793-02", "yaw": 270 },
+            { "do": "npc", "op": "spawn", "npc": "jost", "x": 1222, "z": -1135, "era": "1793-02", "yaw": 180 },
             {
               "do": "objective",
               "id": "k2.jagd",
@@ -1724,120 +800,42 @@
               "z": -1122,
               "delay": 0.5
             },
-            {
-              "do": "flag",
-              "set": {
-                "k2.jagd_los": true
-              },
-              "delay": 20
-            }
+            { "do": "flag", "set": { "k2.jagd_los": true }, "delay": 20 }
           ]
         },
         {
           "id": "k2_10-wieder-jost",
           "when": {
-            "all": [
-              {
-                "flag": "k2.wieder_da"
-              },
-              {
-                "event": "npc:conversation",
-                "match": {
-                  "npc": "jost",
-                  "open": false
-                }
-              }
-            ]
+            "all": [{ "flag": "k2.wieder_da" }, { "event": "npc:conversation", "match": { "npc": "jost", "open": false } }]
           },
           "repeat": true,
-          "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k2.jagd_los": true
-              }
-            }
-          ]
+          "do": [{ "do": "flag", "set": { "k2.jagd_los": true } }]
         },
         {
           "id": "k2_10-wieder-weg",
           "when": {
-            "all": [
-              {
-                "flag": "k2.wieder_da"
-              },
-              {
-                "enter": {
-                  "x": 1235,
-                  "z": -1084,
-                  "r": 12,
-                  "era": "1793-02"
-                }
-              }
-            ]
+            "all": [{ "flag": "k2.wieder_da" }, { "enter": { "x": 1235, "z": -1084, "r": 12, "era": "1793-02" } }]
           },
           "repeat": true,
-          "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k2.jagd_los": true
-              }
-            }
-          ]
+          "do": [{ "do": "flag", "set": { "k2.jagd_los": true } }]
         },
         {
           "id": "k2_10-horn",
           "when": {
             "all": [
+              { "enter": { "x": 1222, "z": -1118, "r": 32, "era": "1793-02" } },
+              { "not": { "flag": "k2.jagd_laeuft" } },
               {
-                "enter": {
-                  "x": 1222,
-                  "z": -1118,
-                  "r": 32,
-                  "era": "1793-02"
-                }
-              },
-              {
-                "not": {
-                  "flag": "k2.jagd_laeuft"
-                }
-              },
-              {
-                "any": [
-                  {
-                    "not": {
-                      "flag": "k2.jagd_versuch"
-                    }
-                  },
-                  {
-                    "flag": "k2.jagd_los"
-                  }
-                ]
+                "any": [{ "not": { "flag": "k2.jagd_versuch" } }, { "flag": "k2.jagd_los" }]
               }
             ]
           },
           "repeat": true,
           "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k2.jagd_laeuft": true,
-                "k2.jagd_versuch": true,
-                "k2.jagd_los": null,
-                "k2.wieder_da": null
-              }
-            },
-            {
-              "do": "say",
-              "line": "jost.k2.04",
-              "delay": 2
-            },
-            {
-              "do": "say",
-              "line": "jost.k2.05",
-              "delay": 1.5
-            },
+            { "do": "flag", "set": { "k2.jagd_laeuft": true, "k2.jagd_versuch": true, "k2.jagd_los": null, "k2.wieder_da": null } },
+            { "do": "quest", "op": "start", "id": "q.k2.parforce", "onResume": true },
+            { "do": "say", "line": "jost.k2.04", "delay": 2 },
+            { "do": "say", "line": "jost.k2.05", "delay": 1.5 },
             {
               "do": "sound",
               "sound": "horn",
@@ -1847,21 +845,9 @@
               "caption": "[Horn vom Zwinger: zwei kurze Töne]",
               "delay": 1
             },
-            {
-              "do": "say",
-              "line": "jost.k2.06",
-              "delay": 0.8
-            },
-            {
-              "do": "npc",
-              "op": "despawn",
-              "npc": "jost"
-            },
-            {
-              "do": "npc",
-              "op": "despawn",
-              "npc": "hanne"
-            },
+            { "do": "say", "line": "jost.k2.06", "delay": 0.8 },
+            { "do": "npc", "op": "despawn", "npc": "jost" },
+            { "do": "npc", "op": "despawn", "npc": "hanne" },
             {
               "do": "threat",
               "kind": "pack",
@@ -1870,133 +856,43 @@
               "intensity": 0.7,
               "hounds": 5,
               "pikeur": true,
-              "from": {
-                "x": 1188,
-                "z": -1070
-              },
-              "target": {
-                "x": 819,
-                "z": -875
-              },
+              "from": { "x": 1188, "z": -1070 },
+              "target": { "x": 819, "z": -875 },
               "goalRadius": 25,
               "headStart": 6,
-              "center": {
-                "x": 1050,
-                "z": -1000
-              },
+              "center": { "x": 1050, "z": -1000 },
               "radius": 420
             },
-            {
-              "do": "objective",
-              "id": "k2.jagd",
-              "text": "Lauf! Durch die Durchfahrt im Südflügel auf die Terrasse",
-              "x": 1235,
-              "z": -1084
-            },
-            {
-              "do": "say",
-              "line": "laub.k2.pikeur",
-              "delay": 3
-            }
+            { "do": "objective", "id": "k2.jagd", "text": "Lauf! Durch die Durchfahrt im Südflügel auf die Terrasse", "x": 1235, "z": -1084 },
+            { "do": "say", "line": "laub.k2.pikeur", "delay": 3 }
           ]
         },
         {
           "id": "k2_10-terrasse",
           "when": {
-            "all": [
-              {
-                "flag": "k2.jagd_laeuft"
-              },
-              {
-                "enter": {
-                  "x": 1237,
-                  "z": -1066,
-                  "r": 16,
-                  "era": "1793-02"
-                }
-              }
-            ]
+            "all": [{ "flag": "k2.jagd_laeuft" }, { "enter": { "x": 1237, "z": -1066, "r": 16, "era": "1793-02" } }]
           },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.mauer",
-              "text": "Hinunter zur Orangerie: um die Mauer im Osten herum",
-              "x": 1290,
-              "z": -1018
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.mauer", "text": "Hinunter zur Orangerie: um die Mauer im Osten herum", "x": 1290, "z": -1018 }]
         },
         {
           "id": "k2_10-ost",
           "when": {
-            "all": [
-              {
-                "flag": "k2.jagd_laeuft"
-              },
-              {
-                "enter": {
-                  "x": 1290,
-                  "z": -1018,
-                  "r": 14,
-                  "era": "1793-02"
-                }
-              }
-            ]
+            "all": [{ "flag": "k2.jagd_laeuft" }, { "enter": { "x": 1290, "z": -1018, "r": 14, "era": "1793-02" } }]
           },
           "repeat": true,
-          "do": [
-            {
-              "do": "objective",
-              "id": "k2.parterre",
-              "text": "Zum Orangerie-Parterre",
-              "x": 1272,
-              "z": -968
-            }
-          ]
+          "do": [{ "do": "objective", "id": "k2.parterre", "text": "Zum Orangerie-Parterre", "x": 1272, "z": -968 }]
         },
         {
           "id": "k2_10-w4",
           "when": {
-            "all": [
-              {
-                "flag": "k2.jagd_laeuft"
-              },
-              {
-                "enter": {
-                  "x": 1272,
-                  "z": -968,
-                  "r": 24,
-                  "era": "1793-02"
-                }
-              },
-              {
-                "not": {
-                  "flag": "k2.w4"
-                }
-              }
-            ]
+            "all": [{ "flag": "k2.jagd_laeuft" }, { "enter": { "x": 1272, "z": -968, "r": 24, "era": "1793-02" } }, { "not": { "flag": "k2.w4" } }]
           },
           "repeat": true,
           "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k2.w4": true
-              }
-            },
-            {
-              "do": "cue",
-              "id": "hunt:hold",
-              "data": {
-                "seconds": 8
-              }
-            },
-            {
-              "do": "echo",
-              "id": "clue.k2.landremont"
-            },
+            { "do": "flag", "set": { "k2.w4": true } },
+            { "do": "cue", "id": "hunt:hold", "data": { "seconds": 8 } },
+            { "do": "echo", "id": "clue.k2.landremont" },
             {
               "do": "objective",
               "id": "k2.hang",
@@ -2008,342 +904,125 @@
         },
         {
           "id": "k2_10-lichter",
-          "when": {
-            "event": "echo:end",
-            "match": {
-              "id": "clue.k2.landremont"
-            }
-          },
-          "do": [
-            {
-              "do": "grant",
-              "clue": "clue.k2.landremont"
-            },
-            {
-              "do": "grant",
-              "clue": "clue.k2.laterne",
-              "delay": 1.5
-            }
-          ]
+          "when": { "event": "echo:end", "match": { "id": "clue.k2.landremont" } },
+          "do": [{ "do": "grant", "clue": "clue.k2.landremont" }, { "do": "grant", "clue": "clue.k2.laterne", "delay": 1.5 }]
         },
-        {
-          "id": "k2_10-keller",
-          "when": {
-            "room": "B10.1.s-pfeilersaal"
-          },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.keller"
-            }
-          ]
-        },
+        { "id": "k2_10-keller", "when": { "room": "B10.1.s-pfeilersaal" }, "do": [{ "do": "say", "line": "laub.k2.keller" }] },
         {
           "id": "k2_10-hang",
           "when": {
-            "all": [
-              {
-                "flag": "k2.jagd_laeuft"
-              },
-              {
-                "enter": {
-                  "x": 1250,
-                  "z": -915,
-                  "r": 22,
-                  "era": "1793-02"
-                }
-              }
-            ]
+            "all": [{ "flag": "k2.jagd_laeuft" }, { "enter": { "x": 1250, "z": -915, "r": 22, "era": "1793-02" } }]
           },
           "repeat": true,
           "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.hang"
-            },
-            {
-              "do": "objective",
-              "id": "k2.damm",
-              "text": "Den Hang hinab zum Damm des Weihers: Wasser hält den Pikeur auf",
-              "x": 819,
-              "z": -875
-            }
+            { "do": "say", "line": "laub.k2.hang" },
+            { "do": "objective", "id": "k2.damm", "text": "Den Hang hinab zum Damm des Weihers: Wasser hält den Pikeur auf", "x": 819, "z": -875 }
           ]
         }
       ],
-      "complete": {
-        "event": "hunt:goal",
-        "match": {
-          "mode": "parforce"
-        }
-      }
+      "complete": { "event": "hunt:goal", "match": { "mode": "parforce" } }
     },
     {
       "id": "k2_11",
       "title_de": "Am Damm",
       "enter": [
+        { "do": "threat", "kind": "pack", "active": false, "delay": 1 },
+        { "do": "objective", "id": "k2.pikeur", "text": "Am Damm wartet der Pikeur. Bannlicht, dann der Stab", "x": 819, "z": -875 },
+        { "do": "say", "line": "laub.k2.damm", "delay": 1 },
+        { "do": "say", "line": "laub.k2.damm.b" },
         {
-          "do": "objective",
-          "id": "k2.heim",
-          "text": "Über das Wasser. Dann Q halten: zurück in die Feldstation",
-          "x": 819,
-          "z": -875
-        },
-        {
-          "do": "say",
-          "line": "laub.k2.wasser",
-          "delay": 1
-        },
-        {
-          "do": "say",
-          "line": "laub.k2.kalkoefen",
-          "delay": 1
-        },
-        {
-          "do": "threat",
-          "kind": "pack",
-          "active": false,
-          "delay": 3
-        },
-        {
-          "do": "say",
-          "line": "laub.k2.sicher",
-          "delay": 1
+          "do": "enemy",
+          "op": "spawn",
+          "group": "k2.pikeur",
+          "kind": "pikeur",
+          "x": 826,
+          "z": -868,
+          "era": "1793-02",
+          "boss": true,
+          "leash": 60,
+          "delay": 0.5
         }
       ],
       "on": [
         {
+          "id": "k2_11-heute",
+          "when": {
+            "all": [{ "era": "today" }, { "not": { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } } }]
+          },
+          "repeat": true,
+          "do": [
+            { "do": "anchor", "to": "1793-02", "x": 819, "z": -875, "r": 30 },
+            { "do": "objective", "id": "k2.heim", "text": "Zurück auf den Damm: Q – der Pikeur wartet noch", "x": 819, "z": -875 }
+          ]
+        },
+        {
+          "id": "k2_11-nacht",
+          "when": {
+            "all": [{ "era": "1793-02" }, { "not": { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } } }]
+          },
+          "repeat": true,
+          "do": [
+            { "do": "anchor", "to": null },
+            { "do": "enemy", "op": "spawn", "group": "k2.pikeur", "kind": "pikeur", "x": 826, "z": -868, "era": "1793-02", "boss": true, "leash": 60 },
+            { "do": "objective", "id": "k2.pikeur", "text": "Am Damm wartet der Pikeur. Bannlicht, dann der Stab", "x": 819, "z": -875 }
+          ]
+        },
+        {
+          "id": "k2_11-weg",
+          "when": { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } },
+          "do": [
+            { "do": "say", "line": "laub.k2.damm.weg", "delay": 1.5 },
+            { "do": "say", "line": "laub.k2.wasser", "delay": 1 },
+            { "do": "say", "line": "laub.k2.kalkoefen", "delay": 1 },
+            { "do": "say", "line": "laub.k2.sicher", "delay": 1 },
+            { "do": "objective", "id": "k2.heim", "text": "Q halten: zurück in die Feldstation", "x": 819, "z": -875 }
+          ]
+        },
+        {
           "id": "k2_11-licht",
           "when": {
-            "flag": "flag.k2_tor",
-            "eq": "leuchten"
+            "all": [{ "flag": "flag.k2_tor", "eq": "leuchten" }, { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } }]
           },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.tor_licht",
-              "delay": 9
-            }
-          ]
+          "do": [{ "do": "say", "line": "laub.k2.tor_licht", "delay": 9 }]
         },
         {
           "id": "k2_11-dunkel",
           "when": {
-            "flag": "flag.k2_tor",
-            "eq": "dunkel"
+            "all": [{ "flag": "flag.k2_tor", "eq": "dunkel" }, { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } }]
           },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.tor_dunkel",
-              "delay": 9
-            }
-          ]
+          "do": [{ "do": "say", "line": "laub.k2.tor_dunkel", "delay": 9 }]
         }
       ],
       "complete": {
-        "era": "today"
+        "all": [{ "era": "today" }, { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } }]
       },
-      "exit": [
-        {
-          "do": "flag",
-          "set": {
-            "k2.jagd_laeuft": null,
-            "k2.w4": null
-          }
-        }
-      ]
+      "exit": [{ "do": "flag", "set": { "k2.jagd_laeuft": null, "k2.w4": null } }, { "do": "anchor", "to": null }],
+      "wake": { "x": 790, "z": -905, "yaw": 60, "era": "today", "text": "Du kommst unten am Damm zu dir, im Heute. Nichts ist verloren." }
     },
     {
       "id": "k2_12",
       "title_de": "Feldstation",
       "enter": [
-        {
-          "do": "objective",
-          "id": "k2.ende",
-          "text": "Die Fallseite „Die Flucht“ fertigstellen (Tab: Chronik). Bestätigt wird nur im Heute."
-        },
-        {
-          "do": "autosave"
-        },
-        {
-          "do": "say",
-          "line": "marlene.k2.abend",
-          "delay": 2.5
-        }
+        { "do": "objective", "id": "k2.ende", "text": "Feldstation. Die Nacht ist vorbei." },
+        { "do": "autosave" },
+        { "do": "say", "line": "marlene.k2.abend", "delay": 2.5 }
       ],
-      "on": [
-        {
-          "id": "k2_12-datum",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "timer": 25
-              },
-              {
-                "not": {
-                  "have": {
-                    "noun": "n.9_februar"
-                  }
-                }
-              }
-            ]
-          },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.fehlt.datum"
-            }
-          ]
-        },
-        {
-          "id": "k2_12-warnung",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "timer": 30
-              },
-              {
-                "not": {
-                  "have": {
-                    "noun": "n.unglaubwuerdig"
-                  }
-                }
-              }
-            ]
-          },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.fehlt.warnung"
-            }
-          ]
-        },
-        {
-          "id": "k2_12-abschied",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "timer": 35
-              },
-              {
-                "have": {
-                  "clue": "clue.k2.warnung"
-                }
-              },
-              {
-                "not": {
-                  "have": {
-                    "noun": "n.galerie_sammlung"
-                  }
-                }
-              }
-            ]
-          },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.fehlt.abschied"
-            }
-          ]
-        },
-        {
-          "id": "k2_12-kalk",
-          "when": {
-            "all": [
-              {
-                "era": "today"
-              },
-              {
-                "timer": 40
-              },
-              {
-                "not": {
-                  "have": {
-                    "noun": "n.kalkoefen"
-                  }
-                }
-              }
-            ]
-          },
-          "do": [
-            {
-              "do": "say",
-              "line": "laub.k2.fehlt.kalkoefen"
-            }
-          ]
-        }
-      ],
+      "on": [],
       "complete": {
-        "all": [
-          {
-            "era": "today"
-          },
-          {
-            "any": [
-              {
-                "caseComplete": "case.k2"
-              },
-              {
-                "confirmed": {
-                  "prefix": "entry.k2.",
-                  "n": 6
-                }
-              },
-              {
-                "flag": "debug.k2"
-              }
-            ]
-          }
-        ]
+        "all": [{ "era": "today" }, { "any": [{ "quest": { "id": "q.k2.parforce" } }, { "flag": "debug.k2" }] }, { "timer": 6 }]
       },
-      "exit": [
-        {
-          "do": "unlock",
-          "chapter": "k3"
-        },
-        {
-          "do": "autosave"
-        }
-      ]
+      "exit": [{ "do": "unlock", "chapter": "k3" }, { "do": "autosave" }]
     },
     {
       "id": "k2_13",
       "title_de": "Rauch",
       "enter": [
-        {
-          "do": "objective",
-          "text": null
-        },
-        {
-          "do": "sound",
-          "sound": "compass",
-          "caption": "[Der Deckel der Bussole taut. Darunter riecht es nach Rauch.]",
-          "delay": 1.5
-        },
-        {
-          "do": "say",
-          "line": "laub.k2.ende",
-          "delay": 1.5
-        },
-        {
-          "do": "say",
-          "line": "laub.k2.ende.b",
-          "delay": 1.2
-        }
+        { "do": "objective", "text": null },
+        { "do": "sound", "sound": "compass", "caption": "[Der Deckel der Bussole taut. Darunter riecht es nach Rauch.]", "delay": 1.5 },
+        { "do": "say", "line": "laub.k2.ende", "delay": 1.5 },
+        { "do": "say", "line": "laub.k2.ende.b", "delay": 1.2 }
       ],
-      "complete": {
-        "timer": 14
-      }
+      "complete": { "timer": 14 }
     }
   ]
 }
