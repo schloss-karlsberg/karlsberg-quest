@@ -276,7 +276,7 @@ export const deContent: Record<string, string> = {
   'ui.credits.data.lvgl': 'Geländemodell DGM1 2025, Laserscan, historische Karten (Bayerische Originalpositionsblätter 1836–41, TK25 1935–40): © GeoBasis-DE/LVGL-SL ({year}), Datenlizenz Deutschland – Namensnennung – Version 2.0 (dl-de/by-2-0)',
   'ui.credits.data.rp': 'Geländemodell DGM1 2022 (Grenzbereich): © GeoBasis-DE/LVermGeoRP ({year}), dl-de/by-2-0',
   'ui.credits.data.osm': 'Wege, Gewässer, Mauern: © OpenStreetMap-Mitwirkende, ODbL',
-  'ui.credits.data.model': 'Rekonstruktion 1789 (Hypothese): Modell und Katalog aus dem Projekt „saar-lidar-explorer / schloss-karlsberg“ (nur gelesen, nicht verändert)',
+  'ui.credits.data.model': 'Rekonstruktion 1789 (Hypothese): Modell und Katalog aus dem Saar LiDAR Explorer (Open-Kirrberg)',
   'ui.credits.fiction': 'Was erfunden ist: Laub, Marlene, Soll, Hanne, Matthes, Peter, Jost, die Hunde, die Chronik, die Meute, der Steinfraß. Siehe Codex „Was in diesem Spiel erfunden ist“.',
   'ui.credits.look': 'Schauen, nicht graben. Der Karlsberg ist ein Bodendenkmal. Funde gehören gemeldet, nicht mitgenommen.',
   'ui.credits.thanks': 'Danke an alle, die den Karlsberg pflegen, erforschen und erklären.',

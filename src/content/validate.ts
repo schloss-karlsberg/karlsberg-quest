@@ -93,6 +93,7 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
     if (!Array.isArray(f.sources)) err(file, f.id, 'fact: "sources" must be an array');
     if (!f.fiction && sources.length === 0) err(file, f.id, 'fact: no source (every non-fiction fact needs at least one)');
     for (const s of sources) if (!isUrl(s?.url)) err(file, f.id, `fact: source without valid http(s) url (${JSON.stringify(s)})`);
+    for (const s of sources) if (/(?:saar-lidar-|research\/\d|\b[\w-]+\/[\w-]+\.md\b)/.test(`${s?.label ?? ''} ${(s as { note?: string })?.note ?? ''}`)) err(file, f.id, 'fact: source note shows a repo path (players read it in the codex)');
     if (f.era !== undefined && !(ERAS as readonly string[]).includes(f.era)) err(file, f.id, `fact: unknown era '${f.era}'`);
   }
 

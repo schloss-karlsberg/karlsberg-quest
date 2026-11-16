@@ -1133,9 +1133,6 @@ body.kq-in-combat .kqs-dlg-body::before {
   animation: none;
   padding: 40px 0 120px;
 }
-.kqs-cr-view:hover .kqs-cr-roll {
-  animation-play-state: paused;
-}
 @keyframes kqs-roll {
   to {
     transform: translateY(-100%);

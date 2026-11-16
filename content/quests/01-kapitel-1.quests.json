@@ -1037,7 +1037,7 @@
             {
               "url": "https://www.shop.lvgl.saarland.de/",
               "label": "LIDAR (DGM1 2025, LVGL Saarland)",
-              "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); Merkmal KB-30"
+              "note": "LIDAR: eigene Auswertung des DGM1 2025 (Geländeanalyse des Projekts, unveröffentlicht); Merkmal KB-30"
             }
           ]
         }

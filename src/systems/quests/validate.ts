@@ -53,6 +53,8 @@ const EVENT_RE = /^[a-z]+:[a-z-]+$/;
 const SKILLS = new Set(['relief', 'kartograf', 'baumeister', 'roentgen', 'spurenleser']);
 const ANIMALS = new Set(['cassowary', 'dromedary', 'jaguar']);
 const VOICES = new Set(['laub', 'marlene']);
+/** A repo path or an internal Markdown file in player-facing text. */
+export const REPO_PATH = /(?:saar-lidar-|research\/\d|\b[\w-]+\/[\w-]+\.md\b)/;
 /** NPCs with a figure in the roster (others become a generic ghost: warning). */
 const ROSTER = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'wache', 'fuhrmann', 'frau', 'mann', 'junge']);
 
@@ -309,7 +311,11 @@ function checkLines(lines: QuestLine[] | undefined, what: string, file: string, 
     if (refs.speakers && !refs.speakers.has(l.speaker)) err(file, qid, `${what}: unknown speaker '${l.speaker}'`);
     // historical persons say only what the sources support (PRD §4.4 rule 2)
     if (refs.historical?.has(l.speaker) && !(l.sources ?? []).length) err(file, qid, `${what}: historical speaker '${l.speaker}' needs sources`);
-    for (const s of l.sources ?? []) if (!isStr(s?.url) || !/^https?:\/\//.test(s.url) || !isStr(s?.label)) err(file, qid, `${what}: source needs an http(s) url and a label`);
+    for (const s of l.sources ?? []) {
+      if (!isStr(s?.url) || !/^https?:\/\//.test(s.url) || !isStr(s?.label)) err(file, qid, `${what}: source needs an http(s) url and a label`);
+      // the codex shows source notes to players: no repo paths or internal file names
+      if (REPO_PATH.test(`${s?.label ?? ''} ${s?.note ?? ''}`)) err(file, qid, `${what}: source note shows a repo path ('${String(s?.note ?? s?.label)}')`);
+    }
     if (l.text.length > 420) warn(file, qid, `${what}: very long line (${l.text.length} chars) — split it`);
   }
 }

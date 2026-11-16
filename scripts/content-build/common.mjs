@@ -48,7 +48,7 @@ const S = {
   WPK: ['https://www.outdooractive.com/de/poi/saarpfalz-kreis/waldpark-schloss-karlsberg/61542782/', 'WaldPark Schloss Karlsberg (outdooractive)'],
 };
 /** LIDAR (own analysis, not public): cited via the open DGM1 data + a note. */
-const LIDAR_NOTE = 'LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich)';
+const LIDAR_NOTE = 'LIDAR: eigene Auswertung des DGM1 2025 (Geländeanalyse des Projekts, unveröffentlicht)';
 
 /** src('M1910', 'S. 423 · Z') → SourceRef. 'LIDAR' maps to the LVGL data + note. */
 export function src(key, note) {

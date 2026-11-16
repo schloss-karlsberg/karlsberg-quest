@@ -215,3 +215,19 @@ describe('input contract', () => {
     expect(DEFAULT_BINDINGS.journal).toEqual(['KeyJ', 'Tab']);
   });
 });
+
+describe('credits data', () => {
+  it('one clean label and the licence once per layer, no internal project names', async () => {
+    const { creditData } = await import('../src/systems/story/endings/ui');
+    const { readFileSync } = await import('node:fs');
+    const items = JSON.parse(readFileSync(new URL('../public/data/attribution.json', import.meta.url), 'utf8')).items;
+    const rows = creditData(items);
+    expect(rows.length).toBe(items.length);
+    for (const r of rows) {
+      const line = `${r.label}: ${r.text} — ${r.licence}`;
+      expect(line).not.toMatch(/Teilprojekt|schloss-karlsberg\b|research\/|source je|Generator-Regeln/);
+      expect(line.split(r.licence).length - 1, line).toBe(1);
+      expect(r.text.startsWith(r.label.split(' ')[0]!), line).toBe(false);
+    }
+  });
+});

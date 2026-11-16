@@ -12,6 +12,27 @@ import type { EndingId } from '../types';
 import type { Epilogue } from './epilogue';
 import { CREDIT_SOURCES, ENDING_BEFORE, endingScenes } from './scenes';
 
+/**
+ * The data credits as players read them: one clean label, the holder, the licence once (the
+ * prepared attribution.json speaks to developers: generator rules, sub-project names).
+ */
+const CREDIT_DATA: Record<string, { label: string; text: string; licence: string }> = {
+  dgm: { label: 'Gelände (DGM1 2025)', text: 'GeoBasis-DE/LVGL-SL (2026)', licence: 'dl-de/by-2-0' },
+  terrain1789: { label: 'Gelände 1789 (Hypothese)', text: 'abgeleitet aus dem DGM1, GeoBasis-DE/LVGL-SL (2026)', licence: 'dl-de/by-2-0' },
+  canopy: { label: 'Vegetationshöhe', text: 'GeoBasis-DE/LVGL-SL (2026), Daten bearbeitet (DOM1 − DGM1)', licence: 'dl-de/by-2-0' },
+  hist1840: { label: 'Karte 1836–41 (Bayerische Positionsblätter)', text: 'GeoBasis-DE/LVGL-SL (2026), Daten bearbeitet', licence: 'dl-de/by-2-0' },
+  hist1935: { label: 'Karte TK25 1935–40', text: 'GeoBasis-DE/LVGL-SL (2026), Daten bearbeitet', licence: 'dl-de/by-2-0' },
+  pointcloud: { label: 'Punktwolke (ALS 2025, Bodenpunkte)', text: 'GeoBasis-DE/LVGL-SL (2026), Daten bearbeitet', licence: 'dl-de/by-2-0' },
+  recon: { label: 'Rekonstruktion 1789 (Hypothese)', text: 'Grundrisse teils nach dem Lageplan 2006 von schloss-carlsberg.de, Sockeltiefen aus dem DGM1', licence: 'CC BY-SA 2.0 DE' },
+  osm: { label: 'Wege & Gewässer', text: '© OpenStreetMap-Mitwirkende', licence: 'ODbL 1.0' },
+  pois: { label: 'Orte', text: 'Koordinaten überwiegend © OpenStreetMap-Mitwirkende', licence: 'ODbL 1.0' },
+  project: { label: 'Datenaufbereitung', text: 'Saar LiDAR Explorer (Open-Kirrberg)', licence: 'MIT' },
+};
+
+export function creditData(items: readonly AttributionItem[]): { label: string; text: string; licence: string }[] {
+  return items.map((a) => CREDIT_DATA[a.id] ?? { label: a.label_de, text: a.text, licence: a.licence ?? '' });
+}
+
 export interface EndingDeps {
   modals: ModalManager;
   attribution(): AttributionItem[];
@@ -58,6 +79,7 @@ export class EndingScreen {
   }
 
   close(): void {
+    this.dropCreditKeys();
     this.m?.close();
     this.m = null;
   }
@@ -137,6 +159,13 @@ export class EndingScreen {
     ]);
   }
 
+  private creditKeys: ((e: KeyboardEvent) => void) | null = null;
+
+  private dropCreditKeys(): void {
+    if (this.creditKeys) document.removeEventListener('keydown', this.creditKeys);
+    this.creditKeys = null;
+  }
+
   /** The credits roll (also reachable directly for tests). */
   credits(): void {
     if (!this.open) this.show();
@@ -151,12 +180,8 @@ export class EndingScreen {
       sec(t('story.credits.sources'), h('ul', CREDIT_SOURCES.map((s) => h('li', [s.label, h('a', { href: s.url, target: '_blank', rel: 'noopener' }, new URL(s.url).hostname.replace(/^www\./, ''))])))),
       sec(
         t('story.credits.data'),
-        // player-facing: no repo paths or internal catalogue names, the licence once
-        h('ul', attrib.map((a) => {
-          const text = a.text.replace(/\s*\((?:research\/[^)]*|Generator-Regeln[^)]*)\)/g, '').replace(/ des Teilprojekts schloss-karlsberg/g, '').replace(/,? Katalog v2/g, '');
-          return h('li', [h('b', `${a.label_de}: `), text, a.licence && !text.includes(a.licence) ? ` — ${a.licence}` : '']);
-        })),
-        h('p', 'Rekonstruktion 1789 (Hypothese): Modell und Katalog aus dem Projekt „saar-lidar-explorer / schloss-karlsberg“.'),
+        // player-facing: one clean label, one holder, the licence once (CREDIT_DATA)
+        h('ul', creditData(attrib).map((a) => h('li', [h('b', `${a.label}: `), a.text, ` — ${a.licence}`]))),
       ),
       sec(t('story.credits.fiction'), h('p', t('story.credits.fictionText'))),
       sec('Bild und Klang', h('p', t('story.credits.sound')), h('p', t('story.credits.fonts'))),
@@ -168,10 +193,32 @@ export class EndingScreen {
     ]);
     const viewport = h('div.kqs-cr-view', { 'data-testid': 'credits' }, roll);
     if (this.d.reducedMotion()) viewport.classList.add('kqs-static');
+    else {
+      // the roll keeps running (a resting cursor no longer freezes it); wheel and arrow keys scrub
+      const scrub = (s: number) => {
+        const a = roll.getAnimations?.()[0];
+        if (!a) return;
+        const now = Number(a.currentTime ?? 0);
+        a.currentTime = Math.max(0, Math.min(95_000, now + s * 1000));
+      };
+      viewport.addEventListener(
+        'wheel',
+        (e) => {
+          e.preventDefault();
+          scrub(Math.sign(e.deltaY) * Math.min(6, Math.abs(e.deltaY) / 25));
+        },
+        { passive: false },
+      );
+      this.creditKeys = (e: KeyboardEvent) => {
+        if (e.code === 'ArrowDown' || e.code === 'PageDown') scrub(e.code === 'PageDown' ? 10 : 3);
+        else if (e.code === 'ArrowUp' || e.code === 'PageUp') scrub(e.code === 'PageUp' ? -10 : -3);
+      };
+      document.addEventListener('keydown', this.creditKeys);
+    }
     this.page('credits', 'kqs-end-credits', [
       viewport,
       h('div.actions', [
-        h('button.kq-btn.primary', { 'data-testid': 'credits-back', onclick: () => (this.close(), this.d.finished()) }, t('story.end.back')),
+        h('button.kq-btn.primary', { 'data-testid': 'credits-back', onclick: () => (this.dropCreditKeys(), this.close(), this.d.finished()) }, t('story.end.back')),
       ]),
     ]);
   }
