@@ -609,7 +609,9 @@ Round-4 (polish: set dressing) integration rules:
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
   (story `npc` action). `room` places the ghost in a palace room on that room's storey (centre
   unless x/z are given); spawned at the player it keeps the player's storey. A figure
-  (`figure.ts`): a period costume from the roster's `look` (`roster.ts`: `outfit` maid / official /
+  (`figure.ts`): a period costume from the roster's `look` (`roster.ts`: soll, hanne, jost, pikeur,
+  peter, matthes and the side-quest givers gaertner, diener, mann — the story validator's `NPCS`
+  set must list the same ids; `outfit` maid / official /
   livery / carter / mason, `hat` tricorn / huntcap / mobcap / slouch, `hair` wig / queue / short,
   `prop`, `tint`, `seed`) built from lathe-revolved skirts and coats, tubes and capsules, merged
   into one geometry (`aPart` head/torso/arms/legs/hat/prop/skirts, `aPivot`, `aShade`). One
@@ -925,9 +927,10 @@ Rules that came out of it:
   quests (`{do:'quest', op, id, onResume:true}`) and wait on `{quest:{id}}` (or an objective count:
   `k4_6` ends when the Steinbrecher falls and then starts the Steinfraß). No `confirmed`,
   `caseComplete` or `reading` condition is left; `k4_15` only runs `readings fill offen`.
-- **Settle reactions**: examine / echo objectives count only clues found while the quest runs, so the
-  chapters carry `settle-*` reactions (`quest` active + clue in the inventory + objective 0 →
-  `quest progress`). Side quests left open are failed at the chapter's end (`k3_9`, `k4_8`, `k4_14`).
+- **Settle reactions**: the chapters carry `settle-*` reactions (`quest` active + clue in the
+  inventory + objective 0 → `quest progress`). Since the integration the quests system also settles
+  known clues itself one tick after any `quest:accepted` / `quest:objective` (`QuestBook.settleKnown`,
+  before only on restore), so the reactions are a harmless second path (progress is capped). Side quests left open are failed at the chapter's end (`k3_9`, `k4_8`, `k4_14`).
 - `flags['combat.disabled']` is set on entering `k4_11` and every beat after it, including `e1` / `e2`;
   `e2`'s exit (after the credits) clears it.
 - Tests: `tests/quests-content-b.test.ts` (structure, stances vs. epilogue, no fights in the Festsaal /

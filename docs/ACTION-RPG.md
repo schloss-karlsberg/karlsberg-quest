@@ -702,16 +702,16 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Story beats waiting on Chronik confirmations | content tracks replace every `confirmed` / `caseComplete` / `reading` gate with `quest` conditions (the validator can be tightened afterwards) |
 | Old saves mid-chapter | old flags kept; quests start fresh per chapter (story re-offers the current beat's quest on resume with `onResume: true`) |
 
-- **contentB (Ch. 3–4) speaker / roster needs:** `gaertner` and `mann` are in the quests validator's
+- **contentB (Ch. 3–4) speaker / roster needs** (roster figures for `gaertner`, `diener` and `mann` added at integration, 2026-11-16; the jaguar and the chair quests could move back to their §11.3 givers in a later content pass): `gaertner` and `mann` are in the quests validator's
   roster but have no NPC figure in `src/systems/npc/roster.ts` (the story validator warns "generic
   ghost"). Ch. 3 therefore gives the jaguar to Hanne and the gilded chair to Peter (Hanne's boy). With
   a gardener / villager figure (architect) both can go back to their §11.3 givers.
-- **contentB:** examine / echo objectives only count clues found while the quest runs (`settleKnown`
+- **contentB:** (resolved at integration: the quests system settles known clues after every accept / objective) examine / echo objectives only count clues found while the quest runs (`settleKnown`
   runs on restore); Ch. 3–4 bridge this with story "settle" reactions (`quest progress` when the clue
   is already in the inventory). A `settleKnown` on accept in the quests system would make them redundant.
 - **Q-11** Ranged option (thrown Kalkstaub is the only one) — enough? Lean: yes for v1.
 - **Q-12** Damage numbers default on? Lean: on, small, handwritten; one switch.
 - **Q-13** Respec cost? Lean: free at the field station.
-- **Q-14** (contentA) The story validator's NPC set (`src/systems/story`) knows soll, hanne, jost, peter, matthes, pikeur but not the side-quest givers `gaertner` and `diener`: their spawns validate as "generic ghost" warnings (k1_0 ×2, k2_0 ×1), and `src/systems/npc/roster.ts` has no look for them yet. Needs: add both to the roster/validator set (src owner).
-- **Q-15** (contentA) QuestBook counts a clue only when its objective is open; clues found earlier settle only on restore. The prolog/k1/k2 stories work around it with `settle.<quest>.<obj>` reactions. Nicer: settle known clues on accept in QuestBook.
-- **Q-16** (contentA) Kapitel 4 still reads `flag.k2_lichter` as before; it is now set by the stance of `q.k2.lichter` (a side quest), so it may be unset — K4 needs an `offen` fallback.
+- ~~**Q-14**~~ (resolved at integration: roster + validator know `gaertner`, `diener`, `mann`) (contentA) The story validator's NPC set (`src/systems/story`) knows soll, hanne, jost, peter, matthes, pikeur but not the side-quest givers `gaertner` and `diener`: their spawns validate as "generic ghost" warnings (k1_0 ×2, k2_0 ×1), and `src/systems/npc/roster.ts` has no look for them yet. Needs: add both to the roster/validator set (src owner).
+- ~~**Q-15**~~ (resolved at integration: settle on accept / objective) (contentA) QuestBook counts a clue only when its objective is open; clues found earlier settle only on restore. The prolog/k1/k2 stories work around it with `settle.<quest>.<obj>` reactions. Nicer: settle known clues on accept in QuestBook.
+- ~~**Q-16**~~ (resolved: `k4_15` fills every open reading with „offen“ when any stance flag is missing, so an unset `flag.k2_lichter` is covered) (contentA) Kapitel 4 still reads `flag.k2_lichter` as before; it is now set by the stance of `q.k2.lichter` (a side quest), so it may be unset — K4 needs an `offen` fallback.
