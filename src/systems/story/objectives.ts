@@ -86,7 +86,7 @@ export class ObjectiveView {
   }
 
   /** Per frame. heading = view heading (deg, clockwise from north). */
-  frame(dt: number, px: number, pz: number, heading: number, opts: { compass: boolean; visible: boolean; reducedMotion: boolean; questLed?: boolean }): void {
+  frame(dt: number, px: number, pz: number, heading: number, opts: { compass: boolean; visible: boolean; reducedMotion: boolean; questLed?: boolean; questTarget?: { x: number; z: number } | null }): void {
     this.el.style.display = opts.visible ? '' : 'none';
     this.bussole.classList.toggle('kqs-show', opts.compass && opts.visible);
     const o = this.obj;
@@ -95,7 +95,12 @@ export class ObjectiveView {
     const dup = !!opts.questLed && !!o && !/\bQ\b/.test(o.text);
     this.el.classList.toggle('kqs-dup', dup);
     let target: number | null = null;
-    if (o && o.x !== undefined && o.z !== undefined) {
+    if (opts.questTarget && (dup || !o)) {
+      // the story line stepped back for the quest tracker: the needle follows the tracked goal
+      this.hud.setMarker('objective', null);
+      this.distEl.textContent = '';
+      target = angleDiff(bearingDeg(px, pz, opts.questTarget.x, opts.questTarget.z), heading);
+    } else if (o && o.x !== undefined && o.z !== undefined) {
       // the Bussole keeps pointing even when the line steps back; only the compass-strip mark goes
       const b = bearingDeg(px, pz, o.x, o.z);
       const d = Math.hypot(o.x - px, o.z - pz);

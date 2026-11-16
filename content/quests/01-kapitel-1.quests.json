@@ -400,43 +400,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k1.lohn",
-        "flag": "flag.k1_lohn",
-        "prompt_de": "Hanne: Warum krieg ich ihn nicht? Was meinen Sie?",
-        "options": [
-          {
-            "label_de": "Weil der Herzog nicht zahlen will.",
-            "value": "will_nicht",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen. Das sag ich auch."
-              }
-            ]
-          },
-          {
-            "label_de": "Weil der Präsident die Kassen geleert hat.",
-            "value": "creuzer",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Dann soll er’s zurückbringen. Er wird’s nicht."
-              }
-            ]
-          },
-          {
-            "label_de": "Weil das Geld in Hunde und Bilder geht.",
-            "value": "hunde_bilder",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Die Hunde kriegen Fleisch, die Bilder kriegen Gold drumrum. Und wir kriegen Zettel."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "soll",

@@ -79,25 +79,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "test.lohn",
-        "prompt_de": "TEST: Warum bekommt Hanne den Lohn nicht, meinst du?",
-        "flag": "flag.test_lohn",
-        "options": [
-          {
-            "label_de": "Weil der Herzog nicht will.",
-            "value": "will_nicht"
-          },
-          {
-            "label_de": "Weil die Kassen leer sind.",
-            "value": "creuzer"
-          },
-          {
-            "label_de": "Ich weiß es nicht.",
-            "value": "offen"
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "briefe",

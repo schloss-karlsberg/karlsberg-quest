@@ -188,7 +188,7 @@ const dialogue = [
   say('marlene.k4.zettel_2', 'marlene', 'PS: Wenn ein altes Schloss in Homburg in hundert Häusern steckt, ist es dann weg oder überall? Frag ich mich nur so.', found('clue.k4.marlene', { step: 2 }), { once: true }),
   say('laub.k4.gestaendnis_1', 'laub', 'Ich habe Ihnen etwas verschwiegen. Ich bin nicht verschollen, weil ich mich verlaufen habe. Ich war am alten Forsthaus, Standpunkt siebzehn. Am Tag vorher hatte ich in einem Graben eine Seite gefunden, alt, angesengt, mit Namen drauf. ‚Was der Hof schuldig blieb.‘ Ich dachte, wenn ich vermesse, wo die Seiten liegen, finde ich den Rest. Ein Geometer findet alles, wenn man ihm genug Standpunkte gibt.', beat('4.0'), { once: true, priority: 10 }),
   // 4.1 Taleingang
-  say('laub.k4.taleingang', 'laub', '1796. Das Schloss ist drei Jahre tot, und die Leute holen sich ihr Geld zurück. In Steinen.', beat('4.1'), { once: true }),
+  say('laub.k4.taleingang', 'laub', 'Die Leute holen sich ihr Geld zurück. In Steinen.', beat('4.1'), { once: true }),
   ...seq(echo('clue.k4.karren'), [
     ['echo.k4.karren.01', 'fuhrmann', 'Hü! Für das Fenstergewände da kriegt der Bäcker in Homburg eine neue Haustür.'],
     ['echo.k4.karren.02', 'fuhrmann2', 'Und der Schmied einen Kamin. Und ich krieg zwei Kreuzer.'],
@@ -203,7 +203,7 @@ const dialogue = [
   // 4.3 Baumagazin
   say('laub.k4.baumagazin', 'laub', 'Das Baumagazin. Das Lager für Baumaterial. Das einzige Haus, das stehen bleibt. Alles andere wird selbst zu Baumaterial. Man hat später gesagt, das Schloss sei eine Baustoffhandlung geworden. Die Verwaltung nennt so etwas Kreislauf.', found('clue.k4.baumagazin'), { once: true, src: [src('RLS', 'P'), src('WP-SK', 'P')] }),
   say('soll.k4.01', 'soll', 'Ah. Sie. Sie sind auch nicht jünger geworden. Doch, Sie schon.', talk('soll', 'greet'), { once: true }),
-  say('soll.k4.02', 'soll', 'Ich führe jetzt Buch für die Pächter. Vierzehn Bürger aus Homburg haben das Recht gepachtet, Holz und Steine zu verkaufen. Vierzehn. Ich habe nachgezählt. Ein Fenstergewände zwölf Kreuzer, ein Treppenstein zwanzig, ein Wappen gar nichts, das will keiner.', talk('soll', 'pacht'), { src: [src('HIB', 'Zahl 14; Preise erfunden')] }),
+  say('soll.k4.02', 'soll', 'Ich führe jetzt Buch für die Pächter. Ein Fenstergewände zwölf Kreuzer, ein Treppenstein zwanzig, ein Wappen gar nichts, das will keiner.', talk('soll', 'pacht'), { src: [src('HIB', 'Pacht belegt; Preise erfunden')] }),
   say('soll.k4.03', 'soll', 'Zum ersten Mal in meinem Leben wird am Karlsberg alles bezahlt. Bar. Sofort. Es ist entsetzlich.', talk('soll', 'geld')),
   say('soll.k4.04', 'soll', 'Raub ist das. Erst haben sie dem Land das Geld genommen und Steine draus gemacht, jetzt nimmt das Land die Steine zurück. Ein Raub am Raub. Ob das wieder gerade wird, weiß ich nicht. Buchhalterisch ist es eine Null.', talk('soll', 'raub')),
   say('soll.k4.05', 'soll', 'Die Franzosen haben ihn angezündet. Aber abgerissen haben ihn wir. Das schreib ich auch auf.', talk('soll', 'schuld')),

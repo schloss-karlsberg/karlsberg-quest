@@ -95,43 +95,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k3.pluenderer",
-        "prompt_de": "Und? Was machen die Leute aus den Dörfern da drüben, was meinst du?",
-        "flag": "flag.k3_pluenderer",
-        "options": [
-          {
-            "label_de": "Sie nehmen sich, was man ihnen schuldet.",
-            "value": "schuld",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Fünf Jahre Zinsen auf einen Gulden. So rechne ich auch."
-              }
-            ]
-          },
-          {
-            "label_de": "Sie stehlen.",
-            "value": "stahlen",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Kann sein. Dann stiehlt der Hof seit zwanzig Jahren, und keiner hat’s aufgeschrieben."
-              }
-            ]
-          },
-          {
-            "label_de": "Sie retten, was zu retten ist.",
-            "value": "retteten",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Ein Stuhl in einer Stube brennt nicht. Das stimmt."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "ehrenhof",
@@ -263,7 +226,7 @@
       "history": [
         {
           "speaker": "laub",
-          "text": "Durch diese Falltür haben Mannlich und ein alter Diener namens Burger die schönsten Bilder getragen, am hellen Tag. Später gingen Galerie, Bibliothek und Möbel über Kaiserslautern nach Mannheim. Die Bilder hängen heute in München.",
+          "text": "Was Mannlich durch diese Falltür gerettet hat, ging später mit Galerie, Bibliothek und Möbeln über Kaiserslautern nach Mannheim. Die Bilder hängen heute in München.",
           "fact": "cx.20",
           "sources": [
             {

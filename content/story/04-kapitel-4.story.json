@@ -757,32 +757,13 @@
       "on": [
         {
           "id": "luecken",
-          "when": {
-            "all": [
-              { "timer": 4 },
-              {
-                "not": {
-                  "all": [
-                    { "flag": "flag.p_spuren" },
-                    { "flag": "flag.k1_lohn" },
-                    { "flag": "flag.k2_lichter" },
-                    { "flag": "flag.k2_pfeiffer" },
-                    { "flag": "flag.k2_stelle" },
-                    { "flag": "flag.k3_pluenderer" },
-                    { "flag": "flag.k4_zerstoerer" },
-                    { "flag": "flag.k4_meute" },
-                    { "flag": "flag.k4_steine" }
-                  ]
-                }
-              }
-            ]
-          },
+          "when": { "timer": 4 },
           "do": [
             {
               "do": "say",
               "id": "laub.k4.x.luecken",
               "speaker": "laub",
-              "text": "Ein paar Fragen sind offen geblieben. Das darf man. Ich schreibe „offen“ dahin. Das ist auch eine Antwort, und keine schlechte."
+              "text": "Was Sie getan haben, steht im Feldbuch. Was Sie haben liegen lassen, auch. Beides zählt."
             },
             { "do": "readings", "fill": "offen" }
           ]

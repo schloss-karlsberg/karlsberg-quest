@@ -596,8 +596,11 @@ Round-4 (polish: set dressing) integration rules:
   `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
   once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
   caps waiting lines at 6 (barks / skill remarks first), drops barks after 14 s, gives lines of an
-  ended beat 6 s, never cuts a playing sequence, and skips a trigger line about a place the player
-  has left. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
+  ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
+  (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
+  `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass. Lines a
+  trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
+  cleared at the credits. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
   player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
   `slice.sayCount`). Beats take `wake {x, z, yaw, era:'today', text}`: being caught / an empty
   meter brings you to the present there instead of the field station. Ending choice: the field
@@ -623,10 +626,12 @@ Round-4 (polish: set dressing) integration rules:
   visible only in its era; turns towards the player. Reduced motion calms it.
 - E within 2.8 m → conversation (modal page at the bottom; typing on the UI clock; keys 1–n,
   E/Enter/Space advance): `greet`, quest topics first (`npc:topics` from quests, ids `q:<quest>`,
-  marked ! / ?), topics from the pack's `npc:talk` lines, `bye`. A quest offer ends in two buttons
-  (`quest:accept` / `quest:decline`); a turn-in plays the history lines (marked "Was wirklich war",
-  with source and codex note), then the stance prompt "Deine Haltung – eine Meinung, keine Prüfung"
-  (`quest:stance`, no right answer) and `quest:turnin`. Quest glyphs over the head
+  marked ! / ? / §), topics from the pack's `npc:talk` lines, `bye`. A quest offer shows the quest
+  card (`questCardEl`, `QuestTopic.card` built by quests: title, giver, pitch, goals, reward preview)
+  and the topics `qa:` Annehmen / `qd:` Später (`quest:accept` / `quest:decline`); a turn-in shows
+  the turn-in card and `qt:` Übergeben (`quest:turnin`), then ONE history line (marked "Was wirklich
+  war", with source and codex note); „Erzähl mehr“ (`more` topic) tells the rest (`quest:told`). No
+  stance prompt (docs/ACTION-RPG.md §8.6). Quest glyphs over the head
   (`glyphs.ts`, `npc:marker`: ! / ringed ! / ? with halo / grey ?), escort `npc:follow`, transient
   flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.

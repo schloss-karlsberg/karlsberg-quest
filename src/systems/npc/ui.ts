@@ -7,6 +7,7 @@
  * under the modal); `finish()` completes it at once (tests, screenshots).
  */
 import { t } from '../../i18n';
+import type { QuestCard } from '../../rpg/types';
 import { h, svg } from '../../ui/dom';
 import type { ModalHandle, ModalManager } from '../../ui/modal';
 import { ensurePortraitDefs, portraitSvg } from '../story/dialogue/portraits';
@@ -23,8 +24,8 @@ export interface TalkLine {
   note?: string;
 }
 
-/** Quest topics carry a shape-coded glyph; answers to a quest (accept / later / stance) are styled. */
-export type TopicMark = 'offer' | 'offer-main' | 'ready' | 'active' | 'accept' | 'decline' | 'stance';
+/** Quest topics carry a shape-coded glyph; answers to a quest (accept / later / hand in) are styled. */
+export type TopicMark = 'offer' | 'offer-main' | 'ready' | 'active' | 'accept' | 'decline' | 'more';
 
 export interface TalkTopic {
   id: string;
@@ -33,7 +34,46 @@ export interface TalkTopic {
   mark?: TopicMark;
 }
 
-const MARK_GLYPH: Record<TopicMark, string> = { offer: '!', 'offer-main': '!', ready: '?', active: '?', accept: '✓', decline: '…', stance: '◇' };
+const MARK_GLYPH: Record<TopicMark, string> = { offer: '!', 'offer-main': '!', ready: '?', active: '?', accept: '✓', decline: '…', more: '§' };
+
+/**
+ * The RPG quest card inside the conversation (playtest round 3): kicker (Auftrag / Abgabe), title,
+ * giver, the pitch, the objectives (ticked at turn-in), the reward preview (EP, items, skills,
+ * codex cards). The answers stay the conversation's buttons below it.
+ */
+export function questCardEl(c: QuestCard, mode: 'offer' | 'turnin'): HTMLElement {
+  const rewards: (HTMLElement | null)[] = [
+    c.xp > 0 ? h('span.kqn-qc-xp', t('quest.xp', { n: c.xp })) : null,
+    ...c.items.map((i) => h('span.kqn-qc-item', i)),
+    ...c.skills.map((s) => h('span.kqn-qc-item.kqn-qc-skill', s)),
+    c.codex > 0 ? h('span.kqn-qc-item.kqn-qc-codex', t('quest.card.codex', { n: c.codex })) : null,
+  ].filter((x): x is HTMLElement => !!x);
+  return h(`div.kqn-qcard.kqn-qc-${mode}${c.main ? '.kqn-qc-main' : ''}`, { 'data-testid': `quest-card-${mode}` }, [
+    h('div.kqn-qc-head', [
+      h('span.kqn-qc-kick', mode === 'offer' ? (c.main ? t('quest.new') : t('quest.newSide')) : t('quest.card.turnin')),
+      h('span.kqn-qc-from', t('quest.card.from', { name: c.giver })),
+    ]),
+    h('div.kqn-qc-title', c.title),
+    mode === 'offer' ? h('p.kqn-qc-pitch', c.pitch) : null,
+    h('div.kqn-qc-cols', [
+      h('div.kqn-qc-goals', [
+        h('div.kqn-qc-lbl', t('quest.card.goals')),
+        h(
+          'ul',
+          c.objectives.slice(0, 6).map((o) =>
+            h(`li${o.done ? '.kqn-qc-done' : ''}${o.optional ? '.kqn-qc-opt' : ''}`, [
+              h('span.kqn-qc-box', { 'aria-hidden': 'true' }, o.done ? '✓' : o.optional ? '+' : ''),
+              o.text,
+              o.need > 1 ? h('span.kqn-qc-n', ` ×${o.need}`) : null,
+              o.optional ? h('span.kqn-qc-bonus', ` (${t('quest.bonus')})`) : null,
+            ]),
+          ),
+        ),
+      ]),
+      rewards.length ? h('div.kqn-qc-rew', [h('div.kqn-qc-lbl', t('quest.card.reward')), h('div.kqn-qc-rlist', rewards)]) : null,
+    ]),
+  ]);
+}
 
 const CPS = 46;
 
@@ -49,6 +89,7 @@ export class ConversationView {
   private readonly header = h('div.kqn-header', { 'data-testid': 'npc-header' });
   private readonly hint = h('div.kqn-next', [h('kbd', 'E'), ' ', t('npc.next')]);
   private readonly topicsEl = h('div.kqn-topics');
+  private readonly cardEl = h('div.kqn-card-slot.kqn-hidden');
   private queue: TalkLine[] = [];
   private cur: { line: TalkLine; typed: number; acc: number; starts: Set<number> } | null = null;
   private lastPortrait = '';
@@ -84,6 +125,7 @@ export class ConversationView {
       this.note,
       this.hint,
       this.header,
+      this.cardEl,
       this.topicsEl,
     ]);
     body.addEventListener('mousedown', (e) => {
@@ -108,16 +150,24 @@ export class ConversationView {
     this.queue.push(...lines);
     this.onDrained = then ?? null;
     this.setTopics([], null);
+    this.setCard(null);
     if (!this.cur) this.next();
   }
 
-  /** `header`: a line above the answers (e.g. the stance note "eine Meinung, keine Prüfung"). */
+  /** A quest card above the answers (offer / turn-in); null removes it. */
+  setCard(card: HTMLElement | null): void {
+    this.cardEl.replaceChildren(...(card ? [card] : []));
+    this.cardEl.classList.toggle('kqn-hidden', !card);
+    // the card stands in for the spoken line: the text above steps back
+    this.modal?.el.classList.toggle('kqn-with-card', !!card);
+  }
+
+  /** `header`: a line above the answers. */
   setTopics(topics: TalkTopic[], pick: ((id: string) => void) | null, header?: string): void {
     this.topics = topics;
     this.pick = pick;
     this.header.textContent = header ?? '';
     this.header.classList.toggle('kqn-hidden', !header || topics.length === 0);
-    this.topicsEl.classList.toggle('kqn-stance', topics.some((x) => x.mark === 'stance'));
     this.topicsEl.replaceChildren(
       ...topics.map((tp, i) =>
         h(

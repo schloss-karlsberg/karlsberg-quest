@@ -20,7 +20,7 @@
  *  - quests     : quest:offered/accepted/progress/objective/ready/completed/failed, npc:topics,
  *                 npc:marker, codex:unlocked (also), and the requests enemy:spawn/despawn,
  *                 loot:place/clear, xp:grant, item:grant for quest content
- *  - npc        : quest:accept, quest:turnin, quest:stance (the player's answers in a conversation)
+ *  - npc        : quest:accept, quest:turnin, quest:told (the player's answers in a conversation)
  *  - story      : quest:command (story action `quest`), and the same requests as quests
  *                 (story actions `enemy`, `loot`, `xp`, `item`)
  *  - combat     : enemy:spawned/killed/cleared/aggro, combat:hit/state/bann, player:damaged/
@@ -79,6 +79,11 @@ declare module '../core/events' {
       until?: unknown;
       /** Not bound to the current beat (quest turn-ins teach history: a beat change never drops them). */
       keep?: boolean;
+      /**
+       * History / lore (a turn-in moment, a long remark): held while a fight is on, dropped when it
+       * waited too long (story/dialogue/queue.ts). Long lines without it count as lore in a fight.
+       */
+      lore?: boolean;
     };
     'story:chapter': { id: string };
     'story:beat': { chapter: string; beat: string };
@@ -232,8 +237,10 @@ declare module '../core/events' {
     'quest:accept': { id: string; npc: string };
     'quest:decline': { id: string; npc: string };
     'quest:turnin': { id: string; npc: string };
-    /** A stance (Haltung) was answered at turn-in: value of the chosen option. */
-    'quest:stance': { id: string; value: string };
+    /** "Erzähl mehr" heard after a turn-in (the rest of the history; the topic goes away). */
+    'quest:told': { id: string; npc: string };
+    /** quests → anyone: a deed was done (a thing taken in the world set its flag, §8.6). */
+    'quest:deed': { flag: string; value: string; item: string };
 
     // ---- story → quests (story action `quest`) ---------------------------------------------
     /**

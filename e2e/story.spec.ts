@@ -166,6 +166,10 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
     // the Handbuch card on top of the shelf page
     if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
   });
+  // the Regal in RPG terms (round 3): level, quests, spirits — no "Begriffe" / "Chronik-Einträge"
+  await expect(page.getByTestId('hub')).toContainText('Aufgaben erledigt');
+  await expect(page.getByTestId('hub')).not.toContainText('Begriffe gefunden');
+  await page.screenshot({ path: `${SCREENS}/fun-quests-regal.png` });
   await page.getByTestId('hub-back').click();
   await page.getByTestId('hub-drawer').click();
   await page.evaluate(() => {
@@ -195,9 +199,11 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   expect(inv.items).toContain('item.bussole');
   expect(inv.clues).toContain('clue.p.laubblatt');
 
-  // objective towards the Orangerie, facing it: the needle glows
+  // objective towards the Orangerie, facing it: the needle glows (the jump leaves the p2 quests
+  // tracked; while a main quest leads, the needle follows the tracker, so they are closed here)
   await page.evaluate(() => {
     const k = window.kq!;
+    for (const id of k.quests?.tracked() ?? []) k.quests!.complete(id);
     k.story!.goto('prolog', 'p3');
     k.story!.flush();
     k.teleport(1150, -966, 90, 2);
@@ -267,7 +273,7 @@ test('story: ending, epilogue and credits', async ({ page }) => {
     k.story!.goto('enden');
     k.state();
     k.ctx.state.update((s) => {
-      s.flags['flag.k1_lohn'] = 'will_nicht';
+      s.flags['quest.q.k1.hundenamen'] = 'done';
       s.flags['flag.k3_objekt'] = 'uhr';
     });
     k.step(2);

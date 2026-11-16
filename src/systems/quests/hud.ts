@@ -76,13 +76,18 @@ export class Feed {
   }
 }
 
-/** "Neue Aufgabe — <title>": an ink stamp that settles and fades (UI time). */
-export function showBanner(layer: HTMLElement, kicker: string, title: string, main: boolean): void {
+/** "Neue Aufgabe — <title>" (+ the first step and the reward): an ink stamp that settles and fades (UI time). */
+export function showBanner(layer: HTMLElement, kicker: string, title: string, main: boolean, sub = ''): void {
   layer.querySelector('.kqq-banner')?.remove();
-  const el = h(`div.kqq-banner${main ? '.kqq-main' : ''}`, { 'data-testid': 'quest-banner', role: 'status' }, [h('div.kqq-b-kick', kicker), h('div.kqq-b-title', title), h('div.kqq-b-rule')]);
+  const el = h(`div.kqq-banner${main ? '.kqq-main' : ''}`, { 'data-testid': 'quest-banner', role: 'status' }, [
+    h('div.kqq-b-kick', kicker),
+    h('div.kqq-b-title', title),
+    h('div.kqq-b-rule'),
+    sub ? h('div.kqq-b-sub', sub) : null,
+  ]);
   layer.append(el);
-  setTimeout(() => el.classList.add('kqq-out'), 2600);
-  setTimeout(() => el.remove(), 3400);
+  setTimeout(() => el.classList.add('kqq-out'), sub ? 3400 : 2600);
+  setTimeout(() => el.remove(), sub ? 4200 : 3400);
 }
 
 export interface RewardView {
@@ -92,6 +97,8 @@ export interface RewardView {
   items: { name: string; count: number }[];
   codex: { id: string; title: string; confidence: Confidence; label: string }[];
   skills: string[];
+  /** "Mehr im Feldbuch (J)": history kept for the journal (voice turn-ins). */
+  more?: string;
 }
 
 /**
@@ -128,6 +135,7 @@ export class RewardCard {
             h('div.kqq-r-items', v.codex.map((c) => h('span.kqq-r-card', { dataset: { fact: c.id } }, [badge(c.confidence), h('span', c.title), h('span.kqq-lab', { dataset: { l: c.label } }, t(`journal.codex.label.${c.label}`))]))),
           ])
         : null,
+      v.more ? h('div.kqq-r-more', v.more) : null,
       // E only dismisses it over a conversation; in open play E is the interact key
       h('div.kqq-r-next', keys ? [h('kbd', 'E'), ` ${t('quest.continue')}`] : [t('quest.continueClick')]),
     ]);

@@ -163,8 +163,9 @@ body:has(.kqn-modal) .kq-dock-feed {
 .kqn-qg-decline {
   color: var(--ink-soft);
 }
-.kqn-qg-stance {
-  color: var(--brass);
+.kqn-qg-more {
+  color: #2f5d7a;
+  font-size: 17px;
 }
 .kqn-q-ready,
 .kqn-q-offer-main {
@@ -184,8 +185,175 @@ body:has(.kqn-modal) .kq-dock-feed {
 .kqn-q-accept .kqn-n {
   color: #e9c46a;
 }
-.kqn-topics.kqn-stance {
-  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+/* ---------- the quest card (offer / turn-in) ---------- */
+.kqn-modal.kqn-with-card .kqn-text,
+.kqn-modal.kqn-with-card .kqn-src,
+.kqn-modal.kqn-with-card .kqn-note,
+.kqn-modal.kqn-with-card .kqn-next {
+  display: none;
+}
+.kqn-modal.kqn-with-card {
+  max-height: 78vh;
+}
+.kqn-qcard {
+  position: relative;
+  border: 1.5px solid #8a6a3a;
+  border-radius: 4px;
+  padding: 12px 16px 12px 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 228, 0.55), rgba(233, 214, 176, 0.35)),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(90, 60, 20, 0.06) 27px 28px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 3px 10px rgba(40, 24, 8, 0.18);
+  animation: kqn-qc-in 0.28s ease-out;
+}
+.kqn-qcard.kqn-qc-main {
+  border-color: #a5782c;
+  box-shadow: 0 0 0 3px rgba(181, 139, 61, 0.22), 0 3px 10px rgba(40, 24, 8, 0.2);
+}
+.kqn-qcard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  background: var(--brass);
+  border-radius: 0 2px 2px 0;
+}
+.kqn-qc-turnin::before {
+  background: #3f6b45;
+}
+@keyframes kqn-qc-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kqn-qcard {
+    animation: none;
+  }
+}
+.kqn-qc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kqn-qc-kick {
+  font-family: var(--sc);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.kqn-qc-from {
+  font-family: var(--hand);
+  font-size: 18px;
+  color: var(--ink-soft);
+}
+.kqn-qc-title {
+  font-family: var(--sc);
+  font-size: 26px;
+  line-height: 1.15;
+  margin: 2px 0 4px;
+}
+.kqn-qc-pitch {
+  margin: 0 0 8px;
+  font-size: 16.5px;
+  line-height: 1.45;
+  font-style: italic;
+}
+.kqn-qc-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 6px 18px;
+}
+@media (max-width: 620px) {
+  .kqn-qc-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kqn-qc-lbl {
+  font-family: var(--sc);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1px solid rgba(90, 60, 20, 0.25);
+  margin-bottom: 4px;
+}
+.kqn-qc-goals ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.kqn-qc-goals li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 16px;
+  line-height: 1.35;
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+.kqn-qc-box {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid #5a4632;
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 13px;
+  text-align: center;
+  transform: translateY(2px);
+}
+.kqn-qc-done .kqn-qc-box {
+  background: #3f6b45;
+  border-color: #3f6b45;
+  color: #f5ecd6;
+}
+.kqn-qc-done {
+  color: #3f5a3f;
+}
+.kqn-qc-opt {
+  opacity: 0.85;
+}
+.kqn-qc-n,
+.kqn-qc-bonus {
+  font-family: var(--sc);
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.kqn-qc-rlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.kqn-qc-xp {
+  font-family: var(--sc);
+  font-size: 19px;
+  color: #6b4a12;
+  padding: 0 8px;
+  border: 1.5px solid #a5782c;
+  border-radius: 12px;
+  background: rgba(233, 196, 106, 0.3);
+}
+.kqn-qc-item {
+  font-size: 14.5px;
+  padding: 1px 8px;
+  border: 1px solid rgba(90, 60, 20, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 250, 236, 0.6);
+}
+.kqn-qc-skill {
+  border-color: #2f5d7a;
+  color: #2f5d7a;
+}
+.kqn-qc-codex {
+  border-style: dashed;
 }
 .kqn-header {
   font-family: var(--hand);

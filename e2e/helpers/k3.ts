@@ -331,8 +331,8 @@ export const quest = (page: Page, id: string) => page.evaluate((id) => (window.k
 export const items = (page: Page) => page.evaluate(() => (window.kq as Any).progression.state().inventory as Record<string, number>);
 
 /**
- * A quest exchange with an NPC (E, the quest topic, then the answer button): 'qa' accepts,
- * 'qs:<value>' answers a stance; none for a plain turn-in. Puts the reward card away.
+ * A quest exchange with an NPC (E, the quest topic, then the answer button): 'qa' accepts (the
+ * offer card); otherwise the turn-in card is handed over ('qt'). Puts the reward card away.
  */
 export async function questTalk(page: Page, npc: string, id: string, answer?: string): Promise<string[]> {
   const near = await page.evaluate((npc) => (window as Any).k3h.faceNpc(npc), npc);
@@ -357,7 +357,8 @@ export async function questTalk(page: Page, npc: string, id: string, answer?: st
       drain();
       const topics1 = k.npc.state().topics as string[];
       let chose = true;
-      if (answer) chose = k.npc.choose(answer === 'qa' ? `qa:${id}` : answer);
+      if (answer === 'qa') chose = k.npc.choose(`qa:${id}`);
+      else if (topics1.includes(`qt:${id}`)) chose = k.npc.choose(`qt:${id}`);
       drain();
       k.step(2);
       for (let i = 0; i < 6 && k.quests.reward(); i++) {
@@ -412,16 +413,13 @@ export async function takeAll(page: Page, prefix: string): Promise<number> {
   }, prefix);
 }
 
-/** Answers the voice stance card of an 'auto' quest (Laub in the compass) by its button label. */
-export async function voiceStance(page: Page, label: string): Promise<void> {
+/** A voice turn-in (Laub in the compass): a short moment, no stance card any more (round 3). */
+export async function voiceStance(page: Page, _label?: string): Promise<void> {
   await page.evaluate(() => {
     const k = window.kq as Any;
-    for (let i = 0; i < 120 && !document.querySelector('[data-testid="quest-stance"]'); i++) k.step(30);
+    for (let i = 0; i < 12; i++) k.step(30);
   });
-  const btn = page.locator('[data-testid="quest-stance"] button', { hasText: label }).first();
-  await expect(btn).toBeVisible();
-  await btn.click();
-  await page.evaluate(() => (window.kq as Any).step(6));
+  expect(await page.locator('[data-testid="quest-stance"]').count()).toBe(0);
 }
 
 /** The chapter's main playthrough, now a chain of quests (shared with e2e/campaign.spec.ts). */
@@ -517,7 +515,8 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     // turn in at Hanne: the basket, the history, then her question (an opinion, never graded)
     const heardHanne = await questTalk(page, 'hanne', 'q.k3.nachmittag', 'qs:retteten');
     expect(heardHanne.length).toBeGreaterThan(2);
-    expect(await flags(page)).toMatchObject({ 'flag.k3_pluenderer': 'retteten', 'quest.q.k3.nachmittag': 'done' });
+    expect(await flags(page)).toMatchObject({ 'quest.q.k3.nachmittag': 'done' });
+    expect((await flags(page))['flag.k3_pluenderer']).toBeUndefined();
     expect(await page.evaluate(() => (window.kq as Any).state().codex.facts)).toContain('cx.23');
     await page.evaluate(() => (window as Any).k3h.settle(60));
     expect(await quest(page, 'q.k3.buch')).toBe('offered');

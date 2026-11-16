@@ -19,8 +19,13 @@ Types: `src/rpg/types.ts` (`QuestFile`, `QuestDef`, `QuestObjective`, `ItemDef`)
   lines (in `history`) need `sources`.
 - Dialogue lives inline: `offer`, `progress`, `turnin_lines`, `history` (each line may name a codex
   `fact`, unlocked at turn-in). Speakers are pack speakers (`content/packs/speakers.pack.json`).
-- **No quizzes.** No blanks, no word or noun choices, no multiple choice with a right answer. A
-  `stance` asks for an opinion, writes its `flag` (the epilogue reads it) and must offer `offen`.
+- **No quizzes, no stance cards.** No blanks, no word or noun choices, no multiple choice at all
+  (the validator rejects `stance`). The epilogue tells deeds: a side quest done is its deed
+  (`quest.<id>` = `done`); a physical choice is an item with `deed: {flag, value}` (picking it up
+  sets the flag, docs/ACTION-RPG.md §8.6). New epilogue sentences go into
+  `scripts/content-build/epilogue-deeds.mjs`.
+- History: the first `history` line is told at turn-in, the rest on „Erzähl mehr“ and in the
+  journal, so put the most vivid, sourced line first.
 - Objectives (`type`): `kill`, `collect`, `reach`, `talk`, `room`, `examine`, `echo`, `calm`,
   `escort`, `survive`, `use`, `event`, `manual`. `after` orders them; `optional` + `bonus_xp` for bonus
   objectives. Spawns name enemy kinds from `src/rpg/enemies.ts`; positions must be inside the playable

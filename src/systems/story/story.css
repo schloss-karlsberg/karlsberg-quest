@@ -1298,6 +1298,8 @@ body.kq-in-combat .kqs-dlg-body::before {
   left: auto;
   max-width: 100%;
   margin-top: 2px;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 .kq-tl > .kqs-objective:not(.kqs-show) {
   display: none;

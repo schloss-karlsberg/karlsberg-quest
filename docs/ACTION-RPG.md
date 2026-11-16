@@ -400,13 +400,24 @@ objective counts as `flags['quest.<id>.<objective>']`.
 ### 8.2 Conversation flow (npc system)
 
 E near a giver opens the field-book conversation. Quest topics come first, marked:
-**!** (offer; main quests: ! in a brass ring), **?** (ready to turn in), grey **?** (active).
+**!** (offer; main quests: ! in a brass ring), **?** (ready to turn in), grey **?** (active),
+**§** ("Erzähl mehr", after a turn-in).
 
-1. *Offer*: the giver speaks `offer` lines → buttons **[accept_de]** / **[Später]** (side quests).
+1. *Offer*: the giver speaks `offer` lines → the **quest card** (an RPG offer card in the
+   conversation: kicker "Neue Aufgabe" / "Nebenaufgabe", title, "von <giver>", the pitch
+   (`summary_de`), the goals (bonus ones marked, counts ×n), the reward preview: EP, items,
+   skills, "n Codex-Karte(n)") → buttons **Annehmen: „<accept_de>“** / **Später.** (side quests).
+   Voice givers (Laub, Marlene) accept at once: the banner shows title, first goal and EP.
 2. *While active*: `progress` lines (a hint in the giver's voice — never a riddle).
-3. *Turn-in*: `turnin_lines` → **history** lines (each may carry `fact` + sources; the source label
-   shows under the line, as today) → optional **stance** (§8.6) → reward card (XP stamp, items, "Neu im
-   Codex: …" with the confidence badge) → `next` quest offered.
+3. *Turn-in*: `turnin_lines` → the **turn-in card** (every goal ticked, the reward) → **Übergeben**
+   → the reward card (XP stamp, items, "Neu im Codex: …" with the confidence badge) → ONE history
+   line as the moment of it (`HISTORY_AT_TURNIN` in `src/systems/quests/logic.ts`; its source and
+   codex card under the line) → `next` quest offered. The other history lines wait for the
+   **„Erzähl mehr: <title>“** topic at the same giver (same chapter; `quest:told` when heard) and are
+   always in the journal. Voice / auto turn-ins say one thanks line and one history line (held
+   while a fight is on) and the reward card says "Mehr dazu im Feldbuch (J)".
+
+No stance cards, no answer grids: see §8.6.
 
 ### 8.3 Markers
 
@@ -445,31 +456,36 @@ E near a giver opens the field-book conversation. Quest topics come first, marke
 Never: fill-in-the-blank, word or noun selection, multiple choice with a right answer, "confirm three",
 hint ladders for puzzles, losing knowledge when caught.
 
-### 8.6 Stances (Haltungen) — the readings become role-play
+### 8.6 Deeds, not stances (playtest round 3)
 
-The old LESARTEN (open readings) survive as **stances**: at some turn-ins the giver asks what *you*
-think. It is an opinion, never graded. Since 2026-11-16 (playtest: five answer buttons read as a quiz)
-a stance is **two or three short replies you say**, in the conversation's topic list (npc givers) or
-as a spoken question with reply lines (voice givers), never a grid, no "Ich weiß es nicht." button: a
-stance left unanswered becomes `offen` in `k4_15 Lücken`. The answer writes
-the same epilogue flag as before, so `content/story/05-enden.story.json` and the endings pack keep
-working (the epilogue maps `n.r_x` ≡ `x`).
+The stance cards (two or three replies at a turn-in) still read like a quiz and are **gone** (the
+quest validator rejects `stance`). What the epilogue tells now comes from what the player **did**:
 
-| Flag | Asked by (quest) | Options (value) |
+| Deed | How it is recorded | Epilogue slot |
 | --- | --- | --- |
-| `flag.p_spuren` | Laub, "Spuren in der Punktwolke" | hunde · wild · messfehler |
-| `flag.k1_lohn` | Hanne, "Matthes' Lohn" | will_nicht · creuzer · hunde_bilder |
-| `flag.k2_lichter` | Laub, "Lichter im Wald" | kalkoefen · fackeln · laternen |
-| `flag.k2_pfeiffer`, `flag.k2_stelle` | Laub, "Hinter der Tür" | treu · dorf · angst / gewarnt · geschwiegen · gefuehrt |
-| `flag.k3_pluenderer` | Hanne, "Der Nachmittag" | schuld · stahlen · retteten |
-| `flag.k4_zerstoerer`, `flag.k4_steine` | Laub, "Standpunkt siebzehn"; Peter, "Matthes' Zeichen" (both voice cards: auto turn-in) | franzosen · steintraeger · vergessen / raub · lohn_steine · neuanfang |
-| `flag.k4_meute` | Jost, "Sich stellen" | herr_suchen · heimtreiben · nie_abgeblasen |
+| side quests done (all 16) | the quest state mirror `quest.<id>` = `done` | one per chapter: `vermessung` (prolog), `hof` (K1), `flucht-tat` (K2), `brand` (K3), `steine` (K4); `meute-namen` (K1 Hundenamen) |
+| the lantern at the gate (K2) | `flag.k2_tor` = `leuchten` · `dunkel` (story `choice` with lantern conditions) | `flucht` |
+| what is carried out of the Festsaal (K3) | `flag.k3_objekt` = `tuergriff` · `dukat` · `uhr` · `nichts` | `objekt` (per ending) |
+| lying down at the Zwinger (K4) | `quest.q.k4.stellen` = `done` | `meute` |
 
-Ch. 3–4 write the endings pack's value keys (`herzog_selbst`, `lohn_steine`, `herr_suchen`,
-`chronik_bewachen`, …); the fallback epilogue in `05-enden.story.json` knows both spellings.
+**Flag contract for physical choices** (`DEED_ITEMS` in `src/systems/quests/index.ts`, event
+`quest:deed {flag, value, item}`): picking up (`item:pickup`) `item.charm.tuergriff` / `.dukat` /
+`.uhr` sets `flag.k3_objekt` = `tuergriff` / `dukat` / `uhr`; the first one taken wins (a set flag
+stays, `nichts` may be overwritten). Leaving the Festsaal with nothing is the story's `nichts`.
+Quest-file items declare more with `deed: {flag, value}` (`ItemDef.deed`, schema). The set-pieces
+track makes the three objects physical and only has to place the pickups; the epilogue needs no
+change.
 
-The two story choices stay story choices: the gate (`k2.tor`, lantern up or down) and the Festsaal
-object (`k3.objekt`, which now also becomes a charm).
+Each slot is ONE sentence in priority order (the first deed that holds), else its `offen` sentence
+(empty for add-on slots: nothing is said), written as a first-person story ("Im Sommer 1789 bekam
+Hanne den Lohnzettel ihres Mannes zurück, … Den entlaufenen Kasuar ließ ich laufen, bis er müde
+war …"). One source for the words: `scripts/content-build/epilogue-deeds.mjs` (the endings pack
+via `enden.mjs`; the story fallback in `05-enden.story.json` via `node
+scripts/content-build/enden.mjs --story`). The old stance flags (`flag.p_spuren`, `flag.k1_lohn`,
+…) are no longer written or read; `k4_15` keeps the `readings` action for old saves only.
+
+The two story choices stay story choices, and both are physical: the gate (`k2.tor`, lantern up or
+down) and the Festsaal object (`k3.objekt`, which also becomes a charm).
 
 ## 9. Technical contract
 
@@ -496,7 +512,8 @@ Requests are imperative, facts past tense. Payloads are plain JSON.
 | `npc:topics` | quests | npc | `{npc, topics: QuestTopic[]}` |
 | `npc:marker` | quests | npc | `{npc, mark}` |
 | `npc:follow` | quests (escort objectives) | npc (the ghost walks after the player) | `{npc, follow}` |
-| `quest:accept` / `decline` / `turnin` / `stance` | npc | quests | `{id, npc}` / `{id, value}` |
+| `quest:accept` / `decline` / `turnin` / `told` | npc | quests | `{id, npc}` |
+| `quest:deed` | quests (a thing taken: §8.6) | anyone | `{flag, value, item}` |
 | `enemy:spawn` / `enemy:despawn` | quests, story | combat | group spec / `{group}` |
 | `enemy:spawned` / `killed` / `cleared` / `aggro`, `boss:phase` | combat | quests, progression, story, barks | see contracts |
 | `combat:hit` / `combat:state` / `combat:bann` | combat | fx, audio, barks, hunt, menagerie | |
@@ -547,8 +564,8 @@ One per chapter (`00-prolog`, `01-kapitel-1` … `04-kapitel-4`; `99-test` is th
 only with `?storytest`). Schema `content/schema/quests.schema.json`; authority
 `src/systems/quests/validate.ts` (run by `pnpm validate` and `tests/rpg-contracts.test.ts`): ids
 `q.<chapter>.<name>` (prolog → `p`, enden → `end`), known speakers (historical speakers need
-sources), codex facts, clues, enemy kinds, items, places inside the playable area, a stance has
-at most four replies, collect objectives have enough places, … The story validator rejects unknown quest ids and
+sources), codex facts, clues, enemy kinds, items, places inside the playable area, no `stance`
+(§8.6), collect objectives have enough places, … The story validator rejects unknown quest ids and
 items. Abridged example (full: `content/quests/99-test.quests.json`):
 
 ```jsonc
@@ -563,8 +580,6 @@ items. Abridged example (full: `content/quests/99-test.quests.json`):
     "progress": [{ "speaker": "hanne", "text": "…" }],
     "turnin_lines": [{ "speaker": "hanne", "text": "…" }],
     "history": [{ "speaker": "hanne", "text": "Zwei Tage arbeitet ein Geselle für einen Gulden …", "fact": "cx.08" }],
-    "stance": { "id": "k1.lohn", "prompt_de": "Warum bekomme ich ihn nicht, was meinst du?", "flag": "flag.k1_lohn",
-                "options": [{ "label_de": "Weil der Herzog nicht will.", "value": "will_nicht" }, …, { "label_de": "Ich weiß es nicht.", "value": "offen" }] },
     "objectives": [
       { "id": "soll", "type": "talk", "text_de": "Den Kanzlisten nach Matthes fragen", "npc": "soll", "topic": "matthes" },
       { "id": "buch", "type": "kill", "text_de": "Das Schuldbuch bezwingen", "enemy": "schuldbuch", "after": ["soll"],
@@ -604,13 +619,14 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
   game section, default on), `lanternPose {side, lift}` exported by `src/systems/hunt/lantern.ts`,
   `PackSim.scatter()` in the hunt, `MenagerieSlice.calmed: string[]`.
 - **Test chapter**: `?storytest`, `kq.story.goto('test', 'q1')` — Hanne offers `q.test.lohnzettel`
-  (kill 3 Mahnbriefe → collect the Zettel → turn in with history + stance) and then the side quest
+  (kill 3 Mahnbriefe → collect the Zettel → turn in: the turn-in card, one history line, „Erzähl mehr“) and then the side quest
   `q.test.irrlichter` (Laub, two Irrlichter). Every track's e2e can start there.
 
 ### 9.6 Additions by the quests track (additive only)
 
-- `src/rpg/types.ts`: `QuestTopic.history?: QuestHistoryLine[]` and `QuestTopic.stance?: QuestStance`
-  (the turn-in topic carries the history lines and the stance prompt to the npc conversation);
+- `src/rpg/types.ts`: `QuestTopic.history?: QuestHistoryLine[]`, `QuestTopic.card?: QuestCard` (the
+  offer / turn-in card the quests system builds and the npc system draws), topic kind `more`
+  ("Erzähl mehr"), `QuestProgress.told`, `ItemDef.deed` (§8.6);
   `QuestSlice.bestiary?: Record<string, number>` (kills per enemy kind for the journal's bestiary).
 - `src/systems/contracts.ts`: `npc:follow {npc, follow}` (escort objectives; npc moves the ghost).
 - Transient flag `npc.near` (npc): set while a ghost is within talk radius, so the Chronik leaves E
@@ -704,17 +720,21 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 | `q.k4.karren` "Die Karren nach Westen" | main | Laub → auto | the carts echo (`clue.k4.karren`); **3 Steinfresser** gnaw the valley guard houses (KB-B63/64, 508/−900) — stop them; the west viewpoint (200/−905): the Hohenburg (`clue.k4.hohenburg`), the carts run backwards (`echo.k4.rueckwaerts`) | steinfresser ×3 | 250 XP | cx.31 Steine auf Wanderschaft |
 | `q.k4.baumagazin` "Das letzte Haus" | main | Soll (Baumagazin, 496/−842) → Soll | the lease letter (`clue.k4.pacht`); Peter's cart: Matthes' mark (`clue.k4.stein_karren`, stone 2/4); **5 Steinfresser** gnaw at the stockpile in the yard (478/−852) — defend it; bonus: 6 Gruslinge | steinfresser ×5, grusling ×6 | 300 XP | cx.32 Das Baumagazin, cx.30 |
 | `q.k4.steinplatz` "Der Steinplatz" | main | Laub → auto | Ehrenhof 1796 (1216/−1114): the notice on the pillar (`clue.k4.anschlag`, 1195/−1112); **Der Steinbrecher** (1224/−1116) — defeat it (W7 follows: the Steinfraß); the robbed-out trench (`clue.k4.graben`, 1240/−1193) and its page (`item.k4.seite`) | **steinbrecher** (boss) | 450 XP, **Messstab V (Laubs Lot)** | cx.29 Tod und Schulden (STRITTIG), rm.05 Ausbruchgraben |
-| `q.k4.standpunkt` "Standpunkt siebzehn" | main | Laub → auto (voice stance card) | the Forsthausbrunnen (1386/−1477): Laub's echo of 1840 (`clue.k4.laub_1840`); Laub's confession (2); the pack **drives** you (lossless) to the Zwinger (today, 1216/−1571) | the pack (drive, threat) | 350 XP; stances `flag.k4_zerstoerer` | cx.33 (the 1840 survey Laub belonged to) |
+| `q.k4.standpunkt` "Standpunkt siebzehn" | main | Laub → auto | the Forsthausbrunnen (1386/−1477): Laub's echo of 1840 (`clue.k4.laub_1840`); Laub's confession (2); the pack **drives** you (lossless) to the Zwinger (today, 1216/−1571) | the pack (drive, threat) | 350 XP; stances `flag.k4_zerstoerer` | cx.33 (the 1840 survey Laub belonged to) |
 | `q.k4.stellen` "Sich stellen" | main | Laub (voice) → Jost (the Pikeur, Zwinger today) | **W8: lie down (X) and light the lantern (L)** — combat disabled; Jost takes off his hat; the horn | — (no fight) | 800 XP, **Das Horn**; stance `flag.k4_meute` | cx.39 Der Karlsberg heute |
-| `q.k4.zeichen` "Matthes' Zeichen" | side | Peter (Baumagazin, 494/−826) → auto (Laub, voice stance card) | the four marked stones: 1 (bonus: `clue.k1.zeichen`, counts if seen), 2 (Peter's cart, `clue.k4.stein_karren`), 3 in the Ehrenhof rubble 1796 (1240/−1105, guarded by Gruslinge), 4 today — seen from the road at the Karlsberger Hof (483/−839, private ground: look, never enter) | grusling ×8 | 300 XP, Matthes' Zeichen (charm); stance `flag.k4_steine` | cx.31 (Karlsberg stones in Homburg houses) |
+| `q.k4.zeichen` "Matthes' Zeichen" | side | Peter (Baumagazin, 494/−826) → auto (Laub) | the four marked stones: 1 (bonus: `clue.k1.zeichen`, counts if seen), 2 (Peter's cart, `clue.k4.stein_karren`), 3 in the Ehrenhof rubble 1796 (1240/−1105, guarded by Gruslinge), 4 today — seen from the road at the Karlsberger Hof (483/−839, private ground: look, never enter) | grusling ×8 | 300 XP, Matthes' Zeichen (charm); stance `flag.k4_steine` | cx.31 (Karlsberg stones in Homburg houses) |
 | `q.k4.graeben` "Gruslinge im Graben" | side | Laub (after `q.k4.steinplatz`) → auto | clear 3 robbed-out trenches of Grusling swarms (1232/−1188, 1236/−1180, 1226/−1194), compare with Relief 3 today (`clue.k4.graben_heute`) | grusling ×15 | 250 XP | rm.05 Ausbruchgraben (the "walls" of the prologue are trenches) |
 | `q.k4.pacht` "Die Pächter" | side | Soll (after `q.k4.baumagazin`) → Soll | recover 3 lease and demolition notices from Steinfresser lairs on the slope (650/−930, 800/−960, 1000/−1000; they drop them) | steinfresser ×3 | 250 XP | cx.30 Pacht und Abriss (1796) |
 
 ### 11.5 Endings
 
 Unchanged (bible 06-enden): the choice at the table (museum / burn / keep), the epilogue assembled from
-the stance flags and `flag.k3_objekt`, credits, "Ende noch einmal wählen". The `k4_15 Lücken` beat
-fills unanswered stances with `offen` (the `readings` action, kept) instead of asking for blanks.
+the player's deeds (§8.6: side quests done, the lantern at the gate, `flag.k3_objekt`), told as a
+first-person story, credits, "Ende noch einmal wählen" (title and, after the credits, the pause
+menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
+both count. After the credits the HUD line says what is left to do (free roam, Feldbuch, the choice
+again); the ending's own lines are told on the ending card only (`story:ending` lines are not
+spoken by the trigger runner), and the presenter is cleared at the credits.
 `flags['combat.disabled']` is set from the finale on (`k4_11` … `e2`; cleared after the credits).
 The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` ≡ `herzog` …).
 
@@ -877,3 +897,22 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   lid springs.
 - **World track, round 3, left open:** the Festsaal choice is still made in the dialogue (story
   owns it); a ghost-hound mount (not cheap enough); the 1796 look is unchanged since round 2.
+- **Playtest round 3 (2026-11-16), fixed (quest UX, dialogue flow, no quiz):** stance cards removed
+  (§8.6: the epilogue is told from deeds as a first-person story; the item deed contract for the
+  Festsaal objects; no "Wird fortgesetzt" / "Fortgesetzt im November" placeholders); quest offer
+  card (title, giver, pitch, goals, EP / items / skills / codex preview, Annehmen / Später) and
+  turn-in card (Übergeben); one history line per turn-in, the rest on „Erzähl mehr“; the banner
+  names the first goal and EP; tracker objectives wrap under their text and the Bussole follows the
+  tracked main quest's goal (its turn-in npc once ready); dialogue: a queued line older than 3 s
+  after its beat / place changed is dropped, normal lines expire after 20 s, lore after 50 s, lore
+  and long lines wait while the player fights (`hud.acting('combat')`), barks stay ≤ 120 chars;
+  the Serenissimus joke, Burger / Falltür, Soll's „Vierzehn Bürger“, Horstmann and the 1796 intro
+  are said once; the ending's lines are not replayed after the credits (`story:ending` lines are
+  assembled, the presenter is cleared); post-game the HUD line and the pause menu say what is left
+  (free roam, Feldbuch, „Ende noch einmal wählen“); the Regal shows RPG stats (Stufe, Aufgaben,
+  Geister, Codex, Sammlungen, Gegenstände); one codex legend (FAKT … FIKTION; D/I/N/U on hover);
+  no coordinates in clue card captions; the Messstab objective without „(E)“; an echo shows its own
+  date in the era label („Erinnerung · 1840“).
+- **Playtest round 3, left open:** the Festsaal objects as physical pickups (set-pieces track; the
+  flag contract is ready); offer cards for voice givers (they still accept at once with a banner);
+  „Erzähl mehr“ is offered only within the turn-in's chapter.

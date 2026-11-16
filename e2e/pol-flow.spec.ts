@@ -224,7 +224,9 @@ test('prologue: the printout card sketches the palace site (not the field statio
   const card = page.getByTestId('chronik-card');
   await expect(card).toHaveAttribute('data-clue', 'clue.p.lageplan');
   // the sketch is centred on the palace site (Corps de logis), not on the trailer at (760, −915)
-  await expect(card.locator('figcaption')).toContainText('1195 / -1095');
+  // (round 3: the caption names the place, never raw coordinates)
+  await expect(card.locator('figcaption')).toContainText('der Ort, um den es geht');
+  await expect(card.locator('figcaption')).not.toContainText('/ -');
   await shot(page, 'card-lageplan');
   expect(errors).toEqual([]);
 });
@@ -240,7 +242,7 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
     k.story!.start('Alex');
     k.story!.goto('enden');
     k.ctx.state.update((s) => {
-      s.flags['flag.k1_lohn'] = 'will_nicht';
+      s.flags['quest.q.k1.hundenamen'] = 'done';
       s.flags['flag.k3_objekt'] = 'uhr';
     });
     k.step(2);

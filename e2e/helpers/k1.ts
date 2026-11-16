@@ -366,6 +366,13 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
     k.npc!.talk('soll');
     k.npc!.drain();
     k.npc!.ask('q:q.k1.registratur');
+    k.npc!.drain();
+    // the turn-in card: „Übergeben“, the reward card away, then the history moment
+    k.npc!.choose('qt:q.k1.registratur');
+    for (let i = 0; i < 6 && k.quests!.reward(); i++) {
+      k.press('KeyE', 1);
+      k.step(2);
+    }
     for (let i = 0; i < 30 && !String(k.npc!.state().line?.id ?? '').startsWith('quest.10'); i++) k.npc!.advance();
     k.npc!.finish();
     k.step(2);
@@ -439,7 +446,8 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   await talkQuest(page, 'hanne', 'q.k1.lohn', 'creuzer');
   expect(await untilQuest(page, 'q.k1.lohn', 'done', 6)).toBe('done');
-  expect(await flag(page, 'flag.k1_lohn')).toBe('creuzer');
+  // no stance: the deed is the quest itself (the epilogue reads quest.q.k1.lohn = done)
+  expect(await flag(page, 'flag.k1_lohn')).toBeUndefined();
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBe('item.stab.eisen');
   expect(await until(page, 'k1_5', 8)).toBe('k1_5');
   // the side quests' givers have their glyphs now: the servant in the Pfeilersaal

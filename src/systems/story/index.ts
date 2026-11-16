@@ -9,7 +9,7 @@
 import './story.css';
 import { RADIO_LINES } from './strings';
 import type { GameContext } from '../../core/context';
-import { type Era, isEra } from '../../core/era';
+import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { hasString, t } from '../../i18n';
 import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
@@ -32,6 +32,8 @@ import { playStorySound } from './sfx';
 import { loadBundledStories } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
+import { pauseHooks } from '../../ui/menus';
+import { COLLECTIONS } from '../../rpg/items';
 import type { Action, Checkpoint, ChoiceAction, Condition, EndingId, FlagValue, HubItem, LookTime, MeterAction, StoryFile } from './types';
 import type { GameEvents } from '../../core/events';
 import type { DialogueItem } from './dialogue/presenter';
@@ -145,7 +147,7 @@ const METER_THREAT: Record<string, ThreatKind> = { smoke: 'fire', vergessen: 'ob
 const ECHO_EVENTS = new Set(['echo:start', 'echo:play', 'echo:end']);
 const QUIET_EVENTS = new Set(['player:step', 'dialogue:say', 'hunt:alert', 'lantern:oil', 'fire:progress', 'oblivion:progress']);
 /** Pack lines of these events are never spoken by the trigger runner (assembled elsewhere). */
-const ASSEMBLED_EVENTS = new Set(['epilog:line']);
+const ASSEMBLED_EVENTS = new Set(['epilog:line', 'story:ending']);
 
 interface Scheduled {
   at: number;
@@ -167,6 +169,8 @@ interface RunScope {
 const PRESENTATION = new Set(['say', 'toast', 'sound', 'card', 'prompt', 'echo', 'choice']);
 /** Barks and skill remarks: low priority in the dialogue queue (hints are not: the player is stuck). */
 const isLowLine = (id: string | undefined) => !!id && (isBarkLine(id) || id.startsWith('laub.skill.'));
+/** Longer lines than this (characters) are lore in a fight: held until it is over. */
+const COMBAT_LINE_MAX = 120;
 
 class StoryRuntime {
   readonly engine: StoryEngine;
@@ -267,6 +271,8 @@ class StoryRuntime {
       reducedMotion: () => ctx.settings.state.reducedMotion,
       name: () => this.slice.name,
       valid: (item) => this.lineStillValid(item),
+      // history and long remarks wait out a fight; barks and short calls go on (playtest round 3)
+      held: (item) => ctx.ui.hud.acting('combat') && item.priority !== 'now' && item.priority !== 'low' && (!!item.lore || item.text.length > COMBAT_LINE_MAX),
     });
     this.objectives = new ObjectiveView(this.layer, ctx.ui.hud);
     this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
@@ -297,11 +303,25 @@ class StoryRuntime {
       },
       counts: () => {
         const s = ctx.state.state;
-        let confirmed = 0;
-        for (const c of Object.values(s.chronik)) confirmed += c.confirmed.length;
         const codexTotal = [...ctx.content.facts.keys()].filter((id) => !this.hiddenFacts.has(id)).length;
         const codex = s.codex.facts.filter((id) => !this.hiddenFacts.has(id)).length;
-        return { codex, codexTotal, clues: s.inventory.clues.length, nouns: s.inventory.nouns.length, items: s.inventory.items.length, confirmed };
+        // RPG numbers from the other features' slices (read only, untyped: systems never import each other)
+        const sys = s.systems as Record<string, unknown>;
+        const pr = (sys.progression ?? {}) as { xp?: number; level?: number; inventory?: Record<string, number>; completedSets?: string[] };
+        const qs = (sys.quests ?? {}) as { quests?: Record<string, { state?: string }>; bestiary?: Record<string, number> };
+        const states = Object.values(qs.quests ?? {});
+        return {
+          codex,
+          codexTotal,
+          level: pr.level ?? 1,
+          xp: pr.xp ?? 0,
+          questsDone: states.filter((q) => q.state === 'done').length,
+          questsTotal: states.filter((q) => q.state !== 'hidden').length,
+          banned: Object.values(qs.bestiary ?? {}).reduce((a, b) => a + b, 0),
+          sets: (pr.completedSets ?? []).length,
+          setsTotal: COLLECTIONS.length,
+          items: Object.values(pr.inventory ?? {}).reduce((a, b) => a + (b > 0 ? 1 : 0), 0),
+        };
       },
       radioLine: () => RADIO_LINES[this.radioIndex++ % RADIO_LINES.length] ?? null,
       drawerState: () => (ctx.state.state.inventory.items.includes('item.bussole') ? 'empty' : 'full'),
@@ -321,6 +341,8 @@ class StoryRuntime {
         ctx.save.autosave('ending', true);
       },
       finished: () => {
+        // the ending card told the scene; nothing the ending queued plays again after the credits
+        this.presenter.clear();
         this.slice.finished = true;
         ctx.state.update((s) => (s.flags['story.credits'] = true), 'story');
         ctx.events.emit('story:credits', {});
@@ -339,6 +361,9 @@ class StoryRuntime {
       if (!auto?.ending || !ctx.save.has(ENDING_SLOT)) return [];
       return [{ label: t('ui.menu.ending_again'), testid: 'title-ending-again', run: () => ctx.save.load(ENDING_SLOT) }];
     };
+    // post-game: the pause menu offers the choice at the table again (the HUD line says so too)
+    pauseHooks.extraActions = () =>
+      this.slice.finished && ctx.save.has(ENDING_SLOT) ? [{ label: t('ui.menu.ending_again'), testid: 'pause-ending-again', run: () => void ctx.save.load(ENDING_SLOT) }] : [];
 
     // ---- events
     ctx.events.onAny((name, payload) => this.onEvent(name, payload));
@@ -349,6 +374,12 @@ class StoryRuntime {
       const key = family ? `story.caught.combat.${family}` : '';
       this.caught(by, { soft: soft === true, ...(key && hasString(key) ? { text: t(key) } : {}) });
     });
+    // an echo shows its own date in the era label (playtest round 3: "Heute · 2025" over 1840)
+    ctx.events.on('echo:start', ({ id }) => {
+      const when = this.echoDate(id);
+      if (when) ctx.ui.hud.setEraLabel(when);
+    });
+    ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
       if (to === 'today') this.placeStation();
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
@@ -1029,6 +1060,23 @@ class StoryRuntime {
     if (seq.length) this.lineGroup++;
   }
 
+  /**
+   * The date an echo is from: a year named in its lines or card (Laub's 1840 at the Forsthaus
+   * well, while the world shows 1796), else the era the echo belongs to. "Erinnerung · 1840".
+   */
+  echoDate(id: string): string | null {
+    const c = this.ctx.content.clues.get(id);
+    if (!c) return null;
+    const lines = this.ctx.content.dialogueFor('echo:start').filter((l) => l.trigger.id === id);
+    const texts = [...lines.map((l) => l.text_de), c.title_de, c.text_de ?? ''];
+    for (const s of texts) {
+      const m = /\b(1[78]\d\d)\b/.exec(s);
+      if (m) return t('story.echo.date', { when: m[1]! });
+    }
+    const era = c.where?.era;
+    return era && era !== 'today' && isEra(era) ? t('story.echo.date', { when: t(ERA_INFO[era].labelKey) }) : null;
+  }
+
   /** room:enter / room:leave { roomId } from the interiors feature (not declared here). */
   private onRoom(name: string, payload: unknown): void {
     const p = (payload ?? {}) as { roomId?: unknown; id?: unknown };
@@ -1059,6 +1107,8 @@ class StoryRuntime {
       priority: p.priority ?? (low ? 'low' : 'normal'),
       group: sc ? this.lineGroup : ++this.lineGroup,
       expired: p.until ? this.latch(p.until as Condition) : undefined,
+      // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
+      lore: p.lore || !!src || undefined,
     });
   }
 
@@ -1413,8 +1463,12 @@ class StoryRuntime {
     const hudVisible = !ctx.ui.hud.el.classList.contains('kq-hidden');
     const inv = ctx.state.state.inventory;
     const compass = inv.items.includes('item.bussole') || !!ctx.state.state.flags['story.compass'];
-    const questLed = typeof document !== 'undefined' && !!document.querySelector('.kqq-tracker .kqq-tq.kqq-main');
-    this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed });
+    const tracker = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.kqq-tracker') : null;
+    const questLed = !!tracker?.querySelector('.kqq-tq.kqq-main');
+    // the headline follows the tracker: its main goal (quests puts it on the tracker) leads the Bussole
+    const tx = Number(tracker?.dataset.tx), tz = Number(tracker?.dataset.tz);
+    const questTarget = questLed && tracker?.dataset.tx !== undefined && Number.isFinite(tx) && Number.isFinite(tz) ? { x: tx, z: tz } : null;
+    this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed, questTarget });
     const today = ctx.era.current === 'today';
     this.station.setVisible(today);
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);

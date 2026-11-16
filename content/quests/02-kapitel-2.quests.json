@@ -313,43 +313,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k2.pfeiffer",
-        "flag": "flag.k2_pfeiffer",
-        "prompt_de": "Laub: Der Bauer ist durch die Nacht gerannt, über einen Zaun, zu einem Herzog, der ihm nicht glaubt. Warum, meinen Sie?",
-        "options": [
-          {
-            "label_de": "Weil er dem Herzog treu war.",
-            "value": "treu",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Treue. Die einzige Münze, die der Hof nie ausgegeben hat. Er hat sie bekommen."
-              }
-            ]
-          },
-          {
-            "label_de": "Weil er sein Dorf schützen wollte.",
-            "value": "dorf",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Wer die Reiter wegschickt, schickt sie woandershin. Vielleicht wusste er das."
-              }
-            ]
-          },
-          {
-            "label_de": "Weil er Angst hatte.",
-            "value": "angst",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Angst läuft schneller als Treue. Das ist keine Schande, das ist Physik."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "hof",
@@ -436,43 +399,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k2.stelle",
-        "flag": "flag.k2_stelle",
-        "prompt_de": "Laub: Sie haben ihn heute rennen sehen. An seiner Stelle, was hätten Sie getan?",
-        "options": [
-          {
-            "label_de": "Ich hätte ihn auch gewarnt.",
-            "value": "gewarnt",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Einen Herzog, der Ihren Lohn schuldig bleibt. Gut. Ich schreibe es auf, ohne Kommentar. Fast."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich hätte geschwiegen.",
-            "value": "geschwiegen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Ehrlich. Die meisten haben geschwiegen. Darüber gibt es keine Quellen, nur Lücken."
-              }
-            ]
-          },
-          {
-            "label_de": "Ich hätte die Reiter geführt.",
-            "value": "gefuehrt",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Irgendeiner hat sie geführt, sonst wären sie nicht gekommen. Seinen Namen kennt auch niemand."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "kalk",
@@ -667,43 +593,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k2.lichter",
-        "flag": "flag.k2_lichter",
-        "prompt_de": "Laub: Die Lichter im Wald, in jener Nacht. Was waren sie?",
-        "options": [
-          {
-            "label_de": "Kalköfen. Wie der Handwerker sagt.",
-            "value": "kalkoefen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Dann hat er die Wahrheit gesagt. Ein General hat ihm geglaubt. Das kommt selten vor."
-              }
-            ]
-          },
-          {
-            "label_de": "Fackeln. Die Diener bei den Wagen.",
-            "value": "fackeln",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Das erzählt man im Ort. Belegt ist es nicht. Aber es ist eine freundliche Geschichte."
-              }
-            ]
-          },
-          {
-            "label_de": "Laternen. Meine war dabei.",
-            "value": "laternen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Eine Erinnerung, in der Sie selbst vorkommen. Ich sage nichts. Ich bin eine Bussole."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "licht1",

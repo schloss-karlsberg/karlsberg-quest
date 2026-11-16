@@ -27,7 +27,7 @@ import { Voice } from '../story/dialogue/voice';
 import { GhostFigure } from './figure';
 import { BYE, GREET, answer, askedTopics, availableTopics, clueFor, talkLines, talkedFlag } from './logic';
 import { lookFor, topicLabel } from './roster';
-import { ConversationView, type TalkLine, type TalkTopic } from './ui';
+import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
 import { GiverGlyphs } from './glyphs';
 
 addStrings('de', {
@@ -40,7 +40,7 @@ addStrings('de', {
   'npc.silent': '(Schweigt und sieht dich an.)',
   'npc.nothing': '(Mehr weiß sie dazu nicht.)',
   'npc.later': 'Später.',
-  'npc.stance.note': 'Deine Haltung – eine Meinung, keine Prüfung.',
+  'npc.thanks': '(Nickt dir zu.)',
   'npc.codex': 'Codex: {title}',
 });
 
@@ -109,7 +109,7 @@ class NpcRuntime {
   /** Escorted NPCs walking after the player (quests → npc:follow). */
   private readonly follow = new Set<string>();
   private readonly glyphs: GiverGlyphs;
-  /** Inside a quest exchange (accept / stance buttons): topic updates wait. */
+  /** Inside a quest exchange (accept / hand-over buttons): topic updates wait. */
   private inQuest = false;
   private near: string | null = null;
   private prompt: string | null = null;
@@ -289,7 +289,7 @@ class NpcRuntime {
       id: `q:${q.quest}`,
       label: q.label,
       asked: false,
-      mark: q.kind === 'turnin' ? 'ready' : q.kind === 'progress' ? 'active' : q.main ? 'offer-main' : 'offer',
+      mark: q.kind === 'turnin' ? 'ready' : q.kind === 'progress' ? 'active' : q.kind === 'more' ? 'more' : q.main ? 'offer-main' : 'offer',
     }));
     const list: TalkTopic[] = [...quest, ...topics.map((id) => ({ id, label: topicLabel(id), asked: asked.has(id) }))];
     list.push({ id: BYE, label: t('npc.bye'), asked: false });
@@ -303,7 +303,11 @@ class NpcRuntime {
     return out;
   }
 
-  /** A quest topic: offer (accept / later), progress, or the turn-in (history, stance, then the reward). */
+  /**
+   * A quest topic: offer (the giver's words, then the quest card: Annehmen / Später), progress,
+   * the turn-in (the giver's thanks, the turn-in card: Übergeben → the reward card, then one
+   * history line as the moment of it), or "Erzähl mehr" (the rest of the history, when wanted).
+   */
   private askQuest(questId: string): boolean {
     const c = this.talking;
     if (!c) return false;
@@ -311,17 +315,31 @@ class NpcRuntime {
     if (!tp) return false;
     const ev = this.ctx.events;
     const lines = tp.lines.map((l, i) => this.questLine(l, i));
+    const facts = this.ctx.content.facts;
+    const hist = (l: QuestLine, i: number) => {
+      const f = 'fact' in l && typeof l.fact === 'string' ? facts.get(l.fact) : undefined;
+      return this.questLine(l, 100 + i, { history: true, note: f ? t('npc.codex', { title: f.title_de }) : undefined });
+    };
     if (tp.kind === 'progress') {
       this.view.say(lines.length ? lines : [{ id: 'npc.nothing', speaker: speakerMeta(c.npc, this.ctx.content), text: t('npc.nothing') }], () => this.menu());
+      return true;
+    }
+    if (tp.kind === 'more') {
+      this.view.say(tp.lines.map(hist), () => {
+        ev.emit('quest:told', { id: questId, npc: c.npc });
+        this.menu();
+      });
       return true;
     }
     if (tp.kind === 'offer') {
       this.inQuest = true;
       this.view.say(lines, () => {
-        const opts: TalkTopic[] = [{ id: `qa:${questId}`, label: tp.accept ?? 'Ich kümmere mich darum.', asked: false, mark: 'accept' }];
+        const opts: TalkTopic[] = [{ id: `qa:${questId}`, label: tp.accept ? `${t('quest.card.accept')}: „${tp.accept}“` : t('quest.card.accept'), asked: false, mark: 'accept' }];
         if (tp.declinable) opts.push({ id: `qd:${questId}`, label: t('npc.later'), asked: false, mark: 'decline' });
+        if (tp.card) this.view.setCard(questCardEl(tp.card, 'offer'));
         this.view.setTopics(opts, (id) => {
           this.inQuest = false;
+          this.view.setCard(null);
           if (id.startsWith('qa:')) ev.emit('quest:accept', { id: questId, npc: c.npc });
           else ev.emit('quest:decline', { id: questId, npc: c.npc });
           this.menu();
@@ -329,34 +347,17 @@ class NpcRuntime {
       });
       return true;
     }
-    // turn-in: the giver's words, the history told (sources + codex card), the stance, then hand in
+    // turn-in: thanks, the card, hand over (reward card), then the history as a short moment
     this.inQuest = true;
-    const facts = this.ctx.content.facts;
-    const hist = (tp.history ?? []).map((l, i) => {
-      const f = l.fact ? facts.get(l.fact) : undefined;
-      return this.questLine(l, 100 + i, { history: true, note: f ? t('npc.codex', { title: f.title_de }) : undefined });
-    });
-    const finish = () => {
-      this.inQuest = false;
-      ev.emit('quest:turnin', { id: questId, npc: c.npc });
-      this.menu();
-    };
-    this.view.say([...lines, ...hist], () => {
-      const st = tp.stance;
-      if (!st) return finish();
-      // the question is part of the conversation (no "Name:" inside the line, no exam note)
-      const prompt = st.prompt_de.replace(/^[A-ZÄÖÜ][\wäöüß]+:\s+/, '');
-      this.view.say([{ id: `stance.${st.id}`, speaker: speakerMeta(c.npc, this.ctx.content), text: prompt }], () => {
-        this.view.setTopics(
-          st.options.map((o) => ({ id: `qs:${o.value}`, label: o.label_de, asked: false, mark: 'stance' as const })),
-          (id) => {
-            const value = id.slice(3);
-            ev.emit('quest:stance', { id: questId, value });
-            const reply = st.options.find((o) => o.value === value)?.reply ?? [];
-            if (reply.length) this.view.say(reply.map((l, i) => this.questLine(l, 200 + i)), finish);
-            else finish();
-          },
-        );
+    const told = (tp.history ?? []).slice(0, 1).map(hist);
+    this.view.say(lines.length ? lines : [{ id: 'npc.thanks', speaker: speakerMeta(c.npc, this.ctx.content), text: t('npc.thanks') }], () => {
+      if (tp.card) this.view.setCard(questCardEl(tp.card, 'turnin'));
+      this.view.setTopics([{ id: `qt:${questId}`, label: t('quest.card.hand'), asked: false, mark: 'accept' }], () => {
+        this.inQuest = false;
+        this.view.setCard(null);
+        ev.emit('quest:turnin', { id: questId, npc: c.npc });
+        if (told.length) this.view.say(told, () => this.menu());
+        else this.menu();
       });
     });
     return true;
@@ -365,8 +366,8 @@ class NpcRuntime {
   ask(topic: string): boolean {
     const c = this.talking;
     if (!c || !this.view.open || this.view.busy) return false;
-    // answers inside a quest exchange (accept / later / stance) go through the open buttons
-    if (/^q[ads]:/.test(topic)) return this.view.chooseId(topic);
+    // answers inside a quest exchange (accept / later / hand over) go through the open buttons
+    if (/^q[adt]:/.test(topic)) return this.view.chooseId(topic);
     if (topic.startsWith('q:')) return this.askQuest(topic.slice(2));
     const ctx = this.ctx;
     ctx.state.update((s) => (s.flags[talkedFlag(c.chapter, c.npc, topic)] = true), 'npc');

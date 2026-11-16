@@ -2,11 +2,11 @@
  * Epilogue assembly from the endings pack (pure, unit-tested). The pack transcribes bible
  * 06-enden.md §6 as dialogue lines with the custom trigger
  *   { event: 'epilog:line', block, ending?, flag?, value? }
- * One sentence per block, blocks in pack order: intro → readings (spuren, lohn, warner,
- * warner-stelle, warner-tor, pluenderer, zerstoerer, zerstoerer-steine, meute, meute-namen) →
- * objekt → schluss → schluss-nachsatz. A block with flag lines takes the line whose `value`
- * equals the flag (reading flags hold the chosen noun id; "n.r_x" ≡ "x"), else its 'offen' line
- * (missing reading = "offen", bible §6), else nothing (add-on sentences like warner-stelle).
+ * One sentence per block, blocks in pack order: intro → the deeds, chapter by chapter
+ * (vermessung, hof, flucht, flucht-tat, brand, steine, meute, meute-namen; docs/ACTION-RPG.md §8.6,
+ * scripts/content-build/epilogue-deeds.mjs) → objekt → schluss → schluss-nachsatz. A block with
+ * flag lines takes the FIRST line whose `value` equals its flag (deeds: `quest.<id>` = "done", in
+ * priority order; "n.r_x" ≡ "x"), else its 'offen' line, else nothing (add-on sentences).
  * The object block falls back to 'nichts' (nothing rescued).
  */
 import type { DialogueLine } from '../../../content/types';
@@ -47,7 +47,9 @@ export function assembleEpilogue(lines: DialogueLine[], ending: EndingId, flags:
     if (flagged.length) {
       pick = flagged.find((l) => flagMatches(flags, l.trigger.flag, l.trigger.value));
       if (!pick) pick = flagged.find((l) => valueKey(l.trigger.value) === 'offen') ?? flagged.find((l) => valueKey(l.trigger.value) === 'nichts');
-      out.variants[b] = pick ? valueKey(pick.trigger.value) : 'offen';
+      // a deed line (value "done") names its quest flag; the others their value
+      const vk = pick ? valueKey(pick.trigger.value) : 'offen';
+      out.variants[b] = vk === 'done' ? String(pick!.trigger.flag) : vk;
     } else pick = cands[0];
     if (!pick) continue;
     const text = fill(pick.text_de);

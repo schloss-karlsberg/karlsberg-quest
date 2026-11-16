@@ -329,7 +329,7 @@ test('campaign: new game → prologue → chapters 1–4 → ending → credits'
         expect(s.chapter).toBe('enden');
         await shot(page, '06-ending-choice');
       } else if (label === 'ending:epilogue') {
-        // the epilogue is built from this run's readings: the saved object of chapter 3, Laub's name …
+        // the epilogue is told from this run's deeds: side quests done, the saved object of chapter 3 …
         const epi = await page.getByTestId('epilogue').innerText();
         expect(epi.length).toBeGreaterThan(200);
         await shot(page, '07-epilogue');
@@ -367,12 +367,12 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
       const k = window.kq!;
       k.ctx.state.mutable.flags['barks.quiet'] = true;
       k.story!.start('Mara');
-      // readings of a played game (the epilogue is built from them)
+      // deeds of a played game (the epilogue is told from them)
       k.ctx.state.update((s) => {
-        s.flags['flag.k1_lohn'] = 'will_nicht';
+        s.flags['quest.q.k1.hundenamen'] = 'done';
+        s.flags['quest.q.k3.lehnstuhl'] = 'done';
         s.flags['flag.k2_tor'] = 'leuchten';
         s.flags['flag.k3_objekt'] = 'uhr';
-        s.flags['flag.k4_zerstoerer'] = 'n.r_steintraeger';
       });
       k.story!.goto('enden');
       k.step(2);

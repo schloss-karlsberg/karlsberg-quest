@@ -1,6 +1,6 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
-import { type QW, cna, fight, holdHome, installQuestPlay, qn, qs, stance, talkQuest, untilQuest } from './prolog';
+import { type QW, cna, fight, holdHome, installQuestPlay, qn, qs, talkQuest, turninMoment, untilQuest } from './prolog';
 
 /**
  * Chapter 2 "Die Flucht" as an action-RPG quest chain (docs/ACTION-RPG.md §11.2), played headless
@@ -431,7 +431,7 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   await endEcho(page);
   expect(await untilQuest(page, 'q.k2.warnung', 'done', 10)).toBe('done');
   await page.setViewportSize({ width: 1280, height: 720 });
-  expect(await stance(page, 'Weil er sein Dorf schützen wollte.', 'flag.k2_pfeiffer')).toBe('dorf');
+  expect(await turninMoment(page, 'q.k2.warnung')).toBe('done');
   await page.setViewportSize(SMALL);
   await settle(page, 10);
   expect((await story(page)).beat).toBe('k2_7');
@@ -552,12 +552,12 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   await settle(page, 12);
   expect(await said(page)).toEqual(expect.arrayContaining(['laub.k2.damm.weg', 'laub.k2.wasser']));
 
-  // ---- home: the stance, the cliffhanger ---------------------------------------------------------------
+  // ---- home: the turn-in, the cliffhanger--------------------------------------------------------------
   await holdQ(page);
   expect((await story(page)).era).toBe('today');
   expect(await untilQuest(page, 'q.k2.parforce', 'done', 10)).toBe('done');
   await page.setViewportSize({ width: 1280, height: 720 });
-  expect(await stance(page, 'Ich hätte ihn auch gewarnt.', 'flag.k2_stelle')).toBe('gewarnt');
+  expect(await turninMoment(page, 'q.k2.parforce')).toBe('done');
   await page.setViewportSize(SMALL);
   expect(await page.evaluate(() => window.kq!.skills!.levels().kartograf)).toBe(3);
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBe('item.stab.silber');

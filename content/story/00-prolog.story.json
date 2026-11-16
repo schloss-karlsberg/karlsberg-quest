@@ -188,7 +188,7 @@
             ]
           },
           "do": [
-            { "do": "objective", "id": "station", "text": "Draußen am Wagen lehnt der Messstab: mitnehmen (E)", "x": 763, "z": -900 },
+            { "do": "objective", "id": "station", "text": "Draußen am Wagen lehnt der Messstab. Nimm ihn mit", "x": 763, "z": -900 },
             { "do": "toast", "text": "Der Messstab: LMB Hieb · gehalten Wuchthieb · Leertaste Ausweichen", "ms": 5000, "delay": 1 }
           ]
         }

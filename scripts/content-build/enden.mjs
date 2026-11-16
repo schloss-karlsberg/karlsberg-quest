@@ -1,4 +1,6 @@
-import { say, seq, src, write } from './common.mjs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { ROOT, say, seq, src, write } from './common.mjs';
+import { DEED_SLOTS, EPILOGUE_FRAME } from './epilogue-deeds.mjs';
 
 /*
  * Endings (06-enden.md). All FIKTION except marked sentences.
@@ -45,66 +47,13 @@ const dialogue = [
     ['marlene.end.behalten', 'marlene', 'Lass das Horn da hängen. Das passt zum Bauwagen. Aber blas nicht drauf, wenn ich schlafe.'],
   ]),
 
-  // 6. Epilog — 6.1 Einleitung
-  line('epilog.intro.museum', 'intro', 'Karlsberg bei Homburg, 1777–1793. Was das Feuer nicht fraß. Diese Seiten führte ein Kanzlist neben den Rechnungen des Hofes. Er schrieb auf, was der Hof schuldig blieb.', { ending: E.museum }),
-  line('epilog.intro.burn', 'intro', 'Was ich weiß, schreibe ich hier einmal hin, und dann nicht wieder.', { ending: E.burn }),
-  line('epilog.intro.keep', 'intro', 'Fortgesetzt im November, wie das letzte Mal. Q. L. und ich.', { ending: E.keep }),
-  // 6.2 Lesart-Sätze (any ending)
-  ...[
-    ['n.hunde', 'In der Punktwolke von 2025 liefen Spuren durch den Wald, und ich habe sie für Hunde gehalten.'],
-    ['n.wild', 'In der Punktwolke von 2025 liefen Spuren durch den Wald. Wild, dachte ich zuerst.'],
-    ['n.messfehler', 'In der Punktwolke von 2025 liefen Spuren durch den Wald. Ein Messfehler, dachte ich zuerst. Das denkt man immer zuerst.'],
-    ['offen', 'Was die Spuren in der Punktwolke waren, habe ich nicht entschieden.'],
-  ].map(([v, t]) => line(`epilog.spuren.${v.replace(/^n\./, '')}`, 'spuren', t, { flag: 'flag.p_spuren', value: v })),
-  ...[
-    ['n.r_will_nicht', 'Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil der Herzog nicht zahlen wollte.'],
-    ['n.r_creuzer', 'Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil ein Präsident die Kassen geleert hatte, auch die der Witwen und Waisen.'],
-    ['n.r_hunde_bilder', 'Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil das Geld in tausend Hunde und tausend Bilder ging.'],
-    ['n.r_getaeuscht', 'Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Man sagt, der Herzog sei getäuscht worden. Bezahlt hat er trotzdem nicht.'],
-    ['offen', 'Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Warum, ist eine Frage, die ich offenlasse.'],
-  ].map(([v, t]) => line(`epilog.lohn.${v.replace(/^n\.r_/, '')}`, 'lohn', t, { flag: 'flag.k1_lohn', value: v })),
-  ...[
-    ['n.r_treu', 'Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald und kletterte über den Zaun, aus Treue.'],
-    ['n.r_dorf', 'Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, damit die Reiter sein Dorf schneller wieder verließen.'],
-    ['n.r_lohn', 'Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Der Herzog glaubte, für Geld. Er bekam einen Dukaten.'],
-    ['n.r_angst', 'Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, weil er Angst hatte. Angst ist auch ein Grund, das Richtige zu tun.'],
-    ['offen', 'Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Warum, hat er niemandem aufgeschrieben.'],
-  ].map(([v, t]) => line(`epilog.warner.${v.replace(/^n\.r_/, '')}`, 'warner', t, { flag: 'flag.k2_pfeiffer', value: v })),
-  ...[
-    ['n.r_gewarnt', 'Ich hätte es auch getan.'],
-    ['n.r_geschwiegen', 'Ich hätte geschwiegen, und ich weiß nicht, ob ich mich dafür schäme.'],
-    ['n.r_gefuehrt', 'Ich hätte die Reiter geführt. Das schreibe ich hier auf, damit es wenigstens einer weiß.'],
-  ].map(([v, t]) => line(`epilog.stelle.${v.replace(/^n\.r_/, '')}`, 'warner-stelle', t, { flag: 'flag.k2_stelle', value: v })),
-  line('epilog.tor.leuchten', 'warner-tor', 'Als die Wagen abfuhren, habe ich ihnen geleuchtet.', { flag: 'flag.k2_tor', value: 'leuchten' }),
-  line('epilog.tor.dunkel', 'warner-tor', 'Als die Wagen abfuhren, stand ich im Dunkeln.', { flag: 'flag.k2_tor', value: 'dunkel' }),
-  ...[
-    ['n.r_schuld', 'Am 28. Juli 1793 nahmen die Leute aus den Dörfern sich, was man ihnen schuldete.'],
-    ['n.r_stahlen', 'Am 28. Juli 1793 stahlen die Leute aus den Dörfern, was nicht niet- und nagelfest war, und dann die Nägel.'],
-    ['n.r_retteten', 'Am 28. Juli 1793 retteten die Leute aus den Dörfern, was zu retten war. Ein Stuhl steht heute vielleicht noch in einer Stube.'],
-    ['n.r_alle', 'Am 28. Juli 1793 taten die Leute aus den Dörfern, was alle taten.'],
-    ['offen', 'Was die Leute aus den Dörfern am 28. Juli 1793 taten, mag ich nicht in ein Wort fassen.'],
-  ].map(([v, t]) => line(`epilog.pluenderer.${v.replace(/^n\.r_/, '')}`, 'pluenderer', t, { flag: 'flag.k3_pluenderer', value: v })),
-  ...[
-    ['n.r_franzosen', 'Angezündet haben ihn die Franzosen.'],
-    ['n.r_herzog_selbst', 'Zerstört hat ihn am Ende der, der ihn so gebaut hat.'],
-    ['n.r_steintraeger', 'Abgetragen haben ihn die Leute aus Homburg, Stein für Stein.'],
-    ['n.r_vergessen', 'Zerstört hat ihn am Ende das Vergessen. Dagegen hilft nur Aufschreiben.'],
-    ['offen', 'Wer ihn zerstört hat, weiß jeder anders.'],
-  ].map(([v, t]) => line(`epilog.zerstoerer.${v.replace(/^n\.r_/, '')}`, 'zerstoerer', t, { flag: 'flag.k4_zerstoerer', value: v })),
-  ...[
-    ['n.r_raub', 'Die Steine in Homburg sind Raub am Raub.'],
-    ['n.r_lohn_steine', 'Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn.'],
-    ['n.r_neuanfang', 'Das Schloss steckt in hundert Häusern. Es ist nicht weg, es ist überall.'],
-    ['n.r_nur_steine', 'Es sind nur Steine. Was daran hängt, hängen wir dran.'],
-  ].map(([v, t]) => line(`epilog.steine.${v.replace(/^n\.r_/, '')}`, 'zerstoerer-steine', t, { flag: 'flag.k4_steine', value: v })),
-  ...[
-    ['n.r_herr_suchen', 'Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.'],
-    ['n.r_chronik_bewachen', 'Die Hunde liefen dort, wo eine Seite lag.'],
-    ['n.r_heimtreiben', 'Die Hunde haben jeden heimgetrieben, der sich zu lange im Vergessen aufhielt. Fast jeden.'],
-    ['n.r_nie_abgeblasen', 'Die Jagd wurde nie abgeblasen. So einfach war das.'],
-    ['offen', 'Warum die Hunde liefen, weiß Jost. Ich habe ihn nicht gefragt.'],
-  ].map(([v, t]) => line(`epilog.meute.${v.replace(/^n\.r_/, '')}`, 'meute', t, { flag: 'flag.k4_meute', value: v })),
-  line('epilog.meute.namen', 'meute-namen', 'Sie hießen Diane, Sultan, Fanfare, Rauhreif und Bijou.', {}),
+  // 6. Epilog — 6.1 Einleitung (told as a story: epilogue-deeds.mjs)
+  ...Object.entries(EPILOGUE_FRAME.intro).map(([k, t]) => line(`epilog.intro.${k}`, 'intro', t, { ending: k })),
+  // 6.2 What you did, chapter by chapter (deeds, docs/ACTION-RPG.md §8.6; no stance answers)
+  ...DEED_SLOTS.flatMap((slot) => [
+    ...slot.deeds.map(([d, t], i) => line(`epilog.${slot.id}.${i + 1}`, slot.id, t, { flag: d.flag, value: d.eq })),
+    ...(slot.offen ? [line(`epilog.${slot.id}.offen`, slot.id, slot.offen, { flag: slot.deeds[0][0].flag, value: 'offen' })] : []),
+  ]),
   // 6.3 Gegenstand (flag.k3_objekt) per ending
   ...[
     ['tuergriff', 'Daneben: ein Türgriff. Er war an der Tür zum Festsaal. Die Wand dahinter hat Matthes gemauert.', 'Den Türgriff habe ich behalten. Eine Tür, die es nicht mehr gibt, braucht trotzdem einen Griff.', 'Der Türgriff liegt in der Schublade bei der Bussole. Manchmal fasse ich ihn an, bevor ich hinausgehe.'],
@@ -117,11 +66,27 @@ const dialogue = [
     line(`epilog.objekt.${v}.keep`, 'objekt', c, { ending: E.keep, flag: 'flag.k3_objekt', value: v }),
   ]),
   // 6.4 Schluss
-  line('epilog.schluss.museum', 'schluss', 'Quellen: Mannlich, Lebenserinnerungen. Die Akten. Der Boden. Und ein Geometer, der auf seinen fünfzig Metern besteht.', { ending: E.museum }),
-  say('laub.end.museum_4', 'laub', 'Ich bestehe darauf.', ep('schluss-nachsatz', { ending: E.museum }), { once: false }),
-  line('epilog.schluss.burn', 'schluss', 'Jetzt ist es still. Gute Nacht, Laub. Gute Nacht, Diane, Sultan, Fanfare, Rauhreif, Bijou.', { ending: E.burn }),
-  line('epilog.schluss.keep', 'schluss', 'Wird fortgesetzt.', { ending: E.keep }),
-  say('jost.end.keep', 'jost', 'Jost war auch da.', ep('schluss-nachsatz', { ending: E.keep }), { once: false }),
+  ...Object.entries(EPILOGUE_FRAME.outro).map(([k, t]) => line(`epilog.schluss.${k}`, 'schluss', t, { ending: k })),
+  say('laub.end.museum_4', 'laub', EPILOGUE_FRAME.coda.museum, ep('schluss-nachsatz', { ending: E.museum }), { once: false }),
+  say('jost.end.keep', 'jost', EPILOGUE_FRAME.coda.keep, ep('schluss-nachsatz', { ending: E.keep }), { once: false }),
 ];
 
 write('enden', { pack: 'enden', dialogue });
+
+// --story: copy the deeds and the frame into the fallback epilogue of 05-enden.story.json (its
+// other keys and the rest of the file stay as they are)
+if (process.argv.includes('--story')) {
+  const file = `${ROOT}/content/story/05-enden.story.json`;
+  const story = JSON.parse(readFileSync(file, 'utf8'));
+  const e = story.epilogue;
+  e.intro = { ...EPILOGUE_FRAME.intro };
+  e.outro = { ...EPILOGUE_FRAME.outro };
+  e.coda = { ...EPILOGUE_FRAME.coda };
+  e.readings = DEED_SLOTS.map((slot) => ({
+    id: slot.id,
+    deeds: slot.deeds.map(([d, text]) => ({ flag: d.flag, eq: d.eq, text })),
+    text: { offen: slot.offen },
+  }));
+  writeFileSync(file, JSON.stringify(story, null, 2) + '\n');
+  console.log('wrote 05-enden.story.json epilogue');
+}
