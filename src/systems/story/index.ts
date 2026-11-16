@@ -74,7 +74,7 @@ export interface StoryHooks {
   /** Emit player:caught; `holdMs` keeps the black curtain down longer (screenshots). */
   caught(by?: ThreatKind, holdMs?: number): void;
   hub(open?: boolean): void;
-  ending(id?: EndingId): void;
+  ending(id?: EndingId, vignette?: boolean): void;
   credits(): void;
   epilogue(id: EndingId): Epilogue | null;
   choose(index: number): boolean;
@@ -1446,7 +1446,7 @@ class StoryRuntime {
         this.ctx.events.emit('player:caught', { by });
       },
       hub: (open = true) => (open ? this.hub.show() : this.hub.close()),
-      ending: (id) => this.endings.show(id),
+      ending: (id, vignette) => this.endings.show(id, vignette),
       credits: () => this.endings.credits(),
       epilogue: (id) => this.epilogue(id),
       choose: (i) => this.overlays.pickChoice(i),

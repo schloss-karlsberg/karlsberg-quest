@@ -1315,3 +1315,154 @@ body.kq-in-combat .kqs-dlg-body::before {
 .kq-root:has(.kqs-dlg.kqs-show) .kq-subtitles {
   bottom: 262px;
 }
+
+/* ---- ending vignettes: six seconds over the live world before the text card ---- */
+.kq-modal-layer.kqs-vig-layer {
+  background: transparent;
+  backdrop-filter: none;
+}
+.kq-modal.kqs-ending[data-stage='vignette'] {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  overflow: hidden;
+}
+.kq-modal.kqs-ending[data-stage='vignette']::before,
+.kq-modal.kqs-ending[data-stage='vignette']::after {
+  display: none;
+}
+.kq-modal.kqs-ending[data-stage='vignette'] .kq-modal-body {
+  padding: 0;
+  height: 100%;
+}
+.kqs-vig {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+.kqs-vig > * {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.kqs-vig .kqs-vig-skip {
+  inset: auto 24px 22px auto;
+  pointer-events: auto;
+  background: rgba(14, 10, 6, 0.6);
+  color: #e8dcc0;
+  border: 1px solid rgba(232, 220, 192, 0.35);
+  border-radius: 4px;
+  padding: 6px 14px;
+  font: inherit;
+  opacity: 0;
+  animation: kqs-vig-in 0.6s 1.2s forwards;
+}
+@keyframes kqs-vig-in {
+  to { opacity: 1; }
+}
+/* museum: the fog lifts off the clearing, far away the hounds lie down */
+.kqs-vig .kqs-vig-fog {
+  inset: -10% 0 -70% 0;
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 30%);
+  mask-image: linear-gradient(to top, transparent, #000 30%);
+  background: linear-gradient(to top, rgba(222, 226, 228, 0.96), rgba(214, 218, 222, 0.85) 45%, rgba(214, 218, 222, 0.5));
+  animation: kqs-vig-lift 5.4s 0.4s ease-in forwards;
+}
+.kqs-vig-fog.b {
+  background: radial-gradient(ellipse at 50% 80%, rgba(240, 240, 236, 0.7), transparent 70%);
+  animation-duration: 4.4s;
+}
+@keyframes kqs-vig-lift {
+  to { transform: translateY(-75%); opacity: 0; }
+}
+.kqs-vig-hounds .kqs-vig-hound {
+  position: absolute;
+  bottom: 44%;
+  width: 5.5%;
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: kqs-vig-lie 2.2s ease-out forwards;
+}
+@keyframes kqs-vig-lie {
+  0% { opacity: 0; transform: translateY(-30%) scaleY(1.25); }
+  35% { opacity: 0.85; }
+  100% { opacity: 0.4; transform: translateY(0) scaleY(0.62); }
+}
+/* burn: the fire takes the pages, the eras flash past once more */
+.kqs-vig-fire {
+  background: radial-gradient(ellipse at 50% 110%, rgba(255, 150, 50, 0.85), rgba(160, 40, 10, 0.45) 40%, transparent 72%);
+  animation: kqs-vig-flicker 0.18s infinite alternate, kqs-vig-in 1s forwards;
+  opacity: 0;
+}
+@keyframes kqs-vig-flicker {
+  to { filter: brightness(1.25); }
+}
+.kqs-vig-eras {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kqs-vig-eras span {
+  position: absolute;
+  font-family: var(--hand, serif);
+  font-size: clamp(48px, 10vw, 120px);
+  color: #fff2d0;
+  text-shadow: 0 0 24px rgba(255, 170, 60, 0.9);
+  opacity: 0;
+  animation: kqs-vig-era 0.62s ease-out forwards;
+}
+@keyframes kqs-vig-era {
+  0% { opacity: 0; transform: scale(1.3); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+.kqs-vig-flash {
+  background: #fff6e0;
+  opacity: 0;
+  animation: kqs-vig-flash 6s forwards;
+}
+@keyframes kqs-vig-flash {
+  0%, 8%, 18%, 30%, 42%, 54%, 66%, 100% { opacity: 0; }
+  10%, 20%, 32%, 44%, 56% { opacity: 0.35; }
+  80% { opacity: 0.9; }
+}
+/* keep: the dark closes in, and behind you eyes open, one pair after another */
+.kqs-vig-dark {
+  background: radial-gradient(ellipse at 50% 45%, transparent 18%, rgba(4, 5, 10, 0.92) 70%);
+  opacity: 0;
+  animation: kqs-vig-in 2.4s forwards;
+}
+.kqs-vig-eyes i {
+  position: absolute;
+  display: flex;
+  gap: 14px;
+  opacity: 0;
+  animation: kqs-vig-eye 2.6s ease-in-out forwards;
+}
+.kqs-vig-eyes b {
+  width: 10px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffd890;
+  box-shadow: 0 0 12px 3px rgba(255, 190, 90, 0.7);
+}
+@keyframes kqs-vig-eye {
+  0% { opacity: 0; transform: scaleY(0.1); }
+  30% { opacity: 1; transform: scaleY(1); }
+  44% { transform: scaleY(0.1); }
+  52% { transform: scaleY(1); }
+  100% { opacity: 0.8; }
+}
+/* the picture is the world, not the HUD */
+body:has(.kqs-vig) .kq-hud {
+  opacity: 0;
+  transition: opacity 0.6s;
+}

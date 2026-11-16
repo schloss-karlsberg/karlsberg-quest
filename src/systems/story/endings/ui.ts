@@ -67,19 +67,21 @@ export class EndingScreen {
   }
 
   /** Opens the choice (or `ending` directly at the scene, for debugging). */
-  show(ending?: EndingId): void {
+  show(ending?: EndingId, vignette = false): void {
     if (!this.open) {
       this.m = this.d.modals.open({ closable: false, className: 'kqs-ending', wide: true });
       this.m.el.dataset.testid = 'ending';
     }
     if (ending) {
       this.ending = ending;
-      this.scene();
+      if (vignette) this.vignette();
+      else this.scene();
     } else this.choose();
   }
 
   close(): void {
     this.dropCreditKeys();
+    window.clearTimeout(this.vigTimer);
     this.m?.close();
     this.m = null;
   }
@@ -87,7 +89,7 @@ export class EndingScreen {
   private page(stage: string, cls: string, body: HTMLElement[]): void {
     const m = this.m!;
     m.el.dataset.stage = stage;
-    m.el.classList.remove('kqs-end-museum', 'kqs-end-burn', 'kqs-end-keep', 'kqs-end-credits');
+    m.el.classList.remove('kqs-end-museum', 'kqs-end-burn', 'kqs-end-keep', 'kqs-end-credits', 'kqs-end-vig-museum', 'kqs-end-vig-burn', 'kqs-end-vig-keep');
     if (cls) m.el.classList.add(cls);
     m.setBody(body, '');
     m.el.scrollTop = 0;
@@ -101,7 +103,7 @@ export class EndingScreen {
       this.ending = id;
       this.d.chosen(id);
       this.d.sound(id === 'museum' ? 'horn' : id === 'burn' ? 'match' : 'compass');
-      this.scene();
+      this.vignette();
     };
     this.page('choose', '', [
       h('div.kqs-end-head', [h('div.kqs-end-kicker', t('story.end.epilogue')), h('h2.kqs-end-title', t('story.end.title'))]),
@@ -120,6 +122,51 @@ export class EndingScreen {
       ),
       h('p.kqs-fic-note', t('story.tag.fiction')),
     ]);
+  }
+
+  private vigTimer = 0;
+
+  /**
+   * A short picture over the live world before the text card (playtest round 2: the ending was
+   * only text): museum, the fog lifts and the hounds lie down; burn, the eras flash through the
+   * fire; keep, eyes open in the dark behind you. Six seconds, a click skips it.
+   */
+  private vignette(): void {
+    const id = this.ending!;
+    if (this.d.reducedMotion()) return this.scene();
+    const m = this.m!;
+    m.el.closest('.kq-modal-layer')?.classList.add('kqs-vig-layer');
+    const layers: HTMLElement[] = [];
+    if (id === 'museum') {
+      layers.push(h('div.kqs-vig-fog'), h('div.kqs-vig-fog.b'));
+      const hounds = h('div.kqs-vig-hounds');
+      hounds.innerHTML = Array.from({ length: 5 }, (_, i) => {
+        const x = 8 + i * 19;
+        return `<svg class="kqs-vig-hound" style="left:${x}%;animation-delay:${1.6 + i * 0.35}s" viewBox="0 0 120 60"><path d="M8 44c6-14 22-20 40-20h34c8 0 12-10 20-12l6 4-4 6c4 2 8 6 8 10l-6 2-10-4c-6 6-10 12-18 14H40c-8 0-14 4-20 6z" fill="#0b0907"/></svg>`;
+      }).join('');
+      layers.push(hounds);
+    } else if (id === 'burn') {
+      layers.push(h('div.kqs-vig-fire'));
+      const eras = ['1785', '1789', '1793', '1796', '1840', '1935', 'heute'];
+      layers.push(h('div.kqs-vig-eras', eras.map((e, i) => h('span', { style: `animation-delay:${0.5 + i * 0.62}s` }, e))));
+      layers.push(h('div.kqs-vig-flash'));
+    } else {
+      layers.push(h('div.kqs-vig-dark'));
+      const eyes = h('div.kqs-vig-eyes');
+      const spots: [number, number, number][] = [[12, 58, 0.8], [26, 70, 1.6], [78, 62, 1.1], [88, 48, 2.2], [64, 76, 2.8], [40, 52, 3.4], [6, 40, 3.9]];
+      eyes.innerHTML = spots.map(([x, y, d]) => `<i style="left:${x}%;top:${y}%;animation-delay:${d}s"><b></b><b></b></i>`).join('');
+      layers.push(eyes);
+    }
+    const next = () => {
+      window.clearTimeout(this.vigTimer);
+      if (!this.open || this.m!.el.dataset.stage !== 'vignette') return;
+      this.m!.el.closest('.kq-modal-layer')?.classList.remove('kqs-vig-layer');
+      this.scene();
+    };
+    this.page('vignette', `kqs-end-vig-${id}`, [
+      h('div.kqs-vig', { 'data-testid': 'ending-vignette', onclick: next }, [...layers, h('button.kqs-vig-skip', { onclick: next }, t('story.end.next'))]),
+    ]);
+    this.vigTimer = window.setTimeout(next, 6200);
   }
 
   private scene(): void {
