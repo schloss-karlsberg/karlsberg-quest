@@ -26,7 +26,7 @@ import { FIREWORKS_ECHO, Fireworks, type FireworksPhase } from './fireworks';
 import { atmosphere } from '../../world/atmosphere';
 import { Lehnstuhl } from './chair';
 import { CONVOY_ROAD, Convoy } from './convoy';
-import { type Extent, HOHENBURG, Hohenburg, pullFactor } from './hohenburg';
+import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, pullFactor } from './hohenburg';
 import { Kit } from './kit';
 import { propMaterial } from './material';
 import { buildPassage, passageCollision, patchPalace, setPassageCut } from './passage';
@@ -67,7 +67,7 @@ export interface SceneryHooks {
     stop(): void;
     state(): { phase: FireworksPhase; lamps: number; sparks: number };
   };
-  hohenburg(): { vis: number; x: number; z: number };
+  hohenburg(): { vis: number; x: number; z: number; /** Westblick magnification of the height (1 = real) */ mag: number };
   passage(): { open: boolean; zones: number };
   /** Doors of the Rund counted so far (lit). */
   rundCounted(): number;
@@ -287,7 +287,9 @@ function updateHohenburg(ctx: GameContext, dt: number): void {
     fogLiftWritten = fogLift > 0.002;
   }
   const cam = ctx.camera.position;
-  hohenburg.set(hohVis, ctx.world.sky.uniforms.uHorizon!.value as Color, pullFactor(cam.x, cam.z, terrainExtent(ctx)));
+  // the magnified castle hill reaches nearer: pull so that its near foot still stays beyond the edge
+  const reach = 330 + (HILL_REACH - 330) * fogLift;
+  hohenburg.set(hohVis, ctx.world.sky.uniforms.uHorizon!.value as Color, pullFactor(cam.x, cam.z, terrainExtent(ctx), 25, reach * (1 + (MAG_ACROSS - 1) * fogLift)), fogLift);
 }
 
 type NpcList = () => { npc: string; x: number; z: number; era: string; visible: boolean }[];
@@ -405,7 +407,7 @@ function installHooks(ctx: GameContext): void {
       stop: () => fireworks?.stop(),
       state: () => ({ phase: fireworks?.phase ?? 'off', lamps: fireworks?.lampCount ?? 0, sparks: fireworks?.liveSparks ?? 0 }),
     },
-    hohenburg: () => ({ vis: hohVis, x: HOHENBURG.x, z: HOHENBURG.z }),
+    hohenburg: () => ({ vis: hohVis, x: HOHENBURG.x, z: HOHENBURG.z, mag: 1 + (MAG_HEIGHT - 1) * fogLift }),
     passage: () => ({ open: !!passage && ERA_INFO[ctx.era.current].palace === 'intact', zones: passage?.zones.length ?? 0 }),
     convoy: () => convoy?.positions() ?? [],
     chair: () => chair?.position() ?? null,

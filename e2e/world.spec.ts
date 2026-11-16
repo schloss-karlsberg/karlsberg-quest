@@ -165,6 +165,27 @@ test.describe('world', () => {
     const end = route[route.length - 1]!;
     expect(Math.hypot(end[0] - 1287, end[1] + 1228)).toBeLessThan(3);
     expect(route.length).toBeGreaterThan(2);
+    // round 3: the route goes through the north wing's Durchfahrt, never into the corner where
+    // the Corps de logis meets the wing (testers ran into it)
+    expect(route.some(([x, z]) => x > 1212 && x < 1228 && z < -1138 && z > -1162)).toBe(true);
+    expect(route.some(([x, z]) => x > 1244 && x < 1256 && z < -1140 && z > -1152)).toBe(false);
+    expect(await page.evaluate(() => window.kq!.scenery!.built())).toContain('ehrenhof-weg');
+    // standing in that corner with Hanne as the goal (bearing ≈ 25°, through the wall): the
+    // compass gets a blue "Weg" marker towards a door (the vestibule or the Durchfahrt) instead
+    const way = await page.evaluate(() => {
+      const k = window.kq!;
+      k.teleport(1246, -1141, 40, 0);
+      k.ctx.events.emit('objective:set', { text: 'Hanne', x: 1287, z: -1228, id: 'test.way' });
+      k.step(80);
+      return k.travel!.way();
+    });
+    expect(way.blocked).toBe(true);
+    expect(way.bearing).not.toBeNull();
+    expect(Math.abs(((way.bearing! - 25 + 540) % 360) - 180)).toBeGreaterThan(60);
+    await look(page, '1789', 1236, -1124, 1243.5, -1139.2, 0, 20);
+    await page.evaluate(() => window.kq!.travel!.trail(true));
+    await page.evaluate(() => window.kq!.step(4));
+    await shot(page, 'ehrenhof-weg');
     expect(errors).toEqual([]);
   });
 
@@ -188,6 +209,13 @@ test.describe('world', () => {
     });
     expect(await page.evaluate(() => window.kq!.scenery!.built())).toContain('k3-festsaal');
     await shot(page, 'festsaal');
+    // round 3: the hung room — the portraits and pier glass on the north wall, the chandelier
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.teleport(1266.5, -1124.5, 330, 8);
+      k.step(10);
+    });
+    await shot(page, 'festsaal-hung');
     await look(page, 'today', 1205, -1570, 1215, -1582, -14, 30);
     expect(await page.evaluate(() => window.kq!.scenery!.built())).toContain('zwinger-heute');
     await shot(page, 'zwinger-heute');
@@ -204,6 +232,8 @@ test.describe('world', () => {
     // the Westblick: the haze lifts, the Hohenburg stands clear
     await look(page, '1796', 210, -905, -1320, 585, 2, 120);
     expect(await page.evaluate(() => window.kq!.scenery!.fogLift())).toBeGreaterThan(0.6);
+    // round 3: the castle hill is drawn larger there (it was a smudge)
+    expect((await page.evaluate(() => window.kq!.scenery!.hohenburg())).mag).toBeGreaterThan(2);
     expect((await page.evaluate(() => window.kq!.scenery!.hohenburg())).vis).toBeGreaterThan(0.6);
     await shot(page, 'westblick-1796');
     expect(errors).toEqual([]);

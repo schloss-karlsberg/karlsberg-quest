@@ -279,6 +279,10 @@ export interface PoiVisual {
   /** Lid opening 0..1 (cache), pulse (shrine). */
   open: number;
   pulse: number;
+  /** A closed cache's warm light column (seen from the next POI), null for other kinds. */
+  beam?: Mesh | null;
+  /** Seconds since the lid sprang (the column flares and goes out), −1 before. */
+  burst?: number;
 }
 
 /** Era tint of the POI glows (a cache in the fire night glows hotter). */
@@ -335,7 +339,19 @@ export function buildCache(x: number, y: number, z: number, yaw: number, era: st
   group.add(ring);
   group.position.set(x, y, z);
   group.rotation.y = yaw;
-  const v: PoiVisual = { group, lid, bob: null, glow, ring, material: mat, open: opened ? 1 : 0, pulse: 0 };
+  // a warm column over a closed cache: on a route you see the next one from the last
+  let beam: Mesh | null = null;
+  if (!opened) {
+    const bg = new CylinderGeometry(0.2, 0.36, 1, 12, 1, true);
+    bg.translate(0, 0.5, 0);
+    beam = new Mesh(bg, beamMaterial(poiTint(era).multiplyScalar(0.9)));
+    beam.name = 'travel-cache-beam';
+    beam.position.y = 0.55;
+    beam.frustumCulled = false;
+    beam.renderOrder = 9;
+    group.add(beam);
+  }
+  const v: PoiVisual = { group, lid, bob: null, glow, ring, material: mat, open: opened ? 1 : 0, pulse: 0, beam, burst: -1 };
   setCacheOpen(v, v.open);
   return v;
 }
@@ -411,7 +427,25 @@ export function buildLetter(x: number, y: number, z: number, kind: string, era: 
   return { group, lid: null, bob, glow, ring: null, material: mat, open: 0, pulse: 0 };
 }
 
-export function animatePoi(v: PoiVisual, dt: number, time: number, reducedMotion: boolean): void {
+export function animatePoi(v: PoiVisual, dt: number, time: number, reducedMotion: boolean, camDist = 0, reducedFlash = false): void {
+  if (v.beam && v.beam.visible) {
+    const bm = v.beam.material as ShaderMaterial;
+    let h = 18 + (reducedMotion ? 0 : Math.sin(time * 1.3) * 1.5);
+    let alpha = 0.5;
+    if (v.open > 0 && (v.burst ?? -1) < 0) v.burst = 0;
+    if ((v.burst ?? -1) >= 0) {
+      // the lid springs: the column shoots up and goes out
+      v.burst! += dt;
+      const b = v.burst!;
+      h = 18 + 50 * Math.min(1, b * 3);
+      alpha = (0.5 + (reducedFlash ? 0.2 : 0.9) * Math.exp(-b * 2)) * Math.max(0, 1 - b / 1.8);
+      if (b > 1.8) v.beam.visible = false;
+    }
+    // stays a few pixels wide from afar, a landmark rather than a hair
+    const w = Math.max(1, camDist / 45);
+    v.beam.scale.set(w, h, w);
+    bm.uniforms.uAlpha!.value = alpha;
+  }
   if (v.bob) {
     v.bob.position.y = 0.75 + (reducedMotion ? 0 : Math.sin(time * 1.8) * 0.08);
     v.bob.rotation.y += dt * (reducedMotion ? 0.3 : 0.9);

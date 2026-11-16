@@ -397,6 +397,126 @@ const festsaal: SetDef = {
       k.place(cx - 0.6, y0, cz - 1.9, 1.2);
       k.cyl(0.16, 0.16, 2.4, 0, 0.16, 0, 0x7a2a22, [0, 0, Math.PI / 2], 10);
     }
+    // ---- round 3: the room as it was hung the day before (testers saw an empty box) ----------
+    const B = FESTSAAL.poly[1]!;
+    /** A point on the wall p→q at t, `d` m into the room, and the compass facing into the room. */
+    const onWall = (p: [number, number], q: [number, number], t: number, d: number): [number, number, number] => {
+      const m: [number, number] = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+      // inward normal of the edge (towards the room's centre)
+      let nx = -(q[1] - p[1]);
+      let nz = q[0] - p[0];
+      const l = Math.hypot(nx, nz);
+      nx /= l;
+      nz /= l;
+      if (nx * (cx - m[0]) + nz * (cz - m[1]) < 0) {
+        nx = -nx;
+        nz = -nz;
+      }
+      return [m[0] + nx * d, m[1] + nz * d, degOf(nx, nz)];
+    };
+    const GILT = 0xc9a24a;
+    /** A gilt frame round a painting hung flat on the wall. */
+    const hang = (p: [number, number], q: [number, number], t: number, yc: number, w: number, h: number, seed: number, tilt = 0) => {
+      const [x, z, deg] = onWall(p, q, t, 0.16);
+      k.place(x, y0 + yc, z, face(deg));
+      k.push(0, 0, 0, 0, 0, tilt);
+      k.box(w + 0.2, 0.1, 0.06, 0, -h / 2 - 0.1, 0, GILT);
+      k.box(w + 0.2, 0.1, 0.06, 0, h / 2, 0, GILT);
+      for (const sx of [-1, 1]) k.box(0.1, h + 0.2, 0.06, sx * (w / 2 + 0.05), -h / 2 - 0.1, 0, GILT);
+      // the carved crest on top
+      k.box(0.36, 0.14, 0.05, 0, h / 2 + 0.08, 0, GILT, [0, 0, 0], 0.15);
+      k.pop();
+      const [sx2, sz2] = onWall(p, q, t, 0.2);
+      b.sign(sx2, y0 + yc, sz2, deg, w, h, { paint: seed });
+    };
+    /** A pale patch on the wall where a painting hung until yesterday, its nail still in. */
+    const patch = (p: [number, number], q: [number, number], t: number, yc: number, w: number, h: number) => {
+      const [x, z, deg] = onWall(p, q, t, 0.135);
+      k.place(x, y0 + yc - h / 2, z, face(deg));
+      k.box(w, h, 0.01, 0, 0, 0, 0xeee2c4);
+      k.box(w - 0.1, 0.02, 0.012, 0, h - 0.06, 0.004, 0xd8caa6);
+      k.cyl(0.012, 0.012, 0.06, 0, h + 0.12, 0.02, 0x3a3028, [Math.PI / 2, 0, 0], 5);
+    };
+    // west wall: the pale squares above the stacks they came from
+    patch(Cc, D, 0.25, 2.35, 1.3, 1.0);
+    patch(Cc, D, 0.65, 2.25, 1.15, 0.9);
+    // north wall: a pier glass over the clock console, two portraits the looters left (too big)
+    hang(B, Cc, 0.2, 2.25, 1.0, 1.3, 61);
+    hang(B, Cc, 0.8, 2.3, 1.0, 1.3, 62, 0.04);
+    {
+      const [x, z, deg] = onWall(B, Cc, 0.5, 0.15);
+      k.place(x, y0 + 1.05, z, face(deg));
+      k.box(0.9, 1.95, 0.04, 0, 0.12, 0, 0x9fb4c0, undefined, 0.25);
+      k.box(1.08, 0.12, 0.07, 0, 0.0, 0.01, GILT);
+      k.box(1.08, 0.12, 0.07, 0, 2.07, 0.01, GILT);
+      for (const sx of [-1, 1]) k.box(0.1, 2.2, 0.07, sx * 0.5, 0.0, 0.01, GILT);
+      k.cone(0.22, 0.32, 0, 2.18, 0.01, GILT, 6);
+    }
+    // south wall, beside the door: one more painting, hanging askew on one nail
+    hang(FESTSAAL.poly[3]!, A, 0.22, 2.2, 1.2, 0.9, 63, -0.12);
+    // two fauteuils by the console and a canapé under the portraits (green silk, gilt wood)
+    const fauteuil = (x: number, z: number, deg: number) => {
+      k.place(x, y0, z, face(deg));
+      k.box(0.62, 0.1, 0.56, 0, 0.38, 0, 0x3e6a4a);
+      k.box(0.66, 0.06, 0.6, 0, 0.34, 0, GILT);
+      k.box(0.6, 0.62, 0.08, 0, 0.42, -0.26, 0x3e6a4a);
+      k.box(0.66, 0.06, 0.1, 0, 1.04, -0.27, GILT);
+      for (const sx of [-1, 1]) {
+        k.box(0.06, 0.24, 0.5, sx * 0.31, 0.48, 0, GILT);
+        k.box(0.08, 0.04, 0.5, sx * 0.31, 0.72, 0, 0x3e6a4a);
+      }
+      for (const [sx, sz] of [[-0.28, -0.24], [0.28, -0.24], [-0.28, 0.24], [0.28, 0.24]] as const) k.cyl(0.025, 0.02, 0.34, sx, 0, sz, GILT, undefined, 6);
+    };
+    for (const t of [0.33, 0.67]) {
+      const [x, z, deg] = onWall(B, Cc, t, 0.55);
+      fauteuil(x, z, deg);
+    }
+    {
+      // the canapé along the south wall, east of the door
+      const [x, z, deg] = onWall(FESTSAAL.poly[3]!, A, 0.72, 0.5);
+      k.place(x, y0, z, face(deg));
+      k.box(1.7, 0.12, 0.62, 0, 0.36, 0, 0x3e6a4a);
+      k.box(1.76, 0.06, 0.66, 0, 0.32, 0, GILT);
+      k.box(1.7, 0.55, 0.1, 0, 0.42, -0.28, 0x3e6a4a);
+      k.box(1.76, 0.07, 0.12, 0, 0.97, -0.29, GILT);
+      for (const sx of [-1, 1]) k.box(0.08, 0.3, 0.6, sx * 0.86, 0.4, 0, GILT);
+      for (const sx of [-0.8, -0.27, 0.27, 0.8]) for (const sz of [-0.26, 0.26]) k.cyl(0.025, 0.02, 0.32, sx, 0, sz, GILT, undefined, 6);
+    }
+    {
+      // the second chandelier still hangs: a gilt crown on its chain, candles, crystal drops
+      const t = 0.72;
+      const mx = B[0] + (Cc[0] - B[0]) * t;
+      const mz = B[1] + (Cc[1] - B[1]) * t;
+      const hx = mx + (cx - mx) * 0.75;
+      const hz = mz + (cz - mz) * 0.75;
+      const ceil = 355.5;
+      const yb = ceil - 1.75;
+      k.place(hx, 0, hz, 0.4);
+      k.cyl(0.015, 0.015, ceil - yb - 0.4, 0, yb + 0.4, 0, 0x8a6a2a, undefined, 4);
+      k.cyl(0.12, 0.05, 0.4, 0, yb, 0, GILT, undefined, 10);
+      k.cyl(0.05, 0.12, 0.18, 0, yb - 0.18, 0, GILT, undefined, 10);
+      const rr = rng(57);
+      for (let i = 0; i < 10; i++) {
+        const a0 = (i / 10) * Math.PI * 2;
+        const a1 = ((i + 1) / 10) * Math.PI * 2;
+        const R = 0.62;
+        k.beam(Math.cos(a0) * R, yb + 0.05, Math.sin(a0) * R, Math.cos(a1) * R, yb + 0.05, Math.sin(a1) * R, 0.03, GILT);
+        k.beam(0, yb + 0.1, 0, Math.cos(a0) * R, yb + 0.05, Math.sin(a0) * R, 0.022, GILT);
+        k.cyl(0.04, 0.03, 0.05, Math.cos(a0) * R, yb + 0.06, Math.sin(a0) * R, GILT, undefined, 6);
+        // a few candles still burn (the fire outside has not reached the room yet)
+        const lit = rr() < 0.6;
+        k.cyl(0.018, 0.018, 0.13, Math.cos(a0) * R, yb + 0.1, Math.sin(a0) * R, 0xf2ead8, undefined, 5, lit ? 0.6 : 0);
+        k.box(0.03, 0.09, 0.012, Math.cos(a0) * R * 0.8, yb - 0.1, Math.sin(a0) * R * 0.8, 0xe8f0f4, [0, a0, 0], 0.3);
+        if (lit) b.glow(hx + Math.cos(a0 + 0.4) * R, yb + 0.27, hz + Math.sin(a0 + 0.4) * R, 0.32, LANTERN);
+      }
+      // crystal festoons hanging below
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        k.beam(Math.cos(a) * 0.45, yb + 0.02, Math.sin(a) * 0.45, Math.cos(a) * 0.12, yb - 0.38, Math.sin(a) * 0.12, 0.012, 0xdfe8ee);
+      }
+      k.cone(0.09, 0.22, 0, yb - 0.6, 0, 0xe8f0f4, 6, [Math.PI, 0, 0]);
+      b.glow(hx, yb + 0.1, hz, 1.6, new Color(0.9, 0.6, 0.28));
+    }
     // nothing here is solid: the room is on the upper floor, and solids act on every storey
   },
 };
@@ -418,37 +538,114 @@ const zwingerHeute: SetDef = {
   build(b) {
     const k = b.kit;
     const r = rng(91);
-    // the kennels' footings: low mossy walls in two rows
+    // the kennels' footings: mossy walls in two rows, each run with its stone threshold, a
+    // corner post here and there, and the iron ring the chain hung from
     for (let i = 0; i < 7; i++) {
       for (const z of [-1590.5, -1553.0]) {
         const x = 1188 + i * 3.2 + (z > -1560 ? 41 - 3.2 * 3 : 0);
         b.at(x, z, 0, 0.6, 0.15);
-        k.box(1.2, 0.35 + r() * 0.2, 0.15, 0, 0, -0.65, tint(0x8a8274, r, 0.12));
-        k.box(0.15, 0.3 + r() * 0.2, 1.4, -0.55, 0, 0, tint(0x8a8274, r, 0.12));
-        if (r() < 0.5) k.box(0.15, 0.25, 1.4, 0.55, 0, 0, tint(0x7a7466, r, 0.12));
-        k.rock(0.3, 0.1, -0.05, 0.1, tint(0x6a7a4a, r, 0.2), 1000 + i, 0.3);
+        const wall = tint(0x9a9282, r, 0.12);
+        k.box(2.9, 0.55 + r() * 0.35, 0.3, 0, 0, -1.35, wall);
+        k.box(0.3, 0.45 + r() * 0.35, 2.7, -1.45, 0, 0, wall);
+        if (r() < 0.6) k.box(0.3, 0.35 + r() * 0.3, 2.7, 1.45, 0, 0, tint(0x8a8474, r, 0.12));
+        k.box(1.0, 0.12, 0.5, 0, 0, 1.2, tint(0xb0a690, r, 0.08));
+        if (r() < 0.5) k.box(0.22, 1.1 + r() * 0.4, 0.22, -1.45, 0, -1.35, tint(0x7a7264, r, 0.1));
+        k.cyl(0.1, 0.1, 0.03, 0, 0.5, -1.18, C.iron, [Math.PI / 2, 0, 0], 8);
+        k.rock(0.45, 0.2, -0.05, 0.1, tint(0x6a7a4a, r, 0.2), 1000 + i, 0.3);
       }
     }
-    // the dogs' bowls in a row, as if somebody still fed them; straw; one old kennel standing
+    // the dogs' bowls in a row, as if somebody still fed them (enamel, chipped); straw; one old
+    // kennel still standing
     for (let i = 0; i < 14; i++) {
       const x = 1196 + i * 1.6;
       const z = -1580 + Math.sin(i * 0.7) * 0.3;
       b.at(x, z, 0, 0.2, 0.0);
-      k.cyl(0.17, 0.13, 0.08, 0, 0, 0, i % 3 ? 0x6a5a48 : 0x5a5a5e, undefined, 10);
-      k.cyl(0.13, 0.13, 0.015, 0, 0.065, 0, 0x2a2420, undefined, 10);
+      const enamel = [0xd8d2c4, 0x7a96b0, 0xb8a888][i % 3]!;
+      k.cyl(0.24, 0.17, 0.12, 0, 0, 0, enamel, undefined, 12);
+      k.cyl(0.245, 0.245, 0.02, 0, 0.11, 0, 0x2a3442, undefined, 12);
+      k.cyl(0.19, 0.19, 0.012, 0, 0.1, 0, i % 4 === 1 ? 0x3a4a52 : 0x5a4636, undefined, 12);
     }
-    for (const [x, z, s] of [[1200, -1566, 1101], [1232, -1585, 1102], [1240, -1561, 1103]] as const) {
+    for (const [x, z, s] of [[1200, -1566, 1101], [1232, -1585, 1102], [1240, -1561, 1103], [1214, -1586, 1106]] as const) {
       b.at(x, z, 0, 1.2);
       straw(k, s, false);
     }
     b.at(1226, -1590.5, 0, 0.6);
     kennel(k, 1104);
     b.box(1226, -1590.5, 0, 0.6, 0.75);
-    b.at(1250, -1576, 0, 0.2);
-    post(k, 1105);
-    b.circle(1250, -1576, 0.12);
-    b.glow(1250.1, b.heightAt(1250, -1576) + 1.15, -1576, 1.0, LANTERN);
+    // a board where the way comes in: what stood here
+    {
+      const x = 1250;
+      const z = -1572;
+      const y = b.at(x, z, 270, 0.4);
+      k.box(0.12, 1.4, 0.12, -0.7, 0, 0, C.woodDark);
+      k.box(0.12, 1.4, 0.12, 0.7, 0, 0, C.woodDark);
+      k.box(1.7, 0.75, 0.06, 0, 0.95, -0.04, C.woodDark, [-0.25, 0, 0]);
+      b.sign(x - 0.02, y + 1.32, z, 270, 1.55, 0.62, { text: 'Hier standen\ndie Hundezwinger', style: 'plate', lean: 0.25 });
+      b.circle(x, z - 0.7, 0.12).circle(x, z + 0.7, 0.12);
+    }
+    // lanterns along the row (the finale is at night)
+    for (const [x, z, s] of [[1250, -1578, 1105], [1192, -1572, 1107], [1224, -1561, 1108]] as const) {
+      b.at(x, z, 0, 0.2);
+      post(k, s);
+      b.circle(x, z, 0.12);
+      b.glow(x + 0.1, b.heightAt(x, z) + 1.15, z, 1.2, LANTERN);
+    }
   },
 };
 
-export const WORLD_SETS: readonly SetDef[] = [apfelallee, menagerie, festsaal, zwingerHeute];
+// ---------------------------------------------------------------------------------------------
+// The Ehrenhof's way to the garden (playtest round 2: testers ran into the corner where the
+// Corps de logis meets the north wing, because Hanne stands straight beyond it). A finger post
+// in that corner points to the Durchfahrt of the north wing, and lamps mark its arch on both sides.
+// ---------------------------------------------------------------------------------------------
+
+/** The north wing's carriage passage: the Ehrenhof door and the garden door (interiors' plan). */
+export const DURCHFAHRT = { court: [1221.2, -1140.8] as [number, number], garden: [1218.2, -1159.1] as [number, number], nx: 0.16, nz: 0.99 };
+/** The finger post in the corner. */
+export const WEG_POST: [number, number] = [1243.5, -1139.2];
+
+const ehrenhofWeg: SetDef = {
+  id: 'ehrenhof-weg',
+  eras: ['1789', '1793-02', '1793-07'],
+  x: 1232,
+  z: -1145,
+  range: 240,
+  build(b, o) {
+    const k = b.kit;
+    // the post faces the court (south-west); the finger points west, to the Durchfahrt
+    const [px, pz] = WEG_POST;
+    const deg = 215;
+    const y = b.at(px, pz, deg, 0.3);
+    k.box(0.14, 2.6, 0.14, 0, 0, 0, C.woodDark);
+    k.cone(0.12, 0.18, 0, 2.6, 0, C.woodDark, 4);
+    // the finger board: plank + point (local −x is the viewer's left = west)
+    k.box(1.7, 0.46, 0.06, -0.75, 1.82, 0.08, C.woodDark);
+    k.box(0.34, 0.34, 0.06, -1.6, 1.88, 0.08, C.woodDark, [0, 0, Math.PI / 4]);
+    k.box(1.2, 0.3, 0.05, 0.45, 1.25, 0.08, C.woodDark);
+    const f = face(deg);
+    const lx = Math.cos(f);
+    const lz = -Math.sin(f);
+    const fx = Math.sin(f) * 0.12;
+    const fz = Math.cos(f) * 0.12;
+    b.sign(px - lx * 0.75 + fx, y + 2.05, pz - lz * 0.75 + fz, deg, 1.55, 0.42, { text: 'Zum Garten' });
+    b.sign(px + lx * 0.45 + fx, y + 1.4, pz + lz * 0.45 + fz, deg, 1.12, 0.28, { text: 'durch die Durchfahrt', style: 'plate' });
+    b.circle(px, pz, 0.15);
+    // lamps either side of the arch, court and garden (lit at night, a warm hint by day)
+    const night = o.era === '1793-02';
+    for (const [dx, dz, s] of [[...DURCHFAHRT.court, 1], [...DURCHFAHRT.garden, -1]] as [number, number, number][]) {
+      for (const side of [-2.3, 2.3]) {
+        // along the wall: perpendicular to the door normal
+        const x = dx + DURCHFAHRT.nx * 0.35 * s + DURCHFAHRT.nz * side;
+        const z = dz + DURCHFAHRT.nz * 0.35 * s - DURCHFAHRT.nx * side;
+        const g = b.heightAt(x, z);
+        k.place(x, g + 3.0, z, Math.atan2(DURCHFAHRT.nx * s, DURCHFAHRT.nz * s));
+        k.box(0.06, 0.06, 0.4, 0, 0.3, -0.15, C.iron);
+        k.box(0.22, 0.32, 0.22, 0, 0, 0.06, C.iron);
+        k.box(0.16, 0.24, 0.16, 0, 0.04, 0.06, 0xffd8a0, undefined, night ? 2.2 : 1.2);
+        b.glow(x, g + 3.15, z, night ? 1.6 : 0.9, LANTERN);
+      }
+    }
+  },
+};
+
+export const WORLD_SETS: readonly SetDef[] = [apfelallee, menagerie, festsaal, zwingerHeute, ehrenhofWeg];

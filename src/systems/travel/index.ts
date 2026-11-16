@@ -87,6 +87,8 @@ export interface TravelHooks {
   trail(show?: boolean): { points: [number, number][]; visible: boolean };
   /** Route from the player to x/z (debug). */
   route(x: number, z: number): [number, number][];
+  /** The compass "Weg" marker: bearing (deg) while the straight line is blocked, else null. */
+  way(): { blocked: boolean; bearing: number | null };
 }
 
 declare module '../../debug/hooks' {
@@ -96,8 +98,8 @@ declare module '../../debug/hooks' {
 }
 
 const SPRINT_BOOST = 0.45;
-const POI_BUILD = 150;
-const POI_DROP = 200;
+const POI_BUILD = 190;
+const POI_DROP = 230;
 const GUARD_SPAWN = 48;
 const GUARD_DROP = 130;
 const LORE_TAKE = 1.9;
@@ -105,6 +107,27 @@ const SHRINE_R = 2.6;
 const SHRINE_COOL = 120;
 
 type PoiState = 'hidden' | 'seen' | 'done';
+
+/** Distance from x/z to a polyline, and the index of the nearest segment. */
+function offPath(pts: readonly [number, number][], x: number, z: number): { d: number; seg: number } {
+  let best = Infinity;
+  let seg = 0;
+  if (pts.length === 1) return { d: Math.hypot(x - pts[0]![0], z - pts[0]![1]), seg: 0 };
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [ax, az] = pts[i]!;
+    const [bx, bz] = pts[i + 1]!;
+    const dx = bx - ax;
+    const dz = bz - az;
+    const L = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L));
+    const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+    if (d < best) {
+      best = d;
+      seg = i;
+    }
+  }
+  return { d: best, seg };
+}
 
 class Travel {
   slice: TravelSlice;
@@ -129,6 +152,10 @@ class Travel {
   private bestD = Infinity;
   private stuckT = 0;
   private trailCheckT = 0;
+  /** The straight line to the goal runs into a wall within 30 m (checked once a second). */
+  private wayBlocked = false;
+  /** Bearing of the compass "Weg" marker, null when hidden. */
+  private wayMarker: number | null = null;
   private card: HTMLElement | null = null;
   private cardT = 0;
   private time = 0;
@@ -599,13 +626,23 @@ class Travel {
   private blockedAt = (x: number, z: number): boolean => {
     const ctx = this.ctx;
     const c = ctx.world.collider;
-    if (c.resolve(x, z, 0.45).hit) return true;
+    // the interiors' walls are height-aware (tested at the player's feet): probe each point at
+    // the ground-floor height there, so a door with a step up (the Durchfahrten) reads open
+    // wherever the player stands; a little over the player's radius (0.35) keeps 1.9 m doors open
+    const pl = ctx.player.position;
+    const feet = pl.y;
+    if (c.overlay) pl.y = ctx.world.heightAt(x, z, ctx.world.heightfield.heightAt(x, z) + 0.6);
+    const hit = c.resolve(x, z, 0.38).hit;
+    pl.y = feet;
+    if (hit) return true;
     return ctx.world.surfaceAt(x, z) === 'water';
   };
 
   routeTo(x: number, z: number): [number, number][] {
     const p = this.ctx.player.position;
-    return findRoute(p.x, p.z, x, z, this.blockedAt, { maxExpand: 40000 }).points;
+    // near goals (palace courts, doors) on a 1 m grid — a 2 m grid misses a door's free gap
+    const near = Math.hypot(x - p.x, z - p.z) < 170;
+    return findRoute(p.x, p.z, x, z, this.blockedAt, near ? { cell: 1, margin: 45, maxExpand: 90000 } : { maxExpand: 40000 }).points;
   }
 
   private updateTrail(dt: number): void {
@@ -614,12 +651,16 @@ class Travel {
     const p = ctx.player.position;
     if (!goal || ctx.player.flying) {
       this.trail.visibleFor = 0;
+      this.wayBlocked = false;
+      this.setWayMarker(null);
       return;
     }
     const key = `${Math.round(goal.x)},${Math.round(goal.z)},${ctx.era.current}`;
     const d = Math.hypot(goal.x - p.x, goal.z - p.z);
     if (d < 12) {
       this.trail.visibleFor = Math.min(this.trail.visibleFor, 0.5);
+      this.wayBlocked = false;
+      this.setWayMarker(null);
       return;
     }
     let want = false;
@@ -647,14 +688,49 @@ class Travel {
       this.trailCheckT = 1;
       const ax = p.x + ((goal.x - p.x) / d) * Math.min(d, 30);
       const az = p.z + ((goal.z - p.z) / d) * Math.min(d, 30);
-      if (ctx.era.info.palace !== 'hidden' && !lineFree(p.x, p.z, ax, az, this.blockedAt, 1.2)) {
+      this.wayBlocked = ctx.era.info.palace !== 'hidden' && !lineFree(p.x, p.z, ax, az, this.blockedAt, 0.5);
+      if (this.wayBlocked) {
         want = true;
         this.trail.visibleFor = Math.max(this.trail.visibleFor, 6);
       }
     }
-    if (want || (this.trail.visibleFor > 0 && this.trail.points.length && Math.hypot(this.trail.points[0]![0] - p.x, this.trail.points[0]![1] - p.z) > 6)) {
+    // re-plan when asked, while the motes show (they flow from the path's start, so keep it near
+    // the player), or when the compass marker's way has been left (off it by > 5 m)
+    const pts = this.trail.points;
+    const moved = pts.length > 0 && Math.hypot(pts[0]![0] - p.x, pts[0]![1] - p.z) > 6;
+    if (want || (pts.length && ((this.trail.visibleFor > 0 && moved) || (this.wayBlocked && offPath(pts, p.x, p.z).d > 5)))) {
       this.trail.setPath(this.routeTo(goal.x, goal.z));
     }
+    this.setWayMarker(this.wayBlocked ? this.nextTurn() : null);
+  }
+
+  /** The first bend of the Wegweiser's route that lies more than 4 m ahead (null: none). */
+  private nextTurn(): [number, number] | null {
+    const p = this.ctx.player.position;
+    const pts = this.trail.points;
+    // from the segment the player is on, the next bend more than 4 m away (never one behind)
+    const from = pts.length > 1 ? offPath(pts, p.x, p.z).seg + 1 : 1;
+    for (let i = from; i < pts.length; i++) if (Math.hypot(pts[i]![0] - p.x, pts[i]![1] - p.z) > 4) return pts[i]!;
+    return null;
+  }
+
+  /**
+   * The compass's "Weg" marker (chalk blue, beside the gold objective marker): while the straight
+   * line to the goal runs into a wall it points at the route's next bend — round the wing, to the
+   * door or the gate — so the compass never sends you into a corner (playtest round 2).
+   */
+  private setWayMarker(at: [number, number] | null): void {
+    const hud = this.ctx.ui.hud;
+    if (!at) {
+      if (this.wayMarker) hud.setMarker('wegweiser', null);
+      this.wayMarker = null;
+      return;
+    }
+    const p = this.ctx.player.position;
+    const b = ((Math.atan2(at[0] - p.x, -(at[1] - p.z)) * 180) / Math.PI + 360) % 360;
+    if (this.wayMarker !== null && Math.abs(((b - this.wayMarker + 540) % 360) - 180) < 0.5) return;
+    this.wayMarker = b;
+    hud.setMarker('wegweiser', b, '#8fd0ff');
   }
 
   // ---- after being caught ---------------------------------------------------------------------
@@ -703,7 +779,7 @@ class Travel {
     const t = performance.now() / 1000;
     const cam = ctx.camera.position;
     for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z));
-    for (const v of this.poiVis.values()) animatePoi(v, dt, t, rm);
+    for (const v of this.poiVis.values()) animatePoi(v, dt, t, rm, Math.hypot(cam.x - v.group.position.x, cam.z - v.group.position.z), rf);
     this.trail.frame(dt, (x, z) => ctx.world.heightAt(x, z), rm);
   }
 
@@ -739,6 +815,8 @@ class Travel {
       this.goalStory = typeof x === 'number' && typeof z === 'number' ? { x, z } : null;
     });
     ev.on('era:change', () => {
+      this.wayBlocked = false;
+      this.setWayMarker(null);
       this.dropAllVisuals();
       this.guards.clear();
       this.trailFor = '';
@@ -795,6 +873,7 @@ class Travel {
         return { points: [...this.trail.points], visible: this.trail.mesh.visible || this.trail.visibleFor > 0 };
       },
       route: (x, z) => this.routeTo(x, z),
+      way: () => ({ blocked: this.wayBlocked, bearing: this.wayMarker }),
     };
   }
 

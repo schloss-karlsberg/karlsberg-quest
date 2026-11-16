@@ -692,8 +692,11 @@ Round-4 (polish: set dressing) integration rules:
   player in their eras, dropped on era change / far away; solids to the collider (owner
   `scenery`). Ghost workers (`workers.ts`) swing on the GPU; their strikes clink within 45 m.
 - Hohenburg (`hohenburg.ts`): silhouette at its real bearing beyond the terrain data, drawn scaled
-  towards the eye (`pullFactor`) so the mirrored apron does not hide it; clearest at dawn / dusk
-  and from the west edge in 1796.
+  towards the eye (`pullFactor`, with the hill's `reach` so its near foot stays beyond the edge)
+  so the mirrored apron does not hide it; clearest at dawn / dusk and from the west edge in 1796.
+  At the Westblick (with the haze lift) the castle hill, its shoulder and the fortress are drawn
+  ×`MAG_ACROSS` wider and ×`MAG_HEIGHT` taller about their foot (`aMag` per vertex, the far hills
+  keep their size), with less haze and lit stone (`uLift`).
 - Fireworks (`fireworks.ts`) while the Chronik plays `clue.k1.feuerwerk`: festive rockets and
   terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
   return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
@@ -709,8 +712,14 @@ Round-4 (polish: set dressing) integration rules:
   on in 1793-02, mostly felled stumps in 1796; the runner's trail spots stay free), the Karlslust
   menagerie (barred cages with name plates, the iron bear boxes, a paddock, "Menagerie" / "Bären" /
   "Das Rund" boards), the Festsaal on 28 July 1793 (the gilded clock on its console, the ducat on
-  the ledge, the handle-less door, stacked paintings, a toppled chair, the fallen chandelier; not
-  solid — upper floor) and the Zwinger today (kennel footings, the bowls in a row, straw, a lantern).
+  the ledge, the handle-less door, stacked paintings, a toppled chair, the fallen chandelier; round
+  3: two portraits and a pier glass on the north wall, an askew painting by the door, pale patches
+  where the stacked ones hung, two fauteuils and a canapé, the second chandelier still hanging with
+  burning candles; not solid — upper floor) and the Zwinger today (kennel footings in two rows with
+  thresholds and posts, not solid (the finale walks there), enamel bowls in a row, straw, the old kennel, a board "Hier
+  standen die Hundezwinger", three lanterns). `ehrenhof-weg` (1789–1793-07): a finger post in the
+  corner where the Corps de logis meets the north wing ("Zum Garten — durch die Durchfahrt") and
+  lamps either side of the north wing's Durchfahrt (`DURCHFAHRT`), court and garden.
   The park gate east of the Torhaus is a 6 m open gate with piers; the sentry box stands outside.
 - Signs (`signs.ts`): lettered boards / painted canvases on ONE canvas atlas + ONE mesh per set
   (`SetBuilder.sign(x, y, z, deg, w, h, {text|paint, style, lean})`), lit and fogged like props.
@@ -740,18 +749,26 @@ Round-4 (polish: set dressing) integration rules:
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Journal tab "Funde") or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
-  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other.
+  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Built within 190 m; a
+  closed cache carries a warm light column (beam shader, widens with distance) so the next one
+  shows from the last; when the lid springs the column shoots up and goes out.
 - Sprint: out of a fight and a chase, after 1.8 s of sprinting the move scale grows to ×1.45
   (multiplies combat's `moveScale`, never compounds).
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
-  set solids, no corner cutting, string-pulled) from the player to the story objective or the
-  tracked quest's goal; 48 glow motes flow along the first 70 m when a goal is new (14 s), after
+  set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
+  cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m
+  grid for goals within 170 m, else 2 m; probe radius 0.38; each probe sets the feet to the
+  ground-floor height there because the interiors' walls are height-aware — so the Durchfahrten
+  and vestibules with a step up read open) from the player to the story objective or the tracked
+  quest's goal; 48 glow motes flow along the first 70 m when a goal is new (14 s), after
   12 s without progress, or when the straight line within 30 m is blocked (round the wings, through
-  doors and gates instead of into corners).
+  doors and gates instead of into corners). While that straight line is blocked the compass
+  carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
+  (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
 - After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
-  `kq.travel.state/points/activate/go/map/pois/nearest/trail/route`.
+  `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
 
 ### How to wire a chapter (story files, round 3)
 

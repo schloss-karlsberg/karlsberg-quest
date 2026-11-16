@@ -162,6 +162,15 @@ describe('way-finding (world/route.ts)', () => {
     expect(pathLength(r.points)).toBeLessThan(60);
   });
 
+  it('never steps through a thin wall between two free cells: it takes the door', () => {
+    // a 0.6 m wall on the half-cell between grid cells (x = 1), a 3 m door at z ∈ [8, 11]
+    const thin = (x: number, z: number) => Math.abs(x - 1) < 0.3 && !(z > 8 && z < 11) && z > -30 && z < 30;
+    const r = findRoute(-6, -2, 8, -2, thin);
+    expect(r.complete).toBe(true);
+    for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], thin, 0.1)).toBe(true);
+    expect(r.points.some(([x, z]) => z > 6 && z < 13 && Math.abs(x - 1) < 4)).toBe(true);
+  });
+
   it('finds the palace way round the east wing to the gallery\'s end (real footprints)', () => {
     const blocked = (x: number, z: number) => collider.resolve(x, z, 0.45).hit;
     // from the garden side of the Corps de logis to Hanne at the gallery's east pavilion

@@ -72,6 +72,20 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
     }
     return w === 1;
   };
+  // the midpoint of every move is tested too (half-cell grid, cached): a thin wall between two
+  // free cells (an interior wall, a fence) must not be jumped — playtest round 2 found the
+  // Wegweiser leading into the corner of the east wing because a 2 m step crossed a wall
+  const W2 = 2 * W - 1;
+  const half = new Uint8Array(W2 * (2 * H - 1));
+  const midFree = (a: number, b: number): boolean => {
+    const k = (Math.floor(a / W) + Math.floor(b / W)) * W2 + (a % W) + (b % W);
+    let w = half[k]!;
+    if (w === 0) {
+      w = blocked((cx(a) + cx(b)) / 2, (cz(a) + cz(b)) / 2) ? 2 : 1;
+      half[k] = w;
+    }
+    return w === 1;
+  };
   const start = idx(sx, sz);
   let goal = idx(tx, tz);
   let moved = false;
@@ -189,6 +203,7 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
       if (closed[n] || !isFree(n)) continue;
       // no corner cutting
       if (di && dj && (!isFree(cj * W + ni) || !isFree(nj * W + ci))) continue;
+      if (!midFree(cur, n)) continue;
       const ng = g[cur]! + c * cell;
       if (ng < g[n]!) {
         g[n] = ng;
@@ -218,7 +233,7 @@ export function simplify(pts: [number, number][], blocked: (x: number, z: number
   let i = 0;
   while (i < pts.length - 1) {
     let j = pts.length - 1;
-    while (j > i + 1 && !lineFree(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], blocked, 0.7)) j--;
+    while (j > i + 1 && !lineFree(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], blocked, 0.3)) j--;
     out.push(pts[j]!);
     i = j;
   }

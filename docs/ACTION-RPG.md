@@ -780,7 +780,23 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   Westblick haze lifting for the Hohenburg.
 - **Playtest round 2, world track, left open:** Peter's gilded armchair follows Peter beside him
   (read from `kq.npc.list()`, not carried in his hands); the Festsaal choice objects are placed but the story's
-  choice still runs through the dialogue (no physical pick-up); the Hohenburg stays small from the
-  Westblick (2–3 km, real bearing); the east-wing corner on the way to Hanne is handled by the
-  Wegweiser, not by new geometry; POI guards do not respawn after a reload of a cleared cache only
-  (by design).
+  choice still runs through the dialogue (no physical pick-up); ~~the Hohenburg stays small from the
+  Westblick~~ (round 3: magnified there); ~~the east-wing corner on the way to Hanne is handled by
+  the Wegweiser~~ (round 3: the route bug fixed, a finger post and lamps); POI guards do not
+  respawn after a reload of a cleared cache only (by design).
+- **World track, round 3 (2026-11-16), fixed:** the Wegweiser led *into* the east-wing corner — its
+  A* stepped 2 m across the interiors' thin walls (and probed doors at the player's feet, so the
+  real Durchfahrten read shut); every move's midpoint is now tested, near goals on a 1 m grid,
+  each probe at the ground-floor height, so the route to Hanne runs through the north wing's
+  Durchfahrt or the Corps de logis' vestibule. While the straight line to a goal is
+  blocked the compass shows a chalk-blue "Weg" marker at the route's next bend, so no marker sends
+  you through a building. A finger post "Zum Garten — durch die Durchfahrt" stands in that corner,
+  lamps mark the Durchfahrt on both sides. From the Westblick the Hohenburg's castle hill is drawn
+  ×1.8 wide, ×3 tall with less haze and lit stone (it was a smudge). The Festsaal is hung: two
+  portraits and a pier glass over the clock, an askew painting by the door, pale patches where the
+  stacked paintings hung, fauteuils and a canapé, the second chandelier still hanging with burning
+  candles. The Zwinger today has readable kennel rows, enamel bowls, a board and lanterns. Closed
+  caches carry a warm light column (seen from the previous POI) that flares and goes out when the
+  lid springs.
+- **World track, round 3, left open:** the Festsaal choice is still made in the dialogue (story
+  owns it); a ghost-hound mount (not cheap enough); the 1796 look is unchanged since round 2.
