@@ -183,6 +183,11 @@ test('chapter 1: the guard calls out a runner; caught in Teil B → awake at the
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.goto('k1', 'k1_14');
+    // the terrace anchor, as the chapter set it at k1_7 (goto skips there; a stale Ehrenhof anchor
+    // would wake you at the Ehrenhof)
+    k.ctx.state.update((st) => {
+      Object.assign(st.flags, { 'shift.allowed': true, 'shift.target': '1789', 'shift.x': 1822, 'shift.z': 70, 'shift.r': 14 });
+    }, 'test');
     k.ctx.era.set('1789');
     k.teleport(1811, 363, 180, 0);
     k.step(10);
