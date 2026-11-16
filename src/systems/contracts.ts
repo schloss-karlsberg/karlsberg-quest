@@ -239,6 +239,8 @@ declare module '../core/events' {
     'quest:turnin': { id: string; npc: string };
     /** "Erzähl mehr" heard after a turn-in (the rest of the history; the topic goes away). */
     'quest:told': { id: string; npc: string };
+    /** quests → anyone: a deed was done (a thing taken in the world set its flag, §8.6). */
+    'quest:deed': { flag: string; value: string; item: string };
 
     // ---- story → quests (story action `quest`) ---------------------------------------------
     /**

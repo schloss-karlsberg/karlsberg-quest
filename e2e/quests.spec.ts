@@ -63,7 +63,7 @@ async function events(page: Page, name: string): Promise<unknown[]> {
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(250);
-  await page.screenshot({ path: `${SCREENS}/qst-${name}.png` });
+  await page.screenshot({ path: `${SCREENS}/fun-quests-${name}.png` });
 }
 
 const flags = (page: Page) => page.evaluate(() => window.kq!.state().flags);

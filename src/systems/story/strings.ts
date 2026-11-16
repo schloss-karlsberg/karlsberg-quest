@@ -39,6 +39,7 @@ addStrings('de', {
   'story.hub.radio.idle': 'Das Funkgerät rauscht leise.',
   'story.hub.radio.silent': '(Rauschen. Marlene ist gerade nicht am Gerät.)',
   'story.hub.radio.marlene': 'Marlene',
+  'story.echo.date': 'Erinnerung · {when}',
   'story.hub.shelf': 'Regal',
   'story.hub.shelf.status': 'Codex {n} / {total}',
   'story.hub.shelf.sub': 'Was sich angesammelt hat: Karten, Notizen, Fundstücke ohne Fundort.',

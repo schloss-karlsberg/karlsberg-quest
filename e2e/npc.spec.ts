@@ -173,11 +173,13 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   await page.evaluate(() => window.kq!.step(320));
   expect(await events(page, 'story:meter-full')).toEqual([{ id: 'atem' }]);
 
-  // ---- t5: readings left empty → 'offen'; {jahre:1793}; a memorial; a room --------------------------
+  // ---- t5: the readings action (old saves only: deeds need no blanks); {jahre:1793}; a memorial; a room
   await page.evaluate(() => window.kq!.step(3));
   s = await story(page);
   expect(s.beat).toBe('t5');
   f = await flags(page);
+  // the test story still declares an old reading: the kept action fills it (old saves); the
+  // campaign's epilogue reads deeds (docs/ACTION-RPG.md §8.6)
   expect(f['flag.k1_lohn']).toBe('offen');
   const said = (await events(page, 'dialogue:say')) as { id?: string; text: string }[];
   expect(said.find((d) => d.id === 'test.jahre')?.text).toContain('{jahre:1793}');
@@ -213,8 +215,9 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   // ---- epilogue from the endings pack ----------------------------------------------------------
   const ep = await page.evaluate(() => window.kq!.story!.epilogue('museum'));
   expect(ep!.object).toContain('Türgriff');
-  expect(ep!.variants.lohn).toBe('offen');
-  expect(ep!.intro).toMatch(/^Karlsberg bei Homburg/);
+  // told from deeds: no side quest done here → the open sentence of the slot
+  expect(ep!.variants.hof).toBe('offen');
+  expect(ep!.intro).toMatch(/^(Karlsberg bei Homburg|Dieses Feldbuch)/);
   expect(errors).toEqual([]);
 });
 

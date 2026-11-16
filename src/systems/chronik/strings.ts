@@ -90,6 +90,9 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.card.kind.map': 'Karte',
   'chronik.card.kind.dialogue': 'Aussage',
   'chronik.card.sketch': 'Lageskizze',
+  // no raw coordinates in captions (playtest round 3)
+  'chronik.card.sketchHere': 'das Gelände am Fundort',
+  'chronik.card.sketchStation': 'der Ort, um den es geht',
   'chronik.card.new': 'Neu im Feldbuch',
   'chronik.card.codex': 'Neue Codex-Karte',
   'chronik.card.ok': 'Notiert',

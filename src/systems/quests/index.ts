@@ -75,6 +75,18 @@ const BEACON_RANGE = 200;
 /** Rough reading time of a spoken line (game seconds). */
 const lineSeconds = (s: string) => 1.6 + s.length * 0.055;
 
+/**
+ * The deed contract for physical choices (docs/ACTION-RPG.md §8.6): taking one of these things in
+ * the world (`item:pickup`) sets the flag the epilogue reads. The Festsaal (Ch. 3): whichever of the
+ * three objects is carried out first is `flag.k3_objekt`; leaving with none is the story's
+ * `nichts`. Quest-file items add theirs with `deed`.
+ */
+export const DEED_ITEMS: Readonly<Record<string, { flag: string; value: string }>> = {
+  'item.charm.tuergriff': { flag: 'flag.k3_objekt', value: 'tuergriff' },
+  'item.charm.dukat': { flag: 'flag.k3_objekt', value: 'dukat' },
+  'item.charm.uhr': { flag: 'flag.k3_objekt', value: 'uhr' },
+};
+
 const SKILL_NAME: Record<string, string> = { relief: 'Relief-Blick', kartograf: 'Kartograf', baumeister: 'Baumeister', roentgen: 'Röntgenblick', spurenleser: 'Spurenleser' };
 
 type CompassKind = 'obj' | 'offer' | 'offer-main' | 'ready';
@@ -190,6 +202,15 @@ class QuestRuntime {
         if (!s.unseen.includes(factId)) s.unseen.push(factId);
         this.journal.refresh();
       }),
+      // deeds: a thing taken in the world sets its flag (first taken wins)
+      ev.on('item:pickup', ({ item }) => {
+        const d = DEED_ITEMS[item] ?? this.items.get(item)?.deed;
+        if (!d) return;
+        const flags = ctx.state.mutable.flags;
+        if (flags[d.flag] !== undefined && flags[d.flag] !== '' && flags[d.flag] !== 'nichts') return;
+        flags[d.flag] = d.value;
+        ctx.events.emit('quest:deed', { flag: d.flag, value: d.value, item });
+      }),
       ev.on('enemy:killed', ({ kind }) => {
         const b = (this.book.slice.bestiary ??= {});
         b[kind] = (b[kind] ?? 0) + 1;
@@ -285,7 +306,8 @@ class QuestRuntime {
   private syncNpcs(): void {
     for (const npc of this.book.npcs()) {
       const topics = this.book.topicsFor(npc).map((tp) => (tp.kind === 'offer' || tp.kind === 'turnin' ? { ...tp, card: this.card(tp.quest, tp.kind === 'turnin') } : tp));
-      const key = JSON.stringify(topics.map((x) => [x.quest, x.kind]));
+      // the card's ticks are part of the key: a bonus done after the quest became ready shows on it
+      const key = JSON.stringify(topics.map((x) => [x.quest, x.kind, x.card?.objectives.map((o) => (o.done ? 1 : 0)).join('') ?? '', x.card?.codex ?? 0]));
       if (this.sentTopics.get(npc) !== key) {
         this.sentTopics.set(npc, key);
         this.ctx.events.emit('npc:topics', { npc, topics });
@@ -533,6 +555,30 @@ class QuestRuntime {
         want.set('kqq:obj', { kind: 'obj', x: at.x, z: at.z });
         break;
       }
+    }
+    // the headline follows the tracker (playtest round 3): the leading main quest's goal — its
+    // objective, or its turn-in npc once ready — is where the Bussole points (story reads it)
+    const lead = this.book.tracked().map((id) => this.defs.get(id)).find((q) => q?.kind === 'main');
+    let tx: { x: number; z: number } | null = null;
+    if (lead) {
+      const st = this.book.state(lead.id);
+      if (st === 'active') {
+        const o = this.book.openObjectives(lead).find((x) => !x.noMarker && (x.where || x.to || x.place?.length));
+        const at = o ? (o.type === 'escort' && o.to ? o.to : (o.where ?? o.place?.[0] ?? o.to)) : null;
+        if (at && (!at.era || at.era === era)) tx = at;
+      } else if (st === 'ready') {
+        const ti = turninOf(lead);
+        const n = typeof ti === 'object' && 'npc' in ti ? this.npcPlaced(ti.npc) : null;
+        if (n && n.era === era) tx = n;
+      }
+    }
+    const tel = this.tracker.el;
+    if (tx) {
+      tel.dataset.tx = String(Math.round(tx.x * 10) / 10);
+      tel.dataset.tz = String(Math.round(tx.z * 10) / 10);
+    } else {
+      delete tel.dataset.tx;
+      delete tel.dataset.tz;
     }
     const p = ctx.player.position;
     for (const npc of this.book.npcs()) {

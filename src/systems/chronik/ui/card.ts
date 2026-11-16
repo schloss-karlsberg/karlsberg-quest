@@ -41,7 +41,7 @@ export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | 
   const facts = (found?.newFacts ?? []).map((id) => d.content.facts.get(id)?.title_de ?? id);
   const body = h('div.ck-card', { dataset: { testid: 'chronik-card', clue: clue.id } }, [
     h('div.ck-card-kind', [h('span', t(`chronik.card.kind.${clue.kind}`)), clue.fiction ? h('span.ck-fic', t('chronik.fiction')) : null]),
-    h('div.ck-card-grid', [h('figure', [canvas, h('figcaption', `${t('chronik.card.sketch')} · ${Math.round(at.x)} / ${Math.round(at.z)}`)]), h('div.ck-card-text', textKids)]),
+    h('div.ck-card-grid', [h('figure', [canvas, h('figcaption', `${t('chronik.card.sketch')} · ${t(clue.sketch ? 'chronik.card.sketchStation' : 'chronik.card.sketchHere')}`)]), h('div.ck-card-text', textKids)]),
     facts.length ? h('div.ck-chips', [h('span', `${t('chronik.card.codex')}:`), ...facts.map((n, i) => chip(n, i, true))]) : null,
   ]);
   return d.open({

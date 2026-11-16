@@ -184,7 +184,14 @@
         "set": { "type": "string", "description": "collection set (src/rpg/items.ts COLLECTIONS)" },
         "fiction": { "type": "boolean" },
         "fact": { "type": "string" },
-        "effect": { "type": "object" }
+        "effect": { "type": "object" },
+        "deed": {
+          "type": "object",
+          "description": "picking it up sets flag = value (first taken wins; docs/ACTION-RPG.md §8.6)",
+          "required": ["flag", "value"],
+          "additionalProperties": false,
+          "properties": { "flag": { "type": "string" }, "value": { "type": "string" } }
+        }
       }
     }
   }

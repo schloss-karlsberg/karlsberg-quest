@@ -331,6 +331,11 @@ export interface ItemDef {
   fiction?: boolean;
   /** Codex fact this lore item points to. */
   fact?: string;
+  /**
+   * A deed (docs/ACTION-RPG.md §8.6): picking this item up in the world sets `flag` = `value`
+   * (the first taken of a group wins: an already set flag stays). The epilogue reads it.
+   */
+  deed?: { flag: string; value: string };
 }
 
 export interface ItemEffect {

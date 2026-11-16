@@ -9,7 +9,7 @@
 import './story.css';
 import { RADIO_LINES } from './strings';
 import type { GameContext } from '../../core/context';
-import { type Era, isEra } from '../../core/era';
+import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { hasString, t } from '../../i18n';
 import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
@@ -374,6 +374,12 @@ class StoryRuntime {
       const key = family ? `story.caught.combat.${family}` : '';
       this.caught(by, { soft: soft === true, ...(key && hasString(key) ? { text: t(key) } : {}) });
     });
+    // an echo shows its own date in the era label (playtest round 3: "Heute · 2025" over 1840)
+    ctx.events.on('echo:start', ({ id }) => {
+      const when = this.echoDate(id);
+      if (when) ctx.ui.hud.setEraLabel(when);
+    });
+    ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
       if (to === 'today') this.placeStation();
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
@@ -1054,6 +1060,23 @@ class StoryRuntime {
     if (seq.length) this.lineGroup++;
   }
 
+  /**
+   * The date an echo is from: a year named in its lines or card (Laub's 1840 at the Forsthaus
+   * well, while the world shows 1796), else the era the echo belongs to. "Erinnerung · 1840".
+   */
+  echoDate(id: string): string | null {
+    const c = this.ctx.content.clues.get(id);
+    if (!c) return null;
+    const lines = this.ctx.content.dialogueFor('echo:start').filter((l) => l.trigger.id === id);
+    const texts = [...lines.map((l) => l.text_de), c.title_de, c.text_de ?? ''];
+    for (const s of texts) {
+      const m = /\b(1[78]\d\d)\b/.exec(s);
+      if (m) return t('story.echo.date', { when: m[1]! });
+    }
+    const era = c.where?.era;
+    return era && era !== 'today' && isEra(era) ? t('story.echo.date', { when: t(ERA_INFO[era].labelKey) }) : null;
+  }
+
   /** room:enter / room:leave { roomId } from the interiors feature (not declared here). */
   private onRoom(name: string, payload: unknown): void {
     const p = (payload ?? {}) as { roomId?: unknown; id?: unknown };
@@ -1440,8 +1463,12 @@ class StoryRuntime {
     const hudVisible = !ctx.ui.hud.el.classList.contains('kq-hidden');
     const inv = ctx.state.state.inventory;
     const compass = inv.items.includes('item.bussole') || !!ctx.state.state.flags['story.compass'];
-    const questLed = typeof document !== 'undefined' && !!document.querySelector('.kqq-tracker .kqq-tq.kqq-main');
-    this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed });
+    const tracker = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.kqq-tracker') : null;
+    const questLed = !!tracker?.querySelector('.kqq-tq.kqq-main');
+    // the headline follows the tracker: its main goal (quests puts it on the tracker) leads the Bussole
+    const tx = Number(tracker?.dataset.tx), tz = Number(tracker?.dataset.tz);
+    const questTarget = questLed && tracker?.dataset.tx !== undefined && Number.isFinite(tx) && Number.isFinite(tz) ? { x: tx, z: tz } : null;
+    this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed, questTarget });
     const today = ctx.era.current === 'today';
     this.station.setVisible(today);
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);

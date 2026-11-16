@@ -330,11 +330,13 @@ export function renderCodex(el: HTMLElement, d: JournalData): void {
 
   const side = h('aside.kqj-cside', [
     h('div.kqj-filters', [filt('all', `${t('journal.codex.all')} · ${count(cards)}`), filt('new', `${t('journal.codex.new')} · ${nNew}`), filt('relief', `${t('journal.codex.relief')} · ${count(relief)}`)]),
+    // one scale shown (how true is it?); the source confidence D / I / N / U explains itself on
+    // hover over each card's badge (playtest round 3: two legends read like an exam key)
     h('h4', t('journal.codex.legend')),
-    h('dl.kqj-legend', [
-      ...(['D', 'I', 'N', 'U'] as const).flatMap((c) => [h('dt', conf(c)), h('dd', t(`journal.codex.${c}`))]),
+    h('dl.kqj-legend', { dataset: { testid: 'codex-legend' } }, [
       ...(['FAKT', 'STRITTIG', 'LEGENDE', 'FIKTION'] as const).flatMap((l) => [h('dt', label(l)), h('dd', t(`journal.codex.labeltext.${l}`))]),
     ]),
+    h('p.kqj-legend-hint', t('journal.codex.confHint')),
   ]);
 
   const grid = h('div.kqj-cgrid', { dataset: { testid: 'codex-grid' } });

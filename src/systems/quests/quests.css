@@ -69,7 +69,14 @@
   transform: translateY(1px);
   opacity: 0.85;
 }
+/* long objectives wrap under their text, never under the box; the counter never breaks */
+.kqq-tt {
+  min-width: 0;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
 .kqq-n {
+  white-space: nowrap;
   font-family: var(--serif);
   font-size: 17px;
   font-variant-numeric: tabular-nums;
@@ -805,6 +812,16 @@ body:has(.kqs-choice-card.kqs-show) .kqq-reward {
 .kqj-legend dd {
   margin: 0;
   line-height: 1.25;
+}
+.kqj-legend-hint {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.kqq-conf[title] {
+  cursor: help;
 }
 .kqj-cgrid {
   display: grid;

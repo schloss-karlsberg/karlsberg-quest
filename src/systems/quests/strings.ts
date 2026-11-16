@@ -59,6 +59,7 @@ export const QUESTS_DE: Record<string, string> = {
   'journal.codex.sources': 'Quellen',
   'journal.codex.contested': 'Umstritten',
   'journal.codex.legend': 'Wie sicher?',
+  'journal.codex.confHint': 'Der Buchstabe auf jeder Karte (D, I, N, U) sagt, woher wir es wissen: Maus darüber.',
   'journal.codex.D': 'belegt – durch Quellen dokumentiert',
   'journal.codex.I': 'erschlossen – aus Befunden gefolgert',
   'journal.codex.N': 'Zeitnorm – so war es damals üblich',
