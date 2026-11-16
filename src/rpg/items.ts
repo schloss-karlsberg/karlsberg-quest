@@ -28,7 +28,7 @@ export const ITEMS: readonly ItemDef[] = [
   // ---- consumables (quick-use H; field-book names) -----------------------------------------
   { id: 'item.balsam', kind: 'consumable', name_de: 'Kräuterbalsam', text_de: 'Arnika und Ringelblume in Schmalz. Riecht nach Großmutter. Heilt.', stack: 9, effect: { heal: 45 } },
   { id: 'item.riechsalz', kind: 'consumable', name_de: 'Riechsalz', text_de: 'Hirschhornsalz im Fläschchen. Einmal daran, und der Atem ist wieder da.', stack: 5, effect: { stamina: 100 } },
-  { id: 'item.lampenoel', kind: 'consumable', name_de: 'Lampenöl', text_de: 'Rüböl für die Laterne. Füllt das Bannlicht auf.', stack: 5, effect: { bann: 2, oil: 0.5 } },
+  { id: 'item.lampenoel', kind: 'consumable', name_de: 'Lampenöl', text_de: 'Rüböl. Füllt die Laterne zur Hälfte nach und lädt das Bannlicht auf.', stack: 5, effect: { bann: 2, oil: 0.5 } },
   { id: 'item.kalkstaub', kind: 'consumable', name_de: 'Kalkstaub', text_de: 'Eine Handvoll gebrannter Kalk aus dem Ofen am Hang. Geworfen, hält er Geister für einen Atemzug fest. „Das sind Kalköfen“, sagt Laub.', stack: 5, effect: { burst: 6 } },
 
   // ---- the hunting horn (finale) -------------------------------------------------------
@@ -38,14 +38,15 @@ export const ITEMS: readonly ItemDef[] = [
 /**
  * Each entry rolls independently: chance + the player's `loot` stat + bad-luck protection (every
  * empty roll in a row adds +6 %, at most +30 %; src/systems/progression/logic.ts). Tuned
- * 2026-11-15 (docs/ACTION-RPG.md §7): a small enemy drops something about every third kill.
+ * 2026-11-15 (docs/ACTION-RPG.md §7); halved 2026-11-16 after playtests (potions piled up unused):
+ * a small enemy drops something about every fifth kill, a boss one Balsam.
  */
 export const LOOT: readonly LootTable[] = [
-  { id: 'loot.klein', entries: [{ item: 'item.balsam', chance: 0.22 }, { item: 'item.lampenoel', chance: 0.1 }, { item: 'item.riechsalz', chance: 0.06 }] },
+  { id: 'loot.klein', entries: [{ item: 'item.balsam', chance: 0.11 }, { item: 'item.lampenoel', chance: 0.08 }, { item: 'item.riechsalz', chance: 0.03 }] },
   { id: 'loot.licht', entries: [{ item: 'item.lampenoel', chance: 0.35 }, { item: 'item.balsam', chance: 0.12 }] },
-  { id: 'loot.raff', entries: [{ item: 'item.balsam', chance: 0.3 }, { item: 'item.riechsalz', chance: 0.15 }, { item: 'item.kalkstaub', chance: 0.1 }] },
-  { id: 'loot.stein', entries: [{ item: 'item.balsam', chance: 0.3 }, { item: 'item.kalkstaub', chance: 0.2 }] },
-  { id: 'loot.boss', entries: [{ item: 'item.balsam', chance: 1, min: 2, max: 3 }, { item: 'item.riechsalz', chance: 1 }, { item: 'item.lampenoel', chance: 1 }, { item: 'item.kalkstaub', chance: 1 }] },
+  { id: 'loot.raff', entries: [{ item: 'item.balsam', chance: 0.15 }, { item: 'item.riechsalz', chance: 0.08 }, { item: 'item.kalkstaub', chance: 0.1 }] },
+  { id: 'loot.stein', entries: [{ item: 'item.balsam', chance: 0.15 }, { item: 'item.kalkstaub', chance: 0.2 }, { item: 'item.lampenoel', chance: 0.1 }] },
+  { id: 'loot.boss', entries: [{ item: 'item.balsam', chance: 1, min: 1, max: 1 }, { item: 'item.riechsalz', chance: 1 }, { item: 'item.lampenoel', chance: 1 }, { item: 'item.kalkstaub', chance: 1 }] },
 ];
 
 /** A loot table by id. */

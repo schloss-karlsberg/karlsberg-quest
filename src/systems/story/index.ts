@@ -830,7 +830,8 @@ class StoryRuntime {
     const m = newMeter(a.id, { seconds: a.seconds, label: a.label, full: a.full, text: a.text, lossless: a.lossless, still: a.still, era: era === 'today' ? undefined : era });
     const prev = s.meters[a.id];
     // a resumed beat re-runs its meter action: keep the running value
-    if (prev && !prev.done && prev.seconds === m.seconds) m.value = prev.value;
+    // (an emptied lantern does not count as running: the next trip starts with a full one)
+    if (prev && !prev.done && prev.seconds === m.seconds && !(a.id === 'oil' && prev.value >= 0.98)) m.value = prev.value;
     s.meters[a.id] = m;
     if (a.lossless) ctx.state.update((st) => (st.flags['chronik.noLoss'] = true), 'story');
     if (a.id === 'oil') {
@@ -854,7 +855,14 @@ class StoryRuntime {
 
   private mirrorMeter(id: string, v: number): void {
     const m = this.slice.meters[id];
-    if (m && Number.isFinite(v)) m.value = Math.max(0, Math.min(1, v));
+    if (!m || !Number.isFinite(v)) return;
+    const before = m.value;
+    m.value = Math.max(0, Math.min(1, v));
+    // Laub warns while the lantern burns down (half left, a fifth left), once per filling
+    if (id === 'oil' && this.ctx.era.current !== 'today' && m.full !== 'none' && !this.caughtBusy) {
+      for (const [at, key] of [[0.5, 'story.oil.half'], [0.8, 'story.oil.low']] as const)
+        if (before < at && m.value >= at) this.ctx.events.emit('dialogue:say', { speaker: 'laub', text: t(key), id: `laub.${key}` });
+    }
   }
 
   /** A meter ran full (custom gauge filled, lantern empty in the past). */
@@ -1144,18 +1152,34 @@ class StoryRuntime {
     if (this.caughtT < this.caughtHoldS) return;
     if (ctx.era.current !== 'today') this.requestShift('today', 'caught', true);
     // where you come to: the resumed beat's wake place, else the caught beat's, else the chapter's checkpoint
-    const wake = this.wakePlace();
+    // … unless the way back into the past starts somewhere else: then wake at that anchor, so the
+    // player does not walk half the map back (playtest: K3 garden, K4 Ehrenhof, K2 after anchor B)
+    let wake = this.wakePlace();
+    const anchor = this.anchorFromFlags();
+    let atAnchor = false;
+    if (anchor && !anchor.anywhere && (!wake || Math.hypot(wake.x - anchor.x, wake.z - anchor.z) > 150)) {
+      wake = { x: anchor.x + 3, z: anchor.z + 3, yaw: wake?.yaw ?? 0, text: t('story.caught.wakeAnchor') };
+      atAnchor = true;
+    }
     const cp = wake ?? this.engine.chapter()?.checkpoint ?? { x: STATION.spawn.x, z: STATION.spawn.z, yaw: STATION.spawn.yaw };
     this.teleport(cp.x, cp.z, cp.yaw);
     this.applyLook();
     ctx.player.frozen = false;
     // full meters start over
     for (const m of Object.values(this.slice.meters)) {
-      if (!isWrapped(m.id)) m.value = 0;
+      // wrapped meters too: an emptied lantern is refilled when its meter restarts (startMeter)
+      m.value = 0;
       m.done = false;
     }
+    if (this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: false, refill: true });
     this.caughtBusy = false;
     this.engine.resume(true);
+    if (atAnchor && anchor && ctx.era.current === 'today' && !this.slice.objective?.text?.includes('Q')) {
+      const text = t('story.caught.backQ');
+      this.slice.objective = { text, x: anchor.x, z: anchor.z, id: 'story.back' };
+      this.objectives.set(this.slice.objective);
+      ctx.events.emit('objective:set', { text, x: anchor.x, z: anchor.z, id: 'story.back' });
+    }
     this.overlays.curtainUp(wake?.text ?? t('story.caught.wake'));
     const lines = this.wakeLines;
     this.wakeLines = [];

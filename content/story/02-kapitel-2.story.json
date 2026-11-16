@@ -18,7 +18,7 @@
       "id": "k2-oel",
       "when": { "era": "1793-02" },
       "repeat": true,
-      "do": [{ "do": "meter", "id": "oil", "active": true, "seconds": 420, "text": "Das Öl ist aus. Die Erinnerung lässt dich los." }]
+      "do": [{ "do": "meter", "id": "oil", "active": true, "seconds": 600, "text": "Das Öl ist aus. Die Erinnerung lässt dich los." }]
     },
     {
       "id": "k2-spur",
@@ -43,7 +43,7 @@
     {
       "id": "k2-anker-b",
       "when": {
-        "any": [{ "have": { "clue": "clue.k2.wachbuch" } }, { "have": { "clue": "clue.k2.warnung" } }]
+        "any": [{ "have": { "clue": "clue.k2.orangerie" } }, { "have": { "clue": "clue.k2.wachbuch" } }, { "have": { "clue": "clue.k2.warnung" } }]
       },
       "do": [{ "do": "anchor", "to": "1793-02", "x": 1222, "z": -1118, "r": 35 }, { "do": "flag", "set": { "k2.anker_b": true } }]
     },
@@ -438,6 +438,11 @@
           "when": { "era": "1793-02" },
           "repeat": true,
           "do": [{ "do": "objective", "id": "k2.wachhaus", "text": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof", "x": 1180, "z": -1120 }]
+        },
+        {
+          "id": "k2_4-frei",
+          "when": { "quest": { "id": "q.k2.wachbuch", "objective": "lichter", "gte": 4 } },
+          "do": [{ "do": "flag", "set": { "k2.wache_frei": true } }]
         },
         {
           "id": "k2_4-wache",

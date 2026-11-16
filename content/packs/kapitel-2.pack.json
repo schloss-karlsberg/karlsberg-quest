@@ -244,6 +244,11 @@
           "n.wachfeuer"
         ]
       },
+      "requires": {
+        "flags": [
+          "k2.wache_frei"
+        ]
+      },
       "fiction": true,
       "chapter": "k2"
     },

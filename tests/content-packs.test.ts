@@ -27,6 +27,7 @@ const STORY_FLAGS = new Set([
   'flag.k4_finale', // ch. 4 finale opens with the 2nd confirmation
   'flag.k2_tor', // ch. 2 choice at the gate: leuchten / dunkel
   'flag.k3_objekt', // ch. 3 rescued object: tuergriff / dukat / uhr / nichts
+  'k2.wache_frei', // ch. 2 Wachhaus Irrlichter banned (story rule k2_4-frei)
 ]);
 /** Events from src/core/events.ts and src/systems/contracts.ts plus the custom events of the campaign. */
 const KNOWN_EVENTS = new Set([

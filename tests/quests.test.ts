@@ -152,7 +152,7 @@ describe('objectives', () => {
 
   it('kill objectives bound to a place ignore kills of the same kind elsewhere or in another era', () => {
     const lichter: QuestDef = {
-      id: 'q.test.lichter', main: false, title_de: 'Lichter', summary_de: 'x', giver: { npc: 'soll' }, offer: [{ speaker: 'soll', text: 'x' }],
+      id: 'q.test.lichter', kind: 'side', title_de: 'Lichter', summary_de: 'x', giver: { npc: 'soll' }, offer: [{ speaker: 'soll', text: 'x' }],
       objectives: [{ id: 'l', type: 'kill', text_de: 'L', enemy: 'irrlicht', count: 3, where: { x: 820, z: -869, r: 24, era: 'today' }, spawn: [{ kind: 'irrlicht', x: 820, z: -869, era: 'today', count: 3, radius: 5 }] }],
       rewards: { xp: 10 },
     };

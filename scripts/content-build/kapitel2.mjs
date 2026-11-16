@@ -31,6 +31,8 @@ const clues = [
     title: 'Erinnerung: Die Wache am Feuer', kind: 'echo', at: WACHE, r: 8, era: E, anchor: 'KB-B38', chapter: ch, fiction: true,
     text: 'Ein Wachfeuer in einer Eisenpfanne am nördlichen Wachhaus. Hinter dem Gitter steht der Hof voller Wagen.',
     nouns: ['n.ehrenhofgitter', 'n.wachfeuer'],
+    // the echo only exists once the Irrlichter are banned (story rule k2_4-frei sets the flag)
+    req: { flags: ['k2.wache_frei'] },
   }),
   clue('clue.k2.wachbuch', {
     title: 'Das Wachbuch', kind: 'document', at: WACHBUCH, r: 4, era: E, anchor: 'KB-B38', chapter: ch, fiction: true,

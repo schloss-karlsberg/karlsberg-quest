@@ -76,6 +76,10 @@ addStrings('de', {
   'story.caught.sub': 'Gestellt. Nicht gerissen.',
   'story.caught.wake': 'Du wachst in der Feldstation auf. Was bestätigt ist, bleibt.',
   'story.meter.return': 'Die Erinnerung lässt dich los.',
+  'story.caught.wakeAnchor': 'Du kommst dort zu dir, wo du hinübergegangen bist, im Heute. Nichts ist verloren.',
+  'story.caught.backQ': 'Hier ging es hinüber: Q – zurück in die Erinnerung',
+  'story.oil.half': 'Die Hälfte vom Öl ist fort. Behalten Sie das im Auge.',
+  'story.oil.low': 'Das Öl wird knapp. Noch ein paar Minuten, dann lässt uns die Erinnerung los. Lampenöl, falls Sie welches haben.',
   'story.meter.returnSub': 'Das Licht reicht nicht weiter.',
 
   // shift fallback (when no era-shift feature is installed)

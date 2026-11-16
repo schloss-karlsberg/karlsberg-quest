@@ -482,7 +482,8 @@ class Hunt {
       const lit = this.setLit(!L.lit, true);
       ctx.ui.toast(ctx.t(lit ? 'lantern.on' : 'lantern.off'), 1400);
     }
-    const r = drain(L, dt, this.mode());
+    // the oil is the timer of the past: in the present the lantern burns for free
+    const r = ctx.era.current === 'today' ? { emptied: false, percentChanged: false } : drain(L, dt, this.mode());
     if (r.percentChanged) ctx.events.emit('lantern:oil', { oil: L.oil });
     if (r.emptied) {
       ctx.events.emit('lantern:toggle', { lit: false });
