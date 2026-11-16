@@ -434,6 +434,8 @@ export interface SafeInput {
   room?: string;
   /** Placed NPCs (the 6 m talk radius). */
   npcs?: readonly { x: number; z: number; era?: string }[];
+  /** A fight is on (an enemy has the player): NPC bubbles do not stop it (a boss never heals mid-fight). */
+  engaged?: boolean;
 }
 
 export type SafeReason = 'disabled' | 'station' | 'memorial' | 'talking' | 'modal' | 'npc' | null;
@@ -454,7 +456,7 @@ export function safeReason(s: SafeInput): SafeReason {
     if (m.x === undefined || m.z === undefined) return 'memorial';
     if (Math.hypot(s.x - m.x, s.z - m.z) <= (m.r ?? 25)) return 'memorial';
   }
-  for (const n of s.npcs ?? []) {
+  for (const n of s.engaged ? [] : (s.npcs ?? [])) {
     if (n.era && n.era !== s.era) continue;
     if (Math.hypot(s.x - n.x, s.z - n.z) <= SAFE.npcR) return 'npc';
   }

@@ -344,7 +344,9 @@ const spawn = (kind, [x, z], count, radius, extra = {}) => ({ kind, x, z, era: E
 // value (1276/−1228 lies inside the pavilion KB-B07) onto the open Bauplatz lawn.
 export const K1_SPOTS = {
   kuechenhof: [1212, -1180], // Küchenhof (TF-02), cobbles, behind the north wing
-  bauplatz: [1294, -1234], // the Bauplatz east of the pavilion KB-B07 (Hanne stands at 1287/−1228)
+  // the Bauplatz lawn north-east of the pavilion KB-B07, 29 m from Hanne (1287/−1228): her 6 m talk
+  // bubble must not overlap the boss's arena (playtest round 2: the book healed when you stepped near her)
+  bauplatz: [1300, -1254],
   fleisch: [[1212, -1626], [1206, -1630], [1216, -1618], [1208, -1612], [1214, -1634]], // the Jägerhaus yard (east of KB-B24)
   allee: [1169, -1636], // the Allee north of the Jägerhaus
   schwanufer: [1852, 248], // the north shore of the Schwanenweiher (the water itself is at 1854/214)
@@ -467,7 +469,7 @@ const k1Quests = {
         {
           id: 'buch', type: 'kill', enemy: 'schuldbuch', count: 1, after: ['soll', 'zeichen'],
           text_de: 'In der Dämmerung am Bauplatz: das Schuldbuch bezwingen (Bannlicht bricht das Siegel)',
-          where: place(...KS.bauplatz, 30),
+          where: place(1297, -1247, 32),
           spawn: [spawn('schuldbuch', KS.bauplatz, 1, 0, { boss: true, leash: 45 })],
         },
         { id: 'zettel', type: 'collect', item: 'item.k1.lohnzettel', after: ['buch'], text_de: 'Matthes’ Lohnzettel aus den Seiten aufheben', drop: { enemy: 'schuldbuch', chance: 1 } },

@@ -271,6 +271,9 @@ describe('combat rules: bosses and safe zones', () => {
     expect(safeReason({ ...base, room: 'B06.1.festsaal', memorials: [{ active: true, room: 'B06.1.festsaal' }] })).toBe('memorial');
     expect(safeReason({ ...base, npcs: [{ x: 1204, z: -1100 }] })).toBe('npc');
     expect(safeReason({ ...base, npcs: [{ x: 1210, z: -1100 }] })).toBeNull();
+    // a fight on: an NPC's bubble no longer stops it (the Schuldbuch healed next to Hanne)
+    expect(safeReason({ ...base, engaged: true, npcs: [{ x: 1204, z: -1100 }] })).toBeNull();
+    expect(safeReason({ ...base, engaged: true, modal: true })).toBe('modal');
   });
 });
 

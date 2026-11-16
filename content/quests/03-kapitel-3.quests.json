@@ -547,8 +547,8 @@
           "spawn": [
             {
               "kind": "strohmann",
-              "x": 1214,
-              "z": -1110,
+              "x": 1222,
+              "z": -1114,
               "era": "1793-07",
               "boss": true,
               "leash": 45

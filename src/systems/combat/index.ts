@@ -349,6 +349,7 @@ class Combat {
       memorials: [...this.memorials.values()],
       room: room || undefined,
       npcs: [...this.npcs.values()],
+      engaged: this.sim.p.inCombat,
     });
   }
 

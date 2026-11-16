@@ -20,7 +20,16 @@ export interface QuestRefs {
   clues?: Set<string>;
   chapters?: Set<string>;
   bounds?: { x0: number; z0: number; x1: number; z1: number };
+  /** NPCs the stories place (for the safe-zone overlap check). */
+  npcs?: readonly { npc: string; x: number; z: number; era?: string; chapter?: string }[];
 }
+
+/**
+ * An NPC's 6 m talk bubble stops fights (combat SAFE.npcR). A quest spawn must stand clear of it by the
+ * bubble + a staff's reach + 10 m of circling room (playtest round 2: the Schuldbuch spawned 9 m from
+ * Hanne and healed whenever the player stepped near her). Bosses: error; other spawns: warning.
+ */
+export const NPC_SPAWN_CLEAR = 6 + 3.4 + 10;
 
 export interface QuestValidation {
   ok: boolean;
@@ -78,12 +87,14 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
     }
   }
   const itemKnown = (id: unknown) => isStr(id) && (ITEM_IDS.has(id) || itemIds.has(id));
+  let curChapter = '';
 
   for (const { file, data } of files) {
     if (!data || typeof data !== 'object' || !Array.isArray(data.quests)) continue;
     if (!isStr(data.chapter)) err(file, undefined, 'missing "chapter"');
     else if (refs.chapters && !refs.chapters.has(data.chapter)) err(file, undefined, `unknown chapter '${data.chapter}'`);
     const ck = chapterKey(String(data.chapter ?? ''));
+    curChapter = String(data.chapter ?? '');
 
     for (const it of data.items ?? []) {
       stats.items++;
@@ -201,6 +212,15 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
         if (d && !d.eras.includes(sp.era)) warn(file, id, `spawn: ${d.id} does not belong to era ${sp.era}`);
       }
       if (sp?.count !== undefined && (!isNum(sp.count) || sp.count < 1)) err(file, id, 'spawn: count must be ≥ 1');
+      if (isNum(sp?.x) && isNum(sp?.z)) {
+        for (const n of refs.npcs ?? []) {
+          if (n.chapter && curChapter && n.chapter !== curChapter) continue;
+          if (n.era && sp.era && n.era !== sp.era) continue;
+          const d = Math.hypot(n.x - sp.x, n.z - sp.z);
+          if (d >= NPC_SPAWN_CLEAR) continue;
+          (sp.boss ? err : warn)(file, id, `spawn ${String(sp.kind)} stands ${d.toFixed(1)} m from ${n.npc} (${n.x}/${n.z}); her/his talk bubble would stop the fight (keep ≥ ${NPC_SPAWN_CLEAR} m)`);
+        }
+      }
     }
     switch (o.type) {
       case 'kill':

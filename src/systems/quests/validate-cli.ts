@@ -25,6 +25,31 @@ export function loadQuestFiles(root: string): { files: { file: string; data: Que
   return { files, parseErrors };
 }
 
+/** Every NPC a story file places at fixed coordinates (`npc` spawn actions). */
+export function storyNpcs(root: string): { npc: string; x: number; z: number; era?: string; chapter?: string }[] {
+  const dir = join(root, 'content/story');
+  const out: { npc: string; x: number; z: number; era?: string; chapter?: string }[] = [];
+  if (!existsSync(dir)) return out;
+  const walk = (o: unknown): void => {
+    if (Array.isArray(o)) for (const x of o) walk(x);
+    else if (o && typeof o === 'object') {
+      const a = o as Record<string, unknown>;
+      if (a.do === 'npc' && a.op === 'spawn' && typeof a.x === 'number' && typeof a.z === 'number' && typeof a.npc === 'string') {
+        out.push({ npc: a.npc, x: a.x, z: a.z, era: typeof a.era === 'string' ? a.era : undefined, chapter: typeof a.chapter === 'string' ? a.chapter : undefined });
+      }
+      for (const v of Object.values(a)) walk(v);
+    }
+  };
+  for (const f of readdirSync(dir).filter((n) => n.endsWith('.story.json'))) {
+    try {
+      walk(JSON.parse(readFileSync(join(dir, f), 'utf8')));
+    } catch {
+      /* the story validator reports it */
+    }
+  }
+  return out;
+}
+
 export function questRefs(packs: LoadedPack[], chapters: Set<string>, bounds?: { x0: number; z0: number; x1: number; z1: number }) {
   const all = <T>(k: string) => packs.flatMap((p) => ((p.pack as unknown as Record<string, T[] | undefined>)[k] ?? []) as T[]);
   const speakers = all<{ id: string; historical?: boolean }>('speakers');
@@ -41,7 +66,7 @@ export function questRefs(packs: LoadedPack[], chapters: Set<string>, bounds?: {
 /** Validate and print; returns the result (ok = no errors). */
 export function checkQuests(root: string, packs: LoadedPack[], chapters: Set<string>, bounds?: { x0: number; z0: number; x1: number; z1: number }, verbose = false): { ok: boolean; result: QuestValidation } {
   const { files, parseErrors } = loadQuestFiles(root);
-  const result = validateQuests(files, questRefs(packs, chapters, bounds));
+  const result = validateQuests(files, { ...questRefs(packs, chapters, bounds), npcs: storyNpcs(root) });
   const line = (i: { level: string; file: string; id?: string; message: string }) => `${i.level === 'error' ? 'ERROR' : 'warn '} ${i.file}${i.id ? ` [${i.id}]` : ''}: ${i.message}`;
   for (const e of parseErrors) console.log(e);
   for (const e of result.errors) console.log(line(e));

@@ -462,16 +462,16 @@
           ],
           "text_de": "In der Dämmerung am Bauplatz: das Schuldbuch bezwingen (Bannlicht bricht das Siegel)",
           "where": {
-            "x": 1294,
-            "z": -1234,
-            "r": 30,
+            "x": 1297,
+            "z": -1247,
+            "r": 32,
             "era": "1789"
           },
           "spawn": [
             {
               "kind": "schuldbuch",
-              "x": 1294,
-              "z": -1234,
+              "x": 1300,
+              "z": -1254,
               "era": "1789",
               "count": 1,
               "radius": 0,

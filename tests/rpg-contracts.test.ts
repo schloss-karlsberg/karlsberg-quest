@@ -13,7 +13,7 @@ import { BASE_STATS, LEVEL_XP, MAX_LEVEL, TALENTS, charmSlots, deriveStats, leve
 import type { QuestFile } from '../src/rpg/types';
 import { questsInPlay } from '../src/systems/quests/data';
 import { chapterKey, validateQuests } from '../src/systems/quests/validate';
-import { loadQuestFiles, questRefs } from '../src/systems/quests/validate-cli';
+import { loadQuestFiles, questRefs, storyNpcs } from '../src/systems/quests/validate-cli';
 import { evaluate, questHolds } from '../src/systems/story/engine';
 import type { StoryFile } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
@@ -28,7 +28,7 @@ describe('quest files', () => {
   const { files, parseErrors } = loadQuestFiles(ROOT);
   it('parse and validate with zero errors (content/quests/*.quests.json)', () => {
     expect(parseErrors).toEqual([]);
-    const r = validateQuests(files, refs);
+    const r = validateQuests(files, { ...refs, npcs: storyNpcs(ROOT) });
     expect(r.errors.map((e) => `${e.file} [${e.id}] ${e.message}`)).toEqual([]);
     expect(r.questIds.has('q.test.lohnzettel')).toBe(true);
   });
@@ -62,6 +62,19 @@ describe('quest files', () => {
   });
   const errs = (f: QuestFile) => validateQuests([{ file: 'x.quests.json', data: f }], refs).errors.map((e) => e.message);
 
+  it('a boss spawned inside an NPC talk bubble (+ reach + room) is an error, a pack a warning', () => {
+    const npcs = [{ npc: 'hanne', x: 1287, z: -1228, era: '1789', chapter: 'k1' }];
+    const f = good();
+    f.quests[0]!.objectives[0]!.spawn = [{ kind: 'schuldbuch', x: 1294, z: -1234, era: '1789', count: 1, boss: true }];
+    const r = validateQuests([{ file: 'x.quests.json', data: f }], { ...refs, npcs });
+    expect(r.errors.map((e) => e.message).join(' | ')).toContain('talk bubble');
+    f.quests[0]!.objectives[0]!.spawn = [{ kind: 'nebelling', x: 1294, z: -1234, era: '1789', count: 2 }];
+    const r2 = validateQuests([{ file: 'x.quests.json', data: f }], { ...refs, npcs });
+    expect(r2.errors).toEqual([]);
+    expect(r2.warnings.map((e) => e.message).join(' | ')).toContain('talk bubble');
+    f.quests[0]!.objectives[0]!.spawn = [{ kind: 'schuldbuch', x: 1300, z: -1254, era: '1789', count: 1, boss: true }];
+    expect(validateQuests([{ file: 'x.quests.json', data: f }], { ...refs, npcs }).warnings.map((e) => e.message).join(' | ')).not.toContain('talk bubble');
+  });
   it('accepts a well-formed quest', () => {
     expect(errs(good())).toEqual([]);
   });
