@@ -894,8 +894,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   candles. The Zwinger today has readable kennel rows, enamel bowls, a board and lanterns. Closed
   caches carry a warm light column (seen from the previous POI) that flares and goes out when the
   lid springs.
-- **World track, round 3, left open:** the Festsaal choice is still made in the dialogue (story
-  owns it); a ghost-hound mount (not cheap enough); the 1796 look is unchanged since round 2.
+- **World track, round 3, left open:** ~~the Festsaal choice is still made in the dialogue~~
+  (integrated: the set-pieces pickups stand on the dressed console and ledge); a ghost-hound mount (not cheap enough); the 1796 look is unchanged since round 2.
 - **Playtest round 3 (2026-11-16), fixed (quest UX, dialogue flow, no quiz):** stance cards removed
   (§8.6: the epilogue is told from deeds as a first-person story; the item deed contract for the
   Festsaal objects; no "Wird fortgesetzt" / "Fortgesetzt im November" placeholders); quest offer
@@ -912,8 +912,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   Geister, Codex, Sammlungen, Gegenstände); one codex legend (FAKT … FIKTION; D/I/N/U on hover);
   no coordinates in clue card captions; the Messstab objective without „(E)“; an echo shows its own
   date in the era label („Erinnerung · 1840“).
-- **Playtest round 3, left open:** the Festsaal objects as physical pickups (set-pieces track; the
-  flag contract is ready); offer cards for voice givers (they still accept at once with a banner);
+- **Playtest round 3, left open:** ~~the Festsaal objects as physical pickups~~ (integrated, see
+  below); offer cards for voice givers (they still accept at once with a banner);
   „Erzähl mehr“ is offered only within the turn-in's chapter.
 - **Set pieces pass (2026-11-16):** K1 finale as a real par force hunt — eight hounds (up to ten),
   the Pikeur a silhouette ≥ 38 m up the slope, two flankers that run wide and cut off the route,
@@ -936,3 +936,14 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 - **Set pieces pass, left open:** smoke stratification inside rooms (one ceiling layer as before),
   no collider for fallen beams (deliberate), fireworks echo still at the 1789 Rondell set (no extra
   palace light rig), the K1 stand's strays are generic Streuner (no hound-shaped fighters).
+- **Round 3 integration (2026-11-16):** the four tracks (combat, world, quests, set pieces) merged.
+  Seams: the Festsaal pickups (`interiors/festsaal.ts`) take the world set's fixed spots for the
+  clock (console under the pier glass) and the ducat (window ledge) — `festsaalSpots(…, anchors)`
+  from `scenery/worldsets.ts` — and the world set no longer draws its own clock and coin, so the room
+  holds one of each; E → `festsaal.took` → the story sets `flag.k3_objekt` + the charm item
+  (`DEED_ITEMS` sees the flag already set) → the deed epilogue. A boss reveal marks
+  `hud.busy('reveal')` for its 2.6 s and the story's presenter holds every line but `now` until it
+  ends (title card and sting are not talked over). A pack's escort kill carries `escort: true`
+  and never counts for a kill objective (XP only); route POI guards of the right kind, era and
+  place do count. After a wake the travel track's hint names the nearest measured
+  Vermessungspunkt when it is far nearer the goal than the wake spot.

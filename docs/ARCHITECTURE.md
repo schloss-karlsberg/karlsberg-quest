@@ -610,7 +610,8 @@ Round-4 (polish: set dressing) integration rules:
   caps waiting lines at 6 (barks / skill remarks first), drops barks after 14 s, gives lines of an
   ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
-  `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass. Lines a
+  `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while
+  `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held. Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
   cleared at the credits. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
   player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
@@ -701,7 +702,8 @@ Round-4 (polish: set dressing) integration rules:
   (`beams.ts`: they tip at one end, swing, fall and lie glowing; no collider; reduced motion: just
   there). The Festsaal choice (K3, `festsaal.ts`): story cue `festsaal:objects {room}` places four
   things — the handle in Hanne's hand, the ducat on the sill, the gilt clock on its console, the
-  way out at the door — each with a glint drawn after the smoke; facing one in reach shows
+  way out at the door — each with a glint drawn after the smoke (in `B01.2.og-festsaal` the clock
+  and the ducat stand on the world set's console / ledge: `festsaalSpots(…, anchors)`); facing one in reach shows
   „E – …“ (`e.owner` flag: the Chronik and Hanne (`npc.hush`) leave E alone), E sets
   `festsaal.took` = tuergriff | dukat | uhr | nichts; `festsaal:clear` removes them. Hooks
   `kq.interiors.festsaal()` / `festsaalTake(key)`. Cleared on `threat:configure {fire, active:false}`
@@ -744,8 +746,8 @@ Round-4 (polish: set dressing) integration rules:
   trees along the old track from the Torhaus to the Orangerie — fruit in summer, bare and snowed
   on in 1793-02, mostly felled stumps in 1796; the runner's trail spots stay free), the Karlslust
   menagerie (barred cages with name plates, the iron bear boxes, a paddock, "Menagerie" / "Bären" /
-  "Das Rund" boards), the Festsaal on 28 July 1793 (the gilded clock on its console, the ducat on
-  the ledge, the handle-less door, stacked paintings, a toppled chair, the fallen chandelier; round
+  "Das Rund" boards), the Festsaal on 28 July 1793 (the ledge and the spots for the clock and
+  the ducat — the pickups themselves are interiors' `festsaal.ts` — the handle-less door, stacked paintings, a toppled chair, the fallen chandelier; round
   3: two portraits and a pier glass on the north wall, an askew painting by the door, pale patches
   where the stacked ones hung, two fauteuils and a canapé, the second chandelier still hanging with
   burning candles; not solid — upper floor) and the Zwinger today (kennel footings in two rows with
