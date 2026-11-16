@@ -904,12 +904,15 @@ Rules that came out of it:
 - **E is shared**: walking over a pickup takes it (1.3 m, drops 1.9 m); E (`listen`) within 2.7 m only
   while the progression prompt is the one on screen — an NPC's or a clue's prompt wins. Pickups with
   `y` / `room` show only on that storey (|Δy| < 2.4 m).
-- **Docks**: `progression.css` narrows the vitals dock to 168 px (it must clear the 190 px gutter the
-  dialogue card leaves at 1024 px) and the feed to `min(300px, 30vw)`; `e2e/pol-flow.spec.ts` checks
+- **Docks** (shared decision after the merge): `progression.css` narrows the vitals dock to 168 px; combat's
+  rows stack label + number over a full-width bar to fit it, and `.kq-subtitles` at ≥ 900 px stay
+  within `100vw − 400px` so they never cover the dock. The 168 px must clear the 190 px gutter the
+  dialogue card leaves at 1024 px; the feed is capped to `min(300px, 30vw)`; `e2e/pol-flow.spec.ts` checks
   `hud-vitals`, `hud-boss`, `hud-feed`, the level card and a quest tracker outside the column.
-- **Journal fallback**: until the quests system's journal modal exists, I (`inventory`) opens a small
-  "Feldbuch" modal with every registered tab (`data-testid=journal-fallback`) — only if no modal and no
-  `[data-testid="journal"]` opened within three fixed steps, so both coexist.
+- **Journal**: the quests system's Journal modal (`data-testid=journal`) renders progression's tabs 40 / 50;
+  I (`inventory`) opens it on Ausrüstung. Progression keeps a small "Feldbuch" fallback
+  (`data-testid=journal-fallback`) that only opens if no modal and no Journal appeared within three
+  fixed steps (i.e. never while quests is registered).
 - **State** `state.systems.progression` (`ProgressionSlice` + additive `codexXp`, `placed`, `drops`,
   `dry`); rebuilt on `new` / `load` / `replace` (no cards). Hooks `kq.progression.state / xp / level /
   grant / equip / use / learn / respec / place / pickups / take / stats / card / feed / journal`.
