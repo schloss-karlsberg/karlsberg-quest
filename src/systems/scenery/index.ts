@@ -29,6 +29,7 @@ import { propMaterial } from './material';
 import { buildPassage, passageCollision, patchPalace, setPassageCut } from './passage';
 import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
+import { RUND, RundTally } from './rund';
 
 export interface SceneryWindow {
   building: string;
@@ -65,6 +66,8 @@ export interface SceneryHooks {
   };
   hohenburg(): { vis: number; x: number; z: number };
   passage(): { open: boolean; zones: number };
+  /** Doors of the Rund counted so far (lit). */
+  rundCounted(): number;
 }
 
 declare module '../../debug/hooks' {
@@ -96,6 +99,26 @@ const lit = new Map<string, LitWindows>();
 let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolean; b07: number } | null = null;
 let solidsDirty = true;
 let lastEra: Era | null = null;
+let tally: RundTally | null = null;
+let tallyQuiet = true;
+
+/** The Rund's counted doors (1789, near the ring): pulse as the story counts each side. */
+function updateTally(ctx: GameContext, dt: number): void {
+  const p = ctx.player.position;
+  const here = ctx.era.current === '1789' && Math.hypot(p.x - RUND.x, p.z - RUND.z) < 300;
+  if (!here) {
+    if (tally) tally.mesh.visible = false;
+    return;
+  }
+  if (!tally) {
+    tally = new RundTally((x, z) => ctx.world.heightfields['1789'].heightAt(x, z));
+    root.add(tally.mesh);
+  }
+  tally.mesh.visible = true;
+  const f = ctx.state.state.flags;
+  tally.update(dt, { w: f['k1.zaehl.w'] === true, n: f['k1.zaehl.n'] === true, o: f['k1.zaehl.o'] === true, s: f['k1.zaehl.s'] === true }, tallyQuiet);
+  tallyQuiet = false;
+}
 
 function windowKey(w: { building: string; era: string }): string {
   return `${w.building}@${w.era}`;
@@ -322,6 +345,7 @@ function installHooks(ctx: GameContext): void {
     },
     hohenburg: () => ({ vis: hohVis, x: HOHENBURG.x, z: HOHENBURG.z }),
     passage: () => ({ open: !!passage && ERA_INFO[ctx.era.current].palace === 'intact', zones: passage?.zones.length ?? 0 }),
+    rundCounted: () => tally?.counted ?? 0,
   };
 }
 
@@ -355,6 +379,8 @@ export default defineSystem({
       // a loaded save brings its own windows / gate
       slice = ctx.state.slice('scenery', () => ({ windows: [], gate: 0 }));
       for (const id of [...live.keys()]) dropSet(id);
+      tally?.reset();
+      tallyQuiet = true;
       applyWindows(ctx);
       applyEra(ctx);
     });
@@ -381,6 +407,7 @@ export default defineSystem({
     playStrikes(ctx);
     updateHohenburg(ctx, dt);
     updateFireworks(ctx, dt);
+    updateTally(ctx, dt);
   },
   // per rendered frame: hooks (also while `?manual` holds the fixed steps) and motion settings
   frame(_dt, ctx) {
@@ -391,6 +418,8 @@ export default defineSystem({
   dispose() {
     for (const id of [...live.keys()]) dropSet(id);
     fireworks?.dispose();
+    tally?.dispose();
+    tally = null;
     for (const w of lit.values()) w.dispose();
     lit.clear();
     root?.removeFromParent();

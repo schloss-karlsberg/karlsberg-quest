@@ -9,6 +9,7 @@ import type { Era } from '../../core/era';
 import { type SetBuilder, face } from './builder';
 import { rng } from './kit';
 import { fence, gate, railing } from './linear';
+import { RUND, rundHouse, rundHouses } from './rund';
 import { C, barrel, blockStack, cart, firePit, hoist, kennel, mortar, post, rubblePile, scale, scaffold, sentryBox, straw, table, tools, trough, wagon, woodStack } from './props';
 
 export interface SetDef {
@@ -460,4 +461,20 @@ const orangerieHof: SetDef = {
   },
 };
 
-export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof];
+/** The Karlslust's Rund (bible 1.6): the nineteen houses you count in K1 Teil B (playtest round 2). */
+const rund: SetDef = {
+  id: 'k1-rund',
+  eras: ['1789', '1793-02', '1793-07'],
+  x: RUND.x,
+  z: RUND.z,
+  range: 260,
+  keepFree: [
+    [1966, 92, 1.5], // the cassowary
+    [1903, 87, 1.5], // the gardener
+  ],
+  build(b) {
+    rundHouses().forEach((h, i) => rundHouse(b, h, 300 + i));
+  },
+};
+
+export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund];
