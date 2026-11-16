@@ -1006,3 +1006,11 @@ html[data-kq-contrast] .kqs-obj-dist {
   background: var(--ink-soft);
   transition: width 0.2s ease-out;
 }
+
+/* Subtitles keep clear of the side gutters (vitals dock bottom-left, gauges / bussole bottom-right)
+   the dialogue card also leaves at ≥ 900 px. */
+@media (min-width: 900px) {
+  .kq-subtitles {
+    width: min(900px, calc(100vw - 400px));
+  }
+}

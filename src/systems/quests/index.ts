@@ -87,6 +87,7 @@ class QuestRuntime {
   private readonly feed = new Feed();
   private readonly layer: HTMLElement;
   private readonly reward: RewardCard;
+  private bannerQ: (() => void)[] = [];
   readonly journal: JournalModal;
   private readonly beacons: Beacons;
   private readonly sentTopics = new Map<string, string>();
@@ -263,7 +264,8 @@ class QuestRuntime {
     const q = this.defs.get(id);
     if (!q) return;
     acceptSound(this.ctx.audio);
-    showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main');
+    // a banner never stamps over the reward card: it waits until the card is gone
+    this.bannerQ.push(() => showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main'));
     // voice givers speak their request (the dialogue presenter queues it)
     if ('voice' in q.giver) for (const l of q.offer) this.say(l);
     this.dirty = true;
@@ -411,6 +413,7 @@ class QuestRuntime {
     const ctx = this.ctx;
     // reward card on the UI clock (the conversation pauses the game)
     this.reward.tick(Math.min(dt, 0.1));
+    if (this.bannerQ.length && !this.reward.open) this.bannerQ.shift()?.();
     if (this.dirty) {
       this.dirty = false;
       this.renderTracker();

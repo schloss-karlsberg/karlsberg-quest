@@ -215,7 +215,7 @@
 .kqp-q-count {
   font-size: 15px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   color: #f6dc94;
 }
 .kqp-quick.kqp-empty {

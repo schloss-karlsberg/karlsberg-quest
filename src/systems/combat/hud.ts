@@ -15,7 +15,11 @@ const CSS = `
   background: linear-gradient(180deg, rgba(20,16,11,0.72), rgba(20,16,11,0.55)); box-shadow: 0 1px 3px rgba(0,0,0,0.5);
   transition: opacity 0.6s; font-family: var(--serif); color: #efe4cb; }
 .kqc-vitals.calm { opacity: 0.55; }
-.kqc-row { display: grid; grid-template-columns: 78px 1fr 30px; align-items: center; gap: 6px; }
+/* the vitals dock is 168 px wide (progression.css): label + number on one line, the bar full width below */
+.kqc-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'lbl num' 'bar bar'; align-items: end; column-gap: 6px; row-gap: 2px; }
+.kqc-row .lbl { grid-area: lbl; }
+.kqc-row .num { grid-area: num; }
+.kqc-row .kqc-track { grid-area: bar; }
 .kqc-row .lbl { font-family: var(--sc); font-size: 12.5px; letter-spacing: 0.04em; color: #e6d8b8; text-shadow: 0 1px 1px #000; }
 .kqc-row .num { font-family: var(--serif); font-size: 13px; text-align: right; color: #f3e9d3; text-shadow: 0 1px 1px #000; }
 .kqc-track { position: relative; height: 11px; border: 1px solid rgba(233,220,192,0.55); background: rgba(8,6,4,0.75); overflow: hidden; border-radius: 1px; }
@@ -34,12 +38,12 @@ html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc
 .kqc-bann { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 3px;
   background: linear-gradient(180deg, rgba(20,16,11,0.7), rgba(20,16,11,0.5)); transition: opacity 0.6s; }
 .kqc-bann.calm { opacity: 0.55; }
-.kqc-bann .lbl { font-family: var(--sc); font-size: 12.5px; letter-spacing: 0.04em; color: #e6d8b8; width: 78px; text-shadow: 0 1px 1px #000; }
+.kqc-bann .lbl { font-family: var(--sc); font-size: 12.5px; letter-spacing: 0.04em; color: #e6d8b8; text-shadow: 0 1px 1px #000; }
 .kqc-pip { position: relative; width: 14px; height: 18px; border: 1.5px solid #e9c77a; border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
   background: rgba(10,7,4,0.8); overflow: hidden; }
 .kqc-pip i { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #ff9a3a, #ffe2a0); }
 .kqc-pip.full { box-shadow: 0 0 6px rgba(255,190,90,0.55); }
-.kqc-bann .key { margin-left: auto; font-family: var(--serif); font-size: 12px; color: #d6c7a6; }
+.kqc-bann .key { margin-left: auto; font-family: var(--serif); font-size: 11px; line-height: 1.1; text-align: right; color: #d6c7a6; }
 .kqc-boss { width: 100%; text-align: center; padding: 6px 12px 7px; border-radius: 3px;
   background: linear-gradient(180deg, rgba(14,10,7,0.82), rgba(14,10,7,0.6)); box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
 .kqc-boss .name { font-family: var(--sc); font-size: 19px; color: #f1e3c2; letter-spacing: 0.06em; text-shadow: 0 1px 2px #000; }
