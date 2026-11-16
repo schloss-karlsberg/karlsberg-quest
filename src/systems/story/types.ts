@@ -694,6 +694,12 @@ export interface EpilogueReading {
   text: Record<string, string>;
   /** A sentence always appended after this slot. */
   always?: string;
+  /**
+   * Deeds (docs/ACTION-RPG.md §8.6): the first whose flag holds (equals `eq` when given) tells this
+   * slot's sentence; none → the variant / "offen" logic above. Quest deeds read the mirrored quest
+   * state (`quest.<id>` = "done").
+   */
+  deeds?: { flag: string; eq?: string | number | boolean; text: string }[];
 }
 
 export interface EpilogueData {

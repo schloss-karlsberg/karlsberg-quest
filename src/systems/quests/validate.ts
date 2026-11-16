@@ -134,20 +134,9 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
         if (h?.fact !== undefined && refs.facts && !refs.facts.has(h.fact)) err(file, qid, `history: unknown codex fact '${h.fact}'`);
         if (!h?.fact && !(h?.sources ?? []).length) warn(file, qid, 'history line without fact or sources (is it history?)');
       }
-      if (q.stance) {
-        const s = q.stance;
-        if (!isStr(s.id) || !isStr(s.prompt_de) || !isStr(s.flag)) err(file, qid, 'stance needs id, prompt_de and flag');
-        if (!Array.isArray(s.options) || s.options.length < 2) err(file, qid, 'stance needs ≥ 2 options');
-        else {
-          // two or three spoken replies; "offen" is what an unanswered stance becomes (story k4_15),
-          // not a button (playtest: a 'weiß nicht' option made the card read as a quiz)
-          if (s.options.length > 4) err(file, qid, 'stance: at most four replies');
-          for (const o of s.options) {
-            if (!isStr(o?.label_de) || !isStr(o?.value)) err(file, qid, 'stance option needs label_de and value');
-            checkLines(o?.reply, 'stance reply', file, qid, refs, err, warn);
-          }
-        }
-      }
+      // no stance cards (playtest round 3: replies to pick read as a quiz): a stance comes from
+      // what the player did (docs/ACTION-RPG.md §8.6 — quest deeds, rewards.flags, story flags)
+      if ((q as { stance?: unknown }).stance !== undefined) err(file, qid, 'stance cards are gone: let a deed set the flag (rewards.flags or the story), §8.6');
       // objectives
       if (!Array.isArray(q.objectives) || q.objectives.length === 0) err(file, qid, 'needs ≥ 1 objective');
       const objIds = new Set<string>();

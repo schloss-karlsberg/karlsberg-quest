@@ -50,18 +50,6 @@ export type QuestGiver = { npc: string } | { voice: 'laub' | 'marlene' };
  */
 export type QuestTurnin = 'giver' | 'auto' | { npc: string } | { voice: 'laub' | 'marlene' };
 
-/**
- * A "Haltung" (stance) asked at turn-in: an opinion, never graded, always with an "offen" option.
- * Writes `flags[flag] = option.value` (the epilogue reads these flags, docs/ACTION-RPG.md §8).
- */
-export interface QuestStance {
-  id: string;
-  prompt_de: string;
-  /** Story flag, e.g. "flag.k1_lohn". */
-  flag: string;
-  options: { label_de: string; value: string; reply?: QuestLine[] }[];
-}
-
 /** Where something is: a circle in the local frame (x east, z south), optional era / room. */
 export interface QuestPlace {
   x: number;
@@ -207,7 +195,6 @@ export interface QuestDef {
   turnin_lines?: QuestLine[];
   /** The history told at turn-in (sourced; unlocks the facts' codex cards). */
   history?: QuestHistoryLine[];
-  stance?: QuestStance;
   objectives: QuestObjective[];
   rewards?: QuestRewards;
   available?: QuestAvailability;
@@ -233,8 +220,12 @@ export interface QuestFile {
 /** A quest topic the quests system hands to the npc system (`npc:topics`). */
 export interface QuestTopic {
   quest: string;
-  /** 'offer' (shows accept / decline), 'progress', 'turnin' (then history, stance, rewards). */
-  kind: 'offer' | 'progress' | 'turnin';
+  /**
+   * 'offer' (the offer card: accept / later), 'progress', 'turnin' (the turn-in card, then the
+   * first history line and the reward), 'more' ("Erzähl mehr": the rest of the history, after
+   * turn-in, at the giver's own pace).
+   */
+  kind: 'offer' | 'progress' | 'turnin' | 'more';
   label: string;
   main: boolean;
   lines: QuestLine[];
@@ -242,8 +233,26 @@ export interface QuestTopic {
   declinable?: boolean;
   /** turnin: the history told after `lines` (sourced; each `fact` unlocks its codex card). Added by the quests track. */
   history?: QuestHistoryLine[];
-  /** turnin: the stance asked after the history (opinion, never graded). Added by the quests track. */
-  stance?: QuestStance;
+  /** offer / turnin: the quest card (title, giver, pitch, objectives, reward preview). */
+  card?: QuestCard;
+}
+
+/**
+ * The RPG quest card shown in the conversation (offer: Accept / Later; turn-in: "Übergeben"):
+ * built by the quests system (it knows item names), drawn by the npc system.
+ */
+export interface QuestCard {
+  title: string;
+  giver: string;
+  /** Short pitch (the journal summary). */
+  pitch: string;
+  main: boolean;
+  objectives: { text: string; optional: boolean; need: number; done?: boolean }[];
+  xp: number;
+  items: string[];
+  skills: string[];
+  /** Codex cards the turn-in tells. */
+  codex: number;
 }
 
 /** Marker over a giver's head / on the compass. Shape AND colour differ (colour-blind safe). */
@@ -483,8 +492,8 @@ export interface QuestProgress {
   counts: Record<string, number>;
   /** Game seconds (meta.playSeconds) when the state last changed. */
   t: number;
-  /** Stance answered (value). */
-  stance?: string;
+  /** The rest of the history ("Erzähl mehr") has been heard. */
+  told?: boolean;
   /** Why a failed quest ended ('story' = the story moved on, 'chapter' = its chapter ended). */
   reason?: string;
 }

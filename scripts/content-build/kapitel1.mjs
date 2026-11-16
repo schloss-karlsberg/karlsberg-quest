@@ -454,15 +454,6 @@ const k1Quests = {
         ln('hanne', 'Der Präsident Creuzer, sagen die Leute, hat alle Kassen geleert, sogar die der Witwen und Waisen. Und die einen bezahlt er mit Versprechungen. So steht es später auch beim Baudirektor.', { fact: 'cx.10', src: [P('S. 377, 396 f.'), src('NDB')] }),
         ln('hanne', 'Die Leute sagen Tränenberg zu dem Berg hier. Ob das so heißt, weiß ich nicht. Geweint wird jedenfalls.', { fact: 'cx.09', src: [src('HIB', 'Hobbyseite, Legende, unbelegt')] }),
       ],
-      stance: {
-        id: 'k1.lohn', flag: 'flag.k1_lohn',
-        prompt_de: 'Hanne: Warum krieg ich ihn nicht? Was meinen Sie?',
-        options: [
-          { label_de: 'Weil der Herzog nicht zahlen will.', value: 'will_nicht', reply: [ln('hanne', 'Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen. Das sag ich auch.')] },
-          { label_de: 'Weil der Präsident die Kassen geleert hat.', value: 'creuzer', reply: [ln('hanne', 'Dann soll er’s zurückbringen. Er wird’s nicht.')] },
-          { label_de: 'Weil das Geld in Hunde und Bilder geht.', value: 'hunde_bilder', reply: [ln('hanne', 'Die Hunde kriegen Fleisch, die Bilder kriegen Gold drumrum. Und wir kriegen Zettel.')] },
-        ],
-      },
       objectives: [
         { id: 'soll', type: 'talk', npc: 'soll', topic: 'matthes', text_de: 'Den Kanzlisten nach Matthes fragen' },
         { id: 'zeichen', type: 'examine', clue: 'clue.k1.zeichen', text_de: 'Matthes’ Zeichen am Quader unten an der Galerie' },

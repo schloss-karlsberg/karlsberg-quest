@@ -125,160 +125,169 @@
   ],
   "epilogue": {
     "intro": {
-      "museum": "Karlsberg bei Homburg, 1777–1793. Was das Feuer nicht fraß. Diese Seiten führte ein Kanzlist neben den Rechnungen des Hofes. Er schrieb auf, was der Hof schuldig blieb.",
+      "museum": "Karlsberg bei Homburg, 1777–1793. Was das Feuer nicht fraß. Diese Seiten führte ein Kanzlist neben den Rechnungen des Hofes; ich habe aufgeschrieben, was ich selbst gesehen habe.",
       "burn": "Was ich weiß, schreibe ich hier einmal hin, und dann nicht wieder.",
-      "keep": "Fortgesetzt im November, wie das letzte Mal. Q. L. und ich."
+      "keep": "Dieses Feldbuch hat 1840 ein Geometer namens Laub begonnen. Ich schreibe darin weiter, und er liest mit."
     },
     "readings": [
       {
-        "id": "p_spuren",
-        "entry": "entry.p.7",
-        "flags": [
-          "flag.p_spuren",
-          "p_spuren"
+        "id": "vermessung",
+        "deeds": [
+          {
+            "flag": "quest.q.p.trichter",
+            "eq": "done",
+            "text": "Im November vermaß ich für Marlene den Wald über dem Schloss. Einen Trichter im Westen habe ich vom Rand aus gemeldet und nicht angefasst, das Klügste, was ich in jenem Herbst getan habe."
+          },
+          {
+            "flag": "quest.q.p.meiler",
+            "eq": "done",
+            "text": "Im November vermaß ich für Marlene den Wald über dem Schloss. An drei Kohlplatten setzte ich Messpunkte: Dort hatten Köhler wochenlang gewohnt, für ein Schloss, das sie nie betreten haben."
+          },
+          {
+            "flag": "quest.q.p.irrlichter",
+            "eq": "done",
+            "text": "Im November vermaß ich für Marlene den Wald über dem Schloss. Über dem Weiherdamm löschte ich die ersten Lichter, bevor ich wusste, was sie waren."
+          }
         ],
-        "nouns": {
-          "n.hunde": "hunde",
-          "n.wild": "wild",
-          "n.messfehler": "messfehler"
-        },
         "text": {
-          "hunde": "In der Punktwolke von 2025 liefen Spuren durch den Wald, und ich habe sie für Hunde gehalten.",
-          "wild": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Wild, dachte ich zuerst.",
-          "messfehler": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Ein Messfehler, dachte ich zuerst. Das denkt man immer zuerst.",
-          "offen": "Was die Spuren in der Punktwolke waren, habe ich nicht entschieden."
+          "offen": "Im November vermaß ich für Marlene den Wald über dem Schloss. In der Punktwolke liefen Spuren quer über den Hof, und ich hielt sie für einen Messfehler."
         }
       },
       {
-        "id": "k1_lohn",
-        "entry": "entry.k1.10",
-        "flags": [
-          "flag.k1_lohn",
-          "k1_lohn"
+        "id": "hof",
+        "deeds": [
+          {
+            "flag": "quest.q.k1.hundenamen",
+            "eq": "done",
+            "text": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Jost brachte ich fünf Hundemarken, und er schrieb die Namen dorthin, wo sie keiner verbrennt."
+          },
+          {
+            "flag": "quest.q.k1.kasuar",
+            "eq": "done",
+            "text": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Den entlaufenen Kasuar ließ ich laufen, bis er müde war, und führte ihn heim, ohne einen Hieb."
+          },
+          {
+            "flag": "quest.q.k1.festplaene",
+            "eq": "done",
+            "text": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Die Festpläne des Baudirektors holte ich aus dem Wind; er hat es nie erfahren."
+          }
         ],
         "text": {
-          "will_nicht": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil der Herzog nicht zahlen wollte.",
-          "creuzer": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil ein Präsident die Kassen geleert hatte, auch die der Witwen und Waisen.",
-          "hunde_bilder": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil das Geld in tausend Hunde und tausend Bilder ging.",
-          "getaeuscht": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Man sagt, der Herzog sei getäuscht worden. Bezahlt hat er trotzdem nicht.",
-          "offen": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Warum, ist eine Frage, die ich offenlasse."
+          "offen": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Der Hof fütterte tausend Hunde und hatte keinen Kreuzer für einen Steinhauer."
         }
       },
       {
-        "id": "k2_pfeiffer",
-        "entry": "entry.k2.8",
-        "flags": [
-          "flag.k2_pfeiffer",
-          "k2_pfeiffer"
+        "id": "flucht",
+        "deeds": [
+          {
+            "flag": "flag.k2_tor",
+            "eq": "leuchten",
+            "text": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Als die Wagen abfuhren, habe ich ihnen geleuchtet."
+          },
+          {
+            "flag": "flag.k2_tor",
+            "eq": "dunkel",
+            "text": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Als die Wagen abfuhren, stand ich mit gelöschter Laterne im Dunkeln und sah nur ihre Fackeln."
+          }
         ],
         "text": {
-          "treu": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald und kletterte über den Zaun, aus Treue.",
-          "dorf": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, damit die Reiter sein Dorf schneller wieder verließen.",
-          "lohn": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Der Herzog glaubte, für Geld. Er bekam einen Dukaten.",
-          "angst": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, weil er Angst hatte. Angst ist auch ein Grund, das Richtige zu tun.",
-          "offen": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Warum, hat er niemandem aufgeschrieben."
+          "offen": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Der Herzog fuhr noch in derselben Nacht."
         }
       },
       {
-        "id": "k2_stelle",
-        "entry": "entry.k2.9",
-        "flags": [
-          "flag.k2_stelle",
-          "k2_stelle"
+        "id": "flucht-tat",
+        "deeds": [
+          {
+            "flag": "quest.q.k2.kisten",
+            "eq": "done",
+            "text": "Vier Bilderkisten hob ich einem Diener auf den Wagen nach Mannheim. Der Baudirektor wird gesagt haben, er habe es allein geschafft."
+          },
+          {
+            "flag": "quest.q.k2.bodenbrett",
+            "eq": "done",
+            "text": "Unter einem Brett in der Bildergalerie lag Solls graues Buch, und ich ließ es dort liegen, wo er es versteckt hatte."
+          },
+          {
+            "flag": "quest.q.k2.lichter",
+            "eq": "done",
+            "text": "Die Lichter im Wald waren ein glimmender Meiler und drei andere, die keine Kohle brauchten. Bei Mannlich steht davon nichts."
+          }
         ],
         "text": {
-          "gewarnt": "Ich hätte es auch getan.",
-          "geschwiegen": "Ich hätte geschwiegen, und ich weiß nicht, ob ich mich dafür schäme.",
-          "gefuehrt": "Ich hätte die Reiter geführt. Das schreibe ich hier auf, damit es wenigstens einer weiß.",
           "offen": ""
         }
       },
       {
-        "id": "k2_tor",
-        "flags": [
-          "flag.k2_tor",
-          "k2_tor"
+        "id": "brand",
+        "deeds": [
+          {
+            "flag": "quest.q.k3.lehnstuhl",
+            "eq": "done",
+            "text": "Am 28. Juli 1793 brannte das Schloss. Ich half Peter, einen vergoldeten Lehnstuhl durchs Tor zu bringen, für seine Mutter; vielleicht steht er heute noch in einer Stube."
+          },
+          {
+            "flag": "quest.q.k3.jaguar",
+            "eq": "done",
+            "text": "Am 28. Juli 1793 brannte das Schloss. Den Jaguar der Menagerie schickte ich mit Licht heim, nicht mit dem Stab."
+          },
+          {
+            "flag": "quest.q.k3.kabinett",
+            "eq": "done",
+            "text": "Am 28. Juli 1793 brannte das Schloss. Für Soll holte ich die Etiketten des Naturalienkabinetts zurück: Die Vögel verbrannten, die Liste überlebte."
+          }
         ],
         "text": {
-          "leuchten": "Als die Wagen abfuhren, habe ich ihnen geleuchtet.",
-          "dunkel": "Als die Wagen abfuhren, stand ich im Dunkeln.",
-          "offen": ""
+          "offen": "Am 28. Juli 1793 brannte das Schloss, und die Leute aus den Dörfern holten sich, was der Hof ihnen schuldig geblieben war."
         }
       },
       {
-        "id": "k3_pluenderer",
-        "entry": "entry.k3.10",
-        "flags": [
-          "flag.k3_pluenderer",
-          "k3_pluenderer"
+        "id": "steine",
+        "deeds": [
+          {
+            "flag": "quest.q.k4.zeichen",
+            "eq": "done",
+            "text": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Einer trägt Matthes’ Zeichen, einen offenen Winkel und drei Punkte, und liegt heute über einer Tür in der Stadt. Er ist der Lohn."
+          },
+          {
+            "flag": "quest.q.k4.pacht",
+            "eq": "done",
+            "text": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Soll bekam von mir drei angenagte Pachtzettel zurück und trug sie ein, weil Ordnung ist, wenn man trotzdem einträgt."
+          },
+          {
+            "flag": "quest.q.k4.graeben",
+            "eq": "done",
+            "text": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Was sie übrig ließen, sind Rinnen im Boden, die man im Relief für Mauern hält."
+          }
         ],
         "text": {
-          "schuld": "Am 28. Juli 1793 nahmen die Leute aus den Dörfern sich, was man ihnen schuldete.",
-          "stahlen": "Am 28. Juli 1793 stahlen die Leute aus den Dörfern, was nicht niet- und nagelfest war, und dann die Nägel.",
-          "retteten": "Am 28. Juli 1793 retteten die Leute aus den Dörfern, was zu retten war. Ein Stuhl steht heute vielleicht noch in einer Stube.",
-          "alle": "Am 28. Juli 1793 taten die Leute aus den Dörfern, was alle taten.",
-          "offen": "Was die Leute aus den Dörfern am 28. Juli 1793 taten, mag ich nicht in ein Wort fassen."
+          "offen": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Angezündet hatten ihn die Franzosen, vergessen haben ihn alle."
         }
       },
       {
-        "id": "k4_zerstoerer",
-        "entry": "entry.k4.7",
-        "flags": [
-          "flag.k4_zerstoerer",
-          "k4_zerstoerer"
+        "id": "meute",
+        "deeds": [
+          {
+            "flag": "quest.q.k4.stellen",
+            "eq": "done",
+            "text": "Am Ende legte ich mich am Zwinger in den Nebel und machte das Licht an, und Jost nahm den Hut ab."
+          }
         ],
-        "nouns": {
-          "n.r_herzog_selbst": "herzog"
-        },
         "text": {
-          "franzosen": "Angezündet haben ihn die Franzosen.",
-          "herzog": "Zerstört hat ihn am Ende der, der ihn so gebaut hat.",
-          "steintraeger": "Abgetragen haben ihn die Leute aus Homburg, Stein für Stein.",
-          "vergessen": "Zerstört hat ihn am Ende das Vergessen. Dagegen hilft nur Aufschreiben.",
-          "offen": "Wer ihn zerstört hat, weiß jeder anders.",
-          "herzog_selbst": "Zerstört hat ihn am Ende der, der ihn so gebaut hat."
+          "offen": "Am Ende stand ich am Zwinger im Nebel, und die Hunde liefen nicht mehr."
         }
       },
       {
-        "id": "k4_steine",
-        "entry": "entry.k4.9",
-        "flags": [
-          "flag.k4_steine",
-          "k4_steine"
+        "id": "meute-namen",
+        "deeds": [
+          {
+            "flag": "quest.q.k1.hundenamen",
+            "eq": "done",
+            "text": "Die Hunde hießen Diane, Sultan, Fanfare, Rauhreif und Bijou."
+          }
         ],
-        "nouns": {
-          "n.r_lohn_steine": "lohn"
-        },
         "text": {
-          "raub": "Die Steine in Homburg sind Raub am Raub.",
-          "lohn": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn.",
-          "neuanfang": "Das Schloss steckt in hundert Häusern. Es ist nicht weg, es ist überall.",
-          "nur_steine": "Es sind nur Steine. Was daran hängt, hängen wir dran.",
-          "offen": "",
-          "lohn_steine": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn."
+          "offen": "Wie die Hunde hießen, weiß nur Jost."
         }
-      },
-      {
-        "id": "k4_meute",
-        "entry": "entry.k4.8",
-        "flags": [
-          "flag.k4_meute",
-          "k4_meute"
-        ],
-        "nouns": {
-          "n.r_herr_suchen": "herr",
-          "n.r_chronik_bewachen": "chronik"
-        },
-        "text": {
-          "herr": "Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.",
-          "chronik": "Die Hunde liefen dort, wo eine Seite lag.",
-          "heimtreiben": "Die Hunde haben jeden heimgetrieben, der sich zu lange im Vergessen aufhielt. Fast jeden.",
-          "nie_abgeblasen": "Die Jagd wurde nie abgeblasen. So einfach war das.",
-          "offen": "Warum die Hunde liefen, weiß Jost. Ich habe ihn nicht gefragt.",
-          "herr_suchen": "Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.",
-          "chronik_bewachen": "Die Hunde liefen dort, wo eine Seite lag."
-        },
-        "always": "Sie hießen Diane, Sultan, Fanfare, Rauhreif und Bijou."
       }
     ],
     "object": {
@@ -312,11 +321,11 @@
     "outro": {
       "museum": "Quellen: Mannlich, Lebenserinnerungen. Die Akten. Der Boden. Und ein Geometer, der auf seinen fünfzig Metern besteht.",
       "burn": "Jetzt ist es still. Gute Nacht, Laub. Gute Nacht, Diane, Sultan, Fanfare, Rauhreif, Bijou.",
-      "keep": "Wird fortgesetzt."
+      "keep": "Das Buch bleibt offen. Wenn es dunkel wird, laufen fünf Hunde hinter mir her, nicht vor mir weg."
     },
     "coda": {
       "museum": "Ich bestehe darauf. — Q. L.",
-      "keep": "Jost war auch da."
+      "keep": "Einer muss sie ja füttern. — Jost"
     }
   }
 }

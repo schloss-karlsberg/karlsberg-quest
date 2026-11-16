@@ -368,18 +368,19 @@ describe('objectives, station, endings', () => {
     expect(new Set(keys).size).toBe(4);
   });
 
-  it('epilogue: readings from the Chronik, flags as fallback, "offen" otherwise', () => {
+  it('epilogue (story fallback): deeds tell the sentence, "offen" otherwise', () => {
     const { files } = loadStoryFiles(ROOT);
     const data = files.find((f) => f.story.epilogue)!.story.epilogue!;
     const e = composeEpilogue(data, 'museum', {
-      chronik: { 'case.p': { filled: {}, confirmed: [], readings: { 'entry.p.7': { b1: 'n.hunde' } } }, 'case.k4': { filled: {}, confirmed: [], readings: { 'entry.k4.8': { b: 'n.r_herr_suchen' } } } },
-      flags: { 'flag.k1_lohn': 'will_nicht', 'flag.k3_objekt': 'uhr', k2_tor: 'unbekannt' },
+      chronik: {},
+      flags: { 'quest.q.k1.hundenamen': 'done', 'quest.q.p.meiler': 'failed', 'flag.k3_objekt': 'uhr', 'flag.k2_tor': 'dunkel' },
     });
-    expect(e.variants.p_spuren).toBe('hunde');
-    expect(e.variants.k4_meute).toBe('herr');
-    expect(e.variants.k1_lohn).toBe('will_nicht');
-    expect(e.variants.k2_tor).toBe('offen');
-    expect(e.variants.k2_pfeiffer).toBe('offen');
+    expect(e.variants.hof).toBe('deed:0');
+    expect(e.variants.vermessung).toBe('offen');
+    expect(e.variants.flucht).toBe('deed:1');
+    expect(e.variants['meute-namen']).toBe('deed:0');
+    expect(e.lines.join(' ')).toMatch(/Diane, Sultan/);
+    expect(e.lines.join(' ')).toMatch(/Hundemarken/);
     expect(e.variants.object).toBe('uhr');
     expect(e.object).toMatch(/Uhr/);
     expect(e.intro.length).toBeGreaterThan(10);

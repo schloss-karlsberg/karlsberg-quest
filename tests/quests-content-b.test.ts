@@ -20,8 +20,8 @@ const Q3 = json<QuestFile>('content/quests/03-kapitel-3.quests.json');
 const Q4 = json<QuestFile>('content/quests/04-kapitel-4.quests.json');
 const S3 = json<StoryFile>('content/story/03-kapitel-3.story.json');
 const S4 = json<StoryFile>('content/story/04-kapitel-4.story.json');
-const S5 = json<StoryFile & { epilogue: { readings: { id: string; flags: string[]; text: Record<string, string> }[] } }>('content/story/05-enden.story.json');
-const ENDEN_PACK = json<{ dialogue: { id: string }[] }>('content/packs/enden.pack.json');
+const S5 = json<StoryFile & { epilogue: { readings: { id: string; deeds?: { flag: string; eq?: string; text: string }[]; text: Record<string, string> }[] } }>('content/story/05-enden.story.json');
+const ENDEN_PACK = json<{ dialogue: { id: string; text_de: string; trigger: { flag?: string; value?: string; block?: string } }[] }>('content/packs/enden.pack.json');
 const RAW3 = readFileSync(new URL('content/story/03-kapitel-3.story.json', ROOT), 'utf8');
 const RAW4 = readFileSync(new URL('content/story/04-kapitel-4.story.json', ROOT), 'utf8');
 const RAW5 = readFileSync(new URL('content/story/05-enden.story.json', ROOT), 'utf8');
@@ -73,7 +73,7 @@ describe('contentB: the shape of the chapters', () => {
       expect(raw).not.toMatch(/"(confirmed|caseComplete|reading)"\s*:/);
       expect(raw).not.toMatch(/"do":\s*"chronik"/);
     }
-    // Lücken keeps the readings action (no blanks: open stances become "offen")
+    // the last beat keeps the readings action (old saves: unanswered Chronik readings become "offen")
     const luecken = S4.beats.find((b) => b.id === 'k4_15')!;
     expect(walk(luecken).some((a) => a.do === 'readings' && a.fill === 'offen')).toBe(true);
   });
@@ -127,22 +127,21 @@ describe('contentB: the shape of the chapters', () => {
     expect(items.filter((i) => i.set === 'steinzeichen').length).toBe(3);
   });
 
-  it('stances: the four flags with "offen", every value told by the epilogue (story fallback and pack)', () => {
-    const stances = [...Q3.quests, ...Q4.quests].filter((q) => q.stance).map((q) => q.stance!);
-    expect(stances.map((s) => s.flag).sort()).toEqual(['flag.k3_pluenderer', 'flag.k4_meute', 'flag.k4_steine', 'flag.k4_zerstoerer']);
-    const lines = new Set(ENDEN_PACK.dialogue.map((d) => d.id));
-    const pk: Record<string, string> = { 'flag.k3_pluenderer': 'pluenderer', 'flag.k4_zerstoerer': 'zerstoerer', 'flag.k4_steine': 'steine', 'flag.k4_meute': 'meute' };
-    for (const s of stances) {
-      const values = s.options.map((o) => o.value);
-      expect(values.length, s.flag).toBeLessThanOrEqual(3);
-      expect(values, s.flag).not.toContain('offen');
-      const reading = S5.epilogue.readings.find((r) => r.flags?.includes(s.flag))!;
-      expect('offen' in reading.text, `${s.flag}: the "offen" fallback`).toBe(true);
-      for (const v of values) {
-        expect(v in reading.text, `${s.flag}=${v} (fallback)`).toBe(true);
-        if (v !== 'offen') expect(lines.has(`epilog.${pk[s.flag]}.${v}`), `${s.flag}=${v} (pack)`).toBe(true);
-      }
+  it('deeds, not stances: K3/K4 side quests and the Festsaal object are told by the epilogue (story fallback and pack, same words)', () => {
+    for (const q of [...Q3.quests, ...Q4.quests]) expect((q as { stance?: unknown }).stance, q.id).toBeUndefined();
+    const sides = [...Q3.quests, ...Q4.quests].filter((q) => q.kind === 'side').map((q) => `quest.${q.id}`);
+    const deeds = S5.epilogue.readings.flatMap((r) => r.deeds ?? []);
+    for (const f of sides) expect(deeds.some((d) => d.flag === f && d.eq === 'done'), f).toBe(true);
+    // the pack tells the same sentences as the fallback (one source: scripts/content-build/epilogue-deeds.mjs)
+    for (const d of deeds) expect(ENDEN_PACK.dialogue.some((l) => l.trigger.flag === d.flag && l.text_de === d.text), d.flag).toBe(true);
+    // every slot has an "offen" (nothing done) entry, and no sentence is a raw flag value
+    for (const r of S5.epilogue.readings) {
+      expect(typeof r.text.offen, r.id).toBe('string');
+      for (const d of r.deeds ?? []) expect(d.text).not.toMatch(/flag\.|quest\.|_/);
     }
+    // the epilogue no longer reads stance flags, and the old placeholders are gone
+    expect(RAW5).not.toMatch(/flag\.k1_lohn|flag\.k3_pluenderer|Fortgesetzt im November|Jost war auch da/);
+    expect(JSON.stringify(ENDEN_PACK)).not.toMatch(/Fortgesetzt im November|Jost war auch da|"Wird fortgesetzt\."/);
   });
 
   it('no enemies in the Festsaal, the finale or the endings; combat is off from the finale on', () => {
@@ -266,7 +265,6 @@ function play(files: QuestFile[], ids: string[]) {
       }
     // 'auto' turn-ins pay out at once; the others wait at their npc
     expect(book.state(id), id).toBe(q.turnin === 'auto' ? 'done' : 'ready');
-    if (q.stance) expect(book.stance(id, q.stance.options[0]!.value)).toBe(true);
     if (q.turnin !== 'auto') expect(book.complete(id)).not.toBeNull();
     expect(flags[`quest.${id}`]).toBe('done');
   }
@@ -277,10 +275,11 @@ describe('contentB: every quest plays through headless; the level curve', () => 
   const ids = (f: QuestFile, kind?: 'main' | 'side') => f.quests.filter((q) => !kind || q.kind === kind).map((q) => q.id);
   const START = 3600; // end of Ch. 2: L8 (§6.1 target L7–8)
 
-  it('K3 and K4 main + side quests reach ready and pay out; stances take a spoken reply', () => {
+  it('K3 and K4 main + side quests reach ready and pay out; the deeds are the quest flags', () => {
     const r = play([Q3, Q4], [...ids(Q3), ...ids(Q4)]);
-    expect(r.flags['flag.k3_pluenderer']).toBe('schuld');
-    expect(r.flags['flag.k4_meute']).toBe('herr_suchen');
+    expect(r.flags['quest.q.k3.lehnstuhl']).toBe('done');
+    expect(r.flags['quest.q.k4.zeichen']).toBe('done');
+    expect(r.flags['flag.k3_pluenderer']).toBeUndefined();
     expect(r.xp).toBeGreaterThan(0);
   });
 

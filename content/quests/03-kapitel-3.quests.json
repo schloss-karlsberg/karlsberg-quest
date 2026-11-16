@@ -95,43 +95,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k3.pluenderer",
-        "prompt_de": "Und? Was machen die Leute aus den Dörfern da drüben, was meinst du?",
-        "flag": "flag.k3_pluenderer",
-        "options": [
-          {
-            "label_de": "Sie nehmen sich, was man ihnen schuldet.",
-            "value": "schuld",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Fünf Jahre Zinsen auf einen Gulden. So rechne ich auch."
-              }
-            ]
-          },
-          {
-            "label_de": "Sie stehlen.",
-            "value": "stahlen",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Kann sein. Dann stiehlt der Hof seit zwanzig Jahren, und keiner hat’s aufgeschrieben."
-              }
-            ]
-          },
-          {
-            "label_de": "Sie retten, was zu retten ist.",
-            "value": "retteten",
-            "reply": [
-              {
-                "speaker": "hanne",
-                "text": "Ein Stuhl in einer Stube brennt nicht. Das stimmt."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "ehrenhof",

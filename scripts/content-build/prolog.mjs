@@ -364,15 +364,6 @@ const prologQuests = {
         ln('laub', 'In den Dörfern erzählt man von einer Wilden Jagd, die in den Rauhnächten über den Himmel reitet. Mit dem Herzog verbindet sie keine Quelle. Die Hunde, die Sie hören, sind meine Sorge, nicht die der Historiker.', { fact: 'cx.36', src: [src('WP-WJ')] }),
         ln('laub', 'Damit wir uns verstehen: Mich gibt es nicht, die Meute nicht und die Nebelinge auch nicht. Den Herzog, das Schloss und die Schulden gab es. Im Codex steht, was erfunden ist.', { fact: 'cx.38' }),
       ],
-      stance: {
-        id: 'p.spuren', flag: 'flag.p_spuren',
-        prompt_de: 'Laub: Die Abdrücke in der Punktwolke, quer über den Hof. Was war das, Ihrer Meinung nach?',
-        options: [
-          { label_de: 'Hunde.', value: 'hunde', reply: [ln('laub', 'Ich habe nichts gesagt. Ich habe nur genickt. In einer Bussole sieht man das schlecht.')] },
-          { label_de: 'Wild. Wildschweine, Rehe.', value: 'wild', reply: [ln('laub', 'Wild trabt nicht paarweise. Aber bitte. Es ist Ihr Feldbuch.')] },
-          { label_de: 'Ein Messfehler.', value: 'messfehler', reply: [ln('laub', 'Ein Messfehler mit Zähnen. Ich notiere: Messfehler.')] },
-        ],
-      },
       objectives: [
         { id: 'wolke', type: 'examine', clue: 'clue.p.punktwolke', text_de: 'Die Punktwolke auf dem Tablet ansehen' },
         { id: 'wechsel', type: 'reach', after: ['wolke'], text_de: 'Am Ehrenhof: Q – Sommer 1789', where: place(1218, -1118, 30, '1789') },

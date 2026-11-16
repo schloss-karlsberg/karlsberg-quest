@@ -214,7 +214,7 @@
     {
       "id": "epilog.intro.museum",
       "speaker": "epilog",
-      "text_de": "Karlsberg bei Homburg, 1777–1793. Was das Feuer nicht fraß. Diese Seiten führte ein Kanzlist neben den Rechnungen des Hofes. Er schrieb auf, was der Hof schuldig blieb.",
+      "text_de": "Karlsberg bei Homburg, 1777–1793. Was das Feuer nicht fraß. Diese Seiten führte ein Kanzlist neben den Rechnungen des Hofes; ich habe aufgeschrieben, was ich selbst gesehen habe.",
       "trigger": {
         "event": "epilog:line",
         "block": "intro",
@@ -236,7 +236,7 @@
     {
       "id": "epilog.intro.keep",
       "speaker": "epilog",
-      "text_de": "Fortgesetzt im November, wie das letzte Mal. Q. L. und ich.",
+      "text_de": "Dieses Feldbuch hat 1840 ein Geometer namens Laub begonnen. Ich schreibe darin weiter, und er liest mit.",
       "trigger": {
         "event": "epilog:line",
         "block": "intro",
@@ -245,468 +245,314 @@
       "once": false
     },
     {
-      "id": "epilog.spuren.hunde",
+      "id": "epilog.vermessung.1",
       "speaker": "epilog",
-      "text_de": "In der Punktwolke von 2025 liefen Spuren durch den Wald, und ich habe sie für Hunde gehalten.",
+      "text_de": "Im November vermaß ich für Marlene den Wald über dem Schloss. Einen Trichter im Westen habe ich vom Rand aus gemeldet und nicht angefasst, das Klügste, was ich in jenem Herbst getan habe.",
       "trigger": {
         "event": "epilog:line",
-        "block": "spuren",
-        "flag": "flag.p_spuren",
-        "value": "n.hunde"
+        "block": "vermessung",
+        "flag": "quest.q.p.trichter",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.spuren.wild",
+      "id": "epilog.vermessung.2",
       "speaker": "epilog",
-      "text_de": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Wild, dachte ich zuerst.",
+      "text_de": "Im November vermaß ich für Marlene den Wald über dem Schloss. An drei Kohlplatten setzte ich Messpunkte: Dort hatten Köhler wochenlang gewohnt, für ein Schloss, das sie nie betreten haben.",
       "trigger": {
         "event": "epilog:line",
-        "block": "spuren",
-        "flag": "flag.p_spuren",
-        "value": "n.wild"
+        "block": "vermessung",
+        "flag": "quest.q.p.meiler",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.spuren.messfehler",
+      "id": "epilog.vermessung.3",
       "speaker": "epilog",
-      "text_de": "In der Punktwolke von 2025 liefen Spuren durch den Wald. Ein Messfehler, dachte ich zuerst. Das denkt man immer zuerst.",
+      "text_de": "Im November vermaß ich für Marlene den Wald über dem Schloss. Über dem Weiherdamm löschte ich die ersten Lichter, bevor ich wusste, was sie waren.",
       "trigger": {
         "event": "epilog:line",
-        "block": "spuren",
-        "flag": "flag.p_spuren",
-        "value": "n.messfehler"
+        "block": "vermessung",
+        "flag": "quest.q.p.irrlichter",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.spuren.offen",
+      "id": "epilog.vermessung.offen",
       "speaker": "epilog",
-      "text_de": "Was die Spuren in der Punktwolke waren, habe ich nicht entschieden.",
+      "text_de": "Im November vermaß ich für Marlene den Wald über dem Schloss. In der Punktwolke liefen Spuren quer über den Hof, und ich hielt sie für einen Messfehler.",
       "trigger": {
         "event": "epilog:line",
-        "block": "spuren",
-        "flag": "flag.p_spuren",
+        "block": "vermessung",
+        "flag": "quest.q.p.trichter",
         "value": "offen"
       },
       "once": false
     },
     {
-      "id": "epilog.lohn.will_nicht",
+      "id": "epilog.hof.1",
       "speaker": "epilog",
-      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil der Herzog nicht zahlen wollte.",
+      "text_de": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Jost brachte ich fünf Hundemarken, und er schrieb die Namen dorthin, wo sie keiner verbrennt.",
       "trigger": {
         "event": "epilog:line",
-        "block": "lohn",
-        "flag": "flag.k1_lohn",
-        "value": "n.r_will_nicht"
+        "block": "hof",
+        "flag": "quest.q.k1.hundenamen",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.lohn.creuzer",
+      "id": "epilog.hof.2",
       "speaker": "epilog",
-      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil ein Präsident die Kassen geleert hatte, auch die der Witwen und Waisen.",
+      "text_de": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Den entlaufenen Kasuar ließ ich laufen, bis er müde war, und führte ihn heim, ohne einen Hieb.",
       "trigger": {
         "event": "epilog:line",
-        "block": "lohn",
-        "flag": "flag.k1_lohn",
-        "value": "n.r_creuzer"
+        "block": "hof",
+        "flag": "quest.q.k1.kasuar",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.lohn.hunde_bilder",
+      "id": "epilog.hof.3",
       "speaker": "epilog",
-      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht, weil das Geld in tausend Hunde und tausend Bilder ging.",
+      "text_de": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Die Festpläne des Baudirektors holte ich aus dem Wind; er hat es nie erfahren.",
       "trigger": {
         "event": "epilog:line",
-        "block": "lohn",
-        "flag": "flag.k1_lohn",
-        "value": "n.r_hunde_bilder"
+        "block": "hof",
+        "flag": "quest.q.k1.festplaene",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.lohn.getaeuscht",
+      "id": "epilog.hof.offen",
       "speaker": "epilog",
-      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Man sagt, der Herzog sei getäuscht worden. Bezahlt hat er trotzdem nicht.",
+      "text_de": "Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Der Hof fütterte tausend Hunde und hatte keinen Kreuzer für einen Steinhauer.",
       "trigger": {
         "event": "epilog:line",
-        "block": "lohn",
-        "flag": "flag.k1_lohn",
-        "value": "n.r_getaeuscht"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.lohn.offen",
-      "speaker": "epilog",
-      "text_de": "Hanne, Witwe des Steinhauers Matthes, bekam seinen Lohn nicht. Warum, ist eine Frage, die ich offenlasse.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "lohn",
-        "flag": "flag.k1_lohn",
+        "block": "hof",
+        "flag": "quest.q.k1.hundenamen",
         "value": "offen"
       },
       "once": false
     },
     {
-      "id": "epilog.warner.treu",
+      "id": "epilog.flucht.1",
       "speaker": "epilog",
-      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald und kletterte über den Zaun, aus Treue.",
+      "text_de": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Als die Wagen abfuhren, habe ich ihnen geleuchtet.",
       "trigger": {
         "event": "epilog:line",
-        "block": "warner",
-        "flag": "flag.k2_pfeiffer",
-        "value": "n.r_treu"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.warner.dorf",
-      "speaker": "epilog",
-      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, damit die Reiter sein Dorf schneller wieder verließen.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner",
-        "flag": "flag.k2_pfeiffer",
-        "value": "n.r_dorf"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.warner.lohn",
-      "speaker": "epilog",
-      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Der Herzog glaubte, für Geld. Er bekam einen Dukaten.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner",
-        "flag": "flag.k2_pfeiffer",
-        "value": "n.r_lohn"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.warner.angst",
-      "speaker": "epilog",
-      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald, weil er Angst hatte. Angst ist auch ein Grund, das Richtige zu tun.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner",
-        "flag": "flag.k2_pfeiffer",
-        "value": "n.r_angst"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.warner.offen",
-      "speaker": "epilog",
-      "text_de": "Nikel Pfeiffer aus Rohrbach rannte in der Nacht durch den Wald. Warum, hat er niemandem aufgeschrieben.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner",
-        "flag": "flag.k2_pfeiffer",
-        "value": "offen"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.stelle.gewarnt",
-      "speaker": "epilog",
-      "text_de": "Ich hätte es auch getan.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner-stelle",
-        "flag": "flag.k2_stelle",
-        "value": "n.r_gewarnt"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.stelle.geschwiegen",
-      "speaker": "epilog",
-      "text_de": "Ich hätte geschwiegen, und ich weiß nicht, ob ich mich dafür schäme.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner-stelle",
-        "flag": "flag.k2_stelle",
-        "value": "n.r_geschwiegen"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.stelle.gefuehrt",
-      "speaker": "epilog",
-      "text_de": "Ich hätte die Reiter geführt. Das schreibe ich hier auf, damit es wenigstens einer weiß.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner-stelle",
-        "flag": "flag.k2_stelle",
-        "value": "n.r_gefuehrt"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.tor.leuchten",
-      "speaker": "epilog",
-      "text_de": "Als die Wagen abfuhren, habe ich ihnen geleuchtet.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "warner-tor",
+        "block": "flucht",
         "flag": "flag.k2_tor",
         "value": "leuchten"
       },
       "once": false
     },
     {
-      "id": "epilog.tor.dunkel",
+      "id": "epilog.flucht.2",
       "speaker": "epilog",
-      "text_de": "Als die Wagen abfuhren, stand ich im Dunkeln.",
+      "text_de": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Als die Wagen abfuhren, stand ich mit gelöschter Laterne im Dunkeln und sah nur ihre Fackeln.",
       "trigger": {
         "event": "epilog:line",
-        "block": "warner-tor",
+        "block": "flucht",
         "flag": "flag.k2_tor",
         "value": "dunkel"
       },
       "once": false
     },
     {
-      "id": "epilog.pluenderer.schuld",
+      "id": "epilog.flucht.offen",
       "speaker": "epilog",
-      "text_de": "Am 28. Juli 1793 nahmen die Leute aus den Dörfern sich, was man ihnen schuldete.",
+      "text_de": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Der Herzog fuhr noch in derselben Nacht.",
       "trigger": {
         "event": "epilog:line",
-        "block": "pluenderer",
-        "flag": "flag.k3_pluenderer",
-        "value": "n.r_schuld"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.pluenderer.stahlen",
-      "speaker": "epilog",
-      "text_de": "Am 28. Juli 1793 stahlen die Leute aus den Dörfern, was nicht niet- und nagelfest war, und dann die Nägel.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "pluenderer",
-        "flag": "flag.k3_pluenderer",
-        "value": "n.r_stahlen"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.pluenderer.retteten",
-      "speaker": "epilog",
-      "text_de": "Am 28. Juli 1793 retteten die Leute aus den Dörfern, was zu retten war. Ein Stuhl steht heute vielleicht noch in einer Stube.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "pluenderer",
-        "flag": "flag.k3_pluenderer",
-        "value": "n.r_retteten"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.pluenderer.alle",
-      "speaker": "epilog",
-      "text_de": "Am 28. Juli 1793 taten die Leute aus den Dörfern, was alle taten.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "pluenderer",
-        "flag": "flag.k3_pluenderer",
-        "value": "n.r_alle"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.pluenderer.offen",
-      "speaker": "epilog",
-      "text_de": "Was die Leute aus den Dörfern am 28. Juli 1793 taten, mag ich nicht in ein Wort fassen.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "pluenderer",
-        "flag": "flag.k3_pluenderer",
+        "block": "flucht",
+        "flag": "flag.k2_tor",
         "value": "offen"
       },
       "once": false
     },
     {
-      "id": "epilog.zerstoerer.franzosen",
+      "id": "epilog.flucht-tat.1",
       "speaker": "epilog",
-      "text_de": "Angezündet haben ihn die Franzosen.",
+      "text_de": "Vier Bilderkisten hob ich einem Diener auf den Wagen nach Mannheim. Der Baudirektor wird gesagt haben, er habe es allein geschafft.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer",
-        "flag": "flag.k4_zerstoerer",
-        "value": "n.r_franzosen"
+        "block": "flucht-tat",
+        "flag": "quest.q.k2.kisten",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.zerstoerer.herzog_selbst",
+      "id": "epilog.flucht-tat.2",
       "speaker": "epilog",
-      "text_de": "Zerstört hat ihn am Ende der, der ihn so gebaut hat.",
+      "text_de": "Unter einem Brett in der Bildergalerie lag Solls graues Buch, und ich ließ es dort liegen, wo er es versteckt hatte.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer",
-        "flag": "flag.k4_zerstoerer",
-        "value": "n.r_herzog_selbst"
+        "block": "flucht-tat",
+        "flag": "quest.q.k2.bodenbrett",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.zerstoerer.steintraeger",
+      "id": "epilog.flucht-tat.3",
       "speaker": "epilog",
-      "text_de": "Abgetragen haben ihn die Leute aus Homburg, Stein für Stein.",
+      "text_de": "Die Lichter im Wald waren ein glimmender Meiler und drei andere, die keine Kohle brauchten. Bei Mannlich steht davon nichts.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer",
-        "flag": "flag.k4_zerstoerer",
-        "value": "n.r_steintraeger"
+        "block": "flucht-tat",
+        "flag": "quest.q.k2.lichter",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.zerstoerer.vergessen",
+      "id": "epilog.brand.1",
       "speaker": "epilog",
-      "text_de": "Zerstört hat ihn am Ende das Vergessen. Dagegen hilft nur Aufschreiben.",
+      "text_de": "Am 28. Juli 1793 brannte das Schloss. Ich half Peter, einen vergoldeten Lehnstuhl durchs Tor zu bringen, für seine Mutter; vielleicht steht er heute noch in einer Stube.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer",
-        "flag": "flag.k4_zerstoerer",
-        "value": "n.r_vergessen"
+        "block": "brand",
+        "flag": "quest.q.k3.lehnstuhl",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.zerstoerer.offen",
+      "id": "epilog.brand.2",
       "speaker": "epilog",
-      "text_de": "Wer ihn zerstört hat, weiß jeder anders.",
+      "text_de": "Am 28. Juli 1793 brannte das Schloss. Den Jaguar der Menagerie schickte ich mit Licht heim, nicht mit dem Stab.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer",
-        "flag": "flag.k4_zerstoerer",
+        "block": "brand",
+        "flag": "quest.q.k3.jaguar",
+        "value": "done"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.brand.3",
+      "speaker": "epilog",
+      "text_de": "Am 28. Juli 1793 brannte das Schloss. Für Soll holte ich die Etiketten des Naturalienkabinetts zurück: Die Vögel verbrannten, die Liste überlebte.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "brand",
+        "flag": "quest.q.k3.kabinett",
+        "value": "done"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.brand.offen",
+      "speaker": "epilog",
+      "text_de": "Am 28. Juli 1793 brannte das Schloss, und die Leute aus den Dörfern holten sich, was der Hof ihnen schuldig geblieben war.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "brand",
+        "flag": "quest.q.k3.lehnstuhl",
         "value": "offen"
       },
       "once": false
     },
     {
-      "id": "epilog.steine.raub",
+      "id": "epilog.steine.1",
       "speaker": "epilog",
-      "text_de": "Die Steine in Homburg sind Raub am Raub.",
+      "text_de": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Einer trägt Matthes’ Zeichen, einen offenen Winkel und drei Punkte, und liegt heute über einer Tür in der Stadt. Er ist der Lohn.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer-steine",
-        "flag": "flag.k4_steine",
-        "value": "n.r_raub"
+        "block": "steine",
+        "flag": "quest.q.k4.zeichen",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.steine.lohn_steine",
+      "id": "epilog.steine.2",
       "speaker": "epilog",
-      "text_de": "Über einer Tür in Homburg liegt ein Stein mit einem Winkel und drei Punkten. Er ist der Lohn.",
+      "text_de": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Soll bekam von mir drei angenagte Pachtzettel zurück und trug sie ein, weil Ordnung ist, wenn man trotzdem einträgt.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer-steine",
-        "flag": "flag.k4_steine",
-        "value": "n.r_lohn_steine"
+        "block": "steine",
+        "flag": "quest.q.k4.pacht",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.steine.neuanfang",
+      "id": "epilog.steine.3",
       "speaker": "epilog",
-      "text_de": "Das Schloss steckt in hundert Häusern. Es ist nicht weg, es ist überall.",
+      "text_de": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Was sie übrig ließen, sind Rinnen im Boden, die man im Relief für Mauern hält.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer-steine",
-        "flag": "flag.k4_steine",
-        "value": "n.r_neuanfang"
+        "block": "steine",
+        "flag": "quest.q.k4.graeben",
+        "value": "done"
       },
       "once": false
     },
     {
-      "id": "epilog.steine.nur_steine",
+      "id": "epilog.steine.offen",
       "speaker": "epilog",
-      "text_de": "Es sind nur Steine. Was daran hängt, hängen wir dran.",
+      "text_de": "Drei Jahre später trugen die Homburger den Karlsberg ab, Stein für Stein. Angezündet hatten ihn die Franzosen, vergessen haben ihn alle.",
       "trigger": {
         "event": "epilog:line",
-        "block": "zerstoerer-steine",
-        "flag": "flag.k4_steine",
-        "value": "n.r_nur_steine"
+        "block": "steine",
+        "flag": "quest.q.k4.zeichen",
+        "value": "offen"
       },
       "once": false
     },
     {
-      "id": "epilog.meute.herr_suchen",
+      "id": "epilog.meute.1",
       "speaker": "epilog",
-      "text_de": "Die Hunde suchten ihren Herrn, der nach Mannheim gefahren war, ohne abzublasen.",
+      "text_de": "Am Ende legte ich mich am Zwinger in den Nebel und machte das Licht an, und Jost nahm den Hut ab.",
       "trigger": {
         "event": "epilog:line",
         "block": "meute",
-        "flag": "flag.k4_meute",
-        "value": "n.r_herr_suchen"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.meute.chronik_bewachen",
-      "speaker": "epilog",
-      "text_de": "Die Hunde liefen dort, wo eine Seite lag.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "meute",
-        "flag": "flag.k4_meute",
-        "value": "n.r_chronik_bewachen"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.meute.heimtreiben",
-      "speaker": "epilog",
-      "text_de": "Die Hunde haben jeden heimgetrieben, der sich zu lange im Vergessen aufhielt. Fast jeden.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "meute",
-        "flag": "flag.k4_meute",
-        "value": "n.r_heimtreiben"
-      },
-      "once": false
-    },
-    {
-      "id": "epilog.meute.nie_abgeblasen",
-      "speaker": "epilog",
-      "text_de": "Die Jagd wurde nie abgeblasen. So einfach war das.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "meute",
-        "flag": "flag.k4_meute",
-        "value": "n.r_nie_abgeblasen"
+        "flag": "quest.q.k4.stellen",
+        "value": "done"
       },
       "once": false
     },
     {
       "id": "epilog.meute.offen",
       "speaker": "epilog",
-      "text_de": "Warum die Hunde liefen, weiß Jost. Ich habe ihn nicht gefragt.",
+      "text_de": "Am Ende stand ich am Zwinger im Nebel, und die Hunde liefen nicht mehr.",
       "trigger": {
         "event": "epilog:line",
         "block": "meute",
-        "flag": "flag.k4_meute",
+        "flag": "quest.q.k4.stellen",
         "value": "offen"
       },
       "once": false
     },
     {
-      "id": "epilog.meute.namen",
+      "id": "epilog.meute-namen.1",
       "speaker": "epilog",
-      "text_de": "Sie hießen Diane, Sultan, Fanfare, Rauhreif und Bijou.",
+      "text_de": "Die Hunde hießen Diane, Sultan, Fanfare, Rauhreif und Bijou.",
       "trigger": {
         "event": "epilog:line",
-        "block": "meute-namen"
+        "block": "meute-namen",
+        "flag": "quest.q.k1.hundenamen",
+        "value": "done"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.meute-namen.offen",
+      "speaker": "epilog",
+      "text_de": "Wie die Hunde hießen, weiß nur Jost.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "meute-namen",
+        "flag": "quest.q.k1.hundenamen",
+        "value": "offen"
       },
       "once": false
     },
@@ -878,17 +724,6 @@
       "once": false
     },
     {
-      "id": "laub.end.museum_4",
-      "speaker": "laub",
-      "text_de": "Ich bestehe darauf.",
-      "trigger": {
-        "event": "epilog:line",
-        "block": "schluss-nachsatz",
-        "ending": "museum"
-      },
-      "once": false
-    },
-    {
       "id": "epilog.schluss.burn",
       "speaker": "epilog",
       "text_de": "Jetzt ist es still. Gute Nacht, Laub. Gute Nacht, Diane, Sultan, Fanfare, Rauhreif, Bijou.",
@@ -902,7 +737,7 @@
     {
       "id": "epilog.schluss.keep",
       "speaker": "epilog",
-      "text_de": "Wird fortgesetzt.",
+      "text_de": "Das Buch bleibt offen. Wenn es dunkel wird, laufen fünf Hunde hinter mir her, nicht vor mir weg.",
       "trigger": {
         "event": "epilog:line",
         "block": "schluss",
@@ -911,9 +746,20 @@
       "once": false
     },
     {
+      "id": "laub.end.museum_4",
+      "speaker": "laub",
+      "text_de": "Ich bestehe darauf. — Q. L.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "schluss-nachsatz",
+        "ending": "museum"
+      },
+      "once": false
+    },
+    {
       "id": "jost.end.keep",
       "speaker": "jost",
-      "text_de": "Jost war auch da.",
+      "text_de": "Einer muss sie ja füttern. — Jost",
       "trigger": {
         "event": "epilog:line",
         "block": "schluss-nachsatz",

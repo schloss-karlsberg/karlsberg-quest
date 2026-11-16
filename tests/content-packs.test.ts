@@ -88,7 +88,8 @@ describe('campaign packs', () => {
     for (const c of clues) for (const f of c.requires?.flags ?? []) expect(revealed.has(f) || STORY_FLAGS.has(f), `${c.id} requires ${f}`).toBe(true);
     for (const d of dialogue) {
       const f = d.trigger.flag as string | undefined;
-      if (f) expect(revealed.has(f) || STORY_FLAGS.has(f) || readingFlags.has(f), `${d.id} uses ${f}`).toBe(true);
+      // quest.<id>: the quest state mirror (epilogue deeds, docs/ACTION-RPG.md §8.6)
+      if (f) expect(revealed.has(f) || STORY_FLAGS.has(f) || readingFlags.has(f) || /^quest\.q\.[a-z0-9]+\.[a-z0-9_]+$/.test(f), `${d.id} uses ${f}`).toBe(true);
     }
   });
 

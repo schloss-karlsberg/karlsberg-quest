@@ -146,12 +146,20 @@ export function availableHolds(q: QuestDef, st: (id: string) => QuestState, flag
 
 const DEFAULT_ACCEPT = 'Ich kümmere mich darum.';
 
+/**
+ * History lines told at a turn-in itself (playtest round 3: four-line lectures). The rest waits
+ * for "Erzähl mehr" (npc givers) or the journal (voices); every line's codex card unlocks at once.
+ */
+export const HISTORY_AT_TURNIN = 1;
+
 export class QuestBook {
   /** Called after any change (UI refresh, autosave). */
   onChange: (reason: string) => void = () => {};
   /** Called on every turn-in with what it paid (the reward card). */
   onPayout: (p: QuestPayout) => void = () => {};
   private readonly drops = new Map<string, number>();
+  /** The story chapter now ("Erzähl mehr" topics stay in their chapter); null = any. */
+  chapter: string | null = null;
 
   constructor(
     readonly defs: ReadonlyMap<string, QuestDefIn>,
@@ -444,14 +452,12 @@ export class QuestBook {
     return true;
   }
 
-  /** A stance answered at turn-in: writes its flag (an opinion, never graded). */
-  stance(id: string, value: string): boolean {
-    const q = this.defs.get(id);
-    const s = q?.stance;
-    if (!q || !s || !s.options.some((o) => o.value === value)) return false;
-    this.env.flags[s.flag] = value;
-    this.prog(id).stance = value;
-    this.onChange('stance');
+  /** "Erzähl mehr" heard: the rest of a quest's history is told (the topic goes away). */
+  told(id: string): boolean {
+    const p = this.slice.quests[id];
+    if (!p || p.state !== 'done' || p.told) return false;
+    p.told = true;
+    this.onChange('told');
     return true;
   }
 
@@ -594,8 +600,11 @@ export class QuestBook {
           t: { quest: q.id, kind: 'offer', label, main, lines: q.offer, accept: q.accept_de ?? DEFAULT_ACCEPT, declinable: q.declinable ?? !main },
         });
       else if (st === 'ready' && atTurnin)
-        out.push({ rank: 0, t: { quest: q.id, kind: 'turnin', label, main, lines: q.turnin_lines ?? [], history: q.history ?? [], stance: q.stance } });
+        out.push({ rank: 0, t: { quest: q.id, kind: 'turnin', label, main, lines: q.turnin_lines ?? [], history: q.history ?? [] } });
       else if (st === 'active' && atTurnin && q.progress?.length) out.push({ rank: 3, t: { quest: q.id, kind: 'progress', label, main, lines: q.progress } });
+      // after a turn-in at this npc: the rest of the history, when the player wants it (§8.5.7)
+      else if (st === 'done' && atTurnin && (q.history?.length ?? 0) > HISTORY_AT_TURNIN && !this.slice.quests[q.id]?.told && (!this.chapter || q.chapter === this.chapter))
+        out.push({ rank: 4, t: { quest: q.id, kind: 'more', label: `Erzähl mehr: ${label}`, main, lines: (q.history ?? []).slice(HISTORY_AT_TURNIN) } });
     }
     return out.sort((a, b) => a.rank - b.rank).map((x) => x.t);
   }

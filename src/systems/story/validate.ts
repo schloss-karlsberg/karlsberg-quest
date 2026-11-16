@@ -132,7 +132,8 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
         if (!isStr(r.id)) err(file, ch, 'epilogue reading without id');
         // "offen" (no reading chosen) must exist; it may be empty for add-on sentences (no addition)
         if (!r.text || typeof r.text.offen !== 'string') err(file, ch, `epilogue reading '${r.id}' needs an "offen" entry`);
-        if (!r.entry && !(r.flags ?? []).length) err(file, ch, `epilogue reading '${r.id}' needs "entry" or "flags"`);
+        if (!r.entry && !(r.flags ?? []).length && !(r.deeds ?? []).length) err(file, ch, `epilogue reading '${r.id}' needs "deeds", "entry" or "flags"`);
+        for (const d of r.deeds ?? []) if (!isStr(d.flag) || typeof d.text !== 'string') err(file, ch, `epilogue reading '${r.id}': a deed needs flag and text`);
       }
       for (const [v, per] of Object.entries(e.object?.text ?? {})) for (const k of ENDINGS) if (!isStr(per[k])) err(file, ch, `epilogue.object.${v}.${k} missing`);
     }

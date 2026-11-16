@@ -588,43 +588,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k4.zerstoerer",
-        "prompt_de": "Eine Frage, bevor wir hingehen. Wer hat den Karlsberg zerstört, was meinen Sie?",
-        "flag": "flag.k4_zerstoerer",
-        "options": [
-          {
-            "label_de": "Die Franzosen. Sie haben ihn angezündet.",
-            "value": "franzosen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Die Fackel war französisch. Das steht fest."
-              }
-            ]
-          },
-          {
-            "label_de": "Die Steinträger aus Homburg.",
-            "value": "steintraeger",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Abgetragen, Stein für Stein. Das ist auch eine Art zu zerstören. Eine fleißige."
-              }
-            ]
-          },
-          {
-            "label_de": "Das Vergessen.",
-            "value": "vergessen",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Dagegen hilft nur Aufschreiben. Und Zuhören."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "brunnen",
@@ -731,43 +694,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k4.meute",
-        "prompt_de": "Warum sind wir gelaufen, all die Jahre? Ich hab nie darüber nachgedacht. Du schon, oder?",
-        "flag": "flag.k4_meute",
-        "options": [
-          {
-            "label_de": "Sie haben ihren Herrn gesucht.",
-            "value": "herr_suchen",
-            "reply": [
-              {
-                "speaker": "pikeur",
-                "text": "Der ist nach Mannheim. Ohne abzublasen. Ja."
-              }
-            ]
-          },
-          {
-            "label_de": "Sie haben uns heimgetrieben.",
-            "value": "heimtreiben",
-            "reply": [
-              {
-                "speaker": "pikeur",
-                "text": "Jeden, der zu lang im Grau war. Fast jeden."
-              }
-            ]
-          },
-          {
-            "label_de": "Weil keiner abgeblasen hat.",
-            "value": "nie_abgeblasen",
-            "reply": [
-              {
-                "speaker": "pikeur",
-                "text": "So einfach. So einfach war das."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "zwinger",
@@ -862,25 +788,6 @@
           ]
         }
       ],
-      "stance": {
-        "id": "k4.steine",
-        "prompt_de": "Die Steine in Homburg, über den Türen und in den Kellern: Was sind die, meinst du?",
-        "flag": "flag.k4_steine",
-        "options": [
-          {
-            "label_de": "Raub am Raub.",
-            "value": "raub"
-          },
-          {
-            "label_de": "Der Lohn, der nie gezahlt wurde.",
-            "value": "lohn_steine"
-          },
-          {
-            "label_de": "Ein Neuanfang: Das Schloss steckt in hundert Häusern.",
-            "value": "neuanfang"
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "eins",

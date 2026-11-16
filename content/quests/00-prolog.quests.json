@@ -485,43 +485,6 @@
           "fact": "cx.38"
         }
       ],
-      "stance": {
-        "id": "p.spuren",
-        "flag": "flag.p_spuren",
-        "prompt_de": "Laub: Die Abdrücke in der Punktwolke, quer über den Hof. Was war das, Ihrer Meinung nach?",
-        "options": [
-          {
-            "label_de": "Hunde.",
-            "value": "hunde",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Ich habe nichts gesagt. Ich habe nur genickt. In einer Bussole sieht man das schlecht."
-              }
-            ]
-          },
-          {
-            "label_de": "Wild. Wildschweine, Rehe.",
-            "value": "wild",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Wild trabt nicht paarweise. Aber bitte. Es ist Ihr Feldbuch."
-              }
-            ]
-          },
-          {
-            "label_de": "Ein Messfehler.",
-            "value": "messfehler",
-            "reply": [
-              {
-                "speaker": "laub",
-                "text": "Ein Messfehler mit Zähnen. Ich notiere: Messfehler."
-              }
-            ]
-          }
-        ]
-      },
       "objectives": [
         {
           "id": "wolke",

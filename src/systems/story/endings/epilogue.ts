@@ -1,7 +1,9 @@
 /**
  * Epilogue composer (pure, unit-tested): builds the epilogue page from the endings data
- * (content/story/05-enden.story.json → `epilogue`) and the player's READINGS (LESARTEN) in
- * `state.chronik[*].readings`, with flags as fallback. Bible: content/bible/06-enden.md §6.
+ * (content/story/05-enden.story.json → `epilogue`): each slot tells what the player DID (its
+ * `deeds`: side quests done, what was carried out of the Festsaal, the lantern at the gate), with
+ * the old READINGS (LESARTEN, `state.chronik[*].readings`) and flags as fallback. Bible:
+ * content/bible/06-enden.md §6; docs/ACTION-RPG.md §8.6.
  */
 import type { CaseProgress } from '../../../core/state';
 import type { EndingId, EpilogueData, EpilogueReading, FlagValue } from '../types';
@@ -28,7 +30,18 @@ export function nounToVariant(nounId: string, map?: Record<string, string>): str
   return nounId.replace(/^n\.r_/, '').replace(/^n\./, '');
 }
 
+/** The first deed of a reading that holds (index), or -1. */
+export function deedIndex(r: EpilogueReading, flags: Readonly<Record<string, FlagValue>>): number {
+  return (r.deeds ?? []).findIndex((d) => {
+    const v = flags[d.flag];
+    if (d.eq === undefined) return v !== undefined && v !== false && v !== 0 && v !== '';
+    return v === d.eq || String(v) === String(d.eq);
+  });
+}
+
 export function readingVariant(r: EpilogueReading, src: EpilogueSource): string {
+  const di = deedIndex(r, src.flags);
+  if (di >= 0) return `deed:${di}`;
   let v: string | undefined;
   if (r.entry) {
     for (const c of Object.values(src.chronik)) {
@@ -66,7 +79,7 @@ export function composeEpilogue(data: EpilogueData, ending: EndingId, src: Epilo
   for (const r of data.readings) {
     const v = readingVariant(r, src);
     variants[r.id] = v;
-    const s = r.text[v] ?? '';
+    const s = v.startsWith('deed:') ? (r.deeds?.[Number(v.slice(5))]?.text ?? '') : (r.text[v] ?? '');
     if (s) lines.push(s);
     if (r.always) lines.push(r.always);
   }

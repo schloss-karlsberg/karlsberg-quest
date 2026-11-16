@@ -133,26 +133,6 @@
         "progress": { "$ref": "#/$defs/lines" },
         "turnin_lines": { "$ref": "#/$defs/lines" },
         "history": { "$ref": "#/$defs/lines" },
-        "stance": {
-          "type": "object",
-          "required": ["id", "prompt_de", "flag", "options"],
-          "additionalProperties": false,
-          "properties": {
-            "id": { "type": "string" },
-            "prompt_de": { "type": "string" },
-            "flag": { "type": "string" },
-            "options": {
-              "type": "array",
-              "minItems": 2,
-              "items": {
-                "type": "object",
-                "required": ["label_de", "value"],
-                "additionalProperties": false,
-                "properties": { "label_de": { "type": "string" }, "value": { "type": "string" }, "reply": { "$ref": "#/$defs/lines" } }
-              }
-            }
-          }
-        },
         "objectives": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/objective" } },
         "rewards": {
           "type": "object",

@@ -77,7 +77,7 @@ describe('quest lifecycle (q.test.lohnzettel)', () => {
     const t = b.topicsFor('hanne')[0]!;
     expect(t.kind).toBe('turnin');
     expect(t.history?.[0]?.fact).toBe('cx.08');
-    expect(t.stance?.flag).toBe('flag.test_lohn');
+    expect((t as { stance?: unknown }).stance).toBeUndefined();
 
     const pay = b.complete('q.test.lohnzettel')!;
     expect(pay).toMatchObject({ xp: 120, items: [{ item: 'item.balsam', count: 2 }], codex: ['cx.08', 'cx.10'], main: true });
@@ -276,16 +276,26 @@ describe('availability, stance, rewards, reset, restore', () => {
     expect(b.topicsFor('soll')[0]).toMatchObject({ kind: 'offer', declinable: true, main: false });
   });
 
-  it('a stance writes its flag (any option, offen too) and is kept with the quest', () => {
+  it('after the turn-in the giver offers "Erzähl mehr" (the rest of the history) until it is told', () => {
     const { b, e } = book();
     b.offer('q.test.lohnzettel');
     b.accept('q.test.lohnzettel');
-    expect(b.stance('q.test.lohnzettel', 'nonsense')).toBe(false);
-    expect(b.stance('q.test.lohnzettel', 'offen')).toBe(true);
-    expect(e.flags['flag.test_lohn']).toBe('offen');
-    expect(b.stance('q.test.lohnzettel', 'creuzer')).toBe(true);
-    expect(e.flags['flag.test_lohn']).toBe('creuzer');
-    expect(b.progressOf('q.test.lohnzettel')?.stance).toBe('creuzer');
+    for (const o of b.def('q.test.lohnzettel')!.objectives) b.progress('q.test.lohnzettel', o.id, 99, true);
+    expect(b.told('q.test.lohnzettel')).toBe(false); // not done yet
+    b.complete('q.test.lohnzettel');
+    // the deed is in the flags (the epilogue reads quest.<id> = done), no stance flag
+    expect(e.flags['quest.q.test.lohnzettel']).toBe('done');
+    expect(e.flags['flag.test_lohn']).toBeUndefined();
+    const more = b.topicsFor('hanne').find((x) => x.kind === 'more')!;
+    expect(more.lines.length).toBe(1);
+    expect(more.label).toMatch(/^Erzähl mehr/);
+    // another chapter: the topic stays in its own
+    b.chapter = 'k1';
+    expect(b.topicsFor('hanne').some((x) => x.kind === 'more')).toBe(false);
+    b.chapter = 'test';
+    expect(b.told('q.test.lohnzettel')).toBe(true);
+    expect(b.topicsFor('hanne').some((x) => x.kind === 'more')).toBe(false);
+    expect(b.told('q.test.lohnzettel')).toBe(false);
   });
 
   it('turn-in emits xp:grant, item:grant, skill:grant, codex:unlocked and sets flags', () => {
@@ -382,7 +392,7 @@ describe('availability, stance, rewards, reset, restore', () => {
     expect(spawnGroup(q, o, { ...o.spawn![0]!, group: 'k1.weiher' }, 1)).toBe('k1.weiher');
   });
 
-  it('no quest in the bundled files asks a quiz: stances always offer offen', () => {
-    for (const q of testFile.quests) if (q.stance) expect(q.stance.options.map((o) => o.value)).toContain('offen');
+  it('no quest in the bundled files asks a quiz: no stance cards at all', () => {
+    for (const q of testFile.quests) expect((q as { stance?: unknown }).stance).toBeUndefined();
   });
 });

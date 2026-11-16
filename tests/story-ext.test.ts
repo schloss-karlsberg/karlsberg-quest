@@ -199,17 +199,25 @@ describe('meters', () => {
 
 describe('epilogue assembly (endings pack, bible 06-enden §6)', () => {
   const fill = (s: string) => substituteName(s, 'Mara', 2026);
-  it('one sentence per block in pack order; flags pick the variant, else offen / nichts', () => {
+  it('one sentence per block in pack order; deeds pick the sentence (first in priority), else offen / nichts', () => {
     expect(epilogueLines(ENDEN).length).toBeGreaterThan(30);
-    const e = assembleEpilogue(ENDEN, 'museum', { 'flag.k1_lohn': 'n.r_will_nicht', 'flag.k3_objekt': 'tuergriff' }, { fill })!;
+    const flags = { 'quest.q.k1.kasuar': 'done', 'quest.q.k1.festplaene': 'done', 'quest.q.k3.lehnstuhl': 'active', 'flag.k2_tor': 'leuchten', 'flag.k3_objekt': 'tuergriff' };
+    const e = assembleEpilogue(ENDEN, 'museum', flags, { fill })!;
     expect(e.intro).toMatch(/^Karlsberg bei Homburg/);
     expect(e.object).toMatch(/Türgriff/);
-    expect(e.variants.lohn).toBe('will_nicht');
+    // kasuar comes before festplaene in the K1 slot; an active (unfinished) quest is no deed
+    expect(e.variants.hof).toBe('quest.q.k1.kasuar');
+    expect(e.variants.brand).toBe('offen');
+    expect(e.variants.flucht).toBe('leuchten');
     expect(e.variants.object).toBe('tuergriff');
-    expect(e.lines.some((l) => l.startsWith('Hanne, Witwe'))).toBe(true);
+    expect(e.lines.some((l) => /Kasuar/.test(l))).toBe(true);
+    expect(e.lines.some((l) => /geleuchtet/.test(l))).toBe(true);
+    // a slot without a deed and without an "offen" sentence adds nothing
+    expect(e.variants['flucht-tat']).toBe('offen');
+    expect(e.lines.length).toBe(7);
     expect(e.outro.length).toBeGreaterThan(10);
     const none = assembleEpilogue(ENDEN, 'burn', {}, { fill })!;
-    expect(none.variants.lohn).toBe('offen');
+    expect(none.variants.hof).toBe('offen');
     expect(none.object).toMatch(/nichts/);
     expect(none.intro).not.toBe(e.intro);
     // no placeholder survives

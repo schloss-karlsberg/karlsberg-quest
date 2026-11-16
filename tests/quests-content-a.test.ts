@@ -1,7 +1,7 @@
 /**
  * Action-RPG content, track A (docs/ACTION-RPG.md §11.0–11.2): the prologue, chapter 1 and chapter 2
  * as quest chains. No quiz gates are left in their story files; every main quest is wired into the
- * beats; the stances the epilogue reads exist with "offen"; the catalogue's codex facts are taught;
+ * beats; no stance cards (the epilogue reads deeds); the catalogue's codex facts are taught;
  * nothing spawns at a memorial; and the XP carries the player to the level targets.
  */
 import { readFileSync } from 'node:fs';
@@ -97,16 +97,19 @@ describe('Action-RPG content A: prologue, chapter 1, chapter 2', () => {
     }
   });
 
-  it('the stances the epilogue reads exist as two or three spoken replies (no "weiß nicht": k4_15 fills "offen")', () => {
-    const stances = new Map(data.flatMap((d) => d.q.quests.filter((q) => q.stance).map((q) => [q.stance!.flag, q.stance!.options.map((o) => o.value)] as const)));
-    const want: Record<string, string[]> = {
-      'flag.p_spuren': ['hunde', 'wild', 'messfehler'],
-      'flag.k1_lohn': ['will_nicht', 'creuzer', 'hunde_bilder'],
-      'flag.k2_lichter': ['kalkoefen', 'fackeln', 'laternen'],
-      'flag.k2_pfeiffer': ['treu', 'dorf', 'angst'],
-      'flag.k2_stelle': ['gewarnt', 'geschwiegen', 'gefuehrt'],
-    };
-    for (const [flag, values] of Object.entries(want)) expect(stances.get(flag), flag).toEqual(values);
+  it('no stance cards: every side quest of the prologue, K1 and K2 is a deed the epilogue tells', () => {
+    const S5 = json<{ epilogue: { readings: { deeds?: { flag: string }[] }[] } }>('content/story/05-enden.story.json');
+    const PACK = json<{ dialogue: { trigger: { flag?: string } }[] }>('content/packs/enden.pack.json');
+    const story = new Set(S5.epilogue.readings.flatMap((r) => (r.deeds ?? []).map((d) => d.flag)));
+    const pack = new Set(PACK.dialogue.map((d) => d.trigger.flag).filter(Boolean));
+    for (const d of data)
+      for (const q of d.q.quests) {
+        expect(q.stance, q.id).toBeUndefined();
+        if (q.kind === 'side') {
+          expect(story.has(`quest.${q.id}`), `${q.id} (story fallback)`).toBe(true);
+          expect(pack.has(`quest.${q.id}`), `${q.id} (endings pack)`).toBe(true);
+        }
+      }
   });
 
   it('every codex fact of the catalogue (§11.0–11.2) is taught by a history line or a reward', () => {

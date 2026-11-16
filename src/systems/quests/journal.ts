@@ -295,7 +295,6 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
             ),
           ])
         : null,
-      p?.stance && q.stance ? h('p.kqj-stance', t('journal.quests.stance', { value: q.stance.options.find((o) => o.value === p.stance)?.label_de ?? p.stance })) : null,
       s === 'active' || s === 'ready'
         ? h(
             `button.kq-btn.kqj-track${tracked ? '.kqj-on' : ''}`,

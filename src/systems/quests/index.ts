@@ -3,7 +3,7 @@
  * (docs/ACTION-RPG.md §8–§9; ARCHITECTURE.md §12.1 "quests").
  *
  * Contract (src/systems/contracts.ts, "quests"): listens to quest:command (story), quest:accept /
- * decline / turnin / stance (npc), enemy:killed, item:pickup, npc:talk, room:enter, clue:found,
+ * decline / turnin / told (npc), enemy:killed, item:pickup, npc:talk, room:enter, clue:found,
  * echo:end, menagerie:calmed, item:use (and any event an `event` objective names), story:chapter,
  * chronik:open (→ opens the Journal); emits quest:offered / accepted / progress / objective /
  * ready / completed / failed, npc:topics, npc:marker, npc:follow, codex:unlocked, and the requests
@@ -21,13 +21,13 @@ import { defineSystem } from '../../core/systems';
 import { t } from '../../i18n';
 import { addJournalTab, journalTabs } from '../../ui/journal';
 import { itemDef, ITEMS } from '../../rpg/items';
-import type { GiverMark, ItemDef, QuestDef, QuestLine, QuestSlice, QuestTopic } from '../../rpg/types';
+import type { GiverMark, ItemDef, QuestCard, QuestDef, QuestLine, QuestSlice, QuestTopic } from '../../rpg/types';
 import { acceptSound, objectiveSound, pageSound, readySound, tickSound, turninSound } from './audio';
 import { Beacons, type BeaconSpec } from './beacons';
 import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
-import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, need, normaliseSlice, turninOf } from './logic';
+import { type QuestDefIn, type QuestPayout, HISTORY_AT_TURNIN, QuestBook, createQuestSlice, need, normaliseSlice, turninOf } from './logic';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -72,7 +72,7 @@ export { createQuestSlice };
 const OFFER_RANGE = 150;
 const BEACON_RANGE = 200;
 
-/** Rough reading time of a spoken line (game seconds) — the voice stance waits for the lines. */
+/** Rough reading time of a spoken line (game seconds). */
 const lineSeconds = (s: string) => 1.6 + s.length * 0.055;
 
 const SKILL_NAME: Record<string, string> = { relief: 'Relief-Blick', kartograf: 'Kartograf', baumeister: 'Baumeister', roentgen: 'Röntgenblick', spurenleser: 'Spurenleser' };
@@ -128,7 +128,7 @@ class QuestRuntime {
     this.layer = ctx.ui.layer('quests');
     this.layer.classList.remove('kq-hidden');
     this.layer.classList.add('kqq-layer');
-    // above the HUD, below modals (pause menu, clue cards, stance cards: playtest z-order)
+    // above the HUD, below modals (pause menu, clue cards: playtest z-order)
     this.layer.style.zIndex = '17';
     this.layer.style.pointerEvents = 'none';
     this.reward = new RewardCard(this.layer);
@@ -167,7 +167,7 @@ class QuestRuntime {
       }),
       ev.on('quest:accept', ({ id }) => this.book.accept(id)),
       ev.on('quest:decline', () => (this.dirty = true)),
-      ev.on('quest:stance', ({ id, value }) => this.book.stance(id, value)),
+      ev.on('quest:told', ({ id }) => this.book.told(id)),
       ev.on('quest:turnin', ({ id }) => this.book.complete(id)),
       ev.on('story:chapter', ({ id }) => {
         this.availIn = 0;
@@ -266,8 +266,8 @@ class QuestRuntime {
     this.syncFollow();
     // a restore (boot, save:loaded) changes nothing worth saving — and at boot it would write an
     // empty save before the title, which then offers "Fortsetzen" on a fresh start
-    // taking, finishing, failing a quest and answering a stance are milestones: forced saves
-    if (why !== 'restore') this.ctx.save.autosave(`quest-${why}`, why === 'accept' || why === 'complete' || why === 'fail' || why === 'stance');
+    // taking, finishing and failing a quest are milestones: forced saves
+    if (why !== 'restore') this.ctx.save.autosave(`quest-${why}`, why === 'accept' || why === 'complete' || why === 'fail');
   }
 
   private computeInterest(): Set<string> {
@@ -284,7 +284,7 @@ class QuestRuntime {
 
   private syncNpcs(): void {
     for (const npc of this.book.npcs()) {
-      const topics = this.book.topicsFor(npc);
+      const topics = this.book.topicsFor(npc).map((tp) => (tp.kind === 'offer' || tp.kind === 'turnin' ? { ...tp, card: this.card(tp.quest, tp.kind === 'turnin') } : tp));
       const key = JSON.stringify(topics.map((x) => [x.quest, x.kind]));
       if (this.sentTopics.get(npc) !== key) {
         this.sentTopics.set(npc, key);
@@ -314,10 +314,12 @@ class QuestRuntime {
     if (!q) return;
     acceptSound(this.ctx.audio);
     // a banner never stamps over the reward card: it waits until the card is gone
-    this.bannerQ.push(() => showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main'));
+    const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
+    const xp = q.rewards?.xp ?? 0;
+    const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
+    this.bannerQ.push(() => showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main', sub));
     // voice givers speak their request (the dialogue presenter queues it)
     // (they lose their point once the first step is done: "Geh zum Damm" while you stand on it)
-    const first = q.objectives.find((o) => !o.optional && !(o.after ?? []).length);
     const until = first ? { quest: { id: q.id, objective: first.id, gte: first.count ?? 1 } } : undefined;
     if ('voice' in q.giver) for (const l of q.offer) this.say(l, until);
     this.dirty = true;
@@ -355,13 +357,14 @@ class QuestRuntime {
     this.feed.push(t('quest.turnin.feed', { title: q.title_de }), 'ready', 4200);
   }
 
-  /** A turn-in paid out: the reward card; voice / auto turn-ins also speak their lines and ask the stance. */
+  /** A turn-in paid out: the reward card; voice / auto turn-ins also speak a short turn-in moment. */
   private onPayout(p: QuestPayout): void {
     const q = this.defs.get(p.id);
     if (!q) return;
     turninSound(this.ctx.audio, p.quiet);
     const ti = turninOf(q);
     const talking = this.ctx.ui.modals.count > 0;
+    const hist = q.history ?? [];
     const view: RewardView = {
       title: p.title,
       xp: p.xp,
@@ -372,53 +375,44 @@ class QuestRuntime {
         return { id: f, title: fact?.title_de ?? f, confidence: fact?.confidence ?? 'U', label: fact ? factLabel(fact) : 'FAKT' };
       }),
       skills: p.skills.map((s) => `${SKILL_NAME[s.id] ?? s.id} ${s.tier}`),
+      // voices tell one line; the rest is in the journal (an npc offers "Erzähl mehr")
+      more: (ti === 'auto' || 'voice' in ti) && hist.length > HISTORY_AT_TURNIN ? t('quest.moreJournal', { n: hist.length - HISTORY_AT_TURNIN }) : undefined,
     };
     this.reward.show(view, talking);
     if (ti === 'auto' || 'voice' in ti) {
-      let at = 0;
-      for (const l of [...(q.turnin_lines ?? []), ...(q.history ?? [])]) {
-        this.say(l);
-        at += lineSeconds(l.text);
-      }
-      if (q.stance) this.later(Math.min(at, 14), () => this.voiceStance(q));
+      // a turn-in moment, not a lecture (playtest round 3): the thanks (one line) and one history
+      // line, held back while a fight is on (the presenter's lore rule)
+      const lines = [...(q.turnin_lines ?? []).slice(0, 1), ...hist.slice(0, HISTORY_AT_TURNIN)];
+      for (const l of lines) this.say(l, undefined, true);
     }
     this.dirty = true;
     this.journal.refresh();
   }
 
-  /** A stance from a voice (Laub in the compass): a small field-book card, never graded. */
-  private voiceStance(q: QuestDef): void {
-    const s = q.stance;
-    if (!s || this.book.progressOf(q.id)?.stance) return;
-    // "Laub: …" in the prompt names who asks (the giver may be Marlene on the radio)
-    const asker = /^([A-ZÄÖÜ][\wäöüß]+):\s+/.exec(s.prompt_de)?.[1];
-    const speaker = asker ?? this.ctx.content.speakers.get(giverOf(q))?.name_de ?? giverOf(q);
-    // a spoken question with two or three replies you say, like the conversation's topics, not a
-    // grid of answer cards (playtest: it read as a quiz)
-    const prompt = s.prompt_de.replace(/^[A-ZÄÖÜ][\wäöüß]+:\s+/, '');
-    const m = this.ctx.ui.modals.open({
-      title: speaker,
-      className: 'kqq-stance-modal',
-      closable: false,
-      body: [Object.assign(document.createElement('p'), { className: 'kqq-st-prompt', textContent: `„${prompt}“` })],
-      actions: s.options.map((o) => ({
-        label: `» ${o.label_de}`,
-        onClick: () => {
-          this.book.stance(q.id, o.value);
-          this.ctx.events.emit('quest:stance', { id: q.id, value: o.value });
-          for (const l of o.reply ?? []) this.say(l);
-        },
-      })),
-    });
-    m.el.dataset.testid = 'quest-stance';
+  /** The RPG quest card (offer / turn-in) the conversation draws. */
+  card(id: string, turnin = false): QuestCard | undefined {
+    const q = this.defs.get(id);
+    if (!q) return undefined;
+    const r = q.rewards ?? {};
+    const facts = new Set([...(q.history ?? []).map((l) => l.fact).filter((f): f is string => !!f), ...(r.codex ?? [])]);
+    const g = giverOf(q);
+    return {
+      title: q.title_de,
+      giver: this.ctx.content.speakers.get(g)?.name_de ?? g,
+      pitch: q.summary_de,
+      main: q.kind === 'main',
+      objectives: q.objectives
+        .filter((o) => !o.hidden)
+        .map((o) => ({ text: o.text_de, optional: !!o.optional, need: need(o), done: turnin ? this.book.objectiveDone(q, o) : undefined })),
+      xp: r.xp ?? 0,
+      items: (r.items ?? []).map((i) => `${(i.count ?? 1) > 1 ? `${i.count}× ` : ''}${this.itemName(i.item)}`),
+      skills: (r.skills ?? []).map((s) => `${SKILL_NAME[s.id] ?? s.id} ${s.tier}`),
+      codex: [...facts].filter((f) => !this.ctx.state.state.codex.facts.includes(f)).length,
+    };
   }
 
-  private say(l: QuestLine, until?: unknown): void {
-    this.ctx.events.emit('dialogue:say', { speaker: l.speaker, text: l.text, ms: Math.round(lineSeconds(l.text) * 1000), until, keep: true });
-  }
-
-  private later(seconds: number, run: () => void): void {
-    this.pending.push({ at: this.gameTime + seconds, run });
+  private say(l: QuestLine, until?: unknown, lore = false): void {
+    this.ctx.events.emit('dialogue:say', { speaker: l.speaker, text: l.text, ms: Math.round(lineSeconds(l.text) * 1000), until, keep: true, lore: lore || undefined });
   }
 
   itemName(id: string): string {
@@ -445,6 +439,7 @@ class QuestRuntime {
       this.book.settleKnown((c) => ctx.state.state.inventory.clues.includes(c));
     }
     this.book.tick(dt, { x: p.x, z: p.z, era: ctx.era.current, room }, (npc) => this.npcDistance(npc));
+    this.book.chapter = this.chapter();
     if ((this.availIn -= dt) <= 0) {
       this.availIn = 1;
       this.book.offerAvailable(this.chapter(), ctx.era.current);

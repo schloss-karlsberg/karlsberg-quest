@@ -413,15 +413,6 @@ const k2Quests = {
         ln('laub', 'Der Herzog hielt die Nachricht zuerst für unglaubwürdig und wollte dem Bauern einen Dukaten geben. Dann kam die Bestätigung, und es wurde gepackt.', { fact: 'cx.16', src: [P('S. 425–427')] }),
         ln('laub', 'Mannlich blieb zurück, um über die Galerie zu wachen und sie zu retten, wenn es ihm möglich sei. Gegen zehn Uhr abends fuhr der Herzog ab.', { fact: 'cx.18', src: [Z('S. 426'), P('S. 427')] }),
       ],
-      stance: {
-        id: 'k2.pfeiffer', flag: 'flag.k2_pfeiffer',
-        prompt_de: 'Laub: Der Bauer ist durch die Nacht gerannt, über einen Zaun, zu einem Herzog, der ihm nicht glaubt. Warum, meinen Sie?',
-        options: [
-          { label_de: 'Weil er dem Herzog treu war.', value: 'treu', reply: [ln('laub', 'Treue. Die einzige Münze, die der Hof nie ausgegeben hat. Er hat sie bekommen.')] },
-          { label_de: 'Weil er sein Dorf schützen wollte.', value: 'dorf', reply: [ln('laub', 'Wer die Reiter wegschickt, schickt sie woandershin. Vielleicht wusste er das.')] },
-          { label_de: 'Weil er Angst hatte.', value: 'angst', reply: [ln('laub', 'Angst läuft schneller als Treue. Das ist keine Schande, das ist Physik.')] },
-        ],
-      },
       objectives: [
         { id: 'hof', type: 'reach', text_de: 'In den Ehrenhof, durch die Durchfahrt im Südflügel', where: place(1222, -1118, 22) },
         { id: 'tuer', type: 'examine', clue: 'clue.k2.warnung', text_de: 'An der Tür des Kabinetts lauschen (E halten)' },
@@ -447,15 +438,6 @@ const k2Quests = {
       history: [
         ln('laub', 'Kurz nach der Abfahrt sprengte General Landremont heran und fragte nach den Feuern im Wald. Ein Handwerker antwortete im Gehen: Das sind Kalköfen. Was die Lichter waren, schreibt Mannlich nicht. Die Fackelträger der Lokalüberlieferung sind nicht belegt.', { fact: 'cx.19', src: [Z('S. 427 f.'), P('S. 428')] }),
       ],
-      stance: {
-        id: 'k2.stelle', flag: 'flag.k2_stelle',
-        prompt_de: 'Laub: Sie haben ihn heute rennen sehen. An seiner Stelle, was hätten Sie getan?',
-        options: [
-          { label_de: 'Ich hätte ihn auch gewarnt.', value: 'gewarnt', reply: [ln('laub', 'Einen Herzog, der Ihren Lohn schuldig bleibt. Gut. Ich schreibe es auf, ohne Kommentar. Fast.')] },
-          { label_de: 'Ich hätte geschwiegen.', value: 'geschwiegen', reply: [ln('laub', 'Ehrlich. Die meisten haben geschwiegen. Darüber gibt es keine Quellen, nur Lücken.')] },
-          { label_de: 'Ich hätte die Reiter geführt.', value: 'gefuehrt', reply: [ln('laub', 'Irgendeiner hat sie geführt, sonst wären sie nicht gekommen. Seinen Namen kennt auch niemand.')] },
-        ],
-      },
       objectives: [
         { id: 'kalk', type: 'echo', clue: 'clue.k2.landremont', text_de: 'Am Orangerie-Parterre: der General und die Lichter' },
         {
@@ -502,15 +484,6 @@ const k2Quests = {
         ln('laub', 'Köhlerplätze: runde, ebene Teller am Hang, schwarze Erde. Ein Meiler glimmt unter Erde und Laub, er leuchtet nicht weit.', { fact: 'rm.03', src: [src('HE-BW')] }),
         ln('laub', 'Das sind Kalköfen, hat der Handwerker dem General gesagt, im Gehen. Was die Lichter wirklich waren, schreibt Mannlich nicht.', { fact: 'cx.19', src: [Z('S. 428')] }),
       ],
-      stance: {
-        id: 'k2.lichter', flag: 'flag.k2_lichter',
-        prompt_de: 'Laub: Die Lichter im Wald, in jener Nacht. Was waren sie?',
-        options: [
-          { label_de: 'Kalköfen. Wie der Handwerker sagt.', value: 'kalkoefen', reply: [ln('laub', 'Dann hat er die Wahrheit gesagt. Ein General hat ihm geglaubt. Das kommt selten vor.')] },
-          { label_de: 'Fackeln. Die Diener bei den Wagen.', value: 'fackeln', reply: [ln('laub', 'Das erzählt man im Ort. Belegt ist es nicht. Aber es ist eine freundliche Geschichte.')] },
-          { label_de: 'Laternen. Meine war dabei.', value: 'laternen', reply: [ln('laub', 'Eine Erinnerung, in der Sie selbst vorkommen. Ich sage nichts. Ich bin eine Bussole.')] },
-        ],
-      },
       objectives: [
         ...KS2.lichter.map(([x, z], i) => ({
           id: `licht${i + 1}`, type: 'kill', enemy: 'irrlicht', count: 2, group: `k2.lichter.${i + 1}`,
