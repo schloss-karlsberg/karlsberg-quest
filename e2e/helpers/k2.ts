@@ -1,6 +1,6 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
-import { cna, fight, holdHome, installQuestPlay, qn, qs, stance, talkQuest, untilQuest } from './prolog';
+import { type QW, cna, fight, holdHome, installQuestPlay, qn, qs, stance, talkQuest, untilQuest } from './prolog';
 
 /**
  * Chapter 2 "Die Flucht" as an action-RPG quest chain (docs/ACTION-RPG.md §11.2), played headless
@@ -347,7 +347,13 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await untilQuest(page, 'q.k2.spur', 'done', 10)).toBe('done');
   expect(await page.evaluate(() => window.kq!.skills!.levels().spurenleser)).toBe(2);
   // the servant at the loading yard has work for you now
-  expect(await page.evaluate(() => window.kq!.quests!.mark('diener'))).toBe('offer');
+  // side quests offer themselves on the quests system's 1 s availability tick
+  const kisten = await page.evaluate(() => {
+    const k = window.kq!;
+    (window as unknown as QW).__cna.until(() => k.quests!.mark('diener') === 'offer', 5);
+    return { mark: k.quests!.mark('diener'), state: k.quests!.state().quests['q.k2.kisten']?.state ?? 'hidden', era: k.ctx.era.current, chapter: k.story!.state().chapter };
+  });
+  expect(kisten.mark, JSON.stringify(kisten)).toBe('offer');
   await giverShot(page, 'diener', [1264, -955], 'k2-giver-diener');
   await settle(page, 3);
   expect((await story(page)).beat).toBe('k2_4');

@@ -75,7 +75,7 @@ export interface QuestPlay {
   q(id: string): string;
   n(id: string, objective: string): number;
 }
-type QW = { __cna: QuestPlay };
+export type QW = { __cna: QuestPlay };
 
 export const QUEST_PLAY = `(() => {
   const k = window.kq;
@@ -310,7 +310,8 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await shot(page, '01-card');
   await o.at?.('prolog:card');
   await installQuestPlay(page);
-  expect(await qs(page, 'q.p.feldstation')).toBe('active'); // Marlene's voice: taken at once
+  // Marlene greets first, then gives the quest by radio (a voice giver: taken at once)
+  expect(await untilQuest(page, 'q.p.feldstation', 'active', 40)).toBe('active');
   await page.evaluate(() => window.kq!.step(200));
   await expect(page.getByTestId('quest-tracker')).toContainText('Feldstation');
   await shot(page, '02-tracker');
