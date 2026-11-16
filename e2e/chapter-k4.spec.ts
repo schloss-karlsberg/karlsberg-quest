@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
-import { beat, boot, events, examineHere, has, playK4, run, settleShift, shot, story, walk } from './helpers/k4';
+import { install, killGroup } from './helpers/k3';
+import { beat, boot, events, examineHere, playK4, run, settleShift, shot, story, walk } from './helpers/k4';
 
 /**
- * Chapter 4 „Der Steinbruch" + the endings, played headless through window.kq (`?manual`). The
- * playthrough lives in e2e/helpers/k4.ts (shared with e2e/campaign.spec.ts).
- * Screenshots: test-results/screens/ch-k4-*.png
+ * Chapter 4 „Der Steinbruch" + the endings as a quest chain, played headless through window.kq
+ * (`?manual`). The playthrough lives in e2e/helpers/k4.ts (shared with e2e/campaign.spec.ts).
+ * Screenshots: test-results/screens/cnb-k4-*.png
  */
 // software WebGL on a busy machine: the full chapter takes 13–20 min headless
 test.describe.configure({ timeout: 1_800_000 });
@@ -46,11 +47,15 @@ test('chapter 4: the threats are fair (Steinfraß catch, soft homecoming, the em
   let s = await story(page);
   expect(s.era).toBe('1796');
   expect(s.beat).toBe('k4_6');
-  // the Steinfraß starts a few seconds after the arrival (after the crowbars fall silent)
+  // the notice, then Der Steinbrecher; when it falls, the Steinfraß starts
+  await examineHere(page, 'clue.k4.anschlag', 1195, -1110.5);
+  await install(page);
+  await page.evaluate(() => (window.kq as unknown as { combat: { god(on: boolean): void } }).combat.god(true));
+  await killGroup(page, 'q.k4.steinplatz.brecher', 1);
+  await run(page, 3);
   for (let i = 0; i < 30 && !(await page.evaluate(() => window.kq!.fx!.state().oblivion.active)); i++) await run(page, 1);
   expect((await page.evaluate(() => window.kq!.fx!.state())).oblivion.active).toBe(true);
-  // the player found the notice, then stood still for too long
-  await examineHere(page, 'clue.k4.anschlag', 1195, -1110.5);
+  // the player stood still for too long
   await page.evaluate(() => window.kq!.fx!.oblivionT(0.995));
   await run(page, 3);
   expect(await events(page, 'player:caught')).toEqual([expect.objectContaining({ by: 'oblivion' })]);
@@ -62,9 +67,8 @@ test('chapter 4: the threats are fair (Steinfraß catch, soft homecoming, the em
   expect(s.beat).toBe('k4_5');
   const p = await page.evaluate(() => window.kq!.ctx.player.position);
   expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(10);
-  // unconfirmed finds are lost; the notice can be found again (its marker is back)
-  expect(await has(page, 'clue.k4.anschlag')).toBe(false);
-  expect(await page.evaluate(() => window.kq!.chronik!.status('clue.k4.anschlag'))).toBe('available');
+  // the boss stays beaten: the quest kept its count
+  expect(await page.evaluate(() => window.kq!.state().flags['quest.q.k4.steinplatz.brecher'])).toBe(1);
   expect(await page.evaluate(() => window.kq!.state().flags['shift.x'])).toBe(1216);
   await shot(page, '20-vergessen-station');
 
@@ -91,10 +95,6 @@ test('chapter 4: the threats are fair (Steinfraß catch, soft homecoming, the em
   // ---- the finale with an empty lantern: Laub lends his light ---------------------------------------
   await page.evaluate(() => {
     const k = window.kq!;
-    k.chronik!.solve('case.k4', 3);
-    k.chronik!.check('case.k4', true);
-    k.chronik!.solve('case.k4', 3);
-    k.chronik!.check('case.k4', true);
     k.lantern!.toggle(false);
     k.lantern!.setOil(0);
     k.story!.goto('k4', 'k4_12');

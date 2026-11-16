@@ -918,6 +918,23 @@ Rules that came out of it:
   grant / equip / use / learn / respec / place / pickups / take / stats / card / feed / journal`.
 - Tests: `tests/progression.test.ts`, `e2e/progression.spec.ts` (screens `prg-*.png`).
 
+#### Chapters 3, 4 and the endings as quest chains (contentB)
+
+- Content: `content/quests/03-kapitel-3`, `04-kapitel-4`.quests.json (main + side quests, chapter
+  items) and the story files `03-kapitel-3`, `04-kapitel-4`, `05-enden`. Beats offer / start the main
+  quests (`{do:'quest', op, id, onResume:true}`) and wait on `{quest:{id}}` (or an objective count:
+  `k4_6` ends when the Steinbrecher falls and then starts the Steinfraß). No `confirmed`,
+  `caseComplete` or `reading` condition is left; `k4_15` only runs `readings fill offen`.
+- **Settle reactions**: examine / echo objectives count only clues found while the quest runs, so the
+  chapters carry `settle-*` reactions (`quest` active + clue in the inventory + objective 0 →
+  `quest progress`). Side quests left open are failed at the chapter's end (`k3_9`, `k4_8`, `k4_14`).
+- `flags['combat.disabled']` is set on entering `k4_11` and every beat after it, including `e1` / `e2`;
+  `e2`'s exit (after the credits) clears it.
+- Tests: `tests/quests-content-b.test.ts` (structure, stances vs. epilogue, no fights in the Festsaal /
+  finale, a headless run of every quest and the XP curve), `e2e/chapter-k3.spec.ts`,
+  `e2e/chapter-k4.spec.ts`, `e2e/campaign.spec.ts` (`CAMPAIGN_FROM=k3` works without a kept save);
+  screens `cnb-k3-*.png`, `cnb-k4-*.png`.
+
 ## 13. Licences
 
 Code: project licence. Fonts: IM Fell English (Igino Marini) and Caveat, SIL OFL 1.1 (texts in

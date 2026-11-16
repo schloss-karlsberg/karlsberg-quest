@@ -1,0 +1,1180 @@
+{
+  "$schema": "../schema/quests.schema.json",
+  "chapter": "k3",
+  "items": [
+    {
+      "id": "item.k3.korb",
+      "kind": "quest",
+      "name_de": "Hannes Korb",
+      "text_de": "Ein Weidenkorb mit einem Riss im Henkel. Leer. Die Raffschatten wollten ihn trotzdem. (Fiktion)",
+      "fiction": true
+    },
+    {
+      "id": "item.k3.seite",
+      "kind": "lore",
+      "set": "chronikseiten",
+      "name_de": "Seite der Chronik: „Die Nacht“",
+      "text_de": "Die eine Seite, die im grauen Buch liegen blieb, als die anderen wie Asche durch die Galerie davonflogen. Namen, Beträge, ein Fettfleck. Auf der Rückseite in Solls Schrift: „Was der Hof schuldig blieb. Fortsetzung folgt nicht.“ (Fiktion)",
+      "fiction": true
+    },
+    {
+      "id": "item.k3.etikett",
+      "kind": "quest",
+      "name_de": "Etikett aus dem Naturalienkabinett",
+      "text_de": "Ein Kartonstreifen mit Tinte: ein lateinischer Vogelname und eine Nummer. Die Etiketten sind erfunden; der Katalog von 1785 mit 1 187 Vögeln ist belegt (Holandre, nach Schwan 2012).",
+      "fiction": true
+    }
+  ],
+  "quests": [
+    {
+      "id": "q.k3.nachmittag",
+      "kind": "main",
+      "era": "1793-07",
+      "title_de": "Der Nachmittag",
+      "summary_de": "Sonntag, 28. Juli 1793, später Nachmittag. Im Ehrenhof laden Soldaten Stroh ab, durch das Gitter strömen die Leute aus den Dörfern. Im Küchenhof reißen Raffschatten Hanne den Korb aus der Hand.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": {
+        "npc": "hanne"
+      },
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Juli dreiundneunzig. Gehen Sie in den Ehrenhof und hören Sie zu, bevor Sie irgendetwas anfassen. Und dann zu Hanne in den Küchenhof. Ich glaube, sie braucht Hilfe. Das ist neu."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "hanne",
+          "text": "Die Schatten sind da drüben. Die mit den Säcken. Mein Korb ist bei denen, und der ist das Einzige, was mir noch gehört."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "hanne",
+          "text": "Mein Korb. Leer, aber meiner. Die Schatten wollten ihn trotzdem. Was gierig ist, fragt nicht, was drin ist."
+        },
+        {
+          "speaker": "laub",
+          "text": "Raffschatten. Keine Menschen, damit das klar ist. Gier mit Schultern. Die Leute aus den Dörfern sind keine Schatten. Die haben fünf Jahre Lohn offen."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "hanne",
+          "text": "Die Franzosen haben das Schloss freigegeben. Zum Plündern, für jeden, auch für uns aus den Dörfern. Morgen früh kommen die Nächsten und holen, was das Feuer übrig lässt.",
+          "fact": "cx.23",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P: Freigabe zur Plünderung"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+              "label": "en.wikipedia: Karlsberg Castle",
+              "note": "P"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Das Stroh, das die Soldaten abladen, kommt von weit her. „Bis von Lothringen“, schreibt Mannlich, andere sagen: hundert Wagen aus der Gegend von Metz. Es geht ins Erdgeschoss. Was das heißt, sehen wir heute Abend.",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 461"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P: Stroh aus der Gegend von Metz"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k3.pluenderer",
+        "prompt_de": "Und? Was machen die Leute aus den Dörfern da drüben, was meinst du?",
+        "flag": "flag.k3_pluenderer",
+        "options": [
+          {
+            "label_de": "Sie nehmen sich, was man ihnen schuldet.",
+            "value": "schuld",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Fünf Jahre Zinsen auf einen Gulden. So rechne ich auch."
+              }
+            ]
+          },
+          {
+            "label_de": "Sie stehlen.",
+            "value": "stahlen",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Kann sein. Dann stiehlt der Hof seit zwanzig Jahren, und keiner hat’s aufgeschrieben."
+              }
+            ]
+          },
+          {
+            "label_de": "Sie retten, was zu retten ist.",
+            "value": "retteten",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Ein Stuhl in einer Stube brennt nicht. Das stimmt."
+              }
+            ]
+          },
+          {
+            "label_de": "Sie tun, was alle tun.",
+            "value": "alle",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Die Preußen, die Franzosen, die vom Hof. Ja. Alle."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "hanne",
+                "text": "Ich auch nicht. Ich weiß nur, dass mein Korb leer ist."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "ehrenhof",
+          "type": "reach",
+          "text_de": "Im Ehrenhof: Q – in den Juli 1793",
+          "where": {
+            "x": 1210,
+            "z": -1114,
+            "r": 30,
+            "era": "1793-07"
+          }
+        },
+        {
+          "id": "stroh",
+          "type": "echo",
+          "text_de": "An den Strohkarren E halten: was die Soldaten abladen",
+          "clue": "clue.k3.stroh",
+          "after": [
+            "ehrenhof"
+          ],
+          "where": {
+            "x": 1212,
+            "z": -1116,
+            "r": 8,
+            "era": "1793-07"
+          }
+        },
+        {
+          "id": "stuhl",
+          "type": "examine",
+          "text_de": "Den Mann mit dem vergoldeten Lehnstuhl ansehen",
+          "clue": "clue.k3.lehnstuhl",
+          "after": [
+            "ehrenhof"
+          ],
+          "where": {
+            "x": 1205,
+            "z": -1110,
+            "r": 6,
+            "era": "1793-07"
+          }
+        },
+        {
+          "id": "schatten",
+          "type": "kill",
+          "text_de": "Im Küchenhof: die Raffschatten vertreiben",
+          "count": 5,
+          "after": [
+            "stroh"
+          ],
+          "where": {
+            "x": 1211,
+            "z": -1173,
+            "r": 12,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "raffschatten",
+              "x": 1211,
+              "z": -1173,
+              "era": "1793-07",
+              "count": 5,
+              "radius": 6
+            }
+          ]
+        },
+        {
+          "id": "korb",
+          "type": "collect",
+          "text_de": "Hannes Korb aufheben",
+          "item": "item.k3.korb",
+          "after": [
+            "schatten"
+          ],
+          "place": [
+            {
+              "x": 1213,
+              "z": -1178,
+              "era": "1793-07"
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 350,
+        "items": [
+          {
+            "item": "item.balsam",
+            "count": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k3.buch",
+      "kind": "main",
+      "era": "1793-07",
+      "title_de": "Das graue Buch",
+      "summary_de": "Soll sitzt in der leeren Registratur. Sein graues Buch, in dem steht, was der Hof schuldig blieb, liegt unter der Galerie, bei der Falltür des Büchsenmachers. Unterwegs schleppen Raffschatten die Kisten des Naturalienkabinetts davon.",
+      "giver": {
+        "npc": "soll"
+      },
+      "turnin": "auto",
+      "topic_de": "Das graue Buch",
+      "accept_de": "Ich hole dein Buch.",
+      "offer": [
+        {
+          "speaker": "soll",
+          "text": "Leer. Die Akten nach Mannheim, die Möbel nach Mannheim. Und mein Buch? Das habe ich versteckt. Unter der Galerie, am Westende, wo der Büchsenmacher seine Falltür hat."
+        },
+        {
+          "speaker": "soll",
+          "text": "Holen Sie es, bevor es einer findet, der es verheizt. Unterwegs werden Sie Schatten sehen, die Kisten schleppen. Lassen Sie sie nicht. Die Kisten gehören dem Land. Theoretisch."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "soll",
+          "text": "Durch die Durchfahrt, die Treppe Nord hinauf, dann in die Galerie. Und schauen Sie in die Waffensammlung. Leer. Ich will, dass es jemand gesehen hat, der nicht ich bin."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Eine Seite. Ein Kanzlist schreibt zwanzig Jahre, und übrig bleibt eine Seite. Das ist eine bessere Quote, als die meisten Ämter schaffen."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Durch diese Falltür haben Mannlich und ein alter Diener namens Burger die schönsten Bilder getragen, am hellen Tag. Später gingen Galerie, Bibliothek und Möbel über Kaiserslautern nach Mannheim. Die Bilder hängen heute in München.",
+          "fact": "cx.20",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 431 f., 437"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Das Naturalienkabinett nicht. Die Wagen waren in Kaiserslautern bestellt, dann versprach der König von Preußen, die Franzosen kämen nicht wieder. Der Herzog bestellte ab. Die Vögel bleiben im Haus.",
+          "fact": "cx.21",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 454 f."
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Die Galerie hat Mannlich 1788 in einem halben Jahr aus einem hölzernen Gang gebaut. Grüner Damast, zwanzig Lüster, hundertvier Lehnstühle. „Cent pas“, hundert Schritt, schreibt er. Die Übersetzung von 1910 macht hundert Fuß daraus.",
+          "fact": "cx.25",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 374 f."
+            },
+            {
+              "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+              "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+              "note": "Anm. 47"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Die Falltür ist belegt, ihr Ort nicht. Wo genau sie war, weiß keiner. Dass ausgerechnet Soll sein Buch darunter versteckt hat, steht in keiner Akte. Das ist unsere Geschichte, nicht die des Hofes.",
+          "fact": "cx.26",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 431 f."
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "schatten",
+          "type": "kill",
+          "text_de": "Raffschatten mit Kisten an der Durchfahrt aufhalten",
+          "count": 3,
+          "where": {
+            "x": 1201,
+            "z": -1163,
+            "r": 10,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "raffschatten",
+              "x": 1201,
+              "z": -1163,
+              "era": "1793-07",
+              "count": 3,
+              "radius": 3
+            }
+          ]
+        },
+        {
+          "id": "waffen",
+          "type": "examine",
+          "text_de": "Die leere Waffensammlung ansehen",
+          "clue": "clue.k3.waffen",
+          "where": {
+            "x": 1185.3,
+            "z": -1197.1,
+            "r": 6,
+            "era": "1793-07",
+            "room": "B04.1.eg-waffensammlung"
+          }
+        },
+        {
+          "id": "kisten",
+          "type": "examine",
+          "text_de": "Oben im Naturalienkabinett: die gepackten Kisten",
+          "clue": "clue.k3.kisten",
+          "where": {
+            "x": 1188.6,
+            "z": -1178.2,
+            "r": 4,
+            "era": "1793-07",
+            "room": "B04.2.og-naturalienkabinett"
+          }
+        },
+        {
+          "id": "koenig",
+          "type": "echo",
+          "text_de": "Bonus: Im Naturalienkabinett E halten – wer hat die Wagen abbestellt?",
+          "clue": "clue.k3.koenig",
+          "optional": true,
+          "bonus_xp": 30,
+          "noMarker": true
+        },
+        {
+          "id": "galerie",
+          "type": "echo",
+          "text_de": "In der leeren Galerie E halten",
+          "clue": "clue.k3.galerie",
+          "where": {
+            "x": 1215,
+            "z": -1216.5,
+            "r": 8,
+            "era": "1793-07",
+            "room": "B06.1.bildergalerie"
+          }
+        },
+        {
+          "id": "messen",
+          "type": "examine",
+          "text_de": "Bonus: Die Galerie messen (R)",
+          "clue": "clue.k3.messen",
+          "optional": true,
+          "bonus_xp": 60,
+          "noMarker": true
+        },
+        {
+          "id": "falltuer",
+          "type": "examine",
+          "text_de": "Am Westende der Galerie: das lose Brett",
+          "clue": "clue.k3.falltuer",
+          "where": {
+            "x": 1201.5,
+            "z": -1216.6,
+            "r": 3,
+            "era": "1793-07",
+            "room": "B06.1.bildergalerie"
+          }
+        },
+        {
+          "id": "buch",
+          "type": "examine",
+          "text_de": "Das graue Buch aufschlagen",
+          "clue": "clue.k3.chronik",
+          "after": [
+            "falltuer"
+          ],
+          "where": {
+            "x": 1201.5,
+            "z": -1216.6,
+            "r": 3,
+            "era": "1793-07",
+            "room": "B06.1.bildergalerie"
+          }
+        },
+        {
+          "id": "seite",
+          "type": "collect",
+          "text_de": "Die eine Seite aufheben, die liegen bleibt",
+          "item": "item.k3.seite",
+          "after": [
+            "buch"
+          ],
+          "place": [
+            {
+              "x": 1204,
+              "z": -1217.4,
+              "era": "1793-07",
+              "room": "B06.1.bildergalerie"
+            }
+          ]
+        },
+        {
+          "id": "tempel",
+          "type": "examine",
+          "text_de": "Bonus: Das Tempelzimmer am Ostende – ein Ausgang für später",
+          "clue": "clue.k3.papier",
+          "optional": true,
+          "bonus_xp": 30,
+          "noMarker": true
+        }
+      ],
+      "rewards": {
+        "xp": 400,
+        "skills": [
+          {
+            "id": "baumeister",
+            "tier": 1
+          },
+          {
+            "id": "baumeister",
+            "tier": 2
+          }
+        ],
+        "codex": [
+          "cx.24"
+        ]
+      }
+    },
+    {
+      "id": "q.k3.strohmann",
+      "kind": "main",
+      "era": "1793-07",
+      "title_de": "Der Strohmann",
+      "summary_de": "Abenddämmerung im Ehrenhof. Das Stroh der hundert Wagen steht auf, mit Armen. Was es ist, weiß keiner. Was danach kommt, weiß jeder: die Fackel.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Hören Sie das? Die Strohkarren knistern. Stroh, das so lange in der Sonne lag, wird ungeduldig. Ich bin Geometer, kein Dichter, aber das da steht gleich auf."
+        },
+        {
+          "speaker": "laub",
+          "text": "Am Rücken, wo die Garben gebunden sind, ist er weich. Vorne hat er Arme aus Dreschflegeln. Bleiben Sie in Bewegung."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Asche. Das Stroh ist geschlagen, und gleich brennt es trotzdem. Man kann die Geschichte verprügeln. Umschreiben kann man sie nicht."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Sonntag, der achtundzwanzigste Juli 1793. Stroh in allen Räumen zu ebener Erde, dann die Fackel „im Namen der Nation“, und die Menge singt „Ça ira“. So schreibt es Mannlich. Er war nicht dabei, er schreibt nach Berichten.",
+          "fact": "cx.22",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 461 f. mit Anm. 39"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "hof",
+          "type": "reach",
+          "text_de": "Zurück in den Ehrenhof, zu den Strohkarren",
+          "where": {
+            "x": 1212,
+            "z": -1112,
+            "r": 26,
+            "era": "1793-07"
+          }
+        },
+        {
+          "id": "strohmann",
+          "type": "kill",
+          "text_de": "Den Strohmann zerschlagen",
+          "enemy": "strohmann",
+          "after": [
+            "hof"
+          ],
+          "where": {
+            "x": 1214,
+            "z": -1110,
+            "r": 26,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "strohmann",
+              "x": 1214,
+              "z": -1110,
+              "era": "1793-07",
+              "boss": true,
+              "leash": 45
+            }
+          ]
+        },
+        {
+          "id": "fackel",
+          "type": "echo",
+          "text_de": "Beim Kommissär E halten. Die Fackel fliegt trotzdem",
+          "clue": "clue.k3.fackel",
+          "after": [
+            "strohmann"
+          ],
+          "where": {
+            "x": 1225,
+            "z": -1118,
+            "r": 5,
+            "era": "1793-07"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 350,
+        "items": [
+          {
+            "item": "item.balsam",
+            "count": 2
+          },
+          {
+            "item": "item.lampenoel"
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k3.festsaal",
+      "kind": "main",
+      "era": "1793-07",
+      "title_de": "Der Festsaal",
+      "summary_de": "Das Schloss brennt von unten nach oben. Hanne ist hinauf in den Festsaal, die Prunktreppe hält noch eine Weile. Eines ist zu retten, mehr nicht. Dann hinaus, zur Pforte der Holländischen Gärtnerei.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": {
+        "npc": "hanne"
+      },
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Hanne ist oben im Festsaal. Die Prunktreppe hält noch eine Weile. Geduckt atmen Sie weniger Rauch."
+        },
+        {
+          "speaker": "laub",
+          "text": "Und was auf der Treppe glüht, ist kein Feuer. Das springt. Löschen Sie es, oder laufen Sie dran vorbei. Beides ist ehrenhaft."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "hanne",
+          "text": "Wir sind draußen. Mehr verlang ich heute nicht."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "hanne",
+          "text": "Wir sind draußen. Alle beide. Dahinten brennt, was Matthes gemauert hat, und ich steh hier und les Ruß von meinem Ärmel."
+        },
+        {
+          "speaker": "hanne",
+          "text": "Was du da trägst, behältst du. Irgendwas soll übrig bleiben."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Im Winter 2018 lagen in Saarbrücken in einer Vitrine: ein Türgriff, ein Dukat mit dem Schloss darauf, eine vergoldete Uhr mit Alabaster. Ob einer davon Ihrer ist, weiß niemand. Ich würde es nicht ausschließen.",
+          "fact": "cx.27",
+          "sources": [
+            {
+              "url": "https://www.rheinpfalz.de/lokal/kreis-suedwestpfalz_artikel,-zerst%C3%B6rte-pracht-jetzt-wieder-sichtbar-_arid,1312894.html",
+              "label": "Die Rheinpfalz 2018: Zerstörte Pracht jetzt wieder sichtbar",
+              "note": "P"
+            },
+            {
+              "url": "https://www.historisches-museum.org/steinerne-macht",
+              "label": "Historisches Museum Saar: Steinerne Macht",
+              "note": "P"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Was heute Nacht brennt, ist das, was schnell gebaut wurde: die Residenz, verputztes Fachwerk. Ställe und Wirtschaftsgebäude stehen morgen noch. Im November kommen hier oben wieder Kinder zur Welt.",
+          "fact": "cx.28",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P"
+            },
+            {
+              "url": "https://en.wikipedia.org/wiki/Karlsberg_Castle",
+              "label": "en.wikipedia: Karlsberg Castle",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "glut",
+          "type": "kill",
+          "text_de": "Bonus: Glutlinge auf der Prunktreppe löschen",
+          "count": 4,
+          "optional": true,
+          "bonus_xp": 80,
+          "where": {
+            "x": 1258,
+            "z": -1138,
+            "r": 8,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "glutling",
+              "x": 1258,
+              "z": -1138,
+              "era": "1793-07",
+              "count": 4,
+              "radius": 2.5,
+              "leash": 14
+            }
+          ]
+        },
+        {
+          "id": "saal",
+          "type": "room",
+          "text_de": "Die Prunktreppe hinauf in den Festsaal",
+          "room": "B01.2.og-festsaal",
+          "where": {
+            "x": 1265.8,
+            "z": -1126.8,
+            "r": 5,
+            "era": "1793-07"
+          }
+        },
+        {
+          "id": "wahl",
+          "type": "manual",
+          "text_de": "Eines retten – oder nichts",
+          "after": [
+            "saal"
+          ]
+        },
+        {
+          "id": "hinaus",
+          "type": "manual",
+          "text_de": "Hinaus in den Garten, bevor die Treppe fällt",
+          "after": [
+            "wahl"
+          ]
+        },
+        {
+          "id": "pforte",
+          "type": "reach",
+          "text_de": "Zur Pforte der Holländischen Gärtnerei. Leise: die Hunde jagen nach Gehör",
+          "after": [
+            "hinaus"
+          ],
+          "where": {
+            "x": 1270,
+            "z": -1293,
+            "r": 7,
+            "era": "1793-07"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 500,
+        "items": [
+          {
+            "item": "item.balsam",
+            "count": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k3.hunde",
+      "kind": "main",
+      "era": "1793-07",
+      "title_de": "Die Hunde los",
+      "summary_de": "Im Zwinger bellen die echten Hunde, eingesperrt, und das Feuer kommt. Jost ist dort. Der Weg führt nach Norden, zwischen Marstall und Remisen hindurch, und die Meute aus Rauch jagt heute nach Gehör.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": {
+        "npc": "jost"
+      },
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Hören Sie? Im Norden bellen Hunde. Nicht die Meute, echte. Eingesperrt, und das Feuer kommt. Zum Zwinger, zwischen Marstall und Remisen hindurch."
+        },
+        {
+          "speaker": "laub",
+          "text": "Leise. Die aus Rauch jagen heute nach Gehör. Und ein paar Streuner haben sich schon selbstständig gemacht."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "jost",
+          "text": "Hilf mir mit den Türen! Die Riegel sind heiß."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "jost",
+          "text": "Raus sind sie. Alle. Die finden den Weg allein."
+        },
+        {
+          "speaker": "jost",
+          "text": "Gib mir deinen Stab. (Er schneidet mit dem Hirschfänger.) Neun Kerben. Eine für jede Stunde, die das hier brennt. Damit das, was im Rauch läuft, weiß, mit wem es zu tun hat."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "jost",
+          "text": "Einen Zwinger für tausend Hunde wollte der Herzog. Herr Mannlich hat ihn gebaut, nördlich vom Marstall, drei Jahre lang. Hirschmeute, Saumeute, Spürhunde. Ihre Namen hat keiner aufgeschrieben. Nur ich, im Kopf.",
+          "fact": "cx.06",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 365, Einl. S. XXXV"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Die Namen der Hunde sind nicht überliefert. Die im Spiel sind erfunden. Die tausend nicht.",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 365"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "streuner",
+          "type": "kill",
+          "text_de": "Streuner auf dem Weg zum Zwinger",
+          "count": 3,
+          "where": {
+            "x": 1263,
+            "z": -1520,
+            "r": 14,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "streuner",
+              "x": 1263,
+              "z": -1520,
+              "era": "1793-07",
+              "count": 3,
+              "radius": 6
+            }
+          ]
+        },
+        {
+          "id": "zwinger",
+          "type": "reach",
+          "text_de": "Nach Norden zum Zwinger",
+          "where": {
+            "x": 1258,
+            "z": -1566,
+            "r": 14,
+            "era": "1793-07"
+          }
+        },
+        {
+          "id": "tueren",
+          "type": "examine",
+          "text_de": "Mit Jost die Gittertüren aufreißen",
+          "clue": "clue.k3.jost",
+          "after": [
+            "zwinger"
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 300,
+        "items": [
+          {
+            "item": "item.stab.bann"
+          }
+        ],
+        "skills": [
+          {
+            "id": "roentgen",
+            "tier": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k3.jaguar",
+      "kind": "side",
+      "era": "1793-07",
+      "title_de": "Der Jaguar",
+      "summary_de": "Der Jaguar aus der Menagerie ist los und streicht nördlich der Gärtnerei durch die Hecken. Hanne bittet: kein Hieb, nur Licht. Dreimal hell, dann geht er heim.",
+      "giver": {
+        "npc": "hanne"
+      },
+      "turnin": "auto",
+      "topic_de": "Der Jaguar",
+      "accept_de": "Ich bring ihn heim.",
+      "offer": [
+        {
+          "speaker": "hanne",
+          "text": "Hörst du das Fauchen da hinten? Der Jaguar ist los. Der aus der Menagerie, den der Herzog hat kommen lassen, damit man ihn anschaut. Jetzt schaut er zurück."
+        },
+        {
+          "speaker": "hanne",
+          "text": "Tu ihm nichts. Er kann nichts dafür, dass er hier ist. Licht mag er nicht. Dreimal hell, sagt der Gärtner, dann geht er heim."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "hanne",
+          "text": "Im Norden, zwischen den Hecken. Laterne an, und dann hell. Nicht hauen, hörst du?"
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Er geht. Nicht schnell, nicht beleidigt. Wie einer, der weiß, wo sein Haus ist. Das kann man nicht von jedem hier sagen, mich eingeschlossen."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "In der Karlslust standen neunzehn kleine Häuser im Kreis um einen Graben: Papageien, Pelikane, Kasuare, Affen, Wölfe, zwei Dromedare. Ein Jaguar steht in keiner Liste, die ich kenne. Den haben wir dazuerfunden. Die anderen nicht.",
+          "fact": "cx.12",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "S. 384"
+            },
+            {
+              "url": "https://www.saarpfalz-touristik.de/attraktionen/baerenzwinger-b8c8db2c7d",
+              "label": "Saarpfalz-Touristik: Bärenzwinger",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "jaguar",
+          "type": "calm",
+          "text_de": "Den Jaguar mit dem Bannlicht (RMB / G) heimtreiben – nicht verletzen",
+          "animal": "jaguar",
+          "where": {
+            "x": 1276,
+            "z": -1418,
+            "r": 30,
+            "era": "1793-07"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 200,
+        "items": [
+          {
+            "item": "item.lampenoel",
+            "count": 2
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k3.festsaal"
+        ],
+        "era": "1793-07"
+      }
+    },
+    {
+      "id": "q.k3.kabinett",
+      "kind": "side",
+      "era": "1793-07",
+      "title_de": "Abbestellt",
+      "summary_de": "Die Raffschatten haben die Etiketten aus dem Naturalienkabinett gerissen. Soll will sie zurück: Ein Vogel ohne Namen ist bloß ein Bündel Federn.",
+      "giver": {
+        "npc": "soll"
+      },
+      "turnin": "giver",
+      "topic_de": "Die Etiketten",
+      "accept_de": "Ich bringe dir die Namen zurück.",
+      "offer": [
+        {
+          "speaker": "soll",
+          "text": "Noch etwas. Die Schatten haben die Etiketten aus dem Naturalienkabinett gerissen. Tausendhundertsiebenundachtzig Vögel, und keiner weiß mehr, wer wer ist."
+        },
+        {
+          "speaker": "soll",
+          "text": "Vier davon schleppen sie im Küchenhof herum. Holen Sie mir die. Ein Vogel ohne Namen ist bloß ein Bündel Federn."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "soll",
+          "text": "Vier Etiketten. Ich zähle mit. Zählen ist das Einzige, was mir keiner wegnimmt."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "soll",
+          "text": "„Loxia curvirostra.“ „Pelecanus.“ Danke. Jetzt hat wenigstens die Liste überlebt. Die Liste überlebt immer."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "soll",
+          "text": "Holandre hat sie 1785 gezählt: tausendhundertsiebenundachtzig Vögel, jeder an seinen Zweig gebunden. Herr Mannlich sagt zwölfhundert Arten. Herr Mannlich rundet.",
+          "fact": "cx.21",
+          "sources": [
+            {
+              "url": "https://journals.ub.uni-heidelberg.de/index.php/bus/article/download/53625/47240",
+              "label": "J. Schwan, Schloss Carlsberg bei Homburg-Saar, Burgen und Schlösser 53 (2012) 4",
+              "note": "Anm. 30 (Holandre 1785)"
+            },
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 437"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "schatten",
+          "type": "kill",
+          "text_de": "Raffschatten im Küchenhof stellen",
+          "count": 4,
+          "where": {
+            "x": 1222,
+            "z": -1172,
+            "r": 12,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "raffschatten",
+              "x": 1222,
+              "z": -1172,
+              "era": "1793-07",
+              "count": 4,
+              "radius": 4
+            }
+          ]
+        },
+        {
+          "id": "etiketten",
+          "type": "collect",
+          "text_de": "Die Etiketten aufheben",
+          "item": "item.k3.etikett",
+          "count": 4,
+          "drop": {
+            "enemy": "raffschatten",
+            "chance": 1
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 200,
+        "items": [
+          {
+            "item": "item.riechsalz"
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k3.buch"
+        ],
+        "era": "1793-07"
+      }
+    },
+    {
+      "id": "q.k3.lehnstuhl",
+      "kind": "side",
+      "era": "1793-07",
+      "title_de": "Der vergoldete Lehnstuhl",
+      "summary_de": "Peter, Hannes Junge, hat einen der hundertvier vergoldeten Lehnstühle aus der Galerie geschleppt: für seine Mutter. Drei Raffschatten wollen ihn auch. Er will nur durchs Tor.",
+      "giver": {
+        "npc": "peter"
+      },
+      "turnin": "giver",
+      "topic_de": "Der Lehnstuhl",
+      "accept_de": "Ich bring dich zum Tor.",
+      "offer": [
+        {
+          "speaker": "peter",
+          "text": "Nicht anfassen! Der ist für Mutter. Einer von hundertvier, hat der Diener gesagt. Der Mann da vorne hat auch einen. Bleiben hundertzwei."
+        },
+        {
+          "speaker": "peter",
+          "text": "Aber die Schatten da hinten, die mit den Säcken, die wollen ihn auch. Die wollen alles. Bringst du mich bis zum Tor? Mutter soll einmal sitzen wie eine Herzogin."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "peter",
+          "text": "Langsam! Der hat Fransen. Gold. Die reißen."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "peter",
+          "text": "Draußen. Mutter sagt bestimmt, ich soll ihn zurückbringen. Und dann setzt sie sich doch drauf. Ich kenn sie."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Hundertvier vergoldete Lehnstühle, mit grünem Damast bezogen und mit Goldfransen behangen, so beschreibt Mannlich die Galerie. Ob einer davon heute noch in einer Stube steht, weiß ich nicht. Ich würde ihn gern vermessen.",
+          "fact": "cx.25",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 374"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Eine literaturgeschichtliche Quelle spricht von „breite[r] Unterstützung bei der heimischen Bevölkerung“, als geplündert wurde. Wer was nahm und warum, darüber schreibe ich kein Urteil. Nur das Datum.",
+          "fact": "cx.23",
+          "sources": [
+            {
+              "url": "https://www.literaturland-saar.de/orte/homburg/",
+              "label": "Literaturland Saar: Homburg",
+              "note": "Z"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "schatten",
+          "type": "kill",
+          "text_de": "Die Raffschatten vom Lehnstuhl verscheuchen",
+          "count": 3,
+          "where": {
+            "x": 1195,
+            "z": -1097,
+            "r": 10,
+            "era": "1793-07"
+          },
+          "spawn": [
+            {
+              "kind": "raffschatten",
+              "x": 1195,
+              "z": -1097,
+              "era": "1793-07",
+              "count": 3,
+              "radius": 3
+            }
+          ]
+        },
+        {
+          "id": "tor",
+          "type": "escort",
+          "text_de": "Peter mit dem Stuhl zum Hoftor bringen",
+          "npc": "peter",
+          "after": [
+            "schatten"
+          ],
+          "to": {
+            "x": 1192,
+            "z": -1113,
+            "r": 5,
+            "era": "1793-07"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 150,
+        "items": [
+          {
+            "item": "item.balsam"
+          }
+        ]
+      },
+      "available": {
+        "era": "1793-07"
+      }
+    }
+  ]
+}

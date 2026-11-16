@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
 import { playK1 } from './helpers/k1';
@@ -23,6 +23,9 @@ import { newGame, playProlog } from './helpers/prolog';
  *
  * A second test plays each of the three endings (museum / burn / keep) from a story shortcut
  * and checks that its scene, epilogue and credits render.
+ *
+ * Chapters 3 and 4 are quest chains (contentB): `CAMPAIGN_FROM=k3` starts there, from the kept save
+ * of an earlier run or, without one, from a new game with the skills and level of that point.
  *
  * Screenshots: test-results/screens/campaign-*.png (each chapter's start, the reload, the ending).
  * Takes 1.5–2 hours headless (software WebGL): the chapter screenshots are skipped here.
@@ -168,8 +171,30 @@ async function keepSave(page: Page, chapter: string): Promise<void> {
   if (raw) writeFileSync(`${SAVES}/${chapter}.json`, raw);
 }
 
-/** Continue the kept save of `chapter` from the title screen and start that chapter afresh. */
+/**
+ * Continue the kept save of `chapter` from the title screen and start that chapter afresh. With no
+ * kept save (`CAMPAIGN_FROM=k3` on a clean checkout) the chapter starts from a new game that has
+ * what the chapters before it give: the survey skills and the level the §6.1 curve expects there.
+ */
 async function resumeFrom(page: Page, chapter: string): Promise<void> {
+  if (!existsSync(`${SAVES}/${chapter}.json`)) {
+    const level: Record<string, number> = { k1: 3, k2: 5, k3: 8, k4: 10 };
+    await page.goto('./?notitle&fresh&manual');
+    await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.npc && !!window.kq?.menagerie, null, { timeout: 180_000 });
+    await page.evaluate(
+      ({ c, lvl }) => {
+        const k = window.kq!;
+        k.ctx.state.mutable.flags['barks.quiet'] = true;
+        k.skills!.all(true);
+        k.story!.start('Mara');
+        (k as unknown as { progression?: { level(n: number): void } }).progression?.level(lvl);
+        k.story!.goto(c);
+        k.step(4);
+      },
+      { c: chapter, lvl: level[chapter] ?? 1 },
+    );
+    return;
+  }
   const raw = readFileSync(`${SAVES}/${chapter}.json`, 'utf8');
   await page.addInitScript((raw) => {
     if (!sessionStorage.getItem('kq.campaign.seeded')) {
@@ -330,6 +355,8 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
     });
     await expect(page.getByTestId('ending')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId(`ending-${e.id}`)).toBeVisible();
+    // from the finale through the endings the staff stays down
+    expect(await page.evaluate(() => window.kq!.state().flags['combat.disabled'])).toBe(true);
     await page.getByTestId(`ending-${e.id}`).click();
     await page.getByRole('button', { name: 'Ja', exact: true }).click();
     await expect(page.getByTestId('ending-next')).toBeVisible();

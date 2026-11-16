@@ -1,5 +1,7 @@
 # Kapitel 4 „Der Steinbruch“
 
+> **Action-RPG-Umbau (2026-11, docs/ACTION-RPG.md §11.4).** Hauptaufträge: `q.k4.zettel` (Marlenes Zettel, Q am Taleingang), `q.k4.karren` (Karren-Echo, drei **Steinfresser** an den Wachhäusern, Westblick, rückwärts nach 1789), `q.k4.baumagazin` (Soll: Pachtbrief, Peters Karren, fünf Steinfresser am Lager), `q.k4.steinplatz` (Anschlag am Pfeiler, **Der Steinbrecher** im Ehrenhof, *danach* der Steinfraß W7, der Ausbruchgraben und seine Seite: **Messstab V, Laubs Lot**), `q.k4.standpunkt` (Brunnen 1840, die Meute treibt, Laubs Frage `flag.k4_zerstoerer`), `q.k4.stellen` (W8: hinlegen, Laterne, **kein Kampf**, `combat.disabled`; Jost, seine Frage `flag.k4_meute`, das Horn). Nebenaufträge: `q.k4.zeichen` (Peter: Matthes’ vier Steine, der vierte heute nur von der Straße vor dem Karlsberger Hof – Privatgrund, nie betreten; `flag.k4_steine`, Talisman „Matthes’ Zeichen“), `q.k4.graeben` (Gruslinge in drei Gräben, Relief 3 heute), `q.k4.pacht` (Pachtzettel aus Steinfresser-Löchern am Hang). „Noch nicht“ wartet nicht mehr auf Bestätigungen, sondern auf Laubs Frage; „Lücken“ füllt offene Haltungen still mit „offen“.
+
 | | |
 | --- | --- |
 | Ära | `1796` (Herbst, eine zerfallende Erinnerung) → Echo `1840-11` → `heute` (November, Nebel, Nacht) |

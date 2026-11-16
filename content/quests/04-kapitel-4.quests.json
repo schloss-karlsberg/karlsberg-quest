@@ -1,0 +1,1281 @@
+{
+  "$schema": "../schema/quests.schema.json",
+  "chapter": "k4",
+  "items": [
+    {
+      "id": "item.k4.seite",
+      "kind": "lore",
+      "set": "chronikseiten",
+      "name_de": "Seite der Chronik: „Der Steinbruch“",
+      "text_de": "Angesengt, aus einem Ausbruchgraben am Küchenhof, 1796. Namen, Beträge, und am Rand in einer anderen, sehr ordentlichen Schrift: „St. 17“. (Fiktion)",
+      "fiction": true
+    },
+    {
+      "id": "item.k4.zeichen_2",
+      "kind": "lore",
+      "set": "steinzeichen",
+      "name_de": "Abrieb: Matthes’ Zeichen (2/4)",
+      "text_de": "Kohle auf Papier, von Peters Karren abgerieben: ein offener Winkel, drei Punkte. Der Stein fährt nach Homburg, über eine Tür. (Fiktion: Das Steinmetzzeichen ist erfunden.)",
+      "fiction": true
+    },
+    {
+      "id": "item.k4.zeichen_3",
+      "kind": "lore",
+      "set": "steinzeichen",
+      "name_de": "Bruchstück mit Matthes’ Zeichen (3/4)",
+      "text_de": "Ein Splitter Buntsandstein aus dem Schutt des Ehrenhofs, 1796. Winkel, drei Punkte, die Hälfte fehlt. Die Gruslinge hatten schon angefangen. (Fiktion)",
+      "fiction": true
+    },
+    {
+      "id": "item.k4.zeichen_4",
+      "kind": "lore",
+      "set": "steinzeichen",
+      "name_de": "Feldbuch-Notiz: Matthes’ Zeichen (4/4)",
+      "text_de": "Eine Zeile in deinem Feldbuch, an der Straße vor dem Karlsberger Hof geschrieben: „Nicht hier. In der Stadt. Über einer Tür?“ Die Antwort kommt am Morgen, auf Marlenes Handy. (Fiktion)",
+      "fiction": true
+    },
+    {
+      "id": "item.k4.pachtzettel",
+      "kind": "quest",
+      "name_de": "Pachtzettel",
+      "text_de": "„Pacht über Holz und Steine der Brandstätte Carlsberg“, angenagt. (Wortlaut Fiktion; die Pacht von 1796 nach homburg-im-bild.)",
+      "fiction": true
+    }
+  ],
+  "quests": [
+    {
+      "id": "q.k4.zettel",
+      "kind": "main",
+      "era": "today",
+      "title_de": "Ein Zettel auf der Stufe",
+      "summary_de": "Marlene ist heimgegangen. Auf der Stufe des Bauwagens liegt ein Zettel. Danach hinunter ins Tal, zu den Wachhäusern am Taleingang, und nach 1796.",
+      "giver": {
+        "voice": "marlene"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Auf der Stufe liegt Papier. Ich lese keine fremden Briefe. Sie schon, das ist Ihr Beruf."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Siebzehnhundertsechsundneunzig. Drei Jahre nach dem Feuer. Keiner heizt mehr, und trotzdem riecht es nach Rauch."
+        }
+      ],
+      "objectives": [
+        {
+          "id": "zettel",
+          "type": "examine",
+          "text_de": "Marlenes Zettel auf der Stufe lesen",
+          "clue": "clue.k4.marlene",
+          "where": {
+            "x": 760,
+            "z": -908,
+            "r": 4,
+            "era": "today"
+          }
+        },
+        {
+          "id": "tal",
+          "type": "reach",
+          "text_de": "Hinunter zum Taleingang. Dort: Q – nach 1796",
+          "after": [
+            "zettel"
+          ],
+          "where": {
+            "x": 497,
+            "z": -900,
+            "r": 25,
+            "era": "1796"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 100
+      }
+    },
+    {
+      "id": "q.k4.karren",
+      "kind": "main",
+      "era": "1796",
+      "title_de": "Die Karren nach Westen",
+      "summary_de": "Die Wachhäuser am Taleingang stehen noch, ohne Wache, und an ihren Mauern nagen Steinfresser. Auf der Straße rollen Karren mit Steinen nach Westen. Laub will sehen, woher die Steine einmal kamen.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Die Wachhäuser stehen noch, ohne Wache. Und an den Mauern nagt etwas. Grau, mit Schultern. Ich nenne es Steinfresser, bis mir ein besserer Name einfällt."
+        },
+        {
+          "speaker": "laub",
+          "text": "Vorne sind sie hart wie Sandstein. Ein Wuchthieb bricht die Kruste. Oder Sie gehen hinten herum, wie ein vernünftiger Mensch."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Rückwärts gefahren und wieder vorwärts. Steine haben kein Zuhause, nur eine Adresse auf Zeit."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Die Hohenburg über Homburg hat man 1714 geschleift, und der Herzog hat ihre Trümmer als Steinbruch benutzt. Aus dem Jagdschloss Jägersburg kamen Täfelungen und Möbel. Nach 1793 wandern die Steine weiter, in die Häuser von Homburg.",
+          "fact": "cx.31",
+          "sources": [
+            {
+              "url": "https://en.wikipedia.org/wiki/Hohenburg_Castle_(Homburg)",
+              "label": "en.wikipedia: Hohenburg Castle (Homburg)",
+              "note": "P"
+            },
+            {
+              "url": "https://www.burgenwelt.org/deutschland/hohenburg/burgenwelt-hohenburg-objektseite.pdf",
+              "label": "Burgenwelt: Hohenburg",
+              "note": "P"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_J%C3%A4gersburg",
+              "label": "de.wikipedia: Schloss Jägersburg",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "karren",
+          "type": "echo",
+          "text_de": "Die Karren am Taleingang (E halten)",
+          "clue": "clue.k4.karren",
+          "where": {
+            "x": 497,
+            "z": -900,
+            "r": 20,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "fresser",
+          "type": "kill",
+          "text_de": "Steinfresser an den Wachhäusern zerschlagen",
+          "count": 3,
+          "where": {
+            "x": 506,
+            "z": -900,
+            "r": 14,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "steinfresser",
+              "x": 508,
+              "z": -900,
+              "era": "1796",
+              "count": 3,
+              "radius": 5
+            }
+          ]
+        },
+        {
+          "id": "kuppe",
+          "type": "reach",
+          "text_de": "Den Karren nach Westen: die Kuppe am Waldrand",
+          "after": [
+            "karren",
+            "fresser"
+          ],
+          "where": {
+            "x": 200,
+            "z": -905,
+            "r": 20,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "hohenburg",
+          "type": "examine",
+          "text_de": "Von der Kuppe nach Südwesten schauen (E)",
+          "clue": "clue.k4.hohenburg",
+          "after": [
+            "kuppe"
+          ],
+          "where": {
+            "x": 200,
+            "z": -905,
+            "r": 20,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "rueckwaerts",
+          "type": "echo",
+          "text_de": "Auf der Kuppe E halten: die Karren, rückwärts",
+          "clue": "echo.k4.rueckwaerts",
+          "after": [
+            "hohenburg"
+          ],
+          "where": {
+            "x": 200,
+            "z": -905,
+            "r": 20,
+            "era": "1796"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 250
+      }
+    },
+    {
+      "id": "q.k4.baumagazin",
+      "kind": "main",
+      "era": "1796",
+      "title_de": "Das letzte Haus",
+      "summary_de": "Im Hof des Baumagazins führt Soll jetzt Buch für die Pächter, und Peter lädt Steine. Am Lager im Hof nagen Steinfresser. Und auf Peters Karren schaut ein Stein zurück.",
+      "giver": {
+        "npc": "soll"
+      },
+      "turnin": "giver",
+      "topic_de": "Das Lager",
+      "accept_de": "Ich halte dir das Lager frei.",
+      "offer": [
+        {
+          "speaker": "soll",
+          "text": "Ich führe jetzt Buch für die Pächter. Und das Lager frisst mir einer weg. Nicht die Pächter. Etwas Graues, das an den Quadern nagt."
+        },
+        {
+          "speaker": "soll",
+          "text": "Fünf sind es, am Stapel bei der Straße. Was sie fressen, steht danach in keinem Buch mehr. Machen Sie das weg. Und sehen Sie sich Peters Karren an."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "soll",
+          "text": "Fünf. Ich zähle. Und der Pachtbrief liegt auf meinem Tisch, falls Sie lesen möchten, was man heute für ein Schloss bezahlt."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "soll",
+          "text": "Gerettet. Das Lager, meine ich. Das einzige Haus hier, das stehen bleibt. Alles andere wird selbst zu Baumaterial."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "soll",
+          "text": "Vierzehn Bürger aus Homburg haben das Recht gepachtet, Holz und Steine zu verkaufen. Vierzehn, ich habe nachgezählt. Was ein Fenstergewände bringt, schreibe ich hin, wie man es mir sagt. Die Vierzehn stehen fest.",
+          "fact": "cx.30",
+          "sources": [
+            {
+              "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_chronologie_schloss_karlsber.html",
+              "label": "homburg-im-bild (Hobbyseite): Chronologie Schloss Karlsberg",
+              "note": "Zahl 14; nur diese Quelle"
+            },
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+              "note": "P"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Das Baumagazin steht heute noch, als einziges Haus vom ganzen Karlsberg: später Brauerei, Forsthaus, Villa, heute der Karlsberger Hof. Privat. Man schaut von der Straße.",
+          "fact": "cx.32",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P"
+            },
+            {
+              "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+              "label": "schloss-karlsberg.de (Dr. Jutta Schwan)",
+              "note": "P"
+            },
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+              "note": "P: „Baustoffhandlung“"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "pacht",
+          "type": "examine",
+          "text_de": "Den Pachtbrief auf Solls Tisch lesen",
+          "clue": "clue.k4.pacht",
+          "where": {
+            "x": 495,
+            "z": -845,
+            "r": 3,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "stein",
+          "type": "examine",
+          "text_de": "Peters Karren: ein Stein schaut zurück",
+          "clue": "clue.k4.stein_karren",
+          "where": {
+            "x": 496.5,
+            "z": -822,
+            "r": 3,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "fresser",
+          "type": "kill",
+          "text_de": "Die Steinfresser am Lager zerschlagen",
+          "count": 5,
+          "where": {
+            "x": 479,
+            "z": -852,
+            "r": 14,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "steinfresser",
+              "x": 478,
+              "z": -852,
+              "era": "1796",
+              "count": 5,
+              "radius": 6
+            }
+          ]
+        },
+        {
+          "id": "krumen",
+          "type": "kill",
+          "text_de": "Bonus: Gruslinge aus dem Steinhaufen fegen",
+          "count": 6,
+          "optional": true,
+          "bonus_xp": 40,
+          "where": {
+            "x": 472,
+            "z": -846,
+            "r": 10,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "grusling",
+              "x": 472,
+              "z": -846,
+              "era": "1796",
+              "count": 6,
+              "radius": 3
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 300,
+        "items": [
+          {
+            "item": "item.riechsalz",
+            "count": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k4.steinplatz",
+      "kind": "main",
+      "era": "1796",
+      "title_de": "Der Steinplatz",
+      "summary_de": "Im Ehrenhof von 1796 schlagen Männer die Mauern aus. Aus den ausgebrochenen Quadern hat sich etwas zusammengesetzt, das nicht weiß, dass es tot ist: der Steinbrecher.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Oben im Ehrenhof schlagen sie die Mauern aus. Und aus den Quadern hat sich etwas zusammengesetzt, das nicht weiß, dass es tot ist."
+        },
+        {
+          "speaker": "laub",
+          "text": "Treffen Sie die Fugen. Dann fliegen die Steine davon, nach Westen, nach Homburg. Wohin sonst."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Eine Seite. In so einem Loch habe ich 1840 auch eine gefunden. Ich hätte sie liegen lassen sollen. Das sagt sich leicht, mit zweihundert Jahren Abstand."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Der Herzog ist am ersten April 1795 gestorben, im Exil, nach einem Schlaganfall. Wo genau, darüber streitet man: Mannheim, sagen die einen, Rohrbach bei Heidelberg die anderen. Sicher sind die Schulden. Über neun Millionen Gulden.",
+          "fact": "cx.29",
+          "sources": [
+            {
+              "url": "https://de.wikipedia.org/wiki/Karl_II._August",
+              "label": "de.wikipedia: Karl II. August",
+              "note": "P"
+            },
+            {
+              "url": "https://de.wikisource.org/wiki/ADB:Karl_II._(Herzog_von_Pfalz-Zweibr%C3%BCcken)",
+              "label": "ADB: Karl II. (Herzog von Pfalz-Zweibrücken)",
+              "note": "P"
+            },
+            {
+              "url": "http://nhp-2000.de/homburg-im-bild/html/body_-_vita_karl_ii_august_christia.html",
+              "label": "homburg-im-bild (Hobbyseite): Vita Karl II. August",
+              "note": "P: Sterbeort Rohrbach"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Holt man eine Mauer bis auf den letzten Stein heraus, bleibt ein Graben in ihrer Form. Im Scan von heute sieht das aus wie eine Mauer. Es ist das Loch, in dem sie stand.",
+          "fact": "rm.05",
+          "sources": [
+            {
+              "url": "https://www.shop.lvgl.saarland.de/",
+              "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+              "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); KB-06"
+            },
+            {
+              "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+              "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "hof",
+          "type": "reach",
+          "text_de": "Hinauf zum Ehrenhof, 1796",
+          "where": {
+            "x": 1216,
+            "z": -1114,
+            "r": 35,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "anschlag",
+          "type": "examine",
+          "text_de": "Am Pfeiler am Hofeingang: ein angeschlagenes Blatt",
+          "clue": "clue.k4.anschlag",
+          "after": [
+            "hof"
+          ],
+          "where": {
+            "x": 1195,
+            "z": -1112,
+            "r": 3,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "brecher",
+          "type": "kill",
+          "text_de": "Den Steinbrecher zerlegen",
+          "enemy": "steinbrecher",
+          "after": [
+            "anschlag"
+          ],
+          "where": {
+            "x": 1224,
+            "z": -1116,
+            "r": 30,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "steinbrecher",
+              "x": 1224,
+              "z": -1116,
+              "era": "1796",
+              "boss": true,
+              "leash": 50
+            }
+          ]
+        },
+        {
+          "id": "graben",
+          "type": "examine",
+          "text_de": "Nach Norden, zu den Gräben am Küchenhof",
+          "clue": "clue.k4.graben",
+          "after": [
+            "brecher"
+          ],
+          "where": {
+            "x": 1240,
+            "z": -1193,
+            "r": 20,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "seite",
+          "type": "collect",
+          "text_de": "Im Graben: eine angesengte Seite",
+          "item": "item.k4.seite",
+          "after": [
+            "graben"
+          ],
+          "place": [
+            {
+              "x": 1236,
+              "z": -1186,
+              "era": "1796"
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 450,
+        "items": [
+          {
+            "item": "item.stab.lot"
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k4.standpunkt",
+      "kind": "main",
+      "era": "1796",
+      "title_de": "Standpunkt siebzehn",
+      "summary_de": "Laub will zum Brunnen am alten Forsthaus, nach Südosten. Standpunkt siebzehn, November 1840: die Nacht, in der er nicht liegen blieb.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Ich muss woanders hin. Nach Südosten, zum Brunnen am alten Forsthaus. Standpunkt siebzehn. Kommen Sie mit? Das war eine rhetorische Frage."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Sie haben uns nicht gestellt. Sie haben uns heimgebracht. Zum Zwinger. Ich hätte es 1840 merken können, wenn ich nicht gerannt wäre."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Die bayerischen Positionsblätter von 1836 bis 1841: „Ruine Carlsberg“, „Carlsbergerhof“. Das Schloss liegt darauf gut fünfzig Meter zu weit im Osten. Den Geometer Laub hat es nie gegeben, sagen Ihre Quellen. Die Quellen haben recht. Ich bestehe trotzdem darauf.",
+          "fact": "cx.33",
+          "sources": [
+            {
+              "url": "https://geoportal.saarland.de/mapbender/php/mod_showMetadata.php?languageCode=de&resource=wms&id=2597",
+              "label": "Geoportal Saarland: WMS Historische Karten (dl-de/by-2-0)",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k4.zerstoerer",
+        "prompt_de": "Eine Frage, bevor wir hingehen. Wer hat den Karlsberg zerstört, was meinen Sie?",
+        "flag": "flag.k4_zerstoerer",
+        "options": [
+          {
+            "label_de": "Die Franzosen. Sie haben ihn angezündet.",
+            "value": "franzosen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Die Fackel war französisch. Das steht fest."
+              }
+            ]
+          },
+          {
+            "label_de": "Der Herzog selbst, der so gebaut hat.",
+            "value": "herzog_selbst",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Wer mit Papier Marmor macht, sollte sich über Feuer nicht beschweren."
+              }
+            ]
+          },
+          {
+            "label_de": "Die Steinträger aus Homburg.",
+            "value": "steintraeger",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Abgetragen, Stein für Stein. Das ist auch eine Art zu zerstören. Eine fleißige."
+              }
+            ]
+          },
+          {
+            "label_de": "Das Vergessen.",
+            "value": "vergessen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Dagegen hilft nur Aufschreiben. Und Zuhören."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "laub",
+                "text": "Das ist die ehrlichste Antwort, die ich heute bekommen habe."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "brunnen",
+          "type": "reach",
+          "text_de": "Zum Brunnen am alten Forsthaus: Standpunkt siebzehn",
+          "where": {
+            "x": 1386,
+            "z": -1477,
+            "r": 18,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "echo",
+          "type": "echo",
+          "text_de": "Am Brunnen E halten: November 1840",
+          "clue": "clue.k4.laub_1840",
+          "after": [
+            "brunnen"
+          ],
+          "where": {
+            "x": 1386,
+            "z": -1477,
+            "r": 12,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "treiben",
+          "type": "event",
+          "text_de": "Nicht ins Grau. Dahin, wohin die Meute dich treibt",
+          "event": "hunt:goal",
+          "match": {
+            "mode": "drive"
+          },
+          "after": [
+            "echo"
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 350
+      }
+    },
+    {
+      "id": "q.k4.stellen",
+      "kind": "main",
+      "era": "today",
+      "title_de": "Sich stellen",
+      "summary_de": "Am Zwinger, heute Nacht, im Nebel. Die Meute steht im Kreis. Nicht weglaufen. Hinlegen, das Licht an, und warten. Der Stab bleibt unten.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": {
+        "npc": "pikeur"
+      },
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Zum Zwinger. Und dann nicht weglaufen. Das ist alles. Es ist das Schwerste, was ich je von jemandem verlangt habe, mich eingeschlossen."
+        },
+        {
+          "speaker": "laub",
+          "text": "Der Stab bleibt unten. Das hier gewinnt man nicht mit Hieben."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "pikeur",
+          "text": "Leg dich hin. Bitte."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "pikeur",
+          "text": "Ich bin’s. Jost. Alt geworden, ohne älter zu werden. Das geht, wenn man lang genug läuft."
+        },
+        {
+          "speaker": "pikeur",
+          "text": "Nimm das Horn. Mundstück zuerst. So gibt man’s weiter."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Heute ist hier ein WaldPark, mit einem Hörpfad von fünfeinhalb Kilometern. Die Ruinen sind gesichert. Vom Zwinger bleibt ein Rechteck im Boden. Man schaut, man gräbt nicht. Ein brauchbares Ende für eine Jagd.",
+          "fact": "cx.39",
+          "sources": [
+            {
+              "url": "https://www.homburg.de/media/scllyew0/schlossbergtour.pdf",
+              "label": "Stadt Homburg: Faltblatt Schlossbergtour",
+              "note": "P"
+            },
+            {
+              "url": "https://schloss-karlsberg.de/hoerpfad-schloss-karlsberg/",
+              "label": "Hörpfad Schloss Karlsberg",
+              "note": "P"
+            },
+            {
+              "url": "https://www.outdooractive.com/de/poi/saarpfalz-kreis/waldpark-schloss-karlsberg/61542782/",
+              "label": "WaldPark Schloss Karlsberg (outdooractive)",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k4.meute",
+        "prompt_de": "Warum sind wir gelaufen, all die Jahre? Du weißt es jetzt besser als ich.",
+        "flag": "flag.k4_meute",
+        "options": [
+          {
+            "label_de": "Sie haben ihren Herrn gesucht.",
+            "value": "herr_suchen",
+            "reply": [
+              {
+                "speaker": "pikeur",
+                "text": "Der ist nach Mannheim. Ohne abzublasen. Ja."
+              }
+            ]
+          },
+          {
+            "label_de": "Sie haben die Chronik bewacht.",
+            "value": "chronik_bewachen",
+            "reply": [
+              {
+                "speaker": "pikeur",
+                "text": "Sie liefen immer da, wo eine Seite lag. Kann sein."
+              }
+            ]
+          },
+          {
+            "label_de": "Sie haben uns heimgetrieben.",
+            "value": "heimtreiben",
+            "reply": [
+              {
+                "speaker": "pikeur",
+                "text": "Jeden, der zu lang im Grau war. Fast jeden."
+              }
+            ]
+          },
+          {
+            "label_de": "Weil keiner abgeblasen hat.",
+            "value": "nie_abgeblasen",
+            "reply": [
+              {
+                "speaker": "pikeur",
+                "text": "So einfach. So einfach war das."
+              }
+            ]
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen",
+            "reply": [
+              {
+                "speaker": "pikeur",
+                "text": "Dann frag ich nicht weiter. Das hab ich von dir gelernt."
+              }
+            ]
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "zwinger",
+          "type": "reach",
+          "text_de": "Zum Zwinger, heute Nacht",
+          "where": {
+            "x": 1216,
+            "z": -1571,
+            "r": 20,
+            "era": "today"
+          }
+        },
+        {
+          "id": "hinlegen",
+          "type": "event",
+          "text_de": "Hinlegen (X) und die Laterne an (L). Nicht weglaufen",
+          "event": "hunt:finale",
+          "match": {
+            "outcome": "calmed"
+          },
+          "after": [
+            "zwinger"
+          ]
+        },
+        {
+          "id": "jost",
+          "type": "talk",
+          "text_de": "Der Pikeur steigt ab und nimmt den Hut ab",
+          "npc": "pikeur",
+          "after": [
+            "hinlegen"
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 800,
+        "items": [
+          {
+            "item": "item.horn"
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k4.zeichen",
+      "kind": "side",
+      "era": "1796",
+      "title_de": "Matthes’ Zeichen",
+      "summary_de": "Peter, Hannes Sohn, sucht die Steine mit dem Zeichen seines Vaters: ein offener Winkel, drei Punkte. Einer liegt auf seinem Karren, einer im Schutt des Ehrenhofs. Und einer, heute, ist nicht da, wo man ihn sucht.",
+      "giver": {
+        "npc": "peter"
+      },
+      "turnin": "auto",
+      "topic_de": "Das Zeichen",
+      "accept_de": "Ich hol ihn dir.",
+      "offer": [
+        {
+          "speaker": "peter",
+          "text": "Der Stein mit dem Winkel und den drei Punkten. Das ist von meinem Vater. Matthes. Er hat sein Zeichen in jeden Stein gehauen, den er gemacht hat."
+        },
+        {
+          "speaker": "peter",
+          "text": "Oben im Schutt vom Ehrenhof liegt noch einer, sagen die Fuhrleute. Aber da krabbelt was Graues drin. Holst du ihn? Ich kann den Karren nicht stehen lassen."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Von der Straße aus. Mehr steht uns nicht zu. Das Haus gehört heute Leuten, die nicht wissen, dass wir hier herumstehen."
+        },
+        {
+          "speaker": "laub",
+          "text": "Und das Zeichen? Nicht hier. In der Stadt, nehme ich an. Über einer Tür. Peter hat gesagt, wohin er fährt."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Nach 1793 wandern die Steine des Karlsbergs in die Häuser von Homburg: Fenstergewände, Stufen, Türstürze. Das ist belegt. Ein Steinmetzzeichen mit Winkel und drei Punkten nicht. Das haben wir für Matthes erfunden.",
+          "fact": "cx.31",
+          "sources": [
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+              "note": "P"
+            },
+            {
+              "url": "https://schloss-karlsberg.de/schloss-karlsberg-3/",
+              "label": "schloss-karlsberg.de (Dr. Jutta Schwan)",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "stance": {
+        "id": "k4.steine",
+        "prompt_de": "Die Steine in Homburg, über den Türen und in den Kellern: Was sind die, meinst du?",
+        "flag": "flag.k4_steine",
+        "options": [
+          {
+            "label_de": "Raub am Raub.",
+            "value": "raub"
+          },
+          {
+            "label_de": "Der Lohn, der nie gezahlt wurde.",
+            "value": "lohn_steine"
+          },
+          {
+            "label_de": "Ein Neuanfang: Das Schloss steckt in hundert Häusern.",
+            "value": "neuanfang"
+          },
+          {
+            "label_de": "Nur Steine.",
+            "value": "nur_steine"
+          },
+          {
+            "label_de": "Ich weiß es nicht.",
+            "value": "offen"
+          }
+        ]
+      },
+      "objectives": [
+        {
+          "id": "eins",
+          "type": "manual",
+          "text_de": "Bonus: Stein 1 – das Zeichen am Bauplatz, 1789 (wenn du es gesehen hast)",
+          "optional": true,
+          "bonus_xp": 30
+        },
+        {
+          "id": "zwei",
+          "type": "manual",
+          "text_de": "Stein 2 – auf Peters Karren"
+        },
+        {
+          "id": "krumen",
+          "type": "kill",
+          "text_de": "Gruslinge im Schutt des Ehrenhofs",
+          "count": 8,
+          "where": {
+            "x": 1240,
+            "z": -1105,
+            "r": 12,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "grusling",
+              "x": 1240,
+              "z": -1105,
+              "era": "1796",
+              "count": 8,
+              "radius": 5
+            }
+          ]
+        },
+        {
+          "id": "drei",
+          "type": "collect",
+          "text_de": "Stein 3 – das Bruchstück mit dem Zeichen aufheben",
+          "item": "item.k4.zeichen_3",
+          "after": [
+            "krumen"
+          ],
+          "place": [
+            {
+              "x": 1241,
+              "z": -1103,
+              "era": "1796"
+            }
+          ]
+        },
+        {
+          "id": "vier",
+          "type": "reach",
+          "text_de": "Heute: von der Straße vor dem Karlsberger Hof schauen (Privatgrund – nur schauen)",
+          "after": [
+            "drei"
+          ],
+          "where": {
+            "x": 483,
+            "z": -839,
+            "r": 6,
+            "era": "today"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 300,
+        "items": [
+          {
+            "item": "item.charm.winkel"
+          },
+          {
+            "item": "item.k4.zeichen_2"
+          },
+          {
+            "item": "item.k4.zeichen_4"
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k4.baumagazin"
+        ],
+        "era": "1796"
+      }
+    },
+    {
+      "id": "q.k4.graeben",
+      "kind": "side",
+      "era": "1796",
+      "title_de": "Gruslinge im Graben",
+      "summary_de": "In den Ausbruchgräben am Küchenhof wimmelt es: Krümel mit Zähnen, aus dem Mörtel, den keiner haben will. Danach, heute, der Vergleich mit dem Relief.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Die Gräben am Küchenhof. Da wimmelt es. Krümel mit Zähnen, aus dem Mörtel, den keiner haben will. Wer will, fegt sie weg. Ein Wuchthieb mit dem Lot fegt am besten."
+        },
+        {
+          "speaker": "laub",
+          "text": "Und danach, heute, mit dem Relief-Blick drei: Schauen Sie, was von so einem Graben übrig bleibt."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Eine Rinne mit zwei kleinen Wällen. Genau da. Was Sie im Prolog für eine Mauer gehalten haben, ist ihr Abdruck. Ich habe mich auch geirrt, damals. Nur länger."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Ausbruchgräben: schmal, gerade, in der Form der Mauer, oft als Rechteck. Am Küchenhof eines von achtundzwanzig mal dreizehn Metern. Im Wald lesen Denkmalpfleger solche Formen im Laserscan. Schauen, nicht graben.",
+          "fact": "rm.05",
+          "sources": [
+            {
+              "url": "https://www.shop.lvgl.saarland.de/",
+              "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+              "note": "LIDAR: eigene Auswertung des DGM1 2025 (saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md, nicht öffentlich); KB-06"
+            },
+            {
+              "url": "https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf",
+              "label": "Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "west",
+          "type": "kill",
+          "text_de": "Graben am Küchenhof: die Westseite",
+          "count": 5,
+          "where": {
+            "x": 1232,
+            "z": -1188,
+            "r": 8,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "grusling",
+              "x": 1232,
+              "z": -1188,
+              "era": "1796",
+              "count": 5,
+              "radius": 3
+            }
+          ]
+        },
+        {
+          "id": "nord",
+          "type": "kill",
+          "text_de": "Graben am Küchenhof: die Nordseite",
+          "count": 5,
+          "where": {
+            "x": 1236,
+            "z": -1180,
+            "r": 8,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "grusling",
+              "x": 1236,
+              "z": -1180,
+              "era": "1796",
+              "count": 5,
+              "radius": 3
+            }
+          ]
+        },
+        {
+          "id": "sued",
+          "type": "kill",
+          "text_de": "Graben am Küchenhof: die Südseite",
+          "count": 5,
+          "where": {
+            "x": 1226,
+            "z": -1194,
+            "r": 8,
+            "era": "1796"
+          },
+          "spawn": [
+            {
+              "kind": "grusling",
+              "x": 1226,
+              "z": -1194,
+              "era": "1796",
+              "count": 5,
+              "radius": 3
+            }
+          ]
+        },
+        {
+          "id": "heute",
+          "type": "examine",
+          "text_de": "Heute, im Relief-Blick 3: die Rinne vergleichen",
+          "clue": "clue.k4.graben_heute",
+          "after": [
+            "west",
+            "nord",
+            "sued"
+          ],
+          "where": {
+            "x": 1240,
+            "z": -1193,
+            "r": 20,
+            "era": "today"
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 250,
+        "items": [
+          {
+            "item": "item.kalkstaub"
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k4.steinplatz"
+        ]
+      }
+    },
+    {
+      "id": "q.k4.pacht",
+      "kind": "side",
+      "era": "1796",
+      "title_de": "Die Pächter",
+      "summary_de": "Steinfresser haben die Pacht- und Abrisszettel der Pächter in ihre Löcher am Hang verschleppt. Soll braucht drei davon zurück. Ohne Zettel kein Buch.",
+      "giver": {
+        "npc": "soll"
+      },
+      "turnin": "giver",
+      "topic_de": "Die Pachtzettel",
+      "accept_de": "Ich hole dir die Zettel.",
+      "offer": [
+        {
+          "speaker": "soll",
+          "text": "Die Pächter haben ihre Zettel verloren. Pacht, Abriss, Bedingungen. Die Steinfresser haben sie mitgenommen, in ihre Löcher am Hang zwischen hier und dem Schloss."
+        },
+        {
+          "speaker": "soll",
+          "text": "Ich brauche drei. Ohne Zettel kein Buch, ohne Buch keine Ordnung, ohne Ordnung … na ja. Das hier."
+        }
+      ],
+      "progress": [
+        {
+          "speaker": "soll",
+          "text": "Drei Zettel. Angenagt nehme ich auch."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "soll",
+          "text": "Drei. Sauber. Na ja, angenagt. Ich trage sie ein. Ordnung ist, wenn man trotzdem einträgt."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Ein paar Jahre später, unter Napoleon, bekommt die Witwe des Herzogs die Ruine zurück. Unter einer Bedingung: abreißen, bis auf den Grund. Anfang des neunzehnten Jahrhunderts ist das Schloss bis auf die Fundamente abgetragen.",
+          "fact": "cx.30",
+          "sources": [
+            {
+              "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+              "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+              "note": "P"
+            },
+            {
+              "url": "https://de.wikipedia.org/wiki/Schloss_Karlsberg",
+              "label": "de.wikipedia: Schloss Karlsberg",
+              "note": "P"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "fresser",
+          "type": "kill",
+          "text_de": "Steinfresser in ihren Löchern am Hang",
+          "count": 3,
+          "spawn": [
+            {
+              "kind": "steinfresser",
+              "x": 650,
+              "z": -930,
+              "era": "1796",
+              "count": 1,
+              "radius": 2
+            },
+            {
+              "kind": "steinfresser",
+              "x": 800,
+              "z": -960,
+              "era": "1796",
+              "count": 1,
+              "radius": 2
+            },
+            {
+              "kind": "steinfresser",
+              "x": 1000,
+              "z": -1000,
+              "era": "1796",
+              "count": 1,
+              "radius": 2
+            }
+          ],
+          "where": {
+            "x": 800,
+            "z": -960,
+            "r": 20,
+            "era": "1796"
+          }
+        },
+        {
+          "id": "zettel",
+          "type": "collect",
+          "text_de": "Die Pachtzettel aufheben",
+          "item": "item.k4.pachtzettel",
+          "count": 3,
+          "drop": {
+            "enemy": "steinfresser",
+            "chance": 1
+          }
+        }
+      ],
+      "rewards": {
+        "xp": 250,
+        "items": [
+          {
+            "item": "item.kalkstaub",
+            "count": 2
+          }
+        ]
+      },
+      "available": {
+        "after": [
+          "q.k4.baumagazin"
+        ],
+        "era": "1796"
+      }
+    }
+  ]
+}

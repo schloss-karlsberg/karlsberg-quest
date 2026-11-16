@@ -1,5 +1,7 @@
 # Die Enden
 
+> **Action-RPG-Umbau (2026-11, docs/ACTION-RPG.md §11.5).** Die Enden bleiben, wie sie sind: Wahl am Tisch (Museum / Feuer / Behalten), Epilog aus den Haltungen und `flag.k3_objekt`, Abspann, „Ende noch einmal wählen“. Die Haltungen kommen jetzt aus den Abgaben der Aufträge (Hanne, Laub, Peter, Jost) und tragen die Werte der Enden-Datei (`herzog_selbst`, `lohn_steine`, `herr_suchen`, `chronik_bewachen` …); der Ersatz-Epilog in der Story-Datei kennt beide Schreibweisen. Vom Finale (W8) bis zum Abspann ist der Kampf aus (`combat.disabled`): Hier gewinnt niemand etwas mit einem Stab.
+
 Alles in dieser Datei ist **FIKTION**, außer den ausdrücklich markierten Sätzen. Kein Ende ist richtig oder falsch. Es gibt keine Wertung, keine Punkte, keinen „wahren“ Schluss.
 
 | | |

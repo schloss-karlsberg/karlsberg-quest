@@ -2,20 +2,21 @@ import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
 
 /**
- * Chapter 3 "Die Nacht", played through headless (`?manual`, driven through window.kq), with the
- * real content (story 03-kapitel-3.story.json + kapitel-3 pack):
+ * Chapter 3 "Die Nacht" as a chain of quests, played through headless (`?manual`, driven through
+ * window.kq), with the real content (story 03-kapitel-3 + quests 03-kapitel-3 + kapitel-3 pack):
  *
- *   Feldstation → Q at the Ehrenhof → Teil A (stroh echo, Lehnstuhl, Küchenhof + Hanne, Soll in
- *   the Registratur, Waffensammlung, Naturalienkabinett, the gallery: echo, tape, trapdoor, the
- *   grey book, Tempelzimmer) → the Kommissär's torch → the fire: up the Prunktreppe into the
- *   burning Festsaal → the choice (one object) → down and out through the smoke → the garden and
- *   the pack (by ear) → the Gärtnerei gate → north past the jaguar to the Zwinger → Jost → back
- *   to today → the object on the table → the case page confirmed → cliffhanger → chapter 4.
+ *   Feldstation → Q at the Ehrenhof → q.k3.nachmittag (straw echo, the armchair, five Raffschatten
+ *   with Hanne's basket, turn-in with her stance) · side q.k3.lehnstuhl (Peter's chair, escort) →
+ *   q.k3.buch from Soll (shades at the Durchfahrt, Waffensammlung, Naturalienkabinett, the gallery
+ *   echo + tape, the trapdoor, the grey book, the one page) · side q.k3.kabinett (labels) → dusk:
+ *   q.k3.strohmann (the boss in the Ehrenhof, then the torch) → q.k3.festsaal (Glutlinge on the
+ *   Prunktreppe, the quiet Festsaal, W5 choice → charm, the escape, the gate, Hanne) · side
+ *   q.k3.jaguar (calmed with light) → q.k3.hunde (Streuner, the Zwinger, Jost: Messstab IV) →
+ *   today → the object on the table → cliffhanger → chapter 4.
  *
- * Every clue is examined at its place (the Chronik's E target must be that clue there), rooms
- * are walked through their doors (only stair halls are skipped with `interiors.enter`), and the
- * escape from the fire and the sneak past the pack are walked with the real smoke / hunt.
- * Used by e2e/chapter-k3.spec.ts and e2e/campaign.spec.ts. Screenshots: test-results/screens/ch-k3-*.png.
+ * Enemies are struck down with kq.combat.kill (the real enemy:killed path), pickups taken with
+ * kq.progression.take, turn-ins and stances go through the conversation. The player is in god mode.
+ * Used by e2e/chapter-k3.spec.ts and e2e/campaign.spec.ts. Screenshots: test-results/screens/cnb-k3-*.png.
  */
 // biome-ignore lint/suspicious/noExplicitAny: test glue
 export type Any = any;
@@ -27,9 +28,17 @@ export async function shot(page: Page, name: string): Promise<void> {
   // let a skill card (real-time HUD card) leave the picture
   await page.waitForFunction(() => (window.kq as Any).skills?.card() === null, null, { timeout: 60_000 }).catch(() => undefined);
   if (!SHOTS) return;
+  // a reward card left over from a turn-in: put it away (E) so the scene shows
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    for (let i = 0; i < 4 && k.quests?.reward(); i++) {
+      k.press('KeyE', 1);
+      k.step(4);
+    }
+  });
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SCREENS}/ch-k3-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/cnb-k3-${name}.png`, timeout: 150_000 });
 }
 
 /**
@@ -307,7 +316,108 @@ export async function talk(page: Page, npc: string, topics: string[]): Promise<s
   );
 }
 
-/** The chapter's main playthrough (moved here from chapter-k3.spec.ts so the campaign can chain it). */
+// ---- quests ------------------------------------------------------------------------------------
+
+export const quest = (page: Page, id: string) => page.evaluate((id) => (window.kq as Any).quests.state().quests[id]?.state ?? 'hidden', id);
+export const items = (page: Page) => page.evaluate(() => (window.kq as Any).progression.state().inventory as Record<string, number>);
+
+/**
+ * A quest exchange with an NPC (E, the quest topic, then the answer button): 'qa' accepts,
+ * 'qs:<value>' answers a stance; none for a plain turn-in. Puts the reward card away.
+ */
+export async function questTalk(page: Page, npc: string, id: string, answer?: string): Promise<string[]> {
+  const near = await page.evaluate((npc) => (window as Any).k3h.faceNpc(npc), npc);
+  expect(near, `${npc} in reach`).toBe(npc);
+  const r = await page.evaluate(
+    ({ id, answer }) => {
+      const k = window.kq as Any;
+      const heard: string[] = [];
+      const drain = () => {
+        for (let i = 0; i < 80; i++) {
+          const l = k.npc.state().line;
+          if (l && heard[heard.length - 1] !== l.id) heard.push(l.id);
+          if (!k.npc.state().busy) break;
+          k.npc.finish();
+          k.npc.advance();
+        }
+      };
+      k.press('KeyE', 1);
+      drain();
+      const topics0 = k.npc.state().topics as string[];
+      const asked = k.npc.ask(`q:${id}`);
+      drain();
+      const topics1 = k.npc.state().topics as string[];
+      let chose = true;
+      if (answer) chose = k.npc.choose(answer === 'qa' ? `qa:${id}` : answer);
+      drain();
+      k.step(2);
+      for (let i = 0; i < 6 && k.quests.reward(); i++) {
+        k.press('KeyE', 1);
+        k.step(2);
+      }
+      if (k.npc.state().open) {
+        if (k.npc.state().topics.includes('bye')) {
+          k.npc.ask('bye');
+          drain();
+        }
+        k.npc.close();
+      }
+      k.step(4);
+      // the reward card may come after the conversation: read it, then E
+      for (let i = 0; i < 12; i++) {
+        k.step(10);
+        if (k.quests.reward()) k.press('KeyE', 1);
+      }
+      return { heard, asked, chose, topics0, topics1 };
+    },
+    { id, answer },
+  );
+  expect(r.asked, `${npc}: topic q:${id} in ${JSON.stringify(r.topics0)}`).toBe(true);
+  expect(r.chose, `${npc}: ${answer} in ${JSON.stringify(r.topics1)}`).toBe(true);
+  return r.heard;
+}
+
+/** A quest's enemy group is there; strike it down (the real kill path: enemy:killed → the quest). */
+export async function killGroup(page: Page, group: string, min = 1): Promise<number> {
+  const n = await page.evaluate(
+    ({ group }) => {
+      const k = window.kq as Any;
+      for (let i = 0; i < 30 && !Object.keys(k.combat.groups()).includes(group); i++) k.step(10);
+      const n = k.combat.kill(group);
+      k.step(60);
+      return n;
+    },
+    { group },
+  );
+  expect(n, `${group} killed`).toBeGreaterThanOrEqual(min);
+  return n;
+}
+
+/** Pick up every placed pickup whose id starts with `prefix` (as if walked over). */
+export async function takeAll(page: Page, prefix: string): Promise<number> {
+  return page.evaluate((prefix) => {
+    const k = window.kq as Any;
+    k.step(6);
+    let n = 0;
+    for (const p of k.progression.pickups() as { id: string }[]) if (p.id.startsWith(prefix)) n += k.progression.take(p.id) > 0 ? 1 : 0;
+    k.step(6);
+    return n;
+  }, prefix);
+}
+
+/** Answers the voice stance card of an 'auto' quest (Laub in the compass) by its button label. */
+export async function voiceStance(page: Page, label: string): Promise<void> {
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    for (let i = 0; i < 120 && !document.querySelector('[data-testid="quest-stance"]'); i++) k.step(30);
+  });
+  const btn = page.locator('[data-testid="quest-stance"] button', { hasText: label }).first();
+  await expect(btn).toBeVisible();
+  await btn.click();
+  await page.evaluate(() => (window.kq as Any).step(6));
+}
+
+/** The chapter's main playthrough, now a chain of quests (shared with e2e/campaign.spec.ts). */
 export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   SHOTS = o.shots ?? true;
   await install(page);
@@ -316,186 +426,250 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     const w = window as Any;
     const installed = Array.isArray(w.k3events);
     w.k3events = [] as [string, unknown][];
+    // the walker is no fighter: enemies may swing, the player does not fall
+    k.combat.god(true);
     if (installed) return;
-    const keep = new Set(['clue:found', 'clue:grant', 'story:beat', 'story:choice', 'player:caught', 'menagerie:seen', 'menagerie:knockdown', 'fire:room', 'hunt:alert', 'npc:talk', 'room:enter', 'chronik:batch', 'hub:enter', 'dialogue:say']);
+    const keep = new Set(['clue:found', 'clue:grant', 'story:beat', 'story:choice', 'player:caught', 'menagerie:seen', 'menagerie:calmed', 'fire:room', 'hunt:alert', 'npc:talk', 'room:enter', 'hub:enter', 'quest:accepted', 'quest:completed', 'quest:failed', 'enemy:spawn', 'enemy:killed', 'item:grant', 'skill:grant']);
     k.ctx.events.onAny((n: string, p: unknown) => keep.has(n) && w.k3events.push([n, structuredClone(p)]));
   });
   await o.at?.('k3:start');
   const said = () => page.evaluate(() => (window.kq as Any).story.state().said as string[]);
+  const events = (name: string) => page.evaluate((name) => ((window as Any).k3events as [string, Any][]).filter(([n]) => n === name).map(([, p]) => p), name);
 
-  // K3_FROM=fackel (development): skip part A with its clues granted, start at the Kommissär
+  // ---- 3.0 Feldstation: Laub sends us to July 1793 (q.k3.nachmittag) --------------------------------
   let s = await story(page);
-  if (process.env.K3_FROM !== 'fackel') {
-    // ---- 3.0 Feldstation -------------------------------------------------------------------------
-    s = await story(page);
-    expect(s.chapter).toBe('k3');
-    expect(s.beat).toBe('k3_0');
-    await page.evaluate(() => (window as Any).k3h.settle(60));
-    expect((await inv(page)).clues).toContain('clue.k3.marlene');
-    expect(await page.evaluate(() => window.kq!.state().skills['kartograf'])).toBe(3);
-    await page.waitForFunction(() => (window.kq as Any).skills.card() === null, null, { timeout: 120_000 });
-    await shot(page, '01-station');
+  expect(s.chapter).toBe('k3');
+  expect(s.beat).toBe('k3_0');
+  await page.evaluate(() => (window as Any).k3h.settle(160));
+  expect((await inv(page)).clues).toContain('clue.k3.marlene');
+  expect(await quest(page, 'q.k3.nachmittag')).toBe('active');
+  await page.waitForFunction(() => (window.kq as Any).skills.card() === null, null, { timeout: 120_000 });
+  await shot(page, '01-station');
 
-    // ---- 3.1 Q at the Ehrenhof → 28 July 1793 ----------------------------------------------------
-    await page.evaluate(() => {
-      const k = window.kq as Any;
-      k.teleport(1208, -1114, 90, 2);
-      k.step(4);
-      k.press('KeyQ', 1);
-      k.fx.shiftAt(3.6);
-      k.fx.freeze(false);
-      k.step(8);
-      (window as Any).k3h.settle(20);
-    });
-    s = await story(page);
-    expect(s.era).toBe('1793-07');
-    expect(s.beat).toBe('k3_1');
-    await page.evaluate(() => (window as Any).k3h.look(1225, -1118, 6));
-    await shot(page, '02-ehrenhof');
-
-    // the straw echo, Horstmann's dates, the man with the armchair
-    await listenAt(page, 'clue.k3.stroh', [1212, -1116]);
-    await page.evaluate(() => (window as Any).k3h.settle(120));
-    expect((await inv(page)).clues).toContain('clue.k3.horstmann');
-    await examineAt(page, 'clue.k3.lehnstuhl', [1205, -1110]);
-
-    // ---- 3.2 Küchenhof: through the north wing's passage; plunder echo; Hanne ----------------------
-    const toKh = await page.evaluate(() => (window as Any).k3h.walk([[1221, -1132], [1221.2, -1140.8], [1218.2, -1159.1], [1214, -1176]], { chunk: 12 }));
-    expect(toKh.stuck, JSON.stringify(toKh)).toBe(false);
-    await listenAt(page, 'clue.k3.kuechenhof', [1212, -1178]);
-    await talk(page, 'hanne', ['pluenderung', 'peter', 'matthes']);
-    expect((await inv(page)).clues).toContain('clue.k3.hanne');
-    await page.evaluate(() => (window as Any).k3h.look(1215, -1185, 2));
-    await shot(page, '03-kuechenhof-hanne');
-
-    // ---- 3.3 Registratur: Soll counts what is missing ---------------------------------------------
-    const toReg = await page.evaluate(() => {
-      const h = (window as Any).k3h;
-      const a = h.walk([[1218.2, -1160.5], [1218.2, -1157.5]], { chunk: 4 });
-      if (a.stuck) return a;
-      return h.go('B03.1.eg-registratur');
-    });
-    expect(toReg.error ?? null, JSON.stringify(toReg)).toBeNull();
-    expect(toReg.room).toBe('B03.1.eg-registratur');
-    await talk(page, 'soll', ['pluenderung', 'siegel', 'buch', 'pluenderer']);
-    expect((await inv(page)).clues).toContain('clue.k3.soll');
-    expect(await flags(page)).toMatchObject({ 'talked.k3.soll': true });
-    await shot(page, '04-registratur-soll');
-
-    // ---- 3.4 Sammlungsflügel: Waffensammlung (EG), Naturalienkabinett (OG) -------------------------
-    const toWaffen = await page.evaluate(() => (window as Any).k3h.go('B04.1.eg-waffensammlung'));
-    expect(toWaffen.error ?? null, JSON.stringify(toWaffen)).toBeNull();
-    expect(toWaffen.room).toBe('B04.1.eg-waffensammlung');
-    await examineAt(page, 'clue.k3.waffen', [1185.3, -1197.1]);
-    await page.evaluate(() => (window as Any).k3h.settle(20));
-    // up the Treppenhaus Nord (the stair hall is skipped), along the OG chain into the cabinet
-    await page.evaluate(() => {
-      const k = window.kq as Any;
-      k.interiors.enter('B04.2.og-bibliothek', { x: 1185.3, z: -1204.4, yaw: 0 });
-      k.step(3);
-    });
-    const toNat = await page.evaluate(() => (window as Any).k3h.go('B04.2.og-naturalienkabinett'));
-    expect(toNat.error ?? null, JSON.stringify(toNat)).toBeNull();
-    expect(toNat.room).toBe('B04.2.og-naturalienkabinett');
-    await examineAt(page, 'clue.k3.kisten', [1188.6, -1178.2]);
-    await page.evaluate(() => (window as Any).k3h.settle(20));
-    await examineAt(page, 'clue.k3.holandre', [1192.4, -1176.4]);
-    await page.evaluate(() => (window as Any).k3h.settle(20));
-    await page.evaluate(() => (window as Any).k3h.look(1188.6, -1178.2, -8));
-    await shot(page, '05-naturalienkabinett');
-    await listenAt(page, 'clue.k3.koenig', [1184.6, -1177.3]);
-    await page.evaluate(() => (window as Any).k3h.settle(30));
-
-    // ---- 3.5 Die Galerie: echo, tape, trapdoor, the grey book ------------------------------------
-    // down the Treppenhaus Nord (skipped) into the Vorraum, then through the door into the gallery
-    await page.evaluate(() => {
-      const k = window.kq as Any;
-      k.interiors.enter('B06.1.vorraum-west', { x: 1191.5, z: -1212.6, yaw: 90 });
-      k.step(3);
-    });
-    const toGal = await page.evaluate(() => (window as Any).k3h.go('B06.1.bildergalerie'));
-    expect(toGal.error ?? null, JSON.stringify(toGal)).toBeNull();
-    expect(toGal.room).toBe('B06.1.bildergalerie');
-    await page.evaluate(() => (window as Any).k3h.settle(30));
-    expect(await said()).toContain('laub.k3.galerie_leer');
-    await page.evaluate(() => (window as Any).k3h.look(1262, -1226, 3));
-    await shot(page, '06-galerie');
-    await listenAt(page, 'clue.k3.galerie', [1215, -1216.5], '07-galerie-echo');
-    // R: measure the gallery (Kartograf 3) → Mannlich's "cent pas"
-    const ring = await page.evaluate(() => (window.kq as Any).ctx.data.footprints.buildings.find((b: Any) => b.id === 'KB-B06').ring as number[][]);
-    await page.evaluate(
-      ({ a, b }) => {
-        const k = window.kq as Any;
-        k.tools.measure.at(a[0], a[1], b[0], b[1], 350.5, 350.5);
-        k.step(90);
-        k.tools.measure.stop(); // R: put the tape away again
-        k.ctx.ui.modals.closeAll();
-        (window as Any).k3h.settle(30);
-      },
-      { a: [ring[0]![0]! + 0.5, ring[0]![1]! + 0.4], b: [ring[1]![0]! - 0.5, ring[1]![1]! + 0.4] },
-    );
-    expect((await inv(page)).clues).toContain('clue.k3.messen');
-    // the loose board at the west end; under it the grey book
-    await examineAt(page, 'clue.k3.falltuer', [1201.5, -1216.6]);
-    await page.evaluate(() => (window as Any).k3h.settle(30));
-    await examineAt(page, 'clue.k3.chronik', [1201.5, -1216.6]);
-    await page.evaluate(() => (window as Any).k3h.settle(60));
-    await page.evaluate(() => (window as Any).k3h.look(1205, -1216, -25));
-    await shot(page, '08-falltuer');
-    s = await story(page);
-    expect(s.beat).toBe('k3_2');
-    expect(await flags(page)).toMatchObject({ 'flag.k3_teil_b': true });
-
-    // ---- 3.6 Tempelzimmer: east end of the gallery ------------------------------------------------
-    const toTempel = await page.evaluate(() => (window as Any).k3h.walk([[1240, -1221.5], [1262.2, -1225.4]], { sprint: true, chunk: 12 }));
-    expect(toTempel.stuck, JSON.stringify(toTempel)).toBe(false);
-    await examineAt(page, 'clue.k3.papier', [1265.6, -1226]);
-    await page.evaluate(() => (window as Any).k3h.settle(120));
-    await page.evaluate(() => (window as Any).k3h.look(1270.3, -1226.8, 4));
-    await shot(page, '09-tempelzimmer');
-
-  } else {
-    await page.evaluate(() => {
-      const k = window.kq as Any;
-      const ids = ['marlene', 'stroh', 'horstmann', 'lehnstuhl', 'kuechenhof', 'hanne', 'soll', 'waffen', 'kisten', 'holandre', 'koenig', 'galerie', 'messen', 'falltuer', 'chronik', 'papier'];
-      k.story.goto('k3', 'k3_2');
-      k.setEra('1793-07');
-      for (const id of ids) k.ctx.events.emit('clue:grant', { id: `clue.k3.${id}` });
-      k.ctx.state.mutable.flags['flag.k3_teil_b'] = true;
-      k.teleport(1221, -1132, 180, 2);
-      k.step(4);
-      (window as Any).k3h.settle(20);
-    });
-  }
-
-  // ---- 3.7 Die Fackel: back to the Ehrenhof, the Kommissär ---------------------------------------
-  // the way back (gallery, Vorraum, Sammlungsflügel, Küchenhof) is known: skip it
+  // ---- 3.1 Q at the Ehrenhof → 28 July 1793 -------------------------------------------------------
   await page.evaluate(() => {
     const k = window.kq as Any;
-    k.teleport(1221, -1132, 180, 2);
+    k.teleport(1208, -1114, 90, 2);
     k.step(4);
+    k.press('KeyQ', 1);
+    k.fx.shiftAt(3.6);
+    k.fx.freeze(false);
+    k.step(8);
     (window as Any).k3h.settle(20);
   });
-  await listenAt(page, 'clue.k3.fackel', [1224, -1119], '10-fackel');
+  s = await story(page);
+  expect(s.era).toBe('1793-07');
+  expect(s.beat).toBe('k3_1');
+  await page.evaluate(() => (window as Any).k3h.look(1225, -1118, 6));
+  await shot(page, '02-ehrenhof');
+
+  // the straw echo, Horstmann's dates, the man with the armchair
+  await listenAt(page, 'clue.k3.stroh', [1212, -1116]);
+  await page.evaluate(() => (window as Any).k3h.settle(120));
+  expect((await inv(page)).clues).toContain('clue.k3.horstmann');
+  await examineAt(page, 'clue.k3.lehnstuhl', [1205, -1110]);
   await page.evaluate(() => (window as Any).k3h.settle(20));
+  const qs = await page.evaluate(() => (window.kq as Any).quests.state().quests);
+  expect(qs['q.k3.nachmittag'].counts).toMatchObject({ ehrenhof: 1, stroh: 1, stuhl: 1 });
+
+  // side: Peter carries one of the 104 gilded chairs for his mother → three Raffschatten → the gate
+  expect(await quest(page, 'q.k3.lehnstuhl')).toBe('offered');
+  await questTalk(page, 'peter', 'q.k3.lehnstuhl', 'qa');
+  expect(await quest(page, 'q.k3.lehnstuhl')).toBe('active');
+  await killGroup(page, 'q.k3.lehnstuhl.schatten', 3);
+  const escort = await page.evaluate(() => {
+    const k = window.kq as Any;
+    const h = (window as Any).k3h;
+    h.faceNpc('peter');
+    k.step(30);
+    const w = h.walk([[1197, -1110], [1192, -1113, 1.2]], { chunk: 6 });
+    for (let i = 0; i < 20 && k.quests.state().quests['q.k3.lehnstuhl'].state !== 'ready'; i++) k.step(30);
+    const n = k.npc.list().find((f: Any) => f.npc === 'peter');
+    return { w, state: k.quests.state().quests['q.k3.lehnstuhl'].state, peter: n && Math.hypot(n.x - k.ctx.player.position.x, n.z - k.ctx.player.position.z) };
+  });
+  expect(escort.state, JSON.stringify(escort)).toBe('ready');
+  await questTalk(page, 'peter', 'q.k3.lehnstuhl');
+  expect(await quest(page, 'q.k3.lehnstuhl')).toBe('done');
+
+  // ---- 3.2 Küchenhof: five Raffschatten have Hanne's basket ------------------------------------------
+  const toKh = await page.evaluate(() => (window as Any).k3h.walk([[1221, -1132], [1221.2, -1140.8], [1218.2, -1159.1], [1214, -1170]], { chunk: 12 }));
+  expect(toKh.stuck, JSON.stringify(toKh)).toBe(false);
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.step(30);
+    const e = k.combat.enemies().filter((x: Any) => x.group === 'q.k3.nachmittag.schatten');
+    if (e[0]) (window as Any).k3h.look(e[0].x, e[0].z, 4);
+  });
+  await shot(page, '03-raffschatten');
+  await killGroup(page, 'q.k3.nachmittag.schatten', 5);
+  expect(await takeAll(page, 'q.k3.nachmittag.korb')).toBe(1);
+  expect(await quest(page, 'q.k3.nachmittag')).toBe('ready');
+  // turn in at Hanne: the basket, the history, then her question (an opinion, never graded)
+  const heardHanne = await questTalk(page, 'hanne', 'q.k3.nachmittag', 'qs:retteten');
+  expect(heardHanne.length).toBeGreaterThan(2);
+  expect(await flags(page)).toMatchObject({ 'flag.k3_pluenderer': 'retteten', 'quest.q.k3.nachmittag': 'done' });
+  expect(await page.evaluate(() => (window.kq as Any).state().codex.facts)).toContain('cx.23');
+  await page.evaluate(() => (window as Any).k3h.settle(60));
+  expect(await quest(page, 'q.k3.buch')).toBe('offered');
+
+  // ---- 3.3 Registratur: Soll gives "Das graue Buch" ---------------------------------------------------
+  const toReg = await page.evaluate(() => {
+    const h = (window as Any).k3h;
+    const a = h.walk([[1218.2, -1160.5], [1218.2, -1157.5]], { chunk: 4 });
+    if (a.stuck) return a;
+    return h.go('B03.1.eg-registratur');
+  });
+  expect(toReg.error ?? null, JSON.stringify(toReg)).toBeNull();
+  expect(toReg.room).toBe('B03.1.eg-registratur');
+  await questTalk(page, 'soll', 'q.k3.buch', 'qa');
+  expect(await quest(page, 'q.k3.buch')).toBe('active');
+  await shot(page, '04-registratur-soll');
+  // the crate-carrying shades at the Durchfahrt
+  await killGroup(page, 'q.k3.buch.schatten', 3);
+
+  // ---- 3.4 Sammlungsflügel: Waffensammlung (EG), Naturalienkabinett (OG) -------------------------
+  const toWaffen = await page.evaluate(() => (window as Any).k3h.go('B04.1.eg-waffensammlung'));
+  expect(toWaffen.error ?? null, JSON.stringify(toWaffen)).toBeNull();
+  expect(toWaffen.room).toBe('B04.1.eg-waffensammlung');
+  await examineAt(page, 'clue.k3.waffen', [1185.3, -1197.1]);
+  await page.evaluate(() => (window as Any).k3h.settle(20));
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.interiors.enter('B04.2.og-bibliothek', { x: 1185.3, z: -1204.4, yaw: 0 });
+    k.step(3);
+  });
+  const toNat = await page.evaluate(() => (window as Any).k3h.go('B04.2.og-naturalienkabinett'));
+  expect(toNat.error ?? null, JSON.stringify(toNat)).toBeNull();
+  expect(toNat.room).toBe('B04.2.og-naturalienkabinett');
+  await examineAt(page, 'clue.k3.kisten', [1188.6, -1178.2]);
+  await page.evaluate(() => (window as Any).k3h.settle(20));
+  await page.evaluate(() => (window as Any).k3h.look(1188.6, -1178.2, -8));
+  await shot(page, '05-naturalienkabinett');
+  await listenAt(page, 'clue.k3.koenig', [1184.6, -1177.3]);
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+
+  // ---- 3.5 Die Galerie: echo, tape, trapdoor, the grey book, the one page -----------------------------
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.interiors.enter('B06.1.vorraum-west', { x: 1191.5, z: -1212.6, yaw: 90 });
+    k.step(3);
+  });
+  const toGal = await page.evaluate(() => (window as Any).k3h.go('B06.1.bildergalerie'));
+  expect(toGal.error ?? null, JSON.stringify(toGal)).toBeNull();
+  expect(toGal.room).toBe('B06.1.bildergalerie');
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+  expect(await said()).toContain('laub.k3.galerie_leer');
+  await listenAt(page, 'clue.k3.galerie', [1215, -1216.5], '06-galerie-echo');
+  const ring = await page.evaluate(() => (window.kq as Any).ctx.data.footprints.buildings.find((b: Any) => b.id === 'KB-B06').ring as number[][]);
+  await page.evaluate(
+    ({ a, b }) => {
+      const k = window.kq as Any;
+      k.tools.measure.at(a[0], a[1], b[0], b[1], 350.5, 350.5);
+      k.step(90);
+      k.tools.measure.stop();
+      k.ctx.ui.modals.closeAll();
+      (window as Any).k3h.settle(30);
+    },
+    { a: [ring[0]![0]! + 0.5, ring[0]![1]! + 0.4], b: [ring[1]![0]! - 0.5, ring[1]![1]! + 0.4] },
+  );
+  expect((await inv(page)).clues).toContain('clue.k3.messen');
+  // the Tempelzimmer at the east end first (a bonus: a way out for later)
+  const toTempel = await page.evaluate(() => (window as Any).k3h.walk([[1240, -1221.5], [1262.2, -1225.4]], { sprint: true, chunk: 12 }));
+  expect(toTempel.stuck, JSON.stringify(toTempel)).toBe(false);
+  await examineAt(page, 'clue.k3.papier', [1265.6, -1226]);
+  await page.evaluate(() => (window as Any).k3h.settle(60));
+  await page.evaluate(() => (window as Any).k3h.walk([[1230, -1218], [1204, -1217]], { sprint: true, chunk: 12 }));
+  await examineAt(page, 'clue.k3.falltuer', [1201.5, -1216.6]);
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+  await examineAt(page, 'clue.k3.chronik', [1201.5, -1216.6]);
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+  await page.evaluate(() => (window as Any).k3h.look(1205, -1216, -25));
+  await shot(page, '07-falltuer-seite');
+  expect(await takeAll(page, 'q.k3.buch.seite')).toBe(1);
+  await page.evaluate(() => (window as Any).k3h.settle(60));
+  expect(await quest(page, 'q.k3.buch')).toBe('done');
+  expect((await items(page))['item.k3.seite']).toBe(1);
+  expect(await page.evaluate(() => window.kq!.state().skills)).toMatchObject({ baumeister: 2 });
+  expect(await flags(page)).toMatchObject({ 'flag.k3_teil_b': true });
+  const xpBuch = (await events('quest:completed')).find((p: Any) => p.id === 'q.k3.buch');
+  expect(xpBuch).toMatchObject({ xp: 400, main: true });
+
+  // side: Soll's labels (the shades in the Küchenhof drop them)
+  expect(await quest(page, 'q.k3.kabinett')).toBe('offered');
+  await page.evaluate(() => (window.kq as Any).quests.accept('q.k3.kabinett'));
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.teleport(1218, -1166, 180, 2);
+    k.step(10);
+  });
+  await killGroup(page, 'q.k3.kabinett.schatten', 4);
+  expect(await takeAll(page, 'q.k3.kabinett.etiketten')).toBe(4);
+  expect(await quest(page, 'q.k3.kabinett')).toBe('ready');
+  await page.evaluate(() => (window.kq as Any).quests.turnin('q.k3.kabinett'));
+  expect(await quest(page, 'q.k3.kabinett')).toBe('done');
+
+  // ---- 3.6 Der Strohmann: dusk, the straw carts rise -------------------------------------------------
+  s = await story(page);
+  expect(s.beat).toBe('k3_2');
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.ctx.ui.modals.closeAll();
+    k.teleport(1221, -1132, 0, 2);
+    k.step(30);
+    (window as Any).k3h.settle(30);
+  });
+  expect(await quest(page, 'q.k3.strohmann')).toBe('active');
+  const boss = await page.evaluate(() => {
+    const k = window.kq as Any;
+    for (let i = 0; i < 30 && !k.combat.enemies().some((e: Any) => e.kind === 'strohmann'); i++) k.step(10);
+    const e = k.combat.enemies().find((x: Any) => x.kind === 'strohmann');
+    if (!e) return null;
+    k.combat.freeze(true);
+    k.combat.place(e.id, 1214, -1112, true);
+    k.teleport(1221, -1124, 0, 2);
+    k.step(4);
+    (window as Any).k3h.look(1214, -1112, 10);
+    k.combat.windup(e.id);
+    k.step(6);
+    return { kind: e.kind, max: e.max };
+  });
+  expect(boss?.kind).toBe('strohmann');
+  await shot(page, 'strohmann');
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.combat.freeze(false);
+  });
+  await killGroup(page, 'q.k3.strohmann.strohmann', 1);
+  await page.evaluate(() => (window as Any).k3h.settle(60));
+  expect((await events('enemy:killed')).some((p: Any) => p.kind === 'strohmann')).toBe(true);
+  // only then the torch: the fire cannot be stopped
+  await listenAt(page, 'clue.k3.fackel', [1224, -1119], '08-fackel');
+  await page.evaluate(() => (window as Any).k3h.settle(20));
+  expect(await quest(page, 'q.k3.strohmann')).toBe('done');
   s = await story(page);
   expect(s.beat).toBe('k3_3');
-  const fire0 = await page.evaluate(() => (window.kq as Any).fx.state().fire);
-  expect(fire0.active).toBe(true);
-  expect(await flags(page)).toMatchObject({ 'chronik.noLoss': true });
+  expect((await page.evaluate(() => (window.kq as Any).fx.state().fire)).active).toBe(true);
+  expect(await quest(page, 'q.k3.festsaal')).toBe('active');
 
-  // ---- 3.8 Hinauf: into the burning vestibule, up the Prunktreppe ------------------------------------
+  // ---- 3.7 Hinauf: the burning vestibule, Glutlinge on the Prunktreppe ----------------------------------
   const toVest = await page.evaluate(() => (window as Any).k3h.walk([[1250, -1125], [1254.8, -1125, 0.5], [1258.5, -1126.5]], { sprint: true, chunk: 4 }));
   expect(toVest.room, JSON.stringify(toVest)).toBe('B01.1.eg-vestibuel');
-  await page.evaluate(() => (window as Any).k3h.look(1261.5, -1140, 12));
-  await shot(page, '11-vestibuel-brennt');
-  // up the imperial stair: the middle flight, the half landing, the east flight to the Festsaal door
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.step(20);
+    const g = k.combat.enemies().filter((e: Any) => e.kind === 'glutling');
+    k.combat.freeze(true);
+    if (g[0]) (window as Any).k3h.look(g[0].x, g[0].z, 6);
+    else (window as Any).k3h.look(1261.5, -1140, 12);
+  });
+  expect(await page.evaluate(() => (window.kq as Any).combat.enemies().filter((e: Any) => e.kind === 'glutling').length)).toBe(4);
+  await shot(page, 'glutlinge-treppe');
+  await page.evaluate(() => (window.kq as Any).combat.freeze(false));
+  await killGroup(page, 'q.k3.festsaal.glut', 4);
   const up = await page.evaluate(() =>
     (window as Any).k3h.walk([[1261.8, -1129.5], [1261.6, -1132], [1261.4, -1142], [1266.6, -1142], [1266.6, -1132.2], [1265.6, -1130.2], [1265.8, -1127.5]], { sprint: true, chunk: 4 }),
   );
-  console.log(`[k3] up: ${JSON.stringify(up)}`);
   expect(up.stuck, JSON.stringify(up)).toBe(false);
-  expect(up.rooms).toContain('B01.1.eg-prunktreppe');
   expect(up.smokeMax).toBeLessThan(0.95);
   await page.evaluate(() => {
     (window.kq as Any).step(4);
@@ -504,172 +678,131 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   s = await story(page);
   expect(s.beat).toBe('k3_4');
   expect(await flags(page)).toMatchObject({ 'fire.hold': true });
-  expect((await inv(page)).clues).toContain('clue.k3.feuer');
-  expect((await inv(page)).clues).toContain('clue.k3.festsaal');
+  // the Festsaal is a memorial: no enemy here, the staff stays down
+  expect(await page.evaluate(() => (window.kq as Any).combat.enemies().length)).toBe(0);
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.step(90);
     const n = k.npc.list().find((f: Any) => f.npc === 'hanne');
     (window as Any).k3h.look(n.x, n.z, 2);
   });
-  await shot(page, '12-festsaal-hanne');
+  await shot(page, 'festsaal-still');
 
-  // ---- 3.9 Die Wahl (the fire stands still) -----------------------------------------------------
-  // Hanne speaks, Laub counts to one, then the field-book card (game time, no flush)
+  // ---- 3.8 Die Wahl (the fire stands still) → the charm ------------------------------------------------
   await page.evaluate(() => {
     const k = window.kq as Any;
     for (let i = 0; i < 80 && !k.story.choice(); i++) k.step(30);
   });
-  if (!(await page.evaluate(() => (window.kq as Any).story.choice()))) {
-    const dbg = await page.evaluate(() => {
-      const k = window.kq as Any;
-      const ev = ((window as Any).k3events as [string, Any][]).filter(([n]) => n !== 'dialogue:say' && n !== 'fire:room').slice(-25);
-      return { ev, st: { ...k.story.state(), said: undefined, latched: undefined }, fire: k.fx.state().fire, meters: k.story.meters() };
-    });
-    console.log(`[k3] no choice: ${JSON.stringify(dbg).slice(0, 4000)}`);
-  }
   expect(await page.evaluate(() => (window.kq as Any).story.choice())).toBe('k3.objekt');
   const clock0 = (await page.evaluate(() => (window.kq as Any).fx.state().fire)).clock;
-  await shot(page, '13-wahl');
+  await shot(page, '09-wahl');
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.step(120);
     k.story.choose(2); // the clock with the alabaster
     k.step(4);
   });
-  // 2 s of choosing: the fire's timeline stood still (bible W5)
   expect((await page.evaluate(() => (window.kq as Any).fx.state().fire)).clock - clock0).toBeLessThan(0.2);
   expect(await flags(page)).toMatchObject({ 'flag.k3_objekt': 'uhr', 'choice.k3.objekt': 'uhr' });
-  expect((await inv(page)).clues).toContain('clue.k3.retten');
+  expect((await items(page))['item.charm.uhr']).toBe(1);
   s = await story(page);
   expect(s.beat).toBe('k3_5');
 
-  // ---- 3.10 Hinaus: down the Prunktreppe, through the burning vestibule, out into the garden -----
+  // ---- 3.9 Hinaus: down the stair, through the smoke, into the garden ---------------------------------
   const escape = await page.evaluate(() => {
     const k = window.kq as Any;
     const h = (window as Any).k3h;
     k.story.flush();
     k.step(10);
-    let smokeMax = 0;
-    const off = k.ctx.events.on('fire:progress', () => (smokeMax = Math.max(smokeMax, k.fx.state().fire.smoke)));
-    // back down the way up: east flight, landing, middle flight, through the vestibule, out east
     const down = h.walk(
       [[1265.6, -1130.2], [1266.6, -1132.2], [1266.6, -1142], [1261.4, -1142], [1261.6, -1132], [1261.8, -1129.5], [1265, -1126], [1270.3, -1125.1], [1276, -1125]],
       { sprint: true, chunk: 4 },
     );
-    const rooms = down.rooms;
-    const out = down;
-    smokeMax = Math.max(smokeMax, down.smokeMax);
-    off?.();
     k.step(10);
-    return { rooms, out, smokeMax, smoke: k.fx.state().fire.smoke, clock: k.fx.state().fire.clock };
+    return { rooms: down.rooms, out: down, smokeMax: down.smokeMax };
   });
-  expect(escape.out.error ?? null, JSON.stringify(escape)).toBeNull();
   expect(escape.out.caught, JSON.stringify(escape)).toBe(false);
-  expect(escape.rooms).toContain('B01.1.eg-prunktreppe');
   expect(escape.smokeMax).toBeLessThan(0.95);
   s = await story(page);
   expect(s.beat, JSON.stringify(escape)).toBe('k3_6');
-  console.log(`[k3] escape: ${JSON.stringify({ rooms: escape.rooms, smokeMax: escape.smokeMax.toFixed(2), clock: escape.clock.toFixed(0), trace: escape.out.trace })}`);
 
-  // ---- 3.11 Der Garten: the pack hunts by ear ----------------------------------------------------
+  // ---- 3.10 Der Garten: the pack hunts by ear; Hanne at the gate ---------------------------------------
   await page.evaluate(() => {
     const k = window.kq as Any;
     (window as Any).k3h.walk([[1288, -1130]], { chunk: 12 });
-    k.step(150); // the pack is configured 2 s after the reaction
-    (window as Any).k3h.look(1262, -1126, 14);
+    k.step(150);
   });
-  await shot(page, '14-garten-brand');
   const hunt0 = await page.evaluate(() => (window.kq as Any).hunt.state());
   expect(hunt0?.active).toBe(true);
-  expect(hunt0.agents.filter((a: Any) => a.kind === 'hound')).toHaveLength(5);
-  // sneak (crouched) along the east side of the garden to the Gärtnerei gate
   const sneak = await page.evaluate(() => {
     const k = window.kq as Any;
     const h = (window as Any).k3h;
-    let maxState = 'calm';
-    let maxLevel = 0;
-    const order = ['calm', 'suspicious', 'searching', 'chasing'];
-    const off = k.ctx.events.on('hunt:alert', (e: Any) => {
-      maxLevel = Math.max(maxLevel, e.level);
-      if (order.indexOf(e.state) > order.indexOf(maxState)) maxState = e.state;
-    });
-    const w = h.walk([[1290, -1180], [1285, -1238], [1267, -1252], [1266.5, -1285], [1270.5, -1291.5]], { crouch: true, chunk: 24, max: 3000, wary: 18 });
-    off?.();
-    return { w, maxState, maxLevel, beat: k.story.state().beat };
-  });
-  console.log(`[k3] garden: ${JSON.stringify(sneak)}`);
-  expect(sneak.w.caught, JSON.stringify(sneak)).toBe(false);
-  expect(sneak.beat).toBe('k3_7');
-  await page.evaluate(() => (window as Any).k3h.settle(30));
-  expect(await page.evaluate(() => (window.kq as Any).hunt.state())).toBeNull();
-
-  // at the gate: Hanne made it out; the gardener's notes; the outbuildings
-  expect(await talk(page, 'hanne', [])).toContain('hanne.k3.09');
-  await page.evaluate(() => {
-    // from inside the gate: Hanne, and behind her the burning palace
-    const k = window.kq as Any;
-    const n = k.npc.list().find((f: Any) => f.npc === 'hanne');
-    k.teleport(n.x + 1, n.z - 3.6, 0, 0);
-    k.step(2);
-    (window as Any).k3h.look(n.x - 0.4, n.z, -3);
-  });
-  await shot(page, '15-pforte-hanne');
-  await page.evaluate(() => {
-    const k = window.kq as Any;
-    k.teleport(1270.3, -1290.6, 0, 0);
-    k.step(2);
-  });
-  await examineAt(page, 'clue.k3.gaertner', [1266.5, -1291.5]);
-  await page.evaluate(() => (window as Any).k3h.settle(30));
-  await examineAt(page, 'clue.k3.wirtschaft', [1274, -1302]);
-  await page.evaluate(() => (window as Any).k3h.settle(30));
-
-  // ---- 3.12 north to the Zwinger, past the jaguar (lantern lit) ---------------------------------
-  const north = await page.evaluate(() => {
-    const k = window.kq as Any;
-    const h = (window as Any).k3h;
-    k.step(420); // the objective comes after a breath
-    k.ctx.events.emit('lantern:request', { lit: true });
-    const w1 = h.walk([[1268, -1340], [1263, -1395]], { crouch: true, chunk: 24, max: 3000, wary: 16 });
-    return { w1, beat: k.story.state().beat, hounds: k.hunt.state()?.agents.length ?? 0 };
-  });
-  expect(north.w1.caught, JSON.stringify(north.w1)).toBe(false);
-  await page.evaluate(() => {
-    const k = window.kq as Any;
+    const w = h.walk([[1290, -1180], [1285, -1238], [1267, -1252], [1266.5, -1285], [1270.5, -1290.5]], { crouch: true, chunk: 24, max: 3000, wary: 18 });
     k.step(30);
-    // screenshot staging: the jaguar at the edge of the lantern light, on the path ahead
-    const p = k.ctx.player.position;
-    const j = k.menagerie.state().find((a: Any) => a.id === 'k3.jaguar');
-    if (j) {
-      k.menagerie.place('k3.jaguar', p.x + 1.5, p.z - 8, 180);
-      k.step(2);
-    }
-    (window as Any).k3h.look(p.x + 1.5, p.z - 8, -4);
+    return { w, beat: k.story.state().beat };
   });
-  await shot(page, '16-jaguar');
-  const north2 = await page.evaluate(() => {
+  expect(sneak.w.caught, JSON.stringify(sneak)).toBe(false);
+  expect(await quest(page, 'q.k3.festsaal')).toBe('ready');
+  expect(await page.evaluate(() => (window.kq as Any).hunt.state())).toBeNull();
+  await questTalk(page, 'hanne', 'q.k3.festsaal');
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+  expect(await quest(page, 'q.k3.festsaal')).toBe('done');
+  s = await story(page);
+  expect(s.beat).toBe('k3_7');
+  await page.evaluate(() => (window as Any).k3h.settle(300));
+  expect(await quest(page, 'q.k3.hunde')).toBe('active');
+
+  // side: the jaguar (Hanne asks: no blow, only light)
+  expect(await quest(page, 'q.k3.jaguar')).toBe('offered');
+  await questTalk(page, 'hanne', 'q.k3.jaguar', 'qa');
+  const calm = await page.evaluate(() => {
+    const k = window.kq as Any;
     const h = (window as Any).k3h;
-    return h.walk([[1262, -1450], [1262, -1520], [1258, -1563]], { crouch: true, chunk: 24, max: 3000, wary: 16 });
+    k.ctx.events.emit('lantern:request', { lit: true });
+    h.walk([[1268, -1340], [1268, -1395]], { crouch: true, chunk: 24, max: 3000, wary: 16 });
+    const p = k.ctx.player.position;
+    k.menagerie.place('k3.jaguar', p.x + 1, p.z - 6, 180);
+    k.step(4);
+    (window as Any).k3h.look(p.x + 1, p.z - 6, -2);
+    const flares: number[] = [];
+    for (let i = 0; i < 6 && k.quests.state().quests['q.k3.jaguar'].state === 'active'; i++) {
+      k.combat.bann();
+      k.step(90);
+      flares.push(i);
+    }
+    return { flares: flares.length, state: k.quests.state().quests['q.k3.jaguar'].state, jaguar: k.menagerie.state().find((a: Any) => a.id === 'k3.jaguar') };
   });
-  console.log(`[k3] north: ${JSON.stringify(north2)}`);
+  console.log(`[k3] jaguar: ${JSON.stringify(calm)}`);
+  expect(calm.state, JSON.stringify(calm)).toBe('done');
+  expect((await events('menagerie:calmed')).length).toBeGreaterThan(0);
+
+  // ---- 3.11 north to the Zwinger: Streuner on the road, then Jost --------------------------------------
+  const north = await page.evaluate(() => (window as Any).k3h.walk([[1262, -1450], [1262, -1505]], { crouch: true, chunk: 24, max: 3000, wary: 16 }));
+  expect(north.caught, JSON.stringify(north)).toBe(false);
+  await killGroup(page, 'q.k3.hunde.streuner', 3);
+  const north2 = await page.evaluate(() => (window as Any).k3h.walk([[1262, -1530], [1258, -1563]], { crouch: true, chunk: 24, max: 3000, wary: 16 }));
   expect(north2.caught, JSON.stringify(north2)).toBe(false);
   s = await story(page);
   expect(s.beat).toBe('k3_8');
-  const seenJaguar = await page.evaluate(() => ((window as Any).k3events as [string, Any][]).some(([n, p]) => n === 'menagerie:seen' && p.animal === 'jaguar'));
-  expect(seenJaguar).toBe(true);
+  await page.evaluate(() => (window as Any).k3h.settle(60));
+  expect((await inv(page)).clues).toContain('clue.k3.jost');
+  expect(await quest(page, 'q.k3.hunde')).toBe('ready');
   await page.evaluate(() => {
     const k = window.kq as Any;
-    k.step(60);
     const n = k.npc.list().find((f: Any) => f.npc === 'jost');
     if (n) (window as Any).k3h.look(n.x, n.z, 2);
   });
-  await shot(page, '17-zwinger-jost');
-  await page.evaluate(() => (window as Any).k3h.settle(60));
-  expect((await inv(page)).clues).toContain('clue.k3.jost');
-  expect(await said()).toEqual(expect.arrayContaining(['jost.k3.01', 'jost.k3.04', 'beat.k3.hunde']));
+  await shot(page, '10-zwinger-jost');
+  await questTalk(page, 'jost', 'q.k3.hunde');
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+  expect(await quest(page, 'q.k3.hunde')).toBe('done');
+  expect((await items(page))['item.stab.bann']).toBe(1);
+  expect(await page.evaluate(() => window.kq!.state().skills)).toMatchObject({ baumeister: 2, roentgen: 1 });
+  expect(await said()).toEqual(expect.arrayContaining(['beat.k3.hunde']));
+  s = await story(page);
+  expect(s.beat).toBe('k3_8b');
 
-  // ---- back to today (hold Q), home to the field station ----------------------------------------
+  // ---- back to today (hold Q), home to the field station --------------------------------------------
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.press('KeyQ', 90);
@@ -696,46 +829,16 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await said()).toContain('laub.k3.heute.uhr');
   await page.evaluate(() => (window.kq as Any).story.hub(false));
   await page.evaluate(() => (window as Any).k3h.look(760, -915, -10));
-  await shot(page, '18-tisch-uhr');
-
-  // ---- the case page: every correct noun was found on the way; confirm in batches of three -------
-  const coverage = await page.evaluate(() => {
-    const k = window.kq as Any;
-    const known = new Set(k.state().inventory.nouns as string[]);
-    const cs = k.ctx.content.cases.get('case.k3');
-    const missing: string[] = [];
-    for (const e of cs.entries) for (const b of e.blanks) if (b.correct && !known.has(b.correct)) missing.push(`${e.id}:${b.correct}`);
-    const readings = cs.entries.filter((e: Any) => e.kind === 'reading').flatMap((e: Any) => e.blanks.flatMap((b: Any) => b.accepts.filter((n: string) => known.has(n))));
-    return { missing, readings };
-  });
-  expect(coverage.missing).toEqual([]);
-  expect(coverage.readings.length).toBeGreaterThan(0);
+  await shot(page, '11-tisch-uhr');
+  // no Pinnwand: the chapter goes on by itself
   await page.evaluate(() => {
     const k = window.kq as Any;
-    k.chronik.open('case.k3');
-    for (let i = 0; i < 4; i++) {
-      k.chronik.solve('case.k3', 3);
-      k.chronik.check('case.k3');
-    }
-    k.chronik.fill('case.k3', 'entry.k3.10', 'wie', 'n.r_alle');
-    k.chronik.check('case.k3');
-    k.step(4);
-  });
-  await shot(page, '19-fallseite');
-  const progress = await page.evaluate(() => (window.kq as Any).state().chronik['case.k3']);
-  expect(progress.confirmed.length).toBeGreaterThanOrEqual(9);
-  await page.evaluate(() => {
-    const k = window.kq as Any;
-    k.chronik.close();
-    k.ctx.ui.modals.closeAll();
-    k.step(10);
+    k.step(17 * 60);
     k.story.flush();
-    k.step(30);
+    k.step(10);
   });
   s = await story(page);
   expect(s.beat).toBe('k3_11');
-  await page.evaluate(() => (window.kq as Any).story.flush());
-  await shot(page, '20-kalter-rauch');
   expect(await said()).toContain('laub.k3.ende');
   await page.evaluate(() => {
     const k = window.kq as Any;
@@ -745,6 +848,8 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   s = await story(page);
   expect(s.chapter).toBe('k4');
-  const skills = await page.evaluate(() => window.kq!.state().skills);
-  expect(skills).toMatchObject({ baumeister: 2, roentgen: 1 });
+  const done = await page.evaluate(() => (window.kq as Any).quests.state().quests);
+  for (const id of ['q.k3.nachmittag', 'q.k3.buch', 'q.k3.strohmann', 'q.k3.festsaal', 'q.k3.hunde', 'q.k3.jaguar', 'q.k3.kabinett', 'q.k3.lehnstuhl']) expect(done[id]?.state, id).toBe('done');
+  const lvl = await page.evaluate(() => (window.kq as Any).progression.state().level);
+  console.log(`[k3] level at the end: ${lvl}`);
 }

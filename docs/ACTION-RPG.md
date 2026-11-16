@@ -383,8 +383,11 @@ working (the epilogue maps `n.r_x` ≡ `x`).
 | `flag.k2_lichter` | Laub, "Lichter im Wald" | kalkoefen · fackeln · wachfeuer · laternen · offen |
 | `flag.k2_pfeiffer`, `flag.k2_stelle` | Laub, "Hinter der Tür" | treu · dorf · lohn · angst · offen / gewarnt · geschwiegen · gefuehrt · offen |
 | `flag.k3_pluenderer` | Hanne, "Der Nachmittag" | schuld · stahlen · retteten · alle · offen |
-| `flag.k4_zerstoerer`, `flag.k4_steine` | Laub, "Standpunkt siebzehn"; Peter, "Matthes' Zeichen" | franzosen · herzog · steintraeger · vergessen · offen / raub · lohn · neuanfang · nur_steine · offen |
+| `flag.k4_zerstoerer`, `flag.k4_steine` | Laub, "Standpunkt siebzehn"; Peter, "Matthes' Zeichen" (both voice cards: auto turn-in) | franzosen · herzog_selbst · steintraeger · vergessen · offen / raub · lohn_steine · neuanfang · nur_steine · offen |
 | `flag.k4_meute` | Jost, "Sich stellen" | herr_suchen · chronik_bewachen · heimtreiben · nie_abgeblasen · offen |
+
+Ch. 3–4 write the endings pack's value keys (`herzog_selbst`, `lohn_steine`, `herr_suchen`,
+`chronik_bewachen`, …); the fallback epilogue in `05-enden.story.json` knows both spellings.
 
 The two story choices stay story choices: the gate (`k2.tor`, lantern up or down) and the Festsaal
 object (`k3.objekt`, which now also becomes a charm).
@@ -599,34 +602,35 @@ Main quests are offered by the chapter's beats; their order is the chapter's bea
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k3.nachmittag` "Der Nachmittag" | main | Laub → Hanne | Q at the Ehrenhof (1210/−1114); the straw echo (`clue.k3.stroh`); the man with the gilded armchair (`clue.k3.lehnstuhl`); Küchenhof (1212/−1180): **5 Raffschatten** snatch Hanne's basket — drive them off, bring the basket back | raffschatten ×5 | 350 XP; stance `flag.k3_pluenderer` | cx.23 Die Plünderung, cx.22 (straw from Metz) |
-| `q.k3.buch` "Das graue Buch" | main | Soll (empty Registratur, 1202.2/−1150.5) → auto | Waffensammlung (B04.1.eg-waffensammlung, empty); Naturalienkabinett crates (B04.2.og-naturalienkabinett, `clue.k3.kisten`, `clue.k3.koenig`); the gallery (W6, `clue.k3.galerie`); bonus: **measure the gallery** (R, `clue.k3.messen`); the loose board (`clue.k3.falltuer`) → the book bursts → pick up **the one page** (`clue.k3.chronik`) | raffschatten ×3 in the gallery | 400 XP, Baumeister 1 + 2 | cx.20 Rettung der Sammlungen, cx.21 Das abbestellte Naturalienkabinett, cx.24 Bibliothek (STRITTIG), cx.25, cx.26 |
-| `q.k3.strohmann` "Der Strohmann" | main | Laub → auto | dusk: the straw carts in the Ehrenhof (1210/−1114) rise as **Der Strohmann** — defeat it; then the commissioner's torch (`clue.k3.fackel`, 1225/−1118): the fire starts | **strohmann** (boss) + glutling | 350 XP | cx.22 Der Brand |
-| `q.k3.festsaal` "Der Festsaal" | main | Hanne (Festsaal B01.2.og-festsaal) → Hanne (outside) | up the Prunktreppe under the smoke meter, **Glutlinge** on the stairs (not in the Festsaal: memorial); W5 — **choose the object** (`k3.objekt`: Türgriff / Dukat / Uhr / nichts → charm); out by (a) / (b) / (c) (the Tempelzimmer passage) | glutling ×6 | 500 XP, the chosen charm | cx.27 Ein Türgriff, ein Dukat, eine Uhr; cx.28 Was schnell gebaut wurde (paper marble) |
-| `q.k3.hunde` "Die Hunde los" | main | Jost (Zwinger, 1250/−1568) → Jost | through the garden while the pack hunts by ear (sneak) to the Holländische Gärtnerei (1221/−1296) and on to the Zwinger (1258/−1566); Jost opens the cages | the pack (threat) | 300 XP, **Messstab IV (Bannkerben)**, Röntgenblick | cx.06 (the kennel, its end) |
-| `q.k3.jaguar` "Der Jaguar" | side | the gardener (Gärtnerei pforte 1267/−1290) → gardener | the jaguar (1276/−1418) circles outside your light: keep the lantern lit, **three Bannlicht flares** drive it home — never hurt it | — (menagerie) | 200 XP | cx.12 (the menagerie's end) |
-| `q.k3.kabinett` "Abbestellt" | side | Soll (after `q.k3.buch`) → Soll | collect 4 specimen labels the Raffschatten scattered in the Naturalienkabinett and the Durchfahrt (B04.1.eg-durchfahrt) | raffschatten ×4 | 200 XP | cx.21 (the cabinet sold to Holland, then cancelled — `clue.k3.holandre`) |
-| `q.k3.lehnstuhl` "Der vergoldete Lehnstuhl" | side | the man with the chair (`mann`, Ehrenhof 1205/−1110) → him | three Raffschatten want his chair: drive them off until he is through the gate | raffschatten ×3 | 150 XP | cx.23 (what the villages took — and why), comic-dark |
+| `q.k3.buch` "Das graue Buch" | main | Soll (empty Registratur, 1202.2/−1150.5) → auto | Waffensammlung (B04.1.eg-waffensammlung, empty); Naturalienkabinett crates (B04.2.og-naturalienkabinett, `clue.k3.kisten`, bonus `clue.k3.koenig`); the gallery (W6, `clue.k3.galerie`); bonus: **measure the gallery** (R, `clue.k3.messen`), the Tempelzimmer (`clue.k3.papier`); the loose board (`clue.k3.falltuer`) → the grey book (`clue.k3.chronik`) → pick up **the one page** (`item.k3.seite`, Chronikseiten) | raffschatten ×3 at the Durchfahrt (1201/−1163: the gallery floor is above the terrain, no fights up there) | 400 XP, Baumeister 1 + 2 | cx.20 Rettung der Sammlungen, cx.21 Das abbestellte Naturalienkabinett, cx.24 Bibliothek (STRITTIG), cx.25, cx.26 |
+| `q.k3.strohmann` "Der Strohmann" | main | Laub → auto | dusk: the straw carts in the Ehrenhof (1214/−1110) rise as **Der Strohmann** — defeat it; then the commissioner's torch (`clue.k3.fackel`, 1225/−1118): the fire starts | **strohmann** (boss; its own Glutlinge) | 350 XP | cx.22 Der Brand |
+| `q.k3.festsaal` "Der Festsaal" | main | Laub (voice, at the torch) → Hanne (at the Gärtnerei gate 1270/−1293) | up the Prunktreppe under the smoke meter, bonus: **Glutlinge** on the stairs (1258/−1138; not in the Festsaal: memorial); W5 — **choose the object** (`k3.objekt`: Türgriff / Dukat / Uhr / nichts → charm, given by the choice); out by (a) / (b) / (c) (the Tempelzimmer passage); sneak through the garden (the pack by ear) to the gate | glutling ×4 (bonus) | 500 XP, the chosen charm | cx.27 Ein Türgriff, ein Dukat, eine Uhr; cx.28 Was schnell gebaut wurde (paper marble) |
+| `q.k3.hunde` "Die Hunde los" | main | Laub (voice, at the gate) → Jost (Zwinger, 1250/−1568) | north past Marstall and Remisen (the pack by ear), **3 Streuner** on the road (1263/−1520), the Zwinger (1258/−1566); Jost and the cages (`clue.k3.jost`) | streuner ×3, the pack (threat) | 300 XP, **Messstab IV (Bannkerben)**, Röntgenblick | cx.06 (the kennel, its end) |
+| `q.k3.jaguar` "Der Jaguar" | side | Hanne (at the gate, after `q.k3.festsaal`; the gardener has no roster figure yet) → auto (Laub) | the jaguar (1276/−1418) circles outside your light: keep the lantern lit, **three Bannlicht flares** drive it home — never hurt it | — (menagerie) | 200 XP | cx.12 (the menagerie's end) |
+| `q.k3.kabinett` "Abbestellt" | side | Soll (after `q.k3.buch`) → Soll (Registratur, later at the gate) | 4 Raffschatten in the Küchenhof (1222/−1172) drop the 4 specimen labels (`item.k3.etikett`) | raffschatten ×4 | 200 XP | cx.21 (the cabinet sold to Holland, then cancelled — `clue.k3.holandre`) |
+| `q.k3.lehnstuhl` "Der vergoldete Lehnstuhl" | side | Peter, Hanne's boy, with one of the chairs (Ehrenhof 1202/−1104; `mann` has no roster figure yet) → Peter | three Raffschatten (1195/−1097) want the chair: drive them off, then **escort** Peter to the court gate (1192/−1113) | raffschatten ×3 | 150 XP | cx.23 (what the villages took — and why), comic-dark |
 
 ### 11.4 Kapitel 4 "Der Steinbruch" (1796 → 1840 echo → today) — tier 4, levels 10–12
 
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k4.zettel` "Ein Zettel auf der Stufe" | main | Marlene (note) → auto | read Marlene's note (`clue.k4.marlene`); Laub's confession (1); Q at the Taleingang (497/−900) | — | 100 XP | — |
-| `q.k4.karren` "Die Karren nach Westen" | main | Laub → auto | the carts echo (`clue.k4.karren`); **3 Steinfresser** gnaw the valley guard houses (KB-B63/64) — stop them; the west viewpoint (200/−905): the Hohenburg (`clue.k4.hohenburg`), the carts run backwards (`echo.k4.rueckwaerts`) | steinfresser ×3 | 300 XP | cx.31 Steine auf Wanderschaft, cx.30 Pacht und Abriss |
-| `q.k4.baumagazin` "Das letzte Haus" | main | Soll (Baumagazin, 496/−842) → Soll | the lease letter (`clue.k4.pacht`); Peter's cart: Matthes' mark (`clue.k4.stein_karren`, stone 2/4); **5 Steinfresser** gnaw at the stockpile in the yard — defend it | steinfresser ×5, grusling | 400 XP | cx.32 Das Baumagazin, cx.30 |
-| `q.k4.steinplatz` "Der Steinplatz" | main | Laub → auto | Ehrenhof 1796 (1216/−1114): the notice on the pillar (`clue.k4.anschlag`, 1195/−1112); **Der Steinbrecher** — defeat it (W7 follows: the Steinfraß); the robbed-out trench (`clue.k4.graben`, 1240/−1193) | **steinbrecher** (boss) + grusling | 600 XP, **Messstab V (Laubs Lot)** | cx.29 Tod und Schulden (STRITTIG), rm.05 Ausbruchgraben |
-| `q.k4.standpunkt` "Standpunkt siebzehn" | main | Laub → Laub | the Forsthausbrunnen (1386/−1477): Laub's echo of 1840 (`clue.k4.laub_1840`); Laub's confession (2); the pack **drives** you (lossless) to the Zwinger (today, 1216/−1571) | the pack (drive, threat) | 500 XP; stances `flag.k4_zerstoerer` | cx.33 (the 1840 survey Laub belonged to) |
-| `q.k4.stellen` "Sich stellen" | main | Jost (the Pikeur, Zwinger today) → Jost | **W8: lie down (X) and light the lantern (L)** — combat disabled; Jost takes off his hat; the horn | — (no fight) | 800 XP, **Das Horn**; stance `flag.k4_meute` | cx.39 Der Karlsberg heute |
-| `q.k4.zeichen` "Matthes' Zeichen" | side | Peter (Baumagazin, 494/−826) → Peter | the four marked stones: 1 (k1, gallery quader — counts if seen), 2 (Peter's cart), 3 in the Ehrenhof rubble 1796 (guarded by Gruslinge, (prüfen)), 4 today — seen from the road at the Baumagazin (private ground: look, never enter) | grusling ×8 | 300 XP, Matthes' Zeichen (charm); stance `flag.k4_steine` | cx.31 (Karlsberg stones in Homburg houses) |
-| `q.k4.graeben` "Gruslinge im Graben" | side | Laub (after `q.k4.steinplatz`) → auto | clear 3 robbed-out trenches of Grusling swarms (around 1240/−1193 (prüfen)), compare each with Relief 3 today (`clue.k4.graben_heute`) | grusling ×15 | 250 XP | rm.05 Ausbruchgraben (the "walls" of the prologue are trenches) |
-| `q.k4.pacht` "Die Pächter" | side | Soll (after `q.k4.baumagazin`) → Soll | recover 3 lease and demolition notices from Steinfresser lairs on the Karlsberg (positions (prüfen)) | steinfresser ×3 | 250 XP | cx.30 Pacht und Abriss (1796) |
+| `q.k4.karren` "Die Karren nach Westen" | main | Laub → auto | the carts echo (`clue.k4.karren`); **3 Steinfresser** gnaw the valley guard houses (KB-B63/64, 508/−900) — stop them; the west viewpoint (200/−905): the Hohenburg (`clue.k4.hohenburg`), the carts run backwards (`echo.k4.rueckwaerts`) | steinfresser ×3 | 250 XP | cx.31 Steine auf Wanderschaft |
+| `q.k4.baumagazin` "Das letzte Haus" | main | Soll (Baumagazin, 496/−842) → Soll | the lease letter (`clue.k4.pacht`); Peter's cart: Matthes' mark (`clue.k4.stein_karren`, stone 2/4); **5 Steinfresser** gnaw at the stockpile in the yard (478/−852) — defend it; bonus: 6 Gruslinge | steinfresser ×5, grusling ×6 | 300 XP | cx.32 Das Baumagazin, cx.30 |
+| `q.k4.steinplatz` "Der Steinplatz" | main | Laub → auto | Ehrenhof 1796 (1216/−1114): the notice on the pillar (`clue.k4.anschlag`, 1195/−1112); **Der Steinbrecher** (1224/−1116) — defeat it (W7 follows: the Steinfraß); the robbed-out trench (`clue.k4.graben`, 1240/−1193) and its page (`item.k4.seite`) | **steinbrecher** (boss) | 450 XP, **Messstab V (Laubs Lot)** | cx.29 Tod und Schulden (STRITTIG), rm.05 Ausbruchgraben |
+| `q.k4.standpunkt` "Standpunkt siebzehn" | main | Laub → auto (voice stance card) | the Forsthausbrunnen (1386/−1477): Laub's echo of 1840 (`clue.k4.laub_1840`); Laub's confession (2); the pack **drives** you (lossless) to the Zwinger (today, 1216/−1571) | the pack (drive, threat) | 350 XP; stances `flag.k4_zerstoerer` | cx.33 (the 1840 survey Laub belonged to) |
+| `q.k4.stellen` "Sich stellen" | main | Laub (voice) → Jost (the Pikeur, Zwinger today) | **W8: lie down (X) and light the lantern (L)** — combat disabled; Jost takes off his hat; the horn | — (no fight) | 800 XP, **Das Horn**; stance `flag.k4_meute` | cx.39 Der Karlsberg heute |
+| `q.k4.zeichen` "Matthes' Zeichen" | side | Peter (Baumagazin, 494/−826) → auto (Laub, voice stance card) | the four marked stones: 1 (bonus: `clue.k1.zeichen`, counts if seen), 2 (Peter's cart, `clue.k4.stein_karren`), 3 in the Ehrenhof rubble 1796 (1240/−1105, guarded by Gruslinge), 4 today — seen from the road at the Karlsberger Hof (483/−839, private ground: look, never enter) | grusling ×8 | 300 XP, Matthes' Zeichen (charm); stance `flag.k4_steine` | cx.31 (Karlsberg stones in Homburg houses) |
+| `q.k4.graeben` "Gruslinge im Graben" | side | Laub (after `q.k4.steinplatz`) → auto | clear 3 robbed-out trenches of Grusling swarms (1232/−1188, 1236/−1180, 1226/−1194), compare with Relief 3 today (`clue.k4.graben_heute`) | grusling ×15 | 250 XP | rm.05 Ausbruchgraben (the "walls" of the prologue are trenches) |
+| `q.k4.pacht` "Die Pächter" | side | Soll (after `q.k4.baumagazin`) → Soll | recover 3 lease and demolition notices from Steinfresser lairs on the slope (650/−930, 800/−960, 1000/−1000; they drop them) | steinfresser ×3 | 250 XP | cx.30 Pacht und Abriss (1796) |
 
 ### 11.5 Endings
 
 Unchanged (bible 06-enden): the choice at the table (museum / burn / keep), the epilogue assembled from
 the stance flags and `flag.k3_objekt`, credits, "Ende noch einmal wählen". The `k4_15 Lücken` beat
 fills unanswered stances with `offen` (the `readings` action, kept) instead of asking for blanks.
-`flags['combat.disabled']` is set from the finale on.
+`flags['combat.disabled']` is set from the finale on (`k4_11` … `e2`; cleared after the credits).
+The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` ≡ `herzog` …).
 
 ## 12. Removed and kept
 
@@ -691,6 +695,13 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Story beats waiting on Chronik confirmations | content tracks replace every `confirmed` / `caseComplete` / `reading` gate with `quest` conditions (the validator can be tightened afterwards) |
 | Old saves mid-chapter | old flags kept; quests start fresh per chapter (story re-offers the current beat's quest on resume with `onResume: true`) |
 
+- **contentB (Ch. 3–4) speaker / roster needs:** `gaertner` and `mann` are in the quests validator's
+  roster but have no NPC figure in `src/systems/npc/roster.ts` (the story validator warns "generic
+  ghost"). Ch. 3 therefore gives the jaguar to Hanne and the gilded chair to Peter (Hanne's boy). With
+  a gardener / villager figure (architect) both can go back to their §11.3 givers.
+- **contentB:** examine / echo objectives only count clues found while the quest runs (`settleKnown`
+  runs on restore); Ch. 3–4 bridge this with story "settle" reactions (`quest progress` when the clue
+  is already in the inventory). A `settleKnown` on accept in the quests system would make them redundant.
 - **Q-11** Ranged option (thrown Kalkstaub is the only one) — enough? Lean: yes for v1.
 - **Q-12** Damage numbers default on? Lean: on, small, handwritten; one switch.
 - **Q-13** Respec cost? Lean: free at the field station.
