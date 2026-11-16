@@ -1234,8 +1234,7 @@ export class CombatSim {
         if (e.t >= rec) {
           this.tokens.release(e.id);
           this.setState(e, 'approach');
-          // the Raffschatten runs once more when it is hurt
-          if (e.kind === 'raffschatten' && e.fled === 1 && e.hp < e.maxHp * 0.4) this.setState(e, 'flee');
+          // the Raffschatten runs only once (a second chase across the field was a chore, playtest round 2)
         }
         break;
       }
