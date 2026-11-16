@@ -146,6 +146,23 @@ describe('dialogue queue rules', () => {
     return out;
   };
 
+  it("a 'now' line jumps the queue and drops waiting barks; an expired line is never said", () => {
+    const q = mk();
+    q.push({ id: 'a' });
+    q.push({ id: 'bark', priority: 'low' });
+    q.push({ id: 'b' });
+    q.push({ id: 'tip', priority: 'now' });
+    q.push({ id: 'tip2', priority: 'now' });
+    expect(q.urgent).toBe(true);
+    expect(drain(q)).toEqual(['tip', 'tip2', 'a', 'b']);
+    let done = false;
+    q.push({ id: 'press1', expired: () => done });
+    q.push({ id: 'c' });
+    done = true;
+    q.prune();
+    expect(drain(q)).toEqual(['c']);
+  });
+
   it('caps the queue, dropping low-priority lines first', () => {
     const q = mk();
     q.push({ id: 'bark', priority: 'low' });

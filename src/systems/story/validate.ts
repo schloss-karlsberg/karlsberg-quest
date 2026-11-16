@@ -286,6 +286,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
           if (!isStr(a.speaker)) err(file, where, 'say: variants need a speaker');
         } else if (!isStr(a.speaker) || !isStr(a.text)) err(file, where, 'say needs speaker + text, or line');
         if (a.id !== undefined && !ID_RE.test(a.id)) err(file, where, `say: malformed id '${a.id}'`);
+        if (a.until !== undefined) checkCond(a.until, file, `${where}:until`, err);
         if (a.text_by_era !== undefined) {
           if (!a.text_by_era || typeof a.text_by_era !== 'object') err(file, where, 'say: text_by_era must be an object');
           else for (const [era, txt] of Object.entries(a.text_by_era)) if (!isEra(era) || !isStr(txt)) err(file, where, `say: text_by_era.${era} needs a known era and text`);

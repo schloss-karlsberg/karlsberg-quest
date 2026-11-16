@@ -67,7 +67,17 @@ declare module '../core/events' {
     /** Ask the fx system to perform an era shift with the transition effect. */
     'shift:request': { to: Era; reason?: string; instant?: boolean };
     /** Show a spoken line (subtitle + portrait). speaker = content speaker id. */
-    'dialogue:say': { speaker: string; text: string; ms?: number; fiction?: boolean; id?: string };
+    'dialogue:say': {
+      speaker: string;
+      text: string;
+      ms?: number;
+      fiction?: boolean;
+      id?: string;
+      /** 'now': a tutorial for the action at hand cuts in (default: the line queues). */
+      priority?: 'now' | 'normal' | 'low';
+      /** A story Condition (story/types.ts): once it holds, the line is no longer worth saying. */
+      until?: unknown;
+    };
     'story:chapter': { id: string };
     'story:beat': { chapter: string; beat: string };
     'story:ending': { id: 'museum' | 'burn' | 'keep' };

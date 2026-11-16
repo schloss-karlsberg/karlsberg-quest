@@ -316,7 +316,10 @@ class QuestRuntime {
     // a banner never stamps over the reward card: it waits until the card is gone
     this.bannerQ.push(() => showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main'));
     // voice givers speak their request (the dialogue presenter queues it)
-    if ('voice' in q.giver) for (const l of q.offer) this.say(l);
+    // (they lose their point once the first step is done: "Geh zum Damm" while you stand on it)
+    const first = q.objectives.find((o) => !o.optional && !(o.after ?? []).length);
+    const until = first ? { quest: { id: q.id, objective: first.id, gte: first.count ?? 1 } } : undefined;
+    if ('voice' in q.giver) for (const l of q.offer) this.say(l, until);
     this.dirty = true;
   }
 
@@ -388,7 +391,9 @@ class QuestRuntime {
   private voiceStance(q: QuestDef): void {
     const s = q.stance;
     if (!s || this.book.progressOf(q.id)?.stance) return;
-    const speaker = this.ctx.content.speakers.get(giverOf(q))?.name_de ?? giverOf(q);
+    // "Laub: …" in the prompt names who asks (the giver may be Marlene on the radio)
+    const asker = /^([A-ZÄÖÜ][\wäöüß]+):\s+/.exec(s.prompt_de)?.[1];
+    const speaker = asker ?? this.ctx.content.speakers.get(giverOf(q))?.name_de ?? giverOf(q);
     // a spoken question with two or three replies you say, like the conversation's topics, not a
     // grid of answer cards (playtest: it read as a quiz)
     const prompt = s.prompt_de.replace(/^[A-ZÄÖÜ][\wäöüß]+:\s+/, '');
@@ -409,8 +414,8 @@ class QuestRuntime {
     m.el.dataset.testid = 'quest-stance';
   }
 
-  private say(l: QuestLine): void {
-    this.ctx.events.emit('dialogue:say', { speaker: l.speaker, text: l.text, ms: Math.round(lineSeconds(l.text) * 1000) });
+  private say(l: QuestLine, until?: unknown): void {
+    this.ctx.events.emit('dialogue:say', { speaker: l.speaker, text: l.text, ms: Math.round(lineSeconds(l.text) * 1000), until });
   }
 
   private later(seconds: number, run: () => void): void {

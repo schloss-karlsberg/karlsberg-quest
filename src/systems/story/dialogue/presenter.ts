@@ -78,6 +78,7 @@ export class DialoguePresenter {
   private hideTimer = 0;
   private mouthTimer = 0;
   private lastPortrait = '';
+  private prune = 0;
   constructor(private readonly o: PresenterOptions) {
     this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
     ensurePortraitDefs();
@@ -122,6 +123,8 @@ export class DialoguePresenter {
   enqueue(item: DialogueItem): void {
     this.queue.push(item);
     if (!this.cur) this.next();
+    // a 'now' line cuts in: the line on screen ends at once (unless it is 'now' itself)
+    else if (item.priority === 'now' && this.cur.item.priority !== 'now') this.next();
   }
 
   /** A beat began: waiting lines of other beats retire (./queue.ts). */
@@ -195,6 +198,18 @@ export class DialoguePresenter {
   /** Advance typing / hold (seconds of game time). */
   update(dt: number): void {
     this.queue.tick(dt);
+    this.prune += dt;
+    if (this.prune >= 0.25) {
+      this.prune = 0;
+      this.queue.prune();
+      // the line on screen lost its moment: let it go soon
+      const c = this.cur;
+      if (c && c.item.expired?.()) {
+        c.typed = c.text.length;
+        c.hold = Math.min(c.hold, c.shownFor + 0.8);
+        this.render();
+      }
+    }
     if (this.mouthTimer > 0) {
       this.mouthTimer -= dt;
       if (this.mouthTimer <= 0) this.portraitEl.classList.remove('kqs-m');
@@ -227,6 +242,8 @@ export class DialoguePresenter {
       return;
     }
     c.shownFor += dt;
-    if (c.shownFor >= c.hold) this.next();
+    // lines waiting behind this one: read a little faster (the queue must not lag behind play)
+    const hold = this.queue.length >= 2 ? Math.max(1.6, c.hold * 0.7) : c.hold;
+    if (c.shownFor >= hold) this.next();
   }
 }

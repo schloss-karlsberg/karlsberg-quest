@@ -32,7 +32,8 @@ import { playStorySound } from './sfx';
 import { loadBundledStories } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
-import type { Action, Checkpoint, ChoiceAction, EndingId, FlagValue, HubItem, LookTime, MeterAction, StoryFile } from './types';
+import type { Action, Checkpoint, ChoiceAction, Condition, EndingId, FlagValue, HubItem, LookTime, MeterAction, StoryFile } from './types';
+import type { GameEvents } from '../../core/events';
 import type { DialogueItem } from './dialogue/presenter';
 
 // ---- story-private state & events (declaration merging; see contracts.ts) -------------------
@@ -570,7 +571,7 @@ class StoryRuntime {
           // a running joke: count how often it was told
           s.sayCount = { ...(s.sayCount ?? {}), [a.id]: (s.sayCount?.[a.id] ?? 0) + 1 };
         } else if (id && !s.said.includes(id)) s.said.push(id);
-        ctx.events.emit('dialogue:say', { speaker, text, ms: a.ms, id, fiction: a.echo ? true : undefined });
+        ctx.events.emit('dialogue:say', { speaker, text, ms: a.ms, id, fiction: a.echo ? true : undefined, until: a.until });
         return;
       }
       case 'objective': {
@@ -1031,7 +1032,7 @@ class StoryRuntime {
     else if (s.room === id) s.room = null;
   }
 
-  private showLine(p: { speaker: string; text: string; ms?: number; fiction?: boolean; id?: string }): void {
+  private showLine(p: GameEvents['dialogue:say']): void {
     const line = p.id ? this.ctx.content.dialogue.get(p.id) : undefined;
     const src = line?.sources?.[0];
     // tag the line: its beat, the place it is about, its priority (barks / hints of other features: low)
@@ -1048,9 +1049,25 @@ class StoryRuntime {
       source: src ? (src.label ?? src.url) : undefined,
       beat: sc ? sc.beat : this.slice.beat,
       where,
-      priority: low ? 'low' : 'normal',
+      priority: p.priority ?? (low ? 'low' : 'normal'),
       group: sc ? this.lineGroup : ++this.lineGroup,
+      expired: p.until ? this.latch(p.until as Condition) : undefined,
     });
+  }
+
+  /** Once a line's `until` held it stays expired (scan 1 pressed and released again). */
+  private latch(c: Condition): () => boolean {
+    let done = false;
+    return () => done || (done = this.holds(c));
+  }
+
+  /** A line's `until` condition, evaluated now (no latches, no timers). */
+  private holds(c: Condition): boolean {
+    try {
+      return evaluate(c, this.env(), {}, 'until', 0);
+    } catch {
+      return false;
+    }
   }
 
   /**

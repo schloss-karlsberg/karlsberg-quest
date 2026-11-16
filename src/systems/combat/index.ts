@@ -491,10 +491,12 @@ class Combat {
           else this.captionOnce(`tell:${key}`, text, '', 2.5, Math.max(900, ev.dur * 1000 + 200));
         }
         this.audio.telegraph(this.posOf(e), e.def.family, e.boss, ev.dur);
-        // the very first wind-up of the game teaches the dodge (once per save)
-        if (!e.boss && ev.attack.damage > 0 && ctx.state.state.flags['tut.dodge'] !== true) {
+        // the first wind-up the player could dodge teaches the dodge (once per save): it cuts into
+        // the dialogue queue; before Laub has spoken it is a HUD hint, not his voice (his reveal)
+        if (!e.boss && ev.attack.damage > 0 && ctx.state.state.flags['tut.dodge'] !== true && Math.hypot(e.x - inp.x, e.z - inp.z) <= ev.attack.range + 2.5) {
           ctx.state.update((s) => (s.flags['tut.dodge'] = true), 'combat');
-          this.emit('dialogue:say', { speaker: 'laub', text: t('combat.tut.dodge'), id: 'laub.tut.dodge', ms: 2600 });
+          if (ctx.state.state.flags['story.laub'] === true) this.emit('dialogue:say', { speaker: 'laub', text: t('combat.tut.dodge'), id: 'laub.tut.dodge', ms: 2600, priority: 'now' });
+          else this.hud.caption(t('combat.tut.dodge.hint'), 'boss', Math.max(2200, ev.dur * 1000 + 900));
         }
         if (e.kind === 'pikeur' && ev.attack.kind === 'charge') this.audio.horn(this.posOf(e, 2.4));
         // off-screen attacker → arrow at the screen edge (settings.soundIndicators)

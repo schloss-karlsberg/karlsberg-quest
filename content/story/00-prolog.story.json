@@ -202,7 +202,7 @@
         { "do": "skill", "id": "relief", "tier": 1, "toast": "Relief-Blick 1 (Taste 1) freigeschaltet" },
         { "do": "quest", "op": "offer", "id": "q.p.relief", "onResume": true },
         { "do": "objective", "id": "damm", "text": "Zum Damm des Karlsbergweihers, hinter dem Bauwagen", "x": 819, "z": -875, "delay": 0.5 },
-        { "do": "say", "line": "marlene.p.relief", "delay": 1 },
+        { "do": "say", "line": "marlene.p.relief", "delay": 1, "until": { "scan": 1 } },
         { "do": "prompt", "key": "1", "text": "Relief-Blick: der Boden ohne Wald" }
       ],
       "on": [
@@ -220,7 +220,7 @@
               "x": 813,
               "z": -903
             },
-            { "do": "say", "line": "marlene.p.damm" }
+            { "do": "say", "line": "marlene.p.damm", "until": { "any": [{ "scan": 2 }, { "have": { "clue": "clue.p.mauerrest" } }] } }
           ]
         },
         {
@@ -482,7 +482,7 @@
             { "do": "flag", "set": { "barks.quiet": true } },
             { "do": "prompt", "key": "Q", "text": "Zeitwechsel: Sommer 1789" },
             { "do": "objective", "id": "wechsel", "text": "Blick nach Osten, zum Schloss. Dann Q.", "x": 1263, "z": -1126 },
-            { "do": "say", "line": "laub.p.blick" }
+            { "do": "say", "line": "laub.p.blick", "until": { "era": "1789" } }
           ]
         },
         {

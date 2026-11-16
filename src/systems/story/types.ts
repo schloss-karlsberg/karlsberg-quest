@@ -255,6 +255,8 @@ export interface SayAction extends ActionBase {
   echo?: boolean;
   /** Repeat even if already said. */
   repeat?: boolean;
+  /** Drop the line (waiting or showing) once this holds: the objective it explains is done. */
+  until?: Condition;
   /**
    * Era-dependent text: the entry for the current era wins, else `text`. Placeholders in any text:
    * {Name}/{name} (player name), {jahre:1793} (years since 1793 in words; fallback "über

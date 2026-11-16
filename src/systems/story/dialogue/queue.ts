@@ -8,13 +8,20 @@
  *   STALE_GRACE seconds to start (`retireBeat`);
  * - the rest of a sequence (same `group`) whose first line is showing is never dropped;
  * - `valid` (the host: is the player still near the place the line is about?) is asked when a
- *   line's turn comes.
+ *   line's turn comes;
+ * - a line with `expired` (its `until` condition: the objective it explains is done, the beat it
+ *   prepares has passed) is dropped once that holds;
+ * - a 'now' line (a tutorial that blocks an action: "Leertaste – zur Seite!") jumps the queue, and
+ *   the waiting lines of other groups that are low priority are dropped (playtest round 2: tips
+ *   arrived 13 s after the moment).
  */
 
 export interface QueuedLine {
   /** Beat the line belongs to (null / undefined = chapter-wide). */
   beat?: string | null;
-  priority?: 'low' | 'normal';
+  priority?: 'low' | 'normal' | 'now';
+  /** The line is no longer worth saying (checked while it waits, and while it shows). */
+  expired?: () => boolean;
   /** Queue clock when queued (set by `push`). */
   queuedAt?: number;
   /** Dropped if it has not started by this queue time. */
@@ -53,7 +60,18 @@ export class LineQueue<T extends QueuedLine> {
 
   push(item: T): void {
     item.queuedAt = this.clock;
-    this.items.push(item);
+    if (item.priority === 'now') {
+      // ahead of everything but other 'now' lines; waiting low lines are stale already
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        if (this.items[i]!.priority === 'low') {
+          this.items.splice(i, 1);
+          this.dropped++;
+        }
+      }
+      let at = 0;
+      while (at < this.items.length && this.items[at]!.priority === 'now') at++;
+      this.items.splice(at, 0, item);
+    } else this.items.push(item);
     while (this.items.length > MAX_QUEUE) {
       let i = this.items.findIndex((q) => q.priority === 'low' && q !== item);
       if (i < 0) i = this.items.findIndex((q) => !this.started(q) && q !== item);
@@ -93,7 +111,24 @@ export class LineQueue<T extends QueuedLine> {
     return q.group !== undefined && this.playingGroup() === q.group;
   }
 
+  /** Drop waiting lines whose `until` holds now (called every tick by the presenter). */
+  prune(): void {
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const q = this.items[i]!;
+      if (q.expired?.()) {
+        this.items.splice(i, 1);
+        this.dropped++;
+      }
+    }
+  }
+
+  /** The next waiting line is a 'now' line (the presenter cuts the current one short). */
+  get urgent(): boolean {
+    return this.items[0]?.priority === 'now';
+  }
+
   private fresh(q: T): boolean {
+    if (q.expired?.()) return false;
     if (this.started(q)) return true;
     if (q.staleAt !== undefined && this.clock > q.staleAt) return false;
     if (q.priority === 'low' && this.clock - (q.queuedAt ?? this.clock) > LOW_TTL) return false;
