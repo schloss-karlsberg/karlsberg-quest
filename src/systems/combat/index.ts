@@ -751,7 +751,8 @@ class Combat {
       flare: this.bannFx?.t ?? 0,
       hurt: 0,
       moving: this.moving,
-      hidden: pl.flying || ctx.ui.modals.count > 0 || (this.deadT >= 0 && this.caughtSent),
+      // no staff in hand before the Messstab is picked up at the trailer, none over the title
+      hidden: pl.flying || ctx.ui.modals.count > 0 || (this.deadT >= 0 && this.caughtSent) || !ctx.state.state.systems.progression?.equipped?.weapon || ctx.pause.reasons.has('title'),
       lowered: f['combat.disabled'] === true || pl.stance === 'prone',
       reducedMotion: st.reducedMotion,
       reducedFlash: st.reducedFlash,

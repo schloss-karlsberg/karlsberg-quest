@@ -56,7 +56,7 @@
     {
       "id": "k2-treue",
       "when": {
-        "all": [{ "era": "today" }, { "have": { "clue": "clue.k2.zaun" } }]
+        "all": [{ "era": "today" }, { "have": { "clue": "clue.k2.warnung" } }]
       },
       "do": [{ "do": "grant", "clue": "clue.k2.laub_treue", "delay": 4 }]
     },
@@ -195,7 +195,7 @@
               "do": "say",
               "id": "laub.k2.weg1",
               "speaker": "laub",
-              "text": "Nur ein Hofhund, einer von heute. Merk dir trotzdem, wie das klingt. Drüben, im Februar dreiundneunzig, sind es andere, und die schlagen nicht bloß an.",
+              "text": "Nur ein Hofhund, einer von heute. Merken Sie sich trotzdem, wie das klingt. Drüben, im Februar dreiundneunzig, sind es andere, und die schlagen nicht bloß an.",
               "delay": 2.5,
               "ms": 7000
             }
@@ -211,7 +211,7 @@
               "do": "say",
               "id": "laub.k2.weg2",
               "speaker": "laub",
-              "text": "Wenn wir drüben sind: schau auf den Boden. Raureif verrät jeden Schritt. Seine. Und deine auch.",
+              "text": "Wenn wir drüben sind: schauen Sie auf den Boden. Raureif verrät jeden Schritt. Seine. Und Ihre auch.",
               "ms": 6000
             }
           ]

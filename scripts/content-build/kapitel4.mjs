@@ -26,7 +26,7 @@ const ZW = [1216, -1571];
 const clues = [
   clue('clue.k4.marlene', {
     title: 'Marlenes Zettel', kind: 'document', at: STUFE, r: 6, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
-    text: '„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Kern FAKT: Steine der Ruine in Homburger Häusern, RLS.)',
+    text: '„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Belegt: Steine der Ruine stecken in Homburger Häusern.)',
     nouns: ['n.r_neuanfang'],
   }),
   clue('clue.k4.karren', {
@@ -36,7 +36,7 @@ const clues = [
   }),
   clue('clue.k4.hohenburg', {
     title: 'Blick zur Hohenburg', kind: 'dialogue', at: WEST, r: 20, era: E, anchor: 'loc.k4.westblick', chapter: ch, fiction: false,
-    text: 'Am Westrand des Spielbereichs. Im Südwesten, etwa zwei Kilometer weit, ein Berg mit Mauerresten über einer kleinen Stadt (stilisierte Silhouette, nicht Gelände).',
+    text: 'Im Südwesten, etwa zwei Kilometer weit, ein Berg mit Mauerresten über einer kleinen Stadt.',
     nouns: ['n.hohenburg'],
   }),
   clue('clue.k4.jaegersburg', {
@@ -60,7 +60,7 @@ const clues = [
   }),
   clue('clue.k4.pacht', {
     title: 'Der Pachtbrief', kind: 'document', at: TISCH, r: 3.5, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
-    text: '„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut FIKTION; Inhalt nach HIB.)',
+    text: '„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut erfunden; der Inhalt ist belegt.)',
     nouns: ['n.vierzehn'],
   }),
   clue('clue.k4.soll', {
@@ -79,7 +79,7 @@ const clues = [
   }),
   clue('clue.k4.anschlag', {
     title: 'Ein Anschlag am Pfeiler', kind: 'document', at: [1195, -1112], r: 3, era: E, anchor: 'TF-01', chapter: ch, fiction: false,
-    text: 'Ein angeschlagenes Blatt, vom Regen halb gelöst: „Nachdem Seine Hochfürstliche Durchlaucht Herzog Carl August am 1. April 1795 verstorben, werden alle, so Forderungen an die herzogliche Cammer haben, aufgefordert …“ Darunter mit Kohle: „über 9 Millionen. Viel Glück.“ (Wortlaut FIKTION; Datum und Summe FAKT nach WP-K2A.)',
+    text: 'Ein angeschlagenes Blatt, vom Regen halb gelöst: „Nachdem Seine Hochfürstliche Durchlaucht Herzog Carl August am 1. April 1795 verstorben, werden alle, so Forderungen an die herzogliche Cammer haben, aufgefordert …“ Darunter mit Kohle: „über 9 Millionen. Viel Glück.“ (Wortlaut erfunden; Datum und Summe sind belegt.)',
     nouns: ['n.9_millionen'],
   }),
   clue('clue.k4.napoleon', {
@@ -253,7 +253,7 @@ const dialogue = [
   say('jost.k4.03', 'jost', 'Ich hab sie rausgelassen, in der Nacht vom Feuer. Dann bin ich ihnen nach. Ich hab sie nie wieder eingefangen. Wer nicht abgeblasen wird, läuft weiter. Und ich bin mitgelaufen.', talk('pikeur', 'meute')),
   say('jost.k4.04', 'jost', 'Was keiner mehr weiß, frisst der Berg. Wer zu lang drin ist in dem, was keiner mehr weiß, den frisst er mit. Wir haben jeden heimgetrieben, bevor es so weit war. Jeden.', talk('pikeur', 'berg', { step: 1 })),
   say('jost.k4.05', 'jost', 'Nur den Geometer nicht. Der hat sich nicht hingelegt.', talk('pikeur', 'berg', { step: 2 })),
-  say('jost.k4.06', 'jost', 'Jetzt hat er’s. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.', talk('pikeur', 'namen')),
+  say('jost.k4.06', 'jost', 'Jetzt haben sie Namen. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.', talk('pikeur', 'namen')),
   say('jost.k4.07', 'jost', 'Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.', talk('pikeur', 'bye')),
   say('jost.k4.08', 'jost', 'Die Chronik ist voll, glaub ich. Was du damit machst, ist deine Sache. Ich hab nur aufgepasst.', beat('4.9-horn'), { once: true }),
   // After the finale (station)

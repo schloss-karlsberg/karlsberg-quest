@@ -4,7 +4,7 @@ import { addStrings } from '../../i18n';
 export const CHRONIK_DE: Record<string, string> = {
   'chronik.title': 'Chronik',
   'chronik.subtitle': 'Was der Hof schuldig blieb',
-  'chronik.tab.board': 'Fallseiten',
+  'chronik.tab.board': 'Seiten',
   'chronik.tab.codex': 'Codex',
   'chronik.close': 'Schließen (Tab)',
   'chronik.noCases': 'Noch keine Seite. Untersuchen Sie, was das Land Ihnen zeigt; die Chronik füllt sich von selbst.',

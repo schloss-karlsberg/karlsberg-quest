@@ -151,7 +151,11 @@ export class EndingScreen {
       sec(t('story.credits.sources'), h('ul', CREDIT_SOURCES.map((s) => h('li', [s.label, h('a', { href: s.url, target: '_blank', rel: 'noopener' }, new URL(s.url).hostname.replace(/^www\./, ''))])))),
       sec(
         t('story.credits.data'),
-        h('ul', attrib.map((a) => h('li', [h('b', `${a.label_de}: `), a.text, a.licence ? ` — ${a.licence}` : '']))),
+        // player-facing: no repo paths or internal catalogue names, the licence once
+        h('ul', attrib.map((a) => {
+          const text = a.text.replace(/\s*\((?:research\/[^)]*|Generator-Regeln[^)]*)\)/g, '').replace(/ des Teilprojekts schloss-karlsberg/g, '').replace(/,? Katalog v2/g, '');
+          return h('li', [h('b', `${a.label_de}: `), text, a.licence && !text.includes(a.licence) ? ` — ${a.licence}` : '']);
+        })),
         h('p', 'Rekonstruktion 1789 (Hypothese): Modell und Katalog aus dem Projekt „saar-lidar-explorer / schloss-karlsberg“.'),
       ),
       sec(t('story.credits.fiction'), h('p', t('story.credits.fictionText'))),

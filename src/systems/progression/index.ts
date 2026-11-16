@@ -381,8 +381,10 @@ class Progression {
     const want = near?.p.id ?? null;
     if (want !== this.promptFor) {
       if (want && (!shownText || ours)) {
-        this.promptText = `Aufheben: ${this.name(near!.p.item)}`;
-        hud.prompt(this.key('listen'), this.promptText, 'progression');
+        // a full stack cannot take more: say so instead of offering E
+        const full = this.core.room(near!.p.item) <= 0;
+        this.promptText = full ? `${this.name(near!.p.item)}: voll` : `Aufheben: ${this.name(near!.p.item)}`;
+        hud.prompt(full ? null : this.key('listen'), this.promptText, 'progression');
         this.promptFor = want;
       } else if (!want) {
         hud.prompt(null, undefined, 'progression');

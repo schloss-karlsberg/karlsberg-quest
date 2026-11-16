@@ -1213,7 +1213,7 @@
         "npc": "hanne",
         "chapter": "k1",
         "topic": "greet",
-        "hasClue": "clue.k1.soll"
+        "flag": "quest.q.k1.lohn.soll"
       },
       "once": true,
       "priority": 5

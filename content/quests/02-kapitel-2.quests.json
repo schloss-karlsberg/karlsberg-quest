@@ -42,7 +42,7 @@
       "history": [
         {
           "speaker": "laub",
-          "text": "Ein Bauer kam atemlos auf den Berg: Französische Reiter suchten in seinem Dorf einen Führer zum Schloss. Er schlich durch seinen Garten in den Wald und kletterte über den Parkzaun. Wikipedia nennt ihn Nikel Pfeiffer, aus Rohrbach. Von ihm selbst ist kein Wort überliefert.",
+          "text": "Ein Bauer kam atemlos auf den Berg: Französische Reiter suchten in seinem Dorf einen Führer zum Schloss. Er schlich durch seinen Garten in den Wald und kletterte über den Parkzaun. Die Ortsgeschichte nennt ihn Nikel Pfeiffer, aus Rohrbach. Von ihm selbst ist kein Wort überliefert.",
           "fact": "cx.16",
           "sources": [
             {
@@ -816,11 +816,11 @@
       },
       "turnin": "giver",
       "topic_de": "Die Kisten",
-      "accept_de": "Ich trage.",
+      "accept_de": "Abgemacht.",
       "offer": [
         {
           "speaker": "diener",
-          "text": "Monsieur, Sie kommen wie gerufen. Der Herr Baudirektor sagt, die Bilder müssen fort, bevor die Franzosen kommen. Vier Kisten noch."
+          "text": "Sie kommen wie gerufen. Der Herr Baudirektor sagt, die Bilder müssen fort, bevor die Franzosen kommen. Vier Kisten noch."
         },
         {
           "speaker": "diener",
@@ -830,7 +830,7 @@
       "progress": [
         {
           "speaker": "diener",
-          "text": "Vier Kisten, Monsieur. Vorsichtig, da ist ein Rubens drin. Oder ein Rahmen. Ich verwechsle das."
+          "text": "Vier Kisten. Vorsichtig, da ist ein Rubens drin. Oder ein Rahmen. Ich verwechsle das."
         }
       ],
       "turnin_lines": [

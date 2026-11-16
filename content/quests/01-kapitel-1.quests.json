@@ -970,7 +970,7 @@
       "offer": [
         {
           "speaker": "diener",
-          "text": "Monsieur! Die Pläne des Herrn Baudirektors! Das Fenster stand offen, und jetzt liegen sie im Garten verstreut."
+          "text": "Sie da! Die Pläne des Herrn Baudirektors! Das Fenster stand offen, und jetzt liegen sie im Garten verstreut."
         },
         {
           "speaker": "diener",
@@ -980,7 +980,7 @@
       "progress": [
         {
           "speaker": "diener",
-          "text": "Drei Blätter, Monsieur. Und am Fenster drinnen steht der Herr Baudirektor manchmal. Man hört ihn, wenn man lange genug still ist."
+          "text": "Drei Blätter. Und am Fenster drinnen steht der Herr Baudirektor manchmal. Man hört ihn, wenn man lange genug still ist."
         }
       ],
       "turnin_lines": [

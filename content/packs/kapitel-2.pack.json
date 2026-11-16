@@ -256,7 +256,7 @@
       "id": "clue.k2.wachbuch",
       "title_de": "Das Wachbuch",
       "kind": "document",
-      "text_de": "Ein aufgeschlagenes Wachbuch. Die letzte Zeile in einer zittrigen Hand: „Sambstag d. 9ten Febr. 1793. Gegen 8 Uhr ein Bauer, außer Athem, wollte zu Serenissimo. Dem Leibjäger übergeben.“ (Wortlaut erfunden; Datum nach Horstmann, M1910 S. 427 Anm. 1.)",
+      "text_de": "Ein aufgeschlagenes Wachbuch. Die letzte Zeile in einer zittrigen Hand: „Sambstag d. 9ten Febr. 1793. Gegen 8 Uhr ein Bauer, außer Athem, wollte zu Serenissimo. Dem Leibjäger übergeben.“ (Wortlaut erfunden; das Datum notierte Regierungsrat Horstmann.)",
       "where": {
         "x": 1179.5,
         "z": -1123.5,
@@ -615,7 +615,7 @@
       },
       "requires": {
         "clues": [
-          "clue.k2.zaun"
+          "clue.k2.warnung"
         ]
       },
       "fiction": true,

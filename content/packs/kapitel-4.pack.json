@@ -130,7 +130,7 @@
       "id": "clue.k4.marlene",
       "title_de": "Marlenes Zettel",
       "kind": "document",
-      "text_de": "„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Kern FAKT: Steine der Ruine in Homburger Häusern, RLS.)",
+      "text_de": "„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Belegt: Steine der Ruine stecken in Homburger Häusern.)",
       "where": {
         "x": 760,
         "z": -908,
@@ -171,7 +171,7 @@
       "id": "clue.k4.hohenburg",
       "title_de": "Blick zur Hohenburg",
       "kind": "dialogue",
-      "text_de": "Am Westrand des Spielbereichs. Im Südwesten, etwa zwei Kilometer weit, ein Berg mit Mauerresten über einer kleinen Stadt (stilisierte Silhouette, nicht Gelände).",
+      "text_de": "Im Südwesten, etwa zwei Kilometer weit, ein Berg mit Mauerresten über einer kleinen Stadt.",
       "where": {
         "x": 200,
         "z": -905,
@@ -285,7 +285,7 @@
       "id": "clue.k4.pacht",
       "title_de": "Der Pachtbrief",
       "kind": "document",
-      "text_de": "„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut FIKTION; Inhalt nach HIB.)",
+      "text_de": "„Pacht über Holz und Steine der Brandstätte Carlsberg. 1796.“ Darunter vierzehn Unterschriften und Hauszeichen, keine davon lesbar. (Wortlaut erfunden; der Inhalt ist belegt.)",
       "where": {
         "x": 495,
         "z": -845,
@@ -371,7 +371,7 @@
       "id": "clue.k4.anschlag",
       "title_de": "Ein Anschlag am Pfeiler",
       "kind": "document",
-      "text_de": "Ein angeschlagenes Blatt, vom Regen halb gelöst: „Nachdem Seine Hochfürstliche Durchlaucht Herzog Carl August am 1. April 1795 verstorben, werden alle, so Forderungen an die herzogliche Cammer haben, aufgefordert …“ Darunter mit Kohle: „über 9 Millionen. Viel Glück.“ (Wortlaut FIKTION; Datum und Summe FAKT nach WP-K2A.)",
+      "text_de": "Ein angeschlagenes Blatt, vom Regen halb gelöst: „Nachdem Seine Hochfürstliche Durchlaucht Herzog Carl August am 1. April 1795 verstorben, werden alle, so Forderungen an die herzogliche Cammer haben, aufgefordert …“ Darunter mit Kohle: „über 9 Millionen. Viel Glück.“ (Wortlaut erfunden; Datum und Summe sind belegt.)",
       "where": {
         "x": 1195,
         "z": -1112,
@@ -1452,7 +1452,7 @@
     {
       "id": "jost.k4.06",
       "speaker": "jost",
-      "text_de": "Jetzt hat er’s. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.",
+      "text_de": "Jetzt haben sie Namen. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.",
       "trigger": {
         "event": "npc:talk",
         "npc": "pikeur",

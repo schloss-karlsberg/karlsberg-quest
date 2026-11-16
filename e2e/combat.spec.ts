@@ -34,6 +34,9 @@ async function setup(page: Page, era = '1789', at = FIELD): Promise<void> {
   await page.evaluate(
     ({ era, at }) => {
       const k = window.kq!;
+      // the staff shows only once one is in hand (a new game picks it up at the trailer)
+      k.progression!.grant('item.stab.esche', 1, true);
+      k.progression!.equip('item.stab.esche');
       k.setEra(era as never);
       k.teleport(at.x, at.z, at.yaw, -7);
       k.step(10);

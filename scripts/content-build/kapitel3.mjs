@@ -55,7 +55,7 @@ const clues = [
   }),
   clue('clue.k3.kisten', {
     title: 'Gepackte Kisten', kind: 'object', at: [1188.6, -1178.2], anchor: NAT, r: 3.2, era: E, chapter: ch, fiction: true,
-    text: 'Zwölf große Kisten, vernagelt, mit Kreide beschriftet: „Naturalien-Cabinet. Nach Kaiserslautern.“ Darunter, mit anderer Kreide durchgestrichen und überschrieben: „Abbestellt.“ (Wortlaut erfunden; Inhalt nach M1910 S. 454 f.)',
+    text: 'Zwölf große Kisten, vernagelt, mit Kreide beschriftet: „Naturalien-Cabinet. Nach Kaiserslautern.“ Darunter, mit anderer Kreide durchgestrichen und überschrieben: „Abbestellt.“ (Wortlaut erfunden; der Inhalt folgt Mannlichs Lebenserinnerungen.)',
     nouns: ['n.kaiserslautern', 'n.naturalienkabinett'],
   }),
   clue('clue.k3.holandre', {

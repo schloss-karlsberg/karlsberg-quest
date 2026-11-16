@@ -12,14 +12,14 @@ export const de: Record<string, string> = {
   'title.loadFailed': 'Die Geländedaten konnten nicht geladen werden.',
   'title.licences': 'Lizenzen & Quellen',
   'title.motto': 'Fakten mit Quelle. Fiktion als Fiktion gekennzeichnet. Schauen, nicht graben.',
-  'title.hint': 'Maus: umsehen · WASD: gehen · Umschalt: rennen · C: ducken · X: hinlegen · F: Geistersicht · Esc: Pause',
+  'title.hint': 'Maus: umsehen · WASD: gehen · Klick/K: Hieb (halten: Wuchthieb) · Leertaste: ausweichen · Rechtsklick/G: Bannlicht · H: Balsam · Esc: Pause',
   'title.headphones': 'Mit Kopfhörern spielen.',
   'title.confirmNew': 'Das bisherige Feldbuch wird überschrieben. Wirklich neu beginnen?',
 
   'era.today': 'Heute · 2025',
   'era.1789': 'Sommer 1789',
   'era.1793-02': '9. Februar 1793, nachts',
-  'era.1793-07': '28. Juli 1793, nachts',
+  'era.1793-07': '28. Juli 1793',
   'era.1796': '1796 · Die Ruine',
 
   'pause.title': 'Pause',
@@ -44,7 +44,7 @@ export const de: Record<string, string> = {
   'settings.fov': 'Sichtfeld',
   'settings.gentle': 'Sanfter Modus',
   'settings.gentle.help':
-    'Für alle, die die Geschichte ohne Hetze erleben wollen: Die Meute ist langsamer und gibt schneller auf, der Jaguar stößt dich nie um, der Rauch im Brand ist dünner, und wer erwischt wird, verliert keine Funde. Im Finale reicht eine Taste. Die Geschichte und alle Enden bleiben dieselben.',
+    'Für alle, die die Geschichte ohne Hetze erleben wollen: Gegner halten weniger aus und treffen schwächer, ihre Angriffe kündigen sich länger an, und nur einer greift zugleich an. Die Meute ist langsamer und gibt schneller auf, der Jaguar stößt dich nie um, der Rauch im Brand ist dünner. Im Finale reicht eine Taste. Die Geschichte und alle Enden bleiben dieselben.',
   'settings.reducedMotion': 'Weniger Bewegung (kein Kopfwippen, sanfte Übergänge)',
   'settings.reducedFlash': 'Keine Lichtblitze',
   'settings.reducedFlash.help': 'Dämpft den Messingblitz beim Zeitsprung, die Blitze einstürzender Dächer im Brand und das Flackern von Feuer und Kerzen.',

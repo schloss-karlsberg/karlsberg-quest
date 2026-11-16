@@ -33,7 +33,7 @@ addStrings('de', {
   'story.hub.sub': 'Bauwagen am Waldweg unter dem Damm. Es riecht nach Ofen, Kaffee und nassem Wald.',
   'story.hub.prompt': 'Feldstation',
   'story.hub.chronik': 'Pinnwand',
-  'story.hub.chronik.status': 'Chronik · {n} bestätigt',
+  'story.hub.chronik.status': 'Lageplan · Karten',
   'story.hub.radio': 'Funkgerät',
   'story.hub.radio.status': 'Marlene, Revier Karlsberg',
   'story.hub.radio.idle': 'Das Funkgerät rauscht leise.',
@@ -116,7 +116,7 @@ addStrings('de', {
 
   // endings
   'story.end.title': 'Was das Feuer nicht fraß',
-  'story.end.intro': 'Auf dem Tisch im Bauwagen liegt die Chronik, jetzt vollständig: die Fallseiten aller Kapitel, mit Laubs Kurrent zwischen den Zeilen. Daneben das Horn und die Bussole.',
+  'story.end.intro': 'Auf dem Tisch im Bauwagen liegt die Chronik, jetzt vollständig: die Seiten aus allen Kapiteln, die Namen, die Beträge, mit Laubs Kurrent zwischen den Zeilen. Daneben das Horn und die Bussole.',
   'story.end.gaps': 'Laub: „Sie haben noch Lücken gelassen. Das darf man. Aber man muss es wollen.“',
   'story.end.museum': 'Ins Museum',
   'story.end.museum.obj': 'Die graue Archivschachtel, die Marlene mitgebracht hat',

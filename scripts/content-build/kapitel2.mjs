@@ -36,7 +36,7 @@ const clues = [
   }),
   clue('clue.k2.wachbuch', {
     title: 'Das Wachbuch', kind: 'document', at: WACHBUCH, r: 4, era: E, anchor: 'KB-B38', chapter: ch, fiction: true,
-    text: 'Ein aufgeschlagenes Wachbuch. Die letzte Zeile in einer zittrigen Hand: „Sambstag d. 9ten Febr. 1793. Gegen 8 Uhr ein Bauer, außer Athem, wollte zu Serenissimo. Dem Leibjäger übergeben.“ (Wortlaut erfunden; Datum nach Horstmann, M1910 S. 427 Anm. 1.)',
+    text: 'Ein aufgeschlagenes Wachbuch. Die letzte Zeile in einer zittrigen Hand: „Sambstag d. 9ten Febr. 1793. Gegen 8 Uhr ein Bauer, außer Athem, wollte zu Serenissimo. Dem Leibjäger übergeben.“ (Wortlaut erfunden; das Datum notierte Regierungsrat Horstmann.)',
     nouns: ['n.9_februar', 'n.schuegens'],
   }),
   clue('clue.k2.horstmann', {
@@ -102,7 +102,7 @@ const clues = [
   }),
   clue('clue.k2.laub_treue', {
     title: 'Laub über den Warner', kind: 'dialogue', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
-    text: 'Laub in der Feldstation, nach dem ersten Wechsel.', nouns: ['n.r_treu', 'n.r_gewarnt'], req: { clues: ['clue.k2.zaun'] },
+    text: 'Laub in der Feldstation, nach dem ersten Wechsel.', nouns: ['n.r_treu', 'n.r_gewarnt'], req: { clues: ['clue.k2.warnung'] },
   }),
 ];
 
@@ -359,7 +359,7 @@ const k2Quests = {
       progress: [ln('laub', 'Der Spur nach. Wenn Sie ein Horn hören: Licht aus, ducken. Sie kennen das.')],
       turnin_lines: [ln('laub', 'Die Spur geht weiter, zum Wachhaus. Und Mannlich packt. Wer packt, weiß etwas, das die anderen noch nicht wissen.')],
       history: [
-        ln('laub', 'Ein Bauer kam atemlos auf den Berg: Französische Reiter suchten in seinem Dorf einen Führer zum Schloss. Er schlich durch seinen Garten in den Wald und kletterte über den Parkzaun. Wikipedia nennt ihn Nikel Pfeiffer, aus Rohrbach. Von ihm selbst ist kein Wort überliefert.', { fact: 'cx.16', src: [P('S. 425–427'), src('WP-K2A')] }),
+        ln('laub', 'Ein Bauer kam atemlos auf den Berg: Französische Reiter suchten in seinem Dorf einen Führer zum Schloss. Er schlich durch seinen Garten in den Wald und kletterte über den Parkzaun. Die Ortsgeschichte nennt ihn Nikel Pfeiffer, aus Rohrbach. Von ihm selbst ist kein Wort überliefert.', { fact: 'cx.16', src: [P('S. 425–427'), src('WP-K2A')] }),
       ],
       objectives: [
         { id: 'zaun', type: 'reach', text_de: 'Am Parkzaun beim Carlsluster Torhaus: Q – Februar 1793', where: place(1680, -400, 30) },
@@ -528,12 +528,12 @@ const k2Quests = {
       title_de: 'Kisten für Mannheim',
       summary_de: 'Im Orangeriehof wird gepackt. Ein Diener des Baudirektors braucht Hände: Vier Bilderkisten müssen auf den Wagen, und zwischen den Kisten streunen Hunde, die nicht in den Zwinger gehören.',
       giver: { npc: 'diener' }, turnin: 'giver',
-      topic_de: 'Die Kisten', accept_de: 'Ich trage.',
+      topic_de: 'Die Kisten', accept_de: 'Abgemacht.',
       offer: [
-        ln('diener', 'Monsieur, Sie kommen wie gerufen. Der Herr Baudirektor sagt, die Bilder müssen fort, bevor die Franzosen kommen. Vier Kisten noch.'),
+        ln('diener', 'Sie kommen wie gerufen. Der Herr Baudirektor sagt, die Bilder müssen fort, bevor die Franzosen kommen. Vier Kisten noch.'),
         ln('diener', 'Und zwischen den Kisten schnüffeln Hunde herum. Nicht unsere. Ich trage, Sie verscheuchen. Oder umgekehrt, aber ich trage lieber.'),
       ],
-      progress: [ln('diener', 'Vier Kisten, Monsieur. Vorsichtig, da ist ein Rubens drin. Oder ein Rahmen. Ich verwechsle das.')],
+      progress: [ln('diener', 'Vier Kisten. Vorsichtig, da ist ein Rubens drin. Oder ein Rahmen. Ich verwechsle das.')],
       turnin_lines: [ln('diener', 'Alle vier auf dem Wagen. Der Herr Baudirektor wird sagen, er hat es allein geschafft. Das ist in Ordnung. Ich weiß es.')],
       history: [
         ln('diener', 'Mit dem alten Burger trägt der Herr Baudirektor die schönsten Bilder durch eine Falltür in die Werkstatt des Büchsenmachers. Später geht alles über Kaiserslautern nach Mannheim. Die Bilder, sagt man, kommen einmal nach München.', { fact: 'cx.20', src: [Z('S. 432'), src('WP-SK')] }),

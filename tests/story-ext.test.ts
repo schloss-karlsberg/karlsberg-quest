@@ -272,11 +272,12 @@ describe('npc conversations', () => {
     expect(more.length).toBeGreaterThan(plain.length);
     expect(more.some((l) => l.speaker === 'laub')).toBe(true);
   });
-  it('greet: once; the clue-aware greeting wins once Soll was asked', () => {
+  it('greet: once; the "Angewiesen" greeting wins once Soll was asked about Matthes (not just met)', () => {
     const hanne = talkLines(K1, 'hanne', 'k1');
     expect(answer(hanne, 'hanne', 'k1', 'greet', c(), new Set()).map((l) => l.id)).toEqual(['hanne.k1.01']);
     expect(answer(hanne, 'hanne', 'k1', 'greet', c(), new Set(['hanne.k1.01']))).toEqual([]);
-    expect(answer(hanne, 'hanne', 'k1', 'greet', c({ clues: ['clue.k1.soll'] }), new Set(['hanne.k1.01'])).map((l) => l.id)).toEqual(['hanne.k1.09']);
+    expect(answer(hanne, 'hanne', 'k1', 'greet', c({ clues: ['clue.k1.soll'] }), new Set()).map((l) => l.id)).toEqual(['hanne.k1.01']);
+    expect(answer(hanne, 'hanne', 'k1', 'greet', c({ flags: { 'quest.q.k1.lohn.soll': true } }), new Set(['hanne.k1.01'])).map((l) => l.id)).toEqual(['hanne.k1.09']);
     expect(answer(hanne, 'hanne', 'k1', 'matthes', c(), new Set()).map((l) => l.id)).toEqual(['hanne.k1.02', 'hanne.k1.03']);
   });
   it('flags, clue ids, labels, looks', () => {

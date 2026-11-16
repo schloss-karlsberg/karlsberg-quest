@@ -24,7 +24,7 @@ const clues = [
   }),
   clue('clue.p.handbuch', {
     title: 'Reliefmuster-Handbuch des Forstamts', kind: 'document', at: BAUWAGEN, r: 1, era: T, anchor: 'loc.p.station', chapter: ch, fiction: false,
-    text: 'Das Reliefmuster-Handbuch des Forstamts im Regal, acht Karten. Die Karten stehen ab jetzt im Codex.',
+    text: 'Im Regal: das Reliefmuster-Handbuch des Forstamts, acht Musterkarten. Die Karten stehen ab jetzt im Codex.',
     nouns: ['n.hohlweg', 'n.wassergraben', 'n.ausbruchgraben', 'n.bombentrichter', 'n.meilerplatz'],
     facts: ['rm.01', 'rm.02', 'rm.03', 'rm.04', 'rm.05', 'rm.06', 'rm.07', 'rm.08'],
   }),

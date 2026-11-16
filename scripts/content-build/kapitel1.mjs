@@ -250,7 +250,7 @@ const dialogue = [
   say('hanne.k1.06', 'hanne', 'Weil der Herzog nicht will. Wer tausend Hunde füttern kann, kann einen Steinhauer bezahlen.', talk('hanne', 'warum')),
   say('hanne.k1.07', 'hanne', 'Wenn Sie in die Schreibstube kommen, fragen Sie nach Matthes. Und schauen Sie, ob da einer Namen aufschreibt. Bei unsereins schreibt keiner was auf.', talk('hanne', 'bye')),
   say('hanne.k1.08', 'hanne', 'Das ist seins. Das hat er in jeden Stein gehauen, damit man weiß, wer ihn gemacht hat.', found('clue.k1.zeichen'), { once: true }),
-  say('hanne.k1.09', 'hanne', 'Angewiesen. Dann warte ich halt weiter. Warten kann ich. Das zahlt mir auch keiner.', { ...talk('hanne', 'greet'), hasClue: 'clue.k1.soll' }, { once: true, priority: 5 }),
+  say('hanne.k1.09', 'hanne', 'Angewiesen. Dann warte ich halt weiter. Warten kann ich. Das zahlt mir auch keiner.', { ...talk('hanne', 'greet'), flag: 'quest.q.k1.lohn.soll' }, { once: true, priority: 5 }),
   // Jost
   say('jost.k1.01', 'jost', 'Du bist nicht von hier. Du riechst nach Regen von morgen.', talk('jost', 'greet'), { once: true }),
   say('jost.k1.02', 'jost', 'Die da drin sind keine Schoßhunde, das ist die Meute. Hirschmeute, Saumeute, Hühnerhunde, Spürhunde. Tausend, sagt der Herr Baudirektor. Ich hab nie über zweihundert gezählt, weil ich bei zweihundert immer Hunger krieg.', talk('jost', 'meute'), { src: [P('S. 365')] }),
@@ -565,10 +565,10 @@ const k1Quests = {
       giver: { npc: 'diener' }, turnin: 'giver',
       topic_de: 'Die Festpläne', accept_de: 'Ich sammle sie ein.',
       offer: [
-        ln('diener', 'Monsieur! Die Pläne des Herrn Baudirektors! Das Fenster stand offen, und jetzt liegen sie im Garten verstreut.'),
+        ln('diener', 'Sie da! Die Pläne des Herrn Baudirektors! Das Fenster stand offen, und jetzt liegen sie im Garten verstreut.'),
         ln('diener', 'Und dazwischen fliegen Briefe herum, die beißen. Ich gehe da nicht hin. Ich bin Diener, nicht Soldat.'),
       ],
-      progress: [ln('diener', 'Drei Blätter, Monsieur. Und am Fenster drinnen steht der Herr Baudirektor manchmal. Man hört ihn, wenn man lange genug still ist.')],
+      progress: [ln('diener', 'Drei Blätter. Und am Fenster drinnen steht der Herr Baudirektor manchmal. Man hört ihn, wenn man lange genug still ist.')],
       turnin_lines: [ln('diener', 'Alle drei! Der Herr Baudirektor wird es nie erfahren. Das ist das Schönste an meiner Arbeit.')],
       history: [
         ln('diener', 'Das eine Blatt zeigt den Jahrmarkt im Orangeriehof, Buden im Kreis und eine Rotunde aus Leinwand. Das andere die Karlslust mit einem Vulkan. Er schickt die Blätter an den Landgrafen nach Darmstadt.', { fact: 'cx.15', src: [src('DA85'), src('M1910', 'S. 386–391')] }),
