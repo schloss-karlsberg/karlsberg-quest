@@ -202,6 +202,8 @@ class StoryRuntime {
   /** A Chronik echo is playing (between echo:start and echo:end). */
   private echoHold = false;
   private caughtBusy = false;
+  /** Story toasts held back until the action calms down. */
+  private calmToasts: { text: string; ms?: number }[] = [];
   private radioIndex = 0;
   private lastSaid = new Map<string, number>();
   /** Dialogue that is never spoken by the trigger runner (example packs, placeholder packs). */
@@ -611,7 +613,9 @@ class StoryRuntime {
         if (a.toast) ctx.ui.toast(a.toast, 4200);
         return;
       case 'toast':
-        ctx.ui.toast(a.text, a.ms);
+        // tips wait while a fight or chase is on (playtest round 2: "Halte [Q] …" over a boss kill)
+        if (ctx.ui.hud.inAction) this.calmToasts.push({ text: a.text, ms: a.ms });
+        else ctx.ui.toast(a.text, a.ms);
         return;
       case 'teleport':
         this.teleport(a.x, a.z, a.yaw);
@@ -1150,6 +1154,7 @@ class StoryRuntime {
   caught(by: ThreatKind, opts: { text?: string; sub?: string; soft?: boolean } = {}): void {
     if (this.caughtBusy) return;
     this.caughtBusy = true;
+    this.ctx.ui.hud.busy('caught', true);
     const ctx = this.ctx;
     this.cancelScheduled();
     this.presenter.clear();
@@ -1197,6 +1202,7 @@ class StoryRuntime {
     }
     if (this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: false, refill: true });
     this.caughtBusy = false;
+    this.ctx.ui.hud.busy('caught', false, 2);
     this.engine.resume(true);
     if (atAnchor && anchor && ctx.era.current === 'today' && !this.slice.objective?.text?.includes('Q')) {
       const text = t('story.caught.backQ');
@@ -1273,6 +1279,10 @@ class StoryRuntime {
     }
     this.updateHub();
     this.updateAfterword();
+    if (this.calmToasts.length && !ctx.ui.hud.inAction) {
+      const tt = this.calmToasts.shift()!;
+      ctx.ui.toast(tt.text, tt.ms);
+    }
     const env = this.env();
     this.tickMeters(dt);
     this.updateInlineChoice(env);

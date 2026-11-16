@@ -226,6 +226,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     update: (dt) => {
       player.update(dt);
       systems.update(dt, ctx);
+      ui.hud.tickCalm(dt);
       player.writeState(state.mutable.player);
       state.mutable.meta.playSeconds += dt;
       input.endStep();

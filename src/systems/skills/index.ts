@@ -155,7 +155,7 @@ export default defineSystem({
     if (skillHooks && typeof window !== 'undefined' && window.kq && window.kq.skills !== skillHooks) window.kq.skills = skillHooks;
     if (!cards) return;
     const storyCard = typeof document !== 'undefined' && !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show, .kqs-choice-card.kqs-show, .kqq-reward:not(.kqq-out)');
-    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard;
+    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || ctx.ui.hud.inAction;
     // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
     cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
   },

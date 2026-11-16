@@ -327,10 +327,9 @@ class QuestRuntime {
     const q = this.defs.get(id);
     const o = q?.objectives.find((x) => x.id === obj);
     if (!q || !o) return;
-    if (count < n) {
-      tickSound(this.ctx.audio);
-      this.feed.push(`${o.text_de} ${count}/${n}`, 'tick', 2600);
-    }
+    // the step shows in the tracker line (counter + pulse), not as a toast each (playtest round 2:
+    // four stacked toasts at a fight's end)
+    if (count < n) tickSound(this.ctx.audio);
     this.dirty = true;
     // pulse after the tracker re-rendered
     queueMicrotask(() => {

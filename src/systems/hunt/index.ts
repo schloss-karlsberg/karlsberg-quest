@@ -842,6 +842,8 @@ class Hunt {
   }
 
   private emitAlert(sim: PackSim): void {
+    // a chase on: level / skill cards and tips wait (HUD calm)
+    this.ctx.ui.hud.busy('hunt', sim.alert >= 0.5, 3);
     const now = this.ctx.loop.time;
     const L = this.lastAlert;
     const level = Math.round(sim.alert * 100) / 100;
@@ -1035,6 +1037,7 @@ class Hunt {
   private beginCaught(soft = false): void {
     const ctx = this.ctx;
     this.caughtT = 0;
+    this.ctx.ui.hud.busy('hunt-caught', true);
     this.caughtEmitted = false;
     this.caughtSoft = soft;
     ctx.player.frozen = true;
@@ -1088,6 +1091,7 @@ class Hunt {
   private endCaught(): void {
     if (this.caughtT < 0) return;
     this.caughtT = -1;
+    this.ctx.ui.hud.busy('hunt-caught', false, 2);
     this.caughtBy = null;
     this.ctx.player.frozen = false;
     this.ctx.player.lookLocked = false;

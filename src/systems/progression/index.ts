@@ -490,7 +490,8 @@ class Progression {
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
     // one centre card at a time: the level card waits for the quest reward card and a choice
     const otherCard = !!document.querySelector('.kqq-reward:not(.kqq-out), .kqs-choice-card.kqs-show');
-    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard;
+    // and never in a fight, a chase or while knocked down (playtest round 2: it covered the boss)
+    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard || ctx.ui.hud.inAction;
     this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
   }
 

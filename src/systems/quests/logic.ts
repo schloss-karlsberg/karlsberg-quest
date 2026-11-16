@@ -266,8 +266,15 @@ export class QuestBook {
     if (on && q) t = q.kind === 'main' ? [id, ...t] : [...t, id];
     // main first; over three, the oldest side quests drop out (never the one just added)
     const list = [...t.filter(isMain), ...t.filter((x) => !isMain(x))];
+    // a voice's side quest (Laub, Marlene) never pushes out one the player accepted from a person
+    const isVoice = (x: string) => {
+      const g = this.defs.get(x)?.giver;
+      return !!g && 'voice' in g;
+    };
     while (list.length > MAX_TRACKED) {
-      const i = list.findIndex((x) => !isMain(x) && x !== id);
+      let i = list.findIndex((x) => !isMain(x) && x !== id && isVoice(x));
+      if (i < 0 && isVoice(id) && !isMain(id)) i = list.indexOf(id);
+      if (i < 0) i = list.findIndex((x) => !isMain(x) && x !== id);
       if (i < 0) break;
       list.splice(i, 1);
     }

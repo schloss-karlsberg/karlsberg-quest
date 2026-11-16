@@ -1,9 +1,10 @@
 /* Skills: unlock card (field-book slip + brass medal + stamp). Tokens from src/ui/styles.css. */
 .kqk-cards {
   position: fixed;
-  left: 22px;
-  /* below the HUD's top-left column (era, status, room, objective, gauges; see src/ui/hud.ts) */
-  top: calc(var(--kq-tl-bottom, 72px) + 14px);
+  /* top centre under the compass: never over the tracker or the vitals column (playtest round 2) */
+  left: 50%;
+  top: 78px;
+  transform: translateX(-50%);
   z-index: 16;
   pointer-events: none;
   perspective: 900px;

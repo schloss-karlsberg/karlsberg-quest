@@ -72,6 +72,10 @@ html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc
 .kqc-num.armored { color: #c9c2b4; font-size: 21px; }
 .kqc-num.player { color: #ffb08a; font-size: 24px; }
 .kqc-num.heal { color: #cfe9ff; font-size: 22px; }
+.kqc-num.merged { font-size: 31px; }
+.kqc-num.heavy.merged { font-size: 38px; }
+.kqc-vnum { transform: translate(0, -50%); font-size: 22px; }
+.kqc-vnum.player { color: #ff7a5c; }
 .kqc-num.immune { font-size: 20px; color: #bfe6ff; }
 .kqc-pips { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .kqc-pips .bar { width: 46px; height: 6px; border: 1px solid rgba(0,0,0,0.85); background: rgba(10,8,6,0.75); box-shadow: 0 0 0 1px rgba(240,226,196,0.45); position: relative; }
@@ -111,7 +115,16 @@ interface FloatNum {
   age: number;
   life: number;
   dx: number;
+  /** Numbers on the same target within MERGE_S add up into one (enemy id, 'in', 'heal'). */
+  key?: string;
+  value?: number;
+  cls?: string;
+  /** Screen-space number beside the vitals (incoming damage, heals): x/y are pixels. */
+  screen?: boolean;
 }
+
+/** Hits on one target within this time show as one number (a clump of digits read as noise). */
+const MERGE_S = 0.35;
 
 export interface PipTarget {
   id: string;
@@ -284,11 +297,43 @@ export class CombatHud {
   }
 
   /** A floating number at a world point. */
-  number(text: string, x: number, y: number, z: number, cls = ''): void {
+  number(text: string, x: number, y: number, z: number, cls = '', key?: string): void {
+    const v = Number(text);
+    if (key && Number.isFinite(v)) {
+      const n = this.nums.find((q) => q.key === key && q.age < MERGE_S);
+      if (n) {
+        n.value = (n.value ?? 0) + v;
+        n.el.textContent = String(n.value);
+        n.el.classList.add('merged');
+        if (cls.includes('heavy')) n.el.classList.add('heavy');
+        n.age = Math.min(n.age, 0.08);
+        return;
+      }
+    }
     const e = el('div', `kqc-num ${cls}`, text);
     this.layer.append(e);
-    this.nums.push({ el: e, x, y, z, age: 0, life: cls.includes('heavy') ? 1.1 : 0.85, dx: (Math.random() - 0.5) * 30 });
+    this.nums.push({ el: e, x, y, z, age: 0, life: cls.includes('heavy') ? 1.1 : 0.85, dx: (Math.random() - 0.5) * 30, key, value: Number.isFinite(v) ? v : undefined, cls });
     while (this.nums.length > 24) this.nums.shift()?.el.remove();
+  }
+
+  /**
+   * Incoming damage (−N, red) and heals (+N) beside the Lebenskraft bar, never in the world: in
+   * first person a number in front of the camera lands on the attacker and reads as your own hit.
+   */
+  vitalNumber(amount: number, kind: 'in' | 'heal'): void {
+    const r = this.vitals.getBoundingClientRect();
+    const n = this.nums.find((q) => q.key === kind && q.screen && q.age < 0.5);
+    if (n) {
+      n.value = (n.value ?? 0) + amount;
+      n.el.textContent = `${kind === 'in' ? '−' : '+'}${Math.round(n.value)}`;
+      n.age = Math.min(n.age, 0.1);
+      return;
+    }
+    const e = el('div', `kqc-num kqc-vnum ${kind === 'in' ? 'player' : 'heal'}`, `${kind === 'in' ? '−' : '+'}${Math.round(amount)}`);
+    this.layer.append(e);
+    const x = (r.width ? r.right : 190) + 26;
+    const y = (r.height ? r.top + r.height * 0.3 : 400) + (kind === 'heal' ? 26 : 0);
+    this.nums.push({ el: e, x, y, z: 0, age: 0, life: 1.1, dx: 0, key: kind, value: amount, screen: true });
   }
 
   /** The player was hit (0..1 strength). */
@@ -338,11 +383,13 @@ export class CombatHud {
         this.nums.splice(i, 1);
         continue;
       }
-      const p = project(n.x, n.y, n.z);
+      const p = n.screen ? { x: n.x, y: n.y, ok: true } : project(n.x, n.y, n.z);
       n.el.style.display = p.ok ? '' : 'none';
-      const lift = o.reducedMotion ? 0 : 40 * t;
+      const lift = o.reducedMotion ? 0 : (n.screen ? 22 : 40) * t;
+      // never on the boss bar: outgoing numbers stay below its bottom edge
+      const floor = !n.screen && this.bossEl.style.display !== 'none' ? this.bossEl.getBoundingClientRect().bottom + 22 : 0;
       n.el.style.left = `${p.x + n.dx * t}px`;
-      n.el.style.top = `${p.y - lift}px`;
+      n.el.style.top = `${Math.max(floor, p.y - lift)}px`;
       n.el.style.opacity = String(t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3);
     }
     // hp pips over enemies

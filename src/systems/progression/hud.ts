@@ -21,6 +21,8 @@ interface Float {
   el: HTMLElement;
   pos: Vector3;
   age: number;
+  /** EP shown (merged floaters). */
+  ep?: number;
 }
 
 const FEED_MS = 4200;
@@ -179,9 +181,20 @@ export class ProgressionHud {
 
   /** A floating "+50 EP" over a world point. */
   float(text: string, x: number, y: number, z: number, cls = ''): void {
+    // a kill burst's EP add up into one number (overlapping "+6 EP" floaters read as noise)
+    const ep = /^\+(\d+) EP$/.exec(text);
+    if (ep) {
+      const f = this.floats.find((q) => q.ep !== undefined && q.age < 0.7);
+      if (f) {
+        f.ep! += Number(ep[1]);
+        f.el.textContent = `+${f.ep} EP`;
+        f.age = Math.min(f.age, 0.15);
+        return;
+      }
+    }
     const el = h(`div.kqp-float${cls ? `.${cls}` : ''}`, { 'data-testid': 'xp-float' }, text);
     this.layer.append(el);
-    this.floats.push({ el, pos: new Vector3(x, y, z), age: 0 });
+    this.floats.push({ el, pos: new Vector3(x, y, z), age: 0, ep: ep ? Number(ep[1]) : undefined });
     while (this.floats.length > 8) this.floats.shift()!.el.remove();
   }
 

@@ -30,6 +30,29 @@ export class Hud {
   /** Action-RPG docks (docs/ACTION-RPG.md §10): features put their own elements here. */
   private readonly docks: Record<HudDockArea, HTMLElement>;
   private heading = 0;
+  /**
+   * Reasons the screen is busy with action (a fight, a chase, being knocked down): centre cards
+   * (level, skill unlock), tips and prompts wait until it calms down. Features set them.
+   */
+  private readonly action = new Map<string, number>();
+  private calmClock = 0;
+
+  /** Mark (or clear) an action reason; cleared ones keep the screen busy for `linger` seconds. */
+  busy(reason: string, on: boolean, linger = 3): void {
+    if (on) this.action.set(reason, Infinity);
+    else if (this.action.get(reason) === Infinity) this.action.set(reason, this.calmClock + linger);
+  }
+
+  /** Advance the linger clock (seconds). */
+  tickCalm(dt: number): void {
+    this.calmClock += dt;
+    for (const [k, v] of this.action) if (v !== Infinity && v <= this.calmClock) this.action.delete(k);
+  }
+
+  /** Something action-heavy is on (or just ended): keep the centre of the screen clear. */
+  get inAction(): boolean {
+    return this.action.size > 0;
+  }
 
   constructor() {
     this.strip = h('div.kq-compass-strip');

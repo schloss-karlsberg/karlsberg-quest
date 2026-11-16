@@ -529,7 +529,8 @@ class Combat {
         this.visuals.hit(e.def.family, e.x - ev.dirX * e.radius * 0.6, y, e.z - ev.dirZ * e.radius * 0.6, ev.dirX, ev.dirZ, ev.heavy || ev.finisher, st.reducedFlash);
         this.audio.hit(this.posOf(e, 1), e.def.family, ev.heavy, ev.finisher);
         this.addShake(ev.heavy ? SHAKE.heavy : ev.finisher ? SHAKE.heavy * 0.6 : SHAKE.light);
-        if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + top * 0.8, e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`);
+        // at the body (not above the head: at melee range a boss's head projects onto the boss bar)
+        if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + Math.min(top * 0.6, 1.5), e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`, e.id);
         if (ev.weak && e.kind === 'strohmann') this.captionOnce('back', t('combat.back'), 'info', 12);
         this.emit('combat:hit', { target: 'enemy', id: e.id, kind: e.kind, damage: ev.damage, heavy: ev.heavy, x: e.x, z: e.z });
         break;
@@ -570,7 +571,7 @@ class Combat {
         this.addShake(SHAKE.player);
         // pushed 1.2 m away from the blow (a dodge roll keeps its own push)
         if (!this.sim.p.dodge) ctx.player.impulse(ev.pushX, ev.pushZ, 0.25);
-        if (st.damageNumbers !== false) this.hud.number(`−${Math.round(ev.damage)}`, inp.x + forwardOf(inp.yaw).x * 1.2, inp.y + 1.3, inp.z + forwardOf(inp.yaw).z * 1.2, 'player');
+        if (st.damageNumbers !== false) this.hud.vitalNumber(ev.damage, 'in');
         // where it came from, if off screen
         this.arrowAt(ev.x, ev.z, `hit:${ev.by}`);
         break;
@@ -604,7 +605,7 @@ class Combat {
       }
       case 'heal':
         this.emit('player:healed', { amount: ev.amount, hp: this.sim.p.hp, max: this.sim.p.max, by: ev.by });
-        if (st.damageNumbers !== false) this.hud.number(`+${Math.round(ev.amount)}`, inp.x + forwardOf(inp.yaw).x * 1.3, inp.y + 1.1, inp.z + forwardOf(inp.yaw).z * 1.3, 'heal');
+        if (st.damageNumbers !== false) this.hud.vitalNumber(ev.amount, 'heal');
         break;
       case 'phase': {
         const e = ev.e;
@@ -664,6 +665,8 @@ class Combat {
         this.emit('combat:state', { inCombat: ev.on });
         // the dialogue card shrinks to a subtitle strip while fighting (story.css)
         if (typeof document !== 'undefined') document.body.classList.toggle('kq-in-combat', ev.on);
+        // level / skill cards and tips wait until about 3 s after the fight
+        ctx.ui.hud.busy('combat', ev.on, 3);
         break;
       case 'resetGroup':
         break;
