@@ -225,9 +225,10 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.locator('.kqn-text')).toHaveClass(/kqn-history/);
   await shot(page, 'history');
   await page.evaluate(() => window.kq!.npc!.drain());
-  // the stance: an opinion, every option fine, "Ich weiß es nicht." always there
+  // the stance: an opinion asked in the conversation, its replies are topics (no quiz header since
+  // the 2026-11-16 playtest)
   await expect(page.locator('.kqn-typed')).toContainText('Warum bekommt Hanne den Lohn nicht');
-  await expect(page.getByTestId('npc-header')).toContainText('keine Prüfung');
+  await expect(page.getByTestId('npc-header')).not.toContainText('Prüfung');
   await expect(page.getByTestId('npc-topic-qs:offen')).toContainText('Ich weiß es nicht.');
   await expect(page.locator('[data-testid^="npc-topic-qs:"]')).toHaveCount(3);
   await shot(page, 'stance');
