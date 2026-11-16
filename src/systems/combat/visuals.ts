@@ -30,6 +30,7 @@ import {
   ShaderMaterial,
   Vector3,
 } from 'three';
+import { ELITES } from '../../rpg/enemies';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import { type BodyPart, type BodyTemplate, bodyTemplate } from './bodies';
 import type { Enemy, Projectile, Ring } from './sim';
@@ -94,10 +95,13 @@ void main() {
   }
   col += vEm * (1.0 - r) * (1.0 - r) * 1.4;
   float dist = length(vWorld - uCamPos);
-  col = mix(kqFog(col, vWorld), col, 0.75 * (1.0 - smoothstep(45.0, 110.0, dist)));
-  // fog-lit rim on the ragged edge (back-lit smoke): the silhouette stays readable
+  col = mix(kqFog(col, vWorld), col, 0.9 * (1.0 - smoothstep(45.0, 110.0, dist)));
+  // a rim that contrasts with the era's fog on the ragged edge: dark on pale fog (1796 beige,
+  // snow, day), fog-lit and pale in the dark (night, fire smoke) — the silhouette always reads
   float rim = smoothstep(0.5, 0.82, edge) * (1.0 - smoothstep(0.82, 1.0, edge));
-  col = mix(col, uFogColor * 1.2 + vec3(0.03) + vEm * 0.3, rim * 0.5 * (1.0 - vData.w));
+  float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
+  vec3 rimC = fogL > 0.38 ? vec3(0.03, 0.025, 0.03) : uFogColor * 1.3 + vec3(0.07, 0.075, 0.09);
+  col = mix(col, rimC + vEm * 0.3, rim * (vData.w > 0.5 ? 0.42 : 0.6));
   if (a < 0.004) discard;
   gl_FragColor = vec4(col, a);
 }
@@ -175,12 +179,15 @@ void main() {
   float g = kqNoise(vW.xz * 9.0 + vW.y * 7.0) * 0.25 + 0.88;
   vec3 col = kqLight(vAlb * g, n, vW, 1.0, 1.0);
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
-  col += uFogColor * rim * 0.35 + vEm.rgb;
+  // the outline contrasts with the fog (dark on pale fog, pale at night)
+  float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
+  col = fogL > 0.38 ? col * (1.0 - rim * 0.55) : col + (uFogColor * 1.2 + vec3(0.05)) * rim * 0.45;
+  col += vEm.rgb;
   float dist = length(vW - uCamPos);
   // a slab right in front of the lens dithers away (the camera never sits inside a boss's arm)
   float nearK = smoothstep(0.45, 1.25, dist);
   if (nearK < 1.0 && kqHash12(gl_FragCoord.xy) > nearK) discard;
-  col = mix(kqFog(col, vW), col, 0.7 * (1.0 - smoothstep(45.0, 110.0, dist)));
+  col = mix(kqFog(col, vW), col, 0.88 * (1.0 - smoothstep(45.0, 110.0, dist)));
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -213,7 +220,24 @@ void main() {
   float ang = atan(vUv.x, vUv.y);
   vec3 col;
   float a;
-  if (kind > 3.5) {
+  if (kind > 6.5) {
+    // shockwave (a kill, a boss coming apart): a thin bright ring that runs outward
+    float band = smoothstep(0.8, 0.95, r) * (1.0 - smoothstep(0.97, 1.03, r));
+    a = band * vData.z;
+    col = mix(vec3(1.0, 0.9, 0.7), vec3(0.75, 0.9, 1.0), step(0.5, vData.y)) * 1.6;
+  } else if (kind > 5.5) {
+    // finishable elite: a white double ring that beats
+    float b1 = smoothstep(0.84, 0.9, r) * (1.0 - smoothstep(0.92, 0.98, r));
+    float b2 = smoothstep(0.62, 0.66, r) * (1.0 - smoothstep(0.68, 0.72, r)) * (0.5 + 0.5 * sin(uTime * 9.0));
+    a = (b1 + b2 * 0.8) * vData.z;
+    col = vec3(1.0, 0.97, 0.9) * 1.7;
+  } else if (kind > 4.5) {
+    // elite aura: a soft ember halo with a slow dashed band
+    float band = smoothstep(0.55, 0.85, r) * (1.0 - smoothstep(0.9, 1.0, r));
+    float marks = 0.6 + 0.4 * step(0.4, fract(ang * 1.2732 - uTime * 0.35));
+    a = band * marks * 0.55 * vData.z;
+    col = vec3(1.0, 0.45, 0.12) * 1.5;
+  } else if (kind > 3.5) {
     // Bannlicht: a pale cone of light on the ground
     float d = abs(mod(atan(-vUv.x, -vUv.y) - vExtra.x + 3.14159, 6.28318) - 3.14159);
     float inCone = 1.0 - smoothstep(vExtra.y - 0.05, vExtra.y, d);
@@ -227,21 +251,21 @@ void main() {
     col = vec3(0.7, 0.9, 1.0) * 1.4;
   } else {
     // telegraph: dashed outline that turns + a disc that fills up towards the strike
-    float dash = step(0.35, fract(ang * 3.183 + uTime * 0.8));
-    float outline = smoothstep(0.9, 0.95, r) * (1.0 - smoothstep(0.99, 1.04, r)) * (0.6 + 0.4 * dash);
+    // fun pass: red and white on any ground — a white dashed outline on a dark under-edge, a red
+    // disc that fills up towards the blow and a white-hot front where it grows (the 1796 sand, snow,
+    // night grass and the fire's glare all read it)
+    float dash = step(0.3, fract(ang * 3.183 + uTime * 0.8));
+    float outline = smoothstep(0.9, 0.94, r) * (1.0 - smoothstep(0.98, 1.02, r)) * (0.7 + 0.3 * dash);
     float fill = vData.y;
-    // the classic filling disc: dark red-orange, denser towards its growing edge (reads on pale
-    // sand and snow, a colour no scene uses; playtest round 2: the Beben ring vanished on 1796 sand)
     float inside = 1.0 - smoothstep(fill - 0.02, fill, r);
-    float disc = inside * (0.16 + 0.34 * smoothstep(0.0, max(fill, 0.01), r));
-    float front = smoothstep(fill - 0.07, fill - 0.01, r) * (1.0 - smoothstep(fill - 0.01, fill + 0.02, r));
-    // a dark under-edge keeps the outline legible on bright ground
-    float under = smoothstep(0.86, 0.9, r) * (1.0 - smoothstep(1.03, 1.06, r));
-    float line = clamp(outline * 0.95 + front * 0.9, 0.0, 1.0);
-    a = min(0.94, line + disc + under * 0.3) * vData.z;
-    vec3 hot = kind > 1.5 ? vec3(1.0, 0.72, 0.4) : kind > 0.5 ? vec3(1.0, 0.62, 0.15) : vec3(1.0, 0.42, 0.1);
-    vec3 deep = kind > 0.5 ? vec3(0.42, 0.12, 0.02) : vec3(0.38, 0.03, 0.02);
-    col = (hot * (1.0 + fill * 0.6) * line + deep * disc + vec3(0.02) * under * 0.3) / max(a / max(vData.z, 0.001), 0.001);
+    float disc = inside * (0.22 + 0.36 * smoothstep(0.0, max(fill, 0.01), r));
+    float front = smoothstep(fill - 0.06, fill - 0.01, r) * (1.0 - smoothstep(fill - 0.01, fill + 0.02, r));
+    float under = smoothstep(0.84, 0.88, r) * (1.0 - smoothstep(1.02, 1.06, r));
+    float line = clamp(outline + front, 0.0, 1.0);
+    a = min(0.95, line + disc + under * 0.55) * vData.z;
+    vec3 white = kind > 1.5 ? vec3(1.0, 0.93, 0.8) : vec3(1.0, 0.97, 0.94);
+    vec3 red = kind > 0.5 && kind < 1.5 ? vec3(0.85, 0.18, 0.03) : vec3(0.82, 0.05, 0.04);
+    col = (white * (1.15 + fill * 0.5) * line + red * disc * 1.15 + vec3(0.01) * under * 0.55) / max(a / max(vData.z, 0.001), 0.001);
   }
   if (a < 0.003) discard;
   gl_FragColor = vec4(col * a, a);
@@ -517,6 +541,11 @@ const FAMILY_HIT: Record<string, { type: number; col: [number, number, number]; 
   stone: { type: 3, col: [0.52, 0.43, 0.36], em: 0, spark: [1, 0.6, 0.25] },
 };
 
+/** Aura colour of an elite (eyes, motes). */
+function eliteAura(kind: string): readonly [number, number, number] {
+  return ELITES[kind]?.aura ?? [1, 0.5, 0.15];
+}
+
 const _m = new Matrix4();
 const _m2 = new Matrix4();
 const _q = new Quaternion();
@@ -540,6 +569,25 @@ interface Vis {
   fade: number;
   dissolved: boolean;
   phaseFlash: number;
+  /** 0..1 recoil from the last staff hit (flinch away from the blow). */
+  flinch: number;
+  lastFlash: number;
+  /** Fractional flame particles owed (burning parts). */
+  fireAcc: number;
+  /** Seconds of walking (gait phase). */
+  walk: number;
+}
+
+/** A ring that runs outward on the ground (kills, a boss coming apart). */
+interface Wave {
+  x: number;
+  y: number;
+  z: number;
+  t: number;
+  dur: number;
+  r0: number;
+  r1: number;
+  cold: boolean;
 }
 
 export interface VisualFrame {
@@ -568,6 +616,7 @@ export class CombatVisuals {
   private readonly glowMat: ShaderMaterial;
   private readonly vis = new Map<string, Vis>();
   private readonly parts: Particle[] = [];
+  private readonly waves: Wave[] = [];
   private maxParticles = 900;
   private seedN = 1;
 
@@ -604,7 +653,7 @@ export class CombatVisuals {
   private template(e: Enemy): Vis {
     let v = this.vis.get(e.id);
     if (!v) {
-      v = { t: bodyTemplate(e.kind, e.seed), tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0 };
+      v = { t: bodyTemplate(e.kind, e.seed, e.size), tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0, flinch: 0, lastFlash: 0, fireAcc: 0, walk: 0 };
       this.vis.set(e.id, v);
     }
     return v;
@@ -652,6 +701,7 @@ export class CombatVisuals {
   /** Drop every particle (an era change: no grit from 1796 drifting through 2025). */
   clearParticles(): void {
     this.parts.length = 0;
+    this.waves.length = 0;
   }
 
   /** The dissolve: the body comes apart along its own parts, everything rises. */
@@ -700,6 +750,70 @@ export class CombatVisuals {
     }
   }
 
+  /** Flames licking up from a burning part: hot puffs that rise, darken and go to smoke; sparks. */
+  private flames(x: number, y: number, z: number, n: number, size: number, reducedFlash: boolean, v: Vis): void {
+    v.fireAcc += n * 2 * (this.maxParticles / 900);
+    while (v.fireAcc >= 1) {
+      v.fireAcc -= 1;
+      const r = () => this.rnd() - 0.5;
+      const s = Math.max(0.2, size * 0.7) * (0.7 + this.rnd() * 0.6);
+      this.add({ type: 2, x: x + r() * size, y: y + r() * size * 0.5, z: z + r() * size, vx: r() * 0.6, vy: 1.6 + this.rnd() * 1.4, vz: r() * 0.6, life: 0.45 + this.rnd() * 0.4, size: s * 0.55, grow: -0.5, r: 1, g: 0.42 + this.rnd() * 0.2, b: 0.08, em: reducedFlash ? 0.9 : 1.7, grav: -1.2, drag: 1.2, spin: 0, aspect: 1 });
+      if (this.rnd() > 0.55) this.add({ type: 2, x, y: y + size * 0.3, z, vx: r() * 1.6, vy: 2 + this.rnd() * 2.5, vz: r() * 1.6, life: 0.6 + this.rnd() * 0.6, size: 0.035 + this.rnd() * 0.03, grow: 0, r: 1, g: 0.6, b: 0.2, em: reducedFlash ? 0.9 : 1.8, grav: -0.6, drag: 1.2, spin: 0, aspect: 1 });
+      if (this.rnd() > 0.7) this.add({ type: 0, x, y: y + size, z, vx: r() * 0.4, vy: 1.2, vz: r() * 0.4, life: 1.4, size: s * 1.2, grow: 1.4, r: 0.07, g: 0.06, b: 0.06, em: 0.15, grav: -0.5, drag: 1, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** A ring that runs outward over the ground. */
+  wave(x: number, y: number, z: number, r0: number, r1: number, dur: number, cold = false): void {
+    this.waves.push({ x, y, z, t: 0, dur, r0, r1, cold });
+    if (this.waves.length > 12) this.waves.shift();
+  }
+
+  /** An enemy undone: a small ring and a spray in its family's colour (before the dissolve). */
+  pop(e: Enemy, groundY: number, reducedFlash: boolean): void {
+    const f = FAMILY_HIT[e.def.family] ?? FAMILY_HIT.mist;
+    const top = this.template(e).t.top;
+    this.wave(e.x, groundY + 0.1, e.z, e.radius * 0.6, e.radius + (e.elite ? 3.2 : 2), e.elite ? 0.55 : 0.4, e.def.family === 'mist' || e.def.family === 'light');
+    const n = Math.round((e.elite ? 26 : 14) * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const sp = 2.5 + this.rnd() * 3;
+      this.add({ type: 2, x: e.x, y: e.y + top * 0.5, z: e.z, vx: Math.cos(a) * sp, vy: 1 + this.rnd() * 3, vz: Math.sin(a) * sp, life: 0.35 + this.rnd() * 0.35, size: 0.05 + this.rnd() * 0.04, grow: 0, r: f.spark[0], g: f.spark[1], b: f.spark[2], em: reducedFlash ? 1 : 2.4, grav: 5, drag: 2.4, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** A boss comes apart: a big ring, a column of light and a storm of its own matter. */
+  bossBurst(e: Enemy, groundY: number, reducedFlash: boolean): void {
+    const f = FAMILY_HIT[e.def.family] ?? FAMILY_HIT.mist;
+    const top = this.template(e).t.top;
+    this.wave(e.x, groundY + 0.1, e.z, e.radius, e.radius + 14, 1.3);
+    this.wave(e.x, groundY + 0.12, e.z, e.radius * 0.5, e.radius + 7, 0.8, true);
+    const k = this.maxParticles / 900;
+    for (let i = 0; i < Math.round(110 * k); i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const el = this.rnd() * 1.2;
+      const sp = 4 + this.rnd() * 7;
+      this.add({ type: 2, x: e.x, y: e.y + top * (0.3 + this.rnd() * 0.5), z: e.z, vx: Math.cos(a) * Math.cos(el) * sp, vy: Math.sin(el) * sp + 2, vz: Math.sin(a) * Math.cos(el) * sp, life: 0.8 + this.rnd() * 0.9, size: 0.06 + this.rnd() * 0.07, grow: 0, r: f.spark[0], g: f.spark[1], b: f.spark[2], em: reducedFlash ? 1.1 : 2.8, grav: 3, drag: 1.4, spin: 0, aspect: 1 });
+    }
+    for (let i = 0; i < Math.round(26 * k); i++) {
+      const a = this.rnd() * Math.PI * 2;
+      this.add({ type: f.type === 2 ? 0 : f.type, x: e.x + Math.cos(a) * e.radius * 0.5, y: e.y + top * this.rnd(), z: e.z + Math.sin(a) * e.radius * 0.5, vx: Math.cos(a) * 3, vy: 1 + this.rnd() * 2, vz: Math.sin(a) * 3, life: 1.8 + this.rnd(), size: 0.5 + this.rnd() * 0.5, grow: 1.6, r: f.col[0], g: f.col[1], b: f.col[2], em: f.em, grav: -0.4, drag: 1.2, spin: (this.rnd() - 0.5) * 6, aspect: f.type === 3 ? 0.4 : 1 });
+    }
+    // a column of pale light where it stood
+    for (let i = 0; i < Math.round(30 * k); i++) this.add({ type: 2, x: e.x + (this.rnd() - 0.5) * 0.6, y: groundY + this.rnd() * 2, z: e.z + (this.rnd() - 0.5) * 0.6, vx: 0, vy: 4 + this.rnd() * 6, vz: 0, life: 1.2 + this.rnd() * 0.8, size: 0.1 + this.rnd() * 0.08, grow: 0, r: 1, g: 0.92, b: 0.75, em: reducedFlash ? 1 : 2.2, grav: -1, drag: 0.6, spin: 0, aspect: 1 });
+  }
+
+  /** The loot fountain: golden glints thrown up that rain down and bounce where the boss stood. */
+  lootFountain(x: number, y: number, z: number, reducedFlash: boolean): void {
+    const n = Math.round(46 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const sp = 1.2 + this.rnd() * 2.6;
+      if (this.rnd() > 0.3) this.add({ type: 3, x, y: y + 1, z, vx: Math.cos(a) * sp, vy: 6 + this.rnd() * 4, vz: Math.sin(a) * sp, life: 2.6 + this.rnd() * 1.2, size: 0.09 + this.rnd() * 0.05, grow: 0, r: 1, g: 0.78, b: 0.32, em: 0, grav: 9, drag: 0.4, spin: (this.rnd() - 0.5) * 12, aspect: 0.25 });
+      this.add({ type: 2, x, y: y + 1, z, vx: Math.cos(a) * sp, vy: 6 + this.rnd() * 4, vz: Math.sin(a) * sp, life: 1.6 + this.rnd() * 1, size: 0.06, grow: 0, r: 1, g: 0.85, b: 0.45, em: reducedFlash ? 1.1 : 2.4, grav: 8, drag: 0.4, spin: 0, aspect: 1 });
+    }
+  }
+
   /** The Glutling bursts: a ring of sparks and a puff of smoke. */
   burst(x: number, y: number, z: number, reducedFlash: boolean): void {
     for (let i = 0; i < 26; i++) {
@@ -737,8 +851,8 @@ export class CombatVisuals {
 
   /** Trail motes behind a projectile. */
   private trail(p: Projectile): void {
-    const cold = p.kind.startsWith('irrlicht');
-    const stone = p.kind.startsWith('steinbrecher');
+    const cold = p.kind.startsWith('irrlicht') || p.kind.startsWith('nebelweber');
+    const stone = p.kind.startsWith('steinbrecher') || p.kind === 'steinfresser.brocken';
     if (stone) this.add({ type: 1, x: p.x, y: p.y, z: p.z, vx: 0, vy: 0.3, vz: 0, life: 0.6, size: 0.3, grow: 0.6, r: 0.55, g: 0.5, b: 0.45, em: 0, grav: 0, drag: 1, spin: 0, aspect: 1 });
     else this.add({ type: 2, x: p.x, y: p.y, z: p.z, vx: (this.rnd() - 0.5) * 0.5, vy: (this.rnd() - 0.5) * 0.5, vz: (this.rnd() - 0.5) * 0.5, life: 0.3, size: 0.06, grow: 0, r: cold ? 0.6 : 1, g: cold ? 0.85 : 0.3, b: cold ? 1 : 0.1, em: 1.4, grav: 0, drag: 1, spin: 0, aspect: 1 });
   }
@@ -781,6 +895,32 @@ export class CombatVisuals {
       }
     }
     if (p.bone === 'legs' && (e.state === 'approach' || e.state === 'circle')) ly += Math.abs(Math.sin(time * 6 + p.seed * 3)) * 0.04;
+    // walking legs swing about the hip
+    if (p.gait) {
+      const [py, pf, ph, amp] = p.gait;
+      const a = Math.sin(v.walk * (e.boss ? 5.5 : 9) + ph) * amp * Math.min(1, this.moving(e));
+      const dy = ly - py;
+      const dz = lz + pf;
+      ly = py + dy * Math.cos(a) - dz * Math.sin(a);
+      lz = dy * Math.sin(a) + dz * Math.cos(a) - pf;
+    }
+    if (p.bone === 'hound') ly += Math.abs(Math.sin(v.walk * 9 + p.r)) * 0.06 * this.moving(e);
+    // pages that turn: about a vertical axis at the spine
+    if (p.turn) {
+      const a = this.turnAngle(p, time);
+      const pr = p.turn[3];
+      const pz = -p.turn[4];
+      const dx = lx - pr;
+      const dz = lz - pz;
+      lx = pr + dx * Math.cos(a) + dz * Math.sin(a);
+      lz = pz - dx * Math.sin(a) + dz * Math.cos(a);
+    }
+    if (p.orbit) {
+      const a = time * p.orbit[0] + p.orbit[1];
+      const ox = lx;
+      lx = ox * Math.cos(a) + lz * Math.sin(a);
+      lz = -ox * Math.sin(a) + lz * Math.cos(a);
+    }
     if (p.bone === 'core') {
       ly += Math.sin(time * 2.1) * 0.06;
     }
@@ -796,8 +936,28 @@ export class CombatVisuals {
     _v.y += bob - v.sink;
     out.makeRotationY(e.heading);
     _v.applyMatrix4(out);
-    out.setPosition(e.x + _v.x, e.y + _v.y, e.z + _v.z);
+    // the flinch: a shove away from the blow (big bodies barely move)
+    const shove = v.flinch * (e.boss ? 0.06 : 0.22 / Math.max(1, e.size));
+    out.setPosition(e.x + _v.x + e.hitX * shove, e.y + _v.y, e.z + _v.z + e.hitZ * shove);
     return out;
+  }
+
+  /** Page-turn angle of a part (radians). */
+  private turnAngle(p: BodyPart, time: number): number {
+    const [rate, amp, ph] = p.turn!;
+    // a page lifts, swings over and settles: a smoothed sawtooth
+    const c = (time * rate + ph) / (Math.PI * 2);
+    const f = c - Math.floor(c);
+    const s = f < 0.55 ? 0.5 - 0.5 * Math.cos((f / 0.55) * Math.PI) : 1;
+    return -amp * 0.5 + amp * s;
+  }
+
+  /** 0..1: is it walking (legs, gallop)? */
+  private moving(e: Enemy): number {
+    if (e.state === 'approach' || e.state === 'circle' || e.state === 'retreat' || e.state === 'return' || e.state === 'flee' || e.state === 'leave') return 1;
+    if (e.state === 'strike' && e.dash) return 1.4;
+    if (e.state === 'idle') return 0.35;
+    return 0;
   }
 
   // ---- frame -----------------------------------------------------------------------------------
@@ -822,6 +982,18 @@ export class CombatVisuals {
       const fill = Math.min(1, r.t / Math.max(0.01, r.dur));
       this.ringPool.push(r.x, y, r.z, r.r, fill, f.reducedFlash ? 0.75 : 1, r.kind === 'rain' ? 1 : r.kind === 'landing' ? 2 : 0);
     }
+    // running rings (kills, bosses)
+    for (let i = this.waves.length - 1; i >= 0; i--) {
+      const w = this.waves[i]!;
+      w.t += dt;
+      const k = w.t / w.dur;
+      if (k >= 1) {
+        this.waves.splice(i, 1);
+        continue;
+      }
+      const ease = 1 - (1 - k) * (1 - k);
+      this.ringPool.push(w.x, w.y, w.z, w.r0 + (w.r1 - w.r0) * ease, w.cold ? 1 : 0, (1 - k) * (f.reducedFlash ? 0.5 : 0.95), 7);
+    }
     // projectiles
     for (const p of f.projectiles) {
       if (!f.frozen) this.trail(p);
@@ -829,7 +1001,14 @@ export class CombatVisuals {
         _q.setFromEuler(_e.set(p.t * 3, p.t * 2, 0));
         _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.7, 0.55, 0.6));
         this.solids.push(_m2, 0.5, 0.41, 0.34);
-      } else if (p.kind.startsWith('irrlicht')) this.glows.push(p.x, p.y, p.z, 0.2, 2.2, 0.6, 0.85, 1, 5);
+      } else if (p.kind === 'nebelweber.frostkugel') {
+        this.glows.push(p.x, p.y, p.z, 0.42, 2.2, 0.62, 0.86, 1, 7);
+        this.glows.push(p.x, p.y, p.z, 1.1, 0.8, 0.3, 0.5, 0.8, 0);
+      } else if (p.kind === 'steinfresser.brocken') {
+        _q.setFromEuler(_e.set(p.t * 4, p.t * 3, 0));
+        _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.45, 0.38, 0.42));
+        this.solids.push(_m2, 0.45, 0.37, 0.3);
+      } else if (p.kind.startsWith('irrlicht') || p.kind.startsWith('nebelweber')) this.glows.push(p.x, p.y, p.z, 0.2, 2.2, 0.6, 0.85, 1, 5);
       else this.glows.push(p.x, p.y, p.z, 0.24, 2.4, 1, 0.3, 0.1, 5);
     }
     // the Bannlicht on the ground
@@ -892,6 +1071,19 @@ export class CombatVisuals {
         swell = 1.08;
         tell = 0.8;
         break;
+      case 'intro': {
+        // the reveal: it gathers itself, rises, throws up its arms and flares
+        const k = Math.min(1, e.t / 1.2);
+        arm = 2.5 * k;
+        lean = -0.32 * k;
+        swell = 1 + 0.1 * k;
+        tell = 0.2 + 0.25 * k;
+        sink = 0.25 * (1 - k);
+        break;
+      }
+      case 'retreat':
+        lean = -0.15;
+        break;
       case 'notice':
         lean = -0.12;
         tell = 0.4;
@@ -902,6 +1094,12 @@ export class CombatVisuals {
       default:
         break;
     }
+    // a new staff hit: flinch away from it
+    if (e.flash > 0.95 && v.lastFlash < 0.9) v.flinch = 1;
+    v.lastFlash = e.flash;
+    v.flinch = Math.max(0, v.flinch - dt * 5.5);
+    lean -= v.flinch * (e.boss ? 0.08 : 0.38);
+    v.walk += dt * this.moving(e);
     const k = Math.min(1, dt * 12);
     v.lean += (lean - v.lean) * k;
     v.arm += (arm - v.arm) * Math.min(1, dt * (e.state === 'strike' ? 30 : 10));
@@ -914,6 +1112,8 @@ export class CombatVisuals {
     else v.fade = Math.max(0, v.fade - dt * 3);
     const alpha = 1 - v.fade;
     if (alpha <= 0.01) return;
+    // undone: a quick swell before it comes apart (a pop, not a fade)
+    if (dissolving && e.t < 0.14) v.swell = 1 + 0.2 * Math.sin((e.t / 0.14) * Math.PI);
     const stunned = e.stun > 0;
     const flash = e.flash;
     const pulse = 0.75 + 0.25 * Math.sin(f.time * 18);
@@ -943,8 +1143,11 @@ export class CombatVisuals {
         if (p.bone === 'seal') I *= sealK * (1 + tellK);
         if (stunned) I *= p.bone === 'core' ? 0.5 : 0.6;
         if (f.reducedFlash) I = Math.min(I, 2.2);
-        const col = stunned && p.bone === 'core' ? ([0.7, 0.85, 1] as const) : p.col;
+        const aura = e.elite && isEye ? eliteAura(e.kind) : null;
+        const col = stunned && p.bone === 'core' ? ([0.7, 0.85, 1] as const) : aura ?? p.col;
+        if (aura) I *= 1.5;
         this.glows.push(_p.x, _p.y, _p.z, size, I * 1.4, col[0], col[1], col[2], p.style ?? 0);
+        if (p.fire && dt > 0 && !dissolving) this.flames(_p.x, _p.y, _p.z, p.fire * dt * (e.state === 'windup' ? 1.8 : 1), p.size, f.reducedFlash, v);
       } else {
         const em = p.em ?? [0, 0, 0];
         const fl = flash * 0.35;
@@ -952,12 +1155,34 @@ export class CombatVisuals {
         const q = _qa.setFromAxisAngle(_ay, e.heading);
         q.multiply(_qb.setFromAxisAngle(_ax, -v.lean));
         if (p.bone === 'armL' || p.bone === 'armR') q.multiply(_qb.setFromAxisAngle(_ax, v.arm * (p.bone === 'armR' ? 1 : 0.85)));
+        if (p.turn) q.multiply(_qb.setFromAxisAngle(_ay, this.turnAngle(p, e.t + e.seed * 10)));
+        if (p.orbit) q.multiply(_qb.setFromAxisAngle(_ay, (e.t + e.seed * 10) * p.orbit[0] + p.orbit[1]));
+        if (p.gait) {
+          const a = Math.sin(v.walk * (e.boss ? 5.5 : 9) + p.gait[2]) * p.gait[3] * Math.min(1, this.moving(e));
+          q.multiply(_qb.setFromAxisAngle(_ax, a));
+        }
         q.multiply(_q.setFromEuler(_e.set(p.rx ?? 0, p.ry ?? 0, p.rz ?? 0)));
         const shrink = dissolving ? Math.max(0.01, 1 - v.fade) : 1;
         _s.set(p.size * v.swell * shrink, (p.sy ?? p.size) * v.swell * shrink, (p.sz ?? p.size) * v.swell * shrink);
         _m2.compose(_p, q, _s);
         const seal = p.bone === 'seal' ? sealK : 1;
         this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5);
+      }
+    }
+    // the elite: an ember halo on the ground, three motes circling over its head
+    if (e.elite && !dissolving) {
+      const y = this.groundY(f, e.x, e.z, e.radius);
+      this.ringPool.push(e.x, y, e.z, e.radius + 0.75, 1, f.reducedFlash ? 0.6 : 0.9, 5);
+      const c = eliteAura(e.kind);
+      for (let i = 0; i < 3; i++) {
+        const a = f.time * 2.4 + (i / 3) * Math.PI * 2;
+        this.glows.push(e.x + Math.cos(a) * 0.35 * e.size, e.y + v.t.top + 0.25, e.z + Math.sin(a) * 0.35 * e.size, 0.07, f.reducedFlash ? 1.2 : 2, c[0], c[1], c[2], 3);
+      }
+      // low enough for the Gnadenstoß: a white beat round it and a white heart
+      if (e.finishable) {
+        this.ringPool.push(e.x, y + 0.01, e.z, e.radius + 1.0, 1, 1, 6);
+        const beat = 0.6 + 0.4 * Math.sin(f.time * 9);
+        this.glows.push(e.x, e.y + v.t.top * 0.55, e.z, 0.35, (f.reducedFlash ? 1.2 : 2.4) * beat, 1, 0.97, 0.9, 6);
       }
     }
     // gebannt: a turning pale ring under it

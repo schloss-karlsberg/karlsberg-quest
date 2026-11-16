@@ -81,10 +81,10 @@ describe('combat rules: damage', () => {
 
   it('scales enemies by tier and gentle mode', () => {
     const neb = enemyDef('nebelling')!;
-    expect(enemyHp(neb, 1)).toBe(22);
-    expect(enemyHp(neb, 3)).toBe(Math.round(22 * 1.9));
-    expect(enemyHp(neb, 1, true)).toBe(Math.round(22 * 0.75));
-    expect(enemyHp(neb, 0)).toBe(Math.round(22 * 0.6));
+    expect(enemyHp(neb, 1)).toBe(30);
+    expect(enemyHp(neb, 3)).toBe(Math.round(30 * 1.9));
+    expect(enemyHp(neb, 1, true)).toBe(Math.round(30 * 0.75));
+    expect(enemyHp(neb, 0)).toBe(Math.round(30 * 0.6));
     expect(enemyDamage(8, 1)).toBe(8);
     expect(enemyDamage(8, 4)).toBe(11.6);
     // gentle mode halves damage taken through the stats
@@ -305,7 +305,8 @@ describe('combat simulation', () => {
     const { s, groups } = sim();
     upsertGroup(groups, { group: 'm', kind: 'mahnbrief', era: '1789', x: 0, z: -2, count: 6, radius: 0.5 });
     s.step(1 / 60, input());
-    const live = s.live();
+    // the pack's escort (a Nebelweber, combat/packs.ts) stands back: only the group is lined up
+    const live = s.live().filter((e) => e.group === 'm');
     expect(live).toHaveLength(6);
     live.forEach((e, i) => {
       e.x = (i - 2.5) * 0.15;
@@ -384,7 +385,7 @@ describe('combat simulation', () => {
     expect(s.p.hp).toBe(s.p.max);
     run(s, 0.2);
     expect(groups['n']!.killed).toBe(1);
-    expect(s.live()).toHaveLength(2);
+    expect(s.live().filter((e) => e.group === 'n')).toHaveLength(2);
     for (const e of s.live()) expect(e.hp).toBe(e.maxHp);
   });
 
@@ -393,6 +394,9 @@ describe('combat simulation', () => {
     upsertGroup(groups, { group: 'b', kind: 'schuldbuch', era: '1789', x: 0, z: -3, count: 1, boss: true });
     s.step(1 / 60, input());
     const b = s.live()[0]!;
+    // past its reveal (no harm during the intro)
+    expect(b.state).toBe('intro');
+    b.state = 'approach';
     b.hp = b.maxHp * 0.5;
     b.sealOpen = 3;
     b.x = 0;
@@ -411,7 +415,7 @@ describe('combat simulation', () => {
     expect(s.tokens.max).toBe(1);
     upsertGroup(groups, { group: 'n', kind: 'nebelling', era: '1789', x: 0, z: -2, count: 1 });
     s.step(1 / 60, input());
-    expect(s.live()[0]!.maxHp).toBe(Math.round(22 * 0.75));
+    expect(s.live()[0]!.maxHp).toBe(Math.round(30 * 0.75));
   });
 
   it('no damage and no aggro in a safe zone', () => {

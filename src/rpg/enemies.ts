@@ -16,10 +16,11 @@ export const ENEMIES: readonly EnemyDef[] = [
     plural_de: 'Nebelinge',
     family: 'mist',
     eras: ['today', '1789', '1793-02', '1796'],
-    hp: 22,
-    speed: 2.6,
+    // fun pass 2026-11-16: two taps undid one before it ever lunged; now it takes a combo
+    hp: 30,
+    speed: 2.9,
     bannStun: 2.5,
-    attacks: [{ id: 'lunge', telegraph: 0.75, damage: 8, range: 2.2, kind: 'lunge', cooldown: 2.2 }],
+    attacks: [{ id: 'lunge', telegraph: 0.75, damage: 9, range: 2.6, kind: 'lunge', cooldown: 1.9 }],
     xp: 8,
     loot: 'loot.klein',
     dissolve: 'mist',
@@ -139,6 +140,28 @@ export const ENEMIES: readonly EnemyDef[] = [
     dissolve: 'grit-rising',
     note_de: 'Der Steinfraß mit Schultern. Nagt an Mauern; vorne hart wie Sandstein, hinten nur Mörtel. Ein Wuchthieb bricht die Kruste. (Fiktion)',
   },
+  {
+    // the caster (fun pass 2026-11-16): it never closes in. It keeps nine to twelve metres, lobs
+    // frost that lands where you stood (a ring on the ground) and flicks needles of ice; come close
+    // and it slips back into the fog. The Bannlicht pulls it down. Content does not place it: it
+    // walks with the bigger packs as an escort (combat/packs.ts).
+    id: 'nebelweber',
+    name_de: 'Nebelweber',
+    plural_de: 'Nebelweber',
+    family: 'mist',
+    eras: ['1789', '1793-02', '1793-07', '1796'],
+    hp: 30,
+    speed: 3.0,
+    bannStun: 3,
+    attacks: [
+      { id: 'frostkugel', telegraph: 0.95, damage: 13, range: 16, kind: 'ranged', cooldown: 3.4 },
+      { id: 'eisnadel', telegraph: 0.6, damage: 8, range: 14, kind: 'ranged', cooldown: 2.4 },
+    ],
+    xp: 14,
+    loot: 'loot.licht',
+    dissolve: 'mist',
+    note_de: 'Ein hohes, dünnes Nebelgespinst mit einem kalten Licht im Innern. Hält Abstand, wirft Frost dorthin, wo man eben stand, und weicht zurück, wenn man ihm nahe kommt. Das Bannlicht holt es herunter. (Fiktion)',
+  },
   // ---- bosses (one per chapter 1–4; the finale W8 is deliberately NOT a fight) ----------------
   {
     id: 'schuldbuch',
@@ -228,6 +251,36 @@ export const ENEMIES: readonly EnemyDef[] = [
     note_de: 'Ein Riese aus ausgebrochenen Quadern im Ehrenhof von 1796. Jeder Treffer an den Fugen löst Steine, die nach Westen davonfliegen, nach Homburg. (Fiktion)',
   },
 ];
+
+/**
+ * Elite variants (fun pass 2026-11-16): in a pack of three or more, one member is an elite — a
+ * name, a glow, more Lebenskraft, a harder hand and one extra move of its own. Below a quarter of
+ * its strength it can be finished with a Wuchthieb (the "Gnadenstoß"). Pure data; the simulation
+ * builds the elite from its kind (combat/packs.ts).
+ */
+export interface EliteDef {
+  kind: string;
+  name_de: string;
+  hpMul: number;
+  dmgMul: number;
+  /** Visual size. */
+  size: number;
+  /** Aura colour (glows, eyes). */
+  aura: [number, number, number];
+  extra: import('./types').EnemyAttackDef;
+}
+
+export const ELITES: Record<string, EliteDef> = {
+  nebelling: { kind: 'nebelling', name_de: 'Nebelmutter', hpMul: 2.6, dmgMul: 1.3, size: 1.45, aura: [0.7, 0.9, 1], extra: { id: 'frosthauch', telegraph: 0.9, damage: 13, range: 3.4, kind: 'area', cooldown: 5 } },
+  irrlicht: { kind: 'irrlicht', name_de: 'Sumpflicht', hpMul: 2.2, dmgMul: 1.2, size: 1.5, aura: [0.5, 1, 0.8], extra: { id: 'funkenfaecher', telegraph: 1.0, damage: 9, range: 15, kind: 'ranged', cooldown: 4 } },
+  streuner: { kind: 'streuner', name_de: 'Leithund', hpMul: 2.1, dmgMul: 1.3, size: 1.35, aura: [1, 0.3, 0.1], extra: { id: 'hetzjagd', telegraph: 0.9, damage: 16, range: 15, kind: 'charge', cooldown: 6 } },
+  mahnbrief: { kind: 'mahnbrief', name_de: 'Pfändungsbefehl', hpMul: 3, dmgMul: 1.3, size: 1.7, aura: [1, 0.2, 0.08], extra: { id: 'siegelwurf', telegraph: 0.8, damage: 9, range: 12, kind: 'ranged', cooldown: 3.2 } },
+  raffschatten: { kind: 'raffschatten', name_de: 'Goldraffer', hpMul: 2.3, dmgMul: 1.25, size: 1.3, aura: [1, 0.78, 0.25], extra: { id: 'goldwirbel', telegraph: 1.0, damage: 16, range: 3.6, kind: 'area', cooldown: 5 } },
+  glutling: { kind: 'glutling', name_de: 'Glutkern', hpMul: 3, dmgMul: 1.2, size: 1.6, aura: [1, 0.85, 0.4], extra: { id: 'funkenspei', telegraph: 0.7, damage: 8, range: 12, kind: 'ranged', cooldown: 2.6 } },
+  grusling: { kind: 'grusling', name_de: 'Grusvater', hpMul: 4, dmgMul: 1.4, size: 1.6, aura: [1, 0.6, 0.25], extra: { id: 'grusstoss', telegraph: 0.8, damage: 10, range: 2.8, kind: 'area', cooldown: 4 } },
+  steinfresser: { kind: 'steinfresser', name_de: 'Mauerbrecher', hpMul: 1.9, dmgMul: 1.2, size: 1.25, aura: [1, 0.5, 0.12], extra: { id: 'brocken', telegraph: 1.0, damage: 15, range: 16, kind: 'ranged', cooldown: 5 } },
+  nebelweber: { kind: 'nebelweber', name_de: 'Nebelspinnerin', hpMul: 2.2, dmgMul: 1.2, size: 1.3, aura: [0.6, 0.9, 1], extra: { id: 'frostkranz', telegraph: 1.0, damage: 12, range: 4, kind: 'area', cooldown: 6 } },
+};
 
 export const ENEMY_IDS: ReadonlySet<string> = new Set(ENEMIES.map((e) => e.id));
 

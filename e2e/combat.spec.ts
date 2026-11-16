@@ -100,6 +100,9 @@ test.describe('combat', () => {
       const c = k.combat!;
       // the last blow: stop shortly after it lands, while it comes apart
       for (let i = 0; i < 8 && c.enemies().some((e) => e.state !== 'dissolve' && e.hp > 8); i++) c.hit(1);
+      // out of breath after a long flurry: the last blow is the one that undoes it
+      for (const e of c.sim()!.enemies) if (e.state !== 'dissolve') e.hp = Math.min(e.hp, 6);
+      k.step(40);
       k.ctx.input.simulate('KeyK', true);
       k.step(1);
       k.ctx.input.simulate('KeyK', false);

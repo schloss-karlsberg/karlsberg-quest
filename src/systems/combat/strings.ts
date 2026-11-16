@@ -27,6 +27,29 @@ export const TELL: Record<string, string> = {
   'steinbrecher.gruslinge': 'Grus rieselt aus den Fugen: Gruslinge!',
 };
 
+/** Telegraphs of the caster and the elites' own moves (fun pass). */
+Object.assign(TELL, {
+  'nebelweber.frostkugel': 'Nebelweber spinnt Frost – weg von der Stelle!',
+  'nebelweber.eisnadel': 'Nebelweber zielt – Eisnadel!',
+  'nebelweber.frostkranz': 'Die Nebelspinnerin zieht den Frost zusammen – raus!',
+  'nebelling.frosthauch': 'Die Nebelmutter atmet Frost – raus aus dem Kreis!',
+  'irrlicht.funkenfaecher': 'Das Sumpflicht fächert Funken auf',
+  'streuner.hetzjagd': 'Der Leithund senkt den Kopf – er hetzt!',
+  'mahnbrief.siegelwurf': 'Der Pfändungsbefehl schleudert sein Siegel',
+  'raffschatten.goldwirbel': 'Der Goldraffer wirbelt – raus aus dem Kreis!',
+  'glutling.funkenspei': 'Der Glutkern speit Funken',
+  'grusling.grusstoss': 'Der Grusvater stößt Grus aus – raus!',
+  'steinfresser.brocken': 'Der Mauerbrecher reißt einen Brocken los – Wurf!',
+});
+
+/** The boss's title card when it reveals itself (name, epithet). */
+export const BOSS_TITLE: Record<string, [string, string]> = {
+  schuldbuch: ['Das Schuldbuch', 'Was niemand bezahlt hat'],
+  pikeur: ['Der Pikeur', 'Herr der Meute'],
+  strohmann: ['Der Strohmann', 'Das Feuer, das noch kommt'],
+  steinbrecher: ['Der Steinbrecher', 'Was von den Mauern blieb'],
+};
+
 /** Boss bar hint (the mechanic to learn) by kind. */
 export const BOSS_HINT: Record<string, string> = {
   schuldbuch: 'Das Bannlicht bricht das Siegel.',
@@ -54,6 +77,11 @@ addStrings('de', {
   'combat.hounds': 'Die Meute schlägt man nicht. Man entkommt ihr.',
   'combat.animals': 'Der Stab geht an den Tieren vorbei. Sie sind nicht der Feind.',
   'combat.burst': 'Kalkstaub!',
+  'combat.elite': '{name} führt sie an!',
+  'combat.enrage': '{name} rast!',
+  'combat.finishable': '{name} wankt – jetzt ein Wuchthieb!',
+  'combat.finisher': 'Gnadenstoß!',
+  'combat.bossDown': '{name} – bezwungen.',
   'settings.damageNumbers': 'Schadenszahlen',
   'settings.damageNumbers.help': 'Kleine handgeschriebene Zahlen zeigen, wie hart ein Treffer war.',
 });

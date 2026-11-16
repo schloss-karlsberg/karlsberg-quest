@@ -77,11 +77,23 @@ html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc
 .kqc-vnum { transform: translate(0, -50%); font-size: 22px; }
 .kqc-vnum.player { color: #ff7a5c; }
 .kqc-num.immune { font-size: 20px; color: #bfe6ff; }
-.kqc-pips { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.kqc-pips { position: absolute; transform: translate(-50%, -100%); transform-origin: 50% 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .kqc-pips .bar { width: 46px; height: 6px; border: 1px solid rgba(0,0,0,0.85); background: rgba(10,8,6,0.75); box-shadow: 0 0 0 1px rgba(240,226,196,0.45); position: relative; }
 .kqc-pips .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, #f08a3c 0 7px, #8f2c10 7px 8px); }
 .kqc-pips .tag { font-family: var(--sc); font-size: 12px; color: #d8efff; background: rgba(10,18,28,0.8); padding: 0 5px; border: 1px solid rgba(190,225,250,0.7); border-radius: 2px; }
 .kqc-pips .tag.immune { color: #e9e2d0; border-color: rgba(233,226,208,0.6); background: rgba(20,16,10,0.8); }
+.kqc-pips .name { font-family: var(--sc); font-size: 13px; letter-spacing: 0.05em; color: #ffd9a0; text-shadow: 0 0 3px #000, 0 1px 1px #000; white-space: nowrap; }
+.kqc-pips.elite .bar { width: 64px; height: 7px; box-shadow: 0 0 0 1px rgba(255,190,110,0.85), 0 0 6px rgba(255,140,60,0.45); }
+.kqc-pips.finish .bar { box-shadow: 0 0 0 1px #fff, 0 0 8px rgba(255,255,255,0.8); }
+.kqc-pips .tag.finish { color: #1a1008; background: #fff3dc; border-color: #fff; }
+.kqc-title { position: absolute; left: 50%; top: 80%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; opacity: 0;
+  transition: opacity 0.45s ease-out, transform 2.6s ease-out; white-space: nowrap; }
+.kqc-title.show { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+.kqc-title .t { font-family: var(--sc); font-size: 54px; letter-spacing: 0.16em; color: #f6e7c4; text-transform: uppercase;
+  text-shadow: 0 2px 4px #000, 0 0 22px rgba(0,0,0,0.85), 0 0 40px rgba(120,30,8,0.55); }
+.kqc-title .e { font-family: var(--hand); font-size: 28px; color: #ffcf8a; margin-top: 2px; text-shadow: 0 1px 3px #000, 0 0 12px rgba(0,0,0,0.9); }
+.kqc-title .rule { height: 2px; width: 70%; margin: 8px auto 6px; background: linear-gradient(90deg, transparent, #e9c48c 20%, #fff2d0 50%, #e9c48c 80%, transparent); box-shadow: 0 1px 2px #000; }
+html[data-kq-reduced-motion] .kqc-title, html[data-kq-reduced-motion] .kqc-title.show { transform: translate(-50%, -50%); transition: opacity 0.3s; }
 .kqc-arrow { position: absolute; width: 0; height: 0; }
 .kqc-arrow svg { position: absolute; left: -20px; top: -20px; width: 40px; height: 40px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.9)); }
 html[data-kq-contrast] .kqc-vitals, html[data-kq-contrast] .kqc-bann, html[data-kq-contrast] .kqc-boss { background: #0d0a07; opacity: 1; border: 1px solid #f3e6c8; }
@@ -135,6 +147,12 @@ export interface PipTarget {
   gebannt: boolean;
   immune: boolean;
   show: boolean;
+  /** Distance from the camera (m): bars shrink with it and nearer ones sit on top. */
+  dist?: number;
+  /** Elite name over the bar. */
+  title?: string;
+  /** Elite low enough for the Gnadenstoß. */
+  finish?: boolean;
 }
 
 export interface Docker {
@@ -160,7 +178,9 @@ export class CombatHud {
   private readonly low: HTMLElement;
   private readonly tell: HTMLElement;
   private readonly nums: FloatNum[] = [];
-  private readonly pipEls = new Map<string, { root: HTMLElement; fill: HTMLElement; tag: HTMLElement }>();
+  private readonly pipEls = new Map<string, { root: HTMLElement; fill: HTMLElement; tag: HTMLElement; name: HTMLElement }>();
+  private titleEl: HTMLElement | null = null;
+  private titleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly arrows = new Map<string, { el: HTMLElement; life: number }>();
   private vig = 0;
   private bossKey = '';
@@ -296,6 +316,32 @@ export class CombatHud {
     setTimeout(() => s.remove(), ms + 400);
   }
 
+  /** A boss's title card ("DER PIKEUR — Herr der Meute") for `ms`. */
+  title(name: string, epithet: string): void {
+    this.hideTitle(true);
+    const card = el('div', 'kqc-title');
+    card.dataset.testid = 'combat-title';
+    card.setAttribute('role', 'status');
+    card.append(el('div', 't', name), el('div', 'rule'), el('div', 'e', epithet));
+    this.layer.append(card);
+    this.titleEl = card;
+    requestAnimationFrame(() => card.classList.add('show'));
+  }
+
+  /** The title card fades (the caller counts game time, so ?manual stepping and pauses hold it). */
+  hideTitle(now = false): void {
+    const card = this.titleEl;
+    if (!card) return;
+    this.titleEl = null;
+    if (this.titleTimer) clearTimeout(this.titleTimer);
+    if (now) {
+      card.remove();
+      return;
+    }
+    card.classList.remove('show');
+    this.titleTimer = setTimeout(() => card.remove(), 600);
+  }
+
   /** A floating number at a world point. */
   number(text: string, x: number, y: number, z: number, cls = '', key?: string): void {
     const v = Number(text);
@@ -402,22 +448,35 @@ export class CombatHud {
       let e = this.pipEls.get(t.id);
       if (!e) {
         const root = el('div', 'kqc-pips');
+        const name = el('span', 'name');
         const bar = el('div', 'bar');
         const fill = el('i');
         bar.append(fill);
         const tag = el('span', 'tag');
-        root.append(tag, bar);
+        root.append(name, tag, bar);
         this.layer.append(root);
-        e = { root, fill, tag };
+        e = { root, fill, tag, name };
         this.pipEls.set(t.id, e);
       }
+      // anchored over the body: the bar shrinks with distance, nearer bars on top
+      const d = t.dist ?? 8;
+      const sc = Math.max(0.62, Math.min(1.25, 9 / Math.max(1, d)));
       e.root.style.left = `${p.x}px`;
       e.root.style.top = `${p.y}px`;
+      e.root.style.transform = `translate(-50%, -100%) scale(${sc.toFixed(3)})`;
+      e.root.style.zIndex = String(Math.max(1, 200 - Math.round(d * 4)));
+      e.root.style.opacity = String(Math.max(0.45, Math.min(1, 1.25 - d / 40)));
       e.fill.style.width = `${Math.round(Math.max(0, Math.min(1, t.frac)) * 100)}%`;
-      const tag = t.gebannt ? 'gebannt' : t.immune ? 'ungreifbar' : '';
+      const tag = t.finish ? 'Gnadenstoß' : t.gebannt ? 'gebannt' : t.immune ? 'ungreifbar' : '';
       if (e.tag.textContent !== tag) e.tag.textContent = tag;
       e.tag.style.display = tag ? '' : 'none';
-      e.tag.classList.toggle('immune', !t.gebannt && t.immune);
+      e.tag.classList.toggle('immune', !t.gebannt && t.immune && !t.finish);
+      e.tag.classList.toggle('finish', !!t.finish);
+      const nm = t.title ?? '';
+      if (e.name.textContent !== nm) e.name.textContent = nm;
+      e.name.style.display = nm ? '' : 'none';
+      e.root.classList.toggle('elite', !!t.title);
+      e.root.classList.toggle('finish', !!t.finish);
     }
     for (const [id, e] of this.pipEls)
       if (!seen.has(id)) {
