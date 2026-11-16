@@ -361,6 +361,13 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await run(page, 6);
   await examine(page, 813, -892, 180, -22, 2, 'clue.p.mauerrest');
   await shot(page, '03-relief2-mauerrest');
+  // the first fight: one weak Nebelling rises from the wall
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 60 && !k.combat!.enemies().some((e) => e.group === 'q.p.relief.nebel'); i++) k.step(10);
+  });
+  expect(await fight(page, 'q.p.relief.nebel', { shot: '03b-first-nebelling' })).toBeGreaterThanOrEqual(1);
+  expect(await qn(page, 'q.p.relief', 'nebel')).toBe(1);
   expect(await until(page, 'p3', 10)).toBe('p3');
   await page.evaluate(() => {
     const k = window.kq!;

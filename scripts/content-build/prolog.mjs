@@ -247,7 +247,7 @@ const LIDAR = src('LIDAR');
 export const P_SPOTS = {
   stab: [763, -900], // beside the trailer door (flat, today)
   eiskeller: [1508, -1296], // the pit (KB-50); in 1789 the Eiskeller house KB-B28 stands here — the fight is today
-  streuner: [1185, -1112], // west mouth of the Ehrenhof, 1789 meadow
+  streuner: [1206, -1113], // inside the Ehrenhof (gravel), not behind the closed gitter (playtest)
   irrlichter: [820, -869], // on the dam of the Karlsbergweiher (not over the water)
   meiler: [[1138, -931], [1040, -902], [1232, -872]], // the flattest spots on the slope below the Orangerie
   trichter: [990, -1044], // forest west of the palace terrace (fiction: a crater "in the scan")
@@ -291,7 +291,10 @@ const prologQuests = {
       summary_de: 'Marlene will wissen, was unter dem Wald liegt. Erst der Damm hinter dem Wagen, dann der Weg hinauf bis zur großen Stufe im Wald. Der Laserscan zeigt, was die Bäume verdecken.',
       giver: { voice: 'marlene' }, turnin: 'auto',
       offer: [ln('marlene', 'Erste Aufgabe: Geh zum Damm hinter dem Wagen und sag mir, was der Wald da versteckt. Dann den Weg hinauf nach Osten, bis zu der hohen Stufe im Wald.')],
-      turnin_lines: [ln('marlene', 'Eine Mauer am Damm und eine Stufe, die keiner gepflanzt hat. Siehst du? Der Wald macht keine rechten Winkel.')],
+      turnin_lines: [
+        ln('marlene', 'Eine Mauer am Damm und eine Stufe, die keiner gepflanzt hat. Siehst du? Der Wald macht keine rechten Winkel.'),
+        ln('marlene', 'Und das am Damm, das mit den Augen? Ich hab nichts gesehen. Schreib es trotzdem auf. Genau so, wie es war.'),
+      ],
       history: [
         ln('marlene', 'Gerade Kanten, rechte Winkel, schmale Rücken, die sich nicht nach dem Gelände richten: Das sind Fundamente. Der Wald wächst drüber, aber er biegt sie nicht.', { fact: 'rm.07', src: [src('HE-BW'), LIDAR] }),
         ln('marlene', 'Und der Weiher ist kein Naturteich. Ein gerader Damm quer zum Tal, dahinter eine glatte Fläche: Der Scan findet auf Wasser keine Punkte und füllt es flach.', { fact: 'rm.08', src: [src('HE-BW'), LIDAR] }),
@@ -299,9 +302,17 @@ const prologQuests = {
       objectives: [
         { id: 'damm', type: 'reach', text_de: 'Zum Damm des Karlsbergweihers, hinter dem Wagen', where: place(819, -875, 32, T0) },
         { id: 'mauer', type: 'examine', clue: 'clue.p.mauerrest', text_de: 'Lokales Relief (2): den Mauerrest am Damm untersuchen' },
+        // the first fight, small and safe (playtest: no enemy for the first 10–15 minutes): the scan
+        // wakes something in the old wall; one weak Nebelling teaches the staff (Klick / K)
+        {
+          id: 'nebel', type: 'kill', enemy: 'nebelling', count: 1, after: ['mauer'],
+          text_de: 'Aus der Mauer kriecht Nebel: mit dem Stab vertreiben (Klick oder K)',
+          where: place(816, -884, 20, T0),
+          spawn: [{ kind: 'nebelling', x: 815, z: -884, era: T0, count: 1, radius: 0, tier: 0, leash: 25 }],
+        },
         { id: 'stufe', type: 'reach', after: ['mauer'], text_de: 'Den Waldweg hinauf: die hohe Stufe im Wald', where: place(1237, -966, 70, T0) },
       ],
-      rewards: { xp: 90 },
+      rewards: { xp: 80 },
     },
     {
       id: 'q.p.bussole', kind: 'main', era: T0,

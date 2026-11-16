@@ -34,6 +34,13 @@ export const COMBO = {
   finisher: 1.4,
 } as const;
 
+/**
+ * Cleave: one swing hits the nearest target in its arc fully; further targets take `falloff` of
+ * the damage, at most `light` / `heavy` / `sweep` targets in all (playtest: six Mahnbriefe or three
+ * Steinfresser fell to one swing).
+ */
+export const CLEAVE = { light: 2, heavy: 3, sweep: 4, falloff: 0.5 } as const;
+
 /** Wuchthieb: hold 0.45–1.0 s (move ×0.5), release. */
 export const HEAVY = { min: 0.45, full: 1.0, moveScale: 0.5, tap: 0.18, arcDeg: 110, reach: 3.0, sweepReach: 3.4, swing: 0.55, impact: 0.2 } as const;
 
@@ -82,10 +89,14 @@ export const PIKEUR_LEAVE = 0.12;
 
 // ---- difficulty ----------------------------------------------------------------------------
 
-/** HP of an enemy: ×(1 + 0.35 (tier − 1)), gentle ×0.75; prologue (tier 0) = tier 1 at 60 %. */
+/**
+ * HP of an enemy: ×(1 + 0.45 (tier − 1)), gentle ×0.75; prologue (tier 0) = tier 1 at 60 %.
+ * (0.35 until the 2026-11-16 playtests: K2–K4 packs fell to one swing at the intended levels.)
+ */
+export const TIER_HP = 0.45;
 export function enemyHp(def: Pick<EnemyDef, 'hp'>, tier = 1, gentle = false): number {
   const t = Math.max(0, Math.min(4, tier));
-  const base = t === 0 ? def.hp * 0.6 : def.hp * (1 + 0.35 * (t - 1));
+  const base = t === 0 ? def.hp * 0.6 : def.hp * (1 + TIER_HP * (t - 1));
   return Math.max(1, Math.round(base * (gentle ? AI.gentleHp : 1)));
 }
 
@@ -375,6 +386,16 @@ export function bossPhase(frac: number, thresholds: readonly number[] = []): num
   let p = 1;
   for (const t of thresholds) if (frac <= t) p++;
   return p;
+}
+
+/**
+ * The lowest HP a hit may leave a boss in `phase` (1-based): just under the next phase line, so one
+ * hit opens the next phase but never skips it. 0 in the last phase.
+ */
+export function bossPhaseFloor(phase: number, max: number, thresholds: readonly number[] = []): number {
+  const next = thresholds[phase - 1];
+  if (next === undefined) return 0;
+  return Math.max(1, Math.floor(next * max) - 1);
 }
 
 /** HP after damage, honouring the Pikeur's floor (he never reaches 0). */

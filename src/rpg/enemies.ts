@@ -209,7 +209,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     plural_de: 'Steinbrecher',
     family: 'stone',
     eras: ['1796'],
-    hp: 640,
+    hp: 1150,
     speed: 2,
     armor: 0.45,
     armorFrontal: true,

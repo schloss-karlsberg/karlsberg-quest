@@ -490,6 +490,11 @@ class Combat {
           else this.captionOnce(`tell:${key}`, text, '', 2.5, Math.max(900, ev.dur * 1000 + 200));
         }
         this.audio.telegraph(this.posOf(e), e.def.family, e.boss, ev.dur);
+        // the very first wind-up of the game teaches the dodge (once per save)
+        if (!e.boss && ev.attack.damage > 0 && ctx.state.state.flags['tut.dodge'] !== true) {
+          ctx.state.update((s) => (s.flags['tut.dodge'] = true), 'combat');
+          this.emit('dialogue:say', { speaker: 'laub', text: t('combat.tut.dodge'), id: 'laub.tut.dodge', ms: 2600 });
+        }
         if (e.kind === 'pikeur' && ev.attack.kind === 'charge') this.audio.horn(this.posOf(e, 2.4));
         // off-screen attacker → arrow at the screen edge (settings.soundIndicators)
         this.arrowFor(e);
@@ -548,6 +553,9 @@ class Combat {
       }
       case 'cleared':
         this.emit('enemy:cleared', { group: ev.group, kind: ev.kind });
+        break;
+      case 'bump':
+        ctx.player.impulse(ev.vx, ev.vz, 0.12);
         break;
       case 'playerHit': {
         const p = this.sim.p;

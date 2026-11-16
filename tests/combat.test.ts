@@ -12,6 +12,7 @@ import { bossHitMul, chooseBossAttack, summonOf } from '../src/systems/combat/bo
 import {
   AI,
   AttackTokens,
+  CLEAVE,
   COMBO,
   DODGE,
   STATION_XZ,
@@ -19,6 +20,7 @@ import {
   applyDamage,
   armorFactor,
   bossPhase,
+  bossPhaseFloor,
   canAct,
   dodgeInvulnerable,
   dodgeSpeed,
@@ -80,7 +82,7 @@ describe('combat rules: damage', () => {
   it('scales enemies by tier and gentle mode', () => {
     const neb = enemyDef('nebelling')!;
     expect(enemyHp(neb, 1)).toBe(22);
-    expect(enemyHp(neb, 3)).toBe(Math.round(22 * 1.7));
+    expect(enemyHp(neb, 3)).toBe(Math.round(22 * 1.9));
     expect(enemyHp(neb, 1, true)).toBe(Math.round(22 * 0.75));
     expect(enemyHp(neb, 0)).toBe(Math.round(22 * 0.6));
     expect(enemyDamage(8, 1)).toBe(8);
@@ -224,6 +226,11 @@ describe('combat rules: groups', () => {
 describe('combat rules: bosses and safe zones', () => {
   it('boss phases at the HP thresholds', () => {
     expect(bossPhase(1, [0.66, 0.33])).toBe(1);
+    // one hit never skips a phase: the floor sits just under the next line, none in the last phase
+    expect(bossPhaseFloor(1, 1000, [0.66, 0.33])).toBe(659);
+    expect(bossPhase(659 / 1000, [0.66, 0.33])).toBe(2);
+    expect(bossPhaseFloor(2, 1000, [0.66, 0.33])).toBe(329);
+    expect(bossPhaseFloor(3, 1000, [0.66, 0.33])).toBe(0);
     expect(bossPhase(0.66, [0.66, 0.33])).toBe(2);
     expect(bossPhase(0.5, [0.66, 0.33])).toBe(2);
     expect(bossPhase(0.2, [0.66, 0.33])).toBe(3);
@@ -289,6 +296,25 @@ describe('combat simulation', () => {
     expect(groups['n']!.killed).toBe(1);
     run(s, 3);
     expect(s.live()).toHaveLength(0);
+  });
+
+  it('cleave: one swing hits the nearest target fully, the next at half, and no more than the cap', () => {
+    const { s, groups } = sim();
+    upsertGroup(groups, { group: 'm', kind: 'mahnbrief', era: '1789', x: 0, z: -2, count: 6, radius: 0.5 });
+    s.step(1 / 60, input());
+    const live = s.live();
+    expect(live).toHaveLength(6);
+    live.forEach((e, i) => {
+      e.x = (i - 2.5) * 0.15;
+      e.z = -1.6 - i * 0.05;
+      e.y = 0;
+      e.maxHp = e.hp = 500;
+    });
+    const hits = tap(s).filter((v) => v.type === 'hit') as { damage: number }[];
+    expect(hits).toHaveLength(CLEAVE.light);
+    const [a, b] = hits.map((h) => h.damage);
+    expect(b!).toBeLessThan(a!);
+    expect(b!).toBeCloseTo(a! * CLEAVE.falloff, -0.5);
   });
 
   it('an Irrlicht is immune until the Bannlicht, then falls and can be hit', () => {

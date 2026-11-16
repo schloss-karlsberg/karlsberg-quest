@@ -57,6 +57,13 @@ export interface QuestPayout {
   main: boolean;
 }
 
+/**
+ * Difficulty tier of a chapter's ordinary enemies when a spawn names none (docs/ACTION-RPG.md §5.4).
+ * Bosses keep tier 1 (their HP is tuned per boss).
+ */
+export const CHAPTER_TIER: Readonly<Record<string, number>> = { prolog: 1, k1: 1, k2: 2, k3: 3, k4: 4 };
+const BOSS_KINDS = new Set(['schuldbuch', 'pikeur', 'strohmann', 'steinbrecher']);
+
 export const QUEST_FLAG = (id: string) => `quest.${id}`;
 export const OBJ_FLAG = (id: string, obj: string) => `quest.${id}.${obj}`;
 const MAX_TRACKED = 3;
@@ -305,6 +312,10 @@ export class QuestBook {
     }
   }
 
+  private isBossKind(kind: string): boolean {
+    return BOSS_KINDS.has(kind);
+  }
+
   /** enemy:spawn / loot:place for one active objective (idempotent by group / pickup id). */
   private requestWorld(q: QuestDef, o: QuestObjective): void {
     (o.spawn ?? []).forEach((s, i) => {
@@ -318,7 +329,7 @@ export class QuestBook {
         count: s.count,
         radius: s.radius,
         boss: s.boss,
-        tier: s.tier,
+        tier: s.tier ?? (s.boss || this.isBossKind(s.kind) ? undefined : CHAPTER_TIER[(q as QuestDefIn).chapter]),
         leash: s.leash,
         time: s.time,
         quest: q.id,

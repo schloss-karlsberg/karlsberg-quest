@@ -406,6 +406,14 @@ const gitter: SetDef = {
     const k = b.kit;
     // bars on the low wall (top ≈ 345.45 m) between the piers, the gate between piers 4 and 5
     railing(k, GITTER_PIERS, 345.45, 1.9, new Set([4]), 0.42);
+    // the bars are solid (playtest: the player walked into them and fought through them)
+    for (let i = 0; i + 1 < GITTER_PIERS.length; i++) {
+      if (i === 4) continue;
+      const [ax, az] = GITTER_PIERS[i]!;
+      const [cx, cz] = GITTER_PIERS[i + 1]!;
+      const len = Math.hypot(cx - ax, cz - az);
+      b.solids.push({ kind: 'box', x: (ax + cx) / 2, z: (az + cz) / 2, ux: (cx - ax) / len, uz: (cz - az) / len, hu: len / 2 + 0.2, hv: 0.3 });
+    }
     const a = GITTER_PIERS[4]!;
     const c = GITTER_PIERS[5]!;
     const y0 = Math.min(b.heightAt(GATE_CENTER[0] - 0.5, GATE_CENTER[1]), b.heightAt(GATE_CENTER[0] + 0.5, GATE_CENTER[1]));

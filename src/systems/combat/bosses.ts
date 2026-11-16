@@ -92,8 +92,9 @@ export function bossHitMul(b: BossView, from: { x: number; z: number }, kind: 'l
     }
     case 'steinbrecher': {
       const front = isFrontal(b, from);
+      // the joints are at the sides and the back; from the front even a Wuchthieb mostly bounces
       if (!front) return { mul: 1.3, weak: true, armored: false };
-      return { mul: kind === 'heavy' ? 1 : 0.45, weak: false, armored: kind !== 'heavy' };
+      return { mul: kind === 'heavy' ? 0.35 : 0.25, weak: false, armored: true };
     }
     case 'pikeur':
       return { mul: b.stun > 0 ? 1.5 : 1, weak: b.stun > 0, armored: false };

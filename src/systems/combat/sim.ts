@@ -18,7 +18,9 @@ import {
   COMBO,
   COST,
   DODGE,
+  CLEAVE,
   HEAVY,
+  bossPhaseFloor,
   HITSTOP,
   HP_REGEN,
   KNOCK,
@@ -197,6 +199,8 @@ export type SimEvent =
   | { type: 'killed'; e: Enemy; by: KillBy }
   | { type: 'cleared'; group: string; kind: string }
   | { type: 'playerHit'; damage: number; by: string; x: number; z: number; pushX: number; pushZ: number; heavy: boolean }
+  /** The player stands inside a big body (a boss, a Steinfresser): push them out (m/s). */
+  | { type: 'bump'; vx: number; vz: number }
   | { type: 'evade'; by: string }
   | { type: 'died'; by: string }
   | { type: 'dodge'; vx: number; vz: number; perfect: boolean }
@@ -576,6 +580,7 @@ export class CombatSim {
     this.sync(inp.era, inp.time, inp.x, inp.z);
     for (const e of [...this.enemies]) this.think(e, edt, inp);
     this.separate();
+    if (!p.dead && !p.dodge) this.bumpPlayer(inp);
     this.updateProjectiles(edt);
     for (const r of this.rings) r.t += edt;
     // combat state
@@ -727,13 +732,15 @@ export class CombatSim {
     const yaw = this.aimYaw({ ...inp, yaw: w.yaw }, reach);
     let hits = 0;
     let killed = false;
-    for (const e of [...this.enemies]) {
-      if (e.state === 'dissolve' || e.state === 'leave') continue;
+    // the nearest target in the arc takes the full hit, the next ones less (CLEAVE)
+    const inArc = this.enemies
+      .filter((e) => e.state !== 'dissolve' && e.state !== 'leave' && e.y - inp.y <= 3.2 && inCone(inp.x, inp.z, yaw, reach, arc, e.x, e.z, e.radius))
+      .sort((a, b) => Math.hypot(a.x - inp.x, a.z - inp.z) - Math.hypot(b.x - inp.x, b.z - inp.z))
+      .slice(0, sweep ? CLEAVE.sweep : heavy ? CLEAVE.heavy : CLEAVE.light);
+    for (const e of inArc) {
       // flying things are reachable (the staff is 2 m long); only very high ones are out of reach
-      if (e.y - inp.y > 3.2) continue;
-      if (!inCone(inp.x, inp.z, yaw, reach, arc, e.x, e.z, e.radius)) continue;
+      if (this.hitEnemy(e, w, inp, hits === 0 ? 1 : CLEAVE.falloff)) killed = true;
       hits++;
-      if (this.hitEnemy(e, w, inp)) killed = true;
     }
     w.hits = hits;
     if (!hits) this.out.push({ type: 'whiff', kind: w.kind });
@@ -744,7 +751,7 @@ export class CombatSim {
   }
 
   /** Apply one staff hit. Returns true if it undid the enemy. */
-  private hitEnemy(e: Enemy, w: Swing, inp: SimInput): boolean {
+  private hitEnemy(e: Enemy, w: Swing, inp: SimInput, cleave = 1): boolean {
     const p = this.p;
     const dx = e.x - inp.x;
     const dz = e.z - inp.z;
@@ -776,10 +783,18 @@ export class CombatSim {
       armored = armor < 1;
       if (heavy && e.def.armor && e.def.armorFrontal) e.armorBroken = 6;
     }
+    // a boss rising into its next phase (roar) cannot be hurt: every phase gets its moment
+    if (e.boss && e.state === 'roar') {
+      this.out.push({ type: 'immune', e });
+      return false;
+    }
     const counter = p.counter;
     p.counter = false;
-    const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt: e.stun > 0 && !e.boss, armor, counter, mul, jitter: hash01(this.tick * 13 + e.seed * 1000) });
+    const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt: e.stun > 0 && !e.boss, armor, counter, mul: mul * cleave, jitter: hash01(this.tick * 13 + e.seed * 1000) });
     e.hp = applyDamage(e.kind, e.hp, e.maxHp, dmg);
+    // one hit crosses at most one phase line (playtest: the Steinbrecher's phase 3 lasted 0 s)
+    if (e.boss && e.hp > 0) e.hp = Math.max(e.hp, bossPhaseFloor(e.phase, e.maxHp, e.def.phases ?? []));
+    else if (e.boss && e.def.phases?.length && e.phase <= e.def.phases.length) e.hp = Math.max(1, bossPhaseFloor(e.phase, e.maxHp, e.def.phases));
     e.flash = 1;
     e.by = heavy ? 'heavy' : 'light';
     this.wake(e);
@@ -1545,6 +1560,25 @@ export class CombatSim {
     if (made) this.out.push({ type: 'summon', e, kind, n: made });
   }
 
+  /** The player cannot walk into a body: the camera would sit inside it (playtest: Steinbrecher). */
+  private bumpPlayer(inp: SimInput): void {
+    let vx = 0;
+    let vz = 0;
+    for (const e of this.enemies) {
+      if (e.state === 'dissolve' || e.state === 'leave' || e.def.family === 'mist' || e.def.family === 'light') continue;
+      if (Math.abs(e.y - inp.y) > 2.5) continue;
+      const dx = inp.x - e.x;
+      const dz = inp.z - e.z;
+      const d = Math.hypot(dx, dz);
+      const min = e.radius + 0.45;
+      if (d >= min || d < 1e-4) continue;
+      const k = ((min - d) / min) * (e.boss || e.radius > 0.9 ? 9 : 4);
+      vx += (dx / d) * k;
+      vz += (dz / d) * k;
+    }
+    if (vx || vz) this.out.push({ type: 'bump', vx, vz });
+  }
+
   /** Keep bodies apart (O(n²), n ≤ 12). */
   private separate(): void {
     const L = this.enemies;
@@ -1556,7 +1590,8 @@ export class CombatSim {
         const dx = b.x - a.x;
         const dz = b.z - a.z;
         const d = Math.hypot(dx, dz);
-        const min = (a.radius + b.radius) * 0.9;
+        // a little air between bodies, so a pack reads as several and one swing does not find all
+        const min = (a.radius + b.radius) * 1.05 + (a.boss || b.boss ? 0 : 0.3);
         if (d >= min || d < 1e-4) continue;
         const push = (min - d) * 0.5;
         const wa = a.boss ? 0.1 : 1;
