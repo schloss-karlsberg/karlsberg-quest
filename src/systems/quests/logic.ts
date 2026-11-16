@@ -478,8 +478,19 @@ export class QuestBook {
         if (name !== 'enemy:killed') return 0;
         if (p.quest === q.id && p.objective === o.id) return 1;
         if (o.group && p.group === o.group) return 1;
-        if (o.enemy && p.kind === o.enemy && !o.group) return 1;
-        return 0;
+        if (!o.enemy || p.kind !== o.enemy || o.group) return 0;
+        // A kill of the right kind that is not one of the objective's own spawns (quest /
+        // objective / group above) counts only at the objective's place, in its era: an Irrlicht
+        // banned in 1789 at the Schwanenweiher is not one over the dam today.
+        {
+          const place = o.where ?? (o.spawn?.[0] ? { x: o.spawn[0].x, z: o.spawn[0].z, r: o.spawn[0].radius ?? 6, era: o.spawn[0].era } : undefined);
+          if (!place) return 1;
+          const era = placeEra(q, o, place as QuestPlace);
+          if (typeof p.era === 'string' && p.era !== era) return 0;
+          const x = Number(p.x), z = Number(p.z);
+          if (Number.isFinite(x) && Number.isFinite(z) && Math.hypot(x - place.x, z - place.z) > Math.max(30, (place.r ?? 6) * 2)) return 0;
+          return 1;
+        }
       case 'collect':
         return name === 'item:pickup' && p.item === o.item ? Math.max(1, Number(p.count ?? 1)) : 0;
       case 'use':

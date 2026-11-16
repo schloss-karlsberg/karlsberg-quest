@@ -34,7 +34,7 @@ function book(extra: QuestDef[] = [], chapter = 'test', seed = 7) {
   return { b, e, names: () => e.log.map((x) => x.n), of: (n: string) => e.log.filter((x) => x.n === n).map((x) => x.p) };
 }
 
-const kill = (b: QuestBook, p: Record<string, unknown>) => b.handle('enemy:killed', { id: `e${Math.random()}`, group: 'g', kind: 'mahnbrief', x: 1, z: 2, era: '1789', boss: false, by: 'light', ...p });
+const kill = (b: QuestBook, p: Record<string, unknown>) => b.handle('enemy:killed', { id: `e${Math.random()}`, group: 'g', kind: 'mahnbrief', x: 1271, z: -1214, era: '1789', boss: false, by: 'light', ...p });
 
 describe('quest lifecycle (q.test.lohnzettel)', () => {
   it('offer → accept → kill 3 → collect → ready → turn-in', () => {
@@ -148,6 +148,24 @@ describe('objectives', () => {
     b.handle('enemy:killed', { kind: 'nebelling' });
     b.handle('enemy:killed', { kind: 'nebelling' });
     expect(b.state('q.test.kette')).toBe('ready');
+  });
+
+  it('kill objectives bound to a place ignore kills of the same kind elsewhere or in another era', () => {
+    const lichter: QuestDef = {
+      id: 'q.test.lichter', main: false, title_de: 'Lichter', summary_de: 'x', giver: { npc: 'soll' }, offer: [{ speaker: 'soll', text: 'x' }],
+      objectives: [{ id: 'l', type: 'kill', text_de: 'L', enemy: 'irrlicht', count: 3, where: { x: 820, z: -869, r: 24, era: 'today' }, spawn: [{ kind: 'irrlicht', x: 820, z: -869, era: 'today', count: 3, radius: 5 }] }],
+      rewards: { xp: 10 },
+    };
+    const { b } = book([lichter]);
+    b.accept('q.test.lichter');
+    // Karlslust Irrlichter, 1789, 1.1 km away: no credit
+    b.handle('enemy:killed', { id: 'k1', group: 'q.k1.karlslust.lichter', kind: 'irrlicht', x: 1846, z: 236, era: '1789', quest: 'q.k1.karlslust', objective: 'lichter' });
+    // the right place but the wrong era: no credit
+    b.handle('enemy:killed', { id: 'k2', group: 'other', kind: 'irrlicht', x: 821, z: -868, era: '1789' });
+    // another group at the dam today, and the quest's own spawn: credit
+    b.handle('enemy:killed', { id: 'k3', group: 'other', kind: 'irrlicht', x: 821, z: -868, era: 'today' });
+    b.handle('enemy:killed', { id: 'k4', group: 'q.test.lichter.l', kind: 'irrlicht', x: 900, z: 0, era: 'today', quest: 'q.test.lichter', objective: 'l' });
+    expect(b.count('q.test.lichter', 'l')).toBe(2);
   });
 
   it('optional objectives pay bonus_xp and are not needed for ready', () => {
