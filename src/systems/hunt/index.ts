@@ -912,11 +912,15 @@ class Hunt {
     this.ctx.ui.hud.busy('hunt', sim.alert >= 0.5, 3);
     const now = this.ctx.loop.time;
     const L = this.lastAlert;
-    const level = Math.round(sim.alert * 100) / 100;
-    if (sim.state !== L.state || (Math.abs(level - L.level) >= 0.05 && now - L.at >= 0.25)) {
-      this.lastAlert = { level, state: sim.state, at: now };
+    // the kennel pack (behind bars, then bursting out into the night) is never "on you": it does
+    // not hold the way home shut
+    const caged = sim.ctl instanceof KennelMode;
+    const level = Math.round((caged ? Math.min(sim.alert, 0.45) : sim.alert) * 100) / 100;
+    const state = caged && sim.state === 'chasing' ? 'searching' : sim.state;
+    if (state !== L.state || (Math.abs(level - L.level) >= 0.05 && now - L.at >= 0.25)) {
+      this.lastAlert = { level, state, at: now };
       this.slice().alert = level;
-      this.ctx.events.emit('hunt:alert', { level, state: sim.state });
+      this.ctx.events.emit('hunt:alert', { level, state });
     }
   }
 
