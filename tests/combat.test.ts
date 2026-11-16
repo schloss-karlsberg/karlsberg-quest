@@ -86,7 +86,7 @@ describe('combat rules: damage', () => {
     expect(enemyHp(neb, 1, true)).toBe(Math.round(22 * 0.75));
     expect(enemyHp(neb, 0)).toBe(Math.round(22 * 0.6));
     expect(enemyDamage(8, 1)).toBe(8);
-    expect(enemyDamage(8, 4)).toBe(14);
+    expect(enemyDamage(8, 4)).toBe(11.6);
     // gentle mode halves damage taken through the stats
     expect(enemyDamage(8, 1, deriveStats(null, { gentle: true }).damageTaken)).toBe(4);
   });

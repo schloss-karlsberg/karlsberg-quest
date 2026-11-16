@@ -100,10 +100,15 @@ export function enemyHp(def: Pick<EnemyDef, 'hp'>, tier = 1, gentle = false): nu
   return Math.max(1, Math.round(base * (gentle ? AI.gentleHp : 1)));
 }
 
-/** Damage of an enemy attack: ×(1 + 0.25 (tier − 1)) (tier 0 = 60 %) × the player's damageTaken. */
+/**
+ * Damage of an enemy attack: ×(1 + 0.15 (tier − 1)) (tier 0 = 60 %) × the player's damageTaken.
+ * (0.25 on paper until 2026-11-16, never applied: quest spawns ran at tier 1. With chapter tiers
+ * live, 0.15 keeps a non-dodging level-10 player alive against three tier-4 Steinfresser, barely.)
+ */
+export const TIER_DAMAGE = 0.15;
 export function enemyDamage(raw: number, tier = 1, damageTaken = 1): number {
   const t = Math.max(0, Math.min(4, tier));
-  const k = t === 0 ? 0.6 : 1 + 0.25 * (t - 1);
+  const k = t === 0 ? 0.6 : 1 + TIER_DAMAGE * (t - 1);
   return Math.max(0, Math.round(raw * k * damageTaken * 10) / 10);
 }
 

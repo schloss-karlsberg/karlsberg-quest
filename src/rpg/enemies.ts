@@ -65,7 +65,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     plural_de: 'Mahnbriefe',
     family: 'paper',
     eras: ['1789', '1793-02'],
-    hp: 10,
+    hp: 14,
     speed: 4.2,
     bannStun: 3,
     attacks: [{ id: 'schnitt', telegraph: 0.55, damage: 6, range: 2, kind: 'lunge', cooldown: 1.8 }],
