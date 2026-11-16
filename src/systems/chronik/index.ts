@@ -372,7 +372,7 @@ function refreshMarkers(ctx: GameContext): void {
 function updatePrompt(ctx: GameContext): void {
   let key = '';
   let text = '';
-  if (target && !director?.active && ctx.ui.modals.count === 0 && !(ctx.state.state.flags['npc.near'] && target.clue.kind !== 'echo')) {
+  if (target && !director?.active && ctx.ui.modals.count === 0 && !((ctx.state.state.flags['npc.near'] || ctx.state.state.flags['e.owner']) && target.clue.kind !== 'echo')) {
     key = 'E';
     if (target.status === 'needs-lantern') text = ctx.t('chronik.prompt.dark');
     else if (target.clue.kind === 'echo') text = ctx.t('chronik.prompt.listen');
@@ -531,8 +531,9 @@ export default defineSystem({
     const pressE = inp.wasPressed('listen');
     if ((pressE || (inp.wasPressed('interact') && inp.locked)) && !director?.active) {
       const echo = echoTargetNear(ctx);
-      // a ghost within talk range owns E (npc flag npc.near): the conversation, not the clue under her feet
-      const tap = target && target.clue.kind !== 'echo' && !ctx.state.state.flags['npc.near'] ? target.clue : null;
+      // a ghost within talk range owns E (npc flag npc.near), or a thing in the room (`e.owner`, the Festsaal):
+      // the conversation / the pickup, not the clue under her feet
+      const tap = target && target.clue.kind !== 'echo' && !ctx.state.state.flags['npc.near'] && !ctx.state.state.flags['e.owner'] ? target.clue : null;
       if (pressE && echo) holding = { t: 0, clue: echo, tap };
       else if (tap) examine(ctx, tap);
     }

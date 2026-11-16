@@ -243,8 +243,8 @@ test('story: caught by the pack → back at the field station', async ({ page })
   // the Bannlicht lesson is played once more; contentA moved it from p10)
   expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p9');
 
-  // a timed choice in the burning hall (chapter 3): field-book modal with a fuse
-  // (chapter 3 as wired: up the stairs into the Festsaal, Hanne and Laub speak, then the choice)
+  // the choice in the burning hall (chapter 3): four things in the room, E on one (the fuse: 40 s
+  // after the offer, Hanne takes you by the arm; chapter-k3.spec.ts)
   await page.waitForFunction(() => !!window.kq?.interiors && !!window.kq?.npc && !!window.kq?.fx, null, { timeout: 180_000 });
   await page.evaluate(() => {
     const k = window.kq!;
@@ -255,11 +255,16 @@ test('story: caught by the pack → back at the field station', async ({ page })
     k.ctx.state.mutable.inventory.clues.push('clue.k3.fackel');
     k.interiors!.enter('B01.2.og-festsaal', { u: 0.5, v: 0.3 });
     k.step(6);
-    for (let i = 0; i < 80 && !k.story!.choice(); i++) k.step(30);
+    for (let i = 0; i < 80 && !k.interiors!.festsaal().active; i++) k.step(30);
+    k.step(120);
   });
-  await expect(page.getByTestId('story-choice')).toBeVisible({ timeout: 20_000 });
+  expect(await page.evaluate(() => window.kq!.interiors!.festsaal().spots.length)).toBe(4);
   await shot(page, 'choice');
-  await page.getByTestId('choice-2').click();
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.interiors!.festsaalTake('uhr');
+    k.step(6);
+  });
   expect(await page.evaluate(() => window.kq!.state().flags['flag.k3_objekt'])).toBe('uhr');
   expect(errors).toEqual([]);
 });
@@ -285,6 +290,8 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await shot(page, 'ending-choice');
   await page.getByTestId('ending-museum').click();
   await page.getByRole('button', { name: 'Ja', exact: true }).click();
+  // the ending is staged in the engine first (endings/stage.ts): skip it
+  await page.getByTestId('ending-stage-skip').click();
   await expect(page.getByTestId('ending-next')).toBeVisible();
   await shot(page, 'ending-scene');
   await page.getByTestId('ending-next').click();

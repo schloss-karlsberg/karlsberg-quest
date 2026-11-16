@@ -59,6 +59,16 @@ addStrings('de', {
   'hunt.finale.eyes': '[Die Augen gehen aus, eins nach dem anderen]',
   'hunt.finale.silence': '[Stille]',
   'hunt.finale.return': '[Die Meute bringt dich in den Kreis zurück]',
+  // K1 finale: lunges, the stand; K3: the kennel gates
+  'hunt.lunge.first': '[Knurren – ein Hund duckt sich zum Sprung] Leertaste: ausweichen!',
+  'hunt.lunge': '[Knurren – er springt gleich]',
+  'hunt.lunge.dodged': '[Ausgewichen – er schlittert vorbei]',
+  'hunt.bite': '[Zähne im Mantel – du stolperst] Noch {left} Bisse, dann haben sie dich.',
+  'hunt.bite.last': '[Zähne im Mantel – du stolperst] Noch ein Biss, dann haben sie dich.',
+  'hunt.stand': '[Die Meute stellt dich – der Kreis schließt sich]',
+  'hunt.stand.break': '[Sie lassen dich nicht durch]',
+  'hunt.kennel.open': '[Die Gittertüren schlagen auf – die Meute bricht heraus]',
+  'hunt.kennel.gone': '[Das Bellen verliert sich in der Nacht]',
   // states (debug / screen readers)
   'hunt.state.calm': 'ruhig',
   'hunt.state.suspicious': 'wittert',

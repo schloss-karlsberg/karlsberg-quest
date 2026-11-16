@@ -456,8 +456,20 @@ Round-4 (polish: set dressing) integration rules:
   fairness checked by simulated runs in `tests/hunt-ext.test.ts`; `headStart`, `heel` (gap they
   settle at, default 9 m), `burst` (rubber band beyond the heel, default 1) and `keepPace` (at the
   heel they match a runner's pace and falter when you stop; Ch. 1's first chase, checked in
-  `tests/hunt-k1.test.ts`) tune it); `follow` (ending C's afterword: the hounds walk your
-  footsteps 16 m+ behind, back off when you turn on them, bay now and then, never catch).
+  `tests/hunt-k1.test.ts`) tune it; `flankers` (the last n hounds run wide and ahead to cut off
+  the route, never catch), `lunges` (a hound crouches — eyes flare, growl, caption — then leaps
+  where you will be; dodging [Leertaste] in the leap makes it miss, a hit is a bite: a shove, a
+  jolt, 1.4 s of grace; `maxBites` (3, gentle 5) bites = caught; sim events `lunge`/`bite`, contract
+  `hunt:bite {n,max}`), `pikeurFar` (the rider keeps ≥ n m off, a silhouette up the slope));
+  `stand` (K1 narrows: an arc behind, two hounds across the way out, the rider 40 m back; they
+  engage within 14 m, never catch while you hold the ground (the strays are the fight), a break-out
+  draws a lunge, > 22 m away = caught); `kennel` (K3 Zwinger: hounds pace behind the bars of
+  `target`; story cue `hunt:release` opens the gates — they burst out along `via` one after
+  another and fade into the night, `hunt:goal {mode:'kennel'}`, the hunt ends); `follow` (ending
+  C's afterword: the hounds walk your footsteps 16 m+ behind, back off when you turn on them, bay
+  now and then, never catch). Story cue `hunt:tableau {kind: lie|eyes|off, n, x, z, r, face}`
+  stages hounds without a hunt (the endings: five lie down one by one after the horn; eyes open
+  in the dark behind you).
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
   240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
@@ -606,8 +618,16 @@ Round-4 (polish: set dressing) integration rules:
   meter brings you to the present there instead of the field station. Ending choice: the field
   book before the table is saved to slot `ending` (`ENDING_SLOT`); the title offers it again.
   Ending C ("keep", finished): the past is at night and a `follow` pack of five comes along.
+  After the choice the ending is staged in the engine (`endings/stage.ts`, ~11 s real time, before
+  the card; testids `ending-stage`, `ending-stage-skip`; any key / click skips): museum — the camera
+  rises, the horn, five hounds lie down one by one (`hunt:tableau lie`), the fog lifts, dawn; burn —
+  the Chronik's pages burn in the air before you (shader burn front), their embers become memory
+  points that climb while the eras flash through the look (1789 … heute; reduced flashing:
+  cross-fades), the camera follows them up; keep — the dark closes in, the view turns round, eyes
+  open behind you (`hunt:tableau eyes`). Reduced motion: no flight, two still shots (7 s). Look and
+  view are restored before the card.
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
-  epilogue/choose/look/meters/meter/room/choice` (`look(time, era?)`: `day | dawn | dusk | night`).
+  epilogue/choose/look/meters/meter/room/choice/stage/stageSkip` (`look(time, era?)`: `day | dawn | dusk | night`).
 
 ### npc (`src/systems/npc/`) – ghostly people, conversations
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
@@ -676,7 +696,15 @@ Round-4 (polish: set dressing) integration rules:
   (`uRoomHeat`; more when a lower storey burns): glowing floor cracks, an orange underlight and
   smoke creeping in slowly — the Festsaal already threatens on arrival. The player's room drives
   the post heat shimmer (`ctx.post.uniforms.uHeat`). Per-room uniforms `uRoomFire/Smoke/Heat/Floor`.
-  `collapsed` → ceiling gone, debris, doors blocked once the player is out (caption for the sound). Cleared on `threat:configure {fire, active:false}`
+  `collapsed` → ceiling gone, debris, doors blocked once the player is out (caption for the sound).
+  A room near the player that catches fire or collapses drops charred beams out of its ceiling
+  (`beams.ts`: they tip at one end, swing, fall and lie glowing; no collider; reduced motion: just
+  there). The Festsaal choice (K3, `festsaal.ts`): story cue `festsaal:objects {room}` places four
+  things — the handle in Hanne's hand, the ducat on the sill, the gilt clock on its console, the
+  way out at the door — each with a glint drawn after the smoke; facing one in reach shows
+  „E – …“ (`e.owner` flag: the Chronik and Hanne (`npc.hush`) leave E alone), E sets
+  `festsaal.took` = tuergriff | dukat | uhr | nichts; `festsaal:clear` removes them. Hooks
+  `kq.interiors.festsaal()` / `festsaalTake(key)`. Cleared on `threat:configure {fire, active:false}`
   and era change. Gentle mode thins the smoke; reduced motion slows flames and stops flicker
   (so does reduced flashing).
 - Per-frame cost: `frame()` allocates nothing; the light sort is cached and redone after the
@@ -810,7 +838,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 | --- | --- | --- |
 | `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?` | spoken line; `{Name}`, `{jahre:1793}`, `{jahr}` |
 | `objective` | `text \| null, x?, z?, id?` | objective + Bussole |
-| `threat` | `kind: pack \| fire \| oblivion, active, intensity?, center?, radius?, seconds?` + pack `mode` (patrol / drive / finale / parforce), `target`, `via`, `from`, `headStart`, `goalRadius`, `snow`, `hounds`, `pikeur`, `sight`, `seed` | hunt / fx threats |
+| `threat` | `kind: pack \| fire \| oblivion, active, intensity?, center?, radius?, seconds?` + pack `mode` (patrol / drive / finale / parforce / stand / kennel / follow), `flankers`, `lunges`, `pikeurFar`, `maxBites`, `target`, `via`, `from`, `headStart`, `goalRadius`, `snow`, `hounds`, `pikeur`, `sight`, `seed` | hunt / fx threats |
 | `flag` | `set {k: v \| null}` | flags |
 | `shift` / `anchor` | `to, instant?, reason?` / `to \| null, x, z, r` | era shift now / Q allowed here |
 | `skill` | `id: relief \| kartograf \| baumeister \| roentgen \| spurenleser, tier` | unlock card (+ Laub once `story.laub`) |

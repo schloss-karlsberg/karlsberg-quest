@@ -44,6 +44,11 @@ export interface EndingDeps {
   sound(kind: 'horn' | 'match' | 'compass'): void;
   reducedMotion(): boolean;
   name(): string;
+  /**
+   * Stage the ending in the engine (endings/stage.ts): the modal closes, the world plays the
+   * picture, `done` opens the text card. Without it the DOM vignette plays over the frame.
+   */
+  stage?(id: EndingId, done: () => void): void;
 }
 
 const OBJECT_SVG: Record<EndingId, string> = {
@@ -74,7 +79,7 @@ export class EndingScreen {
     }
     if (ending) {
       this.ending = ending;
-      if (vignette) this.vignette();
+      if (vignette) this.play();
       else this.scene();
     } else this.choose();
   }
@@ -103,7 +108,7 @@ export class EndingScreen {
       this.ending = id;
       this.d.chosen(id);
       this.d.sound(id === 'museum' ? 'horn' : id === 'burn' ? 'match' : 'compass');
-      this.vignette();
+      this.play();
     };
     this.page('choose', '', [
       h('div.kqs-end-head', [h('div.kqs-end-kicker', t('story.end.epilogue')), h('h2.kqs-end-title', t('story.end.title'))]),
@@ -125,6 +130,18 @@ export class EndingScreen {
   }
 
   private vigTimer = 0;
+
+  /** The picture before the card: staged in the engine when the story offers it, else the vignette. */
+  private play(): void {
+    const id = this.ending!;
+    if (!this.d.stage) return this.vignette();
+    this.dropCreditKeys();
+    this.m?.close();
+    this.m = null;
+    this.d.stage(id, () => {
+      if (!this.open) this.show(id);
+    });
+  }
 
   /**
    * A short picture over the live world before the text card (playtest round 2: the ending was

@@ -718,18 +718,31 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   await shot(page, 'festsaal-still');
 
-  // ---- 3.8 Die Wahl (the fire stands still) → the charm ------------------------------------------------
-  await page.evaluate(() => {
-    const k = window.kq as Any;
-    for (let i = 0; i < 80 && !k.story.choice(); i++) k.step(30);
-  });
-  expect(await page.evaluate(() => (window.kq as Any).story.choice())).toBe('k3.objekt');
+  // ---- 3.8 Die Wahl (the fire stands still) → the charm: four things in the room, E on one -------------
+  const fest = await page.evaluate(() => (window.kq as Any).interiors.festsaal());
+  expect(fest.active).toBe(true);
+  expect(fest.spots.map((s: Any) => s.key).sort()).toEqual(['dukat', 'nichts', 'tuergriff', 'uhr']);
   const clock0 = (await page.evaluate(() => (window.kq as Any).fx.state().fire)).clock;
-  await shot(page, '09-wahl');
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.step(120);
-    k.story.choose(2); // the clock with the alabaster
+    // walk up to the clock on its console, look at it
+    const u = k.interiors.festsaal().spots.find((s: Any) => s.key === 'uhr');
+    const p = k.ctx.player.position;
+    const d = Math.hypot(u.x - p.x, u.z - p.z) || 1;
+    const x = u.x - ((u.x - p.x) / d) * 1.2;
+    const z = u.z - ((u.z - p.z) / d) * 1.2;
+    p.x = x;
+    p.z = z;
+    k.ctx.player.yaw = Math.atan2(-(u.x - x), -(u.z - z));
+    k.ctx.player.pitch = -0.25;
+    k.step(4);
+  });
+  await shot(page, '09-wahl');
+  expect(await page.locator('.kq-prompt').textContent()).toContain('Uhr');
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.press('KeyE', 1);
     k.step(4);
   });
   expect((await page.evaluate(() => (window.kq as Any).fx.state().fire)).clock - clock0).toBeLessThan(0.2);

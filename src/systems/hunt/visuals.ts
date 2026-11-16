@@ -27,7 +27,7 @@ import {
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import { Rng } from './rng';
-import type { Agent, PackState } from './sim';
+import { type Agent, PackSim, type PackState } from './sim';
 
 // ---- particle templates ---------------------------------------------------------------------
 
@@ -554,7 +554,7 @@ export interface VisualInput {
   settle?: number;
 }
 
-const MAX_SMOKE = 1500;
+const MAX_SMOKE = 2300;
 const MAX_GLOW = 96;
 const MAX_WISPS = 420;
 const MAX_BREATH = 160;
@@ -792,11 +792,15 @@ export class PackVisuals {
     const rise = (1 - v.presence) * -0.6; // smoke gathers up from the ground
     const alphaBase = (pik ? 0.82 : 0.8) * v.presence;
     const chase = o.state === 'chasing' ? 1 : 0;
-    const eyeOn = v.eye * v.blink * v.presence;
+    // a lunge: crouch low with flaring eyes (the telegraph), then the leap's arc
+    const pc = pik ? { crouch: 0, leap: 0 } : PackSim.pounce(a);
+    const crouch = smooth01(pc.crouch);
+    const leapY = Math.sin(pc.leap * Math.PI) * 0.55 * S;
+    const eyeOn = v.eye * v.blink * v.presence * (1 + 1.8 * crouch + 0.6 * pc.leap);
     const sn = v.sniff * (pik ? 0.4 : 1);
     // finale: lying down (body sinks, forelegs stretch forward, hind legs fold, head on the paws)
     const lie = pik ? 0 : smooth01(a.lie);
-    const drop = lie * 0.4 * S;
+    const drop = lie * 0.4 * S + crouch * 0.2 * S;
     for (const p of v.template) {
       let x = p.x;
       let y = p.y;
@@ -841,6 +845,15 @@ export class PackVisuals {
           else y -= drop;
         }
       }
+      if (crouch > 0) {
+        // haunches down, head low and forward, legs folded under
+        if (p.bone >= 1 && p.bone <= 4) y = y * (1 - 0.32 * crouch);
+        else if (p.bone === HEAD) {
+          y -= crouch * 0.26 * S;
+          z += crouch * 0.1 * S;
+        } else y -= crouch * (p.bone === TAIL ? 0.1 : 0.2) * S * (p.z < 0 ? 1.3 : 1);
+      }
+      y += leapY;
       if (lie > 0.9 && p.bone === BODY && !o.reducedMotion) y += Math.sin(t * 1.6 + a.idx) * 0.012 * (1 - a.dim);
       // smoky turbulence
       x += Math.sin(t * 1.7 + p.seed * 37) * 0.02;
@@ -870,7 +883,7 @@ export class PackVisuals {
     const facing = (-sh * toCamX - ch * toCamZ) / dc;
     const face = 0.15 + 0.85 * Math.max(0, Math.min(1, (facing + 0.3) / 0.8));
     const ez = (pik ? 1.6 : 0.72 * S * (1 + 0.14 * run)) + sn * 0.06 * S + lie * 0.05 * S;
-    const ey = (pik ? 2.13 - sn * 0.3 : (0.895 - sn * 0.6 - chase * 0.08) * S) - lie * 0.5 * S;
+    const ey = (pik ? 2.13 - sn * 0.3 : (0.895 - sn * 0.6 - chase * 0.08) * S) - lie * 0.5 * S - crouch * 0.26 * S + leapY;
     // the eyes go out like lamps in a house: a last flicker, then dark
     const dim = a.dim;
     const flick = dim > 0 && dim < 0.75 && !o.reducedMotion && !o.reducedFlash ? 0.75 + 0.25 * Math.sin(t * 37 + a.idx * 5) * Math.sin(t * 11.3 + a.idx) : 1;
@@ -881,7 +894,7 @@ export class PackVisuals {
       const wx = v.x + ch * x - sh * ez;
       const wz = v.z - sh * x - ch * ez;
       const inten = eyeOn * face * (pik ? 0.5 : 1) * eyeDim;
-      if (inten > 0.01) this.glowFront.push(wx, v.y + ey + ez * slope + bob + rise, wz, pik ? 0.09 : 0.075, inten, 0, 1.35);
+      if (inten > 0.01) this.glowFront.push(wx, v.y + ey + ez * slope + bob + rise, wz, (pik ? 0.09 : 0.075) * (1 + 0.6 * crouch), inten, 0, 1.35);
     }
     // breath: a pale puff from the muzzle on every exhale, quicker and heavier on the run
     if (!pik && v.presence > 0.3 && lie < 0.5 && dim < 0.5) {

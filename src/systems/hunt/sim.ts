@@ -25,7 +25,7 @@ import type { TrackField, TrailBreak } from './tracks';
 
 export type PackState = 'calm' | 'suspicious' | 'searching' | 'chasing';
 export type HornSignal = 'search' | 'found' | 'lost' | 'call-off';
-export type PackMode = 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow';
+export type PackMode = 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow' | 'stand' | 'kennel';
 export type FinaleOutcome = 'gathered' | 'returned' | 'calmed' | 'faded';
 
 export interface SimWorld extends SenseWorld {
@@ -76,10 +76,20 @@ export interface PackOptions {
   keepPace?: boolean;
   /** finale: lying flat alone is enough (one-key option / gentle mode; the lantern lights itself). */
   oneKey?: boolean;
+  /** parforce: hounds that run ahead on your flanks and cut off the way out (lunging from the side). */
+  flankers?: number;
+  /** parforce / stand: hounds lunge at you (telegraphed: crouch, growl, eyes flare; a dodge roll beats it). */
+  lunges?: boolean;
+  /** parforce: the Pikeur keeps this distance (m) on his flank — a rider seen far off, never riding in. */
+  pikeurFar?: number;
+  /** Bites before the pack has you (default 3, gentle 5); counted per mode (a switch starts afresh). */
+  maxBites?: number;
 }
 
 /** Names from the bible (Jost, 08-stimmen §5); the sixth is ours, in the same style. FIKTION. */
-export const HOUND_NAMES = ['Diane', 'Sultan', 'Fanfare', 'Rauhreif', 'Bijou', 'Mirza'] as const;
+export const HOUND_NAMES = ['Diane', 'Sultan', 'Fanfare', 'Rauhreif', 'Bijou', 'Mirza', 'Melampe', 'Hektor', 'Brisée', 'Tambour'] as const;
+/** Most hounds a pack can have (the K1 finale runs eight). */
+export const MAX_HOUNDS = HOUND_NAMES.length;
 
 export interface Agent {
   kind: 'hound' | 'pikeur';
@@ -124,6 +134,25 @@ export interface Agent {
   /** Metres since the last print (snow). */
   printAcc: number;
   printSide: number;
+  /** A lunge in progress (wind-up → leap → recover); the agent is out of the normal AI meanwhile. */
+  lunge?: Lunge | null;
+}
+
+/** Lunge timing (s, m/s, m). The wind-up is the telegraph: crouch, growl, the eyes flare. */
+export const LUNGE = { wind: 0.62, windGentle: 0.95, windRauh: 0.5, leap: 0.42, speed: 12.5, maxSpeed: 18, recover: 0.7, recoverMissed: 1.4, hit: 1.25, lock: 0.7 };
+
+export interface Lunge {
+  phase: 'wind' | 'leap' | 'recover';
+  t: number;
+  /** Seconds of the wind-up (tuning). */
+  wind: number;
+  /** Leap direction (unit). */
+  dx: number;
+  dz: number;
+  /** The leap went past a dodging player (longer recovery: the opening). */
+  missed: boolean;
+  /** Leap speed (m/s): long enough to reach where it aimed, a little beyond. */
+  speed: number;
 }
 
 export type SimEvent =
@@ -140,7 +169,11 @@ export type SimEvent =
   /** A hound lies down (finale; a sigh). */
   | { type: 'lie'; idx: number }
   /** parforce pacing: a breather starts / ends. */
-  | { type: 'rest'; on: boolean };
+  | { type: 'rest'; on: boolean }
+  /** A hound crouches to lunge (the telegraph) / its leap went past a dodging player. */
+  | { type: 'lunge'; idx: number; phase: 'wind' | 'dodged' }
+  /** A lunge landed: teeth in the coat, the player stumbles (n of max bites; max = caught). */
+  | { type: 'bite'; idx: number; n: number; max: number; dx: number; dz: number };
 
 export interface Tuning {
   speed: { patrol: number; follow: number; trot: number; search: number; chase: number; track: number };
@@ -208,6 +241,8 @@ export interface ModeController {
   alert?(p: PlayerSense): boolean;
   /** The pack got the player: false = ignore (e.g. after the goal). */
   mayCatch?(): boolean;
+  /** This agent may catch by reach / close sight (false: it lunges instead, e.g. parforce flankers). */
+  catches?(a: Agent): boolean;
 }
 
 /** Builds the controller for `sim.opt.mode`; `fresh` = a new pack (false: switching in place). */
@@ -245,6 +280,17 @@ export class PackSim {
   private pickupT = 0;
   /** Where the player stood when the pack was configured. */
   readonly origin: XZ;
+  /** Lunges that landed in this mode (maxBites = caught). */
+  bites = 0;
+  /** Seconds until the next lunge may start (one at a time, never back to back). */
+  lungeCd = 0;
+  /** Seconds of grace after a bite: the pack eases off and cannot catch (you stumble, they hold). */
+  graceT = 0;
+  /** Lunges started / dodged (tests, debug). */
+  readonly lungeStats = { started: 0, dodged: 0 };
+  /** The player's ground velocity (smoothed): a lunge aims where you will be. */
+  readonly pv = { x: 0, z: 0 };
+  private pPrev: XZ | null = null;
 
   constructor(
     readonly world: SimWorld,
@@ -262,7 +308,7 @@ export class PackSim {
     this.area = graph ? graph.within(opt.x, opt.z, opt.radius).filter((i) => !this.isWater(graph.xs[i]!, graph.zs[i]!)) : [];
     this.inArea = new Set(this.area);
     const spawn = opt.from ? this.spawnAt(opt.from, player) : this.pickSpawn(player);
-    const n = Math.max(1, Math.min(6, Math.round(opt.hounds)));
+    const n = Math.max(1, Math.min(MAX_HOUNDS, Math.round(opt.hounds)));
     const leaderIsPikeur = opt.pikeur;
     if (opt.pikeur) this.agents.push(this.makeAgent('pikeur', 0, 'Pikeur', spawn.x, spawn.z, spawn.h, { r: 0, f: 0 }));
     for (let i = 0; i < n; i++) {
@@ -444,6 +490,17 @@ export class PackSim {
     this.stateTime += dt;
     this.tracks?.tick(dt);
     this.layScent(p);
+    if (this.pPrev && dt > 0) {
+      const k = Math.min(1, dt * 6);
+      const vx = (p.x - this.pPrev.x) / dt;
+      const vz = (p.z - this.pPrev.z) / dt;
+      // a jump (teleport) is no velocity
+      if (Math.hypot(vx, vz) < 20) {
+        this.pv.x += (vx - this.pv.x) * k;
+        this.pv.z += (vz - this.pv.z) * k;
+      }
+    }
+    this.pPrev = { x: p.x, z: p.z };
     const before = this.agents.map((a) => a.dist);
     if (this.caught) {
       this.caught.t += dt;
@@ -452,11 +509,14 @@ export class PackSim {
         if (a.kind === 'hound') this.moveToward(a, p.x, p.z, this.tune.speed.chase * 0.6, dt, 1.0);
         else this.face(a, p.x - a.x, p.z - a.z, dt);
       }
+    } else if ((this.stepLunges(dt, p), this.caught)) {
+      // the last bite: the caught sequence runs from the next step
     } else if (!this.ctl?.step?.(dt, p)) {
       this.perceive(dt, p);
       if (!this.ctl?.think?.(dt, p)) this.think(dt, p);
       if (!this.frozen)
         for (const a of this.agents) {
+          if (a.lunge) continue;
           if (a.scatterT && a.scatterT > 0) this.flee(a, dt);
           else if (!this.ctl?.act?.(a, dt, p)) this.act(a, dt, p);
         }
@@ -759,7 +819,7 @@ export class PackSim {
       }
       case 'chasing': {
         const tgt = this.lastKnown ?? { x: p.x, z: p.z };
-        const mul = this.ctl?.chaseSpeed?.(a, p) ?? 1;
+        const mul = (this.ctl?.chaseSpeed?.(a, p) ?? 1) * (this.graceT > 0 ? 0.7 : 1);
         if (pik) {
           if (this.followScent(a, p, T.pikeurSpeed.chase * mul, dt)) break;
           if (Math.hypot(tgt.x - a.x, tgt.z - a.z) > 2) this.moveToward(a, tgt.x, tgt.z, T.pikeurSpeed.chase * mul, dt, 3);
@@ -989,6 +1049,142 @@ export class PackSim {
   }
 
   // ---------------------------------------------------------------------------------------------
+  // lunges (the K1 finale's chase and stand): telegraphed, dodgeable; only the last bite catches
+
+  /** Bites that end it (gentle mode forgives more). */
+  get maxBites(): number {
+    return this.opt.maxBites ?? (this.opt.gentle ? 5 : 3);
+  }
+
+  /** A lunge may start: lunges on, none running, the cooldown over, nobody frozen. */
+  canLunge(): boolean {
+    if (!this.opt.lunges || this.frozen || this.lungeCd > 0 || this.caught) return false;
+    for (const a of this.agents) if (a.lunge) return false;
+    return true;
+  }
+
+  /** Seconds between lunges (gentle: more air between them). */
+  lungeGap(): number {
+    return this.opt.gentle ? this.rng.range(8, 11) : this.opt.rauhnacht ? this.rng.range(3.5, 5) : this.rng.range(5, 7.5);
+  }
+
+  /** Hound `a` crouches to spring at the player (the wind-up is the telegraph). */
+  beginLunge(a: Agent, p: PlayerSense): void {
+    const wind = this.opt.gentle ? LUNGE.windGentle : this.opt.rauhnacht ? LUNGE.windRauh : LUNGE.wind;
+    a.lunge = { phase: 'wind', t: 0, wind, dx: 0, dz: 1, missed: false, speed: LUNGE.speed };
+    this.aimLunge(a, a.lunge, p);
+    a.sniffing = false;
+    a.closeSee = 0;
+    this.lungeCd = wind + LUNGE.leap + this.lungeGap();
+    this.lungeStats.started++;
+    const idx = this.agents.indexOf(a);
+    this.pending.push({ type: 'lunge', idx, phase: 'wind' });
+    this.pending.push({ type: 'bay', idx, kind: 'growl' });
+  }
+
+  /** Aim where the player will be when the leap is half way (a straight runner gets bitten). */
+  private aimLunge(a: Agent, L: Lunge, p: PlayerSense): void {
+    const ahead = Math.max(0, L.wind - L.t) + LUNGE.leap * 0.55;
+    const tx = p.x + this.pv.x * ahead;
+    const tz = p.z + this.pv.z * ahead;
+    const d = Math.hypot(tx - a.x, tz - a.z) || 1;
+    L.dx = (tx - a.x) / d;
+    L.dz = (tz - a.z) / d;
+    L.speed = Math.max(8, Math.min(LUNGE.maxSpeed, ((d + 0.6) / LUNGE.leap) * 1.05));
+  }
+
+  private stepLunges(dt: number, p: PlayerSense): void {
+    this.lungeCd = Math.max(0, this.lungeCd - dt);
+    this.graceT = Math.max(0, this.graceT - dt);
+    if (this.frozen) return;
+    for (const a of this.agents) {
+      const L = a.lunge;
+      if (!L) continue;
+      L.t += dt;
+      if (L.phase === 'wind') {
+        // crouched, tracking the player for most of the wind-up, then committed
+        this.halt(a, dt, 12);
+        if (L.t < L.wind * LUNGE.lock) {
+          this.aimLunge(a, L, p);
+          this.face(a, L.dx, L.dz, dt * 2);
+        }
+        if (L.t >= L.wind) {
+          L.phase = 'leap';
+          L.t = 0;
+          a.heading = headingTo(L.dx, L.dz);
+          a.speed = L.speed;
+        }
+        continue;
+      }
+      if (L.phase === 'leap') {
+        const step = L.speed * dt;
+        const nx = a.x + L.dx * step;
+        const nz = a.z + L.dz * step;
+        if (!this.isWater(nx, nz)) {
+          const c = this.world.collide ? this.world.collide(nx, nz, 0.4) : { x: nx, z: nz };
+          const cp = this.clampPos(c.x, c.z);
+          a.dist += Math.hypot(cp.x - a.x, cp.z - a.z);
+          a.x = cp.x;
+          a.z = cp.z;
+          a.y = this.world.heightAt(a.x, a.z);
+        }
+        a.speed = L.speed;
+        const d = Math.hypot(p.x - a.x, p.z - a.z);
+        if (!L.missed && d < LUNGE.hit && !p.flying && Math.abs(p.y - a.y) < 2.5) {
+          if (p.dodging) {
+            L.missed = true;
+            this.lungeStats.dodged++;
+            this.pending.push({ type: 'lunge', idx: this.agents.indexOf(a), phase: 'dodged' });
+          } else {
+            this.bites++;
+            const idx = this.agents.indexOf(a);
+            this.pending.push({ type: 'bite', idx, n: this.bites, max: this.maxBites, dx: L.dx, dz: L.dz });
+            if (this.bites >= this.maxBites) {
+              a.lunge = null;
+              this.setState('chasing', true);
+              this.catchBy(a);
+              return;
+            }
+            // it lets go and falls back (a bite is a warning, not the catch); the pack holds a moment
+            this.graceT = 1.4;
+            a.lunge = null;
+            a.scatterT = 1.3;
+            a.scatterX = p.x;
+            a.scatterZ = p.z;
+            continue;
+          }
+        }
+        if (L.t >= LUNGE.leap) {
+          L.phase = 'recover';
+          L.t = 0;
+        }
+        continue;
+      }
+      // recover: skid, shake off, stand (after a miss the opening is longer)
+      this.halt(a, dt, L.missed ? 9 : 14);
+      if (a.speed > 0.1) {
+        const step = a.speed * dt;
+        const nx = a.x + L.dx * step;
+        const nz = a.z + L.dz * step;
+        if (!this.isWater(nx, nz)) {
+          a.x = nx;
+          a.z = nz;
+          a.y = this.world.heightAt(nx, nz);
+          a.dist += step;
+        }
+      }
+      if (L.t >= (L.missed ? LUNGE.recoverMissed : LUNGE.recover)) a.lunge = null;
+    }
+  }
+
+  /** Visual pose of a lunge: crouch (0..1, the wind-up) and the leap (0..1). */
+  static pounce(a: Agent): { crouch: number; leap: number } {
+    const L = a.lunge;
+    if (!L) return { crouch: 0, leap: 0 };
+    if (L.phase === 'wind') return { crouch: Math.min(1, L.t / (L.wind * 0.5)), leap: 0 };
+    if (L.phase === 'leap') return { crouch: Math.max(0, 1 - L.t / 0.1), leap: Math.min(1, L.t / LUNGE.leap) };
+    return { crouch: 0, leap: 0 };
+  }
 
   /**
    * The Bannlicht flare (combat:bann) scatters the hounds in its cone for `seconds`: they bolt away
@@ -1007,6 +1203,7 @@ export class PackSim {
       if (d > range + 1.2) continue;
       if (d > 1.2 && (dx * fx + dz * fz) / d < cosHalf) continue;
       a.scatterT = seconds;
+      a.lunge = null;
       a.scatterX = x;
       a.scatterZ = z;
       a.closeSee = 0;
@@ -1026,13 +1223,18 @@ export class PackSim {
   }
 
   private checkCaught(dt: number, p: PlayerSense): void {
-    if (this.state !== 'chasing' || this.frozen || p.flying || this.isWater(p.x, p.z) || this.ctl?.mayCatch?.() === false) {
+    if (this.state !== 'chasing' || this.frozen || this.graceT > 0 || p.flying || this.isWater(p.x, p.z) || this.ctl?.mayCatch?.() === false) {
       for (const a of this.agents) a.closeSee = 0;
       return;
     }
     const T = this.tune;
     for (const a of this.agents) {
       if (a.scatterT && a.scatterT > 0) continue;
+      // a lunging hound bites (or misses); it does not also catch
+      if (a.lunge || this.ctl?.catches?.(a) === false) {
+        a.closeSee = 0;
+        continue;
+      }
       const d = Math.hypot(p.x - a.x, p.z - a.z);
       if (Math.abs(p.y - a.y) > 3) continue;
       if (a.kind === 'pikeur') {
@@ -1087,7 +1289,10 @@ export class PackSim {
     this.tune = makeTuning(this.opt);
     if (this.trail) this.endTrail(false);
     this.ctl = makeCtl(this, false);
+    this.bites = 0;
+    this.lungeCd = Math.max(this.lungeCd, 2);
     for (const a of this.agents) {
+      a.lunge = null;
       a.target = null;
       a.path = [];
       a.wait = 0;

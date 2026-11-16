@@ -394,7 +394,9 @@ class GlowPool {
     this.geo.instanceCount = 0;
     this.mesh = new Mesh(this.geo, mat);
     this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 26;
+    // after the fire smoke (fx/fire 40–42) and the room smoke (interiors 4–5): the Glutlinge' cores and
+    // every enemy's eyes read through the smoke (playtest round 2: "Glutlinge vanish in the smoke")
+    this.mesh.renderOrder = 45;
   }
   push(x: number, y: number, z: number, size: number, intensity: number, r: number, g: number, b: number, minPx = 0, aspect = 1): void {
     if (this.n >= this.max || intensity <= 0.003) return;

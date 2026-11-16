@@ -419,7 +419,8 @@ class NpcRuntime {
       }
       // another storey (the Festsaal above the Kabinett) is not "near"
       const dy = Math.abs(p.y - this.figY(f));
-      const d = dy > 2.4 ? Infinity : Math.hypot(p.x - f.p.x, p.z - f.p.z);
+      // `npc.hush` = id: this ghost does not take E (the Festsaal: the handle in Hanne's hand is the choice)
+      const d = dy > 2.4 || ctx.state.state.flags['npc.hush'] === id ? Infinity : Math.hypot(p.x - f.p.x, p.z - f.p.z);
       if (d < bestD) {
         bestD = d;
         best = id;

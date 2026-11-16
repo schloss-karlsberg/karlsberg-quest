@@ -25,6 +25,7 @@ import type { Quality } from '../quality';
 import { buildTerrainCloud, palaceCloudGeometry, palaceSamples } from '../shift/pointcloud';
 import { ruinForCut } from '../shift/timeline';
 import type { FxUI } from '../ui';
+import { EdgeDust } from './dust';
 import { OblivionSim, oblivionRadius } from './sim';
 
 const ASH = new Color('#9c9a94');
@@ -177,6 +178,7 @@ export class OblivionController {
   private caughtCooldown = 0;
   private readonly shells: Mesh[] = [];
   private grains: Points | null = null;
+  private dust: EdgeDust | null = null;
   private relief: Points | null = null;
   private readonly reliefCenter = new Vector3(1e9, 0, 1e9);
   private readonly vignette: Mesh;
@@ -235,6 +237,10 @@ export class OblivionController {
     this.lastProgress = -1;
     this.caughtCooldown = 0;
     this.buildGrains();
+    if (!this.dust) {
+      this.dust = new EdgeDust(this.ctx, this.quality.high);
+      this.ctx.scene.add(this.dust.points);
+    }
     this.ui.setGauge('oblivion', t);
     this.ui.caption('fx.cap.oblivion', 2, 3500);
     this.ctx.audio.onUnlock(() => {
@@ -303,6 +309,8 @@ export class OblivionController {
       (p.material as ShaderMaterial).dispose();
     }
     this.grains = this.relief = null;
+    this.dust?.dispose();
+    this.dust = null;
     this.reliefCenter.set(1e9, 0, 1e9);
     this.loop?.stop(2);
     this.loop = null;
@@ -399,6 +407,8 @@ export class OblivionController {
       u.uScale!.value = scale;
       this.grains.visible = ctx.era.info.palace !== 'hidden';
     }
+    // the ground comes apart at the rim of the grey (it moves in with the meter)
+    this.dust?.frame(dt, t, R, cam.x, cam.z, scale, ctx.settings.state.reducedMotion);
     // the 2025 relief shows through inside the grey zone
     if (Math.hypot(cam.x - this.reliefCenter.x, cam.z - this.reliefCenter.z) > 140) this.buildRelief(cam.x, cam.z);
     if (this.relief) {

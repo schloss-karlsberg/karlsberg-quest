@@ -253,6 +253,8 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   expect(await page.evaluate(() => window.kq!.ctx.save.has('ending'))).toBe(true);
   await page.getByTestId('ending-keep').click();
   await page.getByRole('button', { name: 'Ja', exact: true }).click();
+  // the ending is staged in the engine first (endings/stage.ts): skip it
+  await page.getByTestId('ending-stage-skip').click();
   await expect(page.getByTestId('ending-next')).toBeVisible();
   await page.getByTestId('ending-next').click();
   await expect(page.getByTestId('epilogue')).toBeVisible();

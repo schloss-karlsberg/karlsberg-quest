@@ -140,6 +140,8 @@ addStrings('de', {
   'story.end.confirm': 'Bist du sicher? Das lässt sich nicht ändern.',
   'story.end.next': 'Weiter',
   'story.end.credits': 'Abspann',
+  'story.end.skip': 'Überspringen',
+  'story.end.today': 'heute',
   'story.end.back': 'Zur Feldstation',
   'story.end.epilogue': 'Epilog',
 

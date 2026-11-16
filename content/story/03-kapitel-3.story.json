@@ -8,11 +8,7 @@
   "next": "k4",
   "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
   "on": [
-    {
-      "id": "teil-b",
-      "when": { "have": { "clue": "clue.k3.chronik" } },
-      "do": [{ "do": "flag", "set": { "flag.k3_teil_b": true } }]
-    },
+    { "id": "teil-b", "when": { "have": { "clue": "clue.k3.chronik" } }, "do": [{ "do": "flag", "set": { "flag.k3_teil_b": true } }] },
     {
       "id": "horstmann",
       "when": { "all": [{ "have": { "clue": "clue.k3.stroh" } }, { "not": { "have": { "clue": "clue.k3.horstmann" } } }, { "era": "1793-07" }] },
@@ -23,11 +19,7 @@
       "when": { "all": [{ "have": { "clue": "clue.k3.fackel" } }, { "room": "KB-B01" }, { "era": "1793-07" }] },
       "do": [{ "do": "grant", "clue": "clue.k3.feuer" }]
     },
-    {
-      "id": "jaguar-gesehen",
-      "when": { "event": "menagerie:seen", "match": { "animal": "jaguar" } },
-      "do": [{ "do": "say", "line": "laub.k3.jaguar" }]
-    },
+    { "id": "jaguar-gesehen", "when": { "event": "menagerie:seen", "match": { "animal": "jaguar" } }, "do": [{ "do": "say", "line": "laub.k3.jaguar" }] },
     {
       "id": "jaguar-stoss",
       "when": { "event": "menagerie:knockdown", "match": { "animal": "jaguar" } },
@@ -272,9 +264,7 @@
       "on": [
         {
           "id": "am-anker",
-          "when": {
-            "enter": { "x": 1210, "z": -1114, "r": 35, "era": "today" }
-          },
+          "when": { "enter": { "x": 1210, "z": -1114, "r": 35, "era": "today" } },
           "repeat": true,
           "do": [{ "do": "prompt", "key": "Q", "text": "Zeitwechsel: 28. Juli 1793" }]
         },
@@ -314,11 +304,7 @@
             }
           ]
         },
-        {
-          "id": "galerie",
-          "when": { "room": "B06.1.bildergalerie" },
-          "do": [{ "do": "say", "line": "laub.k3.galerie_leer", "delay": 1 }]
-        }
+        { "id": "galerie", "when": { "room": "B06.1.bildergalerie" }, "do": [{ "do": "say", "line": "laub.k3.galerie_leer", "delay": 1 }] }
       ],
       "complete": { "all": [{ "quest": { "id": "q.k3.nachmittag", "state": "done" } }, { "quest": { "id": "q.k3.buch", "state": "done" } }] },
       "exit": [
@@ -354,9 +340,7 @@
           "when": {
             "all": [
               { "quest": { "id": "q.k3.strohmann", "objective": "strohmann", "gte": 1 } },
-              {
-                "enter": { "x": 1220, "z": -1120, "r": 24, "era": "1793-07" }
-              }
+              { "enter": { "x": 1220, "z": -1120, "r": 24, "era": "1793-07" } }
             ]
           },
           "do": [{ "do": "say", "line": "laub.k3.kommissaer", "delay": 2.5 }]
@@ -399,64 +383,71 @@
         { "do": "memorial", "id": "k3.festsaal", "room": "B01.2.og-festsaal" },
         { "do": "npc", "op": "spawn", "npc": "hanne", "room": "B01.2.og-festsaal", "era": "1793-07", "chapter": "k3h", "yaw": 250, "mood": "warm" },
         { "do": "grant", "clue": "clue.k3.festsaal", "delay": 0.5 },
-        { "do": "objective", "id": "k3.wahl", "text": "Der Festsaal. Hanne steht in der Mitte" }
+        { "do": "objective", "id": "k3.wahl", "text": "Der Festsaal. Hanne steht in der Mitte" },
+        { "do": "flag", "set": { "festsaal.took": null, "npc.hush": "hanne" } },
+        { "do": "cue", "id": "festsaal:objects", "data": { "room": "B01.2.og-festsaal" } }
       ],
       "on": [
         {
           "id": "wahl",
-          "when": { "all": [{ "not": { "chosen": "k3.objekt" } }, { "timer": 1 }] },
+          "when": { "all": [{ "not": { "flag": "festsaal.took" } }, { "timer": 1 }] },
           "do": [
             { "do": "say", "line": "hanne.k3.05", "delay": 7 },
             { "do": "say", "line": "laub.k3.festsaal_wahl", "delay": 0.8 },
             {
-              "do": "choice",
-              "id": "k3.objekt",
-              "prompt": "Drei Dinge sind zu retten. Tragen kannst du eines.",
-              "note": "Hanne: „Nimm, was du willst. Irgendwas soll übrig bleiben.“ Was du nimmst, trägst du als Talisman. Nach 40 Sekunden nimmt sie dich am Arm.",
-              "seconds": 40,
-              "fallback": 3,
-              "delay": 2,
-              "options": [
-                {
-                  "label": "Den Türgriff aus Hannes Hand",
-                  "key": "tuergriff",
-                  "set": { "flag.k3_objekt": "tuergriff" },
-                  "then": [
-                    { "do": "toast", "text": "Du nimmst ihr den Türgriff ab. Messing, noch warm von ihrer Hand.", "ms": 4200 },
-                    { "do": "item", "item": "item.charm.tuergriff" }
-                  ]
-                },
-                {
-                  "label": "Den Dukaten im Fensterbrett, mit dem Schloss darauf",
-                  "key": "dukat",
-                  "set": { "flag.k3_objekt": "dukat" },
-                  "then": [
-                    { "do": "toast", "text": "Der Dukat. Auf einer Seite das Schloss, das gerade brennt.", "ms": 4200 },
-                    { "do": "item", "item": "item.charm.dukat" }
-                  ]
-                },
-                {
-                  "label": "Die vergoldete Uhr mit Alabaster, die noch tickt",
-                  "key": "uhr",
-                  "set": { "flag.k3_objekt": "uhr" },
-                  "then": [
-                    { "do": "toast", "text": "Die Uhr ist schwerer, als sie aussieht. Sie tickt weiter.", "ms": 4200 },
-                    { "do": "item", "item": "item.charm.uhr" }
-                  ]
-                },
-                {
-                  "label": "Nichts. Hinaus.",
-                  "key": "nichts",
-                  "set": { "flag.k3_objekt": "nichts" },
-                  "then": [{ "do": "toast", "text": "Du nimmst nichts. Hanne nimmt dich am Arm.", "ms": 4200 }]
-                }
-              ]
-            }
+              "do": "toast",
+              "text": "Drei Dinge sind zu retten. Tragen kannst du eines. Hingehen, ansehen, [E]. Oder nichts nehmen: zur Tür.",
+              "ms": 7000,
+              "delay": 2
+            },
+            { "do": "objective", "id": "k3.wahl", "text": "Nimm eines mit [E]: Türgriff, Dukat, Uhr. Oder nichts: zur Tür", "delay": 2 }
+          ]
+        },
+        {
+          "id": "arm",
+          "when": { "all": [{ "not": { "flag": "festsaal.took" } }, { "timer": 50 }] },
+          "do": [{ "do": "flag", "set": { "festsaal.took": "nichts" } }]
+        },
+        {
+          "id": "took_tuergriff",
+          "when": { "flag": "festsaal.took", "eq": "tuergriff" },
+          "do": [
+            { "do": "flag", "set": { "flag.k3_objekt": "tuergriff", "choice.k3.objekt": "tuergriff" } },
+            { "do": "toast", "text": "Du nimmst ihr den Türgriff ab. Messing, noch warm von ihrer Hand.", "ms": 4200 },
+            { "do": "item", "item": "item.charm.tuergriff" }
+          ]
+        },
+        {
+          "id": "took_dukat",
+          "when": { "flag": "festsaal.took", "eq": "dukat" },
+          "do": [
+            { "do": "flag", "set": { "flag.k3_objekt": "dukat", "choice.k3.objekt": "dukat" } },
+            { "do": "toast", "text": "Der Dukat. Auf einer Seite das Schloss, das gerade brennt.", "ms": 4200 },
+            { "do": "item", "item": "item.charm.dukat" }
+          ]
+        },
+        {
+          "id": "took_uhr",
+          "when": { "flag": "festsaal.took", "eq": "uhr" },
+          "do": [
+            { "do": "flag", "set": { "flag.k3_objekt": "uhr", "choice.k3.objekt": "uhr" } },
+            { "do": "toast", "text": "Die Uhr ist schwerer, als sie aussieht. Sie tickt weiter.", "ms": 4200 },
+            { "do": "item", "item": "item.charm.uhr" }
+          ]
+        },
+        {
+          "id": "took_nichts",
+          "when": { "flag": "festsaal.took", "eq": "nichts" },
+          "do": [
+            { "do": "flag", "set": { "flag.k3_objekt": "nichts", "choice.k3.objekt": "nichts" } },
+            { "do": "toast", "text": "Du nimmst nichts. Hanne nimmt dich am Arm.", "ms": 4200 }
           ]
         }
       ],
-      "complete": { "chosen": "k3.objekt" },
+      "complete": { "flag": "festsaal.took" },
       "exit": [
+        { "do": "cue", "id": "festsaal:clear" },
+        { "do": "flag", "set": { "npc.hush": null } },
         { "do": "grant", "clue": "clue.k3.retten" },
         { "do": "memorial", "id": "k3.festsaal", "active": false },
         { "do": "flag", "set": { "fire.hold": false } },
@@ -501,18 +492,10 @@
           { "not": { "flag": "interior.building" } },
           {
             "any": [
-              {
-                "enter": { "x": 1284, "z": -1229, "r": 5 }
-              },
-              {
-                "enter": { "x": 1300, "z": -1170, "r": 58 }
-              },
-              {
-                "enter": { "x": 1215, "z": -1120, "r": 22 }
-              },
-              {
-                "enter": { "x": 1215, "z": -1187, "r": 16 }
-              },
+              { "enter": { "x": 1284, "z": -1229, "r": 5 } },
+              { "enter": { "x": 1300, "z": -1170, "r": 58 } },
+              { "enter": { "x": 1215, "z": -1120, "r": 22 } },
+              { "enter": { "x": 1215, "z": -1187, "r": 16 } },
               { "leave": { "x": 1232, "z": -1165, "r": 75 } }
             ]
           }
@@ -561,9 +544,7 @@
         {
           "id": "an-der-pforte",
           "repeat": true,
-          "when": {
-            "enter": { "x": 1270, "z": -1293, "r": 7, "era": "1793-07" }
-          },
+          "when": { "enter": { "x": 1270, "z": -1293, "r": 7, "era": "1793-07" } },
           "do": [{ "do": "threat", "kind": "pack", "active": false }]
         },
         {
@@ -619,9 +600,7 @@
           "do": [{ "do": "objective", "id": "k3.pforte-anker", "text": "Zur Gärtnerei. Q – zurück in den Juli 1793", "x": 1272, "z": -1300 }]
         }
       ],
-      "complete": {
-        "enter": { "x": 1258, "z": -1566, "r": 14, "era": "1793-07" }
-      },
+      "complete": { "enter": { "x": 1258, "z": -1566, "r": 14, "era": "1793-07" } },
       "exit": [{ "do": "threat", "kind": "pack", "active": false }, { "do": "npc", "op": "despawn", "npc": "hanne" }]
     },
     {
@@ -630,12 +609,30 @@
       "checkpoint": "k3_7",
       "enter": [
         { "do": "npc", "op": "spawn", "npc": "jost", "x": 1250, "z": -1568, "era": "1793-07", "chapter": "k3z", "yaw": 90, "mood": "warm" },
-        { "do": "sound", "sound": "howl", "x": 1232, "z": -1572, "caption": "[Im Zwinger bellen Hunde. Gittertüren schlagen auf.]" },
+        {
+          "do": "threat",
+          "kind": "pack",
+          "active": true,
+          "mode": "kennel",
+          "hounds": 7,
+          "pikeur": false,
+          "intensity": 0.4,
+          "sight": 14,
+          "center": { "x": 1222, "z": -1572 },
+          "radius": 12,
+          "target": { "x": 1220, "z": -1572 },
+          "via": [{ "x": 1252, "z": -1579 }, { "x": 1272, "z": -1604 }, { "x": 1300, "z": -1650 }],
+          "seed": 53
+        },
+        { "do": "sound", "sound": "howl", "x": 1232, "z": -1572, "caption": "[Im Zwinger bellen Hunde. Pfoten an den Gittern.]" },
         { "do": "grant", "clue": "clue.k3.jost", "delay": 1 },
         { "do": "say", "line": "beat.k3.hunde", "delay": 10 }
       ],
       "complete": { "quest": { "id": "q.k3.hunde", "state": "done" } },
-      "exit": [],
+      "exit": [
+        { "do": "cue", "id": "hunt:release" },
+        { "do": "toast", "text": "Jost zieht die Riegel. Die Meute bricht aus dem Zwinger, an dir vorbei, in die Nacht.", "ms": 5200 }
+      ],
       "on": [
         {
           "id": "jost-wartet",

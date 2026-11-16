@@ -27,6 +27,8 @@ import { defineSystem } from '../../core/systems';
 import { atmosphere } from '../../world/atmosphere';
 import { type Built, buildDebris, buildInterior, lookOf } from './builder';
 import { PlanQuery } from './collide';
+import { FallingBeams } from './beams';
+import { FestsaalObjects, type FestsaalKey, festsaalSpots } from './festsaal';
 import { FlameLayer } from './flames';
 import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
@@ -54,6 +56,10 @@ export interface InteriorHooks {
   state(): { mode: InteriorMode; ready: boolean; built: string[]; rooms: number; doors: number; windows: number; lights: number; openings: number; shellCut: boolean };
   /** Floor height the interiors report at x/z for a body at height y. */
   floorAt(x: number, z: number, y?: number): number | null;
+  /** The Festsaal choice objects (K3): where they are and what was taken. */
+  festsaal(): { active: boolean; taken: string | null; spots: { key: string; x: number; y: number; z: number }[] };
+  /** Take one (as if E was pressed in front of it). */
+  festsaalTake(key: string): boolean;
 }
 
 declare module '../../debug/hooks' {
@@ -105,6 +111,19 @@ interface Runtime {
 }
 
 let rt: Runtime | null = null;
+let festsaal: FestsaalObjects | null = null;
+let beams: FallingBeams | null = null;
+/** A `festsaal:objects` cue that came before the plans were ready. */
+let festsaalPending: string | null = null;
+
+function placeFestsaal(ctx: GameContext, roomId: string): boolean {
+  const cur = current();
+  const ri = findRoom(roomId);
+  if (!cur || ri < 0) return false;
+  festsaal ??= new FestsaalObjects(ctx);
+  festsaal.show(festsaalSpots(cur.plan.rooms[ri]!, cur.plan.doors, cur.plan.windows));
+  return true;
+}
 
 function modeOf(era: Era): InteriorMode {
   const p = ERA_INFO[era].palace;
@@ -300,6 +319,11 @@ function setFire(ctx: GameContext, id: string, state: FireState | 'none'): void 
     else if (prev === 'collapsed' && state !== 'collapsed') continue;
     else rt.fires.set(r.id, state);
     const b = rt.brt.get(r.building);
+    // charred joists come down where the fire takes hold (near the player, built rooms only)
+    if (b?.built && ((state === 'burning' && prev !== 'burning') || (state === 'collapsed' && prev !== 'collapsed'))) {
+      beams ??= new FallingBeams(ctx);
+      beams.drop(r, state === 'collapsed');
+    }
     if (state === 'collapsed' && prev !== 'collapsed') {
       if (rt.room === ri) rt.pendingBlock.add(ri);
       else cur.query.setRoomBlocked(ri, true);
@@ -325,6 +349,7 @@ function clearFires(ctx: GameContext): void {
   if (!rt) return;
   for (const id of [...rt.fires.keys()]) setFire(ctx, id, 'none');
   rt.fires.clear();
+  beams?.clear();
   rt.pendingBlock.clear();
   for (const b of rt.brt.values()) {
     b.fire.fill(0);
@@ -758,6 +783,12 @@ function installHooks(ctx: GameContext): void {
       if (!cur) return null;
       return cur.query.floorAt(x, z, y ?? ctx.player.position.y, ctx.world.heightfield.heightAt(x, z));
     },
+    festsaal() {
+      return { active: !!festsaal?.active, taken: festsaal?.taken ?? null, spots: festsaal?.spots().map(({ key, x, y, z }) => ({ key, x, y, z })) ?? [] };
+    },
+    festsaalTake(key) {
+      return !!festsaal?.take(key as FestsaalKey);
+    },
   };
   kq.interiors = hooks;
 }
@@ -786,6 +817,15 @@ export default defineSystem({
       if (rt?.ready) switchMode(ctx);
     });
     ctx.events.on('fire:room', ({ roomId, state }) => setFire(ctx, roomId, state));
+    ctx.events.on('story:cue', ({ id, data }) => {
+      if (id === 'festsaal:objects') {
+        const room = typeof data?.room === 'string' ? data.room : 'B01.2.og-festsaal';
+        festsaalPending = placeFestsaal(ctx, room) ? null : room;
+      } else if (id === 'festsaal:clear') {
+        festsaalPending = null;
+        festsaal?.clear();
+      }
+    });
     ctx.events.on('threat:configure', (c) => {
       if (c.kind === 'fire' && !c.active) clearFires(ctx);
     });
@@ -794,9 +834,13 @@ export default defineSystem({
   update(_dt, ctx) {
     if (!rt?.ready) return;
     updateRoom(ctx);
+    if (festsaalPending && placeFestsaal(ctx, festsaalPending)) festsaalPending = null;
+    festsaal?.update();
   },
   frame(dt, ctx) {
     frame(ctx, dt);
+    festsaal?.frame(dt);
+    beams?.frame(dt, rt?.time ?? 0);
     if (rt?.ready && !window.kq?.interiors) installHooks(ctx);
   },
   dispose() {
@@ -808,6 +852,11 @@ export default defineSystem({
     ctx.world.groundOverride = null;
     ctx.world.surfaceOverride = null;
     ctx.world.roomAnchor = null;
+    festsaal?.dispose();
+    festsaal = null;
+    beams?.dispose();
+    beams = null;
+    festsaalPending = null;
     rt = null;
   },
 });

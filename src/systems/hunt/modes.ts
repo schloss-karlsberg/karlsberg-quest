@@ -403,10 +403,23 @@ export class ParforceMode implements ModeController {
   private scentT = 0;
   readonly stats: ParforceStats = { rests: 0, rideIns: 0, minPikeur: Infinity, escapedAt: -1, releasedAt: -1 };
 
-  constructor(private readonly sim: PackSim) {
+  constructor(
+    private readonly sim: PackSim,
+    fresh = true,
+  ) {
     const o = sim.opt;
     // gentle mode: three seconds more than the story asks for (bible: 6 s, gentle 9 s)
     this.releaseLeft = (o.headStart ?? 6) + (o.gentle ? 3 : 0);
+    if (!fresh && o.target) {
+      // the stand breaks (K1 finale): the hounds between you and the water break aside
+      const p = sim.lastKnown ?? sim.origin;
+      const toT = dist(p, o.target);
+      for (const h of sim.hounds) if (dist(h, o.target) < toT + 2) {
+        h.scatterT = 2.4;
+        h.scatterX = p.x;
+        h.scatterZ = p.z;
+      }
+    }
     this.nextRest = this.restGap();
     this.pikT = sim.rng.range(0, 6);
     this.pikSide = sim.rng.next() < 0.5 ? -1 : 1;
@@ -600,14 +613,63 @@ export class ParforceMode implements ModeController {
       // at the heel: a runner who keeps going (≥ 4 m/s) is not run down — they hold the gap; one
       // who stops to look back sees them falter and bay before they close (a long stop still ends it)
       if (p.speed >= 4) return Math.min(0.9, (p.speed * 0.97) / this.sim.tune.speed.chase);
-      if (p.speed < 1) return 0.55;
+      if (p.speed < 1) return this.sim.opt.gentle ? 0.35 : 0.55;
     }
     return 0.9;
   }
 
   /** The Pikeur rides on a flank, parallel; every cycle he rides in (horn first) and sheers off. */
+  /** Flankers are the last `flankers` hounds of the pack (−1: runs at the heel). */
+  private flankRank(a: Agent): number {
+    const n = Math.max(0, Math.round(this.sim.opt.flankers ?? 0));
+    if (!n) return -1;
+    const hs = this.sim.hounds;
+    const i = hs.indexOf(a);
+    return i >= hs.length - n ? hs.length - 1 - i : -1;
+  }
+
+  /**
+   * K1 finale: flankers run ahead on both sides and close the way (a turn towards them runs you
+   * into their teeth); one at a time a hound crouches and lunges (the wind-up is the telegraph:
+   * growl, crouch, eyes flare). A dodge roll beats it; a bite costs ground, the last one ends it.
+   */
+  private actHound(a: Agent, dt: number, p: PlayerSense): boolean {
+    const sim = this.sim;
+    if (this.phase !== 'hunt' || sim.state !== 'chasing' || this.resting) return false;
+    const since = sim.time - this.stats.releasedAt;
+    const d = dist(a, p);
+    const rank = this.flankRank(a);
+    if (sim.canLunge() && since > 3 && !p.flying && !sim.isWater(p.x, p.z) && (a.scatterT ?? 0) <= 0) {
+      if (rank >= 0 && d < 6.8 && d > 2.2) {
+        sim.beginLunge(a, p);
+        return true;
+      }
+    }
+    if (rank < 0) return false;
+    const dir = this.dir(p);
+    const rx = -dir.z;
+    const rz = dir.x;
+    const side = rank % 2 === 0 ? -1 : 1;
+    const lead = 3.5 + 3 * Math.sin(sim.time * 0.5 + rank * 2.1);
+    const lat = (sim.opt.gentle ? 9 : 7) + 2 * Math.sin(sim.time * 0.37 + rank);
+    const tx = p.x + dir.x * lead + rx * side * lat;
+    const tz = p.z + dir.z * lead + rz * side * lat;
+    const dd = Math.hypot(tx - a.x, tz - a.z);
+    const chase = sim.tune.speed.chase;
+    // spectral legs: far from their place they race to it (that is how they get ahead of you)
+    const sp = dd > 10 ? chase * 1.45 : dd > 5 ? chase * 1.2 : Math.max(chase * 0.55, Math.min(chase * 1.05, p.speed + dd * 0.6));
+    sim.moveToward(a, tx, tz, sp, dt, 7, 0.8);
+    return true;
+  }
+
+  /** Flankers cut you off and lunge; they never catch by running into you. */
+  catches(a: Agent): boolean {
+    return this.flankRank(a) < 0;
+  }
+
   act(a: Agent, dt: number, p: PlayerSense): boolean {
     const sim = this.sim;
+    if (a.kind === 'hound') return this.actHound(a, dt, p);
     if (a.kind !== 'pikeur' || this.phase !== 'hunt' || sim.state !== 'chasing') return false;
     const CYCLE = 24;
     const c = this.pikT % CYCLE;
@@ -621,11 +683,12 @@ export class ParforceMode implements ModeController {
     const d = this.dir(p);
     const rx = -d.z;
     const rz = d.x;
-    const latEnd = sim.opt.gentle ? 9 : sim.opt.rauhnacht ? 4.5 : 6.5;
+    const far = sim.opt.pikeurFar ?? 0;
+    const latEnd = Math.max(far, sim.opt.gentle ? 9 : sim.opt.rauhnacht ? 4.5 : 6.5);
     let lat: number;
     let lead: number;
     if (c < 13) {
-      lat = 30;
+      lat = Math.max(30, far);
       lead = 12;
     } else if (c < 20) {
       if (!this.rideAnnounced) {
@@ -634,11 +697,11 @@ export class ParforceMode implements ModeController {
         sim.horn('search'); // he rides in: the horn comes first, from the flank
       }
       const k = (c - 13) / 7;
-      lat = 30 + (latEnd - 30) * Math.min(1, k * 1.4);
-      lead = 4;
+      lat = Math.max(30, far) + (latEnd - Math.max(30, far)) * Math.min(1, k * 1.4);
+      lead = far ? 10 : 4;
     } else {
-      lat = latEnd + (30 - latEnd) * ((c - 20) / 4);
-      lead = -6;
+      lat = latEnd + (Math.max(30, far) - latEnd) * ((c - 20) / 4);
+      lead = far ? 8 : -6;
     }
     const tx = p.x + d.x * lead + rx * this.pikSide * lat;
     const tz = p.z + d.z * lead + rz * this.pikSide * lat;
@@ -753,6 +816,302 @@ export class FollowMode implements ModeController {
   }
 }
 
+// =============================================================================================
+// stand
+// =============================================================================================
+
+/** Stand geometry (m): the arc behind, the blockers ahead, where breaking out begins. */
+export const STAND = { arc: 15, arcSpread: 2.4, block: 12, blockLat: 4.5, engage: 14, leash: 22, ahead: 7, behind: 8, side: 11 };
+
+/**
+ * K1 finale "Die Enge": the pack has run you into a narrow place (`target`) and holds you there.
+ * The hounds stand in an arc on the side they came from (`from`), two of them lie in wait across
+ * the way out, the Pikeur sits his horse far up the slope. The fight is with the strays they send
+ * (story `enemy` waves); the pack itself only holds the ring: try to slip out ahead, back or to
+ * the side and the nearest hound lunges; run off for good and they have you. Until you are close
+ * they only wait (a return after being caught walks in safely). The story re-configures the same
+ * area with `parforce` when the wave is beaten: the blockers break aside.
+ */
+export class StandMode implements ModeController {
+  readonly mode: PackMode = 'stand';
+  engaged = false;
+  t = 0;
+  readonly center: XZ;
+  /** Unit vector from the pack's side towards the way out. */
+  readonly out: XZ;
+  private hornT = 4;
+  private barkT = 1;
+
+  constructor(
+    private readonly sim: PackSim,
+    fresh = true,
+  ) {
+    const c = sim.opt.target ?? sim.origin;
+    this.center = { x: c.x, z: c.z };
+    const f = sim.opt.from ?? { x: c.x, z: c.z + 20 };
+    const d = dist(c, f) || 1;
+    this.out = { x: (c.x - f.x) / d, z: (c.z - f.z) / d };
+    for (const h of sim.hounds) h.awareness = 0.9;
+    if (!fresh) return;
+    const hs = sim.hounds;
+    const nb = this.blockerCount();
+    hs.forEach((a, i) => {
+      const s = i >= hs.length - nb ? this.blockSlot(hs.length - 1 - i) : this.arcSlot(i, hs.length - nb, 6);
+      sim.place(sim.agents.indexOf(a), s.x, s.z, headingTo(c.x - s.x, c.z - s.z));
+    });
+    const pk = sim.pikeur;
+    if (pk) {
+      const s = this.pikeurSpot();
+      sim.place(0, s.x, s.z, headingTo(c.x - s.x, c.z - s.z));
+    }
+  }
+
+  private blockerCount(): number {
+    const n = this.sim.hounds.length;
+    return n >= 5 ? 2 : n >= 3 ? 1 : 0;
+  }
+
+  private get right(): XZ {
+    return { x: -this.out.z, z: this.out.x };
+  }
+
+  arcSlot(i: number, n: number, extra = 0): XZ {
+    const back = Math.atan2(-this.out.z, -this.out.x);
+    const th = back + (n <= 1 ? 0 : i / (n - 1) - 0.5) * STAND.arcSpread;
+    const r = STAND.arc + extra + 1.8 * Math.sin(this.sim.time * 0.4 + i * 1.7);
+    return { x: this.center.x + Math.cos(th) * r, z: this.center.z + Math.sin(th) * r };
+  }
+
+  blockSlot(j: number): XZ {
+    const r = this.right;
+    const s = j % 2 === 0 ? -1 : 1;
+    return { x: this.center.x + this.out.x * STAND.block + r.x * s * STAND.blockLat, z: this.center.z + this.out.z * STAND.block + r.z * s * STAND.blockLat };
+  }
+
+  pikeurSpot(): XZ {
+    const r = this.right;
+    return { x: this.center.x - this.out.x * 40 + r.x * 14, z: this.center.z - this.out.z * 40 + r.z * 14 };
+  }
+
+  step(dt: number, p: PlayerSense): boolean {
+    const sim = this.sim;
+    const T = sim.tune;
+    this.t += dt;
+    const c = this.center;
+    const pd = dist(p, c);
+    if (!this.engaged && pd < STAND.engage && !p.flying) {
+      this.engaged = true;
+      this.t = 0;
+      sim.horn('found');
+      sim.setState('chasing', true);
+    }
+    const hs = sim.hounds;
+    const nb = this.blockerCount();
+    const na = hs.length - nb;
+    let nearest: Agent | null = null;
+    let nd = Infinity;
+    hs.forEach((a, i) => {
+      const dp = Math.hypot(p.x - a.x, p.z - a.z);
+      if (dp < nd && !a.lunge && !(a.scatterT && a.scatterT > 0)) {
+        nd = dp;
+        nearest = a;
+      }
+      if (a.lunge) return;
+      if (a.scatterT && a.scatterT > 0) {
+        sim.moveToward(a, a.x + (a.x - (a.scatterX ?? a.x)), a.z + (a.z - (a.scatterZ ?? a.z)), T.speed.chase, dt, 3, 0);
+        a.scatterT = Math.max(0, a.scatterT - dt);
+        return;
+      }
+      const blocker = i >= na;
+      const s = blocker ? this.blockSlot(hs.length - 1 - i) : this.arcSlot(i, na);
+      const d = Math.hypot(s.x - a.x, s.z - a.z);
+      if (d > 0.7) sim.moveToward(a, s.x, s.z, d > 6 ? T.speed.chase : T.speed.trot, dt, 6, 0.5);
+      else {
+        sim.halt(a, dt);
+        sim.face(a, p.x - a.x, p.z - a.z, dt);
+      }
+      // the ones across the way out lie low and wait; the arc paces and snaps
+      a.sniffing = blocker && d < 1;
+      a.awareness = this.engaged ? 1 : 0.8;
+    });
+    const pk = sim.pikeur;
+    if (pk) {
+      const s = this.pikeurSpot();
+      if (dist(pk, s) > 1.5) sim.moveToward(pk, s.x, s.z, T.pikeurSpeed.search, dt, 2, 1);
+      else {
+        sim.halt(pk, dt, 2);
+        sim.face(pk, p.x - pk.x, p.z - pk.z, dt);
+      }
+    }
+    if (this.engaged) {
+      const r = this.right;
+      const along = (p.x - c.x) * this.out.x + (p.z - c.z) * this.out.z;
+      const lat = Math.abs((p.x - c.x) * r.x + (p.z - c.z) * r.z);
+      const breaking = along > STAND.ahead || along < -STAND.behind || lat > STAND.side;
+      if (breaking && sim.canLunge() && !p.flying) {
+        // the nearest hound on that side springs
+        let best: Agent | null = null;
+        let bd = Infinity;
+        for (const h of hs) {
+          if (h.lunge || (h.scatterT ?? 0) > 0) continue;
+          const dd = Math.hypot(p.x - h.x, p.z - h.z);
+          if (dd < bd) {
+            bd = dd;
+            best = h;
+          }
+        }
+        if (best && bd < 9) sim.beginLunge(best, p);
+      }
+      if (pd > STAND.leash && nearest && !p.flying) sim.catchBy(nearest);
+      this.hornT -= dt;
+      if (this.hornT <= 0) {
+        this.hornT = sim.rng.range(13, 18);
+        sim.horn('search');
+      }
+      this.barkT -= dt;
+      if (this.barkT <= 0 && hs.length) {
+        this.barkT = sim.rng.range(1.2, 3);
+        const a = sim.rng.pick(hs);
+        sim.emit({ type: 'bay', idx: sim.agents.indexOf(a), kind: sim.rng.next() < 0.2 ? 'howl' : 'bark' });
+      }
+      sim.setState('chasing', true);
+      sim.alert = 0.78;
+    } else {
+      sim.setState('searching', true);
+      sim.searchLeft = T.search;
+      sim.alert = 0.45;
+    }
+    return true;
+  }
+
+  mayCatch(): boolean {
+    return false;
+  }
+}
+
+// =============================================================================================
+// kennel
+// =============================================================================================
+
+/**
+ * K3 "Der Zwinger" (28 July 1793, the night of the fire): the pack paces the walled kennel yard
+ * (`target`, `radius` m), restless, baying at the smoke; nothing catches. Story cue
+ * `hunt:release` opens the gates: one after another they burst out along `via` (the gate, then
+ * the dark) past the player and are gone into the night (`release` events, then 'released').
+ */
+export class KennelMode implements ModeController {
+  readonly mode: PackMode = 'kennel';
+  phase: 'pen' | 'out' | 'gone' = 'pen';
+  t = 0;
+  private barkT = 0.5;
+  private readonly route: XZ[];
+  private readonly wp = new Map<Agent, number>();
+
+  constructor(
+    private readonly sim: PackSim,
+    fresh = true,
+  ) {
+    const c = sim.opt.target ?? { x: sim.opt.x, z: sim.opt.z };
+    this.route = [...(sim.opt.via ?? [])];
+    if (!this.route.length) this.route.push({ x: c.x + 40, z: c.z });
+    for (const a of sim.agents) a.awareness = 0.7;
+    if (!fresh) return;
+    sim.hounds.forEach((a, i) => {
+      const s = this.penSpot(i);
+      sim.place(sim.agents.indexOf(a), s.x, s.z, sim.rng.range(-Math.PI, Math.PI));
+    });
+  }
+
+  private get pen(): { c: XZ; r: number } {
+    const c = this.sim.opt.target ?? { x: this.sim.opt.x, z: this.sim.opt.z };
+    return { c, r: Math.min(14, Math.max(4, this.sim.opt.radius)) };
+  }
+
+  private penSpot(i: number): XZ {
+    const { c, r } = this.pen;
+    const a = i * 2.39996 + this.sim.time * 0.05;
+    const rr = r * (0.35 + 0.6 * ((i * 0.618) % 1));
+    return { x: c.x + Math.cos(a) * rr, z: c.z + Math.sin(a) * rr };
+  }
+
+  /** Open the gates. */
+  release(): void {
+    if (this.phase !== 'pen') return;
+    this.phase = 'out';
+    this.t = 0;
+    this.sim.horn('found');
+    for (const a of this.sim.hounds) this.wp.set(a, 0);
+  }
+
+  step(dt: number, p: PlayerSense): boolean {
+    const sim = this.sim;
+    const T = sim.tune;
+    this.t += dt;
+    const hs = sim.hounds;
+    if (this.phase === 'pen') {
+      hs.forEach((a, i) => {
+        if (!a.target || Math.hypot(a.target.x - a.x, a.target.z - a.z) < 0.8 || a.wait <= -6) {
+          const { c, r } = this.pen;
+          a.target = sim.randomPoint(c.x, c.z, r);
+          a.wait = 0;
+        }
+        a.wait -= dt;
+        // restless: trot to a corner, stop, look at the smoke / the stranger at the gate, trot on
+        if (Math.sin(sim.time * 0.7 + i * 1.3) > 0.55) {
+          sim.halt(a, dt);
+          sim.face(a, p.x - a.x, p.z - a.z, dt);
+          a.sniffing = Math.sin(sim.time * 1.9 + i) > 0.6;
+        } else {
+          a.sniffing = false;
+          sim.moveToward(a, a.target.x, a.target.z, T.speed.trot * (1 + 0.15 * (i % 3)), dt, 5, 0.6);
+        }
+        a.awareness = 0.75;
+      });
+      this.barkT -= dt;
+      if (this.barkT <= 0 && hs.length) {
+        this.barkT = sim.rng.range(0.8, 2.2);
+        sim.emit({ type: 'bay', idx: sim.agents.indexOf(sim.rng.pick(hs)), kind: sim.rng.next() < 0.3 ? 'howl' : 'bark' });
+      }
+      sim.setState('searching', true);
+      sim.searchLeft = T.search;
+      sim.alert = 0.25;
+      return true;
+    }
+    // out: one after another through the gate, past the player, into the dark
+    let left = 0;
+    hs.forEach((a, i) => {
+      if (a.gone >= 1) return;
+      left++;
+      if (this.t < i * 0.35) {
+        sim.face(a, this.route[0]!.x - a.x, this.route[0]!.z - a.z, dt);
+        return;
+      }
+      const k = this.wp.get(a) ?? 0;
+      const w = this.route[Math.min(k, this.route.length - 1)]!;
+      // a little spread so they don't run in single file through one point
+      const off = ((i % 3) - 1) * 1.6;
+      if (sim.moveToward(a, w.x + off, w.z - off, T.speed.chase * 1.1, dt, 7, 2.2)) {
+        if (k < this.route.length - 1) this.wp.set(a, k + 1);
+        else a.gone = Math.min(1, a.gone + dt * 1.2);
+      } else if (k === this.route.length - 1 && dist(a, w) < 14) a.gone = Math.min(1, a.gone + dt * 0.5);
+      a.sniffing = false;
+      a.awareness = 1;
+    });
+    if (this.t > 0.3 && this.t < 0.4) sim.emit({ type: 'bay', idx: sim.agents.indexOf(hs[0]!), kind: 'howl' });
+    sim.setState('chasing', true);
+    sim.alert = left ? 0.4 : 0;
+    if (!left && this.phase === 'out') {
+      this.phase = 'gone';
+      sim.emit({ type: 'goal', x: p.x, z: p.z });
+    }
+    return true;
+  }
+
+  mayCatch(): boolean {
+    return false;
+  }
+}
+
 /** Controller factory for PackSim (null = patrol). */
 export const makeMode: MakeController = (sim, fresh) => {
   switch (sim.opt.mode) {
@@ -763,7 +1122,11 @@ export const makeMode: MakeController = (sim, fresh) => {
     case 'finale':
       return new FinaleMode(sim, fresh);
     case 'parforce':
-      return new ParforceMode(sim);
+      return new ParforceMode(sim, fresh);
+    case 'stand':
+      return new StandMode(sim, fresh);
+    case 'kennel':
+      return new KennelMode(sim, fresh);
     default:
       return null;
   }

@@ -23,6 +23,7 @@ import { speakerMeta } from './dialogue/speakers';
 import { type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
+import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HubOverlay } from './hub/overlay';
 import { FieldStation, STATION } from './hub/station';
@@ -90,6 +91,12 @@ export interface StoryHooks {
   room(id: string | null): void;
   /** Id of the open choice, or null. */
   choice(): string | null;
+  /** The staged ending playing in the engine (before the text card). */
+  stage(): { active: boolean; t: number };
+  /** Skip the staged ending (opens the card). */
+  stageSkip(): void;
+  /** Hold the staged ending at time t (screenshots; null runs on). */
+  stageHold(t: number | null): void;
 }
 declare module '../../debug/hooks' {
   interface KqHooks {
@@ -182,6 +189,7 @@ class StoryRuntime {
   readonly station = new FieldStation();
   readonly hub: HubOverlay;
   readonly endings: EndingScreen;
+  readonly stage: EndingStage;
   readonly voice: Voice;
   private time = 0;
   private gen = 0;
@@ -330,6 +338,7 @@ class StoryRuntime {
       onClose: () => {},
     });
 
+    this.stage = new EndingStage(ctx);
     this.endings = new EndingScreen({
       modals: ctx.ui.modals,
       attribution: () => ctx.data.attribution.items,
@@ -351,6 +360,7 @@ class StoryRuntime {
       sound: (k) => playStorySound(ctx.audio, k, null, 'verloren'),
       reducedMotion: () => ctx.settings.state.reducedMotion,
       name: () => this.slice.name,
+      stage: (id, done) => this.stage.start(id, done),
     });
 
     installTitleFlow({ settings: ctx.settings, modals: ctx.ui.modals, onName: (n) => (this.pendingName = n) });
@@ -1474,6 +1484,8 @@ class StoryRuntime {
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
     this.presenter.el.style.visibility = hudVisible && !this.echoHold && !this.talking ? '' : 'hidden';
+    // the staged ending flies the camera (after it followed the player this frame)
+    this.stage.frame();
   }
 
   private installHooks(): void {
@@ -1528,11 +1540,17 @@ class StoryRuntime {
         if (id) ev.emit('room:enter', { ...full(id), name: id });
       },
       choice: () => this.overlays.choiceId,
+      stage: () => ({ active: this.stage.active, t: this.stage.time }),
+      stageSkip: () => this.stage.finish(),
+      stageHold: (t) => {
+        this.stage.holdAt = t;
+      },
     };
   }
 
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
+    this.stage.dispose();
     this.station.object.removeFromParent();
   }
 }
