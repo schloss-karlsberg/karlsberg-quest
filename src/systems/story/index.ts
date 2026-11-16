@@ -93,6 +93,8 @@ export interface StoryHooks {
   stage(): { active: boolean; t: number };
   /** Skip the staged ending (opens the card). */
   stageSkip(): void;
+  /** Hold the staged ending at time t (screenshots; null runs on). */
+  stageHold(t: number | null): void;
 }
 declare module '../../debug/hooks' {
   interface KqHooks {
@@ -1486,6 +1488,9 @@ class StoryRuntime {
       choice: () => this.overlays.choiceId,
       stage: () => ({ active: this.stage.active, t: this.stage.time }),
       stageSkip: () => this.stage.finish(),
+      stageHold: (t) => {
+        this.stage.holdAt = t;
+      },
     };
   }
 

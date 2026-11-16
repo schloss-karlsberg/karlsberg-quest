@@ -1283,7 +1283,7 @@ class Hunt {
   private frameTableau(dt: number): void {
     const T = this.tableau!;
     const ctx = this.ctx;
-    T.t += Math.min(dt, 0.1);
+    T.t += Math.min(dt, 0.5); // real time (a staged ending on a slow renderer must not lag)
     const t = T.t;
     const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
     T.agents.forEach((a, k) => {

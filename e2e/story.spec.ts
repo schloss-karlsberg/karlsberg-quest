@@ -284,6 +284,8 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await shot(page, 'ending-choice');
   await page.getByTestId('ending-museum').click();
   await page.getByRole('button', { name: 'Ja', exact: true }).click();
+  // the ending is staged in the engine first (endings/stage.ts): skip it
+  await page.getByTestId('ending-stage-skip').click();
   await expect(page.getByTestId('ending-next')).toBeVisible();
   await shot(page, 'ending-scene');
   await page.getByTestId('ending-next').click();

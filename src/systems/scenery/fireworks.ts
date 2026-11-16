@@ -157,8 +157,8 @@ void main() {
   float n = 0.65 + 0.35 * sin(c.x * 9.0 + vSeed * 30.0) * sin(c.y * 7.0 - vSeed * 17.0);
   // powder smoke hanging in the sky, lit by the last bursts
   float d = length(vPos - uGlowPos);
-  vec3 lit = uGlowColor * 0.55 / (1.0 + d * d * 0.0004);
-  vec3 col = vec3(0.16, 0.17, 0.2) * (uSkyAmbient * 0.8 + 0.25) + lit;
+  vec3 lit = uGlowColor * 0.14 / (1.0 + d * d * 0.0008);
+  vec3 col = vec3(0.11, 0.12, 0.14) * (uSkyAmbient * 0.6 + 0.2) + lit;
   gl_FragColor = vec4(col, vA * n * (1.0 - r * r));
 }
 `;
@@ -484,7 +484,7 @@ export class Fireworks {
         }, 520);
       }
     }
-    for (let i = 0; i < 3; i++) this.puff(p, 26 + r() * 22, 0.32 + r() * 0.12);
+    for (let i = 0; i < 2; i++) this.puff(p, 18 + r() * 14, 0.5 + r() * 0.2);
     // coloured light on the snow, the slope and the pavilions; during the climax many flat
     // rockets burst at once and the night grade (exposure 1.6) would wash the slope out to white
     const big = kind === 'chrys' || kind === 'palm' || kind === 'willow';
@@ -664,7 +664,7 @@ export class Fireworks {
       this.smokePos[i * 3] = this.smokePos[i * 3]! + 0.9 * dt;
       this.smokePos[i * 3 + 1] = this.smokePos[i * 3 + 1]! + 0.25 * dt;
       const u = a / L;
-      this.smokeAttr[i * 4 + 1] = Math.min(1, a / 0.8) * (1 - u) * 0.38 * (this.phase === 'return' ? Math.max(0, 1 - this.phaseT / 2) : 1);
+      this.smokeAttr[i * 4 + 1] = Math.min(1, a / 0.8) * (1 - u) * 0.16 * (this.phase === 'return' ? Math.max(0, 1 - this.phaseT / 2) : 1);
       this.smokeAttr[i * 4] = this.smokeAttr[i * 4]! * (1 + dt * 0.04);
     }
     this.smoke.geometry.attributes.position!.needsUpdate = true;

@@ -57,7 +57,7 @@ export function stageAt(id: EndingId, t: number, reduced: boolean): { rise: numb
   const fade = smooth((t - (T - 1.2)) / 1.0) + (1 - smooth(t / 0.6)) * 0.85;
   if (id === 'museum') {
     const k = reduced ? (t < T / 2 ? 0 : 1) : smooth(t / 6);
-    return { rise: 7 * k, back: 9 * k, turn: 0, pitch: -0.18 * k, fade, fog: 1 - 0.75 * smooth((t - 2) / 6), sun: smooth((t - 2.5) / 7), dark: 0 };
+    return { rise: 6 * k, back: 4 * k, turn: 0, pitch: -0.2 * k, fade, fog: 1 - 0.75 * smooth((t - 2) / 6), sun: smooth((t - 2.5) / 7), dark: 0 };
   }
   if (id === 'burn') {
     const k = reduced ? 0 : smooth((t - 3.5) / 5);
@@ -280,6 +280,8 @@ export class EndingStage {
     }
   };
   private eraIdx = -1;
+  /** Tests / screenshots: hold the picture at this time (null: run). */
+  holdAt: number | null = null;
 
   constructor(private readonly ctx: GameContext) {}
 
@@ -324,12 +326,12 @@ export class EndingStage {
     document.addEventListener('keydown', this.onKey, true);
     const fwd = new Vector3(-Math.sin(pl.yaw), 0, -Math.cos(pl.yaw));
     if (id === 'museum') {
-      // the pack lies down on the clearing ahead, facing you
-      const c = { x: this.eye.x + fwd.x * 17, z: this.eye.z + fwd.z * 17 };
-      ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'lie', n: 5, x: c.x, z: c.z, r: 6, face: (pl.yaw * -180) / Math.PI } });
+      // the pack lies down in the clearing before you (an arc 7 m ahead, facing you)
+      const c = { x: this.eye.x + fwd.x * 3, z: this.eye.z + fwd.z * 3 };
+      ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'lie', n: 5, x: c.x, z: c.z, r: 4.5, face: (pl.yaw * -180) / Math.PI } });
     } else if (id === 'keep') {
       // behind you, in the dark
-      ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'eyes', n: 5, x: this.eye.x, z: this.eye.z, r: 13, face: (pl.yaw * -180) / Math.PI + 180 } });
+      ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'eyes', n: 5, x: this.eye.x, z: this.eye.z, r: 8, face: (pl.yaw * -180) / Math.PI + 180 } });
     } else {
       this.pages = new Pages(new Vector3(this.eye.x, this.eye.y + 1.55, this.eye.z), fwd);
       ctx.scene.add(this.pages.group);
@@ -342,6 +344,7 @@ export class EndingStage {
     const ctx = this.ctx;
     const id = this.id;
     this.id = null;
+    this.holdAt = null;
     document.removeEventListener('keydown', this.onKey, true);
     this.ui?.remove();
     this.ui = null;
@@ -371,9 +374,10 @@ export class EndingStage {
     if (!this.id) return;
     const ctx = this.ctx;
     const now = performance.now();
-    const dt = Math.min(0.1, Math.max(0, (now - this.last) / 1000));
+    // real time: a slow software renderer jumps, it does not stretch the ending
+    const dt = Math.min(0.5, Math.max(0, (now - this.last) / 1000));
     this.last = now;
-    this.t += dt;
+    this.t = this.holdAt ?? this.t + dt;
     const id = this.id;
     const reduced = this.reduced();
     const T = reduced ? STAGE_SECONDS_REDUCED : STAGE_SECONDS[id];
@@ -406,15 +410,15 @@ export class EndingStage {
       L.sky.horizon = mixHex(L0.sky.horizon, '#f0c7a0', s.sun * 0.6);
       L.grade.exposure = L0.grade.exposure * (1 + 0.12 * s.sun);
     } else if (id === 'keep') {
-      L.fog.color = mixHex(L0.fog.color, '#030407', s.dark);
+      L.fog.color = mixHex(L0.fog.color, '#0b0e16', s.dark);
       L.fog.sunColor = mixHex(L0.fog.sunColor, '#05060a', s.dark);
       L.fog.density = L0.fog.density * s.fog;
       L.fog.ground = L0.fog.ground * s.fog;
       L.sky.zenith = mixHex(L0.sky.zenith, '#010204', s.dark);
-      L.sky.horizon = mixHex(L0.sky.horizon, '#06070b', s.dark);
-      L.sun.intensity = L0.sun.intensity * (1 - 0.85 * s.dark);
-      L.ambient.intensity = L0.ambient.intensity * (1 - 0.7 * s.dark);
-      L.grade.exposure = L0.grade.exposure * (1 - 0.35 * s.dark);
+      L.sky.horizon = mixHex(L0.sky.horizon, '#10131c', s.dark);
+      L.sun.intensity = L0.sun.intensity * (1 - 0.6 * s.dark);
+      L.ambient.intensity = L0.ambient.intensity * (1 - 0.5 * s.dark);
+      L.grade.exposure = L0.grade.exposure * (1 + 0.15 * s.dark);
       L.grade.vignette = Math.min(0.9, L0.grade.vignette + 0.35 * s.dark);
     } else {
       // the eras flash through the world while the pages burn (reduced flashing: cross-fades)

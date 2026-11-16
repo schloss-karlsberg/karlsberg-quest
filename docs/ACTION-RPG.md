@@ -763,5 +763,25 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   world markers on the death screen; the story.back objective after the K4 catch; Hanne's „Worauf
   warten Sie?“, the duplicate Serenissimus joke, Regal leftovers and the Messstab „(E)“ text (content
   pass); the Talente tab key, codex badge spacing, clue card coordinate captions, the compass waypoint
-  to Hanne; Steinfraß visuals and a catch wipe; ending vignettes are DOM over the live frame, not
-  staged in the engine.
+  to Hanne; a Steinfraß catch wipe.
+- **Set pieces pass (2026-11-16):** K1 finale as a real par force hunt — eight hounds (up to ten),
+  the Pikeur a silhouette ≥ 38 m up the slope, two flankers that run wide and cut off the route,
+  lunges (crouch, eye flare, growl, leap where you will be; dodge [Leertaste] → miss; a bite shoves
+  and jolts, three bites — gentle five — and they have you), then the stand at the narrows (the arc
+  behind, two across the way out, two waves of strays to fight, breaking out draws a lunge), then
+  the dash to the water (k1_14 → k1_14b → k1_14c; `tests/hunt-k1.test.ts` plays it through with
+  simulated runners). Fireworks echo: shells high over the Rondell (chrysanthemum with pistil,
+  willow, palm, crossette, crackle with strobing glitter and late pops, salvos), trails, powder
+  smoke lit by the next bursts, stronger light on snow and pavilions, sound arriving late, the view
+  framed up to the bursts for 4.5 s. K3: the Festsaal choice as four things in the room (E; flag
+  `festsaal.took`, the fuse: 40 s after the offer Hanne takes you by the arm → `nichts`); charred
+  beams fall in rooms that catch fire near you; Glutling cores and every enemy's eyes drawn after
+  the smoke; the Zwinger pack behind bars (`kennel`) bursts out of the gate past you when Jost is
+  done. K4: the Steinfraß edge — the ground lifts off as grains in a band that moves in with the
+  meter, an on-screen explanation with the goal the first time, an objective marker to the
+  trenches; W8: as the last hound lies down the horn blows „Sammeln“, the night greys, dawn after.
+  Endings staged in the engine before the card (museum / burn / keep; skippable, reduced motion =
+  still shots). Screenshots `fun-setpieces-*` (`e2e/setpieces.spec.ts`).
+- **Set pieces pass, left open:** smoke stratification inside rooms (one ceiling layer as before),
+  no collider for fallen beams (deliberate), fireworks echo still at the 1789 Rondell set (no extra
+  palace light rig), the K1 stand's strays are generic Streuner (no hound-shaped fighters).

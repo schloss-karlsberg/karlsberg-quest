@@ -112,8 +112,8 @@ function glintTexture(): CanvasTexture | null {
 
 function buildObject(key: FestsaalKey): Object3D {
   const g = new Group();
-  const brass = new MeshStandardMaterial({ color: 0xc9a14a, metalness: 0.9, roughness: 0.32, emissive: 0x3a2508, emissiveIntensity: 0.6 });
-  const gold = new MeshStandardMaterial({ color: 0xe6c25a, metalness: 1, roughness: 0.25, emissive: 0x4a3008, emissiveIntensity: 0.7 });
+  const brass = new MeshStandardMaterial({ color: 0xc9a14a, metalness: 0.9, roughness: 0.32, emissive: 0x7a4a14, emissiveIntensity: 0.9 });
+  const gold = new MeshStandardMaterial({ color: 0xe6c25a, metalness: 1, roughness: 0.25, emissive: 0x9a6a1c, emissiveIntensity: 1.0 });
   if (key === 'tuergriff') {
     // a lever handle with its rose
     const lever = new Mesh(new BoxGeometry(0.13, 0.022, 0.026), brass);
@@ -132,7 +132,7 @@ function buildObject(key: FestsaalKey): Object3D {
   } else if (key === 'uhr') {
     // console (dark wood), gilt case, alabaster column, white dial
     const wood = new MeshStandardMaterial({ color: 0x3b2416, roughness: 0.7 });
-    const alab = new MeshStandardMaterial({ color: 0xece4d4, roughness: 0.45, emissive: 0x2a2620, emissiveIntensity: 0.4 });
+    const alab = new MeshStandardMaterial({ color: 0xece4d4, roughness: 0.45, emissive: 0x6a6258, emissiveIntensity: 0.7 });
     const top = new Mesh(new BoxGeometry(0.7, 0.04, 0.34), wood);
     top.position.y = -0.02;
     const leg = (x: number) => {
@@ -242,6 +242,10 @@ export class FestsaalObjects {
     if (k === this.promptOn) return;
     this.promptOn = k;
     this.ctx.ui.hud.prompt(k ? 'E' : null, k ? FESTSAAL_LABELS[k] : undefined, 'festsaal');
+    // while a thing is in front of you, E is ours (the Chronik leaves the clue under it alone)
+    const flags = this.ctx.state.mutable.flags;
+    if (k) flags['e.owner'] = 'festsaal';
+    else if (flags['e.owner'] === 'festsaal') delete flags['e.owner'];
   }
 
   /** Fixed step: what you face within reach gets the E prompt; E takes it. */

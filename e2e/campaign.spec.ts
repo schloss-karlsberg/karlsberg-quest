@@ -390,6 +390,8 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
     expect(await page.evaluate(() => window.kq!.state().flags['combat.disabled'])).toBe(true);
     await page.getByTestId(`ending-${e.id}`).click();
     await page.getByRole('button', { name: 'Ja', exact: true }).click();
+    // the ending is staged in the engine first (endings/stage.ts): skip it
+    await page.getByTestId('ending-stage-skip').click();
     await expect(page.getByTestId('ending-next')).toBeVisible();
     const scene = await page.getByTestId('ending').innerText();
     expect(scene, `${e.id}: scene text`).toContain('Laub');
