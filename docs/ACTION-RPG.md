@@ -757,8 +757,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   in a fight, the lantern drops in fights; credits roll on under the cursor (wheel / arrows scrub),
   clean data credits, no repo paths in source notes (validator); six-second ending vignettes (fog
   lifts and hounds lie down / fire and eras / eyes in the dark); the combat curtain names the
-  enemy family; an era change clears combat particles.
-- **Playtest round 2, left open:** Raffschatten fleeing more than once, banned Irrlichter drifting,
+  enemy family; an era change clears combat particles; Raffschatten flee only once.
+- **Playtest round 2, left open:** banned Irrlichter drifting,
   Eiskeller Nebelinge threat, Strohmann phase-2 punish window and Streuner flanking (AI tuning pass);
   world markers on the death screen; the story.back objective after the K4 catch; Hanne's „Worauf
   warten Sie?“, the duplicate Serenissimus joke, Regal leftovers and the Messstab „(E)“ text (content
