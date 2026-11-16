@@ -53,7 +53,7 @@ export interface FestsaalSpot {
  * room's first window, the door handle at Hanne's hand by the centre, the clock on a console in
  * the far quarter, the way out at the room's first inner door.
  */
-export function festsaalSpots(room: IRoom, doors: Door[], windows: Win[]): FestsaalSpot[] {
+export function festsaalSpots(room: IRoom, doors: Door[], windows: Win[], anchors?: FestsaalAnchors): FestsaalSpot[] {
   const f = room.frame;
   const at = (u: number, v: number) => ({ x: f.ox + f.ux * u * f.L + f.vx * v * f.W, z: f.oz + f.uz * u * f.L + f.vz * v * f.W });
   const y0 = room.floor;
@@ -87,7 +87,30 @@ export function festsaalSpots(room: IRoom, doors: Door[], windows: Win[]): Fests
   const side = win && (win.cx - c.x) * f.vx + (win.cz - c.z) * f.vz < 0 ? 0.93 : 0.07;
   const cp = at(far, side);
   out.push({ key: 'uhr', x: cp.x, y: y0 + 0.92, z: cp.z, yaw: Math.atan2(side > 0.5 ? f.vx : -f.vx, side > 0.5 ? f.vz : -f.vz) });
+  // the dressed room (scenery worldsets: the pier glass over the console, the window ledge) has
+  // fixed places for the clock and the ducat: the things you can take stand exactly there, so
+  // there is one clock and one ducat in the room, not a prop and a pickup side by side
+  if (anchors) {
+    const towards = (x: number, z: number) => Math.atan2(c.x - x, c.z - z);
+    for (const s of out) {
+      if (s.key === 'uhr' && anchors.uhr) {
+        [s.x, s.z] = anchors.uhr;
+        s.y = y0 + 0.92;
+        s.yaw = towards(s.x, s.z);
+      } else if (s.key === 'dukat' && anchors.dukat) {
+        [s.x, s.z] = anchors.dukat;
+        s.y = y0 + 0.975;
+        s.yaw = towards(s.x, s.z);
+      }
+    }
+  }
   return out;
+}
+
+/** Fixed (x, z) places for the clock (console) and the ducat (ledge) in a dressed room. */
+export interface FestsaalAnchors {
+  uhr?: [number, number];
+  dukat?: [number, number];
 }
 
 function glintTexture(): CanvasTexture | null {

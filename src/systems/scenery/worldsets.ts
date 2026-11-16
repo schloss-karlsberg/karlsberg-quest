@@ -21,7 +21,6 @@ import { RUND } from './rund';
 import type { SetDef } from './sets';
 
 const LANTERN = new Color(2.2, 1.3, 0.5);
-const GILT_GLOW = new Color(2.4, 1.8, 0.8);
 
 // ---------------------------------------------------------------------------------------------
 // The Apfelallee (bible 2.1): the avenue on the 1836–41 sheet, from the Torhaus up the hill
@@ -265,6 +264,8 @@ const menagerie: SetDef = {
 // The Festsaal on 28 July 1793 (bible 3.8): the looters' leftovers and the three things to save
 // ---------------------------------------------------------------------------------------------
 
+/** The Festsaal's room id (interiors) — its pickups stand on the spots below. */
+export const FESTSAAL_ROOM = 'B01.2.og-festsaal';
 /** The Festsaal's floor polygon (rooms.json B01.2.og-festsaal) and floor height. */
 export const FESTSAAL = {
   poly: [
@@ -310,28 +311,12 @@ const festsaal: SetDef = {
     const degOf = (dx: number, dz: number) => ((Math.atan2(dx, -dz) * 180) / Math.PI + 360) % 360;
     const cx = (A[0] + Cc[0]) / 2;
     const cz = (A[1] + Cc[1]) / 2;
-    // the console with the gilded clock (alabaster columns, a gilt case, a white dial)
-    {
-      const [x, z] = spots.uhr;
-      const deg = degOf(cx - x, cz - z);
-      k.place(x, y0, z, face(deg));
-      k.box(1.3, 0.06, 0.45, 0, 0.82, 0, 0xc9a24a);
-      for (const s of [-0.55, 0.55]) k.box(0.06, 0.82, 0.06, s, 0, 0.12, 0xb08a3a, [0.12, 0, 0]);
-      k.box(1.2, 0.12, 0.4, 0, 0.7, 0, 0x8a6a2a);
-      k.box(0.5, 0.08, 0.26, 0, 0.88, 0, 0xd8d0c0);
-      for (const s of [-0.18, 0.18]) k.cyl(0.035, 0.035, 0.42, s, 0.96, 0, 0xeee8dc, undefined, 8);
-      k.box(0.34, 0.36, 0.2, 0, 1.0, 0, 0xc9a24a, undefined, 0.5);
-      k.cyl(0.11, 0.11, 0.02, 0, 1.18, 0.1, 0xf4eee0, [Math.PI / 2, 0, 0], 14);
-      k.cone(0.12, 0.2, 0, 1.38, 0, 0xc9a24a, 8);
-      b.glow(x, y0 + 1.2, z, 0.9, GILT_GLOW);
-    }
-    // the ducat on the east window ledge, catching the fire light
+    // the gilded clock on its console and the ducat on the ledge are the K3 pickups (interiors
+    // festsaal.ts places them on these spots during the fire night); here only the ledge
     {
       const [x, z] = spots.dukat;
       k.place(x, y0 + 0.92, z, 0);
       k.box(0.6, 0.05, 0.28, 0, 0, 0, 0xd8cfc0);
-      k.cyl(0.03, 0.03, 0.006, 0.05, 0.05, 0, 0xe8c050, undefined, 12, 1.2);
-      b.glow(x, y0 + 0.99, z, 0.35, GILT_GLOW);
     }
     // the door without its handle: a pale outline where the brass was
     {

@@ -503,6 +503,8 @@ export class QuestBook {
         if (name !== 'enemy:killed') return 0;
         // undone by nobody (a Glutling bursting by itself, a boss's adds fading with it)
         if (p.by === 'env') return 0;
+        // a pack's escort gives XP, never a quest kill (combat packs.ts)
+        if (p.escort === true || (typeof p.group === 'string' && p.group.endsWith('+escort'))) return 0;
         if (p.quest === q.id && p.objective === o.id) return 1;
         if (o.group && p.group === o.group) return 1;
         if (!o.enemy || p.kind !== o.enemy || o.group) return 0;

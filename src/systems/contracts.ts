@@ -292,6 +292,8 @@ declare module '../core/events' {
       by: 'light' | 'heavy' | 'bann' | 'item' | 'env';
       quest?: string;
       objective?: string;
+      /** A pack's escort (group `<pack>+escort`): XP, never a quest kill. */
+      escort?: boolean;
     };
     /** Every member of a group is undone. */
     'enemy:cleared': { group: string; kind: string };

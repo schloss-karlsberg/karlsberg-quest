@@ -165,6 +165,8 @@ describe('objectives', () => {
     // another group at the dam today, and the quest's own spawn: credit
     b.handle('enemy:killed', { id: 'k3', group: 'other', kind: 'irrlicht', x: 821, z: -868, era: 'today' });
     b.handle('enemy:killed', { id: 'k4', group: 'q.test.lichter.l', kind: 'irrlicht', x: 900, z: 0, era: 'today', quest: 'q.test.lichter', objective: 'l' });
+    // a pack's escort of the same kind at the same place: XP only, never a quest kill
+    b.handle('enemy:killed', { id: 'k5', group: 'poi.x+escort', kind: 'irrlicht', x: 821, z: -868, era: 'today', escort: true });
     expect(b.count('q.test.lichter', 'l')).toBe(2);
   });
 

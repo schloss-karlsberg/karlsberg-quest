@@ -248,6 +248,7 @@ class Combat {
       this.visuals.clearParticles();
       this.hud.hideTitle(true);
       this.titleLeft = 0;
+      this.ctx.ui.hud.busy('reveal', false, 0);
       this.introCam = null;
       this.deathSlow = 0;
     });
@@ -579,6 +580,7 @@ class Combat {
           this.audio.bossDown();
           this.hud.hideTitle();
           this.titleLeft = 0;
+          ctx.ui.hud.busy('reveal', false, 0);
           if (!rm) this.deathSlow = 1.4;
           this.addShake(0.35);
           if (e.kind !== 'pikeur') this.captionOnce(`down:${e.id}`, t('combat.bossDown', { name: e.def.name_de }), 'boss', 0, 3200);
@@ -586,7 +588,7 @@ class Combat {
         const g = this.slice().groups[e.group];
         // an escort that drifted off after its pack was not undone by anyone: no fact to report
         if (e.escort && ev.by === 'env') break;
-        this.emit('enemy:killed', { id: e.id, group: e.group, kind: e.kind, x: e.x, z: e.z, era: ctx.era.current, boss: e.boss, by: ev.by, ...(g?.quest ? { quest: g.quest } : {}), ...(g?.objective ? { objective: g.objective } : {}) });
+        this.emit('enemy:killed', { id: e.id, group: e.group, kind: e.kind, x: e.x, z: e.z, era: ctx.era.current, boss: e.boss, by: ev.by, ...(g?.quest ? { quest: g.quest } : {}), ...(g?.objective ? { objective: g.objective } : {}), ...(e.escort ? { escort: true } : {}) });
         // escorts give XP too; nothing for what drifted off or burst by itself
         if ((!e.add || e.escort) && ev.by !== 'env' && e.def.xp > 0) this.emit('xp:grant', { amount: Math.round(e.def.xp), reason: `enemy:${e.kind}`, x: e.x, z: e.z });
         break;
@@ -711,6 +713,8 @@ class Combat {
         const [name, epithet] = BOSS_TITLE[e.kind] ?? [e.def.name_de, ''];
         this.hud.title(name, epithet);
         this.titleLeft = ev.dur - 0.3;
+        // the reveal is the boss's moment: the story's dialogue waits it out (story held())
+        ctx.ui.hud.busy('reveal', true);
         this.audio.sting(e.kind);
         this.audio.roar(this.posOf(e, 1.5));
         if (!rm) this.introCam = { e, t: 0, dur: ev.dur };
@@ -818,7 +822,10 @@ class Combat {
     this.revealCamera(dt);
     if (this.titleLeft > 0) {
       this.titleLeft -= dt;
-      if (this.titleLeft <= 0) this.hud.hideTitle();
+      if (this.titleLeft <= 0) {
+        this.hud.hideTitle();
+        this.ctx.ui.hud.busy('reveal', false, 0.6);
+      }
     }
     // the Bannlicht flare: the lantern blazes for a moment (local, never a full-screen flash)
     if (this.bannFx) {

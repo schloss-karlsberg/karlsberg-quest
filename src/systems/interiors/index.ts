@@ -29,6 +29,7 @@ import { type Built, buildDebris, buildInterior, lookOf } from './builder';
 import { PlanQuery } from './collide';
 import { FallingBeams } from './beams';
 import { FestsaalObjects, type FestsaalKey, festsaalSpots } from './festsaal';
+import { FESTSAAL_ROOM, festsaalSpots as dressedFestsaalSpots } from '../scenery/worldsets';
 import { FlameLayer } from './flames';
 import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
@@ -121,7 +122,10 @@ function placeFestsaal(ctx: GameContext, roomId: string): boolean {
   const ri = findRoom(roomId);
   if (!cur || ri < 0) return false;
   festsaal ??= new FestsaalObjects(ctx);
-  festsaal.show(festsaalSpots(cur.plan.rooms[ri]!, cur.plan.doors, cur.plan.windows));
+  const room = cur.plan.rooms[ri]!;
+  // the Festsaal is dressed by the world sets: its clock and ducat stand on that console / ledge
+  const anchors = room.roomId === FESTSAAL_ROOM ? dressedFestsaalSpots() : undefined;
+  festsaal.show(festsaalSpots(room, cur.plan.doors, cur.plan.windows, anchors));
   return true;
 }
 

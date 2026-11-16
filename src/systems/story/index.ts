@@ -280,7 +280,10 @@ class StoryRuntime {
       name: () => this.slice.name,
       valid: (item) => this.lineStillValid(item),
       // history and long remarks wait out a fight; barks and short calls go on (playtest round 3)
-      held: (item) => ctx.ui.hud.acting('combat') && item.priority !== 'now' && item.priority !== 'low' && (!!item.lore || item.text.length > COMBAT_LINE_MAX),
+      // a boss's reveal (combat: title card, camera, sting) holds everything but 'now' lines
+      held: (item) =>
+        (ctx.ui.hud.acting('reveal') && item.priority !== 'now') ||
+        (ctx.ui.hud.acting('combat') && item.priority !== 'now' && item.priority !== 'low' && (!!item.lore || item.text.length > COMBAT_LINE_MAX)),
     });
     this.objectives = new ObjectiveView(this.layer, ctx.ui.hud);
     this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
