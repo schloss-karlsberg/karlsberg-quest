@@ -330,6 +330,8 @@ class Combat {
 
   /** An interact target (E prompt from npc / chronik / story) takes the left mouse button. */
   private interactTarget(): boolean {
+    // in a fight the left button always swings (the prompt is hidden then)
+    if (this.sim.p.inCombat) return false;
     return !!this.ctx.ui.hud.el.querySelector('.kq-prompt.show');
   }
 

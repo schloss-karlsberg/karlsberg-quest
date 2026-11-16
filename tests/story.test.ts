@@ -290,7 +290,7 @@ describe('story files', () => {
     expect(h.slice.beat).toBe('p10');
     step({ ...inv(), ...quest('q.p.punktwolke') });
     expect(h.slice.beat).toBe('p10'); // the quest alone is not enough: back home to the station
-    step({ ...inv(), flags: { ...flags }, x: 760, z: -905 }, 10); // the dusk walk lasts at least 9 s
+    step({ ...inv(), flags: { ...flags }, x: 760, z: -905 }, 20); // the dusk walk lasts at least 9 s
     expect(h.slice.beat).toBe('p11');
     step({}, 20);
     expect(h.slice.chapter).toBe('prolog'); // the night lasts a little

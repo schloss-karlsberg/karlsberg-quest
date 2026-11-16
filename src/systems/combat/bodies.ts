@@ -184,28 +184,56 @@ export function glutling(seed: number): BodyTemplate {
   return { parts: b.parts, tell: [1, 0.6, 0.15], top: 0.9, shoulder: 0 };
 }
 
+/** Wet mortar: dark grey-brown, so a Grusling reads on pale 1796 sand (playtest round 2). */
+const MORTAR: V3 = [0.2, 0.17, 0.15];
+const MORTAR2: V3 = [0.27, 0.23, 0.2];
+
 export function grusling(seed: number): BodyTemplate {
   const R = rng(seed + 7);
   const b = new B(seed);
+  // a dark shadow blob under it (it never floats), then a hunched heap of wet mortar lumps
+  b.blob([0, 0.03, 0], [0.22, 0.02, 0.22], 3, 0.42, [0.04, 0.035, 0.03], { alpha: 0.7, bone: 'legs' });
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    b.solid([Math.cos(a) * 0.12, 0.08 + (i % 2) * 0.08, Math.sin(a) * 0.12], [0.1 + R() * 0.06, 0.08 + R() * 0.05, 0.1 + R() * 0.05], i % 2 ? STONE : [0.6, 0.55, 0.46], { bone: i % 3 ? 'body' : 'legs', ry: R() * 3, rx: R() });
+    b.solid([Math.cos(a) * 0.16, 0.12 + (i % 2) * 0.1, Math.sin(a) * 0.16], [0.14 + R() * 0.07, 0.12 + R() * 0.06, 0.14 + R() * 0.06], i % 2 ? MORTAR : MORTAR2, { bone: i % 3 ? 'body' : 'legs', ry: R() * 3, rx: R() });
   }
-  b.solid([0, 0.22, 0], [0.14, 0.12, 0.14], [0.66, 0.6, 0.5], { bone: 'head', ry: 0.6 })
-    .blob([0, 0.12, 0], [0.18, 0.06, 0.18], 3, 0.3, [0.55, 0.5, 0.44], { style: 1, alpha: 0.45, bone: 'legs' })
-    .eyes(0.27, 0.08, 0.04, 0.03, [1, 0.8, 0.5]);
-  return { parts: b.parts, tell: [1, 0.7, 0.4], top: 0.6, shoulder: 0.2 };
+  b.solid([0, 0.33, 0.02], [0.2, 0.16, 0.2], [0.24, 0.2, 0.17], { bone: 'head', ry: 0.6 })
+    .blob([0, 0.12, -0.15], [0.12, 0.08, 0.18], 3, 0.28, [0.5, 0.46, 0.4], { style: 1, alpha: 0.4, bone: 'tail' })
+    .eyes(0.38, 0.12, 0.06, 0.05, [1, 0.62, 0.2]);
+  // half again as big as at first: in first person a knee-high heap at 1.5 m is below the view
+  return scaleTemplate({ parts: b.parts, tell: [1, 0.7, 0.4], top: 0.55, shoulder: 0.25 }, 1.5);
+}
+
+/** Scale a template uniformly (positions, sizes, top, shoulder). */
+function scaleTemplate(t: BodyTemplate, k: number): BodyTemplate {
+  for (const p of t.parts) {
+    p.r *= k;
+    p.y *= k;
+    p.f *= k;
+    p.size *= k;
+    if (p.sy !== undefined) p.sy *= k;
+    if (p.sz !== undefined) p.sz *= k;
+  }
+  return { ...t, top: t.top * k, shoulder: t.shoulder * k };
 }
 
 export function steinfresser(seed: number): BodyTemplate {
+  // each one a little different in size and tint (three of them read as one blob otherwise), with
+  // a dark face plate under the eyes
+  const R = rng(seed + 5);
+  const k = 0.85 + R() * 0.3;
+  const tintOf = (c: V3): V3 => [c[0] * k, c[1] * (0.9 + R() * 0.2) * k, c[2] * (0.85 + R() * 0.3) * k];
+  const A = tintOf(STONE);
+  const A2 = tintOf(STONE2);
   const b = new B(seed)
-    .solid([0, 1.05, 0], [0.95, 0.85, 0.6], STONE, { ry: 0.05 })
-    .solid([0, 0.45, 0], [0.7, 0.45, 0.5], STONE2, { bone: 'legs' })
-    .solid([0.6, 1.4, 0.05], [0.42, 0.42, 0.45], STONE2, { rz: -0.2 })
-    .solid([-0.6, 1.4, 0.05], [0.42, 0.42, 0.45], STONE2, { rz: 0.2 })
-    .solid([0.72, 0.85, 0.25], [0.3, 0.75, 0.3], STONE, { bone: 'armR' })
-    .solid([-0.72, 0.85, 0.25], [0.3, 0.75, 0.3], STONE, { bone: 'armL' })
+    .solid([0, 1.05, 0], [0.95, 0.85, 0.6], A, { ry: 0.05 })
+    .solid([0, 0.45, 0], [0.7, 0.45, 0.5], A2, { bone: 'legs' })
+    .solid([0.6, 1.4, 0.05], [0.42, 0.42, 0.45], A2, { rz: -0.2 })
+    .solid([-0.6, 1.4, 0.05], [0.42, 0.42, 0.45], A2, { rz: 0.2 })
+    .solid([0.72, 0.85, 0.25], [0.3, 0.75, 0.3], A, { bone: 'armR' })
+    .solid([-0.72, 0.85, 0.25], [0.3, 0.75, 0.3], A, { bone: 'armL' })
     .solid([0, 1.62, 0.22], [0.4, 0.32, 0.36], [0.46, 0.37, 0.31], { bone: 'head' })
+    .solid([0, 1.6, 0.41], [0.34, 0.2, 0.04], [0.08, 0.06, 0.05], { bone: 'head' })
     .glow([0, 1.05, 0.31], 0.4, [0.9, 0.35, 0.08], { bone: 'seal', alpha: 0.6 })
     .glow([0.25, 1.25, 0.31], 0.25, [0.9, 0.35, 0.08], { bone: 'seal', alpha: 0.5 })
     .eyes(1.64, 0.41, 0.1, 0.06, [1, 0.55, 0.15])
@@ -279,8 +307,27 @@ export function strohmann(seed: number): BodyTemplate {
 export function steinbrecher(seed: number): BodyTemplate {
   const R = rng(seed + 11);
   const b = new B(seed);
-  // stacked, robbed-out blocks; the joints between them glow
-  const block = (x: number, y: number, z: number, w: number, h: number, d: number, bone: Bone = 'body') => b.solid([x, y, z], [w, h, d], R() > 0.5 ? STONE : STONE2, { bone, ry: (R() - 0.5) * 0.2, rz: (R() - 0.5) * 0.12 });
+  // stacked, robbed-out blocks in darker, uneven sandstone with dark mortar between them; the
+  // joints glow only at the back and the sides (where it is soft), the front wears a plate and a
+  // face (playtest round 2: up close it was a featureless white wall)
+  const SB: V3[] = [
+    [0.24, 0.18, 0.14],
+    [0.31, 0.23, 0.17],
+    [0.2, 0.16, 0.13],
+    [0.28, 0.2, 0.15],
+  ];
+  const block = (x: number, y: number, z: number, w: number, h: number, d: number, bone: Bone = 'body') => b.solid([x, y, z], [w, h, d], SB[Math.floor(R() * SB.length)]!, { bone, ry: (R() - 0.5) * 0.2, rz: (R() - 0.5) * 0.12 });
+  const JOINT: V3 = [0.07, 0.055, 0.05];
+  for (const [y, w, d] of [
+    [1.07, 1.45, 0.95],
+    [2.13, 1.75, 1.05],
+    [3.16, 0.9, 0.8],
+  ] as const)
+    b.solid([0, y, 0.01], [w, 0.07, d], JOINT);
+  // chest plate and brow: the facing reads at once
+  b.solid([0, 2.6, 0.6], [1.35, 0.85, 0.1], [0.2, 0.16, 0.14], { rx: -0.05 })
+    .solid([0, 2.6, 0.66], [1.1, 0.06, 0.04], [0.5, 0.4, 0.3])
+    .solid([0, 3.72, 0.47], [0.62, 0.1, 0.12], [0.16, 0.13, 0.11], { bone: 'head' });
   block(0, 0.55, 0, 1.3, 1.0, 0.9, 'legs');
   block(0, 1.6, 0, 1.6, 1.05, 1.0);
   block(0, 2.65, 0.02, 1.9, 1.0, 1.1);
@@ -291,17 +338,19 @@ export function steinbrecher(seed: number): BodyTemplate {
   block(-1.45, 1.75, 0.3, 0.6, 1.2, 0.6, 'armL');
   block(1.5, 0.9, 0.45, 0.7, 0.6, 0.7, 'armR');
   block(-1.5, 0.9, 0.45, 0.7, 0.6, 0.7, 'armL');
-  for (const [x, y] of [
-    [0, 1.08],
-    [0, 2.12],
-    [0.9, 2.7],
-    [-0.9, 2.7],
-    [1.45, 1.3],
-    [-1.45, 1.3],
-    [0, 3.18],
+  for (const [x, y, f] of [
+    [0, 1.08, -0.5],
+    [0, 2.12, -0.55],
+    [0.5, 1.6, -0.5],
+    [-0.5, 2.6, -0.58],
+    [0.82, 1.6, 0],
+    [-0.82, 1.6, 0.05],
+    [0.97, 2.4, -0.1],
+    [-0.97, 2.4, -0.1],
+    [0, 3.18, -0.42],
   ] as const)
-    b.glow([x, y, 0.5], 0.32, [1, 0.42, 0.08], { bone: 'seal', alpha: 0.75 });
-  b.eyes(3.6, 0.47, 0.16, 0.08, [1, 0.6, 0.15]).blob([0, 0.2, 0], [1.1, 0.12, 0.9], 6, 0.8, [0.55, 0.5, 0.44], { style: 1, alpha: 0.45, bone: 'legs' });
+    b.glow([x, y, f], 0.36, [1, 0.42, 0.08], { bone: 'seal', alpha: 0.85, minPx: 3 });
+  b.eyes(3.6, 0.5, 0.17, 0.12, [1, 0.72, 0.2]).blob([0, 0.2, 0], [1.1, 0.12, 0.9], 6, 0.8, [0.55, 0.5, 0.44], { style: 1, alpha: 0.45, bone: 'legs' });
   return { parts: b.parts, tell: [1, 0.45, 0.1], top: 4.4, shoulder: 2.7 };
 }
 

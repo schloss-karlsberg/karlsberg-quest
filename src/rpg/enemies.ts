@@ -113,7 +113,8 @@ export const ENEMIES: readonly EnemyDef[] = [
     hp: 8,
     speed: 3.8,
     bannStun: 2,
-    attacks: [{ id: 'kratzen', telegraph: 0.45, damage: 4, range: 1.4, kind: 'melee', cooldown: 1.2 }],
+    // range 1.9: it scratches from where it can be seen (first person: closer is under the view)
+    attacks: [{ id: 'kratzen', telegraph: 0.45, damage: 4, range: 1.9, kind: 'melee', cooldown: 1.2 }],
     xp: 4,
     dissolve: 'grit-rising',
     note_de: 'Ein Häufchen Mörtelgrus, das läuft. Kommt in Schwärmen aus ausgebrochenen Mauergräben. (Fiktion)',

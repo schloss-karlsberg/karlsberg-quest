@@ -275,12 +275,14 @@ const BODY: Record<string, { r: number; hover: number; aggro: number; turn: numb
   mahnbrief: { r: 0.4, hover: 1.35, aggro: 16, turn: 8 },
   raffschatten: { r: 0.55, hover: 0, aggro: 14, turn: 5 },
   glutling: { r: 0.4, hover: 0, aggro: 16, turn: 7 },
-  grusling: { r: 0.32, hover: 0, aggro: 14, turn: 8 },
+  grusling: { r: 0.42, hover: 0, aggro: 14, turn: 8 },
   steinfresser: { r: 0.95, hover: 0, aggro: 14, turn: 2.2 },
   schuldbuch: { r: 1.5, hover: 0.6, aggro: 26, turn: BOSS_TURN['schuldbuch']! },
-  pikeur: { r: 1.3, hover: 0, aggro: 30, turn: BOSS_TURN['pikeur']! },
-  strohmann: { r: 1.4, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
-  steinbrecher: { r: 1.9, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
+  // big bosses keep a stand-off that matches their size (the camera stays outside the smoke horse,
+  // the straw arms, the blocks; playtest round 2); the staff's reach grows with it (inCone + radius)
+  pikeur: { r: 2.1, hover: 0, aggro: 30, turn: BOSS_TURN['pikeur']! },
+  strohmann: { r: 2.0, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
+  steinbrecher: { r: 2.3, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
 };
 const bodyOf = (kind: string) => BODY[kind] ?? { r: 0.6, hover: 0, aggro: AI.aggro, turn: 5 };
 
@@ -1359,6 +1361,8 @@ export class CombatSim {
         for (const s of sparkRain(inp.x, inp.z, e.phase, hash01(this.tick + e.seed))) this.addRing(e, s.x, s.z, 2.4, dur, 'rain');
       } else this.addRing(e, e.x, e.z, a.range, dur, 'area');
     }
+    // a boss's swing draws its reach on the ground too: up close its body may fill the view
+    if (e.boss && (a.kind === 'melee' || a.kind === 'lunge')) this.addRing(e, e.x, e.z, a.range + 0.4, dur, 'landing');
     this.out.push({ type: 'telegraph', e, attack: a, dur });
   }
 
@@ -1381,9 +1385,9 @@ export class CombatSim {
       e.aim = { x: inp.x, z: inp.z };
     }
     // area rings follow their owner (self-centred slams)
-    if (a.kind === 'area' && e.kind !== 'strohmann') for (const id of e.rings) {
+    if ((a.kind === 'area' && e.kind !== 'strohmann') || (e.boss && (a.kind === 'melee' || a.kind === 'lunge'))) for (const id of e.rings) {
       const r = this.rings.find((x) => x.id === id);
-      if (r) {
+      if (r && r.kind !== 'rain') {
         r.x = e.x;
         r.z = e.z;
       }
@@ -1565,12 +1569,12 @@ export class CombatSim {
     let vx = 0;
     let vz = 0;
     for (const e of this.enemies) {
-      if (e.state === 'dissolve' || e.state === 'leave' || e.def.family === 'mist' || e.def.family === 'light') continue;
+      if (e.state === 'dissolve' || e.state === 'leave' || ((e.def.family === 'mist' || e.def.family === 'light') && !e.boss)) continue;
       if (Math.abs(e.y - inp.y) > 2.5) continue;
       const dx = inp.x - e.x;
       const dz = inp.z - e.z;
       const d = Math.hypot(dx, dz);
-      const min = e.radius + 0.45;
+      const min = e.radius + (e.boss ? 0.6 : 0.45);
       if (d >= min || d < 1e-4) continue;
       const k = ((min - d) / min) * (e.boss || e.radius > 0.9 ? 9 : 4);
       vx += (dx / d) * k;

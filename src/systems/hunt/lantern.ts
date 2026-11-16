@@ -106,6 +106,8 @@ export class LanternView {
    * Per frame. `lit`/`oil` from the state slice; `fog` shrinks the light radius (frost fog eats
    * light, bible ch. 2: a 7 m light cone).
    */
+  private lower = 0;
+
   frame(o: { dt: number; time: number; camera: PerspectiveCamera; lit: boolean; oil: number; fog: boolean; prone: boolean; moving: number; reducedMotion: boolean; snap: boolean }): void {
     const dt = Math.min(0.1, o.dt);
     const target = o.lit ? 1 : 0;
@@ -129,7 +131,10 @@ export class LanternView {
     if (!this.prop.visible) return;
     if (!o.reducedMotion) this.sway += dt * (1.2 + o.moving * 5);
     const sw = o.reducedMotion ? 0 : Math.sin(this.sway) * (0.006 + o.moving * 0.01);
-    const y = -0.6 + 0.29 * easeOut(this.raise) + 0.12 * lanternPose.lift;
+    // in a fight the lantern drops lower: small enemies come in from the lower edge of the view
+    const fight = typeof document !== 'undefined' && document.body.classList.contains('kq-in-combat') ? 1 : 0;
+    this.lower += (fight - this.lower) * Math.min(1, dt * 4);
+    const y = -0.6 + 0.29 * easeOut(this.raise) + 0.12 * lanternPose.lift - 0.1 * this.lower;
     this.off.set(0.27 * lanternPose.side + sw, y + Math.abs(Math.cos(this.sway)) * o.moving * 0.008, -0.58).applyQuaternion(cam.quaternion);
     this.prop.position.copy(cam.position).add(this.off);
     this.prop.quaternion.copy(cam.quaternion);

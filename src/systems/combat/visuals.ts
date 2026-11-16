@@ -61,7 +61,8 @@ void main() {
   vEm = iEm;
   vWorld = iPos;
   float vd = -(viewMatrix * vec4(iPos, 1.0)).z;
-  vData.y *= smoothstep(0.35, 1.1, vd);
+  // big puffs (boss smoke, mist) fade out before the camera sits inside them
+  vData.y *= smoothstep(0.35, 1.1 + iData.x * 1.4, vd);
   gl_Position = vData.y <= 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * vec4(wp, 1.0);
 }
 `;
@@ -176,6 +177,9 @@ void main() {
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
   col += uFogColor * rim * 0.35 + vEm.rgb;
   float dist = length(vW - uCamPos);
+  // a slab right in front of the lens dithers away (the camera never sits inside a boss's arm)
+  float nearK = smoothstep(0.45, 1.25, dist);
+  if (nearK < 1.0 && kqHash12(gl_FragCoord.xy) > nearK) discard;
   col = mix(kqFog(col, vW), col, 0.7 * (1.0 - smoothstep(45.0, 110.0, dist)));
   gl_FragColor = vec4(col, 1.0);
 }
@@ -226,13 +230,18 @@ void main() {
     float dash = step(0.35, fract(ang * 3.183 + uTime * 0.8));
     float outline = smoothstep(0.9, 0.95, r) * (1.0 - smoothstep(0.99, 1.04, r)) * (0.6 + 0.4 * dash);
     float fill = vData.y;
-    float disc = (1.0 - smoothstep(fill - 0.02, fill, r)) * 0.2;
+    // the classic filling disc: dark red-orange, denser towards its growing edge (reads on pale
+    // sand and snow, a colour no scene uses; playtest round 2: the Beben ring vanished on 1796 sand)
+    float inside = 1.0 - smoothstep(fill - 0.02, fill, r);
+    float disc = inside * (0.16 + 0.34 * smoothstep(0.0, max(fill, 0.01), r));
     float front = smoothstep(fill - 0.07, fill - 0.01, r) * (1.0 - smoothstep(fill - 0.01, fill + 0.02, r));
     // a dark under-edge keeps the outline legible on bright ground
     float under = smoothstep(0.86, 0.9, r) * (1.0 - smoothstep(1.03, 1.06, r));
-    a = min(0.92, (outline * 0.95 + disc + front * 0.9 + under * 0.25)) * vData.z;
-    col = kind > 1.5 ? vec3(1.0, 0.72, 0.4) : kind > 0.5 ? vec3(1.0, 0.62, 0.15) : vec3(1.0, 0.42, 0.1);
-    col *= (1.0 + fill * 0.6) * mix(0.25, 1.0, clamp(outline + disc * 2.0 + front, 0.0, 1.0));
+    float line = clamp(outline * 0.95 + front * 0.9, 0.0, 1.0);
+    a = min(0.94, line + disc + under * 0.3) * vData.z;
+    vec3 hot = kind > 1.5 ? vec3(1.0, 0.72, 0.4) : kind > 0.5 ? vec3(1.0, 0.62, 0.15) : vec3(1.0, 0.42, 0.1);
+    vec3 deep = kind > 0.5 ? vec3(0.42, 0.12, 0.02) : vec3(0.38, 0.03, 0.02);
+    col = (hot * (1.0 + fill * 0.6) * line + deep * disc + vec3(0.02) * under * 0.3) / max(a / max(vData.z, 0.001), 0.001);
   }
   if (a < 0.003) discard;
   gl_FragColor = vec4(col * a, a);

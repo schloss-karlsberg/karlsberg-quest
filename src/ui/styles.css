@@ -382,9 +382,10 @@ body {
 .kq-prompt.show {
   opacity: 1;
 }
-/* in a fight, prompts step back (the boss fight is not the time to read a notice) */
+/* in a fight, prompts are gone (the boss fight is not the time to read a notice; a faded prompt
+   sat over the subtitles for a whole fight, playtest round 2) */
 body.kq-in-combat .kq-prompt.show {
-  opacity: 0.3;
+  opacity: 0;
 }
 .kq-prompt kbd {
   font-family: var(--sc);
