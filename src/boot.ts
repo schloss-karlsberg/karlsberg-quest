@@ -226,7 +226,6 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     update: (dt) => {
       player.update(dt);
       systems.update(dt, ctx);
-      ui.hud.tickCalm(dt);
       player.writeState(state.mutable.player);
       state.mutable.meta.playSeconds += dt;
       input.endStep();
@@ -243,6 +242,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
         camera.rotation.x = -0.02 + Math.sin(tt * 0.05) * 0.02;
       }
       systems.frame(frameDt, ctx);
+      // the HUD calm counts real play time (frames), so a fight's linger also ends in ?manual
+      if (!pause.paused) ui.hud.tickCalm(frameDt);
       world.frame(camera, frameDt, loop.time + (reasons.has('title') ? performance.now() / 1000 : 0));
       audio.updateListener(camera);
       ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);

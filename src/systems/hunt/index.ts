@@ -763,6 +763,8 @@ class Hunt {
     if (!held) this.updateLantern(dt);
     const sim = this.sim;
     if (!sim || !sim.tracks) this.tracks.tick(dt); // else the simulation advances the clock
+    // no pack, no chase: a hunt that ended mid-alert must not keep the HUD busy forever
+    if (!sim) this.ctx.ui.hud.busy('hunt', false, 3);
     if (sim && !held) this.updateHold(dt, sim);
     if (sim && !held) {
       const evs = sim.update(dt, this.playerSense());
