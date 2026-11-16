@@ -25,6 +25,7 @@ import {
   Vector3,
 } from 'three';
 import type { GameContext } from '../../core/context';
+import { ERA_INFO } from '../../core/era';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import type { EraLook } from '../../world/eraPresets';
 import { fireworkSound } from './audio';
@@ -47,7 +48,9 @@ varying vec4 vCol;
 void main() {
   vCol = aCol;
   vec4 mv = viewMatrix * vec4(position, 1.0);
-  gl_PointSize = aCol.a < 0.002 ? 0.0 : clamp(uScale * (0.35 + aCol.a * 0.9) / max(-mv.z, 1.0), 1.0, 7.0);
+  // sparks must read at 160 m (playtest round 2: clamped to 1–7 px they vanished): world size
+  // ~1–3 m, at least 2 px, up to 26 px close by
+  gl_PointSize = aCol.a < 0.002 ? 0.0 : clamp(uScale * (0.9 + aCol.a * 2.2) / max(-mv.z, 1.0), 2.0, 26.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -72,7 +75,7 @@ void main() {
   vec4 mv = viewMatrix * vec4(position, 1.0);
   float fl = 0.7 + 0.3 * sin(uTime * (2.0 + aSeed * 3.0) + aSeed * 40.0);
   vA = uOn * fl * smoothstep(1400.0, 300.0, -mv.z);
-  gl_PointSize = vA < 0.01 ? 0.0 : clamp(uScale * 0.22 / max(-mv.z, 1.0), 1.0, 4.0);
+  gl_PointSize = vA < 0.01 ? 0.0 : clamp(uScale * 0.55 / max(-mv.z, 1.0), 1.6, 7.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -164,6 +167,8 @@ export class Fireworks {
   private launchY = 0;
   private exposure0 = 1;
   private crowd: { stop(): void; set(v: number): void } | null = null;
+  /** Seconds left of the gentle turn of the view towards the scaffold. */
+  private lookT = 0;
 
   constructor(private readonly ctx: GameContext) {
     this.group.name = 'scenery-fireworks';
@@ -286,6 +291,9 @@ export class Fireworks {
     this.rockets = [];
     this.life.fill(0);
     this.crowd = crowdMurmur(this.ctx);
+    // the show is east of the Rondell: turn the view there (the quest brings the player facing north)
+    this.lookT = 2.2;
+    this.ctx.ui.hud.setEraLabel(this.ctx.t('ui.hud.era.1785'));
   }
 
   /** Jump to a phase (the echo's lines drive it). */
@@ -293,7 +301,10 @@ export class Fireworks {
     if (p === this.phase || this.phase === 'off') return;
     this.phase = p;
     this.phaseT = 0;
-    if (p === 'climax') this.climax();
+    if (p === 'climax') {
+      this.climax();
+      this.lookT = Math.max(this.lookT, 1.4);
+    }
     if (p === 'dark') {
       this.crowd?.stop();
       this.crowd = null;
@@ -313,6 +324,23 @@ export class Fireworks {
     }
     this.lookBefore = null;
     (this.ctx.post.uniforms.uFlash!.value as Color).setRGB(0, 0, 0);
+    this.ctx.ui.hud.setEraLabel(this.ctx.t(ERA_INFO[this.ctx.era.current].labelKey));
+  }
+
+  /** Ease the view towards the sky above the scaffold (a look-at cue, not a lock). */
+  private turnView(dt: number): void {
+    if (this.lookT <= 0) return;
+    this.lookT -= dt;
+    const pl = this.ctx.player;
+    const dx = LAUNCH.x - pl.position.x;
+    const dz = LAUNCH.z - pl.position.z;
+    const want = Math.atan2(-dx, -dz);
+    let d = want - pl.yaw;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    const k = Math.min(1, dt * (this.ctx.settings.state.reducedMotion ? 6 : 2.6));
+    pl.yaw += d * k;
+    const pitch = Math.atan2(55, Math.hypot(dx, dz));
+    pl.pitch += (pitch - pl.pitch) * k;
   }
 
   private spawn(p: Vector3, v: Vector3, color: Color, life: number, bright = 1): void {
@@ -352,7 +380,7 @@ export class Fireworks {
     const p = new Vector3(LAUNCH.x + (r() - 0.5) * 4, this.launchY + 14, LAUNCH.z + (r() - 0.5) * 4);
     const v = flat
       ? new Vector3((r() - 0.5) * 2, 0.15 + r() * 0.35, (r() - 0.5) * 2).normalize().multiplyScalar(26 + r() * 20)
-      : new Vector3((r() - 0.5) * 7, 44 + r() * 14, (r() - 0.5) * 7);
+      : new Vector3((r() - 0.5) * 7 - 8, 44 + r() * 14, (r() - 0.5) * 7);
     this.rockets.push({ p, v, t: 0, fuse: flat ? 0.6 + r() * 1.2 : 1.6 + r() * 0.7, color: PALETTE[Math.floor(r() * PALETTE.length)]!, big, flat });
     fireworkSound(this.ctx.audio, 'launch', p.x, p.y, p.z, flat ? 0.6 : 1);
   }
@@ -393,6 +421,7 @@ export class Fireworks {
     this.time += dt;
     this.phaseT += dt;
     const reduced = this.reduced();
+    this.turnView(dt);
     // ---- schedule
     if (this.phase === 'festive') {
       this.winter = Math.min(1, this.winter + dt / 2.5);
@@ -419,9 +448,11 @@ export class Fireworks {
       k.t += dt;
       k.v.y -= (k.flat ? g * 0.6 : g * 0.25) * dt;
       k.p.addScaledVector(k.v, dt);
-      if (this.r() < 0.9) this.spawn(k.p, new Vector3((this.r() - 0.5) * 1.5, -1 - this.r(), (this.r() - 0.5) * 1.5), PALETTE[0]!, 0.5 + this.r() * 0.4, 0.5);
+      // a bright head and a long, slow trail
+      this.spawn(k.p, new Vector3((this.r() - 0.5) * 1.5, -1 - this.r(), (this.r() - 0.5) * 1.5), PALETTE[0]!, 0.9 + this.r() * 0.6, 0.8);
+      if (this.r() < 0.5) this.spawn(k.p, new Vector3(0, 0.5, 0), PALETTE[3]!, 0.25, 1.6);
     }
-    for (const k of this.rockets.filter((q) => q.t >= q.fuse)) this.burst(k.p, k.color, k.flat ? 60 : k.big ? 260 : 150, k.flat ? 12 : k.big ? 21 : 16, k.big && this.r() < 0.5 ? 'willow' : this.r() < 0.2 ? 'ring' : 'peony');
+    for (const k of this.rockets.filter((q) => q.t >= q.fuse)) this.burst(k.p, k.color, k.flat ? 80 : k.big ? 380 : 220, k.flat ? 14 : k.big ? 32 : 25, k.big && this.r() < 0.5 ? 'willow' : this.r() < 0.2 ? 'ring' : 'peony');
     this.rockets = this.rockets.filter((q) => q.t < q.fuse);
     // ---- sparks
     for (let i = 0; i < MAX_SPARKS; i++) {
