@@ -30,7 +30,7 @@ export const C = {
 } as const;
 
 /** A spoked wheel in the x = const plane (axle along x), centre at (x, y, z). */
-function wheel(k: Kit, x: number, y: number, z: number, radius: number, color: Hex): void {
+export function wheel(k: Kit, x: number, y: number, z: number, radius: number, color: Hex): void {
   k.push(x, y, z, 0, 0, Math.PI / 2);
   // rim as 12 short beams
   const n = 12;
@@ -50,7 +50,7 @@ function wheel(k: Kit, x: number, y: number, z: number, radius: number, color: H
 export type CartLoad = 'stones' | 'blocks' | 'crates' | 'straw' | 'logs' | 'empty' | 'marked';
 
 /** Two-wheeled tipping cart (Karren) with shafts resting on the ground. */
-export function cart(k: Kit, seed: number, load: CartLoad = 'stones'): void {
+export function cart(k: Kit, seed: number, load: CartLoad = 'stones', wheels = true): void {
   const r = rng(seed);
   const wood = tint(C.wood, r);
   // the bed tilts forward: shafts on the ground
@@ -85,8 +85,10 @@ export function cart(k: Kit, seed: number, load: CartLoad = 'stones'): void {
     for (let i = 0; i < 5; i++) k.cyl(0.13, 0.13, 2.4, -0.5 + i * 0.25, 0.22 + (i % 2) * 0.18, -1.2, tint(C.wood, r), [Math.PI / 2, 0, 0], 7);
   }
   k.pop();
-  wheel(k, -0.86, 0.62, -0.1, 0.62, C.woodDark);
-  wheel(k, 0.86, 0.62, -0.1, 0.62, C.woodDark);
+  if (wheels) {
+    wheel(k, -0.86, 0.62, -0.1, 0.62, C.woodDark);
+    wheel(k, 0.86, 0.62, -0.1, 0.62, C.woodDark);
+  }
   k.cyl(0.05, 0.05, 1.86, -0.93, 0.62, -0.1, C.iron, [0, 0, Math.PI / 2], 6);
 }
 

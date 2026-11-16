@@ -65,12 +65,15 @@ export const ERA_LOOKS: Record<Era, EraLook> = {
     season: 0,
   },
   '1796': {
-    sun: { azimuth: 190, elevation: 24, color: '#d9d6cc', intensity: 1.4 },
-    disc: 'none',
-    sky: { zenith: '#7a7e80', horizon: '#b4b2aa', below: '#5a5852', clouds: 0.9, cloudColor: '#a9a69f', stars: 0 },
-    ambient: { sky: '#9a9c9c', ground: '#4c4a44', intensity: 1.15 },
-    fog: { color: '#a4a29b', sunColor: '#b8b4a8', density: 0.0012, heightDensity: 0.004, base: 255, falloff: 30, ground: 0.008 },
-    grade: { exposure: 1.0, saturation: 0.55, contrast: 1.02, lift: '#0d0d0c', gain: '#f4f1ea', vignette: 0.4, grain: 0.05 },
+    // playtest round 2: "everything grey" — still a cold autumn over the ruin, but with a low warm
+    // sun under a steel-blue sky, rust in the trees and more contrast, so stone, fire and the far
+    // Hohenburg read
+    sun: { azimuth: 140, elevation: 19, color: '#f0c890', intensity: 1.75 },
+    disc: 'sun',
+    sky: { zenith: '#4f6a86', horizon: '#d8c4a0', below: '#5a5248', clouds: 0.75, cloudColor: '#b9a993', stars: 0 },
+    ambient: { sky: '#8c98a8', ground: '#5a4a3a', intensity: 1.05 },
+    fog: { color: '#b4ab9c', sunColor: '#e0bf90', density: 0.00085, heightDensity: 0.003, base: 255, falloff: 30, ground: 0.006 },
+    grade: { exposure: 1.02, saturation: 0.86, contrast: 1.14, lift: '#100c0a', gain: '#fbf0e0', vignette: 0.42, grain: 0.05 },
     glow: { color: '#000000', intensity: 0 },
     snow: 0,
     season: 1.4,

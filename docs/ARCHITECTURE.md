@@ -230,7 +230,8 @@ relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness)
 Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m around the player;
 `?scanall` = everywhere); trees inside the bubble sink away (ground points only). The 1840 map
 overlay (`setMapMix`) uses the same lens; the survey system swaps the 1935–40 Messtischblatt into
-the same `uMap` uniform (M cycles off → 1840 → 1935 → off, gated by the Kartograf skill).
+the same `uMap` uniform (the travel map's layer buttons send `survey:show-map {layer}` — off / 1840 /
+1935, gated by the Kartograf skill; M itself opens the travel map when the `travel` system runs).
 With `settings.colorblind` mode 2 uses blue ↔ orange (`uPalette` 1). Inside the bubble where the
 reveal is complete the terrain shader skips the lit/era colouring entirely (cheaper scan modes).
 
@@ -703,8 +704,54 @@ Round-4 (polish: set dressing) integration rules:
 - Passage (`passage.ts`): from the Tempelzimmer's glass doors through KB-B07 into the garden
   (intact eras): palace shader cut (`uKqPassA/B/Bld`), walls / vault / steps / portal, pass zones +
   side-wall solids. Chapter 3's way out (c).
+- World sets (`worldsets.ts`, playtest round 2): the Apfelallee (`orchard.ts`: two rows of apple
+  trees along the old track from the Torhaus to the Orangerie — fruit in summer, bare and snowed
+  on in 1793-02, mostly felled stumps in 1796; the runner's trail spots stay free), the Karlslust
+  menagerie (barred cages with name plates, the iron bear boxes, a paddock, "Menagerie" / "Bären" /
+  "Das Rund" boards), the Festsaal on 28 July 1793 (the gilded clock on its console, the ducat on
+  the ledge, the handle-less door, stacked paintings, a toppled chair, the fallen chandelier; not
+  solid — upper floor) and the Zwinger today (kennel footings, the bowls in a row, straw, a lantern).
+  The park gate east of the Torhaus is a 6 m open gate with piers; the sentry box stands outside.
+- Signs (`signs.ts`): lettered boards / painted canvases on ONE canvas atlas + ONE mesh per set
+  (`SetBuilder.sign(x, y, z, deg, w, h, {text|paint, style, lean})`), lit and fogged like props.
+- Convoy (`convoy.ts`): three ox carts roll the valley road past the Taleingang in 1796 (built
+  within 450 m), wheels turning with the distance, the ox nodding, a carter beside; not solid.
+- Lehnstuhl (`chair.ts`): Peter's gilded armchair stands beside him (a step behind while he
+  walks) whenever the npc system shows him in 1793-07 within 160 m; not solid.
+- Westblick (1796): within 260 m of 200/−905 the haze thins to a quarter (`atmosphere.uFogDensity`
+  and `uFogHeightDensity` scaled from `world.look`; restored when leaving) so the Hohenburg reads.
 - Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate}`.
-  Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage`.
+  Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
+
+### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
+- Survey points (`points.ts`, 11): glowing tripods (`visuals.ts`, beam shader that fades near the
+  camera, widens with distance so a found beam stays a landmark). Walking within 7 m measures one
+  in (chime, burst ring + flash — gentler with `reducedFlash` — banner card, autosave). The field
+  station is known from the start. `travelBlock`: no travel while busy (modal / story pause), in a
+  fight, while hunted (chasing / searching), in a locked chapter phase or, in the past, while a
+  story threat is active. Story objectives far away (> 600 m) whose goal lies within 140 m of a
+  known point get one Laub line "Drücken Sie M …".
+- Map (`map.ts`): M (no modal open) or the Journal tab "Karte" — the 1836–41 sheet with inked
+  footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
+  (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
+  (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
+  goal, `travel:arrived`, autosave (synchronous under `?manual`).
+- Route POIs (`pois.ts`, deterministic): along 17 chapter routes every ~120 m a cache (2–4 era
+  guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
+  `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
+  Journal tab "Funde") or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
+  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other.
+- Sprint: out of a fight and a chase, after 1.8 s of sprinting the move scale grows to ×1.45
+  (multiplies combat's `moveScale`, never compounds).
+- Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
+  set solids, no corner cutting, string-pulled) from the player to the story objective or the
+  tracked quest's goal; 48 glow motes flow along the first 70 m when a goal is new (14 s), after
+  12 s without progress, or when the straight line within 30 m is blocked (round the wings, through
+  doors and gates instead of into corners).
+- After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
+- State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
+  `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
+  `kq.travel.state/points/activate/go/map/pois/nearest/trail/route`.
 
 ### How to wire a chapter (story files, round 3)
 

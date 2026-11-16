@@ -688,6 +688,7 @@ architect's contract files are frozen except for additive, documented changes.
 | **combat** | `src/systems/combat/**`, `src/rpg/enemies.ts` (numbers, new ids), `src/player/player.ts` (additive), `src/systems/hunt/**` (Bannlicht scatter), `src/systems/menagerie/**` (calm / catch), `tests/combat*.test.ts`, `e2e/combat.spec.ts` | contracts, `src/rpg/types.ts`, `src/rpg/stats.ts` (`deriveStats`) | quests / progression / npc / chronik / story folders, `src/ui/hud.ts`, content |
 | **progression** | `src/systems/progression/**`, `src/rpg/items.ts`, `src/rpg/stats.ts`, `src/ui/hud.ts` (only if a dock is missing; prefer docks), `tests/progression*.test.ts`, `e2e/progression.spec.ts` | contracts, `src/rpg/types.ts`, `src/ui/journal.ts` | combat / quests / npc / story folders, content |
 | **contentA** | `content/story/00-prolog`, `01-kapitel-1`, `02-kapitel-2`.story.json; `content/quests/00-prolog`, `01-kapitel-1`, `02-kapitel-2`.quests.json; `scripts/content-build/{prolog,kapitel1,kapitel2}.mjs` (+ their generated packs); `content/bible/01–03` (rework notes); `e2e/helpers/{prolog,k1,k2}.ts`, `e2e/chapter-{prolog,k1,k2}.spec.ts`; their `it` blocks in `tests/story*.test.ts`; `tests/quests-content-a.test.ts` | everything else | system code, other chapters, `codex.mjs` / `speakers.mjs` (ask the architect) |
+| **world** (round 2) | `src/world/**` (`route.ts`, era looks), `src/systems/scenery/**`, `src/systems/travel/**` (survey points, map UI, route POIs, Wegweiser), `tests/travel.test.ts`, `e2e/world.spec.ts`, `e2e/scenery.spec.ts` | contracts, combat / story / quests hooks and events, `src/ui/journal.ts` (`addJournalTab`) | combat / quests / story folders, content |
 | **contentB** | `content/story/03-kapitel-3`, `04-kapitel-4`, `05-enden`.story.json; `content/quests/03-kapitel-3`, `04-kapitel-4`.quests.json; `scripts/content-build/{kapitel3,kapitel4,enden}.mjs` (+ packs); `content/bible/04–06`; `e2e/helpers/{k3,k4}.ts`, `e2e/chapter-{k3,k4}.spec.ts`, `e2e/campaign.spec.ts`; their `it` blocks; `tests/quests-content-b.test.ts` | everything else | system code, other chapters |
 
 Architect-owned (frozen, additive changes only, announce in this file): `src/systems/contracts.ts`,
@@ -765,3 +766,21 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   pass); the Talente tab key, codex badge spacing, clue card coordinate captions, the compass waypoint
   to Hanne; Steinfraß visuals and a catch wipe; ending vignettes are DOM over the live frame, not
   staged in the engine.
+- **Playtest round 2, world track (2026-11-16), fixed:** Vermessungspunkte — 11 glowing tripods,
+  walked up to they measure in with a beam burst; M / Journal "Karte" opens the 1836–41 map with
+  "Hinreisen" (not in a fight, a chase, a locked phase or, in the past, an active threat); Laub
+  points at a known point when the goal is far; sprint grows to ×1.45 out of a fight. Route POIs
+  every ~120 m on 17 chapter routes: guarded caches (2–4 era enemies), 26 Fundstücke (cards, Journal
+  "Funde", no quizzes), Wegsteine (heal + lantern). Wegweiser motes round buildings (A* on the
+  collider) when the straight line is blocked or the player is lost; the park gate east of the
+  Torhaus stands 6 m open (the sentry box moved out of the slot). Set dressing: the Apfelallee
+  (summer fruit, snow, felled in 1796), menagerie cages / bear boxes / boards, the Festsaal choice
+  objects (clock, ducat, the handle-less door) with stacked paintings and the fallen chandelier, the
+  Zwinger today (bowls, straw), Peter's gilded Lehnstuhl beside him in July 1793, rolling ox carts in 1796, a warmer, contrastier 1796 look and the
+  Westblick haze lifting for the Hohenburg.
+- **Playtest round 2, world track, left open:** Peter's gilded armchair follows Peter beside him
+  (read from `kq.npc.list()`, not carried in his hands); the Festsaal choice objects are placed but the story's
+  choice still runs through the dialogue (no physical pick-up); the Hohenburg stays small from the
+  Westblick (2–3 km, real bearing); the east-wing corner on the way to Hanne is handled by the
+  Wegweiser, not by new geometry; POI guards do not respawn after a reload of a cleared cache only
+  (by design).

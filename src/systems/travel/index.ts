@@ -1,0 +1,883 @@
+/**
+ * Travel: Vermessungspunkte and fast travel, route POIs, the Wegweiser and the Laufschritt
+ * (playtest round 2: "long empty walks", "markers point through buildings").
+ *
+ *  - Survey points (points.ts): Laub's tripods. Walking up to one "misst es ein" (beam shoots up,
+ *    rings run out, a brass chime); from then on the map (M, or the Journal's "Karte" tab) takes you
+ *    there in a breath: in the present day always, in the past while nothing holds you there (no
+ *    fight, no pack, no fire or story meter, no `flags['travel.locked']`). A point next to a far
+ *    goal is announced by Laub, so a chapter never starts with a march across the land.
+ *  - Route POIs (pois.ts): every ~120 m beside the chapters' walks a cache guarded by two to four
+ *    spectral things (`enemy:spawn` group `poi.<id>`; cleared → the lid flies open, `loot:place`,
+ *    `xp:grant`), a Fundstück (lore.ts: a card, EP, the Journal's "Fundstücke" tab) or a Wegstein
+ *    that heals once in a while.
+ *  - Wegweiser (trail.ts + world/route.ts): chalk-blue motes along the walkable route to the goal
+ *    (round wings, through the open gate) when a goal is new, the straight line is blocked, or the
+ *    player seems lost.
+ *  - Laufschritt: holding sprint outside fights and chases speeds up to ×1.45 after two seconds.
+ *  - After being caught / knocked down: if a known point lies much closer to the goal than where
+ *    you woke, a toast says so (M).
+ *
+ * The map key M belongs to this system; the survey system's map overlays (1836–41 / 1935–40) are
+ * buttons on the map page (event `survey:show-map`). State `systems.travel`; hooks `kq.travel.*`.
+ */
+import { type Group, Group as ThreeGroup } from 'three';
+import type { GameContext } from '../../core/context';
+import type { Era } from '../../core/era';
+import { defineSystem } from '../../core/systems';
+import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
+import { addJournalTab } from '../../ui/journal';
+import { loadBundledQuests, questsInPlay } from '../quests/data';
+import { findRoute, lineFree } from '../../world/route';
+import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
+import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
+import { LORE, LORE_KIND_DE, loreById } from './lore';
+import { type MapModel, injectTravelCss, renderMap } from './map';
+import { ACTIVATE_RADIUS, SURVEY_POINTS, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock } from './points';
+import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
+import { TRAVEL_DE } from './strings';
+import { Trail } from './trail';
+import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, disposeGroup, setCacheOpen } from './visuals';
+
+export interface TravelSlice {
+  /** Points walked up to. */
+  activated: string[];
+  /** Points Laub announced (known without the walk). */
+  announced: string[];
+  /** POIs seen (map marks). */
+  seen: string[];
+  /** Caches opened, Fundstücke taken. */
+  done: string[];
+  /** Wegstein id → play second of the last heal. */
+  shrineT: Record<string, number>;
+  /** One-time tips shown. */
+  tips: string[];
+}
+
+declare module '../../core/state' {
+  interface SystemStates {
+    travel: TravelSlice;
+  }
+}
+
+declare module '../../core/events' {
+  interface GameEvents {
+    /** A survey point was eingemessen (walked up to). */
+    'travel:activated': { id: string };
+    /** A journey ended at a survey point. */
+    'travel:arrived': { id: string; from: { x: number; z: number } };
+    /** Ask the survey system to lay a historic map on the terrain (0 off). */
+    'survey:show-map': { layer: 0 | 1840 | 1935 };
+    /** A route POI was used: a cache opened, a Fundstück taken, a Wegstein touched. */
+    'travel:poi': { id: string; kind: 'cache' | 'lore' | 'shrine' };
+  }
+}
+
+export interface TravelHooks {
+  state(): TravelSlice & { inCombat: boolean; hunt: string; block: string | null; sprint: number; goal: { x: number; z: number } | null };
+  points(): { id: string; name: string; x: number; z: number; known: boolean; activated: boolean }[];
+  activate(id: string): void;
+  /** Travel now (ignores the map; respects the rules unless `force`). Returns false if blocked. */
+  go(id: string, force?: boolean): boolean;
+  map(open?: boolean): boolean;
+  pois(): (Poi & { state: string; built: boolean })[];
+  /** Nearest POI of a kind in the current era. */
+  nearest(kind?: string): (Poi & { d: number }) | null;
+  /** The Wegweiser: route points and whether it shows. */
+  trail(show?: boolean): { points: [number, number][]; visible: boolean };
+  /** Route from the player to x/z (debug). */
+  route(x: number, z: number): [number, number][];
+}
+
+declare module '../../debug/hooks' {
+  interface KqHooks {
+    travel?: TravelHooks;
+  }
+}
+
+const SPRINT_BOOST = 0.45;
+const POI_BUILD = 150;
+const POI_DROP = 200;
+const GUARD_SPAWN = 48;
+const GUARD_DROP = 130;
+const LORE_TAKE = 1.9;
+const SHRINE_R = 2.6;
+const SHRINE_COOL = 120;
+
+type PoiState = 'hidden' | 'seen' | 'done';
+
+class Travel {
+  slice: TravelSlice;
+  readonly root: Group = new ThreeGroup();
+  private readonly tripods = new Map<string, TripodVisual>();
+  private readonly poiVis = new Map<string, PoiVisual>();
+  private readonly guards = new Set<string>();
+  private readonly pois: Poi[];
+  private inCombat = false;
+  private hunt = 'calm';
+  private caughtPending = false;
+  private wakeAt = -1;
+  private sprintT = 0;
+  private sprint = 0;
+  private lastWritten = Number.NaN;
+  private lastBase = 1;
+  private mapOpen: { close(): void } | null = null;
+  private journeying = false;
+  private goalStory: { x: number; z: number } | null = null;
+  readonly trail = new Trail();
+  private trailFor = '';
+  private bestD = Infinity;
+  private stuckT = 0;
+  private trailCheckT = 0;
+  private card: HTMLElement | null = null;
+  private cardT = 0;
+  private time = 0;
+
+  constructor(private readonly ctx: GameContext) {
+    this.slice = this.loadSlice();
+    this.root.name = 'travel';
+    ctx.scene.add(this.root);
+    this.root.add(this.trail.mesh);
+    const hf = ctx.world.heightfields['1789'];
+    this.pois = generatePois(undefined, {
+      blocked: (x, z) => ctx.world.collider.footprintAt(x, z) >= 0 || hf.slopeDeg(x, z) > 26 || ctx.world.surfaceAt(x, z) === 'water',
+    });
+  }
+
+  loadSlice(): TravelSlice {
+    const s = this.ctx.state.slice('travel', () => ({ activated: [], announced: [], seen: [], done: [], shrineT: {}, tips: [] }));
+    s.activated ??= [];
+    s.announced ??= [];
+    s.seen ??= [];
+    s.done ??= [];
+    s.shrineT ??= {};
+    s.tips ??= [];
+    return s;
+  }
+
+  // ---- state and rules ----------------------------------------------------------------------
+
+  known(): SurveyPoint[] {
+    return knownPoints(this.slice.activated, this.slice.announced);
+  }
+
+  chapter(): string {
+    const st = this.ctx.state.state.systems.story as { chapter?: string | null } | undefined;
+    return st?.chapter ?? 'prolog';
+  }
+
+  tier(): number {
+    const c = this.chapter();
+    return (CHAPTER_TIER as Record<string, number>)[c] ?? 1;
+  }
+
+  private storyThreat(): boolean {
+    const st = this.ctx.state.state.systems.story as { threats?: Record<string, { active?: boolean }>; meters?: Record<string, { done?: boolean }> } | undefined;
+    if (st?.threats && Object.values(st.threats).some((t) => t?.active)) return true;
+    if (st?.meters && Object.entries(st.meters).some(([id, m]) => id !== 'oil' && m && !m.done)) return true;
+    return false;
+  }
+
+  blockReason(): string | null {
+    const ctx = this.ctx;
+    const b = travelBlock({
+      era: ctx.era.current,
+      inCombat: this.inCombat,
+      hunt: this.hunt,
+      threat: this.storyThreat(),
+      locked: ctx.state.state.flags['travel.locked'] === true,
+      busy: this.caughtPending || this.journeying || ctx.post.uniforms.uShift!.value > 0.02 || ctx.player.frozen,
+      flying: ctx.player.flying,
+    });
+    return b ? (TRAVEL_DE.block[b] ?? TRAVEL_DE.block.busy!) : null;
+  }
+
+  // ---- the goal (story objective, else the tracked quest's) ---------------------------------
+
+  private questDefs: Map<string, QuestDef> | null = null;
+
+  /** The tracked quest's first open objective with a place in this era (as the quests' compass). */
+  private questGoal(): { x: number; z: number } | null {
+    const ctx = this.ctx;
+    const qs = ctx.state.state.systems.quests as QuestSlice | undefined;
+    if (!qs?.tracked?.length) return null;
+    this.questDefs ??= questsInPlay(loadBundledQuests(), ctx.params.has('storytest')).quests;
+    const era = ctx.era.current;
+    for (const id of qs.tracked) {
+      const q = this.questDefs.get(id);
+      const prog = qs.quests[id];
+      if (!q || prog?.state !== 'active') continue;
+      const done = (o: QuestObjective) => (prog.counts[o.id] ?? 0) >= Math.max(1, Math.round((o.type === 'survive' ? (o.seconds ?? o.count) : o.count) ?? 1));
+      for (const o of q.objectives) {
+        if (o.noMarker || done(o)) continue;
+        if (!(o.after ?? []).every((a) => {
+          const pre = q.objectives.find((x) => x.id === a);
+          return !pre || done(pre);
+        })) continue;
+        const at = o.type === 'escort' && o.to ? o.to : (o.where ?? o.place?.[0] ?? o.to);
+        if (at && (!at.era || at.era === era) && !at.room) return { x: at.x, z: at.z };
+      }
+    }
+    return null;
+  }
+
+  currentGoal(): { x: number; z: number } | null {
+    const st = this.ctx.state.state.systems.story as { objective?: { x?: number; z?: number; text?: string | null } | null } | undefined;
+    const o = st?.objective;
+    if (o && typeof o.x === 'number' && typeof o.z === 'number' && o.text) return { x: o.x, z: o.z };
+    return this.goalStory ?? this.questGoal();
+  }
+
+  // ---- survey points -----------------------------------------------------------------------
+
+  activate(id: string, quiet = false): void {
+    const p = pointById(id);
+    if (!p || this.slice.activated.includes(id)) return;
+    this.slice.activated.push(id);
+    const t = this.tripods.get(id);
+    if (t) {
+      t.lit = 1;
+      if (!quiet) t.burst = 0;
+    }
+    if (quiet) return;
+    const ctx = this.ctx;
+    chimeActivate(ctx.audio);
+    this.showCard(TRAVEL_DE.activated(p.name), TRAVEL_DE.activatedSub, null, 4.5, 'travel-card-activated');
+    if (!this.slice.tips.includes('map')) {
+      this.slice.tips.push('map');
+      ctx.ui.toast(TRAVEL_DE.firstMap, 6000);
+    }
+    ctx.events.emit('travel:activated', { id });
+    ctx.save.autosave('travel');
+  }
+
+  private syncTripods(): void {
+    const ctx = this.ctx;
+    const p = ctx.player.position;
+    const known = new Set(this.known().map((k) => k.id));
+    for (const sp of SURVEY_POINTS) {
+      const d = Math.hypot(p.x - sp.x, p.z - sp.z);
+      let t = this.tripods.get(sp.id);
+      // a found point's beam is a landmark: keep it within 1.4 km
+      const range = known.has(sp.id) ? 1400 : 260;
+      if (!t && d < range) {
+        const y = ctx.world.heightfields[ctx.era.current === 'today' ? '2025' : '1789'].heightAt(sp.x, sp.z);
+        t = buildTripod(sp.x, y - 0.03, sp.z, SURVEY_POINTS.indexOf(sp) + 3);
+        t.lit = known.has(sp.id) ? 1 : 0;
+        this.tripods.set(sp.id, t);
+        this.root.add(t.group);
+      } else if (t && d > range + 120) {
+        disposeGroup(t.group);
+        this.tripods.delete(sp.id);
+        continue;
+      }
+      if (t) t.lit = known.has(sp.id) ? 1 : t.lit;
+      if (d < ACTIVATE_RADIUS && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
+    }
+  }
+
+  private dropAllVisuals(): void {
+    for (const t of this.tripods.values()) disposeGroup(t.group);
+    this.tripods.clear();
+    for (const v of this.poiVis.values()) disposeGroup(v.group);
+    this.poiVis.clear();
+  }
+
+  // ---- journeys ------------------------------------------------------------------------------
+
+  go(id: string, force = false): boolean {
+    const ctx = this.ctx;
+    const p = pointById(id);
+    if (!p) return false;
+    if (!force && (this.blockReason() || !this.known().some((k) => k.id === id))) return false;
+    this.closeMap();
+    this.journeying = true;
+    const from = { x: ctx.player.position.x, z: ctx.player.position.z };
+    const curtain = document.createElement('div');
+    curtain.className = 'kqt-travel-curtain';
+    curtain.dataset.testid = 'travel-curtain';
+    const cross = document.createElement('div');
+    cross.className = 'kqt-cross';
+    const to = document.createElement('div');
+    to.className = 'kqt-to';
+    to.textContent = TRAVEL_DE.travelTo(p.name);
+    const sub = document.createElement('div');
+    sub.className = 'kqt-sub';
+    sub.textContent = TRAVEL_DE.travelSub;
+    curtain.append(cross, to, sub);
+    document.body.append(curtain);
+    travelSwell(ctx.audio);
+    ctx.pause.push('travel');
+    const reduced = ctx.settings.state.reducedMotion;
+    requestAnimationFrame(() => curtain.classList.add('on'));
+    const arrive = (): void => {
+      // stand beside the tripod, facing the goal (or away from the tripod)
+      const goal = this.currentGoal();
+      const ox = p.x + 2.2;
+      const oz = p.z + 2.2;
+      const tx = goal ? goal.x - ox : ox - p.x;
+      const tz = goal ? goal.z - oz : oz - p.z;
+      const heading = Math.atan2(tx, -tz);
+      ctx.player.setStance('stand');
+      ctx.player.teleport(ox, oz, -heading);
+      ctx.player.pitch = 0;
+      ctx.world.forest.invalidate();
+      ctx.quality.hold(2);
+      ctx.events.emit('travel:arrived', { id, from });
+      this.trail.clear();
+      this.trailFor = '';
+      this.bestD = Infinity;
+      ctx.save.autosave('travel', true);
+    };
+    if (ctx.params.has('manual')) {
+      // deterministic tests: no real-time wait
+      arrive();
+      ctx.pause.pop('travel');
+      curtain.remove();
+      this.journeying = false;
+      return true;
+    }
+    setTimeout(
+      () => {
+        arrive();
+        setTimeout(
+          () => {
+            ctx.pause.pop('travel');
+            curtain.classList.remove('on');
+            setTimeout(() => curtain.remove(), 500);
+            this.journeying = false;
+          },
+          reduced ? 250 : 650,
+        );
+      },
+      reduced ? 450 : 1100,
+    );
+    return true;
+  }
+
+  // ---- the map -------------------------------------------------------------------------------
+
+  model(): MapModel {
+    const ctx = this.ctx;
+    const known = this.known();
+    const knownIds = new Set(known.map((k) => k.id));
+    const gate = gateFrom(ctx.state.state, ctx.params);
+    const layers: MapModel['layers'] = [];
+    const cur = (window.kq?.survey?.state().map ?? 0) as MapLayer;
+    if (nextMap(0, gate) !== null) {
+      layers.push({ id: 0, label: TRAVEL_DE.layerOff, on: cur === 0 });
+      layers.push({ id: 1840, label: TRAVEL_DE.layer1840, on: cur === 1840 });
+      if (nextMap(1840, gate) === 1935) layers.push({ id: 1935, label: TRAVEL_DE.layer1935, on: cur === 1935 });
+    }
+    const seen = new Set(this.slice.seen);
+    const done = new Set(this.slice.done);
+    return {
+      known,
+      unknown: SURVEY_POINTS.filter((p) => !knownIds.has(p.id)),
+      pois: this.pois.filter((p) => seen.has(p.id) || done.has(p.id)).map((p) => ({ ...p, state: done.has(p.id) ? ('done' as const) : ('seen' as const) })),
+      player: { x: ctx.player.position.x, z: ctx.player.position.z, yaw: -ctx.player.yaw },
+      goal: this.currentGoal(),
+      block: this.blockReason(),
+      layers,
+    };
+  }
+
+  openMap(): void {
+    const ctx = this.ctx;
+    if (this.mapOpen || ctx.ui.modals.count > 0) return;
+    const body = document.createElement('div');
+    body.dataset.testid = 'travel-map';
+    let cleanup: (() => void) | null = null;
+    const handle = ctx.ui.modals.open({
+      title: TRAVEL_DE.mapTitle,
+      body,
+      wide: true,
+      className: 'kqt-map-modal',
+      onClose: () => {
+        cleanup?.();
+        this.mapOpen = null;
+      },
+    });
+    cleanup = renderMap(ctx, body, () => this.model(), {
+      travel: (id) => this.go(id),
+      layer: (id) => ctx.events.emit('survey:show-map', { layer: id }),
+    });
+    this.mapOpen = handle;
+  }
+
+  closeMap(): void {
+    this.mapOpen?.close();
+    this.mapOpen = null;
+  }
+
+  // ---- POIs ----------------------------------------------------------------------------------
+
+  poiState(p: Poi): PoiState {
+    if (this.slice.done.includes(p.id)) return 'done';
+    if (this.slice.seen.includes(p.id)) return 'seen';
+    return 'hidden';
+  }
+
+  private hasWeapon(): boolean {
+    const pr = this.ctx.state.state.systems.progression as { equipped?: { weapon?: string | null } } | undefined;
+    return !!pr?.equipped?.weapon;
+  }
+
+  private syncPois(dt: number): void {
+    const ctx = this.ctx;
+    const era = ctx.era.current;
+    const p = ctx.player.position;
+    const armed = this.hasWeapon();
+    for (const poi of this.pois) {
+      const here = poi.era === era;
+      const d = Math.hypot(p.x - poi.x, p.z - poi.z);
+      let v = this.poiVis.get(poi.id);
+      const done = this.slice.done.includes(poi.id);
+      // a cache is only there for someone who can fight for it
+      const present = here && (poi.kind !== 'cache' || armed || done) && !(poi.kind === 'lore' && done);
+      if (v && (!present || d > POI_DROP)) {
+        disposeGroup(v.group);
+        this.poiVis.delete(poi.id);
+        v = undefined;
+      }
+      if (!v && present && d < POI_BUILD) {
+        const y = ctx.world.heightAt(poi.x, poi.z);
+        const yaw = Math.atan2(p.x - poi.x, p.z - poi.z);
+        const seed = Math.abs(Math.round(poi.x * 7 + poi.z * 13));
+        if (poi.kind === 'cache') v = buildCache(poi.x, y, poi.z, yaw, era, seed, done);
+        else if (poi.kind === 'shrine') v = buildShrine(poi.x, y, poi.z, yaw, seed);
+        else v = buildLetter(poi.x, y, poi.z, loreById(poi.lore ?? '')?.kind ?? 'brief', era, seed);
+        this.root.add(v.group);
+        this.poiVis.set(poi.id, v);
+      }
+      if (!v) {
+        if (this.guards.has(poi.id) && d > GUARD_DROP) this.despawnGuards(poi);
+        continue;
+      }
+      if (d < 45 && !this.slice.seen.includes(poi.id)) this.slice.seen.push(poi.id);
+      if (poi.kind === 'cache' && !done) {
+        if (!this.guards.has(poi.id) && d < GUARD_SPAWN && armed) this.spawnGuards(poi);
+        if (this.guards.has(poi.id) && d > GUARD_DROP) this.despawnGuards(poi);
+      } else if (poi.kind === 'lore' && !done && d < LORE_TAKE && !ctx.player.flying) {
+        this.takeLore(poi, v);
+      } else if (poi.kind === 'shrine' && d < SHRINE_R && !this.inCombat) {
+        this.touchShrine(poi, v);
+      }
+      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, Math.min(1, v.open + dt * 1.6));
+    }
+  }
+
+  private spawnGuards(poi: Poi): void {
+    this.guards.add(poi.id);
+    this.ctx.events.emit('enemy:spawn', {
+      group: poi.id,
+      kind: poi.enemy ?? 'nebelling',
+      x: poi.x,
+      z: poi.z,
+      era: poi.era as Era,
+      count: poi.count ?? 2,
+      radius: 4.5,
+      tier: this.tier(),
+      leash: 30,
+    });
+  }
+
+  private despawnGuards(poi: Poi): void {
+    this.guards.delete(poi.id);
+    this.ctx.events.emit('enemy:despawn', { group: poi.id });
+  }
+
+  private openCache(poi: Poi): void {
+    if (this.slice.done.includes(poi.id)) return;
+    const ctx = this.ctx;
+    this.slice.done.push(poi.id);
+    this.guards.delete(poi.id);
+    cacheOpen(ctx.audio);
+    const items = cacheLoot(poi.id);
+    items.forEach((item, i) => {
+      const a = (i / items.length) * Math.PI * 2 + 0.6;
+      ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
+    });
+    ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
+    ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
+    ctx.ui.toast(TRAVEL_DE.cacheOpen, 2400);
+    ctx.save.autosave('poi');
+  }
+
+  private takeLore(poi: Poi, v: PoiVisual): void {
+    const ctx = this.ctx;
+    const l = loreById(poi.lore ?? '');
+    this.slice.done.push(poi.id);
+    paper(ctx.audio);
+    if (l) this.showCard(l.title, l.text, `${LORE_KIND_DE[l.kind]} · ${l.from}`, 12, 'travel-card-lore');
+    ctx.events.emit('xp:grant', { amount: poiXp('lore', this.tier()), reason: 'lore', x: poi.x, z: poi.z });
+    ctx.events.emit('travel:poi', { id: poi.id, kind: 'lore' });
+    disposeGroup(v.group);
+    this.poiVis.delete(poi.id);
+    ctx.save.autosave('lore');
+  }
+
+  private touchShrine(poi: Poi, v: PoiVisual): void {
+    const ctx = this.ctx;
+    const now = ctx.state.state.meta.playSeconds;
+    const last = this.slice.shrineT[poi.id];
+    if (last !== undefined && now - last < SHRINE_COOL) return;
+    const combat = window.kq?.combat;
+    const st = combat?.state() as { hp?: number; max?: number } | undefined;
+    if (st && typeof st.hp === 'number' && typeof st.max === 'number' && st.hp >= st.max) return;
+    this.slice.shrineT[poi.id] = now;
+    combat?.heal();
+    ctx.events.emit('lantern:request', { lit: ctx.player.stats.lanternLit, refill: true });
+    shrineHum(ctx.audio);
+    v.pulse = 1;
+    ctx.ui.toast(TRAVEL_DE.shrine, 2600);
+    ctx.events.emit('travel:poi', { id: poi.id, kind: 'shrine' });
+  }
+
+  // ---- the found-card (activation, Fundstück) ---------------------------------------------------
+
+  showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
+    this.card?.remove();
+    const c = document.createElement('div');
+    c.className = testid === 'travel-card-lore' ? 'kqt-card' : 'kqt-card kqt-banner';
+    c.dataset.testid = testid;
+    const h = document.createElement('h3');
+    h.textContent = title;
+    c.append(h);
+    if (from) {
+      const f = document.createElement('p');
+      f.className = 'kqt-from';
+      f.textContent = from;
+      c.append(f);
+    }
+    const p = document.createElement('p');
+    p.textContent = text;
+    c.append(p);
+    if (testid === 'travel-card-lore') {
+      const tag = document.createElement('span');
+      tag.className = 'kqt-tag';
+      tag.textContent = TRAVEL_DE.fundTag;
+      c.append(tag);
+    }
+    c.onclick = () => this.hideCard();
+    this.ctx.ui.add(c);
+    this.card = c;
+    this.cardT = seconds;
+  }
+
+  hideCard(): void {
+    this.card?.remove();
+    this.card = null;
+  }
+
+  // ---- Laufschritt -------------------------------------------------------------------------------
+
+  private sprintBoost(dt: number): void {
+    const ctx = this.ctx;
+    const pl = ctx.player;
+    // combat writes moveScale every step; without it we must not compound our own factor
+    const base = pl.moveScale === this.lastWritten ? this.lastBase : pl.moveScale;
+    const inp = ctx.input;
+    const moving = inp.isDown('forward') || inp.isDown('left') || inp.isDown('right') || inp.isDown('back');
+    const free = !this.inCombat && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
+    if (free && moving && inp.isDown('sprint')) this.sprintT += dt;
+    else this.sprintT = Math.max(0, this.sprintT - dt * 4);
+    const target = this.sprintT > 1.8 ? SPRINT_BOOST * Math.min(1, (this.sprintT - 1.8) / 1.4) : 0;
+    this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
+    if (this.sprint < 0.002) this.sprint = 0;
+    if (this.sprint > 0.3 && !this.slice.tips.includes('sprint')) {
+      this.slice.tips.push('sprint');
+      ctx.ui.toast(TRAVEL_DE.sprint, 4200);
+    }
+    this.lastBase = base;
+    this.lastWritten = base * (1 + this.sprint);
+    pl.moveScale = this.lastWritten;
+  }
+
+  // ---- the Wegweiser -------------------------------------------------------------------------
+
+  private blockedAt = (x: number, z: number): boolean => {
+    const ctx = this.ctx;
+    const c = ctx.world.collider;
+    if (c.resolve(x, z, 0.45).hit) return true;
+    return ctx.world.surfaceAt(x, z) === 'water';
+  };
+
+  routeTo(x: number, z: number): [number, number][] {
+    const p = this.ctx.player.position;
+    return findRoute(p.x, p.z, x, z, this.blockedAt, { maxExpand: 40000 }).points;
+  }
+
+  private updateTrail(dt: number): void {
+    const ctx = this.ctx;
+    const goal = this.currentGoal();
+    const p = ctx.player.position;
+    if (!goal || ctx.player.flying) {
+      this.trail.visibleFor = 0;
+      return;
+    }
+    const key = `${Math.round(goal.x)},${Math.round(goal.z)},${ctx.era.current}`;
+    const d = Math.hypot(goal.x - p.x, goal.z - p.z);
+    if (d < 12) {
+      this.trail.visibleFor = Math.min(this.trail.visibleFor, 0.5);
+      return;
+    }
+    let want = false;
+    if (key !== this.trailFor) {
+      // a new goal: show the way for a while
+      this.trailFor = key;
+      this.bestD = d;
+      this.stuckT = 0;
+      want = true;
+      this.trail.visibleFor = 14;
+    }
+    if (d < this.bestD - 4) {
+      this.bestD = d;
+      this.stuckT = 0;
+    } else this.stuckT += dt;
+    // lost: no progress for 12 s (not while fighting or talking)
+    if (this.stuckT > 12 && !this.inCombat && ctx.ui.modals.count === 0) {
+      this.stuckT = 0;
+      want = true;
+      this.trail.visibleFor = 12;
+    }
+    // the straight line runs into a wall close ahead: show the way round
+    this.trailCheckT -= dt;
+    if (this.trailCheckT <= 0) {
+      this.trailCheckT = 1;
+      const ax = p.x + ((goal.x - p.x) / d) * Math.min(d, 30);
+      const az = p.z + ((goal.z - p.z) / d) * Math.min(d, 30);
+      if (ctx.era.info.palace !== 'hidden' && !lineFree(p.x, p.z, ax, az, this.blockedAt, 1.2)) {
+        want = true;
+        this.trail.visibleFor = Math.max(this.trail.visibleFor, 6);
+      }
+    }
+    if (want || (this.trail.visibleFor > 0 && this.trail.points.length && Math.hypot(this.trail.points[0]![0] - p.x, this.trail.points[0]![1] - p.z) > 6)) {
+      this.trail.setPath(this.routeTo(goal.x, goal.z));
+    }
+  }
+
+  // ---- after being caught ---------------------------------------------------------------------
+
+  private wakeHint(): void {
+    const ctx = this.ctx;
+    const goal = this.currentGoal();
+    if (!goal) return;
+    const p = ctx.player.position;
+    const dWake = Math.hypot(goal.x - p.x, goal.z - p.z);
+    const near = nearestPoint(goal.x, goal.z, this.known());
+    if (!near || dWake < 220 || near.d > dWake - 150) return;
+    ctx.ui.toast(TRAVEL_DE.wakeHint(near.point.name), 6500);
+  }
+
+  // ---- per step ------------------------------------------------------------------------------
+
+  update(dt: number): void {
+    const ctx = this.ctx;
+    this.time += dt;
+    if (ctx.input.wasPressed('map') && ctx.ui.modals.count === 0) this.openMap();
+    this.syncTripods();
+    this.syncPois(dt);
+    this.sprintBoost(dt);
+    this.updateTrail(dt);
+    // Laub announces the point beside a far goal
+    const ann = announceFor(this.currentGoal(), ctx.player.position, [...this.slice.activated, ...this.slice.announced]);
+    if (ann && !this.caughtPending) {
+      this.slice.announced.push(ann.id);
+      ctx.events.emit('dialogue:say', { speaker: 'laub', text: TRAVEL_DE.announced(ann.name), priority: 'low' });
+    }
+    if (this.wakeAt >= 0) {
+      this.wakeAt -= dt;
+      if (this.wakeAt < 0) this.wakeHint();
+    }
+    if (this.card) {
+      this.cardT -= dt;
+      if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11)) this.hideCard();
+    }
+  }
+
+  frame(dt: number): void {
+    const ctx = this.ctx;
+    const rf = ctx.settings.state.reducedFlash;
+    const rm = ctx.settings.state.reducedMotion;
+    const t = performance.now() / 1000;
+    const cam = ctx.camera.position;
+    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z));
+    for (const v of this.poiVis.values()) animatePoi(v, dt, t, rm);
+    this.trail.frame(dt, (x, z) => ctx.world.heightAt(x, z), rm);
+  }
+
+  // ---- events -------------------------------------------------------------------------------
+
+  wire(): void {
+    const ctx = this.ctx;
+    const ev = ctx.events;
+    ev.on('combat:state', ({ inCombat }) => {
+      this.inCombat = inCombat;
+    });
+    ev.on('hunt:alert', ({ state }) => {
+      this.hunt = state;
+    });
+    ev.on('player:caught', () => {
+      this.caughtPending = true;
+      this.closeMap();
+      for (const id of [...this.guards]) {
+        const poi = this.pois.find((p) => p.id === id);
+        if (poi) this.despawnGuards(poi);
+      }
+    });
+    ev.on('player:teleport', () => {
+      if (!this.caughtPending) return;
+      this.caughtPending = false;
+      this.wakeAt = 1.5;
+    });
+    ev.on('enemy:cleared', ({ group }) => {
+      const poi = this.pois.find((p) => p.id === group);
+      if (poi && poi.kind === 'cache') this.openCache(poi);
+    });
+    ev.on('objective:set', ({ x, z }) => {
+      this.goalStory = typeof x === 'number' && typeof z === 'number' ? { x, z } : null;
+    });
+    ev.on('era:change', () => {
+      this.dropAllVisuals();
+      this.guards.clear();
+      this.trailFor = '';
+      this.trail.clear();
+    });
+    const reload = (): void => {
+      this.slice = this.loadSlice();
+      this.dropAllVisuals();
+      this.guards.clear();
+      this.trail.clear();
+      this.trailFor = '';
+    };
+    ev.on('game:start', reload);
+    ev.on('save:loaded', reload);
+    ctx.state.subscribe((_s, reason) => {
+      if (reason === 'new' || reason === 'replace') reload();
+    });
+  }
+
+  hooks(): TravelHooks {
+    const ctx = this.ctx;
+    return {
+      state: () => ({ ...structuredClone(this.slice), inCombat: this.inCombat, hunt: this.hunt, block: this.blockReason(), sprint: this.sprint, goal: this.currentGoal() }),
+      points: () => {
+        const known = new Set(this.known().map((k) => k.id));
+        return SURVEY_POINTS.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z, known: known.has(p.id), activated: this.slice.activated.includes(p.id) }));
+      },
+      activate: (id) => this.activate(id),
+      go: (id, force) => this.go(id, force),
+      map: (open = true) => {
+        if (open) this.openMap();
+        else this.closeMap();
+        return !!this.mapOpen;
+      },
+      pois: () => this.pois.map((p) => ({ ...p, state: this.poiState(p), built: this.poiVis.has(p.id) })),
+      nearest: (kind) => {
+        const p = ctx.player.position;
+        let best: (Poi & { d: number }) | null = null;
+        for (const poi of this.pois) {
+          if (poi.era !== ctx.era.current || (kind && poi.kind !== kind)) continue;
+          const d = Math.hypot(poi.x - p.x, poi.z - p.z);
+          if (!best || d < best.d) best = { ...poi, d };
+        }
+        return best;
+      },
+      trail: (show) => {
+        if (show) {
+          const g = this.currentGoal();
+          if (g) {
+            this.trail.setPath(this.routeTo(g.x, g.z));
+            this.trail.visibleFor = 20;
+          }
+        }
+        return { points: [...this.trail.points], visible: this.trail.mesh.visible || this.trail.visibleFor > 0 };
+      },
+      route: (x, z) => this.routeTo(x, z),
+    };
+  }
+
+  /** The Journal's "Fundstücke" page. */
+  renderFunde(el: HTMLElement): void {
+    const found = LORE.filter((l) => this.pois.some((p) => p.lore === l.id && this.slice.done.includes(p.id)));
+    const total = new Set(this.pois.filter((p) => p.lore).map((p) => p.lore)).size;
+    const head = document.createElement('p');
+    head.textContent = found.length ? TRAVEL_DE.fundCount(found.length, total) : TRAVEL_DE.fundEmpty;
+    el.append(head);
+    const ul = document.createElement('ul');
+    ul.className = 'kqt-fund-list';
+    for (const l of found) {
+      const li = document.createElement('li');
+      const b = document.createElement('b');
+      b.textContent = l.title;
+      const i = document.createElement('i');
+      i.textContent = `${LORE_KIND_DE[l.kind]} · ${l.from} · ${TRAVEL_DE.fundTag}`;
+      const p = document.createElement('p');
+      p.textContent = l.text;
+      li.append(b, i, p);
+      ul.append(li);
+    }
+    el.append(ul);
+  }
+
+  dispose(): void {
+    this.closeMap();
+    this.hideCard();
+    this.dropAllVisuals();
+    this.trail.dispose();
+    this.root.removeFromParent();
+  }
+}
+
+let travel: Travel | null = null;
+let hooks: TravelHooks | null = null;
+
+export default defineSystem({
+  id: 'travel',
+  after: ['combat', 'quests', 'story', 'scenery'],
+  init(ctx) {
+    injectTravelCss();
+    travel = new Travel(ctx);
+    travel.wire();
+    hooks = travel.hooks();
+    let cleanup: (() => void) | null = null;
+    addJournalTab({
+      id: 'karte',
+      label: TRAVEL_DE.journalTab,
+      order: 15,
+      render: (el) => {
+        if (!travel) return;
+        const t = travel;
+        cleanup?.();
+        cleanup = renderMap(ctx, el, () => t.model(), { travel: (id) => {
+          ctx.ui.modals.closeAll();
+          t.go(id);
+        }, layer: (id) => ctx.events.emit('survey:show-map', { layer: id }) }, true);
+      },
+      hide: () => {
+        cleanup?.();
+        cleanup = null;
+      },
+    });
+    addJournalTab({
+      id: 'funde',
+      label: TRAVEL_DE.fundTab,
+      order: 35,
+      render: (el) => travel?.renderFunde(el),
+    });
+  },
+  update(dt, ctx) {
+    if (hooks && window.kq && window.kq.travel !== hooks) window.kq.travel = hooks;
+    travel?.update(dt);
+    void ctx;
+  },
+  frame(dt) {
+    if (hooks && window.kq && window.kq.travel !== hooks) window.kq.travel = hooks;
+    travel?.frame(dt);
+  },
+  dispose() {
+    travel?.dispose();
+    travel = null;
+  },
+});

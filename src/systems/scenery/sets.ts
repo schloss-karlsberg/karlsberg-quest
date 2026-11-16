@@ -5,6 +5,7 @@
  * radii (they are checked in tests/scenery.test.ts).
  */
 import { Color } from 'three';
+import { WORLD_SETS } from './worldsets';
 import type { Era } from '../../core/era';
 import { type SetBuilder, face } from './builder';
 import { rng } from './kit';
@@ -380,9 +381,32 @@ const parkzaun: SetDef = {
     // east: the broken stretch just past the scrap of wool (where he climbed over, bible 2.1);
     // west: the park barrier on the road beside the gatehouse, and a trampled stretch where his
     // trail (and the pack) crosses towards the Orangerie (k2-spur, ≈ 1613/−402)
-    b.solids.push(...fence(k, PARK_FENCE[0]!, b.heightAt, 111, 1.55, [{ seg: 1, s0: 2.2, s1: 4.6 }]));
-    b.solids.push(...fence(k, PARK_FENCE[1]!, b.heightAt, 112, 1.55, [{ seg: 0, s0: 0.6, s1: 5.0 }, { seg: 0, s0: 13.0, s1: 17.2 }]));
-    // the barrier (Parkschranke), its pole raised, and the sentry box behind it
+    // playtest round 2: the way into the park was a 2 m slot between the sentry box and the
+    // gatehouse wall. Now the park gate east of the Torhaus stands wide open (6 m, where the anchor
+    // is), and the sentry box stands outside, by the road, not in the passage.
+    b.solids.push(...fence(k, PARK_FENCE[0]!, b.heightAt, 111, 1.55, [{ seg: 1, s0: 0.6, s1: 7.4 }]));
+    b.solids.push(...fence(k, PARK_FENCE[1]!, b.heightAt, 112, 1.55, [{ seg: 0, s0: 0.6, s1: 6.0 }, { seg: 0, s0: 13.0, s1: 17.2 }]));
+    {
+      const [p0, p1] = [PARK_FENCE[0]![1]!, PARK_FENCE[0]![2]!];
+      const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      const ux = (p1[0] - p0[0]) / len;
+      const uz = (p1[1] - p0[1]) / len;
+      const at = (s: number): [number, number] => [p0[0] + ux * s, p0[1] + uz * s];
+      const a = at(0.4);
+      const c = at(7.6);
+      const y0 = Math.min(b.heightAt(a[0], a[1]), b.heightAt(c[0], c[1]));
+      for (const [px, pz] of [a, c]) {
+        k.place(px, y0 - 0.1, pz, Math.atan2(ux, uz));
+        k.box(0.7, 2.9, 0.7, 0, 0, 0, C.sandstone);
+        k.box(0.85, 0.18, 0.85, 0, 2.9, 0, C.sandstone);
+        k.cone(0.3, 0.55, 0, 3.08, 0, C.sandstone, 8);
+        b.circle(px, pz, 0.45);
+      }
+      // the wings swung into the park (north)
+      gate(k, a, c, y0, 2.3, 1, [uz, -ux], 0.35);
+      b.glow(a[0], y0 + 3.2, a[1], 0.7, LANTERN).glow(c[0], y0 + 3.2, c[1], 0.7, LANTERN);
+    }
+    // the barrier (Parkschranke), its pole raised, and the sentry box outside by the road
     const y = b.at(1622.4, -407.2, 296, 0.5);
     k.box(0.3, 1.1, 0.3, 0, 0, 0, C.woodDark);
     k.push(0, 1.05, 0, -1.15, 0, 0);
@@ -390,10 +414,10 @@ const parkzaun: SetDef = {
     for (let i = 0; i < 4; i++) k.box(0.125, 0.125, 0.6, 0, 0, 0.6 + i * 1.25, 0x8a2a20);
     k.pop();
     b.circle(1622.4, -407.2, 0.25);
-    b.at(1620.6, -413.2, 116, 0.8);
+    b.at(1631.5, -402.5, 250, 0.8);
     sentryBox(k, 115);
-    b.box(1620.6, -413.2, 116, 0.75, 0.7);
-    b.glow(1620.6, y + 2.1, -413.2, 0.8, LANTERN);
+    b.box(1631.5, -402.5, 250, 0.75, 0.7);
+    b.glow(1631.5, y + 2.1, -402.5, 0.8, LANTERN);
   },
 };
 
@@ -477,4 +501,4 @@ const rund: SetDef = {
   },
 };
 
-export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund];
+export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund, ...WORLD_SETS];

@@ -2,7 +2,7 @@ import { SRGBColorSpace, type Texture, TextureLoader } from 'three';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import type { ScanMode } from '../../world/world';
-import { type MapLayer, gateFrom, nextMap, scanAllowed } from '../skills/logic';
+import { type MapLayer, gateFrom, mapLayers, nextMap, scanAllowed } from '../skills/logic';
 
 /**
  * Survey: relief scan modes (keys 0–3) and the historic map overlay (M), gated by the skills
@@ -64,12 +64,26 @@ function showMap(ctx: GameContext, layer: MapLayer, instant: boolean): void {
   updateStatus(ctx);
 }
 
+/** Is this map layer open by the skills (Kartograf 1 → 1840, 2 → 1935)? */
+function scanMapAllowed(ctx: GameContext, layer: 1840 | 1935): boolean {
+  return mapLayers(gateFrom(ctx.state.state, ctx.params)).includes(layer);
+}
+
 export default defineSystem({
   id: 'survey',
   init(ctx) {
     mapLayer = 0;
     ctx.events.on('era:change', () => updateStatus(ctx));
     ctx.events.on('scan:mode', () => updateStatus(ctx));
+    ctx.events.on('survey:show-map', ({ layer }) => {
+      const next: MapLayer = layer;
+      if (next !== 0 && !scanMapAllowed(ctx, next)) {
+        ctx.ui.toast(ctx.t('skills.locked.map'));
+        return;
+      }
+      showMap(ctx, next, ctx.settings.state.reducedMotion);
+      ctx.ui.toast(ctx.t(next === 0 ? 'map.off' : `map.${next}`));
+    });
     updateStatus(ctx);
     surveyHooks = {
       map: (layer, instant = true) => showMap(ctx, layer, instant),
@@ -94,7 +108,8 @@ export default defineSystem({
         ctx.ui.toast(ctx.t(`scan.${mode}`));
       }
     }
-    if (inp.wasPressed('map')) {
+    // with the travel system M opens its map page; the overlays are buttons there (`survey:show-map`)
+    if (inp.wasPressed('map') && !ctx.systems.get('travel')) {
       const current: MapLayer = ctx.world.mapMix > 0 ? mapLayer || 1840 : 0;
       const next = nextMap(current, gateFrom(ctx.state.state, ctx.params));
       if (next === null) {
