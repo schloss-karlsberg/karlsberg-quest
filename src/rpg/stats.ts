@@ -70,7 +70,7 @@ export const BASE_STATS: DerivedStats = {
   bannAngle: 60,
   bannRange: 9,
   bannStun: 1,
-  bannRecharge: 8,
+  bannRecharge: 11,
   damageTaken: 1,
   staminaCost: 1,
   stagger: 1,

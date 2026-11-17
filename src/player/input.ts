@@ -44,7 +44,11 @@ export type Action =
   /** Quick-use item (Kräuterbalsam …). */
   | 'quickUse'
   /** Journal on the Ausrüstung tab. */
-  | 'inventory';
+  | 'inventory'
+  /** Abilities (combat variety pass, §4.2): Ausfall (level 2), Erdstoß (4), Wirbel (6). T / Z(Y) / U: one row, free keys. */
+  | 'skill1'
+  | 'skill2'
+  | 'skill3';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -80,6 +84,9 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   dodge: ['Space'],
   quickUse: ['KeyH'],
   inventory: ['KeyI'],
+  skill1: ['KeyT'],
+  skill2: ['KeyY'],
+  skill3: ['KeyU'],
 };
 
 /**
@@ -96,7 +103,7 @@ export const SHARED_KEYS: [Action, Action][] = [
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
   'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans', 'journal',
-  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory',
+  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];
 

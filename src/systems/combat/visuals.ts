@@ -903,10 +903,131 @@ export class CombatVisuals {
     }
   }
 
+  // ---- combat variety pass -----------------------------------------------------------------------
+
+  /** A blow bounces off a guard: brass sparks off the board's face, towards you. */
+  guardSpark(x: number, y: number, z: number, dirX: number, dirZ: number, reducedFlash: boolean): void {
+    const n = Math.round(14 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = (this.rnd() - 0.5) * 2.2;
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const sp = 2 + this.rnd() * 3;
+      this.add({ type: 2, x, y: y + (this.rnd() - 0.5) * 0.4, z, vx: -(dirX * c - dirZ * s) * sp, vy: 0.5 + this.rnd() * 2, vz: -(dirX * s + dirZ * c) * sp, life: 0.25 + this.rnd() * 0.25, size: 0.045, grow: 0, r: 1, g: 0.78, b: 0.35, em: reducedFlash ? 1 : 2.2, grav: 7, drag: 2.5, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** A guard broken: the board thrown wide, leaves blown out of it. */
+  guardBreak(x: number, y: number, z: number): void {
+    const n = Math.round(18 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      this.add({ type: 3, x, y: y + this.rnd() * 0.6, z, vx: Math.cos(a) * (1.5 + this.rnd() * 2), vy: 1 + this.rnd() * 2.5, vz: Math.sin(a) * (1.5 + this.rnd() * 2), life: 1.2 + this.rnd() * 0.8, size: 0.08 + this.rnd() * 0.05, grow: 0, r: 0.86, g: 0.8, b: 0.66, em: 0, grav: 2, drag: 2.5, spin: (this.rnd() - 0.5) * 14, aspect: 0.06 });
+    }
+    this.wave(x, y - 0.8, z, 0.4, 2.4, 0.4);
+  }
+
+  /** The mirror throws the Bannlicht back: a bright line of motes from it to you. */
+  reflectBeam(fx: number, fy: number, fz: number, tx: number, ty: number, tz: number, reducedFlash: boolean): void {
+    const n = Math.round(30 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const k = this.rnd();
+      this.add({ type: 2, x: fx + (tx - fx) * k, y: fy + (ty - fy) * k, z: fz + (tz - fz) * k, vx: (this.rnd() - 0.5) * 0.6, vy: (this.rnd() - 0.5) * 0.6, vz: (this.rnd() - 0.5) * 0.6, life: 0.25 + this.rnd() * 0.25, size: 0.05 + this.rnd() * 0.04, grow: 0, r: 0.9, g: 0.96, b: 1, em: reducedFlash ? 1 : 2.6, grav: 0, drag: 3, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** A mirror cracked / a veil torn: glass splinters (cold) or mist ripped apart. */
+  shatter(x: number, y: number, z: number, glass: boolean, reducedFlash: boolean): void {
+    const n = Math.round(20 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const sp = 2 + this.rnd() * 3;
+      if (glass) this.add({ type: 3, x, y, z, vx: Math.cos(a) * sp, vy: 1 + this.rnd() * 2.5, vz: Math.sin(a) * sp, life: 0.7 + this.rnd() * 0.5, size: 0.05 + this.rnd() * 0.05, grow: 0, r: 0.75, g: 0.85, b: 0.95, em: 0, grav: 8, drag: 1, spin: (this.rnd() - 0.5) * 16, aspect: 0.15 });
+      else this.add({ type: 1, x, y, z, vx: Math.cos(a) * sp * 0.6, vy: 0.4 + this.rnd(), vz: Math.sin(a) * sp * 0.6, life: 0.7 + this.rnd() * 0.4, size: 0.25 + this.rnd() * 0.2, grow: 1.2, r: 0.7, g: 0.8, b: 0.92, em: 0, grav: -0.2, drag: 2.4, spin: 0, aspect: 1 });
+      if (i % 3 === 0) this.add({ type: 2, x, y, z, vx: Math.cos(a) * sp, vy: 1 + this.rnd() * 2, vz: Math.sin(a) * sp, life: 0.3, size: 0.04, grow: 0, r: 0.8, g: 0.92, b: 1, em: reducedFlash ? 1 : 2, grav: 4, drag: 2, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** Something called out of the fog: a column of grey mist where it rises. */
+  emerge(x: number, y: number, z: number): void {
+    const n = Math.round(16 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const d = this.rnd() * 0.7;
+      this.add({ type: 1, x: x + Math.cos(a) * d, y: y + this.rnd() * 0.4, z: z + Math.sin(a) * d, vx: Math.cos(a) * 0.4, vy: 1.2 + this.rnd() * 1.6, vz: Math.sin(a) * 0.4, life: 1.4 + this.rnd() * 0.8, size: 0.4 + this.rnd() * 0.3, grow: 1.3, r: 0.5, g: 0.52, b: 0.58, em: 0, grav: -0.3, drag: 1.2, spin: 0, aspect: 1 });
+    }
+    this.wave(x, y + 0.08, z, 0.3, 2.2, 0.6, true);
+  }
+
+  /** Embers raining into a fire ring (each frame while it fills). */
+  emberRain(x: number, y: number, z: number, r: number, k: number, reducedFlash: boolean): void {
+    if (this.rnd() > 0.35 + k * 0.5) return;
+    const a = this.rnd() * Math.PI * 2;
+    const d = Math.sqrt(this.rnd()) * r;
+    this.add({ type: 2, x: x + Math.cos(a) * d, y: y + 5 + this.rnd() * 2, z: z + Math.sin(a) * d, vx: (this.rnd() - 0.5) * 0.5, vy: -6 - this.rnd() * 3, vz: (this.rnd() - 0.5) * 0.5, life: 0.9, size: 0.06 + this.rnd() * 0.04, grow: 0, r: 1, g: 0.5, b: 0.12, em: reducedFlash ? 1 : 2.2, grav: 2, drag: 0.2, spin: 0, aspect: 1 });
+  }
+
+  /** A hazard lands: a burst of fire, or a stone breaking on the ground. */
+  hazardLand(kind: 'fire' | 'stone', x: number, y: number, z: number, r: number, reducedFlash: boolean): void {
+    if (kind === 'fire') {
+      this.burst(x, y, z, reducedFlash);
+      this.wave(x, y + 0.1, z, 0.4, r + 0.6, 0.45);
+      return;
+    }
+    this.dust(x, y, z, r);
+    this.wave(x, y + 0.1, z, 0.4, r + 0.8, 0.5);
+    const n = Math.round(10 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const a = this.rnd() * Math.PI * 2;
+      this.add({ type: 3, x, y: y + 0.3, z, vx: Math.cos(a) * (2 + this.rnd() * 3), vy: 2 + this.rnd() * 3, vz: Math.sin(a) * (2 + this.rnd() * 3), life: 1.4, size: 0.1 + this.rnd() * 0.12, grow: 0, r: 0.5, g: 0.42, b: 0.35, em: 0, grav: 9, drag: 0.3, spin: (this.rnd() - 0.5) * 8, aspect: 0.8 });
+    }
+  }
+
+  /** Ausfall: a streak of light along the lunge. */
+  lungeStreak(x0: number, y: number, z0: number, x1: number, z1: number, reducedFlash: boolean): void {
+    const n = Math.round(26 * (this.maxParticles / 900));
+    for (let i = 0; i < n; i++) {
+      const k = this.rnd();
+      this.add({ type: 2, x: x0 + (x1 - x0) * k + (this.rnd() - 0.5) * 0.3, y: y + (this.rnd() - 0.5) * 0.5, z: z0 + (z1 - z0) * k + (this.rnd() - 0.5) * 0.3, vx: 0, vy: 0.3, vz: 0, life: 0.25 + this.rnd() * 0.3, size: 0.04 + this.rnd() * 0.03, grow: 0, r: 1, g: 0.86, b: 0.6, em: reducedFlash ? 0.9 : 1.8, grav: 0, drag: 2, spin: 0, aspect: 1 });
+    }
+  }
+
+  /** Erdstoß: two shock rings, a crown of dust and chips flung out, cracks of ember light. */
+  groundSlam(x: number, y: number, z: number, r: number, reducedFlash: boolean): void {
+    this.wave(x, y + 0.1, z, 0.3, r + 0.4, 0.45);
+    this.wave(x, y + 0.12, z, 0.2, r * 0.7, 0.7);
+    this.dust(x, y, z, r * 0.7);
+    const k = this.maxParticles / 900;
+    for (let i = 0; i < Math.round(18 * k); i++) {
+      const a = this.rnd() * Math.PI * 2;
+      const sp = 3 + this.rnd() * 4;
+      this.add({ type: 3, x, y: y + 0.15, z, vx: Math.cos(a) * sp, vy: 2 + this.rnd() * 3, vz: Math.sin(a) * sp, life: 1, size: 0.05 + this.rnd() * 0.07, grow: 0, r: 0.42, g: 0.36, b: 0.3, em: 0, grav: 10, drag: 0.6, spin: (this.rnd() - 0.5) * 10, aspect: 0.8 });
+    }
+    // cracks: lines of low ember sparks running out along the ground
+    for (let c = 0; c < 6; c++) {
+      const a = (c / 6) * Math.PI * 2 + this.rnd() * 0.5;
+      for (let j = 1; j <= 5; j++) {
+        const d = (j / 5) * r * 0.85;
+        this.add({ type: 2, x: x + Math.cos(a) * d, y: y + 0.06, z: z + Math.sin(a) * d, vx: 0, vy: 0.15, vz: 0, life: 0.5 + j * 0.06, size: 0.07, grow: 0, r: 1, g: 0.55, b: 0.2, em: reducedFlash ? 0.8 : 1.6, grav: 0, drag: 1, spin: 0, aspect: 1 });
+      }
+    }
+  }
+
+  /** Wirbel: a ring of motes swept round you (each frame while it spins). */
+  whirl(x: number, y: number, z: number, r: number, t: number, reducedFlash: boolean): void {
+    const n = Math.max(2, Math.round(5 * (this.maxParticles / 900)));
+    for (let i = 0; i < n; i++) {
+      const a = t * 14 + (i / n) * Math.PI * 2;
+      const tx = -Math.sin(a);
+      const tz = Math.cos(a);
+      this.add({ type: 2, x: x + Math.cos(a) * r, y: y + 1 + (this.rnd() - 0.5) * 0.3, z: z + Math.sin(a) * r, vx: tx * 4, vy: 0, vz: tz * 4, life: 0.22, size: 0.05, grow: 0, r: 1, g: 0.85, b: 0.55, em: reducedFlash ? 0.9 : 1.8, grav: 0, drag: 4, spin: 0, aspect: 1 });
+    }
+  }
+
   /** Trail motes behind a projectile. */
   private trail(p: Projectile): void {
     const cold = p.kind.startsWith('irrlicht') || p.kind.startsWith('nebelweber');
-    const stone = p.kind.startsWith('steinbrecher') || p.kind === 'steinfresser.brocken';
+    const stone = p.kind.startsWith('steinbrecher') || p.kind === 'steinfresser.brocken' || p.kind === 'hazard.stein';
     if (stone) this.add({ type: 1, x: p.x, y: p.y, z: p.z, vx: 0, vy: 0.3, vz: 0, life: 0.6, size: 0.3, grow: 0.6, r: 0.55, g: 0.5, b: 0.45, em: 0, grav: 0, drag: 1, spin: 0, aspect: 1 });
     else this.add({ type: 2, x: p.x, y: p.y, z: p.z, vx: (this.rnd() - 0.5) * 0.5, vy: (this.rnd() - 0.5) * 0.5, vz: (this.rnd() - 0.5) * 0.5, life: 0.3, size: 0.06, grow: 0, r: cold ? 0.6 : 1, g: cold ? 0.85 : 0.3, b: cold ? 1 : 0.1, em: 1.4, grav: 0, drag: 1, spin: 0, aspect: 1 });
   }
@@ -1035,6 +1156,8 @@ export class CombatVisuals {
       const y = this.groundY(f, r.x, r.z, r.r);
       const fill = Math.min(1, r.t / Math.max(0.01, r.dur));
       this.ringPool.push(r.x, y, r.z, r.r, fill, f.reducedFlash ? 0.75 : 1, r.kind === 'rain' ? 1 : r.kind === 'landing' ? 2 : 0);
+      // an era hazard filling up: embers falling into it (combat variety pass)
+      if (r.owner === 'hazard' && r.kind === 'rain' && dt > 0) this.emberRain(r.x, y, r.z, r.r, fill, f.reducedFlash);
     }
     // running rings (kills, bosses)
     for (let i = this.waves.length - 1; i >= 0; i--) {
@@ -1051,7 +1174,12 @@ export class CombatVisuals {
     // projectiles
     for (const p of f.projectiles) {
       if (!f.frozen) this.trail(p);
-      if (p.kind.startsWith('steinbrecher')) {
+      if (p.kind === 'hazard.stein') {
+        // a dressed block falling out of the night onto its ring
+        _q.setFromEuler(_e.set(p.t * 2, p.t * 1.3, 0));
+        _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.8, 0.5, 0.6));
+        this.solids.push(_m2, 0.55, 0.45, 0.37, 0, 0, 0, 1);
+      } else if (p.kind.startsWith('steinbrecher')) {
         _q.setFromEuler(_e.set(p.t * 3, p.t * 2, 0));
         _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.7, 0.55, 0.6));
         this.solids.push(_m2, 0.5, 0.41, 0.34, 0.25, 0.08, 0.01, 1);
@@ -1148,6 +1276,9 @@ export class CombatVisuals {
       default:
         break;
     }
+    // combat variety pass: a broken guard hangs open; a called one rises out of the ground
+    if (e.guardBroken > 0 && e.state !== 'windup' && e.state !== 'strike') arm = -1.1;
+    if (e.rise > 0) sink += e.rise * Math.min(2, this.template(e).t.top);
     // a new staff hit: flinch away from it
     if (e.flash > 0.95 && v.lastFlash < 0.9) v.flinch = 1;
     v.lastFlash = e.flash;
@@ -1238,6 +1369,21 @@ export class CombatVisuals {
         const beat = 0.6 + 0.4 * Math.sin(f.time * 9);
         this.glows.push(e.x, e.y + v.t.top * 0.55, e.z, 0.35, (f.reducedFlash ? 1.2 : 2.4) * beat, 1, 0.97, 0.9, 6);
       }
+    }
+    // veiled (the Nebelweberin's Schleier): a pale shell of mist motes turning round it
+    if (e.ward > 0 && !dissolving) {
+      const top = v.t.top;
+      for (let i = 0; i < 7; i++) {
+        const a = f.time * 1.6 + (i / 7) * Math.PI * 2;
+        const h = e.y + top * (0.2 + 0.6 * ((i * 0.37) % 1));
+        this.glows.push(e.x + Math.cos(a) * (e.radius + 0.25), h, e.z + Math.sin(a) * (e.radius + 0.25), 0.09, f.reducedFlash ? 1 : 1.8, 0.7, 0.88, 1, 3);
+      }
+      this.glows.push(e.x, e.y + top * 0.5, e.z, e.radius + top * 0.45, f.reducedFlash ? 0.25 : 0.4, 0.45, 0.6, 0.85, 0);
+    }
+    // a mirror: the core flares cold-white while uncracked, dims and flickers once cracked
+    if (e.def.reflectsBann && !dissolving) {
+      const I = e.cracked ? 0.4 + 0.4 * Math.max(0, Math.sin(f.time * 23)) : 1.2 + 0.3 * Math.sin(f.time * 4);
+      this.glows.push(e.x, e.y, e.z, 0.2, (f.reducedFlash ? Math.min(I, 1) : I) * 0.9, 0.92, 0.97, 1, 4);
     }
     // gebannt: a turning pale ring under it
     if (stunned && !dissolving) {

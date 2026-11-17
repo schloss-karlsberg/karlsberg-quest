@@ -236,6 +236,32 @@ const MOVES: Record<string, [number, Pose][]> = {
     [1, REST],
   ],
 };
+/** Abilities (combat variety pass): a thrust, a two-handed drive into the ground, a full turn. */
+const SKILL_MOVES: Record<'ausfall' | 'erdstoss' | 'wirbel', [number, Pose][]> = {
+  ausfall: [
+    [0, { x: 0.3, y: -0.36, z: -0.3, rx: 1.45, ry: -0.05, rz: -0.1 }],
+    [0.25, { x: 0.18, y: -0.3, z: -0.75, rx: 1.55, ry: 0, rz: 0 }],
+    [0.8, { x: 0.16, y: -0.3, z: -0.8, rx: 1.5, ry: 0, rz: 0 }],
+    [1, REST],
+  ],
+  erdstoss: [
+    [0, REST],
+    [0.42, { x: 0.12, y: 0.02, z: -0.36, rx: -1.1, ry: 0.05, rz: 0 }],
+    [0.54, { x: 0.1, y: -0.62, z: -0.6, rx: -1.45, ry: 0, rz: 0 }],
+    [0.8, { x: 0.12, y: -0.6, z: -0.58, rx: -1.35, ry: 0, rz: 0 }],
+    [1, REST],
+  ],
+  wirbel: [
+    [0, { x: 0.44, y: -0.3, z: -0.3, rx: 0.1, ry: -1.3, rz: -0.6 }],
+    [0.18, { x: 0.2, y: -0.3, z: -0.5, rx: 0.02, ry: 0, rz: -0.1 }],
+    [0.3, { x: 0.02, y: -0.32, z: -0.4, rx: 0.0, ry: 1.3, rz: 0.4 }],
+    [0.45, { x: 0.2, y: -0.3, z: -0.5, rx: 0.02, ry: 0, rz: -0.1 }],
+    [0.58, { x: 0.02, y: -0.32, z: -0.4, rx: 0.0, ry: 1.3, rz: 0.4 }],
+    [0.72, { x: 0.2, y: -0.3, z: -0.5, rx: 0.02, ry: 0, rz: -0.1 }],
+    [0.86, { x: 0.02, y: -0.32, z: -0.4, rx: 0.0, ry: 1.3, rz: 0.4 }],
+    [1, REST],
+  ],
+};
 const CHARGE: Pose = { x: 0.44, y: -0.2, z: -0.22, rx: 0.62, ry: -1.15, rz: -0.85 };
 const LOWERED: Pose = { x: 0.32, y: -0.85, z: -0.3, rx: -0.6, ry: 0.3, rz: -0.2 };
 
@@ -277,6 +303,8 @@ export interface ViewmodelFrame {
   frozen: boolean;
   /** Swing in progress: kind, combo, t (s), duration (s). */
   swing: { kind: 'light' | 'heavy'; combo: number; t: number; dur: number } | null;
+  /** An ability in progress (combat variety pass): id, t (s), duration (s). */
+  skill?: { id: 'ausfall' | 'erdstoss' | 'wirbel'; t: number; dur: number } | null;
   /** Wuchthieb being charged: 0..1 (null = not charging). */
   charge: number | null;
   dodge: number | null;
@@ -414,7 +442,9 @@ export class Viewmodel {
     this.root.visible = true;
     // target pose
     const T = this.target;
-    if (f.swing) {
+    if (f.skill) {
+      sample(SKILL_MOVES[f.skill.id], Math.min(1, f.skill.t / f.skill.dur), T);
+    } else if (f.swing) {
       const keys = f.swing.kind === 'heavy' ? MOVES.heavy : MOVES[`light${Math.min(2, f.swing.combo)}`];
       sample(keys, Math.min(1, f.swing.t / f.swing.dur), T);
     } else if (f.charge !== null) {
@@ -448,7 +478,7 @@ export class Viewmodel {
       this.kick = Math.max(0, this.kick - dt * 4);
     }
     // swings follow their keys exactly (crisp), everything else eases
-    const snap = f.swing ? 1 : Math.min(1, dt * 14);
+    const snap = f.swing || f.skill ? 1 : Math.min(1, dt * 14);
     lerpPose(this.pose, T, snap, this.pose);
     const P = this.pose;
     this.arm.position.set(P.x, P.y, P.z);
@@ -457,7 +487,7 @@ export class Viewmodel {
     // glow: the shoe heats up while charging; notches burn faintly in the Bann stages
     const g = this.mat.uniforms.uGlow!.value as Color;
     const ch = f.charge ?? 0;
-    const glow = ch > 0 ? 0.25 + ch * 1.4 + (ch >= 1 ? 0.4 * Math.sin(f.time * 14) : 0) : f.swing?.kind === 'heavy' ? 0.6 * (1 - f.swing.t / f.swing.dur) : 0;
+    const glow = ch > 0 ? 0.25 + ch * 1.4 + (ch >= 1 ? 0.4 * Math.sin(f.time * 14) : 0) : f.skill ? 1.1 * (1 - f.skill.t / f.skill.dur) : f.swing?.kind === 'heavy' ? 0.6 * (1 - f.swing.t / f.swing.dur) : 0;
     g.setRGB(1.0 * glow, 0.62 * glow, 0.25 * glow);
     this.mat.uniforms.uNotch!.value = this.stage === 'bann' || this.stage === 'lot' ? 0.35 + 0.25 * Math.sin(f.time * (f.reducedFlash ? 1 : 2.3)) + glow * 0.5 : 0;
     this.mat.uniforms.uFlash!.value = f.flare;
@@ -493,7 +523,7 @@ export class Viewmodel {
   }
 
   private updateTrail(f: ViewmodelFrame, dt: number): void {
-    const active = !!f.swing && f.swing.t / f.swing.dur > 0.12 && f.swing.t / f.swing.dur < 0.66;
+    const active = (!!f.swing && f.swing.t / f.swing.dur > 0.12 && f.swing.t / f.swing.dur < 0.66) || (!!f.skill && f.skill.id !== 'erdstoss' && f.skill.t / f.skill.dur < 0.9) || (!!f.skill && f.skill.id === 'erdstoss' && f.skill.t / f.skill.dur > 0.4 && f.skill.t / f.skill.dur < 0.6);
     if (dt > 0) {
       for (const p of this.trailPts) p.age += dt;
       if (active) {

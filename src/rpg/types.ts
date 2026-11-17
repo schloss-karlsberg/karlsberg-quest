@@ -294,6 +294,13 @@ export interface EnemyDef {
   armorFrontal?: boolean;
   /** Immune to staff hits until struck by the Bannlicht (Irrlicht). */
   needsBann?: boolean;
+  /**
+   * (combat variety pass, additive) Holds a guard in front while it is not attacking: light blows
+   * from the front are blocked; a Wuchthieb (or the Erdstoß) breaks the guard; flanks and back are open.
+   */
+  guard?: 'front';
+  /** (combat variety pass, additive) Throws the Bannlicht back (dazzles) until a heavy blow cracks it. */
+  reflectsBann?: boolean;
   /** Seconds stunned by the Bannlicht (0 = immune). */
   bannStun: number;
   attacks: EnemyAttackDef[];

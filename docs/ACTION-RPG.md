@@ -81,6 +81,7 @@ unfinished group regain their strength).
 | **Ausweichen** (dodge roll, i-frames) | **Space** (+ direction) | Space still stands you up from crouch / prone and climbs while flying |
 | **Bannlicht** (lantern flare) | **RMB** or **G** | Cone; stuns spectral enemies, makes Irrlichter hittable, scatters the pack |
 | **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default; choose the item in the Ausrüstung tab |
+| **Fähigkeiten** (abilities, §4.2): Ausfall · Erdstoß · Wirbel | **T** · **Z** (Y on a US layout) · **U** | Unlocked at levels 2 · 4 · 6; one row of free keys; a HUD slot each with a cooldown ring |
 | Talk / examine / pick up / listen (hold) | **E** | Accept / turn in quests in the conversation |
 | **Journal** (quests, codex, collections, gear, talents) | **J** / Tab; **I** opens Ausrüstung | Replaces the Chronik board |
 | Lantern | L | |
@@ -91,7 +92,7 @@ Accessibility (ARCHITECTURE §5 contract, extended): `settings.reducedMotion` �
 roll camera tilt, shorter hit-stop; `settings.reducedFlash` → no full-screen flashes from combat at
 all, hit flashes are local and ≤ 25 %; telegraphs always use **shape + motion + sound + caption**, never
 colour alone; `settings.soundIndicators` shows screen-edge arrows for off-screen attackers; gentle mode
-(below) makes fights forgiving; every combat key is remappable; keyboard-only play works (K, G, H).
+(below) makes fights forgiving; every combat key is remappable; keyboard-only play works (K, G, H, T / Z / U).
 
 ## 4. Combat
 
@@ -104,10 +105,12 @@ ranging pole, right hand, upgraded through the campaign) and the **lantern** (le
 | --- | --- | --- | --- |
 | **Lebenskraft** (HP) | 100 | +12 | Out of combat after 6 s: 4 / s; fully at the field station and at anchors |
 | **Atem** (stamina) | 100 | +3 | 25 / s after 0.8 s without spending |
-| **Bannlicht charges** | 2 | talents | 1 per 8 s (`bannRecharge`) |
+| **Bannlicht charges** | 2 | talents | 1 per 11 s (`bannRecharge`; 8 s until the combat variety pass) |
 
 Atem costs: Hieb 10 · Wuchthieb 25 · Ausweichen 20 · running 8 / s (only while `combat:state
-{inCombat:true}`). At 0 Atem you cannot dodge or run (`player.canSprint = false`) until it is back to 25.
+{inCombat:true}`). At 0 Atem you cannot dodge or run (`player.canSprint = false`) until it is back to 25. A **perfect
+dodge** gives 12 Atem back (combat variety pass: dodging a pack's rhythm well pays for itself).
+Abilities cost Atem too: Ausfall 15 · Erdstoß 25 · Wirbel 28.
 
 ### 4.2 Moves
 
@@ -124,8 +127,24 @@ Atem costs: Hieb 10 · Wuchthieb 25 · Ausweichen 20 · running 8 / s (only whil
   `player.impulse()`; i-frames 0.08–0.33 s. A dodge in the last 0.15 s before a hit is a **perfect
   dodge** (slow-mo 0.25 s unless reduced motion; talent "Konterschritt": next hit ×2).
 - **Bannlicht**: the lantern flares (lights it if it was dark — the pack will see you): a 60° / 9 m cone.
-  Spectral enemies in it are **gebannt** (stunned, `bannStun` s, take ×1.5 damage), Irrlichter fall and
-  become hittable, Mahnbriefe drop to the ground, boss weak points open (Schuldbuch's seal). It emits
+  Spectral enemies in it are **gebannt** (stunned, `bannStun` s), Irrlichter fall and become hittable,
+  Mahnbriefe drop to the ground, boss weak points open (Schuldbuch's seal). **A tool, not a nuke**
+  (combat variety pass, `BANN` in rules.ts): the flare itself does no damage; the first blow on a
+  gebannt enemy deals ×1.3 and wakes it (an Irrlicht stays down for its stun); flared again within 8 s
+  it is held half as long; a charge takes 11 s. It also **tears veils** (Nebelweberin), **breaks a
+  Rufer's call**, and is **thrown back by an uncracked Scherbling** in the cone (1.5 s dazzle — no
+  aim assist, no flare — and 6 damage).
+- **Abilities** (combat variety pass, `SKILLS` in rules.ts; T / Z / U; a HUD slot each in the vitals
+  dock with glyph, key and a conic cooldown ring that fills; gentle mode cooldowns ×0.8; while one
+  runs you cannot swing, roll or flare):
+  - **Ausfall** (level 2, 7 s, 15 Atem): a 0.3 s lunge of ~6.5 m (aim assist 35°, it carries you
+    past the target): ×1.7 to everything in the line, staggers the first; invulnerable while lunging.
+    For reaching a Rufer or a Nebelweberin and getting round a Foliant's board.
+  - **Erdstoß** (level 4, 11 s, 25 Atem): the staff driven into the ground after 0.42 s: a 4.6 m shock
+    ring, ×1.5 with falloff, staggers and knocks back, **breaks every guard and armour** it reaches;
+    invulnerable around the impact. Two rings, dust, ember cracks, a deep boom.
+  - **Wirbel** (level 6, 13 s, 28 Atem): three hits all round (3.3 m, ×0.85 each) over 0.95 s while you
+    keep moving at 75 %; bolts within 2.6 m glance off (`deflect`). It emits
   `combat:bann`: the **hunt** scatters pack hounds in the cone for 4 s (they cannot be damaged — "Die
   Meute schlägt man nicht. Man entkommt ihr."), the **menagerie** jaguar retreats.
 - **Schnellgegenstand** (H): drink / use in 0.6 s (can be interrupted by a hit).
@@ -214,7 +233,10 @@ All invented, all spectral, all with German names. Data: `src/rpg/enemies.ts` (i
 | `glutling` | Glutling | 1793-07 (burning rooms, Ehrenhof) | leaps, swells, bursts | kill before it swells / dodge the burst | sparks |
 | `grusling` | Grusling | 1796 | crumb swarm from robbed-out trenches | sweep (Wuchthieb, Laubs Lot) | grit rising upward |
 | `steinfresser` | Steinfresser | 1796 | slow, frontal armour, ground slam | Wuchthieb breaks the crust; hit the back | grit rising upward (W7) |
-| `nebelweber` | Nebelweber (fun pass) | 1789, 1793-02, 1793-07, 1796 (escort only) | **caster**: keeps 8–16 m away, spins a slow *Frostkugel* that lands where you stood (landing ring) and quick *Eisnadeln*; slips away when you close in | run it down between casts, dodge sideways off the ring | mist |
+| `nebelweber` | Nebelweber (fun pass) | 1789, 1793-02, 1793-07, 1796 (escort only) | **caster**: keeps 8–16 m away, spins a slow *Frostkugel* that lands where you stood (landing ring) and quick *Eisnadeln*; slips away when you close in; lays a **Schleier** on up to 3 of its pack within 10 m (9 s, blows ×0.25; pip tag „Schleier“) | run it down between casts, dodge sideways off the ring; the **Bannlicht tears the veil** | mist |
+| `foliant` | Foliant (combat variety pass) | 1789, 1793-02 (escort) | **front blocker**: carries its board before it — a light blow from the front bounces off (6 Atem, „Deckung“ tag), it turns slowly; *Zuklappen* and a short *Rammen* lunge | a **Wuchthieb** or the **Erdstoß** breaks the guard (5 s, ×1.25, staggers); **from the side or back** ×1.15; hit it while it swings (the board is open) | paper |
+| `scherbling` | Scherbling (combat variety pass) | 1793-07, 1796 (escort) | **mirror**: hovering shards, a splinter fan and a splinter ring; **throws the Bannlicht back** (dazzle + 6) while uncracked, blows on it ×0.6 („Spiegel“) | a Wuchthieb or the Erdstoß **cracks** it (then ×1.3 and the flare works); never flare with it in the cone | sparks |
+| `rufer` | Rufer (combat variety pass) | 1793-02, 1796 (escort) | **summoner**: keeps 6–12 m off and **calls** one of the small fry out of the fog on the far side (1.5 s wind-up, every 8 s, at most 2 about; called ones give no XP) | **prioritise**: any blow or the Bannlicht during the call breaks it; the Ausfall reaches it | smoke |
 
 ### 5.2 Bosses (one per chapter, the finale excepted)
 
@@ -276,18 +298,43 @@ A group of **three or more** in the past (not today, not a boss) is a pack:
   spit), Grusvater (grit blast ring), Mauerbrecher (thrown block with landing ring), Nebelspinnerin
   (frost ring). An elite turns **rasend** at 50 % (cooldowns ×0.7) and **reels** at 25 % (Gnadenstoß,
   §4.3). Once undone it stays undone (`EnemyGroupState.eliteDown`, saved).
-- it brings an **escort** of other kinds (mixed groups): Nebelinge + a Nebelweber, Irrlichter + 2–3
-  Nebelinge, Streuner + a Nebelweber, Raffschatten + 2 Glutlinge (+ a Nebelweber), Glutlinge + a
-  Raffschatten, Gruslinge + a Nebelweber, Steinfresser + 3–4 Gruslinge. Escorts live in the group
+- it brings an **escort** of other kinds (mixed groups; combat variety pass in bold): Nebelinge + a
+  Nebelweber (**+ a Foliant** in 1789 / 1793-02), Irrlichter + 2–3 Nebelinge, Streuner by era (1789 3
+  Mahnbriefe **+ a Foliant**; 1793-02 a Nebelling, a Mahnbrief **+ a Rufer**; 1793-07 a Raffschatten **+
+  a Scherbling**; 1796 2 Gruslinge **+ a Rufer**), Mahnbriefe **+ a Foliant** (+ a Nebelweber from four),
+  Raffschatten + 2 Glutlinge **+ a Scherbling** (+ a Nebelweber from four), Glutlinge + a Raffschatten
+  **+ a Scherbling**, Gruslinge + a Nebelweber **+ a Rufer**, Steinfresser + 3–4 Gruslinge **+ a Rufer**. Escorts live in the group
   `<group>+escort`, never count for the group or a kill objective (they give XP), and drift off into
   the fog 1.1 s after their pack is gone. `kq.combat.kill(group)` takes the escort too.
 
-**Balance (`tests/combat-balance.test.ts`):** per chapter, at the intended build (§6), a standard
-encounter (prologue 4 Nebelinge today; K1 3 Streuner 1789; K2 4 Streuner 1793-02 tier 2; K3 4
-Raffschatten tier 3; K4 3 Steinfresser tier 4 — each with its elite and escort from K1 on): a bot that
-never dodges loses ≥ 40 % Lebenskraft (≥ 20 % in the prologue) or is undone; a bot that dodges reads,
-waits for openings and uses the Bannlicht wins every one with Lebenskraft left. Gentle mode: the
-non-dodging bot survives K2.
+- **Second wave** (combat variety pass, `waveOf` / `WAVE`): a pack fight gets reinforcements once —
+  12 s in or at its first kill, announced 1.8 s ahead at a point 10.5 m from you on the side away
+  from the pack (a fog column, a low call, the caption „Da kommen mehr – von hinten!“ and an edge
+  arrow), then they rise out of the ground. 1789 Streuner: a hound + 2 Mahnbriefe; 1793-02: 2
+  Nebelinge + a Mahnbrief; later Streuner: a hound + 2 Nebelinge; Nebelinge / Irrlichter: 2 Nebelinge;
+  Mahnbriefe 3; Raffschatten: one + 2 Glutlinge; Glutlinge 3; Gruslinge 4; Steinfresser: one + 2
+  Gruslinge. The prologue's first fight (4 Nebelinge) gets 3 more from behind — turn round. Wave
+  members are escorts (no objective credit, XP yes).
+- **Era hazards** (`hazardOf` / `HAZARD`): in a pack fight, every 6.5 s: **1793-07 Glut** — two 2.3 m
+  rings fill for 1.4 s with embers falling into them, then burn (10 to you, 30 % of their HP to
+  enemies, elites half); **1796 Steinschlag** — one 2.1 m ring for 1.5 s, a dressed block falls onto
+  it (14, 45 %). Rings land near you and near the pack; enemies are fair game (lure them in).
+
+**Balance (`tests/combat-balance.test.ts`, bots in `tests/combat-bots.ts`):** per chapter, at the
+intended build (§6), a standard encounter (prologue 4 Nebelinge today; K1 3 Streuner 1789; K2 4
+Streuner 1793-02 tier 2; K3 4 Raffschatten tier 3; K4 3 Steinfresser tier 4 — each with its elite,
+escort, second wave and the era's hazards from K1 on):
+- the **tank** (stands, swings, never dodges) loses ≥ 40 % Lebenskraft (≥ 20 % in the prologue) or is
+  undone;
+- the **masher** (runs at the nearest, hammers the attack, flares whenever it can, never dodges, no
+  abilities) takes **≥ 15 s** (≥ 12 s in the prologue) and loses **≥ 40 %** or is undone — from K2 on
+  it usually goes down;
+- the **skilled** bot (rolls out of telegraphs and hazard rings, backs off when winded, Rufer and
+  Nebelweberin first, Wuchthieb on guards, mirrors and armour, flares only for veils, Irrlichter or
+  three in the cone and never into an uncracked mirror, Ausfall / Erdstoß / Wirbel when they pay) wins
+  every one with **more than a third** of its Lebenskraft in **18–75 s** (measured 2026-11-17:
+  prologue 45 s, K1 66 s, K2 29 s, K3 37 s, K4 27 s; it loses 8–52 %).
+- Gentle mode: the masher clears K2 and the tank survives it.
 
 ## 6. Progression
 
@@ -618,6 +665,12 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
   (declared in `src/systems/combat/index.ts`), setting `Settings.damageNumbers` („Schadenszahlen“,
   game section, default on), `lanternPose {side, lift}` exported by `src/systems/hunt/lantern.ts`,
   `PackSim.scatter()` in the hunt, `MenagerieSlice.calmed: string[]`.
+- **Combat variety additions** (additive): `EnemyDef.guard?: 'front'` (a frontal guard: the Foliant)
+  and `EnemyDef.reflectsBann?: boolean` (the Scherbling) in `src/rpg/types.ts`; enemy ids `foliant`,
+  `scherbling`, `rufer` and the Nebelweber's `schleier` attack in `src/rpg/enemies.ts`;
+  `BASE_STATS.bannRecharge` 11; input actions `skill1` / `skill2` / `skill3` (T / Y / U, rebindable,
+  labels `action.skill1–3`); `kq.combat.skill(id)`. `enemy:killed.by` keeps its union: an ability
+  kill or a hazard kill reports `'heavy'`.
 - **Test chapter**: `?storytest`, `kq.story.goto('test', 'q1')` — Hanne offers `q.test.lohnzettel`
   (kill 3 Mahnbriefe → collect the Zettel → turn in: the turn-in card, one history line, „Erzähl mehr“) and then the side quest
   `q.test.irrlichter` (Laub, two Irrlichter). Every track's e2e can start there.
@@ -638,11 +691,11 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
 | --- | --- | --- |
 | Top-left column (`hud.stack`) | era 0, status 10, room 20, story objective 30, **quest tracker 35**, story gauges 40 | core / tools / story / **quests** |
 | Top centre | compass strip (markers), threat eye, **boss bar** (`dock('boss')`) | core / **combat** |
-| Bottom-left (`dock('vitals')`, above the oil gauge) | **Lebenskraft + Atem** 10, **Bannlicht charges** 20, **level + XP bar** 30, **quick-use slot** 40 | **combat** / **progression** |
+| Bottom-left (`dock('vitals')`, above the oil gauge) | **Lebenskraft + Atem** 10, **Bannlicht charges** 20, **abilities** (glyph, key, cooldown ring) 25, **level + XP bar** 30, **quick-use slot** 40 | **combat** / **progression** |
 | Right edge (`dock('feed')`, under the toasts) | pickup feed ("+ Kräuterbalsam"), objective ticks | **progression** / **quests** |
 | Bottom centre | prompt, subtitles, dialogue card (kept) | story / npc |
 | Bottom-right | Bussole (kept), fx gauges | story / fx |
-| Over the world | giver glyphs (npc), beacons (quests), pickups (progression), enemy health pips + gebannt ring (combat) | |
+| Over the world | giver glyphs (npc), beacons (quests), pickups (progression), enemy health pips + gebannt ring + trait tags „Deckung“ / „Schleier“ / „Spiegel“ / „Rufer“ (combat) | |
 
 Field-book look (ink, paper, brass), high-contrast rules for every new piece (solid backing,
 ≥ 4.5 : 1), no meaning by red vs green alone (HP red-orange + a notch pattern, Atem pale blue,
@@ -993,12 +1046,25 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   the run cost wins over a fight's (an Irrlicht by the K2 escape route used to run you dry);
   the K1 Pikeur (kept far) rides past within ~5 m once, early, horn at your ear. K4: the 1840 echo
   shows the eyes in the fog (`hunt:tableau eyes`). Balsam drops: K1 8 %, K3 10 %, K4 26 %.
+- **Combat variety pass (2026-11-17):** regular fights were five seconds of clicking (the Bannlicht
+  one-shot a group). Now: the **Foliant** (front guard, flank or Wuchthieb), the **Scherbling**
+  (mirrors the Bannlicht until cracked), the **Rufer** (calls adds from the far side; interrupt it),
+  the Nebelweberin's **Schleier** (Bannlicht tears it); a **second wave** from another side; era
+  **hazards** (1793-07 embers, 1796 falling stones) that hurt enemies too; the Bannlicht as a tool
+  (no damage, one ×1.3 blow, half stun when repeated within 8 s, 11 s recharge); a perfect dodge gives
+  12 Atem back; the pack's blows come a little further apart (`ATTACK_GAP` 0.5 / land 1.0 s); three
+  **abilities** (Ausfall L2, Erdstoß L4, Wirbel L6 on T / Z / U) with HUD cooldown rings; masher and
+  skilled bots in the balance test (§5.5). **XP cap reviewed:** summing `content/quests` gives
+  main-only ≈ 6360 quest XP by the end of K4 (L10) and ≈ 8790 with every side quest; bosses (~1250),
+  codex and collections (~600) and enemies bring the full run to the 9600 cap (L12) in K4 — the
+  §6.1 targets (K4 L11–12 with side quests, main only L10–11) hold, so `LEVEL_XP` stays. To keep it
+  so, what a Rufer calls gives **no XP** (no farming a caller); wave members give normal XP.
 - **Playtest round 4, left open:** K3 torch arc with windows igniting in sequence, the Zwinger
   hounds running past within 3–6 m and the exterior fire macro layer (smoke columns, roof glow);
   the Ehrenhof straw carts; staged Rückwärts / Jost / burn-ending memories (still captions); the
   trench route's 1.4 m step (A* step limit, north-wing breach); ~~an early fight in the first 60 s;
   modal cards held during combat; tracker collapsing done objectives~~ (onboarding & pacing track,
-  below); the XP cap; the blue slab and black discs (not reproduced).
+  below); the blue slab and black discs (not reproduced). (The XP cap: reviewed in the combat variety pass, above.)
 - **Onboarding, pacing and card flow (2026-11-17), fixed:** *First minute* — "Neues Spiel" puts
   you outside the trailer with one goal: the Messstab three metres away (the Bussole hangs on it);
   Marlene's radio greeting and her offer play while you walk; three tier-0 Nebelinge rise on the

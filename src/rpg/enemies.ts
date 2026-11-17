@@ -157,11 +157,79 @@ export const ENEMIES: readonly EnemyDef[] = [
     attacks: [
       { id: 'frostkugel', telegraph: 0.95, damage: 13, range: 16, kind: 'ranged', cooldown: 3.4 },
       { id: 'eisnadel', telegraph: 0.6, damage: 8, range: 14, kind: 'ranged', cooldown: 2.4 },
+      // combat variety pass: a veil of mist round up to three of its pack (staff blows glance off)
+      { id: 'schleier', telegraph: 1.1, damage: 0, range: 12, kind: 'summon', cooldown: 9 },
     ],
     xp: 14,
     loot: 'loot.licht',
     dissolve: 'mist',
-    note_de: 'Ein hohes, dünnes Nebelgespinst mit einem kalten Licht im Innern. Hält Abstand, wirft Frost dorthin, wo man eben stand, und weicht zurück, wenn man ihm nahe kommt. Das Bannlicht holt es herunter. (Fiktion)',
+    note_de: 'Ein hohes, dünnes Nebelgespinst mit einem kalten Licht im Innern. Hält Abstand, wirft Frost dorthin, wo man eben stand, und weicht zurück, wenn man ihm nahe kommt. Webt den anderen einen Schleier, an dem der Stab abgleitet – das Bannlicht zerreißt ihn. (Fiktion)',
+  },
+  // ---- combat variety pass (2026-11-17): enemies that ask for a tool, not more swings --------
+  {
+    // the shield: an upright folio as tall as a man that holds its covers in front like a door.
+    // Hit it from the front and the staff bounces off; a Wuchthieb (or the Erdstoß) knocks the
+    // covers open, or you get round it (a roll, the Ausfall) and strike the spine. It opens itself
+    // only to strike — the recovery is the moment. Walks with the court's papers (1789, 1793-02).
+    id: 'foliant',
+    name_de: 'Foliant',
+    plural_de: 'Folianten',
+    family: 'paper',
+    eras: ['1789', '1793-02'],
+    hp: 70,
+    speed: 2.1,
+    guard: 'front',
+    bannStun: 1.6,
+    attacks: [
+      { id: 'zuklappen', telegraph: 0.85, damage: 14, range: 2.6, kind: 'melee', cooldown: 2.6 },
+      { id: 'rammen', telegraph: 0.95, damage: 11, range: 5, kind: 'lunge', cooldown: 5.5 },
+    ],
+    xp: 22,
+    loot: 'loot.klein',
+    dissolve: 'paper',
+    note_de: 'Ein Folioband, mannshoch, der seine Deckel wie ein Tor vor sich hält. Von vorn prallt der Stab ab. Ein Wuchthieb schlägt die Deckel auf; wer um ihn herumkommt, trifft den Rücken. (Fiktion)',
+  },
+  {
+    // the mirror: shards of the palace's looking glasses that hang together in the air. The
+    // Bannlicht comes back off them into your eyes; the glass gives under the staff; a heavy blow
+    // cracks it — then it is only glass. With the fire and the plunder (1793-07, 1796).
+    id: 'scherbling',
+    name_de: 'Scherbling',
+    plural_de: 'Scherblinge',
+    family: 'light',
+    eras: ['1793-07', '1796'],
+    hp: 36,
+    speed: 3.1,
+    reflectsBann: true,
+    bannStun: 2,
+    attacks: [
+      { id: 'scherbenfaecher', telegraph: 0.9, damage: 7, range: 13, kind: 'ranged', cooldown: 3.2 },
+      { id: 'splitter', telegraph: 0.8, damage: 10, range: 3.2, kind: 'area', cooldown: 4.5 },
+    ],
+    xp: 18,
+    loot: 'loot.licht',
+    dissolve: 'sparks',
+    note_de: 'Spiegelscherben aus den Sälen, die in der Luft zusammenhalten. Wirft das Bannlicht zurück, dem Werfer in die Augen. Ein Wuchthieb lässt das Glas springen; dann ist es nur noch Glas. (Fiktion)',
+  },
+  {
+    // the summoner: a stooped shade with a horn of smoke that stands back and calls more of its
+    // pack out of the fog until it is undone. Any blow (or the Bannlicht) during the call breaks it.
+    id: 'rufer',
+    name_de: 'Rufer',
+    plural_de: 'Rufer',
+    family: 'shade',
+    eras: ['1793-02', '1796'],
+    hp: 42,
+    speed: 3.0,
+    bannStun: 2.5,
+    attacks: [
+      { id: 'ruf', telegraph: 1.5, damage: 0, range: 18, kind: 'summon', cooldown: 8 },
+      { id: 'stoss', telegraph: 0.6, damage: 8, range: 2.2, kind: 'melee', cooldown: 2.2 },
+    ],
+    xp: 20,
+    loot: 'loot.klein',
+    dissolve: 'smoke',
+    note_de: 'Ein gebeugter Schatten mit einem Horn aus Rauch. Bleibt hinten und ruft, und aus dem Nebel kommen mehr. Ein Schlag in den Ruf hinein bricht ihn ab. Zuerst den Rufer. (Fiktion)',
   },
   // ---- bosses (one per chapter 1–4; the finale W8 is deliberately NOT a fight) ----------------
   {
