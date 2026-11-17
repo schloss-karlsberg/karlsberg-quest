@@ -537,3 +537,17 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   if (SHOTS) await page.screenshot({ path: `${SCREENS}/ch-prolog-10-kapitel1.png`, timeout: 90_000 }).catch(() => undefined);
   expect((await story(page)).objective).toBeFalsy();
 }
+
+/**
+ * A field-book page held back by a fight or a staged moment (src/ui/cards.ts) comes up a little
+ * later; before pressing E on something new a player reads it and puts it away.
+ */
+export async function putAwayPages(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 12 && (k.ctx.ui.cards.pending > 0 || k.ctx.ui.modals.count > 0) && !k.story?.choice(); i++) {
+      k.ctx.ui.modals.closeAll();
+      k.step(10);
+    }
+  });
+}

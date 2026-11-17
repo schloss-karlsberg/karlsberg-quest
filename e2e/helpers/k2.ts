@@ -1,6 +1,6 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
-import { type QW, cna, fight, holdHome, installQuestPlay, qn, qs, talkQuest, turninMoment, untilQuest } from './prolog';
+import { type QW, cna, fight, holdHome, installQuestPlay, putAwayPages, qn, qs, talkQuest, turninMoment, untilQuest } from './prolog';
 
 /**
  * Chapter 2 "Die Flucht" as an action-RPG quest chain (docs/ACTION-RPG.md §11.2), played headless
@@ -95,6 +95,7 @@ export async function holdQ(page: Page): Promise<void> {
 /** Listen to an echo with E held (as a player would), then let it play out. */
 export async function listen(page: Page, clue: string): Promise<void> {
   expect(await page.evaluate((c) => window.kq!.chronik!.status(c), clue)).toBe('available');
+  await putAwayPages(page);
   await page.evaluate(() => window.kq!.press('KeyE', 70));
   expect((await page.evaluate(() => window.kq!.chronik!.echo())).id).toBe(clue);
 }

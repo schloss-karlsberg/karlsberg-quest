@@ -1,6 +1,7 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
 import { type Any, clearCards, install, killGroup, questTalk, takeAll, voiceStance } from './k3';
+import { putAwayPages } from './prolog';
 
 /**
  * Chapter 4 „Der Steinbruch" + the endings as a chain of quests, played headless through
@@ -147,6 +148,7 @@ export async function examineHere(page: Page, clue: string, x: number, z: number
     return { t: k.chronik!.target(), x: p.x, z: p.z, at: k.ctx.content.cluesAt(p.x, p.z, k.ctx.era.current).map((c) => c.id) };
   });
   expect(near.t, JSON.stringify(near)).toBe(clue);
+  await putAwayPages(page);
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   await run(page, 0.3);
   const after = await page.evaluate((c) => {
