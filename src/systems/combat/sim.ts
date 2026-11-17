@@ -324,12 +324,12 @@ const BODY: Record<string, { r: number; hover: number; aggro: number; turn: numb
   grusling: { r: 0.42, hover: 0, aggro: 14, turn: 8 },
   steinfresser: { r: 0.95, hover: 0, aggro: 14, turn: 2.2 },
   nebelweber: { r: 0.5, hover: 0.35, aggro: 20, turn: 6 },
-  schuldbuch: { r: 1.5, hover: 0.6, aggro: 26, turn: BOSS_TURN['schuldbuch']! },
+  schuldbuch: { r: 2.0, hover: 0.6, aggro: 26, turn: BOSS_TURN['schuldbuch']! },
   // big bosses keep a stand-off that matches their size (the camera stays outside the smoke horse,
   // the straw arms, the blocks; playtest round 2); the staff's reach grows with it (inCone + radius)
   pikeur: { r: 2.2, hover: 0, aggro: 30, turn: BOSS_TURN['pikeur']! },
-  strohmann: { r: 2.4, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
-  steinbrecher: { r: 2.7, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
+  strohmann: { r: 2.8, hover: 0, aggro: 26, turn: BOSS_TURN['strohmann']! },
+  steinbrecher: { r: 3.2, hover: 0, aggro: 26, turn: BOSS_TURN['steinbrecher']! },
 };
 const bodyOf = (kind: string) => BODY[kind] ?? { r: 0.6, hover: 0, aggro: AI.aggro, turn: 5 };
 
@@ -1397,8 +1397,9 @@ export class CombatSim {
         if (e.t >= AI.notice) this.setState(e, e.kind === 'raffschatten' && e.fled === 0 ? 'flee' : 'approach');
         break;
       case 'intro':
-        // the reveal: it turns to you and rises; nothing hurts it, it hurts nothing
-        this.turnTo(e, toP, 2.2, dt);
+        // the reveal: it turns to you and rises; nothing hurts it, it hurts nothing. The Pikeur
+        // shows himself broadside first (horse and rider read from the side, not head-on)
+        this.turnTo(e, e.kind === 'pikeur' && e.t < BOSS_INTRO * 0.7 ? toP + Math.PI / 2 : toP, 2.2, dt);
         if (e.t >= BOSS_INTRO) this.setState(e, 'approach');
         break;
       case 'retreat': {

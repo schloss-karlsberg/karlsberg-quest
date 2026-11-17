@@ -621,6 +621,17 @@ class Combat {
           if (!rm) this.deathSlow = 1.4;
           this.addShake(0.35);
           if (e.kind !== 'pikeur') this.captionOnce(`down:${e.id}`, t('combat.bossDown', { name: e.def.name_de }), 'boss', 0, 3200);
+          // the blast throws you back a few steps, so its end is seen, not lived between its legs
+          const pp = ctx.player.position;
+          const dx = pp.x - e.x;
+          const dz = pp.z - e.z;
+          const dd = Math.hypot(dx, dz) || 1;
+          const want = e.radius + 5;
+          if (dd < want) {
+            const sec = 0.55;
+            const v = ((want - dd) * 2) / sec;
+            ctx.player.impulse((dx / dd) * v, (dz / dd) * v, sec);
+          }
         }
         const g = this.slice().groups[e.group];
         // an escort that drifted off after its pack was not undone by anyone: no fact to report
@@ -820,10 +831,16 @@ class Combat {
     const cam = this.ctx.camera;
     const top = this.visuals.topOf(e);
     _target.set(e.x, e.y + top * 0.62, e.z);
-    // pull back along the line from the boss, and up a little
-    _back.set(cam.position.x - e.x, 0, cam.position.z - e.z).normalize();
-    cam.position.addScaledVector(_back, 1.6 * w);
-    cam.position.y += 0.45 * w;
+    // frame it: dolly along the line to a distance where the boss fills the view (playtest round 4:
+    // the Schuldbuch was 60 px tall at a 23 m reveal), or pull back a little when it is too close
+    _back.set(cam.position.x - e.x, 0, cam.position.z - e.z);
+    const d = _back.length() || 1;
+    _back.multiplyScalar(1 / d);
+    const want = Math.max(6.5, top * 1.9);
+    const move = Math.max(-16, Math.min(1.6, want - d));
+    cam.position.addScaledVector(_back, move * w);
+    const ground = this.ctx.world.heightAt(cam.position.x, cam.position.z) + 1.3;
+    cam.position.y = Math.max(ground, cam.position.y + 0.45 * w);
     _look.lookAt(cam.position, _target, _up);
     _qLook.setFromRotationMatrix(_look);
     cam.quaternion.slerp(_qLook, w * 0.92);

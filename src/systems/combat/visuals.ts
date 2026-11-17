@@ -151,17 +151,29 @@ void main() {
 
 const SOLID_VERT = /* glsl */ `
 attribute vec3 iAlb;
-attribute vec4 iEm; // rgb emissive, w = alpha-ish fade (shrinks to nothing in the dissolve)
+attribute vec4 iEm; // rgb emissive, w = surface (0 plain, 1 stone, 2 straw, 3 smooth)
 varying vec3 vN;
 varying vec3 vW;
 varying vec3 vAlb;
 varying vec4 vEm;
+// the face in metres (u, v from its centre), its half extents, and a per-block seed
+varying vec2 vFace;
+varying vec2 vHalf;
+varying float vSeed;
 void main() {
   vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
   vW = wp.xyz;
   vN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
   vAlb = iAlb;
   vEm = iEm;
+  vec3 S = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+  vec3 an = abs(normal);
+  vec3 q = position * S;
+  if (an.x > 0.5) { vFace = q.yz; vHalf = S.yz * 0.5; }
+  else if (an.y > 0.5) { vFace = q.xz; vHalf = S.xz * 0.5; }
+  else { vFace = q.xy; vHalf = S.xy * 0.5; }
+  vec3 o = instanceMatrix[3].xyz;
+  vSeed = fract(sin(dot(o, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
@@ -172,12 +184,52 @@ varying vec3 vN;
 varying vec3 vW;
 varying vec3 vAlb;
 varying vec4 vEm;
+varying vec2 vFace;
+varying vec2 vHalf;
+varying float vSeed;
 void main() {
   vec3 n = normalize(vN);
   vec3 v = normalize(uCamPos - vW);
   // a little grain so flat faces read as stone / paper / straw
   float g = kqNoise(vW.xz * 9.0 + vW.y * 7.0) * 0.25 + 0.88;
-  vec3 col = kqLight(vAlb * g, n, vW, 1.0, 1.0);
+  vec3 alb = vAlb;
+  // playtest round 4 ("flat beige cube stacks", "cardboard robot"): blocks get dark mortar seams
+  // at their edges and a value of their own; straw gets strands along its length
+  float small = min(vHalf.x, vHalf.y);
+  vec2 ed = vHalf - abs(vFace);
+  float edge = min(ed.x, ed.y);
+  float mat = floor(vEm.w + 0.5);
+  float stone = mat == 1.0 ? 1.0 : 0.0;
+  float straw = mat == 2.0 ? 1.0 : 0.0;
+  if (small > 0.06 && mat != 3.0) {
+    float w = clamp(small * mix(0.16, 0.2, stone), 0.012, mix(0.055, 0.08, stone));
+    float seam = 1.0 - smoothstep(w * 0.4, w, edge);
+    alb *= 1.0 - seam * mix(mix(0.5, 0.82, stone), 0.1, straw);
+    // value per block (stone and wood), less for straw (its strands carry it)
+    alb *= mix(0.8 + vSeed * 0.36, 1.0, straw);
+    // chipped / weathered: blotches of darker stone, chisel marks
+    float bl = kqNoise(vFace * 3.1 + vSeed * 17.0);
+    alb *= 1.0 - smoothstep(0.6, 0.9, bl) * mix(0.25, 0.45, stone) * (1.0 - straw);
+    if (stone > 0.5) {
+      float ch = kqNoise(vec2(vFace.x * 22.0 + vFace.y * 9.0, vFace.y * 3.0 + vSeed * 4.0));
+      alb *= 0.86 + ch * 0.22;
+      // sandstone under the bright 1796 sky read as pale beige boxes: a darker, redder stone
+      alb *= vec3(0.78, 0.7, 0.66);
+    }
+  }
+  if (straw > 0.5) {
+    // strands along the long axis of the face, with darker gaps and pale stalks
+    bool longX = vHalf.x > vHalf.y;
+    float across = longX ? vFace.y : vFace.x;
+    float along = longX ? vFace.x : vFace.y;
+    float st = kqNoise(vec2(across * 46.0 + vSeed * 9.0, along * 1.6));
+    float st2 = kqNoise(vec2(across * 120.0, along * 4.0 + vSeed * 5.0));
+    alb *= (0.42 + st * 0.75 + st2 * 0.3) * vec3(1.08, 0.82, 0.46);
+    // bundles: darker towards the tied ends of a sheaf
+    float tie = 1.0 - smoothstep(0.0, 0.18, (longX ? vHalf.x : vHalf.y) - abs(along));
+    alb *= 1.0 - tie * 0.35;
+  }
+  vec3 col = kqLight(alb * g, n, vW, 1.0, 1.0);
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
   // the outline contrasts with the fog (dark on pale fog, pale at night)
   float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
@@ -440,7 +492,7 @@ class SolidPool {
     this.mesh.count = 0;
     this.mesh.renderOrder = 23;
   }
-  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0): void {
+  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0, mat = 0): void {
     if (this.n >= this.max) return;
     const i = this.n++;
     this.mesh.setMatrixAt(i, m);
@@ -452,7 +504,7 @@ class SolidPool {
     E[i * 4] = er;
     E[i * 4 + 1] = eg;
     E[i * 4 + 2] = eb;
-    E[i * 4 + 3] = 1;
+    E[i * 4 + 3] = mat;
   }
   end(): void {
     this.mesh.count = this.n;
@@ -628,7 +680,7 @@ export class CombatVisuals {
     this.glowMat = new ShaderMaterial({ vertexShader: GLOW_VERT, fragmentShader: GLOW_FRAG, uniforms: { ...atmosphere, uPixel: { value: 0.002 } }, transparent: true, depthWrite: false, blending: AdditiveBlending });
     this.puffs = new PuffPool(1800, this.puffMat);
     this.glows = new GlowPool(900, this.glowMat);
-    this.solids = new SolidPool(700);
+    this.solids = new SolidPool(1400);
     this.ringPool = new RingPool(48);
     this.object.add(this.ringPool.mesh, this.solids.mesh, this.puffs.mesh, this.glows.mesh);
   }
@@ -1002,14 +1054,14 @@ export class CombatVisuals {
       if (p.kind.startsWith('steinbrecher')) {
         _q.setFromEuler(_e.set(p.t * 3, p.t * 2, 0));
         _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.7, 0.55, 0.6));
-        this.solids.push(_m2, 0.5, 0.41, 0.34);
+        this.solids.push(_m2, 0.5, 0.41, 0.34, 0.25, 0.08, 0.01, 1);
       } else if (p.kind === 'nebelweber.frostkugel') {
         this.glows.push(p.x, p.y, p.z, 0.42, 2.2, 0.62, 0.86, 1, 7);
         this.glows.push(p.x, p.y, p.z, 1.1, 0.8, 0.3, 0.5, 0.8, 0);
       } else if (p.kind === 'steinfresser.brocken') {
         _q.setFromEuler(_e.set(p.t * 4, p.t * 3, 0));
         _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.45, 0.38, 0.42));
-        this.solids.push(_m2, 0.45, 0.37, 0.3);
+        this.solids.push(_m2, 0.45, 0.37, 0.3, 0, 0, 0, 1);
       } else if (p.kind.startsWith('irrlicht') || p.kind.startsWith('nebelweber')) this.glows.push(p.x, p.y, p.z, 0.2, 2.2, 0.6, 0.85, 1, 5);
       else this.glows.push(p.x, p.y, p.z, 0.24, 2.4, 1, 0.3, 0.1, 5);
     }
@@ -1168,7 +1220,7 @@ export class CombatVisuals {
         _s.set(p.size * v.swell * shrink, (p.sy ?? p.size) * v.swell * shrink, (p.sz ?? p.size) * v.swell * shrink);
         _m2.compose(_p, q, _s);
         const seal = p.bone === 'seal' ? sealK : 1;
-        this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5);
+        this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5, p.mat ?? 0);
       }
     }
     // the elite: an ember halo on the ground, three motes circling over its head

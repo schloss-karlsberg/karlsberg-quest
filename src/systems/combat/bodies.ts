@@ -41,6 +41,8 @@ export interface BodyPart {
   orbit?: [number, number];
   /** Burns: flame particles per second from this point. */
   fire?: number;
+  /** solid: surface (0 plain with edge seams, 1 dressed stone, 2 straw, 3 smooth: no seams). */
+  mat?: number;
 }
 
 /** Look of a kind: where its "eyes" are (telegraph flare) and its glow colour. */
@@ -109,9 +111,16 @@ class B {
   eyes(y: number, f: number, w: number, size: number, col: V3 = [1, 0.5, 0.14], bone: Bone = 'head'): this {
     return this.glow([-w, y, f], size, col, { bone, minPx: 4.5 }).glow([w, y, f], size, col, { bone, minPx: 4.5 });
   }
-  solid(p: V3, s: V3, col: V3, o: { bone?: Bone; em?: V3; rx?: number; ry?: number; rz?: number } = {}): this {
-    this.parts.push({ kind: 'solid', bone: o.bone ?? 'body', r: p[0], y: p[1], f: p[2], size: s[0], sy: s[1], sz: s[2], col, em: o.em, rx: o.rx, ry: o.ry, rz: o.rz, seed: this.R() });
+  solid(p: V3, s: V3, col: V3, o: { bone?: Bone; em?: V3; rx?: number; ry?: number; rz?: number; mat?: number } = {}): this {
+    this.parts.push({ kind: 'solid', bone: o.bone ?? 'body', r: p[0], y: p[1], f: p[2], size: s[0], sy: s[1], sz: s[2], col, em: o.em, rx: o.rx, ry: o.ry, rz: o.rz, seed: this.R(), ...(o.mat ? { mat: o.mat } : {}) });
     return this;
+  }
+  /** Set the surface of the last `n` parts. */
+  mat(n: number, mat: number): this {
+    return this.last(n, { mat });
+  }
+  rand(): number {
+    return this.R();
   }
 }
 
@@ -123,7 +132,8 @@ const PAPER: V3 = [0.86, 0.8, 0.66];
 const STONE: V3 = [0.5, 0.4, 0.33];
 const STONE2: V3 = [0.42, 0.34, 0.29];
 const STRAW: V3 = [0.62, 0.5, 0.24];
-const LEATHER: V3 = [0.2, 0.1, 0.06];
+/** Oxblood calf (a lighter brown read as an orange crate under the warm 1789 light). */
+const LEATHER: V3 = [0.13, 0.045, 0.035];
 const SEAL: V3 = [0.55, 0.06, 0.04];
 
 export function nebelling(seed: number): BodyTemplate {
@@ -208,7 +218,7 @@ export function grusling(seed: number): BodyTemplate {
   b.blob([0, 0.03, 0], [0.22, 0.02, 0.22], 3, 0.42, [0.04, 0.035, 0.03], { alpha: 0.7, bone: 'legs' });
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    b.solid([Math.cos(a) * 0.16, 0.12 + (i % 2) * 0.1, Math.sin(a) * 0.16], [0.14 + R() * 0.07, 0.12 + R() * 0.06, 0.14 + R() * 0.06], i % 2 ? MORTAR : MORTAR2, { bone: i % 3 ? 'body' : 'legs', ry: R() * 3, rx: R() });
+    b.solid([Math.cos(a) * 0.16, 0.12 + (i % 2) * 0.1, Math.sin(a) * 0.16], [0.14 + R() * 0.07, 0.12 + R() * 0.06, 0.14 + R() * 0.06], i % 2 ? MORTAR : MORTAR2, { bone: i % 3 ? 'body' : 'legs', ry: R() * 3, rx: R(), mat: 1 });
   }
   b.solid([0, 0.33, 0.02], [0.2, 0.16, 0.2], [0.24, 0.2, 0.17], { bone: 'head', ry: 0.6 })
     .blob([0, 0.12, -0.15], [0.12, 0.08, 0.18], 3, 0.28, [0.5, 0.46, 0.4], { style: 1, alpha: 0.4, bone: 'tail' })
@@ -251,6 +261,15 @@ export function steinfresser(seed: number): BodyTemplate {
     .glow([0.25, 1.25, 0.31], 0.25, [0.9, 0.35, 0.08], { bone: 'seal', alpha: 0.5 })
     .eyes(1.64, 0.41, 0.1, 0.06, [1, 0.55, 0.15])
     .blob([0, 0.12, 0], [0.6, 0.08, 0.5], 4, 0.5, [0.55, 0.5, 0.44], { style: 1, alpha: 0.4, bone: 'legs' });
+  // dressed stone with hot seams between the blocks (playtest round 4: "rubble at 20 m, a dark
+  // rectangle for a face"): every block stone, glowing joints at hips, shoulders and neck, the eyes
+  // a pair of embers with a halo that pierces the sepia
+  for (const q of b.parts) if (q.kind === 'solid' && q.size > 0.2) q.mat = 1;
+  b.solid([0, 0.66, 0], [0.75, 0.07, 0.55], [0.1, 0.03, 0.01], { em: [0.7, 0.24, 0.03] })
+    .solid([0.6, 1.17, 0.05], [0.32, 0.06, 0.4], [0.1, 0.03, 0.01], { em: [0.6, 0.2, 0.03] })
+    .solid([-0.6, 1.17, 0.05], [0.32, 0.06, 0.4], [0.1, 0.03, 0.01], { em: [0.6, 0.2, 0.03] })
+    .solid([0, 1.47, 0.12], [0.36, 0.06, 0.3], [0.1, 0.03, 0.01], { em: [0.7, 0.24, 0.03] })
+    .glow([0, 1.64, 0.45], 0.32, [1, 0.45, 0.1], { bone: 'head', alpha: 0.55 });
   return { parts: b.parts, tell: [1, 0.5, 0.15], top: 2.2, shoulder: 1.4 };
 }
 
@@ -299,12 +318,41 @@ export function schuldbuch(seed: number): BodyTemplate {
     .solid([0, Y + 0.05, 0.31], [0.24, 0.24, 0.04], [0.32, 0.03, 0.02], { bone: 'seal', em: [0.3, 0.02, 0.01], rz: 0.785 })
     .glow([0, Y + 0.05, 0.38], 0.75, [1, 0.25, 0.08], { bone: 'seal', minPx: 7 })
     .glow([0, Y + 0.05, 0.38], 1.8, [0.8, 0.12, 0.04], { bone: 'seal', alpha: 0.35 });
+  // playtest round 4 ("a flat orange box"): a book's silhouette — the covers' gilt tooling (a frame
+  // and a lozenge on each), the page block's edge as a stack of leaves, a thick ridged spine
+  const GILT: V3 = [0.62, 0.48, 0.18];
+  for (const side of [-1, 1]) {
+    const bone: Bone = side < 0 ? 'armL' : 'armR';
+    const ry = side * -0.5;
+    const cx = side * 0.78;
+    const o = { bone, ry, em: [0.16, 0.11, 0.03] as V3 };
+    // a point on the cover: u along its width, n off its face (the cover turns by ry about y)
+    const at = (u: number, y: number, n: number): V3 => [cx + u * Math.cos(ry) + n * Math.sin(ry), y, -u * Math.sin(ry) + n * Math.cos(ry)];
+    // the outside faces back (the covers open towards the player): tooling on both faces
+    for (const n of [-0.065, 0.065]) {
+      b.solid(at(0, Y + 1.0, n), [1.25, 0.05, 0.02], GILT, o)
+        .solid(at(0, Y - 1.0, n), [1.25, 0.05, 0.02], GILT, o)
+        .solid(at(-0.6, Y, n), [0.05, 2.0, 0.02], GILT, o)
+        .solid(at(0.6, Y, n), [0.05, 2.0, 0.02], GILT, o)
+        .solid(at(0, Y, n), [0.42, 0.42, 0.02], GILT, { ...o, rz: 0.785 })
+        .solid(at(0, Y, n * 1.25), [0.3, 0.3, 0.02], [0.2, 0.06, 0.04], { bone, ry, rz: 0.785 });
+    }
+  }
+  // the page edges: a stack of leaves (light and shadow) on both long sides of the block
+  for (let i = 0; i < 9; i++) {
+    const c: V3 = i % 2 ? [0.9, 0.85, 0.72] : [0.55, 0.5, 0.4];
+    b.solid([0.33, Y, -0.34 + i * 0.045], [0.02, 2.06, 0.03], c).solid([-0.33, Y, -0.34 + i * 0.045], [0.02, 2.06, 0.03], c);
+  }
+  // spine ridges (raised bands) and a headband
+  for (let i = 0; i < 5; i++) b.solid([0, Y - 0.9 + i * 0.45, -0.45], [0.4, 0.07, 0.06], [0.22, 0.1, 0.06], { em: [0.05, 0.02, 0.01] });
+  b.solid([0, Y + 1.2, -0.25], [0.5, 0.06, 0.5], [0.5, 0.08, 0.06]);
   // scraps circling it at different heights (the unpaid)
   for (let i = 0; i < 9; i++) b.solid([1.8 + R() * 0.6, Y - 1 + R() * 2.4, 0], [0.22, 0.003, 0.3], PAPER, { rx: R(), rz: R() }).last(1, { bone: 'orbit', orbit: [0.7 + R() * 0.6, (i / 9) * 6.283] });
   // a dark draught under it (it never touches the ground)
   b.blob([0, 0.5, 0], [0.8, 0.25, 0.5], 9, 0.8, [0.12, 0.1, 0.1], { alpha: 0.45, bone: 'legs' })
     .glow([0, 0.4, 0], 2.2, [0.5, 0.1, 0.05], { bone: 'legs', alpha: 0.25 });
-  return { parts: b.parts, tell: [1, 0.3, 0.1], top: 3.9, shoulder: Y };
+  // door-sized: a ledger taller than a man (it read as a box at reveal distance)
+  return scaleTemplate({ parts: b.parts, tell: [1, 0.3, 0.1], top: 3.9, shoulder: Y }, 1.3);
 }
 
 /**
@@ -314,6 +362,7 @@ export function schuldbuch(seed: number): BodyTemplate {
  */
 export function pikeur(seed: number): BodyTemplate {
   const HS: V3 = [0.035, 0.035, 0.045];
+  const HB: V3 = [0.012, 0.012, 0.016];
   const COLDEM: V3 = [0.03, 0.06, 0.1];
   const GHOST: V3 = [0.62, 0.74, 0.86];
   const BRASS: V3 = [0.6, 0.46, 0.18];
@@ -329,9 +378,18 @@ export function pikeur(seed: number): BodyTemplate {
     // pale ghost-fire: the mane along the neck, the tail
     .line([0, 2.2, 0.92], [0, 2.86, 1.34], 7, 0.3, 0.22, GHOST, { bone: 'flap', style: 1, alpha: 0.55, em: [0.1, 0.16, 0.22] })
     .line([0, 1.85, -1.08], [0, 0.95, -1.6], 6, 0.34, 0.2, GHOST, { bone: 'tail', style: 1, alpha: 0.6, em: [0.1, 0.16, 0.22] })
-    .glow([-0.15, 2.48, 1.78], 0.08, [0.75, 0.92, 1], { bone: 'head', minPx: 4 })
-    .glow([0.15, 2.48, 1.78], 0.08, [0.75, 0.92, 1], { bone: 'head', minPx: 4 })
-    .glow([0, 2.2, 2.08], 0.3, [0.5, 0.7, 0.9], { bone: 'head', alpha: 0.4 });
+    // ember eyes and hot breath (round 4: the cold eyes vanished in the snow light)
+    .glow([-0.15, 2.48, 1.78], 0.1, [1, 0.5, 0.12], { bone: 'head', minPx: 4.5 })
+    .glow([0.15, 2.48, 1.78], 0.1, [1, 0.5, 0.12], { bone: 'head', minPx: 4.5 })
+    .glow([0, 2.2, 2.08], 0.3, [0.8, 0.35, 0.1], { bone: 'head', alpha: 0.35 })
+    // a solid black horse inside the smoke (playtest round 4: "a grey mass of puffs, no horse
+    // reads"): barrel, chest, quarters, neck and head as dark masses with a fog-lit rim; the puffs
+    // fray their edges
+    .solid([0, 1.62, 0], [0.56, 0.62, 1.55], HB, { mat: 3 })
+    .solid([0, 1.7, 0.82], [0.5, 0.7, 0.42], HB, { mat: 3, rx: -0.2 })
+    .solid([0, 1.72, -0.78], [0.62, 0.62, 0.5], HB, { mat: 3 })
+    .solid([0, 2.28, 1.21], [0.3, 0.9, 0.36], HB, { mat: 3, rx: 0.56, bone: 'head' })
+    .solid([0, 2.46, 1.75], [0.24, 0.26, 0.74], HB, { mat: 3, rx: 0.67, bone: 'head' });
   // four legs that trot (diagonal pairs), mist at the hooves
   for (const [r, f, ph] of [
     [0.22, 0.72, 0],
@@ -342,12 +400,14 @@ export function pikeur(seed: number): BodyTemplate {
     b.line([r, 1.4, f], [r, 0.75, f + 0.04], 4, 0.2, 0.14, HS, { bone: 'legs', em: COLDEM })
       .line([r, 0.7, f + 0.04], [r, 0.12, f - 0.03], 4, 0.13, 0.1, HS, { bone: 'legs', em: COLDEM })
       .blob([r, 0.1, f], [0.08, 0.05, 0.08], 2, 0.26, GHOST, { bone: 'legs', style: 1, alpha: 0.55, em: [0.12, 0.18, 0.24] })
-      .last(11, { gait: [1.4, f, ph, 0.55] });
+      .solid([r, 0.8, f], [0.13, 1.25, 0.16], HB, { bone: 'legs', mat: 3 })
+      .last(12, { gait: [1.4, f, ph, 0.55] });
   }
   // the rider: legs in the stirrups, a long coat, the faceless head under the hat
   b.line([0.3, 2.05, 0.08], [0.34, 1.35, 0.28], 4, 0.22, 0.16, SMOKE, { bone: 'rider' })
     .line([-0.3, 2.05, 0.08], [-0.34, 1.35, 0.28], 4, 0.22, 0.16, SMOKE, { bone: 'rider' })
     .line([0, 2.1, 0], [0, 2.95, 0.05], 8, 0.42, 0.34, SMOKE, { bone: 'rider' })
+    .solid([0, 2.55, 0.02], [0.46, 0.85, 0.32], HB, { bone: 'rider', mat: 3 })
     .solid([0, 2.45, -0.36], [0.85, 1.35, 0.05], [0.05, 0.045, 0.06], { bone: 'flap', rx: 0.42 })
     .line([0.2, 2.9, -0.2], [0.35, 1.7, -1.05], 6, 0.3, 0.38, SMOKE, { bone: 'flap', alpha: 0.85 })
     .line([-0.2, 2.9, -0.2], [-0.35, 1.7, -1.05], 6, 0.3, 0.38, SMOKE, { bone: 'flap', alpha: 0.85 })
@@ -446,7 +506,52 @@ export function strohmann(seed: number): BodyTemplate {
     .glow([0, 2.9, -0.55], 0.3, EMBER, { alpha: 0.6 })
     .last(1, { fire: 4 })
     .blob([0, 5.0, 0], [0.5, 0.5, 0.5], 6, 0.75, [0.08, 0.07, 0.07], { bone: 'head', alpha: 0.55, em: [0.35, 0.12, 0.02] });
-  return scaleTemplate({ parts: b.parts, tell: [1, 0.55, 0.15], top: 5.1, shoulder: 3.4 }, 1.12);
+  // playtest round 4 ("untextured yellow cuboids, a cardboard robot"): every sheaf is straw (strands
+  // in the shader), golden and smouldering from within; loose stalks bristle out of every limb so
+  // the outline is ragged, and fire runs along the shoulders and down the flails
+  const sheaves = b.parts.filter((q) => q.kind === 'solid' && q.col !== CORD);
+  for (const q of sheaves) {
+    q.mat = 2;
+    q.col = [q.col[0] * 1.25, q.col[1] * 1.12, q.col[2] * 0.75];
+    q.em = q.em ?? [0.09, 0.035, 0.004];
+  }
+  for (const q of sheaves) {
+    if (q.bone === 'seal') continue;
+    const n = Math.round(Math.min(9, 2 + ((q.sy ?? q.size) * (q.size + (q.sz ?? q.size))) * 5));
+    for (let i = 0; i < n; i++) {
+      const a = R() * Math.PI * 2;
+      const h = (R() - 0.5) * (q.sy ?? q.size) * 0.9;
+      const rr = Math.max(q.size, q.sz ?? q.size) * 0.5;
+      const len = 0.35 + R() * 0.5;
+      b.solid([q.r + Math.cos(a) * rr, q.y + h, q.f + Math.sin(a) * rr], [0.035, len, 0.035], R() > 0.4 ? [0.85, 0.66, 0.26] : [0.6, 0.42, 0.15], {
+        bone: q.bone,
+        rx: Math.sin(a) * (0.6 + R() * 0.7),
+        rz: -Math.cos(a) * (0.6 + R() * 0.7),
+        em: [0.06, 0.025, 0.003],
+        mat: 3,
+      });
+    }
+  }
+  for (const [x, y, z, n, bone] of [
+    [0.55, 3.75, 0.1, 6, 'body'],
+    [-0.55, 3.75, 0.1, 6, 'body'],
+    [0, 3.2, 0.42, 3, 'body'],
+    [1.4, 1.9, 0.32, 5, 'armR'],
+    [-1.4, 1.9, 0.32, 5, 'armL'],
+  ] as const)
+    b.glow([x, y, z], 0.28, EMBER, { bone, alpha: 0.75 }).last(1, { fire: n });
+  // taller and leaner: a sheaf giant, not a crate
+  for (const q of b.parts) {
+    q.r *= 0.86;
+    q.f *= 0.86;
+    q.y *= 1.12;
+    if (q.kind === 'solid') {
+      q.size *= 0.86;
+      if (q.sz !== undefined) q.sz *= 0.86;
+      if (q.sy !== undefined) q.sy *= 1.12;
+    }
+  }
+  return scaleTemplate({ parts: b.parts, tell: [1, 0.55, 0.15], top: 5.1 * 1.12, shoulder: 3.4 * 1.12 }, 1.12);
 }
 
 /**
@@ -465,7 +570,8 @@ export function steinbrecher(seed: number): BodyTemplate {
   ];
   const JOINT: V3 = [0.06, 0.045, 0.04];
   const HOT: V3 = [1, 0.42, 0.08];
-  const block = (x: number, y: number, z: number, w: number, h: number, d: number, bone: Bone = 'body') => b.solid([x, y, z], [w, h, d], SB[Math.floor(R() * SB.length)]!, { bone, ry: (R() - 0.5) * 0.16, rz: (R() - 0.5) * 0.1 });
+  // hunched: the upper body leans forward over the legs (rx), the blocks dressed stone
+  const block = (x: number, y: number, z: number, w: number, h: number, d: number, bone: Bone = 'body', rx = 0) => b.solid([x, y, z], [w, h, d], SB[Math.floor(R() * SB.length)]!, { bone, ry: (R() - 0.5) * 0.16, rz: (R() - 0.5) * 0.1, rx, mat: 1 });
   // legs: thigh, a dark knee, shin, a foot block; they stride
   for (const side of [-1, 1]) {
     const x = side * 0.62;
@@ -481,27 +587,32 @@ export function steinbrecher(seed: number): BodyTemplate {
   // pelvis, belly, chest; mortar joints between them
   block(0, 2.25, 0, 1.75, 0.55, 1.05);
   b.solid([0, 2.55, 0.01], [1.6, 0.08, 0.98], JOINT);
-  block(0, 2.95, 0, 1.75, 0.75, 1.1);
-  b.solid([0, 3.36, 0.01], [2.0, 0.08, 1.1], JOINT);
-  block(0, 3.8, 0.02, 2.35, 0.9, 1.25);
+  block(0, 2.95, 0.12, 1.75, 0.75, 1.1, 'body', 0.12);
+  b.solid([0, 3.36, 0.2], [2.0, 0.08, 1.1], JOINT, { rx: 0.15 });
+  block(0, 3.8, 0.38, 2.35, 0.9, 1.25, 'body', 0.22);
   // the front: a dark plate with a lintel, the head with a brow
   b.solid([0, 3.4, 0.62], [1.45, 1.4, 0.1], [0.16, 0.12, 0.1], { rx: -0.04 })
     .solid([0, 4.08, 0.68], [1.2, 0.07, 0.05], [0.48, 0.38, 0.28])
     .solid([0, 2.88, 0.66], [0.9, 0.05, 0.04], [0.4, 0.31, 0.24]);
-  block(0, 4.65, 0.12, 0.95, 0.8, 0.85, 'head');
-  b.solid([0, 4.9, 0.55], [0.75, 0.12, 0.14], [0.14, 0.11, 0.09], { bone: 'head' })
-    .solid([0, 4.6, 0.56], [0.55, 0.28, 0.05], [0.05, 0.04, 0.035], { bone: 'head' })
-    .eyes(4.68, 0.6, 0.17, 0.12, [1, 0.72, 0.2]);
+  // the head sits low and forward between the shoulders (a brute, not a golem standing to attention)
+  block(0.08, 4.45, 0.7, 0.95, 0.8, 0.85, 'head', 0.1);
+  b.solid([0.08, 4.72, 1.13], [0.8, 0.14, 0.16], [0.14, 0.11, 0.09], { bone: 'head', mat: 1 })
+    .solid([0.08, 4.42, 1.14], [0.55, 0.26, 0.05], [0.05, 0.04, 0.035], { bone: 'head', mat: 3 })
+    .solid([0.08, 4.12, 0.95], [0.7, 0.07, 0.6], [0.1, 0.03, 0.01], { em: [0.8, 0.28, 0.04], bone: 'head' })
+    .eyes(4.48, 1.18, 0.17, 0.13, [1, 0.72, 0.2])
+    .glow([0.08, 4.48, 1.2], 0.6, [1, 0.45, 0.1], { bone: 'head', alpha: 0.5 });
   // shoulders, upper arms, a dark elbow, forearms, fists
   for (const side of [-1, 1]) {
     const bone: Bone = side > 0 ? 'armR' : 'armL';
-    block(side * 1.45, 4.0, 0.05, 0.95, 0.85, 0.95);
-    block(side * 1.62, 3.15, 0.1, 0.62, 1.05, 0.62, bone);
-    b.solid([side * 1.62, 2.55, 0.15], [0.5, 0.16, 0.52], JOINT, { bone })
-      .glow([side * 1.95, 2.55, 0.1], 0.3, HOT, { bone: 'seal', alpha: 0.85, minPx: 2.5 })
+    // asymmetric: the right arm a wall-breaker (bigger fist, higher shoulder), the left a stump
+    const k = side > 0 ? 1.18 : 0.92;
+    block(side * 1.45, 4.0 + (side > 0 ? 0.18 : -0.05), 0.35, 0.95 * k, 0.85 * k, 0.95 * k);
+    block(side * 1.62, 3.15, 0.4, 0.62 * k, 1.05, 0.62 * k, bone);
+    b.solid([side * 1.62, 2.55, 0.45], [0.5 * k, 0.16, 0.52 * k], JOINT, { bone })
+      .glow([side * 1.95, 2.55, 0.4], 0.3, HOT, { bone: 'seal', alpha: 0.85, minPx: 2.5 })
       .last(1, { bone });
-    block(side * 1.65, 1.95, 0.25, 0.7, 1.05, 0.7, bone);
-    block(side * 1.68, 1.15, 0.38, 0.92, 0.72, 0.92, bone);
+    block(side * 1.65, 1.95, 0.55, 0.7 * k, 1.05, 0.7 * k, bone);
+    block(side * 1.68, 1.05, 0.68, 0.92 * k * k, 0.78 * k, 0.92 * k * k, bone);
     // the shoulder joint glows at the side
     b.glow([side * 1.98, 4.0, -0.05], 0.4, HOT, { bone: 'seal', alpha: 0.9, minPx: 3 });
   }
@@ -523,7 +634,16 @@ export function steinbrecher(seed: number): BodyTemplate {
     .glow([-0.92, 2.25, 0], 0.32, HOT, { bone: 'seal', alpha: 0.8, minPx: 2.5 })
     // dust at its feet
     .blob([0, 0.2, 0], [1.2, 0.12, 0.9], 6, 0.85, [0.55, 0.5, 0.44], { style: 1, alpha: 0.45, bone: 'legs' });
-  return scaleTemplate({ parts: b.parts, tell: [1, 0.45, 0.1], top: 5.3, shoulder: 4.0 }, 1.05);
+  // thin hot seams between the stacked blocks, seen from the front too (it reads as one thing, not
+  // a pile of crates), without the weak-point glow (those stay at the back and the sides)
+  for (const [x, y, z, w] of [
+    [0, 2.55, 0.55, 1.5],
+    [0, 3.36, 0.72, 1.8],
+    [-0.62, 1.08, 0.4, 0.5],
+    [0.62, 1.08, 0.4, 0.5],
+  ] as const)
+    b.solid([x, y, z], [w, 0.035, 0.03], [0.1, 0.03, 0.01], { em: [0.75, 0.26, 0.04] });
+  return scaleTemplate({ parts: b.parts, tell: [1, 0.45, 0.1], top: 5.6, shoulder: 4.0 }, 1.22);
 }
 
 /**
