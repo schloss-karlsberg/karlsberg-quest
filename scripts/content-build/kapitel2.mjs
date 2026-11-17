@@ -256,7 +256,7 @@ const dialogue = [
   ...seq(echo('clue.k2.landremont'), [
     ['echo.k2.landremont.01', 'landremont', 'Was bedeuten denn die Feuer, die ich dort unten im Walde habe leuchten sehen?', [Z('S. 427 f.')]],
     ['echo.k2.landremont.02', 'handwerker', 'Das sind Kalköfen.', [Z('S. 428')]],
-    ['echo.k2.landremont.03', 'geraeusch', '(Die Reiter sprengen zum Schloss.)'],
+    ['echo.k2.landremont.03', 'geraeusch', '[Galopp]'],
   ]),
   say('laub.k2.koehler', 'laub', 'Ein Köhlermeiler. Die gibt es hier überall im Wald. Ein Meiler glimmt, er leuchtet nicht. Aber der General kommt aus Saarbrücken, was weiß der.', found('clue.k2.koehler'), { once: true }),
   say('laub.k2.keller', 'laub', 'Hier unten bleibt man, bis man vergessen wird. Raus.', beat('2.10-keller'), { once: true }),

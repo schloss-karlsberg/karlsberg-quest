@@ -7,6 +7,7 @@
  *  clue.k2.warnung /     the Kabinett door: you put your eye to the crack and see the room behind
  *  clue.k2.abschied      it — candlelight, the Duke at his desk, the men who come in (k2-door)
  *  clue.k2.fackeln       the wagons roll out north with their torches and go small in the fog (k2-abfahrt)
+ *  clue.k2.landremont    the general's riders gallop past you up to the palace (k2-reiter; runs its own course)
  *
  * Story cues (`{"do":"cue","id":…}`):
  *  k2-frost {on}         ice flowers grow over the compass and the edges of the view (k2-frost)
@@ -23,6 +24,7 @@ import { stageEcho } from '../../chronik/staging';
 import { AbfahrtPiece } from './k2-abfahrt';
 import { CandlePiece } from './k2-candle';
 import { DoorPiece, kabinettMarks } from './k2-door';
+import { ReiterPiece } from './k2-reiter';
 import { FrostOverlay } from './k2-frost';
 import { Laub1840Piece } from './k4-1840';
 import { QuaderPiece } from './k4-quader';
@@ -53,7 +55,7 @@ declare module '../../../debug/hooks' {
 }
 
 /** Pieces that are a climax (not ambient set dressing like the candle or the prints). */
-const MOMENTS = new Set(['k4-rewind', 'k4-1840', 'k2-door', 'k2-abfahrt']);
+const MOMENTS = new Set(['k4-rewind', 'k4-1840', 'k2-door', 'k2-abfahrt', 'k2-reiter']);
 
 /** Echoes that are staged, and how the echo director paces them. */
 export function registerEchoStagings(): void {
@@ -83,6 +85,7 @@ export class StageDirector {
       else if (id === 'clue.k4.laub_1840') this.add(new Laub1840Piece(ctx));
       else if (id === 'clue.k2.warnung' || id === 'clue.k2.abschied') this.add(new DoorPiece(ctx, id));
       else if (id === 'clue.k2.fackeln') this.add(new AbfahrtPiece(ctx));
+      else if (id === 'clue.k2.landremont') this.add(new ReiterPiece(ctx));
     });
     ev.on('echo:line', ({ line, dur }) => {
       for (const p of this.pieces) p.line?.(line, dur);

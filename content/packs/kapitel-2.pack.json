@@ -1439,7 +1439,7 @@
     {
       "id": "echo.k2.landremont.03",
       "speaker": "geraeusch",
-      "text_de": "(Die Reiter sprengen zum Schloss.)",
+      "text_de": "[Galopp]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.landremont",

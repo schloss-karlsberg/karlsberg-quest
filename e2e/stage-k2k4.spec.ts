@@ -324,6 +324,39 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('K2: Landremont — the riders gallop past you up to the palace (no caption)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.evaluate(() => {
+      const k = window.kq as Any;
+      k.ctx.state.mutable.flags['barks.quiet'] = true;
+      k.story.start('Alex');
+      k.story.goto('k2', 'k2_7');
+      k.step(4);
+    });
+    // at the Orangerie-Parterre, looking up towards the palace, a little to the right
+    await place(page, '1793-02', 1275, -960, 5, -3);
+    await page.evaluate(() => {
+      const k = window.kq as Any;
+      k.story.flush();
+      k.ctx.ui.modals.closeAll();
+      k.chronik.listen('clue.k2.landremont');
+    });
+    // through the general's question and the craftsman's answer: the gallop begins
+    for (let i = 0; i < 6 && !(await page.evaluate(() => JSON.stringify((window.kq as Any).stage.active()))).includes('k2-reiter'); i++) await advance(page, 1.5);
+    expect(await page.evaluate(() => (window.kq as Any).stage.active())).toContain('k2-reiter');
+    await page.evaluate(() => (window.kq as Any).stage.line('echo.k2.landremont.02'));
+    await page.evaluate(() => (window.kq as Any).stage.advance(2.4));
+    await page.evaluate(() => window.kq!.step(2));
+    await shot(page, 'k2-reiter', true);
+    await page.evaluate(() => (window.kq as Any).stage.advance(2.2));
+    await page.evaluate(() => window.kq!.step(2));
+    await shot(page, 'k2-reiter-away', true);
+    await page.evaluate(() => (window.kq as Any).stage.advance(12));
+    await page.evaluate(() => window.kq!.step(2));
+    expect(await page.evaluate(() => (window.kq as Any).stage.active())).not.toContain('k2-reiter');
+    expect(errors).toEqual([]);
+  });
+
   test('Endings: the burn shows its memories through the burning pages; the museum needle; the keep prints', async ({ page }) => {
     const errors = trackErrors(page);
     await place(page, 'today', 760, -902, 0, 0);

@@ -1154,7 +1154,13 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   step, leading in and not away. **Lectures:** a quest's `history_at_turnin` (default 1) — Laub's
   Positionsblätter line (`q.k4.standpunkt`) moved to the calm morning at the Feldstation (k4_14),
   the WaldPark / Hörpfad line (`q.k4.stellen`) to the codex (both facts still unlock).
-- **K2 / K4 staging, left open:** Landremont's riders (K2 W4) still a parenthetical caption; the
+- **Integration (2026-11-17):** Landremont's riders (K2 W4, `clue.k2.landremont`) are staged too
+  (`fx/stage/k2-reiter.ts`): as the craftsman answers, three dark horses with blue-coated riders —
+  the leader's sabre up — gallop past you 7 m to the side, up to the palace, and go small in the
+  fog with their hoofbeats; the caption is down to „[Galopp]“. Staged climaxes (the stage pieces,
+  the K3 torch, the Zwinger breakout) hold the card queue like a fight; a new ability rides on
+  the level card; K1's last beat frosts the compass glass instead of a caption.
+- **K2 / K4 staging, left open:** the
   sight cones read pale on bright frost from far away; Jost turns to face you when you come within
   8 m (the kneel reads best from the side); the burn memories' hounds open their eyes on the hunt's
   own clock (on a slow renderer only two or three pairs open in the 3 s shot).

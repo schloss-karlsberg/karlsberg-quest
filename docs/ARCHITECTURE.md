@@ -574,7 +574,8 @@ Round-4 (polish: set dressing) integration rules:
 - **Staged set pieces** (`fx/stage/`, `StageDirector`, frame runs last so a piece may own the camera):
   pieces (`Piece {id, done, line?, end?, frame, camera?, dispose}`) started by `echo:start`
   (`echo.k4.rueckwaerts` → `k4-rewind`, `clue.k4.laub_1840` → `k4-1840`, `clue.k2.warnung` /
-  `clue.k2.abschied` → `k2-door`, `clue.k2.fackeln` → `k2-abfahrt`), timed by `echo:line` and ended
+  `clue.k2.abschied` → `k2-door`, `clue.k2.fackeln` → `k2-abfahrt`, `clue.k2.landremont` →
+  `k2-reiter`, which runs its own course), timed by `echo:line` and ended
   by `echo:end`, or by story cues (`k2-frost {on}`, `k2-thaw`, `k2-candle {x, z, y?}`,
   `k4-quader {x, z}`, `end-prints {x, z, n, r, ring}`, `stage-off {id?}`); a shift takes the
   world-placed ones down, a load all of them. The echo stagings (`registerEchoStagings`) go into
