@@ -946,4 +946,15 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   ends (title card and sting are not talked over). A pack's escort kill carries `escort: true`
   and never counts for a kill objective (XP only); route POI guards of the right kind, era and
   place do count. After a wake the travel track's hint names the nearest measured
-  Vermessungspunkt when it is far nearer the goal than the wake spot.
+  Vermessungspunkt when it is far nearer the goal than the wake spot. Found by the full e2e run
+  and fixed: M stays the 1840 overlay key while the prologue asks for the map comparison (story
+  flag `map.compare`; travel hands M to the survey with `survey:cycle-map`), otherwise M opens the
+  travel map; the long-walk sprint boost is off while a pack is out (`hunt:start` … `hunt:end`) and
+  inside palace rooms (it overshot the K2 walk into the Schlafzimmer and was never meant for the
+  tuned chases); route cache guards do not rise while a pack is out and go back into the fog when
+  one starts (a K1 cache by the Tempelplatz woke Mahnbriefe into the par force hunt); the stand
+  lunges only at a player moving *out* of the ring (arriving from the cascade at its back edge, or
+  being shoved by a stray's blow, drew a bite); when the stand breaks, hounds at the player's heels
+  fall back with the ones in the way, and the dash's head start is 3 s (was 1.5; Laub's „Jetzt!“
+  needs a moment to read); the Journal's Karte tab sits last (Aufgaben 1, Codex 2, Sammlungen 3
+  keep their digits).

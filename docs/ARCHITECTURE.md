@@ -231,7 +231,9 @@ Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m arou
 `?scanall` = everywhere); trees inside the bubble sink away (ground points only). The 1840 map
 overlay (`setMapMix`) uses the same lens; the survey system swaps the 1935–40 Messtischblatt into
 the same `uMap` uniform (the travel map's layer buttons send `survey:show-map {layer}` — off / 1840 /
-1935, gated by the Kartograf skill; M itself opens the travel map when the `travel` system runs).
+1935, gated by the Kartograf skill; M itself opens the travel map when the `travel` system runs,
+except while the story flag `map.compare` is set or a layer lies on the terrain: then travel sends
+`survey:cycle-map` and M cycles off → 1840 → 1935 → off as before — the prologue's Kartenvergleich).
 With `settings.colorblind` mode 2 uses blue ↔ orange (`uPalette` 1). Inside the bubble where the
 reveal is complete the terrain shader skips the lit/era colouring entirely (cheaper scan modes).
 

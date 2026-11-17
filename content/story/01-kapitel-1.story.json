@@ -2620,7 +2620,7 @@
                 "z": 203
               },
               "goalRadius": 12,
-              "headStart": 1.5,
+              "headStart": 3,
               "heel": 9,
               "burst": 1.3,
               "keepPace": true
