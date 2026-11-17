@@ -90,6 +90,8 @@ test.describe('world', () => {
   });
 
   test('renders every era and scan mode without errors', async ({ page }) => {
+    // twelve full-frame screenshots on SwiftShader: past 2 min when the suite runs in parallel
+    test.setTimeout(360_000);
     const errors = trackErrors(page);
     // today: forest over the ruin of the main palace (POI r03-01)
     await shoot(page, 'today-ruin', { era: 'today', x: 1240, z: -1060, yaw: 250, pitch: -4 });
