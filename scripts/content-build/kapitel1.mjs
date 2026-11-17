@@ -491,10 +491,10 @@ const k1Quests = {
         { id: 'fleisch', type: 'collect', item: 'item.k1.fleisch', count: 5, text_de: 'Fleisch vom Jägerhaus holen', place: KS.fleisch.map(([x, z]) => place(x, z)) },
         { id: 'bringen', type: 'reach', after: ['fleisch'], text_de: 'Das Fleisch zum Zwinger bringen', where: place(1177, -1571, 9) },
         {
-          id: 'streuner', type: 'kill', enemy: 'streuner', count: 3, after: ['bringen'],
-          text_de: 'Drei Streuner an der Allee, bevor die Meute sie hört',
+          id: 'streuner', type: 'kill', enemy: 'streuner', count: 4, after: ['bringen'],
+          text_de: 'Vier Streuner an der Allee, bevor die Meute sie hört',
           where: place(...KS.allee, 26),
-          spawn: [spawn('streuner', KS.allee, 3, 6, { leash: 40 })],
+          spawn: [spawn('streuner', KS.allee, 4, 6, { leash: 40 })],
         },
       ],
       rewards: { xp: 160, items: [{ item: 'item.charm.hundemarke' }], skills: [{ id: 'spurenleser', tier: 1 }] },
@@ -570,10 +570,10 @@ const k1Quests = {
       ],
       objectives: [
         {
-          id: 'briefe', type: 'kill', enemy: 'mahnbrief', count: 4,
+          id: 'briefe', type: 'kill', enemy: 'mahnbrief', count: 6,
           text_de: 'Die Mahnbriefe im Orangeriegarten zerreißen',
           where: place(...KS.festgarten, 20),
-          spawn: [spawn('mahnbrief', KS.festgarten, 4, 7, { leash: 30 })],
+          spawn: [spawn('mahnbrief', KS.festgarten, 6, 7, { leash: 30 })],
         },
         ...Object.keys(PLAN).map((k, i) => ({ id: k, type: 'collect', item: `item.k1.festplan_${k}`, text_de: `${PLAN[k][0]} aufheben`, place: [place(...KS.festplaene[i])] })),
         { id: 'mannlich', type: 'examine', clue: 'clue.k1.mannlich', text_de: 'Im Pfeilersaal am Fenster: Mannlich zuhören (E halten)' },

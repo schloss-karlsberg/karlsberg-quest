@@ -47,8 +47,8 @@ export const HEAVY = { min: 0.45, full: 1.0, moveScale: 0.5, tap: 0.18, arcDeg: 
 /** Ausweichen: 0.35 s roll of 4.5 m; i-frames 0.08–0.33 s; perfect in the last 0.15 s before a hit. */
 export const DODGE = { dur: 0.35, dist: 4.5, iStart: 0.08, iEnd: 0.33, perfect: 0.15, slowmo: 0.25, slowScale: 0.3 } as const;
 
-/** Bannlicht: gebannte enemies take ×1.5; the flare lasts 0.45 s on screen. */
-export const BANN = { damageMul: 1.5, flare: 0.45, sealOpen: 4 } as const;
+/** Bannlicht: gebannte enemies take ×1.3 (×1.5 made the flare a kill button); the flare lasts 0.45 s on screen. */
+export const BANN = { damageMul: 1.3, flare: 0.45, sealOpen: 4 } as const;
 
 /** Juice (§4.3); halved with reduced motion. */
 export const HITSTOP = { light: 0.06, heavy: 0.11, player: 0.08 } as const;
@@ -129,7 +129,7 @@ export interface HitSpec {
   combo?: number;
   /** Heavy charge 0..1 (0.45 s … 1.0 s held). */
   charge?: number;
-  /** Target is gebannt (stunned by the Bannlicht): ×1.5. */
+  /** Target is gebannt (stunned by the Bannlicht): ×BANN.damageMul. */
   gebannt?: boolean;
   /** Armour factor of the target for this hit (1 = none) — see `armorFactor`. */
   armor?: number;

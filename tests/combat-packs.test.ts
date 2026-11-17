@@ -9,7 +9,7 @@ import { deriveStats } from '../src/rpg/stats';
 import type { EnemyGroupState } from '../src/rpg/types';
 import { eliteIndex, escortsOf, packWorthy } from '../src/systems/combat/packs';
 import { telegraphTime, upsertGroup } from '../src/systems/combat/rules';
-import { BOSS_INTRO, CombatSim, type SimEvent, type SimInput } from '../src/systems/combat/sim';
+import { BOSS_INTRO, CombatSim, type SimEvent, type SimInput, reforms } from '../src/systems/combat/sim';
 
 const flat = { heightAt: () => 0 };
 
@@ -61,7 +61,13 @@ describe('packs: elites and escorts', () => {
     expect(w.note_de).toContain('(Fiktion)');
   });
 
-  it('a Streuner pack comes with its Leithund and a Nebelweber; escorts never count for the group', () => {
+  it('the Streuner pack company changes with the era (no three identical packs in a row)', () => {
+    const kinds = (era: string) => escortsOf({ kind: 'streuner', count: 3, boss: false, era: era as never, tier: 2 }).map((e) => e.kind).join(',');
+    const all = ['1789', '1793-02', '1793-07', '1796'].map(kinds);
+    expect(new Set(all).size).toBe(4);
+  });
+
+  it('a Streuner pack comes with its Leithund and the company of its era; escorts never count for the group', () => {
     const { s, groups } = sim();
     upsertGroup(groups, { group: 'p', kind: 'streuner', era: '1793-02', x: 0, z: -30, count: 4, tier: 2 });
     run(s, 0.1);
@@ -72,7 +78,8 @@ describe('packs: elites and escorts', () => {
     expect(elites[0]!.maxHp).toBeGreaterThan(live.find((e) => e.kind === 'streuner' && !e.elite)!.maxHp * 1.8);
     expect(elites[0]!.def.attacks.some((a) => a.id === 'hetzjagd')).toBe(true);
     const esc = live.filter((e) => e.escort);
-    expect(esc.map((e) => e.kind)).toEqual(['nebelweber']);
+    // 1793-02: a flurry of Mahnbriefe (1789 brings the Nebelweber)
+    expect(esc.map((e) => e.kind)).toEqual(['mahnbrief', 'mahnbrief', 'mahnbrief']);
     expect(esc[0]!.group).toBe('p+escort');
     // the escort undone: the group's count does not move
     s.killNow(esc[0]!.id);
@@ -197,5 +204,34 @@ describe('the pack fights together', () => {
     s.dematerialise();
     const again = run(s, 1);
     expect(again.some((v) => v.type === 'intro')).toBe(false);
+  });
+});
+
+describe('playtest round 4: fights that ask something', () => {
+  it('paper and mist scatter under a light blow once, then a Wuchthieb or the second time ends them', () => {
+    const base = { kind: 'mahnbrief', reformed: false, boss: false, elite: false, add: false, tier: 1 };
+    expect(reforms(base, 'light', false)).toBe(true);
+    expect(reforms(base, 'light', true)).toBe(false);
+    expect(reforms(base, 'heavy', false)).toBe(false);
+    expect(reforms({ ...base, reformed: true }, 'light', false)).toBe(false);
+    expect(reforms({ ...base, kind: 'streuner' }, 'light', false)).toBe(false);
+    expect(reforms({ ...base, tier: 0 }, 'light', false)).toBe(false);
+  });
+
+  it('three swings through an Irrlicht bring the Bannlicht hint', () => {
+    const { s, groups } = sim();
+    upsertGroup(groups, { group: 'i', kind: 'irrlicht', era: '1793-02', x: 0, z: -2, count: 1 });
+    s.step(1 / 60, input());
+    const e = s.live()[0]!;
+    e.blinkT = 99;
+    const evs: SimEvent[] = [];
+    for (let i = 0; i < 4; i++) {
+      e.x = 0;
+      e.z = -2;
+      evs.push(...s.step(1 / 60, input({ attackPressed: true })));
+      evs.push(...run(s, 0.45));
+    }
+    expect(evs.filter((e) => e.type === 'immune').length).toBeGreaterThanOrEqual(3);
+    expect(evs.some((e) => e.type === 'immuneHint')).toBe(true);
   });
 });

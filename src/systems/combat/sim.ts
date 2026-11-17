@@ -137,6 +137,10 @@ export interface Enemy {
   /** Direction of the last staff hit (visual flinch). */
   hitX: number;
   hitZ: number;
+  /** Mahnbrief / Nebelling: came apart once and pulled itself together again. */
+  reformed: boolean;
+  /** Seconds since it noticed the player (elites shrug off the Bannlicht for the first 3). */
+  aggroT: number;
 }
 
 export interface Projectile {
@@ -220,6 +224,12 @@ export type SimEvent =
   | { type: 'whiff'; kind: 'light' | 'heavy' }
   | { type: 'hit'; e: Enemy; damage: number; heavy: boolean; finisher: boolean; weak: boolean; armored: boolean; gebannt: boolean; dirX: number; dirZ: number }
   | { type: 'immune'; e: Enemy }
+  /** Three swings went through an untouchable thing: say how (and lend a Bannlicht if both are spent). */
+  | { type: 'immuneHint'; refilled: boolean }
+  /** A light hit scattered a Mahnbrief / Nebelling; it pulls itself together (a Wuchthieb ends it). */
+  | { type: 'reform'; e: Enemy }
+  /** An elite fresh into the fight shrugs the Bannlicht off. */
+  | { type: 'resist'; e: Enemy }
   | { type: 'killed'; e: Enemy; by: KillBy }
   | { type: 'cleared'; group: string; kind: string }
   | { type: 'playerHit'; damage: number; by: string; x: number; z: number; pushX: number; pushZ: number; heavy: boolean }
@@ -332,6 +342,20 @@ const KITERS = new Set(['nebelweber', 'irrlicht']);
 /** Kinds that drift towards the player's back while closing in (flankers). */
 const FLANKERS = new Set(['streuner', 'raffschatten', 'grusling']);
 /** Gap between two pack wind-ups (s): attacks come in a rhythm, not all at once. */
+/** Swings through an untouchable thing before the hint (and a lent Bannlicht). */
+const IMMUNE_HINT_AFTER = 3;
+/** Elites ignore the Bannlicht for their first seconds in a fight. */
+const ELITE_BANN_GRACE = 3;
+/** A scattered Mahnbrief / Nebelling comes back with this share of its strength, after a stagger. */
+const REFORM_HP = 0.4;
+const REFORM_STAGGER = 1.1;
+const REFORMERS = new Set(['mahnbrief', 'nebelling']);
+
+/** Does a finishing blow scatter instead of undo? Light, non-finisher hits on tier ≥ 1 paper / mist, once. */
+export function reforms(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 'add' | 'tier'>, kind: 'light' | 'heavy', finisher: boolean): boolean {
+  return REFORMERS.has(e.kind) && !e.reformed && !e.boss && !e.elite && !e.add && kind === 'light' && !finisher && e.tier >= 1;
+}
+
 const ATTACK_GAP = { min: 0.45, spread: 0.3, gentle: 0.9, land: 0.85, gentleLand: 1.3 } as const;
 
 /** Distance an enemy wants to keep while closing in for `a`. */
@@ -380,6 +404,8 @@ export class CombatSim {
   private readonly out: SimEvent[] = [];
   private idSeq = 0;
   private tick = 0;
+  /** Consecutive staff hits that went through an untouchable enemy. */
+  private immuneStreak = 0;
   /** Last player position seen (for adds and projectiles). */
   private px = 0;
   private py = 0;
@@ -639,6 +665,8 @@ export class CombatSim {
       orphan: 0,
       hitX: 0,
       hitZ: 0,
+      reformed: false,
+      aggroT: 0,
     };
     if (el) e.title = el.name_de;
     if (o.quest) e.quest = o.quest;
@@ -870,8 +898,16 @@ export class CombatSim {
     if (e.def.needsBann && e.stun <= 0) {
       this.out.push({ type: 'immune', e });
       this.wake(e);
+      // playtest round 4: 80 swings through two Irrlichter and no idea why
+      if (++this.immuneStreak >= IMMUNE_HINT_AFTER) {
+        this.immuneStreak = 0;
+        const refilled = p.bann < 1;
+        if (refilled) p.bann = 1;
+        this.out.push({ type: 'immuneHint', refilled });
+      }
       return false;
     }
+    this.immuneStreak = 0;
     const heavy = w.kind === 'heavy';
     const finisher = !heavy && w.combo >= COMBO.hits - 1;
     let mul = 1;
@@ -949,6 +985,15 @@ export class CombatSim {
       this.tokens.release(e.id);
       this.dropRings(e);
       this.out.push({ type: 'leave', e });
+      return false;
+    }
+    if (e.hp <= 0 && reforms(e, w.kind, finisher)) {
+      // paper and mist scatter under a light blow and pull themselves together once
+      e.reformed = true;
+      e.hp = Math.ceil(e.maxHp * REFORM_HP);
+      e.stun = 0;
+      this.staggerEnemy(e, REFORM_STAGGER);
+      this.out.push({ type: 'reform', e });
       return false;
     }
     if (e.hp <= 0) {
@@ -1043,6 +1088,12 @@ export class CombatSim {
       if (!inCone(inp.x, inp.z, inp.yaw, s.bannRange, s.bannAngle, e.x, e.z, e.radius)) continue;
       if (e.y - inp.y > 4) continue;
       hits++;
+      // a named elite fresh into the fight shrugs the flare off (the opening flare killed it)
+      if (e.elite && !e.boss && (!e.aggro || e.aggroT < ELITE_BANN_GRACE)) {
+        this.wake(e);
+        this.out.push({ type: 'resist', e });
+        continue;
+      }
       this.wake(e);
       if (e.kind === 'schuldbuch') {
         e.sealOpen = BANN.sealOpen;
@@ -1307,6 +1358,7 @@ export class CombatSim {
     // gebannt light / paper lies on the ground
     if (e.stun > 0 && (e.kind === 'irrlicht' || e.kind === 'mahnbrief')) hover = 0.25;
     e.y += (ground + hover - e.y) * Math.min(1, dt * (e.stun > 0 ? 6 : 4));
+    if (e.aggro) e.aggroT += dt;
     if (e.stun > 0) {
       e.stun = Math.max(0, e.stun - dt);
       if (e.stun <= 0 && e.state === 'gebannt') this.setState(e, e.aggro ? 'approach' : 'idle');
@@ -1872,7 +1924,8 @@ export class CombatSim {
     let bd = Infinity;
     for (const e of this.enemies) {
       if (!e.boss || !e.engaged) continue;
-      if (e.state === 'dissolve' && e.t > 1.2) continue;
+      // undone or riding off: the bar goes at once (playtest round 4: „Phase 2 von 3“ at 0 HP)
+      if (e.state === 'dissolve' || e.state === 'leave' || e.hp <= 0) continue;
       const d = Math.hypot(e.x - this.px, e.z - this.pz);
       if (d < bd && d < 70) {
         bd = d;

@@ -597,11 +597,11 @@
           "id": "streuner",
           "type": "kill",
           "enemy": "streuner",
-          "count": 3,
+          "count": 4,
           "after": [
             "bringen"
           ],
-          "text_de": "Drei Streuner an der Allee, bevor die Meute sie hört",
+          "text_de": "Vier Streuner an der Allee, bevor die Meute sie hört",
           "where": {
             "x": 1169,
             "z": -1636,
@@ -614,7 +614,7 @@
               "x": 1169,
               "z": -1636,
               "era": "1789",
-              "count": 3,
+              "count": 4,
               "radius": 6,
               "leash": 40
             }
@@ -1010,7 +1010,7 @@
           "id": "briefe",
           "type": "kill",
           "enemy": "mahnbrief",
-          "count": 4,
+          "count": 6,
           "text_de": "Die Mahnbriefe im Orangeriegarten zerreißen",
           "where": {
             "x": 1274,
@@ -1024,7 +1024,7 @@
               "x": 1274,
               "z": -986,
               "era": "1789",
-              "count": 4,
+              "count": 6,
               "radius": 7,
               "leash": 30
             }

@@ -254,13 +254,13 @@
         },
         {
           "speaker": "soll",
-          "text": "Fünf sind es, am Stapel bei der Straße. Was sie fressen, steht danach in keinem Buch mehr. Machen Sie das weg. Und sehen Sie sich Peters Karren an."
+          "text": "Vier sind es, am Stapel bei der Straße. Was sie fressen, steht danach in keinem Buch mehr. Machen Sie das weg. Und sehen Sie sich Peters Karren an."
         }
       ],
       "progress": [
         {
           "speaker": "soll",
-          "text": "Fünf. Ich zähle. Und der Pachtbrief liegt auf meinem Tisch, falls Sie lesen möchten, was man heute für ein Schloss bezahlt."
+          "text": "Vier. Ich zähle. Und der Pachtbrief liegt auf meinem Tisch, falls Sie lesen möchten, was man heute für ein Schloss bezahlt."
         }
       ],
       "turnin_lines": [
@@ -339,7 +339,7 @@
           "id": "fresser",
           "type": "kill",
           "text_de": "Die Steinfresser am Lager zerschlagen",
-          "count": 5,
+          "count": 4,
           "where": {
             "x": 479,
             "z": -852,
@@ -352,7 +352,7 @@
               "x": 478,
               "z": -852,
               "era": "1796",
-              "count": 5,
+              "count": 4,
               "radius": 6
             }
           ]
@@ -360,7 +360,7 @@
         {
           "id": "krumen",
           "type": "kill",
-          "text_de": "Bonus: Gruslinge aus dem Steinhaufen fegen",
+          "text_de": "Bonus: Gruslinge, die danach aus dem Steinhaufen kriechen",
           "count": 6,
           "optional": true,
           "bonus_xp": 40,
@@ -379,6 +379,9 @@
               "count": 6,
               "radius": 3
             }
+          ],
+          "after": [
+            "fresser"
           ]
         }
       ],

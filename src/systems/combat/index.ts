@@ -138,6 +138,8 @@ class Combat {
   private readonly log: { name: string; payload: unknown; tick: number }[] = [];
   private frozenAI = false;
   private mouseTick = -10;
+  /** Caught (by anything): the next teleport is the wake. */
+  private wakePending = false;
   private anchorHealed = false;
   private hooksInstalled = false;
   private lastCaption = new Map<string, number>();
@@ -244,7 +246,10 @@ class Combat {
       if (key === 'gentleMode' || key === 'rauhnacht' || key === 'reducedMotion') this.applyStats();
       if (key === 'graphics') this.visuals.setQuality(ctx.quality.level);
     });
-    ev.on('era:change', () => {
+    ev.on('era:change', ({ from, to }) => {
+      // a shift into the past is a fresh start: Lebenskraft and Bannlicht full (playtest round 4:
+      // the third try at the Pikeur began at 61/172)
+      if (from === 'today' && to !== 'today' && !this.sim.p.dead) this.restore('shift');
       this.sim.dematerialise();
       this.hud.clearWorld();
       this.visuals.clearParticles();
@@ -291,8 +296,12 @@ class Combat {
       }
     });
     // a player who wakes up after being undone gets everything back
+    ev.on('player:caught', () => (this.wakePending = true));
     ev.on('player:teleport', () => {
       if (this.sim.p.dead && this.caughtSent) this.revive();
+      // caught by a story threat (fire, pack, oblivion) and woken: whole again too
+      else if (this.wakePending) this.restore('wake');
+      this.wakePending = false;
     });
     addSettingsRows(damageRows);
   }
@@ -461,8 +470,10 @@ class Combat {
         for (const g of groupsToReset(this.slice().groups)) this.sim.dematerialise(g);
         this.sim.dematerialise();
         // the curtain names what threw you down (by family: mist, paper, stone ...)
-        const fam = enemyDef(this.sim.lastHitBy)?.family;
-        this.emit('player:caught', fam ? { by: 'combat', family: fam } : { by: 'combat' });
+        const def = enemyDef(this.sim.lastHitBy);
+        const fam = def?.family;
+        const boss = def?.boss === true || this.sim.live().some((e) => e.boss && e.aggro);
+        this.emit('player:caught', { by: 'combat', ...(fam ? { family: fam } : {}), ...(boss ? { boss: true } : {}) });
       }
       // no story to wake us (or it never teleports): get up after a while
       if (this.caughtSent && this.deadT > 8 && !pl.frozen) this.revive();
@@ -570,6 +581,24 @@ class Combat {
         if (this.safe) this.captionOnce('safe', t('combat.safe'), 'info', 8);
         else this.captionOnce('immune', t('combat.immune', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }), 'info', 6, 2600);
         if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 0.8, e.z, 'immune');
+        break;
+      }
+      case 'immuneHint':
+        this.audio.whiff();
+        ctx.ui.toast(t('combat.immuneHint', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }) + (ev.refilled ? ` ${t('combat.immuneRefill')}` : ''), 3200);
+        break;
+      case 'reform': {
+        const e = ev.e;
+        this.visuals.hit(e.def.family, e.x, e.y + 0.6, e.z, 0, 0, false, st.reducedFlash);
+        this.audio.whiff();
+        this.captionOnce('reform', t('combat.reform'), 'info', 10, 2200);
+        break;
+      }
+      case 'resist': {
+        const e = ev.e;
+        this.visuals.glance(e.x, e.y + 0.8, e.z);
+        this.audio.immune(this.posOf(e, 0.8));
+        this.captionOnce('resist', t('combat.resist', { name: e.title ?? e.def.name_de }), 'info', 6, 2000);
         break;
       }
       case 'killed': {

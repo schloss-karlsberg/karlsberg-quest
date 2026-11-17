@@ -8,7 +8,7 @@ import { type Any, clearCards, install, killGroup, questTalk, takeAll, voiceStan
  *
  *   q.k4.zettel (Marlene's note, Q at the valley entrance → 1796) → q.k4.karren (the carts echo,
  *   three Steinfresser at the guard houses, the Westblick, the carts backwards: 1789) →
- *   q.k4.baumagazin from Soll (lease, Matthes' stone, five Steinfresser at the stock) · sides
+ *   q.k4.baumagazin from Soll (lease, Matthes' stone, four Steinfresser at the stock, then Gruslinge) · sides
  *   q.k4.zeichen (Peter) and q.k4.pacht (the lairs on the slope) → q.k4.steinplatz (the notice,
  *   Der Steinbrecher, W7 Steinfraß, the trench, the page: Messstab V) · side q.k4.graeben (three
  *   trenches, Relief 3 today) · the fourth stone from the road (stance) → q.k4.standpunkt
@@ -292,7 +292,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
     (window as Any).k3h.look(478, -852, 0);
   });
   await shot(page, '03-baumagazin-lager');
-  await killGroup(page, 'q.k4.baumagazin.fresser', 5);
+  await killGroup(page, 'q.k4.baumagazin.fresser', 4);
   await killGroup(page, 'q.k4.baumagazin.krumen', 6);
   expect(await quest(page, 'q.k4.baumagazin')).toBe('ready');
   await questTalk(page, 'soll', 'q.k4.baumagazin');

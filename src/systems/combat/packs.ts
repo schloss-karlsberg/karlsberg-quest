@@ -44,6 +44,11 @@ export function escortsOf(g: Pick<EnemyGroupState, 'kind' | 'count' | 'boss' | '
     case 'irrlicht':
       return [{ kind: 'nebelling', n: big ? 3 : 2 }];
     case 'streuner':
+      // playtest round 4: "Leithund + 2 Streuner + Nebelweber" three times in a row — the company
+      // changes with the era: paper in the frost of 1793, fire and shades in July, grit in 1796
+      if (g.era === '1793-02') return [{ kind: 'mahnbrief', n: 3 }];
+      if (g.era === '1793-07') return [{ kind: 'raffschatten', n: 1 }, { kind: 'glutling', n: 1 }];
+      if (g.era === '1796') return [{ kind: 'grusling', n: 3 }];
       return [{ kind: 'nebelweber', n: 1 }];
     case 'mahnbrief':
       return g.count >= 4 ? [{ kind: 'nebelweber', n: 1 }] : [];

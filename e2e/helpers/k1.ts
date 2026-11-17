@@ -480,10 +480,10 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1170, -1626, 180, -2);
-    (window as unknown as { __cna: { until(f: () => boolean, s: number): boolean } }).__cna.until(() => k.combat!.enemies().filter((e) => e.kind === 'streuner').length >= 3, 10);
+    (window as unknown as { __cna: { until(f: () => boolean, s: number): boolean } }).__cna.until(() => k.combat!.enemies().filter((e) => e.kind === 'streuner').length >= 4, 10);
   });
   await fight(page, 'streuner', { hits: 4 });
-  expect(await qn(page, 'q.k1.zwinger', 'streuner')).toBe(3);
+  expect(await qn(page, 'q.k1.zwinger', 'streuner')).toBe(4);
   await page.evaluate(() => {
     window.kq!.teleport(1174.6, -1571, 90, 0);
     window.kq!.step(10);

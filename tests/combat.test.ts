@@ -11,6 +11,7 @@ import type { EnemyGroupState } from '../src/rpg/types';
 import { bossHitMul, chooseBossAttack, summonOf } from '../src/systems/combat/bosses';
 import {
   AI,
+  BANN,
   AttackTokens,
   CLEAVE,
   COMBO,
@@ -71,7 +72,7 @@ describe('combat rules: damage', () => {
     expect(hitDamage(s, { kind: 'light', combo: 2 })).toBe(Math.round(12 * COMBO.finisher));
     expect(hitDamage(s, { kind: 'heavy', charge: 1 })).toBe(Math.round(12 * 2.2));
     expect(hitDamage(s, { kind: 'heavy', charge: 0 })).toBe(Math.round(12 * 2.2 * 0.75));
-    expect(hitDamage(s, { kind: 'light', gebannt: true })).toBe(18);
+    expect(hitDamage(s, { kind: 'light', gebannt: true })).toBe(Math.round(12 * BANN.damageMul));
     expect(hitDamage(s, { kind: 'light', armor: 0.35 })).toBe(Math.round(12 * 0.35));
     expect(hitDamage(s, { kind: 'light', counter: true })).toBe(24);
     // a better weapon and levels raise it
