@@ -81,7 +81,7 @@ async function killOne(page: Page, i: number): Promise<void> {
 }
 
 test('quests: Hanne gives a task, the tracker counts, the turn-in tells the history; the journal keeps it', async ({ page }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {

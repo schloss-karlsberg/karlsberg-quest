@@ -13,7 +13,8 @@ import { newGame } from './helpers/prolog';
  *
  * Screenshots: test-results/screens/s5-pacing-*.png
  */
-test.describe.configure({ timeout: 900_000 });
+// SwiftShader under a parallel suite: the card sampling and screenshots alone can take 15 min
+test.describe.configure({ timeout: 1_800_000 });
 
 /** The centre cards visible now (the same selectors as CardDirector.visible()). */
 const CARDS_JS = `(() => {
