@@ -42,10 +42,10 @@ export const ITEMS: readonly ItemDef[] = [
  * a small enemy drops something about every fifth kill, a boss one Balsam.
  */
 export const LOOT: readonly LootTable[] = [
-  { id: 'loot.klein', entries: [{ item: 'item.balsam', chance: 0.11 }, { item: 'item.lampenoel', chance: 0.08 }, { item: 'item.riechsalz', chance: 0.03 }] },
+  { id: 'loot.klein', entries: [{ item: 'item.balsam', chance: 0.08 }, { item: 'item.lampenoel', chance: 0.08 }, { item: 'item.riechsalz', chance: 0.03 }] },
   { id: 'loot.licht', entries: [{ item: 'item.lampenoel', chance: 0.35 }, { item: 'item.balsam', chance: 0.12 }] },
-  { id: 'loot.raff', entries: [{ item: 'item.balsam', chance: 0.15 }, { item: 'item.riechsalz', chance: 0.08 }, { item: 'item.kalkstaub', chance: 0.1 }] },
-  { id: 'loot.stein', entries: [{ item: 'item.balsam', chance: 0.15 }, { item: 'item.kalkstaub', chance: 0.2 }, { item: 'item.lampenoel', chance: 0.1 }] },
+  { id: 'loot.raff', entries: [{ item: 'item.balsam', chance: 0.1 }, { item: 'item.riechsalz', chance: 0.08 }, { item: 'item.kalkstaub', chance: 0.1 }] },
+  { id: 'loot.stein', entries: [{ item: 'item.balsam', chance: 0.26 }, { item: 'item.kalkstaub', chance: 0.2 }, { item: 'item.lampenoel', chance: 0.1 }] },
   { id: 'loot.boss', entries: [{ item: 'item.balsam', chance: 1, min: 1, max: 1 }, { item: 'item.riechsalz', chance: 1 }, { item: 'item.lampenoel', chance: 1 }, { item: 'item.kalkstaub', chance: 1 }] },
 ];
 

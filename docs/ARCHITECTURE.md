@@ -343,6 +343,10 @@ story ──threat:configure──▶ hunt (pack, lantern seconds)   fx (fire, o
 story ──shift:request─────▶ fx ──shift:begin / era.set + shift:midpoint / shift:done──▶ everyone
 hunt, fx ──player:caught──▶ story (curtain, threats off, instant return to today, checkpoint beat)
                             chronik (finishes a running echo; nothing is lost since D-008)
+                            combat (`boss: true` when a boss had you; HP refilled on the wake's teleport;
+                            a non-boss catch wakes at the nearest surveyed point when 60 m nearer)
+hunt ──hunt:alert {state:'chasing'}──▶ combat (running costs Atem at half rate: `SimInput.hunted`)
+chronik ──echo:start / echo:end──▶ story ──story:cue 'hunt:tableau'──▶ hunt (the 1840 eyes)
 story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
 story (hub Pinnwand) ──chronik:open──▶ quests (opens the Journal; the Chronik board is gone)
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)

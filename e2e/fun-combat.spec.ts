@@ -112,7 +112,7 @@ test.describe('combat fun pass', () => {
     });
     expect(pack.elite).toBe('Leithund');
     expect(pack.escorts).toBeGreaterThan(0);
-    expect(pack.kinds).toContain('mahnbrief'); // 1793-02: the Streuner's paper company
+    expect(pack.kinds).toContain('nebelling'); // 1793-02: the Streuner's company of frost mist
     await expect(page.locator('.kqc-pips.elite').first()).toBeVisible();
     await shot(page, 'pack-elite');
 

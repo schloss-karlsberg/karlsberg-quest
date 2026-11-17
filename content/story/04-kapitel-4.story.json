@@ -175,6 +175,18 @@
       "do": [{ "do": "quest", "op": "progress", "id": "q.k4.steinplatz", "objective": "graben" }]
     },
     {
+      "id": "augen-1840",
+      "repeat": true,
+      "when": { "event": "echo:start", "match": { "id": "clue.k4.laub_1840" } },
+      "do": [{ "do": "cue", "id": "hunt:tableau", "data": { "kind": "eyes", "n": 10, "x": 1386, "z": -1477, "r": 11 }, "delay": 9 }]
+    },
+    {
+      "id": "augen-1840-aus",
+      "repeat": true,
+      "when": { "event": "echo:end", "match": { "id": "clue.k4.laub_1840" } },
+      "do": [{ "do": "cue", "id": "hunt:tableau", "data": { "kind": "off" } }]
+    },
+    {
       "id": "settle-echo1840",
       "repeat": true,
       "when": {

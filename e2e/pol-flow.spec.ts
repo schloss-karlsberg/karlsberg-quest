@@ -306,11 +306,13 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   });
   await expect(page.getByTestId('ending')).toBeVisible({ timeout: 20_000 });
   await shot(page, 'pause-ending-again-choice');
-  // the post-game save stays what the title test below needs
+  // the post-game save stays what the title test below needs (written on the title screen: leaving
+  // the running game autosaves on visibilitychange and would overwrite it again)
+  await page.goto('./?manual');
   await page.evaluate(([k, raw]) => raw && localStorage.setItem(k!, raw), [autoKey, autoRaw] as const);
 
   // the main menu: "Ende noch einmal wählen" loads the field book before the table
-  await page.goto('./?manual');
+  await page.reload();
   const again = page.getByTestId('title-ending-again');
   await expect(again).toBeVisible({ timeout: 180_000 });
   await expect(again).toBeEnabled({ timeout: 180_000 });

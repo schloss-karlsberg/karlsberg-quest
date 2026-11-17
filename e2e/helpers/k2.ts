@@ -508,9 +508,17 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
         k.step(150);
       });
     }
+    const why = () =>
+      page.evaluate(() => {
+        const k = window.kq!;
+        const s = k.hunt!.state();
+        return JSON.stringify({ mode: k.hunt!.mode(), by: s?.caught ? s.agents[s.caught.by]?.kind : null });
+      });
     const legA = await walk(page, ESCAPE.slice(0, 9), { sprint: true, dodge: true, chunk: 8 });
+    if (legA.caught || !legA.reached) console.log(`[k2] run ${runs} leg A`, JSON.stringify(legA), await why());
     if (legA.caught) continue;
     const legB = await walk(page, ESCAPE.slice(9), { sprint: true, dodge: true, chunk: 8 });
+    if (legB.caught || !legB.reached) console.log(`[k2] run ${runs} leg B`, JSON.stringify(legB), await why());
     if (legB.caught) continue;
     escaped = true;
   }

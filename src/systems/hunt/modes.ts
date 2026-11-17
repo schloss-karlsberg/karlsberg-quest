@@ -423,7 +423,9 @@ export class ParforceMode implements ModeController {
       }
     }
     this.nextRest = this.restGap();
-    this.pikT = sim.rng.range(0, 6);
+    // a rider kept far off (K1) rides past close once, early: the horn at your ear, hooves by your
+    // shoulder, then away to his distance again (playtest round 4: "he never threatened")
+    this.pikT = o.pikeurFar ? 10.5 : sim.rng.range(0, 6);
     this.pikSide = sim.rng.next() < 0.5 ? -1 : 1;
     // two short: the hounds have the scent (bible ch. 2 §9 B)
     sim.horn('found');
@@ -685,8 +687,9 @@ export class ParforceMode implements ModeController {
     const d = this.dir(p);
     const rx = -d.z;
     const rz = d.x;
-    const far = sim.opt.pikeurFar ?? 0;
-    const latEnd = Math.max(far, sim.opt.gentle ? 9 : sim.opt.rauhnacht ? 4.5 : 6.5);
+    const pass = (sim.opt.pikeurFar ?? 0) > 0 && this.pikCycle === 0;
+    const far = pass ? 0 : sim.opt.pikeurFar ?? 0;
+    const latEnd = pass ? (sim.opt.gentle ? 8 : 5) : Math.max(far, sim.opt.gentle ? 9 : sim.opt.rauhnacht ? 4.5 : 6.5);
     let lat: number;
     let lead: number;
     if (c < 13) {
@@ -700,7 +703,7 @@ export class ParforceMode implements ModeController {
       }
       const k = (c - 13) / 7;
       lat = Math.max(30, far) + (latEnd - Math.max(30, far)) * Math.min(1, k * 1.4);
-      lead = far ? 10 : 4;
+      lead = pass ? 3 : far ? 10 : 4;
     } else {
       lat = latEnd + (Math.max(30, far) - latEnd) * ((c - 20) / 4);
       lead = far ? 8 : -6;

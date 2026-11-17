@@ -292,6 +292,8 @@ export interface SimInput {
   dodgePressed: boolean;
   /** Sprinting and moving (Atem drain in combat). */
   running: boolean;
+  /** The pack is on your heels (hunt chasing): running costs Atem out of a fight too (less). */
+  hunted?: boolean;
   /** Attacks / dodge / Bannlicht are ignored (measuring, modal, flying, spirit view, input off, interact target). */
   blocked: boolean;
   /** Dodge only (Space) is ignored (e.g. flying). */
@@ -342,6 +344,10 @@ const KITERS = new Set(['nebelweber', 'irrlicht']);
 /** Kinds that drift towards the player's back while closing in (flankers). */
 const FLANKERS = new Set(['streuner', 'raffschatten', 'grusling']);
 /** Gap between two pack wind-ups (s): attacks come in a rhythm, not all at once. */
+/** Share of the fight's running cost while the pack chases you (playtest round 4: Atem stayed full for a 90 s par force). */
+const HUNTED_RUN = 0.5;
+/** …down to this much Atem (one dodge and a half). */
+const HUNTED_FLOOR = 30;
 /** Swings through an untouchable thing before the hint (and a lent Bannlicht). */
 const IMMUNE_HINT_AFTER = 3;
 /** Elites ignore the Bannlicht for their first seconds in a fight. */
@@ -736,8 +742,9 @@ export class CombatSim {
   private playerResources(dt: number, inp: SimInput): void {
     const p = this.p;
     const s = this.opt.stats;
-    const runCost = p.inCombat && inp.running && !inp.blocked;
-    if (runCost) spend(p.st, COST.runPerS * s.staminaCost * dt);
+    // hunted: the run eats the Atem a dodge needs, down to a floor (it never stops you running)
+    const runCost = (p.inCombat || (inp.hunted === true && p.st.stamina > HUNTED_FLOOR)) && inp.running && !inp.blocked;
+    if (runCost) spend(p.st, COST.runPerS * (p.inCombat ? 1 : HUNTED_RUN) * s.staminaCost * dt);
     else regenStamina(p.st, dt);
     if (p.st.exhausted && runCost) {
       /* stays exhausted */

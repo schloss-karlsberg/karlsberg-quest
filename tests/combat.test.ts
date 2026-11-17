@@ -285,6 +285,21 @@ describe('combat simulation', () => {
     return { s, groups };
   }
 
+  it('running costs Atem out of a fight only while a pack chases you, at half the fight rate', () => {
+    const calm = sim().s;
+    run(calm, 2, { running: true, moveZ: -1 });
+    expect(calm.p.st.stamina).toBe(calm.p.st.max);
+    const hunted = sim().s;
+    run(hunted, 2, { running: true, moveZ: -1, hunted: true });
+    const spent = hunted.p.st.max - hunted.p.st.stamina;
+    expect(spent).toBeGreaterThan(5);
+    expect(spent).toBeLessThan(2 * 8 + 1);
+    // never below the floor: running on is always possible
+    run(hunted, 30, { running: true, moveZ: -1, hunted: true });
+    expect(hunted.p.st.stamina).toBeGreaterThanOrEqual(29);
+    expect(hunted.p.st.exhausted).toBe(false);
+  });
+
   it('a Nebelling in front is undone by staff hits; the group clears and never comes back', () => {
     const { s, groups } = sim();
     upsertGroup(groups, { group: 'n', kind: 'nebelling', era: '1789', x: 0, z: -2, count: 1 });

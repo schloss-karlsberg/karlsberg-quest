@@ -78,8 +78,8 @@ describe('packs: elites and escorts', () => {
     expect(elites[0]!.maxHp).toBeGreaterThan(live.find((e) => e.kind === 'streuner' && !e.elite)!.maxHp * 1.8);
     expect(elites[0]!.def.attacks.some((a) => a.id === 'hetzjagd')).toBe(true);
     const esc = live.filter((e) => e.escort);
-    // 1793-02: a flurry of Mahnbriefe (1789 brings the Nebelweber)
-    expect(esc.map((e) => e.kind)).toEqual(['mahnbrief', 'mahnbrief', 'mahnbrief']);
+    // 1793-02: frost mist at its heels (1789 brings the court's letters)
+    expect(esc.map((e) => e.kind).sort()).toEqual(['mahnbrief', 'mahnbrief', 'nebelling']);
     expect(esc[0]!.group).toBe('p+escort');
     // the escort undone: the group's count does not move
     s.killNow(esc[0]!.id);

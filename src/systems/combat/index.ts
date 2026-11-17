@@ -138,6 +138,8 @@ class Combat {
   private readonly log: { name: string; payload: unknown; tick: number }[] = [];
   private frozenAI = false;
   private mouseTick = -10;
+  /** The pack chases you (running costs Atem). */
+  private hunted = false;
   /** Caught (by anything): the next teleport is the wake. */
   private wakePending = false;
   private anchorHealed = false;
@@ -297,6 +299,8 @@ class Combat {
     });
     // a player who wakes up after being undone gets everything back
     ev.on('player:caught', () => (this.wakePending = true));
+    ev.on('hunt:alert', ({ state }) => (this.hunted = state === 'chasing'));
+    ev.on('hunt:end', () => (this.hunted = false));
     ev.on('player:teleport', () => {
       if (this.sim.p.dead && this.caughtSent) this.revive();
       // caught by a story threat (fire, pack, oblivion) and woken: whole again too
@@ -416,6 +420,7 @@ class Combat {
       bannPressed: inp.wasPressed('bannlicht'),
       dodgePressed: inp.wasPressed('dodge'),
       running: inp.isDown('sprint') && (fx !== 0 || fz !== 0) && pl.stance === 'stand',
+      hunted: this.hunted,
       blocked,
       noDodge: pl.flying || pl.stance !== 'stand',
       safe: this.safe,

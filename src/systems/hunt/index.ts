@@ -575,6 +575,10 @@ class Hunt {
       if (o.lunges !== undefined) extra.lunges = o.lunges;
       if (o.pikeurFar !== undefined) extra.pikeurFar = o.pikeurFar;
       if (o.maxBites !== undefined) extra.maxBites = o.maxBites;
+      // the chase's pace too (K2: a searching pack at the gate turns into the par force hunt)
+      if (o.heel !== undefined) extra.heel = o.heel;
+      if (o.burst !== undefined) extra.burst = o.burst;
+      if (o.keepPace !== undefined) extra.keepPace = o.keepPace;
       s.switchMode({ mode, target: o.target ?? s.opt.target ?? null, via: o.via ?? [], from: o.from ?? null, headStart: o.headStart, goalRadius: o.goalRadius, oneKey: this.oneKey(), intensity: c.intensity ?? s.opt.intensity, ...extra }, makeMode);
       const saved = this.slice().pack;
       if (saved) saved.opts = { ...saved.opts, ...o, mode };

@@ -963,3 +963,32 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   queued ahead of lore that has not started. The campaign's check of Jost's farewell (`jost.k4.08`)
   raced the level card being clicked away (real-time animation, game time stepped meanwhile); the
   helper now asks `kq.story.shown()` (ids of every line shown this session) whether it was on screen.
+- **Playtest round 4 (2026-11-17), fixed:** route caches arm only in their own chapter (lore and
+  shrines from theirs on); POI guards stay down within 40 m of a survey point or a quest fight and
+  for 3 s after arriving. Combat: three swings through an Irrlicht bring the Bannlicht hint and lend
+  a charge; Mahnbrief and Nebelling re-form once (40 % HP, unless finished by a heavy blow); an elite
+  shrugs off a Bannlicht in its first 3 s of aggro (`resist`); `BANN.damageMul` 1.3; Streuner
+  escorts by era (1789 Mahnbriefe, 1793-02 Nebelling + Mahnbriefe, 1793-07 Raffschatten + Glutling,
+  1796 Grusling); tougher K3 trash, bigger K1 packs, the Baumagazin in two waves (four Steinfresser);
+  the boss bar goes with the boss; HP refilled on a shift to the past and on a wake; a boss's death
+  throws you back. Running costs Atem at half rate while a pack chases you (`SimInput.hunted`), down
+  to 30 (a dodge and a half; it never stops you running). The
+  reveal camera frames the boss; bosses rebuilt (Schuldbuch oxblood ledger with gilt tooling, the
+  Strohmann golden straw with stalks and fire, the Steinbrecher hunched dressed stone, the Pikeur's
+  horse a black mass with ember eyes) with stone and straw surfaces in the solid shader (material
+  id in the 4th emissive channel). Story: a non-boss fight's wake at the nearest surveyed point when
+  it is 60 m nearer; era-bound lines (lantern, hunt, oil) expire on a shift, oil lines once the
+  gauge moves; Q objectives cleared by the shift; k4_8 is its own checkpoint and stops Steinfraß;
+  „Ende noch einmal wählen“ resumes the beat; side quests end two chapters on; the NPC panel resets
+  its speaker. Hunts: a pack switching mode keeps the new heel / burst / keep-pace settings;
+  the K1 Pikeur (kept far) rides past within ~5 m once, early, horn at your ear. K4: the 1840 echo
+  shows the eyes in the fog (`hunt:tableau eyes`). Balsam drops: K1 8 %, K3 10 %, K4 26 %.
+- **Playtest round 4, left open:** the K2 par force with K1's lunges and flankers (tried: the
+  e2e walker on the real route was caught on the long westward straight every run, while a flat
+  simulation and a direct probe escaped; reverted to the round-3 tuning, only the Atem cost added);
+  K3 torch arc with windows igniting in sequence, the Zwinger
+  hounds running past within 3–6 m and the exterior fire macro layer (smoke columns, roof glow);
+  the Ehrenhof straw carts; staged Rückwärts / Jost / burn-ending memories (still captions); the
+  trench route's 1.4 m step (A* step limit, north-wing breach); an early fight in the first 60 s;
+  modal cards held during combat; tracker collapsing done objectives; the XP cap; the blue slab and
+  black discs (not reproduced).
