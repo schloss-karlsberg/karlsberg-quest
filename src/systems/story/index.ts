@@ -65,6 +65,8 @@ export interface StoryHooks {
   goto(chapter: string, beat?: string): void;
   /** Copy of the story slice plus runtime info. */
   state(): StorySlice & { dialogue: DialogueItem | null; pendingLines: number; inHub: boolean; scheduled: number; era: Era };
+  /** Ids of the lines shown on screen so far this session, oldest first (tests). */
+  shown(): string[];
   /** Complete the current beat. */
   skip(): void;
   /** Start a new story (prologue) with a name. */
@@ -234,6 +236,8 @@ class StoryRuntime {
   private choiceAction: ChoiceAction | null = null;
   /** An NPC conversation is open (npc:conversation). */
   private talking = false;
+  /** Ids of the lines shown so far (hook `shown`, tests). */
+  private readonly shownIds: string[] = [];
   private stillT = 0;
   private lastPos = { x: 0, z: 0 };
   /** Facts of hidden packs (examples, placeholders without ?placeholder): not counted in the hub. */
@@ -279,6 +283,10 @@ class StoryRuntime {
       reducedMotion: () => ctx.settings.state.reducedMotion,
       name: () => this.slice.name,
       valid: (item) => this.lineStillValid(item),
+      onShow: (item) => {
+        if (!item.id) return;
+        this.shownIds.push(item.id);
+      },
       // history and long remarks wait out a fight; barks and short calls go on (playtest round 3)
       // a boss's reveal (combat: title card, camera, sting) holds everything but 'now' lines
       held: (item) =>
@@ -1505,6 +1513,7 @@ class StoryRuntime {
         scheduled: this.queue.length,
         era: this.ctx.era.current,
       }),
+      shown: () => [...this.shownIds],
       skip: () => {
         this.cancelScheduled();
         this.engine.skip();

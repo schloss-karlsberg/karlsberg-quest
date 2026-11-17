@@ -960,4 +960,6 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   keep their digits). The campaign run found one more: a quest turned in at a beat change (K4's „Die Karren nach
   Westen“ at the rückwärts echo) queued its turn-in line and its long history line, and the beat's
   own line („Da steht er …“) waited behind both past its moment; a beat's non-lore line is now
-  queued ahead of lore that has not started.
+  queued ahead of lore that has not started. The campaign's check of Jost's farewell (`jost.k4.08`)
+  raced the level card being clicked away (real-time animation, game time stepped meanwhile); the
+  helper now asks `kq.story.shown()` (ids of every line shown this session) whether it was on screen.

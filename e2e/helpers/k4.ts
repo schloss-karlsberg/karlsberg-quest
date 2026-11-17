@@ -85,6 +85,12 @@ export async function untilLine(page: Page, id: string, maxSeconds = 40): Promis
   return false;
 }
 
+/** The line was on screen after `mark` (a count of `story.shown()`), or comes within `maxSeconds`. */
+export async function shownSince(page: Page, mark: number, id: string, maxSeconds = 20): Promise<boolean> {
+  if ((await page.evaluate((m) => window.kq!.story!.shown().slice(m), mark)).includes(id)) return true;
+  return untilLine(page, id, maxSeconds);
+}
+
 /** Read every queued line (story presenter) without waiting for typing. */
 export async function drainLines(page: Page, maxSeconds = 120): Promise<void> {
   for (let t = 0; t < maxSeconds; t += 2) {
@@ -485,12 +491,15 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   await run(page, 1);
   expect(await quest(page, 'q.k4.stellen')).toBe('ready');
+  // Jost's farewell plays while the reward and level cards are clicked away (their real-time animation
+  // costs game time): count it if it was on screen at any point after the turn-in
+  const shownMark = await page.evaluate(() => window.kq!.story!.shown().length);
   await questTalk(page, 'pikeur', 'q.k4.stellen');
   await run(page, 2);
   expect(await quest(page, 'q.k4.stellen')).toBe('done');
   expect((await items(page))['item.horn']).toBe(1);
   expect(await has(page, 'clue.k4.jost')).toBe(true);
-  expect(await untilLine(page, 'jost.k4.08', 20)).toBe(true);
+  expect(await shownSince(page, shownMark, 'jost.k4.08', 20)).toBe(true);
 
   // ---- dawn at the station ------------------------------------------------------------------------
   expect(await untilLine(page, 'marlene.end.morgen', 60)).toBe(true);
