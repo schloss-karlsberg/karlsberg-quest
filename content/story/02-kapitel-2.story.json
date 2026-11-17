@@ -866,7 +866,13 @@
               "goalRadius": 25,
               "headStart": 6,
               "center": { "x": 1050, "z": -1000 },
-              "radius": 420
+              "radius": 420,
+              "lunges": true,
+              "flankers": 1,
+              "maxBites": 6,
+              "heel": 9,
+              "burst": 1.15,
+              "keepPace": true
             },
             { "do": "objective", "id": "k2.jagd", "text": "Lauf! Durch die Durchfahrt im Südflügel auf die Terrasse", "x": 1235, "z": -1084 },
             { "do": "say", "line": "laub.k2.pikeur", "delay": 3 }

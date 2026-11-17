@@ -298,6 +298,10 @@ describe('combat simulation', () => {
     run(hunted, 30, { running: true, moveZ: -1, hunted: true });
     expect(hunted.p.st.stamina).toBeGreaterThanOrEqual(29);
     expect(hunted.p.st.exhausted).toBe(false);
+    // a fight brushing the chase does not run you dry either
+    hunted.p.inCombat = true;
+    run(hunted, 20, { running: true, moveZ: -1, hunted: true });
+    expect(hunted.canSprint).toBe(true);
   });
 
   it('a Nebelling in front is undone by staff hits; the group clears and never comes back', () => {

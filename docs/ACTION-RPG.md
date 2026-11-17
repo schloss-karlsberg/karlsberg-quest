@@ -980,13 +980,12 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   it is 60 m nearer; era-bound lines (lantern, hunt, oil) expire on a shift, oil lines once the
   gauge moves; Q objectives cleared by the shift; k4_8 is its own checkpoint and stops Steinfraß;
   „Ende noch einmal wählen“ resumes the beat; side quests end two chapters on; the NPC panel resets
-  its speaker. Hunts: a pack switching mode keeps the new heel / burst / keep-pace settings;
+  its speaker. Hunts: K2 par force with lunges from a flanker, heel / burst / keep pace and six bites for its
+  130 s route; a pack switching mode keeps the new heel / burst / keep-pace settings; while hunted,
+  the run cost wins over a fight's (an Irrlicht by the K2 escape route used to run you dry);
   the K1 Pikeur (kept far) rides past within ~5 m once, early, horn at your ear. K4: the 1840 echo
   shows the eyes in the fog (`hunt:tableau eyes`). Balsam drops: K1 8 %, K3 10 %, K4 26 %.
-- **Playtest round 4, left open:** the K2 par force with K1's lunges and flankers (tried: the
-  e2e walker on the real route was caught on the long westward straight every run, while a flat
-  simulation and a direct probe escaped; reverted to the round-3 tuning, only the Atem cost added);
-  K3 torch arc with windows igniting in sequence, the Zwinger
+- **Playtest round 4, left open:** K3 torch arc with windows igniting in sequence, the Zwinger
   hounds running past within 3–6 m and the exterior fire macro layer (smoke columns, roof glow);
   the Ehrenhof straw carts; staged Rückwärts / Jost / burn-ending memories (still captions); the
   trench route's 1.4 m step (A* step limit, north-wing breach); an early fight in the first 60 s;

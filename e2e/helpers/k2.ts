@@ -514,7 +514,18 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
         const s = k.hunt!.state();
         return JSON.stringify({ mode: k.hunt!.mode(), by: s?.caught ? s.agents[s.caught.by]?.kind : null });
       });
+    if (process.env.K2_PROBE)
+      console.log(
+        `[k2] run ${runs} start`,
+        await page.evaluate(() => {
+          const k = window.kq!;
+          const P = k.ctx.player;
+          const f = k.state().flags;
+          return JSON.stringify({ speed: P.stats?.speed, pos: [P.position.x | 0, P.position.z | 0], combat: k.combat?.state(), lantern: f['lanternLit'], hunt: k.hunt!.mode(), agents: k.hunt!.state()?.agents.map((a) => [a.kind, a.x | 0, a.z | 0]) });
+        }),
+      );
     const legA = await walk(page, ESCAPE.slice(0, 9), { sprint: true, dodge: true, chunk: 8 });
+    if (process.env.K2_PROBE) console.log(`[k2] run ${runs} legA`, JSON.stringify(legA), await why());
     if (legA.caught || !legA.reached) console.log(`[k2] run ${runs} leg A`, JSON.stringify(legA), await why());
     if (legA.caught) continue;
     const legB = await walk(page, ESCAPE.slice(9), { sprint: true, dodge: true, chunk: 8 });

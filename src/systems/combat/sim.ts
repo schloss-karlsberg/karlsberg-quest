@@ -742,9 +742,11 @@ export class CombatSim {
   private playerResources(dt: number, inp: SimInput): void {
     const p = this.p;
     const s = this.opt.stats;
-    // hunted: the run eats the Atem a dodge needs, down to a floor (it never stops you running)
-    const runCost = (p.inCombat || (inp.hunted === true && p.st.stamina > HUNTED_FLOOR)) && inp.running && !inp.blocked;
-    if (runCost) spend(p.st, COST.runPerS * (p.inCombat ? 1 : HUNTED_RUN) * s.staminaCost * dt);
+    // hunted: the run eats the Atem a dodge needs, down to a floor — it never stops you running,
+    // not even when a fight brushes the chase (a K2 Irrlicht on the escape route left a bot exhausted)
+    const hunted = inp.hunted === true;
+    const runCost = (hunted ? p.st.stamina > HUNTED_FLOOR : p.inCombat) && inp.running && !inp.blocked;
+    if (runCost) spend(p.st, COST.runPerS * (hunted ? HUNTED_RUN : 1) * s.staminaCost * dt);
     else regenStamina(p.st, dt);
     if (p.st.exhausted && runCost) {
       /* stays exhausted */
