@@ -800,11 +800,17 @@
         {
           "id": "tueren",
           "type": "examine",
-          "text_de": "Mit Jost die Gittertüren aufreißen",
+          "text_de": "Mit Jost die Gittertüren aufreißen (E am Tor)",
           "clue": "clue.k3.jost",
           "after": [
             "zwinger"
-          ]
+          ],
+          "where": {
+            "x": 1257,
+            "z": -1579,
+            "r": 3,
+            "era": "1793-07"
+          }
         }
       ],
       "rewards": {

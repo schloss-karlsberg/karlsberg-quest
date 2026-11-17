@@ -67,7 +67,8 @@ addStrings('de', {
   'hunt.bite.last': '[Zähne im Mantel – du stolperst] Noch ein Biss, dann haben sie dich.',
   'hunt.stand': '[Die Meute stellt dich – der Kreis schließt sich]',
   'hunt.stand.break': '[Sie lassen dich nicht durch]',
-  'hunt.kennel.open': '[Die Gittertüren schlagen auf – die Meute bricht heraus]',
+  'hunt.kennel.open': '[Gittertüren schlagen auf]',
+  'hunt.kennel.prompt': 'Riegel ziehen',
   'hunt.kennel.gone': '[Das Bellen verliert sich in der Nacht]',
   // states (debug / screen readers)
   'hunt.state.calm': 'ruhig',

@@ -434,7 +434,7 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     // the walker is no fighter: enemies may swing, the player does not fall
     k.combat.god(true);
     if (installed) return;
-    const keep = new Set(['clue:found', 'clue:grant', 'story:beat', 'story:choice', 'player:caught', 'menagerie:seen', 'menagerie:calmed', 'fire:room', 'hunt:alert', 'npc:talk', 'room:enter', 'hub:enter', 'quest:accepted', 'quest:completed', 'quest:failed', 'enemy:spawn', 'enemy:killed', 'item:grant', 'skill:grant']);
+    const keep = new Set(['clue:found', 'clue:grant', 'story:beat', 'story:choice', 'player:caught', 'menagerie:seen', 'menagerie:calmed', 'fire:room', 'hunt:alert', 'npc:talk', 'room:enter', 'hub:enter', 'quest:accepted', 'quest:completed', 'quest:failed', 'enemy:spawn', 'enemy:killed', 'item:grant', 'skill:grant', 'hunt:release']);
     k.ctx.events.onAny((n: string, p: unknown) => keep.has(n) && w.k3events.push([n, structuredClone(p)]));
   });
   await o.at?.('k3:start');
@@ -829,8 +829,42 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(north2.caught, JSON.stringify(north2)).toBe(false);
   s = await story(page);
   expect(s.beat).toBe('k3_8');
+  // 3.12: nothing is granted before the gates open; E at the Gittertüren (outside, 3–7.5 m)
+  await page.evaluate(() => (window as Any).k3h.settle(30));
+  expect((await inv(page)).clues).not.toContain('clue.k3.jost');
+  expect(await said()).not.toContain('beat.k3.hunde');
+  const atGate = await page.evaluate(() => {
+    const k = window.kq as Any;
+    const h = (window as Any).k3h;
+    h.walk([[1257, -1576]], { chunk: 12, max: 900 });
+    const g = k.hunt.kennel();
+    h.look(g.x, g.z - 1, 2);
+    k.step(4);
+    return k.hunt.kennel();
+  });
+  console.log(`[k3] kennel gate: ${JSON.stringify(atGate)}`);
+  expect(atGate?.prompt, JSON.stringify(atGate)).toBe(true);
+  expect(atGate.open).toBe(false);
+  await shot(page, '10-zwinger-gate');
+  await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.press('KeyE', 1);
+    k.step(Math.round(60 * 1.9));
+  });
+  await shot(page, '10b-zwinger-burst');
+  const out = await page.evaluate(() => {
+    const k = window.kq as Any;
+    k.step(60 * 6);
+    return k.hunt.kennel();
+  });
+  console.log(`[k3] kennel release: ${JSON.stringify(out)}`);
+  expect(out.open).toBe(true);
+  expect(out.nearest, JSON.stringify(out)).toBeGreaterThanOrEqual(3);
+  expect(out.nearest, JSON.stringify(out)).toBeLessThanOrEqual(6);
+  expect((await events('hunt:release')).length).toBe(1);
   await page.evaluate(() => (window as Any).k3h.settle(60));
   expect((await inv(page)).clues).toContain('clue.k3.jost');
+  expect(await said()).toEqual(expect.arrayContaining(['beat.k3.hunde']));
   expect(await quest(page, 'q.k3.hunde')).toBe('ready');
   await page.evaluate(() => {
     const k = window.kq as Any;
@@ -845,9 +879,11 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   const sk = await page.evaluate(() => window.kq!.state().skills);
   expect(sk.baumeister ?? 0).toBeGreaterThanOrEqual(2);
   expect(sk.roentgen ?? 0).toBeGreaterThanOrEqual(1);
-  expect(await said()).toEqual(expect.arrayContaining(['beat.k3.hunde']));
   s = await story(page);
   expect(s.beat).toBe('k3_8b');
+  // Jost runs after them with his lantern (k3:jost-run), the horn far off, then Laub
+  await page.evaluate(() => (window as Any).k3h.settle(60 * 15));
+  expect(await said()).toEqual(expect.arrayContaining(['jost.k3.04', 'laub.k3.alle']));
 
   // ---- back to today (hold Q), home to the field station --------------------------------------------
   await page.evaluate(() => {

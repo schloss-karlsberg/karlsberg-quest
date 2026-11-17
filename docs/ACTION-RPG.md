@@ -1059,12 +1059,41 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   codex and collections (~600) and enemies bring the full run to the 9600 cap (L12) in K4 — the
   §6.1 targets (K4 L11–12 with side quests, main only L10–11) hold, so `LEVEL_XP` stays. To keep it
   so, what a Rufer calls gives **no XP** (no farming a caller); wave members give normal XP.
-- **Playtest round 4, left open:** K3 torch arc with windows igniting in sequence, the Zwinger
-  hounds running past within 3–6 m and the exterior fire macro layer (smoke columns, roof glow);
-  the Ehrenhof straw carts; staged Rückwärts / Jost / burn-ending memories (still captions); the
-  trench route's 1.4 m step (A* step limit, north-wing breach); ~~an early fight in the first 60 s;
-  modal cards held during combat; tracker collapsing done objectives~~ (onboarding & pacing track,
-  below); the blue slab and black discs (not reproduced). (The XP cap: reviewed in the combat variety pass, above.)
+- **Playtest round 4, K3 on stage (fixed):** the chapter's stage directions are events now, not
+  captions (`fx/k3-*`, one `K3Stage` owned by the fx system, era 1793-07 only). The Ehrenhof lives
+  in the afternoon: instanced ghost figures (sepia ink bodies, a pale rim, hatching; they thin out
+  near the camera so the player walks and fights through them) carry bales from the carts to the
+  doors, plunderers walk out through the gate with paintings, chairs and bundles, French soldiers
+  stand guard, a straw cart rolls in, stops, is unloaded and rolls out (`k3-crowd.ts`, scenes
+  `afternoon` / `dusk` / `fire` from the story's beat and the fire). At dusk the commissioner
+  stands on his cart with the torch, a crowd in rings raises fists to the „Ça ira“; the Strohmann's
+  cart bursts into flying straw when it rises (the caption is down to „[Stroh knistert]“). The
+  torch (`clue.k3.fackel`): the echo is reordered so the commissioner shouts and the crowd sings
+  first, then the torch flies in a real arc from his hand (sparks trail), strikes a ground-floor
+  window of the Corps de logis with a flash (0.2 with `reducedFlash`) and the ground floor catches
+  window by window (`k3-torch.ts`: the palace model's own glass via `extractOpenings`, emissive
+  panes, three flame tongues per opening, smoke from the openings), the view turns to it (a cut in
+  reduced motion), and only then Mannlich, cut to one line. From then on the fire is a macro layer
+  seen from the park and the Zwinger (`k3-blaze.ts`: up to six smoke columns 150–220 m tall leaning
+  with the wind and lit from below, roof glows, a dome glow, 900 embers in the sky). The Zwinger
+  (`hunt/kennelGate.ts`, KennelMode): Gittertüren in the yard's east wall; „E – Riegel ziehen“ 3–7.5 m
+  outside them (or Jost alone after 75 s); the leaves swing outward with an overshoot, the seven
+  hounds — real dogs here, dense coats, no wisps, no ember eyes — are bunched at the bars and burst
+  out, their way bent `KENNEL_PASS` = 4.5 m beside the player (`kennelRoute`; the e2e measures
+  3–6 m), the view eases to the gate and thumps once as they go by (neither in reduced motion);
+  `hunt:release` grants `clue.k3.jost` (Jost shouts them out), then Laub's „Echte Hunde …“ —
+  after the release, not before. After the turn-in Jost says „Einer muss sie ja wieder heimholen“
+  and runs off with a swinging lantern (`k3:jost-run`), the horn is heard far off; at the field
+  station a thread of cold smoke rises from the Bussole (`k3:wisp`). Removed: the galerie's
+  „[Die Bilder verblassen …]“ line, the Zwinger toast, every long bracketed caption in K3.
+- **Playtest round 4, left open:** the K3 ghost crowd is figures, not people (no faces, no
+  individual animation beyond walk, arm and load); the released hounds reuse the pack's particle
+  bodies in coat colours, not a modelled dog; the galerie's paintings do not hang again during
+  their echo; stage directions inside spoken lines („(Er schneidet mit dem Hirschfänger.)“ in
+  Jost's turn-in) are still text; staged Rückwärts / burn-ending memories (still captions); the
+  trench route's 1.4 m step (A* step limit, north-wing breach); the blue slab and black discs (not
+  reproduced). (Fixed elsewhere: an early fight, cards held in combat and the tracker — onboarding
+  & pacing, below; the XP cap — combat variety pass, above.)
 - **Onboarding, pacing and card flow (2026-11-17), fixed:** *First minute* — "Neues Spiel" puts
   you outside the trailer with one goal: the Messstab three metres away (the Bussole hangs on it);
   Marlene's radio greeting and her offer play while you walk; three tier-0 Nebelinge rise on the
