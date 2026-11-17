@@ -121,6 +121,9 @@ export function createCombatSlice(): CombatSlice {
 
 const DISSOLVE_STYLES: readonly DissolveKind[] = ['mist', 'sparks', 'smoke', 'ash', 'paper', 'grit-rising', 'fade'];
 
+/** Seconds of calm after which an ability unlock no level card took is told by a toast. */
+const ABILITY_TOAST_AFTER = 10;
+
 class Combat {
   readonly sim: CombatSim;
   readonly visuals = new CombatVisuals();
@@ -151,6 +154,9 @@ class Combat {
   private moving = 0;
   /** Abilities known (level) — null before the first stats pass (no unlock toast on load). */
   private skillsKnown: SkillId[] | null = null;
+  /** A newly unlocked ability waiting for the level card (or, failing that, a toast). */
+  private pendingAbility: SkillId | null = null;
+  private pendingAbilityT = 0;
   /** Ausfall streak start (visuals). */
   private lungeFrom: { x: number; z: number } | null = null;
   /** A boss's reveal: the camera turns to it for a moment (off with reduced motion). */
@@ -233,9 +239,27 @@ class Combat {
     return keyLabel(this.ctx.input.bindings[action]?.[0] ?? '');
   }
 
+  /**
+   * A new ability rides on the level card that comes with it (one card, not a card and a toast);
+   * if no level card takes it within `ABILITY_TOAST_AFTER` s of calm, a toast says it instead.
+   */
   private announceSkill(id: SkillId): void {
-    const name = t(`combat.skill.${id}`);
-    this.ctx.ui.toast(t('combat.skill.unlock', { name, key: this.skillKey(id), desc: t(`combat.skill.${id}.desc`) }), 6500);
+    this.pendingAbility = id;
+    this.pendingAbilityT = 0;
+  }
+
+  private abilityRow(id: SkillId): { name: string; tier: string; key: string; desc: string } {
+    return { name: t(`combat.skill.${id}`), tier: '', key: this.skillKey(id), desc: t(`combat.skill.${id}.desc`) };
+  }
+
+  private framePendingAbility(dt: number): void {
+    const id = this.pendingAbility;
+    if (!id) return;
+    if (!this.ctx.ui.cards.held) this.pendingAbilityT += dt;
+    if (this.pendingAbilityT < ABILITY_TOAST_AFTER) return;
+    this.pendingAbility = null;
+    const r = this.abilityRow(id);
+    this.ctx.ui.toast(t('combat.skill.unlock', { name: r.name, key: r.key, desc: r.desc }), 6500);
   }
 
   private emit<K extends keyof import('../../core/events').GameEvents>(name: K, payload: import('../../core/events').GameEvents[K]): void {
@@ -245,6 +269,12 @@ class Combat {
   private wire(): void {
     const ev = this.ctx.events;
     const ctx = this.ctx;
+    // the level card takes a waiting ability unlock along (src/ui/cards.ts sources)
+    ctx.ui.cards.source('ability', () => {
+      const id = this.pendingAbility;
+      this.pendingAbility = null;
+      return id ? [this.abilityRow(id)] : [];
+    });
     ev.onAny((name, payload) => {
       if (/^(enemy:|boss:|combat:(hit|state|bann)|player:(damaged|healed|died|caught)|menagerie:calmed|xp:grant)/.test(name)) {
         this.log.push({ name, payload, tick: ctx.loop.tick });
@@ -1018,6 +1048,7 @@ class Combat {
     // with ?manual (tests) a render frame does not advance the simulation: keep the visuals in step
     const dt = ctx.loop.manual ? Math.min(frameDt, 1 / 60) : frameDt;
     const st = ctx.settings.state;
+    this.framePendingAbility(frameDt);
     const cam = ctx.camera;
     const pl = ctx.player;
     const p = this.sim.p;

@@ -129,7 +129,7 @@ export class LevelCards {
           ...rows.map((r) =>
             h('div.kqp-card-skill', { 'data-testid': 'level-card-skill' }, [
               h('span.kqp-card-skill-kick', 'Freigeschaltet'),
-              h('span.kqp-card-skill-name', `${r.name} ${r.tier}`),
+              h('span.kqp-card-skill-name', `${r.name} ${r.tier}`.trim()),
               h('span.kqp-card-skill-desc', [r.key ? h('kbd', r.key) : null, r.desc]),
             ]),
           ),

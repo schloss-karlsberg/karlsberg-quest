@@ -140,7 +140,7 @@ class Progression {
     this.cards = new LevelCards(layer);
     this.cards.onStamp = (req) => levelSound(ctx.audio, req.level);
     // skill unlocks waiting as the level card comes up ride along on it (src/systems/skills)
-    this.cards.absorb = () => ctx.ui.cards.drain<MergedSkillRow>('skill');
+    this.cards.absorb = () => [...ctx.ui.cards.drain<MergedSkillRow>('skill'), ...ctx.ui.cards.drain<MergedSkillRow>('ability')];
     this.world = new PickupWorld(
       (x, z, y) => ctx.world.heightAt(x, z, y),
       (id) => (this.item(id)?.kind ?? 'opaque') as ItemKind | 'opaque',

@@ -113,6 +113,7 @@ export class K3Stage {
   /** The torch flew and the echo finished: the windows stay alight until the fire takes over. */
   private thrown = false;
   private lookT = 0;
+  private climax = false;
   private strohAt = -1;
   private runAt = -1;
   private run: XZ[] | null = null;
@@ -283,6 +284,12 @@ export class K3Stage {
     this.frameGlow(fireAll > 0);
     // the view turns to the window as the torch leaves the hand (a look-at cue, not a lock)
     if (this.echoOn && this.torchManual === null && t > -0.5 && t < FLIGHT + 1.6) this.turnView(dt, t);
+    // the torch is the chapter's climax: no card or toast slides over it (hud action reason 'stage')
+    const climax = this.echoOn && showTorch;
+    if (climax !== this.climax) {
+      this.climax = climax;
+      ctx.ui.hud.busy('stage-k3', climax, 1.5);
+    }
 
     // ---- the crowd -------------------------------------------------------------------------
     const showCrowd = era1793 && near < 260 && this.phase !== 'off';

@@ -163,12 +163,15 @@ screen at a time. The clue card (a modal field-book page, `cards.modal('clue:<id
 something the player asked for: it goes in front of a slide-in card (which steps aside, its clock
 stopped, and comes back after) and queues behind another page, 0.35 s apart; the slide-in cards ask for the slot every frame
 (`cards.claim('reward' | 'level' | 'skill')`, `cards.release(…)` when gone). The slot is *held*
-while `hud.inAction` (a fight + 3 s, a chase, a boss reveal, being knocked down) and while an NPC
+while `hud.inAction` (a fight + 3 s, a chase, a boss reveal, being knocked down, a staged climax
++ 1.5 s: the fx `StageDirector`'s rewind / 1840 / Kabinett door / departure pieces as `stage`, the
+K3 torch as `stage-k3`, the Zwinger breakout as `stage-kennel`) and while an NPC
 conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a card already up
 steps aside and its clock stops. Slide-in cards also wait for the chapter title card / curtain and
 any other modal (menus, the Journal); a clue page may open over the station's hub. Merging: skill
 unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
-`cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`), unlocks that arrive together
+`cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the
+same way through `cards.source('ability', …)`), unlocks that arrive together
 share one skill card (`skill-card-also`), and a fresh unlock waits 0.45 s (`SETTLE`) so a reward's
 XP and skill land on one card. The reward card is queued (`RewardCard.push`), goes after 5 s or
 as soon as the player walks 4.5 m from where it came up, a click takes it away. Toasts: at most two
@@ -1050,7 +1053,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `audio.ts` | procedural sfx on the sfx bus (whoosh, thock + family layer, dissolve, telegraph calls, hurt, heartbeat < 30 %, dodge, Bannlicht shimmer, boss roar, the Pikeur's horn; fun pass: the boss sting on the music bus, boss down, Gnadenstoß, armour clank, the elite's call; combat variety pass: lunge, ground slam, whirl, guard knock / break, veil laid / torn, mirror ring / crack, the Rufer's call / choke, emerge, the wave's approach, ember hiss / stone grind and landing) |
 | `hud.ts` | `hud.dock('vitals', …, 10)` Lebenskraft (notched red-orange) + Atem (pale blue), `dock('vitals', …, 20)` Bannlicht pips, `dock('vitals', …, 25)` the ability slots (glyph, key, conic cooldown ring, `setSkills`), `dock('boss')` boss bar with phase marks and the weak-point hint; layer `combat`: telegraph captions, damage numbers (setting „Schadenszahlen“), HP pips with *gebannt* tag (anchored on the crown, scaled by distance, nearer on top; elite name, „Gnadenstoß“ tag), the boss title card (`title` / `hideTitle`, timed in game seconds), edge arrows (`soundIndicators`), hit / low-HP vignette and the mirror's dazzle bloom (≤ 25 % with reduced flash); pip trait tags „Deckung“ / „Schleier“ / „Spiegel“ / „Rufer“; high-contrast CSS |
 | `strings.ts` | German captions (one per telegraph), boss hints, info lines |
-| `index.ts` | wiring: events in and out (see the diagram above), slice `state.systems.combat` (hp, stamina, bann, groups, deaths), `stats:changed` / `deriveStats` fallback, equip → weapon stage, `item:use` effects, `xp:grant` per kill, camera shake (none with reducedMotion), the boss reveal camera and death slow motion (none with reducedMotion), the lantern flare, death → `player:died` → `player:caught {by:'combat'}` → full heal on `player:teleport` (or after 8 s), heal on `hub:enter` and at the shift anchor; abilities by level (`skillsForLevel`, a toast when one unlocks), keys `skill1–3` (T / Z(Y) / U, input.ts), the Ausfall's push through `player.impulse`; `enemy:killed.by` maps the sim's `skill` / `hazard` to `heavy`; no `xp:grant` for called adds |
+| `index.ts` | wiring: events in and out (see the diagram above), slice `state.systems.combat` (hp, stamina, bann, groups, deaths), `stats:changed` / `deriveStats` fallback, equip → weapon stage, `item:use` effects, `xp:grant` per kill, camera shake (none with reducedMotion), the boss reveal camera and death slow motion (none with reducedMotion), the lantern flare, death → `player:died` → `player:caught {by:'combat'}` → full heal on `player:teleport` (or after 8 s), heal on `hub:enter` and at the shift anchor; abilities by level (`skillsForLevel`; a new one rides on the level card through the card source `ability`, a toast only if no level card took it within 10 s of calm), keys `skill1–3` (T / Z(Y) / U, input.ts), the Ausfall's push through `player.impulse`; `enemy:killed.by` maps the sim's `skill` / `hazard` to `heavy`; no `xp:grant` for called adds |
 
 - **Interact wins LMB**: an attack from the mouse is ignored while any `.kq-prompt` is shown
   (npc / chronik / menagerie); K always swings. Attacks are also blocked while measuring, flying,

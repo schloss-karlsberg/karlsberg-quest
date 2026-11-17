@@ -52,6 +52,9 @@ declare module '../../../debug/hooks' {
   }
 }
 
+/** Pieces that are a climax (not ambient set dressing like the candle or the prints). */
+const MOMENTS = new Set(['k4-rewind', 'k4-1840', 'k2-door', 'k2-abfahrt']);
+
 /** Echoes that are staged, and how the echo director paces them. */
 export function registerEchoStagings(): void {
   // the rewind needs its seconds; the one caption is a sound (the compass ticking backwards)
@@ -68,6 +71,8 @@ export class StageDirector {
   private held = false;
   readonly frost: FrostOverlay;
   private hooked = false;
+  /** A set piece that is a climax holds the card queue and calm toasts (hud action reason 'stage'). */
+  private busy = false;
 
   constructor(private readonly ctx: GameContext) {
     registerEchoStagings();
@@ -128,6 +133,12 @@ export class StageDirector {
         p.dispose();
         this.pieces.splice(i, 1);
       }
+    }
+    // nothing slides over a staged climax: cards and toasts wait until it is over (+1.5 s)
+    const busy = this.pieces.some((p) => !p.done && MOMENTS.has(p.id));
+    if (busy !== this.busy) {
+      this.busy = busy;
+      this.ctx.ui.hud.busy('stage', busy, 1.5);
     }
   }
 

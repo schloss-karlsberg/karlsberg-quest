@@ -2814,9 +2814,10 @@
         {
           "do": "sound",
           "sound": "frost",
-          "caption": "[Auf dem Deckel der Bussole bildet sich Raureif]",
+          "caption": "[Eis knistert]",
           "delay": 2
         },
+        { "do": "cue", "id": "k2-frost", "data": { "on": true }, "delay": 0.1 },
         {
           "do": "say",
           "id": "laub.k1.ende",

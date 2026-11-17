@@ -311,6 +311,7 @@ class Hunt {
   private lungeTaught = false;
   /** Seconds after the kennel pack ran out (the pack ends a little later). */
   private releasedT = -1;
+  private breakoutBusy = false;
   /** K3: the Zwinger's Gittertüren (era 1793-07), the E prompt at them, the camera nudge on release. */
   readonly gate = new KennelGate();
   private gatePlaced = false;
@@ -1545,8 +1546,14 @@ class Hunt {
         pl.yaw += d * Math.min(1, dt * 2.4);
       }
     }
-    // the first hound brushing by (within 7 m): a short thump in the view
+    // the breakout is the Zwinger's climax: no card or toast slides over the hounds going by
     const c = sim?.ctl;
+    const breakout = c instanceof KennelMode && c.phase === 'out';
+    if (breakout !== this.breakoutBusy) {
+      this.breakoutBusy = breakout;
+      ctx.ui.hud.busy('stage-kennel', breakout, 1.5);
+    }
+    // the first hound brushing by (within 7 m): a short thump in the view
     if (c instanceof KennelMode && c.phase === 'out' && c.t > KENNEL_DOOR_S) {
       let near = Infinity;
       for (const h of sim!.hounds) if (h.gone < 0.5) near = Math.min(near, Math.hypot(h.x - pl.position.x, h.z - pl.position.z));
