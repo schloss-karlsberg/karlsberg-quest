@@ -75,6 +75,8 @@ export class StageDirector {
   private hooked = false;
   /** A set piece that is a climax holds the card queue and calm toasts (hud action reason 'stage'). */
   private busy = false;
+  /** Climax pieces whose memory has ended (they may still fade out; they no longer hold cards). */
+  private readonly ended = new WeakSet<Piece>();
 
   constructor(private readonly ctx: GameContext) {
     registerEchoStagings();
@@ -93,6 +95,8 @@ export class StageDirector {
     ev.on('echo:end', ({ id }) => {
       const want = id === 'echo.k4.rueckwaerts' ? 'k4-rewind' : id === 'clue.k4.laub_1840' ? 'k4-1840' : id === 'clue.k2.fackeln' ? 'k2-abfahrt' : id.startsWith('clue.k2.') ? 'k2-door' : null;
       for (const p of this.pieces) if (p.id === want) p.end?.();
+      // the memory is over: its page may come (what still fades or rides off is no climax)
+      for (const p of this.pieces) if (MOMENTS.has(p.id)) this.ended.add(p);
     });
     ev.on('story:cue', ({ id, data }) => this.cue(id, data ?? {}));
     // a shift or a load takes the stage down (the frost stays: it is on the compass)
@@ -137,11 +141,12 @@ export class StageDirector {
         this.pieces.splice(i, 1);
       }
     }
-    // nothing slides over a staged climax: cards and toasts wait until it is over (+1.5 s)
-    const busy = this.pieces.some((p) => !p.done && MOMENTS.has(p.id));
+    // nothing slides over a staged climax while its memory plays: cards and toasts wait for its end
+    // (the memory's own page comes right after it)
+    const busy = this.pieces.some((p) => !p.done && MOMENTS.has(p.id) && !this.ended.has(p));
     if (busy !== this.busy) {
       this.busy = busy;
-      this.ctx.ui.hud.busy('stage', busy, 1.5);
+      this.ctx.ui.hud.busy('stage', busy, 0);
     }
   }
 

@@ -1551,7 +1551,7 @@ class Hunt {
     const breakout = c instanceof KennelMode && c.phase === 'out';
     if (breakout !== this.breakoutBusy) {
       this.breakoutBusy = breakout;
-      ctx.ui.hud.busy('stage-kennel', breakout, 1.5);
+      ctx.ui.hud.busy('stage-kennel', breakout, 0);
     }
     // the first hound brushing by (within 7 m): a short thump in the view
     if (c instanceof KennelMode && c.phase === 'out' && c.t > KENNEL_DOOR_S) {

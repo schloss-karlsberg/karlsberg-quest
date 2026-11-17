@@ -288,7 +288,7 @@ export class K3Stage {
     const climax = this.echoOn && showTorch;
     if (climax !== this.climax) {
       this.climax = climax;
-      ctx.ui.hud.busy('stage-k3', climax, 1.5);
+      ctx.ui.hud.busy('stage-k3', climax, 0);
     }
 
     // ---- the crowd -------------------------------------------------------------------------
