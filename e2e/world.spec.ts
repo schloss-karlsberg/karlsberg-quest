@@ -102,13 +102,17 @@ test.describe('world', () => {
     await page.evaluate(() => {
       const k = window.kq!;
       k.setEra('1789');
+      // route caches arm only in their own chapter (travel): the 1789 routes are chapter 1's
+      const sys = k.ctx.state.mutable.systems as Record<string, Record<string, unknown> | undefined>;
+      sys['story'] = { ...(sys['story'] ?? {}), chapter: 'k1' };
       k.progression!.grant('item.stab.esche', 1, true);
       k.progression!.equip('item.stab.esche');
       k.step(2);
     });
     const cache = (await page.evaluate(() => window.kq!.travel!.nearest('cache')))!;
     expect(cache).not.toBeNull();
-    await look(page, '1789', cache.x - 10, cache.z + 10, cache.x, cache.z, -6, 30);
+    // guards rise after the 3 s arrival grace of a teleport (travel ARRIVAL_GRACE)
+    await look(page, '1789', cache.x - 10, cache.z + 10, cache.x, cache.z, -6, 220);
     const guards = await page.evaluate((g) => window.kq!.combat!.enemies().filter((e) => e.group === g).length, `poi:${cache.id}`);
     const any = await page.evaluate(() => window.kq!.combat!.enemies().length);
     expect(Math.max(guards, any)).toBeGreaterThanOrEqual(2);
