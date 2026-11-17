@@ -178,7 +178,8 @@
           "z": -400,
           "delay": 0.5
         },
-        { "do": "sound", "sound": "frost", "caption": "[Der Deckel der Bussole ist von innen beschlagen. Eisblumen.]", "delay": 1 },
+        { "do": "cue", "id": "k2-frost", "data": { "on": true }, "delay": 1, "onResume": true },
+        { "do": "sound", "sound": "frost", "caption": "[Eis knistert]" },
         { "do": "say", "line": "marlene.k2.morgen", "delay": 1.5 },
         { "do": "grant", "clue": "clue.k2.marlene", "delay": 0.5 },
         { "do": "say", "line": "laub.k2.start", "delay": 2 }
@@ -190,7 +191,7 @@
             "all": [{ "era": "today" }, { "leave": { "x": 760, "z": -902, "r": 380 } }]
           },
           "do": [
-            { "do": "sound", "sound": "howl", "x": 1460, "z": -260, "caption": "[Fern, unten im Tal: ein Hofhund schlägt an. Ein Hund von heute.]" },
+            { "do": "sound", "sound": "howl", "x": 1460, "z": -260, "caption": "[Ein Hund bellt, fern]" },
             {
               "do": "say",
               "id": "laub.k2.weg1",
@@ -298,10 +299,10 @@
           "id": "k2_2-augen",
           "when": { "enter": { "x": 1500, "z": -542, "r": 16, "era": "1793-02" } },
           "do": [
-            { "do": "flag", "set": { "chronik.noLoss": true, "k2.augen": true } },
-            { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1560, "z": -470, "caption": "[Horn: ein langer Ton]" },
+            { "do": "flag", "set": { "chronik.noLoss": true, "k2.augen": true, "hunt.cones": true } },
+            { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1560, "z": -470, "caption": "[Horn]" },
             { "do": "say", "line": "laub.k2.augen", "delay": 0.4 },
-            { "do": "objective", "id": "k2.leise", "text": "Licht aus (L), ducken (C), langsam weiter", "x": 1275, "z": -960 },
+            { "do": "objective", "id": "k2.leise", "text": "Licht aus (L), ducken (C): an den Hunden vorbei bis zur Hecke", "x": 1462, "z": -612 },
             {
               "do": "threat",
               "kind": "pack",
@@ -310,9 +311,9 @@
               "intensity": 0.25,
               "hounds": 3,
               "pikeur": false,
-              "from": { "x": 1526, "z": -557 },
-              "center": { "x": 1526, "z": -557 },
-              "radius": 120,
+              "from": { "x": 1500, "z": -566 },
+              "center": { "x": 1488, "z": -572 },
+              "radius": 34,
               "delay": 1
             }
           ]
@@ -322,9 +323,16 @@
           "when": {
             "all": [{ "flag": "k2.augen" }, { "lantern": false }, { "any": [{ "stance": "crouch" }, { "stance": "prone" }] }]
           },
+          "do": [{ "do": "say", "line": "laub.k2.weg", "delay": 0.5 }]
+        },
+        {
+          "id": "k2_2-sicher",
+          "when": { "all": [{ "flag": "k2.augen" }, { "enter": { "x": 1462, "z": -612, "r": 12, "era": "1793-02" } }] },
           "do": [
-            { "do": "threat", "kind": "pack", "active": false, "delay": 9 },
-            { "do": "say", "line": "laub.k2.weg", "delay": 0.5 },
+            { "do": "flag", "set": { "k2.augen": null, "hunt.cones": null } },
+            { "do": "threat", "kind": "pack", "active": false },
+            { "do": "toast", "text": "Sicher. Aufstehen.", "ms": 3500 },
+            { "do": "say", "line": "laub.k2.aufstehen", "delay": 0.4 },
             { "do": "objective", "id": "k2.orangerie", "text": "Der Spur folgen, bis zur Orangerie", "x": 1275, "z": -960 }
           ]
         },
@@ -338,7 +346,7 @@
         }
       ],
       "complete": { "enter": { "x": 1275, "z": -960, "r": 34, "era": "1793-02" } },
-      "exit": [{ "do": "threat", "kind": "pack", "active": false }, { "do": "flag", "set": { "chronik.noLoss": null, "k2.augen": null } }]
+      "exit": [{ "do": "threat", "kind": "pack", "active": false }, { "do": "flag", "set": { "chronik.noLoss": null, "k2.augen": null, "hunt.cones": null } }]
     },
     {
       "id": "k2_3",
@@ -568,7 +576,10 @@
         {
           "id": "k2_5-kerze",
           "when": { "enter": { "x": 1205, "z": -1207, "r": 22, "era": "1793-02" } },
-          "do": [{ "do": "sound", "sound": "match", "x": 1203, "z": -1216, "caption": "[Hinter den Galeriefenstern: eine einzelne Kerze]" }]
+          "do": [
+            { "do": "cue", "id": "k2-candle", "data": { "x": 1203, "z": -1216 } },
+            { "do": "sound", "sound": "match", "x": 1203, "z": -1216 }
+          ]
         }
       ],
       "complete": { "have": { "clue": "clue.k2.warnung" } }
@@ -577,7 +588,7 @@
       "id": "k2_6",
       "title_de": "Der Abschied",
       "wake": { "x": 1226, "z": -1122, "yaw": 270, "era": "today", "text": "Du kommst am Ehrenhof zu dir, im Heute. Nichts ist verloren." },
-      "enter": [{ "do": "objective", "id": "k2.abschied", "text": "Noch einmal an der Tür lauschen (E halten)", "x": 1268.5, "z": -1110, "delay": 2 }],
+      "enter": [{ "do": "objective", "id": "k2.abschied", "text": "Durch den anderen Türspalt: der Abschied (E halten)", "x": 1268.5, "z": -1110, "delay": 2 }],
       "on": [
         {
           "id": "k2_6-heim-a",
@@ -605,7 +616,7 @@
           "id": "k2_6-nacht",
           "when": { "era": "1793-02" },
           "repeat": true,
-          "do": [{ "do": "objective", "id": "k2.abschied", "text": "Noch einmal an der Tür lauschen (E halten)", "x": 1268.5, "z": -1110 }]
+          "do": [{ "do": "objective", "id": "k2.abschied", "text": "Durch den anderen Türspalt: der Abschied (E halten)", "x": 1268.5, "z": -1110 }]
         }
       ],
       "complete": {
@@ -847,7 +858,7 @@
               "signal": "faehrte",
               "x": 1219,
               "z": -1175,
-              "caption": "[Horn vom Zwinger: zwei kurze Töne]",
+              "caption": "[Horn vom Zwinger]",
               "delay": 1
             },
             { "do": "say", "line": "jost.k2.06", "delay": 0.8 },
@@ -1029,7 +1040,8 @@
       "title_de": "Rauch",
       "enter": [
         { "do": "objective", "text": null },
-        { "do": "sound", "sound": "compass", "caption": "[Der Deckel der Bussole taut. Darunter riecht es nach Rauch.]", "delay": 1.5 },
+        { "do": "cue", "id": "k2-thaw", "delay": 1.5 },
+        { "do": "sound", "sound": "compass", "caption": "[Eis taut]" },
         { "do": "say", "line": "laub.k2.ende", "delay": 1.5 },
         { "do": "say", "line": "laub.k2.ende.b", "delay": 1.2 }
       ],

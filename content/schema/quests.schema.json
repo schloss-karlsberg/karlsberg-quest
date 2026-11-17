@@ -133,6 +133,7 @@
         "progress": { "$ref": "#/$defs/lines" },
         "turnin_lines": { "$ref": "#/$defs/lines" },
         "history": { "$ref": "#/$defs/lines" },
+        "history_at_turnin": { "type": "integer", "minimum": 0, "description": "History lines told at the turn-in itself (default 1; 0: later in the story or the codex)." },
         "objectives": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/objective" } },
         "rewards": {
           "type": "object",

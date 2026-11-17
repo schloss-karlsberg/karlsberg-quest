@@ -195,6 +195,11 @@ export interface QuestDef {
   turnin_lines?: QuestLine[];
   /** The history told at turn-in (sourced; unlocks the facts' codex cards). */
   history?: QuestHistoryLine[];
+  /**
+   * How many history lines the turn-in itself tells (default 1). 0: none — the story says it later,
+   * at a calm moment, or it waits in the codex (playtest round 4: no lecture at the climax).
+   */
+  history_at_turnin?: number;
   objectives: QuestObjective[];
   rewards?: QuestRewards;
   available?: QuestAvailability;

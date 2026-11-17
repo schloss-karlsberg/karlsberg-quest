@@ -28,6 +28,7 @@ import type { Stance } from '../../player/stance';
 import { pointInRing } from '../../world/collision';
 import type { ThreatConfig } from '../contracts';
 import { HuntAudio } from './audio';
+import { SightCones } from './cones';
 import { PathGraph } from './graph';
 import { LanternView } from './lantern';
 import { type LanternState, drain, newLantern, refill, toggle } from './lanternLogic';
@@ -261,6 +262,8 @@ class Hunt {
   readonly lanternView: LanternView;
   readonly overlay: HuntOverlay;
   sim: PackSim | null = null;
+  /** Sight cones on the ground (K2 sneak: flags['hunt.cones']). */
+  private readonly cones = new SightCones();
   private graph: PathGraph | null = null;
   /** Agents of a pack that is fading out. */
   private fading: { agents: Agent[]; state: PackState; t: number } | null = null;
@@ -319,12 +322,13 @@ class Hunt {
   /** Closest a released hound came to the player (m; Infinity before the release). */
   private passNearest = Infinity;
   /** A staged picture without a simulation (story cue 'hunt:tableau', the endings). */
-  private tableau: { kind: 'lie' | 'eyes'; agents: Agent[]; t: number; horn: boolean } | null = null;
+  private tableau: { kind: 'lie' | 'eyes' | 'rest'; agents: Agent[]; t: number; horn: boolean } | null = null;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new HuntAudio(ctx.audio);
     this.lanternView = new LanternView(ctx.scene);
     ctx.scene.add(this.visuals.object);
+    ctx.scene.add(this.cones.object);
     ctx.scene.add(this.trackVis.mesh);
     ctx.scene.add(this.gate.object);
     this.visuals.object.visible = false;
@@ -1325,6 +1329,9 @@ class Hunt {
    *          lie down one by one and their eyes go out (museum ending, the W8 echo);
    *  'eyes'  n hounds in the dark around x/z, facing it; one pair of eyes opens after another
    *          (keep ending);
+   *  'rest'  hounds that stay lying where they are, eyes half shut (after W8, round Jost):
+   *          `from: 'pack'` keeps the running pack's hounds where they lay (else an arc as 'lie');
+   *          `near: {x, z}` moves the nearest hound to that spot (the one Jost scratches);
    *  'off'   they dissolve.
    */
   private setTableau(d: Record<string, unknown>): void {
@@ -1334,7 +1341,9 @@ class Hunt {
       this.tableau = null;
       return;
     }
-    if (kind !== 'lie' && kind !== 'eyes') return;
+    if (kind !== 'lie' && kind !== 'eyes' && kind !== 'rest') return;
+    // the W8 pack stays where it lay down (its hounds become the resting tableau)
+    const keep = kind === 'rest' && d['from'] === 'pack' && this.sim ? this.sim.agents.filter((a) => a.kind === 'hound').map((a) => ({ x: a.x, z: a.z, heading: a.heading })) : null;
     if (this.sim) this.stop('debug', true);
     const num = (k: string, def: number) => (typeof d[k] === 'number' ? (d[k] as number) : def);
     const p = this.ctx.player.position;
@@ -1348,20 +1357,35 @@ class Hunt {
     const fx = Math.sin(fwd);
     const fz = -Math.cos(fwd);
     const base = Math.atan2(fz, fx);
-    const spread = kind === 'lie' ? 2.2 : 2.9;
+    const spread = kind === 'eyes' ? 2.9 : 2.2;
     const agents: Agent[] = [];
-    for (let i = 0; i < n; i++) {
-      const th = base + (n === 1 ? 0 : i / (n - 1) - 0.5) * spread;
-      const rr = r * (kind === 'eyes' ? 0.8 + 0.45 * ((i * 0.618) % 1) : 1);
-      const x = cx + Math.cos(th) * rr;
-      const z = cz + Math.sin(th) * rr;
-      const y = this.ctx.world.heightAt(x, z);
-      agents.push({
-        kind: 'hound', idx: i, name: `t${i}`, x, y, z, heading: headingTo(cx - x, cz - z), speed: 0, dist: i * 0.7, awareness: 1, sees: 0, closeSee: 0,
-        target: null, path: [], pathI: 0, wait: 0, sniffing: false, off: { r: 0, f: 0 }, node: -1, stuck: 0, wallT: 0, scentI: -1,
-        lie: 0, dim: 0, gone: kind === 'eyes' ? 1 : 0, printAcc: 0, printSide: 1,
-      });
+    const spots: { x: number; z: number; heading: number }[] = keep ?? [];
+    if (!keep)
+      for (let i = 0; i < n; i++) {
+        const th = base + (n === 1 ? 0 : i / (n - 1) - 0.5) * spread;
+        const rr = r * (kind === 'eyes' ? 0.8 + 0.45 * ((i * 0.618) % 1) : 1);
+        const x = cx + Math.cos(th) * rr;
+        const z = cz + Math.sin(th) * rr;
+        spots.push({ x, z, heading: headingTo(cx - x, cz - z) });
+      }
+    const near = d['near'] as { x?: unknown; z?: unknown } | undefined;
+    if (kind === 'rest' && near && typeof near.x === 'number' && typeof near.z === 'number' && spots.length) {
+      const nx = near.x;
+      const nz = near.z;
+      const best = spots.reduce((b, s) => (Math.hypot(s.x - nx, s.z - nz) < Math.hypot(b.x - nx, b.z - nz) ? s : b));
+      best.x = nx;
+      best.z = nz;
+      if (typeof d['nearHeading'] === 'number') best.heading = ((d['nearHeading'] as number) * Math.PI) / 180;
     }
+    spots.forEach((s, i) => {
+      const y = this.ctx.world.heightAt(s.x, s.z);
+      const rest = kind === 'rest';
+      agents.push({
+        kind: 'hound', idx: i, name: `t${i}`, x: s.x, y, z: s.z, heading: s.heading, speed: 0, dist: i * 0.7, awareness: rest ? 0.2 : 1, sees: 0, closeSee: 0,
+        target: null, path: [], pathI: 0, wait: 0, sniffing: false, off: { r: 0, f: 0 }, node: -1, stuck: 0, wallT: 0, scentI: -1,
+        lie: rest ? 1 : 0, dim: rest ? 0.75 : 0, gone: kind === 'eyes' ? 1 : 0, printAcc: 0, printSide: 1,
+      });
+    });
     this.fading = null;
     this.visuals.clear();
     this.tableau = { kind, agents, t: 0, horn: false };
@@ -1374,7 +1398,12 @@ class Hunt {
     const t = T.t;
     const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
     T.agents.forEach((a, k) => {
-      if (T.kind === 'lie') {
+      if (T.kind === 'rest') {
+        // lying, eyes half shut; now and then one lifts its head (a sniff) and settles again
+        a.lie = 1;
+        a.dim = 0.75;
+        a.sniffing = Math.sin(t * 0.37 + k * 2.1) > 0.93;
+      } else if (T.kind === 'lie') {
         a.lie = clamp01((t - 1.6 - k * 0.85) / 1.3);
         a.dim = clamp01((t - 2.9 - k * 0.85) / 1.5);
       } else {
@@ -1383,7 +1412,7 @@ class Hunt {
         a.sniffing = Math.sin(t * 0.8 + k * 2) > 0.85;
       }
     });
-    if (!T.horn && t > 0.4) {
+    if (!T.horn && t > 0.4 && T.kind !== 'rest') {
       T.horn = true;
       const a = T.agents[Math.floor(T.agents.length / 2)]!;
       if (T.kind === 'lie') {
@@ -1401,12 +1430,12 @@ class Hunt {
       viewportH: window.innerHeight,
       hornGlow: 0,
       caught: null,
-      mist: T.kind === 'eyes' ? 0.8 : 0.5,
+      mist: T.kind === 'eyes' ? 0.8 : T.kind === 'rest' ? 0.35 : 0.5,
       reducedMotion: ctx.settings.state.reducedMotion,
       reducedFlash: ctx.settings.state.reducedFlash,
       heightAt: (x: number, z: number) => ctx.world.heightAt(x, z),
       snap: false,
-      settle: T.kind === 'lie' ? clamp01(t / 8) : 0,
+      settle: T.kind === 'lie' ? clamp01(t / 8) : T.kind === 'rest' ? 1 : 0,
     });
   }
 
@@ -1445,6 +1474,7 @@ class Hunt {
       this.visuals.update(input);
     } else if (this.tableau) this.frameTableau(dt);
     else this.visuals.object.visible = false;
+    this.cones.update(sim && ctx.state.mutable.flags['hunt.cones'] === true ? sim : null, ctx.loop.time, dt, (x, z) => ctx.world.heightAt(x, z));
     if (this.caughtT >= 0) this.caughtFrame(dt);
     this.frameKennel(dt, sim, reducedMotion);
     // a bite: the view jolts towards the pull (no shake in reduced motion)
@@ -1679,6 +1709,8 @@ class Hunt {
   dispose(): void {
     this.visuals.object.removeFromParent();
     this.visuals.dispose();
+    this.cones.object.removeFromParent();
+    this.cones.dispose();
     this.trackVis.mesh.removeFromParent();
     this.trackVis.dispose();
     this.lanternView.dispose();

@@ -591,6 +591,7 @@
           ]
         }
       ],
+      "history_at_turnin": 0,
       "objectives": [
         {
           "id": "brunnen",
@@ -697,6 +698,7 @@
           ]
         }
       ],
+      "history_at_turnin": 0,
       "objectives": [
         {
           "id": "zwinger",

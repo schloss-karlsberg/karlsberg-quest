@@ -296,7 +296,7 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await qn(page, 'q.k2.spur', 'fetzen')).toBe(1);
   expect((await story(page)).beat).toBe('k2_2');
 
-  // ---- eyes in the fog: lantern off, crouch, they lose interest -----------------------------------
+  // ---- eyes in the fog: lantern off, crouch, past the hounds' sight cones to the hedge (≤ 60 s) ------
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1532, -484, 330, 0);
@@ -318,9 +318,15 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   const hunt = await page.evaluate(() => window.kq!.hunt!.state());
   expect(hunt?.active).toBe(true);
-  expect(hunt?.state).not.toBe('chasing');
-  await page.evaluate(() => window.kq!.step(60 * 8));
+  expect(await page.evaluate(() => window.kq!.ctx.state.state.flags['hunt.cones'])).toBe(true);
+  const sneak = await walk(page, [[1462, -612]], { maxSeconds: 70, dodge: true });
+  expect(sneak.reached).toBe(true);
+  expect(sneak.caught).toBe(false);
+  expect(sneak.t).toBeLessThanOrEqual(60);
+  await page.evaluate(() => window.kq!.step(60 * 2));
+  // "Sicher. Aufstehen.": the pack is gone, the cones with it
   expect(await page.evaluate(() => window.kq!.hunt!.state())).toBeNull();
+  expect(await page.evaluate(() => window.kq!.ctx.state.state.flags['hunt.cones'] ?? null)).toBeNull();
   await page.evaluate(() => window.kq!.press('KeyC', 1));
 
   // ---- three Streuner on the trail (bonus), the Orangerie, its echo ----------------------------------

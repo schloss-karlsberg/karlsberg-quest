@@ -40,7 +40,7 @@ export function endingScenes(year?: number): Record<EndingId, EndingScene> {
       id: 'burn',
       flag: 'verbrennen',
       scene:
-        'Du öffnest die Ofenklappe. Die Seiten brennen nicht schnell, sie rollen sich ein und werden durchsichtig, und für einen Atemzug sieht man durch jede eine Erinnerung: den Ehrenhof 1789, die Apfelallee im Nebel, die leere Galerie, den Karren mit dem Stein. Dann ist es Asche. Du gehst zum Zwinger und legst das Horn auf den Mauerrest. Kein Horn mehr in der Nacht.',
+        'Du öffnest die Ofenklappe. Die Seiten brennen nicht schnell, sie rollen sich ein und werden durchsichtig, und für einen Atemzug sieht man durch jede eine Erinnerung: den Ehrenhof im Abendlicht von 1789, ein Feuerwerk über den Dächern, die Meute im Nebel der Apfelallee. Dann ist es Asche. Du gehst zum Zwinger und legst das Horn auf den Mauerrest. Kein Horn mehr in der Nacht.',
       laub: [
         'Gut. Sie haben lange genug gesucht. Die Hunde und ich.',
         'Was im Buch stand, steht auch woanders. Bei Mannlich, in den Akten, im Boden. Nur die Namen nicht. Die Namen tragen jetzt Sie.',

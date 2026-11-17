@@ -514,6 +514,7 @@ uniform float uMotion;
 uniform float uStutter;
 uniform float uSeed;
 uniform float uTalk;
+uniform float uKneel;
 uniform float uHeight;
 uniform float uFace;
 uniform float uEerie;
@@ -563,6 +564,18 @@ void main() {
     q = rotX(q, -a);
     q = rotZ(q, side * 0.03 * sin(t * 0.55));
     p = aPivot + q;
+  }
+  // down on one knee (pose 'kneel'; the npc runtime lowers the figure by the knee height): the
+  // right shin folds back flat on the ground, the left thigh comes forward, its shin stands
+  if (uKneel > 0.001 && p.y < uHeight * 0.5 && aPart > 3.5 && aPart != 5.0 && aPart != 6.0) {
+    float hip = uHeight * 0.5;
+    float knee = uHeight * 0.27;
+    vec3 f = p;
+    if (p.x >= 0.0) {
+      if (p.y < knee) f = vec3(p.x, knee, p.z - (knee - p.y));
+    } else if (p.y >= knee) f = vec3(p.x, hip, p.z + (hip - p.y));
+    else f = vec3(p.x, p.y + (hip - knee), p.z + (hip - knee));
+    p = mix(p, f, uKneel);
   }
   // skirts swing a little behind the body, like cloth in a slow draught
   if (abs(aPart - 7.0) < 0.5) {
@@ -682,6 +695,7 @@ export function figureMaterials(look: NpcLook): { body: ShaderMaterial; depth: S
     uMotion: { value: 1 },
     uStutter: { value: 1 },
     uTalk: { value: 0 },
+    uKneel: { value: 0 },
     uHeight: { value: look.height },
     uFace: { value: 0 },
     uHeadC: { value: headCentre(look) },
@@ -809,6 +823,8 @@ export class GhostFigure {
   alpha = 0;
   target = 1;
   talk = 0;
+  /** 0..1 down on one knee (legs folded in the shader; the caller lowers the object). */
+  kneel = 0;
 
   constructor(look: NpcLook, era: string) {
     this.look = look;
@@ -913,6 +929,7 @@ export class GhostFigure {
     if (u.uStutter) u.uStutter.value = o.reducedFlash || o.reducedMotion ? 0 : 1;
     u.uTalk!.value += ((this.talk ? 1 : 0) - (u.uTalk!.value as number)) * Math.min(1, dt * 3);
     u.uFace!.value = o.face;
+    u.uKneel!.value = this.kneel;
     this.motes.uniforms.uAlpha!.value = this.alpha * 0.55;
     this.motes.uniforms.uPix!.value = o.px;
     this.pool.uniforms.uAlpha!.value = this.alpha * (this.look.mood === 'warm' ? 1 : 0.75);

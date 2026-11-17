@@ -765,6 +765,7 @@ class StoryRuntime {
         if (a.yaw !== undefined) p.yaw = a.yaw;
         if (a.topics) p.topics = a.topics;
         if (a.mood) p.mood = a.mood;
+        if (a.pose) p.pose = a.pose;
         ctx.events.emit('npc:spawn', p);
         return;
       }

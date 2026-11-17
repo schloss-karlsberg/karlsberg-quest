@@ -253,6 +253,8 @@ export class PackSim {
   tune: Tuning;
   state: PackState = 'calm';
   stateTime = 0;
+  /** The sight range (m) at which a calm hound would notice you right now (cone visuals). */
+  lastSight = 0;
   /** 0..1 HUD threat level. */
   alert = 0;
   lastKnown: { x: number; z: number } | null = null;
@@ -700,6 +702,7 @@ export class PackSim {
     this.waterTime = inWater ? this.waterTime + dt : 0;
     const waterSafe = this.waterTime >= this.tune.water;
     const baseRange = sightRange(p, this.tune.sense, hollow);
+    this.lastSight = baseRange;
     const hr = hearRange(p, this.tune.sense, hollow, inWater);
     const st = this.state;
     const alertMul = st === 'chasing' ? 1.35 : st === 'searching' ? 1.15 : 1;

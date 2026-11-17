@@ -237,6 +237,8 @@ Nur Stimme, nie Gestalt. Heiser (Schnupfen, FAKT S. 422), ruhig, unentschlossen.
 | `herzog.04` | „Ich lasse Ihn hier, mein lieber Mannlich, um über meine Galerie zu wachen und sie zu retten, wenn es Ihm möglich ist. Ich weiß, wem ich sie anvertraue; desgleichen empfehle ich Ihm mein Naturalienkabinett, meine Bibliothek und alles, was ich nicht habe mit mir nehmen können.“ | Z | S. 423 |
 | `herzog.05` | „Adieu, mein lieber Mannlich, ich hoffe Ihn bald wiederzusehen. Bleibe Er stets mein Freund!“ | Z | S. 424 |
 
+Im Spiel (Playtest Runde 4: 68 s Lauschen an der Tür → unter 20 s Blick durch den Türspalt) spricht der Herzog nur noch `herzog.01` („Unglaubwürdig. Gib ihm einen Dukaten!“) und `herzog.05` („Adieu, mein lieber Mannlich. Er wache über meine Galerie.“), beide als gekürzte Zitate gekennzeichnet; der Inhalt von `herzog.02`–`.04` steht (teils wörtlich, teils nacherzählt) auf den Karten der Erinnerungen „Die Warnung“ und „Der Abschied“; `mannlich.09` entfällt.
+
 ### 7.3 Weitere historische Personen
 
 | Person | Zeile | Art | Seite | Ort |

@@ -55,12 +55,12 @@ const clues = [
   }),
   clue('clue.k2.warnung', {
     title: 'Erinnerung: Die Warnung', kind: 'echo', room: KAB, r: 6, era: E, chapter: ch, fiction: true,
-    text: 'E halten an der Tür zum Schreibkabinett. Man hört nur Stimmen; durch den Türspalt Schatten an der Wand: ein sitzender Mann, der hustet, und mehrere stehende. Nikel Pfeiffer ist nicht im Raum, er wartet unten.',
+    text: 'Durch den Türspalt des Schreibkabinetts, bei einer Kerze: Der Herzog sitzt am Schreibtisch und hustet. Hofrat Schügens meldet einen Bauern, der durch den Wald gekommen ist: Französische Kavallerie sucht einen Führer, auf Umwegen, nachts wollen sie am Karlsberg sein. Der Herzog hält es für unglaubwürdig, der Mann wolle ein paar Taler verdienen, man gebe ihm einen Dukaten. Der Leibarzt Rose empfiehlt Bett und Tee. Dann Pfeffel: Es sei nur zu wahr, ein Anschlag gegen die Person des Herzogs, er beschwöre ihn, abzufahren. Der Herzog: Da wir abreisen müssen, so wollen wir es tun. Abbé Salabert soll mit. Nikel Pfeiffer ist nicht im Raum, er wartet unten.',
     nouns: ['n.unglaubwuerdig', 'n.nur_zu_wahr', 'n.anschlag', 'n.dukaten', 'n.taler', 'n.pfeffel', 'n.salabert', 'n.r_lohn', 'n.schuegens', 'n.parkzaun'],
   }),
   clue('clue.k2.abschied', {
     title: 'Erinnerung: Der Abschied', kind: 'echo', room: KAB, r: 6, era: E, chapter: ch, fiction: true,
-    text: 'Zweites E halten. Ein Schatten öffnet einen Schreibtisch, steckt Papiere ein und setzt sich. Lange Stille.',
+    text: 'Durch den anderen Türspalt: Der Herzog steht auf, nimmt etwas vom Tisch und sagt zu Mannlich, er lasse ihn hier, um über die Galerie zu wachen, das Naturalienkabinett, die Bibliothek. „Adieu, mein lieber Mannlich, ich hoffe Ihn bald wiederzusehen.“ Schritte, dann ist der Raum leer.',
     nouns: ['n.galerie_sammlung', 'n.naturalienkabinett', 'n.bibliothek', 'n.ende_februar'], req: { clues: ['clue.k2.warnung'] },
   }),
   clue('clue.k2.jagdmesser', {
@@ -205,30 +205,21 @@ const dialogue = [
   say('laub.k2.wache', 'laub', 'Ein Wachfeuer im Ehrenhof. Damit der Feind weiß, wo er hinmuss.', found('clue.k2.wache'), { once: true }),
   say('laub.k2.horstmann', 'laub', 'Horstmann schreibt am selben Abend, Mannlich Jahre später und schöner. Ich glaube dem, der am selben Abend schreibt.', found('clue.k2.horstmann'), { once: true, src: [src('M1910', 'S. 422 und S. 427 Anm. 1')] }),
   say('laub.k2.gaertnerei', 'laub', 'Hier ist er nicht drüber. Zu glatt, zu hoch. Gärtner bauen bessere Mauern als Herzöge Zäune.', found('clue.k2.gaertnerei'), { once: true }),
-  // Schreibkabinett: Warnung (historische Personen: nur M1910)
+  // Schreibkabinett: Warnung und Abschied in einem Blick durch den Türspalt (playtest round 4:
+  // 68 s Zuhören an der Tür → unter 20 s; die ganze Stelle steht auf der Karte und im Codex).
+  // Historische Personen: nur M1910, gekürzt.
   ...seq(echo('clue.k2.warnung'), [
-    ['echo.k2.warnung.01', 'schuegens', 'Durchlaucht, ein Bauer ist atemlos angelangt. Die französische Kavallerie ist durch die Wälder in sein Dorf gekommen, ohne der Landstraße zu folgen. Sie lassen dort ihre Pferde rasten und verlangen einen Führer, der sie auf Umwegen zum Karlsberg bringt. Erst nachts wollen sie ankommen. Er hat sich durch seinen Garten in den Wald geschlichen und ist über den Zaun des Parkes geklettert.', [P('S. 422 f.')]],
-    ['herzog.01', 'herzog', 'Diese Nachricht scheint mir unglaubwürdig; der gute Mann will einige Taler verdienen, das ist alles. Gib ihm einen Dukaten, und er ziehe in Frieden!', [Z('S. 423')]],
-    ['echo.k2.warnung.03', 'geraeusch', '(Eine Tür. Schritte. Pause. Ein langer Husten.)'],
-    ['echo.k2.warnung.04', 'rose', 'Durchlaucht sollten zu Bett gehen und Tee trinken.', [P('S. 423')]],
-    ['echo.k2.warnung.05', 'pfeffel', 'Ich beschwöre Durchlaucht, auf der Stelle abzufahren. Es ist nur zu wahr. Diese Schurken haben einen perfiden Anschlag gegen die Person des Herzogs geplant.', [P('S. 423')]],
-    ['echo.k2.warnung.06', 'rose', 'Bett. Und Tee.', [P('S. 423: „der noch beim Weggehen Bett und Tee empfahl“')]],
-    ['herzog.02', 'herzog', 'Da wir abreisen müssen, so wollen wir es tun! Aber, Abbé, Ihn nehme ich mit mir.', [Z('S. 423')]],
-    ['echo.k2.warnung.08', 'salabert', 'Das ist ein neuer Beweis von Güte, Durchlaucht. Aber ich habe nur bei mir, was ich am Leibe trage. Ich sollte wenigstens Wäsche holen und mein Geld, das ich den Sansculottes nicht gerne überlassen möchte.', [P('S. 423')]],
-    ['herzog.03', 'herzog', 'Hole Er sich Hemden, da Er sie nun einmal braucht; ich gebe Ihm eine halbe Stunde Zeit dazu. Gehe Er!', [Z('S. 423')]],
+    ['echo.k2.warnung.01', 'schuegens', 'Ein Bauer, Durchlaucht. Französische Reiter im Wald, nachts sind sie hier.', [P('S. 422 f., gekürzt')]],
+    ['herzog.01', 'herzog', 'Unglaubwürdig. Gib ihm einen Dukaten!', [Z('S. 423, gekürzt')]],
+    ['echo.k2.warnung.05', 'pfeffel', 'Es ist nur zu wahr! Abfahren, Durchlaucht, sofort!', [P('S. 423, gekürzt')]],
   ]),
   ...seq(found('clue.k2.warnung'), [
-    ['laub.k2.schnupfen', 'laub', 'Bett und Tee. Die Kavallerie kommt durch den Wald, und der Leibarzt verschreibt Bett und Tee. Er hätte es weit gebracht in der Landesaufnahme.'],
+    ['laub.k2.schnupfen', 'laub', 'Der Leibarzt hat ihm übrigens Bett und Tee verschrieben. Die Kavallerie kommt durch den Wald, und der Arzt verschreibt Bett und Tee.', [P('S. 423: „der noch beim Weggehen Bett und Tee empfahl“')]],
     ['laub.k2.dukat', 'laub', 'Einen Dukaten für den Mann, der ihm das Leben rettet. Hanne hat für den Lohn ihres Mannes nicht mal einen Gulden bekommen. Sie sehen, der Herzog konnte großzügig sein.'],
   ]),
-  // Schreibkabinett: Abschied
+  // Schreibkabinett: Abschied (der andere Türspalt)
   ...seq(echo('clue.k2.abschied'), [
-    ['herzog.04', 'herzog', 'Ich lasse Ihn hier, mein lieber Mannlich, um über meine Galerie zu wachen und sie zu retten, wenn es Ihm möglich ist. Ich weiß, wem ich sie anvertraue; desgleichen empfehle ich Ihm mein Naturalienkabinett, meine Bibliothek und alles, was ich nicht habe mit mir nehmen können.', [Z('S. 423')]],
-    ['echo.k2.abschied.02', 'geraeusch', '(Stille. Ein Gegenstand wird vom Tisch genommen.)'],
-    ['herzog.05', 'herzog', 'Adieu, mein lieber Mannlich, ich hoffe Ihn bald wiederzusehen. Bleibe Er stets mein Freund!', [Z('S. 424')]],
-    ['echo.k2.abschied.04', 'geraeusch', '(Schritte entfernen sich.)'],
-    ['mannlich.09', 'mannlich', 'Wenn ich mich recht entsinne, gelangte zu uns gegen Ende Februar 1793 die Nachricht …', [Z('S. 422, gekürzt')]],
-    ['laub.k2.entsinnt', 'laub', 'Er entsinnt sich nicht recht. Merken Sie sich trotzdem, was er sagt.'],
+    ['herzog.05', 'herzog', 'Adieu, mein lieber Mannlich. Er wache über meine Galerie.', [Z('S. 423 f., gekürzt')]],
   ]),
   say('laub.k2.sichern', 'laub', 'Wenn Sie jetzt zurückgehen, behalten Sie, was Sie gefunden haben. Wenn Sie bleiben, sehen Sie die Abfahrt. Ich würde zurückgehen. Ich bin damals geblieben.', found('clue.k2.abschied'), { once: true }),
   ...seq(found('clue.k2.jagdmesser'), [
@@ -247,18 +238,17 @@ const dialogue = [
   say('jost.k2.03', 'jost', 'Die Reiter wollten einen aus dem Dorf, der sie führt. Hätte er ja machen können. Für Geld. Hat er nicht.', talk('jost', 'fuehrer'), { src: [P('S. 423: „einen Führer verlangt“')] }),
   // Abfahrt: Fackeln (Erinnerung, erfunden)
   ...seq(echo('clue.k2.fackeln'), [
-    ['echo.k2.fackeln.01', 'geraeusch', '(Räder knirschen im Raureif. Pferde schnauben.)'],
+    ['echo.k2.fackeln.01', 'geraeusch', '[Räder im Raureif]'],
     ['echo.k2.fackeln.02', 'diener', 'Fackeln an die ersten Wagen! Bis zur Allee, dann zurück.'],
     ['echo.k2.fackeln.03', 'diener2', 'Und die Fackeln?'],
     ['echo.k2.fackeln.04', 'diener', 'Die nimmt er mit. Wir bleiben.'],
-    ['echo.k2.fackeln.05', 'geraeusch', '(Hufschlag nach Norden, immer leiser.)'],
+    ['echo.k2.fackeln.05', 'geraeusch', '[Hufschlag, leiser]'],
   ]),
   say('laub.k2.esebeck', 'laub', 'Der Minister Esebeck bleibt. Am 25. Februar holen sie ihn ab, die Sansculotten vorn und hinten als Eskorte. Er kommt im September zurück.', found('clue.k2.esebeck'), { once: true, src: [P('S. 437 mit Anm. 10')] }),
   // Die Parforcejagd (2.8)
   ...seq(beat('2.8'), [
     ['jost.k2.04', 'jost', 'Und die Hunde? Hat er was von den Hunden gesagt?'],
     ['jost.k2.05', 'jost', 'Wer bläst ab, wenn er nicht da ist?'],
-    ['beat.k2.horn', 'geraeusch', '(Horn vom Zwinger: zwei kurze Töne.)'],
     ['jost.k2.06', 'jost', 'Das bin nicht ich. Lauf.'],
     ['laub.k2.pikeur', 'laub', 'Ein Pikeur. Der führt die Meute. Er hat kein Gesicht, oder er zeigt es nicht. Laufen Sie trotzdem.'],
   ]),
@@ -291,7 +281,8 @@ const dialogue = [
     ['laub.k2.ende.b', 'laub', 'Im Juli brennt Stroh am besten.'],
   ]),
   // Laub, Wegweisung (erfunden, für den Spielfluss; gesprochen von der Story-Datei, beat-Trigger sind tot)
-  say('laub.k2.weg', 'laub', 'Weg. Die suchen jetzt etwas, das leuchtet. Bleiben Sie dunkel, bis die Allee zu Ende ist.', beat('2.2-weg'), { once: true }),
+  say('laub.k2.weg', 'laub', 'So. Die suchen etwas, das leuchtet. Sehen Sie den hellen Fächer vor jedem Hund? Da hinein nicht. Unten durch, bis zur Hecke.', beat('2.2-weg'), { once: true }),
+  say('laub.k2.aufstehen', 'laub', 'Jetzt. Stehen Sie auf, die sind abgezogen. Sie müssen nicht bis Zweibrücken kriechen.', beat('2.2-sicher'), { once: true, priority: 10 }),
   say('laub.k2.lauf', 'laub', 'Gut, dann laufen Sie. Aber richtig. Bis zur Mauer der Orangerie, da kommen sie nicht hinauf.', beat('2.2-lauf'), { once: true }),
   say('laub.k2.gitter', 'laub', 'Zu. Nachts ist das Gitter immer zu, deshalb ist er ja über den Zaun. In den Hof kommt man durch die Flügel. Der Südflügel hat eine Durchfahrt, von der Terrasse aus.', beat('2.5-gitter'), { once: true }),
   say('laub.k2.vestibuel', 'laub', 'Durchs Vestibül, dann durch die Zimmer, bis eine Tür nur angelehnt ist. Leise. Heute Nacht ist hier jeder wach.', beat('2.6'), { once: true }),
@@ -404,10 +395,10 @@ const k2Quests = {
     {
       id: 'q.k2.warnung', kind: 'main', era: E,
       title_de: 'Die Warnung',
-      summary_de: 'Der Bauer ist im Schloss, und hinter der angelehnten Tür des Schreibkabinetts wird geredet. Laub will hören, was der Herzog sagt. Zweimal, denn beim zweiten Mal sagt er etwas anderes.',
+      summary_de: 'Der Bauer ist im Schloss, und hinter der angelehnten Tür des Schreibkabinetts wird geredet. Laub will sehen, was der Herzog tut, wenn er die Warnung hört.',
       giver: { voice: 'laub' }, turnin: 'auto',
       offer: [ln('laub', 'Ins Schloss. Durch die Durchfahrt, durchs Vestibül, bis an die Tür des Kabinetts. Dort hören Sie hin. Anklopfen ist nicht vorgesehen.')],
-      progress: [ln('laub', 'Noch einmal an die Tür. Beim zweiten Mal spricht er nicht mehr über den Bauern.')],
+      progress: [ln('laub', 'An die Tür. Durch den Spalt sieht man mehr, als einem lieb ist.')],
       turnin_lines: [ln('laub', 'Ein kleines Jagdmesser. Mehr hat er nicht selbst mitgenommen. Die Galerie lässt er einem Maler.')],
       history: [
         ln('laub', 'Der Herzog hielt die Nachricht zuerst für unglaubwürdig und wollte dem Bauern einen Dukaten geben. Dann kam die Bestätigung, und es wurde gepackt.', { fact: 'cx.16', src: [P('S. 425–427')] }),
@@ -415,8 +406,8 @@ const k2Quests = {
       ],
       objectives: [
         { id: 'hof', type: 'reach', text_de: 'In den Ehrenhof, durch die Durchfahrt im Südflügel', where: place(1222, -1118, 22) },
-        { id: 'tuer', type: 'examine', clue: 'clue.k2.warnung', text_de: 'An der Tür des Kabinetts lauschen (E halten)' },
-        { id: 'abschied', type: 'examine', clue: 'clue.k2.abschied', text_de: 'Noch einmal lauschen (E halten)' },
+        { id: 'tuer', type: 'examine', clue: 'clue.k2.warnung', text_de: 'Durch den Türspalt des Kabinetts sehen (E halten, A/D: anderer Spalt)' },
+        { id: 'abschied', type: 'examine', clue: 'clue.k2.abschied', text_de: 'Durch den anderen Spalt: der Abschied (E halten)' },
       ],
       rewards: { xp: 200 },
     },

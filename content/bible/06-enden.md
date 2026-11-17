@@ -61,7 +61,7 @@ Laub sagt vor der Wahl genau einen Satz (`laub.end.vorher`): „Es ist Ihr Buch 
 
 ## 4. Ende B: Verbrennen (`end.verbrennen`)
 
-**Szene.** Du öffnest die Ofenklappe. Die Seiten brennen nicht schnell, sie rollen sich ein und werden durchsichtig, und für einen Atemzug sieht man durch jede eine Erinnerung: den Ehrenhof 1789, die Apfelallee im Nebel, die leere Galerie, den Karren mit dem Stein. Dann ist es Asche. Du gehst zum Zwinger und legst das Horn auf den Mauerrest. Kein Horn mehr in der Nacht.
+**Szene.** Du öffnest die Ofenklappe. Die Seiten brennen nicht schnell, sie rollen sich ein und werden durchsichtig, und für einen Atemzug sieht man durch jede eine Erinnerung: den Ehrenhof im Abendlicht von 1789, ein Feuerwerk über den Dächern, die Meute im Nebel der Apfelallee. Dann ist es Asche. Du gehst zum Zwinger und legst das Horn auf den Mauerrest. Kein Horn mehr in der Nacht.
 
 **Laub.**
 - `laub.end.verbrennen_1`: „Gut. Sie haben lange genug gesucht. Die Hunde und ich.“

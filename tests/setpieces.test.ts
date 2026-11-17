@@ -2,10 +2,12 @@
  * Set pieces (docs/ACTION-RPG.md §14): the Festsaal choice as four things in the room, and the
  * timelines of the endings staged in the engine.
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { historyAtTurnin } from '../src/systems/quests/logic';
 import { FESTSAAL_LABELS, festsaalSpots } from '../src/systems/interiors/festsaal';
 import type { Door, IRoom, Win } from '../src/systems/interiors/types';
-import { STAGE_SECONDS, STAGE_SECONDS_REDUCED, stageAt } from '../src/systems/story/endings/stage';
+import { STAGE_SECONDS, STAGE_SECONDS_REDUCED, burnShotAt, stageAt } from '../src/systems/story/endings/stage';
 
 const room = {
   index: 3,
@@ -64,7 +66,10 @@ describe('endings staged in the engine', () => {
     const k1 = stageAt('keep', 9, false);
     expect(k1.dark).toBeCloseTo(1, 2);
     expect(k1.turn).toBeCloseTo(Math.PI, 2);
-    expect(stageAt('burn', 9, false).pitch).toBeGreaterThan(0.6);
+    expect(stageAt('burn', 14.5, false).pitch).toBeGreaterThan(0.6);
+    // the memories come before the climb: three pages, three shots, in order
+    expect([3.5, 6.5, 9.5, 12.5].map((t) => burnShotAt(t, false).i)).toEqual([0, 1, 2, -1]);
+    expect(stageAt('burn', 9, false).pitch).toBeCloseTo(-0.05, 5);
   });
 
   it('reduced motion: no flight (two still shots, no camera path in between), shorter', () => {
@@ -77,5 +82,17 @@ describe('endings staged in the engine', () => {
       expect(a.turn).toBe(b.turn);
     }
     expect(stageAt('burn', 9, true).pitch).toBeCloseTo(-0.05, 5);
+    // the burn's memories fit into the shorter version
+    expect([1.5, 3.1, 4.7].map((t) => burnShotAt(t, true).i)).toEqual([0, 1, 2]);
+    expect(burnShotAt(6.2, true).i).toBe(-1);
+  });
+});
+
+describe('playtest round 4: no lecture at the climax', () => {
+  it('a quest tells history_at_turnin lines at its turn-in (default one, 0 = later or the codex)', () => {
+    expect(historyAtTurnin({})).toBe(1);
+    expect(historyAtTurnin({ history_at_turnin: 0 })).toBe(0);
+    const k4 = JSON.parse(readFileSync('content/quests/04-kapitel-4.quests.json', 'utf8')) as { quests: { id: string; history_at_turnin?: number }[] };
+    for (const id of ['q.k4.standpunkt', 'q.k4.stellen']) expect(historyAtTurnin(k4.quests.find((q) => q.id === id)!)).toBe(0);
   });
 });

@@ -259,7 +259,7 @@
       "kind": "main",
       "era": "1793-02",
       "title_de": "Die Warnung",
-      "summary_de": "Der Bauer ist im Schloss, und hinter der angelehnten Tür des Schreibkabinetts wird geredet. Laub will hören, was der Herzog sagt. Zweimal, denn beim zweiten Mal sagt er etwas anderes.",
+      "summary_de": "Der Bauer ist im Schloss, und hinter der angelehnten Tür des Schreibkabinetts wird geredet. Laub will sehen, was der Herzog tut, wenn er die Warnung hört.",
       "giver": {
         "voice": "laub"
       },
@@ -273,7 +273,7 @@
       "progress": [
         {
           "speaker": "laub",
-          "text": "Noch einmal an die Tür. Beim zweiten Mal spricht er nicht mehr über den Bauern."
+          "text": "An die Tür. Durch den Spalt sieht man mehr, als einem lieb ist."
         }
       ],
       "turnin_lines": [
@@ -329,13 +329,13 @@
           "id": "tuer",
           "type": "examine",
           "clue": "clue.k2.warnung",
-          "text_de": "An der Tür des Kabinetts lauschen (E halten)"
+          "text_de": "Durch den Türspalt des Kabinetts sehen (E halten, A/D: anderer Spalt)"
         },
         {
           "id": "abschied",
           "type": "examine",
           "clue": "clue.k2.abschied",
-          "text_de": "Noch einmal lauschen (E halten)"
+          "text_de": "Durch den anderen Spalt: der Abschied (E halten)"
         }
       ],
       "rewards": {

@@ -95,6 +95,10 @@ interface Placed {
   yaw: number;
   nearT: number;
   barked: boolean;
+  /** 0..1 down on one knee (pose 'kneel'). */
+  kneel?: number;
+  /** Seconds left of a hand scratching the hound at his knee (topic 'namen'). */
+  scratch?: number;
 }
 
 class NpcRuntime {
@@ -121,6 +125,11 @@ class NpcRuntime {
     const ev = ctx.events;
     ev.on('npc:spawn', (p) => this.spawn(p));
     ev.on('npc:despawn', ({ npc }) => this.despawn(npc));
+    // a kneeling figure asked about the hounds' names scratches the one at his knee
+    ev.on('npc:talk', ({ npc, topic }) => {
+      const f = this.figs.get(npc);
+      if (f?.p.pose === 'kneel' && topic === 'namen') f.scratch = 7;
+    });
     ev.on('era:change', ({ to }) => {
       for (const f of this.figs.values()) f.fig.setEra(to);
     });
@@ -213,7 +222,7 @@ class NpcRuntime {
     const fig = new GhostFigure(lookFor(p.npc, p.mood), this.ctx.era.current);
     fig.alpha = 0;
     this.ctx.scene.add(fig.object);
-    this.figs.set(p.npc, { p, fig, yaw: yawRad(p.yaw), nearT: 0, barked: false });
+    this.figs.set(p.npc, { p, fig, yaw: yawRad(p.yaw), nearT: 0, barked: false, kneel: p.pose === 'kneel' ? 1 : 0 });
   }
 
   /** Floor under the figure; a placement with a storey hint (`y`, rooms upstairs) keeps its storey. */
@@ -503,6 +512,21 @@ class NpcRuntime {
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       f.yaw += diff * Math.min(1, dt * (reduced ? 8 : 1.6));
       o.rotation.y = f.yaw;
+      // kneeling: lower and leaning forward over what lies before him; a scratching hand rocks him
+      const kn = (f.kneel = (f.kneel ?? 0) + ((f.p.pose === 'kneel' ? 1 : 0) - (f.kneel ?? 0)) * Math.min(1, dt * 2.2));
+      if (kn > 0.001) {
+        f.scratch = Math.max(0, (f.scratch ?? 0) - dt);
+        const sc = f.scratch > 0 && !reduced ? Math.sin(ctx.loop.time * 9) * 0.04 * Math.min(1, f.scratch) : 0;
+        o.rotation.order = 'YXZ';
+        f.fig.kneel = kn;
+        o.position.y -= f.fig.look.height * 0.27 * kn;
+        o.rotation.x = (0.12 + sc) * kn;
+        // while talking he looks up at you, otherwise down at the hound
+        if (!(d < 8 || this.talking?.npc === id) || f.scratch > 0) o.rotation.y = yawRad(f.p.yaw);
+      } else {
+        o.rotation.x = 0;
+        f.fig.kneel = 0;
+      }
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
       f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0 });
     }
