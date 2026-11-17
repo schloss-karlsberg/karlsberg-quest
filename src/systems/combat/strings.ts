@@ -42,6 +42,17 @@ Object.assign(TELL, {
   'steinfresser.brocken': 'Der Mauerbrecher reißt einen Brocken los – Wurf!',
 });
 
+/** Combat variety pass: the shield, the mirror, the caller, the veil. */
+Object.assign(TELL, {
+  'foliant.zuklappen': 'Der Foliant klappt den Deckel auf – gleich schlägt er zu!',
+  'foliant.rammen': 'Der Foliant senkt den Deckel – er rammt!',
+  'scherbling.scherbenfaecher': 'Der Scherbling fächert Splitter auf',
+  'scherbling.splitter': 'Der Scherbling zittert – Splitter, raus!',
+  'rufer.ruf': 'Der Rufer ruft in den Nebel – unterbrich ihn!',
+  'rufer.stoss': 'Der Rufer stößt zu',
+  'nebelweber.schleier': 'Die Nebelweberin spinnt einen Schleier',
+});
+
 /** The boss's title card when it reveals itself (name, epithet). */
 export const BOSS_TITLE: Record<string, [string, string]> = {
   schuldbuch: ['Das Schuldbuch', 'Was niemand bezahlt hat'],
@@ -86,6 +97,31 @@ addStrings('de', {
   'combat.finishable': '{name} wankt – jetzt ein Wuchthieb!',
   'combat.finisher': 'Gnadenstoß!',
   'combat.bossDown': '{name} – bezwungen.',
+  // combat variety pass
+  'combat.blocked': 'Der Deckel hält – Wuchthieb (halten) oder von der Seite!',
+  'combat.guardBreak': 'Deckung gebrochen!',
+  'combat.flank': 'Von der Seite!',
+  'combat.ward': 'Ein Schleier liegt um sie – das Bannlicht ({key}) zerreißt ihn.',
+  'combat.wardBreak': 'Der Schleier reißt.',
+  'combat.warded': 'Der Schleier dämpft den Schlag.',
+  'combat.reflect': 'Der Scherbling wirft das Licht zurück! Erst ein Wuchthieb, der ihn sprengt.',
+  'combat.crack': 'Der Spiegel springt.',
+  'combat.dazzled': 'Geblendet – das Licht will nicht.',
+  'combat.call': 'Der Rufer holt {n} aus dem Nebel!',
+  'combat.callBroken': 'Ruf unterbrochen!',
+  'combat.wave': 'Da kommen mehr – von hinten!',
+  'combat.wave.side': 'Da kommen mehr – von der Seite!',
+  'combat.hazard.fire': 'Glut fällt – raus aus dem Kreis!',
+  'combat.hazard.stone': 'Steine lösen sich – raus aus dem Kreis!',
+  'combat.skill.cooldown': '{name} – noch {s} s.',
+  'combat.skill.tired': 'Zu wenig Atem für {name}.',
+  'combat.skill.unlock': 'Neue Fähigkeit: {name} ({key}). {desc}',
+  'combat.skill.ausfall': 'Ausfall',
+  'combat.skill.erdstoss': 'Erdstoß',
+  'combat.skill.wirbel': 'Wirbel',
+  'combat.skill.ausfall.desc': 'Ein Sprung nach vorn mit dem Stab voran – durch die Reihe, an den Rufer, um den Deckel herum.',
+  'combat.skill.erdstoss.desc': 'Den Stab in den Boden: ein Stoßring wirft alles um dich zurück und bricht jede Deckung.',
+  'combat.skill.wirbel.desc': 'Drei Schläge rundum, du bleibst in Bewegung; Geschosse prallen ab.',
   'settings.damageNumbers': 'Schadenszahlen',
   'settings.damageNumbers.help': 'Kleine handgeschriebene Zahlen zeigen, wie hart ein Treffer war.',
 });

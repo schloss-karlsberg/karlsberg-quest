@@ -12,7 +12,8 @@
  * memorial:set, npc:spawn / despawn / conversation, game:start, save:loaded, settings:change;
  * emits enemy:spawned / killed / cleared / aggro, boss:phase, combat:hit / state / bann,
  * player:damaged / healed / died, xp:grant (kills) and player:caught {by:'combat'}.
- * Input actions: attack (LMB / K; hold = Wuchthieb), bannlicht (RMB / G), dodge (Space).
+ * Input actions: attack (LMB / K; hold = Wuchthieb), bannlicht (RMB / G), dodge (Space), the
+ * abilities skill1–3 (T / Z(Y) / U: Ausfall from level 2, Erdstoß from 4, Wirbel from 6).
  * Respects flags['combat.disabled'], flags['tools.measuring'], modals, conversations, memorials,
  * the field station and the 6 m around a placed NPC (safe zones).
  * State: `state.systems.combat` (CombatSlice, src/rpg/types.ts).
@@ -34,8 +35,8 @@ import { Matrix4, Quaternion, Vector3 } from 'three';
 import { atmosphere } from '../../world/atmosphere';
 import { lanternPose } from '../hunt/lantern';
 import { CombatAudio } from './audio';
-import { CombatHud, type PipTarget } from './hud';
-import { DODGE, SHAKE, type SafeReason, forwardOf, groupsToReset, safeReason, upsertGroup, wrapAngle, headingOf } from './rules';
+import { CombatHud, type PipTarget, type SkillSlot } from './hud';
+import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay } from './sim';
 import { BOSS_HINT, BOSS_TITLE, TELL } from './strings';
 import { CombatVisuals, type DissolveKind } from './visuals';
@@ -96,6 +97,8 @@ export interface CombatHooks {
   windup(idOrGroup: string, attack?: string, progress?: number): void;
   /** Freeze the enemies' AI (perception and visuals keep running). */
   freeze(on?: boolean): void;
+  /** Use an ability (as if its key was pressed; steps the loop once). Returns why not, or 'ok'. */
+  skill(id: SkillId): string;
   /** Damage the player (tests). */
   hurt(amount: number): void;
   heal(amount?: number): void;
@@ -146,6 +149,10 @@ class Combat {
   private hooksInstalled = false;
   private lastCaption = new Map<string, number>();
   private moving = 0;
+  /** Abilities known (level) — null before the first stats pass (no unlock toast on load). */
+  private skillsKnown: SkillId[] | null = null;
+  /** Ausfall streak start (visuals). */
+  private lungeFrom: { x: number; z: number } | null = null;
   /** A boss's reveal: the camera turns to it for a moment (off with reduced motion). */
   private introCam: { e: Enemy; t: number; dur: number } | null = null;
   /** A boss undone: the fight runs slow for a moment (s left; off with reduced motion). */
@@ -211,6 +218,24 @@ class Combat {
     this.sim.opt.konter = (talents['stab.konter'] ?? 0) > 0;
     this.sim.opt.waerme = (talents['laterne.waerme'] ?? 0) > 0;
     this.sim.opt.dritter = (talents['stab.dritter'] ?? 0) > 0;
+    // abilities by level (combat variety pass); a new one is announced once
+    const skills = skillsForLevel(prog?.level ?? 1);
+    const before = this.skillsKnown;
+    this.sim.opt.skills = skills;
+    this.skillsKnown = skills;
+    // one toast even when several unlock at once (a level jump): the newest, with its key
+    const fresh = before ? skills.filter((id) => !before.includes(id)) : [];
+    if (fresh.length) this.announceSkill(fresh[fresh.length - 1]!);
+  }
+
+  private skillKey(id: SkillId): string {
+    const action = (['skill1', 'skill2', 'skill3'] as const)[SKILL_IDS.indexOf(id)]!;
+    return keyLabel(this.ctx.input.bindings[action]?.[0] ?? '');
+  }
+
+  private announceSkill(id: SkillId): void {
+    const name = t(`combat.skill.${id}`);
+    this.ctx.ui.toast(t('combat.skill.unlock', { name, key: this.skillKey(id), desc: t(`combat.skill.${id}.desc`) }), 6500);
   }
 
   private emit<K extends keyof import('../../core/events').GameEvents>(name: K, payload: import('../../core/events').GameEvents[K]): void {
@@ -408,6 +433,7 @@ class Combat {
     // LMB belongs to the interact target (examine, talk) when there is one
     if (attackPressed && this.mouseTick >= ctx.loop.tick - 1 && this.interactTarget()) attackPressed = false;
     if ((attackPressed || inp.wasPressed('bannlicht')) && disabled) this.captionOnce('lowered', t('combat.lowered'), 'info', 6);
+    const skill: SkillId | null = inp.wasPressed('skill1') ? 'ausfall' : inp.wasPressed('skill2') ? 'erdstoss' : inp.wasPressed('skill3') ? 'wirbel' : null;
     return {
       x: pl.position.x,
       y: pl.position.y,
@@ -419,6 +445,7 @@ class Combat {
       attackPressed,
       bannPressed: inp.wasPressed('bannlicht'),
       dodgePressed: inp.wasPressed('dodge'),
+      skill,
       running: inp.isDown('sprint') && (fx !== 0 || fz !== 0) && pl.stance === 'stand',
       hunted: this.hunted,
       blocked,
@@ -641,9 +668,10 @@ class Combat {
         const g = this.slice().groups[e.group];
         // an escort that drifted off after its pack was not undone by anyone: no fact to report
         if (e.escort && ev.by === 'env') break;
-        this.emit('enemy:killed', { id: e.id, group: e.group, kind: e.kind, x: e.x, z: e.z, era: ctx.era.current, boss: e.boss, by: ev.by, ...(g?.quest ? { quest: g.quest } : {}), ...(g?.objective ? { objective: g.objective } : {}), ...(e.escort ? { escort: true } : {}) });
+        this.emit('enemy:killed', { id: e.id, group: e.group, kind: e.kind, x: e.x, z: e.z, era: ctx.era.current, boss: e.boss, by: ev.by === 'skill' || ev.by === 'hazard' ? 'heavy' : ev.by, ...(g?.quest ? { quest: g.quest } : {}), ...(g?.objective ? { objective: g.objective } : {}), ...(e.escort ? { escort: true } : {}) });
         // escorts give XP too; nothing for what drifted off or burst by itself
-        if ((!e.add || e.escort) && ev.by !== 'env' && e.def.xp > 0) this.emit('xp:grant', { amount: Math.round(e.def.xp), reason: `enemy:${e.kind}`, x: e.x, z: e.z });
+        // …but nothing for what a Rufer called out of the fog (no farming a caller)
+        if ((!e.add || e.escort) && !e.called && ev.by !== 'env' && e.def.xp > 0) this.emit('xp:grant', { amount: Math.round(e.def.xp), reason: `enemy:${e.kind}`, x: e.x, z: e.z });
         break;
       }
       case 'cleared':
@@ -801,6 +829,131 @@ class Combat {
       }
       case 'drift':
         break;
+      // ---- combat variety pass ----
+      case 'blocked': {
+        const e = ev.e;
+        const dx = e.x - inp.x;
+        const dz = e.z - inp.z;
+        const dd = Math.hypot(dx, dz) || 1;
+        this.visuals.guardSpark(e.x - (dx / dd) * e.radius, e.y + 1, e.z - (dz / dd) * e.radius, dx / dd, dz / dd, st.reducedFlash);
+        this.audio.blocked(this.posOf(e, 1));
+        this.viewmodel.jolt();
+        this.addShake(SHAKE.light);
+        if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 1.2, e.z, 'armored', e.id);
+        this.captionOnce('blocked', t('combat.blocked'), 'info', 8, 2400);
+        break;
+      }
+      case 'guardBreak':
+        this.visuals.guardBreak(ev.e.x, ev.e.y + 1, ev.e.z);
+        this.audio.guardBreak(this.posOf(ev.e, 1));
+        this.addShake(SHAKE.heavy * 0.6);
+        this.captionOnce('guardBreak', t('combat.guardBreak'), 'boss', 3, 1300);
+        break;
+      case 'flank':
+        this.captionOnce('flank', t('combat.flank'), 'info', 10, 1000);
+        break;
+      case 'ward': {
+        for (const o of ev.targets) this.visuals.shatter(o.x, o.y + 0.8, o.z, false, st.reducedFlash);
+        this.audio.veil(this.posOf(ev.e, 1.5), false);
+        this.captionOnce('ward', t('combat.ward', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }), 'info', 12, 2600);
+        break;
+      }
+      case 'wardBreak':
+        this.visuals.shatter(ev.e.x, ev.e.y + 0.8, ev.e.z, false, st.reducedFlash);
+        this.audio.veil(this.posOf(ev.e, 1), true);
+        this.captionOnce('wardBreak', t('combat.wardBreak'), 'info', 4, 1200);
+        break;
+      case 'warded':
+        this.visuals.glance(ev.e.x, ev.e.y + 0.8, ev.e.z);
+        this.captionOnce('warded', t('combat.warded'), 'info', 10, 1800);
+        break;
+      case 'reflect': {
+        const e = ev.e;
+        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash);
+        this.audio.reflect(this.posOf(e, 0), false);
+        this.captionOnce('reflect', t('combat.reflect'), 'boss', 6, 2800);
+        break;
+      }
+      case 'crack':
+        this.visuals.shatter(ev.e.x, ev.e.y, ev.e.z, true, st.reducedFlash);
+        this.audio.reflect(this.posOf(ev.e, 0), true);
+        this.captionOnce('crack', t('combat.crack'), 'info', 4, 1200);
+        break;
+      case 'dazzled':
+        this.hud.denied();
+        this.audio.denied();
+        this.captionOnce('dazzled', t('combat.dazzled'), 'info', 3, 1200);
+        break;
+      case 'call':
+        this.audio.call(this.posOf(ev.e, 2));
+        this.captionOnce('call', t('combat.call', { n: ev.n }), 'boss', 4, 2000);
+        break;
+      case 'callBroken':
+        this.audio.callBroken(this.posOf(ev.e, 2));
+        this.captionOnce('callBroken', t('combat.callBroken'), 'info', 2, 1100);
+        break;
+      case 'emerge': {
+        const e = ev.e;
+        this.visuals.emerge(e.x, ctx.world.heightAt(e.x, e.z), e.z);
+        this.audio.emerge(this.posOf(e, 0.5));
+        this.arrowFor(e);
+        break;
+      }
+      case 'waveIncoming': {
+        const gy = ctx.world.heightAt(ev.x, ev.z);
+        this.visuals.emerge(ev.x, gy, ev.z);
+        this.audio.waveIncoming({ x: ev.x, y: gy + 1, z: ev.z });
+        const rel = wrapAngle(ctx.player.yaw - headingOf(ev.x - inp.x, ev.z - inp.z));
+        this.captionOnce('wave', t(Math.abs(rel) > 2.1 ? 'combat.wave' : 'combat.wave.side'), 'boss', 6, 2400);
+        // the wave always gets its arrow when off screen (that is the point: turn round)
+        if (st.soundIndicators !== false && Math.abs(rel) > (35 * Math.PI) / 180) this.hud.arrow(`wave:${ev.group}`, rel);
+        break;
+      }
+      case 'hazard': {
+        const d = Math.hypot(ev.x - inp.x, ev.z - inp.z);
+        if (d < 18) this.audio.hazardWarn({ x: ev.x, y: ctx.world.heightAt(ev.x, ev.z) + 2, z: ev.z }, ev.kind);
+        if (d < ev.r + 4) this.captionOnce(`hazard.${ev.kind}`, t(`combat.hazard.${ev.kind}`), 'info', 10, 1800);
+        break;
+      }
+      case 'hazardHit': {
+        const gy = ctx.world.heightAt(ev.x, ev.z);
+        this.visuals.hazardLand(ev.kind, ev.x, gy, ev.z, ev.r, st.reducedFlash);
+        this.audio.hazardLand({ x: ev.x, y: gy, z: ev.z }, ev.kind);
+        if (Math.hypot(ev.x - inp.x, ev.z - inp.z) < ev.r + 5) this.addShake(ev.kind === 'stone' ? 0.1 : 0.04);
+        break;
+      }
+      case 'skill': {
+        const pp = ctx.player.position;
+        if (ev.id === 'ausfall') {
+          ctx.player.impulse(ev.vx, ev.vz, ev.dur);
+          this.lungeFrom = { x: pp.x, z: pp.z };
+          this.audio.lunge();
+        } else if (ev.id === 'erdstoss') this.audio.slamRaise();
+        else this.audio.whirl();
+        break;
+      }
+      case 'skillImpact': {
+        if (ev.id === 'erdstoss') {
+          this.visuals.groundSlam(ev.x, ctx.world.heightAt(ev.x, ev.z), ev.z, ev.r, st.reducedFlash);
+          this.audio.groundSlam();
+          this.addShake(0.22);
+          this.viewmodel.jolt();
+        }
+        break;
+      }
+      case 'skillDenied': {
+        if (ev.why === 'locked') break;
+        const name = t(`combat.skill.${ev.id}`);
+        this.hud.denied();
+        this.audio.denied();
+        if (ev.why === 'cooldown') this.captionOnce(`cd:${ev.id}`, t('combat.skill.cooldown', { name, s: Math.ceil(this.sim.p.cds[ev.id]) }), 'info', 1.5, 900);
+        else if (ev.why === 'tired') this.captionOnce('skill.tired', t('combat.skill.tired', { name }), 'info', 3, 1000);
+        break;
+      }
+      case 'deflect':
+        this.visuals.glance(ev.p.x, ev.p.y, ev.p.z);
+        this.audio.evade();
+        break;
     }
     void rm;
   }
@@ -912,6 +1065,15 @@ class Combat {
       reducedFlash: st.reducedFlash,
       bann: this.bannFx,
     });
+    // an ability under way: the Wirbel's ring of motes, the Ausfall's streak
+    if (p.skill && !frozen) {
+      const gy = ctx.world.heightAt(pl.position.x, pl.position.z);
+      if (p.skill.id === 'wirbel') this.visuals.whirl(pl.position.x, gy + 0.2, pl.position.z, SKILLS.wirbel.radius * 0.7, ctx.loop.time, st.reducedFlash);
+      if (p.skill.id === 'ausfall' && this.lungeFrom) {
+        this.visuals.lungeStreak(this.lungeFrom.x, gy + 1.1, this.lungeFrom.z, pl.position.x, pl.position.z, st.reducedFlash);
+        this.lungeFrom = { x: pl.position.x, z: pl.position.z };
+      }
+    } else this.lungeFrom = null;
     // the staff
     const f = ctx.state.state.flags;
     const sw = p.swing;
@@ -921,6 +1083,7 @@ class Combat {
       time: ctx.loop.time,
       frozen,
       swing: sw ? { kind: sw.kind, combo: sw.combo, t: sw.t, dur: sw.dur } : null,
+      skill: p.skill ? { id: p.skill.id, t: p.skill.t, dur: p.skill.dur } : null,
       charge: p.charging ? Math.min(1, Math.max(0, (p.hold - 0.18) / (1.0 - 0.18))) : null,
       dodge: p.dodge ? p.dodge.t / DODGE.dur : null,
       drink: p.drink,
@@ -936,6 +1099,13 @@ class Combat {
     // HUD
     const bannFrac = p.bann < p.bannMax ? Math.min(1, p.bannT / Math.max(0.1, this.sim.opt.stats.bannRecharge)) : 1;
     this.hud.setVitals({ hp: p.hp, max: p.max, st: p.st.stamina, stMax: p.st.max, exhausted: p.st.exhausted, bann: p.bann, bannMax: p.bannMax, bannFrac, calm: !p.inCombat, key: keyLabel(ctx.input.bindings.bannlicht[0] ?? 'Mouse2') });
+    // the abilities row (dock 'vitals' 25)
+    const slots: SkillSlot[] = (this.sim.opt.skills ?? []).map((id) => {
+      const cd = skillCooldown(id, this.sim.opt.gentle);
+      const left = Math.max(0, p.cds[id]);
+      return { id, name: t(`combat.skill.${id}`), key: this.skillKey(id), frac: left <= 0 ? 1 : Math.max(0, Math.min(0.999, 1 - left / cd)), left, tired: p.st.exhausted || p.st.stamina < SKILLS[id].cost * this.sim.opt.stats.staminaCost };
+    });
+    this.hud.setSkills(slots, !p.inCombat);
     const b = this.sim.boss();
     if (b) {
       const marks = b.def.phases ?? [];
@@ -948,10 +1118,10 @@ class Combat {
       const d = Math.hypot(e.x - pl.position.x, e.z - pl.position.z);
       const show = d < 32 && (e.aggro || e.hp < e.maxHp || e.stun > 0);
       // over the body's crown (not floating above it): the bar sits on the silhouette
-      pips.push({ id: e.id, x: e.x, y: e.y + this.visuals.topOf(e) + 0.05, z: e.z, frac: e.hp / e.maxHp, gebannt: e.stun > 0, immune: e.def.needsBann === true && e.stun <= 0, show: show || e.elite, dist: Math.hypot(e.x - cam.position.x, e.z - cam.position.z), title: e.title, finish: e.finishable });
+      pips.push({ id: e.id, x: e.x, y: e.y + this.visuals.topOf(e) + 0.05, z: e.z, frac: e.hp / e.maxHp, gebannt: e.stun > 0, immune: e.def.needsBann === true && e.stun <= 0, show: show || e.elite, dist: Math.hypot(e.x - cam.position.x, e.z - cam.position.z), title: e.title, finish: e.finishable, trait: traitOf(e) });
     }
     const lowHp = p.dead ? 0 : Math.max(0, (0.3 - p.hp / p.max) / 0.3);
-    this.hud.frame({ dt, camera: cam, reducedFlash: st.reducedFlash, reducedMotion: st.reducedMotion, lowHp, pips });
+    this.hud.frame({ dt, camera: cam, reducedFlash: st.reducedFlash, reducedMotion: st.reducedMotion, lowHp, pips, dazzle: p.dazzle });
     this.audio.heartbeat(dt, lowHp);
   }
 
@@ -1043,6 +1213,14 @@ class Combat {
       freeze(on) {
         self.frozenAI = on ?? !self.frozenAI;
       },
+      skill(id) {
+        const why = self.sim.skillReady(id);
+        const code = ({ ausfall: 'KeyT', erdstoss: 'KeyY', wirbel: 'KeyU' } as const)[id];
+        ctx.input.simulate(code, true);
+        ctx.loop.step(1);
+        ctx.input.simulate(code, false);
+        return why;
+      },
       hurt(amount) {
         self.sim.hurtPlayer(amount, 'debug', { x: ctx.player.position.x + 1, z: ctx.player.position.z });
       },
@@ -1062,6 +1240,15 @@ class Combat {
     };
     window.kq.combat = hooks;
   }
+}
+
+/** What the HP pip should say about an enemy (combat variety pass). */
+function traitOf(e: Enemy): PipTarget['trait'] {
+  if (e.ward > 0) return 'veil';
+  if (e.def.guard && e.guardBroken <= 0) return 'guard';
+  if (e.def.reflectsBann && !e.cracked) return 'mirror';
+  if (e.kind === 'rufer') return 'caller';
+  return undefined;
 }
 
 function damageRows(settings: SettingsStore): SettingsRow[] {

@@ -359,4 +359,121 @@ export class CombatAudio {
     if (family === 'stone') this.noise(d, { f0: 90, f1: 220, q: 0.7, dur: 0.9, gain: 0.7, type: 'lowpass', attack: 0.2 });
     else this.tone(d, { type: 'sawtooth', f0: family === 'hound' ? 160 : 120, f1: family === 'hound' ? 320 : 180, dur: 0.8, gain: 0.25, lp: 1400, attack: 0.1 });
   }
+  // ---- combat variety pass: abilities, guards, veils, mirrors, callers, waves, hazards -------------
+
+  /** Ausfall: a hard rising rush of air and a bite of wood at the end. */
+  lunge(): void {
+    const b = this.bus;
+    this.noise(b, { f0: 300, f1: 2600, q: 0.9, dur: 0.32, gain: 0.5, attack: 0.03 });
+    this.tone(b, { type: 'triangle', f0: 140, f1: 260, dur: 0.22, gain: 0.25 });
+  }
+
+  /** Erdstoß: the staff driven into the ground — a deep boom, a crack, grit settling. */
+  groundSlam(): void {
+    const b = this.bus;
+    this.tone(b, { type: 'sine', f0: 72, f1: 28, dur: 0.75, gain: 0.85 });
+    this.noise(b, { f0: 520, f1: 70, q: 0.6, dur: 0.6, gain: 0.8, type: 'lowpass' });
+    this.noise(b, { f0: 2200, q: 1.6, dur: 0.07, gain: 0.45 });
+    for (let i = 0; i < 6; i++) this.noise(b, { f0: 1600 + i * 350, q: 4, dur: 0.03, gain: 0.12, when: 0.12 + i * 0.06 });
+  }
+
+  /** The Erdstoß winds up (the staff raised). */
+  slamRaise(): void {
+    this.noise(this.bus, { f0: 200, f1: 900, q: 1, dur: 0.35, gain: 0.25, attack: 0.15 });
+  }
+
+  /** Wirbel: three whooshes round you. */
+  whirl(): void {
+    const b = this.bus;
+    for (let i = 0; i < 3; i++) this.noise(b, { f0: 380 + i * 60, f1: 1900 + i * 200, q: 1.3, dur: 0.24, gain: 0.34, attack: 0.05, when: 0.12 + i * 0.27 });
+    this.tone(b, { type: 'sine', f0: 110, f1: 160, dur: 0.9, gain: 0.12, attack: 0.1 });
+  }
+
+  /** A blow bounces off a guard: a dull board knock and a scrape. */
+  blocked(p: V3): void {
+    const s = this.src(p, 7, 2000);
+    const d = s?.input ?? null;
+    this.tone(d, { type: 'triangle', f0: 180, f1: 120, dur: 0.12, gain: 0.55 });
+    this.noise(d, { f0: 900, f1: 500, q: 2, dur: 0.18, gain: 0.35 });
+  }
+
+  /** A guard broken: the cover thrown open, a crack and pages riffling. */
+  guardBreak(p: V3): void {
+    const s = this.src(p, 9, 2500);
+    const d = s?.input ?? null;
+    this.noise(d, { f0: 1400, f1: 300, q: 0.7, dur: 0.3, gain: 0.7 });
+    this.tone(d, { type: 'sine', f0: 95, f1: 45, dur: 0.3, gain: 0.5 });
+    for (let i = 0; i < 6; i++) this.noise(d, { f0: 4000 + i * 250, q: 3, dur: 0.03, gain: 0.2, when: 0.1 + i * 0.03 });
+  }
+
+  /** A veil laid: a cold breath drawn in. Torn: a glassy rip. */
+  veil(p: V3, torn: boolean): void {
+    const s = this.src(p, 9, 2500);
+    const d = s?.input ?? null;
+    if (torn) {
+      this.noise(d, { f0: 4500, f1: 900, q: 1.5, dur: 0.35, gain: 0.45 });
+      this.tone(d, { f0: 1500, f1: 700, dur: 0.3, gain: 0.12 });
+    } else {
+      this.noise(d, { f0: 600, f1: 2400, q: 0.8, dur: 0.9, gain: 0.3, attack: 0.3, type: 'lowpass' });
+      this.tone(d, { f0: 660, f1: 990, dur: 0.9, gain: 0.08, attack: 0.3 });
+    }
+  }
+
+  /** The mirror throws the light back: a bright ring and a glass shriek. Cracked: glass breaking. */
+  reflect(p: V3, cracked: boolean): void {
+    const s = this.src(p, 9, 2500);
+    const d = s?.input ?? null;
+    if (cracked) {
+      for (let i = 0; i < 7; i++) this.noise(d, { f0: 3000 + i * 500, q: 6, dur: 0.05, gain: 0.25, when: i * 0.025 });
+      this.tone(d, { f0: 2100, f1: 1700, dur: 0.4, gain: 0.12 });
+      return;
+    }
+    this.tone(d, { f0: 2640, f1: 3520, dur: 0.5, gain: 0.2 });
+    this.tone(d, { f0: 3960, f1: 3300, dur: 0.4, gain: 0.12 });
+    this.noise(this.bus, { f0: 5000, f1: 1500, q: 1, dur: 0.35, gain: 0.3 });
+  }
+
+  /** A Rufer calls: a hollow rising call through the fog (the funnel). */
+  call(p: V3): void {
+    const s = this.src(p, 18, 4000);
+    const d = s?.input ?? null;
+    this.tone(d, { type: 'sawtooth', f0: 92, f1: 138, dur: 1.2, gain: 0.25, lp: 700, attack: 0.25 });
+    this.tone(d, { type: 'sine', f0: 184, f1: 276, dur: 1.2, gain: 0.12, attack: 0.25 });
+  }
+
+  /** A call broken off: the note chokes. */
+  callBroken(p: V3): void {
+    const s = this.src(p, 12, 2000);
+    this.tone(s?.input ?? null, { type: 'sawtooth', f0: 150, f1: 60, dur: 0.3, gain: 0.25, lp: 600 });
+  }
+
+  /** Something rises out of the fog. */
+  emerge(p: V3): void {
+    const s = this.src(p, 8, 2500);
+    this.noise(s?.input ?? null, { f0: 200, f1: 900, q: 0.6, dur: 0.7, gain: 0.35, type: 'lowpass', attack: 0.25 });
+  }
+
+  /** The second wave is coming (from where it will come). */
+  waveIncoming(p: V3): void {
+    const s = this.src(p, 30, 4000);
+    const d = s?.input ?? null;
+    this.tone(d, { type: 'sawtooth', f0: 70, f1: 105, dur: 1.4, gain: 0.3, lp: 400, attack: 0.4 });
+    this.noise(d, { f0: 180, f1: 600, q: 0.6, dur: 1.4, gain: 0.4, type: 'lowpass', attack: 0.4 });
+  }
+
+  /** A hazard about to land: embers hissing down / stone grinding loose above. */
+  hazardWarn(p: V3, kind: 'fire' | 'stone'): void {
+    const s = this.src(p, 10, 2500);
+    const d = s?.input ?? null;
+    if (kind === 'fire') for (let i = 0; i < 8; i++) this.noise(d, { f0: 2500 + i * 300, q: 4, dur: 0.04, gain: 0.15, when: i * 0.12 });
+    else this.noise(d, { f0: 120, f1: 300, q: 0.8, dur: 1.2, gain: 0.35, type: 'lowpass', attack: 0.4 });
+  }
+
+  /** A hazard lands. */
+  hazardLand(p: V3, kind: 'fire' | 'stone'): void {
+    if (kind === 'stone') return this.slam(p, true);
+    const s = this.src(p, 10, 2500);
+    this.noise(s?.input ?? null, { f0: 1600, f1: 400, q: 0.6, dur: 0.5, gain: 0.6 });
+  }
 }
+

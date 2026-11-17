@@ -44,11 +44,88 @@ export const CLEAVE = { light: 2, heavy: 3, sweep: 4, falloff: 0.5 } as const;
 /** Wuchthieb: hold 0.45–1.0 s (move ×0.5), release. */
 export const HEAVY = { min: 0.45, full: 1.0, moveScale: 0.5, tap: 0.18, arcDeg: 110, reach: 3.0, sweepReach: 3.4, swing: 0.55, impact: 0.2 } as const;
 
-/** Ausweichen: 0.35 s roll of 4.5 m; i-frames 0.08–0.33 s; perfect in the last 0.15 s before a hit. */
-export const DODGE = { dur: 0.35, dist: 4.5, iStart: 0.08, iEnd: 0.33, perfect: 0.15, slowmo: 0.25, slowScale: 0.3 } as const;
+/** Ausweichen: 0.35 s roll of 4.5 m; i-frames 0.08–0.33 s; perfect in the last 0.15 s before a hit (combat variety pass: a perfect one gives back 12 Atem). */
+export const DODGE = { dur: 0.35, dist: 4.5, iStart: 0.08, iEnd: 0.33, perfect: 0.15, slowmo: 0.25, slowScale: 0.3, perfectRefund: 12 } as const;
 
-/** Bannlicht: gebannte enemies take ×1.3 (×1.5 made the flare a kill button); the flare lasts 0.45 s on screen. */
-export const BANN = { damageMul: 1.3, flare: 0.45, sealOpen: 4 } as const;
+/**
+ * Bannlicht: gebannte enemies take ×1.3 (×1.5 made the flare a kill button); the flare lasts 0.45 s
+ * on screen. Combat variety pass (playtest round 4: "the Bannlicht one-shots paper"): it is a tool,
+ * not a nuke — the bonus counts for ONE blow per enemy and that blow wakes it (`wakeOnHit`; an
+ * Irrlicht stays down, it needs the flare to be hit at all), an enemy flared again within `repeat`
+ * seconds is held for half as long, and a charge takes 11 s (BASE_STATS.bannRecharge).
+ */
+export const BANN = { damageMul: 1.3, flare: 0.45, sealOpen: 4, repeat: 8, repeatMul: 0.5 } as const;
+
+// ---- combat variety pass (2026-11-17): guard, veil, mirror, caller, waves, hazards -------------
+
+/**
+ * Deckung (the Foliant): while it is not attacking, light blows from its front half bounce off
+ * (0 damage, the swing recoils and costs `blockStamina` Atem). A Wuchthieb or the Erdstoß from any
+ * side breaks the guard: a long stagger and `breakFor` s with no guard and ×`brokenMul` damage.
+ * Blows to flank and back land ×`flankMul`.
+ */
+export const GUARD = { blockStamina: 6, breakFor: 5, breakStagger: 1.4, brokenMul: 1.25, flankMul: 1.15, turn: 2.2 } as const;
+/** Schleier (the Nebelweber): up to `max` of its pack within `radius` m take ×`mul` from the staff for `dur` s; the Bannlicht tears it. */
+export const WARD = { dur: 9, mul: 0.25, radius: 10, max: 3 } as const;
+/** Spiegel (the Scherbling): a Bannlicht on it dazzles you (`dazzle` s: no flare, dim view) and hurts; light blows ×`glassMul`; a heavy one cracks it (then ×`crackedMul`). */
+export const REFLECT = { dazzle: 1.5, damage: 6, glassMul: 0.6, crackedMul: 1.3 } as const;
+/** Ruf (the Rufer): calls `n` of its pack out of the fog, at most `max` of its callers alive. */
+export const CALL = { n: 1, max: 2, dist: 9 } as const;
+/** The second wave: `after` s into the fight (or the first of the pack falls), it comes `delay` s later from another side, `dist` m out. */
+export const WAVE = { after: 12, delay: 1.8, dist: 10.5 } as const;
+/** Hazards of a pack fight by era: one every `every` s (± spread); fire rings and falling stones also hurt the enemies inside. */
+export const HAZARD = {
+  every: 6.5,
+  spread: 2.5,
+  fire: { r: 2.3, tele: 1.4, damage: 10, enemyFrac: 0.3, n: 2 },
+  stone: { r: 2.1, tele: 1.5, damage: 14, enemyFrac: 0.45, n: 1 },
+} as const;
+
+/** Is a light blow from `from` turned aside by the enemy's guard? (front half, guard up, not broken) */
+export function guardBlocks(def: Pick<EnemyDef, 'guard'>, kind: 'light' | 'heavy', enemy: { x: number; z: number; heading: number }, from: { x: number; z: number }, open: boolean): boolean {
+  if (def.guard !== 'front' || open || kind === 'heavy') return false;
+  return isFrontal(enemy, from);
+}
+
+// ---- abilities (combat variety pass) ------------------------------------------------------------
+
+export type SkillId = 'ausfall' | 'erdstoss' | 'wirbel';
+export const SKILL_IDS: readonly SkillId[] = ['ausfall', 'erdstoss', 'wirbel'];
+
+/**
+ * The Messstab's three moves beyond the swing, learnt with the levels (docs/ACTION-RPG.md §4.2):
+ *  - **Ausfall** (L2): a lunge of `dist` m along the aim, through the pack (i-frames all the way);
+ *    everything in its path takes ×`mul`, the first one staggers — it gets you round a shield;
+ *  - **Erdstoß** (L4): the staff into the ground, a shock ring of `radius` m: ×`mul`, thrown back,
+ *    staggered; breaks guards, cracks mirrors, cuts a call short;
+ *  - **Wirbel** (L6): a spin with three blows all round (`hits` s into it), ×`mul` each; bolts that
+ *    reach you while it spins are knocked out of the air.
+ * Cooldowns ×0.8 in gentle mode.
+ */
+export const SKILLS = {
+  ausfall: { level: 2, cd: 7, cost: 15, dur: 0.3, dist: 6.5, width: 1.15, mul: 1.7, stagger: 0.7 },
+  erdstoss: { level: 4, cd: 11, cost: 25, dur: 0.78, impact: 0.42, radius: 4.6, mul: 1.5, stagger: 1.1, knock: 3 },
+  wirbel: { level: 6, cd: 13, cost: 28, dur: 0.95, hits: [0.18, 0.45, 0.72], radius: 3.3, mul: 0.85, moveScale: 0.75 },
+} as const;
+
+/** The abilities a level has learnt. */
+export function skillsForLevel(level: number): SkillId[] {
+  return SKILL_IDS.filter((id) => level >= SKILLS[id].level);
+}
+
+/** Cooldown of an ability (gentle mode shorter). */
+export function skillCooldown(id: SkillId, gentle = false): number {
+  return SKILLS[id].cd * (gentle ? 0.8 : 1);
+}
+
+/** Distance from p to the segment a→b, and how far along it (0..1). */
+export function segmentDistance(ax: number, az: number, bx: number, bz: number, px: number, pz: number): { d: number; t: number } {
+  const vx = bx - ax;
+  const vz = bz - az;
+  const l2 = vx * vx + vz * vz || 1e-6;
+  const t = Math.max(0, Math.min(1, ((px - ax) * vx + (pz - az) * vz) / l2));
+  return { d: Math.hypot(px - (ax + vx * t), pz - (az + vz * t)), t };
+}
 
 /** Juice (§4.3); halved with reduced motion. */
 export const HITSTOP = { light: 0.06, heavy: 0.11, player: 0.08 } as const;

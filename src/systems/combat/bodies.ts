@@ -673,7 +673,80 @@ export function nebelweber(seed: number): BodyTemplate {
   return { parts: b.parts, tell: [0.7, 0.9, 1], top: 2.7, shoulder: 1.95 };
 }
 
-const MAKERS: Record<string, (seed: number) => BodyTemplate> = { nebelling, irrlicht, streuner, mahnbrief, raffschatten, glutling, grusling, steinfresser, schuldbuch, pikeur, strohmann, steinbrecher, nebelweber };
+/**
+ * Foliant (combat variety pass): a walking folio that carries its own front board like a shield —
+ * a tall dark-green cover with a brass-yellow edge held before it (armL: it swings shut on the
+ * Zuklappen and hangs open while the guard is broken), a stack of yellowed leaves for a body, two
+ * stumps of rolled paper for legs, the eyes peering over the board's top edge.
+ */
+export function foliant(seed: number): BodyTemplate {
+  const BOARD: V3 = [0.12, 0.16, 0.12];
+  const EDGE: V3 = [0.62, 0.5, 0.2];
+  const LEAF: V3 = [0.78, 0.72, 0.58];
+  const ROLL: V3 = [0.7, 0.64, 0.5];
+  const b = new B(seed);
+  // the body: a block of leaves, slightly askew
+  for (let i = 0; i < 5; i++) b.solid([0.02 * (i % 2 ? 1 : -1), 0.75 + i * 0.16, -0.05], [0.66, 0.15, 0.5], i % 2 ? PAPER : LEAF, { ry: (i - 2) * 0.05 });
+  b.solid([0, 1.6, -0.08], [0.5, 0.26, 0.4], [0.74, 0.68, 0.54], { bone: 'head', ry: 0.15 })
+    .eyes(1.66, 0.14, 0.12, 0.07, [1, 0.62, 0.22])
+    // rolled-paper legs
+    .solid([0.18, 0.32, -0.05], [0.16, 0.64, 0.16], ROLL, { bone: 'legs' })
+    .last(1, { gait: [0.64, 0.05, 0, 0.45] })
+    .solid([-0.18, 0.32, -0.05], [0.16, 0.64, 0.16], ROLL, { bone: 'legs' })
+    .last(1, { gait: [0.64, 0.05, Math.PI, 0.45] })
+    // the board: in front, up to the eyes, a brass edge round it
+    .solid([0, 1.05, 0.42], [0.82, 1.1, 0.07], BOARD, { bone: 'armL', mat: 3 })
+    .solid([0, 1.6, 0.43], [0.85, 0.05, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
+    .solid([0, 0.5, 0.43], [0.85, 0.05, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
+    .solid([0.42, 1.05, 0.43], [0.05, 1.13, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
+    .solid([-0.42, 1.05, 0.43], [0.05, 1.13, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
+    // a faint ember mark in the board's middle (the guard reads as "up")
+    .glow([0, 1.05, 0.48], 0.08, [1, 0.7, 0.3], { bone: 'armL', minPx: 2, alpha: 0.7 })
+    // loose leaves riffling at its back
+    .solid([0.3, 1.2, -0.38], [0.3, 0.01, 0.22], PAPER, { bone: 'flap', rz: 0.4 })
+    .solid([-0.28, 0.95, -0.36], [0.28, 0.01, 0.2], PAPER, { bone: 'flap', rz: -0.5 });
+  return { parts: b.parts, tell: [1, 0.6, 0.2], top: 1.95, shoulder: 1.69 };
+}
+
+/**
+ * Scherbling (combat variety pass): a hovering knot of mirror shards round a hard white core — the
+ * shards turn slowly (orbit), cold-bright on their faces; it throws light back at you.
+ */
+export function scherbling(seed: number): BodyTemplate {
+  const R = rng(seed + 3);
+  const GLASS: V3 = [0.7, 0.78, 0.85];
+  const b = new B(seed)
+    .glow([0, 0, 0], 0.18, [1, 0.98, 0.92], { bone: 'core', minPx: 5 })
+    .glow([0, 0, 0], 0.75, [0.55, 0.65, 0.8], { bone: 'core', alpha: 0.45 });
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    const y = (R() - 0.5) * 0.5;
+    b.solid([Math.cos(a) * 0.32, y, Math.sin(a) * 0.32], [0.08 + R() * 0.08, 0.28 + R() * 0.22, 0.02], GLASS, { em: [0.2, 0.24, 0.3], rx: R() * 0.6, rz: (R() - 0.5) * 0.8, mat: 3 }).last(1, { bone: 'orbit', orbit: [0.9 + R() * 0.5, a] });
+  }
+  for (let i = 0; i < 4; i++) b.glow([0.45, (R() - 0.5) * 0.4, 0], 0.04, [1, 1, 1], { minPx: 2 }).last(1, { bone: 'orbit', orbit: [-1.8 - i * 0.2, i * 1.57] });
+  b.eyes(0.08, 0.2, 0.07, 0.05, [0.85, 0.95, 1], 'core');
+  return { parts: b.parts, tell: [0.85, 0.95, 1], top: 0.7, shoulder: 0 };
+}
+
+/**
+ * Rufer (combat variety pass): a gaunt column of smoke with a long flared funnel where a head would
+ * be, an ember ring glowing in its mouth (it swells on the call), thin arms raised when it calls.
+ */
+export function rufer(seed: number): BodyTemplate {
+  const b = new B(seed)
+    .line([0, 0.15, 0], [0, 1.55, 0], 8, 0.32, 0.22, SMOKE)
+    .blob([0, 0.2, 0], [0.25, 0.12, 0.25], 4, 0.38, SMOKE, { bone: 'legs', alpha: 0.8 })
+    // the funnel: a widening neck tipped forward
+    .line([0, 1.6, 0.02], [0, 2.05, 0.3], 5, 0.16, 0.34, [0.07, 0.065, 0.07], { bone: 'head' })
+    .glow([0, 2.1, 0.38], 0.2, EMBER, { bone: 'head', minPx: 5 })
+    .glow([0, 2.1, 0.36], 0.55, [0.6, 0.2, 0.05], { bone: 'head', alpha: 0.5 })
+    .line([0.16, 1.45, 0], [0.48, 1.85, 0.2], 4, 0.12, 0.08, SMOKE, { bone: 'armR' })
+    .line([-0.16, 1.45, 0], [-0.48, 1.85, 0.2], 4, 0.12, 0.08, SMOKE, { bone: 'armL' })
+    .line([0, 0.7, -0.12], [0, 0.1, -0.5], 3, 0.24, 0.12, SMOKE, { bone: 'tail', alpha: 0.6 });
+  return { parts: b.parts, tell: [1, 0.5, 0.15], top: 2.4, shoulder: 1.5 };
+}
+
+const MAKERS: Record<string, (seed: number) => BodyTemplate> = { nebelling, irrlicht, streuner, mahnbrief, raffschatten, glutling, grusling, steinfresser, schuldbuch, pikeur, strohmann, steinbrecher, nebelweber, foliant, scherbling, rufer };
 
 /** The body of a kind (size > 1: an elite, bigger). */
 export function bodyTemplate(kind: string, seed: number, size = 1): BodyTemplate {

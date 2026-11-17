@@ -55,9 +55,10 @@ describe('packs: elites and escorts', () => {
       expect(el.extra.telegraph).toBeGreaterThanOrEqual(0.4);
       expect(el.hpMul).toBeGreaterThan(1.5);
     }
-    // the caster is in the roster, ranged only, labelled fiction
+    // the caster is in the roster, ranged plus the veil it lays on its pack, labelled fiction
     const w = ENEMIES.find((e) => e.id === 'nebelweber')!;
-    expect(w.attacks.every((a) => a.kind === 'ranged')).toBe(true);
+    expect(w.attacks.every((a) => a.kind === 'ranged' || (a.kind === 'summon' && a.damage === 0))).toBe(true);
+    expect(w.attacks.some((a) => a.id === 'schleier')).toBe(true);
     expect(w.note_de).toContain('(Fiktion)');
   });
 
@@ -78,8 +79,8 @@ describe('packs: elites and escorts', () => {
     expect(elites[0]!.maxHp).toBeGreaterThan(live.find((e) => e.kind === 'streuner' && !e.elite)!.maxHp * 1.8);
     expect(elites[0]!.def.attacks.some((a) => a.id === 'hetzjagd')).toBe(true);
     const esc = live.filter((e) => e.escort);
-    // 1793-02: frost mist at its heels (1789 brings the court's letters)
-    expect(esc.map((e) => e.kind).sort()).toEqual(['mahnbrief', 'mahnbrief', 'nebelling']);
+    // 1793-02: frost mist at its heels, a letter, and a Rufer that calls more out of the fog
+    expect(esc.map((e) => e.kind).sort()).toEqual(['mahnbrief', 'nebelling', 'rufer']);
     expect(esc[0]!.group).toBe('p+escort');
     // the escort undone: the group's count does not move
     s.killNow(esc[0]!.id);

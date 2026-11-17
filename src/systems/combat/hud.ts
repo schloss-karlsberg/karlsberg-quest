@@ -3,6 +3,8 @@
  *  - dock 'vitals' 10: Lebenskraft (red-orange with a notch pattern) and Atem (pale blue, plain) —
  *    never red vs green alone; a pale "ghost" shows the damage just taken;
  *  - dock 'vitals' 20: Bannlicht charges (flame pips that refill);
+ *  - dock 'vitals' 25: the abilities (combat variety pass) — a slot per unlocked ability with its
+ *    glyph, its key and a conic cooldown ring that fills; dimmed while out of breath;
  *  - dock 'boss': the boss bar (name, phase marks, phase line, the weak point);
  *  - layer 'combat': telegraph captions, floating damage numbers ("Schadenszahlen"), HP pips over
  *    enemies with a "gebannt" tag, screen-edge arrows for off-screen attackers
@@ -54,6 +56,28 @@ html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc
 .kqc-boss .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #f6e6c0; box-shadow: 0 0 0 1px rgba(0,0,0,0.7); }
 .kqc-boss .sub { font-family: var(--hand); font-size: 18px; color: #e9d7ad; text-shadow: 0 1px 2px #000; min-height: 20px; }
 .kqc-boss.weak .sub { color: #ffe08a; }
+.kqc-skills { display: flex; gap: 6px; padding: 5px 8px; border-radius: 3px; justify-content: flex-start;
+  background: linear-gradient(180deg, rgba(20,16,11,0.7), rgba(20,16,11,0.5)); transition: opacity 0.6s; }
+.kqc-skills.calm { opacity: 0.6; }
+.kqc-skill { position: relative; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(rgba(233,199,122,0.95) calc(var(--f, 1) * 360deg), rgba(40,32,22,0.9) 0); }
+.kqc-skill::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #3a2c1c, #140e08); }
+.kqc-skill svg { position: relative; width: 22px; height: 22px; stroke: #6f6250; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.kqc-skill.ready svg { stroke: #ffe2a0; filter: drop-shadow(0 0 3px rgba(255,190,90,0.7)); }
+.kqc-skill.ready { box-shadow: 0 0 6px rgba(255,190,90,0.45); }
+.kqc-skill.tired svg { stroke: #9cc5de; }
+.kqc-skill.flash { animation: kqc-skill-ready 0.5s ease-out 1; }
+.kqc-skill .k { position: absolute; right: -4px; bottom: -4px; min-width: 15px; padding: 0 3px; font-family: var(--serif); font-size: 11px; line-height: 15px;
+  text-align: center; color: #1a1008; background: #e9d7ad; border-radius: 2px; box-shadow: 0 1px 2px #000; }
+.kqc-skill .cd { position: absolute; font-family: var(--serif); font-size: 13px; color: #f3e9d3; text-shadow: 0 1px 2px #000; }
+@keyframes kqc-skill-ready { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+html[data-kq-reduced-motion] .kqc-skill.flash { animation: none; }
+html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1px solid #f3e6c8; }
+.kqc-dazzle { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(230,240,255,0.55) 45%, rgba(200,220,240,0.15) 100%); }
+.kqc-pips .tag.guard { color: #f3dca6; border-color: rgba(233,199,122,0.8); background: rgba(28,20,8,0.85); }
+.kqc-pips .tag.veil { color: #d8efff; border-color: rgba(190,225,250,0.9); }
+.kqc-pips .tag.mirror { color: #ffffff; border-color: #ffffff; background: rgba(30,40,55,0.85); }
+.kqc-pips .tag.caller { color: #ffc89a; border-color: rgba(255,160,90,0.85); background: rgba(30,12,4,0.85); }
 .kqc-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .kqc-vignette { position: absolute; inset: -2%; opacity: 0; will-change: opacity;
   background: radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(190,215,235,0.35) 80%, rgba(225,238,250,0.75) 100%); }
@@ -153,7 +177,31 @@ export interface PipTarget {
   title?: string;
   /** Elite low enough for the Gnadenstoß. */
   finish?: boolean;
+  /** Combat variety pass: what to read about it — its guard, its veil, its mirror, its call. */
+  trait?: 'guard' | 'veil' | 'mirror' | 'caller';
 }
+
+/** An ability slot (dock 'vitals' 30). */
+export interface SkillSlot {
+  id: 'ausfall' | 'erdstoss' | 'wirbel';
+  name: string;
+  key: string;
+  /** 0..1 of the cooldown passed (1 = ready). */
+  frac: number;
+  /** Seconds left. */
+  left: number;
+  tired: boolean;
+}
+
+const SKILL_GLYPH: Record<SkillSlot['id'], string> = {
+  // a thrust: a line with an arrowhead
+  ausfall: '<path d="M3 12h15"/><path d="M13 6l6 6-6 6"/>',
+  // a blow into the ground: a stroke down onto two rings
+  erdstoss: '<path d="M12 2v10"/><path d="M8 9l4 4 4-4"/><ellipse cx="12" cy="18" rx="9" ry="3"/><ellipse cx="12" cy="18" rx="4.5" ry="1.4"/>',
+  // a whirl: a spiral
+  wirbel: '<path d="M12 12a2 2 0 1 1 2 2 4 4 0 1 1-4-4 6 6 0 1 1 6 6 8 8 0 0 1-8-8"/>',
+};
+const TRAIT_TAG: Record<NonNullable<PipTarget['trait']>, string> = { guard: 'Deckung', veil: 'Schleier', mirror: 'Spiegel', caller: 'Rufer' };
 
 export interface Docker {
   dock(area: 'vitals' | 'boss' | 'feed', el: HTMLElement, order?: number): void;
@@ -185,6 +233,9 @@ export class CombatHud {
   private vig = 0;
   private bossKey = '';
   private deniedT = 0;
+  readonly skillsEl: HTMLElement;
+  private readonly skillEls = new Map<string, { root: HTMLElement; key: HTMLElement; cd: HTMLElement; ready: boolean }>();
+  private readonly dazzleEl: HTMLElement;
 
   constructor(docker: Docker, layer: HTMLElement) {
     installCss();
@@ -229,11 +280,58 @@ export class CombatHud {
     docker.dock('vitals', this.vitals, 10);
     docker.dock('vitals', this.bannEl, 20);
     docker.dock('boss', this.bossEl, 0);
+    this.skillsEl = el('div', 'kqc-skills');
+    this.skillsEl.dataset.testid = 'combat-skills';
+    this.skillsEl.setAttribute('aria-label', 'Fähigkeiten');
+    this.skillsEl.style.display = 'none';
+    docker.dock('vitals', this.skillsEl, 25);
     this.vignette = el('div', 'kqc-vignette');
     this.low = el('div', 'kqc-low');
     this.tell = el('div', 'kqc-tell');
     this.tell.setAttribute('aria-live', 'polite');
-    layer.append(this.low, this.vignette, this.tell);
+    this.dazzleEl = el('div', 'kqc-dazzle');
+    layer.append(this.low, this.vignette, this.dazzleEl, this.tell);
+  }
+
+  /** The ability slots (none unlocked: the row hides). */
+  setSkills(list: readonly SkillSlot[], calm: boolean): void {
+    this.skillsEl.style.display = list.length ? '' : 'none';
+    this.skillsEl.classList.toggle('calm', calm && list.every((s) => s.frac >= 1));
+    for (const s of list) {
+      let e = this.skillEls.get(s.id);
+      if (!e) {
+        const root = el('div', 'kqc-skill');
+        root.dataset.skill = s.id;
+        root.setAttribute('role', 'img');
+        root.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${SKILL_GLYPH[s.id]}</svg>`;
+        const cd = el('span', 'cd');
+        const key = el('span', 'k');
+        root.append(cd, key);
+        this.skillsEl.append(root);
+        e = { root, key, cd, ready: true };
+        this.skillEls.set(s.id, e);
+      }
+      const ready = s.frac >= 1;
+      e.root.style.setProperty('--f', s.frac.toFixed(3));
+      e.root.classList.toggle('ready', ready && !s.tired);
+      e.root.classList.toggle('tired', ready && s.tired);
+      if (ready && !e.ready) {
+        e.root.classList.remove('flash');
+        void e.root.offsetWidth;
+        e.root.classList.add('flash');
+      }
+      e.ready = ready;
+      const cd = ready ? '' : String(Math.ceil(s.left));
+      if (e.cd.textContent !== cd) e.cd.textContent = cd;
+      if (e.key.textContent !== s.key) e.key.textContent = s.key;
+      const label = `${s.name} (${s.key})${ready ? '' : `, noch ${Math.ceil(s.left)} s`}`;
+      if (e.root.getAttribute('aria-label') !== label) e.root.setAttribute('aria-label', label);
+    }
+    for (const [id, e] of this.skillEls)
+      if (!list.some((s) => s.id === id)) {
+        e.root.remove();
+        this.skillEls.delete(id);
+      }
   }
 
   setVitals(o: { hp: number; max: number; st: number; stMax: number; exhausted: boolean; bann: number; bannMax: number; bannFrac: number; calm: boolean; key: string }): void {
@@ -411,7 +509,7 @@ export class CombatHud {
     a.el.style.transform = `rotate(${rel}rad)`;
   }
 
-  frame(o: { dt: number; camera: PerspectiveCamera; reducedFlash: boolean; reducedMotion: boolean; lowHp: number; pips: PipTarget[] }): void {
+  frame(o: { dt: number; camera: PerspectiveCamera; reducedFlash: boolean; reducedMotion: boolean; lowHp: number; pips: PipTarget[]; dazzle?: number }): void {
     const W = window.innerWidth;
     const H = window.innerHeight;
     const cam = o.camera;
@@ -467,11 +565,12 @@ export class CombatHud {
       e.root.style.zIndex = String(Math.max(1, 200 - Math.round(d * 4)));
       e.root.style.opacity = String(Math.max(0.45, Math.min(1, 1.25 - d / 40)));
       e.fill.style.width = `${Math.round(Math.max(0, Math.min(1, t.frac)) * 100)}%`;
-      const tag = t.finish ? 'Gnadenstoß' : t.gebannt ? 'gebannt' : t.immune ? 'ungreifbar' : '';
+      const tag = t.finish ? 'Gnadenstoß' : t.gebannt ? 'gebannt' : t.immune ? 'ungreifbar' : t.trait ? TRAIT_TAG[t.trait] : '';
       if (e.tag.textContent !== tag) e.tag.textContent = tag;
       e.tag.style.display = tag ? '' : 'none';
       e.tag.classList.toggle('immune', !t.gebannt && t.immune && !t.finish);
       e.tag.classList.toggle('finish', !!t.finish);
+      for (const k of ['guard', 'veil', 'mirror', 'caller'] as const) e.tag.classList.toggle(k, !t.finish && !t.gebannt && !t.immune && t.trait === k);
       const nm = t.title ?? '';
       if (e.name.textContent !== nm) e.name.textContent = nm;
       e.name.style.display = nm ? '' : 'none';
@@ -498,6 +597,8 @@ export class CombatHud {
     this.vignette.style.opacity = String(Math.min(cap, this.vig));
     const pulse = o.reducedMotion || o.reducedFlash ? 1 : 0.8 + 0.2 * Math.sin(performance.now() / 160);
     this.low.style.opacity = String(Math.min(cap, o.lowHp * 0.9 * pulse));
+    // dazzled by a mirror: a white bloom that fades (≤ 25 % with reduced flash)
+    this.dazzleEl.style.opacity = String(Math.min(o.reducedFlash ? 0.25 : 0.55, (o.dazzle ?? 0) * 0.45));
   }
 
   clearWorld(): void {

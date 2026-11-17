@@ -10,12 +10,23 @@
 import { ELITES, ENEMIES, enemyDef } from '../../rpg/enemies';
 import { BASE_STATS } from '../../rpg/stats';
 import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
-import { eliteIndex, escortHost, escortsOf } from './packs';
+import { callOf, eliteIndex, escortHost, escortsOf, hazardOf, packWorthy, waveOf } from './packs';
 import { BOSS_TURN, type BossView, bossCooldown, bossHitMul, chooseBossAttack, sealBolts, sparkRain, summonOf } from './bosses';
 import {
   AI,
   AttackTokens,
   BANN,
+  CALL,
+  GUARD,
+  HAZARD,
+  REFLECT,
+  SKILLS,
+  type SkillId,
+  WARD,
+  WAVE,
+  guardBlocks,
+  segmentDistance,
+  skillCooldown,
   COMBO,
   COST,
   DODGE,
@@ -29,6 +40,7 @@ import {
   type StaminaState,
   applyDamage,
   armorFactor,
+  isFrontal,
   assistYaw,
   attackTokens,
   bossPhase,
@@ -57,7 +69,7 @@ import {
 } from './rules';
 
 export type EnemyState = 'idle' | 'notice' | 'intro' | 'approach' | 'circle' | 'retreat' | 'windup' | 'strike' | 'recover' | 'gebannt' | 'stagger' | 'flee' | 'return' | 'roar' | 'leave' | 'dissolve';
-export type KillBy = 'light' | 'heavy' | 'bann' | 'item' | 'env';
+export type KillBy = 'light' | 'heavy' | 'bann' | 'item' | 'env' | 'skill' | 'hazard';
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
 export interface Enemy {
@@ -141,6 +153,23 @@ export interface Enemy {
   reformed: boolean;
   /** Seconds since it noticed the player (elites shrug off the Bannlicht for the first 3). */
   aggroT: number;
+  // ---- combat variety pass ----
+  /** Guard knocked open (s left): no blocking, blows land harder. */
+  guardBroken: number;
+  /** Veiled by a Nebelweber (s left): staff blows glance off. */
+  ward: number;
+  /** Mirror glass cracked by a heavy blow: no more reflecting. */
+  cracked: boolean;
+  /** Called out of the fog by a Rufer (no XP: it would be a farm). */
+  called: boolean;
+  /** A straggler of the second wave. */
+  wave: boolean;
+  /** Game time of the last Bannlicht on it (a second flare soon after holds it half as long). */
+  lastBann: number;
+  /** The flare's bonus blow is still to come (one blow per flare, then it wakes). */
+  bannBonus: boolean;
+  /** 0..1: still rising out of the fog / the ground (visuals). */
+  rise: number;
 }
 
 export interface Projectile {
@@ -174,6 +203,40 @@ export interface Ring {
   dur: number;
   owner: string;
   kind: 'area' | 'landing' | 'rain';
+}
+
+/** One blow of the staff (a swing, an ability): what the hit rules need. */
+export interface Blow {
+  /** Damage formula and armour: light (combo) or heavy (charge). */
+  kind: 'light' | 'heavy';
+  combo: number;
+  charge: number;
+  /** Extra multiplier (abilities). */
+  mul: number;
+  /** Breaks a front guard and cracks mirror glass (Wuchthieb, Erdstoß). */
+  breaks: boolean;
+  /** Never scatters paper / mist into a re-form (big moves end them). */
+  final: boolean;
+  /** The ability that struck (null: the swing). */
+  skill: SkillId | null;
+  /** Knock-back (m) and stagger (s) of an ability. */
+  knock?: number;
+  stagger?: number;
+}
+
+/** An ability in progress. */
+export interface SkillAct {
+  id: SkillId;
+  t: number;
+  dur: number;
+  yaw: number;
+  /** Ausfall: last position seen (the path is swept between steps). */
+  lx: number;
+  lz: number;
+  /** Ids already struck (each enemy once per ability, the Wirbel once per turn). */
+  hit: string[];
+  /** Wirbel / Erdstoß: blows resolved so far. */
+  done: number;
 }
 
 export interface Swing {
@@ -213,6 +276,12 @@ export interface PlayerCombat {
   flare: number;
   dead: boolean;
   god: boolean;
+  /** Ability in progress. */
+  skill: SkillAct | null;
+  /** Ability cooldowns (s left). */
+  cds: Record<SkillId, number>;
+  /** Dazzled by a mirrored Bannlicht (s left): no flare, no aim assist. */
+  dazzle: number;
 }
 
 export type SimEvent =
@@ -267,7 +336,46 @@ export type SimEvent =
   /** A pack noticed the player together (one call for all). */
   | { type: 'packAlert'; e: Enemy; n: number }
   /** An escort drifts off once its group is undone. */
-  | { type: 'drift'; e: Enemy };
+  | { type: 'drift'; e: Enemy }
+  // ---- combat variety pass ----
+  /** A light blow bounced off a guard (front). */
+  | { type: 'blocked'; e: Enemy; skill: SkillId | null }
+  /** A heavy blow knocked a guard open. */
+  | { type: 'guardBreak'; e: Enemy }
+  /** A blow to the flank / back of a guard. */
+  | { type: 'flank'; e: Enemy }
+  /** A Nebelweber veils its pack. */
+  | { type: 'ward'; e: Enemy; targets: Enemy[] }
+  /** The Bannlicht tears a veil. */
+  | { type: 'wardBreak'; e: Enemy }
+  /** A blow glanced off a veil. */
+  | { type: 'warded'; e: Enemy }
+  /** The Bannlicht came back off mirror glass. */
+  | { type: 'reflect'; e: Enemy; seconds: number }
+  /** A heavy blow cracked the mirror glass. */
+  | { type: 'crack'; e: Enemy }
+  /** A Rufer called (n came out of the fog). */
+  | { type: 'call'; e: Enemy; n: number; kind: string }
+  /** A call (or a veil) broken off by a blow or the flare. */
+  | { type: 'callBroken'; e: Enemy }
+  /** The second wave is coming (from x/z). */
+  | { type: 'waveIncoming'; group: string; x: number; z: number; n: number }
+  /** Something rises out of the fog (wave, call). */
+  | { type: 'emerge'; e: Enemy }
+  /** A hazard begins (rings fill; embers or a stone come down). */
+  | { type: 'hazard'; kind: 'fire' | 'stone'; x: number; z: number; r: number; dur: number }
+  /** A hazard lands: who was inside. */
+  | { type: 'hazardHit'; kind: 'fire' | 'stone'; x: number; z: number; r: number; player: boolean; enemies: number }
+  /** An ability starts (the Ausfall carries the push). */
+  | { type: 'skill'; id: SkillId; yaw: number; vx: number; vz: number; dur: number }
+  /** An ability's blow lands (the Erdstoß ring, each turn of the Wirbel). */
+  | { type: 'skillImpact'; id: SkillId; x: number; z: number; r: number; hits: number }
+  /** An ability could not start. */
+  | { type: 'skillDenied'; id: SkillId; why: 'cooldown' | 'tired' | 'locked' | 'busy' }
+  /** A bolt knocked out of the air by the Wirbel. */
+  | { type: 'deflect'; p: Projectile }
+  /** Dazzled: the flare does not come. */
+  | { type: 'dazzled' };
 
 export interface SimWorld {
   heightAt(x: number, z: number): number;
@@ -298,6 +406,8 @@ export interface SimInput {
   blocked: boolean;
   /** Dodge only (Space) is ignored (e.g. flying). */
   noDodge?: boolean;
+  /** An ability key went down this step. */
+  skill?: SkillId | null;
   safe: SafeReason;
   era: string;
   time: TimeOfDay;
@@ -313,6 +423,8 @@ export interface SimOptions {
   konter: boolean;
   waerme: boolean;
   dritter: boolean;
+  /** Abilities learnt (by level). */
+  skills?: readonly SkillId[];
 }
 
 /** Body radius and hover per kind. */
@@ -326,6 +438,9 @@ const BODY: Record<string, { r: number; hover: number; aggro: number; turn: numb
   grusling: { r: 0.42, hover: 0, aggro: 14, turn: 8 },
   steinfresser: { r: 0.95, hover: 0, aggro: 14, turn: 2.2 },
   nebelweber: { r: 0.5, hover: 0.35, aggro: 20, turn: 6 },
+  foliant: { r: 0.7, hover: 0, aggro: 16, turn: GUARD.turn },
+  scherbling: { r: 0.45, hover: 1.3, aggro: 18, turn: 5 },
+  rufer: { r: 0.5, hover: 0, aggro: 22, turn: 5 },
   schuldbuch: { r: 2.0, hover: 0.6, aggro: 26, turn: BOSS_TURN['schuldbuch']! },
   // big bosses keep a stand-off that matches their size (the camera stays outside the smoke horse,
   // the straw arms, the blocks; playtest round 2); the staff's reach grows with it (inCone + radius)
@@ -340,7 +455,7 @@ export const BOSS_INTRO = 2.6;
 /** Kinds that strike and fall back a few metres before they come again (hit and run). */
 const HIT_AND_RUN = new Set(['streuner', 'mahnbrief', 'raffschatten', 'nebelling']);
 /** Kinds that keep their distance and throw (they never take a surround slot). */
-const KITERS = new Set(['nebelweber', 'irrlicht']);
+const KITERS = new Set(['nebelweber', 'irrlicht', 'rufer']);
 /** Kinds that drift towards the player's back while closing in (flankers). */
 const FLANKERS = new Set(['streuner', 'raffschatten', 'grusling']);
 /** Gap between two pack wind-ups (s): attacks come in a rhythm, not all at once. */
@@ -362,7 +477,7 @@ export function reforms(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 
   return REFORMERS.has(e.kind) && !e.reformed && !e.boss && !e.elite && !e.add && kind === 'light' && !finisher && e.tier >= 1;
 }
 
-const ATTACK_GAP = { min: 0.45, spread: 0.3, gentle: 0.9, land: 0.85, gentleLand: 1.3 } as const;
+const ATTACK_GAP = { min: 0.5, spread: 0.3, gentle: 0.9, land: 1.0, gentleLand: 1.4 } as const;
 
 /** Distance an enemy wants to keep while closing in for `a`. */
 function wantDist(a: EnemyAttackDef): number {
@@ -427,6 +542,13 @@ export class CombatSim {
   private lastLand = -9;
   /** Player's view yaw (the flankers' "back"). */
   private pyaw = 0;
+  /** Second waves: per group, seconds of fight, kills when it began, when the wave steps out. */
+  private readonly waveState = new Map<string, { t: number; killed0: number; due: number; x: number; z: number }>();
+  private readonly waveDone = new Set<string>();
+  /** Hazards on the ground (rings filling up). */
+  readonly hazards: { kind: 'fire' | 'stone'; x: number; z: number; r: number; t: number; dur: number; ring: number }[] = [];
+  private hazardT = 0;
+  private hazardNext: number = HAZARD.every;
 
   constructor(
     readonly world: SimWorld,
@@ -458,6 +580,9 @@ export class CombatSim {
       flare: 0,
       dead: false,
       god: false,
+      skill: null,
+      cds: { ausfall: 0, erdstoss: 0, wirbel: 0 },
+      dazzle: 0,
     };
   }
 
@@ -482,6 +607,9 @@ export class CombatSim {
 
   /** Movement multiplier for the player (charging a Wuchthieb, drinking). */
   get moveScale(): number {
+    const sk = this.p.skill;
+    if (sk?.id === 'wirbel') return SKILLS.wirbel.moveScale;
+    if (sk?.id === 'erdstoss') return 0.25;
     if (this.p.charging) return HEAVY.moveScale;
     if (this.p.drink > 0) return 0.6;
     return 1;
@@ -525,9 +653,16 @@ export class CombatSim {
     if (group === undefined) {
       this.projectiles.length = 0;
       this.rings.length = 0;
+      this.hazards.length = 0;
       this.tokens.clear();
       this.escorted.clear();
-    } else this.escorted.delete(group);
+      this.waveState.clear();
+      this.waveDone.clear();
+    } else {
+      this.escorted.delete(group);
+      this.waveState.delete(group);
+      this.waveDone.delete(group);
+    }
   }
 
   private removeEnemy(i: number): void {
@@ -673,6 +808,14 @@ export class CombatSim {
       hitZ: 0,
       reformed: false,
       aggroT: 0,
+      guardBroken: 0,
+      ward: 0,
+      cracked: false,
+      called: false,
+      wave: false,
+      lastBann: -99,
+      bannBonus: false,
+      rise: 0,
     };
     if (el) e.title = el.name_de;
     if (o.quest) e.quest = o.quest;
@@ -716,6 +859,8 @@ export class CombatSim {
     }
     if (!p.dead) this.playerMoves(dt, inp);
     this.sync(inp.era, inp.time, inp.x, inp.z);
+    this.waveStep(edt, inp);
+    this.hazardStep(edt, inp);
     this.assignSlots(inp, edt);
     for (const e of [...this.enemies]) this.think(e, edt, inp);
     this.separate();
@@ -764,10 +909,16 @@ export class CombatSim {
     } else p.bannT = 0;
     if (p.flare > 0) p.flare = Math.max(0, p.flare - dt);
     if (p.drink > 0) p.drink = Math.max(0, p.drink - dt);
+    if (p.dazzle > 0) p.dazzle = Math.max(0, p.dazzle - dt);
+    for (const k in p.cds) {
+      const id = k as SkillId;
+      if (p.cds[id] > 0) p.cds[id] = Math.max(0, p.cds[id] - dt);
+    }
   }
 
   private playerMoves(dt: number, inp: SimInput): void {
     const p = this.p;
+    if (p.skill) this.skillStep(dt, inp);
     if (p.dodge) {
       p.dodge.t += dt;
       if (p.dodge.t >= DODGE.dur) p.dodge = null;
@@ -790,6 +941,13 @@ export class CombatSim {
     if (inp.blocked) {
       if (p.hold >= 0) this.endCharge();
       p.queued = false;
+      return;
+    }
+    if (inp.skill) this.trySkill(inp.skill, inp);
+    // an ability in progress owns the hands (no swing, no roll, no flare until it ends)
+    if (p.skill) {
+      p.queued = false;
+      if (p.hold >= 0) this.endCharge();
       return;
     }
     if (inp.dodgePressed && !inp.noDodge) this.tryDodge(inp);
@@ -833,6 +991,7 @@ export class CombatSim {
   }
 
   private aimYaw(inp: SimInput, reach: number): number {
+    if (this.p.dazzle > 0) return inp.yaw;
     const deg = this.opt.gentle ? COMBO.gentleAssistDeg : COMBO.assistDeg;
     const targets = this.enemies.filter((e) => e.state !== 'dissolve' && e.state !== 'leave');
     return assistYaw(inp.x, inp.z, inp.yaw, targets, reach, deg);
@@ -881,7 +1040,7 @@ export class CombatSim {
       .slice(0, sweep ? CLEAVE.sweep : heavy ? CLEAVE.heavy : CLEAVE.light);
     for (const e of inArc) {
       // flying things are reachable (the staff is 2 m long); only very high ones are out of reach
-      if (this.hitEnemy(e, w, inp, hits === 0 ? 1 : CLEAVE.falloff)) killed = true;
+      if (this.hitEnemy(e, { kind: w.kind, combo: w.combo, charge: w.charge, mul: 1, breaks: heavy, final: false, skill: null }, inp, hits === 0 ? 1 : CLEAVE.falloff)) killed = true;
       hits++;
     }
     w.hits = hits;
@@ -892,8 +1051,8 @@ export class CombatSim {
     }
   }
 
-  /** Apply one staff hit. Returns true if it undid the enemy. */
-  private hitEnemy(e: Enemy, w: Swing, inp: SimInput, cleave = 1): boolean {
+  /** Apply one blow (a swing, an ability). Returns true if it undid the enemy. */
+  private hitEnemy(e: Enemy, w: Blow, inp: SimInput, cleave = 1): boolean {
     const p = this.p;
     const dx = e.x - inp.x;
     const dz = e.z - inp.z;
@@ -918,20 +1077,21 @@ export class CombatSim {
     }
     this.immuneStreak = 0;
     const heavy = w.kind === 'heavy';
-    const finisher = !heavy && w.combo >= COMBO.hits - 1;
-    let mul = 1;
+    const finisher = !heavy && !w.skill && w.combo >= COMBO.hits - 1;
+    const from = { x: inp.x, z: inp.z };
+    let mul = w.mul;
     let weak = false;
     let armored = false;
     let armor = 1;
     if (e.boss) {
-      const b = bossHitMul(this.bossView(e), { x: inp.x, z: inp.z }, w.kind);
-      mul = b.mul;
+      const b = bossHitMul(this.bossView(e), from, w.breaks ? 'heavy' : w.kind);
+      mul *= b.mul;
       weak = b.weak;
       armored = b.armored;
     } else {
-      armor = armorFactor(e.def, w.kind, e, { x: inp.x, z: inp.z }, e.armorBroken > 0);
+      armor = armorFactor(e.def, w.breaks ? 'heavy' : w.kind, e, from, e.armorBroken > 0);
       armored = armor < 1;
-      if (heavy && e.def.armor && e.def.armorFrontal) e.armorBroken = 6;
+      if (w.breaks && e.def.armor && e.def.armorFrontal) e.armorBroken = 6;
     }
     // a boss rising into its next phase (roar) or revealing itself cannot be hurt
     if (e.boss && (e.state === 'roar' || e.state === 'intro')) {
@@ -940,35 +1100,87 @@ export class CombatSim {
     }
     e.hitX = dirX;
     e.hitZ = dirZ;
+    this.wake(e);
+    // a blow into a call (or a veil being woven) breaks it off
+    if (!e.boss && e.state === 'windup' && e.attack?.kind === 'summon') {
+      this.out.push({ type: 'callBroken', e });
+      this.staggerEnemy(e, 0.8);
+    }
+    // the guard (Foliant): light blows from the front bounce off; a heavy one knocks it open
+    if (!e.boss && e.def.guard) {
+      const open = e.guardBroken > 0 || e.state === 'windup' || e.state === 'strike' || e.state === 'recover' || e.state === 'stagger' || e.state === 'gebannt';
+      if (guardBlocks(e.def, w.breaks ? 'heavy' : 'light', e, from, open)) {
+        e.flash = 0.5;
+        if (!w.skill) {
+          spend(p.st, GUARD.blockStamina * this.opt.stats.staminaCost);
+          p.queued = false;
+        }
+        this.freeze = Math.max(this.freeze, HITSTOP.light * (this.opt.reducedMotion ? 0.5 : 1));
+        this.out.push({ type: 'blocked', e, skill: w.skill });
+        return false;
+      }
+      if (w.breaks && e.guardBroken <= 0 && isFrontal(e, from)) {
+        e.guardBroken = GUARD.breakFor;
+        this.out.push({ type: 'guardBreak', e });
+      } else if (e.guardBroken > 0) mul *= GUARD.brokenMul;
+      else if (!isFrontal(e, from)) {
+        mul *= GUARD.flankMul;
+        this.out.push({ type: 'flank', e });
+      }
+    }
+    // mirror glass gives under light blows; a heavy one cracks it
+    if (!e.boss && e.def.reflectsBann) {
+      if (!e.cracked && w.breaks) {
+        e.cracked = true;
+        this.out.push({ type: 'crack', e });
+      } else if (!e.cracked) mul *= REFLECT.glassMul;
+      else mul *= REFLECT.crackedMul;
+    }
+    // a veil: the staff glances off (the Bannlicht tears it)
+    if (e.ward > 0) {
+      mul *= WARD.mul;
+      this.out.push({ type: 'warded', e });
+    }
     // the Gnadenstoß: a low elite and a Wuchthieb
-    if (e.elite && e.finishable && heavy && e.state !== 'dissolve') {
+    if (e.elite && e.finishable && (heavy || w.breaks) && e.state !== 'dissolve') {
       const dmg = Math.ceil(e.hp);
       e.hp = 0;
       e.flash = 1;
-      e.by = 'heavy';
+      e.by = w.skill ? 'skill' : 'heavy';
       p.counter = false;
       this.freeze = Math.max(this.freeze, HITSTOP.heavy * 1.8 * (this.opt.reducedMotion ? 0.5 : 1));
       if (!this.opt.reducedMotion) this.slowmo = Math.max(this.slowmo, 0.4);
       this.out.push({ type: 'hit', e, damage: dmg, heavy: true, finisher: true, weak: true, armored: false, gebannt: e.stun > 0, dirX, dirZ });
       this.out.push({ type: 'finisher', e });
-      this.kill(e, 'heavy');
+      this.kill(e, e.by);
       return true;
     }
     const counter = p.counter;
     p.counter = false;
-    const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt: e.stun > 0 && !e.boss, armor, counter, mul: mul * cleave, jitter: hash01(this.tick * 13 + e.seed * 1000) });
+    // the flare's bonus: one blow per flare, and that blow wakes it (an Irrlicht stays down)
+    const gebannt = e.stun > 0 && !e.boss && e.bannBonus;
+    const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt, armor, counter, mul: mul * cleave, jitter: hash01(this.tick * 13 + e.seed * 1000) });
+    if (e.stun > 0 && !e.boss) {
+      e.bannBonus = false;
+      if (!e.def.needsBann) {
+        e.stun = 0;
+        if (e.state === 'gebannt') this.setState(e, 'stagger');
+        e.stagger = Math.max(e.stagger, 0.25);
+      }
+    }
     e.hp = applyDamage(e.kind, e.hp, e.maxHp, dmg);
     // one hit crosses at most one phase line (playtest: the Steinbrecher's phase 3 lasted 0 s)
     if (e.boss && e.hp > 0) e.hp = Math.max(e.hp, bossPhaseFloor(e.phase, e.maxHp, e.def.phases ?? []));
     else if (e.boss && e.def.phases?.length && e.phase <= e.def.phases.length) e.hp = Math.max(1, bossPhaseFloor(e.phase, e.maxHp, e.def.phases));
     e.flash = 1;
-    e.by = heavy ? 'heavy' : 'light';
-    this.wake(e);
+    e.by = w.skill ? 'skill' : heavy ? 'heavy' : 'light';
     // knockback (bosses barely move) and stagger
-    const kb = (heavy ? KNOCK.heavy : finisher ? KNOCK.finisher : KNOCK.light) * (e.boss ? 0.12 : e.kind === 'steinfresser' ? 0.35 : 1);
+    const kb = (w.knock ?? (heavy ? KNOCK.heavy : finisher ? KNOCK.finisher : KNOCK.light)) * (e.boss ? 0.12 : e.kind === 'steinfresser' ? 0.35 : e.elite && w.knock ? 0.6 : 1);
     e.vx += dirX * kb * 8;
     e.vz += dirZ * kb * 8;
-    if (!e.boss && (heavy || (finisher && this.opt.dritter) || (finisher && e.def.hp <= 25 && !e.elite))) this.staggerEnemy(e, heavy ? (e.elite ? 0.45 : 0.6) : 0.4);
+    if (!e.boss && e.guardBroken >= GUARD.breakFor - 0.01) this.staggerEnemy(e, GUARD.breakStagger);
+    else if (!e.boss && w.stagger) this.staggerEnemy(e, e.elite ? w.stagger * 0.55 : w.stagger);
+    else if (!e.boss && (heavy || (finisher && this.opt.dritter) || (finisher && e.def.hp <= 25 && !e.elite))) this.staggerEnemy(e, heavy ? (e.elite ? 0.45 : 0.6) : 0.4);
     if (e.boss) {
       e.poise += dmg * this.opt.stats.stagger;
       if (e.poise > e.maxHp * 0.16) {
@@ -976,7 +1188,7 @@ export class CombatSim {
         this.staggerEnemy(e, 0.9);
       }
     }
-    this.out.push({ type: 'hit', e, damage: dmg, heavy, finisher, weak, armored, gebannt: e.stun > 0, dirX, dirZ });
+    this.out.push({ type: 'hit', e, damage: dmg, heavy: heavy || w.skill !== null, finisher, weak, armored, gebannt, dirX, dirZ });
     if (e.elite && e.hp > 0) {
       if (!e.enraged && e.hp <= e.maxHp * 0.5) {
         e.enraged = true;
@@ -996,7 +1208,7 @@ export class CombatSim {
       this.out.push({ type: 'leave', e });
       return false;
     }
-    if (e.hp <= 0 && reforms(e, w.kind, finisher)) {
+    if (e.hp <= 0 && !w.final && reforms(e, w.kind, finisher)) {
       // paper and mist scatter under a light blow and pull themselves together once
       e.reformed = true;
       e.hp = Math.ceil(e.maxHp * REFORM_HP);
@@ -1046,6 +1258,8 @@ export class CombatSim {
     if (p.hold >= 0) this.endCharge();
     const v = dodgeSpeed();
     if (perfect) {
+      // timing pays: the breath comes back (combat variety pass — a pack's rhythm is dodgeable)
+      p.st.stamina = Math.min(p.st.max, p.st.stamina + DODGE.perfectRefund);
       this.slowmo = this.opt.reducedMotion ? 0 : DODGE.slowmo;
       if (this.opt.konter) p.counter = true;
     }
@@ -1085,6 +1299,10 @@ export class CombatSim {
   private tryBann(inp: SimInput): void {
     const p = this.p;
     const s = this.opt.stats;
+    if (p.dazzle > 0) {
+      this.out.push({ type: 'dazzled' });
+      return;
+    }
     if (p.bann < 1) {
       this.out.push({ type: 'noBann' });
       return;
@@ -1092,11 +1310,23 @@ export class CombatSim {
     p.bann--;
     p.flare = BANN.flare;
     let hits = 0;
+    let reflected: Enemy | null = null;
     for (const e of this.enemies) {
       if (e.state === 'dissolve' || e.state === 'leave') continue;
       if (!inCone(inp.x, inp.z, inp.yaw, s.bannRange, s.bannAngle, e.x, e.z, e.radius)) continue;
       if (e.y - inp.y > 4) continue;
       hits++;
+      // the flare tears a veil, whatever else it does
+      if (e.ward > 0) {
+        e.ward = 0;
+        this.out.push({ type: 'wardBreak', e });
+      }
+      // mirror glass throws it back into your eyes (it stays up)
+      if (e.def.reflectsBann && !e.cracked && !e.boss) {
+        this.wake(e);
+        if (!reflected || Math.hypot(e.x - inp.x, e.z - inp.z) < Math.hypot(reflected.x - inp.x, reflected.z - inp.z)) reflected = e;
+        continue;
+      }
       // a named elite fresh into the fight shrugs the flare off (the opening flare killed it)
       if (e.elite && !e.boss && (!e.aggro || e.aggroT < ELITE_BANN_GRACE)) {
         this.wake(e);
@@ -1104,6 +1334,7 @@ export class CombatSim {
         continue;
       }
       this.wake(e);
+      if (!e.boss && e.state === 'windup' && e.attack?.kind === 'summon') this.out.push({ type: 'callBroken', e });
       if (e.kind === 'schuldbuch') {
         e.sealOpen = BANN.sealOpen;
         e.stun = 1.2;
@@ -1112,7 +1343,11 @@ export class CombatSim {
         continue;
       }
       if (e.def.bannStun <= 0) continue;
-      const sec = e.def.bannStun * s.bannStun * (e.boss ? 0.6 : 1);
+      // flared again soon after: held half as long (the flare is a tool, not a cage)
+      const again = this.time - e.lastBann < BANN.repeat;
+      const sec = e.def.bannStun * s.bannStun * (e.boss ? 0.6 : 1) * (again && !e.def.needsBann ? BANN.repeatMul : 1);
+      e.lastBann = this.time;
+      e.bannBonus = true;
       e.stun = sec;
       this.tokens.release(e.id);
       this.dropRings(e);
@@ -1128,6 +1363,11 @@ export class CombatSim {
       }
     }
     this.out.push({ type: 'bann', x: inp.x, z: inp.z, yaw: inp.yaw, range: s.bannRange, angle: s.bannAngle, hits });
+    if (reflected) {
+      p.dazzle = REFLECT.dazzle;
+      this.out.push({ type: 'reflect', e: reflected, seconds: REFLECT.dazzle });
+      this.hurtPlayer(REFLECT.damage, reflected.kind, reflected, reflected.tier);
+    }
   }
 
   /** Quick-use animation lock (progression consumed the item). */
@@ -1180,7 +1420,7 @@ export class CombatSim {
   hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false): number {
     const p = this.p;
     if (p.dead || this.safe) return 0;
-    if (p.dodge && dodgeInvulnerable(p.dodge.t)) {
+    if ((p.dodge && dodgeInvulnerable(p.dodge.t)) || this.skillInvulnerable()) {
       this.out.push({ type: 'evade', by });
       return 0;
     }
@@ -1328,11 +1568,16 @@ export class CombatSim {
     if (e.sealOpen > 0) e.sealOpen = Math.max(0, e.sealOpen - dt);
     if (e.armorBroken > 0) e.armorBroken = Math.max(0, e.armorBroken - dt);
     if (e.slipCd > 0) e.slipCd = Math.max(0, e.slipCd - dt);
-    // an escort whose group is undone (or gone) drifts off into the fog
+    if (e.guardBroken > 0) e.guardBroken = Math.max(0, e.guardBroken - dt);
+    if (e.ward > 0) e.ward = Math.max(0, e.ward - dt);
+    if (e.rise > 0) e.rise = Math.max(0, e.rise - dt * 1.4);
+    // an escort whose group is undone (or gone) drifts off into the fog — unless it is in the
+    // thick of it with you (combat variety pass: the caller, the shield and the wave fight on)
     if (e.escort && e.state !== 'dissolve') {
       const host = this.groups[escortHost(e.group) ?? ''];
       const hostLive = this.enemies.some((x) => x.group === host?.group && x.state !== 'dissolve');
-      if (!host || (isCleared(host) && !hostLive)) {
+      const engaged = e.aggro && Math.hypot(e.x - inp.x, e.z - inp.z) < 14;
+      if (!host || (isCleared(host) && !hostLive && !engaged)) {
         e.orphan += dt;
         if (e.orphan > 1.1) {
           this.out.push({ type: 'drift', e });
@@ -1504,7 +1749,14 @@ export class CombatSim {
     let best: EnemyAttackDef | null = null;
     for (const a of e.def.attacks) {
       if ((e.cd[a.id] ?? 0) > 0) continue;
-      if (a.kind === 'summon') continue;
+      if (a.kind === 'summon') {
+        // the support moves come first when they can do something: a veil over the pack, a call
+        if (e.aggro && a.id === 'schleier' && this.wardTargets(e).length > 0) return a;
+        if (e.aggro && a.id === 'ruf' && d < a.range && this.calledBy(e) < CALL.max && this.live().length < AI.maxActive - 1) return a;
+        continue;
+      }
+      // the caller stays back: it only strikes what comes right up to it
+      if (e.kind === 'rufer' && a.kind === 'melee' && d > 3.2) continue;
       // prefer the attack whose range fits the distance best
       if (!best || Math.abs(wantDist(a) - d) < Math.abs(wantDist(best) - d)) best = a;
     }
@@ -1566,7 +1818,8 @@ export class CombatSim {
     }
     const sp = e.def.speed * (e.enraged ? 1.25 : 1);
     const a = this.pickAttack(e, d);
-    let want = a ? wantDist(a) : 3.5;
+    // casters and callers with nothing ready keep their distance instead of walking in
+    let want = a ? (a.kind === 'summon' ? Math.max(6, Math.min(d, 12)) : wantDist(a)) : KITERS.has(e.kind) ? 10 : 3.5;
     // a boss keeps a stand-off that matches its size (the camera never sits inside it)
     if (e.boss) want = Math.max(want, e.radius + 1.5);
     e.tryT += dt;
@@ -1762,8 +2015,12 @@ export class CombatSim {
         this.shoot(e, a, inp);
         break;
       case 'summon': {
-        const s = summonOf(e.kind, e.phase);
-        this.summon(e, s.kind, s.n);
+        if (a.id === 'schleier') this.veil(e);
+        else if (a.id === 'ruf') this.call(e, inp);
+        else {
+          const s = summonOf(e.kind, e.phase);
+          this.summon(e, s.kind, s.n);
+        }
         break;
       }
     }
@@ -1865,6 +2122,329 @@ export class CombatSim {
       return;
     }
     if (e.t >= AI.strike) this.setState(e, 'recover');
+  }
+
+  // ---- combat variety pass: veil, call, second wave, hazards ------------------------------------
+
+  /** The pack root of an enemy's group (`g+escort` → `g`). */
+  private rootOf(e: Enemy): string {
+    const g = e.group.endsWith('+adds') ? e.group.slice(0, -5) : e.group;
+    return escortHost(g) ?? g;
+  }
+
+  /** Who a Nebelweber would veil: up to WARD.max of its pack near it, nearest the player first. */
+  private wardTargets(e: Enemy): Enemy[] {
+    const root = this.rootOf(e);
+    return this.enemies
+      .filter((o) => o !== e && !o.boss && o.aggro && o.ward <= 0.5 && o.state !== 'dissolve' && o.state !== 'leave' && this.rootOf(o) === root && Math.hypot(o.x - e.x, o.z - e.z) <= WARD.radius && o.hp > o.maxHp * 0.15)
+      .sort((a, b) => Math.hypot(a.x - this.px, a.z - this.pz) - Math.hypot(b.x - this.px, b.z - this.pz))
+      .slice(0, WARD.max);
+  }
+
+  /** Called ones still about (a Rufer's). */
+  private calledBy(e: Enemy): number {
+    const root = this.rootOf(e);
+    return this.enemies.filter((o) => o.called && o.state !== 'dissolve' && this.rootOf(o) === root).length;
+  }
+
+  private veil(e: Enemy): void {
+    const T = this.wardTargets(e);
+    for (const o of T) o.ward = WARD.dur;
+    if (T.length) this.out.push({ type: 'ward', e, targets: T });
+  }
+
+  /** A walkable point `dist` m from the player near `bearing` (rad, atan2 z/x), or null. */
+  private fogPoint(bearing: number, dist: number, seed: number): { x: number; z: number } | null {
+    for (let k = 0; k < 9; k++) {
+      const off = (k === 0 ? 0 : (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.38) + (seed - 0.5) * 0.3;
+      const x = this.px + Math.cos(bearing + off) * dist;
+      const z = this.pz + Math.sin(bearing + off) * dist;
+      if (!this.world.walkable || this.world.walkable(x, z)) return { x, z };
+    }
+    return null;
+  }
+
+  /** Something steps out of the fog and goes straight for the player (wave, call). */
+  private fromFog(kind: string, x: number, z: number, host: EnemyGroupState | undefined, root: string, o: { called?: boolean; wave?: boolean; tier: number }): Enemy | null {
+    const def = enemyDef(kind);
+    if (!def || this.live().length >= AI.maxActive) return null;
+    const e = this.makeEnemy(def, `${root}+escort#${this.idSeq++}`, `${root}+escort`, x, z, { boss: false, tier: o.tier, leash: host?.leash ?? AI.leash, home: { x: host?.x ?? x, z: host?.z ?? z }, add: true, escort: true });
+    e.called = o.called === true;
+    e.wave = o.wave === true;
+    e.aggro = true;
+    e.rise = 1;
+    e.heading = headingOf(this.px - x, this.pz - z);
+    this.setState(e, 'notice');
+    e.t = -0.35;
+    this.out.push({ type: 'emerge', e });
+    return e;
+  }
+
+  /** The Rufer calls: CALL.n of its pack come out of the fog behind the player's shoulder. */
+  private call(e: Enemy, inp: SimInput): void {
+    const root = this.rootOf(e);
+    const host = this.groups[root];
+    const kind = callOf(host?.kind, inp.era);
+    const room = Math.min(CALL.n, CALL.max - this.calledBy(e));
+    // from the side away from the caller: the player is caught between them
+    const away = Math.atan2(inp.z - e.z, inp.x - e.x);
+    let n = 0;
+    for (let i = 0; i < room; i++) {
+      const pt = this.fogPoint(away + (i - (room - 1) / 2) * 0.9, CALL.dist, hash01(this.tick + i * 17 + e.seed * 31));
+      if (pt && this.fromFog(kind, pt.x, pt.z, host, root, { called: true, tier: e.tier })) n++;
+    }
+    if (n) this.out.push({ type: 'call', e, n, kind });
+  }
+
+  /**
+   * The second wave: once a pack is in the fight (WAVE.after s, or the first of it falls) its
+   * stragglers come out of the fog WAVE.delay s later, from the side away from the pack.
+   */
+  private waveStep(dt: number, inp: SimInput): void {
+    for (const g of Object.values(this.groups)) {
+      if (g.boss || isCleared(g) || this.waveDone.has(g.group) || !waveOf(g).length) continue;
+      const members = this.enemies.filter((e) => e.group === g.group && e.state !== 'dissolve');
+      let st = this.waveState.get(g.group);
+      const fighting = members.some((e) => e.aggro && Math.hypot(e.x - inp.x, e.z - inp.z) < 30);
+      if (!st) {
+        if (!fighting) continue;
+        st = { t: 0, killed0: g.killed, due: -1, x: 0, z: 0 };
+        this.waveState.set(g.group, st);
+      }
+      if (!fighting && st.due < 0) continue;
+      st.t += dt;
+      if (st.due < 0 && (st.t >= WAVE.after || g.killed > st.killed0)) {
+        // from the side away from where the pack stands
+        let sx = 0;
+        let sz = 0;
+        for (const e of this.enemies) if ((e.group === g.group || e.group === `${g.group}+escort`) && e.state !== 'dissolve') {
+          sx += e.x - inp.x;
+          sz += e.z - inp.z;
+        }
+        const away = Math.atan2(-sz, -sx) + (hashStr(g.group) - 0.5) * 1.2;
+        const pt = this.fogPoint(sx || sz ? away : inp.yaw, WAVE.dist, hashStr(g.group + 'w'));
+        if (!pt) {
+          this.waveDone.add(g.group);
+          continue;
+        }
+        st.due = this.time + WAVE.delay;
+        st.x = pt.x;
+        st.z = pt.z;
+        this.out.push({ type: 'waveIncoming', group: g.group, x: pt.x, z: pt.z, n: waveOf(g).reduce((n, w) => n + w.n, 0) });
+      }
+      if (st.due >= 0 && this.time >= st.due) {
+        this.waveDone.add(g.group);
+        let i = 0;
+        for (const w of waveOf(g))
+          for (let k = 0; k < w.n; k++, i++) {
+            const a = (i * 2.4 + hashStr(g.group)) % (Math.PI * 2);
+            this.fromFog(w.kind, st.x + Math.cos(a) * (0.8 + i * 0.45), st.z + Math.sin(a) * (0.8 + i * 0.45), g, g.group, { wave: true, tier: g.tier ?? 1 });
+          }
+      }
+    }
+  }
+
+  /** Is a pack (not a boss) fighting the player right now? */
+  private packFight(inp: SimInput): boolean {
+    let pack = false;
+    for (const e of this.enemies) {
+      if (e.state === 'dissolve' || !e.aggro) continue;
+      if (e.boss) return false;
+      if (Math.hypot(e.x - inp.x, e.z - inp.z) > 25) continue;
+      const g = this.groups[this.rootOf(e)];
+      if (g && packWorthy(g)) pack = true;
+    }
+    return pack;
+  }
+
+  /**
+   * Hazards of the era in a pack fight: embers come down in rings in the burning July of 1793,
+   * stones fall from the robbed walls in 1796. Each fills up like a telegraph; who stands in it
+   * when it lands is hurt — the pack too (lure them in).
+   */
+  private hazardStep(dt: number, inp: SimInput): void {
+    for (let i = this.hazards.length - 1; i >= 0; i--) {
+      const h = this.hazards[i]!;
+      h.t += dt;
+      if (h.t < h.dur) continue;
+      this.hazards.splice(i, 1);
+      const k = this.rings.findIndex((r) => r.id === h.ring);
+      if (k >= 0) this.rings.splice(k, 1);
+      const def = HAZARD[h.kind];
+      const hitP = !this.p.dead && Math.hypot(inp.x - h.x, inp.z - h.z) <= h.r + 0.3 && this.hurtPlayer(def.damage, h.kind === 'fire' ? 'funkenflug' : 'steinschlag', { x: h.x, z: h.z }, 1, true) > 0;
+      let n = 0;
+      for (const e of [...this.enemies]) {
+        if (e.boss || e.state === 'dissolve' || e.state === 'leave' || e.hover > 1) continue;
+        if (Math.hypot(e.x - h.x, e.z - h.z) > h.r + e.radius * 0.5) continue;
+        n++;
+        const dmg = Math.round(e.maxHp * def.enemyFrac * (e.elite ? 0.5 : 1));
+        const dx = e.x - h.x;
+        const dz = e.z - h.z;
+        const l = Math.hypot(dx, dz) || 1;
+        e.hp = Math.max(0, e.hp - dmg);
+        e.flash = 1;
+        e.hitX = dx / l;
+        e.hitZ = dz / l;
+        this.out.push({ type: 'hit', e, damage: dmg, heavy: true, finisher: false, weak: true, armored: false, gebannt: false, dirX: dx / l, dirZ: dz / l });
+        if (e.hp <= 0) this.kill(e, 'hazard');
+        else this.staggerEnemy(e, 0.9);
+      }
+      this.out.push({ type: 'hazardHit', kind: h.kind, x: h.x, z: h.z, r: h.r, player: hitP, enemies: n });
+    }
+    const kind = hazardOf(inp.era);
+    if (!kind || this.p.dead || !this.p.inCombat || this.safe || !this.packFight(inp)) {
+      this.hazardT = 0;
+      return;
+    }
+    this.hazardT += dt;
+    if (this.hazardT < this.hazardNext) return;
+    this.hazardT = 0;
+    this.hazardNext = HAZARD.every + hash01(this.tick * 3.1) * HAZARD.spread;
+    const def = HAZARD[kind];
+    const spots: { x: number; z: number }[] = [];
+    // one where you stand (a step or two off), one by an enemy of the pack (lure it in)
+    const a = hash01(this.tick * 1.7) * Math.PI * 2;
+    const off = 0.6 + hash01(this.tick * 2.3) * 0.9;
+    spots.push({ x: inp.x + Math.cos(a) * off + inp.moveX * 1.2, z: inp.z + Math.sin(a) * off + inp.moveZ * 1.2 });
+    if (def.n > 1) {
+      const near = this.enemies.filter((e) => e.aggro && !e.boss && e.state !== 'dissolve' && Math.hypot(e.x - inp.x, e.z - inp.z) > def.r * 1.6 && Math.hypot(e.x - inp.x, e.z - inp.z) < 12);
+      const t = near[Math.floor(hash01(this.tick * 5.3) * near.length)];
+      if (t) spots.push({ x: t.x, z: t.z });
+    }
+    for (const sp of spots) {
+      const id = ++this.idSeq;
+      const dur = def.tele * (this.opt.gentle ? AI.gentleTelegraph : 1);
+      this.rings.push({ id, x: sp.x, z: sp.z, r: def.r, t: 0, dur, owner: 'hazard', kind: kind === 'fire' ? 'rain' : 'landing' });
+      this.hazards.push({ kind, x: sp.x, z: sp.z, r: def.r, t: 0, dur, ring: id });
+      if (kind === 'stone') {
+        // a block comes down from the robbed wall (drawn; the hazard does the harm)
+        const gy = this.world.heightAt(sp.x, sp.z);
+        const h = 0.5 * 9.81 * 0.8 * dur * dur;
+        this.projectiles.push({ id: ++this.idSeq, kind: 'hazard.stein', owner: 'hazard', x: sp.x + 1.2, y: gy + h, z: sp.z - 0.8, vx: -1.2 / dur, vy: 0, vz: 0.8 / dur, t: 0, life: dur, damage: 0, tier: 1, lob: true, tx: sp.x, tz: sp.z, r: def.r, ring: -1 });
+      }
+      this.out.push({ type: 'hazard', kind, x: sp.x, z: sp.z, r: def.r, dur });
+    }
+  }
+
+  // ---- abilities ---------------------------------------------------------------------------------
+
+  /** Seconds of i-frames: the Ausfall all the way, the Erdstoß around its blow. */
+  private skillInvulnerable(): boolean {
+    const k = this.p.skill;
+    if (!k) return false;
+    if (k.id === 'ausfall') return true;
+    if (k.id === 'erdstoss') return k.t >= SKILLS.erdstoss.impact - 0.12 && k.t <= SKILLS.erdstoss.impact + 0.15;
+    return false;
+  }
+
+  /** Can an ability start now (why not)? */
+  skillReady(id: SkillId): 'ok' | 'cooldown' | 'tired' | 'locked' | 'busy' {
+    const p = this.p;
+    if (!(this.opt.skills ?? []).includes(id)) return 'locked';
+    if (p.cds[id] > 0) return 'cooldown';
+    if (p.skill || p.dodge || p.drink > 0 || p.dead) return 'busy';
+    if (!canAct(p.st, SKILLS[id].cost)) return 'tired';
+    return 'ok';
+  }
+
+  private trySkill(id: SkillId, inp: SimInput): void {
+    const p = this.p;
+    // a swing that has landed may be cut short by an ability (the flow of a fight)
+    if (p.swing && p.swing.resolved) p.swing = null;
+    const why = p.swing ? 'busy' : this.skillReady(id);
+    if (why !== 'ok') {
+      this.out.push({ type: 'skillDenied', id, why });
+      return;
+    }
+    const def = SKILLS[id];
+    spend(p.st, def.cost * this.opt.stats.staminaCost);
+    p.cds[id] = skillCooldown(id, this.opt.gentle);
+    if (p.hold >= 0) this.endCharge();
+    p.queued = false;
+    p.drink = 0;
+    let yaw = inp.yaw;
+    let vx = 0;
+    let vz = 0;
+    if (id === 'ausfall') {
+      const A = SKILLS.ausfall;
+      // aimed at the nearest enemy near the view, and on past it (through the pack)
+      const targets = this.enemies.filter((e) => e.state !== 'dissolve' && e.state !== 'leave');
+      yaw = p.dazzle > 0 ? inp.yaw : assistYaw(inp.x, inp.z, inp.yaw, targets, A.dist + 1.5, 35);
+      let dist: number = A.dist;
+      const t = targets.find((e) => Math.abs(wrapAngle(headingOf(e.x - inp.x, e.z - inp.z) - yaw)) < 0.05 && Math.hypot(e.x - inp.x, e.z - inp.z) < A.dist + 2.5);
+      if (t) dist = Math.max(3.5, Math.min(A.dist, Math.hypot(t.x - inp.x, t.z - inp.z) + t.radius + 1.6));
+      const f = forwardOf(yaw);
+      const v = (2 * dist) / A.dur;
+      vx = f.x * v;
+      vz = f.z * v;
+    }
+    p.skill = { id, t: 0, dur: def.dur, yaw, lx: inp.x, lz: inp.z, hit: [], done: 0 };
+    this.out.push({ type: 'skill', id, yaw, vx, vz, dur: def.dur });
+  }
+
+  private skillStep(dt: number, inp: SimInput): void {
+    const p = this.p;
+    const k = p.skill!;
+    k.t += dt;
+    const live = () => this.enemies.filter((e) => e.state !== 'dissolve' && e.state !== 'leave' && e.y - inp.y <= 3.2);
+    if (k.id === 'ausfall') {
+      const S = SKILLS.ausfall;
+      let hits = 0;
+      for (const e of live()) {
+        if (k.hit.includes(e.id)) continue;
+        const sd = segmentDistance(k.lx, k.lz, inp.x, inp.z, e.x, e.z);
+        // and the staff's point ahead of you at the end
+        const f = forwardOf(k.yaw);
+        const tip = k.t >= k.dur ? Math.hypot(e.x - (inp.x + f.x * 1.4), e.z - (inp.z + f.z * 1.4)) <= 1.2 + e.radius : false;
+        if (sd.d > S.width + e.radius && !tip) continue;
+        k.hit.push(e.id);
+        this.hitEnemy(e, { kind: 'light', combo: 0, charge: 0, mul: S.mul, breaks: false, final: true, skill: 'ausfall', knock: 1.2, stagger: k.hit.length === 1 ? S.stagger : undefined }, { ...inp, x: k.lx, z: k.lz });
+        hits++;
+      }
+      if (hits) this.freeze = Math.max(this.freeze, HITSTOP.light * (this.opt.reducedMotion ? 0.5 : 1));
+      k.lx = inp.x;
+      k.lz = inp.z;
+      if (hits) this.out.push({ type: 'skillImpact', id: 'ausfall', x: inp.x, z: inp.z, r: S.width, hits });
+    } else if (k.id === 'erdstoss') {
+      const S = SKILLS.erdstoss;
+      if (k.done === 0 && k.t >= S.impact) {
+        k.done = 1;
+        let hits = 0;
+        for (const e of live()) {
+          const d = Math.hypot(e.x - inp.x, e.z - inp.z);
+          if (d > S.radius + e.radius) continue;
+          // the ring loses a little on the way out
+          const fall = 1 - 0.25 * Math.min(1, d / S.radius);
+          this.hitEnemy(e, { kind: 'light', combo: 0, charge: 0, mul: S.mul * fall, breaks: true, final: true, skill: 'erdstoss', knock: S.knock, stagger: S.stagger }, inp);
+          hits++;
+        }
+        this.freeze = Math.max(this.freeze, HITSTOP.heavy * 1.2 * (this.opt.reducedMotion ? 0.5 : 1));
+        this.out.push({ type: 'skillImpact', id: 'erdstoss', x: inp.x, z: inp.z, r: S.radius, hits });
+      }
+    } else {
+      const S = SKILLS.wirbel;
+      // bolts that come at you while it spins are knocked out of the air
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const pr = this.projectiles[i]!;
+        if (pr.lob || pr.owner === 'hazard') continue;
+        if (Math.hypot(pr.x - inp.x, pr.z - inp.z) > 2.6) continue;
+        this.projectiles.splice(i, 1);
+        this.out.push({ type: 'deflect', p: pr });
+      }
+      while (k.done < S.hits.length && k.t >= S.hits[k.done]!) {
+        k.done++;
+        let hits = 0;
+        for (const e of live()) {
+          const d = Math.hypot(e.x - inp.x, e.z - inp.z);
+          if (d > S.radius + e.radius) continue;
+          this.hitEnemy(e, { kind: 'light', combo: 0, charge: 0, mul: S.mul, breaks: false, final: k.done === S.hits.length, skill: 'wirbel', knock: 0.7 }, inp);
+          hits++;
+        }
+        if (hits) this.freeze = Math.max(this.freeze, HITSTOP.light * 0.6 * (this.opt.reducedMotion ? 0.5 : 1));
+        this.out.push({ type: 'skillImpact', id: 'wirbel', x: inp.x, z: inp.z, r: S.radius, hits });
+      }
+    }
+    if (k.t >= k.dur) p.skill = null;
   }
 
   private summon(e: Enemy, kind: string, n: number): void {

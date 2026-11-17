@@ -369,7 +369,8 @@ describe('combat simulation', () => {
     s.p.god = true;
     for (let i = 0; i < 600; i++) {
       s.step(1 / 60, input());
-      const attacking = s.live().filter((e) => e.state === 'windup' || e.state === 'strike' || e.state === 'recover').length;
+      // a caster's veil / call is not a blow and takes no token
+      const attacking = s.live().filter((e) => (e.state === 'windup' || e.state === 'strike' || e.state === 'recover') && e.attack?.kind !== 'summon').length;
       max = Math.max(max, attacking);
       expect(s.tokens.count).toBeLessThanOrEqual(2);
     }
