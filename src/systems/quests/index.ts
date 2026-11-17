@@ -27,7 +27,7 @@ import { Beacons, type BeaconSpec } from './beacons';
 import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
-import { type QuestDefIn, type QuestPayout, HISTORY_AT_TURNIN, QuestBook, createQuestSlice, need, normaliseSlice, turninOf } from './logic';
+import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -405,13 +405,13 @@ class QuestRuntime {
       }),
       skills: p.skills.map((s) => `${SKILL_NAME[s.id] ?? s.id} ${s.tier}`),
       // voices tell one line; the rest is in the journal (an npc offers "Erzähl mehr")
-      more: (ti === 'auto' || 'voice' in ti) && hist.length > HISTORY_AT_TURNIN ? t('quest.moreJournal', { n: hist.length - HISTORY_AT_TURNIN }) : undefined,
+      more: (ti === 'auto' || 'voice' in ti) && hist.length > historyAtTurnin(q) ? t('quest.moreJournal', { n: hist.length - historyAtTurnin(q) }) : undefined,
     };
     this.reward.show(view, talking);
     if (ti === 'auto' || 'voice' in ti) {
       // a turn-in moment, not a lecture (playtest round 3): the thanks (one line) and one history
       // line, held back while a fight is on (the presenter's lore rule)
-      const lines = [...(q.turnin_lines ?? []).slice(0, 1), ...hist.slice(0, HISTORY_AT_TURNIN)];
+      const lines = [...(q.turnin_lines ?? []).slice(0, 1), ...hist.slice(0, historyAtTurnin(q))];
       for (const l of lines) this.say(l, undefined, true);
     }
     this.dirty = true;

@@ -152,6 +152,11 @@ const DEFAULT_ACCEPT = 'Ich kümmere mich darum.';
  */
 export const HISTORY_AT_TURNIN = 1;
 
+/** History lines the turn-in of `q` tells (its `history_at_turnin`, else HISTORY_AT_TURNIN). */
+export function historyAtTurnin(q: { history_at_turnin?: number }): number {
+  return Math.max(0, q.history_at_turnin ?? HISTORY_AT_TURNIN);
+}
+
 export class QuestBook {
   /** Called after any change (UI refresh, autosave). */
   onChange: (reason: string) => void = () => {};
@@ -602,11 +607,11 @@ export class QuestBook {
           t: { quest: q.id, kind: 'offer', label, main, lines: q.offer, accept: q.accept_de ?? DEFAULT_ACCEPT, declinable: q.declinable ?? !main },
         });
       else if (st === 'ready' && atTurnin)
-        out.push({ rank: 0, t: { quest: q.id, kind: 'turnin', label, main, lines: q.turnin_lines ?? [], history: q.history ?? [] } });
+        out.push({ rank: 0, t: { quest: q.id, kind: 'turnin', label, main, lines: q.turnin_lines ?? [], history: (q.history ?? []).slice(0, historyAtTurnin(q)) } });
       else if (st === 'active' && atTurnin && q.progress?.length) out.push({ rank: 3, t: { quest: q.id, kind: 'progress', label, main, lines: q.progress } });
       // after a turn-in at this npc: the rest of the history, when the player wants it (§8.5.7)
-      else if (st === 'done' && atTurnin && (q.history?.length ?? 0) > HISTORY_AT_TURNIN && !this.slice.quests[q.id]?.told && (!this.chapter || q.chapter === this.chapter))
-        out.push({ rank: 4, t: { quest: q.id, kind: 'more', label: `Erzähl mehr: ${label}`, main, lines: (q.history ?? []).slice(HISTORY_AT_TURNIN) } });
+      else if (st === 'done' && atTurnin && (q.history?.length ?? 0) > historyAtTurnin(q) && !this.slice.quests[q.id]?.told && (!this.chapter || q.chapter === this.chapter))
+        out.push({ rank: 4, t: { quest: q.id, kind: 'more', label: `Erzähl mehr: ${label}`, main, lines: (q.history ?? []).slice(historyAtTurnin(q)) } });
     }
     return out.sort((a, b) => a.rank - b.rank).map((x) => x.t);
   }

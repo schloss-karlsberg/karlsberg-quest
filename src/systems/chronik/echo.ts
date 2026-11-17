@@ -9,6 +9,7 @@ import type { GameContext } from '../../core/context';
 import type { DialogueLine } from '../../content/types';
 import { type BreathLoop, breathing, echoSwell, whisper } from './audio';
 import { figureSpeakers, isStageDirection, lineMs } from './logic';
+import { type EchoMark, type EchoStaging, NO_FIGURE, echoStaging } from './staging';
 import type { ChronikClue } from './types';
 import { GhostFigure } from './world/ghosts';
 import { disposeTree, drapedDisc, lin, mistMaterial } from './world/gfx';
@@ -19,6 +20,8 @@ export interface TranscriptLine {
 }
 
 interface Cue {
+  /** Dialogue line id (echo:line). */
+  id: string;
   start: number;
   dur: number;
   figure: number;
@@ -33,6 +36,7 @@ interface Figure {
   to: Vector3;
   pos: Vector3;
   facing: number;
+  mark?: EchoMark;
 }
 
 const INTRO = 1.9;
@@ -52,6 +56,7 @@ export class EchoDirector {
   private aborted = false;
   private desat0 = 0;
   private mist: Mesh | null = null;
+  private staging: EchoStaging = {};
   private readonly label: HTMLElement;
 
   constructor(
@@ -83,8 +88,10 @@ export class EchoDirector {
     this.ending = false;
     this.aborted = false;
     const lines = this.lines(clue.id);
-    const speakers = figureSpeakers(lines);
-    const figCount = Math.max(1, speakers.length);
+    const st = (this.staging = echoStaging(clue.id) ?? {});
+    const speakers = figureSpeakers(lines, [...NO_FIGURE, ...(st.voices ?? [])]);
+    // a staged memory draws its own people; a plain one always shows at least one figure
+    const figCount = echoStaging(clue.id) ? speakers.length : Math.max(1, speakers.length);
 
     // stage: in front of the player, towards the clue
     const p = ctx.player.position;
@@ -93,16 +100,19 @@ export class EchoDirector {
     if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1);
     dir.normalize();
     const side = new Vector3(-dir.z, 0, dir.x);
-    this.center.set(p.x + dir.x * 5, 0, p.z + dir.z * 5);
+    if (st.atClue) this.center.set(clue.where.x, 0, clue.where.z);
+    else this.center.set(p.x + dir.x * 5, 0, p.z + dir.z * 5);
     const night = ctx.era.info.night;
     this.figures = [];
     for (let i = 0; i < figCount; i++) {
       const seed = [...(speakers[i] ?? clue.id)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 17 + i);
       const ghost = new GhostFigure(seed, { hat: seed % 3 !== 0, dress: seed % 4 === 1, night });
       const off = (i - (figCount - 1) / 2) * 2.1;
-      const from = this.center.clone().addScaledVector(side, off - 0.8).addScaledVector(dir, (i % 2) * 0.9);
-      const to = this.center.clone().addScaledVector(side, off + 0.8).addScaledVector(dir, (i % 2) * 0.9 - 0.4);
-      const fig: Figure = { ghost, from, to, pos: from.clone(), facing: Math.atan2(to.x - from.x, to.z - from.z) };
+      const mark = st.marks?.[speakers[i] ?? ''];
+      const from = mark ? new Vector3(mark.x, 0, mark.z) : this.center.clone().addScaledVector(side, off - 0.8).addScaledVector(dir, (i % 2) * 0.9);
+      const to = mark ? new Vector3(mark.to?.x ?? mark.x, 0, mark.to?.z ?? mark.z) : this.center.clone().addScaledVector(side, off + 0.8).addScaledVector(dir, (i % 2) * 0.9 - 0.4);
+      const look0 = mark?.face ? Math.atan2(mark.face.x - from.x, mark.face.z - from.z) : Math.atan2(to.x - from.x, to.z - from.z);
+      const fig: Figure = { ghost, from, to, pos: from.clone(), facing: look0, mark };
       this.stage.add(ghost.object);
       this.figures.push(fig);
     }
@@ -116,16 +126,19 @@ export class EchoDirector {
 
     // cues
     this.cues = [];
-    let t = INTRO;
-    const list = lines.length ? lines.map((l) => ({ speaker: l.speaker, text: l.text_de })) : [{ speaker: '', text: `(${clue.text_de ?? clue.title_de})` }];
+    const intro = st.intro ?? INTRO;
+    const pace = st.pace ?? 1;
+    let t = intro;
+    const list = lines.length ? lines.map((l) => ({ id: l.id, speaker: l.speaker, text: l.text_de })) : [{ id: '', speaker: '', text: `(${clue.text_de ?? clue.title_de})` }];
     for (const l of list) {
-      const stage = isStageDirection(l.text) || !l.speaker;
+      // sounds ("geraeusch", stage directions) are captions without a figure
+      const stage = isStageDirection(l.text) || !l.speaker || l.speaker === 'geraeusch';
       const figure = stage ? -1 : speakers.indexOf(l.speaker);
-      const dur = lineMs(l.text) / 1000;
-      this.cues.push({ start: t, dur, figure, speaker: stage ? null : l.speaker, text: l.text, shown: false });
-      t += dur + GAP;
+      const dur = Math.max(2, (lineMs(l.text) / 1000) * pace);
+      this.cues.push({ id: l.id, start: t, dur, figure, speaker: stage ? null : l.speaker, text: l.text, shown: false });
+      t += dur + GAP * pace;
     }
-    this.total = t + OUTRO;
+    this.total = Math.max(t + (st.outro ?? OUTRO), st.minSeconds ?? 0);
 
     // look & sound
     this.desat0 = ctx.post.uniforms.uDesaturate!.value as number;
@@ -161,16 +174,18 @@ export class EchoDirector {
     const t = this.t;
     // walked away: the memory fades
     const p = ctx.player.position;
-    if (!this.ending && Math.hypot(p.x - this.center.x, p.z - this.center.z) > Math.max(16, clue.where.radius + 10)) {
+    if (!this.ending && Math.hypot(p.x - this.center.x, p.z - this.center.z) > (this.staging.leash ?? Math.max(16, clue.where.radius + 10))) {
       this.ending = true;
       this.aborted = true;
-      this.t = Math.max(t, this.total - OUTRO * 0.6);
+      this.t = Math.max(t, this.total - (this.staging.outro ?? OUTRO) * 0.6);
       ctx.ui.toast(ctx.t('chronik.echo.abort'));
     }
-    const linesEnd = this.total - OUTRO;
+    const outro = this.staging.outro ?? OUTRO;
+    const intro = this.staging.intro ?? INTRO;
+    const linesEnd = this.total - outro;
     // figures
-    const fadeIn = Math.min(1, t / INTRO);
-    const fadeOut = 1 - Math.min(1, Math.max(0, (t - linesEnd) / OUTRO));
+    const fadeIn = Math.min(1, t / Math.max(0.3, intro));
+    const fadeOut = 1 - Math.min(1, Math.max(0, (t - linesEnd) / Math.max(0.3, outro)));
     const reduced = ctx.settings.state.reducedMotion;
     this.figures.forEach((f, i) => {
       const cue = this.cues.find((c) => c.figure === i && t >= c.start && t < c.start + c.dur);
@@ -179,18 +194,26 @@ export class EchoDirector {
       f.ghost.talk += ((speaking ? 1 : 0) - f.ghost.talk) * k;
       f.ghost.gesture += ((speaking && i % 2 === 0 ? 1 : speaking ? 0.4 : 0) - f.ghost.gesture) * k * 0.7;
       // walk the path slowly during the scene; stop to speak
-      const prog = Math.min(1, Math.max(0, (t - INTRO * 0.5) / Math.max(4, linesEnd)));
-      const target = f.from.clone().lerp(f.to, reduced ? 0.5 : prog);
-      const moving = !speaking && !reduced && prog < 1 && t < linesEnd;
+      const m = f.mark;
+      const walkAt = m?.walkAt ?? intro * 0.5;
+      const prog = m?.walkAt !== undefined ? Math.min(1, Math.max(0, (t - walkAt) / 2.2)) : Math.min(1, Math.max(0, (t - walkAt) / Math.max(4, linesEnd)));
+      const target = f.from.clone().lerp(f.to, reduced && !m ? 0.5 : prog);
+      const moving = (m?.walkAt !== undefined || !speaking) && !reduced && prog > 0 && prog < 1 && t < linesEnd && !m?.sit;
       f.pos.lerp(target, Math.min(1, dt * (moving ? 1.2 : 0.4)));
       f.ghost.walkAmt += ((moving ? 1 : 0) - f.ghost.walkAmt) * k;
       f.ghost.walk += dt * 5.2 * f.ghost.walkAmt;
       // face the walk direction, or the listener while speaking
-      const look = speaking ? Math.atan2(p.x - f.pos.x, p.z - f.pos.z) : Math.atan2(f.to.x - f.from.x, f.to.z - f.from.z);
+      const look = m?.face && !moving
+        ? Math.atan2(m.face.x - f.pos.x, m.face.z - f.pos.z)
+        : speaking && !m
+          ? Math.atan2(p.x - f.pos.x, p.z - f.pos.z)
+          : Math.atan2(f.to.x - f.from.x, f.to.z - f.from.z);
       let d = look - f.facing;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       f.facing += d * Math.min(1, dt * 2.5);
-      f.ghost.object.position.set(f.pos.x, ctx.world.heightAt(f.pos.x, f.pos.z), f.pos.z);
+      // inside a room the floor is the player's storey (heightAt is the ground outside)
+      const fy = m ? p.y : ctx.world.heightAt(f.pos.x, f.pos.z);
+      f.ghost.object.position.set(f.pos.x, fy - (m?.sit ? 0.42 : 0), f.pos.z);
       f.ghost.object.rotation.y = f.facing;
       f.ghost.fade = Math.min(fadeIn * 1.05, fadeOut);
       f.ghost.alpha = 0.8 + 0.2 * Math.sin(t * 0.9 + i);
@@ -205,6 +228,7 @@ export class EchoDirector {
     for (const c of this.cues) {
       if (c.shown || t < c.start || this.aborted) continue;
       c.shown = true;
+      ctx.events.emit('echo:line', { id: clue.id, line: c.id, i: this.cues.indexOf(c), dur: c.dur });
       const name = c.speaker ? (ctx.content.speakers.get(c.speaker)?.name_de ?? c.speaker) : null;
       ctx.ui.hud.subtitle(name, c.text, c.dur * 1000, !!c.speaker && (clue.fiction ?? true));
       const fig = this.figures[c.figure];

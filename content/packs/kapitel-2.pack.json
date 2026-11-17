@@ -342,7 +342,7 @@
       "id": "clue.k2.warnung",
       "title_de": "Erinnerung: Die Warnung",
       "kind": "echo",
-      "text_de": "E halten an der Tür zum Schreibkabinett. Man hört nur Stimmen; durch den Türspalt Schatten an der Wand: ein sitzender Mann, der hustet, und mehrere stehende. Nikel Pfeiffer ist nicht im Raum, er wartet unten.",
+      "text_de": "Durch den Türspalt des Schreibkabinetts, bei einer Kerze: Der Herzog sitzt am Schreibtisch und hustet. Hofrat Schügens meldet einen Bauern, der durch den Wald gekommen ist: Französische Kavallerie sucht einen Führer, auf Umwegen, nachts wollen sie am Karlsberg sein. Der Herzog hält es für unglaubwürdig, der Mann wolle ein paar Taler verdienen, man gebe ihm einen Dukaten. Der Leibarzt Rose empfiehlt Bett und Tee. Dann Pfeffel: Es sei nur zu wahr, ein Anschlag gegen die Person des Herzogs, er beschwöre ihn, abzufahren. Der Herzog: Da wir abreisen müssen, so wollen wir es tun. Abbé Salabert soll mit. Nikel Pfeiffer ist nicht im Raum, er wartet unten.",
       "where": {
         "x": 1268.5,
         "z": -1110,
@@ -371,7 +371,7 @@
       "id": "clue.k2.abschied",
       "title_de": "Erinnerung: Der Abschied",
       "kind": "echo",
-      "text_de": "Zweites E halten. Ein Schatten öffnet einen Schreibtisch, steckt Papiere ein und setzt sich. Lange Stille.",
+      "text_de": "Durch den anderen Türspalt: Der Herzog steht auf, nimmt etwas vom Tisch und sagt zu Mannlich, er lasse ihn hier, um über die Galerie zu wachen, das Naturalienkabinett, die Bibliothek. „Adieu, mein lieber Mannlich, ich hoffe Ihn bald wiederzusehen.“ Schritte, dann ist der Raum leer.",
       "where": {
         "x": 1268.5,
         "z": -1110,
@@ -1034,7 +1034,7 @@
     {
       "id": "echo.k2.warnung.01",
       "speaker": "schuegens",
-      "text_de": "Durchlaucht, ein Bauer ist atemlos angelangt. Die französische Kavallerie ist durch die Wälder in sein Dorf gekommen, ohne der Landstraße zu folgen. Sie lassen dort ihre Pferde rasten und verlangen einen Führer, der sie auf Umwegen zum Karlsberg bringt. Erst nachts wollen sie ankommen. Er hat sich durch seinen Garten in den Wald geschlichen und ist über den Zaun des Parkes geklettert.",
+      "text_de": "Ein Bauer, Durchlaucht. Französische Reiter im Wald, nachts sind sie hier.",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.warnung",
@@ -1045,14 +1045,14 @@
         {
           "url": "https://archive.org/details/eindeutschermale00mann",
           "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "P · S. 422 f."
+          "note": "P · S. 422 f., gekürzt"
         }
       ]
     },
     {
       "id": "herzog.01",
       "speaker": "herzog",
-      "text_de": "Diese Nachricht scheint mir unglaubwürdig; der gute Mann will einige Taler verdienen, das ist alles. Gib ihm einen Dukaten, und er ziehe in Frieden!",
+      "text_de": "Unglaubwürdig. Gib ihm einen Dukaten!",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.warnung",
@@ -1063,65 +1063,36 @@
         {
           "url": "https://archive.org/details/eindeutschermale00mann",
           "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 423"
-        }
-      ]
-    },
-    {
-      "id": "echo.k2.warnung.03",
-      "speaker": "geraeusch",
-      "text_de": "(Eine Tür. Schritte. Pause. Ein langer Husten.)",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.warnung",
-        "step": 3
-      },
-      "once": true
-    },
-    {
-      "id": "echo.k2.warnung.04",
-      "speaker": "rose",
-      "text_de": "Durchlaucht sollten zu Bett gehen und Tee trinken.",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.warnung",
-        "step": 4
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "P · S. 423"
+          "note": "Z · S. 423, gekürzt"
         }
       ]
     },
     {
       "id": "echo.k2.warnung.05",
       "speaker": "pfeffel",
-      "text_de": "Ich beschwöre Durchlaucht, auf der Stelle abzufahren. Es ist nur zu wahr. Diese Schurken haben einen perfiden Anschlag gegen die Person des Herzogs geplant.",
+      "text_de": "Es ist nur zu wahr! Abfahren, Durchlaucht, sofort!",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.warnung",
-        "step": 5
+        "step": 3
       },
       "once": true,
       "sources": [
         {
           "url": "https://archive.org/details/eindeutschermale00mann",
           "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "P · S. 423"
+          "note": "P · S. 423, gekürzt"
         }
       ]
     },
     {
-      "id": "echo.k2.warnung.06",
-      "speaker": "rose",
-      "text_de": "Bett. Und Tee.",
+      "id": "laub.k2.schnupfen",
+      "speaker": "laub",
+      "text_de": "Der Leibarzt hat ihm übrigens Bett und Tee verschrieben. Die Kavallerie kommt durch den Wald, und der Arzt verschreibt Bett und Tee.",
       "trigger": {
-        "event": "echo:start",
+        "event": "clue:found",
         "id": "clue.k2.warnung",
-        "step": 6
+        "step": 1
       },
       "once": true,
       "sources": [
@@ -1131,71 +1102,6 @@
           "note": "P · S. 423: „der noch beim Weggehen Bett und Tee empfahl“"
         }
       ]
-    },
-    {
-      "id": "herzog.02",
-      "speaker": "herzog",
-      "text_de": "Da wir abreisen müssen, so wollen wir es tun! Aber, Abbé, Ihn nehme ich mit mir.",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.warnung",
-        "step": 7
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 423"
-        }
-      ]
-    },
-    {
-      "id": "echo.k2.warnung.08",
-      "speaker": "salabert",
-      "text_de": "Das ist ein neuer Beweis von Güte, Durchlaucht. Aber ich habe nur bei mir, was ich am Leibe trage. Ich sollte wenigstens Wäsche holen und mein Geld, das ich den Sansculottes nicht gerne überlassen möchte.",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.warnung",
-        "step": 8
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "P · S. 423"
-        }
-      ]
-    },
-    {
-      "id": "herzog.03",
-      "speaker": "herzog",
-      "text_de": "Hole Er sich Hemden, da Er sie nun einmal braucht; ich gebe Ihm eine halbe Stunde Zeit dazu. Gehe Er!",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.warnung",
-        "step": 9
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 423"
-        }
-      ]
-    },
-    {
-      "id": "laub.k2.schnupfen",
-      "speaker": "laub",
-      "text_de": "Bett und Tee. Die Kavallerie kommt durch den Wald, und der Leibarzt verschreibt Bett und Tee. Er hätte es weit gebracht in der Landesaufnahme.",
-      "trigger": {
-        "event": "clue:found",
-        "id": "clue.k2.warnung",
-        "step": 1
-      },
-      "once": true
     },
     {
       "id": "laub.k2.dukat",
@@ -1209,9 +1115,9 @@
       "once": true
     },
     {
-      "id": "herzog.04",
+      "id": "herzog.05",
       "speaker": "herzog",
-      "text_de": "Ich lasse Ihn hier, mein lieber Mannlich, um über meine Galerie zu wachen und sie zu retten, wenn es Ihm möglich ist. Ich weiß, wem ich sie anvertraue; desgleichen empfehle ich Ihm mein Naturalienkabinett, meine Bibliothek und alles, was ich nicht habe mit mir nehmen können.",
+      "text_de": "Adieu, mein lieber Mannlich. Er wache über meine Galerie.",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.abschied",
@@ -1222,78 +1128,9 @@
         {
           "url": "https://archive.org/details/eindeutschermale00mann",
           "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 423"
+          "note": "Z · S. 423 f., gekürzt"
         }
       ]
-    },
-    {
-      "id": "echo.k2.abschied.02",
-      "speaker": "geraeusch",
-      "text_de": "(Stille. Ein Gegenstand wird vom Tisch genommen.)",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.abschied",
-        "step": 2
-      },
-      "once": true
-    },
-    {
-      "id": "herzog.05",
-      "speaker": "herzog",
-      "text_de": "Adieu, mein lieber Mannlich, ich hoffe Ihn bald wiederzusehen. Bleibe Er stets mein Freund!",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.abschied",
-        "step": 3
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 424"
-        }
-      ]
-    },
-    {
-      "id": "echo.k2.abschied.04",
-      "speaker": "geraeusch",
-      "text_de": "(Schritte entfernen sich.)",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.abschied",
-        "step": 4
-      },
-      "once": true
-    },
-    {
-      "id": "mannlich.09",
-      "speaker": "mannlich",
-      "text_de": "Wenn ich mich recht entsinne, gelangte zu uns gegen Ende Februar 1793 die Nachricht …",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.abschied",
-        "step": 5
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 422, gekürzt"
-        }
-      ]
-    },
-    {
-      "id": "laub.k2.entsinnt",
-      "speaker": "laub",
-      "text_de": "Er entsinnt sich nicht recht. Merken Sie sich trotzdem, was er sagt.",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k2.abschied",
-        "step": 6
-      },
-      "once": true
     },
     {
       "id": "laub.k2.sichern",
@@ -1446,7 +1283,7 @@
     {
       "id": "echo.k2.fackeln.01",
       "speaker": "geraeusch",
-      "text_de": "(Räder knirschen im Raureif. Pferde schnauben.)",
+      "text_de": "[Räder im Raureif]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.fackeln",
@@ -1490,7 +1327,7 @@
     {
       "id": "echo.k2.fackeln.05",
       "speaker": "geraeusch",
-      "text_de": "(Hufschlag nach Norden, immer leiser.)",
+      "text_de": "[Hufschlag, leiser]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k2.fackeln",
@@ -1540,18 +1377,6 @@
       "once": true
     },
     {
-      "id": "beat.k2.horn",
-      "speaker": "geraeusch",
-      "text_de": "(Horn vom Zwinger: zwei kurze Töne.)",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k2",
-        "beat": "2.8",
-        "step": 3
-      },
-      "once": true
-    },
-    {
       "id": "jost.k2.06",
       "speaker": "jost",
       "text_de": "Das bin nicht ich. Lauf.",
@@ -1559,7 +1384,7 @@
         "event": "story:beat",
         "chapter": "k2",
         "beat": "2.8",
-        "step": 4
+        "step": 3
       },
       "once": true
     },
@@ -1571,7 +1396,7 @@
         "event": "story:beat",
         "chapter": "k2",
         "beat": "2.8",
-        "step": 5
+        "step": 4
       },
       "once": true
     },
@@ -1785,13 +1610,25 @@
     {
       "id": "laub.k2.weg",
       "speaker": "laub",
-      "text_de": "Weg. Die suchen jetzt etwas, das leuchtet. Bleiben Sie dunkel, bis die Allee zu Ende ist.",
+      "text_de": "So. Die suchen etwas, das leuchtet. Sehen Sie den hellen Fächer vor jedem Hund? Da hinein nicht. Unten durch, bis zur Hecke.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k2",
         "beat": "2.2-weg"
       },
       "once": true
+    },
+    {
+      "id": "laub.k2.aufstehen",
+      "speaker": "laub",
+      "text_de": "Jetzt. Stehen Sie auf, die sind abgezogen. Sie müssen nicht bis Zweibrücken kriechen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k2",
+        "beat": "2.2-sicher"
+      },
+      "once": true,
+      "priority": 10
     },
     {
       "id": "laub.k2.lauf",

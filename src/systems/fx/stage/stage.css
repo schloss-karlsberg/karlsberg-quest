@@ -1,0 +1,156 @@
+/* fx/stage: the DOM parts of the staged set pieces (cuts, the door crack, frost on the compass) */
+
+/* "Das Bild bricht ab": a hard cut to black that lets the present back in */
+.kq-stage-cut {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 40;
+  animation: kq-stage-cut 0.9s ease-in forwards;
+}
+.kq-stage-cut.soft {
+  animation-duration: 1.4s;
+  animation-timing-function: ease-in-out;
+  opacity: 0.85;
+}
+@keyframes kq-stage-cut {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* K2: the eye at the crack of the Kabinett door — two dark leaves leave a narrow gap of candlelight */
+.kq-door-crack {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  --gap: 24vw;
+  --shift: 0vw;
+  transition: opacity 0.2s linear;
+}
+.kq-door-crack .leaf {
+  position: absolute;
+  top: -2vh;
+  bottom: -2vh;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.35) 40%, rgba(0, 0, 0, 0) 100%),
+    repeating-linear-gradient(180deg, #1c1410 0 9vh, #241a14 9vh 9.4vh, #1a120e 9.4vh 30vh),
+    #1b130f;
+  box-shadow: 0 0 6vw 1.5vw rgba(0, 0, 0, 0.85);
+}
+.kq-door-crack .leaf.l {
+  left: -4vw;
+  right: calc(50% + var(--gap) / 2 - var(--shift));
+  border-right: 2px solid rgba(255, 170, 90, 0.55);
+  box-shadow:
+    0 0 6vw 1.5vw rgba(0, 0, 0, 0.85),
+    inset -1.2vw 0 1.6vw -0.6vw rgba(255, 150, 60, 0.35);
+}
+.kq-door-crack .leaf.r {
+  right: -4vw;
+  left: calc(50% + var(--gap) / 2 + var(--shift));
+  border-left: 2px solid rgba(255, 170, 90, 0.55);
+  box-shadow:
+    0 0 6vw 1.5vw rgba(0, 0, 0, 0.85),
+    inset 1.2vw 0 1.6vw -0.6vw rgba(255, 150, 60, 0.35);
+}
+.kq-door-crack .hint {
+  position: absolute;
+  top: 12vh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: rgba(239, 230, 210, 0.85);
+  text-shadow: 0 1px 3px #000;
+}
+.kq-door-crack .hint b {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 0.3em;
+  border: 1px solid rgba(239, 230, 210, 0.6);
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* K2: ice flowers on the Bussole glass and at the edges of the view; the thaw, a thread of smoke */
+.kq-frost-glass {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(200, 220, 240, 0.18), rgba(220, 235, 250, 0.42) 70%, rgba(240, 248, 255, 0.6));
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.45);
+}
+.kq-frost-glass canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.kq-frost-glass.melting {
+  background: radial-gradient(circle, rgba(200, 220, 240, 0.05), rgba(220, 235, 250, 0.25) 75%, rgba(240, 248, 255, 0.4));
+}
+.kq-frost-edge {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.kq-frost-edge canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: blur(0.6px);
+}
+.kq-frost-smoke {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.kq-frost-smoke i {
+  position: absolute;
+  left: -10px;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(170, 160, 150, 0.7), rgba(150, 140, 130, 0) 70%);
+  opacity: 0;
+}
+.kq-frost-smoke.go i {
+  animation: kq-frost-smoke 2.6s ease-out forwards;
+}
+.kq-frost-smoke.go i:nth-child(2) {
+  animation-delay: 0.45s;
+}
+.kq-frost-smoke.go i:nth-child(3) {
+  animation-delay: 0.9s;
+}
+@keyframes kq-frost-smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(8px, -70px) scale(2.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kq-frost-smoke.go i {
+    animation-duration: 1.6s;
+  }
+}

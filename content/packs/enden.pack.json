@@ -3,18 +3,6 @@
   "pack": "enden",
   "dialogue": [
     {
-      "id": "geraeusch.end.morgen",
-      "speaker": "geraeusch",
-      "text_de": "[Es wird hell. Die Hunde sind fort, nur ihre Abdrücke liegen im Raureif, im Kreis um die Stelle, an der du gelegen hast.]",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "end",
-        "beat": "end.morgen",
-        "step": 1
-      },
-      "once": true
-    },
-    {
       "id": "marlene.end.morgen",
       "speaker": "marlene",
       "text_de": "Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. (Pause.) Das war ein Witz. Kalköfen gibt’s hier keine mehr.",
@@ -22,7 +10,7 @@
         "event": "story:beat",
         "chapter": "end",
         "beat": "end.morgen",
-        "step": 2
+        "step": 1
       },
       "once": true
     },
@@ -34,7 +22,7 @@
         "event": "story:beat",
         "chapter": "end",
         "beat": "end.morgen",
-        "step": 3
+        "step": 2
       },
       "once": true
     },
@@ -95,24 +83,13 @@
       "once": true
     },
     {
-      "id": "geraeusch.end.museum",
-      "speaker": "geraeusch",
-      "text_de": "[Die Nadel der Bussole dreht sich ruhig nach Norden und bleibt dort.]",
-      "trigger": {
-        "event": "story:ending",
-        "id": "museum",
-        "step": 4
-      },
-      "once": true
-    },
-    {
       "id": "marlene.end.museum",
       "speaker": "marlene",
       "text_de": "Ich fahr’s nächste Woche hin. Und dem Forstamt sag ich, sie sollen die Gräben dem Denkmalamt melden. Gucken ja, graben nein. Das hast du mir beigebracht.",
       "trigger": {
         "event": "story:ending",
         "id": "museum",
-        "step": 5
+        "step": 4
       },
       "once": true,
       "sources": [

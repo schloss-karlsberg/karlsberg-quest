@@ -987,7 +987,46 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   shows the eyes in the fog (`hunt:tableau eyes`). Balsam drops: K1 8 %, K3 10 %, K4 26 %.
 - **Playtest round 4, left open:** K3 torch arc with windows igniting in sequence, the Zwinger
   hounds running past within 3–6 m and the exterior fire macro layer (smoke columns, roof glow);
-  the Ehrenhof straw carts; staged Rückwärts / Jost / burn-ending memories (still captions); the
-  trench route's 1.4 m step (A* step limit, north-wing breach); an early fight in the first 60 s;
+  the Ehrenhof straw carts; ~~staged Rückwärts / Jost / burn-ending memories (still captions)~~
+  (staged, see the next entry); the trench route's 1.4 m step (A* step limit, north-wing breach); an early fight in the first 60 s;
   modal cards held during combat; tracker collapsing done objectives; the XP cap; the blue slab and
   black discs (not reproduced).
+- **Playtest round 4, K2 / K4 / endings staged (2026-11-17):** "climaxes are told in captions, not
+  shown" — every bracketed stage direction in K2, K4 and the endings is now something you see, with
+  at most a short sound caption beside it (`src/systems/fx/stage/`, debug `kq.stage`). The echo
+  director paces a staged memory through a registry (`chronik/staging.ts`: intro / outro, pace,
+  minimum length, voice-only speakers, figures at the clue with marks — where each speaker stands,
+  walks to, looks, sits) and announces each subtitle (`echo:line`), so the set piece times itself
+  on the words. **K4:** the Rückwärts echo — a dressed-stone wall 15 m ahead unbuilds into the air
+  and the stones fly back into it, three carts with their carters roll backwards uphill to the wall
+  ends, dust converges, the view's grade shifts, the Bussole ticks backwards (13 s; reduced motion:
+  no ripple; reduced flash: no glints). The 1840 echo — Laub at his theodolite with a lantern, a
+  horn far off, twelve pairs of eyes opening one by one round you in the fog, Laub runs and fades,
+  the eyes follow and go out, a cut to black. The Steinbrecher's stones shove into a heap (cue
+  `k4-quader`). After W8 the pack stays down where it lay (`hunt:tableau rest`, `from: 'pack'`),
+  Jost kneels by one hound (NPC `pose: 'kneel'`: legs folded in the figure shader, lowered by the
+  knee) and scratches it when asked about the names; at dawn five prints lie in the hoarfrost round
+  your spot (`end-prints`). **K2:** frost grows over the Bussole glass and the edges of the view at
+  the start of the chapter (back on a load / jump: `story:beat`), and thaws with a thread of smoke at
+  the end; a candle lights behind a gallery window (placed on the facade by a ray from your eye);
+  the departure echo rolls three wagons with torchbearers north into the fog. **K2 pacing:** the
+  308 m crouch-walk is now a ≤ 60 s sneak — three hounds patrol a 34 m area across the trail, each
+  casting an amber sight cone on the frost (`flags['hunt.cones']`: as long as the range it would
+  notice you at right now, as wide as its view; it deepens to red when it sees you), until the
+  hedge 80 m on: "Sicher. Aufstehen." (toast + Laub), the pack leaves. The Kabinett door (68 s of
+  listening) is two short looks through the crack (< 20 s together): E puts your eye to the gap
+  between the dark door leaves (DOM frame over the world), behind it the candlelit room plays —
+  the Duke at his desk, Schügens, the physician, Pfeffel bursting in; A / D moves your eye to the
+  other crack; the second look is the farewell. The full quotes stay on the clue cards and in the
+  codex. **Endings:** the burn ending shows its memories through the hole the flame eats into one
+  page after another, played by the world (the world's era is lent, `World.setEra`, and given back):
+  the Ehrenhof in 1789 light, fireworks over the palace, the pack in the frost fog of the Apfelallee
+  (15.5 s; reduced motion: three still shots in 7 s); the museum ending's Bussole needle settles
+  north in the corner of the picture; the keep ending leaves five prints in the hoarfrost before the
+  step, leading in and not away. **Lectures:** a quest's `history_at_turnin` (default 1) — Laub's
+  Positionsblätter line (`q.k4.standpunkt`) moved to the calm morning at the Feldstation (k4_14),
+  the WaldPark / Hörpfad line (`q.k4.stellen`) to the codex (both facts still unlock).
+- **K2 / K4 staging, left open:** Landremont's riders (K2 W4) still a parenthetical caption; the
+  sight cones read pale on bright frost from far away; Jost turns to face you when you come within
+  8 m (the kneel reads best from the side); the burn memories' hounds open their eyes on the hunt's
+  own clock (on a slow renderer only two or three pairs open in the 3 s shot).

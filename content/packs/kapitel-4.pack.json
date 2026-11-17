@@ -913,7 +913,7 @@
     {
       "id": "echo.k4.rueckwaerts.01",
       "speaker": "geraeusch",
-      "text_de": "[Die Karren rollen rückwärts, bergauf. Die Bussole tickt wie eine Uhr.]",
+      "text_de": "[Die Bussole tickt rückwärts]",
       "trigger": {
         "event": "echo:start",
         "id": "echo.k4.rueckwaerts"
@@ -1142,7 +1142,7 @@
     {
       "id": "echo.k4.laub_1840.01",
       "speaker": "laub",
-      "text_de": "(1840, schreibt, murmelt) Standpunkt siebzehn. Richtung Ruine, hundertneunundneunzig Grad und …",
+      "text_de": "Standpunkt siebzehn. Richtung Ruine, hundertneunundneunzig Grad und …",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k4.laub_1840",
@@ -1153,7 +1153,7 @@
     {
       "id": "echo.k4.laub_1840.02",
       "speaker": "geraeusch",
-      "text_de": "[Ein Horn, ein langer Ton. Laub hebt den Kopf.]",
+      "text_de": "[Horn, fern: ein langer Ton]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k4.laub_1840",
@@ -1164,7 +1164,7 @@
     {
       "id": "echo.k4.laub_1840.03",
       "speaker": "laub",
-      "text_de": "(1840) Jäger? Um die Zeit? Es ist keine Jagd angesagt. Ich hätte das wissen müssen, ich habe die Liste.",
+      "text_de": "Jäger? Um die Zeit? Es ist keine Jagd angesagt. Ich hätte das wissen müssen, ich habe die Liste.",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k4.laub_1840",
@@ -1175,7 +1175,7 @@
     {
       "id": "echo.k4.laub_1840.04",
       "speaker": "geraeusch",
-      "text_de": "[Augen gehen im Nebel an, zwölf Stück, in Kniehöhe.]",
+      "text_de": "[Knurren, ringsum]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k4.laub_1840",
@@ -1197,7 +1197,7 @@
     {
       "id": "echo.k4.laub_1840.06",
       "speaker": "laub",
-      "text_de": "(1840) Ich bin königlich bayerischer Geometer. Ich lege mich nicht in den Dreck.",
+      "text_de": "Ich bin königlich bayerischer Geometer. Ich lege mich nicht in den Dreck.",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k4.laub_1840",
@@ -1219,7 +1219,7 @@
     {
       "id": "echo.k4.laub_1840.08",
       "speaker": "geraeusch",
-      "text_de": "[Laub nimmt die Laterne und rennt. Die Augen folgen. Das Bild bricht ab. Nur der Theodolit bleibt stehen.]",
+      "text_de": "[Laufschritte, immer leiser]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k4.laub_1840",
@@ -1334,7 +1334,7 @@
     {
       "id": "beat.k4.sammeln",
       "speaker": "geraeusch",
-      "text_de": "[Das Horn: drei lange Töne. Sammeln.]",
+      "text_de": "[Horn: Sammeln]",
       "trigger": {
         "event": "story:beat",
         "chapter": "k4",
@@ -1370,7 +1370,7 @@
     {
       "id": "beat.k4.hinlegen",
       "speaker": "geraeusch",
-      "text_de": "[Ein Hund nach dem anderen legt sich. Ihre Augen gehen aus wie Lampen in einem Haus. Hufschlag, dann Stille.]",
+      "text_de": "[Hufschlag, fern. Dann Stille]",
       "trigger": {
         "event": "story:beat",
         "chapter": "k4",
@@ -1452,7 +1452,7 @@
     {
       "id": "jost.k4.06",
       "speaker": "jost",
-      "text_de": "Jetzt haben sie Namen. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.",
+      "text_de": "Jetzt haben sie Namen. Gut. Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.",
       "trigger": {
         "event": "npc:talk",
         "npc": "pikeur",

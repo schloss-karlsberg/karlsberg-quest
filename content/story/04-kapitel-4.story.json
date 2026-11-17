@@ -175,18 +175,6 @@
       "do": [{ "do": "quest", "op": "progress", "id": "q.k4.steinplatz", "objective": "graben" }]
     },
     {
-      "id": "augen-1840",
-      "repeat": true,
-      "when": { "event": "echo:start", "match": { "id": "clue.k4.laub_1840" } },
-      "do": [{ "do": "cue", "id": "hunt:tableau", "data": { "kind": "eyes", "n": 10, "x": 1386, "z": -1477, "r": 11 }, "delay": 9 }]
-    },
-    {
-      "id": "augen-1840-aus",
-      "repeat": true,
-      "when": { "event": "echo:end", "match": { "id": "clue.k4.laub_1840" } },
-      "do": [{ "do": "cue", "id": "hunt:tableau", "data": { "kind": "off" } }]
-    },
-    {
       "id": "settle-echo1840",
       "repeat": true,
       "when": {
@@ -238,7 +226,8 @@
       "id": "brecher-steht",
       "when": { "quest": { "id": "q.k4.steinplatz", "objective": "anschlag", "gte": 1 } },
       "do": [
-        { "do": "sound", "sound": "howl", "x": 1224, "z": -1116, "caption": "[Quader schieben sich übereinander. Mörtel knirscht wie Zähne.]", "delay": 1 },
+        { "do": "cue", "id": "k4-quader", "data": { "x": 1224, "z": -1116 }, "delay": 0.6 },
+        { "do": "sound", "sound": "howl", "x": 1224, "z": -1116, "caption": "[Mörtel knirscht]", "delay": 0.4 },
         {
           "do": "say",
           "id": "laub.k4.x.brecher",
@@ -269,7 +258,7 @@
       "enter": [
         { "do": "look", "time": "night" },
         { "do": "flag", "set": { "story.laub": true, "story.compass": true } },
-        { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt in der Tasche. Sonst ist es still am Bauwagen.]", "delay": 2 },
+        { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt]", "delay": 2 },
         { "do": "quest", "op": "start", "id": "q.k4.zettel", "onResume": true, "delay": 3 }
       ],
       "on": [],
@@ -364,7 +353,7 @@
       "complete": { "quest": { "id": "q.k4.karren", "state": "done" } },
       "exit": [
         { "do": "flag", "set": { "barks.quiet": true } },
-        { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt wie eine Uhr. Rückwärts.]" },
+        { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt]" },
         { "do": "teleport", "x": 202, "z": -904, "yaw": 78, "delay": 0.4 },
         { "do": "shift", "to": "1789", "reason": "echo", "delay": 0.3 },
         {
@@ -573,7 +562,7 @@
           "signal": "anblasen",
           "x": 1420,
           "z": -1440,
-          "caption": "[Ein Horn, ganz nah: ein langer Ton. Anblasen.]",
+          "caption": "[Horn, ganz nah: Anblasen]",
           "delay": 0.5
         },
         { "do": "shift", "to": "today", "reason": "oblivion", "delay": 1.2 },
@@ -683,14 +672,13 @@
           "id": "hingelegt",
           "when": { "event": "hunt:finale", "match": { "outcome": "calmed" } },
           "do": [
-            { "do": "say", "line": "beat.k4.hinlegen", "delay": 2 },
             {
               "do": "sound",
               "sound": "horn",
               "signal": "sammeln",
               "x": 1150,
               "z": -1660,
-              "caption": "[Weit weg ein Horn: Sammeln. Langsam, tief, zum letzten Mal.]",
+              "caption": "[Horn, weit weg: Sammeln]",
               "delay": 4
             },
             { "do": "look", "time": "dusk", "delay": 6 }
@@ -712,6 +700,7 @@
       ],
       "complete": { "event": "hunt:finale", "match": { "outcome": "faded" } },
       "exit": [
+        { "do": "cue", "id": "hunt:tableau", "data": { "kind": "rest", "from": "pack", "near": { "x": 1218.4, "z": -1565.2 }, "nearHeading": 120 } },
         { "do": "threat", "kind": "pack", "active": false },
         { "do": "say", "line": "laub.k4.finale_2", "delay": 1 },
         { "do": "flag", "set": { "flag.k4_finale": true, "npc.owns.clue.k4.jost": true } },
@@ -725,7 +714,8 @@
       "enter": [
         { "do": "flag", "set": { "combat.disabled": true } },
         { "do": "flag", "set": { "flag.k4_finale": true, "npc.owns.clue.k4.jost": true } },
-        { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "delay": 1.5 }
+        { "do": "cue", "id": "hunt:tableau", "data": { "kind": "rest", "n": 5, "x": 1216, "z": -1571, "r": 5, "face": 30, "near": { "x": 1218.4, "z": -1565.2 }, "nearHeading": 120 }, "onResume": true },
+        { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "pose": "kneel", "delay": 1.5 }
       ],
       "on": [
         { "id": "erkannt", "when": { "talked": { "npc": "pikeur", "chapter": "k4" } }, "do": [{ "do": "grant", "clue": "clue.k4.jost" }] },
@@ -748,6 +738,7 @@
         { "do": "flag", "set": { "flag.horn": true } },
         { "do": "say", "line": "jost.k4.08", "delay": 1 },
         { "do": "npc", "op": "despawn", "npc": "pikeur", "delay": 2 },
+        { "do": "cue", "id": "hunt:tableau", "data": { "kind": "off" } },
         { "do": "memorial", "id": "k4.zwinger", "active": false }
       ]
     },
@@ -761,8 +752,8 @@
         { "do": "quest", "op": "fail", "id": "q.k4.pacht" },
         { "do": "flag", "set": { "barks.quiet": false } },
         { "do": "look", "time": "dawn", "delay": 1 },
-        { "do": "say", "line": "geraeusch.end.morgen", "delay": 1 },
-        { "do": "card", "title": "Morgengrauen", "sub": "Feldstation · heute", "seconds": 3.5, "delay": 1 },
+        { "do": "cue", "id": "end-prints", "data": { "n": 5, "r": 1.7 } },
+        { "do": "card", "title": "Morgengrauen", "sub": "Feldstation · heute", "seconds": 3.5, "delay": 4.5 },
         { "do": "teleport", "x": 760, "z": -902, "yaw": 0, "delay": 0.6 },
         { "do": "npc", "op": "despawn", "npc": "*" },
         { "do": "objective", "text": null },
@@ -770,6 +761,13 @@
         { "do": "say", "line": "laub.end.morgen" },
         { "do": "grant", "clue": "clue.k4.foto", "delay": 0.5 },
         { "do": "say", "line": "marlene.k4.foto" },
+        {
+          "do": "say",
+          "id": "laub.k4.x.positionsblaetter",
+          "speaker": "laub",
+          "text": "Die bayerischen Positionsblätter von 1836 bis 1841: „Ruine Carlsberg“. Das Schloss liegt darauf gut fünfzig Meter zu weit im Osten. Den Geometer Laub hat es nie gegeben, sagen Ihre Quellen. Die Quellen haben recht. Ich bestehe trotzdem darauf.",
+          "delay": 2.5
+        },
         { "do": "grant", "clue": "clue.k4.nur_steine", "delay": 3 }
       ],
       "complete": { "have": { "clue": "clue.k4.nur_steine" } }

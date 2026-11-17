@@ -346,7 +346,9 @@ hunt, fx ──player:caught──▶ story (curtain, threats off, instant retur
                             combat (`boss: true` when a boss had you; HP refilled on the wake's teleport;
                             a non-boss catch wakes at the nearest surveyed point when 60 m nearer)
 hunt ──hunt:alert {state:'chasing'}──▶ combat (running costs Atem at half rate: `SimInput.hunted`)
-chronik ──echo:start / echo:end──▶ story ──story:cue 'hunt:tableau'──▶ hunt (the 1840 eyes)
+chronik ──echo:start / echo:line / echo:end──▶ fx/stage (staged memories: the rewind, 1840, the Kabinett door, the departure)
+story ──story:cue 'k2-frost' / 'k2-thaw' / 'k2-candle' / 'k4-quader' / 'end-prints' / 'stage-off'──▶ fx/stage
+story ──story:cue 'hunt:tableau' {kind: lie|eyes|rest|off}──▶ hunt (W8: the pack lies down; the endings)
 story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
 story (hub Pinnwand) ──chronik:open──▶ quests (opens the Journal; the Chronik board is gone)
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
@@ -473,9 +475,13 @@ Round-4 (polish: set dressing) integration rules:
   `target`; story cue `hunt:release` opens the gates — they burst out along `via` one after
   another and fade into the night, `hunt:goal {mode:'kennel'}`, the hunt ends); `follow` (ending
   C's afterword: the hounds walk your footsteps 16 m+ behind, back off when you turn on them, bay
-  now and then, never catch). Story cue `hunt:tableau {kind: lie|eyes|off, n, x, z, r, face}`
+  now and then, never catch). Story cue `hunt:tableau {kind: lie|eyes|rest|off, n, x, z, r, face}`
   stages hounds without a hunt (the endings: five lie down one by one after the horn; eyes open
-  in the dark behind you).
+  in the dark behind you; `rest`: hounds stay lying, eyes half shut — `from: 'pack'` keeps the
+  running pack's hounds where they are, `near {x, z}` + `nearHeading` moves the nearest one to a
+  spot: Jost's hound after W8). `flags['hunt.cones']` draws each patrolling hound's sight cone on
+  the ground (`cones.ts`: range = the sim's current `lastSight`, width = its field of view; amber →
+  red with awareness / sight; the K2 sneak).
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
   240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
@@ -526,12 +532,26 @@ Round-4 (polish: set dressing) integration rules:
   adds `uHeat` to `render/post.ts`.
 - State `systems.fx {fire, oblivion}` (running threats resume after a load). URL `?fxq=low|high`.
 - Hooks `kq.fx.shift/shiftAt/freeze/fire/fireTime/oblivion/oblivionT/pulse/quality/state`.
+- **Staged set pieces** (`fx/stage/`, `StageDirector`, frame runs last so a piece may own the camera):
+  pieces (`Piece {id, done, line?, end?, frame, camera?, dispose}`) started by `echo:start`
+  (`echo.k4.rueckwaerts` → `k4-rewind`, `clue.k4.laub_1840` → `k4-1840`, `clue.k2.warnung` /
+  `clue.k2.abschied` → `k2-door`, `clue.k2.fackeln` → `k2-abfahrt`), timed by `echo:line` and ended
+  by `echo:end`, or by story cues (`k2-frost {on}`, `k2-thaw`, `k2-candle {x, z, y?}`,
+  `k4-quader {x, z}`, `end-prints {x, z, n, r, ring}`, `stage-off {id?}`); a shift takes the
+  world-placed ones down, a load all of them. The echo stagings (`registerEchoStagings`) go into
+  the Chronik's registry (`chronik/staging.ts`). Shared bits in `common.ts` (instanced solid
+  material with fog, `GlowPoints`, `GradeLoan` for a temporary grade). `end-memories.ts` is used by
+  the burn ending (`endings/stage.ts`). Reduced motion / reduced flash honoured per piece. Hooks
+  `kq.stage.active/state/hold/cue/advance/line`.
 
 ### chronik (`src/systems/chronik/`) – clues, echoes (the board is gone, D-008)
 - Clue markers + E examine card (`clue:found`, `noun:learned` kept for story conditions but no
   longer shown on the card, `codex:unlocked`); relief clues need the right scan mode, lantern
   clues a lit lantern; hold E on an echo → ghosts + subtitles (`echo:start/end`, `echo:play {id}`
-  starts one). E and the examine prompt step aside while `flags['npc.near']` is set (talk wins).
+  starts one; `echo:line {id, line, i, dur}` as each subtitle comes up). A staged echo
+  (`staging.ts`, `stageEcho(id, {intro, outro, pace, minSeconds, voices, atClue, leash, marks})`)
+  is paced for its set piece; `marks` place a speaker's figure (stand, walk to, look at, sit) — the
+  Kabinett scene behind the door. E and the examine prompt step aside while `flags['npc.near']` is set (talk wins).
 - No board, no blanks, no batches, no hint ladder: J/Tab and `chronik:open` open the quests
   system's Journal (`openJournal()`; `kq.chronik.open/close/tab/isOpen` redirect there, and
   `chronik:opened/closed` are emitted by the Journal). `check()` only re-evaluates state for
@@ -629,17 +649,22 @@ Round-4 (polish: set dressing) integration rules:
   Ending C ("keep", finished): the past is at night and a `follow` pack of five comes along.
   After the choice the ending is staged in the engine (`endings/stage.ts`, ~11 s real time, before
   the card; testids `ending-stage`, `ending-stage-skip`; any key / click skips): museum — the camera
-  rises, the horn, five hounds lie down one by one (`hunt:tableau lie`), the fog lifts, dawn; burn —
-  the Chronik's pages burn in the air before you (shader burn front), their embers become memory
-  points that climb while the eras flash through the look (1789 … heute; reduced flashing:
-  cross-fades), the camera follows them up; keep — the dark closes in, the view turns round, eyes
-  open behind you (`hunt:tableau eyes`). Reduced motion: no flight, two still shots (7 s). Look and
-  view are restored before the card.
+  rises, the horn, five hounds lie down one by one (`hunt:tableau lie`), the fog lifts, dawn, the
+  Bussole's needle settles north in the corner (`ending-bussole`); burn (15.5 s) — the Chronik's
+  pages burn in the air before you (shader burn front), then three memories through the hole the
+  flame eats into a page (`ending-memory`, `fx/stage/end-memories.ts`, `burnShotAt`): the Ehrenhof
+  in 1789 light, fireworks over the palace, the pack in the Apfelallee fog — the world's era lent
+  with `World.setEra` (no era event) and given back — then the embers climb and the camera follows;
+  keep — the dark closes in, the view turns round, eyes open behind you (`hunt:tableau eyes`), five
+  prints lie before the step (`end-prints`, `ring: false`). Reduced motion: no flight, still shots
+  (7 s). Look, era and view are restored before the card.
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
   epilogue/choose/look/meters/meter/room/choice/stage/stageSkip/shown` (`look(time, era?)`: `day | dawn | dusk | night`; `shown()`: ids of the lines shown on screen this session).
 
 ### npc (`src/systems/npc/`) – ghostly people, conversations
-- `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
+- `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?, pose?}` / `npc:despawn {npc}`
+  (`pose: 'kneel'`: down on one knee — legs folded in the figure shader (`uKneel`), the figure
+  lowered by the knee height; asked about `namen` he scratches the hound before him)
   (story `npc` action). `room` places the ghost in a palace room on that room's storey (centre
   unless x/z are given); spawned at the player it keeps the player's storey. A figure
   (`figure.ts`): a period costume from the roster's `look` (`roster.ts`: soll, hanne, jost, pikeur,
@@ -658,7 +683,8 @@ Round-4 (polish: set dressing) integration rules:
   marked ! / ? / §), topics from the pack's `npc:talk` lines, `bye`. A quest offer shows the quest
   card (`questCardEl`, `QuestTopic.card` built by quests: title, giver, pitch, goals, reward preview)
   and the topics `qa:` Annehmen / `qd:` Später (`quest:accept` / `quest:decline`); a turn-in shows
-  the turn-in card and `qt:` Übergeben (`quest:turnin`), then ONE history line (marked "Was wirklich
+  the turn-in card and `qt:` Übergeben (`quest:turnin`), then ONE history line (a quest's
+  `history_at_turnin`, 0 = none: the story tells it later or it waits in the codex) (marked "Was wirklich
   war", with source and codex note); „Erzähl mehr“ (`more` topic) tells the rest (`quest:told`). No
   stance prompt (docs/ACTION-RPG.md §8.6). Quest glyphs over the head
   (`glyphs.ts`, `npc:marker`: ! / ringed ! / ? with halo / grey ?), escort `npc:follow`, transient

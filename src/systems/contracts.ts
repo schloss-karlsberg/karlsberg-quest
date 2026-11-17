@@ -139,6 +139,8 @@ declare module '../core/events' {
     'noun:learned': { id: string };
     'echo:start': { id: string };
     'echo:end': { id: string };
+    /** A memory's line comes up (subtitle shown): set pieces stage what the line is about. */
+    'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
     'chronik:case-complete': { caseId: string };
     'codex:unlocked': { factId: string };
@@ -362,6 +364,8 @@ export interface NpcPlacement {
   room?: string;
   /** Storey hint (local height, m): the figure stands on the floor at most a step above it. */
   y?: number;
+  /** 'kneel': down on one knee, leaning forward (Jost by his hounds after W8). */
+  pose?: 'kneel';
 }
 
 export {};

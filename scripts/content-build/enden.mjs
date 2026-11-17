@@ -16,20 +16,18 @@ const E = { museum: 'museum', burn: 'burn', keep: 'keep' };
 const line = (id, block, text, cond) => say(id, 'epilog', text, ep(block, cond), { once: false });
 
 const dialogue = [
-  // 1. Übergang
+  // 1. Übergang (der Morgen und die Abdrücke im Raureif: k4_14, cue end-prints)
   ...seq(beat('end.morgen'), [
-    ['geraeusch.end.morgen', 'geraeusch', '[Es wird hell. Die Hunde sind fort, nur ihre Abdrücke liegen im Raureif, im Kreis um die Stelle, an der du gelegen hast.]'],
     ['marlene.end.morgen', 'marlene', 'Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. (Pause.) Das war ein Witz. Kalköfen gibt’s hier keine mehr.'],
     ['laub.end.morgen', 'laub', 'Sagen Sie ihr nichts. Oder alles. Sie wird es ohnehin aufschreiben.'],
   ]),
   say('laub.end.luecken', 'laub', 'Sie haben noch Lücken gelassen. Das darf man. Aber man muss es wollen.', beat('end.luecken'), { once: true }),
   say('laub.end.vorher', 'laub', 'Es ist Ihr Buch jetzt. Soll hätte gesagt: Hauptsache, die Namen stimmen.', beat('end.wahl'), { once: true, priority: 10 }),
-  // 3. Ende A: Museum
+  // 3. Ende A: Museum (die Nadel nach Norden: im Bild des Endes, endings/stage.ts)
   ...seq(ending(E.museum), [
     ['laub.end.museum_1', 'laub', 'Abgeblasen. Nach {jahre:1793} Jahren. Ich werde das als Überstunden einreichen.'],
     ['laub.end.museum_2', 'laub', 'Eine Akte, die geschlossen wird, ist eine Akte, die man lesen kann. Bringen Sie sie dahin, wo man nachschaut, bevor man glaubt. Mit Quellen. Auch die, die mir nicht gefallen.'],
     ['laub.end.museum_3', 'laub', 'Und schreiben Sie auf das Schild, dass ich die fünfzig Meter nicht verschuldet habe.'],
-    ['geraeusch.end.museum', 'geraeusch', '[Die Nadel der Bussole dreht sich ruhig nach Norden und bleibt dort.]'],
     ['marlene.end.museum', 'marlene', 'Ich fahr’s nächste Woche hin. Und dem Forstamt sag ich, sie sollen die Gräben dem Denkmalamt melden. Gucken ja, graben nein. Das hast du mir beigebracht.', [src('SDSCHG', 'P: Fundmeldepflicht; cx.35')]],
   ]),
   // 4. Ende B: Verbrennen

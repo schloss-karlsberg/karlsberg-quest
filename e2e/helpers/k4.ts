@@ -507,7 +507,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(s.beat).toBe('k4_14');
   expect((await flags(page))['combat.disabled']).toBe(true);
   await shot(page, '06-morgen');
-  expect(await untilLine(page, 'laub.k4.nur_steine', 40)).toBe(true);
+  expect(await untilLine(page, 'laub.k4.nur_steine', 70)).toBe(true);
   expect(await has(page, 'clue.k4.foto')).toBe(true);
 
   // ---- the last beat: Laub on the field book (deeds, no blanks) -------------------------------------

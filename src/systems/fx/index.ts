@@ -37,6 +37,7 @@ import { type OblivionSlice, OblivionController } from './oblivion/oblivion';
 import { Quality, type QualityLevel } from './quality';
 import { ScanPulse } from './scan/pulse';
 import { ShiftEffect } from './shift/shift';
+import { StageDirector } from './stage';
 import './strings';
 import { FxUI } from './ui';
 
@@ -97,6 +98,7 @@ let pulse: ScanPulse;
 let fire: FireController;
 let obl: OblivionController;
 let ambient: AmbientParticles;
+let stage: StageDirector;
 let pulseHold = false;
 let frozen = false;
 let postOwned = false;
@@ -220,6 +222,8 @@ export default defineSystem({
     // no snow in the rooms: the buildings with interiors (and the passage pavilion) keep it out
     ambient.setRoofs(roofQuads(ctx.data.footprints.buildings, ['KB-B07']));
     ctx.scene.add(ambient.object);
+    // staged set pieces (K2 / K4 / endings): what the captions used to tell, in the world
+    stage = new StageDirector(ctx);
     quality.onChange(() => fire.rebuild());
     // settings → Grafik (core preset, render/quality.ts): Niedrig = low, Mittel / Hoch = high; unset = auto
     const applyGraphics = () => {
@@ -309,6 +313,8 @@ export default defineSystem({
       }
       postOwned = contributes;
     } else postOwned = true;
+    // last: a set piece may borrow the grade and frame the view
+    stage.frame(dt);
   },
 
   dispose() {
@@ -317,6 +323,7 @@ export default defineSystem({
     fire?.dispose();
     obl?.dispose();
     ambient?.dispose();
+    stage?.dispose();
     ui?.dispose();
   },
 });

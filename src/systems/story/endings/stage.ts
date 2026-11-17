@@ -7,8 +7,10 @@
  *          "Sammeln", five hounds lie down one after another and their eyes go out, the fog lifts
  *          and the sun comes up.
  *  burn    the pages burn in the air before you: they curl, glow at the edges and fall apart into
- *          embers; the embers rise and become points of light (memories) that climb into the sky
- *          while the eras flash through the world (1785 … today), the camera follows them up.
+ *          embers. Then, through the hole the flame eats into one page after another, three
+ *          memories played by the world (fx/stage/end-memories): the Ehrenhof in the light of 1789,
+ *          fireworks over the palace, the pack in the frost fog of the Apfelallee. Back in the
+ *          present the embers rise as points of light and the camera follows them up.
  *  keep    the dark closes in (dusk to night in seconds, the fog goes black), the camera turns
  *          slowly round — and behind you, one pair after another, the eyes open.
  *
@@ -34,14 +36,14 @@ import {
   Vector3,
 } from 'three';
 import type { GameContext } from '../../../core/context';
-import type { Era } from '../../../core/era';
 import { t } from '../../../i18n';
 import { h } from '../../../ui/dom';
-import { ERA_LOOKS, type EraLook } from '../../../world/eraPresets';
+import { type EraLook } from '../../../world/eraPresets';
+import { MEMORY_SHOTS, MemoryShots } from '../../fx/stage/end-memories';
 import type { EndingId } from '../types';
 
 /** Seconds of each staged ending (normal / reduced motion). */
-export const STAGE_SECONDS: Record<EndingId, number> = { museum: 11.5, burn: 11, keep: 11 };
+export const STAGE_SECONDS: Record<EndingId, number> = { museum: 11.5, burn: 15.5, keep: 11 };
 export const STAGE_SECONDS_REDUCED = 7;
 
 const smooth = (v: number) => {
@@ -60,11 +62,23 @@ export function stageAt(id: EndingId, t: number, reduced: boolean): { rise: numb
     return { rise: 6 * k, back: 4 * k, turn: 0, pitch: -0.2 * k, fade, fog: 1 - 0.75 * smooth((t - 2) / 6), sun: smooth((t - 2.5) / 7), dark: 0 };
   }
   if (id === 'burn') {
-    const k = reduced ? 0 : smooth((t - 3.5) / 5);
+    const k = reduced ? 0 : smooth((t - 12.1) / 2.4);
     return { rise: 0, back: 0, turn: 0, pitch: lerp(-0.05, 0.85, k), fade, fog: 1, sun: 0, dark: 0 };
   }
   const k = reduced ? (t < T / 2 ? 0 : 1) : smooth((t - 3.2) / 3.6);
   return { rise: 0, back: 0, turn: Math.PI * k, pitch: -0.04 * k, fade, fog: 1 + 2.2 * smooth(t / 3.5), sun: 0, dark: smooth(t / 3.5) };
+}
+
+/**
+ * Which memory of the burn ending shows at time t (−1: none) and how far through it (0..1).
+ * Normal: three pages of 3 s from 3.0 s; reduced motion: three still shots of 1.6 s from 1.2 s.
+ */
+export function burnShotAt(t: number, reduced: boolean): { i: number; u: number } {
+  const t0 = reduced ? 1.2 : 3.0;
+  const d = reduced ? 1.6 : 3.0;
+  const k = (t - t0) / d;
+  const i = Math.floor(k);
+  return i >= 0 && i < MEMORY_SHOTS.length ? { i, u: k - i } : { i: -1, u: 0 };
 }
 
 const PAGE_VERT = /* glsl */ `
@@ -259,8 +273,6 @@ class Pages {
   }
 }
 
-/** Era looks the burn ending flashes through (oldest first). */
-const BURN_ERAS: Era[] = ['1789', '1793-02', '1793-07', '1796', 'today'];
 
 export class EndingStage {
   private id: EndingId | null = null;
@@ -273,6 +285,10 @@ export class EndingStage {
   private fadeEl: HTMLElement | null = null;
   private eraEl: HTMLElement | null = null;
   private pages: Pages | null = null;
+  private memories: MemoryShots | null = null;
+  private needleEl: Element | null = null;
+  private needle = { a: 0, v: 0 };
+  private holeEl: HTMLElement | null = null;
   private readonly onKey = (e: KeyboardEvent) => {
     if (this.id && (e.code === 'Escape' || e.code === 'Space' || e.code === 'Enter')) {
       e.preventDefault();
@@ -315,9 +331,11 @@ export class EndingStage {
     // letterbox, the skip button and the fade (DOM); the picture itself is the world
     this.fadeEl = h('div.kqs-stage-fade');
     this.eraEl = h('div.kqs-stage-era', { 'aria-live': 'polite' });
+    this.holeEl = id === 'burn' ? h('div.kqs-stage-hole', { 'data-testid': 'ending-memory' }) : null;
     this.ui = h('div.kqs-stage', { 'data-testid': 'ending-stage', 'data-ending': id, onclick: () => this.finish() }, [
       h('div.kqs-stage-bar.top'),
       h('div.kqs-stage-bar.bottom'),
+      this.holeEl,
       this.fadeEl,
       this.eraEl,
       h('button.kqs-stage-skip', { 'data-testid': 'ending-stage-skip', onclick: (e: Event) => (e.stopPropagation(), this.finish()) }, t('story.end.skip')),
@@ -329,12 +347,24 @@ export class EndingStage {
       // the pack lies down in the clearing before you (an arc 7 m ahead, facing you)
       const c = { x: this.eye.x + fwd.x * 3, z: this.eye.z + fwd.z * 3 };
       ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'lie', n: 5, x: c.x, z: c.z, r: 4.5, face: (pl.yaw * -180) / Math.PI } });
+      // the Bussole in the corner of the picture: for the first time its needle settles north
+      const svg = document.querySelector('[data-testid="bussole"] svg');
+      if (svg) {
+        const b = h('div.kqs-stage-bussole', { 'data-testid': 'ending-bussole' });
+        b.append(svg.cloneNode(true));
+        this.ui.append(b);
+        this.needleEl = b.querySelector('.kqs-b-needle');
+        this.needle = { a: 70, v: 0 };
+      }
     } else if (id === 'keep') {
       // behind you, in the dark
       ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'eyes', n: 5, x: this.eye.x, z: this.eye.z, r: 8, face: (pl.yaw * -180) / Math.PI + 180 } });
+      // and before you, five prints in the hoarfrost that lead up to you and not away (they stay)
+      ctx.events.emit('story:cue', { id: 'end-prints', data: { x: this.eye.x + fwd.x * 1.4, z: this.eye.z + fwd.z * 1.4, n: 5, r: 1.2, ring: false } });
     } else {
       this.pages = new Pages(new Vector3(this.eye.x, this.eye.y + 1.55, this.eye.z), fwd);
       ctx.scene.add(this.pages.group);
+      this.memories = new MemoryShots(ctx);
     }
   }
 
@@ -350,6 +380,11 @@ export class EndingStage {
     this.ui = null;
     this.pages?.dispose();
     this.pages = null;
+    this.holeEl = null;
+    this.needleEl = null;
+    // the world's era back before the look (setEra sets the era's look)
+    this.memories?.dispose();
+    this.memories = null;
     if (this.look0) {
       ctx.world.look = this.look0;
       ctx.world.applyLook();
@@ -402,6 +437,22 @@ export class EndingStage {
     const L0 = this.look0!;
     const L = structuredClone(L0);
     if (id === 'museum') {
+      // the needle: restless, then from 4 s on it swings to north and stays (no tremble)
+      if (this.needleEl) {
+        const north = -((yaw * -180) / Math.PI);
+        const n = this.needle;
+        const settle = this.t > 4;
+        const goal = settle ? north : 70 * Math.sin(this.t * 0.9) + 12 * Math.sin(this.t * 3.1);
+        if (reduced) n.a = goal;
+        else {
+          const step = Math.min(dt, 0.05);
+          let err = goal - n.a;
+          err = ((((err + 180) % 360) + 360) % 360) - 180;
+          n.v += (30 * err - 2 * Math.sqrt(30) * 0.6 * n.v) * step;
+          n.a += n.v * step;
+        }
+        this.needleEl.setAttribute('transform', `rotate(${n.a.toFixed(2)} 50 50)`);
+      }
       L.fog.density = L0.fog.density * s.fog;
       L.fog.ground = L0.fog.ground * s.fog;
       L.fog.heightDensity = L0.fog.heightDensity * s.fog;
@@ -421,30 +472,40 @@ export class EndingStage {
       L.grade.exposure = L0.grade.exposure * (1 + 0.15 * s.dark);
       L.grade.vignette = Math.min(0.9, L0.grade.vignette + 0.35 * s.dark);
     } else {
-      // the eras flash through the world while the pages burn (reduced flashing: cross-fades)
-      const k = (this.t - 3.2) / 0.62;
-      const i = Math.floor(k);
-      if (i >= 0 && i < BURN_ERAS.length) {
-        const E = ERA_LOOKS[BURN_ERAS[i]!];
-        const f = ctx.settings.state.reducedFlash ? 0.35 * Math.sin(Math.PI * (k - i)) : 1 - Math.pow(k - i, 3) * 0.6;
-        L.sky.zenith = mixHex(L0.sky.zenith, E.sky.zenith, f);
-        L.sky.horizon = mixHex(L0.sky.horizon, E.sky.horizon, f);
-        L.fog.color = mixHex(L0.fog.color, E.fog.color, f);
-        L.sun.color = mixHex(L0.sun.color, E.sun.color, f);
-        L.sun.elevation = lerp(L0.sun.elevation, E.sun.elevation, f);
-        L.ambient.sky = mixHex(L0.ambient.sky, E.ambient.sky, f);
-        L.grade.exposure = lerp(L0.grade.exposure, E.grade.exposure, f) * (ctx.settings.state.reducedFlash ? 1 : 1 + 0.25 * (1 - (k - i)));
-        L.snow = lerp(L0.snow, E.snow, f);
-        if (i !== this.eraIdx) {
-          this.eraIdx = i;
+      // the memories, each through the hole the flame eats into a page
+      const m = this.memories;
+      const shot = burnShotAt(this.t, reduced);
+      m?.show(shot.i);
+      if (m && shot.i >= 0) {
+        if (shot.i !== this.eraIdx) {
+          this.eraIdx = shot.i;
           const el = this.eraEl;
           if (el) {
-            el.textContent = BURN_ERAS[i] === 'today' ? t('story.end.today') : BURN_ERAS[i]!.slice(0, 4);
+            el.textContent = MEMORY_SHOTS[shot.i]!.year;
             el.classList.remove('on');
             void el.offsetWidth;
             el.classList.add('on');
           }
         }
+        m.camera(shot.u, reduced);
+        m.frame(dt);
+        const ML = m.look();
+        if (ML) {
+          ctx.world.look = ML;
+          ctx.world.applyLook();
+        }
+      }
+      if (this.holeEl) {
+        // the hole opens (0.6 s), holds, then the page burns away entirely (last 0.35 s)
+        const u = shot.u;
+        const r = shot.i < 0 ? 0 : reduced ? 62 : 62 * smooth(u / 0.2) + 70 * smooth((u - 0.88) / 0.12);
+        this.holeEl.style.setProperty('--r', `${r.toFixed(1)}%`);
+        this.holeEl.style.opacity = shot.i < 0 ? '0' : reduced ? String(Math.min(1, Math.min(u, 1 - u) * 8)) : '1';
+      }
+      if (m && shot.i >= 0) {
+        if (this.fadeEl) this.fadeEl.style.opacity = '0';
+        if (this.t >= T) this.finish();
+        return;
       }
       // fire light from the pages
       L.glow = { color: '#ff8a3a', intensity: Math.max(0, Math.min(1, (this.t - 1) / 1.5)) * 0.7 * (1 - smooth((this.t - 8) / 2)) };

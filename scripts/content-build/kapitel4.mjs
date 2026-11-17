@@ -199,7 +199,7 @@ const dialogue = [
   say('laub.k4.westblick', 'laub', 'Sehen Sie den Berg da im Südwesten, über der Stadt? Die Hohenburg. Die Festung hat man 1714 geschleift, und der Herzog hat ihre Trümmer als Steinbruch benutzt. Die Steine sind zweimal umgezogen: von der Burg aufs Schloss, vom Schloss in die Stadt. Steine haben kein Zuhause. Nur eine Adresse auf Zeit.', found('clue.k4.hohenburg'), { once: true, src: [src('EN-HB', 'P'), src('BW', 'P')] }),
   say('laub.k4.jaegersburg', 'laub', 'Und das Holz kam aus Jägersburg, dem alten Jagdschloss. Täfelungen, Möbel, angeblich ein ganzer Stall. Der Herzog hat sich auch bei sich selbst bedient.', found('clue.k4.jaegersburg'), { once: true, src: [src('SKD', 'P'), src('WP-JB', 'P')] }),
   say('laub.k4.merburg', 'laub', 'Im Süden, da hinten, die Merburg. Auch eine Ruine, aber eine ehrliche. Die ist von allein alt geworden.', found('clue.k4.merburg'), { once: true }),
-  say('echo.k4.rueckwaerts.01', 'geraeusch', '[Die Karren rollen rückwärts, bergauf. Die Bussole tickt wie eine Uhr.]', echo('echo.k4.rueckwaerts'), { once: true }),
+  say('echo.k4.rueckwaerts.01', 'geraeusch', '[Die Bussole tickt rückwärts]', echo('echo.k4.rueckwaerts'), { once: true }),
   // 4.3 Baumagazin
   say('laub.k4.baumagazin', 'laub', 'Das Baumagazin. Das Lager für Baumaterial. Das einzige Haus, das stehen bleibt. Alles andere wird selbst zu Baumaterial. Man hat später gesagt, das Schloss sei eine Baustoffhandlung geworden. Die Verwaltung nennt so etwas Kreislauf.', found('clue.k4.baumagazin'), { once: true, src: [src('RLS', 'P'), src('WP-SK', 'P')] }),
   say('soll.k4.01', 'soll', 'Ah. Sie. Sie sind auch nicht jünger geworden. Doch, Sie schon.', talk('soll', 'greet'), { once: true }),
@@ -222,14 +222,14 @@ const dialogue = [
   say('laub.k4.graben', 'laub', 'Ein Ausbruchgraben. Wenn man eine Mauer bis auf den letzten Stein herausholt, bleibt ein Graben in ihrer Form. Die ‚Mauerzüge‘, die Sie im Scan sehen, sind keine Mauern. Es sind die Löcher, in denen Mauern waren. Ich habe hier die Seite gefunden. In so einem Loch.', found('clue.k4.graben'), { once: true, src: [src('LIDAR', 'KB-06')] }),
   // 4.6 Brunnen, Echo 1840
   ...seq(echo('clue.k4.laub_1840'), [
-    ['echo.k4.laub_1840.01', 'laub', '(1840, schreibt, murmelt) Standpunkt siebzehn. Richtung Ruine, hundertneunundneunzig Grad und …'],
-    ['echo.k4.laub_1840.02', 'geraeusch', '[Ein Horn, ein langer Ton. Laub hebt den Kopf.]'],
-    ['echo.k4.laub_1840.03', 'laub', '(1840) Jäger? Um die Zeit? Es ist keine Jagd angesagt. Ich hätte das wissen müssen, ich habe die Liste.'],
-    ['echo.k4.laub_1840.04', 'geraeusch', '[Augen gehen im Nebel an, zwölf Stück, in Kniehöhe.]'],
+    ['echo.k4.laub_1840.01', 'laub', 'Standpunkt siebzehn. Richtung Ruine, hundertneunundneunzig Grad und …'],
+    ['echo.k4.laub_1840.02', 'geraeusch', '[Horn, fern: ein langer Ton]'],
+    ['echo.k4.laub_1840.03', 'laub', 'Jäger? Um die Zeit? Es ist keine Jagd angesagt. Ich hätte das wissen müssen, ich habe die Liste.'],
+    ['echo.k4.laub_1840.04', 'geraeusch', '[Knurren, ringsum]'],
     ['echo.k4.laub_1840.05', 'stimme', 'Leg dich hin.'],
-    ['echo.k4.laub_1840.06', 'laub', '(1840) Ich bin königlich bayerischer Geometer. Ich lege mich nicht in den Dreck.'],
+    ['echo.k4.laub_1840.06', 'laub', 'Ich bin königlich bayerischer Geometer. Ich lege mich nicht in den Dreck.'],
     ['echo.k4.laub_1840.07', 'stimme', 'Leg dich hin. Bitte.'],
-    ['echo.k4.laub_1840.08', 'geraeusch', '[Laub nimmt die Laterne und rennt. Die Augen folgen. Das Bild bricht ab. Nur der Theodolit bleibt stehen.]'],
+    ['echo.k4.laub_1840.08', 'geraeusch', '[Laufschritte, immer leiser]'],
   ]),
   say('laub.k4.gestaendnis_2', 'laub', 'Sie haben es gesehen. Ich habe mich nicht hingelegt. Ich dachte, sie reißen mich. Sie wollten mich stellen, und ich bin gerannt, in den Nebel hinein, zu weit, bis dahin, wo nichts mehr ist. Seitdem bin ich in diesem Messing. Mein Tagegeld für den letzten Tag ist übrigens auch noch offen.', beat('4.6'), { once: true, priority: 10 }),
   // 4.7 Die Meute treibt
@@ -242,10 +242,10 @@ const dialogue = [
   say('laub.k4.weiter', 'laub', 'Weiter.', beat('4.bestaetigt-1'), { once: true }),
   // 4.9 Zwinger: Finale (W8)
   say('laub.k4.zwingerhaus', 'laub', 'Vom Zwingerhaus steht heute ein Rest im Relief, ein Rechteck, eine Kante. Kein Haus. Der Eiskeller ist ein Loch mit einem Ring. Stehen geblieben ist nur das Lager.', found('clue.k4.zwingerhaus'), { once: true, src: [src('LIDAR', 'KB-B23/KB-B35'), src('WP-SK', 'P')] }),
-  say('beat.k4.sammeln', 'geraeusch', '[Das Horn: drei lange Töne. Sammeln.]', beat('4.9', { step: 1 }), { once: true }),
+  say('beat.k4.sammeln', 'geraeusch', '[Horn: Sammeln]', beat('4.9', { step: 1 }), { once: true }),
   say('laub.k4.finale_1', 'laub', 'Jetzt. Hinlegen. Und machen Sie das Licht an. Die sollen sehen, dass wir nicht weglaufen.', beat('4.9', { step: 2 }), { once: true, priority: 10 }),
   say('laub.k4.nicht_noch_einmal', 'laub', 'Nicht noch einmal. Bitte.', beat('4.9-weggerannt'), { priority: 10 }),
-  say('beat.k4.hinlegen', 'geraeusch', '[Ein Hund nach dem anderen legt sich. Ihre Augen gehen aus wie Lampen in einem Haus. Hufschlag, dann Stille.]', beat('4.9-hingelegt', { step: 1 }), { once: true }),
+  say('beat.k4.hinlegen', 'geraeusch', '[Hufschlag, fern. Dann Stille]', beat('4.9-hingelegt', { step: 1 }), { once: true }),
   say('laub.k4.finale_2', 'laub', '(sehr leise) Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.', beat('4.9-hingelegt', { step: 2 }), { once: true }),
   // the old Pikeur (npc 'pikeur', ghost at the kennel after the finale): a conversation, the horn last
   say('jost.k4.01', 'jost', 'Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.', talk('pikeur', 'greet'), { once: true }),
@@ -253,7 +253,7 @@ const dialogue = [
   say('jost.k4.03', 'jost', 'Ich hab sie rausgelassen, in der Nacht vom Feuer. Dann bin ich ihnen nach. Ich hab sie nie wieder eingefangen. Wer nicht abgeblasen wird, läuft weiter. Und ich bin mitgelaufen.', talk('pikeur', 'meute')),
   say('jost.k4.04', 'jost', 'Was keiner mehr weiß, frisst der Berg. Wer zu lang drin ist in dem, was keiner mehr weiß, den frisst er mit. Wir haben jeden heimgetrieben, bevor es so weit war. Jeden.', talk('pikeur', 'berg', { step: 1 })),
   say('jost.k4.05', 'jost', 'Nur den Geometer nicht. Der hat sich nicht hingelegt.', talk('pikeur', 'berg', { step: 2 })),
-  say('jost.k4.06', 'jost', 'Jetzt haben sie Namen. Gut. (Er krault den Hund, der ihm am nächsten liegt.) Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.', talk('pikeur', 'namen')),
+  say('jost.k4.06', 'jost', 'Jetzt haben sie Namen. Gut. Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.', talk('pikeur', 'namen')),
   say('jost.k4.07', 'jost', 'Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.', talk('pikeur', 'bye')),
   say('jost.k4.08', 'jost', 'Die Chronik ist voll, glaub ich. Was du damit machst, ist deine Sache. Ich hab nur aufgepasst.', beat('4.9-horn'), { once: true }),
   // After the finale (station)
