@@ -107,6 +107,12 @@ const GUARD_DROP = 130;
 const LORE_TAKE = 1.9;
 const SHRINE_R = 2.6;
 const SHRINE_COOL = 120;
+/** Cache guards keep clear of survey points (arrivals) and of a quest's own fight (m). */
+const GUARD_CLEAR_POINT = 40;
+const GUARD_CLEAR_QUEST = 40;
+/** Seconds after a fast travel or a wake before any cache guards rise. */
+const ARRIVAL_GRACE = 3;
+const CHAPTER_ORDER = ['prolog', 'k1', 'k2', 'k3', 'k4', 'enden'];
 
 type PoiState = 'hidden' | 'seen' | 'done';
 
@@ -142,6 +148,9 @@ class Travel {
   private hunt = 'calm';
   private caughtPending = false;
   private wakeAt = -1;
+  /** Live quest / story spawns (not route caches): cache guards keep clear of them. */
+  private readonly questSpawns = new Map<string, { x: number; z: number; era: string }>();
+  private graceT = 0;
   /** A pack is out (hunt:start … hunt:end): no sprint boost. */
   private packOut = false;
   private sprintT = 0;
@@ -459,8 +468,15 @@ class Travel {
     const era = ctx.era.current;
     const p = ctx.player.position;
     const armed = this.hasWeapon();
+    const chapter = this.chapter();
+    this.graceT = Math.max(0, this.graceT - dt);
     for (const poi of this.pois) {
-      const here = poi.era === era;
+      // a route belongs to its chapter: an unopened cache of another chapter is not there (a K2
+      // Irrlicht cache ambushed K1's walk in today); found things and Wegsteine stay once passed
+      const ci = CHAPTER_ORDER.indexOf(chapter);
+      const pi = CHAPTER_ORDER.indexOf(poi.chapter);
+      const ofChapter = poi.kind === 'cache' ? pi === ci : pi <= ci;
+      const here = poi.era === era && ofChapter;
       const d = Math.hypot(p.x - poi.x, p.z - poi.z);
       let v = this.poiVis.get(poi.id);
       const done = this.slice.done.includes(poi.id);
@@ -489,7 +505,7 @@ class Travel {
       if (poi.kind === 'cache' && !done) {
         // a set piece (a pack out: the par force hunt, the stand, a patrol) owns the night: no
         // cache guards rise into it, and those already up go back into the fog
-        if (!this.guards.has(poi.id) && d < GUARD_SPAWN && armed && !this.packOut) this.spawnGuards(poi);
+        if (!this.guards.has(poi.id) && d < GUARD_SPAWN && armed && !this.packOut && this.guardsMayRise(poi)) this.spawnGuards(poi);
         if (this.guards.has(poi.id) && (d > GUARD_DROP || this.packOut)) this.despawnGuards(poi);
       } else if (poi.kind === 'lore' && !done && d < LORE_TAKE && !ctx.player.flying) {
         this.takeLore(poi, v);
@@ -498,6 +514,16 @@ class Travel {
       }
       if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, Math.min(1, v.open + dt * 1.6));
     }
+  }
+
+  /** No ambush at an arrival point, on a fresh arrival, or stacked onto a quest's own fight. */
+  private guardsMayRise(poi: Poi): boolean {
+    if (this.graceT > 0) return false;
+    if (SURVEY_POINTS.some((sp) => Math.hypot(sp.x - poi.x, sp.z - poi.z) < GUARD_CLEAR_POINT)) return false;
+    for (const q of this.questSpawns.values()) {
+      if (q.era === poi.era && Math.hypot(q.x - poi.x, q.z - poi.z) < GUARD_CLEAR_QUEST) return false;
+    }
+    return true;
   }
 
   private spawnGuards(poi: Poi): void {
@@ -822,7 +848,19 @@ class Travel {
         if (poi) this.despawnGuards(poi);
       }
     });
+    ev.on('enemy:spawn', ({ group, x, z, era }) => {
+      if (group.startsWith('poi.')) return;
+      this.questSpawns.set(group, { x, z, era: era ?? this.ctx.era.current });
+    });
+    ev.on('enemy:despawn', ({ group }) => {
+      if (group === '*') this.questSpawns.clear();
+      else this.questSpawns.delete(group);
+    });
+    ev.on('enemy:cleared', ({ group }) => {
+      this.questSpawns.delete(group);
+    });
     ev.on('player:teleport', () => {
+      this.graceT = ARRIVAL_GRACE;
       if (!this.caughtPending) return;
       this.caughtPending = false;
       this.wakeAt = 1.5;
