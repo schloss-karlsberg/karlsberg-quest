@@ -318,6 +318,7 @@
           "id": "hof-gefunden",
           "when": { "have": { "clue": "clue.p.ehrenhof" } },
           "do": [
+            { "do": "flag", "set": { "map.compare": true } },
             { "do": "prompt", "key": "M", "text": "Karte vergleichen: Laubs Blatt von 1840 über das Gelände legen", "delay": 4 },
             {
               "do": "objective",
@@ -333,12 +334,13 @@
           "when": {
             "all": [{ "have": { "clue": "clue.p.ehrenhof" } }, { "enter": { "x": 1216, "z": -1114, "r": 70, "era": "today" } }, { "map": true }]
           },
-          "do": [{ "do": "grant", "clue": "clue.p.kartenvergleich", "card": true }]
+          "do": [{ "do": "grant", "clue": "clue.p.kartenvergleich", "card": true }, { "do": "flag", "set": { "map.compare": null } }]
         }
       ],
       "complete": { "have": { "clue": "clue.p.kartenvergleich" } },
       "exit": [
         { "do": "prompt", "key": null, "text": null },
+        { "do": "flag", "set": { "map.compare": null } },
         { "do": "say", "line": "laub.p.versatz", "delay": 0.8 },
         { "do": "say", "line": "laub.p.versatz.b" },
         { "do": "say", "line": "laub.p.versatz.c" }

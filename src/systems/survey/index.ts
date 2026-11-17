@@ -14,6 +14,8 @@ import { type MapLayer, gateFrom, mapLayers, nextMap, scanAllowed } from '../ski
  */
 /** Radius (m) of the relief scan around the player; trees inside it are hidden (ground points only). */
 export const SCAN_RADIUS = 160;
+/** travel handed the M key back this step (`survey:cycle-map`). */
+let cycleAsked = false;
 
 export interface SurveyHooks {
   /** Show a map layer (no gating): 0 off, 1840, 1935. */
@@ -73,6 +75,9 @@ export default defineSystem({
   id: 'survey',
   init(ctx) {
     mapLayer = 0;
+    ctx.events.on('survey:cycle-map', () => {
+      cycleAsked = true;
+    });
     ctx.events.on('era:change', () => updateStatus(ctx));
     ctx.events.on('scan:mode', () => updateStatus(ctx));
     ctx.events.on('survey:show-map', ({ layer }) => {
@@ -109,7 +114,9 @@ export default defineSystem({
       }
     }
     // with the travel system M opens its map page; the overlays are buttons there (`survey:show-map`)
-    if (inp.wasPressed('map') && !ctx.systems.get('travel')) {
+    // and travel hands M back (`survey:cycle-map`) while the story asks for the map comparison
+    if ((inp.wasPressed('map') && !ctx.systems.get('travel')) || cycleAsked) {
+      cycleAsked = false;
       const current: MapLayer = ctx.world.mapMix > 0 ? mapLayer || 1840 : 0;
       const next = nextMap(current, gateFrom(ctx.state.state, ctx.params));
       if (next === null) {

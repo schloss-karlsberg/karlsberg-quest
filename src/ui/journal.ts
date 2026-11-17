@@ -14,7 +14,7 @@ import type { GameContext } from '../core/context';
 export interface JournalTab {
   id: string;
   label: string;
-  /** Tab order: 10 Aufgaben, 20 Codex, 30 Sammlungen, 40 Ausrüstung, 50 Talente. */
+  /** Tab order: 10 Aufgaben, 20 Codex, 30 Sammlungen, 35 Funde, 40 Ausrüstung, 50 Talente, 60 Karte. */
   order: number;
   render(el: HTMLElement, ctx: GameContext): void;
   badge?(ctx: GameContext): number;

@@ -68,6 +68,8 @@ declare module '../../core/events' {
     'travel:arrived': { id: string; from: { x: number; z: number } };
     /** Ask the survey system to lay a historic map on the terrain (0 off). */
     'survey:show-map': { layer: 0 | 1840 | 1935 };
+    /** M while a map comparison is asked for (or a layer lies on the terrain): next layer. */
+    'survey:cycle-map': Record<string, never>;
     /** A route POI was used: a cache opened, a Fundstück taken, a Wegstein touched. */
     'travel:poi': { id: string; kind: 'cache' | 'lore' | 'shrine' };
   }
@@ -140,6 +142,8 @@ class Travel {
   private hunt = 'calm';
   private caughtPending = false;
   private wakeAt = -1;
+  /** A pack is out (hunt:start … hunt:end): no sprint boost. */
+  private packOut = false;
   private sprintT = 0;
   private sprint = 0;
   private lastWritten = Number.NaN;
@@ -483,8 +487,10 @@ class Travel {
       }
       if (d < 45 && !this.slice.seen.includes(poi.id)) this.slice.seen.push(poi.id);
       if (poi.kind === 'cache' && !done) {
-        if (!this.guards.has(poi.id) && d < GUARD_SPAWN && armed) this.spawnGuards(poi);
-        if (this.guards.has(poi.id) && d > GUARD_DROP) this.despawnGuards(poi);
+        // a set piece (a pack out: the par force hunt, the stand, a patrol) owns the night: no
+        // cache guards rise into it, and those already up go back into the fog
+        if (!this.guards.has(poi.id) && d < GUARD_SPAWN && armed && !this.packOut) this.spawnGuards(poi);
+        if (this.guards.has(poi.id) && (d > GUARD_DROP || this.packOut)) this.despawnGuards(poi);
       } else if (poi.kind === 'lore' && !done && d < LORE_TAKE && !ctx.player.flying) {
         this.takeLore(poi, v);
       } else if (poi.kind === 'shrine' && d < SHRINE_R && !this.inCombat) {
@@ -606,7 +612,10 @@ class Travel {
     const base = pl.moveScale === this.lastWritten ? this.lastBase : pl.moveScale;
     const inp = ctx.input;
     const moving = inp.isDown('forward') || inp.isDown('left') || inp.isDown('right') || inp.isDown('back');
-    const free = !this.inCombat && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
+    // the long-walk boost is for empty walks outdoors: never while a pack is out (the par force
+    // hunt, the stand and the patrols are tuned to the plain sprint), never in the palace rooms
+    const indoors = !!ctx.state.state.flags['interior.room'];
+    const free = !this.inCombat && !this.packOut && !indoors && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
     if (free && moving && inp.isDown('sprint')) this.sprintT += dt;
     else this.sprintT = Math.max(0, this.sprintT - dt * 4);
     const target = this.sprintT > 1.8 ? SPRINT_BOOST * Math.min(1, (this.sprintT - 1.8) / 1.4) : 0;
@@ -751,7 +760,12 @@ class Travel {
   update(dt: number): void {
     const ctx = this.ctx;
     this.time += dt;
-    if (ctx.input.wasPressed('map') && ctx.ui.modals.count === 0) this.openMap();
+    if (ctx.input.wasPressed('map') && ctx.ui.modals.count === 0) {
+      // the prologue's map comparison (story flag `map.compare`) and a layer already on the
+      // terrain keep M as the overlay key (off → 1840 → 1935 → off); otherwise M opens the map page
+      if (ctx.state.state.flags['map.compare'] === true || ctx.world.mapMix > 0) ctx.events.emit('survey:cycle-map', {});
+      else this.openMap();
+    }
     this.syncTripods();
     this.syncPois(dt);
     this.sprintBoost(dt);
@@ -793,6 +807,12 @@ class Travel {
     });
     ev.on('hunt:alert', ({ state }) => {
       this.hunt = state;
+    });
+    ev.on('hunt:start', () => {
+      this.packOut = true;
+    });
+    ev.on('hunt:end', () => {
+      this.packOut = false;
     });
     ev.on('player:caught', () => {
       this.caughtPending = true;
@@ -924,7 +944,8 @@ export default defineSystem({
     addJournalTab({
       id: 'karte',
       label: TRAVEL_DE.journalTab,
-      order: 15,
+      // last: Aufgaben 1, Codex 2, Sammlungen 3 keep their digits (M opens the map directly)
+      order: 60,
       render: (el) => {
         if (!travel) return;
         const t = travel;

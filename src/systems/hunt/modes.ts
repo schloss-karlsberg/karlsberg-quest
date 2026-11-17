@@ -414,7 +414,9 @@ export class ParforceMode implements ModeController {
       // the stand breaks (K1 finale): the hounds between you and the water break aside
       const p = sim.lastKnown ?? sim.origin;
       const toT = dist(p, o.target);
-      for (const h of sim.hounds) if (dist(h, o.target) < toT + 2) {
+      // … and any at your heels (you stood at the ring's edge) fall back a few strides: the dash
+      // starts with a gap, never with a hound already on you
+      for (const h of sim.hounds) if (dist(h, o.target) < toT + 2 || dist(h, p) < 8) {
         h.scatterT = 2.4;
         h.scatterX = p.x;
         h.scatterZ = p.z;
@@ -841,6 +843,8 @@ export class StandMode implements ModeController {
   readonly out: XZ;
   private hornT = 4;
   private barkT = 1;
+  /** The player's distance to the centre on the previous step (−1 = none yet). */
+  private lastPd = -1;
 
   constructor(
     private readonly sim: PackSim,
@@ -947,7 +951,11 @@ export class StandMode implements ModeController {
       const r = this.right;
       const along = (p.x - c.x) * this.out.x + (p.z - c.z) * this.out.z;
       const lat = Math.abs((p.x - c.x) * r.x + (p.z - c.z) * r.z);
-      const breaking = along > STAND.ahead || along < -STAND.behind || lat > STAND.side;
+      const outside = along > STAND.ahead || along < -STAND.behind || lat > STAND.side;
+      // only a player moving OUT draws a lunge: one who arrives from behind, stands at the edge
+      // of the ring or is pushed by a blow while fighting the strays is not slipping away
+      const leaving = this.lastPd >= 0 && pd > this.lastPd + 0.004;
+      const breaking = outside && leaving;
       if (breaking && sim.canLunge() && !p.flying) {
         // the nearest hound on that side springs
         let best: Agent | null = null;
@@ -981,6 +989,7 @@ export class StandMode implements ModeController {
       sim.searchLeft = T.search;
       sim.alert = 0.45;
     }
+    this.lastPd = pd;
     return true;
   }
 

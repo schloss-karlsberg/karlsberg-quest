@@ -226,6 +226,20 @@ describe('chapter 1 finale: the par force hunt down the cascade', () => {
       // all eight stay out in the ring (none on top of you)
       for (const h of sim.hounds) expect(Math.hypot(h.x - p.x, h.z - p.z)).toBeGreaterThan(5);
     }
+    // standing at the ring's back edge (where you arrive from the cascade) and being shoved about by
+    // the strays' blows is not slipping away: no lunge while you step back in
+    {
+      const n = NARROWS();
+      const sim = new PackSim(world, null, optsOf(standCfg(), 850, false), n, null, makeMode);
+      const p: PlayerSense = { x: n.x, y: 300, z: n.z + 9, stance: 'stand', noise: 0.8, visibility: 1, lanternLit: true, speed: 0, flying: false };
+      for (let i = 0; i < 10 * 60; i++) sim.update(DT, p);
+      expect((sim.ctl as StandMode).engaged).toBe(true);
+      for (let i = 0; i < 3 * 60; i++) {
+        p.z -= 1.5 * DT;
+        sim.update(DT, p);
+      }
+      expect(sim.lungeStats.started).toBe(0);
+    }
     // run back up the slope through them: lunges, then the pack has you
     const sim = stand(900);
     const n = NARROWS();
@@ -246,6 +260,22 @@ describe('chapter 1 finale: the par force hunt down the cascade', () => {
     const sim = stand(777);
     sim.switchMode({ mode: 'parforce', target: BASIN, headStart: 1.5 }, makeMode);
     expect(sim.ctl).toBeInstanceOf(ParforceMode);
+  });
+
+  it('the dash from the ring\'s back edge (where the cascade path arrives): the hounds at your heels fall back', () => {
+    const rs = Array.from({ length: 6 }, (_, i) => {
+      const n = NARROWS();
+      const edge = { x: n.x + 1, z: n.z + 9 };
+      const sim = new PackSim(world, null, optsOf(standCfg(), 760 + i, false), n, null, makeMode);
+      const p: PlayerSense = { x: edge.x, y: 300, z: edge.z, stance: 'stand', noise: 0.6, visibility: 1, lanternLit: true, speed: 0, flying: false };
+      for (let k = 0; k < 20 * 60; k++) sim.update(DT, p);
+      const c = dashCfg() as unknown as Record<string, unknown>;
+      sim.switchMode({ mode: 'parforce', target: c.target as XZ, from: c.from as XZ, headStart: c.headStart as number, goalRadius: c.goalRadius as number, pikeurFar: c.pikeurFar as number, flankers: c.flankers as number }, makeMode);
+      // a straight sprint, no dodging (the e2e walker)
+      return run(sim, edge, BASIN, 12, { wake: 0.2, speed: 6.2, wobble: 0, dodge: 0 }, 760 + i);
+    });
+    if (process.env.K1_DEBUG) console.log(rs.map((r) => [r.escaped, r.caught, r.t.toFixed(1), r.minGap.toFixed(1), r.lunges, r.bites].join(' ')));
+    expect(rs.filter((r) => r.escaped).length).toBeGreaterThanOrEqual(5);
   });
 
   it('gentle mode is noticeably easier: a long stop and no dodging are forgiven', () => {
