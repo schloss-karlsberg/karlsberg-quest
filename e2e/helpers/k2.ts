@@ -377,7 +377,7 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
     [1186, -1098],
     [1184, -1113],
   ], { sprint: true });
-  expect(zurWache.reached).toBe(true);
+  expect(zurWache.reached, JSON.stringify({ ...zurWache, enemies: await page.evaluate(() => window.kq!.combat!.enemies().map((e) => `${e.kind}:${e.group}@${Math.round(e.x)},${Math.round(e.z)}`)), hunt: await page.evaluate(() => window.kq!.hunt!.state()?.mode ?? null) })).toBe(true);
   await page.evaluate(() => {
     const k = window.kq!;
     (window as unknown as { __cna: { until(f: () => boolean, s: number): boolean } }).__cna.until(() => k.combat!.enemies().filter((e) => e.group === 'k2.wache').length >= 4, 10);

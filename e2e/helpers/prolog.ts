@@ -190,9 +190,14 @@ export async function fight(page: Page, target: string, o: { hits?: number; shot
   if (o.shot) await cna(page, o.shot);
   await page.evaluate((t) => {
     const k = window.kq!;
-    k.combat!.kill(t);
+    const c = k.combat!;
+    const groups = new Set(c.enemies().filter((e) => e.kind === t || e.group === t).map((e) => e.group));
+    c.kill(t);
+    // a kind target leaves its packs' escorts (`<group>+escort`) standing: they go too (a cleared
+    // group sends no second wave)
+    for (const e of c.enemies()) if ([...groups].some((g) => e.group === `${g}+escort`)) c.kill(e.id);
     for (let i = 0; i < 20; i++) k.step(10);
-    k.combat!.god(false);
+    c.god(false);
   }, target);
   return before;
 }
