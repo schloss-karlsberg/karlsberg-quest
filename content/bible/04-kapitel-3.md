@@ -52,9 +52,9 @@ Nach der Wahl sagt Hanne „Raus jetzt“ und geht voran. **Hanne kommt in jedem
 
 **3.11 – Der Garten.** Draußen ist es taghell vom Feuer. Die Meute ist da, angelockt vom Lärm. Im Feuerschein ist deine Laterne nur ein Licht unter vielen, die Hunde jagen jetzt nach **Gehör** (Abschnitt 9). Ziel: die ummauerte Holländische Gärtnerei, dann weiter nach Norden zum Zwinger.
 
-**3.12 – Der Zwinger.** Jost reißt die Gittertüren auf. Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht (`jost.k3.*`). Jost nimmt das Horn vom Haken im Zwingerhaus und rennt ihnen nach. Laub sagt nichts.
+**3.12 – Der Zwinger.** Jost reißt die Gittertüren auf; der Spieler zieht mit ihm die Riegel (E am Tor; zögert er, zieht Jost allein). Die Türflügel schlagen auf, und sieben echte Hunde, nicht aus Rauch, laufen in drei bis sechs Metern an dir vorbei in die Nacht (`jost.k3.01`–`03`); erst danach sagt Laub es (`beat.k3.hunde`). Nach Josts Kerben nimmt er das Horn vom Haken, sagt `jost.k3.04` und rennt ihnen mit der Laterne nach; das Horn bläst einmal, weit weg. Laub sagt nur `laub.k3.alle`.
 
-**3.13 – Feldstation, Cliffhanger.** Wenn die Seite ganz bestätigt ist: Die Bussole riecht nach kaltem Rauch. Laub (`laub.k3.ende`): „Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.“
+**3.13 – Feldstation, Cliffhanger.** Wenn die Seite ganz bestätigt ist: Aus der Bussole steigt ein Faden kalter Rauch. Laub (`laub.k3.ende`): „Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.“
 
 ---
 
@@ -198,14 +198,13 @@ Nach der Wahl sagt Hanne „Raus jetzt“ und geht voran. **Hanne kommt in jedem
 - MANNLICH: „Hundertundvier Lehnstühle aus vergoldetem Holz, eine Art kurulischer Sessel, von dem gleichen Damast wie die Wände bezogen und mit Goldfransen behangen, bildeten die Einrichtung dieses geräumigen Saales, der, an hundert Fuß lang, in eine offene, durch eine Kolonnade abgeschlossene Rotunde auslief.“ [Z S. 374; zu „hundert Fuß“ siehe `clue.k3.messen`]
 - MANNLICH: „Als man endlich so weit war, daß die Bilder angehängt werden konnten, verließ er kaum mehr den Saal, stand selbst während der Nacht drei- bis viermal auf und erschien im Schlafrock.“ [Z S. 374 f.]
 - EIN HÖFLING (fern, aus einem anderen Jahr): „Obacht auf die Bilder!“ [Z S. 374]
-- (Die Bilder verblassen. Der Mann im Schlafrock ist fort. Die Rechtecke bleiben.)
 - LAUB: „Er hat die Galerie aus einem hölzernen Gang machen lassen. Bretter und Fachwerk, damit es schnell geht. Was schnell geht, brennt schnell.“ [P nach SCHWAN12: Die Galerie entstand 1788 aus einem hölzernen Verbindungsgang]
 
 **`echo.k3.fackel`** – Ehrenhof, E halten beim Kommissär. Erinnerung (Fiktion) mit Zitat. Abenddämmerung. Eine dichte Menge. Ein Mann mit Schärpe und brennender Fackel auf einem Karren.
-- MANNLICH (Stimme, ohne Figur; Untertitel: „Mannlich war nicht dabei. Er schreibt nach Berichten.“): „Man hatte bis von Lothringen Stroh herbeischleppen lassen, um damit alle seine Gemächer zu ebener Erde auszustopfen. Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen, unter dem Beifall einer tausendköpfigen Schar von Sansculottes und dem Gesange ihres schrecklichen: Ça ira!“ [Z M1910 S. 461]
-- KOMMISSÄR: „Im Namen der Nation!“ [nach S. 461]
-- MENGE (singt, französisch, Untertitel nur „Ça ira“): „Ah! ça ira, ça ira, ça ira …“ (Liedtext gemeinfrei, 1790)
-- (Die Fackel fliegt. Ein Fenster im Erdgeschoss leuchtet auf, dann das nächste.)
+- KOMMISSÄR (hebt die Fackel): „Im Namen der Nation!“ [nach S. 461]
+- MENGE (singt, französisch, Untertitel nur „Ça ira! Ça ira!“): „Ah! ça ira, ça ira, ça ira …“ (Liedtext gemeinfrei, 1790)
+- Zu sehen, nicht zu lesen: Die Fackel fliegt in einem Bogen, schlägt durch ein Fenster im Erdgeschoss, und Fenster um Fenster leuchtet auf: Glut in den Scheiben, Flammenzungen, Rauch aus den Öffnungen. Der Blick dreht sich dorthin. Untertitel nur das Geräusch: „(Glas klirrt. Stroh faucht auf.)“
+- MANNLICH (Stimme, ohne Figur, erst danach, eine Zeile): „Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen.“ [Z M1910 S. 461; Quellenhinweis: Mannlich war nicht dabei, er schreibt nach Berichten. Der volle Satz mit dem Lothringer Stroh und der „tausendköpfigen Schar von Sansculottes“ steht in der Quelle; im Spiel zeigt der Ehrenhof ihn: die Strohkarren, die Menge.]
 
 ---
 
@@ -239,7 +238,7 @@ Nach der Wahl sagt Hanne „Raus jetzt“ und geht voran. **Hanne kommt in jedem
 - `jost.k3.01` (am Zwinger, reißt die Gitter auf): „Raus! Lauft! Die Hunde verbrennen nicht. Nicht meine.“
 - `jost.k3.02`: „Diane, du führst. Sultan, halt die Klappe und lauf. Bijou, das ist kein Hirsch, das ist Feuer!“
 - `jost.k3.03` (zu dir): „Die finden den Weg allein. Bloß nicht zurück.“
-- `jost.k3.04` (nimmt das Horn vom Haken): „Einer muss sie ja wieder heimholen.“ (Er rennt in die Nacht. Das Horn bläst einmal, weit weg, falsch und zu hoch.)
+- `jost.k3.04` (nach den Kerben, nimmt das Horn vom Haken): „Einer muss sie ja wieder heimholen.“ Er rennt mit der Laterne in die Nacht; man sieht das Licht kleiner werden. Das Horn bläst einmal, weit weg, falsch und zu hoch (zu hören, Untertitel nur „[Horn, weit weg]“).
 
 **Laub (Kapitel 3)**
 

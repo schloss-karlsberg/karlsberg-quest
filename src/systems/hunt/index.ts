@@ -33,7 +33,8 @@ import { LanternView } from './lantern';
 import { type LanternState, drain, newLantern, refill, toggle } from './lanternLogic';
 import { type ArrowKind, HuntOverlay } from './overlay';
 import type { PlayerSense } from './perception';
-import { DriveMode, FinaleMode, KennelMode, ParforceMode, StandMode, makeMode } from './modes';
+import { KennelGate, gateFrame } from './kennelGate';
+import { DriveMode, FinaleMode, KENNEL_DOOR_S, KennelMode, ParforceMode, StandMode, makeMode } from './modes';
 import { hashSeed } from './rng';
 import { type Agent, type HornSignal, MAX_HOUNDS, type PackMode, type PackOptions, PackSim, type PackState, type SimEvent, type SimWorld, type XZ, headingTo } from './sim';
 import { TrackVisuals } from './trackVisuals';
@@ -52,6 +53,8 @@ export interface HuntSlice {
   caught?: number;
   /** The active pack (configuration + era); restored after a load, cleared when it ends. */
   pack?: SavedPack | null;
+  /** K3: the Zwinger's Gittertüren were opened (they stay open in 1793-07). */
+  kennelOpen?: boolean;
 }
 
 /** JSON-safe pack configuration as saved in the slice. */
@@ -132,6 +135,8 @@ declare module '../../core/events' {
     'hunt:end': { reason: HuntEndReason };
     /** Snow: the pack picked up / lost the player's trail (why: what broke it). */
     'hunt:tracking': { on: boolean; x: number; z: number; why?: 'water' | 'stone' | 'road' | 'rock' };
+    /** kennel (K3): the Gittertüren swing open and the pack bursts out (E at the gate, or story cue 'hunt:release'). */
+    'hunt:release': { x: number; z: number; by: 'player' | 'cue' };
     /** drive: the player arrived at the target; parforce: escaped (water / target); kennel: the pack ran out and is gone. */
     'hunt:goal': { mode: 'drive' | 'parforce' | 'kennel'; x: number; z: number };
     /** A lunge landed (n of max; max = caught). */
@@ -142,6 +147,13 @@ declare module '../../core/events' {
     'hunt:read': { kind: 'paw' | 'hoof'; age: number; count: number; heading: number };
   }
 }
+
+/** K3 Zwinger: the yard (footprint id) and the pack's first waypoint just outside its gate. */
+const KENNEL_YARD = 'KB-B23';
+const KENNEL_GATE_NEAR: XZ = { x: 1252, z: -1579 };
+/** Distance band (m) from the gate in which E opens it. */
+export const KENNEL_PROMPT_MIN = 3;
+export const KENNEL_PROMPT_MAX = 7.5;
 
 export type HuntEndReason = 'configure' | 'caught' | 'hub' | 'era' | 'escaped' | 'debug';
 
@@ -212,6 +224,8 @@ export interface HuntHooks {
   walkPrints(x0: number, z0: number, x1: number, z1: number, step?: number): number;
   /** Spurenleser: what the pack's prints at the player tell (null = none). */
   readTracks(): (PackReading & { text: string }) | null;
+  /** K3 Zwinger: the Gittertüren (placed, open, E prompt shown), the release path and the nearest a hound came. */
+  kennel(): { placed: boolean; open: boolean; prompt: boolean; x: number; z: number; nx: number; nz: number; path: XZ[]; nearest: number } | null;
   /** Finale / drive / parforce controller state. */
   mode(): { mode: PackMode; phase?: string; calm?: number; pressure?: number; rests?: number; rideIns?: number; bites?: number; lunges?: number } | null;
   /** The staged picture of the endings (cue 'hunt:tableau'): kind and per-hound lie/gone. */
@@ -294,6 +308,16 @@ class Hunt {
   private lungeTaught = false;
   /** Seconds after the kennel pack ran out (the pack ends a little later). */
   private releasedT = -1;
+  /** K3: the Zwinger's Gittertüren (era 1793-07), the E prompt at them, the camera nudge on release. */
+  readonly gate = new KennelGate();
+  private gatePlaced = false;
+  private gatePrompt = false;
+  private nudgeT = 0;
+  private nudgeTo: XZ | null = null;
+  private passShake = 0;
+  private passShook = false;
+  /** Closest a released hound came to the player (m; Infinity before the release). */
+  private passNearest = Infinity;
   /** A staged picture without a simulation (story cue 'hunt:tableau', the endings). */
   private tableau: { kind: 'lie' | 'eyes'; agents: Agent[]; t: number; horn: boolean } | null = null;
 
@@ -302,6 +326,7 @@ class Hunt {
     this.lanternView = new LanternView(ctx.scene);
     ctx.scene.add(this.visuals.object);
     ctx.scene.add(this.trackVis.mesh);
+    ctx.scene.add(this.gate.object);
     this.visuals.object.visible = false;
     this.overlay = new HuntOverlay(ctx.ui.layer('hunt'), { caught: ctx.t('hunt.caught.title'), caughtSub: ctx.t('hunt.caught.sub') });
     const ev = ctx.events;
@@ -336,13 +361,7 @@ class Hunt {
     // story set pieces (ch. 2): the Warner's trail in the hoarfrost; the pack holds still during W4
     ev.on('story:cue', ({ id, data }) => {
       if (id === 'hunt:trail') this.layTrail(data ?? {});
-      else if (id === 'hunt:release') {
-        const c = this.sim?.ctl;
-        if (c instanceof KennelMode) {
-          c.release();
-          this.caption('kennel', ctx.t('hunt.kennel.open'), 6, 4200);
-        }
-      } else if (id === 'hunt:tableau') this.setTableau(data ?? {});
+      else if (id === 'hunt:release') this.releaseKennel('cue'); else if (id === 'hunt:tableau') this.setTableau(data ?? {});
       else if (id === 'hunt:hold') {
         const s = data?.['seconds'];
         this.holdReq = { seconds: typeof s === 'number' && s > 0 ? s : 8, waited: 0 };
@@ -366,7 +385,8 @@ class Hunt {
   // ---- state --------------------------------------------------------------------------------
 
   slice(): Required<HuntSlice> {
-    const s = this.ctx.state.slice('hunt', () => ({ alert: 0, lantern: newLantern(), caught: 0, pack: null }));
+    const s = this.ctx.state.slice('hunt', () => ({ alert: 0, lantern: newLantern(), caught: 0, pack: null, kennelOpen: false }));
+    if (typeof s.kennelOpen !== 'boolean') s.kennelOpen = false;
     if (!s.lantern || typeof s.lantern.oil !== 'number') s.lantern = newLantern();
     if (typeof s.caught !== 'number') s.caught = 0;
     if (typeof s.alert !== 'number') s.alert = 0;
@@ -834,6 +854,7 @@ class Hunt {
       this.emitAlert(sim);
       this.updateModes(dt, sim);
     }
+    this.updateGate(sim);
     this.readTracks(dt);
     if (this.fading) {
       this.fading.t += dt / 2.4;
@@ -854,6 +875,64 @@ class Hunt {
         this.overlay.beat();
       }
     } else this.hbT = 0.3;
+  }
+
+  /** Where the Zwinger's gate is (the KB-B23 yard outline, at the pack's first waypoint). */
+  private placeGate(): void {
+    if (this.gatePlaced) return;
+    this.gatePlaced = true;
+    const yard = this.ctx.data.footprints.buildings.find((b) => b.id === KENNEL_YARD);
+    const f = yard ? gateFrame(yard.ring as [number, number][], KENNEL_GATE_NEAR) : null;
+    if (!f) return;
+    this.gate.place(f, this.ctx.world.heightAt(f.x + f.nx * 0.5, f.z + f.nz * 0.5));
+  }
+
+  /**
+   * K3 (bible 3.12): the Gittertüren swing open, the pack bursts out and runs past the player
+   * (KennelMode bends its way KENNEL_PASS m beside them), the view eases towards the gate.
+   */
+  private releaseKennel(by: 'player' | 'cue'): void {
+    const c = this.sim?.ctl;
+    if (!(c instanceof KennelMode) || c.phase !== 'pen') return;
+    const ctx = this.ctx;
+    const p = ctx.player.position;
+    c.release({ x: p.x, z: p.z });
+    this.placeGate();
+    this.gate.open();
+    this.slice().kennelOpen = true;
+    this.setGatePrompt(false);
+    this.caption('kennel', ctx.t('hunt.kennel.open'), 6, 3000);
+    const f = this.gate.frame;
+    this.nudgeTo = f ? { x: f.x, z: f.z } : (c.path[0] ?? null);
+    this.nudgeT = 1.4;
+    this.passShook = false;
+    this.passNearest = Infinity;
+    ctx.events.emit('hunt:release', { x: p.x, z: p.z, by });
+  }
+
+  private setGatePrompt(on: boolean): void {
+    if (on === this.gatePrompt) return;
+    this.gatePrompt = on;
+    this.ctx.ui.hud.prompt(on ? 'E' : null, on ? this.ctx.t('hunt.kennel.prompt') : undefined, 'hunt-gate');
+    const flags = this.ctx.state.mutable.flags;
+    if (on) flags['e.owner'] = 'hunt-gate';
+    else if (flags['e.owner'] === 'hunt-gate') delete flags['e.owner'];
+  }
+
+  /** Fixed step: E at the closed gate (outside, 3–7.5 m: the pack must pass, not trample). */
+  private updateGate(sim: PackSim | null): void {
+    const c = sim?.ctl;
+    const f = this.gate.frame;
+    let want = false;
+    if (c instanceof KennelMode && c.phase === 'pen' && f && this.ctx.ui.modals.count === 0) {
+      const p = this.ctx.player.position;
+      const dx = p.x - f.x;
+      const dz = p.z - f.z;
+      const d = Math.hypot(dx, dz);
+      want = d >= KENNEL_PROMPT_MIN && d <= KENNEL_PROMPT_MAX && dx * f.nx + dz * f.nz > 0.5;
+    }
+    this.setGatePrompt(want);
+    if (want && this.ctx.input.wasPressed('listen')) this.releaseKennel('player');
   }
 
   /** Finale prompt, bringing the player back into the circle, the end of a par force hunt. */
@@ -1351,7 +1430,8 @@ class Hunt {
         viewportH: window.innerHeight,
         hornGlow: this.hornGlowT > 0 ? Math.min(1, this.hornGlowT / Math.min(0.4, this.hornGlowDur)) * (ctx.settings.state.reducedFlash ? 0.8 : 0.6 + 0.4 * Math.sin(ctx.loop.time * 30)) : 0,
         caught: this.caughtT >= 0 && this.caughtT < 2.2 && !this.caughtSoft ? { t: this.caughtT } : null,
-        mist: ctx.era.current === '1793-02' ? 1 : ctx.era.info.night ? 0.55 : 0.3,
+        mist: sim?.mode === 'kennel' ? 0 : ctx.era.current === '1793-02' ? 1 : ctx.era.info.night ? 0.55 : 0.3,
+        real: sim?.mode === 'kennel',
         reducedMotion,
         reducedFlash: ctx.settings.state.reducedFlash,
         heightAt: (x: number, z: number) => ctx.world.heightAt(x, z),
@@ -1366,6 +1446,7 @@ class Hunt {
     } else if (this.tableau) this.frameTableau(dt);
     else this.visuals.object.visible = false;
     if (this.caughtT >= 0) this.caughtFrame(dt);
+    this.frameKennel(dt, sim, reducedMotion);
     // a bite: the view jolts towards the pull (no shake in reduced motion)
     if (this.biteT > 0 && !reducedMotion) {
       const k = (this.biteT / 0.32) ** 2 * 0.06;
@@ -1413,6 +1494,46 @@ class Hunt {
     const showGauge = L.lit || L.oil < 0.999 || !!sim || ctx.era.info.night;
     ctx.ui.hud.setLantern(showGauge ? L.oil : null, L.lit);
     this.overlay.frame({ dt, alert: this.hudAlert, reducedMotion, caught: this.caughtT, handoff: this.storyOwnsCaught(), showArrows: ctx.settings.state.soundIndicators !== false });
+  }
+
+  /** The Gittertüren, the view easing to the gate on release, a short shake as the pack goes by. */
+  private frameKennel(dt: number, sim: PackSim | null, reducedMotion: boolean): void {
+    const ctx = this.ctx;
+    const k3 = ctx.era.current === '1793-07';
+    if (k3) this.placeGate();
+    if (k3 && this.slice().kennelOpen && !this.gate.isOpen) this.gate.open(true);
+    if (!this.slice().kennelOpen && this.gate.isOpen) this.gate.close();
+    this.gate.update(dt, k3, reducedMotion);
+    const pl = ctx.player;
+    if (this.nudgeT > 0 && this.nudgeTo) {
+      this.nudgeT -= dt;
+      // no turn in reduced motion (the hounds come into view on their own way past)
+      if (!reducedMotion) {
+        const want = Math.atan2(-(this.nudgeTo.x - pl.position.x), -(this.nudgeTo.z - pl.position.z));
+        let d = want - pl.yaw;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        pl.yaw += d * Math.min(1, dt * 2.4);
+      }
+    }
+    // the first hound brushing by (within 7 m): a short thump in the view
+    const c = sim?.ctl;
+    if (c instanceof KennelMode && c.phase === 'out' && c.t > KENNEL_DOOR_S) {
+      let near = Infinity;
+      for (const h of sim!.hounds) if (h.gone < 0.5) near = Math.min(near, Math.hypot(h.x - pl.position.x, h.z - pl.position.z));
+      this.passNearest = Math.min(this.passNearest, near);
+      if (near < 7 && !this.passShook) {
+        this.passShook = true;
+        this.passShake = 0.5;
+      }
+    }
+    if (this.passShake > 0) {
+      this.passShake = Math.max(0, this.passShake - dt);
+      if (!reducedMotion) {
+        const k = this.passShake * 0.05;
+        ctx.camera.position.x += Math.sin(ctx.loop.time * 53) * k;
+        ctx.camera.position.y += Math.sin(ctx.loop.time * 71) * k * 0.6;
+      }
+    }
   }
 
   // ---- debug hooks --------------------------------------------------------------------------
@@ -1492,6 +1613,22 @@ class Hunt {
         self.lastStep = null;
         for (let i = 0; i <= n; i++) self.footprint(x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n, false);
         return n + 1;
+      },
+      kennel() {
+        const f = self.gate.frame;
+        if (!f) return null;
+        const c = self.sim?.ctl;
+        return {
+          placed: true,
+          open: self.gate.isOpen,
+          prompt: self.gatePrompt,
+          x: f.x,
+          z: f.z,
+          nx: f.nx,
+          nz: f.nz,
+          path: c instanceof KennelMode ? [...c.path] : [],
+          nearest: self.passNearest,
+        };
       },
       readTracks() {
         const p = ctx.player.position;

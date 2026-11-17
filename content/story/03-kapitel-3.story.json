@@ -191,13 +191,7 @@
       "id": "strohmann-steht",
       "when": { "quest": { "id": "q.k3.strohmann", "objective": "hof", "gte": 1 } },
       "do": [
-        {
-          "do": "sound",
-          "sound": "howl",
-          "x": 1222,
-          "z": -1114,
-          "caption": "[Die Strohkarren knistern. Dann richtet sich etwas auf, so groß wie zwei Männer.]"
-        },
+        { "do": "sound", "sound": "howl", "x": 1222, "z": -1114, "caption": "[Stroh knistert]" },
         {
           "do": "say",
           "id": "laub.k3.x.strohmann",
@@ -624,16 +618,24 @@
           "via": [{ "x": 1252, "z": -1579 }, { "x": 1272, "z": -1604 }, { "x": 1300, "z": -1650 }],
           "seed": 53
         },
-        { "do": "sound", "sound": "howl", "x": 1232, "z": -1572, "caption": "[Im Zwinger bellen Hunde. Pfoten an den Gittern.]" },
-        { "do": "grant", "clue": "clue.k3.jost", "delay": 1 },
-        { "do": "say", "line": "beat.k3.hunde", "delay": 10 }
+        { "do": "sound", "sound": "howl", "x": 1232, "z": -1572, "caption": "[Bellen hinter den Gittern]" }
       ],
       "complete": { "quest": { "id": "q.k3.hunde", "state": "done" } },
-      "exit": [
-        { "do": "cue", "id": "hunt:release" },
-        { "do": "toast", "text": "Jost zieht die Riegel. Die Meute bricht aus dem Zwinger, an dir vorbei, in die Nacht.", "ms": 5200 }
-      ],
+      "exit": [{ "do": "cue", "id": "hunt:release" }],
       "on": [
+        {
+          "id": "losgelassen",
+          "when": { "event": "hunt:release" },
+          "do": [{ "do": "grant", "clue": "clue.k3.jost" }, { "do": "say", "line": "beat.k3.hunde", "delay": 7 }]
+        },
+        {
+          "id": "jost-allein",
+          "when": { "all": [{ "timer": 75 }, { "not": { "quest": { "id": "q.k3.hunde", "objective": "tueren", "gte": 1 } } }] },
+          "do": [
+            { "do": "say", "id": "jost.k3.x.allein", "speaker": "jost", "text": "Dann zieh ich allein!" },
+            { "do": "cue", "id": "hunt:release", "delay": 1.5 }
+          ]
+        },
         {
           "id": "jost-wartet",
           "when": { "all": [{ "quest": { "id": "q.k3.hunde", "state": "ready" } }, { "timer": 30 }] },
@@ -649,9 +651,12 @@
       "checkpoint": "k3_7",
       "enter": [
         { "do": "cue", "id": "menagerie:clear", "data": { "id": "k3.jaguar" }, "delay": 2 },
-        { "do": "sound", "sound": "horn", "signal": "verloren", "x": 1150, "z": -1700, "caption": "[Horn, weit weg: falsch und zu hoch]", "delay": 3 },
-        { "do": "objective", "id": "k3.heim", "text": "Zurück ins Heute (Q halten)", "delay": 2 },
-        { "do": "npc", "op": "despawn", "npc": "jost", "delay": 6 }
+        { "do": "say", "line": "jost.k3.04", "delay": 0.5 },
+        { "do": "cue", "id": "k3:jost-run", "data": { "x": 1250, "z": -1568, "toX": 1150, "toZ": -1700 }, "delay": 3.5 },
+        { "do": "npc", "op": "despawn", "npc": "jost", "delay": 3.6 },
+        { "do": "sound", "sound": "horn", "signal": "verloren", "x": 1150, "z": -1700, "caption": "[Horn, weit weg]", "delay": 11 },
+        { "do": "say", "line": "laub.k3.alle", "delay": 14 },
+        { "do": "objective", "id": "k3.heim", "text": "Zurück ins Heute (Q halten)", "delay": 2 }
       ],
       "complete": { "era": "today" },
       "exit": [{ "do": "meter", "id": "smoke", "active": false }, { "do": "meter", "id": "oil", "active": false }]
@@ -717,7 +722,8 @@
       "title_de": "Kalter Rauch",
       "enter": [
         { "do": "look", "time": "night" },
-        { "do": "sound", "sound": "compass", "caption": "[Die Bussole riecht nach kaltem Rauch]", "delay": 1.5 },
+        { "do": "cue", "id": "k3:wisp", "delay": 1.4 },
+        { "do": "sound", "sound": "compass", "caption": "[Kalter Rauch]", "delay": 1.5 },
         { "do": "say", "line": "laub.k3.ende", "delay": 1.5 },
         { "do": "autosave" }
       ],

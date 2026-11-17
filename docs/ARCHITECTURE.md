@@ -361,6 +361,8 @@ story(skill) ──state.skills──▶ skills ──skill:unlocked──▶ an
 tools ──measure:done {building?, room?}──▶ story (event condition), chronik (measuring clues)
 interiors ──world.groundOverride / roomAnchor──▶ player, npc, chronik markers (storeys)
 story ──story:cue 'scenery:windows' / 'scenery:gate'──▶ scenery (lit windows, Ehrenhof gate)
+chronik ──echo:start / echo:end──▶ fx K3Stage (the torch flies with echo.k3.fackel) · story ──story:cue 'k3:jost-run' / 'k3:wisp'──▶ fx
+hunt ──hunt:release (E at the Zwinger gate)──▶ story (k3_8 grants clue.k3.jost) ──clue:found──▶ quests (q.k3.hunde.tueren)
 chronik ──echo:start / echo:end (clue.k1.feuerwerk)──▶ scenery (fireworks; phases follow kq.chronik.echo())
 scenery ──world.collider.setSolids / setPassZones──▶ player, hunt, menagerie (props, gate, passage)
 ```
@@ -470,8 +472,13 @@ Round-4 (polish: set dressing) integration rules:
   `stand` (K1 narrows: an arc behind, two hounds across the way out, the rider 40 m back; they
   engage within 14 m, never catch while you hold the ground (the strays are the fight), a break-out
   draws a lunge, > 22 m away = caught); `kennel` (K3 Zwinger: hounds pace behind the bars of
-  `target`; story cue `hunt:release` opens the gates — they burst out along `via` one after
-  another and fade into the night, `hunt:goal {mode:'kennel'}`, the hunt ends); `follow` (ending
+  `target`; E at the Gittertüren (`kennelGate.ts`, in the KB-B23 yard wall at `via[0]`, prompt
+  3–7.5 m outside, `flags['e.owner'] = 'hunt-gate'`) or story cue `hunt:release` opens them —
+  the leaves swing out (they stay open: slice `kennelOpen`), the hounds, bunched at the bars, burst
+  out along `via` bent 4.5 m past the player (`kennelRoute`, pure), drawn as real dogs
+  (`VisualInput.real`: dense coats, no wisps or ember eyes), the view eases to the gate and thumps
+  once as they pass (not in reduced motion); emits `hunt:release {x, z, by}`, then
+  `hunt:goal {mode:'kennel'}` when they are gone, the hunt ends; hook `kq.hunt.kennel()`); `follow` (ending
   C's afterword: the hounds walk your footsteps 16 m+ behind, back off when you turn on them, bay
   now and then, never catch). Story cue `hunt:tableau {kind: lie|eyes|off, n, x, z, r, face}`
   stages hounds without a hunt (the endings: five lie down one by one after the horn; eyes open
@@ -524,8 +531,19 @@ Round-4 (polish: set dressing) integration rules:
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
   `player:caught {by:'fire'|'oblivion'}`. Patches the palace shader at runtime (`palacePatch.ts`),
   adds `uHeat` to `render/post.ts`.
+- K3 on stage (`k3-stage.ts`, era 1793-07 only): `k3-crowd.ts` the Ehrenhof's ghost crowd (pure
+  scenes `afternoon` / `dusk` / `fire` in court coordinates, walkers, standers, carts; phase from
+  the story beat, the fackel echo and the fire), `k3-ghosts.ts` the instanced figures (one
+  InstancedMesh per kind, sepia ink + rim shader, thinning near the camera), `k3-torch.ts` the
+  torch synced to `echo.k3.fackel` (arc from the commissioner's hand, impact flash into post
+  `uFlash`, ground-floor windows of the court from `extractOpenings` lighting in order, flames and
+  smoke, the court glow on `atmosphere.uGlow*`, a look-at turn), `k3-blaze.ts` the fire seen from
+  outside (smoke columns, roof / dome glow, embers; sources from `fire.units` every 0.25 s). Story
+  cues `k3:jost-run {x, z, toX, toZ}` (Jost runs off with his lantern) and `k3:wisp` (cold smoke at
+  the Bussole). Honours `reducedFlash` / `reducedMotion`; low quality drops instances.
 - State `systems.fx {fire, oblivion}` (running threats resume after a load). URL `?fxq=low|high`.
-- Hooks `kq.fx.shift/shiftAt/freeze/fire/fireTime/oblivion/oblivionT/pulse/quality/state`.
+- Hooks `kq.fx.shift/shiftAt/freeze/fire/fireTime/oblivion/oblivionT/pulse/quality/state`,
+  `kq.fx.k3.state/phase/torch/clock/strohmann`.
 
 ### chronik (`src/systems/chronik/`) – clues, echoes (the board is gone, D-008)
 - Clue markers + E examine card (`clue:found`, `noun:learned` kept for story conditions but no

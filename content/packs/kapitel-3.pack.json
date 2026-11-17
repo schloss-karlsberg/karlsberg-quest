@@ -1398,24 +1398,13 @@
       ]
     },
     {
-      "id": "echo.k3.galerie.05",
-      "speaker": "geraeusch",
-      "text_de": "[Die Bilder verblassen. Der Mann im Schlafrock ist fort. Die Rechtecke bleiben.]",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k3.galerie",
-        "step": 5
-      },
-      "once": true
-    },
-    {
       "id": "laub.k3.fachwerk",
       "speaker": "laub",
       "text_de": "Er hat die Galerie aus einem hölzernen Gang machen lassen. Bretter und Fachwerk, damit es schnell geht. Was schnell geht, brennt schnell.",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k3.galerie",
-        "step": 6
+        "step": 5
       },
       "once": true,
       "sources": [
@@ -1518,31 +1507,13 @@
       ]
     },
     {
-      "id": "mannlich.14",
-      "speaker": "mannlich",
-      "text_de": "Man hatte bis von Lothringen Stroh herbeischleppen lassen, um damit alle seine Gemächer zu ebener Erde auszustopfen. Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen, unter dem Beifall einer tausendköpfigen Schar von Sansculottes und dem Gesange ihres schrecklichen: Ça ira! (Mannlich war nicht dabei. Er schreibt nach Berichten.)",
-      "trigger": {
-        "event": "echo:start",
-        "id": "clue.k3.fackel",
-        "step": 1
-      },
-      "once": true,
-      "sources": [
-        {
-          "url": "https://archive.org/details/eindeutschermale00mann",
-          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · S. 461"
-        }
-      ]
-    },
-    {
       "id": "echo.k3.fackel.02",
       "speaker": "kommissaer",
       "text_de": "Im Namen der Nation!",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k3.fackel",
-        "step": 2
+        "step": 1
       },
       "once": true,
       "sources": [
@@ -1556,11 +1527,11 @@
     {
       "id": "echo.k3.fackel.03",
       "speaker": "menge",
-      "text_de": "Ça ira",
+      "text_de": "Ça ira! Ça ira!",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k3.fackel",
-        "step": 3
+        "step": 2
       },
       "once": true,
       "sources": [
@@ -1574,13 +1545,31 @@
     {
       "id": "echo.k3.fackel.04",
       "speaker": "geraeusch",
-      "text_de": "[Die Fackel fliegt. Ein Fenster im Erdgeschoss leuchtet auf, dann das nächste.]",
+      "text_de": "(Glas klirrt. Stroh faucht auf.)",
+      "trigger": {
+        "event": "echo:start",
+        "id": "clue.k3.fackel",
+        "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "mannlich.14",
+      "speaker": "mannlich",
+      "text_de": "„Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen.“",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k3.fackel",
         "step": 4
       },
-      "once": true
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Z · S. 461 (Mannlich war nicht dabei. Er schreibt nach Berichten.)"
+        }
+      ]
     },
     {
       "id": "laub.k3.hinauf",
@@ -1754,20 +1743,10 @@
       "speaker": "jost",
       "text_de": "Einer muss sie ja wieder heimholen.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k3.jost",
-        "step": 4
-      },
-      "once": true
-    },
-    {
-      "id": "beat.k3.horn",
-      "speaker": "geraeusch",
-      "text_de": "[Das Horn bläst einmal, weit weg, falsch und zu hoch.]",
-      "trigger": {
-        "event": "clue:found",
-        "id": "clue.k3.jost",
-        "step": 5
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.12-heim",
+        "step": 1
       },
       "once": true
     },
@@ -1776,9 +1755,10 @@
       "speaker": "laub",
       "text_de": "Die Franzosen, die Preußen, die Leute aus den Dörfern, der Hof selbst. Jeder hat etwas mitgenommen. Man könnte sagen, sie taten, was alle taten.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k3.jost",
-        "step": 6
+        "event": "story:beat",
+        "chapter": "k3",
+        "beat": "3.12-heim",
+        "step": 2
       },
       "once": true
     },
@@ -1872,8 +1852,8 @@
     },
     {
       "id": "beat.k3.hunde",
-      "speaker": "geraeusch",
-      "text_de": "[Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Keiner sieht sich um.]",
+      "speaker": "laub",
+      "text_de": "Echte Hunde. Nicht aus Rauch. Keiner sieht sich um.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k3",

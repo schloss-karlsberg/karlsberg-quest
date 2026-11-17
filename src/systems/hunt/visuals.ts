@@ -198,6 +198,7 @@ varying vec4 vData;
 varying vec2 vExtra;
 varying vec3 vWorld;
 varying float vFragY;
+uniform float uReal;
 void main() {
   float r = length(vUv);
   if (r > 1.0) discard;
@@ -206,10 +207,11 @@ void main() {
   float a;
   if (kind < 0.5) {
     float n = kqFbm(vUv * 1.7 + vData.z * 31.0 + vec2(uTime * 0.23, -uTime * 0.41));
-    a = smoothstep(1.0, 0.3, r * (0.72 + 0.7 * n)) * vData.y;
+    // real dogs (K3 Zwinger): a firm edge, a coat instead of smoke
+    a = smoothstep(1.0, mix(0.3, 0.6, uReal), r * (0.72 + 0.7 * n * (1.0 - 0.5 * uReal))) * vData.y;
     vec3 toCam = normalize(uCamPos - vWorld);
     vec3 N = normalize(mix(toCam, vec3(0.0, 1.0, 0.0), 0.45) + vec3(vUv.x, vUv.y, 0.0) * 0.25);
-    vec3 albedo = vec3(0.05, 0.05, 0.06) * (0.7 + 0.6 * n);
+    vec3 albedo = mix(vec3(0.05, 0.05, 0.06), vec3(0.24, 0.16, 0.09) * (0.55 + 0.9 * fract(vData.z * 3.7)), uReal) * (0.7 + 0.6 * n);
     col = kqLight(albedo, N, vWorld, 1.0, 1.0);
     // ember heat around the eyes
     col += vec3(1.0, 0.32, 0.05) * vData.w * (1.0 - r) * (1.0 - r) * 0.5;
@@ -222,7 +224,7 @@ void main() {
     float edge = r * (0.72 + 0.7 * n);
     float rim = smoothstep(0.5, 0.82, edge) * (1.0 - smoothstep(0.82, 1.0, edge));
     vec3 rimCol = uFogColor * 1.25 + vec3(0.025, 0.028, 0.035) + vec3(0.5, 0.14, 0.02) * vData.w;
-    col = mix(col, rimCol, rim * 0.6);
+    col = mix(col, rimCol, rim * 0.6 * (1.0 - 0.85 * uReal));
   } else if (kind < 1.5) {
     float n = kqFbm(vUv * 1.15 + vData.z * 17.0 + vec2(uTime * 0.035, uTime * 0.021));
     a = smoothstep(1.0, 0.0, r * (0.5 + 0.95 * n));
@@ -552,6 +554,8 @@ export interface VisualInput {
   snap: boolean;
   /** 0..1 finale calm-down: the mist settles low and thick around the resting pack. */
   settle?: number;
+  /** K3 Zwinger: real dogs, not smoke (dense brown bodies, no wisps, no ember eyes). */
+  real?: boolean;
 }
 
 const MAX_SMOKE = 2300;
@@ -596,7 +600,7 @@ export class PackVisuals {
     this.smokeMat = new ShaderMaterial({
       vertexShader: SMOKE_VERT,
       fragmentShader: SMOKE_FRAG,
-      uniforms: { ...atmosphere },
+      uniforms: { ...atmosphere, uReal: { value: 0 } },
       transparent: true,
       depthWrite: false,
     });
@@ -670,7 +674,12 @@ export class PackVisuals {
     return v;
   }
 
+  /** 1 while the pack is real dogs (VisualInput.real). */
+  private real = 0;
+
   update(o: VisualInput): void {
+    this.real = o.real ? 1 : 0;
+    this.smokeMat.uniforms.uReal!.value = this.real;
     this.object.visible = true;
     const dt = Math.min(0.1, o.dt);
     const cam = o.camera;
@@ -790,13 +799,13 @@ export class PackVisuals {
     const t = o.time;
     const bob = Math.abs(Math.sin(phase)) * (0.02 + 0.05 * run) * (pik ? 1.4 : S);
     const rise = (1 - v.presence) * -0.6; // smoke gathers up from the ground
-    const alphaBase = (pik ? 0.82 : 0.8) * v.presence;
+    const alphaBase = (pik ? 0.82 : 0.8 + 0.2 * this.real) * v.presence;
     const chase = o.state === 'chasing' ? 1 : 0;
     // a lunge: crouch low with flaring eyes (the telegraph), then the leap's arc
     const pc = pik ? { crouch: 0, leap: 0 } : PackSim.pounce(a);
     const crouch = smooth01(pc.crouch);
     const leapY = Math.sin(pc.leap * Math.PI) * 0.55 * S;
-    const eyeOn = v.eye * v.blink * v.presence * (1 + 1.8 * crouch + 0.6 * pc.leap);
+    const eyeOn = v.eye * v.blink * v.presence * (1 + 1.8 * crouch + 0.6 * pc.leap) * (1 - 0.9 * this.real);
     const sn = v.sniff * (pik ? 0.4 : 1);
     // finale: lying down (body sinks, forelegs stretch forward, hind legs fold, head on the paws)
     const lie = pik ? 0 : smooth01(a.lie);
@@ -868,7 +877,7 @@ export class PackVisuals {
       this.smoke.push(wx, wy, wz, p.size * (1 + 0.12 * Math.sin(t * 0.9 + p.seed * 10)), alphaBase * (0.7 + 0.3 * p.seed), p.seed, heat);
     }
     // emit wisps: a constant seep, a trail when running
-    v.emit += o.dt * (pik ? 9 + speed * 7 : 4 + speed * 8) * v.presence * (1 - 0.6 * lie);
+    v.emit += o.dt * (pik ? 9 + speed * 7 : 4 + speed * 8) * v.presence * (1 - 0.6 * lie) * (1 - this.real);
     while (v.emit >= 1) {
       v.emit -= 1;
       const p = v.template[Math.floor(this.rng.next() * v.template.length)]!;
@@ -897,7 +906,7 @@ export class PackVisuals {
       if (inten > 0.01) this.glowFront.push(wx, v.y + ey + ez * slope + bob + rise, wz, (pik ? 0.09 : 0.075) * (1 + 0.6 * crouch), inten, 0, 1.35);
     }
     // breath: a pale puff from the muzzle on every exhale, quicker and heavier on the run
-    if (!pik && v.presence > 0.3 && lie < 0.5 && dim < 0.5) {
+    if (!pik && v.presence > 0.3 && lie < 0.5 && dim < 0.5 && this.real < 0.5) {
       const rate = 0.55 + 0.9 * run + 0.4 * chase;
       v.breath += o.dt * rate;
       if (v.breath >= 1) {

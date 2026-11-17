@@ -253,7 +253,6 @@ const dialogue = [
     ['mannlich.12', 'mannlich', 'Hundertundvier Lehnstühle aus vergoldetem Holz, eine Art kurulischer Sessel, von dem gleichen Damast wie die Wände bezogen und mit Goldfransen behangen, bildeten die Einrichtung dieses geräumigen Saales, der, an hundert Fuß lang, in eine offene, durch eine Kolonnade abgeschlossene Rotunde auslief.', [Z('S. 374')]],
     ['mannlich.13', 'mannlich', 'Als man endlich so weit war, daß die Bilder angehängt werden konnten, verließ er kaum mehr den Saal, stand selbst während der Nacht drei- bis viermal auf und erschien im Schlafrock.', [Z('S. 374 f.')]],
     ['echo.k3.galerie.04', 'hoefling', 'Obacht auf die Bilder!', [Z('S. 374')]],
-    ['echo.k3.galerie.05', 'geraeusch', '[Die Bilder verblassen. Der Mann im Schlafrock ist fort. Die Rechtecke bleiben.]'],
     ['laub.k3.fachwerk', 'laub', 'Er hat die Galerie aus einem hölzernen Gang machen lassen. Bretter und Fachwerk, damit es schnell geht. Was schnell geht, brennt schnell.', [src('SCHWAN12', 'P: Galerie 1788 aus einem hölzernen Verbindungsgang')]],
   ]),
   say('laub.k3.messen', 'laub', 'Achtzig Meter. Hundert Fuß wären keine dreiunddreißig. Hundert Klafter wären fast zweihundert. Hundert Schritt, das kommt hin. Mannlich hat französisch geschrieben: ‚cent pas‘. Der Übersetzer von 1910 hat Fuß daraus gemacht.', found('clue.k3.messen'), { once: true, src: [src('SCHWAN12', 'P: Anm. 47')] }),
@@ -265,11 +264,14 @@ const dialogue = [
   ]),
   say('laub.k3.gaertner', 'laub', 'Der Hofgärtner Petri hat auch Notizen hinterlassen. Ein Gärtner, der aufschreibt, wie kalt es war, während um ihn herum alles brennt. Ich mag ihn.', found('clue.k3.gaertner'), { once: true, src: [src('M1910', 'S. 427 Anm. 1 (Petri)')] }),
   // Teil B: Die Fackel
+  // playtest round 4: the torch is seen, not told. The commissioner shouts, the crowd sings, the
+  // torch flies (fx/k3-stage: arc, impact, the ground floor lighting window by window), and only
+  // then Mannlich's sentence, cut to one line (he was not there: the source note says so).
   ...seq(echo('clue.k3.fackel'), [
-    ['mannlich.14', 'mannlich', `Man hatte bis von Lothringen Stroh herbeischleppen lassen, um damit alle seine Gemächer zu ebener Erde auszustopfen. Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen, unter dem Beifall einer tausendköpfigen Schar von Sansculottes und dem Gesange ihres schrecklichen: Ça ira! (${MANNLICH_NICHT_DABEI})`, [Z('S. 461')]],
     ['echo.k3.fackel.02', 'kommissaer', 'Im Namen der Nation!', [P('S. 461')]],
-    ['echo.k3.fackel.03', 'menge', 'Ça ira', [src('M1910', 'S. 461; Liedtext „Ah! ça ira“ 1790, gemeinfrei')]],
-    ['echo.k3.fackel.04', 'geraeusch', '[Die Fackel fliegt. Ein Fenster im Erdgeschoss leuchtet auf, dann das nächste.]'],
+    ['echo.k3.fackel.03', 'menge', 'Ça ira! Ça ira!', [src('M1910', 'S. 461; Liedtext „Ah! ça ira“ 1790, gemeinfrei')]],
+    ['echo.k3.fackel.04', 'geraeusch', '(Glas klirrt. Stroh faucht auf.)'],
+    ['mannlich.14', 'mannlich', '„Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen.“', [Z(`S. 461 (${MANNLICH_NICHT_DABEI})`)]],
   ]),
   say('laub.k3.hinauf', 'laub', 'Hinauf. Jetzt, nicht gleich.', beat('3.8'), { once: true, priority: 10 }),
   say('laub.k3.feuer', 'laub', '(hustend) Von unten nach oben. Erst das Stroh im Erdgeschoss, dann die Treppen, dann der Saal. Die gewölbte Küche brennt zuletzt. Gewölbe sind geduldig.', found('clue.k3.feuer'), { once: true }),
@@ -287,12 +289,16 @@ const dialogue = [
   ].map(([id, text, value]) => say(id, 'hanne', text, { event: 'npc:talk', npc: 'hanne', chapter: 'k3g', topic: 'greet', flag: 'flag.k3_objekt', value })),
   say('laub.k3.wirtschaft', 'laub', 'Die Wirtschaftsgebäude da drüben, Ställe, Remisen, die Kasernen: die stehen morgen noch fast alle. Was brennt, ist das, was schnell gebaut wurde.', found('clue.k3.wirtschaft'), { once: true, src: [src('EN-KC', 'P')] }),
   // Zwinger
+  // the gates are open (hunt:release grants the clue): Jost shouts the pack out while it runs past
   ...seq(found('clue.k3.jost'), [
     ['jost.k3.01', 'jost', 'Raus! Lauft! Die Hunde verbrennen nicht. Nicht meine.'],
     ['jost.k3.02', 'jost', 'Diane, du führst. Sultan, halt die Klappe und lauf. Bijou, das ist kein Hirsch, das ist Feuer!'],
     ['jost.k3.03', 'jost', 'Die finden den Weg allein. Bloß nicht zurück.'],
+  ]),
+  // after the turn-in (story k3_8b speaks them): Jost runs after the pack with his lantern; the horn
+  // is heard once, far off (a real sound at the place he ran to)
+  ...seq(beat('3.12-heim'), [
     ['jost.k3.04', 'jost', 'Einer muss sie ja wieder heimholen.'],
-    ['beat.k3.horn', 'geraeusch', '[Das Horn bläst einmal, weit weg, falsch und zu hoch.]'],
     ['laub.k3.alle', 'laub', 'Die Franzosen, die Preußen, die Leute aus den Dörfern, der Hof selbst. Jeder hat etwas mitgenommen. Man könnte sagen, sie taten, was alle taten.'],
   ]),
   say('marlene.k3.abend', 'marlene', 'Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. (Pause.) Doch, ich frag. Morgen.', beat('3.12-zurueck'), { once: true }),
@@ -305,7 +311,7 @@ const dialogue = [
   say('laub.k3.pforte', 'laub', 'Die Mauer hält sie ab. Hunde gehen nicht, wo Gärtner schimpfen. Atmen Sie. Dann nach Norden, zum Zwinger.', beat('3.11-pforte'), { once: true }),
   say('laub.k3.jaguar', 'laub', 'Augen. Gelb, auf Kniehöhe. Das ist kein Hund, das ist der Jaguar aus der Menagerie. Der Herzog hat ihn kommen lassen, damit man ihn ansieht. Jetzt sieht er uns an. Laterne an. Licht mag er nicht.', beat('3.11-jaguar'), { once: true }),
   say('laub.k3.jaguar_down', 'laub', 'Er wollte nur wissen, ob Sie echt sind. Sie sind es. Aufstehen. Leise.', beat('3.11-jaguar-down'), { once: true }),
-  say('beat.k3.hunde', 'geraeusch', '[Echte Hunde, nicht aus Rauch, laufen an dir vorbei in die Nacht. Keiner sieht sich um.]', beat('3.12-hunde'), { once: true }),
+  say('beat.k3.hunde', 'laub', 'Echte Hunde. Nicht aus Rauch. Keiner sieht sich um.', beat('3.12-hunde'), { once: true }),
   // 3.13: the rescued object, found again today in the field station (06-enden §6.3: it lies on the table next to the Bussole)
   say('laub.k3.heute.tuergriff', 'laub', 'Ein Türgriff. Messing, angelaufen, und er riecht nach Rauch. Fragen Sie mich nicht, wie er hierherkommt. Ich wohne in einer Bussole, ich stelle solche Fragen nicht mehr.', beat('3.13-objekt'), { once: true }),
   say('laub.k3.heute.dukat', 'laub', 'Ein Dukat mit dem Schloss darauf. Er ist noch warm. Fragen Sie mich nicht, wie er hierherkommt. Ausgeben würde ich ihn nicht.', beat('3.13-objekt'), { once: true }),

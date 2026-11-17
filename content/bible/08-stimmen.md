@@ -221,7 +221,7 @@ Erzählstimme in Echos, ohne Gesicht oder als Silhouette. Ruhig, etwas müde, ei
 | `mannlich.11` | „Die Mauern waren mit Brettern verschalt, und diese mit grünem, von Arabesken durchzogenem Damast bespannt …“ (siehe Kapitel 3) | Z | S. 374 | `echo.k3.galerie` |
 | `mannlich.12` | „Hundertundvier Lehnstühle aus vergoldetem Holz …“ (siehe Kapitel 3) | Z | S. 374 | dto. |
 | `mannlich.13` | „Als man endlich so weit war, daß die Bilder angehängt werden konnten, verließ er kaum mehr den Saal …“ | Z | S. 374 f. | dto. |
-| `mannlich.14` | „Man hatte bis von Lothringen Stroh herbeischleppen lassen …“ (siehe Kapitel 3) | Z | S. 461 | `echo.k3.fackel` |
+| `mannlich.14` | „Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen.“ (eine Zeile, nach der Fackel; siehe Kapitel 3) | Z | S. 461 | `echo.k3.fackel` |
 
 Rechtschreibung: Zitate behalten die Schreibung von 1910 („daß“, „Gemächer zu ebener Erde“). Alles andere im Spiel folgt der heutigen Rechtschreibung.
 

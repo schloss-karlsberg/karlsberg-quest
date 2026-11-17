@@ -1011,6 +1011,56 @@ export class StandMode implements ModeController {
  * `hunt:release` opens the gates: one after another they burst out along `via` (the gate, then
  * the dark) past the player and are gone into the night (`release` events, then 'released').
  */
+/** Seconds the kennel doors swing before the first hound comes through. */
+export const KENNEL_DOOR_S = 0.7;
+/** Lateral distance (m) at which the released pack passes a player near the gate. */
+export const KENNEL_PASS = 4.5;
+
+/**
+ * The released pack's way when the player stands near the gate (pure): out through the gate,
+ * then along a line KENNEL_PASS m beside the player (on the gate's side, heading for the rest of
+ * the route), then on. A player farther than 30 m from the gate changes nothing.
+ */
+export function kennelRoute(route: readonly XZ[], player: XZ, pen?: XZ): XZ[] {
+  const g = route[0];
+  if (!g || Math.hypot(player.x - g.x, player.z - g.z) > 30) return [...route];
+  const on = route[1] ?? { x: g.x + 40, z: g.z };
+  let hx = on.x - player.x;
+  let hz = on.z - player.z;
+  const hl = Math.hypot(hx, hz) || 1;
+  hx /= hl;
+  hz /= hl;
+  // side: the one the gate is on (they come from there and need not cross the player's line)
+  let sx = -hz;
+  let sz = hx;
+  if ((g.x - player.x) * sx + (g.z - player.z) * sz < 0) {
+    sx = -sx;
+    sz = -sz;
+  }
+  // the pass line: KENNEL_PASS m to the side, along h; join it level with the gate (never behind it)
+  const tg = (g.x - player.x) * hx + (g.z - player.z) * hz;
+  const at = (t: number): XZ => ({ x: player.x + hx * t + sx * KENNEL_PASS, z: player.z + hz * t + sz * KENNEL_PASS });
+  let ta = Math.max(-8, tg + 1);
+  // a gate already past the player: join the line level with the player instead, as long as that
+  // stays outside the wall (1.5 m beyond the gate, away from the pen)
+  if (ta > 0 && pen) {
+    const nl = Math.hypot(g.x - pen.x, g.z - pen.z) || 1;
+    const nx = (g.x - pen.x) / nl;
+    const nz = (g.z - pen.z) / nl;
+    for (let t = 0; t < ta; t += 0.5) {
+      const q = at(t);
+      if ((q.x - g.x) * nx + (q.z - g.z) * nz >= 1.5) {
+        ta = t;
+        break;
+      }
+    }
+  }
+  const tb = Math.max(ta + 6, 10);
+  const a = at(ta);
+  const b = at(tb);
+  return [g, a, b, ...route.slice(1)];
+}
+
 export class KennelMode implements ModeController {
   readonly mode: PackMode = 'kennel';
   phase: 'pen' | 'out' | 'gone' = 'pen';
@@ -1046,13 +1096,40 @@ export class KennelMode implements ModeController {
     return { x: c.x + Math.cos(a) * rr, z: c.z + Math.sin(a) * rr };
   }
 
-  /** Open the gates. */
-  release(): void {
+  /** The way out once the gates are open (gate, then past the player when one stands near). */
+  get path(): readonly XZ[] {
+    return this.out ?? this.route;
+  }
+
+  private out: XZ[] | null = null;
+  /** Lateral spread at each waypoint of `path` (narrow where they pass the player). */
+  private spread: number[] = [];
+
+  /**
+   * Open the gates (bible 3.12). With the player standing within 30 m of the gate, the pack's
+   * way bends past them: KENNEL_PASS m to one side, so seven real dogs run by close enough to
+   * feel, never through the player (docs/ACTION-RPG.md §14, playtest round 4).
+   */
+  release(player?: XZ): void {
     if (this.phase !== 'pen') return;
     this.phase = 'out';
     this.t = 0;
     this.sim.horn('found');
     for (const a of this.sim.hounds) this.wp.set(a, 0);
+    this.out = player ? kennelRoute(this.route, player, this.pen.c) : null;
+    // they were all at the bars already (the stranger at the gate, the smoke): bunched up just
+    // inside, so the doors open on dogs, not on an empty yard
+    const g = this.route[0]!;
+    const { c } = this.pen;
+    const l = Math.hypot(c.x - g.x, c.z - g.z) || 1;
+    const ux = (c.x - g.x) / l;
+    const uz = (c.z - g.z) / l;
+    this.sim.hounds.forEach((a, i) => {
+      const back = 3.2 + 1.3 * i;
+      const side = ((i % 3) - 1) * 0.9;
+      this.sim.place(this.sim.agents.indexOf(a), g.x + ux * back - uz * side, g.z + uz * back + ux * side, headingTo(-ux, -uz));
+    });
+    this.spread = (this.out ?? this.route).map((_, k) => (this.out && k > 0 && k < 3 ? 0.55 : 1.6));
   }
 
   step(dt: number, p: PlayerSense): boolean {
@@ -1094,22 +1171,27 @@ export class KennelMode implements ModeController {
     hs.forEach((a, i) => {
       if (a.gone >= 1) return;
       left++;
-      if (this.t < i * 0.35) {
-        sim.face(a, this.route[0]!.x - a.x, this.route[0]!.z - a.z, dt);
+      const route = this.path;
+      // the doors swing first (KENNEL_DOOR_S), then one after another
+      if (this.t < KENNEL_DOOR_S + i * 0.35) {
+        sim.face(a, route[0]!.x - a.x, route[0]!.z - a.z, dt);
         return;
       }
       const k = this.wp.get(a) ?? 0;
-      const w = this.route[Math.min(k, this.route.length - 1)]!;
+      const last = route.length - 1;
+      const w = route[Math.min(k, last)]!;
       // a little spread so they don't run in single file through one point
-      const off = ((i % 3) - 1) * 1.6;
-      if (sim.moveToward(a, w.x + off, w.z - off, T.speed.chase * 1.1, dt, 7, 2.2)) {
-        if (k < this.route.length - 1) this.wp.set(a, k + 1);
+      const off = ((i % 3) - 1) * (this.spread[Math.min(k, last)] ?? 1.6);
+      // tight on the pass line (they must not cut the corner past the player), loose elsewhere
+      const arrive = this.out && k > 0 && k < 3 ? 0.9 : 2.2;
+      if (sim.moveToward(a, w.x + off, w.z - off, T.speed.chase * 1.1, dt, 7, arrive)) {
+        if (k < last) this.wp.set(a, k + 1);
         else a.gone = Math.min(1, a.gone + dt * 1.2);
-      } else if (k === this.route.length - 1 && dist(a, w) < 14) a.gone = Math.min(1, a.gone + dt * 0.5);
+      } else if (k === last && dist(a, w) < 14) a.gone = Math.min(1, a.gone + dt * 0.5);
       a.sniffing = false;
       a.awareness = 1;
     });
-    if (this.t > 0.3 && this.t < 0.4) sim.emit({ type: 'bay', idx: sim.agents.indexOf(hs[0]!), kind: 'howl' });
+    if (this.t > KENNEL_DOOR_S + 0.3 && this.t < KENNEL_DOOR_S + 0.4) sim.emit({ type: 'bay', idx: sim.agents.indexOf(hs[0]!), kind: 'howl' });
     sim.setState('chasing', true);
     sim.alert = left ? 0.4 : 0;
     if (!left && this.phase === 'out') {

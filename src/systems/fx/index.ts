@@ -33,6 +33,7 @@ import { scanPing } from './audio';
 import { type FireSlice, FireController, fireConfig } from './fire/fire';
 import { smoothstep } from './geom';
 import { pointScale } from './gl';
+import { K3_FLASH, K3Stage } from './k3-stage';
 import { type OblivionSlice, OblivionController } from './oblivion/oblivion';
 import { Quality, type QualityLevel } from './quality';
 import { ScanPulse } from './scan/pulse';
@@ -74,6 +75,8 @@ export interface FxHooks {
   /** Scan pulse (mode 1–3); optional `t` holds it at that time. */
   pulse(mode?: number, t?: number): void;
   quality(q: QualityLevel | 'auto'): void;
+  /** K3 set pieces staged in the engine (crowd, torch, outside fire): see k3-stage.ts. */
+  k3: ReturnType<K3Stage['hooks']>;
   state(): {
     shift: { active: boolean; t: number; from: Era; to: Era };
     fire: { active: boolean; progress: number; clock: number; smoke: number; burning: number; collapsed: number; units: number };
@@ -89,6 +92,7 @@ declare module '../../debug/hooks' {
 }
 
 const FLASH_FIRE = new Color(0.1, 0.038, 0.01);
+const K3_TMP = new Color();
 
 let ui: FxUI | null = null;
 let quality: Quality;
@@ -96,6 +100,7 @@ let shift: ShiftEffect;
 let pulse: ScanPulse;
 let fire: FireController;
 let obl: OblivionController;
+let k3: K3Stage;
 let ambient: AmbientParticles;
 let pulseHold = false;
 let frozen = false;
@@ -184,6 +189,7 @@ function installHooks(ctx: GameContext): void {
     quality(q) {
       quality.set(q);
     },
+    k3: k3.hooks(),
     state() {
       const sim = fire.sim;
       return {
@@ -216,6 +222,7 @@ export default defineSystem({
     ctx.scene.add(pulse.mesh);
     fire = new FireController(ctx, ui, quality);
     obl = new OblivionController(ctx, ui, quality);
+    k3 = new K3Stage(ctx, fire, quality);
     ambient = new AmbientParticles(ctx.world);
     // no snow in the rooms: the buildings with interiors (and the passage pavilion) keep it out
     ambient.setRoofs(roofQuads(ctx.data.footprints.buildings, ['KB-B07']));
@@ -271,6 +278,7 @@ export default defineSystem({
     if (ctx.state.state.flags['fire.hold'] !== undefined) fire.setHold(ctx.state.state.flags['fire.hold'] === true);
     fire.update(dt);
     obl.update(dt);
+    k3.update(dt);
     sliceTimer -= dt;
     if (sliceTimer <= 0) {
       sliceTimer = 1;
@@ -288,6 +296,7 @@ export default defineSystem({
     if (!pulseHold) pulse.frame(dt);
     fire.frame(dt);
     obl.frame(dt);
+    k3.frame(dt, pointScale(ctx.camera, ctx.renderer));
     // ambience: era layers, hidden in the void of a shift, ash rising in the Steinfraß
     ambient.setEra(ctx.era.current, quality.high);
     ambient.sheltered = ERA_INFO[ctx.era.current].palace === 'intact';
@@ -301,9 +310,9 @@ export default defineSystem({
     const heat = fire.heat * (quality.high ? 1 : 0.6) * (ctx.settings.state.reducedMotion ? 0.3 : 1);
     pu.uHeat!.value = heat;
     if (!shift.active) {
-      const contributes = fire.flash > 0.001 || obl.vis > 0.001;
+      const contributes = fire.flash > 0.001 || k3.flash > 0.001 || obl.vis > 0.001;
       if (contributes || postOwned) {
-        (pu.uFlash!.value as Color).copy(FLASH_FIRE).multiplyScalar(fire.flash);
+        (pu.uFlash!.value as Color).copy(FLASH_FIRE).multiplyScalar(fire.flash).add(K3_TMP.copy(K3_FLASH).multiplyScalar(k3.flash));
         pu.uDesaturate!.value = obl.active ? 0.6 * obl.vis : 0;
         pu.uShift!.value = 0;
       }
@@ -316,6 +325,7 @@ export default defineSystem({
     pulse?.dispose();
     fire?.dispose();
     obl?.dispose();
+    k3?.dispose();
     ambient?.dispose();
     ui?.dispose();
   },
