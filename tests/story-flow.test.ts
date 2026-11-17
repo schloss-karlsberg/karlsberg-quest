@@ -239,6 +239,15 @@ describe('dialogue queue rules', () => {
     fight = false;
     expect(q.take(held)).toBeUndefined();
   });
+
+  it('integration round 3: a beat line goes ahead of waiting lore (quest history at a turn-in)', () => {
+    const q = mk();
+    q.push({ id: 'turnin', beat: null });
+    q.push({ id: 'history', lore: true, beat: null });
+    q.push({ id: 'chat', beat: null });
+    q.push({ id: 'beat-line', beat: 'k4_4' });
+    expect(drain(q)).toEqual(['turnin', 'beat-line', 'history', 'chat']);
+  });
 });
 
 describe('ending C: the follow pack', () => {

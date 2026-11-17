@@ -148,6 +148,8 @@ class Combat {
   private deathSlow = 0;
   /** Seconds of game time the boss's title card stays up. */
   private titleLeft = 0;
+  /** Seconds (game time) the boss reveal still holds the dialogue. */
+  private revealLeft = 0;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new CombatAudio(ctx.audio);
@@ -249,6 +251,7 @@ class Combat {
       this.hud.hideTitle(true);
       this.titleLeft = 0;
       this.ctx.ui.hud.busy('reveal', false, 0);
+      this.revealLeft = 0;
       this.introCam = null;
       this.deathSlow = 0;
     });
@@ -431,6 +434,10 @@ class Combat {
     // a boss undone: the world of the fight slows for a breath
     const slowK = this.deathSlow > 0 ? 0.3 : 1;
     this.deathSlow = Math.max(0, this.deathSlow - dt);
+    if (this.revealLeft > 0) {
+      this.revealLeft -= dt;
+      if (this.revealLeft <= 0) ctx.ui.hud.busy('reveal', false, 0);
+    }
     const evs = this.frozenAI ? this.stepFrozen(dt * slowK, inp) : this.sim.step(dt * slowK, inp);
     for (const e of evs) this.onEvent(e, inp);
     // the player's movement hooks
@@ -581,6 +588,7 @@ class Combat {
           this.hud.hideTitle();
           this.titleLeft = 0;
           ctx.ui.hud.busy('reveal', false, 0);
+          this.revealLeft = 0;
           if (!rm) this.deathSlow = 1.4;
           this.addShake(0.35);
           if (e.kind !== 'pikeur') this.captionOnce(`down:${e.id}`, t('combat.bossDown', { name: e.def.name_de }), 'boss', 0, 3200);
@@ -713,8 +721,10 @@ class Combat {
         const [name, epithet] = BOSS_TITLE[e.kind] ?? [e.def.name_de, ''];
         this.hud.title(name, epithet);
         this.titleLeft = ev.dur - 0.3;
-        // the reveal is the boss's moment: the story's dialogue waits it out (story held())
+        // the reveal is the boss's moment: the story's dialogue waits it out (story held()); counted
+        // in game time (update), so it ends with ?manual stepping too
         ctx.ui.hud.busy('reveal', true);
+        this.revealLeft = ev.dur;
         this.audio.sting(e.kind);
         this.audio.roar(this.posOf(e, 1.5));
         if (!rm) this.introCam = { e, t: 0, dur: ev.dur };
@@ -822,10 +832,7 @@ class Combat {
     this.revealCamera(dt);
     if (this.titleLeft > 0) {
       this.titleLeft -= dt;
-      if (this.titleLeft <= 0) {
-        this.hud.hideTitle();
-        this.ctx.ui.hud.busy('reveal', false, 0.6);
-      }
+      if (this.titleLeft <= 0) this.hud.hideTitle();
     }
     // the Bannlicht flare: the lantern blazes for a moment (local, never a full-screen flash)
     if (this.bannFx) {

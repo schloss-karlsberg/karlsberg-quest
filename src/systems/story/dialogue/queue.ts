@@ -18,6 +18,8 @@
  *   a normal line that has not started within NORMAL_TTL is dropped (its moment is gone); `lore`
  *   lines (history, long remarks) are HELD while the host says a fight is on (`held`), the lines
  *   behind them go first, and a lore line that waited longer than LORE_TTL is dropped.
+ * - integration round 3: a beat's own (non-lore) line is queued ahead of lore lines that have not
+ *   started (a quest's history said at turn-in must not push the beat's line past its moment).
  */
 
 export interface QueuedLine {
@@ -81,6 +83,12 @@ export class LineQueue<T extends QueuedLine> {
       let at = 0;
       while (at < this.items.length && this.items[at]!.priority === 'now') at++;
       this.items.splice(at, 0, item);
+    } else if (item.priority !== 'low' && !item.lore && item.beat) {
+      // a beat's own line goes ahead of waiting lore (a quest's history must not make the beat's
+      // line miss its moment: K4 echo, integration round 3)
+      const at = this.items.findIndex((q) => q.lore && q.priority !== 'now' && !this.started(q));
+      if (at < 0) this.items.push(item);
+      else this.items.splice(at, 0, item);
     } else this.items.push(item);
     while (this.items.length > MAX_QUEUE) {
       let i = this.items.findIndex((q) => q.priority === 'low' && q !== item);

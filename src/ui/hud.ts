@@ -51,7 +51,9 @@ export class Hud {
 
   /** One reason is on (or lingering): e.g. 'combat' while a fight is engaged. */
   acting(reason: string): boolean {
-    return this.action.has(reason);
+    const v = this.action.get(reason);
+    // a reason released without linger is off at once (tickCalm only prunes the map)
+    return v !== undefined && (v === Infinity || v > this.calmClock);
   }
 
   /** Something action-heavy is on (or just ended): keep the centre of the screen clear. */

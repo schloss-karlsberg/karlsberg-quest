@@ -942,8 +942,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   from `scenery/worldsets.ts` — and the world set no longer draws its own clock and coin, so the room
   holds one of each; E → `festsaal.took` → the story sets `flag.k3_objekt` + the charm item
   (`DEED_ITEMS` sees the flag already set) → the deed epilogue. A boss reveal marks
-  `hud.busy('reveal')` for its 2.6 s and the story's presenter holds every line but `now` until it
-  ends (title card and sting are not talked over). A pack's escort kill carries `escort: true`
+  `hud.busy('reveal')` for its 2.6 s (counted in game time by the combat update) and the story's
+  presenter holds every line but `now` until it ends (title card and sting are not talked over). A pack's escort kill carries `escort: true`
   and never counts for a kill objective (XP only); route POI guards of the right kind, era and
   place do count. After a wake the travel track's hint names the nearest measured
   Vermessungspunkt when it is far nearer the goal than the wake spot. Found by the full e2e run
@@ -957,4 +957,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   being shoved by a stray's blow, drew a bite); when the stand breaks, hounds at the player's heels
   fall back with the ones in the way, and the dash's head start is 3 s (was 1.5; Laub's „Jetzt!“
   needs a moment to read); the Journal's Karte tab sits last (Aufgaben 1, Codex 2, Sammlungen 3
-  keep their digits).
+  keep their digits). The campaign run found one more: a quest turned in at a beat change (K4's „Die Karren nach
+  Westen“ at the rückwärts echo) queued its turn-in line and its long history line, and the beat's
+  own line („Da steht er …“) waited behind both past its moment; a beat's non-lore line is now
+  queued ahead of lore that has not started.
