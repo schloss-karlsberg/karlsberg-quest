@@ -4,7 +4,8 @@
  * chime — no flash. Several level-ups at once become one card (the highest level, the sum of the
  * points). Like the skills' unlock cards (docs/ARCHITECTURE.md §5) it counts game time and steps
  * aside (`kqp-held`, its clock stops) while a story title card, the curtain, a modal or a skill
- * unlock card is on screen.
+ * unlock card is on screen. Skill unlocks that wait while the level card comes up ride along on it
+ * (`absorb`, playtest round 4: one card, not two): "Freigeschaltet: Relief-Blick II · [2] …".
  */
 import { charmSlots } from '../../rpg/stats';
 import { h, svg } from '../../ui/dom';
@@ -30,6 +31,14 @@ const MEDAL = (n: string) => `<svg viewBox="0 0 96 96" aria-hidden="true">
   <text class="kqp-numeral" x="48" y="${n.length > 3 ? 57 : 60}" text-anchor="middle" font-family="'IM Fell English SC', Georgia, serif" font-size="${n.length > 3 ? 22 : n.length > 2 ? 27 : 33}" fill="#2a1a08">${n}</text>
 </svg>`;
 
+/** A skill unlock merged into the level card (built by the skills system). */
+export interface MergedSkillRow {
+  name: string;
+  tier: string;
+  key: string;
+  desc: string;
+}
+
 export class LevelCards {
   readonly root: HTMLElement;
   private queued: LevelCardRequest | null = null;
@@ -37,6 +46,9 @@ export class LevelCards {
   private stamped = false;
   static readonly DURATION = 5.6;
   onStamp: ((req: LevelCardRequest) => void) | null = null;
+  /** Called as the card comes up: the skill unlocks waiting right now (they show on this card). */
+  absorb: (() => MergedSkillRow[]) | null = null;
+  private duration = LevelCards.DURATION;
 
   constructor(parent: HTMLElement) {
     this.root = h('div.kqp-cards', { 'aria-live': 'polite' });
@@ -52,6 +64,11 @@ export class LevelCards {
     return this.current?.req ?? null;
   }
 
+  /** Something to show or on screen (it asks the card director for the slot). */
+  get wants(): boolean {
+    return !!this.current || !!this.queued;
+  }
+
   get held(): boolean {
     return !!this.current?.el.classList.contains('kqp-held');
   }
@@ -62,7 +79,9 @@ export class LevelCards {
       if (hold || !this.queued) return;
       const req = this.queued;
       this.queued = null;
-      this.current = { el: this.build(req, reduced), t: 0, req };
+      const rows = this.absorb?.() ?? [];
+      this.duration = LevelCards.DURATION + rows.length * 1.6;
+      this.current = { el: this.build(req, reduced, rows), t: 0, req };
       this.stamped = false;
       this.root.append(this.current.el);
       requestAnimationFrame(() => this.current?.el.classList.add('kqp-in'));
@@ -77,8 +96,8 @@ export class LevelCards {
       c.el.classList.add('kqp-stamped');
       this.onStamp?.(c.req);
     }
-    if (c.t >= LevelCards.DURATION - 0.6) c.el.classList.add('kqp-out');
-    if (c.t >= LevelCards.DURATION) {
+    if (c.t >= this.duration - 0.6) c.el.classList.add('kqp-out');
+    if (c.t >= this.duration) {
       c.el.remove();
       this.current = null;
     }
@@ -90,7 +109,7 @@ export class LevelCards {
     this.current = null;
   }
 
-  private build(req: LevelCardRequest, reduced: boolean): HTMLElement {
+  private build(req: LevelCardRequest, reduced: boolean, rows: MergedSkillRow[] = []): HTMLElement {
     const n = req.gained;
     const gains = [`+${12 * n} Lebenskraft`, `+${3 * n} Atem`, `+${4 * n} % Schaden`];
     const extra: string[] = [];
@@ -98,7 +117,7 @@ export class LevelCards {
     const pts = req.points === 1 ? '1 Talentpunkt frei' : `${req.points} Talentpunkte frei`;
     return h(
       `div.kqp-card${reduced ? '.kqp-reduced' : ''}`,
-      { 'data-testid': 'level-card', dataset: { level: String(req.level) }, role: 'status', 'aria-label': `Stufe ${req.level} erreicht` },
+      { 'data-testid': 'level-card', dataset: { level: String(req.level), skills: String(rows.length) }, role: 'status', 'aria-label': `Stufe ${req.level} erreicht` },
       [
         h('div.kqp-card-medal', svg(MEDAL(roman(req.level)))),
         h('div.kqp-card-body', [
@@ -107,6 +126,13 @@ export class LevelCards {
           h('div.kqp-card-gains', gains.map((g) => h('span', g))),
           h('div.kqp-card-points', [h('span.kqp-card-pip', '✦'), ` ${pts} `, h('span.kqp-card-hint', [h('kbd', 'I'), ' Talente'])]),
           ...extra.map((x) => h('div.kqp-card-extra', x)),
+          ...rows.map((r) =>
+            h('div.kqp-card-skill', { 'data-testid': 'level-card-skill' }, [
+              h('span.kqp-card-skill-kick', 'Freigeschaltet'),
+              h('span.kqp-card-skill-name', `${r.name} ${r.tier}`),
+              h('span.kqp-card-skill-desc', [r.key ? h('kbd', r.key) : null, r.desc]),
+            ]),
+          ),
         ]),
         h('div.kqp-card-stamp', 'Aufgestiegen'),
       ],

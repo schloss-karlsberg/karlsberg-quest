@@ -853,6 +853,14 @@
           "onResume": true
         },
         {
+          "do": "objective",
+          "id": "k1.ehrenhof",
+          "text": "Zum Ehrenhof (F: Geisterblick). Dort Q: Sommer 1789",
+          "x": 1222,
+          "z": -1119,
+          "delay": 0.5
+        },
+        {
           "do": "say",
           "id": "marlene.k1.morgen",
           "speaker": "marlene",
@@ -865,14 +873,6 @@
           "speaker": "laub",
           "text": "Die Bussole zeigt wieder auf den Ehrenhof. Ich nehme an, Sie wollen nicht frühstücken.",
           "delay": 1
-        },
-        {
-          "do": "objective",
-          "id": "k1.ehrenhof",
-          "text": "Zum Ehrenhof (F: Geisterblick). Dort Q: Sommer 1789",
-          "x": 1222,
-          "z": -1119,
-          "delay": 0.5
         }
       ],
       "on": [
@@ -1632,9 +1632,50 @@
             {
               "do": "objective",
               "id": "k1.zaehlen",
-              "text": "Die Häuschen zählen: einmal um das Rund herum. Am Rund: E halten",
+              "text": "Zum Rund: Laub zählt die Häuschen, du siehst zu",
+              "x": 1918,
+              "z": 72
+            }
+          ]
+        },
+        {
+          "id": "k1_9.lauf",
+          "when": {
+            "enter": {
               "x": 1935,
-              "z": 50
+              "z": 87,
+              "r": 46,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.w": true
+              },
+              "delay": 0.4
+            },
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.n": true
+              },
+              "delay": 1.5
+            },
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.o": true
+              },
+              "delay": 1.5
+            },
+            {
+              "do": "flag",
+              "set": {
+                "k1.zaehl.s": true
+              },
+              "delay": 1.5
             }
           ]
         },
@@ -1734,11 +1775,6 @@
           },
           "do": [
             {
-              "do": "toast",
-              "text": "Gezählt: 5 Häuschen",
-              "ms": 2500
-            },
-            {
               "do": "say",
               "id": "laub.k1.zaehl.1",
               "speaker": "laub",
@@ -1814,11 +1850,6 @@
           },
           "do": [
             {
-              "do": "toast",
-              "text": "Gezählt: 10 Häuschen",
-              "ms": 2500
-            },
-            {
               "do": "say",
               "id": "laub.k1.zaehl.2",
               "speaker": "laub",
@@ -1886,11 +1917,6 @@
           },
           "do": [
             {
-              "do": "toast",
-              "text": "Gezählt: 14 Häuschen",
-              "ms": 2500
-            },
-            {
               "do": "say",
               "id": "laub.k1.zaehl.3",
               "speaker": "laub",
@@ -1918,6 +1944,13 @@
           },
           "do": [
             {
+              "do": "sound",
+              "sound": "compass",
+              "x": 1935,
+              "z": 56,
+              "caption": "[Hinter den Türen im Norden raschelt Papier]"
+            },
+            {
               "do": "grant",
               "clue": "clue.k1.amphitheater"
             },
@@ -1931,6 +1964,19 @@
               "id": "laub.k1.zaehl.4",
               "speaker": "laub",
               "text": "Neunzehn. Neunzehn Häuschen mit Schieferdach, neunzehn Türen, keine Klinke innen."
+            },
+            {
+              "do": "enemy",
+              "op": "spawn",
+              "group": "k1.rund",
+              "kind": "mahnbrief",
+              "x": 1935,
+              "z": 52,
+              "era": "1789",
+              "count": 3,
+              "radius": 3,
+              "leash": 30,
+              "delay": 1.2
             }
           ]
         }

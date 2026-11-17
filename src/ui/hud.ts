@@ -282,11 +282,31 @@ export class Hud {
     this.stanceEl.textContent = text;
   }
 
+  /**
+   * A short note top right. At most two at a time (playtest round 4: four tips stacked over the
+   * chapter title in the first seconds); the rest wait their turn, the same text never twice.
+   */
   toast(text: string, ms = 2600): void {
-    const el = h('div.kq-toast', text);
-    this.toastsEl.append(el);
-    setTimeout(() => el.remove(), ms);
-    while (this.toastsEl.childElementCount > 4) this.toastsEl.firstElementChild?.remove();
+    if (this.toastWait.some((x) => x.text === text) || [...this.toastsEl.children].some((el) => el.textContent === text)) return;
+    this.toastWait.push({ text, ms });
+    // a waiting tip is stale after a while: drop the oldest beyond six
+    while (this.toastWait.length > 6) this.toastWait.shift();
+    this.pumpToasts();
+  }
+
+  private readonly toastWait: { text: string; ms: number }[] = [];
+
+  private pumpToasts(): void {
+    while (this.toastWait.length && this.toastsEl.childElementCount < 2) {
+      const { text, ms } = this.toastWait.shift()!;
+      const el = h('div.kq-toast', text);
+      this.toastsEl.append(el);
+      setTimeout(() => {
+        el.remove();
+        // the next one after a short beat
+        setTimeout(() => this.pumpToasts(), 250);
+      }, ms);
+    }
   }
 
   showClickToPlay(on: boolean): void {

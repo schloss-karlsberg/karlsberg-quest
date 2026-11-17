@@ -16,8 +16,8 @@
       "id": "q.p.feldstation",
       "kind": "main",
       "era": "today",
-      "title_de": "Die Feldstation",
-      "summary_de": "Marlene will, dass du weißt, womit du arbeitest, bevor du in den Wald gehst: Lageplan, Handbuch, die Schublade des Vorbesitzers. Und der Messstab lehnt draußen am Wagen.",
+      "title_de": "Der Messstab",
+      "summary_de": "Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der draußen am Bauwagen lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.",
       "giver": {
         "voice": "marlene"
       },
@@ -25,17 +25,13 @@
       "offer": [
         {
           "speaker": "marlene",
-          "text": "Bevor du losgehst: Lageplan an der Pinnwand, Handbuch im Regal, und in der Schublade liegt Kram vom Vorbesitzer. Schau dir alles an."
-        },
-        {
-          "speaker": "marlene",
-          "text": "Und nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald."
+          "text": "Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm."
         }
       ],
       "turnin_lines": [
         {
           "speaker": "marlene",
-          "text": "Hast du alles? Gut. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht."
+          "text": "Du schnaufst ja. Was war da unten? … Egal. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht."
         }
       ],
       "history": [
@@ -73,28 +69,10 @@
       ],
       "objectives": [
         {
-          "id": "lageplan",
-          "type": "examine",
-          "clue": "clue.p.lageplan",
-          "text_de": "Den Lageplan an der Pinnwand ansehen"
-        },
-        {
-          "id": "handbuch",
-          "type": "examine",
-          "clue": "clue.p.handbuch",
-          "text_de": "Das Reliefmuster-Handbuch aus dem Regal nehmen"
-        },
-        {
-          "id": "schublade",
-          "type": "examine",
-          "clue": "clue.p.laubblatt",
-          "text_de": "In die Schublade schauen"
-        },
-        {
           "id": "stab",
           "type": "collect",
           "item": "item.stab.esche",
-          "text_de": "Den Messstab mitnehmen (draußen am Wagen)",
+          "text_de": "Den Messstab nehmen: er lehnt draußen am Wagen",
           "place": [
             {
               "x": 763,
@@ -102,10 +80,38 @@
               "era": "today"
             }
           ]
+        },
+        {
+          "id": "nebel",
+          "type": "kill",
+          "enemy": "nebelling",
+          "count": 3,
+          "after": [
+            "stab"
+          ],
+          "text_de": "Am Damm steigt Nebel auf, mit Augen: den Stab schwingen (LMB)",
+          "where": {
+            "x": 803,
+            "z": -889,
+            "r": 24,
+            "era": "today"
+          },
+          "spawn": [
+            {
+              "kind": "nebelling",
+              "x": 803,
+              "z": -889,
+              "era": "today",
+              "count": 3,
+              "radius": 3.5,
+              "tier": 0,
+              "leash": 30
+            }
+          ]
         }
       ],
       "rewards": {
-        "xp": 40,
+        "xp": 20,
         "skills": [
           {
             "id": "kartograf",

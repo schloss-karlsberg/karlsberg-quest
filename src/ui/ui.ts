@@ -1,5 +1,6 @@
 import './styles.css';
 import { h } from './dom';
+import { CardDirector } from './cards';
 import { Hud } from './hud';
 import { ModalManager } from './modal';
 
@@ -8,11 +9,14 @@ import { ModalManager } from './modal';
  *   ctx.ui.hud.prompt('E', 'Lauschen')   ctx.ui.hud.subtitle('Laub', '…')   ctx.ui.toast('…')
  *   ctx.ui.modals.open({ title, body, actions })
  *   ctx.ui.layer('chronik')  → a full-screen container element a feature can fill (kept below modals)
+ *   ctx.ui.cards.claim('reward') / .modal('clue:x', open)  → one centre card at a time (./cards.ts)
  */
 export class UI {
   readonly root: HTMLElement;
   readonly hud = new Hud();
   readonly modals: ModalManager;
+  /** One centre card at a time, held during fights and conversations (./cards.ts). */
+  readonly cards: CardDirector;
   private readonly layers = new Map<string, HTMLElement>();
 
   constructor(parent: HTMLElement) {
@@ -20,6 +24,7 @@ export class UI {
     this.root.append(this.hud.el);
     parent.append(this.root);
     this.modals = new ModalManager(this.root);
+    this.cards = new CardDirector(this.hud, this.modals);
   }
 
   toast(text: string, ms?: number): void {

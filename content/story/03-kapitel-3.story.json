@@ -255,11 +255,11 @@
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "story.laub": true } },
         { "do": "skill", "id": "kartograf", "tier": 3 },
-        { "do": "say", "line": "marlene.k3.morgen", "delay": 2 },
-        { "do": "grant", "clue": "clue.k3.marlene", "delay": 0.5 },
-        { "do": "say", "line": "laub.k3.start", "delay": 1.5 },
         { "do": "anchor", "to": "1793-07", "x": 1210, "z": -1114, "r": 35 },
-        { "do": "quest", "op": "start", "id": "q.k3.nachmittag", "onResume": true, "delay": 2 }
+        { "do": "quest", "op": "start", "id": "q.k3.nachmittag", "onResume": true, "delay": 1 },
+        { "do": "say", "line": "marlene.k3.morgen", "delay": 1.5 },
+        { "do": "grant", "clue": "clue.k3.marlene", "delay": 0.5 },
+        { "do": "say", "line": "laub.k3.start", "delay": 1.5 }
       ],
       "on": [
         {

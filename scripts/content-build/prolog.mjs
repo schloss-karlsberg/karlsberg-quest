@@ -265,25 +265,28 @@ const prologQuests = {
   quests: [
     {
       id: 'q.p.feldstation', kind: 'main', era: T0,
-      title_de: 'Die Feldstation',
-      summary_de: 'Marlene will, dass du weißt, womit du arbeitest, bevor du in den Wald gehst: Lageplan, Handbuch, die Schublade des Vorbesitzers. Und der Messstab lehnt draußen am Wagen.',
+      // playtest round 4: in control and in a first small fight inside a minute; the station's
+      // Pinnwand / Regal / Schublade are optional now (the hub grants their clues, no quest)
+      title_de: 'Der Messstab',
+      summary_de: 'Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der draußen am Bauwagen lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.',
       giver: { voice: 'marlene' }, turnin: 'auto',
-      offer: [
-        ln('marlene', 'Bevor du losgehst: Lageplan an der Pinnwand, Handbuch im Regal, und in der Schublade liegt Kram vom Vorbesitzer. Schau dir alles an.'),
-        ln('marlene', 'Und nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald.'),
-      ],
-      turnin_lines: [ln('marlene', 'Hast du alles? Gut. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht.')],
+      offer: [ln('marlene', 'Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm.')],
+      turnin_lines: [ln('marlene', 'Du schnaufst ja. Was war da unten? … Egal. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht.')],
       history: [
         ln('marlene', 'Der Laserscan ist vom Winter 2025, ohne Laub an den Bäumen. Seit Januar sind die Daten frei. Ein Punkt pro Meter, und unter den Bäumen liegt der Boden wie ein Abdruck.', { fact: 'cx.34', src: [src('LVGL'), LIDAR] }),
         ln('marlene', 'Und die eine Regel: Wir schauen, wir graben nicht. Der Karlsberg ist ein Bodendenkmal. Wer etwas findet, meldet es.', { fact: 'cx.35', src: [src('SDSCHG'), src('HE-BW')] }),
       ],
       objectives: [
-        { id: 'lageplan', type: 'examine', clue: 'clue.p.lageplan', text_de: 'Den Lageplan an der Pinnwand ansehen' },
-        { id: 'handbuch', type: 'examine', clue: 'clue.p.handbuch', text_de: 'Das Reliefmuster-Handbuch aus dem Regal nehmen' },
-        { id: 'schublade', type: 'examine', clue: 'clue.p.laubblatt', text_de: 'In die Schublade schauen' },
-        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab mitnehmen (draußen am Wagen)', place: [place(...P_SPOTS.stab, 0, T0)] },
+        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab nehmen: er lehnt draußen am Wagen', place: [place(...P_SPOTS.stab, 0, T0)] },
+        {
+          id: 'nebel', type: 'kill', enemy: 'nebelling', count: 3, after: ['stab'],
+          text_de: 'Am Damm steigt Nebel auf, mit Augen: den Stab schwingen (LMB)',
+          // outside the station's safe ring (40 m round 760/−915), on the way down to the dam
+          where: place(803, -889, 24, T0),
+          spawn: [{ kind: 'nebelling', x: 803, z: -889, era: T0, count: 3, radius: 3.5, tier: 0, leash: 30 }],
+        },
       ],
-      rewards: { xp: 40, skills: [{ id: 'kartograf', tier: 1 }] },
+      rewards: { xp: 20, skills: [{ id: 'kartograf', tier: 1 }] },
     },
     {
       id: 'q.p.relief', kind: 'main', era: T0,

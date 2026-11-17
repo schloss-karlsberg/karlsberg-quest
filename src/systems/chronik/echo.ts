@@ -48,8 +48,9 @@ export class EchoDirector {
   private stage = new Group();
   private center = new Vector3();
   private breath: BreathLoop | null = null;
-  private ending = false;
-  private aborted = false;
+  /** The player walked on: the stage fades, the lines go on as subtitles (seconds into the echo). */
+  private detached = false;
+  private detachAt = 0;
   private desat0 = 0;
   private mist: Mesh | null = null;
   private readonly label: HTMLElement;
@@ -58,7 +59,7 @@ export class EchoDirector {
     private readonly ctx: GameContext,
     private readonly lines: (id: string) => DialogueLine[],
     hudLayer: HTMLElement,
-    private readonly onDone: (clue: ChronikClue, transcript: TranscriptLine[]) => void,
+    private readonly onDone: (clue: ChronikClue, transcript: TranscriptLine[], walked: boolean) => void,
   ) {
     this.label = document.createElement('div');
     this.label.className = 'ck-memory-label';
@@ -71,17 +72,23 @@ export class EchoDirector {
   }
 
   /** Seconds into the current echo and its total length (debug / tests). */
-  get progress(): { t: number; total: number; line: number } {
-    return { t: this.t, total: this.total, line: this.cues.findIndex((c) => this.t >= c.start && this.t < c.start + c.dur) };
+  get progress(): { t: number; total: number; line: number; walking: boolean } {
+    return { t: this.t, total: this.total, line: this.cues.findIndex((c) => this.t >= c.start && this.t < c.start + c.dur), walking: this.detached };
+  }
+
+  /** The player walked on while it played (the card waits; a feed line says it was noted). */
+  get walking(): boolean {
+    return this.detached;
   }
 
   start(clue: ChronikClue): void {
-    if (this.clue) this.finish(true);
+    // a memory still whispering as you walk on counts as heard when the next one begins
+    if (this.clue) this.finish(!this.detached);
     const ctx = this.ctx;
     this.clue = clue;
     this.t = 0;
-    this.ending = false;
-    this.aborted = false;
+    this.detached = false;
+    this.detachAt = 0;
     const lines = this.lines(clue.id);
     const speakers = figureSpeakers(lines);
     const figCount = Math.max(1, speakers.length);
@@ -159,18 +166,20 @@ export class EchoDirector {
     const ctx = this.ctx;
     this.t += dt;
     const t = this.t;
-    // walked away: the memory fades
+    // walked on (playtest round 4: nobody should have to stand through a memory): the figures
+    // stay behind and fade, the colour comes back, but the voices go with you as subtitles and the
+    // memory still counts when its last line has been said
     const p = ctx.player.position;
-    if (!this.ending && Math.hypot(p.x - this.center.x, p.z - this.center.z) > Math.max(16, clue.where.radius + 10)) {
-      this.ending = true;
-      this.aborted = true;
-      this.t = Math.max(t, this.total - OUTRO * 0.6);
-      ctx.ui.toast(ctx.t('chronik.echo.abort'));
+    if (!this.detached && Math.hypot(p.x - this.center.x, p.z - this.center.z) > Math.max(16, clue.where.radius + 10)) {
+      this.detached = true;
+      this.detachAt = t;
+      ctx.ui.hud.subtitle(null, ctx.t('chronik.echo.walk'), 2000);
     }
     const linesEnd = this.total - OUTRO;
     // figures
     const fadeIn = Math.min(1, t / INTRO);
-    const fadeOut = 1 - Math.min(1, Math.max(0, (t - linesEnd) / OUTRO));
+    const away = this.detached ? Math.max(0, 1 - (t - this.detachAt) / 1.6) : 1;
+    const fadeOut = Math.min(away, 1 - Math.min(1, Math.max(0, (t - linesEnd) / OUTRO)));
     const reduced = ctx.settings.state.reducedMotion;
     this.figures.forEach((f, i) => {
       const cue = this.cues.find((c) => c.figure === i && t >= c.start && t < c.start + c.dur);
@@ -203,7 +212,7 @@ export class EchoDirector {
     this.breath?.setLevel(Math.min(fadeIn, fadeOut));
     // cues → subtitles + whispers
     for (const c of this.cues) {
-      if (c.shown || t < c.start || this.aborted) continue;
+      if (c.shown || t < c.start) continue;
       c.shown = true;
       const name = c.speaker ? (ctx.content.speakers.get(c.speaker)?.name_de ?? c.speaker) : null;
       ctx.ui.hud.subtitle(name, c.text, c.dur * 1000, !!c.speaker && (clue.fiction ?? true));
@@ -211,13 +220,15 @@ export class EchoDirector {
       if (fig && c.speaker) {
         const src = ctx.audio.createSource3D('voice', { refDistance: 2.5 });
         if (src) {
-          src.setPosition(fig.pos.x, ctx.world.heightAt(fig.pos.x, fig.pos.z) + 1.6, fig.pos.z);
+          // walked on: the whisper comes along, at your shoulder
+          const w = this.detached ? p : fig.pos;
+          src.setPosition(w.x, ctx.world.heightAt(w.x, w.z) + 1.6, w.z);
           whisper(ctx.audio, src.input, c.dur * 0.75, c.start * 13 + c.figure, 0.2);
           setTimeout(() => src.dispose(), (c.dur + 1) * 1000);
         }
       }
     }
-    if (t >= this.total) this.finish(this.aborted);
+    if (t >= this.total || (this.detached && t >= linesEnd)) this.finish(false);
   }
 
   /** Jump to the end (debug). */
@@ -244,10 +255,12 @@ export class EchoDirector {
     this.breath?.stop();
     this.breath = null;
     this.label.classList.remove('show');
+    const walked = this.detached;
+    this.detached = false;
     this.ctx.events.emit('echo:end', { id: clue.id });
     if (!aborted) {
       const transcript = this.cues.map((c) => ({ speaker: c.speaker ? (this.ctx.content.speakers.get(c.speaker)?.name_de ?? c.speaker) : null, text: c.text }));
-      this.onDone(clue, transcript);
+      this.onDone(clue, transcript, walked);
     }
   }
 

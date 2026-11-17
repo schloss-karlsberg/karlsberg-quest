@@ -109,6 +109,9 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
       // a pickup line in the feed dock (the vitals dock always shows the XP bar)
       k.progression?.grant('item.balsam', 1);
       k.step(20);
+      // a fresh unlock settles for 0.45 s of rendered frames before it asks for the centre slot
+      // (src/ui/cards.ts: one card at a time, unlocks that come together share one card)
+      for (let i = 0; i < 60 && !document.querySelector('.kqk-card'); i++) k.step(1);
       k.story!.finishTyping();
       k.step(2);
     });

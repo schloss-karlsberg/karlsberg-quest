@@ -26,28 +26,70 @@ export interface TrackerQuest {
   objectives: TrackerObjective[];
 }
 
-/** Up to three tracked quests, main first; counters; a soft pulse on progress (never a flash). */
+/** Milliseconds a done objective stays struck through before it folds away. */
+export const DONE_LINGER_MS = 2600;
+
+/**
+ * Up to three tracked quests, main first; counters; a soft pulse on progress (never a flash).
+ * A goal that is done is struck through, then folds away (playtest round 4: the tracker shows what
+ * is left, not a list of ticks); a quest whose every goal is done keeps its title line.
+ */
 export class Tracker {
   readonly el = h('div.kqq-tracker', { 'data-testid': 'quest-tracker', 'aria-live': 'polite' });
   private last = '';
+  private list: TrackerQuest[] = [];
+  /** quest/objective → when it was first seen done (ms, performance clock). */
+  private readonly doneAt = new Map<string, number>();
+  private first = true;
+  /** Next time a struck-through line folds away (ms), or Infinity. */
+  private nextFold = Infinity;
 
   render(list: TrackerQuest[]): void {
-    const key = JSON.stringify(list);
+    this.list = list;
+    this.draw();
+  }
+
+  /** Per frame: fold away the lines whose linger ran out. */
+  tick(now = performance.now()): void {
+    if (now >= this.nextFold) this.draw(now);
+  }
+
+  private draw(now = performance.now()): void {
+    const list = this.list;
+    this.nextFold = Infinity;
+    const shown = list.map((q) => ({
+      ...q,
+      objectives: q.objectives.flatMap((o) => {
+        if (!o.done) return [{ ...o, fold: -1 }];
+        const k = `${q.id}/${o.id}`;
+        // after a load the goals done before are simply gone
+        if (!this.doneAt.has(k)) this.doneAt.set(k, this.first ? -Infinity : now);
+        const age = now - this.doneAt.get(k)!;
+        if (age >= DONE_LINGER_MS) return [];
+        this.nextFold = Math.min(this.nextFold, this.doneAt.get(k)! + DONE_LINGER_MS);
+        return [{ ...o, fold: Math.round(DONE_LINGER_MS - age) }];
+      }),
+    }));
+    this.first = false;
+    const key = JSON.stringify(shown.map((q) => ({ ...q, objectives: q.objectives.map((o) => ({ ...o, fold: o.fold >= 0 })) })));
     if (key === this.last) return;
     this.last = key;
     this.el.classList.toggle('kqq-empty', list.length === 0);
     this.el.replaceChildren(
-      ...list.map((q) =>
+      ...shown.map((q) =>
         h(`div.kqq-tq${q.main ? '.kqq-main' : ''}${q.ready ? '.kqq-ready' : ''}`, { dataset: { quest: q.id } }, [
           h('div.kqq-tq-title', [h('span.kqq-glyph', { 'aria-hidden': 'true' }, q.ready ? '?' : q.main ? '◆' : '◇'), q.title]),
           ...(q.ready && q.readyText ? [h('div.kqq-to.kqq-turnin', [h('span.kqq-box', '?'), q.readyText])] : []),
-          ...q.objectives.map((o) =>
-            h(
-              `div.kqq-to${o.done ? '.kqq-done' : ''}${o.optional ? '.kqq-opt' : ''}`,
+          ...q.objectives.map((o) => {
+            const row = h(
+              `div.kqq-to${o.done ? '.kqq-done.kqq-folding' : ''}${o.optional ? '.kqq-opt' : ''}`,
               { dataset: { obj: o.id } },
               [h('span.kqq-box', { 'aria-hidden': 'true' }, o.done ? '✓' : ''), h('span.kqq-tt', o.text), o.need > 1 ? h('span.kqq-n', ` ${o.count}/${o.need}`) : null],
-            ),
-          ),
+            );
+            // the fold starts where this line's linger ends (a re-render keeps the timing)
+            if (o.fold >= 0) row.style.setProperty('--kqq-fold-in', `${Math.max(0, o.fold - 700)}ms`);
+            return row;
+          }),
         ]),
       ),
     );
@@ -101,25 +143,63 @@ export interface RewardView {
   more?: string;
 }
 
+/** The bit of the card director (src/ui/cards.ts) the reward card needs. */
+export interface CardSlot {
+  claim(token: string): boolean;
+  release(token: string): void;
+  readonly held: boolean;
+}
+
+/** Seconds a reward card stays at most; metres you walk away before it goes by itself. */
+export const REWARD_SECONDS = 5;
+export const REWARD_WALK_AWAY = 4.5;
+
 /**
  * The reward card: "Aufgabe erfüllt", the XP stamp, items, "Neu im Codex: …" with the confidence
- * badge. Above the conversation panel; click / E / Enter / Space or 6 s dismiss it.
+ * badge. One centre card at a time (playtest round 4): it waits for the card director's slot — not
+ * over a conversation (the turn-in card already showed what you get), not in a fight — and goes by
+ * itself after five seconds or as soon as you walk away from where it came up; a click takes it
+ * away at once. Payouts that arrive together wait in a short queue.
  */
 export class RewardCard {
   private el: HTMLElement | null = null;
   private timer = 0;
+  private shown = 0;
   private onDone: (() => void) | null = null;
+  private readonly waiting: { v: RewardView; onDone?: () => void }[] = [];
+  private anchor: { x: number; z: number } | null = null;
 
-  constructor(private readonly layer: HTMLElement) {}
+  constructor(
+    private readonly layer: HTMLElement,
+    private readonly slot: CardSlot | null = null,
+  ) {}
 
   get open(): boolean {
     return !!this.el;
+  }
+
+  /** Cards waiting for the slot (tests). */
+  get pending(): number {
+    return this.waiting.length;
+  }
+
+  /** Queue a card; it shows when the director gives it the slot (or at once without a director). */
+  push(v: RewardView, onDone?: () => void): void {
+    this.waiting.push({ v, onDone });
+    if (!this.slot && !this.el) this.next();
+  }
+
+  private next(): void {
+    const w = this.waiting.shift();
+    if (w) this.show(w.v, false, w.onDone);
   }
 
   /** `keys`: E / Enter / Space dismiss it (only over a conversation; in play those keys are the player's). */
   show(v: RewardView, keys = false, onDone?: () => void): void {
     this.close();
     this.onDone = onDone ?? null;
+    this.anchor = null;
+    this.shown = 0;
     const badge = (c: Confidence) => h('span.kqq-conf', { dataset: { c }, title: t(`journal.codex.${c}`), 'aria-label': `${c}: ${t(`journal.codex.${c}`)}` }, c);
     this.el = h(`div.kqq-reward.kq-paper${v.quiet ? '.kqq-quiet' : ''}`, { 'data-testid': 'quest-reward', role: 'dialog', 'aria-label': t('quest.done') }, [
       h('div.kqq-r-kick', t('quest.done')),
@@ -150,14 +230,29 @@ export class RewardCard {
       this.el.dataset.kqKeytrap = '1';
       window.addEventListener('keydown', this.onKey, true);
     }
-    this.timer = 6.5;
+    this.timer = REWARD_SECONDS;
   }
 
-  /** UI clock (real seconds). */
-  tick(dt: number): void {
-    if (!this.el) return;
+  /** UI clock (real seconds). `at`: the player's position (walking away dismisses the card). */
+  tick(dt: number, at?: { x: number; z: number }): void {
+    if (!this.el) {
+      if (this.waiting.length && (!this.slot || this.slot.claim('reward'))) this.next();
+      return;
+    }
+    // a fight or a conversation came up: the card steps aside, its clock stops
+    const held = !!this.slot?.held;
+    this.el.classList.toggle('kqq-held', held);
+    if (held) return;
     // a modal other than the conversation, or a story choice, holds the card back (CSS hides it)
     if (typeof document !== 'undefined' && document.querySelector('.kq-modal:not(.kqn-modal), .kqs-choice-card.kqs-show')) return;
+    this.shown += dt;
+    if (at) {
+      if (!this.anchor) this.anchor = { x: at.x, z: at.z };
+      else if (this.shown > 1.2 && Math.hypot(at.x - this.anchor.x, at.z - this.anchor.z) > REWARD_WALK_AWAY) {
+        this.close();
+        return;
+      }
+    }
     this.timer -= dt;
     if (this.timer <= 0) this.close();
   }
@@ -170,9 +265,16 @@ export class RewardCard {
     this.el = null;
     el.classList.add('kqq-out');
     setTimeout(() => el.remove(), 350);
+    this.slot?.release('reward');
     const fn = this.onDone;
     this.onDone = null;
     fn?.();
+  }
+
+  /** Drop everything (a new game, a load). */
+  clear(): void {
+    this.waiting.length = 0;
+    this.close();
   }
 
   private readonly onKey = (e: KeyboardEvent): void => {

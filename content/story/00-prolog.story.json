@@ -9,6 +9,13 @@
   "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
   "on": [
     {
+      "id": "pinnwand",
+      "when": { "hub": "chronik" },
+      "do": [{ "do": "grant", "clue": "clue.p.messtischblatt", "card": true }, { "do": "grant", "clue": "clue.p.lageplan", "card": true }]
+    },
+    { "id": "regal", "when": { "hub": "shelf" }, "do": [{ "do": "grant", "clue": "clue.p.handbuch", "card": true }] },
+    { "id": "schublade", "when": { "hub": "drawer" }, "do": [{ "do": "grant", "clue": "clue.p.laubblatt", "card": true }] },
+    {
       "id": "trichter-melden",
       "when": {
         "all": [{ "quest": { "id": "q.p.trichter", "objective": "finden" } }, { "not": { "quest": { "id": "q.p.trichter", "objective": "melden" } } }]
@@ -25,39 +32,6 @@
         },
         { "do": "quest", "op": "progress", "id": "q.p.trichter", "objective": "melden", "n": 1, "delay": 0.5 }
       ]
-    },
-    {
-      "id": "settle.p.feldstation.lageplan",
-      "when": {
-        "all": [
-          { "quest": { "id": "q.p.feldstation", "state": "active" } },
-          { "have": { "clue": "clue.p.lageplan" } },
-          { "not": { "quest": { "id": "q.p.feldstation", "objective": "lageplan" } } }
-        ]
-      },
-      "do": [{ "do": "quest", "op": "progress", "id": "q.p.feldstation", "objective": "lageplan", "n": 1, "onResume": true }]
-    },
-    {
-      "id": "settle.p.feldstation.handbuch",
-      "when": {
-        "all": [
-          { "quest": { "id": "q.p.feldstation", "state": "active" } },
-          { "have": { "clue": "clue.p.handbuch" } },
-          { "not": { "quest": { "id": "q.p.feldstation", "objective": "handbuch" } } }
-        ]
-      },
-      "do": [{ "do": "quest", "op": "progress", "id": "q.p.feldstation", "objective": "handbuch", "n": 1, "onResume": true }]
-    },
-    {
-      "id": "settle.p.feldstation.schublade",
-      "when": {
-        "all": [
-          { "quest": { "id": "q.p.feldstation", "state": "active" } },
-          { "have": { "clue": "clue.p.laubblatt" } },
-          { "not": { "quest": { "id": "q.p.feldstation", "objective": "schublade" } } }
-        ]
-      },
-      "do": [{ "do": "quest", "op": "progress", "id": "q.p.feldstation", "objective": "schublade", "n": 1, "onResume": true }]
     },
     {
       "id": "settle.p.relief.mauer",
@@ -133,67 +107,49 @@
       "enter": [
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "laub.silent": true } },
-        { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen · J: Feldbuch" },
-        {
-          "do": "objective",
-          "id": "station",
-          "text": "Im Bauwagen umsehen: Pinnwand, Regal, Schublade (E an der Tür)",
-          "x": 760.6,
-          "z": -910.4,
-          "delay": 1.4
-        },
+        { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen · Shift: Rennen" },
+        { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 763, "z": -900, "delay": 0.3 },
+        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.2, "onResume": true },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.4 },
-        { "do": "say", "line": "marlene.p.01", "delay": 0.6 },
-        { "do": "say", "line": "marlene.p.01b" },
-        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.3, "onResume": true }
+        { "do": "say", "line": "marlene.p.01", "delay": 0.4 }
       ],
       "on": [
         {
           "id": "gegangen",
           "when": {
-            "any": [{ "leave": { "x": 760, "z": -902, "r": 3 } }, { "timer": 16 }]
+            "any": [{ "leave": { "x": 760, "z": -902, "r": 2.5 } }, { "timer": 12 }]
           },
           "do": [{ "do": "prompt", "key": null, "text": null }]
         },
         {
-          "id": "pinnwand",
-          "when": { "hub": "chronik" },
-          "do": [{ "do": "grant", "clue": "clue.p.messtischblatt", "card": true }, { "do": "grant", "clue": "clue.p.lageplan", "card": true }]
-        },
-        { "id": "regal", "when": { "hub": "shelf" }, "do": [{ "do": "grant", "clue": "clue.p.handbuch", "card": true }] },
-        {
-          "id": "schublade",
-          "when": { "hub": "drawer" },
-          "do": [
-            { "do": "grant", "clue": "clue.p.laubblatt", "card": true },
-            { "do": "give", "item": "item.bussole" },
-            { "do": "flag", "set": { "story.compass": true } }
-          ]
-        },
-        {
-          "id": "fehlt-noch",
-          "when": {
-            "all": [{ "have": { "clue": "clue.p.laubblatt" } }, { "timer": 70 }, { "not": { "have": { "clue": "clue.p.handbuch" } } }]
-          },
-          "do": [{ "do": "toast", "text": "Im Regal steht noch das Reliefmuster-Handbuch.", "ms": 4000 }]
-        },
-        {
           "id": "stab",
+          "when": { "quest": { "id": "q.p.feldstation", "objective": "stab" } },
+          "do": [
+            { "do": "give", "item": "item.bussole" },
+            { "do": "flag", "set": { "story.compass": true } },
+            { "do": "objective", "id": "station", "text": "Den Hang hinunter zum Damm. Dort steigt Nebel auf", "x": 803, "z": -889 },
+            { "do": "say", "line": "marlene.p.01b", "delay": 0.6, "until": { "quest": { "id": "q.p.feldstation", "objective": "nebel" } } }
+          ]
+        },
+        {
+          "id": "nebel-sicht",
           "when": {
-            "all": [
-              { "have": { "clue": "clue.p.lageplan" } },
-              { "have": { "clue": "clue.p.handbuch" } },
-              { "have": { "clue": "clue.p.laubblatt" } },
-              { "not": { "quest": { "id": "q.p.feldstation", "objective": "stab" } } }
-            ]
+            "all": [{ "quest": { "id": "q.p.feldstation", "objective": "stab" } }, { "enter": { "x": 803, "z": -889, "r": 30, "era": "today" } }]
           },
           "do": [
-            { "do": "objective", "id": "station", "text": "Draußen am Wagen lehnt der Messstab. Nimm ihn mit", "x": 763, "z": -900 },
-            { "do": "toast", "text": "Der Messstab: LMB Hieb · gehalten Wuchthieb · Leertaste Ausweichen", "ms": 5000, "delay": 1 }
+            { "do": "sound", "sound": "compass", "x": 803, "z": -889, "caption": "[Ein Zischen unten am Damm]" },
+            { "do": "prompt", "key": "LMB", "text": "Hieb · gehalten: Wuchthieb · Leertaste: Ausweichen" },
+            { "do": "objective", "id": "station", "text": "Nebel mit Augen! LMB: zuschlagen · Leertaste: ausweichen", "x": 803, "z": -889 }
           ]
+        },
+        {
+          "id": "nebel-weg",
+          "when": { "quest": { "id": "q.p.feldstation", "objective": "nebel", "gte": 3 } },
+          "do": [{ "do": "prompt", "key": null, "text": null }]
         }
       ],
-      "complete": { "quest": { "id": "q.p.feldstation" } }
+      "complete": { "quest": { "id": "q.p.feldstation" } },
+      "exit": [{ "do": "prompt", "key": null, "text": null }]
     },
     {
       "id": "p2",
@@ -220,7 +176,7 @@
               "x": 813,
               "z": -903
             },
-            { "do": "say", "line": "marlene.p.damm", "until": { "any": [{ "scan": 2 }, { "have": { "clue": "clue.p.mauerrest" } }] } }
+            { "do": "say", "line": "marlene.p.damm", "delay": 2.5, "until": { "any": [{ "scan": 2 }, { "have": { "clue": "clue.p.mauerrest" } }] } }
           ]
         },
         {
@@ -424,12 +380,13 @@
       "title_de": "Die Punktwolke",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
-        { "do": "objective", "text": null },
         { "do": "quest", "op": "offer", "id": "q.p.punktwolke", "onResume": true },
+        { "do": "objective", "id": "wechsel", "text": "Zurück zum Ehrenhof: die Bussole zeigt dorthin", "x": 1218, "z": -1118, "delay": 0.5 },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät knackt]", "delay": 4 },
         { "do": "say", "line": "marlene.p.punkte", "delay": 0.5 },
         { "do": "sound", "sound": "beep", "caption": "[Das Tablet piept: eine neue Datei]", "delay": 0.6 },
-        { "do": "grant", "clue": "clue.p.punktwolke", "card": true, "delay": 0.4 },
+        { "do": "grant", "clue": "clue.p.punktwolke", "delay": 0.4 },
+        { "do": "toast", "text": "Neu im Feldbuch: Spuren in der Punktwolke", "ms": 3000 },
         { "do": "say", "line": "marlene.p.punktwolke", "delay": 0.8 },
         { "do": "say", "line": "kollege.p.punktwolke" },
         { "do": "say", "line": "laub.p.punktwolke", "ms": 3200 },
@@ -619,7 +576,7 @@
           "id": "daheim",
           "when": { "enter": { "x": 760, "z": -915, "r": 18, "era": "today" } },
           "do": [
-            { "do": "objective", "id": "station", "text": "Feierabend: in den Bauwagen", "x": 760.6, "z": -910.4 },
+            { "do": "objective", "id": "station", "text": "Feierabend: in den Bauwagen (E an der Tür). Pinnwand, Regal, Schublade: wenn du magst", "x": 760.6, "z": -910.4 },
             { "do": "say", "line": "marlene.p.abend", "delay": 1.5 },
             { "do": "toast", "text": "L: Laterne. Das Öl reicht nicht ewig.", "ms": 4200, "delay": 6 }
           ]
@@ -636,7 +593,14 @@
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "look", "time": "night" },
-        { "do": "objective", "text": null },
+        {
+          "do": "objective",
+          "id": "bett",
+          "text": "Laterne aus (L). Dann schlafen: das Feldbett im Bauwagen (E an der Tür)",
+          "x": 760.6,
+          "z": -910.4,
+          "delay": 0.5
+        },
         { "do": "unlock", "chapter": "k1" },
         { "do": "sound", "sound": "beep", "caption": "[Der Laptop piept]", "delay": 2 },
         {
@@ -658,14 +622,6 @@
           "delay": 3
         },
         { "do": "say", "line": "laub.p.ende", "delay": 4, "ms": 6000 },
-        {
-          "do": "objective",
-          "id": "bett",
-          "text": "Laterne aus (L). Dann schlafen: das Feldbett im Bauwagen (E an der Tür)",
-          "x": 760.6,
-          "z": -910.4,
-          "delay": 1
-        },
         { "do": "autosave" }
       ],
       "complete": {

@@ -6,8 +6,8 @@ import { type PlayOptions, SCREENS } from './common';
  * §11.0), played headless through window.kq from the first frame after the title flow to the
  * chapter-1 title card:
  *
- *   p1 field station: Marlene's quest "Die Feldstation" (Pinnwand, Regal, Schublade) + the Messstab
- *   outside → p2/p3 "Was der Wald verbirgt" (the dam wall in Relief 2, the Orangerie step in VAT,
+ *   p1 field station: Marlene's quest "Der Messstab" (the staff outside, then three Nebelinge on the
+ *   way down to the dam: the first fight inside a minute) → p2/p3 "Was der Wald verbirgt" (the dam wall in Relief 2, the Orangerie step in VAT,
  *   Laub speaks) → p4–p6 "Die Bussole spricht" (Ehrenhof, the 1840 map, the hollow way, the pit —
  *   and the first fight: four Nebelinge rise from the Eiskeller) → p7–p9b "Spuren in der
  *   Punktwolke" (the point cloud, J: the field book, Q at the Ehrenhof → 1789, the servant's echo,
@@ -271,6 +271,15 @@ export async function examine(page: Page, x: number, z: number, yaw: number, pit
     [x, z, yaw, pitch, scan] as const,
   );
   expect(await page.evaluate(() => window.kq!.chronik!.target())).toBe(clue);
+  // a page held back earlier (one centre card at a time, src/ui/cards.ts; under step() the fight's
+  // 3 s linger counts rendered frames only) must not open over this one and swallow the E
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 300 && (k.ctx.ui.cards.pending || k.ctx.ui.modals.count); i++) {
+      (window as unknown as QW).__cna.tidy();
+      k.step(1);
+    }
+  });
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   await expect.poll(() => clues(page)).toContain(clue);
   await page.evaluate(() => (window as unknown as QW).__cna.tidy());
@@ -308,46 +317,27 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await shot(page, '01-card');
   await o.at?.('prolog:card');
   await installQuestPlay(page);
-  // Marlene greets first, then gives the quest by radio (a voice giver: taken at once)
-  expect(await untilQuest(page, 'q.p.feldstation', 'active', 40)).toBe('active');
-  await page.evaluate(() => window.kq!.step(200));
-  await expect(page.getByTestId('quest-tracker')).toContainText('Feldstation');
+  // Marlene gives the quest by radio while you walk (a voice giver: taken at once)
+  expect(await untilQuest(page, 'q.p.feldstation', 'active', 10)).toBe('active');
+  await page.evaluate(() => window.kq!.step(20));
+  await expect(page.getByTestId('quest-tracker')).toContainText('Messstab');
   await shot(page, '02-tracker');
-  await run(page, 16);
-  // the door: the hub (E) — Pinnwand, Regal, Schublade
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(760, -905, 0);
-    k.step(4);
-    k.press('KeyE', 2);
-  });
-  await expect(page.getByTestId('hub')).toBeVisible();
-  for (const item of ['chronik', 'shelf', 'drawer']) {
-    await page.getByTestId(`hub-${item}`).click({ force: true });
-    await page.evaluate(() => {
-      const k = window.kq!;
-      k.step(4);
-      (window as unknown as QW).__cna.tidy();
-      k.press('KeyE', 2);
-      k.step(2);
-    });
-    if (!(await page.getByTestId('hub').isVisible()))
-      await page.evaluate(() => {
-        window.kq!.teleport(760, -905, 0);
-        window.kq!.step(4);
-        window.kq!.press('KeyE', 2);
-      });
-  }
-  await page.evaluate(() => (window as unknown as QW).__cna.tidy());
-  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.p.lageplan', 'clue.p.handbuch', 'clue.p.laubblatt']));
-  expect(await qn(page, 'q.p.feldstation', 'schublade')).toBe(1);
-  // the Messstab leans outside the trailer: walk over it
+  // the Messstab leans outside the trailer, three metres from the door: walk over it
   expect(await beat(page)).toBe('p1');
   await pickUp(page, 763, -900);
   await expect.poll(() => page.evaluate(() => window.kq!.progression!.state().equipped?.weapon ?? null)).toBe('item.stab.esche');
+  // the first fight, inside the first minute: three Nebelinge rise at the foot of the dam
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(792, -893, 75, -4);
+    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.group === 'q.p.feldstation.nebel').length < 3; i++) k.step(15);
+  });
+  expect(await fight(page, 'q.p.feldstation.nebel', { shot: 'p-first-fight' })).toBe(3);
+  expect(await qn(page, 'q.p.feldstation', 'nebel')).toBe(3);
   expect(await untilQuest(page, 'q.p.feldstation', 'done', 10)).toBe('done');
   expect(await until(page, 'p2', 10)).toBe('p2');
   expect(await page.evaluate(() => window.kq!.skills!.levels().kartograf ?? 0)).toBeGreaterThanOrEqual(1); // the quest's reward
+  expect(await page.evaluate(() => window.kq!.state().flags['story.compass'])).toBe(true); // the Bussole hangs on the staff
 
   // ---- p2 / p3: "Was der Wald verbirgt": the dam wall, the Orangerie step -------------------------
   expect(await qs(page, 'q.p.relief')).toBe('active');
@@ -495,6 +485,34 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
     k.step(2);
   });
   await shot(page, '09-night');
+  // the station's hub is optional now (no quest): Pinnwand, Regal, Schublade in the evening
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(760, -905, 0);
+    k.step(4);
+    k.press('KeyE', 2);
+  });
+  await expect(page.getByTestId('hub')).toBeVisible();
+  for (const item of ['chronik', 'drawer', 'shelf'] as const) {
+    await page.getByTestId(`hub-${item}`).click({ force: true });
+    await page.evaluate(() => {
+      const k = window.kq!;
+      // the field-book pages come one after the other (src/ui/cards.ts): read each away
+      for (let i = 0; i < 4; i++) {
+        k.step(2);
+        for (const m of [...((k.ctx.ui.modals as unknown as { stack: { el: HTMLElement; close(): void }[] }).stack ?? [])]) if (m.el.dataset.testid !== 'hub') m.close();
+        for (let j = 0; j < 24; j++) k.step(1);
+      }
+    });
+    if (!(await page.getByTestId('hub').isVisible()))
+      await page.evaluate(() => {
+        window.kq!.teleport(760, -905, 0);
+        window.kq!.step(4);
+        window.kq!.press('KeyE', 2);
+      });
+  }
+  await page.evaluate(() => (window as unknown as QW).__cna.tidy());
+  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.p.lageplan', 'clue.p.handbuch', 'clue.p.laubblatt']));
   expect(await said(page)).toEqual(expect.arrayContaining(['laptop.p.neu', 'laub.p.ende']));
   // level 3 is in reach after the side quests; the main chain alone gives level 2 at least
   expect(await page.evaluate(() => window.kq!.progression!.state().level)).toBeGreaterThanOrEqual(2);
