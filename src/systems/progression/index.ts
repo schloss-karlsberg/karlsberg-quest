@@ -40,7 +40,7 @@ import { collectionSound, levelSound, pickupSound, useSound, xpTick } from './au
 import { ProgressionHud } from './hud';
 import { iconFor } from './icons';
 import { installJournalTabs } from './journal-tabs';
-import { LevelCards } from './levelup-card';
+import { LevelCards, type MergedSkillRow } from './levelup-card';
 import { ProgressionCore, createProgressionSlice } from './logic';
 import { PickupWorld } from './pickups';
 
@@ -139,6 +139,8 @@ class Progression {
     this.hud = new ProgressionHud(ctx.ui.hud, layer);
     this.cards = new LevelCards(layer);
     this.cards.onStamp = (req) => levelSound(ctx.audio, req.level);
+    // skill unlocks waiting as the level card comes up ride along on it (src/systems/skills)
+    this.cards.absorb = () => ctx.ui.cards.drain<MergedSkillRow>('skill');
     this.world = new PickupWorld(
       (x, z, y) => ctx.world.heightAt(x, z, y),
       (id) => (this.item(id)?.kind ?? 'opaque') as ItemKind | 'opaque',
@@ -491,8 +493,11 @@ class Progression {
     // one centre card at a time: the level card waits for the quest reward card and a choice
     const otherCard = !!document.querySelector('.kqq-reward:not(.kqq-out), .kqs-choice-card.kqs-show');
     // and never in a fight, a chase or while knocked down (playtest round 2: it covered the boss)
-    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard || ctx.ui.hud.inAction;
+    let hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard || ctx.ui.hud.inAction;
+    // one centre card at a time (src/ui/cards.ts): the level card asks for the slot
+    if (this.cards.wants && !hold && !ctx.ui.cards.claim('level')) hold = true;
     this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
+    if (!this.cards.wants) ctx.ui.cards.release('level');
   }
 
   dispose(): void {

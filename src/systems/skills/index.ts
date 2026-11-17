@@ -22,7 +22,7 @@ import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { stampChime } from './audio';
 import { UnlockCards } from './card';
-import { type Gate, SKILL_IDS, SKILL_MAX, type SkillId, gateFrom, levelOf, parseSkill, setFreeOverride, skillIncreases } from './logic';
+import { type Gate, SKILL_IDS, SKILL_MAX, type SkillId, gateFrom, levelOf, parseSkill, roman, setFreeOverride, skillIncreases } from './logic';
 import { installSettings } from './settings';
 
 export interface SkillsHooks {
@@ -111,6 +111,18 @@ export default defineSystem({
       stampChime(ctx.audio, req.level);
       laubLine(ctx, req.skill, req.level);
     };
+    // a level card coming up takes the waiting unlocks along (one card, not two: src/ui/cards.ts)
+    ctx.ui.cards.source('skill', () =>
+      (cards?.drain() ?? []).map((req) => {
+        laubLine(ctx, req.skill, req.level);
+        return {
+          name: ctx.t(`skills.name.${req.skill}`),
+          tier: roman(req.level),
+          key: ctx.t(`skills.key.${req.skill}.${req.level}`),
+          desc: ctx.t(`skills.desc.${req.skill}.${req.level}`),
+        };
+      }),
+    );
     snapshot = copySkills(ctx);
 
     // any writer of state.skills (story action, skill:grant, chronik) → card for each increase
@@ -155,9 +167,12 @@ export default defineSystem({
     if (skillHooks && typeof window !== 'undefined' && window.kq && window.kq.skills !== skillHooks) window.kq.skills = skillHooks;
     if (!cards) return;
     const storyCard = typeof document !== 'undefined' && !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show, .kqs-choice-card.kqs-show, .kqq-reward:not(.kqq-out)');
-    const hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || ctx.ui.hud.inAction;
+    let hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || ctx.ui.hud.inAction;
+    // one centre card at a time (src/ui/cards.ts)
+    if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
     // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
     cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
+    if (!cards.wants) ctx.ui.cards.release('skill');
   },
   dispose() {
     cards?.clear();

@@ -81,6 +81,7 @@ async function killOne(page: Page, i: number): Promise<void> {
 }
 
 test('quests: Hanne gives a task, the tracker counts, the turn-in tells the history; the journal keeps it', async ({ page }) => {
+  test.setTimeout(420_000);
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {
@@ -177,7 +178,9 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   for (let i = 0; i < 3; i++) await killOne(page, i);
   expect(((await events(page, 'quest:progress')) as { count: number }[]).map((p) => p.count)).toEqual([1, 2, 3]);
   expect((await flags(page))[`quest.${Q}.briefe`]).toBe(3);
-  await expect(tracker.locator('[data-obj="briefe"]')).toHaveClass(/kqq-done/);
+  // a done goal is struck through, then folds away (playtest round 4)
+  const briefe = tracker.locator('[data-obj="briefe"]');
+  if (await briefe.count()) await expect(briefe).toHaveClass(/kqq-done/);
   expect(((await events(page, 'loot:place')) as { id: string }[]).map((p) => p.id)).toContain(`${Q}.zettel.0`);
   await expect(tracker.locator('[data-obj="zettel"]')).toContainText('Lohnzettel');
   await page.evaluate(() => {
@@ -241,18 +244,11 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   expect(await events(page, 'item:grant')).toContainEqual({ item: 'item.balsam', count: 2, reason: `quest:${Q}` });
   expect(await events(page, 'codex:unlocked')).toEqual(expect.arrayContaining([{ factId: 'cx.08' }, { factId: 'cx.10' }]));
   expect(await page.evaluate(() => window.kq!.state().codex.facts)).toEqual(expect.arrayContaining(['cx.08', 'cx.10']));
+  // one centre card at a time (src/ui/cards.ts): the reward card waits while Hanne talks
   const reward = page.getByTestId('quest-reward');
-  await expect(reward).toBeVisible();
-  await expect(reward).toContainText('Aufgabe erfüllt');
-  await expect(page.getByTestId('quest-reward-xp')).toHaveText('+120 EP');
-  await expect(reward).toContainText('Kräuterbalsam');
-  await expect(page.getByTestId('quest-reward-codex')).toContainText('Neu im Codex');
-  await expect(page.getByTestId('quest-reward-codex').locator('.kqq-conf').first()).toHaveText('D');
-  await page.waitForTimeout(700);
-  await shot(page, 'reward');
-  // E takes the card away (the conversation keeps its keys for afterwards)
-  await page.keyboard.press('KeyE');
-  await expect(reward).toBeHidden();
+  await page.evaluate(() => window.kq!.step(4));
+  await expect(reward).toHaveCount(0);
+  expect(await page.evaluate(() => window.kq!.quests!.rewardPending())).toBe(1);
   await expect(page.getByTestId('npc-talk')).toBeVisible();
   // the turn-in moment: ONE history line, with its source and codex card (no four-line lecture)
   await page.evaluate(() => window.kq!.npc!.finish());
@@ -273,6 +269,38 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   // the next task: Laub's voice, accepted at once
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.test.irrlichter']?.state)).toBe('active');
   await page.evaluate(() => window.kq!.npc!.close());
+
+  // ---- the reward card, after the conversation ---------------------------------------------------
+  // the 120 EP crossed a level: the level card has the slot first (it runs on rendered frames),
+  // the reward follows it — never both at once
+  for (let i = 0; i < 40 && !(await reward.count()); i++) {
+    const both = await page.evaluate(() => {
+      let both = false;
+      for (let j = 0; j < 12 && !document.querySelector('[data-testid="quest-reward"]'); j++) {
+        window.kq!.step(1);
+        both ||= !!document.querySelector('[data-testid="level-card"]') && !!document.querySelector('[data-testid="quest-reward"]');
+      }
+      return both;
+    });
+    expect(both).toBe(false);
+  }
+  await expect(reward).toBeVisible();
+  await expect(reward).toContainText('Aufgabe erfüllt');
+  await expect(page.getByTestId('quest-reward-xp')).toHaveText('+120 EP');
+  await expect(reward).toContainText('Kräuterbalsam');
+  await expect(page.getByTestId('quest-reward-codex')).toContainText('Neu im Codex');
+  await expect(page.getByTestId('quest-reward-codex').locator('.kqq-conf').first()).toHaveText('D');
+  await page.waitForTimeout(700);
+  await shot(page, 'reward');
+  // walking away takes it away by itself
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 90; i++) k.step(1);
+    const p = k.ctx.player.position;
+    k.teleport(p.x + 6, p.z, 0);
+    for (let i = 0; i < 4; i++) k.step(1);
+  });
+  await expect(reward).toBeHidden();
 
   // ---- the story moves on --------------------------------------------------------------------
   await page.evaluate(() => window.kq!.step(4));

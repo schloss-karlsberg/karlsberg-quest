@@ -259,6 +259,8 @@ class NpcRuntime {
     this.talking = { npc, chapter, lines };
     const meta = speakerMeta(npc, ctx.content);
     this.view.show(meta.name, () => this.closed(), meta);
+    // no centre card (reward, clue, level) over a person talking (src/ui/cards.ts)
+    ctx.ui.cards.hold('talk', true);
     ctx.ui.hud.prompt(null, undefined, 'npc');
     this.prompt = null;
     // first talk: the flag and the Chronik clue (clue.<chapter>.<npc>)
@@ -386,6 +388,7 @@ class NpcRuntime {
   }
 
   private closed(): void {
+    this.ctx.ui.cards.hold('talk', false);
     const c = this.talking;
     this.talking = null;
     this.inQuest = false;

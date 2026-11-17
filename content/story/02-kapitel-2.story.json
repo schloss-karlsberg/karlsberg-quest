@@ -170,18 +170,18 @@
         { "do": "item", "item": "item.stab.esche", "quiet": true },
         { "do": "npc", "op": "spawn", "npc": "diener", "x": 1268, "z": -950, "era": "1793-02", "chapter": "k2", "yaw": 200 },
         { "do": "anchor", "to": "1793-02", "x": 1680, "z": -400, "r": 30 },
-        { "do": "sound", "sound": "frost", "caption": "[Der Deckel der Bussole ist von innen beschlagen. Eisblumen.]", "delay": 1 },
-        { "do": "say", "line": "marlene.k2.morgen", "delay": 1.5 },
-        { "do": "grant", "clue": "clue.k2.marlene", "delay": 0.5 },
         {
           "do": "objective",
           "id": "k2.zaun",
           "text": "Zum Parkzaun am Carlsluster Torhaus (F: Geisterblick), dort Q: Zeitwechsel",
           "x": 1680,
           "z": -400,
-          "delay": 1
+          "delay": 0.5
         },
-        { "do": "say", "line": "laub.k2.start", "delay": 4 }
+        { "do": "sound", "sound": "frost", "caption": "[Der Deckel der Bussole ist von innen beschlagen. Eisblumen.]", "delay": 1 },
+        { "do": "say", "line": "marlene.k2.morgen", "delay": 1.5 },
+        { "do": "grant", "clue": "clue.k2.marlene", "delay": 0.5 },
+        { "do": "say", "line": "laub.k2.start", "delay": 2 }
       ],
       "on": [
         {

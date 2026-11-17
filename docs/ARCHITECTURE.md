@@ -133,7 +133,7 @@ Rules
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
-| `ui` | `hud`, `modals`, `toast(text)`, `layer(id)`, `add(el)` |
+| `ui` | `hud`, `modals`, `cards` (one centre card at a time, below), `toast(text)`, `layer(id)`, `add(el)` |
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
 | `systems, loop, pause` | registry, loop (`time`, `tick`, `step`), pause stack |
@@ -157,6 +157,24 @@ The fx gauges sit above the Bussole; the dialogue card leaves 190 px on each sid
 up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused); an unlock card already on
 screen steps aside (`kqk-held`, its clock stops) while a story title card or the curtain shows.
 `e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
+
+**Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`, playtest round 4): ONE centre card on
+screen at a time. The clue card (a modal field-book page, `cards.modal('clue:<id>', open)`) is
+something the player asked for: it goes in front of a slide-in card (which steps aside, its clock
+stopped, and comes back after) and queues behind another page, 0.35 s apart; the slide-in cards ask for the slot every frame
+(`cards.claim('reward' | 'level' | 'skill')`, `cards.release(…)` when gone). The slot is *held*
+while `hud.inAction` (a fight + 3 s, a chase, a boss reveal, being knocked down) and while an NPC
+conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a card already up
+steps aside and its clock stops. Slide-in cards also wait for the chapter title card / curtain and
+any other modal (menus, the Journal); a clue page may open over the station's hub. Merging: skill
+unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
+`cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`), unlocks that arrive together
+share one skill card (`skill-card-also`), and a fresh unlock waits 0.45 s (`SETTLE`) so a reward's
+XP and skill land on one card. The reward card is queued (`RewardCard.push`), goes after 5 s or
+as soon as the player walks 4.5 m from where it came up, a click takes it away. Toasts: at most two
+at a time, the rest queue, the same text never twice. The quest tracker strikes a done goal
+through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
+`e2e/pacing.spec.ts` (never two centre cards; the Pinnwand's two pages one after the other).
 
 **Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
@@ -532,6 +550,13 @@ Round-4 (polish: set dressing) integration rules:
   longer shown on the card, `codex:unlocked`); relief clues need the right scan mode, lantern
   clues a lit lantern; hold E on an echo → ghosts + subtitles (`echo:start/end`, `echo:play {id}`
   starts one). E and the examine prompt step aside while `flags['npc.near']` is set (talk wins).
+  Walk-and-listen (playtest round 4): walking away from a playing echo no longer aborts it — the
+  figures and the mist fade, the colour comes back, the remaining lines go on as subtitles with
+  the whisper at your shoulder, and the memory counts when its last line is said (`echo:end`, the
+  discovery); heard while walking it gives a toast „Erinnerung notiert“ instead of the modal card
+  (`kq.chronik.echo()` → `walking`). While it whispers on, E and the prompts are free for other
+  clues; starting another echo ends the walking one as heard. Clue cards go through `ctx.ui.cards`
+  (one at a time).
 - No board, no blanks, no batches, no hint ladder: J/Tab and `chronik:open` open the quests
   system's Journal (`openJournal()`; `kq.chronik.open/close/tab/isOpen` redirect there, and
   `chronik:opened/closed` are emitted by the Journal). `check()` only re-evaluates state for
@@ -949,8 +974,11 @@ Each RPG track adds its own subsection here when it fills its system in.
   main quests of earlier chapters still running and unaccepted offers of earlier chapters are
   reset (chapter jumps; the e2e `test` chapter counts as after the campaign); side quests the
   player took keep running unless their chapter fails them.
-- `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready), feed
-  (`hud.dock('feed')`), banner, reward card (EP stamp, items, codex facts with confidence + label).
+- `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
+  goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the reward
+  card and the chapter title card), reward card (EP stamp, items, codex facts with confidence +
+  label; queued for the card director's slot: never over a conversation or a fight, gone after 5 s
+  or when the player walks away; `kq.quests.rewardPending()`).
 - `beacons.ts`: additive era-tinted light column + ground ring over open objective zones
   (≤ 200 m, fades inside). Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
   shapes, givers within 150 m).

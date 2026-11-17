@@ -57,6 +57,8 @@ export interface QuestsHooks {
   journalOpen(): { open: boolean; tab: string };
   /** Reward card on screen. */
   reward(): boolean;
+  /** Reward cards waiting for the centre slot (src/ui/cards.ts). */
+  rewardPending(): number;
   beacons(): { id: string; alpha: number }[];
   markers(): { id: string; kind: string; bearing: number }[];
 }
@@ -143,7 +145,7 @@ class QuestRuntime {
     // above the HUD, below modals (pause menu, clue cards: playtest z-order)
     this.layer.style.zIndex = '17';
     this.layer.style.pointerEvents = 'none';
-    this.reward = new RewardCard(this.layer);
+    this.reward = new RewardCard(this.layer, ctx.ui.cards);
     this.journal = new JournalModal(ctx, {
       opened: () => {
         pageSound(ctx.audio);
@@ -392,7 +394,6 @@ class QuestRuntime {
     if (!q) return;
     turninSound(this.ctx.audio, p.quiet);
     const ti = turninOf(q);
-    const talking = this.ctx.ui.modals.count > 0;
     const hist = q.history ?? [];
     const view: RewardView = {
       title: p.title,
@@ -407,7 +408,8 @@ class QuestRuntime {
       // voices tell one line; the rest is in the journal (an npc offers "Erzähl mehr")
       more: (ti === 'auto' || 'voice' in ti) && hist.length > HISTORY_AT_TURNIN ? t('quest.moreJournal', { n: hist.length - HISTORY_AT_TURNIN }) : undefined,
     };
-    this.reward.show(view, talking);
+    // one centre card at a time: it waits for the slot (not over the conversation, not in a fight)
+    this.reward.push(view);
     if (ti === 'auto' || 'voice' in ti) {
       // a turn-in moment, not a lecture (playtest round 3): the thanks (one line) and one history
       // line, held back while a fight is on (the presenter's lore rule)
@@ -495,13 +497,15 @@ class QuestRuntime {
   frame(dt: number): void {
     const ctx = this.ctx;
     // reward card on the UI clock (the conversation pauses the game)
-    this.reward.tick(Math.min(dt, 0.1));
-    if (this.bannerQ.length && !this.reward.open) this.bannerQ.shift()?.();
+    this.reward.tick(Math.min(dt, 0.1), ctx.player.position);
+    // the "Neue Aufgabe" stamp waits for the reward card and the chapter title card (they overlapped)
+    if (this.bannerQ.length && !this.reward.open && !this.reward.pending && !document.querySelector('.kqs-card.kqs-show')) this.bannerQ.shift()?.();
     if (this.dirty) {
       this.dirty = false;
       this.renderTracker();
       this.syncBeacons();
     }
+    this.tracker.tick();
     const p = ctx.player.position;
     this.beacons.frame(dt, p.x, p.z, ctx.settings.state.reducedMotion);
     if ((this.markIn -= dt) <= 0) {
@@ -705,6 +709,7 @@ class QuestRuntime {
       closeJournal: () => this.journal.close(),
       journalOpen: () => ({ open: this.journal.open, tab: this.journal.tab }),
       reward: () => this.reward.open,
+      rewardPending: () => this.reward.pending,
       beacons: () => this.beacons.state(),
       markers: () => [...this.compass.entries()].map(([id, m]) => ({ id, kind: m.kind, bearing: Math.round(m.bearing) })),
     };
@@ -713,7 +718,7 @@ class QuestRuntime {
   dispose(): void {
     for (const off of this.offs.splice(0)) off();
     this.journal.close();
-    this.reward.close();
+    this.reward.clear();
     this.beacons.dispose();
     this.tracker.el.remove();
     this.feed.el.remove();

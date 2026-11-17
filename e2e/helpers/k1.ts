@@ -167,6 +167,19 @@ export async function holdQ(page: Page): Promise<void> {
 export async function examine(page: Page, id: string): Promise<void> {
   expect(await page.evaluate(() => window.kq!.chronik!.target())).toBe(id);
   await page.evaluate(() => window.kq!.press('KeyE', 1));
+  // one centre card at a time (src/ui/cards.ts): the page waits while something fights you — a
+  // straggler from an earlier group swatting at the player: clear it and let the 3 s linger pass
+  const held = await page.evaluate(() => {
+    const k = window.kq!;
+    const reasons = k.ctx.ui.cards.holdReasons();
+    if (!document.querySelector('[data-testid="chronik-card"]') && reasons.length) {
+      const p = k.ctx.player.position;
+      for (const e of k.combat?.enemies() ?? []) if (Math.hypot(e.x - p.x, e.z - p.z) < 30) k.combat!.kill(e.id);
+      for (let i = 0; i < 240 && !document.querySelector('[data-testid="chronik-card"]'); i++) k.step(1);
+    }
+    return reasons;
+  });
+  if (held.length) console.log(`[k1] ${id}: the page waited for ${held.join(', ')}`);
   await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', id);
   await page.evaluate(() => {
     window.kq!.ctx.ui.modals.closeAll();
@@ -523,19 +536,27 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
     window.kq!.step(4);
   });
   w = await walk(page, [[1899, 87]]);
-  expect(await beat(page)).toBe('k1_9');
-  await walk(page, [
-    [1909, 58],
-    [1935, 48],
-    [1962, 59],
-    [1976, 87],
-    [1962, 115],
-    [1935, 125],
-  ]);
-  await upd(page, 30);
+  // (walking up to the ring may already have counted it: k1_9 or, a moment later, k1_10)
+  expect(['k1_9', 'k1_10']).toContain(await beat(page));
+  // no lap round the 19 huts any more (playtest round 4): at the ring the doors light up one after
+  // the other, round the circuit, while Laub counts; then dunning letters tear out of the north doors
+  await upd(page, 60 * 8);
+  expect(await page.evaluate(() => (window.kq as unknown as { scenery?: { rundCounted(): number } }).scenery?.rundCounted() ?? 19)).toBe(19);
   expect((await inv(page)).clues).toContain('clue.k1.amphitheater');
   expect(await beat(page)).toBe('k1_10');
-  await walk(page, [[1957.5, 145.5]], { tol: 0.5 });
+  await page.evaluate(() => {
+    const h = (window as unknown as { __cna?: { until(f: () => boolean, s: number): boolean } }).__cna;
+    h?.until(() => window.kq!.combat!.enemies().some((e) => e.group === 'k1.rund'), 6);
+  });
+  expect(await page.evaluate(() => window.kq!.combat!.enemies().filter((e) => e.group === 'k1.rund').length)).toBe(3);
+  await fight(page, 'k1.rund', { hits: 4, shot: 'k1-rund-mahnbriefe' });
+  // the fight leaves you somewhere in the ring: from the south doors on to the bear pits
+  await page.evaluate(() => {
+    window.kq!.teleport(1950, 128, 20, 0);
+    window.kq!.step(4);
+  });
+  w = await walk(page, [[1957.5, 145.5]], { tol: 0.5 });
+  expect(w.d).toBeLessThan(1.5);
   await examine(page, 'clue.k1.baerenkaesten');
   await upd(page, 10);
   expect(await beat(page)).toBe('k1_11');

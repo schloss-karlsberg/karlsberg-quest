@@ -301,9 +301,9 @@
       "title_de": "Der Taleingang",
       "checkpoint": "k4_1",
       "enter": [
-        { "do": "say", "line": "laub.k4.taleingang", "delay": 2.5 },
         { "do": "quest", "op": "start", "id": "q.k4.karren", "onResume": true, "delay": 1 },
-        { "do": "echo", "id": "clue.k4.karren", "delay": 6 }
+        { "do": "say", "line": "laub.k4.taleingang", "delay": 1.5 },
+        { "do": "echo", "id": "clue.k4.karren", "delay": 3 }
       ],
       "complete": {
         "all": [{ "quest": { "id": "q.k4.karren", "objective": "karren", "gte": 1 } }, { "quest": { "id": "q.k4.karren", "objective": "fresser", "gte": 3 } }]

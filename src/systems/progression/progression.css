@@ -888,3 +888,30 @@ html[data-kq-reduced-motion] .kqp-xp-plus.show {
     opacity: 1;
   }
 }
+
+/* skill unlocks that came with the level (one card, not two: src/ui/cards.ts) */
+.kqp-card-skill {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 8px;
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(58, 38, 16, 0.35);
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+.kqp-card-skill-kick {
+  grid-row: span 2;
+  align-self: center;
+  font-family: var(--sc, 'IM Fell English SC', Georgia, serif);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #8a2a1a;
+  text-transform: uppercase;
+}
+.kqp-card-skill-name {
+  font-weight: 600;
+}
+.kqp-card-skill-desc kbd {
+  margin-right: 5px;
+}

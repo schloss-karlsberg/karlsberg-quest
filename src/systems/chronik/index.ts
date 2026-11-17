@@ -67,7 +67,7 @@ export interface ChronikHooks {
   skipEcho(): void;
   /** Advance the running echo by `seconds` (deterministic tests; frames may be slow headless). */
   advanceEcho(seconds: number): void;
-  echo(): { id: string | null; t: number; total: number; line: number };
+  echo(): { id: string | null; t: number; total: number; line: number; walking?: boolean };
   status(clueId: string): ClueStatus | null;
   target(): string | null;
   markers(): { id: string; status: ClueStatus | null; vis: number }[];
@@ -175,7 +175,8 @@ function doDiscover(ctx: GameContext, clue: ChronikClue, quiet = false): Discove
 }
 
 function showCard(ctx: GameContext, clue: ChronikClue, d: Discovery | null, transcript?: TranscriptLine[]): void {
-  openClueCard(
+  // one centre card at a time (src/ui/cards.ts): queued behind another card, held in a fight / a talk
+  ctx.ui.cards.modal(`clue:${clue.id}`, () => openClueCard(
     {
       t: ctx.t,
       open: (o) => ctx.ui.modals.open(o),
@@ -187,7 +188,7 @@ function showCard(ctx: GameContext, clue: ChronikClue, d: Discovery | null, tran
     clue,
     d,
     transcript,
-  );
+  ));
 }
 
 function examine(ctx: GameContext, clue: ChronikClue): boolean {
@@ -231,18 +232,20 @@ function onMeasured(ctx: GameContext, m: { a: { x: number; z: number }; b: { x: 
 }
 
 function startEcho(ctx: GameContext, clue: ChronikClue): boolean {
-  if (!director || director.active) return false;
+  if (!director || !echoFree(clue)) return false;
   ctx.ui.hud.prompt(null, undefined, 'chronik');
   promptKey = '';
   director.start(clue);
   return true;
 }
 
-function echoDone(ctx: GameContext, clue: ChronikClue, transcript: TranscriptLine[]): void {
+function echoDone(ctx: GameContext, clue: ChronikClue, transcript: TranscriptLine[], walked = false): void {
   const sl = slice(ctx);
   if (!sl.echoes.includes(clue.id)) sl.echoes.push(clue.id);
   const d = doDiscover(ctx, clue);
-  showCard(ctx, clue, d, transcript);
+  // heard while walking on: no card that stops you mid-stride, the field book has the transcript
+  if (walked) ctx.ui.toast(ctx.t('chronik.echo.noted', { title: clue.title_de }), 3200);
+  else showCard(ctx, clue, d, transcript);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -366,13 +369,19 @@ function refreshMarkers(ctx: GameContext): void {
     if (id) nearTwinkle(ctx.audio);
   }
   // auto echoes start by themselves
-  if (target?.clue.kind === 'echo' && target.clue.auto && target.status === 'available' && !director?.active && ctx.ui.modals.count === 0) startEcho(ctx, target.clue);
+  if (target?.clue.kind === 'echo' && target.clue.auto && target.status === 'available' && echoFree(target.clue) && ctx.ui.modals.count === 0) startEcho(ctx, target.clue);
+}
+
+/** No echo is playing in front of you (one heard while walking on leaves the world free, but not its own spot). */
+function echoFree(clue?: ChronikClue): boolean {
+  if (!director?.active) return true;
+  return director.walking && director.clue?.id !== clue?.id;
 }
 
 function updatePrompt(ctx: GameContext): void {
   let key = '';
   let text = '';
-  if (target && !director?.active && ctx.ui.modals.count === 0 && !((ctx.state.state.flags['npc.near'] || ctx.state.state.flags['e.owner']) && target.clue.kind !== 'echo')) {
+  if (target && echoFree(target.clue) && ctx.ui.modals.count === 0 && !((ctx.state.state.flags['npc.near'] || ctx.state.state.flags['e.owner']) && target.clue.kind !== 'echo')) {
     key = 'E';
     if (target.status === 'needs-lantern') text = ctx.t('chronik.prompt.dark');
     else if (target.clue.kind === 'echo') text = ctx.t('chronik.prompt.listen');
@@ -479,7 +488,7 @@ export default defineSystem({
     hud.style.pointerEvents = 'none';
     holdRing = svg(`<svg class="ck-hold" viewBox="0 0 54 54" aria-hidden="true"><circle class="bg" cx="27" cy="27" r="22"/><circle class="fg" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="138.2" transform="rotate(-90 27 27)"/></svg>`);
     hud.append(holdRing);
-    director = new EchoDirector(ctx, (id) => content.echoLines.get(id) ?? [], hud, (clue, tr) => echoDone(ctx, clue, tr));
+    director = new EchoDirector(ctx, (id) => content.echoLines.get(id) ?? [], hud, (clue, tr, walked) => echoDone(ctx, clue, tr, walked));
 
     const ev = ctx.events;
     offs.push(
@@ -529,7 +538,8 @@ export default defineSystem({
     }
     // E: tap = examine, hold = listen (when both are near, the tap waits for the release)
     const pressE = inp.wasPressed('listen');
-    if ((pressE || (inp.wasPressed('interact') && inp.locked)) && !director?.active) {
+    // an echo heard while walking on (only its voices left) does not take E away from the world
+    if ((pressE || (inp.wasPressed('interact') && inp.locked)) && echoFree(target?.clue)) {
       const echo = echoTargetNear(ctx);
       // a ghost within talk range owns E (npc flag npc.near), or a thing in the room (`e.owner`, the Festsaal):
       // the conversation / the pickup, not the clue under her feet

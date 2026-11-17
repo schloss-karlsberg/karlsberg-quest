@@ -90,6 +90,15 @@ test('story: field station by day and night, dialogue portraits', async ({ page 
   });
   // Marlene on the radio, with her portrait and the fiction label
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-speaker', 'marlene', { timeout: 10_000 });
+  // the quest's own line ("Nimm den Messstab mit …") comes first, while you walk; then the greeting
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const dlg = () => document.querySelector('[data-testid="dialogue"]')?.textContent ?? '';
+    for (let i = 0; i < 240 && !dlg().includes('Alex'); i++) {
+      k.story!.finishTyping();
+      k.step(10);
+    }
+  });
   await typed(page);
   await expect(page.getByTestId('dialogue')).toContainText('Alex');
   await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
@@ -156,9 +165,15 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   // prologue p1: the Pinnwand hands out two cards (Messtischblatt, Lageplan) on top of the hub;
   // the Chronik board itself opens from the Pinnwand once the cards are read (p8: Tab)
   if (await page.evaluate(() => !!window.kq!.chronik)) {
-    await expect(page.getByTestId('chronik-card').last()).toBeVisible();
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('chronik-card')).toHaveCount(1);
+    await page.evaluate(() => {
+    // one field-book page at a time (src/ui/cards.ts): read each away, the next follows after a beat
+    for (let i = 0; i < 8; i++) {
+      if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+      for (let j = 0; j < 30 && !document.querySelector('[data-testid="chronik-card"]'); j++) window.kq!.step(1);
+      if (!document.querySelector('[data-testid="chronik-card"]') && !window.kq!.ctx.ui.cards.pending) break;
+    }
+    });
     await expect(page.getByTestId('hub')).toBeVisible();
   }
   await page.getByTestId('hub-shelf').click();
@@ -189,6 +204,14 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
     const stab = pr.pickups().find((x) => x.item === 'item.stab.esche');
     if (stab) pr.take(stab.id);
     k.step(4);
+  });
+  // the first fight (playtest round 4): three Nebelinge rise on the way down to the dam
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(792, -893, 75, -4);
+    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.group === 'q.p.feldstation.nebel').length < 3; i++) k.step(15);
+    k.combat!.kill('q.p.feldstation.nebel');
+    k.step(10);
   });
   await expect.poll(() => page.evaluate(() => window.kq!.quests!.state().quests['q.p.feldstation']?.state), { timeout: 60_000 }).toBe('done');
   await page.evaluate(() => window.kq!.step(10));

@@ -48,6 +48,12 @@ export interface CardRequest {
 }
 
 /**
+ * Seconds a fresh unlock waits before its card comes up: a quest reward pays XP and a skill in the
+ * same moment, and a level-up then takes the unlock onto its own card (src/ui/cards.ts).
+ */
+export const SETTLE = 0.45;
+
+/**
  * The unlock card: a field-book slip that slides in under the era label, a brass medal whose
  * engraved ring draws itself, tier pips that get inked and a red "Freigeschaltet" stamp.
  * Queued (one at a time), never pauses the game. Reduced motion: opacity only.
@@ -55,7 +61,9 @@ export interface CardRequest {
 export class UnlockCards {
   readonly root: HTMLElement;
   private readonly queue: CardRequest[] = [];
-  private current: { el: HTMLElement; t: number; req: CardRequest } | null = null;
+  /** Seconds the head of the queue has waited (SETTLE). */
+  private waited = 0;
+  private current: { el: HTMLElement; t: number; req: CardRequest; extra: CardRequest[]; dur: number } | null = null;
   /** Seconds a card stays (enter + read + exit). */
   static readonly DURATION = 6.2;
   onStamp: ((req: CardRequest) => void) | null = null;
@@ -77,6 +85,17 @@ export class UnlockCards {
     return !!this.current || this.queue.length > 0;
   }
 
+  /** On screen, or the head of the queue has settled and wants to come up (asks the director). */
+  get wants(): boolean {
+    return !!this.current || (this.queue.length > 0 && this.waited >= SETTLE);
+  }
+
+  /** Take every waiting unlock (the level card shows them instead). */
+  drain(): CardRequest[] {
+    this.waited = 0;
+    return this.queue.splice(0);
+  }
+
   get showing(): CardRequest | null {
     return this.current?.req ?? null;
   }
@@ -84,9 +103,17 @@ export class UnlockCards {
   /** Advance (real seconds). `hold` keeps the queue waiting (modal open, story card on screen). */
   frame(dt: number, reduced: boolean, hold: boolean): void {
     if (!this.current) {
-      if (hold || !this.queue.length) return;
+      if (!this.queue.length) {
+        this.waited = 0;
+        return;
+      }
+      // real seconds: a paused game (dt 0) still lets the merge window pass on the next frames
+      this.waited += Math.max(dt, 1 / 60);
+      if (hold || this.waited < SETTLE) return;
       const req = this.queue.shift()!;
-      this.current = { el: this.build(req, reduced), t: 0, req };
+      // unlocks that came together share one card (playtest round 4: two cards in a row for one reward)
+      const extra = this.queue.splice(0);
+      this.current = { el: this.build(req, reduced, extra), t: 0, req, extra, dur: UnlockCards.DURATION + extra.length * 1.6 };
       this.stamped = false;
       this.root.append(this.current.el);
       // next frame: start the CSS transitions
@@ -101,9 +128,10 @@ export class UnlockCards {
     if (!this.stamped && c.t >= 1.15) {
       this.stamped = true;
       this.onStamp?.(c.req);
+      for (const x of c.extra) this.onStamp?.(x);
     }
-    if (c.t >= UnlockCards.DURATION - 0.6 && !c.el.classList.contains('kqk-out')) c.el.classList.add('kqk-out');
-    if (c.t >= UnlockCards.DURATION) {
+    if (c.t >= c.dur - 0.6 && !c.el.classList.contains('kqk-out')) c.el.classList.add('kqk-out');
+    if (c.t >= c.dur) {
       c.el.remove();
       this.current = null;
     }
@@ -116,7 +144,7 @@ export class UnlockCards {
     this.current = null;
   }
 
-  private build(req: CardRequest, reduced: boolean): HTMLElement {
+  private build(req: CardRequest, reduced: boolean, extra: CardRequest[] = []): HTMLElement {
     const { skill, level } = req;
     const max = SKILL_MAX[skill];
     const pips = h(
@@ -137,6 +165,12 @@ export class UnlockCards {
           h('div.kqk-tier', [h('span.kqk-tiernum', t('skills.card.tier', { n: roman(level) })), ' · ', tier]),
           h('div.kqk-desc', [key ? h('kbd', key) : null, t(`skills.desc.${skill}.${level}`)]),
           h('div.kqk-rule'),
+          ...extra.map((x) =>
+            h('div.kqk-also', { 'data-testid': 'skill-card-also', dataset: { skill: x.skill, level: String(x.level) } }, [
+              h('span.kqk-also-name', `${t(`skills.name.${x.skill}`)} ${roman(x.level)}`),
+              h('span.kqk-also-desc', [t(`skills.key.${x.skill}.${x.level}`) ? h('kbd', t(`skills.key.${x.skill}.${x.level}`)) : null, t(`skills.desc.${x.skill}.${x.level}`)]),
+            ]),
+          ),
         ]),
         h('div.kqk-stamp', t('skills.card.stamp')),
         h('div.kqk-shine'),

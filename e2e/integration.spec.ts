@@ -100,7 +100,12 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   // prologue p1: drawer, Pinnwand and shelf hand out their cards on top of the hub (Escape reads on)
   const readCards = () =>
     page.evaluate(() => {
-      for (let i = 0; i < 4 && document.querySelector('[data-testid="chronik-card"]'); i++) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+    // one field-book page at a time (src/ui/cards.ts): read each away, the next follows after a beat
+    for (let i = 0; i < 8; i++) {
+      if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+      for (let j = 0; j < 30 && !document.querySelector('[data-testid="chronik-card"]'); j++) window.kq!.step(1);
+      if (!document.querySelector('[data-testid="chronik-card"]') && !window.kq!.ctx.ui.cards.pending) break;
+    }
     });
   await page.getByTestId('hub-drawer').click();
   await readCards();
@@ -135,6 +140,14 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     const stab = pr.pickups().find((x) => x.item === 'item.stab.esche');
     if (stab) pr.take(stab.id);
     k.step(4);
+  });
+  // the first fight (playtest round 4): three Nebelinge rise on the way down to the dam
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(792, -893, 75, -4);
+    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.group === 'q.p.feldstation.nebel').length < 3; i++) k.step(15);
+    k.combat!.kill('q.p.feldstation.nebel');
+    k.step(10);
   });
   await expect.poll(() => page.evaluate(() => window.kq!.quests!.state().quests['q.p.feldstation']?.state), { timeout: 60_000 }).toBe('done');
   await page.evaluate(() => {

@@ -80,6 +80,8 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.prompt.both': 'Untersuchen · E halten – Lauschen',
   'chronik.listen.tap': 'Halten Sie E gedrückt, um zu lauschen.',
   'chronik.echo.abort': 'Die Erinnerung verweht.',
+  'chronik.echo.walk': '[Die Stimmen gehen mit dir]',
+  'chronik.echo.noted': 'Erinnerung notiert: {title} (J)',
   'chronik.echo.caption': '[leises Flüstern, Atmen]',
   'chronik.echo.whisper': '[Flüstern verklingt]',
 
