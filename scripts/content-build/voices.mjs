@@ -19,7 +19,7 @@ const dialogue = [
   ...group('laub.bark.lantern_low', 'laub', { event: 'lantern:oil', below: 0.2 }, [
     'Ihr Öl geht zur Neige. Meines ist 1840 ausgegangen. Ich empfehle, nicht meinem Beispiel zu folgen.',
     'Die Flamme wird klein. Zurück zur Station wäre jetzt keine Feigheit, sondern Verwaltung.',
-    'Noch ein paar Minuten Licht. Q halten, wenn Sie heim wollen.',
+    'Nur noch Sekunden Licht. Q halten, wenn Sie heim wollen.',
   ]),
   ...group('laub.bark.hounds_near', 'laub', { event: 'hunt:alert', state: 'suspicious' }, [
     'Hören Sie das? Atmen Sie leiser. Ich tue es auch.',

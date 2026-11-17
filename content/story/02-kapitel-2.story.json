@@ -976,11 +976,11 @@
           "id": "k2_11-weg",
           "when": { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } },
           "do": [
+            { "do": "objective", "id": "k2.heim", "text": "Q halten: zurück in die Feldstation", "x": 819, "z": -875 },
             { "do": "say", "line": "laub.k2.damm.weg", "delay": 1.5 },
             { "do": "say", "line": "laub.k2.wasser", "delay": 1 },
             { "do": "say", "line": "laub.k2.kalkoefen", "delay": 1 },
-            { "do": "say", "line": "laub.k2.sicher", "delay": 1 },
-            { "do": "objective", "id": "k2.heim", "text": "Q halten: zurück in die Feldstation", "x": 819, "z": -875 }
+            { "do": "say", "line": "laub.k2.sicher", "delay": 1 }
           ]
         },
         {

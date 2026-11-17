@@ -116,8 +116,19 @@ export class ConversationView {
     return this.cur?.line ?? null;
   }
 
-  show(title: string, onClose: () => void): void {
+  show(title: string, onClose: () => void, speaker?: SpeakerMeta): void {
     ensurePortraitDefs();
+    // a conversation that opens without a greeting must not show the last one's NPC and line
+    // (playtest round 4: Peter's topics under Soll's name, portrait and „Drei Zettel …“)
+    this.cur = null;
+    this.queue.length = 0;
+    this.typed.textContent = '';
+    this.rest.textContent = '';
+    this.src.textContent = '';
+    this.note.textContent = '';
+    this.note.classList.add('kqn-hidden');
+    this.hint.classList.add('kqn-hidden');
+    if (speaker) this.setSpeaker(speaker);
     const body = h('div.kqn-talk', { 'data-testid': 'npc-talk' }, [
       h('div.kqn-head', [this.portrait, h('div.kqn-names', [this.who, this.tag])]),
       h('div.kqn-text', { 'aria-live': 'polite' }, [this.typed, this.rest]),
@@ -143,6 +154,17 @@ export class ConversationView {
 
   close(): void {
     this.modal?.close();
+  }
+
+  private setSpeaker(m: SpeakerMeta): void {
+    if (this.lastPortrait !== m.portrait + m.id) {
+      this.lastPortrait = m.portrait + m.id;
+      this.portrait.replaceChildren(svg(portraitSvg(m.portrait)));
+    }
+    this.portrait.dataset.speaker = m.id;
+    this.who.textContent = m.name;
+    this.tag.textContent = m.historical ? t('npc.tag.historical') : t('npc.tag.fiction');
+    this.tag.className = `kqn-tag ${m.historical ? 'hist' : 'fic'}`;
   }
 
   /** Queue lines; `then` runs when the last one has been read (advanced past). */
@@ -222,15 +244,7 @@ export class ConversationView {
       return;
     }
     this.cur = { line, typed: this.reducedMotion() ? line.text.length : 0, acc: 0, starts: syllableStarts(line.text) };
-    const m = line.speaker;
-    if (this.lastPortrait !== m.portrait + m.id) {
-      this.lastPortrait = m.portrait + m.id;
-      this.portrait.replaceChildren(svg(portraitSvg(m.portrait)));
-    }
-    this.portrait.dataset.speaker = m.id;
-    this.who.textContent = m.name;
-    this.tag.textContent = m.historical ? t('npc.tag.historical') : t('npc.tag.fiction');
-    this.tag.className = `kqn-tag ${m.historical ? 'hist' : 'fic'}`;
+    this.setSpeaker(line.speaker);
     this.src.textContent = line.source ? `${t('npc.source')}: ${line.source}` : '';
     this.note.textContent = line.note ?? '';
     this.note.classList.toggle('kqn-hidden', !line.note);

@@ -39,7 +39,7 @@ Jede Gruppe wird zufällig gezogen, jede Zeile frühestens nach 10 min wieder. H
 **Laterne fast leer** (`laub.bark.lantern_low.*`, bei 20 % Öl)
 1. „Ihr Öl geht zur Neige. Meines ist 1840 ausgegangen. Ich empfehle, nicht meinem Beispiel zu folgen.“
 2. „Die Flamme wird klein. Zurück zur Station wäre jetzt keine Feigheit, sondern Verwaltung.“
-3. „Noch ein paar Minuten Licht. Q halten, wenn Sie heim wollen.“
+3. „Nur noch Sekunden Licht. Q halten, wenn Sie heim wollen.“
 
 **Hunde in der Nähe** (`laub.bark.hounds_near.*`, ein Hund < 30 m, nicht entdeckt)
 1. „Hören Sie das? Atmen Sie leiser. Ich tue es auch.“

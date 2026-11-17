@@ -505,8 +505,12 @@
     {
       "id": "k4_8",
       "title_de": "Standpunkt siebzehn",
-      "checkpoint": "k4_5",
-      "enter": [{ "do": "anchor", "to": "1796", "x": 1386, "z": -1477, "r": 60 }],
+      "checkpoint": "k4_8",
+      "enter": [
+        { "do": "anchor", "to": "1796", "x": 1386, "z": -1477, "r": 60 },
+        { "do": "meter", "id": "vergessen", "active": false },
+        { "do": "flag", "set": { "k4.frass": false } }
+      ],
       "on": [
         {
           "id": "letzte-chance",

@@ -258,6 +258,13 @@ class QuestRuntime {
         if (st === 'ready') this.book.complete(q.id, true);
         else if (st === 'active') this.book.fail(q.id, 'chapter');
       }
+      // … but not for ever: two chapters on, a present-day side quest ends too (playtest round 4:
+      // the prologue's Irrlichter rose again at the dam on every retry of the K2 Pikeur, and
+      // „Nicht anfassen“ / „Lichter am Weiher“ sat in the tracker through K3)
+      else if (q.kind === 'side' && at - i >= 2) {
+        if (st === 'ready') this.book.complete(q.id, true);
+        else if (st === 'active') this.book.fail(q.id, 'chapter');
+      }
     }
   }
 

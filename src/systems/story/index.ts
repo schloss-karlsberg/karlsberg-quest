@@ -38,6 +38,18 @@ import { COLLECTIONS } from '../../rpg/items';
 import type { Action, Checkpoint, ChoiceAction, Condition, EndingId, FlagValue, HubItem, LookTime, MeterAction, StoryFile } from './types';
 import type { GameEvents } from '../../core/events';
 import type { DialogueItem } from './dialogue/presenter';
+import { knownPoints } from '../travel/points';
+
+/** The nearest Vermessungspunkt the player has measured in (or knows) to x/z. */
+function nearestSurveyed(travel: unknown, x: number, z: number): { name: string; x: number; z: number; d: number } | null {
+  const sl = (travel ?? {}) as { activated?: string[]; announced?: string[] };
+  let best: { name: string; x: number; z: number; d: number } | null = null;
+  for (const p of knownPoints(sl.activated ?? [], sl.announced ?? [])) {
+    const d = Math.hypot(p.x - x, p.z - z);
+    if (!best || d < best.d) best = { name: p.name, x: p.x, z: p.z, d };
+  }
+  return best;
+}
 
 // ---- story-private state & events (declaration merging; see contracts.ts) -------------------
 declare module '../../core/state' {
@@ -178,6 +190,9 @@ interface RunScope {
 const PRESENTATION = new Set(['say', 'toast', 'sound', 'card', 'prompt', 'echo', 'choice']);
 /** Barks and skill remarks: low priority in the dialogue queue (hints are not: the player is stuck). */
 const isLowLine = (id: string | undefined) => !!id && (isBarkLine(id) || id.startsWith('laub.skill.'));
+/** Story lines about the past's dangers: dropped when the era they were said in is left. */
+const ERA_BOUND_IDS = new Set(['laub.p.zurueck', 'laub.p.hinlegen']);
+
 /** Longer lines than this (characters) are lore in a fight: held until it is over. */
 const COMBAT_LINE_MAX = 120;
 
@@ -227,6 +242,10 @@ class StoryRuntime {
   private quietCard = false;
   /** Seconds the caught curtain has been down (game time); hold = caughtHold / 1000. */
   private caughtT = 0;
+  /** game:start has run (a later save:loaded is a load during play). */
+  private started = false;
+  /** Where and by what the player was last caught (a fight's wake goes to the nearest surveyed point). */
+  private caughtAt: { x: number; z: number; by: ThreatKind; boss: boolean } | null = null;
   private caughtHoldS = 2.4;
   /** Lines triggered while the curtain is down: spoken when it lifts. */
   private wakeLines: { speaker: string; text: string; id?: string }[] = [];
@@ -390,8 +409,18 @@ class StoryRuntime {
     ctx.events.onAny((name, payload) => this.onEvent(name, payload));
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
-    ctx.events.on('save:loaded', () => this.resync());
-    ctx.events.on('player:caught', ({ by, soft, family }) => {
+    ctx.events.on('save:loaded', () => {
+      this.resync();
+      // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
+      // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
+      if (this.started && this.slice.active) {
+        this.presenter.clear();
+        this.engine.resume(false);
+      }
+    });
+    ctx.events.on('player:caught', ({ by, soft, family, boss }) => {
+      const p = this.ctx.player.position;
+      this.caughtAt = { x: p.x, z: p.z, by, boss: boss === true };
       const key = family ? `story.caught.combat.${family}` : '';
       this.caught(by, { soft: soft === true, ...(key && hasString(key) ? { text: t(key) } : {}) });
     });
@@ -402,6 +431,7 @@ class StoryRuntime {
     });
     ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
+      this.dropShiftObjective(to);
       if (to === 'today') this.placeStation();
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
     });
@@ -462,6 +492,7 @@ class StoryRuntime {
   private onStart(resumed: boolean): void {
     this.cancelScheduled();
     this.presenter.clear();
+    this.started = true;
     const params = this.ctx.params;
     if (this.pendingName !== null) {
       const name = this.pendingName;
@@ -926,7 +957,7 @@ class StoryRuntime {
     // Laub warns while the lantern burns down (half left, a fifth left), once per filling
     if (id === 'oil' && this.ctx.era.current !== 'today' && m.full !== 'none' && !this.caughtBusy) {
       for (const [at, key] of [[0.5, 'story.oil.half'], [0.8, 'story.oil.low']] as const)
-        if (before < at && m.value >= at) this.ctx.events.emit('dialogue:say', { speaker: 'laub', text: t(key), id: `laub.${key}` });
+        if (before < at && m.value >= at) this.ctx.events.emit('dialogue:say', { speaker: 'laub', text: t(key), id: `laub.${key}`, priority: 'now' });
     }
   }
 
@@ -1127,10 +1158,26 @@ class StoryRuntime {
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
       group: sc ? this.lineGroup : ++this.lineGroup,
-      expired: p.until ? this.latch(p.until as Condition) : undefined,
+      expired: this.expiry(p, line?.trigger?.event),
       // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
       lore: p.lore || !!src || undefined,
     });
+  }
+
+  /**
+   * When a waiting line is no longer worth saying: its `until`, and — for lines about the past's
+   * dangers (the lantern, the horn, the pack, „Zurück. Jetzt.“) — the era it was said in being left
+   * (playtest round 4: „Das Öl wird knapp …“ and „Das Horn …“ while walking home through 2025).
+   * Oil warnings also lapse once the gauge has moved on (the half-warning played at 13 %).
+   */
+  private expiry(p: GameEvents['dialogue:say'], trigger?: string): (() => boolean) | undefined {
+    const until = p.until ? this.latch(p.until as Condition) : null;
+    const era = this.ctx.era.current;
+    const bound = era !== 'today' && (ERA_BOUND_IDS.has(p.id ?? '') || /^(lantern:|hunt:|threat:)/.test(trigger ?? '') || /^laub\.(story\.oil|bark\.lantern|bark\.hounds)/.test(p.id ?? ''));
+    const oil = this.slice.meters['oil'];
+    const oilAt = /oil|lantern/.test(p.id ?? '') && oil ? oil.value : null;
+    if (!until && !bound) return undefined;
+    return () => (until?.() ?? false) || (bound && this.ctx.era.current !== era) || (oilAt !== null && !!oil && Math.abs(oil.value - oilAt) > 0.12);
   }
 
   /** Once a line's `until` held it stays expired (scan 1 pressed and released again). */
@@ -1264,7 +1311,20 @@ class StoryRuntime {
       wake = { x: anchor.x + 3, z: anchor.z + 3, yaw: wake?.yaw ?? 0, text: t('story.caught.wakeAnchor') };
       atAnchor = true;
     }
-    const cp = wake ?? this.engine.chapter()?.checkpoint ?? { x: STATION.spawn.x, z: STATION.spawn.z, yaw: STATION.spawn.yaw };
+    let cp = wake ?? this.engine.chapter()?.checkpoint ?? { x: STATION.spawn.x, z: STATION.spawn.z, yaw: STATION.spawn.yaw };
+    // undone in an ordinary fight: come to at the nearest surveyed point, not at the far end of the
+    // walk (playtest round 4: death was a free fast travel to the Karlslust 1300 m on, and the K4
+    // stockpile woke you 270 m away at the Westblick). Bosses and the story's threats keep their wake.
+    const at = this.caughtAt;
+    this.caughtAt = null;
+    if (at && at.by === 'combat' && !at.boss && !prolog) {
+      const near = nearestSurveyed(this.ctx.state.state.systems.travel, at.x, at.z);
+      if (near && near.d + 60 < Math.hypot(cp.x - at.x, cp.z - at.z)) {
+        cp = { x: near.x + 2.5, z: near.z + 2.5, yaw: cp.yaw };
+        wake = { ...cp, text: t('story.caught.wakePoint', { name: near.name }) };
+        atAnchor = false;
+      }
+    }
     this.teleport(cp.x, cp.z, cp.yaw);
     this.applyLook();
     ctx.player.frozen = false;
@@ -1288,6 +1348,21 @@ class StoryRuntime {
     const lines = this.wakeLines;
     this.wakeLines = [];
     for (const l of lines) ctx.events.emit('dialogue:say', l);
+  }
+
+  /**
+   * A „Q – zurück …“ objective is done the moment the shift happens (playtest round 4: „Östlich vom
+   * Schloss: Q – zurück in den Garten · 390 m“ pointed south all the way to the Zwinger). The next
+   * beat sets its own; until then the tracker's quest goal leads.
+   */
+  private dropShiftObjective(to: Era): void {
+    const o = this.slice.objective;
+    if (!o?.text || !/\bQ\b/.test(o.text)) return;
+    const home = /Heute|Feldstation|Gegenwart/.test(o.text);
+    if ((to === 'today') !== home) return;
+    this.slice.objective = null;
+    this.objectives.set(null);
+    this.ctx.events.emit('objective:set', { text: null });
   }
 
   /** The `wake` place for being caught now: the checkpoint beat's (where the story resumes), else the running beat's. */

@@ -61,7 +61,7 @@
     {
       "id": "laub.bark.lantern_low.03",
       "speaker": "laub",
-      "text_de": "Noch ein paar Minuten Licht. Q halten, wenn Sie heim wollen.",
+      "text_de": "Nur noch Sekunden Licht. Q halten, wenn Sie heim wollen.",
       "trigger": {
         "event": "lantern:oil",
         "below": 0.2

@@ -294,6 +294,21 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   await shot(page, 'ending-c-follow');
   await page.evaluate(() => window.kq!.ctx.save.save('auto', 'test'));
 
+  // post-game, the pause menu: „Ende noch einmal wählen“ loads the slot and the table opens again
+  // (playtest round 4: the slot loaded but the choice card never came)
+  const autoKey = await page.evaluate(() => Object.keys(localStorage).find((k) => k.endsWith('save.v1.auto')) ?? '');
+  const autoRaw = await page.evaluate((k) => localStorage.getItem(k), autoKey);
+  await page.keyboard.press('Escape');
+  await page.getByTestId('pause-ending-again').click();
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 30 && !document.querySelector('[data-testid="ending"]'); i++) k.step(10);
+  });
+  await expect(page.getByTestId('ending')).toBeVisible({ timeout: 20_000 });
+  await shot(page, 'pause-ending-again-choice');
+  // the post-game save stays what the title test below needs
+  await page.evaluate(([k, raw]) => raw && localStorage.setItem(k!, raw), [autoKey, autoRaw] as const);
+
   // the main menu: "Ende noch einmal wählen" loads the field book before the table
   await page.goto('./?manual');
   const again = page.getByTestId('title-ending-again');

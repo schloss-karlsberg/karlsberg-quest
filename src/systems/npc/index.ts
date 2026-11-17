@@ -258,7 +258,7 @@ class NpcRuntime {
     const lines = talkLines(ctx.content.dialogue.values(), npc, chapter);
     this.talking = { npc, chapter, lines };
     const meta = speakerMeta(npc, ctx.content);
-    this.view.show(meta.name, () => this.closed());
+    this.view.show(meta.name, () => this.closed(), meta);
     ctx.ui.hud.prompt(null, undefined, 'npc');
     this.prompt = null;
     // first talk: the flag and the Chronik clue (clue.<chapter>.<npc>)
