@@ -291,6 +291,10 @@ export class PackSim {
   /** The player's ground velocity (smoothed): a lunge aims where you will be. */
   readonly pv = { x: 0, z: 0 };
   private pPrev: XZ | null = null;
+  /** Where the player was on the last step (null before the first). */
+  get playerAt(): XZ | null {
+    return this.pPrev;
+  }
 
   constructor(
     readonly world: SimWorld,

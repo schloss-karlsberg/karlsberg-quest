@@ -412,7 +412,7 @@ export class ParforceMode implements ModeController {
     this.releaseLeft = (o.headStart ?? 6) + (o.gentle ? 3 : 0);
     if (!fresh && o.target) {
       // the stand breaks (K1 finale): the hounds between you and the water break aside
-      const p = sim.lastKnown ?? sim.origin;
+      const p = sim.playerAt ?? sim.lastKnown ?? sim.origin;
       const toT = dist(p, o.target);
       // … and any at your heels (you stood at the ring's edge) fall back a few strides: the dash
       // starts with a gap, never with a hound already on you
