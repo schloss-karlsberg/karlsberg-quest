@@ -80,6 +80,8 @@ export async function install(page: Page): Promise<void> {
         let dodges = 0;
         for (let i = 0; i < (o.max ?? 900); i++) {
           if (caughtFlag.v || (o.until && o.until())) break;
+          // a field-book page held back by a fight or a staged moment comes up later: put it away
+          if (k.ctx.ui.modals.count > 0 && !k.story.choice()) k.ctx.ui.modals.closeAll();
           const dx = t[0] - p.x;
           const dz = t[1] - p.z;
           const d = Math.hypot(dx, dz);
@@ -350,6 +352,11 @@ export async function questTalk(page: Page, npc: string, id: string, answer?: st
           k.npc.advance();
         }
       };
+      // a page still queued behind a fight (src/ui/cards.ts) would open over the talk: let it come, put it away
+      for (let i = 0; i < 12 && (k.ctx.ui.cards.pending > 0 || k.ctx.ui.modals.count > 0) && !k.story.choice(); i++) {
+        k.ctx.ui.modals.closeAll();
+        k.step(10);
+      }
       k.press('KeyE', 1);
       drain();
       const topics0 = k.npc.state().topics as string[];

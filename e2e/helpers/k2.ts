@@ -135,6 +135,8 @@ export async function walk(page: Page, pts: [number, number][], o: { sprint?: bo
       let caught = false;
       const t0 = k.ctx.loop.time;
       while (i < pts.length && n++ < max) {
+        // a field-book page held back by a fight comes up later (src/ui/cards.ts): read, put away
+        if (k.ctx.ui.modals.count > 0 && !k.story!.choice()) k.ctx.ui.modals.closeAll();
         const [tx, tz] = pts[i]!;
         const p = P.position;
         if (Math.hypot(tx - p.x, tz - p.z) < 1.6) {
