@@ -632,7 +632,7 @@ Round-4 (polish: set dressing) integration rules:
   open behind you (`hunt:tableau eyes`). Reduced motion: no flight, two still shots (7 s). Look and
   view are restored before the card.
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
-  epilogue/choose/look/meters/meter/room/choice/stage/stageSkip` (`look(time, era?)`: `day | dawn | dusk | night`).
+  epilogue/choose/look/meters/meter/room/choice/stage/stageSkip/shown` (`look(time, era?)`: `day | dawn | dusk | night`; `shown()`: ids of the lines shown on screen this session).
 
 ### npc (`src/systems/npc/`) – ghostly people, conversations
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?}` / `npc:despawn {npc}`
