@@ -313,8 +313,15 @@ A group of **three or more** in the past (not today, not a boss) is a pack:
   arrow), then they rise out of the ground. 1789 Streuner: a hound + 2 Mahnbriefe; 1793-02: 2
   Nebelinge + a Mahnbrief; later Streuner: a hound + 2 Nebelinge; Nebelinge / Irrlichter: 2 Nebelinge;
   Mahnbriefe 3; Raffschatten: one + 2 Glutlinge; Glutlinge 3; Gruslinge 4; Steinfresser: one + 2
-  Gruslinge. The prologue's first fight (4 Nebelinge) gets 3 more from behind — turn round. Wave
-  members are escorts (no objective credit, XP yes).
+  Gruslinge. Wave members are escorts (no objective credit, XP yes).
+- **Per-fight overrides** (playtest round 5): a quest or story spawn may set `escorts` and `wave`
+  (`[{kind, n}]`, `[]` = none), `aggro` (the group comes at you at once — an ambush) and `veiled`
+  (a ward only the Bannlicht lifts); a story spawn may set `near` (spawn that many metres from you,
+  towards x / z). Prologue groups (`q.p.*`) get no default escort or wave: the tutorial fights are
+  one kind each (the Eiskeller: 4 Nebelinge, then 2 more from behind; the hohlweg Streuner is the
+  veiled one that teaches the flare). Hounds fight with hounds; the K3 basket thieves are
+  Raffschatten only. A boss that reached phase 2 or 3 resumes there after a death
+  (`EnemyGroupState.bossPhase`), and big bosses (radius ≥ 2.5) keep you 1.4 m off their body.
 - **Era hazards** (`hazardOf` / `HAZARD`): in a pack fight, every 6.5 s: **1793-07 Glut** — two 2.3 m
   rings fill for 1.4 s with embers falling into them, then burn (10 to you, 30 % of their HP to
   enemies, elites half); **1796 Steinschlag** — one 2.1 m ring for 1.5 s, a dressed block falls onto
@@ -335,6 +342,12 @@ escort, second wave and the era's hazards from K1 on):
   every one with **more than a third** of its Lebenskraft in **18–75 s** (measured 2026-11-17:
   prologue 45 s, K1 66 s, K2 29 s, K3 37 s, K4 27 s; it loses 8–52 %).
 - Gentle mode: the masher clears K2 and the tank survives it.
+- **Per content encounter** (round 5, `tests/combat-encounters.ts` reads every quest and story
+  spawn): in each chapter's first fight the masher lives with ≥ 10 % and the skilled bot wins in
+  ≤ 50 s; in every regular fight the skilled bot wins with a third of its Lebenskraft in ≤ 75 s;
+  Irrlicht pairs last ≥ 12 s. Measured: the masher keeps 52 % (K1 Registratur), 60 % (K2 Spur),
+  77 % (K3 Nachmittag), 67 % (K4 Karren); the prologue's first fight is meant to be lost by a
+  masher; the Enge 36–40 %; Irrlicht pairs about 18 s.
 
 ## 6. Progression
 
@@ -1184,3 +1197,29 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   sight cones read pale on bright frost from far away; Jost turns to face you when you come within
   8 m (the kneel reads best from the side); the burn memories' hounds open their eyes on the hunt's
   own clock (on a slow renderer only two or three pairs open in the 3 s shot).
+- **Playtest round 5 (2026-11-18), fixed:** *Shown, not told:* every line is checked by
+  `stageDirection` (no caption-only lines, captions ≤ 30 characters, no „(Pause.)“ in speech — a
+  mid-line „…“ makes the subtitle breathe); the K4 Kommissär's „[Geräusch]“ line is a crowbar sound
+  at the spot; the 1840 echo has bigger eyes over dark bodies, a cold night grade and denser fog
+  at a slower pace; the burn memory's seven hounds stand 6 m off and open their eyes within 2 s
+  (`hunt:tableau` `stagger`); the burn ending's card no longer retells the scene. *Slow start:*
+  Marlene speaks before the first quest card; „Drück mal die Eins“ comes 3.5 s after the Damm
+  card, and the second Relief key only after the first was used. *Fights:* per-fight escorts /
+  waves / ambush / veil from content (§5.5); one kind per prologue fight, no Irrlichter on
+  prologue routes, 2 Balsam from the Relief quest; a prologue death wakes at the nearest landmark
+  ≥ 22 m off with its own line (Laub's horn advice only after a pack); the K1 Rund ambush comes at
+  you from 9 m; K4 Karren tier 3, Baumagazin 3 Steinfresser; boss phase resumes after a death and
+  big bosses keep a stand-off; armoured boss hits show „Abgeprallt“, after four in 12 s the hint
+  where to hit; captions never stack the same line twice, at most two; no floating damage left
+  after a death. *Cards:* soft holds (ARCHITECTURE: slide-in cards wait out a spoken line, an
+  active pack, the Festsaal, a playing echo; 1.2 s linger); the level card shows the level reached;
+  a lore line a fight interrupts plays again after it. *K2 sneak:* three hounds walk sentry beats
+  across the way (`threat` `beats`), the hedge is 47 m on instead of 80 m, the cones are a darker
+  amber with a marching rim. *Small:* stage pieces (the K1 papers, riders, wagons, stones) go on a
+  death; the echo prompt no longer shows E twice; the K3 tracker no longer spoils the torch; the
+  post-game objective names „Ende noch einmal wählen“ only when that save exists.
+- **Playtest round 5, left open:** the sight cones are still pale under the frost fog's grade from
+  more than ~25 m; a dark rim on enemies and dithering bodies near the camera; damage-number
+  clamping; the Steinfresser against sand; the carts echo does not yet turn your view to the
+  carts; the gallery echo is still two quotes; HUD overlaps at small widths; edge markers during a
+  boss reveal.
