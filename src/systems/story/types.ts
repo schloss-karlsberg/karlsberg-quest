@@ -525,6 +525,16 @@ export interface EnemyAction extends ActionBase {
   respawn?: number;
   time?: 'any' | 'dusk' | 'night';
   room?: string;
+  /** Pack overrides (src/rpg/types.ts EnemyGroupState): escorts / second wave ([] = none), an ambush, a Bannlicht veil. */
+  escorts?: { kind: string; n: number }[];
+  wave?: { kind: string; n: number }[];
+  aggro?: boolean;
+  veiled?: boolean;
+  /**
+   * Spawn `near` m from the player, on the line towards x / z (an ambush that comes out of the
+   * nearest side of a place, not the far one). Needs x / z.
+   */
+  near?: number;
 }
 /** Place a glowing pickup (`loot:place`); `clear: true` removes it (`loot:clear`). */
 export interface LootAction extends ActionBase {

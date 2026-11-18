@@ -6,7 +6,7 @@
 import type { AudioManager } from '../../audio/audio';
 import { hornCall, noiseBurst } from '../../audio/synth';
 
-export type StorySound = 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match';
+export type StorySound = 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match' | 'crowbar';
 export type HornSignal = 'anblasen' | 'faehrte' | 'verloren' | 'sammeln';
 
 /** Horn signals as harmonic numbers of a natural D horn (bible 05-jagd: four signals). */
@@ -109,6 +109,20 @@ export function playStorySound(am: AudioManager, kind: StorySound, dest: AudioNo
     }
     case 'frost': {
       for (let i = 0; i < 26; i++) noiseBurst(am, out, { duration: 0.01 + Math.random() * 0.02, freq: 5000 + Math.random() * 5000, q: 6, gain: 0.04 + Math.random() * 0.05, when: Math.random() * 1.6 });
+      return 1.8;
+    }
+    case 'crowbar': {
+      // an iron bar driven under a sandstone block: a grinding scrape, a crack, the bar dropped on stone
+      noiseBurst(am, out, { duration: 0.5, freq: 1400, q: 2.5, gain: 0.22, attack: 0.05 });
+      noiseBurst(am, out, { duration: 0.08, freq: 900, q: 1, gain: 0.4, when: 0.55 });
+      for (const [f, g, d, w] of [
+        [820, 0.07, 0.9, 1.0],
+        [2210, 0.04, 0.6, 1.0],
+        [3960, 0.02, 0.4, 1.0],
+        [760, 0.04, 0.5, 1.22],
+        [2050, 0.025, 0.35, 1.22],
+      ] as const)
+        osc(ctx, out, 'triangle', f, t + w, d, g, 0.002);
       return 1.8;
     }
     case 'match': {

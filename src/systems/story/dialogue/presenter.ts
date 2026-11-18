@@ -54,6 +54,8 @@ export interface PresenterOptions {
 }
 
 const CHARS_PER_S = 42;
+/** The breath a mid-line „…“ takes (s). */
+const PAUSE_S = 0.6;
 
 /** Placeholders: {Name}/{name}, {jahre:1793}, {jahr} (see content/triggers.ts fillText). */
 export function substituteName(text: string, name: string, year: number | null = new Date().getFullYear()): string {
@@ -204,6 +206,16 @@ export class DialoguePresenter {
     if (this.prune >= 0.25) {
       this.prune = 0;
       this.queue.prune();
+      // a history line that a fight (or a boss's reveal) now holds steps back and plays again after
+      // it (playtest round 5: the Baumagazin lecture sat over four Steinfresser)
+      const h = this.cur;
+      if (h && h.item.lore && this.o.held?.(h.item)) {
+        this.queue.unshift(h.item);
+        this.cur = null;
+        this.el.classList.remove('kqs-speaking');
+        this.hideTimer = 0.2;
+        return;
+      }
       // the line on screen lost its moment: let it go soon
       const c = this.cur;
       if (c && c.item.expired?.()) {
@@ -232,9 +244,16 @@ export class DialoguePresenter {
     if (c.typed < c.text.length) {
       const before = c.typed;
       c.acc += dt * CHARS_PER_S;
-      const n = Math.floor(c.acc);
+      const n = Math.max(0, Math.floor(c.acc));
       c.acc -= n;
       c.typed = Math.min(c.text.length, c.typed + n);
+      // a pause in the line („…“ mid-sentence): the typing stops for a breath (playtest round 5:
+      // no „(Pause.)“ written into a subtitle any more)
+      const dots = c.text.indexOf('…', before);
+      if (dots >= 0 && dots < c.typed && dots > 0 && dots < c.text.length - 1) {
+        c.typed = dots + 1;
+        c.acc = -PAUSE_S * CHARS_PER_S;
+      }
       for (let i = before; i < c.typed; i++) {
         if (c.starts.has(i)) {
           const prev = c.text[i - 1];

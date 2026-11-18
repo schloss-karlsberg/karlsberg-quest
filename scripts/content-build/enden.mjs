@@ -18,7 +18,7 @@ const line = (id, block, text, cond) => say(id, 'epilog', text, ep(block, cond),
 const dialogue = [
   // 1. Übergang (der Morgen und die Abdrücke im Raureif: k4_14, cue end-prints)
   ...seq(beat('end.morgen'), [
-    ['marlene.end.morgen', 'marlene', 'Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. (Pause.) Das war ein Witz. Kalköfen gibt’s hier keine mehr.'],
+    ['marlene.end.morgen', 'marlene', 'Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. … Das war ein Witz. Kalköfen gibt’s hier keine mehr.'],
     ['laub.end.morgen', 'laub', 'Sagen Sie ihr nichts. Oder alles. Sie wird es ohnehin aufschreiben.'],
   ]),
   say('laub.end.luecken', 'laub', 'Sie haben noch Lücken gelassen. Das darf man. Aber man muss es wollen.', beat('end.luecken'), { once: true }),
@@ -35,7 +35,7 @@ const dialogue = [
     ['laub.end.verbrennen_1', 'laub', 'Gut. Sie haben lange genug gesucht. Die Hunde und ich.'],
     ['laub.end.verbrennen_2', 'laub', 'Was im Buch stand, steht auch woanders. Bei Mannlich, in den Akten, im Boden. Nur die Namen nicht. Die Namen tragen jetzt Sie.'],
     ['laub.end.verbrennen_3', 'laub', 'Machen Sie das Licht aus, wenn Sie gehen. Das habe ich nie gelernt.'],
-    ['marlene.end.verbrennen', 'marlene', 'Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier. (Pause.) Hast du gut gemacht. Ich weiß nicht, was, aber gut.'],
+    ['marlene.end.verbrennen', 'marlene', 'Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier. … Hast du gut gemacht. Ich weiß nicht, was, aber gut.'],
   ]),
   // 5. Ende C: Behalten
   ...seq(ending(E.keep), [

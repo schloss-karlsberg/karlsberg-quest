@@ -203,18 +203,26 @@ const dialogue = [
   say('laub.p.nordterrasse', 'laub', 'Auch eben. Aber da haben keine Flügel gestanden, da sind Pferde im Kreis gelaufen. Vermutlich. Ich war nicht eingeladen.', found('clue.p.nordterrasse'), { once: true }),
   say('laub.p.eiskeller', 'laub', 'Bombentrichter kommen selten allein, sagt Ihr Handbuch. Und Köhler bauen ihre Meiler nicht in Löcher, sondern auf Platten.', found('clue.p.eiskeller', { hasClue: 'clue.p.handbuch' }), { once: true }),
   // the first time the pack gets you (spoken when the curtain lifts in the field station)
-  ...seq({ event: 'player:caught', chapter: 'prolog' }, [
+  // (only once Laub is there, and only for the pack: after a fight lost to the mist in 2025 his
+  // horn-and-lantern advice made no sense — playtest round 5)
+  ...seq({ event: 'player:caught', chapter: 'prolog', by: 'pack', flag: 'story.laub' }, [
     ['laub.p.gestellt', 'laub', 'Da sind Sie ja wieder. Gestellt, nicht gerissen. Auf diesem Unterschied bestehe ich.'],
     ['laub.p.gestellt.b', 'laub', 'Verloren haben Sie nichts. Was Sie gefunden haben, steht im Feldbuch, und der Stab ist noch da. Nur den Weg gehen Sie noch einmal.'],
     ['laub.p.gestellt.c', 'laub', 'Nächstes Mal: Horn, hinlegen, Licht aus. Oder rechtzeitig Q halten. Ich sage es ungern zweimal. Ich sage es vierzigmal.'],
   ]),
+  // a fight lost on the way: what helps against what you meet in the prologue
+  ...seq({ event: 'player:caught', chapter: 'prolog', by: 'combat', flag: 'story.laub' }, [
+    ['laub.p.umgeworfen', 'laub', 'Der Nebel hat Sie umgeworfen. Nicht gefressen. Stehen Sie auf, es ist nicht weit.'],
+    ['laub.p.umgeworfen.b', 'laub', 'Wenn es leuchtet und ausholt: zur Seite, Leertaste. Und Ihr Balsam heilt, Taste H. Ich hatte damals nur Schnupftabak.'],
+  ]),
+  say('marlene.p.umgeworfen', 'marlene', '{Name}? Du bist auf einmal still. Alles gut? Trink was, und dann weiter. Der Balsam ist in der Tasche.', { event: 'player:caught', chapter: 'prolog', by: 'combat', beat: ['p1', 'p2', 'p3'] }, { once: true }),
   say('laub.p.oel', 'laub', 'Das Öl. Zweitens, wie gesagt. Die Erinnerung hält so lange wie Ihr Licht. Löschen Sie es, wenn Sie es nicht brauchen. Das spart Öl und Hunde.', { event: 'lantern:empty', chapter: 'prolog', era: '1789' }, { once: true }),
   // Echo: Diener und Gärtner (1789)
   ...seq({ event: 'echo:start', id: 'echo.p.diener' }, [
     ['echo.p.diener.01', 'diener', 'Zu Fuß, Monsieur! Hinauf fährt nur Serenissimus.', RLS],
-    ['echo.p.diener.02', 'geraeusch', '[Ein Gärtner an der Rabatte summt ein Lied.]'],
+    ['echo.p.diener.02', 'geraeusch', '[Summen]'],
     ['echo.p.diener.03', 'gaertner', 'Pst. Willst du Prügel?', RLS],
-    ['echo.p.diener.04', 'geraeusch', '[Das Summen bricht ab. Fern im Norden ein einzelnes langes Heulen.]'],
+    ['echo.p.diener.04', 'geraeusch', '[Heulen, fern]'],
   ]),
 ];
 
@@ -315,7 +323,8 @@ const prologQuests = {
         },
         { id: 'stufe', type: 'reach', after: ['mauer'], text_de: 'Den Waldweg hinauf: die hohe Stufe im Wald', where: place(1237, -966, 70, T0) },
       ],
-      rewards: { xp: 80 },
+      // a balm before the Eiskeller (playtest round 5: the first balms were that fight's own reward)
+      rewards: { xp: 80, items: [{ item: 'item.balsam', count: 2 }] },
     },
     {
       id: 'q.p.bussole', kind: 'main', era: T0,
@@ -346,7 +355,7 @@ const prologQuests = {
           id: 'nebel', type: 'kill', enemy: 'nebelling', count: 4, after: ['grube'],
           text_de: 'Nebelinge aus der Grube zurückschlagen',
           where: place(...P_SPOTS.eiskeller, 22, T0),
-          spawn: [{ kind: 'nebelling', x: P_SPOTS.eiskeller[0], z: P_SPOTS.eiskeller[1], era: T0, count: 4, radius: 7, leash: 30 }],
+          spawn: [{ kind: 'nebelling', x: P_SPOTS.eiskeller[0], z: P_SPOTS.eiskeller[1], era: T0, count: 4, radius: 7, leash: 30, escorts: [], wave: [{ kind: 'nebelling', n: 2 }] }],
         },
       ],
       rewards: { xp: 120, items: [{ item: 'item.balsam', count: 2 }] },
@@ -375,7 +384,7 @@ const prologQuests = {
           id: 'streuner', type: 'kill', enemy: 'streuner', count: 1, after: ['echo'],
           text_de: 'Den Streuner bannen (Bannlicht: rechte Maustaste / G) und zurückschlagen',
           where: place(...P_SPOTS.streuner, 30, '1789'),
-          spawn: [{ kind: 'streuner', x: P_SPOTS.streuner[0], z: P_SPOTS.streuner[1], era: '1789', count: 1, radius: 2, leash: 45 }],
+          spawn: [{ kind: 'streuner', x: P_SPOTS.streuner[0], z: P_SPOTS.streuner[1], era: '1789', count: 1, radius: 2, leash: 45, veiled: true }],
         },
         { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['streuner'], text_de: 'Q halten: zurück ins Heute' },
       ],

@@ -98,6 +98,11 @@ export class LineQueue<T extends QueuedLine> {
     }
   }
 
+  /** Put a line that had started back at the front (it was cut off by a fight: it plays again after). */
+  unshift(item: T): void {
+    this.items.unshift(item);
+  }
+
   /** A beat began: waiting lines of other beats are stale (see above). */
   retireBeat(beat: string): void {
     for (let i = this.items.length - 1; i >= 0; i--) {

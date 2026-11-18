@@ -385,6 +385,7 @@
         { "do": "npc", "op": "spawn", "npc": "soll", "x": 496, "z": -842, "era": "1796", "yaw": 250, "chapter": "k4" },
         { "do": "npc", "op": "spawn", "npc": "peter", "x": 494, "z": -826, "era": "1796", "yaw": 160, "chapter": "k4" },
         { "do": "quest", "op": "offer", "id": "q.k4.baumagazin", "onResume": true, "delay": 1 },
+        { "do": "anchor", "to": "1796", "x": 470, "z": -902, "r": 26 },
         {
           "do": "objective",
           "id": "k4.baumagazin",
@@ -449,13 +450,7 @@
       "title_de": "Der Steinbrecher",
       "checkpoint": "k4_5",
       "enter": [
-        {
-          "do": "say",
-          "id": "geraeusch.k4.x.brecheisen",
-          "speaker": "geraeusch",
-          "text": "[Brecheisen auf Sandstein, dann Stille]",
-          "delay": 1
-        }
+        { "do": "sound", "sound": "crowbar", "x": 1224, "z": -1116, "caption": "[Brecheisen, dann Stille]", "delay": 1 }
       ],
       "complete": { "quest": { "id": "q.k4.steinplatz", "objective": "brecher", "gte": 1 } },
       "exit": [

@@ -109,9 +109,9 @@
         { "do": "flag", "set": { "laub.silent": true } },
         { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen · Shift: Rennen" },
         { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 763, "z": -900, "delay": 0.3 },
-        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.2, "onResume": true },
-        { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.4 },
-        { "do": "say", "line": "marlene.p.01", "delay": 0.4 }
+        { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.2 },
+        { "do": "say", "line": "marlene.p.01", "delay": 0.2 },
+        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.6, "onResume": true }
       ],
       "on": [
         {
@@ -158,14 +158,14 @@
         { "do": "skill", "id": "relief", "tier": 1, "toast": "Relief-Blick 1 (Taste 1) freigeschaltet" },
         { "do": "quest", "op": "offer", "id": "q.p.relief", "onResume": true },
         { "do": "objective", "id": "damm", "text": "Zum Damm des Karlsbergweihers, hinter dem Bauwagen", "x": 819, "z": -875, "delay": 0.5 },
-        { "do": "say", "line": "marlene.p.relief", "delay": 1, "until": { "scan": 1 } },
+        { "do": "say", "line": "marlene.p.relief", "delay": 3.5, "until": { "scan": 1 } },
         { "do": "prompt", "key": "1", "text": "Relief-Blick: der Boden ohne Wald" }
       ],
       "on": [
         { "id": "relief1", "when": { "scan": 1 }, "do": [{ "do": "prompt", "key": null, "text": null }] },
         {
           "id": "am-damm",
-          "when": { "enter": { "x": 819, "z": -875, "r": 32, "era": "today" } },
+          "when": { "all": [{ "enter": { "x": 819, "z": -875, "r": 32, "era": "today" } }, { "scan": 1 }] },
           "do": [
             { "do": "skill", "id": "relief", "tier": 2, "toast": "Relief-Blick 2 (Lokales Relief, Taste 2) freigeschaltet" },
             { "do": "prompt", "key": "2", "text": "Lokales Relief: kleine Kanten werden sichtbar" },

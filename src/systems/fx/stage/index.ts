@@ -65,7 +65,7 @@ export function registerEchoStagings(): void {
   // the rewind needs its seconds; the one caption is a sound (the compass ticking backwards)
   stageEcho('echo.k4.rueckwaerts', { intro: 0.8, outro: 1.2, minSeconds: REWIND_SECONDS });
   // the voice in the fog has no figure (the eyes are the pack); Laub is drawn by the piece
-  stageEcho('clue.k4.laub_1840', { voices: ['stimme'], intro: 1.2, outro: 0.9, leash: 30 });
+  stageEcho('clue.k4.laub_1840', { voices: ['stimme'], intro: 1.0, outro: 0.9, pace: 0.7, leash: 30 });
   // the Kabinett door: the scene plays in the room behind the door, at speaking pace
   stageEcho('clue.k2.warnung', { atClue: true, intro: 0.7, outro: 0.8, pace: 0.75, leash: 14, marks: kabinettMarks('clue.k2.warnung') });
   stageEcho('clue.k2.abschied', { atClue: true, intro: 0.6, outro: 0.8, pace: 0.85, leash: 14, marks: kabinettMarks('clue.k2.abschied') });
@@ -111,6 +111,8 @@ export class StageDirector {
     // a shift or a load takes the stage down (the frost stays: it is on the compass)
     ev.on('shift:begin', () => this.clear(['k2-candle', 'k4-quader', 'end-prints']));
     ev.on('save:loaded', () => this.clear());
+    // undone: the swirling papers (and the like) do not follow you into the wake (playtest round 5)
+    ev.on('player:caught', () => this.clear(['k1-papers', 'k2-reiter', 'k2-abfahrt', 'k4-quader']));
     // the frost belongs to chapter 2 (k2_0 … k2_12; k2_13 thaws it): a load or a jump puts it back
     ev.on('story:beat', ({ chapter, beat }) => {
       if (chapter === 'k2' && beat !== 'k2_13' && beat !== 'k2_0') this.frost.set(true);

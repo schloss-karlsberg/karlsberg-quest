@@ -1452,7 +1452,7 @@
     {
       "id": "laub.k3.chronik",
       "speaker": "laub",
-      "text_de": "So war das also. (Lange Pause.) Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.",
+      "text_de": "So war das also. … … Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.",
       "trigger": {
         "event": "clue:found",
         "id": "clue.k3.chronik"
@@ -1545,7 +1545,7 @@
     {
       "id": "echo.k3.fackel.04",
       "speaker": "geraeusch",
-      "text_de": "(Glas klirrt. Stroh faucht auf.)",
+      "text_de": "[Glas klirrt]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k3.fackel",
@@ -1765,7 +1765,7 @@
     {
       "id": "marlene.k3.abend",
       "speaker": "marlene",
-      "text_de": "Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. (Pause.) Doch, ich frag. Morgen.",
+      "text_de": "Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. … Doch, ich frag. Morgen.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k3",

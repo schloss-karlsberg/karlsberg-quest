@@ -1382,7 +1382,7 @@
     {
       "id": "laub.k4.finale_2",
       "speaker": "laub",
-      "text_de": "(sehr leise) Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.",
+      "text_de": "… Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k4",

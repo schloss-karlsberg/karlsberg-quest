@@ -172,7 +172,9 @@ export class MemoryShots {
       // the pack in the fog of the Allee, facing you; one pair of eyes after another, the horn
       // (an arc round the camera, opening the way it looks — like the keep ending's eyes)
       const face = (-yawTo(s.x, s.z, s.tx, s.tz) * 180) / Math.PI;
-      ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'eyes', n: 7, x: s.x, z: s.z, r: 8, face } });
+      // nearer and quicker (playtest round 5: the captures showed snow and no hounds): seven hounds
+      // stand in the fog 6 m off, all eyes open within two seconds
+      ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'eyes', n: 7, x: s.x, z: s.z, r: 6, face, stagger: 0.22 } });
     }
   }
 

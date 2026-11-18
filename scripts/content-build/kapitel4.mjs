@@ -49,7 +49,7 @@ const clues = [
   }),
   clue('echo.k4.rueckwaerts', {
     title: 'Erinnerung: Rückwärts', kind: 'echo', at: WEST, r: 20, era: E, anchor: 'loc.k4.westblick', chapter: ch, fiction: true,
-    echoDate: 'um 1780',
+    echoDate: '1796 → 1789',
     text: 'E halten. Die Karren auf der Straße rollen rückwärts, die Steine fahren bergauf, die Jahre laufen zurück bis etwa 1780. Ganz kurz der Karlsberg mit Gerüsten. Auf dem vordersten Karren ein Quader, dessen Zeichen immer blasser wird, bis es fehlt. Dann wieder vorwärts. Wandernde Steine 3/4.',
     flags: ['flag.stein_3'], req: { clues: ['clue.k4.hohenburg'] },
   }),
@@ -196,12 +196,13 @@ const dialogue = [
     ['echo.k4.karren.04', 'fuhrmann2', 'Wir tragen das Schloss halt nach Haus. Stein für Stein. Einer muss es ja tun.'],
   ]),
   // 4.2 Westblick
-  say('laub.k4.westblick', 'laub', 'Sehen Sie den Berg da im Südwesten, über der Stadt? Die Hohenburg. Die Festung hat man 1714 geschleift, und der Herzog hat ihre Trümmer als Steinbruch benutzt. Die Steine sind zweimal umgezogen: von der Burg aufs Schloss, vom Schloss in die Stadt. Steine haben kein Zuhause. Nur eine Adresse auf Zeit.', found('clue.k4.hohenburg'), { once: true, src: [src('EN-HB', 'P'), src('BW', 'P')] }),
+  say('laub.k4.westblick', 'laub', 'Der Berg über der Stadt: die Hohenburg, 1714 geschleift. Der Herzog hat ihre Trümmer als Steinbruch benutzt. Steine haben kein Zuhause. Nur eine Adresse auf Zeit.', found('clue.k4.hohenburg'), { once: true, src: [src('EN-HB', 'P'), src('BW', 'P')] }),
   say('laub.k4.jaegersburg', 'laub', 'Und das Holz kam aus Jägersburg, dem alten Jagdschloss. Täfelungen, Möbel, angeblich ein ganzer Stall. Der Herzog hat sich auch bei sich selbst bedient.', found('clue.k4.jaegersburg'), { once: true, src: [src('SKD', 'P'), src('WP-JB', 'P')] }),
   say('laub.k4.merburg', 'laub', 'Im Süden, da hinten, die Merburg. Auch eine Ruine, aber eine ehrliche. Die ist von allein alt geworden.', found('clue.k4.merburg'), { once: true }),
   say('echo.k4.rueckwaerts.01', 'geraeusch', '[Die Bussole tickt rückwärts]', echo('echo.k4.rueckwaerts'), { once: true }),
   // 4.3 Baumagazin
-  say('laub.k4.baumagazin', 'laub', 'Das Baumagazin. Das Lager für Baumaterial. Das einzige Haus, das stehen bleibt. Alles andere wird selbst zu Baumaterial. Man hat später gesagt, das Schloss sei eine Baustoffhandlung geworden. Die Verwaltung nennt so etwas Kreislauf.', found('clue.k4.baumagazin'), { once: true, src: [src('RLS', 'P'), src('WP-SK', 'P')] }),
+  // after the fight and the turn-in, not on arrival over four Steinfresser (playtest round 5)
+  say('laub.k4.baumagazin', 'laub', 'Das Baumagazin. Das Lager für Baumaterial. Das einzige Haus, das stehen bleibt. Alles andere wird selbst zu Baumaterial. Man hat später gesagt, das Schloss sei eine Baustoffhandlung geworden. Die Verwaltung nennt so etwas Kreislauf.', { event: 'quest:completed', id: 'q.k4.baumagazin' }, { once: true, src: [src('RLS', 'P'), src('WP-SK', 'P')] }),
   say('soll.k4.01', 'soll', 'Ah. Sie. Sie sind auch nicht jünger geworden. Doch, Sie schon.', talk('soll', 'greet'), { once: true }),
   say('soll.k4.02', 'soll', 'Ich führe jetzt Buch für die Pächter. Ein Fenstergewände zwölf Kreuzer, ein Treppenstein zwanzig, ein Wappen gar nichts, das will keiner.', talk('soll', 'pacht'), { src: [src('HIB', 'Pacht belegt; Preise erfunden')] }),
   say('soll.k4.03', 'soll', 'Zum ersten Mal in meinem Leben wird am Karlsberg alles bezahlt. Bar. Sofort. Es ist entsetzlich.', talk('soll', 'geld')),
@@ -246,7 +247,7 @@ const dialogue = [
   say('laub.k4.finale_1', 'laub', 'Jetzt. Hinlegen. Und machen Sie das Licht an. Die sollen sehen, dass wir nicht weglaufen.', beat('4.9', { step: 2 }), { once: true, priority: 10 }),
   say('laub.k4.nicht_noch_einmal', 'laub', 'Nicht noch einmal. Bitte.', beat('4.9-weggerannt'), { priority: 10 }),
   say('beat.k4.hinlegen', 'geraeusch', '[Hufschlag, fern. Dann Stille]', beat('4.9-hingelegt', { step: 1 }), { once: true }),
-  say('laub.k4.finale_2', 'laub', '(sehr leise) Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.', beat('4.9-hingelegt', { step: 2 }), { once: true }),
+  say('laub.k4.finale_2', 'laub', '… Dann leg ich mich auch hin. Hundertfünfundachtzig Jahre zu spät. Oder sechsundachtzig, je nachdem, welches Jahr Sie haben. Pünktlich ist auch nur ein Wort.', beat('4.9-hingelegt', { step: 2 }), { once: true }),
   // the old Pikeur (npc 'pikeur', ghost at the kennel after the finale): a conversation, the horn last
   say('jost.k4.01', 'jost', 'Du riechst immer noch nach Regen von morgen. Jetzt weiß ich, warum. Du kommst von morgen.', talk('pikeur', 'greet'), { once: true }),
   say('jost.k4.02', 'jost', 'Die Meute reißt nicht. Sie stellt. Das hab ich dir gesagt, da war ich dreizehn.', talk('pikeur', 'stellen')),

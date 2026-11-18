@@ -75,9 +75,9 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.memory.real': 'Erinnerung',
 
   'chronik.prompt.examine': 'Untersuchen',
-  'chronik.prompt.listen': 'E halten – Lauschen',
+  'chronik.prompt.listen': 'halten – Lauschen',
   'chronik.prompt.dark': 'Zu dunkel zum Lesen – Laterne anzünden (L)',
-  'chronik.prompt.both': 'Untersuchen · E halten – Lauschen',
+  'chronik.prompt.both': 'Untersuchen · gedrückt halten – Lauschen',
   'chronik.listen.tap': 'Halten Sie E gedrückt, um zu lauschen.',
   'chronik.echo.abort': 'Die Erinnerung verweht.',
   'chronik.echo.walk': '[Die Stimmen gehen mit dir]',

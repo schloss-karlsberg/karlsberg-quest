@@ -1952,8 +1952,6 @@
             {
               "do": "sound",
               "sound": "compass",
-              "x": 1935,
-              "z": 56,
               "caption": "[Papier raschelt]"
             },
             {
@@ -1977,7 +1975,9 @@
               "group": "k1.rund",
               "kind": "mahnbrief",
               "x": 1935,
-              "z": 52,
+              "z": 87,
+              "near": 9,
+              "aggro": true,
               "era": "1789",
               "count": 3,
               "radius": 3,
@@ -2546,8 +2546,9 @@
               "era": "1789",
               "count": 3,
               "radius": 4,
-              "time": "night",
-              "leash": 30
+              "leash": 30,
+              "escorts": [],
+              "wave": []
             },
             {
               "do": "objective",
@@ -2583,8 +2584,9 @@
               "era": "1789",
               "count": 4,
               "radius": 4,
-              "time": "night",
               "leash": 30,
+              "escorts": [],
+              "wave": [],
               "delay": 1.8
             }
           ]

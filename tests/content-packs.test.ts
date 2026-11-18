@@ -28,6 +28,7 @@ const STORY_FLAGS = new Set([
   'flag.k2_tor', // ch. 2 choice at the gate: leuchten / dunkel
   'flag.k3_objekt', // ch. 3 rescued object: tuergriff / dukat / uhr / nichts
   'k2.wache_frei', // ch. 2 Wachhaus Irrlichter banned (story rule k2_4-frei)
+  'story.laub', // set by the prologue story when Laub first speaks (00-prolog.story.json)
   'quest.q.k1.lohn.soll', // quest mirror: Soll asked about Matthes (Hanne's 'Angewiesen' greeting)
 ]);
 /** Events from src/core/events.ts and src/systems/contracts.ts plus the custom events of the campaign. */

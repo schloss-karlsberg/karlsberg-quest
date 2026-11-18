@@ -193,6 +193,30 @@ const isLowLine = (id: string | undefined) => !!id && (isBarkLine(id) || id.star
 /** Story lines about the past's dangers: dropped when the era they were said in is left. */
 const ERA_BOUND_IDS = new Set(['laub.p.zurueck', 'laub.p.hinlegen']);
 
+/**
+ * Where a prologue fight lost on the way wakes you (today): walkable landmarks of its walk — the
+ * dam, the slope below the Orangerie, the Ehrenhof, the garden on the way to the Eiskeller. The
+ * nearest one at least 22 m from where you fell (out of the pack's reach).
+ */
+const PROLOG_WAKES: readonly { x: number; z: number; yaw: number }[] = [
+  { x: 819, z: -875, yaw: 90 },
+  { x: 1040, z: -905, yaw: 90 },
+  { x: 1138, z: -931, yaw: 90 },
+  { x: 1232, z: -1060, yaw: 180 },
+  { x: 1218, z: -1118, yaw: 90 },
+  { x: 1330, z: -1270, yaw: 90 },
+  { x: 1420, z: -1285, yaw: 90 },
+];
+function prologWake(x: number, z: number): { x: number; z: number; yaw: number; d: number } | null {
+  let best: { x: number; z: number; yaw: number; d: number } | null = null;
+  for (const w of PROLOG_WAKES) {
+    const d = Math.hypot(w.x - x, w.z - z);
+    if (d < 22) continue;
+    if (!best || d < best.d) best = { ...w, d };
+  }
+  return best;
+}
+
 /** Longer lines than this (characters) are lore in a fight: held until it is over. */
 const COMBAT_LINE_MAX = 120;
 
@@ -426,7 +450,7 @@ class StoryRuntime {
       const p = this.ctx.player.position;
       this.caughtAt = { x: p.x, z: p.z, by, boss: boss === true };
       const key = family ? `story.caught.combat.${family}` : '';
-      this.caught(by, { soft: soft === true, ...(key && hasString(key) ? { text: t(key) } : {}) });
+      this.caught(by, { soft: soft === true, ...(key && hasString(key) ? { text: t(key) } : {}), ...(by === 'combat' ? { sub: t('story.caught.sub.combat') } : {}) });
     });
     // an echo shows its own date in the era label (playtest round 3: "Heute · 2025" over 1840)
     ctx.events.on('echo:start', ({ id }) => {
@@ -667,10 +691,13 @@ class StoryRuntime {
         return;
       }
       case 'objective': {
-        if (!a.text) s.objective = null;
-        else s.objective = { text: a.text, ...(a.x !== undefined && a.z !== undefined ? { x: a.x, z: a.z } : {}), ...(a.id ? { id: a.id } : {}) };
+        // the post-game line promises the pause menu's „Ende noch einmal wählen“: only when the
+        // ending's save exists (with saving off it never does — playtest round 5)
+        const text = a.text && a.text.includes('Esc →') && !ctx.save.has(ENDING_SLOT) ? a.text.replace(/\s*·\s*Esc →.*$/, '') : a.text;
+        if (!text) s.objective = null;
+        else s.objective = { text, ...(a.x !== undefined && a.z !== undefined ? { x: a.x, z: a.z } : {}), ...(a.id ? { id: a.id } : {}) };
         this.objectives.set(s.objective);
-        ctx.events.emit('objective:set', { text: a.text ?? null, x: a.x, z: a.z, id: a.id });
+        ctx.events.emit('objective:set', { text: text ?? null, x: a.x, z: a.z, id: a.id });
         return;
       }
       case 'threat': {
@@ -807,8 +834,20 @@ class StoryRuntime {
           return;
         }
         if (!a.kind) return;
-        const { do: _d, delay: _dl, onResume: _r, op: _op, x, z, era, ...rest } = a;
-        ctx.events.emit('enemy:spawn', { ...rest, kind: a.kind, x: x ?? ctx.player.position.x, z: z ?? ctx.player.position.z, era: era ?? ctx.era.current });
+        const { do: _d, delay: _dl, onResume: _r, op: _op, x, z, era, near, ...rest } = a;
+        let sx = x ?? ctx.player.position.x;
+        let sz = z ?? ctx.player.position.z;
+        // an ambush from the side the player is on: `near` m from them towards the place
+        if (near !== undefined && x !== undefined && z !== undefined) {
+          const px = ctx.player.position.x;
+          const pz = ctx.player.position.z;
+          const d = Math.hypot(x - px, z - pz);
+          if (d > near) {
+            sx = px + ((x - px) / d) * near;
+            sz = pz + ((z - pz) / d) * near;
+          }
+        }
+        ctx.events.emit('enemy:spawn', { ...rest, kind: a.kind, x: sx, z: sz, era: era ?? ctx.era.current });
         return;
       }
       case 'loot': {
@@ -1124,6 +1163,8 @@ class StoryRuntime {
   echoDate(id: string): string | null {
     const c = this.ctx.content.clues.get(id);
     if (!c) return null;
+    // the clue names its own date (playtest round 5: the 1840 echo said „Erinnerung · 1796“)
+    if (c.echoDate_de) return t('story.echo.date', { when: c.echoDate_de });
     const lines = this.ctx.content.dialogueFor('echo:start').filter((l) => l.trigger.id === id);
     const texts = [...lines.map((l) => l.text_de), c.title_de, c.text_de ?? ''];
     for (const s of texts) {
@@ -1322,6 +1363,16 @@ class StoryRuntime {
     // stockpile woke you 270 m away at the Westblick). Bosses and the story's threats keep their wake.
     const at = this.caughtAt;
     this.caughtAt = null;
+    // the prologue: a fight lost on the way wakes you at the nearest landmark of its walk, not 800 m
+    // back at the station (playtest round 5: a 93 s sprint back to repeat the Eiskeller tutorial)
+    if (at && at.by === 'combat' && prolog) {
+      const near = prologWake(at.x, at.z);
+      if (near && near.d + 60 < Math.hypot(cp.x - at.x, cp.z - at.z)) {
+        cp = { x: near.x, z: near.z, yaw: near.yaw };
+        wake = { ...cp, text: t('story.caught.wakeNear') };
+        atAnchor = false;
+      }
+    }
     if (at && at.by === 'combat' && !at.boss && !prolog) {
       const near = nearestSurveyed(this.ctx.state.state.systems.travel, at.x, at.z);
       if (near && near.d + 60 < Math.hypot(cp.x - at.x, cp.z - at.z)) {
@@ -1400,6 +1451,12 @@ class StoryRuntime {
     this.time += dt;
     // presentation on game time: dialogue typing, the choice fuse, the caught curtain
     this.presenter.update(this.echoHold ? 0 : dt);
+    // centre cards wait while someone is talking (a soft hold: a page asked for still opens) and
+    // during an echo (playtest round 5: the level card over Laub's „Jetzt. Hinlegen …“ and over the
+    // carts' echo; the hunt system holds them while a pack is out, W8 included)
+    const cur = this.presenter.current;
+    ctx.ui.cards.soft('dialogue', !!cur && cur.priority !== 'low');
+    ctx.ui.cards.hold('echo', this.echoHold);
     this.overlays.tickChoice(dt);
     if (this.caughtBusy) {
       this.updateCaught(dt);

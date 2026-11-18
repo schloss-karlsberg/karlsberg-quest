@@ -12,7 +12,7 @@ import type { GameContext } from '../../../core/context';
 import { noiseBurst } from '../../../audio/synth';
 import { GhostFigure } from '../../chronik/world/ghosts';
 import { playStorySound } from '../../story/sfx';
-import { GlowPoints, type Piece, clamp01, forward, lerp, paint, pxScale, rng, smooth, solidMaterial } from './common';
+import { GlowPoints, GradeLoan, type Piece, clamp01, forward, lerp, paint, pxScale, rng, smooth, solidMaterial } from './common';
 
 export const EYE_PAIRS = 12;
 const MIST = 46;
@@ -61,6 +61,9 @@ export class Laub1840Piece implements Piece {
   private readonly theoMat: ShaderMaterial;
   private readonly lamp: GlowPoints;
   private readonly eyes: GlowPoints;
+  /** The hounds' dark shapes round each pair of eyes (playtest round 5: the eyes alone read as fireflies). */
+  private readonly bodies: GlowPoints;
+  private readonly grade: GradeLoan;
   private readonly mist: GlowPoints;
   private readonly pairs: EyePair[] = [];
   private readonly center: Vector3;
@@ -118,6 +121,11 @@ export class Laub1840Piece implements Piece {
     order.forEach((idx, k) => (this.pairs[idx]!.phase = k));
     this.eyes = new GlowPoints(EYE_PAIRS * 2, { additive: true, renderOrder: 72 });
     this.group.add(this.eyes.points);
+    // a dark body and a head under each pair: the hounds step out of the fog with their eyes
+    this.bodies = new GlowPoints(EYE_PAIRS * 2, { additive: false, soft: 0.6, renderOrder: 71 });
+    this.group.add(this.bodies.points);
+    // November, night, fog: the picture goes cold and dark (the world behind it is 1796 daylight)
+    this.grade = new GradeLoan(ctx);
     // low fog banks between the trees: soft grey puffs
     this.mist = new GlowPoints(MIST, { additive: false, soft: 1, renderOrder: 5 });
     this.mistBase = new Float32Array(MIST * 3);
@@ -263,14 +271,28 @@ export class Laub1840Piece implements Piece {
       const bl = reduced ? 1 : Math.sin(t * 0.7 + e.phase * 1.7) > 0.97 ? 0.1 : 1;
       const a = on * gone * bl * (1 - endK);
       const y = H(e.x, e.z) + 0.52 + (reduced ? 0 : Math.sin(t * 1.1 + e.phase) * 0.03);
-      right.set(cam.z - e.z, 0, -(cam.x - e.x)).normalize().multiplyScalar(0.075);
+      right.set(cam.z - e.z, 0, -(cam.x - e.x)).normalize().multiplyScalar(0.12);
       const o = i * 6;
       this.eyes.pos.set([e.x - right.x, y, e.z - right.z, e.x + right.x, y, e.z + right.z], o);
-      const c = 2.8 * flare;
+      const c = 3.4 * flare;
       this.eyes.col.set([c, c * 0.42, c * 0.12, a, c, c * 0.42, c * 0.12, a], i * 8);
-      this.eyes.size[i * 2] = this.eyes.size[i * 2 + 1] = 0.2;
+      this.eyes.size[i * 2] = this.eyes.size[i * 2 + 1] = 0.36;
+      // the hound behind the eyes: a dark head round them and a body low behind, coming out of the
+      // fog as the eyes open (and going with them)
+      const bodyA = (e.on < 0 ? 0 : smooth((t - e.on) / 0.9)) * gone * (1 - endK) * 0.82;
+      const away = Math.hypot(e.x - cam.x, e.z - cam.z) || 1;
+      const ux = (e.x - cam.x) / away;
+      const uz = (e.z - cam.z) / away;
+      this.bodies.pos.set([e.x, y + 0.02, e.z, e.x + ux * 0.55, y - 0.18, e.z + uz * 0.55], i * 6);
+      this.bodies.col.set([0.02, 0.022, 0.03, bodyA, 0.015, 0.016, 0.022, bodyA * 0.9], i * 8);
+      this.bodies.size[i * 2] = 0.75;
+      this.bodies.size[i * 2 + 1] = 1.35;
     });
     this.eyes.commit(pxScale(ctx));
+    this.bodies.commit(pxScale(ctx));
+    // the grade: cold night fog, darker still while the eyes are out
+    const gk = fadeIn * (1 - endK) * (this.eyesAt < 0 ? 0.75 : 0.75 + 0.25 * smooth((t - this.eyesAt) / 2));
+    this.grade.set(gk, new Color(0.0, 0.006, 0.02), new Color(0.42, 0.47, 0.6), 0.45);
     // ---- the fog banks thicken while the eyes are out
     const mk = (this.eyesAt < 0 ? 0.35 : 0.35 + 0.4 * smooth((t - this.eyesAt) / 3)) * fadeIn * (1 - endK);
     for (let i = 0; i < MIST; i++) {
@@ -279,7 +301,7 @@ export class Laub1840Piece implements Piece {
       this.mist.pos[o] = this.mistBase[o]! + dr;
       this.mist.pos[o + 1] = this.mistBase[o + 1]!;
       this.mist.pos[o + 2] = this.mistBase[o + 2]! - dr * 0.6;
-      this.mist.col.set([0.55, 0.6, 0.68, 0.16 * mk], i * 4);
+      this.mist.col.set([0.42, 0.46, 0.54, 0.24 * mk], i * 4);
     }
     this.mist.commit(pxScale(ctx));
   }
@@ -291,6 +313,8 @@ export class Laub1840Piece implements Piece {
     this.theoMat.dispose();
     this.lamp.dispose();
     this.eyes.dispose();
+    this.bodies.dispose();
+    this.grade.release();
     this.mist.dispose();
     const el = this.cut;
     if (el) setTimeout(() => el.remove(), 900);

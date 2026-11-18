@@ -1074,6 +1074,8 @@
       "trigger": {
         "event": "player:caught",
         "chapter": "prolog",
+        "by": "pack",
+        "flag": "story.laub",
         "step": 1
       },
       "once": true
@@ -1085,6 +1087,8 @@
       "trigger": {
         "event": "player:caught",
         "chapter": "prolog",
+        "by": "pack",
+        "flag": "story.laub",
         "step": 2
       },
       "once": true
@@ -1096,7 +1100,51 @@
       "trigger": {
         "event": "player:caught",
         "chapter": "prolog",
+        "by": "pack",
+        "flag": "story.laub",
         "step": 3
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.umgeworfen",
+      "speaker": "laub",
+      "text_de": "Der Nebel hat Sie umgeworfen. Nicht gefressen. Stehen Sie auf, es ist nicht weit.",
+      "trigger": {
+        "event": "player:caught",
+        "chapter": "prolog",
+        "by": "combat",
+        "flag": "story.laub",
+        "step": 1
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.umgeworfen.b",
+      "speaker": "laub",
+      "text_de": "Wenn es leuchtet und ausholt: zur Seite, Leertaste. Und Ihr Balsam heilt, Taste H. Ich hatte damals nur Schnupftabak.",
+      "trigger": {
+        "event": "player:caught",
+        "chapter": "prolog",
+        "by": "combat",
+        "flag": "story.laub",
+        "step": 2
+      },
+      "once": true
+    },
+    {
+      "id": "marlene.p.umgeworfen",
+      "speaker": "marlene",
+      "text_de": "{Name}? Du bist auf einmal still. Alles gut? Trink was, und dann weiter. Der Balsam ist in der Tasche.",
+      "trigger": {
+        "event": "player:caught",
+        "chapter": "prolog",
+        "by": "combat",
+        "beat": [
+          "p1",
+          "p2",
+          "p3"
+        ]
       },
       "once": true
     },
@@ -1132,7 +1180,7 @@
     {
       "id": "echo.p.diener.02",
       "speaker": "geraeusch",
-      "text_de": "[Ein Gärtner an der Rabatte summt ein Lied.]",
+      "text_de": "[Summen]",
       "trigger": {
         "event": "echo:start",
         "id": "echo.p.diener",
@@ -1161,7 +1209,7 @@
     {
       "id": "echo.p.diener.04",
       "speaker": "geraeusch",
-      "text_de": "[Das Summen bricht ab. Fern im Norden ein einzelnes langes Heulen.]",
+      "text_de": "[Heulen, fern]",
       "trigger": {
         "event": "echo:start",
         "id": "echo.p.diener",

@@ -1078,7 +1078,7 @@
     {
       "id": "soll.k1.08",
       "speaker": "soll",
-      "text_de": "Das ist privat. (Pause.) Jemand muss ja aufschreiben, was nicht bezahlt wird. Sonst war es nie.",
+      "text_de": "Das ist privat. … Jemand muss ja aufschreiben, was nicht bezahlt wird. Sonst war es nie.",
       "trigger": {
         "event": "npc:talk",
         "npc": "soll",
@@ -1413,7 +1413,7 @@
     {
       "id": "laub.k1.gegenbuch",
       "speaker": "laub",
-      "text_de": "Haben Sie die Überschrift gesehen? (Pause.) Ich auch.",
+      "text_de": "Haben Sie die Überschrift gesehen? … Ich auch.",
       "trigger": {
         "event": "clue:found",
         "id": "clue.k1.gegenbuch"
@@ -1825,7 +1825,7 @@
     {
       "id": "echo.k1.feuerwerk.05",
       "speaker": "geraeusch",
-      "text_de": "[Stille. Dann, wie von weit unten am Berg: Kanonenschüsse, ein Licht, das den ganzen Himmel aufflammen lässt, das Knattern von Raketen.]",
+      "text_de": "[Kanonendonner, Raketen]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k1.feuerwerk",
@@ -1843,7 +1843,7 @@
     {
       "id": "echo.k1.feuerwerk.06",
       "speaker": "geraeusch",
-      "text_de": "[Das Licht erlischt. Schnee fällt rückwärts nach oben. Der Sommer kehrt zurück.]",
+      "text_de": "[Stille]",
       "trigger": {
         "event": "echo:start",
         "id": "clue.k1.feuerwerk",

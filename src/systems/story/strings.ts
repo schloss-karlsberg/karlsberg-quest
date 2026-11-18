@@ -84,6 +84,8 @@ addStrings('de', {
   'story.caught.combat.stone': 'Der Stein hat dich niedergeworfen.',
   'story.caught.combat.shade': 'Die Schatten haben dich zu Boden gezogen.',
   'story.caught.sub': 'Gestellt. Nicht gerissen.',
+  'story.caught.sub.combat': 'Niedergeworfen. Nicht verloren.',
+  'story.caught.wakeNear': 'Du kommst ein Stück zurück am Weg zu dir, im Heute. Nichts ist verloren.',
   'story.caught.wake': 'Du wachst in der Feldstation auf. Was bestätigt ist, bleibt.',
   'story.meter.return': 'Die Erinnerung lässt dich los.',
   'story.caught.wakePoint': 'Du kommst am Vermessungspunkt {name} zu dir, im Heute. Nichts ist verloren.',

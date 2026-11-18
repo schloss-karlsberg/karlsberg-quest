@@ -257,7 +257,7 @@ const dialogue = [
   ]),
   say('laub.k3.messen', 'laub', 'Achtzig Meter. Hundert Fuß wären keine dreiunddreißig. Hundert Klafter wären fast zweihundert. Hundert Schritt, das kommt hin. Mannlich hat französisch geschrieben: ‚cent pas‘. Der Übersetzer von 1910 hat Fuß daraus gemacht.', found('clue.k3.messen'), { once: true, src: [src('SCHWAN12', 'P: Anm. 47')] }),
   say('laub.k3.falltuer', 'laub', 'Die Falltür, durch die schon einmal etwas gerettet wurde. Diesmal geht ein Buch hinunter, kein Bild. Der Ort hat sich ans Retten gewöhnt.', found('clue.k3.falltuer'), { once: true, src: [P('S. 431 f.')] }),
-  say('laub.k3.chronik', 'laub', 'So war das also. (Lange Pause.) Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.', found('clue.k3.chronik'), { once: true, priority: 10 }),
+  say('laub.k3.chronik', 'laub', 'So war das also. … … Die Karren haben den Rest besorgt. Eine Seite hier, eine Seite dort. Ich habe 1840 eine davon gefunden. Im Graben. Fragen Sie mich nicht jetzt.', found('clue.k3.chronik'), { once: true, priority: 10 }),
   ...seq(found('clue.k3.papier'), [
     ['laub.k3.papier', 'laub', 'Papier. Marmor aus Papier, Granit aus Papier. Das ganze Zimmer wiegt weniger als ich.', [src('SCHWAN12', 'Papierimitation nach dem Schadensetat')]],
     ['laub.k3.glastueren', 'laub', 'Und Glastüren. Dahinter steht der Pavillon, Wand an Wand: ein Notausgang ohne Ausgang. Merken Sie sich das, falls es heute Abend eng wird. Hinaus geht es durch die Dienertreppe oder die große Treppe.'],
@@ -270,7 +270,7 @@ const dialogue = [
   ...seq(echo('clue.k3.fackel'), [
     ['echo.k3.fackel.02', 'kommissaer', 'Im Namen der Nation!', [P('S. 461')]],
     ['echo.k3.fackel.03', 'menge', 'Ça ira! Ça ira!', [src('M1910', 'S. 461; Liedtext „Ah! ça ira“ 1790, gemeinfrei')]],
-    ['echo.k3.fackel.04', 'geraeusch', '(Glas klirrt. Stroh faucht auf.)'],
+    ['echo.k3.fackel.04', 'geraeusch', '[Glas klirrt]'],
     ['mannlich.14', 'mannlich', '„Dann setzte es der Kommissär im Namen der Nation mit brennender Fackel in Flammen.“', [Z(`S. 461 (${MANNLICH_NICHT_DABEI})`)]],
   ]),
   say('laub.k3.hinauf', 'laub', 'Hinauf. Jetzt, nicht gleich.', beat('3.8'), { once: true, priority: 10 }),
@@ -301,7 +301,7 @@ const dialogue = [
     ['jost.k3.04', 'jost', 'Einer muss sie ja wieder heimholen.'],
     ['laub.k3.alle', 'laub', 'Die Franzosen, die Preußen, die Leute aus den Dörfern, der Hof selbst. Jeder hat etwas mitgenommen. Man könnte sagen, sie taten, was alle taten.'],
   ]),
-  say('marlene.k3.abend', 'marlene', 'Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. (Pause.) Doch, ich frag. Morgen.', beat('3.12-zurueck'), { once: true }),
+  say('marlene.k3.abend', 'marlene', 'Du riechst nach Rauch. Hier hat niemand ein Feuer gemacht. Ich frag auch nicht. … Doch, ich frag. Morgen.', beat('3.12-zurueck'), { once: true }),
   say('laub.k3.ende', 'laub', 'Danach kommt nicht mehr viel. Danach kommen nur die Karren. Ich muss Ihnen etwas sagen, aber nicht heute.', beat('3.13'), { once: true }),
   // ---- Runde 3 (Verdrahtung): Zeilen, die die Bibel nicht ausschreibt. Fiktion, im Ton von 08-stimmen;
   // gesprochen von content/story/03-kapitel-3.story.json (Trigger '3.x' feuern nie von selbst).

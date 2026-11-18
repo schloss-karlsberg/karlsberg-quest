@@ -5,7 +5,7 @@
     {
       "id": "marlene.end.morgen",
       "speaker": "marlene",
-      "text_de": "Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. (Pause.) Das war ein Witz. Kalköfen gibt’s hier keine mehr.",
+      "text_de": "Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen. … Das war ein Witz. Kalköfen gibt’s hier keine mehr.",
       "trigger": {
         "event": "story:beat",
         "chapter": "end",
@@ -136,7 +136,7 @@
     {
       "id": "marlene.end.verbrennen",
       "speaker": "marlene",
-      "text_de": "Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier. (Pause.) Hast du gut gemacht. Ich weiß nicht, was, aber gut.",
+      "text_de": "Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier. … Hast du gut gemacht. Ich weiß nicht, was, aber gut.",
       "trigger": {
         "event": "story:ending",
         "id": "burn",

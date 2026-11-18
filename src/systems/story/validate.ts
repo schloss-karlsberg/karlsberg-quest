@@ -37,7 +37,26 @@ const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().len
 const ROOM_RE = /^(KB-[A-Z0-9]+|(KB-[A-Z0-9]+\/)?B[0-9]+\.[0-9]+\.[a-z0-9-]+)$/;
 const isRoomId = (v: unknown): v is string => isStr(v) && ROOM_RE.test(v);
 const THREATS = new Set(['pack', 'fire', 'oblivion']);
-const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match']);
+/**
+ * A spoken line that is (or carries) a stage direction (playtest round 5, rule (a)): a line that is
+ * all brackets, a bracketed caption longer than a short sound (30 characters), or a parenthesised
+ * direction („(Pause.)“, „(sehr leise)“) inside what someone says. Null when the line is fine.
+ */
+export function stageDirection(text: string, speaker?: string): string | null {
+  const t = text.trim();
+  const sfx = speaker === 'geraeusch' || speaker === undefined;
+  if (/^\[[^\]]*\]$/.test(t)) {
+    if (!sfx || speaker === undefined) return 'the whole line is a bracketed stage direction';
+    if (t.length > 32) return `bracketed caption longer than 30 characters (${t.length - 2})`;
+    return null;
+  }
+  for (const m of t.matchAll(/\[([^\]]*)\]/g)) if (m[1]!.length > 30) return `bracketed caption longer than 30 characters (${m[1]!.length})`;
+  if (/\((?:Pause|Lange Pause|sehr leise|leise|seufzt|lacht|flüstert|räuspert sich)[^)]*\)/i.test(t)) return 'a parenthesised stage direction inside a spoken line';
+  if (/\((?:Er|Sie|Es) [^)]*\.\)/.test(t)) return 'a parenthesised stage direction inside a spoken line';
+  return null;
+}
+
+const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar']);
 const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann']);
@@ -287,6 +306,12 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
           if (!isStr(a.speaker)) err(file, where, 'say: variants need a speaker');
         } else if (!isStr(a.speaker) || !isStr(a.text)) err(file, where, 'say needs speaker + text, or line');
         if (a.id !== undefined && !ID_RE.test(a.id)) err(file, where, `say: malformed id '${a.id}'`);
+        // shown, not told (playtest round 5): a stage direction is an event (sound, cue, staging), never a speaker card
+        for (const txt of [a.text, ...(Array.isArray(a.variants) ? a.variants : [])]) {
+          if (!isStr(txt)) continue;
+          const bad = stageDirection(txt);
+          if (bad) err(file, where, `say: ${bad} — stage it (do: sound / cue) instead of writing it`);
+        }
         if (a.until !== undefined) checkCond(a.until, file, `${where}:until`, err);
         if (a.text_by_era !== undefined) {
           if (!a.text_by_era || typeof a.text_by_era !== 'object') err(file, where, 'say: text_by_era must be an object');
@@ -418,6 +443,13 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
           if (a.count !== undefined && (!isNum(a.count) || a.count < 1)) err(file, where, 'enemy: count must be ≥ 1');
           if (a.room !== undefined && !isRoomId(a.room)) err(file, where, `enemy: malformed room id '${String(a.room)}'`);
           if (a.time !== undefined && !['any', 'dusk', 'night'].includes(a.time)) err(file, where, `enemy: unknown time '${String(a.time)}'`);
+          for (const k of ['escorts', 'wave'] as const) {
+            const list = a[k];
+            if (list === undefined) continue;
+            if (!Array.isArray(list)) err(file, where, `enemy: ${k} must be a list`);
+            else for (const x of list) if (!ENEMY_IDS.has(String(x?.kind)) || !isNum(x?.n) || x.n < 1) err(file, where, `enemy: ${k} needs known kinds and n ≥ 1`);
+          }
+          if (a.near !== undefined && (!isNum(a.near) || a.x === undefined)) err(file, where, 'enemy: near needs a number and x / z to point at');
         }
         break;
       case 'loot':

@@ -200,6 +200,7 @@ describe('K3 content: no stage direction left as a caption only', () => {
     for (const c of caps) expect(c.length).toBeLessThanOrEqual(30);
     expect(story).not.toContain('Jost zieht die Riegel');
     const pack = readFileSync('content/packs/kapitel-3.pack.json', 'utf8');
-    expect(pack).not.toMatch(/"text_de": "\[/);
+    // a bracketed echo line is a short sound only (the scene itself is staged; src/systems/story/validate.ts stageDirection)
+    for (const m of pack.matchAll(/"text_de": "(\[[^"]*\])"/g)) expect(m[1]!.length).toBeLessThanOrEqual(30);
   });
 });
