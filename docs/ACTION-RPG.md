@@ -1218,8 +1218,17 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   amber with a marching rim. *Small:* stage pieces (the K1 papers, riders, wagons, stones) go on a
   death; the echo prompt no longer shows E twice; the K3 tracker no longer spoils the torch; the
   post-game objective names „Ende noch einmal wählen“ only when that save exists.
+- **Playtest round 5, from the e2e run:** the K3 afternoon wanted 5 kills of the 4 Raffschatten it
+  now spawns (a softlock): the quest validator rejects a kill objective its spawns cannot meet;
+  Marlene's greeting is the first line of the Feldstation offer (a story `say` delays the actions
+  after it by its speaking time, which held the quest back 13 s); the Damm rule does not wait for
+  Relief 1 (Marlene's "Eins" line drops at the Damm instead); soft holds cap at 8 s. Gates:
+  typecheck, 462 unit tests, validate, build; e2e smoke, combat, fun-combat, combat-variety,
+  pacing, chapter prologue / K1–K4, stage-k2k4, story, chronik, integration, k3-stage; the full
+  campaign (1.2 h) and the three endings.
 - **Playtest round 5, left open:** the sight cones are still pale under the frost fog's grade from
   more than ~25 m; a dark rim on enemies and dithering bodies near the camera; damage-number
-  clamping; the Steinfresser against sand; the carts echo does not yet turn your view to the
+  clamping; the Steinfresser against sand; the quest tracker runs under the vitals panel in a busy
+fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to the
   carts; the gallery echo is still two quotes; HUD overlaps at small widths; edge markers during a
   boss reveal.

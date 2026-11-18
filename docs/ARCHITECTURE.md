@@ -170,9 +170,11 @@ torch as `stage-k3`, the Zwinger breakout from the moment the gates open (set be
 conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a card already up
 steps aside and its clock stops. **Soft holds** (`cards.soft(reason, on)`, playtest round 5) keep
 only slide-in cards back (reward, level, skill; a clue page or modal may still open) and linger
-`SOFT_LINGER` = 1.2 s after they end: a spoken story line that is not low priority (`dialogue`), an
+`SOFT_LINGER` = 1.2 s after they end, but never more than `SOFT_MAX` = 8 s of unbroken holding (a
+chain of lines must not bury a card): a spoken story line that is not low priority (`dialogue`), an
 active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
-(`festsaal`) and a playing echo (`echo`). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card / curtain and
+(`festsaal`) and a playing echo (`echo`, set on `echo:start` / `echo:end`; releasing a hold
+opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card / curtain and
 any other modal (menus, the Journal); a clue page may open over the station's hub. Merging: skill
 unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the
