@@ -67,7 +67,7 @@ export class CardDirector {
   /** An extra reason that keeps cards back (the NPC conversation: 'talk'; an echo; the Festsaal). */
   hold(reason: string, on: boolean): void {
     if (on) this.holds.add(reason);
-    else this.holds.delete(reason);
+    else if (this.holds.delete(reason)) this.pump(); // a page that waited on it opens now
   }
 
   /**

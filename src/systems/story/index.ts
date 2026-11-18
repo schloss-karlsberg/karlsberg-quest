@@ -474,8 +474,15 @@ class StoryRuntime {
       if (to !== 'today' && !this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: ctx.player.stats.lanternLit, refill: true });
     });
     // while the Chronik plays an echo (ghosts + its own subtitles) the presenter waits out of sight
-    ctx.events.on('echo:start', () => (this.echoHold = true));
-    ctx.events.on('echo:end', () => (this.echoHold = false));
+    // (the card hold follows at once: the memory's own page is queued on echo:end and opens then)
+    ctx.events.on('echo:start', () => {
+      this.echoHold = true;
+      ctx.ui.cards.hold('echo', true);
+    });
+    ctx.events.on('echo:end', () => {
+      this.echoHold = false;
+      ctx.ui.cards.hold('echo', false);
+    });
     // readings: mirror the Chronik's reading flag into the entry's story flag (CaseEntry.flag)
     ctx.events.on('chronik:fill', ({ caseId, entryId }) => this.mirrorReading(caseId, entryId));
     // Chronik opened from the Pinnwand → back to the hub overlay when it closes

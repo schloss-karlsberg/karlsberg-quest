@@ -296,7 +296,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
     (window as Any).k3h.look(478, -852, 0);
   });
   await shot(page, '03-baumagazin-lager');
-  await killGroup(page, 'q.k4.baumagazin.fresser', 4);
+  await killGroup(page, 'q.k4.baumagazin.fresser', 3);
   await killGroup(page, 'q.k4.baumagazin.krumen', 6);
   expect(await quest(page, 'q.k4.baumagazin')).toBe('ready');
   await questTalk(page, 'soll', 'q.k4.baumagazin');

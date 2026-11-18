@@ -520,7 +520,7 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
       if (e[0]) (window as Any).k3h.look(e[0].x, e[0].z, 4);
     });
     await shot(page, '03-raffschatten');
-    await killGroup(page, 'q.k3.nachmittag.schatten', 5);
+    await killGroup(page, 'q.k3.nachmittag.schatten', 4);
     expect(await takeAll(page, 'q.k3.nachmittag.korb')).toBe(1);
     expect(await quest(page, 'q.k3.nachmittag')).toBe('ready');
     // turn in at Hanne: the basket, the history, then her question (an opinion, never graded)
