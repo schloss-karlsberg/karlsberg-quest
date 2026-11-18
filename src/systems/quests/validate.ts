@@ -194,6 +194,11 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
     if (o.count !== undefined && (!isNum(o.count) || o.count < 1)) err(file, id, 'count must be ≥ 1');
     for (const a of o.after ?? []) if (!objIds.has(a) || a === o.id) err(file, id, `after: unknown objective '${a}'`);
     if (o.where) checkPlace(o.where, 'where', file, id);
+    // a kill objective must be reachable with what it spawns (escorts and waves never count)
+    if (o.type === 'kill' && o.spawn?.length) {
+      const spawned = o.spawn.reduce((n, sp) => n + (isNum(sp?.count) ? sp.count : 1), 0);
+      if ((o.count ?? 1) > spawned) err(file, id, `kill: needs ${o.count} but its spawns bring only ${spawned}`);
+    }
     for (const sp of o.spawn ?? []) {
       if (!ENEMY_IDS.has(String(sp?.kind))) err(file, id, `spawn: unknown enemy '${String(sp?.kind)}' (src/rpg/enemies.ts)`);
       checkPlace({ x: sp?.x, z: sp?.z, era: sp?.era } as QuestPlace, 'spawn', file, id);

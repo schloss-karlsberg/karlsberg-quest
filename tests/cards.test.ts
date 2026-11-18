@@ -118,4 +118,21 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     expect(d.held).toBe(true);
     expect(d.claim('reward')).toBe(true);
   });
+
+  it('a long spell of talk does not bury a waiting card (SOFT_MAX)', async () => {
+    const { SOFT_MAX } = await import('../src/ui/cards');
+    const { d } = rig();
+    d.soft('dialogue', true);
+    d.tick(0.1);
+    expect(d.claim('reward')).toBe(false);
+    for (let t = 0; t < SOFT_MAX; t += 0.5) d.tick(0.5);
+    expect(d.claim('reward')).toBe(true);
+    expect(d.held).toBe(false);
+    // after a break in the talk, the next spell holds again
+    d.soft('dialogue', false);
+    for (let t = 0; t < 2; t += 0.5) d.tick(0.5);
+    d.soft('dialogue', true);
+    d.tick(0.1);
+    expect(d.held).toBe(true);
+  });
 });

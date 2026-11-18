@@ -30,6 +30,8 @@ interface QueuedModal {
 export const CARD_GAP = 0.35;
 /** A soft hold (a line being spoken, a hunt) keeps cards back this long after it ends. */
 export const SOFT_LINGER = 1.2;
+/** Longest a soft reason keeps a waiting card back in one go (s): a chain of lines must not bury it. */
+export const SOFT_MAX = 8;
 
 export class CardDirector {
   /** The slide-in card on the slot (reward, level, skill). */
@@ -84,9 +86,16 @@ export class CardDirector {
   private readonly softs = new Map<string, number>();
   private clock = 0;
 
-  private get softBusy(): boolean {
+  /** Since when (clock) the soft reasons have held without a break (−1: not holding). */
+  private softSince = -1;
+
+  private get softRaw(): boolean {
     for (const v of this.softs.values()) if (v > this.clock) return true;
     return false;
+  }
+
+  private get softBusy(): boolean {
+    return this.softRaw && (this.softSince < 0 || this.clock - this.softSince < SOFT_MAX);
   }
 
   /** Is the slot held (fight, chase, reveal, being knocked down, conversation …)? */
@@ -151,6 +160,8 @@ export class CardDirector {
   tick(dt: number): void {
     this.clock += dt;
     for (const [k, v] of this.softs) if (v <= this.clock) this.softs.delete(k);
+    if (!this.softRaw) this.softSince = -1;
+    else if (this.softSince < 0) this.softSince = this.clock;
     if (this.gap > 0) this.gap = Math.max(0, this.gap - dt);
     if (this.modalHandle?.closed) this.release(this.modalOwner ?? '');
     this.pump();
@@ -185,6 +196,7 @@ export class CardDirector {
     this.modalHandle = null;
     this.gap = 0;
     this.softs.clear();
+    this.softSince = -1;
   }
 
   /** The kinds of centre cards visible in the DOM now (tests: never more than one). */
