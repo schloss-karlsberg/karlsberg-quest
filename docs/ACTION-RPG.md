@@ -1176,7 +1176,10 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   rise, paper rustling behind the Rund's doors) keep a short SFX caption (≤ 30 characters). The two
   stage directions inside spoken lines (Jost's „(Er schneidet mit dem Hirschfänger.)“, Soll's „(Er
   sieht auf seine eigenen Hände.)“) are gone from the text. e2e: `stage-k2k4.spec.ts` „Bussole
-  cues … papers … passing frost“ (`s5-k2k4stage-bussole-deckel`, `-reif`, `-k1-papiere`).
+  cues … papers … passing frost“ (`s5-k2k4stage-bussole-deckel`, `-reif`, `-k1-papiere`). From the
+  screenshots: the pack's own sound captions („[Hecheln, nah]“, „[Pfoten im Gras]“ …) keep quiet for
+  12 s after the Zwinger breakout (they stood over the running hounds); the K4 rewind ticks the HUD
+  Bussole back; the first survey point's map tip rides on its banner (a toast sat under it).
 - **K2 / K4 staging, left open:** the
   sight cones read pale on bright frost from far away; Jost turns to face you when you come within
   8 m (the kneel reads best from the side); the burn memories' hounds open their eyes on the hunt's
