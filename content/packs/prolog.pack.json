@@ -643,17 +643,6 @@
   ],
   "dialogue": [
     {
-      "id": "marlene.p.01",
-      "speaker": "marlene",
-      "text_de": "{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "p",
-        "beat": "P1"
-      },
-      "once": true
-    },
-    {
       "id": "marlene.p.01b",
       "speaker": "marlene",
       "text_de": "Wir wollen wissen, was unter dem Wald liegt, bevor wir dort Wege bauen. Und bevor du fragst: Ja, da oben war mal ein Schloss. Der Wald steht drauf.",

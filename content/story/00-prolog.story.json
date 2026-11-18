@@ -110,8 +110,7 @@
         { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen · Shift: Rennen" },
         { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 763, "z": -900, "delay": 0.3 },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.2 },
-        { "do": "say", "line": "marlene.p.01", "delay": 0.2 },
-        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.6, "onResume": true }
+        { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.2, "onResume": true }
       ],
       "on": [
         {

@@ -35,7 +35,7 @@ const STORY_FLAGS = new Set([
 const KNOWN_EVENTS = new Set([
   'game:start', 'era:change', 'scan:mode', 'player:caught', 'hub:enter', 'hub:leave',
   'story:chapter', 'story:beat', 'story:ending', 'hunt:alert', 'hunt:horn', 'lantern:oil', 'lantern:empty',
-  'clue:found', 'echo:start', 'echo:end', 'chronik:batch', 'chronik:case-complete', 'codex:unlocked', 'oblivion:progress',
+  'clue:found', 'quest:completed', 'echo:start', 'echo:end', 'chronik:batch', 'chronik:case-complete', 'codex:unlocked', 'oblivion:progress',
   // custom (documented in the hand-off): NPC conversation topics, barks, epilogue blocks
   'npc:talk', 'bark:idle', 'bark:enter-fire', 'bark:npc-near', 'epilog:line',
 ]);

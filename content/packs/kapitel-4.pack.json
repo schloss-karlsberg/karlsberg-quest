@@ -255,7 +255,7 @@
         ]
       },
       "fiction": true,
-      "echoDate_de": "um 1780",
+      "echoDate_de": "1796 → 1789",
       "chapter": "k4"
     },
     {
@@ -859,7 +859,7 @@
     {
       "id": "laub.k4.westblick",
       "speaker": "laub",
-      "text_de": "Sehen Sie den Berg da im Südwesten, über der Stadt? Die Hohenburg. Die Festung hat man 1714 geschleift, und der Herzog hat ihre Trümmer als Steinbruch benutzt. Die Steine sind zweimal umgezogen: von der Burg aufs Schloss, vom Schloss in die Stadt. Steine haben kein Zuhause. Nur eine Adresse auf Zeit.",
+      "text_de": "Der Berg über der Stadt: die Hohenburg, 1714 geschleift. Der Herzog hat ihre Trümmer als Steinbruch benutzt. Steine haben kein Zuhause. Nur eine Adresse auf Zeit.",
       "trigger": {
         "event": "clue:found",
         "id": "clue.k4.hohenburg"
@@ -925,8 +925,8 @@
       "speaker": "laub",
       "text_de": "Das Baumagazin. Das Lager für Baumaterial. Das einzige Haus, das stehen bleibt. Alles andere wird selbst zu Baumaterial. Man hat später gesagt, das Schloss sei eine Baustoffhandlung geworden. Die Verwaltung nennt so etwas Kreislauf.",
       "trigger": {
-        "event": "clue:found",
-        "id": "clue.k4.baumagazin"
+        "event": "quest:completed",
+        "id": "q.k4.baumagazin"
       },
       "once": true,
       "sources": [

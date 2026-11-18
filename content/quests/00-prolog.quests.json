@@ -25,6 +25,10 @@
       "offer": [
         {
           "speaker": "marlene",
+          "text": "{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter."
+        },
+        {
+          "speaker": "marlene",
           "text": "Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm."
         }
       ],

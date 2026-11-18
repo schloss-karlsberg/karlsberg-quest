@@ -145,7 +145,6 @@ const story = (b, lines) => lines.map(([id, speaker, text]) => say(id, speaker, 
 const dialogue = [
   // ---- spoken by the story file (timed) --------------------------------------------------------
   ...story('P1', [
-    ['marlene.p.01', 'marlene', '{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter.'],
     ['marlene.p.01b', 'marlene', 'Wir wollen wissen, was unter dem Wald liegt, bevor wir dort Wege bauen. Und bevor du fragst: Ja, da oben war mal ein Schloss. Der Wald steht drauf.'],
     ['marlene.p.bauwagen', 'marlene', 'Im Wagen hängt alles, was du brauchst: Lageplan an der Pinnwand, das Handbuch im Regal. Und in der Schublade liegt noch Kram vom Vorbesitzer. Guck ruhig rein.'],
   ]),
@@ -278,7 +277,12 @@ const prologQuests = {
       title_de: 'Der Messstab',
       summary_de: 'Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der draußen am Bauwagen lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.',
       giver: { voice: 'marlene' }, turnin: 'auto',
-      offer: [ln('marlene', 'Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm.')],
+      // the greeting is the first offer line: it comes before the request (playtest round 5: the order
+      // was request first, then „Bist du gut angekommen?“), and the quest is active at once
+      offer: [
+        ln('marlene', '{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter.'),
+        ln('marlene', 'Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm.'),
+      ],
       turnin_lines: [ln('marlene', 'Du schnaufst ja. Was war da unten? … Egal. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht.')],
       history: [
         ln('marlene', 'Der Laserscan ist vom Winter 2025, ohne Laub an den Bäumen. Seit Januar sind die Daten frei. Ein Punkt pro Meter, und unter den Bäumen liegt der Boden wie ein Abdruck.', { fact: 'cx.34', src: [src('LVGL'), LIDAR] }),
