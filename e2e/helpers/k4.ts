@@ -130,6 +130,8 @@ export async function walk(page: Page, x: number, z: number, hop = 6): Promise<v
       const z0 = p.z;
       const yaw = (Math.atan2(x - x0, -(z - z0)) * 180) / Math.PI;
       for (let i = 1; i <= n; i++) {
+        // a field-book page held back by a fight comes up on the way: read it, put it away
+        if (k.ctx.ui.modals.count > 0 && !k.story!.choice()) k.ctx.ui.modals.closeAll();
         k.teleport(x0 + ((x - x0) * i) / n, z0 + ((z - z0) * i) / n, yaw);
         k.step(30);
       }
@@ -376,7 +378,12 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   // side: Gruslinge in the three trenches (Laub's voice, taken at once)
   await run(page, 3);
   await untilQuest(page, 'q.k4.graeben', 'active');
-  for (const g of ['west', 'nord', 'sued']) await killGroup(page, `q.k4.graeben.${g}`, 5);
+  // a player walks into each trench: the escorts (Nebelweber, Rufer) kite and can draw you off,
+  // and the Gruslinge only come out of the mortar where you stand
+  for (const [g, x, z] of [['west', 1232, -1188], ['nord', 1236, -1180], ['sued', 1226, -1194]] as const) {
+    await page.evaluate(({ x, z }) => window.kq!.teleport(x + 3, z + 3), { x, z });
+    await killGroup(page, `q.k4.graeben.${g}`, 5);
+  }
   // today: the Relief view 3 over the trench; Peter's fourth stone, from the road
   await shiftQ(page);
   expect((await story(page)).era).toBe('today');
@@ -426,6 +433,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect((await page.evaluate(() => window.kq!.hunt!.mode()))?.mode).toBe('drive');
   await page.evaluate(() => window.kq!.teleport(1375, -1474, 270));
   await run(page, 6);
+  await putAwayPages(page);
   await shot(page, 'drive');
   for (const [x, z] of [
     [1300, -1472],
@@ -533,6 +541,8 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await o.at?.('ending:choice');
   await page.getByTestId('ending-keep').click();
   await page.getByRole('button', { name: 'Ja', exact: true }).click();
+  // the ending is staged in the engine first (endings/stage.ts): skip it
+  await page.getByTestId('ending-stage-skip').click();
   await expect(page.getByTestId('ending-next')).toBeVisible();
   await page.getByTestId('ending-next').click();
   await expect(page.getByTestId('epilogue')).toBeVisible();

@@ -398,14 +398,18 @@ export async function killGroup(page: Page, group: string, min = 1): Promise<num
     ({ group }) => {
       const k = window.kq as Any;
       for (let i = 0; i < 30 && !Object.keys(k.combat.groups()).includes(group); i++) k.step(10);
+      const seen = k.combat.enemies().filter((e: Any) => e.group?.startsWith(group)).map((e: Any) => `${e.kind}:${e.state}:${Math.round(e.hp ?? -1)}`);
       const n = k.combat.kill(group);
       k.step(60);
-      return n;
+      const p = k.ctx.player.position;
+      return { n, seen, at: [Math.round(p.x), Math.round(p.z)], era: k.state().era, groups: k.combat.groups(), all: k.combat.enemies().map((e: Any) => `${e.group}:${e.kind}:${e.state}`) };
     },
     { group },
   );
-  expect(n, `${group} killed`).toBeGreaterThanOrEqual(min);
-  return n;
+  // a group already struck down on the way (a sweep, a hazard, the fight next door) counts as well
+  const done = Math.max(n.n, (n.groups as Any)[group]?.killed ?? 0);
+  expect(done, `${group} killed: ${JSON.stringify(n)}`).toBeGreaterThanOrEqual(min);
+  return n.n;
 }
 
 /** Pick up every placed pickup whose id starts with `prefix` (as if walked over). */
@@ -844,10 +848,20 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     const k = window.kq as Any;
     const h = (window as Any).k3h;
     h.walk([[1257, -1576]], { chunk: 12, max: 900 });
+    // a quest's reward card or a page held back by the fight comes up now: put it away first
+    for (let i = 0; i < 12 && (k.ctx.ui.cards.pending > 0 || k.ctx.ui.modals.count > 0) && !k.story.choice(); i++) {
+      k.ctx.ui.modals.closeAll();
+      k.step(10);
+    }
     const g = k.hunt.kennel();
+    // the gate answers from 3 to 7.5 m: step in to 5 m if the walk stopped short
+    const p = k.ctx.player.position;
+    const d = Math.hypot(p.x - g.x, p.z - g.z);
+    if (d > 6.5 || d < 3.5) k.teleport(g.x + ((p.x - g.x) / (d || 1)) * 5, g.z + ((p.z - g.z) / (d || 1)) * 5);
     h.look(g.x, g.z - 1, 2);
     k.step(4);
-    return k.hunt.kennel();
+    const q = k.ctx.player.position;
+    return { ...k.hunt.kennel(), at: [q.x, q.z], d0: d };
   });
   console.log(`[k3] kennel gate: ${JSON.stringify(atGate)}`);
   expect(atGate?.prompt, JSON.stringify(atGate)).toBe(true);
