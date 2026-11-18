@@ -311,6 +311,8 @@ class Hunt {
   private lungeTaught = false;
   /** Seconds after the kennel pack ran out (the pack ends a little later). */
   private releasedT = -1;
+  /** Loop time of the Zwinger breakout: the hounds are in plain view, their sound captions keep quiet. */
+  private breakoutAt = -1e9;
   private breakoutBusy = false;
   /** K3: the Zwinger's Gittertüren (era 1793-07), the E prompt at them, the camera nudge on release. */
   readonly gate = new KennelGate();
@@ -899,6 +901,7 @@ class Hunt {
   private releaseKennel(by: 'player' | 'cue'): void {
     const c = this.sim?.ctl;
     if (!(c instanceof KennelMode) || c.phase !== 'pen') return;
+    this.breakoutAt = this.ctx.loop.time;
     const ctx = this.ctx;
     const p = ctx.player.position;
     c.release({ x: p.x, z: p.z });
@@ -1035,6 +1038,8 @@ class Hunt {
 
   private caption(key: string, text: string, throttle = 6, ms = 2800): void {
     const now = this.ctx.loop.time;
+    // the breakout is seen, not told: the pack's own sounds get no caption over the running hounds
+    if (now - this.breakoutAt < 12 && /^(paws|pant|hunt\.sound\.)/.test(key)) return;
     const last = this.captionAt.get(key);
     if (last !== undefined && now - last < throttle) return;
     this.captionAt.set(key, now);

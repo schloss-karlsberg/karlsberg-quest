@@ -282,11 +282,10 @@ class Travel {
     if (quiet) return;
     const ctx = this.ctx;
     chimeActivate(ctx.audio);
-    this.showCard(TRAVEL_DE.activated(p.name), TRAVEL_DE.activatedSub, null, 4.5, 'travel-card-activated');
-    if (!this.slice.tips.includes('map')) {
-      this.slice.tips.push('map');
-      ctx.ui.toast(TRAVEL_DE.firstMap, 6000);
-    }
+    // the first one says what the map is for, on the banner itself (a toast would sit under it)
+    const first = !this.slice.tips.includes('map');
+    if (first) this.slice.tips.push('map');
+    this.showCard(TRAVEL_DE.activated(p.name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
     ctx.events.emit('travel:activated', { id });
     ctx.save.autosave('travel');
   }

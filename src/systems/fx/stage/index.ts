@@ -88,7 +88,11 @@ export class StageDirector {
     this.frost = new FrostOverlay(ctx);
     const ev = ctx.events;
     ev.on('echo:start', ({ id }) => {
-      if (id === 'echo.k4.rueckwaerts') this.add(new RewindPiece(ctx));
+      if (id === 'echo.k4.rueckwaerts') {
+        this.add(new RewindPiece(ctx));
+        // the caption "[Die Bussole tickt rückwärts]" is on the Bussole too: its needle ticks back
+        ev.emit('story:cue', { id: 'bussole:tick', data: { hold: REWIND_SECONDS } });
+      }
       else if (id === 'clue.k4.laub_1840') this.add(new Laub1840Piece(ctx));
       else if (id === 'clue.k2.warnung' || id === 'clue.k2.abschied') this.add(new DoorPiece(ctx, id));
       else if (id === 'clue.k2.fackeln') this.add(new AbfahrtPiece(ctx));
