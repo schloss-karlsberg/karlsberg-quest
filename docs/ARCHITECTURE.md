@@ -166,7 +166,7 @@ stopped, and comes back after) and queues behind another page, 0.35 s apart; the
 while `hud.inAction` (a fight + 3 s, a chase, a boss reveal, being knocked down, a staged climax
 while it plays, no linger — the memory's own page comes right after: the fx `StageDirector`'s
 rewind / 1840 / Kabinett door / departure / riders pieces until their echo ends as `stage`, the K3
-torch as `stage-k3`, the Zwinger breakout until the hounds are gone as `stage-kennel`) and while an NPC
+torch as `stage-k3`, the Zwinger breakout from the moment the gates open (set before `hunt:release`, so the clue page granted on it waits) until the hounds are gone as `stage-kennel`) and while an NPC
 conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a card already up
 steps aside and its clock stops. Slide-in cards also wait for the chapter title card / curtain and
 any other modal (menus, the Journal); a clue page may open over the station's hub. Merging: skill

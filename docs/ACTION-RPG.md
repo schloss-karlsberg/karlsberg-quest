@@ -1158,8 +1158,12 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   (`fx/stage/k2-reiter.ts`): as the craftsman answers, three dark horses with blue-coated riders —
   the leader's sabre up — gallop past you 7 m to the side, up to the palace, and go small in the
   fog with their hoofbeats; the caption is down to „[Galopp]“. Staged climaxes (the stage pieces,
-  the K3 torch, the Zwinger breakout) hold the card queue like a fight; a new ability rides on
-  the level card; K1's last beat frosts the compass glass instead of a caption.
+  the K3 torch, the Zwinger breakout) hold the card queue like a fight, without a linger (the
+  memory's own page comes right after it); the Zwinger hold starts as the gates open, so Jost's
+  clue page waits until the hounds are through (a page on screen also stops the pack); a new
+  ability rides on the level card; K1's last beat frosts the compass glass instead of a caption.
+  Stone fall (1796 hazard) also strikes Gruslinge down: a trench can be half cleared before you
+  arrive, and it counts.
 - **K2 / K4 staging, left open:** the
   sight cones read pale on bright frost from far away; Jost turns to face you when you come within
   8 m (the kneel reads best from the side); the burn memories' hounds open their eyes on the hunt's
