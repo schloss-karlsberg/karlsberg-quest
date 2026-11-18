@@ -275,7 +275,7 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
     await page.evaluate(() => (window.kq as Any).hunt.freeze(false));
     await page.evaluate(() => {
       const k = window.kq as Any;
-      k.teleport(1462, -612, 205, -4);
+      k.teleport(1478, -584, 205, -4);
       k.step(30);
     });
     expect(await page.evaluate(() => window.kq!.ctx.state.state.flags['hunt.cones'] ?? null)).toBeNull();

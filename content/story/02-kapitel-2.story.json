@@ -302,7 +302,7 @@
             { "do": "flag", "set": { "chronik.noLoss": true, "k2.augen": true, "hunt.cones": true } },
             { "do": "sound", "sound": "horn", "signal": "anblasen", "x": 1560, "z": -470, "caption": "[Horn]" },
             { "do": "say", "line": "laub.k2.augen", "delay": 0.4 },
-            { "do": "objective", "id": "k2.leise", "text": "Licht aus (L), ducken (C): an den Hunden vorbei bis zur Hecke", "x": 1462, "z": -612 },
+            { "do": "objective", "id": "k2.leise", "text": "Licht aus (L), ducken (C): zwischen den Hunden durch bis zur Hecke", "x": 1478, "z": -584 },
             {
               "do": "threat",
               "kind": "pack",
@@ -314,6 +314,11 @@
               "from": { "x": 1500, "z": -566 },
               "center": { "x": 1488, "z": -572 },
               "radius": 34,
+              "beats": [
+                { "a": { "x": 1501, "z": -559 }, "b": { "x": 1485, "z": -550 } },
+                { "a": { "x": 1480, "z": -561 }, "b": { "x": 1496, "z": -569 }, "speed": 0.8 },
+                { "a": { "x": 1490, "z": -580 }, "b": { "x": 1474, "z": -571 } }
+              ],
               "delay": 1
             }
           ]
@@ -327,7 +332,7 @@
         },
         {
           "id": "k2_2-sicher",
-          "when": { "all": [{ "flag": "k2.augen" }, { "enter": { "x": 1462, "z": -612, "r": 12, "era": "1793-02" } }] },
+          "when": { "all": [{ "flag": "k2.augen" }, { "enter": { "x": 1478, "z": -584, "r": 7, "era": "1793-02" } }] },
           "do": [
             { "do": "flag", "set": { "k2.augen": null, "hunt.cones": null } },
             { "do": "threat", "kind": "pack", "active": false },

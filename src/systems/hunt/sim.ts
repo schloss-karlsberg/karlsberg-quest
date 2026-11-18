@@ -84,6 +84,8 @@ export interface PackOptions {
   pikeurFar?: number;
   /** Bites before the pack has you (default 3, gentle 5); counted per mode (a switch starts afresh). */
   maxBites?: number;
+  /** patrol: sentry beats — hound i walks from `a` to `b` and back (`speed` × patrol pace). */
+  beats?: { a: XZ; b: XZ; speed?: number }[];
 }
 
 /** Names from the bible (Jost, 08-stimmen §5); the sixth is ours, in the same style. FIKTION. */
@@ -803,7 +805,10 @@ export class PackSim {
     }
     switch (this.state) {
       case 'calm':
-        if (a === this.leader) this.patrol(a, dt, pik ? T.pikeurSpeed.patrol : T.speed.patrol);
+        // sentry beats (K2 sneak, playtest round 5): with `beats`, each hound walks its own line
+        // across the way and back, so a straight walk meets a cone and has to wait or go round
+        if (!pik && !this.ctl && this.opt.beats && this.opt.beats.length) this.sentry(a, dt, T.speed.patrol);
+        else if (a === this.leader) this.patrol(a, dt, pik ? T.pikeurSpeed.patrol : T.speed.patrol);
         else this.follow(a, dt);
         break;
       case 'suspicious': {
@@ -849,6 +854,24 @@ export class PackSim {
         this.moveToward(a, tx, tz, T.speed.chase * mul, dt, 7);
         break;
       }
+    }
+  }
+
+  /** A sentry: back and forth on its beat (`opt.beats[idx]`), a look-round at each end. */
+  private sentry(a: Agent, dt: number, speed: number): void {
+    const beats = this.opt.beats!;
+    const b = beats[a.idx % beats.length]!;
+    // the hound starts at the end nearer to it, then turns at each end
+    if (!a.target) {
+      const toA = Math.hypot(b.a.x - a.x, b.a.z - a.z);
+      const toB = Math.hypot(b.b.x - a.x, b.b.z - a.z);
+      a.target = toA > toB ? { ...b.a } : { ...b.b };
+    }
+    if (this.moveToward(a, a.target.x, a.target.z, speed * (b.speed ?? 1), dt, 1.5, 0.8)) {
+      const atA = Math.hypot(b.a.x - a.target.x, b.a.z - a.target.z) < 0.5;
+      a.target = atA ? { ...b.b } : { ...b.a };
+      a.wait = this.rng.range(1.2, 2.4);
+      a.sniffing = true;
     }
   }
 

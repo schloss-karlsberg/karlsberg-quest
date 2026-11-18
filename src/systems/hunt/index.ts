@@ -125,6 +125,8 @@ declare module '../contracts' {
     pikeurFar?: number;
     /** pack: bites before the pack has you (default 3, gentle 5). */
     maxBites?: number;
+    /** pack patrol: sentry beats — hound i walks from `a` to `b` and back (K2 sneak). */
+    beats?: { a: { x: number; z: number }; b: { x: number; z: number }; speed?: number }[];
   }
 }
 
@@ -195,6 +197,7 @@ export interface HuntStartOptions {
   lunges?: boolean;
   pikeurFar?: number;
   maxBites?: number;
+  beats?: { a: XZ; b: XZ; speed?: number }[];
 }
 
 export interface HuntHooks {
@@ -325,7 +328,7 @@ class Hunt {
   /** Closest a released hound came to the player (m; Infinity before the release). */
   private passNearest = Infinity;
   /** A staged picture without a simulation (story cue 'hunt:tableau', the endings). */
-  private tableau: { kind: 'lie' | 'eyes' | 'rest'; agents: Agent[]; t: number; horn: boolean } | null = null;
+  private tableau: { kind: 'lie' | 'eyes' | 'rest'; agents: Agent[]; t: number; horn: boolean; stagger?: number } | null = null;
 
   constructor(readonly ctx: GameContext) {
     this.audio = new HuntAudio(ctx.audio);
@@ -586,6 +589,7 @@ class Hunt {
     if (c.lunges !== undefined) o.lunges = c.lunges;
     if (c.pikeurFar !== undefined) o.pikeurFar = c.pikeurFar;
     if (c.maxBites !== undefined) o.maxBites = c.maxBites;
+    if (Array.isArray(c.beats)) o.beats = c.beats.map((b) => ({ a: { x: b.a.x, z: b.a.z }, b: { x: b.b.x, z: b.b.z }, ...(b.speed !== undefined ? { speed: b.speed } : {}) }));
     const s = this.sim;
     const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && (c.hounds === undefined || Math.round(c.hounds) === s.hounds.length) && (c.pikeur === undefined || c.pikeur === !!s.pikeur);
     if (s && sameArea) {
@@ -664,6 +668,7 @@ class Hunt {
       lunges: o.lunges,
       pikeurFar: o.pikeurFar,
       maxBites: o.maxBites,
+      ...(o.beats ? { beats: o.beats } : {}),
     };
     this.snowOverride = o.snow ?? null;
     const snow = this.snowAmount() >= 0.3;
@@ -853,6 +858,9 @@ class Hunt {
     if (!sim || !sim.tracks) this.tracks.tick(dt); // else the simulation advances the clock
     // no pack, no chase: a hunt that ended mid-alert must not keep the HUD busy forever
     if (!sim) this.ctx.ui.hud.busy('hunt', false, 3);
+    // a pack out at all (patrolling, a stand, the W8 lie-down) keeps the centre cards back (soft:
+    // a page asked for still opens) — playtest round 5: the level card mid-sneak; not the resting pack
+    this.ctx.ui.cards.soft('hunt', !!sim && this.tableau?.kind !== 'rest');
     if (sim && !held) this.updateHold(dt, sim);
     if (sim && !held) {
       const evs = sim.update(dt, this.playerSense());
@@ -1400,7 +1408,9 @@ class Hunt {
     });
     this.fading = null;
     this.visuals.clear();
-    this.tableau = { kind, agents, t: 0, horn: false };
+    // `stagger`: seconds between two pairs of eyes (a short memory opens them quicker)
+    const stagger = typeof d['stagger'] === 'number' ? (d['stagger'] as number) : undefined;
+    this.tableau = { kind, agents, t: 0, horn: false, ...(stagger !== undefined ? { stagger } : {}) };
   }
 
   private frameTableau(dt: number): void {
@@ -1420,7 +1430,8 @@ class Hunt {
         a.dim = clamp01((t - 2.9 - k * 0.85) / 1.5);
       } else {
         // one pair of eyes after another; they never come closer
-        a.gone = 1 - clamp01((t - 0.6 - k * 0.55) / 0.9);
+        const st = T.stagger ?? 0.55;
+        a.gone = 1 - clamp01((t - Math.min(0.6, st) - k * st) / Math.min(0.9, st * 2));
         a.sniffing = Math.sin(t * 0.8 + k * 2) > 0.85;
       }
     });

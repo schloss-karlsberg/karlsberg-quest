@@ -89,10 +89,11 @@ export class SightCones {
       const aw = Math.min(1, a.awareness);
       const seen = Math.min(1, a.sees * 2);
       const hot = Math.max(aw, seen);
-      // pale amber → orange → red
-      const r = 1.0;
-      const g = 0.72 - 0.3 * aw - 0.4 * seen;
-      const bl = 0.3 - 0.2 * hot;
+      // deep amber → orange → red: a dark warm stain reads on bright frost where a pale one vanished
+      // (playtest round 5: "I could not see any fan on the snow")
+      const r = 0.78 + 0.14 * hot;
+      const g = 0.3 - 0.12 * aw - 0.22 * seen;
+      const bl = 0.02;
       const pulse = 0.85 + 0.15 * Math.sin(time * 3 + c);
       const base = c * vPer;
       for (let ri = 0; ri <= RINGS; ri++) {
@@ -109,8 +110,10 @@ export class SightCones {
           this.pos[v * 3 + 2] = z;
           // bright near the hound, fading out to the range; soft side edges, a marked rim
           const edge = Math.min(1, Math.min(u, 1 - u) * 6);
-          const rim = ri === RINGS ? 0.12 : 0;
-          const alpha = Math.min(0.6, (0.3 * (1 - f) + 0.1 + rim * 1.5) * edge * pulse * (0.8 + 0.4 * hot)) * this.k;
+          // the far rim marches (dashes running round the edge): the eye finds a moving line
+          const dash = 0.55 + 0.45 * Math.sin(u * 22 - time * 4 + c);
+          const rim = ri === RINGS ? 0.3 * dash : ri === RINGS - 1 ? 0.06 : 0;
+          const alpha = Math.min(0.88, (0.5 * (1 - f) + 0.26 + rim * 1.8) * edge * pulse * (0.9 + 0.3 * hot)) * this.k;
           this.col[v * 4] = r;
           this.col[v * 4 + 1] = g;
           this.col[v * 4 + 2] = bl;

@@ -322,7 +322,7 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   const hunt = await page.evaluate(() => window.kq!.hunt!.state());
   expect(hunt?.active).toBe(true);
   expect(await page.evaluate(() => window.kq!.ctx.state.state.flags['hunt.cones'])).toBe(true);
-  const sneak = await walk(page, [[1462, -612]], { maxSeconds: 70, dodge: true });
+  const sneak = await walk(page, [[1478, -584]], { maxSeconds: 70, dodge: true });
   expect(sneak.reached).toBe(true);
   expect(sneak.caught).toBe(false);
   expect(sneak.t).toBeLessThanOrEqual(60);
