@@ -259,6 +259,7 @@
         { "do": "look", "time": "night" },
         { "do": "flag", "set": { "story.laub": true, "story.compass": true } },
         { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt]", "delay": 2 },
+        { "do": "cue", "id": "bussole:tick", "data": { "hold": 3 }, "delay": 2 },
         { "do": "quest", "op": "start", "id": "q.k4.zettel", "onResume": true, "delay": 3 }
       ],
       "on": [],
@@ -354,6 +355,7 @@
       "exit": [
         { "do": "flag", "set": { "barks.quiet": true } },
         { "do": "sound", "sound": "compass", "caption": "[Die Bussole tickt]" },
+        { "do": "cue", "id": "bussole:tick", "data": { "hold": 2 } },
         { "do": "teleport", "x": 202, "z": -904, "yaw": 78, "delay": 0.4 },
         { "do": "shift", "to": "1789", "reason": "echo", "delay": 0.3 },
         {

@@ -313,6 +313,10 @@ class StoryRuntime {
         (ctx.ui.hud.acting('combat') && item.priority !== 'now' && item.priority !== 'low' && (!!item.lore || item.text.length > COMBAT_LINE_MAX)),
     });
     this.objectives = new ObjectiveView(this.layer, ctx.ui.hud);
+    // the Bussole's own cues (the needle flung round, ticking back, the lid springing open)
+    ctx.events.on('story:cue', ({ id, data }) => {
+      if (id.startsWith('bussole:')) this.objectives.cue(id, data ?? {}, ctx.settings.state.reducedMotion);
+    });
     this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
 
     // field station in the world (today only) + a clearing in the forest around it

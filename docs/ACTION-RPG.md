@@ -1164,6 +1164,19 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   ability rides on the level card; K1's last beat frosts the compass glass instead of a caption.
   Stone fall (1796 hazard) also strikes Gruslinge down: a trench can be half cleared before you
   arrive, and it counts.
+- **Integration, last captions (2026-11-18):** the remaining long captions in the prologue, K1 and
+  K4 happen on screen now. The HUD Bussole takes story cues (`bussole:jolt`: the needle is flung
+  round, the case jumps and glows, and with x / z or a bearing it settles there — the Ehrenhof in
+  p6, south-east at K1's end; `bussole:tick`: the needle ticks backwards in K4; `bussole:open`: the
+  lid springs open and a page rises out, p7); it shows for the cue even before the story turned it
+  on. K1's Registratur: the reminders whirl up off the desk and stream out towards the Küchenhof
+  (`k1-papers`, caption „[Ein Fenster schlägt auf]“). The prologue's last night: a passing frost on
+  the compass and the view's edges (`frost-breath`, „[Reif knistert]“). Sounds the player is not
+  meant to see (barking behind the wall, a growl, a hiss from the pit where the Nebelinge then
+  rise, paper rustling behind the Rund's doors) keep a short SFX caption (≤ 30 characters). The two
+  stage directions inside spoken lines (Jost's „(Er schneidet mit dem Hirschfänger.)“, Soll's „(Er
+  sieht auf seine eigenen Hände.)“) are gone from the text. e2e: `stage-k2k4.spec.ts` „Bussole
+  cues … papers … passing frost“ (`s5-k2k4stage-bussole-deckel`, `-reif`, `-k1-papiere`).
 - **K2 / K4 staging, left open:** the
   sight cones read pale on bright frost from far away; Jost turns to face you when you come within
   8 m (the kneel reads best from the side); the burn memories' hounds open their eyes on the hunt's

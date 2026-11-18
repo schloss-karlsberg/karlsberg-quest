@@ -15,6 +15,8 @@
  *  k2-candle {x,z,y?}    a single candle lights up behind a window
  *  k4-quader {x,z}       dressed stones shove themselves on top of each other (the Steinbrecher)
  *  end-prints {x,z,n,r}  paw prints in the hoarfrost, in a ring round a spot
+ *  k1-papers {tx,tz}     the reminders whirl up off the desk and stream out towards tx / tz (k1-papers)
+ *  frost-breath {s?}     hoarfrost creeps over the compass and the edges of the view, thaws after s (8)
  *  k4-rest {x,z,n}       — handled by hunt ('hunt:tableau' kind 'rest')
  *
  * Debug: window.kq.stage (see StageHooks).
@@ -30,6 +32,7 @@ import { Laub1840Piece } from './k4-1840';
 import { QuaderPiece } from './k4-quader';
 import { REWIND_SECONDS, RewindPiece } from './k4-rewind';
 import { PrintsPiece } from './end-prints';
+import { PapersPiece } from './k1-papers';
 import type { Piece } from './common';
 import './stage.css';
 
@@ -73,6 +76,8 @@ export class StageDirector {
   private held = false;
   readonly frost: FrostOverlay;
   private hooked = false;
+  /** frost-breath: seconds until the passing frost thaws again (−1: none pending). */
+  private breath = -1;
   /** A set piece that is a climax holds the card queue and calm toasts (hud action reason 'stage'). */
   private busy = false;
   /** Climax pieces whose memory has ended (they may still fade out; they no longer hold cards). */
@@ -117,7 +122,11 @@ export class StageDirector {
     else if (id === 'k2-candle') this.add(new CandlePiece(this.ctx, num('x', p.x), num('z', p.z), typeof d['y'] === 'number' ? (d['y'] as number) : undefined));
     else if (id === 'k4-quader') this.add(new QuaderPiece(this.ctx, num('x', p.x), num('z', p.z)));
     else if (id === 'end-prints') this.add(new PrintsPiece(this.ctx, num('x', p.x), num('z', p.z), num('n', 5), num('r', 1.6), d['ring'] !== false));
-    else if (id === 'stage-off') this.clear(typeof d['id'] === 'string' ? [d['id'] as string] : undefined);
+    else if (id === 'k1-papers') this.add(new PapersPiece(this.ctx, num('tx', p.x), num('tz', p.z)));
+    else if (id === 'frost-breath') {
+      this.frost.set(true);
+      this.breath = num('s', 8);
+    } else if (id === 'stage-off') this.clear(typeof d['id'] === 'string' ? [d['id'] as string] : undefined);
   }
 
   private add(p: Piece): void {
@@ -131,6 +140,7 @@ export class StageDirector {
 
   frame(dt: number): void {
     this.installHooks();
+    if (this.breath >= 0 && (this.breath -= dt) < 0) this.frost.thaw();
     this.frost.frame(dt);
     for (let i = this.pieces.length - 1; i >= 0; i--) {
       const p = this.pieces[i]!;
@@ -174,7 +184,12 @@ export class StageDirector {
         self.cue(id, data ?? {});
       },
       advance(seconds) {
-        for (let t = 0; t < seconds; t += 1 / 30) for (const p of self.pieces) if (!p.done) p.frame(Math.min(1 / 30, seconds - t));
+        for (let t = 0; t < seconds; t += 1 / 30) {
+          const dt = Math.min(1 / 30, seconds - t);
+          for (const p of self.pieces) if (!p.done) p.frame(dt);
+          if (self.breath >= 0 && (self.breath -= dt) < 0) self.frost.thaw();
+          self.frost.frame(dt);
+        }
       },
       line(id, dur = 3) {
         for (const p of self.pieces) p.line?.(id, dur);

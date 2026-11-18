@@ -1088,7 +1088,13 @@
             {
               "do": "sound",
               "sound": "match",
-              "caption": "[Ein Fenster schlägt auf. Papier flattert hinaus in den Küchenhof.]",
+              "caption": "[Ein Fenster schlägt auf]",
+              "delay": 0.5
+            },
+            {
+              "do": "cue",
+              "id": "k1-papers",
+              "data": { "tx": 1212, "tz": -1180 },
               "delay": 0.5
             },
             {
@@ -1331,7 +1337,7 @@
               "sound": "howl",
               "x": 1216,
               "z": -1571,
-              "caption": "[Hinter der Mauer: Gebell, viele Hunde]"
+              "caption": "[Gebell hinter der Mauer]"
             },
             {
               "do": "grant",
@@ -1948,7 +1954,7 @@
               "sound": "compass",
               "x": 1935,
               "z": 56,
-              "caption": "[Hinter den Türen im Norden raschelt Papier]"
+              "caption": "[Papier raschelt]"
             },
             {
               "do": "grant",
@@ -2808,7 +2814,13 @@
         {
           "do": "sound",
           "sound": "compass",
-          "caption": "[Die Nadel der Bussole dreht sich nach Südosten und bleibt stehen]",
+          "caption": "[Die Nadel ruckt]",
+          "delay": 1.5
+        },
+        {
+          "do": "cue",
+          "id": "bussole:jolt",
+          "data": { "bearing": 135, "hold": 7 },
           "delay": 1.5
         },
         {

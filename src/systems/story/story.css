@@ -340,6 +340,70 @@ body.kq-in-combat .kqs-dlg-body::before {
   pointer-events: none;
 }
 
+/* story cues on the Bussole: the case jumps, the lid springs open, a page rises out of it */
+.kqs-bussole.kqs-jolt svg {
+  animation: kqs-b-jolt 0.7s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes kqs-b-jolt {
+  0% { transform: none; }
+  12% { transform: translate(-5px, -7px) rotate(-11deg) scale(1.08); }
+  30% { transform: translate(4px, 2px) rotate(8deg); }
+  50% { transform: translate(-2px, -1px) rotate(-4deg); }
+  72% { transform: rotate(2deg); }
+  100% { transform: none; }
+}
+.kqs-b-lid,
+.kqs-b-page {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+.kqs-b-lid {
+  inset: 10px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255, 246, 214, 0.55), transparent 38%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(60, 40, 18, 0.35) 0 1px, transparent 1px 5px),
+    radial-gradient(circle, #d6ad5c 0%, #a87a2c 62%, #5c3f17 100%);
+  border: 2px solid #2a2118;
+  transform-origin: 50% 0%;
+}
+.kqs-b-page {
+  left: 30%;
+  right: 30%;
+  top: 34%;
+  height: 34%;
+  background: linear-gradient(180deg, #f3e6c4, #d9c28e);
+  border: 1px solid #6b5530;
+  box-shadow: 0 0 14px rgba(255, 214, 140, 0.8);
+}
+.kqs-b-page::before {
+  content: '';
+  position: absolute;
+  inset: 18% 14%;
+  background: repeating-linear-gradient(180deg, rgba(70, 50, 25, 0.55) 0 1px, transparent 1px 5px);
+}
+.kqs-bussole.kqs-open .kqs-b-lid {
+  animation: kqs-b-lid 4.5s ease-out forwards;
+}
+.kqs-bussole.kqs-open .kqs-b-page {
+  animation: kqs-b-page 4.5s ease-out forwards;
+}
+@keyframes kqs-b-lid {
+  0% { opacity: 1; transform: perspective(240px) rotateX(0deg); }
+  8% { opacity: 1; transform: perspective(240px) rotateX(-128deg); }
+  14% { transform: perspective(240px) rotateX(-104deg); }
+  20% { transform: perspective(240px) rotateX(-112deg); }
+  86% { opacity: 1; transform: perspective(240px) rotateX(-112deg); }
+  100% { opacity: 0; transform: perspective(240px) rotateX(0deg); }
+}
+@keyframes kqs-b-page {
+  0%, 12% { opacity: 0; transform: translateY(0) scale(0.6); }
+  30% { opacity: 1; transform: translateY(-58px) scale(1.25) rotate(-4deg); }
+  70% { opacity: 1; transform: translateY(-78px) scale(1.5) rotate(3deg); }
+  100% { opacity: 0; transform: translateY(-120px) scale(1.7) rotate(6deg); }
+}
+
 /* ---------- title card / curtain ---------- */
 .kqs-card {
   position: absolute;
@@ -1221,7 +1285,8 @@ body.kq-in-combat .kqs-dlg-body::before {
 .kqs-reduced .kqs-portrait *,
 .kqs-reduced .kqs-dlg,
 .kqs-reduced .kqs-card,
-.kqs-reduced .kqs-card-rule {
+.kqs-reduced .kqs-card-rule,
+.kqs-reduced .kqs-bussole.kqs-jolt svg {
   animation: none !important;
   transition-duration: 0.01s !important;
 }
@@ -1585,3 +1650,18 @@ body:has(.kqs-vig) .kq-hud {
 }
 html[data-kq-reduced-motion] .kqs-stage-bar { animation: none; height: 9vh; }
 html[data-kq-reduced-motion] .kqs-stage-era.on { animation: none; opacity: 1; }
+
+/* reduced motion: the lid and the page fade instead of flying */
+.kqs-reduced .kqs-bussole.kqs-open .kqs-b-lid {
+  animation: kqs-b-fade 4.5s linear forwards;
+  transform: perspective(240px) rotateX(-112deg);
+}
+.kqs-reduced .kqs-bussole.kqs-open .kqs-b-page {
+  animation: kqs-b-fade 4.5s linear forwards;
+  transform: translateY(-70px) scale(1.4);
+}
+@keyframes kqs-b-fade {
+  0% { opacity: 0; }
+  15%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}

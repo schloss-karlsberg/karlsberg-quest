@@ -231,7 +231,7 @@ const dialogue = [
   say('soll.k1.02', 'soll', 'Matthes, Steinhauer, Galerieflügel. Lohnrest: angewiesen. Nicht ausgezahlt. Das ist ein großer Unterschied, mein Herr, meine Dame, mein … Sie. Angewiesen heißt, dass jemand will. Ausgezahlt heißt, dass jemand kann.', talk('soll', 'matthes')),
   ...seq(talk('soll', 'warum'), [
     ['soll.k1.03', 'soll', 'Weil die Kasse leer ist. Alle Kassen. Auch die der Witwen und Waisen. Die hat der Herr Präsident Creuzer geleert, um Bilder und Vögel zu kaufen, und als das nicht reichte, hat er die einen mit Versprechungen bezahlt.', [P('S. 377')]],
-    ['soll.k1.04', 'soll', 'Und dann ist er bei Nacht verreist. Vorher hat er ein paar Stöße Papier verbrannt und beinahe das Haus angesteckt. Andere hat er in sichere Hände gegeben. (Er sieht auf seine eigenen Hände.) Welche Hände, steht nirgends.', [P('S. 396 f.')]],
+    ['soll.k1.04', 'soll', 'Und dann ist er bei Nacht verreist. Vorher hat er ein paar Stöße Papier verbrannt und beinahe das Haus angesteckt. Andere hat er in sichere Hände gegeben. Welche Hände, steht nirgends.', [P('S. 396 f.')]],
   ], { once: false }),
   say('soll.k1.05', 'soll', 'Der Herr Minister fährt auch nicht hinauf. Der wird gefahren. Das ist etwas völlig anderes.', talk('soll', 'minister')),
   say('soll.k1.06', 'soll', 'Nicht anfassen. Die Große ist noch nicht fertig.', found('clue.k1.rechenbrett')),

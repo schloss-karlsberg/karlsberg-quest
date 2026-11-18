@@ -232,7 +232,8 @@
       "exit": [
         { "do": "prompt", "key": null, "text": null },
         { "do": "grant", "clue": "clue.p.orangeriemauer", "card": true },
-        { "do": "sound", "sound": "compass", "caption": "[Die Bussole zittert in deiner Tasche]", "delay": 0.8 },
+        { "do": "sound", "sound": "compass", "caption": "[Die Bussole zittert]", "delay": 0.8 },
+        { "do": "cue", "id": "bussole:jolt", "data": { "hold": 2.5 }, "delay": 0.8 },
         { "do": "flag", "set": { "story.laub": true, "laub.silent": null } },
         { "do": "say", "line": "laub.p.intro", "delay": 1.6, "ms": 3800 },
         { "do": "say", "line": "laub.p.intro.b" },
@@ -347,7 +348,7 @@
           "id": "nebel",
           "when": { "have": { "clue": "clue.p.eiskeller" } },
           "do": [
-            { "do": "sound", "sound": "compass", "caption": "[Aus der Grube steigt Nebel. Er hat Augen.]", "delay": 1.2 },
+            { "do": "sound", "sound": "compass", "caption": "[Zischen aus der Grube]", "delay": 1.2 },
             {
               "do": "say",
               "id": "laub.p.nebel",
@@ -394,9 +395,10 @@
         {
           "do": "sound",
           "sound": "compass",
-          "caption": "[Der Deckel der Bussole springt auf. Darin liegt eine Seite, die vorher nicht da war.]",
+          "caption": "[Der Deckel springt auf]",
           "delay": 0.6
         },
+        { "do": "cue", "id": "bussole:open" },
         { "do": "grant", "clue": "clue.p.seite_eins", "card": true, "delay": 1.2 },
         { "do": "item", "item": "item.p.seite" }
       ],
@@ -415,7 +417,8 @@
       "complete": { "timer": 6 },
       "exit": [
         { "do": "prompt", "key": null, "text": null },
-        { "do": "sound", "sound": "compass", "caption": "[Die Nadel der Bussole schwingt herum und bleibt auf dem Ehrenhof stehen]" },
+        { "do": "sound", "sound": "compass", "caption": "[Die Nadel schwingt herum]" },
+        { "do": "cue", "id": "bussole:jolt", "data": { "x": 1218, "z": -1118, "hold": 7 } },
         { "do": "say", "line": "laub.p.regeln", "delay": 0.8 },
         { "do": "say", "line": "laub.p.regeln.b" },
         { "do": "say", "line": "laub.p.regeln.c" },
@@ -481,7 +484,7 @@
           },
           "do": [
             { "do": "flag", "set": { "barks.quiet": null, "story.p.heulen": true } },
-            { "do": "sound", "sound": "howl", "x": 1185, "z": -1112, "caption": "[Ganz nah, am Westrand des Hofs: ein Knurren]" },
+            { "do": "sound", "sound": "howl", "x": 1185, "z": -1112, "caption": "[Knurren, ganz nah]" },
             {
               "do": "say",
               "id": "laub.p.streuner",
@@ -499,6 +502,7 @@
           "do": [
             { "do": "prompt", "key": "Q", "text": "halten: zurück ins Heute", "delay": 1.2 },
             { "do": "sound", "sound": "compass", "caption": "[Die Bussole ruckt]" },
+            { "do": "cue", "id": "bussole:jolt", "data": { "hold": 2 } },
             { "do": "say", "line": "laub.p.zurueck", "ms": 3000 }
           ]
         },
@@ -611,7 +615,8 @@
           "delay": 0.8,
           "ms": 7500
         },
-        { "do": "sound", "sound": "frost", "caption": "[Am Fenster knistert Reif. Draußen hat es acht Grad.]", "delay": 1.5 },
+        { "do": "sound", "sound": "frost", "caption": "[Reif knistert]", "delay": 1.5 },
+        { "do": "cue", "id": "frost-breath", "data": { "s": 9 }, "delay": 1.5 },
         {
           "do": "sound",
           "sound": "horn",

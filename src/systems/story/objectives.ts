@@ -47,6 +47,13 @@ export class ObjectiveView {
   private needleVel = 0;
   private glow = 0;
   private wobbleT = 0;
+  /** A story cue on the Bussole (`bussole:jolt` / `bussole:tick` / `bussole:open`): seconds left. */
+  private cueLeft = 0;
+  private cueGoal: { x: number; z: number } | null = null;
+  private cueBearing: number | null = null;
+  private cueTick = 0;
+  private tickAcc = 0;
+  private flare = 0;
 
   constructor(
     parent: HTMLElement,
@@ -81,6 +88,51 @@ export class ObjectiveView {
     if (o.x === undefined) this.hud.setMarker('objective', null);
   }
 
+  /**
+   * What the old captions told ("[Die Nadel der Bussole schwingt herum und bleibt auf dem Ehrenhof
+   * stehen]", "[Die Bussole ruckt]", "[Der Deckel springt auf …]") happens on the brass compass:
+   *  bussole:jolt {x?,z?,hold?}  the needle is flung round, the case jumps, it glows; with x/z the
+   *                              needle settles on that place for `hold` s (default 5)
+   *  bussole:tick {hold?}        the needle ticks backwards, step by step
+   *  bussole:open                the lid springs open and a page rises out of it
+   * The Bussole shows for the cue even before the story turned it on. Reduced motion: no jump.
+   */
+  cue(id: string, d: Record<string, unknown>, reducedMotion: boolean): void {
+    const num = (k: string, def: number) => (typeof d[k] === 'number' ? (d[k] as number) : def);
+    if (id === 'bussole:jolt') {
+      this.cueLeft = num('hold', 5);
+      this.cueGoal = typeof d['x'] === 'number' && typeof d['z'] === 'number' ? { x: d['x'] as number, z: d['z'] as number } : null;
+      this.cueBearing = typeof d['bearing'] === 'number' ? (d['bearing'] as number) : null;
+      this.cueTick = 0;
+      if (!reducedMotion) this.needleVel += 900;
+      this.flare = 1;
+      this.retrigger('kqs-jolt');
+    } else if (id === 'bussole:tick') {
+      this.cueLeft = num('hold', 4);
+      this.cueGoal = null;
+      this.cueBearing = null;
+      this.cueTick = 1;
+      this.tickAcc = 0;
+      this.flare = 0.6;
+    } else if (id === 'bussole:open') {
+      this.cueLeft = Math.max(this.cueLeft, 4.5);
+      this.flare = 1;
+      let lid = this.bussole.querySelector<HTMLElement>('.kqs-b-lid');
+      if (!lid) {
+        lid = h('div.kqs-b-lid', { 'data-testid': 'bussole-lid' });
+        const page = h('div.kqs-b-page', { 'data-testid': 'bussole-page' });
+        this.bussole.append(page, lid);
+      }
+      this.retrigger('kqs-open');
+    }
+  }
+
+  private retrigger(cls: string): void {
+    this.bussole.classList.remove(cls);
+    void this.bussole.offsetWidth;
+    this.bussole.classList.add(cls);
+  }
+
   get current(): ObjectiveState | null {
     return this.obj;
   }
@@ -88,7 +140,10 @@ export class ObjectiveView {
   /** Per frame. heading = view heading (deg, clockwise from north). */
   frame(dt: number, px: number, pz: number, heading: number, opts: { compass: boolean; visible: boolean; reducedMotion: boolean; questLed?: boolean; questTarget?: { x: number; z: number } | null }): void {
     this.el.style.display = opts.visible ? '' : 'none';
-    this.bussole.classList.toggle('kqs-show', opts.compass && opts.visible);
+    const cueing = this.cueLeft > 0;
+    if (cueing) this.cueLeft -= dt;
+    else if (this.bussole.classList.contains('kqs-open') || this.bussole.classList.contains('kqs-jolt')) this.bussole.classList.remove('kqs-open', 'kqs-jolt');
+    this.bussole.classList.toggle('kqs-show', (opts.compass || cueing) && opts.visible);
     const o = this.obj;
     // one "what to do" line: while the quest tracker leads with a main quest, the story's own line
     // (and its compass mark) steps back, unless it tells the way through time (Q)
@@ -108,12 +163,24 @@ export class ObjectiveView {
       this.distEl.textContent = d < 8 ? '' : ` · ${d < 1000 ? `${Math.round(d / 5) * 5} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`}`;
       target = angleDiff(b, heading);
     } else this.distEl.textContent = '';
-    if (!opts.compass) return;
+    if (!opts.compass && !cueing) return;
+    // a cue's place leads the needle while it lasts
+    if (cueing && this.cueGoal) target = angleDiff(bearingDeg(px, pz, this.cueGoal.x, this.cueGoal.z), heading);
+    else if (cueing && this.cueBearing !== null) target = angleDiff(this.cueBearing, heading);
     // the needle: a damped spring towards the target (idle: restless drift, it never points north)
     this.wobbleT += dt;
     const goal = target ?? Math.sin(this.wobbleT * 0.37) * 70 + Math.sin(this.wobbleT * 1.3) * 12;
     const err = angleDiff(goal, this.needleAngle);
-    if (opts.reducedMotion) {
+    this.flare = Math.max(0, this.flare - dt * 0.6);
+    if (cueing && this.cueTick) {
+      // ticking backwards: a jump of 7.5° every quarter second, no spring
+      this.tickAcc += dt;
+      while (this.tickAcc >= 0.25) {
+        this.tickAcc -= 0.25;
+        this.needleAngle -= 7.5;
+      }
+      this.needleVel = 0;
+    } else if (opts.reducedMotion) {
       this.needleAngle = goal;
       this.needleVel = 0;
     } else {
@@ -128,6 +195,6 @@ export class ObjectiveView {
     this.needle.setAttribute('transform', `rotate(${this.needleAngle.toFixed(2)} 50 50)`);
     const aligned = target === null ? 0 : Math.max(0, 1 - Math.abs(target) / 25);
     this.glow += (aligned - this.glow) * Math.min(1, dt * 4);
-    this.bussole.style.setProperty('--glow', this.glow.toFixed(3));
+    this.bussole.style.setProperty('--glow', Math.max(this.glow, this.flare).toFixed(3));
   }
 }

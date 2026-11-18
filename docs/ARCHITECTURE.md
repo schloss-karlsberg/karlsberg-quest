@@ -369,7 +369,8 @@ hunt, fx ──player:caught──▶ story (curtain, threats off, instant retur
                             a non-boss catch wakes at the nearest surveyed point when 60 m nearer)
 hunt ──hunt:alert {state:'chasing'}──▶ combat (running costs Atem at half rate: `SimInput.hunted`)
 chronik ──echo:start / echo:line / echo:end──▶ fx/stage (staged memories: the rewind, 1840, the Kabinett door, the departure)
-story ──story:cue 'k2-frost' / 'k2-thaw' / 'k2-candle' / 'k4-quader' / 'end-prints' / 'stage-off'──▶ fx/stage
+story ──story:cue 'k2-frost' / 'k2-thaw' / 'k2-candle' / 'k4-quader' / 'end-prints' / 'k1-papers' / 'frost-breath' / 'stage-off'──▶ fx/stage
+story ──story:cue 'bussole:jolt {x,z|bearing,hold}' / 'bussole:tick {hold}' / 'bussole:open'──▶ story ObjectiveView (the HUD Bussole)
 story ──story:cue 'hunt:tableau' {kind: lie|eyes|rest|off}──▶ hunt (W8: the pack lies down; the endings)
 story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
 story (hub Pinnwand) ──chronik:open──▶ quests (opens the Journal; the Chronik board is gone)
@@ -578,7 +579,9 @@ Round-4 (polish: set dressing) integration rules:
   `clue.k2.abschied` → `k2-door`, `clue.k2.fackeln` → `k2-abfahrt`, `clue.k2.landremont` →
   `k2-reiter`, which runs its own course), timed by `echo:line` and ended
   by `echo:end`, or by story cues (`k2-frost {on}`, `k2-thaw`, `k2-candle {x, z, y?}`,
-  `k4-quader {x, z}`, `end-prints {x, z, n, r, ring}`, `stage-off {id?}`); a shift takes the
+  `k4-quader {x, z}`, `end-prints {x, z, n, r, ring}`, `k1-papers {tx, tz}` (the Registratur's
+  reminders whirl up and stream out), `frost-breath {s}` (a passing frost on the compass and the
+  view's edges, thawing after s), `stage-off {id?}`); a shift takes the
   world-placed ones down, a load all of them. The echo stagings (`registerEchoStagings`) go into
   the Chronik's registry (`chronik/staging.ts`). Shared bits in `common.ts` (instanced solid
   material with fog, `GlowPoints`, `GradeLoan` for a temporary grade). `end-memories.ts` is used by

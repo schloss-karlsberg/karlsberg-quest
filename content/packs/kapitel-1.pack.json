@@ -1009,7 +1009,7 @@
     {
       "id": "soll.k1.04",
       "speaker": "soll",
-      "text_de": "Und dann ist er bei Nacht verreist. Vorher hat er ein paar Stöße Papier verbrannt und beinahe das Haus angesteckt. Andere hat er in sichere Hände gegeben. (Er sieht auf seine eigenen Hände.) Welche Hände, steht nirgends.",
+      "text_de": "Und dann ist er bei Nacht verreist. Vorher hat er ein paar Stöße Papier verbrannt und beinahe das Haus angesteckt. Andere hat er in sichere Hände gegeben. Welche Hände, steht nirgends.",
       "trigger": {
         "event": "npc:talk",
         "npc": "soll",

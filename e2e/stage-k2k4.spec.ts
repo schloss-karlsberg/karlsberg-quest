@@ -412,4 +412,52 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
     await shot(page, 'ende-keep-abdruecke');
     expect(errors).toEqual([]);
   });
+  test('Bussole cues (lid, needle, ticking) and the Registratur papers; the passing frost', async ({ page }) => {
+    const errors = trackErrors(page);
+    await place(page, 'today', 760, -902, 0, 0);
+    const cue = (id: string, data: Record<string, unknown> = {}) =>
+      page.evaluate(({ id, data }) => window.kq!.ctx.events.emit('story:cue', { id, data } as never), { id, data });
+    // the lid springs open and a page rises out of it (the Bussole shows for the cue)
+    await cue('bussole:open');
+    await page.evaluate(() => window.kq!.step(2));
+    await page.waitForTimeout(1300);
+    await expect(page.getByTestId('bussole')).toHaveClass(/kqs-open/);
+    await expect(page.getByTestId('bussole-page')).toBeVisible();
+    // the lid and the page run on CSS time: hold them at 1.6 s (the slow renderer's shot takes longer)
+    await page.evaluate(() => {
+      for (const a of document.getAnimations()) {
+        const t = (a.effect as KeyframeEffect | null)?.target as Element | null;
+        if (t?.closest('[data-testid="bussole"]')) {
+          a.pause();
+          a.currentTime = 1600;
+        }
+      }
+    });
+    await shot(page, 'bussole-deckel');
+    await page.evaluate(() => document.getAnimations().forEach((a) => a.play()));
+    // the needle is flung round and settles on the Ehrenhof
+    await cue('bussole:jolt', { x: 1218, z: -1118, hold: 6 });
+    await page.evaluate(() => window.kq!.step(40));
+    await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);
+    // the passing frost: on the glass and the edges of the view, thawing on its own
+    await cue('frost-breath', { s: 6 });
+    await page.evaluate(() => (window.kq as Any).stage.advance(4.5));
+    await expect(page.getByTestId('frost-glass')).toBeVisible();
+    await shot(page, 'reif');
+    await page.evaluate(() => (window.kq as Any).stage.advance(8));
+    // the reminders whirl up off the desk and stream out towards the courtyard
+    await place(page, '1789', 1218, -1100, 0, 4);
+    await cue('k1-papers', { tx: 1212, tz: -1180 });
+    expect(await page.evaluate(() => (window.kq as Any).stage.active())).toContain('k1-papers');
+    await page.evaluate(() => (window.kq as Any).stage.advance(1.3));
+    await page.evaluate(() => (window.kq as Any).stage.hold(true));
+    await shot(page, 'k1-papiere');
+    await page.evaluate(() => (window.kq as Any).stage.hold(false));
+    await page.evaluate(() => {
+      (window.kq as Any).stage.advance(5);
+      window.kq!.step(2);
+    });
+    expect(await page.evaluate(() => (window.kq as Any).stage.active())).not.toContain('k1-papers');
+    expect(errors).toEqual([]);
+  });
 });
