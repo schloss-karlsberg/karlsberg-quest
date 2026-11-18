@@ -124,7 +124,8 @@ test('first 60 seconds: in control at once, a first fight before a minute is up,
   // player watching, a frame batch at a time with real time in between
   const samples: string[][] = [];
   const shots = new Set<string>();
-  for (let i = 0; i < 110; i++) {
+  // (a spoken line holds slide-in cards up to SOFT_MAX s, so reward and skill may come in either order)
+  for (let i = 0; i < 300 && (i < 110 || !samples.some((x) => x.includes('reward'))); i++) {
     samples.push(
       await page.evaluate((CARDS) => {
         const k = window.kq!;
