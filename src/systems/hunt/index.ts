@@ -912,6 +912,12 @@ class Hunt {
     this.nudgeT = 1.4;
     this.passShook = false;
     this.passNearest = Infinity;
+    // hold the card queue before the story hears of it: the clue page granted on hunt:release
+    // must not open over the breakout (a page on screen also stops the pack where it stands)
+    if (!this.breakoutBusy) {
+      this.breakoutBusy = true;
+      ctx.ui.hud.busy('stage-kennel', true, 0);
+    }
     ctx.events.emit('hunt:release', { x: p.x, z: p.z, by });
   }
 

@@ -854,10 +854,11 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
       k.step(10);
     }
     const g = k.hunt.kennel();
-    // the gate answers from 3 to 7.5 m: step in to 5 m if the walk stopped short
+    // the gate answers from 3 to 7.5 m: if the walk stopped beyond that, one step in (not further:
+    // the hounds' way out passes a few metres from where the player stands)
     const p = k.ctx.player.position;
     const d = Math.hypot(p.x - g.x, p.z - g.z);
-    if (d > 6.5 || d < 3.5) k.teleport(g.x + ((p.x - g.x) / (d || 1)) * 5, g.z + ((p.z - g.z) / (d || 1)) * 5);
+    if (d > 7.4) k.teleport(g.x + ((p.x - g.x) / d) * 7, g.z + ((p.z - g.z) / d) * 7);
     h.look(g.x, g.z - 1, 2);
     k.step(4);
     const q = k.ctx.player.position;
