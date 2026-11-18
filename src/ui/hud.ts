@@ -2,6 +2,8 @@ import { t } from '../i18n';
 import { EYE_SVG, h, svg } from './dom';
 
 const PX_PER_DEG = 3.2;
+/** Pixels kept free between the top-left column and the bottom-left zone (vitals). */
+const ZONE_GAP = 18;
 
 export type HudDockArea = 'vitals' | 'boss' | 'feed';
 
@@ -47,6 +49,41 @@ export class Hud {
   tickCalm(dt: number): void {
     this.calmClock += dt;
     for (const [k, v] of this.action) if (v !== Infinity && v <= this.calmClock) this.action.delete(k);
+    this.applyMode();
+  }
+
+  /** Re-fit the zones (set once the observers exist). */
+  private fit: (() => void) | null = null;
+  private mode = '';
+
+  /**
+   * The HUD's mode for the zone CSS (`data-kq-mode` on `.kq-hud`): 'combat' while a fight is on
+   * (or just ended) — the tracker shows only the tracked quest and its next goal; 'staged' while a
+   * boss reveal or a climax plays — the tracker and the feed step back, edge markers go.
+   */
+  private applyMode(): void {
+    const m = this.staged ? 'staged' : this.acting('combat') ? 'combat' : '';
+    if (m === this.mode) return;
+    this.mode = m;
+    if (m) this.el.dataset.kqMode = m;
+    else delete this.el.dataset.kqMode;
+    this.fit?.();
+  }
+
+  /** Top edge (px) of the bottom-left zone: the vitals dock, or the oil gauge / stance below it. */
+  private bottomLeftTop(): number {
+    const H = window.innerHeight;
+    let top = H - 122;
+    const v = this.docks.vitals;
+    if (v.childElementCount > 0) {
+      const r = v.getBoundingClientRect();
+      if (r.height > 0) top = Math.min(top, r.top);
+    }
+    if (!this.oilEl.classList.contains('kq-hidden')) {
+      const r = this.oilEl.getBoundingClientRect();
+      if (r.height > 0) top = Math.min(top, r.top);
+    }
+    return top;
   }
 
   /** One reason is on (or lingering): e.g. 'combat' while a fight is engaged. */
@@ -59,6 +96,15 @@ export class Hud {
   /** Something action-heavy is on (or just ended): keep the centre of the screen clear. */
   get inAction(): boolean {
     return this.action.size > 0;
+  }
+
+  /**
+   * A boss reveal or a staged climax holds the screen (reasons 'reveal', 'stage', 'stage-…'):
+   * edge markers (attacker arrows, sound arrows) keep out of the picture while it plays.
+   */
+  get staged(): boolean {
+    for (const k of this.action.keys()) if ((k === 'reveal' || k === 'stage' || k.startsWith('stage-')) && this.acting(k)) return true;
+    return false;
   }
 
   constructor() {
@@ -121,11 +167,18 @@ export class Hud {
         });
       };
       const fitNow = () => {
-        const v = this.docks.vitals;
-        const top = v.childElementCount > 0 ? v.getBoundingClientRect().top : window.innerHeight - 122;
-        this.tl.style.maxHeight = `${Math.max(120, Math.round(top - 12 - 14))}px`;
+        // zones (round 6, docs/ACTION-RPG.md §10): the top-left column ends a gap above the
+        // bottom-left zone (vitals, Bannlicht, abilities, level, quick slot — and the oil gauge
+        // under them); too little room → the tracker goes compact (titles and the next goal),
+        // only then is the column cut, with a fade
+        const top = this.bottomLeftTop();
+        const tlTop = this.tl.getBoundingClientRect().top || 12;
+        this.tl.style.maxHeight = `${Math.max(80, Math.round(top - ZONE_GAP - tlTop))}px`;
+        this.tl.classList.remove('kq-tl-tight');
+        if (this.tl.scrollHeight > this.tl.clientHeight + 1) this.tl.classList.add('kq-tl-tight');
         this.tl.classList.toggle('kq-tl-clipped', this.tl.scrollHeight > this.tl.clientHeight + 1);
       };
+      this.fit = fit;
       const ro = new ResizeObserver(fit);
       ro.observe(this.docks.vitals);
       ro.observe(this.tl);

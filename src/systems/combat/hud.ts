@@ -89,16 +89,17 @@ html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1p
 .kqc-tell span.boss { border-left-color: #ffd36a; font-size: calc(21px * var(--sub-scale, 1)); }
 .kqc-tell span.info { border-left-color: #a9d2ee; }
 .kqc-tell span.gone { opacity: 0; }
-.kqc-num { position: absolute; font-family: var(--hand); font-size: 26px; font-weight: 700; color: #fff0d0; transform: translate(-50%, -50%);
+.kqc-num { position: absolute; font-family: var(--hand); font-size: clamp(16px, 3.2vh, 25px); font-weight: 700; color: #fff0d0; transform: translate(-50%, -50%);
   text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 8px rgba(0,0,0,0.6); white-space: nowrap; }
-.kqc-num.heavy { font-size: 34px; color: #ffd27a; }
+/* round 6: sizes are capped (a merged heavy blow was 38 px — it hid the target); they sit beside the body */
+.kqc-num.heavy { font-size: clamp(18px, 3.8vh, 29px); color: #ffd27a; }
 .kqc-num.weak { color: #ffe58a; }
-.kqc-num.armored { color: #c9c2b4; font-size: 21px; }
-.kqc-num.player { color: #ffb08a; font-size: 24px; }
-.kqc-num.heal { color: #cfe9ff; font-size: 22px; }
-.kqc-num.merged { font-size: 31px; }
-.kqc-num.heavy.merged { font-size: 38px; }
-.kqc-vnum { transform: translate(0, -50%); font-size: 22px; }
+.kqc-num.armored { color: #c9c2b4; font-size: clamp(15px, 2.8vh, 20px); }
+.kqc-num.player { color: #ffb08a; font-size: clamp(16px, 3.2vh, 24px); }
+.kqc-num.heal { color: #cfe9ff; font-size: clamp(15px, 3vh, 22px); }
+.kqc-num.merged { font-size: clamp(17px, 3.5vh, 27px); }
+.kqc-num.heavy.merged { font-size: clamp(18px, 3.8vh, 29px); }
+.kqc-vnum { transform: translate(0, -50%); font-size: clamp(16px, 3vh, 22px); }
 .kqc-vnum.player { color: #ff7a5c; }
 .kqc-num.immune { font-size: 20px; color: #bfe6ff; }
 .kqc-pips { position: absolute; transform: translate(-50%, -100%); transform-origin: 50% 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -110,7 +111,7 @@ html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1p
 .kqc-pips.elite .bar { width: 64px; height: 7px; box-shadow: 0 0 0 1px rgba(255,190,110,0.85), 0 0 6px rgba(255,140,60,0.45); }
 .kqc-pips.finish .bar { box-shadow: 0 0 0 1px #fff, 0 0 8px rgba(255,255,255,0.8); }
 .kqc-pips .tag.finish { color: #1a1008; background: #fff3dc; border-color: #fff; }
-.kqc-title { position: absolute; left: 50%; top: 80%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; opacity: 0;
+.kqc-title { position: absolute; left: 50%; top: 71%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; opacity: 0;
   transition: opacity 0.45s ease-out, transform 2.6s ease-out; white-space: nowrap; }
 .kqc-title.show { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
 .kqc-title .t { font-family: var(--sc); font-size: 54px; letter-spacing: 0.16em; color: #f6e7c4; text-transform: uppercase;
@@ -157,6 +158,45 @@ interface FloatNum {
   cls?: string;
   /** Screen-space number beside the vitals (incoming damage, heals): x/y are pixels. */
   screen?: boolean;
+  /** The target's body (half width, top and base heights, m): the number keeps beside it. */
+  span?: NumberSpan;
+}
+
+/** The body a floating number keeps clear of. */
+export interface NumberSpan {
+  /** Half width (m). */
+  r: number;
+  /** World y of its crown and its base. */
+  top: number;
+  base: number;
+}
+
+/**
+ * Where a floating number goes on screen (round 6: "the numbers covered the target"): beside the
+ * target's projected body — the side its drift picked — never on it, inside the screen, below the
+ * boss bar. `cx`, `cy` is the projected hit point, `half` the body's projected half width (px),
+ * `topY` / `baseY` its projected crown and base. Pure (unit-tested).
+ */
+export function placeNumber(o: { cx: number; cy: number; half: number; topY: number; baseY: number; side: number; t: number; lift: number; W: number; H: number; floor: number; w?: number }): { x: number; y: number } {
+  const w = o.w ?? 40;
+  const gap = 12 + w * 0.5;
+  const side = o.side >= 0 ? 1 : -1;
+  let x = o.cx + side * (o.half + gap + 10 * o.t);
+  // off the screen's edge: the other side, and if the body fills the view, above its crown
+  const margin = w * 0.5 + 8;
+  let y = o.cy - o.lift;
+  if (x > o.W - margin || x < margin) {
+    const alt = o.cx - side * (o.half + gap + 10 * o.t);
+    if (alt <= o.W - margin && alt >= margin) x = alt;
+    else {
+      x = Math.max(margin, Math.min(o.W - margin, o.cx + side * 24));
+      y = Math.min(y, o.topY - 22 - o.lift);
+      // a crown above the screen: the number keeps to the top band below the boss bar
+      if (y < o.floor) y = Math.min(o.floor + 6, o.baseY + 24);
+    }
+  }
+  y = Math.max(o.floor, Math.min(o.H - 60, y));
+  return { x, y };
 }
 
 /** Hits on one target within this time show as one number (a clump of digits read as noise). */
@@ -231,6 +271,9 @@ export class CombatHud {
   private titleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly arrows = new Map<string, { el: HTMLElement; life: number }>();
   private vig = 0;
+  private side = 1;
+  /** A reveal / staged climax is on (last frame): no edge arrows. */
+  private stagedNow = false;
   private bossKey = '';
   private deniedT = 0;
   readonly skillsEl: HTMLElement;
@@ -444,7 +487,7 @@ export class CombatHud {
   }
 
   /** A floating number at a world point. */
-  number(text: string, x: number, y: number, z: number, cls = '', key?: string): void {
+  number(text: string, x: number, y: number, z: number, cls = '', key?: string, span?: NumberSpan): void {
     const v = Number(text);
     if (key && Number.isFinite(v)) {
       const n = this.nums.find((q) => q.key === key && q.age < MERGE_S);
@@ -459,7 +502,9 @@ export class CombatHud {
     }
     const e = el('div', `kqc-num ${cls}`, text);
     this.layer.append(e);
-    this.nums.push({ el: e, x, y, z, age: 0, life: cls.includes('heavy') ? 1.1 : 0.85, dx: (Math.random() - 0.5) * 30, key, value: Number.isFinite(v) ? v : undefined, cls });
+    // alternate sides per target so two quick numbers do not sit on each other
+    this.side = -this.side;
+    this.nums.push({ el: e, x, y, z, age: 0, life: cls.includes('heavy') ? 1.1 : 0.85, dx: this.side * (6 + Math.random() * 10), key, value: Number.isFinite(v) ? v : undefined, cls, span });
     while (this.nums.length > 24) this.nums.shift()?.el.remove();
   }
 
@@ -490,6 +535,7 @@ export class CombatHud {
 
   /** Off-screen attacker arrow at the screen edge (bearing relative to the view, radians, + = right). */
   arrow(id: string, rel: number): void {
+    if (this.stagedNow) return;
     let a = this.arrows.get(id);
     if (!a) {
       const e = el('div', 'kqc-arrow');
@@ -512,10 +558,11 @@ export class CombatHud {
     a.el.style.transform = `rotate(${rel}rad)`;
   }
 
-  frame(o: { dt: number; camera: PerspectiveCamera; reducedFlash: boolean; reducedMotion: boolean; lowHp: number; pips: PipTarget[]; dazzle?: number }): void {
+  frame(o: { dt: number; camera: PerspectiveCamera; reducedFlash: boolean; reducedMotion: boolean; lowHp: number; pips: PipTarget[]; dazzle?: number; staged?: boolean }): void {
     const W = window.innerWidth;
     const H = window.innerHeight;
     const cam = o.camera;
+    this.stagedNow = o.staged === true;
     const project = (x: number, y: number, z: number): { x: number; y: number; ok: boolean } => {
       _v.set(x, y, z).project(cam);
       return { x: (_v.x * 0.5 + 0.5) * W, y: (-_v.y * 0.5 + 0.5) * H, ok: _v.z < 1 && _v.z > -1 && Math.abs(_v.x) < 1.2 && Math.abs(_v.y) < 1.2 };
@@ -532,11 +579,26 @@ export class CombatHud {
       }
       const p = n.screen ? { x: n.x, y: n.y, ok: true } : project(n.x, n.y, n.z);
       n.el.style.display = p.ok ? '' : 'none';
-      const lift = o.reducedMotion ? 0 : (n.screen ? 22 : 40) * t;
+      const lift = o.reducedMotion ? 0 : (n.screen ? 22 : 30) * t;
       // never on the boss bar: outgoing numbers stay below its bottom edge
-      const floor = !n.screen && this.bossEl.style.display !== 'none' ? this.bossEl.getBoundingClientRect().bottom + 22 : 0;
-      n.el.style.left = `${p.x + n.dx * t}px`;
-      n.el.style.top = `${Math.max(floor, p.y - lift)}px`;
+      const floor = !n.screen && this.bossEl.style.display !== 'none' ? this.bossEl.getBoundingClientRect().bottom + 22 : 24;
+      if (n.screen || !p.ok) {
+        n.el.style.left = `${p.x + n.dx * t}px`;
+        n.el.style.top = `${Math.max(floor, p.y - lift)}px`;
+      } else {
+        // beside the body, not on it (round 6): its projected half width from the camera distance
+        _v.set(n.x, n.y, n.z).applyMatrix4(cam.matrixWorldInverse);
+        const depth = Math.max(0.3, -_v.z);
+        const focal = H / (2 * Math.tan((cam.fov * Math.PI) / 360));
+        const span = n.span ?? { r: 0.5, top: n.y + 0.6, base: n.y - 0.8 };
+        const half = (span.r * focal) / depth;
+        const topY = project(n.x, span.top, n.z).y;
+        const baseY = project(n.x, span.base, n.z).y;
+        const w = Math.max(24, n.el.offsetWidth || 40);
+        const q = placeNumber({ cx: p.x, cy: p.y, half, topY, baseY, side: n.dx, t, lift, W, H, floor, w });
+        n.el.style.left = `${q.x}px`;
+        n.el.style.top = `${q.y}px`;
+      }
       n.el.style.opacity = String(t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3);
     }
     // hp pips over enemies
@@ -585,9 +647,9 @@ export class CombatHud {
         e.root.remove();
         this.pipEls.delete(id);
       }
-    // arrows fade
+    // arrows fade; a boss reveal or a staged climax clears them at once (nothing at the frame's edge)
     for (const [id, a] of this.arrows) {
-      a.life -= o.dt;
+      a.life -= o.staged ? 99 : o.dt;
       a.el.style.opacity = String(Math.max(0, Math.min(1, a.life / 0.3)));
       if (a.life <= 0) {
         a.el.remove();

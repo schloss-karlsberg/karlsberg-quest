@@ -1546,7 +1546,7 @@ class Hunt {
     });
     const showGauge = L.lit || L.oil < 0.999 || !!sim || ctx.era.info.night;
     ctx.ui.hud.setLantern(showGauge ? L.oil : null, L.lit);
-    this.overlay.frame({ dt, alert: this.hudAlert, reducedMotion, caught: this.caughtT, handoff: this.storyOwnsCaught(), showArrows: ctx.settings.state.soundIndicators !== false });
+    this.overlay.frame({ dt, alert: this.hudAlert, reducedMotion, caught: this.caughtT, handoff: this.storyOwnsCaught(), showArrows: ctx.settings.state.soundIndicators !== false && !ctx.ui.hud.staged });
   }
 
   /** The Gittertüren, the view easing to the gate on release, a short shake as the pack goes by. */

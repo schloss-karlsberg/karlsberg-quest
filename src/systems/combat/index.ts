@@ -39,7 +39,7 @@ import { CombatHud, type PipTarget, type SkillSlot } from './hud';
 import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay } from './sim';
 import { BOSS_HINT, BOSS_TITLE, TELL } from './strings';
-import { CombatVisuals, type DissolveKind } from './visuals';
+import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
 
 declare module '../../core/state' {
@@ -107,6 +107,8 @@ export interface CombatHooks {
   /** Camera shake trauma (0 = still). */
   shake(): number;
   sim(): CombatSim | null;
+  /** Readability (round 6): how far the camera is pulled out of a big body (m), each enemy's dither (1 = solid). */
+  view(): { pull: number; vis: Record<string, number> };
 }
 
 declare module '../../debug/hooks' {
@@ -167,6 +169,9 @@ class Combat {
   private titleLeft = 0;
   /** Seconds (game time) the boss reveal still holds the dialogue. */
   private revealLeft = 0;
+  /** Smoothed camera pull-back out of a big body (m, visual only). */
+  private clearPull = 0;
+  private readonly clearDir = new Vector3();
 
   constructor(readonly ctx: GameContext) {
     this.audio = new CombatAudio(ctx.audio);
@@ -640,7 +645,7 @@ class Combat {
         if (ev.armored) this.audio.clank(this.posOf(e, 1));
         this.addShake(ev.heavy ? SHAKE.heavy : ev.finisher ? SHAKE.heavy * 0.6 : SHAKE.light);
         // at the body (not above the head: at melee range a boss's head projects onto the boss bar)
-        if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + Math.min(top * 0.6, 1.5), e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`, e.id);
+        if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + Math.min(top * 0.6, 1.5), e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`, e.id, this.numberSpan(e));
         if (ev.weak && e.kind === 'strohmann') this.captionOnce('back', t('combat.back'), 'info', 12);
         // a blow a boss's armour throws back: loud and visible, and after four of them in a row the
         // way in is said out loud (playtest round 5: a masher hit the Steinbrecher's front for 52 s)
@@ -664,7 +669,7 @@ class Combat {
         this.audio.immune(this.posOf(e, 0.5));
         if (this.safe) this.captionOnce('safe', t('combat.safe'), 'info', 8);
         else this.captionOnce('immune', t('combat.immune', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }), 'info', 6, 2600);
-        if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 0.8, e.z, 'immune');
+        if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 0.8, e.z, 'immune', undefined, this.numberSpan(e));
         break;
       }
       case 'immuneHint':
@@ -891,7 +896,7 @@ class Combat {
         this.audio.blocked(this.posOf(e, 1));
         this.viewmodel.jolt();
         this.addShake(SHAKE.light);
-        if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 1.2, e.z, 'armored', e.id);
+        if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 1.2, e.z, 'armored', e.id, this.numberSpan(e));
         this.captionOnce('blocked', t('combat.blocked'), 'info', 8, 2400);
         break;
       }
@@ -958,7 +963,7 @@ class Combat {
         const rel = wrapAngle(ctx.player.yaw - headingOf(ev.x - inp.x, ev.z - inp.z));
         this.captionOnce('wave', t(Math.abs(rel) > 2.1 ? 'combat.wave' : 'combat.wave.side'), 'boss', 6, 2400);
         // the wave always gets its arrow when off screen (that is the point: turn round)
-        if (st.soundIndicators !== false && Math.abs(rel) > (35 * Math.PI) / 180) this.hud.arrow(`wave:${ev.group}`, rel);
+        if (st.soundIndicators !== false && !ctx.ui.hud.staged && Math.abs(rel) > (35 * Math.PI) / 180) this.hud.arrow(`wave:${ev.group}`, rel);
         break;
       }
       case 'hazard': {
@@ -1010,12 +1015,20 @@ class Combat {
     void rm;
   }
 
+  /** The body a damage number must keep clear of: half its width and its height (m). */
+  private numberSpan(e: Enemy): { r: number; top: number; base: number } {
+    const hull = this.visuals.hullOf(e);
+    return { r: Math.max(e.radius, Math.min(hull.r, hull.f + 0.5)), top: e.y + this.visuals.topOf(e), base: e.y };
+  }
+
   private arrowFor(e: Enemy): void {
     this.arrowAt(e.x, e.z, e.id);
   }
 
   private arrowAt(x: number, z: number, id: string): void {
     if (this.ctx.settings.state.soundIndicators === false) return;
+    // a boss reveal or a staged climax: no markers round the edge of the picture
+    if (this.ctx.ui.hud.staged) return;
     const pl = this.ctx.player;
     const rel = wrapAngle(pl.yaw - headingOf(x - pl.position.x, z - pl.position.z));
     // within the view (±35°): no arrow needed
@@ -1057,6 +1070,62 @@ class Combat {
     cam.updateMatrixWorld();
   }
 
+  /**
+   * Camera clearance (round 6): a big body — a boss, a Steinfresser, an elite — never wedges the
+   * lens. When the camera ends up inside a body's hull (shoved by a charge, a dodge into it, an arm
+   * swung over you) the view eases back out along the line from its axis, a little up, until it
+   * sits just outside; the player's own position (and the fight) is untouched. What still overlaps
+   * dithers (visuals.occlusionVis). A bump, never a jolt: it eases in and out.
+   */
+  private cameraClearance(dt: number): void {
+    const cam = this.ctx.camera;
+    let need = 0;
+    let dx = 0;
+    let dz = 0;
+    for (const e of this.sim.enemies) {
+      if (e.state === 'dissolve' || e.state === 'leave') continue;
+      const hull = this.visuals.hullOf(e);
+      const reach = Math.max(e.radius, hull.r, hull.f);
+      // only bodies big enough to swallow the view (a Nebelling's puff is dithered, not pushed)
+      if (reach < 0.9 && !e.boss) continue;
+      const top = this.visuals.topOf(e);
+      if (cam.position.y < e.y - 0.5 || cam.position.y > e.y + top + 0.5) continue;
+      const ox = cam.position.x - e.x;
+      const oz = cam.position.z - e.z;
+      const d = Math.hypot(ox, oz);
+      if (d > reach + 1 || d < 1e-3) continue;
+      const q = hullDistance(e, hull, cam.position.x, cam.position.z);
+      // a boss is kept a step further off: outside its hull is not yet seeing it
+      const want = e.boss ? 1.3 : 1.08;
+      if (q >= want) continue;
+      // how far out along the radial line until the hull is cleared (the ellipse scales with d)
+      const out = Math.min(e.boss ? 3 : 1.2, d * (want / Math.max(q, 0.2) - 1));
+      if (out > need) {
+        need = out;
+        dx = ox / d;
+        dz = oz / d;
+      }
+    }
+    const k = Math.min(1, dt * (need > this.clearPull ? 9 : 3));
+    this.clearPull += (need - this.clearPull) * k;
+    if (need > 0) this.clearDir.set(dx, 0, dz);
+    if (this.clearPull < 0.005) {
+      this.clearPull = 0;
+      return;
+    }
+    cam.position.addScaledVector(this.clearDir, this.clearPull);
+    cam.position.y += this.clearPull * 0.25;
+    // never into the ground (a slope behind you)
+    const ground = this.ctx.world.heightAt(cam.position.x, cam.position.z) + 0.6;
+    if (cam.position.y < ground) cam.position.y = ground;
+    cam.updateMatrixWorld();
+  }
+
+  /** How far the camera is pulled back out of a body right now (m; debug / tests). */
+  get cameraPull(): number {
+    return this.clearPull;
+  }
+
   private addShake(a: number): void {
     if (this.ctx.settings.state.reducedMotion) return;
     this.trauma = Math.min(0.6, this.trauma + a);
@@ -1087,6 +1156,7 @@ class Combat {
       this.shakeNow = k;
     } else this.shakeNow = 0;
     this.revealCamera(dt);
+    this.cameraClearance(dt);
     if (this.titleLeft > 0) {
       this.titleLeft -= dt;
       if (this.titleLeft <= 0) this.hud.hideTitle();
@@ -1117,6 +1187,8 @@ class Combat {
       heightAt: (x, z) => ctx.world.heightAt(x, z),
       reducedFlash: st.reducedFlash,
       bann: this.bannFx,
+      // the reveal camera looks at the boss: nothing may stand in the way of it
+      focus: this.introCam ? [{ x: this.introCam.e.x, y: this.introCam.e.y + this.visuals.topOf(this.introCam.e) * 0.5, z: this.introCam.e.z, id: this.introCam.e.id }] : undefined,
     });
     // an ability under way: the Wirbel's ring of motes, the Ausfall's streak
     if (p.skill && !frozen) {
@@ -1174,7 +1246,7 @@ class Combat {
       pips.push({ id: e.id, x: e.x, y: e.y + this.visuals.topOf(e) + 0.05, z: e.z, frac: e.hp / e.maxHp, gebannt: e.stun > 0, immune: e.def.needsBann === true && e.stun <= 0, show: show || e.elite, dist: Math.hypot(e.x - cam.position.x, e.z - cam.position.z), title: e.title, finish: e.finishable, trait: traitOf(e) });
     }
     const lowHp = p.dead ? 0 : Math.max(0, (0.3 - p.hp / p.max) / 0.3);
-    this.hud.frame({ dt, camera: cam, reducedFlash: st.reducedFlash, reducedMotion: st.reducedMotion, lowHp, pips, dazzle: p.dazzle });
+    this.hud.frame({ dt, camera: cam, reducedFlash: st.reducedFlash, reducedMotion: st.reducedMotion, lowHp, pips, dazzle: p.dazzle, staged: ctx.ui.hud.staged });
     this.audio.heartbeat(dt, lowHp);
   }
 
@@ -1289,6 +1361,11 @@ class Combat {
       },
       sim() {
         return self.sim;
+      },
+      view() {
+        const vis: Record<string, number> = {};
+        for (const e of self.sim.enemies) vis[e.id] = self.visuals.visOf(e.id);
+        return { pull: self.clearPull, vis };
       },
     };
     window.kq.combat = hooks;
