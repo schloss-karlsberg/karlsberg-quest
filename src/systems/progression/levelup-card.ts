@@ -46,6 +46,8 @@ export class LevelCards {
   private stamped = false;
   static readonly DURATION = 5.6;
   onStamp: ((req: LevelCardRequest) => void) | null = null;
+  /** The level now (a card that waited shows the level the player has, not the one it was queued at). */
+  levelNow: (() => number) | null = null;
   /** Called as the card comes up: the skill unlocks waiting right now (they show on this card). */
   absorb: (() => MergedSkillRow[]) | null = null;
   private duration = LevelCards.DURATION;
@@ -79,6 +81,9 @@ export class LevelCards {
       if (hold || !this.queued) return;
       const req = this.queued;
       this.queued = null;
+      // playtest round 5: a held card said "Stufe V" while the HUD said 7
+      const now = this.levelNow?.();
+      if (now !== undefined && now > req.level) req.level = now;
       const rows = this.absorb?.() ?? [];
       this.duration = LevelCards.DURATION + rows.length * 1.6;
       this.current = { el: this.build(req, reduced, rows), t: 0, req };

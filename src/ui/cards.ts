@@ -28,6 +28,8 @@ interface QueuedModal {
 
 /** Seconds between one card leaving and the next one coming (the eye needs a beat). */
 export const CARD_GAP = 0.35;
+/** A soft hold (a line being spoken, a hunt) keeps cards back this long after it ends. */
+export const SOFT_LINGER = 1.2;
 
 export class CardDirector {
   /** The slide-in card on the slot (reward, level, skill). */
@@ -62,10 +64,29 @@ export class CardDirector {
     return (this.sources.get(kind)?.() ?? []) as T[];
   }
 
-  /** An extra reason that keeps cards back (the NPC conversation: 'talk'). */
+  /** An extra reason that keeps cards back (the NPC conversation: 'talk'; an echo; the Festsaal). */
   hold(reason: string, on: boolean): void {
     if (on) this.holds.add(reason);
     else this.holds.delete(reason);
+  }
+
+  /**
+   * A soft reason (playtest round 5: the level card came up over Laub's line and over a sneak): it
+   * keeps the slide-in cards (reward, level, skill) back — a card up steps aside — but not a page the
+   * player asked for (E on a clue). Released, it lingers `SOFT_LINGER` s, so a card does not pop
+   * up in the breath between two lines.
+   */
+  soft(reason: string, on: boolean): void {
+    if (on) this.softs.set(reason, Infinity);
+    else if (this.softs.get(reason) === Infinity) this.softs.set(reason, this.clock + SOFT_LINGER);
+  }
+
+  private readonly softs = new Map<string, number>();
+  private clock = 0;
+
+  private get softBusy(): boolean {
+    for (const v of this.softs.values()) if (v > this.clock) return true;
+    return false;
   }
 
   /** Is the slot held (fight, chase, reveal, being knocked down, conversation …)? */
@@ -73,14 +94,15 @@ export class CardDirector {
     return this.holds.size > 0 || this.hud.inAction;
   }
 
-  /** Must a slide-in card step aside now (held, or a field-book page in front of it)? */
+  /** Must a slide-in card step aside now (held, a soft reason, or a field-book page in front of it)? */
   get held(): boolean {
-    return this.busy || this.modalOwner !== null;
+    return this.busy || this.softBusy || this.modalOwner !== null;
   }
 
   /** Why it is held (tests / debug). */
   holdReasons(): string[] {
-    return [...this.holds, ...(this.hud.inAction ? ['action'] : []), ...(this.extraHold?.() ? ['story'] : [])];
+    const soft = [...this.softs].filter(([, v]) => v > this.clock).map(([k]) => `soft:${k}`);
+    return [...this.holds, ...soft, ...(this.hud.inAction ? ['action'] : []), ...(this.extraHold?.() ? ['story'] : [])];
   }
 
   /** The token on screen now (null: none). */
@@ -94,7 +116,7 @@ export class CardDirector {
    */
   claim(token: string): boolean {
     if (this.owner === token) return true;
-    if (this.owner !== null || this.modalOwner !== null || this.gap > 0 || this.busy || this.queue.length > 0) return false;
+    if (this.owner !== null || this.modalOwner !== null || this.gap > 0 || this.busy || this.softBusy || this.queue.length > 0) return false;
     // another modal (a menu, the journal, the conversation) or the chapter title card / curtain is
     // up: the slide-in cards wait for it
     if (this.modals.count > 0 || this.extraHold?.()) return false;
@@ -127,6 +149,8 @@ export class CardDirector {
 
   /** Per frame (real seconds; also while paused, so a queued card follows a closed one). */
   tick(dt: number): void {
+    this.clock += dt;
+    for (const [k, v] of this.softs) if (v <= this.clock) this.softs.delete(k);
     if (this.gap > 0) this.gap = Math.max(0, this.gap - dt);
     if (this.modalHandle?.closed) this.release(this.modalOwner ?? '');
     this.pump();
@@ -160,6 +184,7 @@ export class CardDirector {
     this.modalOwner = null;
     this.modalHandle = null;
     this.gap = 0;
+    this.softs.clear();
   }
 
   /** The kinds of centre cards visible in the DOM now (tests: never more than one). */

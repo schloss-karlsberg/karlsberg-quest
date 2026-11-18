@@ -840,6 +840,8 @@ export default defineSystem({
     updateRoom(ctx);
     if (festsaalPending && placeFestsaal(ctx, festsaalPending)) festsaalPending = null;
     festsaal?.update();
+    // the Festsaal choice with the fire clock running: no card over Hanne and the clock (round 5)
+    ctx.ui.cards.hold('festsaal', !!festsaal?.active);
   },
   frame(dt, ctx) {
     frame(ctx, dt);

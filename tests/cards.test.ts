@@ -93,3 +93,29 @@ describe('CardDirector', () => {
     expect(d.drain<string>('nothing')).toEqual([]);
   });
 });
+
+describe('CardDirector soft holds (playtest round 5)', () => {
+  it('a line being spoken keeps slide-in cards back (with a short linger), but a page asked for still opens', async () => {
+    const { SOFT_LINGER } = await import('../src/ui/cards');
+    const { d, card, top } = rig();
+    d.soft('dialogue', true);
+    expect(d.claim('level')).toBe(false);
+    expect(d.held).toBe(true);
+    expect(d.holdReasons()).toContain('soft:dialogue');
+    const log: string[] = [];
+    d.modal('clue:a', card(log, 'a'));
+    expect(log).toEqual(['a']);
+    top().close();
+    d.tick(CARD_GAP + 0.01);
+    d.soft('dialogue', false);
+    d.tick(SOFT_LINGER * 0.5);
+    expect(d.claim('reward')).toBe(false);
+    d.tick(SOFT_LINGER);
+    expect(d.held).toBe(false);
+    expect(d.claim('reward')).toBe(true);
+    // a card on the slot steps aside while a pack is out
+    d.soft('hunt', true);
+    expect(d.held).toBe(true);
+    expect(d.claim('reward')).toBe(true);
+  });
+});
