@@ -90,6 +90,9 @@ const GUARDS: Record<PoiEra, readonly [string, number][]> = {
   '1796': [['grusling', 4], ['steinfresser', 2], ['streuner', 3]],
 };
 
+/** Kinds a prologue route never fields (they need the Bannlicht, taught at the prologue's end). */
+const PROLOG_BANNED = new Set(['irrlicht']);
+
 /** Tier of a chapter's guards (docs/ACTION-RPG.md §5.4). */
 export const CHAPTER_TIER: Record<Route['chapter'], number> = { prolog: 1, k1: 1, k2: 2, k3: 3, k4: 4 };
 
@@ -186,7 +189,10 @@ export function generatePois(routes: readonly Route[] = ROUTES, opts: PoiOptions
       if (kind === 'lore' && !lore) kind = n % 2 ? 'cache' : 'shrine';
       const poi: Poi = { id: `poi.${route.id}.${n}`, kind, x: spot[0], z: spot[1], era: route.era, chapter: route.chapter };
       if (kind === 'cache') {
-        const g = GUARDS[route.era];
+        // the prologue teaches the Bannlicht only at its end (the p9b Streuner): nothing on its routes
+        // that only the Bannlicht undoes (playtest round 5: Irrlichter below the Orangerie killed a
+        // level-2 player who had never been told what RMB does)
+        const g = route.chapter === 'prolog' ? GUARDS[route.era].filter(([k]) => !PROLOG_BANNED.has(k)) : GUARDS[route.era];
         const c = cacheCount.get(route.era) ?? 0;
         cacheCount.set(route.era, c + 1);
         const [enemy, count] = g[c % g.length]!;

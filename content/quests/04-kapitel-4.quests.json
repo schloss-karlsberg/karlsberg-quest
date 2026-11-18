@@ -181,7 +181,15 @@
               "z": -900,
               "era": "1796",
               "count": 3,
-              "radius": 5
+              "radius": 5,
+              "escorts": [],
+              "wave": [
+                {
+                  "kind": "grusling",
+                  "n": 3
+                }
+              ],
+              "tier": 3
             }
           ]
         },
@@ -339,7 +347,7 @@
           "id": "fresser",
           "type": "kill",
           "text_de": "Die Steinfresser am Lager zerschlagen",
-          "count": 4,
+          "count": 3,
           "where": {
             "x": 479,
             "z": -852,
@@ -352,8 +360,24 @@
               "x": 478,
               "z": -852,
               "era": "1796",
-              "count": 4,
-              "radius": 6
+              "count": 3,
+              "radius": 6,
+              "escorts": [
+                {
+                  "kind": "grusling",
+                  "n": 2
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "grusling",
+                  "n": 2
+                },
+                {
+                  "kind": "rufer",
+                  "n": 1
+                }
+              ]
             }
           ]
         },

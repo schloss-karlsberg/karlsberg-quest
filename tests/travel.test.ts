@@ -179,3 +179,11 @@ describe('way-finding (world/route.ts)', () => {
     for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], blocked, 0.5)).toBe(true);
   });
 });
+
+describe('prologue routes (playtest round 5)', () => {
+  it('no guard on a prologue route needs the Bannlicht (it is taught at the prologue’s end)', () => {
+    const p = generatePois().filter((x) => x.chapter === 'prolog' && x.kind === 'cache');
+    expect(p.length).toBeGreaterThan(0);
+    for (const x of p) expect(x.enemy, x.id).not.toBe('irrlicht');
+  });
+});

@@ -410,7 +410,7 @@ describe('combat simulation', () => {
     for (const e of s.live()) expect(e.hp).toBe(e.maxHp);
   });
 
-  it('a boss restarts at phase 1 and shows its phases', () => {
+  it('a boss shows its phases and a retry resumes at the phase reached (playtest round 5)', () => {
     const { s, groups } = sim();
     upsertGroup(groups, { group: 'b', kind: 'schuldbuch', era: '1789', x: 0, z: -3, count: 1, boss: true });
     s.step(1 / 60, input());
@@ -427,8 +427,8 @@ describe('combat simulation', () => {
     s.dematerialise();
     s.step(1 / 60, input());
     const again = s.live().find((e) => e.kind === 'schuldbuch')!;
-    expect(again.phase).toBe(1);
-    expect(again.hp).toBe(again.maxHp);
+    expect(again.phase).toBe(2);
+    expect(again.hp).toBe(Math.round(again.maxHp * again.def.phases![0]!));
   });
 
   it('gentle mode: one attacker, lower HP, longer telegraphs', () => {

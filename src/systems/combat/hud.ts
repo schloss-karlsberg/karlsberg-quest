@@ -407,9 +407,12 @@ export class CombatHud {
 
   /** A short caption for a telegraph (or info line); `cls` boss / info. */
   caption(text: string, cls = '', ms = 1400): void {
+    // the same words again: the line on screen stays (no stack of „hebt einen Quader – Wurf!“)
+    for (const c of [...this.tell.children]) if (c.textContent === text && !c.classList.contains('gone')) c.remove();
     const s = el('span', cls, text);
     this.tell.append(s);
-    while (this.tell.childElementCount > 3) this.tell.firstElementChild?.remove();
+    // two lines at most (playtest round 5: three telegraphs stacked in the centre)
+    while (this.tell.childElementCount > 2) this.tell.firstElementChild?.remove();
     setTimeout(() => s.classList.add('gone'), ms);
     setTimeout(() => s.remove(), ms + 400);
   }

@@ -62,7 +62,21 @@
         "boss": { "type": "boolean" },
         "tier": { "type": "integer", "minimum": 1, "maximum": 4 },
         "leash": { "type": "number" },
-        "time": { "enum": ["any", "dusk", "night"] }
+        "time": { "enum": ["any", "dusk", "night"] },
+        "escorts": { "$ref": "#/$defs/company" },
+        "wave": { "$ref": "#/$defs/company" },
+        "aggro": { "type": "boolean" },
+        "veiled": { "type": "boolean" }
+      }
+    },
+    "company": {
+      "type": "array",
+      "description": "Escorts / second wave of a pack (combat packs.ts); [] = none",
+      "items": {
+        "type": "object",
+        "required": ["kind", "n"],
+        "additionalProperties": false,
+        "properties": { "kind": { "type": "string" }, "n": { "type": "integer", "minimum": 1 } }
       }
     },
     "objective": {

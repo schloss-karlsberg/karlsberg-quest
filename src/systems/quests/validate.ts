@@ -203,6 +203,12 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
         if (d && !d.eras.includes(sp.era)) warn(file, id, `spawn: ${d.id} does not belong to era ${sp.era}`);
       }
       if (sp?.count !== undefined && (!isNum(sp.count) || sp.count < 1)) err(file, id, 'spawn: count must be ≥ 1');
+      for (const k of ['escorts', 'wave'] as const) {
+        const list = sp?.[k];
+        if (list === undefined) continue;
+        if (!Array.isArray(list)) err(file, id, `spawn: ${k} must be a list`);
+        else for (const x of list) if (!ENEMY_IDS.has(String(x?.kind)) || !isNum(x?.n) || x.n < 1) err(file, id, `spawn: ${k} needs known kinds and n ≥ 1`);
+      }
       if (isNum(sp?.x) && isNum(sp?.z)) {
         for (const n of refs.npcs ?? []) {
           if (n.chapter && curChapter && n.chapter !== curChapter) continue;

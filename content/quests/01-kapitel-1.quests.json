@@ -297,7 +297,19 @@
               "era": "1789",
               "count": 6,
               "radius": 7,
-              "leash": 35
+              "leash": 35,
+              "escorts": [
+                {
+                  "kind": "foliant",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "mahnbrief",
+                  "n": 2
+                }
+              ]
             }
           ]
         }
@@ -616,7 +628,14 @@
               "era": "1789",
               "count": 4,
               "radius": 6,
-              "leash": 40
+              "leash": 40,
+              "escorts": [],
+              "wave": [
+                {
+                  "kind": "streuner",
+                  "n": 1
+                }
+              ]
             }
           ]
         }
@@ -1026,7 +1045,18 @@
               "era": "1789",
               "count": 6,
               "radius": 7,
-              "leash": 30
+              "leash": 30,
+              "escorts": [
+                {
+                  "kind": "foliant",
+                  "n": 1
+                },
+                {
+                  "kind": "nebelweber",
+                  "n": 1
+                }
+              ],
+              "wave": []
             }
           ]
         },

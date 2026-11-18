@@ -28,6 +28,11 @@ export function packWorthy(g: Pick<EnemyGroupState, 'count' | 'boss' | 'era' | '
   return g.count >= 3;
 }
 
+/** A group of a prologue quest (`q.p.*`): a lesson, no escorts and no second wave unless content names them. */
+export function tutorialGroup(g: Partial<Pick<EnemyGroupState, 'quest'>>): boolean {
+  return typeof g.quest === 'string' && g.quest.startsWith('q.p.');
+}
+
 /** Index (in materialisation order 0..count−1) of the elite member, −1 = none. */
 export function eliteIndex(g: Pick<EnemyGroupState, 'count' | 'boss' | 'era' | 'tier' | 'eliteDown'>): number {
   if (!packWorthy(g) || g.eliteDown) return -1;
@@ -40,7 +45,11 @@ export function eliteIndex(g: Pick<EnemyGroupState, 'count' | 'boss' | 'era' | '
  * Foliant (a shield: Wuchthieb or flank), the Scherbling (a mirror: no Bannlicht at it), the Rufer
  * (a summoner: undo it first), the Nebelweber (now also a veil over the others: Bannlicht).
  */
-export function escortsOf(g: Pick<EnemyGroupState, 'kind' | 'count' | 'boss' | 'era' | 'tier'>): Escort[] {
+export function escortsOf(g: Pick<EnemyGroupState, 'kind' | 'count' | 'boss' | 'era' | 'tier'> & Partial<Pick<EnemyGroupState, 'escorts' | 'quest'>>): Escort[] {
+  // content names the company (playtest round 5: hounds with hounds, paper with paper) …
+  if (g.escorts && !g.boss) return g.escorts;
+  // … and the prologue's lessons come alone (a "+escort" turned the Eiskeller tutorial into deaths)
+  if (tutorialGroup(g)) return [];
   if (!packWorthy(g)) return [];
   const big = g.count >= 5;
   switch (g.kind) {
@@ -78,7 +87,9 @@ export function escortsOf(g: Pick<EnemyGroupState, 'kind' | 'count' | 'boss' | '
  * out of the fog from another side once the fight is on — after the first of the pack falls or
  * `WAVE.after` seconds, whichever comes first. They walk with the escorts (no objective, XP).
  */
-export function waveOf(g: Pick<EnemyGroupState, 'kind' | 'count' | 'boss' | 'era' | 'tier'>): Escort[] {
+export function waveOf(g: Pick<EnemyGroupState, 'kind' | 'count' | 'boss' | 'era' | 'tier'> & Partial<Pick<EnemyGroupState, 'wave' | 'quest'>>): Escort[] {
+  if (g.wave && !g.boss) return g.wave;
+  if (tutorialGroup(g)) return [];
   // the present's first fight (four Nebelinge, no elite): two more come from behind — turn round
   if (g.era === 'today') return !g.boss && (g.tier ?? 1) > 0 && g.count >= 4 && g.kind === 'nebelling' ? [{ kind: 'nebelling', n: 3 }] : [];
   if (!packWorthy(g)) return [];

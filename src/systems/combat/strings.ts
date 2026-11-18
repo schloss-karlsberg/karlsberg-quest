@@ -71,6 +71,8 @@ export const BOSS_HINT: Record<string, string> = {
 
 addStrings('de', {
   'combat.immune': 'Der Stab geht hindurch – erst das Bannlicht ({key}).',
+  'combat.bounce': 'Abgeprallt',
+  'combat.bossWay': 'Vorne prallt alles ab. {hint}',
   'combat.tut.dodge': 'Er duckt sich, gleich springt er. Leertaste – zur Seite!',
   'combat.tut.dodge.hint': 'Er holt aus – [Leertaste]: zur Seite ausweichen!',
   'combat.safe': 'Hier wird nicht gekämpft.',

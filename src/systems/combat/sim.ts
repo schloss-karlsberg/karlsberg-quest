@@ -158,6 +158,8 @@ export interface Enemy {
   guardBroken: number;
   /** Veiled by a Nebelweber (s left): staff blows glance off. */
   ward: number;
+  /** A veil only the Bannlicht tears (group `veiled`, the prologue's lesson): every staff blow goes through. */
+  veil: boolean;
   /** Mirror glass cracked by a heavy blow: no more reflecting. */
   cracked: boolean;
   /** Called out of the fog by a Rufer (no XP: it would be a farm). */
@@ -456,6 +458,9 @@ export const BOSS_INTRO = 2.6;
 const HIT_AND_RUN = new Set(['streuner', 'mahnbrief', 'raffschatten', 'nebelling']);
 /** Kinds that keep their distance and throw (they never take a surround slot). */
 const KITERS = new Set(['nebelweber', 'irrlicht', 'rufer']);
+/** The stand-off ring of a big standing boss (radius ≥ 2.5 m: the Strohmann, the Steinbrecher): its radius plus this (m). */
+export const BOSS_STANDOFF = 1.4;
+
 /** Kinds that drift towards the player's back while closing in (flankers). */
 const FLANKERS = new Set(['streuner', 'raffschatten', 'grusling']);
 /** Gap between two pack wind-ups (s): attacks come in a rhythm, not all at once. */
@@ -723,7 +728,8 @@ export class CombatSim {
         const back = KITERS.has(x.kind) ? 5.5 : 2.4;
         const a = hashStr(g.group) * 6.283 + Math.PI + ((i + 0.5) / Math.max(1, total) - 0.5) * 2.2;
         const r = (g.radius ?? 3) + back;
-        this.makeEnemy(def, `${g.group}+escort#${this.idSeq++}`, `${g.group}+escort`, g.x + Math.cos(a) * r, g.z + Math.sin(a) * r, { boss: false, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, add: true, escort: true });
+        const es = this.makeEnemy(def, `${g.group}+escort#${this.idSeq++}`, `${g.group}+escort`, g.x + Math.cos(a) * r, g.z + Math.sin(a) * r, { boss: false, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, add: true, escort: true });
+        if (g.aggro) this.rouse(es);
       }
     }
   }
@@ -740,7 +746,28 @@ export class CombatSim {
     const rr = r * (0.55 + 0.45 * hash01(idx + hashStr(g.group) * 97));
     const elite = idx === eliteIndex(g);
     const e = this.makeEnemy(def, `${g.group}#${n}`, g.group, g.x + Math.cos(a) * rr, g.z + Math.sin(a) * rr, { boss: g.boss === true || def.boss === true, tier: g.tier ?? 1, leash: g.leash ?? AI.leash, home: { x: g.x, z: g.z }, quest: g.quest, objective: g.objective, elite });
+    if (e.boss && (g.bossPhase ?? 1) > 1) {
+      const line = (e.def.phases ?? [])[(g.bossPhase ?? 1) - 2];
+      if (line !== undefined) {
+        e.phase = g.bossPhase!;
+        e.hp = Math.min(e.hp, Math.max(1, Math.round(e.maxHp * line)));
+      }
+    }
+    if (g.veiled && !e.boss) {
+      e.veil = true;
+      e.ward = 1e4;
+    }
+    if (g.aggro) this.rouse(e);
     return e;
+  }
+
+  /** An ambush: it comes out already aware of the player and closes in after a short notice. */
+  private rouse(e: Enemy): void {
+    if (e.aggro || e.boss) return;
+    e.aggro = true;
+    this.setState(e, 'notice');
+    e.t = -0.2 - e.seed * 0.3;
+    this.out.push({ type: 'aggro', e, on: true });
   }
 
   private makeEnemy(base: EnemyDef, id: string, group: string, x: number, z: number, o: { boss: boolean; tier: number; leash: number; home: { x: number; z: number }; add?: boolean; escort?: boolean; quest?: string; objective?: string; elite?: boolean }): Enemy {
@@ -810,6 +837,7 @@ export class CombatSim {
       aggroT: 0,
       guardBroken: 0,
       ward: 0,
+      veil: false,
       cracked: false,
       called: false,
       wave: false,
@@ -1063,7 +1091,7 @@ export class CombatSim {
       this.out.push({ type: 'immune', e });
       return false;
     }
-    if (e.def.needsBann && e.stun <= 0) {
+    if ((e.def.needsBann && e.stun <= 0) || e.veil) {
       this.out.push({ type: 'immune', e });
       this.wake(e);
       // playtest round 4: 80 swings through two Irrlichter and no idea why
@@ -1317,6 +1345,7 @@ export class CombatSim {
       if (e.y - inp.y > 4) continue;
       hits++;
       // the flare tears a veil, whatever else it does
+      if (e.veil) e.veil = false;
       if (e.ward > 0) {
         e.ward = 0;
         this.out.push({ type: 'wardBreak', e });
@@ -1474,6 +1503,9 @@ export class CombatSim {
     const ph = bossPhase(e.hp / e.maxHp, e.def.phases ?? []);
     if (ph <= e.phase) return;
     e.phase = ph;
+    // a checkpoint per phase: undone and back, the boss starts where you left it (playtest round 5)
+    const g = this.groups[e.group];
+    if (g && e.boss) g.bossPhase = Math.max(g.bossPhase ?? 1, ph);
     this.out.push({ type: 'phase', e, phase: ph });
     if (e.state !== 'leave' && e.hp > 0) {
       this.tokens.release(e.id);
@@ -2475,9 +2507,11 @@ export class CombatSim {
       const dx = inp.x - e.x;
       const dz = inp.z - e.z;
       const d = Math.hypot(dx, dz);
-      const min = e.radius + (e.boss ? 0.6 : 0.45);
+      // a big boss holds you off at its own size plus a step (playtest round 5: a masher walked in
+      // between the Steinbrecher's legs, the screen all blocks, and never saw a wind-up)
+      const min = e.radius + (e.boss ? (e.radius >= 2.5 ? BOSS_STANDOFF : 0.6) : 0.45);
       if (d >= min || d < 1e-4) continue;
-      const k = ((min - d) / min) * (e.boss || e.radius > 0.9 ? 9 : 4);
+      const k = ((min - d) / min) * (e.boss ? (e.radius >= 2.5 ? 16 : 9) : e.radius > 0.9 ? 9 : 4);
       vx += (dx / d) * k;
       vz += (dz / d) * k;
     }

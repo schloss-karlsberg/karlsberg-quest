@@ -242,7 +242,13 @@
         }
       ],
       "rewards": {
-        "xp": 80
+        "xp": 80,
+        "items": [
+          {
+            "item": "item.balsam",
+            "count": 2
+          }
+        ]
       }
     },
     {
@@ -411,7 +417,14 @@
               "era": "today",
               "count": 4,
               "radius": 7,
-              "leash": 30
+              "leash": 30,
+              "escorts": [],
+              "wave": [
+                {
+                  "kind": "nebelling",
+                  "n": 2
+                }
+              ]
             }
           ]
         }
@@ -544,7 +557,8 @@
               "era": "1789",
               "count": 1,
               "radius": 2,
-              "leash": 45
+              "leash": 45,
+              "veiled": true
             }
           ]
         },

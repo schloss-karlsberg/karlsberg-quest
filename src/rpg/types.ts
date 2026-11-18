@@ -80,6 +80,11 @@ export interface SpawnSpec {
   leash?: number;
   /** Time of day the group shows in ('dusk' / 'night' only — content convention, combat decides). */
   time?: 'any' | 'dusk' | 'night';
+  /** Pack overrides (EnemyGroupState): escorts / second wave ([] = none), an ambush, a Bannlicht veil. */
+  escorts?: { kind: string; n: number }[];
+  wave?: { kind: string; n: number }[];
+  aggro?: boolean;
+  veiled?: boolean;
 }
 
 export type ObjectiveType =
@@ -492,6 +497,19 @@ export interface EnemyGroupState {
   room?: string;
   /** The pack's elite has been undone (it does not come back when the group is rebuilt). */
   eliteDown?: boolean;
+  /**
+   * Content overrides of the pack rules (playtest round 5: escorts that fit the scene). `escorts`
+   * replaces what `escortsOf` would add ([] = none), `wave` the second wave ([] = none). Both apply
+   * to small groups too (a pair of Irrlichter may get company).
+   */
+  escorts?: { kind: string; n: number }[];
+  wave?: { kind: string; n: number }[];
+  /** The group comes out already aware of the player (an ambush: it closes in at once). */
+  aggro?: boolean;
+  /** A boss's phase reached (a checkpoint: rebuilt after a defeat, it starts in this phase). */
+  bossPhase?: number;
+  /** A veil only the Bannlicht tears (the prologue's Bannlicht lesson): staff blows glance off until then. */
+  veiled?: boolean;
 }
 
 /** `state.systems.quests` (owner: quests). */

@@ -36,6 +36,8 @@ export interface Encounter {
   era: string;
   /** Distance of the pack's spawn (m, straight ahead). */
   dist?: number;
+  /** Content's pack overrides and binding (escorts, wave, aggro, veiled, quest …). */
+  extra?: Partial<EnemyGroupState>;
 }
 
 export interface FightResult {
@@ -145,7 +147,7 @@ export function fight(build: Build, enc: Encounter, bot: Bot, o: { seconds?: num
   const t = build.talents ?? {};
   const skills = skillsForLevel(Math.min(MAX_LEVEL, build.level));
   const sim = new CombatSim(flat, groups, { gentle: !!o.gentle, reducedMotion: false, stats, sweep: build.weapon === 'item.stab.lot', konter: (t['stab.konter'] ?? 0) > 0, waerme: (t['laterne.waerme'] ?? 0) > 0, dritter: (t['stab.dritter'] ?? 0) > 0, skills });
-  upsertGroup(groups, { group: 'g', kind: enc.kind, era: enc.era as never, x: 0, z: -(enc.dist ?? 10), count: enc.count, radius: 3, tier: enc.tier });
+  upsertGroup(groups, { radius: 3, ...enc.extra, group: 'g', kind: enc.kind, era: enc.era as never, x: 0, z: -(enc.dist ?? 10), count: enc.count, tier: enc.tier });
   const useSkills = bot === 'skilled' && o.skills !== false;
   const dt = 1 / 30;
   let px = 0;

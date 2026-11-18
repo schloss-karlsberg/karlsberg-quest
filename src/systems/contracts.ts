@@ -273,6 +273,11 @@ declare module '../core/events' {
       room?: string;
       quest?: string;
       objective?: string;
+      /** Pack overrides (src/rpg/types.ts EnemyGroupState). */
+      escorts?: { kind: string; n: number }[];
+      wave?: { kind: string; n: number }[];
+      aggro?: boolean;
+      veiled?: boolean;
     };
     /** Remove a group without a fight ('*' = every group). */
     'enemy:despawn': { group: string };

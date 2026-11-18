@@ -354,6 +354,10 @@ export class QuestBook {
         time: s.time,
         quest: q.id,
         objective: o.id,
+        ...(s.escorts ? { escorts: s.escorts } : {}),
+        ...(s.wave ? { wave: s.wave } : {}),
+        ...(s.aggro ? { aggro: true } : {}),
+        ...(s.veiled ? { veiled: true } : {}),
       });
     });
     if (o.type === 'collect' && o.item)

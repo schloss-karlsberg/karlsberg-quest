@@ -136,7 +136,19 @@
               "count": 3,
               "radius": 6,
               "leash": 40,
-              "group": "k2.spur"
+              "group": "k2.spur",
+              "escorts": [
+                {
+                  "kind": "nebelling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "nebelling",
+                  "n": 2
+                }
+              ]
             }
           ]
         }
@@ -526,7 +538,19 @@
               "count": 2,
               "radius": 5,
               "leash": 25,
-              "group": "k2.galerie"
+              "group": "k2.galerie",
+              "escorts": [
+                {
+                  "kind": "nebelling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "nebelling",
+                  "n": 2
+                }
+              ]
             }
           ]
         },
@@ -616,7 +640,19 @@
               "count": 2,
               "radius": 4,
               "leash": 25,
-              "group": "k2.lichter.1"
+              "group": "k2.lichter.1",
+              "escorts": [
+                {
+                  "kind": "nebelling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "nebelling",
+                  "n": 2
+                }
+              ]
             }
           ]
         },
@@ -642,7 +678,23 @@
               "count": 2,
               "radius": 4,
               "leash": 25,
-              "group": "k2.lichter.2"
+              "group": "k2.lichter.2",
+              "escorts": [
+                {
+                  "kind": "nebelling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "nebelling",
+                  "n": 2
+                },
+                {
+                  "kind": "irrlicht",
+                  "n": 1
+                }
+              ]
             }
           ]
         },
@@ -668,7 +720,23 @@
               "count": 2,
               "radius": 4,
               "leash": 25,
-              "group": "k2.lichter.3"
+              "group": "k2.lichter.3",
+              "escorts": [
+                {
+                  "kind": "nebelweber",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "nebelling",
+                  "n": 2
+                },
+                {
+                  "kind": "irrlicht",
+                  "n": 1
+                }
+              ]
             }
           ]
         },
@@ -798,7 +866,23 @@
               "count": 4,
               "radius": 8,
               "leash": 35,
-              "group": "k2.kisten"
+              "group": "k2.kisten",
+              "escorts": [
+                {
+                  "kind": "nebelling",
+                  "n": 1
+                },
+                {
+                  "kind": "rufer",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "streuner",
+                  "n": 1
+                }
+              ]
             }
           ]
         }

@@ -353,10 +353,15 @@ class Combat {
       }
     });
     // a player who wakes up after being undone gets everything back
-    ev.on('player:caught', () => (this.wakePending = true));
+    ev.on('player:caught', () => {
+      this.wakePending = true;
+      // no damage tally left floating over the curtain into the wake (playtest round 5: "−117")
+      this.hud.clearWorld();
+    });
     ev.on('hunt:alert', ({ state }) => (this.hunted = state === 'chasing'));
     ev.on('hunt:end', () => (this.hunted = false));
     ev.on('player:teleport', () => {
+      if (this.wakePending || this.sim.p.dead) this.hud.clearWorld();
       if (this.sim.p.dead && this.caughtSent) this.revive();
       // caught by a story threat (fire, pack, oblivion) and woken: whole again too
       else if (this.wakePending) this.restore('wake');
@@ -485,6 +490,10 @@ class Combat {
       time: this.timeOfDay(),
     };
   }
+
+  /** Blows in a row a boss's armour threw back (the way in is said after four). */
+  private bounces = 0;
+  private bounceAt = -99;
 
   private captionOnce(key: string, text: string, cls = '', every = 4, ms = 1600): void {
     const now = this.ctx.loop.time;
@@ -633,6 +642,19 @@ class Combat {
         // at the body (not above the head: at melee range a boss's head projects onto the boss bar)
         if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + Math.min(top * 0.6, 1.5), e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`, e.id);
         if (ev.weak && e.kind === 'strohmann') this.captionOnce('back', t('combat.back'), 'info', 12);
+        // a blow a boss's armour throws back: loud and visible, and after four of them in a row the
+        // way in is said out loud (playtest round 5: a masher hit the Steinbrecher's front for 52 s)
+        if (e.boss && ev.armored) {
+          this.visuals.glance(e.x - ev.dirX * e.radius * 0.7, y, e.z - ev.dirZ * e.radius * 0.7);
+          const now = ctx.loop.time;
+          this.bounces = now - this.bounceAt < 12 ? this.bounces + 1 : 1;
+          this.bounceAt = now;
+          this.captionOnce('bounce', t('combat.bounce'), 'info', 3, 900);
+          if (this.bounces >= 4 && BOSS_HINT[e.kind]) {
+            this.bounces = 0;
+            this.captionOnce('bossWay', t('combat.bossWay', { hint: BOSS_HINT[e.kind]! }), 'boss', 14, 3600);
+          }
+        } else if (e.boss && ev.weak) this.bounces = 0;
         this.emit('combat:hit', { target: 'enemy', id: e.id, kind: e.kind, damage: ev.damage, heavy: ev.heavy, x: e.x, z: e.z });
         break;
       }

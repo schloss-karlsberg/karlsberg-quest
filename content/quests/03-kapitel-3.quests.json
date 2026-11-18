@@ -157,8 +157,15 @@
               "x": 1211,
               "z": -1173,
               "era": "1793-07",
-              "count": 5,
-              "radius": 6
+              "count": 4,
+              "radius": 6,
+              "escorts": [],
+              "wave": [
+                {
+                  "kind": "raffschatten",
+                  "n": 1
+                }
+              ]
             }
           ]
         },
@@ -302,7 +309,19 @@
               "z": -1163,
               "era": "1793-07",
               "count": 3,
-              "radius": 3
+              "radius": 3,
+              "escorts": [
+                {
+                  "kind": "scherbling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "raffschatten",
+                  "n": 1
+                }
+              ]
             }
           ]
         },
@@ -521,7 +540,7 @@
         {
           "id": "fackel",
           "type": "echo",
-          "text_de": "Beim Kommissär E halten. Die Fackel fliegt trotzdem",
+          "text_de": "Zum Kommissär auf seinem Karren",
           "clue": "clue.k3.fackel",
           "after": [
             "strohmann"
@@ -782,7 +801,14 @@
               "z": -1520,
               "era": "1793-07",
               "count": 3,
-              "radius": 6
+              "radius": 6,
+              "escorts": [],
+              "wave": [
+                {
+                  "kind": "streuner",
+                  "n": 1
+                }
+              ]
             }
           ]
         },
@@ -983,7 +1009,23 @@
               "z": -1172,
               "era": "1793-07",
               "count": 4,
-              "radius": 4
+              "radius": 4,
+              "escorts": [
+                {
+                  "kind": "scherbling",
+                  "n": 1
+                },
+                {
+                  "kind": "glutling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "raffschatten",
+                  "n": 1
+                }
+              ]
             }
           ]
         },
@@ -1093,7 +1135,19 @@
               "z": -1097,
               "era": "1793-07",
               "count": 3,
-              "radius": 3
+              "radius": 3,
+              "escorts": [
+                {
+                  "kind": "glutling",
+                  "n": 1
+                }
+              ],
+              "wave": [
+                {
+                  "kind": "raffschatten",
+                  "n": 1
+                }
+              ]
             }
           ]
         },

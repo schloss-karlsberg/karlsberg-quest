@@ -420,12 +420,13 @@ export function upsertGroup(groups: Record<string, EnemyGroupState>, req: SpawnR
     count: Math.max(1, Math.round(req.count ?? 1)),
     killed: prev ? Math.min(prev.killed, Math.max(1, Math.round(req.count ?? 1))) : 0,
   };
-  for (const k of ['radius', 'boss', 'tier', 'leash', 'quest', 'objective', 'respawn', 'time', 'room'] as const) {
+  for (const k of ['radius', 'boss', 'tier', 'leash', 'quest', 'objective', 'respawn', 'time', 'room', 'escorts', 'wave', 'aggro', 'veiled'] as const) {
     const v = req[k];
     if (v !== undefined) (g as unknown as Record<string, unknown>)[k] = v;
   }
   // a fallen elite stays fallen when content re-declares the group
   if (prev?.eliteDown) g.eliteDown = true;
+  if (prev?.bossPhase) g.bossPhase = prev.bossPhase;
   groups[req.group] = g;
   return !prev;
 }

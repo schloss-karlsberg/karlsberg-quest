@@ -19,6 +19,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { CHAPTERS, fight } from './combat-bots';
+import { FIRST, contentEncounters } from './combat-encounters';
 
 describe('combat balance per chapter: mashing hurts, skill wins', () => {
   for (const [ch, { build, enc }] of Object.entries(CHAPTERS)) {
@@ -76,5 +77,74 @@ describe('combat balance per chapter: mashing hurts, skill wins', () => {
     expect(m.left, JSON.stringify(m)).toBe(0);
     const t = fight(build, enc, 'tank', { gentle: true });
     expect(t.dead, JSON.stringify(t)).toBe(false);
+  });
+});
+
+/**
+ * Every fight content places (playtest round 5): the chapter's first fight must not kill a
+ * button-masher (the K3 basket fight did, at the intended build); the escorts fit the scene (hounds
+ * with hounds, no paper in a hound fight); the prologue's lessons come without company; a pair of
+ * Irrlichter is not three seconds of clicking any more.
+ */
+describe('combat balance per content encounter', () => {
+  const all = contentEncounters();
+  const regular = all.filter((c) => !c.boss);
+
+  it('finds the content encounters (quests and story)', () => {
+    expect(all.length).toBeGreaterThan(30);
+    expect(all.filter((c) => c.first).length).toBe(FIRST.length);
+    expect(all.some((c) => c.id.includes('k1.rund'))).toBe(true);
+  });
+
+  for (const c of all.filter((x) => x.first)) {
+    it(`${c.id}: a masher comes through the chapter's first fight (≥ 10 % left), the skilled bot in ≤ 50 s`, () => {
+      const m = fight(c.build, c.enc, 'masher');
+      expect(m.dead, JSON.stringify(m)).toBe(false);
+      expect(m.max - m.lost, JSON.stringify(m)).toBeGreaterThanOrEqual(m.max * 0.1);
+      const s = fight(c.build, c.enc, 'skilled');
+      expect(s.dead, JSON.stringify(s)).toBe(false);
+      expect(s.seconds, JSON.stringify(s)).toBeLessThanOrEqual(50);
+    });
+  }
+
+  it('every regular fight: the skilled bot wins with a third left, within 75 s', () => {
+    const bad: string[] = [];
+    for (const c of regular) {
+      const r = fight(c.build, c.enc, 'skilled');
+      if (r.dead || r.left > 0 || r.lost > r.max * 0.66 || r.seconds > 75) bad.push(`${c.id} ${JSON.stringify({ s: r.seconds, lost: r.lost, max: r.max, dead: r.dead, left: r.left })}`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('a pair of Irrlichter brings company: no longer over for a masher in seconds', () => {
+    for (const c of regular.filter((x) => x.enc.kind === 'irrlicht' && x.enc.count === 2)) {
+      const r = fight(c.build, c.enc, 'masher');
+      expect(r.seconds, `${c.id} ${JSON.stringify(r)}`).toBeGreaterThanOrEqual(12);
+      expect(r.waves, c.id).toBe(1);
+    }
+  });
+
+  it('hounds fight with hounds; the prologue lessons come alone; the K3 basket thieves are Raffschatten', () => {
+    for (const c of regular.filter((x) => x.enc.kind === 'streuner' && (x.chapter === 'k1' || x.chapter === 'k3'))) {
+      const r = fight(c.build, c.enc, 'tank', { seconds: 30 });
+      expect(r.kinds.map((k) => k.replace('*', '')).filter((k) => k !== 'streuner'), c.id).toEqual([]);
+    }
+    for (const c of regular.filter((x) => x.chapter === 'prolog')) {
+      const r = fight(c.build, c.enc, 'tank', { seconds: 30 });
+      expect(new Set(r.kinds.map((k) => k.replace('*', ''))).size, `${c.id} ${r.kinds}`).toBe(1);
+    }
+    const k3 = all.find((x) => x.id === 'q.k3.nachmittag.schatten')!;
+    expect([...new Set(fight(k3.build, k3.enc, 'tank', { seconds: 40 }).kinds.map((k) => k.replace('*', '')))]).toEqual(['raffschatten']);
+  });
+
+  it("the prologue's Streuner is veiled: staff blows go through until a Bannlicht lands", () => {
+    const c = all.find((x) => x.id === 'q.p.punktwolke.streuner')!;
+    expect(c.enc.extra?.veiled).toBe(true);
+    // the tank never flares: it cannot undo it
+    const t = fight(c.build, c.enc, 'tank', { seconds: 20 });
+    expect(t.killed).toBe(0);
+    // the masher flares and then wins
+    const m = fight(c.build, c.enc, 'masher');
+    expect(m.killed).toBe(1);
   });
 });
