@@ -17,13 +17,38 @@ export interface QualityPreset {
   /** Instanced trees: far ring (m) and the near (detailed) ring (m). */
   treeFar: number;
   treeNear: number;
+  /** Sun shadow map size (px, 0 = no shadows) and the half extent (m) of the box around the player. */
+  shadowSize: number;
+  shadowRange: number;
+  /** PCF taps per shaded pixel: 1, 4 (2×2) or 9 (3×3), each a bilinear 4-texel compare. */
+  shadowTaps: number;
+  /** Bloom (HDR glow of fire, lanterns, spectral enemies, the sun). */
+  bloom: boolean;
+  /** Screen-space ambient occlusion (half resolution, depth only). */
+  ao: boolean;
+  /** Colour grade extras (split toning, white balance, film grain). Low keeps the plain grade. */
+  grade: boolean;
 }
 
 export const QUALITY_PRESETS: Record<GraphicsLevel, QualityPreset> = {
-  low: { maxDpr: 1, msaa: 0, lodScale: 0.6, treeFar: 480, treeNear: 110 },
-  medium: { maxDpr: 1.25, msaa: 2, lodScale: 0.8, treeFar: 600, treeNear: 140 },
-  high: { maxDpr: 1.5, msaa: 4, lodScale: 1, treeFar: 700, treeNear: 170 },
+  low: { maxDpr: 1, msaa: 0, lodScale: 0.6, treeFar: 480, treeNear: 110, shadowSize: 0, shadowRange: 0, shadowTaps: 0, bloom: false, ao: false, grade: false },
+  medium: { maxDpr: 1.25, msaa: 2, lodScale: 0.8, treeFar: 600, treeNear: 140, shadowSize: 1024, shadowRange: 55, shadowTaps: 4, bloom: true, ao: false, grade: true },
+  high: { maxDpr: 1.5, msaa: 4, lodScale: 1, treeFar: 700, treeNear: 170, shadowSize: 2048, shadowRange: 75, shadowTaps: 9, bloom: true, ao: true, grade: true },
 };
+
+/** True for software rasterisers (SwiftShader in headless e2e, llvmpipe, Microsoft Basic Render). */
+export function isSoftwareGpu(gpu: string): boolean {
+  return /swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(gpu);
+}
+
+/** `?q=low|med|medium|high` → a session tier (not saved), null when absent or unknown (pure, tested). */
+export function parseQualityParam(v: string | null | undefined): GraphicsLevel | null {
+  const k = (v ?? '').trim().toLowerCase();
+  if (k === 'low' || k === 'niedrig') return 'low';
+  if (k === 'med' || k === 'medium' || k === 'mittel') return 'medium';
+  if (k === 'high' || k === 'hoch') return 'high';
+  return null;
+}
 
 export const GRAPHICS_LEVELS: GraphicsLevel[] = ['low', 'medium', 'high'];
 
@@ -40,7 +65,7 @@ export function pixelRatioFor(level: GraphicsLevel, resolutionScale: number, dev
  * The auto-downgrade corrects a wrong guess within seconds.
  */
 export function suggestLevel(gpu: string, coarsePointer: boolean, cores: number): GraphicsLevel {
-  if (/swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(gpu)) return 'low';
+  if (isSoftwareGpu(gpu)) return 'low';
   if (coarsePointer) return 'low';
   if (/mali|adreno|powervr|videocore/i.test(gpu)) return 'low';
   if (/intel|uhd|iris|radeon\(tm\) graphics|vega \d+ graphics/i.test(gpu)) return 'medium';
@@ -117,11 +142,20 @@ export class QualityManager {
   autoAllowed = true;
   /** MSAA forced off (`?nomsaa`). */
   noMsaa = false;
+  /**
+   * Session tier that beats the saved setting (`?q=low|med|high`, or a software renderer such as
+   * SwiftShader in the headless e2e run). Cleared when the player picks a level in the settings.
+   */
+  override: GraphicsLevel | null = null;
+  /** Level when nothing is saved and nothing overrides (the GPU guess, 'high' when unknown). */
+  fallback: GraphicsLevel = 'high';
+  /** Called after every `apply()` with the active preset (sun shadows, post features …). */
+  readonly listeners: ((p: QualityPreset, level: GraphicsLevel) => void)[] = [];
 
   constructor(private readonly d: QualityDeps) {}
 
   get level(): GraphicsLevel {
-    return this.d.settings.state.graphics ?? 'high';
+    return this.override ?? this.d.settings.state.graphics ?? this.fallback;
   }
 
   get preset(): QualityPreset {
@@ -140,6 +174,8 @@ export class QualityManager {
     }
     this.d.world.terrain.lodScale = p.lodScale;
     this.d.world.forest.setDistances(p.treeNear, p.treeFar);
+    this.d.post.setFeatures({ bloom: p.bloom, ao: p.ao, grade: p.grade });
+    for (const fn of this.listeners) fn(p, this.level);
     this.auto.hold(2);
   }
 
@@ -172,6 +208,7 @@ export class QualityManager {
     const s = this.d.settings.state;
     const next = this.auto.sample(avg, this.level, s.resolutionScale);
     if (!next) return;
+    this.override = null;
     this.d.settings.update((d) => {
       d.graphics = next.level;
       d.resolutionScale = next.resolutionScale;

@@ -1,4 +1,5 @@
-import { NoToneMapping, PerspectiveCamera, Scene, SRGBColorSpace, WebGLRenderer } from 'three';
+import { NoToneMapping, PerspectiveCamera, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from 'three';
+import { AssetLoader } from './assets/loader';
 import { AudioManager } from './audio/audio';
 import { loadBundledContent } from './content/db';
 import type { EraController, GameContext, PauseController } from './core/context';
@@ -15,9 +16,10 @@ import { Input } from './player/input';
 import { Player } from './player/player';
 import { PerfMonitor } from './render/perf';
 import { PostFX } from './render/post';
-import { QualityManager, gpuName, suggestLevel } from './render/quality';
+import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
+import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
-import { openLicences, openPause } from './ui/menus';
+import { openLicences, openPause, setAssetLicences } from './ui/menus';
 import { TitleScreen } from './ui/title';
 import { UI } from './ui/ui';
 import { World } from './world/world';
@@ -47,6 +49,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
   const post = new PostFX(params.has('nomsaa') ? 0 : 4);
   const perf = new PerfMonitor(renderer);
+  // CC0 art assets (src/assets): models / textures by id, lazy per area or era
+  const assets = new AssetLoader(renderer);
+  void assets.licences().then(setAssetLicences);
   const resize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -128,11 +133,21 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     notify: (level) => ui.toast(t('settings.graphics.auto', { level: t(`settings.graphics.${level}`) }), 5200),
   });
   quality.noMsaa = params.has('nomsaa');
-  if (!settings.state.graphics && !navigator.webdriver) {
+  const gpu = gpuName(renderer.getContext());
+  const guess = suggestLevel(gpu, matchMedia('(pointer: coarse)').matches, navigator.hardwareConcurrency ?? 0);
+  quality.fallback = guess;
+  // session tier: ?q=low|med|high, else a software renderer (SwiftShader in the headless e2e run)
+  // always starts on Niedrig (cheap materials, no shadows / bloom / AO); picking a level in the
+  // settings clears it
+  quality.override = parseQualityParam(params.get('q')) ?? (isSoftwareGpu(gpu) ? 'low' : null);
+  if (!settings.state.graphics && !navigator.webdriver && !quality.override) {
     // first run: guess a preset from the GPU (Hoch / Mittel / Niedrig); the auto-downgrade corrects it
-    const guess = suggestLevel(gpuName(renderer.getContext()), matchMedia('(pointer: coarse)').matches, navigator.hardwareConcurrency ?? 0);
     settings.update((d) => (d.graphics = guess), 'graphics');
   }
+  quality.listeners.push((p) => world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps));
+  const env = new EnvLight(world.sky.mesh);
+  const shadowFocus = new Vector3();
+  const camFwd = new Vector3();
   // never under WebDriver (e2e screenshots stay comparable) or in deterministic ?manual runs
   quality.autoAllowed = !params.has('manual') && (!navigator.webdriver || params.has('autoq'));
   quality.apply();
@@ -175,6 +190,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   };
   settings.subscribe((_, key) => {
     applySettings();
+    if (key === 'graphics') quality.override = null;
     if (key === 'graphics' || key === 'resolutionScale') quality.apply();
     events.emit('settings:change', { key });
   });
@@ -248,6 +264,13 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       world.frame(camera, frameDt, loop.time + (reasons.has('title') ? performance.now() / 1000 : 0));
       audio.updateListener(camera);
       ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
+      // sun shadows around the player (box pushed ahead along the view) and the era sky IBL
+      camera.getWorldDirection(camFwd);
+      camFwd.y = 0;
+      if (camFwd.lengthSq() > 1e-6) camFwd.normalize();
+      shadowFocus.copy(camera.position).addScaledVector(camFwd, quality.preset.shadowRange * 0.35);
+      world.shadows.update(renderer, scene, shadowFocus);
+      env.update(renderer, world.lookVersion);
       post.render(renderer, scene, camera, loop.time);
       perf.end();
       quality.frame(frameDt * 1000, started && !pause.paused && !document.hidden);
@@ -266,6 +289,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     camera,
     post,
     perf,
+    assets,
     quality,
     player,
     input,
@@ -292,6 +316,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   events.on('player:stance', ({ stance }) => ui.hud.setStance(stance === 'stand' ? '' : t(`stance.${stance}`)));
   events.on('player:fly', ({ flying }) => ui.toast(t(flying ? 'fly.on' : 'fly.off')));
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
+  // art assets that belong to an era stream in when it opens (src/assets, lazy)
+  events.on('era:change', ({ to }) => void assets.prefetchEra(to));
 
   // ---- modals pause the game and free the mouse
   ui.modals.onChange = (n) => {

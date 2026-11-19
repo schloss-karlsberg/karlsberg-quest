@@ -166,7 +166,10 @@ void main() {
 
   // --- lighting
   float ao = clamp(1.0 + slrm * 0.22 + fine * 0.25, 0.5, 1.2);
-  float shade = mix(1.0, 1.0 - uTreeShade, forest * (1.0 - farF));
+  // the canopy's blanket shade stands in for real tree shadows only where the sun-shadow map does
+  // not reach (low tier, beyond the shadow box): inside it the trees cast their own shadows
+  float realShadow = uShadowParams.x * (1.0 - smoothstep(uShadowCenter.w * 0.8, uShadowCenter.w, length(vWorld.xz - uShadowCenter.xz)));
+  float shade = mix(1.0, 1.0 - uTreeShade * (1.0 - 0.8 * realShadow), forest * (1.0 - farF));
   col = kqLight(alb, n, vWorld, ao * mix(1.0, 0.8, forest), shade);
 
   // --- water: dark, reflective

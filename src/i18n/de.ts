@@ -115,6 +115,8 @@ export const de: Record<string, string> = {
 
   'licences.title': 'Lizenzen & Quellen',
   'licences.intro': 'Dieses Spiel steht auf echten, offenen Geodaten. Die Rekonstruktion von 1789 ist eine Hypothese, kein Befund.',
+  'licences.assets.title': 'Grafik: freie 3D-Modelle und Texturen',
+  'licences.assets.intro': 'Modelle, Texturen und Himmel stammen aus gemeinfreien Sammlungen (CC0 1.0, Public Domain). Wir nennen die Urheber trotzdem gern.',
   'licences.fonts': 'Schriften: IM Fell English (Igino Marini) und Caveat (The Caveat Project Authors), SIL Open Font License 1.1.',
   'licences.audio': 'Alle Klänge werden im Browser erzeugt (Web Audio), keine fremden Aufnahmen.',
   'licences.code': 'Programmcode: Karlsberg Quest (Open-Kirrberg).',

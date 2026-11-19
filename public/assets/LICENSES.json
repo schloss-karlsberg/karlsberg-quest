@@ -1,0 +1,29 @@
+{
+  "policy": "Art assets: CC0 1.0 (public domain) only, downloaded from the official sites (polyhaven.com, ambientcg.com, kenney.nl, quaternius.com, poly.pizza with the CC0 filter). Every file below public/assets/ is listed here with its source. See docs/ART-DIRECTION.md §8.",
+  "assets": [
+    {
+      "id": "polyhaven.tree_stump_01",
+      "name": "Tree Stump 01",
+      "author": "Rob Tuytel",
+      "source": "https://polyhaven.com/a/tree_stump_01",
+      "licence": "CC0-1.0",
+      "files": ["models/nature/tree_stump_01.glb"],
+      "modified": "1k glTF, mesh simplified to 30 %, textures WebP, meshopt compressed (pnpm assets:pack)",
+      "retrieved": "2026-11-19"
+    }
+  ],
+  "libraries": [
+    {
+      "name": "Basis Universal transcoder (KTX2 textures)",
+      "licence": "Apache-2.0",
+      "files": [],
+      "source": "https://github.com/BinomialLLC/basis_universal (bundled from three.js examples, loaded only for KTX2 / Draco files)"
+    },
+    {
+      "name": "Draco 3D decoder (compressed glTF meshes)",
+      "licence": "Apache-2.0",
+      "files": [],
+      "source": "https://github.com/google/draco (bundled from three.js examples, loaded only for KTX2 / Draco files)"
+    }
+  ]
+}

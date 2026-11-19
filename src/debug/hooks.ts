@@ -31,6 +31,8 @@ export interface KqHooks {
   bench(opts?: BenchOptions): Promise<BenchResult>;
   /** Result of the last bench run. */
   lastBench: BenchResult | null;
+  /** Place a manifest asset in the world (dev / art review): ground height at x/z, yaw degrees. */
+  spawnAsset(id: string, x: number, z: number, opts?: { yaw?: number; scale?: number }): Promise<string>;
   /** Show / hide the performance overlay (F3). */
   perfHud(on?: boolean): boolean;
   /** Switch the polish round's render optimisations off (bench "before" numbers). */
@@ -113,6 +115,14 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       }
     },
     lastBench: null,
+    async spawnAsset(id, x, z, opts = {}) {
+      const o = await ctx.assets.instance(id);
+      o.position.set(x, ctx.world.heightAt(x, z), z);
+      o.rotation.y = ((opts.yaw ?? 0) * Math.PI) / 180;
+      o.scale.setScalar(opts.scale ?? 1);
+      ctx.scene.add(o);
+      return o.uuid;
+    },
     perfHud(on) {
       hud.show(on ?? !hud.visible);
       return hud.visible;

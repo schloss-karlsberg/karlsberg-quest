@@ -1,4 +1,11 @@
-import { Color, Vector3 } from 'three';
+import { Color, DataTexture, Matrix4, type Texture, Vector3, Vector4 } from 'three';
+
+/** 1×1 stand-in bound while no shadow map exists (and during the shadow pass itself). */
+export const NO_SHADOW_TEX: Texture = (() => {
+  const t = new DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+  t.needsUpdate = true;
+  return t;
+})();
 
 /**
  * Uniforms shared (by reference) between every custom material: terrain, palace, trees, sky,
@@ -32,6 +39,13 @@ export const atmosphere = {
   uForestFog: { value: 0.012 },
   /** Foliage: 0 summer green → 1 autumn → 2 bare winter. */
   uSeason: { value: 1 },
+  /** Sun shadow map (render/shadows.ts): depth texture, world → shadow clip matrix. */
+  uShadowMap: { value: NO_SHADOW_TEX },
+  uShadowMatrix: { value: new Matrix4() },
+  /** x on (0/1), y texel size (uv), z PCF taps, w strength (0..1, era). */
+  uShadowParams: { value: new Vector4(0, 0, 0, 0) },
+  /** xyz centre of the shadow box (player), w fade-out radius (m). */
+  uShadowCenter: { value: new Vector4(0, 0, 0, 1) },
 };
 
 export type Atmosphere = typeof atmosphere;
@@ -59,6 +73,10 @@ uniform float uSnow;
 uniform float uSeason;
 uniform float uUnderCanopy;
 uniform float uForestFog;
+uniform sampler2D uShadowMap;
+uniform mat4 uShadowMatrix;
+uniform vec4 uShadowParams;
+uniform vec4 uShadowCenter;
 
 float kqHash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * .1031);
@@ -82,10 +100,55 @@ float kqFbm(vec2 p) {
   return v;
 }
 
-/** Diffuse lighting: sun (wrapped lambert), hemisphere ambient, lantern, fire glow. */
+/**
+ * Sun shadow at world position wp (1 = lit). Soft PCF on a rotated Poisson disc, normal offset
+ * against acne, fades out towards the edge of the box around the player. 1.0 when shadows are
+ * off (low tier, SwiftShader, or a material that does not carry the shadow uniforms).
+ */
+float kqShadowCmp(vec2 uv, float z) {
+  return step(z, texture2D(uShadowMap, uv).r);
+}
+// bilinear-filtered depth compare (4 texels): smooth edges without noise
+float kqShadowBil(vec2 uv, float z, float t) {
+  vec2 st = uv / t - 0.5;
+  vec2 f = fract(st);
+  vec2 b = (floor(st) + 0.5) * t;
+  float a = kqShadowCmp(b, z), c = kqShadowCmp(b + vec2(t, 0.0), z);
+  float d = kqShadowCmp(b + vec2(0.0, t), z), e = kqShadowCmp(b + vec2(t, t), z);
+  return mix(mix(a, c, f.x), mix(d, e, f.x), f.y);
+}
+float kqShadow(vec3 wp, vec3 n) {
+  if (uShadowParams.x < 0.5) return 1.0;
+  float fade = smoothstep(uShadowCenter.w * 0.8, uShadowCenter.w, length(wp.xz - uShadowCenter.xz));
+  if (fade >= 1.0) return 1.0;
+  float ndl = dot(n, uSunDir);
+  vec3 p = wp + n * (0.05 + 0.12 * (1.0 - abs(ndl)));
+  vec4 sc = uShadowMatrix * vec4(p, 1.0);
+  vec3 s = sc.xyz / sc.w * 0.5 + 0.5;
+  if (s.x <= 0.0 || s.y <= 0.0 || s.x >= 1.0 || s.y >= 1.0 || s.z >= 1.0) return 1.0;
+  float z = s.z - 0.0005;
+  float t = uShadowParams.y;
+  float lit;
+  if (uShadowParams.z > 6.0) {
+    // 3×3 bilinear taps (high): ~4 texel penumbra
+    lit = 0.0;
+    for (int i = -1; i <= 1; i++)
+      for (int j = -1; j <= 1; j++) lit += kqShadowBil(s.xy + vec2(float(i), float(j)) * t * 1.25, z, t);
+    lit /= 9.0;
+  } else if (uShadowParams.z > 1.0) {
+    // 2×2 bilinear taps (medium)
+    lit = (kqShadowBil(s.xy + vec2(-0.6, -0.6) * t, z, t) + kqShadowBil(s.xy + vec2(0.6, -0.6) * t, z, t) + kqShadowBil(s.xy + vec2(-0.6, 0.6) * t, z, t) + kqShadowBil(s.xy + vec2(0.6, 0.6) * t, z, t)) * 0.25;
+  } else {
+    lit = kqShadowBil(s.xy, z, t);
+  }
+  return mix(mix(1.0, lit, uShadowParams.w), 1.0, fade);
+}
+
+/** Diffuse lighting: sun (wrapped lambert, shadowed), hemisphere ambient, lantern, fire glow. */
 vec3 kqLight(vec3 albedo, vec3 n, vec3 wp, float ao, float sunShadow) {
   float ndl = dot(n, uSunDir);
   float sun = clamp((ndl + 0.15) / 1.15, 0.0, 1.0) * sunShadow;
+  if (sun > 0.0) sun *= kqShadow(wp, n);
   vec3 amb = mix(uGroundAmbient, uSkyAmbient, n.y * 0.5 + 0.5) * ao;
   vec3 col = albedo * (uSunColor * sun + amb);
   // lantern: soft point light around the player

@@ -1,3 +1,4 @@
+import type { LicencesFile } from '../assets/types';
 import type { SettingsStore } from '../core/save';
 import type { AttributionItem } from '../data/types';
 import { t } from '../i18n';
@@ -30,6 +31,27 @@ export function controlsBody(): HTMLElement {
   );
 }
 
+let assetLicences: LicencesFile | null = null;
+/** public/assets/LICENSES.json, read at boot (AssetLoader.licences); shown under "Lizenzen & Quellen". */
+export function setAssetLicences(f: LicencesFile | null): void {
+  assetLicences = f;
+}
+
+/** The CC0 art assets and the decoder libraries (empty when LICENSES.json is missing). */
+export function assetLicencesBody(f: LicencesFile | null = assetLicences): HTMLElement[] {
+  if (!f || (!f.assets.length && !f.libraries?.length)) return [];
+  return [
+    h('h3', t('licences.assets.title')),
+    h('p', t('licences.assets.intro')),
+    h(
+      'ul.kq-attrib',
+      { 'data-testid': 'asset-licences' },
+      f.assets.map((a) => h('li', [h('span.lbl', `${a.name}: `), `${a.author} — ${a.licence} `, h('a', { href: a.source, target: '_blank', rel: 'noopener' }, a.source), a.modified ? h('em', ` (${a.modified})`) : null])),
+    ),
+    ...(f.libraries?.length ? [h('ul.kq-attrib', f.libraries.map((l) => h('li', [h('span.lbl', `${l.name}: `), `${l.licence} — ${l.source}`])))] : []),
+  ];
+}
+
 export function licencesBody(items: AttributionItem[]): HTMLElement[] {
   return [
     h('p', t('licences.intro')),
@@ -45,6 +67,7 @@ export function licencesBody(items: AttributionItem[]): HTMLElement[] {
         ]),
       ),
     ),
+    ...assetLicencesBody(),
     h('p', t('licences.fonts')),
     h('p', t('licences.audio')),
     h('p', t('licences.code')),

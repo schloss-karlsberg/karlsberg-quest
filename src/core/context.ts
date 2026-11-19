@@ -1,4 +1,5 @@
 import type { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import type { AssetLoader } from '../assets/loader';
 import type { AudioManager } from '../audio/audio';
 import type { ContentDB } from '../content/db';
 import type { GameData } from '../data/types';
@@ -42,6 +43,8 @@ export interface GameContext {
   camera: PerspectiveCamera;
   /** Post-processing (grade, vignette, grain; `uShift`, `uFlash`, `uDesaturate` for effects). */
   post: PostFX;
+  /** CC0 art assets by manifest id (src/assets; docs/ART-DIRECTION.md §8). */
+  assets: AssetLoader;
   /** Per-frame counters (fps, frame / CPU ms, draw calls, triangles); `kq.perf()`, F3 overlay. */
   perf: PerfMonitor;
   /** Graphics preset (pixel ratio, MSAA, terrain LOD, tree rings) and the auto-downgrade. */

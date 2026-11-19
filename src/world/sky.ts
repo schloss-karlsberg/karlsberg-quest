@@ -57,12 +57,16 @@ float fbm(vec2 p) {
 void main() {
   vec3 d = normalize(vDir);
   float y = d.y;
-  vec3 col = y > 0.0 ? mix(uHorizon, uZenith, pow(clamp(y, 0.0, 1.0), 0.55)) : mix(uHorizon, uBelow, clamp(-y * 6.0, 0.0, 1.0));
-  // sun / moon halo
   float sd = max(dot(d, uSunDir), 0.0);
+  // stylised sky gradient: deep zenith, a bright band just above the horizon, warmer towards the sun
+  float up = clamp(y, 0.0, 1.0);
+  vec3 col = mix(uHorizon, uZenith, smoothstep(0.0, 0.62, pow(up, 0.75)));
+  col = mix(col, uHorizon * 1.08, (1.0 - smoothstep(0.0, 0.09, up)) * 0.6);
+  if (y < 0.0) col = mix(uHorizon, uBelow, clamp(-y * 6.0, 0.0, 1.0));
+  float isSun = step(uDisc, 1.5) * step(0.5, uDisc);
+  // Mie glow around the sun (warm, wide) / a cool halo around the moon
+  col += uSunColor * (pow(sd, 5.0) * 0.12 + pow(sd, 32.0) * 0.3) * mix(0.35, 1.0, isSun) * step(0.5, uDisc);
   if (uDisc > 0.5) {
-    float isSun = step(uDisc, 1.5);
-    col += uSunColor * (pow(sd, 8.0) * 0.18 + pow(sd, 64.0) * 0.35) * mix(0.35, 1.0, isSun);
     float disc = smoothstep(isSun > 0.5 ? 0.9994 : 0.99965, isSun > 0.5 ? 0.9997 : 0.99985, sd);
     vec3 discCol = isSun > 0.5 ? uSunColor * 8.0 : vec3(2.2, 2.3, 2.5);
     col = mix(col, discCol, disc);
@@ -76,20 +80,28 @@ void main() {
     float tw = 0.7 + 0.3 * sin(uTime * 2.0 + h * 50.0);
     col += vec3(star * tw * uStars * smoothstep(0.0, 0.25, y) * 1.4);
   }
-  // clouds: fbm on a plane above
+  // painterly clouds: soft-edged fbm banks on a plane above, lit side towards the sun, darker
+  // bellies, silver lining when the sun is behind them
   if (uClouds > 0.0 && y > 0.0) {
-    vec2 uv = d.xz / (y + 0.12) * 1.3 + vec2(uTime * 0.004, uTime * 0.0015);
+    vec2 uv = d.xz / (y + 0.18) * 0.9 + vec2(uTime * 0.004, uTime * 0.0015);
     float c = fbm(uv);
-    float cov = smoothstep(1.0 - uClouds * 0.75, 1.15 - uClouds * 0.35, c);
-    float lit = 0.75 + 0.5 * pow(sd, 3.0);
-    vec3 cc = uCloudColor * lit + uSunColor * pow(sd, 12.0) * 0.4;
-    col = mix(col, cc, cov * smoothstep(0.0, 0.2, y) * 0.9);
+    float c2 = fbm(uv * 2.3 + 7.1);
+    float shape = c * 0.75 + c2 * 0.25;
+    float cov = smoothstep(1.0 - uClouds * 0.62, 1.12 - uClouds * 0.3, shape);
+    // light from the sun side: sample the density a little towards the sun
+    vec2 toSun = normalize(uSunDir.xz + 1e-4) * 0.06;
+    float shade = clamp(shape - fbm(uv + toSun) * 0.75 - c2 * 0.25 + 0.5, 0.0, 1.0);
+    vec3 lit = uCloudColor * (0.85 + 0.35 * pow(sd, 3.0));
+    vec3 dark = mix(uCloudColor * 0.62, uZenith, 0.25);
+    vec3 cc = mix(lit, dark, smoothstep(0.35, 0.75, shade) * 0.8);
+    cc += uSunColor * pow(sd, 10.0) * (1.0 - cov) * 0.9 * cov * 4.0; // silver lining at thin edges
+    col = mix(col, cc, cov * smoothstep(0.0, 0.16, y) * 0.92);
   }
   // fire glow on the horizon
   float gd = max(dot(normalize(vec3(d.x, 0.0, d.z)), uGlowDir), 0.0);
   col += uGlowColor * pow(gd, 6.0) * exp(-max(y, 0.0) * 9.0) * 0.35;
-  // horizon haze melts into the fog colour
-  col = mix(col, uFogColor, uFogBlend * (1.0 - smoothstep(-0.02, 0.22, y)));
+  // horizon haze melts into the fog colour (narrow band: the sky keeps its colour above)
+  col = mix(col, uFogColor, uFogBlend * (1.0 - smoothstep(-0.02, 0.12, y)));
   gl_FragColor = vec4(col, 1.0);
 }
 `;

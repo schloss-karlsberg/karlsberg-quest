@@ -7,6 +7,8 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 1200,
     assetsInlineLimit: 0,
+    // bundle output apart from the art assets (public/assets → dist/assets)
+    assetsDir: 'app',
   },
   server: { port: 5280 },
   test: {

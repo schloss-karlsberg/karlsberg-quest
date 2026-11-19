@@ -22,9 +22,14 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/data/` | Data types, pure decoders, loader for `public/data` |
 | `src/world/` | Terrain (chunked, LOD, shader), sky, forest (instanced), palace (glb), collision, atmosphere (shared uniforms + GLSL), era looks |
 | `src/player/` | Input (bindings, pointer lock, `simulate`), stances, Player controller |
-| `src/render/post.ts` | Post FX: MSAA HDR target (`setSamples(n)`), ACES, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing) |
+| `src/render/post.ts` | Post FX: MSAA HDR target with depth texture (`setSamples(n)`), half-res SAO, bloom chain, ACES (Hill fit), white balance, split toning, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing); `setFeatures({bloom, ao, grade})` from the tier; `debug` 1 = AO / 2 = bloom buffer |
+| `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`) |
+| `src/render/standard.ts` | `kqStandard(mat)` / `kqStandardize(root)`: imported PBR materials lit by the world (era sun + shadow, hemisphere fill, lantern, fire glow, sky IBL, `kqFog`); `EnvLight` (PMREM of the era sky, rebuilt on `world.lookVersion`) |
+| `src/assets/` | CC0 art assets: `types.ts` (manifest / licence types, `checkManifest`, budgets), `manifest.ts` (merges `manifests/*.ts`, one per art track), `loader.ts` (`AssetLoader` = `ctx.assets`) — see docs/ART-DIRECTION.md §8 |
+| `public/assets/` | `models/`, `textures/`, `hdri/` + `LICENSES.json` (every file, CC0 only); copied to `dist/assets/` (the bundle goes to `dist/app/`) |
+| `scripts/assets/` | `pnpm assets:pack` (glTF → meshopt GLB with WebP textures), `pnpm assets:tex` (texture → WebP) |
 | `src/render/perf.ts` | `PERF_BUDGET` (draw calls, triangles, CPU ms, frame ms), `PerfMonitor` (per-frame CPU/GPU time, calls, triangles; ring buffer), `frameStats` |
-| `src/render/quality.ts` | Graphics presets Niedrig/Mittel/Hoch (`QUALITY_PRESETS`: max pixel ratio, MSAA, terrain LOD scale, tree rings), first-run guess from the GPU name, `QualityManager` (applies the preset, auto-downgrade) |
+| `src/render/quality.ts` | Graphics presets Niedrig/Mittel/Hoch (`QUALITY_PRESETS`: max pixel ratio, MSAA, terrain LOD scale, tree rings, shadow size / range / taps, bloom, AO, grade extras), first-run guess from the GPU name, `parseQualityParam` (`?q=low|med|high`), `isSoftwareGpu` (SwiftShader → low), `QualityManager` (`override` / `fallback` / `level`, applies the preset, `listeners`, auto-downgrade) |
 | `src/audio/` | `AudioManager` (buses master/music/sfx/voice/ambience, HRTF 3D sources), `synth.ts` (procedural wind, footsteps, horn, chirp, drone) |
 | `src/ui/` | Field-book UI: HUD, modals (focus trap), title (load progress bar), pause, `settings.ts` (sectioned settings page + key remapping), licences; fonts (OFL) in `src/ui/fonts` |
 | `src/i18n/` | `t(key, params)`, German strings in `de.ts`, `addStrings()` for features |
@@ -129,7 +134,8 @@ Rules
 | `state` | `GameStateStore`: `.state` (readonly), `.mutable`, `.update(fn, reason)`, `.subscribe`, `.slice(id, init)` |
 | `settings` | `SettingsStore` persisted at `kq.settings.v1` (older saves gain new fields with defaults): `volume {master, music, sfx, voice, ambience}`, `mouseSensitivity`, `invertY/invertX`, `fov`, `subtitleSize s/m/l/xl`, `subtitleBg`, `gentleMode`, `reducedMotion`, `reducedFlash`, `highContrast`, `colorblind`, `graphics low/medium/high`, `resolutionScale`, `autoQuality`, `perfHud`, `bindings` (see §4). `reducedMotion`/`reducedFlash` default to `prefers-reduced-motion`, `highContrast` to `prefers-contrast: more` |
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
-| `quality` | `QualityManager`: `level`, `preset`, `apply()`, `hold(seconds)` (pause the auto-downgrade around loads / shifts) |
+| `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
+| `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
@@ -242,7 +248,18 @@ Spirit view (F, free flight) only today. Light/sky/fog/grade per era: `src/world
 (night eras use the "sun" slot for the moon; 1793-07 has a fire glow at the palace that lights
 terrain, trees and fog via `uGlowColor/uGlowPos`).
 
-Forest (`src/world/forest.ts`, procedural, no assets): 3 species (beech, spruce, oak — oak picked
+**Render baseline (docs/ART-DIRECTION.md §7).** Each preset also carries `post` (bloom strength /
+threshold, AO strength, shadow strength, white balance, split-tone tints); `applyLook()` pushes them
+into `post` and `world.shadows` and bumps `world.lookVersion` (the sky PMREM for imported PBR
+materials rebuilds). Per frame, boot renders the sun shadow map (box centred ahead of the camera,
+size / range / taps from the tier) and then the post chain. Every shader using `kqLight` is
+shadowed (terrain, trees, palace, scenery, characters); the terrain's blanket canopy shade
+(`uTreeShade`) only stands in where the shadow map does not reach. Feature systems that add
+custom shaders get shadows for free through `kqLight`; objects that must not cast set
+`userData.noShadow = true` (points, sprites, lines, transparent and depth-write-off materials
+never cast).
+
+Forest (`src/world/forest.ts`, procedural; CC0 asset additions via `ctx.assets`): 3 species (beech, spruce, oak — oak picked
 by a second noise in `generateTrees`) × 3 LODs = at most 9 instanced batches
 (`trees-<species>-<near|mid|far>`) sharing one ShaderMaterial. Near (< 60 m) and mid (< 180 m,
 scaled by tree height) are built meshes (bark tubes with root flare, limbs, leaf cards with
@@ -1157,3 +1174,6 @@ Rules that came out of it:
 Code: project licence. Fonts: IM Fell English (Igino Marini) and Caveat, SIL OFL 1.1 (texts in
 `src/ui/fonts`). Data: © GeoBasis-DE/LVGL-SL dl-de/by-2-0 (DTM, CHM, historic maps), OSM ODbL,
 palace reconstruction from the sister project; all listed in-game under „Lizenzen & Quellen“.
+Art assets (D-009): CC0 1.0 only, each recorded in `public/assets/LICENSES.json` (read by
+`ctx.assets.licences()` at boot, shown in „Lizenzen & Quellen“ under „Grafik“, checked by
+`tests/assets.test.ts`); the Draco / Basis decoders bundled from three.js examples are Apache-2.0.

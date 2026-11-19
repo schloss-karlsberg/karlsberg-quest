@@ -2,6 +2,7 @@ import { Color, LinearSRGBColorSpace, type PerspectiveCamera, type Scene, SRGBCo
 import { ERA_INFO, type Era } from '../core/era';
 import { GROUND_NAMES, type GameData } from '../data/types';
 import type { PostFX } from '../render/post';
+import { SunShadows } from '../render/shadows';
 import { atmosphere } from './atmosphere';
 import { FootprintCollider, type Ring } from './collision';
 import { ERA_LOOKS, type EraLook, dirFromAzEl } from './eraPresets';
@@ -23,6 +24,10 @@ export class World {
   readonly sky = new Sky();
   readonly forest = new Forest();
   readonly palace = new Palace();
+  /** Sun / moon shadows (render/shadows.ts); boot renders the map each frame before the scene. */
+  readonly shadows = new SunShadows();
+  /** Bumped by every `applyLook()` (the environment light rebuilds its sky PMREM on change). */
+  lookVersion = 0;
   readonly heightfields: Record<'2025' | '1789', Heightfield>;
   readonly collider: FootprintCollider;
   private readonly ruinKeep: ReadonlySet<number>;
@@ -212,6 +217,15 @@ export class World {
     (pu.uGain!.value as Color).setStyle(L.grade.gain, LinearSRGBColorSpace);
     pu.uVignette!.value = L.grade.vignette;
     pu.uGrain!.value = L.grade.grain;
+    const P = L.post;
+    this.post.bloomStrength = P.bloom;
+    this.post.bloomThreshold = P.bloomThreshold;
+    this.post.aoStrength = P.ao;
+    (pu.uWhite!.value as Color).setStyle(P.white, LinearSRGBColorSpace);
+    (pu.uShadowTint!.value as Color).setStyle(P.shadowTint, LinearSRGBColorSpace);
+    (pu.uHighTint!.value as Color).setStyle(P.highTint, LinearSRGBColorSpace);
+    this.shadows.strength = P.shadow;
+    this.lookVersion++;
   }
 
   /** Relief scan mode: 0 normal, 1 hillshade, 2 local relief, 3 VAT-like. `instant` skips the fade. */
