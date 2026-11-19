@@ -354,8 +354,9 @@ one look:
   thorns.
 - **Readability on rigs:** the near-camera dither (`occlusionVis`) also fades the rigged bodies; ink
   outlines stay on the procedural solids only (rigged bodies carry the spectral rim instead).
-- **Cost:** the forest crown shader skips sub-pixel detail on cards under ~100 px (mid ring); see
-  ACTION-RPG §14 for the fps numbers.
+- **Cost:** the forest crown shader skips sub-pixel detail on cards under ~100 px (mid ring: the
+  forest view went from ≈ 52 to ≈ 76 fps at high on an M5 Pro); see ACTION-RPG §14 for all numbers.
+- **HUD:** subtitles and the dialogue card keep clear of the slim vitals at 1024 / 1280 px.
 
 Open (next art round): distant tree impostors still read as flat umbrella cards (1789 avenues);
 the 1796 palace ruin reads as a red box from afar; Festsaal paintings / mirrors / consoles are in
