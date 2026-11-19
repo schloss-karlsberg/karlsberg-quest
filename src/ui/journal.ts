@@ -1,5 +1,5 @@
 /**
- * Journal tab registry (docs/ACTION-RPG.md §8.4). The Journal (J / Tab) replaces the Chronik board:
+ * Journal tab registry (docs/ACTION-RPG.md §8.4). The Journal (J) replaces the Chronik board:
  * one field-book modal with tabs. The quests system owns the modal and its own tabs (Aufgaben,
  * Codex, Sammlungen); other features add tabs here without importing the quests system — the
  * progression system adds "Ausrüstung" and "Talente".

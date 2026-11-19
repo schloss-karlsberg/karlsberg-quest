@@ -12,6 +12,7 @@ import { SystemRegistry } from './core/systems';
 import { loadGameData } from './data/loader';
 import { installDebug } from './debug/hooks';
 import { t } from './i18n';
+import { AVATAR_MODEL, Avatar } from './player/avatar';
 import { Input } from './player/input';
 import { Player } from './player/player';
 import { PerfMonitor } from './render/perf';
@@ -167,16 +168,27 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       coverAt: (x, z) => world.coverAt(x, z),
       canFly: () => ERA_INFO[world.currentEra].spiritView,
       waterDepth: (x, z) => (world.surfaceOverride?.(x, z) ? -Infinity : world.water.depthInside(x, z)),
+      // third-person camera collision: footprints, props, interior walls, trunks, room ceilings
+      camera: {
+        blocked: (x, z, r) => world.collider.resolve(x, z, r).hit,
+        trunks: (x, z, r, fn) => world.forest.trunksNear(x, z, r, fn),
+        ceiling: (x, z, y) => world.ceilingAt?.(x, z, y) ?? null,
+      },
     },
     input,
     events,
   );
+  // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
+  const avatar = new Avatar(scene, player, () => assets.model(AVATAR_MODEL));
+  let zoomSaved = 0;
   const applySettings = () => {
     const s = settings.state;
     player.mouseSensitivity = s.mouseSensitivity;
     player.invertY = s.invertY;
     player.invertX = s.invertX === true;
     player.reducedMotion = s.reducedMotion;
+    player.cameraMode = params.get('cam') === 'first' ? 'first' : params.get('cam') === 'third' ? 'third' : s.cameraMode === 'first' ? 'first' : 'third';
+    if (Math.abs((s.cameraZoom ?? 3.6) - zoomSaved) > 1e-3) player.rig.zoom = zoomSaved = s.cameraZoom ?? 3.6;
     camera.fov = s.fov;
     camera.updateProjectionMatrix();
     audio.setVolumes(s.volume);
@@ -244,6 +256,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   // ---- loop
   const loop = new FixedStepLoop({
     update: (dt) => {
+      // F5: over the shoulder ↔ first person (settings „Kamera“)
+      if (input.wasPressed('cameraMode') && !pause.paused) settings.update((d) => (d.cameraMode = player.cameraMode === 'third' ? 'first' : 'third'), 'cameraMode');
       player.update(dt);
       systems.update(dt, ctx);
       player.writeState(state.mutable.player);
@@ -262,6 +276,14 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
         camera.rotation.x = -0.02 + Math.sin(tt * 0.05) * 0.02;
       }
       systems.frame(frameDt, ctx);
+      // the character (after the systems: combat's pose of this frame, cut-scene cameras known)
+      avatar.frame({ dt: pause.paused && !reasons.has('title') ? 0 : frameDt, time: loop.time, camera, hidden: cameraOverride !== null, reducedMotion: settings.state.reducedMotion, reducedFlash: settings.state.reducedFlash === true });
+      // the zoom the player chose stays (saved a moment after the wheel stops)
+      if (Math.abs(player.rig.zoom - zoomSaved) > 0.05 && !zoomTimer) zoomTimer = window.setTimeout(() => {
+        zoomTimer = 0;
+        zoomSaved = player.rig.zoom;
+        settings.update((d) => (d.cameraZoom = Math.round(player.rig.zoom * 100) / 100), 'cameraZoom');
+      }, 1500);
       // the HUD calm counts real play time (frames), so a fight's linger also ends in ?manual
       if (!pause.paused) ui.hud.tickCalm(frameDt);
       ui.cards.tick(frameDt);
@@ -286,6 +308,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   sync();
   if (params.has('manual')) loop.manual = true;
   let frames = 0;
+  let zoomTimer = 0;
   let cameraOverride: ((cam: PerspectiveCamera) => void) | null = null;
 
   const ctx: GameContext = {
@@ -321,6 +344,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   events.on('player:stance', ({ stance }) => ui.hud.setStance(stance === 'stand' ? '' : t(`stance.${stance}`)));
   events.on('player:fly', ({ flying }) => ui.toast(t(flying ? 'fly.on' : 'fly.off')));
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
+  // the character's short reactions (third person)
+  events.on('player:damaged', () => avatar.react('hit'));
+  for (const ev of ['clue:found', 'item:pickup', 'measure:done'] as const) events.on(ev, () => avatar.react('interact'));
   // art assets that belong to an era stream in when it opens (src/assets, lazy)
   events.on('era:change', ({ to }) => void assets.prefetchEra(to));
 
@@ -415,6 +441,11 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   mark('systems');
 
   installDebug(ctx, { frames: () => frames, perf, quality, setCamera: (fn) => (cameraOverride = fn), ready: palaceReady });
+  window.kq!.avatar = {
+    state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom }),
+    setMode: (m) => settings.update((d) => (d.cameraMode = m), 'cameraMode'),
+    ready: () => avatar.whenReady(),
+  };
   loop.start();
 
   if (debug) {

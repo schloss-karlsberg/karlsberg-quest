@@ -173,6 +173,11 @@ export class World {
    * best outer door, seen from (fromX, fromZ); null when (x, z) is not inside a walkable building.
    */
   entranceFor: ((x: number, z: number, fromX: number, fromZ: number) => { x: number; z: number } | null) | null = null;
+  /**
+   * Optional ceiling lookup (interiors system): the ceiling height of the room whose floor holds
+   * (x, z) at about height y, null outdoors. The third-person camera stays under it.
+   */
+  ceilingAt: ((x: number, z: number, y: number) => number | null) | null = null;
   /** Optional surface override (interiors: parquet / stone floors), null = land cover. */
   surfaceOverride: ((x: number, z: number) => string | null) | null = null;
 

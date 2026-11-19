@@ -48,7 +48,11 @@ export type Action =
   /** Abilities (combat variety pass, §4.2): Ausfall (level 2), Erdstoß (4), Wirbel (6). T / Z(Y) / U: one row, free keys. */
   | 'skill1'
   | 'skill2'
-  | 'skill3';
+  | 'skill3'
+  /** Third-person action camera: soft lock-on (Tab / middle mouse): lock the best target, cycle, release. */
+  | 'lockOn'
+  /** Switch between the over-the-shoulder camera and first person (V is taken: Röntgenblick). */
+  | 'cameraMode';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -71,7 +75,7 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   scan1: ['Digit1'],
   scan2: ['Digit2'],
   scan3: ['Digit3'],
-  journal: ['KeyJ', 'Tab'],
+  journal: ['KeyJ'],
   pause: ['Escape', 'KeyP'],
   xray: ['KeyV', 'Digit4'],
   plans: ['KeyB'],
@@ -87,6 +91,8 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   skill1: ['KeyT'],
   skill2: ['KeyY'],
   skill3: ['KeyU'],
+  lockOn: ['Tab', 'Mouse1'],
+  cameraMode: ['F5'],
 };
 
 /**
@@ -103,7 +109,7 @@ export const SHARED_KEYS: [Action, Action][] = [
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
   'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans', 'journal',
-  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3',
+  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];
 
@@ -151,6 +157,8 @@ export class Input {
   private readonly pressedCodes = new Set<string>();
   private mdx = 0;
   private mdy = 0;
+  /** Accumulated wheel notches since the last `takeWheel()` (+ = towards you / zoom out). */
+  private wheel = 0;
   /** False while a menu/modal has focus: gameplay input is ignored. */
   enabled = true;
   private readonly listeners: [EventTarget, string, EventListener][] = [];
@@ -166,7 +174,7 @@ export class Input {
       if (!this.enabled && ev.code !== 'Escape') return;
       if (!ev.repeat) this.pressedCodes.add(ev.code);
       this.down.add(ev.code);
-      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown'].includes(ev.code) && this.enabled) ev.preventDefault();
+      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
     });
     on(window, 'keyup', (e) => this.down.delete((e as KeyboardEvent).code));
     on(window, 'blur', () => this.down.clear());
@@ -181,7 +189,22 @@ export class Input {
       const code = `Mouse${(e as MouseEvent).button}`;
       this.pressedCodes.add(code);
       this.down.add(code);
+      // the middle button is the lock-on: no auto-scroll cursor over the game
+      if ((e as MouseEvent).button === 1) e.preventDefault();
     });
+    // the wheel zooms the third-person camera
+    on(
+      canvas,
+      'wheel',
+      (e) => {
+        if (!this.enabled) return;
+        const ev = e as WheelEvent;
+        const px = ev.deltaMode === 1 ? ev.deltaY * 40 : ev.deltaMode === 2 ? ev.deltaY * 800 : ev.deltaY;
+        this.wheel += Math.max(-3, Math.min(3, px / 100));
+        ev.preventDefault();
+      },
+      { passive: false },
+    );
     on(window, 'mouseup', (e) => this.down.delete(`Mouse${(e as MouseEvent).button}`));
     // the right button is the Bannlicht: no context menu over the game
     on(canvas, 'contextmenu', (e) => e.preventDefault());
@@ -226,6 +249,13 @@ export class Input {
     const r = { dx: this.mdx, dy: this.mdy };
     this.mdx = this.mdy = 0;
     return r;
+  }
+
+  /** Wheel notches since the last call (+ = scrolled towards you: zoom out). */
+  takeWheel(): number {
+    const w = this.wheel;
+    this.wheel = 0;
+    return w;
   }
 
   /** Called by the loop after every fixed update: forget edge presses. */

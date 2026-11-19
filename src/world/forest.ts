@@ -988,4 +988,30 @@ export class Forest {
   invalidate(): void {
     this.dirty = true;
   }
+
+  /**
+   * Tree trunks within `r` of a point (third-person camera collision, src/player/camera.ts):
+   * `fn(x, z, radius, topY)` with the trunk's radius at the root flare and the height where the
+   * crown takes over.
+   */
+  trunksNear(x: number, z: number, r: number, fn: (tx: number, tz: number, tr: number, top: number) => void): void {
+    const tx0 = Math.floor((x - r - 1) / TILE);
+    const tx1 = Math.floor((x + r + 1) / TILE);
+    const tz0 = Math.floor((z - r - 1) / TILE);
+    const tz1 = Math.floor((z + r + 1) / TILE);
+    for (let tz = tz0; tz <= tz1; tz++)
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const arr = this.tiles.get(`${tx}_${tz}`);
+        if (!arr) continue;
+        for (let k = 0; k < arr.length; k += F) {
+          const ax = arr[k]!;
+          const az = arr[k + 2]!;
+          const h = arr[k + 3]!;
+          const tr = 0.1 + h * 0.016;
+          if (Math.abs(ax - x) > r + tr || Math.abs(az - z) > r + tr) continue;
+          if (this.clearings.length && this.inClearing(ax, az)) continue;
+          fn(ax, az, tr, arr[k + 1]! + h * 0.55);
+        }
+      }
+  }
 }

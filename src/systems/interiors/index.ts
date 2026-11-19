@@ -670,6 +670,12 @@ function installWorldHooks(ctx: GameContext): void {
     if (!anchors || anchors.plan !== cur.plan || anchors.era !== ctx.era.current) anchors = { plan: cur.plan, era: ctx.era.current, set: anchorRooms(ctx, cur.plan) };
     return cur.query.floorAt(x, z, -1e9, terrain, anchors.set);
   };
+  w.ceilingAt = (x, z, y) => {
+    const cur = current();
+    if (!cur || !rt || rt.mode !== 'intact') return null;
+    const ri = cur.query.roomAt(x, z, y);
+    return ri < 0 ? null : cur.plan.rooms[ri]!.ceiling;
+  };
   w.roomAnchor = (id) => {
     const cur = current();
     const ri = findRoom(id);
@@ -905,6 +911,7 @@ export default defineSystem({
     rt.cut?.dispose();
     ctx.world.collider.overlay = null;
     ctx.world.groundOverride = null;
+    ctx.world.ceilingAt = null;
     ctx.world.surfaceOverride = null;
     ctx.world.roomAnchor = null;
     ctx.world.entranceFor = null;

@@ -151,6 +151,8 @@ the procedural terrain, bark and forest from the render baseline stay as they we
   stay procedural; the Nebelling got a smaller cold heart in darker mist. View model: a gloved fist
   with four curled fingers, knuckles, thumb and cuff; per-part gloss (satin paint, leather, iron),
   band seams, chipped paint and mud towards the shoe.
+- **Player character (camera track, 2026-11-19):** see §14 — a rigged CC0 surveyor seen over the
+  shoulder.
 - **Never:** gore, real victims or animals as enemies, likenesses of real people.
 
 ## 7. Render baseline (engineering, implemented 2026-11-19)
@@ -395,3 +397,17 @@ cards); stylised CC0 models for the procedural enemies and bosses (Nebeling, Irr
 Steinbrecher / Steinfresser, Schuldbuch); 1796 ruins from a broken-wall kit instead of stepped
 blocks; people, carriages and props in the 1789 Ehrenhof; Festsaal paintings.
 
+## 14. Third-person camera and the player character (2026-11-19)
+
+- **Who you are:** a present-day surveyor — olive field jacket, hi-vis orange vest panel, dark
+  work trousers, boots, an orange backpack, a brass lantern on the left hip (lit at night, it lights
+  the scene from the character) and the red / white Messstab across the back, in hand in a fight.
+  Model: CC0 Quaternius adventurer (poly.pizza), recoloured per material slot, kqStandard shading,
+  no hat, no armour, nothing from any commercial game.
+- **Camera:** over the right shoulder, character in the lower-left third, 3.6 m by default (wheel
+  1.8–8 m); pulls back and up in fights so the pack fits; two-shot in conversations; never inside a
+  wall, trunk, hill or ceiling. First person stays as an option (F5 / Einstellungen).
+- **Readability:** a thin warm additive ring under the target (no colour-only meaning: it also
+  rotates); off-screen attackers as chevrons around the character, pulsing on a wind-up; enemies
+  keep 0.95 m + radius off the body so they never sit inside it.
+- Before / after (headed Chromium, Metal, 1440 × 900, high): `test-results/look/shots/v2-camera-*`.

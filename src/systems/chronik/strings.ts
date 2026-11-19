@@ -6,7 +6,7 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.subtitle': 'Was der Hof schuldig blieb',
   'chronik.tab.board': 'Seiten',
   'chronik.tab.codex': 'Codex',
-  'chronik.close': 'Schließen (Tab)',
+  'chronik.close': 'Schließen (J)',
   'chronik.noCases': 'Noch keine Seite. Untersuchen Sie, was das Land Ihnen zeigt; die Chronik füllt sich von selbst.',
   'chronik.newPage': 'Neue Seite in der Chronik: {title}',
   'chronik.kind.fact': 'Fakt',

@@ -71,6 +71,12 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
     [t('settings.mouse'), range(0.2, 3, 0.05, s.mouseSensitivity, (v) => set((d) => (d.mouseSensitivity = v), 'mouseSensitivity'), t('settings.mouse'), (v) => `${v.toFixed(2)}×`, 'set-mouse'), 'controls'],
     [t('settings.invertY'), check(s.invertY, (v) => set((d) => (d.invertY = v), 'invertY'), t('settings.invertY'), 'set-inverty'), 'controls'],
     [t('settings.invertX'), check(s.invertX === true, (v) => set((d) => (d.invertX = v), 'invertX'), t('settings.invertX'), 'set-invertx'), 'controls'],
+    [
+      t('settings.camera'),
+      radios('kq-cam', ['third', 'first'] as const, s.cameraMode === 'first' ? 'first' : 'third', (v) => `settings.camera.${v}`, (v) => set((d) => (d.cameraMode = v), 'cameraMode'), t('settings.camera'), 'set-camera'),
+      'controls',
+      t('settings.camera.help'),
+    ],
     [t('settings.fov'), range(55, 95, 1, s.fov, (v) => set((d) => (d.fov = v), 'fov'), t('settings.fov'), (v) => `${v}°`, 'set-fov'), 'controls'],
     // Bild & Leistung
     [
@@ -171,6 +177,7 @@ const KEY_NAMES: Record<string, string> = {
   Comma: ',',
   Period: '.',
   Mouse0: 'Maus links',
+  Mouse1: 'Mausrad-Klick',
   Mouse2: 'Maus rechts',
 };
 

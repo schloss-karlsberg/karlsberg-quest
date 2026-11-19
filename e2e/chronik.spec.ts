@@ -4,7 +4,7 @@ import { type Page, expect, test } from '@playwright/test';
 /**
  * Chronik and Journal (Action-RPG rework, docs/ACTION-RPG.md §8.4 / §12): clue markers + examine
  * cards, relief finds behind the scan modes, echoes (hold E), nothing lost when caught; the
- * Journal that replaced the deduction board: J / Tab open it, the tabs are keyboard-reachable,
+ * Journal that replaced the deduction board: J opens it, the tabs are keyboard-reachable,
  * clue facts land in its codex, the Pinnwand at the field station opens it. No board, no blanks,
  * no noun selection, no batches, no hint ladder.
  * Screenshots: test-results/screens/chronik-*.png. `?placeholder` forces the test pack
@@ -159,7 +159,7 @@ test.describe('chronik', () => {
     expect(errors).toEqual([]);
   });
 
-  test('journal: J and Tab open it, the tabs are keyboard-reachable, clue facts land in the codex; no board', async ({ page }) => {
+  test('journal: J opens it, the tabs are keyboard-reachable, clue facts land in the codex; no board', async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page);
     // a clue with a codex fact: examined in the world, its card goes to the journal's codex
@@ -214,11 +214,11 @@ test.describe('chronik', () => {
     }
     await shot(page, 'journal-codex');
 
-    // J closes, Tab opens again (both are the journal key), Esc closes
+    // J closes and opens again (Tab is the lock-on now, docs/ACTION-RPG.md §3), Esc closes
     await page.keyboard.press('KeyJ');
     await expect(journal).toBeHidden();
     expect(await events(page, 'chronik:closed')).toHaveLength(1);
-    await page.evaluate(() => window.kq!.press('Tab', 1));
+    await page.evaluate(() => window.kq!.press('KeyJ', 1));
     await expect(journal).toBeVisible();
     await expect(page.getByTestId('journal-tab-codex')).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('Escape');

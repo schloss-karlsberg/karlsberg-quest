@@ -89,7 +89,7 @@ void main() {
  * Where the first-person lantern is held: side +1 = right (default), −1 = left (combat holds the
  * Messstab in the right hand); lift 0..1 raises it for the Bannlicht flare. Set by combat each frame.
  */
-export const lanternPose = { side: 1, lift: 0 };
+export const lanternPose: { side: number; lift: number; anchor: Vector3 | null } = { side: 1, lift: 0, anchor: null };
 
 export class LanternView {
   private readonly prop = new Group();
@@ -174,6 +174,14 @@ export class LanternView {
     L.uLanternRadius.value = (o.fog ? 9 : 14) * (0.85 + 0.15 * low);
     this.off.set(0.28 * lanternPose.side, o.prone ? -0.15 : -0.5 + 0.3 * lanternPose.lift, -0.35).applyQuaternion(cam.quaternion);
     L.uLanternPos.value.copy(cam.position).add(this.off);
+    // third person (src/player/avatar.ts): the lantern hangs on the character's belt — the light
+    // comes from there (a little out from the hip, raised by the Bannlicht flare), no hand prop
+    if (lanternPose.anchor) {
+      L.uLanternPos.value.copy(lanternPose.anchor);
+      L.uLanternPos.value.y += 0.15 + 0.5 * lanternPose.lift;
+      this.prop.visible = false;
+      return;
+    }
     // prop: first-person, lower right of the view; rises into view when lit
     this.prop.visible = this.raise > 0.01;
     if (!this.prop.visible) return;

@@ -61,6 +61,13 @@ export interface Settings {
   subtitleBg: number;
   volume: { master: number; music: number; sfx: number; ambience: number; voice: number };
   fov: number;
+  /**
+   * Camera (docs/ACTION-RPG.md §3): 'third' = over-the-shoulder action camera with the surveyor in
+   * view (default since playtest round 8), 'first' = the old first-person view with the staff.
+   */
+  cameraMode: 'third' | 'first';
+  /** Third-person boom length the player zoomed to with the wheel (m). */
+  cameraZoom: number;
   /** Graphics preset (render/quality.ts). Unset = 'high' with auto-downgrade. */
   graphics?: GraphicsLevel;
   /** Render resolution scale of the 3D scene, 0.5 .. 1 (UI stays sharp). */
@@ -88,6 +95,8 @@ export function defaultSettings(): Settings {
     subtitleBg: 0.62,
     volume: { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8, voice: 0.9 },
     fov: 80,
+    cameraMode: 'third',
+    cameraZoom: 3.6,
     resolutionScale: 1,
     autoQuality: true,
     perfHud: false,
