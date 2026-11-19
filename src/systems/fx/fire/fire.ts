@@ -40,6 +40,11 @@ export interface FireConfig {
   seconds: number;
   center: { x: number; z: number };
   radius: number;
+  /**
+   * Scenery only: the fire night seen outside the staged K3 beat (`?era=1793-07`, a later visit).
+   * Flames, smoke and glow, but no smoke meter and nobody is caught (playtest: an empty red courtyard).
+   */
+  ambient?: boolean;
 }
 
 export interface FireSlice {
@@ -95,7 +100,7 @@ export class FireController {
 
   /** Start (or update) the fire. A running fire keeps its clock. */
   start(cfg: FireConfig, clock = 0): void {
-    const sameArea = this.cfg && this.cfg.center.x === cfg.center.x && this.cfg.center.z === cfg.center.z && this.cfg.radius === cfg.radius;
+    const sameArea = this.cfg && this.cfg.center.x === cfg.center.x && this.cfg.center.z === cfg.center.z && this.cfg.radius === cfg.radius && !!this.cfg.ambient === !!cfg.ambient;
     if (this.sim && sameArea) {
       this.sim.seconds = cfg.seconds;
       this.cfg = cfg;
@@ -112,8 +117,14 @@ export class FireController {
     for (const c of changes) this.ctx.events.emit('fire:room', { roomId: c.unit.id, state: c.state });
     this.lastProgress = -1;
     this.startAudio();
+    if (cfg.ambient) return;
     this.ui.setGauge('smoke', 0);
     this.ui.caption('fx.cap.fire', 2, 3500);
+  }
+
+  /** The scenery fire (no threat) is burning. */
+  get ambient(): boolean {
+    return !!this.sim && !!this.cfg?.ambient;
   }
 
   private buildVisuals(): void {
@@ -180,7 +191,7 @@ export class FireController {
   }
 
   slice(): FireSlice | null {
-    if (!this.sim || !this.cfg) return null;
+    if (!this.sim || !this.cfg || this.cfg.ambient) return null;
     return { active: true, clock: this.sim.clock, seconds: this.sim.seconds, cx: this.cfg.center.x, cz: this.cfg.center.z, radius: this.cfg.radius };
   }
 
@@ -210,6 +221,10 @@ export class FireController {
       ctx.events.emit('fire:progress', { t: sim.progress });
     }
     this.exposure = sim.exposure(pl.x, pl.y, pl.z);
+    if (this.cfg?.ambient) {
+      sim.smoke = 0;
+      return false;
+    }
     if (this.caughtCooldown > 0) {
       this.caughtCooldown -= dt;
       sim.smoke = Math.max(0, sim.smoke - dt / 3);
@@ -257,7 +272,7 @@ export class FireController {
         rumble(ctx.audio, src.input, 1);
         setTimeout(() => src.dispose(), 5000);
       }
-      if (d < 260) {
+      if (d < (this.cfg?.ambient ? 110 : 260)) {
         this.ui.caption('fx.cap.collapse', 4, 2800);
         this.shake = Math.max(this.shake, Math.max(0, 1 - d / 160));
         this.flash = Math.max(this.flash, Math.max(0.2, 1 - d / 200) * (this.ctx.settings.state.reducedFlash ? 0.25 : 1));
@@ -303,7 +318,7 @@ export class FireController {
     const amount = Math.max(0, sim.smoke * 1.05 - 0.05);
     this.screen.visible = amount > 0.001;
     (this.screen.material as ShaderMaterial).uniforms.uAmount!.value = amount;
-    this.ui.setGauge('smoke', this.exposure.state !== 'none' || sim.smoke > 0.01 ? sim.smoke : 0);
+    if (!this.cfg?.ambient) this.ui.setGauge('smoke', this.exposure.state !== 'none' || sim.smoke > 0.01 ? sim.smoke : 0);
     // camera shake (not with reduced motion)
     if (this.shake > 0.001 && !ctx.settings.state.reducedMotion) {
       const s = this.shake * 0.12;

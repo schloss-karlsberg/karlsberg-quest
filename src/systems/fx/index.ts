@@ -130,6 +130,14 @@ function doShift(ctx: GameContext, to: Era, instant: boolean, reduced: boolean, 
   return shift.start(to, { reduced });
 }
 
+/** The fire night as scenery: the palace ablaze, slowly, no smoke meter (see FireConfig.ambient). */
+export const AMBIENT_FIRE_SECONDS = 2400;
+function startAmbientFire(ctx: GameContext): void {
+  const cfg = { ...fireConfig({}, false), seconds: AMBIENT_FIRE_SECONDS, ambient: true };
+  fire.start(cfg, AMBIENT_FIRE_SECONDS * 0.45);
+  void ctx;
+}
+
 function configureThreat(ctx: GameContext, c: ThreatConfig): void {
   const gentle = ctx.settings.state.gentleMode;
   if (c.kind === 'fire') {
@@ -255,6 +263,8 @@ export default defineSystem({
     ctx.events.on('threat:configure', (c) => configureThreat(ctx, c));
     ctx.events.on('era:change', ({ to }) => {
       if (to !== '1793-07') fire.stop();
+      // the fire night always burns: outside the staged beat as scenery (no threat), well along
+      else if (!fire.active) startAmbientFire(ctx);
       if (to !== '1796') obl.stop();
     });
     ctx.events.on('clue:found', () => obl.remember(0.15));
