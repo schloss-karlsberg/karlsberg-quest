@@ -395,6 +395,12 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await run(page, 6);
   await page.evaluate(() => {
     const k = window.kq!;
+    // the Ehrenhof clue's page can still be held back (the slot counts real seconds: a slower
+    // renderer keeps it longer); it must not open over the map press and swallow the M
+    for (let i = 0; i < 300 && (k.ctx.ui.cards.pending || k.ctx.ui.modals.count); i++) {
+      (window as unknown as QW).__cna.tidy();
+      k.step(1);
+    }
     k.setScanMode(0);
     k.teleport(1185, -1112, 90, -8);
     k.press('KeyM', 2);

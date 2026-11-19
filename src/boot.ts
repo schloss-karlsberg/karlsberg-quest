@@ -383,8 +383,16 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     pauseMenuOpen = true;
     openPause(menuDeps, () => (pauseMenuOpen = false));
   };
+  // pause only when a lock the player HAD is lost: Chromium also sends an unlocked change for a
+  // request that never got the lock (two requests in one frame), and the game's own release (a
+  // modal opened) is no reason either, even when that modal has closed again by the time the event
+  // arrives (several cards closed in one frame) — both opened a stray pause menu that ate the E
+  let hadLock = false;
   document.addEventListener('pointerlockchange', () => {
-    if (!input.locked && started && modalOpen === 0 && !debug) openPauseMenu();
+    const self = input.takeSelfRelease();
+    const lost = hadLock && !input.locked;
+    hadLock = input.locked;
+    if (lost && !self && started && modalOpen === 0 && !debug) openPauseMenu();
     ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0);
   });
   window.addEventListener('keydown', (e) => {

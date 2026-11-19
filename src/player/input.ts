@@ -214,18 +214,44 @@ export class Input {
     return document.pointerLockElement === this.canvas;
   }
 
+  /** A lock request is in flight (a second one in the same moment makes the first one fail). */
+  private lockPending = false;
+
   requestLock(): void {
-    if (this.locked) return;
+    if (this.locked || this.lockPending) return;
     try {
       const p = this.canvas.requestPointerLock() as unknown as Promise<void> | undefined;
-      p?.catch?.(() => {});
+      if (p && typeof p.then === 'function') {
+        this.lockPending = true;
+        p.then(
+          () => (this.lockPending = false),
+          () => (this.lockPending = false),
+        );
+      }
     } catch {
       /* not allowed (headless, iframe) */
+      this.lockPending = false;
     }
   }
 
+  /**
+   * True from a game-side `releaseLock()` until the next pointer-lock change has been read with
+   * `takeSelfRelease()`: the unlock that follows is the game's own (a modal opened), not the player's
+   * Escape, so it must not open the pause menu once that modal has closed again.
+   */
+  private selfRelease = false;
+
   releaseLock(): void {
-    if (this.locked) document.exitPointerLock();
+    if (!this.locked) return;
+    this.selfRelease = true;
+    document.exitPointerLock();
+  }
+
+  /** Read (and clear) whether the last unlock came from `releaseLock()`. */
+  takeSelfRelease(): boolean {
+    const r = this.selfRelease;
+    this.selfRelease = false;
+    return r;
   }
 
   /** Apply the player's overrides (settings.bindings) on top of the defaults. */
