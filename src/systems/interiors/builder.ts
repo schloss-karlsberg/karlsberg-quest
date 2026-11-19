@@ -10,6 +10,7 @@
  * balustrades. Ruin (1796): broken masonry stubs, rubble, charred rafters, open sky. Today: low
  * mossy foundation lines on the 2025 ground.
  */
+import type { ModelPlacement } from '../scenery/models';
 import type { Era } from '../../core/era';
 import { GeoBuf, type RGB, type Surf, type V3 } from './geobuf';
 import { type Edge, along, hash1, paramOf, pointInPoly, rng, seedOf } from './geom';
@@ -53,10 +54,12 @@ export interface Look {
   looted: boolean;
   /** Abandoned, dust sheets over the furniture (1793-02). */
   sheets: boolean;
+  /** Medium / high tier: CC0 prop models (chandeliers, fauteuils) instead of the procedural ones. */
+  detailed: boolean;
 }
 
-export function lookOf(era: Era, mode: FullPlan['mode']): Look {
-  return { era, mode, lit: era === '1789', looted: era === '1793-07', sheets: era === '1793-02' };
+export function lookOf(era: Era, mode: FullPlan['mode'], detailed = false): Look {
+  return { era, mode, lit: era === '1789', looted: era === '1793-07', sheets: era === '1793-02', detailed };
 }
 
 export interface Built {
@@ -68,6 +71,8 @@ export interface Built {
   local: Map<number, number>;
   /** Collision outlines of large props. */
   solids: Wall[];
+  /** CC0 prop models to instance beside the mesh (detailed looks only). */
+  models: ModelPlacement[];
 }
 
 // ---- palette ----------------------------------------------------------------------------------
@@ -220,7 +225,7 @@ export function boxSolid(cx: number, cz: number, ux: number, uz: number, su: num
 export function buildInterior(plan: FullPlan, building: string, look: Look, terrain: (x: number, z: number) => number): Built {
   const bp = plan.buildings.find((b) => b.id === building);
   const g = new GeoBuf();
-  const out: Built = { geo: g, lights: [], flames: [], rooms: [], local: new Map(), solids: [] };
+  const out: Built = { geo: g, lights: [], flames: [], rooms: [], local: new Map(), solids: [], models: [] };
   if (!bp) return out;
   bp.rooms.forEach((ri, li) => {
     out.rooms.push(ri);

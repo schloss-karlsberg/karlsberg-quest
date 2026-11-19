@@ -13,19 +13,26 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Footprint } from '../data/types';
 import { ATMOS_GLSL, atmosphere } from './atmosphere';
+import { SURF, SURF_GLSL, planarUv, surfaces } from './surfaces';
 
 const PALACE_VERT = /* glsl */ `
 attribute vec3 color;
 attribute float aBase;
 attribute float aConf;
 attribute float aBld;
+attribute float aSurf;
+attribute vec2 aUv;
 varying vec3 vWorld;
 varying vec3 vNormal;
 varying vec3 vColor;
 varying float vBase;
 varying float vConf;
 varying float vBld;
+varying float vSurf;
+varying vec2 vUv;
 void main() {
+  vSurf = aSurf;
+  vUv = aUv;
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWorld = wp.xyz;
   vNormal = normalize(mat3(modelMatrix) * normal);
@@ -40,6 +47,7 @@ void main() {
 const PALACE_FRAG = /* glsl */ `
 precision highp float;
 ${ATMOS_GLSL}
+${SURF_GLSL}
 uniform float uRuin;       // 0 intact .. 1 ruin (walls cut down to stubs)
 uniform float uChar;       // 0 .. 1 soot/charring (fire)
 uniform float uConfMix;    // 0 material colours .. 1 confidence colours
@@ -51,6 +59,8 @@ varying vec3 vColor;
 varying float vBase;
 varying float vConf;
 varying float vBld;
+varying float vSurf;
+varying vec2 vUv;
 void main() {
   float n = kqFbm(vWorld.xz * 0.35 + vWorld.y * 0.21 + vBld * 3.1);
   bool kept = false;
@@ -67,14 +77,44 @@ void main() {
   alb *= 0.9 + 0.18 * n;
   alb *= mix(0.78, 1.0, smoothstep(vBase, vBase + 1.6, vWorld.y));
   vec3 conf = vConf < 0.5 ? vec3(0.62, 0.1, 0.32) : vConf < 1.5 ? vec3(0.79, 0.37, 0.0) : vec3(0.0, 0.37, 0.24);
-  alb = mix(alb, conf, uConfMix);
-  // soot rises from the windows and roof edges
-  float soot = uChar * smoothstep(0.25, 0.75, n + (vWorld.y - vBase) * 0.04);
-  alb = mix(alb, vec3(0.02, 0.018, 0.016), soot);
   vec3 nn = normalize(vNormal);
   if (!gl_FrontFacing) nn = -nn;
   float ao = mix(0.7, 1.0, smoothstep(vBase - 0.5, vBase + 4.0, vWorld.y));
-  vec3 col = kqLight(alb, nn, vWorld, ao, 1.0);
+  vec3 col;
+  if (uSurfOn > 0.5 && uConfMix < 0.5) {
+    // textured (medium / high): CC0 stone, plaster, tiles, slate, painted wood, glass
+    float rough = 0.85;
+    float metal = 0.0;
+    bool glass = vSurf > 19.5;
+    if (glass) {
+      alb = vec3(0.012, 0.016, 0.02);
+      rough = 0.08;
+      // old crown glass: a faint waviness in the reflection
+      vec2 wv = vec2(kqNoise(vWorld.xz * 3.0 + vWorld.y * 2.0), kqNoise(vWorld.zy * 3.0 + 7.0)) - 0.5;
+      nn = normalize(nn + vec3(wv.x, wv.y * 0.5, wv.y) * 0.08);
+    } else {
+      kqSurface(vSurf, vUv, vWorld, alb, nn, rough, metal);
+      // rain streaks below sills and cornices, moss-green damp at the foot of the walls
+      float streak = kqNoise(vec2(vUv.x * 1.3, vWorld.y * 0.12)) * kqNoise(vec2(vUv.x * 4.0, vWorld.y * 0.3));
+      if (abs(nn.y) < 0.5) alb *= 1.0 - 0.1 * smoothstep(0.3, 0.65, streak);
+      alb = mix(alb, alb * vec3(0.72, 0.8, 0.62), (1.0 - smoothstep(vBase, vBase + 0.9, vWorld.y)) * 0.6 * (1.0 - uSnow));
+    }
+    // soot rises from the windows and roof edges
+    float soot = uChar * smoothstep(0.25, 0.75, n + (vWorld.y - vBase) * 0.04);
+    alb = mix(alb, vec3(0.02, 0.018, 0.016), soot);
+    rough = mix(rough, 0.95, soot);
+    // snow on roofs, sills and cornices (1793-02)
+    float snow = uSnow * smoothstep(0.35, 0.75, nn.y) * smoothstep(0.3, 0.55, kqNoise(vWorld.xz * 1.3) * 0.6 + 0.45);
+    alb = mix(alb, vec3(0.8, 0.84, 0.92), snow);
+    rough = mix(rough, 0.55, snow);
+    col = kqLightPbr(alb, nn, vWorld, ao, rough, metal * (1.0 - snow));
+  } else {
+    alb = mix(alb, conf, uConfMix);
+    // soot rises from the windows and roof edges
+    float soot = uChar * smoothstep(0.25, 0.75, n + (vWorld.y - vBase) * 0.04);
+    alb = mix(alb, vec3(0.02, 0.018, 0.016), soot);
+    col = kqLight(alb, nn, vWorld, ao, 1.0);
+  }
   gl_FragColor = vec4(kqFog(col, vWorld), 1.0);
 }
 `;
@@ -113,6 +153,50 @@ function nodeIdOf(o: Object3D, root: Object3D): string {
   return o.name || 'unknown';
 }
 
+/** Glass panes (near-black vertex colour): layer id the palace shader treats as glass. */
+export const SURF_GLASS = 20;
+
+/**
+ * Surface layer of a palace face from its vertex colour (linear) and normal: the model's palette
+ * is a handful of material colours (cream / white plaster, red and grey sandstone, red tiles,
+ * dark slate, green-painted shutters and doors, brown door leaves, green copper, glass).
+ */
+export function palaceSurface(r: number, g: number, b: number, ny: number): number {
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  const ay = Math.abs(ny);
+  const slope = ay > 0.15 && ay < 0.95;
+  if (mx < 0.06) return SURF_GLASS;
+  if (g > r * 1.6 && b > r * 1.4) return SURF.IRON; // green copper (domes, lanterns)
+  if (r > g * 2.5 && slope) return SURF.TILES; // red tiles
+  if (mx < 0.13 && mx - mn < 0.04 && slope) return SURF.SLATE;
+  if (r > g * 2.5) return SURF.ASHLAR; // red sandstone dressings
+  if (g >= r && g >= b && mx < 0.32) return SURF.PAINTED; // green shutters, doors
+  if (r > g * 1.6 && mx < 0.2) return SURF.PLANKS; // brown door leaves
+  if (r > b * 3 && r > 0.5) return SURF.IRON; // gilt
+  if (mx - mn < 0.08 && mx < 0.6) return SURF.ASHLAR; // grey stone dressings
+  if (mx < 0.13) return SURF.SLATE;
+  return SURF.PLASTER;
+}
+
+/** aSurf (layer) + aUv (planar metres) for a palace geometry in world space. */
+function surfaceAttributes(g: BufferGeometry): void {
+  const P = g.getAttribute('position');
+  const N = g.getAttribute('normal');
+  const C = g.getAttribute('color');
+  const surf = new Float32Array(P.count);
+  const uv = new Float32Array(P.count * 2);
+  const o: [number, number] = [0, 0];
+  for (let i = 0; i < P.count; i++) {
+    surf[i] = palaceSurface(C.getX(i), C.getY(i), C.getZ(i), N.getY(i));
+    planarUv(P.getX(i), P.getY(i), P.getZ(i), N.getX(i), N.getY(i), N.getZ(i), o);
+    uv[i * 2] = o[0];
+    uv[i * 2 + 1] = o[1];
+  }
+  g.setAttribute('aSurf', new BufferAttribute(surf, 1));
+  g.setAttribute('aUv', new BufferAttribute(uv, 2));
+}
+
 /**
  * The 1789 light model (91 buildings + site features), merged into a single draw call with a
  * custom shader (vertex colours, shared lighting/fog, ruin cut-off, charring, confidence colours).
@@ -130,6 +214,7 @@ export class Palace {
       fragmentShader: PALACE_FRAG,
       uniforms: {
         ...atmosphere,
+        ...surfaces,
         uRuin: { value: 0 },
         uChar: { value: 0 },
         uConfMix: { value: 0 },
@@ -190,6 +275,7 @@ export class Palace {
       }
       // keep only the attributes the shader needs (merge requires identical sets)
       for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(name)) g.deleteAttribute(name);
+      surfaceAttributes(g);
       g.setAttribute('aConf', new BufferAttribute(conf, 1));
       g.setAttribute('aBase', new BufferAttribute(new Float32Array(count).fill(base), 1));
       g.setAttribute('aBld', new BufferAttribute(new Float32Array(count).fill(idx), 1));

@@ -191,6 +191,45 @@ opens (`era:change`). Ids are dotted lower-case `<track>.<thing>[.<variant>]`.
 | **FX + UI** | particle sheets (smoke, fire, embers, sparks, magic), decals (scorch, footprints), a parchment / paper texture set and ornament frames for the UI, icons for items / skills | Kenney (Particle Pack, Game Icons, UI Pack RPG expansion), ambientCG (Paper, Fabric), Poly Haven (`paper_*` textures) |
 | **Sky** (render, optional) | a few CC0 HDRIs only as lighting reference or for interiors' reflections (the outdoor sky stays procedural so it can follow every era) | Poly Haven HDRIs (`kloofendal_*`, `belfast_sunset`, night skies) |
 
+### 8.2 Architecture track (implemented 2026-11-19)
+
+**Surfaces** (`src/world/surfaces.ts`): 15 tiling CC0 PBR sets from Poly Haven (plaster
+`white_plaster_02`, ashlar `medieval_blocks_03`, roof tiles `clay_roof_tiles_02`, slate
+`roof_slates_02`, planks `weathered_brown_planks`, painted boards `green_rough_planks`, iron
+`green_metal_rust`, rubble `castle_wall_varriation`, parquet `herringbone_parquet`, `marble_01`,
+fabric `hessian_230`, straw `reed_roof_04`, fine wood `wood_table_worn`, cobbles
+`cobblestone_floor_01`, sandstone `sandstone_cracks`), packed by `pnpm assets:surface <diff>
+<nor_gl> <arm> <out-base>` into two 1k WebP files each (`_col`: albedo × AO, `_nrm`: RG normal +
+B roughness), ≈ 8.5 MB, area `palace`. They load into two `DataArrayTexture`s shared by every
+shader through the `surfaces` uniforms and `SURF_GLSL`:
+
+- `kqSurface(layer, uvMetres, world, …)` modulates the vertex colour by the texture relative to
+  its mean (the palette keeps its colours), perturbs the normal (derivative frame, no tangents)
+  and sets roughness / metalness; detail fades out 50–260 m.
+- `kqLightPbr` adds a GGX-ish sun highlight and a sky reflection to the usual world light.
+- **Who uses it:** the palace shell (per-vertex class from colour + normal: plaster, ashlar
+  trims, roofs, shutters, glass), the scenery kit (`kit.ts`: layer from the palette colour or
+  given per piece; metre UVs), the interiors (per finish: parquet, plaster, boiserie, boards,
+  masonry, marble, damask, iron / gilt …) and the field station.
+- **Tiers:** `low` sets `uSurfOn = 0` and every shader takes the old flat path (e2e /
+  SwiftShader unchanged); `medium` uploads 512 px layers, `high` 1024 px.
+
+**Prop models** (`src/systems/scenery/models.ts`, manifest `src/assets/manifests/architecture.ts`):
+19 CC0 GLBs (Poly Haven: barrels, crates, bucket, lantern, pick, basket, stool, chest, chandelier,
+picture frames, fauteuil, console, mirror, candelabra, commode, folding stool, field table;
+meshopt + 1k WebP, ≈ 8 MB) instanced per set (one `InstancedMesh` per model part). Medium /
+high tier only: the scenery sets (Baumagazin barrels and tools, kennels, post lanterns, Orangerie
+crates and chest, Festsaal fauteuils and chandelier in 1793-07), the interiors (chandeliers with
+their candle flames at the model's candle tips, fauteuils) and the field station's table, stools,
+crate and barrel. The low tier keeps the procedural kit props. Glass materials of the models are
+made thin and see-through (`lightenGlass`).
+
+**Field station** (`src/systems/story/hub/station.ts`): green board-and-batten Bauwagen on a steel
+chassis (longerons, disc wheels, mudguards, A-frame drawbar, jockey wheel), tin barrel roof with
+gutters and downpipe, framed windows with sills and open shutters, planked door with a lit pane,
+steps on stringers, awning, gas bottle, extinguisher, firewood under a tin sheet; textured via the
+surfaces on medium / high.
+
 ## 9. UI style
 
 Field-book look stays (parchment, ink, IM Fell English / Caveat), but cleaner: higher contrast

@@ -1125,6 +1125,7 @@ class StoryRuntime {
     if (this.stationPlaced) return;
     const hf = this.ctx.world.heightfields['2025'];
     this.station.place((x, z) => hf.heightAt(x, z));
+    this.station.dress(this.ctx.assets, this.ctx.quality.level !== 'low');
     this.stationPlaced = true;
   }
 

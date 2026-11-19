@@ -14,7 +14,8 @@
     "prepare-data": "tsx scripts/prepare-data.ts",
     "typecheck": "tsc --noEmit",
     "assets:pack": "tsx scripts/assets/pack-gltf.ts",
-    "assets:tex": "tsx scripts/assets/pack-texture.ts"
+    "assets:tex": "tsx scripts/assets/pack-texture.ts",
+    "assets:surface": "tsx scripts/assets/pack-surface.ts"
   },
   "dependencies": {
     "three": "0.187.0"

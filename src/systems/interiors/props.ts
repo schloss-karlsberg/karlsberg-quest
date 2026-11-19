@@ -15,6 +15,22 @@ import { type Edge, hash1, pointInPoly, rng, seedOf } from './geom';
 import type { FullPlan, PlanRoom } from './layout';
 import { M, lin } from './material';
 import { frameXZ } from './stairs';
+import { placeMatrix } from '../scenery/models';
+
+/**
+ * Candle tips of the CC0 chandelier (architecture.chandelier, Chandelier_03) in model units:
+ * 12 arms at r 0.355 / y −0.66 and 6 inner ones at r 0.23 / y −0.58 (measured from the GLB).
+ */
+const CHANDELIER_TIPS: [number, number, number][] = [
+  ...Array.from({ length: 12 }, (_, i) => {
+    const a = ((18 + i * 30) * Math.PI) / 180;
+    return [Math.cos(a) * 0.355, -0.655, Math.sin(a) * 0.355] as [number, number, number];
+  }),
+  ...Array.from({ length: 6 }, (_, i) => {
+    const a = ((2 + i * 60) * Math.PI) / 180;
+    return [Math.cos(a) * 0.23, -0.575, Math.sin(a) * 0.23] as [number, number, number];
+  }),
+];
 
 export interface FurnishCtx {
   g: GeoBuf;
@@ -134,6 +150,20 @@ class Kit {
   }
 
   chandelier(x: number, z: number, size: number, lit: boolean, hang = 1.7): void {
+    if (this.look.detailed) {
+      // CC0 brass-and-crystal chandelier; its candles burn where the model's candles are
+      // hangs with its lowest crystal ≥ 2.9 m above the floor (clear of the eye), shrinks in low rooms
+      const yTop = this.r.ceiling;
+      let s = 1.45 * size;
+      const bottom = Math.max(this.floor + 2.9, yTop - 1.04 * s - 1.4);
+      if (bottom + 1.04 * s > yTop - 0.1) s = Math.max(0.6, (yTop - 0.1 - bottom) / 1.04);
+      const top = Math.min(yTop, bottom + 1.04 * s);
+      if (top < yTop - 0.05) this.g.prism(x, top - 0.02, z, 0.015, yTop - top + 0.02, 4, this.S(C.gilt, M.GILT));
+      this.out.models.push({ id: 'architecture.chandelier', matrix: placeMatrix(x, top, z, 0, s) });
+      if (lit) for (const [tx, ty, tz] of CHANDELIER_TIPS) this.flame(x + tx * s, top + ty * s + 0.01, z + tz * s, 0.75);
+      if (lit) this.light(x, top - 0.6 * s, z, 9 + 5 * size, 1.25 * size);
+      return;
+    }
     const yTop = this.r.ceiling;
     const y = yTop - hang * size;
     const gilt = this.S(C.gilt, M.GILT);
@@ -212,6 +242,11 @@ class Kit {
     const y = this.floor;
     const fx = this.f.ux * faceU + this.f.vx * faceV;
     const fz = this.f.uz * faceU + this.f.vz * faceV;
+    if (this.look.detailed && !this.look.sheets) {
+      // CC0 fauteuil (seat faces +z)
+      this.out.models.push({ id: 'architecture.armchair', matrix: placeMatrix(x, y, z, Math.atan2(fx, fz), 0.95) });
+      return;
+    }
     const seat = this.F(col, M.FABRIC);
     const frame = this.F(C.gilt, M.GILT);
     this.g.box(x, y + 0.42, z, fx, fz, 0.48, 0.48, 0.08, seat);
