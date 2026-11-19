@@ -486,7 +486,27 @@ No stance cards, no answer grids: see §8.6.
 | Over a giver's head | offer / main offer / ready / active | `!` · `!` in a ring · `?` · grey `?` |
 | Compass (Bussole strip) | tracked objective; givers with offers within 150 m; turn-ins | diamond · `!` · `?` |
 | World | objective zones within 200 m | a faint era-tinted light column that fades when you are inside |
+| World | the tracked objective ("lead") within 420 m | a tall gold volumetric beam + pulsing ground ring |
+| Screen | the lead | waymark: diamond + distance, label when looked at; clamps to the edge with an arrow off screen |
 | World | pickups | warm glow + motes |
+
+**Always know what to do (2026-11-19, `src/systems/quests/wayfinding.ts`, `src/ui/waymark.ts`):**
+
+- **The lead** is the first tracked quest (main first) with a place: `objectiveTarget()` resolves
+  every type (escort → `to`, collect → the nearest pickup left, talk → the npc, examine / echo →
+  `where` or the clue's own place from the content pack, else `where` / `place`). A ready quest
+  leads to its turn-in npc. When the main quest has no place, the story's objective leads, never
+  a side quest. One lead drives the compass diamond (`kqq:obj`, with distance), the waymark and
+  the gold beacon, and the tracker shows its distance.
+- **Objective text** says what and where ("Am Damm: Taste 2 (Lokales Relief) drücken, dann zur
+  Markierung gehen"); objectives may carry `hint_de`.
+- **Stall hint:** no progress for `STALL_SECONDS` (60 s; then every 90 s) → a "Tipp" under the
+  tracker and a toast (`quest:hint`). Progress is an objective count change or walking 12 m closer;
+  the clock stops during fights, modals and an open dialogue. `hintFor()` builds the text from the
+  type, the scan key, Bannlicht for `needsBann` enemies, a time jump when the target is in another
+  era, and the compass direction. Hooks `kq.quests.lead()`, `hint()`, `stall(seconds)`.
+- **Prompts name the action** ("E – Messstab nehmen"); the Feldstation hub prompt is low priority
+  and E opens the hub only when its prompt is the one shown.
 
 ### 8.4 Journal (J / Tab) and tracker
 
@@ -880,6 +900,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Architecture still reads as flat boxes | architecture track (2026-11-19): CC0 PBR surface layers on the palace, scenery, interiors and Bauwagen; CC0 prop models near the player on medium / high; low tier unchanged (docs/ART-DIRECTION.md §8.2) |
 | Characters look like 1990 (procedural capsules) | characters track: rigged animated CC0 humans for NPC ghosts, CC0 wolf / horse rigs for hounds, Raffschatten and the Pikeur under spectral shaders, a better view-model hand; low tier keeps the procedural bodies; other enemy kinds and the hunt still procedural |
 | Art assets: licence or payload creep | CC0 only from the listed sites, every file in `public/assets/LICENSES.json`, `tests/assets.test.ts` checks records, sizes and budgets (150 MB total, 40 MB first load); lazy per area / era |
+| Players stuck at the lake (owner, 2026-11-19) | the Mauerrest step had no marker and said "press E"; now every examine step points at its clue, the text names key 2 and "no E needed", the stall hint repeats it; the Feldstation prompt no longer hijacks E at the start (§8.3) |
 | New render cost on weak GPUs / headless e2e | tiers: `low` has no shadows / AO / bloom; SwiftShader and `?q=low` start on `low`; auto-downgrade unchanged; the bench route still gates draw calls and triangles |
 
 - **contentB (Ch. 3–4) speaker / roster needs** (roster figures for `gaertner`, `diener` and `mann` added at integration, 2026-11-16; the jaguar and the chair quests could move back to their §11.3 givers in a later content pass): `gaertner` and `mann` are in the quests validator's

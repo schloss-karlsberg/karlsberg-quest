@@ -131,7 +131,8 @@ export const de: Record<string, string> = {
   'hud.compass.w': 'W',
   'hud.oil': 'Lampenöl',
   'hud.threat': 'Gefahr',
-  'hud.clickToPlay': 'Klicken, um weiterzuspielen',
+  'hud.clickToPlay': 'Ins Bild klicken: mit der Maus umsehen',
+  'hud.clickToPlaySub': 'Esc gibt die Maus wieder frei',
 
   'scan.0': 'Relief aus',
   'scan.1': 'Relief-Blick: Schummerung',

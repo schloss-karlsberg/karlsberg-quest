@@ -1308,10 +1308,11 @@ class StoryRuntime {
     const showPrompt = inside && !this.storyPrompt && !this.hub.open;
     if (showPrompt !== this.hubPrompt) {
       this.hubPrompt = showPrompt;
-      if (showPrompt) ctx.ui.hud.prompt('E', t('story.hub.prompt'), 'story');
-      else if (!this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
+      // a low prompt: anything else that wants E here (the Messstab at the wagon, a clue, an npc)
+      // comes first, the hub waits (playtest 2026-11-19: "E – Feldstation" over the first task)
+      ctx.ui.hud.prompt(showPrompt ? 'E' : null, showPrompt ? t('story.hub.prompt') : undefined, 'hub', { low: true });
     }
-    if (inside && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0) this.hub.show();
+    if (inside && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0 && ctx.ui.hud.promptOwner() === 'hub') this.hub.show();
   }
 
   // ------------------------------------------------------------------------------------------

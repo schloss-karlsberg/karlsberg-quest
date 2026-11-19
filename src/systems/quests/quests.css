@@ -1,10 +1,14 @@
 /* Quests: tracker, objective ticks, banner, reward card, compass shapes, the Journal. Field-book look. */
 
-/* ---------- tracker (top-left column, order 35) ---------- */
+/* ---------- tracker (top-left column, order 35) ----------
+   Restyle 2026-11-19 (docs/ART-DIRECTION.md §9): no box, a soft glass fade behind it; the quest
+   title in gold small caps, the goals in the book serif (readable at a glance, never the
+   handwriting), the goal the compass leads to marked and with its distance, a "Tipp" line after
+   a stall. */
 .kqq-tracker {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   max-width: 100%;
   pointer-events: none;
 }
@@ -13,45 +17,51 @@
 }
 .kqq-tq {
   position: relative;
-  padding: 5px 12px 6px 12px;
-  border-left: 3px solid rgba(233, 196, 106, 0.75);
-  background: linear-gradient(90deg, rgba(12, 9, 6, 0.58), rgba(12, 9, 6, 0.28) 70%, transparent);
-  border-radius: 0 4px 4px 0;
-  color: #f1e6cc;
+  padding: 6px 14px 7px 12px;
+  border-left: 2px solid rgba(242, 199, 107, 0.85);
+  background: linear-gradient(90deg, rgba(12, 9, 6, 0.5), rgba(12, 9, 6, 0.22) 75%, transparent);
+  border-radius: 0 8px 8px 0;
+  color: #f4ecd9;
   animation: kqq-slide 0.45s ease-out;
 }
 .kqq-tq:not(.kqq-main) {
-  border-left-style: dashed;
-  border-left-color: rgba(220, 210, 190, 0.6);
+  border-left-color: rgba(220, 225, 235, 0.55);
+  background: linear-gradient(90deg, rgba(12, 9, 6, 0.38), rgba(12, 9, 6, 0.14) 75%, transparent);
 }
 .kqq-tq-title {
   font-family: var(--sc);
-  font-size: 19px;
+  font-size: 16px;
   line-height: 1.15;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.05em;
+  color: #ffdf9a;
   display: flex;
-  gap: 8px;
+  gap: 7px;
   align-items: baseline;
+}
+.kqq-tq:not(.kqq-main) .kqq-tq-title {
+  color: #e8e4da;
+  font-size: 15px;
 }
 .kqq-glyph {
   font-family: var(--serif);
-  color: #e9c46a;
-  font-size: 14px;
-  min-width: 12px;
+  color: #f2c76b;
+  font-size: 12px;
+  min-width: 11px;
   text-align: center;
 }
 .kqq-ready .kqq-glyph {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
 }
 .kqq-to {
   display: flex;
   align-items: baseline;
   gap: 7px;
-  font-family: var(--hand);
-  font-size: 21px;
-  line-height: 1.1;
-  margin-top: 2px;
+  font-family: var(--serif);
+  font-size: 15.5px;
+  line-height: 1.25;
+  margin-top: 3px;
+  color: rgba(244, 236, 217, 0.92);
   transform-origin: left center;
 }
 .kqq-box {
@@ -59,15 +69,46 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 9px;
+  height: 9px;
+  margin: 0 2px 0 1px;
   border: 1.5px solid currentColor;
-  border-radius: 2px;
+  border-radius: 1px;
   font-family: var(--serif);
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
+  transform: translateY(-1px) rotate(45deg);
+  opacity: 0.75;
+}
+.kqq-to.kqq-done .kqq-box {
   transform: translateY(1px);
-  opacity: 0.85;
+  width: 12px;
+  height: 12px;
+  border: none;
+  color: #a8e08e;
+  opacity: 1;
+  font-size: 13px;
+}
+/* the goal the compass and the waymark lead to */
+.kqq-to.kqq-lead {
+  color: #fff6e2;
+}
+.kqq-to.kqq-lead .kqq-box {
+  border-color: #ffdf9a;
+  background: rgba(242, 199, 107, 0.7);
+  box-shadow: 0 0 8px rgba(255, 205, 110, 0.8);
+  opacity: 1;
+}
+.kqq-dist {
+  flex: none;
+  margin-left: auto;
+  padding: 0 7px 1px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #ffdf9a;
+  background: rgba(12, 9, 6, 0.45);
 }
 /* long objectives wrap under their text, never under the box; the counter never breaks */
 .kqq-tt {
@@ -78,9 +119,41 @@
 .kqq-n {
   white-space: nowrap;
   font-family: var(--serif);
-  font-size: 17px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
-  color: #f2d58a;
+  color: #ffdf9a;
+}
+.kqq-hint {
+  margin-top: 5px;
+  padding: 4px 8px 5px;
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.3;
+  color: #e6f8ff;
+  border-radius: 6px;
+  background: rgba(40, 90, 120, 0.32);
+  border: 1px solid rgba(159, 230, 255, 0.35);
+  animation: kqq-hint-in 0.6s ease-out;
+}
+.kqq-hint-k {
+  font-family: var(--sc);
+  letter-spacing: 0.06em;
+  color: #9fe6ff;
+}
+@keyframes kqq-hint-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+    box-shadow: 0 0 0 rgba(159, 230, 255, 0);
+  }
+  40% {
+    box-shadow: 0 0 16px rgba(159, 230, 255, 0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    box-shadow: 0 0 0 rgba(159, 230, 255, 0);
+  }
 }
 .kqq-to.kqq-done {
   opacity: 0.6;
@@ -155,8 +228,8 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
   gap: 5px;
 }
 .kqq-fi {
-  font-family: var(--hand);
-  font-size: 21px;
+  font-family: var(--serif);
+  font-size: 15px;
   color: #f1e6cc;
   background: rgba(14, 10, 7, 0.62);
   border-right: 3px solid rgba(233, 196, 106, 0.7);
@@ -202,43 +275,46 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
   pointer-events: none;
 }
 .kqq-banner {
+  /* under the compass (restyle 2026-11-19: it stamped over the middle of the screen) */
   position: absolute;
   left: 50%;
-  top: 19%;
+  top: 74px;
   transform: translateX(-50%);
   text-align: center;
-  color: #f4e9cf;
+  color: #f4ecd9;
   text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.9),
-    0 0 22px rgba(0, 0, 0, 0.7);
+    0 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 14px rgba(0, 0, 0, 0.6);
   animation: kqq-stamp 0.6s cubic-bezier(0.2, 1.4, 0.4, 1);
   transition: opacity 0.7s;
-  padding: 10px 40px 14px;
-  background: radial-gradient(ellipse at center, rgba(10, 8, 6, 0.55), transparent 70%);
+  padding: 8px 46px 10px;
+  max-width: min(640px, 60vw);
+  background: radial-gradient(ellipse at center, rgba(10, 8, 6, 0.6), rgba(10, 8, 6, 0.25) 60%, transparent 75%);
 }
 .kqq-b-kick {
   font-family: var(--sc);
-  font-size: 17px;
-  letter-spacing: 0.32em;
-  color: #e9c46a;
+  font-size: 13px;
+  letter-spacing: 0.36em;
+  color: #f2c76b;
 }
 .kqq-b-title {
   font-family: var(--sc);
-  font-size: 38px;
+  font-size: 28px;
   line-height: 1.1;
-  margin-top: 4px;
+  margin-top: 2px;
+  letter-spacing: 0.03em;
 }
 .kqq-b-sub {
-  margin-top: 8px;
-  font-family: var(--hand);
-  font-size: 21px;
-  opacity: 0.9;
+  margin-top: 6px;
+  font-family: var(--serif);
+  font-size: 15px;
+  opacity: 0.92;
 }
 .kqq-b-rule {
-  height: 2px;
-  margin: 8px auto 0;
+  height: 1px;
+  margin: 6px auto 0;
   width: 70%;
-  background: linear-gradient(90deg, transparent, #e9c46a, transparent);
+  background: linear-gradient(90deg, transparent, #f2c76b, transparent);
   animation: kqq-rule 0.9s ease-out;
 }
 .kqq-banner.kqq-out {

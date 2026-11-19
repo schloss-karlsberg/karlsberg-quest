@@ -333,6 +333,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     } else {
       pause.pop('modal');
       if (started) input.requestLock();
+      window.setTimeout(() => ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0), 600);
     }
   };
 
@@ -381,6 +382,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     input.enabled = true;
     pause.pop('title');
     input.requestLock();
+    // the first click into the picture takes the mouse (pointer lock): say so until it has it
+    // (playtest 2026-11-19: the view did not turn and nothing said why)
+    window.setTimeout(() => ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0), 900);
     events.emit('game:start', { resumed: !fresh && state.state.meta.savedAt !== null });
     save.autosave('start', true);
   }

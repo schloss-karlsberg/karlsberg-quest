@@ -1,0 +1,590 @@
+/* =============================================================================================
+   HUD restyle (D-009, docs/ART-DIRECTION.md §9, 2026-11-19): a slimmer, modern game HUD.
+   Field-book soul (IM Fell, gold ink, parchment cards), but glass instead of boxes, thin bars,
+   one readable serif for every instruction (no handwriting for what you must read in play),
+   colour only for state (health ember, Atem pale blue, quest gold, spectral cyan), and nothing
+   over the centre of the screen. Loaded after the features' CSS; rules are scoped (`.kq-hud …`,
+   `.kq-root …`, `.kq-dock-vitals …`) so they win by specificity while the features keep their
+   markup and their own files.
+   ============================================================================================= */
+:root {
+  --hud-ink: #f4ecd9;
+  --hud-dim: rgba(244, 236, 217, 0.72);
+  --hud-gold: #f2c76b;
+  --hud-gold-2: #ffdf9a;
+  --hud-cyan: #9fe6ff;
+  --hud-glass: rgba(14, 11, 8, 0.52);
+  --hud-glass-2: rgba(14, 11, 8, 0.3);
+  --hud-line: rgba(242, 199, 107, 0.38);
+  --hud-hp: #ff7d45;
+  --hud-atem: #95d2f2;
+  --hud-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.45);
+}
+.kq-hud {
+  color: var(--hud-ink);
+  text-shadow: var(--hud-shadow);
+}
+
+/* ---- compass: a slim lit band; the tracked goal is always on it ---- */
+.kq-hud .kq-compass {
+  top: 12px;
+  width: min(540px, 62vw);
+  height: 30px;
+  border: none;
+  background: linear-gradient(90deg, transparent, rgba(12, 9, 6, 0.48) 22%, rgba(12, 9, 6, 0.48) 78%, transparent);
+  overflow: visible;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+.kq-hud .kq-compass::before,
+.kq-hud .kq-compass::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--hud-line) 25%, var(--hud-line) 75%, transparent);
+}
+.kq-hud .kq-compass::before {
+  top: 0;
+}
+.kq-hud .kq-compass::after {
+  bottom: 0;
+}
+.kq-compass-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+}
+.kq-hud .kq-compass-strip span {
+  top: 6px;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: var(--hud-ink);
+}
+.kq-hud .kq-compass-strip i {
+  top: auto;
+  bottom: 0;
+  height: 6px;
+  background: rgba(244, 236, 217, 0.5);
+}
+.kq-hud .kq-compass-needle {
+  bottom: -1px;
+  border-bottom-color: var(--hud-gold);
+  filter: drop-shadow(0 0 3px rgba(242, 199, 107, 0.8));
+}
+.kq-hud .kq-compass-marker {
+  z-index: 2;
+}
+.kq-hud .kq-compass-marker.kqq-cm-obj::before {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--hud-gold-2);
+  background: rgba(242, 199, 107, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 0 10px rgba(255, 205, 110, 0.85);
+}
+/* the distance under the tracked goal's mark */
+.kq-hud .kq-compass-marker[data-dist]::after {
+  content: attr(data-dist);
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--hud-gold-2);
+  padding: 0 7px 1px;
+  border-radius: 8px;
+  background: rgba(12, 9, 6, 0.55);
+}
+/* behind or beside you: the mark waits at the band's edge, a chevron shows the way round */
+.kq-hud .kq-compass-marker[data-side]::after {
+  top: 1px;
+  transform: none;
+  padding: 0 6px 1px;
+}
+.kq-hud .kq-compass-marker[data-side='l']::after {
+  left: auto;
+  right: 100%;
+  content: '‹ ' attr(data-dist);
+}
+.kq-hud .kq-compass-marker[data-side='r']::after {
+  left: 100%;
+  content: attr(data-dist) ' ›';
+}
+.kq-hud .kq-compass-marker[data-side='l']:not([data-dist])::after {
+  content: '‹';
+}
+.kq-hud .kq-compass-marker[data-side='r']:not([data-dist])::after {
+  content: '›';
+}
+
+/* ---- the world waymark (./waymark.ts) ---- */
+.kq-waymark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.kq-wm-icon {
+  position: absolute;
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 0 6px rgba(255, 196, 90, 0.85)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+  animation: kq-wm-bob 2.4s ease-in-out infinite;
+}
+.kq-wm-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.kq-wm-icon .o {
+  fill: rgba(30, 20, 8, 0.55);
+  stroke: var(--hud-gold-2);
+  stroke-width: 1.8;
+}
+.kq-wm-icon .i {
+  fill: var(--hud-gold-2);
+}
+.kq-wm-icon .s {
+  fill: none;
+  stroke: var(--hud-gold-2);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.kq-waymark.kq-wm-side .kq-wm-icon {
+  filter: drop-shadow(0 0 5px rgba(200, 230, 255, 0.7)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+}
+.kq-waymark.kq-wm-side .kq-wm-icon .o,
+.kq-waymark.kq-wm-side .kq-wm-icon .s {
+  stroke: #e6eef6;
+}
+.kq-waymark.kq-wm-side .kq-wm-icon .i {
+  fill: #e6eef6;
+}
+.kq-wm-dist {
+  position: absolute;
+  top: 19px;
+  left: 0;
+  transform: translateX(-50%);
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--hud-ink);
+  padding: 2px 7px 3px;
+  border-radius: 9px;
+  background: rgba(12, 9, 6, 0.5);
+}
+.kq-wm-label {
+  position: absolute;
+  bottom: 21px;
+  left: 0;
+  transform: translateX(-50%);
+  font-family: var(--serif);
+  font-size: 15px;
+  white-space: nowrap;
+  color: var(--hud-gold-2);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.kq-waymark.kq-wm-look .kq-wm-label {
+  opacity: 1;
+}
+.kq-wm-arrow {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  display: none;
+}
+.kq-wm-arrow svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--hud-gold-2);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px rgba(255, 196, 90, 0.8));
+  transform: translateX(26px);
+}
+.kq-waymark.kq-wm-edge .kq-wm-arrow {
+  display: block;
+}
+.kq-waymark.kq-wm-edge .kq-wm-icon {
+  animation: none;
+}
+@keyframes kq-wm-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+html[data-kq-reduced-motion] .kq-wm-icon {
+  animation: none;
+}
+body.kq-in-combat .kq-waymark {
+  filter: opacity(0.45);
+}
+
+/* ---- top-left column: era, then the quest tracker ---- */
+.kq-hud .kq-tl {
+  top: 14px;
+  left: 18px;
+  gap: 4px;
+  max-width: max(220px, min(370px, calc(50vw - 300px)));
+}
+.kq-hud .kq-era-label {
+  font-family: var(--sc);
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  min-height: 0;
+  color: var(--hud-dim);
+  padding-bottom: 2px;
+}
+.kq-hud .kq-status {
+  font-size: 13px;
+  margin: -2px 0 2px 0;
+  color: var(--hud-cyan);
+  opacity: 0.9;
+}
+
+/* the story's own line (when no quest leads): the same book serif as the tracker */
+.kq-hud .kq-tl > .kqs-objective {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.28;
+  padding: 5px 12px 6px 10px;
+  border-left: 2px solid rgba(242, 199, 107, 0.85);
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(90deg, rgba(12, 9, 6, 0.5), rgba(12, 9, 6, 0.2) 75%, transparent);
+}
+.kq-hud .kq-tl > .kqs-objective .kqs-obj-mark {
+  font-size: 11px;
+  vertical-align: 1px;
+  color: #f2c76b;
+}
+.kq-hud .kq-tl > .kqs-objective .kqs-obj-dist {
+  font-size: 13px;
+  color: #ffdf9a;
+}
+
+/* ---- prompt: a pill with a key cap ---- */
+.kq-hud .kq-prompt {
+  bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  padding: 5px 16px 5px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(16, 12, 8, 0.72), rgba(16, 12, 8, 0.58));
+  border: 1px solid rgba(242, 199, 107, 0.32);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+.kq-hud .kq-prompt kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0 8px;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: #241a0e;
+  text-shadow: none;
+  background: linear-gradient(180deg, #fff1cc, #e7c47a);
+  border: none;
+  border-radius: 999px;
+  box-shadow:
+    0 2px 0 #8a6a2c,
+    0 0 10px rgba(242, 199, 107, 0.45);
+}
+
+/* ---- toasts: small glass notes on the right ---- */
+.kq-hud .kq-toasts {
+  top: 66px;
+  right: 18px;
+  gap: 6px;
+  max-width: min(380px, 32vw);
+}
+.kq-hud .kq-toast {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--hud-ink);
+  text-shadow: var(--hud-shadow);
+  background: linear-gradient(90deg, rgba(14, 11, 8, 0.74), rgba(14, 11, 8, 0.52));
+  border-right: 2px solid var(--hud-gold);
+  border-radius: 6px 0 0 6px;
+  padding: 6px 12px 7px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transform: none;
+  text-align: right;
+}
+
+/* ---- "click into the picture" (pointer lock) ---- */
+.kq-hud .kq-click-to-play {
+  top: auto;
+  bottom: 28%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-style: normal;
+  padding: 10px 20px 10px 14px;
+  border-radius: 14px;
+  background: rgba(14, 11, 8, 0.62);
+  border: 1px solid rgba(242, 199, 107, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  opacity: 1;
+  white-space: nowrap;
+  animation: kq-in 0.35s ease-out;
+}
+.kq-hud .kq-click-to-play .kq-ctp-mouse {
+  width: 22px;
+  height: 30px;
+  color: var(--hud-gold-2);
+  filter: drop-shadow(0 0 4px rgba(242, 199, 107, 0.6));
+}
+.kq-hud .kq-click-to-play .kq-ctp-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.kq-hud .kq-click-to-play b {
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--hud-ink);
+}
+.kq-hud .kq-click-to-play .kq-ctp-text span {
+  font-size: 14px;
+  color: var(--hud-dim);
+}
+
+/* ---- crosshair: a soft dot ---- */
+.kq-hud .kq-crosshair {
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  background: rgba(255, 246, 225, 0.85);
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.35),
+    0 0 6px rgba(255, 240, 210, 0.4);
+}
+
+/* ---- subtitles ---- */
+.kq-hud .kq-subtitles .line {
+  background: rgba(12, 9, 6, 0.6);
+  border-radius: 6px;
+}
+.kq-hud .kq-subtitles .who {
+  color: var(--hud-gold);
+}
+
+/* ---- vitals (bottom-left): slim glass, thin bars ---- */
+.kq-hud .kq-dock-vitals {
+  left: 18px;
+  width: 190px;
+  gap: 5px;
+}
+.kq-dock-vitals .kqc-vitals {
+  gap: 4px;
+  padding: 7px 10px 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--hud-glass), var(--hud-glass-2));
+  box-shadow: none;
+  border: 1px solid rgba(244, 236, 217, 0.08);
+}
+.kq-dock-vitals .kqc-vitals.calm {
+  opacity: 0.72;
+}
+.kq-dock-vitals .kqc-row .lbl {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--hud-dim);
+}
+.kq-dock-vitals .kqc-row .num {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.kq-dock-vitals .kqc-track {
+  height: 7px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(244, 236, 217, 0.12);
+}
+.kq-dock-vitals .kqc-track .fill,
+.kq-dock-vitals .kqc-track .ghost {
+  border-radius: 4px;
+}
+.kq-dock-vitals .kqc-hp .fill {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(30, 8, 2, 0.55) calc(10% - 1px) 10%),
+    linear-gradient(180deg, #ffb07a, var(--hud-hp) 55%, #b8401a);
+  box-shadow: 0 0 8px rgba(255, 125, 69, 0.45);
+}
+.kq-dock-vitals .kqc-st .fill {
+  background: linear-gradient(180deg, #e8f6ff, var(--hud-atem) 60%, #5e9ec4);
+  box-shadow: 0 0 8px rgba(149, 210, 242, 0.35);
+}
+.kq-dock-vitals .kqc-bann,
+.kq-dock-vitals .kqc-skills {
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--hud-glass), var(--hud-glass-2));
+  border: 1px solid rgba(244, 236, 217, 0.08);
+}
+.kq-dock-vitals .kqc-bann .lbl {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--hud-dim);
+}
+.kq-dock-vitals .kqc-pip {
+  width: 11px;
+  height: 15px;
+}
+.kq-dock-vitals .kqc-skill {
+  width: 34px;
+  height: 34px;
+}
+.kq-dock-vitals .kqc-skill svg {
+  width: 19px;
+  height: 19px;
+}
+.kq-dock-vitals .kqp-xp {
+  padding: 4px 10px 5px 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--hud-glass), var(--hud-glass-2));
+  border: 1px solid rgba(242, 199, 107, 0.3);
+  box-shadow: none;
+}
+.kq-dock-vitals .kqp-lvl {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+}
+.kq-dock-vitals .kqp-bar {
+  height: 5px;
+  border: none;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.kq-dock-vitals .kqp-xp-num {
+  font-size: 12px;
+}
+.kq-dock-vitals .kqp-quick {
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--hud-glass), var(--hud-glass-2));
+  border: 1px solid rgba(244, 236, 217, 0.12);
+  box-shadow: none;
+}
+.kq-dock-vitals .kqp-q-key {
+  min-width: 22px;
+  height: 22px;
+  font-size: 13px;
+  border-radius: 999px;
+}
+.kq-dock-vitals .kqp-q-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.kq-dock-vitals .kqp-q-name {
+  font-size: 12px;
+}
+.kq-dock-vitals .kqp-q-count {
+  font-size: 13px;
+}
+
+/* ---- the dialogue card: slimmer and calmer, still a page from the field book ---- */
+.kq-root .kqs-dlg {
+  bottom: 84px;
+  width: min(720px, 90vw, calc(100vw - 380px));
+  gap: 14px;
+}
+.kq-root .kqs-portrait {
+  width: 86px;
+  height: 86px;
+}
+.kq-root .kqs-dlg-body {
+  padding: 10px 18px 8px 20px;
+  border-radius: 10px;
+  transform: none;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(255, 250, 235, 0.55), transparent 60%),
+    linear-gradient(180deg, #efe3c6, #e2d3ae);
+  box-shadow:
+    0 0 0 1px rgba(60, 40, 20, 0.28),
+    0 12px 36px rgba(0, 0, 0, 0.45);
+}
+.kq-root .kqs-dlg-body::before {
+  background: #e9dcbc;
+  bottom: 24px;
+}
+.kq-root .kqs-who {
+  font-size: 18px;
+  letter-spacing: 0.06em;
+}
+.kq-root .kqs-dlg-text {
+  font-size: calc(var(--sub-size) * 0.9);
+  line-height: 1.34;
+}
+.kq-root .kqs-dlg-foot {
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+/* ---- the right-edge feed (pickups, objective ticks): one serif, glass rows ---- */
+.kq-dock-feed .kqp-line,
+.kq-dock-feed .kqq-fi {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.25;
+  padding: 4px 12px 5px 22px;
+  color: var(--hud-ink);
+  background: linear-gradient(90deg, rgba(14, 11, 8, 0), rgba(14, 11, 8, 0.66) 22px);
+  border-right: 2px solid var(--hud-gold);
+  border-radius: 0;
+}
+.kq-dock-feed .kqq-fi-done {
+  border-right-color: #a8e08e;
+}
+.kq-dock-feed .kqp-line-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.kq-dock-feed .kqp-line-count,
+.kq-dock-feed .kqp-line-xp {
+  font-size: 13px;
+  color: var(--hud-gold-2);
+}
+
+/* ---- high contrast keeps solid backings ---- */
+html[data-kq-contrast] .kq-hud .kq-prompt,
+html[data-kq-contrast] .kq-hud .kq-toast,
+html[data-kq-contrast] .kq-hud .kq-click-to-play,
+html[data-kq-contrast] .kq-wm-dist {
+  background: #000;
+  border-color: #fff;
+}

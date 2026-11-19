@@ -87,6 +87,7 @@
         "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
         "type": { "enum": ["kill", "collect", "reach", "talk", "room", "examine", "echo", "calm", "escort", "survive", "use", "event", "manual"] },
         "text_de": { "type": "string", "minLength": 1 },
+        "hint_de": { "type": "string", "minLength": 1, "description": "What to do, concretely: shown when the player makes no progress for a minute (quests wayfinding)." },
         "count": { "type": "integer", "minimum": 1 },
         "optional": { "type": "boolean" },
         "bonus_xp": { "type": "number", "minimum": 0 },

@@ -257,7 +257,7 @@ test('a glowing pickup at dusk: walk over it → feed → H uses it; E picks up;
     k.progression!.place('t2', 'item.riechsalz', p.x, p.z - 2.1, '1789');
     k.step(3);
   });
-  await expect(page.locator('.kq-prompt')).toContainText('Aufheben: Riechsalz');
+  await expect(page.locator('.kq-prompt')).toContainText('Riechsalz aufheben');
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   expect((await prog(page)).inventory['item.riechsalz']).toBe(1);
   expect((await events(page, 'item:pickup')).at(-1)).toMatchObject({ item: 'item.riechsalz', id: 't2' });

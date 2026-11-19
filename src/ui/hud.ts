@@ -1,7 +1,10 @@
 import { t } from '../i18n';
 import { EYE_SVG, h, svg } from './dom';
+import { Waymark } from './waymark';
 
 const PX_PER_DEG = 3.2;
+
+const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="true"><rect x="3" y="2" width="18" height="28" rx="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v10M3 12h18" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M4 11V11a8 8 0 0 1 8-8v9z" fill="currentColor" opacity="0.85"/></svg>`;
 
 export type HudDockArea = 'vitals' | 'boss' | 'feed';
 
@@ -25,6 +28,8 @@ export class Hud {
   private readonly stanceEl: HTMLElement;
   private readonly toastsEl: HTMLElement;
   private readonly clickEl: HTMLElement;
+  /** The world waymark over the tracked objective (./waymark.ts; the quests system drives it). */
+  readonly waymark = new Waymark();
   /** Top-left column: era label, status, then feature lines (room, objective, gauges) — never overlapping. */
   private readonly tl: HTMLElement;
   /** Action-RPG docks (docs/ACTION-RPG.md §10): features put their own elements here. */
@@ -81,7 +86,8 @@ export class Hud {
         this.strip.append(i);
       }
     }
-    this.compass = h('div.kq-compass', [this.strip, h('div.kq-compass-needle')]);
+    // the strip scrolls inside a clip (the markers and their distance labels may hang below it)
+    this.compass = h('div.kq-compass', [h('div.kq-compass-clip', this.strip), h('div.kq-compass-needle')]);
     this.promptEl = h('div.kq-prompt');
     this.subsEl = h('div.kq-subtitles', { 'aria-live': 'polite' });
     this.threatEl = h('div.kq-threat', { title: t('hud.threat') }, svg(EYE_SVG));
@@ -92,7 +98,10 @@ export class Hud {
     this.statusEl = h('div.kq-status');
     this.stanceEl = h('div.kq-stance');
     this.toastsEl = h('div.kq-toasts');
-    this.clickEl = h('div.kq-click-to-play.kq-hidden', t('hud.clickToPlay'));
+    this.clickEl = h('div.kq-click-to-play.kq-hidden', { 'data-testid': 'click-to-look' }, [
+      svg(MOUSE_SVG),
+      h('div.kq-ctp-text', [h('b', t('hud.clickToPlay')), h('span', t('hud.clickToPlaySub'))]),
+    ]);
     this.eraEl.style.order = '0';
     this.statusEl.style.order = '10';
     this.tl = h('div.kq-tl', { 'data-testid': 'hud-topleft' }, [this.eraEl, this.statusEl]);
@@ -134,6 +143,7 @@ export class Hud {
     }
     this.el = h('div.kq-hud.kq-hidden', [
       this.threatEdge,
+      this.waymark.el,
       this.docks.vitals,
       this.docks.boss,
       this.docks.feed,
@@ -162,8 +172,12 @@ export class Hud {
     for (const [, m] of this.markers) this.placeMarker(m);
   }
 
-  /** A marker on the compass at a grid bearing (deg). Pass null to remove. */
-  setMarker(id: string, bearingDeg: number | null, color = '#e9c46a'): void {
+  /**
+   * A marker on the compass at a grid bearing (deg). Pass null to remove. `opts.dist` (metres)
+   * prints the distance under it; `opts.edge` keeps it on the strip's edge (with an arrow) when it
+   * is behind you, so the way to the tracked goal is always on screen.
+   */
+  setMarker(id: string, bearingDeg: number | null, color = '#e9c46a', opts: { dist?: number | null; edge?: boolean } = {}): void {
     let m = this.markers.get(id);
     if (bearingDeg === null) {
       m?.remove();
@@ -177,6 +191,11 @@ export class Hud {
     }
     m.style.borderColor = color;
     m.dataset.bearing = String(bearingDeg);
+    if (opts.edge) m.dataset.edge = '1';
+    else delete m.dataset.edge;
+    const dt = typeof opts.dist === 'number' && opts.dist >= 6 ? (opts.dist < 1000 ? `${Math.round(opts.dist / (opts.dist < 100 ? 1 : 10)) * (opts.dist < 100 ? 1 : 10)} m` : `${(opts.dist / 1000).toFixed(1).replace('.', ',')} km`) : '';
+    if (dt) m.dataset.dist = dt;
+    else delete m.dataset.dist;
     this.placeMarker(m);
   }
 
@@ -185,6 +204,15 @@ export class Hud {
     let d = b - this.heading;
     d = ((d + 540) % 360) - 180;
     const w = this.compass.clientWidth || 460;
+    const half = w / 2 / PX_PER_DEG - 6;
+    if (m.dataset.edge && Math.abs(d) > half) {
+      // behind or beside you: it waits on the strip's edge and points the way round
+      m.style.left = `${w / 2 + Math.sign(d) * half * PX_PER_DEG}px`;
+      m.style.display = '';
+      m.dataset.side = d < 0 ? 'l' : 'r';
+      return;
+    }
+    delete m.dataset.side;
     m.style.left = `${w / 2 + d * PX_PER_DEG}px`;
     m.style.display = Math.abs(d) > 70 ? 'none' : '';
   }
@@ -194,10 +222,15 @@ export class Hud {
    * at once (`owner`, e.g. the story's "Q – Zeitwechsel" and the Chronik's "E – Untersuchen"): the
    * most recently set one is shown, and clearing yours reveals the one below instead of hiding all.
    */
-  prompt(key: string | null, text?: string, owner = '_'): void {
+  prompt(key: string | null, text?: string, owner = '_', opts: { low?: boolean } = {}): void {
     this.prompts.delete(owner);
-    if (key || text) this.prompts.set(owner, { key, text: text ?? '' });
-    const top = [...this.prompts.values()].pop();
+    if (key || text) this.prompts.set(owner, { key, text: text ?? '', low: !!opts.low });
+    // a low prompt (the Feldstation's door) yields to any other: the staff beside the trailer is
+    // taken with E, not the hub opened (playtest 2026-11-19: "E – Feldstation" over the first task)
+    const all = [...this.prompts.entries()];
+    const topEntry = all.filter(([, p]) => !p.low).pop() ?? all.pop();
+    this.promptTop = topEntry?.[0] ?? null;
+    const top = topEntry?.[1];
     if (!top) {
       this.promptEl.classList.remove('show');
       return;
@@ -205,7 +238,19 @@ export class Hud {
     this.promptEl.replaceChildren(...(top.key ? [h('kbd', top.key)] : []), top.text);
     this.promptEl.classList.add('show');
   }
-  private readonly prompts = new Map<string, { key: string | null; text: string }>();
+  private readonly prompts = new Map<string, { key: string | null; text: string; low: boolean }>();
+  private promptTop: string | null = null;
+
+  /** Owner of the prompt on screen (null: none): E belongs to it. */
+  promptOwner(): string | null {
+    return this.promptTop;
+  }
+
+  /** Is only a low prompt (or none) on screen? A feature may then show its own. */
+  promptFree(): boolean {
+    const top = this.promptTop ? this.prompts.get(this.promptTop) : undefined;
+    return !top || top.low;
+  }
 
   /** Show a subtitle line; returns a function that removes it early. */
   subtitle(speaker: string | null, text: string, ms = 4000, fiction = false): () => void {

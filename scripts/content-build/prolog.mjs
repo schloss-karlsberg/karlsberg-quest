@@ -289,10 +289,13 @@ const prologQuests = {
         ln('marlene', 'Und die eine Regel: Wir schauen, wir graben nicht. Der Karlsberg ist ein Bodendenkmal. Wer etwas findet, meldet es.', { fact: 'cx.35', src: [src('SDSCHG'), src('HE-BW')] }),
       ],
       objectives: [
-        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab nehmen: er lehnt draußen am Wagen', place: [place(...P_SPOTS.stab, 0, T0)] },
+        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)',
+          hint_de: 'Der Messstab lehnt rechts neben der Wagentür, wo der goldene Lichtstrahl steht: hingehen und E drücken (oder einfach darüberlaufen).',
+          place: [place(...P_SPOTS.stab, 0, T0)] },
         {
           id: 'nebel', type: 'kill', enemy: 'nebelling', count: 3, after: ['stab'],
-          text_de: 'Am Damm steigt Nebel auf, mit Augen: den Stab schwingen (LMB)',
+          text_de: 'Unten am Damm: drei Nebelinge vertreiben (Klick oder K)',
+          hint_de: 'Den Hang hinunter zur Markierung am Damm. Nebelinge mit dem Stab treffen: Klick oder K, gehalten ein Wuchthieb; holt einer aus, Leertaste: ausweichen.',
           // outside the station's safe ring (40 m round 760/−915), on the way down to the dam
           where: place(803, -889, 24, T0),
           spawn: [{ kind: 'nebelling', x: 803, z: -889, era: T0, count: 3, radius: 3.5, tier: 0, leash: 30 }],
@@ -315,8 +318,14 @@ const prologQuests = {
         ln('marlene', 'Und der Weiher ist kein Naturteich. Ein gerader Damm quer zum Tal, dahinter eine glatte Fläche: Der Scan findet auf Wasser keine Punkte und füllt es flach.', { fact: 'rm.08', src: [src('HE-BW'), LIDAR] }),
       ],
       objectives: [
-        { id: 'damm', type: 'reach', text_de: 'Zum Damm des Karlsbergweihers, hinter dem Wagen', where: place(819, -875, 32, T0) },
-        { id: 'mauer', type: 'examine', clue: 'clue.p.mauerrest', text_de: 'Lokales Relief (2): den Mauerrest am Damm untersuchen' },
+        { id: 'damm', type: 'reach', text_de: 'Zum Damm am Karlsbergweiher, hinter dem Bauwagen', where: place(819, -875, 32, T0) },
+        {
+          id: 'mauer', type: 'examine', clue: 'clue.p.mauerrest',
+          text_de: 'Am Damm: Taste 2 (Lokales Relief) drücken, dann zur Markierung gehen',
+          // playtest 2026-11-19, „stuck at the lake“: the line said „untersuchen“ and there was no
+          // marker; the wall shows itself once you stand on it in Relief 2 (no E needed)
+          hint_de: 'Taste 2 schaltet das Lokale Relief ein. Dann zur Markierung am Damm gehen: auf der Stelle zeigt sich der Mauerrest von selbst, E ist nicht nötig. Taste 2 noch einmal: wieder die normale Sicht.',
+        },
         // the first fight, small and safe (playtest: no enemy for the first 10–15 minutes): the scan
         // wakes something in the old wall; one weak Nebelling teaches the staff (Klick / K)
         {
@@ -325,7 +334,7 @@ const prologQuests = {
           where: place(816, -884, 20, T0),
           spawn: [{ kind: 'nebelling', x: 815, z: -884, era: T0, count: 1, radius: 0, tier: 0, leash: 25 }],
         },
-        { id: 'stufe', type: 'reach', after: ['mauer'], text_de: 'Den Waldweg hinauf: die hohe Stufe im Wald', where: place(1237, -966, 70, T0) },
+        { id: 'stufe', type: 'reach', after: ['mauer'], text_de: 'Den Waldweg hinauf nach Osten: die hohe Stufe im Wald (dort Taste 3)', hint_de: 'Der goldene Lichtstrahl im Osten zeigt die Stufe. Den Weg entlang hinauf (Shift: rennen, F: über den Wald fliegen); dort Taste 3 (VAT) drücken.', where: place(1237, -966, 70, T0) },
       ],
       // a balm before the Eiskeller (playtest round 5: the first balms were that fight's own reward)
       rewards: { xp: 80, items: [{ item: 'item.balsam', count: 2 }] },
@@ -351,10 +360,10 @@ const prologQuests = {
         ln('laub', 'Und die Grube mit dem Ringwall war ein Keller, dessen Gewölbe nachgegeben hat. Der Lageplan schreibt Eiskeller. Zehn mal zehn Meter, einsfünfundachtzig tief.', { fact: 'rm.02', src: [src('HE-BW'), src('LIDAR', 'Merkmal KB-50')] }),
       ],
       objectives: [
-        { id: 'ehrenhof', type: 'examine', clue: 'clue.p.ehrenhof', text_de: 'Den Ehrenhof finden: Lokales Relief (2), dann E' },
+        { id: 'ehrenhof', type: 'examine', clue: 'clue.p.ehrenhof', text_de: 'Zum Ehrenhof, in die Mitte der Lichtung: dort Taste 2 (Lokales Relief)', hint_de: 'Der Lichtstrahl steht in der Mitte des Ehrenhofs. Hingehen und Taste 2 (Lokales Relief) drücken: die Mauerzüge zeigen sich von selbst.' },
         { id: 'karte', type: 'examine', clue: 'clue.p.kartenvergleich', text_de: 'M: Laubs Karte von 1840 über den Ehrenhof legen' },
-        { id: 'hohlweg', type: 'examine', clue: 'clue.p.hohlweg', text_de: 'Den Hohlweg westlich des Schlosses untersuchen' },
-        { id: 'grube', type: 'examine', clue: 'clue.p.eiskeller', text_de: 'Die runde Grube östlich des Schlosses (VAT, E)' },
+        { id: 'hohlweg', type: 'examine', clue: 'clue.p.hohlweg', text_de: 'Zum Hohlweg westlich des Schlosses: dort Taste 2 (Lokales Relief)', hint_de: 'Der Lichtstrahl steht im Hohlweg westlich des Schlosses. Hingehen und Taste 2 (Lokales Relief) drücken: der tiefe Weg zeigt sich von selbst.' },
+        { id: 'grube', type: 'examine', clue: 'clue.p.eiskeller', text_de: 'Zur runden Grube östlich des Schlosses: dort Taste 3 (VAT)', hint_de: 'Der Lichtstrahl steht über der Grube an der Wegkreuzung. Hingehen und Taste 3 (VAT) drücken.' },
         {
           id: 'nebel', type: 'kill', enemy: 'nebelling', count: 4, after: ['grube'],
           text_de: 'Nebelinge aus der Grube zurückschlagen',
@@ -382,7 +391,7 @@ const prologQuests = {
       ],
       objectives: [
         { id: 'wolke', type: 'examine', clue: 'clue.p.punktwolke', text_de: 'Die Punktwolke auf dem Tablet ansehen' },
-        { id: 'wechsel', type: 'reach', after: ['wolke'], text_de: 'Am Ehrenhof: Q – Sommer 1789', where: place(1218, -1118, 30, '1789') },
+        { id: 'wechsel', type: 'reach', after: ['wolke'], text_de: 'In der Mitte des Ehrenhofs: Q – Zeitwechsel in den Sommer 1789', hint_de: 'Zur Markierung in der Mitte des Ehrenhofs gehen und Q drücken: der Zeitwechsel in den Sommer 1789.', where: place(1218, -1118, 30, '1789') },
         { id: 'echo', type: 'echo', clue: 'echo.p.diener', after: ['wechsel'], text_de: 'Zuhören: der Hof von 1789' },
         {
           id: 'streuner', type: 'kill', enemy: 'streuner', count: 1, after: ['echo'],
@@ -439,7 +448,7 @@ const prologQuests = {
       objectives: [
         {
           id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 3,
-          text_de: 'Irrlichter über dem Damm bannen',
+          text_de: 'Irrlichter am Damm: erst Bannlicht (Rechtsklick oder G), dann zuschlagen',
           where: place(...P_SPOTS.irrlichter, 24, T0),
           spawn: [{ kind: 'irrlicht', x: P_SPOTS.irrlichter[0], z: P_SPOTS.irrlichter[1], era: T0, count: 3, radius: 5, leash: 30 }],
         },
