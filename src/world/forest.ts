@@ -37,7 +37,7 @@ import type { Heightfield } from './heightfield';
 const F = 7;
 const TILE = 64;
 const NEAR_DIST = 60;
-const MID_DIST = 180;
+const MID_DIST = 130;
 const KINDS = 3;
 const MAX_NEAR = 2500;
 const MAX_MID = 9000;
@@ -501,7 +501,8 @@ vec2 leafClump(vec2 uv, float seed, float dens) {
   bool coarse = fr > 0.02;
   // scalloped outline: leaf tips around the rim, slower lobes for a lumpy silhouette
   float lobes = 0.11 * sin(ang * 3.0 + seed * 17.0) + 0.07 * sin(ang * 5.0 + seed * 41.0);
-  float tips = 0.09 * abs(sin(ang * 9.0 + seed * 23.0)) + (coarse ? 0.025 : 0.05 * kqNoise(vec2(ang * 6.0, seed * 9.0)));
+  // (softer tips than before: big cards with spiky rims read as torn paper, playtest)
+  float tips = 0.05 * abs(sin(ang * 11.0 + seed * 23.0)) + (coarse ? 0.015 : 0.03 * kqNoise(vec2(ang * 6.0, seed * 9.0)));
   float edge = 0.86 + lobes - tips;
   // thinner in autumn / winter: the outline shrinks and gaps open from the rim
   edge *= mix(0.55, 1.0, dens);
@@ -661,6 +662,8 @@ void main() {
 #endif
     // darker at the foot (damp), and low in the stand
     alb *= mix(0.6, 1.0, smoothstep(0.0, 0.12, vH));
+    // trunks further off sink into the stand's shade (no pale palisade between the crowns)
+    alb *= mix(1.0, 0.55, smoothstep(25.0, 110.0, length(vWorld - uCamPos)));
     snowUp = smoothstep(0.2, 0.7, n.y);
   } else if (vPart < 1.5) {
     float dens = leafDensity() * step(seed, leafDensity() + 0.25);
@@ -706,7 +709,8 @@ void main() {
       float fr = max(fwidth(r), 0.01);
       crown = 1.0 - smoothstep(0.98 - fr, 0.98 + fr, r);
     }
-    float trunk = step(abs(q.x), 0.05) * step(q.y, 0.55);
+    // a short dark trunk only (playtest: the far stand read as a palisade of pale poles)
+    float trunk = step(abs(q.x), 0.04 * (1.0 - q.y)) * step(q.y, isSpruce > 0.5 ? 0.2 : 0.4);
     // winter: bare broadleaf crowns become a thin, twiggy haze (partial coverage, no pixel noise)
     float bare = (1.0 - isSpruce) * twigShow();
     crown *= 1.0 - bare * 0.62 * smoothstep(0.2, 0.9, length(cq) + 0.25 * nz);
@@ -722,8 +726,8 @@ void main() {
       leafy = 1.0 - bare;
       snowUp = smoothstep(0.2, 0.8, n.y) * (isSpruce > 0.5 ? 0.6 : 0.25);
     } else {
-      alb = srgb(vec3(0.25, 0.22, 0.2));
-      ao = 0.6;
+      alb = srgb(vec3(0.13, 0.11, 0.1));
+      ao = 0.45;
     }
   }
   // a touch toward the painted palette (rich, not grey: docs/ART-DIRECTION.md §1)

@@ -46,12 +46,15 @@ interface PropKind {
   chance: (c: CoverSample, slope: number, patch: number, look: CoverLook) => number;
 }
 
+// radii trimmed in the real-GPU perf pass (2026-11-19): the logs and stumps are dense scanned
+// meshes (about 0.5 M triangles each kind at the old 130–150 m), the forest view ran at 35–45 fps
+// on an M5 Pro at 1440×900 high; beyond ~60–95 m they are sub-pixel detail under the canopy
 export const PROP_KINDS: PropKind[] = [
   {
     id: 'fern',
     asset: 'nature.fern.02',
     mode: 'split',
-    radius: 46,
+    radius: 38,
     scale: [1.4, 2.3],
     sink: 0.05,
     wind: true,
@@ -62,7 +65,7 @@ export const PROP_KINDS: PropKind[] = [
     id: 'rock',
     asset: 'nature.rocks.moss01',
     mode: 'split',
-    radius: 170,
+    radius: 95,
     scale: [0.45, 0.95],
     sink: 0.25,
     wind: false,
@@ -73,7 +76,7 @@ export const PROP_KINDS: PropKind[] = [
     id: 'rock2',
     asset: 'nature.rocks.moss02',
     mode: 'split',
-    radius: 170,
+    radius: 95,
     scale: [0.45, 0.95],
     sink: 0.25,
     wind: false,
@@ -84,7 +87,7 @@ export const PROP_KINDS: PropKind[] = [
     id: 'log',
     asset: 'nature.log.01',
     mode: 'whole',
-    radius: 150,
+    radius: 70,
     scale: [0.8, 1.25],
     sink: 0.2,
     wind: false,
@@ -95,7 +98,7 @@ export const PROP_KINDS: PropKind[] = [
     id: 'stump',
     asset: 'nature.stump.02',
     mode: 'whole',
-    radius: 130,
+    radius: 60,
     scale: [0.7, 1.1],
     sink: 0.12,
     wind: false,
@@ -106,7 +109,7 @@ export const PROP_KINDS: PropKind[] = [
     id: 'stump1',
     asset: 'nature.stump.01',
     mode: 'whole',
-    radius: 130,
+    radius: 60,
     scale: [0.8, 1.2],
     sink: 0.1,
     wind: false,
