@@ -24,6 +24,14 @@
   color: #f4ecd9;
   animation: kqq-slide 0.45s ease-out;
 }
+/* in a fight the tracker keeps one quest: the one whose goal you stand in (the Irrlichter at the
+   dam, not the main quest's line elsewhere), else the first */
+.kq-hud[data-kq-mode='combat'] .kqq-tracker:has(.kqq-here) .kqq-tq:not(.kqq-here) {
+  display: none;
+}
+.kq-hud[data-kq-mode='combat'] .kqq-tracker .kqq-tq.kqq-here.kqq-here {
+  display: block;
+}
 .kqq-tq:not(.kqq-main) {
   border-left-color: rgba(220, 225, 235, 0.55);
   background: linear-gradient(90deg, rgba(12, 9, 6, 0.38), rgba(12, 9, 6, 0.14) 75%, transparent);
@@ -1156,4 +1164,31 @@ html[data-kq-contrast] .kqj-card {
 .kqj-set .kqj-empty {
   margin: 0 0 6px;
   font-size: 15px;
+}
+
+/* the silver waymark over a nearby tracked side goal (quests/index.ts `sideMark`): smaller than
+   the lead's, never in its way */
+.kq-waymark.kq-wm-near .kq-wm-icon {
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+}
+.kq-waymark.kq-wm-near .kq-wm-dist {
+  opacity: 0.85;
+  transform: scale(0.88);
+}
+
+/* the step before the goal (the story's „Q am Ehrenhof“ while the goal lies in another era) */
+.kqq-to.kqq-via {
+  font-style: italic;
+  color: #ffe2a0;
+}
+.kqq-to.kqq-via .kqq-box {
+  border: none;
+  background: none;
+  color: #f2c76b;
+}
+.kq-hud[data-kq-mode='combat'] .kqq-tracker .kqq-to.kqq-via {
+  display: none;
 }

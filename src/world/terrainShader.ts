@@ -216,9 +216,10 @@ void main() {
     } else if (i == 0) {
       c *= vec3(1.06, 0.95, 0.85);
     } else if (i == 3) {
-      // 1789 gravel walks are pale, raked sandstone grit
+      // 1789 gravel walks are pale, raked sandstone grit (not ×1.45: under the summer sun the
+      // Ehrenhof and the walks burnt out to a white sand plane, playtest round 7)
       float l = dot(c, vec3(0.3, 0.55, 0.15));
-      c = mix(c, vec3(l) * vec3(1.18, 1.08, 0.92) * 1.45, uHistoric * (1.0 - uRuin) * 0.7);
+      c = mix(c, vec3(l) * vec3(1.12, 1.04, 0.9) * 1.12, uHistoric * (1.0 - uRuin) * 0.6);
     } else if (i == 5) {
       c = mix(c, vec3(0.9, 0.93, 1.0), 0.45);
     }

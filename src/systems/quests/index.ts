@@ -27,6 +27,7 @@ import { type HintContext, type WayDeps, type WayPoint, StallWatch, distanceText
 import { enemyDef } from '../../rpg/enemies';
 import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
+import { Waymark } from '../../ui/waymark';
 import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
 import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
 
@@ -80,6 +81,8 @@ export { createQuestSlice };
 
 const OFFER_RANGE = 150;
 const BEACON_RANGE = 200;
+/** A tracked side goal this close (m) gets its own silver waymark. */
+const SIDE_MARK_RANGE = 90;
 
 /** Rough reading time of a spoken line (game seconds). */
 const lineSeconds = (s: string) => 1.6 + s.length * 0.055;
@@ -139,6 +142,13 @@ class QuestRuntime {
   private hintKey = '';
   private hint: { quest: string; obj: string; text: string } | null = null;
   private leadDist = '';
+  /**
+   * A second, silver waymark over the nearest tracked side goal that is not the lead (playtest:
+   * „Lichter am Weiher“ had a compass mark only; at night nobody found the Irrlichter).
+   */
+  private readonly sideMark = new Waymark();
+  /** The tracked quest whose open goal zone the player stands in (it heads the tracker in a fight). */
+  private here: string | null = null;
   private interest = new Set<string>();
   private dirty = true;
   /** Set when a quest was accepted or an objective closed: clues found earlier settle next tick (Q-15). */
@@ -151,6 +161,8 @@ class QuestRuntime {
 
   constructor(private readonly ctx: GameContext) {
     const { quests, items } = questsInPlay(loadBundledQuests(), ctx.params.has('storytest'));
+    this.sideMark.el.dataset.testid = 'waymark-side';
+    this.sideMark.el.classList.add('kq-wm-near');
     this.defs = quests;
     this.items = items;
     const self = this;
@@ -554,7 +566,10 @@ class QuestRuntime {
       }
     }
     const canvas = ctx.renderer?.domElement;
-    ctx.ui.hud.waymark.frame(Math.min(dt, 0.1), ctx.camera, p.x, p.z, canvas?.clientWidth || window.innerWidth, canvas?.clientHeight || window.innerHeight);
+    const cw = canvas?.clientWidth || window.innerWidth;
+    const ch = canvas?.clientHeight || window.innerHeight;
+    ctx.ui.hud.waymark.frame(Math.min(dt, 0.1), ctx.camera, p.x, p.z, cw, ch);
+    this.sideMark.frame(Math.min(dt, 0.1), ctx.camera, p.x, p.z, cw, ch);
   }
 
   // ---- HUD ----------------------------------------------------------------------------------
@@ -587,6 +602,10 @@ class QuestRuntime {
           // (playtest: three quests ran 9+ lines into the vitals)
           .filter((o, _i, all) => first || (!o.done && o === all.find((x) => !x.done))),
         hint: this.hint?.quest === id ? this.hint.text : undefined,
+        here: this.here === id,
+        // the story's own step leads (its place, its words): say it under the quest's goal
+        // (a „Q …“ line the story shows above the tracker itself: story/objectives.ts)
+        via: this.lead?.quest === q && this.lead.obj && this.lead.label !== this.lead.obj.text_de && !/\bQ\b/.test(this.lead.label) ? this.lead.label : undefined,
       });
       first = false;
     }
@@ -683,8 +702,17 @@ class QuestRuntime {
   private viaEntrance(lead: Lead | null): Lead | null {
     const w = this.ctx.world;
     const tg = lead?.target;
-    if (!lead || !tg || !w.entranceFor || !w.collider.enabled) return lead;
+    if (!lead || !tg || !w.collider.enabled) return lead;
     const p = this.ctx.player.position;
+    // through the rooms door by door (playtest round 7: past the Durchfahrt's mouth the marker
+    // still pointed back at it; inside it pointed through the wall at the Registratur)
+    if (w.routeTo) {
+      const step = w.routeTo(tg.x, tg.z, p.x, p.z, p.y);
+      if (!step) return lead;
+      const inside = !!this.ctx.state.state.flags['interior.room'];
+      return { ...lead, target: { ...tg, x: step.x, z: step.z, r: 1.5, kind: 'zone' }, label: t(inside ? 'quest.viaInner' : 'quest.viaDoor', { label: lead.label }) };
+    }
+    if (!w.entranceFor) return lead;
     if (this.ctx.state.state.flags['interior.room'] || w.collider.footprintAt(p.x, p.z) >= 0) return lead;
     if (w.collider.footprintAt(tg.x, tg.z) < 0) return lead;
     const door = w.entranceFor(tg.x, tg.z, p.x, p.z);
@@ -714,22 +742,36 @@ class QuestRuntime {
       delete tel.dataset.tz;
     }
     // the world waymark: a glowing diamond with the distance over the lead goal
-    if (lead?.target && !ctx.player.flying) {
+    // also in the air: the Geisterblick is for finding the way (playtest: flying, only the compass
+    // said where to go)
+    if (lead?.target) {
       ctx.ui.hud.waymark.set({ x: lead.target.x, y: ctx.world.heightAt(lead.target.x, lead.target.z), z: lead.target.z, r: lead.target.r, label: shortLabel(lead.label), kind: lead.target.kind, main: lead.quest?.kind !== 'side' });
     } else ctx.ui.hud.waymark.set(null);
     // every other tracked quest keeps a (non-edge) compass mark too: a tracked side quest with no
     // marker at all read as "Wird verfolgt" and nowhere to go (playtest: the Irrlichter at the lake)
     const deps = this.wayDeps();
+    let side: { x: number; z: number; r: number; d: number; label: string; kind: WayPoint['kind'] } | null = null;
+    let here: string | null = null;
     for (const id of this.book.tracked()) {
       const q = this.defs.get(id);
-      if (!q || q === lead?.quest || this.book.state(q.id) !== 'active') continue;
+      if (!q || this.book.state(q.id) !== 'active') continue;
       for (const o of this.book.openObjectives(q).filter((x) => !x.optional)) {
         const tg = this.targetOf(q, o, deps);
         if (!tg) continue;
-        want.set(`kqq:trk:${q.id}`, { kind: 'obj', x: tg.x, z: tg.z, dist: Math.hypot(tg.x - p.x, tg.z - p.z) });
+        const d = Math.hypot(tg.x - p.x, tg.z - p.z);
+        if (!here && d <= Math.max(tg.r, 12) + 6) here = q.id;
+        if (q === lead?.quest) break;
+        want.set(`kqq:trk:${q.id}`, { kind: 'obj', x: tg.x, z: tg.z, dist: d });
+        if (d < SIDE_MARK_RANGE && (!side || d < side.d) && !(lead?.target && Math.hypot(lead.target.x - tg.x, lead.target.z - tg.z) < 4)) side = { x: tg.x, z: tg.z, r: tg.r, d, label: o.text_de, kind: tg.kind };
         break;
       }
     }
+    if (here !== this.here) {
+      this.here = here;
+      this.dirty = true;
+    }
+    this.sideMark.set(side ? { x: side.x, y: ctx.world.heightAt(side.x, side.z), z: side.z, r: side.r, label: shortLabel(side.label), kind: side.kind, main: false } : null);
+    if (!this.sideMark.el.isConnected) ctx.ui.hud.waymark.el.parentElement?.append(this.sideMark.el);
     for (const npc of this.book.npcs()) {
       const mark = this.book.markFor(npc);
       if (mark !== 'offer' && mark !== 'offer-main' && mark !== 'ready') continue;
@@ -925,6 +967,7 @@ class QuestRuntime {
     this.journal.close();
     this.reward.clear();
     this.beacons.dispose();
+    this.sideMark.el.remove();
     this.tracker.el.remove();
     this.feed.el.remove();
     for (const id of this.compass.keys()) this.ctx.ui.hud.setMarker(id, null);

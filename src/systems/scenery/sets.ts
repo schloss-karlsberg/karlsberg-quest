@@ -6,6 +6,7 @@
  */
 import { Color } from 'three';
 import { WORLD_SETS } from './worldsets';
+import { EHRENHOF_1789 } from './court';
 import type { Era } from '../../core/era';
 import { type SetBuilder, face } from './builder';
 import { rng } from './kit';
@@ -519,4 +520,4 @@ const rund: SetDef = {
   },
 };
 
-export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund, ...WORLD_SETS];
+export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund, EHRENHOF_1789, ...WORLD_SETS];

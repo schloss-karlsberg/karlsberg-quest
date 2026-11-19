@@ -88,9 +88,9 @@ export const de: Record<string, string> = {
   'action.sprint': 'Rennen',
   'action.crouch': 'Ducken',
   'action.prone': 'Hinlegen',
-  'action.fly': 'Geistersicht',
+  'action.fly': 'Geisterblick',
   'action.up': 'Aufsteigen / Aufstehen',
-  'action.down': 'Absteigen (Geistersicht)',
+  'action.down': 'Sinken (Geisterblick)',
   'action.listen': 'Lauschen / Untersuchen / Sprechen',
   'action.lantern': 'Laterne',
   'action.shift': 'Zeitsprung',
@@ -123,7 +123,7 @@ export const de: Record<string, string> = {
 
   'controls.title': 'Steuerung',
   'controls.body':
-    'WASD / Pfeile: gehen · Maus: umsehen · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · F: Geistersicht (nur heute) · 1–3: Relief-Blick · 0: Relief aus · M: Karte 1840 · Esc: Pause',
+    'WASD / Pfeile: gehen · Maus: umsehen · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · F: Geisterblick (nur heute) · 1–3: Relief-Blick · 0: Relief aus · M: Karte 1840 · Esc: Pause',
 
   'hud.compass.n': 'N',
   'hud.compass.e': 'O',
@@ -143,13 +143,14 @@ export const de: Record<string, string> = {
   'map.on': 'Karte 1836–41 eingeblendet',
   'map.off': 'Karte ausgeblendet',
 
-  'toast.noSpirit': 'Die Geistersicht trägt nur in der Gegenwart.',
+  'toast.noSpirit': 'Der Geisterblick trägt nur in der Gegenwart.',
   'toast.saved': 'Feldbuch gesichert.',
   'stance.stand': 'Stehen',
   'stance.crouch': 'Geduckt',
   'stance.prone': 'Liegend',
-  'fly.on': 'Geistersicht',
+  'fly.on': 'Geisterblick',
   'fly.off': 'Zurück auf dem Boden',
+  'fly.prompt': 'Landen · W: fliegen, wohin du schaust · Leertaste: steigen · C: sinken · Umschalt: schneller',
 
   'modal.close': 'Schließen',
   'modal.ok': 'Gut',

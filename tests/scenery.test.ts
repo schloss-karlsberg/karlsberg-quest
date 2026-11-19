@@ -10,6 +10,8 @@ import { roofQuads, underRoof } from '../src/systems/fx/ambient/ambient';
 import { SetBuilder } from '../src/systems/scenery/builder';
 import { PASSAGE, TEMPEL_DOOR, passageAt, passageCollision } from '../src/systems/scenery/passage';
 import { GATE_CENTER, SETS } from '../src/systems/scenery/sets';
+import { COURT_LIFE, CourtLife, EHRENHOF_1789, ROSETTE } from '../src/systems/scenery/court';
+import { court } from '../src/systems/fx/k3-crowd';
 import { lookFor } from '../src/systems/story/index';
 import { validateStories } from '../src/systems/story/validate';
 import type { StoryFile } from '../src/systems/story/types';
@@ -128,6 +130,31 @@ describe('sets', () => {
     };
     expect(solidsAt(0)).toBe(true);
     expect(solidsAt(1)).toBe(false);
+  });
+});
+
+describe('the Ehrenhof in 1789 (court.ts)', () => {
+  it('is paved, its rosette marks the era anchor, and it is built in 1789 only', () => {
+    expect(EHRENHOF_1789.eras).toEqual(['1789']);
+    const r = court(ROSETTE[0], ROSETTE[1]);
+    expect(Math.hypot(r.x - 1218, r.z + 1118)).toBeLessThan(1.5);
+    const b = new SetBuilder(() => 300);
+    EHRENHOF_1789.build(b, { era: '1789', gateOpen: 0 });
+    const built = b.build(EHRENHOF_1789.id);
+    expect(built.group.children.length).toBeGreaterThan(0);
+    // the paving carries no solids: only lanterns, tubs, flags, coach, stalls and barrels
+    expect(built.solids.length).toBeLessThan(40);
+  });
+
+  it('its people stand clear of the anchor, the gate and the Streuner', () => {
+    for (const st of COURT_LIFE.standers) {
+      const p = court(st.at[0], st.at[1]);
+      for (const [x, z, r] of [[1218, -1118, 4], [1206, -1113, 3], [1201, -1115, 2.5]] as const) expect(Math.hypot(p.x - x, p.z - z), `${st.kind} ${st.at}`).toBeGreaterThan(r);
+    }
+    const life = new CourtLife(() => 300);
+    life.update(30, false);
+    expect(life.count).toBeGreaterThan(COURT_LIFE.standers.length);
+    life.dispose();
   });
 });
 

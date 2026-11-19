@@ -384,6 +384,9 @@ export class StoryEngine {
     s.beatTime = 0;
     for (const k of Object.keys(s.latched)) if (!k.startsWith('c:')) delete s.latched[k];
     s.fired = s.fired.filter((r) => r.startsWith('c:'));
+    // the beat's repeatable reactions look afresh (a resume after being caught in the past wakes you
+    // in the present: its „era today“ reaction must set the way back again, playtest round 7)
+    for (const k of [...this.edges.keys()]) if (k.startsWith('b:')) this.edges.delete(k);
     this.host.beatEntered(f.chapter, b, { resume });
     if (b.enter?.length) this.host.run(b.enter, { resume, source: `${f.chapter}/${b.id}:enter`, beat: id });
   }
