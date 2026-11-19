@@ -538,7 +538,7 @@ class QuestRuntime {
     }
     this.tracker.tick();
     const p = ctx.player.position;
-    this.beacons.frame(dt, p.x, p.z, ctx.settings.state.reducedMotion);
+    this.beacons.frame(dt, p.x, p.z, ctx.settings.state.reducedMotion, ctx.camera.position.y);
     if ((this.markIn -= dt) <= 0) {
       this.markIn = 0.1;
       this.syncCompass();

@@ -157,7 +157,7 @@ export class Beacons {
     return { group: g, beam, halo, ground, x: s.x, z: s.z, r: s.r, lead: !!s.lead, alpha: 0, want: 0, seen: true };
   }
 
-  frame(dt: number, px: number, pz: number, reducedMotion: boolean): void {
+  frame(dt: number, px: number, pz: number, reducedMotion: boolean, eyeY?: number): void {
     this.time += dt;
     for (const [id, b] of this.list) {
       const d = Math.hypot(px - b.x, pz - b.z);
@@ -191,7 +191,11 @@ export class Beacons {
       b.beam.uniforms.uAlpha!.value = 0.55 * b.alpha;
       b.halo.uniforms.uAlpha!.value = 0.16 * b.alpha;
       // the ground ring stays a little visible close by, so you see where the zone ends
-      b.ground.uniforms.uAlpha!.value = 0.7 * Math.max(b.alpha, b.seen && d < b.r * 3 ? 0.3 : 0);
+      // seen almost edge-on (from far below the ring's plane or across a slope) a flat ring is a long
+      // floating streak through the forest (playtest): it fades at grazing angles
+      const graze = eyeY === undefined ? 1 : Math.atan2(eyeY - (y + 0.2), Math.max(1, d - gr * 0.8));
+      const flat = Math.min(1, Math.max(0, (graze - 0.04) / 0.1));
+      b.ground.uniforms.uAlpha!.value = 0.7 * Math.max(b.alpha, b.seen && d < b.r * 3 ? 0.3 : 0) * flat;
     }
   }
 
