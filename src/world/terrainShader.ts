@@ -6,6 +6,8 @@ precision highp int;
 uniform highp sampler2D uHeight;
 uniform vec4 uGrid;      // x0, z0, cell, skirt depth per step (m)
 uniform vec2 uGridSize;  // cols, rows
+uniform sampler2D uCover;
+uniform float uBedDepth; // m the lake bed sinks below the (flat LiDAR) water surface
 attribute vec3 aChunk;   // c0, r0, step (in samples)
 varying vec3 vWorld;
 varying float vOutside;
@@ -24,6 +26,10 @@ void main() {
   ivec2 sc = ivec2(mirrorIdx(ic.x, n.x), mirrorIdx(ic.y, n.y));
   float h = texelFetch(uHeight, sc, 0).r;
   h -= position.y * uGrid.w * aChunk.z;
+  // water cells: the LiDAR return is the flat water surface; sink a bed under the water mesh
+  // (world/water.ts draws the surface at the old height) so the shore meets it in a soft slope
+  float wet = texelFetch(uCover, sc, 0).g;
+  h -= uBedDepth * smoothstep(0.15, 0.85, wet);
   vec3 wp = vec3(uGrid.x + cr.x * uGrid.z, h, uGrid.y + cr.y * uGrid.z);
   vec2 lo = uGrid.xy;
   vec2 hi = uGrid.xy + (uGridSize - 1.0) * uGrid.z;
@@ -52,6 +58,16 @@ uniform float uForestFar;
 uniform float uHistoric;   // 0 today, 1 historic eras (palette)
 uniform float uTreeShade;  // how much the canopy shades the forest floor
 uniform float uPalette;    // 0 default, 1 colour-blind safe (settings.colorblind)
+uniform float uRuin;       // 1796: burnt patches on the building grounds
+#ifdef KQ_SPLAT
+precision highp sampler2DArray;
+// CC0 ground set (vegetation/strips.ts): 0 litter, 1 forest floor, 2 grass, 3 gravel, 4 rock,
+// 5 snow, 6 mud, 7 burnt. Albedo (sRGB) and normal xy + height in one array each.
+uniform sampler2DArray uGroundAlb;
+uniform sampler2DArray uGroundNH;
+uniform float uTile[8];
+uniform float uDetailFar;  // m: texture normals fade out here
+#endif
 varying vec3 vWorld;
 varying float vOutside;
 
@@ -104,11 +120,125 @@ void main() {
   vec3 col = uFogColor;
   if (reveal < 0.999) {
 
+  float forest = cov.r;
+  float water = cov.g;
+  float bare = cov.b;
+  float lawn = cov.a;
+  float season = uSeason;
+  float nz2 = kqFbm(vWorld.xz * 0.11);
+  float nz3 = kqNoise(vWorld.xz * 0.023);
+#ifdef KQ_SPLAT
+  // --- splat-blended CC0 ground set: weights from land cover, slope, water, era; then
+  // height-blended (the taller texel wins: pebbles poke out of the leaves), no visible tiling
+  // (two offset lookups switched by a macro noise), macro colour variation on top
+  float slope = degrees(acos(clamp(n.y, -1.0, 1.0)));
+  float autumn = clamp(season, 0.0, 1.0);
+  float macro = kqFbm(vWorld.xz * 0.013 + 7.0);
+  float moss = smoothstep(0.42, 0.7, kqFbm(vWorld.xz * 0.045 + 3.0));
+  float wv[8];
+  wv[0] = forest * mix(0.25, 1.0, autumn) * (1.0 - 0.6 * moss);
+  wv[1] = forest * (mix(1.0, 0.25, autumn) + moss * 0.9);
+  wv[2] = (1.0 - forest) * (1.0 - bare) + lawn;
+  wv[3] = bare * (1.0 - uRuin * 0.5);
+  wv[7] = uRuin * (bare * (0.5 + 0.8 * smoothstep(0.45, 0.65, nz2)) + (1.0 - forest) * 0.6 * smoothstep(0.55, 0.75, macro));
+  float rockW = smoothstep(30.0, 46.0, slope) * (1.0 - bare);
+  // damp mud: the lake shore (and the bed under the water) and wet hollows in the forest
+  float mudW = max(smoothstep(0.03, 0.4, water), forest * smoothstep(-0.2, -1.4, slrm) * smoothstep(0.45, 0.7, nz2) * 0.8);
+  float snowW = uSnow * smoothstep(44.0, 24.0, slope) * (1.0 - forest * 0.3) * (0.9 + 0.1 * nz2);
+  float keep = (1.0 - rockW) * (1.0 - mudW);
+  for (int i = 0; i < 4; i++) wv[i] *= keep;
+  wv[7] *= keep;
+  wv[4] = rockW * (1.0 - mudW);
+  wv[6] = mudW;
+  float wsum = 0.0;
+  for (int i = 0; i < 8; i++) { if (i != 5) wv[i] *= (1.0 - snowW); wsum += i == 5 ? 0.0 : wv[i]; }
+  wv[5] = snowW;
+  wsum += snowW;
+  for (int i = 0; i < 8; i++) wv[i] /= max(wsum, 1e-4);
+  // anti-tiling: a macro noise picks one of 8 offsets per patch, blended between neighbours
+  vec2 dX = dFdx(vWorld.xz);
+  vec2 dY = dFdy(vWorld.xz);
+  float lk = kqNoise(vWorld.xz * 0.09) * 8.0;
+  float ia = floor(lk);
+  float fb = smoothstep(0.25, 0.75, fract(lk));
+  vec2 offA = sin(vec2(3.0, 7.0) * ia);
+  vec2 offB = sin(vec2(3.0, 7.0) * (ia + 1.0));
+  vec4 cs[8];
+  vec4 hs[8];
+  float best = -1.0;
+  for (int i = 0; i < 8; i++) {
+    cs[i] = vec4(0.0);
+    hs[i] = vec4(0.5, 0.5, 0.0, 0.0);
+    if (wv[i] < 0.015) continue;
+    float t = uTile[i];
+    vec2 uvl = vWorld.xz / t;
+    vec2 gx = dX / t;
+    vec2 gy = dY / t;
+    float L = float(i);
+    vec4 ca = vec4(0.0);
+    vec4 ha = vec4(0.0);
+    vec4 cb = vec4(0.0);
+    vec4 hb = vec4(0.0);
+    if (fb < 0.98) {
+      ca = textureGrad(uGroundAlb, vec3(uvl + offA, L), gx, gy);
+      ha = textureGrad(uGroundNH, vec3(uvl + offA, L), gx, gy);
+    }
+    if (fb > 0.02) {
+      cb = textureGrad(uGroundAlb, vec3(uvl + offB, L), gx, gy);
+      hb = textureGrad(uGroundNH, vec3(uvl + offB, L), gx, gy);
+    }
+    if (fb <= 0.02) { cb = ca; hb = ha; }
+    if (fb >= 0.98) { ca = cb; ha = hb; }
+    cs[i] = mix(ca, cb, fb);
+    hs[i] = mix(ha, hb, fb);
+    best = max(best, hs[i].b + wv[i] * 1.6);
+  }
+  // height blend: keep what rises within 0.35 of the winner
+  vec3 alb = vec3(0.0);
+  vec2 dn = vec2(0.0);
+  float hsum = 0.0;
+  float hgt = 0.0;
+  for (int i = 0; i < 8; i++) {
+    if (wv[i] < 0.015) continue;
+    float b = max(hs[i].b + wv[i] * 1.6 - best + 0.35, 0.0);
+    b *= b;
+    vec3 c = cs[i].rgb;
+    // era / season tints per layer (hand-painted feel: warm lights, rich but not garish)
+    if (i == 2) {
+      vec3 lush = c * vec3(0.86, 1.1, 0.72);
+      vec3 gold = c * vec3(1.12, 1.0, 0.68);
+      c = mix(lush, gold, autumn * 0.85);
+      c = mix(c, c * vec3(1.15, 0.98, 0.62), clamp(season - 1.0, 0.0, 1.0));
+      c *= mix(1.0, 1.12, lawn);
+    } else if (i == 0) {
+      c *= vec3(1.06, 0.95, 0.85);
+    } else if (i == 3) {
+      // 1789 gravel walks are pale, raked sandstone grit
+      float l = dot(c, vec3(0.3, 0.55, 0.15));
+      c = mix(c, vec3(l) * vec3(1.18, 1.08, 0.92) * 1.45, uHistoric * (1.0 - uRuin) * 0.7);
+    } else if (i == 5) {
+      c = mix(c, vec3(0.9, 0.93, 1.0), 0.45);
+    }
+    alb += c * b;
+    dn += (hs[i].rg * 2.0 - 1.0) * b;
+    hgt += hs[i].b * b;
+    hsum += b;
+  }
+  alb /= max(hsum, 1e-4);
+  dn /= max(hsum, 1e-4);
+  hgt /= max(hsum, 1e-4);
+  // macro variation (no repeat at 20 m): value and a warm/cool hue drift
+  alb *= 0.8 + 0.42 * macro;
+  alb = mix(alb, alb * vec3(1.08, 1.0, 0.86), smoothstep(0.35, 0.75, nz3));
+  // detail normal (image +Y = −z here), fades out with distance
+  float ns = 0.85 * (1.0 - smoothstep(uDetailFar * 0.4, uDetailFar, dist));
+  n = normalize(vec3(n.x + dn.x * ns, n.y, n.z - dn.y * ns));
+  float snow = snowW;
+  float cavity = mix(0.72, 1.06, smoothstep(0.1, 0.75, hgt));
+#else
   // --- micro detail near the camera (leaf litter, grass clumps)
   float near = 1.0 - smoothstep(25.0, 90.0, dist);
   float nz1 = kqNoise(vWorld.xz * 1.7);
-  float nz2 = kqFbm(vWorld.xz * 0.11);
-  float nz3 = kqNoise(vWorld.xz * 0.023);
   if (near > 0.0) {
     float e = 0.35;
     float hx = kqNoise((vWorld.xz + vec2(e, 0.0)) * 1.7) - nz1;
@@ -118,14 +248,9 @@ void main() {
   float slope = degrees(acos(clamp(n.y, -1.0, 1.0)));
 
   // --- albedo from land cover, season and slope
-  float forest = cov.r;
-  float water = cov.g;
-  float bare = cov.b;
-  float lawn = cov.a;
   vec3 meadowSummer = srgb(vec3(0.33, 0.43, 0.2));
   vec3 meadowAutumn = srgb(vec3(0.42, 0.42, 0.28));
   vec3 meadowWinter = srgb(vec3(0.40, 0.38, 0.32));
-  float season = uSeason;
   vec3 meadow = season < 1.0 ? mix(meadowSummer, meadowAutumn, season) : mix(meadowAutumn, meadowWinter, season - 1.0);
   meadow *= 0.8 + 0.35 * nz2;
   // forest floor (only where there is forest: saves an fbm and a noise on open ground)
@@ -149,6 +274,9 @@ void main() {
   alb = mix(alb, path, bare);
   alb = mix(alb, rock, smoothstep(32.0, 48.0, slope) * (1.0 - bare));
 
+  float cavity = 1.0;
+#endif
+
   // --- forest canopy seen from afar (beyond the instanced trees)
   float farF = smoothstep(uForestFar * 0.8, uForestFar, dist) * forest;
   if (farF > 0.0) {
@@ -160,26 +288,22 @@ void main() {
     alb = mix(alb, canopy, farF);
   }
 
+#ifndef KQ_SPLAT
   // --- snow on flat ground
   float snow = uSnow * smoothstep(42.0, 20.0, slope) * (1.0 - forest * 0.5) * (0.85 + 0.15 * nz1);
   alb = mix(alb, srgb(vec3(0.86, 0.89, 0.95)), snow);
+#endif
 
   // --- lighting
-  float ao = clamp(1.0 + slrm * 0.22 + fine * 0.25, 0.5, 1.2);
+  float ao = clamp(1.0 + slrm * 0.22 + fine * 0.25, 0.5, 1.2) * cavity;
   // the canopy's blanket shade stands in for real tree shadows only where the sun-shadow map does
   // not reach (low tier, beyond the shadow box): inside it the trees cast their own shadows
   float realShadow = uShadowParams.x * (1.0 - smoothstep(uShadowCenter.w * 0.8, uShadowCenter.w, length(vWorld.xz - uShadowCenter.xz)));
   float shade = mix(1.0, 1.0 - uTreeShade * (1.0 - 0.8 * realShadow), forest * (1.0 - farF));
   col = kqLight(alb, n, vWorld, ao * mix(1.0, 0.8, forest), shade);
 
-  // --- water: dark, reflective
-  if (water > 0.01) {
-    vec3 v = normalize(vWorld - uCamPos);
-    float fres = pow(1.0 - max(-v.y, 0.0), 4.0);
-    vec3 wcol = srgb(vec3(0.04, 0.06, 0.06)) + mix(uFogColor * 0.6, uSkyAmbient, 0.5) * (0.15 + 0.85 * fres);
-    wcol += uSunColor * pow(max(dot(reflect(v, vec3(0, 1, 0)), uSunDir), 0.0), 120.0) * 2.0;
-    col = mix(col, wcol, smoothstep(0.2, 0.8, water) * (1.0 - snow));
-  }
+  // --- the lake bed under the water mesh (world/water.ts): darker and cooler with depth
+  if (water > 0.01) col *= mix(vec3(1.0), vec3(0.45, 0.5, 0.48), smoothstep(0.2, 0.9, water));
 
   // --- 1840 map overlay (Kartograf)
   if (uMapMix > 0.001) {

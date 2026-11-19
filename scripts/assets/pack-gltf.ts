@@ -3,7 +3,8 @@
  *
  *   pnpm assets:pack <in.gltf|in.glb> <out.glb> [--tex 1024] [--q 82] [--simplify 0.5] [--no-meshopt]
  *
- * - dedup + prune + weld, optional meshoptimizer simplify (ratio of triangles to keep),
+ * - dedup + prune + weld, optional meshoptimizer simplify (ratio of triangles to keep; --error
+ *   is the allowed deviation relative to the mesh size, default 0.002: raise it for scans),
  * - every texture → WebP (EXT_texture_webp) via the `cwebp` CLI, longest side ≤ --tex
  *   (default 1024; use 2048 only for hero / terrain sets, docs/ART-DIRECTION.md §8),
  * - meshopt compression (EXT_meshopt_compression) with quantised attributes.
@@ -26,7 +27,7 @@ function arg(name: string, def?: string): string | undefined {
 
 const [input, output] = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !all[i - 1]?.startsWith('--'));
 if (!input || !output) {
-  console.error('usage: pnpm assets:pack <in.gltf|in.glb> <out.glb> [--tex 1024] [--q 82] [--simplify 0.5] [--no-meshopt]');
+  console.error('usage: pnpm assets:pack <in.gltf|in.glb> <out.glb> [--tex 1024] [--q 82] [--simplify 0.5] [--error 0.002] [--no-meshopt]');
   process.exit(2);
 }
 const maxTex = Number(arg('tex', '1024'));
@@ -39,7 +40,7 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
 const doc = await io.read(input);
 
 await doc.transform(dedup(), weld());
-if (simplifyRatio !== null) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: simplifyRatio, error: 0.002 }));
+if (simplifyRatio !== null) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: simplifyRatio, error: Number(arg('error', '0.002')) }));
 await doc.transform(prune());
 
 // textures → WebP through cwebp (resize keeps the aspect: 0 for the other side)

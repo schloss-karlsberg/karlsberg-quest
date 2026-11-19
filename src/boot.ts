@@ -145,6 +145,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     settings.update((d) => (d.graphics = guess), 'graphics');
   }
   quality.listeners.push((p) => world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps));
+  // nature track: CC0 ground / bark sets, grass, props and water detail follow the tier
+  quality.listeners.push((_p, level) => world.setDetail(level));
+  world.attachAssets(assets);
   const env = new EnvLight(world.sky.mesh);
   const shadowFocus = new Vector3();
   const camFwd = new Vector3();
@@ -270,6 +273,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       if (camFwd.lengthSq() > 1e-6) camFwd.normalize();
       shadowFocus.copy(camera.position).addScaledVector(camFwd, quality.preset.shadowRange * 0.35);
       world.shadows.update(renderer, scene, shadowFocus);
+      world.water.renderReflection(renderer, scene, camera);
       env.update(renderer, world.lookVersion);
       post.render(renderer, scene, camera, loop.time);
       perf.end();

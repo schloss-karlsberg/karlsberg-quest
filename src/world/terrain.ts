@@ -27,6 +27,7 @@ import {
 import { atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { TERRAIN_FRAG, TERRAIN_VERT } from './terrainShader';
+import { GROUND_TILE_M } from './vegetation/strips';
 
 /** Quads per chunk side at LOD 0 (one quad = one 2 m cell). */
 export const CHUNK = 64;
@@ -167,6 +168,12 @@ export class Terrain {
         uHistoric: { value: 0 },
         uTreeShade: { value: 0.55 },
         uPalette: { value: 0 },
+        uRuin: { value: 0 },
+        uBedDepth: { value: 1.6 },
+        uGroundAlb: { value: null as Texture | null },
+        uGroundNH: { value: null as Texture | null },
+        uTile: { value: GROUND_TILE_M.slice() },
+        uDetailFar: { value: 160 },
       },
     });
     for (const step of LOD_STEPS) {
@@ -220,6 +227,25 @@ export class Terrain {
 
   get uniforms() {
     return this.material.uniforms;
+  }
+
+  /**
+   * CC0 ground set (vegetation/strips.ts): splat-blended texture arrays instead of the procedural
+   * colours. Off (null) on the low tier; switching recompiles the terrain shader once.
+   */
+  setGroundSet(set: { albedo: Texture; nh: Texture } | null): void {
+    const u = this.material.uniforms;
+    u.uGroundAlb!.value = set?.albedo ?? null;
+    u.uGroundNH!.value = set?.nh ?? null;
+    const on = set !== null;
+    if (on === 'KQ_SPLAT' in this.material.defines) return;
+    if (on) this.material.defines.KQ_SPLAT = '';
+    else delete this.material.defines.KQ_SPLAT;
+    this.material.needsUpdate = true;
+  }
+
+  get splat(): boolean {
+    return 'KQ_SPLAT' in this.material.defines;
   }
 
   /** Choose LODs and cull chunks for this camera. Call once per frame before rendering. */

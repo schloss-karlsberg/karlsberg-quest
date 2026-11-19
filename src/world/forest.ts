@@ -8,6 +8,7 @@ import {
   InstancedBufferGeometry,
   Mesh,
   ShaderMaterial,
+  type Texture,
   Vector3,
   type PerspectiveCamera,
 } from 'three';
@@ -50,6 +51,8 @@ export interface ForestSource {
   ground?: Uint8Array;
   /** 0..1 path coverage; no trees on paths. */
   paths?: Float32Array;
+  /** Land-cover classes; no trees on water (lakes, ponds) in any era. */
+  noTreesOnWater?: Uint8Array;
   spacing: number;
   seed: number;
 }
@@ -95,6 +98,7 @@ export function generateTrees(src: ForestSource): { tiles: Map<string, Float32Ar
       const r = Math.round((z - hf.z0) / hf.cell);
       const i = r * hf.cols + c;
       if (src.paths && src.paths[i]! > 0.25) continue;
+      if (src.noTreesOnWater && src.noTreesOnWater[i] === GROUND.water) continue;
       let height: number;
       if (src.canopy) {
         // local maximum of the canopy around the point = crown top
@@ -289,7 +293,7 @@ const OAK: Crown = { c: [0, 0.6, 0], rad: [0.29, 0.23, 0.29], clumps: 11, clumpR
 function broadleaf(spec: Crown, detail: 0 | 1, seed: number): BufferGeometry {
   const g = new TreeGeo();
   const r = rng(seed);
-  const radial = detail ? 8 : 5;
+  const radial = detail ? 12 : 6;
   // trunk with root flare, slightly bowed
   g.tube([0, -0.02, 0], [0.01 * spec.crooked, spec.trunkTop, 0], spec.trunkR, spec.trunkR * 0.4, radial, detail ? 5 : 2, [0.012 * spec.crooked, 0, 0.008], 0.55);
   // clump centres on the crown ellipsoid (upper part favoured), one at the top
@@ -337,30 +341,32 @@ function broadleaf(spec: Crown, detail: 0 | 1, seed: number): BufferGeometry {
 function spruce(detail: 0 | 1, seed: number): BufferGeometry {
   const g = new TreeGeo();
   const r = rng(seed);
-  g.tube([0, -0.02, 0], [0, 1, 0], 0.012, 0.001, detail ? 6 : 4, detail ? 4 : 2, [0, 0, 0], 0.7);
-  g.cone(0.14, 0.97, detail ? 0.1 : 0.12, detail ? 9 : 6);
-  const tiers = detail ? 12 : 6;
-  const per = detail ? 7 : 5;
+  g.tube([0, -0.02, 0], [0, 1, 0], 0.012, 0.001, detail ? 10 : 5, detail ? 5 : 2, [0, 0, 0], 0.7);
+  g.cone(0.24, 0.97, detail ? 0.085 : 0.1, detail ? 10 : 6);
+  // whorls of short drooping branches; the lowest third of a stand-grown spruce is bare
+  const tiers = detail ? 15 : 7;
+  const per = detail ? 8 : 5;
   for (let t = 0; t < tiers; t++) {
     const f = t / (tiers - 1);
-    const y = 0.16 + f * 0.78;
-    const len = 0.03 + 0.2 * Math.pow(1 - f, 0.95);
+    const y = 0.26 + f * 0.7;
+    const len = 0.025 + 0.15 * Math.pow(1 - f, 0.9);
     for (let k = 0; k < per; k++) {
       const a = ((k + r() * 0.6 + t * 0.37) / per) * Math.PI * 2;
       const out: V3 = [Math.cos(a), 0, Math.sin(a)];
-      const droop = 0.35 + 0.25 * r();
+      const droop = 0.25 + 0.25 * r() + 0.15 * (1 - f);
       const dir = norm3([out[0], -droop, out[2]]);
       // the card lies along the branch, tilted around it so it shows from the side too
       const side = norm3(cross3(dir, [0, 1, 0]));
-      const tilt = (r() - 0.5) * 1.1;
+      const tilt = (r() - 0.5) * 0.9;
       const base: V3 = [out[0] * 0.006, y, out[2] * 0.006];
-      const light = (p: V3): V3 => norm3([p[0] * 3, 0.55 + (p[1] - y) * 2, p[2] * 3]);
-      const w = len * (detail ? 0.75 : 1.0);
-      const ao = 0.4 + 0.6 * f;
-      // anchored at the trunk, reaching out along `dir`
+      const light = (p: V3): V3 => norm3([p[0] * 3, 0.65 + (p[1] - y) * 2, p[2] * 3]);
+      const w = len * (detail ? 0.8 : 1.0);
+      const ao = 0.5 + 0.5 * f;
       const nn = norm3(cross3(side, dir));
       const nFace = norm3(add3(mul3(nn, Math.cos(tilt)), mul3(side, Math.sin(tilt))));
       g.card(base, nFace, dir, w, len * 1.15, P_NEEDLE, r(), ao, light, true);
+      // a crossed card on the near level: the branch reads as a spray, not a flat slab, from below
+      if (detail) g.card(base, norm3(add3(mul3(nn, Math.sin(tilt)), mul3(side, -Math.cos(tilt)))), dir, w * 0.7, len * 1.05, P_NEEDLE, r(), ao * 0.9, light, true);
     }
   }
   return g.build();
@@ -393,6 +399,7 @@ varying vec3 vEx;
 varying float vH;
 varying vec3 vRight;
 varying vec3 vUp;
+varying vec2 vBarkUv;
 void main() {
   float h = aInst.w;
   vec3 camd = aInst.xyz - uCamPos;
@@ -429,6 +436,7 @@ void main() {
     wp += wdir * sway * 0.006 * h * position.y * position.y;
     vRight = right;
     vUp = up;
+    vBarkUv = vec2(0.0);
     nn = vd;
     vH = position.y;
   } else {
@@ -443,6 +451,8 @@ void main() {
     }
     wp = aInst.xyz + p * h * fade;
     wp += wdir * sway * 0.011 * h * p.y * p.y;
+    // bark texture: once around the trunk, one tile per 1.8 m up (a little random per tree)
+    vBarkUv = vec2(uv.x + aVar.y * 3.7, position.y * h / 1.8 + aVar.y * 11.0);
     vRight = vec3(1.0, 0.0, 0.0);
     vUp = vec3(0.0, 1.0, 0.0);
     vH = position.y;
@@ -466,11 +476,50 @@ varying vec3 vEx;
 varying float vH;
 varying vec3 vRight;
 varying vec3 vUp;
+varying vec2 vBarkUv;
+#ifdef KQ_BARK
+precision highp sampler2DArray;
+// CC0 bark set (vegetation/strips.ts): 0 beech, 1 oak, 2 spruce; colour + normal xy / height
+uniform sampler2DArray uBarkAlb;
+uniform sampler2DArray uBarkNH;
+#endif
 vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }
+
+/**
+ * Leaf clump card (stylized foliage, docs/ART-DIRECTION.md §5): a soft round mass whose rim is
+ * scalloped by leaf tips, a few gaps near the edge, the inside a calm pattern of overlapping
+ * leaves (shading only, no holes: big shapes, no noise). Returns coverage (anti-aliased with
+ * fwidth, so alpha-to-coverage gives soft edges under MSAA) and a leaf shade term in .y.
+ */
+vec2 leafClump(vec2 uv, float seed, float dens) {
+  vec2 c = uv - 0.5;
+  float r = length(c) * 2.0;
+  float ang = atan(c.y, c.x);
+  // scalloped outline: leaf tips around the rim, slower lobes for a lumpy silhouette
+  float lobes = 0.11 * sin(ang * 3.0 + seed * 17.0) + 0.07 * sin(ang * 5.0 + seed * 41.0);
+  float tips = 0.09 * abs(sin(ang * 9.0 + seed * 23.0)) + 0.05 * kqNoise(vec2(ang * 6.0, seed * 9.0));
+  float edge = 0.86 + lobes - tips;
+  // thinner in autumn / winter: the outline shrinks and gaps open from the rim
+  edge *= mix(0.55, 1.0, dens);
+  float d = r - edge;
+  float aa = max(fwidth(r) * 1.2, 0.012);
+  float cov = 1.0 - smoothstep(-aa, aa, d);
+  // gaps between leaf groups, only in the outer third
+  vec2 g = uv * 7.0 + seed * 13.0;
+  float gap = kqNoise(g) * 0.6 + kqNoise(g * 2.3) * 0.4;
+  float gapCut = smoothstep(0.55, 0.95, r / max(edge, 0.05)) * (1.25 - dens * 0.55);
+  float ga = max(fwidth(gap) * 1.5, 0.02);
+  cov *= smoothstep(gapCut - ga, gapCut + ga, gap + 0.25);
+  // interior: calm mottling of leaf groups (two noise octaves, no grid)
+  float m1 = kqNoise(uv * 6.0 + seed * 31.0);
+  float m2 = kqNoise(uv * 15.0 + seed * 17.0);
+  float shade = (0.74 + 0.36 * (m1 * 0.65 + m2 * 0.35)) * mix(0.85, 1.05, smoothstep(0.1, 0.8, r));
+  return vec2(cov, shade);
+}
 
 /** Leaf density for the season: summer full, November thinned, bare in winter. */
 float leafDensity() {
-  return uSeason <= 1.0 ? 1.0 - 0.22 * uSeason : clamp(0.78 - (uSeason - 1.0) * 1.35, 0.0, 1.0);
+  return uSeason <= 1.0 ? 1.0 - 0.1 * uSeason : clamp(0.9 - (uSeason - 1.0) * 1.2, 0.0, 1.0);
 }
 float twigShow() { return smoothstep(0.75, 1.6, uSeason); }
 
@@ -527,16 +576,21 @@ float twigMask(vec2 uv, float seed) {
   return m;
 }
 
-/** Spruce branch card: a stem with needle sprigs, tapering to the tip (uv.y 0 trunk → 1 tip). */
+/** Spruce branch card: a stem with feathery needle sprigs, tapering to the tip (uv.y 0 trunk → 1 tip); coverage. */
 float needleMask(vec2 uv, float seed) {
   float x = abs(uv.x - 0.5) * 2.0;
   float t = uv.y;
-  float width = (1.0 - t) * 0.8 + 0.2;
-  float fr = kqNoise(vec2(uv.x * 14.0, uv.y * 26.0) + seed * 9.0);
-  float body = step(x, width * (0.7 + 0.4 * fr));
-  float sprig = step(0.45, fract(t * 10.0 + x * 1.4 + seed * 3.0));
-  body *= mix(1.0, sprig, smoothstep(width * 0.45, width, x));
-  return body * step(0.02, t) * (1.0 - step(0.97, t));
+  float width = (1.0 - t) * 0.75 + 0.25;
+  float fr = kqNoise(vec2(uv.x * 10.0, uv.y * 18.0) + seed * 9.0);
+  float lim = width * (0.65 + 0.45 * fr);
+  // sprigs: angled side shoots along the stem
+  float sp = fract(t * 9.0 + x * 1.2 + seed * 3.0);
+  float spr = smoothstep(0.25, 0.5, sp) * smoothstep(0.98, 0.7, sp);
+  lim *= mix(1.0, 0.55 + 0.45 * spr, smoothstep(0.3, 0.8, x / max(width, 0.05)));
+  float d = x - lim;
+  float aa = max(fwidth(x) * 1.2, 0.01);
+  float cov = 1.0 - smoothstep(-aa, aa, d);
+  return cov * smoothstep(0.0, 0.04, t) * (1.0 - smoothstep(0.94, 1.0, t));
 }
 
 vec3 leafColour(float kind, float v) {
@@ -564,7 +618,29 @@ void main() {
   float ao = vEx.y;
   float snowUp = 0.0;
   float leafy = 0.0;
+  // alpha-to-coverage (MSAA tiers): soft cut-out edges; the shadow pass and the low tier (no
+  // MSAA, shadows off → uShadowParams.x = 0) keep a hard 0.5 alpha test
+  float cut = uShadowParams.x > 0.5 ? 0.1 : 0.5;
+  float cover = 1.0;
   if (vPart < 0.5) {
+#ifdef KQ_BARK
+    // CC0 bark: beech silver-grey and smooth, oak deep furrows, spruce red-brown scales
+    float bl = kind > 1.5 ? 1.0 : (isSpruce > 0.5 ? 2.0 : 0.0);
+    vec4 bc = texture(uBarkAlb, vec3(vBarkUv, bl));
+    vec4 bn = texture(uBarkNH, vec3(vBarkUv, bl));
+    alb = bc.rgb;
+    if (bl < 0.5) alb = mix(alb, vec3(dot(alb, vec3(0.3, 0.55, 0.15))) * vec3(0.98, 1.0, 1.02) * 1.25, 0.65);
+    // tangent frame on the trunk: around (T) and up (B)
+    vec3 bB = normalize(vec3(0.0, 1.0, 0.0) - n * n.y + vec3(1e-4, 0.0, 0.0));
+    vec3 bT = cross(bB, n);
+    vec2 dnb = bn.rg * 2.0 - 1.0;
+    float bs = 0.9 * (1.0 - smoothstep(25.0, 70.0, length(vWorld - uCamPos)));
+    n = normalize(n + (bT * dnb.x + bB * dnb.y) * bs);
+    // moss on the weather side (west) and near the foot
+    float mossy = smoothstep(0.1, 0.8, -n.x * 0.7 + 0.3) * (1.0 - smoothstep(0.05, 0.35, vH)) * 0.75 + smoothstep(0.3, 0.9, -n.x) * 0.25;
+    alb = mix(alb, srgb(vec3(0.26, 0.33, 0.12)) * (0.8 + 0.4 * bc.g), mossy * (1.0 - isSpruce * 0.6));
+    ao = mix(0.55, 1.0, smoothstep(0.0, 0.5, vH)) * mix(0.7, 1.05, bn.b);
+#else
     // bark: beech smooth grey with lichen, oak dark and furrowed, spruce red-brown and scaly
     float fur = kqNoise(vec2(vUv.x * 9.0, vUv.y * 0.6)) * 0.6 + kqNoise(vec2(vUv.x * 22.0, vUv.y * 2.5)) * 0.4;
     vec3 beech = srgb(vec3(0.46, 0.46, 0.42)) * (0.85 + 0.25 * kqNoise(vUv * vec2(4.0, 1.5)));
@@ -572,27 +648,34 @@ void main() {
     vec3 oak = srgb(vec3(0.26, 0.22, 0.17)) * (0.55 + 0.6 * smoothstep(0.25, 0.7, fur));
     vec3 spr = srgb(vec3(0.33, 0.22, 0.15)) * (0.7 + 0.4 * kqNoise(vUv * vec2(10.0, 5.0)));
     alb = kind > 1.5 ? oak : (isSpruce > 0.5 ? spr : beech);
+    ao = mix(0.55, 1.0, smoothstep(0.0, 0.5, vH));
+#endif
     // darker at the foot (damp), and low in the stand
     alb *= mix(0.6, 1.0, smoothstep(0.0, 0.12, vH));
     snowUp = smoothstep(0.2, 0.7, n.y);
-    ao = mix(0.55, 1.0, smoothstep(0.0, 0.5, vH));
   } else if (vPart < 1.5) {
     float dens = leafDensity() * step(seed, leafDensity() + 0.25);
-    float lm = leafMask(vUv, seed, dens);
+    vec2 lc = dens > 0.02 ? leafClump(vUv, seed, dens) : vec2(0.0);
     float tw = twigMask(vUv, seed) * twigShow();
-    if (lm < 0.5 && tw < 0.5) discard;
-    leafy = lm;
-    alb = lm > 0.5 ? leafColour(kind, v) * (0.8 + 0.4 * kqHash12(floor(vUv * 8.0) + seed)) : srgb(vec3(0.24, 0.21, 0.19));
-    snowUp = lm > 0.5 ? 0.0 : 0.8 * smoothstep(-0.2, 0.6, vEx.z);
+    cover = max(lc.x, tw);
+    if (cover < cut) discard;
+    leafy = step(tw, lc.x);
+    alb = leafy > 0.5 ? leafColour(kind, v) * lc.y * (0.88 + 0.24 * kqHash12(vec2(seed * 7.0, v))) : srgb(vec3(0.24, 0.21, 0.19));
+    // clumps: the outer rim catches more sky, the core stays darker
+    ao *= mix(0.8, 1.05, smoothstep(0.2, 0.9, length(vUv - 0.5) * 2.0));
+    snowUp = leafy > 0.5 ? 0.0 : 0.8 * smoothstep(-0.2, 0.6, vEx.z);
   } else if (vPart < 2.5) {
-    if (needleMask(vUv, seed) < 0.5) discard;
+    cover = needleMask(vUv, seed);
+    if (cover < cut) discard;
     leafy = 1.0;
-    alb = mix(srgb(vec3(0.06, 0.12, 0.07)), srgb(vec3(0.1, 0.17, 0.09)), v) * (0.8 + 0.4 * kqNoise(vUv * 12.0));
+    // blue-green needles, fresh lighter growth at the branch tips
+    alb = mix(srgb(vec3(0.09, 0.16, 0.1)), srgb(vec3(0.13, 0.21, 0.11)), v) * (0.8 + 0.35 * kqNoise(vUv * 12.0));
+    alb = mix(alb, srgb(vec3(0.22, 0.3, 0.13)), smoothstep(0.6, 1.0, vUv.y) * 0.5);
     // snow lies on the upper side of the branches
     snowUp = smoothstep(0.1, 0.8, vEx.z) * smoothstep(0.15, 0.7, vUv.y + 0.3 * kqNoise(vUv * 9.0 + seed));
   } else if (vPart < 4.5) {
     // the dark needle mass inside a spruce
-    alb = srgb(vec3(0.045, 0.08, 0.05)) * (0.7 + 0.5 * kqNoise(vec2(vUv.x * 30.0, vWorld.y * 0.8)));
+    alb = srgb(vec3(0.06, 0.1, 0.065)) * (0.7 + 0.5 * kqNoise(vec2(vUv.x * 30.0, vWorld.y * 0.8)));
     leafy = 1.0;
     snowUp = 0.25 * smoothstep(0.3, 0.9, n.y);
   } else {
@@ -604,20 +687,23 @@ void main() {
     if (isSpruce > 0.5) {
       float w = (1.0 - q.y) * 1.05;
       cq = vec2(q.x / max(w, 0.05), (q.y - 0.55) / 0.45);
-      crown = step(abs(q.x), w * (0.8 + 0.3 * nz)) * step(0.14, q.y);
+      float dd = abs(q.x) - w * (0.8 + 0.3 * nz);
+      crown = (1.0 - smoothstep(-fwidth(dd), fwidth(dd), dd)) * step(0.14, q.y);
     } else {
       float cy = kind > 1.5 ? 0.58 : 0.64;
       float ry = kind > 1.5 ? 0.36 : 0.36;
       cq = vec2(q.x, (q.y - cy) / ry);
       float r = length(cq) + (nz - 0.75) * 0.32;
-      crown = step(r, 0.98);
+      float fr = max(fwidth(r), 0.01);
+      crown = 1.0 - smoothstep(0.98 - fr, 0.98 + fr, r);
     }
     float trunk = step(abs(q.x), 0.05) * step(q.y, 0.55);
-    // winter: bare broadleaf crowns become a thin, twiggy haze
+    // winter: bare broadleaf crowns become a thin, twiggy haze (partial coverage, no pixel noise)
     float bare = (1.0 - isSpruce) * twigShow();
-    if (bare > 0.0 && crown > 0.5) crown *= step(bare * 0.72, kqHash12(floor(gl_FragCoord.xy * 0.5) + floor(vVar * 97.0)) * (0.6 + 0.6 * nz));
-    if (crown < 0.5 && trunk < 0.5) discard;
-    if (crown > 0.5) {
+    crown *= 1.0 - bare * 0.62 * smoothstep(0.2, 0.9, length(cq) + 0.25 * nz);
+    cover = max(crown, trunk);
+    if (cover < cut * (bare > 0.5 ? 0.6 : 1.0)) discard;
+    if (crown >= trunk) {
       float cz = sqrt(max(0.0, 1.0 - dot(cq, cq) * 0.7));
       vec3 vd = normalize(cross(vRight, vUp));
       n = normalize(vRight * cq.x + vUp * cq.y * 0.8 + vd * cz + vec3(0.0, 0.25, 0.0));
@@ -631,17 +717,18 @@ void main() {
       ao = 0.6;
     }
   }
-  // greyed toward the etching palette
+  // a touch toward the painted palette (rich, not grey: docs/ART-DIRECTION.md §1)
   float lum = dot(alb, vec3(0.3, 0.55, 0.15));
-  alb = mix(vec3(lum), alb, 0.75) * 0.9;
+  alb = mix(vec3(lum), alb, 1.08) * 0.95;
   alb = mix(alb, srgb(vec3(0.86, 0.89, 0.95)), uSnow * snowUp * 0.85);
   vec3 col = kqLight(alb, n, vWorld, ao, 1.0);
   // leaves scatter sky light: undersides dim, not black
-  col += alb * uSkyAmbient * 0.18 * leafy * (1.0 - max(n.y, 0.0));
+  col += alb * uSkyAmbient * 0.3 * leafy * (1.0 - max(n.y, 0.0));
   // sun shining through the leaves from behind
   vec3 vd = normalize(vWorld - uCamPos);
-  col += alb * uSunColor * pow(max(dot(vd, uSunDir), 0.0), 4.0) * 0.45 * leafy;
-  gl_FragColor = vec4(kqFog(col, vWorld), 1.0);
+  col += alb * uSunColor * pow(max(dot(vd, uSunDir), 0.0), 4.0) * 0.55 * leafy;
+  // coverage → alpha (alpha-to-coverage on the MSAA tiers; ignored otherwise)
+  gl_FragColor = vec4(kqFog(col, vWorld), clamp((cover - cut) / max(1.0 - cut, 1e-3) * 1.6, 0.0, 1.0));
 }
 `;
 
@@ -699,6 +786,8 @@ export class Forest {
         uMapMix: { value: 0 },
         uScanCenter: { value: new Vector3() },
         uScanRadius: { value: 1e6 },
+        uBarkAlb: { value: null as Texture | null },
+        uBarkNH: { value: null as Texture | null },
       },
     });
     const make = (g: BufferGeometry, max: number, name: string): Batch => {
@@ -727,6 +816,25 @@ export class Forest {
         const g = lod === 2 ? imp : kind === 1 ? spruce(detail, 11 + lod) : broadleaf(kind === 2 ? OAK : BEECH, detail, kind * 7 + lod + 3);
         this.batches.push(make(g, lod === 0 ? MAX_NEAR : lod === 1 ? MAX_MID : MAX_FAR, `trees-${names[kind]}-${['near', 'mid', 'far'][lod]}`));
       }
+  }
+
+  /** CC0 bark set (vegetation/strips.ts) or null for the procedural bark (low tier). */
+  setBark(set: { albedo: Texture; nh: Texture } | null): void {
+    const u = this.material.uniforms;
+    u.uBarkAlb!.value = set?.albedo ?? null;
+    u.uBarkNH!.value = set?.nh ?? null;
+    const on = set !== null;
+    if (on === 'KQ_BARK' in this.material.defines) return;
+    if (on) this.material.defines.KQ_BARK = '';
+    else delete this.material.defines.KQ_BARK;
+    this.material.needsUpdate = true;
+  }
+
+  /** Alpha-to-coverage for the leaf / impostor cut-outs (tiers with MSAA). */
+  setAlphaToCoverage(on: boolean): void {
+    if (this.material.alphaToCoverage === on) return;
+    this.material.alphaToCoverage = on;
+    this.material.needsUpdate = true;
   }
 
   setTrees(tiles: Map<string, Float32Array>): void {

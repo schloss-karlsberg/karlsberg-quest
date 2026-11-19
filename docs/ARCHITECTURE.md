@@ -270,6 +270,17 @@ stay for the point-cloud and `forestClear.ts` patches. Seasons per era in the sh
 autumn today, bare frosted twigs and snow 1793-02, sparse 1796 (`leafDensity`, `twigShow`).
 `forest.stats` = `{near, mid, far, total, drawCalls, culled}` (debug panel and F3 overlay show them).
 
+Nature layers (`src/world/vegetation/`, docs/ART-DIRECTION.md §5.1): `world.nature` (`Nature`) owns
+`cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles) and `props` (`NatureProps`:
+instanced CC0 ferns, rocks, logs, stumps, 16 m tiles), and on medium / high loads the ground and bark
+texture strips into the terrain (`terrain.setGroundSet`) and forest (`forest.setBark`). `world.setDetail(level)`
+is a quality listener (alpha-to-coverage for crowns, layer radii, water reflection); nothing loads on low.
+`world.water` (`src/world/water.ts`): water bodies from the ground raster per terrain set
+(`findWaterBodies` / `shoreDistance`, pure), one transparent mesh per body, `levelAt`, era looks
+(`ERA_WATER`), and on high `renderReflection(renderer, scene, camera)` (called by boot before the main
+render) draws a half-resolution planar reflection of the nearest body in view (`reflectionSkip`
+hides the near layers). Stats: `nature.cover.stats`, `nature.props.stats`, `water.stats`.
+
 Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 diverging local
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
 Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m around the player;
