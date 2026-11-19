@@ -226,8 +226,7 @@ export class K3Stage {
 
   private ensureWindows(): void {
     if (this.builtWindows) return;
-    let mesh: Mesh | null = null;
-    for (const c of this.ctx.world.palace.object.children) if ((c as Mesh).isMesh) mesh = c as Mesh;
+    const mesh = (this.ctx.world.palace.object.getObjectByName('palace-merged') as Mesh | undefined) ?? null;
     if (!mesh) return;
     this.builtWindows = true;
     const byIndex = new Map<number, string>();

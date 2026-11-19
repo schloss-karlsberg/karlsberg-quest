@@ -9,6 +9,7 @@ import {
   Mesh,
   type Object3D,
   ShaderMaterial,
+  Vector3,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -211,6 +212,9 @@ function surfaceAttributes(g: BufferGeometry): void {
  * The 1789 light model (91 buildings + site features), merged into a single draw call with a
  * custom shader (vertex colours, shared lighting/fog, ruin cut-off, charring, confidence colours).
  */
+/** Edge of the palace's draw cells (m). */
+const PALACE_CELL = 48;
+
 export class Palace {
   readonly object = new Group();
   readonly material: ShaderMaterial;
@@ -301,10 +305,38 @@ export class Palace {
     if (!merged) throw new Error('palace: geometry merge failed');
     merged.computeBoundingSphere();
     this.triangles = (merged.index ? merged.index.count : merged.getAttribute('position').count) / 3;
+    // the whole model stays as one geometry for the systems that read it (openings, lit windows,
+    // the point cloud, the picker) — but it is not drawn: it is never culled as one piece
     const mesh = new Mesh(merged, this.material);
     mesh.name = 'palace-merged';
     mesh.matrixAutoUpdate = false;
+    mesh.visible = false;
+    mesh.layers.set(31);
+    mesh.userData.noShadow = true;
     this.object.add(mesh);
+    // what is drawn: the same pieces merged per 48 m cell (round 9, 52–62 fps with the 1789 palace
+    // in view, > 5 M triangles): cells off screen or out of the shadow box are culled, so the
+    // gallery interior no longer pays for the far wings and the shadow pass only for the near ones
+    const cells = new Map<string, BufferGeometry[]>();
+    const c = new Vector3();
+    for (const g of list) {
+      g.computeBoundingBox();
+      g.boundingBox!.getCenter(c);
+      const key = `${Math.floor(c.x / PALACE_CELL)},${Math.floor(c.z / PALACE_CELL)}`;
+      let arr = cells.get(key);
+      if (!arr) cells.set(key, (arr = []));
+      arr.push(g);
+    }
+    for (const [key, arr] of cells) {
+      const part = mergeGeometries(arr, false);
+      if (!part) continue;
+      part.computeBoundingSphere();
+      part.computeBoundingBox();
+      const m = new Mesh(part, this.material);
+      m.name = `palace-cell:${key}`;
+      m.matrixAutoUpdate = false;
+      this.object.add(m);
+    }
     for (const m of meshes) m.geometry.dispose();
   }
 
