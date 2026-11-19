@@ -205,7 +205,10 @@ void main() {
     vec3 c = cs[i].rgb;
     // era / season tints per layer (hand-painted feel: warm lights, rich but not garish)
     if (i == 2) {
-      vec3 lush = c * vec3(0.86, 1.1, 0.72);
+      // summer: pulled towards a fresh green at the texture's own brightness (the CC0 leafy-grass
+      // set is straw-warm; under a low warm sun it read as sand)
+      float gl = dot(c, vec3(0.3, 0.59, 0.11));
+      vec3 lush = mix(c * vec3(0.86, 1.1, 0.72), gl * vec3(0.68, 1.12, 0.46), 0.55);
       vec3 gold = c * vec3(1.12, 1.0, 0.68);
       c = mix(lush, gold, autumn * 0.85);
       c = mix(c, c * vec3(1.15, 0.98, 0.62), clamp(season - 1.0, 0.0, 1.0));

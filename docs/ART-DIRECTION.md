@@ -41,7 +41,7 @@ Hex = sRGB. "Key" is the sun/moon colour, "fill" the sky ambient, "shade" the sp
 | Era | Mood | Key | Fill | Haze / fog | Shade tint / highlight tint | Accent |
 | --- | --- | --- | --- | --- | --- | --- |
 | **Heute (2025), autumn forest** | golden late afternoon, light shafts between beech trunks | `#ffd8a6` low sun (19°) | `#8aa2c0` | amber `#bdb5a0`, sun side `#f2cc94` | teal-blue / warm amber | rust and gold leaves, moss green, the survey orange of Marlene's gear |
-| **Sommer 1789, palace** | high summer evening, the court at its brightest | `#ffc98a` (13°) | `#9ab0c8` | warm sand `#d6c3a4` | blue / gold | ochre-cream façades, red-orange roofs, deep lawn green, white gravel |
+| **Sommer 1789, palace** | high summer late afternoon, the court at its brightest | `#ffd4a0` (20°) | `#9ab4cc` | pale sage `#c9ccbc` (thinner than the other day eras) | blue / gold | ochre-cream façades, red-orange roofs, deep lawn green, white gravel |
 | **Feb 1793, snow night** | blue moonlight on snow, lantern pools, stars | `#9fb6e0` moon | `#40517a` | ink blue `#2b3448` | deep blue / neutral | warm lantern orange as the only warm colour |
 | **Jul 1793, fire** | the palace burns: orange-red glow under a black sky | moon `#8ea4cf`, fire glow `#ff6a1f` | `#3a4566` | smoky violet `#2a2630` | violet / orange | embers, sparks, silhouettes against fire |
 | **1796, ruin** | cold autumn, low warm sun on charred stone | `#f0c890` (19°) | `#8c98a8` | dusty `#b4ab9c` | slate / warm | rust trees, black char, pale fresh-cut stone |

@@ -160,14 +160,54 @@ function flowerGeometry(): BufferGeometry {
 function reedGeometry(): BufferGeometry {
   const blades = tuftGeometry(16, 3, 11, 0.026, 0.22, 5, 0.3);
   const heads: BufferGeometry[] = [];
-  for (let k = 0; k < 2; k++) {
-    const g = tuftGeometry(1, 4, 31 + k * 7, 0.03, 0.05, 2);
-    const p = g.getAttribute('position');
-    // cattail: the top 22 % of a straight stem, thicker
-    for (let i = 0; i < p.count; i++) p.setY(i, 0.92 + p.getY(i) * 0.22 + k * 0.08);
-    heads.push(g);
-  }
+  for (let k = 0; k < 2; k++) heads.push(cattailGeometry(k));
   return merge([blades, ...heads]);
+}
+
+/** A cattail head: a sausage of two crossed cards (rounded ends) with a thin spike above. */
+function cattailGeometry(k: number): BufferGeometry {
+  const pos: number[] = [];
+  const nrm: number[] = [];
+  const t: number[] = [];
+  const parts: number[] = [];
+  const idx: number[] = [];
+  const ox = (k ? -1 : 1) * 0.05;
+  const oz = (k ? 1 : -1) * 0.03;
+  const y0 = 0.84 + k * 0.07;
+  const len = 0.13;
+  const r = 0.016;
+  const segs = 5;
+  for (const [ax, az] of [[1, 0], [0, 1]] as const) {
+    const base = pos.length / 3;
+    for (let s = 0; s <= segs; s++) {
+      const f = s / segs;
+      const w = r * Math.pow(Math.sin(Math.PI * (0.08 + 0.84 * f)), 0.35);
+      const y = y0 + f * len;
+      pos.push(ox - ax * w, y, oz - az * w, ox + ax * w, y, oz + az * w);
+      nrm.push(-az, 0.4, ax, -az, 0.4, ax);
+      t.push(0.85 + 0.15 * f, 0.85 + 0.15 * f);
+      parts.push(4, 4);
+    }
+    for (let s = 0; s < segs; s++) {
+      const i = base + s * 2;
+      idx.push(i, i + 1, i + 2, i + 1, i + 3, i + 2);
+    }
+    // the bare spike above the head
+    const b = pos.length / 3;
+    const w = 0.003;
+    pos.push(ox - ax * w, y0 + len, oz - az * w, ox + ax * w, y0 + len, oz + az * w, ox, y0 + len + 0.07, oz);
+    nrm.push(-az, 0.4, ax, -az, 0.4, ax, -az, 0.4, ax);
+    t.push(1, 1, 1);
+    parts.push(3, 3, 3);
+    idx.push(b, b + 1, b + 2);
+  }
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
+  g.setAttribute('normal', new BufferAttribute(new Float32Array(nrm), 3));
+  g.setAttribute('aT', new BufferAttribute(new Float32Array(t), 1));
+  g.setAttribute('aPart', new BufferAttribute(new Float32Array(parts), 1));
+  g.setIndex(idx);
+  return g;
 }
 
 const COVER_VERT = /* glsl */ `
@@ -257,9 +297,9 @@ void main() {
     vec3 tp = mix(srgb(vec3(0.5, 0.58, 0.26)), srgb(vec3(0.76, 0.65, 0.4)), clamp(season - 0.3, 0.0, 1.0));
     alb = mix(b, tp, t) * (0.85 + 0.3 * vVar);
   } else {
-    // cattail head
-    alb = srgb(vec3(0.3, 0.18, 0.09));
-    ao = 0.9;
+    // cattail head: velvety brown, a soft highlight along its length
+    alb = srgb(vec3(0.27, 0.17, 0.1)) * (0.8 + 0.3 * vVar);
+    ao = 1.0;
   }
   // snow dusts the upper side
   alb = mix(alb, srgb(vec3(0.86, 0.89, 0.95)), uSnow * smoothstep(0.4, 1.0, t) * 0.6 * step(vPart, 3.5));
@@ -321,7 +361,7 @@ export class GroundCover {
       return { mesh, geo, inst, vary, max };
     };
     this.layers = {
-      grass: make(merge([tuftGeometry(18, 0, 3, 0.024, 0.24, 3, 0.24)]), 20000, 'nature-grass'),
+      grass: make(merge([tuftGeometry(22, 0, 3, 0.022, 0.26, 3, 0.42)]), 20000, 'nature-grass'),
       flowers: make(flowerGeometry(), 2500, 'nature-flowers'),
       reeds: make(reedGeometry(), 3000, 'nature-reeds'),
     };
@@ -369,8 +409,9 @@ export class GroundCover {
       for (let i = 0; i < n; i++) {
         const gx = tx * n + i;
         const gz = tz * n + j;
-        const x = (gx + 0.15 + 0.7 * hash2(gx, gz, 101)) * cell;
-        const z = (gz + 0.15 + 0.7 * hash2(gz, gx, 103)) * cell;
+        // full jitter (cells overlap a little) so the tufts never read as rows
+        const x = (gx - 0.1 + 1.2 * hash2(gx, gz, 101)) * cell;
+        const z = (gz - 0.1 + 1.2 * hash2(gz, gx, 103)) * cell;
         if (!this.src.inside(x, z)) continue;
         const c = this.sample(x, z);
         const r = hash2(gx, gz, 107);
@@ -394,9 +435,11 @@ export class GroundCover {
           flowers.push(x, h - 0.02, z, 0.32 + 0.22 * v, rot, hash2(gx, gz, 131));
           continue;
         }
-        const gc = grassChance(c, slope, patch, this.look);
+        // clumps of a few metres: dense, taller tussocks with thinner gaps between them
+        const clump = smoothstep(0.22, 0.78, valueNoise(x * 0.33, z * 0.33, 17));
+        const gc = grassChance(c, slope, patch, this.look) * (0.35 + 0.95 * clump);
         if (gc > 0 && r < gc) {
-          const tall = (0.26 + 0.26 * v) * (1 - 0.45 * c.lawn) * (0.7 + 0.6 * patch);
+          const tall = (0.26 + 0.26 * v) * (1 - 0.45 * c.lawn) * (0.7 + 0.6 * patch) * (0.75 + 0.5 * clump);
           grass.push(x, h - 0.03, z, tall, rot, hash2(gx, gz, 137));
         }
       }

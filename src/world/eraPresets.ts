@@ -42,11 +42,13 @@ export const ERA_LOOKS: Record<Era, EraLook> = {
     season: 1,
   },
   '1789': {
-    sun: { azimuth: 262, elevation: 13, color: '#ffc98a', intensity: 3.0 },
+    // integration pass (owner: "lush 1789"): a late-afternoon sun a little higher and a cooler,
+    // thinner haze, so the meadows read green instead of a uniform sand under orange fog
+    sun: { azimuth: 262, elevation: 20, color: '#ffd4a0', intensity: 3.0 },
     disc: 'sun',
-    sky: { zenith: '#3e6a9c', horizon: '#f2cfa0', below: '#6b5a44', clouds: 0.45, cloudColor: '#fbe3c4', stars: 0 },
-    ambient: { sky: '#9ab0c8', ground: '#5c4a30', intensity: 0.9 },
-    fog: { color: '#d6c3a4', sunColor: '#ffd29a', density: 0.0007, heightDensity: 0.003, base: 255, falloff: 30, ground: 0.0035 },
+    sky: { zenith: '#3a6aa4', horizon: '#e9d6b4', below: '#6b5a44', clouds: 0.45, cloudColor: '#fbe7cf', stars: 0 },
+    ambient: { sky: '#9ab4cc', ground: '#4f4a30', intensity: 0.9 },
+    fog: { color: '#c9ccbc', sunColor: '#ffd8a8', density: 0.0006, heightDensity: 0.0025, base: 255, falloff: 30, ground: 0.0024 },
     grade: { exposure: 1.05, saturation: 1.1, contrast: 1.06, lift: '#120c06', gain: '#fff2dc', vignette: 0.33, grain: 0.03 },
     glow: { color: '#000000', intensity: 0 },
     post: { bloom: 0.55, bloomThreshold: 1.2, ao: 0.8, shadow: 0.85, white: '#fff1dc', shadowTint: '#02040e', highTint: '#100800' },
