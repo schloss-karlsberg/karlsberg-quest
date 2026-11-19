@@ -9,11 +9,10 @@
  *  - particles: hit puffs / sparks / scraps / chips by family and the dissolve (mist, sparks, smoke,
  *    ash, paper, rising grit) — counts follow the quality preset. Nothing bleeds; nothing stays.
  *
- * Four draw calls for everything (puffs, glows, solids, rings), all instanced.
+ * A few draw calls for everything (puffs, glows, rings, one per sculpted shape in use), all instanced.
  */
 import {
   AdditiveBlending,
-  BoxGeometry,
   DynamicDrawUsage,
   Euler,
   Float32BufferAttribute,
@@ -26,6 +25,7 @@ import {
   NormalBlending,
   BackSide,
   DoubleSide,
+  FrontSide,
   type PerspectiveCamera,
   Quaternion,
   ShaderMaterial,
@@ -34,8 +34,9 @@ import {
 import { ELITES } from '../../rpg/enemies';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import type { AssetLoader } from '../../assets/loader';
-import { type BodyPart, type BodyTemplate, bodyTemplate } from './bodies';
+import { type BodyPart, type BodyTemplate, bodyTemplate, MAT } from './bodies';
 import { EnemyRigs } from './rigged';
+import { DOUBLE, type Shape, SHAPES, SHEETS, shapeGeometry } from './visuals-shapes';
 import type { Enemy, Projectile, Ring } from './sim';
 
 // ---- shaders ------------------------------------------------------------------------------------
@@ -160,8 +161,10 @@ void main() {
 
 const SOLID_VERT = /* glsl */ `
 attribute vec3 iAlb;
-attribute vec4 iEm; // rgb emissive, w = surface (0 plain, 1 stone, 2 straw, 3 smooth)
-attribute vec2 iFx; // x: visibility 0..1 (an enemy between the lens and what you look at dithers), y: outline on
+attribute vec4 iEm; // rgb emissive (or the family tint: spectral, flame, crystal, rock, mask), w = surface
+attribute vec4 iFx; // x: visibility 0..1 (an enemy between the lens and what you look at dithers), y: outline on, z: dissolve 0..1, w: hem fray
+attribute vec4 iCore; // the creature's heart (world xyz, radius m; 0 = none): seen through a spectral body
+attribute float aSeam;
 varying float vVis;
 varying vec3 vN;
 varying vec3 vW;
@@ -171,6 +174,12 @@ varying vec4 vEm;
 varying vec2 vFace;
 varying vec2 vHalf;
 varying float vSeed;
+// the shape's own unit coordinates (−0.5 … 0.5) and its size in metres
+varying vec3 vLocal;
+varying vec3 vS;
+varying float vSeam;
+varying vec2 vDis;
+varying vec4 vCore;
 void main() {
   vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
   vW = wp.xyz;
@@ -184,8 +193,13 @@ void main() {
   else if (an.y > 0.5) { vFace = q.xz; vHalf = S.xz * 0.5; }
   else { vFace = q.xy; vHalf = S.xy * 0.5; }
   vec3 o = instanceMatrix[3].xyz;
-  vSeed = fract(sin(dot(o, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+  vSeed = fract(sin(dot(floor(o * 3.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
   vVis = iFx.x;
+  vLocal = position;
+  vS = S;
+  vSeam = aSeam;
+  vDis = iFx.zw;
+  vCore = iCore;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
@@ -200,57 +214,188 @@ varying vec2 vFace;
 varying vec2 vHalf;
 varying float vSeed;
 varying float vVis;
+varying vec3 vLocal;
+varying vec3 vS;
+varying float vSeam;
+varying vec2 vDis;
+varying vec4 vCore;
 void main() {
   // an enemy in the way (wedged against the lens, between the reveal camera and the boss) is
   // screen-door dithered: what is behind it stays readable
   if (vVis < 0.999 && kqHash12(floor(gl_FragCoord.xy)) > vVis) discard;
-  vec3 n = normalize(vN);
-  vec3 v = normalize(uCamPos - vW);
-  // a little grain so flat faces read as stone / paper / straw
-  float g = kqNoise(vW.xz * 9.0 + vW.y * 7.0) * 0.25 + 0.88;
-  vec3 alb = vAlb;
-  // playtest round 4 ("flat beige cube stacks", "cardboard robot"): blocks get dark mortar seams
-  // at their edges and a value of their own; straw gets strands along its length
-  float small = min(vHalf.x, vHalf.y);
-  vec2 ed = vHalf - abs(vFace);
-  float edge = min(ed.x, ed.y);
   float mat = floor(vEm.w + 0.5);
-  float stone = mat == 1.0 ? 1.0 : 0.0;
-  float straw = mat == 2.0 ? 1.0 : 0.0;
-  if (small > 0.06 && mat != 3.0) {
-    float w = clamp(small * mix(0.16, 0.2, stone), 0.012, mix(0.055, 0.08, stone));
-    float seam = 1.0 - smoothstep(w * 0.4, w, edge);
-    alb *= 1.0 - seam * mix(mix(0.5, 0.82, stone), 0.1, straw);
-    // value per block (stone and wood), less for straw (its strands carry it)
-    alb *= mix(0.8 + vSeed * 0.36, 1.0, straw);
-    // chipped / weathered: blotches of darker stone, chisel marks
-    float bl = kqNoise(vFace * 3.1 + vSeed * 17.0);
-    alb *= 1.0 - smoothstep(0.6, 0.9, bl) * mix(0.25, 0.45, stone) * (1.0 - straw);
-    if (stone > 0.5) {
-      float ch = kqNoise(vec2(vFace.x * 22.0 + vFace.y * 9.0, vFace.y * 3.0 + vSeed * 4.0));
-      alb *= 0.86 + ch * 0.22;
-      // sandstone under the bright 1796 sky read as pale beige boxes: a darker, redder stone
-      alb *= vec3(0.78, 0.7, 0.66);
-    }
+  vec3 lp = vLocal * vS;
+  // spectral hems fray into tatters that drift (the lowest part of a shroud / tail is already mist)
+  if (vDis.y > 0.0) {
+    float fr = kqFbm(vec2(atan(vLocal.x, vLocal.z) * 2.2 + vSeed * 9.0, lp.y * 3.0 + uTime * 0.7));
+    if (fr < smoothstep(-0.12, -0.5, vLocal.y) * vDis.y * 1.15) discard;
   }
-  if (straw > 0.5) {
-    // strands along the long axis of the face, with darker gaps and pale stalks
-    bool longX = vHalf.x > vHalf.y;
-    float across = longX ? vFace.y : vFace.x;
-    float along = longX ? vFace.x : vFace.y;
-    float st = kqNoise(vec2(across * 46.0 + vSeed * 9.0, along * 1.6));
-    float st2 = kqNoise(vec2(across * 120.0, along * 4.0 + vSeed * 5.0));
-    alb *= (0.42 + st * 0.75 + st2 * 0.3) * vec3(1.08, 0.82, 0.46);
-    // bundles: darker towards the tied ends of a sheaf
-    float tie = 1.0 - smoothstep(0.0, 0.18, (longX ? vHalf.x : vHalf.y) - abs(along));
-    alb *= 1.0 - tie * 0.35;
+  // the death dissolve: a noise front eats the piece from below, its edge burns in the family colour
+  float burn = 0.0;
+  float charK = 0.0;
+  if (vDis.x > 0.0) {
+    float dn = kqFbm(vec2(lp.x * 3.1 + lp.z * 2.3 + vSeed * 5.0, lp.y * 2.6 + vSeed * 3.0));
+    float cut = dn + (vLocal.y + 0.5) * 0.45 - vDis.x * 1.65;
+    if (cut < 0.0) discard;
+    burn = 1.0 - smoothstep(0.0, 0.07, cut);
+    charK = 1.0 - smoothstep(0.07, 0.22, cut);
   }
-  vec3 col = kqLight(alb * g, n, vW, 1.0, 1.0);
-  float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
-  // the outline contrasts with the fog (dark on pale fog, pale at night)
+  vec3 n = normalize(vN);
+  if (!gl_FrontFacing) n = -n;
+  vec3 v = normalize(uCamPos - vW);
+  float ndv = clamp(dot(n, v), 0.0, 1.0);
   float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
-  col = fogL > 0.38 ? col * (1.0 - rim * 0.55) : col + (uFogColor * 1.2 + vec3(0.05)) * rim * 0.45;
-  col += vEm.rgb;
+  float dark = fogL > 0.38 ? 1.0 : 0.0;
+  vec3 col;
+  vec3 burnCol = vec3(1.0, 0.42, 0.08);
+  if (mat > 3.5 && mat < 4.5) {
+    // spectral: a dark, translucent-looking body — ink smoke streaming upward, a rim in the family
+    // colour, light drifting up inside it and the heart glowing through from within
+    float flow = kqFbm(vec2(lp.x * 2.6 + lp.z * 1.9 + vSeed * 7.0, lp.y * 2.2 - uTime * 0.75));
+    float wisp = kqFbm(vec2(lp.x * 5.0 - lp.z * 3.0, lp.y * 4.0 - uTime * 1.4 + vSeed));
+    float rim = pow(1.0 - ndv, 3.0);
+    vec3 tint = vEm.rgb;
+    vec3 body = vAlb * (0.35 + 1.3 * flow);
+    col = kqLight(body, n, vW, 1.0, 1.0) * 0.45 + body * uSkyAmbient * 0.2;
+    // inner light streaming up
+    col += tint * smoothstep(0.62, 0.92, wisp) * 0.14 * (1.0 - rim);
+    // by day an ink band just inside the rim (the silhouette holds on pale fog), then the family rim
+    col *= 1.0 - dark * smoothstep(0.12, 0.45, rim) * 0.6;
+    col += tint * smoothstep(0.22, 0.85, rim) * (0.5 + 0.35 * flow) * mix(1.0, 0.8, dark);
+    // the heart, seen through the body: the view ray's distance to it
+    if (vCore.w > 0.0) {
+      vec3 rd = normalize(vW - uCamPos);
+      vec3 oc = vCore.xyz - uCamPos;
+      float tt = dot(oc, rd);
+      float d = length(oc - rd * tt);
+      float g = exp(-d * d / (vCore.w * vCore.w));
+      float g2 = exp(-d * d / (vCore.w * vCore.w * 7.0));
+      col += tint * (g * 0.6 + g2 * 0.08) * (0.75 + 0.25 * flow) + vec3(1.0, 0.96, 0.88) * pow(g, 6.0) * 0.18;
+    }
+    burnCol = tint * 2.2 + vec3(0.25);
+  } else if (mat > 4.5 && mat < 5.5) {
+    // paper: parchment with fibres, ruled ink and scrawled sums, browner towards its edges
+    float fib = kqNoise(vec2(lp.x * 60.0, lp.y * 7.0 + vSeed * 4.0)) * 0.12 + kqNoise(lp.xy * 9.0 + vSeed * 11.0) * 0.14;
+    vec3 alb = vAlb * (0.86 + fib);
+    float edgeD = min(0.5 - abs(vLocal.x), 0.5 - abs(vLocal.y));
+    alb *= mix(vec3(0.72, 0.6, 0.45), vec3(1.0), smoothstep(0.0, 0.16, edgeD));
+    float rows = abs(fract(vLocal.y * 9.0 + 0.5) - 0.5);
+    float ink = (1.0 - smoothstep(0.02, 0.05, rows)) * step(0.08, edgeD);
+    float scrawl = smoothstep(0.55, 0.75, kqNoise(vec2(lp.x * 26.0 + vSeed * 31.0, floor(vLocal.y * 9.0 + 0.5) * 7.0))) * (1.0 - smoothstep(0.08, 0.2, rows)) * step(0.1, edgeD);
+    alb *= 1.0 - 0.75 * max(ink * 0.6, scrawl);
+    col = kqLight(alb, n, vW, 1.0, 1.0);
+    // light through the sheet (it is thin)
+    col += alb * uSunColor * 0.12 * (1.0 - ndv);
+    col += vEm.rgb;
+  } else if (mat > 5.5 && mat < 6.5) {
+    // the mask: bone-white porcelain, two slanted hollows for eyes, a hairline crack
+    vec2 uv = vLocal.xy;
+    vec2 e = vec2(abs(uv.x) - 0.17, uv.y - 0.04);
+    e.y -= e.x * 0.7;
+    float eye = 1.0 - smoothstep(0.85, 1.12, length(e / vec2(0.13, 0.058)));
+    float mouth = (1.0 - smoothstep(0.012, 0.03, abs(uv.y + 0.26 + uv.x * uv.x * 0.6))) * step(abs(uv.x), 0.12);
+    float crack = 1.0 - smoothstep(0.0, 0.012, abs(uv.x - 0.06 - sin(uv.y * 18.0 + vSeed * 6.0) * 0.03)) ;
+    crack *= step(0.0, uv.y) * step(uv.y, 0.4) * step(0.5, vSeed);
+    vec3 alb = vAlb * (0.92 + kqNoise(lp.xy * 30.0) * 0.12);
+    alb *= 1.0 - 0.9 * max(eye, max(mouth, crack * 0.7));
+    // the hood's shadow over the brow, cheekbones catching the light
+    alb *= mix(0.45, 1.0, smoothstep(0.46, 0.18, uv.y));
+    col = kqLight(alb, n, vW, 1.0, 1.0) + alb * 0.05;
+    // the hollows glow faintly from inside (the family colour)
+    col += vEm.rgb * eye * 0.6 + vEm.rgb * pow(1.0 - ndv, 3.0) * 0.25;
+  } else if (mat > 6.5 && mat < 7.5) {
+    // flame: unlit, white-hot at the root, the family colour, dark red at the licking tip
+    float h = vLocal.y + 0.5;
+    float fl = kqNoise(vec2(atan(vLocal.x, vLocal.z) * 1.5 + vSeed * 5.0, h * 3.0 - uTime * 4.0));
+    if (h > 0.4 && fl < (h - 0.4) * 1.6) discard;
+    vec3 hot = mix(vec3(1.0, 0.82, 0.5), vEm.rgb, smoothstep(0.0, 0.2, h));
+    hot = mix(hot, vEm.rgb * vec3(0.8, 0.32, 0.2), smoothstep(0.35, 0.9, h));
+    col = hot * (0.85 + fl * 0.55) * (0.5 + 0.5 * ndv);
+    burnCol = vEm.rgb * 2.0;
+  } else if (mat > 7.5 && mat < 8.5) {
+    // crystal: dark glassy facets with the family glow deep inside and bright facet edges
+    float fac = kqHash12(floor(n.xz * 3.0 + n.y * 5.0 + vSeed * 7.0));
+    vec3 alb = vAlb;
+    col = kqLight(alb, n, vW, 1.0, 1.0) * 0.6;
+    col += vEm.rgb * (0.55 + 0.45 * fac) * (0.5 + 0.5 * ndv);
+    col += mix(vec3(1.0), vEm.rgb, 0.4) * pow(1.0 - ndv, 3.0) * 0.8;
+    col += vec3(1.0) * pow(max(dot(reflect(-v, n), uSunDir), 0.0), 24.0) * 0.8;
+    burnCol = vEm.rgb * 2.4;
+  } else if (mat > 8.5 && mat < 9.5) {
+    // rock: dark sooty stone with veins of the family glow running through it
+    float g = kqNoise(lp.xy * 7.0 + lp.z * 5.0 + vSeed * 13.0) * 0.3 + 0.8;
+    vec3 alb = vAlb * g;
+    float vn = abs(kqFbm(vec2(lp.x * 2.4 + lp.z * 1.6 + vSeed * 3.0, lp.y * 2.4)) - 0.5);
+    float vein = 1.0 - smoothstep(0.008, 0.028, vn);
+    alb *= 1.0 - (1.0 - smoothstep(0.0, 0.07, vn)) * 0.5;
+    col = kqLight(alb, n, vW, 1.0, 1.0);
+    col += vEm.rgb * vein * (0.75 + 0.25 * sin(uTime * 2.3 + vSeed * 9.0));
+    burnCol = vec3(1.0, 0.5, 0.15);
+  } else {
+    // a little grain so flat faces read as stone / paper / straw
+    float g = kqNoise(vW.xz * 9.0 + vW.y * 7.0) * 0.25 + 0.88;
+    vec3 alb = vAlb;
+    // playtest round 4 ("flat beige cube stacks", "cardboard robot"): blocks get dark mortar seams
+    // at their edges and a value of their own; straw gets strands along its length
+    float small = min(vHalf.x, vHalf.y);
+    vec2 ed = vHalf - abs(vFace);
+    float edge = min(ed.x, ed.y);
+    float stone = mat == 1.0 ? 1.0 : 0.0;
+    float straw = mat == 2.0 ? 1.0 : 0.0;
+    if (small > 0.06 && mat != 3.0) {
+      float w = clamp(small * mix(0.16, 0.2, stone), 0.012, mix(0.055, 0.08, stone));
+      float seam = (1.0 - smoothstep(w * 0.4, w, edge)) * vSeam;
+      alb *= 1.0 - seam * mix(mix(0.5, 0.82, stone), 0.1, straw);
+      // value per block (stone and wood), less for straw (its strands carry it)
+      alb *= mix(0.8 + vSeed * 0.36, 1.0, straw);
+      // chipped / weathered: blotches of darker stone, chisel marks
+      float bl = kqNoise((vSeam > 0.5 ? vFace : lp.xy + lp.z) * 3.1 + vSeed * 17.0);
+      alb *= 1.0 - smoothstep(0.6, 0.9, bl) * mix(0.25, 0.45, stone) * (1.0 - straw);
+      if (stone > 0.5) {
+        vec2 fc = vSeam > 0.5 ? vFace : lp.xy + lp.zz * 0.7;
+        float ch = kqNoise(vec2(fc.x * 22.0 + fc.y * 9.0, fc.y * 3.0 + vSeed * 4.0));
+        alb *= 0.86 + ch * 0.22;
+        // sandstone under the bright 1796 sky read as pale beige boxes: a darker, redder stone
+        alb *= vec3(0.78, 0.7, 0.66);
+      }
+    }
+    if (straw > 0.5) {
+      // strands along the long axis (boxes) or round a sheaf (sculpted), darker gaps, pale stalks
+      float across;
+      float along;
+      float halfLen;
+      if (vSeam > 0.5) {
+        bool longX = vHalf.x > vHalf.y;
+        across = longX ? vFace.y : vFace.x;
+        along = longX ? vFace.x : vFace.y;
+        halfLen = longX ? vHalf.x : vHalf.y;
+      } else {
+        across = atan(vLocal.x, vLocal.z) * 0.5 * max(vS.x, vS.z) * 0.45;
+        along = lp.y * 0.6;
+        halfLen = vS.y * 0.3;
+      }
+      float st = kqNoise(vec2(across * 46.0 + vSeed * 9.0, along * 1.6));
+      float st2 = kqNoise(vec2(across * 120.0, along * 4.0 + vSeed * 5.0));
+      // dark gaps between the stalk bundles (they read at range), pale stalks, browner tips
+      float gap = smoothstep(0.25, 0.05, abs(fract(across * 9.0 + st * 0.6) - 0.5));
+      alb *= (0.38 + st * 0.8 + st2 * 0.3) * (1.0 - gap * 0.5) * vec3(1.08, 0.82, 0.46);
+      // bundles: darker towards the tied ends of a sheaf
+      float tie = 1.0 - smoothstep(0.0, 0.18, halfLen - abs(along));
+      alb *= 1.0 - tie * 0.35;
+      burnCol = vec3(1.0, 0.45, 0.08);
+    }
+    col = kqLight(alb * g, n, vW, 1.0, 1.0);
+    col += vEm.rgb;
+    if (stone > 0.5) burnCol = vec3(1.0, 0.55, 0.18);
+  }
+  if (mat < 3.5 || (mat > 4.5 && mat < 6.5) || (mat > 8.5 && mat < 9.5)) {
+    float rim = pow(1.0 - ndv, 2.5);
+    // the outline contrasts with the fog (dark on pale fog, pale at night)
+    col = dark > 0.5 ? col * (1.0 - rim * 0.55) : col + (uFogColor * 1.2 + vec3(0.05)) * rim * 0.45;
+  }
+  // the dissolve: charred just behind the front (paper, straw), the front burning
+  col *= 1.0 - charK * 0.75;
+  col += burnCol * burn * 2.2;
   float dist = length(vW - uCamPos);
   // a slab right in front of the lens dithers away (the camera never sits inside a boss's arm)
   float nearK = smoothstep(0.45, 1.25, dist);
@@ -262,26 +407,30 @@ void main() {
 
 /**
  * The outline (readability pass): every solid piece is drawn a second time as an inverted hull a
- * fixed number of pixels larger (grown per axis, so box corners stay closed) — a dark ink line
- * round stone, straw and paper against bright sand, snow and day fog, a fog-lit pale one at night.
+ * fixed number of pixels larger (pushed along `aOut`: per axis on a box so its corners stay
+ * closed, along the averaged normal on sculpted shapes) — a dark ink line round stone, straw and
+ * paper against bright sand, snow and day fog, a fog-lit pale one at night.
  */
 const OUTLINE_VERT = /* glsl */ `
-attribute vec2 iFx;
+attribute vec4 iFx;
+attribute vec3 aOut;
 uniform float uPixel;
 uniform float uOutlinePx;
 varying vec3 vW;
 varying float vVis;
 void main() {
-  vec3 S = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
-  vec4 c = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  mat4 M = modelMatrix * instanceMatrix;
+  vec3 S = vec3(length(M[0].xyz), length(M[1].xyz), length(M[2].xyz));
+  vec4 c = M * vec4(0.0, 0.0, 0.0, 1.0);
   float dist = length(c.xyz - cameraPosition);
   // a fixed width on screen (thin up close, never a fat slab), capped in metres far away
   float w = min(uOutlinePx * uPixel * dist, 0.09);
-  vec3 grow = (S + 2.0 * w) / max(S, vec3(1e-4));
-  vec4 wp = modelMatrix * instanceMatrix * vec4(position * grow, 1.0);
+  mat3 R = mat3(M[0].xyz / max(S.x, 1e-4), M[1].xyz / max(S.y, 1e-4), M[2].xyz / max(S.z, 1e-4));
+  vec4 wp = M * vec4(position, 1.0);
+  wp.xyz += R * aOut * w;
   vW = wp.xyz;
   vVis = iFx.x;
-  gl_Position = iFx.y < 0.5 || iFx.x < 0.02 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * wp;
+  gl_Position = iFx.y < 0.5 || iFx.x < 0.02 || iFx.z > 0.02 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * wp;
 }
 `;
 
@@ -535,42 +684,60 @@ class GlowPool {
 
 class SolidPool {
   readonly mesh: InstancedMesh;
-  /** The inverted-hull outline drawn round every solid (shares the instances). */
-  readonly outline: InstancedMesh;
-  readonly outlineMat: ShaderMaterial;
+  /** The inverted-hull outline drawn round every solid (shares the instances); null on sheets. */
+  readonly outline: InstancedMesh | null;
+  readonly mat: ShaderMaterial;
+  readonly outlineMat: ShaderMaterial | null;
   private readonly alb: InstancedBufferAttribute;
   private readonly em: InstancedBufferAttribute;
   private readonly fx: InstancedBufferAttribute;
+  private readonly core: InstancedBufferAttribute;
   n = 0;
-  constructor(readonly max: number) {
-    const geo = new BoxGeometry(1, 1, 1);
+  constructor(
+    readonly max: number,
+    readonly shape: Shape = 'box',
+    outlineUniforms?: Record<string, { value: unknown }>,
+  ) {
+    const geo = shapeGeometry(shape);
     this.alb = dyn(max, 3);
     this.em = dyn(max, 4);
-    this.fx = dyn(max, 2);
+    this.fx = dyn(max, 4);
+    this.core = dyn(max, 4);
     geo.setAttribute('iAlb', this.alb);
     geo.setAttribute('iEm', this.em);
     geo.setAttribute('iFx', this.fx);
-    const mat = new ShaderMaterial({ vertexShader: SOLID_VERT, fragmentShader: SOLID_FRAG, uniforms: { ...atmosphere } });
-    this.mesh = new InstancedMesh(geo, mat, max);
+    geo.setAttribute('iCore', this.core);
+    this.mat = new ShaderMaterial({ vertexShader: SOLID_VERT, fragmentShader: SOLID_FRAG, uniforms: { ...atmosphere }, side: DOUBLE.has(shape) ? DoubleSide : FrontSide });
+    this.mesh = new InstancedMesh(geo, this.mat, max);
     this.mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     this.mesh.frustumCulled = false;
     this.mesh.count = 0;
     this.mesh.renderOrder = 23;
-    this.outlineMat = new ShaderMaterial({ vertexShader: OUTLINE_VERT, fragmentShader: OUTLINE_FRAG, uniforms: { ...atmosphere, uPixel: { value: 0.002 }, uOutlinePx: { value: 1.7 } }, side: BackSide });
-    this.outline = new InstancedMesh(geo, this.outlineMat, max);
-    this.outline.instanceMatrix = this.mesh.instanceMatrix;
-    this.outline.frustumCulled = false;
-    this.outline.count = 0;
-    this.outline.renderOrder = 23;
+    this.mesh.name = `combat-solids-${shape}`;
+    if (SHEETS.has(shape)) {
+      this.outline = null;
+      this.outlineMat = null;
+    } else {
+      this.outlineMat = new ShaderMaterial({ vertexShader: OUTLINE_VERT, fragmentShader: OUTLINE_FRAG, uniforms: { ...atmosphere, ...(outlineUniforms ?? { uPixel: { value: 0.002 }, uOutlinePx: { value: 1.7 } }) }, side: BackSide });
+      this.outline = new InstancedMesh(geo, this.outlineMat, max);
+      this.outline.instanceMatrix = this.mesh.instanceMatrix;
+      this.outline.frustumCulled = false;
+      this.outline.count = 0;
+      this.outline.renderOrder = 23;
+    }
   }
-  /** `vis` < 1 dithers the piece away; `outline` false draws no ink line (chips, flying grit). */
-  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0, mat = 0, vis = 1, outline = true): void {
+  /**
+   * `vis` < 1 dithers the piece away; `outline` false draws no ink line (chips, flying grit);
+   * `dissolve` 0..1 burns it away; `fray` tatters its hem; `core` the heart seen through it.
+   */
+  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0, mat = 0, vis = 1, outline = true, dissolve = 0, fray = 0, core: Vector3 | null = null, coreR = 0): void {
     if (this.n >= this.max) return;
     const i = this.n++;
     this.mesh.setMatrixAt(i, m);
     const A = this.alb.array as Float32Array;
     const E = this.em.array as Float32Array;
     const F = this.fx.array as Float32Array;
+    const C = this.core.array as Float32Array;
     A[i * 3] = r;
     A[i * 3 + 1] = g;
     A[i * 3 + 2] = b;
@@ -578,18 +745,30 @@ class SolidPool {
     E[i * 4 + 1] = eg;
     E[i * 4 + 2] = eb;
     E[i * 4 + 3] = mat;
-    F[i * 2] = vis;
-    F[i * 2 + 1] = outline ? 1 : 0;
+    F[i * 4] = vis;
+    F[i * 4 + 1] = outline ? 1 : 0;
+    F[i * 4 + 2] = dissolve;
+    F[i * 4 + 3] = fray;
+    if (core) {
+      C[i * 4] = core.x;
+      C[i * 4 + 1] = core.y;
+      C[i * 4 + 2] = core.z;
+      C[i * 4 + 3] = coreR;
+    } else C[i * 4 + 3] = 0;
   }
   end(): void {
     this.mesh.count = this.n;
-    this.outline.count = this.n;
+    if (this.outline) this.outline.count = this.n;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceMatrix.clearUpdateRanges();
     this.mesh.instanceMatrix.addUpdateRange(0, Math.max(1, this.n) * 16);
-    upload([this.alb, this.em, this.fx], this.n);
+    upload([this.alb, this.em, this.fx, this.core], this.n);
     this.mesh.visible = this.n > 0;
-    this.outline.visible = this.n > 0;
+    if (this.outline) this.outline.visible = this.n > 0;
+  }
+  dispose(): void {
+    this.mat.dispose();
+    this.outlineMat?.dispose();
   }
 }
 
@@ -756,8 +935,18 @@ const _s = new Vector3();
 const _p = new Vector3();
 const _ax = new Vector3(1, 0, 0);
 const _ay = new Vector3(0, 1, 0);
+const _az = new Vector3(0, 0, 1);
+const _core = new Vector3();
 const _qa = new Quaternion();
 const _qb = new Quaternion();
+
+/** A stand-in part for the heart's position (the core channel). */
+const _corePart: BodyPart = { kind: 'glow', bone: 'core', r: 0, y: 0, f: 0, size: 0, col: [0, 0, 0], seed: 0 };
+function CORE_PART(y: number, f: number): BodyPart {
+  _corePart.y = y;
+  _corePart.f = f;
+  return _corePart;
+}
 
 interface Vis {
   t: BodyTemplate;
@@ -821,6 +1010,9 @@ export class CombatVisuals {
   private readonly puffs: PuffPool;
   private readonly glows: GlowPool;
   private readonly solids: SolidPool;
+  /** Sculpted shapes (visuals-shapes.ts), one instanced pool each (drawn only when in use). */
+  private readonly shapes = new Map<Shape, SolidPool>();
+  private readonly outlineU = { uPixel: { value: 0.002 }, uOutlinePx: { value: 1.7 } };
   private readonly ringPool: RingPool;
   private readonly puffMat: ShaderMaterial;
   private readonly glowMat: ShaderMaterial;
@@ -838,9 +1030,15 @@ export class CombatVisuals {
     this.glowMat = new ShaderMaterial({ vertexShader: GLOW_VERT, fragmentShader: GLOW_FRAG, uniforms: { ...atmosphere, uPixel: { value: 0.002 } }, transparent: true, depthWrite: false, blending: AdditiveBlending });
     this.puffs = new PuffPool(1800, this.puffMat);
     this.glows = new GlowPool(900, this.glowMat);
-    this.solids = new SolidPool(1400);
+    this.solids = new SolidPool(1400, 'box', this.outlineU);
+    this.shapes.set('box', this.solids);
+    for (const sh of SHAPES) if (sh !== 'box') this.shapes.set(sh, new SolidPool(sh === 'rock' || sh === 'rock2' || sh === 'block' || sh === 'page' ? 420 : 260, sh, this.outlineU));
     this.ringPool = new RingPool(48);
-    this.object.add(this.ringPool.mesh, this.solids.outline, this.solids.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
+    this.object.add(this.ringPool.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
+    for (const pool of this.shapes.values()) {
+      if (pool.outline) this.object.add(pool.outline);
+      this.object.add(pool.mesh);
+    }
   }
 
   /** Rigged bodies on (medium / high: the asset loader) or off (low tier: null). */
@@ -1219,6 +1417,27 @@ export class CombatVisuals {
     let lx = p.r;
     let ly = p.y;
     let lz = -p.f;
+    // a hinge (wings, page pinions) swings the part about its pivot before anything else moves it
+    if (p.hinge) {
+      const a = this.hingeAngle(p, time);
+      const [ax, , , , pr, py, pf] = p.hinge;
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const dx = lx - pr;
+      const dy = ly - py;
+      const dz = lz + pf;
+      if (ax === 0) {
+        ly = py + dy * c - dz * s;
+        lz = -pf + dy * s + dz * c;
+      } else if (ax === 1) {
+        lx = pr + dx * c + dz * s;
+        lz = -pf - dx * s + dz * c;
+      } else {
+        lx = pr + dx * c - dy * s;
+        ly = py + dx * s + dy * c;
+      }
+    }
+    if (p.sway) lx += Math.sin(time * p.sway[1] + p.sway[2] + p.seed * 3) * p.sway[0];
     // bone channels
     const armSign = p.bone === 'armL' ? 1 : p.bone === 'armR' ? -1 : 0;
     if (armSign !== 0) {
@@ -1291,6 +1510,12 @@ export class CombatVisuals {
     return out;
   }
 
+  /** Hinge angle of a part (radians). */
+  private hingeAngle(p: BodyPart, time: number): number {
+    const [, rate, amp, ph] = p.hinge!;
+    return Math.sin(time * rate + ph) * amp;
+  }
+
   /** Page-turn angle of a part (radians). */
   private turnAngle(p: BodyPart, time: number): number {
     const [rate, amp, ph] = p.turn!;
@@ -1316,10 +1541,10 @@ export class CombatVisuals {
     const cam = f.camera.position;
     const px = (2 * Math.tan(((f.camera.fov * Math.PI) / 180) / 2)) / Math.max(1, f.viewportH);
     this.glowMat.uniforms.uPixel!.value = px;
-    this.solids.outlineMat.uniforms.uPixel!.value = px;
+    this.outlineU.uPixel.value = px;
     this.puffs.n = 0;
     this.glows.n = 0;
-    this.solids.n = 0;
+    for (const pool of this.shapes.values()) pool.n = 0;
     this.ringPool.n = 0;
     const seen = new Set<string>();
     this.rigs.begin();
@@ -1380,7 +1605,7 @@ export class CombatVisuals {
     this.particles(dt, f);
     this.puffs.end(cam);
     this.glows.end();
-    this.solids.end();
+    for (const pool of this.shapes.values()) pool.end();
     this.ringPool.end();
   }
 
@@ -1488,15 +1713,26 @@ export class CombatVisuals {
     if (rigged) {
       const dis = dissolving ? Math.min(1, Math.max(0, (e.t - 0.08) / 1.3)) : 0;
       if (dis < 1)
-        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: Math.max(leaving ? v.fade : 0, (1 - vis) * 0.7), dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px));
+        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: Math.max(leaving ? v.fade : 0, (1 - vis) * 0.7), dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px), (shape, m, r, g, b, er, eg, eb, mat) => this.shapes.get(shape)!.push(m, r, g, b, er, eg, eb, mat, vis));
     }
-    if (alpha <= 0.01) return;
+    // sculpted pieces burn away over ≈ 1.2 s (the puffs and glows fade faster)
+    if (alpha <= 0.01 && !(dissolving && e.t < 1.3)) return;
     // undone: a quick swell before it comes apart (a pop, not a fade)
     if (dissolving && e.t < 0.14) v.swell = 1 + 0.2 * Math.sin((e.t / 0.14) * Math.PI);
     const wakeK = e.aggro ? 1 : 0.65;
     // weak point open (seal) / armour broken: glows harder
     const sealK = e.kind === 'schuldbuch' ? (e.sealOpen > 0 ? 2.4 + Math.sin(f.time * 10) * 0.6 : 0.5) : e.armorBroken > 0 ? 1.8 : 1;
     const rise = dissolving ? v.fade * 0.8 : 0;
+    // the heart seen through the spectral pieces: it rides the core channel, swells with the tell
+    const tc = v.t.core;
+    let core = false;
+    let coreR = 0;
+    if (tc) {
+      this.bodyMatrix(e, v, CORE_PART(tc.y, tc.f), _m);
+      _core.setFromMatrixPosition(_m);
+      core = true;
+      coreR = tc.rad * v.swell * (1 + tellK * 0.5 + flash * 0.4) * (stunned ? 0.7 : 1) * wakeK;
+    }
     for (const p of v.t.parts) {
       // on a rig only the extras draw, plus the template's smoke as a faint fraying aura
       if (rigged && !p.onRig && (p.kind !== 'puff' || (p.style ?? 0) > 0.5)) continue;
@@ -1539,13 +1775,21 @@ export class CombatVisuals {
           const a = Math.sin(v.walk * (e.boss ? 5.5 : 9) + p.gait[2]) * p.gait[3] * Math.min(1, this.moving(e));
           q.multiply(_qb.setFromAxisAngle(_ax, a));
         }
+        if (p.hinge) q.multiply(_qb.setFromAxisAngle(p.hinge[0] === 0 ? _ax : p.hinge[0] === 1 ? _ay : _az, this.hingeAngle(p, e.t + e.seed * 10)));
         q.multiply(_q.setFromEuler(_e.set(p.rx ?? 0, p.ry ?? 0, p.rz ?? 0)));
-        const shrink = dissolving ? Math.max(0.01, 1 - v.fade) : 1;
-        _s.set(p.size * v.swell * shrink, (p.sy ?? p.size) * v.swell * shrink, (p.sz ?? p.size) * v.swell * shrink);
+        // a sculpted piece burns away along a noise front (per family colour); a box still shrinks
+        const shaped = p.shape !== undefined && p.shape !== 'box';
+        const shrink = dissolving && !shaped ? Math.max(0.01, 1 - v.fade) : 1;
+        const dis = dissolving && shaped ? Math.min(1, Math.max(0, (e.t - 0.04) / 1.2)) : 0;
+        _s.set(p.size * v.swell * shrink * (p.mx ? -1 : 1), (p.sy ?? p.size) * v.swell * shrink, (p.sz ?? p.size) * v.swell * shrink);
         _m2.compose(_p, q, _s);
         const seal = p.bone === 'seal' ? sealK : 1;
         const thin = Math.min(p.size, p.sy ?? p.size, p.sz ?? p.size) < 0.07;
-        this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5, p.mat ?? 0, vis, !thin);
+        const spectral = p.mat === MAT.spectral;
+        const pool = shaped ? this.shapes.get(p.shape!)! : this.solids;
+        // the spectral rim flares with the telegraph and the hit; a stunned body goes cold
+        const ek = seal * (1 + tellK * (spectral ? 1.4 : 1)) * (spectral && stunned ? 0.6 : 1);
+        pool.push(_m2, p.col[0] + fl * (spectral ? 0.15 : 1), p.col[1] + fl * (spectral ? 0.15 : 1), p.col[2] + fl * (spectral ? 0.15 : 1), em[0] * ek + fl * 0.5 + (spectral && stunned ? 0.1 : 0), em[1] * ek + fl * 0.5 + (spectral && stunned ? 0.18 : 0), em[2] * ek + fl * 0.5 + (spectral && stunned ? 0.3 : 0), p.mat ?? 0, vis, !thin, dis, p.fray ?? 0, spectral && core ? _core : null, coreR);
       }
     }
     // the elite: an ember halo on the ground, three motes circling over its head
@@ -1572,7 +1816,8 @@ export class CombatVisuals {
         const h = e.y + top * (0.2 + 0.6 * ((i * 0.37) % 1));
         this.glows.push(e.x + Math.cos(a) * (e.radius + 0.25), h, e.z + Math.sin(a) * (e.radius + 0.25), 0.09, f.reducedFlash ? 1 : 1.8, 0.7, 0.88, 1, 3);
       }
-      this.glows.push(e.x, e.y + top * 0.5, e.z, e.radius + top * 0.45, f.reducedFlash ? 0.25 : 0.4, 0.45, 0.6, 0.85, 0);
+      // a faint veil glow (it was a white blob over the body at night: the motes carry the read)
+      this.glows.push(e.x, e.y + top * 0.5, e.z, e.radius + top * 0.4, f.reducedFlash ? 0.06 : 0.1, 0.35, 0.5, 0.8, 0);
     }
     // the prologue's veil (a Streuner under a Schleier): a ring on the ground and a slow shell of
     // mist motes give its place away in bright daylight (playtest: only the nameplate showed)
@@ -1645,7 +1890,7 @@ export class CombatVisuals {
     });
     this.puffMat.dispose();
     this.glowMat.dispose();
-    this.solids.outlineMat.dispose();
+    for (const pool of this.shapes.values()) pool.dispose();
     this.ringPool.mat.dispose();
   }
 }

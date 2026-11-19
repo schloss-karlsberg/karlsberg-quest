@@ -170,13 +170,11 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   neck and head turn to the player within 9 m (additive bone turns after the mixer). Hats (tricorn,
   huntcap, mobcap) and props (basket, stick, book) from the procedural figure ride the Head / WristR
   bones. Enemies: the Streuner is a smoke hound on the CC0 wolf rig, the Raffschatten a smoke plunderer
-  on the human rig, the Pikeur rides a spectral CC0 horse with two hounds at heel (rider stays
-  procedural). Spectral shader: dark ink smoke, fog-contrast rim, ragged wisp edges, a small point core
+  on the human rig, the Pikeur rides a spectral CC0 horse with two hounds at heel (rider: see §14). Spectral shader: dark ink smoke, fog-contrast rim, ragged wisp edges, a small point core
   (≤ 10 % of the height), the telegraph on the rim, a burning noise dissolve over the death clip; the
   AI state picks the clip (wind-up = attack clip held at its anticipation pose, strike played through,
   hit react, gallop by ground speed). The low tier keeps the procedural figures and bodies (no
-  downloads). The other kinds (mist, paper, straw, stone, the Schuldbuch, Strohmann, Steinbrecher)
-  stay procedural; the Nebelling got a smaller cold heart in darker mist. View model: a gloved fist
+  downloads). The other kinds are sculpted procedural creatures (§14). View model: a gloved fist
   with four curled fingers, knuckles, thumb and cuff; per-part gloss (satin paint, leather, iron),
   band seams, chipped paint and mud towards the shoe.
 - **Never:** gore, real victims or animals as enemies, likenesses of real people.
@@ -419,7 +417,43 @@ changed in the look, each checked with headed-Chromium screenshots before / afte
   subtitles); enemy nameplates stay out of the quest tracker / top-left column; a favicon.
 
 Still open (next art round): CC0 tree models for the near ring (the crowns are still procedural
-cards); stylised CC0 models for the procedural enemies and bosses (Nebeling, Irrlicht, Strohmann,
-Steinbrecher / Steinfresser, Schuldbuch); 1796 ruins from a broken-wall kit instead of stepped
+cards); 1796 ruins from a broken-wall kit instead of stepped
 blocks; people, carriages and props in the 1789 Ehrenhof; Festsaal paintings.
 
+
+## 14. Creature & boss models (2026-11-19)
+
+No CC0 creature in the listed sources fits a mist wraith, a paper bird or a ledger, so every
+procedural family is now a **sculpted multi-part body** (`src/systems/combat/visuals-shapes.ts`:
+shroud with a pointed hood and tattered hem, mask, trailing tail, limb, claw spike, flame and drop
+lathes, displaced flat-shaded rocks, crystals, rounded blocks, sheaves, tori, curled pages, folded
+wings; each fitted to the unit box so a part's size stays its extents) on instanced pools, one per
+shape, with an ink outline (no outline on sheets). Surfaces per part (`MAT` in `bodies.ts`):
+
+- **Spectral** (mist family): a dark ink body (never transparent, never a white blob), a family-tint
+  fresnel rim, an ink band inside the rim by day, drifting flow bands, a small heart seen *through*
+  the body (distance of the view ray to the core, ≤ ~12 % of the height), frayed hems.
+- **Mask**: pale bone with slanted eye hollows and a shadow under the hood.
+- **Paper / flame / crystal / rock** (ember veins) / **stone** (chisel bands) / **straw** (stalks with
+  dark bundle gaps).
+- **Death dissolve** per family: a noise front eats every piece from below in ≈ 1.2 s with a burning
+  edge in the family colour (mist cold blue, paper ember, stone orange, straw fire) and char behind it.
+- **Size variance**: every template rolls ±10–20 % per individual; gameplay numbers unchanged.
+
+Families: **Nebelling** hooded wraith (mask, ember eyes, clawed sleeves, trailing tail, cold heart);
+**Irrlicht** iron lantern round a flame orb with three orbiting cold flames; **Mahnbrief** paper
+crane with beating wings and a wax-seal eye; **Glutling** coal lump with a flame crown; **Grusling**
+mortar lumps on stubby feet; **Steinfresser** rock brute with a crystal heart and back crystals;
+**Nebelweber** tall shrouded caster with crystal hands and threads; **Foliant** a walking tome with a
+gilt board; **Scherbling** shard ring round a flame; **Rufer** shroud with a horn mouth.
+Bosses: **Schuldbuch** an open giant ledger — covers opening towards the player, six page pinions per
+side beating as wings, turning pages, ribbon pages, a wax-seal eye with a crystal iris;
+**Strohmann** bound sheaves with cord ties, burning at the head, shoulders and flail ends;
+**Steinbrecher** carved sandstone blocks (cornice brow, volutes, bosses) with ember seams in the big
+blocks; **Pikeur** the CC0 human rig seated on the CC0 horse (thighs over the flanks, bent after the
+mixer, hips at the horse's Torso bone), whip = sword slash, a black tricorn with a brass band (low tier
+keeps the procedural rider).
+
+Real GPU (M5 Pro, Metal, 1440 × 900, high): every showcase scene 92–100 fps (vsync cap 100), the
+Pikeur 92–96 fps. Open: the Strohmann still reads stiff (a straight torso of sheaves), the
+Steinbrecher stays blocky by design but could use broken edges; no CC0 rigged creatures used.
