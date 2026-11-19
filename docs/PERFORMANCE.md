@@ -75,6 +75,28 @@ Presets on the same machine (GPU ms / triangles):
 On a fast GPU the presets differ little in time (noise dominates); the triangle count and MSAA
 (fill rate, see 3.2) are what saves time on integrated GPUs.
 
+### 3.1a Nature round 2 (Apple M5 Pro, ANGLE Metal, headed Chromium, 1440×900, Hoch, uncapped)
+
+`requestAnimationFrame` intervals over 240 frames per view, vsync and frame limit off; the machine
+was shared with other jobs, so single runs vary by ±25 %. Before = `b03a39f` (card trees), after =
+model trees + impostors + shadow-pass early-outs (docs/ART-DIRECTION.md §5.2).
+
+| View | fps before | p95 before | fps after | p95 after |
+|---|---:|---:|---:|---:|
+| Title (forest behind the menu) | 47 | 33.9 ms | 85 | 27.1 ms |
+| Forest today (1240 / −1060) | 56 | 35.3 ms | 87 | 16.5 ms |
+| Forest today B (1632 / −1640, densest) | 40 | 34.2 ms | 101 | 13.2 ms |
+| Forest today C (1952 / −1010) | 41 | 33.1 ms | 92 | 16.4 ms |
+| Palace 1789 | 49 | 34.9 ms | 59 | 35.0 ms |
+| Night 1793-02 | 73 | – | 84 | 16.8 ms |
+
+`kq.bench` frame p95 after: today-forest 14.5 ms (was 29.4), 1789-night-pack 35.4 ms (was 32.6),
+1793-07-festsaal-fire 37.5 ms (was 31.4; avg 28 ms ≈ 35 fps). The forest itself was the cost: its
+fragment shading paid twice (main + shadow pass). Toggling layers in the densest view: whole forest
+≈ 3.3 ms, impostors ≈ 0.6 ms, props / ground cover ≈ 0.3 ms each, the sun shadows (casting +
+9-tap receiving everywhere) ≈ 7 ms — the next knob. The Festsaal fire and the palace views are
+bound by the fire / interior effects and stay under 60 fps (open, not this track's code).
+
 ### 3.2 SwiftShader (headless e2e, 1280×720, pixel ratio 1, Hoch, 8 frames per scene)
 
 | Scene | Triangles before | after | Frame ms before | after | CPU ms before | after |

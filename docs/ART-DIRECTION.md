@@ -112,7 +112,7 @@ the procedural terrain, bark and forest from the render baseline stay as they we
 - **Ground cover (`GroundCover`):** instanced grass tufts, meadow flowers (1789 most, none in the
   snow) and reeds / cattails on the shore band, deterministic per 8 m tile from the land cover; wind
   gusts, grow-in at the ring edge (high 30 m, medium 21 m), tall reeds duck away right at the camera.
-- **Props (`NatureProps`):** CC0 ferns (wind), two mossy rock sets (every rock its own variant), a
+- **Props (`NatureProps`):** (round 2: stylised kit, see §5.2) CC0 ferns (wind), rocks, a
   fallen dead trunk and two stumps, instanced per kind around the player (ferns 46 m, rocks 170 m),
   never on water, paths or the parterre; snow on top in February 1793.
 - **Water (`Water`):** the Karlsbergweiher, the Schwanenweiher and every other pond come from the
@@ -121,6 +121,34 @@ the procedural terrain, bark and forest from the render baseline stay as they we
   layered waves, Fresnel, sky gradient + tree-line reflection, a **planar reflection** of the scene
   on high (half resolution, nearest body in view, `KQ_WATER_REFL`), sun glitter, shore foam, depth
   colour and transparency, floating leaves in autumn, ice with cracks and drifts in February 1793.
+
+### 5.2 Nature round 2: model trees, stylised floor, clear air (2026-11-19)
+
+Code: `src/world/vegetation/trees.ts` (`ModelTrees`), `foliage.ts` (shared season colours),
+`props.ts`, `src/world/eraPresets.ts`; assets `public/assets/models/nature2/*.glb` (Quaternius
+Stylized Nature kit via poly.pizza, CC0, packed with `pnpm assets:set`). Medium / high only: the
+low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
+
+- **Trees are 3D models now**, not cards: 16 variants in four families — common (beech stands),
+  pine (spruce stands), twisted (oak), dead (bare February crowns, snags in every stand). Leaves
+  are real leaf-clump geometry tinted by season from the texture's luminance (summer 1789, golden
+  2025, thinned 1796 crowns; winter swaps broadleaf to the dead models).
+- **Stand proportions:** the kit's trees are 7–19 m and stout; LiDAR stands are 20–35 m. The crown
+  keeps the model's size (scale `min(h·k, max)` per family) and only the trunk below the crown base
+  stretches; the trunk is slimmed to ≈ 1.8 % of the height and low limbs are pulled onto the stem
+  (no giant elephant trunks, no limbs dragged to 15 m).
+- **LOD:** lod0 (full, bark normal map < 30 m) → lod1 (bark ≈ 25 %, half the leaf cards ×1.35)
+  → **baked impostors** (8 azimuths per variant, normal + albedo + bark/leaf flag, lit at runtime
+  with the same light, fog and season colour as the models). Levels cross-fade by screen-space
+  dither; no pop, no pale far palisade (far bark darkens towards the impostors' ×0.6).
+- **Wind:** gust-modulated sway on every level, stronger on leaf cards.
+- **Floor:** stylised low-poly ferns / forest plants, bushes (green, blossoming, rust), flower
+  clumps and mossy boulders + pebbles replace the photo-scan rocks and fern; placed with full-cell
+  jitter and a warped clump noise on top of the patch noise, so they come in clusters and glades,
+  never in rows. Logs and stumps stay.
+- **Air:** "today" and 1789 have a cooler, thinner ground haze and more saturation / contrast (the
+  crowns' colour carries instead of a brown veil); the night presets got a stronger blue moon fill.
+  Sub-pixel dust / pollen motes fade out earlier, so nothing reads as stars in a day sky.
 
 ## 6. Character style
 

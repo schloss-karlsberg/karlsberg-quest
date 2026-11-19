@@ -29,13 +29,15 @@ export interface EraLook {
 export const ERA_LOOKS: Record<Era, EraLook> = {
   today: {
     // art direction: a golden autumn afternoon — warm low sun, blue-teal shade, amber haze
+    // (nature round 2: cooler, thinner ground haze and more saturation/contrast, so the colour
+    // of the stylised crowns carries instead of a brown veil)
     // between the trunks instead of a grey wall (docs/ART-DIRECTION.md §2)
     sun: { azimuth: 222, elevation: 19, color: '#ffd8a6', intensity: 3.2 },
     disc: 'sun',
     sky: { zenith: '#4f7fb2', horizon: '#e2d5bb', below: '#5d6560', clouds: 0.5, cloudColor: '#f3e8d8', stars: 0 },
     ambient: { sky: '#8aa2c0', ground: '#5a4632', intensity: 0.85 },
-    fog: { color: '#bdb5a0', sunColor: '#f2cc94', density: 0.0007, heightDensity: 0.0035, base: 255, falloff: 30, ground: 0.0045 },
-    grade: { exposure: 1.06, saturation: 1.06, contrast: 1.08, lift: '#0a0c10', gain: '#fff6e8', vignette: 0.32, grain: 0.03 },
+    fog: { color: '#b4bab6', sunColor: '#f2cc94', density: 0.0006, heightDensity: 0.003, base: 255, falloff: 30, ground: 0.0032 },
+    grade: { exposure: 1.06, saturation: 1.14, contrast: 1.12, lift: '#080b10', gain: '#fff6e8', vignette: 0.3, grain: 0.03 },
     glow: { color: '#000000', intensity: 0 },
     post: { bloom: 0.45, bloomThreshold: 1.25, ao: 0.85, shadow: 0.82, white: '#fff3e2', shadowTint: '#00050f', highTint: '#0d0700' },
     snow: 0,
@@ -48,8 +50,8 @@ export const ERA_LOOKS: Record<Era, EraLook> = {
     disc: 'sun',
     sky: { zenith: '#3a6aa4', horizon: '#e9d6b4', below: '#6b5a44', clouds: 0.45, cloudColor: '#fbe7cf', stars: 0 },
     ambient: { sky: '#9ab4cc', ground: '#4f4a30', intensity: 0.9 },
-    fog: { color: '#c9ccbc', sunColor: '#ffd8a8', density: 0.0006, heightDensity: 0.0025, base: 255, falloff: 30, ground: 0.0024 },
-    grade: { exposure: 1.05, saturation: 1.1, contrast: 1.06, lift: '#120c06', gain: '#fff2dc', vignette: 0.33, grain: 0.03 },
+    fog: { color: '#c3cbc4', sunColor: '#ffd8a8', density: 0.0005, heightDensity: 0.0022, base: 255, falloff: 30, ground: 0.0019 },
+    grade: { exposure: 1.05, saturation: 1.16, contrast: 1.1, lift: '#0e0b07', gain: '#fff2dc', vignette: 0.32, grain: 0.03 },
     glow: { color: '#000000', intensity: 0 },
     post: { bloom: 0.55, bloomThreshold: 1.2, ao: 0.8, shadow: 0.85, white: '#fff1dc', shadowTint: '#02040e', highTint: '#100800' },
     snow: 0,
@@ -59,7 +61,7 @@ export const ERA_LOOKS: Record<Era, EraLook> = {
     sun: { azimuth: 150, elevation: 38, color: '#9fb6e0', intensity: 0.9 },
     disc: 'moon',
     sky: { zenith: '#070b16', horizon: '#26324a', below: '#141821', clouds: 0.35, cloudColor: '#3a4660', stars: 1 },
-    ambient: { sky: '#40517a', ground: '#232633', intensity: 0.75 },
+    ambient: { sky: '#44587f', ground: '#252937', intensity: 0.85 },
     fog: { color: '#2b3448', sunColor: '#46557a', density: 0.0018, heightDensity: 0.006, base: 260, falloff: 25, ground: 0.011 },
     grade: { exposure: 1.55, saturation: 0.7, contrast: 1.08, lift: '#05070d', gain: '#dfe8ff', vignette: 0.5, grain: 0.05 },
     glow: { color: '#000000', intensity: 0 },
@@ -71,7 +73,7 @@ export const ERA_LOOKS: Record<Era, EraLook> = {
     sun: { azimuth: 200, elevation: 30, color: '#8ea4cf', intensity: 0.75 },
     disc: 'moon',
     sky: { zenith: '#060812', horizon: '#3a2a2a', below: '#120d0c', clouds: 0.6, cloudColor: '#2a2024', stars: 0.5 },
-    ambient: { sky: '#3a4566', ground: '#2a1d16', intensity: 0.7 },
+    ambient: { sky: '#3d4a6c', ground: '#2a1d16', intensity: 0.78 },
     fog: { color: '#2a2630', sunColor: '#5a4a52', density: 0.0016, heightDensity: 0.005, base: 260, falloff: 30, ground: 0.009 },
     grade: { exposure: 1.6, saturation: 0.8, contrast: 1.1, lift: '#06060a', gain: '#ffe9d6', vignette: 0.5, grain: 0.05 },
     glow: { color: '#ff6a1f', intensity: 2.2 },

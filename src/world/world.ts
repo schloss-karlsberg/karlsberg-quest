@@ -1,4 +1,4 @@
-import { Color, LinearSRGBColorSpace, type PerspectiveCamera, type Scene, SRGBColorSpace, type Texture, TextureLoader, Vector3 } from 'three';
+import { Color, LinearSRGBColorSpace, type PerspectiveCamera, type Scene, SRGBColorSpace, type Texture, TextureLoader, Vector3, type WebGLRenderer } from 'three';
 import { ERA_INFO, type Era } from '../core/era';
 import { GROUND_NAMES, type GameData } from '../data/types';
 import type { PostFX } from '../render/post';
@@ -118,9 +118,9 @@ export class World {
     this.water.reflectionSkip = [this.nature.cover.object, this.nature.props.object];
   }
 
-  /** CC0 assets for the nature layers (boot, once the loader exists). */
-  attachAssets(assets: AssetLoader): void {
-    this.nature.attach(assets);
+  /** CC0 assets for the nature layers (boot, once the loader exists); the renderer bakes tree impostors. */
+  attachAssets(assets: AssetLoader, renderer?: WebGLRenderer): void {
+    this.nature.attach(assets, renderer);
   }
 
   /** Quality tier (render/quality.ts listener): nature layers and water detail. */

@@ -15,6 +15,8 @@ import {
 import { GROUND } from '../data/types';
 import { ATMOS_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
+import { FOLIAGE_GLSL } from './vegetation/foliage';
+import { type ModelTrees, pickVariant } from './vegetation/trees';
 
 /**
  * Procedural forest: three species (beech, spruce, oak), three detail levels, one draw call per
@@ -483,7 +485,7 @@ precision highp sampler2DArray;
 uniform sampler2DArray uBarkAlb;
 uniform sampler2DArray uBarkNH;
 #endif
-vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }
+${FOLIAGE_GLSL}
 
 /**
  * Leaf clump card (stylized foliage, docs/ART-DIRECTION.md §5): a soft round mass whose rim is
@@ -526,12 +528,6 @@ vec2 leafClump(vec2 uv, float seed, float dens) {
   float shade = (0.74 + 0.36 * (m1 * 0.65 + m2 * 0.35)) * mix(0.85, 1.05, smoothstep(0.1, 0.8, r));
   return vec2(cov, shade);
 }
-
-/** Leaf density for the season: summer full, November thinned, bare in winter. */
-float leafDensity() {
-  return uSeason <= 1.0 ? 1.0 - 0.1 * uSeason : clamp(0.9 - (uSeason - 1.0) * 1.2, 0.0, 1.0);
-}
-float twigShow() { return smoothstep(0.75, 1.6, uSeason); }
 
 /** Leaf clusters in a card: two offset grids of pointed leaves, ragged round outline. */
 float leafMask(vec2 uv, float seed, float dens) {
@@ -603,21 +599,6 @@ float needleMask(vec2 uv, float seed) {
   return cov * smoothstep(0.0, 0.04, t) * (1.0 - smoothstep(0.94, 1.0, t));
 }
 
-vec3 leafColour(float kind, float v) {
-  // summer
-  vec3 sBeech = mix(srgb(vec3(0.2, 0.3, 0.1)), srgb(vec3(0.27, 0.36, 0.12)), v);
-  vec3 sOak = mix(srgb(vec3(0.15, 0.22, 0.08)), srgb(vec3(0.2, 0.27, 0.1)), v);
-  // November: copper beech, brown oak, a few late yellow and still-green crowns
-  vec3 aBeech = v < 0.4 ? mix(srgb(vec3(0.5, 0.22, 0.07)), srgb(vec3(0.6, 0.32, 0.1)), v / 0.4)
-              : v < 0.75 ? mix(srgb(vec3(0.62, 0.42, 0.12)), srgb(vec3(0.55, 0.3, 0.09)), (v - 0.4) / 0.35)
-              : srgb(vec3(0.3, 0.3, 0.12));
-  vec3 aOak = mix(srgb(vec3(0.36, 0.26, 0.11)), srgb(vec3(0.44, 0.32, 0.12)), v);
-  vec3 sum = kind > 1.5 ? sOak : sBeech;
-  vec3 aut = kind > 1.5 ? aOak : aBeech;
-  vec3 dead = srgb(vec3(0.32, 0.24, 0.16));
-  return uSeason < 1.0 ? mix(sum, aut, uSeason) : mix(aut, dead, clamp(uSeason - 1.0, 0.0, 1.0));
-}
-
 void main() {
   float kind = vKind;
   float isSpruce = step(0.5, kind) * (1.0 - step(1.5, kind));
@@ -632,6 +613,8 @@ void main() {
   // MSAA, shadows off → uShadowParams.x = 0) keep a hard 0.5 alpha test
   float cut = uShadowParams.x > 0.5 ? 0.1 : 0.5;
   float cover = 1.0;
+  // shadow map pass: only the cut-outs matter, no lighting
+  if (uShadowPass > 0.5 && (vPart < 0.5 || (vPart > 2.5 && vPart < 4.5))) { gl_FragColor = vec4(1.0); return; }
   if (vPart < 0.5) {
 #ifdef KQ_BARK
     // CC0 bark: beech silver-grey and smooth, oak deep furrows, spruce red-brown scales
@@ -671,6 +654,7 @@ void main() {
     float tw = twigMask(vUv, seed) * twigShow();
     cover = max(lc.x, tw);
     if (cover < cut) discard;
+    if (uShadowPass > 0.5) { gl_FragColor = vec4(1.0); return; }
     leafy = step(tw, lc.x);
     alb = leafy > 0.5 ? leafColour(kind, v) * lc.y * (0.88 + 0.24 * kqHash12(vec2(seed * 7.0, v))) : srgb(vec3(0.24, 0.21, 0.19));
     // clumps: the outer rim catches more sky, the core stays darker
@@ -679,6 +663,7 @@ void main() {
   } else if (vPart < 2.5) {
     cover = needleMask(vUv, seed);
     if (cover < cut) discard;
+    if (uShadowPass > 0.5) { gl_FragColor = vec4(1.0); return; }
     leafy = 1.0;
     // blue-green needles, fresh lighter growth at the branch tips
     alb = mix(srgb(vec3(0.09, 0.16, 0.1)), srgb(vec3(0.13, 0.21, 0.11)), v) * (0.8 + 0.35 * kqNoise(vUv * 12.0));
@@ -716,6 +701,7 @@ void main() {
     crown *= 1.0 - bare * 0.62 * smoothstep(0.2, 0.9, length(cq) + 0.25 * nz);
     cover = max(crown, trunk);
     if (cover < cut * (bare > 0.5 ? 0.6 : 1.0)) discard;
+    if (uShadowPass > 0.5) { gl_FragColor = vec4(1.0); return; }
     if (crown >= trunk) {
       float cz = sqrt(max(0.0, 1.0 - dot(cq, cq) * 0.7));
       vec3 vd = normalize(cross(vRight, vUp));
@@ -784,6 +770,8 @@ export class Forest {
   cull = true;
   /** Circles kept free of trees (feature buildings such as the field station). */
   private readonly clearings: { x: number; z: number; r: number }[] = [];
+  /** CC0 model trees with baked impostors (medium / high, vegetation/trees.ts); null = procedural. */
+  private models: ModelTrees | null = null;
 
   constructor() {
     this.object.name = 'forest';
@@ -845,9 +833,36 @@ export class Forest {
 
   /** Alpha-to-coverage for the leaf / impostor cut-outs (tiers with MSAA). */
   setAlphaToCoverage(on: boolean): void {
+    this.a2c = on;
+    this.models?.setAlphaToCoverage(on);
     if (this.material.alphaToCoverage === on) return;
     this.material.alphaToCoverage = on;
     this.material.needsUpdate = true;
+  }
+  private a2c = false;
+
+  /** Uniforms the model trees share with this forest (atmosphere, far ring, scan lens). */
+  get sharedUniforms(): Record<string, { value: unknown }> {
+    const u = this.material.uniforms;
+    return { ...atmosphere, uFar: u.uFar!, uScanMix: u.uScanMix!, uMapMix: u.uMapMix!, uScanCenter: u.uScanCenter!, uScanRadius: u.uScanRadius! };
+  }
+
+  /** Switch to the CC0 model trees (vegetation/trees.ts) or back to the procedural forest (null). */
+  setModels(m: ModelTrees | null): void {
+    if (m === this.models) return;
+    if (this.models) this.object.remove(this.models.object);
+    this.models = m;
+    if (m) {
+      this.object.add(m.object);
+      m.setAlphaToCoverage(this.a2c);
+    }
+    for (const b of this.batches) b.mesh.visible = false;
+    this.dirty = true;
+  }
+
+  /** The model trees are drawn (medium / high with the set loaded). */
+  get usesModels(): boolean {
+    return this.models !== null;
   }
 
   setTrees(tiles: Map<string, Float32Array>): void {
@@ -906,6 +921,11 @@ export class Forest {
     counts.fill(0);
     let culled = 0;
     const far = this.farDist;
+    const models = this.models;
+    // February 1793: bare broadleaf crowns (the dead models); a few snags in every stand
+    const winter = atmosphere.uSeason.value > 1.6;
+    const snagRate = atmosphere.uSeason.value > 0.5 ? 0.05 : 0.025;
+    models?.begin();
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
     const t0z = Math.floor((p.z - far) / TILE);
@@ -927,6 +947,12 @@ export class Forest {
           const kind = Math.min(KINDS - 1, Math.max(0, Math.round(arr[k + 5]!)));
           // taller trees keep their detail a little further out
           const hk = (0.8 + Math.min(0.6, arr[k + 3]! / 60)) * ls;
+          if (models) {
+            const v = arr[k + 6]!;
+            const variant = pickVariant(kind, (v * 7919.31) % 1, (v * 1237.77) % 1, winter, snagRate);
+            models.push(arr[k]!, arr[k + 1]! - 0.3, arr[k + 2]!, arr[k + 3]!, arr[k + 4]!, v, variant, d, hk);
+            continue;
+          }
           const lod = d < NEAR_DIST * hk ? 0 : d < MID_DIST * hk ? 1 : 2;
           const bi = lod * KINDS + kind;
           const b = this.batches[bi]!;
@@ -957,6 +983,15 @@ export class Forest {
       b.vary.needsUpdate = true;
       b.mesh.visible = counts[i]! > 0;
       if (b.mesh.visible) calls++;
+    }
+    if (models) {
+      models.end();
+      this.stats.near = models.stats.lod0;
+      this.stats.mid = models.stats.lod1;
+      this.stats.far = models.stats.imp;
+      this.stats.drawCalls = models.stats.calls;
+      this.stats.culled = culled;
+      return;
     }
     let nN = 0;
     let nM = 0;

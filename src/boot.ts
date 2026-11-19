@@ -147,7 +147,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   quality.listeners.push((p) => world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps));
   // nature track: CC0 ground / bark sets, grass, props and water detail follow the tier
   quality.listeners.push((_p, level) => world.setDetail(level));
-  world.attachAssets(assets);
+  world.attachAssets(assets, renderer);
   const env = new EnvLight(world.sky.mesh);
   const shadowFocus = new Vector3();
   const camFwd = new Vector3();

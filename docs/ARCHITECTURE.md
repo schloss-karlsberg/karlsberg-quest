@@ -279,6 +279,8 @@ stay for the point-cloud and `forestClear.ts` patches. Seasons per era in the sh
 autumn today, bare frosted twigs and snow 1793-02, sparse 1796 (`leafDensity`, `twigShow`).
 `forest.stats` = `{near, mid, far, total, drawCalls, culled}` (debug panel and F3 overlay show them).
 
+Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees outside the shadow box collapse there. The low tier never fetches the models.
+
 Nature layers (`src/world/vegetation/`, docs/ART-DIRECTION.md §5.1): `world.nature` (`Nature`) owns
 `cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles) and `props` (`NatureProps`:
 instanced CC0 ferns, rocks, logs, stumps, 16 m tiles), and on medium / high loads the ground and bark

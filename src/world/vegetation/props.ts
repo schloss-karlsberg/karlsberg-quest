@@ -20,8 +20,8 @@ import type { GroundCoverSource } from './groundcover';
 import { COVER_LOOKS, type CoverLook, type CoverSample, hash2, valueNoise } from './scatter';
 
 /**
- * Scattered CC0 props of the forest floor (docs/ART-DIRECTION.md §5): ferns near the player,
- * mossy rocks, fallen logs and stumps further out. Each model piece is one
+ * Scattered CC0 props of the forest floor (docs/ART-DIRECTION.md §5, §5.2): stylised ferns,
+ * bushes, flower clumps and rocks in noise-driven clusters, fallen logs and stumps. Each model piece is one
  * InstancedMesh (the glTF's PBR material, patched to the world light by the asset loader, plus
  * wind for ferns and snow on top in February 1793). Placement is a deterministic scatter per 16 m
  * tile from the land cover; the instance lists follow the camera. Off on the low tier (nothing is
@@ -32,56 +32,83 @@ interface PropKind {
   id: string;
   /** Asset id(s) in the nature manifest. */
   asset: string;
-  /** 'whole': the model is one prop; 'split': every mesh is its own variant (rock sets). */
-  mode: 'whole' | 'split';
+  /**
+   * 'whole': the model is one prop; 'split': every mesh is its own variant (rock sets); 'nodes':
+   * every top-level node is one variant (the nature2 sets of `pnpm assets:set`, `_lod1` skipped).
+   */
+  mode: 'whole' | 'split' | 'nodes';
   /** Visible radius (m) on high; medium uses 70 %. */
   radius: number;
-  /** Scale range. */
+  /** Scale range (× the model), or with `size` the height range in metres. */
   scale: [number, number];
+  /** Scale picks a height in metres instead of a factor (stylised kits come in arbitrary units). */
+  size?: boolean;
   /** Sink into the ground (fraction of the piece height). */
   sink: number;
   wind: boolean;
   shadow: boolean;
-  /** Chance per 2 m cell (pure density rule). */
-  chance: (c: CoverSample, slope: number, patch: number, look: CoverLook) => number;
+  /** Instances per variant mesh. */
+  max: number;
+  /** Chance per 2 m cell (pure density rule); `clump` is a second, finer noise for clusters. */
+  chance: (c: CoverSample, slope: number, patch: number, look: CoverLook, clump: number) => number;
 }
 
-// radii trimmed in the real-GPU perf pass (2026-11-19): the logs and stumps are dense scanned
-// meshes (about 0.5 M triangles each kind at the old 130–150 m), the forest view ran at 35–45 fps
-// on an M5 Pro at 1440×900 high; beyond ~60–95 m they are sub-pixel detail under the canopy
+// nature round 2 (2026-11-19): stylised low-poly CC0 kit (Quaternius) for ferns, bushes, flowers
+// and rocks, in noise-driven clumps (patch × clump) instead of an even sprinkle; the scanned Poly
+// Haven logs and stumps stay (they read as stylised enough under the canopy at 60–70 m)
 export const PROP_KINDS: PropKind[] = [
   {
     id: 'fern',
-    asset: 'nature.fern.02',
-    mode: 'split',
-    radius: 38,
-    scale: [1.4, 2.3],
-    sink: 0.05,
+    asset: 'nature2.ferns',
+    mode: 'nodes',
+    radius: 42,
+    scale: [0.55, 1.15],
+    size: true,
+    sink: 0.04,
     wind: true,
     shadow: false,
-    chance: (c, slope, patch, look) => (c.forest > 0.45 && c.bare < 0.15 && c.water < 0.02 && slope < 38 ? 0.5 * look.ferns * smoothstep(0.3, 0.7, patch) * c.forest : 0),
+    max: 1400,
+    chance: (c, slope, patch, look, clump) => (c.forest > 0.4 && c.bare < 0.15 && c.water < 0.02 && slope < 38 ? 0.75 * look.ferns * smoothstep(0.35, 0.7, patch) * smoothstep(0.3, 0.65, clump) * c.forest : 0),
+  },
+  {
+    id: 'bush',
+    asset: 'nature2.bushes',
+    mode: 'nodes',
+    radius: 70,
+    scale: [0.8, 1.7],
+    size: true,
+    sink: 0.08,
+    wind: true,
+    shadow: true,
+    max: 500,
+    chance: (c, slope, patch, look, clump) =>
+      c.bare < 0.12 && c.water < 0.02 && c.lawn < 0.3 && slope < 32 ? (0.05 * c.forest + 0.03 * (1 - c.forest) * (1 - c.lawn)) * look.ferns * smoothstep(0.5, 0.8, clump) * (0.4 + patch) : 0,
+  },
+  {
+    id: 'flowers',
+    asset: 'nature2.flowers',
+    mode: 'nodes',
+    radius: 36,
+    scale: [0.22, 0.42],
+    size: true,
+    sink: 0.02,
+    wind: true,
+    shadow: false,
+    max: 900,
+    chance: (c, slope, patch, look, clump) => (c.bare < 0.1 && c.water < 0.02 && slope < 25 ? look.flowers * 4 * (1 - c.forest * 0.85) * (1 - c.lawn * 0.7) * smoothstep(0.55, 0.8, clump) * smoothstep(0.2, 0.6, patch) : 0),
   },
   {
     id: 'rock',
-    asset: 'nature.rocks.moss01',
-    mode: 'split',
+    asset: 'nature2.rocks',
+    mode: 'nodes',
     radius: 95,
-    scale: [0.45, 0.95],
-    sink: 0.25,
+    scale: [0.35, 1.5],
+    size: true,
+    sink: 0.22,
     wind: false,
     shadow: true,
-    chance: (c, slope) => (c.bare < 0.15 && c.water < 0.02 && c.lawn < 0.1 ? 0.014 * c.forest + 0.02 * smoothstep(18, 35, slope) : 0),
-  },
-  {
-    id: 'rock2',
-    asset: 'nature.rocks.moss02',
-    mode: 'split',
-    radius: 95,
-    scale: [0.45, 0.95],
-    sink: 0.25,
-    wind: false,
-    shadow: true,
-    chance: (c, slope) => (c.bare < 0.15 && c.water < 0.02 && c.lawn < 0.1 ? 0.01 * c.forest + 0.015 * smoothstep(18, 35, slope) : 0),
+    max: 500,
+    chance: (c, slope, _p, _l, clump) => (c.bare < 0.15 && c.water < 0.02 && c.lawn < 0.1 ? (0.012 * c.forest + 0.035 * smoothstep(16, 35, slope)) * (0.3 + 1.4 * smoothstep(0.55, 0.85, 1 - clump)) : 0),
   },
   {
     id: 'log',
@@ -92,6 +119,7 @@ export const PROP_KINDS: PropKind[] = [
     sink: 0.2,
     wind: false,
     shadow: true,
+    max: 260,
     chance: (c, slope) => (c.forest > 0.6 && c.bare < 0.1 && c.water < 0.01 && slope < 22 ? 0.009 : 0),
   },
   {
@@ -103,6 +131,7 @@ export const PROP_KINDS: PropKind[] = [
     sink: 0.12,
     wind: false,
     shadow: true,
+    max: 260,
     chance: (c, slope) => (c.forest > 0.5 && c.bare < 0.1 && c.water < 0.01 && slope < 28 ? 0.006 : 0),
   },
   {
@@ -114,6 +143,7 @@ export const PROP_KINDS: PropKind[] = [
     sink: 0.1,
     wind: false,
     shadow: true,
+    max: 260,
     chance: (c, slope) => (c.forest > 0.5 && c.bare < 0.1 && c.water < 0.01 && slope < 28 ? 0.005 : 0),
   },
 ];
@@ -231,7 +261,22 @@ export class NatureProps {
     root.traverse((o) => {
       if (o instanceof Mesh) meshes.push(o);
     });
-    const groups: Mesh[][] = k.mode === 'split' ? meshes.map((m) => [m]) : [meshes];
+    let groups: Mesh[][];
+    if (k.mode === 'split') groups = meshes.map((m) => [m]);
+    else if (k.mode === 'whole') groups = [meshes];
+    else {
+      const top = root.children.length === 1 && !(root.children[0] instanceof Mesh) && root.children[0]!.children.length > 1 ? root.children[0]!.children : root.children;
+      groups = top
+        .filter((n) => !n.name.endsWith('_lod1'))
+        .map((n) => {
+          const ms: Mesh[] = [];
+          n.traverse((o) => {
+            if (o instanceof Mesh) ms.push(o);
+          });
+          return ms;
+        })
+        .filter((g) => g.length);
+    }
     const out: Piece[] = [];
     for (const g of groups) {
       // bounds of the group in model space
@@ -268,7 +313,7 @@ export class NatureProps {
         geo.translate(-cx, -minY, -cz);
         const mats = Array.isArray(mat) ? mat : [mat];
         for (const mm of mats) patchNature(mm, k.wind);
-        const im = new InstancedMesh(geo, mat, k.id === 'fern' ? 900 : 260);
+        const im = new InstancedMesh(geo, mat, k.max);
         im.count = 0;
         im.frustumCulled = false;
         im.name = `nature-${k.id}`;
@@ -292,8 +337,9 @@ export class NatureProps {
       for (let i = 0; i < n; i++) {
         const gx = tx * n + i;
         const gz = tz * n + j;
-        const x = (gx + 0.1 + 0.8 * hash2(gx, gz, 201)) * CELL;
-        const z = (gz + 0.1 + 0.8 * hash2(gz, gx, 203)) * CELL;
+        // full-cell jitter: no rows along the grid
+        const x = (gx + hash2(gx, gz, 201)) * CELL;
+        const z = (gz + hash2(gz, gx, 203)) * CELL;
         if (!this.src.inside(x, z)) continue;
         this.src.cover(x, z, this.cov);
         const c: CoverSample = { forest: this.cov[0]!, water: this.cov[1]!, bare: this.cov[2]!, lawn: this.cov[3]! };
@@ -304,10 +350,12 @@ export class NatureProps {
         const sz = (this.src.height(x, z + e) - this.src.height(x, z - e)) / (2 * e);
         const slope = (Math.atan(Math.hypot(sx, sz)) * 180) / Math.PI;
         const patch = valueNoise(x * 0.06, z * 0.06, 9);
+        // clumps: a finer noise, warped so the clusters are not round
+        const clump = valueNoise(x * 0.17 + 2.3 * patch, z * 0.17 - 1.7 * patch, 13);
         const r = hash2(gx, gz, 207);
         let acc = 0;
         for (let k = 0; k < PROP_KINDS.length; k++) {
-          const p = PROP_KINDS[k]!.chance(c, slope, patch, this.look);
+          const p = PROP_KINDS[k]!.chance(c, slope, patch, this.look, clump);
           if (p <= 0) continue;
           if (r >= acc && r < acc + p) {
             const K = PROP_KINDS[k]!;
@@ -358,7 +406,7 @@ export class NatureProps {
             const piece = ps[vi]!;
             const n = counts[k]![vi]!;
             if (n >= piece.meshes[0]!.instanceMatrix.count) continue;
-            const sc = L[o + 4]!;
+            const sc = K.size ? L[o + 4]! / Math.max(0.01, piece.height) : L[o + 4]!;
             this.e.set((hash2(o, k, 3) - 0.5) * 0.12, L[o + 3]!, (hash2(o, k, 5) - 0.5) * 0.12);
             this.q.setFromEuler(this.e);
             this.v.set(L[o]!, L[o + 1]! - piece.height * sc * K.sink, L[o + 2]!);

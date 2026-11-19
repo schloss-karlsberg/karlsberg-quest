@@ -153,7 +153,7 @@ void main() {
   // a mote smaller than a pixel fades out instead of being drawn as a hard 1 px dot: far dust and
   // pollen read as stars in a daytime sky, far snow as white noise (playtest)
   float ps = uSize * (0.6 + 0.8 * aSeed.w) * uScale / max(-mv.z, 0.3);
-  vAlpha *= smoothstep(0.5, 1.8, ps);
+  vAlpha *= smoothstep(1.0, 2.6, ps);
   gl_PointSize = vAlpha < 0.004 ? 0.0 : clamp(ps, 1.0, 9.0);
   gl_Position = projectionMatrix * mv;
 }
