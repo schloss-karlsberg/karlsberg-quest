@@ -75,6 +75,8 @@ export interface SceneryHooks {
   rundCounted(): number;
   /** The rolling stone carts of 1796 (positions; empty when not built). */
   convoy(): [number, number][];
+  /** Seconds the carts echo still turns the view to the nearest cart. */
+  cartsLook(): number;
   /** Peter's armchair (x/z) while it stands beside him. */
   chair(): [number, number] | null;
   /** Current Westblick haze lift 0..1. */
@@ -116,6 +118,11 @@ let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolea
 let solidsDirty = true;
 let lastEra: Era | null = null;
 let tally: RundTally | null = null;
+/** The carts echo (`clue.k4.karren`): seconds the view still eases to the nearest cart. */
+let cartsLook = 0;
+let cartsCut = false;
+/** The memory that is the carts on the road (round 6: it did not turn the view to them). */
+const CARTS_ECHO = 'clue.k4.karren';
 let tallyQuiet = true;
 
 /** The Rund's counted doors (1789, near the ring): pulse as the story counts each side. */
@@ -316,6 +323,42 @@ function updateChair(ctx: GameContext, dt: number): void {
   if (chair && peter) chair.follow(peter.x, peter.z, (x, z) => ctx.world.heightfield.heightAt(x, z), dt);
 }
 
+/**
+ * The carts echo turns the view to the nearest cart for a few seconds (a look-at cue, not a lock:
+ * the mouse still wins; reduced motion: one cut). Like the fireworks and the K3 torch.
+ */
+function turnToCarts(ctx: GameContext, dt: number): void {
+  if (cartsLook <= 0) return;
+  cartsLook -= dt;
+  if (!convoy) return;
+  const pl = ctx.player;
+  let tx = 0;
+  let tz = 0;
+  let bd = Infinity;
+  for (const [x, z] of convoy.positions()) {
+    const d = Math.hypot(x - pl.position.x, z - pl.position.z);
+    if (d < bd) {
+      bd = d;
+      tx = x;
+      tz = z;
+    }
+  }
+  if (bd > 120 || bd < 2) return;
+  const dx = tx - pl.position.x;
+  const dz = tz - pl.position.z;
+  const want = Math.atan2(-dx, -dz);
+  let d = want - pl.yaw;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  const reduced = ctx.settings.state.reducedMotion;
+  if (reduced && cartsCut) return;
+  cartsCut = true;
+  const k = reduced ? 1 : Math.min(1, dt * 2.4);
+  pl.yaw += d * k;
+  const ty = ctx.world.heightAt(tx, tz) + 1.2;
+  const pitch = Math.max(-0.35, Math.min(0.3, Math.atan2(ty - (pl.position.y + 1.6), bd)));
+  pl.pitch += (pitch - pl.pitch) * k;
+}
+
 /** The 1796 carts roll while the player is within 450 m of the valley road. */
 function updateConvoy(ctx: GameContext, dt: number): void {
   const p = ctx.player.position;
@@ -416,6 +459,7 @@ function installHooks(ctx: GameContext): void {
     hohenburg: () => ({ vis: hohVis, x: HOHENBURG.x, z: HOHENBURG.z, mag: 1 + (MAG_HEIGHT - 1) * fogLift }),
     passage: () => ({ open: !!passage && ERA_INFO[ctx.era.current].palace === 'intact', zones: passage?.zones.length ?? 0 }),
     convoy: () => convoy?.positions() ?? [],
+    cartsLook: () => cartsLook,
     chair: () => chair?.position() ?? null,
     fogLift: () => fogLift,
     rundCounted: () => tally?.counted ?? 0,
@@ -440,6 +484,13 @@ export default defineSystem({
     ctx.events.on('era:change', () => applyEra(ctx));
     ctx.events.on('echo:start', ({ id }) => {
       if (id === FIREWORKS_ECHO) startFireworks(ctx);
+      if (id === CARTS_ECHO) {
+        // the carts come up the road beside the memory, and the view turns to them
+        updateConvoy(ctx, 0);
+        if (convoy) convoy.bringNear(ctx.player.position.x, ctx.player.position.z);
+        cartsLook = 4.5;
+        cartsCut = false;
+      }
     });
     ctx.events.on('echo:end', ({ id }) => {
       if (id === FIREWORKS_ECHO) fireworks?.stop();
@@ -483,6 +534,7 @@ export default defineSystem({
     playStrikes(ctx);
     updateHohenburg(ctx, dt);
     updateConvoy(ctx, dt);
+    turnToCarts(ctx, dt);
     updateChair(ctx, dt);
     updateFireworks(ctx, dt);
     updateTally(ctx, dt);

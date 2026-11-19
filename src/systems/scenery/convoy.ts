@@ -140,6 +140,42 @@ export class Convoy {
     this.place(time);
   }
 
+  /**
+   * A memory of the carts (`clue.k4.karren`): when no cart is within `near` m of (x, z), the
+   * convoy's clock is moved so the first cart comes rolling up the road `ahead` m east of that
+   * point (spacing kept). Returns the cart closest to (x, z) afterwards.
+   */
+  bringNear(x: number, z: number, near = 70, ahead = 32): [number, number] {
+    const closest = () => {
+      let best: [number, number] = [this.rigs[0]!.group.position.x, this.rigs[0]!.group.position.z];
+      let bd = Infinity;
+      for (const r of this.rigs) {
+        const d = Math.hypot(r.group.position.x - x, r.group.position.z - z);
+        if (d < bd) {
+          bd = d;
+          best = [r.group.position.x, r.group.position.z];
+        }
+      }
+      return { best, bd };
+    };
+    if (closest().bd <= near) return closest().best;
+    // the road distance nearest to (x, z)
+    let sBest = 0;
+    let dBest = Infinity;
+    for (let s = 0; s < this.total; s += 2) {
+      const [px, pz] = this.at(s);
+      const d = Math.hypot(px - x, pz - z);
+      if (d < dBest) {
+        dBest = d;
+        sBest = s;
+      }
+    }
+    const shift = sBest - ahead - this.rigs[0]!.s;
+    for (const r of this.rigs) r.s = (((r.s + shift) % this.total) + this.total) % this.total;
+    this.place(0);
+    return closest().best;
+  }
+
   /** Distances (debug hook). */
   positions(): [number, number][] {
     return this.rigs.map((r) => [r.group.position.x, r.group.position.z]);

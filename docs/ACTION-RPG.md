@@ -734,6 +734,17 @@ Field-book look (ink, paper, brass), high-contrast rules for every new piece (so
 ≥ 4.5 : 1), no meaning by red vs green alone (HP red-orange + a notch pattern, Atem pale blue,
 XP brass). `e2e/pol-flow.spec.ts` overlap checks extend to the new boxes.
 
+**Zones** (round 6, `src/ui/hud.ts`): the areas above are zones that never share pixels. The
+top-left column ends 18 px above the bottom-left zone (vitals dock, or the oil gauge); in a fight
+(`data-kq-mode="combat"`, while `hud.acting('combat')`) the tracker shows only the tracked quest's
+title and its next goal; a column still too tall folds the other quests to their titles
+(`.kq-tl-tight`) before its bottom is cut with a fade. During a boss reveal or a staged climax
+(`hud.staged`, `data-kq-mode="staged"`) the column's lines and the feed step back and **no edge
+markers** are drawn (combat's attacker / wave arrows, the hunt's sound arrows). Damage numbers are
+capped (`clamp(16px, 3.2vh, 25px)`, heavy ≤ 29 px) and sit beside the target's projected body,
+never on it. `e2e/readability.spec.ts` checks 1280×720, 1366×768 and 1920×1080 in a fight with a
+boss bar.
+
 **One centre card at a time** (playtest round 4, `src/ui/cards.ts`, docs/ARCHITECTURE.md §5):
 clue page, reward, level and skill cards share one slot with a queue; nothing comes up during a
 fight (+3 s), a chase, a boss reveal or an NPC conversation; skill unlocks ride on the level card
@@ -1258,4 +1269,32 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
   clamping; the Steinfresser against sand; the quest tracker runs under the vitals panel in a busy
 fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to the
   carts; the gallery echo is still two quotes; HUD overlaps at small widths; edge markers during a
-  boss reveal.
+  boss reveal. (Round 6, below: all of these fixed but the gallery echo.)
+- **Round 6, readability & HUD layout (2026-11-18), fixed** (most of round 5's "left open"):
+  *Enemies* — every solid piece has an inverted-hull **ink outline** a fixed ~1.7 px wide (dark on
+  pale fog, sand, snow and day; fog-lit at night; none on chips and thin seams), smoke bodies a
+  firmer dark rim on bright backdrops, eyes larger at range (min 5.5 px), drawn after the ambient
+  mist and less fogged. The **Steinfresser** is sooty grey rock with hotter seams (it was sandstone
+  on sand). A body the camera is wedged into, or one between the boss-reveal camera and the boss,
+  is screen-door dithered to ~30 % (`occlusionVis`, elliptical hull per body). **Camera
+  clearance**: inside a big body's hull the view eases back out (≤ 3 m for a boss, to 1.3 × its
+  hull), the player and the fight untouched. **Damage numbers** are capped (≤ 25 px, heavy ≤ 29 px,
+  `vh`-scaled) and sit beside the target's projected body on alternating sides — above its crown
+  when it fills the view, never on the boss bar. *K2 cones* — rendered after the ground mist and
+  snow, with a per-pixel ink border and a marching amber line, plus a low glowing **fence** along
+  the fan's outline that stands up off the frost: the fan reads at 25 and 40 m. *HUD* — zones
+  (§10): a compact tracker in fights, a folded one when the column runs short, an 18 px gap above
+  the bottom-left zone; during a boss reveal or a staged climax the tracker and feed step back and
+  **no edge arrows** (combat attacker / wave, hunt sound arrows) are drawn; the boss title card
+  sits higher (71 %) so the dialogue strip does not cover its epithet. *Carts echo* — the convoy
+  is brought up the road beside the memory and the view eases to the nearest cart (a cut with
+  reduced motion). e2e `readability.spec.ts` (screenshots `r6-read-*`: eras near / far, the
+  Steinfresser on sand, a number beside its target, the Steinbrecher wedge, HUD at 1280×720,
+  1366×768, 1920×1080 in a fight with a boss bar, the clean reveal, K2 cones at 25 / 40 m, the
+  carts), unit `tests/readability.test.ts`.
+- **Round 6, readability, left open:** the gallery echo is still two quotes (content); a boss
+  that fills the view at melee is readable but still large (the stand-off, not the camera, keeps
+  you off it); the outline is per box (a piece's inner edges are inked too, which reads as
+  carved stone and paper, intentionally); HUD numbers / vitals do not scale up at 1920×1080;
+  the dialogue strip can still start while a boss title card is up when a story line is
+  `now`-priority.

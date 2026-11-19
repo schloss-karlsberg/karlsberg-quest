@@ -24,6 +24,7 @@ import {
   Matrix4,
   Mesh,
   NormalBlending,
+  BackSide,
   DoubleSide,
   type PerspectiveCamera,
   Quaternion,
@@ -103,7 +104,11 @@ void main() {
   float rim = smoothstep(0.5, 0.82, edge) * (1.0 - smoothstep(0.82, 1.0, edge));
   float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
   vec3 rimC = fogL > 0.38 ? vec3(0.03, 0.025, 0.03) : uFogColor * 1.3 + vec3(0.07, 0.075, 0.09);
-  col = mix(col, rimC + vEm * 0.3, rim * (vData.w > 0.5 ? 0.42 : 0.6));
+  // round 6 readability: a firmer ink edge where the ground and fog are bright (sand, snow, day) —
+  // the smoke bodies' silhouette holds against a pale backdrop at any distance
+  float bright = fogL > 0.38 ? 1.0 : 0.0;
+  col = mix(col, rimC + vEm * 0.3, rim * (vData.w > 0.5 ? 0.42 + 0.14 * bright : 0.6 + 0.2 * bright));
+  if (vData.w < 0.5) a = max(a, rim * 0.5 * bright * vData.y);
   if (a < 0.004) discard;
   gl_FragColor = vec4(col, a);
 }
@@ -132,6 +137,8 @@ void main() {
   float hAvg = (iPos.y + uCamPos.y) * 0.5;
   float hf = uFogHeightDensity * exp(-max(hAvg - uFogBase, 0.0) / uFogFalloff);
   vFog = 1.0 - exp(-d * (uFogDensity + hf) - min(d, 260.0) * uUnderCanopy * uForestFog);
+  // eyes and cores (min px ≥ 4) burn through the fog: they are how an enemy is found at 30 m
+  vFog *= iData.z >= 4.0 ? 0.55 : 1.0;
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -154,6 +161,8 @@ void main() {
 const SOLID_VERT = /* glsl */ `
 attribute vec3 iAlb;
 attribute vec4 iEm; // rgb emissive, w = surface (0 plain, 1 stone, 2 straw, 3 smooth)
+attribute vec2 iFx; // x: visibility 0..1 (an enemy between the lens and what you look at dithers), y: outline on
+varying float vVis;
 varying vec3 vN;
 varying vec3 vW;
 varying vec3 vAlb;
@@ -176,6 +185,7 @@ void main() {
   else { vFace = q.xy; vHalf = S.xy * 0.5; }
   vec3 o = instanceMatrix[3].xyz;
   vSeed = fract(sin(dot(o, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+  vVis = iFx.x;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
@@ -189,7 +199,11 @@ varying vec4 vEm;
 varying vec2 vFace;
 varying vec2 vHalf;
 varying float vSeed;
+varying float vVis;
 void main() {
+  // an enemy in the way (wedged against the lens, between the reveal camera and the boss) is
+  // screen-door dithered: what is behind it stays readable
+  if (vVis < 0.999 && kqHash12(floor(gl_FragCoord.xy)) > vVis) discard;
   vec3 n = normalize(vN);
   vec3 v = normalize(uCamPos - vW);
   // a little grain so flat faces read as stone / paper / straw
@@ -242,6 +256,48 @@ void main() {
   float nearK = smoothstep(0.45, 1.25, dist);
   if (nearK < 1.0 && kqHash12(gl_FragCoord.xy) > nearK) discard;
   col = mix(kqFog(col, vW), col, 0.88 * (1.0 - smoothstep(45.0, 110.0, dist)));
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+/**
+ * The outline (readability pass): every solid piece is drawn a second time as an inverted hull a
+ * fixed number of pixels larger (grown per axis, so box corners stay closed) — a dark ink line
+ * round stone, straw and paper against bright sand, snow and day fog, a fog-lit pale one at night.
+ */
+const OUTLINE_VERT = /* glsl */ `
+attribute vec2 iFx;
+uniform float uPixel;
+uniform float uOutlinePx;
+varying vec3 vW;
+varying float vVis;
+void main() {
+  vec3 S = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+  vec4 c = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  float dist = length(c.xyz - cameraPosition);
+  // a fixed width on screen (thin up close, never a fat slab), capped in metres far away
+  float w = min(uOutlinePx * uPixel * dist, 0.09);
+  vec3 grow = (S + 2.0 * w) / max(S, vec3(1e-4));
+  vec4 wp = modelMatrix * instanceMatrix * vec4(position * grow, 1.0);
+  vW = wp.xyz;
+  vVis = iFx.x;
+  gl_Position = iFx.y < 0.5 || iFx.x < 0.02 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * viewMatrix * wp;
+}
+`;
+
+const OUTLINE_FRAG = /* glsl */ `
+${ATMOS_GLSL}
+varying vec3 vW;
+varying float vVis;
+void main() {
+  if (vVis < 0.999 && kqHash12(floor(gl_FragCoord.xy)) > vVis) discard;
+  float dist = length(vW - uCamPos);
+  if (dist < 1.1) discard;
+  float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
+  // dark ink on pale fog / sand / snow; a fog-lit pale line in the dark
+  vec3 col = fogL > 0.38 ? vec3(0.025, 0.02, 0.022) : uFogColor * 1.25 + vec3(0.08, 0.08, 0.1);
+  // fogged a little less than the body: the silhouette outlives the fill
+  col = mix(kqFog(col, vW), col, 0.92 * (1.0 - smoothstep(55.0, 130.0, dist)));
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -450,7 +506,8 @@ class GlowPool {
     this.mesh.frustumCulled = false;
     // after the fire smoke (fx/fire 40–42) and the room smoke (interiors 4–5): the Glutlinge' cores and
     // every enemy's eyes read through the smoke (playtest round 2: "Glutlinge vanish in the smoke")
-    this.mesh.renderOrder = 45;
+    // round 6: after the ambient ground mist and snow (49 / 50) too — eyes are not veiled by it
+    this.mesh.renderOrder = 52;
   }
   push(x: number, y: number, z: number, size: number, intensity: number, r: number, g: number, b: number, minPx = 0, aspect = 1): void {
     if (this.n >= this.max || intensity <= 0.003) return;
@@ -478,28 +535,42 @@ class GlowPool {
 
 class SolidPool {
   readonly mesh: InstancedMesh;
+  /** The inverted-hull outline drawn round every solid (shares the instances). */
+  readonly outline: InstancedMesh;
+  readonly outlineMat: ShaderMaterial;
   private readonly alb: InstancedBufferAttribute;
   private readonly em: InstancedBufferAttribute;
+  private readonly fx: InstancedBufferAttribute;
   n = 0;
   constructor(readonly max: number) {
     const geo = new BoxGeometry(1, 1, 1);
     this.alb = dyn(max, 3);
     this.em = dyn(max, 4);
+    this.fx = dyn(max, 2);
     geo.setAttribute('iAlb', this.alb);
     geo.setAttribute('iEm', this.em);
+    geo.setAttribute('iFx', this.fx);
     const mat = new ShaderMaterial({ vertexShader: SOLID_VERT, fragmentShader: SOLID_FRAG, uniforms: { ...atmosphere } });
     this.mesh = new InstancedMesh(geo, mat, max);
     this.mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     this.mesh.frustumCulled = false;
     this.mesh.count = 0;
     this.mesh.renderOrder = 23;
+    this.outlineMat = new ShaderMaterial({ vertexShader: OUTLINE_VERT, fragmentShader: OUTLINE_FRAG, uniforms: { ...atmosphere, uPixel: { value: 0.002 }, uOutlinePx: { value: 1.7 } }, side: BackSide });
+    this.outline = new InstancedMesh(geo, this.outlineMat, max);
+    this.outline.instanceMatrix = this.mesh.instanceMatrix;
+    this.outline.frustumCulled = false;
+    this.outline.count = 0;
+    this.outline.renderOrder = 23;
   }
-  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0, mat = 0): void {
+  /** `vis` < 1 dithers the piece away; `outline` false draws no ink line (chips, flying grit). */
+  push(m: Matrix4, r: number, g: number, b: number, er = 0, eg = 0, eb = 0, mat = 0, vis = 1, outline = true): void {
     if (this.n >= this.max) return;
     const i = this.n++;
     this.mesh.setMatrixAt(i, m);
     const A = this.alb.array as Float32Array;
     const E = this.em.array as Float32Array;
+    const F = this.fx.array as Float32Array;
     A[i * 3] = r;
     A[i * 3 + 1] = g;
     A[i * 3 + 2] = b;
@@ -507,14 +578,18 @@ class SolidPool {
     E[i * 4 + 1] = eg;
     E[i * 4 + 2] = eb;
     E[i * 4 + 3] = mat;
+    F[i * 2] = vis;
+    F[i * 2 + 1] = outline ? 1 : 0;
   }
   end(): void {
     this.mesh.count = this.n;
+    this.outline.count = this.n;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceMatrix.clearUpdateRanges();
     this.mesh.instanceMatrix.addUpdateRange(0, Math.max(1, this.n) * 16);
-    upload([this.alb, this.em], this.n);
+    upload([this.alb, this.em, this.fx], this.n);
     this.mesh.visible = this.n > 0;
+    this.outline.visible = this.n > 0;
   }
 }
 
@@ -602,6 +677,76 @@ function eliteAura(kind: string): readonly [number, number, number] {
   return ELITES[kind]?.aura ?? [1, 0.5, 0.15];
 }
 
+/** Horizontal reach of a body template from its axis (m): sideways (r) and fore / aft (f). */
+export function hullOf(t: BodyTemplate): { r: number; f: number } {
+  let r = 0;
+  let f = 0;
+  for (const p of t.parts) {
+    const half = p.kind === 'solid' ? Math.max(p.size, p.sy ?? p.size, p.sz ?? p.size) * 0.5 : p.kind === 'puff' ? p.size * 0.6 : 0;
+    r = Math.max(r, Math.abs(p.r) + half);
+    f = Math.max(f, Math.abs(p.f) + half);
+  }
+  return { r, f };
+}
+
+/**
+ * Where a point sits against a body's hull: an ellipse round its axis (sideways reach r, fore /
+ * aft reach f, never less than its collision radius). 1 = on the hull, < 1 inside.
+ */
+export function hullDistance(e: Pick<Enemy, 'x' | 'z' | 'heading' | 'radius'>, hull: { r: number; f: number }, x: number, z: number): number {
+  const dx = x - e.x;
+  const dz = z - e.z;
+  const c = Math.cos(e.heading);
+  const s = Math.sin(e.heading);
+  // the body's local frame (makeRotationY(heading)): right = (cos, -sin), forward = (-sin, -cos)
+  const lr = dx * c - dz * s;
+  const lf = -dx * s - dz * c;
+  return Math.hypot(lr / Math.max(e.radius, hull.r), lf / Math.max(e.radius, hull.f));
+}
+
+/** Distance from point c to the segment a → b. */
+function segDist(cx: number, cy: number, cz: number, ax: number, ay: number, az: number, bx: number, by: number, bz: number): { d: number; t: number } {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const dz = bz - az;
+  const L = dx * dx + dy * dy + dz * dz;
+  const t = L > 1e-6 ? Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy + (cz - az) * dz) / L)) : 0;
+  return { d: Math.hypot(ax + dx * t - cx, ay + dy * t - cy, az + dz * t - cz), t };
+}
+
+const ss = (a: number, b: number, x: number) => {
+  const k = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+};
+
+/**
+ * How solid an enemy may be drawn (1 = fully): the camera inside (or brushing) its hull, or its
+ * body on the line from the camera to a focus point (the boss being revealed, the player), thins
+ * it to a dither of ~30 %.
+ */
+export function occlusionVis(e: Enemy, v: { hull: { r: number; f: number }; t: { top: number } }, f: Pick<VisualFrame, 'camera' | 'focus'>): number {
+  const cam = f.camera.position;
+  const top = v.t.top;
+  let vis = 1;
+  // the camera within the body's height and inside (or brushing) its hull
+  if (cam.y > e.y - 0.5 && cam.y < e.y + top + 0.5) {
+    const q = hullDistance(e, v.hull, cam.x, cam.z);
+    vis = 0.3 + 0.7 * ss(0.5, 1.1, q);
+  }
+  const R = Math.max(e.radius, v.hull.r, v.hull.f);
+  for (const p of f.focus ?? []) {
+    if (p.id === e.id) continue;
+    // the body's axis, sampled low / middle / high, against the line of sight
+    for (const h of [0.2, 0.5, 0.85]) {
+      const s = segDist(e.x, e.y + top * h, e.z, cam.x, cam.y, cam.z, p.x, p.y, p.z);
+      // only what stands in front of the focus (not the crowd behind it), and not right at it
+      if (s.t <= 0 || s.t >= 0.92) continue;
+      vis = Math.min(vis, 0.3 + 0.7 * ss(R * 0.45, R * 0.45 + 0.8, s.d));
+    }
+  }
+  return vis;
+}
+
 const _m = new Matrix4();
 const _m2 = new Matrix4();
 const _q = new Quaternion();
@@ -632,6 +777,10 @@ interface Vis {
   fireAcc: number;
   /** Seconds of walking (gait phase). */
   walk: number;
+  /** Horizontal reach of the body from its axis (m): the hull the camera must keep out of. */
+  hull: { r: number; f: number };
+  /** Smoothed visibility 0..1 (dithered while in the way of the lens). */
+  vis: number;
 }
 
 /** A ring that runs outward on the ground (kills, a boss coming apart). */
@@ -660,6 +809,11 @@ export interface VisualFrame {
   reducedFlash: boolean;
   /** Bannlicht flare 0..1 and its cone. */
   bann: { t: number; x: number; z: number; yaw: number; range: number; angle: number } | null;
+  /**
+   * What the view is looking at besides the camera's own spot (a boss under its reveal camera, the
+   * player when the camera is pulled away): an enemy between the lens and one of these dithers.
+   */
+  focus?: readonly { x: number; y: number; z: number; id?: string }[];
 }
 
 export class CombatVisuals {
@@ -686,7 +840,7 @@ export class CombatVisuals {
     this.glows = new GlowPool(900, this.glowMat);
     this.solids = new SolidPool(1400);
     this.ringPool = new RingPool(48);
-    this.object.add(this.ringPool.mesh, this.solids.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
+    this.object.add(this.ringPool.mesh, this.solids.outline, this.solids.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
   }
 
   /** Rigged bodies on (medium / high: the asset loader) or off (low tier: null). */
@@ -716,7 +870,8 @@ export class CombatVisuals {
   private template(e: Enemy): Vis {
     let v = this.vis.get(e.id);
     if (!v) {
-      v = { t: bodyTemplate(e.kind, e.seed, e.size), tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0, flinch: 0, lastFlash: 0, fireAcc: 0, walk: 0 };
+      const t = bodyTemplate(e.kind, e.seed, e.size);
+      v = { t, tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0, flinch: 0, lastFlash: 0, fireAcc: 0, walk: 0, hull: hullOf(t), vis: 1 };
       this.vis.set(e.id, v);
     }
     return v;
@@ -725,6 +880,16 @@ export class CombatVisuals {
   /** Where the HP pips / labels go (top of the body), or null if unknown. */
   topOf(e: Enemy): number {
     return this.template(e).t.top;
+  }
+
+  /** Horizontal reach of the body from its axis (m): arms, covers, the horse's head. */
+  hullOf(e: Enemy): { r: number; f: number } {
+    return this.template(e).hull;
+  }
+
+  /** Current visibility of an enemy's body 0..1 (1 = solid; lower while in the way of the lens). */
+  visOf(id: string): number {
+    return this.vis.get(id)?.vis ?? 1;
   }
 
   // ---- emitters ------------------------------------------------------------------------------
@@ -1149,7 +1314,9 @@ export class CombatVisuals {
   frame(f: VisualFrame): void {
     const dt = f.frozen ? 0 : Math.min(0.1, f.dt);
     const cam = f.camera.position;
-    this.glowMat.uniforms.uPixel!.value = (2 * Math.tan(((f.camera.fov * Math.PI) / 180) / 2)) / Math.max(1, f.viewportH);
+    const px = (2 * Math.tan(((f.camera.fov * Math.PI) / 180) / 2)) / Math.max(1, f.viewportH);
+    this.glowMat.uniforms.uPixel!.value = px;
+    this.solids.outlineMat.uniforms.uPixel!.value = px;
     this.puffs.n = 0;
     this.glows.n = 0;
     this.solids.n = 0;
@@ -1307,6 +1474,11 @@ export class CombatVisuals {
     if (dissolving || leaving) v.fade = Math.min(1, v.fade + dt * (leaving ? 0.3 : 1.6));
     else v.fade = Math.max(0, v.fade - dt * 3);
     const alpha = 1 - v.fade;
+    // in the way of the lens: the camera wedged into its hull, or the body between the camera and
+    // what the view is looking at — it thins to a dither so the fight behind it stays readable
+    const want = occlusionVis(e, v, f);
+    v.vis += (want - v.vis) * Math.min(1, dt > 0 ? dt * 10 : 1);
+    const vis = v.vis;
     const stunned = e.stun > 0;
     const flash = e.flash;
     const pulse = 0.75 + 0.25 * Math.sin(f.time * 18);
@@ -1316,7 +1488,7 @@ export class CombatVisuals {
     if (rigged) {
       const dis = dissolving ? Math.min(1, Math.max(0, (e.t - 0.08) / 1.3)) : 0;
       if (dis < 1)
-        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: leaving ? v.fade : 0, dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px));
+        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: Math.max(leaving ? v.fade : 0, (1 - vis) * 0.7), dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px));
     }
     if (alpha <= 0.01) return;
     // undone: a quick swell before it comes apart (a pop, not a fade)
@@ -1337,7 +1509,7 @@ export class CombatVisuals {
         const fl = flash * 0.6;
         const heat = 1 + tellK * 1.2;
         const cold = stunned ? 0.35 : 0;
-        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6) * (aura < 1 ? 1.25 : 1), (p.alpha ?? 1) * alpha * aura * (stunned ? 0.75 : 1), p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
+        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6) * (aura < 1 ? 1.25 : 1), (p.alpha ?? 1) * alpha * aura * (stunned ? 0.75 : 1) * (0.2 + 0.8 * vis), p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
       } else if (p.kind === 'glow') {
         let I = (p.alpha ?? 1) * alpha * wakeK;
         let size = p.size * v.swell;
@@ -1352,7 +1524,7 @@ export class CombatVisuals {
         const aura = e.elite && isEye ? eliteAura(e.kind) : null;
         const col = stunned && p.bone === 'core' ? ([0.7, 0.85, 1] as const) : aura ?? p.col;
         if (aura) I *= 1.5;
-        this.glows.push(_p.x, _p.y, _p.z, size, I * 1.4, col[0], col[1], col[2], p.style ?? 0);
+        this.glows.push(_p.x, _p.y, _p.z, size, I * 1.4 * (0.45 + 0.55 * vis), col[0], col[1], col[2], p.style ?? 0);
         if (p.fire && dt > 0 && !dissolving) this.flames(_p.x, _p.y, _p.z, p.fire * dt * (e.state === 'windup' ? 1.8 : 1), p.size, f.reducedFlash, v);
       } else {
         const em = p.em ?? [0, 0, 0];
@@ -1372,7 +1544,8 @@ export class CombatVisuals {
         _s.set(p.size * v.swell * shrink, (p.sy ?? p.size) * v.swell * shrink, (p.sz ?? p.size) * v.swell * shrink);
         _m2.compose(_p, q, _s);
         const seal = p.bone === 'seal' ? sealK : 1;
-        this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5, p.mat ?? 0);
+        const thin = Math.min(p.size, p.sy ?? p.size, p.sz ?? p.size) < 0.07;
+        this.solids.push(_m2, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * seal * (1 + tellK) + fl * 0.5, em[1] * seal * (1 + tellK) + fl * 0.5, em[2] * seal * (1 + tellK) + fl * 0.5, p.mat ?? 0, vis, !thin);
       }
     }
     // the elite: an ember halo on the ground, three motes circling over its head
@@ -1448,7 +1621,7 @@ export class CombatVisuals {
         _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(s, s * p.aspect, s));
         // paper greys as it rises
         const grey = p.aspect < 0.1 ? t * 0.5 : 0;
-        this.solids.push(_m2, p.r * (1 - grey) + 0.3 * grey, p.g * (1 - grey) + 0.3 * grey, p.b * (1 - grey) + 0.3 * grey);
+        this.solids.push(_m2, p.r * (1 - grey) + 0.3 * grey, p.g * (1 - grey) + 0.3 * grey, p.b * (1 - grey) + 0.3 * grey, 0, 0, 0, 0, 1, false);
       } else this.puffs.push(p.x, p.y, p.z, p.size * (1 + p.grow * t), fade * (p.type === 1 ? 0.7 : 0.85), p.seed, p.type, p.r, p.g, p.b, p.em * 1.0, p.em * 0.35, p.em * 0.08);
     }
   }
@@ -1461,6 +1634,7 @@ export class CombatVisuals {
     });
     this.puffMat.dispose();
     this.glowMat.dispose();
+    this.solids.outlineMat.dispose();
     this.ringPool.mat.dispose();
   }
 }

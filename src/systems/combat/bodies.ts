@@ -111,7 +111,8 @@ class B {
   }
   /** Two ember eyes. */
   eyes(y: number, f: number, w: number, size: number, col: V3 = [1, 0.5, 0.14], bone: Bone = 'head'): this {
-    return this.glow([-w, y, f], size, col, { bone, minPx: 4.5 }).glow([w, y, f], size, col, { bone, minPx: 4.5 });
+    // round 6: a little larger at range (two clear embers at 30 m, not one smudge)
+    return this.glow([-w, y, f], size, col, { bone, minPx: 5.5 }).glow([w, y, f], size, col, { bone, minPx: 5.5 });
   }
   solid(p: V3, s: V3, col: V3, o: { bone?: Bone; em?: V3; rx?: number; ry?: number; rz?: number; mat?: number } = {}): this {
     this.parts.push({ kind: 'solid', bone: o.bone ?? 'body', r: p[0], y: p[1], f: p[2], size: s[0], sy: s[1], sz: s[2], col, em: o.em, rx: o.rx, ry: o.ry, rz: o.rz, seed: this.R(), ...(o.mat ? { mat: o.mat } : {}) });
@@ -132,8 +133,9 @@ const SMOKE: V3 = [0.05, 0.05, 0.06];
 const EMBER: V3 = [1, 0.42, 0.1];
 const COLD: V3 = [0.62, 0.86, 1.0];
 const PAPER: V3 = [0.86, 0.8, 0.66];
-const STONE: V3 = [0.5, 0.4, 0.33];
-const STONE2: V3 = [0.42, 0.34, 0.29];
+/** The Steinfresser's sooty grey rock (it must not melt into the 1796 sand). */
+const STONE_DARK: V3 = [0.3, 0.3, 0.33];
+const STONE_DARK2: V3 = [0.23, 0.23, 0.26];
 const STRAW: V3 = [0.62, 0.5, 0.24];
 /** Oxblood calf (a lighter brown read as an orange crate under the warm 1789 light). */
 const LEATHER: V3 = [0.13, 0.045, 0.035];
@@ -254,8 +256,10 @@ export function steinfresser(seed: number): BodyTemplate {
   const R = rng(seed + 5);
   const k = 0.85 + R() * 0.3;
   const tintOf = (c: V3): V3 => [c[0] * k, c[1] * (0.9 + R() * 0.2) * k, c[2] * (0.85 + R() * 0.3) * k];
-  const A = tintOf(STONE);
-  const A2 = tintOf(STONE2);
+  // round 6 readability: it was sandstone on sand (the 1796 quarry floor) — now a dark, sooty,
+  // cold-grey rock (value and hue both away from the beige ground) with hotter seams
+  const A = tintOf(STONE_DARK);
+  const A2 = tintOf(STONE_DARK2);
   const b = new B(seed)
     .solid([0, 1.05, 0], [0.95, 0.85, 0.6], A, { ry: 0.05 })
     .solid([0, 0.45, 0], [0.7, 0.45, 0.5], A2, { bone: 'legs' })
@@ -263,20 +267,20 @@ export function steinfresser(seed: number): BodyTemplate {
     .solid([-0.6, 1.4, 0.05], [0.42, 0.42, 0.45], A2, { rz: 0.2 })
     .solid([0.72, 0.85, 0.25], [0.3, 0.75, 0.3], A, { bone: 'armR' })
     .solid([-0.72, 0.85, 0.25], [0.3, 0.75, 0.3], A, { bone: 'armL' })
-    .solid([0, 1.62, 0.22], [0.4, 0.32, 0.36], [0.46, 0.37, 0.31], { bone: 'head' })
+    .solid([0, 1.62, 0.22], [0.4, 0.32, 0.36], [0.26, 0.25, 0.27], { bone: 'head' })
     .solid([0, 1.6, 0.41], [0.34, 0.2, 0.04], [0.08, 0.06, 0.05], { bone: 'head' })
     .glow([0, 1.05, 0.31], 0.4, [0.9, 0.35, 0.08], { bone: 'seal', alpha: 0.6 })
     .glow([0.25, 1.25, 0.31], 0.25, [0.9, 0.35, 0.08], { bone: 'seal', alpha: 0.5 })
     .eyes(1.64, 0.41, 0.1, 0.06, [1, 0.55, 0.15])
-    .blob([0, 0.12, 0], [0.6, 0.08, 0.5], 4, 0.5, [0.55, 0.5, 0.44], { style: 1, alpha: 0.4, bone: 'legs' });
+    .blob([0, 0.12, 0], [0.6, 0.08, 0.5], 4, 0.5, [0.3, 0.28, 0.27], { style: 0, alpha: 0.35, bone: 'legs' });
   // dressed stone with hot seams between the blocks (playtest round 4: "rubble at 20 m, a dark
   // rectangle for a face"): every block stone, glowing joints at hips, shoulders and neck, the eyes
   // a pair of embers with a halo that pierces the sepia
   for (const q of b.parts) if (q.kind === 'solid' && q.size > 0.2) q.mat = 1;
-  b.solid([0, 0.66, 0], [0.75, 0.07, 0.55], [0.1, 0.03, 0.01], { em: [0.7, 0.24, 0.03] })
-    .solid([0.6, 1.17, 0.05], [0.32, 0.06, 0.4], [0.1, 0.03, 0.01], { em: [0.6, 0.2, 0.03] })
-    .solid([-0.6, 1.17, 0.05], [0.32, 0.06, 0.4], [0.1, 0.03, 0.01], { em: [0.6, 0.2, 0.03] })
-    .solid([0, 1.47, 0.12], [0.36, 0.06, 0.3], [0.1, 0.03, 0.01], { em: [0.7, 0.24, 0.03] })
+  b.solid([0, 0.66, 0], [0.75, 0.07, 0.55], [0.1, 0.03, 0.01], { em: [1.0, 0.36, 0.05] })
+    .solid([0.6, 1.17, 0.05], [0.32, 0.06, 0.4], [0.1, 0.03, 0.01], { em: [0.9, 0.3, 0.04] })
+    .solid([-0.6, 1.17, 0.05], [0.32, 0.06, 0.4], [0.1, 0.03, 0.01], { em: [0.9, 0.3, 0.04] })
+    .solid([0, 1.47, 0.12], [0.36, 0.06, 0.3], [0.1, 0.03, 0.01], { em: [1.0, 0.36, 0.05] })
     .glow([0, 1.64, 0.45], 0.32, [1, 0.45, 0.1], { bone: 'head', alpha: 0.55 });
   return { parts: b.parts, tell: [1, 0.5, 0.15], top: 2.2, shoulder: 1.4 };
 }

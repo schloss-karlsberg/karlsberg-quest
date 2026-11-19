@@ -350,6 +350,21 @@ body {
   overflow-x: visible;
   overflow-y: clip;
 }
+/* zones (round 6, docs/ACTION-RPG.md §10): in a fight the tracker shows the tracked quest's title
+   and its next goal only (it ran under the vitals in the K1 Rund at 720 px); a column too tall for
+   its zone folds the other quests to their titles; a boss reveal or a staged climax lets the
+   column and the feed step back */
+.kq-hud[data-kq-mode='combat'] .kqq-tracker .kqq-tq ~ .kqq-tq,
+.kq-hud[data-kq-mode='combat'] .kqq-tracker .kqq-to:not(.kqq-done) ~ .kqq-to,
+.kq-hud[data-kq-mode='combat'] .kqq-tracker .kqq-to.kqq-done,
+.kq-tl.kq-tl-tight .kqq-tracker .kqq-tq ~ .kqq-tq .kqq-to,
+.kq-tl.kq-tl-tight .kqq-tracker .kqq-to:not(.kqq-done) ~ .kqq-to:not(.kqq-done) {
+  display: none;
+}
+.kq-hud[data-kq-mode='staged'] .kq-tl > *:not(.kq-era-label),
+.kq-hud[data-kq-mode='staged'] .kq-dock-feed {
+  opacity: 0;
+}
 .kq-tl.kq-tl-clipped {
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 34px), transparent);
   mask-image: linear-gradient(180deg, #000 calc(100% - 34px), transparent);
