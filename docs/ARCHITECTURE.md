@@ -747,6 +747,14 @@ Round-4 (polish: set dressing) integration rules:
 - Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
   epilogue/choose/look/meters/meter/room/choice/stage/stageSkip/shown` (`look(time, era?)`: `day | dawn | dusk | night`; `shown()`: ids of the lines shown on screen this session).
 
+### characters (`src/systems/characters/`) – rigged CC0 models (shared by npc and combat)
+- `catalog.ts` (pure data, `tests/characters.test.ts`): which model each NPC wears (`modelFor`),
+  costume colours per material slot (`COSTUMES`, `ACCENTS`, `slotColour`), the enemy rigs
+  (`ENEMY_RIGS`, `PIKEUR_RIG`: model, height, clips, core). `rig.ts`: `Rig` (SkeletonUtils clone
+  scaled to a height, `AnimationMixer` with crossfades, `hold`, additive `turnBone`, `attach` to a
+  bone) and `rigInfo` (bind-pose height, eyes, head top). `shaders.ts`: skinned ghost and spectral
+  ShaderMaterials (premultiplied, depth pre-pass twins). Models in `src/assets/manifests/characters.ts`.
+
 ### npc (`src/systems/npc/`) – ghostly people, conversations
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?, pose?}` / `npc:despawn {npc}`
   (`pose: 'kneel'`: down on one knee — legs folded in the figure shader (`uKneel`), the figure
@@ -764,6 +772,9 @@ Round-4 (polish: set dressing) integration rules:
   mist, an occasional slice glitch, skirt swing; around the feet 9 camera-facing mist puffs (thin
   out near the camera) and motes. Warm amber for Hanne, cold flicker for the others, era tint;
   visible only in its era; turns towards the player. Reduced motion calms it.
+  On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
+  `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
+  head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.
 - E within 2.8 m → conversation (modal page at the bottom; typing on the UI clock; keys 1–n,
   E/Enter/Space advance): `greet`, quest topics first (`npc:topics` from quests, ids `q:<quest>`,
   marked ! / ? / §), topics from the pack's `npc:talk` lines, `bye`. A quest offer shows the quest
@@ -1096,6 +1107,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `sim.ts` | `CombatSim`: deterministic simulation fed a `SimInput` per fixed step (player resources, swings, the dodge with i-frames and the perfect-dodge slow-mo, Bannlicht cone, enemy AI idle → notice → approach → windup (≥ 0.4 s) → strike → recover → retreat, flee / blink / flank / swarm / ranged / lunge / charge / lob, surround slots (`assignSlots`), a landing rhythm between blows, pack alert, escorts that drift off, boss `intro` (immune, `BOSS_INTRO`), elites (enrage, `finishable`, the Gnadenstoß), leash and reset, max 12 live, ≤ 2 attack tokens — 1 in gentle mode; combat variety pass: front guards (`EnemyDef.guard`, `GUARD`), the veil (`ward`), the mirror (`EnemyDef.reflectsBann`, `cracked`, the player's `dazzle`), the call (`called` adds, interrupted by any blow), the second wave (`waveStep`), era hazards (`hazardStep`, `hazards`), the abilities (`SimInput.skill`, `SimOptions.skills`, `PlayerCombat.skill / cds`, `skillReady`) and the Bannlicht's one-blow bonus / repeat halving); returns `SimEvent`s; `tests/combat-packs.test.ts`, `tests/combat-variety.test.ts`, `tests/combat-balance.test.ts` (tank, masher and skilled bots per chapter from `tests/combat-bots.ts`) |
 | `packs.ts` | packs (fun pass): which group is pack-worthy, per-fight overrides from content (`EnemyGroupState.escorts` / `wave`, from a quest or story spawn: `[]` = none; prologue groups `q.p.*` get no escort or wave unless content says so — playtest round 5, `tests/combat-encounters.ts` reads every content fight for the balance test), the elite's index (`eliteDown` skips it), the mixed escort per kind (group `<id>+escort`, outside objective counting); combat variety pass: `waveOf` (the second wave), `callOf` (what a Rufer calls), `hazardOf` (era hazard) |
 | `bosses.ts` | the four bosses' attack choice, cooldowns, weak points (Schuldbuch seal opened by the Bannlicht, Strohmann's back, Steinbrecher's joints, the Pikeur balking at water and leaving with „verloren“), summons |
+| `rigged.ts` | `EnemyRigs` (medium / high): rigged spectral bodies for the Streuner (wolf), Raffschatten (human) and the Pikeur's horse + two hounds from `characters/catalog.ts`; clip by AI state and ground speed, spectral shader uniforms (core, telegraph, flash, dissolve), eyes at the head bone; template parts flagged `onRig` (the rider, coins) still draw, the rest becomes a faint smoke aura; off on `low` |
 | `bodies.ts` + `visuals.ts` | faceless procedural bodies (smoke / mist puffs, glows, instanced solids) per kind; pose from state (rear back in the wind-up, glow, swell); pooled particles (hit family, glance, dissolve into mist / sparks / smoke / ash / paper / rising grit, dust, motes); ground rings (area, rain, landing, gebannt, Bannlicht cone; red/white telegraphs, elite halo, finishable ring, running shockwaves); body channels `gait` / `turn` / `orbit` / `fire` (walking legs, turning pages, orbiting scraps, flame emitters); flinch, kill pop, boss burst, loot fountain; rims that contrast with the fog; budget by quality; combat variety pass: Foliant / Scherbling / Rufer bodies, the veil shell, the mirror core, guard sparks and a broken guard hanging open, the reflect beam, glass / veil shatter, fog columns where called ones rise, ember rain into fire rings and the falling block, the Erdstoß rings and cracks, the Wirbel ring, the Ausfall streak |
 | `viewmodel.ts` | first-person Messstab (red/white ranging pole; stages esche → eisen → silber → bann → lot with Laub's plumb bob on a chain), keyed swings with anticipation and follow-through, motion trail, heavy-charge glow; ability moves (thrust, ground drive, three-turn whirl); drawn in the main scene at `renderOrder` 1000 after a tiny mesh that calls `renderer.clearDepth()` |
 | `audio.ts` | procedural sfx on the sfx bus (whoosh, thock + family layer, dissolve, telegraph calls, hurt, heartbeat < 30 %, dodge, Bannlicht shimmer, boss roar, the Pikeur's horn; fun pass: the boss sting on the music bus, boss down, Gnadenstoß, armour clank, the elite's call; combat variety pass: lunge, ground slam, whirl, guard knock / break, veil laid / torn, mirror ring / crack, the Rufer's call / choke, emerge, the wave's approach, ember hiss / stone grind and landing) |

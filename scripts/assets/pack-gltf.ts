@@ -2,11 +2,14 @@
  * Asset pipeline step: glTF / GLB (downloaded CC0 source) → one browser-ready GLB.
  *
  *   pnpm assets:pack <in.gltf|in.glb> <out.glb> [--tex 1024] [--q 82] [--simplify 0.5] [--no-meshopt]
+ *                    [--anims Idle,Walk,Run]
  *
  * - dedup + prune + weld, optional meshoptimizer simplify (ratio of triangles to keep; --error
  *   is the allowed deviation relative to the mesh size, default 0.002: raise it for scans),
  * - every texture → WebP (EXT_texture_webp) via the `cwebp` CLI, longest side ≤ --tex
  *   (default 1024; use 2048 only for hero / terrain sets, docs/ART-DIRECTION.md §8),
+ * - `--anims`: keep only these animation clips (matched on the name after the last '|', so
+ *   'CharacterArmature|Walk' is 'Walk'), renamed to that short name; duplicates are dropped,
  * - meshopt compression (EXT_meshopt_compression) with quantised attributes.
  * The input is untrusted data: this script only parses it (no code from the download runs).
  * Prints the output size; record it as `bytes` in the manifest entry.
@@ -27,7 +30,7 @@ function arg(name: string, def?: string): string | undefined {
 
 const [input, output] = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !all[i - 1]?.startsWith('--'));
 if (!input || !output) {
-  console.error('usage: pnpm assets:pack <in.gltf|in.glb> <out.glb> [--tex 1024] [--q 82] [--simplify 0.5] [--error 0.002] [--no-meshopt]');
+  console.error('usage: pnpm assets:pack <in.gltf|in.glb> <out.glb> [--tex 1024] [--q 82] [--simplify 0.5] [--error 0.002] [--no-meshopt] [--anims Idle,Walk]');
   process.exit(2);
 }
 const maxTex = Number(arg('tex', '1024'));
@@ -38,6 +41,22 @@ await MeshoptEncoder.ready;
 await MeshoptSimplifier.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
 const doc = await io.read(input);
+
+// animation clips: keep a list (short names), drop duplicates ('Walk' and 'Armature|Walk')
+const keepAnims = arg('anims')?.split(',').map((a) => a.trim()).filter(Boolean) ?? null;
+if (keepAnims) {
+  const seen = new Set<string>();
+  for (const a of doc.getRoot().listAnimations()) {
+    const short = a.getName().split('|').pop() ?? a.getName();
+    if (!keepAnims.includes(short) || seen.has(short)) a.dispose();
+    else {
+      seen.add(short);
+      a.setName(short);
+    }
+  }
+  const missing = keepAnims.filter((n) => !seen.has(n));
+  if (missing.length) console.warn(`animations not found: ${missing.join(', ')}`);
+}
 
 await doc.transform(dedup(), weld());
 if (simplifyRatio !== null) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: simplifyRatio, error: Number(arg('error', '0.002')) }));

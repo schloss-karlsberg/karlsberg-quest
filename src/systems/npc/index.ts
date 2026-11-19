@@ -24,7 +24,10 @@ import type { NpcPlacement } from '../contracts';
 import type { GiverMark, QuestLine, QuestTopic } from '../../rpg/types';
 import { speakerMeta } from '../story/dialogue/speakers';
 import { Voice } from '../story/dialogue/voice';
+import type { LoadedModel } from '../../assets/loader';
+import { modelFor } from '../characters/catalog';
 import { GhostFigure } from './figure';
+import { RiggedGhost } from './rigged';
 import { BYE, GREET, answer, askedTopics, availableTopics, clueFor, talkLines, talkedFlag } from './logic';
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
@@ -150,7 +153,30 @@ class NpcRuntime {
       else this.follow.delete(npc);
     });
     this.glyphs = new GiverGlyphs(ctx.ui.layer('npc-glyphs'));
+    // rigged bodies from medium quality up (the low tier and the e2e run keep the procedural ones)
+    this.onQuality = (_p, level) => {
+      for (const [id, f] of this.figs) {
+        if (level === 'low') f.fig.setRigged(null);
+        else this.rigFor(id, f.fig);
+      }
+    };
+    ctx.quality.listeners.push(this.onQuality);
     this.rebuild();
+  }
+
+  private readonly onQuality: (p: unknown, level: string) => void;
+
+  /** Give a figure its rigged CC0 body once the model is there (characters area, lazy). */
+  private rigFor(id: string, fig: GhostFigure): void {
+    if (this.ctx.quality.level === 'low' || fig.isRigged) return;
+    const model = modelFor(fig.look);
+    const build = (m: LoadedModel) => {
+      if (this.figs.get(id)?.fig !== fig || fig.isRigged || this.ctx.quality.level === 'low') return;
+      fig.setRigged(new RiggedGhost(fig.look, m, fig.tint));
+    };
+    const ready = this.ctx.assets.peek<LoadedModel>(model);
+    if (ready) build(ready);
+    else this.ctx.assets.model(model).then(build, (e: unknown) => console.warn('[npc] model failed', e));
   }
 
   get slice(): NpcSlice {
@@ -223,6 +249,7 @@ class NpcRuntime {
     fig.alpha = 0;
     this.ctx.scene.add(fig.object);
     this.figs.set(p.npc, { p, fig, yaw: yawRad(p.yaw), nearT: 0, barked: false, kneel: p.pose === 'kneel' ? 1 : 0 });
+    this.rigFor(p.npc, fig);
   }
 
   /** Floor under the figure; a placement with a storey hint (`y`, rooms upstairs) keeps its storey. */
@@ -528,7 +555,7 @@ class NpcRuntime {
         f.fig.kneel = 0;
       }
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
-      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0 });
+      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt: d < 9 || this.talking?.npc === id ? cam.position : null });
     }
     // quest glyphs over the heads (hidden while that conversation is open)
     this.glyphs.frame(
@@ -587,6 +614,8 @@ class NpcRuntime {
   }
 
   dispose(): void {
+    const i = this.ctx.quality.listeners.indexOf(this.onQuality);
+    if (i >= 0) this.ctx.quality.listeners.splice(i, 1);
     this.view.close();
     this.glyphs.dispose();
     for (const f of this.figs.values()) f.fig.dispose();

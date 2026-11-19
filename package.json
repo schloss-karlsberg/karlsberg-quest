@@ -16,7 +16,8 @@
     "assets:pack": "tsx scripts/assets/pack-gltf.ts",
     "assets:tex": "tsx scripts/assets/pack-texture.ts",
     "assets:strip": "tsx scripts/assets/pack-strip.ts",
-    "assets:surface": "tsx scripts/assets/pack-surface.ts"
+    "assets:surface": "tsx scripts/assets/pack-surface.ts",
+    "assets:inspect": "tsx scripts/assets/inspect-gltf.ts"
   },
   "dependencies": {
     "three": "0.187.0"

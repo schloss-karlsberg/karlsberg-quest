@@ -132,6 +132,25 @@ the procedural terrain, bark and forest from the render baseline stay as they we
   faces, period costume shapes: tricorn, coat tails, aprons, bonnets), slightly translucent
   edges and a soft inner glow so they read as memories, not living people.
 - **Animation:** readable anticipation and follow-through; idle breathing; no T-poses.
+- **Implemented (characters track, 2026-11-19), medium / high tiers:** NPC ghosts are rigged CC0
+  Quaternius humans (`public/assets/models/characters/`: adventurer, farmer, animated woman; 0.5–0.6 MB
+  each, meshopt, lazy on first sight) dressed per outfit by recolouring the model's material slots
+  (`src/systems/characters/catalog.ts`: official coat blue, livery green, mason stone, maid dress, carter
+  overalls; per-NPC accents) under the ghost shader (`characters/shaders.ts`: luma-normalised era tint,
+  fresnel rim, flowing bands, feet dissolving into mist, depth pre-pass). Clips: `Idle_Neutral`, Walk /
+  Run by real travel speed, Wave when a warm ghost starts talking, Interact gestures while talking; the
+  neck and head turn to the player within 9 m (additive bone turns after the mixer). Hats (tricorn,
+  huntcap, mobcap) and props (basket, stick, book) from the procedural figure ride the Head / WristR
+  bones. Enemies: the Streuner is a smoke hound on the CC0 wolf rig, the Raffschatten a smoke plunderer
+  on the human rig, the Pikeur rides a spectral CC0 horse with two hounds at heel (rider stays
+  procedural). Spectral shader: dark ink smoke, fog-contrast rim, ragged wisp edges, a small point core
+  (≤ 10 % of the height), the telegraph on the rim, a burning noise dissolve over the death clip; the
+  AI state picks the clip (wind-up = attack clip held at its anticipation pose, strike played through,
+  hit react, gallop by ground speed). The low tier keeps the procedural figures and bodies (no
+  downloads). The other kinds (mist, paper, straw, stone, the Schuldbuch, Strohmann, Steinbrecher)
+  stay procedural; the Nebelling got a smaller cold heart in darker mist. View model: a gloved fist
+  with four curled fingers, knuckles, thumb and cuff; per-part gloss (satin paint, leather, iron),
+  band seams, chipped paint and mud towards the shoe.
 - **Never:** gore, real victims or animals as enemies, likenesses of real people.
 
 ## 7. Render baseline (engineering, implemented 2026-11-19)
