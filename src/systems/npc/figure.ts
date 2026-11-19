@@ -473,6 +473,25 @@ export function figurePieces(look: NpcLook): Piece[] {
   return p;
 }
 
+/**
+ * Headwear and the hand prop of a figure as plain geometry (metres, this figure's frame), for the
+ * rigged ghosts (rigged.ts) which wear them on the head and hand bones: `hat` is placed relative
+ * to `headTop`, `prop` hangs from `grip` (the top of its bounding box).
+ */
+export function figureExtras(look: NpcLook): { hat: BufferGeometry | null; prop: BufferGeometry | null; headTop: Vector3; eyeGap: number } {
+  const pieces = figurePieces(look);
+  const pick = (part: number): BufferGeometry | null => {
+    const gs = pieces.filter((p) => p.part === part).map((p) => p.geo);
+    return gs.length ? mergeAll(gs) : null;
+  };
+  const hat = pick(5);
+  const prop = pick(6);
+  for (const p of pieces) p.geo.dispose();
+  const H = look.height / 1.7;
+  const hc = headCentre(look);
+  return { hat, prop, headTop: new Vector3(hc.x, hc.y + 0.1 * Math.sqrt(H) * 1.02, hc.z), eyeGap: 0.072 };
+}
+
 /** Merge pieces into one non-indexed geometry with aPart / aPivot / aShade attributes. */
 export function figureGeometry(look: NpcLook): BufferGeometry {
   const pieces = figurePieces(look);
@@ -810,11 +829,22 @@ void main() {
 }
 `;
 
+/** A rigged body that can stand in for the procedural one (rigged.ts). */
+export interface RiggedBody {
+  readonly rig: { root: Group };
+  setTint(c: Color): void;
+  frame(f: { dt: number; alpha: number; talk: number; motion: number; stutter: number; reducedMotion: boolean; lookAt: Vector3 | null }): void;
+  dispose(): void;
+}
+
 /** A ghost figure in the world. */
 export class GhostFigure {
   readonly object = new Group();
   readonly look: NpcLook;
   private readonly mats: ShaderMaterial[];
+  /** The procedural body (colour pass + depth pre-pass): the fallback and the kneeling pose. */
+  private readonly proc: Mesh[];
+  private rigged: RiggedBody | null = null;
   private readonly body: ShaderMaterial;
   private readonly motes: ShaderMaterial;
   private readonly pool: ShaderMaterial;
@@ -898,6 +928,7 @@ export class GhostFigure {
     pool.renderOrder = 8;
     pool.frustumCulled = false;
     this.object.add(pool, depthMesh, bodyMesh, motes);
+    this.proc = [depthMesh, bodyMesh];
     this.object.name = `npc-${look.id}`;
     this.mats = [body, depth, this.motes, this.pool];
   }
@@ -911,13 +942,33 @@ export class GhostFigure {
   setEra(era: string): void {
     const c = this.tintFor(era);
     for (const m of this.mats) (m.uniforms.uTint?.value as Color | undefined)?.copy(c);
+    this.rigged?.setTint(c);
+  }
+
+  /** The figure's current light colour (era × mood tint). */
+  get tint(): Color {
+    return this.body.uniforms.uTint!.value as Color;
+  }
+
+  /** Stand a rigged body in for the procedural one (null: back to procedural). */
+  setRigged(r: RiggedBody | null): void {
+    if (this.rigged && this.rigged !== r) this.rigged.dispose();
+    this.rigged = r;
+    if (r) {
+      r.setTint(this.tint);
+      this.object.add(r.rig.root);
+    }
+  }
+
+  get isRigged(): boolean {
+    return this.rigged !== null;
   }
 
   /**
    * Per frame: fade, talking gesture, reduced motion, face the player (yaw radians in world).
    * `px` = pixels per metre at distance 1 (point sizes).
    */
-  frame(dt: number, o: { reducedMotion: boolean; reducedFlash?: boolean; px: number; face: number }): void {
+  frame(dt: number, o: { reducedMotion: boolean; reducedFlash?: boolean; px: number; face: number; lookAt?: Vector3 | null }): void {
     const k = Math.min(1, dt * 1.6);
     this.alpha += (this.target - this.alpha) * k;
     if (Math.abs(this.target - this.alpha) < 0.002) this.alpha = this.target;
@@ -934,9 +985,19 @@ export class GhostFigure {
     this.motes.uniforms.uPix!.value = o.px;
     this.pool.uniforms.uAlpha!.value = this.alpha * (this.look.mood === 'warm' ? 1 : 0.75);
     this.object.visible = this.alpha > 0.01;
+    // the rigged body stands in, except on one knee (the procedural legs fold for that)
+    const rigged = this.rigged !== null && this.kneel < 0.01;
+    for (const m of this.proc) m.visible = !rigged;
+    if (this.rigged) {
+      this.rigged.rig.root.visible = rigged;
+      if (rigged && this.object.visible)
+        this.rigged.frame({ dt, alpha: this.alpha, talk: u.uTalk!.value as number, motion, stutter: (u.uStutter?.value as number) ?? 1, reducedMotion: o.reducedMotion, lookAt: o.lookAt ?? null });
+    }
   }
 
   dispose(): void {
+    this.rigged?.dispose();
+    this.rigged = null;
     this.object.removeFromParent();
     for (const g of this.geos) g.dispose();
     for (const m of this.mats) m.dispose();

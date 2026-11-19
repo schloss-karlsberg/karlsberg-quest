@@ -32,7 +32,9 @@ import {
 } from 'three';
 import { ELITES } from '../../rpg/enemies';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
+import type { AssetLoader } from '../../assets/loader';
 import { type BodyPart, type BodyTemplate, bodyTemplate } from './bodies';
+import { EnemyRigs } from './rigged';
 import type { Enemy, Projectile, Ring } from './sim';
 
 // ---- shaders ------------------------------------------------------------------------------------
@@ -673,6 +675,8 @@ export class CombatVisuals {
   private readonly waves: Wave[] = [];
   private maxParticles = 900;
   private seedN = 1;
+  /** Rigged CC0 bodies (hounds, the Raffschatten, the Pikeur's horse) from medium quality up. */
+  readonly rigs = new EnemyRigs();
 
   constructor() {
     this.object.name = 'combat-visuals';
@@ -682,7 +686,12 @@ export class CombatVisuals {
     this.glows = new GlowPool(900, this.glowMat);
     this.solids = new SolidPool(1400);
     this.ringPool = new RingPool(48);
-    this.object.add(this.ringPool.mesh, this.solids.mesh, this.puffs.mesh, this.glows.mesh);
+    this.object.add(this.ringPool.mesh, this.solids.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
+  }
+
+  /** Rigged bodies on (medium / high: the asset loader) or off (low tier: null). */
+  setAssets(a: AssetLoader | null): void {
+    this.rigs.setAssets(a);
   }
 
   /** Quality preset → particle budget. */
@@ -1146,10 +1155,12 @@ export class CombatVisuals {
     this.solids.n = 0;
     this.ringPool.n = 0;
     const seen = new Set<string>();
+    this.rigs.begin();
     for (const e of f.enemies) {
       seen.add(e.id);
       this.drawEnemy(e, f, dt);
     }
+    this.rigs.end();
     for (const id of [...this.vis.keys()]) if (!seen.has(id)) this.vis.delete(id);
     // telegraph rings
     for (const r of f.rings) {
@@ -1296,18 +1307,28 @@ export class CombatVisuals {
     if (dissolving || leaving) v.fade = Math.min(1, v.fade + dt * (leaving ? 0.3 : 1.6));
     else v.fade = Math.max(0, v.fade - dt * 3);
     const alpha = 1 - v.fade;
-    if (alpha <= 0.01) return;
-    // undone: a quick swell before it comes apart (a pop, not a fade)
-    if (dissolving && e.t < 0.14) v.swell = 1 + 0.2 * Math.sin((e.t / 0.14) * Math.PI);
     const stunned = e.stun > 0;
     const flash = e.flash;
     const pulse = 0.75 + 0.25 * Math.sin(f.time * 18);
     const tellK = v.tell * (e.state === 'windup' ? pulse : 1);
+    // a rigged body (its models loaded): the model draws the body, the template only its extras
+    const rigged = this.rigs.ready(e);
+    if (rigged) {
+      const dis = dissolving ? Math.min(1, Math.max(0, (e.t - 0.08) / 1.3)) : 0;
+      if (dis < 1)
+        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: leaving ? v.fade : 0, dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px));
+    }
+    if (alpha <= 0.01) return;
+    // undone: a quick swell before it comes apart (a pop, not a fade)
+    if (dissolving && e.t < 0.14) v.swell = 1 + 0.2 * Math.sin((e.t / 0.14) * Math.PI);
     const wakeK = e.aggro ? 1 : 0.65;
     // weak point open (seal) / armour broken: glows harder
     const sealK = e.kind === 'schuldbuch' ? (e.sealOpen > 0 ? 2.4 + Math.sin(f.time * 10) * 0.6 : 0.5) : e.armorBroken > 0 ? 1.8 : 1;
     const rise = dissolving ? v.fade * 0.8 : 0;
     for (const p of v.t.parts) {
+      // on a rig only the extras draw, plus the template's smoke as a faint fraying aura
+      if (rigged && !p.onRig && (p.kind !== 'puff' || (p.style ?? 0) > 0.5)) continue;
+      const aura = rigged && !p.onRig ? 0.2 : 1;
       this.bodyMatrix(e, v, p, _m);
       _p.set(0, 0, 0).applyMatrix4(_m);
       _p.y += rise * (0.5 + p.seed);
@@ -1316,7 +1337,7 @@ export class CombatVisuals {
         const fl = flash * 0.6;
         const heat = 1 + tellK * 1.2;
         const cold = stunned ? 0.35 : 0;
-        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6), (p.alpha ?? 1) * alpha * (stunned ? 0.75 : 1), p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
+        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6) * (aura < 1 ? 1.25 : 1), (p.alpha ?? 1) * alpha * aura * (stunned ? 0.75 : 1), p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
       } else if (p.kind === 'glow') {
         let I = (p.alpha ?? 1) * alpha * wakeK;
         let size = p.size * v.swell;
@@ -1433,6 +1454,7 @@ export class CombatVisuals {
   }
 
   dispose(): void {
+    this.rigs.dispose();
     this.object.removeFromParent();
     this.object.traverse((o) => {
       if (o instanceof Mesh) o.geometry.dispose();

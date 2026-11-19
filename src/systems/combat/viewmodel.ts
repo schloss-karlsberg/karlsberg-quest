@@ -11,6 +11,7 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  CapsuleGeometry,
   type BufferGeometry,
   Color,
   ConeGeometry,
@@ -47,6 +48,8 @@ export function stageOf(item: string | null | undefined): WeaponStage {
 const VM_VERT = /* glsl */ `
 attribute vec3 color;
 attribute float aEm;
+attribute float aGloss;
+varying float vGloss;
 varying vec3 vN;
 varying vec3 vW;
 varying vec3 vCol;
@@ -58,6 +61,7 @@ void main() {
   vN = normalize(mat3(modelMatrix) * normal);
   vCol = color;
   vEm = aEm;
+  vGloss = aGloss;
   vAlong = -position.z;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
@@ -73,15 +77,32 @@ varying vec3 vW;
 varying vec3 vCol;
 varying float vEm;
 varying float vAlong;
+varying float vGloss;
 void main() {
   vec3 n = normalize(vN);
   vec3 v = normalize(uCamPos - vW);
-  // painted wood has a little grain along the pole
+  // painted wood has a little grain along the pole; the paint is worn and earthy towards the shoe
   float grain = 0.9 + 0.1 * kqNoise(vec2(vAlong * 40.0, n.x * 3.0));
-  vec3 col = kqLight(vCol * grain, n, vW, 1.0, 1.0);
+  vec3 alb = vCol * grain;
+  bool paint = vGloss > 0.4 && vGloss < 0.6;
+  if (paint) {
+    // a dark seam where two painted bands meet, chipped paint, mud near the tip
+    float b = fract((vAlong + 0.5) / 0.25);
+    alb *= 0.6 + 0.4 * smoothstep(0.0, 0.025, min(b, 1.0 - b));
+    float chip = step(0.8, kqNoise(vec2(vAlong * 90.0, atan(n.y, n.x) * 6.0)));
+    alb = mix(alb, vec3(0.42, 0.31, 0.2), chip * 0.6);
+    alb = mix(alb, vec3(0.16, 0.12, 0.08), smoothstep(0.95, 1.3, vAlong) * 0.7);
+  }
+  vec3 col = kqLight(alb, n, vW, 1.0, 1.0);
+  // a soft sheen (satin paint, oiled leather, iron) from the sun and the lantern
+  vec3 h = normalize(uSunDir + v);
+  float spec = pow(max(dot(n, h), 0.0), mix(12.0, 60.0, vGloss)) * vGloss;
+  col += uSunColor * spec * 0.35;
+  vec3 lh = normalize(normalize(uLanternPos - vW) + v);
+  col += uLantern * pow(max(dot(n, lh), 0.0), mix(12.0, 60.0, vGloss)) * vGloss * 0.25;
   // never pitch black: a little of the sky and the fog on the rim, so it reads at night
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
-  col += vCol * uSkyAmbient * 0.12 + uFogColor * rim * 0.22;
+  col += alb * uSkyAmbient * 0.12 + uFogColor * rim * 0.22;
   // emissive parts: 1 = shoe (heavy glow), 2 = notches (ember)
   col += uGlow * step(0.5, vEm) * (1.0 - step(1.5, vEm)) ;
   col += vec3(1.0, 0.42, 0.1) * uNotch * step(1.5, vEm);
@@ -111,19 +132,23 @@ void main() {
 }
 `;
 
-function colored(g: BufferGeometry, c: [number, number, number], em = 0): BufferGeometry {
+/** Vertex colour, emissive code and gloss (0 matte … 0.5 satin paint … 1 polished metal). */
+function colored(g: BufferGeometry, c: [number, number, number], em = 0, gloss = 0.5): BufferGeometry {
   const geo = g.index ? g.toNonIndexed() : g;
   const n = geo.getAttribute('position').count;
   const col = new Float32Array(n * 3);
   const emA = new Float32Array(n);
+  const gl = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     col[i * 3] = c[0];
     col[i * 3 + 1] = c[1];
     col[i * 3 + 2] = c[2];
     emA[i] = em;
+    gl[i] = gloss;
   }
   geo.setAttribute('color', new Float32BufferAttribute(col, 3));
   geo.setAttribute('aEm', new Float32BufferAttribute(emA, 1));
+  geo.setAttribute('aGloss', new Float32BufferAttribute(gl, 1));
   if (geo.getAttribute('uv')) geo.deleteAttribute('uv');
   return geo;
 }
@@ -155,41 +180,57 @@ function buildStaff(stage: WeaponStage): BufferGeometry {
   for (let z = z0; z > z1 + 0.06; z -= band, i++) parts.push(colored(poleSeg(R, R, z, Math.max(z1 + 0.06, z - band)), i % 2 ? WHITE : RED));
   // iron shoe (the striking end)
   const shoeLen = stage === 'esche' ? 0.09 : 0.14;
-  parts.push(colored(poleSeg(R * 1.05, R * 0.55, z1 + 0.06, z1 - shoeLen + 0.06, 10), IRON, 1));
-  parts.push(colored(poleSeg(R * 0.55, 0.002, z1 - shoeLen + 0.06, z1 - shoeLen + 0.01, 8), IRON, 1));
+  parts.push(colored(poleSeg(R * 1.05, R * 0.55, z1 + 0.06, z1 - shoeLen + 0.06, 10), IRON, 1, 0.85));
+  parts.push(colored(poleSeg(R * 0.55, 0.002, z1 - shoeLen + 0.06, z1 - shoeLen + 0.01, 8), IRON, 1, 0.85));
   // butt cap
-  parts.push(colored(poleSeg(R * 1.08, R * 1.08, z0, z0 + 0.025), IRON));
+  parts.push(colored(poleSeg(R * 1.08, R * 1.08, z0, z0 + 0.025), IRON, 0, 0.8));
   if (stage !== 'esche') {
     // iron bands near the head, a ferrule at the grip
-    for (const z of [-1.05, -1.18, -1.28]) parts.push(colored(poleSeg(R * 1.22, R * 1.22, z, z - 0.03), IRON, 1));
+    for (const z of [-1.05, -1.18, -1.28]) parts.push(colored(poleSeg(R * 1.22, R * 1.22, z, z - 0.03), IRON, 1, 0.85));
   }
   if (stage === 'silber' || stage === 'bann' || stage === 'lot') {
     // silver wire wound round the grip
     for (let k = 0; k < 14; k++) {
       const t = new TorusGeometry(R * 1.12, 0.0022, 4, 14);
       t.translate(0, 0, 0.12 - k * 0.018);
-      parts.push(colored(t, SILVER));
+      parts.push(colored(t, SILVER, 0, 0.95));
     }
   }
   if (stage === 'bann' || stage === 'lot') {
     // nine notches cut in the night of the fire — they glow faintly
-    for (let k = 0; k < 9; k++) parts.push(colored(poleSeg(R * 1.03, R * 1.03, -0.62 - k * 0.045, -0.635 - k * 0.045, 8), [0.08, 0.04, 0.02], 2));
+    for (let k = 0; k < 9; k++) parts.push(colored(poleSeg(R * 1.03, R * 1.03, -0.62 - k * 0.045, -0.635 - k * 0.045, 8), [0.08, 0.04, 0.02], 2, 0.2));
   }
-  // the glove round the grip and the coat sleeve going back out of view
-  // a gloved fist: rounded, wrapped round the pole
-  const glove = new SphereGeometry(0.048, 10, 8);
-  glove.scale(1.05, 1.0, 1.35);
-  glove.translate(0.012, -0.006, 0.0);
-  parts.push(colored(glove, GLOVE));
-  const thumb = new CylinderGeometry(0.014, 0.016, 0.06, 6);
-  thumb.rotateZ(1.2);
-  thumb.translate(-0.03, 0.022, -0.02);
-  parts.push(colored(thumb, [0.13, 0.085, 0.06]));
-  const sleeve = new CylinderGeometry(0.05, 0.065, 0.42, 10, 1, true);
+  // the gloved fist round the grip and the coat sleeve going back out of view (art pass: four
+  // curled fingers, knuckles, a thumb over them, the back of the hand, a turned-back cuff)
+  for (let k = 0; k < 4; k++) {
+    // a finger: a thick arc wrapped round the pole from the right, its tip tucked in on the left
+    const f = new TorusGeometry(R + 0.011, 0.0105 - k * 0.0006, 7, 14, Math.PI * 1.45);
+    f.rotateZ(-0.35);
+    f.translate(0, 0, 0.03 - k * 0.0215);
+    parts.push(colored(f, k % 2 ? GLOVE : [0.095, 0.062, 0.045], 0, 0.3));
+    const knuckle = new SphereGeometry(0.0125, 8, 6);
+    knuckle.translate(0.022, 0.017, 0.03 - k * 0.0215);
+    parts.push(colored(knuckle, [0.11, 0.072, 0.052], 0, 0.35));
+  }
+  const back = new SphereGeometry(0.05, 12, 9);
+  back.scale(0.62, 0.75, 1.18);
+  back.translate(0.04, 0.012, -0.002);
+  parts.push(colored(back, GLOVE, 0, 0.3));
+  const thumb = new CapsuleGeometry(0.0115, 0.04, 4, 8);
+  thumb.rotateX(Math.PI / 2);
+  thumb.rotateY(0.55);
+  thumb.translate(-0.018, 0.024, -0.034);
+  parts.push(colored(thumb, [0.12, 0.08, 0.058], 0, 0.35));
+  const cuff = new CylinderGeometry(0.052, 0.046, 0.06, 12, 1, false);
+  cuff.rotateX(Math.PI / 2 - 0.35);
+  cuff.rotateY(-0.5);
+  cuff.translate(0.065, -0.045, 0.085);
+  parts.push(colored(cuff, [0.07, 0.05, 0.036], 0, 0.25));
+  const sleeve = new CylinderGeometry(0.05, 0.065, 0.42, 12, 1, true);
   sleeve.rotateX(Math.PI / 2 - 0.35);
   sleeve.rotateY(-0.5);
   sleeve.translate(0.1, -0.09, 0.2);
-  parts.push(colored(sleeve, SLEEVE));
+  parts.push(colored(sleeve, SLEEVE, 0, 0.1));
   const geo = mergeGeometries(parts) as BufferGeometry;
   for (const p of parts) p.dispose();
   return geo;
@@ -360,9 +401,9 @@ export class Viewmodel {
     bobGeo.rotateX(Math.PI);
     const top = new SphereGeometry(0.022, 8, 6);
     top.translate(0, 0.04, 0);
-    this.bob = new Mesh(mergeGeometries([colored(bobGeo, [0.6, 0.45, 0.2]), colored(top, [0.6, 0.45, 0.2])]) as BufferGeometry, this.mat);
+    this.bob = new Mesh(mergeGeometries([colored(bobGeo, [0.6, 0.45, 0.2], 0, 0.9), colored(top, [0.6, 0.45, 0.2], 0, 0.9)]) as BufferGeometry, this.mat);
     this.bob.renderOrder = 1000;
-    this.chain = new Mesh(colored(new CylinderGeometry(0.0025, 0.0025, 1, 4), [0.3, 0.3, 0.3]), this.mat);
+    this.chain = new Mesh(colored(new CylinderGeometry(0.0025, 0.0025, 1, 4), [0.3, 0.3, 0.3], 0, 0.8), this.mat);
     this.chain.renderOrder = 1000;
     this.root.add(this.arm, this.bob, this.chain);
     // clears the depth buffer right before the viewmodel draws (it is the last thing in the frame)

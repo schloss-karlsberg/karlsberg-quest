@@ -876,6 +876,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Story beats waiting on Chronik confirmations | content tracks replace every `confirmed` / `caseComplete` / `reading` gate with `quest` conditions (the validator can be tightened afterwards) |
 | Old saves mid-chapter | old flags kept; quests start fresh per chapter (story re-offers the current beat's quest on resume with `onResume: true`) |
 | "Looks like a 1990 game" (owner, real GPU, 2026-11-19) | D-009: stylized modern look, CC0 assets allowed; render baseline (soft sun shadows, AO, bloom, ACES, per-era grade, stylized sky) and the asset pipeline in place (docs/ART-DIRECTION.md); four art tracks (nature, architecture, characters, FX + UI) build on it |
+| Characters look like 1990 (procedural capsules) | characters track: rigged animated CC0 humans for NPC ghosts, CC0 wolf / horse rigs for hounds, Raffschatten and the Pikeur under spectral shaders, a better view-model hand; low tier keeps the procedural bodies; other enemy kinds and the hunt still procedural |
 | Art assets: licence or payload creep | CC0 only from the listed sites, every file in `public/assets/LICENSES.json`, `tests/assets.test.ts` checks records, sizes and budgets (150 MB total, 40 MB first load); lazy per area / era |
 | New render cost on weak GPUs / headless e2e | tiers: `low` has no shadows / AO / bloom; SwiftShader and `?q=low` start on `low`; auto-downgrade unchanged; the bench route still gates draw calls and triangles |
 

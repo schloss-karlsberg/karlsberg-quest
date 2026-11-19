@@ -192,6 +192,8 @@ class Combat {
     ctx.scene.add(this.visuals.object);
     ctx.scene.add(this.viewmodel.root);
     this.visuals.setQuality(ctx.quality.level);
+    this.visuals.setAssets(ctx.quality.level === 'low' ? null : ctx.assets);
+    ctx.quality.listeners.push((_p, level) => this.visuals.setAssets(level === 'low' ? null : ctx.assets));
     this.hud = new CombatHud(ctx.ui.hud, ctx.ui.layer('combat'));
     this.viewmodel.setStage(stageOf(ctx.state.state.systems.progression?.equipped?.weapon));
     this.wire();

@@ -43,6 +43,8 @@ export interface BodyPart {
   fire?: number;
   /** solid: surface (0 plain with edge seams, 1 dressed stone, 2 straw, 3 smooth: no seams). */
   mat?: number;
+  /** Still drawn when the kind is a rigged model (combat/rigged.ts): the Pikeur's rider. */
+  onRig?: boolean;
 }
 
 /** Look of a kind: where its "eyes" are (telegraph flare) and its glow colour. */
@@ -124,7 +126,8 @@ class B {
   }
 }
 
-const MIST: V3 = [0.44, 0.48, 0.57];
+/** Pale blue mist, darker than it was (art pass: a day-lit Nebelling was a white blob under bloom). */
+const MIST: V3 = [0.2, 0.24, 0.32];
 const SMOKE: V3 = [0.05, 0.05, 0.06];
 const EMBER: V3 = [1, 0.42, 0.1];
 const COLD: V3 = [0.62, 0.86, 1.0];
@@ -138,9 +141,12 @@ const SEAL: V3 = [0.55, 0.06, 0.04];
 
 export function nebelling(seed: number): BodyTemplate {
   const b = new B(seed)
-    .blob([0, 0.45, 0], [0.32, 0.26, 0.3], 14, 0.42, MIST, { style: 1, alpha: 0.75 })
-    .blob([0, 0.2, -0.1], [0.4, 0.1, 0.4], 6, 0.4, MIST, { style: 1, alpha: 0.6, bone: 'legs' })
-    .blob([0, 0.62, 0.12], [0.18, 0.12, 0.12], 4, 0.3, [0.4, 0.43, 0.5], { style: 1, alpha: 0.9, bone: 'head' })
+    .blob([0, 0.45, 0], [0.32, 0.26, 0.3], 14, 0.42, MIST, { style: 1, alpha: 0.6 })
+    .blob([0, 0.2, -0.1], [0.4, 0.1, 0.4], 6, 0.4, MIST, { style: 1, alpha: 0.45, bone: 'legs' })
+    .blob([0, 0.62, 0.12], [0.18, 0.12, 0.12], 4, 0.3, [0.22, 0.25, 0.31], { style: 1, alpha: 0.9, bone: 'head' })
+    // a small cold heart glowing through the mist (spectral = light from within, §6)
+    .glow([0, 0.42, 0.06], 0.09, [0.55, 0.78, 1], { bone: 'core', minPx: 2, alpha: 0.45 })
+    .glow([0, 0.42, 0.06], 0.38, [0.3, 0.5, 0.8], { bone: 'core', alpha: 0.14 })
     .eyes(0.64, 0.3, 0.1, 0.07);
   return { parts: b.parts, tell: [1, 0.55, 0.2], top: 1.1, shoulder: 0.5 };
 }
@@ -192,7 +198,9 @@ export function raffschatten(seed: number): BodyTemplate {
     .glow([0, 1.2, 0.15], 0.5, [0.6, 0.45, 0.12], { bone: 'body', alpha: 0.5 })
     .glow([0.1, 1.0, 0.18], 0.05, [1, 0.8, 0.3], { bone: 'flap', minPx: 2 })
     .glow([-0.12, 1.3, 0.12], 0.05, [1, 0.8, 0.3], { bone: 'flap', minPx: 2 })
-    .glow([0.0, 0.8, 0.15], 0.05, [1, 0.8, 0.3], { bone: 'flap', minPx: 2 });
+    .glow([0.0, 0.8, 0.15], 0.05, [1, 0.8, 0.3], { bone: 'flap', minPx: 2 })
+    // the stolen coins glint on the rigged body too
+    .last(3, { onRig: true });
   return { parts: b.parts, tell: [1, 0.75, 0.25], top: 2.1, shoulder: 1.45 };
 }
 
@@ -440,6 +448,8 @@ export function pikeur(seed: number): BodyTemplate {
       .last(3, { gait: [0.5, f - 0.3, side > 0 ? Math.PI : 0, 0.6] })
       .line([r, 0.7, f - 0.45], [r, 0.92, f - 0.75], 3, 0.1, 0.06, SMOKE, { bone: 'tail' });
   }
+  // on the rigged horse (medium / high quality) only the rider, his coat and the whip stay
+  for (const p of b.parts) if (p.bone === 'rider' || p.bone === 'armR' || (p.bone === 'flap' && (p.kind === 'solid' || p.col === SMOKE))) p.onRig = true;
   return scaleTemplate({ parts: b.parts, tell: [1, 0.65, 0.25], top: 3.75, shoulder: 2.75 }, 1.12);
 }
 
