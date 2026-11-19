@@ -90,6 +90,38 @@ objects, enemies, UI focus).
   layer, not a flat colour.
 - **Seasons** stay era-driven (summer 1789, autumn today, bare + snow 1793-02, sparse 1796).
 
+### 5.1 Nature track (implemented 2026-11-19)
+
+Code: `src/world/vegetation/` (`nature.ts` owns the layers, `strips.ts`, `scatter.ts` pure rules,
+`groundcover.ts`, `props.ts`), `src/world/water.ts`, `src/world/terrainShader.ts`, `forest.ts`.
+Everything below is **off on the low tier** (SwiftShader / e2e / `?q=low`): nothing is fetched and
+the procedural terrain, bark and forest from the render baseline stay as they were.
+
+- **Ground (medium / high):** 8 CC0 Poly Haven sets packed into two WebP strips
+  (`textures/nature/ground_albedo.webp` 8 × 1k, `ground_nh.webp` 8 × 512 with normal RG + height B,
+  `pnpm assets:strip`) and uploaded as `DataArrayTexture`s: leaf litter, forest floor, leafy grass,
+  rocky trail (paths / gravel), rock ground (slopes 30–46°), snow, forest mud (shores, damp
+  hollows), burned ground (1796 ruin field). Splat weights come from the land-cover rasters, slope,
+  shore distance and the era; layers are height-blended, sampled twice with offsets picked by a
+  macro noise (no visible tiling), and tinted per era (lush 1789, golden today, snow 1793-02, dry and
+  burnt 1796). Defined as `KQ_SPLAT` in the terrain shader (`terrain.setGroundSet`).
+- **Bark:** three CC0 bark sets (beech, oak, spruce; `bark_albedo.webp`, `bark_nh.webp`) on the near
+  trunks with a tangent-frame normal, moss on the weather (west) side (`forest.setBark`, `KQ_BARK`).
+- **Crowns:** scalloped leaf-clump cut-outs with anti-aliased edges and alpha-to-coverage on medium /
+  high (no honeycomb, no shimmering); spruces rebuilt as denser whorls of shorter needle cards.
+- **Ground cover (`GroundCover`):** instanced grass tufts, meadow flowers (1789 most, none in the
+  snow) and reeds / cattails on the shore band, deterministic per 8 m tile from the land cover; wind
+  gusts, grow-in at the ring edge (high 30 m, medium 21 m), tall reeds duck away right at the camera.
+- **Props (`NatureProps`):** CC0 ferns (wind), two mossy rock sets (every rock its own variant), a
+  fallen dead trunk and two stumps, instanced per kind around the player (ferns 46 m, rocks 170 m),
+  never on water, paths or the parterre; snow on top in February 1793.
+- **Water (`Water`):** the Karlsbergweiher, the Schwanenweiher and every other pond come from the
+  ground raster (class `water`, flood-filled per level, `findWaterBodies`), with a signed shore
+  distance for foam and depth. The lake bed sinks under the water (`uBedDepth`). Stylized shading:
+  layered waves, Fresnel, sky gradient + tree-line reflection, a **planar reflection** of the scene
+  on high (half resolution, nearest body in view, `KQ_WATER_REFL`), sun glitter, shore foam, depth
+  colour and transparency, floating leaves in autumn, ice with cracks and drifts in February 1793.
+
 ## 6. Character style
 
 - **Spectral enemies:** glowing, translucent, stylized. A bright core (emissive, blooms) inside
@@ -151,6 +183,9 @@ pnpm assets:pack <in.gltf|glb> public/assets/models/<track>/<name>.glb [--tex 10
     # dedup / weld / prune, optional meshopt simplify, textures → WebP (cwebp, ≤ --tex px),
     # EXT_meshopt_compression; prints { bytes } for the manifest
 pnpm assets:tex <in.jpg|png> public/assets/textures/<set>/<name>.webp [--size 1024]
+pnpm assets:strip <out.webp> [--nh] [--size 1024] in1 in2 …   # layers stacked vertically for a texture array
+    # (--nh: normal RG + height B); pack-gltf also takes --error <0.002> (simplify tolerance, raise for scans)
+npx tsx scripts/assets/inspect-glb.ts <file.glb>             # materials, alpha, textures, triangles
 ```
 
 Layout: `public/assets/{models,textures,hdri}/<track or set>/…`. Budgets: whole folder

@@ -12,6 +12,10 @@ import { Palace, RUIN_KEEP } from './palace';
 import { buildCover, buildSurface, rasterLines } from './rasters';
 import { Sky } from './sky';
 import { Terrain, type TerrainDataset, makeDataTexture, makeHeightTexture } from './terrain';
+import { Nature } from './vegetation/nature';
+import { Water } from './water';
+import type { AssetLoader } from '../assets/loader';
+import type { GraphicsLevel } from '../core/save';
 
 export type ScanMode = 0 | 1 | 2 | 3;
 
@@ -26,6 +30,10 @@ export class World {
   readonly palace = new Palace();
   /** Sun / moon shadows (render/shadows.ts); boot renders the map each frame before the scene. */
   readonly shadows = new SunShadows();
+  /** Nature track: CC0 ground / bark sets, near ground cover, forest props (world/vegetation). */
+  readonly nature: Nature;
+  /** Lakes and ponds (world/water.ts). */
+  readonly water: Water;
   /** Bumped by every `applyLook()` (the environment light rebuilds its sky PMREM on change). */
   lookVersion = 0;
   readonly heightfields: Record<'2025' | '1789', Heightfield>;
@@ -90,13 +98,49 @@ export class World {
       historic: makeDataTexture(coverHist, m.cols, m.rows, true),
     };
     this.trees = {
-      today: generateTrees({ hf: this.heightfields['2025'], canopy: data.canopy, paths, spacing: 8.5, seed: 1 }).tiles,
+      today: generateTrees({ hf: this.heightfields['2025'], canopy: data.canopy, paths, noTreesOnWater: data.ground, spacing: 8.5, seed: 1 }).tiles,
       historic: generateTrees({ hf: this.heightfields['1789'], ground: data.ground, spacing: 7.5, seed: 2 }).tiles,
     };
     this.collider = new FootprintCollider(data.footprints.buildings.map((b) => b.ring as Ring));
     this.ruinKeep = new Set(RUIN_KEEP.map((id) => data.footprints.buildings.findIndex((b) => b.id === id)).filter((i) => i >= 0));
 
     scene.add(this.sky.mesh, this.terrain.object, this.forest.object, this.palace.object);
+
+    const src = {
+      height: (x: number, z: number) => this.hf.heightAt(x, z),
+      cover: (x: number, z: number, out: Float32Array) => this.coverSample(x, z, out),
+      inside: (x: number, z: number) => this.hf.inBounds(x, z, 4),
+    };
+    this.nature = new Nature(this.terrain, this.forest, scene, src);
+    this.water = new Water(data.ground, this.grid, this.heightfields, this.sky);
+    scene.add(this.water.object);
+    // the near layers are not worth their cost in the half-resolution lake reflection
+    this.water.reflectionSkip = [this.nature.cover.object, this.nature.props.object];
+  }
+
+  /** CC0 assets for the nature layers (boot, once the loader exists). */
+  attachAssets(assets: AssetLoader): void {
+    this.nature.attach(assets);
+  }
+
+  /** Quality tier (render/quality.ts listener): nature layers and water detail. */
+  setDetail(level: GraphicsLevel): void {
+    this.forest.setAlphaToCoverage(level !== 'low');
+    this.nature.setLevel(level);
+    this.water.setLevel(level);
+  }
+
+  /** Land cover [forest, water, bare, lawn] 0..1 at x/z in the current era. */
+  private coverSample(x: number, z: number, out: Float32Array): void {
+    const w = this.era === 'today' ? this.coverWeights.today : this.coverWeights.historic;
+    const c = Math.round((x - this.grid.x0) / this.grid.cell);
+    const r = Math.round((z - this.grid.z0) / this.grid.cell);
+    if (c < 0 || r < 0 || c >= this.grid.cols || r >= this.grid.rows) {
+      out.fill(0);
+      return;
+    }
+    const o = (r * this.grid.cols + c) * 4;
+    for (let k = 0; k < 4; k++) out[k] = w[o + k]! / 255;
   }
 
   async loadPalace(): Promise<void> {
@@ -178,6 +222,9 @@ export class World {
     this.collider.enabled = info.palace === 'intact';
     // the buildings that survive the ruin (Baumagazin, the guard houses) stay solid in 1796
     this.collider.keep = info.palace === 'ruin' ? this.ruinKeep : new Set();
+    this.terrain.uniforms.uRuin!.value = info.palace === 'ruin' ? 1 : 0;
+    this.nature.setEra(era);
+    this.water.setEra(era, info.terrain);
     this.look = structuredClone(ERA_LOOKS[era]);
     this.applyLook();
   }
@@ -283,6 +330,8 @@ export class World {
     (this.sky.uniforms.uGlowDir!.value as Vector3).set(g.x - camera.position.x, 0, g.z - camera.position.z).normalize();
     this.terrain.update(camera);
     this.forest.update(camera);
+    this.nature.frame(camera);
+    this.water.frame(camera, dt);
   }
 }
 
