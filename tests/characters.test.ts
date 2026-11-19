@@ -55,25 +55,23 @@ describe('characters: rigged CC0 models (catalog)', () => {
   });
 
   it('rigged enemies: every model and clip exists; the rest stay procedural', () => {
-    for (const [kind, r] of [...Object.entries(ENEMY_RIGS), ['pikeur', PIKEUR_RIG.horse] as const, ['pikeur.hound', PIKEUR_RIG.hound] as const]) {
+    for (const [kind, r] of [...Object.entries(ENEMY_RIGS), ['pikeur', PIKEUR_RIG.horse] as const, ['pikeur.hound', PIKEUR_RIG.hound] as const, ['pikeur.rider', PIKEUR_RIG.rider] as const]) {
       const names = clips(r.model);
       for (const c of [r.idle, r.walk, r.run, r.attack, r.hit, r.death]) expect(names, `${kind}: ${c}`).toContain(c);
       expect(r.attackWindup).toBeGreaterThan(0);
       expect(r.attackWindup).toBeLessThan(0.6);
       expect(r.coreR).toBeLessThan(r.height * 0.2); // a small heart, never a blob
     }
-    expect(enemyModels('pikeur').sort()).toEqual(['characters.creature.horse', 'characters.creature.wolf']);
+    expect(enemyModels('pikeur').sort()).toEqual(['characters.creature.horse', 'characters.creature.wolf', 'characters.human.adventurer']);
     expect(enemyRig('nebelling')).toBeNull();
     expect(enemyModels('steinbrecher')).toEqual([]);
   });
 
-  it('on a rig only the flagged template parts still draw (the rider, the coins)', () => {
+  it('on a rig only the flagged template parts still draw (the coins); the Pikeur is all models', () => {
     const pk = bodyTemplate('pikeur', 0.3);
-    const kept = pk.parts.filter((p) => p.onRig);
-    expect(kept.length).toBeGreaterThan(10);
-    expect(kept.every((p) => p.bone === 'rider' || p.bone === 'armR' || p.bone === 'flap')).toBe(true);
-    // the horse and the hounds are the models now
-    expect(pk.parts.some((p) => p.bone === 'hound' && p.onRig)).toBe(false);
+    // the horse, the hounds and the seated rider are the models now (the template is the low tier's)
+    expect(pk.parts.filter((p) => p.onRig)).toHaveLength(0);
+    expect(pk.parts.some((p) => p.bone === 'rider')).toBe(true);
     expect(bodyTemplate('raffschatten', 0.4).parts.filter((p) => p.onRig)).toHaveLength(3);
     expect(bodyTemplate('streuner', 0.4).parts.filter((p) => p.onRig)).toHaveLength(0);
   });

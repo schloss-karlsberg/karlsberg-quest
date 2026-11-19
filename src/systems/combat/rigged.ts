@@ -1,8 +1,9 @@
 /**
  * Rigged spectral enemies (medium / high quality; visual only, reads the simulation): the
  * Streuner is a smoke hound on a CC0 wolf rig, the Raffschatten a smoke plunderer on a human rig
- * (his pack is the loot), the Pikeur rides a spectral horse with two hounds at heel — his rider
- * stays procedural on top (bodies.ts parts flagged `rider`). Clips follow the AI state: walk /
+ * (his pack is the loot), the Pikeur rides a spectral horse with two hounds at heel — the rider is
+ * the human rig seated in the saddle (thighs over the flanks, shins down, bent after the mixer),
+ * cracking the whip with the slash clip, a tricorn on his head. Clips follow the AI state: walk /
  * gallop by real ground speed, the wind-up held at the start of the attack clip (anticipation),
  * the strike played through, a hit flinch, the death clip under a burning dissolve.
  *
@@ -10,9 +11,9 @@
  * a small family core, the telegraph on the rim. Eyes are glows at the model's own eyes (head
  * bone), so they keep their minimum on-screen size like every enemy's eyes.
  */
-import { Group, type Mesh, type ShaderMaterial, Vector3 } from 'three';
+import { Group, Matrix4, type Mesh, Quaternion, type ShaderMaterial, Vector3 } from 'three';
 import type { AssetLoader, LoadedModel } from '../../assets/loader';
-import { type EnemyRig, enemyModels, enemyRig, PIKEUR_RIG } from '../characters/catalog';
+import { type EnemyRig, enemyModels, enemyRig, HIDDEN_MESHES, PIKEUR_RIG } from '../characters/catalog';
 import { Rig } from '../characters/rig';
 import { spectralMaterials, spectralShared } from '../characters/shaders';
 import type { Enemy } from './sim';
@@ -31,6 +32,11 @@ interface Body {
   /** Last AI state seen and the clip time it started (strike timing). */
   state: string;
   flinch: number;
+  /** Seated on the first body (the Pikeur's rider). */
+  seat: boolean;
+  /** The seated legs' pose from the mixer (restored while frozen). */
+  legPose?: Quaternion[];
+  legSaved?: boolean;
 }
 
 interface EnemyBodies {
@@ -55,8 +61,31 @@ export interface RigPose {
 }
 
 export type GlowFn = (x: number, y: number, z: number, size: number, intensity: number, r: number, g: number, b: number, minPx: number) => void;
+/** Draw a solid piece (a prop on a rig: the rider's hat, his whip). */
+export type SolidFn = (shape: 'block' | 'box' | 'spike', m: Matrix4, r: number, g: number, b: number, er: number, eg: number, eb: number, mat: number) => void;
 
 const _v = new Vector3();
+const _v2 = new Vector3();
+const _zero = new Vector3();
+const _qa = new Quaternion();
+const _qb = new Quaternion();
+const _qc = new Quaternion();
+const _axis = new Vector3();
+const _hm = new Matrix4();
+const _hs = new Vector3();
+const _RIGHT = new Vector3(1, 0, 0);
+const _FWD = new Vector3(0, 0, 1);
+
+/** Turn a bone after the mixer about an axis given in the rig root's frame (radians). */
+function turnAbout(rig: Rig, name: string, ax: Vector3, angle: number): void {
+  const b = rig.bones.get(name);
+  const p = b?.parent;
+  if (!b || !p) return;
+  p.getWorldQuaternion(_qa).invert();
+  rig.root.getWorldQuaternion(_qb);
+  _axis.copy(ax).applyQuaternion(_qb).applyQuaternion(_qa).normalize();
+  b.quaternion.premultiply(_qc.setFromAxisAngle(_axis, angle));
+}
 
 /** Is this AI state moving the body over the ground? */
 function locomotive(s: string): boolean {
@@ -102,9 +131,11 @@ export class EnemyRigs {
   private make(e: Enemy): EnemyBodies {
     const a = this.assets!;
     const bodies: Body[] = [];
-    const add = (def: EnemyRig, off: [number, number] | null, scale: number) => {
+    const add = (def: EnemyRig, off: [number, number] | null, scale: number, seat = false) => {
       const src = a.peek<LoadedModel>(def.model)!;
       const rig = new Rig(src, def.height * scale);
+      const hide = seat ? HIDDEN_MESHES[def.model] : undefined;
+      if (hide) for (const m of rig.meshes) if (hide.test(m.name)) m.visible = false;
       const u = spectralShared(def.body, def.core, (e.seed * 7.13 + bodies.length * 0.37) % 1);
       u.uHeight!.value = def.height * scale;
       u.uCoreR!.value = def.coreR * scale;
@@ -124,12 +155,13 @@ export class EnemyRigs {
       const c = rig.current;
       if (c) c.time = (e.seed * 3.1) % c.getClip().duration;
       this.object.add(rig.root);
-      bodies.push({ rig, def, u, mats, off, last: new Vector3(NaN, 0, 0), speed: 0, state: '', flinch: 0 });
+      bodies.push({ rig, def, u, mats, off, last: new Vector3(NaN, 0, 0), speed: 0, state: '', flinch: 0, seat });
     };
     const size = e.size ?? 1;
     if (e.kind === 'pikeur') {
       add(PIKEUR_RIG.horse, null, size);
       for (const o of PIKEUR_RIG.hounds) add(PIKEUR_RIG.hound, [o[0] * size, o[1] * size], 1);
+      add(PIKEUR_RIG.rider, null, size * 1.12, true);
     } else add(enemyRig(e.kind)!, null, size);
     const eb = { bodies, seen: true };
     this.live.set(e.id, eb);
@@ -137,7 +169,7 @@ export class EnemyRigs {
   }
 
   /** Draw one enemy's rig(s) this frame. */
-  draw(e: Enemy, p: RigPose, dt: number, glow: GlowFn): void {
+  draw(e: Enemy, p: RigPose, dt: number, glow: GlowFn, solid?: SolidFn): void {
     const eb = this.live.get(e.id) ?? this.make(e);
     eb.seen = true;
     const yaw = e.heading + Math.PI;
@@ -159,6 +191,12 @@ export class EnemyRigs {
       o.position.set(x + e.hitX * shove, e.y - p.sink, z + e.hitZ * shove);
       o.rotation.y = yaw;
       o.rotation.x = p.lean * 0.5;
+      // the rider: in the saddle of the horse drawn just before him, his hips a little below it
+      const horse = eb.bodies[0]!;
+      if (b.seat && horse !== b && horse.rig.boneWorld(PIKEUR_RIG.saddleBone, _zero, _v)) {
+        o.position.set(_v.x, _v.y - PIKEUR_RIG.saddleDrop * (e.size ?? 1), _v.z);
+        o.rotation.x = p.lean * 0.3;
+      }
       // ground speed from the travel (clip choice and its playback rate)
       if (Number.isFinite(b.last.x) && dt > 0) {
         const sp = Math.hypot(x - b.last.x, z - b.last.z) / dt;
@@ -167,6 +205,27 @@ export class EnemyRigs {
       b.last.set(x, 0, z);
       this.animate(e, b, p);
       if (!p.frozen) r.update(dt);
+      if (b.seat) {
+        // seated: thighs forward and out over the flanks, shins down. The turns are made on the
+        // mixer's pose; frozen (no mixer update) the saved pose is restored first, so they never pile up
+        const legs = ['UpperLeg.L', 'UpperLeg.R', 'LowerLeg.L', 'LowerLeg.R'];
+        b.legPose ??= legs.map(() => new Quaternion());
+        legs.forEach((n, i) => {
+          const q = r.bones.get(n)?.quaternion;
+          if (!q) return;
+          if (p.frozen && b.legSaved) q.copy(b.legPose![i]!);
+          else b.legPose![i]!.copy(q);
+        });
+        b.legSaved = true;
+        for (const [side, n] of [
+          [1, 'L'],
+          [-1, 'R'],
+        ] as const) {
+          turnAbout(r, `UpperLeg.${n}`, _RIGHT, -1.35);
+          turnAbout(r, `UpperLeg.${n}`, _FWD, side * 0.42);
+          turnAbout(r, `LowerLeg.${n}`, _RIGHT, 1.45);
+        }
+      }
       // shader state
       const u = b.u;
       u.uAlpha!.value = 1 - p.fade;
@@ -191,6 +250,20 @@ export class EnemyRigs {
           if (!r.boneWorld(r.info.head, local, _v)) continue;
           glow(_v.x, _v.y, _v.z, size, I, c[0], c[1], c[2], 4.5);
         }
+      }
+      // the rider's tricorn (brim, crown, brass band) over his eyes, facing where the horse goes
+      if (b.seat && solid && eyes && p.dissolve < 0.4 && p.fade < 0.9 && r.boneWorld(r.info.head, eyes.l, _v) && r.boneWorld(r.info.head, eyes.r, _v2)) {
+        const k = (u.uHeight!.value as number) / 1.9;
+        _v.add(_v2).multiplyScalar(0.5);
+        _qa.setFromAxisAngle(_axis.set(0, 1, 0), yaw);
+        const put = (shape: 'block' | 'box', up: number, back: number, sx: number, sy: number, sz: number, c: [number, number, number], em: [number, number, number]) => {
+          _v2.set(0, up * k, -back * k).applyQuaternion(_qa).add(_v);
+          _hm.compose(_v2, _qa, _hs.set(sx * k, sy * k, sz * k));
+          solid(shape, _hm, c[0], c[1], c[2], em[0], em[1], em[2], 3);
+        };
+        put('block', 0.12, 0.04, 0.62, 0.05, 0.52, [0.02, 0.02, 0.025], [0, 0, 0]);
+        put('block', 0.2, 0.05, 0.3, 0.16, 0.28, [0.02, 0.02, 0.025], [0, 0, 0]);
+        put('box', 0.135, -0.18, 0.46, 0.03, 0.03, [0.6, 0.46, 0.18], [0.14, 0.1, 0.03]);
       }
     }
   }

@@ -144,7 +144,7 @@ export const ENEMY_RIGS: Record<string, EnemyRig> = {
   },
 };
 
-/** The Pikeur's horse and his two hounds (the rider stays procedural on top). */
+/** The Pikeur's horse, his two hounds and the rider seated on the horse (creature pass 2026-11). */
 export const PIKEUR_RIG = {
   horse: {
     ...HOUND,
@@ -162,6 +162,33 @@ export const PIKEUR_RIG = {
     eyeSize: 0.1,
   } satisfies EnemyRig,
   hound: HOUND,
+  /**
+   * The rider: the CC0 human rig in the saddle (legs bent over the horse's flanks after the mixer,
+   * see combat/rigged.ts); the whip is the sword slash, his hat a tricorn of solids on his head.
+   */
+  rider: {
+    model: 'characters.human.adventurer' as CharacterModel,
+    height: 1.9,
+    idle: 'Idle',
+    walk: 'Idle',
+    run: 'Idle',
+    attack: 'Sword_Slash',
+    attackWindup: 0.38,
+    hit: 'HitRecieve',
+    death: 'Death',
+    walkSpeed: 1.6,
+    runSpeed: 6,
+    body: [0.025, 0.025, 0.032] as [number, number, number],
+    core: [0.35, 0.6, 1] as [number, number, number],
+    coreY: 0.66,
+    coreF: 0.06,
+    coreR: 0.12,
+    eye: [1, 0.62, 0.18] as [number, number, number],
+    eyeSize: 0.05,
+  } satisfies EnemyRig,
+  /** The saddle: the horse bone the rider sits on, and how far his hips sink below it (m at size 1). */
+  saddleBone: 'Torso',
+  saddleDrop: 0.55,
   /** Hounds at heel: right / forward offsets (m) at size 1.12 (the template's scale). */
   hounds: [
     [-1.55 * 1.12, -0.5 * 1.12],
@@ -177,7 +204,7 @@ export function enemyRig(kind: string): EnemyRig | null {
 
 /** Every model an enemy kind needs. */
 export function enemyModels(kind: string): CharacterModel[] {
-  if (kind === 'pikeur') return [PIKEUR_RIG.horse.model, PIKEUR_RIG.hound.model];
+  if (kind === 'pikeur') return [PIKEUR_RIG.horse.model, PIKEUR_RIG.hound.model, PIKEUR_RIG.rider.model];
   const r = ENEMY_RIGS[kind];
   return r ? [r.model] : [];
 }
