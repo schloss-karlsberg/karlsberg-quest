@@ -76,7 +76,8 @@
           "id": "stab",
           "type": "collect",
           "item": "item.stab.esche",
-          "text_de": "Den Messstab nehmen: er lehnt draußen am Wagen",
+          "text_de": "Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)",
+          "hint_de": "Der Messstab lehnt rechts neben der Wagentür, wo der goldene Lichtstrahl steht: hingehen und E drücken (oder einfach darüberlaufen).",
           "place": [
             {
               "x": 763,
@@ -93,7 +94,8 @@
           "after": [
             "stab"
           ],
-          "text_de": "Am Damm steigt Nebel auf, mit Augen: den Stab schwingen (LMB)",
+          "text_de": "Unten am Damm: drei Nebelinge vertreiben (Klick oder K)",
+          "hint_de": "Den Hang hinunter zur Markierung am Damm. Nebelinge mit dem Stab treffen: Klick oder K, gehalten ein Wuchthieb; holt einer aus, Leertaste: ausweichen.",
           "where": {
             "x": 803,
             "z": -889,
@@ -188,7 +190,7 @@
         {
           "id": "damm",
           "type": "reach",
-          "text_de": "Zum Damm des Karlsbergweihers, hinter dem Wagen",
+          "text_de": "Zum Damm am Karlsbergweiher, hinter dem Bauwagen",
           "where": {
             "x": 819,
             "z": -875,
@@ -200,7 +202,8 @@
           "id": "mauer",
           "type": "examine",
           "clue": "clue.p.mauerrest",
-          "text_de": "Lokales Relief (2): den Mauerrest am Damm untersuchen"
+          "text_de": "Am Damm: Taste 2 (Lokales Relief) drücken, dann zur Markierung gehen",
+          "hint_de": "Taste 2 schaltet das Lokale Relief ein. Dann zur Markierung am Damm gehen: auf der Stelle zeigt sich der Mauerrest von selbst, E ist nicht nötig. Taste 2 noch einmal: wieder die normale Sicht."
         },
         {
           "id": "nebel",
@@ -236,7 +239,8 @@
           "after": [
             "mauer"
           ],
-          "text_de": "Den Waldweg hinauf: die hohe Stufe im Wald",
+          "text_de": "Den Waldweg hinauf nach Osten: die hohe Stufe im Wald (dort Taste 3)",
+          "hint_de": "Der goldene Lichtstrahl im Osten zeigt die Stufe. Den Weg entlang hinauf (Shift: rennen, F: über den Wald fliegen); dort Taste 3 (VAT) drücken.",
           "where": {
             "x": 1237,
             "z": -966,
@@ -378,7 +382,8 @@
           "id": "ehrenhof",
           "type": "examine",
           "clue": "clue.p.ehrenhof",
-          "text_de": "Den Ehrenhof finden: Lokales Relief (2), dann E"
+          "text_de": "Zum Ehrenhof, in die Mitte der Lichtung: dort Taste 2 (Lokales Relief)",
+          "hint_de": "Der Lichtstrahl steht in der Mitte des Ehrenhofs. Hingehen und Taste 2 (Lokales Relief) drücken: die Mauerzüge zeigen sich von selbst."
         },
         {
           "id": "karte",
@@ -390,13 +395,15 @@
           "id": "hohlweg",
           "type": "examine",
           "clue": "clue.p.hohlweg",
-          "text_de": "Den Hohlweg westlich des Schlosses untersuchen"
+          "text_de": "Zum Hohlweg westlich des Schlosses: dort Taste 2 (Lokales Relief)",
+          "hint_de": "Der Lichtstrahl steht im Hohlweg westlich des Schlosses. Hingehen und Taste 2 (Lokales Relief) drücken: der tiefe Weg zeigt sich von selbst."
         },
         {
           "id": "grube",
           "type": "examine",
           "clue": "clue.p.eiskeller",
-          "text_de": "Die runde Grube östlich des Schlosses (VAT, E)"
+          "text_de": "Zur runden Grube östlich des Schlosses: dort Taste 3 (VAT)",
+          "hint_de": "Der Lichtstrahl steht über der Grube an der Wegkreuzung. Hingehen und Taste 3 (VAT) drücken."
         },
         {
           "id": "nebel",
@@ -521,7 +528,8 @@
           "after": [
             "wolke"
           ],
-          "text_de": "Am Ehrenhof: Q – Sommer 1789",
+          "text_de": "In der Mitte des Ehrenhofs: Q – Zeitwechsel in den Sommer 1789",
+          "hint_de": "Zur Markierung in der Mitte des Ehrenhofs gehen und Q drücken: der Zeitwechsel in den Sommer 1789.",
           "where": {
             "x": 1218,
             "z": -1118,
@@ -798,7 +806,7 @@
           "type": "kill",
           "enemy": "irrlicht",
           "count": 3,
-          "text_de": "Irrlichter über dem Damm bannen",
+          "text_de": "Irrlichter am Damm: erst Bannlicht (Rechtsklick oder G), dann zuschlagen",
           "where": {
             "x": 820,
             "z": -869,

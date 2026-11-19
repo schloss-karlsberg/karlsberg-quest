@@ -198,6 +198,28 @@ panels with soft drop shadows, thin gold-ink rules, icons with a hand-drawn line
 state (health red, Atem blue, quest gold, spectral cyan). Big readable numbers; no grey-on-grey.
 HUD sits on a subtle dark vignette, never on flat boxes.
 
+**Implemented 2026-11-19 (`src/ui/hud-restyle.css`, loaded after `styles.css`; `--hud-*` tokens):**
+
+- **One type system:** IM Fell English for all HUD text (tracker, feed, prompts, toasts, dialogue),
+  small caps for labels; Caveat stays only on hand-written cards (Marlene's notes, field book).
+- **The centre stays free:** nothing sits between 25 % and 75 % of the screen height in the middle
+  third except the crosshair, the waymark and (briefly) the click-to-look pill; the "Neue Aufgabe"
+  banner sits just under the compass; prompts and subtitles sit at the bottom.
+- **Slim vitals** bottom-left (thin segmented bars, small-caps labels, numbers right), glass panels
+  (dark, 60–70 % opacity, a 1 px gold-ink rule) instead of solid boxes.
+- **Tracker** top-left: quest title in small caps, diamond boxes, the lead objective glows gold
+  and carries a distance chip; the stall hint is a cyan-ruled "Tipp" box under it.
+- **Compass band:** a masked strip (letters fade at the ends), the lead diamond with its distance
+  under it; off-strip targets clamp to the edge with a chevron.
+- **Waymark:** a diamond icon over the lead target with the distance, the label when you look at it;
+  off screen it clamps to the screen edge with an arrow. Fades inside the zone.
+- **Objective beacons:** a soft volumetric gold beam (90 m, view-angle soft edges, rising sparks)
+  and a crisp ground ring with an outward pulse over the lead; other open goals are fainter and
+  era-tinted. Additive, no textures: same cost on every tier.
+- **Prompts:** a glass pill with a key cap (`E`, `W A S D`) and a real verb ("Messstab nehmen",
+  "Riechsalz aufheben"); low-priority prompts (the Feldstation hub) yield to any other.
+- **Dialogue card:** narrower, lower, parchment kept; radio icon on the left.
+
 ## 10. References (described, not copied)
 
 - *Painterly golden-hour forests* of story-driven indie adventures: long soft shadows, warm haze,

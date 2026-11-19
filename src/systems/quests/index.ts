@@ -16,7 +16,6 @@ import '../contracts';
 import './strings';
 import './quests.css';
 import type { GameContext } from '../../core/context';
-import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { t } from '../../i18n';
 import { addJournalTab, journalTabs } from '../../ui/journal';
@@ -24,6 +23,8 @@ import { itemDef, ITEMS } from '../../rpg/items';
 import type { GiverMark, ItemDef, QuestCard, QuestDef, QuestLine, QuestSlice, QuestTopic } from '../../rpg/types';
 import { acceptSound, objectiveSound, pageSound, readySound, tickSound, turninSound } from './audio';
 import { Beacons, type BeaconSpec } from './beacons';
+import { type HintContext, type WayDeps, type WayPoint, StallWatch, distanceText, hintFor, objectiveTarget, storyHint, targetVisible } from './wayfinding';
+import { enemyDef } from '../../rpg/enemies';
 import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
@@ -59,7 +60,13 @@ export interface QuestsHooks {
   reward(): boolean;
   /** Reward cards waiting for the centre slot (src/ui/cards.ts). */
   rewardPending(): number;
-  beacons(): { id: string; alpha: number }[];
+  beacons(): { id: string; alpha: number; lead?: boolean }[];
+  /** The goal the HUD leads to (compass, waymark, Bussole): quest / objective / place. */
+  lead(): { quest: string | null; objective: string | null; x: number | null; z: number | null; label: string } | null;
+  /** The stall hint on screen (null: none). */
+  hint(): string | null;
+  /** Tests: let `seconds` pass without progress; returns the hint, if one came up. */
+  stall(seconds: number): string | null;
   markers(): { id: string; kind: string; bearing: number }[];
 }
 
@@ -93,6 +100,23 @@ const SKILL_NAME: Record<string, string> = { relief: 'Relief-Blick', kartograf: 
 
 type CompassKind = 'obj' | 'offer' | 'offer-main' | 'ready';
 
+/** The goal the HUD leads to (compass, waymark, Bussole, lead beam, stall hints). */
+interface Lead {
+  quest: QuestDefIn | null;
+  obj: QuestDefIn['objectives'][number] | null;
+  target: WayPoint | null;
+  label: string;
+}
+
+/** The waymark's label: the objective in a few words (up to the first colon or 46 characters). */
+function shortLabel(s: string): string {
+  const cut = s.split(/[:(·–]/)[0]!.trim() || s;
+  return cut.length > 46 ? `${cut.slice(0, 44).trimEnd()} …` : cut;
+}
+
+/** Seconds without progress before a hint (docs/ACTION-RPG.md §8.3). */
+export const STALL_SECONDS = 60;
+
 class QuestRuntime {
   readonly book: QuestBook;
   readonly defs: Map<string, QuestDefIn>;
@@ -108,6 +132,11 @@ class QuestRuntime {
   private readonly sentMarks = new Map<string, GiverMark>();
   private readonly compass = new Map<string, { el: HTMLElement | null; kind: CompassKind; bearing: number }>();
   private readonly following = new Set<string>();
+  private lead: Lead | null = null;
+  private readonly stall = new StallWatch(STALL_SECONDS);
+  private hintKey = '';
+  private hint: { quest: string; obj: string; text: string } | null = null;
+  private leadDist = '';
   private interest = new Set<string>();
   private dirty = true;
   /** Set when a quest was accepted or an objective closed: clues found earlier settle next tick (Q-15). */
@@ -512,7 +541,18 @@ class QuestRuntime {
       this.markIn = 0.1;
       this.syncCompass();
       this.syncBeacons();
+      this.stallTick(0.1);
+      // the lead line's distance, refreshed with the markers (the tracker re-renders on change only)
+      const tg = this.lead?.target ?? null;
+      const ld = tg ? Math.hypot(tg.x - p.x, tg.z - p.z) : null;
+      const dtxt = tg && ld !== null && ld >= Math.max(8, tg.r) ? distanceText(ld) : '';
+      if (dtxt !== this.leadDist) {
+        this.leadDist = dtxt;
+        this.dirty = true;
+      }
     }
+    const canvas = ctx.renderer?.domElement;
+    ctx.ui.hud.waymark.frame(Math.min(dt, 0.1), ctx.camera, p.x, p.z, canvas?.clientWidth || window.innerWidth, canvas?.clientHeight || window.innerHeight);
   }
 
   // ---- HUD ----------------------------------------------------------------------------------
@@ -537,10 +577,14 @@ class QuestRuntime {
         objectives: q.objectives
           .filter((o) => this.book.objectiveActive(q, o) && !(o.hidden && this.book.objectiveDone(q, o)))
           .filter((o) => !ready || (o.optional && !this.book.objectiveDone(q, o)))
-          .map((o) => ({ id: o.id, text: o.text_de, count: this.book.count(id, o.id), need: need(o), done: this.book.objectiveDone(q, o), optional: !!o.optional }))
+          .map((o) => {
+            const lead = this.lead?.quest === q && this.lead.obj === o;
+            return { id: o.id, text: o.text_de, count: this.book.count(id, o.id), need: need(o), done: this.book.objectiveDone(q, o), optional: !!o.optional, lead, dist: lead ? this.leadDist : undefined };
+          })
           // the focused (first) quest lists its objectives; the others only their next open one
           // (playtest: three quests ran 9+ lines into the vitals)
           .filter((o, _i, all) => first || (!o.done && o === all.find((x) => !x.done))),
+        hint: this.hint?.quest === id ? this.hint.text : undefined,
       });
       first = false;
     }
@@ -552,37 +596,94 @@ class QuestRuntime {
     return ((Math.atan2(x - p.x, -(z - p.z)) * 180) / Math.PI + 360) % 360;
   }
 
+  // ---- wayfinding (playtest 2026-11-19: "got stuck at the lake") ----------------------------
+
+  private wayDeps(): WayDeps {
+    const ctx = this.ctx;
+    const p = ctx.player.position;
+    return {
+      era: ctx.era.current,
+      player: { x: p.x, z: p.z },
+      clue: (id) => {
+        const c = ctx.content.clues.get(id);
+        if (!c) return null;
+        return { x: c.where.x, z: c.where.z, r: c.where.radius, eras: Array.isArray(c.where.era) ? c.where.era : [c.where.era], scan: c.requires?.scanMode };
+      },
+      npc: (id) => this.npcPlaced(id),
+      pickups: (quest, obj) => {
+        const pr = (ctx.state.state.systems as Record<string, unknown>).progression as { placed?: Record<string, { x: number; z: number; era?: string }> } | undefined;
+        const pre = `${quest}.${obj}.`;
+        return Object.entries(pr?.placed ?? {})
+          .filter(([id]) => id.startsWith(pre))
+          .map(([, v]) => v);
+      },
+    };
+  }
+
+  /** Where an objective is now (null: nowhere to point, or not in this era / inside a room). */
+  private targetOf(q: QuestDefIn, o: QuestDefIn['objectives'][number], deps = this.wayDeps()): WayPoint | null {
+    const tg = objectiveTarget(q, o, deps);
+    return targetVisible(tg, deps.era, q.era) ? tg : null;
+  }
+
+  /**
+   * The goal the HUD leads to: the first tracked quest (main first) with an open objective that has
+   * a place in this era; a ready quest leads to its turn-in npc. When the leading main quest has no
+   * place to point at right now (a "Q halten" step), the story's own objective leads instead — never
+   * a side quest over the main one (before, the compass pointed at the Kohlplatten).
+   */
+  private computeLead(): Lead | null {
+    const deps = this.wayDeps();
+    const era = deps.era;
+    const tracked = this.book.tracked().map((id) => this.defs.get(id)).filter((q): q is QuestDefIn => !!q);
+    const story = (this.ctx.state.state.systems as Record<string, unknown>).story as { objective?: { text?: string | null; x?: number; z?: number } | null } | undefined;
+    const so = story?.objective;
+    const storyLead = (q: QuestDefIn | null, obj: Lead['obj']): Lead | null =>
+      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: so.x, z: so.z, r: 6, kind: 'zone' }, label: so.text } : null;
+    for (const q of tracked) {
+      // the story's own line (the main path between two main quests: „VAT (3): die Kante im Wald
+      // ansehen“) comes before any side quest
+      if (q.kind !== 'main') {
+        const sl = storyLead(null, null);
+        if (sl) return sl;
+      }
+      const st = this.book.state(q.id);
+      if (st === 'ready') {
+        const ti = turninOf(q);
+        if (typeof ti === 'object' && 'npc' in ti) {
+          const n = this.npcPlaced(ti.npc);
+          if (n && n.era === era) {
+            const name = this.ctx.content.speakers.get(ti.npc)?.name_de ?? ti.npc;
+            return { quest: q, obj: null, target: { x: n.x, z: n.z, r: 2.5, era: n.era, kind: 'npc' }, label: t('quest.readyAt', { name }) };
+          }
+        }
+        continue;
+      }
+      if (st !== 'active') continue;
+      const open = this.book.openObjectives(q).filter((o) => !o.optional);
+      for (const o of open) {
+        const tg = this.targetOf(q, o, deps);
+        if (tg) return { quest: q, obj: o, target: tg, label: o.text_de };
+      }
+      if (q.kind === 'main') {
+        // the main quest's step has no place now: the story's line (if it has one) leads
+        return storyLead(q, open[0] ?? null) ?? { quest: q, obj: open[0] ?? null, target: null, label: open[0]?.text_de ?? q.title_de };
+      }
+    }
+    return storyLead(null, null);
+  }
+
   private syncCompass(): void {
     const ctx = this.ctx;
-    const want = new Map<string, { kind: CompassKind; x: number; z: number }>();
+    const want = new Map<string, { kind: CompassKind; x: number; z: number; dist?: number; edge?: boolean }>();
     const era = ctx.era.current;
-    // the tracked objective: first open objective with a place of the first tracked quest
-    for (const id of this.book.tracked()) {
-      const q = this.defs.get(id);
-      if (!q || this.book.state(id) !== 'active') continue;
-      const o = this.book.openObjectives(q).find((x) => !x.noMarker && (x.where || x.to || x.place?.length));
-      const at = o ? (o.type === 'escort' && o.to ? o.to : (o.where ?? o.place?.[0] ?? o.to)) : null;
-      if (at && (!at.era || at.era === era)) {
-        want.set('kqq:obj', { kind: 'obj', x: at.x, z: at.z });
-        break;
-      }
-    }
-    // the headline follows the tracker (playtest round 3): the leading main quest's goal — its
-    // objective, or its turn-in npc once ready — is where the Bussole points (story reads it)
-    const lead = this.book.tracked().map((id) => this.defs.get(id)).find((q) => q?.kind === 'main');
-    let tx: { x: number; z: number } | null = null;
-    if (lead) {
-      const st = this.book.state(lead.id);
-      if (st === 'active') {
-        const o = this.book.openObjectives(lead).find((x) => !x.noMarker && (x.where || x.to || x.place?.length));
-        const at = o ? (o.type === 'escort' && o.to ? o.to : (o.where ?? o.place?.[0] ?? o.to)) : null;
-        if (at && (!at.era || at.era === era)) tx = at;
-      } else if (st === 'ready') {
-        const ti = turninOf(lead);
-        const n = typeof ti === 'object' && 'npc' in ti ? this.npcPlaced(ti.npc) : null;
-        if (n && n.era === era) tx = n;
-      }
-    }
+    const p = ctx.player.position;
+    const lead = this.computeLead();
+    this.lead = lead;
+    if (lead?.target) want.set('kqq:obj', { kind: 'obj', x: lead.target.x, z: lead.target.z, dist: Math.hypot(lead.target.x - p.x, lead.target.z - p.z), edge: true });
+    // the headline follows the tracker (playtest round 3): the lead goal is where the Bussole
+    // points (story reads it from the tracker's data-tx / data-tz)
+    const tx = lead?.target ?? null;
     const tel = this.tracker.el;
     if (tx) {
       tel.dataset.tx = String(Math.round(tx.x * 10) / 10);
@@ -591,7 +692,10 @@ class QuestRuntime {
       delete tel.dataset.tx;
       delete tel.dataset.tz;
     }
-    const p = ctx.player.position;
+    // the world waymark: a glowing diamond with the distance over the lead goal
+    if (lead?.target && !ctx.player.flying) {
+      ctx.ui.hud.waymark.set({ x: lead.target.x, y: ctx.world.heightAt(lead.target.x, lead.target.z), z: lead.target.z, r: lead.target.r, label: shortLabel(lead.label), kind: lead.target.kind, main: lead.quest?.kind !== 'side' });
+    } else ctx.ui.hud.waymark.set(null);
     for (const npc of this.book.npcs()) {
       const mark = this.book.markFor(npc);
       if (mark !== 'offer' && mark !== 'offer-main' && mark !== 'ready') continue;
@@ -615,7 +719,7 @@ class QuestRuntime {
         this.compass.delete(id);
         cur = undefined;
       }
-      ctx.ui.hud.setMarker(id, b, colour[w.kind]);
+      ctx.ui.hud.setMarker(id, b, colour[w.kind], { dist: w.dist, edge: w.edge });
       if (!cur) {
         // shape-coded (colour-blind safe): diamond (objective), "!" (offer), "!" ringed (main), "?" (turn-in)
         const el = (compassEl?.lastElementChild as HTMLElement | null) ?? null;
@@ -632,20 +736,75 @@ class QuestRuntime {
     const ctx = this.ctx;
     const era = ctx.era.current;
     const p = ctx.player.position;
+    const deps = this.wayDeps();
+    const lead = this.lead;
     const specs: BeaconSpec[] = [];
     for (const q of this.book.running()) {
       if (this.book.state(q.id) !== 'active') continue;
       for (const o of this.book.openObjectives(q)) {
-        if (o.noMarker) continue;
-        const at = o.type === 'escort' ? o.to : o.where;
-        if (!at) continue;
-        const e = (at.era ?? q.era ?? era) as Era;
-        if (e !== era || at.room) continue;
-        if (Math.hypot(p.x - at.x, p.z - at.z) > BEACON_RANGE + 30) continue;
-        specs.push({ id: `${q.id}.${o.id}`, x: at.x, z: at.z, r: at.r ?? 6, era });
+        const tg = this.targetOf(q, o, deps);
+        if (!tg) continue;
+        const isLead = lead?.obj === o && lead.quest === q && lead.target?.x === tg.x && lead.target?.z === tg.z;
+        if (!isLead && Math.hypot(p.x - tg.x, p.z - tg.z) > BEACON_RANGE + 30) continue;
+        specs.push({ id: `${q.id}.${o.id}`, x: tg.x, z: tg.z, r: tg.r, era, lead: isLead });
       }
     }
+    // a lead that is no quest objective's own place (the story's line) gets its beam too
+    if (lead?.target && lead.target.kind !== 'npc' && !specs.some((x) => x.lead)) specs.push({ id: 'kqq:lead', x: lead.target.x, z: lead.target.z, r: lead.target.r, era, lead: true });
     this.beacons.sync(specs);
+  }
+
+  /**
+   * No progress for a minute (no count change, not getting closer to the marker; fights,
+   * conversations and modals stop the clock): a concrete hint under the lead objective in the
+   * tracker, and a short toast.
+   */
+  private stallTick(dt: number): void {
+    const ctx = this.ctx;
+    const lead = this.lead;
+    const o = lead?.obj ?? null;
+    const q = lead?.quest ?? null;
+    // a quest step, or (no quest objective leads) the story's own line
+    const key = q && o ? `${q.id}/${o.id}/${this.book.count(q.id, o.id)}/${ctx.era.current}` : lead?.target ? `story/${lead.label}` : '';
+    const p = ctx.player.position;
+    const d = lead?.target ? Math.hypot(lead.target.x - p.x, lead.target.z - p.z) : null;
+    const held = ctx.ui.modals.count > 0 || ctx.ui.hud.acting('combat') || (typeof document !== 'undefined' && !!document.querySelector('.kqs-dlg.kqs-show'));
+    if (key !== this.hintKey) {
+      this.hintKey = key;
+      if (this.hint) {
+        this.hint = null;
+        this.dirty = true;
+      }
+    }
+    if (!this.stall.tick(held ? 0 : dt, key, d) || !lead) return;
+    const text = q && o ? hintFor(o, this.hintContext(q, o, lead.target)) : storyHint(lead.label, lead.target, { x: p.x, z: p.z });
+    this.hint = { quest: q?.id ?? '', obj: o?.id ?? '', text };
+    this.dirty = true;
+    ctx.ui.toast(`${t('quest.hint')} ${text}`, 7000);
+    ctx.events.emit('quest:hint', { id: q?.id ?? '', objective: o?.id ?? '', text });
+  }
+
+  private hintContext(q: QuestDefIn, o: QuestDefIn['objectives'][number], target: WayPoint | null): HintContext {
+    const ctx = this.ctx;
+    const p = ctx.player.position;
+    const clue = o.clue ? ctx.content.clues.get(o.clue) : undefined;
+    // the place lies in another era (a goal in 1789 seen from today): say "Q"
+    const tg = objectiveTarget(q, o, this.wayDeps());
+    const otherEra = !target && tg?.era && tg.era !== ctx.era.current && !tg.room ? tg.era : null;
+    return {
+      target,
+      otherEra,
+      player: { x: p.x, z: p.z },
+      scan: clue?.requires?.scanMode,
+      npcName: o.npc ? (ctx.content.speakers.get(o.npc)?.name_de ?? o.npc) : undefined,
+      itemName: o.item ? this.itemName(o.item) : undefined,
+      needsBann: !!(o.enemy && enemyDef(o.enemy)?.needsBann),
+    };
+  }
+
+  /** The current hint (tests): null until the player stalled. */
+  hintNow(): string | null {
+    return this.hint?.text ?? null;
   }
 
   // ---- journal ------------------------------------------------------------------------------
@@ -711,6 +870,17 @@ class QuestRuntime {
       reward: () => this.reward.open,
       rewardPending: () => this.reward.pending,
       beacons: () => this.beacons.state(),
+      lead: () => {
+        const l = this.lead;
+        return l ? { quest: l.quest?.id ?? null, objective: l.obj?.id ?? null, x: l.target?.x ?? null, z: l.target?.z ?? null, label: l.label } : null;
+      },
+      hint: () => this.hintNow(),
+      stall: (seconds) => {
+        // tests: pretend the player stood still for `seconds`
+        this.stallTick(seconds);
+        this.renderTracker();
+        return this.hintNow();
+      },
       markers: () => [...this.compass.entries()].map(([id, m]) => ({ id, kind: m.kind, bearing: Math.round(m.bearing) })),
     };
   }

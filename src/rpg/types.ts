@@ -109,6 +109,8 @@ export interface QuestObjective {
   type: ObjectiveType;
   /** Tracker / journal line, e.g. "Irrlichter über den Schwanenweihern bannen". */
   text_de: string;
+  /** What to do, concretely (key, view, place): the hint after a minute without progress. Built from the type when absent (src/systems/quests/wayfinding.ts). */
+  hint_de?: string;
   /** How many (kill / collect / examine …). Default 1. */
   count?: number;
   /** Bonus objective: not needed for "ready", gives `bonus_xp`. */

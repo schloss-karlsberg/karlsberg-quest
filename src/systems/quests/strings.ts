@@ -6,6 +6,7 @@ export const QUESTS_DE: Record<string, string> = {
   'quest.newSide': 'Nebenaufgabe',
   'quest.ready': 'Bereit zur Abgabe',
   'quest.readyAt': 'Zurück zu {name}',
+  'quest.hint': 'Tipp:',
   'quest.done': 'Aufgabe erfüllt',
   'quest.failed': 'Aufgabe gescheitert',
   'quest.bonus': 'Bonus',

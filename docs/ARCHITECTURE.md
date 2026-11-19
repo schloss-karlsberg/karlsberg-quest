@@ -1056,8 +1056,13 @@ Each RPG track adds its own subsection here when it fills its system in.
   card and the chapter title card), reward card (EP stamp, items, codex facts with confidence +
   label; queued for the card director's slot: never over a conversation or a fight, gone after 5 s
   or when the player walks away; `kq.quests.rewardPending()`).
-- `beacons.ts`: additive era-tinted light column + ground ring over open objective zones
-  (≤ 200 m, fades inside). Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
+- `beacons.ts`: soft volumetric beam (view-angle edges, sparks) + pulsing ground ring over open
+  objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
+- `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
+  objective type, clue places from the content packs), `hintFor` / `storyHint`, `StallWatch`
+  (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
+  quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint
+  (`quest:hint`). Hooks `kq.quests.lead/hint/stall`. Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
   shapes, givers within 150 m).
 - `journal.ts`: the Journal modal (J / Tab, `chronik:open`, testid `journal`), tabs Aufgaben (10,
   running / done, objectives, Lohn, "Was erzählt wurde" with sources, the player's stance), Codex

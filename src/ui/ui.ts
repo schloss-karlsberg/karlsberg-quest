@@ -1,4 +1,5 @@
 import './styles.css';
+import './hud-restyle.css';
 import { h } from './dom';
 import { CardDirector } from './cards';
 import { Hud } from './hud';

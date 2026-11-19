@@ -14,6 +14,10 @@ export interface TrackerObjective {
   need: number;
   done: boolean;
   optional: boolean;
+  /** The goal the compass and the waymark lead to (a marker on the line). */
+  lead?: boolean;
+  /** Distance to it ("120 m"), on the lead line. */
+  dist?: string;
 }
 
 export interface TrackerQuest {
@@ -24,6 +28,8 @@ export interface TrackerQuest {
   /** "Zurück zu Hanne" while ready. */
   readyText?: string;
   objectives: TrackerObjective[];
+  /** "Tipp: …" after a stall (quests wayfinding). */
+  hint?: string;
 }
 
 /** Milliseconds a done objective stays struck through before it folds away. */
@@ -82,14 +88,20 @@ export class Tracker {
           ...(q.ready && q.readyText ? [h('div.kqq-to.kqq-turnin', [h('span.kqq-box', '?'), q.readyText])] : []),
           ...q.objectives.map((o) => {
             const row = h(
-              `div.kqq-to${o.done ? '.kqq-done.kqq-folding' : ''}${o.optional ? '.kqq-opt' : ''}`,
+              `div.kqq-to${o.done ? '.kqq-done.kqq-folding' : ''}${o.optional ? '.kqq-opt' : ''}${o.lead && !o.done ? '.kqq-lead' : ''}`,
               { dataset: { obj: o.id } },
-              [h('span.kqq-box', { 'aria-hidden': 'true' }, o.done ? '✓' : ''), h('span.kqq-tt', o.text), o.need > 1 ? h('span.kqq-n', ` ${o.count}/${o.need}`) : null],
+              [
+                h('span.kqq-box', { 'aria-hidden': 'true' }, o.done ? '✓' : ''),
+                h('span.kqq-tt', o.text),
+                o.need > 1 ? h('span.kqq-n', ` ${o.count}/${o.need}`) : null,
+                o.lead && o.dist && !o.done ? h('span.kqq-dist', { 'data-testid': 'quest-dist' }, o.dist) : null,
+              ],
             );
             // the fold starts where this line's linger ends (a re-render keeps the timing)
             if (o.fold >= 0) row.style.setProperty('--kqq-fold-in', `${Math.max(0, o.fold - 700)}ms`);
             return row;
           }),
+          q.hint ? h('div.kqq-hint', { 'data-testid': 'quest-hint' }, [h('span.kqq-hint-k', t('quest.hint')), ` ${q.hint}`]) : null,
         ]),
       ),
     );

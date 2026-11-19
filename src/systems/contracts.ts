@@ -243,6 +243,8 @@ declare module '../core/events' {
     'quest:told': { id: string; npc: string };
     /** quests → anyone: a deed was done (a thing taken in the world set its flag, §8.6). */
     'quest:deed': { flag: string; value: string; item: string };
+    /** No progress for a while: a concrete hint was shown (quests wayfinding, docs/ACTION-RPG.md §8.3). */
+    'quest:hint': { id: string; objective: string; text: string };
 
     // ---- story → quests (story action `quest`) ---------------------------------------------
     /**

@@ -173,6 +173,12 @@ class Progression {
     return tail.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
+  /** "nehmen" for a weapon or a quest thing (the Messstab, a Festplan), "aufheben" for the rest. */
+  private verb(id: string): string {
+    const k = this.item(id)?.kind;
+    return k === 'weapon' || k === 'quest' || k === 'lore' ? 'nehmen' : 'aufheben';
+  }
+
   private key(action: 'quickUse' | 'listen' | 'inventory'): string {
     const code = effectiveBindings(this.ctx.settings.state.bindings)[action]?.[0];
     return code ? keyLabel(code) : '';
@@ -359,6 +365,7 @@ class Progression {
 
   private pickupTick(): void {
     const { ctx } = this;
+    const hud = ctx.ui.hud;
     const pl = ctx.player.position;
     let near: { p: PlacedPickup; d: number } | null = null;
     if (!ctx.player.flying) {
@@ -373,10 +380,10 @@ class Progression {
       }
     }
     // E: only while our prompt is the one on screen (an NPC's or a clue's E wins)
-    const hud = ctx.ui.hud;
     const promptEl = typeof document !== 'undefined' ? document.querySelector('.kq-prompt') : null;
-    const shownText = promptEl?.classList.contains('show') ? (promptEl.textContent ?? '') : '';
-    const ours = !!this.promptFor && shownText.includes(this.promptText);
+    // a low prompt (the Feldstation's door) gives way: the pickup's E comes first
+    const shownText = promptEl?.classList.contains('show') && !hud.promptFree() ? (promptEl.textContent ?? '') : '';
+    const ours = !!this.promptFor && hud.promptOwner() === 'progression';
     if (near && ours && ctx.input.wasPressed('listen')) {
       this.take(near.p.id);
       near = null;
@@ -386,7 +393,8 @@ class Progression {
       if (want && (!shownText || ours)) {
         // a full stack cannot take more: say so instead of offering E
         const full = this.core.room(near!.p.item) <= 0;
-        this.promptText = full ? `${this.name(near!.p.item)}: voll` : `Aufheben: ${this.name(near!.p.item)}`;
+        // the prompt names the action (playtest 2026-11-19): "E  Messstab nehmen"
+        this.promptText = full ? `${this.name(near!.p.item)}: voll` : `${this.name(near!.p.item)} ${this.verb(near!.p.item)}`;
         hud.prompt(full ? null : this.key('listen'), this.promptText, 'progression');
         this.promptFor = want;
       } else if (!want) {

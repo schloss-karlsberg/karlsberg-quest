@@ -32,10 +32,12 @@ export const BRASS = new Color(1.8, 1.25, 0.5);
 const BEAM_VERT = /* glsl */ `
 varying vec2 vUv;
 varying vec3 vWp;
+varying vec3 vN;
 void main() {
   vUv = uv;
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWp = wp.xyz;
+  vN = mat3(modelMatrix) * normal;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
@@ -47,11 +49,15 @@ uniform float uTime;
 uniform vec3 uCamPos;
 varying vec2 vUv;
 varying vec3 vWp;
+varying vec3 vN;
 void main() {
   float v = vUv.y;
-  float bands = 0.65 + 0.35 * sin(v * 60.0 - uTime * 3.0);
-  float edge = pow(sin(vUv.x * 3.14159), 0.6);
-  float a = pow(1.0 - v, 1.4) * bands * uAlpha * (0.35 + 0.65 * edge);
+  float bands = 0.8 + 0.2 * sin(v * 60.0 - uTime * 3.0);
+  // soft at the silhouette by the view angle (playtest 2026-11-19: the old fade ran round the
+  // cylinder's uv seam and drew a dashed white edge on a flat-looking sheet)
+  vec3 toCam = normalize(uCamPos - vWp);
+  float edge = pow(abs(dot(normalize(vN), toCam)), 1.6);
+  float a = pow(1.0 - v, 1.4) * bands * uAlpha * edge * 0.6;
   // never fill the screen when standing in it
   float d = distance(uCamPos.xz, vWp.xz);
   a *= smoothstep(1.2, 5.0, d);

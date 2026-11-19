@@ -107,7 +107,7 @@
       "enter": [
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "laub.silent": true } },
-        { "do": "prompt", "key": "W A S D", "text": "Gehen · Maus: Schauen · Shift: Rennen" },
+        { "do": "prompt", "key": "W A S D", "text": "Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen" },
         { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 763, "z": -900, "delay": 0.3 },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.2 },
         { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.2, "onResume": true }
@@ -167,13 +167,14 @@
           "when": { "enter": { "x": 819, "z": -875, "r": 32, "era": "today" } },
           "do": [
             { "do": "skill", "id": "relief", "tier": 2, "toast": "Relief-Blick 2 (Lokales Relief, Taste 2) freigeschaltet" },
-            { "do": "prompt", "key": "2", "text": "Lokales Relief: kleine Kanten werden sichtbar" },
+            { "do": "prompt", "key": "2", "text": "Lokales Relief: kleine Kanten werden sichtbar", "delay": 0.8 },
             {
               "do": "objective",
               "id": "mauerrest",
-              "text": "Lokales Relief (2): gerade Kanten unten am Damm – dort E: untersuchen",
+              "text": "Taste 2 (Lokales Relief): gerade Kanten unten am Damm. Zur Markierung gehen",
               "x": 813,
-              "z": -903
+              "z": -903,
+              "delay": 0.8
             },
             { "do": "say", "line": "marlene.p.damm", "delay": 2.5, "until": { "any": [{ "scan": 2 }, { "have": { "clue": "clue.p.mauerrest" } }] } }
           ]
@@ -257,7 +258,7 @@
             {
               "do": "objective",
               "id": "ehrenhof",
-              "text": "Lokales Relief (2): die flachen Mauerzüge um die Lichtung – E: untersuchen",
+              "text": "Taste 2 (Lokales Relief): die flachen Mauerzüge um die Lichtung. In ihre Mitte gehen",
               "x": 1216,
               "z": -1114
             }
@@ -310,7 +311,7 @@
         {
           "do": "objective",
           "id": "hohlweg",
-          "text": "Westlich des Schlosses: ein Weg tief im Boden (Relief 2 oder 3, E)",
+          "text": "Westlich des Schlosses: ein Weg tief im Boden (dort Taste 2 oder 3)",
           "x": 1172,
           "z": -1238,
           "delay": 6
@@ -329,7 +330,7 @@
         {
           "do": "objective",
           "id": "eiskeller",
-          "text": "Östlich des Schlosses, an einer Wegkreuzung: eine runde Grube mit Ringwall (VAT, E)",
+          "text": "Östlich des Schlosses, an einer Wegkreuzung: eine runde Grube mit Ringwall (dort Taste 3: VAT)",
           "x": 1508,
           "z": -1296,
           "delay": 3

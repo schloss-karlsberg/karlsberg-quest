@@ -1,68 +1,89 @@
 /**
- * Objective beacons: a faint, era-tinted column of light over each open objective zone within
- * 200 m, with a slowly breathing ring on the ground (procedural, additive, no textures). The
- * column thins out with height, fades in with distance and fades away while you stand inside the
- * zone. Reduced motion: no breathing, no drifting motes in the column.
+ * Objective beacons (restyled 2026-11-19, docs/ART-DIRECTION.md §9 "always know what to do"): a
+ * soft volumetric beam of light over each open objective, a glowing ground ring with a pulse that
+ * runs outward, and sparks rising in the beam. The tracked goal ("lead") burns gold and tall; other
+ * open goals are fainter and take the era's tint. The beam reads as light, not as a sheet: its
+ * core is bright, its edges fade with the view angle, it thins out with height and fades away
+ * while you stand inside the zone. Procedural, additive, no textures (cheap on every tier).
+ * Reduced motion: no pulse, no rising sparks.
  */
-import { AdditiveBlending, CylinderGeometry, DoubleSide, Group, Mesh, RingGeometry, ShaderMaterial, Color } from 'three';
+import { AdditiveBlending, Color, CylinderGeometry, DoubleSide, Group, Mesh, PlaneGeometry, ShaderMaterial } from 'three';
 import type { Era } from '../../core/era';
 
-/** sRGB tints per era (warm 1789, cold winter 1793-02, ember July 1793, grey-green 1796, pale today). */
+/** sRGB tints per era for the side goals (the lead is always gold). */
 const TINT: Record<Era, number> = {
-  today: 0x9fc6e8,
-  '1789': 0xf2c46b,
-  '1793-02': 0xbfd9ff,
-  '1793-07': 0xff9a4d,
-  '1796': 0xc9d6a4,
+  today: 0xa9d4f0,
+  '1789': 0xf2d39b,
+  '1793-02': 0xc4dcff,
+  '1793-07': 0xffb27a,
+  '1796': 0xd7e2b0,
 };
+const LEAD = 0xffc65a;
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
-varying vec3 vWorld;
+varying vec3 vN;
+varying vec3 vView;
 void main() {
   vUv = uv;
   vec4 w = modelMatrix * vec4(position, 1.0);
-  vWorld = w.xyz;
+  vN = normalize(mat3(modelMatrix) * normal);
+  vView = cameraPosition - w.xyz;
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 
-const COLUMN_FRAG = /* glsl */ `
+const BEAM_FRAG = /* glsl */ `
 uniform vec3 uColor;
 uniform float uAlpha;
 uniform float uTime;
 uniform float uMotion;
+uniform float uCore;
 varying vec2 vUv;
-varying vec3 vWorld;
+varying vec3 vN;
+varying vec3 vView;
+float hash(float n) { return fract(sin(n) * 43758.5453); }
 void main() {
-  float v = vUv.y;
-  // soft vertical falloff, a brighter foot, slow rising bands
-  float fall = pow(1.0 - v, 1.6);
-  float foot = smoothstep(0.08, 0.0, v) * 0.8;
-  float bands = 0.75 + 0.25 * sin((v * 26.0 - uTime * 0.9 * uMotion) + vUv.x * 6.2831 * 2.0);
-  float a = (fall * bands + foot) * uAlpha;
-  gl_FragColor = vec4(uColor, a); // additive: src × alpha
+  vec3 v = normalize(vView);
+  // facing ratio of the open cylinder: 1 at the beam's middle, 0 at its silhouette
+  float face = abs(dot(normalize(vN), v));
+  float core = pow(face, uCore);
+  float y = vUv.y;
+  float fall = exp(-y * 3.2) * smoothstep(0.0, 0.03, y);
+  // sparks rising in the beam: thin streaks per column of the uv
+  float col = floor(vUv.x * 18.0);
+  float sp = fract(y * 5.0 - uTime * (0.18 + hash(col) * 0.2) * uMotion + hash(col * 7.0));
+  float spark = smoothstep(0.0, 0.02, sp) * smoothstep(0.08, 0.02, sp) * step(0.55, hash(col * 3.1)) * face;
+  float a = (core * fall * (0.85 + 0.15 * sin(uTime * 1.3)) + spark * 0.55 * (1.0 - y)) * uAlpha;
+  gl_FragColor = vec4(uColor * (1.0 + core * 0.6), a);
 }`;
 
-const RING_FRAG = /* glsl */ `
+const GROUND_FRAG = /* glsl */ `
 uniform vec3 uColor;
 uniform float uAlpha;
 uniform float uTime;
 uniform float uMotion;
 varying vec2 vUv;
 void main() {
-  // RingGeometry uv: x runs around the ring; we only need the radial soft edge via vUv.y
-  float breathe = 0.75 + 0.25 * sin(uTime * 1.7) * uMotion;
-  float a = uAlpha * breathe;
-  gl_FragColor = vec4(uColor, a); // additive: src × alpha
+  float r = length(vUv - 0.5) * 2.0; // 0 centre … 1 edge of the quad
+  // the zone's edge at r = 0.8: a crisp ring with a soft glow, a faint disc inside
+  float ring = exp(-pow((r - 0.8) / 0.018, 2.0)) + 0.35 * exp(-pow((r - 0.8) / 0.07, 2.0));
+  float disc = smoothstep(0.8, 0.0, r) * 0.12;
+  // a pulse running out from the centre every 2.4 s
+  float ph = fract(uTime / 2.4) * uMotion;
+  float pulse = exp(-pow((r - ph * 0.8) / 0.03, 2.0)) * (1.0 - ph) * 0.8 * step(0.001, uMotion);
+  float a = (ring + disc + pulse) * uAlpha * smoothstep(1.0, 0.9, r);
+  gl_FragColor = vec4(uColor, a);
 }`;
 
 interface Beacon {
   group: Group;
-  col: ShaderMaterial;
-  ring: ShaderMaterial;
+  beam: ShaderMaterial;
+  halo: ShaderMaterial;
+  ground: ShaderMaterial;
   x: number;
   z: number;
   r: number;
+  lead: boolean;
   alpha: number;
   want: number;
   seen: boolean;
@@ -74,15 +95,20 @@ export interface BeaconSpec {
   z: number;
   r: number;
   era: Era;
+  /** The tracked goal: gold, taller, brighter. */
+  lead?: boolean;
 }
 
 export class Beacons {
   readonly group = new Group();
   private readonly list = new Map<string, Beacon>();
   private time = 0;
+  private readonly cyl = new CylinderGeometry(1, 1, 1, 32, 1, true);
+  private readonly quad = new PlaneGeometry(2, 2);
 
   constructor(private readonly heightAt: (x: number, z: number) => number) {
     this.group.name = 'quest-beacons';
+    this.group.userData.noShadow = true;
   }
 
   /** Show exactly these zones (others fade out). */
@@ -98,64 +124,74 @@ export class Beacons {
       b.x = s.x;
       b.z = s.z;
       b.r = s.r;
-      // HDR: the post pass tone-maps, so the column reads against a bright day sky too
-      const c = new Color(TINT[s.era] ?? 0xf2c46b).convertSRGBToLinear().multiplyScalar(1.8);
-      (b.col.uniforms.uColor!.value as Color).copy(c);
-      (b.ring.uniforms.uColor!.value as Color).copy(c);
+      b.lead = !!s.lead;
+      // HDR: the post pass tone-maps; the lead beam is bright enough to bloom softly at its core
+      const c = new Color(s.lead ? LEAD : (TINT[s.era] ?? LEAD)).convertSRGBToLinear().multiplyScalar(s.lead ? 1.6 : 1.1);
+      for (const m of [b.beam, b.halo, b.ground]) (m.uniforms.uColor!.value as Color).copy(c);
     }
   }
 
   private make(s: BeaconSpec): Beacon {
-    const uniforms = () => ({ uColor: { value: new Color() }, uAlpha: { value: 0 }, uTime: { value: 0 }, uMotion: { value: 1 } });
+    const uniforms = (core = 2) => ({ uColor: { value: new Color() }, uAlpha: { value: 0 }, uTime: { value: 0 }, uMotion: { value: 1 }, uCore: { value: core } });
     const common = { vertexShader: VERT, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide };
-    const col = new ShaderMaterial({ ...common, fragmentShader: COLUMN_FRAG, uniforms: uniforms() });
-    const ring = new ShaderMaterial({ ...common, fragmentShader: RING_FRAG, uniforms: uniforms() });
+    const beam = new ShaderMaterial({ ...common, fragmentShader: BEAM_FRAG, uniforms: uniforms(2.6) });
+    const halo = new ShaderMaterial({ ...common, fragmentShader: BEAM_FRAG, uniforms: uniforms(1.4) });
+    const ground = new ShaderMaterial({ ...common, fragmentShader: GROUND_FRAG, uniforms: uniforms() });
     const g = new Group();
-    const cyl = new Mesh(new CylinderGeometry(1, 1, 1, 28, 1, true), col);
-    cyl.position.y = 0.5;
-    cyl.renderOrder = 5;
-    cyl.frustumCulled = false;
-    const rg = new Mesh(new RingGeometry(0.93, 1, 48, 1), ring);
-    rg.rotation.x = -Math.PI / 2;
-    rg.position.y = 0.15;
-    rg.renderOrder = 5;
-    g.add(cyl, rg);
+    const mk = (geo: CylinderGeometry | PlaneGeometry, m: ShaderMaterial) => {
+      const x = new Mesh(geo, m);
+      x.renderOrder = 5;
+      x.frustumCulled = false;
+      x.userData.noShadow = true;
+      return x;
+    };
+    const core = mk(this.cyl, beam);
+    core.position.y = 0.5;
+    const glow = mk(this.cyl, halo);
+    glow.position.y = 0.5;
+    const disc = mk(this.quad, ground);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.y = 0.2;
+    g.add(core, glow, disc);
     this.group.add(g);
-    return { group: g, col, ring, x: s.x, z: s.z, r: s.r, alpha: 0, want: 0, seen: true };
+    return { group: g, beam, halo, ground, x: s.x, z: s.z, r: s.r, lead: !!s.lead, alpha: 0, want: 0, seen: true };
   }
 
   frame(dt: number, px: number, pz: number, reducedMotion: boolean): void {
     this.time += dt;
     for (const [id, b] of this.list) {
       const d = Math.hypot(px - b.x, pz - b.z);
-      // far: faint; 30–200 m: strongest; inside the zone: gone
+      // far: faint; 30–260 m: strongest; inside the zone: gone (the lead reaches further)
       const inside = Math.min(1, Math.max(0, (d - b.r * 0.6) / Math.max(4, b.r)));
-      const far = 1 - Math.min(1, Math.max(0, (d - 170) / 30));
-      b.want = b.seen ? inside * far : 0;
+      const reach = b.lead ? 420 : 200;
+      const far = 1 - Math.min(1, Math.max(0, (d - reach) / 40));
+      b.want = b.seen ? inside * far * (b.lead ? 1 : 0.6) : 0;
       b.alpha += (b.want - b.alpha) * Math.min(1, dt * 2.5);
       if (!b.seen && b.alpha < 0.01) {
         this.group.remove(b.group);
-        for (const m of b.group.children as Mesh[]) m.geometry.dispose();
-        b.col.dispose();
-        b.ring.dispose();
+        for (const m of [b.beam, b.halo, b.ground]) m.dispose();
         this.list.delete(id);
         continue;
       }
       const y = this.heightAt(b.x, b.z);
-      const cr = Math.max(1.6, Math.min(4.5, b.r * 0.22));
-      const cyl = b.group.children[0] as Mesh;
-      cyl.scale.set(cr, 70, cr);
-      const rg = b.group.children[1] as Mesh;
-      rg.scale.setScalar(Math.max(2.5, b.r));
+      // the beam widens a little with distance so it never shrinks to a hair line far away
+      const cr = Math.max(0.9, Math.min(2.6, b.r * 0.12)) * (1 + Math.min(1.6, d / 160));
+      const tall = b.lead ? 90 : 55;
+      const [core, glow, disc] = b.group.children as Mesh[];
+      core!.scale.set(cr, tall, cr);
+      glow!.scale.set(cr * 2.8, tall * 0.8, cr * 2.8);
+      const gr = Math.max(1.3, b.r) / 0.8;
+      disc!.scale.set(gr, gr, 1);
       b.group.position.set(b.x, y, b.z);
       b.group.visible = b.alpha > 0.005;
-      for (const m of [b.col, b.ring]) {
+      for (const m of [b.beam, b.halo, b.ground]) {
         m.uniforms.uTime!.value = this.time;
         m.uniforms.uMotion!.value = reducedMotion ? 0 : 1;
       }
-      b.col.uniforms.uAlpha!.value = 0.42 * b.alpha;
+      b.beam.uniforms.uAlpha!.value = 0.55 * b.alpha;
+      b.halo.uniforms.uAlpha!.value = 0.16 * b.alpha;
       // the ground ring stays a little visible close by, so you see where the zone ends
-      b.ring.uniforms.uAlpha!.value = 0.5 * Math.max(b.alpha, b.seen && d < b.r * 3 ? 0.35 : 0);
+      b.ground.uniforms.uAlpha!.value = 0.7 * Math.max(b.alpha, b.seen && d < b.r * 3 ? 0.3 : 0);
     }
   }
 
@@ -164,18 +200,15 @@ export class Beacons {
   }
 
   /** Current opacity per beacon (tests). */
-  state(): { id: string; alpha: number }[] {
-    return [...this.list.entries()].map(([id, b]) => ({ id, alpha: b.alpha }));
+  state(): { id: string; alpha: number; lead?: boolean }[] {
+    return [...this.list.entries()].map(([id, b]) => ({ id, alpha: b.alpha, lead: b.lead }));
   }
 
   dispose(): void {
-    for (const id of [...this.list.keys()]) {
-      const b = this.list.get(id)!;
-      for (const m of b.group.children as Mesh[]) m.geometry.dispose();
-      b.col.dispose();
-      b.ring.dispose();
-    }
+    for (const b of this.list.values()) for (const m of [b.beam, b.halo, b.ground]) m.dispose();
     this.list.clear();
+    this.cyl.dispose();
+    this.quad.dispose();
     this.group.removeFromParent();
   }
 }
