@@ -362,3 +362,36 @@ Open (next art round): distant tree impostors still read as flat umbrella cards 
 the 1796 palace ruin reads as a red box from afar; Festsaal paintings / mirrors / consoles are in
 the manifest but not yet placed; the remaining procedural enemies (mist, paper, straw, stone,
 three bosses) and the Pikeur's rider are not rigged yet.
+
+## 13. Real-GPU playtest round 7 (2026-11-19, "stuck at the lake")
+
+Two testers played on the real GPU (Apple M5 Pro, Metal, 1440 × 900, `?q=high`); what this round
+changed in the look, each checked with headed-Chromium screenshots before / after:
+
+- **Night reads:** the prologue night (`story` look `night`) has a brighter cool moon (1.15),
+  a blue sky fill (ambient 0.95), a lighter blue haze and exposure 1.75 — terrain, paths, the
+  wagon and the lake shore read without the lantern; the lantern adds warmth, not visibility.
+- **No stars in a day sky:** the ambient motes (dust, pollen, ash, snow) fade out once they are
+  smaller than about a pixel instead of being clamped to a hard 1 px dot (they read as stars over
+  the 1789 / 1796 / 2025 day sky and as white noise over the snow); the 1796 ash is a dark grey.
+- **Palace shell:** the merged palace draws both sides; the inside of the shell is a dim warm
+  interior, so upper-floor windows without a room behind them no longer show the sky through a
+  hollow facade.
+- **Lantern viewmodel:** the brass lantern is shaded (key light, its own flame on the frame, rim,
+  specular) instead of a flat unlit silhouette; rounder parts (28 segments, round bars).
+- **Forest:** distant bark sinks into the stand's shade and the far impostors draw only a short dark
+  trunk (the "palisade of pale poles" between the crowns); leaf-clump rims have softer, shorter
+  tips (less "torn paper"); the mid ring ends at 130 m (impostors beyond).
+- **Fire night:** `1793-07` always burns — outside the staged K3 beat the fire runs as scenery
+  (flames, smoke, glow, collapses; no smoke meter, never catches, not saved).
+- **Markers:** the quest ground ring fades at grazing angles (no orange streak through the forest);
+  a veiled enemy (Schleier) has a pale ring and a slow shell of mist motes, so its place reads in
+  daylight before the Bannlicht.
+- **HUD:** the pointer-lock hint is a small chip under the compass (never over fights, dialogue or
+  subtitles); enemy nameplates stay out of the quest tracker / top-left column; a favicon.
+
+Still open (next art round): CC0 tree models for the near ring (the crowns are still procedural
+cards); stylised CC0 models for the procedural enemies and bosses (Nebeling, Irrlicht, Strohmann,
+Steinbrecher / Steinfresser, Schuldbuch); 1796 ruins from a broken-wall kit instead of stepped
+blocks; people, carriages and props in the 1789 Ehrenhof; Festsaal paintings.
+
