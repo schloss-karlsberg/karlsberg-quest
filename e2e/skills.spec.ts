@@ -78,7 +78,8 @@ async function clearDialogue(page: Page): Promise<void> {
 
 test.describe('skills and survey tools', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('./?notitle&nosave&fresh&manual&skills=strict');
+    // the survey tools aim from the eye: first person (cam=first) keeps the crosshair maths exact
+    await page.goto('./?notitle&nosave&fresh&manual&skills=strict&cam=first');
     await page.waitForFunction(() => window.kq !== undefined && window.kq.tools !== undefined && window.kq.skills !== undefined, null, { timeout: 120_000 });
   });
 

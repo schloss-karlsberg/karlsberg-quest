@@ -41,6 +41,8 @@ import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOf
 import { BOSS_HINT, BOSS_TITLE, TELL } from './strings';
 import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
+import { type TargetCandidate, Targeting } from './targeting';
+import { cameraHints } from '../../player/camera';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -109,6 +111,10 @@ export interface CombatHooks {
   sim(): CombatSim | null;
   /** Readability (round 6): how far the camera is pulled out of a big body (m), each enemy's dither (1 = solid). */
   view(): { pull: number; vis: Record<string, number> };
+  /** Lock-on (third-person camera): lock / switch like Tab (no id), lock an id, or null to release. Returns the lock. */
+  lock(id?: string | null): string | null;
+  /** The locked and the soft target. */
+  target(): { locked: string | null; soft: string | null };
 }
 
 declare module '../../debug/hooks' {
@@ -132,6 +138,9 @@ class Combat {
   readonly viewmodel = new Viewmodel();
   readonly audio: CombatAudio;
   readonly hud: CombatHud;
+  /** Lock-on / soft target, the ring under it, indicators round the character (targeting.ts). */
+  readonly targeting: Targeting;
+  private cands: TargetCandidate[] = [];
   private statsFromProgression: DerivedStats | null = null;
   private readonly memorials = new Map<string, { x?: number; z?: number; r?: number; era?: string; room?: string; active: boolean }>();
   private readonly npcs = new Map<string, { x: number; z: number; era?: string }>();
@@ -201,6 +210,7 @@ class Combat {
     this.visuals.setAssets(ctx.quality.level === 'low' ? null : ctx.assets);
     ctx.quality.listeners.push((_p, level) => this.visuals.setAssets(level === 'low' ? null : ctx.assets));
     this.hud = new CombatHud(ctx.ui.hud, ctx.ui.layer('combat'));
+    this.targeting = new Targeting(ctx.scene, ctx.ui.layer('combat'));
     this.viewmodel.setStage(stageOf(ctx.state.state.systems.progression?.equipped?.weapon));
     this.wire();
     ctx.renderer.domElement.addEventListener('mousedown', (e) => {
@@ -478,11 +488,16 @@ class Combat {
     if (attackPressed && this.mouseTick >= ctx.loop.tick - 1 && this.interactTarget()) attackPressed = false;
     if ((attackPressed || inp.wasPressed('bannlicht')) && disabled) this.captionOnce('lowered', t('combat.lowered'), 'info', 6);
     const skill: SkillId | null = inp.wasPressed('skill1') ? 'ausfall' : inp.wasPressed('skill2') ? 'erdstoss' : inp.wasPressed('skill3') ? 'wirbel' : null;
+    // targeting (third-person camera): Tab / middle mouse locks; swings go at the lock or the soft target
+    this.cands = this.candidates();
+    if (inp.wasPressed('lockOn') && !blocked) this.targeting.press(this.cands, pl.position.x, pl.position.z, pl.yaw);
+    this.targeting.update(this.cands, pl.position.x, pl.position.z, pl.yaw, pl.thirdPerson && !blocked);
+    const aim = blocked ? null : this.targeting.aimYaw(this.cands, pl.position.x, pl.position.z);
     return {
       x: pl.position.x,
       y: pl.position.y,
       z: pl.position.z,
-      yaw: pl.yaw,
+      yaw: aim ?? pl.yaw,
       moveX,
       moveZ,
       attackDown: inp.isDown('attack'),
@@ -498,6 +513,17 @@ class Combat {
       era: ctx.era.current,
       time: this.timeOfDay(),
     };
+  }
+
+  /** Enemies the player can target (alive, here, not leaving). */
+  private candidates(): TargetCandidate[] {
+    const out: TargetCandidate[] = [];
+    for (const e of this.sim.enemies) {
+      if (e.state === 'dissolve' || e.state === 'leave' || e.state === 'intro') continue;
+      const hull = this.visuals.hullOf(e);
+      out.push({ id: e.id, x: e.x, y: e.y, z: e.z, r: Math.max(e.radius, Math.min(hull.r, hull.f + 0.4)), top: this.visuals.topOf(e), boss: e.boss, windup: e.state === 'windup', aggro: e.aggro });
+    }
+    return out;
   }
 
   /** Blows in a row a boss's armour threw back (the way in is said after four). */
@@ -531,6 +557,8 @@ class Combat {
     for (const e of evs) this.onEvent(e, inp);
     // the player's movement hooks
     const pl = ctx.player;
+    // a lock keeps its target in the picture (the view turns only when it would slip out)
+    if (this.targeting.locked && !pl.lookLocked && !pl.frozen && ctx.ui.modals.count === 0 && !this.introCam) pl.yaw = this.targeting.keepInView(this.cands, pl.position.x, pl.position.z, pl.yaw, dt);
     pl.moveScale = this.sim.moveScale;
     pl.canSprint = this.sim.canSprint;
     // anchors heal (the story's shift anchor: shift.allowed and within its radius)
@@ -1034,6 +1062,8 @@ class Combat {
     // a boss reveal or a staged climax: no markers round the edge of the picture
     if (this.ctx.ui.hud.staged) return;
     const pl = this.ctx.player;
+    // third person: the chevrons round the character show every enemy out of the picture
+    if (pl.thirdPerson) return;
     const rel = wrapAngle(pl.yaw - headingOf(x - pl.position.x, z - pl.position.z));
     // within the view (±35°): no arrow needed
     if (Math.abs(rel) < (35 * Math.PI) / 180) return;
@@ -1123,6 +1153,13 @@ class Combat {
     const ground = this.ctx.world.heightAt(cam.position.x, cam.position.z) + 0.6;
     if (cam.position.y < ground) cam.position.y = ground;
     cam.updateMatrixWorld();
+  }
+
+  /** Where the current (locked or soft) target stands, for the avatar to face. */
+  private targetPos(): { x: number; z: number } | null {
+    const id = this.targeting.current;
+    const e = id ? this.cands.find((c) => c.id === id) : undefined;
+    return e ? { x: e.x, z: e.z } : null;
   }
 
   /** How far the camera is pulled back out of a body right now (m; debug / tests). */
@@ -1224,6 +1261,40 @@ class Combat {
       lowered: f['combat.disabled'] === true || pl.stance === 'prone',
       reducedMotion: st.reducedMotion,
       reducedFlash: st.reducedFlash,
+      thirdPerson: pl.thirdPerson,
+      swingYaw: sw?.yaw ?? pl.yaw,
+      inCombat: p.inCombat,
+      dead: this.deadT >= 0,
+      armed: !!ctx.state.state.systems.progression?.equipped?.weapon,
+      target: this.targetPos(),
+    });
+    // the third-person camera frames the fight (pull back so every enemy near you fits)
+    this.cands = this.candidates();
+    const fight: typeof cameraHints.fight = [];
+    let bossR = 0;
+    if (p.inCombat) {
+      for (const c of this.cands) {
+        if (!c.aggro || Math.hypot(c.x - pl.position.x, c.z - pl.position.z) > 16) continue;
+        fight.push({ x: c.x, z: c.z, r: c.r, top: c.top });
+        if (c.boss) bossR = Math.max(bossR, c.r);
+      }
+    }
+    cameraHints.fight = fight;
+    cameraHints.boss = bossR;
+    this.targeting.frame({
+      dt,
+      time: ctx.loop.time,
+      camera: cam,
+      c: this.cands,
+      player: pl.renderPos,
+      third: pl.thirdPerson,
+      heightAt: (x, z) => ctx.world.heightAt(x, z),
+      viewYaw: pl.yaw,
+      inCombat: p.inCombat && !p.dead,
+      staged: ctx.ui.hud.staged,
+      reducedMotion: st.reducedMotion,
+      viewportW: ctx.renderer.domElement.clientWidth || window.innerWidth,
+      viewportH: ctx.renderer.domElement.clientHeight || window.innerHeight,
     });
     // HUD
     const bannFrac = p.bann < p.bannMax ? Math.min(1, p.bannT / Math.max(0.1, this.sim.opt.stats.bannRecharge)) : 1;
@@ -1371,6 +1442,16 @@ class Combat {
         for (const e of self.sim.enemies) vis[e.id] = self.visuals.visOf(e.id);
         return { pull: self.clearPull, vis };
       },
+      lock(id) {
+        const pl = self.ctx.player;
+        self.cands = self.candidates();
+        if (id === undefined) self.targeting.press(self.cands, pl.position.x, pl.position.z, pl.yaw);
+        else self.targeting.locked = id;
+        return self.targeting.locked;
+      },
+      target() {
+        return { locked: self.targeting.locked, soft: self.targeting.soft };
+      },
     };
     window.kq.combat = hooks;
   }
@@ -1426,6 +1507,7 @@ export default defineSystem({
   dispose() {
     sys?.visuals.dispose();
     sys?.viewmodel.dispose();
+    sys?.targeting.dispose();
     sys = null;
   },
 });

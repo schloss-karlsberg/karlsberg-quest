@@ -62,14 +62,22 @@ test.describe('combat', () => {
     test.setTimeout(300_000);
     const errors = trackErrors(page);
     await setup(page);
-    const idle = await page.evaluate(() => {
+    const idle = await page.evaluate(async () => {
       const k = window.kq!;
+      await k.avatar!.ready();
       k.step(30);
+      await k.screenshotReady();
+      // third person (default): the character holds the staff; first person: the view model
+      const third = k.ctx.player.thirdPerson;
       const vm = k.ctx.scene.getObjectByName('combat-viewmodel');
-      return { visible: !!vm && vm.visible, children: vm?.children.length ?? 0 };
+      const staff = k.ctx.scene.getObjectByName('player-staff');
+      const avatar = k.ctx.scene.getObjectByName('player-avatar');
+      return { third, vm: !!vm && vm.visible, staff: !!staff && !!staff.parent, avatar: !!avatar && avatar.visible };
     });
-    expect(idle.visible).toBe(true);
-    expect(idle.children).toBeGreaterThan(2);
+    expect(idle.third).toBe(true);
+    expect(idle.avatar).toBe(true);
+    expect(idle.staff).toBe(true);
+    expect(idle.vm).toBe(false);
     await shot(page, 'idle');
 
     // a Nebelling right ahead; two hits, a screenshot mid-swing with the hit particles

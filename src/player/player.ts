@@ -1,6 +1,7 @@
 import { type PerspectiveCamera, Vector3 } from 'three';
 import type { EventBus } from '../core/events';
 import type { PlayerState } from '../core/state';
+import { CameraRig, type CameraMode, type CameraWorld } from './camera';
 import type { Input } from './input';
 import { STANCES, type Stance } from './stance';
 
@@ -18,6 +19,8 @@ export interface PlayerWorld {
   canFly(): boolean;
   /** Metres inside open water (> 0 in the water, <= 0 on land); optional. */
   waterDepth?(x: number, z: number): number;
+  /** Third-person camera collision (walls, trunks, ceilings); without it only the terrain counts. */
+  camera?: Partial<CameraWorld>;
 }
 
 export interface PlayerStats {
@@ -48,9 +51,12 @@ const FLY_MIN_AGL = 2.5;
 const FLY_MAX_AGL = 450;
 
 /**
- * First-person controller: walk over the heightfield with stances, slope limit, footprint
- * collision; "spirit view" free flight. Simulation runs in fixed steps; the camera is
- * interpolated between steps in `applyCamera`.
+ * Player controller: walk over the heightfield with stances, slope limit, footprint collision;
+ * "spirit view" free flight. Simulation runs in fixed steps; the camera is interpolated between
+ * steps in `applyCamera` — over the shoulder (`CameraRig`, src/player/camera.ts, default) or
+ * through the eyes (`cameraMode = 'first'`, and always in the spirit view). `yaw` / `pitch` are the
+ * VIEW (mouse look; movement is relative to it); the character's body turns on its own
+ * (src/player/avatar.ts).
  */
 export class Player {
   readonly position = new Vector3();
@@ -66,6 +72,11 @@ export class Player {
   private flyVel = new Vector3();
   /** Seconds of the automatic climb after the spirit view starts. */
   private flyLift = 0;
+  /** Interpolated feet position of the last rendered frame (the avatar stands here). */
+  readonly renderPos = new Vector3();
+  /** Third-person action camera (or the first-person eye). */
+  readonly rig = new CameraRig();
+  private camWorld: CameraWorld;
   readonly stats: PlayerStats = { noise: 0, visibility: 1, speed: 0, lanternLit: false, noiseBoost: 0, onSlopeLimit: false };
   /** Freeze movement (cut-scenes, menus). Mouse look still works unless `lookLocked`. */
   frozen = false;
@@ -99,7 +110,29 @@ export class Player {
     private readonly world: PlayerWorld,
     private readonly input: Input,
     private readonly events: EventBus,
-  ) {}
+  ) {
+    const w = world;
+    this.camWorld = {
+      heightAt: (x, z) => w.heightAt(x, z),
+      blocked: w.camera?.blocked ?? (() => false),
+      trunks: w.camera?.trunks,
+      ceiling: w.camera?.ceiling,
+    };
+  }
+
+  /** 'third' (over the shoulder, default) or 'first' (through the eyes). */
+  get cameraMode(): CameraMode {
+    return this.rig.mode;
+  }
+
+  set cameraMode(m: CameraMode) {
+    this.rig.mode = m;
+  }
+
+  /** True when the last frame was drawn over the shoulder (not first person, not flying). */
+  get thirdPerson(): boolean {
+    return this.rig.thirdPerson;
+  }
 
   /** Place the player (feet on the ground unless flying). */
   teleport(x: number, z: number, yaw?: number): void {
@@ -112,6 +145,8 @@ export class Player {
     if (yaw !== undefined) this.yaw = yaw;
     this.vy = 0;
     this.push.t = 0;
+    this.renderPos.copy(this.position);
+    this.rig.reset();
     this.events.emit('player:teleport', { x, z });
   }
 
@@ -143,6 +178,8 @@ export class Player {
   /** Mouse look, once per rendered frame. */
   look(): void {
     const { dx, dy } = this.input.takeMouse();
+    const wheel = this.input.takeWheel();
+    if (!this.frozen) this.rig.addZoom(wheel);
     if (this.lookLocked) return;
     const k = 0.0022 * this.mouseSensitivity;
     this.yaw -= dx * k * (this.invertX ? -1 : 1);
@@ -331,16 +368,25 @@ export class Player {
     p.y = Math.min(g + FLY_MAX_AGL, Math.max(g + FLY_MIN_AGL, p.y));
   }
 
-  /** Interpolated eye position into the camera. */
+  /** Interpolated position into the camera: over the shoulder, or the eye in first person. */
   applyCamera(camera: PerspectiveCamera, alpha: number, frameDt: number): void {
     const target = this.flying ? 0 : STANCES[this.stance].eye;
     this.eye += (target - this.eye) * Math.min(1, frameDt * 8);
     const x = this.prev.x + (this.position.x - this.prev.x) * alpha;
     const y = this.prev.y + (this.position.y - this.prev.y) * alpha;
     const z = this.prev.z + (this.position.z - this.prev.z) * alpha;
-    const bobAmp = this.reducedMotion || this.flying ? 0 : this.stance === 'stand' ? 0.035 : 0.015;
-    camera.position.set(x, y + this.eye + Math.sin(this.bob * Math.PI) * bobAmp, z);
-    camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    this.renderPos.set(x, y, z);
+    const third = this.rig.update(camera, { x, y, z, eye: this.eye, yaw: this.yaw, pitch: this.pitch, dt: frameDt, reducedMotion: this.reducedMotion, flying: this.flying }, this.camWorld);
+    if (!third) {
+      // first person: the walking bob
+      const bobAmp = this.reducedMotion || this.flying ? 0 : this.stance === 'stand' ? 0.035 : 0.015;
+      camera.position.y += Math.sin(this.bob * Math.PI) * bobAmp;
+    }
+  }
+
+  /** Current eye height above the feet (smoothed stance height; 0 while flying). */
+  get eyeHeight(): number {
+    return this.eye;
   }
 
   writeState(s: PlayerState): void {

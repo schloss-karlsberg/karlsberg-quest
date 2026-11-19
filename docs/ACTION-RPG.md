@@ -76,6 +76,8 @@ unfinished group regain their strength).
 | --- | --- | --- |
 | Move / run / crouch / lie flat | WASD, Shift, C, X | Running costs **Atem** only while in combat |
 | Look | Mouse; keyboard `,` `.` Bild↑ Bild↓ | |
+| **Camera** | **Mouse wheel** zooms (1.8–8 m, kept in the save); **F5** switches over-the-shoulder ↔ first person (also in Einstellungen → Steuerung) | Third person is the default; the spirit view is always first person |
+| **Ziel erfassen** (lock-on) | **Tab** or **middle mouse**: lock the best enemy in view, press again for the next, hold off / walk away (30 m) to release | Without a lock, swings snap to the nearest enemy within 7.5 m and ±70° (third person) |
 | **Hieb** (light attack, 3-hit combo) | **LMB** or **K** | Shares LMB with the measuring tape: while measuring (R), LMB measures |
 | **Wuchthieb** (heavy, charged) | **hold LMB / K** ≥ 0.45 s, release | Breaks armour, staggers; slows you while charging |
 | **Ausweichen** (dodge roll, i-frames) | **Space** (+ direction) | Space still stands you up from crouch / prone and climbs while flying |
@@ -83,7 +85,7 @@ unfinished group regain their strength).
 | **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default; choose the item in the Ausrüstung tab |
 | **Fähigkeiten** (abilities, §4.2): Ausfall · Erdstoß · Wirbel | **T** · **Z** (Y on a US layout) · **U** | Unlocked at levels 2 · 4 · 6; one row of free keys; a HUD slot each with a cooldown ring |
 | Talk / examine / pick up / listen (hold) | **E** | Accept / turn in quests in the conversation |
-| **Journal** (quests, codex, collections, gear, talents) | **J** / Tab; **I** opens Ausrüstung | Replaces the Chronik board |
+| **Journal** (quests, codex, collections, gear, talents) | **J**; **I** opens Ausrüstung | Replaces the Chronik board (Tab moved to the lock-on, camera track 2026-11-19) |
 | Lantern | L | |
 | Era shift | Q (at an anchor), hold Q to return | Kept |
 | Scan 0–3, maps M, measure R, Röntgenblick V, plans B, spirit view F | as before | Survey skills, now quest rewards |
@@ -96,8 +98,24 @@ colour alone; `settings.soundIndicators` shows screen-edge arrows for off-screen
 
 ## 4. Combat
 
-First person, close and readable. The player holds the **Messstab** (the surveyor's iron-shod
-ranging pole, right hand, upgraded through the campaign) and the **lantern** (left hand).
+Over the shoulder by default (camera track, 2026-11-19), first person as an option
+(Einstellungen → Steuerung, F5). The player is a modern surveyor (§4.7) holding the **Messstab**
+(the surveyor's iron-shod ranging pole, right hand, upgraded through the campaign) with the
+**lantern** on the belt; in first person both are the view model as before.
+
+### 4.0 Camera and targeting (camera track, `src/player/camera.ts`, `src/systems/combat/targeting.ts`)
+
+- **Spring arm:** pivot at the head, 0.62 m right shoulder offset, distance = wheel zoom (default
+  3.6 m). It never sits inside a wall, a palace collider, a tree trunk (`forest.trunksNear`), under
+  the terrain or above a room's ceiling (`world.ceilingAt`): it snaps in at once and eases back out.
+- **Fights:** aggro enemies within 16 m are written to `cameraHints.fight`; the arm pulls back and
+  lifts until they fit in the frame (a boss adds its radius). **Conversations:** the talking NPC's
+  head (within 8 m) is `cameraHints.focus`; the view eases into an over-the-shoulder two-shot.
+- **Lock-on:** Tab / middle mouse picks by distance + angle off the view (aggro and bosses first),
+  a second press cycles, it breaks at 30 m or on death; the view is kept within ±26° of the target.
+  A ground ring (`combat-target-ring`) marks the locked or soft target; swings, the heavy and
+  abilities turn to it. Off-screen aggro enemies get chevrons on an ellipse around the character
+  (`.kqc-around`, pulsing on a wind-up; none during staged beats).
 
 ### 4.1 Player resources
 
@@ -148,6 +166,18 @@ Abilities cost Atem too: Ausfall 15 · Erdstoß 25 · Wirbel 28.
   `combat:bann`: the **hunt** scatters pack hounds in the cone for 4 s (they cannot be damaged — "Die
   Meute schlägt man nicht. Man entkommt ihr."), the **menagerie** jaguar retreats.
 - **Schnellgegenstand** (H): drink / use in 0.6 s (can be interrupted by a hit).
+
+### 4.7 The player character (`src/player/avatar.ts`)
+
+A rigged CC0 Quaternius human (`public/assets/models/camera/surveyor.glb`) recoloured as a modern
+surveyor: olive field jacket with a hi-vis orange vest panel, dark work trousers, boots, an orange
+backpack; the brass lantern hangs on the left hip and is the hunt lantern's light origin; the
+Messstab rides across the back and comes to hand in a fight. Upper and lower body blend apart:
+idle / walk / run / sprint by real ground speed (strafe and back-pedal while locked on), the combo
+as forehand – backhand – wide slash and the heavy from a full wind-up, scrubbed to the combat
+timing; dodge roll, hit, death, interact and wave as full-body or upper-body actions; crouch and
+prone lean the body. The body turns smoothly toward travel (or the target in a fight). Low tier
+loads the same model (0.6 MB). `kq.avatar.state()` / `setMode()` for tests.
 
 ### 4.3 Feel ("juice")
 
@@ -508,7 +538,7 @@ No stance cards, no answer grids: see §8.6.
 - **Prompts name the action** ("E – Messstab nehmen"); the Feldstation hub prompt is low priority
   and E opens the hub only when its prompt is the one shown.
 
-### 8.4 Journal (J / Tab) and tracker
+### 8.4 Journal (J) and tracker
 
 - **Tracker** (HUD top-left column, `hud.stack(el, 35)`): up to three tracked quests (main first),
   title + active objectives with counters ("Irrlichter bannen 2/5"), ticks when done, a soft pulse
@@ -728,7 +758,7 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
 | Right edge (`dock('feed')`, under the toasts) | pickup feed ("+ Kräuterbalsam"), objective ticks | **progression** / **quests** |
 | Bottom centre | prompt, subtitles, dialogue card (kept) | story / npc |
 | Bottom-right | Bussole (kept), fx gauges | story / fx |
-| Over the world | giver glyphs (npc), beacons (quests), pickups (progression), enemy health pips + gebannt ring + trait tags „Deckung“ / „Schleier“ / „Spiegel“ / „Rufer“ (combat) | |
+| Over the world | giver glyphs (npc), beacons (quests), pickups (progression), enemy health pips + gebannt ring + trait tags „Deckung“ / „Schleier“ / „Spiegel“ / „Rufer“ (combat), **target ring** under the locked enemy and **chevrons around the character** for off-screen attackers (combat, third person) | |
 
 Field-book look (ink, paper, brass), high-contrast rules for every new piece (solid backing,
 ≥ 4.5 : 1), no meaning by red vs green alone (HP red-orange + a notch pattern, Atem pale blue,
@@ -900,7 +930,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
-| First-person melee feels floaty | viewmodel anticipation + follow-through, hit-stop, knockback, sound layers; aim assist; tune in e2e screenshots and by hand |
+| First-person melee feels floaty | third person by default (camera track); viewmodel anticipation + follow-through, hit-stop, knockback, sound layers; soft lock and lock-on; tune in e2e screenshots and by hand |
 | Combat breaks the dread | few enemies, placed by content; the hunt stays unfightable; memorials are quiet; nights stay dark |
 | SwiftShader e2e too slow for fights | `?manual` + `kq.step`, debug hooks (`kq.combat.kill`, `god`), short arenas |
 | Performance (many enemies + fog + forest) | instanced spectral bodies (like the pack), ≤ 12 active enemies, `PERF_BUDGET` bench scene "combat" |
@@ -917,6 +947,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Nature round 2 (2026-11-19): card trees, pale palisade, photo-scan rock blobs, brown haze, slow forest | 16 CC0 Quaternius tree models (common / pine / twisted / dead) with real leaf geometry, season colours, wind, lod0 → lod1 → baked impostors with dither cross-fades; stand proportions (crown kept, trunk stretched and slimmed, low limbs pruned); stylised ferns, bushes, flower clumps and boulders in clump-noise clusters; clearer day grade, stronger moon fill, no day-sky motes. Real GPU (M5 Pro, 1440 × 900, high, uncapped): densest forest 40 → ≈ 100 fps (p95 34 → 13 ms), title 47 → 85. Open: Festsaal fire ≈ 35 fps and palace ≈ 59 (fire / interior cost), sun-shadow receiving ≈ 7 ms |
 | Creature & boss models (2026-11-19) | every procedural family a sculpted multi-part body with spectral / paper / flame / crystal / rock / straw surfaces, a see-through heart, outline, size variance and a per-family burning dissolve; Schuldbuch open ledger with page wings and seal eye, Strohmann burning sheaves, Steinbrecher carved blocks with ember seams, Pikeur's rider = CC0 human rig in the saddle (ART-DIRECTION §15). Gameplay numbers unchanged. Real GPU (M5 Pro, high): 92–100 fps in every showcase scene |
 | Round 7 follow-up (2026-11-19): remaining stuck points, a lived-in 1789 Ehrenhof | **Doors:** markers lead door by door through a building's plan (`world.routeTo`: in by the right outer door, room to room, out by the door nearest an outside goal: Registratur → Küchenhof), labelled „Eingang: …“ / „Tür: …“. **Geisterblick:** one name for the flight everywhere; while flying the prompt lists the controls (W fliegt, wohin du schaust · Leertaste steigt · C sinkt · Umschalt schneller · F landet). **Zeitwechsel anchor:** the prologue's „Q drücken“ marker sits in the middle of the court (it flipped between two trigger rings). **Side goals:** a small second waymark for the nearest other tracked goal within 90 m (the Irrlichter at the lake while the lantern quest leads); in a fight the tracker keeps the quest whose zone you stand in. **After being caught** in K1 the beat's „Q am Ehrenhof“ is set again (repeatable reactions re-arm on a beat resume) and the tracker shows that step under the quest goal; the Mahnbriefe only fly out in 1789. **Ehrenhof 1789:** paving with a rosette at the anchor, lanterns, orange tubs, flags, coach, market, ghost guards / courtiers / servants / coach (docs/ART-DIRECTION.md §14) |
+
+| Third-person camera + player character (camera track, 2026-11-19) | Over-the-shoulder spring arm with wall / trunk / terrain / ceiling collision, wheel zoom, fight pull-back, conversation two-shot; rigged CC0 surveyor (one 0.6 MB GLB, 16 clips); Tab / middle-mouse lock-on with ground ring, soft target, chevrons; journal on J only. Real GPU (M5 Pro, Metal, 1440 × 900, high): see docs/ART-DIRECTION.md §16. Open: no IK (feet slide a little on slopes, the left hand does not touch the staff), the roll / sprint are the stock clips, the first-person view model stays for the option |
 | New render cost on weak GPUs / headless e2e | tiers: `low` has no shadows / AO / bloom; SwiftShader and `?q=low` start on `low`; auto-downgrade unchanged; the bench route still gates draw calls and triangles |
 
 - **contentB (Ch. 3–4) speaker / roster needs** (roster figures for `gaertner`, `diener` and `mann` added at integration, 2026-11-16; the jaguar and the chair quests could move back to their §11.3 givers in a later content pass): `gaertner` and `mann` are in the quests validator's

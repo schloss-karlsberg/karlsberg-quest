@@ -159,9 +159,10 @@ test.describe('round 6 readability', () => {
       for (let i = 0; i < 30; i++) await new Promise((r) => requestAnimationFrame(r));
       const cam = k.ctx.camera.position;
       const v = c.view();
-      return { pull: v.pull, camD: Math.hypot(cam.x - b.x, cam.z - b.z), vis: v.vis[b.id] };
+      return { third: k.ctx.player.thirdPerson, pull: v.pull, camD: Math.hypot(cam.x - b.x, cam.z - b.z), vis: v.vis[b.id] };
     });
-    expect(wedge.pull).toBeGreaterThan(0.3);
+    // first person eases the eye out of the hull; over the shoulder the spring arm already sits behind it
+    if (!wedge.third) expect(wedge.pull).toBeGreaterThan(0.3);
     expect(wedge.camD).toBeGreaterThan(1.5);
     await shot(page, 'boss-wedge');
     expect(errors).toEqual([]);
@@ -244,7 +245,7 @@ test.describe('round 6 readability', () => {
       c.windup('r6.behind', 'pounce', 0.4);
       k.step(2);
       await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
-      const arrows = document.querySelectorAll('.kqc-arrow').length;
+      const arrows = document.querySelectorAll('.kqc-arrow, .kqc-around-c').length;
       const staged = k.ctx.ui.hud.staged;
       const mode = (document.querySelector('.kq-hud') as HTMLElement).dataset.kqMode ?? '';
       return { intro, arrows, staged, mode };
@@ -268,7 +269,7 @@ test.describe('round 6 readability', () => {
       c.windup('r6.behind', 'pounce', 0.4);
       k.step(2);
       await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
-      return { staged: k.ctx.ui.hud.staged, arrows: document.querySelectorAll('.kqc-arrow').length };
+      return { staged: k.ctx.ui.hud.staged, arrows: document.querySelectorAll('.kqc-arrow, .kqc-around-c').length };
     });
     expect(after.staged).toBe(false);
     expect(after.arrows).toBeGreaterThan(0);

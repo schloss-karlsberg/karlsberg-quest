@@ -32,6 +32,7 @@ import {
   BufferGeometry as BG,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { actionPose } from '../../player/pose';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 
 export type WeaponStage = 'esche' | 'eisen' | 'silber' | 'bann' | 'lot';
@@ -168,8 +169,11 @@ const SILVER: [number, number, number] = [0.75, 0.78, 0.82];
 const GLOVE: [number, number, number] = [0.085, 0.055, 0.04];
 const SLEEVE: [number, number, number] = [0.1, 0.1, 0.11];
 
-/** The pole: grip at the origin, the shoe end 1.35 m ahead (−z), the butt 0.5 m behind. */
-function buildStaff(stage: WeaponStage): BufferGeometry {
+/**
+ * The pole: grip at the origin, the shoe end 1.35 m ahead (−z), the butt 0.5 m behind. `hand`
+ * false leaves the gloved fist and sleeve off (the third-person avatar holds it in its own hand).
+ */
+export function buildStaff(stage: WeaponStage, hand = true): BufferGeometry {
   const parts: BufferGeometry[] = [];
   const R = 0.017;
   // 0.25 m bands from the butt to the head
@@ -199,6 +203,11 @@ function buildStaff(stage: WeaponStage): BufferGeometry {
   if (stage === 'bann' || stage === 'lot') {
     // nine notches cut in the night of the fire — they glow faintly
     for (let k = 0; k < 9; k++) parts.push(colored(poleSeg(R * 1.03, R * 1.03, -0.62 - k * 0.045, -0.635 - k * 0.045, 8), [0.08, 0.04, 0.02], 2, 0.2));
+  }
+  if (!hand) {
+    const g = mergeGeometries(parts) as BufferGeometry;
+    for (const p of parts) p.dispose();
+    return g;
   }
   // the gloved fist round the grip and the coat sleeve going back out of view (art pass: four
   // curled fingers, knuckles, a thumb over them, the back of the hand, a turned-back cuff)
@@ -360,6 +369,29 @@ export interface ViewmodelFrame {
   lowered: boolean;
   reducedMotion: boolean;
   reducedFlash: boolean;
+  /**
+   * Third-person camera (src/player/camera.ts): the first-person staff is not drawn; the frame goes
+   * to the avatar instead (`actionPose`, src/player/pose.ts).
+   */
+  thirdPerson?: boolean;
+  /** For the avatar: the swing's yaw, fight on, down, staff equipped, the target it faces. */
+  swingYaw?: number;
+  inCombat?: boolean;
+  dead?: boolean;
+  armed?: boolean;
+  target?: { x: number; z: number } | null;
+}
+
+/**
+ * The staff's material (painted wood, iron, silver, glowing notches; lit by the world's sun,
+ * lantern and fog in world space). `uGlow` / `uNotch` / `uFlash` drive the charge, notch and flare.
+ */
+export function staffMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    vertexShader: VM_VERT,
+    fragmentShader: VM_FRAG,
+    uniforms: { ...atmosphere, uGlow: { value: new Color(0, 0, 0) }, uNotch: { value: 0 }, uFlash: { value: 0 } },
+  });
 }
 
 export class Viewmodel {
@@ -470,6 +502,29 @@ export class Viewmodel {
   }
 
   frame(f: ViewmodelFrame): void {
+    // the avatar's copy (third person draws the staff in the character's hand)
+    const A = actionPose;
+    A.swing = f.swing ? { ...f.swing, yaw: f.swingYaw ?? 0 } : null;
+    A.skill = f.skill ?? null;
+    A.charge = f.charge;
+    A.dodge = f.dodge;
+    A.drink = f.drink;
+    A.flare = f.flare;
+    A.frozen = f.frozen;
+    A.armed = f.armed ?? !f.hidden;
+    A.inCombat = f.inCombat ?? false;
+    A.dead = f.dead ?? false;
+    A.hidden = f.hidden;
+    A.lowered = f.lowered;
+    A.stage = this.stage ?? 'esche';
+    A.target = f.target ?? null;
+    A.time = f.time;
+    if (f.thirdPerson) {
+      this.root.visible = false;
+      this.lower = 1;
+      this.trailPts.length = 0;
+      return;
+    }
     const cam = f.camera;
     this.root.position.copy(cam.position);
     this.root.quaternion.copy(cam.quaternion);

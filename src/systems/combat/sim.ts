@@ -392,6 +392,9 @@ export interface SimWorld {
 /** Closest a (non-boss) body settles to the player's feet (m, plus half its radius). */
 export const STANDOFF_M = 1.45;
 
+/** Closest any (non-boss) body settles to the player after the opening lessons (m, plus half its radius). */
+export const CLOSE_M = 0.95;
+
 /** Enemies stay within this distance of the shore (m): every one of them is reachable. */
 export const SHORE_REACH_M = 1.2;
 
@@ -1632,12 +1635,11 @@ export class CombatSim {
    * below the view, behind the lantern, hitting while unseen). Inside `STANDOFF_M` it eases out
    * along the line to the player; bosses keep their own size-based stand-off.
    */
-  private keepStandoff(e: Enemy, dt: number, inp: SimInput): void {
+  private keepStandoff(e: Enemy, dt: number, inp: SimInput, min = STANDOFF_M + e.radius * 0.5): void {
     if (e.boss || e.state === 'dissolve' || e.state === 'leave') return;
     const dx = e.x - inp.x;
     const dz = e.z - inp.z;
     const d = Math.hypot(dx, dz);
-    const min = STANDOFF_M + e.radius * 0.5;
     if (d >= min || d < 1e-3) return;
     const push = Math.min(min - d, dt * 5);
     this.moveBy(e, (dx / d) * push, (dz / d) * push);
@@ -1647,6 +1649,9 @@ export class CombatSim {
     this.keepAshore(e, dt);
     // (the opening lessons only: later fights are tuned around bodies that crowd in)
     if (this.novice && !e.dash) this.keepStandoff(e, dt, inp);
+    // (later fights: never inside the character either — over the shoulder a puff in the body is
+    // unreadable; mist and light bodies are not bumped, so they get a short stand-off)
+    else if (!e.dash && (e.def.family === 'mist' || e.def.family === 'light')) this.keepStandoff(e, dt, inp, CLOSE_M + e.radius * 0.5);
     e.t += dt;
     e.flash = Math.max(0, e.flash - dt * 5);
     for (const k in e.cd) if (e.cd[k] > 0) e.cd[k] = Math.max(0, e.cd[k] - dt);

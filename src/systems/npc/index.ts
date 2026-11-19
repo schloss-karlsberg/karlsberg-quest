@@ -13,6 +13,8 @@
  * Persistent: placements and spoken once-lines (slice `npc`).
  * Debug/test API: window.kq.npc (see NpcHooks).
  */
+import { Vector3 as _V3 } from 'three';
+import { cameraHints } from '../../player/camera';
 import '../contracts';
 import './npc.css';
 import { addStrings, t } from '../../i18n';
@@ -553,6 +555,11 @@ class NpcRuntime {
         }
       }
     }
+    // the third-person camera turns a conversation into an over-the-shoulder two-shot (src/player/camera.ts)
+    const tf = this.talking ? this.figs.get(this.talking.npc) : undefined;
+    cameraHints.focus = tf && !ctx.player.flying && Math.hypot(tf.p.x - p.x, tf.p.z - p.z) < 8 ? { x: tf.p.x, y: this.figY(tf) + tf.fig.look.height * 0.88, z: tf.p.z } : null;
+    // NPCs look at the player's face (over the shoulder the camera is not where the eyes are)
+    const face = ctx.player.thirdPerson ? _face.set(p.x, p.y + ctx.player.eyeHeight, p.z) : cam.position;
     for (const [id, f] of this.figs) {
       const vis = this.visible(f);
       f.fig.target = vis ? 1 : 0;
@@ -581,7 +588,7 @@ class NpcRuntime {
         f.fig.kneel = 0;
       }
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
-      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt: d < 9 || this.talking?.npc === id ? cam.position : null });
+      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt: d < 9 || this.talking?.npc === id ? face : null });
     }
     // quest glyphs over the heads (hidden while that conversation is open)
     this.glyphs.frame(
@@ -650,6 +657,8 @@ class NpcRuntime {
 }
 
 /** Placement yaw (degrees, 0 = north, 90 = east) → object rotation (the figure faces +z). */
+const _face = new _V3();
+
 function yawRad(deg?: number): number {
   return Math.PI - ((deg ?? 180) * Math.PI) / 180;
 }

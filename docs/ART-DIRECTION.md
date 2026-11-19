@@ -170,13 +170,15 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   neck and head turn to the player within 9 m (additive bone turns after the mixer). Hats (tricorn,
   huntcap, mobcap) and props (basket, stick, book) from the procedural figure ride the Head / WristR
   bones. Enemies: the Streuner is a smoke hound on the CC0 wolf rig, the Raffschatten a smoke plunderer
-  on the human rig, the Pikeur rides a spectral CC0 horse with two hounds at heel (rider: see §14). Spectral shader: dark ink smoke, fog-contrast rim, ragged wisp edges, a small point core
+  on the human rig, the Pikeur rides a spectral CC0 horse with two hounds at heel (rider: see §15). Spectral shader: dark ink smoke, fog-contrast rim, ragged wisp edges, a small point core
   (≤ 10 % of the height), the telegraph on the rim, a burning noise dissolve over the death clip; the
   AI state picks the clip (wind-up = attack clip held at its anticipation pose, strike played through,
   hit react, gallop by ground speed). The low tier keeps the procedural figures and bodies (no
-  downloads). The other kinds are sculpted procedural creatures (§14). View model: a gloved fist
+  downloads). The other kinds are sculpted procedural creatures (§15). View model: a gloved fist
   with four curled fingers, knuckles, thumb and cuff; per-part gloss (satin paint, leather, iron),
   band seams, chipped paint and mud towards the shoe.
+- **Player character (camera track, 2026-11-19):** see §16 — a rigged CC0 surveyor seen over the
+  shoulder.
 - **Never:** gore, real victims or animals as enemies, likenesses of real people.
 
 ## 7. Render baseline (engineering, implemented 2026-11-19)
@@ -485,3 +487,18 @@ keeps the procedural rider).
 Real GPU (M5 Pro, Metal, 1440 × 900, high): every showcase scene 92–100 fps (vsync cap 100), the
 Pikeur 92–96 fps. Open: the Strohmann still reads stiff (a straight torso of sheaves), the
 Steinbrecher stays blocky by design but could use broken edges; no CC0 rigged creatures used.
+
+## 16. Third-person camera and the player character (2026-11-19)
+
+- **Who you are:** a present-day surveyor — olive field jacket, hi-vis orange vest panel, dark
+  work trousers, boots, an orange backpack, a brass lantern on the left hip (lit at night, it lights
+  the scene from the character) and the red / white Messstab across the back, in hand in a fight.
+  Model: CC0 Quaternius adventurer (poly.pizza), recoloured per material slot, kqStandard shading,
+  no hat, no armour, nothing from any commercial game.
+- **Camera:** over the right shoulder, character in the lower-left third, 3.6 m by default (wheel
+  1.8–8 m); pulls back and up in fights so the pack fits; two-shot in conversations; never inside a
+  wall, trunk, hill or ceiling. First person stays as an option (F5 / Einstellungen).
+- **Readability:** a thin warm additive ring under the target (no colour-only meaning: it also
+  rotates); off-screen attackers as chevrons around the character, pulsing on a wind-up; enemies
+  keep 0.95 m + radius off the body so they never sit inside it.
+- Before / after (headed Chromium, Metal, 1440 × 900, high): `test-results/look/shots/v2-camera-*`.
