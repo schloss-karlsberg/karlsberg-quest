@@ -123,7 +123,9 @@ export class SunShadows {
     const prev = renderer.getRenderTarget();
     renderer.setRenderTarget(this.target);
     renderer.clear(true, true, false);
+    a.uShadowPass.value = 1;
     renderer.render(scene, cam);
+    a.uShadowPass.value = 0;
     renderer.setRenderTarget(prev);
     for (let i = 0; i < skip.length; i++) skip[i]!.visible = this.vis[i]!;
 

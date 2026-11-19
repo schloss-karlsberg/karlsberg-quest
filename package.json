@@ -17,6 +17,7 @@
     "assets:tex": "tsx scripts/assets/pack-texture.ts",
     "assets:strip": "tsx scripts/assets/pack-strip.ts",
     "assets:surface": "tsx scripts/assets/pack-surface.ts",
+    "assets:set": "tsx scripts/assets/pack-set.ts",
     "assets:inspect": "tsx scripts/assets/inspect-gltf.ts"
   },
   "dependencies": {

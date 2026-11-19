@@ -1,4 +1,4 @@
-import type { DataArrayTexture, PerspectiveCamera, Scene, Texture } from 'three';
+import type { DataArrayTexture, PerspectiveCamera, Scene, Texture, WebGLRenderer } from 'three';
 import type { AssetLoader } from '../../assets/loader';
 import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
@@ -7,6 +7,7 @@ import type { Terrain } from '../terrain';
 import { GroundCover, type GroundCoverSource } from './groundcover';
 import { NatureProps } from './props';
 import { stripToArray } from './strips';
+import { ModelTrees } from './trees';
 
 /** Asset ids of the nature track's texture strips (src/assets/manifests/nature.ts). */
 export const NATURE_TEX = {
@@ -31,7 +32,11 @@ export class Nature {
   readonly cover: GroundCover;
   readonly props: NatureProps;
   /** Test / debug status. */
-  readonly status = { textures: 'off' as 'off' | 'loading' | 'on' | 'failed', level: 'low' as GraphicsLevel };
+  readonly status = { textures: 'off' as 'off' | 'loading' | 'on' | 'failed', level: 'low' as GraphicsLevel, trees: 'off' as 'off' | 'loading' | 'on' | 'failed' };
+  private renderer: WebGLRenderer | null = null;
+  /** CC0 model trees (built once on the first medium / high level, kept across level changes). */
+  private trees: ModelTrees | null = null;
+  private treesLoading = false;
 
   constructor(
     private readonly terrain: Terrain,
@@ -44,11 +49,17 @@ export class Nature {
     scene.add(this.cover.object, this.props.object);
   }
 
-  /** Assets become available (boot, after the loader exists). */
-  attach(assets: AssetLoader): void {
+  /** Assets become available (boot, after the loader exists); the renderer bakes the tree impostors. */
+  attach(assets: AssetLoader, renderer?: WebGLRenderer): void {
     this.assets = assets;
+    this.renderer = renderer ?? null;
     this.props.attach(assets);
     this.sync();
+  }
+
+  /** Debug / tests: the model trees (null until loaded or on low). */
+  get modelTrees(): ModelTrees | null {
+    return this.trees;
   }
 
   /** Quality tier changed (render/quality.ts listener). */
@@ -70,7 +81,39 @@ export class Nature {
     this.props.update(camera);
   }
 
+  /** Model trees on medium / high (one GLB, impostors baked once); procedural forest on low. */
+  private syncTrees(): void {
+    const want = this.level !== 'low';
+    if (!want) {
+      this.forest.setModels(null);
+      if (this.status.trees === 'on') this.status.trees = 'off';
+      return;
+    }
+    if (this.trees) {
+      this.forest.setModels(this.trees);
+      this.status.trees = 'on';
+      return;
+    }
+    if (!this.assets || !this.renderer || this.treesLoading) return;
+    this.treesLoading = true;
+    this.status.trees = 'loading';
+    const renderer = this.renderer;
+    this.assets
+      .model('nature2.trees')
+      .then((m) => {
+        this.trees = new ModelTrees(m.scene, renderer, this.level === 'high' ? 256 : 128, this.forest.sharedUniforms);
+        if (this.level !== 'low') this.forest.setModels(this.trees);
+        this.status.trees = this.level !== 'low' ? 'on' : 'off';
+      })
+      .catch((err: unknown) => {
+        this.status.trees = 'failed';
+        console.warn('[nature] model trees failed, keeping the procedural forest', err);
+      })
+      .finally(() => (this.treesLoading = false));
+  }
+
   private sync(): void {
+    this.syncTrees();
     const want = this.level !== 'low';
     if (!want) {
       this.terrain.setGroundSet(null);

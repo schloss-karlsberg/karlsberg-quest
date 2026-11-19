@@ -46,6 +46,8 @@ export const atmosphere = {
   uShadowParams: { value: new Vector4(0, 0, 0, 0) },
   /** xyz centre of the shadow box (player), w fade-out radius (m). */
   uShadowCenter: { value: new Vector4(0, 0, 0, 1) },
+  /** 1 while the sun shadow map renders (render/shadows.ts): shaders skip lighting, impostors face the sun. */
+  uShadowPass: { value: 0 },
 };
 
 export type Atmosphere = typeof atmosphere;
@@ -77,6 +79,7 @@ uniform sampler2D uShadowMap;
 uniform mat4 uShadowMatrix;
 uniform vec4 uShadowParams;
 uniform vec4 uShadowCenter;
+uniform float uShadowPass;
 
 float kqHash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * .1031);

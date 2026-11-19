@@ -5,7 +5,11 @@ import { findWaterBodies, shoreDistance } from '../src/world/water';
 import { COVER_LOOKS, flowerChance, grassChance, hash2, reedChance, valueNoise } from '../src/world/vegetation/scatter';
 import { GROUND_LAYERS, GROUND_TILE_M, BARK_LAYERS } from '../src/world/vegetation/strips';
 import { PROP_KINDS } from '../src/world/vegetation/props';
-import NATURE_ASSETS from '../src/assets/manifests/nature';
+import NATURE1 from '../src/assets/manifests/nature';
+import NATURE2 from '../src/assets/manifests/nature2';
+import { FAMILY_CROWN, TREE_VARIANTS, pickVariant, treeLevels, treeScaleY } from '../src/world/vegetation/trees';
+
+const NATURE_ASSETS = [...NATURE1, ...NATURE2];
 
 /** 12 × 8 grid, 2 m cells: a 4 × 3 pond at 10 m and a 2 × 2 puddle at 12 m on 15 m land. */
 function pondWorld() {
@@ -103,12 +107,12 @@ describe('nature scatter', () => {
   it('props keep off water and paths', () => {
     const look = today;
     for (const k of PROP_KINDS) {
-      expect(k.chance({ forest: 1, water: 0.5, bare: 0, lawn: 0 }, 5, 1, look)).toBe(0);
-      expect(k.chance({ forest: 1, water: 0, bare: 0.9, lawn: 0 }, 5, 1, look)).toBe(0);
+      expect(k.chance({ forest: 1, water: 0.5, bare: 0, lawn: 0 }, 5, 1, look, 1)).toBe(0);
+      expect(k.chance({ forest: 1, water: 0, bare: 0.9, lawn: 0 }, 5, 1, look, 1)).toBe(0);
     }
     const fern = PROP_KINDS.find((k) => k.id === 'fern')!;
-    expect(fern.chance({ forest: 1, water: 0, bare: 0, lawn: 0 }, 5, 1, look)).toBeGreaterThan(0);
-    expect(fern.chance({ forest: 0, water: 0, bare: 0, lawn: 0 }, 5, 1, look)).toBe(0);
+    expect(fern.chance({ forest: 1, water: 0, bare: 0, lawn: 0 }, 5, 1, look, 1)).toBeGreaterThan(0);
+    expect(fern.chance({ forest: 0, water: 0, bare: 0, lawn: 0 }, 5, 1, look, 1)).toBe(0);
   });
 });
 
@@ -124,9 +128,47 @@ describe('nature assets', () => {
       const e = NATURE_ASSETS.find((a) => a.id === k.asset);
       expect(e, k.asset).toBeTruthy();
       expect(e!.kind).toBe('model');
-      expect(e!.licence).toMatch(/^polyhaven\./);
+      expect(e!.licence).toMatch(/^(polyhaven|quaternius)\./);
       // the stump from the art foundation is also a scenery prop of 'today' / '1796'
       if (k.asset !== 'nature.stump.01') expect(e!.eras ?? []).toEqual([]);
     }
+  });
+});
+
+describe('model trees (nature round 2)', () => {
+  it('every variant exists in the set and families pick sensibly', () => {
+    expect(TREE_VARIANTS.length).toBe(16);
+    // spruce stands get pines, winter broadleaf goes bare, snags are dead in every season
+    const fam = (k: number, v: number, snag: number, winter: boolean) => TREE_VARIANTS[pickVariant(k, v, snag, winter, 0.05)]!.family;
+    expect(fam(1, 0.3, 0.9, false)).toBe(1);
+    expect(fam(0, 0.3, 0.9, true)).toBe(3);
+    expect(fam(0, 0.3, 0.01, false)).toBe(3);
+  });
+
+  it('LOD levels cross-fade in a band and stay complementary', () => {
+    const out: number[] = [];
+    treeLevels(10, 1, out);
+    expect(out[0]).toBe(0);
+    out.length = 0;
+    treeLevels(400, 1, out);
+    expect(out[0]).toBe(2);
+    // inside the lod0/lod1 band both levels are drawn with complementary dither ranges
+    out.length = 0;
+    treeLevels(30, 1, out);
+    expect(out.length).toBe(6);
+    expect(out[0]).toBe(0);
+    expect(out[3]).toBe(1);
+    // the nearer level keeps [t, 2), the farther [0, t): every pixel is drawn by exactly one
+    expect(out[1]).toBeCloseTo(out[5]!, 6);
+  });
+
+  it('the stand height maps the crown base and keeps the crown size', () => {
+    const [k, max] = FAMILY_CROWN[0]!;
+    const h = 28;
+    const C = Math.min(h * k, max);
+    expect(treeScaleY(0, 0.35, h, k, max)).toBeCloseTo(0, 6);
+    expect(treeScaleY(1, 0.35, h, k, max)).toBeCloseTo(h, 4);
+    // the crown above the base keeps its proportion (C per unit)
+    expect(treeScaleY(0.9, 0.35, h, k, max) - treeScaleY(0.5, 0.35, h, k, max)).toBeCloseTo(0.4 * C, 4);
   });
 });
