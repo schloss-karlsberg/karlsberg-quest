@@ -801,6 +801,10 @@ Round-4 (polish: set dressing) integration rules:
   60 m of the player, dropped beyond 85 m. 1789 candle-lit; 1793-02 dark, dust sheets, one candle
   in the Kabinett; 1793-07 looted (bible ch. 3) and burning; 1796 broken masonry, rubble, open
   sky; today low mossy foundations only (no collision).
+- Medium / high tier: the finishes take the CC0 surface layers (parquet, plaster, boards,
+  marble, damask …) and the chandeliers / fauteuils are CC0 models (`Built.models`, instanced
+  beside the mesh, dropped with it; candle flames sit at the model's candle tips). `low` keeps
+  the procedural furniture and finishes.
 - Shell (`shell.ts`, runtime patch of the palace shader like fx): glass of built buildings cut
   away, door boxes cut through the facade, other model parts poking into a built room clipped,
   the ruin shell dissolved into the interior's own stubs.
@@ -846,6 +850,10 @@ Round-4 (polish: set dressing) integration rules:
   railing with the two-winged gate; the Orangerie court in 1793-02. Built within `range` of the
   player in their eras, dropped on era change / far away; solids to the collider (owner
   `scenery`). Ghost workers (`workers.ts`) swing on the GPU; their strikes clink within 45 m.
+- Look (medium / high tier): the kit gives every piece a CC0 surface layer and metre UVs
+  (`src/world/surfaces.ts`, docs/ART-DIRECTION.md §8.2); `models.ts` instances CC0 prop GLBs
+  (`SetBuilder.model(id, fallback)`; the fallback kit prop is used on `low`). Dropped sets mark
+  their group `detached` so late model loads add nothing.
 - Hohenburg (`hohenburg.ts`): silhouette at its real bearing beyond the terrain data, drawn scaled
   towards the eye (`pullFactor`, with the hill's `reach` so its near foot stays beyond the edge)
   so the mirrored apron does not hide it; clearest at dawn / dusk and from the west edge in 1796.

@@ -7,6 +7,7 @@
  */
 import { Color, type DataTexture, DoubleSide, ShaderMaterial, Vector4 } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
+import { SURF, SURF_GLSL, surfaces } from '../../world/surfaces';
 
 export const MAX_LIGHTS = 12;
 export const MAX_ROOMS = 32;
@@ -72,6 +73,7 @@ void main() {
 const FRAG = /* glsl */ `
 precision highp float;
 ${ATMOS_GLSL}
+${SURF_GLSL}
 uniform sampler2D uLightMap;
 uniform vec4 uLmBox;
 uniform float uLmSplit;
@@ -449,6 +451,33 @@ void main() {
     alb *= 1.0 - 0.6 * step(0.985, h21(floor(uv * 6.0)));
   }
 
+  // CC0 surface detail (medium / high tier): the material's grain and relief on the finishes
+  if (uSurfOn > 0.5) {
+    float L = -1.0;
+    float k = 1.0;
+    if (m == ${M.PLASTER} || m == ${M.CEILING} || m == ${M.BARE} || m == ${M.BOISERIE}) { L = ${SURF.PLASTER}.0; k = 0.45; }
+    else if (m == ${M.PARQUET}) { L = ${SURF.PARQUET}.0; alb = base * 1.15; }
+    else if (m == ${M.BOARDS} || m == ${M.CHARRED}) L = ${SURF.PLANKS}.0;
+    else if (m == ${M.WOOD}) L = ${SURF.FINEWOOD}.0;
+    else if (m == ${M.MASONRY} || m == ${M.STEP} || m == ${M.FLAGS}) L = ${SURF.STONE}.0;
+    else if (m == ${M.RUBBLE}) L = ${SURF.RUBBLE}.0;
+    else if (m == ${M.MARBLE} || m == ${M.CHECKER}) { L = ${SURF.MARBLE}.0; k = 0.8; }
+    else if (m == ${M.IRON} || m == ${M.GILT}) { L = ${SURF.IRON}.0; k = 0.6; }
+    else if (m == ${M.FABRIC} || m == ${M.DAMASK}) { L = ${SURF.FABRIC}.0; k = 0.6; }
+    else if (m == ${M.STRAW}) L = ${SURF.STRAW}.0;
+    else if (m == ${M.COBBLE}) L = ${SURF.COBBLE}.0;
+    if (L > -0.5) {
+      float rough = 0.85;
+      float metal = 0.0;
+      vec3 a2 = alb;
+      vec3 n2 = n;
+      kqSurface(L, uv, vWorld, a2, n2, rough, metal);
+      alb = mix(alb, a2, k);
+      n = normalize(mix(n, n2, k));
+      spec = max(spec, (1.0 - rough) * 0.7 * k);
+    }
+  }
+
   // dust (abandoned rooms) and charring of burnt rooms
   if (uDust > 0.0 && n.y > 0.5) alb = mix(alb, vec3(0.42, 0.39, 0.34), uDust * 0.35 * (0.6 + 0.4 * kqFbm(vWorld.xz * 2.0)));
   if (charr > 0.0) {
@@ -582,6 +611,7 @@ export function makeInteriorMaterial(lightMap: DataTexture, lmBox: Vector4, lmSp
     side: DoubleSide,
     uniforms: {
       ...atmosphere,
+      ...surfaces,
       uLightMap: { value: lightMap },
       uLmBox: { value: lmBox },
       uLmSplit: { value: lmSplit },

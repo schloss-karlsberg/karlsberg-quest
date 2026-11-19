@@ -5,15 +5,22 @@
  */
 import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
+import { SURF_GLSL, surfaces } from '../../world/surfaces';
 
 const PROP_VERT = /* glsl */ `
 attribute vec3 color;
 attribute float aGlow;
+attribute float aSurf;
+attribute vec2 aUv;
 varying vec3 vWp;
 varying vec3 vN;
 varying vec3 vCol;
 varying float vGlow;
+varying float vSurf;
+varying vec2 vUv;
 void main() {
+  vSurf = aSurf - 1.0; // stored +1 (missing attribute → −1 = untextured)
+  vUv = aUv;
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWp = wp.xyz;
   vN = normalize(mat3(modelMatrix) * normal);
@@ -26,23 +33,41 @@ void main() {
 const PROP_FRAG = /* glsl */ `
 precision highp float;
 ${ATMOS_GLSL}
+${SURF_GLSL}
 uniform vec3 uEmissive;
 uniform float uOpacity;
 varying vec3 vWp;
 varying vec3 vN;
 varying vec3 vCol;
 varying float vGlow;
+varying float vSurf;
+varying vec2 vUv;
 void main() {
   if (uOpacity < 1.0 && kqHash12(gl_FragCoord.xy + floor(uTime * 30.0)) > uOpacity) discard;
   vec3 n = normalize(vN);
   if (!gl_FrontFacing) n = -n;
-  float g = kqNoise(vWp.xz * 1.7 + vWp.y * 2.3);
-  vec3 alb = vCol * (0.84 + 0.3 * g);
-  // dirt creeps up from the ground, snow settles on what faces the sky
-  alb *= mix(0.72, 1.0, smoothstep(0.0, 0.6, fract(vWp.y) + n.y * 0.4));
-  float snow = uSnow * smoothstep(0.55, 0.85, n.y) * smoothstep(0.35, 0.6, kqNoise(vWp.xz * 3.0) + 0.3);
-  alb = mix(alb, vec3(0.82, 0.86, 0.95), snow);
-  vec3 col = kqLight(alb, n, vWp, 1.0, 1.0);
+  vec3 col;
+  if (uSurfOn > 0.5 && vSurf > -0.5) {
+    // textured (medium / high): CC0 material detail on the palette colour, bump, specular
+    vec3 alb = vCol * (0.92 + 0.16 * kqNoise(vWp.xz * 0.6 + vWp.y));
+    float rough = 0.85;
+    float metal = 0.0;
+    kqSurface(vSurf, vUv, vWp, alb, n, rough, metal);
+    // grime near the ground, snow on what faces the sky
+    alb *= mix(0.78, 1.0, smoothstep(0.0, 0.5, fract(vWp.y) + n.y * 0.4));
+    float snow = uSnow * smoothstep(0.5, 0.85, n.y) * smoothstep(0.35, 0.6, kqNoise(vWp.xz * 3.0) + 0.3);
+    alb = mix(alb, vec3(0.82, 0.86, 0.95), snow);
+    rough = mix(rough, 0.6, snow);
+    col = kqLightPbr(alb, n, vWp, 1.0, rough, metal * (1.0 - snow));
+  } else {
+    float g = kqNoise(vWp.xz * 1.7 + vWp.y * 2.3);
+    vec3 alb = vCol * (0.84 + 0.3 * g);
+    // dirt creeps up from the ground, snow settles on what faces the sky
+    alb *= mix(0.72, 1.0, smoothstep(0.0, 0.6, fract(vWp.y) + n.y * 0.4));
+    float snow = uSnow * smoothstep(0.55, 0.85, n.y) * smoothstep(0.35, 0.6, kqNoise(vWp.xz * 3.0) + 0.3);
+    alb = mix(alb, vec3(0.82, 0.86, 0.95), snow);
+    col = kqLight(alb, n, vWp, 1.0, 1.0);
+  }
   if (vGlow > 0.0) {
     float fl = 0.78 + 0.22 * sin(uTime * 7.3 + vWp.x * 3.1) * sin(uTime * 4.1 + vWp.z * 2.3);
     col += uEmissive * vGlow * fl;
@@ -56,7 +81,7 @@ export function propMaterial(): ShaderMaterial {
   return new ShaderMaterial({
     vertexShader: PROP_VERT,
     fragmentShader: PROP_FRAG,
-    uniforms: { ...atmosphere, uEmissive: { value: new Color(3.2, 1.25, 0.35) }, uOpacity: { value: 1 } },
+    uniforms: { ...atmosphere, ...surfaces, uEmissive: { value: new Color(3.2, 1.25, 0.35) }, uOpacity: { value: 1 } },
     side: DoubleSide,
   });
 }

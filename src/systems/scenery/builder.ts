@@ -7,6 +7,7 @@ import { Color, Group, InstancedBufferAttribute, Mesh, type ShaderMaterial } fro
 import type { Solid } from '../../world/collision';
 import { Kit } from './kit';
 import { glowMaterial, propMaterial } from './material';
+import { type ModelPlacement, placeMatrix } from './models';
 import { type SignSpec, signMesh } from './signs';
 import { instancedQuad, type SmokeSource, smokeMesh } from './smoke';
 import { type WorkerSpec, STRIKE_PERIOD, workersMesh } from './workers';
@@ -35,6 +36,8 @@ export interface BuiltSet {
   solids: Solid[];
   strikes: Strike[];
   materials: ShaderMaterial[];
+  /** CC0 prop models to instance into `group` (medium / high tier; empty on low). */
+  models: ModelPlacement[];
 }
 
 export class SetBuilder {
@@ -44,8 +47,37 @@ export class SetBuilder {
   readonly smoke: SmokeSource[] = [];
   readonly glows: Glow[] = [];
   readonly signs: SignSpec[] = [];
+  readonly models: ModelPlacement[] = [];
 
-  constructor(readonly heightAt: (x: number, z: number) => number) {}
+  /**
+   * @param detailed place CC0 prop models (`model()`); false (low tier, tests) builds the
+   *   procedural fallbacks into the kit instead.
+   */
+  constructor(
+    readonly heightAt: (x: number, z: number) => number,
+    readonly detailed = false,
+  ) {}
+
+  /**
+   * A CC0 prop model at the kit's current frame (set by `at()` / `kit.place()`), offset by x/y/z
+   * and yawed (radians) / scaled in that frame. Without `detailed`, `fallback` builds the old
+   * procedural prop into the kit at the same frame instead.
+   */
+  model(id: string, fallback?: () => void, o: { x?: number; y?: number; z?: number; yaw?: number; scale?: number; tiltX?: number; tiltZ?: number } = {}): this {
+    if (!this.detailed) {
+      fallback?.();
+      return this;
+    }
+    const m = this.kit.frameMatrix().multiply(placeMatrix(o.x ?? 0, o.y ?? 0, o.z ?? 0, o.yaw ?? 0, o.scale ?? 1, o.tiltX ?? 0, o.tiltZ ?? 0));
+    this.models.push({ id, matrix: m });
+    return this;
+  }
+
+  /** Same as `model` at a world position (yaw radians). */
+  modelAt(id: string, x: number, y: number, z: number, yaw = 0, scale = 1): this {
+    if (this.detailed) this.models.push({ id, matrix: placeMatrix(x, y, z, yaw, scale) });
+    return this;
+  }
 
   /** Place the kit at x/z on the ground (lowest of a few samples around, `sink` m deeper). */
   at(x: number, z: number, deg = 0, spread = 0.8, sink = 0.05): number {
@@ -140,6 +172,6 @@ export class SetBuilder {
       group.add(mesh);
       materials.push(m);
     }
-    return { group, solids: this.solids, strikes, materials };
+    return { group, solids: this.solids, strikes, materials, models: this.models };
   }
 }

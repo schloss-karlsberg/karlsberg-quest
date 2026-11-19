@@ -134,9 +134,21 @@ const baumagazin: SetDef = {
     // barrels by the wall, carts waiting to leave
     for (const [x, z, s] of [[500.2, -851.0, 21], [500.6, -852.4, 22], [499.4, -853.0, 23]] as const) {
       b.at(x, z, 0, 0.3);
-      barrel(k, s);
+      b.model('architecture.barrel', () => barrel(k, s), { yaw: s, scale: 0.82 });
       b.circle(x, z, 0.32);
     }
+    // detailed tiers: the yard's small things (CC0 models) round the barrels and Soll's table
+    b.at(499.0, -849.6, 250, 0.4);
+    b.model('architecture.crate.lid', undefined, { yaw: 0.2 });
+    b.model('architecture.crate.lid', undefined, { y: 0.35, yaw: -0.15, scale: 0.9 });
+    b.at(497.4, -846.8, 0, 0.2);
+    b.model('architecture.stool', undefined, { yaw: 1.1 });
+    b.at(493.6, -843.4, 0, 0.2);
+    b.model('architecture.bucket', undefined, { yaw: 0.6 });
+    b.at(485.6, -832.6, 0, 0.3);
+    b.model('architecture.basket', undefined, { yaw: 0.4, scale: 1.2 });
+    b.at(483.7, -831.2, 200, 0.2);
+    b.model('architecture.pickaxe', undefined, { y: 0.34, yaw: 0.3, tiltZ: 1.25 });
     b.at(465.0, -842.5, 200, 1.4);
     cart(k, 24, 'stones');
     b.circle(465.0, -842.5, 1.2).circle(464.0, -840.0, 0.7);
@@ -327,7 +339,9 @@ const zwinger: SetDef = {
       b.circle(x, z, 0.12);
     }
     b.at(1183.4, -1597.5, 0, 0.3);
-    barrel(k, 74);
+    b.model('architecture.barrel', () => barrel(k, 74), { yaw: 1.3, scale: 0.82 });
+    b.at(1182.6, -1596.4, 0, 0.2);
+    b.model('architecture.bucket', undefined, { yaw: 2.1 });
     b.circle(1183.4, -1597.5, 0.32);
     // inside the walled yard: rows of kennels, troughs, straw (seen over the wall and from the Jägerhaus)
     s = 80;
@@ -355,6 +369,7 @@ const zwinger: SetDef = {
       // the night of the fire: a lantern on a post, the trough knocked over
       b.at(1254.0, -1576.0, 0, 0.2);
       post(k, 102);
+      b.model('architecture.lantern', undefined, { x: 0.14, y: 0.66, scale: 0.85 });
       b.circle(1254.0, -1576.0, 0.12);
       const y = b.heightAt(1254.0, -1576.0);
       b.glow(1254.1, y + 1.15, -1576.0, 1.1, LANTERN);
@@ -473,10 +488,13 @@ const orangerieHof: SetDef = {
     b.box(1270.5, -982.0, 200, 1.0, 2.3).circle(1270.5 + Math.sin(face(200)) * 3.6, -982.0 + Math.cos(face(200)) * 3.6, 0.4);
     for (const [x, z, sd] of [[1266.8, -985.5, 122], [1267.6, -987.2, 123], [1274.6, -986.0, 124]] as const) {
       b.at(x, z, 200 + sd, 0.4);
-      k.box(0.7, 0.5, 0.6, 0, 0, 0, C.woodGrey);
-      if (sd === 122) k.box(0.6, 0.45, 0.55, 0, 0.5, 0.02, C.woodGrey, [0, 0.2, 0]);
+      b.model('architecture.crate.long', () => k.box(0.7, 0.5, 0.6, 0, 0, 0, C.woodGrey), { yaw: Math.PI / 2, scale: 1.05 });
+      if (sd === 122) b.model('architecture.crate.lid', () => k.box(0.6, 0.45, 0.55, 0, 0.5, 0.02, C.woodGrey, [0, 0.2, 0]), { y: 0.48, yaw: 0.2 });
       b.circle(x, z, 0.5);
     }
+    // the iron-bound chest of the collection waiting by the wagon
+    b.at(1271.8, -986.4, 205, 0.5);
+    b.model('architecture.chest', undefined, { scale: 0.9 });
     b.at(1264.0, -980.0, 0, 0.3);
     post(k, 125);
     b.circle(1264.0, -980.0, 0.12);

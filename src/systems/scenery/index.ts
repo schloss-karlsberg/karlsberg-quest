@@ -24,11 +24,13 @@ import { clink } from './audio';
 import { type BuiltSet, SetBuilder } from './builder';
 import { FIREWORKS_ECHO, Fireworks, type FireworksPhase } from './fireworks';
 import { atmosphere } from '../../world/atmosphere';
+import { applySurfaceQuality } from '../../world/surfaces';
 import { Lehnstuhl } from './chair';
 import { CONVOY_ROAD, Convoy } from './convoy';
 import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, pullFactor } from './hohenburg';
 import { Kit } from './kit';
 import { propMaterial } from './material';
+import { disposeModels, instanceModels } from './models';
 import { buildPassage, passageCollision, patchPalace, setPassageCut } from './passage';
 import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
@@ -142,8 +144,11 @@ function dropSet(id: string): void {
   const l = live.get(id);
   if (!l) return;
   l.built.group.removeFromParent();
+  l.built.group.userData.detached = true;
+  disposeModels(l.built.group);
   l.built.group.traverse((o) => {
     const m = o as Mesh;
+    if (o.userData.sharedGeometry) return;
     if (m.isMesh || (o as { isPoints?: boolean }).isPoints) m.geometry.dispose();
   });
   for (const m of l.built.materials) {
@@ -155,10 +160,11 @@ function dropSet(id: string): void {
 }
 
 function buildSet(ctx: GameContext, def: SetDef, era: Era): void {
-  const b = new SetBuilder((x, z) => ctx.world.heightfield.heightAt(x, z));
+  const b = new SetBuilder((x, z) => ctx.world.heightfield.heightAt(x, z), ctx.quality.level !== 'low');
   def.build(b, { era, gateOpen: slice.gate });
   const built = b.build(def.id);
   root.add(built.group);
+  if (built.models.length) void instanceModels(ctx.assets, built.models, built.group);
   live.set(def.id, { def, built, era, gate: slice.gate, lastStrike: built.strikes.map(() => Number.NaN) });
   solidsDirty = true;
 }
@@ -426,6 +432,9 @@ export default defineSystem({
     root = new Group();
     root.name = 'scenery';
     ctx.scene.add(root);
+    // CC0 surface sets of palace, props, interiors (src/world/surfaces.ts): medium / high only
+    applySurfaceQuality(ctx.assets, ctx.quality.level);
+    ctx.quality.listeners.push((_p, level) => applySurfaceQuality(ctx.assets, level));
     hohenburg = new Hohenburg();
     root.add(hohenburg.mesh);
     ctx.events.on('era:change', () => applyEra(ctx));

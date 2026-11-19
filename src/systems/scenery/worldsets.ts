@@ -95,6 +95,7 @@ const apfelallee: SetDef = {
       const [mx, mz] = ALLEE[1]!;
       b.at(mx + 7, mz, 0, 0.2);
       post(k, 501);
+      b.model('architecture.lantern', undefined, { x: 0.14, y: 0.66, scale: 0.85 });
       b.circle(mx + 7, mz, 0.12);
       b.glow(mx + 7.1, b.heightAt(mx + 7, mz) + 1.15, mz, 1.0, LANTERN);
     }
@@ -244,7 +245,7 @@ const menagerie: SetDef = {
     // feed: barrels and a trough
     for (const [x, z, s] of [[1999, 92, 741], [2000.5, 93.2, 742]] as const) {
       b.at(x, z, 0, 0.3);
-      barrel(k, s);
+      b.model('architecture.barrel', () => barrel(k, s), { yaw: s, scale: 0.82 });
       b.circle(x, z, 0.32);
     }
     b.at(1993, 100, 30, 1.2);
@@ -454,7 +455,8 @@ const festsaal: SetDef = {
     };
     for (const t of [0.33, 0.67]) {
       const [x, z, deg] = onWall(B, Cc, t, 0.55);
-      fauteuil(x, z, deg);
+      k.place(x, y0, z, face(deg));
+      b.model('architecture.armchair', () => fauteuil(x, z, deg), { scale: 1.05 });
     }
     {
       // the canapé along the south wall, east of the door
@@ -476,30 +478,43 @@ const festsaal: SetDef = {
       const hz = mz + (cz - mz) * 0.75;
       const ceil = 355.5;
       const yb = ceil - 1.75;
-      k.place(hx, 0, hz, 0.4);
-      k.cyl(0.015, 0.015, ceil - yb - 0.4, 0, yb + 0.4, 0, 0x8a6a2a, undefined, 4);
-      k.cyl(0.12, 0.05, 0.4, 0, yb, 0, GILT, undefined, 10);
-      k.cyl(0.05, 0.12, 0.18, 0, yb - 0.18, 0, GILT, undefined, 10);
+      const kitLamp = !b.detailed;
+      if (b.detailed) {
+        // detailed tiers: a CC0 brass-and-crystal candle chandelier on its chain
+        k.place(hx, ceil - 0.25, hz, 0.4);
+        b.model('architecture.chandelier', undefined, { scale: 1.6 });
+        k.place(hx, 0, hz, 0.4);
+        k.cyl(0.015, 0.015, 0.3, 0, ceil - 0.3, 0, 0x8a6a2a, undefined, 4);
+      } else {
+        k.place(hx, 0, hz, 0.4);
+        k.cyl(0.015, 0.015, ceil - yb - 0.4, 0, yb + 0.4, 0, 0x8a6a2a, undefined, 4);
+        k.cyl(0.12, 0.05, 0.4, 0, yb, 0, GILT, undefined, 10);
+        k.cyl(0.05, 0.12, 0.18, 0, yb - 0.18, 0, GILT, undefined, 10);
+      }
       const rr = rng(57);
       for (let i = 0; i < 10; i++) {
         const a0 = (i / 10) * Math.PI * 2;
         const a1 = ((i + 1) / 10) * Math.PI * 2;
         const R = 0.62;
-        k.beam(Math.cos(a0) * R, yb + 0.05, Math.sin(a0) * R, Math.cos(a1) * R, yb + 0.05, Math.sin(a1) * R, 0.03, GILT);
-        k.beam(0, yb + 0.1, 0, Math.cos(a0) * R, yb + 0.05, Math.sin(a0) * R, 0.022, GILT);
-        k.cyl(0.04, 0.03, 0.05, Math.cos(a0) * R, yb + 0.06, Math.sin(a0) * R, GILT, undefined, 6);
-        // a few candles still burn (the fire outside has not reached the room yet)
         const lit = rr() < 0.6;
-        k.cyl(0.018, 0.018, 0.13, Math.cos(a0) * R, yb + 0.1, Math.sin(a0) * R, 0xf2ead8, undefined, 5, lit ? 0.6 : 0);
-        k.box(0.03, 0.09, 0.012, Math.cos(a0) * R * 0.8, yb - 0.1, Math.sin(a0) * R * 0.8, 0xe8f0f4, [0, a0, 0], 0.3);
+        if (kitLamp) {
+          k.beam(Math.cos(a0) * R, yb + 0.05, Math.sin(a0) * R, Math.cos(a1) * R, yb + 0.05, Math.sin(a1) * R, 0.03, GILT);
+          k.beam(0, yb + 0.1, 0, Math.cos(a0) * R, yb + 0.05, Math.sin(a0) * R, 0.022, GILT);
+          k.cyl(0.04, 0.03, 0.05, Math.cos(a0) * R, yb + 0.06, Math.sin(a0) * R, GILT, undefined, 6);
+          // a few candles still burn (the fire outside has not reached the room yet)
+          k.cyl(0.018, 0.018, 0.13, Math.cos(a0) * R, yb + 0.1, Math.sin(a0) * R, 0xf2ead8, undefined, 5, lit ? 0.6 : 0);
+          k.box(0.03, 0.09, 0.012, Math.cos(a0) * R * 0.8, yb - 0.1, Math.sin(a0) * R * 0.8, 0xe8f0f4, [0, a0, 0], 0.3);
+        }
         if (lit) b.glow(hx + Math.cos(a0 + 0.4) * R, yb + 0.27, hz + Math.sin(a0 + 0.4) * R, 0.32, LANTERN);
       }
       // crystal festoons hanging below
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        k.beam(Math.cos(a) * 0.45, yb + 0.02, Math.sin(a) * 0.45, Math.cos(a) * 0.12, yb - 0.38, Math.sin(a) * 0.12, 0.012, 0xdfe8ee);
+      if (kitLamp) {
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          k.beam(Math.cos(a) * 0.45, yb + 0.02, Math.sin(a) * 0.45, Math.cos(a) * 0.12, yb - 0.38, Math.sin(a) * 0.12, 0.012, 0xdfe8ee);
+        }
+        k.cone(0.09, 0.22, 0, yb - 0.6, 0, 0xe8f0f4, 6, [Math.PI, 0, 0]);
       }
-      k.cone(0.09, 0.22, 0, yb - 0.6, 0, 0xe8f0f4, 6, [Math.PI, 0, 0]);
       b.glow(hx, yb + 0.1, hz, 1.6, new Color(0.9, 0.6, 0.28));
     }
     // nothing here is solid: the room is on the upper floor, and solids act on every storey
@@ -572,6 +587,7 @@ const zwingerHeute: SetDef = {
     for (const [x, z, s] of [[1250, -1578, 1105], [1192, -1572, 1107], [1224, -1561, 1108]] as const) {
       b.at(x, z, 0, 0.2);
       post(k, s);
+      b.model('architecture.lantern', undefined, { x: 0.14, y: 0.66, scale: 0.85 });
       b.circle(x, z, 0.12);
       b.glow(x + 0.1, b.heightAt(x, z) + 1.15, z, 1.2, LANTERN);
     }

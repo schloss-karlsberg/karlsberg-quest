@@ -20,7 +20,8 @@
  *
  * Debug: window.kq.interiors (see InteriorHooks).
  */
-import { type DataTexture, Mesh, type ShaderMaterial, Vector3 } from 'three';
+import { type DataTexture, Group, Mesh, type ShaderMaterial, Vector3 } from 'three';
+import { disposeModels, instanceModels } from '../scenery/models';
 import { ERA_INFO, type Era } from '../../core/era';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
@@ -82,6 +83,8 @@ interface BRT {
   mat: ShaderMaterial | null;
   lightTex: DataTexture | null;
   flames: FlameLayer | null;
+  /** CC0 prop models of the building (detailed tiers). */
+  models: Group | null;
   debris: Map<number, Mesh>;
   fade: number;
   fire: number[];
@@ -193,6 +196,7 @@ function switchMode(ctx: GameContext): void {
       mat: null,
       lightTex: null,
       flames: null,
+      models: null,
       debris: new Map(),
       fade: 0,
       fire: new Array<number>(MAX_ROOMS).fill(0),
@@ -231,7 +235,7 @@ function distTo(bp: BuildingPlan, x: number, z: number): number {
 function build(ctx: GameContext, b: BRT): void {
   const cur = current();
   if (!cur || !rt) return;
-  const look = lookOf(rt.era, rt.mode);
+  const look = lookOf(rt.era, rt.mode, ctx.quality.level !== 'low');
   const hf = ctx.world.heightfields[rt.mode === 'today' ? '2025' : '1789'];
   const built = buildInterior(cur.plan, b.id, look, (x, z) => hf.heightAt(x, z));
   const geo = built.geo.toGeometry();
@@ -257,6 +261,13 @@ function build(ctx: GameContext, b: BRT): void {
   ctx.scene.add(mesh);
   const flames = new FlameLayer(built.flames, b.fire, b.smoke, b.heat);
   ctx.scene.add(flames.additive, flames.smoke);
+  if (built.models.length) {
+    const group = new Group();
+    group.name = `interior-${b.id}-models`;
+    ctx.scene.add(group);
+    void instanceModels(ctx.assets, built.models, group);
+    b.models = group;
+  }
   b.built = built;
   b.mesh = mesh;
   b.mat = mat;
@@ -280,6 +291,12 @@ function addDebris(ctx: GameContext, b: BRT, ri: number): void {
 }
 
 function drop(ctx: GameContext, b: BRT): void {
+  if (b.models) {
+    b.models.userData.detached = true;
+    ctx.scene.remove(b.models);
+    disposeModels(b.models);
+    b.models = null;
+  }
   if (b.mesh) {
     ctx.scene.remove(b.mesh);
     b.mesh.geometry.dispose();
