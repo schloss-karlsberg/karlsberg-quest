@@ -527,3 +527,32 @@ real GPU (headed Chromium, Metal, M5 Pro, 1440 × 900, high; shots in `test-resu
   character's body (no avatar fade toward the locked target yet); loot glows read as white balls
   on night snow; a few motes still show in the 1789 day sky; the Strohmann stiff, the Steinbrecher
   blocky; no IK on the surveyor; the unused Poly Haven rock sets / fern_02 still sit in the manifest.
+
+## 18. Real-GPU playtest round 9 (2026-11-20)
+
+Two testers (a new player and a tour) on the real GPU. Checked with headed Chromium (Metal,
+1440 × 900, high; shots in `test-results/look/r9/`):
+
+- **Creatures:** the Irrlicht is a wisp (heart orb, flame drop, halo, dark eye hollows, orbiting
+  motes, a trailing tail; no lantern cage); its sparks are larger with a halo and a longer trail.
+  The Rufer is a hooded shroud with a bone mask, a glowing mouth ring and raised clawed arms; the
+  Foliant is a book golem (bound-volume torso, book head, an open tome as shield, page wings); the
+  Nebelweber has a shoulder shroud and sleeve tails; the Mahnbrief is twice the size, with no ground blob.
+- **Glare:** the Bannlicht flare and the dazzle overlay are capped (overlay ≤ 0.38, reduced flash
+  0.2); pickup glows are a soft tint (HDR 2.4 instead of 6), not white balls.
+- **Ehrenhof:** the court rosette is a stone inlay (warm grey), not a red disc.
+- **Camera:** the fight shoulder is higher (lift 0.45) and rises over a boss's body; a conversation
+  frames the speaker from the player's side; the avatar fades (dither) when the lens comes close or
+  the locked target is behind it.
+- **Reeds / grass** duck out of the line between the camera and the lantern (no wall of blades in
+  front of the light).
+- **Focus ring:** the canvas has no browser focus outline.
+- **Palace draw cells** (see ARCHITECTURE): 1789 Ehrenhof 112 fps (≈ 100 before).
+
+Frame rate this round was measured under heavy machine load (Spotlight indexing at ~350 % CPU);
+the forest A/B (same spot, same build, old vs new) moved between 20 and 57 fps on the *old* build
+too, so no regression is attributable to this round; not re-benchmarked on a quiet machine.
+
+Still open: the 1793-07 window flames and the smoke column (reads as a skull at some angles);
+the 1796 stepped ruins and the sky ellipse; relief views hiding vegetation; the red bushes; the
+light-shaft quad; ghost props near the player; the wireframe market stall; the Messstab in hand.

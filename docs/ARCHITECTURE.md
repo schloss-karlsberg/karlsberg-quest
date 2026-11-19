@@ -21,7 +21,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/core/` | Engine core, no three.js: `events` (typed bus), `state` (serialisable GameState + store), `save` (localStorage `kq.*`), `loop` (fixed step), `systems` (registry), `era`, `context` (GameContext type) |
 | `src/data/` | Data types, pure decoders, loader for `public/data` |
 | `src/world/` | Terrain (chunked, LOD, shader), sky, forest (instanced), palace (glb), collision, atmosphere (shared uniforms + GLSL), era looks |
-| `src/player/` | Input (bindings, pointer lock, `simulate`, wheel), stances, Player controller, `camera.ts` (third-person spring arm `CameraRig`, `cameraHints`), `avatar.ts` (the rigged player character), `pose.ts` (`actionPose`: combat → avatar) |
+| `src/player/` | Input (bindings, pointer lock, `simulate`, wheel), stances, Player controller, `camera.ts` (third-person spring arm `CameraRig`, `cameraHints` fight / focus / boss / `bodies`; pitch −55°…+35° and auto-levelling while walking in third person), `avatar.ts` (the rigged player character; dithered fade when the lens is close or the locked target is behind the body), `pose.ts` (`actionPose`: combat → avatar) |
 | `src/render/post.ts` | Post FX: MSAA HDR target with depth texture (`setSamples(n)`), half-res SAO, bloom chain, ACES (Hill fit), white balance, split toning, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing); `setFeatures({bloom, ao, grade})` from the tier; `debug` 1 = AO / 2 = bloom buffer |
 | `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`) |
 | `src/render/standard.ts` | `kqStandard(mat)` / `kqStandardize(root)`: imported PBR materials lit by the world (era sun + shadow, hemisphere fill, lantern, fire glow, sky IBL, `kqFog`); `EnvLight` (PMREM of the era sky, rebuilt on `world.lookVersion`) |
@@ -66,6 +66,10 @@ input). The palace glb (4.5 MB, only visible in the past eras) loads in parallel
 block the title (`palace` mark); `?notitle` / skip-title still waits for it. After it arrives a
 shader warm-up (`renderer.compileAsync`, mark `warm`) compiles all scene materials while the
 title is shown (skipped under WebDriver unless `?warm`).
+The palace is kept twice in memory: `palace-merged` (one geometry, hidden, layer 31, no shadow) is
+what systems read (openings, lit windows, point cloud, picker, the shader patches share its
+material); what is drawn are the same pieces merged per 48 m cell (`palace-cell:x,z`), so cells
+off screen or outside the shadow box are culled (round 9: Ehrenhof 1789 ≈ 100 → 112 fps).
 
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop but rendering continues. `?manual` stops the real-time simulation entirely; only
