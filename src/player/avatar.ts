@@ -106,6 +106,9 @@ interface Loco {
   w: number;
 }
 
+const _fa = new Vector3();
+const _fb = new Vector3();
+
 export interface AvatarFrame {
   dt: number;
   time: number;
@@ -209,6 +212,8 @@ export class Avatar {
           // hi-vis panels glow a touch (they catch the lantern and read at dusk)
           if (mat.name === 'LightGreen') cl.emissive = new Color(0x2a0e02);
           kqStandard(cl, { ambient: 1.15 });
+          // screen-door fade (no sorting): opacity < 1 dithers the body away (see fade below)
+          cl.alphaHash = true;
           cache.set(mat, cl);
           this.materials.push(cl);
           c = cl;
@@ -591,6 +596,10 @@ export class Avatar {
       const active = (!!A.swing && A.swing.t / A.swing.dur > 0.1 && A.swing.t / A.swing.dur < 0.7) || (!!A.skill && A.skill.t / A.skill.dur < 0.9);
       this.trail.frame(dt, active && !A.frozen, this.staff, A.swing?.kind === 'heavy', f.reducedFlash);
     } else this.trail.clear();
+    // ---- fade (playtest round 9): the camera pressed against the head and backpack, and the enemy
+    // being fought hidden behind the body — dither the character when the lens is close or the
+    // target sits behind it on screen
+    this.fadeFrame(f, dt, p);
     // ---- lantern: the light hangs on the belt
     this.lantern.getWorldPosition(this.lanternWorld);
     lanternPose.anchor = this.lanternWorld;
@@ -603,6 +612,35 @@ export class Avatar {
       const fl = f.reducedFlash ? 1 : 0.85 + 0.15 * Math.sin(f.time * 17);
       this.flame.scale.set(1, 1.6 * fl, 1).multiplyScalar(0.6 + 0.4 * Math.min(1, lit));
     }
+  }
+
+  /** 0..1 how much of the body is drawn (1 = solid). */
+  private fade = 1;
+
+  private fadeFrame(f: AvatarFrame, dt: number, p: Vector3): void {
+    const cam = f.camera;
+    let want = 1;
+    // the lens close to the head: from 1.3 m in, fade down to 0.3
+    const dc = Math.hypot(cam.position.x - p.x, cam.position.y - (p.y + 1.45), cam.position.z - p.z);
+    if (dc < 1.3) want = Math.min(want, 0.3 + 0.7 * Math.max(0, (dc - 0.55) / 0.75));
+    // the target behind the body: both on screen, the target farther away, close together in x
+    const T = actionPose.target;
+    if (T) {
+      _fa.set(p.x, p.y + 1.0, p.z).project(cam);
+      _fb.set(T.x, p.y + 0.9, T.z).project(cam);
+      const dT = Math.hypot(T.x - cam.position.x, T.z - cam.position.z);
+      const dA = Math.hypot(p.x - cam.position.x, p.z - cam.position.z);
+      if (_fa.z < 1 && _fb.z < 1 && dT > dA + 0.3) {
+        // the body is ~0.5 m wide: its half-width on screen in NDC, plus a margin
+        const half = (0.45 / Math.max(0.5, dA)) / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.5, cam.aspect);
+        const ox = Math.abs(_fa.x - _fb.x);
+        if (ox < half + 0.05 && Math.abs(_fa.y - _fb.y) < 0.5) want = Math.min(want, 0.4);
+      }
+    }
+    this.fade += (want - this.fade) * Math.min(1, dt * 8);
+    const o = this.fade > 0.98 ? 1 : this.fade;
+    for (const m of this.materials) m.opacity = o;
+    if (this.staff) this.staff.visible = this.staff.visible && o > 0.35;
   }
 
   dispose(): void {

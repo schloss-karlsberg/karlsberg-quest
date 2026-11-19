@@ -64,6 +64,11 @@ body {
   height: 100%;
   display: block;
 }
+/* the game canvas takes keyboard focus (tabIndex 0) but never draws a browser focus ring */
+#app canvas:focus,
+#app canvas:focus-visible {
+  outline: none;
+}
 .kq-root {
   position: fixed;
   inset: 0;

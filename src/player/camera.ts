@@ -39,14 +39,25 @@ export interface CameraHints {
   focus: { x: number; y: number; z: number } | null;
   /** A big body (boss) close by: raise the camera more. */
   boss: number;
+  /** Big bodies (bosses) the boom may not pass through: it goes over them instead (x, z, r, top above ground). */
+  bodies?: { x: number; z: number; r: number; top: number }[];
 }
 
-export const cameraHints: CameraHints = { fight: [], focus: null, boss: 0 };
+export const cameraHints: CameraHints = { fight: [], focus: null, boss: 0, bodies: [] };
 
 export const ZOOM_MIN = 1.8;
 export const ZOOM_MAX = 8;
 /** Shoulder offset (m to the right of the pivot) and the camera's lift above the pivot. */
 const SHOULDER = 0.62;
+/**
+ * Shoulder in a fight (playtest round 9: "the enemy I was fighting sat exactly behind the
+ * surveyor's body" at 0.62 m): the character moves well left of the crosshair.
+ */
+export const SHOULDER_FIGHT = 1.1;
+/** Third-person pitch range (rad: −55° … +35°) and the level it eases back to while walking. */
+export const PITCH_MIN_3P = -0.96;
+export const PITCH_MAX_3P = 0.61;
+export const PITCH_REST_3P = -0.21;
 const LIFT = 0.18;
 /** Closest the camera may come to a wall / trunk / the ground (m). */
 const CLEAR = 0.28;
@@ -82,6 +93,8 @@ export class CameraRig {
   /** Smoothed fight pull-back (m) and lift (m). */
   private pull = 0;
   private lift = 0;
+  /** Smoothed extra lift that carries the boom over a big body (m). */
+  private bodyLift = 0;
   /** Smoothed shoulder offset (shrinks when a wall is at the right shoulder, and in a two-shot). */
   private shoulder = SHOULDER;
   private readonly pivot = new Vector3();
@@ -142,7 +155,7 @@ export class CameraRig {
       }
       if (spread > 0) {
         wantPull = Math.min(3.4, 0.8 + Math.max(0, spread - 2.5) * 0.32 + Math.max(0, top - 2) * 0.35);
-        wantLift = Math.min(0.9, 0.25 + Math.max(0, top - 2) * 0.12);
+        wantLift = Math.min(1.0, 0.45 + Math.max(0, top - 2) * 0.12);
       }
     }
     if (hints.boss > 0) {
@@ -159,12 +172,35 @@ export class CameraRig {
     this.lift += (wantLift - this.lift) * ease;
     // a conversation: a tighter boom, a wider shoulder (the speaker sits in the open right half)
     const boom = focus ? Math.min(this.zoom, 2.4) : this.zoom + this.pull;
-    let wantShoulder = focus ? 0.78 : SHOULDER;
+    let wantShoulder = focus ? 0.78 : hints.fight.length || hints.boss > 0 ? SHOULDER_FIGHT : SHOULDER;
 
-    const cy = Math.cos(o.yaw);
-    const sy = Math.sin(o.yaw);
-    const cp = Math.cos(o.pitch);
-    _f.set(-sy * cp, Math.sin(o.pitch), -cy * cp);
+    // a conversation: the boom lies along the line from the speaker through the player (an
+    // over-the-shoulder shot that faces the speaker), and on the shoulder side with more room
+    // (playtest round 9: in the Registratur 70 % of the two-shot was plaster, Soll behind a jamb)
+    let byaw = o.yaw;
+    let bpitch = o.pitch;
+    if (focus) {
+      byaw = Math.atan2(-(focus.x - o.x), -(focus.z - o.z));
+      bpitch = -0.12;
+      const room = (side: number) => {
+        const rx = Math.cos(byaw) * side;
+        const rz = -Math.sin(byaw) * side;
+        const fx = -Math.sin(byaw);
+        const fz = -Math.cos(byaw);
+        let t = 0;
+        for (; t < boom + wantShoulder; t += 0.25) {
+          const x = o.x + rx * Math.min(t, wantShoulder) - fx * Math.max(0, t - wantShoulder);
+          const z = o.z + rz * Math.min(t, wantShoulder) - fz * Math.max(0, t - wantShoulder);
+          if (world.blocked(x, z, CLEAR)) break;
+        }
+        return t;
+      };
+      if (room(-1) > room(1) + 0.5) wantShoulder = -wantShoulder;
+    }
+    const cy = Math.cos(byaw);
+    const sy = Math.sin(byaw);
+    const cp = Math.cos(bpitch);
+    _f.set(-sy * cp, Math.sin(bpitch), -cy * cp);
     _r.set(cy, 0, -sy);
     // the shoulder: shrink it when a wall stands right beside the head
     for (let k = 1; k >= 0; k -= 0.25) {
@@ -178,6 +214,21 @@ export class CameraRig {
     this.shoulder += (wantShoulder - this.shoulder) * Math.min(1, dt * 6);
     _s.copy(this.pivot).addScaledVector(_r, this.shoulder);
     _s.y += LIFT + this.lift;
+    // a big body (a boss) between the lens and the character: the boom goes over it, not through
+    // it (playtest round 9: the camera sat inside the Pikeur's ghost horse)
+    let needLift = 0;
+    for (const b of hints.bodies ?? []) {
+      for (let t = 0.6; t <= boom; t += 0.4) {
+        const x = _s.x - _f.x * t;
+        const z = _s.z - _f.z * t;
+        if (Math.hypot(x - b.x, z - b.z) > b.r + 0.5) continue;
+        const top = world.heightAt(b.x, b.z) + b.top + 0.4;
+        const y = _s.y + this.bodyLift - _f.y * t;
+        needLift = Math.max(needLift, Math.min(3, top - (y - this.bodyLift)));
+      }
+    }
+    this.bodyLift += (Math.max(0, needLift) - this.bodyLift) * Math.min(1, dt * (needLift > this.bodyLift ? 4 : 1.2));
+    _s.y += this.bodyLift;
     // the boom: march from the shoulder back along the view; the first obstacle ends it
     const ceil = world.ceiling?.(o.x, o.z, o.y) ?? null;
     let free = boom;

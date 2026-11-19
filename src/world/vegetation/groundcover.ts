@@ -229,6 +229,14 @@ void main() {
   float grow = 1.0 - smoothstep(uRadius * 0.72, uRadius, d);
   // tall reeds duck away right at the camera instead of filling the screen
   grow *= mix(1.0, 0.15 + 0.85 * smoothstep(0.8, 3.0, d), step(1.0, aInst.w));
+  // … and along the line from the camera to the character (third person, round 9: walking into
+  // the reed belt filled the screen with flat blades): uLanternPos rides on the character
+  vec2 sa = uCamPos.xz, sb = uLanternPos.xz;
+  vec2 ab = sb - sa;
+  float hl = clamp(dot(aInst.xz - sa, ab) / max(dot(ab, ab), 1e-4), 0.0, 0.92);
+  float seg = length(aInst.xz - (sa + ab * hl));
+  float segOn = step(0.6, length(ab)) * step(length(ab), 12.0);
+  grow *= mix(1.0, 0.12 + 0.88 * smoothstep(0.5, 1.4, seg), segOn * step(0.6, aInst.w));
   float c = cos(aVar.x), s = sin(aVar.x);
   vec3 p = position;
   p = vec3(c * p.x - s * p.z, p.y, s * p.x + c * p.z);

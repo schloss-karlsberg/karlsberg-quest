@@ -1,7 +1,7 @@
 import { type PerspectiveCamera, Vector3 } from 'three';
 import type { EventBus } from '../core/events';
 import type { PlayerState } from '../core/state';
-import { CameraRig, type CameraMode, type CameraWorld } from './camera';
+import { CameraRig, type CameraMode, type CameraWorld, PITCH_MAX_3P, PITCH_MIN_3P, PITCH_REST_3P } from './camera';
 import type { Input } from './input';
 import { STANCES, type Stance } from './stance';
 
@@ -70,6 +70,8 @@ export class Player {
   private strideAcc = 0;
   private bob = 0;
   private flyVel = new Vector3();
+  /** Seconds since the player last looked (mouse / keys): the third-person pitch levels after a while. */
+  private lookIdle = 0;
   /** Seconds of the automatic climb after the spirit view starts. */
   private flyLift = 0;
   /** Interpolated feet position of the last rendered frame (the avatar stands here). */
@@ -165,6 +167,8 @@ export class Player {
     }
     this.flying = on;
     this.flyVel.set(0, 0, 0);
+    // landing: the view comes back level (the flight's pitch is not the walk's)
+    if (!on && this.rig.mode === 'third') this.pitch = PITCH_REST_3P;
     if (on) {
       this.setStance('stand');
       this.position.y += 1.5;
@@ -182,8 +186,18 @@ export class Player {
     if (!this.frozen) this.rig.addZoom(wheel);
     if (this.lookLocked) return;
     const k = 0.0022 * this.mouseSensitivity;
+    if (dx || dy) this.lookIdle = 0;
     this.yaw -= dx * k * (this.invertX ? -1 : 1);
     this.pitch -= dy * k * (this.invertY ? -1 : 1);
+    this.clampPitch();
+  }
+
+  /** The look's pitch range: narrower over the shoulder (−55° … +35°), so it never ends top-down or in the sun. */
+  private clampPitch(): void {
+    if (this.rig.mode === 'third' && !this.flying) {
+      this.pitch = Math.max(PITCH_MIN_3P, Math.min(PITCH_MAX_3P, this.pitch));
+      return;
+    }
     const lim = this.stance === 'prone' && !this.flying ? 0.9 : 1.45;
     this.pitch = Math.max(-lim, Math.min(lim, this.pitch));
   }
@@ -197,11 +211,12 @@ export class Player {
       const h = (inp.isDown('lookLeft') ? 1 : 0) - (inp.isDown('lookRight') ? 1 : 0);
       const v = (inp.isDown('lookUp') ? 1 : 0) - (inp.isDown('lookDown') ? 1 : 0);
       if (h || v) {
+        this.lookIdle = 0;
         this.yaw += h * kl * (this.invertX ? -1 : 1);
-        const lim = this.stance === 'prone' && !this.flying ? 0.9 : 1.45;
-        this.pitch = Math.max(-lim, Math.min(lim, this.pitch + v * kl * 0.7 * (this.invertY ? -1 : 1)));
+        this.pitch += v * kl * 0.7 * (this.invertY ? -1 : 1);
       }
     }
+    this.lookIdle += dt;
     if (!this.frozen) {
       if (inp.wasPressed('fly')) this.setFlying(!this.flying);
       if (!this.flying) {
@@ -233,6 +248,12 @@ export class Player {
 
     if (this.flying) this.updateFly(dt, wx, wz, fz);
     else this.updateWalk(dt, wx, wz, len > 0);
+    // over the shoulder: walking with no look input for a second eases the view back to level
+    // (playtest round 9: the pitch drifted to top-down or into the sun on slopes, ten times in 50 min)
+    if (this.rig.mode === 'third' && !this.flying && !this.frozen && !this.lookLocked && len > 0 && this.lookIdle > 1) {
+      this.pitch += (PITCH_REST_3P - this.pitch) * Math.min(1, dt * 1.6);
+    }
+    this.clampPitch();
 
     // stats for the hunt
     const st = STANCES[this.stance];
@@ -403,14 +424,12 @@ export class Player {
     this.flying = false;
     this.stance = s.stance;
     this.yaw = s.yaw;
-    this.pitch = s.pitch;
+    // a resume starts on the ground with a level view (playtest round 9: a save made in the
+    // spirit view woke high in the sky, looking into the sun, the character off screen)
+    this.pitch = this.rig.mode === 'third' ? PITCH_REST_3P : Math.max(-0.6, Math.min(0.4, s.pitch));
     this.teleport(s.x, s.z);
-    if (s.flying && this.world.canFly()) {
-      this.flying = true;
-      this.position.y = Math.max(this.position.y, s.y);
-      this.prev.copy(this.position);
-    }
-    this.eye = this.flying ? 0 : STANCES[this.stance].eye;
+    this.eye = STANCES[this.stance].eye;
+    this.lookIdle = 0;
   }
 
   /** Unit forward vector on the ground plane. */
