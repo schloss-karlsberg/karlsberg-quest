@@ -403,7 +403,11 @@ describe('combat simulation', () => {
     s.step(1 / 60, input());
     groups['n']!.killed = 1;
     const evs: ReturnType<CombatSim['step']> = [];
-    for (let i = 0; i < 20 && !s.p.dead; i++) s.hurtPlayer(40, 'nebelling', { x: 0, z: -2 });
+    // (the burst cap, round 9: at most 30 % of the bar per 1.2 s from ordinary enemies — space the blows)
+    for (let i = 0; i < 20 && !s.p.dead; i++) {
+      s.hurtPlayer(40, 'nebelling', { x: 0, z: -2 });
+      if (!s.p.dead) run(s, 1.3);
+    }
     evs.push(...s.step(1 / 60, input()));
     expect(s.p.dead).toBe(true);
     s.dematerialise();

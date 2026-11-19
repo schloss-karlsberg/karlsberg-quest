@@ -1401,7 +1401,7 @@ export class CombatVisuals {
     const cold = p.kind.startsWith('irrlicht') || p.kind.startsWith('nebelweber');
     const stone = p.kind.startsWith('steinbrecher') || p.kind === 'steinfresser.brocken' || p.kind === 'hazard.stein';
     if (stone) this.add({ type: 1, x: p.x, y: p.y, z: p.z, vx: 0, vy: 0.3, vz: 0, life: 0.6, size: 0.3, grow: 0.6, r: 0.55, g: 0.5, b: 0.45, em: 0, grav: 0, drag: 1, spin: 0, aspect: 1 });
-    else this.add({ type: 2, x: p.x, y: p.y, z: p.z, vx: (this.rnd() - 0.5) * 0.5, vy: (this.rnd() - 0.5) * 0.5, vz: (this.rnd() - 0.5) * 0.5, life: 0.3, size: 0.06, grow: 0, r: cold ? 0.6 : 1, g: cold ? 0.85 : 0.3, b: cold ? 1 : 0.1, em: 1.4, grav: 0, drag: 1, spin: 0, aspect: 1 });
+    else this.add({ type: 2, x: p.x, y: p.y, z: p.z, vx: (this.rnd() - 0.5) * 0.5, vy: (this.rnd() - 0.5) * 0.5, vz: (this.rnd() - 0.5) * 0.5, life: p.kind.startsWith('irrlicht') ? 0.55 : 0.3, size: p.kind.startsWith('irrlicht') ? 0.11 : 0.06, grow: 0, r: cold ? 0.6 : 1, g: cold ? 0.85 : 0.3, b: cold ? 1 : 0.1, em: 1.4, grav: 0, drag: 1, spin: 0, aspect: 1 });
   }
 
   // ---- body pose ---------------------------------------------------------------------------------
@@ -1593,7 +1593,12 @@ export class CombatVisuals {
         _q.setFromEuler(_e.set(p.t * 4, p.t * 3, 0));
         _m2.compose(_p.set(p.x, p.y, p.z), _q, _s.set(0.45, 0.38, 0.42));
         this.solids.push(_m2, 0.45, 0.37, 0.3, 0, 0, 0, 1);
-      } else if (p.kind.startsWith('irrlicht') || p.kind.startsWith('nebelweber')) this.glows.push(p.x, p.y, p.z, 0.2, 2.2, 0.6, 0.85, 1, 5);
+      } else if (p.kind.startsWith('irrlicht')) {
+        // playtest round 9: "sparks I couldn't see" — a cold green-white bolt with a halo and a
+        // floor of 9 px on screen, so it reads at night and against a pale sky
+        this.glows.push(p.x, p.y, p.z, 0.34, 2.6, 0.55, 1, 0.8, 9);
+        this.glows.push(p.x, p.y, p.z, 0.95, 0.7, 0.25, 0.75, 0.6, 0);
+      } else if (p.kind.startsWith('nebelweber')) this.glows.push(p.x, p.y, p.z, 0.2, 2.2, 0.6, 0.85, 1, 5);
       else this.glows.push(p.x, p.y, p.z, 0.24, 2.4, 1, 0.3, 0.1, 5);
     }
     // the Bannlicht on the ground

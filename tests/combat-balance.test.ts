@@ -119,7 +119,9 @@ describe('combat balance per content encounter', () => {
   it('a pair of Irrlichter brings company: no longer over for a masher in seconds', () => {
     for (const c of regular.filter((x) => x.enc.kind === 'irrlicht' && x.enc.count === 2)) {
       const r = fight(c.build, c.enc, 'masher');
-      expect(r.seconds, `${c.id} ${JSON.stringify(r)}`).toBeGreaterThanOrEqual(12);
+      // (round 9: a light the flare pressed down is reached a little further and snapped to first —
+      // "Lichter am Weiher" was lost three times — so the masher is quicker; still not a few seconds)
+      expect(r.seconds, `${c.id} ${JSON.stringify(r)}`).toBeGreaterThanOrEqual(9);
       expect(r.waves, c.id).toBe(1);
     }
   });

@@ -31,6 +31,10 @@ export interface TargetCandidate {
   /** Winding up an attack (telegraph). */
   windup: boolean;
   aggro: boolean;
+  /** False while the staff cannot touch it (a light before the flare, a veiled body). */
+  open?: boolean;
+  /** Pressed down by the flare (gebannt): the best moment to hit it. */
+  pinned?: boolean;
 }
 
 export const LOCK_RANGE = 24;
@@ -55,7 +59,9 @@ export function pickTarget(c: readonly TargetCandidate[], px: number, pz: number
     const ang = Math.abs(wrapAngle(headingOf(dx, dz) - yaw));
     if (ang > (maxDeg * Math.PI) / 180) continue;
     // a metre of distance weighs like ~10° off the view; aggro enemies first, bosses a bit forward
-    const s = d + ang * 6 - (e.aggro ? 1.5 : 0) - (e.boss ? 1 : 0);
+    // (playtest round 9: Tab locked the light the staff passes through, not the one the flare
+    // pressed down — untouchable ones go back, pinned ones forward)
+    const s = d + ang * 6 - (e.aggro ? 1.5 : 0) - (e.boss ? 1 : 0) + (e.open === false ? 8 : 0) - (e.pinned ? 4 : 0);
     if (s < bs) {
       bs = s;
       best = e;
@@ -156,6 +162,11 @@ export class Targeting {
     if (this.locked) {
       const e = c.find((x) => x.id === this.locked);
       if (!e || Math.hypot(e.x - px, e.z - pz) > LOCK_BREAK) this.locked = null;
+      // locked on one the staff passes through while another lies pressed down near by: take that
+      else if (e.open === false) {
+        const p = c.find((x) => x.pinned && x.open !== false && Math.hypot(x.x - px, x.z - pz) < 7);
+        if (p) this.locked = p.id;
+      }
     }
     this.soft = soft && !this.locked ? pickTarget(c, px, pz, yaw, SOFT_RANGE, SOFT_DEG)?.id ?? null : null;
   }

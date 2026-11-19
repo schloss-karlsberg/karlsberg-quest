@@ -193,10 +193,9 @@ const SEAL: V3 = [0.55, 0.06, 0.04];
 const MIST_INK: V3 = [0.03, 0.04, 0.065];
 const MIST_RIM: V3 = [0.36, 0.56, 0.95];
 const SMOKE_INK: V3 = [0.035, 0.03, 0.03];
-/** Bone-white masks, dark claws, lantern iron, coal. */
+/** Bone-white masks, dark claws, coal. */
 const BONE: V3 = [0.78, 0.75, 0.69];
 const CLAW: V3 = [0.1, 0.11, 0.15];
-const IRON: V3 = [0.045, 0.04, 0.035];
 const COAL: V3 = [0.035, 0.028, 0.025];
 
 /**
@@ -232,39 +231,35 @@ export function nebelling(seed: number): BodyTemplate {
 }
 
 /**
- * Irrlicht: a lantern-wisp — a cold flame hanging in a small iron lantern (pointed cap, a ring to
- * carry it by, four bars), three flame tongues circling it, a thin wisp trailing below. Dark iron
- * against the day, cold light at night; the glow stays small.
+ * Irrlicht (round 9 rework — "a street lantern on a post"): a floating will-o'-wisp. A hot white
+ * heart inside a tall cold flame, two dark hollows for eyes in the flame, a halo, five motes that
+ * circle it and a long frayed wisp that trails behind and below. No iron, no cage: only light and
+ * mist, big enough to read at 20 m by day (the halo) and by night (the heart).
  */
 export function irrlicht(seed: number): BodyTemplate {
   const R = rng(seed + 4);
-  const k = 0.9 + R() * 0.25;
-  const CAGE = { bone: 'core' as Bone, mat: MAT.smooth, em: [0.04, 0.07, 0.11] as V3 };
+  const k = 0.95 + R() * 0.2;
+  const PALE: V3 = [0.7, 1, 0.92];
   const b = new B(seed)
-    .shape('orb', [0, 0, 0], [0.12, 0.15, 0.12], [1, 1, 1], { bone: 'core', mat: MAT.flame, em: COLD })
-    .glow([0, 0, 0], 0.16, COLD, { bone: 'core', minPx: 6 })
-    .glow([0, 0, 0], 0.7, [0.25, 0.45, 0.7], { bone: 'core', alpha: 0.4 })
-    .shape('spike', [0, 0.2, 0], [0.3, 0.14, 0.3], IRON, CAGE)
-    .shape('torus', [0, 0.31, 0], [0.11, 0.025, 0.11], IRON, { ...CAGE, rx: Math.PI / 2 })
-    .shape('torus', [0, 0.13, 0], [0.25, 0.03, 0.25], IRON, CAGE)
-    .shape('torus', [0, -0.13, 0], [0.22, 0.03, 0.22], IRON, CAGE)
-    .shape('spike', [0, -0.19, 0], [0.22, 0.09, 0.22], IRON, { ...CAGE, rz: Math.PI });
-  for (const [x, z] of [
-    [0.09, 0.09],
-    [-0.09, 0.09],
-    [0.09, -0.09],
-    [-0.09, -0.09],
-  ] as const)
-    b.shape('box', [x, 0, z], [0.016, 0.27, 0.016], IRON, CAGE);
-  // three cold flame tongues circling the lantern
-  for (let i = 0; i < 3; i++) {
-    const y = -0.06 + i * 0.1;
-    b.shape('flame', [0.3, y, 0], [0.07, 0.16, 0.07], [1, 1, 1], { mat: MAT.flame, em: COLD }).last(1, { bone: 'orbit', orbit: [2.2 + i * 0.35, i * 2.09] });
-    b.glow([0.3, y, 0], 0.06, COLD, { minPx: 2 }).last(1, { bone: 'orbit', orbit: [2.2 + i * 0.35, i * 2.09] });
+    // the heart and the flame round it
+    .shape('orb', [0, 0, 0], [0.13, 0.13, 0.13], [1, 1, 1], { bone: 'core', mat: MAT.flame, em: [0.9, 1, 0.95] })
+    .glow([0, 0, 0], 0.2, PALE, { bone: 'core', minPx: 8 })
+    .shape('drop', [0, 0.1, 0], [0.3, 0.56, 0.3], [1, 1, 1], { bone: 'core', mat: MAT.flame, em: [0.35, 0.8, 0.75], sway: [0.03, 5, 0] })
+    .shape('flame', [0, 0.36, 0], [0.16, 0.34, 0.16], [1, 1, 1], { bone: 'core', mat: MAT.flame, em: COLD, sway: [0.05, 7, 1] })
+    .glow([0, 0.05, 0], 0.95, [0.22, 0.55, 0.5], { bone: 'core', alpha: 0.42 })
+    // two dark hollows in the flame: it looks at you
+    .shape('orb', [-0.065, 0.12, 0.12], [0.045, 0.06, 0.03], [0.02, 0.03, 0.04], { bone: 'core', mat: MAT.smooth })
+    .shape('orb', [0.065, 0.12, 0.12], [0.045, 0.06, 0.03], [0.02, 0.03, 0.04], { bone: 'core', mat: MAT.smooth });
+  // motes circling it
+  for (let i = 0; i < 5; i++) {
+    const y = -0.15 + i * 0.1;
+    const r = 0.36 + (i % 2) * 0.12;
+    b.glow([r, y, 0], 0.05, PALE, { minPx: 2.5 }).last(1, { bone: 'orbit', orbit: [1.8 + i * 0.4, i * 1.26] });
   }
-  b.spec('tail', [0, -0.42, -0.06], [0.16, 0.46, 0.32], [0.4, 0.62, 1], MIST_INK, { bone: 'core', fray: 1, sway: [0.05, 3, 0] })
-    .blob([0, 0, 0], [0.15, 0.15, 0.15], 3, 0.38, [0.36, 0.48, 0.6], { style: 1, alpha: 0.22, bone: 'core', em: [0.06, 0.15, 0.25] });
-  return scaleTemplate({ parts: b.parts, tell: [0.7, 0.9, 1], top: 0.7, shoulder: 0, core: { y: 0, f: 0, rad: 0.1 } }, k);
+  // the long wisp it trails
+  b.spec('tail', [0, -0.42, -0.18], [0.2, 0.62, 0.5], [0.4, 0.95, 0.85], MIST_INK, { bone: 'core', fray: 1, sway: [0.07, 2.6, 0] })
+    .blob([0, -0.55, -0.3], [0.14, 0.16, 0.2], 3, 0.32, [0.3, 0.5, 0.5], { style: 1, alpha: 0.2, bone: 'core', em: [0.05, 0.16, 0.15] });
+  return scaleTemplate({ parts: b.parts, tell: [0.7, 1, 0.9], top: 0.85, shoulder: 0, core: { y: 0, f: 0, rad: 0.14 } }, k);
 }
 
 export function streuner(seed: number): BodyTemplate {
@@ -288,7 +283,7 @@ export function streuner(seed: number): BodyTemplate {
  */
 export function mahnbrief(seed: number): BodyTemplate {
   const R = rng(seed + 9);
-  const k = (0.92 + R() * 0.22) * 1.45;
+  const k = (0.92 + R() * 0.22) * 2.1; // round 9: x1.45 was too small to read at combat range
   const P2: V3 = [0.8, 0.74, 0.6];
   const beat = 8 + R() * 2;
   const b = new B(seed)
@@ -300,8 +295,7 @@ export function mahnbrief(seed: number): BodyTemplate {
     .shape('wing', [-0.27, 0.1, -0.02], [0.56, 0.12, 0.44], P2, { mat: MAT.paper, mx: true, rz: -0.35, hinge: [2, beat, -0.7, 0, 0, 0.02, 0] })
     .shape('orb', [0, 0.075, -0.03], [0.1, 0.04, 0.1], SEAL, { bone: 'seal', mat: MAT.smooth, em: [0.4, 0.03, 0.01] })
     .glow([0, 0.1, -0.03], 0.1, [1, 0.2, 0.08], { bone: 'seal', minPx: 3.5 })
-    .eyes(0.19, 0.41, 0.025, 0.028, [1, 0.35, 0.1])
-    .blob([0, -0.05, 0], [0.2, 0.06, 0.2], 2, 0.3, [0.2, 0.18, 0.18], { alpha: 0.25 });
+    .eyes(0.19, 0.41, 0.025, 0.028, [1, 0.35, 0.1]);
   return scaleTemplate({ parts: b.parts, tell: [1, 0.25, 0.1], top: 0.55, shoulder: 0 }, k);
 }
 
@@ -832,8 +826,13 @@ export function nebelweber(seed: number): BodyTemplate {
     .spec('tail', [0, 0.38, -0.34], [0.42, 0.72, 0.78], RIM, MIST_INK, { bone: 'tail', fray: 0.9, sway: [0.08, 2, 0] })
     .shape('mask', [0, 1.98, 0.11], [0.22, 0.3, 0.08], [0.6, 0.66, 0.74], { bone: 'head', mat: MAT.mask, em: [0.4, 0.65, 1] })
     .eyes(2.0, 0.16, 0.042, 0.035, [0.75, 0.93, 1])
-    .spec('limb', [0.37, 1.525, 0.21], [0.1, 0.74, 0.11], RIM, MIST_INK, { bone: 'armR', rx: 0.66, rz: 0.357 })
-    .spec('limb', [-0.37, 1.525, 0.21], [0.1, 0.74, 0.11], RIM, MIST_INK, { bone: 'armL', rx: 0.66, rz: -0.357 })
+    // (round 9: the arms were detached capsules) — wide sleeves grow out of the shroud's shoulders
+    // and the arms come out of them, so shroud, sleeve and arm read as one spectral body
+    .spec('shroud', [0, 1.78, 0.02], [0.92, 0.42, 0.6], RIM, MIST_INK, { fray: 0.6 })
+    .spec('tail', [0.34, 1.62, 0.1], [0.26, 0.5, 0.3], RIM, MIST_INK, { bone: 'armR', fray: 0.9, rz: 0.3, sway: [0.03, 2.4, 1] })
+    .spec('tail', [-0.34, 1.62, 0.1], [0.26, 0.5, 0.3], RIM, MIST_INK, { bone: 'armL', fray: 0.9, rz: -0.3, sway: [0.03, 2.2, 2] })
+    .spec('limb', [0.33, 1.56, 0.2], [0.1, 0.74, 0.11], RIM, MIST_INK, { bone: 'armR', rx: 0.66, rz: 0.357 })
+    .spec('limb', [-0.33, 1.56, 0.2], [0.1, 0.74, 0.11], RIM, MIST_INK, { bone: 'armL', rx: 0.66, rz: -0.357 })
     .shape('crystal', [0.5, 1.22, 0.44], [0.05, 0.16, 0.05], [0.1, 0.14, 0.2], { bone: 'armR', mat: MAT.crystal, em: COLD })
     .shape('crystal', [-0.5, 1.22, 0.44], [0.05, 0.16, 0.05], [0.1, 0.14, 0.2], { bone: 'armL', mat: MAT.crystal, em: COLD })
     .glow([0.5, 1.22, 0.44], 0.1, COLD, { bone: 'armR', minPx: 3 })
@@ -852,42 +851,50 @@ export function nebelweber(seed: number): BodyTemplate {
 }
 
 /**
- * Foliant (combat variety pass): a walking folio that carries its own front board like a shield —
- * a tall dark-green cover with a brass-yellow edge held before it (armL: it swings shut on the
- * Zuklappen and hangs open while the guard is broken), a stack of yellowed leaves for a body, two
- * stumps of rolled paper for legs, the eyes peering over the board's top edge.
+ * Foliant (round 9 rework — "a flat green board on two sticks"): a book golem. A thick bound
+ * volume for a torso (spine, boards and a block of yellowed leaves), a smaller book for a head with
+ * the eyes in its gap, heavy legs of stacked quires, and the open tome it carries before it as a
+ * shield (armL: it swings shut on the Zuklappen, hangs open while the guard is broken). Loose pages
+ * fan out from its back like wings and flutter.
  */
 export function foliant(seed: number): BodyTemplate {
   const BOARD: V3 = [0.13, 0.2, 0.13];
   const EDGE: V3 = [0.62, 0.5, 0.2];
   const LEAF: V3 = [0.78, 0.72, 0.58];
   const ROLL: V3 = [0.7, 0.64, 0.5];
-  const b = new B(seed);
-  // the body: a block of leaves, slightly askew
-  for (let i = 0; i < 5; i++) b.shape('block', [0.02 * (i % 2 ? 1 : -1), 0.75 + i * 0.16, -0.05], [0.66, 0.15, 0.5], i % 2 ? PAPER : LEAF, { ry: (i - 2) * 0.05, mat: MAT.paper });
-  b.shape('block', [0, 1.6, -0.08], [0.5, 0.26, 0.4], [0.74, 0.68, 0.54], { bone: 'head', ry: 0.15, mat: MAT.paper })
-    .eyes(1.66, 0.14, 0.12, 0.07, [1, 0.62, 0.22])
-    // rolled-paper legs
-    .shape('limb', [0.18, 0.32, -0.05], [0.17, 0.64, 0.17], ROLL, { bone: 'legs', mat: MAT.paper })
-    .last(1, { gait: [0.64, 0.05, 0, 0.45] })
-    .shape('limb', [-0.18, 0.32, -0.05], [0.17, 0.64, 0.17], ROLL, { bone: 'legs', mat: MAT.paper })
-    .last(1, { gait: [0.64, 0.05, Math.PI, 0.45] })
-    // the board: in front, up to the eyes, a brass edge round it
-    .shape('block', [0, 1.05, 0.42], [0.82, 1.1, 0.07], BOARD, { bone: 'armL', mat: MAT.smooth })
-    .solid([0, 1.6, 0.43], [0.85, 0.05, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
-    .solid([0, 0.5, 0.43], [0.85, 0.05, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
-    .solid([0.42, 1.05, 0.43], [0.05, 1.13, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
-    .solid([-0.42, 1.05, 0.43], [0.05, 1.13, 0.09], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
-    // gilt tooling on the board: a lozenge, corner pieces, a title label
-    .solid([0, 1.05, 0.465], [0.32, 0.32, 0.02], EDGE, { bone: 'armL', rz: 0.785, em: [0.1, 0.07, 0.02] })
-    .solid([0, 1.05, 0.475], [0.2, 0.2, 0.02], BOARD, { bone: 'armL', rz: 0.785 })
-    .shape('block', [0, 1.42, 0.47], [0.36, 0.12, 0.02], PAPER, { bone: 'armL', mat: MAT.paper })
-    // a faint ember mark in the board's middle (the guard reads as "up")
-    .glow([0, 1.05, 0.5], 0.08, [1, 0.7, 0.3], { bone: 'armL', minPx: 2, alpha: 0.7 })
-    // loose leaves riffling at its back
-    .shape('page', [0.3, 1.2, -0.38], [0.3, 0.22, 0.05], PAPER, { mat: MAT.paper, rx: 1.4, sway: [0.04, 6, 0] })
-    .shape('page', [-0.28, 0.95, -0.36], [0.28, 0.2, 0.05], PAPER, { mat: MAT.paper, rx: 1.6, mx: true, sway: [0.04, 7, 1] });
-  return { parts: b.parts, tell: [1, 0.6, 0.2], top: 1.95, shoulder: 1.69 };
+  const b = new B(seed)
+    // the torso: a bound volume standing on its tail, boards front and back, gilt bands on the spine
+    .shape('block', [0, 1.1, -0.06], [0.74, 0.9, 0.46], LEAF, { mat: MAT.paper })
+    .shape('block', [0, 1.1, 0.19], [0.8, 0.96, 0.06], BOARD, { mat: MAT.smooth })
+    .shape('block', [0, 1.1, -0.31], [0.8, 0.96, 0.06], BOARD, { mat: MAT.smooth })
+    .shape('block', [-0.4, 1.1, -0.06], [0.08, 0.96, 0.56], [0.1, 0.15, 0.1], { mat: MAT.smooth });
+  for (const y of [0.78, 1.1, 1.42]) b.solid([-0.44, y, -0.06], [0.02, 0.05, 0.58], EDGE, { em: [0.12, 0.08, 0.02] });
+  // the head: a smaller book lying across the shoulders, the eyes glowing out of its gap
+  b.shape('block', [0, 1.73, -0.04], [0.56, 0.18, 0.42], BOARD, { bone: 'head', ry: 0.12, mat: MAT.smooth })
+    .shape('block', [0, 1.86, -0.04], [0.52, 0.06, 0.38], LEAF, { bone: 'head', ry: 0.12, mat: MAT.paper })
+    .shape('block', [0, 1.93, -0.04], [0.56, 0.08, 0.42], BOARD, { bone: 'head', ry: 0.12, mat: MAT.smooth })
+    .eyes(1.86, 0.16, 0.12, 0.07, [1, 0.62, 0.22])
+    // legs of stacked quires
+    .shape('block', [0.2, 0.34, -0.05], [0.26, 0.68, 0.3], ROLL, { bone: 'legs', mat: MAT.paper })
+    .last(1, { gait: [0.66, 0.05, 0, 0.4] })
+    .shape('block', [-0.2, 0.34, -0.05], [0.26, 0.68, 0.3], ROLL, { bone: 'legs', mat: MAT.paper })
+    .last(1, { gait: [0.66, 0.05, Math.PI, 0.4] })
+    // the open tome before it: two boards in a shallow V with the leaves between, a brass edge
+    .shape('block', [0.24, 1.15, 0.5], [0.5, 0.95, 0.07], BOARD, { bone: 'armL', mat: MAT.smooth, ry: -0.35 })
+    .shape('block', [-0.24, 1.15, 0.5], [0.5, 0.95, 0.07], BOARD, { bone: 'armL', mat: MAT.smooth, ry: 0.35 })
+    .shape('block', [0.18, 1.15, 0.45], [0.42, 0.86, 0.08], LEAF, { bone: 'armL', mat: MAT.paper, ry: -0.35 })
+    .shape('block', [-0.18, 1.15, 0.45], [0.42, 0.86, 0.08], PAPER, { bone: 'armL', mat: MAT.paper, ry: 0.35 })
+    .solid([0, 1.15, 0.43], [0.05, 0.96, 0.06], EDGE, { bone: 'armL', em: [0.12, 0.08, 0.02] })
+    .solid([0.45, 1.15, 0.6], [0.04, 0.98, 0.09], EDGE, { bone: 'armL', ry: -0.35, em: [0.12, 0.08, 0.02] })
+    .solid([-0.45, 1.15, 0.6], [0.04, 0.98, 0.09], EDGE, { bone: 'armL', ry: 0.35, em: [0.12, 0.08, 0.02] })
+    // an ember sigil on the open pages (the guard reads as "up")
+    .glow([0, 1.2, 0.52], 0.09, [1, 0.7, 0.3], { bone: 'armL', minPx: 2.5, alpha: 0.75 })
+    // page wings fanning from its back
+    .shape('wing', [0.34, 1.4, -0.38], [0.62, 0.1, 0.42], PAPER, { mat: MAT.paper, rz: 0.5, hinge: [2, 3.2, 0.25, 0, 0.05, 1.4, -0.36] })
+    .shape('wing', [-0.34, 1.4, -0.38], [0.62, 0.1, 0.42], LEAF, { mat: MAT.paper, mx: true, rz: -0.5, hinge: [2, 3.2, -0.25, 0, -0.05, 1.4, -0.36] })
+    .shape('page', [0.3, 0.95, -0.4], [0.3, 0.22, 0.05], PAPER, { mat: MAT.paper, rx: 1.4, sway: [0.04, 6, 0] })
+    .shape('page', [-0.28, 0.85, -0.38], [0.28, 0.2, 0.05], PAPER, { mat: MAT.paper, rx: 1.6, mx: true, sway: [0.04, 7, 1] });
+  return { parts: b.parts, tell: [1, 0.6, 0.2], top: 2.05, shoulder: 1.69 };
 }
 
 /**
@@ -912,24 +919,37 @@ export function scherbling(seed: number): BodyTemplate {
 }
 
 /**
- * Rufer (combat variety pass): a gaunt hooded column of smoke with a long flared funnel where a
- * face would be, an ember ring glowing in its mouth (it swells on the call), thin arms raised when
- * it calls; the hem trails.
+ * Rufer (round 9 rework — "a cone on a cloak with two paddle arms"): a gaunt hooded caller of
+ * smoke. A tall shroud with a deep hood over a bone mask whose mouth is a wide glowing ring (it
+ * swells on the call), long arms out of the sleeves raised to the mouth, ragged sleeves, a
+ * smouldering mantle on the shoulders and a trailing hem.
  */
 export function rufer(seed: number): BodyTemplate {
   const RIM: V3 = [0.85, 0.38, 0.12];
   const b = new B(seed)
-    .spec('shroud', [0, 0.85, 0], [0.56, 1.5, 0.46], RIM, SMOKE_INK, { fray: 1 })
-    .spec('tail', [0, 0.3, -0.25], [0.32, 0.5, 0.55], RIM, SMOKE_INK, { bone: 'tail', fray: 0.8, sway: [0.05, 2.6, 0] })
-    // the funnel: a widening horn tipped forward
-    .shape('spike', [0, 1.88, 0.16], [0.4, 0.56, 0.4], SMOKE_INK, { bone: 'head', mat: MAT.spectral, em: RIM, rx: Math.PI - 0.6 })
-    .shape('torus', [0, 2.08, 0.32], [0.36, 0.06, 0.36], [0.1, 0.03, 0.01], { bone: 'head', mat: MAT.smooth, em: [0.9, 0.3, 0.05], rx: -0.6 })
-    .glow([0, 2.06, 0.36], 0.2, EMBER, { bone: 'head', minPx: 5 })
-    .glow([0, 2.06, 0.34], 0.55, [0.6, 0.2, 0.05], { bone: 'head', alpha: 0.5 })
-    .spec('limb', [0.3, 1.62, 0.1], [0.08, 0.55, 0.08], RIM, SMOKE_INK, { bone: 'armR', rz: -0.7 })
-    .spec('limb', [-0.3, 1.62, 0.1], [0.08, 0.55, 0.08], RIM, SMOKE_INK, { bone: 'armL', rz: 0.7 })
+    .spec('shroud', [0, 0.95, 0], [0.62, 1.7, 0.5], RIM, SMOKE_INK, { fray: 1 })
+    .spec('tail', [0, 0.3, -0.28], [0.36, 0.55, 0.6], RIM, SMOKE_INK, { bone: 'tail', fray: 0.8, sway: [0.05, 2.6, 0] })
+    // the mantle over the shoulders and the deep hood
+    .spec('shroud', [0, 1.62, -0.02], [0.78, 0.5, 0.56], RIM, SMOKE_INK, { fray: 0.7 })
+    .spec('shroud', [0, 1.98, -0.04], [0.42, 0.56, 0.44], RIM, SMOKE_INK, { bone: 'head', fray: 0.4, rx: 0.18 })
+    // the mask inside the hood: a bone face with a wide calling mouth that glows
+    .shape('mask', [0, 1.94, 0.13], [0.22, 0.3, 0.07], BONE, { bone: 'head', mat: MAT.mask, em: [0.9, 0.35, 0.08], rx: -0.1 })
+    .shape('torus', [0, 1.86, 0.19], [0.085, 0.03, 0.085], [0.1, 0.03, 0.01], { bone: 'head', mat: MAT.smooth, em: [1, 0.4, 0.06], rx: Math.PI / 2 })
+    .glow([0, 1.86, 0.21], 0.11, EMBER, { bone: 'head', minPx: 5 })
+    .glow([0, 1.86, 0.24], 0.45, [0.6, 0.2, 0.05], { bone: 'head', alpha: 0.45 })
+    .eyes(2.0, 0.17, 0.05, 0.028, [1, 0.6, 0.2])
+    // long arms out of ragged sleeves, the hands raised towards the mouth
+    .spec('tail', [0.36, 1.5, 0.08], [0.2, 0.42, 0.24], RIM, SMOKE_INK, { bone: 'armR', fray: 0.9, rz: -0.35, sway: [0.03, 3, 1] })
+    .spec('tail', [-0.36, 1.5, 0.08], [0.2, 0.42, 0.24], RIM, SMOKE_INK, { bone: 'armL', fray: 0.9, rz: 0.35, sway: [0.03, 3.2, 2] })
+    .spec('limb', [0.3, 1.66, 0.2], [0.065, 0.5, 0.07], RIM, SMOKE_INK, { bone: 'armR', rx: 0.7, rz: -0.45 })
+    .spec('limb', [-0.3, 1.66, 0.2], [0.065, 0.5, 0.07], RIM, SMOKE_INK, { bone: 'armL', rx: 0.7, rz: 0.45 });
+  for (const side of [-1, 1]) {
+    const bone: Bone = side > 0 ? 'armR' : 'armL';
+    for (let i = 0; i < 3; i++) b.shape('spike', [side * (0.2 + i * 0.03), 1.86, 0.36 - i * 0.02], [0.022, 0.13, 0.022], CLAW, { bone, mat: MAT.smooth, em: [0.15, 0.05, 0.01], rx: -1.4, rz: side * (i - 1) * 0.3 });
+  }
+  b.glow([0, 1.25, 0.2], 0.05, EMBER, { bone: 'core', minPx: 2, alpha: 0.5 })
     .blob([0, 0.2, 0], [0.25, 0.12, 0.25], 3, 0.38, SMOKE, { bone: 'legs', alpha: 0.6 });
-  return { parts: b.parts, tell: [1, 0.5, 0.15], top: 2.4, shoulder: 1.5, core: { y: 1.25, f: 0.05, rad: 0.12 } };
+  return { parts: b.parts, tell: [1, 0.5, 0.15], top: 2.35, shoulder: 1.5, core: { y: 1.25, f: 0.05, rad: 0.12 } };
 }
 
 const MAKERS: Record<string, (seed: number) => BodyTemplate> = { nebelling, irrlicht, streuner, mahnbrief, raffschatten, glutling, grusling, steinfresser, schuldbuch, pikeur, strohmann, steinbrecher, nebelweber, foliant, scherbling, rufer };

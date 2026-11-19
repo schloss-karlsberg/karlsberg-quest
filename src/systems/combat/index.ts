@@ -37,7 +37,7 @@ import { lanternPose } from '../hunt/lantern';
 import { CombatAudio } from './audio';
 import { CombatHud, type PipTarget, type SkillSlot } from './hud';
 import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
-import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay } from './sim';
+import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
 import { BOSS_HINT, BOSS_TITLE, TELL } from './strings';
 import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
@@ -176,6 +176,8 @@ class Combat {
   private deathSlow = 0;
   /** Seconds of game time the boss's title card stays up. */
   private titleLeft = 0;
+  /** A boss whose way in is said right after its title card (playtest round 9: twelve blows into the front at 420/420). */
+  private hintAfterTitle: string | null = null;
   /** Seconds (game time) the boss reveal still holds the dialogue. */
   private revealLeft = 0;
   /** Smoothed camera pull-back out of a big body (m, visual only). */
@@ -521,7 +523,7 @@ class Combat {
     for (const e of this.sim.enemies) {
       if (e.state === 'dissolve' || e.state === 'leave' || e.state === 'intro') continue;
       const hull = this.visuals.hullOf(e);
-      out.push({ id: e.id, x: e.x, y: e.y, z: e.z, r: Math.max(e.radius, Math.min(hull.r, hull.f + 0.4)), top: this.visuals.topOf(e), boss: e.boss, windup: e.state === 'windup', aggro: e.aggro });
+      out.push({ id: e.id, x: e.x, y: e.y, z: e.z, r: Math.max(e.radius, Math.min(hull.r, hull.f + 0.4)), top: this.visuals.topOf(e), boss: e.boss, windup: e.state === 'windup', aggro: e.aggro, open: touchable(e), pinned: e.stun > 0 && !e.boss });
     }
     return out;
   }
@@ -883,6 +885,7 @@ class Combat {
         const [name, epithet] = BOSS_TITLE[e.kind] ?? [e.def.name_de, ''];
         this.hud.title(name, epithet);
         this.titleLeft = ev.dur - 0.3;
+        this.hintAfterTitle = BOSS_HINT[e.kind] ? e.kind : null;
         // the reveal is the boss's moment: the story's dialogue waits it out (story held()); counted
         // in game time (update), so it ends with ?manual stepping too
         ctx.ui.hud.busy('reveal', true);
@@ -1200,17 +1203,23 @@ class Combat {
     this.cameraClearance(dt);
     if (this.titleLeft > 0) {
       this.titleLeft -= dt;
-      if (this.titleLeft <= 0) this.hud.hideTitle();
+      if (this.titleLeft <= 0) {
+        this.hud.hideTitle();
+        const k = this.hintAfterTitle;
+        this.hintAfterTitle = null;
+        if (k) this.captionOnce(`bossWayFirst:${k}`, t('combat.bossWayFirst', { hint: BOSS_HINT[k]! }), 'boss', 60, 4200);
+      }
     }
     // the Bannlicht flare: the lantern blazes for a moment (local, never a full-screen flash)
     if (this.bannFx) {
       this.bannFx.t = Math.max(0, this.bannFx.t - dt / 0.55);
       const f = this.bannFx.t;
-      const boost = st.reducedFlash ? 1.2 : 3;
+      // (round 9: ×4 lantern light under bloom blew the frame to white; now a firm, tonemapped pulse)
+      const boost = st.reducedFlash ? 0.8 : 1.5;
       const L = atmosphere.uLantern.value;
       if (L.lengthSq() < 0.01) L.set(1, 0.58, 0.24).multiplyScalar(2.7 * f);
       else L.multiplyScalar(1 + boost * f);
-      atmosphere.uLanternRadius.value = (atmosphere.uLanternRadius.value as number) * (1 + 0.8 * f);
+      atmosphere.uLanternRadius.value = (atmosphere.uLanternRadius.value as number) * (1 + 0.5 * f);
       if (f <= 0) this.bannFx = null;
     }
     lanternPose.side = -1;
@@ -1281,6 +1290,7 @@ class Combat {
     }
     cameraHints.fight = fight;
     cameraHints.boss = bossR;
+    cameraHints.bodies = this.cands.filter((c) => c.boss && Math.hypot(c.x - pl.position.x, c.z - pl.position.z) < 14).map((c) => ({ x: c.x, z: c.z, r: c.r, top: c.top }));
     this.targeting.frame({
       dt,
       time: ctx.loop.time,

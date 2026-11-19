@@ -73,7 +73,7 @@ html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc
 @keyframes kqc-skill-ready { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
 html[data-kq-reduced-motion] .kqc-skill.flash { animation: none; }
 html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1px solid #f3e6c8; }
-.kqc-dazzle { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(230,240,255,0.55) 45%, rgba(200,220,240,0.15) 100%); }
+.kqc-dazzle { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(235,242,255,0.75) 0%, rgba(210,225,245,0.3) 40%, rgba(200,220,240,0) 75%); }
 .kqc-pips .tag.guard { color: #f3dca6; border-color: rgba(233,199,122,0.8); background: rgba(28,20,8,0.85); }
 .kqc-pips .tag.veil { color: #d8efff; border-color: rgba(190,225,250,0.9); }
 .kqc-pips .tag.mirror { color: #ffffff; border-color: #ffffff; background: rgba(30,40,55,0.85); }
@@ -674,7 +674,8 @@ export class CombatHud {
     const pulse = o.reducedMotion || o.reducedFlash ? 1 : 0.8 + 0.2 * Math.sin(performance.now() / 160);
     this.low.style.opacity = String(Math.min(cap, o.lowHp * 0.9 * pulse));
     // dazzled by a mirror: a white bloom that fades (≤ 25 % with reduced flash)
-    this.dazzleEl.style.opacity = String(Math.min(o.reducedFlash ? 0.25 : 0.55, (o.dazzle ?? 0) * 0.45));
+    // (round 9: a near-white frame; now a cold glare at the centre that leaves the edges readable)
+    this.dazzleEl.style.opacity = String(Math.min(o.reducedFlash ? 0.2 : 0.38, (o.dazzle ?? 0) * 0.35));
   }
 
   clearWorld(): void {

@@ -4,7 +4,7 @@ import { addStrings } from '../../i18n';
 /** Telegraph caption per `<kind>.<attack>` (pose + glow + sound + caption, docs §4.4). */
 export const TELL: Record<string, string> = {
   'nebelling.lunge': 'Nebelling duckt sich – Ausfall!',
-  'irrlicht.funke': 'Irrlicht sammelt Funken',
+  'irrlicht.funke': 'Irrlicht sammelt Funken – ausweichen!',
   'streuner.sprung': 'Streuner duckt sich – Sprung!',
   'streuner.biss': 'Streuner schnappt',
   'mahnbrief.schnitt': 'Mahnbrief zuckt – Schnitt!',
@@ -73,6 +73,7 @@ addStrings('de', {
   'combat.immune': 'Der Stab geht hindurch – erst das Bannlicht ({key}).',
   'combat.bounce': 'Abgeprallt',
   'combat.bossWay': 'Vorne prallt alles ab. {hint}',
+  'combat.bossWayFirst': 'Der Weg hinein: {hint}',
   'combat.tut.dodge': 'Er duckt sich, gleich springt er. Leertaste – zur Seite!',
   'combat.tut.dodge.hint': 'Er holt aus – [Leertaste]: zur Seite ausweichen!',
   'combat.safe': 'Hier wird nicht gekämpft.',

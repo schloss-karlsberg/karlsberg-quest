@@ -481,6 +481,24 @@ const HUNTED_RUN = 0.5;
 const HUNTED_FLOOR = 30;
 /** Swings through an untouchable thing before the hint (and a lent Bannlicht). */
 const IMMUNE_HINT_AFTER = 3;
+/**
+ * Real-GPU playtest round 9 ("Lichter am Weiher" lost three times): a light the flare pressed to
+ * the ground lies low, so the staff lunges a little further for it (`PINNED_REACH` m), and the
+ * flare catches lights in a wider fan than other enemies (`LIGHT_FLARE`: +range m, +angle °).
+ */
+export const PINNED_REACH = 1.2;
+export const LIGHT_FLARE = { range: 3, angle: 40 } as const;
+/**
+ * Burst cap: within any `win` s, ordinary enemies take at most `frac` of the maximum Lebenskraft
+ * (bosses and story threats are not capped). Playtest round 9: 70 of 124 HP in under a second
+ * from three Irrlichter's sparks, 112 HP in a few seconds at the Nebelinge pit.
+ */
+export const BURST = { win: 1.2, frac: 0.3 } as const;
+
+/** Can the staff touch it now? (a light needs the flare first; a veil turns blows.) */
+export function touchable(e: { def: { needsBann?: boolean }; stun: number; veil?: boolean }): boolean {
+  return !((e.def.needsBann && e.stun <= 0) || e.veil);
+}
 /** Elites ignore the Bannlicht for their first seconds in a fight. */
 const ELITE_BANN_GRACE = 3;
 /** A scattered Mahnbrief / Nebelling comes back with this share of its strength, after a stagger. */
@@ -701,6 +719,9 @@ export class CombatSim {
       if (k >= 0) this.rings.splice(k, 1);
     }
     e.rings = [];
+    // every ring it owns (a charge lane, a lob's landing), not only the listed ones (playtest
+    // round 9: the Pikeur's disc stayed 1–2.5 s after he blew „verloren“ and rode off)
+    for (let i = this.rings.length - 1; i >= 0; i--) if (this.rings[i]!.owner === e.id) this.rings.splice(i, 1);
   }
 
   /** Materialise groups near the player in their era / time; respawn; reinforcements under the cap. */
@@ -1040,6 +1061,12 @@ export class CombatSim {
     if (this.p.dazzle > 0) return inp.yaw;
     const deg = this.opt.gentle ? COMBO.gentleAssistDeg : COMBO.assistDeg;
     const targets = this.enemies.filter((e) => e.state !== 'dissolve' && e.state !== 'leave');
+    // a pressed-down light first (playtest round 9: the snap went to the one the staff passes through)
+    const open = targets.filter((e) => touchable(e));
+    if (open.length && open.length < targets.length) {
+      const y = assistYaw(inp.x, inp.z, inp.yaw, open, reach + PINNED_REACH, deg);
+      if (y !== inp.yaw) return y;
+    }
     return assistYaw(inp.x, inp.z, inp.yaw, targets, reach, deg);
   }
 
@@ -1080,10 +1107,13 @@ export class CombatSim {
     let hits = 0;
     let killed = false;
     // the nearest target in the arc takes the full hit, the next ones less (CLEAVE)
-    const inArc = this.enemies
-      .filter((e) => e.state !== 'dissolve' && e.state !== 'leave' && e.y - inp.y <= 3.2 && inCone(inp.x, inp.z, yaw, reach, arc, e.x, e.z, e.radius))
-      .sort((a, b) => Math.hypot(a.x - inp.x, a.z - inp.z) - Math.hypot(b.x - inp.x, b.z - inp.z))
-      .slice(0, sweep ? CLEAVE.sweep : heavy ? CLEAVE.heavy : CLEAVE.light);
+    // (a light pinned by the flare is reached a little further; the ones the staff can touch go
+    // first, and an untouchable one only takes the blow when nothing touchable is in the arc)
+    let inArc = this.enemies
+      .filter((e) => e.state !== 'dissolve' && e.state !== 'leave' && e.y - inp.y <= 3.2 && inCone(inp.x, inp.z, yaw, reach + (e.def.needsBann && e.stun > 0 ? PINNED_REACH : 0), arc, e.x, e.z, e.radius))
+      .sort((a, b) => Number(touchable(b)) - Number(touchable(a)) || Math.hypot(a.x - inp.x, a.z - inp.z) - Math.hypot(b.x - inp.x, b.z - inp.z));
+    if (inArc.some((e) => touchable(e))) inArc = inArc.filter((e) => touchable(e));
+    inArc = inArc.slice(0, sweep ? CLEAVE.sweep : heavy ? CLEAVE.heavy : CLEAVE.light);
     for (const e of inArc) {
       // flying things are reachable (the staff is 2 m long); only very high ones are out of reach
       if (this.hitEnemy(e, { kind: w.kind, combo: w.combo, charge: w.charge, mul: 1, breaks: heavy, final: false, skill: null }, inp, hits === 0 ? 1 : CLEAVE.falloff)) killed = true;
@@ -1359,7 +1389,8 @@ export class CombatSim {
     let reflected: Enemy | null = null;
     for (const e of this.enemies) {
       if (e.state === 'dissolve' || e.state === 'leave') continue;
-      if (!inCone(inp.x, inp.z, inp.yaw, s.bannRange, s.bannAngle, e.x, e.z, e.radius)) continue;
+      const light = e.def.needsBann === true;
+      if (!inCone(inp.x, inp.z, inp.yaw, s.bannRange + (light ? LIGHT_FLARE.range : 0), Math.min(180, s.bannAngle + (light ? LIGHT_FLARE.angle : 0)), e.x, e.z, e.radius)) continue;
       if (e.y - inp.y > 4) continue;
       hits++;
       // the flare tears a veil, whatever else it does
@@ -1463,6 +1494,8 @@ export class CombatSim {
    */
   /** Kind of the last enemy that hurt the player (the curtain names the family). */
   lastHitBy = '';
+  /** Damage taken in the burst window (BURST). */
+  private recentHurt: { t: number; a: number }[] = [];
 
   hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false): number {
     const p = this.p;
@@ -1471,8 +1504,18 @@ export class CombatSim {
       this.out.push({ type: 'evade', by });
       return 0;
     }
-    const amount = enemyDamage(raw, tier, this.opt.stats.damageTaken);
+    let amount = enemyDamage(raw, tier, this.opt.stats.damageTaken);
     if (amount <= 0) return 0;
+    // the burst cap (enemies only, not bosses): no ordinary pack takes most of the bar in one breath
+    const def = enemyDef(by);
+    if (def && def.boss !== true) {
+      while (this.recentHurt.length && this.time - this.recentHurt[0]!.t > BURST.win) this.recentHurt.shift();
+      let sum = 0;
+      for (const r of this.recentHurt) sum += r.a;
+      amount = Math.max(0, Math.min(amount, p.max * BURST.frac - sum));
+      if (amount <= 0) return 0;
+      this.recentHurt.push({ t: this.time, a: amount });
+    }
     this.lastHitBy = by;
     let dx = this.px - from.x;
     let dz = this.pz - from.z;
@@ -1569,6 +1612,7 @@ export class CombatSim {
       if (e.kind === 'pikeur') {
         e.hp = Math.ceil(e.maxHp * 0.12);
         this.setState(e, 'leave');
+        this.dropRings(e);
         this.out.push({ type: 'leave', e });
       } else this.kill(e, 'light');
       n++;
