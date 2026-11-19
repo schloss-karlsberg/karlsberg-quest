@@ -495,15 +495,25 @@ vec2 leafClump(vec2 uv, float seed, float dens) {
   vec2 c = uv - 0.5;
   float r = length(c) * 2.0;
   float ang = atan(c.y, c.x);
+  // a card only a few pixels across (mid ring, 60 m +) skips the sub-pixel detail: the noisy
+  // tips, the rim gaps and the fine mottling (integration pass: this shader was the forest's cost)
+  float fr = fwidth(r);
+  bool coarse = fr > 0.02;
   // scalloped outline: leaf tips around the rim, slower lobes for a lumpy silhouette
   float lobes = 0.11 * sin(ang * 3.0 + seed * 17.0) + 0.07 * sin(ang * 5.0 + seed * 41.0);
-  float tips = 0.09 * abs(sin(ang * 9.0 + seed * 23.0)) + 0.05 * kqNoise(vec2(ang * 6.0, seed * 9.0));
+  float tips = 0.09 * abs(sin(ang * 9.0 + seed * 23.0)) + (coarse ? 0.025 : 0.05 * kqNoise(vec2(ang * 6.0, seed * 9.0)));
   float edge = 0.86 + lobes - tips;
   // thinner in autumn / winter: the outline shrinks and gaps open from the rim
   edge *= mix(0.55, 1.0, dens);
   float d = r - edge;
-  float aa = max(fwidth(r) * 1.2, 0.012);
+  float aa = max(fr * 1.2, 0.012);
   float cov = 1.0 - smoothstep(-aa, aa, d);
+  float m1 = kqNoise(uv * 6.0 + seed * 31.0);
+  if (coarse) {
+    // far: thinner seasons just shrink the outline a bit more
+    cov *= 1.0 - smoothstep(0.75, 1.0, r / max(edge, 0.05)) * (1.0 - dens) * 0.8;
+    return vec2(cov, (0.74 + 0.36 * m1 * 0.85) * mix(0.85, 1.05, smoothstep(0.1, 0.8, r)));
+  }
   // gaps between leaf groups, only in the outer third
   vec2 g = uv * 7.0 + seed * 13.0;
   float gap = kqNoise(g) * 0.6 + kqNoise(g * 2.3) * 0.4;
@@ -511,7 +521,6 @@ vec2 leafClump(vec2 uv, float seed, float dens) {
   float ga = max(fwidth(gap) * 1.5, 0.02);
   cov *= smoothstep(gapCut - ga, gapCut + ga, gap + 0.25);
   // interior: calm mottling of leaf groups (two noise octaves, no grid)
-  float m1 = kqNoise(uv * 6.0 + seed * 31.0);
   float m2 = kqNoise(uv * 15.0 + seed * 17.0);
   float shade = (0.74 + 0.36 * (m1 * 0.65 + m2 * 0.35)) * mix(0.85, 1.05, smoothstep(0.1, 0.8, r));
   return vec2(cov, shade);
