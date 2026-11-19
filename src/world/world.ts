@@ -178,7 +178,7 @@ export class World {
    * outer door, inside the next door through the rooms; null when there is no door to go through
    * (the goal is in this room, outside every building, or no way is known).
    */
-  routeTo: ((x: number, z: number, fromX: number, fromZ: number, fromY: number) => { x: number; z: number; door: boolean } | null) | null = null;
+  routeTo: ((x: number, z: number, fromX: number, fromZ: number, fromY: number) => { x: number; z: number; door: boolean; mark?: { x: number; y: number; z: number } } | null) | null = null;
   /**
    * Optional ceiling lookup (interiors system): the ceiling height of the room whose floor holds
    * (x, z) at about height y, null outdoors. The third-person camera stays under it.

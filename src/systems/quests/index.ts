@@ -710,7 +710,7 @@ class QuestRuntime {
       const step = w.routeTo(tg.x, tg.z, p.x, p.z, p.y);
       if (!step) return lead;
       const inside = !!this.ctx.state.state.flags['interior.room'];
-      return { ...lead, target: { ...tg, x: step.x, z: step.z, r: 1.5, kind: 'zone' }, label: t(inside ? 'quest.viaInner' : 'quest.viaDoor', { label: lead.label }) };
+      return { ...lead, target: { ...tg, x: step.x, z: step.z, r: 1.5, kind: 'zone', ...(step.mark ? { mark: step.mark } : {}) }, label: t(inside ? 'quest.viaInner' : 'quest.viaDoor', { label: lead.label }) };
     }
     if (!w.entranceFor) return lead;
     if (this.ctx.state.state.flags['interior.room'] || w.collider.footprintAt(p.x, p.z) >= 0) return lead;
@@ -745,7 +745,8 @@ class QuestRuntime {
     // also in the air: the Geisterblick is for finding the way (playtest: flying, only the compass
     // said where to go)
     if (lead?.target) {
-      ctx.ui.hud.waymark.set({ x: lead.target.x, y: ctx.world.heightAt(lead.target.x, lead.target.z), z: lead.target.z, r: lead.target.r, label: shortLabel(lead.label), kind: lead.target.kind, main: lead.quest?.kind !== 'side' });
+      const mk = lead.target.mark;
+      ctx.ui.hud.waymark.set({ x: mk?.x ?? lead.target.x, y: mk?.y ?? ctx.world.heightAt(lead.target.x, lead.target.z), z: mk?.z ?? lead.target.z, r: lead.target.r, label: shortLabel(lead.label), kind: lead.target.kind, main: lead.quest?.kind !== 'side' });
     } else ctx.ui.hud.waymark.set(null);
     // every other tracked quest keeps a (non-edge) compass mark too: a tracked side quest with no
     // marker at all read as "Wird verfolgt" and nowhere to go (playtest: the Irrlichter at the lake)

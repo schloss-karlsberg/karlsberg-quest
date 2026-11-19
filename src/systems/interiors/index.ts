@@ -778,8 +778,12 @@ function installWorldHooks(ctx: GameContext): void {
       const out = d.depth + (d.stoop?.length ?? 0) + 1.2;
       const ox = d.cx + d.nx * out;
       const oz = d.cz + d.nz * out;
-      if (Math.hypot(ox - fx, oz - fz) > 3 && Math.hypot(d.cx - fx, d.cz - fz) > out + 0.5) return { x: ox, z: oz, door: true };
-      return { x: d.cx - d.nx * 1.2, z: d.cz - d.nz * 1.2, door: true };
+      // the mark floats in the opening itself (playtest round 9: over the foot of the steps it
+      // read as "on the blank wall left of the door"); the zone stays at the foot of the steps
+      const sill = cur.query.floorAt(d.cx - d.nx * 0.3, d.cz - d.nz * 0.3, 1e9, ctx.world.heightAt(d.cx, d.cz)) ?? ctx.world.heightAt(d.cx, d.cz);
+      const mark = { x: d.cx, y: sill - 0.9, z: d.cz };
+      if (Math.hypot(ox - fx, oz - fz) > 3 && Math.hypot(d.cx - fx, d.cz - fz) > out + 0.5) return { x: ox, z: oz, door: true, mark };
+      return { x: d.cx - d.nx * 1.2, z: d.cz - d.nz * 1.2, door: true, mark };
     }
     const k = fromA ? d.depth + (d.b === -1 ? (d.stoop?.length ?? 0) + 1.2 : 1) : -1;
     return { x: d.cx + d.nx * k, z: d.cz + d.nz * k, door: true };

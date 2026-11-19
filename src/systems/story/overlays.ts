@@ -100,10 +100,10 @@ export class StoryOverlays {
     this.curtain.classList.add('kqs-down');
   }
 
-  curtainUp(text?: string): void {
+  curtainUp(text?: string, sub?: string): void {
     if (text) {
       this.curtainText.textContent = text;
-      this.curtainSub.textContent = '';
+      this.curtainSub.textContent = sub ?? '';
     }
     this.curtain.classList.add('kqs-up');
     window.setTimeout(() => this.curtain.classList.remove('kqs-down', 'kqs-up'), 2600);

@@ -261,14 +261,15 @@ export class PickupWorld {
   private create(p: PlacedPickup, animate: boolean): Vis {
     const kind = this.kindOf(p.item);
     const precious = BEAM_KINDS.has(kind);
-    const tint = lin(ERA_TINT[p.era] ?? 0xffd58a, precious ? 6 : 5);
+    // (round 9: at ×5–6 HDR the glints bloomed into huge white orbs that washed out the frame)
+    const tint = lin(ERA_TINT[p.era] ?? 0xffd58a, precious ? 2.4 : 2);
     const seed = (p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 97) / 9.7;
     const glow = new Mesh(
       QUAD,
       new ShaderMaterial({
         vertexShader: GLOW_VERT,
         fragmentShader: GLOW_FRAG,
-        uniforms: { uPix: shared.uPix, uTime: shared.uTime, uMotion: shared.uMotion, uSize: { value: precious ? 1.7 : 1.4 }, uMinPx: { value: precious ? 56 : 46 }, uColor: { value: tint }, uAlpha: { value: 0 }, uFar: { value: 40 }, uSeed: { value: seed } },
+        uniforms: { uPix: shared.uPix, uTime: shared.uTime, uMotion: shared.uMotion, uSize: { value: precious ? 1.05 : 0.85 }, uMinPx: { value: precious ? 30 : 24 }, uColor: { value: tint }, uAlpha: { value: 0 }, uFar: { value: 40 }, uSeed: { value: seed } },
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,

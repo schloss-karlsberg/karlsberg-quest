@@ -358,14 +358,18 @@ class Progression {
     const got = this.core.take(id);
     if (got > 0) {
       this.world.collect(id);
-      this.changed('pickup');
       // the first Messstab comes with two Kräuterbalsam in the bag (Marlene's radio line says
-      // so; playtest: "Der Balsam ist in der Tasche" while the HUD showed ×0)
+      // so; playtest: "Der Balsam ist in der Tasche" while the HUD showed ×0) — granted before the
+      // save, which is forced (round 9: a reload right after the pickup lost the two Balsam, the
+      // throttled autosave had run between the staff and the grant)
       const flags = this.ctx.state.state.flags;
-      if (p.item === 'item.stab.esche' && !flags['progression.starterBalsam']) {
+      const starter = p.item === 'item.stab.esche' && !flags['progression.starterBalsam'];
+      if (starter) {
         flags['progression.starterBalsam'] = true;
         this.ctx.events.emit('item:grant', { item: 'item.balsam', count: 2 });
       }
+      this.changed('pickup');
+      if (starter && this.started) this.ctx.save.autosave('progression-starter', true);
     } else this.refuse(`Kein Platz mehr: ${this.name(p.item)} (${this.core.count(p.item)})`);
     return got;
   }

@@ -246,9 +246,9 @@
       "title_de": "Der Ehrenhof",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
-        { "do": "quest", "op": "offer", "id": "q.p.bussole", "onResume": true },
         { "do": "objective", "id": "ehrenhof", "text": "Weiter hinauf: eine ebene Lichtung auf der Terrasse", "x": 1216, "z": -1114, "delay": 1 },
-        { "do": "say", "line": "laub.p.intro2", "delay": 16 }
+        { "do": "quest", "op": "offer", "id": "q.p.bussole", "onResume": true, "delay": 13 },
+        { "do": "say", "line": "laub.p.intro2", "delay": 3 }
       ],
       "on": [
         {
@@ -600,7 +600,7 @@
         {
           "do": "objective",
           "id": "bett",
-          "text": "Laterne aus (L). Dann schlafen: das Feldbett im Bauwagen (E an der Tür)",
+          "text": "Schlafen: das Feldbett im Bauwagen (E an der Tür, dann Feldbett)",
           "x": 760.6,
           "z": -910.4,
           "delay": 0.5
@@ -630,7 +630,7 @@
         { "do": "autosave" }
       ],
       "complete": {
-        "all": [{ "timer": 22 }, { "any": [{ "hub": "bed" }, { "timer": 150 }] }]
+        "any": [{ "hub": "bed" }, { "timer": 150 }]
       },
       "exit": [{ "do": "objective", "text": null }]
     }

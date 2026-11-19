@@ -1268,7 +1268,8 @@
 }
 .ck-memory-label {
   position: absolute;
-  top: 64px;
+  /* under the pointer-lock chip (top 54 px), not over it (round 9) */
+  top: 96px;
   left: 50%;
   transform: translateX(-50%) rotate(-1.5deg);
   font-family: var(--sc);

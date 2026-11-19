@@ -387,7 +387,8 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   });
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
   await shot(page, '05-laub-speaks');
-  expect(await qs(page, 'q.p.bussole')).toBe('active');
+  // the quest comes once Laub has introduced himself (round 9: the offer card cut him off)
+  expect(await untilQuest(page, 'q.p.bussole', 'active', 40)).toBe('active');
 
   // ---- p4–p6: "Die Bussole spricht" ----------------------------------------------------------------
   await run(page, 16);

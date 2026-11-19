@@ -37,7 +37,7 @@ export const STATION = {
   r: 15,
   /** Where the player stands in front of the door, looking north at it. */
   door: { x: 760.6, z: -910.4 },
-  spawn: { x: 760, z: -902, yaw: 0 },
+  spawn: { x: 762.2, z: -902, yaw: 0 },
   halfLen: 3.7,
   halfWid: 1.35,
 };

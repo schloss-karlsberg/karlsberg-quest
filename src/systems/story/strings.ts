@@ -123,7 +123,7 @@ addStrings('de', {
   'story.name.placeholder': 'Dein Name',
   'story.name.suggest': 'Alex',
   'story.name.confirm': 'Eintragen',
-  'story.lantern.title': 'Es ist dunkel im Bauwagen.',
+  'story.lantern.title': 'Früh am Morgen, vor dem Bauwagen.',
   'story.lantern.light': 'Laterne anzünden',
   'story.lantern.hint': 'Mit Kopfhörern spielen. Der Klick weckt den Ton.',
 

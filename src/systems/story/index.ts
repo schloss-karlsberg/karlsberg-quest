@@ -462,6 +462,7 @@ class StoryRuntime {
     ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
       this.dropShiftObjective(to);
+      this.stationSolid(to === 'today');
       if (to === 'today') this.placeStation();
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
     });
@@ -1129,6 +1130,15 @@ class StoryRuntime {
     this.station.place((x, z) => hf.heightAt(x, z));
     this.station.dress(this.ctx.assets, this.ctx.quality.level !== 'low');
     this.stationPlaced = true;
+    this.stationSolid(this.ctx.era.current === 'today');
+  }
+
+  /**
+   * The trailer as a collider solid in its era (playtest round 9: the third-person camera's spring
+   * arm went through the wagon — walls see-through, the player inside; only the walk was pushed out).
+   */
+  private stationSolid(on: boolean): void {
+    this.ctx.world.collider.setSolids('station', on ? [{ kind: 'box', x: STATION.x, z: STATION.z, ux: Math.cos(STATION.yaw), uz: -Math.sin(STATION.yaw), hu: STATION.halfLen + 0.15, hv: STATION.halfWid + 0.15 }] : []);
   }
 
   // ------------------------------------------------------------------------------------------
@@ -1322,6 +1332,8 @@ class StoryRuntime {
   // ------------------------------------------------------------------------------------------
 
   private caughtHold = 2400;
+  /** The curtain is down for a lost fight (its sub line stays on the way up). */
+  private caughtCombat = false;
 
   /**
    * The curtain: down at once, the threats stop, the player stands still; after `caughtHold` of
@@ -1346,8 +1358,9 @@ class StoryRuntime {
     for (const [kind, cfg] of Object.entries(this.slice.threats)) if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });
     ctx.player.frozen = true;
     this.caughtT = 0;
-    this.caughtHoldS = this.caughtHold / 1000;
+    this.caughtHoldS = Math.max(this.caughtHold / 1000, by === 'combat' ? 3.2 : 0);
     this.caughtHold = 2400;
+    this.caughtCombat = by === 'combat';
   }
 
   private updateCaught(dt: number): void {
@@ -1411,7 +1424,10 @@ class StoryRuntime {
       this.objectives.set(this.slice.objective);
       ctx.events.emit('objective:set', { text, x: anchor.x, z: anchor.z, id: 'story.back' });
     }
-    this.overlays.curtainUp(wake?.text ?? t('story.caught.wake'));
+    // a fight lost says so on the way up too (playtest round 9: "no visible KO card, I was just at
+    // the wagon") — the wake line under „Niedergeworfen. Nicht verloren.“
+    this.overlays.curtainUp(wake?.text ?? t('story.caught.wake'), this.caughtCombat ? t('story.caught.sub.combat') : undefined);
+    this.caughtCombat = false;
     const lines = this.wakeLines;
     this.wakeLines = [];
     for (const l of lines) ctx.events.emit('dialogue:say', l);

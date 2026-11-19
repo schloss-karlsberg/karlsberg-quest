@@ -285,6 +285,8 @@ class Hunt {
   private readonly agentAudio = new Map<Agent, { paw: number; pant: number; hoof: number }>();
   private readonly log: { name: string; payload: unknown; tick: number }[] = [];
   private lowWarned = false;
+  /** A conversation is open (the oil does not burn meanwhile). */
+  private talking = false;
   private lastLit = false;
   private hooksInstalled = false;
   /** Prints in the snow (player trail + the pack's). */
@@ -347,6 +349,7 @@ class Hunt {
       }
     });
     ev.on('threat:configure', (c) => this.configure(c));
+    ev.on('npc:conversation', ({ open }) => (this.talking = open));
     // round 2: the story's oil meter lights (and refills) the lantern for a timed beat
     ev.on('lantern:request', ({ lit, refill }) => {
       if (refill) this.refill();
@@ -550,7 +553,12 @@ class Hunt {
       ctx.ui.toast(ctx.t(lit ? 'lantern.on' : 'lantern.off'), 1400);
     }
     // the oil is the timer of the past: in the present the lantern burns for free
-    const r = ctx.era.current === 'today' ? { emptied: false, percentChanged: false } : drain(L, dt, this.mode());
+    // playtest round 9 (the Registratur: finding the door ate half the oil, the visit ended mid-
+    // conversation): no burn while someone talks or a page is open, half burn under a roof
+    const p = ctx.player.position;
+    const indoors = ctx.world.ceilingAt?.(p.x, p.z, p.y) != null;
+    const burnK = this.talking || ctx.ui.modals.count > 0 ? 0 : indoors ? 0.5 : 1;
+    const r = ctx.era.current === 'today' || burnK === 0 ? { emptied: false, percentChanged: false } : drain(L, dt * burnK, this.mode());
     if (r.percentChanged) ctx.events.emit('lantern:oil', { oil: L.oil });
     if (r.emptied) {
       ctx.events.emit('lantern:toggle', { lit: false });

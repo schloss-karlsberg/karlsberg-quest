@@ -63,6 +63,22 @@ export class Waymark {
     this.el.style.opacity = '0';
   }
 
+  private rects: DOMRect[] = [];
+  private rectsAt = 0;
+
+  /** HUD panels the mark keeps out of (re-measured twice a second). */
+  private safeRects(width: number): DOMRect[] {
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (now - this.rectsAt < 500 || typeof document === 'undefined') return this.rects;
+    this.rectsAt = now;
+    this.rects = [];
+    for (const el of document.querySelectorAll<HTMLElement>('[data-testid="quest-tracker"], [data-testid="combat-vitals"], [data-testid="hud-topleft"]')) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && r.left < width / 2) this.rects.push(r);
+    }
+    return this.rects;
+  }
+
   set(spec: WaymarkSpec | null): void {
     this.spec = spec;
     if (!spec) return;
@@ -97,9 +113,11 @@ export class Waymark {
       let sx = (_v.x * 0.5 + 0.5) * width;
       let sy = (-_v.y * 0.5 + 0.5) * height;
       if (behind) {
-        // mirrored through the centre, then pushed to the bottom edge
-        sx = width - sx;
-        sy = height * 2;
+        // behind you: on the left or right edge at mid height, the arrow pointing round (playtest
+        // round 9: clamped to the bottom centre it read as "ahead")
+        const right = toX * -_f.z + toZ * _f.x > 0;
+        sx = right ? width * 4 : -width * 3;
+        sy = height * 0.5;
       }
       const mx = 46;
       const top = 78;
@@ -121,6 +139,11 @@ export class Waymark {
         ang = Math.atan2(dy, dx);
         dx = 0;
         dy = 0;
+      }
+      // never under the HUD panels (playtest round 9: under the quest tracker, „30 m“ over the
+      // „Lebenskraft“ label): pushed out sideways past the panel
+      for (const r of this.safeRects(width)) {
+        if (sx > r.left - 26 && sx < r.right + 26 && sy > r.top - 22 && sy < r.bottom + 22) sx = r.right + 34;
       }
       this.el.classList.toggle('kq-wm-edge', !onScreen);
       if (!onScreen) this.arrow.style.transform = `rotate(${ang.toFixed(3)}rad)`;

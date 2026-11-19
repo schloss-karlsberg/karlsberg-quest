@@ -34,7 +34,9 @@ function courtDeg(du: number, dw: number): number {
 const COB: Hex = 0x9a9082;
 const BAND: Hex = 0xa99c88;
 const WALK: Hex = 0xb3a48c;
-const RED: Hex = 0xa86f58;
+/** The rosette's inlay: grey-ochre stone, never the red of a combat telegraph (playtest round 9). */
+const INLAY: Hex = 0x958772;
+const INLAY_DARK: Hex = 0x7f776a;
 const GUTTER: Hex = 0x5a544c;
 
 /**
@@ -256,12 +258,13 @@ export const EHRENHOF_1789: SetDef = {
     drape(b, 35.5, 38.5, 1.7, w - 1.6, 0.075, WALK, SURF.STONE);
     // the rosette round the anchor: a red sandstone ring, pale inside, a red star
     const [ru, rw] = ROSETTE;
-    ringAt(b, ru, rw, 4.6, 5.5, 0.09, RED, SURF.STONE, 48);
+    // (grey-ochre inlay, not red: a red ring with spokes read as an enemy's danger ring)
+    ringAt(b, ru, rw, 4.6, 5.5, 0.09, INLAY_DARK, SURF.STONE, 48);
     ringAt(b, ru, rw, 1.7, 4.6, 0.085, WALK, SURF.STONE, 48);
-    ringAt(b, ru, rw, 0, 1.0, 0.1, RED, SURF.STONE, 24);
+    ringAt(b, ru, rw, 0, 1.0, 0.1, INLAY, SURF.STONE, 24);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      ringAt(b, ru, rw, 1.0, 4.4, 0.095, i % 2 ? COB : RED, SURF.STONE, 2, a - 0.08, a + 0.08);
+      ringAt(b, ru, rw, 1.0, 4.4, 0.095, i % 2 ? COB : INLAY, SURF.STONE, 2, a - 0.08, a + 0.08);
     }
     // the court's furniture
     for (const [u, ww] of LANTERNS) lanternPost(b, u, ww);

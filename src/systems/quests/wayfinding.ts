@@ -22,6 +22,8 @@ export interface WayPoint {
   room?: string;
   /** What kind of thing is there (marker icon, hint wording). */
   kind: 'zone' | 'pickup' | 'clue' | 'npc' | 'dest';
+  /** Where the floating mark sits when it is not over x/z (a door: in the opening, not over the foot of its steps). */
+  mark?: { x: number; y: number; z: number };
 }
 
 export interface WayDeps {
