@@ -1574,6 +1574,17 @@ export class CombatVisuals {
       }
       this.glows.push(e.x, e.y + top * 0.5, e.z, e.radius + top * 0.45, f.reducedFlash ? 0.25 : 0.4, 0.45, 0.6, 0.85, 0);
     }
+    // the prologue's veil (a Streuner under a Schleier): a ring on the ground and a slow shell of
+    // mist motes give its place away in bright daylight (playtest: only the nameplate showed)
+    if (e.veil && !dissolving) {
+      const gy = this.groundY(f, e.x, e.z, e.radius);
+      this.ringPool.push(e.x, gy + 0.02, e.z, e.radius + 0.55, 1, 0.85, 3);
+      const top = v.t.top;
+      for (let i = 0; i < 6; i++) {
+        const a = -f.time * 1.2 + (i / 6) * Math.PI * 2;
+        this.glows.push(e.x + Math.cos(a) * (e.radius + 0.3), e.y + top * (0.25 + 0.12 * i), e.z + Math.sin(a) * (e.radius + 0.3), 0.11, f.reducedFlash ? 1 : 1.6, 0.75, 0.9, 1, 3);
+      }
+    }
     // a mirror: the core flares cold-white while uncracked, dims and flickers once cracked
     if (e.def.reflectsBann && !dissolving) {
       const I = e.cracked ? 0.4 + 0.4 * Math.max(0, Math.sin(f.time * 23)) : 1.2 + 0.3 * Math.sin(f.time * 4);

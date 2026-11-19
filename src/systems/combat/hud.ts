@@ -601,8 +601,16 @@ export class CombatHud {
       }
       n.el.style.opacity = String(t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3);
     }
-    // hp pips over enemies
+    // hp pips over enemies; never over the HUD's own zones (playtest: an 'UNGREIFBAR' tag over
+    // the quest tracker): a pip that would land in the tracker / top-left column is pushed below it
     const seen = new Set<string>();
+    const zones: DOMRect[] = [];
+    if (o.pips.some((t) => t.show)) {
+      for (const sel of ['[data-testid="quest-tracker"]', '[data-testid="hud-topleft"]']) {
+        const r = document.querySelector(sel)?.getBoundingClientRect();
+        if (r && r.width > 0 && r.height > 0) zones.push(r);
+      }
+    }
     for (const t of o.pips) {
       if (!t.show) continue;
       const p = project(t.x, t.y, t.z);
@@ -624,8 +632,10 @@ export class CombatHud {
       // anchored over the body: the bar shrinks with distance, nearer bars on top
       const d = t.dist ?? 8;
       const sc = Math.max(0.62, Math.min(1.25, 9 / Math.max(1, d)));
+      let py = p.y;
+      for (const z of zones) if (p.x > z.left - 60 && p.x < z.right + 60 && py < z.bottom + 34 && py > z.top) py = z.bottom + 34;
       e.root.style.left = `${p.x}px`;
-      e.root.style.top = `${p.y}px`;
+      e.root.style.top = `${py}px`;
       e.root.style.transform = `translate(-50%, -100%) scale(${sc.toFixed(3)})`;
       e.root.style.zIndex = String(Math.max(1, 200 - Math.round(d * 4)));
       e.root.style.opacity = String(Math.max(0.45, Math.min(1, 1.25 - d / 40)));

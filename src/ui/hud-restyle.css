@@ -345,39 +345,45 @@ body.kq-in-combat .kq-waymark {
 
 /* ---- "click into the picture" (pointer lock) ---- */
 .kq-hud .kq-click-to-play {
-  top: auto;
-  bottom: 28%;
+  /* a small chip under the compass (playtest: the card sat mid-screen over fights, dialogue and
+     subtitles whenever the pointer lock was not held) */
+  top: 54px;
+  bottom: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-style: normal;
-  padding: 10px 20px 10px 14px;
-  border-radius: 14px;
-  background: rgba(14, 11, 8, 0.62);
-  border: 1px solid rgba(242, 199, 107, 0.4);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  padding: 4px 12px 4px 9px;
+  border-radius: 999px;
+  background: rgba(14, 11, 8, 0.55);
+  border: 1px solid rgba(242, 199, 107, 0.3);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
   opacity: 1;
   white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
   animation: kq-in 0.35s ease-out;
 }
 .kq-hud .kq-click-to-play .kq-ctp-mouse {
-  width: 22px;
-  height: 30px;
+  width: 12px;
+  height: 17px;
   color: var(--hud-gold-2);
-  filter: drop-shadow(0 0 4px rgba(242, 199, 107, 0.6));
+  filter: drop-shadow(0 0 3px rgba(242, 199, 107, 0.5));
 }
 .kq-hud .kq-click-to-play .kq-ctp-text {
   display: flex;
-  flex-direction: column;
-  line-height: 1.25;
+  flex-direction: row;
+  gap: 8px;
+  align-items: baseline;
+  line-height: 1.2;
 }
 .kq-hud .kq-click-to-play b {
   font-weight: 400;
-  font-size: 18px;
+  font-size: 14px;
   color: var(--hud-ink);
 }
 .kq-hud .kq-click-to-play .kq-ctp-text span {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--hud-dim);
 }
 

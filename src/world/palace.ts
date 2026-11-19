@@ -1,6 +1,8 @@
 import {
   BufferAttribute,
   type BufferGeometry,
+  DoubleSide,
+  FrontSide,
   Float32BufferAttribute,
   Group,
   Matrix4,
@@ -72,6 +74,14 @@ void main() {
     if (vWorld.y > stub) discard;
   }
   if (uOpacity < 1.0 && kqHash12(gl_FragCoord.xy + floor(uTime * 30.0)) > uOpacity) discard;
+  // the inside of the shell (seen through an upper-floor window with no room behind it): a dim
+  // warm interior instead of the sky showing through a hollow facade (playtest)
+  if (!gl_FrontFacing && uRuin < 0.5) {
+    float lamp = 0.6 + 0.4 * kqNoise(vWorld.xz * 0.15 + vWorld.y * 0.5);
+    vec3 inner = vec3(0.075, 0.058, 0.044) * lamp * mix(0.6, 1.0, smoothstep(vBase, vBase + 8.0, vWorld.y));
+    gl_FragColor = vec4(kqFog(inner, vWorld), 1.0);
+    return;
+  }
   vec3 alb = vColor;
   // weathering: slight streaks and darker plinths
   alb *= 0.9 + 0.18 * n;
@@ -212,6 +222,9 @@ export class Palace {
     this.material = new ShaderMaterial({
       vertexShader: PALACE_VERT,
       fragmentShader: PALACE_FRAG,
+      // both sides: the shell's inner faces fill the window holes of storeys without rooms
+      side: DoubleSide,
+      shadowSide: FrontSide,
       uniforms: {
         ...atmosphere,
         ...surfaces,

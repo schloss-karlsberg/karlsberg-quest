@@ -5,7 +5,6 @@
  */
 import {
   AdditiveBlending,
-  BoxGeometry,
   ConeGeometry,
   CylinderGeometry,
   Group,
@@ -38,6 +37,46 @@ void main() {
   gl_FragColor = vec4(col * uLevel, 1.0);
 }
 `;
+/**
+ * The lantern's metal, shaded (playtest: "a flat 2D brown cut-out"): view-space normals, a key
+ * light from the upper left, the flame's warm light on the frame from inside, a fresnel rim and a
+ * brass tint where the light catches it.
+ */
+const METAL_VERT = /* glsl */ `
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+void main() {
+  vN = normalize(normalMatrix * normal);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vV = normalize(-mv.xyz);
+  vP = position;
+  gl_Position = projectionMatrix * mv;
+}
+`;
+const METAL_FRAG = /* glsl */ `
+uniform float uLevel;
+uniform vec3 uBase;
+uniform vec3 uAmb;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+void main() {
+  vec3 n = normalize(vN);
+  vec3 L = normalize(vec3(-0.45, 0.75, 0.5));
+  float dif = max(dot(n, L), 0.0);
+  vec3 h = normalize(L + vV);
+  float spec = pow(max(dot(n, h), 0.0), 28.0);
+  float rim = pow(1.0 - max(dot(n, vV), 0.0), 2.5);
+  // the flame sits at the centre: parts facing it (and near it) catch its glow
+  float near = exp(-dot(vP, vP) * 160.0);
+  vec3 flame = vec3(1.0, 0.55, 0.2) * uLevel;
+  vec3 col = uBase * (uAmb + dif * 0.8) + vec3(1.0, 0.82, 0.55) * spec * 0.22;
+  col += flame * (0.3 * rim + 0.7 * near + 0.08 * dif) * uBase * 1.3;
+  col += vec3(0.45, 0.55, 0.7) * rim * 0.03;
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
 const FLAME_VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
@@ -54,7 +93,14 @@ export const lanternPose = { side: 1, lift: 0 };
 
 export class LanternView {
   private readonly prop = new Group();
-  private readonly ironMat = new MeshBasicMaterial({ color: 0x16110b, depthTest: false, depthWrite: false, transparent: true });
+  private readonly ironMat = new ShaderMaterial({
+    vertexShader: METAL_VERT,
+    fragmentShader: METAL_FRAG,
+    uniforms: { uLevel: { value: 0 }, uBase: { value: new Vector3(0.085, 0.055, 0.025) }, uAmb: { value: new Vector3(0.16, 0.17, 0.21) } },
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
+  });
   private readonly glassMat = new MeshBasicMaterial({ color: 0xff9a40, transparent: true, opacity: 0.25, blending: AdditiveBlending, depthTest: false, depthWrite: false });
   private readonly flameMat: ShaderMaterial;
   private raise = 0;
@@ -80,14 +126,16 @@ export class LanternView {
       this.prop.add(m);
       return m;
     };
-    iron(new CylinderGeometry(0.058, 0.064, 0.022, 16), 0, -0.065, 0);
-    iron(new ConeGeometry(0.066, 0.055, 16), 0, 0.083, 0);
+    iron(new CylinderGeometry(0.058, 0.064, 0.022, 28), 0, -0.065, 0);
+    iron(new CylinderGeometry(0.05, 0.058, 0.012, 28), 0, -0.05, 0);
+    iron(new ConeGeometry(0.066, 0.055, 28), 0, 0.083, 0);
+    iron(new CylinderGeometry(0.06, 0.06, 0.008, 28), 0, 0.058, 0);
     iron(new CylinderGeometry(0.012, 0.016, 0.03, 8), 0, 0.122, 0);
-    const handle = iron(new TorusGeometry(0.034, 0.004, 6, 20), 0, 0.16, 0);
+    const handle = iron(new TorusGeometry(0.034, 0.0045, 8, 28), 0, 0.16, 0);
     handle.rotation.y = Math.PI / 2;
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      iron(new BoxGeometry(0.007, 0.13, 0.007), Math.cos(a) * 0.05, 0.0, Math.sin(a) * 0.05);
+      iron(new CylinderGeometry(0.0045, 0.0045, 0.13, 8), Math.cos(a) * 0.05, 0.0, Math.sin(a) * 0.05);
     }
     const glass = new Mesh(new CylinderGeometry(0.047, 0.047, 0.12, 20, 1, true), this.glassMat);
     glass.renderOrder = 101;
@@ -142,8 +190,8 @@ export class LanternView {
     this.flameMat.uniforms.uTime!.value = t;
     this.flameMat.uniforms.uLevel!.value = this.level;
     this.glassMat.opacity = 0.05 + 0.22 * this.level;
-    // the iron frame catches a bit of its own light
-    this.ironMat.color.setRGB(0.012 + 0.05 * this.level, 0.009 + 0.025 * this.level, 0.006 + 0.008 * this.level);
+    // the brass frame catches its own light
+    this.ironMat.uniforms.uLevel!.value = this.level;
   }
 
   /** Current light level 0..1 (for tests). */

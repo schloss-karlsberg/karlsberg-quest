@@ -150,7 +150,11 @@ void main() {
   vAlpha = uAlpha * edge * fy * blink * (1.0 - kqUnderRoof(p));
   vSeed = aSeed.w;
   vec4 mv = viewMatrix * vec4(p, 1.0);
-  gl_PointSize = vAlpha < 0.004 ? 0.0 : clamp(uSize * (0.6 + 0.8 * aSeed.w) * uScale / max(-mv.z, 0.3), 0.8, 9.0);
+  // a mote smaller than a pixel fades out instead of being drawn as a hard 1 px dot: far dust and
+  // pollen read as stars in a daytime sky, far snow as white noise (playtest)
+  float ps = uSize * (0.6 + 0.8 * aSeed.w) * uScale / max(-mv.z, 0.3);
+  vAlpha *= smoothstep(0.5, 1.8, ps);
+  gl_PointSize = vAlpha < 0.004 ? 0.0 : clamp(ps, 1.0, 9.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -261,7 +265,7 @@ export const AMBIENT: Record<Era, { layers: LayerCfg[]; mist: number; mistTint: 
     mistTint: [1, 1, 1],
   },
   '1796': {
-    layers: [{ count: 4200, box: [70, 30, 70], vel: [0.25, -0.45, 0.08], sway: 0.9, size: 0.05, color: [0.58, 0.57, 0.55], alpha: 0.8, additive: false, soft: 0.35 }],
+    layers: [{ count: 4200, box: [70, 30, 70], vel: [0.25, -0.45, 0.08], sway: 0.9, size: 0.05, color: [0.26, 0.25, 0.24], alpha: 0.7, additive: false, soft: 0.35 }],
     mist: 16,
     mistTint: [1, 1, 1],
   },

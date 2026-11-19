@@ -137,12 +137,14 @@ const LOOKS: Record<Exclude<LookTime, 'day'>, LookPatch> = {
     grade: { exposure: 1.18, saturation: 0.82, contrast: 1.07, lift: '#0b0a10', gain: '#ffe4c8', vignette: 0.45 },
   },
   night: {
-    sun: { azimuth: 150, elevation: 34, color: '#9fb6e0', intensity: 0.62 },
+    // a readable moonlit night (playtest: "nearly black, you can't read the terrain or see where
+    // to go"): a brighter cool moon, blue sky fill, a lighter blue haze for depth
+    sun: { azimuth: 150, elevation: 34, color: '#a9c2ee', intensity: 1.15 },
     disc: 'moon',
-    sky: { zenith: '#04070e', horizon: '#1b2234', below: '#0c0e13', clouds: 0.4, cloudColor: '#29324a', stars: 1 },
-    ambient: { sky: '#3a4868', ground: '#1c1e26', intensity: 0.55 },
-    fog: { color: '#1b2130', sunColor: '#38445e', density: 0.0016, heightDensity: 0.006, ground: 0.012 },
-    grade: { exposure: 1.6, saturation: 0.62, contrast: 1.08, lift: '#04060b', gain: '#dfe8ff', vignette: 0.55, grain: 0.05 },
+    sky: { zenith: '#081022', horizon: '#2b3a58', below: '#121722', clouds: 0.4, cloudColor: '#34405c', stars: 1 },
+    ambient: { sky: '#4c5f8a', ground: '#262a36', intensity: 0.95 },
+    fog: { color: '#26314a', sunColor: '#46557a', density: 0.0014, heightDensity: 0.006, ground: 0.011 },
+    grade: { exposure: 1.75, saturation: 0.7, contrast: 1.06, lift: '#070a12', gain: '#dfe8ff', vignette: 0.5, grain: 0.05 },
   },
 };
 
