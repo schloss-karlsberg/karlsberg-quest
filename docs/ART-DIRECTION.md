@@ -502,3 +502,28 @@ Steinbrecher stays blocky by design but could use broken edges; no CC0 rigged cr
   rotates); off-screen attackers as chevrons around the character, pulsing on a wind-up; enemies
   keep 0.95 m + radius off the body so they never sit inside it.
 - Before / after (headed Chromium, Metal, 1440 × 900, high): `test-results/look/shots/v2-camera-*`.
+
+## 17. Integration of the round 8 tracks (2026-11-19)
+
+Nature round 2 (§5.2), the creature and boss models (§15), the lived-in 1789 Ehrenhof (§14) and the
+third-person camera with the player character (§16) merged into `main` as one look. Checked on the
+real GPU (headed Chromium, Metal, M5 Pro, 1440 × 900, high; shots in `test-results/look/int/`):
+
+- **One look:** the surveyor stands in the model forest, the Ehrenhof court and the 1793 / 1796
+  scenes with the same kqStandard shading as the trees and the palace; the creature ink outlines read
+  against the model forest and over the character's shoulder; the camera's trunk collision uses the
+  slimmed model trunks (radius ≈ 1.6 % of the stand height, the trees' own slimming ≈ 1.8 %); the
+  Ehrenhof props are collider solids, so the spring arm stays out of them too.
+- **Frame rate, uncapped** (other e2e runs on the same machine): forest 160–210 fps, title 150,
+  palace 1789 ≈ 100, Ehrenhof 1789 ≈ 100, Ehrenhof today 155, night 1793-02 163, fire night
+  1793-07 ≈ 90, 1796 180; live boss fights in third person (Strohmann, Steinbrecher) 260–290 fps,
+  a five-enemy pack in the forest ≈ 175 fps (≈ 335 draw calls). `kq.bench` frame avg / p95:
+  today-forest 7.1 / 7.1 ms, 1789-ehrenhof 9.3 / 10.9 ms, Festsaal fire 15.1 / 19.7 ms (≈ 66 fps,
+  p95 ≈ 50 fps — the one scene still under 60 at its worst frames).
+- **Fix at integration:** a boss title card still fading out was left on screen for good when the next
+  boss's card came and went (a later hide cancelled its removal timer); each fading card now owns its
+  timer and a new card clears any fading one (`combat/hud.ts`).
+- **Still open:** the Festsaal fire's worst frames; a close enemy straight ahead can hide behind the
+  character's body (no avatar fade toward the locked target yet); loot glows read as white balls
+  on night snow; a few motes still show in the 1789 day sky; the Strohmann stiff, the Steinbrecher
+  blocky; no IK on the surveyor; the unused Poly Haven rock sets / fern_02 still sit in the manifest.

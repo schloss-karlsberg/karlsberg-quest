@@ -268,7 +268,6 @@ export class CombatHud {
   private readonly nums: FloatNum[] = [];
   private readonly pipEls = new Map<string, { root: HTMLElement; fill: HTMLElement; tag: HTMLElement; name: HTMLElement }>();
   private titleEl: HTMLElement | null = null;
-  private titleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly arrows = new Map<string, { el: HTMLElement; life: number }>();
   private vig = 0;
   private side = 1;
@@ -474,16 +473,18 @@ export class CombatHud {
 
   /** The title card fades (the caller counts game time, so ?manual stepping and pauses hold it). */
   hideTitle(now = false): void {
+    // a card still fading out goes at once when the next one comes (two cards, both with the testid)
+    if (now) for (const old of this.layer.querySelectorAll('.kqc-title')) if (old !== this.titleEl) old.remove();
     const card = this.titleEl;
     if (!card) return;
     this.titleEl = null;
-    if (this.titleTimer) clearTimeout(this.titleTimer);
     if (now) {
       card.remove();
       return;
     }
     card.classList.remove('show');
-    this.titleTimer = setTimeout(() => card.remove(), 600);
+    // each fading card owns its timer: a later hide must not cancel an earlier card's removal
+    setTimeout(() => card.remove(), 600);
   }
 
   /** A floating number at a world point. */
