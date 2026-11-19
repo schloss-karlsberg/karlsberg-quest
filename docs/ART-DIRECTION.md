@@ -417,11 +417,39 @@ changed in the look, each checked with headed-Chromium screenshots before / afte
   subtitles); enemy nameplates stay out of the quest tracker / top-left column; a favicon.
 
 Still open (next art round): CC0 tree models for the near ring (the crowns are still procedural
-cards); 1796 ruins from a broken-wall kit instead of stepped
-blocks; people, carriages and props in the 1789 Ehrenhof; Festsaal paintings.
+cards — done in the nature round 2, §5.2); stylised models for the procedural enemies
+and bosses (done, §15); 1796 ruins from a broken-wall kit instead of stepped blocks; people,
+carriages and props in the 1789 Ehrenhof (done, §14); Festsaal paintings.
+
+## 14. The 1789 Ehrenhof lived in (2026-11-19, round 7 follow-up)
+
+Before: an empty, burnt-out sand plane between the wings (real GPU, `v2-places-before-*`).
+After (`v2-places-after-*`, same views, 100 fps vsync-capped on M5 Pro at high, unchanged):
+
+- **Paving, not sand:** a grey-brown cobble field (CC0 `cobblestone_floor_01` layer) framed by
+  worn sandstone bands along the wings, dark gutters, a sandstone walk on the axis from the gate
+  to the vestibule and cross walks to the wing doors; a red sandstone **rosette with a star**
+  round the era anchor, so "the middle of the Ehrenhof" is a place one can see. Sandstone is a
+  muted grey-beige (the summer light and the memory grade warm it; a saturated tone turned
+  orange against the sun).
+- **Overexposure:** the 1789 gravel layer of the terrain is brightened ×1.12 instead of ×1.45 —
+  the walks and the forecourt no longer burn out to white.
+- **Furniture:** iron lantern posts with warm glass, orange trees in green Versailles tubs along
+  the wings and before the Corps de logis, two flagpoles with blue-white lozenge banners at the
+  gate, a dark red coach parked by the south wing, market stalls with striped awnings, crates,
+  baskets and barrels on the square outside the railing.
+- **People:** the court's guards, courtiers, maids and servants are the sepia ink silhouettes of
+  the K3 crowd (same material, one family of ghosts): guards at the gate and at the steps, groups
+  of two and three talking with a raised hand now and then, servants crossing with bundles, a
+  chair or a painting, a guard on his round, and a ghost coach with its horse that rolls in,
+  waits at the steps and leaves. Not on the low tier.
+
+Still open: a garden parterre (box hedges, beds, fountain) east of the Corps de logis; dressing of
+the other past-era places (the Orangerie in 1789, the Karlslust); CC0 models for the coach and
+the lanterns instead of the kit pieces.
 
 
-## 14. Creature & boss models (2026-11-19)
+## 15. Creature & boss models (2026-11-19)
 
 No CC0 creature in the listed sources fits a mist wraith, a paper bird or a ledger, so every
 procedural family is now a **sculpted multi-part body** (`src/systems/combat/visuals-shapes.ts`:

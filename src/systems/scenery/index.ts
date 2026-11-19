@@ -35,6 +35,7 @@ import { buildPassage, passageCollision, patchPalace, setPassageCut } from './pa
 import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
 import { RUND, RundTally } from './rund';
+import { CourtLife, EHRENHOF_1789 } from './court';
 
 export interface SceneryWindow {
   building: string;
@@ -118,12 +119,27 @@ let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolea
 let solidsDirty = true;
 let lastEra: Era | null = null;
 let tally: RundTally | null = null;
+let life: CourtLife | null = null;
 /** The carts echo (`clue.k4.karren`): seconds the view still eases to the nearest cart. */
 let cartsLook = 0;
 let cartsCut = false;
 /** The memory that is the carts on the road (round 6: it did not turn the view to them). */
 const CARTS_ECHO = 'clue.k4.karren';
 let tallyQuiet = true;
+
+/** The Ehrenhof's people in 1789 (medium / high, within 200 m of the court; court.ts). */
+function updateLife(ctx: GameContext, dt: number): void {
+  const p = ctx.player.position;
+  const want = ctx.era.current === '1789' && ctx.quality.level !== 'low' && Math.hypot(p.x - EHRENHOF_1789.x, p.z - EHRENHOF_1789.z) < 200;
+  if (want && !life) {
+    life = new CourtLife((x, z) => ctx.world.heightfields['1789'].heightAt(x, z));
+    root.add(life.object);
+  } else if (!want && life) {
+    life.dispose();
+    life = null;
+  }
+  life?.update(dt, ctx.settings.state.reducedMotion);
+}
 
 /** The Rund's counted doors (1789, near the ring): pulse as the story counts each side. */
 function updateTally(ctx: GameContext, dt: number): void {
@@ -538,6 +554,7 @@ export default defineSystem({
     updateChair(ctx, dt);
     updateFireworks(ctx, dt);
     updateTally(ctx, dt);
+    updateLife(ctx, dt);
   },
   // per rendered frame: hooks (also while `?manual` holds the fixed steps) and motion settings
   frame(_dt, ctx) {
@@ -554,6 +571,8 @@ export default defineSystem({
     chair = null;
     tally?.dispose();
     tally = null;
+    life?.dispose();
+    life = null;
     for (const w of lit.values()) w.dispose();
     lit.clear();
     root?.removeFromParent();

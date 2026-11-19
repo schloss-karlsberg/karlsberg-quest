@@ -875,6 +875,13 @@ Round-4 (polish: set dressing) integration rules:
   railing with the two-winged gate; the Orangerie court in 1793-02. Built within `range` of the
   player in their eras, dropped on era change / far away; solids to the collider (owner
   `scenery`). Ghost workers (`workers.ts`) swing on the GPU; their strikes clink within 45 m.
+- The 1789 Ehrenhof (`court.ts`): the set `ehrenhof-1789` paves the court in the K3 court frame
+  (`fx/k3-crowd.ts` `court(u, w)`) with strips draped a few cm over the terrain (cobble field,
+  sandstone bands, gutters, axis and cross walks, a rosette round the era anchor 1218/−1118; no
+  solids) and adds lantern posts, orange tubs, two flags, a parked coach and a market outside the
+  railing. `CourtLife` (medium / high, within 200 m, 1789) puts the court's people in as the K3
+  ghost silhouettes (`fx/k3-ghosts.ts` `GhostBatch`, one draw call per kind): guards, courtiers in
+  groups, servants crossing, a guard's round, a coach with its horse.
 - Look (medium / high tier): the kit gives every piece a CC0 surface layer and metre UVs
   (`src/world/surfaces.ts`, docs/ART-DIRECTION.md §8.2); `models.ts` instances CC0 prop GLBs
   (`SetBuilder.model(id, fallback)`; the fallback kit prop is used on `low`). Dropped sets mark
@@ -1105,7 +1112,12 @@ Each RPG track adds its own subsection here when it fills its system in.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
   objective type, clue places from the content packs), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
-  quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint
+  quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
+  a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the
+  plan's doors, out of a building by the outer door nearest the goal; label „Eingang: …“ / „Tür:
+  …“); a second, smaller waymark (`waymark-side`) shows the nearest other tracked goal within 90 m;
+  when the lead is the story's step before the quest goal (another era), the tracker shows it under
+  the goal (`quest-via`). In a fight only the quest whose zone the player stands in stays listed
   (`quest:hint`). Hooks `kq.quests.lead/hint/stall`. Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
   shapes, givers within 150 m).
 - `journal.ts`: the Journal modal (J / Tab, `chronik:open`, testid `journal`), tabs Aufgaben (10,

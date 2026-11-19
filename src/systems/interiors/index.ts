@@ -37,6 +37,7 @@ import { bakeLight, lightTexture } from './lightmap';
 import { MAX_LIGHTS, MAX_ROOMS, makeInteriorMaterial } from './material';
 import { type CutBox, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
 import type { BuildingPlan, InteriorMode, ShellOpening } from './types';
+import { pointInPoly } from './geom';
 import { t } from '../../i18n';
 import './strings';
 
@@ -712,6 +713,71 @@ function installWorldHooks(ctx: GameContext): void {
     }
     return door;
   };
+  w.routeTo = (x, z, fx, fz, fy) => {
+    const cur = current();
+    if (!cur || !rt || rt.mode === 'today') return null;
+    const plan = cur.plan;
+    // the goal's room: the one whose outline holds it (lowest storey); −1 = out of doors
+    let goal = -1;
+    for (const r of plan.rooms) if (pointInPoly(x, z, r.poly) && (goal < 0 || r.storey < plan.rooms[goal]!.storey)) goal = r.index;
+    const from = cur.query.roomAt(fx, fz, fy);
+    if (from === goal) return null;
+    // breadth-first over the doors (rooms + outside = −1)
+    const prev = new Map<number, { door: number; room: number }>();
+    const hops = new Map<number, number>([[from, 0]]);
+    const queue = [from];
+    while (queue.length) {
+      const r = queue.shift()!;
+      for (const d of plan.doors) {
+        const other = d.a === r ? d.b : d.b === r ? d.a : null;
+        if (other === null || hops.has(other)) continue;
+        // a door between storeys is no door to walk (stairs are rooms of their own)
+        if (other >= 0 && r >= 0 && plan.rooms[other]!.storey !== plan.rooms[r]!.storey) continue;
+        hops.set(other, hops.get(r)! + 1);
+        prev.set(other, { door: d.index, room: r });
+        queue.push(other);
+      }
+    }
+    let target = goal;
+    let exit = -1;
+    if (goal < 0) {
+      // out of the building to a goal outside (the Küchenhof from the Registratur): the outer door
+      // that makes the shortest walk, not the first one found
+      let best = Infinity;
+      for (const d of plan.doors) {
+        if (d.b !== -1 || !hops.has(d.a)) continue;
+        const c = hops.get(d.a)! * 5 + Math.hypot(d.cx - x, d.cz - z);
+        if (c < best) {
+          best = c;
+          exit = d.index;
+          target = d.a;
+        }
+      }
+      if (exit < 0) return null;
+    } else if (!hops.has(goal)) return null;
+    let step = { door: exit, room: target };
+    if (target !== from) {
+      let at = target;
+      step = prev.get(at)!;
+      while (step.room !== from) {
+        at = step.room;
+        step = prev.get(at)!;
+      }
+    }
+    const d = plan.doors[step.door]!;
+    // the far side of the door, seen from where the player is: outside an outer door it is the
+    // point in front of its steps until close, then a step inside
+    const fromA = d.a === from;
+    if (from < 0) {
+      const out = d.depth + (d.stoop?.length ?? 0) + 1.2;
+      const ox = d.cx + d.nx * out;
+      const oz = d.cz + d.nz * out;
+      if (Math.hypot(ox - fx, oz - fz) > 3 && Math.hypot(d.cx - fx, d.cz - fz) > out + 0.5) return { x: ox, z: oz, door: true };
+      return { x: d.cx - d.nx * 1.2, z: d.cz - d.nz * 1.2, door: true };
+    }
+    const k = fromA ? d.depth + (d.b === -1 ? (d.stoop?.length ?? 0) + 1.2 : 1) : -1;
+    return { x: d.cx + d.nx * k, z: d.cz + d.nz * k, door: true };
+  };
   w.surfaceOverride = (x, z) => {
     const cur = current();
     if (!cur || !rt || rt.mode === 'today') return null;
@@ -908,6 +974,7 @@ export default defineSystem({
     ctx.world.surfaceOverride = null;
     ctx.world.roomAnchor = null;
     ctx.world.entranceFor = null;
+    ctx.world.routeTo = null;
     festsaal?.dispose();
     festsaal = null;
     beams?.dispose();

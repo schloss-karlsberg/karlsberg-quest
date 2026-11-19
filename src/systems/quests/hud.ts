@@ -30,6 +30,14 @@ export interface TrackerQuest {
   objectives: TrackerObjective[];
   /** "Tipp: …" after a stall (quests wayfinding). */
   hint?: string;
+  /** The player stands in one of its goal zones: in a fight this quest's line stays up. */
+  here?: boolean;
+  /**
+   * The step before the goal, when the lead goal is somewhere else right now (another era, the
+   * story's „Q am Ehrenhof“): shown under the objective with an arrow (playtest round 7: knocked
+   * back into the present, the tracker still said „Mahnbriefe im Küchenhof zerreißen, 60 m“).
+   */
+  via?: string;
 }
 
 /** Milliseconds a done objective stays struck through before it folds away. */
@@ -83,7 +91,7 @@ export class Tracker {
     this.el.classList.toggle('kqq-empty', list.length === 0);
     this.el.replaceChildren(
       ...shown.map((q) =>
-        h(`div.kqq-tq${q.main ? '.kqq-main' : ''}${q.ready ? '.kqq-ready' : ''}`, { dataset: { quest: q.id } }, [
+        h(`div.kqq-tq${q.main ? '.kqq-main' : ''}${q.ready ? '.kqq-ready' : ''}${q.here ? '.kqq-here' : ''}`, { dataset: { quest: q.id } }, [
           h('div.kqq-tq-title', [h('span.kqq-glyph', { 'aria-hidden': 'true' }, q.ready ? '?' : q.main ? '◆' : '◇'), q.title]),
           ...(q.ready && q.readyText ? [h('div.kqq-to.kqq-turnin', [h('span.kqq-box', '?'), q.readyText])] : []),
           ...q.objectives.map((o) => {
@@ -101,6 +109,7 @@ export class Tracker {
             if (o.fold >= 0) row.style.setProperty('--kqq-fold-in', `${Math.max(0, o.fold - 700)}ms`);
             return row;
           }),
+          q.via ? h('div.kqq-to.kqq-via.kqq-lead', { 'data-testid': 'quest-via' }, [h('span.kqq-box', { 'aria-hidden': 'true' }, '→'), h('span.kqq-tt', q.via)]) : null,
           q.hint ? h('div.kqq-hint', { 'data-testid': 'quest-hint' }, [h('span.kqq-hint-k', t('quest.hint')), ` ${q.hint}`]) : null,
         ]),
       ),

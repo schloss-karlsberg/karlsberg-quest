@@ -319,7 +319,12 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
 
   // ---- HUD wiring for core events
   events.on('player:stance', ({ stance }) => ui.hud.setStance(stance === 'stand' ? '' : t(`stance.${stance}`)));
-  events.on('player:fly', ({ flying }) => ui.toast(t(flying ? 'fly.on' : 'fly.off')));
+  events.on('player:fly', ({ flying }) => {
+    ui.toast(t(flying ? 'fly.on' : 'fly.off'));
+    // while in the air the controls stay on screen (playtest: the story's "F: Geisterblick" hint
+    // did not say what W / Space / C do once you fly, nor how to land)
+    ui.hud.prompt(flying ? 'F' : null, flying ? t('fly.prompt') : undefined, 'fly');
+  });
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // art assets that belong to an era stream in when it opens (src/assets, lazy)
   events.on('era:change', ({ to }) => void assets.prefetchEra(to));

@@ -206,7 +206,7 @@
         },
         { "do": "say", "line": "marlene.p.weg", "delay": 5 },
         { "do": "say", "line": "marlene.p.flug", "delay": 1.5 },
-        { "do": "prompt", "key": "F", "text": "Geisterblick: über den Wald fliegen (W: vorwärts, Leertaste: höher) · F erneut: landen" }
+        { "do": "prompt", "key": "F", "text": "Geisterblick: abheben und über den Wald fliegen (in der Luft: F landet)" }
       ],
       "on": [
         {
@@ -443,7 +443,7 @@
           "do": [
             { "do": "flag", "set": { "barks.quiet": true } },
             { "do": "prompt", "key": "Q", "text": "Zeitwechsel: Sommer 1789" },
-            { "do": "objective", "id": "wechsel", "text": "Blick nach Osten, zum Schloss. Dann Q.", "x": 1263, "z": -1126 },
+            { "do": "objective", "id": "wechsel", "text": "Hier bleiben, Blick nach Osten zum Schloss: Q drücken", "x": 1218, "z": -1118 },
             { "do": "say", "line": "laub.p.blick", "until": { "era": "1789" } }
           ]
         },

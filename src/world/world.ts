@@ -173,6 +173,12 @@ export class World {
    * best outer door, seen from (fromX, fromZ); null when (x, z) is not inside a walkable building.
    */
   entranceFor: ((x: number, z: number, fromX: number, fromZ: number) => { x: number; z: number } | null) | null = null;
+  /**
+   * The next door on the walk to a goal inside a building (interiors feature): from outside the
+   * outer door, inside the next door through the rooms; null when there is no door to go through
+   * (the goal is in this room, outside every building, or no way is known).
+   */
+  routeTo: ((x: number, z: number, fromX: number, fromZ: number, fromY: number) => { x: number; z: number; door: boolean } | null) | null = null;
   /** Optional surface override (interiors: parquet / stone floors), null = land cover. */
   surfaceOverride: ((x: number, z: number) => string | null) | null = null;
 
