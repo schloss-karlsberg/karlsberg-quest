@@ -393,6 +393,11 @@ body.kq-in-combat .kq-waymark {
 }
 
 /* ---- subtitles ---- */
+/* the block keeps clear of the slim vitals (left 18 + 190 px) and the right-hand gauges: at
+   1280 px its 86 vw ran 8 px into the vitals when a line lifted it above the dialogue card */
+.kq-hud .kq-subtitles {
+  width: min(900px, 86vw, calc(100vw - 464px));
+}
 .kq-hud .kq-subtitles .line {
   background: rgba(12, 9, 6, 0.6);
   border-radius: 6px;
@@ -520,7 +525,7 @@ body.kq-in-combat .kq-waymark {
 /* ---- the dialogue card: slimmer and calmer, still a page from the field book ---- */
 .kq-root .kqs-dlg {
   bottom: 84px;
-  width: min(720px, 90vw, calc(100vw - 380px));
+  width: min(720px, 90vw, calc(100vw - 440px)); /* clear of the 18 + 190 px vitals on both sides */
   gap: 14px;
 }
 .kq-root .kqs-portrait {

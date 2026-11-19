@@ -334,3 +334,30 @@ HUD sits on a subtle dark vignette, never on flat boxes.
 | CC0 assets from the listed sites, recorded in LICENSES.json | assets from or imitating commercial games, unlicensed or "free for personal use" packs |
 | 1k textures, WebP, meshopt GLB, lazy per area | 4k textures, uncompressed glTF + PNG, everything in `core` |
 | judge on the real GPU (headed Chromium, Metal) | judging the look from SwiftShader screenshots |
+
+## 12. Integration pass (2026-11-20)
+
+The four art tracks (nature §5.1, architecture §8.2, characters §6, UX / HUD §9) and the round 6
+readability work were merged into one build and checked together on the real GPU (headed Chromium,
+Metal, Apple M5 Pro, 1440 × 900, `?q=high`), every era. What the pass changed so the parts read as
+one look:
+
+- **One light, one palette:** materials (CC0 PBR on the palace, splat ground, bark), the rigged
+  ghosts / spectral bodies and the HUD all take the era preset's key, fill and fog; 1789 got a
+  higher (20°) sun and a thinner sage haze (`#c9ccbc`) — under the old 13° orange sun and sand fog
+  the meadows, the grass layer and the far hills fused into one sand colour.
+- **Meadows:** the summer grass layer of the ground splat is pulled towards a fresh green at the
+  texture's own brightness (the CC0 leafy-grass set is straw-warm); grass tufts are placed with full
+  jitter and a 3 m clump noise (dense tussocks, thinner gaps) instead of one tuft per cell, which
+  read as planted rows; tufts are wider (22 blades, 0.42 spread).
+- **Shores:** cattails are rounded velvet-brown heads on a stem with a bare spike, not dark pointed
+  thorns.
+- **Readability on rigs:** the near-camera dither (`occlusionVis`) also fades the rigged bodies; ink
+  outlines stay on the procedural solids only (rigged bodies carry the spectral rim instead).
+- **Cost:** the forest crown shader skips sub-pixel detail on cards under ~100 px (mid ring); see
+  ACTION-RPG §14 for the fps numbers.
+
+Open (next art round): distant tree impostors still read as flat umbrella cards (1789 avenues);
+the 1796 palace ruin reads as a red box from afar; Festsaal paintings / mirrors / consoles are in
+the manifest but not yet placed; the remaining procedural enemies (mist, paper, straw, stone,
+three bosses) and the Pikeur's rider are not rigged yet.

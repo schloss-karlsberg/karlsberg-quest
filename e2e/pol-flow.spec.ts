@@ -105,14 +105,21 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
       // a skill unlock card (not quiet), a Laub line and a captioned sound at once
       k.skills!.grant('spurenleser', 1);
       k.story!.say('laub', 'Hier hat er gesessen. Zähl die Fächer, bevor du den Kasten aufmachst; der Kanzlist hat das auch getan.');
-      k.ctx.ui.hud.subtitle(null, '[Draußen im Hof: Schritte auf Kies, dann eine Tür]', 8000);
-      // a pickup line in the feed dock (the vitals dock always shows the XP bar)
-      k.progression?.grant('item.balsam', 1);
       k.step(20);
       // a fresh unlock settles for 0.45 s of rendered frames before it asks for the centre slot
-      // (src/ui/cards.ts: one card at a time, unlocks that come together share one card)
-      for (let i = 0; i < 60 && !document.querySelector('.kqk-card'); i++) k.step(1);
+      // (src/ui/cards.ts: one card at a time, unlocks that come together share one card); Laub's
+      // line holds it back as a soft reason for at most SOFT_MAX (8 s of rendered frames): the
+      // card clock is pushed on a little per frame, so the card comes up beside the line without
+      // 480 slow SwiftShader frames
+      for (let i = 0; i < 80 && !document.querySelector('.kqk-card'); i++) {
+        k.ctx.ui.cards.tick(0.2);
+        k.step(1);
+      }
       k.story!.finishTyping();
+      // the real-time parts last (their timers run on the wall clock): a captioned sound and a
+      // pickup line in the feed dock (the vitals dock always shows the XP bar)
+      k.ctx.ui.hud.subtitle(null, '[Draußen im Hof: Schritte auf Kies, dann eine Tür]', 8000);
+      k.progression?.grant('item.balsam', 1);
       k.step(2);
     });
     await expect(page.getByTestId('room-tag')).toBeVisible();
