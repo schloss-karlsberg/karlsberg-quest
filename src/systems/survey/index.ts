@@ -29,12 +29,20 @@ declare module '../../debug/hooks' {
 }
 
 let mapLayer: MapLayer = 0;
+/**
+ * Seconds until the relief scan switches itself off after a find (-1: not pending). Playtest: the
+ * Relief-Blick stayed on after the dam wall, hid the near trees and paths, and nothing said how
+ * to get the normal view back; the next goal was 430 m away across the lake.
+ */
+let autoOff = -1;
+/** Delay (s) between a relief find and the scan switching back to the normal view. */
+export const SCAN_AUTO_OFF_S = 4;
 let surveyHooks: SurveyHooks | null = null;
 const textures: Partial<Record<1840 | 1935, Texture>> = {};
 
 function updateStatus(ctx: GameContext): void {
   const parts: string[] = [];
-  if (ctx.world.scanMode > 0) parts.push(ctx.t(`scan.${ctx.world.scanMode}`));
+  if (ctx.world.scanMode > 0) parts.push(`${ctx.t(`scan.${ctx.world.scanMode}`)} · ${ctx.t('scan.exit', { n: ctx.world.scanMode })}`);
   if (ctx.world.mapMix > 0) parts.push(mapLayer === 1935 ? ctx.t('map.status.1935') : ctx.t('map.status.1840'));
   ctx.ui.hud.setStatus(parts.join(' · '));
 }
@@ -75,6 +83,10 @@ export default defineSystem({
   id: 'survey',
   init(ctx) {
     mapLayer = 0;
+    autoOff = -1;
+    ctx.events.on('clue:found', () => {
+      if (ctx.world.scanMode > 0) autoOff = SCAN_AUTO_OFF_S;
+    });
     ctx.events.on('survey:cycle-map', () => {
       cycleAsked = true;
     });
@@ -95,9 +107,19 @@ export default defineSystem({
       state: () => ({ scan: ctx.world.scanMode, map: ctx.world.mapMix > 0 ? mapLayer : 0, mix: ctx.world.mapMix }),
     };
   },
-  update(_dt, ctx) {
+  update(dt, ctx) {
     const inp = ctx.input;
     let mode: ScanMode | null = null;
+    if (autoOff >= 0) {
+      autoOff -= dt;
+      if (ctx.world.scanMode === 0) autoOff = -1;
+      else if (autoOff < 0) {
+        const was = ctx.world.scanMode;
+        ctx.world.setScanMode(0, ctx.settings.state.reducedMotion);
+        ctx.events.emit('scan:mode', { mode: 0 });
+        ctx.ui.toast(ctx.t('scan.auto0', { n: was }), 4200);
+      }
+    }
     if (inp.wasPressed('scan0')) mode = 0;
     if (inp.wasPressed('scan1')) mode = 1;
     if (inp.wasPressed('scan2')) mode = 2;
@@ -107,6 +129,7 @@ export default defineSystem({
       if (!scanAllowed(mode, gate)) {
         ctx.ui.toast(ctx.t('skills.locked.scan', { n: mode }));
       } else {
+        autoOff = -1;
         if (mode === ctx.world.scanMode) mode = 0; // pressing the active mode again turns it off
         ctx.world.setScanMode(mode, ctx.settings.state.reducedMotion);
         ctx.events.emit('scan:mode', { mode });

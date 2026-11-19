@@ -1,5 +1,6 @@
 /** German texts of the travel system (Vermessungspunkte, Karte, Fundstücke, Wegsteine, Laufschritt). */
 export const TRAVEL_DE = {
+  deepWater: 'Zu tief zum Waten. Am Ufer entlang gehen.',
   mapTitle: 'Karte · Vermessungspunkte',
   mapAria: 'Karte des Karlsbergs mit den Vermessungspunkten',
   mapHint: 'Ein gefundener Vermessungspunkt bringt dich hin. Zahl wählt, Enter reist. Mausrad: Maßstab, Ziehen: verschieben.',

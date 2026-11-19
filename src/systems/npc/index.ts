@@ -109,6 +109,8 @@ class NpcRuntime {
   private readonly view: ConversationView;
   private readonly voice: Voice;
   private talking: { npc: string; chapter: string; lines: DialogueLine[] } | null = null;
+  /** Seconds left of easing the view onto the speaker after a conversation opens. */
+  private frameT = 0;
   /** Quest topics per NPC (quests → npc:topics), shown first in the menu. */
   private readonly questTopics = new Map<string, QuestTopic[]>();
   /** Glyph over the head per NPC (quests → npc:marker). */
@@ -293,6 +295,7 @@ class NpcRuntime {
     const chapter = f.p.chapter ?? '';
     const lines = talkLines(ctx.content.dialogue.values(), npc, chapter);
     this.talking = { npc, chapter, lines };
+    this.frameT = 1.1;
     const meta = speakerMeta(npc, ctx.content);
     this.view.show(meta.name, () => this.closed(), meta);
     // no centre card (reward, clue, level) over a person talking (src/ui/cards.ts)
@@ -527,6 +530,29 @@ class NpcRuntime {
     const px = ctx.renderer.domElement.height / (2 * Math.tan((cam.fov * Math.PI) / 360));
     const p = ctx.player.position;
     const reduced = ctx.settings.state.reducedMotion;
+    // a conversation frames its speaker (playtest: talking to Soll with the camera on a bookshelf):
+    // the view eases onto the face for a second, then the mouse is free again
+    if (this.talking && this.frameT > 0) {
+      this.frameT -= dt;
+      const f = this.figs.get(this.talking.npc);
+      const pl = ctx.player;
+      if (f && !pl.flying) {
+        const dx = f.p.x - p.x;
+        const dz = f.p.z - p.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 0.4) {
+          const k = reduced ? 1 : Math.min(1, dt * 6);
+          const wantYaw = Math.atan2(-dx, -dz);
+          let dy = wantYaw - pl.yaw;
+          dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+          pl.yaw += dy * k;
+          const head = this.figY(f) + f.fig.look.height * 0.9;
+          const eyeY = cam.position.y;
+          const wantPitch = Math.max(-0.5, Math.min(0.4, Math.atan2(head - eyeY, dist))) - 0.06;
+          pl.pitch += (wantPitch - pl.pitch) * k;
+        }
+      }
+    }
     for (const [id, f] of this.figs) {
       const vis = this.visible(f);
       f.fig.target = vis ? 1 : 0;

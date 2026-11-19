@@ -133,6 +133,8 @@ class QuestRuntime {
   private readonly compass = new Map<string, { el: HTMLElement | null; kind: CompassKind; bearing: number }>();
   private readonly following = new Set<string>();
   private lead: Lead | null = null;
+  /** The door the marker leads to first (a goal inside a building, the player outside). */
+  private leadDoor: { x: number; z: number } | null = null;
   private readonly stall = new StallWatch(STALL_SECONDS);
   private hintKey = '';
   private hint: { quest: string; obj: string; text: string } | null = null;
@@ -673,13 +675,32 @@ class QuestRuntime {
     return storyLead(null, null);
   }
 
+  /**
+   * A goal inside a building while the player is outside: the marker leads to the door first
+   * (playtest: the Registratur marker pointed straight through the north wing's facade, four
+   * runs into the wall). Inside, or once at the door, the room itself leads again.
+   */
+  private viaEntrance(lead: Lead | null): Lead | null {
+    const w = this.ctx.world;
+    const tg = lead?.target;
+    if (!lead || !tg || !w.entranceFor || !w.collider.enabled) return lead;
+    const p = this.ctx.player.position;
+    if (this.ctx.state.state.flags['interior.room'] || w.collider.footprintAt(p.x, p.z) >= 0) return lead;
+    if (w.collider.footprintAt(tg.x, tg.z) < 0) return lead;
+    const door = w.entranceFor(tg.x, tg.z, p.x, p.z);
+    if (!door || Math.hypot(door.x - p.x, door.z - p.z) < 2.5) return lead;
+    return { ...lead, target: { ...tg, x: door.x, z: door.z, r: 2, kind: 'zone' }, label: t('quest.viaDoor', { label: lead.label }) };
+  }
+
   private syncCompass(): void {
     const ctx = this.ctx;
     const want = new Map<string, { kind: CompassKind; x: number; z: number; dist?: number; edge?: boolean }>();
     const era = ctx.era.current;
     const p = ctx.player.position;
-    const lead = this.computeLead();
-    this.lead = lead;
+    const lead0 = this.computeLead();
+    this.lead = lead0;
+    const lead = this.viaEntrance(lead0);
+    this.leadDoor = lead !== lead0 && lead?.target ? { x: lead.target.x, z: lead.target.z } : null;
     if (lead?.target) want.set('kqq:obj', { kind: 'obj', x: lead.target.x, z: lead.target.z, dist: Math.hypot(lead.target.x - p.x, lead.target.z - p.z), edge: true });
     // the headline follows the tracker (playtest round 3): the lead goal is where the Bussole
     // points (story reads it from the tracker's data-tx / data-tz)
@@ -696,6 +717,19 @@ class QuestRuntime {
     if (lead?.target && !ctx.player.flying) {
       ctx.ui.hud.waymark.set({ x: lead.target.x, y: ctx.world.heightAt(lead.target.x, lead.target.z), z: lead.target.z, r: lead.target.r, label: shortLabel(lead.label), kind: lead.target.kind, main: lead.quest?.kind !== 'side' });
     } else ctx.ui.hud.waymark.set(null);
+    // every other tracked quest keeps a (non-edge) compass mark too: a tracked side quest with no
+    // marker at all read as "Wird verfolgt" and nowhere to go (playtest: the Irrlichter at the lake)
+    const deps = this.wayDeps();
+    for (const id of this.book.tracked()) {
+      const q = this.defs.get(id);
+      if (!q || q === lead?.quest || this.book.state(q.id) !== 'active') continue;
+      for (const o of this.book.openObjectives(q).filter((x) => !x.optional)) {
+        const tg = this.targetOf(q, o, deps);
+        if (!tg) continue;
+        want.set(`kqq:trk:${q.id}`, { kind: 'obj', x: tg.x, z: tg.z, dist: Math.hypot(tg.x - p.x, tg.z - p.z) });
+        break;
+      }
+    }
     for (const npc of this.book.npcs()) {
       const mark = this.book.markFor(npc);
       if (mark !== 'offer' && mark !== 'offer-main' && mark !== 'ready') continue;
@@ -751,6 +785,7 @@ class QuestRuntime {
     }
     // a lead that is no quest objective's own place (the story's line) gets its beam too
     if (lead?.target && lead.target.kind !== 'npc' && !specs.some((x) => x.lead)) specs.push({ id: 'kqq:lead', x: lead.target.x, z: lead.target.z, r: lead.target.r, era, lead: true });
+    if (this.leadDoor) specs.push({ id: 'kqq:door', x: this.leadDoor.x, z: this.leadDoor.z, r: 2, era, lead: true });
     this.beacons.sync(specs);
   }
 

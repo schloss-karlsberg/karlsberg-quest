@@ -87,7 +87,7 @@ export function defaultSettings(): Settings {
     subtitleSize: 'm',
     subtitleBg: 0.62,
     volume: { master: 0.8, music: 0.7, sfx: 0.9, ambience: 0.8, voice: 0.9 },
-    fov: 70,
+    fov: 80,
     resolutionScale: 1,
     autoQuality: true,
     perfHud: false,

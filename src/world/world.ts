@@ -168,6 +168,11 @@ export class World {
    * on the right storey.
    */
   roomAnchor: ((id: string) => { x: number; z: number; y: number; roomId: string; building: string } | null) | null = null;
+  /**
+   * The way into a building for a goal inside it (interiors feature): the point in front of the
+   * best outer door, seen from (fromX, fromZ); null when (x, z) is not inside a walkable building.
+   */
+  entranceFor: ((x: number, z: number, fromX: number, fromZ: number) => { x: number; z: number } | null) | null = null;
   /** Optional surface override (interiors: parquet / stone floors), null = land cover. */
   surfaceOverride: ((x: number, z: number) => string | null) | null = null;
 

@@ -179,6 +179,7 @@ class Combat {
       {
         heightAt: (x, z) => ctx.world.heightAt(x, z),
         isWater: (x, z) => ctx.world.surfaceAt(x, z) === 'water',
+        waterDepth: (x, z) => ctx.world.water?.depthInside(x, z) ?? -Infinity,
         walkable: (x, z) => {
           const w = ctx.world;
           if (w.collider.enabled && w.collider.footprintAt(x, z) >= 0 && !ctx.state.state.flags['interior.room']) return false;
@@ -226,6 +227,7 @@ class Combat {
     const weapon = prog?.equipped?.weapon;
     this.sim.setStats(this.computeStats());
     this.sim.setGentle(this.ctx.settings.state.gentleMode);
+    this.sim.setNovice((prog?.level ?? 1) <= 2);
     this.sim.opt.reducedMotion = this.ctx.settings.state.reducedMotion;
     this.sim.opt.sweep = itemDef(weapon ?? '')?.effect?.sweep === true;
     this.sim.opt.konter = (talents['stab.konter'] ?? 0) > 0;

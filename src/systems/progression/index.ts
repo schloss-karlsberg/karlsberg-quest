@@ -359,6 +359,13 @@ class Progression {
     if (got > 0) {
       this.world.collect(id);
       this.changed('pickup');
+      // the first Messstab comes with two Kräuterbalsam in the bag (Marlene's radio line says
+      // so; playtest: "Der Balsam ist in der Tasche" while the HUD showed ×0)
+      const flags = this.ctx.state.state.flags;
+      if (p.item === 'item.stab.esche' && !flags['progression.starterBalsam']) {
+        flags['progression.starterBalsam'] = true;
+        this.ctx.events.emit('item:grant', { item: 'item.balsam', count: 2 });
+      }
     } else this.refuse(`Kein Platz mehr: ${this.name(p.item)} (${this.core.count(p.item)})`);
     return got;
   }

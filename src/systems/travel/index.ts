@@ -161,6 +161,7 @@ class Travel {
   private journeying = false;
   private goalStory: { x: number; z: number } | null = null;
   readonly trail = new Trail();
+  private deepToastAt = -1e9;
   private trailFor = '';
   private bestD = Infinity;
   private stuckT = 0;
@@ -785,6 +786,15 @@ class Travel {
   update(dt: number): void {
     const ctx = this.ctx;
     this.time += dt;
+    // deep water holds the player back at the wading line: say why, now and then
+    const ps = ctx.player.stats;
+    if (ps.deepWater) {
+      ps.deepWater = false;
+      if (this.time - this.deepToastAt > 10) {
+        this.deepToastAt = this.time;
+        ctx.ui.toast(TRAVEL_DE.deepWater, 3200);
+      }
+    }
     if (ctx.input.wasPressed('map') && ctx.ui.modals.count === 0) {
       // the prologue's map comparison (story flag `map.compare`) and a layer already on the
       // terrain keep M as the overlay key (off → 1840 → 1935 → off); otherwise M opens the map page

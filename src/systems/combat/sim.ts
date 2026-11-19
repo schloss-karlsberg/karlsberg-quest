@@ -385,7 +385,15 @@ export interface SimWorld {
   isWater?(x: number, z: number): boolean;
   /** Can a walking enemy stand here (buildings, steep rock: no)? */
   walkable?(x: number, z: number): boolean;
+  /** Metres inside open water (> 0 in a lake), for the shore clamp; optional. */
+  waterDepth?(x: number, z: number): number;
 }
+
+/** Closest a (non-boss) body settles to the player's feet (m, plus half its radius). */
+export const STANDOFF_M = 1.45;
+
+/** Enemies stay within this distance of the shore (m): every one of them is reachable. */
+export const SHORE_REACH_M = 1.2;
 
 export interface SimInput {
   x: number;
@@ -607,7 +615,14 @@ export class CombatSim {
 
   setGentle(on: boolean): void {
     this.opt.gentle = on;
-    this.tokens.max = attackTokens(on);
+    this.tokens.max = attackTokens(on || this.novice);
+  }
+
+  /** Level 1–2: one attacker at a time, as in the Sanfter Modus (the opening lessons). */
+  private novice = false;
+  setNovice(on: boolean): void {
+    this.novice = on;
+    this.tokens.max = attackTokens(this.opt.gentle || on);
   }
 
   /** Movement multiplier for the player (charging a Wuchthieb, drinking). */
@@ -1593,7 +1608,45 @@ export class CombatSim {
     return d - step;
   }
 
+  /**
+   * No enemy out over the open water (playtest: Irrlichter kiting over the Karlsbergweiher, out of
+   * staff reach, draining the player with sparks): ease it back along the shore-distance gradient.
+   */
+  private keepAshore(e: Enemy, dt: number): void {
+    const wd = this.world.waterDepth;
+    if (!wd) return;
+    const d0 = wd.call(this.world, e.x, e.z);
+    if (!(d0 > SHORE_REACH_M)) return;
+    const gx = wd.call(this.world, e.x + 1, e.z) - wd.call(this.world, e.x - 1, e.z);
+    const gz = wd.call(this.world, e.x, e.z + 1) - wd.call(this.world, e.x, e.z - 1);
+    const g = Math.hypot(gx, gz);
+    if (g < 1e-4) return;
+    const over = d0 - SHORE_REACH_M;
+    const step = over > 3 ? over : Math.min(over, Math.max(0.5, over * 6 * dt) + 4 * dt);
+    e.x -= (gx / g) * step;
+    e.z -= (gz / g) * step;
+  }
+
+  /**
+   * Personal space: a body never settles under the camera (playtest: Nebelinge lunged in and sat
+   * below the view, behind the lantern, hitting while unseen). Inside `STANDOFF_M` it eases out
+   * along the line to the player; bosses keep their own size-based stand-off.
+   */
+  private keepStandoff(e: Enemy, dt: number, inp: SimInput): void {
+    if (e.boss || e.state === 'dissolve' || e.state === 'leave') return;
+    const dx = e.x - inp.x;
+    const dz = e.z - inp.z;
+    const d = Math.hypot(dx, dz);
+    const min = STANDOFF_M + e.radius * 0.5;
+    if (d >= min || d < 1e-3) return;
+    const push = Math.min(min - d, dt * 5);
+    this.moveBy(e, (dx / d) * push, (dz / d) * push);
+  }
+
   private think(e: Enemy, dt: number, inp: SimInput): void {
+    this.keepAshore(e, dt);
+    // (the opening lessons only: later fights are tuned around bodies that crowd in)
+    if (this.novice && !e.dash) this.keepStandoff(e, dt, inp);
     e.t += dt;
     e.flash = Math.max(0, e.flash - dt * 5);
     for (const k in e.cd) if (e.cd[k] > 0) e.cd[k] = Math.max(0, e.cd[k] - dt);

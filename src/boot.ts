@@ -166,6 +166,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       surfaceAt: (x, z) => world.surfaceAt(x, z),
       coverAt: (x, z) => world.coverAt(x, z),
       canFly: () => ERA_INFO[world.currentEra].spiritView,
+      waterDepth: (x, z) => (world.surfaceOverride?.(x, z) ? -Infinity : world.water.depthInside(x, z)),
     },
     input,
     events,

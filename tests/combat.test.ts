@@ -89,7 +89,12 @@ describe('combat rules: damage', () => {
     expect(enemyDamage(8, 1)).toBe(8);
     expect(enemyDamage(8, 4)).toBe(11.6);
     // gentle mode halves damage taken through the stats
-    expect(enemyDamage(8, 1, deriveStats(null, { gentle: true }).damageTaken)).toBe(4);
+    // (at level 3+, past the novice grace of the opening lessons)
+    const l3 = { level: 3, talents: {}, equipped: { charms: [] } } as unknown as Parameters<typeof deriveStats>[0];
+    expect(enemyDamage(8, 1, deriveStats(l3, { gentle: true }).damageTaken)).toBe(4);
+    // novice grace: level 1 takes 55 %, level 2 75 % (playtest: HP 100 → 3 in the first quest)
+    expect(deriveStats(null).damageTaken).toBeCloseTo(0.55, 5);
+    expect(deriveStats({ ...(l3 as object), level: 2 } as typeof l3).damageTaken).toBeCloseTo(0.75, 5);
   });
 
   it('frontal armour only applies from the front, and a Wuchthieb breaks it', () => {

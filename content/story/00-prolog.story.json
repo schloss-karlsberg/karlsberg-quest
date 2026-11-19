@@ -108,7 +108,7 @@
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "laub.silent": true } },
         { "do": "prompt", "key": "W A S D", "text": "Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen" },
-        { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 763, "z": -900, "delay": 0.3 },
+        { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 762.2, "z": -912.3, "delay": 0.3 },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.2 },
         { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.2, "onResume": true }
       ],
@@ -206,7 +206,7 @@
         },
         { "do": "say", "line": "marlene.p.weg", "delay": 5 },
         { "do": "say", "line": "marlene.p.flug", "delay": 1.5 },
-        { "do": "prompt", "key": "F", "text": "Geisterblick: über den Wald fliegen · F erneut: landen" }
+        { "do": "prompt", "key": "F", "text": "Geisterblick: über den Wald fliegen (W: vorwärts, Leertaste: höher) · F erneut: landen" }
       ],
       "on": [
         {

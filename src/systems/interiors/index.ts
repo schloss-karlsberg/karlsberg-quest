@@ -680,6 +680,38 @@ function installWorldHooks(ctx: GameContext): void {
     const y = r.stair ? r.stair.low : cat?.floor_h ?? r.floor;
     return { x: r.cx, z: r.cz, y, roomId: r.roomId, building: r.building };
   };
+  w.entranceFor = (x, z, fx, fz) => {
+    const cur = current();
+    if (!cur || !rt || rt.mode === 'today') return null;
+    // the goal's building: the room nearest the goal whose centre lies within 30 m
+    let best = -1;
+    let bd = 30;
+    for (let i = 0; i < cur.plan.rooms.length; i++) {
+      const r = cur.plan.rooms[i]!;
+      const d = Math.hypot(r.cx - x, r.cz - z);
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    }
+    if (best < 0) return null;
+    const building = cur.plan.rooms[best]!.building;
+    // the outer door that makes the shortest walk: player → door → goal
+    let door: { x: number; z: number } | null = null;
+    let cost = Infinity;
+    for (const d of cur.plan.doors) {
+      if (d.b !== -1 || (d.building !== building && d.buildingB !== building)) continue;
+      const out = d.depth + (d.stoop?.length ?? 0) + 1.2;
+      const px = d.cx + d.nx * out;
+      const pz = d.cz + d.nz * out;
+      const c = Math.hypot(px - fx, pz - fz) + Math.hypot(px - x, pz - z) * 1.5;
+      if (c < cost) {
+        cost = c;
+        door = { x: px, z: pz };
+      }
+    }
+    return door;
+  };
   w.surfaceOverride = (x, z) => {
     const cur = current();
     if (!cur || !rt || rt.mode === 'today') return null;
@@ -875,6 +907,7 @@ export default defineSystem({
     ctx.world.groundOverride = null;
     ctx.world.surfaceOverride = null;
     ctx.world.roomAnchor = null;
+    ctx.world.entranceFor = null;
     festsaal?.dispose();
     festsaal = null;
     beams?.dispose();

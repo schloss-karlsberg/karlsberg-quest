@@ -329,7 +329,7 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await shot(page, '02-tracker');
   // the Messstab leans outside the trailer, three metres from the door: walk over it
   expect(await beat(page)).toBe('p1');
-  await pickUp(page, 763, -900);
+  await pickUp(page, 762.2, -912.3);
   await expect.poll(() => page.evaluate(() => window.kq!.progression!.state().equipped?.weapon ?? null)).toBe('item.stab.esche');
   // the first fight, inside the first minute: three Nebelinge rise at the foot of the dam
   await page.evaluate(() => {

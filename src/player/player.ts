@@ -16,6 +16,8 @@ export interface PlayerWorld {
   coverAt(x: number, z: number): number;
   /** Spirit view allowed in the current era. */
   canFly(): boolean;
+  /** Metres inside open water (> 0 in the water, <= 0 on land); optional. */
+  waterDepth?(x: number, z: number): number;
 }
 
 export interface PlayerStats {
@@ -30,9 +32,15 @@ export interface PlayerStats {
   /** Extra noise from features (splashing, breaking twigs), decays each step. */
   noiseBoost: number;
   onSlopeLimit: boolean;
+  /** 0..1 how deep the player wades (0 dry, 1 at the wading limit). */
+  inWater?: number;
+  /** Set when a step was refused by deep water (consumers reset it). */
+  deepWater?: boolean;
 }
 
 const SLOPE_LIMIT_DEG = 42;
+/** Wading stops this far into a lake (m from the shore line); deeper water blocks like a wall. */
+export const WADE_LIMIT_M = 0.8;
 const RADIUS = 0.35;
 const FLY_SPEED = 28;
 const FLY_FAST = 95;
@@ -56,6 +64,8 @@ export class Player {
   private strideAcc = 0;
   private bob = 0;
   private flyVel = new Vector3();
+  /** Seconds of the automatic climb after the spirit view starts. */
+  private flyLift = 0;
   readonly stats: PlayerStats = { noise: 0, visibility: 1, speed: 0, lanternLit: false, noiseBoost: 0, onSlopeLimit: false };
   /** Freeze movement (cut-scenes, menus). Mouse look still works unless `lookLocked`. */
   frozen = false;
@@ -123,6 +133,9 @@ export class Player {
     if (on) {
       this.setStance('stand');
       this.position.y += 1.5;
+      // rise above the canopy on its own (playtest: "F only gave a spirit tint and Space did not
+      // climb" — the flight started inside the crowns, 1.5 m up)
+      this.flyLift = 1.6;
     }
     this.events.emit('player:fly', { flying: on });
   }
@@ -233,6 +246,33 @@ export class Player {
         }
       }
     }
+    // deep water: wade a step or two into the shallows, then the lake holds you back (no
+    // walking across the Karlsbergweiher on its bed); slide along the shore like a wall
+    this.stats.inWater = 0;
+    const wd = this.world.waterDepth;
+    if (wd) {
+      const deep = (x: number, z: number) => {
+        const d = wd.call(this.world, x, z);
+        return d > WADE_LIMIT_M && d > wd.call(this.world, this.position.x, this.position.z);
+      };
+      if (deep(nx, nz)) {
+        this.stats.deepWater = true;
+        if (!deep(nx, this.position.z)) nz = this.position.z;
+        else if (!deep(this.position.x, nz)) nx = this.position.x;
+        else {
+          nx = this.position.x;
+          nz = this.position.z;
+        }
+      }
+      const here = wd.call(this.world, nx, nz);
+      this.stats.inWater = Math.max(0, Math.min(1, here / WADE_LIMIT_M));
+      if (here > 0 && moving) {
+        // wading is slower: pull back part of the step
+        const k = 1 - 0.45 * this.stats.inWater;
+        nx = this.position.x + (nx - this.position.x) * k;
+        nz = this.position.z + (nz - this.position.z) * k;
+      }
+    }
     const col = this.world.collide(nx, nz, RADIUS);
     nx = col.x;
     nz = col.z;
@@ -275,6 +315,11 @@ export class Player {
       target.y = Math.sin(this.pitch) * sp * -fz;
     }
     if (this.input.isDown('up')) target.y += sp * 0.6;
+    if (this.flyLift > 0) {
+      this.flyLift = Math.max(0, this.flyLift - dt);
+      const agl = this.position.y - this.world.heightAt(this.position.x, this.position.z);
+      if (agl < 38) target.y = Math.max(target.y, 26);
+    }
     if (this.input.isDown('down')) target.y -= sp * 0.6;
     this.flyVel.lerp(target, Math.min(1, dt * 4));
     const p = this.position;

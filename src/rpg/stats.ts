@@ -85,6 +85,11 @@ export interface StatOptions {
   rauhnacht?: boolean;
 }
 
+/** Damage-taken factor of the first levels: 0.55 at level 1, 0.75 at level 2, then 1. */
+export function noviceGrace(level: number): number {
+  return level <= 1 ? 0.55 : level === 2 ? 0.75 : 1;
+}
+
 /** Derived stats from level, talents, weapon and charms (+ gentle / Rauhnacht). */
 export function deriveStats(p: Pick<ProgressionSlice, 'level' | 'talents' | 'equipped'> | null, opt: StatOptions = {}): DerivedStats {
   const s: DerivedStats = { ...BASE_STATS };
@@ -108,6 +113,9 @@ export function deriveStats(p: Pick<ProgressionSlice, 'level' | 'talents' | 'equ
       else s[key] *= v as number;
     }
   }
+  // novice grace: the opening fights (dam, wall, Eiskeller pit) are lessons, not walls (playtest:
+  // HP 100 → 3 in the very first quest, four Nebelinge doing 80 in two seconds in the pit)
+  s.damageTaken *= noviceGrace(level);
   if (opt.gentle) {
     s.damageTaken *= 0.5;
     s.staminaCost *= 0.7;

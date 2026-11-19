@@ -138,6 +138,8 @@ export const de: Record<string, string> = {
   'scan.1': 'Relief-Blick: Schummerung',
   'scan.2': 'Relief-Blick: Lokales Relief',
   'scan.3': 'Relief-Blick: VAT',
+  'scan.exit': 'Taste {n} oder 0: normale Sicht',
+  'scan.auto0': 'Gefunden. Wieder normale Sicht (Taste {n}: Relief-Blick)',
   'map.on': 'Karte 1836–41 eingeblendet',
   'map.off': 'Karte ausgeblendet',
 

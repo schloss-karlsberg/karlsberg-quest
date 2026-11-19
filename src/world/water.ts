@@ -313,6 +313,9 @@ void main() {
 interface BodyMesh {
   body: WaterBody;
   mesh: Mesh;
+  /** Signed shore distance on the body's grid box (m, positive inside the water). */
+  sd: Float32Array;
+  box: { c0: number; r0: number; c1: number; r1: number };
 }
 
 /** Era looks of the water (linear colours are set from sRGB hex). */
@@ -372,7 +375,11 @@ export class Water {
     for (const key of ['2025', '1789'] as const) {
       const hf = heightfields[key];
       const { bodies, label } = findWaterBodies(ground, hf);
-      this.sets[key] = bodies.map((b) => ({ body: b, mesh: this.buildMesh(b, label, hf) }));
+      this.sets[key] = bodies.map((b) => {
+        const box = this.bodyBox(b);
+        const sd = shoreDistance(label, this.grid.cols, this.grid.rows, this.grid.cell, b.id, box);
+        return { body: b, sd, box, mesh: this.buildMesh(b, label, hf, sd, box) };
+      });
       for (const bm of this.sets[key]) {
         bm.mesh.visible = false;
         this.object.add(bm.mesh);
@@ -395,16 +402,49 @@ export class Water {
     return null;
   }
 
-  private buildMesh(b: WaterBody, label: Int32Array, hf: Heightfield): Mesh {
+  /**
+   * How far (m) x/z lies inside open water, bilinear on the shore-distance grid: > 0 in the
+   * water, <= 0 on land, `-Infinity` away from every body. Frozen water (February 1793) counts
+   * as land. Used to keep the player and hovering enemies out of the deep water (playtest:
+   * walking across the Karlsbergweiher on its bed; Irrlichter kiting over the open lake).
+   */
+  depthInside(x: number, z: number): number {
+    if (this.frozen) return -Infinity;
+    const { cell, x0, z0 } = this.grid;
+    for (const bm of this.active) {
+      const { body, sd, box } = bm;
+      if (x < body.x0 - 6 || x > body.x1 + 6 || z < body.z0 - 6 || z > body.z1 + 6) continue;
+      const w = box.c1 - box.c0 + 1;
+      const fc = (x - x0) / cell - box.c0;
+      const fr = (z - z0) / cell - box.r0;
+      const c = Math.floor(fc);
+      const r = Math.floor(fr);
+      if (c < 0 || r < 0 || c + 1 >= w || r + 1 > box.r1 - box.r0) continue;
+      const tx = fc - c;
+      const tz = fr - r;
+      const a = sd[r * w + c]! * (1 - tx) + sd[r * w + c + 1]! * tx;
+      const b2 = sd[(r + 1) * w + c]! * (1 - tx) + sd[(r + 1) * w + c + 1]! * tx;
+      const v = a * (1 - tz) + b2 * tz;
+      if (v > -6) return v;
+    }
+    return -Infinity;
+  }
+
+  private frozen = false;
+
+  private bodyBox(b: WaterBody): { c0: number; r0: number; c1: number; r1: number } {
     const { cols, rows, cell, x0, z0 } = this.grid;
     const pad = 3;
-    const box = {
+    return {
       c0: Math.max(0, Math.round((b.x0 - x0) / cell) - pad),
       r0: Math.max(0, Math.round((b.z0 - z0) / cell) - pad),
       c1: Math.min(cols - 1, Math.round((b.x1 - x0) / cell) + pad),
       r1: Math.min(rows - 1, Math.round((b.z1 - z0) / cell) + pad),
     };
-    const sd = shoreDistance(label, cols, rows, cell, b.id, box);
+  }
+
+  private buildMesh(b: WaterBody, label: Int32Array, hf: Heightfield, sd: Float32Array, box: { c0: number; r0: number; c1: number; r1: number }): Mesh {
+    const { cols, cell, x0, z0 } = this.grid;
     const w = box.c1 - box.c0 + 1;
     const pos: number[] = [];
     const shore: number[] = [];
@@ -456,6 +496,7 @@ export class Water {
     (u.uDeep!.value as Vector3).set(L.deep[0], L.deep[1], L.deep[2]);
     u.uLeaves!.value = L.leaves;
     u.uIce!.value = L.ice;
+    this.frozen = L.ice > 0.5;
     u.uTreeLine!.value = L.treeLine;
   }
 
