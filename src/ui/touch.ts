@@ -72,6 +72,8 @@ export interface TouchDeps {
   openPause(): void;
   canFly(): boolean;
   flying(): boolean;
+  /** Ability n (1 Ausfall, 2 Erdstoß, 3 Wirbel) learnt? Its button hides until then. Absent: always shown. */
+  skillUnlocked?(n: 1 | 2 | 3): boolean;
 }
 
 interface Btn {
@@ -98,6 +100,7 @@ export class TouchControls {
   private readonly downBtn: Btn;
   private readonly dodgeBtn: Btn;
   private readonly scanPop: HTMLElement;
+  private readonly skillBtns: HTMLButtonElement[];
   /** Touch UI wanted (setting / device). */
   private wanted = false;
   /** Gameplay running without a modal (boot decides). */
@@ -146,10 +149,8 @@ export class TouchControls {
       this.deps.openPause();
     });
     const top = h('div.kq-t-top', [this.flyBtn.el, this.downBtn.el, scanBtn, btn('journal', I.journal, t('touch.journal'), ['journal']).el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
-    const skills = h(
-      'div.kq-t-skills',
-      ([1, 2, 3] as const).map((n) => btn(`skill${n}`, I.skill, t(`touch.skill${n}`), [`skill${n}`], h('span.kq-t-num', String(n))).el),
-    );
+    this.skillBtns = ([1, 2, 3] as const).map((n) => btn(`skill${n}`, I.skill, t(`touch.skill${n}`), [`skill${n}`], h('span.kq-t-num', String(n))).el);
+    const skills = h('div.kq-t-skills', this.skillBtns);
     const arc = h('div.kq-t-arc', [
       attack.el,
       this.dodgeBtn.el,
@@ -183,6 +184,8 @@ export class TouchControls {
     deps.hud.onPrompt = (key, text) => this.setPrompt(key, text);
     deps.events.on('player:fly', () => this.syncFly());
     deps.events.on('era:change', () => this.syncFly());
+    // abilities unlock by level (combat: skillsForLevel); a fresh game or a loaded save may change them
+    for (const ev of ['level:up', 'stats:changed', 'game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncSkills());
     this.refresh();
   }
 
@@ -208,12 +211,19 @@ export class TouchControls {
     if (!this.wanted) this.releaseAll();
     this.syncVisible();
     this.syncFly();
+    this.syncSkills();
     if (was !== this.wanted) this.onActiveChange?.(this.wanted);
   }
 
   private syncVisible(): void {
     this.el.classList.toggle('kq-hidden', !(this.wanted && this.playing));
     if (!(this.wanted && this.playing)) this.scanPop.classList.add('kq-hidden');
+  }
+
+  /** Hide the ability buttons not learnt yet. */
+  syncSkills(): void {
+    const ok = this.deps.skillUnlocked;
+    this.skillBtns.forEach((el, i) => el.classList.toggle('kq-hidden', ok ? !ok((i + 1) as 1 | 2 | 3) : false));
   }
 
   private syncFly(): void {

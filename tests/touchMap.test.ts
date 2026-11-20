@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Input, virtualCode } from '../src/player/input';
-import { TOUCH, diffHeld, isTouchSetting, lookDelta, stickToMove, touchActive, touchIconFor } from '../src/player/touchMap';
+import { DEFAULT_BINDINGS, Input, virtualCode } from '../src/player/input';
+import { TOUCH, diffHeld, isTouchSetting, lookDelta, stickToMove, touchActive, touchIconFor, touchName } from '../src/player/touchMap';
+import { actionLabel } from '../src/ui/actionLabel';
 import { mobileLevel } from '../src/render/mobileDefaults';
 
 describe('stickToMove', () => {
@@ -141,5 +142,39 @@ describe('Input.press (virtual touch actions)', () => {
     inp.touchMode = false;
     inp.requestLock();
     expect(asked).toBe(1);
+  });
+});
+
+describe('touch names in text (actionLabel)', () => {
+  const desk = { touchMode: false, bindings: structuredClone(DEFAULT_BINDINGS) };
+  const touch = { ...desk, touchMode: true };
+  it('names the key on desktop', () => {
+    expect(actionLabel(desk, 'dodge')).toBe('Leertaste');
+    expect(actionLabel(desk, 'bannlicht', 1, 'KeyG')).toBe('G');
+    expect(actionLabel(desk, 'bannlicht', 0)).toBe('Maus rechts');
+    expect(actionLabel({ ...desk, bindings: { ...desk.bindings, bannlicht: [] } }, 'bannlicht', 1, 'KeyG')).toBe('G');
+  });
+  it('names the touch button on touch', () => {
+    expect(actionLabel(touch, 'bannlicht', 1, 'KeyG')).toBe('Bannlicht');
+    expect(actionLabel(touch, 'attack')).toBe('Hieb');
+    expect(actionLabel(touch, 'dodge')).toBe('Ausweichen');
+    expect(actionLabel(touch, 'lockOn')).toBe('Ziel');
+    expect(actionLabel(touch, 'quickUse')).toBe('Balsam');
+    expect(actionLabel(touch, 'listen')).toBe('Aktion');
+    expect(actionLabel(touch, 'interact')).toBe('Aktion');
+    expect(actionLabel(touch, 'shift')).toBe('Epoche');
+    expect(actionLabel(touch, 'journal')).toBe('Feldbuch');
+    expect(actionLabel(touch, 'map')).toBe('Karte');
+    expect(actionLabel(touch, 'skill2')).toBe('2');
+  });
+  it('keeps the key for actions without a button', () => {
+    expect(touchName('inventory')).toBeNull();
+    expect(actionLabel(touch, 'inventory')).toBe(actionLabel(desk, 'inventory'));
+  });
+  it('maps touch names in prompts back to their button', () => {
+    expect(touchIconFor('Aktion')).toBe('interact');
+    expect(touchIconFor('Bannlicht')).toBe('bannlicht');
+    expect(touchIconFor('Balsam')).toBe('balm');
+    expect(touchIconFor('Ziel')).toBe('lock');
   });
 });

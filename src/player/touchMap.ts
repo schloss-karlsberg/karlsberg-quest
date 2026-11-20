@@ -107,9 +107,51 @@ const KEY_ICON: Record<string, TouchIcon> = {
   '3': 'relief',
   ESC: 'pause',
   P: 'pause',
+  // touch mode: prompts may carry the touch button's name instead of a key (`touchName`)
+  HIEB: 'attack',
+  AUSWEICHEN: 'dodge',
+  BANNLICHT: 'bannlicht',
+  ZIEL: 'lock',
+  BALSAM: 'balm',
+  AKTION: 'interact',
+  EPOCHE: 'shift',
+  FELDBUCH: 'journal',
+  KARTE: 'map',
+  FLIEGEN: 'fly',
+  SINKEN: 'down',
+  PAUSE: 'pause',
 };
 
 export function touchIconFor(key: string): TouchIcon {
   const k = key.trim().toUpperCase();
   return KEY_ICON[k] ?? KEY_ICON[k.split(/\s*[/·]\s*/)[0] ?? ''] ?? 'interact';
+}
+
+/**
+ * German name of the on-screen button that does `action` (what text says on touch where it would
+ * name a key: "das Bannlicht (Bannlicht)", "Auf Balsam"). The abilities are the numbered buttons.
+ * Null: no touch button for it (the caller keeps the key label).
+ */
+const TOUCH_NAMES: Partial<Record<Action, string>> = {
+  attack: 'Hieb',
+  dodge: 'Ausweichen',
+  bannlicht: 'Bannlicht',
+  lockOn: 'Ziel',
+  quickUse: 'Balsam',
+  interact: 'Aktion',
+  listen: 'Aktion',
+  shift: 'Epoche',
+  journal: 'Feldbuch',
+  map: 'Karte',
+  fly: 'Fliegen',
+  up: 'Steigen',
+  down: 'Sinken',
+  pause: 'Pause',
+  skill1: '1',
+  skill2: '2',
+  skill3: '3',
+};
+
+export function touchName(action: Action): string | null {
+  return TOUCH_NAMES[action] ?? null;
 }

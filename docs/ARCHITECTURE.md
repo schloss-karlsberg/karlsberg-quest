@@ -1370,7 +1370,9 @@ Rules that came out of it:
   - **Buttons press actions:**
     - Hieb → `attack` + `interact`. Hold for the Wuchthieb; the ring fills in 0.45 s.
     - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying, and "Sinken" (`down`) appears.
-    - Bannlicht, Ziel (`lockOn`), Balsam (`quickUse`), abilities 1–3.
+    - Bannlicht, Ziel (`lockOn`), Balsam (`quickUse`), abilities 1–3. An ability button stays hidden
+      until it is learnt (`skillUnlocked(n)` from boot: `skillsForLevel(progression.level)`, re-checked
+      on `level:up`, `stats:changed`, `game:start` and `save:loaded`).
     - Interagieren → `listen`. Holding it is Lauschen; the pill carries the prompt's text.
     - Epoche → `shift`. Holding it returns; the ring fills in 1.2 s.
     - Top row: Relief (a popover for `scan1–3` / `scan0`), Feldbuch (`journal`), Karte (`map`),
@@ -1383,6 +1385,10 @@ Rules that came out of it:
     and selection, applies the `env(safe-area-inset-*)` insets to the HUD, and zooms the HUD to 0.78
     on screens under 500 px tall.
   - It also asks to turn a phone held in portrait.
+- **Key names in text.** `actionLabel(input, action, slot?, fallback?)` (`src/ui/actionLabel.ts`)
+  fills a caption's or toast's `{key}`: the key label on desktop, the touch button's German name in
+  touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, Feldbuch, Karte;
+  abilities 1–3). Combat and progression use it instead of `keyLabel`.
 - **Prompts.** `hud.setTouchIcons(fn)` turns a prompt's key cap into the icon of the answering
   button (`touchIconFor`: E → hand, Q → hourglass …). `hud.onPrompt(key, text)` lights that button.
 - **Mobile tier.** On first run a coarse pointer gets `mobileLevel()` (`src/render/mobileDefaults.ts`):
