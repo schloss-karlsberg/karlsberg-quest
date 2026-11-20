@@ -314,7 +314,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   | Playtest round 10 | `docs/PLAYTEST-ROUND10.md` |
   | Spring e2e and tests | `e2e/pacing.spec.ts`, `e2e/helpers/prolog.ts`, `campaign.spec.ts` |
   | Spring look polish | `src/systems/scenery/quelle.ts`, `src/systems/quelle/` |
-  | Design doc for the owner's new ideas (§5c) | [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md) (may not exist yet) |
+  | Design doc for the owner's new ideas (§5c) | [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md) |
 
 - **Next:** merge the parallel tracks, rebuild the play copy, then §3.5 PLAY via the Chrome extension,
   using `kq.pilot.bulletTime(true)` and `kq.pilot.showStrip(true)` on the play build.
