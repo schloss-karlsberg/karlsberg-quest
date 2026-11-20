@@ -16,7 +16,7 @@
  */
 import { deriveStats, MAX_LEVEL } from '../src/rpg/stats';
 import type { EnemyGroupState } from '../src/rpg/types';
-import { DODGE, HEAVY, SKILLS, type SkillId, headingOf, inCone, isFrontal, skillsForLevel, upsertGroup, wrapAngle } from '../src/systems/combat/rules';
+import { HEAVY, SKILLS, type SkillId, headingOf, inCone, isFrontal, skillsForLevel, upsertGroup, wrapAngle } from '../src/systems/combat/rules';
 import { CombatSim, type Enemy, type SimInput } from '../src/systems/combat/sim';
 
 const flat = { heightAt: () => 0 };
@@ -301,7 +301,8 @@ export function fight(build: Build, enc: Encounter, bot: Bot, o: { seconds?: num
         if (ev.e.group === 'g') r.killed++;
         if (ev.by !== 'env') r.undone++;
       }
-      if (ev.type === 'dodge') push = { vx: ev.vx, vz: ev.vz, t: DODGE.dur, dur: DODGE.dur };
+      if (ev.type === 'dodge') push = { vx: ev.vx, vz: ev.vz, t: ev.dur, dur: ev.dur };
+      if (ev.type === 'step') push = { vx: ev.vx, vz: ev.vz, t: ev.dur, dur: ev.dur };
       if (ev.type === 'skill') {
         r.skills[ev.id] = (r.skills[ev.id] ?? 0) + 1;
         if (ev.vx || ev.vz) push = { vx: ev.vx, vz: ev.vz, t: ev.dur, dur: ev.dur };
