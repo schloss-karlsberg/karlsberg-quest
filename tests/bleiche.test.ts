@@ -194,6 +194,17 @@ describe('bleiche layout', () => {
     expect(KEEP_CLEAR.some(([x, z]) => Math.hypot(x - BLEICHE.x, z - BLEICHE.z) < 1)).toBe(true);
   });
 
+  it('places the 16.6k-triangle CC0 basket on high only (the procedural one on medium and low)', () => {
+    const baskets = (detailed: boolean, high: boolean) => {
+      const b = new SetBuilder(heightAt, detailed, high);
+      bleicheSet.build(b, { era: '1789', gateOpen: 0 });
+      return b.models.filter((m) => m.id === 'architecture.basket').length;
+    };
+    expect(baskets(true, true)).toBe(1);
+    expect(baskets(true, false)).toBe(0);
+    expect(baskets(false, false)).toBe(0);
+  });
+
   it('only stands in 1789', () => {
     expect(bleicheSet.eras).toEqual(['1789']);
   });

@@ -307,7 +307,9 @@ high tier only: the scenery sets (Baumagazin barrels and tools, kennels, post la
 crates and chest, Festsaal fauteuils and chandelier in 1793-07), the interiors (chandeliers with
 their candle flames at the model's candle tips, fauteuils) and the field station's table, stools,
 crate and barrel. The low tier keeps the procedural kit props. Glass materials of the models are
-made thin and see-through (`lightenGlass`).
+made thin and see-through (`lightenGlass`). A costly model can be kept to the high tier
+(`b.model(id, fallback, { high: true })`): its procedural fallback then stands on medium too. The
+Bleiche's wicker basket (16.6k triangles, four times the rest of the green) is the first.
 
 **Field station** (`src/systems/story/hub/station.ts`): green board-and-batten Bauwagen on a steel
 chassis (longerons, disc wheels, mudguards, A-frame drawbar, jockey wheel), tin barrel roof with
