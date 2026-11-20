@@ -279,9 +279,9 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
 - Original work only. No names, lore or assets from existing games.
 - Never name or show the brewery brand that shares the Karlsberg name (§3.6). In docs write "the
   brewery brand" or "the real beer label".
-  - **Exception (owner, 2026-11-20):** the hidden bottle collectibles may carry the real beer label as
-    a swappable placeholder (one constant / texture, text label only, no logo artwork), never in
-    codex / quests / dialogue; replace or license before any public release.
+  - **Exception (owner, 2026-11-20):** the hidden bottle collectibles carry the real beer label, public
+    repo and site included, as a swappable placeholder (one constant/texture, plain text label only, no
+    logo artwork); never in codex/quests/dialogue; swap when permission is refused or when the owner says so.
 - **Working mode (owner, 2026-11-20):** the main session acts only as a coordinator; all work runs in
   subagents or separate sessions.
 - Local git only; **never push**. Commit messages end with
@@ -328,7 +328,7 @@ Design goes into [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md). Nothing is built y
 | 1 | The **next chapter** also starts at the Karlsbergquelle, as a time-travel transition | reuses the touch scene (§3.6); today the chapter opens at the Ehrenhof anchor |
 | 2 | In 1789 the Herzog lets **no strangers** into the garden or the palace, so the opening is a **sneaking / disguise** beat: get clothes, pose as part of an esteemed visitor's party "like Knigge" | Knigge is a real person: PRD §4.4 rule 2 (only sourced words and deeds) applies |
 | 3 | A fun **side activity** not tied to quests: original **"challenge chambers"** with spatial puzzles | the owner said "like Zelda shrines"; we must **not copy** that game (§5: original work only). Spatial, not quiz or word puzzles |
-| 4 | **Hidden collectibles** at points of interest | the owner asked for **real-brand beer bottles**. **Decision (owner, 2026-11-20, relayed by the coordinator):** allowed for now as a swappable placeholder; there is no permission from the brewery yet, so replace or license before any public release. Rule and limits: §5, exception to the brand rule |
+| 4 | **Hidden collectibles** at points of interest | the owner asked for **real-brand beer bottles**. **Decision (owner, 2026-11-20, relayed by the coordinator):** the hidden bottle collectibles carry the real beer label, public repo and site included, as a swappable placeholder (one constant/texture, plain text label only, no logo artwork); never in codex/quests/dialogue; swap when permission is refused or when the owner says so. Rule and limits: §5, exception to the brand rule |
 
 ## 6. Current state
 

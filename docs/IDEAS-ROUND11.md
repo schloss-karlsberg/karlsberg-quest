@@ -502,14 +502,14 @@ animation and input. The feel would drift from the main game.
 ### 4.1 Owner decision (2026-11-20)
 
 > **Owner decision (2026-11-20, relayed by the coordinator; NEXT-SESSION §5 exception)**
-> - The **real beer label** the owner asked for (brand and product name) is used **as a placeholder** on the bottles.
-> - There is **no permission from the brewery**. Before any public release, it must be **replaced** by an invented label, **or licensed** in writing.
+> - The hidden bottle collectibles carry the **real beer label** (brand and product name), **public repo and site included**, as a **swappable placeholder** (one constant/texture, plain text label only, no logo artwork); never in codex/quests/dialogue.
+> - There is **no permission from the brewery** yet; the owner accepts the risk. **Swap** to an invented label (§4.3) when permission is refused or when the owner says so.
 > - Before release, also have someone check alcohol-marketing and youth-protection rules for a USK-16 game. The bottles are never drunk, give no effect and are never shown being consumed.
 > - **The single switch:** `content/collectibles/flaschen.json` → `label` (the text lines + `"placeholder": true`).
 >   - It is rendered to **one** texture and **one** material in `src/systems/flaschen/label.ts`. Nothing else holds the text.
 >   - Plain text in our own font only. No logo artwork, emblem, label layout, label colours or bottle shape copied from the brewery.
 > - The name never appears in codex cards, quests, dialogue, journal text, item names, toasts or docs. Docs say "the real beer label".
-> - **Release gate:** `pnpm validate` fails a release build (`KQ_RELEASE=1`) while `placeholder` is `true`. A unit test greps that the label text occurs in no other file under `content/` or `src/`.
+> - **Swap = one edit (planned unit test):** `tests/flaschen.test.ts` checks that the label text appears in exactly one collectibles source file (`content/collectibles/flaschen.json`) and nowhere else under `content/` or `src/`, so swapping it stays a single edit.
 
 ```jsonc
 // content/collectibles/flaschen.json (sketch)
@@ -517,7 +517,7 @@ animation and input. The feel would drift from the main game.
   "label": {
     "lines": ["<BRAND>", "<PRODUCT>"],   // the real beer label the owner asked for; take the text from the owner's request, not from this doc
     "placeholder": true,
-    "note": "Owner decision 2026-11-20: placeholder only. Replace or license before any public release."
+    "note": "Owner decision 2026-11-20: swappable placeholder, public repo and site included. Swap when permission is refused or when the owner says so."
   },
   "fallback": { "lines": ["Quellwasser", "Probe"] }   // invented replacement (see 4.3); never the word "Karlsberg"
 }
@@ -632,14 +632,13 @@ the spring is active in those beats (today's is 7 m away).
 | `src/rpg/stats.ts` / progression | Spürsinn ignores `flaschen` |
 | `src/systems/story/hub/overlay.ts` | the shelf |
 | `scripts/content-build/codex.mjs` | cx.47 „Treibgut“ (FIKTION, no brand) |
-| `scripts/` validate | the release gate (§4.1) |
-| `tests/flaschen.test.ts` (new) | 24 spots, per-era counts, ≥ 6 m from clue / NPC / pickup places of every story and quest file, not in memorials, inside the terrain, the label text in one file only |
+| `tests/flaschen.test.ts` (new) | 24 spots, per-era counts, ≥ 6 m from clue / NPC / pickup places of every story and quest file, not in memorials, inside the terrain, the label text in exactly one collectibles source file (swap = one edit, §4.1) |
 
 ### 4.9 Effort, risks, order
 
 - **Effort:** S for the system; M with the placement walk (24 spots on the terrain) and tests.
 - **Risks:**
-  - Trademark and alcohol branding: the §4.1 box and the release gate.
+  - Trademark and alcohol branding: the §4.1 box and the swap = one edit test.
   - A modern bottle in 1789 clashes with the tone. The fiction (Treibgut) and the memorial ban cover it.
   - Too hard → frustration. The clink and the per-era count soften it.
   - It reads like the travel caches. It doesn't glow, so it won't.
@@ -660,7 +659,7 @@ the spring is active in those beats (today's is 7 m away).
 
 - [ ] **Decide (owner / coordinator):** the letter in Knigge's name (K1, recommended) or an invented visitor (K2), §2.3.
 - [ ] **Idea 1:** move the k1 `checkpoint` to the spring (1058.2/−832.4, yaw 54); rewrite `k1_0` (dawn, `quelle.call`, complete on `quelle:touch`, exit shift 1789); add the `quelle` objective to `q.k1.ankunft`; update `e2e/helpers/k1.ts` with a shared `touchSpring()`; adjust `campaign.spec.ts` / `chapter-k1.spec.ts`. Details in IDEAS-ROUND11 §1.5–1.8.
-- [ ] **Idea 4:** build `src/systems/flaschen/` with the single label switch `content/collectibles/flaschen.json` (placeholder, release gate, grep test). Walk the 24 spots on the terrain. §4.
+- [ ] **Idea 4:** build `src/systems/flaschen/` with the single label switch `content/collectibles/flaschen.json` (public placeholder, swap = one edit test). Walk the 24 spots on the terrain. §4.
 - [ ] **Idea 2 MVP:** `src/systems/court/` (zones, watchers, suspicion, gate inspection, lossless ejection), generalised `SightCones`, the `COURT_COSTUME`, `q.k1.kleider` + `q.k1.brief`, beats k1_0b / k1_0c, the anchor and oil rules, codex cx.43–cx.46, `e2e/court.spec.ts`. §2.
 - [ ] **Idea 3 MVP:** the world provider stack (with the interiors owner), `src/systems/kammern/` with the pocket, chambers #5 Laternenkammer and #1 Streiflicht, solvability tests. §3.
 - [ ] Docs when built: ACTION-RPG §4.6, §11.1, §14; PRD §3.4 + changelog; bible 02-kapitel-1, 07-codex, 08-stimmen.
