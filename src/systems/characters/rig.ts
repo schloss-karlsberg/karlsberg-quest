@@ -19,6 +19,7 @@ import {
   Matrix4,
   type Mesh,
   type Object3D,
+  PropertyBinding,
   Quaternion,
   type SkinnedMesh,
   Vector3,
@@ -47,6 +48,18 @@ const _axis = new Vector3();
 
 function isSkinned(o: Object3D): o is SkinnedMesh {
   return (o as SkinnedMesh).isSkinnedMesh === true;
+}
+
+/**
+ * A bone (or any node) by name, as written in the source rig or as three's GLTFLoader renamed it:
+ * the loader runs node names through `PropertyBinding.sanitizeNodeName`, which drops `.` (and
+ * `[]:/`, whitespace to `_`), so 'UpperLeg.L' loads as 'UpperLegL'. Tries the name as given first.
+ */
+export function findBone(root: Object3D, name: string): Object3D | undefined {
+  const hit = root.getObjectByName(name);
+  if (hit) return hit;
+  const clean = PropertyBinding.sanitizeNodeName(name);
+  return clean !== name ? root.getObjectByName(clean) : undefined;
 }
 
 /** Bind-pose measurements of a loaded model (cached per source scene). */
@@ -159,6 +172,11 @@ export class Rig {
     this.mixer = new AnimationMixer(this.model);
   }
 
+  /** A bone by its name as given or in GLTFLoader's sanitized form (see `findBone`). */
+  bone(name: string): Bone | undefined {
+    return this.bones.get(name) ?? this.bones.get(PropertyBinding.sanitizeNodeName(name));
+  }
+
   has(name: string): boolean {
     return this.clips.has(name);
   }
@@ -227,7 +245,7 @@ export class Rig {
    */
   turnBone(name: string | null, yaw: number, pitch = 0): void {
     if (!name) return;
-    const b = this.bones.get(name);
+    const b = this.bone(name);
     const p = b?.parent;
     if (!b || !p) return;
     p.getWorldQuaternion(_q).invert();
@@ -244,7 +262,7 @@ export class Rig {
 
   /** World position of a point given in a bone's local frame (eyes). */
   boneWorld(name: string | null, local: Vector3, out: Vector3): Vector3 | null {
-    const b = name ? this.bones.get(name) : undefined;
+    const b = name ? this.bone(name) : undefined;
     if (!b) return null;
     return out.copy(local).applyMatrix4(b.matrixWorld);
   }
@@ -254,7 +272,7 @@ export class Rig {
    * the bone from then on. Call before the first mixer update (the clone is still in bind pose).
    */
   attach(boneName: string, obj: Object3D): boolean {
-    const b = this.bones.get(boneName);
+    const b = this.bone(boneName);
     if (!b) return false;
     this.model.updateMatrixWorld(true);
     // bind-pose model space → the bone's local frame (the model root sits inside the holder)
