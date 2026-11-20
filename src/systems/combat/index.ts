@@ -729,7 +729,7 @@ class Combat {
         this.visuals.glance(e.x, e.y + 0.5, e.z);
         this.audio.immune(this.posOf(e, 0.5));
         if (this.safe) this.captionOnce('safe', t('combat.safe'), 'info', 8);
-        else this.captionOnce('immune', t('combat.immune', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }), 'info', 6, 2600);
+        else this.captionOnce('immune', t(ctx.input.touchMode ? 'combat.immune.touch' : 'combat.immune', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }), 'info', 6, 2600);
         if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 0.8, e.z, 'immune', undefined, this.numberSpan(e));
         break;
       }
@@ -982,7 +982,7 @@ class Combat {
       case 'ward': {
         for (const o of ev.targets) this.visuals.shatter(o.x, o.y + 0.8, o.z, false, st.reducedFlash);
         this.audio.veil(this.posOf(ev.e, 1.5), false);
-        this.captionOnce('ward', t('combat.ward', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }), 'info', 12, 2600);
+        this.captionOnce('ward', t(ctx.input.touchMode ? 'combat.ward.touch' : 'combat.ward', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }), 'info', 12, 2600);
         break;
       }
       case 'wardBreak':
