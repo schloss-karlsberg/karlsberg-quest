@@ -37,7 +37,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/systems/` | **Feature systems**, one folder each, registered in `src/systems/index.ts` |
 | `src/rpg/` | Action-RPG shared data, pure (no three.js, no DOM): `types.ts` (quests, enemies, items, slices, stats), `enemies.ts` (roster), `items.ts` (items, loot tables, collections), `stats.ts` (level curve, talents, `deriveStats`) — see §12.1 |
 | `content/quests/` | Quest files `<nn>-<chapter>.quests.json` (schema `content/schema/quests.schema.json`, validated by `pnpm validate`) |
-| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route) |
+| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route), `pilot.ts` (`kq.pilot` bullet-time play, §11) |
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `sim-combat.ts` (`pnpm sim:combat`: the human-like combat bot's balance table, docs/BALANCE.md), `scripts/dev/` screenshot helpers for a running dev server |
@@ -390,6 +390,37 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   URL flags: `debug`, `notitle`, `nosave`, `fresh`, `manual`, `nomsaa`, `preserve`,
   `era=1789`, `x=…&z=…&yaw=…`, `scanall`, `perf` (overlay), `autoq` (auto-downgrade also under
   WebDriver), `warm` (shader warm-up also under WebDriver).
+- Bullet-time pilot (`kq.pilot`, `src/debug/pilot.ts`; docs/NEXT-SESSION.md §3.1): an agent plays
+  in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
+  HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).
+  `kq.pilot.act({ hold?: string[], tap?: string[], tapSteps?: 1|2, mouse?: { dx?, dy?, turnDeg?,
+  left?: true|'click'|'hold', right?: … }, steps = 15, frames = 5, frameSize = 320, quality = 0.6,
+  keep?: boolean })` holds keys for every step (up afterwards unless `keep`; the next act releases
+  kept keys it does not hold, `kq.pilot.release()` all), taps for the first 1–2 steps, `left: 'hold'`
+  keeps LMB down (≥ 27 steps then up = Wuchthieb). Mouse look works without pointer lock or focus:
+  `dx`/`dy` (pixels, + = right / down) go through `input.addLook` into the same accumulator as
+  `movementX/Y`, and `player.look()` runs once per step (real sensitivity, invert, clamp);
+  `turnDeg` converts degrees at the current sensitivity. Each step is `loop.advance(1)` (no render,
+  and no step while `pause.paused`: a modal stops the simulation as in play); at `frames` evenly
+  spaced steps `loop.renderOnce(dt · steps since the last render)` draws and the canvas is copied to
+  a small 2D canvas in the same task (JPEG data URL), so no `preserveDrawingBuffer` is needed.
+  While a modal / dialogue is open, taps go to the page as real `keydown`/`keyup` (E advances a
+  conversation, digits pick). Returns the observation: `time`, `tick`, `paused`, `player {hp, max,
+  stamina, staminaMax, exhausted, bann, x, z, yaw (0 = north, 90 = east), pitch, era, inCombat,
+  dead}`, `lock {locked, soft}`, `enemies` (≤ 40 m, nearest first, ≤ 10: `id, kind, name, d,
+  bearing` (relative to the view, + = right), `hp, max, state, telegraph` (s of wind-up left, null
+  when none), `attack, onScreen, boss?, elite?, stun?`), `objective {label, quest, objective, d,
+  bearing, tracker}` (from `kq.quests.lead()` / the tracker / the story line), `dialogue {kind:
+  npc|choice|modal, title, who, text, options [{n, label}]}`, `hud {prompt, subtitle, toasts}`,
+  `events` (combat sim events since the last act / observe, compact: `hit` (dmg, heavy, hpLeft),
+  `hurt`, `dodge` (perfect), `evade`, `ko`, `died`, `bounce` (guard), `guardBreak`, `flank`,
+  `immune`, `telegraph` (attack, dur), `strike`, `swing`, `whiff`, `stun`, `phase`, `heal`, `bann`,
+  `shotHit`, `hazardHit`, …; `t` = seconds into the act; tapped by wrapping the live
+  `CombatSim.step`, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
+  same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
+  story choice / modal; `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
+  the page (one browser screenshot shows the whole strip). Test: `e2e/pilot.spec.ts`,
+  `tests/pilot.test.ts`.
 - Performance (see `docs/PERFORMANCE.md`): `kq.perf()` (summary), `kq.bench(opts?)` runs the
   fixed route `BENCH_SCENES` (9 views over all eras, pack, fire, ruin, scan 3) and returns per
   scene frame/CPU/GPU ms, calls, triangles, `withinBudget` (also `kq.lastBench`, console table),

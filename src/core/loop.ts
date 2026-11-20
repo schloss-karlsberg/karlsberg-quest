@@ -80,4 +80,17 @@ export class FixedStepLoop {
     }
     this.cb.render(this.dt, 1);
   }
+
+  /** Run exactly `n` fixed updates without rendering (the bullet-time pilot renders only the frames it captures). */
+  advance(n = 1): void {
+    for (let i = 0; i < n; i++) {
+      this.cb.update(this.dt);
+      this.tick++;
+    }
+  }
+
+  /** Render once now; `frameDt` (s) is the time the visuals advance by (capped like a real frame). */
+  renderOnce(frameDt = this.dt): void {
+    this.cb.render(Math.min(0.25, Math.max(0, frameDt)), 1);
+  }
 }
