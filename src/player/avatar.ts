@@ -46,7 +46,6 @@ import type { LoadedModel } from '../assets/loader';
 import { kqStandard } from '../render/standard';
 import { Rig } from '../systems/characters/rig';
 import { lanternPose } from '../systems/hunt/lantern';
-import { cosmetics } from './cosmetics';
 import { type WeaponStage, buildStaff, staffMaterial } from '../systems/combat/viewmodel';
 import { atmosphere } from '../world/atmosphere';
 import { BOOM_MIN } from './camera';
@@ -713,10 +712,7 @@ export class Avatar {
     const L = atmosphere.uLantern.value as Vector3;
     const lit = Math.min(1.5, L.length() / 2.7);
     this.lantern.visible = true;
-    if (this.lanternGlow) {
-      this.lanternGlow.opacity = 0.08 + 0.5 * Math.min(1, lit);
-      this.lanternGlow.color.setHex(cosmetics.lanternGlass ?? 0xffa64a);
-    }
+    if (this.lanternGlow) this.lanternGlow.opacity = 0.08 + 0.5 * Math.min(1, lit);
     if (this.flame) {
       this.flame.visible = lit > 0.05;
       const fl = f.reducedFlash ? 1 : 0.85 + 0.15 * Math.sin(f.time * 17);

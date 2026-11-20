@@ -373,8 +373,10 @@ class Flaschen {
     }
   }
 
+  /** The lantern glass follows the reward; the avatar (src/player/avatar.ts) listens for the event. */
   applyCosmetics(): void {
     cosmetics.lanternGlass = this.slice.said.includes('all') ? FLASCHENGRUEN : null;
+    this.ctx.events.emit('player:lantern-tint', { hex: cosmetics.lanternGlass });
   }
 
   // ---- per frame: the glint ------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { type Page, expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
+import { FLASCHENGRUEN } from '../src/player/cosmetics';
 
 /**
  * Fläschchen (docs/IDEAS-ROUND11.md §4): every one of the 24 bottles in its era, looked at from a
@@ -116,7 +117,7 @@ test.describe('Fläschchen', () => {
       k.step(4);
     }, id);
     expect(await page.evaluate(() => window.kq!.flaschen!.prompt())).toBe(id);
-    await expect(page.getByText('Fläschchen aufheben')).toBeVisible();
+    await expect(page.locator('.kq-prompt.show').getByText('Fläschchen aufheben')).toBeVisible();
     await page.evaluate(() => window.kq!.press('KeyE', 2));
     const st = await page.evaluate(() => window.kq!.flaschen!.state());
     expect(st.found).toEqual([id]);
@@ -142,6 +143,14 @@ test.describe('Fläschchen', () => {
     await expect(shelf).toBeVisible();
     await expect(shelf.locator('.kqf-shelf-bottle')).toHaveCount(1);
     await page.screenshot({ path: `${SCREENS}/fl-shelf.png` });
+    // all 24 (debug hook): the lantern glass turns Flaschengrün through the player:lantern-tint event
+    expect(await page.evaluate(() => window.kq!.avatar!.lanternTint())).toBeNull();
+    await page.evaluate(() => {
+      const k = window.kq!;
+      for (const s of k.flaschen!.spots()) k.flaschen!.pick(s.id);
+    });
+    expect((await page.evaluate(() => window.kq!.flaschen!.state())).count).toBe(24);
+    expect(await page.evaluate(() => window.kq!.avatar!.lanternTint())).toBe(FLASCHENGRUEN);
     expect(errors).toEqual([]);
   });
 });

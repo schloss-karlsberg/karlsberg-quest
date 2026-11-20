@@ -1,5 +1,5 @@
 /**
- * Cosmetic choices the avatar reads every frame (no gameplay effect). Feature systems set them,
+ * Cosmetic choices (no gameplay effect), the state behind the `player:lantern-tint` event. Feature systems set them,
  * e.g. the Fläschchen reward (all 24 found): the lantern glass „Flaschengrün“.
  */
 export const cosmetics: {
