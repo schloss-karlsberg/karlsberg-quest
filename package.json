@@ -11,6 +11,7 @@
     "test": "vitest run",
     "e2e": "vite build && playwright test",
     "validate": "tsx scripts/validate-content.ts",
+    "sim:combat": "tsx scripts/sim-combat.ts",
     "prepare-data": "tsx scripts/prepare-data.ts",
     "typecheck": "tsc --noEmit",
     "assets:pack": "tsx scripts/assets/pack-gltf.ts",

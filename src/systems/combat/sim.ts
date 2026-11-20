@@ -303,10 +303,10 @@ export type SimEvent =
   | { type: 'resist'; e: Enemy }
   | { type: 'killed'; e: Enemy; by: KillBy }
   | { type: 'cleared'; group: string; kind: string }
-  | { type: 'playerHit'; damage: number; by: string; x: number; z: number; pushX: number; pushZ: number; heavy: boolean }
+  | { type: 'playerHit'; damage: number; by: string; x: number; z: number; pushX: number; pushZ: number; heavy: boolean; src?: string; attack?: string }
   /** The player stands inside a big body (a boss, a Steinfresser): push them out (m/s). */
   | { type: 'bump'; vx: number; vz: number }
-  | { type: 'evade'; by: string }
+  | { type: 'evade'; by: string; src?: string; attack?: string }
   | { type: 'died'; by: string }
   | { type: 'dodge'; vx: number; vz: number; perfect: boolean }
   | { type: 'bann'; x: number; z: number; yaw: number; range: number; angle: number; hits: number }
@@ -378,6 +378,12 @@ export type SimEvent =
   | { type: 'deflect'; p: Projectile }
   /** Dazzled: the flare does not come. */
   | { type: 'dazzled' };
+
+/** Who dealt a blow to the player (fight metrics, `fightlog.ts`): enemy id (or 'hazard') and attack id. */
+export interface HurtSource {
+  id: string;
+  attack: string;
+}
 
 export interface SimWorld {
   heightAt(x: number, z: number): number;
@@ -1444,7 +1450,7 @@ export class CombatSim {
     if (reflected) {
       p.dazzle = REFLECT.dazzle;
       this.out.push({ type: 'reflect', e: reflected, seconds: REFLECT.dazzle });
-      this.hurtPlayer(REFLECT.damage, reflected.kind, reflected, reflected.tier);
+      this.hurtPlayer(REFLECT.damage, reflected.kind, reflected, reflected.tier, false, { id: reflected.id, attack: 'reflect' });
     }
   }
 
@@ -1497,11 +1503,11 @@ export class CombatSim {
   /** Damage taken in the burst window (BURST). */
   private recentHurt: { t: number; a: number }[] = [];
 
-  hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false): number {
+  hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false, src?: HurtSource): number {
     const p = this.p;
     if (p.dead || this.safe) return 0;
     if ((p.dodge && dodgeInvulnerable(p.dodge.t)) || this.skillInvulnerable()) {
-      this.out.push({ type: 'evade', by });
+      this.out.push({ type: 'evade', by, src: src?.id, attack: src?.attack });
       return 0;
     }
     let amount = enemyDamage(raw, tier, this.opt.stats.damageTaken);
@@ -1529,7 +1535,7 @@ export class CombatSim {
     if (!p.god) p.hp = Math.max(0, p.hp - amount);
     const rm = this.opt.reducedMotion ? 0.5 : 1;
     this.freeze = Math.max(this.freeze, HITSTOP.player * rm);
-    this.out.push({ type: 'playerHit', damage: amount, by, x: from.x, z: from.z, pushX: dx * push, pushZ: dz * push, heavy });
+    this.out.push({ type: 'playerHit', damage: amount, by, x: from.x, z: from.z, pushX: dx * push, pushZ: dz * push, heavy, src: src?.id, attack: src?.attack });
     if (p.hp <= 0) {
       p.dead = true;
       p.swing = null;
@@ -2111,14 +2117,14 @@ export class CombatSim {
     switch (a.kind) {
       case 'melee': {
         const arc = e.kind === 'strohmann' ? 170 : 110;
-        if (inCone(e.x, e.z, e.heading, a.range + 0.4, arc, inp.x, inp.z, 0.35)) this.hurtPlayer(dmg, by, e, e.tier, e.boss);
+        if (inCone(e.x, e.z, e.heading, a.range + 0.4, arc, inp.x, inp.z, 0.35)) this.hurtPlayer(dmg, by, e, e.tier, e.boss, { id: e.id, attack: a.id });
         break;
       }
       case 'area': {
         for (const id of e.rings) {
           const r = this.rings.find((x) => x.id === id);
           if (r && Math.hypot(inp.x - r.x, inp.z - r.z) <= r.r + 0.3) {
-            this.hurtPlayer(dmg, by, r, e.tier, true);
+            this.hurtPlayer(dmg, by, r, e.tier, true, { id: e.id, attack: a.id });
             break;
           }
         }
@@ -2204,7 +2210,7 @@ export class CombatSim {
         pr.y += pr.vy * dt;
         if (pr.t >= pr.life) {
           const hit = Math.hypot(this.px - pr.tx, this.pz - pr.tz) <= pr.r + 0.3;
-          const dealt = hit ? this.hurtPlayer(pr.damage, pr.kind.split('.')[0], { x: pr.tx, z: pr.tz }, pr.tier, true) : 0;
+          const dealt = hit ? this.hurtPlayer(pr.damage, pr.kind.split('.')[0], { x: pr.tx, z: pr.tz }, pr.tier, true, { id: pr.owner, attack: pr.kind.split('.')[1] ?? '' }) : 0;
           this.out.push({ type: 'impact', p: pr, hitPlayer: dealt > 0 });
           const k = this.rings.findIndex((r) => r.id === pr.ring);
           if (k >= 0) this.rings.splice(k, 1);
@@ -2221,7 +2227,7 @@ export class CombatSim {
       const dy = pr.y - (this.py + 1.2);
       const hitP = Math.hypot(pr.x - this.px, pr.z - this.pz) < pr.r && Math.abs(dy) < 1.4;
       if (hitP || pr.t >= pr.life) {
-        const dealt = hitP ? this.hurtPlayer(pr.damage, pr.kind.split('.')[0], { x: pr.x - pr.vx * 0.1, z: pr.z - pr.vz * 0.1 }, pr.tier) : 0;
+        const dealt = hitP ? this.hurtPlayer(pr.damage, pr.kind.split('.')[0], { x: pr.x - pr.vx * 0.1, z: pr.z - pr.vz * 0.1 }, pr.tier, false, { id: pr.owner, attack: pr.kind.split('.')[1] ?? '' }) : 0;
         this.out.push({ type: 'impact', p: pr, hitPlayer: dealt > 0 });
         this.projectiles.splice(i, 1);
       }
@@ -2250,7 +2256,7 @@ export class CombatSim {
       D.t -= step;
       if (!D.hit && Math.hypot(inp.x - e.x, inp.z - e.z) < e.radius + (a?.kind === 'charge' ? 0.9 : 0.6)) {
         D.hit = true;
-        this.hurtPlayer((a?.damage ?? 8) * e.dmgMul, e.kind, { x: e.x - D.vx * 0.05, z: e.z - D.vz * 0.05 }, e.tier, a?.kind === 'charge');
+        this.hurtPlayer((a?.damage ?? 8) * e.dmgMul, e.kind, { x: e.x - D.vx * 0.05, z: e.z - D.vz * 0.05 }, e.tier, a?.kind === 'charge', { id: e.id, attack: a?.id ?? 'dash' });
       }
       if (D.t <= 0) e.dash = null;
       return;
@@ -2405,7 +2411,7 @@ export class CombatSim {
       const k = this.rings.findIndex((r) => r.id === h.ring);
       if (k >= 0) this.rings.splice(k, 1);
       const def = HAZARD[h.kind];
-      const hitP = !this.p.dead && Math.hypot(inp.x - h.x, inp.z - h.z) <= h.r + 0.3 && this.hurtPlayer(def.damage, h.kind === 'fire' ? 'funkenflug' : 'steinschlag', { x: h.x, z: h.z }, 1, true) > 0;
+      const hitP = !this.p.dead && Math.hypot(inp.x - h.x, inp.z - h.z) <= h.r + 0.3 && this.hurtPlayer(def.damage, h.kind === 'fire' ? 'funkenflug' : 'steinschlag', { x: h.x, z: h.z }, 1, true, { id: 'hazard', attack: h.kind }) > 0;
       let n = 0;
       for (const e of [...this.enemies]) {
         if (e.boss || e.state === 'dissolve' || e.state === 'leave' || e.hover > 1) continue;

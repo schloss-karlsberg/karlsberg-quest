@@ -31,10 +31,11 @@ import type { CombatSlice, DerivedStats, EnemyGroupState } from '../../rpg/types
 import { h } from '../../ui/dom';
 import { type SettingsRow, addSettingsRows } from '../../ui/settings';
 import { keyLabel } from '../../ui/settings';
-import { Matrix4, Quaternion, Vector3 } from 'three';
+import { Frustum, Matrix4, Quaternion, Vector3 } from 'three';
 import { atmosphere } from '../../world/atmosphere';
 import { lanternPose } from '../hunt/lantern';
 import { CombatAudio } from './audio';
+import { FightLog, type FightReport, type FightView } from './fightlog';
 import { CombatHud, type PipTarget, type SkillSlot } from './hud';
 import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
@@ -115,6 +116,10 @@ export interface CombatHooks {
   lock(id?: string | null): string | null;
   /** The locked and the soft target. */
   target(): { locked: string | null; soft: string | null };
+  /** Fight metrics (fightlog.ts, docs/BALANCE.md): the last fights and totals. */
+  report(): FightReport;
+  /** Clear the fight metrics. */
+  reset(): void;
 }
 
 declare module '../../debug/hooks' {
@@ -153,6 +158,9 @@ class Combat {
   private shakeNow = 0;
   private bannFx: { t: number; x: number; z: number; yaw: number; range: number; angle: number } | null = null;
   private readonly log: { name: string; payload: unknown; tick: number }[] = [];
+  /** Fight metrics (`kq.combat.report()`). */
+  readonly fights = new FightLog();
+  private fightView: FightView | null = null;
   private frozenAI = false;
   private mouseTick = -10;
   /** The pack chases you (running costs Atem). */
@@ -557,6 +565,7 @@ class Combat {
     }
     const evs = this.frozenAI ? this.stepFrozen(dt * slowK, inp) : this.sim.step(dt * slowK, inp);
     for (const e of evs) this.onEvent(e, inp);
+    this.fights.observe(dt, evs, this.viewForFights());
     // the player's movement hooks
     const pl = ctx.player;
     // a lock keeps its target in the picture (the view turns only when it would slip out)
@@ -593,6 +602,22 @@ class Combat {
     s.hp = Math.round(this.sim.p.hp * 10) / 10;
     s.stamina = Math.round(this.sim.p.st.stamina);
     s.bann = this.sim.p.bann;
+  }
+
+  /** What the fight log needs each step: the camera frustum as last drawn and the feedback settings. */
+  private viewForFights(): FightView {
+    const cam = this.ctx.camera;
+    _fightM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    _fightFrustum.setFromProjectionMatrix(_fightM);
+    const st = this.ctx.settings.state;
+    const v = (this.fightView ??= {
+      sim: this.sim,
+      onScreen: (x, y, z) => _fightFrustum.containsPoint(_fightP.set(x, y, z)),
+      feedback: { sound: true, particles: true, shake: true, numbers: true },
+    });
+    v.feedback.shake = !st.reducedMotion;
+    v.feedback.numbers = st.damageNumbers !== false;
+    return v;
   }
 
   /** Debug freeze: the enemies hold still, the player's side still runs. */
@@ -1462,6 +1487,12 @@ class Combat {
       target() {
         return { locked: self.targeting.locked, soft: self.targeting.soft };
       },
+      report() {
+        return self.fights.report();
+      },
+      reset() {
+        self.fights.reset();
+      },
     };
     window.kq.combat = hooks;
   }
@@ -1490,6 +1521,9 @@ function damageRows(settings: SettingsStore): SettingsRow[] {
   return [[t('settings.damageNumbers'), box, 'game', t('settings.damageNumbers.help')]];
 }
 
+const _fightM = new Matrix4();
+const _fightFrustum = new Frustum();
+const _fightP = new Vector3();
 const _target = new Vector3();
 const _back = new Vector3();
 const _up = new Vector3(0, 1, 0);
