@@ -1195,6 +1195,60 @@ Round-4 (polish: set dressing) integration rules:
   Lock-on: not special-cased; like the mouse, the keys turn freely inside the lock's keep-in-view
   window and the lock pulls the view back when the target would leave it.
 
+### photo (`src/systems/photo/`) – Fotomodus: the smartphone camera (present day only)
+
+- **N toggles** the phone (one press up, one down; the touch top row has a camera button that does
+  the same). Toggle, not hold: holding a key while aiming and walking is awkward, and on a phone
+  impossible next to the stick. Up: a phone frame (`.kq-photo`, thirds grid, status bar with the
+  afternoon clock and the signal), the lens at the eyes and a hand ahead (`CameraRig.setPhoto`,
+  boom 0 so the character hides), **1× / 2×** by wheel or chips (`CameraRig.setFovScale`: the focal
+  length doubles). **Click** (or the touch attack button, which becomes the shutter) shoots; **N,
+  Esc, right click** put it away. While up, `Input.muted` hides attack / interact / Bannlicht /
+  lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
+  with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
+  own), so no pause menu opens.
+- **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
+  (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
+  `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
+  `kq.setCamera` and the coming cinematic use).
+- **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
+  era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
+  diameter ≥ `minFrac` of the frame height, ≥ 2 of 3 sample points (top / left / right of the
+  sphere) with a clear line (terrain, footprint walls when the palace stands, `forest.trunksNear`;
+  the last 0.7 r is the subject itself), distance within `minDist`…`maxDist`, the view's mean
+  angular speed < 0.35 rad/s over the last 0.3 s (`SteadyMeter`), and `calm()` true. `needAll`
+  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
+  the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
+  clock lives in the save slice, stops at the first good shot), with `fallbackStars`. **Stars**
+  (contract C3): 0 nothing in the frame, 1 in the frame but not good, 2 good, 3 good and closer than
+  0.6 × `maxDist`. German verdicts („Perfekt!“, „Gutes Foto“, „Nicht mittig“, „Verdeckt“, „Zu weit
+  weg“, „Zu klein im Bild“, „Unscharf“, „Aufgeschreckt“, „Nicht alle im Bild“ …).
+- **Past eras:** „Kein Netz“ in the frame and as a toast, the picture comes out white, nothing is
+  judged or booked: `photo:shot { targets: [], good: [], stars: 0, noSignal: true }`.
+- **Events:** `photo:open`, `photo:close`, `photo:shot { targets, good, stars, noSignal }`, and one
+  `photo:good { id, stars }` per good target (scalar: the story waits with
+  `{ "event": "photo:good", "match": { "id": … } }`; quests count it with the objective
+  `{ "type": "photo", "target": … }`, validated against the target list).
+- **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
+  one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
+  `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without
+  `y`); npc / animal anchors stay out of the world until code attaches a live position:
+  `attachTarget(id, { at, calm })` (the animals system for the deer). `registerTarget(def)` adds a
+  whole target from code. **Placeholders** (flagged `placeholder: true`, built in `demo.ts`): the
+  plain trail board at the car park (`photo.parkplatz`, grants the flag `photo.demo.parkplatz`) and,
+  with `?debug` only, a blocky test doe and fawn at 817 / −704 bound to `reh.ricke` / `reh.kitz`.
+- **Album** (journal tab „Album“, order 70) and grants: the save slice `systems.photo` keeps one
+  entry per target (best stars, era, ISO time, play seconds), at most 60 (the oldest out), plus
+  `good` (every target ever shot well, for `has()`), `granted`, `cards`, `best` and the fallback
+  clocks; **no images**. This session's JPEG thumbnail (`notes/capture.ts` `captureView`: re-render
+  and read back, 480 px, q 0.72) shows in the card and the album; otherwise a stock card with the
+  label. Grants fire once per target: `codex` → `state.codex.facts` + `codex:unlocked { noXp: true }`
+  (progression gives no XP for it), `card` → `cards` (must be in `cards[]`), `flag` → `state.flags`.
+  Unknown ids are skipped with a dev warning. Photos give no XP.
+- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`, and
+  with `?debug` `kq.photo.deer.{spawn, calm, at}`. Tests: `tests/photo.test.ts`,
+  `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
+
 ### How to wire a chapter (story files, round 3)
 
 A chapter is one `content/story/<nn>-<id>.story.json` (schema: `content/story/README.md`, checked
