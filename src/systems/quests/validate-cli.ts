@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { LoadedPack } from '../../content/validate';
 import type { QuestFile } from '../../rpg/types';
 import { type QuestValidation, validateQuests } from './validate';
+import { loadPhotoTargets } from '../photo/validate-cli';
 
 export function loadQuestFiles(root: string): { files: { file: string; data: QuestFile }[]; parseErrors: string[] } {
   const dir = join(root, 'content/quests');
@@ -66,7 +67,7 @@ export function questRefs(packs: LoadedPack[], chapters: Set<string>, bounds?: {
 /** Validate and print; returns the result (ok = no errors). */
 export function checkQuests(root: string, packs: LoadedPack[], chapters: Set<string>, bounds?: { x0: number; z0: number; x1: number; z1: number }, verbose = false): { ok: boolean; result: QuestValidation } {
   const { files, parseErrors } = loadQuestFiles(root);
-  const result = validateQuests(files, { ...questRefs(packs, chapters, bounds), npcs: storyNpcs(root) });
+  const result = validateQuests(files, { ...questRefs(packs, chapters, bounds), npcs: storyNpcs(root), photoTargets: loadPhotoTargets(root, packs, bounds).ids });
   const line = (i: { level: string; file: string; id?: string; message: string }) => `${i.level === 'error' ? 'ERROR' : 'warn '} ${i.file}${i.id ? ` [${i.id}]` : ''}: ${i.message}`;
   for (const e of parseErrors) console.log(e);
   for (const e of result.errors) console.log(line(e));

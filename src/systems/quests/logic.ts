@@ -518,7 +518,7 @@ export class QuestBook {
 
   /**
    * A game event: count every open objective it satisfies. Returns true when something counted.
-   * (kill · collect / drop · talk · room · examine · echo · calm · use · event)
+   * (kill · collect / drop · talk · room · examine · echo · calm · use · event · photo)
    */
   handle(name: string, payload: unknown): boolean {
     const p = (payload ?? {}) as Record<string, unknown>;
@@ -592,15 +592,24 @@ export class QuestBook {
         return name === 'menagerie:calmed' && (p.animal === o.animal || p.id === o.animal) ? 1 : 0;
       case 'event':
         return !!o.event && name === o.event && matches(p, o.match) ? 1 : 0;
+      case 'photo':
+        return name === 'photo:good' && !!o.target && p.id === o.target ? 1 : 0;
       default:
         return 0;
     }
   }
 
-  /** Clues already found when an examine / echo objective opens count at once. */
-  settleKnown(found: (clue: string) => boolean): void {
+  /**
+   * Clues already found when an examine / echo objective opens count at once; so does a good photo
+   * of a `photo` objective's target taken before the objective started (`hasPhoto`: the photo
+   * system's `has()`, read from its save slice), on accept, on a newly active objective and on load.
+   */
+  settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false): void {
     for (const q of this.running())
-      for (const o of this.openObjectives(q)) if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
+      for (const o of this.openObjectives(q)) {
+        if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
+        else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
+      }
   }
 
   /**

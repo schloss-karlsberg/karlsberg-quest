@@ -36,6 +36,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./quelle'),
   // the tour group: Gerold walks the route, the group follows (WP-16, era today)
   () => import('./walk'),
+  // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
+  () => import('./photo'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
   () => import('./notes'),
 ];
