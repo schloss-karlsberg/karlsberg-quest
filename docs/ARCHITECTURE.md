@@ -21,7 +21,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/core/` | Engine core, no three.js: `events` (typed bus), `state` (serialisable GameState + store), `save` (localStorage `kq.*`), `loop` (fixed step + render pacing: `FramePacer`, `renderRate`, `frameCap`, §3), `systems` (registry), `era`, `context` (GameContext type) |
 | `src/data/` | Data types, pure decoders, loader for `public/data` |
 | `src/world/` | Terrain (chunked, LOD, shader), sky, forest (instanced), palace (glb), collision, atmosphere (shared uniforms + GLSL), era looks |
-| `src/player/` | Input (bindings, pointer lock, `simulate`, wheel), stances, Player controller, `camera.ts` (third-person spring arm `CameraRig`, `cameraHints` fight / focus / boss / `bodies`; pitch −55°…+35° and auto-levelling while walking in third person), `avatar.ts` (the rigged player character; dithered fade when the lens is close or the locked target is behind the body), `pose.ts` (`actionPose`: combat → avatar) |
+| `src/player/` | Input (bindings, pointer lock, `simulate`, wheel), stances, Player controller, `camera.ts` (third-person spring arm `CameraRig`, `cameraHints` fight / focus / boss / `bodies`; pitch −55°…+35° and auto-levelling while walking in third person; round 10: walkable-space sweep, terrain crane, rise over the shoulder, keep-in-frame tilt, indoor preset, side two-shot, lift over an enemy at the lens — see §3 „Third-person camera“), `seeThrough.ts` (the see-through uniforms for trees and props), `guards.ts` (NaN guards for the camera and avatar maths), `avatar.ts` (the rigged player character; dithered fade when the lens is close or the locked target is behind the body, never under 45 % in a fight), `pose.ts` (`actionPose`: combat → avatar) |
 | `src/render/post.ts` | Post FX: MSAA HDR target with depth texture (`setSamples(n)`), half-res SAO, bloom chain, ACES (Hill fit), white balance, split toning, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing); `setFeatures({bloom, ao, grade})` from the tier; `debug` 1 = AO / 2 = bloom buffer |
 | `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`); `every` / `ShadowReuse`: a frame may keep the last map (tier `shadowEvery` 2) while the focus moved < ¾ texel, the sun did not turn and the map is ≤ 25 ms old (never in `?manual` or a fight) |
 | `src/render/standard.ts` | `kqStandard(mat)` / `kqStandardize(root)`: imported PBR materials lit by the world (era sun + shadow, hemisphere fill, lantern, fire glow, sky IBL, `kqFog`); `EnvLight` (PMREM of the era sky, rebuilt on `world.lookVersion`) |
@@ -106,6 +106,42 @@ what systems read (openings, lit windows, point cloud, picker, the shader patche
 material); what is drawn are the same pieces merged per 48 m cell (`palace-cell:x,z`), so cells
 off screen or outside the shadow box are culled (round 9: Ehrenhof 1789 ≈ 100 → 112 fps).
 
+**Third-person camera** (`src/player/camera.ts`, `CameraRig.update` inside `player.applyCamera`;
+playtest round 10, F-03 / F-07 / F-08 / F-15 / F-21 / F-31 / F-35; tests/camera.test.ts,
+tests/camera-palace.test.ts, e2e/camera.spec.ts). Per drawn frame: the pivot (head) → the preset
+(outdoors; a fight pulls the boom back and up; **indoors** — a ceiling over the character — a
+boom ≤ 2.3 m, 0.32 m higher, 0.5 m shoulder) → the shoulder offset (shrunk by a wall at the
+shoulder and on a short boom) → the **sweep** from the shoulder back along the view in 0.25 m
+steps: `blocked` (footprints, solids and interior walls from the knee to 3.4 m over the feet, via
+the allocation-free `FootprintCollider.hits` / `PlanQuery.hits`) and `space` (`world.spaceAt`:
+−1 outdoors, a room index, −2 a door reveal / wall mass; the boom never leaves the character's
+space, so no lens through a door, the Durchfahrt or into a stair block) end it; terrain does not:
+rising ground **cranes** the boom up (the lift `max(deficit / t) · length`, ≤ 2.6 m, else the boom
+ends where it still fits) → in at once, out gently → a boom under 1.2 m **rises over the shoulder**
+(`squeezeRise`, ≤ 0.85 m) → an enemy within 1.3 m of the lens lifts it over the body (≤ 1.3 m) →
+ground / ceiling clamps → the view is the player's yaw / pitch plus a **keep-in-frame tilt**
+(`frameTilt`: the head stays between −0.5 and +0.85 of the screen height) → a conversation
+(`hints.focus`) blends to a **two-shot** from the side (`twoShot`: character left, speaker right,
+both heads above the dialogue box; the side with room, chosen when the talk starts; over the
+shoulder when neither side has room). Trunks, low spruce cones, ferns, bushes and rocks are not
+collided with: the **see-through** (`src/player/seeThrough.ts` writes `atmosphere.uSeeCam / uSeeP /
+uSeeT / uSeeK` after the avatar each frame; `SEE_GLSL` / `SEE_FRAG_GLSL` in world/atmosphere.ts,
+used by the procedural and model tree shaders per instance and by the forest props per vertex)
+screen-door dithers what stands in the cone from the lens to the character (wider in a fight),
+to the fight's locked / soft target or to the speaker (≤ 82 %), and anything pressed against the
+lens (gone); crowns above eye height stay, the shadow pass is untouched. Enemies at the lens fade
+out completely (`lensVis` in combat/visuals.ts, render only). `kq.camera.state()` reads the
+rig's last frame (distance, head, rise, crane, enemy lift, tilt, indoor, focus, spaces, see,
+fight hints). **NaN guards** (F-15, `src/player/guards.ts`): a NaN / negative dt counts as 0, a
+huge one is capped at 0.1 s; a NaN input, height, ceiling or hint never reaches the camera (the
+rig holds its last finite placement and restarts its smoothing); the avatar holds its last pose
+on a NaN position (`usablePos`), turns with `turnToward` (a NaN wish or facing never sticks),
+clamps clip times and weights with the NaN-safe `clamp01`; the staff trail never stretches across
+a teleport (`ribbonStep`); the see-through switches off on a NaN lens. The character's own fade
+(the lens at the head, the fight's target behind the body, never under 45 % in a fight) is
+`CharacterFade` in seeThrough.ts; avatar.ts only calls these hooks (it belongs to the character
+look work), so the camera rules live in `guards.ts` / `seeThrough.ts`.
+
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop and rendering follows the pacing above. `?manual` stops the real-time simulation entirely;
 only `kq.step(n)` advances it (deterministic tests).
@@ -166,7 +202,7 @@ Rules
 |---|---|
 | `renderer, scene, camera` | three.js objects |
 | `post` | `post.uniforms.uShift` (era-shift warp 0..1), `uFlash` (white flash), `uDesaturate` |
-| `player` | `position`, `yaw/pitch`, `stance`, `flying`, `stats {noise, visibility, speed, lanternLit, noiseBoost, onSlopeLimit}`, `teleport(x,z,yaw?)`, `setStance`, `setFlying`, `forward()`; camera track: `cameraMode` (`third` default / `first`), `thirdPerson` (false while flying), `eyeHeight`, `rig` (`CameraRig`: `zoom`, `distance`). The camera follows `renderPos`; `world.ceilingAt(x,z,y)` (interiors) and `forest.trunksNear` feed its collision |
+| `player` | `position`, `yaw/pitch`, `stance`, `flying`, `stats {noise, visibility, speed, lanternLit, noiseBoost, onSlopeLimit}`, `teleport(x,z,yaw?)`, `setStance`, `setFlying`, `forward()`; camera track: `cameraMode` (`third` default / `first`), `thirdPerson` (false while flying), `eyeHeight`, `rig` (`CameraRig`: `zoom`, `distance`, `debug`). The camera follows `renderPos`; `world.collider.hits` (allocation-free walls), `world.spaceAt(x,z,y)` and `world.ceilingAt(x,z,y)` (interiors) and the storey-aware `world.heightAt(x,z,y)` feed its collision; trunks are dithered, not collided (§3) |
 | `input` | actions, `simulate(code, down)`, `enabled`, pointer lock |
 | `world` | `heightAt(x,z)`, `surfaceAt` (meadow/forest/water/…), `coverAt`, `bounds()`, `heightfield` (`slopeDeg`, `normalAt`), `collider.footprintAt` / `setSolids(owner, list)` / `setPassZones(owner, list)` / `solidAt` / `keep`, `palace.setMode`, `palace.uniforms.uRuin/uChar`, `setScanMode`, `setScanArea`, `setMapMix`, `forest`, `sky` |
 | `data` | `meta`, `heights`, `ground`, `canopy`, `footprints`, `rooms` (114 room polygons), `pois`, `paths` (graph), `attribution` |
@@ -409,6 +445,11 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `e2e/quelle.spec.ts` (p3q → E at the trough → the scene on game time → shift to 1789 / p3r, held
   until `shift:done` → hold Q → p4); the prologue driver walks the same way (`touchSpring` in
   `e2e/helpers/prolog.ts`).
+- Third-person camera (`e2e/camera.spec.ts`, round 10): the F-03 slope fight (low and Mittel),
+  dodges below the hohe Stufe, a Streuner at the lens, the Küchenhof by the Nordflügel stairs with
+  the boom zoomed out, the Registratur and a talk with Soll; asserts in-frame, lens-to-head
+  distance, lens space = character space, indoor preset, two-shot; screenshots
+  `camera-<KQ_CAM_TAG>-*.png` (`before` runs it as a probe without assertions).
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
   prologue across all four systems (new game → hub → Pinnwand opens the Journal → objective →
   scan → clues → Q → shift → echo → pack → caught (nothing lost) → station → Journal codex holds
