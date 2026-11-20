@@ -14,7 +14,8 @@
  *  - Wegweiser (trail.ts + world/route.ts): chalk-blue motes along the walkable route to the goal
  *    (round wings, through the open gate) when a goal is new, the straight line is blocked, or the
  *    player seems lost.
- *  - Laufschritt: holding sprint outside fights and chases speeds up to ×1.45 after two seconds.
+ *  - Laufschritt (laufschritt.ts): holding sprint outside fights and chases speeds up to ×1.45,
+ *    starting after one second.
  *  - After being caught / knocked down: if a known point lies much closer to the goal than where
  *    you woke, a toast says so (M).
  *
@@ -34,6 +35,7 @@ import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
 import { SURVEY_POINTS, activateRadius, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
@@ -99,7 +101,6 @@ declare module '../../debug/hooks' {
   }
 }
 
-const SPRINT_BOOST = 0.45;
 const POI_BUILD = 190;
 const POI_DROP = 230;
 const GUARD_SPAWN = 48;
@@ -645,7 +646,7 @@ class Travel {
     const free = !this.inCombat && !this.packOut && !indoors && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
     if (free && moving && inp.isDown('sprint')) this.sprintT += dt;
     else this.sprintT = Math.max(0, this.sprintT - dt * 4);
-    const target = this.sprintT > 1.8 ? SPRINT_BOOST * Math.min(1, (this.sprintT - 1.8) / 1.4) : 0;
+    const target = laufschrittTarget(this.sprintT);
     this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
     if (this.sprint < 0.002) this.sprint = 0;
     if (this.sprint > 0.3 && !this.slice.tips.includes('sprint')) {

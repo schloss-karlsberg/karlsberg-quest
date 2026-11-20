@@ -1018,8 +1018,9 @@ Round-4 (polish: set dressing) integration rules:
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Built within 190 m; a
   closed cache carries a warm light column (beam shader, widens with distance) so the next one
   shows from the last; when the lid springs the column shoots up and goes out.
-- Sprint: out of a fight and a chase, after 1.8 s of sprinting the move scale grows to ×1.45
-  (multiplies combat's `moveScale`, never compounds).
+- Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
+  (1.8 s before playtest round 10) the move scale grows to ×1.45 over 1.4 s (multiplies combat's
+  `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
   set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
   cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m

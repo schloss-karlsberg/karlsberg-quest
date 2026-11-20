@@ -6,6 +6,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
+import { LAUF_DELAY, SPRINT_BOOST, laufschrittTarget } from '../src/systems/travel/laufschritt';
 import { LORE } from '../src/systems/travel/lore';
 import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceFor, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
@@ -268,5 +269,30 @@ describe('the Ehrenhof point is eingemessen at the Q spot (playtest round 10, A2
       if (p.id !== 'ehrenhof') expect(activateRadius(p), p.id).toBe(ACTIVATE_RADIUS);
       for (const q of SURVEY_POINTS) if (q !== p) expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(activateRadius(p) + activateRadius(q));
     }
+  });
+});
+
+describe('the Laufschritt ramp (playtest round 10, D1)', () => {
+  it('begins after 1.0 s of held sprint (was 1.8 s) and reaches ×1.45 by 2.4 s', () => {
+    expect(LAUF_DELAY).toBe(1.0);
+    expect(laufschrittTarget(0.99)).toBe(0);
+    expect(laufschrittTarget(1.7)).toBeCloseTo(SPRINT_BOOST * 0.5, 5);
+    expect(laufschrittTarget(2.4)).toBeCloseTo(SPRINT_BOOST, 5);
+    expect(laufschrittTarget(10)).toBe(SPRINT_BOOST);
+  });
+
+  it('with the travel system easing (×3 per s), the speed is past ×1.3 within 3 s of holding Shift', () => {
+    // the same easing as TravelSystem.sprintBoost
+    let held = 0;
+    let boost = 0;
+    let t = 0;
+    const dt = 1 / 60;
+    while (boost < 0.3 && t < 10) {
+      held += dt;
+      boost += (laufschrittTarget(held) - boost) * Math.min(1, dt * 3);
+      t += dt;
+    }
+    expect(t).toBeLessThan(3.0);
+    expect(t).toBeGreaterThan(LAUF_DELAY);
   });
 });
