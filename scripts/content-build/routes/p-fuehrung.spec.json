@@ -1,0 +1,14 @@
+{
+  "id": "p-fuehrung",
+  "note": "DRAFT (tour WP-16): the guided tour of the prologue, car park → Felsenpfad → Karlsbergweiher → Karlsbergquelle. Stops from docs/design/tour/bible/01-prolog.md (t1–t9, coordinates from tour-route-research). The story team takes ownership of this route later. Build: node scripts/content-build/routes.mjs",
+  "stops": [
+    { "id": "parkplatz", "x": 524, "z": -770, "ref": "t1/t2 Wanderparkplatz, chapter checkpoint; open car park, not on the path graph (19 m to the road)", "offGraph": true },
+    { "id": "abzweig", "x": 515, "z": -730, "ref": "t3 turn-off at the car park onto the Feldweg (OSM 29272437)" },
+    { "id": "einstieg", "x": 623.5, "z": -486, "ref": "t3 entry to the Felsenpfad" },
+    { "id": "felsen", "x": 683, "z": -596, "ref": "t4 station 2, rocks by the little wooden bridge" },
+    { "id": "wind", "x": 676, "z": -636, "ref": "t5 wind / dogs trigger after station 2: moved from the bible's 700/-640 (prüfen), which lies 24 m off the natural route and forced an out-and-back spur, to the path junction on the route" },
+    { "id": "damm", "x": 837, "z": -840, "ref": "t7 end of the Felsenpfad, west end of the dam" },
+    { "id": "weiher", "x": 898, "z": -840, "ref": "t7 station 3, benches on the north shore" },
+    { "id": "quelle", "x": 1059.3, "z": -833.1, "ref": "t9 station 4, trough stand at the Karlsbergquelle (home spawn)" }
+  ]
+}
