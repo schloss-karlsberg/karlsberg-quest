@@ -1,0 +1,11 @@
+{
+  "label": {
+    "lines": ["Karlsberg", "Urpils"],
+    "placeholder": true,
+    "note": "Owner decision 2026-11-20: the real beer label as a placeholder (text only, no logo artwork). Spelling may be corrected here by the owner. Replace or license before any public release."
+  },
+  "fallback": {
+    "lines": ["Quellwasser", "Probe"],
+    "note": "Invented replacement label (docs/IDEAS-ROUND11.md §4.3 F1). Never the word for the place on it."
+  }
+}

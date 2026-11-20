@@ -23,12 +23,17 @@
 import { BufferAttribute, BufferGeometry, CylinderGeometry, ExtrudeGeometry, IcosahedronGeometry, Matrix4, Shape, Vector2, Vector3 } from 'three';
 import type { Era } from '../../core/era';
 import { SURF } from '../../world/surfaces';
+import { clearings as bleicheClearings } from '../bleiche/layout';
 import {
   basinBase,
+  BROOK_LEN,
+  BROOK_PATHS,
+  BROOK_REF,
   brookLine,
   groundLocal,
   lookFor,
   meshGround,
+  PATH_HALF,
   PIECES,
   QUELLE,
   toLocal,
@@ -1090,22 +1095,43 @@ function infoBoard(b: SetBuilder): void {
 /** The era each look stands for (the brook's line starts at the trough or the basin). */
 const LOOK_ERA: Record<QuelleLook, Era> = { today: 'today', baroque: '1789', winter: '1793-02', fire: '1793-07', ruin: '1796' };
 
+/** The OSM footpaths by the brook as samples about every metre (world x/z). */
+function pathSamples(): [number, number][] {
+  const out: [number, number][] = [];
+  for (const p of BROOK_PATHS)
+    for (let i = 0; i + 1 < p.length; i++) {
+      const [ax, az] = p[i]!;
+      const [bx, bz] = p[i + 1]!;
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az)));
+      for (let s = 0; s <= n; s++) out.push([ax + ((bx - ax) * s) / n, az + ((bz - az) * s) / n]);
+    }
+  return out;
+}
+
 /**
- * The brook's banks: stones lining the wet bed, moss cushions, ferns on the side away from the
- * trail, stepping stones where the branch to the steps crosses it.
+ * The brook's banks, the whole drawn length (to where its bed fades out past the Bleiche): stones
+ * lining the wet bed, moss cushions, ferns on the side away from the trail (the other bank where a
+ * footpath runs on that side), stepping stones where the branch to the steps crosses it. Nothing
+ * on the trail, today's OSM footpaths or, in 1789, the Bleiche's green (its clearings).
  */
 function brookBanks(b: SetBuilder, look: QuelleLook): void {
   const k = b.kit;
   const r = rng(808);
   const line = brookLine(b.heightAt, LOOK_ERA[look]);
   const trail = TRAIL.flatMap((s) => trailLine(s, 1));
-  const onTrail = (x: number, z: number) => trail.some((p) => Math.hypot(x - p.x, z - p.z) < p.half + 0.15);
+  // the terrain draws the OSM footpaths today only
+  const paths = look === 'today' ? pathSamples() : [];
+  const green1789 = look === 'baroque' ? bleicheClearings() : [];
+  const onTrail = (x: number, z: number) =>
+    trail.some((p) => Math.hypot(x - p.x, z - p.z) < p.half + 0.15) ||
+    paths.some(([px, pz]) => Math.hypot(x - px, z - pz) < PATH_HALF) ||
+    green1789.some(([cx, cz, cr]) => Math.hypot(x - cx, z - cz) < cr);
   const prevSurf = k.surface;
   const green = look !== 'winter';
   let along = 0;
   let nextStone = 0.9;
   let nextFern = 2.5;
-  for (let i = 1; i + 1 < line.length && along < 34; i++) {
+  for (let i = 1; i + 1 < line.length && along < BROOK_LEN - 4; i++) {
     const [x, z] = line[i]!;
     along += Math.hypot(x - line[i - 1]![0], z - line[i - 1]![1]);
     const [ax, az] = line[i - 1]!;
@@ -1140,12 +1166,14 @@ function brookBanks(b: SetBuilder, look: QuelleLook): void {
       }
     }
     if (along >= nextFern && along > 2) {
-      nextFern += 3.2 + r() * 2.5;
+      // out of the ravine (past the stretch the look pass tuned) the banks open out: ferns further
+      // apart there (each CC0 clump is ~5.6k triangles)
+      nextFern += (along > BROOK_REF ? 6.5 : 3.2) + r() * 2.5;
       const off = 0.95 + r() * 0.5;
-      const px = x + nx * away * off;
-      const pz = z + nz * away * off;
-      if (!onTrail(px, pz)) {
-        const [fu, fw] = toLocal(px, pz);
+      // the side away from the trail; the other bank where a path or the green takes that one
+      const side = [away, -away].find((s) => !onTrail(x + nx * s * off, z + nz * s * off));
+      if (side !== undefined) {
+        const [fu, fw] = toLocal(x + nx * side * off, z + nz * side * off);
         fern(b, fu, fw, 0.65 + r() * 0.35, 40 + i, look === 'winter');
       }
     }

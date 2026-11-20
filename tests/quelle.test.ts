@@ -2,12 +2,16 @@
  * The Karlsbergquelle's pure layout (src/systems/quelle/layout.ts): the local frame, where the
  * water lies in each era, the jet from the pipe, who may touch the water, the brook line and the
  * clearings. Two synthetic heightfields stand in for the LiDAR: a flat plane and a slope that
- * rises ~0.5 m per m towards −w (into the hillside behind the wall), as at the real spring.
+ * rises ~0.5 m per m towards −w (into the hillside behind the wall), as at the real spring. The
+ * brook past the Bleiche is also checked on the real 2025 / 1789 terrain (its bank to the linen).
  */
 import { describe, expect, it } from 'vitest';
 import { ERAS, type Era } from '../src/core/era';
+import { PIECES as BLEICHE_PIECES, clearings as bleicheClearings, ITEMS, ropeAt, toLocal as bleicheLocal, toWorld as bleicheWorld } from '../src/systems/bleiche/layout';
 import {
+  BROOK_HALF,
   BROOK_LEN,
+  BROOK_REF,
   PIECES,
   QUELLE,
   REACH,
@@ -25,6 +29,8 @@ import {
   waterSpec,
   yawToWater,
 } from '../src/systems/quelle/layout';
+import { brookPulse } from '../src/systems/quelle/water';
+import { loadPalaceData } from './interiors-fixture';
 
 type HeightAt = (x: number, z: number) => number;
 
@@ -212,7 +218,9 @@ describe.each(FIELDS)('Karlsbergquelle water on the %s', (_name, h) => {
   it('brookLine: ~BROOK_LEN long, runs on along its way, starts at the overflow, never runs uphill much', () => {
     for (const era of ERAS) {
       const line = brookLine(h, era);
-      expect(line.length, era).toBeGreaterThan(30);
+      // a sample a metre, the whole drawn length (past the Bleiche)
+      expect(line.length, era).toBeGreaterThan(BROOK_LEN * 0.85);
+      expect(line.length, era).toBeLessThan(BROOK_LEN * 1.15);
       // the first point is the overflow at the low end of the log / basin (pinned by the smoothing)
       const want =
         lookFor(era) === 'today'
@@ -343,5 +351,90 @@ describe('Karlsbergquelle: clearings', () => {
       expect(r).toBeLessThan(10);
       expect(Math.hypot(x - QUELLE.x, z - QUELLE.z)).toBeLessThan(15);
     }
+  });
+});
+
+describe('Karlsbergbach on the real terrain: past the Bleiche', () => {
+  const { h1789, h2025 } = loadPalaceData();
+  const REAL: [Era, HeightAt][] = [
+    ['today', (x, z) => h2025.heightAt(x, z)],
+    ['1789', (x, z) => h1789.heightAt(x, z)],
+  ];
+  /** Distance from x/z to the line (segments). */
+  const dist = (line: readonly [number, number][], x: number, z: number): { d: number; i: number } => {
+    let best = { d: Infinity, i: 0 };
+    for (let i = 0; i + 1 < line.length; i++) {
+      const [ax, az] = line[i]!;
+      const [bx, bz] = line[i + 1]!;
+      const vx = bx - ax;
+      const vz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / (vx * vx + vz * vz)));
+      const d = Math.hypot(x - ax - vx * t, z - az - vz * t);
+      if (d < best.d) best = { d, i };
+    }
+    return best;
+  };
+  /** Every point of linen: along each hanging piece (10 cm steps) and the corners of the linen on the grass. */
+  const linen = (): [string, number, number][] => {
+    const out: [string, number, number][] = [];
+    ITEMS.forEach((it, i) => {
+      for (let u = it.u0; u <= it.u0 + it.width + 1e-6; u += 0.1) out.push([`${it.kind} ${i}`, ...bleicheWorld(u, ropeAt(it.line, u)!.w)]);
+    });
+    BLEICHE_PIECES.flat.forEach((f, i) => {
+      const a = (f.yaw * Math.PI) / 180;
+      for (const [su, sw] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+        const du = (su * f.lu) / 2;
+        const dw = (sw * f.lw) / 2;
+        out.push([`flat ${i}`, ...bleicheWorld(f.u + du * Math.cos(a) - dw * Math.sin(a), f.w + du * Math.sin(a) + dw * Math.cos(a))]);
+      }
+    });
+    return out;
+  };
+
+  it.each(REAL)('%s: the whole drawn length, on and on downhill, the touch untouched', (era, h) => {
+    const line = brookLine(h, era);
+    let len = 0;
+    for (let i = 1; i < line.length; i++) len += Math.hypot(line[i]![0] - line[i - 1]![0], line[i]![1] - line[i - 1]![1]);
+    expect(len).toBeGreaterThan(BROOK_LEN * 0.95);
+    expect(len).toBeLessThan(BROOK_LEN * 1.05);
+    const [x0, z0] = line[0]!;
+    let far = 0;
+    for (let i = 1; i < line.length; i++) {
+      const [ax, az] = line[i - 1]!;
+      const [bx, bz] = line[i]!;
+      const d = Math.hypot(bx - x0, bz - z0);
+      expect(d, `step ${i}`).toBeGreaterThan(far);
+      far = d;
+      expect(Math.hypot(bx - ax, bz - az), `step ${i}`).toBeGreaterThan(0.2);
+      // the LiDAR's ravine floor is a little bumpy (today up to ~11 cm at 31–34 m and 42–47 m);
+      // out on the meadow past it the brook never climbs more than a few centimetres
+      expect(h(bx, bz) - h(ax, az), `step ${i}`).toBeLessThan(i > 50 ? 0.05 : 0.15);
+    }
+    expect(h(...line[line.length - 1]!)).toBeLessThan(h(x0, z0) - 3);
+    // the wake spot at the spring still touches the water (P_SPOTS.quelle, facing it)
+    expect(canTouch(1059.3, -833.1, yawToWater(1059.3, -833.1, era), era)).toBe(true);
+  });
+
+  it.each(REAL)('%s: runs past the green, its bed ≥ 1.6 m from the beating board and the linen, out of the clearings', (era, h) => {
+    const line = brookLine(h, era);
+    const bed = (x: number, z: number) => dist(line, x, z).d - BROOK_HALF;
+    // the beating board and the linen: a bank of at least 1.6 m beyond the ribbon's edge
+    expect(bed(...bleicheWorld(BLEICHE_PIECES.board.u, BLEICHE_PIECES.board.w)), 'board').toBeGreaterThanOrEqual(1.6);
+    for (const [name, x, z] of linen()) expect(bed(x, z), name).toBeGreaterThanOrEqual(1.6);
+    // the wash corner's other pieces stand on the bank, not in the bed
+    for (const k of ['tub', 'bench', 'bucket', 'basket'] as const) expect(bed(...bleicheWorld(BLEICHE_PIECES[k].u, BLEICHE_PIECES[k].w)), k).toBeGreaterThan(0.9);
+    // the centre line keeps out of the green's clearings (trees, props, Liese's talk circle)
+    for (const [cx, cz, r] of bleicheClearings()) for (const [x, z] of line) expect(Math.hypot(x - cx, z - cz), `clearing ${cx}/${cz}`).toBeGreaterThan(r);
+    // it passes the wash corner at full strength (the last 6 m fade) and ends beyond the green
+    const atBoard = dist(line, ...bleicheWorld(BLEICHE_PIECES.board.u, BLEICHE_PIECES.board.w)).i;
+    expect(atBoard).toBeLessThan(BROOK_LEN - 6);
+    const [, wEnd] = bleicheLocal(...line[line.length - 1]!);
+    expect(wEnd).toBeLessThan(BLEICHE_PIECES.bench.w - BLEICHE_PIECES.bench.len / 2);
+  });
+
+  it('the touch pulses stretch with the drawn length (never shorter than tuned)', () => {
+    expect(brookPulse(BROOK_REF)).toBe(1);
+    expect(brookPulse(20)).toBe(1);
+    expect(brookPulse(BROOK_LEN)).toBeCloseTo(BROOK_LEN / BROOK_REF, 9);
   });
 });

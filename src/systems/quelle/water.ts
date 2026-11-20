@@ -22,7 +22,7 @@ import {
   Vector4,
 } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
-import { meshGround, type QuelleLook, type WaterSpec } from './layout';
+import { BROOK_HALF, BROOK_REF, meshGround, type QuelleLook, type WaterSpec } from './layout';
 
 /** Uniforms shared by all water pieces of the spring (one object; the system writes it). */
 export function waterUniforms() {
@@ -385,6 +385,7 @@ precision highp float;
 ${ATMOS_GLSL}
 ${COMMON}
 uniform float uLen;
+uniform float uPulse;
 uniform vec3 uBedCol;
 uniform vec3 uPebCol;
 uniform vec3 uMossCol;
@@ -441,9 +442,11 @@ void main() {
   // the wet bed round the thread: darker, glossy stones
   vec3 wetBed = lit * mix(0.55, 0.85, smoothstep(0.5, 1.0, ax / bw)) + refl * fres * 0.12 + uSunColor * spec * peb * 0.08;
   vec3 col = mix(wetBed, water, core);
-  // magic: the thread lights up, sparks and pulses of light run with the flow (and back up)
+  // magic: the thread lights up, sparks and pulses of light run with the flow (and back up); the
+  // pulse train is stretched to the drawn length (uPulse), so the pulses cross the whole brook in
+  // the time they took on the shorter brook they were tuned on and the run-back does not drag
   float caust = clamp(r1 * r2 * 2.0, 0.0, 1.0);
-  float pulse = pow(0.5 + 0.5 * sin(along * 1.3 - f * 3.2), 6.0);
+  float pulse = pow(0.5 + 0.5 * sin(along * 1.3 / uPulse - f * 3.2), 6.0);
   vec3 magic = vec3(0.35, 0.8, 1.0) * (0.3 + 0.7 * caust) + vec3(1.0, 0.82, 0.45) * pow(caust, 5.0) * 2.0;
   col += magic * (uMagic * (core * 0.9 + bed * (0.04 + 0.28 * pulse)) + uGuide * 0.1 * core);
   // ice in the winter night, leaves in 1796
@@ -454,6 +457,14 @@ void main() {
   gl_FragColor = vec4(kqFog(col, vWp), aBed * mix(0.82, 0.96, core));
 }
 `;
+
+/**
+ * How far the touch scene's light pulses on the brook are stretched for a drawn length of `len` m
+ * (spacing and speed both, so a pulse crosses the whole brook in the same time; never shorter).
+ */
+export function brookPulse(len: number): number {
+  return Math.max(1, len / BROOK_REF);
+}
 
 /**
  * The Karlsbergbach: a wet bed with a thread of water along `line` (world xz), draped on the
@@ -471,18 +482,18 @@ export function brookMesh(line: readonly [number, number][], heightAt: (x: numbe
     const n = Math.max(1, Math.ceil(len / 0.4));
     for (let s = 0; s < n; s++) {
       const t = s / n;
-      pts.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, half: 0.62 + Math.min(1, (along + len * t) / 16) * 0.3 });
+      pts.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, half: BROOK_HALF - 0.3 + Math.min(1, (along + len * t) / 16) * 0.3 });
     }
     along += len;
   }
   const [lx, lz] = line[line.length - 1]!;
-  pts.push({ x: lx, z: lz, half: 0.92 });
+  pts.push({ x: lx, z: lz, half: BROOK_HALF });
   const out = { pos: [] as number[], nor: [] as number[], rib: [] as number[], idx: [] as number[] };
   const len = ribbon(out, pts, heightAt, [-1, -0.7, -0.45, -0.22, 0, 0.22, 0.45, 0.7, 1], (f) => 0.025 + (1 - Math.abs(f)) * 0.01);
   const m = new ShaderMaterial({
     vertexShader: RIBBON_VERT,
     fragmentShader: BROOK_FRAG,
-    uniforms: { ...atmosphere, ...u, uLen: { value: len } },
+    uniforms: { ...atmosphere, ...u, uLen: { value: len }, uPulse: { value: brookPulse(len) } },
     transparent: true,
     depthWrite: false,
     side: DoubleSide,
@@ -672,10 +683,10 @@ export interface Motes {
   flow(path: readonly Vector3[], offset: number): void;
 }
 
-/** ~36 motes over the water and ~24 along the brook. */
+/** ~36 motes over the water and ~24 along every 46 m of the brook (`path`: about a point per metre). */
 export function motes(center: Vector3, path: readonly Vector3[], u: WaterUniforms): Motes {
   const nWater = 36;
-  const nBrook = 24;
+  const nBrook = Math.round(24 * brookPulse(path.length));
   const n = nWater + nBrook;
   const aMote = new Float32Array(n * 4);
   const aPath = new Float32Array(n * 3);

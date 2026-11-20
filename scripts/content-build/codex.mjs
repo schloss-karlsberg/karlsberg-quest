@@ -143,6 +143,11 @@ const facts = [
   f('cx.42', 'Das Wasser erinnert sich', 'FIKTION', 'D',
     'Erfunden: dass das Wasser der Karlsbergquelle sich erinnert und dass, wer es berührt, in ein anderes Jahr gerät. Erfunden ist, dass ein Tropfen davon in der Bussole den Weg in andere Jahre offen hält, bis er über Nacht eintrocknet. Erfunden ist auch die barocke Brunnenstube mit Steinbecken und Bronzespeier, die das Spiel für 1789 bis 1796 an die Quelle stellt: Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert.',
     []),
+  // cx.43–46 are kept for the 1789 disguise opening (docs/IDEAS-ROUND11.md §2.8); cx.47 is the
+  // Fläschchen card, unlocked by finding all 24 (src/systems/flaschen). No label text in it.
+  f('cx.47', 'Treibgut', 'FIKTION', 'D',
+    'Erfunden: Seit Sie die Quelle berührt haben, spült sie kleine Fläschchen an Orte, wo jemand gern war, in jedes Jahr, auch in Jahre, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig haben Sie aufgelesen. Der Wald ist kein Keller.',
+    []),
 ];
 
 // ---- Reliefmuster (Handbuch des Forstamts): facts tagged 'reliefmuster'

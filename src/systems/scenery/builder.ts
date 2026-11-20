@@ -54,19 +54,23 @@ export class SetBuilder {
   /**
    * @param detailed place CC0 prop models (`model()`); false (low tier, tests) builds the
    *   procedural fallbacks into the kit instead.
+   * @param high also place the costly models marked `high` (high tier); false builds their
+   *   fallbacks on medium too.
    */
   constructor(
     readonly heightAt: (x: number, z: number) => number,
     readonly detailed = false,
+    readonly high = false,
   ) {}
 
   /**
    * A CC0 prop model at the kit's current frame (set by `at()` / `kit.place()`), offset by x/y/z
-   * and yawed (radians) / scaled in that frame. Without `detailed`, `fallback` builds the old
-   * procedural prop into the kit at the same frame instead.
+   * and yawed (radians) / scaled in that frame. Without `detailed` (or, for a model marked `high`,
+   * without `high`), `fallback` builds the old procedural prop into the kit at the same frame
+   * instead.
    */
-  model(id: string, fallback?: () => void, o: { x?: number; y?: number; z?: number; yaw?: number; scale?: number; tiltX?: number; tiltZ?: number } = {}): this {
-    if (!this.detailed) {
+  model(id: string, fallback?: () => void, o: { x?: number; y?: number; z?: number; yaw?: number; scale?: number; tiltX?: number; tiltZ?: number; high?: boolean } = {}): this {
+    if (!this.detailed || (o.high && !this.high)) {
       fallback?.();
       return this;
     }
