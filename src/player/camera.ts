@@ -28,6 +28,11 @@ import { finiteOr, safeDt } from './guards';
  *
  * First person (`mode = 'first'`, settings „Kamera“) and the spirit view keep the old eye camera.
  * Pure maths over a small world interface (tests/camera.test.ts).
+ *
+ * **Photo mode** (src/systems/photo, additive; nothing changes while it is off): `setPhoto(true)`
+ * puts the lens where the phone is held, at the eyes and a hand ahead of the face (`PHOTO_AHEAD`),
+ * and hides the character (boom 0); `setFovScale(k)` narrows the field of view k-fold (the phone's
+ * 2× zoom: the focal length doubles), eased unless reduced motion. Tests: tests/camera-photo.test.ts.
  */
 export type CameraMode = 'third' | 'first';
 
@@ -104,6 +109,9 @@ const INDOOR_SHOULDER = 0.5;
 export const ENEMY_CLEAR = 1.3;
 /** Sweep step along the boom (m): thinner than twice the probe radius, so no wall slips through. */
 const STEP = 0.25;
+/** Photo mode: the phone a hand ahead of the eyes (m, horizontal) and a little below them. */
+export const PHOTO_AHEAD = 0.32;
+export const PHOTO_DROP = 0.06;
 
 const _f = new Vector3();
 const _r = new Vector3();
@@ -259,10 +267,96 @@ export class CameraRig {
   private goodYaw = 0;
   private goodPitch = 0;
   private goodInit = false;
+  /** Photo mode (src/systems/photo): the lens at the phone, the character hidden. */
+  private photo = false;
+  /** Wanted and current field-of-view narrowing (1 = the settings' fov, 2 = the phone's 2×). */
+  private fovWant = 1;
+  private fovK = 1;
+  /** The fov the settings set (read back whenever someone else wrote camera.fov) and the one we set. */
+  private fovBase = 0;
+  private fovSet = -1;
+
+  /** Photo mode on / off (src/systems/photo). Off restores the boom from scratch. */
+  setPhoto(on: boolean): void {
+    if (on === this.photo) return;
+    this.photo = on;
+    this.pivotInit = false;
+  }
+
+  get photoMode(): boolean {
+    return this.photo;
+  }
+
+  /** Narrow the field of view k-fold (≥ 1; photo zoom). 1 = the settings' fov. */
+  setFovScale(k: number): void {
+    this.fovWant = Number.isFinite(k) ? Math.max(1, Math.min(4, k)) : 1;
+  }
+
+  get fovScale(): number {
+    return this.fovK;
+  }
+
+  /** The narrowing asked for (setFovScale), before easing. */
+  get fovWanted(): number {
+    return this.fovWant;
+  }
+
+  /** Apply the fov narrowing (only while one is wanted or still easing back). */
+  private applyFov(camera: PerspectiveCamera, dt: number, instant: boolean): void {
+    if (this.fovWant === 1 && this.fovK === 1 && this.fovSet < 0) return;
+    // somebody else (the settings) wrote the fov: that is the new base
+    if (camera.fov !== this.fovSet) this.fovBase = camera.fov;
+    this.fovK = instant ? this.fovWant : this.fovK + (this.fovWant - this.fovK) * Math.min(1, dt * 12);
+    if (Math.abs(this.fovK - this.fovWant) < 0.002) this.fovK = this.fovWant;
+    const base = this.fovBase || 70;
+    const fov = this.fovK === 1 ? base : (2 * Math.atan(Math.tan((base * Math.PI) / 360) / this.fovK) * 180) / Math.PI;
+    if (camera.fov !== fov) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+    // back at the base: hand the fov back to the settings
+    this.fovSet = this.fovK === 1 && this.fovWant === 1 ? -1 : camera.fov;
+  }
+
+  /** Photo mode: the lens at the phone (eyes, a hand ahead), looking along the player's view. */
+  private placePhoto(camera: PerspectiveCamera, o: RigInput, world: CameraWorld): void {
+    const fx = -Math.sin(o.yaw);
+    const fz = -Math.cos(o.yaw);
+    let x = o.x + fx * PHOTO_AHEAD;
+    let z = o.z + fz * PHOTO_AHEAD;
+    // a wall right in front of the face: the phone stays at the eyes
+    if (world.blocked(x, z, 0.08)) {
+      x = o.x;
+      z = o.z;
+    }
+    let y = o.y + Math.max(0.5, o.eye - PHOTO_DROP);
+    y = Math.max(y, world.heightAt(x, z, o.y) + CLEAR);
+    if (!Number.isFinite(x + y + z)) {
+      this.fallBack(camera);
+      return;
+    }
+    camera.position.set(x, y, z);
+    camera.rotation.set(o.pitch, o.yaw, 0, 'YXZ');
+    this.distance = 0;
+    this.pivotInit = false;
+    this.focusMix = 0;
+    this.shotInit = false;
+    this.good.copy(camera.position);
+    this.goodYaw = o.yaw;
+    this.goodPitch = o.pitch;
+    this.goodInit = true;
+    this.debug.distance = 0;
+    this.debug.head = 0;
+  }
 
   /** Wheel notches → zoom. */
   addZoom(notches: number): void {
     if (!notches || !Number.isFinite(notches)) return;
+    // photo mode: the wheel is the phone's 1× / 2× (away from you = 2×); the boom keeps its length
+    if (this.photo) {
+      this.setFovScale(notches < 0 ? 2 : 1);
+      return;
+    }
     this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.zoom * Math.pow(1.12, notches)));
   }
 
@@ -314,6 +408,11 @@ export class CameraRig {
     // a broken input (NaN feet or look): hold the last good camera rather than pass it on (F-15)
     if (!Number.isFinite(o.x + o.y + o.z + o.yaw + o.pitch + o.eye)) {
       this.fallBack(camera);
+      return third;
+    }
+    this.applyFov(camera, dt, o.reducedMotion);
+    if (this.photo && !o.flying) {
+      this.placePhoto(camera, o, world);
       return third;
     }
     camera.rotation.set(o.pitch, o.yaw, 0, 'YXZ');
