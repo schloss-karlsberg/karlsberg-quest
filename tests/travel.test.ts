@@ -12,6 +12,7 @@ import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois 
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
 import { findRoute, lineFree, pathLength } from '../src/world/route';
+import { loadWorldData } from './world-data';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
 const collider = new FootprintCollider(footprints.map((f) => f.ring as Ring));
@@ -201,5 +202,42 @@ describe('the Wegweiser straight-line check (playtest round 10, F-10)', () => {
   it('in the past everything that stops the player counts', () => {
     expect(wayLineBlocked(false, { x: 0, z: 0 }, { x: 0, z: 10 }, blocked, water)).toBe(true);
     expect(wayLineBlocked(false, { x: 20, z: 0 }, { x: 20, z: 30 }, blocked, water)).toBe(false);
+  });
+});
+
+describe('the Weiher walk on real terrain (playtest round 10, F-10)', () => {
+  const w = loadWorldData();
+  // the runtime filter of the travel system (src/systems/travel/index.ts constructor)
+  const runtimeBlocked = (x: number, z: number) => w.footprints.footprintAt(x, z) >= 0 || w.h1789.slopeDeg(x, z) > 26 || w.water(x, z);
+  const live = generatePois(ROUTES, { blocked: runtimeBlocked });
+  const nearPath = (x: number, z: number, r: number) => {
+    for (let dz = -r; dz <= r; dz += 1) for (let dx = -r; dx <= r; dx += 1) if (Math.hypot(dx, dz) <= r && w.pathAt(x + dx, z + dz) > 0.3) return true;
+    return false;
+  };
+
+  it('every p-hang POI survives the terrain filter (p-hang.1 stands on the shore, not in the Weiher)', () => {
+    const hang = live.filter((p) => p.id.startsWith('poi.p-hang.')).map((p) => p.id);
+    expect(hang).toEqual(['poi.p-hang.1', 'poi.p-hang.2', 'poi.p-hang.3', 'poi.p-hang.4']);
+    for (const p of live) expect(w.water(p.x, p.z), p.id).toBe(false);
+  });
+
+  it('p-weiher puts POIs on the walk round the shore, one beside the Waldweg', () => {
+    const weiher = live.filter((p) => p.id.startsWith('poi.p-weiher.'));
+    expect(weiher.length).toBeGreaterThanOrEqual(2);
+    for (const p of weiher) {
+      expect(p.era).toBe('today');
+      expect(p.chapter).toBe('prolog');
+      for (const q of live) if (q !== p && q.era === p.era) expect(Math.hypot(p.x - q.x, p.z - q.z), `${p.id} vs ${q.id}`).toBeGreaterThan(POI_SPACING * 0.5);
+    }
+    expect(weiher.some((p) => nearPath(p.x, p.z, 20)), 'a POI within 20 m of the OSM path').toBe(true);
+    // the route itself follows the path: its shore points lie on path cells
+    const route = ROUTES.find((r) => r.id === 'p-weiher')!;
+    for (const [x, z] of route.pts.slice(0, 6)) expect(nearPath(x, z, 4), `${x}/${z}`).toBe(true);
+  });
+
+  it('adding p-weiher (last in ROUTES) leaves every saved POI id where it was', () => {
+    expect(ROUTES[ROUTES.length - 1]!.id).toBe('p-weiher');
+    const before = generatePois(ROUTES.filter((r) => r.id !== 'p-weiher'), { blocked: runtimeBlocked });
+    expect(live.filter((p) => !p.id.startsWith('poi.p-weiher.'))).toEqual(before);
   });
 });

@@ -17,6 +17,10 @@ export interface Route {
   chapter: 'prolog' | 'k1' | 'k2' | 'k3' | 'k4';
   era: PoiEra;
   pts: readonly (readonly [number, number])[];
+  /** Arc length (m) of the first POI (default: 0.6 × the spacing). */
+  start?: number;
+  /** Least distance (m) to the POIs of the same era (default: 0.55 × the spacing). */
+  gap?: number;
 }
 
 export interface Poi {
@@ -59,6 +63,12 @@ export const ROUTES: readonly Route[] = [
   { id: 'k4-west', chapter: 'k4', era: '1796', pts: [[470, -905], [380, -905], [300, -903], [220, -903]] },
   { id: 'k4-hinauf', chapter: 'k4', era: '1796', pts: [[530, -910], [650, -930], [800, -960], [1000, -1000], [1130, -1060], [1200, -1100]] },
   { id: 'k4-standpunkt', chapter: 'k4', era: '1796', pts: [[1260, -1240], [1300, -1320], [1340, -1400], [1386, -1460]] },
+  // prologue (today), playtest round 10 (F-10): the Waldweg round the Weiher's north shore (OSM
+  // walk graph, public/data/paths.json) from the Damm to where it turns south for the spring, then
+  // up the slope to the hohe Stufe. LAST in the list on purpose: POIs are generated route by route
+  // and share the per-era spacing and Fundstück pools, so a route added earlier would move or
+  // re-kind the POIs of the routes after it, and their ids (`poi.<route>.<n>`) sit in saves.
+  { id: 'p-weiher', chapter: 'prolog', era: 'today', pts: [[816, -896], [830, -909], [861, -908], [898, -908], [938, -909], [963, -901], [1010, -912], [1080, -935], [1160, -950], [1225, -968]], start: 110, gap: 62 },
 ];
 
 /** Places the story and the quests use (anchors, NPCs, clues, objectives): POIs keep clear of them. */
@@ -156,16 +166,16 @@ export function generatePois(routes: readonly Route[] = ROUTES, opts: PoiOptions
     list.push(l.id);
     loreLeft.set(l.era, list);
   }
-  const clear = (x: number, z: number, era: PoiEra): boolean => {
+  const clear = (x: number, z: number, era: PoiEra, gap = spacing * 0.55): boolean => {
     for (const [kx, kz] of KEEP_CLEAR) if (Math.hypot(kx - x, kz - z) < KEEP_CLEAR_R) return false;
-    for (const p of out) if (p.era === era && Math.hypot(p.x - x, p.z - z) < spacing * 0.55) return false;
+    for (const p of out) if (p.era === era && Math.hypot(p.x - x, p.z - z) < gap) return false;
     return !opts.blocked?.(x, z);
   };
   for (const route of routes) {
     const r = rand(hash(route.id));
     const L = routeLength(route.pts);
     let n = 0;
-    for (let s = spacing * 0.6; s < L - 25; s += spacing) {
+    for (let s = route.start ?? spacing * 0.6; s < L - 25; s += spacing) {
       const a = along(route.pts, s);
       if (!a) break;
       const side = n % 2 ? 1 : -1;
@@ -175,7 +185,7 @@ export function generatePois(routes: readonly Route[] = ROUTES, opts: PoiOptions
         // normal to the route: (−uz, ux)
         const x = Math.round((a.x - a.uz * o) * 10) / 10;
         const z = Math.round((a.z + a.ux * o) * 10) / 10;
-        if (clear(x, z, route.era)) {
+        if (clear(x, z, route.era, route.gap)) {
           spot = [x, z];
           break;
         }
