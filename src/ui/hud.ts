@@ -30,6 +30,9 @@ export class Hud {
   private readonly stanceEl: HTMLElement;
   private readonly toastsEl: HTMLElement;
   private readonly clickEl: HTMLElement;
+  /** "⏸ Bullet-Time" chip while the simulation only advances by `kq.step` / `kq.pilot` (?manual). */
+  private readonly bulletEl = h('div.kq-bullet-time.kq-hidden', { 'data-testid': 'bullet-time', title: 'Bullet-Time: das Spiel läuft nur über kq.pilot / kq.step weiter' }, '⏸ Bullet-Time');
+  private bulletTime = false;
   /** The world waymark over the tracked objective (./waymark.ts; the quests system drives it). */
   readonly waymark = new Waymark();
   /** Top-left column: era label, status, then feature lines (room, objective, gauges) — never overlapping. */
@@ -210,6 +213,7 @@ export class Hud {
       this.stanceEl,
       this.toastsEl,
       this.clickEl,
+      this.bulletEl,
     ]);
   }
 
@@ -408,6 +412,14 @@ export class Hud {
   }
 
   showClickToPlay(on: boolean): void {
-    this.clickEl.classList.toggle('kq-hidden', !on);
+    // in bullet time the pilot looks without pointer lock: no "click into the picture" chip
+    this.clickEl.classList.toggle('kq-hidden', !on || this.bulletTime);
+  }
+
+  /** Show the bullet-time chip (?manual / `kq.pilot.bulletTime()`); it takes the pointer-lock chip's place. */
+  setBulletTime(on: boolean): void {
+    this.bulletTime = on;
+    this.bulletEl.classList.toggle('kq-hidden', !on);
+    if (on) this.clickEl.classList.add('kq-hidden');
   }
 }

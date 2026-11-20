@@ -290,12 +290,18 @@ export class Input {
     this.pressedCodes.clear();
   }
 
-  /** Simulate input (tests, debug hooks). */
-  simulate(code: string, down: boolean): void {
+  /** Simulate input (tests, debug hooks). `edge: false` holds a key down without a new press (pilot holds). */
+  simulate(code: string, down: boolean, edge = true): void {
     if (down) {
-      this.pressedCodes.add(code);
+      if (edge) this.pressedCodes.add(code);
       this.down.add(code);
     } else this.down.delete(code);
+  }
+
+  /** Inject mouse-look movement (pixels) as if it came from `movementX/Y` under pointer lock (bullet-time pilot). */
+  addLook(dx: number, dy: number): void {
+    this.mdx += dx;
+    this.mdy += dy;
   }
 
   dispose(): void {

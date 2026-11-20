@@ -8,6 +8,7 @@ import type { ScanMode } from '../world/world';
 import { type BenchOptions, type BenchResult, runBench } from './bench';
 import { DebugPanel } from './panel';
 import { PerfHud } from './perfHud';
+import { type PilotApi, installPilot } from './pilot';
 
 /** Test/debug API on `window.kq` (always installed; the stats panel only with ?debug). */
 export interface KqHooks {
@@ -37,6 +38,8 @@ export interface KqHooks {
   perfHud(on?: boolean): boolean;
   /** Switch the polish round's render optimisations off (bench "before" numbers). */
   baseline(): void;
+  /** Bullet-time play: act / observe / choose (src/debug/pilot.ts, docs/ARCHITECTURE.md). */
+  pilot: PilotApi;
 }
 
 /** Further baseline switches registered by optimised modules (see `baseline()`). */
@@ -133,6 +136,7 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       ctx.world.forest.invalidate();
       for (const fn of baselineHooks) fn(ctx);
     },
+    pilot: installPilot(ctx),
   };
   window.kq = hooks;
   if (ctx.debug) new DebugPanel(ctx, info.frames);
