@@ -645,7 +645,7 @@ class QuestRuntime {
       clue: (id) => {
         const c = ctx.content.clues.get(id);
         if (!c) return null;
-        return { x: c.where.x, z: c.where.z, r: c.where.radius, eras: Array.isArray(c.where.era) ? c.where.era : [c.where.era], scan: c.requires?.scanMode };
+        return { x: c.where.x, z: c.where.z, r: c.where.radius, eras: Array.isArray(c.where.era) ? c.where.era : [c.where.era], scan: c.requires?.scanMode, anchor: c.where.anchor };
       },
       npc: (id) => this.npcPlaced(id),
       pickups: (quest, obj) => {

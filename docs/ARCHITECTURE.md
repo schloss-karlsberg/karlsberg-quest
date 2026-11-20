@@ -1027,27 +1027,37 @@ Round-4 (polish: set dressing) integration rules:
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
-- Survey points (`points.ts`, 11): glowing tripods (`visuals.ts`, beam shader that fades near the
-  camera, widens with distance so a found beam stays a landmark). Walking within 7 m measures one
+- Survey points (`points.ts`, 12): glowing tripods (`visuals.ts`, beam shader that fades near the
+  camera, widens with distance so a found beam stays a landmark). Walking within 7 m (the Ehrenhof:
+  16 m, `activateRadius`, so both Q spots lie inside) measures one
   in (chime, burst ring + flash — gentler with `reducedFlash` — banner card, autosave). The field
   station is known from the start. `travelBlock`: no travel while busy (modal / story pause), in a
   fight, while hunted (chasing / searching), in a locked chapter phase or, in the past, while a
-  story threat is active. Story objectives far away (> 600 m) whose goal lies within 140 m of a
+  story threat is active. Story objectives far away (> 400 m, `ANNOUNCE_MIN`; 600 m before playtest round 10) whose goal lies within 140 m of a
   known point get one Laub line "Drücken Sie M …".
+  The Karlsbergquelle tripod (round 10, 1072/−825) stands on the bench east of the spring, 14.7 m
+  from the trough's water: its 7 m circle never reaches the touch reach (`quelle/layout.ts`
+  `REACH`) nor the story's 5 m step zone; travel has no E prompt of its own, and its card closes on
+  E only while nothing else owns E (`cardMayTakeE`: `e.owner`, `npc.near`).
 - Map (`map.ts`): M (no modal open) or the Journal tab "Karte" — the 1836–41 sheet with inked
   footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
   (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
   goal, `travel:arrived`, autosave (synchronous under `?manual`).
-- Route POIs (`pois.ts`, deterministic): along 17 chapter routes every ~120 m a cache (2–4 era
+- Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Journal tab "Funde") or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
-  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Built within 190 m; a
+  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
+  sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
+  are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
+  the Weiher's north-shore Waldweg to the hohe Stufe with its own `start` / `gap` (62 m) to fit
+  between the `p-hang` POIs; tests check this on real terrain (`tests/world-data.ts`). Built within 190 m; a
   closed cache carries a warm light column (beam shader, widens with distance) so the next one
   shows from the last; when the lid springs the column shoots up and goes out.
-- Sprint: out of a fight and a chase, after 1.8 s of sprinting the move scale grows to ×1.45
-  (multiplies combat's `moveScale`, never compounds).
+- Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
+  (1.8 s before playtest round 10) the move scale grows to ×1.45 over 1.4 s (multiplies combat's
+  `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
   set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
   cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m
@@ -1059,6 +1069,14 @@ Round-4 (polish: set dressing) integration rules:
   doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
+  Present day (playtest round 10): the straight-line check counts only water (`wayLineBlocked`
+  in `points.ts`; trunks and ruins would fire it every few steps, the Weiher must), and the A*
+  takes a ground cost (`RouteOptions.cost` / `minCost`): OSM path cells (`World.pathAt`, the
+  raster from `rasters.ts` `buildPathRaster`) cost `PATH_COST` 0.6, the heuristic is scaled by it
+  and the string pulling keeps a shortcut only if it is no dearer, so the motes follow the
+  Waldweg round the Weiher's north shore. A free straight line still skips the search; the lake
+  case costs ~10–25 ms per route (~9 000 cells; tests/travel.test.ts logs it; e2e
+  `e2e/travel-paths.spec.ts`).
 - After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
@@ -1257,7 +1275,8 @@ Each RPG track adds its own subsection here when it fills its system in.
 - `beacons.ts`: soft volumetric beam (view-angle edges, sparks) + pulsing ground ring over open
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
-  objective type, clue places from the content packs), `hintFor` / `storyHint`, `StallWatch`
+  objective type, clue places from the content packs; none for a clue with `anchor: "portable"`,
+  the tablet's nominal spot is no place: playtest round 10, F-25), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
   quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
   a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the

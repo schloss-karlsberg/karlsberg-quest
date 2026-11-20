@@ -8,6 +8,7 @@
  * anchor where there is one (a traveller lands where Q works), ≥ 4 m from anchor centres and NPC
  * places, inside the terrain.
  */
+import { lineFree } from '../../world/route';
 
 export interface SurveyPoint {
   id: string;
@@ -19,11 +20,13 @@ export interface SurveyPoint {
   note: string;
   /** Known from the start (the field station). */
   known?: boolean;
+  /** Activation radius (m) when it is not ACTIVATE_RADIUS. */
+  r?: number;
 }
 
 export const SURVEY_POINTS: readonly SurveyPoint[] = [
   { id: 'feldstation', name: 'Feldstation', x: 776, z: -902, note: 'Marlenes Tisch, die Bussole, der Heimweg', known: true },
-  { id: 'ehrenhof', name: 'Ehrenhof', x: 1230, z: -1127, note: 'Der Hof vor dem Corps de logis. Hier geht es hinüber' },
+  { id: 'ehrenhof', name: 'Ehrenhof', x: 1230, z: -1127, note: 'Der Hof vor dem Corps de logis. Hier geht es hinüber', r: 16 },
   { id: 'galerie', name: 'Galerie, Ostende', x: 1300, z: -1192, note: 'Bauplatz, Hanne, der Garten hinter dem Schloss' },
   { id: 'orangerie', name: 'Orangerie', x: 1322, z: -906, note: 'Mannlichs Fenster, der Ladehof' },
   { id: 'zwinger', name: 'Zwinger', x: 1158, z: -1561, note: 'Die Hundeställe, Josts Platz' },
@@ -33,6 +36,11 @@ export const SURVEY_POINTS: readonly SurveyPoint[] = [
   { id: 'karlslust', name: 'Karlslust', x: 1831, z: 79, note: 'Die Terrasse, das Rund, die Menagerie' },
   { id: 'taleingang', name: 'Taleingang', x: 509, z: -893, note: 'Das Baumagazin, die Wachhäuser, der Steinbruch' },
   { id: 'westblick', name: 'Westblick', x: 214, z: -899, note: 'Der Waldrand. Im Westen die Hohenburg' },
+  // playtest round 10 (A4): on the small bench east of the Karlsbergquelle, 5 m off the path,
+  // 14.7 m from the trough's water. Its 7 m circle never reaches the trough's E zone
+  // (quelle/layout.ts REACH) nor the story's 5 m step zone at the spring, so the tripod's card can
+  // never be up because you stand at the trough. Last in the list: the index seeds the tripod look.
+  { id: 'karlsbergquelle', name: 'Karlsbergquelle', x: 1072, z: -825, note: 'Der Trog im Hang, der Bach, der Weg hinauf zum Schloss' },
 ];
 
 export function pointById(id: string): SurveyPoint | undefined {
@@ -41,6 +49,25 @@ export function pointById(id: string): SurveyPoint | undefined {
 
 /** Within this distance a tripod is eingemessen (m). */
 export const ACTIVATE_RADIUS = 7;
+
+/**
+ * A point's own activation radius. The Ehrenhof tripod stands 11 m from the Ehrenhof time anchor
+ * (1222, -1119) and 15 m from the prologue's "Q in der Mitte des Ehrenhofs" spot (1218, -1118).
+ * With 7 m a player who walked straight to the compass rose never got it (playtest round 10: K1
+ * started with a 470 m walk from the Feldstation), so it takes 16 m and both Q spots lie inside.
+ */
+export function activateRadius(p: SurveyPoint): number {
+  return p.r ?? ACTIVATE_RADIUS;
+}
+
+/**
+ * May the travel card take E (close on E)? Not while something else owns E: the spring's
+ * "Wasser berühren" (`e.owner` = quelle), a door or gate, an NPC in talk range (`npc.near`).
+ * Otherwise one E press at the Karlsbergquelle would both close the card and touch the water.
+ */
+export function cardMayTakeE(flags: Readonly<Record<string, unknown>>): boolean {
+  return !flags['e.owner'] && !flags['npc.near'];
+}
 
 /**
  * Points that count as known: walked up to (`activated`) or pre-surveyed (`known`, e.g. the field
@@ -96,11 +123,34 @@ export function travelBlock(w: TravelWorld): TravelBlock {
  * then known without the walk (so a chapter never starts with a 1.8 km march). Returns the point to
  * announce, or null.
  */
+/**
+ * How far away (m) a goal must be before Laub announces the point beside it. 600 until playtest
+ * round 10: the Feldstation → Ehrenhof leg (~500 m) then never qualified.
+ */
+export const ANNOUNCE_MIN = 400;
+
 export function announceFor(goal: { x: number; z: number } | null, player: { x: number; z: number }, known: readonly string[]): SurveyPoint | null {
   if (!goal) return null;
-  if (Math.hypot(goal.x - player.x, goal.z - player.z) < 600) return null;
+  if (Math.hypot(goal.x - player.x, goal.z - player.z) < ANNOUNCE_MIN) return null;
   const near = nearestPoint(goal.x, goal.z, SURVEY_POINTS);
   if (!near || near.d > 140) return null;
   if (near.point.known || known.includes(near.point.id)) return null;
   return near.point;
+}
+
+/**
+ * The Wegweiser's "straight line blocked" check (the compass "Weg" marker and the motes). In the
+ * past it counts everything that stops the player (walls, wings, set dressing, water). In the
+ * present day (`palace === 'hidden'`) only water counts: the forest's trunks and the ruins' stones
+ * would fire it every few steps, but the lake must (playtest round 10, F-10: the Wegweiser never
+ * showed the way round the Weiher today).
+ */
+export function wayLineBlocked(
+  palaceHidden: boolean,
+  from: { x: number; z: number },
+  to: { x: number; z: number },
+  blocked: (x: number, z: number) => boolean,
+  water: (x: number, z: number) => boolean,
+): boolean {
+  return !lineFree(from.x, from.z, to.x, to.z, palaceHidden ? water : blocked, 0.5);
 }
