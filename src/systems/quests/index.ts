@@ -319,6 +319,12 @@ class QuestRuntime {
     }
   }
 
+  /** A good photo of this target exists (the photo system's save slice `systems.photo.good`). */
+  private hasPhoto(id: string): boolean {
+    const p = (this.ctx.state.state.systems as Record<string, unknown>).photo as { good?: unknown } | undefined;
+    return Array.isArray(p?.good) && p.good.includes(id);
+  }
+
   slice(): QuestSlice {
     return normaliseSlice(this.ctx.state.slice('quests', createQuestSlice));
   }
@@ -328,7 +334,7 @@ class QuestRuntime {
     this.book.slice = this.slice();
     this.book.mirror();
     this.book.reassert();
-    this.book.settleKnown((c) => this.ctx.state.state.inventory.clues.includes(c));
+    this.book.settleKnown((c) => this.ctx.state.state.inventory.clues.includes(c), (id) => this.hasPhoto(id));
     this.sentTopics.clear();
     this.sentMarks.clear();
     for (const npc of [...this.following]) this.ctx.events.emit('npc:follow', { npc, follow: false });
@@ -514,9 +520,9 @@ class QuestRuntime {
     const p = ctx.player.position;
     const room = String(ctx.state.state.flags['interior.room'] ?? '');
     if (this.settle) {
-      // examine / echo objectives that open after their clue was found count at once
+      // examine / echo / photo objectives that open after their clue was found (photo taken) count at once
       this.settle = false;
-      this.book.settleKnown((c) => ctx.state.state.inventory.clues.includes(c));
+      this.book.settleKnown((c) => ctx.state.state.inventory.clues.includes(c), (id) => this.hasPhoto(id));
     }
     this.book.tick(dt, { x: p.x, z: p.z, era: ctx.era.current, room }, (npc) => this.npcDistance(npc));
     this.book.chapter = this.chapter();

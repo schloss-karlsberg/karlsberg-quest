@@ -1219,7 +1219,8 @@ Round-4 (polish: set dressing) integration rules:
   angular speed < 0.35 rad/s over the last 0.3 s (`SteadyMeter`), and `calm()` true. `needAll`
   binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
   the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
-  clock lives in the save slice, stops at the first good shot), with `fallbackStars`. **Stars**
+  clock lives in the save slice, stops at the first good shot), with `fallbackStars` (2 or 3 = good;
+  1 = never good: one rule, good means ≥ 2 stars everywhere). **Stars**
   (contract C3): 0 nothing in the frame, 1 in the frame but not good, 2 good, 3 good and closer than
   0.6 × `maxDist`. German verdicts („Perfekt!“, „Gutes Foto“, „Nicht mittig“, „Verdeckt“, „Zu weit
   weg“, „Zu klein im Bild“, „Unscharf“, „Aufgeschreckt“, „Nicht alle im Bild“ …).
@@ -1228,7 +1229,9 @@ Round-4 (polish: set dressing) integration rules:
 - **Events:** `photo:open`, `photo:close`, `photo:shot { targets, good, stars, noSignal }`, and one
   `photo:good { id, stars }` per good target (scalar: the story waits with
   `{ "event": "photo:good", "match": { "id": … } }`; quests count it with the objective
-  `{ "type": "photo", "target": … }`, validated against the target list).
+  `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
+  the objective started counts at once, on accept, on a newly active objective and on load:
+  `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without

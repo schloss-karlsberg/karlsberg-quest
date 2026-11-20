@@ -135,6 +135,31 @@ describe('photo mode: geometric judging', () => {
     expect(j.verdict).toBe('weit-ok');
   });
 
+  it('a fallback shot under two stars is not good: no good id, no album entry, no has()', () => {
+    const t = target({ d: 20, minFrac: 0.03, fallbackDist: 22, fallbackAfterS: 90, fallbackStars: 1 });
+    const j = judgeTarget(t, view(), flat, true);
+    expect(j.good).toBe(false);
+    expect(j.stars).toBe(1);
+    expect(j.verdict).toBe('zu-weit');
+    const s = emptySlice();
+    s.near['reh.ricke'] = 999;
+    const core = new PhotoCore(() => s);
+    core.register(t);
+    const r = core.judge('today', view(), flat);
+    expect(r.good).toEqual([]);
+    expect(r.stars).toBe(1);
+    // the photo:good loop of index.ts emits nothing
+    expect(r.details.filter((d) => d.good)).toEqual([]);
+    const { s: sk, log } = sink();
+    expect(core.book(r, 'x', 0, sk)).toEqual([]);
+    expect(s.album).toEqual([]);
+    expect(core.has('reh.ricke')).toBe(false);
+    expect(log.flag).toEqual([]);
+    // a 3-star fallback is good
+    core.register({ ...t, fallbackStars: 3 });
+    expect(core.judge('today', view(), flat).good).toEqual(['reh.ricke']);
+  });
+
   it('the fallback clock counts seconds within fallbackDist (PhotoCore.tick)', () => {
     let s = emptySlice();
     const core = new PhotoCore(() => s);
@@ -351,5 +376,47 @@ describe('quest objective "photo"', () => {
     book.accept('q.test.foto');
     expect(book.handle('photo:good', { id: 'photo.other', stars: 3 })).toBe(false);
     expect(book.handle('photo:good', { id: 'photo.parkplatz', stars: 2 })).toBe(true);
+    expect(book.state('q.test.foto')).toBe('ready');
+  });
+
+  const env = (): QuestEnv => ({ flags: {}, codex: [], emit: () => {}, now: () => 0, rng: () => 0.5 });
+  const fotoBook = (slice = createQuestSlice()) => {
+    const def = { ...quest('photo.parkplatz').data.quests[0]! };
+    return new QuestBook(new Map([[def.id, def as unknown as QuestDefIn]]), slice, env());
+  };
+
+  it('a photo objective counts a good shot taken before the quest started', () => {
+    // the shot first: the photo system's slice knows the target
+    const photo = emptySlice();
+    const core = new PhotoCore(() => photo);
+    core.register(target({ id: 'photo.parkplatz' }));
+    core.book(core.judge('today', view(), flat), 'x', 0, sink().s);
+    expect(core.has('photo.parkplatz')).toBe(true);
+    // then the quest: accept, and the quests system settles open objectives (index.ts, settle on accept)
+    const book = fotoBook();
+    book.accept('q.test.foto');
+    expect(book.state('q.test.foto')).toBe('active');
+    book.settleKnown(() => false, (id) => core.has(id));
+    expect(book.state('q.test.foto')).toBe('ready');
+  });
+
+  it('without a photo the objective stays open on settle', () => {
+    const book = fotoBook();
+    book.accept('q.test.foto');
+    book.settleKnown(() => false, () => false);
+    expect(book.state('q.test.foto')).toBe('active');
+  });
+
+  it('save / load: a resumed quest whose target is already in the album completes', () => {
+    const book = fotoBook();
+    book.accept('q.test.foto');
+    // the save: quest slice and photo slice through JSON (the photo was taken after the quest save)
+    const savedQuests = JSON.parse(JSON.stringify(book.slice));
+    const photo = normaliseSlice(JSON.parse(JSON.stringify({ ...emptySlice(), good: ['photo.parkplatz'], album: [{ id: 'photo.parkplatz', era: 'today', at: 'x', play: 0, stars: 2 }] })));
+    // load: a new book on the loaded slice, restore() settles with the photo slice's good set
+    const loaded = fotoBook(savedQuests);
+    expect(loaded.state('q.test.foto')).toBe('active');
+    loaded.settleKnown(() => false, (id) => photo.good.includes(id));
+    expect(loaded.state('q.test.foto')).toBe('ready');
   });
 });
