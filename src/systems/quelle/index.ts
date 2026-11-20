@@ -19,7 +19,7 @@
  * Trees and scattered props keep out of the hollow (forest / nature clearings); loot caches too
  * (travel/pois.ts KEEP_CLEAR).
  */
-import { Group, type Material, type Mesh, Vector3 } from 'three';
+import { Group, type Material, type Mesh, type Sprite, type SpriteMaterial, Vector3 } from 'three';
 import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
@@ -27,7 +27,7 @@ import { cameraHints } from '../../player/camera';
 import { addStrings } from '../../i18n';
 import { brookLine, canTouch, clearings, lookFor, outlet, QUELLE, toWorld, touchLocal, waterSpec, yawToWater, type WaterSpec } from './layout';
 import { springSound, type SpringSound } from './sound';
-import { applyLook, brookMesh, motes, poolMesh, streamMesh, waterUniforms, type Motes } from './water';
+import { applyLook, brookMesh, glowSprite, motes, poolMesh, streamMesh, waterUniforms, type Motes } from './water';
 
 addStrings('de', { 'quelle.touch': 'Wasser berühren' });
 
@@ -99,6 +99,7 @@ let built: Era | null = null;
 let spec: WaterSpec | null = null;
 let out: { x: number; y: number; z: number } | null = null;
 let mot: Motes | null = null;
+let glow: Sprite | null = null;
 let path: Vector3[] = [];
 const U = waterUniforms();
 let poolT = 0;
@@ -127,10 +128,14 @@ function disposeGroup(): void {
     if (m.geometry) m.geometry.dispose();
     const mat = m.material as Material | Material[] | undefined;
     if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
-    else mat?.dispose();
+    else {
+      (mat as { map?: { dispose(): void } | null } | undefined)?.map?.dispose();
+      mat?.dispose();
+    }
   });
   group = null;
   mot = null;
+  glow = null;
   built = null;
   spec = null;
   out = null;
@@ -165,6 +170,10 @@ function build(ctx: GameContext, era: Era): void {
   path = line.map(([x, z]) => new Vector3(x, h(x, z) + 0.08, z));
   mot = motes(new Vector3(spec.x, spec.y, spec.z), path, U);
   g.add(mot.points);
+  glow = glowSprite();
+  glow.position.set(spec.x, spec.y + 0.9, spec.z);
+  glow.scale.set(1.6, 3.2, 1);
+  g.add(glow);
   ctx.scene.add(g);
   group = g;
   built = era;
@@ -374,6 +383,7 @@ export default defineSystem({
     U.uMagic.value = magic;
     U.uGuide.value = guide;
     U.uReverse.value = Math.max(0, -flow / 1.8);
+    if (glow) (glow.material as SpriteMaterial).opacity = Math.min(1, magic * 0.75 + guide * 0.12);
     if (mot && group?.visible) {
       const cam = ctx.camera;
       mot.material.uniforms.uMoteTime!.value = moteT;

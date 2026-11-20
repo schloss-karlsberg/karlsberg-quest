@@ -8,6 +8,9 @@
 import {
   AdditiveBlending,
   BufferAttribute,
+  CanvasTexture,
+  Sprite,
+  SpriteMaterial,
   BufferGeometry,
   Color,
   DoubleSide,
@@ -309,6 +312,8 @@ void main() {
   float bed = 1.0 - smoothstep(0.3, 1.0, abs(x));
   if (bed < 0.01) discard;
   float core = 1.0 - smoothstep(0.22, 0.62, abs(x) + (kqNoise(vec2(along * 0.9, 4.2)) - 0.5) * 0.25);
+  // a trickle, not a pipe: stretches where only the wet bed shows, small pools between
+  core *= 0.35 + 0.65 * smoothstep(0.3, 0.6, kqNoise(vec2(along * 0.45, 9.1)));
   // flow: ripples that run downhill (uPhase forward), stand still or climb back up
   float f = uPhase * 1.6;
   float r1 = kqNoise(vec2(x * 3.0, along * 2.2 - f * 2.0));
@@ -328,7 +333,7 @@ void main() {
   float spec = pow(max(dot(rr, uSunDir), 0.0), 120.0) * kqShadow(vWp, vec3(0.0, 1.0, 0.0));
   float caust = clamp(r1 * r2 * 2.0, 0.0, 1.0);
   vec3 magic = vec3(0.35, 0.8, 1.0) * (0.25 + 0.75 * caust) + vec3(1.0, 0.82, 0.45) * pow(caust, 6.0) * 2.0;
-  vec3 wet = mud * 0.5 + sky * fres * 0.7 + uSunColor * spec * 2.0 + uGlowColor * fres * 0.5;
+  vec3 wet = mud * 0.5 + sky * fres * 0.45 + uSunColor * spec * 2.0 + uGlowColor * fres * 0.5;
   wet += vec3(0.7, 0.78, 0.8) * foam * 0.25 * (uSkyAmbient + uSunColor * 0.5);
   wet += magic * (uMagic * 0.9 + uGuide * 0.14);
   vec3 col = mix(mud * 0.8, wet, core);
@@ -427,13 +432,13 @@ void main() {
   } else {
     // drift along the brook (towards the spring when it runs backwards)
     p = aPath + vec3(sin(t * 0.9) * 0.15, 0.2 + 0.25 * sin(t * 0.6 + aMote.z * 5.0), cos(t * 0.8) * 0.15);
-    vA = (0.35 + 0.65 * uReverse) * (0.5 + 0.5 * sin(t * 1.9));
+    vA = (0.6 + 0.4 * uReverse) * (0.55 + 0.45 * sin(t * 1.9));
   }
   vA *= clamp(uGuide * 0.8 + uMagic, 0.0, 1.0);
   vHue = aMote.z;
   vec4 mv = viewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uPx * (0.05 + 0.03 * fract(aMote.z * 7.0)) / max(0.5, -mv.z);
+  gl_PointSize = uPx * (0.07 + 0.05 * fract(aMote.z * 7.0)) / max(0.5, -mv.z);
 }
 `;
 
@@ -524,4 +529,35 @@ export function motes(center: Vector3, path: readonly Vector3[], u: WaterUniform
   };
   flow(path, 0);
   return { points, material, flow };
+}
+
+// ---------------------------------------------------------------- the glow over the water
+
+/** A soft column of light over the water (the place calling from afar; bright while time stands still). */
+export function glowSprite(): Sprite {
+  const c = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+  let tex: CanvasTexture | null = null;
+  if (c) {
+    c.width = 64;
+    c.height = 128;
+    const g = c.getContext('2d');
+    if (g) {
+      // an ellipse that fades to nothing before the canvas edge (no visible quad), brightest low down
+      g.scale(1, 2);
+      const grd = g.createRadialGradient(32, 42, 0, 32, 36, 31);
+      grd.addColorStop(0, 'rgba(220,245,255,0.9)');
+      grd.addColorStop(0.3, 'rgba(130,205,255,0.4)');
+      grd.addColorStop(0.7, 'rgba(70,150,255,0.1)');
+      grd.addColorStop(1, 'rgba(60,140,255,0)');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 64, 64);
+    }
+    tex = new CanvasTexture(c);
+  }
+  const m = new SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, blending: AdditiveBlending, opacity: 0 });
+  const sp = new Sprite(m);
+  sp.renderOrder = 5;
+  sp.userData.noShadow = true;
+  sp.name = 'quelle-glow';
+  return sp;
 }
