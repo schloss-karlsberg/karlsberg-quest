@@ -1725,8 +1725,9 @@ export class CombatVisuals {
     // undone: a quick swell before it comes apart (a pop, not a fade)
     if (dissolving && e.t < 0.14) v.swell = 1 + 0.2 * Math.sin((e.t / 0.14) * Math.PI);
     const wakeK = e.aggro ? 1 : 0.65;
-    // weak point open (seal) / armour broken: glows harder
-    const sealK = e.kind === 'schuldbuch' ? (e.sealOpen > 0 ? 2.4 + Math.sin(f.time * 10) * 0.6 : 0.5) : e.armorBroken > 0 ? 1.8 : 1;
+    // weak point open (seal) / armour broken: glows harder. A closed seal throbs slowly (balance
+    // round 2026-11-20, docs/BALANCE.md: the one thing that matters on the Schuldbuch must look it)
+    const sealK = e.kind === 'schuldbuch' ? (e.sealOpen > 0 ? 2.4 + Math.sin(f.time * 10) * 0.6 : sealClosedPulse(f.time, f.reducedFlash)) : e.armorBroken > 0 ? 1.8 : 1;
     const rise = dissolving ? v.fade * 0.8 : 0;
     // the heart seen through the spectral pieces: it rides the core channel, swells with the tell
     const tc = v.t.core;
@@ -1898,4 +1899,10 @@ export class CombatVisuals {
     for (const pool of this.shapes.values()) pool.dispose();
     this.ringPool.mat.dispose();
   }
+}
+
+/** Glow factor of the Schuldbuch's closed seal: a slow throb (≈ 0.7 Hz), gentler with reduced flashing. */
+export function sealClosedPulse(time: number, reducedFlash = false): number {
+  const w = 0.5 + 0.5 * Math.sin(time * 4.5);
+  return reducedFlash ? 0.6 + 0.25 * w : 0.5 + 0.9 * w;
 }

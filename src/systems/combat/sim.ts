@@ -295,6 +295,8 @@ export type SimEvent =
   | { type: 'whiff'; kind: 'light' | 'heavy' }
   | { type: 'hit'; e: Enemy; damage: number; heavy: boolean; finisher: boolean; weak: boolean; armored: boolean; gebannt: boolean; dirX: number; dirZ: number }
   | { type: 'immune'; e: Enemy }
+  /** A blow on a boss during its reveal or phase roar: it cannot be hurt for that moment (not the Bannlicht's business). */
+  | { type: 'bossGuard'; e: Enemy; why: 'intro' | 'roar' }
   /** Three swings went through an untouchable thing: say how (and lend a Bannlicht if both are spent). */
   | { type: 'immuneHint'; refilled: boolean }
   /** A light hit scattered a Mahnbrief / Nebelling; it pulls itself together (a Wuchthieb ends it). */
@@ -1177,7 +1179,7 @@ export class CombatSim {
     }
     // a boss rising into its next phase (roar) or revealing itself cannot be hurt
     if (e.boss && (e.state === 'roar' || e.state === 'intro')) {
-      this.out.push({ type: 'immune', e });
+      this.out.push({ type: 'bossGuard', e, why: e.state });
       return false;
     }
     e.hitX = dirX;

@@ -189,9 +189,15 @@ export function enemyDamage(raw: number, tier = 1, damageTaken = 1): number {
   return Math.max(0, Math.round(raw * k * damageTaken * 10) / 10);
 }
 
-/** Wind-up of an attack the player can read (gentle ×1.4); never below 0.4 s. */
+/**
+ * Shortest wind-up (s). Balance round 2026-11-20 (docs/BALANCE.md): 0.4 → 0.5 s, so a human with
+ * 0.25 s reaction keeps ≥ 0.17 s to decide before the roll's i-frames (0.08 s) start.
+ */
+export const TELEGRAPH_MIN = 0.5;
+
+/** Wind-up of an attack the player can read (gentle ×1.4); never below `TELEGRAPH_MIN`. */
 export function telegraphTime(a: Pick<EnemyAttackDef, 'telegraph'>, gentle = false): number {
-  return Math.max(0.4, a.telegraph * (gentle ? AI.gentleTelegraph : 1));
+  return Math.max(TELEGRAPH_MIN, a.telegraph * (gentle ? AI.gentleTelegraph : 1));
 }
 
 export function attackTokens(gentle: boolean): number {
