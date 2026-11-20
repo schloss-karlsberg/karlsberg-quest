@@ -6,7 +6,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { clipFilter, durationMs, ffmpegAvailable, FFMPEG, pauseCapFilter, trimArgs } from '../scripts/voice/audio.ts';
+import {
+  clipFilter,
+  durationMs,
+  encodeArgs,
+  ffmpegAvailable,
+  FFMPEG,
+  makeupArgs,
+  measureR128,
+  OPUS_MAKEUP_DB,
+  parseR128,
+  pauseCapFilter,
+  preLimitFilter,
+  processClip,
+  trimArgs,
+} from '../scripts/voice/audio.ts';
 import {
   LICENCES,
   MOSS_ATTRIBUTION,
@@ -272,6 +286,41 @@ describe('runner.py refusal paths (system python, no mlx import, no model)', () 
     expect(runJob([clip()]).status).toBe(2); // no out dir
     const ok = runJob({ outDir: join(tmp, 'o'), clips: [clip()] });
     expect([4, 76]).toContain(ok.status); // 76 if a quiet window happens to be active
+  });
+});
+
+describe('loudness: pre-limit + static make-up to −18 LUFS (post-processing)', () => {
+  it('gain to the target, then a gentle limiter; make-up is a plain gain to 24 kHz mono', () => {
+    expect(preLimitFilter(-23.39)).toBe('volume=5.39dB,alimiter=limit=0.6:attack=5:release=50:level=false');
+    expect(preLimitFilter('-12')).toBe('volume=-6.00dB,alimiter=limit=0.6:attack=5:release=50:level=false');
+    expect(preLimitFilter(-Infinity)).toMatch(/^volume=0\.00dB,/); // silence: no gain
+    expect(preLimitFilter(-90)).toMatch(/^volume=30\.00dB,/); // clamped
+    const a = makeupArgs('l.wav', -18.8, 'n.wav');
+    expect(a[a.indexOf('-af') + 1]).toBe('volume=0.80dB');
+    expect(a.slice(-7)).toEqual(['-ac', '1', '-ar', '24000', '-c:a', 'pcm_s16le', 'n.wav']);
+    expect(a.join(' ')).not.toContain('loudnorm');
+  });
+  it('Opus gets the make-up gain (or none on the clean retry), AAC none', () => {
+    const e = encodeArgs('n.wav', 'o.webm', 'a.m4a');
+    expect(e.opus[e.opus.indexOf('-af') + 1]).toBe(`volume=${OPUS_MAKEUP_DB}dB`);
+    expect(e.opus).toEqual(expect.arrayContaining(['libopus', '24k', 'voip', 'webm', 'o.webm']));
+    expect(e.aac).not.toContain('-af');
+    expect(encodeArgs('n.wav', 'o.webm', 'a.m4a', 0).opus).not.toContain('-af');
+  });
+  it('parses the ebur128 summary', () => {
+    const s = '[Parsed_ebur128_0] t: 1 M: -20 S: -21 I: -25.0 LUFS\n  Integrated loudness:\n    I:         -18.3 LUFS\n  True peak:\n    Peak:       -1.2 dBFS\n';
+    expect(parseR128(s)).toEqual({ i: -18.3, tp: -1.2 });
+    expect(parseR128('    I:         -inf LUFS\n')).toEqual({ i: -Infinity, tp: -Infinity });
+  });
+  it.skipIf(!ffmpegAvailable())('a hot, peaky clip lands at −18 ± 0.5 LUFS in both encodings', () => {
+    const src = join(tmp, 'hot.wav');
+    // loud tone bursts with 0 dBFS clicks: peak-to-loudness ratio well over 16.5 dB
+    execFileSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', "aevalsrc='0.08*sin(2*PI*180*t)*(1+0.5*sin(2*PI*3*t))+if(lt(mod(t,0.5),0.002),0.98,0)':s=24000:d=3", src]);
+    const o = join(tmp, 'hot.webm');
+    const a = join(tmp, 'hot.m4a');
+    processClip(src, o, a);
+    expect(Math.abs(measureR128(a).i + 18)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(measureR128(o).i + 18)).toBeLessThanOrEqual(0.5);
   });
 });
 
