@@ -110,8 +110,9 @@ describe('bleiche layout', () => {
       expect(lineDist(x, z, BROOK_OSM), p.name).toBeGreaterThan(4.5);
     }
     for (const s of [LIESE, TUB_SPOT, COAT_REACH]) expect(lineDist(s.x, s.z, BROOK_OSM)).toBeGreaterThan(4.5);
-    // the bed as quelle/layout.ts brookLine() draws it, the whole OSM line long (it stops at
-    // BROOK_LEN today): samples every metre pulled to the lowest ground within ±3 m across
+    // the bed roughly as quelle/layout.ts brookLine() draws it, the whole OSM line long: samples
+    // every metre pulled to the lowest ground within ±3 m across (brookLine also keeps out of the
+    // green's clearings; tests/quelle.test.ts checks the drawn line's bank against the linen)
     const bed: [number, number][] = [];
     for (let i = 0; i + 1 < BROOK_OSM.length; i++) {
       const [ax, az] = BROOK_OSM[i]!;

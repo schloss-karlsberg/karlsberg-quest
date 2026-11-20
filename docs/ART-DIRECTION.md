@@ -592,6 +592,18 @@ are set to `#7f9150`, `#9c7a5a` and `#7f9f4c`. Pick kit hexes about one step lig
 and check them on the real GPU. Do not "fix" the kit on its own: every existing set is tuned against
 the double conversion.
 
+**The brook past the Bleiche.** The Karlsbergbach is drawn 80 m (`BROOK_LEN`) along the OSM line,
+down the ravine and out past the 1789 laundry green, whose wash corner stands on its bank; the last
+6 m fade out beyond the green. Each sample snaps to the lowest ground within ±3 m, as before. In
+1789 the meadow by the green falls away northwards, so the snap stays out of the Bleiche's
+clearings (`KEEP_OFF`). The bed stays ≥ 1.6 m from the beating board and the linen (tested). Bank
+stones, moss and ferns run the whole length in every era's look. Past the stretch the look pass
+tuned (46 m, `BROOK_REF`) the ferns stand further apart, because each CC0 clump is ~5.6k triangles.
+Nothing stands on today's OSM footpaths: a fern moves to the other bank instead. In 1789 nothing
+stands on the green. The touch's light pulses on the brook stretch with the drawn length
+(`brookPulse`), so the run-back crosses the whole brook in the time it took on 46 m. The guide
+motes along the brook grow in number with the length.
+
 Still open (look polish runs in another session): ivy on the wall, the burning palace reflected in
 the July water, an ice crust to break in February 1793.
 
