@@ -126,19 +126,19 @@
           "do": [
             { "do": "give", "item": "item.bussole" },
             { "do": "flag", "set": { "story.compass": true } },
-            { "do": "objective", "id": "station", "text": "Den Hang hinunter zum Damm. Dort steigt Nebel auf", "x": 803, "z": -889 },
+            { "do": "objective", "id": "station", "text": "Den Hang hinunter zum Damm. Dort steigt Nebel auf", "x": 809, "z": -890 },
             { "do": "say", "line": "marlene.p.01b", "delay": 0.6, "until": { "quest": { "id": "q.p.feldstation", "objective": "nebel" } } }
           ]
         },
         {
           "id": "nebel-sicht",
           "when": {
-            "all": [{ "quest": { "id": "q.p.feldstation", "objective": "stab" } }, { "enter": { "x": 803, "z": -889, "r": 30, "era": "today" } }]
+            "all": [{ "quest": { "id": "q.p.feldstation", "objective": "stab" } }, { "enter": { "x": 809, "z": -890, "r": 30, "era": "today" } }]
           },
           "do": [
-            { "do": "sound", "sound": "compass", "x": 803, "z": -889, "caption": "[Ein Zischen unten am Damm]" },
+            { "do": "sound", "sound": "compass", "x": 809, "z": -890, "caption": "[Ein Zischen unten am Damm]" },
             { "do": "prompt", "key": "LMB", "text": "Hieb · gehalten: Wuchthieb · Leertaste: Ausweichen" },
-            { "do": "objective", "id": "station", "text": "Nebel mit Augen! LMB: zuschlagen · Leertaste: ausweichen", "x": 803, "z": -889 }
+            { "do": "objective", "id": "station", "text": "Nebel mit Augen! LMB: zuschlagen · Leertaste: ausweichen", "x": 809, "z": -890 }
           ]
         },
         {
@@ -204,17 +204,45 @@
           "z": -966,
           "delay": 1.5
         },
-        { "do": "say", "line": "marlene.p.weg", "delay": 5 },
-        { "do": "say", "line": "marlene.p.flug", "delay": 1.5 },
-        { "do": "prompt", "key": "F", "text": "Geisterblick: abheben und über den Wald fliegen (in der Luft: F landet)" }
+        { "do": "say", "line": "marlene.p.weg", "delay": 5 }
       ],
       "on": [
         {
+          "id": "flug",
+          "when": {
+            "all": [
+              { "any": [{ "quest": { "id": "q.p.relief", "objective": "nebel" } }, { "leave": { "x": 816, "z": -884, "r": 60 } }] },
+              { "not": { "enter": { "x": 1237, "z": -966, "r": 75 } } }
+            ]
+          },
+          "do": [
+            { "do": "flag", "set": { "story.p.flug": true } },
+            {
+              "do": "objective",
+              "id": "orangerie",
+              "text": "Den Waldweg hinauf nach Osten: eine hohe, gerade Stufe im Wald (F: darüber fliegen)",
+              "x": 1237,
+              "z": -966,
+              "delay": 2
+            },
+            { "do": "say", "line": "marlene.p.flug" },
+            { "do": "prompt", "key": "F", "text": "Geisterblick: abheben und über den Wald fliegen (in der Luft: F landet)" }
+          ]
+        },
+        {
           "id": "geflogen",
           "when": {
-            "any": [{ "timer": 40 }, { "enter": { "x": 1237, "z": -966, "r": 75 } }]
+            "all": [
+              { "flag": "story.p.flug" },
+              { "any": [{ "event": "player:fly" }, { "enter": { "x": 1237, "z": -966, "r": 75 } }, { "leave": { "x": 816, "z": -884, "r": 160 } }] }
+            ]
           },
           "do": [{ "do": "prompt", "key": null, "text": null }]
+        },
+        {
+          "id": "halbweg",
+          "when": { "enter": { "x": 1000, "z": -905, "r": 40, "era": "today" } },
+          "do": [{ "do": "say", "line": "marlene.p.halbweg", "until": { "enter": { "x": 1237, "z": -966, "r": 75, "era": "today" } } }]
         },
         {
           "id": "vat",
@@ -231,6 +259,7 @@
       },
       "exit": [
         { "do": "prompt", "key": null, "text": null },
+        { "do": "flag", "set": { "story.p.flug": null } },
         { "do": "grant", "clue": "clue.p.orangeriemauer", "card": true },
         { "do": "sound", "sound": "compass", "caption": "[Die Bussole zittert]", "delay": 0.8 },
         { "do": "cue", "id": "bussole:jolt", "data": { "hold": 2.5 }, "delay": 0.8 },
@@ -436,12 +465,12 @@
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "quest", "op": "offer", "id": "q.p.punktwolke", "onResume": true },
-        { "do": "objective", "id": "wechsel", "text": "Zurück zum Ehrenhof: die Bussole zeigt dorthin", "x": 1218, "z": -1118, "delay": 0.5 },
-        { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät knackt]", "delay": 4 },
-        { "do": "say", "line": "marlene.p.punkte", "delay": 0.5 },
-        { "do": "sound", "sound": "beep", "caption": "[Das Tablet piept: eine neue Datei]", "delay": 0.6 },
-        { "do": "grant", "clue": "clue.p.punktwolke", "delay": 0.4 },
+        { "do": "objective", "id": "wechsel", "text": "Zurück zum Ehrenhof: die Bussole zeigt dorthin", "x": 1218, "z": -1118 },
+        { "do": "sound", "sound": "beep", "caption": "[Das Tablet piept: eine neue Datei]", "delay": 0.5 },
+        { "do": "grant", "clue": "clue.p.punktwolke", "delay": 0.2 },
         { "do": "toast", "text": "Neu im Feldbuch: Spuren in der Punktwolke", "ms": 3000 },
+        { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät knackt]", "delay": 2.5 },
+        { "do": "say", "line": "marlene.p.punkte", "delay": 0.5 },
         { "do": "say", "line": "marlene.p.punktwolke", "delay": 0.8 },
         { "do": "say", "line": "kollege.p.punktwolke" },
         { "do": "say", "line": "laub.p.punktwolke", "ms": 3200 },
@@ -626,13 +655,21 @@
         { "do": "meter", "id": "oil", "active": false },
         { "do": "prompt", "key": null, "text": null },
         { "do": "look", "time": "dusk" },
-        { "do": "objective", "id": "station", "text": "Zurück zur Feldstation (F: Geisterblick)", "x": 760, "z": -915, "delay": 2 },
+        { "do": "objective", "id": "station", "text": "Zurück zur Feldstation: M – Karte, die Feldstation anklicken, hinreisen (oder F: fliegen)", "x": 760, "z": -915 },
+        { "do": "prompt", "key": "M", "text": "Karte: zur Feldstation reisen", "delay": 2 },
         { "do": "autosave" }
       ],
       "on": [
         {
+          "id": "karte-zu",
+          "when": { "any": [{ "event": "travel:arrived" }, { "leave": { "x": 1218, "z": -1118, "r": 120 } }, { "timer": 30 }] },
+          "do": [{ "do": "prompt", "key": null, "text": null }]
+        },
+        {
           "id": "daheim",
-          "when": { "enter": { "x": 760, "z": -915, "r": 18, "era": "today" } },
+          "when": {
+            "any": [{ "enter": { "x": 760, "z": -915, "r": 18, "era": "today" } }, { "event": "travel:arrived", "match": { "id": "feldstation" } }]
+          },
           "do": [
             { "do": "objective", "id": "station", "text": "Feierabend: in den Bauwagen (E an der Tür). Pinnwand, Regal, Schublade: wenn du magst", "x": 760.6, "z": -910.4 },
             { "do": "say", "line": "marlene.p.abend", "delay": 1.5 },
@@ -641,9 +678,13 @@
         }
       ],
       "complete": {
-        "all": [{ "quest": { "id": "q.p.punktwolke" } }, { "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }, { "timer": 9 }]
+        "all": [
+          { "quest": { "id": "q.p.punktwolke" } },
+          { "any": [{ "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }, { "event": "travel:arrived", "match": { "id": "feldstation" } }] },
+          { "timer": 9 }
+        ]
       },
-      "exit": [{ "do": "autosave" }]
+      "exit": [{ "do": "prompt", "key": null, "text": null }, { "do": "autosave" }]
     },
     {
       "id": "p11",

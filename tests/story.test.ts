@@ -299,7 +299,13 @@ describe('story files', () => {
     expect(h.slice.beat).toBe('p10');
     step({ ...inv(), ...quest('q.p.punktwolke') });
     expect(h.slice.beat).toBe('p10'); // the quest alone is not enough: back home to the station
-    step({ ...inv(), flags: { ...flags }, x: 760, z: -905 }, 20); // the dusk walk lasts at least 9 s
+    // home by the map (playtest round 10 F-30: no 470 m walk for one bed): the journey lands beside
+    // the Feldstation tripod (776/−902 + 2.2 m), outside the 22 m circle; the arrival itself counts
+    h.engine.onEvent('travel:arrived', { id: 'feldstation', from: { x: 1218, z: -1118 } });
+    step({ ...inv(), flags: { ...flags }, x: 778.2, z: -899.8 });
+    expect(h.rec.runs.some((r) => r.source === 'prolog/b:daheim')).toBe(true); // „Feierabend“ + Marlene
+    expect(h.slice.beat).toBe('p10'); // the dusk lasts at least 9 s
+    step({ ...inv(), flags: { ...flags }, x: 778.2, z: -899.8 }, 20);
     expect(h.slice.beat).toBe('p11');
     step({}, 20);
     expect(h.slice.chapter).toBe('prolog'); // the night lasts a little
@@ -307,6 +313,30 @@ describe('story files', () => {
     step({}, 60);
     expect(h.slice.chapter).toBe('k1');
     expect(h.slice.completed).toContain('prolog');
+  });
+
+  it('prologue pacing (playtest round 10): the file before the radio, Geisterblick after the wall, Marlene halfway, home by the map', () => {
+    const pro = files.find((f) => f.story.chapter === 'prolog')!.story;
+    const b = (id: string) => pro.beats.find((x) => x.id === id)!;
+    // p7: the clue is granted before Marlene's radio lines (the tracker never points at the portable clue's station)
+    const p7 = b('p7').enter!;
+    const grant = p7.findIndex((a) => a.do === 'grant' && a.clue === 'clue.p.punktwolke');
+    const radio = p7.findIndex((a) => a.do === 'say' && a.line === 'marlene.p.punkte');
+    expect(grant).toBeGreaterThanOrEqual(0);
+    expect(grant).toBeLessThan(radio);
+    expect(p7.findIndex((a) => a.do === 'objective')).toBeLessThan(grant);
+    // p3: F is taught once the wall's Nebelling is gone (not during that fight), and stays in the objective
+    const p3 = b('p3');
+    expect(p3.enter!.some((a) => a.do === 'say' && a.line === 'marlene.p.flug')).toBe(false);
+    const flug = p3.on!.find((r) => r.id === 'flug')!;
+    expect(JSON.stringify(flug.when)).toContain('"objective":"nebel"');
+    expect(flug.do.some((a) => a.do === 'say' && a.line === 'marlene.p.flug')).toBe(true);
+    expect(flug.do.some((a) => a.do === 'objective' && /F: /.test(a.text ?? ''))).toBe(true);
+    // halfway up the Waldweg: a line, no fight (the prologue's XP budget is untouched)
+    const half = p3.on!.find((r) => r.id === 'halbweg')!;
+    expect(half.do.map((a) => a.do)).toEqual(['say']);
+    // p10: the objective offers the map at once
+    expect(b('p10').enter!.some((a) => a.do === 'objective' && /M – Karte/.test(a.text ?? '') && a.delay === undefined)).toBe(true);
   });
 
   it('opens chapter 1 at the Karlsbergquelle at dawn: touch, summer 1789, the walk up, the court', () => {

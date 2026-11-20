@@ -155,6 +155,9 @@ const dialogue = [
   ...story('P3', [
     ['marlene.p.weg', 'marlene', 'Und, {Name}: Wir schauen, wir graben nicht. Nichts anfassen, nichts mitnehmen. Was da im Boden liegt, gehört dem Land, und es ist geschützt.'],
     ['marlene.p.flug', 'marlene', 'Der Weg nach oben ist steil. Wenn du’s eilig hast: Mit F fliegst du über die Daten wie mit der Drohne. Nur gucken. Landen nicht vergessen.'],
+    // halfway up the Waldweg (playtest round 10 F-10: 45–60 s of uphill with nothing on the way); the
+    // Kohlplatten quest Marlene offers at the top picks the teaser up (no fact here, no source needed)
+    ['marlene.p.halbweg', 'marlene', 'Halbe Höhe. Guck mal links und rechts am Hang: runde, flache Stellen, wie Teller. Merk sie dir. Die erklär ich dir, wenn du oben bist.'],
     ['laub.p.intro', 'laub', 'Fünf Meter dreißig. Für Orangen.'],
     ['laub.p.intro.b', 'laub', 'Erschrecken Sie nicht, das ist schlecht für die Messgenauigkeit. Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis.'],
     ['laub.p.intro.c', 'laub', 'Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt.'],
@@ -179,7 +182,7 @@ const dialogue = [
     ['laub.p.versatz.c', 'laub', 'Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer. Und ein Geometer merkt es ewig.'],
   ]),
   ...story('P7', [
-    ['marlene.p.punkte', 'marlene', 'Ich schick dir was aufs Tablet. Das hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.'],
+    ['marlene.p.punkte', 'marlene', 'Hast du die Datei? Die hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.'],
     ['marlene.p.punktwolke', 'marlene', 'Wildschweine machen andere Spuren. Und Hunde waren da nicht, der Wald war gesperrt.'],
     ['kollege.p.punktwolke', 'kollege', 'Mehrfachreflexion. Ein Messfehler.'],
     ['laub.p.punktwolke', 'laub', 'Hunde.'],
@@ -309,9 +312,11 @@ const prologQuests = {
           id: 'nebel', type: 'kill', enemy: 'nebelling', count: 3, after: ['stab'],
           text_de: 'Unten am Damm: drei Nebelinge vertreiben (Klick oder K)',
           hint_de: 'Den Hang hinunter zur Markierung am Damm. Nebelinge mit dem Stab treffen: Klick oder K, gehalten ein Wuchthieb; holt einer aus, Leertaste: ausweichen.',
-          // outside the station's safe ring (40 m round 760/−915), on the way down to the dam
-          where: place(803, -889, 24, T0),
-          spawn: [{ kind: 'nebelling', x: 803, z: -889, era: T0, count: 3, radius: 3.5, tier: 0, leash: 30 }],
+          // outside the station's safe ring (40 m round 760/−915), on the flat ground at the foot of
+          // the slope (277 m): playtest round 10 F-04, at 803/−889 they sat 4.5 m below the convex crest
+          // and the player saw only their HP bars; from 809/−890 the group is in view from x ≈ 790
+          where: place(809, -890, 24, T0),
+          spawn: [{ kind: 'nebelling', x: 809, z: -890, era: T0, count: 3, radius: 3.5, tier: 0, leash: 30 }],
         },
       ],
       rewards: { xp: 20, skills: [{ id: 'kartograf', tier: 1 }] },

@@ -815,11 +815,11 @@ prologue beat (no quest, no gate); the p10 objective suggests them in the evenin
 
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
-| `q.p.feldstation` "Der Messstab" | main | Marlene (radio, while you walk) → auto | pick up the **Messstab** (763/−900, 3 m from the door; the Bussole hangs on it); **3 Nebelinge** rise on the way down to the dam (803/−889, just outside the station's safe ring) — the first fight, ~10–20 s after "Neues Spiel" (`e2e/pacing.spec.ts` asserts ≤ 45 s of play) | nebelling ×3 (tier 0) | 20 XP, `item.stab.esche`, Kartograf 1 | cx.34 Laserscan 2025, cx.35 Schauen, nicht graben |
+| `q.p.feldstation` "Der Messstab" | main | Marlene (radio, while you walk) → auto | pick up the **Messstab** (763/−900, 3 m from the door; the Bussole hangs on it); **3 Nebelinge** rise on the flat ground at the foot of the slope to the dam (809/−890, just outside the station's safe ring; visible from x ≈ 790, playtest round 10 F-04) — the first fight, ~10–20 s after "Neues Spiel" (`e2e/pacing.spec.ts` asserts ≤ 45 s of play) | nebelling ×3 (tier 0) | 20 XP, `item.stab.esche`, Kartograf 1 | cx.34 Laserscan 2025, cx.35 Schauen, nicht graben |
 | `q.p.relief` "Was der Wald verbirgt" | main | Marlene → auto | the dam (819/−875) with Relief; the wall remnant (813/−903); the Orangerie step (1237/−966) | — | 80 XP, Kräuterbalsam ×2 | rm.07 Fundament, rm.08 Weiher und Damm |
 | `q.p.quelle` "Wasser, das sich erinnert" | main | Laub (beat p3q, right after he wakes at the Orangerie wall) → auto | down the slope to the **Karlsbergquelle** (1059.3/−833.1, r 7; motes down the brook and a light column guide); at the log trough **E „Wasser berühren“** (≈ 2.7 s scene on game time: dip, ripple, freeze, the brook runs back → `quelle:touch`) → the **first shift, to 1789**: the Brunnenstube, Laub's rule (p3r); hold Q home | — | 30 XP | cx.41 Die Karlsbergquelle (FAKT), cx.42 Das Wasser erinnert sich (FIKTION) |
 | `q.p.bussole` "Die Bussole spricht" | main | Laub (beat p4, back in today after the spring) → auto | Ehrenhof (1216/−1114); map compare (M); Hohlweg (1172/−1238); the **Eiskeller** pit (1508/−1296), then **4 Nebelinge** rise (combat tutorial) | nebelling ×4 | 95 XP, Kräuterbalsam ×2 | cx.01 Ehrenhof, rm.01, cx.33 Karte 1836–41, rm.04 Hohlweg, rm.02 Eiskeller |
-| `q.p.punktwolke` "Spuren in der Punktwolke" | main | Marlene (tablet) → auto (home) | examine the point cloud (station); **Q → 1789** at the Ehrenhof (1789, r30; the second, self-made shift, p9 „Der eigene Wechsel“; the first was the spring's); the servant's echo (`echo.p.diener`); **one Streuner** (1185/−1112, Bannlicht tutorial); hold Q home | streuner ×1 | 105 XP, Lampenöl; stance `flag.p_spuren` (hunde / wild / messfehler / offen) | cx.03 Karl II. August, cx.36 Die Wilde Jagd (LEGENDE), cx.38 Fiktionsliste |
+| `q.p.punktwolke` "Spuren in der Punktwolke" | main | Marlene (tablet) → auto (home) | examine the point cloud (granted on the tablet where you stand, before Marlene's radio lines); **Q → 1789** at the Ehrenhof (1789, r30; the second, self-made shift, p9 „Der eigene Wechsel“; the first was the spring's); the servant's echo (`echo.p.diener`); **one Streuner** (1185/−1112, Bannlicht tutorial); hold Q home | streuner ×1 | 105 XP, Lampenöl; stance `flag.p_spuren` (hunde / wild / messfehler / offen) | cx.03 Karl II. August, cx.36 Die Wilde Jagd (LEGENDE), cx.38 Fiktionsliste |
 | `q.p.meiler` "Kohlplatten" | side | Marlene (after `q.p.relief`) | find 3 charcoal-kiln platforms with Relief (reach; no pickup) | — | 50 XP, Lampenöl | rm.03 Meilerplatz |
 | `q.p.trichter` "Nicht anfassen" | side | Marlene (after `q.p.bussole`) | find the bomb crater, **do not touch**, report it on the radio (story reaction `trichter-melden`) | — | 40 XP | rm.06 Bombentrichter, cx.35 |
 | `q.p.irrlichter` "Lichter am Weiher" | side | Laub (after `q.p.punktwolke`) | bann **3 Irrlichter** over the Karlsbergweiher (820/−869) | irrlicht ×3 | 50 XP, Lampenöl ×2 | rm.08 |
@@ -1400,3 +1400,21 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   `q.k1.ankunft` gains the objective `quelle`, `wechsel` moves to the gate; cx.42 adds the drop that
   dries overnight. Old `k1_0` saves are teleported to the spring on resume. No change to the quelle
   system or its 3D.
+- **Story track, 2026-11-20 — prologue pacing (playtest round 10 F-04, F-10, F-25, F-30):** the
+  first three Nebelinge rise at 809/−890 on the flat ground by the water (277 m) instead of
+  803/−889, 4.5 m below a convex crest where only their HP bars showed; still ~55 m from the
+  station (outside the 40 m safe ring). p7 grants `clue.p.punktwolke` (beep + toast) before
+  Marlene's radio lines, so the portable clue's station anchor is never the tracker's goal.
+  p3 teaches the Geisterblick once the wall's Nebelling is gone (reaction `flug`, or on leaving the
+  dam by 60 m; not during that fight) and keeps „F: darüber fliegen“ in the objective; Marlene's
+  `marlene.p.halbweg` halfway up (enter 1000/−905 r 40) teases the Kohlplatten the side quest asks
+  for at the top. No encounter on the leg: the prologue XP is unchanged (still level 3). p10's
+  objective offers the map at once („M – Karte, die Feldstation anklicken, hinreisen (oder F:
+  fliegen)“, M prompt) and `travel:arrived {id: feldstation}` counts as home (the journey lands
+  23.7 m from the bed's circle centre); the ≥ 9 s dusk still holds. Geisterblick gating checked
+  (F works in 2025 from the start; only the lesson moved): enter zones test x/z only, but each
+  flight-sensitive step guards itself — the spring touch needs landing (`quelle.call`, not flying),
+  the Eiskeller clue needs Taste 3 within 7 m and its fight needs landing (combat is off in the
+  air), the Streuner is in 1789 where F is off, p10's 9 s is beat time. Teaching F in p1/p2 would
+  only compete with the Messstab, the first fight and the wall's Nebelling, so p3 after the wall
+  fight is the earliest safe beat.
