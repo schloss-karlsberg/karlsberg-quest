@@ -6,8 +6,9 @@ import { cna, fight, flag, holdHome, installQuestPlay, pickUp, qn, qs, talkQuest
  * Chapter 1 "Der Hof" as an action-RPG quest chain (docs/ACTION-RPG.md §11.1), played through
  * headless (`?manual`, driven through window.kq):
  *
- *   Teil A (1789, day → dusk)  station → "Zu Fuß, außer einem" (Q at the Ehrenhof, the guard's
- *   echo) → "Der Kanzlist zählt" (walk into the Registratur, Soll gives the quest, three papers,
+ *   Teil A (1789, day → dusk)  dawn at the spring → "Zu Fuß, außer einem" (the Karlsbergquelle: E
+ *   at the trough, the shift; in 1789 a jump to the Ehrenhof gate, the guard's echo) → "Der
+ *   Kanzlist zählt" (walk into the Registratur, Soll gives the quest, three papers,
  *   six Mahnbriefe in the Küchenhof, the turn-in with its history and sources) → "Matthes' Lohn"
  *   (Hanne, the mason's mark, Soll asked, the Schuldbuch at dusk on the Bauplatz, the wage slip,
  *   the stance) → "Tausend Hunde" (Jost: hiding, meat for the kennel, three Streuner) → home.
@@ -278,6 +279,100 @@ export async function giverShot(page: Page, npc: string, from: [number, number],
   await cna(page, name);
 }
 
+/** In front of the Karlsbergquelle's trough, facing the water (the touch reaches 2.1 m from it; prologue spot). */
+export const SPRING = { x: 1059.3, z: -833.1, yaw: 50 } as const;
+/** The chapter's checkpoint and the k1_0b wake (story 01-kapitel-1): the same spot, within reach of the water. */
+export const K1_START = SPRING;
+/** The water in the trough (what the player faces for the E prompt). */
+export const SPRING_WATER = { x: 1061, z: -834.5 } as const;
+/** The walk up in 1789: the trail out of the hollow, west of the Orangerie, in through the Ehrenhof gate. */
+export const SPRING_TO_COURT: [number, number][] = [
+  [1100, -870],
+  [1150, -920],
+  [1190, -980],
+  [1185, -1050],
+  [1172, -1085],
+  [1170, -1112],
+  [1190, -1116],
+];
+
+/** Distance of the player from a point (x/z), in metres. */
+export const distTo = (page: Page, x: number, z: number) =>
+  page.evaluate(([x, z]) => Math.hypot(window.kq!.ctx.player.position.x - x, window.kq!.ctx.player.position.z - z), [x, z] as const);
+
+/**
+ * The touch at the Karlsbergquelle (k1_0; shaped to move to helpers/prolog.ts later: it needs only
+ * the page and window.kq). Steps to the trough (unless `stay`: k1 opens within reach), faces the water, expects the
+ * spring's E prompt, presses E, runs the ~2.7 s touch scene on game time, jumps past the fx shift
+ * transition and expects 1789 with the quest objective counted (`quest`/`objective`, default
+ * q.k1.ankunft/quelle).
+ */
+export async function touchSpring(page: Page, o: { stay?: boolean; quest?: string; objective?: string; screenshot?: (name: string) => Promise<void> } = {}): Promise<void> {
+  await page.evaluate(
+    ([spot, water, stay]) => {
+      const k = window.kq!;
+      if (!stay) k.teleport(spot.x, spot.z, spot.yaw, 0);
+      const p = k.ctx.player.position;
+      k.ctx.player.yaw = Math.atan2(-(water.x - p.x), -(water.z - p.z));
+      k.ctx.player.pitch = 0;
+      k.step(4);
+    },
+    [SPRING, SPRING_WATER, !!o.stay] as const,
+  );
+  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'E "Wasser berühren" at the trough').toBe(true);
+  await o.screenshot?.('quelle-heute');
+  await page.evaluate(() => window.kq!.press('KeyE', 1));
+  // the touch scene runs ~2.7 s of game time (fixed updates without renders), then the story shifts
+  await page.evaluate(() => {
+    // fixed updates without a render each (as K1Helpers.upd; the loop's callback is private)
+    const loop = window.kq!.ctx.loop as unknown as { cb: { update(dt: number): void }; dt: number; tick: number };
+    for (let i = 0; i < 200; i++) {
+      loop.cb.update(loop.dt);
+      loop.tick++;
+    }
+    window.kq!.step(1);
+    // the fx transition runs on rendered frames: jump past its end
+    window.kq!.fx!.shiftAt(3.6);
+    for (let i = 0; i < 60; i += 10) window.kq!.step(10);
+  });
+  expect(await page.evaluate(() => window.kq!.ctx.era.current)).toBe('1789');
+  const n = await page.evaluate(
+    ([id, ob]) => (window.kq!.quests!.state().quests[id] ?? { counts: {} as Record<string, number> }).counts[ob] ?? 0,
+    [o.quest ?? 'q.k1.ankunft', o.objective ?? 'quelle'] as const,
+  );
+  expect(n, 'the touch counts the quest objective').toBe(1);
+}
+
+/**
+ * The chapter's opening the long way (story k1_0 → k1_0b → k1_1): the touch at the spring, then the
+ * walk up to the court on foot with the real controller. Returns the nearest enemy seen on the way (m).
+ */
+export async function openAtSpring(page: Page, o: { shots?: boolean } = {}): Promise<number> {
+  await ensureHelpers(page);
+  expect(await page.evaluate(() => window.kq!.state().flags['quelle.call'])).toBe(true);
+  await touchSpring(page, { screenshot: o.shots === false ? undefined : (n) => shot(page, `00-${n}`) });
+  let s = await story(page);
+  expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });
+  // the lantern waits for the court (the fresh drop carries the walk)
+  expect(!!s.meters.oil).toBe(false);
+  await upd(page, 60);
+  if (o.shots !== false) await shot(page, '00-quelle-1789');
+  let near = 1e9;
+  for (const pt of SPRING_TO_COURT) {
+    const w = await walk(page, [pt], { sprint: pt[0] < 1180, tol: 1.5 });
+    near = Math.min(near, ...(await page.evaluate(([x, z]) => window.kq!.combat!.enemies().map((e) => Math.hypot(e.x - x, e.z - z)), [w.x, w.z] as const)));
+    if (w.beat === 'k1_1') break;
+    expect(w.d, `walked to ${pt.join('/')}`).toBeLessThan(2);
+    expect(w.beat).toBe('k1_0b');
+  }
+  await upd(page, 20);
+  s = await story(page);
+  expect(s.beat).toBe('k1_1');
+  expect(await qn(page, 'q.k1.ankunft', 'wechsel')).toBe(1);
+  expect(!!s.meters.oil, 'the lantern burns from the court on').toBe(true);
+  return near;
+}
+
 /** The chapter's main playthrough (shared with e2e/campaign.spec.ts). */
 export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   SHOTS = o.shots ?? true;
@@ -285,6 +380,8 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   await installQuestPlay(page);
   let s = await story(page);
   expect(s).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today' });
+  // the chapter opens at the Karlsbergquelle at dawn (its checkpoint), not in the station bed
+  expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
   await expect(page.getByTestId('story-card')).toContainText('Der Hof');
   await o.at?.('k1:start');
   await ensureHelpers(page);
@@ -297,15 +394,23 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBeTruthy();
 
   // ======================= Teil A: the day =======================================================
-  // ---- "Zu Fuß, außer einem": Q at the Ehrenhof, the guard at the gate --------------------------
+  // ---- "Zu Fuß, außer einem": the Karlsbergquelle, the guard at the gate ---------------------------
+  // the checkpoint is within reach of the water: no step forward
+  await touchSpring(page, { stay: true, screenshot: (n) => shot(page, `00-${n}`) });
+  s = await story(page);
+  expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });
+  expect(!!s.meters.oil, 'no lantern in the prelude').toBe(false);
+  // the 380 m walk up is e2e/chapter-k1-quelle.spec.ts's: here a jump to the gate in 1789
   await page.evaluate(() => {
-    window.kq!.teleport(1224, -1117, 80, 0);
-    window.kq!.step(2);
+    window.kq!.teleport(1195, -1116, 90, 0);
+    window.kq!.step(4);
   });
-  await flush(page);
-  await shiftToPast(page);
-  expect(await beat(page)).toBe('k1_1');
+  await upd(page, 20);
+  s = await story(page);
+  expect(s.beat).toBe('k1_1');
   expect(await qn(page, 'q.k1.ankunft', 'wechsel')).toBe(1);
+  expect(!!s.meters.oil, 'the lantern burns from the court on').toBe(true);
+  await flush(page);
   await upd(page, 120);
   await shot(page, '01-ehrenhof-1789');
   await walk(page, [[1207, -1115]]);
