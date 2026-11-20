@@ -28,6 +28,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./travel'),
   // the Karlsbergquelle: its living water and the touch that starts the time travel (prologue p3q)
   () => import('./quelle'),
+  // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
+  () => import('./photo'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
   () => import('./notes'),
 ];

@@ -392,3 +392,10 @@ html[data-kq-touch] .kqp-q-key,
 html[data-kq-touch] .kqj-foot kbd {
   display: none;
 }
+
+/* photo mode: the attack button is the shutter (src/systems/photo) */
+.kq-t-btn.attack.shutter {
+  background: rgba(240, 240, 240, 0.28);
+  border-color: rgba(255, 255, 255, 0.85);
+  color: #fff;
+}
