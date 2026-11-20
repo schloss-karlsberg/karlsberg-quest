@@ -15,6 +15,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./chronik'),
   () => import('./story'),
   () => import('./interiors'),
+  // people contract v0 (modern NPCs behind a mesh-independent handle API, ctx.people); before npc, which binds talkable people
+  () => import('./people'),
   () => import('./npc'),
   () => import('./barks'),
   () => import('./skills'),
