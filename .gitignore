@@ -6,3 +6,10 @@ playwright-report/
 *.log
 .vite/
 .claude/worktrees/
+.claude/settings.local.json
+scripts/release/private/
+
+# local secrets (content tools); see .env.example
+.env
+.env.*
+!.env.example

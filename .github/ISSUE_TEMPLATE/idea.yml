@@ -1,0 +1,41 @@
+name: Idea
+description: Suggest a quest, a feature, a place, a historical detail or an improvement.
+title: "[Idee] "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome. Please keep the project rules in mind (see CONTRIBUTING.md):
+        original work only (no names, lore or assets from existing games), facts need a source,
+        invented parts are labelled FIKTION, and in-game text is German.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of idea
+      options:
+        - Quest or story
+        - Gameplay or combat
+        - Place, era or world detail
+        - Historical fact or correction
+        - User interface or controls
+        - Performance or accessibility
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would you like to see, and why would it make the game better?
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: For historical or regional facts, links or literature. If the idea is invented, say so; it will be labelled FIKTION in the game.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Sketches, references, anything else
