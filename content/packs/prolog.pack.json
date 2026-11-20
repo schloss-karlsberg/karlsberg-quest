@@ -709,6 +709,17 @@
       "once": true
     },
     {
+      "id": "marlene.p.halbweg",
+      "speaker": "marlene",
+      "text_de": "Halbe Höhe. Guck mal links und rechts am Hang: runde, flache Stellen, wie Teller. Merk sie dir. Die erklär ich dir, wenn du oben bist.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3"
+      },
+      "once": true
+    },
+    {
       "id": "laub.p.intro",
       "speaker": "laub",
       "text_de": "Fünf Meter dreißig. Für Orangen.",
@@ -887,7 +898,7 @@
     {
       "id": "marlene.p.punkte",
       "speaker": "marlene",
-      "text_de": "Ich schick dir was aufs Tablet. Das hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.",
+      "text_de": "Hast du die Datei? Die hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",
