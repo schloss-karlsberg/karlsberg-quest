@@ -330,7 +330,7 @@ describe('story files', () => {
     const SPRING = { x: 1059.3, z: -833.1 };
     const k1 = files.find((f) => f.story.chapter === 'k1')!.story;
     // the chapter checkpoint is the spring (chapterEntered teleports there from the station bed)
-    expect(k1.checkpoint).toEqual({ x: 1058.2, z: -832.4, yaw: 54, era: 'today' });
+    expect(k1.checkpoint).toEqual({ x: 1059.3, z: -833.1, yaw: 50, era: 'today' });
     expect(k1.beats.slice(0, 3).map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_1']);
     engine.goto('k1');
     expect(slice.beat).toBe('k1_0');
@@ -380,7 +380,7 @@ describe('story files', () => {
     expect(all().some((a) => a.do === 'anchor' && a.x === 1061)).toBe(false);
     // caught in the prelude: you wake at the spring
     const k0b = k1.beats.find((b) => b.id === 'k1_0b')!;
-    expect(k0b.wake).toEqual({ x: 1058.2, z: -832.4, yaw: 54, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' });
+    expect(k0b.wake).toEqual({ x: 1059.3, z: -833.1, yaw: 50, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' });
     // the chapter's oil and return-tip reactions wait for the end of the prelude
     for (const id of ['oel-a', 'oel-b', 'lauf-zurueck']) expect(JSON.stringify(k1.on!.find((r) => r.id === id)!.when)).toContain('"not":{"flag":"k1.vorspiel"}');
     // every Ehrenhof anchor in k1 waits for court.admitted
@@ -409,7 +409,7 @@ describe('story files', () => {
     expect(slice.beat).toBe('k1_0');
     const acts = runs.flatMap((r) => r.actions);
     // chapterEntered(resume) does not teleport: the beat's own teleport does (onResume)
-    expect(acts).toContainEqual({ do: 'teleport', x: 1058.2, z: -832.4, yaw: 54, onResume: true });
+    expect(acts).toContainEqual({ do: 'teleport', x: 1059.3, z: -833.1, yaw: 50, onResume: true });
     // the old anchor (shift.* flags) goes, the spring's flags come, the objective points at it
     expect(acts).toContainEqual({ do: 'anchor', to: null });
     expect(acts.indexOf(acts.find((a) => a.do === 'anchor')!)).toBeLessThan(acts.findIndex((a) => a.do === 'teleport'));

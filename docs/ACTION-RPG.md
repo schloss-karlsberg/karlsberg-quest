@@ -810,7 +810,7 @@ prologue beat (no quest, no gate); the p10 objective suggests them in the evenin
 As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapitel1.mjs`); ends at level 6.
 
 **Opening at the Karlsbergquelle** (owner, 2026-11-20; design `docs/IDEAS-ROUND11.md` §1, phase 1;
-story `k1_0` → `k1_0b` → `k1_1`): the chapter checkpoint is the spring (1058.2/−832.4, yaw 54), so
+story `k1_0` → `k1_0b` → `k1_1`): the chapter checkpoint is the spring (1059.3/−833.1, yaw 50: the prologue's spot, within reach of the water), so
 the chapter opens there at dawn (`k1_0` „Morgengrauen an der Quelle“, `look dawn`), not in the station
 bed. Marlene radios („Du bist ja schon weg“), Laub says why it takes a second touch: yesterday's drop
 dried in the Bussole overnight (FIKTION, cx.42). `k1_0` sets no Q anchor (Q at the spring would skip

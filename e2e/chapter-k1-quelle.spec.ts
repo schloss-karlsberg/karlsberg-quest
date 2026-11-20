@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
+import { canTouch, REACH, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { K1_START, SPRING, boot, distTo, frames, openAtSpring, shiftToPast, shot, story, upd, walk } from './helpers/k1';
 
 /**
@@ -18,8 +19,11 @@ test('chapter 1 opens at the Karlsbergquelle: the touch, summer 1789, the walk u
   expect(s).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today' });
   expect(s.objective?.id).toBe('k1.quelle');
   expect(await distTo(page, K1_START.x, K1_START.z), 'the chapter opens at the spring').toBeLessThan(30);
-  // the prompt from the checkpoint itself (informational: the player may need one step forward)
-  console.log('[k1-quelle] E prompt at the checkpoint:', await page.evaluate(() => window.kq!.quelle!.info().prompt));
+  // the checkpoint is within reach: the E prompt shows without moving or turning the player
+  await page.evaluate(() => {
+    for (let i = 0; i < 6; i++) window.kq!.step(2);
+  });
+  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'E "Wasser berühren" at the checkpoint').toBe(true);
   // Q at the Ehrenhof opens nothing this morning (no anchor in k1_0)
   await page.evaluate(() => {
     window.kq!.teleport(1222, -1119, 80, 0);
@@ -57,7 +61,13 @@ test('chapter 1: caught on the walk up, you wake at the spring and Q there takes
   s = await story(page);
   expect(s).toMatchObject({ era: 'today', beat: 'k1_0b' });
   expect(s.objective?.id).toBe('k1.zurueck-q');
-  expect(await distTo(page, SPRING.x, SPRING.z)).toBeLessThan(8);
+  // awake within reach of the water: quelle.call is off in k1_0b (no prompt), so check the touch
+  // geometry itself (src/systems/quelle/layout.ts: distance to today's touch point ≤ REACH, and canTouch)
+  const pl = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z, yaw: window.kq!.ctx.player.yaw }));
+  const [tx, tz] = toWorld(...touchLocal('today'));
+  expect(Math.hypot(tx - pl.x, tz - pl.z), 'woke within reach of the water').toBeLessThanOrEqual(REACH);
+  expect(canTouch(pl.x, pl.z, pl.yaw, 'today'), 'woke facing the water').toBe(true);
+  expect(await distTo(page, SPRING.x, SPRING.z)).toBeLessThan(1);
   // the anchor is the spring, never the Ehrenhof before the court has let you in
   const f = await page.evaluate(() => window.kq!.state().flags);
   expect([f['shift.x'], f['shift.z']]).toEqual([1061, -834.5]);

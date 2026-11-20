@@ -7,9 +7,9 @@
   "start": "k1_0",
   "next": "k2",
   "checkpoint": {
-    "x": 1058.2,
-    "z": -832.4,
-    "yaw": 54,
+    "x": 1059.3,
+    "z": -833.1,
+    "yaw": 50,
     "era": "today"
   },
   "on": [
@@ -862,9 +862,9 @@
         },
         {
           "do": "teleport",
-          "x": 1058.2,
-          "z": -832.4,
-          "yaw": 54,
+          "x": 1059.3,
+          "z": -833.1,
+          "yaw": 50,
           "onResume": true
         },
         {
@@ -936,9 +936,9 @@
       "id": "k1_0b",
       "title_de": "Die Brunnenstube, Sommer",
       "wake": {
-        "x": 1058.2,
-        "z": -832.4,
-        "yaw": 54,
+        "x": 1059.3,
+        "z": -833.1,
+        "yaw": 50,
         "era": "today",
         "text": "Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren."
       },

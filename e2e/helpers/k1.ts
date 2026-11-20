@@ -279,10 +279,10 @@ export async function giverShot(page: Page, npc: string, from: [number, number],
   await cna(page, name);
 }
 
-/** The chapter's checkpoint at the Karlsbergquelle (story 01-kapitel-1 `checkpoint`): where k1 opens. */
-export const K1_START = { x: 1058.2, z: -832.4, yaw: 54 } as const;
-/** In front of the Karlsbergquelle's trough, facing the water (the touch reaches 2.1 m from it). */
+/** In front of the Karlsbergquelle's trough, facing the water (the touch reaches 2.1 m from it; prologue spot). */
 export const SPRING = { x: 1059.3, z: -833.1, yaw: 50 } as const;
+/** The chapter's checkpoint and the k1_0b wake (story 01-kapitel-1): the same spot, within reach of the water. */
+export const K1_START = SPRING;
 /** The water in the trough (what the player faces for the E prompt). */
 export const SPRING_WATER = { x: 1061, z: -834.5 } as const;
 /** The walk up in 1789: the trail out of the hollow, west of the Orangerie, in through the Ehrenhof gate. */
@@ -302,7 +302,7 @@ export const distTo = (page: Page, x: number, z: number) =>
 
 /**
  * The touch at the Karlsbergquelle (k1_0; shaped to move to helpers/prolog.ts later: it needs only
- * the page and window.kq). Steps to the trough (unless `stay`), faces the water, expects the
+ * the page and window.kq). Steps to the trough (unless `stay`: k1 opens within reach), faces the water, expects the
  * spring's E prompt, presses E, runs the ~2.7 s touch scene on game time, jumps past the fx shift
  * transition and expects 1789 with the quest objective counted (`quest`/`objective`, default
  * q.k1.ankunft/quelle).
@@ -395,7 +395,8 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
 
   // ======================= Teil A: the day =======================================================
   // ---- "Zu Fuß, außer einem": the Karlsbergquelle, the guard at the gate ---------------------------
-  await touchSpring(page, { screenshot: (n) => shot(page, `00-${n}`) });
+  // the checkpoint is within reach of the water: no step forward
+  await touchSpring(page, { stay: true, screenshot: (n) => shot(page, `00-${n}`) });
   s = await story(page);
   expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });
   expect(!!s.meters.oil, 'no lantern in the prelude').toBe(false);
