@@ -788,7 +788,18 @@ Round-4 (polish: set dressing) integration rules:
 - Emits `story:chapter/beat/ending`, `objective:set`, `threat:configure`, `shift:request`,
   `dialogue:say`, `hub:enter/leave`, `chronik:open`, and private `hub:use {item}`,
   `story:cue {id,data?}`, `story:credits`. Presents every `dialogue:say` (portrait card, typing,
-  murmur voice) and ContentDB dialogue triggers. Owns the title flow (warning, name, lantern),
+  voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
+  (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
+  `dialogue/voiceManifest.ts`) has a current one for the line (by id, else by text hash for id-less
+  quest lines and variant / era ids) and it is already decoded (`dialogue/voiceClips.ts`: per-beat
+  preload, 3 parallel fetches, 16-clip LRU; Opus/WebM when `canPlayType` says "probably", else
+  AAC/M4A, an Opus decode failure retries as AAC and switches to AAC for the session; the old
+  single `file` is still read); else the per-syllable murmur. Both run through the
+  same per-speaker chain (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, mirrored
+  offline by the ffmpeg casting pipeline). With a clip the typing paces to its length; skip / next
+  stops it; the game's pause and an echo pause it; a suspended context (hidden tab,
+  `AudioManager.setHidden`) freezes it and no clip starts then. `public/voice/` is gitignored; the
+  build emits an empty manifest when there is none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern),
   the field station at (760, −915) with the hub overlay, the Bussole/objective HUD, the caught
   curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,

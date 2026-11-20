@@ -8,3 +8,6 @@ playwright-report/
 .claude/worktrees/
 .claude/settings.local.json
 scripts/release/private/
+
+# recorded voice clips: not committed until the audio licensing is settled
+public/voice/
