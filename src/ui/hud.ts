@@ -282,19 +282,36 @@ export class Hud {
   prompt(key: string | null, text?: string, owner = '_', opts: { low?: boolean } = {}): void {
     this.prompts.delete(owner);
     if (key || text) this.prompts.set(owner, { key, text: text ?? '', low: !!opts.low });
+    this.renderPrompt();
+  }
+
+  private renderPrompt(): void {
     // a low prompt (the Feldstation's door) yields to any other: the staff beside the trailer is
     // taken with E, not the hub opened (playtest 2026-11-19: "E – Feldstation" over the first task)
     const all = [...this.prompts.entries()];
     const topEntry = all.filter(([, p]) => !p.low).pop() ?? all.pop();
     this.promptTop = topEntry?.[0] ?? null;
     const top = topEntry?.[1];
+    this.onPrompt?.(top?.key ?? null, top ? top.text || null : null);
     if (!top) {
       this.promptEl.classList.remove('show');
       return;
     }
-    this.promptEl.replaceChildren(...(top.key ? [h('kbd', top.key)] : []), top.text);
+    // touch mode: the key cap becomes the icon of the touch button that answers it (src/ui/touch.ts)
+    const cap = top.key ? (this.touchIcon ? h('kbd.kq-touch-key', { 'data-key': top.key }, svg(this.touchIcon(top.key))) : h('kbd', top.key)) : null;
+    this.promptEl.replaceChildren(...(cap ? [cap] : []), top.text);
     this.promptEl.classList.add('show');
   }
+
+  /** Touch mode: prompt keys as touch icons (null: key caps); also hides the pointer-lock chip. */
+  setTouchIcons(fn: ((key: string) => string) | null): void {
+    this.touchIcon = fn;
+    if (fn) this.clickEl.classList.add('kq-hidden');
+    this.renderPrompt();
+  }
+  private touchIcon: ((key: string) => string) | null = null;
+  /** Called with the shown prompt's key and text (null: none) whenever it changes (touch buttons). */
+  onPrompt: ((key: string | null, text: string | null) => void) | null = null;
   private readonly prompts = new Map<string, { key: string | null; text: string; low: boolean }>();
   private promptTop: string | null = null;
 
@@ -422,7 +439,7 @@ export class Hud {
 
   showClickToPlay(on: boolean): void {
     // in bullet time the pilot looks without pointer lock: no "click into the picture" chip
-    this.clickEl.classList.toggle('kq-hidden', !on || this.bulletTime);
+    this.clickEl.classList.toggle('kq-hidden', !on || this.bulletTime || this.touchIcon !== null);
   }
 
   /** Show the bullet-time chip (?manual / `kq.pilot.bulletTime()`); it takes the pointer-lock chip's place. */

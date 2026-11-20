@@ -121,6 +121,8 @@ export interface AttributionItem {
   url?: string;
   source?: string;
   disclaimer_de?: string;
+  /** Shipped files (below public/) this item's licence covers, e.g. the CC BY-SA palace data. */
+  files?: string[];
 }
 
 export interface GameData {

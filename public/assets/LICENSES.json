@@ -89,6 +89,10 @@
     {"id": "quaternius.adventurer.player", "name": "Adventurer", "author": "Quaternius", "source": "https://poly.pizza/m/5EGWBMpuXq", "licence": "CC0-1.0", "files": ["models/camera/surveyor.glb"],"modified": "The player character: full clip set kept (16 clips, pnpm assets:pack --anims), meshopt compressed; recoloured at runtime as a modern surveyor (olive field jacket, hi-vis panels, cargo trousers); the Messstab and the belt lantern are our own geometry", "retrieved": "2026-11-19"}
   ],
   "libraries": [
+    {"name": "three.js (3D engine, incl. the examples/addons loaders and utilities)", "licence": "MIT", "files": [], "source": "https://github.com/mrdoob/three.js (© 2010-2026 three.js authors)"},
+    {"name": "meshoptimizer decoder (compressed glTF meshes)", "licence": "MIT", "files": [], "source": "https://github.com/zeux/meshoptimizer (© 2016-2026 Arseny Kapoulkine; bundled from three.js examples)"},
+    {"name": "KTX-Parse (KTX2 container parser)", "licence": "MIT", "files": [], "source": "https://github.com/donmccurdy/KTX-Parse (© Don McCurdy; bundled from three.js examples)"},
+    {"name": "zstddec (Zstandard decoder for KTX2)", "licence": "MIT", "files": [], "source": "https://github.com/donmccurdy/zstddec (© Don McCurdy; bundled from three.js examples)"},
     {
       "name": "Basis Universal transcoder (KTX2 textures)",
       "licence": "Apache-2.0",

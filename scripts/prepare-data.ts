@@ -694,7 +694,7 @@ const attribution = {
     { id: 'hist1840', label_de: hist.label_de, text: hist.attribution, source: hist.source, licence: 'dl-de/by-2-0' },
     { id: 'hist1935', label_de: hist35.label_de, text: hist35.attribution, source: hist35.source, licence: 'dl-de/by-2-0' },
     ...(pointMeta ? [{ id: 'pointcloud', label_de: 'Punktwolke (ALS 2025, Bodenpunkte)', text: String(pointMeta.attribution), source: String(pointMeta.source), licence: 'dl-de/by-2-0' }] : []),
-    { id: 'recon', label_de: 'Rekonstruktion 1789', text: reconIndex.attribution, disclaimer_de: reconIndex.disclaimer_de, licence: 'CC BY-SA 2.0 DE (Grundrisse teils nach schloss-carlsberg.de); Modell: Teilprojekt schloss-karlsberg' },
+    { id: 'recon', label_de: 'Rekonstruktion 1789', text: reconIndex.attribution, disclaimer_de: reconIndex.disclaimer_de, licence: 'CC BY-SA 2.0 DE (Grundrisse teils nach Lageplan 2006, schloss-carlsberg.de); diese Dateien stehen nicht unter MIT', url: 'https://creativecommons.org/licenses/by-sa/2.0/de/', files: ['data/palace/footprints.json', 'data/palace/buildings.glb', 'data/palace/rooms.json'] },
     { id: 'osm', label_de: 'Wege & Gewässer', text: '© OpenStreetMap-Mitwirkende, ODbL', source: om.vectors.osm.source, licence: 'ODbL 1.0', url: 'https://www.openstreetmap.org/copyright' },
     { id: 'pois', label_de: 'Orte', text: poiGeo.attribution, licence: 'ODbL / siehe Quelle je Ort' },
     { id: 'project', label_de: 'Datenaufbereitung', text: 'Saar LiDAR Explorer / schloss-karlsberg (Open-Kirrberg), MIT', licence: 'MIT' },

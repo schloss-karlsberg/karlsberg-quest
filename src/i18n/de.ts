@@ -134,8 +134,11 @@ export const de: Record<string, string> = {
   'licences.assets.title': 'Grafik: freie 3D-Modelle und Texturen',
   'licences.assets.intro': 'Modelle, Texturen und Himmel stammen aus gemeinfreien Sammlungen (CC0 1.0, Public Domain). Wir nennen die Urheber trotzdem gern.',
   'licences.fonts': 'Schriften: IM Fell English (Igino Marini) und Caveat (The Caveat Project Authors), SIL Open Font License 1.1.',
+  'licences.fonts.texts': 'Lizenztexte:',
+  'licences.files': 'Dateien:',
   'licences.audio': 'Alle Klänge werden im Browser erzeugt (Web Audio), keine fremden Aufnahmen.',
-  'licences.code': 'Programmcode: Karlsberg Quest (Open-Kirrberg).',
+  'licences.trademarks': 'Marken gehören ihren Inhabern. Dieses unabhängige Fanprojekt steht in keiner Verbindung zur Stadt Homburg, zum WaldPark Schloss Karlsberg oder zu einer Brauerei und wird von ihnen nicht unterstützt.',
+  'licences.code': 'Programmcode: Karlsberg Quest, MIT-Lizenz (Karlsberg-Quest-Mitwirkende).',
 
   'controls.title': 'Steuerung',
   'ui.keys.turn': 'Umsehen ohne Maus: drehen (auch Komma / Punkt) und Blick heben / senken',

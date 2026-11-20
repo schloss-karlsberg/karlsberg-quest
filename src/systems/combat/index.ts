@@ -30,7 +30,7 @@ import { deriveStats } from '../../rpg/stats';
 import type { CombatSlice, DerivedStats, EnemyGroupState } from '../../rpg/types';
 import { h } from '../../ui/dom';
 import { type SettingsRow, addSettingsRows } from '../../ui/settings';
-import { keyLabel } from '../../ui/settings';
+import { actionLabel } from '../../ui/actionLabel';
 import { Frustum, Matrix4, Quaternion, Vector3 } from 'three';
 import { atmosphere } from '../../world/atmosphere';
 import { lanternPose } from '../hunt/lantern';
@@ -265,7 +265,7 @@ class Combat {
 
   private skillKey(id: SkillId): string {
     const action = (['skill1', 'skill2', 'skill3'] as const)[SKILL_IDS.indexOf(id)]!;
-    return keyLabel(this.ctx.input.bindings[action]?.[0] ?? '');
+    return actionLabel(this.ctx.input, action);
   }
 
   /**
@@ -668,8 +668,8 @@ class Combat {
         // the dialogue queue; before Laub has spoken it is a HUD hint, not his voice (his reveal)
         if (!e.boss && ev.attack.damage > 0 && ctx.state.state.flags['tut.dodge'] !== true && Math.hypot(e.x - inp.x, e.z - inp.z) <= ev.attack.range + 2.5) {
           ctx.state.update((s) => (s.flags['tut.dodge'] = true), 'combat');
-          if (ctx.state.state.flags['story.laub'] === true) this.emit('dialogue:say', { speaker: 'laub', text: t('combat.tut.dodge'), id: 'laub.tut.dodge', ms: 2600, priority: 'now' });
-          else this.hud.caption(t('combat.tut.dodge.hint'), 'boss', Math.max(2200, ev.dur * 1000 + 900));
+          if (ctx.state.state.flags['story.laub'] === true) this.emit('dialogue:say', { speaker: 'laub', text: t('combat.tut.dodge', { key: actionLabel(ctx.input, 'dodge', 0, 'Space') }), id: 'laub.tut.dodge', ms: 2600, priority: 'now' });
+          else this.hud.caption(t('combat.tut.dodge.hint', { key: actionLabel(ctx.input, 'dodge', 0, 'Space') }), 'boss', Math.max(2200, ev.dur * 1000 + 900));
         }
         if (e.kind === 'pikeur' && ev.attack.kind === 'charge') this.audio.horn(this.posOf(e, 2.4));
         // off-screen attacker → arrow at the screen edge (settings.soundIndicators)
@@ -729,7 +729,7 @@ class Combat {
         this.visuals.glance(e.x, e.y + 0.5, e.z);
         this.audio.immune(this.posOf(e, 0.5));
         if (this.safe) this.captionOnce('safe', t('combat.safe'), 'info', 8);
-        else this.captionOnce('immune', t('combat.immune', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }), 'info', 6, 2600);
+        else this.captionOnce('immune', t(ctx.input.touchMode ? 'combat.immune.touch' : 'combat.immune', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }), 'info', 6, 2600);
         if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 0.8, e.z, 'immune', undefined, this.numberSpan(e));
         break;
       }
@@ -743,7 +743,7 @@ class Combat {
       }
       case 'immuneHint':
         this.audio.whiff();
-        ctx.ui.toast(t('combat.immuneHint', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }) + (ev.refilled ? ` ${t('combat.immuneRefill')}` : ''), 3200);
+        ctx.ui.toast(t(ctx.input.touchMode ? 'combat.immuneHint.touch' : 'combat.immuneHint', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }) + (ev.refilled ? ` ${t('combat.immuneRefill')}` : ''), 3200);
         break;
       case 'reform': {
         const e = ev.e;
@@ -982,7 +982,7 @@ class Combat {
       case 'ward': {
         for (const o of ev.targets) this.visuals.shatter(o.x, o.y + 0.8, o.z, false, st.reducedFlash);
         this.audio.veil(this.posOf(ev.e, 1.5), false);
-        this.captionOnce('ward', t('combat.ward', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }), 'info', 12, 2600);
+        this.captionOnce('ward', t(ctx.input.touchMode ? 'combat.ward.touch' : 'combat.ward', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }), 'info', 12, 2600);
         break;
       }
       case 'wardBreak':
@@ -1343,7 +1343,7 @@ class Combat {
     });
     // HUD
     const bannFrac = p.bann < p.bannMax ? Math.min(1, p.bannT / Math.max(0.1, this.sim.opt.stats.bannRecharge)) : 1;
-    this.hud.setVitals({ hp: p.hp, max: p.max, st: p.st.stamina, stMax: p.st.max, exhausted: p.st.exhausted, bann: p.bann, bannMax: p.bannMax, bannFrac, calm: !p.inCombat, key: keyLabel(ctx.input.bindings.bannlicht[0] ?? 'Mouse2') });
+    this.hud.setVitals({ hp: p.hp, max: p.max, st: p.st.stamina, stMax: p.st.max, exhausted: p.st.exhausted, bann: p.bann, bannMax: p.bannMax, bannFrac, calm: !p.inCombat, key: actionLabel(ctx.input, 'bannlicht', 0, 'Mouse2') });
     // the abilities row (dock 'vitals' 25)
     const slots: SkillSlot[] = (this.sim.opt.skills ?? []).map((id) => {
       const cd = skillCooldown(id, this.sim.opt.gentle);

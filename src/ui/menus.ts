@@ -52,6 +52,9 @@ export function assetLicencesBody(f: LicencesFile | null = assetLicences): HTMLE
   ];
 }
 
+/** The OFL texts, copied from src/ui/fonts to public/fonts so they ship in dist (relative to index.html). */
+const OFL_TEXTS = ['fonts/OFL-IMFell.txt', 'fonts/OFL-Caveat.txt'];
+
 export function licencesBody(items: AttributionItem[]): HTMLElement[] {
   return [
     h('p', t('licences.intro')),
@@ -64,13 +67,19 @@ export function licencesBody(items: AttributionItem[]): HTMLElement[] {
           it.licence ? ` — ${it.licence}` : '',
           it.disclaimer_de ? h('em', ` ${it.disclaimer_de}`) : null,
           it.url ? [' ', h('a', { href: it.url, target: '_blank', rel: 'noopener' }, it.url)] : null,
+          it.files?.length ? h('em', ` ${t('licences.files')} ${it.files.join(', ')}`) : null,
         ]),
       ),
     ),
     ...assetLicencesBody(),
-    h('p', t('licences.fonts')),
+    h('p', [
+      t('licences.fonts'),
+      ` ${t('licences.fonts.texts')} `,
+      ...OFL_TEXTS.flatMap((f, i) => [i ? ' · ' : '', h('a', { href: f, target: '_blank', rel: 'noopener' }, f)]),
+    ]),
     h('p', t('licences.audio')),
     h('p', t('licences.code')),
+    h('p', t('licences.trademarks')),
   ];
 }
 
