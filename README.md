@@ -57,6 +57,8 @@ Built with Vite, TypeScript and three.js. The design documents live in [`PRD.md`
 versions, the changelog and the player notes (`content/release-notes/`, shown in the game under
 „Neuigkeiten“ and on `neu.html`) come from release-please; see [`docs/RELEASE.md`](docs/RELEASE.md).
 
+- [Storyboard](docs/storyboard/) — **Spoiler**: every beat, place and creature, illustrated.
+
 ## Credits
 
 The full list is in the game, under „Lizenzen & Quellen“ (title screen and pause menu).
