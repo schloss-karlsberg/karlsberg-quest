@@ -22,6 +22,7 @@ import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel
 import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
+import { openNews } from './ui/news';
 import { TitleScreen } from './ui/title';
 import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
@@ -120,6 +121,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   const title = new TitleScreen({
     onStart: (fresh) => startGame(fresh),
     onLicences: () => openLicences({ modals: ui.modals, attribution: () => ctxRef?.data.attribution.items ?? [] }),
+    onNews: () => openNews(ui.modals, () => title.refreshNews()),
     confirm: (text) => ui.modals.confirm(text),
   });
   if (!skipTitle) ui.add(title.el);

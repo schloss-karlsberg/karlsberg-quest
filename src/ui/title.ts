@@ -1,10 +1,13 @@
 import { t } from '../i18n';
 import { LANTERN_SVG, h, svg } from './dom';
+import { newsUnseen, versionLabel } from './news';
 
 export interface TitleCallbacks {
   /** `fresh` = start a new field book instead of continuing. */
   onStart(fresh: boolean): void;
   onLicences(): void;
+  /** „Neuigkeiten“ (release notes); call `title.refreshNews()` once they were seen. */
+  onNews?(): void;
   confirm(text: string): Promise<boolean>;
 }
 
@@ -39,6 +42,7 @@ export class TitleScreen {
   private readonly settingsBtn: HTMLButtonElement;
   private readonly extrasEl: HTMLElement;
   private readonly loadingEl: HTMLElement;
+  private readonly newsBadge: HTMLElement;
   private hasSave = false;
   private busy = false;
 
@@ -51,6 +55,9 @@ export class TitleScreen {
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
     this.loadingEl = h('div.loading', { role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0', 'data-testid': 'title-loading' }, t('title.loading', { pct: 0 }));
     this.extrasEl = h('div.kq-title-extras');
+    this.newsBadge = h('span.kq-news-badge', { 'aria-label': t('news.unseen'), title: t('news.unseen') });
+    const newsBtn = h('button.kq-link.kq-news-link', { 'data-testid': 'title-news', onclick: () => cb.onNews?.() }, [h('span', t('title.news')), this.newsBadge]);
+    this.refreshNews();
     const page = h('div.kq-title-page.kq-paper', [
       h('h1', t('game.title')),
       h('p.sub', t('game.subtitle')),
@@ -58,9 +65,15 @@ export class TitleScreen {
       h('div.actions', [this.startBtn, this.newBtn, this.extrasEl, this.settingsBtn, this.loadingEl]),
       h('p.motto', t('title.motto')),
       h('p.controls', t('title.hint')),
-      h('button.kq-link', { onclick: () => cb.onLicences() }, t('title.licences')),
+      h('div.kq-title-links', [newsBtn, h('button.kq-link', { onclick: () => cb.onLicences() }, t('title.licences'))]),
+      h('p.kq-title-version', { 'data-testid': 'title-version' }, versionLabel()),
     ]);
     this.el = h('div.kq-title', { 'data-testid': 'title' }, page);
+  }
+
+  /** Show or hide the „neu“ badge on „Neuigkeiten“ (newest notes not opened yet). */
+  refreshNews(): void {
+    this.newsBadge.classList.toggle('kq-hidden', !newsUnseen());
   }
 
   setProgress(frac: number): void {
