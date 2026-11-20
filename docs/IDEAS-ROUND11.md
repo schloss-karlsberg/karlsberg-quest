@@ -20,7 +20,7 @@ Contents: [0 Overview](#0-overview) · [1 Chapter 1 opens at the spring](#1-chap
 | # | Owner's request | Our design | Effort | Depends on |
 |---|---|---|---|---|
 | 1 | Chapter 1 also starts at the Karlsbergquelle | k1 opens at dawn at the spring (today): E at the trough, the 2.7 s touch, summer 1789. You walk up to the court **on foot**, as everyone had to (cx.11) | **S** (story) + **S** (e2e) | the built spring (§3.6 of NEXT-SESSION) |
-| 2 | No strangers at court: sneak in, clothes, pose as a visitor's party "like Knigge" | **"Unauffällig"**: a borrowed or stolen livery coat, a forged letter in Knigge's name (the player's own forgery, labelled FIKTION), court zones with watchers, a suspicion meter, an inspection at the Ehrenhof gate, lossless "Hinausbegleitet" when you are caught | **L** (MVP **M**) | idea 1 (it fills the walk from the spring to the court) |
+| 2 | No strangers at court: sneak in, clothes, pose as a visitor's party "like Knigge" | **"Unauffällig"**: a borrowed or stolen livery coat, a forged letter in the name of an **invented** visitor, Hofrat Justus Amsel aus Celle (the player's own forgery, labelled FIKTION; owner decision 2026-11-20, §2.3), court zones with watchers, a suspicion meter, an inspection at the Ehrenhof gate, lossless "Hinausbegleitet" when you are caught | **L** (MVP **M**) | idea 1 (it fills the walk from the spring to the court) |
 | 3 | Zelda-like side challenges (brain games), not quest-related | **"Ausreißer"**: LiDAR outlier clusters at real relief features open small point-cloud chambers with spatial survey puzzles (sun angle, wall tops between eras, traverse beams, water levels, light-solid floors, prisms, staking out, first/last return) | **L** (MVP **M**) | nothing story-wise; one small core hook change |
 | 4 | Hidden small bottles of the real beer, only at favourite places / POIs | **"Fläschchen"**: 24 hand-placed bottles across five eras, unmarked, unguarded; the real beer label as a **swappable placeholder** (owner decision, see §4.1); counter, shelf in the station, cosmetic reward | **S–M** | nothing |
 
@@ -150,11 +150,20 @@ The offer line already fits: „Heute gehen wir hinein. Zu Fuß, wie alle. Am Gi
 
 ## 2. 1789: the court lets no strangers in (the disguise opening)
 
+> **Korrektur 2026-11-20:** "Knigge visited the Karlsberg in 1792" is **not proven**. The only source is a
+> letter („Zweybrücken, den 11ten May“ [1792]) in *Briefe, auf einer Reise aus Lothringen nach Niedersachsen
+> geschrieben*, Hannover 1793, S. 26–29 (BSB copy, MDZ bsb10467161). Its writer is unnamed and presents himself
+> as someone who lived in Metz; the title page names Knigge only as editor („herausgegeben von“), Literaturland
+> Saar calls the letters „auf 1792 vordatiert“, and the duke was away („Der Herzog war gerade abwesend“).
+> Consequences: cx.43 becomes STRITTIG; the letter in Knigge's name (K1) is dropped; the disguise uses the
+> invented visitor Hofrat Justus Amsel aus Celle (K2, owner decision). The corrected texts are below.
+
 ### 2.1 Pitch
 
 You arrive in 1789 in a hi-vis vest. The court of Karl II. August is famous for keeping the world out,
 so you **dress the part and walk calmly**: a lackey's coat from the laundress at the brook, and a
-letter of introduction that Laub forges in the name of a famous author. In the court you hide in plain
+letter of introduction that Laub forges in the name of an invented travelling author, Hofrat Justus
+Amsel aus Celle (FIKTION). In the court you hide in plain
 sight. Walk upright and slowly, keep the staff and the lantern away, and stay on the paths. That is the
 **inverse of the pack's rules** (crouch, darkness, cover), so it is a new skill rather than a reskin.
 Guards and lackeys watch with visible fans of sight. Get spotted and you are escorted out, losing
@@ -169,24 +178,30 @@ nothing but time. The mechanic is action and movement, not a dialogue quiz.
 | Born 16 Oct 1752, Bredenbeck near Hannover; died 6 May 1796, Bremen | ADB 16 (1882) S. 288–291 (Erich Schmidt), de.wikipedia |
 | Hofjunker/assessor in Kassel 1771; Weimar chamberlain title 1776; Hanau court 1777–1780; Frankfurt 1780; Illuminati 1780–1784 ("Philo"); Heidelberg until 1787; Hannover 1787; from 1790/91 Hanoverian official (Oberhauptmann / Landdrost) in Bremen | de.wikipedia; ADB (the two give 1790 vs 1791) |
 | „Über den Umgang mit Menschen“, 1788, two parts (3rd ed. 1790 in three parts; seven printings by 1801). Not an etiquette manual: a book on getting along with people of every rank, trade and temper | ADB; de.wikipedia |
-| A sentence from its chapter on courtiers: „Sei ernsthaft, bescheiden, höflich, ruhig, wahrhaftig.“ (Teil 3, Kap. 3 „Über den Umgang mit Hofleuten“, §3). The Hofleute chapter may only be in the 3-part editions from 1790. That is fine for **Laub** (a voice from 1840), but no 1789 figure may quote it | Projekt Gutenberg-DE text (edition not checked against 1788) |
-| **He visited the Karlsberg.** A travel letter dated **11 May 1792**: „In der That ist die Pracht, welche da im Schlosse herrscht, unglaublich. … Man sieht da Stühle, wovon … das Stück funfzig neue Louisdor kostet. … Ein Cabinet sahe ich auf dem Karlsberge, worinn eine Sammlung von mehr als tausend seltenen Pfeifenköpfen verwahrt wird … es ist der Mühe werth, dies Feen-Schloß mit seinen Schätzen zu sehn.“ | Knigge, *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, Hannover 1793, S. 28 f. (ADB lists the work, 1793), **quoted in** M1910 Einl. S. XXXIII f. (Stollreither). Primary edition not seen by us |
-| He was „einer von ganz wenigen“ who gained access to the Karlsberg in 1792; the duke hid his collections even from his own court | Stadtmuseum Zweibrücken, news item „Le Château de Carlsberg“ (museum text, no source given) |
-| Other contact with Pfalz-Zweibrücken: **none found**. ADB says he "called at the Saarbrücken court" (that is Nassau-Saarbrücken, not Zweibrücken). **No documented meeting with Karl II. August**, and **no documented visit before 1792** | ADB; de.wikipedia; de.wikipedia „Schloss Karlsberg“ (no mention) |
+| A sentence from its chapter on courtiers: „Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!“ **Verified in the 3rd edition, 1790**: Teil 3, Kap. 3 „Ueber den Umgang mit Hofleuten und ihres Gleichen“, Abschn. 3, S. 53 f. The 1790 preface announces „große Veränderungen“ against the first two editions; whether the sentence is already in the **1788** edition is **nicht verifiziert**. So only **Laub** (a voice from 1840) may quote it; no 1789 figure may | Knigge, *Ueber den Umgang mit Menschen*, 3. Aufl., Hannover 1790, Teil 3 (KNIGGE-UMGANG-1790); modern text PG-KNIGGE |
+| **A travel letter published by Knigge describes the Karlsberg.** Vierter Brief, „Zweybrücken, den 11ten May“ [1792; the year from the first letter, „Metz, den 2ten May, 1792“]; the visit was „gestern früh“, i.e. 10 May. Quote (S. 28 f.): „In der That ist die Pracht, welche da im Schlosse herrscht, unglaublich; … Man sieht da Stühle, wovon … das Stück funfzig neue Louisd'or kostet. … Ein Cabinet sahe ich auf dem Carlsberge, worinn eine Sammlung von mehr als tausend seltenen Pfeifenköpfen verwahrt wird … es ist der Mühe werth, dies Feen-Schloß mit seinen Schätzen zu sehn.“ Also (S. 27): „Der Herzog war gerade abwesend“, so **no meeting with the duke** | Knigge (Hg.), *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, Hannover: Ritscher 1793, S. 26–29, first edition seen on the BSB scan (KNIGGE-BRIEFE); quoted (from „In der That“ on) in M1910 Einl. S. XXXIII f. |
+| **Who wrote it is disputed.** The writer never names himself and presents himself as someone who lived in Lorraine (Metz); the title page names Knigge only as editor („herausgegeben von“). Mannlich's editor (1910) and the Stadtmuseum read it as Knigge's own visit; Literaturland Saar calls the letters „auf 1792 vordatiert“ (no source given). So the letter is **FAKT**, the writer and the date are **STRITTIG**, and „Knigge war 1792 am Karlsberg“ must not be stated as fact | KNIGGE-BRIEFE (S. [1], S. 26–29; title page); M1910 Einl. S. XXXIII f.; LITSAAR-KNIGGE; SMZW |
+| ~~„einer von ganz wenigen“ with access in 1792; the duke hid his collections even from his own court~~ **Dropped:** a museum text without a source. The primary text says only that permission was required | SMZW (museum text, no source given) |
+| Other contact with Pfalz-Zweibrücken: **none found**. ADB says he "called at the Saarbrücken court" (that is Nassau-Saarbrücken, not Zweibrücken). **No documented meeting with Karl II. August** and **no documented visit of his own** to the Karlsberg | ADB; de.wikipedia; de.wikipedia „Schloss Karlsberg“ (no mention) |
 
-**Conclusion:** Knigge's 1792 visit and his words are **FAKT**. Any Knigge visit, announcement or
-"party" in **1789** is **FIKTION**, three years too early. Already in the repo, consistent with this:
-cx.07 and `laub.k1.feenschloss` („Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘“).
+**Conclusion:** the travel letter (published 1793, dated May 1792) and its words are **FAKT**; that Knigge
+himself wrote it on a visit in 1792 is **STRITTIG**. Knigge does **not** appear in 1789 in any form, and no
+letter in the game carries his name (§2.3). Already in the repo and still accurate: `laub.k1.feenschloss`
+(„Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘“). cx.07 („Ein Reisender, Adolph von Knigge, nannte
+das Ganze 1792 …“) needs the softer wording now in the bible: „In Knigges Reisebriefen (1793) heißt das Ganze
+ein ‚Feen-Schloß‘“ (code change pending, `scripts/content-build/codex.mjs`).
 
 **Court access and etiquette at the Karlsberg (documented)**
 
 | Fact | Source | Use |
 |---|---|---|
-| „Das Innere des Schlosses, dessen Eingänge 100 Gardisten bewachten …“ | M1910 Einl. S. XXXIII (Stollreither 1910, after Molitor S. 484 f.): an editor's summary, not an eyewitness | guards at every door |
+| „Das Innere des Schlosses, dessen Eingänge 100 Gardisten bewachten …“ | M1910 Einl. S. XXXIII: **Stollreither's own statement** (editor, 1910), not an eyewitness. The sentence has no footnote; footnote 12 (Molitor) belongs to the sentence before | guards at every door |
+| **Nobody could approach the Karlsberg without the duke's express permission**, and the permit („Verwilligungs-Befehl“) had to name every companion; the writer got it through „eine fürstliche Verwendung von Saarbrück aus“ | KNIGGE-BRIEFE S. 26 f. | **the letter is the key**; the permit names people, so the secretary must be named in it |
+| On the hill the duke used the lack of room as a pretext to refuse everyone: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die Erlaubnis dazu erhalten zu haben“ (first seasons on the hill, c. 1779/80) | M1910 S. 355 | the same rule, from the inside |
 | Karl August „schließt sich von der Außenwelt durch seine bärtigen Grenadiere ab“ | M1910 Vorwort S. VI (editor's characterisation) | the tone of the court |
 | Only the duke drove up; everyone else walked; singing was forbidden | RLS 2015 (cx.11, in the game) | walk, don't run |
 | At Jägersburg (before the Karlsberg, c. 1777) nobody might appear uninvited; guests waited in Zweibrücken for permission | M1910 S. 322 f. | an invitation is the key |
-| A con man, „Prinz Castrioto von Albanien“, came c. 1777 to Zweibrücken with a warm letter of recommendation from Strasbourg to the duke's physician, travelling "incognito"; he tried several times to be presented at court. The duke refused, but watched him secretly from behind the blinds. His printed ode was copied word for word | M1910 S. 346–349 | a real precedent for a forged welcome, with comic-dark tone aimed at vanity |
+| A con man, „Prinz Castrioto von Albanien“, came **end of 1777** to Zweibrücken with a warm letter of recommendation from Strasbourg to the duke's „ersten Leibarzt“ Rosé; **Rosé** spread the story that he travelled incognito (he had seen a letter with the Prussian seal). He tried several times to be presented; the duke laughed about it but was curious, and **the whole court** watched him secretly from behind the blinds in Mannlich's garden. His printed ode was copied word for word. Later the duke had him **arrested and expelled** | M1910 S. 346–349, S. 356–358; date from S. 345 Anm. 24 and S. 349. In Zweibrücken, before the Karlsberg existed | a real precedent for a forged welcome, with comic-dark tone aimed at vanity |
 | Travellers carried letters of recommendation and a pass (Mannlich lost his on the road in 1766 and sent a rider out with a lantern on a stick) | M1910 S. 64 | the letter as an object |
 | The site had "ein Gasthaus mit Stallungen … eine große Brauerei und ein Bierhaus" | M1910 Einl. S. XXXIII; catalogue KB-B26/KB-B36 „Brauerei und Wirtshaus“ (1240–1251/−1766…−1778, confidence low) | visitors' inn; (idea 4 context) |
 | **Not documented:** a dress code, how the gate guard checked people, a laundry or bleaching meadow, lackeys' livery colours | M1910 OCR searched for Livree, Kleidung, Hofkleid, Uniform, Zutritt: nothing for the Karlsberg | all of that is **FIKTION** in the game |
@@ -195,10 +210,12 @@ cx.07 and `laub.k1.feenschloss` („Ein Reisender nennt das alles 1792 ein ‚Fe
 
 | Option | What | For | Against |
 |---|---|---|---|
-| **K1 (recommended)** | Laub forges a letter **in Knigge's name**; you pose as his travelling secretary sent ahead. Knigge never appears, never speaks, and is never a figure. Laub corrects history on the spot. The FIKTION card says it plainly. The turn-in tells the real 1792 visit with the real quote | what the owner asked for; teaches a real fact (1792, „Feen-Schloß“) through the lie; humour aimed at the court's vanity ("the guard reads seals, not letters") | touches PRD §4.4 rule 2: the forged text puts words under his name. Mitigation: the letter is shown as the player's forgery, kept to one formal sentence, and corrected in the same scene |
-| K2 (fallback) | the same mechanic, with an invented visitor "in Knigge's manner": **Hofrat Justus Amsel aus Celle** (FIKTION), author of a book "on how to behave" | no rule-2 question at all | loses the owner's hook; still needs the FAKT card to teach Knigge |
+| ~~K1~~ (dropped) | Laub forges a letter **in Knigge's name**; you pose as his travelling secretary sent ahead | was the owner's hook | **dropped 2026-11-20:** its premise ("Knigge really came in 1792", "the turn-in tells the real visit") is not proven (Korrektur above), and it put words under a real person's name (PRD §4.4 rule 2) |
+| **K2 (chosen)** | the same mechanic, with an invented visitor: **Hofrat Justus Amsel aus Celle** (FIKTION), a travelling author of „Vom Betragen bei Hofe“ (invented book). You play his secretary, sent ahead | no rule-2 question at all; the name check found no real 18th-century Hofrat Amsel; the real access rule (written permit naming every companion, KNIGGE-BRIEFE S. 26 f.) makes the forgery the obvious key | needs cx.43 (STRITTIG) and cx.44 to teach the real history |
 
-→ **Coordinator / owner: confirm K1 or K2 before content work.** Everything below works for both (swap the name).
+→ **Decision (owner, 2026-11-20): K2, visitor A = Hofrat Justus Amsel aus Celle.** There is no letter in
+Knigge's name, and Knigge does not appear in 1789. Laub may mention the real book „Über den Umgang mit
+Menschen“ (1788) and the travel letter as context, never as a visit fact.
 
 ### 2.4 Player loop
 
@@ -218,7 +235,7 @@ cx.07 and `laub.k1.feenschloss` („Ein Reisender nennt das alles 1792 ein ‚Fe
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History |
 |---|---|---|---|---|---|---|
 | `q.k1.kleider` „Kleider machen Leute“ | main | Liese (`waescherin`, Bleiche **1004/−857** (prüfen: meadow, 281.3 m, by the brook; 58 m from the nearest story place)) → Liese | `talk` Liese (topic `rock`); then **either** `kill` 5 Mahnbriefe in the linen (1010/−860 r 14) → she hands over the coat, **or** `use` the coat on the line (hold E 1.5 s while her sight fan is off you) → it's yours | mahnbrief ×5 (+1 nebelweber escort) on the "earn" path | 60 XP, `item.k1.livree` (key item: the coat); deed flag `flag.k1_kleid` = `geliehen` / `genommen` | none (fiction); Liese's „Wäschelohn: angewiesen“ links to cx.08 |
-| `q.k1.brief` „Ein Brief in fremdem Namen“ | main | Laub (voice) → auto | `collect` a sheet of the Bauamt's paper (Pfeilersaal, room `B10.1.s-pfeilersaal`, window table, ≥ 4.3 m from the servant and from `clue.k1.festplan`; take it unseen); `kill` 4 Mahnbriefe at the Ladehof **1335/−892** (prüfen) with `drop: {enemy: mahnbrief, chance: 0.5}` → `collect` 2 `item.k1.siegellack`; `examine` the garden table **1262/−1008** (prüfen) (`clue.k1.brief`: Laub writes) | mahnbrief ×4 (+1 foliant) | 70 XP, `item.k1.empfehlung` (key item) | turn-in: cx.43 Knigge (the real 1792 visit), cx.45 the false prince |
+| `q.k1.brief` „Ein Brief in fremdem Namen“ | main | Laub (voice) → auto | `collect` a sheet of the Bauamt's paper (Pfeilersaal, room `B10.1.s-pfeilersaal`, window table, ≥ 4.3 m from the servant and from `clue.k1.festplan`; take it unseen); `kill` 4 Mahnbriefe at the Ladehof **1335/−892** (prüfen) with `drop: {enemy: mahnbrief, chance: 0.5}` → `collect` 2 `item.k1.siegellack`; `examine` the garden table **1262/−1008** (prüfen) (`clue.k1.brief`: Laub writes) | mahnbrief ×4 (+1 foliant) | 70 XP, `item.k1.empfehlung` (key item) | turn-in: cx.43 the travel letter (STRITTIG), cx.44 the permit, cx.45 the false prince |
 | `q.k1.ankunft` (changed, §1.6) | main | Laub → auto | `quelle`, `hof` (now through the gate), `wache`, `fluegel` | — | 60 XP | cx.11, cx.44 |
 
 **NPCs** (`src/systems/npc/roster.ts`; all FIKTION, all memory figures; people are **never** enemies)
@@ -239,21 +256,23 @@ basket, linen; `keepFree` Liese's 6 m talk circle; add 1004/−857 to `KEEP_CLEA
 | Id | Speaker | Text |
 |---|---|---|
 | `laub.k1.orange` | Laub | „Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.“ |
-| `laub.k1.fremde` | Laub | „Der Herzog lässt keine Fremden in seinen Garten. Hundert Gardisten an den Türen, schreibt einer. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat.“ |
+| `laub.k1.fremde` | Laub | „Der Herzog lässt keine Fremden in seinen Garten. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat.“ |
 | `waescherin.k1.01` | Liese | „Jesses, wie sieht Er denn aus? Wie ein Feuersalamander.“ |
 | `waescherin.k1.02` | Liese | „Einen Rock? Auf der Leine hängt Kaspars, der Lakai liegt seit drei Wochen mit Fieber. Aber erst helf Er mir: Die Zettel da fliegen mir in die Wäsche. Wäschelohn: angewiesen. Steht auf allen.“ |
 | `waescherin.k1.dieb` | Liese | „He! Das ist Kaspars! Häng Er das zurück!“ (the coat goes back on the line; try again) |
 | `waescherin.k1.dank` | Liese | „Steht Ihm besser als Kaspar. Sag Er keinem, woher.“ |
-| `laub.k1.brief` | Laub | „Wir schreiben im Namen des Freiherrn von Knigge. Er hat letztes Jahr ein Buch darüber geschrieben, wie man mit Menschen umgeht. Hierher kommt er erst in drei Jahren. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen.“ |
-| `laub.k1.wahrhaftig` | Laub | „Er schreibt: ‚Sei ernsthaft, bescheiden, höflich, ruhig, wahrhaftig.‘ Vier von fünf schaffen wir.“ [Z, Projekt Gutenberg edition] |
+| `laub.k1.brief` | Laub | „Wir schreiben im Namen des Hofrats Justus Amsel aus Celle. Er reist, er schreibt Bücher, eins heißt ‚Vom Betragen bei Hofe‘. Sie sind sein Sekretär, vorausgeschickt. Den Hofrat gibt es nicht. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen.“ (FIKTION: Amsel and his book are invented) |
+| `laub.k1.erlaubnis` (optional) | Laub | „Ohne ausdrückliche Erlaubnis des Herzogs kommt keiner hier herauf. Und jeder, der mitkommt, muss mit Namen drinstehen. Also schreiben wir Sie hinein.“ [F, KNIGGE-BRIEFE S. 26 f.; M1910 S. 355] |
+| `laub.k1.umgang` (optional) | Laub | „Ein echtes Buch über den Umgang mit Menschen gibt es schon, vom Freiherrn Knigge, letztes Jahr erschienen. Seinen Namen leihen wir uns nicht.“ [F, Umgang 1788: ADB-KNIGGE] |
+| `laub.k1.wahrhaftig` | Laub | „Knigge schreibt, in einer späteren Auflage: ‚Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!‘ Vier von fünf schaffen wir.“ [Z, KNIGGE-UMGANG-1790 Teil 3, Kap. 3, S. 53 f.; 1788 nicht verifiziert, so only Laub] |
 | `laub.k1.siegel` | Laub | „Die Wache liest nicht. Sie schaut aufs Wachs.“ |
-| `gardist.k1.ok` | Gardist | „Der Herr Sekretär. Zu Fuß, wenn's beliebt.“ |
+| `gardist.k1.ok` | Gardist | „Der Herr Sekretär vom Herrn Hofrat Amsel. Steht drin. Zu Fuß, wenn's beliebt.“ |
 | `gardist.k1.ohne` | Gardist | „Ohne Papier kommt hier keiner durch. Auch nicht im schönen Rock.“ |
 | `gardist.k1.orange` | Gardist | „In dem Aufzug? Der Herr ist wohl vom Theater. Raus.“ |
 | `gardist.k1.raus` (variants) | Gardist | „Raus. Und komm Er mir nicht wieder.“ / „Schon wieder Er? Ich schreib Ihn auf.“ / „Ich begleite Ihn gern. Ich hab ja sonst nichts zu tun.“ |
 | `hofgaertner.k1.rasen` | Hofgärtner | „Den Rasen betritt der Gärtner. Sonst keiner.“ |
 | `lakai.k1.laterne` | Lakai | „Am hellen Tag mit der Laterne? Such Er sich einen Menschen.“ |
-| `soll.k1.brief` (topic, k1_2) | Soll | „Knigge? Der mit dem Buch über den Umgang? Dann gehen Sie mit mir um. Leise.“ (the book existed in 1788, so a 1789 clerk can know it) |
+| `soll.k1.brief` (topic, k1_2) | Soll | „Hofrat Amsel? Aus Celle? ‚Vom Betragen bei Hofe‘? Nie gehört. Dann betragen Sie sich, mein Herr, meine Dame, mein … Sie. Leise.“ (Amsel and his book are FIKTION) |
 
 The existing `wache-rennen` reaction (speed ≥ 4.8 near 1212/−1116) folds into the running tell and keeps its four variants.
 
@@ -324,50 +343,71 @@ today. So you are the surveyor today and the lackey in every past era from then 
 | combat | no spectral spawns inside court zones; every k1 fight (Küchenhof Mahnbriefe, the Schuldbuch on the Bauplatz) is already in a service zone. Attacking where a watcher can see you = instant Aufgefallen. Guards are people: not targetable, no hit reaction (`combat` ignores npc figures as now) |
 | hunt | separate meter, **not** the pack's alert. Reuses `perception.ts` (`lineOfSight`) and generalises `cones.ts` (`SightCones` takes a list of `{x, z, yaw, range, fov, level}` instead of a `PackSim`) |
 | npc | new looks; a `watch` block on the `npc` spawn action (`{fov, range, sweep:[yawA,yawB], period}`) that the court system reads; one additive hook `npc.setYaw(id, yaw)` for head turns. Talk still works (the talk radius is a safe zone, as now) |
-| chronik / codex | cx.43–cx.46 (§2.8); cx.38 (Fiktionsliste) gains Liese, Kaspar's coat, the forged letter and the inspection |
+| chronik / codex | cx.43–cx.46 (§2.8); cx.38 (Fiktionsliste) gains Liese, Kaspar's coat, Hofrat Amsel and his book, the forged letter and the inspection |
 | story | flags and quest conditions only, no new action type; watcher sets switched by `cue court:on {set:'k1'}` / `court:off` |
 | deeds (§8.6) | `flag.k1_kleid` (geliehen / genommen) in `scripts/content-build/epilogue-deeds.mjs`: the epilogue can say whether you borrowed or stole Kaspar's coat |
 | travel | the arrival rule above; the Bleiche and the Ladehof go into `KEEP_CLEAR` |
 
 ### 2.8 Codex cards (proposals; `scripts/content-build/codex.mjs`, next free ids)
 
-**cx.43 – Adolph Freiherr Knigge** · FAKT
-> Adolph Freiherr Knigge (1752–1796) war Hofmann, Schriftsteller und Aufklärer. 1788 erschien sein
-> Buch „Über den Umgang mit Menschen“. Es ist kein Benimmbuch, wie man heute oft meint, sondern handelt
-> davon, wie Menschen verschiedener Stände, Berufe und Gemüter miteinander auskommen. In einem Reisebrief
-> vom 11. Mai 1792 beschreibt er den Karlsberg: Stühle für fünfzig neue Louisdor das Stück, Tapeten aus
-> den Federn seltener Vögel, fünfzehnhundert Pferde, ein Kabinett mit mehr als tausend Pfeifenköpfen.
-> „Es ist der Mühe werth, dies Feen-Schloß mit seinen Schätzen zu sehn.“ Ob er dabei den Herzog selbst
-> traf, ist nicht überliefert.
+> Corrected 2026-11-20 against the primary text (KNIGGE-BRIEFE) and M1910; replaces the first drafts.
 
-Sources: ADB (Schmidt 1882), de.wikipedia, M1910 Einl. S. XXXIII f. (quoting Knigge, *Briefe auf einer
-Reise aus Lothringen nach Niedersachsen*, 1793, S. 28 f.), Stadtmuseum Zweibrücken. New source keys in
-`common.mjs`: `ADB-KNIGGE`, `WP-KNIGGE`, `SMZW`, `PG-KNIGGE`.
+**cx.43 – Knigges Reisebriefe** · STRITTIG
+> Adolph Freiherr Knigge (1752–1796) war Hofmann, Schriftsteller und Aufklärer. 1788 erschien sein Buch
+> „Über den Umgang mit Menschen“. Es ist kein Benimmbuch, wie man heute oft meint, sondern handelt davon, wie
+> Menschen verschiedener Stände, Berufe und Gemüter miteinander auskommen. 1793 gab Knigge „Briefe, auf einer
+> Reise aus Lothringen nach Niedersachsen geschrieben“ heraus. In einem Brief vom 11. Mai 1792 besucht der
+> Reisende den Karlsberg. Ohne ausdrückliche Erlaubnis des Herzogs, schreibt er, dürfe sich niemand dem Berg
+> nähern; er hatte sie über den Hof in Saarbrücken bekommen. Der Herzog war gerade abwesend. Der Reisende sah
+> Stühle, die angeblich fünfzig neue Louisdor das Stück kosteten, Tapeten aus den Federn ausländischer Vögel
+> und ein Kabinett mit mehr als tausend seltenen Pfeifenköpfen. „Es ist der Mühe werth, dies Feen-Schloß mit
+> seinen Schätzen zu sehn.“
+
+`contested_de`:
+> Der Briefschreiber nennt keinen Namen und stellt sich als jemand vor, der in Lothringen gelebt hat; Knigge
+> steht nur als Herausgeber auf dem Titel. Mannlichs Herausgeber (1910) und das Stadtmuseum Zweibrücken lesen
+> den Brief als Knigges eigenen Besuch, Literaturland Saar nennt die Briefe „auf 1792 vordatiert“.
+
+Sources: KNIGGE-BRIEFE (Vierter Brief, Zweybrücken, 11. Mai [1792], S. 26–29; quote S. 28 f.); M1910 Einl.
+S. XXXIII f. (quotes the letter, footnote 13); ADB-KNIGGE; WP-KNIGGE (not an etiquette book); for
+`contested_de`: LITSAAR-KNIGGE, SMZW. Solid: a travel letter of 1792/93, published by Knigge, calls the
+Karlsberg a „Feen-Schloß“. Disputed: the writer and the date. New source keys in `common.mjs`:
+`KNIGGE-BRIEFE`, `ADB-KNIGGE`, `WP-KNIGGE`, `LITSAAR-KNIGGE`, `SMZW`.
 
 **cx.44 – Wer hinauf durfte** · FAKT
-> Den Karlsberg sah kaum ein Fremder von innen. Die Eingänge des Schlosses bewachten, so schreibt der
-> Herausgeber von Mannlichs Erinnerungen 1910, hundert Gardisten. Nur der Herzog fuhr hinauf, alle
-> anderen gingen zu Fuß. Schon im Jagdschloss Jägersburg durfte niemand unaufgefordert erscheinen; Gäste
-> warteten in Zweibrücken auf die Erlaubnis. Seine Sammlungen hütete der Herzog sogar vor dem eigenen
-> Hof. Knigge gehörte 1792 zu den ganz wenigen Besuchern.
+> Den Karlsberg sah kaum ein Fremder von innen. Schon in den ersten Jahren auf dem Berg nahm der Herzog den
+> Platzmangel als Vorwand, niemanden vorzulassen: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die
+> Erlaubnis dazu erhalten zu haben“, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine
+> ausdrückliche Erlaubnis des Herzogs, und die musste jeden Begleiter mit Namen nennen. Nur der Herzog fuhr
+> hinauf, alle anderen gingen zu Fuß. Die Eingänge des Schlosses bewachten, so schreibt der Herausgeber von
+> Mannlichs Erinnerungen 1910, hundert Gardisten.
 
-Sources: M1910 Einl. S. XXXIII, M1910 S. 322 f., RLS, SMZW.
+Sources: M1910 S. 355 (nobody without being called or permitted) and Einl. S. XXXIII (100 Gardisten,
+Stollreither's own text, no footnote); KNIGGE-BRIEFE S. 26 f. (the permit naming every companion); RLS (only
+the duke drove up). Optional extra sentence (M1910 S. 322): „Schon im Jagdschloss Jägersburg durfte niemand
+unaufgefordert erscheinen; Gäste warteten in Zweibrücken auf die Erlaubnis.“ Dropped from the draft: the
+collections hidden from the court and „Knigge gehörte 1792 zu den ganz wenigen Besuchern“ (SMZW, no source).
 
 **cx.45 – Der Prinz von Albanien** · FAKT (nach Mannlichs Erinnerungen)
-> Um 1777 kam ein Fremder nach Zweibrücken: eine Börse voller Dukaten, lose Diamanten in Papier und ein
-> warmer Empfehlungsbrief aus Straßburg an den Leibarzt des Herzogs. Er reise inkognito, hieß es, als
-> Prinz Castrioto von Albanien. Mannlich glaubte ihm nicht; er hatte auf Reisen zu viele falsche Barone
-> getroffen. Der Herzog ließ ihn nicht vorstellen, sah ihm aber heimlich hinter den Jalousien zu. Eine
-> Ode, die der Prinz drucken ließ, war Wort für Wort abgeschrieben.
+> Ende 1777 kam ein Fremder nach Zweibrücken, mit einer Börse voller Dukaten und losen Diamanten in Papier. Er
+> brachte einen warmen Empfehlungsbrief aus Straßburg an den ersten Leibarzt des Herzogs mit. Der Arzt
+> erzählte überall, der Fremde sei ein Prinz, der inkognito reise, um jedes Zeremoniell zu meiden; er habe
+> einen Brief mit preußischem Siegel an den „Prinzen Castrioto von Albanien“ bekommen. Mannlich glaubte ihm
+> nicht: Er hatte auf Reisen so viele falsche Barone getroffen, warum nicht auch falsche Prinzen? Der Prinz
+> versuchte mehrmals, bei Hof vorgestellt zu werden. Der Herzog lachte darüber, wollte ihn aber doch sehen:
+> Mannlich lockte ihn in seinen Garten, und der Hof sah ihm heimlich hinter den Jalousien zu. Eine Ode, die
+> der Prinz drucken ließ, war Wort für Wort abgeschrieben. Später ließ der Herzog ihn verhaften und des Landes
+> verweisen.
 
-Source: M1910 S. 346–349.
+Source: M1910 S. 346–349 (arrival, letter, incognito, blinds, ode) and S. 356–358 (arrest, expulsion); date
+from S. 345 Anm. 24 (Mannlich's wedding, 23 Dec 1777) and S. 349 (30 Dec 1777). Note for writers: this
+happened **in Zweibrücken**, before the Karlsberg existed.
 
 **cx.46 – Ein Brief in fremdem Namen** · FIKTION
-> Erfunden: die Wäscherin Liese und Kaspars Rock, der Brief, den du mit Laub schreibst, die Musterung am
-> Gitter und die Wachen, die dich hinausbegleiten. Knigge war 1789 nicht am Karlsberg und hat niemanden
-> vorausgeschickt. Er kam erst im Mai 1792, und von dir wusste er nichts.
-
-(With K2: replace Knigge's name on the letter by „Hofrat Justus Amsel“ and add „Amsel ist erfunden“.)
+> Erfunden: die Wäscherin Liese und Kaspars Rock, der Hofrat Justus Amsel aus Celle und sein Buch „Vom
+> Betragen bei Hofe“, der Brief, den du mit Laub in seinem Namen schreibst, die Musterung am Gitter und die
+> Wachen, die dich hinausbegleiten. Einen Hofrat Amsel hat es nie gegeben. Echt ist nur die Regel: Ohne
+> Erlaubnis des Herzogs kam niemand auf den Karlsberg (cx.44).
 
 ### 2.9 Systems and files
 
@@ -392,7 +432,7 @@ Source: M1910 S. 346–349.
   - MVP (M): Orangerie teaching zone, gate inspection, ejection, four tells (clothes, running, staff, taking in view), cones, the costume.
   - Later: bow, lawn, lantern and tape tells; the back route; interior lackeys.
 - **Risks:**
-  - Rule 2 (§2.3). Needs a decision.
+  - Rule 2 (§2.3): resolved by the owner's decision (K2, the invented Hofrat Amsel; no letter in Knigge's name).
   - Stealth frustration. Playtest round 4 asked for visible danger; the fans and the lossless ejection answer it, and the teaching zone is ×0.6.
   - The k1 length grows by about 8 min (bible: 30–35 min). Keep the prelude ≤ 8 min.
   - Head-turn animation on ghost figures (npc rigs).
@@ -541,7 +581,7 @@ ist kein Keller.“ UI name everywhere: **„Fläschchen“**.
 | F2 | green apothecary phial with a blue wax seal bearing the Bussole's compass rose | ties to the spring and Laub |
 | F3 | salt-glazed stoneware jug, 18th-century shape, no lettering | grounded: the site had a brewery and a beer house (M1910 Einl. S. XXXIII); but alcohol-themed |
 | F4 | wax seal impressions („Siegel 1789“) | no bottle |
-| F5 | chandelier prisms („Lüsterprismen“), after Knigge's „Kronleuchter“ | links to cx.43; not a bottle |
+| F5 | chandelier prisms („Lüsterprismen“), after the travel letter's „Kronleuchter“ (Knigge (Hg.) 1793) | links to cx.43; not a bottle |
 
 Never use the word "Karlsberg" on any label, because it would read as the brand.
 
@@ -650,20 +690,21 @@ the spring is active in those beats (today's is 7 m away).
 
 1. **Idea 1, phase 1** (S): the spring opens k1. Independent of everything else; ship first.
 2. **Idea 4** (S–M): independent, quick, a visible win.
-3. **Idea 2** (MVP M, then L): fills the walk that idea 1 creates. Needs the K1/K2 decision.
+3. **Idea 2** (MVP M, then L): fills the walk that idea 1 creates. K2 decided (owner, 2026-11-20).
 4. **Idea 3** (MVP M, then L): last. Needs the provider-stack change, scheduled when the interiors files are free.
 
 ---
 
 ## 6. Next steps (paste into NEXT-SESSION)
 
-- [ ] **Decide (owner / coordinator):** the letter in Knigge's name (K1, recommended) or an invented visitor (K2), §2.3.
+- [x] **Decided (owner, 2026-11-20):** K2, the invented visitor Hofrat Justus Amsel aus Celle; no letter in Knigge's name (K1 dropped: the 1792 visit is not proven), §2.3.
 - [ ] **Idea 1:** move the k1 `checkpoint` to the spring (1058.2/−832.4, yaw 54); rewrite `k1_0` (dawn, `quelle.call`, complete on `quelle:touch`, exit shift 1789); add the `quelle` objective to `q.k1.ankunft`; update `e2e/helpers/k1.ts` with a shared `touchSpring()`; adjust `campaign.spec.ts` / `chapter-k1.spec.ts`. Details in IDEAS-ROUND11 §1.5–1.8.
 - [ ] **Idea 4:** build `src/systems/flaschen/` with the single label switch `content/collectibles/flaschen.json` (public placeholder, swap = one edit test). Walk the 24 spots on the terrain. §4.
 - [ ] **Idea 2 MVP:** `src/systems/court/` (zones, watchers, suspicion, gate inspection, lossless ejection), generalised `SightCones`, the `COURT_COSTUME`, `q.k1.kleider` + `q.k1.brief`, beats k1_0b / k1_0c, the anchor and oil rules, codex cx.43–cx.46, `e2e/court.spec.ts`. §2.
 - [ ] **Idea 3 MVP:** the world provider stack (with the interiors owner), `src/systems/kammern/` with the pocket, chambers #5 Laternenkammer and #1 Streiflicht, solvability tests. §3.
 - [ ] Docs when built: ACTION-RPG §4.6, §11.1, §14; PRD §3.4 + changelog; bible 02-kapitel-1, 07-codex, 08-stimmen.
-- [ ] Research still open: the primary text of Knigge's *Briefe* (1793, S. 28 f.; HathiTrust has the 1806 edition) to confirm the quote; the edition of the „Umgang“ quote; sources for the four survey-method cards (§3.4).
+- [x] Research done 2026-11-20: the primary text of the *Briefe* (1793 first edition, BSB scan, S. 26–29) confirms the quote, the permit rule and „Der Herzog war gerade abwesend“; the writer and the date are disputed (cx.43 STRITTIG). The „Umgang“ quote is verified in the 1790 3rd edition (Teil 3, Kap. 3, S. 53 f.).
+- [ ] Research still open: the „Sey ernsthaft …“ sentence in the **1788** first edition (DTA `knigge_umgang02_1788`, search "bescheiden, höflich"; nicht verifiziert); the 1806 edition's page and wording (HathiTrust, nicht verifiziert); the SULB reprint *Die Franzosen in Saarbrücken … 1792–94* (1890) that reportedly dates Knigge's Saarbrücken visit 1783–1787 (nicht verifiziert); sources for the four survey-method cards (§3.4).
 
 ---
 
@@ -671,12 +712,15 @@ the spring is active in those beats (today's is 7 m away).
 
 | Key | Source | Used for |
 |---|---|---|
-| M1910 | Mannlich, *Ein deutscher Maler und Hofmann*, ed. Stollreither 1910, https://archive.org/details/eindeutschermale00mann (OCR text searched): Vorwort S. VI; Einl. S. XXXIII–XXXIV; S. 64; S. 322 f.; S. 346–349 | Knigge's letter (quoted), 100 Gardisten, Jägersburg, Castrioto, the pass, brewery and beer house |
+| M1910 | Mannlich, *Ein deutscher Maler und Hofmann*, ed. Stollreither 1910, https://archive.org/details/eindeutschermale00mann (OCR text searched): Vorwort S. VI; Einl. S. XXXIII–XXXIV; S. 64; S. 322 f.; S. 345–349; S. 355; S. 356–358 | the travel letter (quoted, footnote 13), 100 Gardisten (editor's own text), Jägersburg, the Karlsberg access rule (S. 355), Castrioto (incl. arrest and expulsion), the pass, brewery and beer house |
+| KNIGGE-BRIEFE | Knigge (Hg.), *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, Hannover: Christian Ritscher 1793, first edition, BSB copy It.sing. 502 s; scan: MDZ https://www.digitale-sammlungen.de/en/view/bsb10467161 (mirror with OCR: https://archive.org/details/10467161bsb). Vierter Brief „Zweybrücken, den 11ten May“, S. 21 ff.; Karlsberg S. 26–29 | the letter, the quote (S. 28 f.), the permit naming every companion (S. 26 f.), „Der Herzog war gerade abwesend“ (S. 27), the unnamed writer from Metz (S. [1]) |
+| KNIGGE-UMGANG-1790 | Knigge, *Ueber den Umgang mit Menschen. In drey Theilen*, 3. Aufl., Hannover: Ritscher 1790, Teil 3, Kap. 3, Abschn. 3, S. 53 f.; MDZ https://www.digitale-sammlungen.de/en/view/bsb10041018 (mirror: https://archive.org/details/10041018bsb) | „Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!“ (1788: nicht verifiziert) |
 | ADB-KNIGGE | Erich Schmidt, „Knigge, Adolf Freiherr v.“, ADB 16 (1882) S. 288–291, https://de.wikisource.org/wiki/ADB:Knigge,_Adolph_Freiherr | life, the *Briefe* (1793), „Umgang“ (1788), the Saarbrücken court |
 | WP-KNIGGE | https://de.wikipedia.org/wiki/Adolph_Freiherr_Knigge | life, „Umgang“ is not an etiquette book |
-| SMZW | Stadtmuseum Zweibrücken, „Spektakuläre Dauerleihgabe: Das Tablett ‚Le Château de Carlsberg‘“, https://www.zweibruecken.de/de/kultur-tourismus/kultur-erleben/kulturelle-einrichtungen/stadtmuseum/neuigkeiten/ | Knigge 1792 „als einer von ganz wenigen“; collections hidden from the court |
-| PG-KNIGGE | Knigge, „Über den Umgang mit Menschen“, Teil 3 Kap. 3, https://projekt-gutenberg.org/authors/adolph-freiherr-knigge/books/ueber-den-umgang-mit-menschen/chapter/23 | the „Sei ernsthaft …“ quote (edition not checked against 1788) |
-| LITSAAR | Literaturland Saar, Homburg, https://www.literaturland-saar.de/orte/homburg/ | „Feen-Schloß (Adolph Freiherr von Knigge 1792)“ |
+| SMZW | Stadtmuseum Zweibrücken, „Spektakuläre Dauerleihgabe: Das Tablett ‚Le Château de Carlsberg‘“, https://www.zweibruecken.de/de/kultur-tourismus/kultur-erleben/kulturelle-einrichtungen/stadtmuseum/neuigkeiten/ | reads the letter as Knigge's own visit (for cx.43 `contested_de` only); its claims „als einer von ganz wenigen“ and collections hidden from the court are **dropped** (no source) |
+| PG-KNIGGE | Knigge, „Über den Umgang mit Menschen“, Teil 3 Kap. 3, https://projekt-gutenberg.org/authors/adolph-freiherr-knigge/books/ueber-den-umgang-mit-menschen/chapter/23 | modern text of the „Sei ernsthaft …“ quote; cite KNIGGE-UMGANG-1790 instead |
+| LITSAAR | Literaturland Saar, Homburg, https://www.literaturland-saar.de/orte/homburg/ | „Feen-Schloß (Adolph Freiherr von Knigge 1792)“ (follows the usual attribution) |
+| LITSAAR-KNIGGE | Literaturland Saar, „Adolph Freiherr Knigge“, https://www.literaturland-saar.de/personen/adolph-freiherr-knigge/ | the letters „auf 1792 vordatiert“, a side trip from Metz to Saarbrücken „in den 80er Jahren“ (no source given; cx.43 `contested_de`) |
 | WP-SK | https://de.wikipedia.org/wiki/Schloss_Karlsberg | checked: nothing on access, guards or etiquette |
 | RLS | in the repo (cx.11) | only the duke drove up |
 | Repo data | `public/data/pois.json` (r03-xx), `public/data/palace/footprints.json` (KB-B26/36/37/38), `public/data/paths.json` (Karlsbergbach), `src/systems/quelle/layout.ts` | places, coordinates |

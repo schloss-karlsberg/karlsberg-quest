@@ -85,8 +85,9 @@ Der Codex enthält **40 Karten** (`cx.01`–`cx.40`) und **8 Reliefmuster-Karten
 
 ### cx.07 – Vierzehn Millionen
 - **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.k1.3`
-- **Text:** Bau und Betrieb des Karlsbergs kosteten nach der ADB fast 14 Millionen Gulden. Das ganze Herzogtum nahm im Jahr etwa 800 000 Gulden ein. Ein Reisender, Adolph von Knigge, nannte das Ganze 1792 ein „Feen-Schloß“.
-- **Quellen:** ADB; M1910 Einl. S. XXXIV; LIT
+- **Text:** Bau und Betrieb des Karlsbergs kosteten nach der ADB fast 14 Millionen Gulden. Das ganze Herzogtum nahm im Jahr etwa 800 000 Gulden ein. In Knigges Reisebriefen (1793) heißt das Ganze ein „Feen-Schloß“.
+- **Quellen:** ADB; M1910 Einl. S. XXXIV; LIT; Knigge (Hg.), *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, Hannover 1793, S. 28 f. (https://www.digitale-sammlungen.de/en/view/bsb10467161)
+- **Korrektur 2026-11-20:** Der Brief (datiert Zweybrücken, 11. Mai [1792]) nennt seinen Schreiber nicht; Knigge steht nur als Herausgeber auf dem Titel. Dass Knigge selbst 1792 am Karlsberg war, ist nicht belegt (siehe `docs/IDEAS-ROUND11.md` §2.2). Der Code (`scripts/content-build/codex.mjs`, cx.07) hat noch die alte Fassung.
 - **Lizenz:** eigener Text
 
 ### cx.08 – Zwei Tage für einen Gulden

@@ -112,7 +112,7 @@
 *Gibt:* `n.orangeriehof`, `n.karlslust`, `n.zweibruecken`, `n.drei_abteilungen`, `n.vulkan`, `n.kaskade`.
 
 **`clue.k1.feenschloss`** – Pfeilersaal, Laub beim Blick in den Saal.
-*Hört (Laub):* „Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.“ [Z Knigge nach M1910 Einl. S. XXXIV]
+*Hört (Laub):* „Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.“ [Z Reisebrief vom 11. Mai 1792, in: Knigge (Hg.), *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, 1793, S. 28 f.; nach M1910 Einl. S. XXXIV. Der Schreiber ist ungenannt; nicht als Knigges eigenen Besuch ausgeben]
 *Gibt:* `n.feenschloss`.
 
 **`clue.k1.jost`** – Zwinger, Gespräch.
