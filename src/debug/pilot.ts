@@ -512,6 +512,8 @@ export function installPilot(ctx: GameContext): PilotApi {
     bulletTime(on) {
       ctx.loop.manual = on ?? !ctx.loop.manual;
       ctx.ui.hud.setBulletTime(ctx.loop.manual);
+      // bullet time draws only on request (act / observe / kq.step / screenshotReady): show the badge now
+      ctx.loop.requestRender();
       return ctx.loop.manual;
     },
     showStrip(on) {

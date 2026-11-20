@@ -80,6 +80,28 @@ export class AudioManager {
     return this.buses.get(b) ?? null;
   }
 
+  private hiddenSuspend = false;
+
+  /**
+   * Hidden tab: suspend the context (HRTF panners, wind and drones stop costing CPU), resume when
+   * the tab is visible again (only what this call suspended).
+   */
+  setHidden(hidden: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      if (hidden && ctx.state === 'running') {
+        this.hiddenSuspend = true;
+        void ctx.suspend().catch(() => {});
+      } else if (!hidden && this.hiddenSuspend) {
+        this.hiddenSuspend = false;
+        void ctx.resume().catch(() => {});
+      }
+    } catch {
+      /* closed context */
+    }
+  }
+
   /** Duck/fade all sound (pause menu). */
   setPaused(paused: boolean): void {
     if (!this.ctx || !this.master) return;

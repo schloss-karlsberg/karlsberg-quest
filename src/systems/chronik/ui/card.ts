@@ -48,6 +48,7 @@ export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | 
     title: clue.title_de,
     body,
     className: `ck-card-modal${d.reducedMotion ? ' ck-reduced' : ''}`,
+    backdrop: 'still',
     actions: [
       { label: t('chronik.card.openChronik'), onClick: () => d.onChronik() },
       { label: t('chronik.card.ok'), primary: true },

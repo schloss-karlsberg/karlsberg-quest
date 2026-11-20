@@ -71,7 +71,7 @@ export class HubOverlay {
 
   show(): void {
     if (this.open) return;
-    this.m = this.d.modals.open({ title: t('story.hub.title'), wide: true, className: 'kqs-hub', onClose: () => this.closed() });
+    this.m = this.d.modals.open({ title: t('story.hub.title'), wide: true, className: 'kqs-hub', backdrop: 'still', onClose: () => this.closed() });
     this.m.el.dataset.testid = 'hub';
     this.main();
   }

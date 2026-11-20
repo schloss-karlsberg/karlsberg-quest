@@ -1,8 +1,8 @@
 # Karlsberg Quest – Performance, loading, accessibility
 
 How fast the game is, how we measure it, what the graphics presets do, and which accessibility
-settings exist. Numbers below were measured on 2026-11-02; re-measure after render changes and
-update the tables (how: §2).
+settings exist. Numbers below were measured on 2026-11-02 (§5.1, render pacing: 2026-11-20);
+re-measure after render changes and update the tables (how: §2).
 
 ## 1. Budgets
 
@@ -14,7 +14,8 @@ the e2e test fails when a scene is over.
 | Draw calls per frame (all passes) | ≤ 300 | WebGL call overhead on mid laptops; we use 12–48 |
 | Triangles per frame (all passes) | ≤ 1.5 M | integrated GPUs at 1080p; we use 0.55–0.7 M |
 | CPU per rendered frame | ≤ 8 ms | systems.frame + world.frame + issuing GL calls, leaves room for GC and audio |
-| Frame time | 16.7 ms (60 fps) on a mid laptop GPU | target; the auto-downgrade steps in above 25 ms |
+| Frame time | 16.7 ms (60 fps) on a mid laptop GPU | target; the auto-downgrade steps in above 25 ms (above 1.25 × the frame time of a lower cap) |
+| Renders per second | the cap (60 default) while playing, ≤ 30 on the title, ≤ 15 or none in menus, none in bullet time (§5.1) | fans: a 120 Hz screen must not mean 120 renders a second, and nothing renders twice for a view that cannot change |
 | Data before the first input | ≤ 20 MB | PRD D-007; we fetch 4.5 MB critical + 4.6 MB palace in parallel |
 
 ## 2. Measuring
@@ -160,12 +161,24 @@ programs); later era first frames ~85 ms. Not run under WebDriver (keeps e2e tim
 
 | | Niedrig | Mittel | Hoch |
 |---|---|---|---|
-| Max pixel ratio | 1 | 1.25 | 1.5 |
+| Max pixel ratio | 1 | 1 (was 1.25) | 1.25 (was 1.5) |
 | MSAA | off | 2× | 4× |
 | Terrain LOD distance | 0.6 | 0.8 | 1 (200 / 450 / 1000 m) |
 | Tree rings near / far | 110 / 480 m | 140 / 600 m | 170 / 700 m |
+| Sun shadow map | none | 1024², re-used every 2nd frame | 2048², re-used every 2nd frame |
 | fx particles | low | high | high |
 | Point cloud (Röntgenblick) | sparser | full | full |
+
+- **Bildrate** 30 / **60** / unbegrenzt (default 60): the most frames a second while playing
+  (`core/loop.ts` `FramePacer`: on a 120 Hz screen 60 draws every 2nd display frame with even
+  spacing, 30 every 4th). The fixed 60 Hz simulation does not depend on it.
+- **Energiesparen** (off by default): 30 fps, pixel ratio ≤ 1, no AO, no planar water
+  reflection, on top of any preset. On battery (Battery API, Chromium only) a toast suggests it
+  once, 15 s after the start; nothing switches by itself.
+- **Shadow re-use**: a frame keeps the last shadow map only while it is still exact: the focus
+  moved less than ¾ of a texel (walking 3.2 m/s = 5.3 cm a 60 fps frame keeps it on Hoch and
+  Mittel; sprinting 6.2 m/s = 10.3 cm re-renders), the sun did not turn, the map is ≤ 25 ms old
+  (so at 30 fps every frame re-renders), and never in a fight or in bullet time.
 
 - **Auflösung der 3D-Ansicht** (50–100 %) scales the 3D resolution under the preset's pixel-ratio cap; the UI
   stays sharp.
@@ -173,8 +186,60 @@ programs); later era first frames ~85 ms. Not run under WebDriver (keeps e2e tim
   rasterisers, phones and tablets → Niedrig; Intel / AMD integrated → Mittel; else Hoch.
 - **Grafik automatisch anpassen** (on by default): when the average frame time stays above 25 ms for six
   seconds in a row while playing, the preset goes one step down (Hoch → Mittel → Niedrig → 75 %
-  resolution), with a toast saying so. Stalls > 250 ms (shader compiles, loading rooms, tab
-  switches), era shifts and the first seconds are ignored. Off under WebDriver and `?manual`.
+  resolution), with a toast saying so. Stalls ≥ 250 ms (shader compiles, loading rooms, tab
+  switches), era shifts and the first seconds are ignored. Off under WebDriver, `?manual` and
+  in bullet time. Under a 30 fps cap the threshold is 1.25 × 33 ms (`slowMsFor`), so the cap's
+  own frame time does not count as slow.
+
+### 5.1 Render pacing and the fan round (2026-11-20)
+
+Owner report: the laptop fans get loud (MacBook Pro M-series, 120 Hz ProMotion). Causes
+(research of the same day): no frame cap (Chrome renders at 120 Hz), rendering never idled
+(title, menus and bullet time drew at the full rate), Hoch at pixel ratio 1.5, the shadow map
+re-rendered every frame. What changed:
+
+1. **Frame cap** „Bildrate“ (default 60), see above.
+2. **Idle rendering** (`renderRate`, docs/ARCHITECTURE.md §3): title ≤ 30 fps; pause menu,
+   journal, map, cards and other "still" panels draw once and hold the frame; dialogue and other
+   live panels 15 fps after a 1.5 s settle; bullet time only on request (pilot frames, `kq.step`,
+   `screenshotReady`, hooks, real input); hidden tab nothing and the AudioContext suspended; the
+   rAF loop parks while it has nothing to do.
+3. **Pixel-ratio caps** Hoch 1.25, Mittel 1.
+4. **Shadow re-use** every 2nd frame on every tier with shadows (Hoch and Mittel; Niedrig has none).
+5. **Energiesparen**, see above.
+
+Measured on the real GPU (Apple M5 Pro, ANGLE Metal, headless Chromium, 1512 × 982 at device
+pixel ratio 2 like a 14" MacBook Pro, `--disable-gpu-vsync --disable-frame-rate-limit` so the
+GPU, not a display, limits the rate; script `measure.mjs` in the session scratchpad, `?idle`
+gives the player's policy under automation). Before = `02340f5`. The machine was shared with
+another session's GPU work, so single numbers vary by ±10 %; ratios hold.
+
+| View | Before: renders/s | After: renders/s | After, „unbegrenzt“: fps |
+|---|---:|---:|---:|
+| Title, Hoch | 53 (GPU-bound) | **30** | – (title stays ≤ 30) |
+| Title, Mittel | 73 (GPU-bound) | **30** | – |
+| Densest forest (1632 / −1640), Hoch | 66 (GPU-bound) | **60** | 87 (+32 %) |
+| Densest forest, Mittel | 108 (GPU-bound) | **60** | 129 (+19 %) |
+| Pause menu over the forest, Hoch | 65 | **0** (frame held) | |
+| Journal, Hoch | 69 | **0** | |
+| Bullet time (`kq.pilot.bulletTime(true)`), idle | 66 | **0** | |
+| Bullet time, one `act` with 3 frames / `screenshotReady()` | 3 / 3 | 3 / 3 | |
+
+- GPU load at the 60 cap, estimated as renders/s ÷ uncapped fps: Hoch ≈ 69 %, Mittel ≈ 47 %
+  (before: 100 % on every view, menus included; on a 120 Hz screen Mittel would have drawn 108
+  frames a second).
+- `kq.perf()` in the forest at the cap: frame 16.7 ms avg, CPU of the render callback 1.8 ms
+  (before 14.9 ms: the callback blocked on a saturated GPU).
+- Pixel ratio: Hoch draws 1890 × 1227 instead of 2268 × 1473 (−31 % pixels), Mittel 1512 × 982
+  instead of 1890 × 1227 (−36 %).
+- Shadow re-use, standing in the forest at 60 fps: 50 % of the shadow passes skipped.
+- **No visible shadow swimming** (checked on the real GPU, script `swim.mjs`): the same walking
+  frame drawn with the re-used and with a fresh map. Static shadows (buildings, trees) are
+  identical, pixel for pixel; only the walking avatar's own shadow lags (≤ 0.11 % of pixels
+  differ by more than 12 / 255, max 58 / 255), invisible at 1:1. Sprinting re-renders every
+  frame (0 differing pixels).
+- Not measured here: a real 120 Hz display (headless has none; `tests/core.test.ts` checks the
+  pattern for 120 / 60 / 144 / 50 Hz with jitter), Safari (60 Hz rAF by default anyway).
 
 ## 6. Accessibility settings
 
@@ -206,3 +271,7 @@ open dialog, visible focus outlines.
   chapter.
 - The shader warm-up cannot be verified headless (SwiftShader compiles serially).
 - The key-help page lists the bible's default key names; it does not yet follow remapped keys.
+- Fan round leftovers (research 2026-11-20, wins 6–8): the auto-downgrade still reads only frame
+  time (no missed-frame or thermal signal, never steps back up); the first-run guess still gives
+  Apple GPUs Hoch; no dynamic resolution. A live dialogue renders 15 fps after its 1.5 s settle:
+  NPC idle motion behind the panel looks a little stepped.

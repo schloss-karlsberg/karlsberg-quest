@@ -72,17 +72,22 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       ctx.player.teleport(x, z, yawDeg === undefined ? undefined : (-yawDeg * Math.PI) / 180);
       if (pitchDeg !== undefined) ctx.player.pitch = (pitchDeg * Math.PI) / 180;
       ctx.world.forest.invalidate();
+      // a held view (bullet time, menus) shows the new spot
+      ctx.loop.requestRender();
     },
     setEra(e) {
       if (!isEra(e)) throw new Error(`unknown era '${e}'`);
       ctx.era.set(e);
+      ctx.loop.requestRender();
     },
     setScanMode(n) {
       ctx.world.setScanMode(Math.max(0, Math.min(3, Math.round(n))) as ScanMode, true);
       ctx.events.emit('scan:mode', { mode: n });
+      ctx.loop.requestRender();
     },
     setMapMix(v) {
       ctx.world.setMapMix(v, true);
+      ctx.loop.requestRender();
     },
     step(n = 1) {
       ctx.loop.step(n);
@@ -94,7 +99,11 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       await info.ready.catch(() => {});
       const f0 = info.frames();
       // three frames: instance buffers and textures uploaded, LODs settled for the current view
-      while (info.frames() < f0 + 3) await nextFrame();
+      // (asked for explicitly: bullet time and held menus draw only on request)
+      while (info.frames() < f0 + 3) {
+        ctx.loop.requestRender();
+        await nextFrame();
+      }
     },
     press(code, steps = 1) {
       ctx.input.simulate(code, true);
@@ -124,10 +133,12 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       o.rotation.y = ((opts.yaw ?? 0) * Math.PI) / 180;
       o.scale.setScalar(opts.scale ?? 1);
       ctx.scene.add(o);
+      ctx.loop.requestRender();
       return o.uuid;
     },
     perfHud(on) {
       hud.show(on ?? !hud.visible);
+      ctx.loop.requestRender();
       return hud.visible;
     },
     baseline() {

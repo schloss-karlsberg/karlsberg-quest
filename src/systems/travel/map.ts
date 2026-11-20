@@ -255,8 +255,13 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     g.fillText('N ↑', W - 34, 16);
   }
 
+  // ≤ 30 redraws per second: the pulsing marks and panning need no more (120 Hz screens)
+  let drawnAt = -1e9;
   function frame(t: number): void {
-    draw(t);
+    if (t - drawnAt >= 1000 / 30 - 4) {
+      drawnAt = t;
+      draw(t);
+    }
     raf = requestAnimationFrame(frame);
   }
 
