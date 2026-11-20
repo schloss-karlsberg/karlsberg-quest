@@ -1,6 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute } from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { buildDebris, buildInterior, lookOf } from '../src/systems/interiors/builder';
+import { buildDebris, buildInterior, foundationStones, lookOf } from '../src/systems/interiors/builder';
 import { PlanQuery } from '../src/systems/interiors/collide';
 import { type FullPlan, buildPlan, classifyRoom, ruinTop } from '../src/systems/interiors/layout';
 import { bakeLight } from '../src/systems/interiors/lightmap';
@@ -167,6 +167,38 @@ describe('interiors meshes', () => {
         expect(built.rooms.length).toBeLessThanOrEqual(32);
       }
     }
+  });
+
+  it('sets the 2025 foundation lines into the ground, also on the Orangerie step (round 10, F-14)', () => {
+    const t25 = (x: number, z: number) => d.h2025.heightAt(x, z);
+    for (const id of ['KB-B10', 'KB-B01', 'KB-B02']) {
+      const g = buildInterior(today, id, lookOf('today', 'today'), t25).geo;
+      let worst = -Infinity;
+      // side quads of the boxes: vertices 0 and 1 are the bottom edge
+      for (let q = 0; q + 3 < g.vertices; q += 4) {
+        if (Math.abs(g.nor[q * 3 + 1]!) > 0.01) continue;
+        for (const v of [q, q + 1]) worst = Math.max(worst, g.pos[v * 3 + 1]! - t25(g.pos[v * 3]!, g.pos[v * 3 + 2]!));
+      }
+      // before: up to 0.7 m of air under the downhill ends of the Orangerie's runs
+      expect(worst, id).toBeLessThan(0);
+    }
+  });
+
+  it('steps a foundation run down a slope in short stones', () => {
+    const slope = (x: number) => 300 - 0.8 * x; // 39°, falling along +x
+    const stones = foundationStones(0, 0, 1, 0, 1.56, 0.8, (x) => slope(x));
+    expect(stones.length).toBeGreaterThan(3);
+    for (const s of stones) {
+      expect(s.y0).toBeLessThanOrEqual(slope(s.x + s.len / 2) - 0.25);
+      expect(s.top).toBeGreaterThan(slope(s.x));
+      expect(s.top - (slope(s.x + s.len / 2))).toBeLessThan(0.45);
+    }
+    // flat ground: one stone, as before
+    expect(foundationStones(0, 0, 1, 0, 1.56, 0.4, () => 300)).toHaveLength(1);
+    // along the contour: still one long stone, sunk below its downhill edge
+    const along = foundationStones(0, 0, 0, 1, 1.56, 0.8, (x) => slope(x));
+    expect(along).toHaveLength(1);
+    expect(along[0]!.y0).toBeLessThanOrEqual(slope(0.4) - 0.25);
   });
 
   it('lights candles in 1789, one candle in February 1793, none in July 1793', () => {

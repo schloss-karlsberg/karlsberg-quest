@@ -17,6 +17,7 @@ import type { AssetLoader } from '../../assets/loader';
 import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
 import type { GroundCoverSource } from './groundcover';
+import { DUCK_GLSL, enemyDuck } from './duck';
 import { COVER_LOOKS, type CoverLook, type CoverSample, hash2, valueNoise } from './scatter';
 
 /**
@@ -171,8 +172,10 @@ function patchNature(m: Material, wind: boolean): void {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (shader, renderer) => {
     prev.call(mat, shader, renderer);
-    if (wind)
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;').replace(
+    if (wind) {
+      // the swaying kinds also lie down round the enemies (duck.ts, playtest round 10 F-04)
+      shader.uniforms.uEnemyDuck = enemyDuck;
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>\nuniform float uTime;\n${DUCK_GLSL}`).replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
 #ifdef USE_INSTANCING
@@ -180,9 +183,13 @@ function patchNature(m: Material, wind: boolean): void {
   vec2 kqIp = instanceMatrix[3].xz;
   float kqW = sin(uTime * 1.7 + kqIp.x * 0.4 + kqIp.y * 0.3) * 0.6 + sin(uTime * 3.1 + kqIp.x) * 0.25;
   transformed.xz += vec2(0.8, 0.5) * kqW * 0.06 * transformed.y * transformed.y;
+  float kqDk = kqDuckAt(kqIp);
+  transformed.y *= 1.0 - 0.78 * kqDk;
+  transformed.xz *= 1.0 + 0.3 * kqDk;
 }
 #endif`,
       );
+    }
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `#include <normal_fragment_maps>

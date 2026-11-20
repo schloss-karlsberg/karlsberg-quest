@@ -1,6 +1,6 @@
 # Karlsberg Quest — PRD / Game Design Document (living)
 
-> Version 0.4.7 · 2026-11-20 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
+> Version 0.4.8 · 2026-11-20 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
 > Status: **in production — action-RPG rework** (D-008). The full campaign is playable (D-006); the owner asked
 > to turn it from a deduction game into an action RPG with quests and fights. The rework's living spec is
 > [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md); where it and this file disagree, the newer decision wins.
@@ -16,6 +16,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.4.8 | 2026-11-20 | **Round 10 look fixes** (docs/PLAYTEST-ROUND10.md): the first Nebelinge no longer read as dark blobs on the forest floor; they have a pale rim and halo in their own colour and a brighter heart in every era and light, and ferns and bushes lie down round creatures so a fight in the undergrowth stays readable. The mossy foundations of the vanished buildings in 2025 now sit in the slope below the Orangerie instead of floating (docs/ART-DIRECTION.md §20, ACTION-RPG §14) |
 | 0.4.7 | 2026-11-20 | **Kapitel 1 opens at the Karlsbergquelle** (owner: "start at the Karlsbergquelle, for a nice time-travel transition"): the chapter starts at the spring at dawn; the Bussole's drop dried overnight, so E at the trough takes you into summer 1789; you walk up on foot to the Ehrenhof gate (the lantern waits for the court). Waking on the way puts you at the spring, and Q never lands you inside the court before it has let you in. Old chapter-1 saves resume at the spring. Spec: `docs/ACTION-RPG.md` §11.1, design `docs/IDEAS-ROUND11.md` §1 |
 | 0.4.6 | 2026-11-20 | **Open-source / release tooling round:** `scripts/release/publish.sh` publishes local main to the public repo (fresh mirror clone → deterministic history rewrite → checks → fast-forward push, never force); Conventional Commits for commits, PR titles (`pr-lint.yml`) and `--no-ff` merge summaries (CONTRIBUTING); release-please (`release.yml`, first release pinned to 0.5.0 from the first public commit) writes CHANGELOG.md and GitHub Releases, topped with German player notes from `content/release-notes/vX.Y.Z.md`; the title screen shows version + build and „Neuigkeiten“ (badge until read), the site gets `neu.html` generated at build time (docs/RELEASE.md §0a–0c, ACTION-RPG §14) |
 | 0.4.5 | 2026-11-20 | **Touch phase 1** (phones and tablets in landscape): a floating move stick, drag to look, touch buttons for Hieb / Wuchthieb, Ausweichen, Bannlicht, Ziel, Balsam, Interagieren / Lauschen, Epochenwechsel (hold to return), Relief, Feldbuch, Karte and Pause. No pointer lock on touch, prompts as touch icons, safe areas and a smaller HUD on phones, the new-game lantern screen fits a phone. Setting "Touch-Steuerung" (Auto / An / Aus). Phones start on Niedrig, big tablets on Mittel (docs/ARCHITECTURE.md "Input", ACTION-RPG §14) |

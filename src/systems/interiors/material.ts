@@ -437,7 +437,8 @@ void main() {
   } else if (m == ${M.MOSS}) {
     vec2 q = uv / vec2(0.5, 0.3);
     vec2 f = fract(q + vec2(floor(q.y) * 0.5, 0.0));
-    alb = mix(base, vec3(0.2, 0.27, 0.1), smoothstep(0.4, 0.7, kqFbm(vWorld.xz * 1.5 + uv)));
+    // weathered stone with moss in patches (round 10, F-14: they read as dark-green slabs)
+    alb = mix(base, vec3(0.22, 0.29, 0.11), 0.75 * smoothstep(0.45, 0.75, kqFbm(vWorld.xz * 1.5 + uv)));
     alb *= 0.7 + 0.3 * smoothstep(0.0, 0.06, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
   } else if (m == ${M.COBBLE}) {
     vec2 q = uv / 0.2;

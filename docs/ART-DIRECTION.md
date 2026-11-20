@@ -591,3 +591,34 @@ the double conversion.
 
 Still open (look polish runs in another session): ivy on the wall, the burning palace reflected in
 the July water, an ice crust to break in February 1793.
+
+## 20. Real-GPU playtest round 10: look fixes (2026-11-20)
+
+Report `docs/PLAYTEST-ROUND10.md`. Checked in headless Chrome on ANGLE Metal (Apple M5 Pro,
+1280 × 720, high), before / after from the same views.
+
+- **Nebelinge on the forest floor (F-04).** In daylight the spectral body showed as a dark blob, and
+  only its health pips read. The rim is now a light, not an ink edge: the family tint runs round the
+  silhouette (stronger in pale day fog), and the heart is brighter (0.6 → 0.8). Just inside the rim
+  the body darkens a little, so the pale edge stands against the dark core. The inverted-hull outline
+  of a spectral body takes the family tint (× 0.8) instead of ink, so it reads as a pale-blue halo on
+  leaf litter, meadow and snow. The body stays dark and misty, with no white blob. Checked in all five
+  eras, at dusk and at night.
+- **Ferns part round creatures (F-04, F-21 part).** Ferns, bushes and flower clumps (the swaying
+  `NatureProps` kinds) lie down and spread within an enemy's radius + 1.4 m (at least 1.9 m). They
+  sink to ≈ 22 % height and spread × 1.3. `src/world/vegetation/duck.ts` holds 8 slots (nearest to
+  the camera, ≤ 46 m) that combat fills every frame, and the props' vertex shader reads them.
+  Flyers 2.5 m or more above the ground do not count. A Nebelling standing in a fern clump is now
+  seen whole, with its ground ring.
+- **Foundations in 2025 (F-14).** The mossy foundation lines of the vanished buildings sat on the
+  ground under their centres. On the Orangerie's step they hung up to 0.7 m in the air (74 floating
+  vertices at KB-B10). A run down a slope now steps in shorter stones, each falling at most 0.3 m
+  along its length (`foundationStones` in `src/systems/interiors/builder.ts`). Every stone reaches
+  0.3 m below the lowest ground under its corners. A run along the contour stays one long stone.
+  Result: 0 floating vertices. The stone is a little lighter (`#8a8a74`, moss in patches up to 75 %),
+  so the lines read as weathered stone, not dark-green slabs.
+
+Not taken here: the black cone (F-15) did not reproduce, from the report's spot or with its quest
+state. The straight-edged flat black wedge, seen together with a missing player, looks like a single
+exploded triangle (degenerate or NaN vertex) more than a scene prop. The camera findings (F-03,
+F-07 / F-08, F-21 trunks, F-31, F-35) belong to the camera session.
