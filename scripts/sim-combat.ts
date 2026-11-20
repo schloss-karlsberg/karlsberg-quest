@@ -149,7 +149,7 @@ for (const { row, runs } of out) {
 lines.push('');
 lines.push('**Bosses**: how the way in was found and what the armour or seal threw back (per fight, mean).');
 lines.push('');
-lines.push('| Boss | Learnt the way in | Learnt after (s) | Blows bounced ("Abgeprallt") | Blows into the reveal / phase roar ("Der Stab geht hindurch – erst das Bannlicht") |');
+lines.push('| Boss | Learnt the way in | Learnt after (s) | Blows bounced ("Abgeprallt") | Blows into the reveal / phase roar (`bossGuard`: „… – warte.“; before 2026-11-20 the „erst das Bannlicht“ line) |');
 lines.push('|---|---|---|---|---|');
 for (const { row, runs } of out) {
   if (!row.enc.boss) continue;

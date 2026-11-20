@@ -258,6 +258,8 @@ export function summarizeSimEvent(ev: SimEvent, t: number): PilotEvent | null {
       return { type: ev.type, t: T };
     case 'intro':
       return { type: 'bossIntro', t: T, ...who(ev.e) };
+    case 'bossGuard':
+      return { type: 'bossGuard', t: T, ...who(ev.e), why: ev.why };
     default:
       return null;
   }
