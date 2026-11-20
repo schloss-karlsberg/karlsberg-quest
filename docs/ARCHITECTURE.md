@@ -135,8 +135,12 @@ rig's last frame (distance, head, rise, crane, enemy lift, tilt, indoor, focus, 
 fight hints). **NaN guards** (F-15, `src/player/guards.ts`): a NaN / negative dt counts as 0, a
 huge one is capped at 0.1 s; a NaN input, height, ceiling or hint never reaches the camera (the
 rig holds its last finite placement and restarts its smoothing); the avatar holds its last pose
-on a NaN position, restarts a NaN facing / gait phase, clamps clip times and weights (NaN → 0);
-the staff trail never stretches across a teleport; the see-through switches off on a NaN lens.
+on a NaN position (`usablePos`), turns with `turnToward` (a NaN wish or facing never sticks),
+clamps clip times and weights with the NaN-safe `clamp01`; the staff trail never stretches across
+a teleport (`ribbonStep`); the see-through switches off on a NaN lens. The character's own fade
+(the lens at the head, the fight's target behind the body, never under 45 % in a fight) is
+`CharacterFade` in seeThrough.ts; avatar.ts only calls these hooks (it belongs to the character
+look work), so the camera rules live in `guards.ts` / `seeThrough.ts`.
 
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop and rendering follows the pacing above. `?manual` stops the real-time simulation entirely;

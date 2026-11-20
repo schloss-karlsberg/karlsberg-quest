@@ -58,3 +58,35 @@ export function loop01(t: number, d: number): number {
   const k = (t / d) % 1;
   return k < 0 ? k + 1 : k;
 }
+
+/**
+ * The avatar's ground point this frame (F-15): false when `p` is not finite (the body holds its last
+ * good pose this frame, nothing is written to the skinned mesh); a non-finite `last` (copied while
+ * hidden) restarts at `p`, so the next velocity is 0 instead of NaN.
+ */
+export function usablePos(p: { x: number; y: number; z: number }, last: { x: number; y: number; z: number }): boolean {
+  if (!finite3(p)) return false;
+  if (!finite3(last)) {
+    last.x = p.x;
+    last.y = p.y;
+    last.z = p.z;
+  }
+  return true;
+}
+
+/**
+ * The next point pair of a swing ribbon (F-15): 'drop' when a point is not finite (clear the ribbon,
+ * add nothing), 'restart' when the blade end jumped more than `jump` m since the last pair (a
+ * teleport: clear, then start again here — the old points would stretch it across the screen),
+ * otherwise 'add'.
+ */
+export function ribbonStep(prev: { x: number; y: number; z: number } | undefined, a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }, jump = 3): 'drop' | 'restart' | 'add' {
+  if (!finite3(a) || !finite3(b)) return 'drop';
+  if (prev) {
+    const dx = prev.x - a.x;
+    const dy = prev.y - a.y;
+    const dz = prev.z - a.z;
+    if (!(dx * dx + dy * dy + dz * dz <= jump * jump)) return 'restart';
+  }
+  return 'add';
+}

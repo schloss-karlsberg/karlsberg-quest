@@ -50,9 +50,11 @@ import { type WeaponStage, buildStaff, staffMaterial } from '../systems/combat/v
 import { atmosphere } from '../world/atmosphere';
 import { BOOM_MIN } from './camera';
 import { type Costume, costumeColours, costumeEmissive, costumeHides, lanternColours, partOf, resolveCostume, resolveTint, slotHex, staffOnBack } from './costume';
-import { clamp01, finite3, finiteOr, loop01, safeDt, turnToward } from './guards';
+// camera session hooks (round 10): NaN guards (F-15) and the character's fade (round 9, F-07)
+import { clamp01, finiteOr, ribbonStep, safeDt, turnToward, usablePos } from './guards';
 import type { Player } from './player';
 import { actionPose } from './pose';
+import { CharacterFade } from './seeThrough';
 
 export { type Costume, SURVEYOR_COSTUME } from './costume';
 
@@ -104,9 +106,6 @@ interface Loco {
   up: AnimationAction;
   w: number;
 }
-
-const _fa = new Vector3();
-const _fb = new Vector3();
 
 export interface AvatarFrame {
   dt: number;
@@ -493,24 +492,18 @@ export class Avatar {
     }
     // ---- ground motion
     const p = pl.renderPos;
-    // F-15: a non-finite position never reaches the skinned mesh (one NaN bone can blow a
-    // triangle across the screen on some GPUs): the body holds its last good pose this frame
-    if (!finite3(p)) return;
-    if (!finite3(this.last)) this.last.copy(p);
+    // F-15 hook (guards.ts): a NaN position never reaches the skinned mesh; hold the last good pose
+    if (!usablePos(p, this.last)) return;
     if (dt > 0) {
       const vx = (p.x - this.last.x) / dt;
       const vz = (p.z - this.last.z) / dt;
-      const jump = !(Math.hypot(vx, vz) <= 40);
+      const jump = Math.hypot(vx, vz) > 40;
       // a teleport: face where the view looks
       if (jump) this.facing = pl.yaw;
       const k = Math.min(1, dt * 10);
       this.vel.x += ((jump ? 0 : vx) - this.vel.x) * k;
       this.vel.z += ((jump ? 0 : vz) - this.vel.z) * k;
       this.speed = Math.hypot(this.vel.x, this.vel.z);
-      if (!Number.isFinite(this.speed)) {
-        this.vel.x = this.vel.z = 0;
-        this.speed = 0;
-      }
     }
     this.last.copy(p);
     rig.root.position.copy(p);
@@ -523,10 +516,10 @@ export class Avatar {
     else if (fight && this.speed > 0.3) want = pl.yaw;
     else if (A.charge !== null || A.flare > 0.2) want = pl.yaw;
     else if (this.speed > 0.35) want = Math.atan2(-this.vel.x, -this.vel.z);
-    if (want !== null) this.facing = turnToward(this.facing, want, A.swing || A.dodge !== null ? 22 : 11, dt, pl.yaw);
-    else if (!Number.isFinite(this.facing)) this.facing = finiteOr(pl.yaw, 0);
+    // F-15 hook (guards.ts turnToward): the short way round; a NaN wish or facing never sticks
+    this.facing = turnToward(this.facing, want ?? this.facing, A.swing || A.dodge !== null ? 22 : 11, dt, pl.yaw);
     // Wirbel: two full turns over the move
-    if (A.skill?.id === 'wirbel') this.spin = A.skill.dur > 0 ? finiteOr((A.skill.t / A.skill.dur) * Math.PI * 4, 0) : 0;
+    if (A.skill?.id === 'wirbel') this.spin = finiteOr((A.skill.t / A.skill.dur) * Math.PI * 4, 0);
     else this.spin = 0;
     rig.root.rotation.set(0, this.facing + Math.PI + this.spin, 0);
     // ---- locomotion weights
@@ -560,7 +553,6 @@ export class Avatar {
     // phase-locked feet: one cycle counter for every loop
     const stride = STRIDE.walk + (STRIDE.run - STRIDE.walk) * runK;
     if (!A.frozen) this.phase += (Math.max(sp, 0) / stride) * dt;
-    if (!Number.isFinite(this.phase)) this.phase = 0;
     // crouch / prone: slower, lower
     this.crouch += ((pl.stance === 'crouch' ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
     this.prone += ((pl.stance === 'prone' ? 1 : 0) - this.prone) * Math.min(1, dt * 6);
@@ -568,10 +560,10 @@ export class Avatar {
     const set = (n: string, up: number, full: number, t01: number) => {
       const a = this.acts.get(n);
       if (!a) return;
-      a.w = clamp01(up);
-      a.wf = clamp01(full);
+      a.w = up;
+      a.wf = full;
       const d = a.up.getClip().duration;
-      a.up.time = a.full.time = d > 0 ? clamp01(t01) * d * 0.999 : 0;
+      a.up.time = a.full.time = clamp01(t01) * d * 0.999;
     };
     for (const a of this.acts.values()) {
       a.w = 0;
@@ -659,10 +651,9 @@ export class Avatar {
     let bw = 0;
     for (const l of this.locos) {
       l.w += ((wl[l.name] ?? 0) - l.w) * kk;
-      if (!Number.isFinite(l.w)) l.w = 0;
       const d = l.low.getClip().duration;
-      const t = l.name.startsWith('Idle') ? loop01(f.time, d) : loop01(this.phase, 1);
-      l.low.time = l.up.time = t * Math.max(0, d);
+      const t = l.name.startsWith('Idle') ? (f.time / d) % 1 : this.phase % 1;
+      l.low.time = l.up.time = t * d;
       l.low.setEffectiveWeight(l.w * (1 - fullW));
       l.up.setEffectiveWeight(l.w * (1 - fullW) * (1 - upperW));
       if (l.w > bw) {
@@ -709,9 +700,9 @@ export class Avatar {
       const active = (!!A.swing && A.swing.t / A.swing.dur > 0.1 && A.swing.t / A.swing.dur < 0.7) || (!!A.skill && A.skill.t / A.skill.dur < 0.9);
       this.trail.frame(dt, active && !A.frozen, this.staff, A.swing?.kind === 'heavy', f.reducedFlash);
     } else this.trail.clear();
-    // ---- fade (playtest round 9): the camera pressed against the head and backpack, and the enemy
-    // being fought hidden behind the body — dither the character when the lens is close or the
-    // target sits behind it on screen
+    // ---- fade: camera hook (round 9; round 10 F-07 / F-15) — how solid the body is drawn is
+    // decided in src/player/seeThrough.ts (CharacterFade): the lens at the head, the fight's target
+    // behind the body, never under 45 % in a fight
     this.fadeFrame(f, dt, p);
     // ---- lantern: the light hangs on the belt
     this.lantern.getWorldPosition(this.lanternWorld);
@@ -727,36 +718,13 @@ export class Avatar {
     }
   }
 
-  /** 0..1 how much of the body is drawn (1 = solid). */
-  private fade = 1;
+  /** The character's camera-side fade (src/player/seeThrough.ts; the camera session owns it). */
+  private readonly see = new CharacterFade();
 
+  /** Opacity of every material in `materials` (alphaHash: dithered, no sorting): camera fade × costume swap dip. */
   private fadeFrame(f: AvatarFrame, dt: number, p: Vector3): void {
-    const cam = f.camera;
-    let want = 1;
-    // the lens close to the head: from 1.3 m in, fade down to 0.3
-    const dc = Math.hypot(cam.position.x - p.x, cam.position.y - (p.y + 1.45), cam.position.z - p.z);
-    if (dc < 1.3) want = Math.min(want, 0.3 + 0.7 * Math.max(0, (dc - 0.55) / 0.75));
-    // the target behind the body: both on screen, the target farther away, close together in x
-    const T = actionPose.target;
-    if (T) {
-      _fa.set(p.x, p.y + 1.0, p.z).project(cam);
-      _fb.set(T.x, p.y + 0.9, T.z).project(cam);
-      const dT = Math.hypot(T.x - cam.position.x, T.z - cam.position.z);
-      const dA = Math.hypot(p.x - cam.position.x, p.z - cam.position.z);
-      if (_fa.z < 1 && _fb.z < 1 && dT > dA + 0.3) {
-        // the body is ~0.5 m wide: its half-width on screen in NDC, plus a margin
-        const half = (0.45 / Math.max(0.5, dA)) / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.5, cam.aspect);
-        const ox = Math.abs(_fa.x - _fb.x);
-        if (ox < half + 0.05 && Math.abs(_fa.y - _fb.y) < 0.5) want = Math.min(want, 0.4);
-      }
-    }
-    // in a fight the character never thins below ~half (round 10, F-07: the rig rises over the
-    // shoulder instead of pressing into the head, so a strong fade is never needed there)
-    if (actionPose.inCombat) want = Math.max(want, 0.45);
-    this.fade += (want - this.fade) * Math.min(1, dt * 8);
-    if (!Number.isFinite(this.fade)) this.fade = 1;
     this.swapFrame(dt);
-    const o = (this.fade > 0.98 ? 1 : this.fade) * this.swapK;
+    const o = this.see.step(f.camera, p, actionPose.target, actionPose.inCombat, dt) * this.swapK;
     for (const m of this.materials) m.opacity = o;
     if (this.staff) this.staff.visible = this.staff.visible && o > 0.35;
   }
@@ -844,13 +812,10 @@ class Trail {
     if (active) {
       const a = staff.localToWorld(new Vector3(0, 0, -1.4));
       const b = staff.localToWorld(new Vector3(0, 0, -0.75));
-      // F-15: no ribbon through a NaN or across a teleport (the old points would stretch it)
-      const prev = this.pts[0];
-      if (!finite3(a) || !finite3(b)) this.pts.length = 0;
-      else {
-        if (prev && prev.a.distanceToSquared(a) > 9) this.pts.length = 0;
-        this.pts.unshift({ a, b, age: 0 });
-      }
+      // F-15 hook (guards.ts): no ribbon through a NaN or stretched across a teleport
+      const step = ribbonStep(this.pts[0]?.a, a, b);
+      if (step !== 'add') this.pts.length = 0;
+      if (step !== 'drop') this.pts.unshift({ a, b, age: 0 });
       if (this.pts.length > Trail.N) this.pts.length = Trail.N;
     }
     while (this.pts.length && this.pts[this.pts.length - 1]!.age > 0.14) this.pts.pop();

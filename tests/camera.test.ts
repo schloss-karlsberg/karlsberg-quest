@@ -1,9 +1,9 @@
 import { PerspectiveCamera, Vector3, Vector4 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { BOOM_MIN, CameraRig, type CameraHints, type CameraWorld, CRANE_MAX, INDOOR_BOOM, NEAR_COMFORT, RISE_MAX, ZOOM_MAX, ZOOM_MIN, frameTilt, squeezeRise, twoShot } from '../src/player/camera';
-import { SEE_CONE, SEE_HALF, SEE_HALF_FIGHT, applySeeThrough, seeAmount } from '../src/player/seeThrough';
+import { CharacterFade, FADE_FIGHT_FLOOR, FADE_NEAR_MIN, FADE_TARGET, SEE_CONE, SEE_HALF, SEE_HALF_FIGHT, applySeeThrough, characterFadeWant, seeAmount } from '../src/player/seeThrough';
 import { FootprintCollider } from '../src/world/collision';
-import { clamp01, dirXZ, finite3, finiteOr, loop01, safeDt, turnToward } from '../src/player/guards';
+import { clamp01, dirXZ, finite3, finiteOr, loop01, ribbonStep, safeDt, turnToward, usablePos } from '../src/player/guards';
 import { lensVis } from '../src/systems/combat/visuals';
 import { DEFAULT_BINDINGS, REBINDABLE } from '../src/player/input';
 import { pickTarget, type TargetCandidate } from '../src/systems/combat/targeting';
@@ -522,5 +522,73 @@ describe('lock-on targeting', () => {
     expect(DEFAULT_BINDINGS.journal).toEqual(['KeyJ']);
     expect(REBINDABLE).toContain('lockOn');
     expect(REBINDABLE).toContain('cameraMode');
+  });
+});
+
+describe('the character fade (camera side of src/player/avatar.ts)', () => {
+  const feet = { x: 0, y: 0, z: 0 };
+  /** A camera behind the character (+z), looking at the head. */
+  const camAt = (z: number, y = 1.6): PerspectiveCamera => {
+    const c = new PerspectiveCamera(70, 16 / 9, 0.2, 1000);
+    c.position.set(0, y, z);
+    c.lookAt(0, 1.45, 0);
+    c.updateMatrixWorld(true);
+    return c;
+  };
+
+  it('is solid with the lens at a normal distance, thins as the lens nears the head', () => {
+    expect(characterFadeWant(camAt(3.6), feet, null, false)).toBe(1);
+    const mid = characterFadeWant(camAt(0.9), feet, null, false);
+    expect(mid).toBeGreaterThan(FADE_NEAR_MIN);
+    expect(mid).toBeLessThan(1);
+    expect(characterFadeWant(camAt(0.4), feet, null, false)).toBeCloseTo(FADE_NEAR_MIN, 6);
+  });
+
+  it('thins when it hides the fight target on screen, never under the floor in a fight (F-07)', () => {
+    const cam = camAt(3.6);
+    expect(characterFadeWant(cam, feet, { x: 0, z: -4 }, false)).toBe(FADE_TARGET);
+    // the target off to the side: not hidden
+    expect(characterFadeWant(cam, feet, { x: 4, z: -4 }, false)).toBe(1);
+    expect(characterFadeWant(cam, feet, { x: 0, z: -4 }, true)).toBe(FADE_FIGHT_FLOOR);
+    expect(characterFadeWant(camAt(0.4), feet, null, true)).toBe(FADE_FIGHT_FLOOR);
+  });
+
+  it('eases, snaps to solid above 0.98 and restarts solid on a NaN lens (F-15)', () => {
+    const f = new CharacterFade();
+    const near = camAt(0.4);
+    const o1 = f.step(near, feet, null, false, 1 / 60);
+    expect(o1).toBeLessThan(1);
+    expect(o1).toBeGreaterThan(0.8);
+    for (let i = 0; i < 120; i++) f.step(near, feet, null, false, 1 / 60);
+    expect(f.value).toBeCloseTo(FADE_NEAR_MIN, 3);
+    // dt 0 (paused) holds
+    expect(f.step(camAt(3.6), feet, null, false, 0)).toBeCloseTo(FADE_NEAR_MIN, 3);
+    for (let i = 0; i < 120; i++) f.step(camAt(3.6), feet, null, false, 1 / 60);
+    expect(f.step(camAt(3.6), feet, null, false, 1 / 60)).toBe(1);
+    const bad = camAt(3.6);
+    bad.position.x = Number.NaN;
+    f.value = Number.NaN;
+    expect(f.step(bad, feet, { x: 0, z: -4 }, false, 1 / 60)).toBe(1);
+    expect(f.step(camAt(3.6), { x: Number.NaN, y: 0, z: 0 }, null, false, 1 / 60)).toBe(1);
+  });
+
+  it('usablePos holds on a NaN position and restarts a NaN last position', () => {
+    const last = { x: 1, y: 2, z: 3 };
+    expect(usablePos({ x: Number.NaN, y: 0, z: 0 }, last)).toBe(false);
+    expect(last).toEqual({ x: 1, y: 2, z: 3 });
+    const bad = { x: Number.NaN, y: 0, z: Number.POSITIVE_INFINITY };
+    expect(usablePos({ x: 4, y: 5, z: 6 }, bad)).toBe(true);
+    expect(bad).toEqual({ x: 4, y: 5, z: 6 });
+  });
+
+  it('ribbonStep drops a NaN point and restarts across a teleport', () => {
+    const a = { x: 0, y: 1, z: 0 };
+    const b = { x: 0, y: 1.5, z: 0 };
+    expect(ribbonStep(undefined, a, b)).toBe('add');
+    expect(ribbonStep({ x: 0.5, y: 1, z: 0 }, a, b)).toBe('add');
+    expect(ribbonStep({ x: 50, y: 1, z: 0 }, a, b)).toBe('restart');
+    expect(ribbonStep({ x: Number.NaN, y: 1, z: 0 }, a, b)).toBe('restart');
+    expect(ribbonStep({ x: 0, y: 1, z: 0 }, { x: Number.NaN, y: 1, z: 0 }, b)).toBe('drop');
+    expect(ribbonStep(undefined, a, { x: 0, y: Number.POSITIVE_INFINITY, z: 0 })).toBe('drop');
   });
 });
