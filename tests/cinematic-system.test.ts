@@ -17,7 +17,7 @@ function memStorage() {
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
 }
 
-function setup(opts: { reduced?: boolean } = {}) {
+function setup(opts: { reduced?: boolean; title?: () => boolean } = {}) {
   const events = new EventBus();
   const log: [string, unknown][] = [];
   events.onAny((n, p) => log.push([n, p]));
@@ -28,7 +28,7 @@ function setup(opts: { reduced?: boolean } = {}) {
   let now = 0;
   const slot = new OverrideSlot((active) => events.emit('camera:override', { active }));
   const settings = { state: { reducedMotion: opts.reduced === true } };
-  const takeover = new CameraTakeover({ slot, player, events, reducedMotion: () => settings.state.reducedMotion, now: () => now });
+  const takeover = new CameraTakeover({ slot, player, events, reducedMotion: () => settings.state.reducedMotion, now: () => now, titleActive: opts.title });
   const holds = new Set<string>();
   const ctx = {
     events,
@@ -236,6 +236,38 @@ describe('cinematic system', () => {
     s.render();
     expect(s.slot.fn).toBeNull();
     expect(s.camera.position.distanceTo(s.rig)).toBeLessThan(1e-9);
+  });
+
+  it('takeCamera is refused (with a warning) while the title screen shows', () => {
+    let title = true;
+    const s = setup({ title: () => title });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(s.takeover.takeCamera('photo', () => {})).toBe(false);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('title'));
+    expect(s.rt.play(ORBIT)).toBe(false);
+    warn.mockRestore();
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(s.slot.fn).toBeNull();
+    expect(s.player.frozen).toBe(false);
+    title = false;
+    expect(s.takeover.takeCamera('photo', () => {})).toBe(true);
+  });
+
+  it('showAvatar: false hides the character while owned and shows it from the start of the hand-back', () => {
+    const s = setup();
+    s.takeover.takeCamera('photo', (cam) => cam.position.set(0, 20, 0), { showAvatar: false });
+    s.render();
+    expect(s.takeover.showsAvatar(s.slot.fn)).toBe(false);
+    s.takeover.releaseCamera('photo');
+    // the hand-back's first frame: still ours, the character is back
+    expect(s.slot.fn).not.toBeNull();
+    expect(s.takeover.showsAvatar(s.slot.fn)).toBe(true);
+    s.render(16);
+    expect(s.slot.fn).not.toBeNull();
+    expect(s.takeover.showsAvatar(s.slot.fn)).toBe(true);
+    s.render(HANDBACK_S * 1000);
+    expect(s.slot.fn).toBeNull();
+    expect(s.takeover.showsAvatar(s.slot.fn)).toBe(false);
   });
 
   it('a NaN from a shot never reaches the camera', () => {

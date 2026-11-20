@@ -57,6 +57,8 @@ export interface TakeoverDeps {
   /** ms clock for the hand-back (render time, default performance.now). */
   now?: () => number;
   requestRender?: () => void;
+  /** True while the title screen shows (boot's 'title' pause reason): its backdrop drift owns the view, takes are refused. */
+  titleActive?: () => boolean;
 }
 
 const finiteV = (v: Vector3) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
@@ -93,9 +95,13 @@ export class CameraTakeover implements CinematicCamera {
     return this.owner;
   }
 
-  /** Is the slot's function ours and should the character be drawn (boot's `avatar.frame`)? */
+  /**
+   * Is the slot's function ours and should the character be drawn (boot's `avatar.frame`)? During
+   * the hand-back always: a `showAvatar: false` shot gets the character back as the ease starts, not
+   * popping in at its end.
+   */
   showsAvatar(fn: CameraFn | null): boolean {
-    return fn !== null && fn === this.apply && this.avatar;
+    return fn !== null && fn === this.apply && (this.avatar || this.owner === null);
   }
 
   /** Taken or still handing back (the slot is ours). */
@@ -105,6 +111,10 @@ export class CameraTakeover implements CinematicCamera {
 
   takeCamera(owner: string, fn: CameraFn, opts: TakeCameraOptions = {}): boolean {
     if (this.owner !== null || typeof owner !== 'string' || !owner || typeof fn !== 'function') return false;
+    if (this.deps.titleActive?.()) {
+      console.warn(`[cinematic] takeCamera('${owner}') refused: the title screen is showing`);
+      return false;
+    }
     // another override (the debug bench camera) holds the slot
     if (this.deps.slot.fn !== null && this.deps.slot.fn !== this.apply) return false;
     this.owner = owner;

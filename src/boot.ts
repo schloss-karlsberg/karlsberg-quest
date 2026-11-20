@@ -394,7 +394,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     (active) => events.emit('camera:override', { active }),
     () => loop.requestRender(),
   );
-  const takeover = new CameraTakeover({ slot: cameraOverride, player, events, reducedMotion: () => settings.state.reducedMotion, requestRender: () => loop.requestRender() });
+  const takeover = new CameraTakeover({ slot: cameraOverride, player, events, reducedMotion: () => settings.state.reducedMotion, requestRender: () => loop.requestRender(), titleActive: () => reasons.has('title') });
   const seeChest = { x: 0, y: 0, z: 0 };
   const seeSubject = { x: 0, y: 0, z: 0, w: 0 };
   const see: SeeInput = { on: false, cam: camera.position, chest: seeChest, fight: false, subject: null };
