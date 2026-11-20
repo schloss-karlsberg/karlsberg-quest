@@ -65,10 +65,14 @@ git bundle verify "$bundle" >/dev/null
 echo "Worktrees before the rewrite (each must be reset or recreated afterwards):"
 git worktree list
 
-# mailmap.txt and replace-text.txt themselves contain the old email, the home path and
-# the first name, so they are copied out and then dropped from every commit (--invert-paths).
+# The rule files contain the old email and the personal strings, so they are never tracked:
+# they live in scripts/release/private/ (gitignored) and are copied to a temp dir for the run.
+# An early commit (e17cbb2) tracked them under scripts/release/: --invert-paths drops those.
 tmp="$(mktemp -d)"
-cp "$here/mailmap.txt" "$here/replace-text.txt" "$tmp/"
+for f in mailmap.txt replace-text.txt; do
+  [ -f "$here/private/$f" ] || { echo "missing $here/private/$f (untracked rule file, see README.md)" >&2; exit 1; }
+done
+cp "$here/private/mailmap.txt" "$here/private/replace-text.txt" "$tmp/"
 echo "Rule files copied to $tmp (kept after the run; delete them by hand when done)."
 
 git filter-repo --force \

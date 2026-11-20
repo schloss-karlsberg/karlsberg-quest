@@ -62,8 +62,10 @@ single-player game they harm nobody.
 **Future option:** a build-time switch `VITE_KQ_RELEASE=1`, set in the workflow's build step. It is
 not needed for the debug API, but it is the planned hook for the **bottle-label swap**: once the
 hidden bottle collectibles exist, their label texture comes through one resolver (a
-`labelFor(collectible)` in the future collectibles system) that can check the flag. The public build
-always uses the invented placeholder label; no real brand art goes into the repository. The e2e
+`labelFor(collectible)` in the future collectibles system) that can check the flag. Owner decision
+2026-11-20: the bottles carry the real label publicly as a swappable placeholder (plain text, no logo
+artwork, never in codex / quests / dialogue); a unit test keeps the label text in one collectibles
+file so the swap stays one edit (docs/NEXT-SESSION.md §5). The e2e
 suites and the pilot need the full API, so e2e would build without the flag.
 
 ## 5. Credits status (2026-11-20)

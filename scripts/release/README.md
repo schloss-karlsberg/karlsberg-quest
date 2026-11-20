@@ -5,12 +5,14 @@ To be folded into `docs/RELEASE.md` (branch `release/pages-prep`) as the section
 | File | Purpose |
 |---|---|
 | `rewrite-history.sh` | one-time history rewrite (email + personal strings), with backup bundle and safety checks |
-| `mailmap.txt` | old author email to the GitHub noreply address |
-| `replace-text.txt` | exact rules for the home path and the owner's first name in old blobs and commit messages |
+| `private/mailmap.txt` (untracked) | old author email to the GitHub noreply address |
+| `private/replace-text.txt` (untracked) | exact rules for the home path and the owner's first name in old blobs and commit messages |
 | `setup-github.sh` | `gh repo create`, discussions, topics, push, Pages, private vulnerability reporting |
 
-`mailmap.txt` and `replace-text.txt` hold the strings they remove. The rewrite copies them to a
-temp directory and drops both from every commit (`--invert-paths`). **Never push before the
+`private/mailmap.txt` and `private/replace-text.txt` hold the strings they remove, so they are
+gitignored; put them into the main checkout's `scripts/release/private/` before the run. One early
+commit tracked them under `scripts/release/`; the rewrite drops those paths from every commit
+(`--invert-paths`). **Never push before the
 rewrite**, or these files publish what they are meant to hide.
 
 ## History rewrite and first push

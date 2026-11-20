@@ -7,3 +7,4 @@ playwright-report/
 .vite/
 .claude/worktrees/
 .claude/settings.local.json
+scripts/release/private/
