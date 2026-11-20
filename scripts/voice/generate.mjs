@@ -14,8 +14,8 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
@@ -68,6 +68,7 @@ const { values: a } = parseArgs({
     'max-lines': { type: 'string', default: '40' },
     force: { type: 'boolean', default: false },
     prune: { type: 'boolean', default: false },
+    'keep-raw': { type: 'string' },
     offline: { type: 'boolean', default: false },
     verbose: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
@@ -89,6 +90,7 @@ if (a.help) {
   --prune              (real run) remove manifest entries and clips of lines no longer in content
   --offline            do not ask the account for remaining credits
   --out <dir>          output dir (default public/voice)
+  --keep-raw <dir>     (real run) also keep each provider's raw audio there (e.g. moss WAVs, for pause metrics)
   --content, --voices, --priority, --speech <path>   (speech.json: spoken text overrides per line id)
   -v, --verbose        list every selected line, also those past the budget`);
   process.exit(0);
@@ -219,6 +221,10 @@ function finish(r, raw, credits) {
   const id = r.line.id;
   const opusTmp = join(tmpDir, `${id}.webm.part`);
   const aacTmp = join(tmpDir, `${id}.m4a.part`);
+  if (a['keep-raw']) {
+    mkdirSync(a['keep-raw'], { recursive: true });
+    copyFileSync(raw, join(a['keep-raw'], `${id}${extname(raw) || '.raw'}`));
+  }
   let durationMs;
   try {
     durationMs = processClip(raw, opusTmp, aacTmp, { maxPauseSec: r.voice.postprocess?.maxPauseSec });
