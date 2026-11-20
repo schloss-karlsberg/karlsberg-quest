@@ -282,7 +282,7 @@ test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; the Journal fr
   await page.evaluate(() => {
     const k = window.kq!;
     k.setEra('today');
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(3);
     k.ctx.ui.modals.closeAll();
     k.story!.hub(true);

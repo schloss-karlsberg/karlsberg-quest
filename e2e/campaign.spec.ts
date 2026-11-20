@@ -51,7 +51,7 @@ async function shot(page: Page, name: string): Promise<void> {
 const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
 
 /**
- * The chapter after `prev` has begun: completed list, first beat, at the station in the present,
+ * The chapter after `prev` has begun: completed list, first beat, at home (the Quelle) in the present,
  * standing, and nothing of the previous chapter still being said. (Quick: the chapter's own play
  * function checks its title card next, which fades after 5.5 s of real time; the picture is taken
  * by the chapter's 'start' hook.)

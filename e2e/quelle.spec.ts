@@ -37,7 +37,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   expect(await flag(page, 'quelle.call')).toBe(true);
   expect(await flag(page, 'quelle.guide')).toBe(true);
   expect(await untilQuest(page, 'q.p.quelle', 'active', 20)).toBe('active');
-  // far away (the field station): nothing built, no prompt
+  // far away (the prologue's old start by the forest road): nothing built, no prompt
   expect(await info0()).toMatchObject({ built: null, prompt: false, scene: null });
 
   // ---- the prompt: only in front of the trough, facing the water --------------------------------
@@ -56,6 +56,8 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     );
   // facing away (the spring's own front, compass 234): no
   expect((await at(QUELLE_STAND.x, QUELLE_STAND.z, QUELLE_STAND.yaw + 180)).prompt).toBe(false);
+  // … and the hub at home keeps its E away from the trough while the spring calls (contract C4)
+  expect(await page.evaluate(() => window.kq!.ctx.ui.hud.promptShown()?.owner ?? null)).not.toBe('hub');
   // on the slope behind the wall, turned to the water (+w = compass 234), within reach: no (the wall is between)
   const behind = await at(...toWorld(touchLocal('today')[0], PIECES.wall.w - PIECES.wall.thick - 0.45), 234);
   const [bu, bw] = toLocal(behind.x, behind.z);

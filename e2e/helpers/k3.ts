@@ -455,7 +455,7 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   // K3_FROM=strohmann (development): skip to dusk with the afternoon's quests done
   let s = await story(page);
   if (process.env.K3_FROM !== 'strohmann') {
-    // ---- 3.0 Feldstation: Laub sends us to July 1793 (q.k3.nachmittag) --------------------------------
+    // ---- 3.0 at the Quelle: Laub sends us to July 1793 (q.k3.nachmittag) --------------------------------
     s = await story(page);
     expect(s.chapter).toBe('k3');
     expect(s.beat).toBe('k3_0');
@@ -908,7 +908,7 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.evaluate(() => (window as Any).k3h.settle(60 * 15));
   expect(await said()).toEqual(expect.arrayContaining(['jost.k3.04', 'laub.k3.alle']));
 
-  // ---- back to today (hold Q), home to the field station --------------------------------------------
+  // ---- back to today (hold Q), home to the Quelle -------------------------------------------------------
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.press('KeyQ', 90);
@@ -922,9 +922,10 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(s.beat).toBe('k3_9');
   await page.evaluate(() => {
     const k = window.kq as Any;
-    k.teleport(760.6, -905, 0, 0);
+    // just outside the hub (HOME r 12), then walk in: k3_9 completes on hub:enter
+    k.teleport(1048, -825.5, 51, 0);
     k.step(4);
-    (window as Any).k3h.walk([[760.6, -910.6, 0.5]], { chunk: 4 });
+    (window as Any).k3h.walk([[1056.5, -831.5, 0.5]], { chunk: 4 });
     k.step(20);
     k.story.flush();
     k.step(120);
@@ -934,7 +935,7 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   expect((await inv(page)).items).toContain('item.k3.uhr');
   expect(await said()).toContain('laub.k3.heute.uhr');
   await page.evaluate(() => (window.kq as Any).story.hub(false));
-  await page.evaluate(() => (window as Any).k3h.look(760, -915, -10));
+  await page.evaluate(() => (window as Any).k3h.look(1061, -834.5, -10));
   await shot(page, '11-tisch-uhr');
   // no Pinnwand: the chapter goes on by itself
   await page.evaluate(() => {

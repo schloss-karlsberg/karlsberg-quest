@@ -167,7 +167,7 @@ test('the Pinnwand hands out two field-book pages: they come one after the other
   await page.evaluate(() => {
     const k = window.kq!;
     k.step(60);
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(4);
     k.press('KeyE', 2);
   });
