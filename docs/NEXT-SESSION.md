@@ -319,7 +319,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
     logo artwork); never in codex/quests/dialogue; swap when permission is refused or when the owner says so.
 - **Working mode (owner, 2026-11-20):** the main session acts only as a coordinator; all work runs in
   subagents or separate sessions.
-- Git: the repo is public at schloss-karlsberg/karlsberg-quest. Publish after the gates pass with `scripts/release/publish.sh` (mirror → rewrite → fast-forward push) until the one-time in-place rewrite; never force-push main. Commit messages and --no-ff merges use Conventional Commits. Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or your model's line).
+- Git: the repo is public at schloss-karlsberg/karlsberg-quest. The one-time history rewrite is done (2026-11-20): push to origin after the gates pass, pull or rebase onto `origin/main` before merging; never force-push main. `scripts/release/publish.sh` is retired. Commit messages and --no-ff merges use Conventional Commits. Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or your model's line).
 - No persistent background HTTP control server for driving the browser; the earlier attempt
   was blocked. Use the Chrome extension, plus one-shot scripts if needed.
 - Keep the user's personal data private.
