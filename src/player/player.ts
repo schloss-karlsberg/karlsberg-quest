@@ -20,7 +20,7 @@ export interface PlayerWorld {
   canFly(): boolean;
   /** Metres inside open water (> 0 in the water, <= 0 on land); optional. */
   waterDepth?(x: number, z: number): number;
-  /** Third-person camera collision (walls, trunks, ceilings); without it only the terrain counts. */
+  /** Third-person camera collision (walls, walkable spaces, ceilings, storey-aware ground); without it only the terrain counts. */
   camera?: Partial<CameraWorld>;
 }
 
@@ -118,10 +118,11 @@ export class Player {
   ) {
     const w = world;
     this.camWorld = {
-      heightAt: (x, z) => w.heightAt(x, z),
+      heightAt: w.camera?.heightAt ?? ((x, z) => w.heightAt(x, z)),
       blocked: w.camera?.blocked ?? (() => false),
       trunks: w.camera?.trunks,
       ceiling: w.camera?.ceiling,
+      space: w.camera?.space,
     };
   }
 
