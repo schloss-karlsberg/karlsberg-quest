@@ -1400,3 +1400,10 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   `q.k1.ankunft` gains the objective `quelle`, `wechsel` moves to the gate; cx.42 adds the drop that
   dries overnight. Old `k1_0` saves are teleported to the spring on resume. No change to the quelle
   system or its 3D.
+- **Story track, 2026-11-20 — echoes route Mannlich and the Duke through the twin hook**: the echo
+  director asks `twinEcho()` (src/systems/npc/twins.ts) for every speaker's figure before it builds
+  the smoke silhouette, and passes a mark's `sit` on (the Duke at the k2 Kabinett desk). The hook
+  returns null until kq-characters' authored twin models land, so every echo still shows the smoke
+  figure: k1 `clue.k1.mannlich`, `clue.k1.mannlich_lohn`, `echo.k1.mannlich_menagerie`,
+  `clue.k1.feuerwerk`; k2 `clue.k2.warnung` (seated), `clue.k2.abschied`; k3 `clue.k3.koenig`,
+  `clue.k3.galerie`, `clue.k3.fackel`. Tests: tests/echo-twins.test.ts, e2e/twins-echo.spec.ts.
