@@ -305,6 +305,8 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   - §3.6 Karlsbergquelle: `21dc108` + `b90a311` (see §3.6 "As built")
 - **Research:** [`docs/PERF-MOBILE-RESEARCH.md`](PERF-MOBILE-RESEARCH.md) (fan noise, older devices,
   mobile; ranked quick wins), committed in `21dc108`.
+- **Research:** [`docs/VOICE-MEDIA-RESEARCH.md`](VOICE-MEDIA-RESEARCH.md) (AI voice and media options for
+  voices, SFX, images and video).
 - **Running in parallel (other sessions; do not edit their files):**
 
   | Track | Output |
