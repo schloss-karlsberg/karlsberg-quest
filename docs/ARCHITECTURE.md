@@ -1016,11 +1016,15 @@ Round-4 (polish: set dressing) integration rules:
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
   (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
   goal, `travel:arrived`, autosave (synchronous under `?manual`).
-- Route POIs (`pois.ts`, deterministic): along 17 chapter routes every ~120 m a cache (2–4 era
+- Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Journal tab "Funde") or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
-  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Built within 190 m; a
+  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
+  sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
+  are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
+  the Weiher's north-shore Waldweg to the hohe Stufe with its own `start` / `gap` (62 m) to fit
+  between the `p-hang` POIs; tests check this on real terrain (`tests/world-data.ts`). Built within 190 m; a
   closed cache carries a warm light column (beam shader, widens with distance) so the next one
   shows from the last; when the lid springs the column shoots up and goes out.
 - Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
@@ -1235,7 +1239,8 @@ Each RPG track adds its own subsection here when it fills its system in.
 - `beacons.ts`: soft volumetric beam (view-angle edges, sparks) + pulsing ground ring over open
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
-  objective type, clue places from the content packs), `hintFor` / `storyHint`, `StallWatch`
+  objective type, clue places from the content packs; none for a clue with `anchor: "portable"`,
+  the tablet's nominal spot is no place: playtest round 10, F-25), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
   quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
   a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the
