@@ -169,8 +169,8 @@ export interface AnimalSave { v: 1; deer: DeerSave[]; dogs: DogSave[] }
 
 declare module '../../core/events' {
   interface GameEvents {
-    /** Request (every op, C5 names it `animal:spawn`). Owner: story → animal system. */
-    'animal:spawn': AnimalAction;
+    /** Request, every op (renamed from C5's `animal:spawn`, agreed with kq-story). Owner: story → animal system. */
+    'animal:request': AnimalAction;
     /** Head up, the 1.5 s tell. */
     'animal:alert': { id: string };
     /** dist = metres between the player and the animal when it bolted. */

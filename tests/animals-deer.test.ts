@@ -1,8 +1,9 @@
 /** Tour C5: the shy roe deer core (src/systems/animals/deer.ts). */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import type { GameEvents } from '../src/core/events';
 import { DEER, calmHerd, createDeer, isSneaking, noticeRadius, restoreDeer, serializeDeer, startleDeer, stepDeerHerd, type Deer, type DeerInput, type DeerPlayer } from '../src/systems/animals/deer';
 import { restoreAnimals, serializeAnimals } from '../src/systems/animals/save';
-import { toRequest, type AnimalEvent } from '../src/systems/animals/types';
+import { toRequest, type AnimalAction, type AnimalEvent } from '../src/systems/animals/types';
 
 const DT = 1 / 60;
 
@@ -51,6 +52,11 @@ describe('deer: constants and perception', () => {
     expect(noticeRadius(shy, sneak)).toBeLessThan(DEER.PHOTO_RANGE);
     expect(isSneaking({ ...sneak, stance: 'stand' })).toBe(false);
     expect(noticeRadius(shy, { ...sneak, stance: 'stand', speed: 3.2 })).toBe(30);
+  });
+
+  it('the request event is animal:request carrying an AnimalAction', () => {
+    expectTypeOf<GameEvents['animal:request']>().toEqualTypeOf<AnimalAction>();
+    expectTypeOf<GameEvents>().not.toHaveProperty('animal:spawn');
   });
 
   it('narrows a flat C5 action to its op', () => {
