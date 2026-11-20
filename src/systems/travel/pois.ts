@@ -71,8 +71,11 @@ export const ROUTES: readonly Route[] = [
   { id: 'p-weiher', chapter: 'prolog', era: 'today', pts: [[816, -896], [830, -909], [861, -908], [898, -908], [938, -909], [963, -901], [1010, -912], [1080, -935], [1160, -950], [1225, -968]], start: 110, gap: 62 },
 ];
 
-/** Places the story and the quests use (anchors, NPCs, clues, objectives): POIs keep clear of them. */
-export const KEEP_CLEAR: readonly (readonly [number, number])[] = [
+/**
+ * Places the story and the quests use (anchors, NPCs, clues, objectives): POIs keep clear of them.
+ * A third entry limits a place to one era (a set that only stands then); without it, every era.
+ */
+export const KEEP_CLEAR: readonly (readonly [number, number] | readonly [number, number, PoiEra])[] = [
   [763, -912], [819, -875], [1237, -966], [1508, -1296], [1218, -1118], [1206, -1113], [1138, -931], [1040, -902], [1232, -872], [990, -1044],
   [1212, -1180], [1297, -1247], [1212, -1626], [1208, -1612], [1177, -1571], [1169, -1636], [1822, 70], [1852, 248], [1812, 203], [1966, 92],
   [1274, -986], [1282, -971], [1286, -958], [1227, -1466], [1264, -1302], [1298, -1016], [1268, -950], [1680, -400], [1500, -542], [1347, -817],
@@ -85,7 +88,7 @@ export const KEEP_CLEAR: readonly (readonly [number, number])[] = [
   [1050, -1000], [1237, -1066], [1320, -940], [1250, -915], [790, -905], [1285, -1150], [1300, -1170], [1232, -1165], [1302, -1262], [1268, -1470],
   [1232, -1572], [1150, -1700], [1420, -1440], [1300, -1520], [1300, -1472], [1240, -1494], [1200, -1530],
   [1061, -834.5], // the Karlsbergquelle (prologue q.p.quelle; src/systems/quelle/layout.ts)
-  [1001.5, -876.5], // the Bleiche by the brook, 1789 (Unauffällig: Liese, the coat; src/systems/bleiche/layout.ts)
+  [1001.5, -876.5, '1789'], // the Bleiche by the brook, 1789 only (Unauffällig: Liese, the coat; src/systems/bleiche/layout.ts)
 ];
 
 /** Distance POIs keep from the places above (m). */
@@ -168,7 +171,7 @@ export function generatePois(routes: readonly Route[] = ROUTES, opts: PoiOptions
     loreLeft.set(l.era, list);
   }
   const clear = (x: number, z: number, era: PoiEra, gap = spacing * 0.55): boolean => {
-    for (const [kx, kz] of KEEP_CLEAR) if (Math.hypot(kx - x, kz - z) < KEEP_CLEAR_R) return false;
+    for (const [kx, kz, ke] of KEEP_CLEAR) if ((!ke || ke === era) && Math.hypot(kx - x, kz - z) < KEEP_CLEAR_R) return false;
     for (const p of out) if (p.era === era && Math.hypot(p.x - x, p.z - z) < gap) return false;
     return !opts.blocked?.(x, z);
   };

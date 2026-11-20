@@ -126,7 +126,7 @@ describe('route POIs', () => {
     const places = contentPlaces();
     for (const p of pois) {
       expect(inBuilding(p.x, p.z), p.id).toBe(false);
-      for (const [x, z] of KEEP_CLEAR) expect(Math.hypot(p.x - x, p.z - z), p.id).toBeGreaterThanOrEqual(KEEP_CLEAR_R);
+      for (const [x, z, e] of KEEP_CLEAR) if (!e || e === p.era) expect(Math.hypot(p.x - x, p.z - z), p.id).toBeGreaterThanOrEqual(KEEP_CLEAR_R);
       for (const c of places) expect(Math.hypot(p.x - c.x, p.z - c.z), `${p.id} vs ${c.x}/${c.z}`).toBeGreaterThan(Math.max(18, c.r !== undefined && c.r <= 40 ? c.r * 0.5 : 0));
       for (const q of pois) if (q !== p && q.era === p.era) expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(POI_SPACING * 0.5);
     }
