@@ -166,6 +166,9 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   // ---- hold Q: today, the quest done, beat p4 -----------------------------------------------------
   await holdHome(page);
   expect((await story(page)).era).toBe('today');
+  // home to the Quelle (WP-04): at HOME.spawn
+  const home = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
+  expect(Math.hypot(home.x - 1059.3, home.z + 833.1)).toBeLessThan(1);
   expect(await qn(page, 'q.p.quelle', 'heim')).toBe(1);
   expect(await untilQuest(page, 'q.p.quelle', 'done', 10)).toBe('done');
   expect(await until(page, 'p4', 10)).toBe('p4');

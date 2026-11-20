@@ -28,7 +28,7 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HubOverlay } from './hub/overlay';
-import { HOME, hubAt } from './hub/home';
+import { HOME, bringHome, hubAt } from './hub/home';
 import { ObjectiveView, bearingDeg } from './objectives';
 import { StoryOverlays } from './overlays';
 import { playStorySound } from './sfx';
@@ -63,6 +63,8 @@ declare module '../../core/events' {
   interface GameEvents {
     /** A hub item was used (the hub overlay at the Quelle). */
     'hub:use': { item: HubItem };
+    /** The player was brought home to the Quelle (HOME.spawn): Q held in the past (contract C4). */
+    'home:arrived': { reason: 'return' | 'caught' | 'checkpoint' };
     /** Free-form story cue for other features (e.g. { id: 'k2.fire.start' }). */
     'story:cue': { id: string; data?: Record<string, FlagValue> };
     /** The credits were closed (the story is finished). */
@@ -256,7 +258,7 @@ class StoryRuntime {
   private hubToastShown = false;
   private storyPrompt = false;
   private hubPrompt = false;
-  private shiftPending: { to: Era; age: number } | null = null;
+  private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
   /** The pack is chasing the player (hunt:alert): holding Q does not bring you home (bible: "nicht, solange Sie jemand ansieht"). */
   private packChasing = false;
@@ -479,8 +481,10 @@ class StoryRuntime {
       this.shiftPending = null;
       this.shifting = true;
     });
-    ctx.events.on('shift:done', ({ to }) => {
+    ctx.events.on('shift:done', ({ to, reason }) => {
       this.shifting = false;
+      // Q held in the past: home to the Quelle (WP-04); not after being caught (its own wake)
+      this.homeAfterShift({ to, reason });
       // where the oil is not the chapter's timer (no oil meter), every trip into the past starts
       // with a full lantern (playtest K4: it ran dry mid-chapter and nothing refilled it)
       if (to !== 'today' && !this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: ctx.player.stats.lanternLit, refill: true });
@@ -1099,7 +1103,18 @@ class StoryRuntime {
       this.shiftPending = null;
       // fx answered synchronously ('shift:begin' already ran): no fallback timer, or Q stays
       // dead for 1.5 s after every shift
-    } else if (!this.shifting && ctx.era.current !== to) this.shiftPending = { to, age: 0 };
+    } else if (!this.shifting && ctx.era.current !== to) this.shiftPending = { to, age: 0, reason };
+    // no fx to finish the shift (it switched directly): home now, as shift:done would
+    if (ctx.era.current === to && !ctx.systems.get('fx')) this.homeAfterShift({ to, reason });
+  }
+
+  /** A shift is done: after a Q-hold, home to the Quelle (HOME.spawn, facing the water) + `home:arrived`. */
+  private homeAfterShift(e: { to: Era; reason?: string }): void {
+    bringHome(e, {
+      caught: this.caughtBusy,
+      teleport: (x, z, yaw) => this.teleport(x, z, yaw),
+      arrived: (reason) => this.ctx.events.emit('home:arrived', { reason }),
+    });
   }
 
   private sound(kind: Parameters<typeof playStorySound>[1], x?: number, z?: number, caption?: string, signal?: Parameters<typeof playStorySound>[3]): void {
@@ -1500,8 +1515,11 @@ class StoryRuntime {
     if (this.shiftPending) {
       this.shiftPending.age += dt;
       if (this.shiftPending.age > 1.5) {
-        if (ctx.era.current !== this.shiftPending.to) ctx.era.set(this.shiftPending.to);
+        const pending = this.shiftPending;
+        if (ctx.era.current !== pending.to) ctx.era.set(pending.to);
         this.shiftPending = null;
+        // fx never answered: the shift is done now (home after a Q-hold, as on shift:done)
+        this.homeAfterShift(pending);
       }
     }
     this.updateShiftKey(dt);
@@ -1620,9 +1638,7 @@ class StoryRuntime {
       this.qHold += dt;
       if (this.qHold > 1.2) {
         this.qHold = 0;
-        // TODO(WP-04): the owner wants the Q-hold to bring you home to the Quelle (HOME.spawn) —
-        // teleport on `shift:done` with to 'today' and reason 'return', then `home:arrived`. Waits
-        // for kq-systems' `shift:done { reason }` (tour/shift-reason); until then you return in place.
+        // WP-04: the 'return' reason brings you home to the Quelle when the shift is done
         this.requestShift('today', 'return');
       }
     } else this.qHold = 0;

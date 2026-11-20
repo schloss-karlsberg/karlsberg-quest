@@ -919,13 +919,13 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   });
   s = await story(page);
   expect(s.era).toBe('today');
-  expect(s.beat).toBe('k3_9');
+  // the Q-hold brings you home to the Quelle (WP-04): inside the hub, so k3_9 („Zur Quelle“)
+  // completes on its hub:enter by itself
+  expect(['k3_9', 'k3_10']).toContain(s.beat);
+  const home = await page.evaluate(() => (window.kq as Any).ctx.player.position as { x: number; z: number });
+  expect(Math.hypot(home.x - 1059.3, home.z + 833.1)).toBeLessThan(3);
   await page.evaluate(() => {
     const k = window.kq as Any;
-    // just outside the hub (HOME r 12), then walk in: k3_9 completes on hub:enter
-    k.teleport(1048, -825.5, 51, 0);
-    k.step(4);
-    (window as Any).k3h.walk([[1056.5, -831.5, 0.5]], { chunk: 4 });
     k.step(20);
     k.story.flush();
     k.step(120);

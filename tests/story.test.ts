@@ -9,7 +9,7 @@ import { syllableStarts } from '../src/systems/story/dialogue/voice';
 import { type StoryEnv, type StoryHost, StoryEngine, type StorySlice, createStorySlice, evaluate, runsOnResume } from '../src/systems/story/engine';
 import { composeEpilogue, nounToVariant } from '../src/systems/story/endings/epilogue';
 import { endingScenes, yearsSpelled } from '../src/systems/story/endings/scenes';
-import { HOME, HOME_TROUGH, hubAt } from '../src/systems/story/hub/home';
+import { HOME, HOME_TROUGH, bringHome, hubAt } from '../src/systems/story/hub/home';
 import { REACH, canTouch, toLocal } from '../src/systems/quelle/layout';
 import { angleDiff, bearingDeg } from '../src/systems/story/objectives';
 import { HORN_SIGNALS } from '../src/systems/story/sfx';
@@ -632,6 +632,22 @@ describe('objectives, home, endings', () => {
       const inWall = radius <= 0.5 && Math.abs(u) + radius < 2.7 && w + radius < 0.15 + 0.6 && w - radius > 0.15 - 0.55 - 0.6;
       if (!inWall) expect(Math.hypot(x - HOME_TROUGH.x, z - HOME_TROUGH.z) - radius, c.id).toBeGreaterThan(HOME.troughR);
     }
+  });
+
+  it('holding Q brings you home (WP-04): return → HOME.spawn + home:arrived; caught and other shifts stay put', () => {
+    const run = (e: { to: string; reason?: string }, caught = false) => {
+      const log: string[] = [];
+      const went = bringHome(e, { caught, teleport: (x, z, yaw) => log.push(`tp ${x}/${z}/${yaw}`), arrived: (r) => log.push(`home:arrived ${r}`) });
+      return { went, log };
+    };
+    expect(run({ to: 'today', reason: 'return' })).toEqual({ went: true, log: [`tp ${HOME.spawn.x}/${HOME.spawn.z}/${HOME.spawn.yaw}`, 'home:arrived return'] });
+    // being caught shifts to today with its own reason and wakes by itself: no second teleport
+    expect(run({ to: 'today', reason: 'caught' }, true)).toEqual({ went: false, log: [] });
+    expect(run({ to: 'today', reason: 'return' }, true)).toEqual({ went: false, log: [] });
+    // content shifts without a reason, the spring, anchors, echoes, endings, the Steinfraß: stay put
+    for (const reason of [undefined, 'quelle', 'anchor', 'echo', 'ending', 'oblivion', 'key']) expect(run({ to: 'today', reason }).went, String(reason)).toBe(false);
+    // into the past never
+    expect(run({ to: '1789', reason: 'return' }).went).toBe(false);
   });
 
   it('old hub ids stay aliases: bed is the bench, radio the phone', () => {

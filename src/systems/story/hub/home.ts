@@ -41,6 +41,30 @@ export function atTrough(x: number, z: number): boolean {
 }
 
 /**
+ * Does this finished shift bring the player home (WP-04, contract C4)? Only holding Q in the past
+ * (`reason 'return'`) into today. Being caught has its own wake (it already lands at home or at
+ * a nearer anchor), and the spring's touch, anchors, echoes, endings and content shifts without a
+ * reason leave the player where they are.
+ */
+export function returnsHome(e: { to: string; reason?: string }, caught = false): boolean {
+  return e.to === 'today' && e.reason === 'return' && !caught;
+}
+
+/**
+ * A finished shift → home, when `returnsHome` says so: teleport to HOME.spawn (facing the water),
+ * then `arrived('return')` (the runtime emits `home:arrived`). Returns whether it went home.
+ */
+export function bringHome(
+  e: { to: string; reason?: string },
+  d: { caught: boolean; teleport(x: number, z: number, yawDeg: number): void; arrived(reason: 'return'): void },
+): boolean {
+  if (!returnsHome(e, d.caught)) return false;
+  d.teleport(HOME.spawn.x, HOME.spawn.z, HOME.spawn.yaw);
+  d.arrived('return');
+  return true;
+}
+
+/**
  * The hub's state at a spot (pure; StoryRuntime.updateHub acts on it): `inside` — in the hub
  * (today's era, within `HOME.r`, on foot): `hub:enter` / `hub:leave` follow it; `quelleOwnsE` — the
  * Quelle's „Wasser berühren“ owns E here (its prompt is up, or `quelle.call` is set and x/z is at

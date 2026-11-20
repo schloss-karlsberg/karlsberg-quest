@@ -225,7 +225,7 @@ export async function shiftTo(page: Page, x: number, z: number, yaw: number): Pr
     [x, z, yaw] as const,
   );
 }
-/** Hold Q (back to today): the long press, then the transition played through. */
+/** Hold Q (back to today, home to the Quelle — WP-04): the long press, then the transition played through. */
 export async function holdHome(page: Page): Promise<void> {
   const log = await page.evaluate(() => {
     const k = window.kq!;

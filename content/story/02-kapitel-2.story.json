@@ -1030,7 +1030,7 @@
       "id": "k2_12",
       "title_de": "An der Quelle",
       "enter": [
-        { "do": "objective", "id": "k2.ende", "text": "Heute. Die Nacht ist vorbei." },
+        { "do": "objective", "id": "k2.ende", "text": "An der Quelle. Die Nacht ist vorbei." },
         { "do": "autosave" },
         { "do": "say", "line": "marlene.k2.abend", "delay": 2.5 }
       ],
