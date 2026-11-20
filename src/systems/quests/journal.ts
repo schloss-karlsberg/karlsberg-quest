@@ -57,6 +57,7 @@ export class JournalModal {
       body,
       className: 'kqj-modal',
       wide: true,
+      backdrop: 'still',
       onClose: () => {
         window.removeEventListener('keydown', this.onKey, true);
         journalTabs().find((x) => x.id === this.current)?.hide?.();

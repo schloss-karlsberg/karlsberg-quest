@@ -18,18 +18,18 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | Path | What |
 |---|---|
 | `src/boot.ts` | Orchestration: renderer, data load, world, player, UI, audio, systems, loop, title, saves, URL flags |
-| `src/core/` | Engine core, no three.js: `events` (typed bus), `state` (serialisable GameState + store), `save` (localStorage `kq.*`), `loop` (fixed step), `systems` (registry), `era`, `context` (GameContext type) |
+| `src/core/` | Engine core, no three.js: `events` (typed bus), `state` (serialisable GameState + store), `save` (localStorage `kq.*`), `loop` (fixed step + render pacing: `FramePacer`, `renderRate`, `frameCap`, §3), `systems` (registry), `era`, `context` (GameContext type) |
 | `src/data/` | Data types, pure decoders, loader for `public/data` |
 | `src/world/` | Terrain (chunked, LOD, shader), sky, forest (instanced), palace (glb), collision, atmosphere (shared uniforms + GLSL), era looks |
 | `src/player/` | Input (bindings, pointer lock, `simulate`, wheel), stances, Player controller, `camera.ts` (third-person spring arm `CameraRig`, `cameraHints` fight / focus / boss / `bodies`; pitch −55°…+35° and auto-levelling while walking in third person), `avatar.ts` (the rigged player character; dithered fade when the lens is close or the locked target is behind the body), `pose.ts` (`actionPose`: combat → avatar) |
 | `src/render/post.ts` | Post FX: MSAA HDR target with depth texture (`setSamples(n)`), half-res SAO, bloom chain, ACES (Hill fit), white balance, split toning, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing); `setFeatures({bloom, ao, grade})` from the tier; `debug` 1 = AO / 2 = bloom buffer |
-| `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`) |
+| `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`); `every` / `ShadowReuse`: a frame may keep the last map (tier `shadowEvery` 2) while the focus moved < ¾ texel, the sun did not turn and the map is ≤ 25 ms old (never in `?manual` or a fight) |
 | `src/render/standard.ts` | `kqStandard(mat)` / `kqStandardize(root)`: imported PBR materials lit by the world (era sun + shadow, hemisphere fill, lantern, fire glow, sky IBL, `kqFog`); `EnvLight` (PMREM of the era sky, rebuilt on `world.lookVersion`) |
 | `src/assets/` | CC0 art assets: `types.ts` (manifest / licence types, `checkManifest`, budgets), `manifest.ts` (merges `manifests/*.ts`, one per art track), `loader.ts` (`AssetLoader` = `ctx.assets`) — see docs/ART-DIRECTION.md §8 |
 | `public/assets/` | `models/`, `textures/`, `hdri/` + `LICENSES.json` (every file, CC0 only); copied to `dist/assets/` (the bundle goes to `dist/app/`) |
 | `scripts/assets/` | `pnpm assets:pack` (glTF → meshopt GLB with WebP textures), `pnpm assets:tex` (texture → WebP) |
 | `src/render/perf.ts` | `PERF_BUDGET` (draw calls, triangles, CPU ms, frame ms), `PerfMonitor` (per-frame CPU/GPU time, calls, triangles; ring buffer), `frameStats` |
-| `src/render/quality.ts` | Graphics presets Niedrig/Mittel/Hoch (`QUALITY_PRESETS`: max pixel ratio, MSAA, terrain LOD scale, tree rings, shadow size / range / taps, bloom, AO, grade extras), first-run guess from the GPU name, `parseQualityParam` (`?q=low|med|high`), `isSoftwareGpu` (SwiftShader → low), `QualityManager` (`override` / `fallback` / `level`, applies the preset, `listeners`, auto-downgrade) |
+| `src/render/quality.ts` | Graphics presets Niedrig/Mittel/Hoch (`QUALITY_PRESETS`: max pixel ratio 1 / 1 / 1.25, MSAA, terrain LOD scale, tree rings, shadow size / range / taps / `shadowEvery`, bloom, AO, grade extras), „Energiesparen“ on top (`POWER_SAVE`: pixel ratio ≤ 1, no AO, no water reflection; `pixelRatioFor(…, powerSave)`), first-run guess from the GPU name, `parseQualityParam` (`?q=low|med|high`), `isSoftwareGpu` (SwiftShader → low), `QualityManager` (`override` / `fallback` / `level`, applies the preset, `listeners`, auto-downgrade with `slowMsFor(capFps)`) |
 | `src/audio/` | `AudioManager` (buses master/music/sfx/voice/ambience, HRTF 3D sources), `synth.ts` (procedural wind, footsteps, horn, chirp, drone) |
 | `src/ui/` | Field-book UI: HUD, modals (focus trap), title (load progress bar), pause, `settings.ts` (sectioned settings page + key remapping), licences; fonts (OFL) in `src/ui/fonts` |
 | `src/i18n/` | `t(key, params)`, German strings in `de.ts`, `addStrings()` for features |
@@ -53,12 +53,46 @@ debug hooks take degrees with `90 = east`. Palace Corps de logis ≈ (1195, −1
 ## 3. Frame of a tick
 
 `FixedStepLoop` (60 Hz) → `update(dt)`: `player.update` → `systems.update` (registration/dep
-order) → player state written to `GameState` → `input.endStep()`. Once per animation frame →
-`render`: camera interpolation → `systems.frame` → `world.frame` (LOD, trees, transitions,
-shared uniforms) → audio listener → HUD compass → post FX render. `ctx.perf.begin()/end()`
-wrap the render (CPU ms, draw calls and triangles of the whole frame incl. post; `systems.stats()`
-times every system's `update` and `frame`), then `ctx.quality.frame(ms, playing)` feeds the
-auto-downgrade.
+order) → player state written to `GameState` → `input.endStep()`. The fixed updates follow the
+wall clock on every animation frame, whatever the render rate (the cap never changes what the
+simulation does). The **render pacing** then decides whether this animation frame is drawn →
+`render(frameDt, alpha)` (`frameDt` = time since the previous drawn frame): camera interpolation
+→ `systems.frame` → `world.frame` (LOD, trees, transitions, shared uniforms) → audio listener →
+HUD compass → sun shadow map (may be re-used, §1 `shadows.ts`) → water reflection → post FX
+render. `ctx.perf.begin()/end()` wrap the render (CPU ms, draw calls and triangles of the whole
+frame incl. post; `systems.stats()` times every system's `update` and `frame`), then
+`ctx.quality.frame(ms, playing)` feeds the auto-downgrade (its slow threshold follows the cap:
+`slowMsFor`, so a 30 fps cap's 33 ms frames are not "slow").
+
+**Render pacing** (`src/core/loop.ts`, fan round 2026-11-20, numbers in docs/PERFORMANCE.md §5.1).
+`loop.pace()` returns the renders per second allowed now (boot installs `renderRate(state)`);
+`FramePacer` turns it into a steady pattern: an accumulator spends one interval per drawn frame
+with half a display frame of slack, so 60 fps on a 120 Hz screen draws exactly every 2nd frame
+and 30 fps every 4th (every frame / every 2nd at 60 Hz).
+
+| State | Renders per second |
+|---|---|
+| Playing | the cap: settings „Bildrate“ 30 / **60** (default) / unbegrenzt, „Energiesparen“ 30 (`frameCap`) |
+| Title | ≤ 30 |
+| Live modal (default of `modals.open`: dialogue, story choice, endings) | the cap for 1.5 s after the modal stack changed (the two-shot camera eases in), then ≤ 15 |
+| Still modal (`backdrop: 'still'`: pause menu with settings, journal, map, licences, confirms, Chronik cards, field-station hub) | 0, the last frame is held (over the title: ≤ 15) |
+| Other pause (travel curtain) | ≤ 15 |
+| Bullet time / `?manual` | 0, frames only on request |
+| Hidden tab | 0 (and the AudioContext is suspended) |
+
+`loop.requestRender(n)` draws at least the next n animation frames whatever the pacing:
+`screenshotReady()` asks per frame, the bench asks for every frame (uncapped throughput), debug
+hooks that change the view ask (`teleport`, `setEra`, `setScanMode`, `setMapMix`, `spawnAsset`,
+`perfHud`, the bench camera), so do modal / pause / settings changes, resize, the tab becoming
+visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loop.renderOnce` and
+the pilot's `act` / `observe` render synchronously as before. With nothing to simulate (paused /
+manual) and nothing to draw the rAF loop parks (no callbacks at the display rate) until a
+request or a `paused` / `manual` change wakes it; the first frame after a held phase advances the
+visuals by one fixed step and restarts the perf clock (`loop.resumed`). Under WebDriver bullet
+time keeps drawing every frame and still menus draw at 15 fps, exactly as before, unless `?idle`
+(e2e specs that wait for frame-driven fades in `?manual` stay valid; `e2e/framerate.spec.ts`
+checks the full policy with `?idle`). Only the WebGL canvas is paced: CSS animations (the title
+lantern, card transitions) run as before; the travel map's 2D canvas redraws at ≤ 30 fps.
 
 Boot order (marks in `window.__kqReady`, ms since navigation): `boot` → `data` (terrain rasters
 streamed with byte progress on the title bar) → `world` → `systems` → `ready` (title takes
@@ -72,8 +106,8 @@ material); what is drawn are the same pieces merged per 48 m cell (`palace-cell:
 off screen or outside the shadow box are culled (round 9: Ehrenhof 1789 ≈ 100 → 112 fps).
 
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
-stop but rendering continues. `?manual` stops the real-time simulation entirely; only
-`kq.step(n)` advances it (deterministic tests).
+stop and rendering follows the pacing above. `?manual` stops the real-time simulation entirely;
+only `kq.step(n)` advances it (deterministic tests).
 
 ## 4. Extension contract: feature systems
 
@@ -136,9 +170,9 @@ Rules
 | `world` | `heightAt(x,z)`, `surfaceAt` (meadow/forest/water/…), `coverAt`, `bounds()`, `heightfield` (`slopeDeg`, `normalAt`), `collider.footprintAt` / `setSolids(owner, list)` / `setPassZones(owner, list)` / `solidAt` / `keep`, `palace.setMode`, `palace.uniforms.uRuin/uChar`, `setScanMode`, `setScanArea`, `setMapMix`, `forest`, `sky` |
 | `data` | `meta`, `heights`, `ground`, `canopy`, `footprints`, `rooms` (114 room polygons), `pois`, `paths` (graph), `attribution` |
 | `state` | `GameStateStore`: `.state` (readonly), `.mutable`, `.update(fn, reason)`, `.subscribe`, `.slice(id, init)` |
-| `settings` | `SettingsStore` persisted at `kq.settings.v1` (older saves gain new fields with defaults): `volume {master, music, sfx, voice, ambience}`, `mouseSensitivity`, `invertY/invertX`, `fov`, `subtitleSize s/m/l/xl`, `subtitleBg`, `gentleMode`, `reducedMotion`, `reducedFlash`, `highContrast`, `colorblind`, `graphics low/medium/high`, `resolutionScale`, `autoQuality`, `perfHud`, `cameraMode` (`third`), `cameraZoom` (3.6 m), `bindings` (see §4). `reducedMotion`/`reducedFlash` default to `prefers-reduced-motion`, `highContrast` to `prefers-contrast: more` |
+| `settings` | `SettingsStore` persisted at `kq.settings.v1` (older saves gain new fields with defaults): `volume {master, music, sfx, voice, ambience}`, `mouseSensitivity`, `invertY/invertX`, `fov`, `subtitleSize s/m/l/xl`, `subtitleBg`, `gentleMode`, `reducedMotion`, `reducedFlash`, `highContrast`, `colorblind`, `fpsCap` („Bildrate“ 30 / 60 / 0 = unbegrenzt, default 60), `powerSave` („Energiesparen“), `powerHint` (battery toast shown once), `graphics low/medium/high`, `resolutionScale`, `autoQuality`, `perfHud`, `cameraMode` (`third`), `cameraZoom` (3.6 m), `bindings` (see §4). `reducedMotion`/`reducedFlash` default to `prefers-reduced-motion`, `highContrast` to `prefers-contrast: more` |
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
-| `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
+| `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
@@ -146,7 +180,7 @@ Rules
 | `ui` | `hud`, `modals`, `cards` (one centre card at a time, below), `toast(text)`, `layer(id)`, `add(el)` |
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
-| `systems, loop, pause` | registry, loop (`time`, `tick`, `step`), pause stack |
+| `systems, loop, pause` | registry, loop (`time`, `tick`, `step`, `advance`, `renderOnce`, `requestRender(n)`, `pace`, `manual`, `paused`; §3), pause stack |
 | `debug, params, t` | `?debug`, URL params, i18n |
 
 HUD slots (`ctx.ui.hud`): `dock('vitals' | 'boss' | 'feed', el, order)` (Action-RPG docks: bottom-left
@@ -389,7 +423,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `setScanMode`, `setMapMix`, `step(n)`, `state()`, `press(code, steps)`, `screenshotReady()`.
   URL flags: `debug`, `notitle`, `nosave`, `fresh`, `manual`, `nomsaa`, `preserve`,
   `era=1789`, `x=…&z=…&yaw=…`, `scanall`, `perf` (overlay), `autoq` (auto-downgrade also under
-  WebDriver), `warm` (shader warm-up also under WebDriver).
+  WebDriver), `warm` (shader warm-up also under WebDriver), `idle` (the full idle-render policy
+  also under WebDriver: bullet time draws on request only, still menus hold their frame; §3).
+  `screenshotReady()` asks the loop for its frames, so it works in held views too.
 - Bullet-time pilot (`kq.pilot`, `src/debug/pilot.ts`; docs/NEXT-SESSION.md §3.1): an agent plays
   in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
   HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).

@@ -22,6 +22,12 @@ export interface QualityPreset {
   shadowRange: number;
   /** PCF taps per shaded pixel: 1, 4 (2×2) or 9 (3×3), each a bilinear 4-texel compare. */
   shadowTaps: number;
+  /**
+   * Re-render the shadow map at most every n-th frame (`SunShadows.every`); a frame re-uses the
+   * last map only while the focus moved less than ¾ texel and the map is ≤ 25 ms old
+   * (render/shadows.ts `ShadowReuse`; boot forces fresh maps in fights and bullet time).
+   */
+  shadowEvery: number;
   /** Bloom (HDR glow of fire, lanterns, spectral enemies, the sun). */
   bloom: boolean;
   /** Screen-space ambient occlusion (half resolution, depth only). */
@@ -31,10 +37,16 @@ export interface QualityPreset {
 }
 
 export const QUALITY_PRESETS: Record<GraphicsLevel, QualityPreset> = {
-  low: { maxDpr: 1, msaa: 0, lodScale: 0.6, treeFar: 480, treeNear: 110, shadowSize: 0, shadowRange: 0, shadowTaps: 0, bloom: false, ao: false, grade: false },
-  medium: { maxDpr: 1.25, msaa: 2, lodScale: 0.8, treeFar: 600, treeNear: 140, shadowSize: 1024, shadowRange: 55, shadowTaps: 4, bloom: true, ao: false, grade: true },
-  high: { maxDpr: 1.5, msaa: 4, lodScale: 1, treeFar: 700, treeNear: 170, shadowSize: 2048, shadowRange: 75, shadowTaps: 9, bloom: true, ao: true, grade: true },
+  low: { maxDpr: 1, msaa: 0, lodScale: 0.6, treeFar: 480, treeNear: 110, shadowSize: 0, shadowRange: 0, shadowTaps: 0, shadowEvery: 2, bloom: false, ao: false, grade: false },
+  medium: { maxDpr: 1, msaa: 2, lodScale: 0.8, treeFar: 600, treeNear: 140, shadowSize: 1024, shadowRange: 55, shadowTaps: 4, shadowEvery: 2, bloom: true, ao: false, grade: true },
+  high: { maxDpr: 1.25, msaa: 4, lodScale: 1, treeFar: 700, treeNear: 170, shadowSize: 2048, shadowRange: 75, shadowTaps: 9, shadowEvery: 2, bloom: true, ao: true, grade: true },
 };
+
+/**
+ * „Energiesparen“ (settings `powerSave`) on top of any preset: pixel ratio ≤ 1, no AO, no planar
+ * water reflection; the 30 fps cap is `frameCap` (core/loop.ts).
+ */
+export const POWER_SAVE = { maxDpr: 1 } as const;
 
 /** True for software rasterisers (SwiftShader in headless e2e, llvmpipe, Microsoft Basic Render). */
 export function isSoftwareGpu(gpu: string): boolean {
@@ -52,11 +64,12 @@ export function parseQualityParam(v: string | null | undefined): GraphicsLevel |
 
 export const GRAPHICS_LEVELS: GraphicsLevel[] = ['low', 'medium', 'high'];
 
-/** Pixel ratio for a preset and the user's resolution scale (pure, tested). */
-export function pixelRatioFor(level: GraphicsLevel, resolutionScale: number, devicePixelRatio: number): number {
+/** Pixel ratio for a preset and the user's resolution scale, optionally under „Energiesparen“ (pure, tested). */
+export function pixelRatioFor(level: GraphicsLevel, resolutionScale: number, devicePixelRatio: number, powerSave = false): number {
   const p = QUALITY_PRESETS[level];
   const scale = Math.max(0.5, Math.min(1, resolutionScale || 1));
-  return Math.max(0.35, Math.min(devicePixelRatio || 1, p.maxDpr) * scale);
+  const cap = powerSave ? Math.min(p.maxDpr, POWER_SAVE.maxDpr) : p.maxDpr;
+  return Math.max(0.35, Math.min(devicePixelRatio || 1, cap) * scale);
 }
 
 /**
@@ -86,6 +99,11 @@ export function gpuName(gl: WebGLRenderingContext | WebGL2RenderingContext): str
 /** Auto-downgrade thresholds: average frame time above `slowMs` for `seconds` steps one level down. */
 export const AUTO_QUALITY = { slowMs: 25, seconds: 6, graceSeconds: 4 };
 
+/** Slow-frame threshold under a frame cap (pure, tested): 25 ms, or 1.25 × the capped frame time when that is longer. */
+export function slowMsFor(capFps: number): number {
+  return Number.isFinite(capFps) && capFps > 0 ? Math.max(AUTO_QUALITY.slowMs, 1250 / capFps) : AUTO_QUALITY.slowMs;
+}
+
 /**
  * Pure decision of the auto-downgrade (tested): feed one-second averages, get the next level or
  * resolution scale when the game has been slow for `AUTO_QUALITY.seconds` in a row.
@@ -100,13 +118,16 @@ export class AutoQuality {
     this.slow = 0;
   }
 
-  /** One second of play with average frame time `avgMs`. */
-  sample(avgMs: number, level: GraphicsLevel, resolutionScale: number): { level: GraphicsLevel; resolutionScale: number } | null {
+  /**
+   * One second of play with average frame time `avgMs`; `slowMs` is the threshold (higher under a
+   * 30 fps cap, whose frames are 33 ms by design: `slowMsFor`).
+   */
+  sample(avgMs: number, level: GraphicsLevel, resolutionScale: number, slowMs: number = AUTO_QUALITY.slowMs): { level: GraphicsLevel; resolutionScale: number } | null {
     if (this.grace > 0) {
       this.grace -= 1;
       return null;
     }
-    this.slow = avgMs > AUTO_QUALITY.slowMs ? this.slow + 1 : 0;
+    this.slow = avgMs > slowMs ? this.slow + 1 : 0;
     if (this.slow < AUTO_QUALITY.seconds) return null;
     this.slow = 0;
     this.grace = AUTO_QUALITY.graceSeconds;
@@ -149,6 +170,8 @@ export class QualityManager {
   override: GraphicsLevel | null = null;
   /** Level when nothing is saved and nothing overrides (the GPU guess, 'high' when unknown). */
   fallback: GraphicsLevel = 'high';
+  /** The render cap (fps, Infinity = none; boot sets it from „Bildrate“ / „Energiesparen“): the slow threshold follows it. */
+  capFps = Infinity;
   /** Called after every `apply()` with the active preset (sun shadows, post features …). */
   readonly listeners: ((p: QualityPreset, level: GraphicsLevel) => void)[] = [];
 
@@ -166,7 +189,8 @@ export class QualityManager {
     const s = this.d.settings.state;
     const p = this.preset;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    const want = pixelRatioFor(this.level, s.resolutionScale, dpr);
+    const save = s.powerSave === true;
+    const want = pixelRatioFor(this.level, s.resolutionScale, dpr, save);
     this.d.post.setSamples(this.noMsaa ? 0 : p.msaa);
     if (Math.abs(this.d.renderer.getPixelRatio() - want) > 1e-3) {
       this.d.renderer.setPixelRatio(want);
@@ -174,7 +198,8 @@ export class QualityManager {
     }
     this.d.world.terrain.lodScale = p.lodScale;
     this.d.world.forest.setDistances(p.treeNear, p.treeFar);
-    this.d.post.setFeatures({ bloom: p.bloom, ao: p.ao, grade: p.grade });
+    this.d.post.setFeatures({ bloom: p.bloom, ao: p.ao && !save, grade: p.grade });
+    this.d.world.water.reflections = !save;
     for (const fn of this.listeners) fn(p, this.level);
     this.auto.hold(2);
   }
@@ -192,7 +217,7 @@ export class QualityManager {
       this.ms = 0;
       return;
     }
-    if (frameMs > 250) {
+    if (frameMs >= 250) {
       // a stall (shader compile, building interiors, tab switch) says nothing about the steady state
       this.auto.hold(2);
       return;
@@ -206,7 +231,7 @@ export class QualityManager {
     this.ms = 0;
     this.frames = 0;
     const s = this.d.settings.state;
-    const next = this.auto.sample(avg, this.level, s.resolutionScale);
+    const next = this.auto.sample(avg, this.level, s.resolutionScale, slowMsFor(this.capFps));
     if (!next) return;
     this.override = null;
     this.d.settings.update((d) => {

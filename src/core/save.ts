@@ -72,6 +72,12 @@ export interface Settings {
   graphics?: GraphicsLevel;
   /** Render resolution scale of the 3D scene, 0.5 .. 1 (UI stays sharp). */
   resolutionScale: number;
+  /** „Bildrate“: frames per second at most, 30 / 60 / 0 = unbegrenzt (core/loop.ts `frameCap`). */
+  fpsCap: number;
+  /** „Energiesparen“: 30 fps, pixel ratio ≤ 1, no AO, no water reflection (render/quality.ts `POWER_SAVE`). */
+  powerSave: boolean;
+  /** The one-time battery hint („Energiesparen“ toast) was shown. */
+  powerHint?: boolean;
   /** Lower the preset by itself when the frame time stays high. */
   autoQuality: boolean;
   /** Show the performance overlay (also F3). */
@@ -98,6 +104,8 @@ export function defaultSettings(): Settings {
     cameraMode: 'third',
     cameraZoom: 3.6,
     resolutionScale: 1,
+    fpsCap: 60,
+    powerSave: false,
     autoQuality: true,
     perfHud: false,
     bindings: {},

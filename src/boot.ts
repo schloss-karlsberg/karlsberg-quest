@@ -5,7 +5,7 @@ import { loadBundledContent } from './content/db';
 import type { EraController, GameContext, PauseController } from './core/context';
 import { ERA_INFO, type Era, isEra } from './core/era';
 import { EventBus } from './core/events';
-import { FixedStepLoop } from './core/loop';
+import { FixedStepLoop, frameCap, renderRate } from './core/loop';
 import { SaveManager, SettingsStore, defaultStorage } from './core/save';
 import { DEFAULT_SPAWN, GameStateStore, createInitialState } from './core/state';
 import { SystemRegistry } from './core/systems';
@@ -13,6 +13,7 @@ import { loadGameData } from './data/loader';
 import { installDebug } from './debug/hooks';
 import { t } from './i18n';
 import { AVATAR_MODEL, Avatar } from './player/avatar';
+import { cameraHints } from './player/camera';
 import { Input } from './player/input';
 import { Player } from './player/player';
 import { PerfMonitor } from './render/perf';
@@ -43,7 +44,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
 
   // ---- renderer, scene, camera
   const renderer = new WebGLRenderer({ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: params.has('preserve') });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NoToneMapping;
   renderer.domElement.tabIndex = 0;
@@ -55,6 +56,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   // CC0 art assets (src/assets): models / textures by id, lazy per area or era
   const assets = new AssetLoader(renderer);
   void assets.licences().then(setAssetLicences);
+  // the loop is created below; resize and pause need a late reference
+  let loopRef: FixedStepLoop | null = null;
   const resize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -62,6 +65,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     post.setSize(w, h, renderer.getPixelRatio());
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // a resized canvas is cleared: draw it again even while the view is held (menus, bullet time)
+    loopRef?.requestRender();
   };
   window.addEventListener('resize', resize);
   resize();
@@ -80,9 +85,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
 
   let started = false;
   let modalOpen = 0;
+  /** performance.now() of the last change of the modal stack (render pacing: a live modal settles at the cap). */
+  let modalChanged = 0;
   const reasons = new Set<string>();
-  // the loop is created below; pause needs a late reference
-  let loopRef: FixedStepLoop | null = null;
   const pause: PauseController = {
     push(r) {
       reasons.add(r);
@@ -104,6 +109,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       events.emit('game:pause', { paused: loopRef.paused });
       audio.setPaused(loopRef.paused);
     }
+    // a new pause state (title, menu, travel) starts from a fresh frame, then the pacing takes over
+    loopRef?.requestRender();
   };
   pause.push('title');
 
@@ -148,8 +155,13 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   if (!settings.state.graphics && !navigator.webdriver && !quality.override) {
     // first run: guess a preset from the GPU (Hoch / Mittel / Niedrig); the auto-downgrade corrects it
     settings.update((d) => (d.graphics = guess), 'graphics');
+    // phones (touch, short side < 600 px): Energiesparen on from the start (30 fps, heat, battery)
+    if (coarse && Math.min(screen.width, screen.height) < 600) settings.update((d) => (d.powerSave = true), 'powerSave');
   }
-  quality.listeners.push((p) => world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps));
+  quality.listeners.push((p) => {
+    world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps);
+    world.shadows.every = p.shadowEvery;
+  });
   // nature track: CC0 ground / bark sets, grass, props and water detail follow the tier
   quality.listeners.push((_p, level) => world.setDetail(level));
   world.attachAssets(assets, renderer);
@@ -200,6 +212,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
   const avatar = new Avatar(scene, player, () => assets.model(AVATAR_MODEL));
   let zoomSaved = 0;
+  let capFps = 60;
   const applySettings = () => {
     const s = settings.state;
     player.mouseSensitivity = s.mouseSensitivity;
@@ -210,6 +223,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     if (Math.abs((s.cameraZoom ?? 3.6) - zoomSaved) > 1e-3) player.rig.zoom = zoomSaved = s.cameraZoom ?? 3.6;
     camera.fov = s.fov;
     camera.updateProjectionMatrix();
+    // „Bildrate“ / „Energiesparen“: the render pacing's cap, and the auto-downgrade's slow threshold follows it
+    capFps = frameCap(s.fpsCap, s.powerSave);
+    quality.capFps = capFps;
     audio.setVolumes(s.volume);
     ui.hud.setSubtitleSize(s.subtitleSize);
     input.setBindings(s.bindings ?? {});
@@ -226,8 +242,10 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   settings.subscribe((_, key) => {
     applySettings();
     if (key === 'graphics') quality.override = null;
-    if (key === 'graphics' || key === 'resolutionScale') quality.apply();
+    if (key === 'graphics' || key === 'resolutionScale' || key === 'powerSave') quality.apply();
     events.emit('settings:change', { key });
+    // a held view (pause menu → settings) shows the change at once
+    loopRef?.requestRender();
   });
   applySettings();
 
@@ -284,6 +302,11 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       input.endStep();
     },
     render: (frameDt, alpha) => {
+      // the first frame after a held view (menu, bullet time), or a bullet-time frame long after
+      // the last one: the idle gap is no frame time
+      const now = performance.now();
+      if (loop.resumed || (loop.manual && holdIdle && now - lastRenderAt > 250)) perf.resetClock();
+      lastRenderAt = now;
       perf.begin();
       if (!pause.paused) player.look();
       player.applyCamera(camera, alpha, frameDt);
@@ -314,19 +337,41 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       camFwd.y = 0;
       if (camFwd.lengthSq() > 1e-6) camFwd.normalize();
       shadowFocus.copy(camera.position).addScaledVector(camFwd, quality.preset.shadowRange * 0.35);
-      world.shadows.update(renderer, scene, shadowFocus);
+      // the map may stand for one more frame while it is exact (render/shadows.ts); never in
+      // ?manual / bullet time, whose frames can lie many simulated steps apart, nor in a fight
+      // (lunging enemies, dodges: every caster's shadow on time)
+      const fresh = loop.manual || cameraHints.fight.length > 0 || cameraHints.boss > 0;
+      world.shadows.update(renderer, scene, shadowFocus, fresh ? Infinity : frameDt);
       world.water.renderReflection(renderer, scene, camera);
       env.update(renderer, world.lookVersion);
       post.render(renderer, scene, camera, loop.time);
       perf.end();
-      quality.frame(frameDt * 1000, started && !pause.paused && !document.hidden);
+      // (not in bullet time: its frames lie many simulated steps apart and say nothing about speed)
+      quality.frame(frameDt * 1000, started && !pause.paused && !document.hidden && !loop.manual);
       frames++;
     },
   });
   loopRef = loop;
+  // Render pacing (core/loop.ts `renderRate`, docs/ARCHITECTURE.md §3): the player's cap while
+  // playing, ≤ 30 fps on the title, menus at 15 fps or holding their last frame, bullet time only
+  // on request, nothing in a hidden tab. Under WebDriver bullet time and still menus keep the
+  // e2e behaviour (every frame / 15 fps) unless ?idle.
+  const holdIdle = !navigator.webdriver || params.has('idle');
+  loop.pace = () =>
+    renderRate({
+      cap: capFps,
+      hidden: document.hidden,
+      manual: loop.manual,
+      hold: holdIdle,
+      title: reasons.has('title'),
+      modal: ui.modals.backdrop,
+      modalAge: (performance.now() - modalChanged) / 1000,
+      paused: pause.paused,
+    });
   sync();
   if (params.has('manual')) loop.manual = true;
   let frames = 0;
+  let lastRenderAt = 0;
   let zoomTimer = 0;
   let cameraOverride: ((cam: PerspectiveCamera) => void) | null = null;
 
@@ -377,6 +422,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   // ---- modals pause the game and free the mouse
   ui.modals.onChange = (n) => {
     modalOpen = n;
+    modalChanged = performance.now();
+    loop.requestRender();
     input.enabled = n === 0 && started;
     touch.setPlaying(n === 0 && started);
     if (n > 0) {
@@ -425,7 +472,30 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     if (document.hidden && started) save.autosave('hidden', true);
     perf.resetClock();
     quality.hold();
+    // a hidden tab draws nothing (rAF stops anyway) and its sound stops too (HRTF, wind, drones)
+    audio.setHidden(document.hidden);
+    if (!document.hidden) loop.requestRender();
   });
+  // „Energiesparen“: a one-time hint when the game runs on battery (Battery API, Chromium only;
+  // never under WebDriver), a while after the start so it does not crowd the opening lines
+  events.on('game:start', () => {
+    const nav = navigator as Navigator & { getBattery?: () => Promise<{ charging: boolean }> };
+    if (navigator.webdriver || typeof nav.getBattery !== 'function') return;
+    window.setTimeout(() => {
+      if (!started || settings.state.powerSave || settings.state.powerHint) return;
+      void nav
+        .getBattery!()
+        .then((b) => {
+          if (b.charging || settings.state.powerSave || settings.state.powerHint) return;
+          settings.update((d) => (d.powerHint = true), 'powerHint');
+          ui.toast(t('settings.powerSave.hint'), 8000);
+        })
+        .catch(() => {});
+    }, 15_000);
+  });
+  // bullet time draws on request only: a real mouse look / key / wheel shows at once
+  // (pointer events: touch drags and buttons too, src/ui/touch.ts)
+  for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel', 'pointerdown', 'pointermove', 'pointerup'] as const) window.addEventListener(ev, () => loop.manual && loop.requestRender(), { passive: true });
   window.setInterval(() => started && !pause.paused && save.autosave('interval'), 60_000);
 
   function startGame(fresh: boolean): void {
@@ -475,7 +545,16 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   await systems.initAll(ctx);
   mark('systems');
 
-  installDebug(ctx, { frames: () => frames, perf, quality, setCamera: (fn) => (cameraOverride = fn), ready: palaceReady });
+  installDebug(ctx, {
+    frames: () => frames,
+    perf,
+    quality,
+    setCamera: (fn) => {
+      cameraOverride = fn;
+      loop.requestRender();
+    },
+    ready: palaceReady,
+  });
 
   // Playtesting a later chapter: ?kapitel=2|3|4 turns a NEW game into a start at that chapter,
   // with what the earlier chapters would have left behind (survey skills, a fitting level).

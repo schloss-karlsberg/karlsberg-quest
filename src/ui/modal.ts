@@ -17,6 +17,12 @@ export interface ModalOptions {
   closable?: boolean;
   wide?: boolean;
   className?: string;
+  /**
+   * What the game behind the panel does (render pacing, core/loop.ts `renderRate`): 'live' (default:
+   * a dialogue camera or figures still move, the view renders at 15 fps) or 'still' (pause menu,
+   * journal, map, cards: the paused view cannot change, its last frame is held).
+   */
+  backdrop?: 'live' | 'still';
   onClose?: () => void;
 }
 
@@ -34,7 +40,7 @@ export interface ModalHandle {
  * codex cards, dialogue choices etc.
  */
 export class ModalManager {
-  private readonly stack: ModalHandle[] = [];
+  private readonly stack: (ModalHandle & { closable: boolean; backdrop: 'live' | 'still' })[] = [];
   onChange: (open: number) => void = () => {};
 
   constructor(private readonly root: HTMLElement) {
@@ -43,7 +49,7 @@ export class ModalManager {
       (e) => {
         if (e.code !== 'Escape' || !this.stack.length) return;
         const top = this.stack[this.stack.length - 1]!;
-        if ((top as ModalHandle & { closable: boolean }).closable) {
+        if (top.closable) {
           e.stopImmediatePropagation();
           e.preventDefault();
           top.close();
@@ -77,6 +83,12 @@ export class ModalManager {
     return this.stack.length;
   }
 
+  /** What the open panels leave of the game: 'none', 'still' (all of them hold the view) or 'live' (any one is live). */
+  get backdrop(): 'none' | 'still' | 'live' {
+    if (!this.stack.length) return 'none';
+    return this.stack.some((m) => m.backdrop === 'live') ? 'live' : 'still';
+  }
+
   open(o: ModalOptions): ModalHandle {
     const closable = o.closable ?? true;
     const page = h(`div.kq-modal.kq-paper${o.wide ? '.wide' : ''}`, { role: 'dialog', 'aria-modal': 'true' });
@@ -88,9 +100,10 @@ export class ModalManager {
     if (closable) page.append(h('button.close', { 'aria-label': t('modal.close'), onclick: () => handle.close() }, '×'));
     page.append(titleEl, bodyEl, actionsEl);
     let closed = false;
-    const handle: ModalHandle & { closable: boolean } = {
+    const handle: ModalHandle & { closable: boolean; backdrop: 'live' | 'still' } = {
       el: page,
       closable,
+      backdrop: o.backdrop ?? 'live',
       get closed() {
         return closed;
       },
@@ -137,6 +150,7 @@ export class ModalManager {
       let answered = false;
       this.open({
         body: text,
+        backdrop: 'still',
         actions: [
           { label: no, onClick: () => { answered = true; resolve(false); } },
           { label: yes, primary: true, onClick: () => { answered = true; resolve(true); } },

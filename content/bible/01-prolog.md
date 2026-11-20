@@ -20,6 +20,15 @@
 
 **P3 – Der Weg nach oben.** Der Waldweg führt nach Osten bergauf (≈ 480 m). Am Fuß der Orangerie steht eine gerade, hohe Stufe im Wald. Tutorial **Relief-Blick 3 (VAT)**: Die Kante wird scharf, 81 m lang (`clue.p.orangeriemauer`). **Die Bussole zittert.** Eine trockene Stimme sagt: „Fünf Meter dreißig. Für Orangen.“ Das ist Laubs Einführung (`laub.p.intro`).
 
+**P3Q – Die Quelle.** Kaum ist Laub wach, hört er etwas: „Wasser. Unten im Hang, wo der Bach anfängt. Es erinnert sich an etwas.“ (`laub.p.quelle`). Die Nadel ruckt den Hang hinunter. Lichtpünktchen treiben den Bach hinab, über dem Wasser steht ein weicher Lichtschein. In einer kleinen Rinne zwischen Orangerie und Weiher liegt die **Karlsbergquelle**: eine niedrige Trockenmauer aus rotem Sandstein mit einem Schildchen, ein Rohr, ein ausgehöhlter Stamm als Trog auf zwei Stümpfen, links Sandsteinstufen, hangaufwärts eine kleine gewölbte Brunnenstube, halb im Boden. Laub: „Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.“ Am Trog: **E „Wasser berühren“**. Die Hand taucht ein, ein Ring läuft übers Wasser und bleibt stehen. Der Ton bricht weg, der Strahl aus dem Rohr hängt in der Luft, dann läuft der Bach rückwärts den Hang hinauf. Der Boden kippt: **1789**.
+*FAKT:* die Quelle selbst (OSM-Knoten 368031320, Beginn des Karlsbergbachs, rund 60 m unter der Orangerie-Terrasse), die heutige Fassung mit Trog, Mauer, Rohr und Brunnenstube, die Infotafel daneben (`cx.41`). Wann sie gefasst wurde und ob sie das Schloss versorgte, ist **nicht belegt**.
+*FIKTION:* dass das Wasser sich erinnert und wer es berührt, in ein anderes Jahr gerät (`cx.42`, `cx.38`).
+
+**P3R – Die Brunnenstube.** Dieselbe Stelle, zweihundert Jahre jünger. Statt der Trockenmauer steht eine barocke Brunnenstube: eine Front aus Quadern, eine Rundbogennische, ein Speier aus Bronze, ein Steinbecken, davor Steinplatten. Das Wasser ist zuerst noch starr und taut dann auf. Laub erklärt die Regel: Ein Tropfen des Wassers sitzt jetzt in der Bussole. Wo der Boden sich genauso gut erinnert, nimmt er uns mit (`laub.p.quelle.regel`). Zurück geht es immer: **Q halten**. Wieder im Heute: „Merken Sie sich die Stelle.“
+*FIKTION:* die ganze Brunnenstube von 1789 bis 1796. Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert (`cx.42`).
+
+**Die Quelle in den Ären.** Heute der Trog. 1789 die neue Brunnenstube. Februar 1793 Eiszapfen, das Wasser gefroren. Juli 1793 die Brunnenstube im Feuerschein. 1796 geplündert: der Speier herausgerissen, das Becken gesprungen, die Tür der Brunnenstube fort.
+
 **P4 – Der Ehrenhof.** Eine Lichtung auf einer ebenen Terrasse, umgeben von flachen Mauerzügen (`clue.p.ehrenhof`). Taste M legt Laubs Karte darüber. Die rote Signatur „Ruine Carlsberg“ sitzt deutlich östlich der Mauern (`clue.p.kartenvergleich`). Laub ist beleidigt (`laub.p.versatz`). Optional: Geisterblick F → Überflug. Von oben sieht man die Nordterrasse als zweite große ebene Fläche (`clue.p.nordterrasse`).
 
 **P5 – Der Hohlweg.** Westlich des Schlosses läuft ein Weg tief im Boden, 249 m nach Norden (`clue.p.hohlweg`). Marlene erklärt, wie Hohlwege entstehen.
@@ -30,7 +39,7 @@
 
 **P8 – Die Chronik öffnet sich.** Tab öffnet die Fallseite „Vermessung“. Sie kommt aus Laubs Bussole: Beim Öffnen des Deckels liegt eine angesengte Seite darin, die vorher nicht da war (`clue.p.seite_eins`). Der Spieler füllt die Einträge. **Bestätigt wird nur im Heute.** Der erste Satz von drei richtigen FAKT-Einträgen schaltet den **Zeitwechsel (Q)** am Anker Ehrenhof frei. Laub erklärt die Regeln (`laub.p.regeln`).
 
-**P9 – Der erste Wechsel (Wow W1).** Am Ehrenhof Q drücken. Das Schloss steigt aus dem Boden (siehe `00-overview.md` W1). 90 Sekunden Laternenöl. Echo `echo.p.diener` (Diener und Gärtner). Danach heult im Norden ein einzelner Hund (Richtung Zwinger, 1216/−1571). Die Bussole ruckt. Laub: „Zurück. Jetzt.“ Prompt: Q halten.
+**P9 – Der eigene Wechsel (Wow W1).** (Früher „Der erste Wechsel“. Seit der Quelle ist es der zweite, aber der erste, den man selbst macht.) Am Ehrenhof Q drücken. Das Schloss steigt aus dem Boden (siehe `00-overview.md` W1). 90 Sekunden Laternenöl. Echo `echo.p.diener` (Diener und Gärtner). Danach heult im Norden ein einzelner Hund (Richtung Zwinger, 1216/−1571). Die Bussole ruckt. Laub: „Zurück. Jetzt.“ Prompt: Q halten.
 
 **P10 – Zurück.** Feldstation, Abend. Der zweite bestätigte Satz schaltet Kapitel 1 frei.
 
@@ -46,6 +55,7 @@
 | `loc.p.damm` | Damm des Karlsbergweihers | TF-22, LiDAR KB-42, POI r03-04 | 819 | −875 | 25 | heute | Tutorial Relief 1→2 |
 | `loc.p.mauerrest` | Mauerrest am Weiher | POI r03-03 (OSM historic=ruins) | 813 | −903 | 15 | heute | `clue.p.mauerrest` bei aktivem Relief 2 |
 | `loc.p.orangerie` | Westliche Stützmauer der Orangerie | LiDAR KB-30, Katalog KB-B10, TF-07 | 1237 | −966 | 40 | heute | Tutorial VAT; Laub erwacht |
+| `loc.p.quelle` | Karlsbergquelle (Quellmulde am Fuß des Hangs, Beginn des Karlsbergbachs) | OSM-Knoten 368031320 (natural=spring), LiDAR-Rinne zum Weiher; die Brunnenstube 1789 ist FIKTION | 1061 | −834,5 | 7 (Trog: 1059,3 / −833,1) | alle | E „Wasser berühren“ (nur heute, P3Q) → erster Wechsel nach 1789 |
 | `loc.p.ehrenhof` | Ehrenhof-Lichtung | TF-01, LiDAR KB-01, POI r03-01 | 1216 | −1114 | 35 | heute / 1789-07 | Anker; Kartenvergleich; erster Wechsel |
 | `loc.p.nordterrasse` | Nordterrasse (Marstall-/Reitplatz?) | LiDAR KB-20, TF-05 | 1227 | −1466 | 60 | heute | Köder für P-1 (nur sichtbar im Überflug oder zu Fuß) |
 | `loc.p.hohlweg` | Hohlweg westlich des Schlosses | LiDAR KB-10, TF-10 | 1172 | −1238 | 20 (Linie N–S, 249 m) | heute | `clue.p.hohlweg` bei Relief 2 oder 3 |
@@ -145,12 +155,20 @@
   „Fünf Meter dreißig. Für Orangen.
   Erschrecken Sie nicht, das ist schlecht für die Messgenauigkeit. Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt.
   Sie vermessen den Berg? Gut. Dann sind wir zu zweit. Ich bin der Kleinere.“
+- `laub.p.quelle` (P3Q, gleich nach dem Erwachen): „Hören Sie das? Nein, natürlich nicht. Wasser. Unten im Hang, wo der Bach anfängt. Es erinnert sich an etwas.“
+- `laub.p.quelle.b`: „Gehen Sie hin. Die Nadel zeigt es Ihnen.“
+- `laub.p.quelle.nah` (an der Quelle): „Da. Die Karlsbergquelle. Ein Trog, eine Mauer, ein Rohr. Das Wasser ist älter als alle drei.“
+- `laub.p.quelle.trog`: „Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.“
+- `laub.p.quelle.1789` (P3R): „Siebzehnhundertneunundachtzig. Dieselbe Quelle, zweihundert Jahre jünger. Gefasst in Stein, mit Bronze. Ob sie wirklich so aussah? Mein Blatt sagt nichts dazu. Das Wasser schon.“
+- `laub.p.quelle.regel`: „Das Wasser erinnert sich. Ein Tropfen davon sitzt jetzt in der Bussole. Wo der Boden sich genauso gut erinnert, nimmt er uns mit. Mehr später.“
+- `laub.p.quelle.zurueck`: „Zurück geht es immer: Q gedrückt halten. Jetzt bitte. Mir bekommt das achtzehnte Jahrhundert nicht.“
+- `laub.p.quelle.heute` (wieder im Heute): „Da sind wir wieder. Merken Sie sich die Stelle. Und nun hinauf, ich habe am Ehrenhof etwas nachzumessen.“
 - `laub.p.intro2` (wenn man weitergeht): „Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.“
 - `laub.p.versatz` (Kartenvergleich am Ehrenhof): „Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war. Die Herrschaften, die es zweihundert Jahre später auf ihre Koordinaten genagelt haben, die hatten offenbar einen schlechten Tag. Fünfhundert hätte man gemerkt. Fünfzig merkt nur ein Geometer. Und ein Geometer merkt es ewig.“
 - `laub.p.ehrenhof`: „Drei Flügel, offen zur Straße. So baut man, wenn man gesehen werden will.“
 - `laub.p.nordterrasse`: „Auch eben. Aber da haben keine Flügel gestanden, da sind Pferde im Kreis gelaufen. Vermutlich. Ich war nicht eingeladen.“
 - `laub.p.punktwolke`: „Hunde.“ (Pause.) „Fragen Sie nicht. Füllen Sie die Seite aus.“
-- `laub.p.regeln` (nach dem ersten bestätigten Satz; die Nadel schwingt zum Ehrenhof):
+- `laub.p.regeln` (nach dem ersten bestätigten Satz; die Nadel schwingt zum Ehrenhof; im Spiel heute: „So. Das Wasser hat Sie einmal mitgenommen, und der Berg kennt Sie jetzt. Das reicht, um selbst zu gehen.“ und „Erstens: Sie können nur dort hinüber, wo die Nadel steht. Dort erinnert sich der Boden. Taste Q.“):
   „So. Der Berg glaubt Ihnen jetzt drei Dinge. Das reicht für einen Blick.
   Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal.
   Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q.
@@ -228,8 +246,9 @@ Der Prolog läuft jetzt als Questkette (`content/quests/00-prolog.quests.json`, 
 
 - **Die Feldstation** (Marlene): Lageplan, Handbuch, Schublade, dann den **Messstab** aufheben. Kartograf 1 ist jetzt die Belohnung dieser Quest.
 - **Was der Wald verbirgt** (Marlene): Damm, Mauerrest und Orangerie-Stufe mit Relief.
+- **Wasser, das sich erinnert** (Laub, `q.p.quelle`): den Hang hinunter zur Karlsbergquelle, am Trog das Wasser berühren, der erste Wechsel nach 1789, Q halten. Bei der Abgabe: was über die Quelle belegt ist (`cx.41`) und was erfunden ist (`cx.42`).
 - **Die Bussole spricht** (Laub): Ehrenhof, Kartenvergleich, Hohlweg, Eiskeller. Aus der Grube steigen bei Dämmerung **vier Nebelinge** auf. Das ist das Kampf-Tutorial (Hieb, Ausweichen, Wuchthieb). Die Nebelinge lösen sich auf, es fließt kein Blut.
-- **Spuren in der Punktwolke** (Marlene): Punktwolke, Q am Ehrenhof, das Echo des Dieners, **ein Streuner** (Bannlicht-Tutorial), Q halten. Am Ende fragt die Haltung „Was hat die Spuren gemacht?“ (Hunde / Wild / Messfehler / offen). Die Antwort steht in `flag.p_spuren`.
+- **Spuren in der Punktwolke** (Marlene): Punktwolke, Q am Ehrenhof (der eigene Wechsel), das Echo des Dieners, **ein Streuner** (Bannlicht-Tutorial), Q halten. Am Ende fragt die Haltung „Was hat die Spuren gemacht?“ (Hunde / Wild / Messfehler / offen). Die Antwort steht in `flag.p_spuren`.
 - Nebenquests:
   - **Kohlplatten**: drei Meilerplatten finden.
   - **Nicht anfassen**: den Bombentrichter melden, nie berühren.

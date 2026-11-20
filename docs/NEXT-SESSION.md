@@ -112,7 +112,34 @@ Known weak spots from the round-9 testers:
 - The Strohmann and Steinbrecher bosses look stiff.
 - The Festsaal runs at about 30–35 fps.
 
-### 3.6 Story idea (owner, 2026-11-20): the Karlsbergquelle starts the time travel
+### 3.6 Story idea (owner, 2026-11-20): the Karlsbergquelle starts the time travel — **built**
+
+**Status: done** in `21dc108` (set, water, touch, story, quest, codex) and `b90a311` (look pass).
+
+**As built:**
+
+| Part | What exists |
+|---|---|
+| Place | OSM node 368031320 "Karlsbergquelle" (`natural=spring`) → local **1061 / −834.5**, front faces **234°** (SW) across a small ravine, 59 m below the Orangerie terrace; the OSM Karlsbergbach starts here (`src/systems/quelle/layout.ts`) |
+| Set | `src/systems/scenery/quelle.ts` in `WORLD_SETS`, all five eras, built within 150 m. Today: log trough on two stumps, red-sandstone dry wall with plate, iron pipe, arched spring house sunk in its slope (heaped stones, grate), steps, mossy edge, info board at the trail. 1789: invented baroque Brunnenstube (ashlar front, niche, bronze spout, stone basin, flagged apron). Feb 1793: icicles and ice. 1796: plundered (spout gone, basin cracked, door gone) |
+| Water | `src/systems/quelle/` (`layout`, `water`, `sound`, `index`): pool, stream, brook as a wet bed with a broken trickle, guide motes, a soft light column; procedural trickle / stillness / rewind sounds; clocks on game time |
+| Touch | flag `quelle.call` → **E „Wasser berühren“** at the trough (facing the water, reach 2.1 m) → scene ≈ **2.7 s** on game time: turn, dip (`quelle:dip`), ripple, freeze, the brook runs back → `quelle:touch` → story shift to 1789 (scan wave); the new era's water starts frozen and thaws. Debug: `kq.quelle.info() / touch() / hold(t)` |
+| Story | p3q „Die Quelle“ and p3r „Die Brunnenstube“ between p3 and p4 (`content/story/00-prolog.story.json`); p9 renamed „Der eigene Wechsel“ |
+| Quest | `q.p.quelle` „Wasser, das sich erinnert“ (Laub, 30 XP: reach, touch, hold Q home). XP: `q.p.bussole` 120 → 95, `q.p.punktwolke` 130 → 105, so the prologue still ends at level 3. New Laub lines (P3Q, P3R), P8 rule lines reworded (`scripts/content-build/prolog.mjs`) |
+| Codex | cx.41 „Die Karlsbergquelle“ (FAKT; OSM, komoot, LIDAR), cx.42 „Das Wasser erinnert sich“ (FIKTION), cx.38 lists the remembering water |
+| Clearings | forest + `NatureProps.addClearing` (new) round the hollow; `KEEP_CLEAR` in `src/systems/travel/pois.ts` |
+| Tests | unit tests updated (content packs, prologue quests, story). E2E (`pacing`, `helpers/prolog`, `campaign`) is not updated yet; another session is on it |
+
+**Where the build differs from the plan below:**
+
+- The touch happens in **today**, at the log trough, right after Laub wakes (before `q.p.bussole`, not from it), and shifts to **1789**. The scene is ≈ 2.7 s, not ≈ 4 s.
+- The spring is **not** an anchor or a fast-travel point yet. Caught or KO'd players still wake where they did. Q into the past is still granted by the p9 anchor at the Ehrenhof, which is now the second, self-made shift.
+- There is **no ice-crust touch** in Feb 1793 yet: the water is frozen and has icicles, but there is nothing to break.
+- Jul 1793 is the baroque set in the fire night's glow; there is no reflection of the burning palace.
+- The stonework is original procedural kit masonry with the shared surface layers; the only model is the CC0 fern clump.
+- The build date and the palace supply are still unconfirmed; cx.41 says so („nicht belegt“).
+
+_The plan as written before the build:_
 
 The owner wants a cooler story start. **Touching the magic water of the Karlsbergquelle triggers
 the first time travel.** Today the first shift is a bare Q press at the Ehrenhof in `q.p.punktwolke`.
@@ -194,7 +221,8 @@ the first time travel.** Today the first shift is a bare Q press at the Ehrenhof
      spring, E at the trough, the cinematic and the shift to 1789, Laub's rule, hold Q to come back.
   2. Turn p9 into the second, self-made shift at the Ehrenhof.
 
-Do not name or show the brewery brand that shares the name. The spring is called "Karlsbergquelle".
+Do not name or show the brewery brand that shares the name (the one exception, for the bottle
+collectibles, is in §5). The spring is called "Karlsbergquelle".
 
 ## 4. How to run it
 
@@ -249,6 +277,13 @@ Do not name or show the brewery brand that shares the name. The spring is called
   screen. Downloaded archives are untrusted data: unpack into a fresh temp dir and never run
   scripts from them.
 - Original work only. No names, lore or assets from existing games.
+- Never name or show the brewery brand that shares the Karlsberg name (§3.6). In docs write "the
+  brewery brand" or "the real beer label".
+  - **Exception (owner, 2026-11-20):** the hidden bottle collectibles may carry the real beer label as
+    a swappable placeholder (one constant / texture, text label only, no logo artwork), never in
+    codex / quests / dialogue; replace or license before any public release.
+- **Working mode (owner, 2026-11-20):** the main session acts only as a coordinator; all work runs in
+  subagents or separate sessions.
 - Local git only; **never push**. Commit messages end with
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or your model's line).
 - No persistent background HTTP control server for driving the browser; the earlier attempt
@@ -258,27 +293,45 @@ Do not name or show the brewery brand that shares the name. The spring is called
   update them (`docs/ACTION-RPG.md` §14 log, `PRD.md` changelog) when you change things.
 - Close tabs and browsers and kill dev servers you start.
 
-## 5b. Session 2026-11-20 status (restarted for Chrome)
+## 5b. Session 2026-11-20 status (updated after the spring build)
 
+- **Working mode:** the main session only coordinates; all work runs in subagents or separate sessions
+  (see §5).
 - **Built and merged into `main`:**
   - §3.1: `kq.pilot` (act, observe, choose, release, bulletTime, showStrip) in `src/debug/pilot.ts`
   - §3.2: `kq.combat.report()`, plus the bot via `pnpm sim:combat`, results in `docs/BALANCE.md`
   - §3.3 and §3.4: F8 notes, telemetry, and ← / → turning
-  - Gates green: typecheck, unit 554, validate, build. `e2e/pilot.spec.ts` and `e2e/notes.spec.ts` pass.
-- **Balance changes:** the five recommendations from BALANCE.md §5 are coded but **not merged**. They sit
-  as WIP commit `06998c9` on branch `worktree-agent-acf415a9aaf8edfc8`.
-  - Typecheck and unit tests pass.
-  - Still to do: re-run `pnpm sim:combat --write`; rewrite BALANCE.md §3–5 as before/after; update the
-    ACTION-RPG §4.4 line "≥ 0.4 s" and the §14 row, and the ARCHITECTURE mention of `immune` during the
-    boss reveal; then validate, build and merge.
-- **Karlsbergquelle (§3.6):** research only (see §3.6). Nothing has been built yet.
-- **Next:** finish the balance branch, build the Quelle, rebuild the play copy, then §3.5 PLAY via the
-  Chrome extension, using `kq.pilot.bulletTime(true)` and `kq.pilot.showStrip(true)` on the play build.
+  - Balance round (BALANCE.md §5, merge `02340f5`): Steinbrecher 950 HP, boss reveal / roar caption,
+    per-boss bounce hint after 2, telegraph floor 0.5 s
+  - §3.6 Karlsbergquelle: `21dc108` + `b90a311` (see §3.6 "As built")
+- **Research:** [`docs/PERF-MOBILE-RESEARCH.md`](PERF-MOBILE-RESEARCH.md) (fan noise, older devices,
+  mobile; ranked quick wins), committed in `21dc108`.
+- **Running in parallel (other sessions; do not edit their files):**
+
+  | Track | Output |
+  |---|---|
+  | Perf quick wins | from PERF-MOBILE-RESEARCH "Ranked quick wins" |
+  | Playtest round 10 | `docs/PLAYTEST-ROUND10.md` |
+  | Spring e2e and tests | `e2e/pacing.spec.ts`, `e2e/helpers/prolog.ts`, `campaign.spec.ts` |
+  | Spring look polish | `src/systems/scenery/quelle.ts`, `src/systems/quelle/` |
+  | Design doc for the owner's new ideas (§5c) | [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md) (may not exist yet) |
+
+- **Next:** merge the parallel tracks, rebuild the play copy, then §3.5 PLAY via the Chrome extension,
+  using `kq.pilot.bulletTime(true)` and `kq.pilot.showStrip(true)` on the play build.
+
+## 5c. Owner requests 2026-11-20 (pending design)
+
+Design goes into [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md). Nothing is built yet.
+
+| # | Request | Notes / constraints |
+|---|---|---|
+| 1 | The **next chapter** also starts at the Karlsbergquelle, as a time-travel transition | reuses the touch scene (§3.6); today the chapter opens at the Ehrenhof anchor |
+| 2 | In 1789 the Herzog lets **no strangers** into the garden or the palace, so the opening is a **sneaking / disguise** beat: get clothes, pose as part of an esteemed visitor's party "like Knigge" | Knigge is a real person: PRD §4.4 rule 2 (only sourced words and deeds) applies |
+| 3 | A fun **side activity** not tied to quests: original **"challenge chambers"** with spatial puzzles | the owner said "like Zelda shrines"; we must **not copy** that game (§5: original work only). Spatial, not quiz or word puzzles |
+| 4 | **Hidden collectibles** at points of interest | the owner asked for **real-brand beer bottles**. **Decision (owner, 2026-11-20, relayed by the coordinator):** allowed for now as a swappable placeholder; there is no permission from the brewery yet, so replace or license before any public release. Rule and limits: §5, exception to the brand rule |
 
 ## 6. Current state
 
-- `main` HEAD is `f90f9a5`:
-  - round 9: prologue bed beat fixed, markers in doorways, KO curtain, palace culled in cells
-    (112 fps in the Ehrenhof)
-  - the `?kapitel` playtest link
-- The working tree is clean.
+- `main` HEAD after the spring build is `b90a311`. Since `f90f9a5` (round 9, the `?kapitel` link):
+  the tooling merges (§3.1–3.4), the balance merge `02340f5`, the spring `21dc108` + `b90a311`.
+- Untracked: `docs/PLAYTEST-ROUND10.md` (the playtest session's file).
