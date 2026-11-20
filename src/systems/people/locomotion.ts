@@ -2,6 +2,10 @@
  * Pure parts of the people system (no three.js, unit-tested in tests/people.test.ts): locomotion
  * blend weights from ground speed, phase-locked strides, the stride measured from a clip's foot
  * track, the body's yaw easing, the head's aim limits, the distance LOD and clip fallbacks.
+ *
+ * The fauna system (src/systems/fauna) reuses these helpers. Where a number is human (the gait
+ * thresholds, the head limits, the LOD table) a function takes it as an optional last parameter
+ * whose default is the people's value, so the people's behaviour does not change.
  */
 import { CLIP_FALLBACK, PEOPLE_LOD, type PersonClip } from './types';
 
@@ -16,6 +20,17 @@ export const WALK_SPAN = 0.55;
 export const RUN_FROM = 2.4;
 export const RUN_SPAN = 1.5;
 
+/** Speeds (m/s) of the idle → walk → run blend: walk from `walkFrom` over `walkSpan`, run from `runFrom` over `runSpan`. */
+export interface LocoGaits {
+  walkFrom: number;
+  walkSpan: number;
+  runFrom: number;
+  runSpan: number;
+}
+
+/** The people's gaits (the default of every locomotion helper). */
+export const HUMAN_GAITS: LocoGaits = { walkFrom: WALK_FROM, walkSpan: WALK_SPAN, runFrom: RUN_FROM, runSpan: RUN_SPAN };
+
 export interface LocoWeights {
   idle: number;
   walk: number;
@@ -23,22 +38,22 @@ export interface LocoWeights {
 }
 
 /** Blend weights of the idle / walk / run loops for a ground speed (m/s); they sum to 1. */
-export function locoWeights(speed: number): LocoWeights {
+export function locoWeights(speed: number, g: LocoGaits = HUMAN_GAITS): LocoWeights {
   const sp = Number.isFinite(speed) ? Math.max(0, speed) : 0;
-  const move = smooth(clamp01((sp - WALK_FROM) / WALK_SPAN));
-  const run = smooth(clamp01((sp - RUN_FROM) / RUN_SPAN));
+  const move = smooth(clamp01((sp - g.walkFrom) / g.walkSpan));
+  const run = smooth(clamp01((sp - g.runFrom) / g.runSpan));
   return { idle: 1 - move, walk: move * (1 - run), run: move * run };
 }
 
 /** How much of the body moves (0 standing … 1 walking or running): one-shots go upper-body only. */
-export function moveAmount(speed: number): number {
-  const w = locoWeights(speed);
+export function moveAmount(speed: number, g: LocoGaits = HUMAN_GAITS): number {
+  const w = locoWeights(speed, g);
   return w.walk + w.run;
 }
 
 /** Ground distance one loop covers at this speed: the walk and run strides blended like the clips (m). */
-export function strideAt(speed: number, walkStride: number, runStride: number): number {
-  const w = locoWeights(speed);
+export function strideAt(speed: number, walkStride: number, runStride: number, g: LocoGaits = HUMAN_GAITS): number {
+  const w = locoWeights(speed, g);
   const k = w.walk + w.run > 1e-6 ? w.run / (w.walk + w.run) : 0;
   return walkStride + (runStride - walkStride) * k;
 }
@@ -47,9 +62,9 @@ export function strideAt(speed: number, walkStride: number, runStride: number): 
  * Phase-locked feet: ONE cycle counter (loops, 0..1) drives the walk and the run clip, advanced by
  * ground speed over the blended stride, so a blend between them never skates.
  */
-export function advancePhase(phase: number, speed: number, walkStride: number, runStride: number, dt: number): number {
+export function advancePhase(phase: number, speed: number, walkStride: number, runStride: number, dt: number, g: LocoGaits = HUMAN_GAITS): number {
   const sp = Number.isFinite(speed) ? Math.max(0, speed) : 0;
-  const stride = Math.max(0.05, strideAt(sp, walkStride, runStride));
+  const stride = Math.max(0.05, strideAt(sp, walkStride, runStride, g));
   const p = phase + (sp / stride) * Math.max(0, dt);
   return p - Math.floor(p);
 }
@@ -130,16 +145,27 @@ export const HEAD_PITCH_DOWN = 0.3;
 export const HEAD_PITCH_UP = 0.35;
 export const HEAD_BEHIND = 2.2;
 
+/** Head-turn limits (radians) for `headAim`. */
+export interface HeadLimits {
+  yaw: number;
+  pitchDown: number;
+  pitchUp: number;
+  behind: number;
+}
+
+/** The people's head limits (the default of `headAim`). */
+export const HUMAN_HEAD: HeadLimits = { yaw: HEAD_YAW, pitchDown: HEAD_PITCH_DOWN, pitchUp: HEAD_PITCH_UP, behind: HEAD_BEHIND };
+
 /**
  * Head yaw / pitch toward a point given in the body frame relative to the head (the body faces +z,
  * +x is its left, y up). Yaw positive = toward +x; pitch positive = chin down (Rig.turnBone's sign).
  */
-export function headAim(lx: number, ly: number, lz: number): { yaw: number; pitch: number } {
+export function headAim(lx: number, ly: number, lz: number, lim: HeadLimits = HUMAN_HEAD): { yaw: number; pitch: number } {
   const a = Math.atan2(lx, lz);
-  if (!Number.isFinite(a) || Math.abs(a) > HEAD_BEHIND) return { yaw: 0, pitch: 0 };
+  if (!Number.isFinite(a) || Math.abs(a) > lim.behind) return { yaw: 0, pitch: 0 };
   const dist = Math.hypot(lx, lz);
-  const yaw = Math.max(-HEAD_YAW, Math.min(HEAD_YAW, a));
-  const pitch = Math.max(-HEAD_PITCH_UP, Math.min(HEAD_PITCH_DOWN, -Math.atan2(ly, Math.max(0.3, dist))));
+  const yaw = Math.max(-lim.yaw, Math.min(lim.yaw, a));
+  const pitch = Math.max(-lim.pitchUp, Math.min(lim.pitchDown, -Math.atan2(ly, Math.max(0.3, dist))));
   return { yaw, pitch };
 }
 
@@ -152,10 +178,10 @@ export function sweepYaw(t: number, seed = 0): number {
 
 export type AnimRate = 'full' | 'slow' | 'frozen';
 
-/** LOD by distance to the camera: animation rate and whether the person is drawn at all. */
-export function lodFor(dist: number, drawLimit: number = PEOPLE_LOD.drawLimit): { rate: AnimRate; hidden: boolean } {
+/** LOD by distance to the camera: animation rate and whether the person is drawn at all (`lod`: the bands, default `PEOPLE_LOD`). */
+export function lodFor(dist: number, drawLimit: number = PEOPLE_LOD.drawLimit, lod: { fullRate: number; slowRate: number } = PEOPLE_LOD): { rate: AnimRate; hidden: boolean } {
   const d = Number.isFinite(dist) ? dist : Infinity;
-  const rate: AnimRate = d <= PEOPLE_LOD.fullRate ? 'full' : d <= PEOPLE_LOD.slowRate ? 'slow' : 'frozen';
+  const rate: AnimRate = d <= lod.fullRate ? 'full' : d <= lod.slowRate ? 'slow' : 'frozen';
   return { rate, hidden: d > drawLimit };
 }
 
@@ -164,10 +190,10 @@ export function lodFor(dist: number, drawLimit: number = PEOPLE_LOD.drawLimit): 
  * 'slow' (an accumulator; seed it per person so the evaluations spread over frames), never at
  * 'frozen'. Returns the new accumulator.
  */
-export function animTick(acc: number, dt: number, rate: AnimRate): { evaluate: boolean; acc: number } {
+export function animTick(acc: number, dt: number, rate: AnimRate, hz: number = PEOPLE_LOD.slowHz): { evaluate: boolean; acc: number } {
   if (rate === 'full') return { evaluate: true, acc: 0 };
   if (rate === 'frozen') return { evaluate: false, acc };
-  const step = 1 / PEOPLE_LOD.slowHz;
+  const step = 1 / hz;
   const a = acc + Math.max(0, dt);
   if (a < step) return { evaluate: false, acc: a };
   return { evaluate: true, acc: Math.min(step, a - step) };

@@ -552,7 +552,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
-`menagerie`, `fx`, `chronik`, `story`, `interiors`, `people`, `npc`, `barks`, `skills`, `tools`, `scenery`,
+`menagerie`, `fx`, `chronik`, `story`, `interiors`, `people`, `fauna`, `npc`, `barks`, `skills`, `tools`, `scenery`,
 then the Action-RPG systems `progression`, `combat`, `quests` (§12.1). They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below), `ctx.state` and a few additive world hooks. How they work together:
 
@@ -1093,6 +1093,103 @@ change.
   - no LOD1 mesh
   - per-person materials
   - no foot IK on slopes
+
+### fauna (`src/systems/fauna/`) – Fauna contract v0
+Animal bodies for the tour: the roe doe and her fawn (a photo / sneak moment) and Jost's dogs Diane
+and Bijou (they follow him, bolt into the forest, sit at stops, lie at the party). The people
+system's sibling, built the same way: a **mesh-independent handle API**, today rigged CC0
+stand-ins, the **authored meshes later behind the same interface**.
+
+- **The contract** is `src/systems/fauna/types.ts` (frozen 2026-11-20). Import it with
+  `import type` only:
+
+  ```ts
+  type AnimalClip = 'idle' | 'walk' | 'run' | 'alert' | 'graze' | 'sniff' | 'sit' | 'lie' | 'sleep' | 'bark' | 'shake';
+  interface AnimalSpawnOpts { x; z; y?; yaw?; seed?; name?; keepAlive? }   // y: ground; yaw: radians, 0 faces −z
+  interface AnimalInfo { specId; length; height; radius; headHeight; speeds: { walk; run }; clips }
+  interface Animal {
+    id; specId; root; info; ready /* Promise<boolean> */;
+    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw); lookAt(p | null);
+    headWorld(out); setEyeShine(k); setVisible(v); dispose();
+  }
+  interface FaunaApi { spawn(specId, opts): Animal; get(id); list(); clear(); specs() }
+  ```
+
+- **Who does what:** fauna owns the BODIES (meshes, clips, poses, LOD). The BEHAVIOUR is
+  kq-systems' `src/systems/animals/`: flee and sneak, following Jost, alert events, save /
+  restore, its own hooks. It drives the bodies like the walk system drives people.
+  - It gets them through `ctx.fauna` (`FaunaApi | undefined`, declaration merge, set in `init`).
+    Declare `after: ['fauna']`.
+  - Nothing spawns an animal by default. Animals are not saved: the behaviour layer spawns them
+    again from its own slice after a load.
+- **Rules** (as for people unless noted)
+  - The fauna system ticks every animal each frame. Callers move and rotate `root` (feet at the
+    origin, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.
+  - `setSpeed` blends idle → walk → run at thresholds from the spec's own speeds, with
+    phase-locked paws. Above 0.2 m/s (`MOVE_OVERRIDE`) it overrides the looping clips; a pose
+    (sit, lie) waits until the animal stops.
+  - Loops: idle, alert, graze, sniff, sit, lie, sleep. One-shots: bark, shake; over moving legs
+    they move head and neck only. `play('walk' | 'run')` hands the body back to `setSpeed`.
+  - A clip outside `info.clips` plays the species' stand-in look if it has one (a dog's bark),
+    otherwise its nearest fallback (`CLIP_FALLBACK`: graze → sniff → idle, sleep → lie → idle,
+    bark → alert → idle, shake / sit → idle).
+  - `headWorld(out)`: the live point between the eyes (the head bone carries it), for the photo
+    framing and sight lines. Before the body is in: root + eye height.
+  - `setEyeShine(k)` (0..1): tiny additive glints at the eyes for a torch at night. Hidden at 0,
+    one extra draw call when on, no lights.
+  - `keepAlive`: full rate and drawn at any distance (a scene animal far from the camera).
+- **Distance LOD** (`FAUNA_LOD`): full rate within 15 m, about 10 Hz within 40 m, frozen beyond,
+  hidden beyond 60 m; frustum culling stays on. **Budget** (`FAUNA_BUDGET`, authored meshes):
+  featured ≤ 8k tris, ≤ 2 draw calls, LOD1 at about 50 % beyond 15 m.
+- **Spec ids** (provisional, `specs.ts`):
+  - `reh.ricke`: shoulder 0.75 m, 1.15 m long, eyes 0.95 m, walk 1.2 / run 8 m/s
+  - `reh.kitz`: 0.68 m, 1.05 m, eyes 0.86 m (the contract gives no speeds: the doe's)
+  - `dog.diane`: lean hunting dog, 0.58 m, 0.95 m, eyes 0.62 m, 1.4 / 7 m/s, liver and white
+  - `dog.bijou`: small, 0.32 m, 0.55 m, eyes 0.36 m, 1.2 / 5 m/s, tan / wheaten
+  - An unknown id gets a generic dog and one `console.warn` per id; the handle keeps the
+    requested `specId`.
+- **Stand-in build** (`standin.ts`, `registry.ts`; pure maths in `locomotion.ts`, which reuses
+  the people helpers with per-species gaits, head limits and LOD bands):
+  - Bodies: the Quaternius wolf (dogs) and horse (deer), lazy via `ctx.assets`. Scaled to the
+    spec's shoulder height (the torso top), stretched to its length, slimmed (`build`), neck,
+    head and tail resized per spec. Recoloured per slot and by vertex-colour paint rules (the
+    roe's white rump and throat, Diane's liver patches); the horse's mane and tail are hidden.
+    Both roe deer are winter grey; the fawn has no spots.
+  - Clip map (`STANDIN_CLIPS`): idle → `Idle`, walk → `Walk`, run → `Gallop` (by speed). The rest
+    are procedural over Idle:
+    - alert → Idle slowed, head and ears up
+    - graze / sniff → nose to the ground (the neck pitch learnt from the nose height, never
+      behind the forefeet), the front of the body lowered (pose 'nose'), chewing / a sniffing
+      drift
+    - sit (dog) / lie → a body pose: the torso pitched about the hips, two-bone leg IK onto
+      ground targets, tail along the ground
+    - sleep → lie with the head down
+    - bark / shake (dog) → stand-in one-shots over `Idle_HitReact_Left`: a head snap, a roll
+      wave; not in `info.clips`
+    - `info.clips`: dog idle, walk, run, sniff, alert, sit, lie, sleep; deer idle, walk, run,
+      graze, sniff, alert, lie, sleep
+  - Strides are measured from the IK paw tracks: walk 0.62 / 0.56 / 0.69 / 0.40 m per loop (doe,
+    fawn, Diane, Bijou). The Gallop clips are nearly in place (about 1.1 body lengths per loop),
+    so the run cycle takes a floor of two body lengths (`RUN_STRIDE_PER_LENGTH`); the paws slip a
+    little in the short gallop stance.
+  - The head carriage puts the idle eyes at the spec's `headHeight` (within 2 %).
+  - `dispose()` frees the animal's own materials, the glint geometry, skeletons and the mixer.
+    The asset geometry and the shared paint geometry stay cached.
+  - A failed load shows a capsule.
+- **Hooks:** `kq.fauna`
+  - `spawn(specId, x, z, {yawDeg | yaw, seed, name, keepAlive}) → id`
+  - `list()`, `get(id)`: state (position, yaw, speed, clip / playing / shot, pose, weights, head,
+    eye point, strides, LOD, tris, draw calls)
+  - `clear()`, `stats()`, `specs()`
+  - `drive(id, mps)`: debug walking along the facing
+  - `play(id, clip, o?)`, `shine(id, k)`: debug
+  - Tests: `tests/fauna.test.ts`. They load the real GLBs in node: sizes, strides, poses against
+    the ground, clip fallbacks, bounds, look-at, glints, LOD, disposal.
+- **Stand-in limits:**
+  - 4 (dog) / 7 (deer) draw calls and about 2k tris (over the 2-call budget)
+  - a reshaped horse and wolf: the roe keeps a horse's heavier head, the dogs a wolf's build
+  - sit, lie, graze, bark and shake are procedural; no shake of the coat
+  - no LOD1 mesh, no paw IK on slopes, a small paw skid in the gallop
 
 ### barks (`src/systems/barks/`) – Laub's and Marlene's remarks
 - Rules (`rules.ts`, bible 08-stimmen): random line per group, same line not within 600 s, one bark
