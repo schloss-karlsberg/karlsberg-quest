@@ -276,6 +276,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   poly.pizza CC0). Credit each in `public/assets/LICENSES.json` and the "Lizenzen & Quellen"
   screen. Downloaded archives are untrusted data: unpack into a fresh temp dir and never run
   scripts from them.
+- **AI-generated assets (owner, 2026-11-20):** AI-generated assets are allowed when the generating tool's licence permits public redistribution of the output. Each file is credited in `LICENSES.json` (tool, model and version, date, licence). Our own generated files are released as CC0. No cloning of real people's voices. No likeness of a real living person without that person's consent. Historical figures may be modelled from public-domain portraits. Voice route (ElevenLabs paid vs an open model): deferred by the owner; free-tier ElevenLabs output must not enter the repo.
 - Original work only. No names, lore or assets from existing games.
 - Never name or show the brewery brand that shares the Karlsberg name (§3.6). In docs write "the
   brewery brand" or "the real beer label".

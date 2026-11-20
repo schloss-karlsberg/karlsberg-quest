@@ -63,11 +63,16 @@ time, give each its own port, e.g. `KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
 
 These are not negotiable; pull requests that break them cannot be merged.
 
-### Art assets: CC0 only
+### Art assets: CC0, or licensed AI-generated
 
 - Use only **CC0 1.0** assets, downloaded from the official sites: [Poly Haven](https://polyhaven.com),
   [ambientCG](https://ambientcg.com), [Kenney](https://kenney.nl),
   [Quaternius](https://quaternius.com) and [poly.pizza](https://poly.pizza) (with the CC0 filter).
+- AI-generated assets are allowed when the generating tool's licence permits public redistribution of
+  the output. Credit each file in `LICENSES.json` with the tool, model and version, date and licence;
+  our own generated files are released as CC0. No cloning of real people's voices, and no likeness of a
+  real living person without that person's consent; historical figures may be modelled from
+  public-domain portraits. Free-tier ElevenLabs output must not enter the repo.
 - Credit **every file** in [`public/assets/LICENSES.json`](public/assets/LICENSES.json) with its
   name, author and source URL. The entry then appears in the game under „Lizenzen & Quellen“.
 - Treat downloaded archives as untrusted data: unpack them into a fresh, empty directory and never

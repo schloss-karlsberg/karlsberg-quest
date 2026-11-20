@@ -220,6 +220,9 @@ the in-game „Lizenzen & Quellen“ screen lists it. `tests/assets.test.ts` fai
 a record, a record that is not CC0 or not from an allowed site, a wrong byte count, or a budget
 overrun.
 
+**AI-generated assets (owner, 2026-11-20):** AI-generated assets are allowed when the generating tool's licence permits public redistribution of the output. Each file is credited in `LICENSES.json` (tool, model and version, date, licence). Our own generated files are released as CC0. No cloning of real people's voices. No likeness of a real living person without that person's consent. Historical figures may be modelled from public-domain portraits. Voice route (ElevenLabs paid vs an open model): deferred by the owner; free-tier ElevenLabs output must not enter the repo. Until `tests/assets.test.ts` knows such records, it still
+accepts CC0 only.
+
 **Downloads are untrusted data:** unpack each archive into a fresh empty temp dir (the
 scratchpad), copy out only the model / texture files, never run anything from it.
 
@@ -359,7 +362,7 @@ HUD sits on a subtle dark vignette, never on flat boxes.
 | soft shadows everywhere (medium+) | floating objects without contact shadow / AO |
 | clumped, layered, swaying vegetation | single-plane noisy leaf cards, trunks in rows |
 | glow only where something is magic or a real light | whole bodies above the bloom threshold (white blobs) |
-| CC0 assets from the listed sites, recorded in LICENSES.json | assets from or imitating commercial games, unlicensed or "free for personal use" packs |
+| CC0 assets from the listed sites, or AI-generated assets whose tool licence allows redistribution, recorded in LICENSES.json | assets from or imitating commercial games, unlicensed or "free for personal use" packs |
 | 1k textures, WebP, meshopt GLB, lazy per area | 4k textures, uncompressed glTF + PNG, everything in `core` |
 | judge on the real GPU (headed Chromium, Metal) | judging the look from SwiftShader screenshots |
 
