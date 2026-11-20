@@ -9,9 +9,8 @@ Prepared 2026-11-20 on branch `release/pages-prep`; nothing has been pushed.
 
 ## 1. Owner decisions (before the first push)
 
-- [ ] **Code licence:** MIT, all rights reserved, or something else. Fill in the README "Licence"
-      section, add a `LICENSE` file, and update `licences.code` in `src/i18n/de.ts`. That string
-      currently says "Karlsberg Quest (Open-Kirrberg)".
+- [x] **Code licence: decided, MIT.** `LICENSE` ("Copyright (c) 2026 Karlsberg Quest contributors"),
+      the README "Licence" section and `licences.code` in `src/i18n/de.ts` are updated.
 - [ ] **Commit author email:** all commits so far use one personal address. It becomes public on
       push. Options:
       - push as is;
@@ -22,10 +21,10 @@ Prepared 2026-11-20 on branch `release/pages-prep`; nothing has been pushed.
       contain local absolute paths (`/Users/<name>/…`) and the owner's first name. `IDEA.md` names a
       commercial game as genre inspiration. Agent handoff notes are part of the history.
       - Keep them as they are, trim them, or publish from a clean squashed repo.
-- [ ] **Release flag** (see §4): ship with the `window.kq` debug API and URL cheats, or gate them first.
-- [ ] **CC BY-SA 2.0 DE share-alike:** the palace footprints are partly based on the
-      schloss-carlsberg.de site plan (CC BY-SA 2.0 DE). Derived files (`public/data/palace/*`) may need
-      to be offered under CC BY-SA too. State that in the README / credits, or replace the source.
+- [x] **Release flag: decided.** The debug API stays on (community project); see §4.
+- [x] **CC BY-SA 2.0 DE share-alike: resolved.** The palace footprints are partly based on the
+      schloss-carlsberg.de site plan (CC BY-SA 2.0 DE). The README "Licence" section states that the
+      derived palace data in `public/data/palace/` is offered under CC BY-SA 2.0 DE as well.
 
 ## 2. GitHub setup
 
@@ -49,29 +48,23 @@ git push -u origin main
       should list all items. No console errors (assets load from the `/karlsberg-quest/` sub-path).
 - [ ] Optional: add the URL to the repo's About box and topics (`threejs`, `webgl`, `game`, `saarland`).
 
-## 4. Release build hygiene (open)
+## 4. Release build hygiene (decided)
 
-Today the production build exposes:
+**Decided: the debug API stays on (community project).** The production build keeps:
 
-- **`window.kq`** — always installed (`src/debug/hooks.ts`, `installDebug` from `src/boot.ts`). It
-  allows teleporting, setting the era, `step` / `press`, combat hooks (hurt / heal / restore), the
-  pilot API and spawning assets. Anyone with the console can cheat. That is harmless for a
-  single-player game, but it is still a cheat surface.
-- **URL flags** — `?debug` (stats panel, skips the title, never pauses), `?kapitel=2|3|4` (a new game
-  starts at that chapter with skills and level), `?era=`, `?x=&z=` (teleport) and `?manual`
-  (bullet time).
+- **`window.kq`**, always installed (`src/debug/hooks.ts`, `installDebug` from `src/boot.ts`):
+  teleporting, setting the era, `step` / `press`, combat hooks, the `kq.pilot` API, spawning assets.
+- **URL flags:** `?debug`, `?kapitel=2|3|4`, `?era=`, `?x=&z=`, `?manual` (bullet time).
 
-Suggestion: add a build-time switch `VITE_KQ_RELEASE=1`, set in the workflow's build step.
+They are testing aids for contributors and are documented in `CONTRIBUTING.md`. In a
+single-player game they harm nobody.
 
-- In `src/boot.ts` (around `const debug = params.has('debug')`) ignore `debug`, `kapitel`, `x/z`,
-  `manual` when `import.meta.env.VITE_KQ_RELEASE` is set. Keep `q`, `cam`, `nosave`, `fresh`.
-- Install `window.kq` only when not in release mode, or install a reduced read-only set.
-  The e2e suites and the pilot need the full API, so e2e must build without the flag.
-- **Bottle labels:** once the hidden bottle collectibles exist, the label texture should come
-  through one resolver. In release mode it is forced to the invented label (owner decision, see
-  docs/NEXT-SESSION.md). There is no collectibles code yet, so the hook point is planned: a
-  `labelFor(collectible)` in the future collectibles system that checks `VITE_KQ_RELEASE`. No real
-  brand art goes into `public/`.
+**Future option:** a build-time switch `VITE_KQ_RELEASE=1`, set in the workflow's build step. It is
+not needed for the debug API, but it is the planned hook for the **bottle-label swap**: once the
+hidden bottle collectibles exist, their label texture comes through one resolver (a
+`labelFor(collectible)` in the future collectibles system) that can check the flag. The public build
+always uses the invented placeholder label; no real brand art goes into the repository. The e2e
+suites and the pilot need the full API, so e2e would build without the flag.
 
 ## 5. Credits status (2026-11-20)
 
@@ -79,13 +72,18 @@ These are covered: every CC0 asset (86 entries in `public/assets/LICENSES.json`;
 `public/assets` is listed), DGM1 / DOM1 / ALS point cloud and the historic maps (© GeoBasis-DE/LVGL-SL,
 dl-de/by-2-0, `public/data/attribution.json`), OSM (ODbL), the fonts (OFL 1.1, text string) and Web Audio.
 
-Gaps, in order:
+Former gaps, all fixed on `release/pages-prep`:
 
-- **three.js (MIT)** is not credited in the game. `LICENSES.json` → `libraries` lists only Draco
-  and Basis. Add it.
-- **OFL licence texts** are not shipped with the build. The woff2 files are in `dist/app/`, but
-  `OFL-*.txt` stay in `src/ui/fonts`. Copy them to `public/licences/`, or link to them from the credits.
-- **dl-de/by-2-0 link:** the in-game items carry the URL only for the DGM entry. Optionally add
-  `www.lvgl.saarland.de` and the licence URL to every LVGL item. The LVGL DGM1 metadata gives the
-  source note as "© LVGL <Jahr>, dl-de/by-2-0, www.lvgl.saarland.de".
-- **CC BY-SA 2.0 DE** share-alike (see §1).
+- [x] **three.js (MIT)** and the other libraries bundled from its examples (meshoptimizer decoder,
+      KTX-Parse, zstddec: MIT; Draco, Basis Universal: Apache-2.0) are in `LICENSES.json` →
+      `libraries`, shown in the game and in the README credits. No other production dependency is
+      bundled (no fflate).
+- [x] **OFL licence texts** ship with the build: `public/fonts/OFL-*.txt` → `dist/fonts/`, linked
+      from the fonts line in „Lizenzen & Quellen“.
+- [x] **CC BY-SA 2.0 DE** share-alike: the README licence section names the derived files
+      (`public/data/palace/footprints.json`, `buildings.glb`, `rooms.json`); the `recon` item in
+      `public/data/attribution.json` (and `scripts/prepare-data.ts`) carries the licence link and
+      the file list, shown in the game.
+- [ ] Optional, still open: add `www.lvgl.saarland.de` and the licence URL to every LVGL item (the
+      in-game items carry the URL only for the DGM entry). The LVGL DGM1 metadata gives the source
+      note as "© LVGL <Jahr>, dl-de/by-2-0, www.lvgl.saarland.de".
