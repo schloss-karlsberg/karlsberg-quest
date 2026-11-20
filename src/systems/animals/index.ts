@@ -32,6 +32,8 @@ declare module '../../core/state' {
 }
 
 export interface AnimalsHooks {
+  /** true once the `animal:request` listener is attached (kq-story's temporary stand-in checks it). */
+  readonly ready: true;
   /** Spawn (or any other op): a flat C5 action, `op` defaults to 'spawn'. */
   spawn(op: Partial<AnimalAction> & { id: string }): boolean;
   /** Any C5 action, as the story sends it. */
@@ -158,7 +160,9 @@ class AnimalsSystem {
     this.hooks = true;
     const rt = this.rt;
     const ctx = this.ctx;
+    // the runtime attached its animal:request listener in its constructor, before these hooks
     kq.animals = {
+      ready: true,
       spawn: (op) => rt.request({ op: 'spawn', ...op } as AnimalAction),
       request: (a) => rt.request(a),
       list: () => rt.list(),
