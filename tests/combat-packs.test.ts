@@ -209,13 +209,14 @@ describe('the pack fights together', () => {
 });
 
 describe('playtest round 4: fights that ask something', () => {
-  it('paper and mist scatter under a plain Hieb once; the 3rd Hieb, a Wuchthieb, an ability or the Bannlicht end them (round 10 rule)', () => {
+  it('paper and mist scatter under a lone Hieb once; a follow-up Hieb, a Wuchthieb, an ability or the Bannlicht end them (round 10 rule)', () => {
     const base = { kind: 'mahnbrief', reformed: false, boss: false, elite: false, add: false, escort: false, tier: 1 };
-    const plain = { kind: 'light' as const, finisher: false };
+    const plain = { kind: 'light' as const, combo: 0 };
     expect(reforms(base, plain)).toBe(true);
     expect(reforms({ ...base, kind: 'nebelling' }, plain)).toBe(true);
-    expect(reforms(base, { kind: 'light', finisher: true })).toBe(false);
-    expect(reforms(base, { kind: 'heavy', finisher: false })).toBe(false);
+    expect(reforms(base, { kind: 'light', combo: 1 })).toBe(false);
+    expect(reforms(base, { kind: 'light', combo: 2 })).toBe(false);
+    expect(reforms(base, { kind: 'heavy', combo: 0 })).toBe(false);
     expect(reforms(base, { ...plain, skill: true })).toBe(false);
     expect(reforms(base, { ...plain, banned: true })).toBe(false);
     expect(reforms({ ...base, reformed: true }, plain)).toBe(false);

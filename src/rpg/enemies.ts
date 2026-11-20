@@ -24,7 +24,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     xp: 8,
     loot: 'loot.klein',
     dissolve: 'mist',
-    note_de: 'Kniehoher Nebelballen mit zwei Glutaugen. Kriecht aus Senken, wenn das Land sich erinnert. Ungefährlich, solange man ihn kommen sieht. Leert ihn ein einfacher Hieb, formt er sich einmal neu; der dritte Hieb einer Kette, ein Wuchthieb oder das Bannlicht lösen ihn ganz auf. (Fiktion)',
+    note_de: 'Kniehoher Nebelballen mit zwei Glutaugen. Kriecht aus Senken, wenn das Land sich erinnert. Ungefährlich, solange man ihn kommen sieht. Leert ihn ein einzelner Hieb, formt er sich einmal neu; zwei Hiebe in Folge, ein Wuchthieb oder das Bannlicht lösen ihn ganz auf – wen das Bannlicht einmal getroffen hat, der formt sich nicht mehr. (Fiktion)',
   },
   {
     id: 'irrlicht',
@@ -73,7 +73,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     xp: 6,
     loot: 'loot.klein',
     dissolve: 'paper',
-    note_de: 'Ein herzogliches Schreiben, das niemand bezahlt hat und das deshalb nie zur Ruhe kommt. Flattert, schneidet, mahnt. Zerreißt ihn ein einfacher Hieb, faltet er sich einmal neu; der dritte Hieb einer Kette, ein Wuchthieb oder das Bannlicht machen ihn endgültig zu Fetzen. (Fiktion)',
+    note_de: 'Ein herzogliches Schreiben, das niemand bezahlt hat und das deshalb nie zur Ruhe kommt. Flattert, schneidet, mahnt. Zerreißt ihn ein einzelner Hieb, faltet er sich einmal neu; zwei Hiebe in Folge, ein Wuchthieb oder das Bannlicht machen ihn endgültig zu Fetzen – was das Bannlicht einmal getroffen hat, faltet sich nicht mehr. (Fiktion)',
   },
   {
     id: 'raffschatten',

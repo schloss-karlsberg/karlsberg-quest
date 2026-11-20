@@ -541,12 +541,14 @@ export function canReform(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' 
 }
 
 /**
- * Does the blow that empties it scatter instead of undo? Only a plain Hieb (1st or 2nd of the
- * chain). The 3rd Hieb, a Wuchthieb, an ability, or any blow while the Bannlicht holds it (gebannt)
- * undoes it for good.
+ * Does the blow that empties it scatter instead of undo? Only a lone Hieb — the first of a chain
+ * (`combo` 0). A follow-up Hieb (2nd or 3rd of the chain), a Wuchthieb, an ability, or any blow on
+ * one the Bannlicht has touched (`banned`: held now or flared before in this life) undoes it for
+ * good. Follow-up 2026-11-20: the 2nd Hieb and the Bannlicht's lasting mark are new, so a pack with
+ * Nebelling escorts (K1 Karlslust) keeps its pace.
  */
-export function reforms(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 'add' | 'escort' | 'tier'>, blow: { kind: 'light' | 'heavy'; finisher: boolean; skill?: boolean; banned?: boolean }): boolean {
-  return canReform(e) && blow.kind === 'light' && !blow.finisher && !blow.skill && !blow.banned;
+export function reforms(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 'add' | 'escort' | 'tier'>, blow: { kind: 'light' | 'heavy'; combo: number; skill?: boolean; banned?: boolean }): boolean {
+  return canReform(e) && blow.kind === 'light' && blow.combo === 0 && !blow.skill && !blow.banned;
 }
 
 const ATTACK_GAP = { min: 0.5, spread: 0.3, gentle: 0.9, land: 1.0, gentleLand: 1.4 } as const;
@@ -1345,8 +1347,8 @@ export class CombatSim {
     }
     const counter = p.counter;
     p.counter = false;
-    // held by the Bannlicht when the blow lands (paper and mist then cannot pull together)
-    const banned = e.stun > 0 && !e.boss;
+    // touched by the Bannlicht (held now, or flared before): paper and mist then cannot pull together
+    const banned = (e.stun > 0 || e.lastBann > -99) && !e.boss;
     // the flare's bonus: one blow per flare, and that blow wakes it (an Irrlicht stays down)
     const gebannt = e.stun > 0 && !e.boss && e.bannBonus;
     const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt, armor, counter, mul: mul * cleave, jitter: hash01(this.tick * 13 + e.seed * 1000) });
@@ -1398,8 +1400,8 @@ export class CombatSim {
       this.out.push({ type: 'leave', e });
       return false;
     }
-    if (e.hp <= 0 && !w.final && reforms(e, { kind: w.kind, finisher, skill: w.skill !== null, banned })) {
-      // paper and mist scatter under a plain Hieb and pull themselves together once
+    if (e.hp <= 0 && !w.final && reforms(e, { kind: w.kind, combo: w.combo, skill: w.skill !== null, banned })) {
+      // paper and mist scatter under a lone Hieb and pull themselves together once
       e.reformed = true;
       e.hp = Math.ceil(e.maxHp * REFORM_HP);
       e.stun = 0;

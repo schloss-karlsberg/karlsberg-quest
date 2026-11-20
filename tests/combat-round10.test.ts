@@ -7,7 +7,10 @@ import { describe, expect, it } from 'vitest';
 import { deriveStats } from '../src/rpg/stats';
 import type { EnemyGroupState } from '../src/rpg/types';
 import { COMBO, INPUT_BUFFER, RESET, STEP_IN, STUMBLE, dodgeInvulnerable, dodgeSpeed, keepsWounds, leashBroken, upsertGroup } from '../src/systems/combat/rules';
-import { CombatSim, type Enemy, REFORM_HP, type SimEvent, type SimInput, canReform } from '../src/systems/combat/sim';
+import { CombatSim, type Enemy, REFORM_HP, REFORMERS, type SimEvent, type SimInput, canReform } from '../src/systems/combat/sim';
+import { captionToDrop } from '../src/systems/combat/hud';
+import { reformLessonKey } from '../src/systems/combat/strings';
+import { t } from '../src/i18n';
 
 const flat = { heightAt: () => 0 };
 const DT = 1 / 60;
@@ -168,6 +171,56 @@ describe('round 10 · F-22 / F-34: paper and mist pull together by one rule', ()
     run(s, 0.5);
     const b = tap(s, { e, x: 0, z: -2 });
     expect(b.some((v) => v.type === 'killed')).toBe(true);
+  });
+
+  it('a follow-up Hieb (2nd of the chain) undoes it for good', () => {
+    const { s, e } = one('nebelling', 0, -2);
+    e.hp = e.maxHp;
+    const pin = { e, x: 0, z: -2 };
+    // first Hieb of the chain lands, then empty it just before the second
+    run(s, DT, { attackPressed: true }, pin);
+    run(s, 0.3, {}, pin);
+    e.hp = 1;
+    const evs = tap(s, pin, 0.4);
+    expect(s.p.lastCombo === 1 || evs.some((v) => v.type === 'swing' && v.combo === 1)).toBe(true);
+    expect(evs.some((v) => v.type === 'reform')).toBe(false);
+    expect(evs.some((v) => v.type === 'killed')).toBe(true);
+  });
+
+  it('once the Bannlicht has touched it, it no longer reforms (even after the hold wears off)', () => {
+    const { s, e } = one('nebelling', 0, -2);
+    e.lastBann = 0.5;
+    e.stun = 0;
+    e.hp = 1;
+    const a = tap(s, { e, x: 0, z: -2 });
+    expect(a.some((v) => v.type === 'reform')).toBe(false);
+    expect(a.some((v) => v.type === 'killed')).toBe(true);
+  });
+
+  it('the first reform of every kind has its lesson, and a pinned lesson is never pushed out by captions', () => {
+    for (const k of REFORMERS) {
+      const text = t(reformLessonKey(k));
+      expect(text, k).not.toBe(reformLessonKey(k));
+      expect(text).toMatch(/Bannlicht/);
+    }
+    // two telegraphs, then the lesson, then two more telegraphs: the lesson stays
+    let lines: { pin: boolean; id: string }[] = [];
+    const add = (id: string, pin = false) => {
+      lines.push({ pin, id });
+      for (let i = captionToDrop(lines.map((l) => l.pin)); i >= 0; i = captionToDrop(lines.map((l) => l.pin))) lines = lines.filter((_, j) => j !== i);
+    };
+    add('a');
+    add('b');
+    add('lesson', true);
+    add('c');
+    add('d');
+    add('e');
+    expect(lines.map((l) => l.id)).toContain('lesson');
+    expect(lines.filter((l) => !l.pin)).toHaveLength(2);
+    expect(lines.map((l) => l.id)).toEqual(['lesson', 'd', 'e']);
+    // without pins: two lines at most, as before
+    expect(captionToDrop([false, false, false])).toBe(0);
+    expect(captionToDrop([false, false])).toBe(-1);
   });
 
   it('held by the Bannlicht, it is undone at once', () => {

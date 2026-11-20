@@ -95,6 +95,11 @@ export const BOSS_GUARD: Record<string, string> = {
   steinbrecher: 'Der Steinbrecher türmt sich auf – warte.',
 };
 
+/** The string key of the rule taught at the first reform of `kind` (playtest round 10). */
+export function reformLessonKey(kind: string): string {
+  return `combat.reform.first.${kind}`;
+}
+
 addStrings('de', {
   'combat.bossGuard': 'Er sammelt sich – warte.',
   'combat.immune': 'Der Stab geht hindurch – erst das Bannlicht ({key}).',
@@ -108,8 +113,8 @@ addStrings('de', {
   'combat.immuneRefill': 'Die Laterne gibt noch einen Funken her.',
   'combat.reform': 'Formt sich neu!',
   'combat.reform.tag': 'formt sich neu',
-  'combat.reform.first.nebelling': 'Nebel formt sich einmal neu – der dritte Hieb, ein Wuchthieb oder das Bannlicht lösen ihn ganz auf.',
-  'combat.reform.first.mahnbrief': 'Papier faltet sich einmal neu – der dritte Hieb, ein Wuchthieb oder das Bannlicht zerreißen es ganz.',
+  'combat.reform.first.nebelling': 'Nebel formt sich nach einem einzelnen Hieb einmal neu – zwei Hiebe in Folge, ein Wuchthieb oder das Bannlicht lösen ihn ganz auf.',
+  'combat.reform.first.mahnbrief': 'Papier faltet sich nach einem einzelnen Hieb einmal neu – zwei Hiebe in Folge, ein Wuchthieb oder das Bannlicht zerreißen es ganz.',
   'combat.stumble': 'Kein Atem – du stolperst nur zur Seite.',
   'combat.resist': '{name} schüttelt das Licht ab – noch nicht!',
   'combat.noBann': 'Kein Bannlicht – es lädt nach.',

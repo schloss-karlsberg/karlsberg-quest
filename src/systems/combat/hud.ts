@@ -244,6 +244,19 @@ const SKILL_GLYPH: Record<SkillSlot['id'], string> = {
 };
 const TRAIT_TAG: Record<NonNullable<PipTarget['trait']>, string> = { guard: 'Deckung', veil: 'Schleier', mirror: 'Spiegel', caller: 'Rufer', reform: 'formt sich neu' };
 
+/**
+ * Which caption line to drop (index, or −1 for none), given which lines are pinned, oldest first:
+ * at most `max` unpinned lines (the oldest unpinned goes) and `max + 1` lines in all.
+ */
+export function captionToDrop(pins: readonly boolean[], max = 2): number {
+  const loose = pins.filter((p) => !p).length;
+  if (loose > max || pins.length > max + 1) {
+    const i = pins.indexOf(false);
+    return i >= 0 ? i : 0;
+  }
+  return -1;
+}
+
 export interface Docker {
   dock(area: 'vitals' | 'boss' | 'feed', el: HTMLElement, order?: number): void;
 }
@@ -448,14 +461,19 @@ export class CombatHud {
     this.bossEl.classList.toggle('weak', b.weak);
   }
 
-  /** A short caption for a telegraph (or info line); `cls` boss / info. */
-  caption(text: string, cls = '', ms = 1400): void {
+  /**
+   * A short caption for a telegraph (or info line); `cls` boss / info. A `pin`ned line (a rule taught
+   * once, e.g. the first reform) is never pushed out by the telegraphs that follow it; it leaves
+   * when its time is up.
+   */
+  caption(text: string, cls = '', ms = 1400, pin = false): void {
     // the same words again: the line on screen stays (no stack of „hebt einen Quader – Wurf!“)
     for (const c of [...this.tell.children]) if (c.textContent === text && !c.classList.contains('gone')) c.remove();
     const s = el('span', cls, text);
+    if (pin) s.classList.add('pin');
     this.tell.append(s);
-    // two lines at most (playtest round 5: three telegraphs stacked in the centre)
-    while (this.tell.childElementCount > 2) this.tell.firstElementChild?.remove();
+    // two lines at most (playtest round 5: three telegraphs stacked in the centre), pinned ones aside
+    for (let i = captionToDrop([...this.tell.children].map((c) => c.classList.contains('pin'))); i >= 0; i = captionToDrop([...this.tell.children].map((c) => c.classList.contains('pin')))) this.tell.children[i]?.remove();
     setTimeout(() => s.classList.add('gone'), ms);
     setTimeout(() => s.remove(), ms + 400);
   }

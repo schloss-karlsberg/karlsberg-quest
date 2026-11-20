@@ -39,7 +39,7 @@ import { FightLog, type FightReport, type FightView } from './fightlog';
 import { CombatHud, type PipTarget, type SkillSlot } from './hud';
 import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, canReform, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
-import { BOSS_BOUNCE, BOSS_BOUNCE_AFTER, BOSS_GUARD, BOSS_HINT, BOSS_TITLE, TELL } from './strings';
+import { BOSS_BOUNCE, BOSS_BOUNCE_AFTER, BOSS_GUARD, BOSS_HINT, BOSS_TITLE, TELL, reformLessonKey } from './strings';
 import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
 import { type TargetCandidate, Targeting } from './targeting';
@@ -170,6 +170,8 @@ class Combat {
   private anchorHealed = false;
   private hooksInstalled = false;
   private lastCaption = new Map<string, number>();
+  /** Rules taught once per session (the first reform per kind). */
+  private readonly lessons = new Set<string>();
   private moving = 0;
   /** Abilities known (level) — null before the first stats pass (no unlock toast on load). */
   private skillsKnown: SkillId[] | null = null;
@@ -753,8 +755,13 @@ class Combat {
         this.visuals.wave(e.x, e.y + 0.2, e.z, 1.6, 0.3, 0.45, e.kind === 'nebelling');
         this.audio.whiff();
         this.hud.number(t('combat.reform'), e.x, e.y + 1.3, e.z, 'immune', undefined, this.numberSpan(e));
-        if (!this.lastCaption.has(`reformFirst:${e.kind}`)) this.captionOnce(`reformFirst:${e.kind}`, t(`combat.reform.first.${e.kind}`), 'info', 1e9, 4200);
-        else this.captionOnce('reform', t('combat.reform'), 'info', 10, 1200);
+        // the first reform per kind is a lesson: always shown (also with subtitles off), pinned so the
+        // telegraph captions that follow cannot push it out
+        if (!this.lessons.has(`reform:${e.kind}`)) {
+          this.lessons.add(`reform:${e.kind}`);
+          this.lastCaption.set('reform', ctx.loop.time);
+          this.hud.caption(t(reformLessonKey(e.kind)), 'info', 4600, true);
+        } else this.captionOnce('reform', t('combat.reform'), 'info', 10, 1200);
         break;
       }
       case 'resist': {
