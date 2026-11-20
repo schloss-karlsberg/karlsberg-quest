@@ -80,7 +80,7 @@ export async function tts(key: string, r: TtsRequest, log?: (s: string) => void)
   const body: Record<string, unknown> = { text: r.text, model_id: r.model };
   if (supportsLanguageCode(r.model)) body.language_code = 'de';
   if (r.voiceSettings) body.voice_settings = r.voiceSettings;
-  const path = `/v1/text-to-speech/${encodeURIComponent(r.voiceId)}?output_format=${r.outputFormat ?? 'mp3_44100_64'}`;
+  const path = `/v1/text-to-speech/${encodeURIComponent(r.voiceId)}?output_format=${r.outputFormat ?? 'mp3_44100_128'}`;
   const res = await call(key, path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify(body) }, { log });
   const billed = Number(res.headers.get('character-cost') ?? res.headers.get('x-character-count'));
   return { audio: Buffer.from(await res.arrayBuffer()), billed: Number.isFinite(billed) && billed > 0 ? billed : null };

@@ -1,16 +1,45 @@
 {
-  "$comment": "Speaker -> ElevenLabs voice. Casting is still open: replace the PLACEHOLDER ids with the owner's picks. A speaker missing here is skipped and reported; a PLACEHOLDER id is planned in --dry-run but refused in a real run. 'model' per speaker overrides --model (null = the run model).",
-  "defaultModel": "eleven_flash_v2_5",
+  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId) or 'hf-space' (voicePrompt for voice design, or voiceId). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model'. Casting is open: PLACEHOLDER voices are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
+  "providers": {
+    "elevenlabs": {
+      "defaultModel": "eleven_flash_v2_5",
+      "licence": "elevenlabs-free-noncommercial",
+      "outputFormat": "mp3_44100_128"
+    },
+    "hf-space": {
+      "$comment": "Not run yet (owner has not chosen). Qwen3-TTS is Apache-2.0 with German and voice design. apiName and params must be checked against the Space's 'Use via API' page before the first run; $text/$voicePrompt/$voiceId/$model/$lang are filled in.",
+      "defaultModel": "Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+      "licence": "apache-2.0-model",
+      "space": "Qwen/Qwen3-TTS",
+      "apiName": "PLACEHOLDER_CHECK_USE_VIA_API",
+      "params": { "text": "$text", "voice_description": "$voicePrompt", "language": "German" }
+    }
+  },
   "speakers": {
     "laub": {
+      "provider": "elevenlabs",
       "voiceId": "PLACEHOLDER_LAUB",
       "model": null,
       "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "style": 0, "use_speaker_boost": true, "speed": 1 }
     },
     "marlene": {
+      "provider": "elevenlabs",
       "voiceId": "PLACEHOLDER_MARLENE",
       "model": null,
       "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "style": 0, "use_speaker_boost": true, "speed": 1 }
+    }
+  },
+  "$examples": {
+    "$comment": "Not read by the script. Copy into speakers to switch a speaker to the HF Space.",
+    "laub": {
+      "provider": "hf-space",
+      "voicePrompt": "Ein Mann Mitte fünfzig, tiefer, trockener Bariton, ruhig und leicht pedantisch, spricht deutlich wie ein Beamter des 19. Jahrhunderts, mit leiser Ironie",
+      "model": null
+    },
+    "marlene": {
+      "provider": "hf-space",
+      "voicePrompt": "Eine Frau Anfang vierzig, warme, klare Altstimme, freundlich und direkt, saarländische Försterin, spricht zügig und unkompliziert",
+      "model": null
     }
   }
 }

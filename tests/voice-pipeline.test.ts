@@ -3,13 +3,15 @@ import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildPlan,
-  clipFile,
+  contentFile,
   collectLines,
   creditsFor,
   emptyManifest,
+  entryFiles,
+  estimateMB,
   lineStatus,
   loadContent,
   prepareTtsText,
@@ -22,10 +24,12 @@ import {
   textHash,
   writeManifest,
   type Manifest,
+  type ManifestEntry,
   type PriorityConfig,
   type VoiceLine,
   type VoicesConfig,
 } from '../scripts/voice/lib.ts';
+import { audioUrl, elevenLabsProvider, fillParams, hfSpaceProvider, isHfHost, type GradioConnect } from '../scripts/voice/providers.ts';
 import priority from '../scripts/voice/priority.json';
 import speechJson from '../scripts/voice/speech.json';
 
@@ -43,8 +47,25 @@ const line = (id: string, speaker: string, text: string, o: Partial<VoiceLine> =
   ...o,
 });
 
+/** a manifest entry with both clip files */
+const entry = (o: Partial<ManifestEntry> = {}): ManifestEntry => ({
+  files: { opus: 'x.00000000.webm', aac: 'x.00000000.m4a' },
+  textHash: '00000000',
+  speechHash: '00000000',
+  speaker: 'laub',
+  provider: 'elevenlabs',
+  voiceId: 'v-laub',
+  model: 'eleven_flash_v2_5',
+  licence: 'elevenlabs-free-noncommercial',
+  date: '',
+  chars: 1,
+  credits: 1,
+  durationMs: 1,
+  ...o,
+});
+
 const voices: VoicesConfig = {
-  defaultModel: 'eleven_flash_v2_5',
+  providers: { elevenlabs: { defaultModel: 'eleven_flash_v2_5' } },
   speakers: { laub: { voiceId: 'v-laub' }, marlene: { voiceId: 'v-marlene', model: 'eleven_multilingual_v2' } },
 };
 
@@ -58,8 +79,9 @@ describe('textHash (contract)', () => {
     expect(textHash('a\n\tb')).toBe(textHash('a b'));
     expect(textHash('Hallo.')).not.toBe(textHash('Hallo'));
   });
-  it('file name is <lineId>.<hash>.mp3', () => {
-    expect(clipFile('laub.p.quelle', '9f02b107')).toBe('laub.p.quelle.9f02b107.mp3');
+  it('clip file name is <lineId>.<sha256[0..8]>.<ext>', () => {
+    expect(contentFile('laub.p.quelle', '9f02b107deadbeef', 'webm')).toBe('laub.p.quelle.9f02b107.webm');
+    expect(contentFile('laub.p.quelle', 'abcdef0123', 'm4a')).toBe('laub.p.quelle.abcdef01.m4a');
   });
 });
 
@@ -183,7 +205,7 @@ describe('plan + budget', () => {
   });
   it('up-to-date lines cost nothing; no-voice and caption-only lines are skipped', () => {
     const m: Manifest = emptyManifest();
-    m.lines.a = { file: clipFile('a', textHash(t)), textHash: textHash(t), speaker: 'laub', voiceId: 'v-laub', model: 'eleven_flash_v2_5', date: '', chars: 100, credits: 50, durationMs: 1, speechHash: textHash(prepareTtsText(t)!) };
+    m.lines.a = entry({ textHash: textHash(t), speechHash: textHash(prepareTtsText(t)!), chars: 100, credits: 50 });
     const extra = [{ line: line('s', 'soll', t), tier: 'x' }, { line: line('cap', 'laub', '[Stille]'), tier: 'x' }];
     const p = buildPlan([...sel, ...extra], { voices, manifest: m, cap: 100 });
     expect(p.rows.find((r) => r.line.id === 'a')?.status).toBe('up-to-date');
@@ -194,7 +216,7 @@ describe('plan + budget', () => {
 
 describe('stale detection', () => {
   const h = textHash('Hallo');
-  const e = { file: clipFile('l', h), textHash: h, speaker: 'laub', voiceId: 'v1', model: 'eleven_flash_v2_5', date: '', chars: 5, credits: 3, durationMs: 400 };
+  const e = entry({ textHash: h, voiceId: 'v1' });
   const v = { voiceId: 'v1', model: 'eleven_flash_v2_5' };
   it('new / up to date / text, voice, model or file changed', () => {
     expect(lineStatus(undefined, h, v)).toBe('new');
@@ -213,8 +235,8 @@ describe('manifest', () => {
     const p = join(dir, 'sub', 'manifest.json');
     expect(readManifest(p)).toEqual(emptyManifest());
     const m = emptyManifest();
-    m.lines['z.line'] = { file: 'z.line.00000000.mp3', textHash: '00000000', speaker: 'laub', voiceId: 'v', model: 'eleven_flash_v2_5', date: '2026-11-20T00:00:00.000Z', chars: 1, credits: 1, durationMs: 100 };
-    m.lines['a.line'] = { ...m.lines['z.line']!, file: 'a.line.00000000.mp3' };
+    m.lines['z.line'] = entry({ files: { opus: 'z.line.0a1b2c3d.webm', aac: 'z.line.4e5f6a7b.m4a' }, date: '2026-11-20T00:00:00.000Z', durationMs: 100 });
+    m.lines['a.line'] = entry({ files: { opus: 'a.line.00000000.webm', aac: 'a.line.11111111.m4a' }, provider: 'hf-space', licence: 'apache-2.0-model' });
     writeManifest(p, m);
     const back = readManifest(p);
     expect(back).toEqual(m);
@@ -251,17 +273,16 @@ describe('speech overrides', () => {
     expect(p.staleOverrides.map((x) => x.id)).toEqual(['marlene.k4.ruf']);
   });
 
-  it('changing only the speech regenerates (speechHash), the clip name stays', () => {
+  it('changing only the speech regenerates (speechHash)', () => {
     const first = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: emptyManifest(), cap: 1000, speech: ovr }).rows[0]!;
     const m = emptyManifest();
-    m.lines[l.id] = { file: clipFile(l.id, first.hash), textHash: first.hash, speaker: 'marlene', voiceId: 'v-marlene', model: 'eleven_multilingual_v2', date: '', chars: first.chars, credits: first.credits, durationMs: 1, speechHash: first.speechHash };
+    m.lines[l.id] = entry({ textHash: first.hash, speaker: 'marlene', voiceId: 'v-marlene', model: 'eleven_multilingual_v2', speechHash: first.speechHash });
     const same = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: m, cap: 1000, speech: ovr }).rows[0]!;
     expect(same.status).toBe('up-to-date');
     const ovr2 = { 'marlene.k4.ruf': { ...ovr['marlene.k4.ruf'], speech: 'Hallo? Hörst du mich? Die Suppe wird kalt!' } };
     const again = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: m, cap: 1000, speech: ovr2 }).rows[0]!;
     expect(again.status).toBe('stale-speech');
     expect(again.take).toBe(true);
-    expect(clipFile(l.id, again.hash)).toBe(m.lines[l.id]!.file);
     // dropping the override goes back to auto-prep, which is a speech change too
     expect(buildPlan([{ line: l, tier: 'x' }], { voices, manifest: m, cap: 1000 }).rows[0]!.status).toBe('stale-speech');
   });
@@ -274,5 +295,113 @@ describe('speech overrides', () => {
       expect(o.speech.length, id).toBeGreaterThan(0);
       expect(o.speech, id).not.toMatch(/\{/);
     }
+  });
+});
+
+describe('providers: config, credits, plan', () => {
+  const mixed: VoicesConfig = {
+    providers: { elevenlabs: { defaultModel: 'eleven_flash_v2_5', licence: 'elevenlabs-paid' }, 'hf-space': { defaultModel: 'qwen3-vd' } },
+    speakers: {
+      laub: { provider: 'elevenlabs', voiceId: 'v-laub' },
+      marlene: { provider: 'hf-space', voicePrompt: 'Eine Frau Anfang vierzig, warme Altstimme' },
+      soll: { provider: 'hf-space', voicePrompt: 'PLACEHOLDER' },
+    },
+  };
+  it('resolves provider, voice id (prompt hash for designed voices), model and licence', () => {
+    expect(resolveVoice('laub', mixed, 'eleven_v3')).toMatchObject({ provider: 'elevenlabs', voiceId: 'v-laub', model: 'eleven_v3', licence: 'elevenlabs-paid' });
+    const m = resolveVoice('marlene', mixed, 'eleven_v3')!;
+    expect(m).toMatchObject({ provider: 'hf-space', model: 'qwen3-vd', licence: 'apache-2.0-model', placeholder: false });
+    expect(m.voiceId).toBe(`prompt:${textHash('Eine Frau Anfang vierzig, warme Altstimme')}`);
+    expect(resolveVoice('soll', mixed)?.placeholder).toBe(true);
+    expect(() => resolveVoice('x', { speakers: { x: { provider: 'nope' as never, voiceId: 'a' } } })).toThrow(/provider/);
+    expect(() => resolveVoice('x', { speakers: { x: { voiceId: 'a', licence: 'cc-by' as never } } })).toThrow(/licence/);
+  });
+  it('hf-space costs 0 credits and keeps going after the credit cap; --max-lines guards it', () => {
+    expect(creditsFor(500, 'qwen3-vd', 'hf-space')).toBe(0);
+    const t = 'x'.repeat(100);
+    const sel = [
+      { line: line('l1', 'laub', t, {}, 0), tier: 'x' },
+      { line: line('m1', 'marlene', t, {}, 1), tier: 'x' },
+      { line: line('l2', 'laub', t, {}, 2), tier: 'x' },
+      { line: line('m2', 'marlene', t, {}, 3), tier: 'x' },
+      { line: line('m3', 'marlene', t, {}, 4), tier: 'x' },
+    ];
+    const p = buildPlan(sel, { voices: mixed, manifest: emptyManifest(), cap: 60, maxLines: { 'hf-space': 2 } });
+    expect(p.rows.filter((r) => r.take).map((r) => r.line.id)).toEqual(['l1', 'm1', 'm2']);
+    expect(p.stoppedAt?.line.id).toBe('l2');
+    expect(p.limited).toEqual(['hf-space']);
+    expect(p.spend).toBe(50);
+    expect(buildPlan(sel, { voices: mixed, manifest: emptyManifest(), cap: 1000, limit: 2 }).rows.filter((r) => r.take).length).toBe(2);
+  });
+  it('provider change or a missing encoding regenerates', () => {
+    const e = entry({ textHash: 'h', speechHash: 's' });
+    const v = { voiceId: 'v-laub', model: 'eleven_flash_v2_5', provider: 'elevenlabs' as const };
+    expect(lineStatus(e, 'h', v, () => true, 's')).toBe('up-to-date');
+    expect(lineStatus(e, 'h', { ...v, provider: 'hf-space' }, () => true, 's')).toBe('stale-voice');
+    expect(lineStatus(e, 'h', v, (f) => !f.endsWith('.m4a'), 's')).toBe('missing-file');
+    expect(lineStatus({ ...e, files: undefined as never }, 'h', v, () => true, 's')).toBe('missing-file');
+    expect(entryFiles({ file: 'old.mp3' })).toEqual(['old.mp3']);
+    expect(entryFiles(e)).toEqual(['x.00000000.webm', 'x.00000000.m4a']);
+  });
+  it('estimates dist size from durations or characters', () => {
+    expect(estimateMB([{ chars: 0, durationMs: 1_000_000 }])).toBeCloseTo(9.36, 2);
+    expect(estimateMB([{ chars: 14_000 }])).toBeCloseTo(9.36, 2);
+  });
+});
+
+describe('hf-space provider (mocked Gradio client, no network)', () => {
+  const cfg = { space: 'Qwen/Qwen3-TTS', apiName: '/voice_design', params: { text: '$text', voice_description: '$voicePrompt', language: 'German', seed: 7 } };
+  const voice = resolveVoice('marlene', { speakers: { marlene: { provider: 'hf-space', voicePrompt: 'warme Altstimme' } } })!;
+  const req = { text: 'Hallo? Hörst du mich?', voice, model: voice.model, lang: 'de' };
+  it('connects with the token, fills the params, downloads the file with auth only from HF hosts', async () => {
+    const calls: unknown[] = [];
+    const connect: GradioConnect = async (space, opts) => {
+      calls.push(['connect', space, opts]);
+      return { predict: async (ep, data) => (calls.push(['predict', ep, data]), { data: [{ url: 'https://qwen-qwen3-tts.hf.space/file=/tmp/a.wav', path: '/tmp/a.wav' }] }) };
+    };
+    const fetchMock = vi.fn(async (_u: string | URL | Request, _i?: RequestInit) => new Response(new Uint8Array([1, 2, 3])));
+    const p = hfSpaceProvider('hf_test_token', cfg, { connect, fetch: fetchMock as unknown as typeof fetch });
+    const res = await p.synthesize(req);
+    expect([...res.audio]).toEqual([1, 2, 3]);
+    expect(res.billedCredits).toBe(0);
+    expect(calls).toEqual([
+      ['connect', 'Qwen/Qwen3-TTS', { hf_token: 'hf_test_token' }],
+      ['predict', '/voice_design', { text: 'Hallo? Hörst du mich?', voice_description: 'warme Altstimme', language: 'German', seed: 7 }],
+    ]);
+    expect(fetchMock.mock.calls[0]![1]).toEqual({ headers: { authorization: 'Bearer hf_test_token' } });
+    expect(isHfHost('https://evil.example.com/hf.space')).toBe(false);
+    expect(isHfHost('https://huggingface.co/x')).toBe(true);
+  });
+  it('redacts the token from errors and refuses a placeholder endpoint', async () => {
+    const connect: GradioConnect = async () => ({ predict: async () => Promise.reject(new Error('quota exceeded for hf_test_token')) });
+    await expect(hfSpaceProvider('hf_test_token', cfg, { connect }).synthesize(req)).rejects.toThrow('quota exceeded for [REDACTED]');
+    expect(() => hfSpaceProvider('t', { ...cfg, apiName: 'PLACEHOLDER_X' })).toThrow(/placeholder/);
+  });
+  it('helpers', () => {
+    expect(audioUrl({ value: { url: 'https://x.hf.space/a.wav' } })).toBe('https://x.hf.space/a.wav');
+    expect(audioUrl(['nope', 3])).toBeNull();
+    expect(fillParams({ a: '$lang', b: '$model', c: 1 }, req)).toEqual({ a: 'de', b: voice.model, c: 1 });
+  });
+});
+
+describe('elevenlabs provider (stubbed fetch, no network)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it('sends the key only as a header, German language code, MP3 128 source', async () => {
+    const fetchMock = vi.fn(async (_u: string, _i: RequestInit) => new Response(new Uint8Array([9]), { headers: { 'character-cost': '12' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const voice = resolveVoice('laub', voices)!;
+    const res = await elevenLabsProvider('sk_secret', { outputFormat: 'mp3_44100_128' }).synthesize({ text: 'Hallo', voice, model: 'eleven_flash_v2_5', lang: 'de' });
+    expect([...res.audio]).toEqual([9]);
+    expect(res.billedCredits).toBe(12);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('https://api.elevenlabs.io/v1/text-to-speech/v-laub?output_format=mp3_44100_128');
+    expect(url).not.toContain('sk_secret');
+    expect((init.headers as Record<string, string>)['xi-api-key']).toBe('sk_secret');
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'Hallo', model_id: 'eleven_flash_v2_5', language_code: 'de' });
+  });
+  it('error messages never carry the key', async () => {
+    vi.stubGlobal('fetch', async () => new Response('bad key sk_secret', { status: 400 }));
+    const voice = resolveVoice('laub', voices)!;
+    await expect(elevenLabsProvider('sk_secret').synthesize({ text: 'x', voice, model: 'eleven_flash_v2_5', lang: 'de' })).rejects.toThrow(/\[REDACTED\]/);
   });
 });

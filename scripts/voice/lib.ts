@@ -4,8 +4,10 @@
  * `tests/voice-pipeline.test.ts`.
  *
  * Contract with in-game playback (do not change): manifest `public/voice/manifest.json`
- *   { version: 1, lines: { <lineId>: { file, textHash, speaker, voiceId, model, date, chars, credits, durationMs } } }
- * file = `<lineId>.<textHash>.mp3`; textHash = FNV-1a 32 over UTF-8 of the normalised display text.
+ *   { version: 1, lines: { <lineId>: { files: { opus, aac }, textHash, speechHash, speaker, provider, voiceId,
+ *     model, licence, date, chars, credits, durationMs } } }
+ * files = `<lineId>.<sha256(bytes)[0..8]>.webm|.m4a` (the runtime reads names only from the manifest);
+ * textHash = FNV-1a 32 over UTF-8 of the normalised display text_de (the runtime matches on it).
  */
 import { existsSync, readFileSync, readdirSync, renameSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -50,7 +52,13 @@ export function supportsLanguageCode(model: string): boolean {
   return model !== 'eleven_multilingual_v2' && !model.startsWith('eleven_monolingual');
 }
 
-export function creditsFor(chars: number, model: string): number {
+export type ProviderName = 'elevenlabs' | 'hf-space';
+export const PROVIDERS: readonly ProviderName[] = ['elevenlabs', 'hf-space'];
+
+/** Credits for one line. ElevenLabs bills per character by model; an HF Space costs 0 credits
+ * (it spends ZeroGPU minutes instead, guarded by --max-lines). */
+export function creditsFor(chars: number, model: string, provider: ProviderName = 'elevenlabs'): number {
+  if (provider === 'hf-space') return 0;
   const rate = CREDITS_PER_CHAR[model];
   if (rate === undefined) throw new Error(`unknown model "${model}": add it to CREDITS_PER_CHAR`);
   return Math.ceil(chars * rate);
@@ -323,50 +331,101 @@ export function selectLines(lines: VoiceLine[], cfg: PriorityConfig, o: { ids?: 
 }
 
 // ---------------------------------------------------------------------------------------------
-// Voices
+// Voices (scripts/voice/voices.json)
+
+export type Licence = 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model';
+export const LICENCES: readonly Licence[] = ['elevenlabs-free-noncommercial', 'elevenlabs-paid', 'apache-2.0-model'];
+
+export interface ProviderConfig {
+  defaultModel?: string;
+  /** licence of what this provider generates (manifest `licence`) */
+  licence?: Licence;
+  /** elevenlabs */
+  outputFormat?: string;
+  /** hf-space: Space id (`owner/name`), endpoint, and the request params (`$text`, `$voicePrompt`,
+   * `$voiceId`, `$model`, `$lang` are filled in; other values are passed as they are) */
+  space?: string;
+  apiName?: string;
+  params?: Record<string, unknown>;
+}
 
 export interface SpeakerVoice {
+  provider?: ProviderName;
   voiceId?: string | null;
+  /** hf-space voice design: a German description of the voice */
+  voicePrompt?: string | null;
   model?: string | null;
+  licence?: Licence;
   voiceSettings?: Record<string, number | boolean>;
 }
 export interface VoicesConfig {
-  defaultModel?: string;
+  providers?: Partial<Record<ProviderName, ProviderConfig>>;
   speakers: Record<string, SpeakerVoice>;
 }
 
 export const isPlaceholderVoice = (id: string | null | undefined): boolean => !id || /^(PLACEHOLDER|TODO)/i.test(id);
 
 export interface ResolvedVoice {
+  provider: ProviderName;
+  /** what the manifest records as `voiceId`: the provider's voice id, or `prompt:<hash>` for a designed voice */
   voiceId: string;
+  voicePrompt?: string;
   model: string;
+  licence: Licence;
   placeholder: boolean;
   voiceSettings?: Record<string, number | boolean>;
 }
 
-/** Per-speaker model wins over the run model (`--model`), which wins over `defaultModel`. */
+const DEFAULT_MODEL: Record<ProviderName, string> = { elevenlabs: 'eleven_flash_v2_5', 'hf-space': 'qwen3-tts' };
+const DEFAULT_LICENCE: Record<ProviderName, Licence> = { elevenlabs: 'elevenlabs-free-noncommercial', 'hf-space': 'apache-2.0-model' };
+
+/**
+ * Speaker → voice. Model: the speaker's own, else `runModel` (`--model`, ElevenLabs speakers only),
+ * else the provider's default. Licence: the speaker's, else the provider's.
+ */
 export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: string): ResolvedVoice | null {
   const v = voices.speakers[speaker];
-  if (!v || !v.voiceId) return null;
-  const model = v.model || runModel || voices.defaultModel || 'eleven_flash_v2_5';
-  return { voiceId: v.voiceId, model, placeholder: isPlaceholderVoice(v.voiceId), voiceSettings: v.voiceSettings };
+  if (!v) return null;
+  const provider = v.provider ?? 'elevenlabs';
+  if (!PROVIDERS.includes(provider)) throw new Error(`speaker ${speaker}: unknown provider "${provider}"`);
+  const pc = voices.providers?.[provider] ?? {};
+  let voiceId: string;
+  let placeholder: boolean;
+  if (provider === 'hf-space') {
+    const prompt = v.voicePrompt ?? '';
+    if (!prompt && !v.voiceId) return null;
+    voiceId = v.voiceId || `prompt:${textHash(prompt)}`;
+    placeholder = v.voiceId ? isPlaceholderVoice(v.voiceId) : isPlaceholderVoice(prompt);
+  } else {
+    if (!v.voiceId) return null;
+    voiceId = v.voiceId;
+    placeholder = isPlaceholderVoice(v.voiceId);
+  }
+  const model = v.model || (provider === 'elevenlabs' ? runModel : undefined) || pc.defaultModel || DEFAULT_MODEL[provider];
+  const licence = v.licence ?? pc.licence ?? DEFAULT_LICENCE[provider];
+  if (!LICENCES.includes(licence)) throw new Error(`speaker ${speaker}: unknown licence "${licence}"`);
+  return { provider, voiceId, voicePrompt: v.voicePrompt ?? undefined, model, licence, placeholder, voiceSettings: v.voiceSettings };
 }
 
 // ---------------------------------------------------------------------------------------------
 // Manifest
 
 export interface ManifestEntry {
-  file: string;
+  /** Opus 24 kbps mono in WebM, and the AAC fallback (Safari); named `<lineId>.<sha256(bytes)[0..8]>.<ext>` */
+  files: { opus: string; aac: string };
+  /** FNV-1a of the displayed text_de (the runtime matches on it) */
   textHash: string;
+  /** FNV-1a of the text actually spoken (speech override or auto-prep) */
+  speechHash: string;
   speaker: string;
+  provider: ProviderName;
   voiceId: string;
   model: string;
+  licence: Licence;
   date: string;
   chars: number;
   credits: number;
   durationMs: number;
-  /** textHash of the text actually sent to TTS (speech override or auto-prep); regenerate when it changes */
-  speechHash?: string;
 }
 export interface Manifest {
   version: 1;
@@ -374,7 +433,16 @@ export interface Manifest {
 }
 
 export const emptyManifest = (): Manifest => ({ version: 1, lines: {} });
-export const clipFile = (lineId: string, hash: string): string => `${lineId}.${hash}.mp3`;
+
+/** `<lineId>.<first 8 hex of sha256(bytes)>.<ext>`: every new encoding gets a new URL. */
+export function contentFile(lineId: string, sha256hex: string, ext: 'webm' | 'm4a'): string {
+  return `${lineId}.${sha256hex.slice(0, 8)}.${ext}`;
+}
+
+/** All clip files an entry points at (also an old-shape `file`). */
+export function entryFiles(e: Partial<ManifestEntry> & { file?: string }): string[] {
+  return [e.files?.opus, e.files?.aac, e.file].filter((f): f is string => typeof f === 'string');
+}
 
 export function readManifest(path: string): Manifest {
   if (!existsSync(path)) return emptyManifest();
@@ -396,22 +464,22 @@ export function writeManifest(path: string, m: Manifest): void {
 export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | 'stale-model' | 'stale-speech' | 'missing-file';
 
 /**
- * Does this line need (re)generating? `speechHash` (hash of the TTS text) catches a changed speech
- * override or text prep while the displayed text stayed the same. `fileExists` checks the clip on disk.
+ * Does this line need (re)generating? Provider or voice id changed → stale-voice; `speechHash`
+ * catches a changed speech override / text prep under an unchanged text; both clip files must exist.
  */
 export function lineStatus(
   entry: ManifestEntry | undefined,
   hash: string,
-  voice: { voiceId: string; model: string },
+  voice: { voiceId: string; model: string; provider?: ProviderName },
   fileExists: (f: string) => boolean = () => true,
   speechHash?: string,
 ): LineStatus {
   if (!entry) return 'new';
   if (entry.textHash !== hash) return 'stale-text';
-  if (entry.voiceId !== voice.voiceId) return 'stale-voice';
+  if (entry.voiceId !== voice.voiceId || (voice.provider && (entry.provider ?? 'elevenlabs') !== voice.provider)) return 'stale-voice';
   if (entry.model !== voice.model) return 'stale-model';
   if (speechHash !== undefined && entry.speechHash !== speechHash) return 'stale-speech';
-  if (!fileExists(entry.file)) return 'missing-file';
+  if (!entry.files?.opus || !entry.files?.aac || !fileExists(entry.files.opus) || !fileExists(entry.files.aac)) return 'missing-file';
   return 'up-to-date';
 }
 
@@ -458,7 +526,7 @@ export interface PlanRow {
   chars: number;
   credits: number;
   status: LineStatus;
-  /** to generate in this run (within budget) */
+  /** to generate in this run (within budget and line limits) */
   take: boolean;
   /** running total of credits for taken rows */
   cumulative: number;
@@ -473,8 +541,10 @@ export interface Plan {
   cap: number;
   spend: number;
   chars: number;
-  /** first row that did not fit, if the budget stopped the run */
+  /** first credit-billed row that did not fit the cap */
   stoppedAt: PlanRow | null;
+  /** providers whose --max-lines guard was reached */
+  limited: ProviderName[];
   /** lines whose speech override no longer matches their text (auto-prep used instead) */
   staleOverrides: VoiceLine[];
 }
@@ -486,8 +556,10 @@ export function spendCap(o: { budget: number; reserve: number; remaining?: numbe
 }
 
 /**
- * Walk the selection in order; up-to-date lines cost nothing; stop at the first line that would
- * exceed the cap (no skipping ahead to smaller lines, so priority order holds).
+ * Walk the selection in order. Up-to-date lines cost nothing. The credit cap (ElevenLabs) stops
+ * credit-billed lines at the first one that would exceed it (no skipping ahead, so priority order
+ * holds); 0-credit providers (hf-space) go on, each limited by `maxLines[provider]`, and `limit`
+ * caps new clips overall.
  */
 export function buildPlan(
   selected: Selected[],
@@ -499,13 +571,18 @@ export function buildPlan(
     fileExists?: (f: string) => boolean;
     force?: boolean;
     speech?: SpeechOverrides;
+    maxLines?: Partial<Record<ProviderName, number>>;
+    limit?: number;
   },
 ): Plan {
   const rows: PlanRow[] = [];
   const skipped: Skipped[] = [];
   let spend = 0;
   let chars = 0;
+  let taken = 0;
   let stoppedAt: PlanRow | null = null;
+  const perProvider: Partial<Record<ProviderName, number>> = {};
+  const limited = new Set<ProviderName>();
   const staleOverrides: VoiceLine[] = [];
   for (const { line, tier } of selected) {
     const voice = resolveVoice(line.speaker, o.voices, o.runModel);
@@ -524,22 +601,51 @@ export function buildPlan(
     const speechHash = textHash(tts);
     const status = o.force ? 'stale-text' : lineStatus(o.manifest.lines[line.id], hash, voice, o.fileExists, speechHash);
     const n = [...tts].length;
-    const credits = creditsFor(n, voice.model);
+    const credits = creditsFor(n, voice.model, voice.provider);
     const row: PlanRow = { line, tier, voice, hash, tts, speechHash, speechSource: sp.source, chars: n, credits, status, take: false, cumulative: spend };
-    if (status !== 'up-to-date' && !stoppedAt) {
-      if (spend + credits <= o.cap) {
-        spend += credits;
-        chars += n;
-        row.take = true;
-        row.cumulative = spend;
-      } else stoppedAt = row;
-    }
     rows.push(row);
+    if (status === 'up-to-date') continue;
+    if (taken >= (o.limit ?? Infinity)) continue;
+    const used = perProvider[voice.provider] ?? 0;
+    if (used >= (o.maxLines?.[voice.provider] ?? Infinity)) {
+      limited.add(voice.provider);
+      continue;
+    }
+    if (credits > 0) {
+      if (stoppedAt) continue;
+      if (spend + credits > o.cap) {
+        stoppedAt = row;
+        continue;
+      }
+    }
+    spend += credits;
+    chars += n;
+    taken++;
+    perProvider[voice.provider] = used + 1;
+    row.take = true;
+    row.cumulative = spend;
   }
-  return { rows, skipped, cap: o.cap, spend, chars, stoppedAt, staleOverrides };
+  return { rows, skipped, cap: o.cap, spend, chars, stoppedAt, limited: [...limited], staleOverrides };
 }
 
-/** Redact a secret from any string before it is printed. */
-export function redact(s: string, secret: string | undefined): string {
-  return secret ? s.split(secret).join('[REDACTED]') : s;
+// ---------------------------------------------------------------------------------------------
+// Size estimate (dry run)
+
+/** Spoken German at the game's pace, characters per second (for the size estimate before audio exists). */
+export const CHARS_PER_SECOND = 14;
+/** Opus 24 kbps + AAC 48 kbps, plus ~4 % container overhead, in bytes per second of speech. */
+export const BYTES_PER_SECOND = ((24_000 + 48_000) / 8) * 1.04;
+export const DIST_WARN_MB = 50;
+
+/** Estimated size in MB of both encodings: by duration if known, else by characters. */
+export function estimateMB(items: { chars: number; durationMs?: number }[]): number {
+  let s = 0;
+  for (const i of items) s += i.durationMs ? i.durationMs / 1000 : i.chars / CHARS_PER_SECOND;
+  return (s * BYTES_PER_SECOND) / 1e6;
+}
+
+/** Redact secrets from any string before it is printed. */
+export function redact(s: string, ...secrets: (string | undefined)[]): string {
+  for (const secret of secrets) if (secret) s = s.split(secret).join('[REDACTED]');
+  return s;
 }

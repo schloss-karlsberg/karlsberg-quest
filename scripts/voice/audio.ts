@@ -1,6 +1,7 @@
 /**
  * ffmpeg post-processing: trim silence to ~60 ms at each end, two-pass loudnorm to I=-18 LUFS /
- * TP=-1.5 dBTP, MP3 mono 44.1 kHz 64 kbps; ffprobe for the real duration.
+ * TP=-1.5 dBTP, mono 24 kHz, then two encodings: Opus 24 kbps (voip) in WebM, and AAC ~48 kbps in
+ * .m4a (macOS Safari's Opus support is partial); ffprobe for the real duration.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, unlinkSync } from 'node:fs';
@@ -45,20 +46,26 @@ function measure(file: string): LoudMeasure {
   return JSON.parse(err.slice(err.lastIndexOf('{'), err.lastIndexOf('}') + 1)) as LoudMeasure;
 }
 
-/** Process `input` (any audio ffmpeg reads) into `output` (.mp3). Returns durationMs of the result. */
-export function processClip(input: string, output: string): number {
-  const trimmed = `${output}.trim.wav`;
+/**
+ * Process `input` (any audio ffmpeg reads) into `opusOut` (WebM/Opus) and `aacOut` (MP4/AAC).
+ * Returns durationMs of the Opus file.
+ */
+export function processClip(input: string, opusOut: string, aacOut: string): number {
+  const trimmed = `${opusOut}.trim.wav`;
+  const normed = `${opusOut}.norm.wav`;
   try {
-    execFileSync(FFMPEG, [...quiet, '-i', input, '-af', TRIM, '-ac', '1', '-ar', '44100', trimmed]);
+    execFileSync(FFMPEG, [...quiet, '-i', input, '-af', TRIM, '-ac', '1', '-ar', '48000', trimmed]);
     const m = measure(trimmed);
     const ln =
       `loudnorm=${LOUD}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:` +
       `measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true`;
-    execFileSync(FFMPEG, [...quiet, '-i', trimmed, '-af', ln, '-ac', '1', '-ar', '44100', '-c:a', 'libmp3lame', '-b:a', '64k', '-f', 'mp3', output]);
+    execFileSync(FFMPEG, [...quiet, '-i', trimmed, '-af', ln, '-ac', '1', '-ar', '24000', '-c:a', 'pcm_s16le', normed]);
+    execFileSync(FFMPEG, [...quiet, '-i', normed, '-c:a', 'libopus', '-b:a', '24k', '-application', 'voip', '-ac', '1', '-f', 'webm', opusOut]);
+    execFileSync(FFMPEG, [...quiet, '-i', normed, '-c:a', 'aac', '-b:a', '48k', '-ac', '1', '-movflags', '+faststart', '-f', 'mp4', aacOut]);
   } finally {
-    if (existsSync(trimmed)) unlinkSync(trimmed);
+    for (const f of [trimmed, normed]) if (existsSync(f)) unlinkSync(f);
   }
-  return durationMs(output);
+  return durationMs(opusOut);
 }
 
 export function durationMs(file: string): number {
