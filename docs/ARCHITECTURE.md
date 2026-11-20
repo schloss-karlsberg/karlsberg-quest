@@ -856,7 +856,12 @@ Round-4 (polish: set dressing) integration rules:
   fresnel rim, flowing bands, a blank face with dark eye hollows, the lower body dissolving into
   mist, an occasional slice glitch, skirt swing; around the feet 9 camera-facing mist puffs (thin
   out near the camera) and motes. Warm amber for Hanne, cold flicker for the others, era tint;
-  visible only in its era; turns towards the player. Reduced motion calms it.
+  visible only in its era. Turning (F-33, pure helpers `approachYaw` / `shortestArc` / `yawToward` in
+  `logic.ts`, `tests/npc-turn.test.ts`): in a conversation (and for a story `dialogue:say` line it
+  speaks with the player within 10 m) the body turns round to the player in `TALK_TURN_S` = 0.4 s,
+  afterwards back to its placement yaw in 1.2 s; the rigged head looks at a player within 9 m, the
+  procedural figure (no head look) slowly turns to a player within 8 m instead. Reduced motion
+  snaps the turn and calms the figure.
   On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
   `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
   head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.
@@ -1212,7 +1217,15 @@ Each RPG track adds its own subsection here when it fills its system in.
   Known clues settle one tick after any accept / objective (`settleKnown`). On `story:chapter`,
   main quests of earlier chapters still running and unaccepted offers of earlier chapters are
   reset (chapter jumps; the e2e `test` chapter counts as after the campaign); side quests the
-  player took keep running unless their chapter fails them.
+  player took keep running unless their chapter fails them. The book restores on a state `load`
+  too (it fires before `save:loaded`, which reaches the story's resume first).
+- Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
+  a running main quest is always in `tracked()` (a lost entry heals on read, `track(id, false)`
+  ignores it, the journal shows no toggle for it). `mainOffer(chapter)`: with no main quest
+  running, the main quest on offer (content order, current chapter first) heads the tracker
+  (`.kqq-offer`, „Bei <Geber> annehmen“; deliberately not `.kqq-main`, so the story's line keeps
+  leading to the giver). The journal's „Laufend“ is `journalRunning()`: running quests plus main
+  quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the reward
   card and the chapter title card), reward card (EP stamp, items, codex facts with confidence +
