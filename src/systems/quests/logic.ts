@@ -518,7 +518,7 @@ export class QuestBook {
 
   /**
    * A game event: count every open objective it satisfies. Returns true when something counted.
-   * (kill · collect / drop · talk · room · examine · echo · calm · use · event)
+   * (kill · collect / drop · talk · room · examine · echo · calm · use · event · photo)
    */
   handle(name: string, payload: unknown): boolean {
     const p = (payload ?? {}) as Record<string, unknown>;
@@ -592,6 +592,8 @@ export class QuestBook {
         return name === 'menagerie:calmed' && (p.animal === o.animal || p.id === o.animal) ? 1 : 0;
       case 'event':
         return !!o.event && name === o.event && matches(p, o.match) ? 1 : 0;
+      case 'photo':
+        return name === 'photo:good' && !!o.target && p.id === o.target ? 1 : 0;
       default:
         return 0;
     }

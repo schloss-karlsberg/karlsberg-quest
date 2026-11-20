@@ -353,7 +353,7 @@ class QuestRuntime {
     const s = new Set<string>();
     for (const q of this.book.running())
       for (const o of this.book.openObjectives(q)) {
-        const ev: Record<string, string> = { kill: 'enemy:killed', collect: 'item:pickup', use: 'item:use', talk: 'npc:talk', room: 'room:enter', examine: 'clue:found', echo: 'echo:end', calm: 'menagerie:calmed' };
+        const ev: Record<string, string> = { kill: 'enemy:killed', collect: 'item:pickup', use: 'item:use', talk: 'npc:talk', room: 'room:enter', examine: 'clue:found', echo: 'echo:end', calm: 'menagerie:calmed', photo: 'photo:good' };
         if (ev[o.type]) s.add(ev[o.type]!);
         if (o.type === 'event' && o.event) s.add(o.event);
         if (o.type === 'collect' && o.drop) s.add('enemy:killed');
