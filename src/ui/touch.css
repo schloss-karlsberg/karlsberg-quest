@@ -1,0 +1,394 @@
+/* Touch controls (src/ui/touch.ts). Shown only with html[data-kq-touch] during play. */
+:root {
+  --kq-safe-t: env(safe-area-inset-top, 0px);
+  --kq-safe-r: env(safe-area-inset-right, 0px);
+  --kq-safe-b: env(safe-area-inset-bottom, 0px);
+  --kq-safe-l: env(safe-area-inset-left, 0px);
+  --kq-t-btn: 58px;
+  --kq-t-big: 84px;
+}
+
+/* no pinch zoom, no swipe-back, no text selection or callouts over the game */
+html[data-kq-touch],
+html[data-kq-touch] body {
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* menus still scroll by finger */
+html[data-kq-touch] .kq-modal,
+html[data-kq-touch] .kq-settings,
+html[data-kq-touch] .kq-title,
+html[data-kq-touch] .kq-layer {
+  touch-action: pan-y;
+}
+html[data-kq-touch] input,
+html[data-kq-touch] textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.kq-touch {
+  position: fixed;
+  inset: 0;
+  /* above the canvas and the HUD, below feature layers (15), the title (20) and modals (30) */
+  z-index: 14;
+  pointer-events: auto;
+  touch-action: none;
+  color: #efe6d2;
+  font-family: var(--serif);
+}
+.kq-touch.kq-hidden {
+  display: none;
+}
+
+/* ---- floating stick */
+.kq-t-stick {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border-radius: 50%;
+  border: 2px solid rgba(239, 230, 210, 0.35);
+  background: radial-gradient(circle, rgba(20, 17, 13, 0.25), rgba(20, 17, 13, 0.45));
+  pointer-events: none;
+}
+.kq-t-stick.kq-hidden {
+  display: none;
+}
+.kq-t-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
+  border-radius: 50%;
+  background: rgba(239, 230, 210, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.kq-t-stick.sprint {
+  border-color: rgba(217, 130, 43, 0.8);
+}
+.kq-t-stick.sprint .kq-t-knob {
+  background: rgba(217, 130, 43, 0.75);
+}
+
+/* ---- buttons */
+.kq-t-btn {
+  position: absolute;
+  width: var(--kq-t-btn);
+  height: var(--kq-t-btn);
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(239, 230, 210, 0.45);
+  background: rgba(20, 17, 13, 0.48);
+  color: inherit;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.08s,
+    background 0.12s;
+}
+.kq-t-btn > svg {
+  width: 52%;
+  height: 52%;
+  pointer-events: none;
+}
+.kq-t-btn.down {
+  transform: scale(0.92);
+  background: rgba(181, 139, 61, 0.6);
+}
+.kq-t-btn.cue {
+  border-color: rgba(217, 130, 43, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(217, 130, 43, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.kq-t-btn.kq-hidden {
+  display: none;
+}
+.kq-t-btn.on {
+  background: rgba(181, 139, 61, 0.5);
+}
+
+/* thumb arc, bottom right, around the big Hieb button */
+.kq-t-arc {
+  position: absolute;
+  right: calc(18px + var(--kq-safe-r));
+  bottom: calc(18px + var(--kq-safe-b));
+  width: 250px;
+  height: 250px;
+  pointer-events: none;
+}
+.kq-t-arc .kq-t-btn {
+  pointer-events: auto;
+}
+.kq-t-btn.attack {
+  right: 0;
+  bottom: 0;
+  width: var(--kq-t-big);
+  height: var(--kq-t-big);
+  border-width: 2px;
+}
+.kq-t-btn.dodge {
+  right: 98px;
+  bottom: 0;
+}
+.kq-t-btn.bannlicht {
+  right: 86px;
+  bottom: 70px;
+}
+.kq-t-btn.lock {
+  right: 12px;
+  bottom: 98px;
+  width: 50px;
+  height: 50px;
+}
+.kq-t-btn.balm {
+  right: 166px;
+  bottom: 4px;
+  width: 48px;
+  height: 48px;
+}
+.kq-t-btn.shift {
+  right: 160px;
+  bottom: 120px;
+  width: 52px;
+  height: 52px;
+}
+/* the contextual action: a pill that carries the prompt's text */
+.kq-t-btn.interact {
+  right: 64px;
+  bottom: 150px;
+  width: auto;
+  min-width: var(--kq-t-btn);
+  max-width: 220px;
+  height: 52px;
+  border-radius: 26px;
+  padding: 0 16px 0 10px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+.kq-t-btn.interact > svg {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+.kq-t-btn.interact.lit {
+  opacity: 1;
+  border-color: rgba(217, 130, 43, 0.95);
+  background: rgba(40, 30, 18, 0.7);
+}
+.kq-t-label {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* hold ring (Wuchthieb charge, era return): fills while held */
+.kq-t-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(rgba(217, 130, 43, 0.9) var(--kq-fill, 0%), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  opacity: 0;
+}
+@property --kq-fill {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.kq-t-btn.down .kq-t-ring {
+  opacity: 1;
+  animation: kq-t-fill 0.45s linear forwards;
+}
+.kq-t-btn.shift.down .kq-t-ring {
+  animation-duration: 1.2s;
+}
+@keyframes kq-t-fill {
+  from {
+    --kq-fill: 0%;
+  }
+  to {
+    --kq-fill: 100%;
+  }
+}
+
+/* abilities: a small row above the arc */
+.kq-t-skills {
+  position: absolute;
+  right: calc(20px + var(--kq-safe-r));
+  bottom: calc(282px + var(--kq-safe-b));
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.kq-t-skills .kq-t-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  pointer-events: auto;
+  opacity: 0.8;
+}
+.kq-t-num {
+  position: absolute;
+  right: 3px;
+  bottom: 0;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* top bar, right */
+.kq-t-top {
+  position: absolute;
+  top: calc(10px + var(--kq-safe-t));
+  right: calc(12px + var(--kq-safe-r));
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+.kq-t-top .kq-t-btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  pointer-events: auto;
+}
+.kq-t-pop {
+  position: absolute;
+  top: calc(64px + var(--kq-safe-t));
+  right: calc(120px + var(--kq-safe-r));
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 26px;
+  background: rgba(20, 17, 13, 0.7);
+}
+.kq-t-pop.kq-hidden {
+  display: none;
+}
+.kq-t-chip {
+  min-width: 46px;
+  height: 46px;
+  padding: 0 12px;
+  border-radius: 23px;
+  border: 1.5px solid rgba(239, 230, 210, 0.45);
+  background: transparent;
+  color: #efe6d2;
+  font: 18px var(--sc);
+  touch-action: none;
+}
+
+/* ---- the HUD in touch mode: safe areas, room for the controls, smaller on phones */
+html[data-kq-touch] .kq-hud {
+  inset: var(--kq-safe-t) var(--kq-safe-r) var(--kq-safe-b) var(--kq-safe-l);
+}
+html[data-kq-touch] .kq-hud .kq-toasts {
+  top: 70px;
+  right: 18px;
+}
+html[data-kq-touch] .kq-hud .kq-prompt {
+  bottom: 18px;
+}
+html[data-kq-touch] .kq-prompt kbd.kq-touch-key {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: rgba(20, 17, 13, 0.5);
+}
+html[data-kq-touch] .kq-prompt kbd.kq-touch-key svg {
+  width: 20px;
+  height: 20px;
+}
+html[data-kq-touch] .kq-crosshair {
+  opacity: 0.6;
+}
+
+/* phones in landscape: everything a notch smaller */
+@media (max-height: 500px) {
+  .kq-touch {
+    --kq-t-btn: 50px;
+    --kq-t-big: 72px;
+  }
+  .kq-t-arc {
+    transform: scale(0.86);
+    transform-origin: right bottom;
+  }
+  .kq-t-skills {
+    bottom: calc(232px + var(--kq-safe-b));
+  }
+  .kq-t-skills .kq-t-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .kq-t-top .kq-t-btn {
+    width: 42px;
+    height: 42px;
+  }
+  html[data-kq-touch] .kq-hud {
+    zoom: 0.78;
+  }
+  html[data-kq-touch] .kq-modal {
+    max-height: 94vh;
+    padding: 18px 20px 16px 52px;
+  }
+  /* the new-game lantern screen: the 250 px lantern pushed its button under the art on phones */
+  .kqs-dark {
+    gap: 6px !important;
+  }
+  .kqs-dark .kqs-lantern-stage {
+    zoom: 0.56;
+  }
+  .kqs-dark .kqs-dark-title {
+    font-size: 22px;
+  }
+}
+
+/* portrait phones: ask to turn the device */
+.kq-rotate {
+  display: none;
+}
+@media (orientation: portrait) and (max-width: 600px) {
+  html[data-kq-touch] .kq-rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    text-align: center;
+    background: rgba(20, 17, 13, 0.92);
+    color: #efe6d2;
+    font: 22px var(--serif);
+    pointer-events: auto;
+  }
+}
+
+html[data-kq-reduced-motion] .kq-t-btn {
+  transition: none;
+}
+
+/* key hints on the HUD docks mean nothing on touch: the buttons carry the icons */
+html[data-kq-touch] .kq-dock-vitals .key,
+html[data-kq-touch] .kqp-q-key,
+html[data-kq-touch] .kqj-foot kbd {
+  display: none;
+}

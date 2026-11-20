@@ -162,6 +162,9 @@ export const REACH = 2.1;
 
 /** Is a player at x/z facing yaw (radians, three.js: forward = (−sin, −cos)) able to touch the water? */
 export function canTouch(px: number, pz: number, yaw: number, era: Era): boolean {
+  // only from the front: on the slope behind the wall the water is still within REACH, but the
+  // wall (1.1 m high, 0.55 m thick) stands between
+  if (toLocal(px, pz)[1] < PIECES.wall.w) return false;
   const [tu, tw] = touchLocal(era);
   const [tx, tz] = toWorld(tu, tw);
   const dx = tx - px;

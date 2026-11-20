@@ -11,6 +11,7 @@ scripts/release/private/
 
 # recorded voice clips + manifest: not committed until the audio licensing is settled (pnpm voice:gen)
 public/voice/
-# local secrets (ELEVENLABS_API_KEY, HF_TOKEN): never commit
+# local secrets (ELEVENLABS_API_KEY, HF_TOKEN, content tools): never commit; see .env.example
 .env
 .env.*
+!.env.example
