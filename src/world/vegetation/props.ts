@@ -165,8 +165,11 @@ interface Piece {
   height: number;
 }
 
-/** Wind + snow patch on top of the loader's world-light patch (kqStandard). */
-function patchNature(m: Material, wind: boolean): void {
+/**
+ * Wind, enemy duck, snow and see-through patch on top of the loader's world-light patch
+ * (kqStandard). Exported for tests/props-shader.test.ts.
+ */
+export function patchNature(m: Material, wind: boolean): void {
   const mat = m as MeshStandardMaterial;
   if (!(mat instanceof MeshStandardMaterial) || mat.userData.kqNature) return;
   mat.userData.kqNature = true;
