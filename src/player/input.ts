@@ -52,7 +52,9 @@ export type Action =
   /** Third-person action camera: soft lock-on (Tab / middle mouse): lock the best target, cycle, release. */
   | 'lockOn'
   /** Switch between the over-the-shoulder camera and first person (V is taken: Röntgenblick). */
-  | 'cameraMode';
+  | 'cameraMode'
+  /** Smartphone photo mode (src/systems/photo): N raises / lowers the phone (P is pause). */
+  | 'photo';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -94,6 +96,7 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   skill3: ['KeyU'],
   lockOn: ['Tab', 'Mouse1'],
   cameraMode: ['F5'],
+  photo: ['KeyN'],
 };
 
 /**
@@ -110,7 +113,7 @@ export const SHARED_KEYS: [Action, Action][] = [
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
   'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans', 'journal',
-  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode',
+  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode', 'photo',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];
 
@@ -162,6 +165,11 @@ export class Input {
   private wheel = 0;
   /** False while a menu/modal has focus: gameplay input is ignored. */
   enabled = true;
+  /**
+   * Actions hidden from every reader while a mode owns their keys (photo mode: the click is the
+   * shutter, the right click puts the phone away). The owner reads them with `raw = true`.
+   */
+  readonly muted = new Set<Action>();
   private readonly listeners: [EventTarget, string, EventListener][] = [];
 
   constructor(private readonly canvas: HTMLElement) {
@@ -260,14 +268,16 @@ export class Input {
     this.bindings = effectiveBindings(overrides);
   }
 
-  isDown(a: Action): boolean {
+  isDown(a: Action, raw = false): boolean {
     if (!this.enabled) return false;
+    if (!raw && this.muted.has(a)) return false;
     return this.down.has(virtualCode(a)) || this.bindings[a].some((c) => this.down.has(c));
   }
 
   /** True if the action was pressed since the last `endStep()`. */
-  wasPressed(a: Action): boolean {
+  wasPressed(a: Action, raw = false): boolean {
     if (!this.enabled && a !== 'pause') return false;
+    if (!raw && this.muted.has(a)) return false;
     return this.pressedCodes.has(virtualCode(a)) || this.bindings[a].some((c) => this.pressedCodes.has(c));
   }
 
