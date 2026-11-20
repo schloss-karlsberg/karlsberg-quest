@@ -14,13 +14,13 @@
 | [`storyboard-beats.md`](storyboard-beats.md) | 28 storyboard beats mapped onto `SHOTS`, and the shots they replace |
 | [`impact.md`](impact.md) | 25 work packages with files, change, size and dependencies |
 | [`systems.md`](systems.md) | Photo mode, cinematic, tour group, animals, Quelle hub, party, training flag; pacing targets |
-| [`open-questions.md`](open-questions.md) | 16 questions; Q1 and Q3–Q11 resolved, the rest open with defaults |
+| [`open-questions.md`](open-questions.md) | 16 questions, all resolved by the owner |
 
 ## Decisions recorded (owner, 2026-11-20, via the coordinator)
 
 1. The opening is a guided tour (a tutorial). The player is an ordinary visitor; the look is the owner's avatar. No surveyor, Feldstation or Bauwagen.
 2. The guide is big, skinny and bald, modelled on a real living guide whose consent is pending. **Placeholder name: Gerold Imhoff** in all docs and dialogue; the swap is one name. No real name, no personal details.
-3. Route: meet at the **Karlsberger Hof** car park at the forest edge → the hook along the farm track to the Felsenpfad → along the Karlsbergweiher → the Karlsbergquelle. The place name "Karlsberger Hof" may be named as a location (guide dialogue, map label, docs); no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts stay neutral and sourced.
+3. Route: meet at the car park at the forest edge (Wanderparkplatz; the building there is the Karlsberger Hof) → the hook along the farm track to the Felsenpfad → along the Karlsbergweiher → the Karlsbergquelle. The place name "Karlsberger Hof" may be named as a location (guide dialogue, map label, docs); no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts stay neutral and sourced.
 4. The group has 15 people, including modern doubles of the Duke, Mannlich, Hanne, Jost and Soll, plus Peter and Liese; modern Jost has two dogs. The circle closes at the party.
 5. The tour teaches walking, camera, talking, map, codex, photo mode and sneaking. No combat in the tour; the first fight is a short guided training in 1789.
 6. A mysterious moment: the wind picks up and the two dogs run barking into the forest (foreshadowing the Meute).
@@ -40,7 +40,7 @@
 The owner's answers to the open questions, plus the earlier rulings:
 
 - **Guide:** "Gerold Imhoff" is the placeholder name until the real guide gives written consent; the swap is one name. No real name, no personal details.
-- **Karlsberger Hof:** may be named as a location only (meeting point, map label, guide dialogue, docs); no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts neutral and sourced.
+- **Karlsberger Hof:** the name may be used as a location only; no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts neutral and sourced. **Q2 resolved:** no detailed model exists, so the tour starts at the Wanderparkplatz, the building is not modelled in the present (no new mesh), the name appears only where it occurs naturally (an address, the road name), and the guide points toward it in one line.
 - **Animals:** roe deer (doe and fawn), not red deer.
 - **Unverified facts** (the Weiher's date and purpose, whether the Quelle fed the palace, palace-era quarrying on the Felsenpfad) are never FAKT; they are marked open, in the guide's mouth too. The cx.32 re-check is an open task.
 - **Time:** strict, one afternoon (≈ 14:30–16:50): the present is one November afternoon, from the tour through dusk to the party at nightfall. WP-12 is approved.
@@ -50,8 +50,24 @@ The owner's answers to the open questions, plus the earlier rulings:
 - **The tour is skippable on replay**, starting at the break at the Quelle.
 - **Photo mode** is present-only („Kein Netz“ in the past), key N, no XP; good photos unlock codex cards.
 - **Storyboard:** 66–68 shots accepted; the budget is raised.
+- **Party drinks (Q12):** mulled wine plus children's punch, nobody drunk, no brands, no fireworks; fairy lights; a fire bowl in the burn ending.
+- **Jacket (Q13):** a bright outdoor jacket (orange or red), so „Feuersalamander“ and `laub.k1.orange` survive; costume by kq-characters (WP-13).
+- **Messstab (Q14):** Marlene lends it and says „Ach, behalt ihn“ at the party. **Return leg (Q15):** the group goes uphill to the plateau. **cx.32 (Q16):** the brewery / villa sentence is dropped.
 
-Still open: Q2 (how the building is shown), Q12 (party drinks), Q13 (the player's jacket), Q14 (Marlene's staff), Q15 (return leg), Q16 (cx.32 sentence).
+All open questions are resolved.
+
+## Owners of the work packages
+
+| Owner | Work packages |
+|---|---|
+| kq-mobile | WP-02 (safe ring, heal, respec), WP-05 (fast travel, POIs), WP-14 (photo mode) |
+| kq-systems (new session) | WP-15 (cinematic), WP-16 (path-walk group), the systems side of the Quelle hub (WP-01 code, WP-04 teleport) |
+| kq-characters | WP-17 (animals), WP-13 costume |
+| 3D subagent (later) | WP-18 party set (props, lights, fire bowl) |
+| kq-integrate | WP-22 (e2e) |
+| kq-story | everything else (content, strings, story files, generators, unit tests for content, docs, storyboard) |
+
+The story contracts these owners build against are in [`systems.md`](systems.md) § "Story contracts".
 
 ## The five hard problems, solved on paper
 

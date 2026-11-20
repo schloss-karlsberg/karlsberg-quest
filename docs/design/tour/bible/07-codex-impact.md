@@ -27,7 +27,9 @@
 - **Streitpunkt:** Die Stadt Homburg nennt 1776–85 als Bauzeit; 1776 liegt vor dem Kauf des Louisenhofs (1777, `cx.02`). Darum steht im Text nur „zur Bauzeit des Schlosses“.
 - **Quellen:** HOM-HF17; SKD
 - **Lizenz:** eigener Text
-- **Hinweis:** Keine Eigentümer- oder Markennennung. Der Ortsname „Karlsberger Hof“ ist erlaubt (Owner, 2026-11-20).
+- **Hinweis:** Keine Eigentümer- oder Markennennung. Der Name „Karlsberger Hof“ steht hier als Name des Ortes (Adresse, Quellentitel), nur als Ort (Q2 entschieden). Das Gebäude wird im Heute nicht modelliert.
+- **Zusatz (optional, Quelle nachtragen):** Das Gebäude ist heute verändert: kürzer als das Baumagazin, mit neuem Dach und einem zusätzlichen Geschoss (Ergebnis der Schwester-Repo-Prüfung, 2026-11-20). Dass es heute noch steht, sagen schon cx.32 und `content/quests/04-kapitel-4.quests.json:300`; für „verändert“ vor dem Einbau die Quelle nennen, sonst weglassen.
+- **Nicht verwechseln:** KB-B30 „Carlsberger Hof (Meierei)“ ist ein anderer Hof von 1789, rund 120 m südlich; das Baumagazin ist KB-B29.
 
 ### cx.T2 – Der Felsenpfad
 - **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** Station 2
@@ -57,7 +59,6 @@ Fotokarten sind kurze Kartenrückseiten, die ein gutes Foto freischaltet. Sie ve
 
 | Arbeits-ID | Titel | Freigeschaltet durch | Inhalt | Verweist auf |
 | --- | --- | --- | --- | --- |
-| `ph.hof` | Von außen | Foto des Gebäudes am Parkplatz | „Nur von außen. Privatbesitz.“ + Bild | cx.T1 |
 | `ph.sandstein` | Roter Stein | Foto Buntsandstein | ein Satz zum Buntsandstein | cx.T2 |
 | `ph.insel` | Die Insel | Foto der Insel | „Im Laserscan sieht man sie auch.“ | cx.T3, rm.08 |
 | `ph.tafel` | Was auf der Tafel steht | Foto der Infotafel an der Quelle | Kurzfassung von cx.41 (unser Text, nicht der der echten Tafel) | cx.41 |
@@ -72,7 +73,7 @@ Fotokarten sind kurze Kartenrückseiten, die ein gutes Foto freischaltet. Sie ve
 
 | Karte | Änderung |
 | --- | --- |
-| **cx.32 Das Baumagazin** | Text an cx.T1 angleichen oder zusammenlegen (Empfehlung: cx.32 bleibt die K4-Karte über das Baumagazin 1796, verweist auf cx.T1 für die spätere Geschichte). Den Satz „Es war später Brauerei, Forsthaus und Villa eines Brauereidirektors“ **streichen**, bis die Quelle geprüft ist (§4). Neu: „Es steht als einziges Gebäude noch; heute heißt es Karlsberger Hof und ist Privatbesitz (→ cx.T1).“ |
+| **cx.32 Das Baumagazin** | Text an cx.T1 angleichen oder zusammenlegen (Empfehlung: cx.32 bleibt die K4-Karte über das Baumagazin 1796, verweist auf cx.T1 für die spätere Geschichte). Den Satz über die spätere Nutzung als Brauerei und Direktorenvilla **streichen** (Owner, 2026-11-20, Q16). Neu: „Es steht als einziges Gebäude noch; heute heißt es Karlsberger Hof und ist Privatbesitz (→ cx.T1).“ |
 | **cx.34 Der Laserscan von 2025** | „frei durch“: `entry.p.1` → `q.p.marlene` (Marlene am Weiher). Text unverändert. |
 | **cx.35 Schauen, nicht graben** | „frei durch“: `q.p.marlene` (Marlenes Satz „Wir schauen, wir graben nicht“). Text unverändert. |
 | **cx.38 Was in diesem Spiel erfunden ist** | + „Gerold Imhoff und seine Führungsgruppe, die Doppelgänger von heute, Josts Hunde Diane und Bijou von heute, die Bussole im Trog, das Abschlussfest“; − „die Feldstation“ (falls dort genannt; in `07-codex.md` nicht, wohl aber in der Fiktionsliste der Bibel und in `story.credits.fictionText`). |

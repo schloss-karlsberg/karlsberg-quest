@@ -49,7 +49,7 @@ Der Platz las bisher `q.p.trichter`, `q.p.meiler`, `q.p.irrlichter`. Jetzt sind 
 2. Mindestens einer: „Für Marlene habe ich ein paar Stellen im Wald nachgemessen. Gegraben habe ich nicht.“
 3. Keiner (**Standard**): „Ich war auf einer Führung. Das Reh habe ich fotografiert, den Rest habe ich mir gemerkt.“
 Zusatz nach `q.p.irrlichter` erledigt: „Über dem Weiher waren Lichter. Ich habe sie nicht gefragt, woher.“
-Zusatz nach Album (alle acht Prolog-Fotoziele): „Im Telefon habe ich acht Bilder, und auf keinem ist ein Schloss.“
+Zusatz nach Album (alle sieben Prolog-Fotoziele): „Im Telefon habe ich sieben Bilder, und auf keinem ist ein Schloss.“
 Der Lesart-Satz „Spuren“ (`flag.p_spuren`) bleibt; ohne `q.p.punktwolke` gilt der vorhandene `offen`-Satz.
 
 ## 7. Nach dem Epilog (ersetzt)

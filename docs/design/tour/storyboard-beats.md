@@ -8,9 +8,9 @@ New looks needed by `h.look()`: `tour` (golden afternoon, low sun), `pause` (low
 
 | # | Shot id | Beat (one sentence) | Place (x / z) | Era · light | Shot hint |
 |---|---|---|---|---|---|
-| 1 | `t0-ticket` | A paper ticket on black: "Öffentliche Führung, Treffpunkt Karlsberger Hof, 14:30". | title screen | — · — | UI shot, `ui: '.kqs-title'`; no world |
+| 1 | `t0-ticket` | A paper ticket on black: "Öffentliche Führung, Treffpunkt: Wanderparkplatz am Karlsberg, 14:30". | title screen | — · — | UI shot, `ui: '.kqs-title'`; no world |
 | 2 | `t1-treffpunkt` | The group of fifteen gathers at the forest-edge car park while a tall, bald guide raises a folded umbrella. | 522 / −766 | today · tour | `place({x:530,z:-760,tx:520,tz:-772,pitch:-4,zoom:5})`, group spawned in a half circle |
-| 3 | `t2-gebaeude` | Across the car park stands the long old building, the only one left of the palace, plain and without any sign. | 519 / −813 | today · tour | over the group's shoulders, `tx:519,tz:-813`; building fills the right third; **no lettering on it** |
+| 3 | `t2-station1` | The guide points his umbrella past the car park into the trees, where the only surviving palace building stands unseen. | 522 / −766 | today · tour | over the group's shoulders towards `tx:519,tz:-813`; only forest there (**no building mesh**, Q2) |
 | 4 | `t3-handy` | On the farm track the phone buzzes and the first photo frames a golden beech leaf against the sun. | ≈ 560 / −650 | today · tour, backlight | first-person phone UI, `ui: '.kq-photo'`; sun in frame |
 | 5 | `t4-felsenpfad` | At the little wooden bridge the guide points at red sandstone rocks while a man sketches them. | 683 / −596 | today · tour | `place({x:672,z:-584,tx:694,tz:-599,pitch:2,zoom:4.5})` |
 | 6 | `t5-wind` | The wind tears the gold leaves sideways and two dogs bolt barking up the slope into the trees. | 700 / −640 (prüfen) | today · tour, darker under the crowns | low camera, dogs mid-run, leaves streaking; a hint of lamplight far up the slope, barely there |

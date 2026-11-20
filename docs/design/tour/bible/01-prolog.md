@@ -24,22 +24,24 @@ Koordinaten lokal (x = E − 381000, z = −(N − 5465000); z < 0 ist Norden), 
 ### t0 – Vor dem Spiel
 
 Titel → Inhaltshinweis (16+) → Name → statt der Streichholzschachtel ein **Ticket** auf schwarzem Grund:
-„Öffentliche Führung · Schloss Karlsberg – was vom Märchenschloss blieb · Treffpunkt: Karlsberger Hof, Wanderparkplatz am Waldrand · Sa., 14:30 Uhr · festes Schuhwerk“.
+„Öffentliche Führung · Schloss Karlsberg – was vom Märchenschloss blieb · Treffpunkt: Wanderparkplatz am Karlsberg, am Waldrand · Sa., 14:30 Uhr · festes Schuhwerk“.
 Der Klick „Ticket abreißen“ startet den Ton (wie bisher das Streichholz; Ablauf in `src/systems/story/title/flow.ts` bleibt, nur das Motiv wechselt). Kein Logo, kein Werbetext.
 
 ### t1 – Treffpunkt (Bewegung, Kamera)
 
-**Ort:** Wanderparkplatz am Karlsberger Hof, **522 / −766** (OSM-Knoten 778169747). Kapitel-Checkpoint `{x 524, z −770, yaw 200, era today}` (prüfen: Blick nach Süden über den Parkplatz zum Gebäude 519/−813).
+**Ort:** Wanderparkplatz am Waldrand, **522 / −766** (OSM-Knoten 778169747). Kapitel-Checkpoint `{x 524, z −770, yaw 200, era today}` (prüfen: Blick nach Süden über den Parkplatz, Richtung 519/−813, wo hinter den Bäumen das alte Gebäude steht).
 Du stehst am Rand der Gruppe. Gerold hebt einen zusammengeklappten Schirm wie ein Zeigestock. Erste Steuerung ab Sekunde 0: W/A/S/D (`ui.tut.move`), Maus schauen. Ziel: „Zur Gruppe“ (6 m).
 - `imhoff.t.01`: „So. Fünfzehn. Dann sind wir komplett. Ich bin Gerold Imhoff, und ich bin heute zwei Stunden lang euer Mann für das Schloss, das nicht mehr da ist.“
 - Herr Soll (Doppelgänger) zählt halblaut mit: „… dreizehn, vierzehn, fünfzehn. Stimmt.“
 - `imhoff.t.02` (Kamera-Tutorial: „Schau nach oben“): „Guckt mal hoch, da oben auf dem Berg. Nichts zu sehen, oder? Nur Wald. Genau da stand es.“ → Ziel „Schau zum Berg“ (Blickrichtung Ost, Toleranz 30°).
 
-### t2 – Station 1: das Gebäude am Parkplatz (Sprechen, Codex)
+### t2 – Station 1: am Wanderparkplatz (Sprechen, Codex)
 
-**Ort:** derselbe Platz; Blick auf das Gebäude **519 / −813** (Grundriss x 503–535, z −837…−788). Das Gebäude wird **ohne Schilder, Beschriftung oder Logos** gebaut.
+> **Q2 entschieden (Owner, 2026-11-20).** Es gibt kein detailliertes Modell des heutigen Gebäudes (nur das hypothetische 1789-Baumagazin KB-B29 in `public/data/palace/buildings.glb`, nicht CC0, und die amtliche LoD2-Kubatur, dl-de/by-2-0). Darum: Die Führung beginnt am **Wanderparkplatz**. Das Gebäude wird im Heute **nicht** modelliert (höchstens Gelände und Wald an seiner Stelle, kein neues Mesh). Der Name „Karlsberger Hof“ steht nur, wo er natürlich vorkommt (Adresse, Straßenname: OSM-Weg 29272436 heißt so), und es gilt die Regel „nur als Ort“. Gerold zeigt in **einem** Satz in die Richtung (ein FAKT, der schon im Codex steht). Nicht verwechseln mit KB-B30 „Carlsberger Hof (Meierei)“, einem anderen Hof von 1789 rund 120 m südlich.
+
+**Ort:** derselbe Platz; Gerold zeigt Richtung **519 / −813** (OSM-Grundriss x 503–535, z −837…−788). Dort stehen im Spiel nur Wald und Gelände; kein Gebäude-Mesh, keine Schilder, keine Beschriftung.
 E „Zuhören“ bei Gerold (Sprech-Tutorial; der Gesprächsradius ist eine sichere Zone wie bei jedem NPC). Stationstext (FAKT, Quellen in `07-codex-impact.md` `cx.T1`):
-- `imhoff.t.station1`: „Willkommen am Fuß des Karlsbergs. Das lange Gebäude dort ist der Karlsberger Hof, und er ist das Einzige, was von der ganzen Schlossanlage des Herzogs Karl II. August noch steht. Gebaut wurde er zur Bauzeit des Schlosses, als Lager für das Baumaterial, mit Wohnungen, unten am Berg. Später war er Hofgut, dann eine Zuckerraffinerie, ab 1866 ein Forsthaus. Heute ist er Privatbesitz, also schauen wir von hier.“
+- `imhoff.t.station1`: „Willkommen am Fuß des Karlsbergs. Da hinten, hinter den Bäumen, steht noch ein einziges Gebäude der ganzen Schlossanlage des Herzogs Karl II. August: das alte Baumagazin. Heute ist es Privatbesitz, da gehen wir nicht hin.“ (FAKT, `cx.32`, `cx.T1`; die ganze Geschichte des Gebäudes steht im Codex, nicht in Gerolds Mund.)
 - `imhoff.t.station1b`: „Und das Schloss selbst? Ab 1778 gebaut, 1793 abgebrannt. Fünfzehn Jahre. Kürzer als so mancher Kredit.“ (FAKT: Baubeginn 1778, Brand 28. Juli 1793; `cx.22`, `cx.03`.)
 - Codex-Tutorial: Nach der Station erscheint die Karte `cx.T1` „Das Gebäude, das blieb“, Hinweis „Neue Karte im Codex. [J] → Codex“ (`ui.tut.codex`, neu).
 - Karten-Tutorial: Gerold zeigt auf die Infotafel (470/−793, OSM 5768687206): „Wer sich verläuft: Die Runde ist auf der Tafel.“ → die Route `p-fuehrung` wird auf der Karte gezeichnet, Ziel „Öffne die Karte“ (Reisekarte). Die Tafel im Spiel trägt **unseren** Text (Route, vier Stationen), nicht den der echten Tafel.
@@ -48,7 +50,7 @@ E „Zuhören“ bei Gerold (Sprech-Tutorial; der Gesprächsradius ist eine sich
 ### t3 – Der Weg zum Felsenpfad (Fotomodus)
 
 **Weg:** Abzweig am Parkplatz **515 / −730** → Feldweg (OSM 29272437) nach Südosten, 269 m, 254 → 268 m, bis zum Einstieg **623,5 / −486**. Die Gruppe folgt Gerold (System `tour-group`, `systems.md` §3); wer zurückbleibt, hört „Kommst du? Wir warten vorne.“
-Unterwegs, nach ≈ 80 m: das Handy brummt. Nachricht „Willkommen im WaldPark Schloss Karlsberg“ (erfundener Netzgruß, kein Anbieter). **Foto-Tutorial** (`photo`, Taste N): „Halte [N]: Handy-Kamera. Klick: Foto.“ Erstes Ziel: das Gebäude am Parkplatz von weitem oder ein Buchenblatt im Gegenlicht (beides zählt). Ein gutes Foto landet im **Album** und zeigt, wie Fotokarten freigeschaltet werden (`systems.md` §1).
+Unterwegs, nach ≈ 80 m: das Handy brummt. Nachricht „Willkommen im WaldPark Schloss Karlsberg“ (erfundener Netzgruß, kein Anbieter). **Foto-Tutorial** (`photo`, Taste N): „Halte [N]: Handy-Kamera. Klick: Foto.“ Erstes Ziel: ein goldenes Buchenblatt im Gegenlicht. Ein gutes Foto landet im **Album** und zeigt, wie Fotokarten freigeschaltet werden (`systems.md` §1).
 
 ### t4 – Station 2: Felsenpfad
 
@@ -161,8 +163,8 @@ Zurück an der Quelle, im Heute. **Es sind kaum fünf Minuten vergangen** (§9).
 
 | id | Ort | Bezug | x | z | r (m) | Ära | Trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `loc.p.treffpunkt` | Wanderparkplatz am Karlsberger Hof | OSM node 778169747; Infotafel 5768687206 | 522 | −766 | 12 | heute | Kapitel-Checkpoint (524/−770, prüfen); t1/t2 |
-| `loc.p.hof` | Karlsberger Hof (Gebäude), nur Blickziel | OSM way 279751239 | 519 | −813 | – | heute | Fotoziel; **ohne Schilder/Logo** |
+| `loc.p.treffpunkt` | Wanderparkplatz am Waldrand (Treffpunkt) | OSM node 778169747; Infotafel 5768687206 | 522 | −766 | 12 | heute | Kapitel-Checkpoint (524/−770, prüfen); t1/t2 |
+| `loc.p.hof` | Richtung des alten Baumagazins (Adresse Karlsberger Hof 1) | OSM way 279751239 | 519 | −813 | – | heute | nur Zeigerichtung für Gerold; **kein Mesh** (Q2) |
 | `loc.p.abzweig` | Abzweig des Feldwegs | OSM 29272437 / 1319570396 | 515 | −730 | 8 | heute | Gruppe setzt sich in Bewegung |
 | `loc.p.felsen_ein` | Einstieg Felsenpfad | Ende von 29272437 = Beginn 32707898 | 623,5 | −486 | 10 | heute | Gruppen-Wegpunkt |
 | `loc.p.wind` | Wind und Hunde | Felsenpfad, Hang | 650 (bzw. 700) | −540 (bzw. −640) | 12 | heute | t5 (Lage prüfen, nach Station 2) |
@@ -186,8 +188,7 @@ Ein **gutes Foto** = Ziel im mittleren Drittel, ≥ Mindestgröße im Bild, nich
 
 | id | Motiv | Ort (x/z) | Bedingung | Belohnung |
 | --- | --- | --- | --- | --- |
-| `photo.p.hof` | das Gebäude am Parkplatz | 519/−813 | ≥ 20 % Bildbreite | Album; t3-Tutorial |
-| `photo.p.blatt` | goldenes Buchenblatt im Gegenlicht | überall auf t3 | Sonne im Bild | Album (Tutorial-Alternative) |
+| `photo.p.blatt` | goldenes Buchenblatt im Gegenlicht | überall auf t3 | Sonne im Bild | Album; t3-Tutorial |
 | `photo.p.sandstein` | Buntsandstein am Felsenpfad | 694/−599 | ≥ 25 % Fläche | Album; Fotokarte `cx.T2`-Zusatz (ohne XP) |
 | `photo.p.reh` | Ricke und Kitz | 817/−704 (wandert) | ≤ 14 m (Fallback 22 m), beide im Bild | **`cx.T4`** (Quest `q.p.reh`) |
 | `photo.p.insel` | die Insel im Weiher | 891/−869 | ganz im Bild | Album |
@@ -296,6 +297,6 @@ Die ganze Zeitreise des Spiels liegt in der Pause an der Quelle. Wer ins Heute z
 ## 11. Übergabe an Kapitel 1
 
 - K1 `k1_0` bleibt der Einstieg: heute, an der Quelle, **derselbe Nachmittag** (Look `pause` statt `dawn`), E „Wasser berühren“ → 1789. Marlenes Funkzeile („Die Brötchen liegen auf der Stufe“) wird eine Handy-Nachricht von Gerold („Kuchen ist angeschnitten. Wir heben dir ein Stück auf.“). Laubs Satz vom eingetrockneten Tropfen bleibt (`cx.42`).
-- `k1_0b` (der Weg hinauf in 1789) und die Verkleidung (IDEAS-ROUND11 §2: Liese, Rock, Brief, Gitter) bleiben, wie sie sind. Änderung: Der Spieler ist kein Vermesser in Warnweste mehr, sondern Besucher in einer leuchtenden Outdoorjacke. „In Orange“ bleibt als Witz, wenn die Jacke des Owner-Avatars orange oder signalfarben ist; sonst `laub.k1.orange` → „Und mittendrin Sie. In dieser Jacke.“ (offen, `../open-questions.md` Q13).
+- `k1_0b` (der Weg hinauf in 1789) und die Verkleidung (IDEAS-ROUND11 §2: Liese, Rock, Brief, Gitter) bleiben, wie sie sind. Änderung: Der Spieler ist kein Vermesser in Warnweste mehr, sondern Besucher in einer leuchtenden Outdoorjacke. „In Orange“ und Lieses „Feuersalamander“ bleiben als Witz: Der Owner-Avatar trägt eine helle Outdoorjacke in Orange oder Rot. (entschieden, Q13: helle Outdoorjacke in Orange oder Rot; Kostüm kq-characters, WP-13).
 - **Keine Doppelung:** Das Training (t12) lehrt Hieb, Ausweichen, Wuchthieb, Bannlicht. K1 lehrt nichts davon neu. Die Mahnbriefe in Lieses Wäsche (`q.k1.kleider`, Weg „verdienen“) sind die erste **Anwendung**, nicht ein zweites Tutorial. Jost (1.5) lehrt weiter Verstecken vor der Meute (C/X/L/Wasser/Hohlweg/Sandstein), die erste Meute kommt in 1.10. Der alte p9b-Streuner und die drei Hunde aus p9b entfallen ersatzlos (K1 hat beides).
 - Das Schleichen der Rehszene (C, langsam) ist die Grundlage für Josts Lektion; Jost greift es auf: „Du kannst ja schon schleichen. Wer hat dir das beigebracht? Ein Reh?“
