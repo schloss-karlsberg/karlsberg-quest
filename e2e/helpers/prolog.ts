@@ -8,8 +8,9 @@ import { type PlayOptions, SCREENS } from './common';
  *
  *   p1 field station: Marlene's quest "Der Messstab" (the staff outside, then three Nebelinge on the
  *   way down to the dam: the first fight inside a minute) → p2/p3 "Was der Wald verbirgt" (the dam wall in Relief 2, the Orangerie step in VAT,
- *   Laub speaks) → p4–p6 "Die Bussole spricht" (Ehrenhof, the 1840 map, the hollow way, the pit —
- *   and the first fight: four Nebelinge rise from the Eiskeller) → p7–p9b "Spuren in der
+ *   Laub speaks) → p3q/p3r "Wasser, das sich erinnert" (down to the Karlsbergquelle, E at the
+ *   trough: the first time travel, 1789, hold Q home) → p4–p6 "Die Bussole spricht" (Ehrenhof,
+ *   the 1840 map, the hollow way, the pit — and the first fight: four Nebelinge rise from the Eiskeller) → p7–p9b "Spuren in der
  *   Punktwolke" (the point cloud, J: the field book, Q at the Ehrenhof → 1789, the servant's echo,
  *   a Streuner: Bannlicht + Messstab, Q home) → the stance "Was war das?" → p10 dusk → p11 night,
  *   the Feldbett → "Kapitel 1 · Der Hof".
@@ -253,6 +254,57 @@ export async function holdHome(page: Page): Promise<void> {
   });
   if (log.length) console.log('[holdHome] retried:', log.join(' | '));
 }
+/** Before the Karlsbergquelle's trough, facing the water (P_SPOTS.quelle; compass 54 = the spring's 234° front − 180). */
+export const QUELLE_STAND = { x: 1059.3, z: -833.1, yaw: 54 } as const;
+
+/**
+ * The Karlsbergquelle (prologue p3q, src/systems/quelle): stand before the trough facing the water,
+ * wait for "E Wasser berühren", press E, let the touch scene run on game time (the dip, the
+ * stillness, the brook running back; the touch at 2.7 s) until the story's shift starts, then play
+ * the transition through. `atScene` runs once the moment stands still (a screenshot). Returns what
+ * the spring did (the scene time it reached; -1 if E never started it) and where the story is.
+ */
+export async function touchSpring(page: Page, atScene?: () => Promise<void>): Promise<{ scene: number; prompt: boolean; era: string; beat: string; tries: number }> {
+  let r = { scene: -1, prompt: false, era: '', beat: '', tries: 0 };
+  // a card on screen pauses the game (and E with it): read it away first, then press E
+  for (let i = 0; i < 3 && r.era !== '1789'; i++) {
+    r = await page.evaluate(
+      ({ at, i }) => {
+        const k = window.kq!;
+        const h = (window as unknown as QW).__cna;
+        h.tidy();
+        k.setScanMode(0);
+        k.teleport(at.x, at.z, at.yaw, -14);
+        k.step(6);
+        const prompt = h.until(() => !!k.quelle?.info().prompt, 6);
+        h.tidy();
+        k.press('KeyE', 2);
+        // the moment stands still (the ripple freezes, the stream hangs): one picture there
+        for (let j = 0; j < 90 && (k.quelle?.info().scene ?? -1) < 1.5; j++) k.step(5);
+        const scene = k.quelle?.info().scene ?? -1;
+        return { scene, prompt, era: k.story!.state().era as string, beat: k.story!.state().beat as string, tries: i + 1 };
+      },
+      { at: QUELLE_STAND, i },
+    );
+    if (r.scene < 0) continue;
+    if (atScene) await atScene();
+    r = await page.evaluate(
+      (r) => {
+        const k = window.kq!;
+        // on to the touch (2.7 s): the story answers with the shift to 1789; play it through
+        for (let j = 0; j < 120 && !k.fx!.state().shift.active && k.story!.state().era === 'today'; j++) k.step(5);
+        k.fx!.shiftAt(3.6);
+        k.fx!.freeze(false);
+        k.step(12);
+        (window as unknown as QW).__cna.tidy();
+        return { ...r, era: k.story!.state().era as string, beat: k.story!.state().beat as string };
+      },
+      r,
+    );
+  }
+  return r;
+}
+
 /** Walk-free pickup: stand on it (the pickup radius is 1.3 m). */
 export async function pickUp(page: Page, x: number, z: number): Promise<void> {
   await page.evaluate(
@@ -377,8 +429,8 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
     k.step(10);
   });
   expect(await untilQuest(page, 'q.p.relief', 'done', 10)).toBe('done');
-  expect(await until(page, 'p4', 8)).toBe('p4');
-  // Laub speaks for the first time, and gives his quest
+  expect(await until(page, 'p3q', 8)).toBe('p3q');
+  // Laub speaks for the first time (p3's exit), then hears the water
   await page.evaluate(() => {
     const k = window.kq!;
     k.setScanMode(0);
@@ -387,7 +439,33 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   });
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
   await shot(page, '05-laub-speaks');
-  // the quest comes once Laub has introduced himself (round 9: the offer card cut him off)
+
+  // ---- p3q / p3r: "Wasser, das sich erinnert": the Karlsbergquelle, the first time travel ---------
+  expect(await untilQuest(page, 'q.p.quelle', 'active', 40)).toBe('active');
+  expect(await flag(page, 'quelle.call')).toBe(true);
+  const touch = await touchSpring(page, async () => shot(page, '05b-quelle-touch'));
+  expect(touch.scene, JSON.stringify(touch)).toBeGreaterThan(0);
+  s = await story(page);
+  expect(s.era).toBe('1789');
+  expect(s.beat).toBe('p3r');
+  expect(await qn(page, 'q.p.quelle', 'beruehren')).toBe(1);
+  expect(await flag(page, 'quelle.call')).toBeUndefined();
+  // the tracker follows the story: no stale „→ den Hang hinunter zur Karlsbergquelle“ line in 1789
+  // (a few rendered frames: the lead refreshes every 0.1 s)
+  expect(
+    await page.evaluate(() => {
+      for (let i = 0; i < 20; i++) window.kq!.step(1);
+      return document.querySelector('[data-testid="quest-via"]')?.textContent ?? null;
+    }),
+  ).toBeNull();
+  await shot(page, '05c-quelle-1789');
+  // Laub explains the rule; then hold Q: home
+  await run(page, 6);
+  await holdHome(page);
+  expect((await story(page)).era).toBe('today');
+  expect(await untilQuest(page, 'q.p.quelle', 'done', 10)).toBe('done');
+  expect(await until(page, 'p4', 10)).toBe('p4');
+  // Laub's own quest comes on the way up to the Ehrenhof (round 9: never over his first words)
   expect(await untilQuest(page, 'q.p.bussole', 'active', 40)).toBe('active');
 
   // ---- p4–p6: "Die Bussole spricht" ----------------------------------------------------------------

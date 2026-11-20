@@ -77,11 +77,11 @@
           "type": "collect",
           "item": "item.stab.esche",
           "text_de": "Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)",
-          "hint_de": "Der Messstab lehnt rechts neben der Wagentür, wo der goldene Lichtstrahl steht: hingehen und E drücken (oder einfach darüberlaufen).",
+          "hint_de": "Der Messstab lehnt rechts neben der Wagentür, im goldenen Lichtstrahl: geradeaus zum Wagen, dann E drücken (oder einfach darüberlaufen).",
           "place": [
             {
-              "x": 763,
-              "z": -900,
+              "x": 762.2,
+              "z": -912.3,
               "era": "today"
             }
           ]

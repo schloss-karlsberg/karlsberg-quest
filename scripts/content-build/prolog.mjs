@@ -264,7 +264,7 @@ const LIDAR = src('LIDAR');
 // Terrain-checked spots (scripts/content-build/probe.mjs + terrain.mjs, 2026-11-16): dry, walkable,
 // outside every footprint of their era, inside the playable area.
 export const P_SPOTS = {
-  stab: [763, -900], // beside the trailer door (flat, today)
+  stab: [762.2, -912.3], // right of the trailer door (playtest 1792841; the story's p1 objective and src/systems/story/hub/station.ts agree)
   quelle: [1059.3, -833.1], // in front of the Karlsbergquelle's trough (src/systems/quelle/layout.ts)
   eiskeller: [1508, -1296], // the pit (KB-50); in 1789 the Eiskeller house KB-B28 stands here — the fight is today
   streuner: [1206, -1113], // inside the Ehrenhof (gravel), not behind the closed gitter (playtest)
@@ -303,7 +303,7 @@ const prologQuests = {
       ],
       objectives: [
         { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)',
-          hint_de: 'Der Messstab lehnt rechts neben der Wagentür, wo der goldene Lichtstrahl steht: hingehen und E drücken (oder einfach darüberlaufen).',
+          hint_de: 'Der Messstab lehnt rechts neben der Wagentür, im goldenen Lichtstrahl: geradeaus zum Wagen, dann E drücken (oder einfach darüberlaufen).',
           place: [place(...P_SPOTS.stab, 0, T0)] },
         {
           id: 'nebel', type: 'kill', enemy: 'nebelling', count: 3, after: ['stab'],
