@@ -1032,6 +1032,14 @@ Round-4 (polish: set dressing) integration rules:
   doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
+  Present day (playtest round 10): the straight-line check counts only water (`wayLineBlocked`
+  in `points.ts`; trunks and ruins would fire it every few steps, the Weiher must), and the A*
+  takes a ground cost (`RouteOptions.cost` / `minCost`): OSM path cells (`World.pathAt`, the
+  raster from `rasters.ts` `buildPathRaster`) cost `PATH_COST` 0.6, the heuristic is scaled by it
+  and the string pulling keeps a shortcut only if it is no dearer, so the motes follow the
+  Waldweg round the Weiher's north shore. A free straight line still skips the search; the lake
+  case costs ~10–25 ms per route (~9 000 cells; tests/travel.test.ts logs it; e2e
+  `e2e/travel-paths.spec.ts`).
 - After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks

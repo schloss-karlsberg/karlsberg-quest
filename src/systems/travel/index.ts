@@ -29,7 +29,7 @@ import { defineSystem } from '../../core/systems';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
 import { addJournalTab } from '../../ui/journal';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
-import { findRoute } from '../../world/route';
+import { PATH_COST, findRoute, pathGroundCost } from '../../world/route';
 import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
@@ -676,12 +676,16 @@ class Travel {
   };
 
   private waterAt = (x: number, z: number): boolean => this.ctx.world.surfaceAt(x, z) === 'water';
+  private pathCost = pathGroundCost((x, z) => this.ctx.world.pathAt(x, z));
 
   routeTo(x: number, z: number): [number, number][] {
     const p = this.ctx.player.position;
     // near goals (palace courts, doors) on a 1 m grid — a 2 m grid misses a door's free gap
     const near = Math.hypot(x - p.x, z - p.z) < 170;
-    return findRoute(p.x, p.z, x, z, this.blockedAt, near ? { cell: 1, margin: 45, maxExpand: 90000 } : { maxExpand: 40000 }).points;
+    // in the present day the route prefers the OSM paths (the Waldweg round the Weiher); the
+    // search only runs when the straight line is blocked, ~10 ms there (tests/travel.test.ts)
+    const ground = this.ctx.era.info.palace === 'hidden' ? { cost: this.pathCost, minCost: PATH_COST } : {};
+    return findRoute(p.x, p.z, x, z, this.blockedAt, near ? { cell: 1, margin: 45, maxExpand: 90000, ...ground } : { maxExpand: 40000, ...ground }).points;
   }
 
   private updateTrail(dt: number): void {

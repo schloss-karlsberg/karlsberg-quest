@@ -12,7 +12,7 @@ import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceF
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
-import { findRoute, lineFree, pathLength } from '../src/world/route';
+import { PATH_COST, findRoute, lineFree, pathGroundCost, pathLength } from '../src/world/route';
 import { loadWorldData } from './world-data';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
@@ -294,5 +294,80 @@ describe('the Laufschritt ramp (playtest round 10, D1)', () => {
     }
     expect(t).toBeLessThan(3.0);
     expect(t).toBeGreaterThan(LAUF_DELAY);
+  });
+});
+
+describe('the Wegweiser follows the paths (playtest round 10, B2)', () => {
+  /** Share of the polyline (sampled every 1 m, up to `upto` m) within `r` m of a path cell. */
+  function onPathShare(pts: readonly [number, number][], pathAt: (x: number, z: number) => number, upto = Infinity, r = 2): number {
+    const near = (x: number, z: number) => {
+      for (let dz = -r; dz <= r; dz += 1) for (let dx = -r; dx <= r; dx += 1) if (pathAt(x + dx, z + dz) > 0.3) return true;
+      return false;
+    };
+    let on = 0;
+    let all = 0;
+    for (let i = 0; i + 1 < pts.length && all < upto; i++) {
+      const [ax, az] = pts[i]!;
+      const [bx, bz] = pts[i + 1]!;
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az)));
+      for (let k = 0; k < n && all < upto; k++) {
+        const t = (k + 0.5) / n;
+        all++;
+        if (near(ax + (bx - ax) * t, az + (bz - az) * t)) on++;
+      }
+    }
+    return all ? on / all : 0;
+  }
+
+  // synthetic: a pond in the middle; a 2 m path runs round its north side in a wide bow
+  const pond = (x: number, z: number) => Math.hypot(x, z) < 20;
+  const onBow = (x: number, z: number) => {
+    // the bow: from (-30, 0) up to z = -24, across, and down to (30, 0): 108 m × 0.6 beats the 74 m round the pond
+    if (Math.abs(z + 24) < 1.5 && Math.abs(x) <= 30) return 1;
+    if (Math.abs(Math.abs(x) - 30) < 1.5 && z <= 0 && z >= -24) return 1;
+    return 0;
+  };
+
+  it('without costs the route hugs the pond; with the path discount it takes the path bow', () => {
+    const plain = findRoute(-30, 0, 30, 0, pond);
+    expect(onPathShare(plain.points, onBow, Infinity, 1)).toBeLessThan(0.5);
+    const r = findRoute(-30, 0, 30, 0, pond, { cost: pathGroundCost(onBow), minCost: PATH_COST });
+    expect(r.complete).toBe(true);
+    expect(onPathShare(r.points, onBow, Infinity, 1)).toBeGreaterThan(0.9);
+    // every leg is free, and the string pulling did not cut the bow's corners across the grass
+    for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], pond, 0.5)).toBe(true);
+    expect(pathLength(r.points)).toBeGreaterThan(100);
+  });
+
+  it('a free straight line stays straight with costs too (no search, no price)', () => {
+    const r = findRoute(-30, 30, 30, 30, pond, { cost: pathGroundCost(onBow), minCost: PATH_COST });
+    expect(r.straight).toBe(true);
+    expect(r.expanded).toBe(0);
+  });
+
+  it('real data: from the Damm towards the hohe Stufe the route takes the Waldweg round the Weiher, in a few ms', () => {
+    const w = loadWorldData();
+    const water = w.water;
+    const cost = pathGroundCost(w.pathAt);
+    // warm-up (JIT), then the measured run
+    findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
+    const t0 = performance.now();
+    const runs = 5;
+    let r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
+    for (let k = 1; k < runs; k++) r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
+    const ms = (performance.now() - t0) / runs;
+    const plain = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000 });
+    console.info(`[B2] Damm -> hohe Stufe: ${ms.toFixed(1)} ms per route, ${r.expanded} cells expanded (plain ${plain.expanded}); on path: first 70 m ${(onPathShare(r.points, w.pathAt, 70) * 100).toFixed(0)} %, all ${(onPathShare(r.points, w.pathAt) * 100).toFixed(0)} % (plain ${(onPathShare(plain.points, w.pathAt) * 100).toFixed(0)} %)`);
+    expect(r.straight).toBe(false);
+    expect(r.expanded).toBeLessThan(40000);
+    // the motes show the first 70 m: all of it on the north-shore path
+    expect(onPathShare(r.points, w.pathAt, 70)).toBeGreaterThan(0.9);
+    expect(onPathShare(r.points, w.pathAt)).toBeGreaterThan(0.6);
+    expect(onPathShare(r.points, w.pathAt)).toBeGreaterThan(onPathShare(plain.points, w.pathAt) + 0.3);
+    // it goes round the north shore, never into the water
+    for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], water, 0.5)).toBe(true);
+    expect(r.points.some(([x, z]) => x > 840 && x < 940 && z < -900)).toBe(true);
+    // performance budget (measured ~10 ms on a laptop; generous for CI)
+    expect(ms).toBeLessThan(150);
   });
 });
