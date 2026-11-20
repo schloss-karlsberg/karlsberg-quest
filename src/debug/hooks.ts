@@ -1,13 +1,14 @@
 import type { GameContext } from '../core/context';
 import { type Era, isEra } from '../core/era';
 import type { GameState } from '../core/state';
-import type { PerspectiveCamera } from 'three';
+import type { Object3D, PerspectiveCamera } from 'three';
 import type { PerfMonitor, PerfSummary } from '../render/perf';
 import type { QualityManager } from '../render/quality';
 import type { ScanMode } from '../world/world';
 import { type BenchOptions, type BenchResult, runBench } from './bench';
 import { DebugPanel } from './panel';
 import { PerfHud } from './perfHud';
+import { type NanWatchApi, installNanWatch, nanWatchDefaultOn } from './nanWatch';
 import { type PilotApi, installPilot } from './pilot';
 
 /** Test/debug API on `window.kq` (always installed; the stats panel only with ?debug). */
@@ -40,6 +41,8 @@ export interface KqHooks {
   baseline(): void;
   /** Bullet-time play: act / observe / choose (src/debug/pilot.ts, docs/ARCHITECTURE.md). */
   pilot: PilotApi;
+  /** Exploded-geometry watchdog (src/debug/nanWatch.ts): on with ?debug / WebDriver, else off and free. */
+  nanWatch: NanWatchApi;
 }
 
 /** Further baseline switches registered by optimised modules (see `baseline()`). */
@@ -61,6 +64,26 @@ export interface DebugInfo {
   setCamera: (fn: ((cam: PerspectiveCamera) => void) | null) => void;
   /** Resolves when the streamed assets (palace model) are in. */
   ready: Promise<unknown>;
+}
+
+/** The watchdog with the player-tied roots (avatar, combat viewmodel; looked up by name, cached). */
+function nanWatchFor(ctx: GameContext, info: DebugInfo): NanWatchApi {
+  const names = ['player-avatar', 'combat-viewmodel'];
+  const roots: (Object3D | null)[] = names.map(() => null);
+  let lookups = 0;
+  return installNanWatch({
+    scene: ctx.scene,
+    camera: ctx.camera,
+    roots: () => {
+      // a missing / detached root is looked up again every 10th scan (getObjectByName walks the scene)
+      if (lookups++ % 10 === 0) for (let i = 0; i < names.length; i++) if (!roots[i]?.parent) roots[i] = ctx.scene.getObjectByName(names[i]!) ?? null;
+      return roots;
+    },
+    era: () => ctx.era.current,
+    player: () => ctx.player.position,
+    frame: info.frames,
+    on: nanWatchDefaultOn(ctx.debug),
+  });
 }
 
 export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
@@ -148,6 +171,7 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       for (const fn of baselineHooks) fn(ctx);
     },
     pilot: installPilot(ctx),
+    nanWatch: nanWatchFor(ctx, info),
   };
   window.kq = hooks;
   if (ctx.debug) new DebugPanel(ctx, info.frames);
