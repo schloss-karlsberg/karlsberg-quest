@@ -98,6 +98,8 @@ interface Findings {
   startedAt: string;
   shots: Shot[];
   states: Record<string, { ok: boolean; ms: number; error?: string; na?: string }>;
+  /** What the runner had to work around (each one is a finding candidate). */
+  notes: string[];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -392,7 +394,16 @@ const STATES: State[] = [
         p.grant('item.lampenoel', 2, true);
       });
       await c.tap('touch-journal');
-      await expect.poll(() => c.page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBeGreaterThan(0);
+      const opened = await c.page
+        .waitForFunction(() => window.kq!.ctx.ui.modals.count > 0, null, { timeout: 4000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!opened) {
+        const why = await c.page.evaluate(() => ({ paused: window.kq!.ctx.pause.paused, touch: !!document.querySelector('[data-testid=touch]:not(.kq-hidden)') }));
+        c.f.notes.push(`journal: a tap on touch-journal did not open the field book (${JSON.stringify(why)}); opened by kq.quests.journal()`);
+        await c.page.evaluate(() => window.kq!.quests!.journal());
+        await expect.poll(() => c.page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBeGreaterThan(0);
+      }
       const tabs = await c.page.locator('[data-testid^="journal-tab-"]').evaluateAll((els) => [...new Set(els.filter((e) => (e as HTMLElement).offsetParent).map((e) => (e as HTMLElement).dataset.testid!))]);
       for (const tid of tabs) {
         await c.tap(tid);
@@ -651,11 +662,12 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
   } catch {
     prev = null;
   }
-  const f: Findings = { unit, gpu: '?', safeArea, quality: null, startedAt: new Date().toISOString(), shots: [], states: {} };
+  const f: Findings = { unit, gpu: '?', safeArea, quality: null, startedAt: new Date().toISOString(), shots: [], states: {}, notes: [] };
   const ids = new Set(list.map((s) => s.id));
   if (prev && FILTER.length) {
     f.shots = prev.shots.filter((s) => !ids.has(s.state));
     f.states = Object.fromEntries(Object.entries(prev.states).filter(([k]) => !ids.has(k)));
+    f.notes = prev.notes ?? [];
   }
   const save = () => writeFileSync(file, JSON.stringify(f, null, 2));
 
@@ -720,8 +732,14 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
     f,
     shot: async () => undefined,
     tap: async (testid, finger = 1) => {
-      const b = await page.getByTestId(testid).first().boundingBox();
+      const loc = page.getByTestId(testid).first();
+      let b = await loc.boundingBox();
       if (!b) throw new Error(`tap: ${testid} has no box`);
+      if (b.y + b.height / 2 > unit.height || b.y + b.height / 2 < 0 || b.x + b.width / 2 > unit.width || b.x + b.width / 2 < 0) {
+        f.notes.push(`${testid}: off-screen (centre ${Math.round(b.x + b.width / 2)}/${Math.round(b.y + b.height / 2)} in ${unit.width}×${unit.height}); scrolled into view to tap it`);
+        await loc.scrollIntoViewIfNeeded();
+        b = (await loc.boundingBox())!;
+      }
       await new Finger(cdp, finger).tap(b.x + b.width / 2, b.y + b.height / 2);
       await page.waitForTimeout(150);
     },
