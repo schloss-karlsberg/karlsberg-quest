@@ -240,7 +240,7 @@ export function summarizeSimEvent(ev: SimEvent, t: number): PilotEvent | null {
     case 'playerHit':
       return { type: 'hurt', t: T, dmg: Math.round(ev.damage), by: ev.by, heavy: ev.heavy };
     case 'dodge':
-      return { type: 'dodge', t: T, perfect: ev.perfect };
+      return { type: 'dodge', t: T, perfect: ev.perfect, ...(ev.stumble ? { stumble: true } : {}) };
     case 'evade':
       return { type: 'evade', t: T, by: ev.by };
     case 'killed':

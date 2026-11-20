@@ -35,7 +35,12 @@ import {
   bossPhaseFloor,
   HITSTOP,
   HP_REGEN,
+  INPUT_BUFFER,
   KNOCK,
+  RESET,
+  STEP_IN,
+  STUMBLE,
+  keepsWounds,
   type SafeReason,
   type StaminaState,
   applyDamage,
@@ -151,6 +156,8 @@ export interface Enemy {
   hitZ: number;
   /** Mahnbrief / Nebelling: came apart once and pulled itself together again. */
   reformed: boolean;
+  /** Seconds the leash (or a safe zone) has been broken in a row (RESET.grace before it gives up). */
+  leashT: number;
   /** Seconds since it noticed the player (elites shrug off the Bannlicht for the first 3). */
   aggroT: number;
   // ---- combat variety pass ----
@@ -251,6 +258,8 @@ export interface Swing {
   charge: number;
   resolved: boolean;
   hits: number;
+  /** The enemy this light swing went for (locked / soft-aimed): it steps in and reaches a little further (STEP_IN). */
+  target?: string;
 }
 
 export interface PlayerCombat {
@@ -269,9 +278,14 @@ export interface PlayerCombat {
   /** Seconds the attack button is held (−1 = not holding). */
   hold: number;
   queued: boolean;
+  /** Input buffer (s left): an attack / dodge press that could not act yet (INPUT_BUFFER). */
+  bufAtk: number;
+  bufDodge: number;
+  /** Seconds until the next stumble (a roll out of Atem, STUMBLE.cd). */
+  stumbleCd: number;
   charging: boolean;
   chargeFull: boolean;
-  dodge: { t: number; perfect: boolean } | null;
+  dodge: { t: number; perfect: boolean; stumble: boolean } | null;
   counter: boolean;
   /** Quick-use animation lock (s). */
   drink: number;
@@ -299,7 +313,7 @@ export type SimEvent =
   | { type: 'bossGuard'; e: Enemy; why: 'intro' | 'roar' }
   /** Three swings went through an untouchable thing: say how (and lend a Bannlicht if both are spent). */
   | { type: 'immuneHint'; refilled: boolean }
-  /** A light hit scattered a Mahnbrief / Nebelling; it pulls itself together (a Wuchthieb ends it). */
+  /** A plain Hieb scattered a Mahnbrief / Nebelling; it pulls itself together once (`reforms`). */
   | { type: 'reform'; e: Enemy }
   /** An elite fresh into the fight shrugs the Bannlicht off. */
   | { type: 'resist'; e: Enemy }
@@ -310,7 +324,9 @@ export type SimEvent =
   | { type: 'bump'; vx: number; vz: number }
   | { type: 'evade'; by: string; src?: string; attack?: string }
   | { type: 'died'; by: string }
-  | { type: 'dodge'; vx: number; vz: number; perfect: boolean }
+  | { type: 'dodge'; vx: number; vz: number; perfect: boolean; stumble: boolean; dur: number }
+  /** The light Hieb steps in towards its target (m/s, a decaying push over `dur` s). */
+  | { type: 'step'; vx: number; vz: number; dur: number }
   | { type: 'bann'; x: number; z: number; yaw: number; range: number; angle: number; hits: number }
   | { type: 'stun'; e: Enemy; seconds: number }
   | { type: 'phase'; e: Enemy; phase: number }
@@ -510,13 +526,29 @@ export function touchable(e: { def: { needsBann?: boolean }; stun: number; veil?
 /** Elites ignore the Bannlicht for their first seconds in a fight. */
 const ELITE_BANN_GRACE = 3;
 /** A scattered Mahnbrief / Nebelling comes back with this share of its strength, after a stagger. */
-const REFORM_HP = 0.4;
+export const REFORM_HP = 0.4;
 const REFORM_STAGGER = 1.1;
-const REFORMERS = new Set(['mahnbrief', 'nebelling']);
+export const REFORMERS: ReadonlySet<string> = new Set(['mahnbrief', 'nebelling']);
 
-/** Does a finishing blow scatter instead of undo? Light, non-finisher hits on tier ≥ 1 paper / mist, once. */
-export function reforms(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 'add' | 'tier'>, kind: 'light' | 'heavy', finisher: boolean): boolean {
-  return REFORMERS.has(e.kind) && !e.reformed && !e.boss && !e.elite && !e.add && kind === 'light' && !finisher && e.tier >= 1;
+/**
+ * Can this enemy still pull itself together (playtest round 10, F-22 / F-34: one rule, shown on
+ * its bar as „formt sich neu“)? Every Nebelling and Mahnbrief of tier ≥ 1 — pack, escort, wave —
+ * that has not done it yet. Not bosses, not elites, not a boss's summons, not the prologue's
+ * tutorial ones (tier 0).
+ */
+export function canReform(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 'add' | 'escort' | 'tier'>): boolean {
+  return REFORMERS.has(e.kind) && !e.reformed && !e.boss && !e.elite && !(e.add && !e.escort) && e.tier >= 1;
+}
+
+/**
+ * Does the blow that empties it scatter instead of undo? Only a lone Hieb — the first of a chain
+ * (`combo` 0). A follow-up Hieb (2nd or 3rd of the chain), a Wuchthieb, an ability, or any blow on
+ * one the Bannlicht has touched (`banned`: held now or flared before in this life) undoes it for
+ * good. Follow-up 2026-11-20: the 2nd Hieb and the Bannlicht's lasting mark are new, so a pack with
+ * Nebelling escorts (K1 Karlslust) keeps its pace.
+ */
+export function reforms(e: Pick<Enemy, 'kind' | 'reformed' | 'boss' | 'elite' | 'add' | 'escort' | 'tier'>, blow: { kind: 'light' | 'heavy'; combo: number; skill?: boolean; banned?: boolean }): boolean {
+  return canReform(e) && blow.kind === 'light' && blow.combo === 0 && !blow.skill && !blow.banned;
 }
 
 const ATTACK_GAP = { min: 0.5, spread: 0.3, gentle: 0.9, land: 1.0, gentleLand: 1.4 } as const;
@@ -614,6 +646,9 @@ export class CombatSim {
       sinceSwing: 99,
       hold: -1,
       queued: false,
+      bufAtk: 0,
+      bufDodge: 0,
+      stumbleCd: 0,
       charging: false,
       chargeFull: false,
       dodge: null,
@@ -881,6 +916,7 @@ export class CombatSim {
       hitX: 0,
       hitZ: 0,
       reformed: false,
+      leashT: 0,
       aggroT: 0,
       guardBroken: 0,
       ward: 0,
@@ -923,6 +959,17 @@ export class CombatSim {
     this.pyaw = inp.yaw;
     const p = this.p;
     if (!p.dead) this.playerResources(dt, inp);
+    // the input buffer: a press is kept a moment, also through hit-stop (playtest round 10, F-23)
+    p.bufAtk = Math.max(0, p.bufAtk - dt);
+    p.bufDodge = Math.max(0, p.bufDodge - dt);
+    p.stumbleCd = Math.max(0, p.stumbleCd - dt);
+    if (inp.blocked) {
+      p.bufAtk = 0;
+      p.bufDodge = 0;
+    } else {
+      if (inp.attackPressed) p.bufAtk = INPUT_BUFFER;
+      if (inp.dodgePressed && !inp.noDodge) p.bufDodge = INPUT_BUFFER;
+    }
     if (this.freeze > 0) {
       this.freeze = Math.max(0, this.freeze - dt);
       return this.flush();
@@ -998,6 +1045,8 @@ export class CombatSim {
       p.dodge.t += dt;
       if (p.dodge.t >= DODGE.dur) p.dodge = null;
     }
+    const attackPressed = p.bufAtk > 0;
+    const dodgePressed = p.bufDodge > 0 && !inp.noDodge;
     // the swing runs on (hit-stop holds it: we only get here when not frozen)
     if (p.swing) {
       const w = p.swing;
@@ -1016,22 +1065,39 @@ export class CombatSim {
     if (inp.blocked) {
       if (p.hold >= 0) this.endCharge();
       p.queued = false;
+      p.bufAtk = 0;
+      p.bufDodge = 0;
       return;
     }
     if (inp.skill) this.trySkill(inp.skill, inp);
-    // an ability in progress owns the hands (no swing, no roll, no flare until it ends)
+    // an ability in progress owns the hands (no swing, no roll, no flare until it ends; presses
+    // made during it are dropped, not buffered)
     if (p.skill) {
       p.queued = false;
+      p.bufAtk = 0;
+      p.bufDodge = 0;
       if (p.hold >= 0) this.endCharge();
       return;
     }
-    if (inp.dodgePressed && !inp.noDodge) this.tryDodge(inp);
+    // a buffered roll waits for the one in progress to end
+    if (dodgePressed && !p.dodge) {
+      p.bufDodge = 0;
+      this.tryDodge(inp);
+    }
     if (inp.bannPressed) this.tryBann(inp);
-    // attack: tap = Hieb, hold ≥ 0.45 s = Wuchthieb
-    if (inp.attackPressed) {
-      if (p.swing) p.queued = p.swing.kind === 'light' && p.swing.dur - p.swing.t <= COMBO.buffer + 0.15;
-      else if (!inp.attackDown) this.startLight(inp);
-      else p.hold = 0;
+    // attack: tap = Hieb, hold ≥ 0.45 s = Wuchthieb. A press during a light swing's last part queues
+    // the next Hieb; an earlier one (or one during a heavy swing or hit-stop) stays buffered
+    if (attackPressed) {
+      if (p.swing) {
+        if (p.swing.kind === 'light' && p.swing.dur - p.swing.t <= COMBO.buffer + 0.15) {
+          p.queued = true;
+          p.bufAtk = 0;
+        }
+      } else {
+        p.bufAtk = 0;
+        if (!inp.attackDown) this.startLight(inp);
+        else p.hold = 0;
+      }
     }
     if (p.hold >= 0 && !p.swing) {
       if (inp.attackDown) {
@@ -1086,9 +1152,48 @@ export class CombatSim {
     }
     spend(p.st, COST.light * this.opt.stats.staminaCost);
     const combo = nextCombo(p.lastCombo, p.sinceSwing);
-    p.swing = { kind: 'light', combo, t: 0, dur: COMBO.swing, impact: COMBO.impact, yaw: this.aimYaw(inp, COMBO.reach), charge: 0, resolved: false, hits: 0 };
+    const yaw = this.aimYaw(inp, COMBO.reach);
+    const target = this.swingTarget(inp, yaw);
+    p.swing = { kind: 'light', combo, t: 0, dur: COMBO.swing, impact: COMBO.impact, yaw, charge: 0, resolved: false, hits: 0, target: target?.id };
     p.drink = 0;
     this.out.push({ type: 'swing', kind: 'light', combo, charge: 0 });
+    // the step-in: its body just out of reach → up to a metre towards it, done before the impact
+    if (target) {
+      const d = Math.hypot(target.x - inp.x, target.z - inp.z) || 1;
+      const edge = d - target.radius;
+      if (edge > COMBO.reach) {
+        const step = Math.min(STEP_IN.max, edge - COMBO.reach + 0.3);
+        const v = dodgeSpeed(step, STEP_IN.dur);
+        this.out.push({ type: 'step', vx: ((target.x - inp.x) / d) * v, vz: ((target.z - inp.z) / d) * v, dur: STEP_IN.dur });
+      }
+    }
+  }
+
+  /**
+   * The enemy a light swing goes for: the nearest one near the swing's line (touchable first),
+   * whose body is within reach plus the step-in and the tolerance (playtest round 10, F-06 / F-37).
+   */
+  private swingTarget(inp: SimInput, yaw: number): Enemy | null {
+    if (this.p.dazzle > 0) return null;
+    const deg = this.opt.gentle ? COMBO.gentleAssistDeg : COMBO.assistDeg;
+    let best: Enemy | null = null;
+    let bestKey = Infinity;
+    for (const e of this.enemies) {
+      // (a light pressed down by the flare already has its own longer reach, PINNED_REACH)
+      if (e.def.needsBann || e.state === 'dissolve' || e.state === 'leave' || e.state === 'intro' || e.y - inp.y > 3.2) continue;
+      const dx = e.x - inp.x;
+      const dz = e.z - inp.z;
+      const d = Math.hypot(dx, dz);
+      if (d - e.radius > COMBO.reach + STEP_IN.max + STEP_IN.tol) continue;
+      const slack = Math.atan2(e.radius, Math.max(d, 0.01));
+      if (d > 0.35 && Math.abs(wrapAngle(headingOf(dx, dz) - yaw)) > (deg * Math.PI) / 180 + slack) continue;
+      const key = d + (touchable(e) ? 0 : 100);
+      if (key < bestKey) {
+        bestKey = key;
+        best = e;
+      }
+    }
+    return best;
   }
 
   private startHeavy(inp: SimInput, charge: number): void {
@@ -1118,7 +1223,7 @@ export class CombatSim {
     // (a light pinned by the flare is reached a little further; the ones the staff can touch go
     // first, and an untouchable one only takes the blow when nothing touchable is in the arc)
     let inArc = this.enemies
-      .filter((e) => e.state !== 'dissolve' && e.state !== 'leave' && e.y - inp.y <= 3.2 && inCone(inp.x, inp.z, yaw, reach + (e.def.needsBann && e.stun > 0 ? PINNED_REACH : 0), arc, e.x, e.z, e.radius))
+      .filter((e) => e.state !== 'dissolve' && e.state !== 'leave' && e.y - inp.y <= 3.2 && inCone(inp.x, inp.z, yaw, reach + (e.def.needsBann && e.stun > 0 ? PINNED_REACH : 0) + (w.target === e.id ? STEP_IN.tol : 0), arc, e.x, e.z, e.radius))
       .sort((a, b) => Number(touchable(b)) - Number(touchable(a)) || Math.hypot(a.x - inp.x, a.z - inp.z) - Math.hypot(b.x - inp.x, b.z - inp.z));
     if (inArc.some((e) => touchable(e))) inArc = inArc.filter((e) => touchable(e));
     inArc = inArc.slice(0, sweep ? CLEAVE.sweep : heavy ? CLEAVE.heavy : CLEAVE.light);
@@ -1198,6 +1303,7 @@ export class CombatSim {
         if (!w.skill) {
           spend(p.st, GUARD.blockStamina * this.opt.stats.staminaCost);
           p.queued = false;
+          p.bufAtk = 0;
         }
         this.freeze = Math.max(this.freeze, HITSTOP.light * (this.opt.reducedMotion ? 0.5 : 1));
         this.out.push({ type: 'blocked', e, skill: w.skill });
@@ -1241,6 +1347,8 @@ export class CombatSim {
     }
     const counter = p.counter;
     p.counter = false;
+    // touched by the Bannlicht (held now, or flared before): paper and mist then cannot pull together
+    const banned = (e.stun > 0 || e.lastBann > -99) && !e.boss;
     // the flare's bonus: one blow per flare, and that blow wakes it (an Irrlicht stays down)
     const gebannt = e.stun > 0 && !e.boss && e.bannBonus;
     const dmg = hitDamage(this.opt.stats, { kind: w.kind, combo: w.combo, charge: w.charge, gebannt, armor, counter, mul: mul * cleave, jitter: hash01(this.tick * 13 + e.seed * 1000) });
@@ -1292,8 +1400,8 @@ export class CombatSim {
       this.out.push({ type: 'leave', e });
       return false;
     }
-    if (e.hp <= 0 && !w.final && reforms(e, w.kind, finisher)) {
-      // paper and mist scatter under a light blow and pull themselves together once
+    if (e.hp <= 0 && !w.final && reforms(e, { kind: w.kind, combo: w.combo, skill: w.skill !== null, banned })) {
+      // paper and mist scatter under a lone Hieb and pull themselves together once
       e.reformed = true;
       e.hp = Math.ceil(e.maxHp * REFORM_HP);
       e.stun = 0;
@@ -1317,14 +1425,26 @@ export class CombatSim {
     this.setState(e, 'stagger');
   }
 
+  /** What a roll pressed now would be: a full roll, a stumble (out of Atem), or nothing. */
+  dodgeKind(): 'roll' | 'stumble' | null {
+    const p = this.p;
+    if (p.dodge || p.skill || p.dead) return null;
+    if (canAct(p.st, COST.dodge)) return 'roll';
+    return p.stumbleCd <= 0 ? 'stumble' : null;
+  }
+
   private tryDodge(inp: SimInput): void {
     const p = this.p;
     if (p.dodge) return;
-    if (!canAct(p.st, COST.dodge)) {
+    // out of Atem the roll still comes out, as a short stumble (playtest round 10, F-12)
+    const kind = this.dodgeKind();
+    if (!kind) {
       this.out.push({ type: 'tired' });
       return;
     }
-    spend(p.st, COST.dodge * this.opt.stats.staminaCost);
+    const stumble = kind === 'stumble';
+    if (stumble) p.stumbleCd = STUMBLE.cd;
+    else spend(p.st, COST.dodge * this.opt.stats.staminaCost);
     let dx = inp.moveX;
     let dz = inp.moveZ;
     const l = Math.hypot(dx, dz);
@@ -1336,18 +1456,18 @@ export class CombatSim {
       dx /= l;
       dz /= l;
     }
-    const perfect = this.incomingWithin(inp, DODGE.perfect);
-    p.dodge = { t: 0, perfect };
+    const perfect = !stumble && this.incomingWithin(inp, DODGE.perfect);
+    p.dodge = { t: 0, perfect, stumble };
     p.drink = 0;
     if (p.hold >= 0) this.endCharge();
-    const v = dodgeSpeed();
+    const v = dodgeSpeed(stumble ? STUMBLE.dist : DODGE.dist);
     if (perfect) {
       // timing pays: the breath comes back (combat variety pass — a pack's rhythm is dodgeable)
       p.st.stamina = Math.min(p.st.max, p.st.stamina + DODGE.perfectRefund);
       this.slowmo = this.opt.reducedMotion ? 0 : DODGE.slowmo;
       if (this.opt.konter) p.counter = true;
     }
-    this.out.push({ type: 'dodge', vx: dx * v, vz: dz * v, perfect });
+    this.out.push({ type: 'dodge', vx: dx * v, vz: dz * v, perfect, stumble, dur: DODGE.dur });
   }
 
   /** Will a telegraphed hit land on the player within `s` seconds (perfect-dodge window)? */
@@ -1508,7 +1628,7 @@ export class CombatSim {
   hurtPlayer(raw: number, by: string, from: { x: number; z: number }, tier = 1, heavy = false, src?: HurtSource): number {
     const p = this.p;
     if (p.dead || this.safe) return 0;
-    if ((p.dodge && dodgeInvulnerable(p.dodge.t)) || this.skillInvulnerable()) {
+    if ((p.dodge && dodgeInvulnerable(p.dodge.t, p.dodge.stumble)) || this.skillInvulnerable()) {
       this.out.push({ type: 'evade', by, src: src?.id, attack: src?.attack });
       return 0;
     }
@@ -1759,8 +1879,12 @@ export class CombatSim {
       e.stun = Math.max(0, e.stun - dt);
       if (e.stun <= 0 && e.state === 'gebannt') this.setState(e, e.aggro ? 'approach' : 'idle');
     }
-    // leash: too far from home, or the player walked away / into safety
-    if (e.aggro && e.state !== 'leave' && e.state !== 'gebannt' && (leashBroken(e.home, e, inp, e.leash) || this.safe)) {
+    // leash: too far from home, or the player walked away / into safety — for RESET.grace s in a
+    // row (playtest round 10, F-05: one roll towards the field station ended the fight)
+    const broken = e.aggro && e.state !== 'leave' && e.state !== 'gebannt' && (leashBroken(e.home, e, inp, e.leash) || !!this.safe);
+    e.leashT = broken ? e.leashT + dt : 0;
+    if (broken && e.leashT >= RESET.grace) {
+      e.leashT = 0;
       e.aggro = false;
       this.tokens.release(e.id);
       this.dropRings(e);
@@ -1770,6 +1894,8 @@ export class CombatSim {
     }
     switch (e.state) {
       case 'idle': {
+        // back home and left alone for a while: it heals slowly (quest, escort, wave and prologue ones keep their wounds)
+        if (e.t >= RESET.regenDelay && e.hp < e.maxHp && !keepsWounds(e)) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * RESET.regenPerS * dt);
         // drift about the spawn
         const wx = e.home.x + Math.cos(e.orbit + this.time * 0.15) * 1.5;
         const wz = e.home.z + Math.sin(e.orbit + this.time * 0.15) * 1.5;
@@ -1807,11 +1933,11 @@ export class CombatSim {
         break;
       }
       case 'return': {
+        // no healing on the way home (it used to be 50 %/s: back to full in 1.5 s)
         const left = this.moveToward(e, e.home.x, e.home.z, sp * 1.2, dt, 1);
-        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.5 * dt);
         if (left <= 1.05 || e.t > 12) {
-          e.hp = e.maxHp;
           if (e.boss) {
+            e.hp = e.maxHp;
             e.phase = 1;
             e.sealOpen = 0;
           }

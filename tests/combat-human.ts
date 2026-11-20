@@ -334,7 +334,9 @@ export function humanFight(build: Build, enc: Encounter, seed: number, o: HumanO
     if (due >= 0) {
       const th = threats.splice(due, 1)[0]!;
       const stillComing = sim.enemies.some((e) => e.id === th.id && e.state !== 'dissolve' && (e.state === 'windup' || e.state === 'strike' || e.dash)) || sim.projectiles.some((p) => p.owner === th.id);
-      if (stillComing && !sim.p.dodge && st.stamina >= 20 && !st.exhausted && !busy) {
+      // (out of Atem the roll is a stumble: shorter, short i-frames — a human still presses it)
+      const dk = sim.dodgeKind();
+      if (stillComing && dk && (dk === 'stumble' || (st.stamina >= 20 && !st.exhausted)) && !busy) {
         dodge = true;
         moveX = th.dir.x;
         moveZ = th.dir.z;
@@ -445,7 +447,8 @@ export function humanFight(build: Build, enc: Encounter, seed: number, o: HumanO
     const evs = sim.step(dt, inp);
     log.observe(dt, evs, { sim, onScreen, feedback: { sound: true, particles: true, shake: true, numbers: true } });
     for (const ev of evs) {
-      if (ev.type === 'dodge') push = { vx: ev.vx, vz: ev.vz, t: DODGE.dur, dur: DODGE.dur };
+      if (ev.type === 'dodge') push = { vx: ev.vx, vz: ev.vz, t: ev.dur, dur: ev.dur };
+      if (ev.type === 'step') push = { vx: ev.vx, vz: ev.vz, t: ev.dur, dur: ev.dur };
       if (ev.type === 'skill' && (ev.vx || ev.vz)) push = { vx: ev.vx, vz: ev.vz, t: ev.dur, dur: ev.dur };
       if (ev.type === 'playerHit') {
         const key = `${ev.src === 'hazard' ? 'hazard' : ev.by}.${ev.attack ?? '?'}`;
