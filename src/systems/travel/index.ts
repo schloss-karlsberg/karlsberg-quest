@@ -35,7 +35,7 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, activateRadius, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, livePointIds, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
 import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
@@ -189,8 +189,9 @@ class Travel {
 
   loadSlice(): TravelSlice {
     const s = this.ctx.state.slice('travel', () => ({ activated: [], announced: [], seen: [], done: [], shrineT: {}, tips: [] }));
-    s.activated ??= [];
-    s.announced ??= [];
+    // retired points (the old Feldstation) and unknown ids from old saves drop out quietly
+    s.activated = livePointIds(s.activated);
+    s.announced = livePointIds(s.announced);
     s.seen ??= [];
     s.done ??= [];
     s.shrineT ??= {};
@@ -304,7 +305,7 @@ class Travel {
       const range = known.has(sp.id) ? 1400 : 260;
       if (!t && d < range) {
         const y = ctx.world.heightfields[ctx.era.current === 'today' ? '2025' : '1789'].heightAt(sp.x, sp.z);
-        t = buildTripod(sp.x, y - 0.03, sp.z, SURVEY_POINTS.indexOf(sp) + 3);
+        t = buildTripod(sp.x, y - 0.03, sp.z, SURVEY_POINTS.indexOf(sp) + TRIPOD_SEED_BASE);
         t.lit = known.has(sp.id) ? 1 : 0;
         this.tripods.set(sp.id, t);
         this.root.add(t.group);

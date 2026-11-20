@@ -56,7 +56,9 @@ test.describe('world', () => {
   test('survey points: walk up to one, open the map, travel there, blocked in a fight', async ({ page }) => {
     const errors = trackErrors(page);
     const known = await page.evaluate(() => window.kq!.travel!.points().filter((p) => p.known).map((p) => p.id));
-    expect(known).toContain('feldstation');
+    // the spring is home and known from the start; the old Feldstation point is retired (tour WP-05)
+    expect(known).toContain('karlsbergquelle');
+    expect(known).not.toContain('feldstation');
     // walking up to the Ehrenhof tripod measures it in (the beam rises, a card says so)
     await look(page, '1789', 1214, -1112, 1230, -1127, 4);
     expect(await page.evaluate(() => window.kq!.travel!.state().activated)).not.toContain('ehrenhof');
@@ -86,7 +88,7 @@ test.describe('world', () => {
       k.step(30);
     });
     expect(await page.evaluate(() => window.kq!.travel!.state().block)).toMatch(/Kampf/);
-    expect(await page.evaluate(() => window.kq!.travel!.go('feldstation'))).toBe(false);
+    expect(await page.evaluate(() => window.kq!.travel!.go('karlsbergquelle'))).toBe(false);
     await page.evaluate(() => {
       window.kq!.combat!.kill();
       window.kq!.step(10);
