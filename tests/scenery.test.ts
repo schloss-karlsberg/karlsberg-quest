@@ -229,6 +229,11 @@ describe('Tempelzimmer passage through the rotunda', () => {
     }
     expect(passageCoords(x, z)[1]).toBeLessThan(ROTUNDA.inner - 0.4);
     expect(c.footprintAt(x, z)).toBe(idx('KB-B07'));
+    // the doorways are as wide as the doors: the middle is free, the jambs hold
+    expect(c.resolve(...passageAt(PASSAGE.doorE, 0.4), 0.35).hit).toBe(false);
+    expect(c.resolve(...passageAt(PASSAGE.doorE - 0.1, 1.05), 0.35).hit).toBe(true);
+    expect(c.resolve(...passageAt(PASSAGE.doorW + 0.2, -0.6), 0.35).hit).toBe(false);
+    expect(c.resolve(...passageAt(PASSAGE.doorW + 0.2, -1.35), 0.35).hit).toBe(true);
   });
 
   it('carries the rotunda’s plinths down to our 1789 terrain (footings under the model)', () => {

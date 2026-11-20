@@ -117,6 +117,15 @@ export function passageCollision(poly: number): { zones: PassZone[]; solids: Sol
     const uz = Math.cos(a);
     solids.push({ kind: 'box', x: cx + Math.cos(a) * ring, z: cz + Math.sin(a) * ring, ux, uz, hu: ring * Math.sin(Math.PI / n) + 0.02, hv: 0.3 });
   }
+  // the door jambs (the wall boxes leave ±20°; the doors' frames are ±1.5 m west, ±1.2 m east)
+  for (const [frame, west] of [[1.5, true], [1.2, false]] as const) {
+    const q = frame + 0.15;
+    const s = ROTUNDA.s + (west ? -1 : 1) * Math.sqrt(5.0 * 5.0 - q * q);
+    for (const side of [-1, 1]) {
+      const [x, z] = passageAt(s, side * q);
+      solids.push({ kind: 'box', x, z, ux: d.nx, uz: d.nz, hu: 0.45, hv: 0.15 });
+    }
+  }
   for (const [s, q] of COLUMNS) {
     const [x, z] = passageAt(s, q);
     solids.push({ kind: 'circle', x, z, r: COLUMN_R });
