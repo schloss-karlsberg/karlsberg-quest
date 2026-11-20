@@ -179,7 +179,8 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   band seams, chipped paint and mud towards the shoe.
 - **Player character (camera track, 2026-11-19):** see §16 — a rigged CC0 surveyor seen over the
   shoulder.
-- **Never:** gore, real victims or animals as enemies, likenesses of real people.
+- **Never:** gore, real victims or animals as enemies. No likeness of a real living person without
+  that person's consent. Historical figures may be modelled from public-domain portraits (§21).
 
 ## 7. Render baseline (engineering, implemented 2026-11-19)
 
@@ -625,3 +626,14 @@ Not taken here: the black cone (F-15) did not reproduce, from the report's spot 
 state. The straight-edged flat black wedge, seen together with a missing player, looks like a single
 exploded triangle (degenerate or NaN vertex) more than a scene prop. The camera findings (F-03,
 F-07 / F-08, F-21 trunks, F-31, F-35) belong to the camera session.
+
+## 21. The historical twins (2026-11-20)
+
+Two real men of the court have roster ids: **Johann Christian von Mannlich** (`mannlich`) and
+**Duke Karl II. August** (`herzog`; alias `karl-ii-august`), flagged `historical: true` in
+`src/systems/npc/roster.ts` (heights 1.76 / 1.80 m). Every other figure stays fiction. The identity
+API (`rosterId`, `TWINS`, `isTwin`, `NpcPlacement.look`, `twinEcho()` in `src/systems/npc/twins.ts`)
+is in place. Their own look is being rebuilt on an authored-mesh pipeline, after the public-domain
+portraits in `docs/reference/people/`. Until then they wear the generic official's look (powdered
+wig, bareheaded), every figure is a ghost, and `twinEcho()` returns null, so the Chronik echoes keep
+their smoke silhouette.
