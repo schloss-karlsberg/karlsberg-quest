@@ -1348,6 +1348,65 @@ Rules that came out of it:
 - The e2e helpers click a reward card away (`clearCards`) instead of pressing E: in play E is the
   player's talk / examine key and would reopen the conversation.
 
+### Input: keyboard, mouse and touch (`src/player/input.ts`, `src/ui/touch.ts`)
+
+- **Actions, not keys.** Features read `input.isDown(action)` / `input.wasPressed(action)`. Keys come
+  from `effectiveBindings` (defaults plus the player's remaps). Mouse look comes from pointer-locked
+  `movementX/Y`, `addLook(dx, dy)` (the pilot and touch) and ← / → (`keyTurn.ts`).
+- **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
+  Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
+  the touch layer says per button which actions it means. `releaseVirtual()` drops every `@` hold.
+- **Touch mode** (`input.touchMode`): `requestLock()` is a no-op, the "Ins Bild klicken" chip stays
+  hidden, and the pause menu comes from a button, since Esc and losing the lock do not exist on touch.
+- **`TouchControls` (`src/ui/touch.ts`)** is created in boot after the input.
+  - Overlay `div.kq-touch`, z-index 14: above the canvas and the HUD, below feature layers (15), the
+    title (20) and modals (30).
+  - Shown only while `touch.active && playing`. Boot calls `setPlaying(started && no modal)` from
+    `modals.onChange`, `startGame` and `toTitle`.
+  - **Left 42 %:** a floating stick (`stickToMove`: W/A/S/D with diagonals, a dead zone, sprint at the
+    rim when going forward).
+  - **Elsewhere:** drag to look (`lookDelta`, ×1.8 before the mouse sensitivity). Multi-touch is
+    tracked by pointer id.
+  - **Buttons press actions:**
+    - Hieb → `attack` + `interact`. Hold for the Wuchthieb; the ring fills in 0.45 s.
+    - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying, and "Sinken" (`down`) appears.
+    - Bannlicht, Ziel (`lockOn`), Balsam (`quickUse`), abilities 1–3. An ability button stays hidden
+      until it is learnt (`skillUnlocked(n)` from boot: `skillsForLevel(progression.level)`, re-checked
+      on `level:up`, `stats:changed`, `game:start` and `save:loaded`).
+    - Interagieren → `listen`. Holding it is Lauschen; the pill carries the prompt's text.
+    - Epoche → `shift`. Holding it returns; the ring fills in 1.2 s.
+    - Top row: Relief (a popover for `scan1–3` / `scan0`), Feldbuch (`journal`), Karte (`map`),
+      Pause (opens boot's pause menu), and Fliegen (`fly`, only in a spirit-view era).
+- **Detection.** The setting "Touch-Steuerung" (`settings.touchControls`: `auto` | `on` | `off`, in
+  Steuerung; declared by module augmentation in `touch.ts`, strings via `addStrings`).
+  - Auto means `matchMedia('(pointer: coarse)')` or the first `pointerType === 'touch'` this session
+    (touch laptops). `touchActive()` is the pure rule.
+  - When active, boot sets `html[data-kq-touch]`. The CSS (`touch.css`) then disables pinch, swipe
+    and selection, applies the `env(safe-area-inset-*)` insets to the HUD, and zooms the HUD to 0.78
+    on screens under 500 px tall.
+  - It also asks to turn a phone held in portrait.
+- **Key names in text.** `actionLabel(input, action, slot?, fallback?)` (`src/ui/actionLabel.ts`)
+  fills a caption's or toast's `{key}`: the key label on desktop, the touch button's German name in
+  touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, Feldbuch, Karte;
+  abilities 1–3). Combat and progression use it instead of `keyLabel`.
+- **Prompts.** `hud.setTouchIcons(fn)` turns a prompt's key cap into the icon of the answering
+  button (`touchIconFor`: E → hand, Q → hourglass …). `hud.onPrompt(key, text)` lights that button.
+- **Mobile tier.** On first run a coarse pointer gets `mobileLevel()` (`src/render/mobileDefaults.ts`):
+  Niedrig on phones (short side < 600 px) and mobile GPUs, Mittel on big tablets with ≥ 6 cores.
+- **Icons** are inline SVG drawn for the project (`src/ui/touchIcons.ts`); there are no external assets.
+- **Tests:**
+  - `tests/touchMap.test.ts`: stick, look, mode, icons, mobile tier, and `Input.press` / no lock in
+    touch mode.
+  - `e2e/touch.spec.ts`: iPhone 13, Pixel 7 and iPad Pro 11 in landscape, CDP touch events. Walk,
+    look, two fingers, hit, field book open and close, pause, then title → new game by taps and
+    "Touch-Steuerung" Aus / Auto. Screens: `touch-*.png`.
+- **Phase 2 (open):**
+  - analog movement
+  - captions and toasts that still name keys ("Maus rechts", "G")
+  - abilities shown before they unlock
+  - aim assist, auto-lock and camera follow; perfect-dodge 0.20 s on touch
+  - iOS audio session, PWA, the Minimal tier, real-device tests
+
 ## 13. Licences
 
 Code: project licence. Fonts: IM Fell English (Igino Marini) and Caveat, SIL OFL 1.1 (texts in
