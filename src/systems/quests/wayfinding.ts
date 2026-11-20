@@ -83,7 +83,7 @@ export function objectiveTarget(q: Pick<QuestDef, 'id' | 'era'>, o: QuestObjecti
       const c = o.clue ? d.clue(o.clue) : null;
       if (!c) return null;
       // a portable clue (the tablet, the Bussole's page: `anchor: "portable"`) has no place in the
-      // world, its `where` is only a nominal spot (the Feldstation). Pointing there sent the player
+      // world, its `where` is only a nominal spot (in the spring's wall, set by the story). Pointing there sent the player
       // 840 m west in the prologue (playtest round 10, F-25).
       if (c.anchor === 'portable') return null;
       const era = c.eras.includes(d.era) ? d.era : (c.eras[0] ?? q.era);
