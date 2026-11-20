@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 import { evaluate } from '../src/systems/story/engine';
 import { validateStories } from '../src/systems/story/validate';
 import type { Condition, StoryFile } from '../src/systems/story/types';
+import type { ShellOpening } from '../src/systems/interiors/types';
+import { along } from '../src/systems/interiors/geom';
 import { loadPalaceData } from './interiors-fixture';
 import { TEMPEL_DOOR, passageFloor } from '../src/systems/scenery/passage';
 
@@ -77,6 +79,40 @@ describe('interiors layout', () => {
     }
     const gallery = room(intact, 'B06.1.bildergalerie');
     expect(intact.windows.filter((w) => w.room === gallery.index).length).toBeGreaterThan(4);
+  });
+
+  it('takes a mullioned window and its panes as one window; the Orangerie gets distinct garden doors', () => {
+    // the Orangerie hall's long edges, with windows like the research-wave model's: per bay a tall
+    // window reaching down to the floor (whole window + two panes) and an upper one above it
+    const pf = room(intact, 'B10.1.s-pfeilersaal');
+    const ops: ShellOpening[] = [];
+    for (const x of pf.ext) {
+      const e = pf.edges[x.edge]!;
+      const win = (s: number, w: number, y0: number, y1: number) => {
+        const [mx, mz] = along(e, s);
+        const ox = mx + e.nx * x.gap;
+        const oz = mz + e.nz * x.gap;
+        ops.push({ building: 'KB-B10', kind: 'window', ax: ox - (e.tx * w) / 2, az: oz - (e.tz * w) / 2, bx: ox + (e.tx * w) / 2, bz: oz + (e.tz * w) / 2, y0, y1 });
+      };
+      for (let s = 3; s < e.len - 3; s += 3.3) {
+        win(s, 1.4, pf.floor + 0.05, pf.floor + 4.5);
+        win(s - 0.45, 0.55, pf.floor + 0.05, pf.floor + 4.5);
+        win(s + 0.45, 0.55, pf.floor + 0.05, pf.floor + 4.5);
+        win(s, 1.2, pf.floor + 7.1, pf.floor + 9.8);
+      }
+    }
+    const p = buildPlan({ rooms: d.rooms, footprints: d.footprints, mode: 'intact', terrain: t89, openings: ops });
+    const r = room(p, 'B10.1.s-pfeilersaal');
+    const bays = pf.ext.reduce((n, x) => n + Math.ceil((pf.edges[x.edge]!.len - 6) / 3.3), 0);
+    const wins = p.windows.filter((w) => w.room === r.index);
+    const doors = p.doors.filter((x) => x.a === r.index && x.b === -1);
+    // two windows a bay (minus those the doors replaced), each as wide as the whole window
+    expect(wins.length).toBe(bays * 2 - doors.length);
+    for (const w of wins.filter((q) => q.y0 < r.floor + 1)) expect(w.width).toBeCloseTo(1.45, 1);
+    // garden doors: in the tall windows, none on top of another
+    expect(doors.length).toBeGreaterThanOrEqual(2);
+    for (const a of doors) for (const b of doors) if (a !== b) expect(Math.hypot(a.cx - b.cx, a.cz - b.cz)).toBeGreaterThan(2);
+    for (const a of doors) expect(a.top).toBeLessThan(r.floor + 6);
   });
 
   it('opens the Tempelzimmer flush onto the rotunda’s colonnade (no steps down there)', () => {
