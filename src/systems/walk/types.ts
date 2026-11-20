@@ -11,7 +11,14 @@ export interface GroupOp { op: 'group'; group: string; members: string[]; leader
 export interface FollowOp { op: 'follow'; npc?: string; group?: string; leader: string; spacing?: number; off?: boolean }
 export interface GatherOp { op: 'gather' | 'hold' | 'release'; group: string; around?: string; face?: string; r?: [number, number] }
 export interface GroupDespawnOp { op: 'despawn'; group: string }
-export type WalkRequest = WalkOp | GroupOp | FollowOp | GatherOp | GroupDespawnOp;
+/**
+ * Fade transition (story): snap the group's leader to stop `to` (its walker's route, or `route`
+ * when the leader has no live walker) and land the members in their slots at once. Never backward
+ * along the route; may jump past the walker's target (it then arrives there). Emits
+ * `npc:arrived {skipped: true}` once. The player is not moved.
+ */
+export interface WarpOp { op: 'warp'; group: string; to: string; route?: string }
+export type WalkRequest = WalkOp | GroupOp | FollowOp | GatherOp | GroupDespawnOp | WarpOp;
 /** content/routes/<id>.json: named stops along a polyline (local metres, x east, z south). */
 export interface Route { id: string; stops: { id: string; x: number; z: number }[]; points: [number, number][] }
 
@@ -34,11 +41,15 @@ export interface GroupSave {
   mode: 'follow' | 'gather' | 'hold';
   around?: string;
   face?: string;
+  /** Leader pose [x, z, yaw] (a leader without a walker has nowhere else to come back to). */
+  at?: [number, number, number];
+  /** The leader's last route (warp without a live walker). */
+  route?: string;
+  /** Gather radii / follow spacing when not the default. */
+  r?: [number, number];
+  spacing?: [number, number];
 }
-/**
- * Save slice of the walk core. Per contract C2 it lives inside the npc slice (or as its own
- * `SystemStates` key): the integration task decides and adds the augmentation there.
- */
+/** Save slice of the walk system: its own `SystemStates` key `walk` (src/systems/walk/index.ts). */
 export interface WalkSlice { walkers: WalkerSave[]; groups: GroupSave[] }
 
 declare module '../../core/events' {
@@ -51,5 +62,12 @@ declare module '../../core/events' {
     'group:waiting': { group: string; leader: string; dist: number };
     /** The player caught up; the leader walks on. */
     'group:resumed': { group: string; leader: string };
+    /**
+     * A come-along bark from a waiting walker (`wait.bark`, a line-group id such as
+     * 'imhoff.bark.wait'). The barks system picks it up like any event: bark lines with
+     * `trigger: { event: 'walk:bark', id: 'imhoff.bark.wait' }` (ids `imhoff.bark.wait.NN`).
+     * Never sent during a conversation; at most every 20 s per walker.
+     */
+    'walk:bark': { npc: string; id: string };
   }
 }
