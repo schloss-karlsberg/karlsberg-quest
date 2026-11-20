@@ -47,6 +47,28 @@ async function probe(page: Page): Promise<Probe> {
 
 const dist = (a: number[], b: number[]) => Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!);
 
+/**
+ * Wait until the third-person rig has settled (frames keep drawing under WebDriver, and the rig
+ * eases per drawn frame): the camera moves < 1 cm over 300 ms.
+ */
+async function settle(page: Page): Promise<void> {
+  const cam = () => page.evaluate(() => window.kq!.ctx.camera.position.toArray() as number[]);
+  let a = await cam();
+  for (let i = 0; i < 30; i++) {
+    await page.waitForTimeout(300);
+    const b = await cam();
+    if (dist(a, b) < 0.01) return;
+    a = b;
+  }
+  throw new Error('the camera rig did not settle');
+}
+
+/** Close whatever the new game's prologue has open (story cards, radio pages): a modal blocks the skip. */
+async function closeModals(page: Page): Promise<void> {
+  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
+  expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(0);
+}
+
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.screenshot({ path: `${SCREENS}/cinematic-${name}.png` });
@@ -71,6 +93,8 @@ test.describe('cinematic', () => {
       k.teleport(830, -930, 40, -10);
       k.step(40);
     });
+    await closeModals(page);
+    await settle(page);
     expect(await page.evaluate(() => window.kq!.cinematic!.list())).toContain('reh');
     const before = await probe(page);
     expect(before.finite).toBe(true);
@@ -112,6 +136,7 @@ test.describe('cinematic', () => {
     const p2 = await probe(page);
     expect(dist(p2.cam, p1.cam)).toBeGreaterThan(0.2);
     await shot(page, 'orbit-c');
+    await closeModals(page);
     await page.keyboard.press('KeyX');
     const p3 = await probe(page);
     expect(p3.events).toContainEqual(['cinematic:end', { id: 'e2e-orbit', skipped: true }]);
@@ -136,6 +161,7 @@ test.describe('cinematic', () => {
     expect(await page.evaluate(() => window.kq!.camera!.state().see)).toBe(true);
 
     // ---- reduced motion: two stills (≤ 3 s), then a cut back
+    await closeModals(page);
     await page.evaluate(() => {
       const k = window.kq!;
       (window as unknown as { __cine: unknown[] }).__cine.length = 0;
