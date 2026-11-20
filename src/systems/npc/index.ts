@@ -10,6 +10,9 @@
  *               per question, 'npc:conversation' {npc, open}, 'bark:npc-near' {npc, era} when the
  *               player lingers nearby, and on the first talk 'clue:grant' {id: clue.<chapter>.<npc>}
  *               plus the flags talked.<chapter>.<npc>[.<topic>].
+ * Talking to people (people contract v0.1, ./bind.ts): a placement whose speaker has a live Person
+ *               (`ctx.people.bySpeaker`) is bound to it: no figure of its own, range / prompt /
+ *               glyph / framing follow the person, who faces the player and talks in the conversation.
  * Persistent: placements and spoken once-lines (slice `npc`).
  * Debug/test API: window.kq.npc (see NpcHooks).
  */
@@ -34,6 +37,8 @@ import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw,
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
 import { GiverGlyphs } from './glyphs';
+import type { Person } from '../people/types';
+import { type BodySpot, bodySpot, faceYaw, talkCues } from './bind';
 
 addStrings('de', {
   'npc.prompt': 'Mit {name} sprechen',
@@ -63,7 +68,7 @@ declare module '../../core/state' {
 
 export interface NpcHooks {
   /** y = the floor the figure stands on (its storey inside the palace). */
-  list(): { npc: string; x: number; z: number; y: number; era: string; visible: boolean; alpha: number; dist: number }[];
+  list(): { npc: string; x: number; z: number; y: number; era: string; visible: boolean; alpha: number; dist: number; bound: string | null }[];
   spawn(p: NpcPlacement): void;
   despawn(npc: string): void;
   /** Open the conversation with an NPC (ignores the distance). */
@@ -127,6 +132,8 @@ class NpcRuntime {
   private near: string | null = null;
   private prompt: string | null = null;
   private hooks = false;
+  /** The bound person told to talk in the open conversation (people contract v0.1). */
+  private talker: Person | null = null;
 
   constructor(private readonly ctx: GameContext) {
     this.voice = new Voice(ctx.audio);
@@ -267,6 +274,17 @@ class NpcRuntime {
   /** Floor under the figure; a placement with a storey hint (`y`, rooms upstairs) keeps its storey. */
   private figY(f: Placed): number {
     return this.ctx.world.heightAt(f.p.x, f.p.z, f.p.y);
+  }
+
+  /** The live person bound to this speaker's placement (people contract v0.1), if any. */
+  private person(id: string): Person | undefined {
+    return this.ctx.people?.bySpeaker(id);
+  }
+
+  /** Where a placement's body is now: the bound person, else the placement (./bind.ts). */
+  private spot(id: string, f: Placed): BodySpot & { floor: number; tall: number } {
+    const s = bodySpot(f.p, this.person(id));
+    return { ...s, floor: s.y ?? this.figY(f), tall: s.height ?? f.fig.look.height };
   }
 
   private rebuild(): void {
@@ -469,10 +487,11 @@ class NpcRuntime {
         f.nearT = 0;
         continue;
       }
-      // another storey (the Festsaal above the Kabinett) is not "near"
-      const dy = Math.abs(p.y - this.figY(f));
+      // another storey (the Festsaal above the Kabinett) is not "near"; a bound person is where it walks
+      const body = this.spot(id, f);
+      const dy = Math.abs(p.y - body.floor);
       // `npc.hush` = id: this ghost does not take E (the Festsaal: the handle in Hanne's hand is the choice)
-      const d = dy > 2.4 || ctx.state.state.flags['npc.hush'] === id ? Infinity : Math.hypot(p.x - f.p.x, p.z - f.p.z);
+      const d = dy > 2.4 || ctx.state.state.flags['npc.hush'] === id ? Infinity : Math.hypot(p.x - body.x, p.z - body.z);
       if (d < bestD) {
         bestD = d;
         best = id;
@@ -512,7 +531,8 @@ class NpcRuntime {
   /** Escort: walk after the player (2.4 m behind, a little faster than walking), into their era. */
   private followStep(id: string, dt: number): void {
     const f = this.figs.get(id);
-    if (!f) return;
+    // a bound person is moved by whoever spawned it
+    if (!f || this.person(id)) return;
     const ctx = this.ctx;
     const p = ctx.player.position;
     if (f.p.era !== ctx.era.current) f.p.era = ctx.era.current;
@@ -546,9 +566,10 @@ class NpcRuntime {
       this.frameT -= dt;
       const f = this.figs.get(this.talking.npc);
       const pl = ctx.player;
-      if (f && !pl.flying) {
-        const dx = f.p.x - p.x;
-        const dz = f.p.z - p.z;
+      const body = f ? this.spot(this.talking.npc, f) : null;
+      if (f && body && !pl.flying) {
+        const dx = body.x - p.x;
+        const dz = body.z - p.z;
         const dist = Math.hypot(dx, dz);
         if (dist > 0.4) {
           const k = reduced ? 1 : Math.min(1, dt * 6);
@@ -556,7 +577,7 @@ class NpcRuntime {
           let dy = wantYaw - pl.yaw;
           dy = Math.atan2(Math.sin(dy), Math.cos(dy));
           pl.yaw += dy * k;
-          const head = this.figY(f) + f.fig.look.height * 0.9;
+          const head = body.floor + body.tall * 0.9;
           const eyeY = cam.position.y;
           const wantPitch = Math.max(-0.5, Math.min(0.4, Math.atan2(head - eyeY, dist))) - 0.06;
           pl.pitch += (wantPitch - pl.pitch) * k;
@@ -565,11 +586,27 @@ class NpcRuntime {
     }
     // the third-person camera turns a conversation into an over-the-shoulder two-shot (src/player/camera.ts)
     const tf = this.talking ? this.figs.get(this.talking.npc) : undefined;
-    cameraHints.focus = tf && !ctx.player.flying && Math.hypot(tf.p.x - p.x, tf.p.z - p.z) < 8 ? { x: tf.p.x, y: this.figY(tf) + tf.fig.look.height * 0.88, z: tf.p.z } : null;
+    const tb = tf ? this.spot(this.talking!.npc, tf) : null;
+    cameraHints.focus = tb && !ctx.player.flying && Math.hypot(tb.x - p.x, tb.z - p.z) < 8 ? { x: tb.x, y: tb.floor + tb.tall * 0.88, z: tb.z } : null;
     // NPCs look at the player's face (over the shoulder the camera is not where the eyes are)
     const face = ctx.player.thirdPerson ? _face.set(p.x, p.y + ctx.player.eyeHeight, p.z) : cam.position;
+    // people contract v0.1: a bound person turns to the player, looks at the eyes and talks while the
+    // conversation is open, then goes back to idle (locomotion by itself when it walks on)
+    const talker = (this.talking && this.person(this.talking.npc)) || null;
+    const cue = talkCues(this.talker, talker);
+    if (cue.end) {
+      cue.end.play('idle');
+      cue.end.lookAt(null);
+    }
+    if (cue.start) cue.start.play('talk');
+    this.talker = talker;
+    if (talker) {
+      talker.face(faceYaw(talker.root.position.x, talker.root.position.z, p.x, p.z));
+      talker.lookAt(face);
+    }
     for (const [id, f] of this.figs) {
-      const vis = this.visible(f);
+      // bound to a person: the figure fades away at its placement (and comes back when unbound)
+      const vis = this.visible(f) && !this.person(id);
       f.fig.target = vis ? 1 : 0;
       const o = f.fig.object;
       o.position.set(f.p.x, this.figY(f), f.p.z);
@@ -605,7 +642,10 @@ class NpcRuntime {
     this.glyphs.frame(
       dt,
       cam,
-      [...this.figs.entries()].map(([id, f]) => ({ npc: id, x: f.p.x, y: this.figY(f), z: f.p.z, visible: this.visible(f) && f.fig.alpha > 0.2 && this.talking?.npc !== id })),
+      [...this.figs.entries()].map(([id, f]) => {
+        const b = this.spot(id, f);
+        return { npc: id, x: b.x, y: b.floor, z: b.z, visible: this.visible(f) && (b.bound || f.fig.alpha > 0.2) && this.talking?.npc !== id };
+      }),
       p,
       reduced,
     );
@@ -617,16 +657,20 @@ class NpcRuntime {
     this.hooks = true;
     kq.npc = {
       list: () =>
-        [...this.figs.entries()].map(([npc, f]) => ({
-          npc,
-          x: f.p.x,
-          z: f.p.z,
-          y: this.figY(f),
-          era: f.p.era,
-          visible: this.visible(f),
-          alpha: f.fig.alpha,
-          dist: Math.hypot(this.ctx.player.position.x - f.p.x, this.ctx.player.position.z - f.p.z),
-        })),
+        [...this.figs.entries()].map(([npc, f]) => {
+          const b = this.spot(npc, f);
+          return {
+            npc,
+            x: b.x,
+            z: b.z,
+            y: b.floor,
+            era: f.p.era,
+            visible: this.visible(f),
+            alpha: f.fig.alpha,
+            dist: Math.hypot(this.ctx.player.position.x - b.x, this.ctx.player.position.z - b.z),
+            bound: this.person(npc)?.id ?? null,
+          };
+        }),
       spawn: (p) => this.spawn(p),
       despawn: (n) => this.despawn(n),
       talk: (n) => this.open(n),
