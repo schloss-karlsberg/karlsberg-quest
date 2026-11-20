@@ -4,7 +4,7 @@ import { buildDebris, buildInterior, foundationStones, lookOf } from '../src/sys
 import { PlanQuery } from '../src/systems/interiors/collide';
 import { type FullPlan, buildPlan, classifyRoom, ruinTop } from '../src/systems/interiors/layout';
 import { bakeLight } from '../src/systems/interiors/lightmap';
-import { extractOpenings } from '../src/systems/interiors/shell';
+import { extractOpenings, isDoor } from '../src/systems/interiors/shell';
 import { frameXZ, stairHeight } from '../src/systems/interiors/stairs';
 import { readFileSync } from 'node:fs';
 import { evaluate } from '../src/systems/story/engine';
@@ -244,7 +244,11 @@ describe('interiors shell', () => {
       }
     };
     quad(0, 1.2, 1, 3, 5, [0.02, 0.02, 0.03], 3);
+    // the door leaf is a slab: front and back (the research-wave model's red-brown shade)
     quad(3, 4.4, 0, 2.6, 5, [0.15, 0.07, 0.03], 3);
+    quad(3, 4.4, 0, 2.6, 5.03, [0.17, 0.06, 0.03], 3);
+    // a lone painted reveal of the same hue is no door
+    quad(7, 7.3, 0, 2.6, 5, [0.15, 0.07, 0.03], 3);
     quad(10, 11, 1, 3, 5, [0.02, 0.02, 0.03], 4); // another building
     const g = new BufferGeometry();
     g.setAttribute('position', new Float32BufferAttribute(pos, 3));
@@ -255,7 +259,18 @@ describe('interiors shell', () => {
     const w = ops.find((o) => o.kind === 'window')!;
     expect(Math.hypot(w.bx - w.ax, w.bz - w.az)).toBeCloseTo(1.2, 3);
     expect(w.y1 - w.y0).toBeCloseTo(2, 3);
-    expect(ops.find((o) => o.kind === 'door')!.building).toBe('KB-B01');
+    const d = ops.find((o) => o.kind === 'door')!;
+    expect(d.building).toBe('KB-B01');
+    expect(Math.hypot(d.bx - d.ax, d.bz - d.az)).toBeCloseTo(1.4, 3);
+  });
+
+  it('door paint: brown and red-brown leaves, not the red plinth, tiles or green paint', () => {
+    expect(isDoor(0.15, 0.07, 0.03)).toBe(true);
+    expect(isDoor(0.129, 0.059, 0.027)).toBe(true);
+    expect(isDoor(0.2, 0.06, 0.035)).toBe(true);
+    expect(isDoor(0.38, 0.114, 0.067)).toBe(false); // red sandstone plinth
+    expect(isDoor(0.06, 0.09, 0.05)).toBe(false); // green shutters
+    expect(isDoor(0.04, 0.02, 0.01)).toBe(false); // near black
   });
 });
 
