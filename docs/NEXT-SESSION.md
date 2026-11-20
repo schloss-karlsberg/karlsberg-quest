@@ -112,6 +112,72 @@ Known weak spots from the round-9 testers:
 - The Strohmann and Steinbrecher bosses look stiff.
 - The Festsaal runs at about 30–35 fps.
 
+### 3.6 Story idea (owner, 2026-11-20): the Karlsbergquelle starts the time travel
+
+The owner wants a cooler story start. **Touching the magic water of the Karlsbergquelle triggers
+the first time travel.** Today the first shift is a bare Q press at the Ehrenhof in `q.p.punktwolke`.
+
+**The real place (fact, for the codex):**
+- The Karlsbergquelle is a real spring in the beech forest between the Karlsbergweiher and the
+  Orangerie ruin. It is uphill from the Orangerie and reached from the pond or by a trail up from the
+  Orangerie.
+- It feeds the Karlsbergbach, about 1.6 km long, which joins the Reichersbach. There is a Kneipp
+  basin nearby.
+- Sources: komoot highlight 780842 "Karlsberg Spring and Water Cascade" (about 330 m); ich-geh-wandern.de
+  Schlossbergtour and "Karlsbergweiher, Binnendünen und Closenbruch".
+- Its build date, and whether it fed the palace, are **not confirmed**. Research this before writing a
+  fact card; otherwise mark it unknown.
+
+**The look, from a photo of the real spring:**
+- a hollow in a steep forest slope, with ferns and ivy
+- a low dry wall of red sandstone with a small plaque
+- a hollowed **log trough** on two stumps in front of the wall, fed by a pipe
+- uphill, a small **arched stone spring house** (Brunnenstube) half sunk into the slope
+- sandstone steps on the left and mossy sandstone blocks along the path
+- a red, sandy path
+
+**Story beat (fiction, tagged FIKTION in the codex):**
+1. In the prologue Laub, the Bussole, wakes at the Orangerie wall (`q.p.bussole`). It "hears water that
+   remembers" and leads the player up the trail to the spring. Use the marker, plus a few light motes
+   drifting downhill along the brook.
+2. At the trough: **E "Wasser berühren"**. Then a short cinematic of about 4 s:
+   - the hand dips in, and the ripples freeze
+   - the sound drops away, and the brook runs backwards
+   - the forest dissolves to 1789
+   - the spring house stands new: a dressed baroque Brunnenstube with a stone basin and a bronze spout
+3. Laub explains the rule. The water "remembers"; the Bussole carries a drop of it, so from now on **Q** works
+   at places that remember. This gives the era shift a cause the player has seen, not just a keybind.
+4. Optional: the spring becomes the **anchor**. Players who are caught or KO'd wake at the spring
+   instead of the station, and the spring is a fast-travel point.
+
+**The spring in each era:**
+
+| Era | What the spring looks like |
+|---|---|
+| today | log trough |
+| 1789 | new Brunnenstube |
+| Feb 1793 night | frozen, so the first touch breaks the ice crust |
+| Jul 1793 night | firelight reflected in the water from the burning palace |
+| 1796 | the spout is plundered, only the stones are left |
+
+**Work list:**
+1. Find the spring's real position on the LiDAR, in local x/z. Use the OSM node "Karlsbergquelle" or the
+   relief hollow and brook line between the Weiher (820/−869) and the Orangerie (1237/−966). Check that
+   the slope reads in the terrain.
+2. Model it from CC0 parts (Poly Haven or ambientCG red sandstone, a log, ferns), with a water surface
+   and an animated spout. Build the era variants as above.
+3. Content:
+   - a new prologue objective or beat, between `q.p.bussole` and `q.p.punktwolke` or replacing the
+     Ehrenhof Q tutorial
+   - an `interact` trigger and the cinematic
+   - a codex card for the real spring, and a FIKTION card "Das Wasser erinnert sich"
+   - the pacing e2e (`e2e/pacing.spec.ts`), `e2e/helpers/prolog.ts` and `campaign.spec.ts` updated
+4. Check how Q is unlocked today, so the spring becomes the one place that grants it.
+5. Docs: PRD §4.2 premise, `docs/ACTION-RPG.md` §11.0 prologue table and §14 log, and
+   `content/bible/01` (prologue).
+
+Do not name or show the brewery brand that shares the name. The spring is called "Karlsbergquelle".
+
 ## 4. How to run it
 
 - **Play copy** (stable build for the user and the browser):
