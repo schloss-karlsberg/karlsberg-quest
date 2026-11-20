@@ -268,8 +268,9 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   never finished, so run it once.
 - **Heavy jobs: one at a time per machine.** About five sessions share this Mac, so wrap every
   heavy job in `scripts/dev/heavy.sh` (alias `pnpm heavy`). It takes a machine-wide lock
-  (`/tmp/kq-heavy.lock`), waits while another session holds it and prints who holds it, which
-  command and for how long, then runs your command and passes its exit code through. Heavy jobs
+  (`/tmp/kq-heavy.lock`). Waiters line up first come, first served in a ticket queue
+  (`/tmp/kq-heavy.lock.queue/`) and print who holds the lock, which command and for how long.
+  Then it runs your command and passes its exit code through. Heavy jobs
   are Playwright e2e, real-GPU screenshots (`scripts/dev/shot*.mjs`, `look.mjs`) and local
   TTS/model runs. Set `KQ_HEAVY_OWNER=<session name>` so the others can see who holds the lock.
 
@@ -277,15 +278,27 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   KQ_HEAVY_OWNER=voice scripts/dev/heavy.sh -- pnpm exec playwright test e2e/voice.spec.ts --workers=1
   scripts/dev/heavy.sh -- node scripts/dev/shots.mjs            # GPU screenshots
   scripts/dev/heavy.sh --nice --check-load -- python tts_run.py  # CPU model run at background QoS
-  scripts/dev/heavy.sh --status                                  # who holds it, or "free"
+  scripts/dev/heavy.sh --max-hold 5 -- node scripts/dev/shots.mjs  # hint: expect <= 5 min
+  scripts/dev/heavy.sh --status                                  # holder (or "free") and the queue
   ```
+
+  - **One spec file or one screenshot set per lock hold, never a whole multi-spec batch.** A
+    47-minute batch makes every 5-minute GPU job wait behind it. Loop instead, so short jobs from
+    other sessions can slot in between specs:
+
+    ```sh
+    for s in e2e/a.spec.ts e2e/b.spec.ts; do scripts/dev/heavy.sh -- pnpm exec playwright test "$s" --workers=1; done
+    ```
+
+  - `--max-hold <min>` is a hint, not a limit. `--status` shows it (and "EXCEEDED"), and the
+    holder prints a warning on stderr once it runs over.
 
   - `KQ_HEAVY_TIMEOUT=600` gives up after 10 min of waiting, with exit 75.
   - `--check-load` warns when less than 20 % of memory is free (`memory_pressure -Q`).
     Add `--strict` to refuse instead.
   - `--nice` throttles hard, so don't use it for GPU or timed e2e runs.
   - Nested calls run straight through (`KQ_HEAVY_HELD=1`).
-  - A lock whose holder has died is cleared automatically.
+  - A lock whose holder has died, and tickets of dead waiters, are cleared automatically.
   - Tests: `bash scripts/dev/heavy.test.sh`.
 
 ## 5. Hard rules
