@@ -25,6 +25,9 @@ import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
 import { TitleScreen } from './ui/title';
+import { TouchControls } from './ui/touch';
+import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
+import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
 import { World } from './world/world';
@@ -145,7 +148,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   });
   quality.noMsaa = params.has('nomsaa');
   const gpu = gpuName(renderer.getContext());
-  const guess = suggestLevel(gpu, matchMedia('(pointer: coarse)').matches, navigator.hardwareConcurrency ?? 0);
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  // phones and tablets (touch, docs/PERF-MOBILE-RESEARCH.md §B): Niedrig on phones, Mittel on big tablets
+  const guess = coarse && !isSoftwareGpu(gpu) ? mobileLevel(gpu, Math.min(screen.width, screen.height), navigator.hardwareConcurrency ?? 0) : suggestLevel(gpu, coarse, navigator.hardwareConcurrency ?? 0);
   quality.fallback = guess;
   // session tier: ?q=low|med|high, else a software renderer (SwiftShader in the headless e2e run)
   // always starts on Niedrig (cheap materials, no shadows / bloom / AO); picking a level in the
@@ -154,6 +159,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   if (!settings.state.graphics && !navigator.webdriver && !quality.override) {
     // first run: guess a preset from the GPU (Hoch / Mittel / Niedrig); the auto-downgrade corrects it
     settings.update((d) => (d.graphics = guess), 'graphics');
+    // phones (touch, short side < 600 px): Energiesparen on from the start (30 fps, heat, battery)
+    if (coarse && Math.min(screen.width, screen.height) < 600) settings.update((d) => (d.powerSave = true), 'powerSave');
   }
   quality.listeners.push((p) => {
     world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps);
@@ -194,6 +201,22 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     input,
     events,
   );
+  // touch controls (phones / tablets, "Touch-Steuerung"): stick, drag look, buttons (src/ui/touch.ts)
+  const touch = new TouchControls({
+    input,
+    settings,
+    hud: ui.hud,
+    events,
+    root: ui.root,
+    openPause: () => openPauseMenu(),
+    canFly: () => ERA_INFO[world.currentEra].spiritView,
+    flying: () => player.flying,
+    skillUnlocked: (n) => skillsForLevel(state.state.systems.progression?.level ?? 1).includes(SKILL_IDS[n - 1]!),
+  });
+  touch.onActiveChange = (on) => {
+    if (on) input.releaseLock();
+    else if (started && modalOpen === 0) ui.hud.showClickToPlay(!input.locked);
+  };
   // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
   const avatar = new Avatar(scene, player, () => assets.model(AVATAR_MODEL));
   let zoomSaved = 0;
@@ -441,6 +464,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     modalChanged = performance.now();
     loop.requestRender();
     input.enabled = n === 0 && started;
+    touch.setPlaying(n === 0 && started);
     if (n > 0) {
       pause.push('modal');
       input.releaseLock();
@@ -509,7 +533,8 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     }, 15_000);
   });
   // bullet time draws on request only: a real mouse look / key / wheel shows at once
-  for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel'] as const) window.addEventListener(ev, () => loop.manual && loop.requestRender(), { passive: true });
+  // (pointer events: touch drags and buttons too, src/ui/touch.ts)
+  for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel', 'pointerdown', 'pointermove', 'pointerup'] as const) window.addEventListener(ev, () => loop.manual && loop.requestRender(), { passive: true });
   window.setInterval(() => started && !pause.paused && save.autosave('interval'), 60_000);
 
   function startGame(fresh: boolean): void {
@@ -524,6 +549,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     title.hide();
     ui.hud.show(true);
     input.enabled = true;
+    touch.setPlaying(modalOpen === 0);
     pause.pop('title');
     input.requestLock();
     // the first click into the picture takes the mouse (pointer lock): say so until it has it
@@ -537,6 +563,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     save.autosave('title', true);
     started = false;
     input.enabled = false;
+    touch.setPlaying(false);
     input.releaseLock();
     ui.hud.show(false);
     pause.push('title');

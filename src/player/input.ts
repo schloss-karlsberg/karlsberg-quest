@@ -219,7 +219,7 @@ export class Input {
   private lockPending = false;
 
   requestLock(): void {
-    if (this.locked || this.lockPending) return;
+    if (this.locked || this.lockPending || this.touchMode) return;
     try {
       const p = this.canvas.requestPointerLock() as unknown as Promise<void> | undefined;
       if (p && typeof p.then === 'function') {
@@ -262,13 +262,13 @@ export class Input {
 
   isDown(a: Action): boolean {
     if (!this.enabled) return false;
-    return this.bindings[a].some((c) => this.down.has(c));
+    return this.down.has(virtualCode(a)) || this.bindings[a].some((c) => this.down.has(c));
   }
 
   /** True if the action was pressed since the last `endStep()`. */
   wasPressed(a: Action): boolean {
     if (!this.enabled && a !== 'pause') return false;
-    return this.bindings[a].some((c) => this.pressedCodes.has(c));
+    return this.pressedCodes.has(virtualCode(a)) || this.bindings[a].some((c) => this.pressedCodes.has(c));
   }
 
   /** Accumulated mouse movement since the last call (pixels). */
@@ -298,6 +298,25 @@ export class Input {
     } else this.down.delete(code);
   }
 
+  /**
+   * Press / release an action directly, independent of key bindings (touch buttons, src/ui/touch.ts).
+   * Uses a virtual code (`@attack`), so remapped keys and the shared-key pairs stay untouched.
+   */
+  press(a: Action, down: boolean, edge = true): void {
+    this.simulate(virtualCode(a), down, edge);
+  }
+
+  /** Release every touch-held action (modal opened, touch cancelled, tab hidden). */
+  releaseVirtual(): void {
+    for (const c of [...this.down]) if (c.startsWith('@')) this.down.delete(c);
+  }
+
+  /**
+   * Touch mode (src/ui/touch.ts): no pointer lock is ever requested — look comes from drags via
+   * `addLook`, and the pause menu from its button.
+   */
+  touchMode = false;
+
   /** Inject mouse-look movement (pixels) as if it came from `movementX/Y` under pointer lock (bullet-time pilot). */
   addLook(dx: number, dy: number): void {
     this.mdx += dx;
@@ -307,6 +326,11 @@ export class Input {
   dispose(): void {
     for (const [t, type, fn] of this.listeners) t.removeEventListener(type, fn);
   }
+}
+
+/** Binding-independent code of an action pressed by the touch layer (`Input.press`). */
+export function virtualCode(a: Action): string {
+  return `@${a}`;
 }
 
 export function isTyping(t: EventTarget | null): boolean {

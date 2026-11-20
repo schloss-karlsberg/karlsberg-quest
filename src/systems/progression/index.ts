@@ -34,7 +34,7 @@ import type { DerivedStats, ItemDef, ItemKind, PlacedPickup, ProgressionSlice } 
 import { h } from '../../ui/dom';
 import { journalTabs } from '../../ui/journal';
 import type { ModalHandle } from '../../ui/modal';
-import { keyLabel } from '../../ui/settings';
+import { actionLabel } from '../../ui/actionLabel';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { collectionSound, levelSound, pickupSound, useSound, xpTick } from './audio';
 import { ProgressionHud } from './hud';
@@ -180,8 +180,7 @@ class Progression {
   }
 
   private key(action: 'quickUse' | 'listen' | 'inventory'): string {
-    const code = effectiveBindings(this.ctx.settings.state.bindings)[action]?.[0];
-    return code ? keyLabel(code) : '';
+    return actionLabel({ touchMode: this.ctx.input.touchMode, bindings: effectiveBindings(this.ctx.settings.state.bindings) }, action);
   }
 
   private setLevelFlag(level: number): void {
