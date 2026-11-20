@@ -122,9 +122,34 @@ behaviour, content or design, update them in the same pull request:
 - add a row to the log in [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md) §14, and
 - add an entry to the changelog table at the top of [`PRD.md`](PRD.md).
 
+## Commit messages: Conventional Commits
+
+Commit messages and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/):
+`type(scope): summary`, in English, imperative, lower case after the colon.
+
+```
+feat(quelle): touching the spring starts the first time travel
+fix(combat): Irrlichter stay hittable after a Bannlicht
+docs(release): how to cut a release
+```
+
+- **Types:** `feat` (new for players), `fix` (bug fix), `perf` (faster or lighter), `refactor`,
+  `docs`, `test`, `build`, `ci`, `chore`. A breaking change (e.g. old saves no longer load) gets a
+  `!` after the type or scope, or a `BREAKING CHANGE:` footer.
+- **Scopes** (optional): `story`, `quelle`, `combat`, `camera`, `touch`, `render`, `content`, `ui`,
+  `release`, `env` (`main` is reserved for release-please's release PR). Pick the closest one or
+  leave it out.
+- **Merges into `main`** use `git merge --no-ff`, and the merge commit's summary is itself a
+  conventional summary for the whole branch (e.g. `feat(touch): touch controls phase 1`), not
+  "Merge branch …". On GitHub, use "Squash and merge" or keep the PR title as the merge summary.
+  That summary is what release-please reads for `CHANGELOG.md` and the GitHub Release: `feat`,
+  `fix`, `perf` and `docs` appear there; `refactor`, `test`, `build`, `ci` and `chore` stay hidden.
+- The PR title is checked by the "PR title" workflow (`.github/workflows/pr-lint.yml`).
+
 ## Pull requests
 
-- Open pull requests against `main`. Keep them focused on one topic.
+- Open pull requests against `main`. Keep them focused on one topic, with a Conventional Commits
+  title (see above).
 - CI runs typecheck, unit tests, content validation and the build.
 - Fill in the pull request template: gates, asset credits, FIKTION labels.
 - For bugs, include the browser, GPU and URL flags, and if you can, the F8 note from the game.
