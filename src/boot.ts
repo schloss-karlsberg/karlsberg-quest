@@ -454,6 +454,18 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   mark('systems');
 
   installDebug(ctx, { frames: () => frames, perf, quality, setCamera: (fn) => (cameraOverride = fn), ready: palaceReady });
+
+  // Playtesting a later chapter: ?kapitel=2|3|4 turns a NEW game into a start at that chapter,
+  // with what the earlier chapters would have left behind (survey skills, a fitting level).
+  const kapitel = Number(params.get('kapitel'));
+  if (kapitel >= 2 && kapitel <= 4) {
+    const offStart = ctx.events.on('game:start', ({ resumed }) => {
+      offStart();
+      if (resumed) return;
+      // after the story system's own game:start handler has started the prologue
+      setTimeout(() => startAtChapter(kapitel), 0);
+    });
+  }
   window.kq!.avatar = {
     state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom }),
     setMode: (m) => settings.update((d) => (d.cameraMode = m), 'cameraMode'),
@@ -489,4 +501,17 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     );
   }
   return ctx;
+}
+
+/** `?kapitel=N`: jump a freshly started game to chapter N (see boot). */
+function startAtChapter(n: number): void {
+  const k = window.kq;
+  if (!k?.story || !k.skills || !k.progression || !k.quests) return;
+  const skills: [string, number][] = [['relief', 2], ['kartograf', 2]];
+  if (n >= 2) skills.push(['baumeister', 1], ['spurenleser', 1]);
+  for (const [id, tier] of skills) k.skills.grant(id, tier, true);
+  k.progression.level(n * 2 + 1);
+  const earlier = new RegExp(`^q\\.(p|${Array.from({ length: n - 1 }, (_, i) => `k${i + 1}`).join('|')})\\.`);
+  for (const id of k.quests.ids()) if (earlier.test(id) && k.quests.state().quests[id]?.state !== 'done') k.quests.reset(id);
+  k.story.goto(`k${n}`, `k${n}_0`);
 }
