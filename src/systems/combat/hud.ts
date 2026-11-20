@@ -78,6 +78,7 @@ html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1p
 .kqc-pips .tag.veil { color: #d8efff; border-color: rgba(190,225,250,0.9); }
 .kqc-pips .tag.mirror { color: #ffffff; border-color: #ffffff; background: rgba(30,40,55,0.85); }
 .kqc-pips .tag.caller { color: #ffc89a; border-color: rgba(255,160,90,0.85); background: rgba(30,12,4,0.85); }
+.kqc-pips .tag.reform { color: #e4f0ff; border-color: rgba(200,220,255,0.75); border-style: dashed; background: rgba(14,20,34,0.85); }
 .kqc-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .kqc-vignette { position: absolute; inset: -2%; opacity: 0; will-change: opacity;
   background: radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(190,215,235,0.35) 80%, rgba(225,238,250,0.75) 100%); }
@@ -218,7 +219,7 @@ export interface PipTarget {
   /** Elite low enough for the Gnadenstoß. */
   finish?: boolean;
   /** Combat variety pass: what to read about it — its guard, its veil, its mirror, its call. */
-  trait?: 'guard' | 'veil' | 'mirror' | 'caller';
+  trait?: 'guard' | 'veil' | 'mirror' | 'caller' | 'reform';
 }
 
 /** An ability slot (dock 'vitals' 30). */
@@ -241,7 +242,7 @@ const SKILL_GLYPH: Record<SkillSlot['id'], string> = {
   // a whirl: a spiral
   wirbel: '<path d="M12 12a2 2 0 1 1 2 2 4 4 0 1 1-4-4 6 6 0 1 1 6 6 8 8 0 0 1-8-8"/>',
 };
-const TRAIT_TAG: Record<NonNullable<PipTarget['trait']>, string> = { guard: 'Deckung', veil: 'Schleier', mirror: 'Spiegel', caller: 'Rufer' };
+const TRAIT_TAG: Record<NonNullable<PipTarget['trait']>, string> = { guard: 'Deckung', veil: 'Schleier', mirror: 'Spiegel', caller: 'Rufer', reform: 'formt sich neu' };
 
 export interface Docker {
   dock(area: 'vitals' | 'boss' | 'feed', el: HTMLElement, order?: number): void;
@@ -646,7 +647,7 @@ export class CombatHud {
       e.tag.style.display = tag ? '' : 'none';
       e.tag.classList.toggle('immune', !t.gebannt && t.immune && !t.finish);
       e.tag.classList.toggle('finish', !!t.finish);
-      for (const k of ['guard', 'veil', 'mirror', 'caller'] as const) e.tag.classList.toggle(k, !t.finish && !t.gebannt && !t.immune && t.trait === k);
+      for (const k of ['guard', 'veil', 'mirror', 'caller', 'reform'] as const) e.tag.classList.toggle(k, !t.finish && !t.gebannt && !t.immune && t.trait === k);
       const nm = t.title ?? '';
       if (e.name.textContent !== nm) e.name.textContent = nm;
       e.name.style.display = nm ? '' : 'none';

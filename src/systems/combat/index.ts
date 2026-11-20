@@ -38,7 +38,7 @@ import { CombatAudio } from './audio';
 import { FightLog, type FightReport, type FightView } from './fightlog';
 import { CombatHud, type PipTarget, type SkillSlot } from './hud';
 import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
-import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
+import { CombatSim, type Enemy, canReform, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
 import { BOSS_BOUNCE, BOSS_BOUNCE_AFTER, BOSS_GUARD, BOSS_HINT, BOSS_TITLE, TELL } from './strings';
 import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
@@ -746,10 +746,15 @@ class Combat {
         ctx.ui.toast(t('combat.immuneHint', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }) + (ev.refilled ? ` ${t('combat.immuneRefill')}` : ''), 3200);
         break;
       case 'reform': {
+        // playtest round 10 (F-22 / F-34): shown every time (puff, a ring pulling in, a word over it),
+        // explained in full the first time per kind; the bar said „formt sich neu“ beforehand
         const e = ev.e;
         this.visuals.hit(e.def.family, e.x, e.y + 0.6, e.z, 0, 0, false, st.reducedFlash);
+        this.visuals.wave(e.x, e.y + 0.2, e.z, 1.6, 0.3, 0.45, e.kind === 'nebelling');
         this.audio.whiff();
-        this.captionOnce('reform', t('combat.reform'), 'info', 10, 2200);
+        this.hud.number(t('combat.reform'), e.x, e.y + 1.3, e.z, 'immune', undefined, this.numberSpan(e));
+        if (!this.lastCaption.has(`reformFirst:${e.kind}`)) this.captionOnce(`reformFirst:${e.kind}`, t(`combat.reform.first.${e.kind}`), 'info', 1e9, 4200);
+        else this.captionOnce('reform', t('combat.reform'), 'info', 10, 1200);
         break;
       }
       case 'resist': {
@@ -829,9 +834,14 @@ class Combat {
         this.emit('player:died', { by: ev.by });
         break;
       case 'dodge':
-        ctx.player.impulse(ev.vx, ev.vz, DODGE.dur);
+        ctx.player.impulse(ev.vx, ev.vz, ev.dur);
         this.audio.dodge(ev.perfect);
         if (ev.perfect) this.captionOnce('perfect', t('combat.perfect'), 'info', 1.5, 900);
+        if (ev.stumble) this.captionOnce('stumble', t('combat.stumble'), 'info', 12, 1400);
+        break;
+      case 'step':
+        // the light Hieb's step-in towards its target (playtest round 10, F-06 / F-37)
+        ctx.player.impulse(ev.vx, ev.vz, ev.dur);
         break;
       case 'bann': {
         this.bannFx = { t: 1, x: ev.x, z: ev.z, yaw: ev.yaw, range: ev.range, angle: ev.angle };
@@ -1511,6 +1521,8 @@ class Combat {
 /** What the HP pip should say about an enemy (combat variety pass). */
 function traitOf(e: Enemy): PipTarget['trait'] {
   if (e.ward > 0) return 'veil';
+  // paper and mist that will pull together once more: said on the bar before it happens (round 10)
+  if (canReform(e) && e.hp <= e.maxHp * 0.5) return 'reform';
   if (e.def.guard && e.guardBroken <= 0) return 'guard';
   if (e.def.reflectsBann && !e.cracked) return 'mirror';
   if (e.kind === 'rufer') return 'caller';

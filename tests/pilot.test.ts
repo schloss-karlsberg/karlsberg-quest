@@ -73,7 +73,7 @@ describe('pilot events', () => {
   it('keeps hits, hurts, dodges, KOs and bounces compact', () => {
     expect(summarizeSimEvent({ type: 'hit', e, damage: 8.4, heavy: true, finisher: false, weak: false, armored: false, gebannt: false, dirX: 0, dirZ: 1 } as SimEvent, 0.123)).toEqual({ type: 'hit', t: 0.12, id: 'e1', kind: 'irrlicht', dmg: 8, heavy: true, hpLeft: 12 });
     expect(summarizeSimEvent({ type: 'playerHit', damage: 11, by: 'irrlicht', x: 0, z: 0, pushX: 0, pushZ: 0, heavy: false }, 0.2)).toEqual({ type: 'hurt', t: 0.2, dmg: 11, by: 'irrlicht', heavy: false });
-    expect(summarizeSimEvent({ type: 'dodge', vx: 1, vz: 0, perfect: true }, 0)).toEqual({ type: 'dodge', t: 0, perfect: true });
+    expect(summarizeSimEvent({ type: 'dodge', vx: 1, vz: 0, perfect: true, stumble: false, dur: 0.35 }, 0)).toEqual({ type: 'dodge', t: 0, perfect: true });
     expect(summarizeSimEvent({ type: 'killed', e, by: 'light' } as SimEvent, 0)).toMatchObject({ type: 'ko', id: 'e1' });
     expect(summarizeSimEvent({ type: 'blocked', e, skill: null }, 0)).toMatchObject({ type: 'bounce', kind: 'irrlicht' });
     expect(summarizeSimEvent({ type: 'telegraph', e, attack: { id: 'flare', kind: 'ranged' }, dur: 0.75 } as unknown as SimEvent, 0)).toMatchObject({ type: 'telegraph', attack: 'flare (ranged)', dur: 0.75 });
