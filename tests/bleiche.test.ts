@@ -110,8 +110,9 @@ describe('bleiche layout', () => {
       expect(lineDist(x, z, BROOK_OSM), p.name).toBeGreaterThan(4.5);
     }
     for (const s of [LIESE, TUB_SPOT, COAT_REACH]) expect(lineDist(s.x, s.z, BROOK_OSM)).toBeGreaterThan(4.5);
-    // the bed as quelle/layout.ts brookLine() draws it, the whole OSM line long (it stops at
-    // BROOK_LEN today): samples every metre pulled to the lowest ground within ±3 m across
+    // the bed roughly as quelle/layout.ts brookLine() draws it, the whole OSM line long: samples
+    // every metre pulled to the lowest ground within ±3 m across (brookLine also keeps out of the
+    // green's clearings; tests/quelle.test.ts checks the drawn line's bank against the linen)
     const bed: [number, number][] = [];
     for (let i = 0; i + 1 < BROOK_OSM.length; i++) {
       const [ax, az] = BROOK_OSM[i]!;
@@ -191,6 +192,17 @@ describe('bleiche layout', () => {
     }
     expect(mown().some(([x, z]) => Math.hypot(x - BLEICHE.x, z - BLEICHE.z) < 2)).toBe(true);
     expect(KEEP_CLEAR.some(([x, z]) => Math.hypot(x - BLEICHE.x, z - BLEICHE.z) < 1)).toBe(true);
+  });
+
+  it('places the 16.6k-triangle CC0 basket on high only (the procedural one on medium and low)', () => {
+    const baskets = (detailed: boolean, high: boolean) => {
+      const b = new SetBuilder(heightAt, detailed, high);
+      bleicheSet.build(b, { era: '1789', gateOpen: 0 });
+      return b.models.filter((m) => m.id === 'architecture.basket').length;
+    };
+    expect(baskets(true, true)).toBe(1);
+    expect(baskets(true, false)).toBe(0);
+    expect(baskets(false, false)).toBe(0);
   });
 
   it('only stands in 1789', () => {

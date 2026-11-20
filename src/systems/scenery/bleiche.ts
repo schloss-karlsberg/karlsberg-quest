@@ -6,7 +6,7 @@
  *    coopered wash tub on a low stand with soapy water and a sheet over its rim, the beating board
  *    leaning into it, the washing bench with a paddle and folded linen, a bucket, stones on the
  *    corners of the linen laid out to bleach, the long-handled sprinkling scoop. The laundry basket
- *    is the CC0 wicker basket (medium / high; procedural on low) with linen heaped in it.
+ *    is the CC0 wicker basket (high; procedural on medium / low) with linen heaped in it.
  *  - Linen (one more mesh, its own small shader): sheets folded over the rope, shirts threaded on by
  *    their sleeves, an apron, cloths, linen laid flat on the grass, and Kaspar's dark-blue coat. The
  *    hanging pieces sway in a gentle wind (vertex shader, weighted by how far below the rope a
@@ -572,10 +572,11 @@ function basket(b: SetBuilder): void {
   const [x, z] = toWorld(P.u, P.w);
   const y = lowGround(b, P.u, P.w, 0.3) - 0.01;
   k.place(x, y, z, face(BLEICHE.facing + 20));
+  // the Poly Haven basket is ~16.6k triangles (four times the rest of the green): high tier only
   b.model(
     'architecture.basket',
     () => {
-      // low tier: an oval wicker basket of rings
+      // low / medium tier: an oval wicker basket of rings
       k.surface = SURF.STRAW;
       const g = openCyl(0.36, 0.3, 0.24, 14);
       g.scale(1, 1, 0.78);
@@ -587,7 +588,7 @@ function basket(b: SetBuilder): void {
       rim.scale(1, 1, 0.78);
       k.add(rim, tint(WICKER, rng(5), 0.1), 0, translate(0, 0.23, 0));
     },
-    { scale: 1.9 },
+    { scale: 1.9, high: true },
   );
   // linen heaped in it
   k.surface = SURF.FABRIC;

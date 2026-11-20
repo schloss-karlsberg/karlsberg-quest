@@ -1,7 +1,7 @@
 {
   "name": "karlsberg-quest",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Karlsberg Quest - a grim mystery-exploration browser game on the real LiDAR terrain of the Karlsberg (Homburg)",
   "scripts": {

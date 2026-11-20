@@ -203,7 +203,7 @@ function dropSet(id: string): void {
 }
 
 function buildSet(ctx: GameContext, def: SetDef, era: Era): void {
-  const b = new SetBuilder((x, z) => ctx.world.heightfield.heightAt(x, z), ctx.quality.level !== 'low');
+  const b = new SetBuilder((x, z) => ctx.world.heightfield.heightAt(x, z), ctx.quality.level !== 'low', ctx.quality.level === 'high');
   def.build(b, { era, gateOpen: slice.gate });
   const built = b.build(def.id);
   root.add(built.group);

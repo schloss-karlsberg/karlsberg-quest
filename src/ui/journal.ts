@@ -36,3 +36,53 @@ export function addJournalTab(tab: JournalTab): void {
 export function journalTabs(): readonly JournalTab[] {
   return tabs;
 }
+
+/**
+ * A section another feature adds to a tab it does not own (e.g. the Fläschchen row on the quests
+ * system's "Sammlungen" page). The owner of the tab calls `journalSections(tabId)` and appends each
+ * section's element after its own content.
+ */
+export interface JournalSection {
+  id: string;
+  tab: string;
+  order: number;
+  render(): HTMLElement | null;
+}
+
+const sections: JournalSection[] = [];
+
+/** Register (or replace, by id) a section of a tab. */
+export function addJournalSection(s: JournalSection): void {
+  const i = sections.findIndex((x) => x.id === s.id);
+  if (i >= 0) sections.splice(i, 1, s);
+  else sections.push(s);
+  sections.sort((a, b) => a.order - b.order);
+}
+
+/** The rendered sections of a tab, in order. */
+export function journalSections(tab: string): HTMLElement[] {
+  return sections.filter((s) => s.tab === tab).map((s) => s.render()).filter((e): e is HTMLElement => !!e);
+}
+
+/**
+ * Things a feature puts on the field station's Regal (hub overlay, story system) without importing
+ * the story: `render` returns the element or null.
+ */
+export interface ShelfItem {
+  id: string;
+  order: number;
+  render(): HTMLElement | null;
+}
+
+const shelf: ShelfItem[] = [];
+
+export function addShelfItem(s: ShelfItem): void {
+  const i = shelf.findIndex((x) => x.id === s.id);
+  if (i >= 0) shelf.splice(i, 1, s);
+  else shelf.push(s);
+  shelf.sort((a, b) => a.order - b.order);
+}
+
+export function shelfItems(): HTMLElement[] {
+  return shelf.map((s) => s.render()).filter((e): e is HTMLElement => !!e);
+}
