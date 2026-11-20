@@ -556,3 +556,38 @@ too, so no regression is attributable to this round; not re-benchmarked on a qui
 Still open: the 1793-07 window flames and the smoke column (reads as a skull at some angles);
 the 1796 stepped ruins and the sky ellipse; relief views hiding vegetation; the red bushes; the
 light-shaft quad; ghost props near the player; the wireframe market stall; the Messstab in hand.
+
+## 19. The Karlsbergquelle (2026-11-20)
+
+The spring that starts the time travel (NEXT-SESSION §3.6). Set `src/systems/scenery/quelle.ts`,
+water `src/systems/quelle/water.ts`. Reference for today: a photo of the real spring (komoot
+highlight 780842). The whole hollow is kept free of trees and scattered props.
+
+| Era | Stonework | Water |
+| --- | --- | --- |
+| **Today** (real) | low dry wall of red sandstone (`#a86f58` / `#8e5a47`, moss on top) with a small plate; a hollowed log trough on two stumps; an iron pipe; up the slope an arched spring house sunk into the earth, heaped stones on its flanks, an iron grate; mossy steps on the left; edge blocks along the red path; an info board at the trail; ferns | a still, slightly murky pool; a thin stream from the pipe; the brook a wet bed with a broken trickle and small pools |
+| **1789** (invented) | a dressed baroque Brunnenstube: pale ashlar front (`#d8c3a2`, warm `#c9ab86`), round-arched niche, pilasters, cornice, a bronze spout (`#b8923e`), a stone basin with a rim moulding, a flagged apron; the old dry wall goes on either side; a plank door on the spring house | clear and deeper teal; the spout runs |
+| **Feb 1793** | the 1789 set with icicles (`#dde8f0`); the prop material puts snow on top | milky, cracked ice with no ripples; the brook iced; no trickle |
+| **Jul 1793** | the 1789 set in the fire night's glow | dark; fire and lantern light glint on it |
+| **1796** | plundered: the spout torn out, cornice stones on the ground, the basin cracked, apron flags missing, the spring house door gone, more and larger ferns | low and murky, leaves in the brook, no stream |
+
+**The magic** (cool cyan, a touch of gold, never white):
+
+- **Guide:** motes drift down the brook and hover over the water, with a soft additive light column
+  over it. The column fades to nothing before the sprite's edge, so no quad shows.
+- **Touch:** a ripple ring runs out and freezes, the water gets a glassy sheen, cyan / gold caustics,
+  and the brook's ripples climb back up. The new era's water starts frozen and thaws.
+- **Under the canopy:** the sky reflection is dimmed (fresnel 0.7 → 0.45), so the water does not glow
+  in the shade.
+
+**Palette note: untextured kit pieces need lighter hexes.** The scenery kit
+(`src/systems/scenery/kit.ts`) converts each piece's vertex colour sRGB → linear **twice**:
+`Color.setHex` already converts under three's colour management, then `convertSRGBToLinear()` runs
+again. An untextured piece therefore renders much darker than its hex. That is why `C` in
+`src/systems/scenery/props.ts` uses mid and light tones, and why the spring's moss, earth and fern
+are set to `#7f9150`, `#9c7a5a` and `#7f9f4c`. Pick kit hexes about one step lighter than the target
+and check them on the real GPU. Do not "fix" the kit on its own: every existing set is tuned against
+the double conversion.
+
+Still open (look polish runs in another session): ivy on the wall, the burning palace reflected in
+the July water, an ice crust to break in February 1793.
