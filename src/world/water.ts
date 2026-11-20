@@ -345,6 +345,8 @@ export class Water {
   /** Hidden during the reflection pass (set by World: near ground cover, props). */
   reflectionSkip: { visible: boolean }[] = [];
   readonly stats = { bodies: 0, reflection: false, reflectedLevel: 0 };
+  /** Planar reflection allowed (off under „Energiesparen“; the tier decides the rest). */
+  reflections = true;
 
   constructor(
     ground: Uint8Array,
@@ -530,7 +532,7 @@ export class Water {
     const u = this.material.uniforms;
     u.uReflOn!.value = 0;
     this.stats.reflection = false;
-    if (this.level !== 'high' || this.active.length === 0) return;
+    if (this.level !== 'high' || !this.reflections || this.active.length === 0) return;
     // nearest body in view
     let best: WaterBody | null = null;
     let bestD = 450;

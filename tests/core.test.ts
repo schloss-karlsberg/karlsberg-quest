@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EventBus } from '../src/core/events';
-import { FixedStepLoop } from '../src/core/loop';
+import { FixedStepLoop, FramePacer, IDLE_RENDER, type PaceState, frameCap, renderRate } from '../src/core/loop';
 import { GameStateStore, createInitialState, deserializeState, serializeState } from '../src/core/state';
 import { MemoryStorage, SAVE_KEY, SETTINGS_KEY, SaveManager, SettingsStore } from '../src/core/save';
 import { SystemRegistry, defineSystem, sortByDeps, type GameSystem } from '../src/core/systems';
@@ -72,6 +72,193 @@ describe('FixedStepLoop', () => {
     loop.frame(0);
     loop.frame(10);
     expect(ticks).toBeLessThanOrEqual(loop.maxStepsPerFrame + 1);
+  });
+});
+
+describe('render pacing (frame cap)', () => {
+  /** Which of `n` animation frames at `hz` (with ± `jitter` s on the timestamps) the pacer draws at `fps`. */
+  const pattern = (hz: number, fps: number, n: number, jitter = 0, seed = 7) => {
+    const p = new FramePacer();
+    let x = seed;
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) {
+      x = (x * 1664525 + 1013904223) >>> 0;
+      const j = jitter * ((x / 4294967296) * 2 - 1);
+      if (p.tick(i / hz + j, fps)) out.push(i);
+    }
+    return out;
+  };
+  const gaps = (idx: number[]) => idx.slice(1).map((v, i) => v - idx[i]!);
+
+  it('60 fps on a 120 Hz screen: exactly every 2nd frame; 30 fps: every 4th', () => {
+    const d60 = pattern(120, 60, 240);
+    expect(d60.length).toBe(120);
+    expect(new Set(gaps(d60))).toEqual(new Set([2]));
+    const d30 = pattern(120, 30, 240);
+    expect(d30.length).toBe(60);
+    expect(new Set(gaps(d30))).toEqual(new Set([4]));
+  });
+
+  it('steady under timestamp jitter (±1.5 ms at 120 Hz)', () => {
+    expect(new Set(gaps(pattern(120, 60, 600, 0.0015)))).toEqual(new Set([2]));
+    expect(new Set(gaps(pattern(120, 30, 600, 0.0015)))).toEqual(new Set([4]));
+  });
+
+  it('60 Hz screen: 60 fps draws every frame (even with jitter), 30 fps every 2nd', () => {
+    expect(pattern(60, 60, 120, 0.003).length).toBe(120);
+    expect(new Set(gaps(pattern(60, 30, 120)))).toEqual(new Set([2]));
+  });
+
+  it('144 Hz: averages to the cap; slower screens and unbegrenzt draw every frame; 0 draws nothing', () => {
+    const d = pattern(144, 60, 1440);
+    expect(d.length).toBeGreaterThanOrEqual(598);
+    expect(d.length).toBeLessThanOrEqual(602);
+    expect(new Set(gaps(d))).toEqual(new Set([2, 3]));
+    expect(pattern(50, 60, 100).length).toBe(100);
+    expect(pattern(120, Infinity, 100).length).toBe(100);
+    expect(pattern(120, 0, 100).length).toBe(0);
+  });
+
+  it('the first frame after an idle phase is drawn at once, then the pacing resumes', () => {
+    const p = new FramePacer();
+    for (let i = 0; i < 10; i++) p.tick(i / 120, 0);
+    expect(p.tick(10 / 120, 60)).toBe(true);
+    expect(p.tick(11 / 120, 60)).toBe(false);
+    expect(p.tick(12 / 120, 60)).toBe(true);
+  });
+
+  it('the fixed 60 Hz simulation does not depend on the render cap', () => {
+    const run = (fps: number) => {
+      let ticks = 0;
+      let renders = 0;
+      const loop = new FixedStepLoop({ update: () => ticks++, render: () => renders++ }, 60, () => 0, () => {});
+      loop.pace = () => fps;
+      for (let i = 0; i <= 240; i++) loop.frame(i / 120); // 2 s on a 120 Hz screen
+      return { ticks, renders, tick: loop.tick };
+    };
+    const free = run(Infinity);
+    const c60 = run(60);
+    const c30 = run(30);
+    expect(c60.ticks).toBe(free.ticks);
+    expect(c30.ticks).toBe(free.ticks);
+    expect(Math.abs(free.ticks - 120)).toBeLessThanOrEqual(1);
+    expect(free.renders).toBe(241);
+    expect(c60.renders).toBe(121);
+    expect(c30.renders).toBe(61);
+  });
+
+  it('render frameDt is the time since the previous drawn frame; requests force frames', () => {
+    const dts: number[] = [];
+    const loop = new FixedStepLoop({ update: () => {}, render: (dt) => dts.push(dt) }, 60, () => 0, () => {});
+    let fps = 30;
+    loop.pace = () => fps;
+    for (let i = 0; i <= 8; i++) loop.frame(i / 120);
+    expect(dts.length).toBe(3);
+    expect(dts[1]).toBeCloseTo(1 / 30, 5);
+    // on demand: nothing until asked, then exactly the frames asked for
+    fps = 0;
+    dts.length = 0;
+    for (let i = 9; i <= 30; i++) loop.frame(i / 120);
+    expect(dts.length).toBe(0);
+    loop.requestRender(2);
+    for (let i = 31; i <= 40; i++) loop.frame(i / 120);
+    expect(dts.length).toBe(2);
+    // after a held view the visuals go on with one fixed step, not the idle gap
+    expect(dts[0]).toBeCloseTo(1 / 60, 5);
+    expect(dts[1]).toBeCloseTo(1 / 120, 5);
+  });
+
+  it('kq.step / renderOnce render at once whatever the pacing; manual stops the simulation', () => {
+    let ticks = 0;
+    let renders = 0;
+    const loop = new FixedStepLoop({ update: () => ticks++, render: () => renders++ }, 60, () => 0, () => {});
+    loop.pace = () => 0;
+    loop.manual = true;
+    for (let i = 0; i < 60; i++) loop.frame(i / 60);
+    expect(ticks).toBe(0);
+    expect(renders).toBe(0);
+    loop.step(5);
+    expect(ticks).toBe(5);
+    expect(renders).toBe(1);
+    loop.renderOnce(0.1);
+    expect(renders).toBe(2);
+  });
+
+  it('parks the rAF loop while nothing moves and nothing is asked for; wakes on a request', () => {
+    // a fake requestAnimationFrame whose cancel really removes the callback
+    const queue = new Map<number, FrameRequestCallback>();
+    let id = 0;
+    const loop = new FixedStepLoop(
+      { update: () => {}, render: () => {} },
+      60,
+      (fn) => (queue.set(++id, fn), id),
+      (i) => void queue.delete(i),
+    );
+    let fps = 0;
+    loop.pace = () => fps;
+    loop.paused = true;
+    loop.start();
+    let t = 0;
+    const pump = () => {
+      const [k, fn] = [...queue][0] ?? [];
+      if (k === undefined || !fn) return false;
+      queue.delete(k);
+      fn((t += 1000 / 120));
+      return true;
+    };
+    expect(pump()).toBe(true);
+    // paused, nothing to draw: parked, no animation frame pending
+    expect(queue.size).toBe(0);
+    expect(loop.drawn).toBe(0);
+    loop.requestRender();
+    expect(queue.size).toBe(1);
+    pump();
+    expect(loop.drawn).toBe(1);
+    expect(queue.size).toBe(0);
+    // un-pausing wakes it and it keeps running
+    fps = 60;
+    loop.paused = false;
+    for (let i = 0; i < 4; i++) expect(pump()).toBe(true);
+    expect(queue.size).toBe(1);
+    expect(loop.drawn).toBe(3);
+    loop.stop();
+    expect(queue.size).toBe(0);
+  });
+
+  it('policy: cap while playing, ≤ 30 on the title, menus 15 or held, bullet time on request, hidden nothing', () => {
+    const base: PaceState = { cap: 60, hidden: false, manual: false, hold: true, title: false, modal: 'none', modalAge: 10, paused: false };
+    const r = (o: Partial<PaceState>) => renderRate({ ...base, ...o });
+    expect(r({})).toBe(60);
+    expect(r({ cap: Infinity })).toBe(Infinity);
+    expect(r({ cap: 30 })).toBe(30);
+    expect(r({ title: true, paused: true })).toBe(IDLE_RENDER.titleFps);
+    expect(r({ title: true, cap: Infinity })).toBe(30);
+    expect(r({ title: true, cap: 30 })).toBe(30);
+    // pause menu / journal / map: the paused view cannot change, its frame is held
+    expect(r({ modal: 'still', paused: true })).toBe(0);
+    // a live modal (dialogue) renders at the cap while its camera settles, then at 15
+    expect(r({ modal: 'live', paused: true, modalAge: 0.2 })).toBe(60);
+    expect(r({ modal: 'live', paused: true })).toBe(IDLE_RENDER.modalFps);
+    // a modal over the title: the drift goes on behind it, slowly
+    expect(r({ modal: 'still', title: true, paused: true })).toBe(15);
+    expect(r({ paused: true })).toBe(15);
+    expect(r({ manual: true })).toBe(0);
+    expect(r({ hidden: true })).toBe(0);
+    // WebDriver without ?idle: bullet time renders as before (the cap), still menus at 15
+    expect(r({ manual: true, hold: false })).toBe(60);
+    expect(r({ modal: 'still', paused: true, hold: false })).toBe(15);
+    expect(r({ hidden: true, hold: false })).toBe(0);
+  });
+
+  it('frameCap: Bildrate 30 / 60 / unbegrenzt, Energiesparen caps at 30', () => {
+    expect(frameCap(60, false)).toBe(60);
+    expect(frameCap(30, false)).toBe(30);
+    expect(frameCap(0, false)).toBe(Infinity);
+    expect(frameCap(0, true)).toBe(30);
+    expect(frameCap(60, true)).toBe(30);
+    expect(frameCap(undefined, undefined)).toBe(60);
+    expect(frameCap(Number.NaN, false)).toBe(60);
+    expect(frameCap(5, false)).toBe(15);
   });
 });
 
