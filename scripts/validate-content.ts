@@ -9,6 +9,7 @@ import type { ContentPack } from '../src/content/types.ts';
 import { type LoadedPack, formatIssues, validateContent } from '../src/content/validate.ts';
 import { checkStories, loadStoryFiles } from '../src/systems/story/validate-cli.ts';
 import { checkQuests } from '../src/systems/quests/validate-cli.ts';
+import { checkCinematics } from '../src/systems/cinematic/validate-cli.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -62,6 +63,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log('✗ story files invalid');
     process.exit(1);
   }
+  const cine = checkCinematics(ROOT);
+  if (cine.errors.length) console.log(cine.errors.join('\n'));
+  if (!cine.ok) {
+    console.log('✗ cinematic files invalid');
+    process.exit(1);
+  }
+  console.log(`✓ ${cine.refs.length} cinematic file(s)`);
   if (!r.ok || parseErrors.length) {
     console.log(`✗ content invalid: ${r.errors.length + parseErrors.length} error(s), ${r.warnings.length} warning(s)`);
     process.exit(1);

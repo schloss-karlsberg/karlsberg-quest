@@ -143,6 +143,10 @@ export class SaveManager {
   minIntervalMs = 5000;
   /** Disable all writes (e.g. e2e screenshots, `?nosave`). */
   enabled = true;
+  /** Reasons that hold autosaves back (a cinematic plays); see `hold`. */
+  private readonly holds = new Set<string>();
+  /** An autosave asked for while held: written when the last hold ends. */
+  private heldReason: { reason: string; force: boolean } | null = null;
 
   constructor(
     private readonly store: GameStateStore,
@@ -169,8 +173,31 @@ export class SaveManager {
     return true;
   }
 
+  /**
+   * Hold autosaves back while `reason` is on (a cinematic: the save never holds a half-played shot).
+   * The last autosave asked for meanwhile is written when the last hold ends. Manual saves still write.
+   */
+  hold(reason: string, on: boolean): void {
+    if (on) {
+      this.holds.add(reason);
+      return;
+    }
+    if (!this.holds.delete(reason) || this.holds.size > 0 || !this.heldReason) return;
+    const h = this.heldReason;
+    this.heldReason = null;
+    this.autosave(h.reason, h.force);
+  }
+
+  get held(): boolean {
+    return this.holds.size > 0;
+  }
+
   /** Throttled save to the 'auto' slot. Returns true if written. */
   autosave(reason: string, force = false): boolean {
+    if (this.holds.size > 0) {
+      this.heldReason = { reason, force: force || this.heldReason?.force === true };
+      return false;
+    }
     const t = this.now();
     if (!force && t - this.lastAuto < this.minIntervalMs) return false;
     this.lastAuto = t;

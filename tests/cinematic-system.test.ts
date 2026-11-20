@@ -1,0 +1,310 @@
+import { PerspectiveCamera, Vector3 } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import type { GameContext } from '../src/core/context';
+import { EventBus } from '../src/core/events';
+import { SaveManager } from '../src/core/save';
+import { GameStateStore, createInitialState } from '../src/core/state';
+import { CAMERA_OWNER, CinematicRuntime, SKIP_GRACE } from '../src/systems/cinematic';
+import { CameraTakeover, HANDBACK_S, OverrideSlot } from '../src/systems/cinematic/takeover';
+import type { CinematicFile } from '../src/systems/cinematic/types';
+import '../src/systems/contracts';
+import reh from '../content/cinematics/reh.json';
+
+const DT = 1 / 60;
+
+function memStorage() {
+  const m = new Map<string, string>();
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+}
+
+function setup(opts: { reduced?: boolean } = {}) {
+  const events = new EventBus();
+  const log: [string, unknown][] = [];
+  events.onAny((n, p) => log.push([n, p]));
+  const state = new GameStateStore(createInitialState());
+  const save = new SaveManager(state, memStorage(), events);
+  const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
+  const player = { position: new Vector3(100, 10, 200), renderPos: new Vector3(100, 10, 200), yaw: 0.4, pitch: -0.2, eyeHeight: 1.6, frozen: false, lookLocked: false };
+  let now = 0;
+  const slot = new OverrideSlot((active) => events.emit('camera:override', { active }));
+  const settings = { state: { reducedMotion: opts.reduced === true } };
+  const takeover = new CameraTakeover({ slot, player, events, reducedMotion: () => settings.state.reducedMotion, now: () => now });
+  const holds = new Set<string>();
+  const ctx = {
+    events,
+    state,
+    save,
+    camera,
+    player,
+    settings,
+    world: { heightAt: () => 10, look: {}, applyLook: () => {} },
+    era: { current: 'today' },
+    ui: { cards: { hold: (r: string, on: boolean) => (on ? holds.add(r) : holds.delete(r)) }, hud: { busy: () => {} }, modals: { count: 0 } },
+    pause: { paused: false },
+    cinematic: takeover,
+  } as unknown as GameContext;
+  const rt = new CinematicRuntime(ctx, { reh: reh as CinematicFile });
+  rt.init();
+  /** One drawn frame: the "rig" puts the camera at a fixed spot, then the slot runs. */
+  const rig = new Vector3(100, 12, 204);
+  const render = (ms = 16) => {
+    now += ms;
+    camera.position.copy(rig);
+    camera.rotation.set(-0.2, 0.4, 0, 'YXZ');
+    slot.fn?.(camera);
+  };
+  const steps = (n: number) => {
+    for (let i = 0; i < n; i++) rt.update(DT);
+  };
+  const named = (n: string) => log.filter(([k]) => k === n).map(([, p]) => p);
+  return { events, log, state, save, camera, player, slot, takeover, rt, render, steps, named, settings, holds, rig };
+}
+
+const ORBIT = { id: 'ring', orbit: { x: 100, z: 200, r: 8, period: 10, seconds: 3 } };
+
+describe('cinematic system', () => {
+  it('play → start, the camera moves, the player is frozen; end emitted once with yaw / pitch back', () => {
+    const s = setup();
+    expect(s.rt.play(ORBIT)).toBe(true);
+    expect(s.named('cinematic:start')).toEqual([{ id: 'ring', seconds: 3 }]);
+    expect(s.player.frozen).toBe(true);
+    expect(s.player.lookLocked).toBe(true);
+    expect(s.takeover.cameraOwner).toBe(CAMERA_OWNER);
+    expect(s.takeover.showsAvatar(s.slot.fn)).toBe(true);
+    s.render();
+    const a = s.camera.position.clone();
+    s.steps(60);
+    s.render();
+    expect(a.distanceTo(s.camera.position)).toBeGreaterThan(1);
+    // something turned yaw meanwhile (look input): restored at the end
+    s.player.yaw = 2;
+    s.steps(200);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: false }]);
+    s.rt.end(true);
+    s.steps(10);
+    expect(s.named('cinematic:end')).toHaveLength(1);
+    expect(s.player.frozen).toBe(false);
+    expect(s.player.yaw).toBeCloseTo(0.4);
+    expect(s.player.pitch).toBeCloseTo(-0.2);
+    expect(s.rt.playing).toBeNull();
+  });
+
+  it('skip only after the 0.5 s grace', () => {
+    const s = setup();
+    s.rt.play(ORBIT);
+    s.steps(Math.floor(SKIP_GRACE * 60) - 3);
+    expect(s.rt.userSkip()).toBe(false);
+    expect(s.named('cinematic:end')).toHaveLength(0);
+    s.steps(6);
+    expect(s.rt.userSkip()).toBe(true);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+  });
+
+  it('not skippable: input never skips', () => {
+    const s = setup();
+    s.rt.play({ ...ORBIT, skippable: false });
+    s.steps(60);
+    expect(s.rt.userSkip()).toBe(false);
+  });
+
+  it('reduced motion stills: ≤ 3 s, first and last key', () => {
+    const s = setup({ reduced: true });
+    s.rt.play({ id: 'long', keys: [{ t: 0, eye: { x: 0, z: 0 } }, { t: 20, eye: { x: 50, z: 0 } }] });
+    expect(s.named('cinematic:start')).toEqual([{ id: 'long', seconds: 3 }]);
+    s.render();
+    expect(s.camera.position.x).toBeCloseTo(0);
+    s.steps(150);
+    s.render();
+    expect(s.camera.position.x).toBeCloseTo(50);
+    s.steps(31);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'long', skipped: false }]);
+  });
+
+  it("reduced motion 'skip' ends at once, skipped", () => {
+    const s = setup({ reduced: true });
+    s.rt.play({ ...ORBIT, reduced: 'skip' });
+    expect(s.named('cinematic:start')).toEqual([{ id: 'ring', seconds: 0 }]);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(s.takeover.cameraOwner).toBeNull();
+    expect(s.player.frozen).toBe(false);
+  });
+
+  it('a bad spec warns and ends skipped, never hangs', () => {
+    const s = setup();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(s.rt.play({ id: 'bad', keys: [{ t: 0 }] })).toBe(false);
+    expect(s.rt.play({ id: 'nope', ref: 'missing' })).toBe(false);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+    expect(s.named('cinematic:end')).toEqual([
+      { id: 'bad', skipped: true },
+      { id: 'nope', skipped: true },
+    ]);
+    expect(s.named('cinematic:start')).toHaveLength(0);
+    expect(s.takeover.cameraOwner).toBeNull();
+  });
+
+  it('plays a ref, the cinematic:play request and the story:cue bridge', () => {
+    const s = setup();
+    s.events.emit('story:cue', { id: 'cinematic', data: { id: 'reh', ref: 'reh' } });
+    expect(s.rt.playing).toBe('reh');
+    expect(s.named('cinematic:start')).toEqual([{ id: 'reh', seconds: 6 }]);
+    // animal targets are not registered: the view holds, no NaN
+    s.render();
+    expect(Number.isFinite(s.camera.position.x) && Number.isFinite(s.camera.quaternion.w)).toBe(true);
+    expect(s.camera.fov).toBeCloseTo(40);
+    s.events.emit('cinematic:play', ORBIT);
+    // a new play ends the old one first
+    expect(s.named('cinematic:end')).toEqual([{ id: 'reh', skipped: true }]);
+    expect(s.rt.playing).toBe('ring');
+  });
+
+  it('single owner: a second take is refused while the camera is owned', () => {
+    const s = setup();
+    expect(s.takeover.takeCamera('photo', () => {})).toBe(true);
+    expect(s.takeover.takeCamera('other', () => {})).toBe(false);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(s.rt.play(ORBIT)).toBe(false);
+    warn.mockRestore();
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    s.takeover.releaseCamera('other'); // not the owner: nothing happens
+    expect(s.takeover.cameraOwner).toBe('photo');
+    s.takeover.releaseCamera('photo');
+    expect(s.takeover.cameraOwner).toBeNull();
+    expect(s.takeover.takeCamera('other', () => {})).toBe(true);
+  });
+
+  it('auto-release on shift:done, era:change and player:died ends the cinematic skipped', () => {
+    for (const fire of [
+      (e: EventBus) => e.emit('shift:done', { from: 'today', to: '1789' }),
+      (e: EventBus) => e.emit('era:change', { from: 'today', to: '1789' }),
+      (e: EventBus) => e.emit('player:died', { by: 'test' }),
+    ]) {
+      const s = setup();
+      s.rt.play(ORBIT);
+      s.steps(10);
+      fire(s.events);
+      expect(s.takeover.cameraOwner).toBeNull();
+      expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+      expect(s.player.frozen).toBe(false);
+    }
+  });
+
+  it('hands back over 0.4 s from the shot to the rig, then frees the slot; camera:override on transitions only', () => {
+    const s = setup();
+    s.rt.play(ORBIT);
+    s.render();
+    s.render();
+    const shot = s.camera.position.clone();
+    s.steps(40);
+    s.render();
+    const last = s.camera.position.clone();
+    expect(last.distanceTo(shot)).toBeGreaterThan(0.1);
+    s.rt.end(true);
+    // still ours while easing: first frame of the hand-back is close to the shot
+    s.render(16);
+    expect(s.camera.position.distanceTo(last)).toBeLessThan(s.camera.position.distanceTo(s.rig));
+    expect(s.slot.fn).not.toBeNull();
+    s.render(HANDBACK_S * 500);
+    const mid = s.camera.position.clone();
+    expect(mid.distanceTo(s.rig)).toBeGreaterThan(0.01);
+    s.render(HANDBACK_S * 1000);
+    expect(s.slot.fn).toBeNull();
+    expect(s.camera.fov).toBe(70);
+    s.render();
+    expect(s.camera.position.distanceTo(s.rig)).toBeLessThan(1e-9);
+    expect(s.named('camera:override')).toEqual([{ active: true }, { active: false }]);
+  });
+
+  it('the override slot emits camera:override only on real changes (debug setCamera path too)', () => {
+    const ev: boolean[] = [];
+    const slot = new OverrideSlot((a) => ev.push(a));
+    const f = () => {};
+    slot.set(f);
+    slot.set(() => {});
+    slot.set(null);
+    slot.set(null);
+    slot.set(f);
+    expect(ev).toEqual([true, false, true]);
+  });
+
+  it('reduced motion hand-back is a cut', () => {
+    const s = setup({ reduced: true });
+    s.rt.play(ORBIT);
+    s.render();
+    s.rt.end(true);
+    s.render();
+    expect(s.slot.fn).toBeNull();
+    expect(s.camera.position.distanceTo(s.rig)).toBeLessThan(1e-9);
+  });
+
+  it('a NaN from a shot never reaches the camera', () => {
+    const s = setup();
+    let bad = false;
+    s.takeover.takeCamera('x', (cam) => {
+      cam.position.set(bad ? NaN : 1, 2, 3);
+    });
+    s.render();
+    bad = true;
+    s.render();
+    expect(s.camera.position.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it('no autosave while playing; the held one is written at the end', () => {
+    const s = setup();
+    s.rt.play(ORBIT);
+    expect(s.save.autosave('interval', true)).toBe(false);
+    expect(s.named('save:written')).toHaveLength(0);
+    expect(s.holds.has('cinematic')).toBe(true);
+    s.steps(200);
+    expect(s.named('save:written')).toEqual([{ slot: 'auto', reason: 'interval' }]);
+    expect(s.holds.has('cinematic')).toBe(false);
+    // the save holds no playing cinematic
+    expect(s.state.state.systems.cinematic?.playing).toBeNull();
+  });
+
+  it('a load does not replay: cinematic:end skipped for what played and what the save held', () => {
+    const s = setup();
+    s.rt.play(ORBIT);
+    s.save.save('auto', 'manual'); // a manual save from the pause menu holds the playing cinematic
+    s.steps(200);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: false }]);
+    s.save.load('auto');
+    expect(s.named('cinematic:end')).toEqual([
+      { id: 'ring', skipped: false },
+      { id: 'ring', skipped: true },
+    ]);
+    expect(s.rt.playing).toBeNull();
+    expect(s.state.state.systems.cinematic?.playing).toBeNull();
+  });
+
+  it('a load while playing ends it once, skipped, and gives the camera back', () => {
+    const s = setup();
+    s.rt.play(ORBIT);
+    s.save.save('auto', 'manual');
+    s.save.load('auto');
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(s.takeover.cameraOwner).toBeNull();
+  });
+
+  it('resume (game:start on a save holding a cinematic) emits end skipped', () => {
+    const s = setup();
+    s.state.slice('cinematic', () => ({ playing: null })).playing = 'reh';
+    s.events.emit('game:start', { resumed: true });
+    expect(s.named('cinematic:end')).toEqual([{ id: 'reh', skipped: true }]);
+    expect(s.named('cinematic:start')).toHaveLength(0);
+  });
+
+  it('at(id, t) holds the picture', () => {
+    const s = setup();
+    s.rt.at('reh', 2.5);
+    expect(s.rt.playing).toBe('reh');
+    s.steps(600);
+    expect(s.rt.time).toBe(2.5);
+    s.render();
+    expect(s.camera.fov).toBeCloseTo(18);
+    s.rt.at('reh', -1);
+    s.steps(600);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'reh', skipped: false }]);
+  });
+});
