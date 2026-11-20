@@ -16,6 +16,7 @@ import {
 import type { AssetLoader } from '../../assets/loader';
 import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
+import { SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from '../atmosphere';
 import type { GroundCoverSource } from './groundcover';
 import { COVER_LOOKS, type CoverLook, type CoverSample, hash2, valueNoise } from './scatter';
 
@@ -171,6 +172,16 @@ function patchNature(m: Material, wind: boolean): void {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (shader, renderer) => {
     prev.call(mat, shader, renderer);
+    // see-through (round 10, F-21): a fern / bush / rock between the lens and the character, the
+    // fight's target or the speaker thins away per vertex (SEE_GLSL; kqStandard put vKqWorld and
+    // the atmosphere uniforms in place)
+    Object.assign(shader.uniforms, { uSeeCam: atmosphere.uSeeCam, uSeeP: atmosphere.uSeeP, uSeeT: atmosphere.uSeeT, uSeeK: atmosphere.uSeeK, uShadowPass: atmosphere.uShadowPass });
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nuniform float uShadowPass;\n${SEE_GLSL}\nvarying float vKqSee;`)
+      .replace('#include <fog_vertex>', '#include <fog_vertex>\nvKqSee = kqSee(vKqWorld, 0.25, vKqWorld.y, vKqWorld);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying float vKqSee;\n${SEE_FRAG_GLSL}`)
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (kqSeeCut(vKqSee, vKqWorld)) discard;');
     if (wind)
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;').replace(
         '#include <begin_vertex>',

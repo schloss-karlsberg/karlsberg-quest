@@ -13,6 +13,18 @@ const BODY_HIGH = 1.7;
 /** Highest step up the floor choice accepts. */
 const STEP_UP = 0.75;
 
+/** A wall spanning some height in [lo, hi] within `radius` of (x, z) (no allocation). */
+function wallTouches(w: Wall, x: number, z: number, radius: number, lo: number, hi: number): boolean {
+  if (w.y1 <= lo || w.y0 >= hi) return false;
+  const dx = w.bx - w.ax;
+  const dz = w.bz - w.az;
+  const L2 = dx * dx + dz * dz;
+  const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - w.ax) * dx + (z - w.az) * dz) / L2)) : 0;
+  const ex = w.ax + t * dx - x;
+  const ez = w.az + t * dz - z;
+  return ex * ex + ez * ez < radius * radius;
+}
+
 export class PlanQuery {
   private readonly cells = new Map<number, Wall[]>();
   private readonly cell = 4;
@@ -111,6 +123,51 @@ export class PlanQuery {
       if (!moved) break;
     }
     return { x, z, hit };
+  }
+
+  /**
+   * Does a circle touch a wall that spans any height in [lo, hi]? Allocation-free (the
+   * third-person camera probes this a few dozen times per frame).
+   */
+  hits(x: number, z: number, radius: number, lo: number, hi: number): boolean {
+    const s = this.cell;
+    const r = radius + 0.01;
+    for (let cz = Math.floor((z - r) / s); cz <= Math.floor((z + r) / s); cz++)
+      for (let cx = Math.floor((x - r) / s); cx <= Math.floor((x + r) / s); cx++) {
+        const l = this.cells.get(this.key(cx, cz));
+        if (l) for (const w of l) if (wallTouches(w, x, z, radius, lo, hi)) return true;
+      }
+    for (const w of this.dynamic) if (wallTouches(w, x, z, radius, lo, hi)) return true;
+    for (const w of this.solidList) if (wallTouches(w, x, z, radius, lo, hi)) return true;
+    return false;
+  }
+
+  /**
+   * The walkable space at x/z for someone at about height y (third-person camera, round 10): the
+   * room (index) whose floor there is nearest y (within 2 m), −2 inside a building's ring but in no
+   * room (wall mass, a door's reveal), −1 outside every building.
+   */
+  spaceAt(x: number, z: number, y: number): number {
+    if (!this.inBounds(x, z)) return -1;
+    let found = -1;
+    let bestDy = 2;
+    let inside = false;
+    for (const b of this.plan.buildings) {
+      if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
+      if (!inside && pointInPoly(x, z, b.ring)) inside = true;
+      for (const ri of b.rooms) {
+        const r = this.plan.rooms[ri]!;
+        if (!pointInPoly(x, z, r.poly)) continue;
+        const h = roomFloorAt(r, x, z);
+        if (h === null) continue;
+        const dy = Math.abs(y - h);
+        if (dy < bestDy) {
+          bestDy = dy;
+          found = ri;
+        }
+      }
+    }
+    return found >= 0 ? found : inside ? -2 : -1;
   }
 
   /**

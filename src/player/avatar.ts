@@ -637,6 +637,9 @@ export class Avatar {
         if (ox < half + 0.05 && Math.abs(_fa.y - _fb.y) < 0.5) want = Math.min(want, 0.4);
       }
     }
+    // in a fight the character never thins below ~half (round 10, F-07: the rig rises over the
+    // shoulder instead of pressing into the head, so a strong fade is never needed there)
+    if (actionPose.inCombat) want = Math.max(want, 0.45);
     this.fade += (want - this.fade) * Math.min(1, dt * 8);
     const o = this.fade > 0.98 ? 1 : this.fade;
     for (const m of this.materials) m.opacity = o;

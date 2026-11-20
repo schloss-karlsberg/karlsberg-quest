@@ -184,6 +184,11 @@ export class World {
    * (x, z) at about height y, null outdoors. The third-person camera stays under it.
    */
   ceilingAt: ((x: number, z: number, y: number) => number | null) | null = null;
+  /**
+   * Optional walkable-space lookup (interiors system): −1 outdoors, a room index, −2 inside a
+   * walkable building but in no room. The third-person camera never leaves the player's space.
+   */
+  spaceAt: ((x: number, z: number, y: number) => number) | null = null;
   /** Optional surface override (interiors: parquet / stone floors), null = land cover. */
   surfaceOverride: ((x: number, z: number) => string | null) | null = null;
 

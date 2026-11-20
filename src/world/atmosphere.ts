@@ -48,9 +48,81 @@ export const atmosphere = {
   uShadowCenter: { value: new Vector4(0, 0, 0, 1) },
   /** 1 while the sun shadow map renders (render/shadows.ts): shaders skip lighting, impostors face the sun. */
   uShadowPass: { value: 0 },
+  /**
+   * See-through (playtest round 10, `SEE_GLSL`, written each frame by src/player/seeThrough.ts):
+   * the third-person lens, xyz, and w = how far from it anything can stand in the way (m, 0 = off).
+   */
+  uSeeCam: { value: new Vector4(0, 0, 0, 0) },
+  /** The character's chest (xyz) and its half-width for the sight cone (w, m). */
+  uSeeP: { value: new Vector4(0, 0, 0, 0.55) },
+  /** A second subject (the fight's target, the speaker in a conversation): xyz, w half-width (0 = none). */
+  uSeeT: { value: new Vector4(0, 0, 0, 0) },
+  /** x lens radius inside which an occluder is gone, y its falloff (m), z cone strength 0..1, w world height above which nothing thins. */
+  uSeeK: { value: new Vector4(0.45, 1.1, 0.82, 1e6) },
 };
 
 export type Atmosphere = typeof atmosphere;
+
+/**
+ * See-through for occluders of the third-person view (playtest round 10, F-03 / F-15 / F-21):
+ * trunks, low spruce cones, ferns, bushes and rocks between the lens and the character (or the
+ * fight's target, or the speaker), or pressed against the lens, screen-door dither away like the
+ * character's own fade — no sorting, no transparency, the shadow pass untouched.
+ *
+ * Vertex side: `kqSee(base, r, top, wp)` → 0..1 how much to thin a vertical occluder standing
+ * at `base` (xz axis, radius r, top height) for the vertex at world position `wp`; instanced
+ * trees pass their instance, props their own vertex. Fragment side: `kqSeeCut(see, wp)` → discard.
+ * Needs `uShadowPass` declared by the host shader (ATMOS_GLSL does) and the `uSee*` uniforms.
+ */
+export const SEE_GLSL = /* glsl */ `
+uniform vec4 uSeeCam;
+uniform vec4 uSeeP;
+uniform vec4 uSeeT;
+uniform vec4 uSeeK;
+// the cone from the lens to a subject (s = its chest, w = its half-width): 0..1
+float kqSeeCone(vec3 base, float r, float top, vec3 s, float w) {
+  vec2 cp = s.xz - uSeeCam.xz;
+  float L = length(cp);
+  if (L < 0.4) return 0.0;
+  vec2 dir = cp / L;
+  vec2 ac = base.xz - uSeeCam.xz;
+  float along = dot(ac, dir);
+  // behind the lens, or not in front of the subject
+  if (along < -r || along - r > L - 0.3) return 0.0;
+  float k = clamp(along / L, 0.0, 1.0);
+  float side = abs(ac.x * dir.y - ac.y * dir.x);
+  float hw = r + w * k + 0.12;
+  float c = 1.0 - smoothstep(hw, hw + 0.45, side);
+  // low things (a fern) under the sight line to the subject's feet hide nothing
+  float lineY = uSeeCam.y + (s.y - 1.0 - uSeeCam.y) * k;
+  return c * step(lineY - 0.15, top);
+}
+float kqSee(vec3 base, float r, float top, vec3 wp) {
+  if (uSeeCam.w <= 0.0 || uShadowPass > 0.5) return 0.0;
+  vec2 d = base.xz - uSeeCam.xz;
+  float dd = dot(d, d);
+  if (dd > uSeeCam.w * uSeeCam.w) return 0.0;
+  float lens = sqrt(dd) - r;
+  // pressed against the lens: gone; a little further off: a thin ghost
+  float s = lens < uSeeK.x ? 1.0 : 0.9 * (1.0 - smoothstep(uSeeK.x, uSeeK.x + uSeeK.y, lens));
+  // the vertex itself at the lens (a low spruce branch, the bush the camera sits in)
+  s = max(s, 1.0 - smoothstep(0.55, 1.25, length(wp - uSeeCam.xyz)));
+  s = max(s, uSeeK.z * kqSeeCone(base, r, top, uSeeP.xyz, uSeeP.w));
+  if (uSeeT.w > 0.0) s = max(s, uSeeK.z * kqSeeCone(base, r, top, uSeeT.xyz, uSeeT.w));
+  return s;
+}
+`;
+
+/** Fragment side of `SEE_GLSL`: discard by a screen-door pattern (needs `uSeeK`). */
+export const SEE_FRAG_GLSL = /* glsl */ `
+uniform vec4 uSeeK;
+bool kqSeeCut(float see, vec3 wp) {
+  if (see < 0.004) return false;
+  // the crowns overhead stay: only what is near the eye line thins
+  float k = see * (1.0 - smoothstep(uSeeK.w, uSeeK.w + 2.5, wp.y));
+  return fract(52.9829189 * fract(dot(gl_FragCoord.xy + vec2(3.0, 11.0), vec2(0.06711056, 0.00583715)))) < k;
+}
+`;
 
 /** GLSL shared by all world shaders. Requires the `atmosphere` uniforms. */
 export const ATMOS_GLSL = /* glsl */ `

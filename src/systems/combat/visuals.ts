@@ -926,6 +926,21 @@ export function occlusionVis(e: Enemy, v: { hull: { r: number; f: number }; t: {
   return vis;
 }
 
+/**
+ * How solid an enemy may be drawn for the lens itself (playtest round 10, F-08: a Streuner
+ * circling through the camera became a huge semi-transparent wolf over the whole screen): 0 with
+ * the camera inside its hull, 1 from ~0.7 m outside it. Unlike `occlusionVis` (a ~30 % ghost), a
+ * body at the near plane fades out completely. Render only; the fight is untouched.
+ */
+export function lensVis(e: Pick<Enemy, 'x' | 'y' | 'z' | 'heading' | 'radius'>, v: { hull: { r: number; f: number }; t: { top: number } }, cam: { x: number; y: number; z: number }): number {
+  if (cam.y < e.y - 0.6 || cam.y > e.y + v.t.top + 0.6) return 1;
+  const q = hullDistance(e, v.hull, cam.x, cam.z);
+  const d = Math.hypot(cam.x - e.x, cam.z - e.z);
+  // metres from the hull's surface along the line from its axis (negative inside)
+  const out = q > 1e-3 ? d * (1 - 1 / q) : -1;
+  return ss(-0.1, 0.7, out);
+}
+
 const _m = new Matrix4();
 const _m2 = new Matrix4();
 const _q = new Quaternion();
@@ -970,6 +985,8 @@ interface Vis {
   hull: { r: number; f: number };
   /** Smoothed visibility 0..1 (dithered while in the way of the lens). */
   vis: number;
+  /** Smoothed 0..1: 0 while the lens is inside the body (`lensVis`). */
+  lens: number;
 }
 
 /** A ring that runs outward on the ground (kills, a boss coming apart). */
@@ -1069,7 +1086,7 @@ export class CombatVisuals {
     let v = this.vis.get(e.id);
     if (!v) {
       const t = bodyTemplate(e.kind, e.seed, e.size);
-      v = { t, tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0, flinch: 0, lastFlash: 0, fireAcc: 0, walk: 0, hull: hullOf(t), vis: 1 };
+      v = { t, tell: 0, lean: 0, arm: 0, swell: 1, sink: 0, fade: 0, dissolved: false, phaseFlash: 0, flinch: 0, lastFlash: 0, fireAcc: 0, walk: 0, hull: hullOf(t), vis: 1, lens: 1 };
       this.vis.set(e.id, v);
     }
     return v;
@@ -1708,7 +1725,10 @@ export class CombatVisuals {
     // what the view is looking at — it thins to a dither so the fight behind it stays readable
     const want = occlusionVis(e, v, f);
     v.vis += (want - v.vis) * Math.min(1, dt > 0 ? dt * 10 : 1);
-    const vis = v.vis;
+    // the lens itself inside / brushing the body: it goes, quickly (round 10, F-08)
+    v.lens += (lensVis(e, v, f.camera.position) - v.lens) * Math.min(1, dt > 0 ? dt * 14 : 1);
+    const lens = v.lens;
+    const vis = v.vis * lens;
     const stunned = e.stun > 0;
     const flash = e.flash;
     const pulse = 0.75 + 0.25 * Math.sin(f.time * 18);
@@ -1718,7 +1738,7 @@ export class CombatVisuals {
     if (rigged) {
       const dis = dissolving ? Math.min(1, Math.max(0, (e.t - 0.08) / 1.3)) : 0;
       if (dis < 1)
-        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: Math.max(leaving ? v.fade : 0, (1 - vis) * 0.7), dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px), (shape, m, r, g, b, er, eg, eb, mat) => this.shapes.get(shape)!.push(m, r, g, b, er, eg, eb, mat, vis));
+        this.rigs.draw(e, { lean: v.lean, sink: v.sink, tellK, flash, flinch: v.flinch, stunned, fade: Math.max(leaving ? v.fade : 0, (1 - v.vis) * 0.7, 1 - lens), dissolve: dis, reducedFlash: f.reducedFlash, frozen: f.frozen }, dt, (x, y, z, size, I, r, g, b, px) => this.glows.push(x, y, z, size, I, r, g, b, px), (shape, m, r, g, b, er, eg, eb, mat) => this.shapes.get(shape)!.push(m, r, g, b, er, eg, eb, mat, vis));
     }
     // sculpted pieces burn away over ≈ 1.2 s (the puffs and glows fade faster)
     if (alpha <= 0.01 && !(dissolving && e.t < 1.3)) return;
@@ -1751,7 +1771,7 @@ export class CombatVisuals {
         const fl = flash * 0.6;
         const heat = 1 + tellK * 1.2;
         const cold = stunned ? 0.35 : 0;
-        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6) * (aura < 1 ? 1.25 : 1), (p.alpha ?? 1) * alpha * aura * (stunned ? 0.75 : 1) * (0.2 + 0.8 * vis), p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
+        this.puffs.push(_p.x, _p.y, _p.z, p.size * v.swell * (1 + v.fade * 0.6) * (aura < 1 ? 1.25 : 1), (p.alpha ?? 1) * alpha * aura * (stunned ? 0.75 : 1) * (0.2 + 0.8 * vis) * lens, p.seed, p.style ?? 0, p.col[0] + fl, p.col[1] + fl, p.col[2] + fl, em[0] * heat + v.t.tell[0] * tellK * 0.25 + cold * 0.2, em[1] * heat + v.t.tell[1] * tellK * 0.25 + cold * 0.35, em[2] * heat + v.t.tell[2] * tellK * 0.25 + cold * 0.5);
       } else if (p.kind === 'glow') {
         let I = (p.alpha ?? 1) * alpha * wakeK;
         let size = p.size * v.swell;
@@ -1766,7 +1786,7 @@ export class CombatVisuals {
         const aura = e.elite && isEye ? eliteAura(e.kind) : null;
         const col = stunned && p.bone === 'core' ? ([0.7, 0.85, 1] as const) : aura ?? p.col;
         if (aura) I *= 1.5;
-        this.glows.push(_p.x, _p.y, _p.z, size, I * 1.4 * (0.45 + 0.55 * vis), col[0], col[1], col[2], p.style ?? 0);
+        this.glows.push(_p.x, _p.y, _p.z, size, I * 1.4 * (0.45 + 0.55 * vis) * lens, col[0], col[1], col[2], p.style ?? 0);
         if (p.fire && dt > 0 && !dissolving) this.flames(_p.x, _p.y, _p.z, p.fire * dt * (e.state === 'windup' ? 1.8 : 1), p.size, f.reducedFlash, v);
       } else {
         const em = p.em ?? [0, 0, 0];

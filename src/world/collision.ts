@@ -71,6 +71,11 @@ export function pushOutOfBox(x: number, z: number, radius: number, b: Extract<So
   return [b.x + nu * b.ux + nv * vx, b.z + nu * b.uz + nv * vz];
 }
 
+/** Numeric spatial-hash key of a cell (no string building on the camera's hot path). */
+function cellKey(cx: number, cz: number): number {
+  return (cx + 32768) * 65536 + (cz + 32768);
+}
+
 export class FootprintCollider {
   private readonly cells = new Map<string, Edge[]>();
   enabled = true;
@@ -87,7 +92,17 @@ export class FootprintCollider {
    * Optional overlay (interiors system): footprints in `passable` stop blocking and `resolve`
    * runs after the footprint pass (also while the footprints are disabled, e.g. ruin walls).
    */
-  overlay: { passable: ReadonlySet<number>; resolve(x: number, z: number, radius: number): { x: number; z: number; hit: boolean } } | null = null;
+  overlay: {
+    passable: ReadonlySet<number>;
+    resolve(x: number, z: number, radius: number): { x: number; z: number; hit: boolean };
+    /** Allocation-free overlap test (the camera's probes); falls back to `resolve(…).hit`. */
+    hits?(x: number, z: number, radius: number): boolean;
+  } | null = null;
+  /** The same edges keyed by number (allocation-free lookups in `hits`). */
+  private readonly cellsN = new Map<number, Edge[]>();
+  /** Flat copies of the solids and pass zones (no iterator objects in `hits`). */
+  private solidFlat: Solid[] = [];
+  private zoneFlat: PassZone[] = [];
 
   constructor(
     readonly rings: Ring[],
@@ -107,6 +122,10 @@ export class FootprintCollider {
           let l = this.cells.get(k);
           if (!l) this.cells.set(k, (l = []));
           l.push(e);
+          const kn = cellKey(cx, cz);
+          let ln = this.cellsN.get(kn);
+          if (!ln) this.cellsN.set(kn, (ln = []));
+          ln.push(e);
         }
       }
     });
@@ -137,12 +156,62 @@ export class FootprintCollider {
   setSolids(owner: string, list: Solid[]): void {
     if (list.length) this.solids.set(owner, list);
     else this.solids.delete(owner);
+    this.solidFlat = [...this.solids.values()].flat();
   }
 
   /** Replace the pass zones (gates) of one owner ([] removes them). */
   setPassZones(owner: string, list: PassZone[]): void {
     if (list.length) this.passZones.set(owner, list);
     else this.passZones.delete(owner);
+    this.zoneFlat = [...this.passZones.values()].flat();
+  }
+
+  /**
+   * Does a circle overlap a footprint edge, a set-dressing solid or an overlay wall? Like
+   * `resolve(…).hit` for a circle that moved in from outside (a point deep inside a footprint,
+   * far from every edge, is not reported), but without allocating: the third-person camera
+   * sweeps its boom with it every frame.
+   */
+  hits(x: number, z: number, radius: number): boolean {
+    if (this.enabled || this.keep.size) {
+      const s = this.cellSize;
+      const passable = this.overlay?.passable;
+      const r2 = radius * radius;
+      for (let cz = Math.floor((z - radius) / s); cz <= Math.floor((z + radius) / s); cz++)
+        for (let cx = Math.floor((x - radius) / s); cx <= Math.floor((x + radius) / s); cx++) {
+          const l = this.cellsN.get(cellKey(cx, cz));
+          if (!l) continue;
+          for (const e of l) {
+            if (!(this.enabled || this.keep.has(e.poly)) || passable?.has(e.poly)) continue;
+            const dx = e.bx - e.ax;
+            const dz = e.bz - e.az;
+            const L2 = dx * dx + dz * dz;
+            const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - e.ax) * dx + (z - e.az) * dz) / L2)) : 0;
+            const ex = e.ax + t * dx - x;
+            const ez = e.az + t * dz - z;
+            if (ex * ex + ez * ez >= r2 || this.inZone(e.poly, x, z)) continue;
+            return true;
+          }
+        }
+    }
+    for (const q of this.solidFlat) {
+      if (q.kind === 'circle') {
+        if (Math.hypot(x - q.x, z - q.z) < q.r + radius) return true;
+      } else {
+        const dx = x - q.x;
+        const dz = z - q.z;
+        if (Math.abs(dx * q.ux + dz * q.uz) < q.hu + radius && Math.abs(-dx * q.uz + dz * q.ux) < q.hv + radius) return true;
+      }
+    }
+    const o = this.overlay;
+    if (!o) return false;
+    return o.hits ? o.hits(x, z, radius) : o.resolve(x, z, radius).hit;
+  }
+
+  /** A gate of footprint `poly` contains the point. */
+  private inZone(poly: number, x: number, z: number): boolean {
+    for (const g of this.zoneFlat) if (g.poly === poly && Math.hypot(x - g.x, z - g.z) < g.r) return true;
+    return false;
   }
 
   /** Is the point inside one of the set-dressing solids (grown by `radius`)? */

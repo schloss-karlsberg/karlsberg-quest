@@ -22,7 +22,7 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
-import { ATMOS_GLSL } from '../atmosphere';
+import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL } from '../atmosphere';
 import { FOLIAGE_GLSL } from './foliage';
 
 /**
@@ -139,6 +139,7 @@ export const FAMILY_CROWN: [number, number][] = [
 
 const MODEL_VERT = /* glsl */ `
 ${ATMOS_GLSL}
+${SEE_GLSL}
 attribute float aPart;
 attribute float aAo;
 attribute float aSeed;
@@ -160,6 +161,7 @@ varying float vAo;
 varying float vVar;
 varying vec2 vDither;
 varying float vH;
+varying float vSee;
 ${FOLIAGE_GLSL}
 ${SHAPE_GLSL}
 void main() {
@@ -197,6 +199,8 @@ void main() {
   vVar = var;
   vDither = aVar.zw;
   vH = position.y;
+  // in the way of the third-person view (trunk, low crown): thinned in the fragment shader
+  vSee = kqSee(aInst.xyz, 0.1 + h * 0.016, aInst.y + h, wp);
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
   // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
   if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + 30.0) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
@@ -220,12 +224,15 @@ varying float vAo;
 varying float vVar;
 varying vec2 vDither;
 varying float vH;
+varying float vSee;
 ${FOLIAGE_GLSL}
+${SEE_FRAG_GLSL}
 // interleaved gradient noise: the LOD cross-fade dither
 float kqIgn(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
 void main() {
   float dth = kqIgn(gl_FragCoord.xy);
   if (dth < vDither.x || dth >= vDither.y) discard;
+  if (kqSeeCut(vSee, vWorld)) discard;
   float cut = uShadowParams.x > 0.5 ? 0.3 : 0.5;
   vec3 n = normalize(vNormal);
   vec3 alb;
