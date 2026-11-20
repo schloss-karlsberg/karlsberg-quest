@@ -33,9 +33,9 @@ export const ROTUNDA = { s: 9.4, r: 5.25, inner: 4.8, floor: 349.7, cornice: 356
 /**
  * The way along the axis: colonnade floor to `colonnade`, steps up to the west door (`stepsUp`),
  * the room, the east door, the portico to its front edge (`stylobate`), steps down to the garden
- * (`to`). `half`: half the clear width of the doors.
+ * (`to`).
  */
-export const PASSAGE = { from: 0.25, colonnade: 2.75, stepsUp: 4.3, doorW: 4.45, doorE: 14.35, stylobate: 17.6, to: 19.2, half: 1.3 };
+export const PASSAGE = { from: 0.25, colonnade: 2.75, stepsUp: 4.3, doorW: 4.45, doorE: 14.35, stylobate: 17.6, to: 19.2 };
 
 /** Floors (catalogue KB-B07 / the model). */
 const COLONNADE_FLOOR = TEMPEL_DOOR.floor;
@@ -291,7 +291,8 @@ export function rotundaSite(k: Kit, groundAt: (x: number, z: number) => number, 
 
 const DECL = /* glsl */ `
 uniform vec4 uKqPassA;  // door x, z, axis ux, uz
-uniform vec4 uKqPassB;  // door half width, y0, y1, building index (KB-B07; < 0: off)
+uniform vec4 uKqPassB;  // east door half width, y0, y1, building index (KB-B07; < 0: off)
+uniform float uKqPassW; // west door half width
 uniform vec4 uKqPassS;  // along the axis: west door s0, s1; east door s0, s1
 uniform vec4 uKqSite;   // 1789 building site (1/0), rotunda centre s, cornice y, pediment y
 `;
@@ -300,7 +301,7 @@ const CUT = /* glsl */ `
     vec2 kqPd = vWorld.xz - uKqPassA.xy;
     float kqS = dot(kqPd, uKqPassA.zw);
     float kqQ = dot(kqPd, vec2(-uKqPassA.w, uKqPassA.z));
-    bool kqDoor = abs(kqQ) < uKqPassB.x && vWorld.y > uKqPassB.y && vWorld.y < uKqPassB.z && ((kqS > uKqPassS.x && kqS < uKqPassS.y) || (kqS > uKqPassS.z && kqS < uKqPassS.w));
+    bool kqDoor = vWorld.y > uKqPassB.y && vWorld.y < uKqPassB.z && ((abs(kqQ) < uKqPassW && kqS > uKqPassS.x && kqS < uKqPassS.y) || (abs(kqQ) < uKqPassB.x && kqS > uKqPassS.z && kqS < uKqPassS.w));
     bool kqSite = uKqSite.x > 0.5 && ((length(vec2(kqS - uKqSite.y, kqQ)) < 5.75 && vWorld.y > uKqSite.z) || (kqS > uKqSite.y + 5.2 && vWorld.y > uKqSite.w));
     if (kqDoor || kqSite) discard;
   }
@@ -315,9 +316,12 @@ export function patchPalace(mesh: Mesh, b07: number): boolean {
   const d = TEMPEL_DOOR;
   const P = PASSAGE;
   u.uKqPassA = { value: new Vector4(d.x, d.z, d.nx, d.nz) };
-  u.uKqPassB = { value: new Vector4(P.half + 0.02, ROTUNDA.floor + 0.02, 354.6, b07) };
+  // the glass and its frames: ±1.5 m in the west door, ±1.2 m in the east door
+  u.uKqPassB = { value: new Vector4(1.22, ROTUNDA.floor + 0.02, 354.6, b07) };
+  u.uKqPassW = { value: 1.52 };
   u.uKqPassS = { value: new Vector4(P.doorW - 0.45, P.doorW + 0.5, P.doorE - 0.45, P.doorE + 0.45) };
-  u.uKqSite = { value: new Vector4(0, ROTUNDA.s, ROTUNDA.cornice, 354.95) };
+  // (the portico keeps its columns and entablature, up to 356.3; its pediment and roof are not on yet)
+  u.uKqSite = { value: new Vector4(0, ROTUNDA.s, ROTUNDA.cornice, 356.32) };
   if (m.fragmentShader.includes('uKqPassA')) return true;
   if (!m.fragmentShader.includes(DECL_ANCHOR) || !m.fragmentShader.includes(CUT_ANCHOR)) return false;
   m.fragmentShader = m.fragmentShader.replace(DECL_ANCHOR, `${DECL_ANCHOR}\n${DECL}`).replace(CUT_ANCHOR, `${CUT}\n  ${CUT_ANCHOR}`);
