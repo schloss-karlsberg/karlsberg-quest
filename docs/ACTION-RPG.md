@@ -1418,3 +1418,9 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   air), the Streuner is in 1789 where F is off, p10's 9 s is beat time. Teaching F in p1/p2 would
   only compete with the Messstab, the first fight and the wall's Nebelling, so p3 after the wall
   fight is the earliest safe beat.
+- **Story track, 2026-11-20 — tour opening and party endings (drafts only):** the owner's redesign of
+  the opening as a guided tour (visitor, guide placeholder Gerold Imhoff, Karlsberger Hof → Felsenpfad
+  → Weiher → Karlsbergquelle, no combat, roe deer photo, the Quelle as home base, the whole journey
+  during the break) and a credits party on the plateau after each ending. Drafts, work packages,
+  systems, pacing targets and open questions in `docs/design/tour/` (status: draft for the release
+  after 0.5.0); nothing built, §11.0 unchanged until then.

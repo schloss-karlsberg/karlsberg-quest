@@ -317,6 +317,9 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   - **Exception (owner, 2026-11-20):** the hidden bottle collectibles carry the real beer label, public
     repo and site included, as a swappable placeholder (one constant/texture, plain text label only, no
     logo artwork); never in codex/quests/dialogue; swap when permission is refused or when the owner says so.
+  - **Place name (owner, 2026-11-20):** "Karlsberger Hof" may be named as a **location only** (the tour's
+    meeting point: guide dialogue, map label, docs). No logo, signage, slogans, products, advertising tone or
+    beer talk tied to the brand; FAKT texts about the building stay neutral and sourced (docs/design/tour/).
 - **Working mode (owner, 2026-11-20):** the main session acts only as a coordinator; all work runs in
   subagents or separate sessions.
 - Git: the repo is public at schloss-karlsberg/karlsberg-quest. The one-time history rewrite is done (2026-11-20): push to origin after the gates pass, pull or rebase onto `origin/main` before merging; never force-push main. `scripts/release/publish.sh` is retired. Commit messages and --no-ff merges use Conventional Commits. Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or your model's line).
