@@ -9,8 +9,10 @@
  *
  * Reads ELEVENLABS_API_KEY and HF_TOKEN from the main checkout's .env (override: --env <path>).
  * Secrets are sent only as auth headers and never printed. Output (Opus/WebM + AAC/m4a) and the
- * manifest go to public/voice/ (gitignored: ElevenLabs free-tier output is non-commercial and must
- * never be committed). Contract: scripts/voice/lib.ts.
+ * manifest go to public/voice/, which is COMMITTED and takes synthetic MOSS clips only (rules:
+ * scripts/voice/assetRules.ts, tests/voice-assets.test.ts). A real run that would write elevenlabs or
+ * hf-space clips there is refused unless --allow-noncommittable is given; use --out <scratch dir>
+ * for those. ElevenLabs output must never be committed. Contract: scripts/voice/lib.ts.
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -36,6 +38,7 @@ import {
   writeManifest,
   MOSS_ATTRIBUTION,
 } from './lib.ts';
+import { isCommittableVoiceDir, nonCommittableGuard } from './assetRules.ts';
 import { MOSS_BATCH_MAX, MOSS_RTF, QUIET_WINDOW, mossConfig, mossEstimate, refSha8For } from './moss.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -70,6 +73,7 @@ const { values: a } = parseArgs({
     prune: { type: 'boolean', default: false },
     'keep-raw': { type: 'string' },
     offline: { type: 'boolean', default: false },
+    'allow-noncommittable': { type: 'boolean', default: false },
     verbose: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -89,8 +93,9 @@ if (a.help) {
   --force              regenerate even up-to-date lines
   --prune              (real run) remove manifest entries and clips of lines no longer in content
   --offline            do not ask the account for remaining credits
-  --out <dir>          output dir (default public/voice)
+  --out <dir>          output dir (default public/voice: committed, synthetic MOSS clips only)
   --keep-raw <dir>     (real run) also keep each provider's raw audio there (e.g. moss WAVs, for pause metrics)
+  --allow-noncommittable  let elevenlabs / hf-space clips land in public/voice anyway (local test only; never commit them)
   --content, --voices, --priority, --speech <path>   (speech.json: spoken text overrides per line id)
   -v, --verbose        list every selected line, also those past the budget`);
   process.exit(0);
@@ -181,6 +186,13 @@ const plan = buildPlan(selected, {
   resolve: ro,
 });
 const todo = plan.rows.filter((r) => r.take);
+// public/voice/ is committed: only moss clips may land there (scripts/voice/assetRules.ts)
+const guardMsg = nonCommittableGuard({ out: a.out, repo: REPO, providers: todo.map((r) => r.voice.provider), allow: a['allow-noncommittable'] });
+if (a['keep-raw'] && isCommittableVoiceDir(a['keep-raw'], REPO)) fail('--keep-raw must point outside public/voice/ (raw renders never go into the committed folder)');
+if (guardMsg) {
+  if (!dry) fail(`${guardMsg} Nothing generated.`);
+  console.warn(`WARNING (a real run would stop here): ${guardMsg}`);
+}
 if (!dry) {
   if (todo.some((r) => r.voice.provider === 'elevenlabs') && !KEY)
     fail(`${keyNote}. Put ELEVENLABS_API_KEY into that .env (never into the repo) or pass --env <path>. Nothing generated (try --dry-run).`);

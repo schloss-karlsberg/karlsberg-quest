@@ -9,8 +9,14 @@ playwright-report/
 .claude/settings.local.json
 scripts/release/private/
 
-# recorded voice clips + manifest: not committed until the audio licensing is settled (pnpm voice:gen)
-public/voice/
+# public/voice/ IS committed: synthetic MOSS clips + manifest only (owner 2026-11-20; rules in
+# scripts/voice/assetRules.ts, enforced by tests/voice-assets.test.ts). Safety net for what never goes in:
+public/voice/**/*.wav
+public/voice/.tmp/
+public/voice/**/*.tmp
+public/voice/**/*.part
+public/**/*-private*
+public/**/*TEST-synthetic*
 # local secrets (ELEVENLABS_API_KEY, HF_TOKEN, content tools): never commit; see .env.example
 .env
 .env.*
