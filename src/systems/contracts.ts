@@ -373,6 +373,12 @@ export interface NpcPlacement {
   y?: number;
   /** 'kneel': down on one knee, leaning forward (Jost by his hounds after W8). */
   pose?: 'kneel';
+  /**
+   * How the figure is drawn: 'ghost' (default) or 'solid' (lit and opaque, present in the scene).
+   * 'solid' is honoured once the authored twin models land (docs/ART-DIRECTION.md §21); until
+   * then every figure is a ghost.
+   */
+  look?: 'ghost' | 'solid';
 }
 
 export {};
