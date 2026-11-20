@@ -129,7 +129,7 @@ const facts = [
     'Der Spitzname „Hundskarl“ wurde 1923 durch den Heimatforscher Fritz Schunck bekannt, nach dem Ende der bayerischen Monarchie. Eine Hobbyseite erzählt dazu eine Geschichte von einem Hund, einem Jungen und einem herzoglichen Satz; sie ist nicht belegt, und das Spiel erzählt sie nicht nach.',
     [src('WP-K2A'), src('RLS'), src('HIB-VITA', 'unbelegte Anekdote')], { tags: ['unlock:entry.k1.4'] }),
   f('cx.38', 'Was in diesem Spiel erfunden ist', 'FIKTION', 'D',
-    'Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.',
+    'Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, das Wasser der Karlsbergquelle, das sich erinnert, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.',
     [], { tags: ['unlock:always'] }),
   f('cx.39', 'Der Karlsberg heute', 'FAKT', 'D',
     'Seit 2008 ist der Karlsberg ein WaldPark, seit 2007 führt ein Hörpfad von 5,5 km durch das Gelände, und 2009–2013 wurden die Ruinen gesichert. Sichtbar sind die Reste der Orangerie, die Lichtung des Ehrenhofs, Weiher, Brunnen und das Rund des „Bärenzwingers“. Die „Herzogskastanien“ gelten als über 200 Jahre alte Naturdenkmale; ob sie den Sturm Wiebke 1990 überstanden, ist widersprüchlich überliefert.',
@@ -137,6 +137,12 @@ const facts = [
   f('cx.40', 'Die Orangerie', 'FAKT', 'D',
     'Die Orangerie entstand ab 1780 aus der früheren Schweizerei; im Pfeilersaal standen im Winter die Kübelpflanzen, und Mannlich wohnte im Obergeschoss. Im Laserscan ist ihre Stützmauer eine schnurgerade Kante von rund 81 m mit einer Stufe von 5,3 m. Ihre Reste gehören heute zu den wenigen sichtbaren Mauern am Karlsberg.',
     [src('SBT'), src('WP-SK'), src('M1910'), src('LIDAR', 'Merkmal KB-30')]),
+  f('cx.41', 'Die Karlsbergquelle', 'FAKT', 'D',
+    'Die Karlsbergquelle liegt im Buchenwald zwischen dem Karlsbergweiher und der Orangerie, am Fuß eines Hangs in einer kleinen Rinne, rund 60 m tiefer als die Orangerie-Terrasse. Hier beginnt der Karlsbergbach, der durch die Rinne zum Weiher hinunterläuft; wenige Meter daneben steht eine Infotafel. Heute läuft das Wasser aus einem Rohr in einen ausgehöhlten Stamm vor einer niedrigen Trockenmauer, hangaufwärts liegt eine kleine gewölbte Brunnenstube. Wann die Quelle gefasst wurde und ob sie das Schloss mit Wasser versorgte, ist nicht belegt.',
+    [src('OSM-KQ'), src('KOMOOT-KQ', 'Fotos der heutigen Fassung'), src('LIDAR', 'Quellmulde bei 1061/−835, Rinne zum Weiher')]),
+  f('cx.42', 'Das Wasser erinnert sich', 'FIKTION', 'D',
+    'Erfunden: dass das Wasser der Karlsbergquelle sich erinnert und dass, wer es berührt, in ein anderes Jahr gerät. Erfunden ist auch die barocke Brunnenstube mit Steinbecken und Bronzespeier, die das Spiel für 1789 bis 1796 an die Quelle stellt: Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert.',
+    []),
 ];
 
 // ---- Reliefmuster (Handbuch des Forstamts): facts tagged 'reliefmuster'

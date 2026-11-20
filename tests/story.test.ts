@@ -202,7 +202,7 @@ describe('story files', () => {
     expect(r.stats.beats).toBeGreaterThan(35);
     const prolog = files.find((f) => f.story.chapter === 'prolog')!.story;
     expect(prolog.placeholder).toBeFalsy();
-    expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
+    expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p3q', 'p3r', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
     // chapters chain to the endings
     const order = files.map((f) => f.story).filter((f) => !f.test).sort((a, b) => a.order - b.order);
     for (let i = 0; i < order.length - 1; i++) expect(order[i]!.next).toBe(order[i + 1]!.chapter);
@@ -267,6 +267,15 @@ describe('story files', () => {
     step({ ...inv('clue.p.mauerrest'), x: 1237, z: -966, scan: 3 });
     expect(h.slice.beat).toBe('p3'); // the step is there, but Marlene's quest wants the dam and the wall first
     step({ ...inv(), ...quest('q.p.relief'), x: 1237, z: -966, scan: 3 });
+    expect(h.slice.beat).toBe('p3q'); // Laub hears the water: down to the Karlsbergquelle
+    step({ ...inv(), x: 1059.3, z: -833.1 });
+    expect(h.slice.beat).toBe('p3q'); // at the trough: the touch is the player's
+    h.engine.onEvent('quelle:touch', { era: 'today' });
+    step({ ...inv(), x: 1059.3, z: -833.1 });
+    expect(h.slice.beat).toBe('p3r'); // the shift to 1789 (fx), the Brunnenstube
+    step({ ...inv(), era: '1789', x: 1059.3, z: -833.1 }, 4);
+    expect(h.slice.beat).toBe('p3r');
+    step({ ...inv(), ...quest('q.p.quelle'), era: 'today', x: 1059.3, z: -833.1 });
     expect(h.slice.beat).toBe('p4');
     // the Ehrenhof clue first, then the 1840 map overlay grants the Kartenvergleich
     step({ ...inv('clue.p.orangeriemauer', 'clue.p.ehrenhof'), x: 1216, z: -1114, map: true });

@@ -753,6 +753,94 @@
       "once": true
     },
     {
+      "id": "laub.p.quelle",
+      "speaker": "laub",
+      "text_de": "Hören Sie das? Nein, natürlich nicht. Wasser. Unten im Hang, wo der Bach anfängt. Es erinnert sich an etwas.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3Q"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.b",
+      "speaker": "laub",
+      "text_de": "Gehen Sie hin. Die Nadel zeigt es Ihnen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3Q"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.nah",
+      "speaker": "laub",
+      "text_de": "Da. Die Karlsbergquelle. Ein Trog, eine Mauer, ein Rohr. Das Wasser ist älter als alle drei.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3Q"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.trog",
+      "speaker": "laub",
+      "text_de": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3Q"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.1789",
+      "speaker": "laub",
+      "text_de": "Siebzehnhundertneunundachtzig. Dieselbe Quelle, zweihundert Jahre jünger. Gefasst in Stein, mit Bronze. Ob sie wirklich so aussah? Mein Blatt sagt nichts dazu. Das Wasser schon.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3R"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.regel",
+      "speaker": "laub",
+      "text_de": "Das Wasser erinnert sich. Ein Tropfen davon sitzt jetzt in der Bussole. Wo der Boden sich genauso gut erinnert, nimmt er uns mit. Mehr später.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3R"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.zurueck",
+      "speaker": "laub",
+      "text_de": "Zurück geht es immer: Q gedrückt halten. Jetzt bitte. Mir bekommt das achtzehnte Jahrhundert nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3R"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.p.quelle.heute",
+      "speaker": "laub",
+      "text_de": "Da sind wir wieder. Merken Sie sich die Stelle. Und nun hinauf, ich habe am Ehrenhof etwas nachzumessen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "p",
+        "beat": "P3R"
+      },
+      "once": true
+    },
+    {
       "id": "laub.p.intro2",
       "speaker": "laub",
       "text_de": "Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.",
@@ -854,7 +942,7 @@
     {
       "id": "laub.p.regeln",
       "speaker": "laub",
-      "text_de": "So. Der Berg kennt Sie jetzt. Das reicht für einen Blick.",
+      "text_de": "So. Das Wasser hat Sie einmal mitgenommen, und der Berg kennt Sie jetzt. Das reicht, um selbst zu gehen.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",
@@ -876,7 +964,7 @@
     {
       "id": "laub.p.regeln.c",
       "speaker": "laub",
-      "text_de": "Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q.",
+      "text_de": "Erstens: Sie können nur dort hinüber, wo die Nadel steht. Dort erinnert sich der Boden. Taste Q.",
       "trigger": {
         "event": "story:beat",
         "chapter": "p",

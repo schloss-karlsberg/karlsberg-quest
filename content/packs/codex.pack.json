@@ -898,7 +898,7 @@
     {
       "id": "cx.38",
       "title_de": "Was in diesem Spiel erfunden ist",
-      "text_de": "Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.",
+      "text_de": "Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, das Wasser der Karlsbergquelle, das sich erinnert, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.",
       "confidence": "D",
       "fiction": true,
       "sources": [],
@@ -966,6 +966,45 @@
       ],
       "tags": [
         "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.41",
+      "title_de": "Die Karlsbergquelle",
+      "text_de": "Die Karlsbergquelle liegt im Buchenwald zwischen dem Karlsbergweiher und der Orangerie, am Fuß eines Hangs in einer kleinen Rinne, rund 60 m tiefer als die Orangerie-Terrasse. Hier beginnt der Karlsbergbach, der durch die Rinne zum Weiher hinunterläuft; wenige Meter daneben steht eine Infotafel. Heute läuft das Wasser aus einem Rohr in einen ausgehöhlten Stamm vor einer niedrigen Trockenmauer, hangaufwärts liegt eine kleine gewölbte Brunnenstube. Wann die Quelle gefasst wurde und ob sie das Schloss mit Wasser versorgte, ist nicht belegt.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.openstreetmap.org/node/368031320",
+          "label": "OpenStreetMap: Karlsbergquelle (natural=spring) und Karlsbergbach"
+        },
+        {
+          "url": "https://www.komoot.com/highlight/780842",
+          "label": "komoot-Highlight 780842: Quelle am Karlsberg (Fotos)",
+          "note": "Fotos der heutigen Fassung"
+        },
+        {
+          "url": "https://www.shop.lvgl.saarland.de/",
+          "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+          "note": "LIDAR: eigene Auswertung des DGM1 2025 (Geländeanalyse des Projekts, unveröffentlicht); Quellmulde bei 1061/−835, Rinne zum Weiher"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.42",
+      "title_de": "Das Wasser erinnert sich",
+      "text_de": "Erfunden: dass das Wasser der Karlsbergquelle sich erinnert und dass, wer es berührt, in ein anderes Jahr gerät. Erfunden ist auch die barocke Brunnenstube mit Steinbecken und Bronzespeier, die das Spiel für 1789 bis 1796 an die Quelle stellt: Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert.",
+      "confidence": "D",
+      "fiction": true,
+      "sources": [],
+      "tags": [
+        "label:FIKTION"
       ],
       "licence": "eigener Text"
     },

@@ -160,6 +160,18 @@ const dialogue = [
     ['laub.p.intro.c', 'laub', 'Seit November 1840 verwaltungstechnisch verschollen. Meine letzten Tagegelder hat man mir übrigens nie ausgezahlt.'],
     ['laub.p.intro.d', 'laub', 'Sie vermessen den Berg? Gut. Dann sind wir zu zweit. Ich bin der Kleinere.'],
   ]),
+  ...story('P3Q', [
+    ['laub.p.quelle', 'laub', 'Hören Sie das? Nein, natürlich nicht. Wasser. Unten im Hang, wo der Bach anfängt. Es erinnert sich an etwas.'],
+    ['laub.p.quelle.b', 'laub', 'Gehen Sie hin. Die Nadel zeigt es Ihnen.'],
+    ['laub.p.quelle.nah', 'laub', 'Da. Die Karlsbergquelle. Ein Trog, eine Mauer, ein Rohr. Das Wasser ist älter als alle drei.'],
+    ['laub.p.quelle.trog', 'laub', 'Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.'],
+  ]),
+  ...story('P3R', [
+    ['laub.p.quelle.1789', 'laub', 'Siebzehnhundertneunundachtzig. Dieselbe Quelle, zweihundert Jahre jünger. Gefasst in Stein, mit Bronze. Ob sie wirklich so aussah? Mein Blatt sagt nichts dazu. Das Wasser schon.'],
+    ['laub.p.quelle.regel', 'laub', 'Das Wasser erinnert sich. Ein Tropfen davon sitzt jetzt in der Bussole. Wo der Boden sich genauso gut erinnert, nimmt er uns mit. Mehr später.'],
+    ['laub.p.quelle.zurueck', 'laub', 'Zurück geht es immer: Q gedrückt halten. Jetzt bitte. Mir bekommt das achtzehnte Jahrhundert nicht.'],
+    ['laub.p.quelle.heute', 'laub', 'Da sind wir wieder. Merken Sie sich die Stelle. Und nun hinauf, ich habe am Ehrenhof etwas nachzumessen.'],
+  ]),
   ...story('P4', [
     ['laub.p.intro2', 'laub', 'Fragen Sie nicht, wie ich in das Messing gekommen bin. Später. Fragen Sie lieber, warum ein Herzog einen ganzen Berg umgraben lässt, damit der Hof eben liegt. Antwort: weil er es konnte. Fußnote: Bezahlt hat er es nicht.'],
     ['laub.p.versatz', 'laub', 'Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war.'],
@@ -174,9 +186,9 @@ const dialogue = [
     ['laub.p.punktwolke.b', 'laub', 'Fragen Sie nicht. Gehen Sie hin und sehen Sie selbst.'],
   ]),
   ...story('P8', [
-    ['laub.p.regeln', 'laub', 'So. Der Berg kennt Sie jetzt. Das reicht für einen Blick.'],
+    ['laub.p.regeln', 'laub', 'So. Das Wasser hat Sie einmal mitgenommen, und der Berg kennt Sie jetzt. Das reicht, um selbst zu gehen.'],
     ['laub.p.regeln.b', 'laub', 'Hören Sie gut zu, ich sage es nur einmal und dann noch ungefähr vierzigmal.'],
-    ['laub.p.regeln.c', 'laub', 'Erstens: Sie können nur dort hinüber, wo die Nadel steht. Taste Q.'],
+    ['laub.p.regeln.c', 'laub', 'Erstens: Sie können nur dort hinüber, wo die Nadel steht. Dort erinnert sich der Boden. Taste Q.'],
     ['laub.p.regeln.d', 'laub', 'Zweitens: Ihre Laterne brennt dort drüben auf Kosten Ihrer Zeit. Wenn das Öl aus ist, sind Sie wieder hier. Unsanft.'],
     ['laub.p.regeln.e', 'laub', 'Drittens: Wenn Sie ein Horn hören, legen Sie sich hin. Nicht diskutieren. Hinlegen.'],
     ['laub.p.regeln.f', 'laub', 'Viertens: Wenn Sie zurück wollen, halten Sie Q. Es geht nicht, solange Sie jemand ansieht.'],
@@ -253,6 +265,7 @@ const LIDAR = src('LIDAR');
 // outside every footprint of their era, inside the playable area.
 export const P_SPOTS = {
   stab: [763, -900], // beside the trailer door (flat, today)
+  quelle: [1059.3, -833.1], // in front of the Karlsbergquelle's trough (src/systems/quelle/layout.ts)
   eiskeller: [1508, -1296], // the pit (KB-50); in 1789 the Eiskeller house KB-B28 stands here — the fight is today
   streuner: [1206, -1113], // inside the Ehrenhof (gravel), not behind the closed gitter (playtest)
   irrlichter: [820, -869], // on the dam of the Karlsbergweiher (not over the water)
@@ -340,6 +353,29 @@ const prologQuests = {
       rewards: { xp: 80, items: [{ item: 'item.balsam', count: 2 }] },
     },
     {
+      id: 'q.p.quelle', kind: 'main', era: T0,
+      // NEXT-SESSION §3.6: the first time travel has a cause the player sees (and does): the spring's water
+      title_de: 'Wasser, das sich erinnert',
+      summary_de: 'Laub hört Wasser, das sich erinnert. Unten im Hang, wo der Karlsbergbach entspringt, liegt die Karlsbergquelle. Er will, dass du die Hand hineinhältst. Was dann passiert, sagt er nicht.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Kommen Sie. Unten am Hang ist eine Quelle. Ich möchte, dass Sie sie anfassen.')],
+      turnin_lines: [ln('laub', 'Das Wasser hat Sie mitgenommen und wieder hergegeben. Nicht jeder Ort ist so großzügig. Notieren Sie das.')],
+      history: [
+        ln('laub', 'Die Karlsbergquelle liegt am Fuß eines Hangs, in einer kleinen Rinne zwischen Orangerie und Weiher. Hier beginnt der Karlsbergbach. Wer sie gefasst hat und wann, weiß ich nicht. Ich habe nur die Höhe gemessen.', { fact: 'cx.41', src: [src('OSM-KQ'), src('LIDAR', 'Quellmulde bei 1061/−835')] }),
+        ln('laub', 'Dass Wasser sich erinnert, steht in keinem Handbuch. Und die Brunnenstube von 1789, die Sie gesehen haben, die hat sich das Spiel ausgedacht. Im Codex steht es.', { fact: 'cx.42' }),
+      ],
+      objectives: [
+        { id: 'quelle', type: 'reach', text_de: 'Den Hang hinunter zur Karlsbergquelle',
+          hint_de: 'Der goldene Lichtstrahl steht an der Quelle: unten im Hang westlich der Orangerie, wo der Bach beginnt. Den Weg hinunter (oder mit F über den Wald).',
+          where: place(...P_SPOTS.quelle, 7, T0) },
+        { id: 'beruehren', type: 'event', event: 'quelle:touch', after: ['quelle'], text_de: 'Am Trog: E – das Wasser berühren',
+          hint_de: 'Vor den Holztrog stellen, zum Wasser schauen und E drücken.' },
+        { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['beruehren'], text_de: 'Q gedrückt halten: zurück ins Heute' },
+      ],
+      // the prologue's XP budget ends at level 3 (tests/quests-content-a.test.ts): Bussole and Punktwolke gave 25 each
+      rewards: { xp: 30 },
+    },
+    {
       id: 'q.p.bussole', kind: 'main', era: T0,
       title_de: 'Die Bussole spricht',
       summary_de: 'Laub, verschollen seit 1840 und neuerdings in einer Bussole, will seine alten Messpunkte noch einmal ablaufen: den Ehrenhof, den Hohlweg, die runde Grube im Osten. Er zeigt, du läufst.',
@@ -371,7 +407,7 @@ const prologQuests = {
           spawn: [{ kind: 'nebelling', x: P_SPOTS.eiskeller[0], z: P_SPOTS.eiskeller[1], era: T0, count: 4, radius: 7, leash: 30, escorts: [], wave: [{ kind: 'nebelling', n: 2 }] }],
         },
       ],
-      rewards: { xp: 120, items: [{ item: 'item.balsam', count: 2 }] },
+      rewards: { xp: 95, items: [{ item: 'item.balsam', count: 2 }] },
     },
     {
       id: 'q.p.punktwolke', kind: 'main', era: '1789',
@@ -401,7 +437,7 @@ const prologQuests = {
         },
         { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['streuner'], text_de: 'Q halten: zurück ins Heute' },
       ],
-      rewards: { xp: 130, items: [{ item: 'item.lampenoel' }] },
+      rewards: { xp: 105, items: [{ item: 'item.lampenoel' }] },
     },
     // ---- side quests ------------------------------------------------------------------------------
     {

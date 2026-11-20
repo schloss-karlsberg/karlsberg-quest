@@ -77,11 +77,11 @@
           "type": "collect",
           "item": "item.stab.esche",
           "text_de": "Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)",
-          "hint_de": "Der Messstab lehnt rechts neben der Wagentür, im goldenen Lichtstrahl: geradeaus zum Wagen, dann E drücken (oder einfach darüberlaufen).",
+          "hint_de": "Der Messstab lehnt rechts neben der Wagentür, wo der goldene Lichtstrahl steht: hingehen und E drücken (oder einfach darüberlaufen).",
           "place": [
             {
-              "x": 762.2,
-              "z": -912.3,
+              "x": 763,
+              "z": -900,
               "era": "today"
             }
           ]
@@ -257,6 +257,91 @@
             "count": 2
           }
         ]
+      }
+    },
+    {
+      "id": "q.p.quelle",
+      "kind": "main",
+      "era": "today",
+      "title_de": "Wasser, das sich erinnert",
+      "summary_de": "Laub hört Wasser, das sich erinnert. Unten im Hang, wo der Karlsbergbach entspringt, liegt die Karlsbergquelle. Er will, dass du die Hand hineinhältst. Was dann passiert, sagt er nicht.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Kommen Sie. Unten am Hang ist eine Quelle. Ich möchte, dass Sie sie anfassen."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Das Wasser hat Sie mitgenommen und wieder hergegeben. Nicht jeder Ort ist so großzügig. Notieren Sie das."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Die Karlsbergquelle liegt am Fuß eines Hangs, in einer kleinen Rinne zwischen Orangerie und Weiher. Hier beginnt der Karlsbergbach. Wer sie gefasst hat und wann, weiß ich nicht. Ich habe nur die Höhe gemessen.",
+          "fact": "cx.41",
+          "sources": [
+            {
+              "url": "https://www.openstreetmap.org/node/368031320",
+              "label": "OpenStreetMap: Karlsbergquelle (natural=spring) und Karlsbergbach"
+            },
+            {
+              "url": "https://www.shop.lvgl.saarland.de/",
+              "label": "LIDAR (DGM1 2025, LVGL Saarland)",
+              "note": "LIDAR: eigene Auswertung des DGM1 2025 (Geländeanalyse des Projekts, unveröffentlicht); Quellmulde bei 1061/−835"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Dass Wasser sich erinnert, steht in keinem Handbuch. Und die Brunnenstube von 1789, die Sie gesehen haben, die hat sich das Spiel ausgedacht. Im Codex steht es.",
+          "fact": "cx.42"
+        }
+      ],
+      "objectives": [
+        {
+          "id": "quelle",
+          "type": "reach",
+          "text_de": "Den Hang hinunter zur Karlsbergquelle",
+          "hint_de": "Der goldene Lichtstrahl steht an der Quelle: unten im Hang westlich der Orangerie, wo der Bach beginnt. Den Weg hinunter (oder mit F über den Wald).",
+          "where": {
+            "x": 1059.3,
+            "z": -833.1,
+            "r": 7,
+            "era": "today"
+          }
+        },
+        {
+          "id": "beruehren",
+          "type": "event",
+          "event": "quelle:touch",
+          "after": [
+            "quelle"
+          ],
+          "text_de": "Am Trog: E – das Wasser berühren",
+          "hint_de": "Vor den Holztrog stellen, zum Wasser schauen und E drücken."
+        },
+        {
+          "id": "heim",
+          "type": "event",
+          "event": "era:change",
+          "match": {
+            "to": "today"
+          },
+          "after": [
+            "beruehren"
+          ],
+          "text_de": "Q gedrückt halten: zurück ins Heute"
+        }
+      ],
+      "rewards": {
+        "xp": 30
       }
     },
     {
@@ -441,7 +526,7 @@
         }
       ],
       "rewards": {
-        "xp": 120,
+        "xp": 95,
         "items": [
           {
             "item": "item.balsam",
@@ -588,7 +673,7 @@
         }
       ],
       "rewards": {
-        "xp": 130,
+        "xp": 105,
         "items": [
           {
             "item": "item.lampenoel"

@@ -242,6 +242,60 @@
       ]
     },
     {
+      "id": "p3q",
+      "title_de": "Die Quelle",
+      "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true, "quelle.guide": true, "quelle.call": true } },
+        { "do": "quest", "op": "offer", "id": "q.p.quelle", "delay": 2, "onResume": true },
+        { "do": "objective", "id": "quelle", "text": "Laub hört Wasser: den Hang hinunter zur Karlsbergquelle", "x": 1059.3, "z": -833.1, "delay": 0.5 },
+        { "do": "say", "line": "laub.p.quelle", "delay": 16, "until": { "enter": { "x": 1059.3, "z": -833.1, "r": 12, "era": "today" } } },
+        { "do": "cue", "id": "bussole:jolt", "data": { "x": 1061, "z": -834.5, "hold": 4 } },
+        { "do": "say", "line": "laub.p.quelle.b", "until": { "enter": { "x": 1059.3, "z": -833.1, "r": 12, "era": "today" } } }
+      ],
+      "on": [
+        {
+          "id": "nah",
+          "when": { "enter": { "x": 1059.3, "z": -833.1, "r": 14, "era": "today" } },
+          "do": [
+            { "do": "say", "line": "laub.p.quelle.nah", "until": { "event": "quelle:touch" } },
+            { "do": "say", "line": "laub.p.quelle.trog", "until": { "event": "quelle:touch" } }
+          ]
+        },
+        {
+          "id": "am-trog",
+          "when": { "enter": { "x": 1059.3, "z": -833.1, "r": 5, "era": "today" } },
+          "repeat": true,
+          "do": [{ "do": "objective", "id": "quelle", "text": "Vor den Trog stellen, zum Wasser schauen: E – das Wasser berühren", "x": 1059.3, "z": -833.1 }]
+        }
+      ],
+      "complete": { "event": "quelle:touch" },
+      "exit": [
+        { "do": "flag", "set": { "quelle.call": null, "quelle.guide": null } },
+        { "do": "objective", "text": null },
+        { "do": "shift", "to": "1789", "reason": "quelle" }
+      ]
+    },
+    {
+      "id": "p3r",
+      "title_de": "Die Brunnenstube",
+      "enter": [
+        { "do": "flag", "set": { "laub.silent": null, "story.laub": true, "barks.quiet": true } },
+        { "do": "say", "line": "laub.p.quelle.1789", "delay": 4.5 },
+        { "do": "say", "line": "laub.p.quelle.regel" },
+        { "do": "say", "line": "laub.p.quelle.zurueck" },
+        { "do": "prompt", "key": "Q", "text": "halten: zurück ins Heute", "delay": 0.3 },
+        { "do": "objective", "id": "quelle", "text": "Umsehen. Dann Q gedrückt halten: zurück ins Heute", "x": 1059.3, "z": -833.1 }
+      ],
+      "on": [{ "id": "schon-heute", "when": { "era": "today" }, "do": [{ "do": "prompt", "key": null, "text": null }] }],
+      "complete": { "any": [{ "quest": { "id": "q.p.quelle" } }, { "all": [{ "era": "today" }, { "timer": 1 }] }] },
+      "exit": [
+        { "do": "prompt", "key": null, "text": null },
+        { "do": "flag", "set": { "barks.quiet": null } },
+        { "do": "objective", "text": null },
+        { "do": "say", "line": "laub.p.quelle.heute", "delay": 1.2 }
+      ]
+    },
+    {
       "id": "p4",
       "title_de": "Der Ehrenhof",
       "enter": [
@@ -429,7 +483,7 @@
     },
     {
       "id": "p9",
-      "title_de": "Der erste Wechsel",
+      "title_de": "Der eigene Wechsel",
       "enter": [
         { "do": "flag", "set": { "laub.silent": null, "story.laub": true } },
         { "do": "anchor", "to": "1789", "x": 1218, "z": -1118, "r": 18 },

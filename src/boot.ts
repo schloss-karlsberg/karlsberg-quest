@@ -351,7 +351,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));
-  for (const ev of ['clue:found', 'item:pickup', 'measure:done'] as const) events.on(ev, () => avatar.react('interact'));
+  for (const ev of ['clue:found', 'item:pickup', 'measure:done', 'quelle:dip'] as const) events.on(ev, () => avatar.react('interact'));
   // art assets that belong to an era stream in when it opens (src/assets, lazy)
   events.on('era:change', ({ to }) => void assets.prefetchEra(to));
 

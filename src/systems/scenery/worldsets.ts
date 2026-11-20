@@ -19,6 +19,7 @@ import { type OrchardLook, appleTree, stump } from './orchard';
 import { C, barrel, kennel, post, straw, trough } from './props';
 import { RUND } from './rund';
 import type { SetDef } from './sets';
+import { quelleSet } from './quelle';
 
 const LANTERN = new Color(2.2, 1.3, 0.5);
 
@@ -649,4 +650,4 @@ const ehrenhofWeg: SetDef = {
   },
 };
 
-export const WORLD_SETS: readonly SetDef[] = [apfelallee, menagerie, festsaal, zwingerHeute, ehrenhofWeg];
+export const WORLD_SETS: readonly SetDef[] = [apfelallee, menagerie, festsaal, zwingerHeute, ehrenhofWeg, quelleSet];

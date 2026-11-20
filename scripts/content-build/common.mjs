@@ -46,6 +46,8 @@ const S = {
   'HE-BW': ['https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf', 'Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald'],
   HP: ['https://schloss-karlsberg.de/hoerpfad-schloss-karlsberg/', 'Hörpfad Schloss Karlsberg'],
   WPK: ['https://www.outdooractive.com/de/poi/saarpfalz-kreis/waldpark-schloss-karlsberg/61542782/', 'WaldPark Schloss Karlsberg (outdooractive)'],
+  'OSM-KQ': ['https://www.openstreetmap.org/node/368031320', 'OpenStreetMap: Karlsbergquelle (natural=spring) und Karlsbergbach'],
+  'KOMOOT-KQ': ['https://www.komoot.com/highlight/780842', 'komoot-Highlight 780842: Quelle am Karlsberg (Fotos)'],
 };
 /** LIDAR (own analysis, not public): cited via the open DGM1 data + a note. */
 const LIDAR_NOTE = 'LIDAR: eigene Auswertung des DGM1 2025 (Geländeanalyse des Projekts, unveröffentlicht)';
