@@ -8,6 +8,7 @@
  * anchor where there is one (a traveller lands where Q works), ≥ 4 m from anchor centres and NPC
  * places, inside the terrain.
  */
+import { lineFree } from '../../world/route';
 
 export interface SurveyPoint {
   id: string;
@@ -103,4 +104,21 @@ export function announceFor(goal: { x: number; z: number } | null, player: { x: 
   if (!near || near.d > 140) return null;
   if (near.point.known || known.includes(near.point.id)) return null;
   return near.point;
+}
+
+/**
+ * The Wegweiser's "straight line blocked" check (the compass "Weg" marker and the motes). In the
+ * past it counts everything that stops the player (walls, wings, set dressing, water). In the
+ * present day (`palace === 'hidden'`) only water counts: the forest's trunks and the ruins' stones
+ * would fire it every few steps, but the lake must (playtest round 10, F-10: the Wegweiser never
+ * showed the way round the Weiher today).
+ */
+export function wayLineBlocked(
+  palaceHidden: boolean,
+  from: { x: number; z: number },
+  to: { x: number; z: number },
+  blocked: (x: number, z: number) => boolean,
+  water: (x: number, z: number) => boolean,
+): boolean {
+  return !lineFree(from.x, from.z, to.x, to.z, palaceHidden ? water : blocked, 0.5);
 }

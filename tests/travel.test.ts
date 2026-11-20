@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
 import { LORE } from '../src/systems/travel/lore';
-import { SURVEY_POINTS, announceFor, knownPoints, travelBlock } from '../src/systems/travel/points';
+import { SURVEY_POINTS, announceFor, knownPoints, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -185,5 +185,21 @@ describe('prologue routes (playtest round 5)', () => {
     const p = generatePois().filter((x) => x.chapter === 'prolog' && x.kind === 'cache');
     expect(p.length).toBeGreaterThan(0);
     for (const x of p) expect(x.enemy, x.id).not.toBe('irrlicht');
+  });
+});
+
+describe('the Wegweiser straight-line check (playtest round 10, F-10)', () => {
+  // a lake round (0, 20) r 8, and a tree trunk at (0, 5)
+  const water = (x: number, z: number) => Math.hypot(x, z - 20) < 8;
+  const blocked = (x: number, z: number) => water(x, z) || Math.hypot(x, z - 5) < 0.5;
+
+  it('in the present day only water counts: the lake detour shows, a tree does not', () => {
+    expect(wayLineBlocked(true, { x: 0, z: 0 }, { x: 0, z: 30 }, blocked, water)).toBe(true);
+    expect(wayLineBlocked(true, { x: 0, z: 0 }, { x: 0, z: 10 }, blocked, water)).toBe(false);
+  });
+
+  it('in the past everything that stops the player counts', () => {
+    expect(wayLineBlocked(false, { x: 0, z: 0 }, { x: 0, z: 10 }, blocked, water)).toBe(true);
+    expect(wayLineBlocked(false, { x: 20, z: 0 }, { x: 20, z: 30 }, blocked, water)).toBe(false);
   });
 });

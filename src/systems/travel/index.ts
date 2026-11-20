@@ -28,12 +28,12 @@ import { defineSystem } from '../../core/systems';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
 import { addJournalTab } from '../../ui/journal';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
-import { findRoute, lineFree } from '../../world/route';
+import { findRoute } from '../../world/route';
 import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { ACTIVATE_RADIUS, SURVEY_POINTS, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock } from './points';
+import { ACTIVATE_RADIUS, SURVEY_POINTS, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
@@ -674,6 +674,8 @@ class Travel {
     return ctx.world.surfaceAt(x, z) === 'water';
   };
 
+  private waterAt = (x: number, z: number): boolean => this.ctx.world.surfaceAt(x, z) === 'water';
+
   routeTo(x: number, z: number): [number, number][] {
     const p = this.ctx.player.position;
     // near goals (palace courts, doors) on a 1 m grid — a 2 m grid misses a door's free gap
@@ -724,7 +726,7 @@ class Travel {
       this.trailCheckT = 1;
       const ax = p.x + ((goal.x - p.x) / d) * Math.min(d, 30);
       const az = p.z + ((goal.z - p.z) / d) * Math.min(d, 30);
-      this.wayBlocked = ctx.era.info.palace !== 'hidden' && !lineFree(p.x, p.z, ax, az, this.blockedAt, 0.5);
+      this.wayBlocked = wayLineBlocked(ctx.era.info.palace === 'hidden', p, { x: ax, z: az }, this.blockedAt, this.waterAt);
       if (this.wayBlocked) {
         want = true;
         this.trail.visibleFor = Math.max(this.trail.visibleFor, 6);
