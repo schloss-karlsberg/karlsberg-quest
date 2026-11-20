@@ -298,6 +298,9 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   (see §5).
 - **Built and merged into `main`:**
   - §3.1: `kq.pilot` (act, observe, choose, release, bulletTime, showStrip) in `src/debug/pilot.ts`
+    (round-10 fixes: `radio` and a live `hud.prompt` in the observation, `turnDeg` up front,
+    `inputDropped` events, serial `choose()`, a working `left: 'hold'`, era shift / fast travel on
+    game time in bullet time; full API in docs/ARCHITECTURE.md "Debug hooks")
   - §3.2: `kq.combat.report()`, plus the bot via `pnpm sim:combat`, results in `docs/BALANCE.md`
   - §3.3 and §3.4: F8 notes, telemetry, and ← / → turning
   - Balance round (BALANCE.md §5, merge `02340f5`): Steinbrecher 950 HP, boss reveal / roar caption,

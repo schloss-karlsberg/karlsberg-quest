@@ -435,13 +435,21 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
   HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).
   `kq.pilot.act({ hold?: string[], tap?: string[], tapSteps?: 1|2, mouse?: { dx?, dy?, turnDeg?,
-  left?: true|'click'|'hold', right?: … }, steps = 15, frames = 5, frameSize = 320, quality = 0.6,
-  keep?: boolean })` holds keys for every step (up afterwards unless `keep`; the next act releases
-  kept keys it does not hold, `kq.pilot.release()` all), taps for the first 1–2 steps, `left: 'hold'`
-  keeps LMB down (≥ 27 steps then up = Wuchthieb). Mouse look works without pointer lock or focus:
+  lookSteps?, turnSteps?, left?: true|'click'|'hold', right?: … }, steps = 15, frames = 5,
+  frameSize = 320, quality = 0.6, keep?: boolean })` holds keys for every step (up afterwards unless
+  `keep`; the next act releases kept keys it does not hold, `kq.pilot.release()` all), taps for
+  1–2 steps, `left: 'hold'` keeps LMB down across the act's steps and lets it up at the end unless
+  `keep` (held ≥ 0.45 s = ≥ 27 steps, then up = Wuchthieb). A held attack (`left: 'hold'`,
+  `hold: ['KeyK']`) presses only once no swing, hit-stop or ability is running (a press then would
+  just queue a light combo hit); if that moment never comes in the act, an `inputDropped` event
+  with `hold: true` says so. Mouse look works without pointer lock or focus:
   `dx`/`dy` (pixels, + = right / down) go through `input.addLook` into the same accumulator as
   `movementX/Y`, and `player.look()` runs once per step (real sensitivity, invert, clamp);
-  `turnDeg` converts degrees at the current sensitivity. Each step is `loop.advance(1)` (no render,
+  `dx`/`dy` are spread evenly over the first `lookSteps` steps (default all: a pan). `turnDeg`
+  converts degrees at the current sensitivity and is done up front, over the first `turnSteps`
+  steps (default 3, at most the act); the act's taps (keys, a click) go down on the step the turn
+  completes, so a swing goes out in the new direction. `Enter` / `NumpadEnter` taps also go to the
+  page as real key events (the radio box skips on Enter). Each step is `loop.advance(1)` (no render,
   and no step while `pause.paused`: a modal stops the simulation as in play); at `frames` evenly
   spaced steps `loop.renderOnce(dt · steps since the last render)` draws and the canvas is copied to
   a small 2D canvas in the same task (JPEG data URL), so no `preserveDrawingBuffer` is needed.
@@ -452,15 +460,25 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   bearing` (relative to the view, + = right), `hp, max, state, telegraph` (s of wind-up left, null
   when none), `attack, onScreen, boss?, elite?, stun?`), `objective {label, quest, objective, d,
   bearing, tracker}` (from `kq.quests.lead()` / the tracker / the story line), `dialogue {kind:
-  npc|choice|modal, title, who, text, options [{n, label}]}`, `hud {prompt, subtitle, toasts}`,
+  npc|choice|modal, title, who, text, options [{n, label}]}`, `hud {prompt, promptOwner, subtitle,
+  toasts}` (`prompt` from the HUD's prompt state `hud.promptShown()`, '' when none is shown or a
+  fight hides prompts; the element keeps its last text when hidden), `radio {showing, who, speaker,
+  tag, text, typing}` (the spoken-line box: speaker name and id, the whole line),
   `events` (combat sim events since the last act / observe, compact: `hit` (dmg, heavy, hpLeft),
   `hurt`, `dodge` (perfect), `evade`, `ko`, `died`, `bounce` (guard), `guardBreak`, `flank`,
   `immune`, `telegraph` (attack, dur), `strike`, `swing`, `whiff`, `stun`, `phase`, `heal`, `bann`,
-  `shotHit`, `hazardHit`, …; `t` = seconds into the act; tapped by wrapping the live
-  `CombatSim.step`, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
+  `shotHit`, `hazardHit`, …, and `inputDropped {input: attack|dodge, reason}` for a press that had
+  no effect: `recovery` (a swing runs, outside the combo buffer), `hitstop`, `blocked`, `skill`,
+  `dodging`, `tired`, `noDodge`, `interact` (the click went to the interact target), `dead`; `t` =
+  seconds into the act; tapped by wrapping the live `CombatSim.step` and reading the player state
+  before / after, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
   same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
-  story choice / modal; `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
-  the page (one browser screenshot shows the whole strip). Test: `e2e/pilot.spec.ts`,
+  story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
+  null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
+  shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
+  once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
+  the page (one browser screenshot shows the whole strip; it hides while the radio box speaks or a
+  dialogue / modal is open, so it never covers them). Test: `e2e/pilot.spec.ts`,
   `tests/pilot.test.ts`.
 - Performance (see `docs/PERFORMANCE.md`): `kq.perf()` (summary), `kq.bench(opts?)` runs the
   fixed route `BENCH_SCENES` (9 views over all eras, pack, fire, ruin, scan 3) and returns per
