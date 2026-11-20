@@ -22,7 +22,7 @@ import {
   Vector4,
 } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
-import type { QuelleLook, WaterSpec } from './layout';
+import { meshGround, type QuelleLook, type WaterSpec } from './layout';
 
 /** Uniforms shared by all water pieces of the spring (one object; the system writes it). */
 export function waterUniforms() {
@@ -38,6 +38,10 @@ export function waterUniforms() {
     uRipple: { value: new Vector4(0, 0, -100, 0) },
     uGuide: { value: 0 },
     uReverse: { value: 0 },
+    /** The brook's bed (linear albedos): wet earth, pebbles, the moss of its banks. */
+    uBedCol: { value: new Color(0.07, 0.04, 0.026) },
+    uPebCol: { value: new Color(0.16, 0.12, 0.1) },
+    uMossCol: { value: new Color(0.05, 0.08, 0.025) },
   };
 }
 export type WaterUniforms = ReturnType<typeof waterUniforms>;
@@ -45,7 +49,7 @@ export type WaterUniforms = ReturnType<typeof waterUniforms>;
 /** Era looks of the water. */
 export function applyLook(u: WaterUniforms, look: QuelleLook): void {
   const deep: Record<QuelleLook, [number, number, number]> = {
-    today: [0.07, 0.17, 0.15],
+    today: [0.03, 0.05, 0.04],
     baroque: [0.06, 0.2, 0.22],
     winter: [0.05, 0.09, 0.12],
     fire: [0.05, 0.08, 0.1],
@@ -55,6 +59,18 @@ export function applyLook(u: WaterUniforms, look: QuelleLook): void {
   u.uDeep.value.setRGB(d[0], d[1], d[2]);
   u.uIce.value = look === 'winter' ? 1 : 0;
   u.uMurk.value = look === 'ruin' ? 1 : look === 'today' ? 0.25 : 0;
+  // the bed: red-brown wet earth in the beech wood, dark meadow earth in the open past, snow in February 1793
+  const bed: Record<QuelleLook, [number, number, number][]> = {
+    today: [[0.06, 0.034, 0.022], [0.1, 0.075, 0.06], [0.04, 0.06, 0.02]],
+    baroque: [[0.055, 0.042, 0.03], [0.2, 0.16, 0.12], [0.05, 0.085, 0.022]],
+    winter: [[0.34, 0.38, 0.48], [0.1, 0.1, 0.12], [0.3, 0.34, 0.42]],
+    fire: [[0.055, 0.042, 0.03], [0.2, 0.16, 0.12], [0.05, 0.085, 0.022]],
+    ruin: [[0.06, 0.045, 0.03], [0.15, 0.12, 0.09], [0.07, 0.075, 0.03]],
+  };
+  const [bc, pc, mc] = bed[look];
+  u.uBedCol.value.setRGB(...bc!);
+  u.uPebCol.value.setRGB(...pc!);
+  u.uMossCol.value.setRGB(...mc!);
 }
 
 const COMMON = /* glsl */ `
@@ -140,7 +156,7 @@ void main() {
   float caust = pow(kqNoise(p * 9.0 + t * 0.3) * kqNoise(p * 13.0 - t * 0.25), 1.2) * 2.2;
   vec3 col = waterShade(vWp, n, -edge * 0.5, clamp(caust, 0.0, 1.0));
   // leaves on today's water, a dull murk in 1796
-  float leaf = step(0.82, kqNoise(p * 6.0 + 3.1)) * uMurk;
+  float leaf = step(0.86, kqNoise(p * 15.0 + 3.1)) * uMurk;
   col = mix(col, vec3(0.32, 0.2, 0.08) * (uSkyAmbient + uSunColor * 0.4), leaf * 0.8);
   col = mix(col, col * vec3(0.7, 0.75, 0.5), uMurk * 0.4);
   // ice: milky, cracked, no ripples
@@ -281,118 +297,192 @@ export function streamMesh(from: Vector3, dirX: number, dirZ: number, toY: numbe
   return mesh;
 }
 
-// ---------------------------------------------------------------- the brook down the ravine
+// ---------------------------------------------------------------- ground ribbons (brook, trail)
 
-const BROOK_VERT = /* glsl */ `
-attribute vec2 aBrook; // metres along, −1…1 across
+/** A ribbon sample: world x/z and half width (m). */
+export interface RibbonPoint {
+  x: number;
+  z: number;
+  half: number;
+}
+
+/**
+ * Append a ribbon along `pts` to the arrays, draped on the terrain *mesh* (`meshGround`: the
+ * triangles as drawn, not the bilinear patch) at every vertex, `lift(f)` m above it (f = −1…1
+ * across). `aRib` = (m along, m across); normals from the terrain gradient (smooth, like the
+ * terrain's own shading).
+ */
+function ribbon(
+  out: { pos: number[]; nor: number[]; rib: number[]; idx: number[] },
+  pts: readonly RibbonPoint[],
+  heightAt: (x: number, z: number) => number,
+  across: readonly number[],
+  lift: (f: number) => number,
+): number {
+  if (pts.length < 2) return 0;
+  const base = out.pos.length / 3;
+  let along = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]!;
+    if (i > 0) along += Math.hypot(p.x - pts[i - 1]!.x, p.z - pts[i - 1]!.z);
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(pts.length - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let tz = b.z - a.z;
+    const l = Math.hypot(tx, tz) || 1;
+    tx /= l;
+    tz /= l;
+    for (const f of across) {
+      const off = f * p.half;
+      const px = p.x - tz * off;
+      const pz = p.z + tx * off;
+      out.pos.push(px, meshGround(heightAt, px, pz) + lift(f), pz);
+      const gx = (heightAt(px + 1, pz) - heightAt(px - 1, pz)) / 2;
+      const gz = (heightAt(px, pz + 1) - heightAt(px, pz - 1)) / 2;
+      const nl = Math.hypot(gx, 1, gz);
+      out.nor.push(-gx / nl, 1 / nl, -gz / nl);
+      out.rib.push(along, off);
+    }
+  }
+  const nA = across.length;
+  for (let i = 0; i + 1 < pts.length; i++)
+    for (let j = 0; j + 1 < nA; j++) {
+      const a = base + i * nA + j;
+      const b = a + nA;
+      out.idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  return along;
+}
+
+function ribbonGeometry(out: { pos: number[]; nor: number[]; rib: number[]; idx: number[] }): BufferGeometry {
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(new Float32Array(out.pos), 3));
+  g.setAttribute('normal', new BufferAttribute(new Float32Array(out.nor), 3));
+  g.setAttribute('aRib', new BufferAttribute(new Float32Array(out.rib), 2));
+  g.setIndex(out.idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
+const RIBBON_VERT = /* glsl */ `
+attribute vec2 aRib; // metres along, metres across
 varying vec2 vB;
 varying vec3 vWp;
+varying vec3 vN;
 void main() {
-  vB = aBrook;
+  vB = aRib;
+  vN = normal;
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWp = wp.xyz;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
 
+// ---------------------------------------------------------------- the brook down the ravine
+
 const BROOK_FRAG = /* glsl */ `
 precision highp float;
 ${ATMOS_GLSL}
 ${COMMON}
-${SHADE}
 uniform float uLen;
+uniform vec3 uBedCol;
+uniform vec3 uPebCol;
+uniform vec3 uMossCol;
 varying vec2 vB;
 varying vec3 vWp;
+varying vec3 vN;
 void main() {
   float along = vB.x;
-  float across = vB.y;
-  // a meandering bed: dark wet earth either side, the water thin in the middle
-  float wob = kqNoise(vec2(along * 0.35, 1.7)) - 0.5;
-  float x = across + wob * 0.45;
-  float bed = 1.0 - smoothstep(0.3, 1.0, abs(x));
-  if (bed < 0.01) discard;
-  float core = 1.0 - smoothstep(0.22, 0.62, abs(x) + (kqNoise(vec2(along * 0.9, 4.2)) - 0.5) * 0.25);
-  // a trickle, not a pipe: stretches where only the wet bed shows, small pools between
-  core *= 0.35 + 0.65 * smoothstep(0.3, 0.6, kqNoise(vec2(along * 0.45, 9.1)));
-  // flow: ripples that run downhill (uPhase forward), stand still or climb back up
-  float f = uPhase * 1.6;
-  float r1 = kqNoise(vec2(x * 3.0, along * 2.2 - f * 2.0));
-  float r2 = kqNoise(vec2(x * 6.0 + 4.0, along * 4.5 - f * 3.4));
-  float e = 0.08;
-  float hx = (kqNoise(vec2((x + e) * 3.0, along * 2.2 - f * 2.0)) - r1) / e;
-  float hz = (kqNoise(vec2(x * 3.0, (along + e) * 2.2 - f * 2.0)) - r1) / e;
-  vec3 n = normalize(vec3(-hx * 0.05, 1.0, -hz * 0.05 - (r2 - 0.5) * 0.04));
-  float foam = smoothstep(0.75, 0.95, r2 * 0.7 + r1 * 0.4) * (1.0 - uIce) * core;
-  // the bed: wet earth and pebbles; the shallow water shows it, darkened, with the sky and the sun on top
-  float peb = kqNoise(vWp.xz * 9.0);
-  vec3 mud = kqLight(vec3(0.13, 0.095, 0.065) * (0.7 + 0.6 * peb), vec3(0.0, 1.0, 0.0), vWp, 1.0, 1.0);
+  vec2 p = vWp.xz;
+  // the thread of water wanders a little inside its bed
+  float mea = (kqNoise(vec2(along * 0.31, 1.7)) - 0.5) * 0.22 + (kqNoise(vec2(along * 1.3, 5.3)) - 0.5) * 0.07;
+  float x = vB.y - mea;
+  float ax = abs(x);
+  // the wet bed: ragged banks, wider in the little pools, never a band with parallel edges
+  float grow = min(along / 18.0, 1.0);
+  float bw = 0.3 + 0.2 * kqNoise(vec2(along * 0.45, 3.3)) + 0.14 * grow;
+  float rag = (kqNoise(p * 2.7) - 0.5) * 0.26 + (kqNoise(p * 7.3 + 3.0) - 0.5) * 0.12;
+  float bed = 1.0 - smoothstep(bw * 0.3, bw + 0.06, ax + rag);
+  // the end of the drawn stretch fades into the ravine, the start out of the overflow
+  float fade = smoothstep(uLen, uLen - 6.0, along) * smoothstep(0.0, 0.5, along);
+  float aBed = bed * fade;
+  if (aBed < 0.01) discard;
+  // the water: a thread of a few centimetres, broken where only wet stones show, small pools
+  float pool = smoothstep(0.62, 0.85, kqNoise(vec2(along * 0.22, 11.0)));
+  float tw = 0.03 + 0.06 * kqNoise(vec2(along * 0.9, 7.9)) + pool * 0.12 + grow * 0.03;
+  float run = mix(smoothstep(0.2, 0.42, kqNoise(vec2(along * 0.55, 9.1))), 1.0, pool);
+  float core = (1.0 - smoothstep(tw * 0.45, tw + 0.035, ax + (kqNoise(p * 6.0) - 0.5) * 0.05)) * run;
+  // flow: ripples and glints running downhill (uPhase forward), standing, or climbing back
+  float f = uPhase * 1.8;
+  float r1 = kqNoise(vec2(x * 9.0, along * 3.0 - f * 2.6));
+  float r2 = kqNoise(vec2(x * 17.0 + 4.0, along * 6.0 - f * 4.2));
+  vec3 n = normalize(vec3((r1 - 0.5) * 0.22, 1.0, (r2 - 0.5) * 0.22));
+  // the bed: wet earth with pebbles, moss creeping in from the banks
+  float peb = smoothstep(0.56, 0.7, kqNoise(p * 9.0)) * (0.55 + 0.45 * kqNoise(p * 3.1 + 7.0));
+  vec3 earth = mix(uBedCol, uPebCol, peb);
+  earth = mix(earth, uMossCol, smoothstep(0.45, 0.95, ax / bw) * smoothstep(0.35, 0.7, kqNoise(p * 1.9 + 2.0)));
+  vec3 lit = kqLight(earth, normalize(vN), vWp, 1.0, 1.0);
+  // what it mirrors: the dark wood around it under the beeches, a little sky in the open; never a pale pipe
   vec3 v = normalize(uCamPos - vWp);
-  float fres = 0.02 + 0.98 * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
-  vec3 sky = mix(uFogColor, uSkyAmbient * 2.2 + uSunColor * 0.08, 0.55) * mix(1.0, 0.35, uUnderCanopy);
+  float fres = 0.03 + 0.3 * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
+  vec3 refl = mix(uFogColor * 0.4 + uSkyAmbient * 0.4, vec3(0.05, 0.06, 0.05) + uSkyAmbient * 0.35, uUnderCanopy);
+  float sh = kqShadow(vWp, vec3(0.0, 1.0, 0.0));
   vec3 rr = reflect(-v, n);
-  float spec = pow(max(dot(rr, uSunDir), 0.0), 120.0) * kqShadow(vWp, vec3(0.0, 1.0, 0.0));
+  // the sun glitters on ripple crests only: a low sun down the brook makes broken sparkles, not a lit tube
+  float spec = pow(max(dot(rr, uSunDir), 0.0), 90.0) * sh * smoothstep(0.5, 0.8, r2);
+  // a few sparkles on the thread, not a white line
+  float glint = pow(clamp(r1 * r2 * 1.45, 0.0, 1.0), 9.0);
+  float lat = clamp(1.0 - length(uLanternPos - vWp) / uLanternRadius, 0.0, 1.0);
+  vec3 water = lit * 0.4 + refl * fres + (uSunColor * (spec * 0.7 + glint * 0.3 * sh) + uLantern * glint * 0.15 * lat) * (1.0 - uIce);
+  water += uGlowColor * (fres * 0.25 + glint * 0.06);
+  // foam flecks where the thread runs over stones
+  float foam = smoothstep(0.8, 0.96, r2 * 0.65 + peb * 0.5) * (1.0 - uIce) * (1.0 - pool);
+  water += vec3(0.6, 0.65, 0.66) * foam * 0.14 * (uSkyAmbient + uSunColor * 0.5);
+  // the wet bed round the thread: darker, glossy stones
+  vec3 wetBed = lit * mix(0.55, 0.85, smoothstep(0.5, 1.0, ax / bw)) + refl * fres * 0.12 + uSunColor * spec * peb * 0.08;
+  vec3 col = mix(wetBed, water, core);
+  // magic: the thread lights up, sparks and pulses of light run with the flow (and back up)
   float caust = clamp(r1 * r2 * 2.0, 0.0, 1.0);
-  vec3 magic = vec3(0.35, 0.8, 1.0) * (0.25 + 0.75 * caust) + vec3(1.0, 0.82, 0.45) * pow(caust, 6.0) * 2.0;
-  vec3 wet = mud * 0.5 + sky * fres * 0.45 + uSunColor * spec * 2.0 + uGlowColor * fres * 0.5;
-  wet += vec3(0.7, 0.78, 0.8) * foam * 0.25 * (uSkyAmbient + uSunColor * 0.5);
-  wet += magic * (uMagic * 0.9 + uGuide * 0.14);
-  vec3 col = mix(mud * 0.8, wet, core);
+  float pulse = pow(0.5 + 0.5 * sin(along * 1.3 - f * 3.2), 6.0);
+  vec3 magic = vec3(0.35, 0.8, 1.0) * (0.3 + 0.7 * caust) + vec3(1.0, 0.82, 0.45) * pow(caust, 5.0) * 2.0;
+  col += magic * (uMagic * (core * 0.9 + bed * (0.04 + 0.28 * pulse)) + uGuide * 0.1 * core);
   // ice in the winter night, leaves in 1796
-  vec3 ice = kqLight(vec3(0.6, 0.68, 0.76), vec3(0.0, 1.0, 0.0), vWp, 1.0, 1.0);
+  vec3 ice = kqLight(vec3(0.62, 0.7, 0.78), vec3(0.0, 1.0, 0.0), vWp, 1.0, 1.0) + refl * fres;
   col = mix(col, ice, uIce * core * 0.9);
-  float leaf = step(0.8, kqNoise(vWp.xz * 5.0 + 1.3)) * uMurk;
-  col = mix(col, vec3(0.3, 0.19, 0.08) * (uSkyAmbient + uSunColor * 0.4), leaf * 0.7);
-  // the end of the drawn stretch fades into the ravine
-  float fade = smoothstep(uLen, uLen - 6.0, along) * smoothstep(0.0, 0.6, along);
-  gl_FragColor = vec4(kqFog(col, vWp), bed * mix(0.7, 0.92, core) * fade);
+  float leaf = step(0.8, kqNoise(p * 5.0 + 1.3)) * uMurk;
+  col = mix(col, vec3(0.3, 0.19, 0.08) * (uSkyAmbient + uSunColor * 0.4), leaf * 0.6 * (1.0 - core * 0.5));
+  gl_FragColor = vec4(kqFog(col, vWp), aBed * mix(0.82, 0.96, core));
 }
 `;
 
 /**
- * A ribbon along `line` (world xz), draped on the ground (each edge vertex at its own height + lift),
- * `width` m wide (narrow near the spring).
+ * The Karlsbergbach: a wet bed with a thread of water along `line` (world xz), draped on the
+ * terrain mesh. The ribbon is wider than the bed so its banks fade out raggedly.
  */
 export function brookMesh(line: readonly [number, number][], heightAt: (x: number, z: number) => number, u: WaterUniforms): Mesh | null {
   if (line.length < 3) return null;
-  const pos: number[] = [];
-  const attr: number[] = [];
-  const idx: number[] = [];
+  // resample to ~0.4 m so the ribbon follows the terrain triangles closely
+  const pts: RibbonPoint[] = [];
   let along = 0;
-  const across = [-1, -0.5, 0, 0.5, 1];
-  for (let i = 0; i < line.length; i++) {
-    const [x, z] = line[i]!;
-    if (i > 0) along += Math.hypot(x - line[i - 1]![0], z - line[i - 1]![1]);
-    const [ax, az] = line[Math.max(0, i - 1)]!;
-    const [bx, bz] = line[Math.min(line.length - 1, i + 1)]!;
-    let tx = bx - ax;
-    let tz = bz - az;
-    const l = Math.hypot(tx, tz) || 1;
-    tx /= l;
-    tz /= l;
-    const half = 0.32 + Math.min(1, along / 14) * 0.4;
-    for (const a of across) {
-      const px = x - tz * half * a;
-      const pz = z + tx * half * a;
-      pos.push(px, heightAt(px, pz) + 0.05 + (1 - Math.abs(a)) * 0.015, pz);
-      attr.push(along, a * 1.25);
+  for (let i = 0; i + 1 < line.length; i++) {
+    const [ax, az] = line[i]!;
+    const [bx, bz] = line[i + 1]!;
+    const len = Math.hypot(bx - ax, bz - az);
+    const n = Math.max(1, Math.ceil(len / 0.4));
+    for (let s = 0; s < n; s++) {
+      const t = s / n;
+      pts.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, half: 0.62 + Math.min(1, (along + len * t) / 16) * 0.3 });
     }
+    along += len;
   }
-  const nA = across.length;
-  for (let i = 0; i + 1 < line.length; i++)
-    for (let j = 0; j + 1 < nA; j++) {
-      const a = i * nA + j;
-      const b = a + nA;
-      idx.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  const g = new BufferGeometry();
-  g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
-  g.setAttribute('aBrook', new BufferAttribute(new Float32Array(attr), 2));
-  g.setIndex(idx);
-  g.computeBoundingSphere();
+  const [lx, lz] = line[line.length - 1]!;
+  pts.push({ x: lx, z: lz, half: 0.92 });
+  const out = { pos: [] as number[], nor: [] as number[], rib: [] as number[], idx: [] as number[] };
+  const len = ribbon(out, pts, heightAt, [-1, -0.7, -0.45, -0.22, 0, 0.22, 0.45, 0.7, 1], (f) => 0.025 + (1 - Math.abs(f)) * 0.01);
   const m = new ShaderMaterial({
-    vertexShader: BROOK_VERT,
+    vertexShader: RIBBON_VERT,
     fragmentShader: BROOK_FRAG,
-    uniforms: { ...atmosphere, ...u, uLen: { value: along } },
+    uniforms: { ...atmosphere, ...u, uLen: { value: len } },
     transparent: true,
     depthWrite: false,
     side: DoubleSide,
@@ -400,10 +490,130 @@ export function brookMesh(line: readonly [number, number][], heightAt: (x: numbe
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2,
   });
-  const mesh = new Mesh(g, m);
+  const mesh = new Mesh(ribbonGeometry(out), m);
   mesh.renderOrder = 1;
   mesh.userData.noShadow = true;
   mesh.name = 'quelle-brook';
+  return mesh;
+}
+
+// ---------------------------------------------------------------- the trail to the spring
+
+const TRAIL_VERT = /* glsl */ `
+attribute vec2 aRib;
+attribute vec2 aHalf; // half width (m), distance to the strand's nearer end in fade lengths
+varying vec2 vB;
+varying float vHalf;
+varying float vEnd;
+varying vec3 vWp;
+varying vec3 vN;
+void main() {
+  vB = aRib;
+  vHalf = aHalf.x;
+  vEnd = aHalf.y;
+  vN = normal;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWp = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+const TRAIL_FRAG = /* glsl */ `
+precision highp float;
+${ATMOS_GLSL}
+uniform vec3 uSand;
+uniform vec3 uSand2;
+uniform float uLeaves;
+uniform float uPatchy;
+uniform float uTrodden;
+varying vec2 vB;
+varying float vHalf;
+varying float vEnd;
+varying vec3 vWp;
+varying vec3 vN;
+void main() {
+  vec2 p = vWp.xz;
+  // across in half widths (1 = the nominal edge; the ribbon reaches a little further for the fade)
+  float a = abs(vB.y) / max(0.3, vHalf);
+  float rag = (kqNoise(p * 1.3) - 0.5) * 0.5 + (kqNoise(p * 4.1 + 2.0) - 0.5) * 0.25;
+  float edge = 1.0 - smoothstep(0.4, 0.95, a + rag * 0.55);
+  // the strand's ends fade into the forest floor
+  edge *= smoothstep(0.0, 1.0, vEnd + rag * 0.3);
+  // 1796: the grass takes the trail back in patches
+  edge *= mix(1.0, smoothstep(0.28, 0.62, kqNoise(p * 0.8 + 5.0)), uPatchy);
+  if (edge < 0.01) discard;
+  float n1 = kqNoise(p * 1.9);
+  float n2 = kqNoise(p * 8.0 + 1.0);
+  vec3 alb = mix(uSand, uSand2, smoothstep(0.25, 0.75, n1)) * (0.88 + 0.24 * n2);
+  // the trodden middle is smoother and a touch lighter
+  alb *= mix(0.9, 1.06, 1.0 - smoothstep(0.0, 0.6, a));
+  // small stones, roots and leaves
+  float peb = smoothstep(0.72, 0.82, kqNoise(p * 12.0 + 5.0));
+  alb = mix(alb, alb * 1.3 + 0.015, peb * 0.55);
+  float leaf = smoothstep(0.7, 0.76, kqNoise(p * 6.5 + 3.0)) * uLeaves * (0.6 + 0.4 * smoothstep(0.2, 0.9, a));
+  alb = mix(alb, vec3(0.26, 0.11, 0.035) * (0.7 + 0.6 * n2), leaf * 0.75);
+  // winter: trodden snow with footprints, a little earth where it is worn through
+  float step1 = kqNoise(vec2(vB.x * 2.6, vB.y * 2.2 + 3.0));
+  vec3 snow = vec3(0.6, 0.66, 0.78) * (0.86 + 0.14 * n2) * mix(1.0, 0.82, smoothstep(0.6, 0.75, step1));
+  snow = mix(snow, uSand * 0.8, smoothstep(0.78, 0.9, kqNoise(p * 2.2 + 9.0)) * (1.0 - smoothstep(0.0, 0.5, a)) * 0.6);
+  alb = mix(alb, snow, uTrodden);
+  vec3 col = kqLight(alb, normalize(vN), vWp, 1.0, 1.0);
+  gl_FragColor = vec4(kqFog(col, vWp), edge * 0.94);
+}
+`;
+
+/** Trail looks per era (linear albedos): sand, its second tone, leaves, patchiness, snow. */
+const TRAIL_LOOK: Record<QuelleLook, { sand: [number, number, number]; sand2: [number, number, number]; leaves: number; patchy: number; trodden: number }> = {
+  // the red Buntsandstein sand of the reference photo, leaf litter on it
+  today: { sand: [0.17, 0.092, 0.066], sand2: [0.21, 0.12, 0.085], leaves: 1, patchy: 0, trodden: 0 },
+  // a kept path of pale red sand
+  baroque: { sand: [0.3, 0.16, 0.1], sand2: [0.36, 0.22, 0.14], leaves: 0, patchy: 0, trodden: 0 },
+  winter: { sand: [0.2, 0.1, 0.07], sand2: [0.24, 0.13, 0.09], leaves: 0, patchy: 0, trodden: 1 },
+  fire: { sand: [0.3, 0.16, 0.1], sand2: [0.36, 0.22, 0.14], leaves: 0, patchy: 0, trodden: 0 },
+  // nobody keeps it any more
+  ruin: { sand: [0.22, 0.12, 0.075], sand2: [0.26, 0.15, 0.09], leaves: 0.6, patchy: 1, trodden: 0 },
+};
+
+/** The trail strands (world samples with half widths) as one soft-edged ground decal in the era's look. */
+export function trailMesh(strands: readonly (readonly RibbonPoint[])[], heightAt: (x: number, z: number) => number, look: QuelleLook): Mesh | null {
+  const out = { pos: [] as number[], nor: [] as number[], rib: [] as number[], idx: [] as number[] };
+  const halves: number[] = [];
+  for (const s of strands) {
+    const start = out.rib.length / 2;
+    const total = ribbon(out, s, heightAt, [-1.15, -0.75, -0.4, 0, 0.4, 0.75, 1.15], () => 0.022);
+    // the shader needs the half width where it is and how far the strand's ends are (they fade)
+    const fadeLen = Math.max(0.3, Math.min(3, total * 0.2));
+    for (let i = start; i < out.rib.length / 2; i++) {
+      const al = out.rib[i * 2]!;
+      halves.push(s[Math.floor((i - start) / 7)]!.half, Math.min(al, total - al) / fadeLen);
+    }
+  }
+  if (!out.idx.length) return null;
+  const g = ribbonGeometry(out);
+  g.setAttribute('aHalf', new BufferAttribute(new Float32Array(halves), 2));
+  const L = TRAIL_LOOK[look];
+  const m = new ShaderMaterial({
+    vertexShader: TRAIL_VERT,
+    fragmentShader: TRAIL_FRAG,
+    uniforms: {
+      ...atmosphere,
+      uSand: { value: new Color(...L.sand) },
+      uSand2: { value: new Color(...L.sand2) },
+      uLeaves: { value: L.leaves },
+      uPatchy: { value: L.patchy },
+      uTrodden: { value: L.trodden },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  const mesh = new Mesh(g, m);
+  mesh.renderOrder = 0;
+  mesh.userData.noShadow = true;
+  mesh.name = 'quelle-trail';
   return mesh;
 }
 
