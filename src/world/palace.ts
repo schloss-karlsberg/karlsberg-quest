@@ -170,7 +170,7 @@ export const SURF_GLASS = 20;
 /**
  * Surface layer of a palace face from its vertex colour (linear) and normal: the model's palette
  * is a handful of material colours (cream / white plaster, red and grey sandstone, red tiles,
- * dark slate, green-painted shutters and doors, brown door leaves, green copper, glass).
+ * dark slate, green- and blue-grey-painted shutters and doors, brown door leaves, green copper, glass).
  */
 export function palaceSurface(r: number, g: number, b: number, ny: number): number {
   const mx = Math.max(r, g, b);
@@ -183,7 +183,10 @@ export function palaceSurface(r: number, g: number, b: number, ny: number): numb
   if (mx < 0.13 && mx - mn < 0.04 && slope) return SURF.SLATE;
   if (r > g * 2.5) return SURF.ASHLAR; // red sandstone dressings
   if (g >= r && g >= b && mx < 0.32) return SURF.PAINTED; // green shutters, doors
-  if (r > g * 1.6 && mx < 0.2) return SURF.PLANKS; // brown door leaves
+  // blue-grey louvred shutters of the research-wave model (#5F6F7A, research/09 §3.2); darker
+  // than 0.13 is slate seen side-on, not paint
+  if (b >= g && g >= r && b > r * 1.3 && mx >= 0.13 && mx < 0.32) return SURF.PAINTED;
+  if (r > g * 1.6 && mx < 0.21) return SURF.PLANKS; // brown and red-brown door leaves
   if (r > b * 3 && r > 0.5) return SURF.IRON; // gilt
   if (mx - mn < 0.08 && mx < 0.6) return SURF.ASHLAR; // grey stone dressings
   if (mx < 0.13) return SURF.SLATE;
