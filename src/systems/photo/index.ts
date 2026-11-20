@@ -174,6 +174,8 @@ class Photo {
   private readonly offs: (() => void)[] = [];
   private readonly el: HTMLElement;
   private readonly flash: HTMLElement;
+  /** The 1× / 2× chips: their own layer above the touch controls (which cover the screen). */
+  private readonly zoomBar: HTMLElement;
   private readonly card: HTMLElement;
   private readonly clock: HTMLElement;
   private readonly zoomBtns: HTMLButtonElement[];
@@ -207,13 +209,13 @@ class Photo {
         h('div.kq-photo-focus'),
         h('div.kq-photo-status', [this.clock, h('span.kq-photo-net', [h('span.kq-photo-carrier', { 'data-testid': 'photo-net' }, ''), h('span.kq-photo-bars', [h('i'), h('i'), h('i'), h('i')]), h('span.kq-photo-batt')])]),
         h('div.kq-photo-nonet', { 'data-testid': 'photo-nonet', role: 'status' }, t('photo.nonet')),
-        h('div.kq-photo-zoom', { role: 'group', 'aria-label': t('photo.zoom') }, this.zoomBtns),
         h('div.kq-photo-hint', t('photo.hint')),
       ]),
     ]);
     this.flash = h('div.kq-photo-flash', { 'aria-hidden': 'true' });
     this.card = h('div.kq-photo-card.kq-hidden', { 'data-testid': 'photo-card', role: 'status', 'aria-live': 'polite' });
-    ctx.ui.root.append(this.el, this.flash, this.card);
+    this.zoomBar = h('div.kq-photo-zoom.kq-hidden', { role: 'group', 'aria-label': t('photo.zoom') }, this.zoomBtns);
+    ctx.ui.root.append(this.el, this.zoomBar, this.flash, this.card);
   }
 
   init(): void {
@@ -331,6 +333,7 @@ class Photo {
     this.setZoom(1);
     for (const a of MUTED) this.ctx.input.muted.add(a);
     this.el.classList.remove('kq-hidden');
+    this.zoomBar.classList.remove('kq-hidden');
     document.documentElement.toggleAttribute('data-kq-photo', true);
     this.syncSignal();
     if (this.ctx.era.current !== 'today') this.ctx.ui.toast(t('photo.toast.nonet'));
@@ -346,6 +349,7 @@ class Photo {
     pl.rig.setFovScale(1);
     for (const a of MUTED) this.ctx.input.muted.delete(a);
     this.el.classList.add('kq-hidden');
+    this.zoomBar.classList.add('kq-hidden');
     document.documentElement.toggleAttribute('data-kq-photo', false);
     this.ctx.events.emit('photo:close', {});
   }
@@ -568,6 +572,7 @@ class Photo {
     this.deer?.dispose();
     this.board?.remove();
     this.el.remove();
+    this.zoomBar.remove();
     this.flash.remove();
     this.card.remove();
   }

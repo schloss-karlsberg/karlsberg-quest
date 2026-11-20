@@ -94,9 +94,9 @@ export function buildBoard(scene: Scene, x: number, groundY: number, z: number, 
   const g = new Group();
   g.name = 'photo-demo-board';
   const wood = mat(0x5a4330);
-  for (const sx of [-0.95, 0.95]) {
+  for (const sx of [-1.0, 1.0]) {
     const post = new Mesh(new BoxGeometry(0.11, 2.15, 0.11), wood);
-    post.position.set(sx, 1.07, -0.02);
+    post.position.set(sx, 1.07, -0.07);
     g.add(post);
   }
   const back = new Mesh(new BoxGeometry(2.1, 1.3, 0.06), wood);
