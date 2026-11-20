@@ -11,7 +11,7 @@ import type { Era } from '../../core/era';
 import { type SetBuilder, face } from './builder';
 import { rng } from './kit';
 import { fence, gate, railing } from './linear';
-import { RUND, rundHouse, rundHouses } from './rund';
+import { RUND, rundGrilles } from './rund';
 import { ROTUNDA, rotundaAt, rotundaSite } from './passage';
 import { C, barrel, blockStack, cart, firePit, hoist, kennel, mortar, post, rubblePile, scale, sentryBox, straw, table, tools, trough, wagon, woodStack } from './props';
 
@@ -487,7 +487,10 @@ const orangerieHof: SetDef = {
   },
 };
 
-/** The Karlslust's Rund (bible 1.6): the nineteen houses you count in K1 Teil B (playtest round 2). */
+/**
+ * The Karlslust's Rund (bible 1.6): the nineteen houses you count in K1 Teil B are the palace
+ * model's (KL-B40); the set adds the iron grilles of their yards (rund.ts).
+ */
 const rund: SetDef = {
   id: 'k1-rund',
   eras: ['1789', '1793-02', '1793-07'],
@@ -499,7 +502,7 @@ const rund: SetDef = {
     [1903, 87, 1.5], // the gardener
   ],
   build(b) {
-    rundHouses().forEach((h, i) => rundHouse(b, h, 300 + i));
+    rundGrilles(b.kit, b.heightAt, 300);
   },
 };
 

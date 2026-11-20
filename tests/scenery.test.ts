@@ -1,7 +1,8 @@
 /**
  * Scenery (set dressing): collider extensions (solids, pass zones, ruin keep), the sets leaving
  * the story's places free, the Tempelzimmer passage through the rotunda KB-B07 (and its 1789
- * building site), the roof mask that keeps snow out of the rooms, and the dawn look.
+ * building site), the Karlslust's Rund and terraces in the research-wave model, the roof mask that
+ * keeps snow out of the rooms, and the dawn look.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -9,14 +10,16 @@ import type { Footprint } from '../src/data/types';
 import { roofQuads, underRoof } from '../src/systems/fx/ambient/ambient';
 import { SetBuilder } from '../src/systems/scenery/builder';
 import { PASSAGE, ROTUNDA, TEMPEL_DOOR, passageAt, passageCollision, passageCoords, passageFloor } from '../src/systems/scenery/passage';
+import { RUND, rundHouses } from '../src/systems/scenery/rund';
 import { GATE_CENTER, SETS } from '../src/systems/scenery/sets';
+import { TERRACE_ROWS, terraceSolids } from '../src/systems/scenery/worldsets';
 import { COURT_LIFE, CourtLife, EHRENHOF_1789, ROSETTE } from '../src/systems/scenery/court';
 import { court } from '../src/systems/fx/k3-crowd';
 import { lookFor } from '../src/systems/story/index';
 import { validateStories } from '../src/systems/story/validate';
 import type { StoryFile } from '../src/systems/story/types';
-import { FootprintCollider, type Ring } from '../src/world/collision';
-import { RUIN_KEEP } from '../src/world/palace';
+import { FootprintCollider, type Ring, pointInRing } from '../src/world/collision';
+import { OPEN_GROUND, RUIN_KEEP } from '../src/world/palace';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
 const rings = footprints.map((f) => f.ring as Ring);
@@ -253,6 +256,53 @@ describe('Tempelzimmer passage through the rotunda', () => {
     expect(c.solidAt(1294, -1234, 3)).toBe(false);
     expect(c.footprintAt(1294, -1234)).toBe(-1);
     expect(passageFloor(1300, -1254, 349)).toBeNull();
+  });
+});
+
+describe('the Karlslust in the research-wave model', () => {
+  it('the Rund: the model’s nineteen houses (no second ring), counted 5 + 5 + 5 + 4 round the loge', () => {
+    const ring = footprints.find((f) => f.id === 'KL-B40')!.ring as Ring;
+    const hs = rundHouses();
+    expect(hs.length).toBe(19);
+    for (const h of hs) {
+      expect(pointInRing(h.x, h.z, ring)).toBe(true);
+      expect(Math.hypot(h.x - RUND.x, h.z - RUND.z)).toBeCloseTo(RUND.ring, 3);
+    }
+    const n = { w: 0, n: 0, o: 0, s: 0 };
+    for (const h of hs) n[h.side]++;
+    expect(n).toEqual({ w: 5, n: 4, o: 5, s: 5 });
+    // the set adds only the yards' grilles: no solids, nothing on the counting spots
+    const def = SETS.find((s) => s.id === 'k1-rund')!;
+    const b = new SetBuilder(() => 300);
+    def.build(b, { era: '1789', gateOpen: 0 });
+    expect(b.build(def.id).solids.length).toBe(0);
+  });
+
+  it('the terraces KL-B43 are open ground: the rows of houses hold, the runs and the bear boxes’ clue are free', () => {
+    expect(OPEN_GROUND).toContain('KL-B43');
+    const c = new FootprintCollider(footprints.map((f) => (OPEN_GROUND.includes(f.id) ? [] : f.ring) as Ring));
+    c.setSolids('rows', terraceSolids());
+    const plot = footprints.find((f) => f.id === 'KL-B43')!.ring as Ring;
+    expect(TERRACE_ROWS.length).toBe(6);
+    for (const { p0, p1 } of TERRACE_ROWS) {
+      expect(pointInRing((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, plot)).toBe(true);
+      const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      const [ux, uz] = [(p1[0] - p0[0]) / len, (p1[1] - p0[1]) / len];
+      const at = (u: number, v: number): [number, number] => [p0[0] + ux * u - uz * v, p0[1] + uz * u + ux * v];
+      expect(c.solidAt(...at(25, 1.7))).toBe(true); // a house
+      expect(c.resolve(...at(25, 8), 0.35).hit).toBe(false); // its run
+    }
+    // k1_10: the clue at the bear boxes and the e2e's walk to it
+    expect(c.solidAt(1958, 146, 4)).toBe(false);
+    let [x, z] = [1950, 128];
+    for (let i = 0; i < 60; i++) {
+      const r = c.resolve(x + (7.5 / 60) * 1, z + (17.5 / 60) * 1, 0.35);
+      expect(r.hit).toBe(false);
+      x = r.x;
+      z = r.z;
+    }
+    // inside the plot, away from the rows, nothing pushes you out any more
+    expect(c.resolve(1975, 120, 0.35).hit).toBe(false);
   });
 });
 

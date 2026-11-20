@@ -1,79 +1,110 @@
 /**
- * The Rund of the Karlslust (KL-B40, bible 1.6): nineteen small houses with slate roofs around the
- * ring, a barred door and a feeding hatch each. The set (sets.ts `k1-rund`) builds them; the tally
- * here makes the counting of q.k1 / k1_9 something you see: when the story sets a side's flag
- * (`k1.zaehl.w|n|o|s`), that side's doors light up one after the other and keep a faint chalk glow.
+ * The Rund of the Karlslust (KL-B40, bible 1.6). The palace model (research wave) carries the
+ * nineteen square slate-roofed houses and the loge on the ring of house centres (r 24.8, facing the
+ * moat, the loge on the north axis); what it leaves out are the iron grilles of the yards (catalogue:
+ * "each yard = house + two radial grilles to the water + a grille closing it behind"). The set
+ * (sets.ts `k1-rund`) builds those grilles; the tally here makes the counting of q.k1 / k1_9
+ * something you see: when the story sets a side's flag (`k1.zaehl.w|n|o|s`), that side's houses light
+ * up one after the other (a chalk mark on the back wall, the side you walk past) and keep a glow.
  */
 import { Color, InstancedBufferAttribute, Mesh, type ShaderMaterial } from 'three';
-import type { SetBuilder } from './builder';
+import type { Kit } from './kit';
 import { rng, tint } from './kit';
 import { glowMaterial } from './material';
 import { C } from './props';
 import { instancedQuad } from './smoke';
 
-/** Centre and radius of the ring wall (footprint KL-B40). */
-export const RUND = { x: 1935, z: 87, r: 27, houses: 19 } as const;
+/**
+ * Centre and outer radius of the ring (footprint KL-B40, the LiDAR ring KL-01), the radius of the
+ * house centres and the loge's compass bearing (catalogue KL-B40 facade.menagerie.ring).
+ */
+export const RUND = { x: 1935, z: 87, r: 27, ring: 24.8, houses: 19, logeDeg: 0 } as const;
+
+/** The model's ring houses: 3.6 m square walls, radially 23.0 … 26.6 m from the centre. */
+const HOUSE_HALF = 1.8;
+const HOUSE_BACK = 26.6;
+/** Half the loge's width. */
+const LOGE_HALF = 2.8;
+/** The moat's water's edge (catalogue moat_radius 22). */
+const MOAT = 22.2;
 
 export type RundSide = 'w' | 'n' | 'o' | 's';
 
 export interface RundHouse {
   x: number;
   z: number;
-  /** Compass facing of the door (outwards). */
+  /** Compass bearing from the ring's centre (the loge stands at RUND.logeDeg). */
+  az: number;
+  /** Compass facing of the door: towards the moat. */
   deg: number;
   side: RundSide;
 }
 
-/** The 19 houses, evenly round the outside of the ring; each belongs to the nearest counting spot. */
+/** Unit vector (x, z) of a compass bearing (0 north = −z, 90 east = +x). */
+function dir(deg: number): [number, number] {
+  const a = (deg * Math.PI) / 180;
+  return [Math.sin(a), -Math.cos(a)];
+}
+
+/** The model's 19 houses (the loge's slot left out); each belongs to the nearest counting spot. */
 export function rundHouses(): RundHouse[] {
   const out: RundHouse[] = [];
-  const rr = RUND.r + 1.25;
-  for (let i = 0; i < RUND.houses; i++) {
-    const a = ((i + 0.5) / RUND.houses) * Math.PI * 2; // math angle: x = cos, z = sin
-    const dx = Math.cos(a);
-    const dz = Math.sin(a);
-    const deg = ((Math.atan2(dx, -dz) * 180) / Math.PI + 360) % 360;
+  const step = 360 / (RUND.houses + 1);
+  for (let i = 1; i <= RUND.houses; i++) {
+    const az = (RUND.logeDeg + i * step) % 360;
+    const [dx, dz] = dir(az);
     // the story's counting spots: w (−x), n (−z), o (+x), s (+z)
     const side: RundSide = Math.abs(dx) >= Math.abs(dz) ? (dx < 0 ? 'w' : 'o') : dz < 0 ? 'n' : 's';
-    out.push({ x: RUND.x + dx * rr, z: RUND.z + dz * rr, deg, side });
+    out.push({ x: RUND.x + dx * RUND.ring, z: RUND.z + dz * RUND.ring, az, deg: (az + 180) % 360, side });
   }
   return out;
 }
 
-/** One house in prop space (+z = the door side, outwards). */
-export function rundHouse(b: SetBuilder, h: RundHouse, seed: number): void {
-  const k = b.kit;
+/** The point at radius r on bearing az, shifted t metres sideways (clockwise positive). */
+export function ringPoint(az: number, r: number, t: number): [number, number] {
+  const [dx, dz] = dir(az);
+  return [RUND.x + dx * r - dz * t, RUND.z + dz * r + dx * t];
+}
+
+/** An iron grille from a to b on the ground: bars every `step` m, two rails, three posts. */
+function grille(k: Kit, a: [number, number], b: [number, number], h: (x: number, z: number) => number, height: number, step: number, seed: number): void {
   const r = rng(seed);
-  b.at(h.x, h.z, h.deg, 1.1, 0.12);
-  const wall = tint(C.plaster, r, 0.08);
-  k.box(2.7, 0.4, 2.6, 0, 0, 0, tint(C.sandstoneRed, r, 0.1));
-  k.box(2.5, 2.25, 2.4, 0, 0.4, 0, wall);
-  // corner pilasters (sandstone) so the row reads as separate houses from afar
-  for (const sx of [-1, 1]) k.box(0.22, 2.25, 0.22, sx * 1.22, 0.4, 1.12, tint(C.sandstone, r, 0.08));
-  // the door: dark planks, iron bars in the upper half, no handle (Laub: "keine Klinke innen")
-  k.box(0.95, 1.75, 0.08, -0.4, 0.4, 1.21, tint(C.woodDark, r, 0.1));
-  k.box(0.75, 0.6, 0.04, -0.4, 1.35, 1.27, 0x120d0a);
-  for (let i = 0; i < 5; i++) k.box(0.045, 0.66, 0.045, -0.72 + i * 0.16, 1.32, 1.3, C.iron);
-  k.box(1.05, 0.08, 0.12, -0.4, 2.15, 1.24, C.sandstone);
-  // the feeding hatch
-  k.box(0.46, 0.38, 0.06, 0.72, 1.25, 1.21, tint(C.wood, r, 0.12));
-  k.box(0.56, 0.06, 0.1, 0.72, 1.63, 1.24, C.sandstone);
-  // slate roof: two slabs, ridge parallel to the ring wall, a ridge cap
-  k.push(0, 2.65, 0, 0, 0, 0);
-  k.box(2.95, 0.08, 1.62, 0, 0.32, 0.66, tint(C.slate, r, 0.1), [0.52, 0, 0]);
-  k.box(2.95, 0.08, 1.62, 0, 0.32, -0.66, tint(C.slate, r, 0.1), [-0.52, 0, 0]);
-  k.box(3.0, 0.12, 0.16, 0, 0.74, 0, 0x2c2e33);
-  // gable ends
-  for (const sx of [-1, 1]) k.box(0.06, 0.62, 1.6, sx * 1.24, 0, 0, wall);
-  k.pop();
-  // a number board above the door, the way a menagerie keeps its cages
-  k.box(0.32, 0.22, 0.04, -0.4, 2.27, 1.26, C.ledger);
-  b.box(h.x, h.z, h.deg, 1.38, 1.3);
+  const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+  const y = (s: number) => h(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s);
+  const iron = tint(C.iron, r, 0.06);
+  for (let i = 0; i <= n; i++) {
+    const s = i / n;
+    const x = a[0] + (b[0] - a[0]) * s;
+    const z = a[1] + (b[1] - a[1]) * s;
+    const post = i === 0 || i === n || i === Math.round(n / 2);
+    k.beam(x, y(s) - 0.3, z, x, y(s) + height + (post ? 0.08 : 0), z, post ? 0.07 : 0.035, iron);
+  }
+  for (const ry of [0.12, height - 0.1]) k.beam(a[0], y(0) + ry, a[1], b[0], y(1) + ry, b[1], 0.05, iron, 0.025);
+}
+
+/**
+ * The yards' grilles round the model's houses: in every gap between two houses (and beside the loge)
+ * one grille closes the gap behind, flush with the back walls, and one runs radially down to the
+ * water and parts the two neighbours' yards. Ground-following; no solids (the ring footprint holds).
+ */
+export function rundGrilles(k: Kit, h: (x: number, z: number) => number, seed: number): void {
+  k.place(0, 0, 0, 0);
+  const step = 360 / (RUND.houses + 1);
+  const back = HOUSE_BACK - 0.15;
+  for (let i = 0; i <= RUND.houses; i++) {
+    const az0 = RUND.logeDeg + i * step;
+    const az1 = az0 + step;
+    const half0 = i === 0 ? LOGE_HALF : HOUSE_HALF;
+    const half1 = i === RUND.houses ? LOGE_HALF : HOUSE_HALF;
+    grille(k, ringPoint(az0, back, half0), ringPoint(az1, back, -half1), h, 2.3, 0.22, seed + i * 2);
+    const mid = az0 + step / 2;
+    grille(k, ringPoint(mid, back - 0.4, 0), ringPoint(mid, MOAT, 0), h, 2.0, 0.3, seed + i * 2 + 1);
+  }
 }
 
 const CHALK = new Color(1.6, 1.25, 0.7);
 
-/** The counted doors: one glow per house, pulsing when its side is counted. */
+/** The counted houses: one glow per house, pulsing when its side is counted. */
 export class RundTally {
   readonly mesh: Mesh;
   private readonly tints: InstancedBufferAttribute;
@@ -89,11 +120,9 @@ export class RundTally {
     const a = new Float32Array(this.houses.length * 4);
     const t = new Float32Array(this.houses.length * 4);
     this.houses.forEach((h, i) => {
-      // in front of the door, at the bars
-      const yaw = (h.deg * Math.PI) / 180;
-      const x = h.x + Math.sin(yaw) * 1.45 + Math.cos(yaw) * 0.4;
-      const z = h.z - Math.cos(yaw) * 1.45 + Math.sin(yaw) * 0.4;
-      a.set([x, heightAt(h.x, h.z) + 1.55, z, 2.6], i * 4);
+      // a chalk mark on the back wall: the doors face the moat, the counting spots are outside
+      const [x, z] = ringPoint(h.az, HOUSE_BACK + 0.25, 0);
+      a.set([x, heightAt(x, z) + 1.7, z, 2.6], i * 4);
       t.set([0, 0, 0, i * 0.37], i * 4);
     });
     g.setAttribute('aSprite', new InstancedBufferAttribute(a, 4));
@@ -113,13 +142,13 @@ export class RundTally {
     return this.mesh.material as ShaderMaterial;
   }
 
-  /** Doors counted so far (tests). */
+  /** Houses counted so far (tests). */
   get counted(): number {
     return this.start.filter((s) => !Number.isNaN(s)).length;
   }
 
   /**
-   * Sides counted now (flags). A side that turns on pulses its doors one by one; `quiet` (a loaded
+   * Sides counted now (flags). A side that turns on pulses its houses one by one; `quiet` (a loaded
    * save) lights them without the pulse.
    */
   update(dt: number, sides: Record<RundSide, boolean>, quiet = false): void {

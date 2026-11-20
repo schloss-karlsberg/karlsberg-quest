@@ -8,7 +8,7 @@ import { FootprintCollider, type Ring } from './collision';
 import { ERA_LOOKS, type EraLook, dirFromAzEl } from './eraPresets';
 import { Forest, generateTrees } from './forest';
 import { Heightfield, classAt } from './heightfield';
-import { Palace, RUIN_KEEP } from './palace';
+import { OPEN_GROUND, Palace, RUIN_KEEP } from './palace';
 import { buildCover, buildSurface, rasterLines } from './rasters';
 import { Sky } from './sky';
 import { Terrain, type TerrainDataset, makeDataTexture, makeHeightTexture } from './terrain';
@@ -101,7 +101,8 @@ export class World {
       today: generateTrees({ hf: this.heightfields['2025'], canopy: data.canopy, paths, noTreesOnWater: data.ground, spacing: 8.5, seed: 1 }).tiles,
       historic: generateTrees({ hf: this.heightfields['1789'], ground: data.ground, spacing: 7.5, seed: 2 }).tiles,
     };
-    this.collider = new FootprintCollider(data.footprints.buildings.map((b) => b.ring as Ring));
+    // open ground (the menagerie terraces) keeps its index but no outline
+    this.collider = new FootprintCollider(data.footprints.buildings.map((b) => (OPEN_GROUND.includes(b.id) ? [] : b.ring) as Ring));
     this.ruinKeep = new Set(RUIN_KEEP.map((id) => data.footprints.buildings.findIndex((b) => b.id === id)).filter((i) => i >= 0));
 
     scene.add(this.sky.mesh, this.terrain.object, this.forest.object, this.palace.object);

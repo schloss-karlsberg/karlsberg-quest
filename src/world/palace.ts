@@ -136,6 +136,14 @@ void main() {
  */
 export const RUIN_KEEP = ['KB-B29', 'KB-B63', 'KB-B64'];
 
+/**
+ * Footprints that are open ground with free-standing parts, so their outline must not block: the
+ * menagerie terraces KL-B43 (research-wave model: six rows of animal houses with their runs, no wall
+ * round the plot). The collider leaves them out; their rows are solids of the menagerie set
+ * (scenery/worldsets.ts `TERRACE_ROWS`).
+ */
+export const OPEN_GROUND: readonly string[] = ['KL-B43'];
+
 export interface PalaceBuilding {
   id: string;
   index: number;
