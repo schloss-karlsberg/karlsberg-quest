@@ -29,7 +29,7 @@ export type Action =
   | 'xray'
   /** Baumeister: plan sheet / confidence view, tools system. */
   | 'plans'
-  /** Keyboard look (play without a mouse). */
+  /** Keyboard look (play without a mouse): ← / → turn, Bild↑ / Bild↓ tilt (src/player/keyTurn.ts). */
   | 'lookLeft'
   | 'lookRight'
   | 'lookUp'
@@ -57,8 +57,8 @@ export type Action =
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
   back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft'],
-  right: ['KeyD', 'ArrowRight'],
+  left: ['KeyA'],
+  right: ['KeyD'],
   sprint: ['ShiftLeft', 'ShiftRight'],
   crouch: ['KeyC'],
   prone: ['KeyX'],
@@ -79,8 +79,9 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   pause: ['Escape', 'KeyP'],
   xray: ['KeyV', 'Digit4'],
   plans: ['KeyB'],
-  lookLeft: ['Comma', 'Numpad4'],
-  lookRight: ['Period', 'Numpad6'],
+  // ← / → turn the view (§3.4: a fallback to mouse look for automation and accessibility); A / D strafe
+  lookLeft: ['ArrowLeft', 'Comma', 'Numpad4'],
+  lookRight: ['ArrowRight', 'Period', 'Numpad6'],
   lookUp: ['PageUp', 'Numpad8'],
   lookDown: ['PageDown', 'Numpad2'],
   attack: ['Mouse0', 'KeyK'],
@@ -174,7 +175,7 @@ export class Input {
       if (!this.enabled && ev.code !== 'Escape') return;
       if (!ev.repeat) this.pressedCodes.add(ev.code);
       this.down.add(ev.code);
-      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
+      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
     });
     on(window, 'keyup', (e) => this.down.delete((e as KeyboardEvent).code));
     on(window, 'blur', () => this.down.clear());

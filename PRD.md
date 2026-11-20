@@ -137,7 +137,8 @@ Getting caught is cheap. You are thrown back to the field station and lose only 
 
 | Verb | What it does | Desktop control |
 | --- | --- | --- |
-| Walk / sneak / lie flat | Move on the real terrain; lying flat hides you from the hunt | WASD, Shift, C / X |
+| Walk / sneak / lie flat | Move on the real terrain; lying flat hides you from the hunt | WASD (or ↑ / ↓ forward / back), Shift, C / X |
+| Look | Turn and tilt the view (over the shoulder or first person) | Mouse; without a mouse ← / → turn (120°/s), Bild↑ / Bild↓ tilt |
 | Spirit view | Short free flight for overview (present day only) | F |
 | Scan | Switch relief modes (hillshade → local relief → VAT) to see features under the forest | 1–3 |
 | Compare | Overlay the 1840 or 1935 map on the land | M |
@@ -146,6 +147,8 @@ Getting caught is cheap. You are thrown back to the field station and lose only 
 | Examine | Pick up and turn over an object; it becomes a clue | Click |
 | Shift | Use the compass to step into the era bound to this spot | Q |
 | Lantern | Light helps you read clues but draws the hunt; oil is the soft timer of a shift | L |
+
+**F8** writes a note to the developers (with a picture of the view, the place and the last 30 s of events), kept in the browser's IndexedDB; the pause menu exports all notes and the local play telemetry as one JSON. Nothing is ever sent over the network.
 
 Touch controls follow in the mobile milestone (§10).
 
