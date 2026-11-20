@@ -1,7 +1,11 @@
 /**
  * The ghostly people of the story (bible 03-figuren): how each one looks as a silhouette of smoke
  * and light, how warm or eerie the figure feels, and the German labels of their topics.
- * All of them are fiction (speakers pack: historical false); the label in the conversation says so.
+ * Most of them are fiction (speakers pack: historical false); the label in the conversation says so.
+ * Two are real people, the "historical twins" (`historical: true`, docs/ART-DIRECTION.md §21):
+ * Johann Christian von Mannlich (1741–1822), court painter and Baudirektor of the Karlsberg, and
+ * Duke Karl II. August of Pfalz-Zweibrücken (1746–1795), who built it. For now they wear the
+ * generic official's look; their own appearance is being rebuilt as authored models.
  */
 
 export type Mood = 'warm' | 'eerie' | 'neutral';
@@ -36,6 +40,8 @@ export interface NpcLook {
   tint: number;
   /** Seed for the idle motion (no two figures breathe in step). */
   seed: number;
+  /** A real person (speakers pack `historical: true`); everyone else is fiction. */
+  historical?: true;
 }
 
 export const ROSTER: Record<string, NpcLook> = {
@@ -49,10 +55,33 @@ export const ROSTER: Record<string, NpcLook> = {
   gaertner: { id: 'gaertner', name: 'Der Gärtner', mood: 'warm', height: 1.66, build: 0.98, outfit: 'carter', hat: 'slouch', hair: 'queue', prop: 'basket', tint: 0xc8d9a8, seed: 31 },
   diener: { id: 'diener', name: 'Ein Diener', mood: 'neutral', height: 1.72, build: 0.9, outfit: 'livery', hat: 'none', hair: 'wig', prop: 'none', tint: 0xd9cdb4, seed: 37 },
   mann: { id: 'mann', name: 'Ein Mann aus dem Dorf', mood: 'neutral', height: 1.74, build: 1.0, outfit: 'carter', hat: 'slouch', hair: 'short', prop: 'stick', tint: 0xc4c0b2, seed: 41 },
+  // The historical twins (real people, ART-DIRECTION §21): heights and build from the portraits,
+  // for now the generic official in a powdered wig, bareheaded (authored models pending).
+  mannlich: { id: 'mannlich', name: 'Johann Christian von Mannlich', mood: 'warm', height: 1.76, build: 0.88, outfit: 'official', hat: 'none', hair: 'wig', prop: 'none', tint: 0xffd6a0, seed: 43, historical: true },
+  herzog: { id: 'herzog', name: 'Herzog Karl II. August', mood: 'neutral', height: 1.8, build: 1.14, outfit: 'official', hat: 'none', hair: 'wig', prop: 'none', tint: 0xe6d6b4, seed: 47, historical: true },
 };
 
+/** Other ids for roster figures (the reference folders name the Duke `karl-ii-august`). */
+export const ALIASES: Record<string, string> = {
+  'karl-ii-august': 'herzog',
+};
+
+/** The roster id for an id or alias (unknown ids pass through). */
+export function rosterId(id: string): string {
+  return ALIASES[id] ?? id;
+}
+
+/** The historical twins' roster ids. */
+export const TWINS = ['mannlich', 'herzog'] as const;
+export type TwinId = (typeof TWINS)[number];
+
+/** Is this id (or alias) one of the historical twins? */
+export function isTwin(id: string): boolean {
+  return (TWINS as readonly string[]).includes(rosterId(id));
+}
+
 export function lookFor(id: string, mood?: Mood): NpcLook {
-  const base = ROSTER[id] ?? { id, name: id, mood: 'neutral' as Mood, height: 1.7, build: 1, outfit: 'official' as const, hat: 'tricorn' as const, hair: 'queue' as const, prop: 'none' as const, tint: 0xd8d2c4, seed: 29 };
+  const base = ROSTER[rosterId(id)] ?? { id, name: id, mood: 'neutral' as Mood, height: 1.7, build: 1, outfit: 'official' as const, hat: 'tricorn' as const, hair: 'queue' as const, prop: 'none' as const, tint: 0xd8d2c4, seed: 29 };
   return mood ? { ...base, mood } : base;
 }
 

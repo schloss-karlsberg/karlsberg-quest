@@ -97,16 +97,16 @@
           "text_de": "Unten am Damm: drei Nebelinge vertreiben (Klick oder K)",
           "hint_de": "Den Hang hinunter zur Markierung am Damm. Nebelinge mit dem Stab treffen: Klick oder K, gehalten ein Wuchthieb; holt einer aus, Leertaste: ausweichen.",
           "where": {
-            "x": 803,
-            "z": -889,
+            "x": 809,
+            "z": -890,
             "r": 24,
             "era": "today"
           },
           "spawn": [
             {
               "kind": "nebelling",
-              "x": 803,
-              "z": -889,
+              "x": 809,
+              "z": -890,
               "era": "today",
               "count": 3,
               "radius": 3.5,

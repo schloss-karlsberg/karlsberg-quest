@@ -19,6 +19,7 @@
 **P2 – Der Damm.** Draußen, 60 m zum Damm des Karlsbergweihers. Tutorial Relief-Blick 1 (Hillshade): Wasserfläche und Damm. Marlene: „Schalt mal auf Lokales Relief.“ → **Relief-Blick 2** wird freigeschaltet. Neben dem Damm erscheint ein kleines Rechteck aus Kanten (`clue.p.mauerrest`), und die Karte `rm.07` „Fundament und Mauerzug“ geht ins Handbuch.
 
 **P3 – Der Weg nach oben.** Der Waldweg führt nach Osten bergauf (≈ 480 m). Am Fuß der Orangerie steht eine gerade, hohe Stufe im Wald. Tutorial **Relief-Blick 3 (VAT)**: Die Kante wird scharf, 81 m lang (`clue.p.orangeriemauer`). **Die Bussole zittert.** Eine trockene Stimme sagt: „Fünf Meter dreißig. Für Orangen.“ Das ist Laubs Einführung (`laub.p.intro`).
+*Tempo (Playtest Runde 10):* Sobald der Nebelling aus der Mauer vertrieben ist, sagt Marlene, dass F (Geisterblick) über den Wald fliegt (`marlene.p.flug`); das Ziel nennt „F: darüber fliegen“, solange der Weg läuft. Auf halber Höhe (≈ 1000/−905) meldet sie sich noch einmal: die runden, flachen Stellen am Hang (`marlene.p.halbweg`), die oben zum Auftrag „Kohlplatten“ werden. Kein Kampf auf dem Weg (EP-Budget des Prologs).
 
 **P3Q – Die Quelle.** Kaum ist Laub wach, hört er etwas: „Wasser. Unten im Hang, wo der Bach anfängt. Es erinnert sich an etwas.“ (`laub.p.quelle`). Die Nadel ruckt den Hang hinunter. Lichtpünktchen treiben den Bach hinab, über dem Wasser steht ein weicher Lichtschein. In einer kleinen Rinne zwischen Orangerie und Weiher liegt die **Karlsbergquelle**: eine niedrige Trockenmauer aus rotem Sandstein mit einem Schildchen, ein Rohr, ein ausgehöhlter Stamm als Trog auf zwei Stümpfen, links Sandsteinstufen, hangaufwärts eine kleine gewölbte Brunnenstube, halb im Boden. Laub: „Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.“ Am Trog: **E „Wasser berühren“**. Die Hand taucht ein, ein Ring läuft übers Wasser und bleibt stehen. Der Ton bricht weg, der Strahl aus dem Rohr hängt in der Luft, dann läuft der Bach rückwärts den Hang hinauf. Der Boden kippt: **1789**.
 *FAKT:* die Quelle selbst (OSM-Knoten 368031320, Beginn des Karlsbergbachs, rund 60 m unter der Orangerie-Terrasse), die heutige Fassung mit Trog, Mauer, Rohr und Brunnenstube, die Infotafel daneben (`cx.41`). Wann sie gefasst wurde und ob sie das Schloss versorgte, ist **nicht belegt**.
@@ -35,13 +36,13 @@
 
 **P6 – Die Grube.** Östlich des Schlosses liegt an einer Wegkreuzung eine runde Grube mit Ringwall, etwa 10 m breit (`clue.p.eiskeller`).
 
-**P7 – Die Punktwolke.** Marlene schickt einen Ausschnitt aus der Punktwolke aufs Tablet (`clue.p.punktwolke`). Quer über den Ehrenhof läuft eine Reihe kleiner Abdrücke im Boden, in Pfotengröße, im Trab. Das Forstamt sagt, der Wald war beim Flug leer. Laub sagt nur: „Hunde.“
+**P7 – Die Punktwolke.** Das Tablet piept: Marlene hat einen Ausschnitt aus der Punktwolke geschickt (`clue.p.punktwolke`, sofort im Feldbuch, erst danach ihr Funkspruch; so zeigt die Bussole nie zurück zur Feldstation). Quer über den Ehrenhof läuft eine Reihe kleiner Abdrücke im Boden, in Pfotengröße, im Trab. Das Forstamt sagt, der Wald war beim Flug leer. Laub sagt nur: „Hunde.“
 
 **P8 – Die Chronik öffnet sich.** Tab öffnet die Fallseite „Vermessung“. Sie kommt aus Laubs Bussole: Beim Öffnen des Deckels liegt eine angesengte Seite darin, die vorher nicht da war (`clue.p.seite_eins`). Der Spieler füllt die Einträge. **Bestätigt wird nur im Heute.** Der erste Satz von drei richtigen FAKT-Einträgen schaltet den **Zeitwechsel (Q)** am Anker Ehrenhof frei. Laub erklärt die Regeln (`laub.p.regeln`).
 
 **P9 – Der eigene Wechsel (Wow W1).** (Früher „Der erste Wechsel“. Seit der Quelle ist es der zweite, aber der erste, den man selbst macht.) Am Ehrenhof Q drücken. Das Schloss steigt aus dem Boden (siehe `00-overview.md` W1). 90 Sekunden Laternenöl. Echo `echo.p.diener` (Diener und Gärtner). Danach heult im Norden ein einzelner Hund (Richtung Zwinger, 1216/−1571). Die Bussole ruckt. Laub: „Zurück. Jetzt.“ Prompt: Q halten.
 
-**P10 – Zurück.** Feldstation, Abend. Der zweite bestätigte Satz schaltet Kapitel 1 frei.
+**P10 – Zurück.** Feldstation, Abend. Das Ziel bietet sofort die Karte an (M: die Feldstation ist eingemessen, hinreisen; oder F: fliegen); die Ankunft per Karte zählt als „daheim“, niemand muss 470 m zum Feldbett laufen. Der zweite bestätigte Satz schaltet Kapitel 1 frei.
 
 **P11 – Cliffhanger.** Der Laptop piept. Die Punktwolke hat neue Punkte, obwohl die Datei vom Februar 2025 ist. Die Spur läuft jetzt vom Ehrenhof den Hang herunter, über den Damm, bis an die Tür des Bauwagens und hört dort auf. Am Fenster bildet sich Reif, obwohl es draußen acht Grad hat. Ganz fern ein Horn, ein langer Ton. Laub (`laub.p.ende`): „Machen Sie die Laterne aus. Und dann schlafen Sie. Morgen ist 1789.“
 
@@ -146,7 +147,8 @@
 - `marlene.p.mauerrest`: „Gerade Linien und rechte Winkel macht der Wald nicht. Das war mal eine Mauer.“
 - `marlene.p.weg` (auf dem Weg nach oben): „Und, {Name}: Wir schauen, wir graben nicht. Nichts anfassen, nichts mitnehmen. Was da im Boden liegt, gehört dem Land, und es ist geschützt.“
 - `marlene.p.hohlweg`: „Das ist ein Hohlweg. Karren, Hufe, Regen, ein paar hundert Jahre, und der Weg frisst sich in den Boden. Bei Nebel ist das der dunkelste Ort im ganzen Revier. Und der stillste.“
-- `marlene.p.punkte` (nach P4): „Ich schick dir was aufs Tablet. Das hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.“
+- `marlene.p.halbweg` (P3, auf halber Höhe): „Halbe Höhe. Guck mal links und rechts am Hang: runde, flache Stellen, wie Teller. Merk sie dir. Die erklär ich dir, wenn du oben bist.“
+- `marlene.p.punkte` (P7, nachdem die Datei da ist): „Hast du die Datei? Die hat der Kollege in der Punktwolke gefunden, mitten auf der Lichtung. Sag mir, dass das Wildschweine sind.“
 - `marlene.p.abend` (P10): „Du bist ja ganz blass. Mach dir einen Tee. Morgen früh komm ich mit Brötchen vorbei.“
 
 **Quirin Laub (Bussole)**
