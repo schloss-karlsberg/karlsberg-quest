@@ -28,7 +28,8 @@ export interface PhotoTargetData {
     maxDist?: number;
     minDist?: number;
     needAll?: string[];
-    fallback?: { afterS: number; maxDist: number; stars: 1 | 2 };
+    /** stars 2 | 3 = the fallback shot is good; 1 = never good (validator warns). */
+    fallback?: { afterS: number; maxDist: number; stars: 1 | 2 | 3 };
   };
   grants?: PhotoGrants;
   /** Placeholder content shipped by the photo system (kq-story replaces it). */
@@ -175,7 +176,8 @@ export function validatePhotoTargets(file: string, data: unknown, refs: PhotoRef
     }
     if (fr.fallback !== undefined) {
       const fb = fr.fallback;
-      if (!num(fb.afterS) || fb.afterS <= 0 || !num(fb.maxDist) || fb.maxDist <= 0 || (fb.stars !== 1 && fb.stars !== 2)) err(id, 'frame.fallback needs afterS > 0, maxDist > 0 and stars 1 or 2');
+      if (!num(fb.afterS) || fb.afterS <= 0 || !num(fb.maxDist) || fb.maxDist <= 0 || (fb.stars !== 1 && fb.stars !== 2 && fb.stars !== 3)) err(id, 'frame.fallback needs afterS > 0, maxDist > 0 and stars 1, 2 or 3');
+      else if (fb.stars === 1) warn(id, 'frame.fallback.stars 1: a fallback shot is then never good (good means ≥ 2 stars), so the fallback unlocks nothing');
       else if (fb.maxDist <= (fr.maxDist ?? DEFAULT_MAX_DIST)) warn(id, 'frame.fallback.maxDist is not farther than maxDist: the fallback changes nothing');
     }
     const g = t.grants;

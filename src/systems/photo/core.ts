@@ -20,8 +20,8 @@
  * `needAll` is good in the same shot too (doe and fawn both in the picture).
  *
  * **Stars** (story contract C3): 0 = not in the frame, 1 = in the frame but not good, 2 = good,
- * 3 = good and closer than 0.6 × `maxDist`. "Good" means ≥ 2 (a fallback shot gets
- * `fallbackStars`, default 2).
+ * 3 = good and closer than 0.6 × `maxDist`. "Good" means ≥ 2, everywhere: a fallback shot gets
+ * `fallbackStars` (default 2), and with 1 it is not good (no `photo:good`, no album, no `has()`).
  *
  * In any era but today the phone has no signal: nothing is judged, the image comes out white.
  */
@@ -262,8 +262,10 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
     out.good = true;
     out.fallback = dist > t.maxDist;
     if (out.fallback) {
-      out.stars = Math.max(1, Math.min(3, t.fallbackStars ?? 2));
-      out.verdict = 'weit-ok';
+      out.stars = Math.max(1, Math.min(3, Math.round(t.fallbackStars ?? 2)));
+      // one rule: good means ≥ 2 stars; a 1-star fallback is only "far, but in the frame"
+      out.good = out.stars >= 2;
+      out.verdict = out.good ? 'weit-ok' : 'zu-weit';
     } else {
       out.stars = dist < CLOSE_STAR * t.maxDist ? 3 : 2;
       out.verdict = out.stars === 3 ? 'perfekt' : 'gut';
