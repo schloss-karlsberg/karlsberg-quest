@@ -418,6 +418,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));
   for (const ev of ['clue:found', 'item:pickup', 'measure:done', 'quelle:dip'] as const) events.on(ev, () => avatar.react('interact'));
+  // the character's costume (the story's court disguise) and lantern tint (src/player/avatar.ts)
+  events.on('player:costume', ({ costume }) => avatar.setCostume(costume));
+  events.on('player:lantern-tint', ({ hex }) => avatar.setLanternTint(hex));
   // art assets that belong to an era stream in when it opens (src/assets, lazy)
   events.on('era:change', ({ to }) => void assets.prefetchEra(to));
 
@@ -570,9 +573,12 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     });
   }
   window.kq!.avatar = {
-    state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom }),
+    state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom, costume: avatar.costume }),
     setMode: (m) => settings.update((d) => (d.cameraMode = m), 'cameraMode'),
     ready: () => avatar.whenReady(),
+    costume: () => avatar.costume,
+    setCostume: (c) => events.emit('player:costume', { costume: c }),
+    lanternTint: () => avatar.lanternTint,
   };
   loop.start();
 
