@@ -16,6 +16,7 @@
  * w = towards that viewer (SW), y up. `toWorld(u, w)` maps it (the kit's `face(234)` frame).
  */
 import type { Era } from '../../core/era';
+import { clearings as bleicheClearings } from '../bleiche/layout';
 
 export const QUELLE = {
   x: 1061.0,
@@ -214,22 +215,64 @@ export function yawToWater(px: number, pz: number, era: Era): number {
 
 /**
  * The Karlsbergbach below the spring: OSM line (paths.json, "Karlsbergbach") from the overflow
- * down the ravine. The first two points are the runnel from the trough's low end.
+ * down the ravine and out past the Bleiche's meadow towards the Weiher. The first two points are
+ * the runnel from the trough's low end.
  */
 export const BROOK_OSM: readonly [number, number][] = [
   [1039, -849],
   [1021, -855],
   [996, -864],
   [991, -865],
+  [966, -873],
 ];
 
-/** Length of brook drawn (m along the line). */
-export const BROOK_LEN = 46;
+/**
+ * Length of brook drawn (m along the line): down the ravine and on past the 1789 Bleiche, whose
+ * wash corner stands on its bank; the last 6 m fade out beyond the green (water.ts BROOK_FRAG).
+ */
+export const BROOK_LEN = 80;
+
+/** The length the touch scene's pulses were tuned on (water.ts stretches them to the drawn length). */
+export const BROOK_REF = 46;
+
+/** Half width of the brook's ground ribbon once it has grown (m; the wet bed fades out inside it). */
+export const BROOK_HALF = 0.92;
+
+/**
+ * Where the drawn brook keeps off (world x, z, radius): the Bleiche's clearings, 0.3 m wider. In
+ * 1789 the LiDAR-free meadow there falls away northwards, so the snap would pull the bed towards
+ * the green; it stays out of the clearings instead, the wash corner on its bank.
+ */
+const KEEP_OFF: readonly (readonly [number, number, number])[] = bleicheClearings().map(([x, z, r]) => [x, z, r + 0.3] as const);
+
+const keptOff = (x: number, z: number) => KEEP_OFF.some(([cx, cz, r]) => Math.hypot(x - cx, z - cz) < r);
+
+/**
+ * OSM footpaths beside and across the brook below the spring (paths.json walk graph; the terrain
+ * draws them today, 0.9 m half width): the bank stones and ferns keep off them.
+ */
+export const BROOK_PATHS: readonly (readonly (readonly [number, number])[])[] = [
+  [
+    [1046.6, -848.4],
+    [1035.7, -855.1],
+    [1013.9, -867.5],
+    [992.8, -863.8],
+    [967.9, -859.4],
+  ],
+  [
+    [1007.9, -848.0],
+    [1026.3, -860.8],
+  ],
+];
+
+/** Half width of an OSM footpath as the terrain draws it (world/world.ts paths raster). */
+export const PATH_HALF = 0.9;
 
 /**
  * Brook centre line as world x/z samples every `step` m: from the trough's overflow along the
  * runnel, then the OSM line, each sample pulled to the lowest ground within ±`snap` m across the
- * line (the OSM line is a few metres off the LiDAR's ravine floor) and smoothed.
+ * line (the OSM line is a few metres off the LiDAR's ravine floor), never into the Bleiche's
+ * clearings (`KEEP_OFF`), and smoothed.
  */
 export function brookLine(heightAt: (x: number, z: number) => number, era: Era, step = 1, snap = 3): [number, number][] {
   const look = lookFor(era);
@@ -261,10 +304,11 @@ export function brookLine(heightAt: (x: number, z: number) => number, era: Era, 
     ux /= l;
     uz /= l;
     let best: [number, number] = [x, z];
-    let bh = heightAt(x, z);
+    let bh = keptOff(x, z) ? Infinity : heightAt(x, z);
     for (let o = -snap; o <= snap; o += 0.5) {
       const qx = x - uz * o;
       const qz = z + ux * o;
+      if (keptOff(qx, qz)) continue;
       const h = heightAt(qx, qz) + Math.abs(o) * 0.02; // prefer the line when it is a tie
       if (h < bh) {
         bh = h;
