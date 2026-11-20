@@ -292,6 +292,13 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
 
   - `--max-hold <min>` is a hint, not a limit. `--status` shows it (and "EXCEEDED"), and the
     holder prints a warning on stderr once it runs over.
+  - **Priority lane and the 15-minute cap.** Owners `kq-integrate` and `kq-integrate-*` (the
+    merge-gate e2e) go ahead of the FIFO queue. After 2 priority holds in a row, the oldest waiting
+    normal ticket gets the next hold (2:1), so nobody starves. A priority ticket must pass
+    `--max-hold 15` or less, or heavy.sh refuses with exit code 2. Everyone else should also keep
+    `--max-hold` at 15 or less; a larger value only prints a warning. `--status` marks priority
+    tickets with `P` and prints `next: <owner> (pid …)`. Waiters still running an older heavy.sh
+    keep their FIFO place and are never deadlocked (see the comment in the script).
 
   - `KQ_HEAVY_TIMEOUT=600` gives up after 10 min of waiting, with exit 75.
   - `--check-load` warns when less than 20 % of memory is free (`memory_pressure -Q`).

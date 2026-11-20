@@ -40,6 +40,18 @@ import type { Era } from '../core/era';
 import type { DerivedStats, GiverMark, QuestTopic } from '../rpg/types';
 
 /** 'combat': the player's Lebenskraft ran out (combat emits player:caught {by:'combat'}). */
+/**
+ * Why an era shift happened (carried by 'shift:request' and passed through to 'shift:done').
+ * Known values, by origin:
+ *  - 'key'      fx: Q pressed with no story system (flags shift.allowed/target)
+ *  - 'anchor'   story: Q pressed inside a story anchor (today → the past)
+ *  - 'return'   story: Q held in the past, "return to the present"
+ *  - 'caught'   story: carried home after a capture (not counted in meta.shifts)
+ *  - 'echo' | 'oblivion' | 'quelle' | 'ending'  story script `shift` actions (content)
+ * Free strings stay allowed (content may name its own); undefined = unspecified.
+ */
+export type ShiftReason = 'key' | 'anchor' | 'return' | 'caught' | 'echo' | 'oblivion' | 'quelle' | 'ending' | (string & {});
+
 export type ThreatKind = 'pack' | 'fire' | 'oblivion' | 'combat';
 
 /** The escaped animals of the Karlsberg menagerie (codex cx.12). */
@@ -65,7 +77,7 @@ declare module '../core/events' {
     /** Turn a threat on/off for the current beat. */
     'threat:configure': ThreatConfig;
     /** Ask the fx system to perform an era shift with the transition effect. */
-    'shift:request': { to: Era; reason?: string; instant?: boolean };
+    'shift:request': { to: Era; reason?: ShiftReason; instant?: boolean };
     /** Show a spoken line (subtitle + portrait). speaker = content speaker id. */
     'dialogue:say': {
       speaker: string;
@@ -97,7 +109,8 @@ declare module '../core/events' {
     'shift:begin': { from: Era; to: Era };
     /** Era has just been switched under cover of the effect. */
     'shift:midpoint': { from: Era; to: Era };
-    'shift:done': { from: Era; to: Era };
+    /** `reason` is the one from the 'shift:request' that started it (tour C4: 'return' → spring). */
+    'shift:done': { from: Era; to: Era; reason?: ShiftReason };
     'fire:room': { roomId: string; state: 'smoke' | 'burning' | 'collapsed' };
     'fire:progress': { t: number };
     'oblivion:progress': { t: number };

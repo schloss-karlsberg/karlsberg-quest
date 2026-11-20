@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests for scripts/dev/heavy.sh. Run: bash scripts/dev/heavy.test.sh (~20 s).
+# Tests for scripts/dev/heavy.sh. Run: bash scripts/dev/heavy.test.sh (~45 s).
 # Uses a private lock path (KQ_HEAVY_LOCK) in a temp dir, so it never touches
 # /tmp/kq-heavy.lock and is safe while a real heavy job holds the real lock.
 
@@ -152,6 +152,100 @@ check "max-hold: job finished normally (rc=$rc)" [ "$rc" = 0 ]
 check "max-hold: lock released" no_lock
 "$HEAVY" --max-hold soon true 2>/dev/null; rc=$?
 check "max-hold: non-number rejected (rc=$rc)" [ "$rc" = 64 ]
+
+# ---------- priority lane ----------
+PS="$KQ_HEAVY_LOCK.prio"
+# Both run in this shell (not in $(...)) so `wait` works: they set $bp / append to $pp.
+blocker() {  # a live fake holder
+  sleep 60 & bp=$!; bgpids="$bgpids $bp"
+  mkdir "$KQ_HEAVY_LOCK"; echo $bp >"$KQ_HEAVY_LOCK/pid"; echo "blocker" >"$KQ_HEAVY_LOCK/cmd"
+}
+# pjob <owner> <log> [heavy.sh]: queue a short job that logs its owner.
+pjob() {
+  local mh=""; case "$1" in kq-integrate*) mh="--max-hold 5" ;; esac
+  KQ_HEAVY_OWNER=$1 KQ_HEAVY_POLL=0.2 KQ_HEAVY_TIMEOUT=60 "${3:-$HEAVY}" $mh -- sh -c "echo $1 >>'$2'; sleep 0.3" 2>/dev/null &
+  pp="$pp $!"; bgpids="$bgpids $!"
+}
+run_order() { tr '\n' ' ' <"$1" | sed 's/ $//'; }
+
+# 11. priority order: kq-integrate queued last still goes first
+rm -f "$PS"; plog="$T/prio.log"; blocker; pp=""
+for o in A B kq-integrate; do pjob $o "$plog"; sleep 0.4; done
+kill $bp; wait $bp 2>/dev/null
+for p in $pp; do wait "$p"; done
+check "priority: kq-integrate overtakes FIFO ($(run_order "$plog"))" [ "$(run_order "$plog")" = "kq-integrate A B" ]
+check "priority: lock released, queue empty" sh -c "[ ! -e '$KQ_HEAVY_LOCK' ] && [ -z \"\$(ls -A '$Q')\" ]"
+
+# 12. 2:1 anti-starvation + --status (P marker, next line)
+rm -f "$PS"; flog2="$T/fair.log"; blocker; pp=""
+for o in A kq-integrate-1 kq-integrate-2 kq-integrate-3; do pjob $o "$flog2"; sleep 0.4; done
+st=$("$HEAVY" --status)
+printf '%s\n' "$st" >"$T/status.txt"
+check "status: priority tickets marked P" sh -c "grep -Eq '^ +2\. +P kq-integrate-1 \(pid [0-9]+\)' '$T/status.txt' && grep -Eq '^ +4\. +P kq-integrate-3 ' '$T/status.txt'"
+check "status: normal ticket has no P" grep -Eq '^ +1\. +A \(pid [0-9]+\)' "$T/status.txt"
+check "status: next is the oldest priority ticket" grep -Eq '^next: kq-integrate-1 \(pid [0-9]+\)$' "$T/status.txt"
+echo 2 >"$PS"
+check "status: after 2 priority holds, next is the waiting normal ticket" sh -c "'$HEAVY' --status | grep -Eq '^next: A \(pid [0-9]+\)$'"
+rm -f "$PS"
+kill $bp; wait $bp 2>/dev/null
+for p in $pp; do wait "$p"; done
+check "2:1: P P N P ($(run_order "$flog2"))" [ "$(run_order "$flog2")" = "kq-integrate-1 kq-integrate-2 A kq-integrate-3" ]
+check "2:1: counter reset when no normal ticket waits ($(cat "$PS"))" [ "$(cat "$PS")" = 0 ]
+
+# 13. max-hold cap: priority needs --max-hold <= 15 (exit 2); others only get a warning
+KQ_HEAVY_OWNER=kq-integrate "$HEAVY" true 2>"$T/cap.err"; rc=$?
+check "cap: priority without --max-hold refused (rc=$rc)" [ "$rc" = 2 ]
+check "cap: clear message" grep -q "priority lane, which needs --max-hold <= 15" "$T/cap.err"
+KQ_HEAVY_OWNER=kq-integrate-gate "$HEAVY" --max-hold 15.5 true 2>/dev/null; rc=$?
+check "cap: priority --max-hold 15.5 refused (rc=$rc)" [ "$rc" = 2 ]
+out=$(KQ_HEAVY_OWNER=kq-integrate-gate "$HEAVY" --max-hold 15 echo ran 2>/dev/null); rc=$?
+check "cap: priority --max-hold 15 runs (rc=$rc)" [ "$rc:$out" = "0:ran" ]
+out=$(KQ_HEAVY_OWNER=kq-integrated "$HEAVY" echo ran 2>/dev/null); rc=$?
+check "cap: kq-integrated is not the priority lane (rc=$rc)" [ "$rc:$out" = "0:ran" ]
+out=$(KQ_HEAVY_OWNER=voice "$HEAVY" --max-hold 30 echo ran 2>"$T/warn.err"); rc=$?
+check "cap: normal --max-hold 30 runs (rc=$rc)" [ "$rc:$out" = "0:ran" ]
+check "cap: normal --max-hold 30 warns" grep -q "above the agreed 15 min" "$T/warn.err"
+check "cap: no lock or tickets left" sh -c "[ ! -e '$KQ_HEAVY_LOCK' ] && [ -z \"\$(ls -A '$Q')\" ]"
+
+# 14. mixed with an OLD heavy.sh (the real pre-priority script from git history)
+OLD="$T/heavy-old.sh"
+if git -C "$(dirname "$HEAVY")" show 1472fa4:scripts/dev/heavy.sh >"$OLD" 2>/dev/null && [ -s "$OLD" ]; then
+  chmod +x "$OLD"
+  # 14a. old ticket in the middle: priority overtakes it, but it never deadlocks
+  rm -f "$PS"; olog="$T/old.log"; blocker; pp=""
+  pjob A "$olog"; sleep 0.4
+  pjob kq-integrate-old "$olog" "$OLD"; sleep 0.4   # old code: no lane, no priority
+  pjob kq-integrate "$olog"; sleep 0.4
+  check "old mix: old ticket shown without P" sh -c "'$HEAVY' --status | grep -Eq '^ +2\. +kq-integrate-old '"
+  kill $bp; wait $bp 2>/dev/null
+  for p in $pp; do wait "$p"; done
+  check "old mix: P, then FIFO A, then old ($(run_order "$olog"))" [ "$(run_order "$olog")" = "kq-integrate A kq-integrate-old" ]
+  # 14b. old ticket at the head: new priority code yields to it
+  rm -f "$PS"; olog2="$T/old2.log"; blocker; pp=""
+  pjob O "$olog2" "$OLD"; sleep 0.4
+  pjob kq-integrate "$olog2"; sleep 0.4
+  check "old mix: next is the old head" sh -c "'$HEAVY' --status | grep -Eq '^next: O \(pid [0-9]+\)$'"
+  kill $bp; wait $bp 2>/dev/null
+  for p in $pp; do wait "$p"; done
+  check "old mix: old head served first ($(run_order "$olog2"))" [ "$(run_order "$olog2")" = "O kq-integrate" ]
+  check "old mix: lock released, queue empty" sh -c "[ ! -e '$KQ_HEAVY_LOCK' ] && [ -z \"\$(ls -A '$Q')\" ]"
+else
+  echo "skip old mix: git history not available"
+fi
+
+# 15. TERM on a priority ticket: waiting -> ticket gone; holding -> lock released
+blocker
+KQ_HEAVY_OWNER=kq-integrate KQ_HEAVY_POLL=0.2 "$HEAVY" --max-hold 5 true 2>/dev/null & w=$!; bgpids="$bgpids $w"
+sleep 0.6
+check "TERM: priority ticket queued" sh -c "ls '$Q' | grep -q kq-integrate"
+kill -TERM $w; wait $w; rc=$?
+check "TERM while waiting: exit 143 (rc=$rc), ticket removed" sh -c "[ $rc = 143 ] && [ -z \"\$(ls -A '$Q')\" ]"
+kill $bp; wait $bp 2>/dev/null; rm -rf "$KQ_HEAVY_LOCK"
+KQ_HEAVY_OWNER=kq-integrate "$HEAVY" --max-hold 5 sh -c "exec sleep 60" & w=$!; bgpids="$bgpids $w"
+wait_for_lock; sleep 0.3
+check "TERM: priority holder marked in status" sh -c "'$HEAVY' --status | grep -q '\[priority\] \[max-hold 5m\]'"
+kill -TERM $w; wait $w; rc=$?
+check "TERM while holding: exit 143 (rc=$rc), lock released" sh -c "[ $rc = 143 ] && [ ! -e '$KQ_HEAVY_LOCK' ]"
 
 # never leave the real lock behind
 if [ "$real_lock_before" = 0 ]; then check "real /tmp/kq-heavy.lock untouched" [ ! -e /tmp/kq-heavy.lock ]; fi

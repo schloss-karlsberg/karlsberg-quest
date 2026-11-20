@@ -70,6 +70,8 @@ To release:
 4. The merge is a push to `main`, so Pages redeploys: the title screen shows „Version X.Y.Z ·
    Build <sha>“ and the „Neuigkeiten“ badge, and `neu.html` lists the new notes.
 
+New PRD changelog rows say `unreleased` until release-please cuts the version; the release PR relabels them.
+
 **First release:** the manifest says `0.1.0` (the current `package.json` version) and the config
 pins `"release-as": "0.5.0"`. **Remove `release-as` from `release-please-config.json` after v0.5.0
 has shipped**, or every later release PR stays at 0.5.0. From then on the version follows the

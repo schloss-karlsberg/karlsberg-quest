@@ -68,6 +68,12 @@ screenshot set at a time, never a whole multi-spec batch, so short jobs can inte
 for s in e2e/a.spec.ts e2e/b.spec.ts; do scripts/dev/heavy.sh -- pnpm exec playwright test "$s" --workers=1; done
 ```
 
+Pass `--max-hold 15` or less. The merge gate (`KQ_HEAVY_OWNER=kq-integrate` or `kq-integrate-*`)
+has a priority lane: it goes ahead of the queue, but after 2 priority holds in a row the oldest
+waiting normal job gets the next hold. A priority job without `--max-hold` of 15 or less is refused
+(exit 2); for everyone else a larger value only prints a warning. `--status` marks priority tickets
+with `P` and shows who is next.
+
 ## Project rules
 
 These are not negotiable; pull requests that break them cannot be merged.
