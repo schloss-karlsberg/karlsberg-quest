@@ -10,7 +10,7 @@ import type { GameContext } from '../../core/context';
 import type { Confidence, Fact } from '../../content/types';
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
-import { type JournalTab, journalTabs } from '../../ui/journal';
+import { type JournalTab, journalSections, journalTabs } from '../../ui/journal';
 import type { ModalHandle } from '../../ui/modal';
 import type { ItemDef, QuestDef, QuestProgress } from '../../rpg/types';
 import { ENEMIES } from '../../rpg/enemies';
@@ -430,7 +430,7 @@ export function renderSets(el: HTMLElement, d: JournalData): void {
   });
   el.replaceChildren(
     h('div.kqj-sets', [
-      h('div.kqj-setcol', sets),
+      h('div.kqj-setcol', [...sets, ...journalSections('sets')]),
       h('section.kqj-bestiary', { dataset: { testid: 'bestiary' } }, [h('h4', t('journal.bestiary')), h('p.kqj-note', t('journal.bestiary.note')), h('ul', beasts)]),
     ]),
   );
