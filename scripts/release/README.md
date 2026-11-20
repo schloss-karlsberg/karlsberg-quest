@@ -7,6 +7,7 @@ To be folded into `docs/RELEASE.md` (branch `release/pages-prep`) as the section
 | `rewrite-history.sh` | one-time history rewrite (email + personal strings), with backup bundle and safety checks |
 | `private/mailmap.txt` (untracked) | old author email to the GitHub noreply address |
 | `private/replace-text.txt` (untracked) | exact rules for the home path and the owner's first name in old blobs and commit messages |
+| `publish.sh` | every later publish until the in-place rewrite: fresh `--no-local` clone of main → rewrite → verify → fast-forward push (never force); `--dry-run` stops before the push |
 | `setup-github.sh` | `gh repo create`, discussions, topics, push, Pages, private vulnerability reporting |
 
 `private/mailmap.txt` and `private/replace-text.txt` hold the strings they remove, so they are
@@ -14,6 +15,26 @@ gitignored; put them into the main checkout's `scripts/release/private/` before 
 commit tracked them under `scripts/release/`; the rewrite drops those paths from every commit
 (`--invert-paths`). **Never push before the
 rewrite**, or these files publish what they are meant to hide.
+
+## Publishing after the first push: `publish.sh`
+
+The public repo holds a rewritten copy of local `main`. Until the local repo itself is rewritten
+in place, every publish repeats the rewrite on a throwaway clone:
+
+```sh
+scripts/release/publish.sh --dry-run    # test: stops after the fast-forward check
+scripts/release/publish.sh              # publish
+```
+
+Steps: temp dir under `$TMPDIR` → `git clone --no-local --single-branch --branch main` →
+copy `private/mailmap.txt` and `private/replace-text.txt` (from the toplevel, else the main
+checkout) → `rewrite-history.sh` in the clone (bundle and rule copies stay in the temp dir) →
+verify noreply-only emails, no tracked `.env`, no replace-text hit in any blob or message →
+`git remote add origin https://github.com/schloss-karlsberg/karlsberg-quest.git` (temp clone only)
+→ `git fetch origin main` → abort unless `git merge-base --is-ancestor origin/main HEAD` →
+`git push origin main`. It never force-pushes. If it aborts, the public repo has a commit local
+`main` lacks (something merged on GitHub) or the rules changed; see `docs/RELEASE.md` §0a.
+`--keep` keeps the temp dir for inspection (delete it afterwards: it holds the rule files).
 
 ## History rewrite and first push
 

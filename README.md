@@ -8,7 +8,8 @@ You take on quests from the people you meet, fight the shadows of the past and t
 eras: today, summer 1789, February and July 1793, and 1796. Along the way you learn real regional
 history; invented parts are labelled as fiction in the in-game Chronik.
 
-**Play:** https://schloss-karlsberg.github.io/karlsberg-quest/
+**Play:** https://schloss-karlsberg.github.io/karlsberg-quest/ ·
+**What's new (German):** [Neuigkeiten](https://schloss-karlsberg.github.io/karlsberg-quest/neu.html)
 
 > Trademarks belong to their owners. This independent fan project is not affiliated with or
 > endorsed by the city of Homburg, the WaldPark Schloss Karlsberg, or any brewery.
@@ -52,8 +53,9 @@ pnpm typecheck && pnpm test && pnpm validate && pnpm build
 ```
 
 Built with Vite, TypeScript and three.js. The design documents live in [`PRD.md`](PRD.md) and
-[`docs/`](docs/). Releases are built by GitHub Actions (`.github/workflows/pages.yml`); see
-[`docs/RELEASE.md`](docs/RELEASE.md).
+[`docs/`](docs/). Every push to `main` is deployed by GitHub Actions (`.github/workflows/pages.yml`);
+versions, the changelog and the player notes (`content/release-notes/`, shown in the game under
+„Neuigkeiten“ and on `neu.html`) come from release-please; see [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## Credits
 
