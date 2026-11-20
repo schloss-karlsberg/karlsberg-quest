@@ -1,0 +1,332 @@
+{
+  "chapter": "tour",
+  "order": 90,
+  "dev": "tour",
+  "title_de": "Die Führung",
+  "sub_de": "Tour-Test · heute, ein Novembernachmittag",
+  "era": "today",
+  "start": "t1",
+  "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" },
+  "wake": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
+  "beats": [
+    {
+      "id": "t1",
+      "title_de": "Treffpunkt",
+      "enter": [
+        { "do": "look", "time": "tour" },
+        { "do": "flag", "set": { "laub.silent": true, "combat.disabled": true, "tour.slice": true } },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "parkplatz", "speed": 1.9 },
+        {
+          "do": "npc",
+          "op": "group",
+          "group": "fuehrung",
+          "leader": "imhoff",
+          "era": "today",
+          "members": [
+            "double.herzog",
+            "double.mannlich",
+            "double.hanne",
+            "double.peter",
+            "double.jost",
+            "double.soll",
+            "double.liese",
+            "child.compass",
+            "extra.1",
+            "extra.2",
+            "extra.3",
+            "extra.4",
+            "extra.5",
+            "extra.6"
+          ]
+        },
+        { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
+        { "do": "npc", "op": "spawn", "npc": "imhoff", "x": 524, "z": -770, "era": "today" },
+        { "do": "animal", "op": "spawn", "kind": "hund", "look": "diane", "id": "diane", "follow": "npc:double.jost", "era": "today" },
+        { "do": "animal", "op": "spawn", "kind": "hund", "look": "bijou", "id": "bijou", "follow": "npc:double.jost", "era": "today" },
+        { "do": "prompt", "key": "W A S D", "text": "Gehen · ins Bild klicken, dann Maus: Schauen" },
+        { "do": "objective", "id": "tour", "text": "Zur Gruppe am Wanderparkplatz", "x": 524, "z": -770, "delay": 0.3 },
+        { "do": "say", "id": "imhoff.t.01", "speaker": "imhoff", "text": "So. Treffpunkt Karlsberger Hof, Parkplatz, halb drei: Dann seid ihr richtig. Ich bin Gerold Imhoff, und ich bin heute euer Mann für das Schloss, das nicht mehr da ist.", "delay": 1.5 },
+        { "do": "say", "id": "solld.t.01", "speaker": "solld", "text": "… dreizehn, vierzehn, fünfzehn. Stimmt." },
+        { "do": "say", "id": "mats.t.01", "speaker": "mats", "text": "Meiner zeigt nicht nach Norden." }
+      ],
+      "complete": { "any": [{ "enter": { "x": 524, "z": -770, "r": 7, "era": "today" } }, { "timer": 25 }] }
+    },
+    {
+      "id": "t2",
+      "title_de": "Station 1: am Wanderparkplatz",
+      "enter": [
+        { "do": "say", "id": "imhoff.t.02", "speaker": "imhoff", "text": "Guckt mal hoch, da oben auf dem Berg. Nichts zu sehen, oder? Nur Wald. Genau da stand es." },
+        { "do": "prompt", "key": "Maus", "text": "Schauen · zum Berg hinauf (Osten)" },
+        { "do": "say", "id": "jostd.t.01", "speaker": "jostd", "text": "Keine Angst, die tun nix. Diane passt auf, Bijou glaubt, er wär ein Hirsch." },
+        { "do": "prompt", "key": "E", "text": "bei Gerold: zuhören" },
+        { "do": "objective", "id": "tour", "text": "Gerold Imhoff zuhören (E)", "x": 524, "z": -770 }
+      ],
+      "complete": { "any": [{ "talked": { "npc": "imhoff" } }, { "timer": 60 }] },
+      "exit": [{ "do": "prompt", "key": null, "text": null }]
+    },
+    {
+      "id": "t3",
+      "title_de": "Los geht's",
+      "enter": [
+        { "do": "say", "id": "imhoff.t.los", "speaker": "imhoff", "text": "So. Dann mal los. Bleibt zusammen, der Weg ist schmal." },
+        { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "abzweig", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 515.2, "z": -729.9 }
+      ],
+      "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "abzweig" } }
+    },
+    {
+      "id": "t4",
+      "title_de": "Die Abkürzung",
+      "enter": [
+        { "do": "say", "id": "imhoff.t.abkuerzen", "speaker": "imhoff", "text": "Kommt, wir kürzen ab." },
+        { "do": "fade", "to": 1, "seconds": 0.8 },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "felsen", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" }, "delay": 0.9 },
+        { "do": "npc", "op": "warp", "group": "fuehrung", "to": "einstieg", "route": "p-fuehrung" },
+        { "do": "teleport", "x": 619.1, "z": -492.7, "yaw": 148 },
+        { "do": "fade", "to": 0, "seconds": 0.9, "delay": 0.6 },
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: zum Felsenpfad", "x": 682.9, "z": -596.1 },
+        { "do": "flag", "set": { "tour.abkuerzung": true }, "delay": 0.5 }
+      ],
+      "complete": { "flag": "tour.abkuerzung" }
+    },
+    {
+      "id": "t5",
+      "title_de": "Zum Felsenpfad",
+      "enter": [{ "do": "prompt", "key": "Shift", "text": "Rennen, wenn die Gruppe zu weit vorn ist", "delay": 4 }],
+      "on": [{ "id": "prompt-weg", "when": { "timer": 12 }, "do": [{ "do": "prompt", "key": null, "text": null }] }],
+      "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "felsen" } },
+      "exit": [{ "do": "prompt", "key": null, "text": null }]
+    },
+    {
+      "id": "t6",
+      "title_de": "Station 2: Felsenpfad",
+      "enter": [
+        { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
+        { "do": "say", "id": "imhoff.t.station2", "speaker": "imhoff", "text": "So. Ab hier sind wir auf dem Felsenpfad, und der gehört schon zum WaldPark Schloss Karlsberg. Die Felsen sind Buntsandstein, gut 250 Millionen Jahre alt. Bitte nicht auf die Felsköpfe klettern, das ist nicht erlaubt." },
+        { "do": "say", "id": "imhoff.t.station2b", "speaker": "imhoff", "text": "Ob der Herzog hier Steine brechen ließ? Ehrlich: Das weiß man nicht. Belegt ist nur, dass ihm die Trümmer der Hohenburg als Steinbruch dienten." },
+        { "do": "say", "id": "player.t.fuehrer", "speaker": "player", "text": "Hm. Das wusste ich nicht." },
+        { "do": "flag", "set": { "tour.felsen": true } }
+      ],
+      "complete": { "flag": "tour.felsen" }
+    },
+    {
+      "id": "t7",
+      "title_de": "Weiter am Hang",
+      "enter": [
+        { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "wind", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } }
+      ],
+      "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "wind" } }
+    },
+    {
+      "id": "t8",
+      "title_de": "Wind im Wald",
+      "enter": [
+        { "do": "npc", "op": "hold", "group": "fuehrung" },
+        { "do": "sound", "sound": "wind", "caption": "[Der Wind frischt auf]" },
+        { "do": "animal", "op": "run", "id": "diane", "path": [[676, -636], [700, -640], [722, -646]], "bark": true, "back": true, "delay": 1.2 },
+        { "do": "animal", "op": "run", "id": "bijou", "path": [[677, -637], [701, -642], [718, -652]], "bark": true, "back": true, "delay": 0.4 },
+        { "do": "sound", "sound": "bark", "caption": "[Hundegebell]" },
+        {
+          "do": "cinematic",
+          "id": "tour.hunde",
+          "skippable": true,
+          "keys": [
+            { "t": 0, "eye": { "rel": "player", "back": 2.6, "up": 2.0 }, "look": { "target": "animal:diane" }, "fov": 55 },
+            { "t": 3, "look": { "target": "animal:diane" }, "fov": 42 },
+            { "t": 6, "look": { "target": "animal:bijou" }, "fov": 42 }
+          ]
+        },
+        { "do": "say", "id": "player.t.wind", "speaker": "player", "text": "Was war das denn?", "delay": 0.5 },
+        { "do": "say", "id": "jostd.t.hunde", "speaker": "jostd", "text": "Diane! Bijou! … Was habt ihr denn? Da ist doch nix." }
+      ],
+      "complete": {
+        "any": [
+          { "all": [{ "event": "animal:returned", "match": { "id": "diane" } }, { "event": "animal:returned", "match": { "id": "bijou" } }, { "timer": 8 }] },
+          { "timer": 30 }
+        ]
+      },
+      "exit": [
+        { "do": "say", "id": "player.t.hunde", "speaker": "player", "text": "Die haben irgendwas gesehen." },
+        { "do": "say", "id": "imhoff.t.wind", "speaker": "imhoff", "text": "Wildschweine, wahrscheinlich. Oder Rehe. Kommt, weiter." }
+      ]
+    },
+    {
+      "id": "t9",
+      "title_de": "Am Hang entlang",
+      "enter": [
+        { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "reh", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
+        { "do": "animal", "op": "spawn", "kind": "reh", "look": "ricke", "id": "ricke", "x": 704, "z": -779, "yaw": 300, "era": "today", "shy": { "notice": 30, "flee": 20, "settle": 25 } },
+        { "do": "animal", "op": "spawn", "kind": "reh", "look": "kitz", "id": "kitz", "follow": "animal:ricke", "spacing": 1.5, "era": "today" },
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 727.4, "z": -751.5 }
+      ],
+      "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "reh" } }
+    },
+    {
+      "id": "t10",
+      "title_de": "Ricke und Kitz",
+      "enter": [
+        { "do": "npc", "op": "hold", "group": "fuehrung" },
+        { "do": "say", "id": "imhoff.t.reh1", "speaker": "imhoff", "text": "Pssst. Da unten. Nicht bewegen." },
+        { "do": "say", "id": "imhoff.t.reh2", "speaker": "imhoff", "text": "Wer ein gutes Foto will: ganz langsam. Geduckt. Und stillhalten, wenn sie guckt." },
+        { "do": "prompt", "key": "C", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: stillhalten" },
+        { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: anschleichen [C], Handy [N]", "x": 704, "z": -779 }
+      ],
+      "on": [
+        {
+          "id": "handy",
+          "when": { "any": [{ "enter": { "x": 704, "z": -779, "r": 24, "era": "today" } }, { "timer": 20 }] },
+          "do": [{ "do": "prompt", "key": "N", "text": "Handy-Kamera · Klick: Foto · beide Tiere in die Bildmitte" }]
+        },
+        { "id": "sichert", "when": { "event": "animal:alert", "match": { "id": "ricke" } }, "do": [{ "do": "flag", "set": { "tour.reh.alert": true } }] },
+        {
+          "id": "foto-alert",
+          "when": { "all": [{ "event": "photo:good", "match": { "id": "reh.ricke" } }, { "flag": "tour.reh.alert" }] },
+          "do": [
+            { "do": "prompt", "key": null, "text": null },
+            { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es." },
+            { "do": "say", "id": "imhoff.t.reh.alert", "speaker": "imhoff", "text": "Sie hat dich angesehen. Gutes Bild." },
+            { "do": "flag", "set": { "tour.reh.done": true } }
+          ]
+        },
+        {
+          "id": "foto",
+          "when": { "all": [{ "event": "photo:good", "match": { "id": "reh.ricke" } }, { "not": { "flag": "tour.reh.alert" } }] },
+          "do": [
+            { "do": "prompt", "key": null, "text": null },
+            { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es." },
+            { "do": "say", "id": "imhoff.t.reh3", "speaker": "imhoff", "text": "Das ist besser als jedes Schloss. Fast." },
+            { "do": "flag", "set": { "tour.reh.done": true } }
+          ]
+        },
+        {
+          "id": "zu-schnell",
+          "when": { "event": "animal:fled", "match": { "id": "ricke" }, "lte": { "dist": 16 } },
+          "do": [
+            { "do": "say", "id": "player.photo.weg", "speaker": "player", "text": "Und weg." },
+            { "do": "say", "id": "imhoff.t.reh.schnell", "speaker": "imhoff", "text": "Zu schnell." },
+            { "do": "flag", "set": { "tour.reh.weg": true } }
+          ]
+        }
+      ],
+      "complete": {
+        "any": [
+          { "flag": "tour.reh.done" },
+          { "all": [{ "flag": "tour.reh.weg" }, { "timer": 45 }] },
+          { "timer": 180 }
+        ]
+      },
+      "exit": [{ "do": "prompt", "key": null, "text": null }]
+    },
+    {
+      "id": "t11",
+      "title_de": "Zum Weiher",
+      "enter": [
+        { "do": "say", "id": "imhoff.t.weiter", "speaker": "imhoff", "text": "So. Lassen wir die zwei in Ruhe. Weiter zum Weiher.", "delay": 1 },
+        { "do": "fade", "to": 1, "seconds": 0.8 },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "weiher", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" }, "delay": 0.9 },
+        { "do": "npc", "op": "warp", "group": "fuehrung", "to": "damm", "route": "p-fuehrung" },
+        { "do": "animal", "op": "despawn", "id": "ricke" },
+        { "do": "animal", "op": "despawn", "id": "kitz" },
+        { "do": "teleport", "x": 829.5, "z": -838.7, "yaw": 90 },
+        { "do": "fade", "to": 0, "seconds": 0.9, "delay": 0.6 },
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: zum Karlsbergweiher", "x": 897.2, "z": -845.3 },
+        { "do": "flag", "set": { "tour.weiher.fade": true }, "delay": 0.5 }
+      ],
+      "complete": { "flag": "tour.weiher.fade" }
+    },
+    {
+      "id": "t12",
+      "title_de": "Am Damm",
+      "enter": [
+        { "do": "say", "id": "marlene.t.cameo", "speaker": "marlene", "text": "Gerold! Ich mess grad den Damm nach. Lass mir die Leute nicht in den Weiher fallen.", "delay": 2 },
+        { "do": "say", "id": "imhoff.t.marlene", "speaker": "imhoff", "text": "Das ist Marlene vom Forstamt. Die misst den Wald." }
+      ],
+      "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "weiher" } }
+    },
+    {
+      "id": "t13",
+      "title_de": "Station 3: am Karlsbergweiher",
+      "enter": [
+        { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
+        { "do": "say", "id": "imhoff.t.station3", "speaker": "imhoff", "text": "So. Der Karlsbergweiher. Auch er ist ein Überbleibsel vom Schloss, ein Rest der Wasserbecken im Schlosspark. Wann man ihn angelegt hat und ob er Zierteich oder Fischweiher war: Ehrlich, das weiß man nicht. Den geraden Damm und die kleine Insel sieht man sogar im Laserscan." },
+        { "do": "flag", "set": { "tour.weiher": true } }
+      ],
+      "complete": { "flag": "tour.weiher" }
+    },
+    {
+      "id": "t14",
+      "title_de": "Zur Quelle",
+      "enter": [
+        { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "quelle", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: hinauf zur Karlsbergquelle", "x": 1059.3, "z": -833.1 }
+      ],
+      "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "quelle" } }
+    },
+    {
+      "id": "t15",
+      "title_de": "Station 4: an der Karlsbergquelle",
+      "enter": [
+        { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
+        { "do": "say", "id": "imhoff.t.station4", "speaker": "imhoff", "text": "So. Hier oben entspringt die Karlsbergquelle. Aus ihr wird der Karlsbergbach, der hinunter zum Weiher läuft. In der Nähe gibt's ein Wassertretbecken, im November was für Mutige. Ob die Quelle früher das Schloss versorgt hat und wann man sie gefasst hat: weiß man nicht." },
+        { "do": "say", "id": "imhoff.t.pause", "speaker": "imhoff", "text": "Ruh dich kurz aus, wir sind oben am Plateau." },
+        { "do": "npc", "op": "despawn", "npc": "imhoff" },
+        { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-aufstieg", "to": "plateau", "speed": 1.9 },
+        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1059.3, "z": -833.1 },
+        { "do": "flag", "set": { "tour.aufbruch": true } }
+      ],
+      "complete": { "flag": "tour.aufbruch" }
+    },
+    {
+      "id": "t16",
+      "title_de": "Die Pause",
+      "enter": [{ "do": "say", "id": "player.q.fund", "speaker": "player", "text": "Was liegt denn da im Wasser?", "delay": 9 }],
+      "on": [
+        {
+          "id": "glanz",
+          "when": { "timer": 9 },
+          "do": [{ "do": "objective", "id": "tour", "text": "Im Trog glänzt etwas: ganz an den Trog treten", "x": 1059.3, "z": -833.1 }]
+        }
+      ],
+      "complete": { "all": [{ "enter": { "x": 1059.3, "z": -833.1, "r": 1.6, "era": "today" } }, { "timer": 10 }] }
+    },
+    {
+      "id": "t17",
+      "title_de": "Die Bussole",
+      "enter": [
+        { "do": "npc", "op": "despawn", "group": "fuehrung" },
+        { "do": "animal", "op": "despawn", "id": "diane" },
+        { "do": "animal", "op": "despawn", "id": "bijou" },
+        { "do": "sound", "sound": "compass", "caption": "[Messing klirrt auf Stein]" },
+        { "do": "give", "item": "item.bussole", "toast": "Eine Messing-Bussole, grün angelaufen. Der Deckel klemmt." },
+        { "do": "flag", "set": { "story.compass": true, "laub.silent": null, "story.laub": true } },
+        { "do": "say", "id": "laub.t.intro", "speaker": "laub", "text": "Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.", "delay": 1.5 },
+        { "do": "say", "id": "player.q.laub", "speaker": "player", "text": "…Hat der Kompass gerade geredet?" },
+        { "do": "say", "id": "laub.t.intro.b", "speaker": "laub", "text": "Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Sie haben mich aus dem Wasser gezogen. Danke. Es war kalt, und es war lang." },
+        { "do": "say", "id": "laub.t.quelle", "speaker": "laub", "text": "Hören Sie das? Nein, natürlich nicht. Das Wasser. Es erinnert sich an etwas." },
+        { "do": "say", "id": "laub.t.trog", "speaker": "laub", "text": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem." },
+        { "do": "flag", "set": { "quelle.guide": true, "quelle.call": true } },
+        { "do": "objective", "id": "tour", "text": "Hand ins Wasser: vor dem Trog E – das Wasser berühren", "x": 1059.3, "z": -833.1 }
+      ],
+      "complete": { "event": "quelle:touch" },
+      "exit": [
+        { "do": "flag", "set": { "quelle.call": null, "quelle.guide": null } },
+        { "do": "objective", "text": null },
+        { "do": "shift", "to": "1789", "reason": "quelle" }
+      ]
+    },
+    {
+      "id": "t18",
+      "title_de": "Fortsetzung folgt",
+      "enter": [
+        { "do": "flag", "set": { "combat.disabled": null } },
+        { "do": "card", "title": "Fortsetzung folgt", "sub": "Die Führung · Testfassung", "note": "Hier endet der Tour-Test (slice v0).", "seconds": 600, "delay": 5 }
+      ],
+      "complete": { "manual": true }
+    }
+  ]
+}

@@ -7,7 +7,22 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LoadedPack } from '../../content/validate';
 import type { StoryFile } from './types';
-import { type StoryValidation, validateStories } from './validate';
+import type { Route } from '../walk/types';
+import { type StoryValidation, checkRoutes, validateStories } from './validate';
+
+/** content/routes/*.json (the tour's walk routes) and the content/cinematics/*.json ids. */
+export function loadWalkRefs(root: string): { routes: Map<string, Route>; cinematics: Set<string> } {
+  const routes = new Map<string, Route>();
+  const rdir = join(root, 'content/routes');
+  if (existsSync(rdir))
+    for (const f of readdirSync(rdir).filter((n) => n.endsWith('.json'))) {
+      const r = JSON.parse(readFileSync(join(rdir, f), 'utf8')) as Route;
+      routes.set(r.id, r);
+    }
+  const cdir = join(root, 'content/cinematics');
+  const cinematics = new Set(existsSync(cdir) ? readdirSync(cdir).filter((n) => n.endsWith('.json')).map((n) => n.replace(/\.json$/, '')) : []);
+  return { routes, cinematics };
+}
 
 export function loadStoryFiles(root: string): { files: { file: string; story: StoryFile }[]; parseErrors: string[] } {
   const dir = join(root, 'content/story');
@@ -33,7 +48,12 @@ export function storyRefs(packs: LoadedPack[]) {
 /** Validate and print; returns false on errors. Warnings (content not written yet) are summarised. */
 export function checkStories(root: string, packs: LoadedPack[], verbose = false, rpg: { quests?: Set<string>; items?: Set<string> } = {}): { ok: boolean; result: StoryValidation } {
   const { files, parseErrors } = loadStoryFiles(root);
-  const result = validateStories(files, { ...storyRefs(packs), ...rpg });
+  const walk = loadWalkRefs(root);
+  const result = validateStories(files, { ...storyRefs(packs), ...rpg, ...walk });
+  for (const i of checkRoutes(walk.routes)) {
+    result.errors.push(i);
+    result.ok = false;
+  }
   const line = (i: { level: string; file: string; id?: string; message: string }) => `${i.level === 'error' ? 'ERROR' : 'warn '} ${i.file}${i.id ? ` [${i.id}]` : ''}: ${i.message}`;
   for (const e of parseErrors) console.log(e);
   for (const e of result.errors) console.log(line(e));

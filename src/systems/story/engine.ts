@@ -147,7 +147,7 @@ export interface StoryHost {
 
 /** Actions that are NOT repeated when a beat is resumed (unless `onResume: true`). */
 // (RPG: quest commands, xp and items are granted once; enemy groups and pickups are idempotent by id)
-const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant', 'quest', 'xp', 'item']);
+const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant', 'quest', 'xp', 'item', 'cinematic', 'fade']);
 
 export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);

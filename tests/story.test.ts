@@ -13,7 +13,7 @@ import { HOME, HOME_TROUGH, bringHome, hubAt } from '../src/systems/story/hub/ho
 import { REACH, canTouch, toLocal } from '../src/systems/quelle/layout';
 import { angleDiff, bearingDeg } from '../src/systems/story/objectives';
 import { HORN_SIGNALS } from '../src/systems/story/sfx';
-import type { Action, Beat, StoryFile } from '../src/systems/story/types';
+import type { Action, Beat, NpcAction, StoryFile } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles } from '../src/systems/story/validate-cli';
 
@@ -198,14 +198,16 @@ describe('story files', () => {
     const r = validateStories(files, { items: questItems });
     expect(r.errors.map((e) => `${e.file} ${e.id ?? ''}: ${e.message}`)).toEqual([]);
     // + the test chapter (99-test.story.json, "test": true; loaded only with ?storytest)
-    expect(r.stats.chapters).toBe(7);
+    // + the tour slice (00-tour.story.json, "dev": "tour"; loaded only with ?tour)
+    expect(r.stats.chapters).toBe(8);
+    expect(files.filter((f) => f.story.dev).map((f) => f.story.chapter)).toEqual(['tour']);
     expect(files.filter((f) => f.story.test).map((f) => f.story.chapter)).toEqual(['test']);
     expect(r.stats.beats).toBeGreaterThan(35);
     const prolog = files.find((f) => f.story.chapter === 'prolog')!.story;
     expect(prolog.placeholder).toBeFalsy();
     expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p3q', 'p3r', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
     // chapters chain to the endings
-    const order = files.map((f) => f.story).filter((f) => !f.test).sort((a, b) => a.order - b.order);
+    const order = files.map((f) => f.story).filter((f) => !f.test && !f.dev).sort((a, b) => a.order - b.order);
     for (let i = 0; i < order.length - 1; i++) expect(order[i]!.next).toBe(order[i + 1]!.chapter);
     expect(order.at(-1)!.epilogue).toBeTruthy();
   });
@@ -344,6 +346,12 @@ describe('story files', () => {
     const at = (c: { x: number; z: number } | undefined) => !!c && Math.hypot(c.x - HOME.spawn.x, c.z - HOME.spawn.z) < 0.01;
     for (const { story } of files) {
       if (story.test) continue;
+      if (story.chapter === 'tour') {
+        // the tour slice starts at the car park and wakes at the Quelle
+        expect(at(story.checkpoint)).toBe(false);
+        expect(at(story.wake)).toBe(true);
+        continue;
+      }
       if (story.chapter === 'prolog') {
         expect(at(story.checkpoint)).toBe(false); // the start stays by the forest road (bridge)
         expect(at(story.wake)).toBe(true);
@@ -422,7 +430,7 @@ describe('story files', () => {
     const k0bEnter = k1.beats.find((b) => b.id === 'k1_0b')!.enter!;
     expect(k0bEnter).toContainEqual({ do: 'cue', id: 'court:on', data: { set: 'k1' } });
     expect(k0bEnter).toContainEqual({ do: 'quest', op: 'offer', id: 'q.k1.kleider', onResume: true });
-    const spawns = k0bEnter.filter((a): a is Extract<Action, { do: 'npc' }> => a.do === 'npc');
+    const spawns = k0bEnter.filter((a): a is NpcAction => a.do === 'npc' && 'npc' in a);
     expect(spawns.map((a) => a.npc).sort()).toEqual(['gardist', 'gardist-tor', 'hofgaertner', 'lakai', 'liese']);
     expect(spawns.find((a) => a.npc === 'liese')).toMatchObject({ x: 1004.85, z: -870.3, era: '1789' });
     expect(spawns.find((a) => a.npc === 'liese')!.watch).toBeUndefined();

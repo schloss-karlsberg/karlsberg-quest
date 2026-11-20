@@ -4,9 +4,9 @@
  * Every cue that can mean danger also gets a caption (handled by the caller).
  */
 import type { AudioManager } from '../../audio/audio';
-import { hornCall, noiseBurst } from '../../audio/synth';
+import { hornCall, noiseBurst, windLoop } from '../../audio/synth';
 
-export type StorySound = 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match' | 'crowbar';
+export type StorySound = 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match' | 'crowbar' | 'wind' | 'bark';
 export type HornSignal = 'anblasen' | 'faehrte' | 'verloren' | 'sammeln';
 
 /** Horn signals as harmonic numbers of a natural D horn (bible 05-jagd: four signals). */
@@ -124,6 +124,23 @@ export function playStorySound(am: AudioManager, kind: StorySound, dest: AudioNo
       ] as const)
         osc(ctx, out, 'triangle', f, t + w, d, g, 0.002);
       return 1.8;
+    }
+    case 'wind': {
+      // the tour's gust (t5): the crowns roar for a few seconds, then it drops away
+      const w = windLoop(am, out, 1);
+      w.setIntensity(1, 1.2);
+      window.setTimeout(() => w.setIntensity(0.35, 2), 5500);
+      window.setTimeout(() => w.stop(2.5), 8000);
+      return 9;
+    }
+    case 'bark': {
+      // two dogs barking off into the trees (placeholder: filtered noise yelps, no samples)
+      for (let i = 0; i < 7; i++) {
+        const when = i * 0.32 + Math.random() * 0.12;
+        noiseBurst(am, out, { duration: 0.09, freq: 700 + Math.random() * 500, q: 3.5, gain: 0.32, attack: 0.008, when });
+        osc(ctx, out, 'sawtooth', 380 + Math.random() * 160, t + when, 0.11, 0.05, 0.005);
+      }
+      return 2.4;
     }
     case 'match': {
       noiseBurst(am, out, { duration: 0.18, freq: 2600, q: 0.8, gain: 0.35, type: 'highpass' });

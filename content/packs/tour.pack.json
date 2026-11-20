@@ -1,0 +1,45 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "tour",
+  "speakers": [
+    { "id": "imhoff", "name_de": "Gerold Imhoff · Führung", "historical": false },
+    { "id": "player", "name_de": "Du", "historical": false },
+    { "id": "jostd", "name_de": "Jost Fendel", "historical": false },
+    { "id": "solld", "name_de": "Herr Soll", "historical": false },
+    { "id": "mats", "name_de": "Mats", "historical": false }
+  ],
+  "dialogue": [
+    {
+      "id": "imhoff.bark.wait.01",
+      "speaker": "imhoff",
+      "text_de": "Kommst du? Wir warten vorne.",
+      "trigger": { "event": "walk:bark", "id": "imhoff.bark.wait" }
+    },
+    {
+      "id": "imhoff.bark.wait.02",
+      "speaker": "imhoff",
+      "text_de": "Nicht verlaufen! Der Weg ist der mit den Leuten drauf.",
+      "trigger": { "event": "walk:bark", "id": "imhoff.bark.wait" }
+    },
+    {
+      "id": "imhoff.bark.wait.03",
+      "speaker": "imhoff",
+      "text_de": "Wer fotografiert, darf trödeln. Aber nicht ewig.",
+      "trigger": { "event": "walk:bark", "id": "imhoff.bark.wait" }
+    },
+    {
+      "id": "imhoff.t.station1",
+      "speaker": "imhoff",
+      "text_de": "Willkommen am Fuß des Karlsbergs. Da hinten, hinter den Bäumen, steht noch ein einziges Gebäude der ganzen Schlossanlage des Herzogs Karl II. August: zur Bauzeit des Schlosses errichtet, als Vorrats- und Wohngebäude. Heute ist es Privatbesitz, da gehen wir nicht hin.",
+      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet" },
+      "once": true
+    },
+    {
+      "id": "imhoff.t.station1b",
+      "speaker": "imhoff",
+      "text_de": "Und das Schloss selbst? Ab 1778 gebaut, 1793 abgebrannt. Fünfzehn Jahre. Kürzer als so mancher Kredit.",
+      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet" },
+      "once": true
+    }
+  ]
+}
