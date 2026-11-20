@@ -103,7 +103,7 @@ export const C = {
   iron: lin(0x2e2e30),
   masonry: lin(0x948a7a),
   ruin: lin(0x81776a),
-  moss: lin(0x737560),
+  moss: lin(0x8a8a74),
   soot: lin(0x2a2522),
   doorBrown: lin(0x4a2a14),
 } as const;
@@ -762,10 +762,52 @@ function buildFoundations(g: GeoBuf, plan: FullPlan, building: string, terrain: 
       const z = ln.a[1] + (ln.b[1] - ln.a[1]) * t;
       const h = hash1(Math.round(x * 3), Math.round(z * 3), 17);
       if (h < 0.18) continue; // gaps where the stones were robbed
-      const ground = terrain(x, z);
-      g.box(x, ground - 0.4, z, tx, tz, L / n - 0.04, ln.w, 0.45 + 0.35 * h, mossS);
+      for (const s of foundationStones(x, z, tx, tz, L / n - 0.04, ln.w, terrain)) g.box(s.x, s.y0, s.z, tx, tz, s.len, ln.w, s.top + 0.35 * h - s.y0, mossS);
     }
   }
+}
+
+/** One stone of a foundation line: centre x/z, length along the line, bottom y and top y (before the per-run height). */
+export interface FoundationStone {
+  x: number;
+  z: number;
+  len: number;
+  y0: number;
+  top: number;
+}
+
+/**
+ * A foundation run of `len` × `w` m at (x, z) on the terrain (playtest round 10, F-14: on the
+ * Orangerie's step the 1.6 m runs sat flat on the ground under their centre and hung up to 0.7 m
+ * in the air at the downhill end). A run down a slope steps in shorter stones (each falls at most
+ * ≈ 0.3 m along its length); every stone reaches 0.3 m below the lowest ground under its corners and
+ * peeks 5 cm out of the ground at its centre (the caller adds the weathered height on top).
+ */
+export function foundationStones(x: number, z: number, tx: number, tz: number, len: number, w: number, terrain: (x: number, z: number) => number): FoundationStone[] {
+  const vx = -tz;
+  const vz = tx;
+  const corners = (cx: number, cz: number, l: number): number[] => {
+    const out: number[] = [];
+    for (const a of [-l / 2, l / 2]) for (const b of [-w / 2, w / 2]) out.push(terrain(cx + tx * a + vx * b, cz + tz * a + vz * b));
+    return out;
+  };
+  // split by the fall along the run only: a run along the contour stays one long stone (its
+  // downhill face simply shows more), a run down the slope steps
+  const drop = Math.abs(terrain(x + (tx * len) / 2, z + (tz * len) / 2) - terrain(x - (tx * len) / 2, z - (tz * len) / 2));
+  const m = Math.min(8, Math.max(1, Math.ceil(drop / 0.3)));
+  const out: FoundationStone[] = [];
+  const piece = len / m;
+  for (let i = 0; i < m; i++) {
+    const off = -len / 2 + piece * (i + 0.5);
+    const cx = x + tx * off;
+    const cz = z + tz * off;
+    const c = corners(cx, cz, piece);
+    const y0 = Math.min(...c) - 0.3;
+    // the top follows the ground at the centre, but always shows a lip on the downhill side
+    const top = Math.max(terrain(cx, cz) + 0.05, Math.min(...c) + 0.12);
+    out.push({ x: cx, z: cz, len: m > 1 ? piece - 0.03 : piece, y0, top });
+  }
+  return out;
 }
 
 // ---- 1793-07: a collapsed room (ceiling and roof came down) ---------------------------------------
