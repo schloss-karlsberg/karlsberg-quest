@@ -84,6 +84,38 @@ export function specFor(npc: string, specs: readonly string[] = PEOPLE_SPECS): s
   return extras.length ? extras[hash(npc) % extras.length]! : (specs[0] ?? 'guide');
 }
 
+/** A member's look: people spec id and seed (the seed varies the look of a re-used spec). */
+export interface MemberLook {
+  spec: string;
+  seed: number;
+}
+
+const isSpecId = (id: string, specs: readonly string[]) => id === 'guide' || specs.includes(id) || /^(extra\.\d+|double\.|child\.)/.test(id);
+
+/**
+ * The looks of a group's members, deterministic per group: ids that are spec ids pass through
+ * ('extra.3', 'double.hanne', 'child.compass', 'guide'); the other ids ('extra.mats', …) take the
+ * extra specs not used by the group yet, in member order; past the last free extra they wrap
+ * around the extras with a different seed, so no two members look the same.
+ */
+export function memberLooks(members: readonly string[], specs: readonly string[] = PEOPLE_SPECS, leader?: string): MemberLook[] {
+  const extras = specs.filter((s) => /^extra\.\d+$/.test(s));
+  const used = new Set(members.filter((m) => isSpecId(m, specs)));
+  if (leader) used.add(specFor(leader, specs));
+  const free = extras.filter((e) => !used.has(e));
+  let k = 0;
+  return members.map((m) => {
+    if (m === 'imhoff') return { spec: 'guide', seed: hash(m) };
+    if (isSpecId(m, specs)) return { spec: m, seed: hash(m) };
+    const i = k++;
+    if (i < free.length) return { spec: free[i]!, seed: hash(m) };
+    // wrapped: any extra again (all of them, in order), with a seed of its own
+    const pool = extras.length ? extras : [specFor(m, specs)];
+    const j = i - free.length;
+    return { spec: pool[j % pool.length]!, seed: hash(`${m}#${Math.floor(j / pool.length) + 1}`) };
+  });
+}
+
 export function tierFor(spec: string): BodyTier {
   return spec === 'guide' ? 'hero' : spec.startsWith('extra.') ? 'extra' : 'featured';
 }
@@ -107,6 +139,7 @@ export const VIS_DIST = 220;
 interface NpcRt {
   id: string;
   spec: string;
+  seed: number;
   body: Body | null;
   x: number;
   z: number;
@@ -201,21 +234,32 @@ export class WalkRuntime {
   // ---- bodies --------------------------------------------------------------------------------
 
   /** The npc's runtime entry, spawned (with a body when in the group era) at x/z when new. */
-  ensureNpc(id: string, x: number, z: number, yaw = 0): NpcRt {
+  ensureNpc(id: string, x: number, z: number, yaw = 0, look?: MemberLook): NpcRt {
     let n = this.npcs.get(id);
     if (!n) {
-      const specs = this.o.specs?.() ?? PEOPLE_SPECS;
-      n = { id, spec: specFor(id, specs), body: null, x, z, yaw, speed: 0, clip: null, visible: true };
+      const specs = this.specs();
+      n = { id, spec: look?.spec ?? specFor(id, specs), seed: look?.seed ?? hash(id), body: null, x, z, yaw, speed: 0, clip: null, visible: true };
       this.npcs.set(id, n);
+      this.spawnBody(n);
+    } else if (look && (n.spec !== look.spec || n.seed !== look.seed)) {
+      // joined a group that gives it another look: a new body
+      n.body?.dispose();
+      n.body = null;
+      n.spec = look.spec;
+      n.seed = look.seed;
       this.spawnBody(n);
     }
     return n;
   }
 
+  private specs(): readonly string[] {
+    return this.o.specs?.() ?? PEOPLE_SPECS;
+  }
+
   private spawnBody(n: NpcRt): void {
     if (n.body) return;
     try {
-      n.body = this.o.bodies({ npc: n.id, spec: n.spec, x: n.x, y: this.o.world.heightAt(n.x, n.z), z: n.z, yaw: n.yaw, tier: tierFor(n.spec), seed: hash(n.id), speaker: speakerFor(n.id) });
+      n.body = this.o.bodies({ npc: n.id, spec: n.spec, x: n.x, y: this.o.world.heightAt(n.x, n.z), z: n.z, yaw: n.yaw, tier: tierFor(n.spec), seed: n.seed, speaker: speakerFor(n.id) });
       n.clip = null;
       n.visible = true;
     } catch (e) {
@@ -282,13 +326,14 @@ export class WalkRuntime {
     const g: GroupRt = { id: group, leader, members: members.filter((m) => m !== leader), mode: 'hold', assign: [], slots: [] };
     if (spacing) g.spacing = spacing;
     const n = g.members.length;
+    const looks = memberLooks(g.members, this.specs(), leader);
     g.members.forEach((m, i) => {
       // a ring around the leader: golden-angle spread between the radii
       const a = i * 2.39996 + 0.5;
       const rad = sp[0] + (sp[1] - sp[0]) * (n > 1 ? i / (n - 1) : 0.5);
       const x = L.x + Math.sin(a) * rad;
       const z = L.z + Math.cos(a) * rad;
-      const nn = this.ensureNpc(m, x, z, headingOf(L.x - x, L.z - z));
+      const nn = this.ensureNpc(m, x, z, headingOf(L.x - x, L.z - z), looks[i]);
       nn.x = x;
       nn.z = z;
       nn.yaw = headingOf(L.x - x, L.z - z);
@@ -699,7 +744,8 @@ export class WalkRuntime {
       if (gs.r) g.r = gs.r;
       if (gs.spacing) g.spacing = gs.spacing;
       if (gs.route) g.route = gs.route;
-      for (const m of g.members) this.ensureNpc(m, L.x, L.z);
+      const looks = memberLooks(g.members, this.specs(), g.leader);
+      g.members.forEach((m, i) => this.ensureNpc(m, L!.x, L!.z, 0, looks[i]));
       this.groups.set(g.id, g);
       this.landMembers(g);
     }

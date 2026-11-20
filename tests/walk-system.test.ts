@@ -1,11 +1,12 @@
 /** WP-16 tour walk: the walk system's runtime (src/systems/walk/runtime.ts) with fake bodies and a fake bus. */
 import { describe, expect, it } from 'vitest';
 import route from '../content/routes/p-fuehrung.json';
-import { WalkRuntime, specFor, type Body, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
+import { WalkRuntime, memberLooks, specFor, type Body, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
 import type { Route, WalkRequest, WalkSlice } from '../src/systems/walk/types';
 
 const ROUTE = route as Route;
 const DT = 1 / 60;
+const MEMBERS_14 = ['double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost', 'double.soll', 'double.liese', 'extra.mats', 'extra.mutter', 'extra.paar_a', 'extra.paar_b', 'extra.wanderin_a', 'extra.wanderin_b', 'extra.student'];
 const MEMBERS = ['double.herzog', 'double.mannlich', 'double.hanne', 'extra.mats', 'extra.mutter', 'extra.student'];
 
 class FakeBus implements WalkBus {
@@ -109,6 +110,31 @@ describe('walk system', () => {
     expect(specFor('extra.3')).toBe('extra.3');
     expect(specFor('extra.mats')).toMatch(/^extra\.[1-7]$/);
     expect(specFor('extra.mats')).toBe(specFor('extra.mats'));
+  });
+
+  it('member looks: spec ids pass through, other ids take the free extras in order, then wrap with a new seed', () => {
+    const members = ['double.hanne', 'extra.2', 'extra.mats', 'extra.mutter', 'child.compass', 'extra.paar_a', 'extra.paar_b', 'extra.wanderin_a', 'extra.wanderin_b', 'extra.student', 'extra.x'];
+    const looks = memberLooks(members, undefined, 'imhoff');
+    expect(looks.map((l) => l.spec)).toEqual(['double.hanne', 'extra.2', 'extra.1', 'extra.3', 'child.compass', 'extra.4', 'extra.5', 'extra.6', 'extra.7', 'extra.1', 'extra.2']);
+    // no two members share spec and seed
+    expect(new Set(looks.map((l) => `${l.spec}|${l.seed}`)).size).toBe(members.length);
+    // the wrapped ones differ in seed from the first holder of their spec
+    expect(looks[9]!.seed).not.toBe(looks[2]!.seed);
+    expect(looks[10]!.seed).not.toBe(looks[1]!.seed);
+    // deterministic per group
+    expect(memberLooks(members, undefined, 'imhoff')).toEqual(looks);
+    // the contract's 14 tour members: 14 different looks, the 7 named extras on extra.1…7
+    const tour = memberLooks(MEMBERS_14, undefined, 'imhoff');
+    expect(new Set(tour.map((l) => l.spec)).size).toBe(14);
+    // the runtime spawns with them, and a restore gives the same looks
+    const s = setup();
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS_14 });
+    const specs = MEMBERS_14.map((m) => s.bodies.find((b) => b.spawn.npc === m)!.spawn.spec);
+    expect(specs).toEqual(tour.map((l) => l.spec));
+    s.rt.writeSlice();
+    const b = setup(JSON.parse(JSON.stringify(s.slice)));
+    b.rt.restore();
+    expect(MEMBERS_14.map((m) => b.bodies.find((x) => x.spawn.npc === m)!.spawn.spec)).toEqual(specs);
   });
 
   it('group: a body for the leader (guide, speaker imhoff) and each member in a ring', () => {

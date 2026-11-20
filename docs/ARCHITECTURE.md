@@ -1274,6 +1274,71 @@ change.
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
   `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
 
+### walk (`src/systems/walk/`) – the tour group: the guide walks a route, the group follows
+WP-16, design contract C2 (`docs/design/tour/systems.md`). Pure core: `route.ts` (polyline, stops,
+validator rules), `walker.ts` (one walker: leash with hysteresis, catch-up, arrival once,
+`snapAhead`, save), `group.ts` (follow / gather slots, separation, trunk push-out, stable slot
+assignment, `stepMember`); `runtime.ts` (the system, headless: requests, groups, events, save) on a
+`BodyFactory` and a `WalkWorld`; `bodies.ts` (body adapters); `index.ts` (wiring, hooks). Runs
+`after: ['people', 'npc']`. The group exists only in era `today`: other eras hide the bodies and
+pause the logic.
+- Requests: `npc:walk` `WalkRequest` (types.ts; the story's `do: 'npc'` ops), also
+  `story:cue {id: 'walk', data: WalkRequest}`. Ops: `group {group, leader, members, spacing?}`
+  (members spawn in a ring around the leader, radii `spacing` default [1.2, 4]; a leader without a
+  body gets one: its walker's pose, else 4 m in front of the player; `imhoff` → spec `guide`, speaker
+  `imhoff`), `follow {group | npc, leader, spacing?, off?}` (follow slots behind the leader; `npc`
+  with `leader: 'player'` forwards to the npc escort `npc:follow`), `walk {npc, route + to | path,
+  speed?, wait?}` (default 1.6 m/s, ×1.5 when the player is close behind; a new stop on the same
+  route continues from where the walker is), `gather {group, around?, face?, r?}` (a half circle in
+  front of `around`, everyone faces `face`, default the guide; radii default [3, 7]), `hold`
+  (freeze), `release` (back to following), `despawn {group}` (disposes the whole group, the guide
+  included unless another group still uses him), `warp {group, to, route?}`.
+- Per step: walkers step against the player position; slots recomputed at 10 Hz
+  (`followSlots` / `gatherSlots` + `assignSlots`, stable), `separate` and
+  `pushOutOfTrunks(forest.trunksNear)` at 10 Hz, `stepMember` every step (walk 1.6 m/s, run 2.4 m/s
+  beyond 8 m, teleport beyond 60 m). Per drawn frame the bodies follow: y from `world.heightAt`, the
+  heading (0 faces −z, the walker convention; people take it as is), speed; hidden beyond 220 m.
+- Events: `npc:arrived {npc, at, route, skipped}` (`at` = the stop id or 'end'), `group:waiting
+  {group, leader, dist}`, `group:resumed {group, leader}`, `walk:bark {npc, id}`.
+- **Barks**: a waiting walker with `wait.bark` emits `walk:bark {npc, id}` when it starts waiting
+  and then at most every 20 s, never while a conversation is open. The barks system speaks it like
+  any event, so the story writes the lines as bark lines with a trigger on it: ids
+  `imhoff.bark.wait.NN`, `trigger: { "event": "walk:bark", "id": "imhoff.bark.wait" }`.
+- **Conversation**: `npc:conversation {npc, open}` for a walker (its id or its speaker, `imhoff`)
+  stops it and its group; its body is left to the npc system (face / lookAt / talk) until the end.
+- **Snap** (teleport, travel, wake, checkpoint): a `player:teleport` or a player move > 20 m in one
+  step is a jump; every walking leader then more than 60 m from the player snaps (`snapAhead`) to
+  the route stop at or ahead of it (never behind, at most its target) nearest to the player, the
+  members land in their slots and one `npc:arrived {skipped: true}` names that stop (the walk goes on
+  when it is short of the target).
+- **Warp** (the story's fade, same code path as the snap): the group's leader goes to stop `to` of
+  its walker's route (or `route`, or the group's last route when there is no live walker); never
+  backward (`console.warn`, no-op); short of a live target the walk continues from the stop, at or
+  past it the walk ends there (`to` becomes the warp stop, arrived); members land in their slots at
+  once (mode unchanged), one `npc:arrived {skipped: true}`. Works while bodies are hidden; it never
+  moves the player.
+- **Bodies** (`bodies.ts`): `ctx.people` (people contract v0.1) first — spec per npc (`imhoff` →
+  `guide`, spec ids pass through), tier hero / featured / extra, `root.position` moved, turns via
+  `face`, locomotion via `setSpeed` (no `play` for walking, no `root.rotation`, no `lookAt`). A
+  group's members that are not spec ids (`extra.mats`, …) take the extra specs the group does not use
+  yet, in member order, then wrap with another seed (`memberLooks`), so no two look the same. Without
+  `ctx.people` (people system failed / not registered): stand-ins built with the scenery Kit on the
+  prop material (3 draw calls each, no shadows, legs swinging with the distance walked).
+- State `systems.walk {walkers: WalkerSave[], groups: GroupSave[]}` (written twice a second and
+  after every request / arrival): per walker `{npc, route, to, s, waiting, path?, speed?, wait?}`,
+  per group `{group, leader, members, mode, around?, face?, at?, route?, r?, spacing?}`. People are
+  not saved: a load (`save:loaded`, and init) re-spawns the bodies, rebuilds walkers
+  (`restoreWalker`) and lands members in their slots around the leader; no event is re-emitted and
+  a waiting walker barks only after the usual 20 s.
+- Routes: `content/routes/<id>.json` (bundled with `import.meta.glob`; built by
+  `scripts/content-build/routes.mjs`), e.g. `p-fuehrung` car park → Quelle.
+- Hooks `kq.walk.go(npc, route, to, {speed?, wait?})`, `snap(group, stop)`, `groups()` → `{group,
+  leader, at, waiting}[]`, `demo({to?, speed?, r?})` (guide + 14 members at the car park, group,
+  follow, walk to `abzweig` at 1.9 m/s with `wait {r: 25, bark: 'imhoff.bark.wait'}`), `stats()` →
+  `{bodies, visible, ms, updateMs, syncMs, people}`, `list()`, `walker(npc)`, `request(r)`,
+  `restore()`. Tests: `tests/walk-{route,walker,group,system}.test.ts`, `e2e/walk.spec.ts` (demo
+  arrival, leash, snap + warp, perf with 16 bodies at high / low, screenshots `test-results/walk/`).
+
 ### notes (`src/systems/notes/`) – F8 notes, local telemetry; keyboard turning
 
 - **F8** (window keydown, not an `Action`: no clash with the bindings; F3 is the perf HUD, F5 the
