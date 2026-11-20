@@ -511,7 +511,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
-`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`, `scenery`,
+`menagerie`, `fx`, `chronik`, `story`, `interiors`, `people`, `npc`, `barks`, `skills`, `tools`, `scenery`,
 then the Action-RPG systems `progression`, `combat`, `quests` (§12.1). They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below), `ctx.state` and a few additive world hooks. How they work together:
 
@@ -933,6 +933,125 @@ Round-4 (polish: set dressing) integration rules:
   flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.
 - State `systems.npc {placed, said}`. Hooks `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state/mark/choose`.
+- Talking to people: a placement can be bound to a live person of the people system (next
+  section, "Talking to people"); `kq.npc.list()` reports it as `bound` (the person id).
+
+### people (`src/systems/people/`) – People contract v0
+Modern NPCs (the tour guide, about 15 tour members, the modern doubles of historical figures, a
+child, the two historical twins) walking paths together. Other systems (path walk, groups, the
+tour) spawn them through a **mesh-independent handle API**. Today rigged CC0 stand-ins draw them.
+The **real authored character meshes come later behind the same interface**: callers do not
+change.
+
+- **The contract** is `src/systems/people/types.ts` (frozen 2026-11-20, v0.1 additive). Import
+  it with `import type` only:
+
+  ```ts
+  type PersonClip = 'idle' | 'walk' | 'run' | 'talk' | 'point' | 'wave' | 'lookAround' | 'sit' | 'sitTalk' | 'interact';
+  type PersonLook = 'solid' | 'ghost';
+  type BudgetTier = 'hero' | 'featured' | 'extra';
+  interface PersonSpawnOpts { x; z; y?; yaw?; look?; tier?; seed?; name?; speaker? }  // y: ground; yaw: radians, 0 faces −z
+  interface PersonInfo { specId; tier; height; radius; clips }                       // clips: really supported
+  interface Person {
+    id; specId; root; info; ready /* Promise<boolean> */;
+    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw); lookAt(p | null);
+    setLook(look); setVisible(v); dispose();
+  }
+  interface PeopleApi { spawn(specId, opts): Person; get(id); list(); clear(); specs(); bySpeaker(speaker) }
+  ```
+
+- **How a system gets it:** `ctx.people` (`PeopleApi | undefined`). The people module declares it
+  on `GameContext` by declaration merging and sets it in `init`, so the core is not edited.
+  Declare `after: ['people']` and read `ctx.people` in `init` or later. It is undefined only when
+  the people system failed or is missing.
+  - Why a ctx service and not events: a spawn returns a handle, which a fire-and-forget event
+    with a plain payload cannot carry.
+  - Like `ctx.assets`, it is a service. What the people *do* in the story still travels through
+    events and state.
+  - People are not saved: whoever spawned them spawns them again after a load.
+- **Rules**
+  - The people system updates every person each frame; callers never call update. They move and
+    rotate `root` (world space, feet at the origin; `root.rotation.y = yaw` in the player's
+    convention, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.
+  - `setSpeed` blends idle → walk → run by ground speed with phase-locked feet. Above 0.2 m/s it
+    overrides the looping clips.
+  - Looping clips: idle, talk, sit, sitTalk, lookAround. Walk and run follow `setSpeed` only:
+    `play('walk' | 'run')` ends a looping action and hands the body back to locomotion.
+  - One-shots: point, wave, interact. Afterwards the looping clip that was playing (idle unless
+    another loop was set) or locomotion takes over. A one-shot over walking legs moves the upper
+    body only.
+  - A clip outside `info.clips` plays its nearest fallback (`CLIP_FALLBACK`).
+  - `ready` resolves true when the mesh is in, false on a fallback. The handle works before that
+    and stays invisible until then.
+- **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
+  - animation at full rate within 15 m, about 10 Hz within 40 m, frozen beyond
+  - hidden beyond the draw limit (stand-in: 60 m)
+  - frustum culling stays on
+- **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
+  - hero: ≤ 25k tris, ≤ 8 draw calls
+  - featured: ≤ 12k tris, ≤ 4
+  - extra: ≤ 6k tris, ≤ 2
+  - LOD1 at about 50 % beyond 15 m
+- **Spec ids** (provisional, `specs.ts`):
+  - `guide`: the placeholder guide Gerold Imhoff, 1.95 m, big, skinny, bald
+  - `double.herzog`, `double.mannlich`, `double.hanne`, `double.peter`, `double.jost`,
+    `double.soll`, `double.liese`: modern clothes, featured
+  - `child.compass`: 1.25 m, featured
+  - `extra.1` … `extra.7`: extra
+  - `twin.herzog`, `twin.mannlich`: featured, default look 'ghost' (the roster's period costume,
+    height and tint)
+  - Capsule radius: 0.3 for featured adults, 0.28 for extras, 0.22 for the child.
+  - An unknown id gets the generic extra and one `console.warn` per id. The handle keeps the
+    requested `specId`.
+- **Stand-in build** (`standin.ts`, `registry.ts`, `locomotion.ts` pure):
+  - Bodies: the Quaternius adventurer / farmer / woman (lazy, `ctx.assets`). Each is recoloured
+    per spec from the palette table, scaled to the spec height, and given a width factor
+    (`build`). The guide's Hair slot is hidden. The child and one hiker carry the backpack.
+  - Clip map: one table, `STANDIN_CLIPS`.
+    - idle → `Idle_Neutral`, walk → `Walk`, run → `Run` (by speed)
+    - talk → idle plus `Interact` gestures
+    - point / interact → `Interact`, wave → `Wave`
+    - lookAround → idle with a head sweep
+    - sit / sitTalk → idle with the root lowered 0.42 m
+    - `info.clips` = idle, walk, run, talk, wave, lookAround, interact.
+  - Strides are measured from each clip's foot track (`strideFromFeet`): Walk 0.98, Run 1.31 m
+    per loop per metre of height.
+  - `face` is an eased turn, capped at 5 rad/s. `lookAt` turns neck and head
+    (`Rig.turnBone`, ±60°, no owl neck).
+  - 'solid' = per-person clones of the model's slots lit by `kqStandard`. 'ghost' = the NPC ghost
+    shader with its depth pre-pass.
+  - Each skinned part gets one conservative bound round the whole body, so frustum culling works
+    on skinned meshes.
+  - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
+    capsule. Geometry belongs to the asset cache.
+  - A failed load shows a capsule.
+- **Talking to people** (v0.1):
+  - Spawn the person with `speaker: '<content speaker id>'`. The npc system then binds that
+    speaker's story placement (`npc:spawn`) to `ctx.people.bySpeaker(id)` (`npc/bind.ts`).
+  - While bound, the placement has no figure of its own. Talk range, the E prompt, the quest
+    glyph and the conversation framing follow `person.root`. The placement's own x/z wait unused.
+  - During the conversation the person turns to the player (`face`), looks at the eyes
+    (`lookAt`) and plays 'talk'. At the end it plays 'idle' and `lookAt(null)`.
+  - A walking person stays talkable. The walk system may pause itself on `npc:conversation`.
+  - Disposing the person unbinds it, and the figure comes back at the placement.
+- **Hooks:** `kq.people`
+  - `spawn(specId, x, z, {yawDeg | yaw, look, tier, seed, name, speaker}) → id`
+  - `list()`
+  - `get(id)`: state (position, yaw, speed, clip / playing / shot, look, LOD, measured strides,
+    weights, head, tris, draw calls)
+  - `clear()`
+  - `stats()`: count, drawn, approx tris, draw calls, LOD bands
+  - `specs()`
+  - `drive(id, mps)`: debug walking along the facing
+  - Tests: `tests/people.test.ts`. They load the real GLBs in node: strides, poses, bounds,
+    disposal.
+- **Stand-in limits:**
+  - 10–15 draw calls and 5.3k–10.2k tris per body (above the featured / extra budgets), twice
+    that for a ghost
+  - no real point / sit clips
+  - no LOD1 mesh
+  - per-person materials
+  - no foot IK on slopes
 
 ### barks (`src/systems/barks/`) – Laub's and Marlene's remarks
 - Rules (`rules.ts`, bible 08-stimmen): random line per group, same line not within 600 s, one bark
