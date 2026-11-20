@@ -594,7 +594,10 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     perf,
     quality,
     setCamera: (fn) => {
+      const was = cameraOverride !== null;
       cameraOverride = fn;
+      // features that own the view (photo mode) step aside while somebody else holds the camera
+      if (was !== (fn !== null)) events.emit('camera:override', { active: fn !== null });
       loop.requestRender();
     },
     ready: palaceReady,
