@@ -16,7 +16,7 @@
 
 ## 1. Photo mode (smartphone)
 
-**What it does.** Hold **N** (proposed; P is pause, see `src/player/input.ts:79`) to raise the phone: a phone frame overlay, a slight zoom (1×/2×), click to shoot. A shot is **judged geometrically, not by pixels**: for each registered photo target in range, project its bounding sphere into the frame; "good" = centre in the middle third, projected size ≥ the target's minimum, a line-of-sight ray from the camera to ≥ 2 of 3 sample points is clear (`world.collider` / trunks), distance within limits (animals: max distance; inscriptions: ≤ 4 m). A good shot saves a JPEG thumbnail into the **album** (journal tab „Album“) and may unlock a codex card or a photo card. In a past era the frame shows „Kein Netz“ and the image comes out white (running joke; no targets judged).
+**What it does.** Hold **N** (decided; P is pause, see `src/player/input.ts:79`) to raise the phone: a phone frame overlay, a slight zoom (1×/2×), click to shoot. A shot is **judged geometrically, not by pixels**: for each registered photo target in range, project its bounding sphere into the frame; "good" = centre in the middle third, projected size ≥ the target's minimum, a line-of-sight ray from the camera to ≥ 2 of 3 sample points is clear (`world.collider` / trunks), distance within limits (animals: max distance; inscriptions: ≤ 4 m). A good shot saves a JPEG thumbnail into the **album** (journal tab „Album“) and may unlock a codex card or a photo card. In a past era the frame shows „Kein Netz“ and the image comes out white (running joke; no targets judged). Owner decision 2026-11-20: present-only, key N, no XP for photos, codex/photo cards for good photos.
 
 **Reusable code (audit §8).** The capture core is `src/systems/notes/index.ts:252–270` `screenshot()` (re-render via `post.render`, draw to a 2D canvas, JPEG data URL). `preserveDrawingBuffer` is only on with `?preserve` (`boot.ts:48`), but the notes path re-renders, so no flag is needed. Lantern / camera FOV live in `src/player/camera.ts` (camera owner kq-mobile: report the zoom hook). Journal tabs: `src/systems/progression/journal-tabs.ts`.
 
@@ -31,7 +31,7 @@ registerTarget({ id: 'photo.p.reh', era: 'today', at: () => ({ x, y, z }), r: 0.
 // quest objective type: "photo" { target, grants }
 album(): { id, era, t, thumb /* JPEG ≤ 30 KB */, label_de }[]   // persisted in the save, max 60
 ```
-Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) or store only the target id and re-render a stock card image (recommended for v1: **id only**, a pre-rendered card per target; the live JPEG only for the session). Touch: a camera icon in the top row (`src/ui/touch.ts`).
+Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) or store only the target id and re-render a stock card image (v1: **id only**, a pre-rendered card per target; the live JPEG only for the session). Touch: a camera icon in the top row (`src/ui/touch.ts`).
 
 **Tests.** Unit: `tests/photo.test.ts` (judging: centred / off-centre / occluded / too far / fallback after 90 s; past era → no targets; grants once). Content validator: every `photo` objective names a registered target; every target lies inside the playable extent. e2e: `e2e/photo.spec.ts` (open the phone at the car park, shoot the building, album has 1 entry; shoot in 1789 → white + „Kein Netz“), touched specs + smoke under the heavy lock.
 
@@ -105,13 +105,13 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 
 ## 5. Quelle hub (home base, replaces the Feldstation)
 
-**What it does.** The Karlsbergquelle is the home in the present: chapter checkpoint, wake place when caught or out of oil, Q-hold target (recommended), safe ring, and the rest-stop overlay. Tiles (re-themed `HubOverlay`): **Chronik** (opens from the Bussole lid), **Handy** (messages, album, map with chapter select — the old Kartentisch), **Mauerkante** (old Regal: finds, RPG counts, later the bottles' shelf), **Mauernische** (old Schublade: the Bussole state; Ende C's Chronik place is now the backpack, see `bible/06-enden.md`), **Stufe** (old Feldbett: rest → save `'auto','bench'`). The radio tile goes; Marlene speaks in person or by phone.
+**What it does.** The Karlsbergquelle is the home in the present: chapter checkpoint, wake place when caught or out of oil, Q-hold target (decided), safe ring, and the rest-stop overlay. Tiles (re-themed `HubOverlay`): **Chronik** (opens from the Bussole lid), **Handy** (messages, album, map with chapter select — the old Kartentisch), **Mauerkante** (old Regal: finds, RPG counts, later the bottles' shelf), **Mauernische** (old Schublade: the Bussole state; Ende C's Chronik place is now the backpack, see `bible/06-enden.md`), **Stufe** (old Feldbett: rest → save `'auto','bench'`). The radio tile goes; Marlene speaks in person or by phone.
 
 **Reusable code (audit §1, §2).** `src/systems/story/hub/overlay.ts` (6 tiles, `hub:use`); `story/index.ts:1302–1343` `useHub()` / `updateHub()` (swap `STATION` for `QUELLE` from `src/systems/quelle/layout.ts:20`, radius 12); the K1 pattern k1_0 / k1_0b (checkpoint and wake at 1059.3/−833.1 yaw 50, Q anchor at the spring). Remove `FieldStation` (`hub/station.ts`, 476 lines) and its colliders and `pushOut`. Move `SAFE.stationR` / `STATION_XZ` in `combat/rules.ts:196–198` to the spring. `hub:enter` keeps driving the hunt reset, the oil refill, the free respec and the full heal.
 
 **Prompt coexistence.** At the trough the Quelle's E „Wasser berühren“ (`e.owner = quelle`) wins; the hub's low prompt „Pause an der Quelle“ shows only outside the trough's 2.5 m ring. Rule: within 2.5 m of the trough → Quelle E; 2.5–12 m → hub E.
 
-**Q-hold.** Today Q-hold returns in place (`story/index.ts:1632–1650` → `requestShift('today','return')`, no teleport). Recommended (Q5): after `shift:done` with `reason === 'return'`, fade and teleport to the wake spot 1059.3/−833.1 yaw 50. Cost: one branch + texts (`ui.keys.shift`, `ui.tut.return`, `ui.hud.return_hold`, K2 objective at `02-kapitel-2.story.json:1001`).
+**Q-hold.** Today Q-hold returns in place (`story/index.ts:1632–1650` → `requestShift('today','return')`, no teleport). **Decided (owner, 2026-11-20):** after `shift:done` with `reason === 'return'`, fade and teleport to the wake spot 1059.3/−833.1 yaw 50. Cost: one branch + texts (`ui.keys.shift`, `ui.tut.return`, `ui.hud.return_hold`, K2 objective at `02-kapitel-2.story.json:1001`).
 
 **API sketch.**
 ```ts

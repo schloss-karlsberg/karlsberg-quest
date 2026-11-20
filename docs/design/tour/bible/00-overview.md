@@ -32,9 +32,9 @@
 | **1 „Der Hof“** | … unverändert; Einstieg `k1_0` an der Quelle am selben Nachmittag (Look `pause`) | | | | | |
 | **Enden** | heute, Dämmerung | Zwinger → Quelle → Plateau (Ehrenhof-Lichtung 1216/−1114) | Museum / Verbrennen / Behalten, danach das Fest | – | Epilog; Abschlussfest mit Abspann | 6–8 min |
 
-**Zeit im Heute.** Alle heutigen Szenen liegen in einem Nachmittag: Führung 14:30–15:15, Kapitel 1–2 ≈ 15:20–15:45, Kapitel 3 ≈ 16:00, Kapitel 4 und Enden in der Dämmerung ≈ 16:45. Keine Nacht und kein Morgen im Heute mehr; das betrifft heutige Beats in K1–K4 (`../impact.md` WP-12).
+**Zeit im Heute (Owner-Entscheidung 2026-11-20: streng ein Nachmittag).** Alle heutigen Szenen liegen in einem Nachmittag: Führung 14:30–15:15, Kapitel 1–2 ≈ 15:20–15:45, Kapitel 3 ≈ 16:00, Kapitel 4 und Enden in der Dämmerung ≈ 16:45. Keine Nacht und kein Morgen im Heute mehr; das betrifft heutige Beats in K1–K4 (`../impact.md` WP-12).
 
-**Reisen (ersetzt).** Im Heute dient der Geisterblick (F) auch als Schnellflug zwischen freigeschalteten Ankern (Richtwert 25 m/s). In der Vergangenheit geht man zu Fuß. Ein Zeitwechsel (Q) geht nur an einem Anker. **Q halten (3 s) bringt dich überall zurück an die Karlsbergquelle**, ins Heute, aber nicht, solange dich die Meute sieht (Empfehlung; Alternative „am Ort zurück“ siehe `../open-questions.md` Q5).
+**Reisen (ersetzt).** Im Heute dient der Geisterblick (F) auch als Schnellflug zwischen freigeschalteten Ankern (Richtwert 25 m/s). In der Vergangenheit geht man zu Fuß. Ein Zeitwechsel (Q) geht nur an einem Anker. **Q halten (3 s) bringt dich überall zurück an die Karlsbergquelle**, ins Heute, aber nicht, solange dich die Meute sieht (Owner-Entscheidung 2026-11-20).
 
 ---
 

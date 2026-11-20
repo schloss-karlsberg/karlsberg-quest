@@ -58,6 +58,6 @@ New looks needed by `h.look()`: `tour` (golden afternoon, low sun), `pause` (low
 | `e-museum`, `e-burn`, `e-keep` | **replaced** by #25–#27 (the staged ending moments stay inside `stage.ts`; the cards show the party) |
 | `pl-quelle-1793-02`, `pl-quelle-1793-07`, `pl-quelle-1796`, `pl-orangerie-1789`, `pl-eiskeller-1789`, all `k1-…`–`k4-…`, `c-…` except `c-marlene` | unchanged |
 
-**Budget:** 60 shots now; 20 retired or replaced, 28 new → **68**. Over the ~60-picture / 8 MB budget (6.4 MB used). Proposal: render #1, #4, #8, #22, #28 as UI-only crops at half size, and merge #15/#16 and #19/#20 into one card each → **66 pictures, ≈ 7.3 MB**; or raise the budget (open question Q11).
+**Budget:** 60 shots now; 20 retired or replaced, 28 new → **68**. **Accepted by the owner (2026-11-20): the budget is raised to cover 66–68 shots; one card per beat, no merging needed.**
 
 **index.html:** the `<section class="chapter" id="prolog">` gets the new kicker „Prolog · heute“, h3 „Die Führung“, `.era` „heute, Mitte November · 1789 (Training)“ and a new blurb; the endings section gets the three party cards after the staged ones.

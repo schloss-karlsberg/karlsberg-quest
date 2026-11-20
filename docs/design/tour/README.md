@@ -14,14 +14,14 @@
 | [`storyboard-beats.md`](storyboard-beats.md) | 28 storyboard beats mapped onto `SHOTS`, and the shots they replace |
 | [`impact.md`](impact.md) | 25 work packages with files, change, size and dependencies |
 | [`systems.md`](systems.md) | Photo mode, cinematic, tour group, animals, Quelle hub, party, training flag; pacing targets |
-| [`open-questions.md`](open-questions.md) | 16 questions for the owner with defaults |
+| [`open-questions.md`](open-questions.md) | 16 questions; Q1 and Q3–Q11 resolved, the rest open with defaults |
 
 ## Decisions recorded (owner, 2026-11-20, via the coordinator)
 
 1. The opening is a guided tour (a tutorial). The player is an ordinary visitor; the look is the owner's avatar. No surveyor, Feldstation or Bauwagen.
 2. The guide is big, skinny and bald, modelled on a real living guide whose consent is pending. **Placeholder name: Gerold Imhoff** in all docs and dialogue; the swap is one name. No real name, no personal details.
 3. Route: meet at the **Karlsberger Hof** car park at the forest edge → the hook along the farm track to the Felsenpfad → along the Karlsbergweiher → the Karlsbergquelle. The place name "Karlsberger Hof" may be named as a location (guide dialogue, map label, docs); no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts stay neutral and sourced.
-4. The group has 15 people, including modern doubles of the Duke, Mannlich, Hanne, Jost and Soll (plus proposed: Peter, Liese); modern Jost has two dogs. The circle closes at the party.
+4. The group has 15 people, including modern doubles of the Duke, Mannlich, Hanne, Jost and Soll, plus Peter and Liese; modern Jost has two dogs. The circle closes at the party.
 5. The tour teaches walking, camera, talking, map, codex, photo mode and sneaking. No combat in the tour; the first fight is a short guided training in 1789.
 6. A mysterious moment: the wind picks up and the two dogs run barking into the forest (foreshadowing the Meute).
 7. The deer scene is the first wow moment and the sneak tutorial: a roe doe and her fawn (November: no spots, grey winter coat, still following the doe), a good smartphone photo, may be a cinematic. Roe deer, not red deer.
@@ -34,6 +34,24 @@
 14. Kept: FAKT/FIKTION labels, tone rules, German player-facing content, the XP budget (prologue incl. the 1789 training ends at level 3).
 15. Unverified facts (the Weiher's date and purpose, whether the Quelle fed the palace, palace-era quarrying on the Felsenpfad) are never FAKT; they are marked open, in the guide's mouth too.
 16. The cx.32 re-check is an open task (`bible/07-codex-impact.md` §4).
+
+## Decisions (owner, 2026-11-20)
+
+The owner's answers to the open questions, plus the earlier rulings:
+
+- **Guide:** "Gerold Imhoff" is the placeholder name until the real guide gives written consent; the swap is one name. No real name, no personal details.
+- **Karlsberger Hof:** may be named as a location only (meeting point, map label, guide dialogue, docs); no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts neutral and sourced.
+- **Animals:** roe deer (doe and fawn), not red deer.
+- **Unverified facts** (the Weiher's date and purpose, whether the Quelle fed the palace, palace-era quarrying on the Felsenpfad) are never FAKT; they are marked open, in the guide's mouth too. The cx.32 re-check is an open task.
+- **Time:** strict, one afternoon (≈ 14:30–16:50): the present is one November afternoon, from the tour through dusk to the party at nightfall. WP-12 is approved.
+- **Doubles:** as proposed: the Duke (Carl Herzog), Mannlich (Christian Mann), Hanne Matz + Peter, Jost Fendel with two dogs, Herr Soll, Liese Wendling; the child Mats with the toy compass is the Laub nod; 7 extras, 15 in total.
+- **Q-hold** teleports to the Quelle.
+- **Old saves** are migrated without XP loss.
+- **The tour is skippable on replay**, starting at the break at the Quelle.
+- **Photo mode** is present-only („Kein Netz“ in the past), key N, no XP; good photos unlock codex cards.
+- **Storyboard:** 66–68 shots accepted; the budget is raised.
+
+Still open: Q2 (how the building is shown), Q12 (party drinks), Q13 (the player's jacket), Q14 (Marlene's staff), Q15 (return leg), Q16 (cx.32 sentence).
 
 ## The five hard problems, solved on paper
 

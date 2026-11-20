@@ -48,7 +48,7 @@ E „Zuhören“ bei Gerold (Sprech-Tutorial; der Gesprächsradius ist eine sich
 ### t3 – Der Weg zum Felsenpfad (Fotomodus)
 
 **Weg:** Abzweig am Parkplatz **515 / −730** → Feldweg (OSM 29272437) nach Südosten, 269 m, 254 → 268 m, bis zum Einstieg **623,5 / −486**. Die Gruppe folgt Gerold (System `tour-group`, `systems.md` §3); wer zurückbleibt, hört „Kommst du? Wir warten vorne.“
-Unterwegs, nach ≈ 80 m: das Handy brummt. Nachricht „Willkommen im WaldPark Schloss Karlsberg“ (erfundener Netzgruß, kein Anbieter). **Foto-Tutorial** (`photo`, Taste N, Vorschlag): „Halte [N]: Handy-Kamera. Klick: Foto.“ Erstes Ziel: das Gebäude am Parkplatz von weitem oder ein Buchenblatt im Gegenlicht (beides zählt). Ein gutes Foto landet im **Album** und zeigt, wie Fotokarten freigeschaltet werden (`systems.md` §1).
+Unterwegs, nach ≈ 80 m: das Handy brummt. Nachricht „Willkommen im WaldPark Schloss Karlsberg“ (erfundener Netzgruß, kein Anbieter). **Foto-Tutorial** (`photo`, Taste N): „Halte [N]: Handy-Kamera. Klick: Foto.“ Erstes Ziel: das Gebäude am Parkplatz von weitem oder ein Buchenblatt im Gegenlicht (beides zählt). Ein gutes Foto landet im **Album** und zeigt, wie Fotokarten freigeschaltet werden (`systems.md` §1).
 
 ### t4 – Station 2: Felsenpfad
 
@@ -296,6 +296,6 @@ Die ganze Zeitreise des Spiels liegt in der Pause an der Quelle. Wer ins Heute z
 ## 11. Übergabe an Kapitel 1
 
 - K1 `k1_0` bleibt der Einstieg: heute, an der Quelle, **derselbe Nachmittag** (Look `pause` statt `dawn`), E „Wasser berühren“ → 1789. Marlenes Funkzeile („Die Brötchen liegen auf der Stufe“) wird eine Handy-Nachricht von Gerold („Kuchen ist angeschnitten. Wir heben dir ein Stück auf.“). Laubs Satz vom eingetrockneten Tropfen bleibt (`cx.42`).
-- `k1_0b` (der Weg hinauf in 1789) und die Verkleidung (IDEAS-ROUND11 §2: Liese, Rock, Brief, Gitter) bleiben, wie sie sind. Änderung: Der Spieler ist kein Vermesser in Warnweste mehr, sondern Besucher in einer leuchtenden Outdoorjacke. „In Orange“ bleibt als Witz, wenn die Jacke des Owner-Avatars orange oder signalfarben ist; sonst `laub.k1.orange` → „Und mittendrin Sie. In dieser Jacke.“ (Entscheidung mit kq-characters, `open-questions.md` Q13).
+- `k1_0b` (der Weg hinauf in 1789) und die Verkleidung (IDEAS-ROUND11 §2: Liese, Rock, Brief, Gitter) bleiben, wie sie sind. Änderung: Der Spieler ist kein Vermesser in Warnweste mehr, sondern Besucher in einer leuchtenden Outdoorjacke. „In Orange“ bleibt als Witz, wenn die Jacke des Owner-Avatars orange oder signalfarben ist; sonst `laub.k1.orange` → „Und mittendrin Sie. In dieser Jacke.“ (offen, `../open-questions.md` Q13).
 - **Keine Doppelung:** Das Training (t12) lehrt Hieb, Ausweichen, Wuchthieb, Bannlicht. K1 lehrt nichts davon neu. Die Mahnbriefe in Lieses Wäsche (`q.k1.kleider`, Weg „verdienen“) sind die erste **Anwendung**, nicht ein zweites Tutorial. Jost (1.5) lehrt weiter Verstecken vor der Meute (C/X/L/Wasser/Hohlweg/Sandstein), die erste Meute kommt in 1.10. Der alte p9b-Streuner und die drei Hunde aus p9b entfallen ersatzlos (K1 hat beides).
 - Das Schleichen der Rehszene (C, langsam) ist die Grundlage für Josts Lektion; Jost greift es auf: „Du kannst ja schon schleichen. Wer hat dir das beigebracht? Ein Reh?“
