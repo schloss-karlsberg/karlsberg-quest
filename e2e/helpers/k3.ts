@@ -791,7 +791,8 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   const sneak = await page.evaluate(() => {
     const k = window.kq as Any;
     const h = (window as Any).k3h;
-    const w = h.walk([[1290, -1180], [1285, -1238], [1267, -1252], [1266.5, -1285], [1270.5, -1290.5]], { crouch: true, chunk: 24, max: 3000, wary: 18 });
+    // (round the rotunda KB-B07's portico and steps, not across them)
+    const w = h.walk([[1290, -1180], [1293, -1226], [1291, -1238], [1267, -1252], [1266.5, -1285], [1270.5, -1290.5]], { crouch: true, chunk: 24, max: 3000, wary: 18 });
     k.step(30);
     return { w, beat: k.story.state().beat };
   });

@@ -12,7 +12,8 @@ import { type SetBuilder, face } from './builder';
 import { rng } from './kit';
 import { fence, gate, railing } from './linear';
 import { RUND, rundHouse, rundHouses } from './rund';
-import { C, barrel, blockStack, cart, firePit, hoist, kennel, mortar, post, rubblePile, scale, scaffold, sentryBox, straw, table, tools, trough, wagon, woodStack } from './props';
+import { ROTUNDA, rotundaAt, rotundaSite } from './passage';
+import { C, barrel, blockStack, cart, firePit, hoist, kennel, mortar, post, rubblePile, scale, sentryBox, straw, table, tools, trough, wagon, woodStack } from './props';
 
 export interface SetDef {
   id: string;
@@ -227,29 +228,6 @@ const ehrenhofRuin: SetDef = {
 // 1789: the building site at the gallery's east end (bible 1.3) and the kennels (1.5)
 // ---------------------------------------------------------------------------------------------
 
-/** KB-B07 stands in for the rotunda being built in 1789: scaffolding on its faces. */
-const B07 = {
-  /** z ≈ −1234: the garden side (north). */
-  north: { a: [1279.85, -1234.46] as [number, number], b: [1269.98, -1232.81] as [number, number] },
-  /** z ≈ −1222: the palace side (south). */
-  south: { a: [1271.97, -1220.97] as [number, number], b: [1281.83, -1222.62] as [number, number] },
-};
-
-function scaffoldOn(b: SetBuilder, a: [number, number], c: [number, number], seed: number, height: number): void {
-  const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
-  const ux = (c[0] - a[0]) / len;
-  const uz = (c[1] - a[1]) / len;
-  // outward normal: right of a→c for a clockwise ring
-  const nx = -uz;
-  const nz = ux;
-  const mx = (a[0] + c[0]) / 2 + nx * 0.35;
-  const mz = (a[1] + c[1]) / 2 + nz * 0.35;
-  const y = Math.min(b.heightAt(a[0], a[1]), b.heightAt(c[0], c[1]), b.heightAt(mx, mz));
-  b.kit.place(mx, y - 0.05, mz, Math.atan2(nx, nz));
-  scaffold(b.kit, seed, len + 0.6, height, 1.4);
-  b.solids.push({ kind: 'box', x: mx + nx * 0.7, z: mz + nz * 0.7, ux, uz, hu: len / 2 + 0.4, hv: 0.85 });
-}
-
 const bauplatz: SetDef = {
   id: 'k1-bauplatz',
   eras: ['1789'],
@@ -262,12 +240,17 @@ const bauplatz: SetDef = {
   ],
   build(b) {
     const k = b.kit;
-    // (the east face keeps the Tempelzimmer's passage free, passage.ts)
-    scaffoldOn(b, B07.south.a, B07.south.b, 51, 7.4);
-    scaffoldOn(b, B07.north.a, B07.north.b, 52, 7.4);
-    // a mason on the scaffold, one dressing a block below
-    const sy = Math.min(b.heightAt(1271.97, -1220.97), b.heightAt(1281.83, -1222.62), b.heightAt(1277, -1221)) - 0.05 + 2.1 + 0.08;
-    b.worker({ x: 1277.0, z: -1220.6, deg: 350, pose: 'pick', phase: 0.6, y: sy });
+    // the rotunda KB-B07 going up (passage.ts): wall crown, the dome's centering, a scaffold on
+    // both flanks; the colonnade, the portico and the way through them stay free
+    const site = rotundaSite(k, b.heightAt, 51);
+    b.solids.push(...site.solids);
+    // a mason on the south scaffold's first deck, facing the drum; one dressing a block below
+    {
+      const [mx, mz] = rotundaAt(105, ROTUNDA.r + 1.15);
+      const [cx, cz] = rotundaAt(0, 0);
+      const deg = ((Math.atan2(cx - mx, -(cz - mz)) * 180) / Math.PI + 360) % 360;
+      b.worker({ x: mx, z: mz, deg, pose: 'pick', phase: 0.6, y: site.deck[1] });
+    }
     b.at(1296.0, -1238.5, 95, 2.5);
     hoist(k, 53, 6.5);
     b.circle(1294.6, -1238.6, 0.25).circle(1297.4, -1238.6, 0.25).circle(1296.6, -1238.5, 0.5);
