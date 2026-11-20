@@ -5,7 +5,7 @@
  * tests/walk-system.test.ts drives it with fakes. index.ts wires it to the game.
  */
 import { buildRoute, type BuiltRoute } from './route';
-import { assignSlots, followSlots, gatherSlots, pushOutOfTrunks, separate, stepMember, type Slot, type TrunksNear } from './group';
+import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, pushOutOfTrunks, separate, stepMember, type MemberSpeeds, type Slot, type TrunksNear } from './group';
 import { createWalker, headingOf, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from './walker';
 import type { GatherOp, GroupSave, Route, WalkRequest, WalkSlice } from './types';
 
@@ -602,6 +602,7 @@ export class WalkRuntime {
     for (const g of this.groups.values()) {
       if (slotTick || g.slots.length !== g.members.length) this.reslot(g);
       const paused = this.isTalking(g.leader);
+      const speeds = memberSpeeds(this.npcs.get(g.leader)?.speed ?? 0);
       g.members.forEach((m, i) => {
         const n = this.npcs.get(m);
         const sl = g.slots[g.assign[i] ?? -1];
@@ -612,7 +613,7 @@ export class WalkRuntime {
         }
         const ox = n.x;
         const oz = n.z;
-        n.speed = stepMember(n, sl, dt);
+        n.speed = stepMember(n, sl, dt, speeds);
         const mx = n.x - ox;
         const mz = n.z - oz;
         n.yaw = n.speed > 0.05 && Math.hypot(mx, mz) > 1e-4 ? headingOf(mx, mz) : turnTo(n.yaw, sl.yaw, dt * 4);
@@ -786,6 +787,15 @@ export class WalkRuntime {
 }
 
 type WalkOp = Extract<WalkRequest, { op: 'walk' }>;
+
+/**
+ * Member speeds against the leader's: the core's 1.6 / 2.4 m/s, raised so the group keeps up with
+ * a faster leader (the story's 1.9 m/s pace, ×1.5 while the player is close behind = 2.85 m/s).
+ */
+export function memberSpeeds(leader: number): MemberSpeeds {
+  if (leader <= MEMBER_SPEEDS.walk) return MEMBER_SPEEDS;
+  return { ...MEMBER_SPEEDS, walk: leader * 1.1, catchUp: Math.max(MEMBER_SPEEDS.catchUp, leader * 1.5) };
+}
 
 const round = (v: number) => Math.round(v * 1000) / 1000;
 

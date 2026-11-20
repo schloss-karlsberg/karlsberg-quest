@@ -144,9 +144,13 @@ interface Sample {
   walkMs: number;
 }
 
-/** Average frame / CPU ms, draw calls and triangles over `ms` of real time (perf monitor per frame). */
-async function sample(page: Page, tier: string, group: boolean, ms = 5000): Promise<Sample> {
-  const r = await page.evaluate(async (dur) => {
+/**
+ * Average frame / CPU ms, draw calls and triangles over at least `ms` of real time (perf monitor
+ * per frame), longer until `minFrames` frames were drawn (SwiftShader at the high tier draws about
+ * one frame a second), at most `maxMs`.
+ */
+async function sample(page: Page, tier: string, group: boolean, ms = 5000, minFrames = 10, maxMs = 30_000): Promise<Sample> {
+  const r = await page.evaluate(async ([dur, minN, maxDur]) => {
     const kq = window.kq!;
     const perf = kq.ctx.perf as unknown as { onFrame: ((f: number, c: number, calls: number, tris: number) => void) | null };
     const prev = perf.onFrame;
@@ -161,18 +165,19 @@ async function sample(page: Page, tier: string, group: boolean, ms = 5000): Prom
       acc.walk += kq.walk!.stats().ms;
     };
     const t0 = performance.now();
-    await new Promise((res) => setTimeout(res, dur));
+    while (performance.now() - t0 < dur! || (acc.n < minN! && performance.now() - t0 < maxDur!)) await new Promise((res) => setTimeout(res, 100));
     perf.onFrame = prev;
     const secs = (performance.now() - t0) / 1000;
     const n = Math.max(1, acc.n);
     return { frames: acc.n, fps: acc.n / secs, frameMs: acc.f / n, cpuMs: acc.c / n, calls: acc.calls / n, triangles: acc.tris / n, walkMs: acc.walk / n };
-  }, ms);
+  }, [ms, minFrames, maxMs]);
   return { tier, group, ...r };
 }
 
-const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,low').split(',');
+const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
 
-test('walk (d): perf — 16 bodies vs. none at the high and the low tier; screenshots', async ({ page }) => {
+test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', async ({ page }) => {
+  test.setTimeout(840_000);
   const rows: Sample[] = [];
   for (const tier of TIERS) {
     await boot(page, `&q=${tier}`);
@@ -204,5 +209,5 @@ test('walk (d): perf — 16 bodies vs. none at the high and the low tier; screen
   const label = (await page.evaluate(() => window.kq!.walk!.stats().people)) ? 'stand-in people v0.1 bodies' : 'walk stand-in bodies (no ctx.people)';
   console.log(`[walk d] perf (${label})\n${lines.join('\n')}`);
   writeFileSync(`${OUT}/perf.json`, JSON.stringify({ label, rows }, null, 2));
-  for (const r of rows) expect(r.frames).toBeGreaterThan(5);
+  for (const r of rows) expect(r.frames).toBeGreaterThanOrEqual(10);
 });

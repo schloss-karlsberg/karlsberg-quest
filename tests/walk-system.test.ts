@@ -183,6 +183,24 @@ describe('walk system', () => {
     expect(s.rt.groupList()[0]!.at).toBe('abzweig');
   });
 
+  it('the group keeps up with a fast leader (1.9 m/s pace, catch-up with the player close behind)', () => {
+    const s = setup();
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS });
+    s.req({ op: 'follow', group: 'fuehrung', leader: 'imhoff' });
+    s.req({ op: 'walk', npc: 'imhoff', route: 'p-fuehrung', to: 'abzweig', speed: 1.9, wait: { for: 'player', r: 25 } });
+    let worst = 0;
+    for (let i = 0; i < 60 * 40 && !s.bus.of('npc:arrived').length; i++) {
+      // the player 4 m behind the guide: he hurries (2.85 m/s)
+      const w = s.rt.walkers.get('imhoff')!;
+      s.player.x = w.x + Math.sin(w.yaw) * 4;
+      s.player.z = w.z + Math.cos(w.yaw) * 4;
+      s.rt.update(DT);
+      if (i > 60 * 3) for (const m of MEMBERS) worst = Math.max(worst, Math.hypot(s.rt.npcs.get(m)!.x - w.x, s.rt.npcs.get(m)!.z - w.z));
+    }
+    expect(s.bus.of('npc:arrived')).toHaveLength(1);
+    expect(worst).toBeLessThan(8);
+  });
+
   it('leash: waiting + bark when the player stays behind, resumed when close; no bark in a conversation', () => {
     const s = setup();
     demo(s, 'einstieg');
