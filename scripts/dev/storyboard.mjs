@@ -718,7 +718,7 @@ const SHOTS = [
   {
     id: 'c-nebelinge',
     run: (k, h) => {
-      h.place({ era: 'today', x: 795, z: -893, tx: 803, tz: -889, pitch: 0, zoom: 3 });
+      h.place({ era: 'today', x: 795, z: -893, tx: 809, tz: -890, pitch: 0, zoom: 3 });
       h.enemies('nebelling', { n: 3, d: 4.5, spread: 72, windup: 'lunge' });
     },
   },

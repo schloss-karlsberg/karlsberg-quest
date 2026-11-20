@@ -231,6 +231,14 @@ function switchMode(ctx: GameContext): void {
       if (!c || rt!.mode === 'today') return { x, z, hit: false };
       return c.query.resolve(x, z, r, playerY(ctx));
     },
+    // the third-person camera's probes: walls from the knee up to over the lens (a lintel over a
+    // door stops a raised camera too)
+    hits: (x, z, r) => {
+      const c = current();
+      if (!c || rt!.mode === 'today') return false;
+      const y = playerY(ctx);
+      return c.query.hits(x, z, r, y + 0.45, y + 3.4);
+    },
   };
   updateRoom(ctx, true);
 }
@@ -685,6 +693,11 @@ function installWorldHooks(ctx: GameContext): void {
     const ri = cur.query.roomAt(x, z, y);
     return ri < 0 ? null : cur.plan.rooms[ri]!.ceiling;
   };
+  w.spaceAt = (x, z, y) => {
+    const cur = current();
+    if (!cur || !rt || rt.mode === 'today') return -1;
+    return cur.query.spaceAt(x, z, y);
+  };
   w.roomAnchor = (id) => {
     const cur = current();
     const ri = findRoom(id);
@@ -990,6 +1003,7 @@ export default defineSystem({
     ctx.world.collider.overlay = null;
     ctx.world.groundOverride = null;
     ctx.world.ceilingAt = null;
+    ctx.world.spaceAt = null;
     ctx.world.surfaceOverride = null;
     ctx.world.roomAnchor = null;
     ctx.world.entranceFor = null;

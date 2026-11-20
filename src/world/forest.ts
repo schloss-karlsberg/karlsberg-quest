@@ -13,7 +13,7 @@ import {
   type PerspectiveCamera,
 } from 'three';
 import { GROUND } from '../data/types';
-import { ATMOS_GLSL, atmosphere } from './atmosphere';
+import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { FOLIAGE_GLSL } from './vegetation/foliage';
 import { type ModelTrees, pickVariant } from './vegetation/trees';
@@ -382,6 +382,7 @@ function impostor(): BufferGeometry {
 
 const TREE_VERT = /* glsl */ `
 ${ATMOS_GLSL}
+${SEE_GLSL}
 attribute float aPart;
 attribute vec3 aEx;
 attribute vec4 aInst;   // x, y, z, height
@@ -402,6 +403,7 @@ varying float vH;
 varying vec3 vRight;
 varying vec3 vUp;
 varying vec2 vBarkUv;
+varying float vSee;
 void main() {
   float h = aInst.w;
   vec3 camd = aInst.xyz - uCamPos;
@@ -461,6 +463,8 @@ void main() {
   }
   vWorld = wp;
   vNormal = nn;
+  // in the way of the third-person view (trunk, low spruce cone): thinned in the fragment shader
+  vSee = aPart > 4.5 ? 0.0 : kqSee(aInst.xyz, 0.1 + h * 0.016, aInst.y + h, wp);
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
 }
 `;
@@ -479,6 +483,8 @@ varying float vH;
 varying vec3 vRight;
 varying vec3 vUp;
 varying vec2 vBarkUv;
+varying float vSee;
+${SEE_FRAG_GLSL}
 #ifdef KQ_BARK
 precision highp sampler2DArray;
 // CC0 bark set (vegetation/strips.ts): 0 beech, 1 oak, 2 spruce; colour + normal xy / height
@@ -600,6 +606,7 @@ float needleMask(vec2 uv, float seed) {
 }
 
 void main() {
+  if (kqSeeCut(vSee, vWorld)) discard;
   float kind = vKind;
   float isSpruce = step(0.5, kind) * (1.0 - step(1.5, kind));
   float seed = vEx.x;

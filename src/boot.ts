@@ -16,6 +16,8 @@ import { AVATAR_MODEL, Avatar } from './player/avatar';
 import { cameraHints } from './player/camera';
 import { Input } from './player/input';
 import { Player } from './player/player';
+import { actionPose } from './player/pose';
+import { applySeeThrough, type SeeInput } from './player/seeThrough';
 import { PerfMonitor } from './render/perf';
 import { PostFX } from './render/post';
 import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
@@ -28,6 +30,7 @@ import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
+import { atmosphere } from './world/atmosphere';
 import { World } from './world/world';
 
 /**
@@ -187,11 +190,14 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       coverAt: (x, z) => world.coverAt(x, z),
       canFly: () => ERA_INFO[world.currentEra].spiritView,
       waterDepth: (x, z) => (world.surfaceOverride?.(x, z) ? -Infinity : world.water.depthInside(x, z)),
-      // third-person camera collision: footprints, props, interior walls, trunks, room ceilings
+      // third-person camera collision: footprints, props, interior walls, walkable spaces (rooms /
+      // outdoors), room ceilings, the storey-aware ground; trunks are dithered, not collided
       camera: {
-        blocked: (x, z, r) => world.collider.resolve(x, z, r).hit,
+        heightAt: (x, z, y) => world.heightAt(x, z, y),
+        blocked: (x, z, r) => world.collider.hits(x, z, r),
         trunks: (x, z, r, fn) => world.forest.trunksNear(x, z, r, fn),
         ceiling: (x, z, y) => world.ceilingAt?.(x, z, y) ?? null,
+        space: (x, z, y) => world.spaceAt?.(x, z, y) ?? -1,
       },
     },
     input,
@@ -324,6 +330,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       systems.frame(frameDt, ctx);
       // the character (after the systems: combat's pose of this frame, cut-scene cameras known)
       avatar.frame({ dt: pause.paused && !reasons.has('title') ? 0 : frameDt, time: loop.time, camera, hidden: cameraOverride !== null, reducedMotion: settings.state.reducedMotion, reducedFlash: settings.state.reducedFlash === true });
+      // see-through (round 10): trunks, ferns, rocks in front of the character / the target / the
+      // speaker, or at the lens, dither away (src/player/seeThrough.ts, SEE_GLSL)
+      updateSee();
       // the zoom the player chose stays (saved a moment after the wheel stops)
       if (Math.abs(player.rig.zoom - zoomSaved) > 0.05 && !zoomTimer) zoomTimer = window.setTimeout(() => {
         zoomTimer = 0;
@@ -378,6 +387,34 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   let lastRenderAt = 0;
   let zoomTimer = 0;
   let cameraOverride: ((cam: PerspectiveCamera) => void) | null = null;
+  const seeChest = { x: 0, y: 0, z: 0 };
+  const seeSubject = { x: 0, y: 0, z: 0, w: 0 };
+  const see: SeeInput = { on: false, cam: camera.position, chest: seeChest, fight: false, subject: null };
+  const updateSee = () => {
+    const p = player.renderPos;
+    see.on = player.thirdPerson && cameraOverride === null && !reasons.has('title');
+    seeChest.x = p.x;
+    seeChest.y = p.y + player.eyeHeight * 0.62;
+    seeChest.z = p.z;
+    see.fight = cameraHints.fight.length > 0 || cameraHints.boss > 0;
+    see.subject = null;
+    const f = cameraHints.focus;
+    const tg = actionPose.target;
+    if (f) {
+      seeSubject.x = f.x;
+      seeSubject.y = f.y - 0.55;
+      seeSubject.z = f.z;
+      seeSubject.w = 0.45;
+      see.subject = seeSubject;
+    } else if (see.fight && tg) {
+      seeSubject.x = tg.x;
+      seeSubject.y = world.heightAt(tg.x, tg.z, p.y) + 0.9;
+      seeSubject.z = tg.z;
+      seeSubject.w = 0.8;
+      see.subject = seeSubject;
+    }
+    applySeeThrough(see, atmosphere);
+  };
 
   const ctx: GameContext = {
     renderer,
@@ -574,6 +611,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       setTimeout(() => startAtChapter(kapitel), 0);
     });
   }
+  window.kq!.camera = {
+    state: () => ({ ...player.rig.debug, mode: player.cameraMode, third: player.thirdPerson, see: atmosphere.uSeeCam.value.w > 0, seeTarget: atmosphere.uSeeT.value.w > 0, fightHints: cameraHints.fight.length }),
+  };
   window.kq!.avatar = {
     state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom, costume: avatar.costume }),
     setMode: (m) => settings.update((d) => (d.cameraMode = m), 'cameraMode'),
