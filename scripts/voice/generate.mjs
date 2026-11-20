@@ -26,6 +26,7 @@ import {
   redact,
   selectLines,
   spendCap,
+  textHash,
   writeManifest,
 } from './lib.ts';
 
@@ -54,6 +55,7 @@ const { values: a } = parseArgs({
     content: { type: 'string', default: join(REPO, 'content') },
     voices: { type: 'string', default: join(HERE, 'voices.json') },
     priority: { type: 'string', default: join(HERE, 'priority.json') },
+    speech: { type: 'string', default: join(HERE, 'speech.json') },
     limit: { type: 'string' },
     force: { type: 'boolean', default: false },
     prune: { type: 'boolean', default: false },
@@ -77,7 +79,7 @@ if (a.help) {
   --prune              (real run) remove manifest entries and clips of lines no longer in content
   --offline            do not ask the account for remaining credits
   --out <dir>          output dir (default public/voice)
-  --content, --voices, --priority <path>
+  --content, --voices, --priority, --speech <path>   (speech.json: spoken text overrides per line id)
   -v, --verbose        list every selected line, also those past the budget`);
   process.exit(0);
 }
@@ -117,6 +119,7 @@ if (a.model && !(a.model in CREDITS_PER_CHAR)) fail(`unknown model "${a.model}" 
 // --- inputs -------------------------------------------------------------------------------
 const voices = JSON.parse(readFileSync(a.voices, 'utf8'));
 const priority = JSON.parse(readFileSync(a.priority, 'utf8'));
+const speech = existsSync(a.speech) ? JSON.parse(readFileSync(a.speech, 'utf8')) : {};
 const lines = collectLines(loadContent(a.content));
 const manifestPath = join(a.out, 'manifest.json');
 const manifest = readManifest(manifestPath);
@@ -145,7 +148,7 @@ if (KEY && !a.offline) {
 }
 
 const cap = spendCap({ budget, reserve, remaining });
-let plan = buildPlan(selected, { voices: runVoices, runModel: a.model, manifest, cap, fileExists, force: a.force });
+let plan = buildPlan(selected, { voices: runVoices, runModel: a.model, manifest, cap, fileExists, force: a.force, speech });
 if (Number.isFinite(limit)) {
   let n = 0;
   let spend = 0;
@@ -220,6 +223,7 @@ for (const [i, r] of todo.entries()) {
     chars: r.chars,
     credits,
     durationMs,
+    speechHash: r.speechHash,
   };
   writeManifest(manifestPath, manifest);
   spent += credits;
@@ -254,7 +258,7 @@ function printPlan(p) {
   const placeholders = Object.entries(voices.speakers).filter(([, v]) => isPlaceholderVoice(v.voiceId)).map(([k]) => k);
   if (placeholders.length) console.log(`Placeholder voice ids (${dry ? 'planned, but a real run skips them' : 'skipped'}): ${placeholders.join(', ')}`);
   console.log('');
-  const w = Math.max(28, ...p.rows.map((r) => r.line.id.length)) + 1;
+  const w = Math.max(28, ...p.rows.map((r) => r.line.id.length)) + 3;
   console.log(`${lpad('#', 4)}  ${pad('line id', w)}${pad('speaker', 9)}${pad('tier', 16)}${pad('status', 13)}${lpad('chars', 6)}${lpad('credits', 8)}${lpad('cum.', 7)}`);
   let shown = 0;
   let hidden = 0;
@@ -262,15 +266,17 @@ function printPlan(p) {
     const past = !r.take && r.status !== 'up-to-date';
     if (past && !a.verbose) return void hidden++;
     shown++;
+    const sid = r.speechSource === 'override' ? `${r.line.id} *` : r.line.id;
     const st = r.take ? r.status : r.status === 'up-to-date' ? 'up-to-date' : `(${r.status})`;
     const cum = r.take ? r.cumulative : '';
-    console.log(`${lpad(i + 1, 4)}  ${pad(r.line.id, w)}${pad(r.line.speaker, 9)}${pad(r.tier, 16)}${pad(st, 13)}${lpad(r.chars, 6)}${lpad(r.status === 'up-to-date' ? 0 : r.credits, 8)}${lpad(cum, 7)}`);
+    console.log(`${lpad(i + 1, 4)}  ${pad(sid, w)}${pad(r.line.speaker, 9)}${pad(r.tier, 16)}${pad(st, 13)}${lpad(r.chars, 6)}${lpad(r.status === 'up-to-date' ? 0 : r.credits, 8)}${lpad(cum, 7)}`);
   });
   const taken = p.rows.filter((r) => r.take);
   const upToDate = p.rows.filter((r) => r.status === 'up-to-date');
   const stale = p.rows.filter((r) => r.status.startsWith('stale') || r.status === 'missing-file');
   const rest = p.rows.filter((r) => !r.take && r.status !== 'up-to-date');
   if (hidden) console.log(`   … ${hidden} more selected lines past the budget (-v lists them)`);
+  if (p.rows.some((r) => r.speechSource === 'override')) console.log('   * spoken text from speech.json');
   console.log('');
   console.log(`To generate: ${taken.length} lines · ${p.chars} chars · ${p.spend} credits (cap ${p.cap}; reserve ${reserve} kept, ${p.cap - p.spend} of the cap unused)`);
   console.log(`Up to date: ${upToDate.length} · stale (text/voice/model/file changed): ${stale.length} · lines covered after run: ${upToDate.length + taken.length}/${p.rows.length}`);
@@ -289,6 +295,10 @@ function printPlan(p) {
         .join(' · ') +
       ` credits (this run's ${taken.length} lines: ${tChars} chars)`,
   );
+  for (const l of p.staleOverrides)
+    console.warn(`WARNING: speech.json override for ${l.id} was written for another text (forText != ${textHash(l.text)}); ignored, auto-prep used. Rewrite it.`);
+  const nameAuto = p.rows.filter((r) => r.speechSource === 'auto' && /\{[Nn]ame\}/.test(r.line.text)).map((r) => r.line.id);
+  if (nameAuto.length) console.warn(`WARNING: lines with {Name} and no current speech.json entry (name just dropped): ${nameAuto.join(', ')}`);
   const noVoice = {};
   for (const l of lines) if (!runVoices.speakers[l.speaker]?.voiceId) noVoice[l.speaker] = (noVoice[l.speaker] ?? 0) + 1;
   const nv = Object.entries(noVoice).sort((x, y) => y[1] - x[1]);

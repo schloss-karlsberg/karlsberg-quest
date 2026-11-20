@@ -365,6 +365,8 @@ export interface ManifestEntry {
   chars: number;
   credits: number;
   durationMs: number;
+  /** textHash of the text actually sent to TTS (speech override or auto-prep); regenerate when it changes */
+  speechHash?: string;
 }
 export interface Manifest {
   version: 1;
@@ -391,16 +393,55 @@ export function writeManifest(path: string, m: Manifest): void {
   renameSync(tmp, path);
 }
 
-export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | 'stale-model' | 'missing-file';
+export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | 'stale-model' | 'stale-speech' | 'missing-file';
 
-/** Does this line need (re)generating? `fileExists` lets callers check the clip on disk. */
-export function lineStatus(entry: ManifestEntry | undefined, hash: string, voice: { voiceId: string; model: string }, fileExists: (f: string) => boolean = () => true): LineStatus {
+/**
+ * Does this line need (re)generating? `speechHash` (hash of the TTS text) catches a changed speech
+ * override or text prep while the displayed text stayed the same. `fileExists` checks the clip on disk.
+ */
+export function lineStatus(
+  entry: ManifestEntry | undefined,
+  hash: string,
+  voice: { voiceId: string; model: string },
+  fileExists: (f: string) => boolean = () => true,
+  speechHash?: string,
+): LineStatus {
   if (!entry) return 'new';
   if (entry.textHash !== hash) return 'stale-text';
   if (entry.voiceId !== voice.voiceId) return 'stale-voice';
   if (entry.model !== voice.model) return 'stale-model';
+  if (speechHash !== undefined && entry.speechHash !== speechHash) return 'stale-speech';
   if (!fileExists(entry.file)) return 'missing-file';
   return 'up-to-date';
+}
+
+// ---------------------------------------------------------------------------------------------
+// Speech overrides (scripts/voice/speech.json)
+
+/** Per line: what to speak instead of the auto-prepared text, valid only for one version of the text. */
+export interface SpeechOverride {
+  /** textHash of the `text_de` this speech was written for */
+  forText: string;
+  speech: string;
+}
+export type SpeechOverrides = Record<string, SpeechOverride>;
+
+export interface Speech {
+  /** text to send to TTS, null = nothing to speak */
+  text: string | null;
+  source: 'override' | 'auto';
+  /** an override exists but was written for another text version (ignored, auto-prep used) */
+  staleOverride: boolean;
+}
+
+/** The text to speak for a line: a current override wins; a stale override is never spoken. */
+export function speechFor(line: Pick<VoiceLine, 'id' | 'text'>, overrides: SpeechOverrides = {}): Speech {
+  const o = overrides[line.id];
+  if (o && o.forText === textHash(line.text)) {
+    const t = normalizeForHash(o.speech);
+    return { text: t || null, source: 'override', staleOverride: false };
+  }
+  return { text: prepareTtsText(line.text), source: 'auto', staleOverride: !!o };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -412,6 +453,8 @@ export interface PlanRow {
   voice: ResolvedVoice;
   hash: string;
   tts: string;
+  speechHash: string;
+  speechSource: 'override' | 'auto';
   chars: number;
   credits: number;
   status: LineStatus;
@@ -432,6 +475,8 @@ export interface Plan {
   chars: number;
   /** first row that did not fit, if the budget stopped the run */
   stoppedAt: PlanRow | null;
+  /** lines whose speech override no longer matches their text (auto-prep used instead) */
+  staleOverrides: VoiceLine[];
 }
 
 /** Spend cap: min(budget, account remaining) − reserve, never below 0. */
@@ -446,29 +491,41 @@ export function spendCap(o: { budget: number; reserve: number; remaining?: numbe
  */
 export function buildPlan(
   selected: Selected[],
-  o: { voices: VoicesConfig; runModel?: string; manifest: Manifest; cap: number; fileExists?: (f: string) => boolean; force?: boolean },
+  o: {
+    voices: VoicesConfig;
+    runModel?: string;
+    manifest: Manifest;
+    cap: number;
+    fileExists?: (f: string) => boolean;
+    force?: boolean;
+    speech?: SpeechOverrides;
+  },
 ): Plan {
   const rows: PlanRow[] = [];
   const skipped: Skipped[] = [];
   let spend = 0;
   let chars = 0;
   let stoppedAt: PlanRow | null = null;
+  const staleOverrides: VoiceLine[] = [];
   for (const { line, tier } of selected) {
     const voice = resolveVoice(line.speaker, o.voices, o.runModel);
     if (!voice) {
       skipped.push({ line, reason: 'no-voice' });
       continue;
     }
-    const tts = prepareTtsText(line.text);
+    const sp = speechFor(line, o.speech);
+    if (sp.staleOverride) staleOverrides.push(line);
+    const tts = sp.text;
     if (tts === null) {
       skipped.push({ line, reason: 'nothing-to-speak' });
       continue;
     }
     const hash = textHash(line.text);
-    const status = o.force ? 'stale-text' : lineStatus(o.manifest.lines[line.id], hash, voice, o.fileExists);
+    const speechHash = textHash(tts);
+    const status = o.force ? 'stale-text' : lineStatus(o.manifest.lines[line.id], hash, voice, o.fileExists, speechHash);
     const n = [...tts].length;
     const credits = creditsFor(n, voice.model);
-    const row: PlanRow = { line, tier, voice, hash, tts, chars: n, credits, status, take: false, cumulative: spend };
+    const row: PlanRow = { line, tier, voice, hash, tts, speechHash, speechSource: sp.source, chars: n, credits, status, take: false, cumulative: spend };
     if (status !== 'up-to-date' && !stoppedAt) {
       if (spend + credits <= o.cap) {
         spend += credits;
@@ -479,7 +536,7 @@ export function buildPlan(
     }
     rows.push(row);
   }
-  return { rows, skipped, cap: o.cap, spend, chars, stoppedAt };
+  return { rows, skipped, cap: o.cap, spend, chars, stoppedAt, staleOverrides };
 }
 
 /** Redact a secret from any string before it is printed. */

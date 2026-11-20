@@ -17,6 +17,7 @@ import {
   redact,
   resolveVoice,
   selectLines,
+  speechFor,
   spendCap,
   textHash,
   writeManifest,
@@ -26,6 +27,7 @@ import {
   type VoicesConfig,
 } from '../scripts/voice/lib.ts';
 import priority from '../scripts/voice/priority.json';
+import speechJson from '../scripts/voice/speech.json';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -181,7 +183,7 @@ describe('plan + budget', () => {
   });
   it('up-to-date lines cost nothing; no-voice and caption-only lines are skipped', () => {
     const m: Manifest = emptyManifest();
-    m.lines.a = { file: clipFile('a', textHash(t)), textHash: textHash(t), speaker: 'laub', voiceId: 'v-laub', model: 'eleven_flash_v2_5', date: '', chars: 100, credits: 50, durationMs: 1 };
+    m.lines.a = { file: clipFile('a', textHash(t)), textHash: textHash(t), speaker: 'laub', voiceId: 'v-laub', model: 'eleven_flash_v2_5', date: '', chars: 100, credits: 50, durationMs: 1, speechHash: textHash(prepareTtsText(t)!) };
     const extra = [{ line: line('s', 'soll', t), tier: 'x' }, { line: line('cap', 'laub', '[Stille]'), tier: 'x' }];
     const p = buildPlan([...sel, ...extra], { voices, manifest: m, cap: 100 });
     expect(p.rows.find((r) => r.line.id === 'a')?.status).toBe('up-to-date');
@@ -225,5 +227,52 @@ describe('redact', () => {
   it('removes the secret from messages', () => {
     expect(redact('bad key sk_123 in sk_123', 'sk_123')).toBe('bad key [REDACTED] in [REDACTED]');
     expect(redact('nothing', '')).toBe('nothing');
+  });
+});
+
+describe('speech overrides', () => {
+  const shown = '{name}? {name}! Die Suppe wird kalt!';
+  const l = line('marlene.k4.ruf', 'marlene', shown);
+  const ovr = { 'marlene.k4.ruf': { forText: textHash(shown), speech: 'Hallo? Hallo! Die Suppe wird kalt!' } };
+
+  it('a current override is spoken; the hash stays over the displayed text', () => {
+    expect(speechFor(l, ovr)).toEqual({ text: 'Hallo? Hallo! Die Suppe wird kalt!', source: 'override', staleOverride: false });
+    const p = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: emptyManifest(), cap: 1000, speech: ovr });
+    expect(p.rows[0]!.tts).toBe('Hallo? Hallo! Die Suppe wird kalt!');
+    expect(p.rows[0]!.hash).toBe(textHash(shown));
+    expect(p.rows[0]!.speechHash).toBe(textHash('Hallo? Hallo! Die Suppe wird kalt!'));
+  });
+
+  it('a stale override (text changed) is never spoken: auto-prep + reported', () => {
+    const changed = line('marlene.k4.ruf', 'marlene', '{name}? Die Suppe ist kalt!');
+    expect(speechFor(changed, ovr)).toEqual({ text: 'Die Suppe ist kalt!', source: 'auto', staleOverride: true });
+    const p = buildPlan([{ line: changed, tier: 'x' }], { voices, manifest: emptyManifest(), cap: 1000, speech: ovr });
+    expect(p.rows[0]!.tts).toBe('Die Suppe ist kalt!');
+    expect(p.staleOverrides.map((x) => x.id)).toEqual(['marlene.k4.ruf']);
+  });
+
+  it('changing only the speech regenerates (speechHash), the clip name stays', () => {
+    const first = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: emptyManifest(), cap: 1000, speech: ovr }).rows[0]!;
+    const m = emptyManifest();
+    m.lines[l.id] = { file: clipFile(l.id, first.hash), textHash: first.hash, speaker: 'marlene', voiceId: 'v-marlene', model: 'eleven_multilingual_v2', date: '', chars: first.chars, credits: first.credits, durationMs: 1, speechHash: first.speechHash };
+    const same = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: m, cap: 1000, speech: ovr }).rows[0]!;
+    expect(same.status).toBe('up-to-date');
+    const ovr2 = { 'marlene.k4.ruf': { ...ovr['marlene.k4.ruf'], speech: 'Hallo? Hörst du mich? Die Suppe wird kalt!' } };
+    const again = buildPlan([{ line: l, tier: 'x' }], { voices, manifest: m, cap: 1000, speech: ovr2 }).rows[0]!;
+    expect(again.status).toBe('stale-speech');
+    expect(again.take).toBe(true);
+    expect(clipFile(l.id, again.hash)).toBe(m.lines[l.id]!.file);
+    // dropping the override goes back to auto-prep, which is a speech change too
+    expect(buildPlan([{ line: l, tier: 'x' }], { voices, manifest: m, cap: 1000 }).rows[0]!.status).toBe('stale-speech');
+  });
+
+  it('the committed speech.json is well-formed', () => {
+    for (const [id, v] of Object.entries(speechJson)) {
+      if (id.startsWith('$')) continue;
+      const o = v as { forText: string; speech: string };
+      expect(o.forText, id).toMatch(/^[0-9a-f]{8}$/);
+      expect(o.speech.length, id).toBeGreaterThan(0);
+      expect(o.speech, id).not.toMatch(/\{/);
+    }
   });
 });
