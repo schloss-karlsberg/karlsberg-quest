@@ -256,6 +256,14 @@ did not move on).
 - **Fire and Steinfraß** (fx) stay timers; combat adds enemies inside them (Glutlinge, Steinfresser).
 - **The finale W8 is deliberately not a fight**: you lie down and light the lantern. The Messstab
   stays lowered ("Du hebst den Stab nicht."). The one battle you win by not fighting.
+- **Court zones vs service zones (1789, "Unauffällig", `src/systems/court`, docs/IDEAS-ROUND11.md §2.6):**
+  the court zones (`court.orangerie`, the teaching zone, tells ×0.6; `court.ehrenhof` east of the gitter
+  plus the rooms of KB-B01/B02/B03/B06, ×1, ×0.5 once `court.admitted`; data in `court/zones.ts`) are
+  watched, not fought in: a blow, a lock-on or a Wuchthieb charge where a watcher sees you is a tell
+  (a blow is instant "Aufgefallen"), and being caught there is a lossless escort to the zone's exit (no
+  damage, oil, XP or era change; never `player:caught`). Fights stay in the **service zones** with no
+  checks: Küchenhof, Bauplatz, Ladehof, Jägerhaus yard, Zwinger, the woods, the Karlslust. Guards are
+  people: not targetable. Content keeps spectral spawns out of court zones.
 
 ## 5. Enemies
 
@@ -1446,3 +1454,17 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   the real beer label as the owner's placeholder from one switch file. *Left open:* the Messstab
   tape-stripe cosmetic (the staff uses a shader material), a 3D look pass on the bottle and covers, and
   the doc's verbs crouch / relief / open / unseen are flavour only (no mechanic gates them).
+- **"Unauffällig" MVP system (2026-11-20, kq-story; spec docs/IDEAS-ROUND11.md §2.6/§2.10):** `src/systems/court/`
+  (`logic.ts` pure + `tests/court.test.ts`, `zones.ts`, `strings.ts`, `index.ts`). Watchers are placed
+  NPCs with a `watch` block on the story's npc spawn (`{fov, range, sweep?, period?, set?, inspector?,
+  zone?, who?}`, validated); sets switch with `cue court:on {set}` / `court:off`. Four MVP tells (hi-vis
+  without `disguise.coat`, running ≥ 4.8 m/s, the staff, an `unseen` pickup via `court:take`); bow, lawn,
+  lantern, tape, the back route and interior lackeys are LATER (their rates sit in `TELLS`). The HUD shows
+  the highest watcher as an eye + bar under the threat eye, captions name the tell, the first ejection
+  shows a hint card. The gate inspection (inspector, E hold 1 s, 2.5 s ring at ×3) refuses without the
+  letter, ejects without the coat, and on a pass opens the gate (`scenery:gate`) and sets `court.admitted`.
+  The court emits `player:costume` ('court' iff coat and not today). Fast travel to `ehrenhof` while the
+  court watches and you are not admitted lands at 1180/−1112. `SightCones` takes a list of fans (the pack
+  maps itself with `packCones`, no behaviour change); npc gains `npc:yaw` / `kq.npc.setYaw`, the watch
+  sweep and a `pike` look flag (pike in the rigged hand, `PIKE_BESIDE` on the low tier). Content (k1
+  quests, roster looks, lines, codex) comes next, against this API.

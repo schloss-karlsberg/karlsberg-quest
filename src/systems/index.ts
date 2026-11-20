@@ -38,6 +38,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./walk'),
   // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
   () => import('./photo'),
+  // "Unauffällig": the court's watchers, suspicion, the gate inspection (after npc / scenery / story)
+  () => import('./court'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
   () => import('./notes'),
 ];

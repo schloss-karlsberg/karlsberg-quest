@@ -36,6 +36,11 @@ export interface NpcLook {
   hair: 'wig' | 'queue' | 'short' | 'none';
   /** Holds something: ledger (Soll), basket (Hanne), stick (Jost), horn (the Pikeur). */
   prop: 'ledger' | 'basket' | 'stick' | 'none';
+  /**
+   * Carries a Gardist's pike (src/systems/court/props.ts): in the right hand of the rigged body,
+   * standing beside the procedural (low-tier) figure. Both in the ghost material.
+   */
+  pike?: boolean;
   /** sRGB tint of the light inside the smoke. */
   tint: number;
   /** Seed for the idle motion (no two figures breathe in step). */
