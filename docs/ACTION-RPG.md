@@ -485,6 +485,20 @@ The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); onl
   pickups), **Die Namen der Hunde** (five collars: Diane, Sultan, Fanfare, Rauhreif, Bijou), **Matthes'
   Zeichen** (four marked stones across eras), **Planblätter**, **Mannlichs Festpläne**. A complete set
   gives XP and a line from its owner. Relief patterns (rm.01–08) stay codex cards.
+- **Fläschchen** (hidden collectibles, docs/IDEAS-ROUND11.md §4; `src/systems/flaschen/`, state
+  `systems.flaschen`): 24 small bottles hand-placed at named places in all five eras (today 6, 1789 6,
+  Feb 1793 4, Jul 1793 3, 1796 5; the spring holds one in every year), never guarded, no glow, no map
+  mark, no Bussole marker, not shown by Spürsinn. Hints: a soft clink within 6 m every 8–12 s
+  (captioned with its side) and a glint when the camera faces one within 15° and 12 m in light. Some
+  need a verb: a Wuchthieb shakes two out of apple trees and one out of the spring's icicles; one shows
+  only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
+  „Fläschchen n/24“, a row in Journal → Sammlungen (era counts only, never places) and a bottle on the
+  field station's Regal; Marlene at 8, Laub at 16; all 24: the lantern glass „Flaschengrün“ and the
+  FIKTION card cx.47 „Treibgut“. **No XP per bottle** (the doc's 15 XP would push the prologue past
+  L3: its margin is 4 XP, `tests/quests-content-a.test.ts`) and no talent point; only cx.47's usual
+  codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
+  in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
+  (`label.ts`); `tests/flaschen.test.ts` fails if it appears in any other file.
 - **Inventory**: journal tab "Ausrüstung": weapon, charm slots, consumables (set the quick-use item),
   quest items, lore (read the text).
 
@@ -1399,3 +1413,12 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   `q.k1.ankunft` gains the objective `quelle`, `wechsel` moves to the gate; cx.42 adds the drop that
   dries overnight. Old `k1_0` saves are teleported to the spring on resume. No change to the quelle
   system or its 3D.
+- **Fläschchen (2026-11-20, docs/IDEAS-ROUND11.md §4)**: 24 hidden bottles (`src/systems/flaschen/`),
+  the Journal row, the station Regal, Marlene at 8, Laub at 16, the lantern glass and cx.47 „Treibgut“
+  at 24; no XP per bottle (§7). Every spot was checked against the terrain, the colliders and the
+  keep-clear rules (`tests/flaschen.test.ts`) and screenshotted in its era (`e2e/flaschen.spec.ts`,
+  `test-results/screens/fl-*.png`); spots that were inside a building, a wall, a walled yard, near an
+  NPC or clue, or in the Steinbrecher's ground were moved (≤ 40 m from their anchor). The bottle shows
+  the real beer label as the owner's placeholder from one switch file. *Left open:* the Messstab
+  tape-stripe cosmetic (the staff uses a shader material), a 3D look pass on the bottle and covers, and
+  the doc's verbs crouch / relief / open / unseen are flavour only (no mechanic gates them).

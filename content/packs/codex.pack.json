@@ -1009,6 +1009,18 @@
       "licence": "eigener Text"
     },
     {
+      "id": "cx.47",
+      "title_de": "Treibgut",
+      "text_de": "Erfunden: Seit Sie die Quelle berührt haben, spült sie kleine Fläschchen an Orte, wo jemand gern war, in jedes Jahr, auch in Jahre, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig haben Sie aufgelesen. Der Wald ist kein Keller.",
+      "confidence": "D",
+      "fiction": true,
+      "sources": [],
+      "tags": [
+        "label:FIKTION"
+      ],
+      "licence": "eigener Text"
+    },
+    {
       "id": "rm.01",
       "title_de": "Terrasse und Planie",
       "text_de": "Im Relief: Eine auffällig ebene Fläche mit geraden Kanten, an einer Seite in den Hang geschnitten, an der anderen aufgeschüttet. Im Lokalen Relief hell an der Böschungsoberkante, dunkel am Fuß. Verwechslung: Forstwege-Kehren, Holzlagerplätze (meist jünger, ohne rechte Winkel). Am Karlsberg: der Ehrenhof auf 344,8 m und die Stufe zum Nordplateau.",
