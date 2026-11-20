@@ -999,13 +999,18 @@ Round-4 (polish: set dressing) integration rules:
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
-- Survey points (`points.ts`, 11): glowing tripods (`visuals.ts`, beam shader that fades near the
-  camera, widens with distance so a found beam stays a landmark). Walking within 7 m measures one
+- Survey points (`points.ts`, 12): glowing tripods (`visuals.ts`, beam shader that fades near the
+  camera, widens with distance so a found beam stays a landmark). Walking within 7 m (the Ehrenhof:
+  16 m, `activateRadius`, so both Q spots lie inside) measures one
   in (chime, burst ring + flash — gentler with `reducedFlash` — banner card, autosave). The field
   station is known from the start. `travelBlock`: no travel while busy (modal / story pause), in a
   fight, while hunted (chasing / searching), in a locked chapter phase or, in the past, while a
   story threat is active. Story objectives far away (> 400 m, `ANNOUNCE_MIN`; 600 m before playtest round 10) whose goal lies within 140 m of a
   known point get one Laub line "Drücken Sie M …".
+  The Karlsbergquelle tripod (round 10, 1072/−825) stands on the bench east of the spring, 14.7 m
+  from the trough's water: its 7 m circle never reaches the touch reach (`quelle/layout.ts`
+  `REACH`) nor the story's 5 m step zone; travel has no E prompt of its own, and its card closes on
+  E only while nothing else owns E (`cardMayTakeE`: `e.owner`, `npc.near`).
 - Map (`map.ts`): M (no modal open) or the Journal tab "Karte" — the 1836–41 sheet with inked
   footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay

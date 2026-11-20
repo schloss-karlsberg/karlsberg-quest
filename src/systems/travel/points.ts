@@ -36,6 +36,11 @@ export const SURVEY_POINTS: readonly SurveyPoint[] = [
   { id: 'karlslust', name: 'Karlslust', x: 1831, z: 79, note: 'Die Terrasse, das Rund, die Menagerie' },
   { id: 'taleingang', name: 'Taleingang', x: 509, z: -893, note: 'Das Baumagazin, die Wachhäuser, der Steinbruch' },
   { id: 'westblick', name: 'Westblick', x: 214, z: -899, note: 'Der Waldrand. Im Westen die Hohenburg' },
+  // playtest round 10 (A4): on the small bench east of the Karlsbergquelle, 5 m off the path,
+  // 14.7 m from the trough's water. Its 7 m circle never reaches the trough's E zone
+  // (quelle/layout.ts REACH) nor the story's 5 m step zone at the spring, so the tripod's card can
+  // never be up because you stand at the trough. Last in the list: the index seeds the tripod look.
+  { id: 'karlsbergquelle', name: 'Karlsbergquelle', x: 1072, z: -825, note: 'Der Trog im Hang, der Bach, der Weg hinauf zum Schloss' },
 ];
 
 export function pointById(id: string): SurveyPoint | undefined {
@@ -53,6 +58,15 @@ export const ACTIVATE_RADIUS = 7;
  */
 export function activateRadius(p: SurveyPoint): number {
   return p.r ?? ACTIVATE_RADIUS;
+}
+
+/**
+ * May the travel card take E (close on E)? Not while something else owns E: the spring's
+ * "Wasser berühren" (`e.owner` = quelle), a door or gate, an NPC in talk range (`npc.near`).
+ * Otherwise one E press at the Karlsbergquelle would both close the card and touch the water.
+ */
+export function cardMayTakeE(flags: Readonly<Record<string, unknown>>): boolean {
+  return !flags['e.owner'] && !flags['npc.near'];
 }
 
 /**

@@ -4,11 +4,16 @@
  * the way-finding A* (world/route.ts) round a wall and through a gap.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
 import { LAUF_DELAY, SPRINT_BOOST, laufschrittTarget } from '../src/systems/travel/laufschritt';
 import { LORE } from '../src/systems/travel/lore';
-import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceFor, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/quelle/layout';
+import { decodeH2025, quantToMetres } from '../src/data/decode';
+import type { TerrainMeta } from '../src/data/types';
+import { Heightfield } from '../src/world/heightfield';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceFor, cardMayTakeE, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -369,5 +374,55 @@ describe('the Wegweiser follows the paths (playtest round 10, B2)', () => {
     expect(r.points.some(([x, z]) => x > 840 && x < 940 && z < -900)).toBe(true);
     // performance budget (measured ~10 ms on a laptop; generous for CI)
     expect(ms).toBeLessThan(150);
+  });
+});
+
+describe('the Karlsbergquelle tripod keeps clear of the spring (playtest round 10, A4)', () => {
+  const p = pointById('karlsbergquelle')!;
+  // the story's spring spot (prologue P3q objective and its 5 m "vor den Trog stellen" step)
+  const STORY = { x: 1059.3, z: -833.1, r: 5 };
+  // where a journey puts the player (TravelSystem.go: beside the tripod, +2.2 / +2.2)
+  const arrival = { x: p.x + 2.2, z: p.z + 2.2 };
+
+  it('stands ≥ 4 m from the anchor, and its 7 m circle never reaches the trough\'s E zone', () => {
+    expect(p).toBeDefined();
+    expect(SURVEY_POINTS[SURVEY_POINTS.length - 1]!.id).toBe('karlsbergquelle');
+    expect(Math.hypot(p.x - QUELLE.x, p.z - QUELLE.z)).toBeGreaterThan(4);
+    for (const era of ['today', '1789'] as const) {
+      const [tx, tz] = toWorld(...touchLocal(era));
+      const d = Math.hypot(p.x - tx, p.z - tz);
+      // nowhere a player can touch the water is the tripod activated (no card pops at the trough)
+      expect(d, era).toBeGreaterThan(activateRadius(p) + REACH);
+      // and an arriving traveller stands well outside the reach
+      expect(Math.hypot(arrival.x - tx, arrival.z - tz), era).toBeGreaterThan(REACH + 8);
+      for (let a = 0; a < 360; a += 15) {
+        const yaw = (a * Math.PI) / 180;
+        expect(canTouch(arrival.x, arrival.z, yaw, era)).toBe(false);
+        expect(canTouch(p.x, p.z, yaw, era)).toBe(false);
+      }
+    }
+    // the story's 5 m step zone at the spring lies outside the activation circle too
+    expect(Math.hypot(p.x - STORY.x, p.z - STORY.z)).toBeGreaterThan(activateRadius(p) + STORY.r);
+    // and it is still the spring's point: within 20 m, Laub's "Wasser" line plays inside 12 m of it
+    expect(Math.hypot(p.x - STORY.x, p.z - STORY.z)).toBeLessThan(20);
+  });
+
+  it('the card never takes E while the spring (or a door, or an NPC) owns it', () => {
+    expect(cardMayTakeE({})).toBe(true);
+    expect(cardMayTakeE({ 'e.owner': 'quelle' })).toBe(false);
+    expect(cardMayTakeE({ 'npc.near': 'laub' })).toBe(false);
+  });
+
+  it('stands on walkable ground in the present and in 1789 (real terrain), not in the brook', () => {
+    const w = loadWorldData();
+    const dir = new URL('../public/data/terrain/', import.meta.url);
+    const meta = JSON.parse(readFileSync(new URL('meta.json', dir), 'utf8')) as TerrainMeta;
+    const h2025 = new Heightfield(w.grid, quantToMetres(decodeH2025(new Uint8Array(inflateSync(readFileSync(new URL('h2025.u16.deflate', dir)))), meta), meta));
+    for (const [x, z] of [[p.x, p.z], [arrival.x, arrival.z]] as const) {
+      expect(w.water(x, z)).toBe(false);
+      expect(h2025.slopeDeg(x, z)).toBeLessThan(26);
+      expect(w.h1789.slopeDeg(x, z)).toBeLessThan(26);
+      expect(w.footprints.footprintAt(x, z)).toBe(-1);
+    }
   });
 });

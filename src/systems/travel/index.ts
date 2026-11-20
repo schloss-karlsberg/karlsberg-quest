@@ -34,7 +34,7 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, activateRadius, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, activateRadius, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
 import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
@@ -825,7 +825,7 @@ class Travel {
     }
     if (this.card) {
       this.cardT -= dt;
-      if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11)) this.hideCard();
+      if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
   }
 
