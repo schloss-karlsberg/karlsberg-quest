@@ -3,7 +3,8 @@
  *
  *  1. Era SHIFT on 'shift:request' {to, instant?}: ~3.5 s LiDAR scan-wave transition (reduced
  *     motion: 1.4 s crossfade; instant: none). Emits shift:begin → shift:midpoint (era already
- *     switched with ctx.era.set) → shift:done. Counts state.meta.shifts.
+ *     switched with ctx.era.set) → shift:done {reason} (the request's reason, passed through).
+ *     Counts state.meta.shifts.
  *     Q key (only when no story system is registered; otherwise the story owns Q):
  *     fx emits 'shift:request' only if the STORY allows it, via state flags:
  *        flags['shift.allowed'] === true  and  flags['shift.target'] = an Era ('1789', …)
@@ -28,7 +29,7 @@ import { Color } from 'three';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
-import type { ThreatConfig } from '../contracts';
+import type { ShiftReason, ThreatConfig } from '../contracts';
 import { AmbientParticles, roofQuads } from './ambient/ambient';
 import { scanPing } from './audio';
 import { type FireSlice, FireController, fireConfig } from './fire/fire';
@@ -38,6 +39,7 @@ import { K3_FLASH, K3Stage } from './k3-stage';
 import { type OblivionSlice, OblivionController } from './oblivion/oblivion';
 import { Quality, type QualityLevel } from './quality';
 import { ScanPulse } from './scan/pulse';
+import { instantShift } from './shift/instant';
 import { ShiftEffect } from './shift/shift';
 import { StageDirector } from './stage';
 import './strings';
@@ -116,19 +118,13 @@ function slice(ctx: GameContext): FxSlice {
   return ctx.state.slice('fx', () => ({ fire: null, oblivion: null }));
 }
 
-function doShift(ctx: GameContext, to: Era, instant: boolean, reduced: boolean, reason?: string): Promise<void> {
+function doShift(ctx: GameContext, to: Era, instant: boolean, reduced: boolean, reason?: ShiftReason): Promise<void> {
   if (instant) {
     if (shift.active) shift.finish();
-    const from = ctx.era.current;
-    ctx.events.emit('shift:begin', { from, to });
-    ctx.era.set(to);
-    ctx.events.emit('shift:midpoint', { from, to });
-    // being carried home after a capture is not a shift the player made (round 2)
-    if (reason !== 'caught') ctx.state.mutable.meta.shifts++;
-    ctx.events.emit('shift:done', { from, to });
+    instantShift(ctx, to, reason);
     return Promise.resolve();
   }
-  return shift.start(to, { reduced });
+  return shift.start(to, { reduced, reason });
 }
 
 /** The fire night as scenery: the palace ablaze, slowly, no smoke meter (see FireConfig.ambient). */

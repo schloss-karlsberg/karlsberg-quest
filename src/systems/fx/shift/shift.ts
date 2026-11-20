@@ -25,6 +25,7 @@ import { ERA_INFO, type Era } from '../../../core/era';
 import { shiftSweep } from '../audio';
 import { makeScreenPass, pointScale } from '../gl';
 import { rng } from '../geom';
+import type { ShiftReason } from '../../contracts';
 import type { Quality } from '../quality';
 import type { FxUI } from '../ui';
 import { buildTerrainCloud, buildTreeCloud, palaceCloudGeometry, palaceSamples } from './pointcloud';
@@ -72,6 +73,8 @@ function cloudMaterial(kind: 0 | 1 | 2, size: number): ShaderMaterial {
 
 export interface ShiftOptions {
   reduced: boolean;
+  /** The 'shift:request' reason, passed through to 'shift:done'. */
+  reason?: ShiftReason;
 }
 
 export class ShiftEffect {
@@ -82,6 +85,7 @@ export class ShiftEffect {
   from: Era = 'today';
   to: Era = 'today';
   private reduced = false;
+  private reason: ShiftReason | undefined;
   private midDone = false;
   private pendingNewTrees = -1;
   private readonly center = new Vector3();
@@ -127,6 +131,7 @@ export class ShiftEffect {
     this.from = ctx.era.current;
     this.to = to;
     this.reduced = opts.reduced;
+    this.reason = opts.reason;
     this.active = true;
     this.t = 0;
     this.midDone = false;
@@ -363,7 +368,7 @@ export class ShiftEffect {
       this.savedVol = null;
     }
     ctx.state.mutable.meta.shifts++;
-    ctx.events.emit('shift:done', { from: this.from, to: this.to });
+    ctx.events.emit('shift:done', { from: this.from, to: this.to, reason: this.reason });
     for (const fn of this.onDone.splice(0)) fn();
   }
 
