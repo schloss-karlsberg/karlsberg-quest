@@ -219,7 +219,9 @@ export async function runBench(
       let callsMax = 0;
       let tris = 0;
       let trisMax = 0;
+      // every animation frame drawn, whatever the cap or idle pacing (the bench measures throughput)
       while (i < warmup) {
+        ctx.loop.requestRender();
         await nextFrame();
         i++;
       }
@@ -233,6 +235,7 @@ export async function runBench(
         trisMax = Math.max(trisMax, tr);
       };
       while (i < total) {
+        ctx.loop.requestRender();
         await nextFrame();
         i++;
       }

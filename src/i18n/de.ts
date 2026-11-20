@@ -70,6 +70,16 @@ export const de: Record<string, string> = {
     'Niedrig: einfache Pixeldichte, keine Kantenglättung, weniger Bäume und Partikel. Mittel: leichte Kantenglättung, kürzere Sichtweite der Bäume. Hoch: volle Pracht.',
   'settings.graphics.auto': 'Grafik automatisch auf „{level}“ gesenkt (Einstellungen → Bild & Leistung).',
   'settings.resolution': 'Auflösung der 3D-Ansicht',
+  'settings.fps': 'Bildrate',
+  'settings.fps.30': '30',
+  'settings.fps.60': '60',
+  'settings.fps.0': 'unbegrenzt',
+  'settings.fps.help':
+    'Höchstens so viele Bilder pro Sekunde. 60 reicht für flüssiges Spiel und schont auf 120-Hz-Bildschirmen Akku und Lüfter; „unbegrenzt“ zeichnet so oft, wie der Bildschirm es kann. Menüs und Titelbild zeichnen von sich aus seltener.',
+  'settings.powerSave': 'Energiesparen',
+  'settings.powerSave.help':
+    'Höchstens 30 Bilder pro Sekunde, einfache Pixeldichte, ohne Umgebungsschatten und Spiegelung im Wasser. Leiser und länger mit Akku.',
+  'settings.powerSave.hint': 'Akkubetrieb: Einstellungen → Bild & Leistung → „Energiesparen“ schont Akku und Lüfter.',
   'settings.autoQuality': 'Grafik automatisch anpassen, wenn es ruckelt',
   'settings.perfHud': 'Leistungsanzeige (F3)',
   'settings.volume.master': 'Gesamtlautstärke',

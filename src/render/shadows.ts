@@ -28,6 +28,54 @@ export function castsShadow(o: Object3D): boolean {
 }
 
 /**
+ * When may the shadow map of an earlier frame stand for this one (pure, tested)? At most
+ * `every - 1` frames in a row, only while it is still exact: the focus moved less than
+ * `maxDriftTexels` of a map texel, the sun did not turn, and the map is at most `maxAge` seconds old,
+ * so moving casters lag one 60 fps frame at most (no swimming shadow under a walking or sprinting
+ * character; at 30 fps or in bullet time every frame re-renders).
+ */
+export class ShadowReuse {
+  /** Re-render at least every n-th frame (1 = every frame; the tier's `shadowEvery`). */
+  every = 1;
+  /** 0.75 texel: walking (5.3 cm a 60 fps frame) re-uses on Hoch (7.3 cm texels) and Mittel (10.7 cm), sprinting (10.3 cm) does not. */
+  maxDriftTexels = 0.75;
+  maxAge = 0.025;
+  private reused = 0;
+  private age = 0;
+  private readonly focus = new Vector3(Infinity, 0, 0);
+  private readonly sun = new Vector3();
+
+  /**
+   * One frame: true = keep the last map; false = re-render now (this focus and sun become the
+   * reference). `dt` = seconds since the previous frame, `texel` = map texel size (m).
+   */
+  reuse(focus: Vector3, sun: Vector3, dt: number, texel: number): boolean {
+    const drift = this.maxDriftTexels * texel;
+    const keep =
+      this.every > 1 &&
+      this.reused < this.every - 1 &&
+      this.age + dt <= this.maxAge &&
+      this.focus.distanceToSquared(focus) <= drift * drift &&
+      this.sun.dot(sun) > 0.999999;
+    if (keep) {
+      this.reused++;
+      this.age += dt;
+      return true;
+    }
+    this.reused = 0;
+    this.age = 0;
+    this.focus.copy(focus);
+    this.sun.copy(sun);
+    return false;
+  }
+
+  /** The last map is gone or stale (new size, shadows off): the next frame re-renders. */
+  invalidate(): void {
+    this.focus.set(Infinity, 0, 0);
+  }
+}
+
+/**
  * Sun (or moon) shadows for every shader that uses `kqLight` (terrain, trees, palace, scenery,
  * characters, patched glTF materials). One fitted orthographic shadow camera follows the player,
  * snapped to whole texels so edges do not crawl. The depth pass renders the scene's own materials
@@ -43,9 +91,17 @@ export class SunShadows {
   private taps = 8;
   /** Era strength 0..1 (night eras: softer moon shadows). */
   strength = 0.85;
-  /** Re-render every n-th frame (1 = every frame). */
-  every = 1;
-  private frame = 0;
+  /** Re-use of the last map on the next frame (`ShadowReuse`; `every` comes from the tier). */
+  readonly reuse = new ShadowReuse();
+  /** Re-render at least every n-th frame (1 = every frame). */
+  get every(): number {
+    return this.reuse.every;
+  }
+  set every(n: number) {
+    this.reuse.every = Math.max(1, Math.round(n));
+  }
+  /** Shadow passes drawn / re-used since start (perf readouts). */
+  readonly stats = { drawn: 0, reused: 0 };
   private skip: Object3D[] = [];
   private skipAge = 1e9;
   private readonly tmpM = new Matrix4();
@@ -61,6 +117,7 @@ export class SunShadows {
 
   /** Quality tier: map size (0 = off), half extent of the box (m), PCF taps. */
   configure(size: number, range: number, taps: number): void {
+    this.reuse.invalidate();
     this.range = range;
     this.taps = taps;
     if (size !== this.size) {
@@ -80,15 +137,22 @@ export class SunShadows {
     }
   }
 
-  /** Render the shadow map around `focus` (the player / camera). */
-  update(renderer: WebGLRenderer, scene: Scene, focus: Vector3): void {
+  /** Render the shadow map around `focus` (the player / camera); `dt` = seconds since the previous frame. */
+  update(renderer: WebGLRenderer, scene: Scene, focus: Vector3, dt = 0): void {
     const a = atmosphere;
     if (!this.target || this.strength <= 0 || a.uSunDir.value.y < 0.03) {
       a.uShadowParams.value.x = 0;
+      this.reuse.invalidate();
       return;
     }
-    if (this.frame++ % this.every !== 0 && a.uShadowParams.value.x > 0) return;
     const r = this.range;
+    if (a.uShadowParams.value.x <= 0) this.reuse.invalidate();
+    if (this.reuse.reuse(focus, a.uSunDir.value, dt, (2 * r) / this.size)) {
+      this.stats.reused++;
+      a.uShadowParams.value.w = this.strength;
+      return;
+    }
+    this.stats.drawn++;
     const cam = this.camera;
     cam.left = -r;
     cam.right = r;

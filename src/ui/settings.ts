@@ -6,7 +6,7 @@ import { clear, h } from './dom';
 
 /**
  * The settings page (pause menu and title): five sections with a jump bar — Spiel, Steuerung
- * (incl. key remapping), Bild & Leistung (preset, resolution, auto, perf overlay),
+ * (incl. key remapping), Bild & Leistung (preset, resolution, Bildrate, Energiesparen, auto, perf overlay),
  * Barrierefreiheit, Ton. Every control has a visible label bound with `for`, ranges show and
  * announce their value, help texts explain what a switch does.
  */
@@ -26,6 +26,13 @@ export function addSettingsRows(fn: (settings: SettingsStore) => SettingsRow[]):
 }
 
 let formSeq = 0;
+
+/** „Bildrate“ choices (settings `fpsCap`; '0' = unbegrenzt). */
+const FPS_CHOICES = ['30', '60', '0'] as const;
+/** The saved cap as one of the choices (anything else reads as the default 60). */
+function fpsChoice(v: number | undefined): (typeof FPS_CHOICES)[number] {
+  return v === 30 ? '30' : v === 0 ? '0' : '60';
+}
 
 export function settingsForm(settings: SettingsStore): HTMLElement {
   const s = settings.state;
@@ -86,6 +93,13 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
       t('settings.graphics.help'),
     ],
     [t('settings.resolution'), range(0.5, 1, 0.05, s.resolutionScale ?? 1, (v) => set((d) => (d.resolutionScale = v), 'resolutionScale'), t('settings.resolution'), pct, 'set-res'), 'graphics'],
+    [
+      t('settings.fps'),
+      radios('kq-fps', FPS_CHOICES, fpsChoice(s.fpsCap), (v) => `settings.fps.${v}`, (v) => set((d) => (d.fpsCap = Number(v)), 'fpsCap'), t('settings.fps'), 'set-fps'),
+      'graphics',
+      t('settings.fps.help'),
+    ],
+    [t('settings.powerSave'), check(s.powerSave === true, (v) => set((d) => (d.powerSave = v), 'powerSave'), t('settings.powerSave'), 'set-powersave'), 'graphics', t('settings.powerSave.help')],
     [t('settings.autoQuality'), check(s.autoQuality !== false, (v) => set((d) => (d.autoQuality = v), 'autoQuality'), t('settings.autoQuality'), 'set-autoq'), 'graphics'],
     [t('settings.perfHud'), check(s.perfHud === true, (v) => set((d) => (d.perfHud = v), 'perfHud'), t('settings.perfHud'), 'set-perfhud'), 'graphics'],
     // Barrierefreiheit

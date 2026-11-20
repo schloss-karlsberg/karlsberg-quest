@@ -433,6 +433,7 @@ class Travel {
       body,
       wide: true,
       className: 'kqt-map-modal',
+      backdrop: 'still',
       onClose: () => {
         cleanup?.();
         this.mapOpen = null;
