@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
 import { roofQuads, underRoof } from '../src/systems/fx/ambient/ambient';
 import { SetBuilder } from '../src/systems/scenery/builder';
-import { PASSAGE, ROTUNDA, TEMPEL_DOOR, passageAt, passageCollision, passageCoords, passageFloor } from '../src/systems/scenery/passage';
+import { Kit } from '../src/systems/scenery/kit';
+import { PASSAGE, ROTUNDA, TEMPEL_DOOR, passageAt, passageCollision, passageCoords, passageFloor, rotundaFooting } from '../src/systems/scenery/passage';
 import { RUND, rundHouses } from '../src/systems/scenery/rund';
 import { GATE_CENTER, SETS } from '../src/systems/scenery/sets';
 import { TERRACE_ROWS, terraceSolids } from '../src/systems/scenery/worldsets';
@@ -228,6 +229,29 @@ describe('Tempelzimmer passage through the rotunda', () => {
     }
     expect(passageCoords(x, z)[1]).toBeLessThan(ROTUNDA.inner - 0.4);
     expect(c.footprintAt(x, z)).toBe(idx('KB-B07'));
+  });
+
+  it('carries the rotunda’s plinths down to our 1789 terrain (footings under the model)', () => {
+    const k = new Kit();
+    rotundaFooting(k, () => 347.6);
+    const g = k.build();
+    g.computeBoundingBox();
+    const bb = g.boundingBox!;
+    expect(bb.min.y).toBeCloseTo(347.25, 2);
+    expect(bb.max.y).toBeCloseTo(348.22, 2); // the colonnade's and portico's plinth bottoms
+    // within the rotunda's outline, nothing on the way or beyond the steps
+    for (const [x, z] of [[bb.min.x, bb.min.z], [bb.max.x, bb.max.z]] as const) {
+      const [s, q] = passageCoords(x, z);
+      expect(s).toBeGreaterThan(-4);
+      expect(s).toBeLessThan(PASSAGE.to + 1);
+      expect(Math.abs(q)).toBeLessThan(ROTUNDA.r + 3);
+    }
+    // on terrain that already reaches the plinths there is nothing to fill
+    const high = new Kit();
+    rotundaFooting(high, () => 349.1);
+    const h = high.build();
+    h.computeBoundingBox();
+    expect(h.boundingBox!.max.y).toBeLessThan(348.0);
   });
 
   it('chapter 3 offers it as a way out (bible 3.10 c), and its exit trigger lies on the way', () => {

@@ -124,6 +124,30 @@ export function passageCollision(poly: number): { zones: PassZone[]; solids: Sol
   return { zones, solids };
 }
 
+/**
+ * Footings under the rotunda (intact eras, world space). The model's plinths end at 348.2 (colonnade,
+ * portico) and 347.92 (the drum's red sandstone base), drawn for a terrain pad at ≈ 349.1; our 1789
+ * terrain lies at 347.6 round the drum, so they would float up to 0.6 m. Foundation masonry continues
+ * them down into the ground, inset 2 cm behind the model's faces.
+ */
+export function rotundaFooting(k: Kit, groundAt: (x: number, z: number) => number): void {
+  const d = TEMPEL_DOOR;
+  const stone = 0xcfc9ba;
+  const red = 0xa65e4a;
+  // local frame: +z along the axis (s), +x to its left (−q)
+  k.place(d.x, 0, d.z, Math.atan2(d.nx, d.nz));
+  const block = (s0: number, s1: number, hq: number, top: number, color: number) => {
+    const g = [passageAt(s0, -hq), passageAt(s0, hq), passageAt(s1, -hq), passageAt(s1, hq), passageAt((s0 + s1) / 2, 0)].map((p) => groundAt(p[0], p[1]));
+    const y0 = Math.min(...g) - 0.35;
+    if (y0 < top - 0.05) k.box(hq * 2, top - y0, s1 - s0, 0, y0, (s0 + s1) / 2, color);
+  };
+  block(0.66, 4.33, 2.48, 348.22, stone); // the colonnade
+  block(14.47, 18.81, 3.5, 348.22, stone); // the portico and its steps
+  const ring = Array.from({ length: 16 }, (_, i) => rotundaAt(i * 22.5, 5.19)).map((p) => groundAt(p[0], p[1]));
+  const y0 = Math.min(...ring) - 0.35;
+  if (y0 < 347.89) k.cyl(5.18, 5.18, 347.94 - y0, 0, y0, ROTUNDA.s, red, undefined, 32);
+}
+
 /** A point round the rotunda: `phiDeg` from the garden axis (east door 0, south side positive), radius. */
 export function rotundaAt(phiDeg: number, rad: number): [number, number] {
   const d = TEMPEL_DOOR;

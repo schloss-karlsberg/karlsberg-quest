@@ -32,7 +32,9 @@ import { Lehnstuhl } from './chair';
 import { CONVOY_ROAD, Convoy } from './convoy';
 import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, pullFactor } from './hohenburg';
 import { disposeModels, instanceModels } from './models';
-import { passageCollision, passageFloor, patchPalace, setPassageCut } from './passage';
+import { Kit } from './kit';
+import { propMaterial } from './material';
+import { passageCollision, passageFloor, patchPalace, rotundaFooting, setPassageCut } from './passage';
 import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
 import { RUND, RundTally } from './rund';
@@ -129,7 +131,7 @@ let fireworks: Fireworks | null = null;
 let fwMaxLine = -1;
 let fwOwnClock = 0;
 const lit = new Map<string, LitWindows>();
-let passage: { zones: PassZone[]; solids: Solid[]; patched: boolean; b07: number } | null = null;
+let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolean; b07: number } | null = null;
 /** The world whose `floorPatch` the passage set (cleared on dispose). */
 let floorWorld: { floorPatch: unknown } | null = null;
 let solidsDirty = true;
@@ -240,9 +242,18 @@ function ensurePassage(ctx: GameContext): void {
   const b07 = ctx.world.palace.buildings.find((b) => b.id === 'KB-B07')?.index ?? -1;
   const poly = ctx.data.footprints.buildings.findIndex((f) => f.id === 'KB-B07');
   if (b07 < 0 || poly < 0) return;
+  // the footings that carry the rotunda down to our terrain
+  const k = new Kit();
+  rotundaFooting(k, (x, z) => ctx.world.heightfields['1789'].heightAt(x, z));
+  const group = new Group();
+  group.name = 'scenery-passage';
+  const m = new (Object.getPrototypeOf(mesh).constructor as typeof import('three').Mesh)(k.build(), propMaterial());
+  m.name = 'scenery-rotunda-footing';
+  group.add(m);
+  root.add(group);
   const { zones, solids } = passageCollision(poly);
   const patched = patchPalace(mesh, b07);
-  passage = { zones, solids, patched, b07 };
+  passage = { group, zones, solids, patched, b07 };
   applyPassage(ctx, mesh);
   solidsDirty = true;
 }
@@ -252,6 +263,7 @@ function applyPassage(ctx: GameContext, mesh: Mesh | null): void {
   if (!passage) return;
   const era = ctx.era.current;
   const intact = ERA_INFO[era].palace === 'intact';
+  passage.group.visible = intact;
   if (mesh) setPassageCut(mesh, intact ? passage.b07 : -10, era === '1789');
   ctx.world.floorPatch = intact ? passageFloor : null;
   floorWorld = ctx.world;
@@ -632,6 +644,13 @@ export default defineSystem({
     for (const id of [...live.keys()]) dropSet(id);
     if (floorWorld?.floorPatch === passageFloor) floorWorld.floorPatch = null;
     floorWorld = null;
+    passage?.group.traverse((o) => {
+      const m = o as Mesh;
+      if (m.isMesh) {
+        m.geometry.dispose();
+        (m.material as ShaderMaterial).dispose();
+      }
+    });
     passage = null;
     fireworks?.dispose();
     convoy?.dispose();
