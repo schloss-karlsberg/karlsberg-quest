@@ -17,7 +17,7 @@
 
 ### Teil A – Am Schloss (Tag)
 
-**1.1 – Ankunft.** Wechsel am Ehrenhof. Eine Kutsche fährt bis vor das Corps de logis, alle anderen gehen zu Fuß. Wache am Gitter (`echo.k1.wache`). Laub kommentiert die Flügel (`laub.k1.fluegel`).
+**1.1 – Ankunft.** Das Kapitel beginnt nicht in der Feldstation, sondern **an der Karlsbergquelle im Morgengrauen** (`loc.k1.quelle`, Kapitel-Checkpoint 1058,2/−832,4, Blick zum Trog). Marlene funkt („Du bist ja schon weg“, `marlene.k1.morgen.quelle`), Laub erklärt in einem Satz, warum es ein zweites Mal sein muss: Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet (`laub.k1.morgen.quelle`, FIKTION `cx.42`). E „Wasser berühren“ wie im Prolog (p3q): der Bach läuft zurück, der graue Novembermorgen wird ein warmer Sommermorgen 1789 (Beat `k1_0`). In der Brunnenstube ein Satz von Laub (`laub.k1.brunnenstube`), dann geht man **zu Fuß** den Hang hinauf, an der Orangerie vorbei, zum Ehrenhofgitter, wie alle außer dem Herzog (FAKT, `cx.11`; Beat `k1_0b` „Die Brunnenstube, Sommer“, rund 380 m). Die Laterne brennt auf diesem Weg noch nicht (Flag `k1.vorspiel`). Wer unterwegs ins Heute fällt, wacht an der Quelle auf und kehrt dort mit Q zurück. Q bringt einen erst in den Ehrenhof, wenn der Hof einen hereingelassen hat (Flag `court.admitted`, gesetzt mit `k1_1`). Am Gitter: eine Kutsche fährt bis vor das Corps de logis, die Wache (`echo.k1.wache`), Laub kommentiert die Flügel (`laub.k1.fluegel`).
 
 **1.2 – Die Registratur.** Im Erdgeschoss des Nordflügels sitzt Kanzlist **Gottlob Soll** (FIKTION) zwischen Regalen und zählt. Gespräch `soll.k1.*`. Auf seinem Pult liegt das Rechenbrett mit drei Zahlen (`clue.k1.rechenbrett`), im Regal die Abschrift eines Kaufbriefs (`clue.k1.kaufbrief`), in einer Schublade ein beschlagnahmtes Zeitschriftenheft (`clue.k1.schloezer`). Unter dem Hauptbuch liegt ein zweites, dünneres Buch. Soll klappt es zu, bevor man lesen kann (`clue.k1.gegenbuch`): „Das ist privat.“
 
@@ -53,6 +53,7 @@
 
 | id | Ort | Bezug | x | z | r | Ära | Trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `loc.k1.quelle` | Karlsbergquelle mit Trog (heute) und Brunnenstube (1789, FIKTION `cx.42`) | OSM-KQ, LiDAR Quellmulde 1061/−835, `cx.41` | 1061 | −834,5 | 10 | heute (Morgengrauen) → 1789-07 | Kapitelstart (Checkpoint 1058,2/−832,4); E „Wasser berühren“ (`quelle:touch`); Q-Anker zurück nach 1789, solange `court.admitted` fehlt; Aufwachort in `k1_0b` |
 | `loc.k1.ehrenhof` | Ehrenhof mit Gitter und Wachhäusern | TF-01, KB-B37, KB-B38, KB-B39 | 1192 | −1115 | 40 | 1789-07 | Anker A; `echo.k1.wache` beim Betreten |
 | `loc.k1.registratur` | Registratur, Nordflügel EG | B03.1.eg-registratur (KB-B03) | 1202 | −1153 | 6 (Raumpolygon) | 1789-07 | Soll |
 | `loc.k1.bauplatz` | Bauplatz am Galerie-Ostende | KB-B07 (Platzhalter für Rotunde 1789), KB-B06 | 1276 | −1228 | 25 | 1789-07 | Hanne; Zeichen am Quader (1262/−1224, r 3) |
@@ -232,7 +233,9 @@
 
 **Quirin Laub (Kapitel 1)**
 
-- `laub.k1.start` (Ankunft): „1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.“
+- `laub.k1.morgen.quelle` (an der Quelle, Kapitelstart): „Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.“
+- `laub.k1.brunnenstube` (1789, nach der Berührung): „Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle.“
+- `laub.k1.start` (Ankunft am Ehrenhof): „1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.“
 - `laub.k1.fluegel`: „Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.“
 - `laub.k1.registratur`: „Eine Registratur. Mein natürlicher Lebensraum. Halten Sie sich an den Mann mit den Ärmelschonern.“
 - `laub.k1.gegenbuch` (nachdem Soll das Buch zuklappt): „Haben Sie die Überschrift gesehen?“ (Pause.) „Ich auch.“
@@ -246,7 +249,7 @@
 
 **Marlene (Kapitel 1)**
 
-- `marlene.k1.morgen` (Feldstation, Kapitelstart): „Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.“
+- `marlene.k1.morgen.quelle` (Funk, an der Quelle, Kapitelstart; ersetzt `marlene.k1.morgen`): „Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist.“
 - `marlene.k1.flug`: „Die Karlslust? Das ist da, wo heute der Bärenzwinger ist und die Schwanenweiher. Schöne Ecke. Nimm den Überflug, zu Fuß bist du ewig unterwegs.“
 - `marlene.k1.bärenzwinger`: „Die Leute sagen Bärenzwinger. Ob da je Bären drin waren, weiß keiner so genau.“ (STRITTIG, `cx.13`.)
 - `marlene.k1.abend` (nach Rückkehr aus Teil B): „Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl's mir morgen.“

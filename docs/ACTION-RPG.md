@@ -809,9 +809,24 @@ prologue beat (no quest, no gate); the p10 objective suggests them in the evenin
 
 As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapitel1.mjs`); ends at level 6.
 
+**Opening at the Karlsbergquelle** (owner, 2026-11-20; design `docs/IDEAS-ROUND11.md` §1, phase 1;
+story `k1_0` → `k1_0b` → `k1_1`): the chapter checkpoint is the spring (1058.2/−832.4, yaw 54), so
+the chapter opens there at dawn (`k1_0` „Morgengrauen an der Quelle“, `look dawn`), not in the station
+bed. Marlene radios („Du bist ja schon weg“), Laub says why it takes a second touch: yesterday's drop
+dried in the Bussole overnight (FIKTION, cx.42). `k1_0` sets no Q anchor (Q at the spring would skip
+the touch); E at the trough → the touch → the shift to summer 1789 (exit: `look day`). `k1_0b` „Die
+Brunnenstube, Sommer“ (one Laub line) is the walk up on foot by the trail west of the Orangerie to the
+Ehrenhof gate (1200/−1116, r 14); flag `k1.vorspiel` keeps the oil meter and the return tip off until
+`k1_1` clears it. Caught or back in today on the way: you wake at the spring, and Q there (anchor
+1061/−834.5 r 10) takes you back. **Anchor rule:** Q never anchors inside the Ehrenhof before the
+flag `court.admitted`; `k1_1` sets it (also `k1_2`/`k1_3`, so older saves keep their anchor), and the
+`k1_1`–`k1_3` today reactions anchor at the Ehrenhof only with it, else at the spring. `k1_0b` is the
+seam for the round-11 disguise (phase 2). Old saves in `k1_0` resume at the spring (an `onResume`
+teleport) with the old Ehrenhof anchor cleared. e2e `chapter-k1-quelle.spec.ts`, unit `tests/story.test.ts`.
+
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
-| `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | Q at the Ehrenhof (1222/−1119); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
+| `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
 | `q.k1.registratur` "Der Kanzlist zählt" | main | Soll (Registratur, 1198.8/−1152.6) → Soll | Rechenbrett, Kaufbrief, Schlözer-Heft (room); **6 Mahnbriefe** flutter into the Küchenhof (1212/−1180) | mahnbrief ×6 | 130 XP, Solls Rechenpfennig | cx.07, cx.05, cx.02 (STRITTIG) |
 | `q.k1.lohn` "Matthes' Lohn" | main | Hanne (Bauplatz, 1287/−1228) → Hanne | ask Soll about Matthes (`matthes`); Matthes' mark (`clue.k1.zeichen`, item `item.k1.zeichen`); at dusk **Das Schuldbuch** rises at 1294/−1234; pick up the **Lohnzettel** it drops | **schuldbuch** (boss) | 260 XP, **Messstab II**; stance `flag.k1_lohn` | cx.08, cx.10, cx.09 (LEGENDE) |
 | `q.k1.zwinger` "Tausend Hunde" | main | Jost (Zwinger, 1174.6/−1571) → Jost | Jost's hiding lesson (`verstecken`); 5 pieces of meat (Jägerhaus yard ~1210/−1625); bring them to the kennel; **3 Streuner** (1169/−1636) | streuner ×3 | 160 XP, Josts Hundemarke, Spurenleser 1 | cx.06, cx.37 |
@@ -1348,3 +1363,10 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   carved stone and paper, intentionally); HUD numbers / vitals do not scale up at 1920×1080;
   the dialogue strip can still start while a boss title card is up when a story line is
   `now`-priority.
+- **Story track, 2026-11-20 — Kapitel 1 opens at the Karlsbergquelle** (IDEAS-ROUND11 §1, phase 1):
+  the chapter checkpoint moves to the spring; `k1_0` is dawn at the spring and completes on the touch;
+  the new `k1_0b` is the walk up in 1789 (no enemies within 40 m, the oil paused by `k1.vorspiel`,
+  wake at the spring). Q never anchors in the Ehrenhof before `court.admitted` (set by `k1_1`).
+  `q.k1.ankunft` gains the objective `quelle`, `wechsel` moves to the gate; cx.42 adds the drop that
+  dries overnight. Old `k1_0` saves are teleported to the spring on resume. No change to the quelle
+  system or its 3D.

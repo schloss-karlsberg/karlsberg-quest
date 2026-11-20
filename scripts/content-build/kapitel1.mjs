@@ -269,6 +269,8 @@ const dialogue = [
   say('jost.k1.11', 'jost', 'Die Meute reißt nicht. Sie stellt. Reißen tut, was danach kommt.', talk('jost', 'stellen')),
   say('jost.k1.12', 'jost', 'Heut Nacht laufen sie in der Karlslust. Wenn du dahin gehst: Bleib am Wasser.', talk('jost', 'bye')),
   // Laub
+  say('laub.k1.morgen.quelle', 'laub', 'Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.', beat('1.0'), { once: true }),
+  say('laub.k1.brunnenstube', 'laub', 'Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle.', beat('1.0b'), { once: true }),
   say('laub.k1.start', 'laub', '1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.', beat('1.1'), { once: true, priority: 10 }),
   say('laub.k1.fluegel', 'laub', 'Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.', found('clue.k1.fluegel'), { once: true }),
   say('laub.k1.registratur', 'laub', 'Eine Registratur. Mein natürlicher Lebensraum. Halten Sie sich an den Mann mit den Ärmelschonern.', beat('1.2'), { once: true }),
@@ -290,7 +292,8 @@ const dialogue = [
   say('laub.k1.nach_rondell', 'laub', 'Mannlich war schon am Fuß des Berges, als es geschah. Er hat das Licht gesehen und es schön gefunden. So steht es bei ihm. Das ist das Schlimmste daran.', beat('1.11-nach'), { once: true, src: [P('S. 391')] }),
   say('laub.k1.ende', 'laub', 'Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.', beat('1.14'), { once: true }),
   // Marlene
-  say('marlene.k1.morgen', 'marlene', 'Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.', beat('1.0'), { once: true }),
+  // spoken by the story at the spring (k1_0, inline say actions with these ids; the '1.x' beat triggers never fire, as for laub.k1.start)
+  say('marlene.k1.morgen.quelle', 'marlene', 'Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist.', beat('1.0'), { once: true }),
   say('marlene.k1.abend', 'marlene', 'Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl’s mir morgen.', beat('B-zurueck'), { once: true }),
   // Echos mit Mannlich-Zitaten
   ...seq(echo('clue.k1.mannlich'), [
@@ -386,13 +389,17 @@ const k1Quests = {
     {
       id: 'q.k1.ankunft', kind: 'main', era: E,
       title_de: 'Zu Fuß, außer einem',
-      summary_de: 'Sommer 1789. Laub will, dass du den Hof betrittst wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.',
+      summary_de: 'Die Bussole ist über Nacht trocken geworden. Ein neuer Tropfen aus der Karlsbergquelle bringt dich in den Sommer 1789. Von dort gehst du zum Hof wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.',
       giver: { voice: 'laub' }, turnin: 'auto',
-      offer: [ln('laub', 'Heute gehen wir hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht.')],
+      offer: [ln('laub', 'Erst die Quelle, dann gehen wir hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht.')],
       turnin_lines: [ln('laub', 'Merken Sie sich die Wache. Die schreibt Sie auf, wenn Sie rennen.')],
       history: [ln('laub', 'Nur der Herzog durfte zum Schloss hinauffahren. Alle anderen gingen zu Fuß, und Singen war verboten. Ein Zeitgenosse fand die ganze Gegend „wie betäubt“.', { fact: 'cx.11', src: [src('RLS', 'P')] })],
       objectives: [
-        { id: 'wechsel', type: 'reach', text_de: 'Am Ehrenhof: Q – Sommer 1789', where: place(1222, -1119, 22) },
+        // the chapter opens at the Karlsbergquelle (story k1_0 → k1_0b → k1_1): touch, then walk up in 1789.
+        // `wechsel` keeps its id (saves and tests count it), only its text and place changed
+        { id: 'quelle', type: 'event', event: 'quelle:touch', text_de: 'An der Quelle: das Wasser berühren',
+          hint_de: 'Die Karlsbergquelle liegt im Hang westlich der Orangerie. Vor den Holztrog stellen, zum Wasser schauen und E drücken.' },
+        { id: 'wechsel', type: 'reach', after: ['quelle'], text_de: 'Hinauf zum Ehrenhof, zu Fuß', where: place(1200, -1116, 14) },
         { id: 'wache', type: 'examine', clue: 'clue.k1.wache', text_de: 'Am Gitter: der Wache zuhören' },
         { id: 'fluegel', type: 'examine', clue: 'clue.k1.fluegel', text_de: 'Die beiden Flügel ansehen' },
       ],

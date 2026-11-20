@@ -141,7 +141,7 @@ const facts = [
     'Die Karlsbergquelle liegt im Buchenwald zwischen dem Karlsbergweiher und der Orangerie, am Fuß eines Hangs in einer kleinen Rinne, rund 60 m tiefer als die Orangerie-Terrasse. Hier beginnt der Karlsbergbach, der durch die Rinne zum Weiher hinunterläuft; wenige Meter daneben steht eine Infotafel. Heute läuft das Wasser aus einem Rohr in einen ausgehöhlten Stamm vor einer niedrigen Trockenmauer, hangaufwärts liegt eine kleine gewölbte Brunnenstube. Wann die Quelle gefasst wurde und ob sie das Schloss mit Wasser versorgte, ist nicht belegt.',
     [src('OSM-KQ'), src('KOMOOT-KQ', 'Fotos der heutigen Fassung'), src('LIDAR', 'Quellmulde bei 1061/−835, Rinne zum Weiher')]),
   f('cx.42', 'Das Wasser erinnert sich', 'FIKTION', 'D',
-    'Erfunden: dass das Wasser der Karlsbergquelle sich erinnert und dass, wer es berührt, in ein anderes Jahr gerät. Erfunden ist auch die barocke Brunnenstube mit Steinbecken und Bronzespeier, die das Spiel für 1789 bis 1796 an die Quelle stellt: Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert.',
+    'Erfunden: dass das Wasser der Karlsbergquelle sich erinnert und dass, wer es berührt, in ein anderes Jahr gerät. Erfunden ist, dass ein Tropfen davon in der Bussole den Weg in andere Jahre offen hält, bis er über Nacht eintrocknet. Erfunden ist auch die barocke Brunnenstube mit Steinbecken und Bronzespeier, die das Spiel für 1789 bis 1796 an die Quelle stellt: Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert.',
     []),
 ];
 

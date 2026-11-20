@@ -308,6 +308,122 @@ describe('story files', () => {
     expect(h.slice.chapter).toBe('k1');
     expect(h.slice.completed).toContain('prolog');
   });
+
+  it('opens chapter 1 at the Karlsbergquelle at dawn: touch, summer 1789, the walk up, the court', () => {
+    let slice: StorySlice = createStorySlice();
+    const runs: { source: string; resume: boolean; actions: Action[] }[] = [];
+    const host: StoryHost = {
+      run: (actions, o) => runs.push({ source: o.source, resume: o.resume, actions: actions.filter((a) => !o.resume || runsOnResume(a)) }),
+      chapterEntered: () => {},
+      beatEntered: () => {},
+      chapterCompleted: () => {},
+    };
+    const engine = new StoryEngine(
+      files.map((f) => f.story),
+      () => slice,
+      host,
+    );
+    const step = (e: Partial<StoryEnv>, n = 1) => {
+      for (let i = 0; i < n; i++) engine.tick(0.5, env(e));
+    };
+    const all = () => runs.flatMap((r) => r.actions);
+    const SPRING = { x: 1059.3, z: -833.1 };
+    const k1 = files.find((f) => f.story.chapter === 'k1')!.story;
+    // the chapter checkpoint is the spring (chapterEntered teleports there from the station bed)
+    expect(k1.checkpoint).toEqual({ x: 1058.2, z: -832.4, yaw: 54, era: 'today' });
+    expect(k1.beats.slice(0, 3).map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_1']);
+    engine.goto('k1');
+    expect(slice.beat).toBe('k1_0');
+    // dawn, no Q anywhere, the spring calls (guide motes + the E prompt)
+    const k0 = all();
+    expect(k0).toContainEqual({ do: 'look', time: 'dawn' });
+    expect(k0).toContainEqual({ do: 'anchor', to: null });
+    expect(k0.some((a) => a.do === 'anchor' && a.to !== null)).toBe(false);
+    expect(k0.some((a) => a.do === 'flag' && a.set['quelle.call'] === true && a.set['quelle.guide'] === true)).toBe(true);
+    expect(k0.some((a) => a.do === 'objective' && a.text === 'An der Quelle: E – das Wasser berühren' && a.x === SPRING.x && a.z === SPRING.z)).toBe(true);
+    const says = k0.filter((a): a is Extract<Action, { do: 'say' }> => a.do === 'say').map((a) => a.id);
+    expect(says).toEqual(['marlene.k1.morgen.quelle', 'laub.k1.morgen.quelle']);
+    // Q at the Ehrenhof does not count: only the touch
+    step({ era: '1789', x: 1222, z: -1119 }, 4);
+    expect(slice.beat).toBe('k1_0');
+    runs.length = 0;
+    engine.onEvent('quelle:touch', { era: 'today' });
+    step({ ...SPRING });
+    expect(slice.beat).toBe('k1_0b');
+    // the exit shifts to 1789 through the spring, the dawn ends, the prelude pauses the lantern
+    const exit = all();
+    expect(exit).toContainEqual({ do: 'shift', to: '1789', reason: 'quelle' });
+    expect(exit).toContainEqual({ do: 'look', time: 'day' });
+    expect(exit.some((a) => a.do === 'flag' && a.set['k1.vorspiel'] === true && a.set['quelle.call'] === null)).toBe(true);
+    step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } }, 6);
+    expect(slice.beat).toBe('k1_0b');
+    // back to today on the walk: Q at the spring takes you back, never the Ehrenhof
+    runs.length = 0;
+    step({ era: 'today', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1061, z: -834.5, r: 10 });
+    expect(all().some((a) => a.do === 'anchor' && a.to !== null && a.x === 1222)).toBe(false);
+    step({ era: '1789', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } }, 4);
+    expect(slice.beat).toBe('k1_0b');
+    runs.length = 0;
+    step({ era: '1789', x: 1195, z: -1116, flags: { 'k1.vorspiel': true } }); // at the gate of the court
+    expect(slice.beat).toBe('k1_1');
+    // k1_1: admitted to the court, the prelude ends (the lantern's reaction rises again)
+    expect(all().some((a) => a.do === 'flag' && a.set['k1.vorspiel'] === null && a.set['court.admitted'] === true)).toBe(true);
+    // the anchor rule: not admitted → the spring; admitted → the Ehrenhof
+    runs.length = 0;
+    step({ era: 'today', x: 1195, z: -1116 });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1061, z: -834.5, r: 10 });
+    step({ era: '1789', x: 1195, z: -1116 });
+    runs.length = 0;
+    step({ era: 'today', x: 1195, z: -1116, flags: { 'court.admitted': true } });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1222, z: -1119, r: 16 });
+    expect(all().some((a) => a.do === 'anchor' && a.x === 1061)).toBe(false);
+    // caught in the prelude: you wake at the spring
+    const k0b = k1.beats.find((b) => b.id === 'k1_0b')!;
+    expect(k0b.wake).toEqual({ x: 1058.2, z: -832.4, yaw: 54, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' });
+    // the chapter's oil and return-tip reactions wait for the end of the prelude
+    for (const id of ['oel-a', 'oel-b', 'lauf-zurueck']) expect(JSON.stringify(k1.on!.find((r) => r.id === id)!.when)).toContain('"not":{"flag":"k1.vorspiel"}');
+    // every Ehrenhof anchor in k1 waits for court.admitted
+    for (const b of k1.beats)
+      for (const r of b.on ?? [])
+        if (r.do.some((a) => a.do === 'anchor' && a.x === 1222)) expect(JSON.stringify(r.when), `${b.id} ${r.id}`).toContain('"flag":"court.admitted"');
+  });
+
+  it('a chapter-1 save from before the spring opening resumes at the spring (old Ehrenhof anchor cleared)', () => {
+    // an old save: k1_0 running at the station, the old morning lines said, the Ehrenhof anchor in the flags
+    let slice: StorySlice = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', said: ['marlene.k1.morgen', 'laub.k1.morgen'] };
+    const runs: { resume: boolean; actions: Action[] }[] = [];
+    const host: StoryHost = {
+      run: (actions, o) => runs.push({ resume: o.resume, actions: actions.filter((a) => !o.resume || runsOnResume(a)) }),
+      chapterEntered: () => {},
+      beatEntered: () => {},
+      chapterCompleted: () => {},
+    };
+    const engine = new StoryEngine(
+      files.map((f) => f.story),
+      () => slice,
+      host,
+    );
+    slice = JSON.parse(JSON.stringify(slice)) as StorySlice;
+    engine.resume(true);
+    expect(slice.beat).toBe('k1_0');
+    const acts = runs.flatMap((r) => r.actions);
+    // chapterEntered(resume) does not teleport: the beat's own teleport does (onResume)
+    expect(acts).toContainEqual({ do: 'teleport', x: 1058.2, z: -832.4, yaw: 54, onResume: true });
+    // the old anchor (shift.* flags) goes, the spring's flags come, the objective points at it
+    expect(acts).toContainEqual({ do: 'anchor', to: null });
+    expect(acts.indexOf(acts.find((a) => a.do === 'anchor')!)).toBeLessThan(acts.findIndex((a) => a.do === 'teleport'));
+    expect(acts.some((a) => a.do === 'anchor' && a.to !== null)).toBe(false);
+    expect(acts.some((a) => a.do === 'flag' && a.set['quelle.call'] === true)).toBe(true);
+    expect(acts).toContainEqual({ do: 'look', time: 'dawn' });
+    expect(acts.some((a) => a.do === 'objective' && a.x === 1059.3 && a.z === -833.1)).toBe(true);
+    // the old completion (era 1789 by Q at the Ehrenhof) no longer ends the morning
+    for (let i = 0; i < 4; i++) engine.tick(0.5, env({ era: '1789', x: 1222, z: -1119 }));
+    expect(slice.beat).toBe('k1_0');
+    engine.onEvent('quelle:touch', { era: 'today' });
+    engine.tick(0.5, env({ x: 1059.3, z: -833.1 }));
+    expect(slice.beat).toBe('k1_0b');
+  });
 });
 
 describe('dialogue', () => {

@@ -7,9 +7,9 @@
   "start": "k1_0",
   "next": "k2",
   "checkpoint": {
-    "x": 760,
-    "z": -902,
-    "yaw": 0,
+    "x": 1058.2,
+    "z": -832.4,
+    "yaw": 54,
     "era": "today"
   },
   "on": [
@@ -23,6 +23,11 @@
           {
             "not": {
               "flag": "k1.b"
+            }
+          },
+          {
+            "not": {
+              "flag": "k1.vorspiel"
             }
           }
         ]
@@ -51,6 +56,11 @@
           },
           {
             "flag": "k1.b"
+          },
+          {
+            "not": {
+              "flag": "k1.vorspiel"
+            }
           }
         ]
       },
@@ -129,6 +139,11 @@
           },
           {
             "chapterTimer": 75
+          },
+          {
+            "not": {
+              "flag": "k1.vorspiel"
+            }
           },
           {
             "not": {
@@ -761,11 +776,11 @@
   "beats": [
     {
       "id": "k1_0",
-      "title_de": "Morgen in der Feldstation",
+      "title_de": "Morgengrauen an der Quelle",
       "enter": [
         {
           "do": "look",
-          "time": "day"
+          "time": "dawn"
         },
         {
           "do": "look",
@@ -805,7 +820,9 @@
             "npc.owns.clue.k1.feenschloss": true,
             "npc.owns.clue.k1.gagern": true,
             "npc.owns.clue.k1.insel": true,
-            "npc.owns.clue.k1.amphitheater": true
+            "npc.owns.clue.k1.amphitheater": true,
+            "quelle.guide": true,
+            "quelle.call": true
           }
         },
         {
@@ -841,10 +858,14 @@
         },
         {
           "do": "anchor",
-          "to": "1789",
-          "x": 1222,
-          "z": -1119,
-          "r": 16
+          "to": null
+        },
+        {
+          "do": "teleport",
+          "x": 1058.2,
+          "z": -832.4,
+          "yaw": 54,
+          "onResume": true
         },
         {
           "do": "quest",
@@ -854,49 +875,142 @@
         },
         {
           "do": "objective",
-          "id": "k1.ehrenhof",
-          "text": "Zum Ehrenhof (F: Geisterblick). Dort Q: Sommer 1789",
-          "x": 1222,
-          "z": -1119,
+          "id": "k1.quelle",
+          "text": "An der Quelle: E – das Wasser berühren",
+          "x": 1059.3,
+          "z": -833.1,
           "delay": 0.5
         },
         {
-          "do": "say",
-          "id": "marlene.k1.morgen",
-          "speaker": "marlene",
-          "text": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.",
-          "delay": 3
+          "do": "sound",
+          "sound": "radio",
+          "caption": "[Das Funkgerät knackt]",
+          "delay": 2.5
         },
         {
           "do": "say",
-          "id": "laub.k1.morgen",
+          "id": "marlene.k1.morgen.quelle",
+          "speaker": "marlene",
+          "delay": 0.3,
+          "text": "Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist."
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.morgen.quelle",
           "speaker": "laub",
-          "text": "Die Bussole zeigt wieder auf den Ehrenhof. Ich nehme an, Sie wollen nicht frühstücken.",
-          "delay": 1
+          "delay": 1,
+          "until": {
+            "event": "quelle:touch"
+          },
+          "text": "Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht."
+        }
+      ],
+      "complete": {
+        "event": "quelle:touch"
+      },
+      "exit": [
+        {
+          "do": "flag",
+          "set": {
+            "quelle.call": null,
+            "quelle.guide": null,
+            "k1.vorspiel": true
+          }
+        },
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "shift",
+          "to": "1789",
+          "reason": "quelle"
+        },
+        {
+          "do": "look",
+          "time": "day"
+        }
+      ]
+    },
+    {
+      "id": "k1_0b",
+      "title_de": "Die Brunnenstube, Sommer",
+      "wake": {
+        "x": 1058.2,
+        "z": -832.4,
+        "yaw": 54,
+        "era": "today",
+        "text": "Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren."
+      },
+      "enter": [
+        {
+          "do": "flag",
+          "set": {
+            "k1.vorspiel": true
+          }
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.brunnenstube",
+          "speaker": "laub",
+          "delay": 4.5,
+          "text": "Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle."
         }
       ],
       "on": [
         {
-          "id": "k1_0.am-hof",
+          "id": "k1_0b.heute",
           "when": {
-            "enter": {
-              "x": 1222,
-              "z": -1119,
-              "r": 16,
-              "era": "today"
-            }
+            "era": "today"
           },
+          "repeat": true,
           "do": [
             {
-              "do": "toast",
-              "text": "Hier erinnert sich das Land. Drücke [Q], um die Zeit zu wechseln.",
-              "ms": 4500
+              "do": "anchor",
+              "to": "1789",
+              "x": 1061,
+              "z": -834.5,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.damals",
+          "when": {
+            "era": "1789"
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.vorspiel": true
+              }
+            },
+            {
+              "do": "objective",
+              "id": "k1.hinauf",
+              "text": "Hinauf zum Ehrenhof, zu Fuß (den Hang hinauf, an der Orangerie vorbei)",
+              "x": 1192,
+              "z": -1116
             }
           ]
         }
       ],
       "complete": {
-        "era": "1789"
+        "enter": {
+          "x": 1200,
+          "z": -1116,
+          "r": 14,
+          "era": "1789"
+        }
       }
     },
     {
@@ -911,6 +1025,13 @@
       },
       "enter": [
         {
+          "do": "flag",
+          "set": {
+            "k1.vorspiel": null,
+            "court.admitted": true
+          }
+        },
+        {
           "do": "say",
           "id": "laub.k1.start",
           "speaker": "laub",
@@ -922,7 +1043,14 @@
         {
           "id": "k1_1.heute",
           "when": {
-            "era": "today"
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "flag": "court.admitted"
+              }
+            ]
           },
           "repeat": true,
           "do": [
@@ -939,6 +1067,38 @@
               "text": "Zurück in den Sommer 1789: Q am Ehrenhof",
               "x": 1222,
               "z": -1119
+            }
+          ]
+        },
+        {
+          "id": "k1_1.heute-quelle",
+          "when": {
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "not": {
+                  "flag": "court.admitted"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1061,
+              "z": -834.5,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
             }
           ]
         },
@@ -1000,7 +1160,14 @@
         {
           "id": "k1_2.heute",
           "when": {
-            "era": "today"
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "flag": "court.admitted"
+              }
+            ]
           },
           "repeat": true,
           "do": [
@@ -1017,6 +1184,38 @@
               "text": "Zurück in den Sommer 1789: Q am Ehrenhof",
               "x": 1222,
               "z": -1119
+            }
+          ]
+        },
+        {
+          "id": "k1_2.heute-quelle",
+          "when": {
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "not": {
+                  "flag": "court.admitted"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1061,
+              "z": -834.5,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
             }
           ]
         },
@@ -1061,7 +1260,9 @@
           "id": "k1_2.briefe",
           "when": {
             "all": [
-              { "era": "1789" },
+              {
+                "era": "1789"
+              },
               {
                 "have": {
                   "clue": "clue.k1.rechenbrett"
@@ -1095,7 +1296,10 @@
             {
               "do": "cue",
               "id": "k1-papers",
-              "data": { "tx": 1212, "tz": -1180 },
+              "data": {
+                "tx": 1212,
+                "tz": -1180
+              },
               "delay": 0.5
             },
             {
@@ -1114,6 +1318,12 @@
         }
       },
       "enter": [
+        {
+          "do": "flag",
+          "set": {
+            "court.admitted": true
+          }
+        },
         {
           "do": "quest",
           "op": "offer",
@@ -1136,7 +1346,14 @@
         {
           "id": "k1_3.heute",
           "when": {
-            "era": "today"
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "flag": "court.admitted"
+              }
+            ]
           },
           "repeat": true,
           "do": [
@@ -1153,6 +1370,38 @@
               "text": "Zurück in den Sommer 1789: Q am Ehrenhof",
               "x": 1222,
               "z": -1119
+            }
+          ]
+        },
+        {
+          "id": "k1_3.heute-quelle",
+          "when": {
+            "all": [
+              {
+                "era": "today"
+              },
+              {
+                "not": {
+                  "flag": "court.admitted"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1061,
+              "z": -834.5,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
             }
           ]
         },
@@ -1243,6 +1492,12 @@
         }
       },
       "enter": [
+        {
+          "do": "flag",
+          "set": {
+            "court.admitted": true
+          }
+        },
         {
           "do": "quest",
           "op": "offer",
