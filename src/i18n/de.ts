@@ -79,7 +79,7 @@ export const de: Record<string, string> = {
   'settings.volume.ambience': 'Umgebung',
   'settings.keys': 'Tastenbelegung',
   'settings.keys.help':
-    'Tasten zählen nach ihrer Lage auf der Tastatur: Auf AZERTY liegt „Vorwärts“ auf Z, auf QWERTZ wie gewohnt auf W. Pfeiltasten gehen immer. Ohne Maus umsehen: Komma / Punkt, Bild↑ / Bild↓ oder der Ziffernblock.',
+    'Tasten zählen nach ihrer Lage auf der Tastatur: Auf AZERTY liegt „Vorwärts“ auf Z, auf QWERTZ wie gewohnt auf W. Ohne Maus umsehen: Pfeil links / rechts drehen die Sicht (auch Komma / Punkt), Bild↑ / Bild↓ neigen sie, oder der Ziffernblock. Pfeil hoch / runter: gehen.',
   'settings.keys.add': '+ Taste',
   'settings.keys.press': 'Taste drücken … (Esc: abbrechen)',
   'settings.keys.remove': '{key} entfernen',
@@ -128,8 +128,10 @@ export const de: Record<string, string> = {
   'licences.code': 'Programmcode: Karlsberg Quest (Open-Kirrberg).',
 
   'controls.title': 'Steuerung',
+  'ui.keys.turn': 'Umsehen ohne Maus: drehen (auch Komma / Punkt) und Blick heben / senken',
+  'ui.keys.turn.key': '[←][→] [Bild↑][Bild↓]',
   'controls.body':
-    'WASD / Pfeile: gehen · Maus: umsehen · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · F: Geisterblick (nur heute) · 1–3: Relief-Blick · 0: Relief aus · M: Karte 1840 · Esc: Pause',
+    'WASD / Pfeil hoch, runter: gehen · Maus oder Pfeil links, rechts: umsehen · Bild↑ / Bild↓: Blick heben, senken · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · F: Geisterblick (nur heute) · 1–3: Relief-Blick · 0: Relief aus · M: Karte 1840 · Esc: Pause',
 
   'hud.compass.n': 'N',
   'hud.compass.e': 'O',

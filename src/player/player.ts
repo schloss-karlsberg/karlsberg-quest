@@ -3,6 +3,7 @@ import type { EventBus } from '../core/events';
 import type { PlayerState } from '../core/state';
 import { CameraRig, type CameraMode, type CameraWorld, PITCH_MAX_3P, PITCH_MIN_3P, PITCH_REST_3P } from './camera';
 import type { Input } from './input';
+import { KEY_TURN_RATE, type KeyTurnRates, stepKeyTurn } from './keyTurn';
 import { STANCES, type Stance } from './stance';
 
 /** What the player controller needs from the world (keeps it testable without three scenes). */
@@ -86,8 +87,10 @@ export class Player {
   mouseSensitivity = 1;
   invertY = false;
   invertX = false;
-  /** Keyboard look speed (rad/s at full sensitivity), see lookLeft/… actions. */
-  keyLookSpeed = 1.9;
+  /** Keyboard look speed (rad/s at sensitivity 1, 120°/s), see lookLeft/… actions and keyTurn.ts. */
+  keyLookSpeed = KEY_TURN_RATE;
+  /** Current eased keyboard turn rates (src/player/keyTurn.ts). */
+  readonly keyTurn: KeyTurnRates = { yaw: 0, pitch: 0 };
   reducedMotion = false;
   /**
    * Action-RPG hooks (combat owns them, docs/ACTION-RPG.md §4): `moveScale` multiplies walking
@@ -206,16 +209,17 @@ export class Player {
     this.prev.copy(this.position);
     const inp = this.input;
     if (!this.lookLocked) {
-      // keyboard look (Komma / Punkt, Bild↑ / Bild↓, Ziffernblock): play without a mouse
-      const kl = this.keyLookSpeed * Math.sqrt(this.mouseSensitivity) * dt;
+      // keyboard look (← / →, Komma / Punkt, Bild↑ / Bild↓, Ziffernblock): play without a mouse.
+      // Eased rate (src/player/keyTurn.ts), fixed-step so kq.press / bots stay deterministic.
       const h = (inp.isDown('lookLeft') ? 1 : 0) - (inp.isDown('lookRight') ? 1 : 0);
       const v = (inp.isDown('lookUp') ? 1 : 0) - (inp.isDown('lookDown') ? 1 : 0);
-      if (h || v) {
-        this.lookIdle = 0;
-        this.yaw += h * kl * (this.invertX ? -1 : 1);
-        this.pitch += v * kl * 0.7 * (this.invertY ? -1 : 1);
+      const { dYaw, dPitch } = stepKeyTurn(this.keyTurn, { h, v, speed: this.keyLookSpeed * Math.sqrt(this.mouseSensitivity) }, dt);
+      if (dYaw || dPitch) {
+        if (h || v) this.lookIdle = 0;
+        this.yaw += dYaw * (this.invertX ? -1 : 1);
+        this.pitch += dPitch * (this.invertY ? -1 : 1);
       }
-    }
+    } else this.keyTurn.yaw = this.keyTurn.pitch = 0;
     this.lookIdle += dt;
     if (!this.frozen) {
       if (inp.wasPressed('fly')) this.setFlying(!this.flying);

@@ -17,7 +17,7 @@ export { SETTINGS_SECTIONS, type SettingsRow, type SettingsSection, addSettingsR
 import { settingsForm } from './settings';
 
 /** Key help: `ui.keys.<id>` (description) + `ui.keys.<id>.key` (key label) from the bible, in this order. */
-export const CONTROL_KEYS: string[] = ['move', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'chronik', 'measure', 'pause'];
+export const CONTROL_KEYS: string[] = ['move', 'turn', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'chronik', 'measure', 'pause'];
 /** Feature systems append their own control ids (strings `ui.keys.<id>` / `.key` registered via addStrings). */
 export function addControlKeys(...ids: string[]): void {
   for (const id of ids) if (!CONTROL_KEYS.includes(id)) CONTROL_KEYS.push(id);
@@ -86,6 +86,9 @@ export interface PauseAction {
 }
 export const pauseHooks: { extraActions?(): PauseAction[] } = {};
 
+/** F8 notes (src/systems/notes): "Notizen exportieren (n)" and "Notizen löschen" in the pause menu. */
+export const notesPauseHooks: { count?(): number; exportAll?(): void; clearAll?(): Promise<void> } = {};
+
 /** Pause menu with sub-pages (settings, licences, controls). */
 export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
   const m = deps.modals.open({ title: t('pause.title'), onClose, className: 'kq-pause' });
@@ -97,11 +100,33 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
         h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
         h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody()) }, t('pause.controls')),
         h('button.kq-btn', { onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),
+        ...notesButtons(),
         h('button.kq-btn', { onclick: () => sub(t('licences.title'), licencesBody(deps.attribution())) }, t('pause.licences')),
         h('button.kq-link', { onclick: () => { m.close(); deps.toTitle(); } }, t('pause.toTitle')),
       ]),
       t('pause.title'),
     );
+  };
+  const notesButtons = (): HTMLElement[] => {
+    const nh = notesPauseHooks;
+    if (!nh.exportAll || !nh.count) return [];
+    const n = nh.count();
+    return [
+      h('button.kq-btn', { 'data-testid': 'pause-notes-export', disabled: n === 0 ? true : undefined, onclick: () => nh.exportAll?.() }, t('notes.export', { n: String(n) })),
+      ...(n > 0 && nh.clearAll
+        ? [
+            h('button.kq-link', {
+              'data-testid': 'pause-notes-clear',
+              onclick: () =>
+                void deps.modals.confirm(t('notes.clear.confirm', { n: String(n) })).then(async (yes) => {
+                  if (!yes) return;
+                  await nh.clearAll?.();
+                  if (!m.closed) main();
+                }),
+            }, t('notes.clear')),
+          ]
+        : []),
+    ];
   };
   const sub = (title: string, body: HTMLElement | HTMLElement[]) => {
     m.setBody([...(Array.isArray(body) ? body : [body]), h('div.actions', h('button.kq-btn', { onclick: main }, t('settings.back')))], title);

@@ -969,6 +969,46 @@ Round-4 (polish: set dressing) integration rules:
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
   `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
 
+### notes (`src/systems/notes/`) – F8 notes, local telemetry; keyboard turning
+
+- **F8** (window keydown, not an `Action`: no clash with the bindings; F3 is the perf HUD, F5 the
+  camera) opens „Notiz an die Entwickler“ as a normal modal, so the game pauses and pointer lock is
+  released like for any card; Esc cancels (the modal manager eats it before the pause menu), Enter or
+  „Speichern“ saves, Shift+Enter is a new line. Not on the title screen.
+- The moment is taken on the key press: `post.render(...)` once more, then the canvas is drawn into
+  a 480 px 2D canvas in the same task and read as a JPEG (q 0.72): `preserveDrawingBuffer` stays off.
+  The note also stores position, yaw / compass heading / pitch, era, `systems.story`
+  chapter / beat, `kq.quests.lead()` (quest, objective id, label) plus tracked quests and the last
+  `objective:set` text, HP (`systems.combat.hp`) / max HP / level, stance / camera mode, quality tier
+  and fps / frame ms, play seconds and the last 30 s of events.
+- Events: `EventRing` (`logic.ts`, pure) listens with `events.onAny`; per-frame or chatty events
+  (`player:step`, `*:progress`, `lantern:oil`, `stats:changed`, `hunt:alert`, …) are dropped, payloads
+  are JSON cut to 240 characters (numbers rounded, long arrays / strings cut), at most 400 entries.
+- Telemetry (`Telemetry`, pure): `quest:accepted` → `quest:completed` in active play seconds
+  (`meta.playSeconds`; a new game restarts open clocks), `player:died` / `player:caught` with place,
+  killer kind, era and objective (a `caught` within 3 s of a `died` is the same KO), stuck episodes:
+  ≥ 180 s of active play (fixed step, not paused) while there is an objective and no
+  `quest:progress / objective / ready / completed / accepted`, `story:beat / chapter` or changed
+  `objective:set`; the episode grows until progress ends it. Lists capped at 500.
+- Storage (`store.ts`): IndexedDB `kq-notes` v1, stores `notes` (auto-increment) and `meta`
+  (`telemetry`, written at most every 5 s while it changes and when the tab hides); memory fallback
+  when IndexedDB is blocked. **No network calls, ever.**
+- Pause menu (`notesPauseHooks` in `src/ui/menus.ts`): „Notizen exportieren (n)“ downloads
+  `karlsberg-notizen-<date>.json` = `{ format: 'kq-notes', version: 1, exportedAt, notes: Note[],
+  telemetry: { open, quests, deaths, stuck, sinceProgress, summary } }` (screenshots as data URLs);
+  „Notizen löschen“ (confirm) clears notes and telemetry.
+- Hooks: `kq.notes.list() / export()` (promises), `count / open / isOpen / save(text) / download /
+  clear / storage`, `kq.telemetry.state()` and `kq.telemetry.idle(s)` (tests). Tests:
+  `tests/notes-turn.test.ts`, `e2e/notes.spec.ts`.
+- **Keyboard turning** (`src/player/keyTurn.ts`, used in `Player.update`): ← / → (also Komma /
+  Punkt, Ziffernblock 4 / 6) are `lookLeft / lookRight`, Bild↑ / Bild↓ (Ziffernblock 8 / 2)
+  `lookUp / lookDown`; ↑ / ↓ stay forward / back, A / D strafe. The rate eases to
+  `KEY_TURN_RATE` = 120°/s · √sensitivity (pitch 0.7×) with τ = 0.08 s, integrated exactly per step,
+  so it does not depend on the step size; it runs in the fixed step (deterministic for `kq.press`
+  and bots) and needs no pointer lock, in both camera modes. `lookLocked` (cut-scenes) stops it.
+  Lock-on: not special-cased; like the mouse, the keys turn freely inside the lock's keep-in-view
+  window and the lock pulls the view back when the target would leave it.
+
 ### How to wire a chapter (story files, round 3)
 
 A chapter is one `content/story/<nn>-<id>.story.json` (schema: `content/story/README.md`, checked

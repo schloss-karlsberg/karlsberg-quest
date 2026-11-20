@@ -26,4 +26,6 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./quests'),
   // world: Vermessungspunkte, fast travel, route POIs, Wegweiser (after combat / quests / story)
   () => import('./travel'),
+  // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
+  () => import('./notes'),
 ];
