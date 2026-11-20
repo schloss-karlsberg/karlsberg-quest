@@ -9,6 +9,8 @@ Job: either a list of clips, or {"outDir": "...", "clips": [...]}; `--out <dir>`
 Clip: {"id", "text", "reference", "seed", "language", "instruction"?, "params"?}
   reference: a WAV inside the allowed reference dir (KQ_MOSS_VOICES, default ~/kq-models/voices),
              absolute or relative to that dir; never under any /casting/clips/ path (ElevenLabs).
+Clips run in job order (generate.mjs keeps the --ids order). After every model load, warm-up v1 runs
+first (WARMUP below), so a clip's take does not depend on its position in the batch.
 stdout: one JSON line per clip {"id", "wav", "seconds", "rtf"} (nothing else); logs go to stderr.
 exit: 0 ok, 2 bad job, 3 reference refused, 4 model snapshot missing, 76 quiet window active.
 
@@ -33,6 +35,10 @@ FORBIDDEN = "/casting/clips/"
 QUIET_WINDOW = "/tmp/kq-quiet-window"
 MAX_CLIPS = 6
 ALLOWED_PARAMS = {"max_tokens", "temperature", "top_p", "top_k", "repetition_penalty"}
+# Warm-up v1 (agreed with moss-service, 2026-11-21; spec in docs/ARCHITECTURE.md "warmup v1"; must stay
+# identical in both paths, any change is v2 and changes the manifest `engine.warmup`). Without it the
+# first clip after a lazy load came out as a different take than the same clip later in a batch.
+WARMUP = {"version": "v1", "text": "Hallo.", "seed": 0, "max_tokens": 50}
 
 
 def log(msg):
@@ -137,11 +143,37 @@ def main():
     t0 = time.perf_counter()
     model = load(model_dir, lazy=True)
     log(f"model loaded in {time.perf_counter() - t0:.1f}s")
+    run_batch(model, clips, tok_dir, out, mx, np, audio_write)
+    log(f"done: {len(clips)} clips, peak {mx.get_peak_memory() / 1e9:.1f} GB")
+
+
+def seed_all(seed, mx, np):
+    mx.random.seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
+
+def warmup_v1(model, first, tok_dir, mx, np):
+    """Warm-up v1 (WARMUP above), right after the model load and before the first real clip:
+    1. mx.eval(model.parameters()); 2. seed 0 (mx, np, random), one throw-away generate with the first
+    real clip's reference and language, max_tokens 50, no instruction, no other params; mx.eval(audio).
+    Nothing is written. Order and arguments match moss-service (moss_host.py); any change is v2."""
+    t = time.perf_counter()
+    mx.eval(model.parameters())
+    seed_all(WARMUP["seed"], mx, np)
+    kw = {"audio_tokenizer_source": tok_dir, "ref_audio": first["reference"], "max_tokens": WARMUP["max_tokens"]}
+    if first.get("language"):
+        kw["language"] = first["language"]
+    res = next(model.generate(text=WARMUP["text"], **kw))
+    mx.eval(res.audio)
+    log(f"warmup {WARMUP['version']} done in {time.perf_counter() - t:.1f} s")
+
+
+def run_batch(model, clips, tok_dir, out, mx, np, audio_write):
+    """Everything after `load(lazy=True)`: warm-up v1, then the clips in job order, reseeded per clip."""
+    warmup_v1(model, clips[0], tok_dir, mx, np)
     for c in clips:
-        seed = int(c["seed"])
-        mx.random.seed(seed)
-        np.random.seed(seed)
-        random.seed(seed)
+        seed_all(int(c["seed"]), mx, np)
         kw = dict(c.get("params") or {})
         kw["audio_tokenizer_source"] = tok_dir
         kw["ref_audio"] = c["reference"]
@@ -158,7 +190,6 @@ def main():
         audio_write(path, audio, res.sample_rate)
         dur = len(audio) / res.sample_rate
         print(json.dumps({"id": c["id"], "wav": path, "seconds": round(dur, 3), "rtf": round(gen_s / max(dur, 1e-6), 3)}), flush=True)
-    log(f"done: {len(clips)} clips, peak {mx.get_peak_memory() / 1e9:.1f} GB")
 
 
 if __name__ == "__main__":

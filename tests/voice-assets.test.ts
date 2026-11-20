@@ -20,6 +20,7 @@ import {
   nonCommittableGuard,
   parseMossVoiceId,
 } from '../scripts/voice/assetRules.ts';
+import { MOSS_ENGINE } from '../scripts/voice/lib.ts';
 import type { LicencesFile, VoiceCredit } from '../src/assets/types';
 
 const REPO = resolve(__dirname, '..');
@@ -104,6 +105,13 @@ describe('checkVoiceAssets (fixtures)', () => {
     const ok = checkVoiceAssets(fixture({ 'laub.hello': entry() }), credits);
     expect(ok.errors).toEqual([]);
     expect(ok.totalBytes).toBe(2);
+  });
+  it('accepts the moss engine marker (warm-up v1) with the voiceId format unchanged; rejects a malformed one', () => {
+    const engine = { ...MOSS_ENGINE };
+    expect(errs(fixture({ 'laub.hello': entry({ engine }) }))).toBe('');
+    expect(errs(fixture({ 'laub.hello': entry({ engine: { ...engine, warmup: 'v2' } }) }))).toBe(''); // a future version is still well-formed
+    expect(errs(fixture({ 'laub.hello': entry({ engine: 'v1' }) }))).toMatch(/engine must be/);
+    expect(errs(fixture({ 'laub.hello': entry({ engine: { model: engine.model, tokenizer: engine.tokenizer } }) }))).toMatch(/engine must be/);
   });
 
   it('fails ElevenLabs output, unknown licences and non-moss providers', () => {

@@ -65,13 +65,39 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`.
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
   after the lock is released (trim, pause cap, pre-limit + make-up to −18 LUFS, Opus + AAC). `--max-lines` (default 40)
   caps new moss clips per run.
 - `pnpm voice:plan` shows the moss lines, characters, estimated minutes (RTF ~1.1 plus a model load
   per batch), lock batches and dist MB; it never loads the model.
+- **Order:** with `--ids`, lines are generated in exactly the listed order (a glob expands in content
+  order, each line once), and each runner job keeps that order, so the first id is the first real clip
+  after the warm-up. Without `--ids`: priority tiers, then play order.
+- **Engine marker:** moss manifest entries carry `engine: { model: "MOSS-TTS-v1.5@<rev>", tokenizer:
+  "MOSS-Audio-Tokenizer@<rev>", warmup: "v1" }` (`lib.ts` `MOSS_ENGINE`, full pinned revisions). An entry
+  whose `engine` is missing or differs is `stale-engine` and is regenerated; the `voiceId` format stays
+  `moss:<speaker>:<sha8>:<seed>` (checked by `assetRules.ts`, which accepts the `engine` field).
+
+#### warmup v1 (moss-tts)
+
+Fixed spec, identical in the `moss` provider (`runner.py` `warmup_v1`) and in the standalone moss-service
+(`moss_host.py`), agreed 2026-11-21. It runs once after **every** model load (`load(model_dir, lazy=True)`),
+before the first real clip, in this order:
+
+1. `mx.eval(model.parameters())`: materialize all weights now.
+2. `mx.random.seed(0); np.random.seed(0); random.seed(0)`, then one throw-away
+   `next(model.generate(text="Hallo.", ref_audio=<ref of the first real clip in this batch>,
+   audio_tokenizer_source=<tokenizer dir>, language=<that clip's language>, max_tokens=50))` with no
+   instruction and no other params; `mx.eval(res.audio)`; nothing is written.
+3. Real clips then reseed per clip (`mx.random`, `np.random`, `random` = the clip's seed) exactly as before.
+
+The runner logs `warmup v1 done in X s`. Why: without it, the first clip after a lazy load came out as a
+different take than the same (seed, text, reference) later in the batch; output must not depend on batch
+position. **Any change to this procedure is "v2"**: bump `WARMUP` in `runner.py` and `MOSS_ENGINE.warmup`
+together (every moss clip regenerates), and it must match moss-service's warm-up of the same version.
 
 ## 2. Coordinate frame
 

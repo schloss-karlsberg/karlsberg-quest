@@ -1,7 +1,7 @@
 /** Voice pipeline, local `moss` provider: no model, no lock, no network. The child process is mocked;
  * only the runner's refusal paths run for real (system python, stops before any mlx import). */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +24,7 @@ import {
 import {
   LICENCES,
   MOSS_ATTRIBUTION,
+  MOSS_ENGINE,
   MOSS_MODEL,
   PROVIDERS,
   buildPlan,
@@ -32,6 +33,8 @@ import {
   lineStatus,
   mossVoiceId,
   resolveVoice,
+  selectLines,
+  textHash,
   type ManifestEntry,
   type VoiceLine,
   type VoicesConfig,
@@ -88,9 +91,14 @@ const ro = { refSha8: refSha8For(cfg) };
 
 describe('moss config', () => {
   it('defaults under <homedir>/kq-models, env overrides (with ~), never a hardcoded user path', () => {
-    expect(cfg).toEqual({ venv: join(HOME, 'kq-models/venv-moss'), home: join(HOME, 'kq-models'), voices: VOICES, python: join(HOME, 'kq-models/venv-moss/bin/python') });
+    expect(cfg).toEqual({ venv: join(HOME, 'kq-models/venv-moss'), home: join(HOME, 'kq-models'), voices: VOICES, python: join(HOME, 'kq-models/venv-moss/bin/python'), owner: 'kq-voice-moss' });
     const c = mossConfig({ KQ_MOSS_HOME: '~/m', KQ_MOSS_VENV: '/opt/v', KQ_MOSS_VOICES: ' ' }, HOME);
     expect(c).toMatchObject({ home: join(HOME, 'm'), venv: '/opt/v', voices: join(HOME, 'm/voices'), python: '/opt/v/bin/python' });
+  });
+  it('KQ_HEAVY_OWNER relabels the lock owner (e.g. kq-voice-gate); default kq-voice-moss', () => {
+    const g = mossConfig({ KQ_HEAVY_OWNER: 'kq-voice-gate' }, HOME);
+    expect(heavyCommand(g, '/w/j.json').env.KQ_HEAVY_OWNER).toBe('kq-voice-gate');
+    expect(heavyCommand(mossConfig({ KQ_HEAVY_OWNER: '  ' }, HOME), '/w/j.json').env.KQ_HEAVY_OWNER).toBe('kq-voice-moss');
   });
 });
 
@@ -122,7 +130,7 @@ describe('moss voice id, plan and manifest fields', () => {
     expect(v.moss).toMatchObject({ reference: 'laub-ref.wav', seed: 102, language: 'German', instruction: 'brisk', params: { max_tokens: 1000 } });
     const entry: ManifestEntry = {
       files: { opus: 'a.webm', aac: 'a.m4a' }, textHash: 'h', speechHash: 's', speaker: 'laub', provider: 'moss', voiceId: v.voiceId,
-      model: v.model, licence: v.licence, date: '', chars: 1, credits: 0, durationMs: 1, attribution: MOSS_ATTRIBUTION,
+      model: v.model, licence: v.licence, date: '', chars: 1, credits: 0, durationMs: 1, attribution: MOSS_ATTRIBUTION, engine: MOSS_ENGINE,
     };
     expect(lineStatus(entry, 'h', v, () => true, 's')).toBe('up-to-date');
     const reseeded = resolveVoice('laub', { ...mossVoices, speakers: { laub: { ...mossVoices.speakers.laub!, seed: 103 } } }, undefined, ro)!;
@@ -136,6 +144,41 @@ describe('moss voice id, plan and manifest fields', () => {
     expect(v2.voiceId).not.toBe(v.voiceId);
     expect(lineStatus(entry, 'h', v2, () => true, 's')).toBe('stale-voice');
     expect(mossVoiceId('laub', null, 1)).toBe('moss:laub:MISSING:1');
+  });
+  it('engine marker: model + tokenizer revisions and warm-up v1; a missing or different engine regenerates (voiceId unchanged)', () => {
+    expect(MOSS_ENGINE).toEqual({
+      model: 'MOSS-TTS-v1.5@cdd3b911b1585e3f2dbc7775ef10f9926f58850a',
+      tokenizer: 'MOSS-Audio-Tokenizer@3cd226ba2947efa357ef453bcad111b6eafba782',
+      warmup: 'v1',
+    });
+    const v = resolveVoice('laub', mossVoices, undefined, ro)!;
+    expect(v.engine).toEqual(MOSS_ENGINE);
+    expect(v.voiceId).toMatch(/^moss:laub:[0-9a-f]{8}:102$/); // the asset-rules voiceId format stays
+    const base: ManifestEntry = {
+      files: { opus: 'a.webm', aac: 'a.m4a' }, textHash: 'h', speechHash: 's', speaker: 'laub', provider: 'moss', voiceId: v.voiceId,
+      model: v.model, licence: v.licence, date: '', chars: 1, credits: 0, durationMs: 1, attribution: MOSS_ATTRIBUTION,
+    };
+    expect(lineStatus({ ...base, engine: { ...MOSS_ENGINE } }, 'h', v, () => true, 's')).toBe('up-to-date');
+    expect(lineStatus(base, 'h', v, () => true, 's')).toBe('stale-engine'); // pre-warm-up clips
+    for (const k of ['model', 'tokenizer', 'warmup'] as const)
+      expect(lineStatus({ ...base, engine: { ...MOSS_ENGINE, [k]: 'other' } }, 'h', v, () => true, 's'), k).toBe('stale-engine');
+    expect(lineStatus({ ...base, engine: null as unknown as ManifestEntry['engine'] }, 'h', v, () => true, 's')).toBe('stale-engine');
+    // non-moss voices carry no engine and ignore the field
+    expect(lineStatus({ ...base, provider: 'elevenlabs', voiceId: 'abc' }, 'h', { voiceId: 'abc', model: v.model, provider: 'elevenlabs' }, () => true, 's')).toBe('up-to-date');
+    // the plan regenerates them, and the stale count picks them up
+    const sel = [{ line: line('laub.a', 'laub', 'Hallo Welt.'), tier: 't' }];
+    const manifest = { version: 1 as const, lines: { 'laub.a': { ...base, textHash: textHash('Hallo Welt.'), speechHash: textHash('Hallo Welt.') } } };
+    const p = buildPlan(sel, { voices: mossVoices, manifest, cap: 0, resolve: ro });
+    expect(p.rows[0]).toMatchObject({ status: 'stale-engine', take: true });
+    manifest.lines['laub.a'] = { ...manifest.lines['laub.a']!, engine: { ...MOSS_ENGINE } };
+    expect(buildPlan(sel, { voices: mossVoices, manifest, cap: 0, resolve: ro }).rows[0]).toMatchObject({ status: 'up-to-date', take: false });
+  });
+  it('runner.py and MOSS_ENGINE agree on revisions and warm-up version', () => {
+    const src = readFileSync(join(ROOT, 'scripts/voice/moss/runner.py'), 'utf8');
+    expect(MOSS_ENGINE.model).toBe(`MOSS-TTS-v1.5@${/^REV = "([0-9a-f]{40})"$/m.exec(src)![1]}`);
+    expect(MOSS_ENGINE.tokenizer).toBe(`MOSS-Audio-Tokenizer@${/^TOK_REV = "([0-9a-f]{40})"$/m.exec(src)![1]}`);
+    expect(src).toMatch(/^WARMUP = \{"version": "v1", "text": "Hallo\.", "seed": 0, "max_tokens": 50\}$/m);
+    expect(MOSS_ENGINE.warmup).toBe('v1');
   });
   it('a missing reference is a placeholder (planned in a dry run, skipped in a real run)', () => {
     expect(resolveVoice('soll', mossVoices, undefined, ro)).toMatchObject({ placeholder: true, voiceId: 'moss:soll:MISSING:1' });
@@ -212,6 +255,22 @@ describe('heavy lock and quiet window (mocked child process)', () => {
     expect(out[0]!.clips[0]).toMatchObject({ id: 'laub.0', seconds: 2.5, rtf: 1.05 });
   });
 
+  it('--ids order is the batch order: the first listed id is the first real clip after the warm-up', async () => {
+    // content order: nah before b; --ids asks for b first
+    const lines = [line('laub.p.quelle.nah', 'laub', 'Da. Die Karlsbergquelle.', 1), line('laub.p.quelle.b', 'laub', 'Gehen Sie hin.', 2), line('laub.p.other', 'laub', 'Anders.', 0)];
+    const sel = selectLines(lines, { tiers: [] }, { ids: ['laub.p.quelle.b', 'laub.p.quelle.nah'] });
+    expect(sel.map((s) => s.line.id)).toEqual(['laub.p.quelle.b', 'laub.p.quelle.nah']);
+    expect(selectLines(lines, { tiers: [] }, { ids: ['laub.p.quelle.nah', 'laub.p.quelle.b'] }).map((s) => s.line.id)).toEqual(['laub.p.quelle.nah', 'laub.p.quelle.b']);
+    expect(selectLines(lines, { tiers: [] }, { ids: ['laub.p.quelle.b', 'laub.p.*'] }).map((s) => s.line.id)).toEqual(['laub.p.quelle.b', 'laub.p.quelle.nah', 'laub.p.other']); // globs: content order, no repeats
+    const todo = buildPlan(sel, { voices: mossVoices, manifest: emptyManifest(), cap: 0, resolve: ro }).rows.filter((r) => r.take);
+    const { run, calls } = fakeRunner();
+    const p = mossProvider({ cfg, repo: ROOT, workDir: join(tmp, 'work-order') }, { run, exists: () => false, fileExists: () => true, env: {} });
+    for await (const _ of p.batches(todo.map((r) => ({ id: r.line.id, text: r.tts, voice: r.voice, model: r.voice.model, lang: 'de' })))) void _;
+    expect(calls.length).toBe(1);
+    const job = JSON.parse(readFileSync(calls[0]!.args.at(-1)!, 'utf8')) as { clips: { id: string }[] };
+    expect(job.clips.map((c) => c.id)).toEqual(['laub.p.quelle.b', 'laub.p.quelle.nah']);
+  });
+
   it('no batch starts while /tmp/kq-quiet-window exists', async () => {
     const { run, calls } = fakeRunner();
     let polls = 0;
@@ -278,6 +337,57 @@ describe('runner.py refusal paths (system python, no mlx import, no model)', () 
       expect(r.status, `${reference}: ${r.stderr}`).toBe(3);
       expect(r.stdout).toBe('');
     }
+  });
+  it.skipIf(!py)('warm-up v1 with a mocked model: eval params, seed 0, one "Hallo." generate (first clip ref + language, max_tokens 50 only), nothing written; then per-clip reseed in job order', () => {
+    // stand-ins for mlx.core / numpy / random record every call; run_batch gets them injected
+    const probe = String.raw`
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("runner", sys.argv[1])
+runner = importlib.util.module_from_spec(spec); spec.loader.exec_module(runner)
+ev = []
+class Seeder:
+    def __init__(self, name): self.name = name
+    def seed(self, s): ev.append(["seed", self.name, s])
+class MX:
+    random = Seeder("mx")
+    def eval(self, x): ev.append(["eval", x])
+class NP:
+    random = Seeder("np")
+    float32 = "f32"
+    def array(self, x, dtype=None): return list(x)
+class Res:
+    def __init__(self, text): self.audio = "audio:" + text; self.sample_rate = 4
+class Model:
+    def parameters(self): return "PARAMS"
+    def generate(self, text, **kw):
+        ev.append(["generate", text, kw]); yield Res(text)
+runner.random = Seeder("random")
+clips = [
+    {"id": "b", "text": "Gehen Sie hin.", "reference": "/v/laub.wav", "seed": 102, "language": "German", "instruction": "brisk", "params": {"max_tokens": 900}},
+    {"id": "nah", "text": "Da.", "reference": "/v/laub.wav", "seed": 102, "language": "German"},
+]
+runner.run_batch(Model(), clips, "/tok", "/out", MX(), NP(), lambda p, a, sr: ev.append(["write", p]))
+print("EVENTS " + json.dumps(ev))
+`;
+    const r = spawnSync(py!, ['-I', '-c', probe, runner], { encoding: 'utf8', env: { PATH: process.env.PATH ?? '' } });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stderr).toMatch(/warmup v1 done in \d+\.\d s/);
+    const ev = JSON.parse(r.stdout.split('\n').find((l) => l.startsWith('EVENTS '))!.slice(7)) as unknown[];
+    const clip = (text: string, kw: Record<string, unknown>, id: string) => [
+      ['seed', 'mx', 102], ['seed', 'np', 102], ['seed', 'random', 102],
+      ['generate', text, kw], ['eval', `audio:${text}`], ['write', `/out/${id}.wav`],
+    ];
+    expect(ev).toEqual([
+      ['eval', 'PARAMS'],
+      ['seed', 'mx', 0], ['seed', 'np', 0], ['seed', 'random', 0],
+      ['generate', 'Hallo.', { audio_tokenizer_source: '/tok', ref_audio: '/v/laub.wav', max_tokens: 50, language: 'German' }],
+      ['eval', 'audio:Hallo.'],
+      ...clip('Gehen Sie hin.', { max_tokens: 900, audio_tokenizer_source: '/tok', ref_audio: '/v/laub.wav', language: 'German', instruction: 'brisk' }, 'b'),
+      ...clip('Da.', { audio_tokenizer_source: '/tok', ref_audio: '/v/laub.wav', language: 'German' }, 'nah'),
+    ]);
+    // main() hands the freshly loaded model straight to run_batch (warm-up after every load)
+    const src = readFileSync(runner, 'utf8');
+    expect(src).toMatch(/model = load\(model_dir, lazy=True\)\n.*\n\s+run_batch\(model, clips,/);
   });
   it.skipIf(!py)('refuses more than 6 clips, bad ids and unknown params; a valid job stops at the missing snapshot', () => {
     expect(runJob({ outDir: join(tmp, 'o'), clips: Array.from({ length: 7 }, (_, i) => clip({ id: `c${i}` })) }).status).toBe(2);

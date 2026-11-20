@@ -86,7 +86,8 @@ if (a.help) {
   --model <id>         ElevenLabs run model (default: providers.elevenlabs.defaultModel); a speaker's own model wins
   --budget <credits>   credits this run may use (default 8000)
   --reserve <credits>  credits kept unspent (default 1400): spend <= min(budget, account remaining) - reserve
-  --ids <a,b,glob*>    explicit line ids / globs instead of the priority tiers
+  --ids <a,b,glob*>    explicit line ids / globs instead of the priority tiers; generated in exactly this
+                       order (globs expand in content order), also inside each moss batch
   --speakers <a,b>     only these speakers
   --limit <n>          at most n new clips overall
   --max-lines <n>      at most n new hf-space clips and n new moss clips per run (default 40; quota / machine-time guard)
@@ -263,7 +264,8 @@ function finish(r, raw, credits) {
     chars: r.chars,
     credits,
     durationMs,
-    ...(r.voice.provider === 'moss' ? { attribution: MOSS_ATTRIBUTION } : {}),
+    // moss: engine marker (model + tokenizer revision, warm-up version); missing / different → stale-engine
+    ...(r.voice.provider === 'moss' ? { attribution: MOSS_ATTRIBUTION, engine: r.voice.engine } : {}),
   };
   writeManifest(manifestPath, manifest);
   // old clips go only after the manifest no longer points at them
@@ -368,7 +370,7 @@ function printPlan(p) {
   if (p.rows.some((r) => r.speechSource === 'override')) console.log('   * spoken text from speech.json');
   console.log('');
   console.log(`To generate: ${taken.length} lines · ${p.chars} chars · ${p.spend} credits (cap ${p.cap}; reserve ${reserve} kept, ${p.cap - p.spend} of the cap unused)`);
-  console.log(`Up to date: ${upToDate.length} · stale (text/voice/model/file changed): ${stale.length} · lines covered after run: ${upToDate.length + taken.length}/${p.rows.length}`);
+  console.log(`Up to date: ${upToDate.length} · stale (text/voice/model/engine/file changed): ${stale.length} · lines covered after run: ${upToDate.length + taken.length}/${p.rows.length}`);
   if (p.limited.length) console.log(`--max-lines reached for: ${p.limited.join(', ')} (max ${maxLines} new clips per run)`);
   const mbRun = estimateMB(taken);
   const mbAll = estimateMB([...upToDate.map((r) => ({ chars: r.chars, durationMs: manifest.lines[r.line.id]?.durationMs })), ...taken]);

@@ -87,6 +87,12 @@ export function checkVoiceAssets(dir: string, credits: readonly VoiceCredit[]): 
             if (v.sha8 !== c.referenceSha256.slice(0, 8)) r.errors.push(`${where}: voiceId reference ${v.sha8} != credited reference ${c.referenceSha256.slice(0, 8)}`);
           }
         }
+        // optional engine marker (moss: { model, tokenizer, warmup }, see lib.ts MOSS_ENGINE); other fields stay free
+        if (e.engine !== undefined) {
+          const en = e.engine as Record<string, unknown> | null;
+          if (!en || typeof en !== 'object' || Array.isArray(en) || !['model', 'tokenizer', 'warmup'].every((k) => typeof en[k] === 'string' && en[k] !== ''))
+            r.errors.push(`${where}: engine must be { model, tokenizer, warmup } strings`);
+        }
         const fs = e.files as { opus?: unknown; aac?: unknown } | undefined;
         const list = [fs?.opus, fs?.aac, e.file].filter((f): f is string => typeof f === 'string');
         if (!list.length) r.errors.push(`${where}: no files`);

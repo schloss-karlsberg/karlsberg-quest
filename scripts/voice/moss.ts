@@ -8,6 +8,7 @@
  *   KQ_MOSS_VENV   venv with mlx-audio 0.6.7          (default ~/kq-models/venv-moss)
  *   KQ_MOSS_HOME   HF cache in <home>/hf               (default ~/kq-models)
  *   KQ_MOSS_VOICES fixed synthetic reference WAVs      (default ~/kq-models/voices)
+ *   KQ_HEAVY_OWNER heavy-lock owner label              (default kq-voice-moss; e.g. kq-voice-gate)
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -37,6 +38,8 @@ export interface MossConfig {
   home: string;
   voices: string;
   python: string;
+  /** heavy-lock owner label (KQ_HEAVY_OWNER), default HEAVY_OWNER */
+  owner?: string;
 }
 
 const expand = (p: string, home: string) => (p === '~' ? home : p.startsWith('~/') ? join(home, p.slice(2)) : p);
@@ -50,7 +53,8 @@ export function mossConfig(env: Record<string, string | undefined> = process.env
   const base = get('KQ_MOSS_HOME') ?? join(home, 'kq-models');
   const venv = get('KQ_MOSS_VENV') ?? join(base, 'venv-moss');
   const voices = get('KQ_MOSS_VOICES') ?? join(base, 'voices');
-  return { venv, home: base, voices, python: join(venv, 'bin', 'python') };
+  const owner = env.KQ_HEAVY_OWNER?.trim() || HEAVY_OWNER;
+  return { venv, home: base, voices, python: join(venv, 'bin', 'python'), owner };
 }
 
 /** realpath; for a path that does not exist, the realpath of its nearest existing parent + the rest. */
@@ -151,7 +155,7 @@ export function heavyCommand(cfg: MossConfig, jobPath: string): Command {
   return {
     cmd: HEAVY_SH,
     args: ['--check-load', '--strict', '--max-hold', String(HEAVY_MAX_HOLD_MIN), '--', cfg.python, '-I', RUNNER, jobPath],
-    env: { KQ_HEAVY_OWNER: HEAVY_OWNER, KQ_MOSS_HOME: cfg.home, KQ_MOSS_VOICES: cfg.voices, HF_HUB_OFFLINE: '1' },
+    env: { KQ_HEAVY_OWNER: cfg.owner || HEAVY_OWNER, KQ_MOSS_HOME: cfg.home, KQ_MOSS_VOICES: cfg.voices, HF_HUB_OFFLINE: '1' },
   };
 }
 
