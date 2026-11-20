@@ -223,12 +223,20 @@ describe('voice manifest: helpers', () => {
     expect(sayLineIds(jokes)).toEqual(['laub.joke', 'laub.joke.v1', 'laub.joke.v2', 'laub.era', 'laub.era.era-1789', 'laub.era.era-today']);
   });
 
-  it('chain parameters stay in their documented ranges', () => {
-    expect(RADIO_CHAIN.highpassHz).toBe(300);
-    expect(RADIO_CHAIN.lowpassHz).toBe(3400);
-    expect(RADIO_CHAIN.crackle.bed).toBeLessThan(0.01);
-    expect(RING_CHAIN.dry).toBeGreaterThan(RING_CHAIN.comb + RING_CHAIN.band - 0.5);
-    expect(RING_CHAIN.combFeedback).toBeLessThan(0.7);
+  it('clip chains match the casting render', () => {
+    const R = RADIO_CHAIN.clip;
+    expect([R.highpassHz, R.lowpassHz, R.edgeQ, R.edgeStages]).toEqual([300, 3400, 0.707, 2]);
+    expect([R.presenceHz, R.presenceQ, R.presenceDb, R.driveDb, R.trimDb]).toEqual([1700, 0.9, 4, 6, -6]);
+    expect(R.hiss).toEqual({ amplitude: 0.006, bandHz: 1800, bandQ: 0.5 });
+    expect(R.crackle).toEqual({ perS: 9, amplitude: 0.25, bandHz: 3200, bandQ: 0.7 });
+    const L = RING_CHAIN.clip;
+    expect([L.highpassHz, L.highpassQ, L.dry]).toEqual([110, 0.707, 1]);
+    expect(L.comb).toEqual({ bandHz: 1250, bandQ: 1.6, delayS: 0.0016, feedback: 0.62, gain: 0.5 });
+    expect(L.slap).toEqual({ lowpassHz: 3000, delayS: 0.023, gain: 0.18 });
+    expect([L.presenceHz, L.presenceQ, L.presenceDb]).toEqual([2500, 1, 2]);
+    // stable feedback loops
+    expect(L.comb.feedback).toBeLessThan(1);
+    expect(RING_CHAIN.blip.combFeedback).toBeLessThan(0.7);
     expect(HALL_CHAIN.feedback).toBeLessThan(0.6);
   });
 });

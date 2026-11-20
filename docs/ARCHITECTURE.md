@@ -794,12 +794,17 @@ Round-4 (polish: set dressing) integration rules:
   quest lines and variant / era ids) and it is already decoded (`dialogue/voiceClips.ts`: per-beat
   preload, 3 parallel fetches, 16-clip LRU; Opus/WebM when `canPlayType` says "probably", else
   AAC/M4A, an Opus decode failure retries as AAC and switches to AAC for the session; the old
-  single `file` is still read); else the per-syllable murmur. Both run through the
-  same per-speaker chain (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, mirrored
-  offline by the ffmpeg casting pipeline). With a clip the typing paces to its length; skip / next
-  stops it; the game's pause and an echo pause it; a suspended context (hidden tab,
-  `AudioManager.setHidden`) freezes it and no clip starts then. `public/voice/` is gitignored; the
-  build emits an empty manifest when there is none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern),
+  single `file` is still read); else the per-syllable murmur. Both get the
+  speaker's character (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, a `blip`
+  and a `clip` variant; the clip values are the casting render's, so in-game clips sound like the
+  casting page; clips at −18 LUFS enter at unity `CLIP_GAIN`). With a clip the typing paces to its
+  length; skip / next stops it; the game's pause and an echo pause it; a suspended context (hidden
+  tab, `AudioManager.setHidden`) freezes it and no clip starts then. Bullet time (`loop.manual`)
+  does not pause clips: they run in real time while the simulation waits, and the subtitle
+  completes when the clip ends. Stale counts only lines whose id the manifest knows (an id-less
+  line with a changed text just finds no match); NPC conversations keep the murmur (only presenter
+  lines play clips). `public/voice/` is gitignored; the build emits an empty manifest when there is
+  none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern),
   the field station at (760, −915) with the hub overlay, the Bussole/objective HUD, the caught
   curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
