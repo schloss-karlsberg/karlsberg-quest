@@ -159,7 +159,11 @@ export interface PilotApi {
   release(): void;
   /** Switch bullet time on / off at runtime (the simulation then runs only through act / kq.step). Returns the state. */
   bulletTime(on?: boolean): boolean;
-  /** Show each act's frame strip as an overlay at the bottom of the page (for a screenshot of the browser). Returns the state. */
+  /**
+   * Show each act's frame strip as an overlay at the bottom of the page (for a screenshot of the
+   * browser). It hides while the radio box speaks or a dialogue / modal is open, so it never covers
+   * them (updated on every act / observe). Returns the state.
+   */
   showStrip(on?: boolean): boolean;
 }
 
@@ -404,6 +408,15 @@ export function attackReady(p: { dead: boolean; swing: unknown; skill: unknown }
   return !p.dead && !p.swing && !p.skill && !(freeze > 0);
 }
 
+/**
+ * Is the frame strip shown? It spans the bottom of the page, where the radio box, subtitles and
+ * prompt sit: it steps aside while the radio speaks or a dialogue / modal is open (playtest round
+ * 10: it covered the radio in screenshots). The act's frames are in the observation either way.
+ */
+export function stripVisible(radioShowing: boolean, dialogueOpen: boolean): boolean {
+  return !radioShowing && !dialogueOpen;
+}
+
 /** `choose()` one at a time: a pick blocks the next until the pilot looked again (act / observe). */
 export class ChooseGate {
   private pending = false;
@@ -542,6 +555,9 @@ export function installPilot(ctx: GameContext): PilotApi {
   };
 
   const observation = (frames: string[]): PilotObservation => {
+    const radio = readRadio();
+    const dialogue = readDialogue().obs;
+    if (stripEl) stripEl.style.display = stripVisible(radio.showing, dialogue !== null) ? 'flex' : 'none';
     const pl = ctx.player;
     const px = pl.position.x;
     const pz = pl.position.z;
@@ -587,7 +603,7 @@ export function installPilot(ctx: GameContext): PilotApi {
       lock: { locked: tg.locked, soft: tg.soft },
       enemies: s ? summarizeEnemies(px, pz, pl.yaw, s.enemies, (e) => onScreen(e as Enemy)) : [],
       objective,
-      dialogue: readDialogue().obs,
+      dialogue,
       hud: {
         // from the prompt state: the element keeps its last text after it hides (round 10: stale prompts)
         prompt: promptLine(ctx.ui.hud.promptShown(), document.body.classList.contains('kq-in-combat')),
@@ -595,7 +611,7 @@ export function installPilot(ctx: GameContext): PilotApi {
         subtitle: txt(ctx.ui.hud.el, '.kq-subtitles', 300),
         toasts: [...ctx.ui.hud.el.querySelectorAll<HTMLElement>('.kq-toast')].map((t) => clean(t.textContent, 160)),
       },
-      radio: readRadio(),
+      radio,
       events: events.splice(0),
       frames,
     };

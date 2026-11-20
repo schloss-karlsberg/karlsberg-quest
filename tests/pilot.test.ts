@@ -13,6 +13,7 @@ import {
   summarizeRadio,
   summarizeSimEvent,
   tapWindow,
+  stripVisible,
   telegraphLeft,
   wrap180,
 } from '../src/debug/pilot';
@@ -206,5 +207,13 @@ describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
     expect(skipRealTimeWaits(true, new URLSearchParams(''))).toBe(true);
     expect(skipRealTimeWaits(false, new URLSearchParams('manual'))).toBe(true);
     expect(skipRealTimeWaits(false, new URLSearchParams('nosave'))).toBe(false);
+  });
+});
+
+describe('pilot frame strip', () => {
+  it('steps aside while the radio speaks or a dialogue is open', () => {
+    expect(stripVisible(false, false)).toBe(true);
+    expect(stripVisible(true, false)).toBe(false);
+    expect(stripVisible(false, true)).toBe(false);
   });
 });

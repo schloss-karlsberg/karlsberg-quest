@@ -472,7 +472,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
   shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
   once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
-  the page (one browser screenshot shows the whole strip). Test: `e2e/pilot.spec.ts`,
+  the page (one browser screenshot shows the whole strip; it hides while the radio box speaks or a
+  dialogue / modal is open, so it never covers them). Test: `e2e/pilot.spec.ts`,
   `tests/pilot.test.ts`.
 - Performance (see `docs/PERFORMANCE.md`): `kq.perf()` (summary), `kq.bench(opts?)` runs the
   fixed route `BENCH_SCENES` (9 views over all eras, pack, fire, ruin, scan 3) and returns per
