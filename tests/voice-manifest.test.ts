@@ -16,6 +16,7 @@ import {
   textHash,
 } from '../src/systems/story/dialogue/voiceManifest';
 import { HALL_CHAIN, RADIO_CHAIN, RING_CHAIN } from '../src/systems/story/dialogue/voice';
+import { contentFile, textHash as pipelineHash } from '../scripts/voice/lib';
 
 const entry = (text: string, extra: Record<string, unknown> = {}) => {
   const h = textHash(text);
@@ -221,6 +222,20 @@ describe('voice manifest: helpers', () => {
     expect(sayLineIds(beat)).toEqual(['laub.1', 'dlg.2', 'laub.3']);
     const jokes = { enter: [{ do: 'say', id: 'laub.joke', variants: ['a', 'b'] }, { do: 'say', id: 'laub.era', text_by_era: { '1789': 'x', today: 'y' } }] };
     expect(sayLineIds(jokes)).toEqual(['laub.joke', 'laub.joke.v1', 'laub.joke.v2', 'laub.era', 'laub.era.era-1789', 'laub.era.era-today']);
+  });
+
+  it('runtime and pipeline hashes agree (scripts/voice/lib.ts)', () => {
+    const samples = ['Hallo', '  Grüß   Gott, Herr Laub. ', 'Na, {Name}, wieder da?', 'Grüße\n\taus {jahre:1793}…', '', '„Zurück. Jetzt.“ – ÄÖÜ ß €'];
+    expect(pipelineHash('Hallo')).toBe('9f02b107');
+    expect(pipelineHash('  Grüß   Gott, Herr Laub. ')).toBe('003a186c');
+    for (const s of samples) expect(pipelineHash(s)).toBe(textHash(s));
+  });
+
+  it('pipeline file names pass runtime validation', () => {
+    const opus = contentFile('quest.q.k1.pilze.offer.0', 'a1b2c3d4e5f6', 'webm');
+    const aac = contentFile('quest.q.k1.pilze.offer.0', 'a1b2c3d4e5f6', 'm4a');
+    const e = parseEntry({ files: { opus, aac }, textHash: textHash('x'), speechHash: textHash('y'), provider: 'elevenlabs', licence: 'pending' });
+    expect(e?.files).toEqual({ opus, aac });
   });
 
   it('clip chains match the casting render', () => {
