@@ -4,9 +4,12 @@
  * limit, leash and reset, idempotent groups, respawn, boss phases, the Pikeur's floor, death resets,
  * safe zones and the telegraph minimum of every roster attack.
  */
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ENEMIES, enemyDef } from '../src/rpg/enemies';
 import { BASE_STATS, deriveStats } from '../src/rpg/stats';
+import { homeSpot } from '../src/systems/home';
+import { QUELLE } from '../src/systems/quelle/layout';
 import type { EnemyGroupState } from '../src/rpg/types';
 import { bossHitMul, chooseBossAttack, summonOf } from '../src/systems/combat/bosses';
 import {
@@ -16,7 +19,7 @@ import {
   CLEAVE,
   COMBO,
   DODGE,
-  STATION_XZ,
+  SAFE,
   type StaminaState,
   applyDamage,
   armorFactor,
@@ -263,14 +266,21 @@ describe('combat rules: bosses and safe zones', () => {
     expect(summonOf('steinbrecher', 3)).toEqual({ kind: 'grusling', n: 5 });
   });
 
-  it('safe zones: station, memorials, disabled, talk, modal, NPC radius', () => {
+  it('safe zones: home (the spring), memorials, disabled, talk, modal, NPC radius', () => {
     const base = { x: 1200, z: -1100, era: '1789' };
     expect(safeReason(base)).toBeNull();
     expect(safeReason({ ...base, disabled: true })).toBe('disabled');
     expect(safeReason({ ...base, talking: true })).toBe('talking');
     expect(safeReason({ ...base, modal: true })).toBe('modal');
-    expect(safeReason({ x: STATION_XZ.x + 30, z: STATION_XZ.z, era: 'today' })).toBe('station');
-    expect(safeReason({ x: STATION_XZ.x + 45, z: STATION_XZ.z, era: 'today' })).toBeNull();
+    const home = homeSpot();
+    expect(home).toMatchObject({ x: QUELLE.x, z: QUELLE.z, r: 12 });
+    expect(safeReason({ x: home.x + 30, z: home.z, era: 'today' })).toBe('home');
+    expect(safeReason({ x: home.x + 45, z: home.z, era: 'today' })).toBeNull();
+    // only in the present: the spring in 1789 is no refuge
+    expect(safeReason({ x: home.x + 5, z: home.z, era: '1789' })).toBeNull();
+    // the old trailer at 760/−915 is no longer a safe place
+    expect(safeReason({ x: 760, z: -915, era: 'today' })).toBeNull();
+    expect(safeReason({ ...base, hub: true })).toBe('home');
     expect(safeReason({ ...base, memorials: [{ active: true, x: 1210, z: -1100, r: 20 }] })).toBe('memorial');
     expect(safeReason({ ...base, memorials: [{ active: false, x: 1210, z: -1100, r: 20 }] })).toBeNull();
     expect(safeReason({ ...base, memorials: [{ active: true, x: 1210, z: -1100, r: 20, era: '1796' }] })).toBeNull();
@@ -448,12 +458,28 @@ describe('combat simulation', () => {
     expect(s.live()[0]!.maxHp).toBe(Math.round(30 * 0.75));
   });
 
+  it('no today-era quest spawn stands inside the home safe ring (it would never fight)', () => {
+    const home = homeSpot();
+    const near: string[] = [];
+    const walk = (x: unknown, at: string): void => {
+      if (Array.isArray(x)) x.forEach((v, i) => walk(v, `${at}[${i}]`));
+      else if (x && typeof x === 'object') {
+        const o = x as Record<string, unknown>;
+        if (typeof o.kind === 'string' && typeof o.x === 'number' && typeof o.z === 'number' && o.era === 'today' && Math.hypot(o.x - home.x, o.z - home.z) <= SAFE.homeR) near.push(at);
+        for (const [k, v] of Object.entries(o)) walk(v, `${at}.${k}`);
+      }
+    };
+    for (const dir of ['content/quests', 'content/story'])
+      for (const f of readdirSync(dir).filter((n) => n.endsWith('.json'))) walk(JSON.parse(readFileSync(`${dir}/${f}`, 'utf8')), f);
+    expect(near).toEqual([]);
+  });
+
   it('no damage and no aggro in a safe zone', () => {
     const { s, groups } = sim();
     upsertGroup(groups, { group: 'n', kind: 'nebelling', era: '1789', x: 0, z: -3, count: 1 });
-    run(s, 2, { safe: 'station' });
+    run(s, 2, { safe: 'home' });
     expect(s.live()[0]!.aggro).toBe(false);
-    s.step(1 / 60, input({ safe: 'station' }));
+    s.step(1 / 60, input({ safe: 'home' }));
     expect(s.hurtPlayer(20, 'x', { x: 0, z: -1 })).toBe(0);
   });
 

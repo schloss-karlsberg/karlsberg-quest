@@ -1591,7 +1591,7 @@ export class CombatSim {
     return a;
   }
 
-  /** Full heal (field station, anchors, wake). */
+  /** Full heal (home base, anchors, wake). */
   restore(): void {
     const p = this.p;
     p.hp = p.max;

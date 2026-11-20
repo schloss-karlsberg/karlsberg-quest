@@ -8,7 +8,7 @@
  *
  * Contract (src/systems/contracts.ts, "progression"): listens to xp:grant, item:grant, loot:place
  * / clear, enemy:killed (loot tables), codex:unlocked (+10 XP once per fact), settings:change
- * (gentle / Rauhnacht), hub:enter / leave (respec at the field station); emits xp:gain, level:up,
+ * (gentle / Rauhnacht), hub:enter / leave (free respec at the home base, the spring); emits xp:gain, level:up,
  * item:pickup / use, loot:drop, loot:place (its own drops), equip:change, talent:learned,
  * stats:changed (at boot, at game:start and on every change), lantern:request (Lampenöl).
  * Mirrors `flags['rpg.level']` (story `level` condition) from boot on.
@@ -106,7 +106,7 @@ class Progression {
   readonly world: PickupWorld;
   private readonly tabs: { refresh(): void };
   private readonly questItems: Map<string, ItemDef>;
-  private inStation = false;
+  private atHome = false;
   private promptFor: string | null = null;
   private promptText = '';
   private inventoryWait = -1;
@@ -151,7 +151,7 @@ class Progression {
       core: this.core,
       item: (id) => this.item(id),
       name: (id) => this.name(id),
-      inStation: () => this.inStation,
+      atHome: () => this.atHome,
       quickKey: () => this.key('quickUse'),
       changed: (reason) => this.changed(reason),
     });
@@ -267,11 +267,11 @@ class Progression {
       if (key === 'bindings') this.updateQuick();
     });
     on('hub:enter', () => {
-      this.inStation = true;
+      this.atHome = true;
       this.tabs.refresh();
     });
     on('hub:leave', () => {
-      this.inStation = false;
+      this.atHome = false;
       this.tabs.refresh();
     });
     on('game:start', () => {
@@ -391,7 +391,7 @@ class Progression {
     }
     // E: only while our prompt is the one on screen (an NPC's or a clue's E wins)
     const promptEl = typeof document !== 'undefined' ? document.querySelector('.kq-prompt') : null;
-    // a low prompt (the Feldstation's door) gives way: the pickup's E comes first
+    // a low prompt (the home's rest prompt) gives way: the pickup's E comes first
     const shownText = promptEl?.classList.contains('show') && !hud.promptFree() ? (promptEl.textContent ?? '') : '';
     const ours = !!this.promptFor && hud.promptOwner() === 'progression';
     if (near && ours && ctx.input.wasPressed('listen')) {

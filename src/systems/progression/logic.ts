@@ -322,7 +322,7 @@ export class ProgressionCore {
     return true;
   }
 
-  /** Give every spent point back (free at the field station). Returns the points refunded. */
+  /** Give every spent point back (free at the home base, the spring). Returns the points refunded. */
   respec(): number {
     const s = this.s;
     const back = spentPoints(s.talents);
