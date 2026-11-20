@@ -22,6 +22,8 @@ import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
 import { TitleScreen } from './ui/title';
+import { TouchControls } from './ui/touch';
+import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { World } from './world/world';
 
@@ -135,7 +137,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   });
   quality.noMsaa = params.has('nomsaa');
   const gpu = gpuName(renderer.getContext());
-  const guess = suggestLevel(gpu, matchMedia('(pointer: coarse)').matches, navigator.hardwareConcurrency ?? 0);
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  // phones and tablets (touch, docs/PERF-MOBILE-RESEARCH.md §B): Niedrig on phones, Mittel on big tablets
+  const guess = coarse && !isSoftwareGpu(gpu) ? mobileLevel(gpu, Math.min(screen.width, screen.height), navigator.hardwareConcurrency ?? 0) : suggestLevel(gpu, coarse, navigator.hardwareConcurrency ?? 0);
   quality.fallback = guess;
   // session tier: ?q=low|med|high, else a software renderer (SwiftShader in the headless e2e run)
   // always starts on Niedrig (cheap materials, no shadows / bloom / AO); picking a level in the
@@ -178,6 +182,21 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     input,
     events,
   );
+  // touch controls (phones / tablets, "Touch-Steuerung"): stick, drag look, buttons (src/ui/touch.ts)
+  const touch = new TouchControls({
+    input,
+    settings,
+    hud: ui.hud,
+    events,
+    root: ui.root,
+    openPause: () => openPauseMenu(),
+    canFly: () => ERA_INFO[world.currentEra].spiritView,
+    flying: () => player.flying,
+  });
+  touch.onActiveChange = (on) => {
+    if (on) input.releaseLock();
+    else if (started && modalOpen === 0) ui.hud.showClickToPlay(!input.locked);
+  };
   // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
   const avatar = new Avatar(scene, player, () => assets.model(AVATAR_MODEL));
   let zoomSaved = 0;
@@ -359,6 +378,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   ui.modals.onChange = (n) => {
     modalOpen = n;
     input.enabled = n === 0 && started;
+    touch.setPlaying(n === 0 && started);
     if (n > 0) {
       pause.push('modal');
       input.releaseLock();
@@ -420,6 +440,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     title.hide();
     ui.hud.show(true);
     input.enabled = true;
+    touch.setPlaying(modalOpen === 0);
     pause.pop('title');
     input.requestLock();
     // the first click into the picture takes the mouse (pointer lock): say so until it has it
@@ -433,6 +454,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     save.autosave('title', true);
     started = false;
     input.enabled = false;
+    touch.setPlaying(false);
     input.releaseLock();
     ui.hud.show(false);
     pause.push('title');
