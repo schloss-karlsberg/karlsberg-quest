@@ -59,6 +59,15 @@ Always use `--workers=1`: the game is GPU-heavy, and parallel workers produce fl
 The preview server uses port 5281 by default. To run suites from several checkouts at the same
 time, give each its own port, e.g. `KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
 
+On a machine shared by several sessions, wrap heavy jobs (e2e, real-GPU screenshots, local model
+runs) in `scripts/dev/heavy.sh`. It is a machine-wide lock with a first-come-first-served queue;
+`scripts/dev/heavy.sh --status` shows the holder and the queue. Hold it for one spec file or one
+screenshot set at a time, never a whole multi-spec batch, so short jobs can interleave:
+
+```sh
+for s in e2e/a.spec.ts e2e/b.spec.ts; do scripts/dev/heavy.sh -- pnpm exec playwright test "$s" --workers=1; done
+```
+
 ## Project rules
 
 These are not negotiable; pull requests that break them cannot be merged.
