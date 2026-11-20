@@ -1,0 +1,16 @@
+{
+  "$comment": "Speaker -> ElevenLabs voice. Casting is still open: replace the PLACEHOLDER ids with the owner's picks. A speaker missing here is skipped and reported; a PLACEHOLDER id is planned in --dry-run but refused in a real run. 'model' per speaker overrides --model (null = the run model).",
+  "defaultModel": "eleven_flash_v2_5",
+  "speakers": {
+    "laub": {
+      "voiceId": "PLACEHOLDER_LAUB",
+      "model": null,
+      "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "style": 0, "use_speaker_boost": true, "speed": 1 }
+    },
+    "marlene": {
+      "voiceId": "PLACEHOLDER_MARLENE",
+      "model": null,
+      "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "style": 0, "use_speaker_boost": true, "speed": 1 }
+    }
+  }
+}
