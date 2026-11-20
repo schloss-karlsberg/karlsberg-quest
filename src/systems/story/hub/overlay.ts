@@ -5,6 +5,7 @@
  */
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
+import { shelfItems } from '../../../ui/journal';
 import type { ModalHandle, ModalManager } from '../../../ui/modal';
 import { portraitSvg } from '../dialogue/portraits';
 import type { HubItem } from '../types';
@@ -170,6 +171,7 @@ export class HubOverlay {
           row(t('story.hub.shelf.sets'), `${c.sets} / ${c.setsTotal}`),
           row(t('story.hub.shelf.items'), String(c.items)),
         ]),
+        ...shelfItems(),
         h('div.actions', h('button.kq-btn', { onclick: () => this.main(), 'data-testid': 'hub-back' }, t('settings.back'))),
       ],
       t('story.hub.shelf'),

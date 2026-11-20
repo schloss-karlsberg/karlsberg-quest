@@ -26,6 +26,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./quests'),
   // world: Vermessungspunkte, fast travel, route POIs, Wegweiser (after combat / quests / story)
   () => import('./travel'),
+  // the Fläschchen: 24 hidden bottles, one table, the Journal row and the Regal (after travel)
+  () => import('./flaschen'),
   // the Karlsbergquelle: its living water and the touch that starts the time travel (prologue p3q)
   () => import('./quelle'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
