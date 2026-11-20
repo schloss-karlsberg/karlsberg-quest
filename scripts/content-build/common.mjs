@@ -48,6 +48,13 @@ const S = {
   WPK: ['https://www.outdooractive.com/de/poi/saarpfalz-kreis/waldpark-schloss-karlsberg/61542782/', 'WaldPark Schloss Karlsberg (outdooractive)'],
   'OSM-KQ': ['https://www.openstreetmap.org/node/368031320', 'OpenStreetMap: Karlsbergquelle (natural=spring) und Karlsbergbach'],
   'KOMOOT-KQ': ['https://www.komoot.com/highlight/780842', 'komoot-Highlight 780842: Quelle am Karlsberg (Fotos)'],
+  // Knigge and the court's access rules (IDEAS-ROUND11 §2.2, research 2026-11-20)
+  'KNIGGE-BRIEFE': ['https://www.digitale-sammlungen.de/en/view/bsb10467161', 'Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)'],
+  'KNIGGE-UMGANG-1790': ['https://www.digitale-sammlungen.de/en/view/bsb10041018', 'Knigge: Ueber den Umgang mit Menschen, 3. Aufl., Teil 3 (Hannover 1790)'],
+  'ADB-KNIGGE': ['https://de.wikisource.org/wiki/ADB:Knigge,_Adolph_Freiherr', 'ADB: Knigge, Adolph Freiherr (Erich Schmidt, 1882)'],
+  'WP-KNIGGE': ['https://de.wikipedia.org/wiki/Adolph_Freiherr_Knigge', 'de.wikipedia: Adolph Freiherr Knigge'],
+  'LITSAAR-KNIGGE': ['https://www.literaturland-saar.de/personen/adolph-freiherr-knigge/', 'Literaturland Saar: Adolph Freiherr Knigge'],
+  SMZW: ['https://www.zweibruecken.de/de/kultur-tourismus/kultur-erleben/kulturelle-einrichtungen/stadtmuseum/neuigkeiten/', 'Stadtmuseum Zweibrücken: Das Tablett „Le Château de Carlsberg“'],
 };
 /** LIDAR (own analysis, not public): cited via the open DGM1 data + a note. */
 const LIDAR_NOTE = 'LIDAR: eigene Auswertung des DGM1 2025 (Geländeanalyse des Projekts, unveröffentlicht)';

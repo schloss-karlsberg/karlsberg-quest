@@ -771,6 +771,116 @@
           "onResume": true
         }
       ]
+    },
+    {
+      "id": "settle.k1.kleider.bitte",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.kleider",
+              "state": "active"
+            }
+          },
+          {
+            "talked": {
+              "npc": "liese",
+              "topic": "rock"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.kleider",
+                "objective": "bitte"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.kleider",
+          "objective": "bitte",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.brief.papier",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.brief",
+              "state": "active"
+            }
+          },
+          {
+            "talked": {
+              "npc": "hofgaertner",
+              "topic": "papier"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.brief",
+                "objective": "papier"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.brief",
+          "objective": "papier",
+          "n": 1,
+          "onResume": true
+        }
+      ]
+    },
+    {
+      "id": "settle.k1.brief.schreiben",
+      "when": {
+        "all": [
+          {
+            "quest": {
+              "id": "q.k1.brief",
+              "state": "active"
+            }
+          },
+          {
+            "have": {
+              "clue": "clue.k1.brief"
+            }
+          },
+          {
+            "not": {
+              "quest": {
+                "id": "q.k1.brief",
+                "objective": "schreiben"
+              }
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.brief",
+          "objective": "schreiben",
+          "n": 1,
+          "onResume": true
+        }
+      ]
     }
   ],
   "beats": [
@@ -946,15 +1056,132 @@
         {
           "do": "flag",
           "set": {
-            "k1.vorspiel": true
+            "k1.vorspiel": true,
+            "npc.owns.clue.k1.papier": true
           }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "liese",
+          "x": 1004.85,
+          "z": -870.3,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 120
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "hofgaertner",
+          "x": 1221,
+          "z": -993,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 110,
+          "watch": {
+            "fov": 70,
+            "range": 13,
+            "sweep": [
+              20,
+              200
+            ],
+            "period": 10,
+            "set": "k1",
+            "zone": "court.orangerie",
+            "who": "Der Hofgärtner"
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gardist-tor",
+          "x": 1194.6,
+          "z": -1111.5,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 270,
+          "watch": {
+            "fov": 70,
+            "range": 12,
+            "sweep": [
+              240,
+              300
+            ],
+            "period": 9,
+            "set": "k1",
+            "inspector": true,
+            "who": "Ein Gardist"
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gardist",
+          "x": 1218,
+          "z": -1100,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 210,
+          "watch": {
+            "fov": 70,
+            "range": 14,
+            "sweep": [
+              170,
+              250
+            ],
+            "period": 10,
+            "set": "k1",
+            "who": "Ein Gardist"
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "lakai",
+          "x": 1238,
+          "z": -1124,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 285,
+          "watch": {
+            "fov": 70,
+            "range": 12,
+            "sweep": [
+              250,
+              320
+            ],
+            "period": 7,
+            "set": "k1",
+            "who": "Ein Lakai"
+          }
+        },
+        {
+          "do": "cue",
+          "id": "court:on",
+          "data": {
+            "set": "k1"
+          }
+        },
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.kleider",
+          "onResume": true
         },
         {
           "do": "say",
           "id": "laub.k1.brunnenstube",
           "speaker": "laub",
           "delay": 4.5,
-          "text": "Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle."
+          "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.fremde",
+          "speaker": "laub",
+          "delay": 1,
+          "text": "Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche."
         }
       ],
       "on": [
@@ -984,6 +1211,351 @@
         {
           "id": "k1_0b.damals",
           "when": {
+            "all": [
+              {
+                "era": "1789"
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.vorspiel": true
+              }
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.5,
+              "z": -876.5
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.damals-brief",
+          "when": {
+            "all": [
+              {
+                "era": "1789"
+              },
+              {
+                "flag": "disguise.coat"
+              },
+              {
+                "not": {
+                  "flag": "disguise.letter"
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.vorspiel": true
+              }
+            },
+            {
+              "do": "objective",
+              "id": "k1.papier",
+              "text": "Papier und Siegel: zum Hofgärtner vor der Orangerie (langsam, Stab weg)",
+              "x": 1221,
+              "z": -993
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.bleiche",
+          "when": {
+            "all": [
+              {
+                "enter": {
+                  "x": 1001.5,
+                  "z": -876.5,
+                  "r": 18,
+                  "era": "1789"
+                }
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k1.bleiche",
+              "speaker": "laub",
+              "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein."
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.rock-genommen",
+          "when": {
+            "all": [
+              {
+                "have": {
+                  "clue": "clue.k1.rock"
+                }
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "disguise.coat": true,
+                "flag.k1_kleid": "genommen"
+              }
+            },
+            {
+              "do": "cue",
+              "id": "scenery:coat",
+              "data": {
+                "visible": false
+              }
+            },
+            {
+              "do": "cue",
+              "id": "court:take",
+              "data": {
+                "what": "rock"
+              }
+            },
+            {
+              "do": "quest",
+              "op": "progress",
+              "id": "q.k1.kleider",
+              "objective": "rock",
+              "n": 1,
+              "onResume": true
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.rock.genommen",
+              "speaker": "laub",
+              "delay": 1.2,
+              "text": "Genommen. Im Dienst der Wissenschaft. Ich trage es ein, unter „geliehen, ohne zu fragen“."
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.rock-geliehen",
+          "when": {
+            "all": [
+              {
+                "quest": {
+                  "id": "q.k1.kleider",
+                  "objective": "zettel",
+                  "gte": 3
+                }
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "disguise.coat": true,
+                "flag.k1_kleid": "geliehen"
+              }
+            },
+            {
+              "do": "cue",
+              "id": "scenery:coat",
+              "data": {
+                "visible": false
+              }
+            },
+            {
+              "do": "grant",
+              "clue": "clue.k1.rock"
+            },
+            {
+              "do": "quest",
+              "op": "progress",
+              "id": "q.k1.kleider",
+              "objective": "rock",
+              "n": 1,
+              "onResume": true
+            },
+            {
+              "do": "say",
+              "id": "liese.k1.dank",
+              "speaker": "liese",
+              "delay": 0.6,
+              "text": "Da, nimm Er ihn. Steht Ihm besser als Kaspar. Sag Er keinem, woher, und bring Er ihn mir sauber wieder."
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.rock.geliehen",
+              "speaker": "laub",
+              "delay": 0.8,
+              "text": "Ehrlich erworben. Das wird der Hof nie begreifen."
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.brief-start",
+          "when": {
+            "quest": {
+              "id": "q.k1.kleider"
+            }
+          },
+          "do": [
+            {
+              "do": "quest",
+              "op": "offer",
+              "id": "q.k1.brief",
+              "onResume": true
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.papier",
+              "speaker": "laub",
+              "delay": 2,
+              "text": "Einen Rock haben wir. Jetzt Papier und Siegel. Vor der Orangerie schneidet der Hofgärtner Rasen. Ab da schaut der Hof: langsam gehen, Stab weg. Die hellen Fächer am Boden, das sind Blicke."
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.papier",
+          "when": {
+            "talked": {
+              "npc": "hofgaertner",
+              "topic": "papier"
+            }
+          },
+          "do": [
+            {
+              "do": "grant",
+              "clue": "clue.k1.papier"
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.brief",
+          "when": {
+            "have": {
+              "clue": "clue.k1.brief"
+            }
+          },
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "disguise.letter": true
+              }
+            }
+          ]
+        }
+      ],
+      "complete": {
+        "any": [
+          {
+            "all": [
+              {
+                "flag": "disguise.coat"
+              },
+              {
+                "flag": "disguise.letter"
+              }
+            ]
+          },
+          {
+            "flag": "court.admitted"
+          }
+        ]
+      }
+    },
+    {
+      "id": "k1_0c",
+      "title_de": "Die Musterung",
+      "wake": {
+        "x": 1059.3,
+        "z": -833.1,
+        "yaw": 50,
+        "era": "today",
+        "text": "Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren."
+      },
+      "enter": [
+        {
+          "do": "flag",
+          "set": {
+            "k1.vorspiel": true
+          }
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.brief",
+          "speaker": "laub",
+          "delay": 0.8,
+          "text": "Wir schreiben im Namen des Hofrats Justus Amsel aus Celle. Er reist, er schreibt Bücher, eins heißt ‚Vom Betragen bei Hofe‘. Sie sind sein Sekretär, vorausgeschickt. Den Hofrat gibt es nicht. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen."
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.erlaubnis",
+          "speaker": "laub",
+          "delay": 0.4,
+          "text": "Ohne ausdrückliche Erlaubnis des Herzogs kommt keiner hier herauf. Und jeder, der mitkommt, muss mit Namen drinstehen. Also schreiben wir Sie hinein."
+        },
+        {
+          "do": "say",
+          "id": "laub.k1.umgang",
+          "speaker": "laub",
+          "delay": 0.4,
+          "text": "Ein echtes Buch über den Umgang mit Menschen gibt es schon, vom Freiherrn Knigge, letztes Jahr erschienen. Seinen Namen leihen wir uns nicht."
+        }
+      ],
+      "on": [
+        {
+          "id": "k1_0c.heute",
+          "when": {
+            "era": "today"
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1061,
+              "z": -834.5,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
+            }
+          ]
+        },
+        {
+          "id": "k1_0c.damals",
+          "when": {
             "era": "1789"
           },
           "repeat": true,
@@ -996,22 +1568,45 @@
             },
             {
               "do": "objective",
-              "id": "k1.hinauf",
-              "text": "Hinauf zum Ehrenhof, zu Fuß (den Hang hinauf, an der Orangerie vorbei)",
-              "x": 1192,
-              "z": -1116
+              "id": "k1.musterung",
+              "text": "Am Gitter: E halten, den Brief vorzeigen, dann still stehen",
+              "x": 1191,
+              "z": -1113
+            }
+          ]
+        },
+        {
+          "id": "k1_0c.gitter",
+          "when": {
+            "enter": {
+              "x": 1191,
+              "z": -1113,
+              "r": 14,
+              "era": "1789"
+            }
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k1.musterung",
+              "speaker": "laub",
+              "text": "Jetzt ruhig. Stab weg, Laterne aus, und stehen bleiben, wenn er schaut. Die Wache liest nicht. Sie schaut aufs Wachs."
             }
           ]
         }
       ],
       "complete": {
-        "enter": {
-          "x": 1200,
-          "z": -1116,
-          "r": 14,
-          "era": "1789"
+        "flag": "court.admitted"
+      },
+      "exit": [
+        {
+          "do": "say",
+          "id": "laub.k1.wahrhaftig",
+          "speaker": "laub",
+          "delay": 3.5,
+          "text": "Knigge schreibt, in einer späteren Auflage: ‚Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!‘ Vier von fünf haben wir geschafft."
         }
-      }
+      ]
     },
     {
       "id": "k1_1",
@@ -1029,6 +1624,13 @@
           "set": {
             "k1.vorspiel": null,
             "court.admitted": true
+          }
+        },
+        {
+          "do": "cue",
+          "id": "scenery:gate",
+          "data": {
+            "open": true
           }
         },
         {
@@ -1318,6 +1920,13 @@
         }
       },
       "enter": [
+        {
+          "do": "cue",
+          "id": "court:off",
+          "data": {
+            "set": "k1"
+          }
+        },
         {
           "do": "flag",
           "set": {

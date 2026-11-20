@@ -43,6 +43,31 @@
       "historical": false
     },
     {
+      "id": "liese",
+      "name_de": "Liese, Wäscherin",
+      "historical": false
+    },
+    {
+      "id": "hofgaertner",
+      "name_de": "Der Hofgärtner",
+      "historical": false
+    },
+    {
+      "id": "gardist",
+      "name_de": "Ein Gardist",
+      "historical": false
+    },
+    {
+      "id": "gardist-tor",
+      "name_de": "Ein Gardist",
+      "historical": false
+    },
+    {
+      "id": "lakai",
+      "name_de": "Ein Lakai",
+      "historical": false
+    },
+    {
       "id": "diener",
       "name_de": "Diener",
       "historical": false

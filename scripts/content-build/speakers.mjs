@@ -13,6 +13,12 @@ write('speakers', {
     sp('peter', 'Peter', false),
     sp('kollege', 'Ein Kollege (Funk)', false),
     sp('stimme', 'Eine Stimme aus dem Nebel', false),
+    // 1789, the disguise opening (k1_0b / k1_0c; IDEAS-ROUND11 §2): fiction
+    sp('liese', 'Liese, Wäscherin', false),
+    sp('hofgaertner', 'Der Hofgärtner', false),
+    sp('gardist', 'Ein Gardist', false),
+    sp('gardist-tor', 'Ein Gardist', false),
+    sp('lakai', 'Ein Lakai', false),
     // nameless extras in echoes (fiction)
     sp('diener', 'Diener', false),
     sp('diener2', 'Zweiter Diener', false),

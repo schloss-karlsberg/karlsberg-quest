@@ -358,10 +358,11 @@ describe('story files', () => {
     };
     const all = () => runs.flatMap((r) => r.actions);
     const SPRING = { x: 1059.3, z: -833.1 };
+    const k0bWake = { x: 1059.3, z: -833.1, yaw: 50, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' };
     const k1 = files.find((f) => f.story.chapter === 'k1')!.story;
     // the chapter checkpoint is the spring (chapterEntered teleports there from the station bed)
     expect(k1.checkpoint).toEqual({ x: 1059.3, z: -833.1, yaw: 50, era: 'today' });
-    expect(k1.beats.slice(0, 3).map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_1']);
+    expect(k1.beats.slice(0, 4).map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_0c', 'k1_1']);
     engine.goto('k1');
     expect(slice.beat).toBe('k1_0');
     // dawn, no Q anywhere, the spring calls (guide motes + the E prompt)
@@ -394,9 +395,47 @@ describe('story files', () => {
     expect(all().some((a) => a.do === 'anchor' && a.to !== null && a.x === 1222)).toBe(false);
     step({ era: '1789', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } }, 4);
     expect(slice.beat).toBe('k1_0b');
+    // k1_0b: the disguise (IDEAS-ROUND11 §2): the court's k1 watchers on, the coat quest offered, Liese
+    // at her Bleiche, the Gardist at the gate inspects letters, the Hofgärtner watches the Orangerie
+    const k0bEnter = k1.beats.find((b) => b.id === 'k1_0b')!.enter!;
+    expect(k0bEnter).toContainEqual({ do: 'cue', id: 'court:on', data: { set: 'k1' } });
+    expect(k0bEnter).toContainEqual({ do: 'quest', op: 'offer', id: 'q.k1.kleider', onResume: true });
+    const spawns = k0bEnter.filter((a): a is Extract<Action, { do: 'npc' }> => a.do === 'npc');
+    expect(spawns.map((a) => a.npc).sort()).toEqual(['gardist', 'gardist-tor', 'hofgaertner', 'lakai', 'liese']);
+    expect(spawns.find((a) => a.npc === 'liese')).toMatchObject({ x: 1004.85, z: -870.3, era: '1789' });
+    expect(spawns.find((a) => a.npc === 'liese')!.watch).toBeUndefined();
+    expect(spawns.find((a) => a.npc === 'gardist-tor')!.watch).toMatchObject({ inspector: true, set: 'k1' });
+    expect(spawns.find((a) => a.npc === 'hofgaertner')!.watch).toMatchObject({ set: 'k1', zone: 'court.orangerie' });
+    for (const a of spawns) if (a.watch) expect(a.watch.set).toBe('k1');
+    // walking up to the gate in orange no longer lets you in: the Musterung does
     runs.length = 0;
-    step({ era: '1789', x: 1195, z: -1116, flags: { 'k1.vorspiel': true } }); // at the gate of the court
+    step({ era: '1789', x: 1195, z: -1116, flags: { 'k1.vorspiel': true } }, 4);
+    expect(slice.beat).toBe('k1_0b');
+    // the steal path: E behind line B → the coat flag, the coat off the line, the court's take tell
+    step({ era: '1789', x: 1001.08, z: -880.9, flags: { 'k1.vorspiel': true }, inventory: { clues: ['clue.k1.rock'], nouns: [], items: [] } });
+    expect(all().some((a) => a.do === 'flag' && a.set['disguise.coat'] === true && a.set['flag.k1_kleid'] === 'genommen')).toBe(true);
+    expect(all()).toContainEqual({ do: 'cue', id: 'scenery:coat', data: { visible: false } });
+    expect(all()).toContainEqual({ do: 'cue', id: 'court:take', data: { what: 'rock' } });
+    expect(all()).toContainEqual({ do: 'quest', op: 'progress', id: 'q.k1.kleider', objective: 'rock', n: 1, onResume: true });
+    expect(slice.beat).toBe('k1_0b');
+    // the coat alone is not enough; the coat and the letter end the walk-in: k1_0c, the Musterung
+    step({ era: '1789', x: 1190, z: -1113, flags: { 'k1.vorspiel': true, 'disguise.coat': true } }, 2);
+    expect(slice.beat).toBe('k1_0b');
+    step({ era: '1789', x: 1190, z: -1113, flags: { 'k1.vorspiel': true, 'disguise.coat': true, 'disguise.letter': true } }, 2);
+    expect(slice.beat).toBe('k1_0c');
+    // still the prelude: the lantern waits, being caught wakes you at the spring, Q anchors there
+    expect(k1.beats.find((b) => b.id === 'k1_0c')!.wake).toEqual(k0bWake);
+    runs.length = 0;
+    step({ era: 'today', x: 1190, z: -1113, flags: { 'k1.vorspiel': true, 'disguise.coat': true, 'disguise.letter': true } });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1061, z: -834.5, r: 10 });
+    step({ era: '1789', x: 1190, z: -1113, flags: { 'k1.vorspiel': true, 'disguise.coat': true, 'disguise.letter': true } }, 4);
+    expect(slice.beat).toBe('k1_0c');
+    // the court system sets court.admitted when the Musterung is passed → k1_1
+    runs.length = 0;
+    step({ era: '1789', x: 1195, z: -1116, flags: { 'k1.vorspiel': true, 'disguise.coat': true, 'disguise.letter': true, 'court.admitted': true } });
     expect(slice.beat).toBe('k1_1');
+    // the Registratur ends the court section (k1_2 switches the k1 watchers off)
+    expect(k1.beats.find((b) => b.id === 'k1_2')!.enter).toContainEqual({ do: 'cue', id: 'court:off', data: { set: 'k1' } });
     // k1_1: admitted to the court, the prelude ends (the lantern's reaction rises again)
     expect(all().some((a) => a.do === 'flag' && a.set['k1.vorspiel'] === null && a.set['court.admitted'] === true)).toBe(true);
     // the anchor rule: not admitted → the spring; admitted → the Ehrenhof

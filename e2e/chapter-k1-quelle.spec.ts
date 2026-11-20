@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
 import { canTouch, REACH, toWorld, touchLocal } from '../src/systems/quelle/layout';
-import { K1_START, SPRING, boot, distTo, frames, openAtSpring, shiftToPast, shot, story, upd, walk } from './helpers/k1';
+import { K1_START, SPRING, boot, distTo, frames, openAtSpring, playDisguise, shiftToPast, shot, story, upd, walk } from './helpers/k1';
 
 /**
- * Chapter 1 opens at the Karlsbergquelle (story k1_0 → k1_0b → k1_1): dawn at the spring (the
+ * Chapter 1 opens at the Karlsbergquelle (story k1_0 → k1_0b → k1_0c → k1_1): dawn at the spring (the
  * chapter checkpoint), no Q at the Ehrenhof, E at the trough, the shift into summer 1789, the walk up
- * on foot (no enemies on the way, the lantern waits for the court), in through the gate.
+ * on foot past the Bleiche and the Orangerie (the disguise: coat, letter; no enemies on the way, the
+ * lantern waits for the court), the Musterung, in through the gate.
  * Being caught on the walk wakes you at the spring, where Q takes you back.
  * Screenshots: test-results/screens/ch-k1-00-*.png, ch-k1-x0-*.png.
  */
@@ -75,11 +76,8 @@ test('chapter 1: caught on the walk up, you wake at the spring and Q there takes
   await walk(page, [[SPRING.x, SPRING.z]]);
   await shiftToPast(page);
   expect(await story(page)).toMatchObject({ era: '1789', beat: 'k1_0b' });
-  // up at the gate: k1_1, admitted, the lantern burns
-  await page.evaluate(() => {
-    window.kq!.teleport(1195, -1116, 90, 0);
-    window.kq!.step(4);
-  });
+  // the disguise (short jumps between its places), the Musterung: k1_1, admitted, the lantern burns
+  await playDisguise(page, { shots: false });
   await upd(page, 20);
   s = await story(page);
   expect(s.beat).toBe('k1_1');
