@@ -107,6 +107,52 @@ check "status: free" [ "$("$HEAVY" --status)" = free ]
 check "foreign pid at exit: lock not removed" [ -d "$KQ_HEAVY_LOCK" ]
 rm -rf "$KQ_HEAVY_LOCK"
 
+Q="$KQ_HEAVY_LOCK.queue"
+no_tickets() { [ -z "$(ls -A "$Q" 2>/dev/null)" ]; }
+check "queue: no tickets left after the runs above (timeouts included)" no_tickets
+
+# 8. FIFO: A, B, C queue in that order behind a holder; C polls 10x faster but still goes last
+sleep 60 & hp=$!; bgpids="$bgpids $hp"
+mkdir "$KQ_HEAVY_LOCK"; echo $hp >"$KQ_HEAVY_LOCK/pid"; echo "blocker" >"$KQ_HEAVY_LOCK/cmd"
+flog="$T/fifo.log"; fp=""
+fjob() { KQ_HEAVY_OWNER=$1 KQ_HEAVY_POLL=$2 KQ_HEAVY_TIMEOUT=60 "$HEAVY" -- sh -c "echo $1 >>'$flog'; sleep 0.3" 2>/dev/null; }
+fjob A 2 & fp="$fp $!"; sleep 0.4
+fjob B 2 & fp="$fp $!"; sleep 0.4
+fjob C 0.2 & fp="$fp $!"; sleep 0.4
+bgpids="$bgpids $fp"
+st=$("$HEAVY" --status)
+check "status queue: 3 tickets in order A, B, C with cmd" sh -c "printf '%s\n' \"\$1\" | grep -A3 '^queue:' | grep -Eq '^ +3\. +C \(pid [0-9]+\) waiting [0-9]+s: sh -c'" _ "$st"
+check "status queue: A is #1, B is #2" sh -c "printf '%s\n' \"\$1\" | grep -Eq '^ +1\. +A ' && printf '%s\n' \"\$1\" | grep -Eq '^ +2\. +B '" _ "$st"
+kill $hp; wait $hp 2>/dev/null   # holder dies: lock goes stale; C (fast poller) sees it first
+for p in $fp; do wait "$p"; done
+check "FIFO: acquired in order A B C ($(tr '\n' ' ' <"$flog"))" [ "$(tr -d '\n' <"$flog")" = ABC ]
+check "FIFO: lock released, queue empty" sh -c "[ ! -e '$KQ_HEAVY_LOCK' ] && [ -z \"\$(ls -A '$Q')\" ]"
+
+# 9. stale ticket (dead waiter) is shown as stale and cleared by the next waiter
+gt="$Q/000001-$(dead_pid)-ghost"; mkdir -p "$gt"; echo "ghost cmd" >"$gt/cmd"
+check "status: dead ticket shown as stale" sh -c "'$HEAVY' --status | grep -Eq '^ +stale +ghost .*ghost cmd'"
+KQ_HEAVY_TIMEOUT=5 "$HEAVY" true 2>/dev/null; rc=$?
+check "stale ticket: not blocking (rc=$rc)" [ "$rc" = 0 ]
+check "stale ticket: removed" no_tickets
+
+# 10. --max-hold: stored, shown in --status, warns when exceeded (not enforced)
+mkdir "$KQ_HEAVY_LOCK"; echo $$ >"$KQ_HEAVY_LOCK/pid"; echo 5 >"$KQ_HEAVY_LOCK/max_hold"
+echo $(( $(date +%s) - 120 )) >"$KQ_HEAVY_LOCK/epoch"; echo "long job" >"$KQ_HEAVY_LOCK/cmd"
+check "max-hold: status shows hint" sh -c "'$HEAVY' --status | grep -q '\[max-hold 5m\]'"
+echo 1 >"$KQ_HEAVY_LOCK/max_hold"
+check "max-hold: status shows EXCEEDED" sh -c "'$HEAVY' --status | grep -q 'max-hold 1m EXCEEDED by 1m'"
+rm -rf "$KQ_HEAVY_LOCK"
+"$HEAVY" --max-hold 0.02 -- sleep 3.5 2>"$T/mh.err" & w=$!; bgpids="$bgpids $w"
+sleep 2.6   # 0.02 min = 1.2 s, rounded up to 2 s
+check "max-hold: stored in the lock" [ "$(cat "$KQ_HEAVY_LOCK/max_hold" 2>/dev/null)" = 0.02 ]
+check "max-hold: warning on stderr once exceeded" grep -q "still holding the lock after 0.02 min" "$T/mh.err"
+check "max-hold: not enforced (lock still held, job running)" [ -d "$KQ_HEAVY_LOCK" ]
+wait $w; rc=$?
+check "max-hold: job finished normally (rc=$rc)" [ "$rc" = 0 ]
+check "max-hold: lock released" no_lock
+"$HEAVY" --max-hold soon true 2>/dev/null; rc=$?
+check "max-hold: non-number rejected (rc=$rc)" [ "$rc" = 64 ]
+
 # never leave the real lock behind
 if [ "$real_lock_before" = 0 ]; then check "real /tmp/kq-heavy.lock untouched" [ ! -e /tmp/kq-heavy.lock ]; fi
 
