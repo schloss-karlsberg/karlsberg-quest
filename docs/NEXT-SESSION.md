@@ -266,6 +266,27 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   `pnpm build`. E2E with `--workers=1` only as a regression net; the full `campaign.spec.ts`
   takes about 1–1.2 h. The round-9 fixes are committed, but their final full campaign e2e
   never finished, so run it once.
+- **Heavy jobs: one at a time per machine.** About five sessions share this Mac, so wrap every
+  heavy job in `scripts/dev/heavy.sh` (alias `pnpm heavy`). It takes a machine-wide lock
+  (`/tmp/kq-heavy.lock`), waits while another session holds it and prints who holds it, which
+  command and for how long, then runs your command and passes its exit code through. Heavy jobs
+  are Playwright e2e, real-GPU screenshots (`scripts/dev/shot*.mjs`, `look.mjs`) and local
+  TTS/model runs. Set `KQ_HEAVY_OWNER=<session name>` so the others can see who holds the lock.
+
+  ```sh
+  KQ_HEAVY_OWNER=voice scripts/dev/heavy.sh -- pnpm exec playwright test e2e/voice.spec.ts --workers=1
+  scripts/dev/heavy.sh -- node scripts/dev/shots.mjs            # GPU screenshots
+  scripts/dev/heavy.sh --nice --check-load -- python tts_run.py  # CPU model run at background QoS
+  scripts/dev/heavy.sh --status                                  # who holds it, or "free"
+  ```
+
+  - `KQ_HEAVY_TIMEOUT=600` gives up after 10 min of waiting, with exit 75.
+  - `--check-load` warns when less than 20 % of memory is free (`memory_pressure -Q`).
+    Add `--strict` to refuse instead.
+  - `--nice` throttles hard, so don't use it for GPU or timed e2e runs.
+  - Nested calls run straight through (`KQ_HEAVY_HELD=1`).
+  - A lock whose holder has died is cleared automatically.
+  - Tests: `bash scripts/dev/heavy.test.sh`.
 
 ## 5. Hard rules
 
