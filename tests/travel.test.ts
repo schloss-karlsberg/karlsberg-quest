@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
 import { LORE } from '../src/systems/travel/lore';
-import { SURVEY_POINTS, announceFor, knownPoints, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, SURVEY_POINTS, activateRadius, announceFor, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -239,5 +239,25 @@ describe('the Weiher walk on real terrain (playtest round 10, F-10)', () => {
     expect(ROUTES[ROUTES.length - 1]!.id).toBe('p-weiher');
     const before = generatePois(ROUTES.filter((r) => r.id !== 'p-weiher'), { blocked: runtimeBlocked });
     expect(live.filter((p) => !p.id.startsWith('poi.p-weiher.'))).toEqual(before);
+  });
+});
+
+describe('the Ehrenhof point is eingemessen at the Q spot (playtest round 10, A2)', () => {
+  it('takes 16 m, so the compass rose where the story asks for Q lies inside', () => {
+    const e = pointById('ehrenhof')!;
+    expect(activateRadius(e)).toBe(16);
+    // the Ehrenhof time anchor (centre) and the prologue's "Q in der Mitte des Ehrenhofs" spot
+    for (const [x, z] of [[1222, -1119], [1218, -1118]] as const) expect(Math.hypot(e.x - x, e.z - z)).toBeLessThan(activateRadius(e));
+    // the quest file says the same: the wechsel objective's place is inside the radius
+    const q = JSON.parse(readFileSync(new URL('../content/quests/00-prolog.quests.json', import.meta.url), 'utf8')) as { quests: { id: string; objectives: { id: string; where?: { x: number; z: number } }[] }[] };
+    const w = q.quests.find((x) => x.id === 'q.p.punktwolke')!.objectives.find((o) => o.id === 'wechsel')!.where!;
+    expect(Math.hypot(e.x - w.x, e.z - w.z)).toBeLessThan(activateRadius(e));
+  });
+
+  it('every other point keeps the plain 7 m, and no radius reaches another point', () => {
+    for (const p of SURVEY_POINTS) {
+      if (p.id !== 'ehrenhof') expect(activateRadius(p), p.id).toBe(ACTIVATE_RADIUS);
+      for (const q of SURVEY_POINTS) if (q !== p) expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(activateRadius(p) + activateRadius(q));
+    }
   });
 });

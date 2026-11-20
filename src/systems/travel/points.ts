@@ -20,11 +20,13 @@ export interface SurveyPoint {
   note: string;
   /** Known from the start (the field station). */
   known?: boolean;
+  /** Activation radius (m) when it is not ACTIVATE_RADIUS. */
+  r?: number;
 }
 
 export const SURVEY_POINTS: readonly SurveyPoint[] = [
   { id: 'feldstation', name: 'Feldstation', x: 776, z: -902, note: 'Marlenes Tisch, die Bussole, der Heimweg', known: true },
-  { id: 'ehrenhof', name: 'Ehrenhof', x: 1230, z: -1127, note: 'Der Hof vor dem Corps de logis. Hier geht es hinüber' },
+  { id: 'ehrenhof', name: 'Ehrenhof', x: 1230, z: -1127, note: 'Der Hof vor dem Corps de logis. Hier geht es hinüber', r: 16 },
   { id: 'galerie', name: 'Galerie, Ostende', x: 1300, z: -1192, note: 'Bauplatz, Hanne, der Garten hinter dem Schloss' },
   { id: 'orangerie', name: 'Orangerie', x: 1322, z: -906, note: 'Mannlichs Fenster, der Ladehof' },
   { id: 'zwinger', name: 'Zwinger', x: 1158, z: -1561, note: 'Die Hundeställe, Josts Platz' },
@@ -42,6 +44,16 @@ export function pointById(id: string): SurveyPoint | undefined {
 
 /** Within this distance a tripod is eingemessen (m). */
 export const ACTIVATE_RADIUS = 7;
+
+/**
+ * A point's own activation radius. The Ehrenhof tripod stands 11 m from the Ehrenhof time anchor
+ * (1222, -1119) and 15 m from the prologue's "Q in der Mitte des Ehrenhofs" spot (1218, -1118).
+ * With 7 m a player who walked straight to the compass rose never got it (playtest round 10: K1
+ * started with a 470 m walk from the Feldstation), so it takes 16 m and both Q spots lie inside.
+ */
+export function activateRadius(p: SurveyPoint): number {
+  return p.r ?? ACTIVATE_RADIUS;
+}
 
 /**
  * Points that count as known: walked up to (`activated`) or pre-surveyed (`known`, e.g. the field

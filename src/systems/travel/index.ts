@@ -33,7 +33,7 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { ACTIVATE_RADIUS, SURVEY_POINTS, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, activateRadius, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
@@ -312,7 +312,7 @@ class Travel {
         continue;
       }
       if (t) t.lit = known.has(sp.id) ? 1 : t.lit;
-      if (d < ACTIVATE_RADIUS && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
+      if (d < activateRadius(sp) && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
     }
   }
 
