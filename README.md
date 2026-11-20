@@ -18,7 +18,7 @@ history; invented parts are labelled as fiction in the in-game Chronik.
 
 - A current desktop browser with **WebGL 2**: tested in Chrome; Edge and Firefox should work,
   Safari is untested.
-- A keyboard and a mouse. Touch and gamepad are not supported yet.
+- A keyboard and a mouse, or touch on phones and tablets in landscape. Gamepad is not supported yet.
 - A dedicated or recent integrated GPU is recommended. On weak hardware the game lowers its quality
   on its own. You can also force a quality tier with `?q=low`, `?q=med` or `?q=high`.
 - The full game is about 55 MB; terrain and models load per area and era. Progress is saved in
