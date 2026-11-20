@@ -233,17 +233,20 @@ export class NatureProps {
   }
 
   setEra(era: Era): void {
+    this.era = era;
     this.look = COVER_LOOKS[era] ?? COVER_LOOKS.today!;
     this.tiles.clear();
     this.dirty = true;
   }
 
-  /** Circles kept free of props (a built place: the Karlsbergquelle's hollow …). */
-  private readonly clearings: { x: number; z: number; r: number }[] = [];
+  private era: Era = 'today';
 
-  /** Keep a circle free of scattered props (rebuilds the tiles it touches). */
-  addClearing(x: number, z: number, r: number): void {
-    this.clearings.push({ x, z, r });
+  /** Circles kept free of props (a built place: the Karlsbergquelle's hollow …), in some eras or all. */
+  private readonly clearings: { x: number; z: number; r: number; eras?: readonly Era[] }[] = [];
+
+  /** Keep a circle free of scattered props (rebuilds the tiles it touches); `eras`: only in those (default all). */
+  addClearing(x: number, z: number, r: number, eras?: readonly Era[]): void {
+    this.clearings.push({ x, z, r, eras });
     this.tiles.clear();
     this.dirty = true;
   }
@@ -351,7 +354,7 @@ export class NatureProps {
         const x = (gx + hash2(gx, gz, 201)) * CELL;
         const z = (gz + hash2(gz, gx, 203)) * CELL;
         if (!this.src.inside(x, z)) continue;
-        if (this.clearings.length && this.clearings.some((q) => Math.hypot(x - q.x, z - q.z) < q.r)) continue;
+        if (this.clearings.length && this.clearings.some((q) => Math.hypot(x - q.x, z - q.z) < q.r && (!q.eras || q.eras.includes(this.era)))) continue;
         this.src.cover(x, z, this.cov);
         const c: CoverSample = { forest: this.cov[0]!, water: this.cov[1]!, bare: this.cov[2]!, lawn: this.cov[3]! };
         if (c.forest < 0.2 && c.water < 0.01 && c.bare < 0.1 && hash2(gx, gz, 205) > 0.3) continue;

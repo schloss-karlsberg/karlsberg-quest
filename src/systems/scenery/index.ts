@@ -12,10 +12,12 @@
  *  - Lit windows (windows.ts) by story cue: `{do:'cue', id:'scenery:windows', data:{building,
  *    era?, on?, share?}}`; the Ehrenhof gate by `{id:'scenery:gate', data:{open:true|false}}`.
  *  - The passage through KB-B07 from the Tempelzimmer's glass doors (passage.ts), intact eras.
+ *  - The Bleiche (bleiche.ts, 1789): its linen parts around the player; Kaspar's coat leaves the line
+ *    by `setCoatVisible(false)` or the cue `{id:'scenery:coat', data:{visible:false}}` (saved).
  *
- * State `systems.scenery {windows: [{building, era, share}], gate}`; hooks `kq.scenery.*`.
+ * State `systems.scenery {windows: [{building, era, share}], gate, coatTaken?}`; hooks `kq.scenery.*`.
  */
-import { Color, Group, type Mesh, type ShaderMaterial } from 'three';
+import { Color, Group, type Mesh, type ShaderMaterial, Vector3 } from 'three';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
@@ -36,6 +38,10 @@ import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
 import { RUND, RundTally } from './rund';
 import { CourtLife, EHRENHOF_1789 } from './court';
+import { bleichePlayer, coatVisible, setCoatVisible } from './bleiche';
+import { clearings as bleicheClearings, coatWorld, mown as bleicheMown } from '../bleiche/layout';
+import { attachPike, pikeMesh } from '../court/props';
+import type { Rig } from '../characters/rig';
 
 export interface SceneryWindow {
   building: string;
@@ -47,6 +53,8 @@ export interface ScenerySlice {
   windows: SceneryWindow[];
   /** Ehrenhof gate: 0 closed … 1 open. */
   gate: number;
+  /** Kaspar's coat is gone from the Bleiche's line (taken / handed over). */
+  coatTaken?: boolean;
 }
 
 declare module '../../core/state' {
@@ -82,6 +90,13 @@ export interface SceneryHooks {
   chair(): [number, number] | null;
   /** Current Westblick haze lift 0..1. */
   fogLift(): number;
+  /** The Bleiche's coat: show / hide it (saved), and where it hangs. */
+  coat(visible?: boolean): { visible: boolean; x: number; y: number; z: number };
+  /**
+   * A court pike for checks: stand one upright at x/z (`{x, z}`), or put one into the right hand of
+   * the rigged ghost nearest to x/z (`{x, z, hand: true}`); no argument removes them. True if placed.
+   */
+  pike(o?: { x: number; z: number; hand?: boolean }): boolean;
 }
 
 declare module '../../debug/hooks' {
@@ -126,6 +141,8 @@ let cartsCut = false;
 /** The memory that is the carts on the road (round 6: it did not turn the view to them). */
 const CARTS_ECHO = 'clue.k4.karren';
 let tallyQuiet = true;
+/** Pikes placed by `kq.scenery.pike` (debug). */
+const pikes: Mesh[] = [];
 
 /** The Ehrenhof's people in 1789 (medium / high, within 200 m of the court; court.ts). */
 function updateLife(ctx: GameContext, dt: number): void {
@@ -479,7 +496,52 @@ function installHooks(ctx: GameContext): void {
     chair: () => chair?.position() ?? null,
     fogLift: () => fogLift,
     rundCounted: () => tally?.counted ?? 0,
+    coat: (visible) => {
+      if (visible !== undefined) setCoat(visible);
+      const p = coatWorld((x, z) => ctx.world.heightfields['1789'].heightAt(x, z));
+      return { visible: coatVisible(), ...p };
+    },
+    pike: (o) => {
+      if (!o) {
+        for (const m of pikes) {
+          m.removeFromParent();
+          m.geometry.dispose();
+          (m.material as ShaderMaterial).dispose();
+        }
+        pikes.length = 0;
+        return false;
+      }
+      const m = pikeMesh();
+      if (o.hand) {
+        // the rigged ghost (npc/rigged.ts tags its rig root) nearest to x/z
+        let best: { rig: Rig; d: number } | null = null;
+        ctx.scene.traverse((ob) => {
+          const g = ob.userData.ghost as { rig?: Rig } | undefined;
+          if (!g?.rig) return;
+          const wp = ob.getWorldPosition(new Vector3());
+          const d = Math.hypot(wp.x - o.x, wp.z - o.z);
+          if (!best || d < best.d) best = { rig: g.rig, d };
+        });
+        const hit = best as { rig: Rig; d: number } | null;
+        if (!hit || !attachPike(hit.rig, m)) {
+          m.geometry.dispose();
+          (m.material as ShaderMaterial).dispose();
+          return false;
+        }
+      } else {
+        m.position.set(o.x, ctx.world.heightAt(o.x, o.z) - 0.04, o.z);
+        root.add(m);
+      }
+      pikes.push(m);
+      return true;
+    },
   };
+}
+
+/** Kaspar's coat on the Bleiche's line (saved in the slice). */
+function setCoat(visible: boolean): void {
+  slice.coatTaken = !visible;
+  setCoatVisible(visible);
 }
 
 export default defineSystem({
@@ -489,6 +551,7 @@ export default defineSystem({
     slice = ctx.state.slice('scenery', () => ({ windows: [], gate: 0 }));
     slice.windows ??= [];
     slice.gate ??= 0;
+    setCoatVisible(slice.coatTaken !== true);
     root = new Group();
     root.name = 'scenery';
     ctx.scene.add(root);
@@ -497,6 +560,10 @@ export default defineSystem({
     ctx.quality.listeners.push((_p, level) => applySurfaceQuality(ctx.assets, level));
     hohenburg = new Hohenburg();
     root.add(hohenburg.mesh);
+    // the Bleiche's green (1789): no scattered rocks / stumps / ferns on it (the 1789 land cover there
+    // is meadow, so no 1789 trees grow on it either; today the spot is forest and stays untouched)
+    for (const [x, z, r] of bleicheClearings()) ctx.world.nature.props.addClearing(x, z, r, ['1789']);
+    for (const [x, z, r, keep] of bleicheMown()) ctx.world.nature.cover.addClearing(x, z, r, keep, ['1789']);
     ctx.events.on('era:change', () => applyEra(ctx));
     ctx.events.on('echo:start', ({ id }) => {
       if (id === FIREWORKS_ECHO) startFireworks(ctx);
@@ -517,6 +584,7 @@ export default defineSystem({
         const share = typeof data.share === 'number' ? data.share : 0.7;
         setWindows(ctx, data.building, data.on !== false, era, share);
       } else if (id === 'scenery:gate' && data) setGate(ctx, data.open === true);
+      else if (id === 'scenery:coat' && data) setCoat(data.visible !== false);
     });
     ctx.events.on('game:start', () => {
       // a loaded save brings its own windows / gate
@@ -524,6 +592,7 @@ export default defineSystem({
       for (const id of [...live.keys()]) dropSet(id);
       tally?.reset();
       tallyQuiet = true;
+      setCoatVisible(slice.coatTaken !== true);
       applyWindows(ctx);
       applyEra(ctx);
     });
@@ -547,6 +616,7 @@ export default defineSystem({
       if (!live.has(def.id) && here && d < def.range) buildSet(ctx, def, era);
     }
     syncSolids(ctx);
+    if (live.has('bleiche')) bleichePlayer(p.x, p.y, p.z);
     playStrikes(ctx);
     updateHohenburg(ctx, dt);
     updateConvoy(ctx, dt);

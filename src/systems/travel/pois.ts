@@ -75,6 +75,7 @@ export const KEEP_CLEAR: readonly (readonly [number, number])[] = [
   [1050, -1000], [1237, -1066], [1320, -940], [1250, -915], [790, -905], [1285, -1150], [1300, -1170], [1232, -1165], [1302, -1262], [1268, -1470],
   [1232, -1572], [1150, -1700], [1420, -1440], [1300, -1520], [1300, -1472], [1240, -1494], [1200, -1530],
   [1061, -834.5], // the Karlsbergquelle (prologue q.p.quelle; src/systems/quelle/layout.ts)
+  [1001.5, -876.5], // the Bleiche by the brook, 1789 (Unauffällig: Liese, the coat; src/systems/bleiche/layout.ts)
 ];
 
 /** Distance POIs keep from the places above (m). */
