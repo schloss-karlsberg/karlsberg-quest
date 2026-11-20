@@ -133,6 +133,8 @@ export interface PilotObservation {
   events: PilotEvent[];
   /** JPEG data URLs, evenly spaced over the act. */
   frames: string[];
+  /** Exploded-geometry findings so far (`kq.nanWatch`) and the newest one's summary. */
+  nanWatch?: { n: number; last: string | null };
 }
 
 export interface PilotRadio {
@@ -477,6 +479,11 @@ function readDialogue(): { obs: PilotObservation['dialogue']; buttons: HTMLEleme
 }
 
 /** Compact JPEG data URL of the canvas, read right after a render (no preserveDrawingBuffer needed). */
+function nanWatchInfo(): PilotObservation['nanWatch'] {
+  const f = window.kq?.nanWatch?.findings();
+  return f ? { n: f.length, last: f.at(-1)?.summary ?? null } : undefined;
+}
+
 function grab(src: HTMLCanvasElement, scratch: HTMLCanvasElement, width: number, quality: number): string {
   const w = Math.max(32, Math.round(width));
   const h = Math.max(18, Math.round((w * (src.height || 9)) / (src.width || 16)));
@@ -614,6 +621,7 @@ export function installPilot(ctx: GameContext): PilotApi {
       radio,
       events: events.splice(0),
       frames,
+      nanWatch: nanWatchInfo(),
     };
   };
 

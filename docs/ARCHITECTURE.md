@@ -37,7 +37,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/systems/` | **Feature systems**, one folder each, registered in `src/systems/index.ts` |
 | `src/rpg/` | Action-RPG shared data, pure (no three.js, no DOM): `types.ts` (quests, enemies, items, slices, stats), `enemies.ts` (roster), `items.ts` (items, loot tables, collections), `stats.ts` (level curve, talents, `deriveStats`) — see §12.1 |
 | `content/quests/` | Quest files `<nn>-<chapter>.quests.json` (schema `content/schema/quests.schema.json`, validated by `pnpm validate`) |
-| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route), `pilot.ts` (`kq.pilot` bullet-time play, §11) |
+| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route), `pilot.ts` (`kq.pilot` bullet-time play, §11), `nanWatch.ts` (`kq.nanWatch` exploded-geometry watchdog, §11) |
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `sim-combat.ts` (`pnpm sim:combat`: the human-like combat bot's balance table, docs/BALANCE.md), `scripts/dev/` screenshot helpers for a running dev server |
@@ -480,6 +480,21 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   the page (one browser screenshot shows the whole strip; it hides while the radio box speaks or a
   dialogue / modal is open, so it never covers them). Test: `e2e/pilot.spec.ts`,
   `tests/pilot.test.ts`.
+- Exploded-geometry watchdog (`kq.nanWatch`, `src/debug/nanWatch.ts`; playtest round 10 F-15, a
+  huge black wedge over the screen with the player gone): on with `?debug` or under WebDriver, or
+  `kq.nanWatch.enabled(true)`; otherwise its render hook is not installed (no per-frame work). Every
+  30 rendered frames (`kq.nanWatch.every(1)`: every frame) it runs from `scene.onAfterRender` and
+  walks the drawn scene: a non-finite world matrix on any node (its descendants are not reported
+  again), and for meshes / lines / points within 60 m a world bounding sphere that is non-finite,
+  over 5000 m in radius or more than 10 km from the camera (geometry sphere computed lazily,
+  recomputed when the positions change, times `matrixWorld` incl. scale). The camera (position,
+  quaternion, matrices) and everything under it, the avatar (`player-avatar`) and the combat
+  viewmodel are always checked in full, whatever their distance or visibility; skinned meshes also
+  check their bones (`boneMatrices`, bone world matrices, bind matrix). Each broken object is logged
+  once (`console.warn('[nan-watch] …')`: name, type, uuid, parent chain, values, era, player and
+  camera position, stack); `kq.nanWatch.findings()` keeps the last 20, `scan()` scans now and returns
+  what is broken now, `clear()` forgets. The pilot's observation carries `nanWatch: { n, last }`.
+  Test: `tests/nanWatch.test.ts`.
 - Performance (see `docs/PERFORMANCE.md`): `kq.perf()` (summary), `kq.bench(opts?)` runs the
   fixed route `BENCH_SCENES` (9 views over all eras, pack, fire, ruin, scan 3) and returns per
   scene frame/CPU/GPU ms, calls, triangles, `withinBudget` (also `kq.lastBench`, console table),
