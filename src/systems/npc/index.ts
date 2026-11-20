@@ -30,7 +30,7 @@ import type { LoadedModel } from '../../assets/loader';
 import { modelFor } from '../characters/catalog';
 import { GhostFigure } from './figure';
 import { RiggedGhost } from './rigged';
-import { BYE, GREET, answer, askedTopics, availableTopics, clueFor, talkLines, talkedFlag } from './logic';
+import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, talkLines, talkedFlag, yawToward } from './logic';
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
 import { GiverGlyphs } from './glyphs';
@@ -104,6 +104,8 @@ interface Placed {
   kneel?: number;
   /** Seconds left of a hand scratching the hound at his knee (topic 'namen'). */
   scratch?: number;
+  /** Seconds left of facing the player for a story line this person speaks (`dialogue:say`). */
+  faceT?: number;
 }
 
 class NpcRuntime {
@@ -136,6 +138,12 @@ class NpcRuntime {
     ev.on('npc:talk', ({ npc, topic }) => {
       const f = this.figs.get(npc);
       if (f?.p.pose === 'kneel' && topic === 'namen') f.scratch = 7;
+    });
+    // a story line spoken by a placed person (outside the conversation panel, same turn): it
+    // faces the player for the line when the player stands close (frame: d < 10 m)
+    ev.on('dialogue:say', ({ speaker, ms, text }) => {
+      const f = this.figs.get(speaker);
+      if (f && this.visible(f)) f.faceT = Math.max(f.faceT ?? 0, (ms ?? 1500 + text.length * 45) / 1000 + 1);
     });
     ev.on('era:change', ({ to }) => {
       for (const f of this.figs.values()) f.fig.setEra(to);
@@ -565,12 +573,15 @@ class NpcRuntime {
       f.fig.target = vis ? 1 : 0;
       const o = f.fig.object;
       o.position.set(f.p.x, this.figY(f), f.p.z);
-      // turn towards the player who comes close (and while talking)
+      // in a conversation (or while it speaks a story line to the player close by) the person turns
+      // round to the player in ~0.4 s (F-33), then back to its idle heading; the rigged head keeps
+      // looking at a player who comes close, the procedural figure (no head look) turns slowly instead
       const d = Math.hypot(p.x - f.p.x, p.z - f.p.z);
-      const want = d < 8 || this.talking?.npc === id ? Math.atan2(p.x - f.p.x, p.z - f.p.z) : yawRad(f.p.yaw);
-      let diff = want - f.yaw;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      f.yaw += diff * Math.min(1, dt * (reduced ? 8 : 1.6));
+      f.faceT = Math.max(0, (f.faceT ?? 0) - dt);
+      const talkTo = this.talking?.npc === id || (f.faceT > 0 && d < 10);
+      const nearTo = !talkTo && d < 8 && !f.fig.isRigged;
+      const want = talkTo || nearTo ? yawToward(f.p.x, f.p.z, p.x, p.z) : yawRad(f.p.yaw);
+      f.yaw = approachYaw(f.yaw, want, dt, talkTo ? TALK_TURN_S : nearTo ? NEAR_TURN_S : IDLE_TURN_S, reduced);
       o.rotation.y = f.yaw;
       // kneeling: lower and leaning forward over what lies before him; a scratching hand rocks him
       const kn = (f.kneel = (f.kneel ?? 0) + ((f.p.pose === 'kneel' ? 1 : 0) - (f.kneel ?? 0)) * Math.min(1, dt * 2.2));
@@ -582,7 +593,7 @@ class NpcRuntime {
         o.position.y -= f.fig.look.height * 0.27 * kn;
         o.rotation.x = (0.12 + sc) * kn;
         // while talking he looks up at you, otherwise down at the hound
-        if (!(d < 8 || this.talking?.npc === id) || f.scratch > 0) o.rotation.y = yawRad(f.p.yaw);
+        if (!(talkTo || nearTo) || f.scratch > 0) o.rotation.y = yawRad(f.p.yaw);
       } else {
         o.rotation.x = 0;
         f.fig.kneel = 0;

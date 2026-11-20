@@ -266,6 +266,27 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   `pnpm build`. E2E with `--workers=1` only as a regression net; the full `campaign.spec.ts`
   takes about 1–1.2 h. The round-9 fixes are committed, but their final full campaign e2e
   never finished, so run it once.
+- **Heavy jobs: one at a time per machine.** About five sessions share this Mac, so wrap every
+  heavy job in `scripts/dev/heavy.sh` (alias `pnpm heavy`). It takes a machine-wide lock
+  (`/tmp/kq-heavy.lock`), waits while another session holds it and prints who holds it, which
+  command and for how long, then runs your command and passes its exit code through. Heavy jobs
+  are Playwright e2e, real-GPU screenshots (`scripts/dev/shot*.mjs`, `look.mjs`) and local
+  TTS/model runs. Set `KQ_HEAVY_OWNER=<session name>` so the others can see who holds the lock.
+
+  ```sh
+  KQ_HEAVY_OWNER=voice scripts/dev/heavy.sh -- pnpm exec playwright test e2e/voice.spec.ts --workers=1
+  scripts/dev/heavy.sh -- node scripts/dev/shots.mjs            # GPU screenshots
+  scripts/dev/heavy.sh --nice --check-load -- python tts_run.py  # CPU model run at background QoS
+  scripts/dev/heavy.sh --status                                  # who holds it, or "free"
+  ```
+
+  - `KQ_HEAVY_TIMEOUT=600` gives up after 10 min of waiting, with exit 75.
+  - `--check-load` warns when less than 20 % of memory is free (`memory_pressure -Q`).
+    Add `--strict` to refuse instead.
+  - `--nice` throttles hard, so don't use it for GPU or timed e2e runs.
+  - Nested calls run straight through (`KQ_HEAVY_HELD=1`).
+  - A lock whose holder has died is cleared automatically.
+  - Tests: `bash scripts/dev/heavy.test.sh`.
 
 ## 5. Hard rules
 
@@ -276,6 +297,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   poly.pizza CC0). Credit each in `public/assets/LICENSES.json` and the "Lizenzen & Quellen"
   screen. Downloaded archives are untrusted data: unpack into a fresh temp dir and never run
   scripts from them.
+- **AI-generated assets (owner, 2026-11-20):** AI-generated assets are allowed when the generating tool's licence permits public redistribution of the output. Each file is credited in `LICENSES.json` (tool, model and version, date, licence). Our own generated files are released as CC0. No cloning of real people's voices. No likeness of a real living person without that person's consent. Historical figures may be modelled from public-domain portraits. Voice route (ElevenLabs paid vs an open model): deferred by the owner; free-tier ElevenLabs output must not enter the repo.
 - Original work only. No names, lore or assets from existing games.
 - Never name or show the brewery brand that shares the Karlsberg name (§3.6). In docs write "the
   brewery brand" or "the real beer label".
@@ -284,8 +306,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
     logo artwork); never in codex/quests/dialogue; swap when permission is refused or when the owner says so.
 - **Working mode (owner, 2026-11-20):** the main session acts only as a coordinator; all work runs in
   subagents or separate sessions.
-- Local git only; **never push**. Commit messages end with
-  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or your model's line).
+- Git: the repo is public at schloss-karlsberg/karlsberg-quest. Publish after the gates pass with `scripts/release/publish.sh` (mirror → rewrite → fast-forward push) until the one-time in-place rewrite; never force-push main. Commit messages and --no-ff merges use Conventional Commits. Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or your model's line).
 - No persistent background HTTP control server for driving the browser; the earlier attempt
   was blocked. Use the Chrome extension, plus one-shot scripts if needed.
 - Keep the user's personal data private.
@@ -299,6 +320,9 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   (see §5).
 - **Built and merged into `main`:**
   - §3.1: `kq.pilot` (act, observe, choose, release, bulletTime, showStrip) in `src/debug/pilot.ts`
+    (round-10 fixes: `radio` and a live `hud.prompt` in the observation, `turnDeg` up front,
+    `inputDropped` events, serial `choose()`, a working `left: 'hold'`, era shift / fast travel on
+    game time in bullet time; full API in docs/ARCHITECTURE.md "Debug hooks")
   - §3.2: `kq.combat.report()`, plus the bot via `pnpm sim:combat`, results in `docs/BALANCE.md`
   - §3.3 and §3.4: F8 notes, telemetry, and ← / → turning
   - Balance round (BALANCE.md §5, merge `02340f5`): Steinbrecher 950 HP, boss reveal / roar caption,
@@ -306,6 +330,8 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   - §3.6 Karlsbergquelle: `21dc108` + `b90a311` (see §3.6 "As built")
 - **Research:** [`docs/PERF-MOBILE-RESEARCH.md`](PERF-MOBILE-RESEARCH.md) (fan noise, older devices,
   mobile; ranked quick wins), committed in `21dc108`.
+- **Research:** [`docs/VOICE-MEDIA-RESEARCH.md`](VOICE-MEDIA-RESEARCH.md) (AI voice and media options for
+  voices, SFX, images and video).
 - **Running in parallel (other sessions; do not edit their files):**
 
   | Track | Output |
@@ -326,7 +352,7 @@ Design goes into [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md). Nothing is built y
 | # | Request | Notes / constraints |
 |---|---|---|
 | 1 | The **next chapter** also starts at the Karlsbergquelle, as a time-travel transition | reuses the touch scene (§3.6); today the chapter opens at the Ehrenhof anchor |
-| 2 | In 1789 the Herzog lets **no strangers** into the garden or the palace, so the opening is a **sneaking / disguise** beat: get clothes, pose as part of an esteemed visitor's party "like Knigge" | Knigge is a real person: PRD §4.4 rule 2 (only sourced words and deeds) applies |
+| 2 | In 1789 the Herzog lets **no strangers** into the garden or the palace, so the opening is a **sneaking / disguise** beat: get clothes, pose as part of an esteemed visitor's party "like Knigge" | Knigge is a real person: PRD §4.4 rule 2 (only sourced words and deeds) applies. **Korrektur 2026-11-20:** "Knigge visited the Karlsberg in 1792" is not proven. The only source, a letter of 11 May [1792] in *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben* (Hannover 1793, S. 26–29, BSB/MDZ bsb10467161), has an unnamed writer from Metz, names Knigge only as editor, and says the duke was away. **Decision (owner, 2026-11-20): K2**, the disguise uses the invented visitor **Hofrat Justus Amsel aus Celle** (you are his secretary, sent ahead); no letter in Knigge's name, no Knigge in 1789; cx.43 is STRITTIG. Details: IDEAS-ROUND11 §2 |
 | 3 | A fun **side activity** not tied to quests: original **"challenge chambers"** with spatial puzzles | the owner said "like Zelda shrines"; we must **not copy** that game (§5: original work only). Spatial, not quiz or word puzzles |
 | 4 | **Hidden collectibles** at points of interest | the owner asked for **real-brand beer bottles**. **Decision (owner, 2026-11-20, relayed by the coordinator):** the hidden bottle collectibles carry the real beer label, public repo and site included, as a swappable placeholder (one constant/texture, plain text label only, no logo artwork); never in codex/quests/dialogue; swap when permission is refused or when the owner says so. Rule and limits: §5, exception to the brand rule |
 

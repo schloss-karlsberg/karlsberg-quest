@@ -14,6 +14,17 @@ export interface RouteOptions {
   maxSide?: number;
   /** Give up after this many expanded cells (falls back to the straight line). */
   maxExpand?: number;
+  /**
+   * Cost factor of the ground at x/z (1 = plain ground; below 1 = preferred, e.g. 0.5 on an OSM
+   * path, so the route follows the real Waldweg). Must be ≥ `minCost`. Without it every free cell
+   * costs its length and the route is the shortest one.
+   */
+  cost?: (x: number, z: number) => number;
+  /**
+   * The cheapest `cost` anywhere (default 1). The A* heuristic is scaled by it (admissible, so the
+   * preferred ground is really found), at the price of more expanded cells.
+   */
+  minCost?: number;
 }
 
 export interface RouteResult {
@@ -23,6 +34,8 @@ export interface RouteResult {
   complete: boolean;
   /** True when no search was needed (straight line is free). */
   straight: boolean;
+  /** Cells the search expanded (0 for a straight line). */
+  expanded: number;
 }
 
 /** Is the straight segment free (sampled every `step` m)? */
@@ -42,7 +55,11 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
   const margin = opts.margin ?? 40;
   const maxSide = opts.maxSide ?? 420;
   const maxExpand = opts.maxExpand ?? 60000;
-  if (lineFree(sx, sz, gx, gz, blocked)) return { points: [[sx, sz], [gx, gz]], complete: true, straight: true };
+  const costAt = opts.cost;
+  const hScale = costAt ? Math.min(1, opts.minCost ?? 1) : 1;
+  // a free straight line is taken as is, also with ground costs: the search (and its price) is only
+  // paid where something stands in the way (the Weiher), and there the route follows the paths
+  if (lineFree(sx, sz, gx, gz, blocked)) return { points: [[sx, sz], [gx, gz]], complete: true, straight: true, expanded: 0 };
   // a far goal: aim for the point on the line at the box limit
   let tx = gx;
   let tz = gz;
@@ -115,6 +132,17 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
       moved = true;
     }
   }
+  // per-cell ground cost, cached (NaN: not looked up yet)
+  const cc = costAt ? new Float32Array(N).fill(Number.NaN) : null;
+  const cellCost = (i: number): number => {
+    if (!cc) return 1;
+    let v = cc[i]!;
+    if (Number.isNaN(v)) {
+      v = costAt!(cx(i), cz(i));
+      cc[i] = v;
+    }
+    return v;
+  };
   const g = new Float32Array(N).fill(Infinity);
   const from = new Int32Array(N).fill(-1);
   const closed = new Uint8Array(N);
@@ -160,7 +188,7 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
   const h = (i: number) => {
     const dx = Math.abs((i % W) - gi);
     const dz = Math.abs(Math.floor(i / W) - gj);
-    return (Math.max(dx, dz) + 0.4142 * Math.min(dx, dz)) * cell;
+    return (Math.max(dx, dz) + 0.4142 * Math.min(dx, dz)) * cell * hScale;
   };
   walk[start] = 1;
   g[start] = 0;
@@ -204,7 +232,7 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
       // no corner cutting
       if (di && dj && (!isFree(cj * W + ni) || !isFree(nj * W + ci))) continue;
       if (!midFree(cur, n)) continue;
-      const ng = g[cur]! + c * cell;
+      const ng = g[cur]! + c * cell * (cc ? (cellCost(cur) + cellCost(n)) * 0.5 : 1);
       if (ng < g[n]!) {
         g[n] = ng;
         from[n] = cur;
@@ -213,7 +241,7 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
     }
   }
   const end = found ? goal : best;
-  if (end === start) return { points: [[sx, sz], [gx, gz]], complete: false, straight: true };
+  if (end === start) return { points: [[sx, sz], [gx, gz]], complete: false, straight: true, expanded };
   const cells: number[] = [];
   for (let i = end; i >= 0; i = from[i]!) {
     cells.push(i);
@@ -223,17 +251,40 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
   const raw: [number, number][] = cells.map((i) => [cx(i), cz(i)]);
   raw[0] = [sx, sz];
   if (found && !partial && !moved) raw.push([gx, gz]);
-  return { points: simplify(raw, blocked), complete: found && !partial, straight: false };
+  return { points: simplify(raw, blocked, costAt), complete: found && !partial, straight: false, expanded };
 }
 
-/** Drop waypoints whose neighbours see each other (string pulling). */
-export function simplify(pts: [number, number][], blocked: (x: number, z: number) => boolean): [number, number][] {
+/** Cost of the straight segment a→b under a ground cost (sampled every `step` m). */
+function segmentCost(ax: number, az: number, bx: number, bz: number, cost: (x: number, z: number) => number, step = 0.5): number {
+  const L = Math.hypot(bx - ax, bz - az);
+  const n = Math.max(1, Math.ceil(L / step));
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    sum += cost(ax + (bx - ax) * t, az + (bz - az) * t);
+  }
+  return (sum * L) / n;
+}
+
+/**
+ * Drop waypoints whose neighbours see each other (string pulling). With a ground `cost` a shortcut
+ * must also be no dearer than the stretch it replaces, so a route along a path is not pulled
+ * straight across the forest beside it.
+ */
+export function simplify(pts: [number, number][], blocked: (x: number, z: number) => boolean, cost?: (x: number, z: number) => number): [number, number][] {
   if (pts.length <= 2) return pts;
+  // cost along the raw polyline up to each point
+  const acc = [0];
+  if (cost) for (let k = 1; k < pts.length; k++) acc.push(acc[k - 1]! + segmentCost(pts[k - 1]![0], pts[k - 1]![1], pts[k]![0], pts[k]![1], cost));
+  const ok = (i: number, j: number): boolean => {
+    if (!lineFree(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], blocked, 0.3)) return false;
+    return !cost || segmentCost(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], cost) <= (acc[j]! - acc[i]!) * 1.02 + 0.5;
+  };
   const out: [number, number][] = [pts[0]!];
   let i = 0;
   while (i < pts.length - 1) {
     let j = pts.length - 1;
-    while (j > i + 1 && !lineFree(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], blocked, 0.3)) j--;
+    while (j > i + 1 && !ok(i, j)) j--;
     out.push(pts[j]!);
     i = j;
   }
@@ -245,4 +296,18 @@ export function pathLength(pts: readonly [number, number][]): number {
   let L = 0;
   for (let i = 0; i + 1 < pts.length; i++) L += Math.hypot(pts[i + 1]![0] - pts[i]![0], pts[i + 1]![1] - pts[i]![1]);
   return L;
+}
+
+/**
+ * Cost factor of a cell on an OSM path, track or road (coverage > 0.3 in World.paths): the
+ * Wegweiser's route takes up to 1 / 0.6 ≈ 1.7× the length to stay on the real Waldweg (playtest
+ * round 10, F-10: the motes cut across the Weiher's shore instead of following the path).
+ * 0.6 is the measured trade-off: 0.5 follows the path as well but expands ~20 % more cells, 0.7
+ * leaves the north-shore path near the Damm.
+ */
+export const PATH_COST = 0.6;
+
+/** The ground cost for `findRoute` from a path-coverage lookup (pass `minCost: PATH_COST`). */
+export function pathGroundCost(pathAt: (x: number, z: number) => number): (x: number, z: number) => number {
+  return (x, z) => (pathAt(x, z) > 0.3 ? PATH_COST : 1);
 }

@@ -63,11 +63,16 @@ time, give each its own port, e.g. `KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
 
 These are not negotiable; pull requests that break them cannot be merged.
 
-### Art assets: CC0 only
+### Art assets: CC0, or licensed AI-generated
 
 - Use only **CC0 1.0** assets, downloaded from the official sites: [Poly Haven](https://polyhaven.com),
   [ambientCG](https://ambientcg.com), [Kenney](https://kenney.nl),
   [Quaternius](https://quaternius.com) and [poly.pizza](https://poly.pizza) (with the CC0 filter).
+- AI-generated assets are allowed when the generating tool's licence permits public redistribution of
+  the output. Credit each file in `LICENSES.json` with the tool, model and version, date and licence;
+  our own generated files are released as CC0. No cloning of real people's voices, and no likeness of a
+  real living person without that person's consent; historical figures may be modelled from
+  public-domain portraits. Free-tier ElevenLabs output must not enter the repo.
 - Credit **every file** in [`public/assets/LICENSES.json`](public/assets/LICENSES.json) with its
   name, author and source URL. The entry then appears in the game under „Lizenzen & Quellen“.
 - Treat downloaded archives as untrusted data: unpack them into a fresh, empty directory and never
@@ -122,9 +127,34 @@ behaviour, content or design, update them in the same pull request:
 - add a row to the log in [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md) §14, and
 - add an entry to the changelog table at the top of [`PRD.md`](PRD.md).
 
+## Commit messages: Conventional Commits
+
+Commit messages and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/):
+`type(scope): summary`, in English, imperative, lower case after the colon.
+
+```
+feat(quelle): touching the spring starts the first time travel
+fix(combat): Irrlichter stay hittable after a Bannlicht
+docs(release): how to cut a release
+```
+
+- **Types:** `feat` (new for players), `fix` (bug fix), `perf` (faster or lighter), `refactor`,
+  `docs`, `test`, `build`, `ci`, `chore`. A breaking change (e.g. old saves no longer load) gets a
+  `!` after the type or scope, or a `BREAKING CHANGE:` footer.
+- **Scopes** (optional): `story`, `quelle`, `combat`, `camera`, `touch`, `render`, `content`, `ui`,
+  `release`, `env` (`main` is reserved for release-please's release PR). Pick the closest one or
+  leave it out.
+- **Merges into `main`** use `git merge --no-ff`, and the merge commit's summary is itself a
+  conventional summary for the whole branch (e.g. `feat(touch): touch controls phase 1`), not
+  "Merge branch …". On GitHub, use "Squash and merge" or keep the PR title as the merge summary.
+  That summary is what release-please reads for `CHANGELOG.md` and the GitHub Release: `feat`,
+  `fix`, `perf` and `docs` appear there; `refactor`, `test`, `build`, `ci` and `chore` stay hidden.
+- The PR title is checked by the "PR title" workflow (`.github/workflows/pr-lint.yml`).
+
 ## Pull requests
 
-- Open pull requests against `main`. Keep them focused on one topic.
+- Open pull requests against `main`. Keep them focused on one topic, with a Conventional Commits
+  title (see above).
 - CI runs typecheck, unit tests, content validation and the build.
 - Fill in the pull request template: gates, asset credits, FIKTION labels.
 - For bugs, include the browser, GPU and URL flags, and if you can, the F8 note from the game.

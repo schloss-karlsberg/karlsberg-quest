@@ -14,6 +14,11 @@ export const de: Record<string, string> = {
   'title.motto': 'Fakten mit Quelle. Fiktion als Fiktion gekennzeichnet. Schauen, nicht graben.',
   'title.hint': 'Maus: umsehen · WASD: gehen · Klick/K: Hieb (halten: Wuchthieb) · Leertaste: ausweichen · Rechtsklick/G: Bannlicht · H: Balsam · Esc: Pause',
   'title.headphones': 'Mit Kopfhörern spielen.',
+  'title.news': 'Neuigkeiten',
+  'title.version': 'Version {version} · Build {build}',
+  'news.title': 'Neuigkeiten',
+  'news.unseen': 'Neue Einträge',
+  'news.empty': 'Noch keine Einträge.',
   'title.confirmNew': 'Das bisherige Feldbuch wird überschrieben. Wirklich neu beginnen?',
 
   'era.today': 'Heute · 2025',

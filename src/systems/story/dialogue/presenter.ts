@@ -1,6 +1,8 @@
 /**
  * Dialogue presenter: a queue of spoken lines shown as a field-book card with an etched portrait,
- * a typing effect and a procedural voice murmur. Enter / click skips (finish typing → next line).
+ * a typing effect and a voice: the line's recorded clip when one is ready (./voiceClips.ts; the
+ * typing then paces itself to the clip), else the procedural murmur. Subtitles always show.
+ * Enter / click skips (finish typing → next line); skipping or advancing stops the clip.
  * Driven by `update(dt)` from the system's fixed update (game time: stops while the game is
  * paused, and headless `kq.step` advances it deterministically).
  */
@@ -10,7 +12,8 @@ import { t } from '../../../i18n';
 import { ensurePortraitDefs, portraitSvg } from './portraits';
 import type { SpeakerMeta } from './speakers';
 import { LineQueue, type QueuedLine } from './queue';
-import { type Voice, syllableStarts } from './voice';
+import { type Voice, type VoiceClip, syllableStarts } from './voice';
+import type { ClipProvider } from './voiceClips';
 
 export { LORE_TTL, LOW_TTL, MAX_QUEUE, NORMAL_TTL, STALE_GRACE } from './queue';
 
@@ -36,12 +39,31 @@ interface Active {
   shownFor: number;
   starts: Set<number>;
   acc: number;
+  /** Characters per second (the clip's pace when one plays). */
+  rate: number;
+  /** The recorded clip of this line (null: murmur). */
+  clip: VoiceClip | null;
+  /** Clip length (s) and the game time the line has been up. */
+  clipS: number;
+  age: number;
+}
+
+/** Recorded-voice counters (tests / debug). */
+export interface PresenterVoiceStats {
+  /** Lines that started a clip. */
+  clips: number;
+  /** Lines that murmured. */
+  murmured: number;
+  /** The id of the line whose clip played last. */
+  lastClip: string | null;
 }
 
 export interface PresenterOptions {
   layer: HTMLElement;
   meta: (speaker: string) => SpeakerMeta;
   voice: Voice | null;
+  /** Recorded clips (none: murmur only). */
+  clips?: ClipProvider | null;
   reducedMotion: () => boolean;
   /** Player name for {Name}. */
   name: () => string;
@@ -83,6 +105,8 @@ export class DialoguePresenter {
   private mouthTimer = 0;
   private lastPortrait = '';
   private prune = 0;
+  private paused = false;
+  readonly voiceStats: PresenterVoiceStats = { clips: 0, murmured: 0, lastClip: null };
   constructor(private readonly o: PresenterOptions) {
     this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
     ensurePortraitDefs();
@@ -124,8 +148,15 @@ export class DialoguePresenter {
     return this.queue.dropped;
   }
 
+  /** Is the current line's clip audible right now? */
+  get clipPlaying(): boolean {
+    return !!this.cur?.clip?.playing;
+  }
+
   enqueue(item: DialogueItem): void {
     this.queue.push(item);
+    // the clip is hashed over the raw template ({Name} …); the displayed text is tried too
+    if (this.o.clips) this.o.clips.preload([{ id: item.id, text: [item.text, substituteName(item.text, this.o.name())], speaker: this.o.meta(item.speaker).id }]);
     if (!this.cur) this.next();
     // a 'now' line cuts in: the line on screen ends at once (unless it is 'now' itself)
     else if (item.priority === 'now' && this.cur.item.priority !== 'now') this.next();
@@ -138,6 +169,7 @@ export class DialoguePresenter {
 
   clear(): void {
     this.queue.clear();
+    this.stopClip();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');
   }
@@ -145,10 +177,27 @@ export class DialoguePresenter {
   /** Finish typing, or advance to the next line. */
   skip(): void {
     if (!this.cur) return;
+    this.stopClip();
     if (this.cur.typed < this.cur.text.length) {
       this.cur.typed = this.cur.text.length;
       this.render();
     } else this.next();
+  }
+
+  /**
+   * The game is paused (pause menu, an echo holding the presenter): the clip pauses with the
+   * typing and resumes where it stopped. A suspended audio context (hidden tab) freezes it anyway.
+   */
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+    const clip = this.cur?.clip;
+    if (!clip || clip.done) return;
+    if (paused) clip.pause();
+    else if (!clip.playing) clip.start(); // no-op until the context runs again
+  }
+
+  private stopClip(): void {
+    this.cur?.clip?.stop();
   }
 
   /** Complete the current line instantly (tests / screenshots). */
@@ -160,6 +209,7 @@ export class DialoguePresenter {
   }
 
   private next(): void {
+    this.stopClip();
     const item = this.queue.take(this.o.held);
     if (!item) {
       this.cur = null;
@@ -169,7 +219,18 @@ export class DialoguePresenter {
     }
     const meta = this.o.meta(item.speaker);
     const text = substituteName(item.text, this.o.name());
-    this.cur = { item, meta, text, typed: this.o.reducedMotion() ? text.length : 0, hold: holdSeconds(text, item.ms), shownFor: 0, starts: syllableStarts(text), acc: 0 };
+    this.cur = { item, meta, text, typed: this.o.reducedMotion() ? text.length : 0, hold: holdSeconds(text, item.ms), shownFor: 0, starts: syllableStarts(text), acc: 0, rate: CHARS_PER_S, clip: null, clipS: 0, age: 0 };
+    // a recorded clip when it is decoded and the context runs (never waits for one)
+    const ready = this.paused ? null : (this.o.clips?.take(item.id, [item.text, text], meta.id) ?? null);
+    const clip = ready && this.o.voice ? this.o.voice.playClip(ready.buffer, meta.voice) : null;
+    if (clip && ready) {
+      this.cur.clip = clip;
+      this.cur.clipS = ready.seconds;
+      // the reveal ends about when the voice does
+      this.cur.rate = Math.max(4, text.length / Math.max(0.3, ready.seconds));
+      this.voiceStats.clips++;
+      this.voiceStats.lastClip = ready.id;
+    } else this.voiceStats.murmured++;
     this.hideTimer = 0;
     if (this.lastPortrait !== meta.portrait + meta.id) {
       this.lastPortrait = meta.portrait + meta.id;
@@ -210,6 +271,7 @@ export class DialoguePresenter {
       // it (playtest round 5: the Baumagazin lecture sat over four Steinfresser)
       const h = this.cur;
       if (h && h.item.lore && this.o.held?.(h.item)) {
+        this.stopClip();
         this.queue.unshift(h.item);
         this.cur = null;
         this.el.classList.remove('kqs-speaking');
@@ -241,16 +303,22 @@ export class DialoguePresenter {
       return;
     }
     const c = this.cur;
+    c.age += dt;
+    // the clip ended before the typing did (a slow frame, a hitch): the words are all said
+    if (c.clip?.done && c.typed < c.text.length) {
+      c.typed = c.text.length;
+      this.render();
+    }
     if (c.typed < c.text.length) {
       const before = c.typed;
-      c.acc += dt * CHARS_PER_S;
+      c.acc += dt * c.rate;
       const n = Math.max(0, Math.floor(c.acc));
       c.acc -= n;
       c.typed = Math.min(c.text.length, c.typed + n);
       // a pause in the line („…“ mid-sentence): the typing stops for a breath (playtest round 5:
       // no „(Pause.)“ written into a subtitle any more)
       const dots = c.text.indexOf('…', before);
-      if (dots >= 0 && dots < c.typed && dots > 0 && dots < c.text.length - 1) {
+      if (!c.clip && dots >= 0 && dots < c.typed && dots > 0 && dots < c.text.length - 1) {
         c.typed = dots + 1;
         c.acc = -PAUSE_S * CHARS_PER_S;
       }
@@ -258,7 +326,7 @@ export class DialoguePresenter {
         if (c.starts.has(i)) {
           const prev = c.text[i - 1];
           const stress = i === 0 || prev === undefined || /[.!?]\s*$/.test(c.text.slice(Math.max(0, i - 3), i)) ? 1 : /[A-ZÄÖÜ]/.test(c.text[i]!) ? 0.5 : 0;
-          this.o.voice?.blip(c.meta.voice, stress);
+          if (!c.clip) this.o.voice?.blip(c.meta.voice, stress);
           this.portraitEl.classList.add('kqs-m');
           this.mouthTimer = 0.085;
           break;
@@ -270,6 +338,8 @@ export class DialoguePresenter {
     c.shownFor += dt;
     // lines waiting behind this one: read a little faster (the queue must not lag behind play)
     const hold = this.queue.length >= 2 ? Math.max(1.6, c.hold * 0.7) : c.hold;
-    if (c.shownFor >= hold) this.next();
+    // a clip still speaking keeps its line up (bounded: a stalled context never pins it)
+    const speaking = !!c.clip?.playing && c.age < c.clipS + 1;
+    if (c.shownFor >= hold && !speaking) this.next();
   }
 }

@@ -78,6 +78,34 @@ export const PIECES = {
 
 type HeightAt = (x: number, z: number) => number;
 
+/** The terrain grid (public/data/terrain/meta.json: origin, cell; the 2025 and 1789 heights share it). */
+export const TERRAIN_GRID = { x0: 151, z0: -2149, cell: 2 } as const;
+
+/**
+ * The ground as the terrain mesh draws it: LOD 0 splits each 2 m cell along its (x1, z0)–(x0, z1)
+ * diagonal (world/terrain.ts `lodGeometry`), so between the samples it is two flat triangles, not
+ * the bilinear patch `heightAt` gives (up to ~10 cm apart on a ravine floor). Ground decals (the
+ * brook, the trail) and slabs laid on the ground sample this, so they lie on the triangles.
+ */
+export function meshGround(h: HeightAt, x: number, z: number, grid: { x0: number; z0: number; cell: number } = TERRAIN_GRID): number {
+  const fc = (x - grid.x0) / grid.cell;
+  const fr = (z - grid.z0) / grid.cell;
+  const c = Math.floor(fc);
+  const r = Math.floor(fr);
+  const tx = fc - c;
+  const ty = fr - r;
+  const x0 = grid.x0 + c * grid.cell;
+  const z0 = grid.z0 + r * grid.cell;
+  const h10 = h(x0 + grid.cell, z0);
+  const h01 = h(x0, z0 + grid.cell);
+  if (tx + ty <= 1) {
+    const h00 = h(x0, z0);
+    return h00 + (h10 - h00) * tx + (h01 - h00) * ty;
+  }
+  const h11 = h(x0 + grid.cell, z0 + grid.cell);
+  return h11 + (h01 - h11) * (1 - tx) + (h10 - h11) * (1 - ty);
+}
+
 /** The ground under local (u, w). */
 export function groundLocal(h: HeightAt, u: number, w: number): number {
   const [x, z] = toWorld(u, w);
@@ -256,6 +284,63 @@ export function brookLine(heightAt: (x: number, z: number) => number, era: Era, 
     });
   }
   return cur;
+}
+
+/** One strand of the trail: local (u, w, half width m) control points. */
+export type TrailStrand = readonly (readonly [number, number, number])[];
+
+/**
+ * The red sandy trail of the reference photo (local u, w, half width): up the ravine floor from
+ * the Weiher on the far side of the brook, past the front of the spring and on up the ravine; the
+ * open forecourt before the water (between the trough and the mossy edge blocks); the branch to
+ * the steps, over the runnel.
+ */
+export const TRAIL: readonly TrailStrand[] = [
+  [
+    [-26, 9.9, 0.75],
+    [-20, 9.0, 0.8],
+    [-15, 7.9, 0.8],
+    [-11, 6.8, 0.85],
+    [-7.5, 5.7, 0.85],
+    [-4.5, 4.7, 0.9],
+    [-2, 4.1, 0.95],
+    [1, 3.95, 0.95],
+    [3.8, 4.3, 0.85],
+    [6.5, 4.95, 0.8],
+    [10, 6.1, 0.75],
+  ],
+  [
+    [-1.9, 2.35, 0.75],
+    [0.15, 2.3, 0.95],
+    [2.2, 2.45, 0.75],
+  ],
+  [
+    [-3.75, 4.3, 0.55],
+    [-3.5, 2.9, 0.5],
+    [-3.35, 1.55, 0.5],
+  ],
+];
+
+/** A trail strand as world samples about every `step` m (Catmull–Rom through its points), with half widths. */
+export function trailLine(strand: TrailStrand, step = 0.5): { x: number; z: number; half: number }[] {
+  const out: { x: number; z: number; half: number }[] = [];
+  const n = strand.length;
+  for (let i = 0; i + 1 < n; i++) {
+    const p0 = strand[Math.max(0, i - 1)]!;
+    const p1 = strand[i]!;
+    const p2 = strand[i + 1]!;
+    const p3 = strand[Math.min(n - 1, i + 2)]!;
+    const segs = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
+    for (let s = 0; s < segs || (i + 2 === n && s === segs); s++) {
+      const t = s / segs;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const cr = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      const [x, z] = toWorld(cr(p0[0], p1[0], p2[0], p3[0]), cr(p0[1], p1[1], p2[1], p3[1]));
+      out.push({ x, z, half: p1[2] + (p2[2] - p1[2]) * t });
+    }
+  }
+  return out;
 }
 
 /** Keep clear of trees / scattered props / caches: centres (world) and radii. */

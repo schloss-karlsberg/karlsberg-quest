@@ -48,6 +48,8 @@ export class SetBuilder {
   readonly glows: Glow[] = [];
   readonly signs: SignSpec[] = [];
   readonly models: ModelPlacement[] = [];
+  /** Extra meshes with their own shader (the Bleiche's swaying linen), added to the set's group as they are. */
+  readonly extras: Mesh[] = [];
 
   /**
    * @param detailed place CC0 prop models (`model()`); false (low tier, tests) builds the
@@ -144,6 +146,10 @@ export class SetBuilder {
     }
     if (this.smoke.length) {
       const mesh = smokeMesh(this.smoke);
+      group.add(mesh);
+      materials.push(mesh.material as ShaderMaterial);
+    }
+    for (const mesh of this.extras) {
       group.add(mesh);
       materials.push(mesh.material as ShaderMaterial);
     }

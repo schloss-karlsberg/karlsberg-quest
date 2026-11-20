@@ -49,41 +49,41 @@ import { lanternPose } from '../systems/hunt/lantern';
 import { type WeaponStage, buildStaff, staffMaterial } from '../systems/combat/viewmodel';
 import { atmosphere } from '../world/atmosphere';
 import { BOOM_MIN } from './camera';
+import { type Costume, costumeColours, costumeEmissive, costumeHides, lanternColours, partOf, resolveCostume, resolveTint, slotHex, staffOnBack } from './costume';
 import { clamp01, finite3, finiteOr, loop01, safeDt, turnToward } from './guards';
 import type { Player } from './player';
 import { actionPose } from './pose';
+
+export { type Costume, SURVEYOR_COSTUME } from './costume';
 
 declare module '../debug/hooks' {
   interface KqHooks {
     /** Third-person character (src/player/avatar.ts): state for tests, camera mode switch. */
     avatar?: {
-      state(): Record<string, unknown> & { ready: boolean; visible: boolean; clip: string; upper: string; full: string; mode: string; third: boolean; distance: number; facing: number };
+      state(): Record<string, unknown> & { ready: boolean; visible: boolean; clip: string; upper: string; full: string; mode: string; third: boolean; distance: number; facing: number; costume: Costume };
       setMode(m: 'third' | 'first'): void;
       ready(): Promise<boolean>;
+      /** The costume asked for (sticky; the model may still be fading into it). */
+      costume(): Costume;
+      /** Emits 'player:costume' (the same path the story takes). */
+      setCostume(c: Costume): void;
+      /** The lantern tint (sRGB hex), null = the warm default. */
+      lanternTint(): number | null;
     };
+  }
+}
+
+declare module '../core/events' {
+  interface GameEvents {
+    /** Dress the player character (the story's court disguise). Sticky and idempotent. */
+    'player:costume': { costume: Costume };
+    /** Tint the player's lantern glass and flame (sRGB hex); null = the warm default. */
+    'player:lantern-tint': { hex: number | null };
   }
 }
 
 export const AVATAR_MODEL = 'camera.player.surveyor';
 export const AVATAR_HEIGHT = 1.78;
-
-/** Surveyor's costume over the model's material slots (sRGB). */
-export const SURVEYOR_COSTUME: Record<string, number> = {
-  // field jacket (olive), hi-vis vest panels (orange), skin, hair
-  Green: 0x4b5534,
-  LightGreen: 0xe0661c,
-  Skin: 0xd6ad8c,
-  Hair: 0x4a3324,
-  Eyebrows: 0x3a2a1e,
-  // cargo trousers, belt / straps
-  Brown: 0x3a3631,
-  Brown2: 0x2b2824,
-  // boots and soles
-  Black: 0x1f1b17,
-  Grey: 0x5b5148,
-  // backpack buckles
-  Gold: 0xa98b45,
-};
 
 /** Bones of the upper-body layer (swings, charge, flare, hit play over the walking legs). */
 const UPPER = /^(Torso|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb)/;
@@ -146,8 +146,20 @@ export class Avatar {
   private readonly lantern = new Group();
   private lanternGlow: MeshBasicMaterial | null = null;
   private flame: Mesh | null = null;
+  private flameMat: MeshBasicMaterial | null = null;
   private readonly trail: Trail;
   private readonly materials: Material[] = [];
+  /** Geometry built here (the model's own is shared with the asset cache and never disposed). */
+  private readonly geos: BufferGeometry[] = [];
+  /** The model's costumed materials: one clone per part and slot (the backpack's orange is its own). */
+  private readonly dressed: { mat: MeshStandardMaterial; part: string; slot: string }[] = [];
+  private readonly parts: Mesh[] = [];
+  /** Costume asked for / on the model now; the swap dithers out, swaps, dithers back in. */
+  private costumeWant: Costume = 'default';
+  private costumeNow: Costume = 'default';
+  private swapK = 1;
+  private swapDir: -1 | 0 | 1 = 0;
+  private tint: number | null = null;
   /** Exposed for tests / debug. */
   readonly debug = { clip: '', upper: '', full: '', weights: {} as Record<string, number>, visible: false, armed: false };
 
@@ -173,6 +185,92 @@ export class Avatar {
     return this.rig !== null;
   }
 
+  /** The costume asked for (the model may still be dithering into it). */
+  get costume(): Costume {
+    return this.costumeWant;
+  }
+
+  /**
+   * Dress the character. Sticky (a call before the model is in is applied when it loads) and
+   * idempotent. While the character is on screen the body dithers out, swaps and dithers back in
+   * (~0.3 s, alphaHash: no sorting); hidden or paused, it swaps at once.
+   */
+  setCostume(c: Costume): void {
+    const want = resolveCostume(c);
+    if (want === this.costumeWant) return;
+    this.costumeWant = want;
+    if (!this.rig) return;
+    if (!this.root.visible) this.swapNow();
+    else this.swapDir = want === this.costumeNow ? 1 : -1;
+  }
+
+  /** The lantern tint (sRGB hex), null = the warm default. */
+  get lanternTint(): number | null {
+    return this.tint;
+  }
+
+  /** Tint the lantern's glass glow and flame (sRGB hex); null = the warm default. Sticky, idempotent. */
+  setLanternTint(hex: number | null): void {
+    const t = resolveTint(hex);
+    if (t === this.tint) return;
+    this.tint = t;
+    this.applyTint();
+  }
+
+  private swapNow(): void {
+    this.applyCostume(this.costumeWant);
+    this.swapK = 1;
+    this.swapDir = 0;
+  }
+
+  /** Lay a costume over the model's slots, hide what it does not wear. */
+  private applyCostume(c: Costume): void {
+    this.costumeNow = c;
+    const cols = costumeColours(c);
+    const emi = costumeEmissive(c);
+    for (const d of this.dressed) {
+      const hex = slotHex(cols, d.part, d.slot);
+      if (hex !== null) d.mat.color.setHex(hex);
+      d.mat.emissive.setHex(slotHex(emi, d.part, d.slot) ?? 0);
+    }
+    for (const m of this.parts) m.visible = !costumeHides(c, m.name);
+    this.staffBack.visible = staffOnBack(c);
+  }
+
+  private applyTint(): void {
+    const { glow, flame } = lanternColours(this.tint);
+    this.lanternGlow?.color.setHex(glow);
+    this.flameMat?.color.setHex(flame);
+  }
+
+  /** Advance a running costume swap (the dither dip), with `dt` = 0 (paused) it swaps at once. */
+  private swapFrame(dt: number): void {
+    if (this.swapDir === 0) return;
+    if (dt <= 0) {
+      this.swapNow();
+      return;
+    }
+    if (this.swapDir === -1) {
+      this.swapK -= dt / 0.14;
+      if (this.swapK <= 0) {
+        this.swapK = 0;
+        this.applyCostume(this.costumeWant);
+        this.swapDir = 1;
+      }
+    } else {
+      // asked for another costume while dithering back in: dip again from here
+      if (this.costumeWant !== this.costumeNow) {
+        this.swapDir = -1;
+        return;
+      }
+      this.swapK += dt / 0.16;
+      if (this.swapK >= 1) {
+        this.swapK = 1;
+        this.swapDir = 0;
+      }
+    }
+  }
+
   private building: Promise<void> | null = null;
 
   /** Resolves when the model is in (true) or failed (false); starts loading if needed. */
@@ -194,27 +292,29 @@ export class Avatar {
       return;
     }
     const rig = new Rig(src, AVATAR_HEIGHT);
-    // own costume: clone the shared (world-lit) materials and recolour them per slot
-    const cache = new Map<Material, Material>();
+    // own costume: clone the shared (world-lit) materials per model part and slot, so a costume can
+    // colour the backpack's orange apart from the vest's (applyCostume)
+    const cache = new Map<string, MeshStandardMaterial>();
     for (const m of rig.meshes) {
       m.castShadow = true;
+      const part = partOf(m.name);
+      this.parts.push(m);
       const mats = Array.isArray(m.material) ? m.material : [m.material];
       const out = mats.map((mat) => {
-        let c = cache.get(mat);
+        const key = `${part}.${mat.name}`;
+        let c = cache.get(key);
         if (!c) {
           const cl = mat.clone() as MeshStandardMaterial;
           delete cl.userData.kqStandard;
-          const col = SURVEYOR_COSTUME[mat.name];
-          if (col !== undefined && cl.color) cl.color.setHex(col);
           cl.roughness = mat.name === 'LightGreen' ? 0.55 : mat.name === 'Skin' ? 0.62 : 0.82;
           cl.metalness = mat.name === 'Gold' ? 0.6 : 0;
-          // hi-vis panels glow a touch (they catch the lantern and read at dusk)
-          if (mat.name === 'LightGreen') cl.emissive = new Color(0x2a0e02);
+          if (!cl.emissive) cl.emissive = new Color(0);
           kqStandard(cl, { ambient: 1.15 });
           // screen-door fade (no sorting): opacity < 1 dithers the body away (see fade below)
           cl.alphaHash = true;
-          cache.set(mat, cl);
+          cache.set(key, cl);
           this.materials.push(cl);
+          this.dressed.push({ mat: cl, part, slot: mat.name });
           c = cl;
         }
         return c;
@@ -252,6 +352,9 @@ export class Avatar {
     this.buildLantern(rig);
     this.rig = rig;
     this.root.traverse((o) => (o.frustumCulled = false));
+    // sticky: a costume / tint asked for before the model was in
+    this.swapNow();
+    this.applyTint();
   }
 
   /**
@@ -336,13 +439,16 @@ export class Avatar {
     if (!hips) return;
     const brass = kqStandard(new MeshStandardMaterial({ color: 0x8a6a2c, metalness: 0.75, roughness: 0.38 }), { ambient: 1.2 });
     this.materials.push(brass);
-    this.lanternGlow = new MeshBasicMaterial({ color: 0xffa64a, transparent: true, opacity: 0.6, blending: AdditiveBlending, depthWrite: false });
+    const { glow, flame } = lanternColours(this.tint);
+    this.lanternGlow = new MeshBasicMaterial({ color: glow, transparent: true, opacity: 0.6, blending: AdditiveBlending, depthWrite: false });
+    this.flameMat = new MeshBasicMaterial({ color: flame, transparent: true, blending: AdditiveBlending, depthWrite: false });
     const g = this.lantern;
     const add = (geo: BufferGeometry, mat: Material, x: number, y: number, z: number) => {
       const m = new Mesh(geo, mat);
       m.position.set(x, y, z);
       m.userData.noShadow = true;
       g.add(m);
+      this.geos.push(geo);
       return m;
     };
     add(new CylinderGeometry(0.055, 0.062, 0.02, 16), brass, 0, -0.07, 0);
@@ -355,7 +461,7 @@ export class Avatar {
       add(new CylinderGeometry(0.005, 0.005, 0.13, 6), brass, Math.cos(a) * 0.05, 0, Math.sin(a) * 0.05);
     }
     add(new CylinderGeometry(0.046, 0.046, 0.12, 14, 1, true), this.lanternGlow, 0, 0, 0);
-    this.flame = add(new SphereGeometry(0.022, 10, 8), new MeshBasicMaterial({ color: 0xffd28a, transparent: true, blending: AdditiveBlending, depthWrite: false }), 0, -0.01, 0);
+    this.flame = add(new SphereGeometry(0.022, 10, 8), this.flameMat, 0, -0.01, 0);
     this.flame.scale.set(1, 1.6, 1);
     // on the left hip, hanging from the belt (calibrated in the idle pose; +x is the model's left)
     this.poseFor(rig, 'Idle');
@@ -649,7 +755,8 @@ export class Avatar {
     if (actionPose.inCombat) want = Math.max(want, 0.45);
     this.fade += (want - this.fade) * Math.min(1, dt * 8);
     if (!Number.isFinite(this.fade)) this.fade = 1;
-    const o = this.fade > 0.98 ? 1 : this.fade;
+    this.swapFrame(dt);
+    const o = (this.fade > 0.98 ? 1 : this.fade) * this.swapK;
     for (const m of this.materials) m.opacity = o;
     if (this.staff) this.staff.visible = this.staff.visible && o > 0.35;
   }
@@ -658,8 +765,13 @@ export class Avatar {
     lanternPose.anchor = null;
     this.rig?.dispose();
     this.root.removeFromParent();
-    this.trail.mesh.removeFromParent();
+    this.trail.dispose();
     for (const m of this.materials) m.dispose();
+    this.lanternGlow?.dispose();
+    this.flameMat?.dispose();
+    for (const g of this.geos) g.dispose();
+    this.staff?.geometry.dispose();
+    this.staffMat?.dispose();
   }
 }
 
@@ -719,6 +831,12 @@ class Trail {
   clear(): void {
     this.pts.length = 0;
     this.mesh.visible = false;
+  }
+
+  dispose(): void {
+    this.mesh.removeFromParent();
+    this.geo.dispose();
+    this.mat.dispose();
   }
 
   frame(dt: number, active: boolean, staff: Object3D, heavy: boolean, reducedFlash: boolean): void {

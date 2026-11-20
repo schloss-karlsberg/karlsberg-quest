@@ -18,6 +18,7 @@ import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
 import { SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from '../atmosphere';
 import type { GroundCoverSource } from './groundcover';
+import { DUCK_GLSL, enemyDuck } from './duck';
 import { COVER_LOOKS, type CoverLook, type CoverSample, hash2, valueNoise } from './scatter';
 
 /**
@@ -182,8 +183,10 @@ function patchNature(m: Material, wind: boolean): void {
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying float vKqSee;\n${SEE_FRAG_GLSL}`)
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (kqSeeCut(vKqSee, vKqWorld)) discard;');
-    if (wind)
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;').replace(
+    if (wind) {
+      // the swaying kinds also lie down round the enemies (duck.ts, playtest round 10 F-04)
+      shader.uniforms.uEnemyDuck = enemyDuck;
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>\nuniform float uTime;\n${DUCK_GLSL}`).replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
 #ifdef USE_INSTANCING
@@ -191,9 +194,13 @@ function patchNature(m: Material, wind: boolean): void {
   vec2 kqIp = instanceMatrix[3].xz;
   float kqW = sin(uTime * 1.7 + kqIp.x * 0.4 + kqIp.y * 0.3) * 0.6 + sin(uTime * 3.1 + kqIp.x) * 0.25;
   transformed.xz += vec2(0.8, 0.5) * kqW * 0.06 * transformed.y * transformed.y;
+  float kqDk = kqDuckAt(kqIp);
+  transformed.y *= 1.0 - 0.78 * kqDk;
+  transformed.xz *= 1.0 + 0.3 * kqDk;
 }
 #endif`,
       );
+    }
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `#include <normal_fragment_maps>
@@ -244,17 +251,20 @@ export class NatureProps {
   }
 
   setEra(era: Era): void {
+    this.era = era;
     this.look = COVER_LOOKS[era] ?? COVER_LOOKS.today!;
     this.tiles.clear();
     this.dirty = true;
   }
 
-  /** Circles kept free of props (a built place: the Karlsbergquelle's hollow …). */
-  private readonly clearings: { x: number; z: number; r: number }[] = [];
+  private era: Era = 'today';
 
-  /** Keep a circle free of scattered props (rebuilds the tiles it touches). */
-  addClearing(x: number, z: number, r: number): void {
-    this.clearings.push({ x, z, r });
+  /** Circles kept free of props (a built place: the Karlsbergquelle's hollow …), in some eras or all. */
+  private readonly clearings: { x: number; z: number; r: number; eras?: readonly Era[] }[] = [];
+
+  /** Keep a circle free of scattered props (rebuilds the tiles it touches); `eras`: only in those (default all). */
+  addClearing(x: number, z: number, r: number, eras?: readonly Era[]): void {
+    this.clearings.push({ x, z, r, eras });
     this.tiles.clear();
     this.dirty = true;
   }
@@ -362,7 +372,7 @@ export class NatureProps {
         const x = (gx + hash2(gx, gz, 201)) * CELL;
         const z = (gz + hash2(gz, gx, 203)) * CELL;
         if (!this.src.inside(x, z)) continue;
-        if (this.clearings.length && this.clearings.some((q) => Math.hypot(x - q.x, z - q.z) < q.r)) continue;
+        if (this.clearings.length && this.clearings.some((q) => Math.hypot(x - q.x, z - q.z) < q.r && (!q.eras || q.eras.includes(this.era)))) continue;
         this.src.cover(x, z, this.cov);
         const c: CoverSample = { forest: this.cov[0]!, water: this.cov[1]!, bare: this.cov[2]!, lawn: this.cov[3]! };
         if (c.forest < 0.2 && c.water < 0.01 && c.bare < 0.1 && hash2(gx, gz, 205) > 0.3) continue;

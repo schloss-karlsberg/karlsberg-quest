@@ -1378,6 +1378,28 @@
       }
     },
     {
+      "id": "laub.k1.morgen.quelle",
+      "speaker": "laub",
+      "text_de": "Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.brunnenstube",
+      "speaker": "laub",
+      "text_de": "Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b"
+      },
+      "once": true
+    },
+    {
       "id": "laub.k1.start",
       "speaker": "laub",
       "text_de": "1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.",
@@ -1610,9 +1632,9 @@
       "once": true
     },
     {
-      "id": "marlene.k1.morgen",
+      "id": "marlene.k1.morgen.quelle",
       "speaker": "marlene",
-      "text_de": "Morgen, {Name}! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen.",
+      "text_de": "Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k1",

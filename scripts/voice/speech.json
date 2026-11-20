@@ -1,0 +1,31 @@
+{
+  "$comment": "Spoken text per line id, used instead of the auto-prepared text_de (e.g. lines with {Name}, which cannot be pre-voiced). forText = textHash of the text_de it was written for: when the line text changes, the override is ignored (warned) until it is rewritten. Changing speech regenerates the clip (manifest speechHash).",
+  "marlene.p.weg": {
+    "forText": "bf247320",
+    "speech": "Und noch was: Wir schauen, wir graben nicht. Nichts anfassen, nichts mitnehmen. Was da im Boden liegt, gehört dem Land, und es ist geschützt."
+  },
+  "marlene.p.umgeworfen": {
+    "forText": "ad2c3602",
+    "speech": "Hallo? Du bist auf einmal still. Alles gut? Trink was, und dann weiter. Der Balsam ist in der Tasche."
+  },
+  "quest.q.p.feldstation.offer.0": {
+    "forText": "32ea9cff",
+    "speech": "Hallo, hörst du mich? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter."
+  },
+  "marlene.k1.morgen": {
+    "forText": "63316bd9",
+    "speech": "Na, guten Morgen! Brötchen liegen auf der Stufe. Hast du schlecht geschlafen? Du siehst aus, als hättest du die ganze Nacht Rechnungen gelesen."
+  },
+  "marlene.k4.ruf": {
+    "forText": "8166a3f5",
+    "speech": "Hallo? Hallo-o! Wo steckst du denn? Die Suppe wird kalt!"
+  },
+  "laub.k4.x.allee": {
+    "forText": "bfbcfca6",
+    "speech": "Nach Westen treiben sie uns, dann die Allee hinauf. Da oben war der Zwinger. Sie gehen nach Hause, sehen Sie? Und wir mit."
+  },
+  "laub.k4.x.brecher": {
+    "forText": "db075cf6",
+    "speech": "Hinter Ihnen. Der da ist aus der Hofmauer gemacht. Achten Sie auf die Fugen! Wo der Mörtel leuchtet."
+  }
+}

@@ -25,9 +25,9 @@ import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { cameraHints } from '../../player/camera';
 import { addStrings } from '../../i18n';
-import { brookLine, canTouch, clearings, lookFor, outlet, QUELLE, toWorld, touchLocal, waterSpec, yawToWater, type WaterSpec } from './layout';
+import { brookLine, canTouch, clearings, lookFor, outlet, QUELLE, toWorld, touchLocal, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
 import { springSound, type SpringSound } from './sound';
-import { applyLook, brookMesh, glowSprite, motes, poolMesh, streamMesh, waterUniforms, type Motes } from './water';
+import { applyLook, brookMesh, glowSprite, motes, poolMesh, streamMesh, trailMesh, waterUniforms, type Motes } from './water';
 
 addStrings('de', { 'quelle.touch': 'Wasser berühren' });
 
@@ -167,6 +167,9 @@ function build(ctx: GameContext, era: Era): void {
   const line = brookLine(h, era);
   const b = brookMesh(line, h, U);
   if (b) g.add(b);
+  // the red sandy trail up to the front (a ground decal in the era's look)
+  const tr = trailMesh(TRAIL.map((s) => trailLine(s)), h, lookFor(era));
+  if (tr) g.add(tr);
   path = line.map(([x, z]) => new Vector3(x, h(x, z) + 0.08, z));
   mot = motes(new Vector3(spec.x, spec.y, spec.z), path, U);
   g.add(mot.points);

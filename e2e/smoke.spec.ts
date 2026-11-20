@@ -71,6 +71,17 @@ test('title screen loads, lights the lantern and starts the game', async ({ page
   await page.waitForTimeout(500); // let the backdrop draw a few frames
   await page.screenshot({ path: `${SCREENS}/title.png` });
 
+  // version + build, and „Neuigkeiten“ with its unseen badge (cleared once opened)
+  await expect(page.getByTestId('title-version')).toContainText(/Version \d+\.\d+\.\d+ · Build \S+/);
+  const badge = page.locator('.kq-news-badge');
+  await expect(badge).toBeVisible();
+  await page.getByTestId('title-news').click();
+  await expect(page.getByTestId('news')).toContainText('Erste öffentliche Version');
+  await expect(page.getByTestId('news')).toBeVisible();
+  await page.locator('.kq-modal .actions button').click();
+  await expect(page.getByTestId('news')).toBeHidden();
+  await expect(badge).toBeHidden();
+
   // new game: content warning → name → light the lantern (story feature's title flow)
   await start.click();
   await page.getByTestId('warning-accept').click();

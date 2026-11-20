@@ -33,6 +33,7 @@ import {
 } from 'three';
 import { ELITES } from '../../rpg/enemies';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
+import { setDuck } from '../../world/vegetation/duck';
 import type { AssetLoader } from '../../assets/loader';
 import { type BodyPart, type BodyTemplate, bodyTemplate, MAT } from './bodies';
 import { EnemyRigs } from './rigged';
@@ -258,10 +259,14 @@ void main() {
     vec3 body = vAlb * (0.35 + 1.3 * flow);
     col = kqLight(body, n, vW, 1.0, 1.0) * 0.45 + body * uSkyAmbient * 0.2;
     // inner light streaming up
-    col += tint * smoothstep(0.62, 0.92, wisp) * 0.14 * (1.0 - rim);
-    // by day an ink band just inside the rim (the silhouette holds on pale fog), then the family rim
-    col *= 1.0 - dark * smoothstep(0.12, 0.45, rim) * 0.6;
-    col += tint * smoothstep(0.22, 0.85, rim) * (0.5 + 0.35 * flow) * mix(1.0, 0.8, dark);
+    col += tint * smoothstep(0.62, 0.92, wisp) * mix(0.14, 0.2, dark) * (1.0 - rim);
+    // by day an ink band just inside the rim (the silhouette holds on pale fog), then the family rim.
+    // Playtest round 10 (F-04): in the autumn forest the ink body sank into the dark litter and
+    // ferns, only the health pips showed at 6–9 m — the rim is a light now (stronger by day, a thin
+    // hot line at the very edge that blooms a little), the ink band a thin separator inside it
+    col *= 1.0 - dark * smoothstep(0.1, 0.38, rim) * (1.0 - smoothstep(0.55, 0.8, rim)) * 0.55;
+    col += tint * smoothstep(0.2, 0.8, rim) * (0.55 + 0.35 * flow) * mix(1.0, 1.2, dark);
+    col += tint * smoothstep(0.62, 0.95, rim) * mix(0.55, 0.85, dark);
     // the heart, seen through the body: the view ray's distance to it
     if (vCore.w > 0.0) {
       vec3 rd = normalize(vW - uCamPos);
@@ -270,7 +275,7 @@ void main() {
       float d = length(oc - rd * tt);
       float g = exp(-d * d / (vCore.w * vCore.w));
       float g2 = exp(-d * d / (vCore.w * vCore.w * 7.0));
-      col += tint * (g * 0.6 + g2 * 0.08) * (0.75 + 0.25 * flow) + vec3(1.0, 0.96, 0.88) * pow(g, 6.0) * 0.18;
+      col += tint * (g * 0.8 + g2 * 0.14) * (0.75 + 0.25 * flow) + vec3(1.0, 0.96, 0.88) * pow(g, 6.0) * 0.18;
     }
     burnCol = tint * 2.2 + vec3(0.25);
   } else if (mat > 4.5 && mat < 5.5) {
@@ -418,7 +423,10 @@ uniform float uPixel;
 uniform float uOutlinePx;
 varying vec3 vW;
 varying float vVis;
+attribute vec4 iEm;
+varying vec4 vEm;
 void main() {
+  vEm = iEm;
   mat4 M = modelMatrix * instanceMatrix;
   vec3 S = vec3(length(M[0].xyz), length(M[1].xyz), length(M[2].xyz));
   vec4 c = M * vec4(0.0, 0.0, 0.0, 1.0);
@@ -438,6 +446,7 @@ const OUTLINE_FRAG = /* glsl */ `
 ${ATMOS_GLSL}
 varying vec3 vW;
 varying float vVis;
+varying vec4 vEm;
 void main() {
   if (vVis < 0.999 && kqHash12(floor(gl_FragCoord.xy)) > vVis) discard;
   float dist = length(vW - uCamPos);
@@ -445,6 +454,10 @@ void main() {
   float fogL = dot(uFogColor, vec3(0.299, 0.587, 0.114));
   // dark ink on pale fog / sand / snow; a fog-lit pale line in the dark
   vec3 col = fogL > 0.38 ? vec3(0.025, 0.02, 0.022) : uFogColor * 1.25 + vec3(0.08, 0.08, 0.1);
+  // a spectral body is ink-dark itself: its line is a light in the family colour (round 10, F-04:
+  // a dark line round a dark body on dark forest ground drew nothing); it flares with the tell
+  float spectral = step(3.5, vEm.w) * step(vEm.w, 4.5);
+  col = mix(col, vEm.rgb * 0.8 + vec3(0.025, 0.03, 0.04), spectral);
   // fogged a little less than the body: the silhouette outlives the fill
   col = mix(kqFog(col, vW), col, 0.92 * (1.0 - smoothstep(55.0, 130.0, dist)));
   gl_FragColor = vec4(col, 1.0);
@@ -1573,6 +1586,9 @@ export class CombatVisuals {
     }
     this.rigs.end();
     for (const id of [...this.vis.keys()]) if (!seen.has(id)) this.vis.delete(id);
+    // ferns and bushes part round the creatures on the ground (duck.ts; round 10, F-04)
+    const onGround = f.enemies.filter((e) => e.y - f.heightAt(e.x, e.z) < 2.5);
+    setDuck(onGround.map((e) => ({ x: e.x, z: e.z, r: Math.max(1.9, e.radius + 1.4) })), cam.x, cam.z);
     // telegraph rings
     for (const r of f.rings) {
       const y = this.groundY(f, r.x, r.z, r.r);

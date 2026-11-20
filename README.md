@@ -8,7 +8,8 @@ You take on quests from the people you meet, fight the shadows of the past and t
 eras: today, summer 1789, February and July 1793, and 1796. Along the way you learn real regional
 history; invented parts are labelled as fiction in the in-game Chronik.
 
-**Play:** https://schloss-karlsberg.github.io/karlsberg-quest/
+**Play:** https://schloss-karlsberg.github.io/karlsberg-quest/ ·
+**What's new (German):** [Neuigkeiten](https://schloss-karlsberg.github.io/karlsberg-quest/neu.html)
 
 > Trademarks belong to their owners. This independent fan project is not affiliated with or
 > endorsed by the city of Homburg, the WaldPark Schloss Karlsberg, or any brewery.
@@ -17,7 +18,7 @@ history; invented parts are labelled as fiction in the in-game Chronik.
 
 - A current desktop browser with **WebGL 2**: tested in Chrome; Edge and Firefox should work,
   Safari is untested.
-- A keyboard and a mouse. Touch and gamepad are not supported yet.
+- A keyboard and a mouse, or touch on phones and tablets in landscape. Gamepad is not supported yet.
 - A dedicated or recent integrated GPU is recommended. On weak hardware the game lowers its quality
   on its own. You can also force a quality tier with `?q=low`, `?q=med` or `?q=high`.
 - The full game is about 55 MB; terrain and models load per area and era. Progress is saved in
@@ -52,8 +53,11 @@ pnpm typecheck && pnpm test && pnpm validate && pnpm build
 ```
 
 Built with Vite, TypeScript and three.js. The design documents live in [`PRD.md`](PRD.md) and
-[`docs/`](docs/). Releases are built by GitHub Actions (`.github/workflows/pages.yml`); see
-[`docs/RELEASE.md`](docs/RELEASE.md).
+[`docs/`](docs/). Every push to `main` is deployed by GitHub Actions (`.github/workflows/pages.yml`);
+versions, the changelog and the player notes (`content/release-notes/`, shown in the game under
+„Neuigkeiten“ and on `neu.html`) come from release-please; see [`docs/RELEASE.md`](docs/RELEASE.md).
+
+- [Storyboard](docs/storyboard/) — **Spoiler**: every beat, place and creature, illustrated.
 
 ## Credits
 

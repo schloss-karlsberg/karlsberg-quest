@@ -82,7 +82,7 @@ Research date: 2026-11-02. All sources were opened and read. Snippet-only leads 
   - Source: https://de.wikipedia.org/wiki/Schloss_Karlsberg
 - **[FACT]** The valley was previously called **"Teufelsloch"** ("devil's hole") because of its gloomy, wild landscape. The cellar of the Kavaliersgebäude is nicknamed **"Räuberhöhle"** ("robbers' cave").
   - Source: https://de.wikipedia.org/wiki/Schloss_Karlsberg
-- **[FACT]** Emperor Joseph II reportedly said he had never seen comparable splendour. Adolph von Knigge (1792) called Karlsberg a "Feen-Schloß" ("fairy castle").
+- **[FACT]** Emperor Joseph II reportedly said he had never seen comparable splendour. A travel letter dated 11 May 1792, published by Adolph von Knigge as editor in 1793 (*Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, Hannover 1793, S. 28 f.; BSB scan https://www.digitale-sammlungen.de/en/view/bsb10467161), calls Karlsberg a "Feen-Schloß" ("fairy castle"). **[CONTESTED]** The writer is unnamed (he says he lived in Metz) and the duke was away; that Knigge himself visited in 1792 is not proven (correction 2026-11-20, see `docs/IDEAS-ROUND11.md` §2.2).
   - Sources: ADB ; https://www.literaturland-saar.de/orte/homburg/
 
 ### 1.5 The flight in 1793

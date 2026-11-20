@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
-import { playK1 } from './helpers/k1';
+import { K1_START, distTo, playK1 } from './helpers/k1';
 import { playK2 } from './helpers/k2';
 import { playK3 } from './helpers/k3';
 import { playK4 } from './helpers/k4';
@@ -272,6 +272,8 @@ test('campaign: new game → prologue → chapters 1–4 → ending → credits'
     });
     lap('prologue');
     await chapterStart(page, 'prolog', 'k1', 'k1_0');
+    // chapter 1 opens at the Karlsbergquelle at dawn (its checkpoint), not in the station bed
+    expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
     // what the prologue really leaves behind (the chapter-1 spec grants Relief 2 + Kartograf 1)
     const sk = (await page.evaluate(() => window.kq!.state().skills)) as Record<string, number>;
     expect(sk['relief'] ?? 0).toBeGreaterThanOrEqual(2);

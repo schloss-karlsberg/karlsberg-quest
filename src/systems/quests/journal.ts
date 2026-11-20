@@ -16,6 +16,7 @@ import type { ItemDef, QuestDef, QuestProgress } from '../../rpg/types';
 import { ENEMIES } from '../../rpg/enemies';
 import { COLLECTIONS } from '../../rpg/items';
 import type { Era } from '../../core/era';
+import { journalRunning } from './logic';
 
 // ---------------------------------------------------------------------------------------------
 // the modal
@@ -186,6 +187,8 @@ export interface JournalData {
   seen(id: string): void;
   bestiary(): Record<string, number>;
   speaker(id: string): string;
+  /** The story's own objective line (the main step between two main quests), if any. */
+  storyStep?(): string | null;
 }
 
 const ERA_LABEL: Record<string, string> = { today: 'Gegenwart', '1789': '1789', '1793-02': 'Februar 1793', '1793-07': 'Juli 1793', '1796': '1796' };
@@ -219,8 +222,10 @@ let selQuest: string | null = null;
 export function renderQuests(el: HTMLElement, d: JournalData): void {
   const all = d.quests();
   const st = (q: QuestDef) => d.progress(q.id)?.state ?? 'hidden';
-  const by = (a: QuestDef, b: QuestDef) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1) || (d.progress(b.id)?.t ?? 0) - (d.progress(a.id)?.t ?? 0);
-  const active = all.filter((q) => st(q) === 'active' || st(q) === 'ready').sort(by);
+  // running quests and the main quest on offer (F-41), main first
+  const active = journalRunning(all, (id) => d.progress(id));
+  // no main quest in the list: the story's own line is the main step (F-30: „nothing under Hauptaufgabe“)
+  const step = active.some((q) => q.kind === 'main') ? null : d.storyStep?.() ?? null;
   const done = all.filter((q) => st(q) === 'done' || st(q) === 'failed').sort((a, b) => (d.progress(b.id)?.t ?? 0) - (d.progress(a.id)?.t ?? 0));
   if (!selQuest || ![...active, ...done].some((q) => q.id === selQuest)) selQuest = active[0]?.id ?? done[0]?.id ?? null;
   const unseen = new Set(d.unseen());
@@ -228,7 +233,7 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
 
   const row = (q: QuestDef) => {
     const s = st(q);
-    const mark = s === 'ready' ? '?' : s === 'done' ? '✓' : s === 'failed' ? '×' : q.kind === 'main' ? '◆' : '◇';
+    const mark = s === 'ready' ? '?' : s === 'offered' ? '!' : s === 'done' ? '✓' : s === 'failed' ? '×' : q.kind === 'main' ? '◆' : '◇';
     return h(
       `button.kqj-qrow${q.id === selQuest ? '.kqj-on' : ''}${s === 'done' ? '.kqj-qdone' : ''}`,
       {
@@ -247,7 +252,8 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
 
   const list = h('div.kqj-qlist', [
     h('h4', t('journal.quests.active')),
-    active.length ? h('div.kqj-qgroup', active.map(row)) : h('p.kqj-empty', t('journal.quests.none')),
+    step ? h('p.kqj-mainstep', { dataset: { testid: 'journal-mainstep' } }, [h('span.kqj-qm.kqj-qm-active', { 'aria-hidden': 'true' }, '◆'), h('span.kqj-qt', `${t('journal.quests.mainstep')}: ${step}`)]) : null,
+    active.length ? h('div.kqj-qgroup', active.map(row)) : step ? null : h('p.kqj-empty', t('journal.quests.none')),
     done.length ? h('h4', t('journal.quests.done')) : null,
     done.length ? h('div.kqj-qgroup', done.map(row)) : null,
   ]);
@@ -270,6 +276,7 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
       h('h3', q.title_de),
       h('div.kqj-who', [t('journal.quests.giver', { name: giver }), turnin && turnin !== giver ? ` · ${t('journal.quests.turnin', { name: turnin })}` : '']),
       h('p.kqj-summary', q.summary_de),
+      s === 'offered' ? h('p.kqj-offered', { dataset: { testid: 'journal-offered' } }, t('journal.quests.offered', { name: giver })) : null,
       s === 'failed' ? h('p.kqj-missed', { dataset: { testid: 'journal-missed' } }, t(p?.reason === 'chapter' ? 'journal.quests.missedChapter' : 'journal.quests.missedStory')) : null,
       h(
         'ul.kqj-objs',
@@ -296,7 +303,9 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
             ),
           ])
         : null,
-      s === 'active' || s === 'ready'
+      (s === 'active' || s === 'ready') && q.kind === 'main'
+        ? h('p.kqj-track.kqj-on', { dataset: { testid: 'journal-track' } }, t('journal.quests.trackedMain'))
+        : s === 'active' || s === 'ready'
         ? h(
             `button.kq-btn.kqj-track${tracked ? '.kqj-on' : ''}`,
             { type: 'button', 'aria-pressed': String(tracked), dataset: { testid: 'journal-track' }, onclick: () => (d.track(q.id, !tracked), rerender()) },

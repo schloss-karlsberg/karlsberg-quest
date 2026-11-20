@@ -19,7 +19,10 @@
     "assets:strip": "tsx scripts/assets/pack-strip.ts",
     "assets:surface": "tsx scripts/assets/pack-surface.ts",
     "assets:set": "tsx scripts/assets/pack-set.ts",
-    "assets:inspect": "tsx scripts/assets/inspect-gltf.ts"
+    "assets:inspect": "tsx scripts/assets/inspect-gltf.ts",
+    "voice:plan": "node scripts/voice/generate.mjs --dry-run",
+    "voice:gen": "node scripts/voice/generate.mjs",
+    "heavy": "scripts/dev/heavy.sh"
   },
   "dependencies": {
     "three": "0.187.0"

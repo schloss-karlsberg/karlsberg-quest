@@ -36,6 +36,18 @@
   border-left-color: rgba(220, 225, 235, 0.55);
   background: linear-gradient(90deg, rgba(12, 9, 6, 0.38), rgba(12, 9, 6, 0.14) 75%, transparent);
 }
+.kqq-tq.kqq-offer {
+  border-left-color: rgba(242, 199, 107, 0.75);
+  background: linear-gradient(90deg, rgba(12, 9, 6, 0.42), rgba(12, 9, 6, 0.16) 75%, transparent);
+}
+.kqq-tq.kqq-offer .kqq-tq-title {
+  color: #ffdf9a;
+  font-size: 16px;
+}
+.kqq-offer .kqq-glyph {
+  font-size: 15px;
+  font-weight: 700;
+}
 .kqq-tq-title {
   font-family: var(--sc);
   font-size: 16px;
@@ -795,6 +807,19 @@ body:has(.kqs-choice-card.kqs-show) .kqq-reward,
   font-size: 19px !important;
   line-height: 1.5;
   margin: 10px 0;
+}
+.kqj-offered {
+  margin: 4px 0 8px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.kqj-mainstep {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 4px 0 8px;
+  font-style: italic;
+  color: var(--ink-soft);
 }
 .kqj-missed {
   margin: 4px 0 8px;

@@ -1,0 +1,62 @@
+# Releases (docs/RELEASE.md "Cutting a release").
+# On every push to main release-please opens or updates the release PR ("chore(main): release X.Y.Z")
+# from the Conventional Commits since the last release: CHANGELOG.md, package.json "version" and
+# .release-please-manifest.json. Merging that PR tags vX.Y.Z and creates the GitHub Release; the
+# player notes content/release-notes/vX.Y.Z.md are then put on top of the generated changelog.
+# Repo setting needed: Settings → Actions → General → "Allow GitHub Actions to create and approve
+# pull requests".
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Check out the release commit
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
+
+      - name: Put the player notes on top of the release
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          notes="content/release-notes/v${VERSION}.md"
+          if [ ! -f "$notes" ]; then
+            echo "::warning title=No player notes::$notes is missing; the release keeps the generated changelog only."
+            exit 0
+          fi
+          gh release view "$TAG" --json body --jq .body > "$RUNNER_TEMP/changelog.md"
+          {
+            echo "## Für Spielerinnen und Spieler"
+            echo
+            # drop the notes' own title ("# Version …", the release title says it), demote "## Neu" etc.
+            sed -e '1{/^# /d;}' -e 's/^## /### /' "$notes"
+            echo
+            echo "---"
+            echo
+            cat "$RUNNER_TEMP/changelog.md"
+          } > "$RUNNER_TEMP/body.md"
+          gh release edit "$TAG" --notes-file "$RUNNER_TEMP/body.md"
+          echo "Release $TAG: player notes from $notes added above the changelog."

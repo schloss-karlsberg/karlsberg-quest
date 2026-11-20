@@ -1,0 +1,44 @@
+# Lint pull request titles as Conventional Commits (CONTRIBUTING.md "Commit messages").
+# The title becomes the merge / squash commit summary on main, which release-please reads for
+# CHANGELOG.md and the GitHub Release. Runs on pull requests only, never on pushes to main.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Conventional PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+          scopes: |
+            story
+            quelle
+            combat
+            camera
+            touch
+            render
+            content
+            ui
+            release
+            env
+            main
+          requireScope: false
