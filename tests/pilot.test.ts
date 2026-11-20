@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { FixedStepLoop } from '../src/core/loop';
-import { compassDeg, relBearing, summarizeEnemies, summarizeSimEvent, telegraphLeft, wrap180 } from '../src/debug/pilot';
+import { skipRealTimeWaits, stepsDriveVisuals } from '../src/core/bullet';
+import {
+  ChooseGate,
+  attackReady,
+  compassDeg,
+  droppedInputs,
+  lookPlan,
+  promptLine,
+  relBearing,
+  summarizeEnemies,
+  summarizeRadio,
+  summarizeSimEvent,
+  tapWindow,
+  stripVisible,
+  telegraphLeft,
+  wrap180,
+} from '../src/debug/pilot';
 import type { SimEvent } from '../src/systems/combat/sim';
 
 /** Bullet-time pilot (src/debug/pilot.ts): the observation's pure parts. */
@@ -98,5 +114,106 @@ describe('loop advance / renderOnce (pilot stepping)', () => {
     loop.renderOnce(5);
     expect(renders[0]).toBeCloseTo(0.05);
     expect(renders[1]).toBe(0.25);
+  });
+});
+
+describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
+  it('radio box: speaker, whole line, showing only when shown and not hidden', () => {
+    const base = { show: true, hidden: false, who: 'Marlene', speaker: 'marlene', tag: 'Fiktion', text: 'Du  schnaufst ja.', speaking: true };
+    expect(summarizeRadio(base)).toEqual({ showing: true, who: 'Marlene', speaker: 'marlene', tag: 'Fiktion', text: 'Du schnaufst ja.', typing: true });
+    expect(summarizeRadio({ ...base, hidden: true })).toMatchObject({ showing: false, typing: false });
+    expect(summarizeRadio({ ...base, show: false }).showing).toBe(false);
+  });
+
+  it('prompt: from the prompt state, empty when none is shown or a fight hides it', () => {
+    expect(promptLine({ key: 'E', text: 'Sprechen' }, false)).toBe('E Sprechen');
+    expect(promptLine({ key: null, text: 'Lauschen' }, false)).toBe('Lauschen');
+    expect(promptLine(null, false)).toBe('');
+    expect(promptLine({ key: 'E', text: 'Feldstation' }, true)).toBe('');
+  });
+
+  it('turnDeg is done up front (3 steps by default), dx/dy spread over lookSteps', () => {
+    const p = lookPlan(15, 0, 0, 90);
+    expect(p.turnEnd).toBe(3);
+    expect(p.dx.slice(0, 3)).toEqual([30, 30, 30]);
+    expect(p.dx.slice(3).every((x) => x === 0)).toBe(true);
+    const q = lookPlan(10, 200, 20, 0);
+    expect(q.turnEnd).toBe(0);
+    expect(q.dx.every((x) => x === 20)).toBe(true);
+    expect(q.dy.reduce((a, b) => a + b, 0)).toBeCloseTo(20);
+    const r = lookPlan(15, 60, 0, 30, 2, 1);
+    expect(r.dx[0]).toBe(60);
+    expect(r.dx[1]).toBe(30);
+    expect(r.turnEnd).toBe(1);
+    // a short act: the turn fits into it
+    expect(lookPlan(2, 0, 0, 10).turnEnd).toBe(2);
+    expect(lookPlan(0, 5, 5, 5).dx).toEqual([]);
+  });
+
+  it('taps go down on the step the turn completes', () => {
+    expect(tapWindow(15, 2, 0)).toEqual({ down: 1, up: 2 });
+    expect(tapWindow(15, 2, 3)).toEqual({ down: 3, up: 4 });
+    expect(tapWindow(3, 2, 3)).toEqual({ down: 3, up: 3 });
+  });
+
+  it('two choose() calls: the second is rejected until the pilot looks again', () => {
+    const g = new ChooseGate();
+    expect(g.begin()).toBe(true);
+    expect(g.begin()).toBe(false);
+    g.settle();
+    expect(g.begin()).toBe(true);
+    g.cancel();
+    expect(g.busy).toBe(false);
+  });
+
+  const idle = { dead: false, freeze: 0, swing: false, dodging: false, skill: false };
+  const none = { queued: false, hold: -1, skill: false };
+  const press = (o: Partial<{ attackPressed: boolean; dodgePressed: boolean; blocked: boolean; noDodge: boolean }>) => ({ attackPressed: false, dodgePressed: false, blocked: false, ...o });
+
+  it('inputDropped: a click in the swing recovery, outside the combo buffer', () => {
+    expect(droppedInputs(press({ attackPressed: true }), { ...idle, swing: true }, none, [])).toEqual([{ input: 'attack', reason: 'recovery' }]);
+    // buffered (queued) or a new swing or the start of a hold: taken
+    expect(droppedInputs(press({ attackPressed: true }), { ...idle, swing: true }, { ...none, queued: true }, [])).toEqual([]);
+    expect(droppedInputs(press({ attackPressed: true }), idle, none, [{ type: 'swing' }])).toEqual([]);
+    expect(droppedInputs(press({ attackPressed: true }), idle, { ...none, hold: 0.016 }, [])).toEqual([]);
+  });
+
+  it('inputDropped: hit-stop, blocked, tired, skill, dodging, interact', () => {
+    expect(droppedInputs(press({ attackPressed: true }), { ...idle, freeze: 0.05 }, { ...none, queued: true }, [])).toEqual([{ input: 'attack', reason: 'hitstop' }]);
+    expect(droppedInputs(press({ dodgePressed: true, blocked: true }), idle, none, [])).toEqual([{ input: 'dodge', reason: 'blocked' }]);
+    expect(droppedInputs(press({ attackPressed: true }), idle, none, [{ type: 'tired' }])).toEqual([{ input: 'attack', reason: 'tired' }]);
+    expect(droppedInputs(press({ dodgePressed: true }), { ...idle, skill: true }, none, [])).toEqual([{ input: 'dodge', reason: 'skill' }]);
+    expect(droppedInputs(press({ dodgePressed: true }), { ...idle, dodging: true }, none, [])).toEqual([{ input: 'dodge', reason: 'dodging' }]);
+    expect(droppedInputs(press({ dodgePressed: true }), idle, none, [{ type: 'dodge' }])).toEqual([]);
+    expect(droppedInputs(press({}), idle, none, [], true)).toEqual([{ input: 'attack', reason: 'interact' }]);
+    expect(droppedInputs(press({}), idle, none, [])).toEqual([]);
+  });
+
+  it("left:'hold' presses only once a hold can begin (no swing, hit-stop or ability running)", () => {
+    expect(attackReady({ dead: false, swing: null, skill: null }, 0)).toBe(true);
+    expect(attackReady({ dead: false, swing: { kind: 'light' }, skill: null }, 0)).toBe(false);
+    expect(attackReady({ dead: false, swing: null, skill: null }, 0.06)).toBe(false);
+    expect(attackReady({ dead: false, swing: null, skill: { id: 'wirbel' } }, 0)).toBe(false);
+    expect(attackReady(null, 0)).toBe(true);
+  });
+
+  it('bullet time: the era shift steps with the fixed updates, travel skips its real-time wait', () => {
+    expect(stepsDriveVisuals(true, false, false)).toBe(true);
+    // e2e under WebDriver keeps the rAF-driven timing unless ?idle
+    expect(stepsDriveVisuals(true, true, false)).toBe(false);
+    expect(stepsDriveVisuals(true, true, true)).toBe(true);
+    // normal play unchanged
+    expect(stepsDriveVisuals(false, false, false)).toBe(false);
+    expect(skipRealTimeWaits(true, new URLSearchParams(''))).toBe(true);
+    expect(skipRealTimeWaits(false, new URLSearchParams('manual'))).toBe(true);
+    expect(skipRealTimeWaits(false, new URLSearchParams('nosave'))).toBe(false);
+  });
+});
+
+describe('pilot frame strip', () => {
+  it('steps aside while the radio speaks or a dialogue is open', () => {
+    expect(stripVisible(false, false)).toBe(true);
+    expect(stripVisible(true, false)).toBe(false);
+    expect(stripVisible(false, true)).toBe(false);
   });
 });

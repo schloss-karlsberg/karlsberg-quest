@@ -37,7 +37,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/systems/` | **Feature systems**, one folder each, registered in `src/systems/index.ts` |
 | `src/rpg/` | Action-RPG shared data, pure (no three.js, no DOM): `types.ts` (quests, enemies, items, slices, stats), `enemies.ts` (roster), `items.ts` (items, loot tables, collections), `stats.ts` (level curve, talents, `deriveStats`) — see §12.1 |
 | `content/quests/` | Quest files `<nn>-<chapter>.quests.json` (schema `content/schema/quests.schema.json`, validated by `pnpm validate`) |
-| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route), `pilot.ts` (`kq.pilot` bullet-time play, §11) |
+| `src/debug/` | `window.kq` hooks, `?debug` stats panel, `perfHud.ts` (F3 overlay), `bench.ts` (fixed benchmark route), `pilot.ts` (`kq.pilot` bullet-time play, §11), `nanWatch.ts` (`kq.nanWatch` exploded-geometry watchdog, §11) |
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `sim-combat.ts` (`pnpm sim:combat`: the human-like combat bot's balance table, docs/BALANCE.md), `scripts/dev/` screenshot helpers for a running dev server |
@@ -436,13 +436,21 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
   HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).
   `kq.pilot.act({ hold?: string[], tap?: string[], tapSteps?: 1|2, mouse?: { dx?, dy?, turnDeg?,
-  left?: true|'click'|'hold', right?: … }, steps = 15, frames = 5, frameSize = 320, quality = 0.6,
-  keep?: boolean })` holds keys for every step (up afterwards unless `keep`; the next act releases
-  kept keys it does not hold, `kq.pilot.release()` all), taps for the first 1–2 steps, `left: 'hold'`
-  keeps LMB down (≥ 27 steps then up = Wuchthieb). Mouse look works without pointer lock or focus:
+  lookSteps?, turnSteps?, left?: true|'click'|'hold', right?: … }, steps = 15, frames = 5,
+  frameSize = 320, quality = 0.6, keep?: boolean })` holds keys for every step (up afterwards unless
+  `keep`; the next act releases kept keys it does not hold, `kq.pilot.release()` all), taps for
+  1–2 steps, `left: 'hold'` keeps LMB down across the act's steps and lets it up at the end unless
+  `keep` (held ≥ 0.45 s = ≥ 27 steps, then up = Wuchthieb). A held attack (`left: 'hold'`,
+  `hold: ['KeyK']`) presses only once no swing, hit-stop or ability is running (a press then would
+  just queue a light combo hit); if that moment never comes in the act, an `inputDropped` event
+  with `hold: true` says so. Mouse look works without pointer lock or focus:
   `dx`/`dy` (pixels, + = right / down) go through `input.addLook` into the same accumulator as
   `movementX/Y`, and `player.look()` runs once per step (real sensitivity, invert, clamp);
-  `turnDeg` converts degrees at the current sensitivity. Each step is `loop.advance(1)` (no render,
+  `dx`/`dy` are spread evenly over the first `lookSteps` steps (default all: a pan). `turnDeg`
+  converts degrees at the current sensitivity and is done up front, over the first `turnSteps`
+  steps (default 3, at most the act); the act's taps (keys, a click) go down on the step the turn
+  completes, so a swing goes out in the new direction. `Enter` / `NumpadEnter` taps also go to the
+  page as real key events (the radio box skips on Enter). Each step is `loop.advance(1)` (no render,
   and no step while `pause.paused`: a modal stops the simulation as in play); at `frames` evenly
   spaced steps `loop.renderOnce(dt · steps since the last render)` draws and the canvas is copied to
   a small 2D canvas in the same task (JPEG data URL), so no `preserveDrawingBuffer` is needed.
@@ -453,16 +461,41 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   bearing` (relative to the view, + = right), `hp, max, state, telegraph` (s of wind-up left, null
   when none), `attack, onScreen, boss?, elite?, stun?`), `objective {label, quest, objective, d,
   bearing, tracker}` (from `kq.quests.lead()` / the tracker / the story line), `dialogue {kind:
-  npc|choice|modal, title, who, text, options [{n, label}]}`, `hud {prompt, subtitle, toasts}`,
+  npc|choice|modal, title, who, text, options [{n, label}]}`, `hud {prompt, promptOwner, subtitle,
+  toasts}` (`prompt` from the HUD's prompt state `hud.promptShown()`, '' when none is shown or a
+  fight hides prompts; the element keeps its last text when hidden), `radio {showing, who, speaker,
+  tag, text, typing}` (the spoken-line box: speaker name and id, the whole line),
   `events` (combat sim events since the last act / observe, compact: `hit` (dmg, heavy, hpLeft),
   `hurt`, `dodge` (perfect), `evade`, `ko`, `died`, `bounce` (guard), `guardBreak`, `flank`,
   `immune`, `telegraph` (attack, dur), `strike`, `swing`, `whiff`, `stun`, `phase`, `heal`, `bann`,
-  `shotHit`, `hazardHit`, …; `t` = seconds into the act; tapped by wrapping the live
-  `CombatSim.step`, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
+  `shotHit`, `hazardHit`, …, and `inputDropped {input: attack|dodge, reason}` for a press that had
+  no effect: `recovery` (a swing runs, outside the combo buffer), `hitstop`, `blocked`, `skill`,
+  `dodging`, `tired`, `noDodge`, `interact` (the click went to the interact target), `dead`; `t` =
+  seconds into the act; tapped by wrapping the live `CombatSim.step` and reading the player state
+  before / after, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
   same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
-  story choice / modal; `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
-  the page (one browser screenshot shows the whole strip). Test: `e2e/pilot.spec.ts`,
+  story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
+  null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
+  shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
+  once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
+  the page (one browser screenshot shows the whole strip; it hides while the radio box speaks or a
+  dialogue / modal is open, so it never covers them). Test: `e2e/pilot.spec.ts`,
   `tests/pilot.test.ts`.
+- Exploded-geometry watchdog (`kq.nanWatch`, `src/debug/nanWatch.ts`; playtest round 10 F-15, a
+  huge black wedge over the screen with the player gone): on with `?debug` or under WebDriver, or
+  `kq.nanWatch.enabled(true)`; otherwise its render hook is not installed (no per-frame work). Every
+  30 rendered frames (`kq.nanWatch.every(1)`: every frame) it runs from `scene.onAfterRender` and
+  walks the drawn scene: a non-finite world matrix on any node (its descendants are not reported
+  again), and for meshes / lines / points within 60 m a world bounding sphere that is non-finite,
+  over 5000 m in radius or more than 10 km from the camera (geometry sphere computed lazily,
+  recomputed when the positions change, times `matrixWorld` incl. scale). The camera (position,
+  quaternion, matrices) and everything under it, the avatar (`player-avatar`) and the combat
+  viewmodel are always checked in full, whatever their distance or visibility; skinned meshes also
+  check their bones (`boneMatrices`, bone world matrices, bind matrix). Each broken object is logged
+  once (`console.warn('[nan-watch] …')`: name, type, uuid, parent chain, values, era, player and
+  camera position, stack); `kq.nanWatch.findings()` keeps the last 20, `scan()` scans now and returns
+  what is broken now, `clear()` forgets. The pilot's observation carries `nanWatch: { n, last }`.
+  Test: `tests/nanWatch.test.ts`.
 - Performance (see `docs/PERFORMANCE.md`): `kq.perf()` (summary), `kq.bench(opts?)` runs the
   fixed route `BENCH_SCENES` (9 views over all eras, pack, fire, ruin, scan 3) and returns per
   scene frame/CPU/GPU ms, calls, triangles, `withinBudget` (also `kq.lastBench`, console table),
@@ -878,7 +911,12 @@ Round-4 (polish: set dressing) integration rules:
   fresnel rim, flowing bands, a blank face with dark eye hollows, the lower body dissolving into
   mist, an occasional slice glitch, skirt swing; around the feet 9 camera-facing mist puffs (thin
   out near the camera) and motes. Warm amber for Hanne, cold flicker for the others, era tint;
-  visible only in its era; turns towards the player. Reduced motion calms it.
+  visible only in its era. Turning (F-33, pure helpers `approachYaw` / `shortestArc` / `yawToward` in
+  `logic.ts`, `tests/npc-turn.test.ts`): in a conversation (and for a story `dialogue:say` line it
+  speaks with the player within 10 m) the body turns round to the player in `TALK_TURN_S` = 0.4 s,
+  afterwards back to its placement yaw in 1.2 s; the rigged head looks at a player within 9 m, the
+  procedural figure (no head look) slowly turns to a player within 8 m instead. Reduced motion
+  snaps the turn and calms the figure.
   On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
   `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
   head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.
@@ -1021,27 +1059,37 @@ Round-4 (polish: set dressing) integration rules:
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
-- Survey points (`points.ts`, 11): glowing tripods (`visuals.ts`, beam shader that fades near the
-  camera, widens with distance so a found beam stays a landmark). Walking within 7 m measures one
+- Survey points (`points.ts`, 12): glowing tripods (`visuals.ts`, beam shader that fades near the
+  camera, widens with distance so a found beam stays a landmark). Walking within 7 m (the Ehrenhof:
+  16 m, `activateRadius`, so both Q spots lie inside) measures one
   in (chime, burst ring + flash — gentler with `reducedFlash` — banner card, autosave). The field
   station is known from the start. `travelBlock`: no travel while busy (modal / story pause), in a
   fight, while hunted (chasing / searching), in a locked chapter phase or, in the past, while a
-  story threat is active. Story objectives far away (> 600 m) whose goal lies within 140 m of a
+  story threat is active. Story objectives far away (> 400 m, `ANNOUNCE_MIN`; 600 m before playtest round 10) whose goal lies within 140 m of a
   known point get one Laub line "Drücken Sie M …".
+  The Karlsbergquelle tripod (round 10, 1072/−825) stands on the bench east of the spring, 14.7 m
+  from the trough's water: its 7 m circle never reaches the touch reach (`quelle/layout.ts`
+  `REACH`) nor the story's 5 m step zone; travel has no E prompt of its own, and its card closes on
+  E only while nothing else owns E (`cardMayTakeE`: `e.owner`, `npc.near`).
 - Map (`map.ts`): M (no modal open) or the Journal tab "Karte" — the 1836–41 sheet with inked
   footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
   (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
   goal, `travel:arrived`, autosave (synchronous under `?manual`).
-- Route POIs (`pois.ts`, deterministic): along 17 chapter routes every ~120 m a cache (2–4 era
+- Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Journal tab "Funde") or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
-  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Built within 190 m; a
+  Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
+  sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
+  are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
+  the Weiher's north-shore Waldweg to the hohe Stufe with its own `start` / `gap` (62 m) to fit
+  between the `p-hang` POIs; tests check this on real terrain (`tests/world-data.ts`). Built within 190 m; a
   closed cache carries a warm light column (beam shader, widens with distance) so the next one
   shows from the last; when the lid springs the column shoots up and goes out.
-- Sprint: out of a fight and a chase, after 1.8 s of sprinting the move scale grows to ×1.45
-  (multiplies combat's `moveScale`, never compounds).
+- Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
+  (1.8 s before playtest round 10) the move scale grows to ×1.45 over 1.4 s (multiplies combat's
+  `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
   set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
   cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m
@@ -1053,6 +1101,14 @@ Round-4 (polish: set dressing) integration rules:
   doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
+  Present day (playtest round 10): the straight-line check counts only water (`wayLineBlocked`
+  in `points.ts`; trunks and ruins would fire it every few steps, the Weiher must), and the A*
+  takes a ground cost (`RouteOptions.cost` / `minCost`): OSM path cells (`World.pathAt`, the
+  raster from `rasters.ts` `buildPathRaster`) cost `PATH_COST` 0.6, the heuristic is scaled by it
+  and the string pulling keeps a shortcut only if it is no dearer, so the motes follow the
+  Waldweg round the Weiher's north shore. A free straight line still skips the search; the lake
+  case costs ~10–25 ms per route (~9 000 cells; tests/travel.test.ts logs it; e2e
+  `e2e/travel-paths.spec.ts`).
 - After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
@@ -1234,7 +1290,15 @@ Each RPG track adds its own subsection here when it fills its system in.
   Known clues settle one tick after any accept / objective (`settleKnown`). On `story:chapter`,
   main quests of earlier chapters still running and unaccepted offers of earlier chapters are
   reset (chapter jumps; the e2e `test` chapter counts as after the campaign); side quests the
-  player took keep running unless their chapter fails them.
+  player took keep running unless their chapter fails them. The book restores on a state `load`
+  too (it fires before `save:loaded`, which reaches the story's resume first).
+- Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
+  a running main quest is always in `tracked()` (a lost entry heals on read, `track(id, false)`
+  ignores it, the journal shows no toggle for it). `mainOffer(chapter)`: with no main quest
+  running, the main quest on offer (content order, current chapter first) heads the tracker
+  (`.kqq-offer`, „Bei <Geber> annehmen“; deliberately not `.kqq-main`, so the story's line keeps
+  leading to the giver). The journal's „Laufend“ is `journalRunning()`: running quests plus main
+  quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the reward
   card and the chapter title card), reward card (EP stamp, items, codex facts with confidence +
@@ -1243,7 +1307,8 @@ Each RPG track adds its own subsection here when it fills its system in.
 - `beacons.ts`: soft volumetric beam (view-angle edges, sparks) + pulsing ground ring over open
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
-  objective type, clue places from the content packs), `hintFor` / `storyHint`, `StallWatch`
+  objective type, clue places from the content packs; none for a clue with `anchor: "portable"`,
+  the tablet's nominal spot is no place: playtest round 10, F-25), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
   quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
   a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the

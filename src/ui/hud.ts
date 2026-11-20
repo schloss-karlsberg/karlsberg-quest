@@ -320,6 +320,15 @@ export class Hud {
     return this.promptTop;
   }
 
+  /**
+   * The prompt on screen now (null: none), from the prompt state: the element keeps its last text
+   * after it hides, so reading the DOM reports a stale prompt (bullet-time pilot, playtest round 10).
+   */
+  promptShown(): { owner: string; key: string | null; text: string } | null {
+    const top = this.promptTop ? this.prompts.get(this.promptTop) : undefined;
+    return top && this.promptTop ? { owner: this.promptTop, key: top.key, text: top.text } : null;
+  }
+
   /** Is only a low prompt (or none) on screen? A feature may then show its own. */
   promptFree(): boolean {
     const top = this.promptTop ? this.prompts.get(this.promptTop) : undefined;

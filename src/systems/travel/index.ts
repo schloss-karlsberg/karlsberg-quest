@@ -14,13 +14,15 @@
  *  - Wegweiser (trail.ts + world/route.ts): chalk-blue motes along the walkable route to the goal
  *    (round wings, through the open gate) when a goal is new, the straight line is blocked, or the
  *    player seems lost.
- *  - Laufschritt: holding sprint outside fights and chases speeds up to ×1.45 after two seconds.
+ *  - Laufschritt (laufschritt.ts): holding sprint outside fights and chases speeds up to ×1.45,
+ *    starting after one second.
  *  - After being caught / knocked down: if a known point lies much closer to the goal than where
  *    you woke, a toast says so (M).
  *
  * The map key M belongs to this system; the survey system's map overlays (1836–41 / 1935–40) are
  * buttons on the map page (event `survey:show-map`). State `systems.travel`; hooks `kq.travel.*`.
  */
+import { skipRealTimeWaits } from '../../core/bullet';
 import { type Group, Group as ThreeGroup } from 'three';
 import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
@@ -28,12 +30,13 @@ import { defineSystem } from '../../core/systems';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
 import { addJournalTab } from '../../ui/journal';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
-import { findRoute, lineFree } from '../../world/route';
+import { PATH_COST, findRoute, pathGroundCost } from '../../world/route';
 import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { ACTIVATE_RADIUS, SURVEY_POINTS, type SurveyPoint, announceFor, knownPoints, nearestPoint, pointById, travelBlock } from './points';
+import { SURVEY_POINTS, activateRadius, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
@@ -99,7 +102,6 @@ declare module '../../debug/hooks' {
   }
 }
 
-const SPRINT_BOOST = 0.45;
 const POI_BUILD = 190;
 const POI_DROP = 230;
 const GUARD_SPAWN = 48;
@@ -312,7 +314,7 @@ class Travel {
         continue;
       }
       if (t) t.lit = known.has(sp.id) ? 1 : t.lit;
-      if (d < ACTIVATE_RADIUS && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
+      if (d < activateRadius(sp) && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
     }
   }
 
@@ -369,8 +371,9 @@ class Travel {
       this.bestD = Infinity;
       ctx.save.autosave('travel', true);
     };
-    if (ctx.params.has('manual')) {
-      // deterministic tests: no real-time wait
+    if (skipRealTimeWaits(ctx.loop.manual, ctx.params)) {
+      // deterministic tests and bullet time (also switched on at runtime, playtest round 10): no
+      // real-time wait while the game stands still
       arrive();
       ctx.pause.pop('travel');
       curtain.remove();
@@ -645,7 +648,7 @@ class Travel {
     const free = !this.inCombat && !this.packOut && !indoors && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
     if (free && moving && inp.isDown('sprint')) this.sprintT += dt;
     else this.sprintT = Math.max(0, this.sprintT - dt * 4);
-    const target = this.sprintT > 1.8 ? SPRINT_BOOST * Math.min(1, (this.sprintT - 1.8) / 1.4) : 0;
+    const target = laufschrittTarget(this.sprintT);
     this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
     if (this.sprint < 0.002) this.sprint = 0;
     if (this.sprint > 0.3 && !this.slice.tips.includes('sprint')) {
@@ -674,11 +677,17 @@ class Travel {
     return ctx.world.surfaceAt(x, z) === 'water';
   };
 
+  private waterAt = (x: number, z: number): boolean => this.ctx.world.surfaceAt(x, z) === 'water';
+  private pathCost = pathGroundCost((x, z) => this.ctx.world.pathAt(x, z));
+
   routeTo(x: number, z: number): [number, number][] {
     const p = this.ctx.player.position;
     // near goals (palace courts, doors) on a 1 m grid — a 2 m grid misses a door's free gap
     const near = Math.hypot(x - p.x, z - p.z) < 170;
-    return findRoute(p.x, p.z, x, z, this.blockedAt, near ? { cell: 1, margin: 45, maxExpand: 90000 } : { maxExpand: 40000 }).points;
+    // in the present day the route prefers the OSM paths (the Waldweg round the Weiher); the
+    // search only runs when the straight line is blocked, ~10 ms there (tests/travel.test.ts)
+    const ground = this.ctx.era.info.palace === 'hidden' ? { cost: this.pathCost, minCost: PATH_COST } : {};
+    return findRoute(p.x, p.z, x, z, this.blockedAt, near ? { cell: 1, margin: 45, maxExpand: 90000, ...ground } : { maxExpand: 40000, ...ground }).points;
   }
 
   private updateTrail(dt: number): void {
@@ -724,7 +733,7 @@ class Travel {
       this.trailCheckT = 1;
       const ax = p.x + ((goal.x - p.x) / d) * Math.min(d, 30);
       const az = p.z + ((goal.z - p.z) / d) * Math.min(d, 30);
-      this.wayBlocked = ctx.era.info.palace !== 'hidden' && !lineFree(p.x, p.z, ax, az, this.blockedAt, 0.5);
+      this.wayBlocked = wayLineBlocked(ctx.era.info.palace === 'hidden', p, { x: ax, z: az }, this.blockedAt, this.waterAt);
       if (this.wayBlocked) {
         want = true;
         this.trail.visibleFor = Math.max(this.trail.visibleFor, 6);
@@ -818,7 +827,7 @@ class Travel {
     }
     if (this.card) {
       this.cardT -= dt;
-      if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11)) this.hideCard();
+      if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
   }
 

@@ -71,7 +71,7 @@ Nothing in the game marks a hit as missing feedback.
 **Approximations:**
 
 - **Ground.** The ground is flat and open: no walls, trees, reeds, slopes or water, except a 2 m strip of water for the Pikeur's dam at x = 7.
-- **Movement.** The player's feet walk at 3.2 m/s and run at 6.2 m/s. The roll and knock-back pushes are integrated as in `combat-bots.ts`.
+- **Movement.** The player's feet walk at 3.2 m/s and run at 6.2 m/s. The roll and knock-back pushes are integrated as in `combat-bots.ts`. The Laufschritt (travel, ×1.45 on the sprint, from 1.0 s of held Shift since playtest round 10, 1.8 s before) is off in every fight, chase and pack, so the sim leaves it out.
 - **Camera.** The camera is modelled, not rendered: 70° vertical FOV at 16:9, a 3.6 m boom plus the fight pull-back of `camera.ts`, and a 1.1 m shoulder. It has no occlusion, so it never ends up inside reeds or behind a trunk. The game's `kq.combat.report()` uses the real frustum, but that has no occlusion either.
 - **The human:**
   - **Seeing.** It sees a wind-up when the attacker, its ring or its bolt is on screen. It notices an off-screen wind-up (sound, edge chevron) only 30 % of the time, and 150 ms later.

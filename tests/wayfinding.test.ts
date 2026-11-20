@@ -30,6 +30,20 @@ describe('objectiveTarget', () => {
     expect(t!.r).toBeLessThan(6);
   });
 
+  it('a portable clue (the tablet) gives no world target: no 840 m marker to the Feldstation (F-25)', () => {
+    const clue = () => ({ x: 760, z: -915, r: 1, eras: ['today'], anchor: 'portable' });
+    expect(objectiveTarget(Q, obj({ type: 'examine', clue: 'clue.p.punktwolke' }), deps({ player: { x: 1150, z: -1000 }, clue }))).toBeNull();
+    expect(objectiveTarget(Q, obj({ type: 'echo', clue: 'clue.p.punktwolke' }), deps({ clue }))).toBeNull();
+    // an anchored clue still has its marker
+    const anchored = () => ({ x: 816, z: -884, r: 9, eras: ['today'], anchor: 'loc.p.damm' });
+    expect(objectiveTarget(Q, obj({ type: 'examine', clue: 'clue.a' }), deps({ clue: anchored }))).toMatchObject({ x: 816, z: -884 });
+  });
+
+  it('the prologue punktwolke clue is portable in the content pack', () => {
+    const pack = JSON.parse(readFileSync(`${ROOT}content/packs/prolog.pack.json`, 'utf8')) as { clues: { id: string; where: { anchor?: string } }[] };
+    expect(pack.clues.find((c) => c.id === 'clue.p.punktwolke')?.where.anchor).toBe('portable');
+  });
+
   it('collect points at the nearest pickup still lying in this era', () => {
     const t = objectiveTarget(
       Q,

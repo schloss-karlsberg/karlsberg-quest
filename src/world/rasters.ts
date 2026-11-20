@@ -146,3 +146,28 @@ export function buildCover(g: GridDesc, inp: CoverInputs): Uint8Array {
   }
   return out;
 }
+
+/**
+ * The OSM walk graph (public/data/paths.json) as a 0..1 coverage raster on the terrain grid: path
+ * 0.9 m half-width at 0.6, track 1.4 m and road 2.4 m at 0.85. The ground textures, the tree
+ * placement and the Wegweiser's route costs (world/route.ts) read it.
+ */
+export function buildPathRaster(g: GridDesc, P: { nodes: ArrayLike<number>; edges: ArrayLike<number> }): Float32Array {
+  const paths = new Float32Array(g.cols * g.rows);
+  const halfW = [0.9, 1.4, 2.4]; // path, track, road
+  for (let k = 0; k < P.edges.length; k += 4) {
+    const a = P.edges[k]!;
+    const b = P.edges[k + 1]!;
+    const kind = P.edges[k + 2]!;
+    rasterLines(paths, g, [P.nodes[a * 3]!, P.nodes[a * 3 + 2]!, P.nodes[b * 3]!, P.nodes[b * 3 + 2]!], halfW[kind] ?? 1, kind === 0 ? 0.6 : 0.85);
+  }
+  return paths;
+}
+
+/** Nearest-cell lookup into a float raster on the grid (0 outside). */
+export function rasterAt(g: GridDesc, data: Float32Array, x: number, z: number): number {
+  const c = Math.round((x - g.x0) / g.cell);
+  const r = Math.round((z - g.z0) / g.cell);
+  if (c < 0 || r < 0 || c >= g.cols || r >= g.rows) return 0;
+  return data[r * g.cols + c]!;
+}

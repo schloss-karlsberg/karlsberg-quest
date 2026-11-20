@@ -26,11 +26,17 @@ export interface PilotAction {
   tapSteps?: number;
   /**
    * Mouse: `dx`/`dy` are look deltas in pixels (as `movementX/Y`; + dx turns right, + dy looks down),
-   * spread evenly over the steps. `turnDeg` (+ = right) is the same in degrees at the current sensitivity.
-   * `left` / `right`: true or 'click' for a click, 'hold' to keep the button down for the act
-   * (left held ≥ 0.45 s and released = Wuchthieb).
+   * spread evenly over the first `lookSteps` steps (default: all of them, a slow pan).
+   * `turnDeg` (+ = right) is a turn in degrees at the current sensitivity, done up front: over the
+   * first `turnSteps` steps (default 3 = 0.05 s, at most the act's steps). Taps (keys, a mouse click)
+   * in the same act go down on the step the turn completes, so a swing goes out in the new direction.
+   * `left` / `right`: true or 'click' for a click; 'hold' keeps the button down across the act's
+   * steps and lets it up at the end (unless `keep`). A held left button that is released after
+   * ≥ 0.45 s is a Wuchthieb: use ≥ 30 steps, or `keep: true` and let go in a later act. While a swing,
+   * a hit-stop or an ability is running the press of a held attack waits until it ends (a press then
+   * would only queue a light combo hit); the hold time counts from the press.
    */
-  mouse?: { dx?: number; dy?: number; turnDeg?: number; left?: PilotButton; right?: PilotButton };
+  mouse?: { dx?: number; dy?: number; turnDeg?: number; lookSteps?: number; turnSteps?: number; left?: PilotButton; right?: PilotButton };
   /** Fixed 60 Hz steps to simulate (default 15 = 0.25 s). 0 = just look. */
   steps?: number;
   /** Frames to capture, evenly spaced over the act, the last one at its end (default 5, 0 = none). */
@@ -105,25 +111,61 @@ export interface PilotObservation {
   objective: { label: string; quest: string | null; objective: string | null; d: number | null; bearing: number | null; tracker: string } | null;
   /** Open dialogue / modal: speaker, text and numbered options (`kq.pilot.choose(n)`). */
   dialogue: { kind: 'npc' | 'choice' | 'modal'; title: string; who: string; text: string; options: { n: number; label: string }[] } | null;
-  /** The interaction prompt on screen ("E Sprechen" …), subtitles and toasts. */
-  hud: { prompt: string; subtitle: string; toasts: string[] };
-  /** Combat events since the previous act / observe (hits dealt and taken, dodges, KOs, bounces, telegraphs). */
+  /**
+   * The interaction prompt on screen ("E Sprechen" …; '' when none is shown, also in a fight, where
+   * prompts are hidden) and the feature that owns it (E goes to it), subtitles and toasts.
+   */
+  hud: { prompt: string; promptOwner: string | null; subtitle: string; toasts: string[] };
+  /**
+   * The radio / spoken-line box (Marlene and the other speakers, bottom centre): whether it is on
+   * screen, the speaker's display name and id, its tag (Fiktion / historisch / Echo), the whole line
+   * (also the part not typed yet) and whether it is still typing. Enter (`tap: ['Enter']`) skips.
+   */
+  radio: PilotRadio;
+  /**
+   * Combat events since the previous act / observe (hits dealt and taken, dodges, KOs, bounces,
+   * telegraphs), and `{type: 'inputDropped', input: 'attack' | 'dodge', reason}` when a press had no
+   * effect (reasons: 'recovery' = a swing runs, outside the combo buffer; 'hitstop'; 'blocked' =
+   * attacks off (modal, measuring, flying, talking …); 'skill'; 'dodging'; 'tired'; 'noDodge';
+   * 'interact' = the left click went to the interact target; 'dead'; 'unknown'), and
+   * `{type: 'chooseRejected', n}` for a `choose()` that came before the previous one settled.
+   */
   events: PilotEvent[];
   /** JPEG data URLs, evenly spaced over the act. */
   frames: string[];
+  /** Exploded-geometry findings so far (`kq.nanWatch`) and the newest one's summary. */
+  nanWatch?: { n: number; last: string | null };
+}
+
+export interface PilotRadio {
+  showing: boolean;
+  who: string;
+  speaker: string;
+  tag: string;
+  text: string;
+  typing: boolean;
 }
 
 export interface PilotApi {
   act(a?: PilotAction): PilotObservation;
   /** The observation without stepping (one frame unless `frames: 0`). */
   observe(opts?: { frames?: number; frameSize?: number; quality?: number }): PilotObservation;
-  /** Pick dialogue option n (1-based, as the numbers on the buttons). Returns the label or null. */
+  /**
+   * Pick dialogue option n (1-based, as the numbers on the buttons). Returns the label or null.
+   * One at a time: after a pick, the next `choose()` is rejected (null, and a `chooseRejected`
+   * event) until an `act()` or `observe()` has run, because the next modal may not be on screen
+   * yet and the pick would hit the wrong one (`choose(a); choose(b)` in one call).
+   */
   choose(n: number): string | null;
   /** Release every key the pilot keeps down. */
   release(): void;
   /** Switch bullet time on / off at runtime (the simulation then runs only through act / kq.step). Returns the state. */
   bulletTime(on?: boolean): boolean;
-  /** Show each act's frame strip as an overlay at the bottom of the page (for a screenshot of the browser). Returns the state. */
+  /**
+   * Show each act's frame strip as an overlay at the bottom of the page (for a screenshot of the
+   * browser). It hides while the radio box speaks or a dialogue / modal is open, so it never covers
+   * them (updated on every act / observe). Returns the state.
+   */
   showStrip(on?: boolean): boolean;
 }
 
@@ -265,6 +307,140 @@ export function summarizeSimEvent(ev: SimEvent, t: number): PilotEvent | null {
   }
 }
 
+/**
+ * How an act's look is spread over its steps: `dx`/`dy` evenly over the first `lookSteps` steps
+ * (default all), the `turnDx` pixels of a `turnDeg` over the first `turnSteps` (default 3, at most
+ * `steps`). `turnEnd` is the step (1-based) the turn completes on, 0 without a turn.
+ */
+export function lookPlan(steps: number, dx: number, dy: number, turnDx: number, lookSteps?: number, turnSteps?: number): { dx: number[]; dy: number[]; turnEnd: number } {
+  const n = Math.max(0, Math.round(steps));
+  const outX = new Array<number>(n).fill(0);
+  const outY = new Array<number>(n).fill(0);
+  if (n === 0) return { dx: outX, dy: outY, turnEnd: 0 };
+  const ls = Math.max(1, Math.min(n, Math.round(lookSteps ?? n)));
+  for (let i = 0; i < ls; i++) {
+    outX[i]! += dx / ls;
+    outY[i]! += dy / ls;
+  }
+  let turnEnd = 0;
+  if (turnDx) {
+    const ts = Math.max(1, Math.min(n, Math.round(turnSteps ?? 3)));
+    for (let i = 0; i < ts; i++) outX[i]! += turnDx / ts;
+    turnEnd = ts;
+  }
+  return { dx: outX, dy: outY, turnEnd };
+}
+
+/** Steps (1-based, inclusive) a tap is down: from the step a turn completes (or 1) for `tapSteps` steps. */
+export function tapWindow(steps: number, tapSteps: number, turnEnd: number): { down: number; up: number } {
+  const down = Math.max(1, Math.min(Math.max(1, steps), turnEnd || 1));
+  return { down, up: Math.max(down, Math.min(Math.max(1, steps), down + Math.max(1, tapSteps) - 1)) };
+}
+
+/** The prompt line as the player sees it ('' when none is shown or a fight hides prompts). */
+export function promptLine(p: { key: string | null; text: string } | null, inCombat: boolean): string {
+  if (!p || inCombat) return '';
+  return clean(`${p.key ?? ''} ${p.text}`, 120);
+}
+
+/** The radio box as the observation shows it (from the box's classes and texts). */
+export function summarizeRadio(o: { show: boolean; hidden: boolean; who: string; speaker: string; tag: string; text: string; speaking: boolean }): PilotRadio {
+  const showing = o.show && !o.hidden;
+  return { showing, who: clean(o.who, 80), speaker: o.speaker, tag: clean(o.tag, 40), text: clean(o.text, 400), typing: showing && o.speaking };
+}
+
+/** The player's combat state before a sim step, as far as a press needs it. */
+export interface PressBefore {
+  dead: boolean;
+  /** Hit-stop seconds left (the player's moves are skipped this step while > 0). */
+  freeze: number;
+  swing: boolean;
+  dodging: boolean;
+  skill: boolean;
+}
+
+export interface DroppedInput {
+  input: 'attack' | 'dodge';
+  reason: string;
+}
+
+/**
+ * Presses a sim step swallowed (pure; the pilot taps the live sim's step with it): an attack press
+ * that started no swing, queued no combo hit and began no hold, a dodge press without a roll.
+ * `pilotAttack`: the pilot pressed attack this step (a press the combat layer gave to the interact
+ * target never reaches the sim).
+ */
+export function droppedInputs(
+  inp: { attackPressed: boolean; dodgePressed: boolean; blocked: boolean; noDodge?: boolean },
+  before: PressBefore,
+  after: { queued: boolean; hold: number; skill: boolean },
+  out: readonly { type: string }[],
+  pilotAttack = false,
+): DroppedInput[] {
+  const res: DroppedInput[] = [];
+  const has = (t: string) => out.some((e) => e.type === t);
+  const gate = (): string | null => (before.dead ? 'dead' : before.freeze > 0 ? 'hitstop' : inp.blocked ? 'blocked' : null);
+  if (inp.attackPressed) {
+    const g = gate();
+    if (g) res.push({ input: 'attack', reason: g });
+    else if (has('swing') || after.queued || after.hold >= 0) {
+      // taken: a swing, a buffered combo hit or the start of a hold
+    } else if (before.skill || after.skill) res.push({ input: 'attack', reason: 'skill' });
+    else if (has('tired')) res.push({ input: 'attack', reason: 'tired' });
+    else if (before.swing) res.push({ input: 'attack', reason: 'recovery' });
+    else res.push({ input: 'attack', reason: 'unknown' });
+  } else if (pilotAttack) res.push({ input: 'attack', reason: 'interact' });
+  if (inp.dodgePressed) {
+    const g = gate();
+    if (g) res.push({ input: 'dodge', reason: g });
+    else if (inp.noDodge) res.push({ input: 'dodge', reason: 'noDodge' });
+    else if (has('dodge')) {
+      // taken
+    } else if (before.skill || after.skill) res.push({ input: 'dodge', reason: 'skill' });
+    else if (before.dodging) res.push({ input: 'dodge', reason: 'dodging' });
+    else if (has('tired')) res.push({ input: 'dodge', reason: 'tired' });
+    else res.push({ input: 'dodge', reason: 'unknown' });
+  }
+  return res;
+}
+
+/** May a held attack be pressed now (a press would begin a hold, not queue a combo hit or be lost)? */
+export function attackReady(p: { dead: boolean; swing: unknown; skill: unknown } | null | undefined, freeze: number): boolean {
+  if (!p) return true;
+  return !p.dead && !p.swing && !p.skill && !(freeze > 0);
+}
+
+/**
+ * Is the frame strip shown? It spans the bottom of the page, where the radio box, subtitles and
+ * prompt sit: it steps aside while the radio speaks or a dialogue / modal is open (playtest round
+ * 10: it covered the radio in screenshots). The act's frames are in the observation either way.
+ */
+export function stripVisible(radioShowing: boolean, dialogueOpen: boolean): boolean {
+  return !radioShowing && !dialogueOpen;
+}
+
+/** `choose()` one at a time: a pick blocks the next until the pilot looked again (act / observe). */
+export class ChooseGate {
+  private pending = false;
+  /** May a pick go out now? Marks it pending if so. */
+  begin(): boolean {
+    if (this.pending) return false;
+    this.pending = true;
+    return true;
+  }
+  /** The pick found nothing to click: not pending after all. */
+  cancel(): void {
+    this.pending = false;
+  }
+  /** The pilot looked again: the next pick may go. */
+  settle(): void {
+    this.pending = false;
+  }
+  get busy(): boolean {
+    return this.pending;
+  }
+}
+
 // ---- the in-game side -------------------------------------------------------------------------------
 
 const clean = (s: string | null | undefined, max = 400) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -303,6 +479,11 @@ function readDialogue(): { obs: PilotObservation['dialogue']; buttons: HTMLEleme
 }
 
 /** Compact JPEG data URL of the canvas, read right after a render (no preserveDrawingBuffer needed). */
+function nanWatchInfo(): PilotObservation['nanWatch'] {
+  const f = window.kq?.nanWatch?.findings();
+  return f ? { n: f.length, last: f.at(-1)?.summary ?? null } : undefined;
+}
+
 function grab(src: HTMLCanvasElement, scratch: HTMLCanvasElement, width: number, quality: number): string {
   const w = Math.max(32, Math.round(width));
   const h = Math.max(18, Math.round((w * (src.height || 9)) / (src.width || 16)));
@@ -314,6 +495,26 @@ function grab(src: HTMLCanvasElement, scratch: HTMLCanvasElement, width: number,
   return scratch.toDataURL('image/jpeg', quality);
 }
 
+/** The radio / spoken-line box (src/systems/story/dialogue/presenter.ts). */
+function readRadio(): PilotRadio {
+  const el = document.querySelector<HTMLElement>('.kqs-dlg');
+  if (!el) return summarizeRadio({ show: false, hidden: false, who: '', speaker: '', tag: '', text: '', speaking: false });
+  return summarizeRadio({
+    show: el.classList.contains('kqs-show'),
+    hidden: el.style.visibility === 'hidden',
+    who: txt(el, '.kqs-who', 80),
+    speaker: el.dataset.speaker ?? '',
+    tag: txt(el, '.kqs-tag', 40),
+    text: txt(el, '.kqs-dlg-text', 400),
+    speaking: el.classList.contains('kqs-speaking'),
+  });
+}
+
+/** Key codes of the attack action (a held one waits for a moment it can begin a hold). */
+const ATTACK_CODES = new Set(['Mouse0', 'KeyK']);
+/** Key codes that go to the page as real key events too (the radio box skips on Enter). */
+const PAGE_KEYS = new Set(['Enter', 'NumpadEnter']);
+
 export function installPilot(ctx: GameContext): PilotApi {
   const events: PilotEvent[] = [];
   /** Simulated seconds at the start of the current act (event times are relative to it). */
@@ -322,6 +523,9 @@ export function installPilot(ctx: GameContext): PilotApi {
   const scratch = document.createElement('canvas');
   const v = new Vector3();
   let stripEl: HTMLElement | null = null;
+  const gate = new ChooseGate();
+  /** The pilot put an attack press edge into the current step (a press that never reaches the sim is reported). */
+  let pilotAttackEdge = false;
 
   const combat = () => window.kq?.combat;
   const sim = () => combat()?.sim() ?? null;
@@ -333,11 +537,19 @@ export function installPilot(ctx: GameContext): PilotApi {
     s.__pilot = true;
     const step = s.step.bind(s);
     s.step = (dt, inp) => {
+      const p = s.p;
+      const before: PressBefore = { dead: p.dead, freeze: s.freeze, swing: !!p.swing, dodging: !!p.dodge, skill: !!p.skill };
       const out = step(dt, inp);
+      const t = ctx.loop.time - actStart;
       for (const ev of out) {
-        const pe = summarizeSimEvent(ev, ctx.loop.time - actStart);
+        const pe = summarizeSimEvent(ev, t);
         if (pe) events.push(pe);
       }
+      // swallowed presses (playtest round 10: dropped clicks looked like tooling problems)
+      if (inp.attackPressed || inp.dodgePressed || pilotAttackEdge) {
+        for (const d of droppedInputs(inp, before, { queued: p.queued, hold: p.hold, skill: !!p.skill }, out, pilotAttackEdge)) events.push({ type: 'inputDropped', t: r2(t), ...d });
+      }
+      pilotAttackEdge = false;
       if (events.length > 200) events.splice(0, events.length - 200);
       return out;
     };
@@ -350,6 +562,9 @@ export function installPilot(ctx: GameContext): PilotApi {
   };
 
   const observation = (frames: string[]): PilotObservation => {
+    const radio = readRadio();
+    const dialogue = readDialogue().obs;
+    if (stripEl) stripEl.style.display = stripVisible(radio.showing, dialogue !== null) ? 'flex' : 'none';
     const pl = ctx.player;
     const px = pl.position.x;
     const pz = pl.position.z;
@@ -395,14 +610,18 @@ export function installPilot(ctx: GameContext): PilotApi {
       lock: { locked: tg.locked, soft: tg.soft },
       enemies: s ? summarizeEnemies(px, pz, pl.yaw, s.enemies, (e) => onScreen(e as Enemy)) : [],
       objective,
-      dialogue: readDialogue().obs,
+      dialogue,
       hud: {
-        prompt: inner(ctx.ui.hud.el.querySelector<HTMLElement>('.kq-prompt'), ' ', 120),
+        // from the prompt state: the element keeps its last text after it hides (round 10: stale prompts)
+        prompt: promptLine(ctx.ui.hud.promptShown(), document.body.classList.contains('kq-in-combat')),
+        promptOwner: ctx.ui.hud.promptShown()?.owner ?? null,
         subtitle: txt(ctx.ui.hud.el, '.kq-subtitles', 300),
         toasts: [...ctx.ui.hud.el.querySelectorAll<HTMLElement>('.kq-toast')].map((t) => clean(t.textContent, 160)),
       },
+      radio,
       events: events.splice(0),
       frames,
+      nanWatch: nanWatchInfo(),
     };
   };
 
@@ -427,13 +646,13 @@ export function installPilot(ctx: GameContext): PilotApi {
   const api: PilotApi = {
     act(a = {}) {
       tap();
+      gate.settle();
       actStart = ctx.loop.time;
       const input = ctx.input;
       const steps = Math.max(0, Math.round(a.steps ?? 15));
       const nFrames = Math.max(0, Math.round(a.frames ?? 5));
       const width = a.frameSize ?? 320;
       const quality = a.quality ?? 0.6;
-      const tapSteps = Math.max(1, Math.min(steps || 1, Math.round(a.tapSteps ?? 2)));
       const m = a.mouse ?? {};
       const btn = (b: PilotButton | undefined, code: string, holds: Set<string>, taps: Set<string>) => {
         if (b === 'hold') holds.add(code);
@@ -448,41 +667,70 @@ export function installPilot(ctx: GameContext): PilotApi {
         input.simulate(c, false);
         kept.delete(c);
       }
-      // a modal / dialogue: the game input is off, taps go to the page as real key events
+      // a modal / dialogue: the game input is off, taps go to the page as real key events; Enter
+      // also goes to the page outside modals (the radio box skips on it, round 10)
       const modal = ctx.pause.paused && document.querySelector('.kq-modal') !== null;
-      if (modal) for (const c of taps) if (!c.startsWith('Mouse')) keyEvent(c);
-      // look: pixels like movementX/Y; turnDeg converts at the current sensitivity
+      for (const c of taps) if (!c.startsWith('Mouse') && (modal || PAGE_KEYS.has(c))) keyEvent(c);
+      const gameTaps = modal ? [] : [...taps].filter((c) => !PAGE_KEYS.has(c));
+      // look: pixels like movementX/Y; turnDeg converts at the current sensitivity and is done up
+      // front (round 10: spread over the act, a click in the same act swung before the turn was done)
       const k = 0.0022 * ctx.player.mouseSensitivity * (ctx.player.invertX ? -1 : 1);
-      const dxTotal = (m.dx ?? 0) + (m.turnDeg ? (m.turnDeg * Math.PI) / 180 / k : 0);
-      const dyTotal = m.dy ?? 0;
+      const turnDx = m.turnDeg ? (m.turnDeg * Math.PI) / 180 / k : 0;
+      const plan = lookPlan(steps, m.dx ?? 0, m.dy ?? 0, turnDx, m.lookSteps, m.turnSteps);
+      const win = tapWindow(steps, Math.round(a.tapSteps ?? 2), plan.turnEnd);
       const frames: string[] = [];
       const at = new Set<number>();
       for (let i = 1; i <= nFrames && steps > 0; i++) at.add(Math.max(1, Math.round((i * steps) / nFrames)));
       const canvas = ctx.renderer.domElement;
       let lastRender = 0;
-      for (const c of holds) if (!kept.has(c)) input.simulate(c, true);
-      if (!modal) for (const c of taps) input.simulate(c, true);
+      // a held attack presses once a hold can begin (round 10: pressed during a combo swing it only
+      // queued a light hit, so a Wuchthieb could not be tried)
+      const waiting = new Set(modal || steps === 0 ? [] : [...holds].filter((c) => ATTACK_CODES.has(c) && !kept.has(c)));
+      for (const c of holds) if (!kept.has(c) && !waiting.has(c)) input.simulate(c, true);
       const look = (dx: number, dy: number) => {
         if (!dx && !dy) return;
         input.addLook(dx, dy);
         if (!ctx.pause.paused) ctx.player.look();
       };
-      if (steps === 0) look(dxTotal, dyTotal);
+      if (steps === 0) look((m.dx ?? 0) + turnDx, m.dy ?? 0);
       for (let i = 1; i <= steps; i++) {
         // holds stay down even if a window blur cleared the key set (no new press edge)
-        for (const c of holds) input.simulate(c, true, false);
-        look(dxTotal / steps, dyTotal / steps);
+        for (const c of holds) if (!waiting.has(c)) input.simulate(c, true, false);
+        look(plan.dx[i - 1]!, plan.dy[i - 1]!);
+        pilotAttackEdge = i === 1 && [...holds].some((c) => ATTACK_CODES.has(c) && !kept.has(c) && !waiting.has(c));
+        if (i === win.down)
+          for (const c of gameTaps) {
+            input.simulate(c, true);
+            if (ATTACK_CODES.has(c)) pilotAttackEdge = true;
+          }
+        if (waiting.size && !ctx.pause.paused && i >= plan.turnEnd) {
+          const s = sim();
+          if (attackReady(s?.p, s?.freeze ?? 0)) {
+            for (const c of waiting) input.simulate(c, true);
+            waiting.clear();
+            pilotAttackEdge = true;
+          }
+        }
         if (!ctx.pause.paused) ctx.loop.advance(1);
-        if (i === tapSteps && !modal) for (const c of taps) if (!holds.has(c)) input.simulate(c, false);
+        pilotAttackEdge = false;
+        if (i === win.up) for (const c of gameTaps) if (!holds.has(c)) input.simulate(c, false);
         if (at.has(i)) {
           ctx.loop.renderOnce((i - lastRender) * ctx.loop.dt);
           lastRender = i;
           frames.push(grab(canvas, scratch, width, quality));
         }
       }
-      if (!modal) for (const c of taps) if (!holds.has(c)) input.simulate(c, false);
-      if (a.keep) for (const c of holds) kept.add(c);
-      else for (const c of holds) input.simulate(c, false);
+      if (waiting.size) {
+        const s = sim();
+        const reason = !s ? 'unknown' : s.p.dead ? 'dead' : s.p.skill ? 'skill' : s.freeze > 0 ? 'hitstop' : 'recovery';
+        events.push({ type: 'inputDropped', t: r2(ctx.loop.time - actStart), input: 'attack', reason, hold: true });
+      }
+      for (const c of gameTaps) if (!holds.has(c)) input.simulate(c, false);
+      for (const c of holds) {
+        if (waiting.has(c)) continue;
+        if (a.keep) kept.add(c);
+        else input.simulate(c, false);
+      }
       if (lastRender < steps || steps === 0) {
         ctx.loop.renderOnce((steps - lastRender) * ctx.loop.dt);
         if (nFrames > 0 && frames.length === 0) frames.push(grab(canvas, scratch, width, quality));
@@ -492,15 +740,24 @@ export function installPilot(ctx: GameContext): PilotApi {
     },
     observe(o = {}) {
       tap();
+      gate.settle();
       const n = Math.max(0, Math.round(o.frames ?? 1));
       ctx.loop.renderOnce(0);
       const frames = n > 0 ? [grab(ctx.renderer.domElement, scratch, o.frameSize ?? 320, o.quality ?? 0.6)] : [];
       return observation(frames);
     },
     choose(n) {
+      // one pick at a time: the next modal may not be on screen yet (round 10: choose(a); choose(b))
+      if (!gate.begin()) {
+        events.push({ type: 'chooseRejected', t: r2(ctx.loop.time - actStart), n, reason: 'pending' });
+        return null;
+      }
       const { buttons } = readDialogue();
       const b = buttons[n - 1];
-      if (!b) return null;
+      if (!b) {
+        gate.cancel();
+        return null;
+      }
       const label = clean(b.textContent, 80).replace(/^\d+\s*/, '');
       b.click();
       return label;

@@ -29,7 +29,7 @@ import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
 import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
-import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
+import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -231,6 +231,8 @@ class QuestRuntime {
       ev.on('story:chapter', ({ id }) => {
         this.availIn = 0;
         this.dropEarlier(id);
+        // the main quest on offer is the chapter's (renderTracker)
+        this.dirty = true;
       }),
       ev.on('era:change', () => {
         this.availIn = 0;
@@ -241,8 +243,10 @@ class QuestRuntime {
       ev.on('save:loaded', () => this.restore()),
       // a new game replaces the whole state: the book must follow the new slice, or it keeps
       // writing into the old one and nothing it records is saved any more
+      // (a load too, at once: save:loaded reaches the story first, whose resume runs quest
+      // commands that must land in the loaded slice, not in the one being replaced)
       ctx.state.subscribe((_s, reason) => {
-        if (reason === 'new' || reason === 'replace') this.restore();
+        if (reason === 'new' || reason === 'replace' || reason === 'load') this.restore();
       }),
       ev.on('codex:unlocked', ({ factId }) => {
         const s = this.book.slice;
@@ -579,6 +583,16 @@ class QuestRuntime {
   private renderTracker(): void {
     const list: TrackerQuest[] = [];
     let first = true;
+    // no main quest runs: the main quest on offer heads the tracker (playtest round 10, F-30 /
+    // F-41: between two main quests the tracker showed side quests only). Not `main` on purpose:
+    // the story's own line (above the tracker) still leads the way to its giver.
+    const offer = this.book.mainOffer(this.chapter());
+    if (offer) {
+      const g = giverId(offer);
+      const name = this.ctx.content.speakers.get(g)?.name_de ?? g;
+      list.push({ id: offer.id, title: offer.title_de, main: false, offer: true, ready: false, objectives: [{ id: 'offer', text: t('quest.offerAt', { name }), count: 0, need: 1, done: false, optional: false }] });
+      first = false;
+    }
     for (const id of this.book.tracked()) {
       const q = this.defs.get(id);
       if (!q) continue;
@@ -611,7 +625,8 @@ class QuestRuntime {
       });
       first = false;
     }
-    this.tracker.render(list);
+    // at most three blocks (the offer takes the place of the last side quest)
+    this.tracker.render(list.slice(0, 3));
   }
 
   private bearing(x: number, z: number): number {
@@ -630,7 +645,7 @@ class QuestRuntime {
       clue: (id) => {
         const c = ctx.content.clues.get(id);
         if (!c) return null;
-        return { x: c.where.x, z: c.where.z, r: c.where.radius, eras: Array.isArray(c.where.era) ? c.where.era : [c.where.era], scan: c.requires?.scanMode };
+        return { x: c.where.x, z: c.where.z, r: c.where.radius, eras: Array.isArray(c.where.era) ? c.where.era : [c.where.era], scan: c.requires?.scanMode, anchor: c.where.anchor };
       },
       npc: (id) => this.npcPlaced(id),
       pickups: (quest, obj) => {
@@ -931,6 +946,10 @@ class QuestRuntime {
       },
       bestiary: () => book.slice.bestiary ?? {},
       speaker: (id) => ctx.content.speakers.get(id)?.name_de ?? id,
+      storyStep: () => {
+        const so = (ctx.state.state.systems as Record<string, unknown>).story as { objective?: { text?: string | null } | null } | undefined;
+        return so?.objective?.text || null;
+      },
     };
     const codexUnseen = () => book.slice.unseen.filter((x) => !x.startsWith('q:') && ctx.state.state.codex.facts.includes(x)).length;
     addJournalTab({ id: 'quests', label: t('journal.tab.quests'), order: 10, render: (el) => renderQuests(el, data), badge: () => book.slice.unseen.filter((x) => x.startsWith('q:')).length });
