@@ -143,7 +143,8 @@ declare module '../core/events' {
     'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
     'chronik:case-complete': { caseId: string };
-    'codex:unlocked': { factId: string };
+    /** noXp: unlocked by a photo (no XP for photos, owner 2026-11-20; progression skips it). */
+    'codex:unlocked': { factId: string; noXp?: boolean };
 
     // ---- round 2: NPCs, barks, story meters (owners noted per event) ------------------------
     /** story → npc: place a ghostly NPC (era: only visible in that era; chapter: whose lines). */
