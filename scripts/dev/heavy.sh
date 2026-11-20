@@ -1,7 +1,8 @@
 #!/bin/bash
 # heavy.sh: machine-wide lock so only one heavy job (Playwright e2e, real-GPU
 # screenshots, local TTS/model runs) runs at a time across all sessions on this Mac.
-# Waiters queue FIFO by ticket. bash 3.2 compatible (macOS /bin/bash), no flock.
+# Waiters queue FIFO by ticket, with a priority lane for the merge gate
+# (KQ_HEAVY_OWNER=kq-integrate[-*]). bash 3.2 compatible (macOS /bin/bash), no flock.
 # See usage() below.
 
 set -u
@@ -9,6 +10,9 @@ set -u
 LOCK="${KQ_HEAVY_LOCK:-/tmp/kq-heavy.lock}"
 QUEUE="$LOCK.queue"         # FIFO tickets: <seq>-<pid>-<owner> (dirs)
 BREAKER="$LOCK.breaker"     # short-lived mutex taken only while clearing a stale lock
+PRIO_STATE="$LOCK.prio"     # consecutive priority holds while others waited (2:1 rule)
+PRIO_MAX_HOLD=15            # priority tickets must pass --max-hold <= this (minutes)
+PRIO_RUN=2                  # after this many priority holds in a row, a waiting normal ticket goes next
 POLL="${KQ_HEAVY_POLL:-2}"  # seconds between acquire attempts
 STALE_AGE=30                # a lock without a pid file older than this is stale
 MIN_FREE_PCT="${KQ_HEAVY_MIN_FREE_PCT:-20}"  # --check-load: below this % free memory = high pressure
@@ -24,6 +28,12 @@ heavy job (e2e, GPU screenshots, model runs) runs at a time on this machine.
 Waiters line up first come, first served (ticket queue in /tmp/kq-heavy.lock.queue)
 and poll every 2 s. The command's exit code is passed through.
 
+Priority lane: owners `kq-integrate` and `kq-integrate-*` (the merge-gate e2e) go
+ahead of the FIFO order, but after 2 priority holds in a row the oldest waiting
+normal ticket gets the next hold (2:1). A priority ticket must pass --max-hold 15
+or less, or heavy.sh refuses (exit 2). Everyone is asked to keep --max-hold <= 15;
+for normal tickets a larger value only prints a warning.
+
 Hold the lock for ONE spec file or ONE screenshot set, never a whole multi-spec
 batch, so short jobs from other sessions can interleave:
   for s in e2e/a.spec.ts e2e/b.spec.ts; do
@@ -31,9 +41,11 @@ batch, so short jobs from other sessions can interleave:
   done
 
 Options:
-  --status         Print the holder (or "free") and the queue, then exit (0 free, 1 held).
+  --status         Print the holder (or "free"), the queue (P = priority lane) and who is
+                   next, then exit (0 free, 1 held).
   --max-hold <min> Expected hold time in minutes (hint, not enforced). Shown in --status;
-                   a warning goes to stderr when it is exceeded.
+                   a warning goes to stderr when it is exceeded. Required (<= 15) for
+                   priority owners; above 15 warns for everyone else.
   --nice           Run <cmd> under `nice -n 19` and `taskpolicy -b` (macOS background QoS).
                    Good for CPU jobs (TTS); avoid for GPU screenshots/timed e2e (it throttles).
   --check-load     After acquiring, warn if memory pressure is high (free < 20 %, from
@@ -51,7 +63,7 @@ Environment:
                         (no lock, no queue).
 
 Exit codes: the command's own code; 75 = timed out or refused by --strict;
-64 = usage error. A stale lock (holder pid dead, or no pid file and older
+64 = usage error; 2 = priority owner without --max-hold <= 15. A stale lock (holder pid dead, or no pid file and older
 than 30 s) and tickets of dead waiters are cleared automatically.
 EOF
 }
@@ -95,12 +107,18 @@ holder_line() {
     if [ "$el" -gt "$mhs" ]; then extra=" [max-hold ${mh}m EXCEEDED by $(fmt_dur $((el - mhs)))]"
     else extra=" [max-hold ${mh}m]"; fi
   fi
+  [ "$(read_f lane)" = P ] && extra=" [priority]$extra"
   printf 'held by %s (pid %s) for %s%s: %s' "${owner:-?}" "${pid:-?}" "$(fmt_dur "$el")" "$extra" "${cmd:-?}"
 }
 
+# Priority lane: decided from the raw owner label.
+is_prio_owner() { case "${KQ_HEAVY_OWNER:-}" in kq-integrate|kq-integrate-*) return 0 ;; esac; return 1; }
+my_lane=N; is_prio_owner && my_lane=P
+num_gt() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a + 0 > b + 0) }'; }
+
 # ---------- queue ----------
 # A ticket is a directory $QUEUE/<seq>-<pid>-<owner>, seq zero-padded to 6 digits,
-# holding `cmd`. seq = highest ticket + 1; creating the dir is atomic (mkdir), and a
+# holding `lane` (P = priority, N = normal; written right after the mkdir) and `cmd`. seq = highest ticket + 1; creating the dir is atomic (mkdir), and a
 # seq clash between two concurrent arrivals makes the one(s) that see it re-draw,
 # so every live ticket has a unique seq and the queue order is the seq order.
 ticket=""
@@ -118,6 +136,7 @@ take_ticket() {
     seq=$(( 10#${last:-0} + 1 ))
     name=$(printf '%06d-%s-%s' "$seq" $$ "$owner")
     mkdir "$QUEUE/$name" 2>/dev/null || { sleep 0.1; continue; }
+    echo "$my_lane" >"$QUEUE/$name/lane"
     printf '%s\n' "$1" >"$QUEUE/$name/cmd"
     # Seq clash: whoever sees it yields and re-draws. The later mkdir always sees the
     # earlier ticket, so two tickets can never both keep one seq.
@@ -135,6 +154,67 @@ queue_head() {
     if pid_alive "$(t_pid "$t")"; then echo "$t"; return; fi
     rm -rf "${QUEUE:?}/$t"
   done
+}
+
+# ---------- who goes next: priority lane + 2:1 anti-starvation ----------
+# Lane of a ticket: P, N, or "" for a ticket drawn by an OLD heavy.sh (before the
+# priority lane: no `lane` file).
+#
+# Old and new heavy.sh share one queue and one lock. How they interact:
+# * An old waiter takes the lock only when its ticket is the FIFO head (lowest live
+#   seq) and the lock dir is free; it knows nothing about lanes.
+# * New code therefore never hands the lock to an old ticket unless that ticket is
+#   the FIFO head, and when the FIFO head IS an old ticket, new code yields to it
+#   (next = head). So old and new waiters never both think they are next: no mkdir
+#   race between them, and no deadlock (if new code picked an old ticket behind the
+#   head, the old one would wait for the head while the head waited for it).
+# * An old ticket keeps its FIFO place: it is served as soon as everything drawn
+#   before it is served. Priority tickets may overtake it while it is not the head,
+#   but the 2:1 rule still serves the oldest new normal ticket (or, if there is none,
+#   the head) after every 2 priority holds, so the queue in front of it keeps
+#   shrinking and it cannot starve. An old ticket from a kq-integrate owner gets no
+#   priority (it is served in FIFO order); for the 2:1 count it is a normal ticket.
+# * Old holders do not update the 2:1 counter; the next new holder does.
+# A brand-new ticket whose `lane` file is not written yet looks old for a few ms; it
+# has the highest seq, so it is only picked when it is also the head (correct anyway).
+lane_of() { cat "$QUEUE/$1/lane" 2>/dev/null; }
+prio_count() { local c; c=$(cat "$PRIO_STATE" 2>/dev/null); case "$c" in ''|*[!0-9]*) c=0 ;; esac; echo "$c"; }
+
+# Echoes the ticket that gets the lock next (empty if the queue is empty).
+next_ticket() {
+  local t head="" first_p="" first_n="" others=0
+  for t in $(ticket_list); do
+    pid_alive "$(t_pid "$t")" || continue
+    [ -n "$head" ] || head=$t
+    case "$(lane_of "$t")" in
+      P) [ -n "$first_p" ] || first_p=$t ;;
+      N) [ -n "$first_n" ] || first_n=$t; others=1 ;;
+      *) others=1 ;;
+    esac
+  done
+  [ -n "$head" ] || return 0
+  # Old ticket at the head, or no priority ticket waiting: plain FIFO.
+  if [ -z "$(lane_of "$head")" ] || [ -z "$first_p" ]; then echo "$head"; return; fi
+  if [ "$others" = 1 ] && [ "$(prio_count)" -ge "$PRIO_RUN" ]; then
+    # Fairness turn: the oldest new normal ticket; if only old tickets are waiting
+    # (all behind the head), the head, which moves them up.
+    echo "${first_n:-$head}"; return
+  fi
+  echo "$first_p"
+}
+
+# Called right after acquiring (we hold the lock, so updates are serialised).
+record_hold() {
+  local t c=0 others=0 tmp="$PRIO_STATE.$$"
+  if [ "$my_lane" = P ]; then
+    for t in $(ticket_list); do
+      [ "$t" = "$ticket" ] && continue
+      pid_alive "$(t_pid "$t")" || continue
+      [ "$(lane_of "$t")" = P ] || { others=1; break; }
+    done
+    [ "$others" = 1 ] && c=$(( $(prio_count) + 1 ))
+  fi
+  echo "$c" >"$tmp" && mv "$tmp" "$PRIO_STATE"
 }
 
 if [ "$want_status" = 1 ]; then
@@ -159,9 +239,12 @@ if [ "$want_status" = 1 ]; then
     for t in $tl; do
       tp=$(t_pid "$t"); w=$(( $(now) - $(mtime "$QUEUE/$t") ))
       if pid_alive "$tp"; then i=$((i + 1)); pos="$i."; else pos="stale"; fi
-      printf '  %-6s %s (pid %s) waiting %s: %s\n' "$pos" "$(t_owner "$t")" "$tp" "$(fmt_dur "$w")" \
+      if [ "$(lane_of "$t")" = P ]; then mark="P "; else mark="  "; fi
+      printf '  %-6s %s%s (pid %s) waiting %s: %s\n' "$pos" "$mark" "$(t_owner "$t")" "$tp" "$(fmt_dur "$w")" \
         "$(cat "$QUEUE/$t/cmd" 2>/dev/null)"
     done
+    nt=$(next_ticket)
+    [ -n "$nt" ] && echo "next: $(t_owner "$nt") (pid $(t_pid "$nt"))"
   fi
   exit $rc
 fi
@@ -206,6 +289,16 @@ check_load() {
 # ---------- nested: lock already held by an ancestor ----------
 if [ "${KQ_HEAVY_HELD:-}" = 1 ]; then
   exec ${prefix[@]+"${prefix[@]}"} "$@"
+fi
+
+# ---------- max-hold cap ----------
+if [ "$my_lane" = P ]; then
+  if [ -z "$max_hold" ] || num_gt "$max_hold" "$PRIO_MAX_HOLD"; then
+    echo "$ME: refusing: owner '${KQ_HEAVY_OWNER}' uses the priority lane, which needs --max-hold <= ${PRIO_MAX_HOLD} (got ${max_hold:-none}). Split the job (one spec per hold) and pass e.g. --max-hold ${PRIO_MAX_HOLD}." >&2
+    exit 2
+  fi
+elif [ -n "$max_hold" ] && num_gt "$max_hold" "$PRIO_MAX_HOLD"; then
+  echo "$ME: warning: --max-hold ${max_hold} is above the agreed ${PRIO_MAX_HOLD} min; hold the lock for one spec or one screenshot set at a time" >&2
 fi
 
 # ---------- stale-lock clearing ----------
@@ -276,6 +369,7 @@ write_meta() {
   date +%Y-%m-%dT%H:%M:%S%z >"$LOCK/started"
   now >"$LOCK/epoch"
   printf '%s\n' "${KQ_HEAVY_OWNER:-}" >"$LOCK/owner"
+  echo "$my_lane" >"$LOCK/lane"
   [ -n "$max_hold" ] && printf '%s\n' "$max_hold" >"$LOCK/max_hold"
   echo $$ >"$tmp" && mv "$tmp" "$LOCK/pid"   # pid appears atomically, last
 }
@@ -285,8 +379,10 @@ take_ticket "$cmdline"
 waited=0; t0=$(now); last_print=-999; is_tty=0; [ -t 2 ] && is_tty=1
 while :; do
   head=$(queue_head)
-  if [ "$head" = "$ticket" ] && mkdir "$LOCK" 2>/dev/null; then
+  nxt=$(next_ticket)
+  if [ -n "$head" ] && [ "$nxt" = "$ticket" ] && mkdir "$LOCK" 2>/dev/null; then
     write_meta "$cmdline"
+    record_hold
     drop_ticket
     break
   fi
@@ -303,7 +399,7 @@ while :; do
   fi
   pos=$(ticket_list | grep -n -x "$ticket" | cut -d: -f1)
   msg="waiting $(fmt_dur "$el") (queue #${pos:-?}), lock $(holder_line)"
-  [ -d "$LOCK" ] || msg="waiting $(fmt_dur "$el") (queue #${pos:-?}), lock free, next is $(t_owner "$head")"
+  [ -d "$LOCK" ] || msg="waiting $(fmt_dur "$el") (queue #${pos:-?}), lock free, next is $(t_owner "${nxt:-$head}")"
   if [ "$is_tty" = 1 ]; then
     printf '\r\033[K%s: %s' "$ME" "$msg" >&2
   elif [ $(( el - last_print )) -ge 30 ]; then
