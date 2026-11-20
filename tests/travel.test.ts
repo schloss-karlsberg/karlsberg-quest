@@ -4,14 +4,21 @@
  * the way-finding A* (world/route.ts) round a wall and through a gap.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
+import { LAUF_DELAY, SPRINT_BOOST, laufschrittTarget } from '../src/systems/travel/laufschritt';
 import { LORE } from '../src/systems/travel/lore';
-import { SURVEY_POINTS, announceFor, knownPoints, travelBlock } from '../src/systems/travel/points';
+import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/quelle/layout';
+import { decodeH2025, quantToMetres } from '../src/data/decode';
+import type { TerrainMeta } from '../src/data/types';
+import { Heightfield } from '../src/world/heightfield';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceFor, cardMayTakeE, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
-import { findRoute, lineFree, pathLength } from '../src/world/route';
+import { PATH_COST, findRoute, lineFree, pathGroundCost, pathLength } from '../src/world/route';
+import { loadWorldData } from './world-data';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
 const collider = new FootprintCollider(footprints.map((f) => f.ring as Ring));
@@ -79,6 +86,15 @@ describe('survey points', () => {
     expect(announceFor({ x: 600, z: -1600 }, { x: 1800, z: 0 }, [])).toBeNull();
   });
 
+  it('announces from 400 m (playtest round 10): the Feldstation → Ehrenhof leg qualifies, 350 m does not', () => {
+    expect(ANNOUNCE_MIN).toBe(400);
+    // K1 start: from the Feldstation tripod to the Ehrenhof Q spot, ~496 m (> 400, < the old 600)
+    const fs = pointById('feldstation')!;
+    expect(announceFor({ x: 1222, z: -1119 }, { x: fs.x, z: fs.z }, [])?.id).toBe('ehrenhof');
+    expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 350, z: -1119 }, [])).toBeNull();
+    expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 410, z: -1119 }, [])?.id).toBe('ehrenhof');
+  });
+
   it('journeys: free in the present, in the past only while nothing holds you', () => {
     const w = { era: 'today', inCombat: false, hunt: 'calm', threat: false, locked: false, busy: false, flying: false };
     expect(travelBlock(w)).toBeNull();
@@ -110,7 +126,7 @@ describe('route POIs', () => {
     const places = contentPlaces();
     for (const p of pois) {
       expect(inBuilding(p.x, p.z), p.id).toBe(false);
-      for (const [x, z] of KEEP_CLEAR) expect(Math.hypot(p.x - x, p.z - z), p.id).toBeGreaterThanOrEqual(KEEP_CLEAR_R);
+      for (const [x, z, e] of KEEP_CLEAR) if (!e || e === p.era) expect(Math.hypot(p.x - x, p.z - z), p.id).toBeGreaterThanOrEqual(KEEP_CLEAR_R);
       for (const c of places) expect(Math.hypot(p.x - c.x, p.z - c.z), `${p.id} vs ${c.x}/${c.z}`).toBeGreaterThan(Math.max(18, c.r !== undefined && c.r <= 40 ? c.r * 0.5 : 0));
       for (const q of pois) if (q !== p && q.era === p.era) expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(POI_SPACING * 0.5);
     }
@@ -185,5 +201,228 @@ describe('prologue routes (playtest round 5)', () => {
     const p = generatePois().filter((x) => x.chapter === 'prolog' && x.kind === 'cache');
     expect(p.length).toBeGreaterThan(0);
     for (const x of p) expect(x.enemy, x.id).not.toBe('irrlicht');
+  });
+});
+
+describe('the Wegweiser straight-line check (playtest round 10, F-10)', () => {
+  // a lake round (0, 20) r 8, and a tree trunk at (0, 5)
+  const water = (x: number, z: number) => Math.hypot(x, z - 20) < 8;
+  const blocked = (x: number, z: number) => water(x, z) || Math.hypot(x, z - 5) < 0.5;
+
+  it('in the present day only water counts: the lake detour shows, a tree does not', () => {
+    expect(wayLineBlocked(true, { x: 0, z: 0 }, { x: 0, z: 30 }, blocked, water)).toBe(true);
+    expect(wayLineBlocked(true, { x: 0, z: 0 }, { x: 0, z: 10 }, blocked, water)).toBe(false);
+  });
+
+  it('in the past everything that stops the player counts', () => {
+    expect(wayLineBlocked(false, { x: 0, z: 0 }, { x: 0, z: 10 }, blocked, water)).toBe(true);
+    expect(wayLineBlocked(false, { x: 20, z: 0 }, { x: 20, z: 30 }, blocked, water)).toBe(false);
+  });
+});
+
+describe('the Weiher walk on real terrain (playtest round 10, F-10)', () => {
+  const w = loadWorldData();
+  // the runtime filter of the travel system (src/systems/travel/index.ts constructor)
+  const runtimeBlocked = (x: number, z: number) => w.footprints.footprintAt(x, z) >= 0 || w.h1789.slopeDeg(x, z) > 26 || w.water(x, z);
+  const live = generatePois(ROUTES, { blocked: runtimeBlocked });
+  const nearPath = (x: number, z: number, r: number) => {
+    for (let dz = -r; dz <= r; dz += 1) for (let dx = -r; dx <= r; dx += 1) if (Math.hypot(dx, dz) <= r && w.pathAt(x + dx, z + dz) > 0.3) return true;
+    return false;
+  };
+
+  it('every p-hang POI survives the terrain filter (p-hang.1 stands on the shore, not in the Weiher)', () => {
+    const hang = live.filter((p) => p.id.startsWith('poi.p-hang.')).map((p) => p.id);
+    expect(hang).toEqual(['poi.p-hang.1', 'poi.p-hang.2', 'poi.p-hang.3', 'poi.p-hang.4']);
+    for (const p of live) expect(w.water(p.x, p.z), p.id).toBe(false);
+  });
+
+  it('p-weiher puts POIs on the walk round the shore, one beside the Waldweg', () => {
+    const weiher = live.filter((p) => p.id.startsWith('poi.p-weiher.'));
+    expect(weiher.length).toBeGreaterThanOrEqual(2);
+    for (const p of weiher) {
+      expect(p.era).toBe('today');
+      expect(p.chapter).toBe('prolog');
+      for (const q of live) if (q !== p && q.era === p.era) expect(Math.hypot(p.x - q.x, p.z - q.z), `${p.id} vs ${q.id}`).toBeGreaterThan(POI_SPACING * 0.5);
+    }
+    expect(weiher.some((p) => nearPath(p.x, p.z, 20)), 'a POI within 20 m of the OSM path').toBe(true);
+    // the route itself follows the path: its shore points lie on path cells
+    const route = ROUTES.find((r) => r.id === 'p-weiher')!;
+    for (const [x, z] of route.pts.slice(0, 6)) expect(nearPath(x, z, 4), `${x}/${z}`).toBe(true);
+  });
+
+  it('adding p-weiher (last in ROUTES) leaves every saved POI id where it was', () => {
+    expect(ROUTES[ROUTES.length - 1]!.id).toBe('p-weiher');
+    const before = generatePois(ROUTES.filter((r) => r.id !== 'p-weiher'), { blocked: runtimeBlocked });
+    expect(live.filter((p) => !p.id.startsWith('poi.p-weiher.'))).toEqual(before);
+  });
+});
+
+describe('the Ehrenhof point is eingemessen at the Q spot (playtest round 10, A2)', () => {
+  it('takes 16 m, so the compass rose where the story asks for Q lies inside', () => {
+    const e = pointById('ehrenhof')!;
+    expect(activateRadius(e)).toBe(16);
+    // the Ehrenhof time anchor (centre) and the prologue's "Q in der Mitte des Ehrenhofs" spot
+    for (const [x, z] of [[1222, -1119], [1218, -1118]] as const) expect(Math.hypot(e.x - x, e.z - z)).toBeLessThan(activateRadius(e));
+    // the quest file says the same: the wechsel objective's place is inside the radius
+    const q = JSON.parse(readFileSync(new URL('../content/quests/00-prolog.quests.json', import.meta.url), 'utf8')) as { quests: { id: string; objectives: { id: string; where?: { x: number; z: number } }[] }[] };
+    const w = q.quests.find((x) => x.id === 'q.p.punktwolke')!.objectives.find((o) => o.id === 'wechsel')!.where!;
+    expect(Math.hypot(e.x - w.x, e.z - w.z)).toBeLessThan(activateRadius(e));
+  });
+
+  it('every other point keeps the plain 7 m, and no radius reaches another point', () => {
+    for (const p of SURVEY_POINTS) {
+      if (p.id !== 'ehrenhof') expect(activateRadius(p), p.id).toBe(ACTIVATE_RADIUS);
+      for (const q of SURVEY_POINTS) if (q !== p) expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(activateRadius(p) + activateRadius(q));
+    }
+  });
+});
+
+describe('the Laufschritt ramp (playtest round 10, D1)', () => {
+  it('begins after 1.0 s of held sprint (was 1.8 s) and reaches ×1.45 by 2.4 s', () => {
+    expect(LAUF_DELAY).toBe(1.0);
+    expect(laufschrittTarget(0.99)).toBe(0);
+    expect(laufschrittTarget(1.7)).toBeCloseTo(SPRINT_BOOST * 0.5, 5);
+    expect(laufschrittTarget(2.4)).toBeCloseTo(SPRINT_BOOST, 5);
+    expect(laufschrittTarget(10)).toBe(SPRINT_BOOST);
+  });
+
+  it('with the travel system easing (×3 per s), the speed is past ×1.3 within 3 s of holding Shift', () => {
+    // the same easing as TravelSystem.sprintBoost
+    let held = 0;
+    let boost = 0;
+    let t = 0;
+    const dt = 1 / 60;
+    while (boost < 0.3 && t < 10) {
+      held += dt;
+      boost += (laufschrittTarget(held) - boost) * Math.min(1, dt * 3);
+      t += dt;
+    }
+    expect(t).toBeLessThan(3.0);
+    expect(t).toBeGreaterThan(LAUF_DELAY);
+  });
+});
+
+describe('the Wegweiser follows the paths (playtest round 10, B2)', () => {
+  /** Share of the polyline (sampled every 1 m, up to `upto` m) within `r` m of a path cell. */
+  function onPathShare(pts: readonly [number, number][], pathAt: (x: number, z: number) => number, upto = Infinity, r = 2): number {
+    const near = (x: number, z: number) => {
+      for (let dz = -r; dz <= r; dz += 1) for (let dx = -r; dx <= r; dx += 1) if (pathAt(x + dx, z + dz) > 0.3) return true;
+      return false;
+    };
+    let on = 0;
+    let all = 0;
+    for (let i = 0; i + 1 < pts.length && all < upto; i++) {
+      const [ax, az] = pts[i]!;
+      const [bx, bz] = pts[i + 1]!;
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az)));
+      for (let k = 0; k < n && all < upto; k++) {
+        const t = (k + 0.5) / n;
+        all++;
+        if (near(ax + (bx - ax) * t, az + (bz - az) * t)) on++;
+      }
+    }
+    return all ? on / all : 0;
+  }
+
+  // synthetic: a pond in the middle; a 2 m path runs round its north side in a wide bow
+  const pond = (x: number, z: number) => Math.hypot(x, z) < 20;
+  const onBow = (x: number, z: number) => {
+    // the bow: from (-30, 0) up to z = -24, across, and down to (30, 0): 108 m × 0.6 beats the 74 m round the pond
+    if (Math.abs(z + 24) < 1.5 && Math.abs(x) <= 30) return 1;
+    if (Math.abs(Math.abs(x) - 30) < 1.5 && z <= 0 && z >= -24) return 1;
+    return 0;
+  };
+
+  it('without costs the route hugs the pond; with the path discount it takes the path bow', () => {
+    const plain = findRoute(-30, 0, 30, 0, pond);
+    expect(onPathShare(plain.points, onBow, Infinity, 1)).toBeLessThan(0.5);
+    const r = findRoute(-30, 0, 30, 0, pond, { cost: pathGroundCost(onBow), minCost: PATH_COST });
+    expect(r.complete).toBe(true);
+    expect(onPathShare(r.points, onBow, Infinity, 1)).toBeGreaterThan(0.9);
+    // every leg is free, and the string pulling did not cut the bow's corners across the grass
+    for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], pond, 0.5)).toBe(true);
+    expect(pathLength(r.points)).toBeGreaterThan(100);
+  });
+
+  it('a free straight line stays straight with costs too (no search, no price)', () => {
+    const r = findRoute(-30, 30, 30, 30, pond, { cost: pathGroundCost(onBow), minCost: PATH_COST });
+    expect(r.straight).toBe(true);
+    expect(r.expanded).toBe(0);
+  });
+
+  it('real data: from the Damm towards the hohe Stufe the route takes the Waldweg round the Weiher, in a few ms', () => {
+    const w = loadWorldData();
+    const water = w.water;
+    const cost = pathGroundCost(w.pathAt);
+    // warm-up (JIT), then the measured run
+    findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
+    const t0 = performance.now();
+    const runs = 5;
+    let r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
+    for (let k = 1; k < runs; k++) r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
+    const ms = (performance.now() - t0) / runs;
+    const plain = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000 });
+    console.info(`[B2] Damm -> hohe Stufe: ${ms.toFixed(1)} ms per route, ${r.expanded} cells expanded (plain ${plain.expanded}); on path: first 70 m ${(onPathShare(r.points, w.pathAt, 70) * 100).toFixed(0)} %, all ${(onPathShare(r.points, w.pathAt) * 100).toFixed(0)} % (plain ${(onPathShare(plain.points, w.pathAt) * 100).toFixed(0)} %)`);
+    expect(r.straight).toBe(false);
+    expect(r.expanded).toBeLessThan(40000);
+    // the motes show the first 70 m: all of it on the north-shore path
+    expect(onPathShare(r.points, w.pathAt, 70)).toBeGreaterThan(0.9);
+    expect(onPathShare(r.points, w.pathAt)).toBeGreaterThan(0.6);
+    expect(onPathShare(r.points, w.pathAt)).toBeGreaterThan(onPathShare(plain.points, w.pathAt) + 0.3);
+    // it goes round the north shore, never into the water
+    for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], water, 0.5)).toBe(true);
+    expect(r.points.some(([x, z]) => x > 840 && x < 940 && z < -900)).toBe(true);
+    // performance budget (measured ~10 ms on a laptop; generous for CI)
+    expect(ms).toBeLessThan(150);
+  });
+});
+
+describe('the Karlsbergquelle tripod keeps clear of the spring (playtest round 10, A4)', () => {
+  const p = pointById('karlsbergquelle')!;
+  // the story's spring spot (prologue P3q objective and its 5 m "vor den Trog stellen" step)
+  const STORY = { x: 1059.3, z: -833.1, r: 5 };
+  // where a journey puts the player (TravelSystem.go: beside the tripod, +2.2 / +2.2)
+  const arrival = { x: p.x + 2.2, z: p.z + 2.2 };
+
+  it('stands ≥ 4 m from the anchor, and its 7 m circle never reaches the trough\'s E zone', () => {
+    expect(p).toBeDefined();
+    expect(SURVEY_POINTS[SURVEY_POINTS.length - 1]!.id).toBe('karlsbergquelle');
+    expect(Math.hypot(p.x - QUELLE.x, p.z - QUELLE.z)).toBeGreaterThan(4);
+    for (const era of ['today', '1789'] as const) {
+      const [tx, tz] = toWorld(...touchLocal(era));
+      const d = Math.hypot(p.x - tx, p.z - tz);
+      // nowhere a player can touch the water is the tripod activated (no card pops at the trough)
+      expect(d, era).toBeGreaterThan(activateRadius(p) + REACH);
+      // and an arriving traveller stands well outside the reach
+      expect(Math.hypot(arrival.x - tx, arrival.z - tz), era).toBeGreaterThan(REACH + 8);
+      for (let a = 0; a < 360; a += 15) {
+        const yaw = (a * Math.PI) / 180;
+        expect(canTouch(arrival.x, arrival.z, yaw, era)).toBe(false);
+        expect(canTouch(p.x, p.z, yaw, era)).toBe(false);
+      }
+    }
+    // the story's 5 m step zone at the spring lies outside the activation circle too
+    expect(Math.hypot(p.x - STORY.x, p.z - STORY.z)).toBeGreaterThan(activateRadius(p) + STORY.r);
+    // and it is still the spring's point: within 20 m, Laub's "Wasser" line plays inside 12 m of it
+    expect(Math.hypot(p.x - STORY.x, p.z - STORY.z)).toBeLessThan(20);
+  });
+
+  it('the card never takes E while the spring (or a door, or an NPC) owns it', () => {
+    expect(cardMayTakeE({})).toBe(true);
+    expect(cardMayTakeE({ 'e.owner': 'quelle' })).toBe(false);
+    expect(cardMayTakeE({ 'npc.near': 'laub' })).toBe(false);
+  });
+
+  it('stands on walkable ground in the present and in 1789 (real terrain), not in the brook', () => {
+    const w = loadWorldData();
+    const dir = new URL('../public/data/terrain/', import.meta.url);
+    const meta = JSON.parse(readFileSync(new URL('meta.json', dir), 'utf8')) as TerrainMeta;
+    const h2025 = new Heightfield(w.grid, quantToMetres(decodeH2025(new Uint8Array(inflateSync(readFileSync(new URL('h2025.u16.deflate', dir)))), meta), meta));
+    for (const [x, z] of [[p.x, p.z], [arrival.x, arrival.z]] as const) {
+      expect(w.water(x, z)).toBe(false);
+      expect(h2025.slopeDeg(x, z)).toBeLessThan(26);
+      expect(w.h1789.slopeDeg(x, z)).toBeLessThan(26);
+      expect(w.footprints.footprintAt(x, z)).toBe(-1);
+    }
   });
 });

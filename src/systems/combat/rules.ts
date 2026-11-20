@@ -48,6 +48,42 @@ export const HEAVY = { min: 0.45, full: 1.0, moveScale: 0.5, tap: 0.18, arcDeg: 
 export const DODGE = { dur: 0.35, dist: 4.5, iStart: 0.08, iEnd: 0.33, perfect: 0.15, slowmo: 0.25, slowScale: 0.3, perfectRefund: 12 } as const;
 
 /**
+ * Playtest round 10 (F-12): out of Atem the roll still comes out, as a short stumble — 2.5 m,
+ * i-frames only 0.10–0.25 s, never perfect (no refund, no slow motion), and at most one per
+ * `cd` s. It costs nothing (there is nothing left) and does not delay the Atem coming back.
+ * Hits and the Wuchthieb stay blocked while exhausted.
+ */
+export const STUMBLE = { dist: 2.5, iStart: 0.1, iEnd: 0.25, cd: 1.1 } as const;
+
+/**
+ * Playtest round 10 (F-23): a press of attack or dodge is kept this long (s) when it cannot act yet
+ * (hit-stop, a swing not yet in its last part, a roll still rolling) and fires as soon as it can. An
+ * ability still owns the hands: presses during one are dropped.
+ */
+export const INPUT_BUFFER = 0.25;
+
+/**
+ * Playtest round 10 (F-06, F-37): the light Hieb steps in up to `max` m towards the swing's target
+ * (the locked or soft-aimed enemy) when its body is just out of reach, over `dur` s (before the
+ * impact), and the staff reaches `tol` m further against that one target.
+ */
+export const STEP_IN = { max: 1, dur: 0.12, tol: 0.4 } as const;
+
+/**
+ * Playtest round 10 (F-05): a fight does not end on one roll away. The leash (or a safe zone) must
+ * stay broken for `grace` s before an enemy gives up; no leash is shorter than `minLeash` m; a
+ * returned enemy heals only after `regenDelay` s back at home, by `regenPerS` of its strength per
+ * second — and quest, escort, wave and prologue (tier 0) enemies keep their wounds (`keepsWounds`).
+ * Bosses still reset in full when they get home (phase 1, seal shut).
+ */
+export const RESET = { grace: 4.5, minLeash: 15, regenDelay: 6, regenPerS: 0.1 } as const;
+
+/** Does this enemy keep its wounds after a reset (no regeneration at all)? */
+export function keepsWounds(e: { boss: boolean; tier: number; quest?: string; escort?: boolean; wave?: boolean }): boolean {
+  return !e.boss && (e.quest !== undefined || e.escort === true || e.wave === true || e.tier <= 0);
+}
+
+/**
  * Bannlicht: gebannte enemies take ×1.3 (×1.5 made the flare a kill button); the flare lasts 0.45 s
  * on screen. Combat variety pass (playtest round 4: "the Bannlicht one-shots paper"): it is a tool,
  * not a nuke — the bonus counts for ONE blow per enemy and that blow wakes it (`wakeOnHit`; an
@@ -275,9 +311,9 @@ export function nextCombo(last: number, since: number): number {
   return last + 1;
 }
 
-/** Dodge i-frames: t seconds into the roll. */
-export function dodgeInvulnerable(t: number): boolean {
-  return t >= DODGE.iStart && t <= DODGE.iEnd;
+/** Dodge i-frames: t seconds into the roll (a stumble out of Atem has a shorter window). */
+export function dodgeInvulnerable(t: number, stumble = false): boolean {
+  return stumble ? t >= STUMBLE.iStart && t <= STUMBLE.iEnd : t >= DODGE.iStart && t <= DODGE.iEnd;
 }
 
 /** A dodge started `before` seconds before an incoming hit lands is perfect if ≤ 0.15 s. */
@@ -298,7 +334,7 @@ export interface StaminaState {
   idle: number;
 }
 
-/** Can the player afford an action now? Exhausted (hit 0, not yet back to 25) blocks dodge, heavy, running and hits. */
+/** Can the player afford an action now? Exhausted (hit 0, not yet back to 25) blocks heavy, running and hits; the roll becomes a stumble (STUMBLE). */
 export function canAct(s: StaminaState, _cost: number): boolean {
   return !s.exhausted && s.stamina > 0;
 }
@@ -402,8 +438,9 @@ export class AttackTokens {
 
 // ---- leash -------------------------------------------------------------------------------------
 
-/** Enemies give up when they or the player stray beyond the leash from the group's spawn. */
+/** Enemies give up when they or the player stray beyond the leash from the group's spawn (never under RESET.minLeash). */
 export function leashBroken(home: { x: number; z: number }, enemy: { x: number; z: number }, player: { x: number; z: number }, leash: number = AI.leash): boolean {
+  leash = Math.max(RESET.minLeash, leash);
   return Math.hypot(enemy.x - home.x, enemy.z - home.z) > leash || Math.hypot(player.x - home.x, player.z - home.z) > leash + 12;
 }
 

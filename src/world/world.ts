@@ -9,7 +9,7 @@ import { ERA_LOOKS, type EraLook, dirFromAzEl } from './eraPresets';
 import { Forest, generateTrees } from './forest';
 import { Heightfield, classAt } from './heightfield';
 import { OPEN_GROUND, Palace, RUIN_KEEP } from './palace';
-import { buildCover, buildSurface, rasterLines } from './rasters';
+import { buildCover, buildPathRaster, buildSurface, rasterAt } from './rasters';
 import { Sky } from './sky';
 import { Terrain, type TerrainDataset, makeDataTexture, makeHeightTexture } from './terrain';
 import { Nature } from './vegetation/nature';
@@ -38,6 +38,8 @@ export class World {
   lookVersion = 0;
   readonly heightfields: Record<'2025' | '1789', Heightfield>;
   readonly collider: FootprintCollider;
+  /** The OSM walk graph as 0..1 coverage on the terrain grid (present-day paths, tracks, roads). */
+  readonly paths: Float32Array;
   private readonly ruinKeep: ReadonlySet<number>;
   private readonly datasets: Record<'2025' | '1789', TerrainDataset>;
   private readonly covers: { today: Texture; historic: Texture };
@@ -81,15 +83,8 @@ export class World {
     this.datasets = { '2025': ds('2025'), '1789': ds('1789') };
 
     // paths raster (today) from the OSM walk graph
-    const paths = new Float32Array(m.cols * m.rows);
-    const P = data.paths;
-    const halfW = [0.9, 1.4, 2.4]; // path, track, road
-    for (let k = 0; k < P.edges.length; k += 4) {
-      const a = P.edges[k]!;
-      const b = P.edges[k + 1]!;
-      const kind = P.edges[k + 2]!;
-      rasterLines(paths, this.grid, [P.nodes[a * 3]!, P.nodes[a * 3 + 2]!, P.nodes[b * 3]!, P.nodes[b * 3 + 2]!], halfW[kind] ?? 1, kind === 0 ? 0.6 : 0.85);
-    }
+    const paths = buildPathRaster(this.grid, data.paths);
+    this.paths = paths;
     const coverToday = buildCover(this.grid, { ground: data.ground, canopy: data.canopy, paths });
     const coverHist = buildCover(this.grid, { ground: data.ground, canopy: null, paths: null });
     this.coverWeights = { today: coverToday, historic: coverHist };
@@ -216,6 +211,11 @@ export class World {
       return c > 0.5 ? 'forest' : 'meadow';
     }
     return GROUND_NAMES[classAt(this.grid, this.data.ground, x, z)] ?? 'meadow';
+  }
+
+  /** 0..1 OSM path coverage at x/z (present-day walk graph; 0 off the paths). */
+  pathAt(x: number, z: number): number {
+    return rasterAt(this.grid, this.paths, x, z);
   }
 
   /** 0..1 tree cover at x/z in the current era. */

@@ -85,6 +85,19 @@ export function normaliseSlice(s: Partial<QuestSlice> | undefined | null): Quest
   return out;
 }
 
+/**
+ * The Feldbuch's „Laufend“ list: every quest that runs (active / ready) and every main quest on
+ * offer — the next main step waits at its giver and belongs in the log as soon as the story gave it
+ * (playtest round 10, F-41: „Der Bauplatz …: Hanne“ led the HUD while the log listed side quests
+ * only). Main first, then the latest change first.
+ */
+export function journalRunning<Q extends QuestDef>(all: readonly Q[], progress: (id: string) => QuestProgress | undefined): Q[] {
+  const st = (q: Q) => progress(q.id)?.state ?? 'hidden';
+  return all
+    .filter((q) => st(q) === 'active' || st(q) === 'ready' || (q.kind === 'main' && st(q) === 'offered'))
+    .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1) || (st(a) === 'offered' ? 1 : 0) - (st(b) === 'offered' ? 1 : 0) || (progress(b.id)?.t ?? 0) - (progress(a.id)?.t ?? 0));
+}
+
 export function need(o: QuestObjective): number {
   if (o.type === 'survive') return Math.max(1, Math.round(o.seconds ?? o.count ?? 1));
   return Math.max(1, Math.round(o.count ?? 1));
@@ -221,8 +234,30 @@ export class QuestBook {
     });
   }
 
+  /**
+   * The tracker's quests, main first. A running main quest is always among them (playtest round 10,
+   * F-30 / F-41: the main quest vanished from the tracker): one missing from the list (an old save,
+   * an entry lost on the way) is put back at the front before the list is read.
+   */
   tracked(): string[] {
+    if (this.running().some((q) => q.kind === 'main' && !this.slice.tracked.includes(q.id))) this.track('', true);
     return [...this.slice.tracked];
+  }
+
+  /**
+   * The next main step when no main quest runs: the main quest on offer at its giver (the story
+   * offered it, nobody took it yet), the current chapter's first in content order. Null while a
+   * main quest runs or none is on offer (between chapters the story's own line leads).
+   */
+  mainOffer(chapter: string | null = this.chapter): QuestDefIn | null {
+    const offered: QuestDefIn[] = [];
+    for (const q of this.defs.values()) {
+      if (q.kind !== 'main') continue;
+      const st = this.state(q.id);
+      if (st === 'active' || st === 'ready') return null;
+      if (st === 'offered') offered.push(q);
+    }
+    return offered.find((q) => !chapter || q.chapter === chapter) ?? offered[0] ?? null;
   }
 
   // ---- lifecycle ------------------------------------------------------------------------------
@@ -271,12 +306,19 @@ export class QuestBook {
     return true;
   }
 
-  /** Put a quest into the tracker (main quests first, at most three). */
+  /**
+   * Put a quest into the tracker (main quests first, at most three). A running main quest cannot
+   * be taken out (the journal's toggle, `kq.quests.track(id, false)`), and every running main quest
+   * missing from the list comes back with any call.
+   */
   track(id: string, on = true): void {
     const q = this.defs.get(id);
     const isMain = (x: string) => this.defs.get(x)?.kind === 'main';
+    const runningMain = (x: string) => isMain(x) && (this.state(x) === 'active' || this.state(x) === 'ready');
+    if (!on && runningMain(id)) on = true;
     let t = this.slice.tracked.filter((x) => x !== id && this.defs.has(x));
     if (on && q) t = q.kind === 'main' ? [id, ...t] : [...t, id];
+    for (const m of this.running()) if (m.kind === 'main' && !t.includes(m.id)) t.unshift(m.id);
     // main first; over three, the oldest side quests drop out (never the one just added)
     const list = [...t.filter(isMain), ...t.filter((x) => !isMain(x))];
     // a voice's side quest (Laub, Marlene) never pushes out one the player accepted from a person
@@ -284,6 +326,8 @@ export class QuestBook {
       const g = this.defs.get(x)?.giver;
       return !!g && 'voice' in g;
     };
+    // a main quest that is not running (done, failed, reset) never holds a place
+    for (let i = list.length - 1; i >= 0; i--) if (isMain(list[i]!) && !runningMain(list[i]!) && list[i] !== id) list.splice(i, 1);
     while (list.length > MAX_TRACKED) {
       let i = list.findIndex((x) => !isMain(x) && x !== id && isVoice(x));
       if (i < 0 && isVoice(id) && !isMain(id)) i = list.indexOf(id);

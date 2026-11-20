@@ -30,7 +30,7 @@ export interface WayDeps {
   era: string;
   player: { x: number; z: number };
   /** A clue's place (content packs): eras it exists in. */
-  clue(id: string): { x: number; z: number; r: number; eras: string[]; scan?: number } | null;
+  clue(id: string): { x: number; z: number; r: number; eras: string[]; scan?: number; anchor?: string } | null;
   /** Where an npc stands now (npc system's placed map). */
   npc(id: string): { x: number; z: number; era: string } | null;
   /** Pickups of a collect objective still lying in the world. */
@@ -82,6 +82,10 @@ export function objectiveTarget(q: Pick<QuestDef, 'id' | 'era'>, o: QuestObjecti
       if (o.where) return zone(o.where, 'clue');
       const c = o.clue ? d.clue(o.clue) : null;
       if (!c) return null;
+      // a portable clue (the tablet, the Bussole's page: `anchor: "portable"`) has no place in the
+      // world, its `where` is only a nominal spot (the Feldstation). Pointing there sent the player
+      // 840 m west in the prologue (playtest round 10, F-25).
+      if (c.anchor === 'portable') return null;
       const era = c.eras.includes(d.era) ? d.era : (c.eras[0] ?? q.era);
       // the exact spot: story triggers for clues are 6–9 m, the clue radius (15 m) would hide the mark too soon
       return { x: c.x, z: c.z, r: 4, era, kind: 'clue' };

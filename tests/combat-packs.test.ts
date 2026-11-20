@@ -209,14 +209,24 @@ describe('the pack fights together', () => {
 });
 
 describe('playtest round 4: fights that ask something', () => {
-  it('paper and mist scatter under a light blow once, then a Wuchthieb or the second time ends them', () => {
-    const base = { kind: 'mahnbrief', reformed: false, boss: false, elite: false, add: false, tier: 1 };
-    expect(reforms(base, 'light', false)).toBe(true);
-    expect(reforms(base, 'light', true)).toBe(false);
-    expect(reforms(base, 'heavy', false)).toBe(false);
-    expect(reforms({ ...base, reformed: true }, 'light', false)).toBe(false);
-    expect(reforms({ ...base, kind: 'streuner' }, 'light', false)).toBe(false);
-    expect(reforms({ ...base, tier: 0 }, 'light', false)).toBe(false);
+  it('paper and mist scatter under a lone Hieb once; a follow-up Hieb, a Wuchthieb, an ability or the Bannlicht end them (round 10 rule)', () => {
+    const base = { kind: 'mahnbrief', reformed: false, boss: false, elite: false, add: false, escort: false, tier: 1 };
+    const plain = { kind: 'light' as const, combo: 0 };
+    expect(reforms(base, plain)).toBe(true);
+    expect(reforms({ ...base, kind: 'nebelling' }, plain)).toBe(true);
+    expect(reforms(base, { kind: 'light', combo: 1 })).toBe(false);
+    expect(reforms(base, { kind: 'light', combo: 2 })).toBe(false);
+    expect(reforms(base, { kind: 'heavy', combo: 0 })).toBe(false);
+    expect(reforms(base, { ...plain, skill: true })).toBe(false);
+    expect(reforms(base, { ...plain, banned: true })).toBe(false);
+    expect(reforms({ ...base, reformed: true }, plain)).toBe(false);
+    expect(reforms({ ...base, kind: 'streuner' }, plain)).toBe(false);
+    expect(reforms({ ...base, tier: 0 }, plain)).toBe(false);
+    expect(reforms({ ...base, elite: true }, plain)).toBe(false);
+    // escorts follow the same rule as their pack (F-22: escort Nebellinge died, quest ones reformed)
+    expect(reforms({ ...base, add: true, escort: true }, plain)).toBe(true);
+    // a boss's summons do not
+    expect(reforms({ ...base, add: true, escort: false }, plain)).toBe(false);
   });
 
   it('three swings through an Irrlicht bring the Bannlicht hint', () => {
