@@ -721,6 +721,67 @@ body.kq-in-combat .kq-prompt.show {
   gap: 12px;
 }
 
+/* title footer: „Neuigkeiten“ (with the unseen badge), „Lizenzen & Quellen“, version + build */
+.kq-title-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+}
+.kq-news-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kq-news-badge {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(140, 47, 31, 0.25);
+}
+.kq-title-version {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+/* „Neuigkeiten“ modal: one section per release, newest first */
+.kq-news h3 {
+  font-family: var(--sc);
+  font-weight: 400;
+  font-size: 26px;
+  margin: 0 0 6px;
+}
+.kq-news h4 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 20px;
+  color: var(--accent);
+  margin: 14px 0 4px;
+}
+.kq-news ul {
+  margin: 0 0 6px;
+  padding-left: 22px;
+}
+.kq-news strong {
+  /* IM Fell has no bold cut: mark it in ink red instead */
+  font-weight: 700;
+  color: var(--accent);
+}
+.kq-news-entry + .kq-news-entry {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--ink-faint);
+}
+.kq-news-build {
+  margin-top: 18px;
+  font-size: 13px !important;
+  color: var(--ink-faint);
+}
+
 /* ---------- perf overlay (F3, ?perf, settings → Leistungsanzeige) ---------- */
 .kq-perf {
   position: fixed;
