@@ -9,7 +9,9 @@ playwright-report/
 .claude/settings.local.json
 scripts/release/private/
 
-# local secrets (content tools); see .env.example
+# recorded voice clips + manifest: not committed until the audio licensing is settled (pnpm voice:gen)
+public/voice/
+# local secrets (ELEVENLABS_API_KEY, HF_TOKEN, content tools): never commit; see .env.example
 .env
 .env.*
 !.env.example

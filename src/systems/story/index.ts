@@ -18,6 +18,8 @@ import { isBarkLine, pickSequence } from '../../content/triggers';
 import { assembleEpilogue } from './endings/assemble';
 import { isWrapped, newMeter, tickMeter } from './meters';
 import { Voice } from './dialogue/voice';
+import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
+import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
 import { type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume } from './engine';
@@ -83,7 +85,13 @@ export interface StoryHooks {
   skip(): void;
   /** Start a new story (prologue) with a name. */
   start(name?: string): void;
-  say(speaker: string, text: string): void;
+  /** Say a line (an `id` lets a recorded clip play for it). */
+  say(speaker: string, text: string, id?: string): void;
+  /** Recorded voices: loader and playback counters, and preloading by line id (tests). */
+  voice: {
+    stats(): VoiceClipStats & { clips: number; murmured: number; lastClip: string | null; playing: boolean; ctx: string };
+    preload(ids: string[]): void;
+  };
   /** Complete typing of the current line (screenshots). */
   finishTyping(): void;
   /** Run all delayed actions now. */
@@ -234,6 +242,8 @@ class StoryRuntime {
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
   readonly voice: Voice;
+  /** Recorded clips (null outside a browser). */
+  readonly clips: VoiceClips | null;
   private time = 0;
   private gen = 0;
   private queue: Scheduled[] = [];
@@ -301,6 +311,8 @@ class StoryRuntime {
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
         this.retireScheduled(b.id);
         this.presenter.retireBeat(b.id);
+        // the beat's spoken lines: fetch and decode their clips now (never waits)
+        this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
         ctx.events.emit('story:beat', { chapter: ch, beat: b.id });
         if (!o.resume) this.pendingAutosave = true;
         if (this.storyPrompt) {
@@ -321,10 +333,13 @@ class StoryRuntime {
     this.layer = ctx.ui.layer('story');
     this.layer.classList.remove('kq-hidden');
     this.voice = new Voice(ctx.audio);
+    this.clips = typeof window !== 'undefined' && typeof fetch === 'function' ? new VoiceClips(ctx.audio) : null;
+    this.clips?.init();
     this.presenter = new DialoguePresenter({
       layer: this.layer,
       meta: (id) => speakerMeta(id, ctx.content),
       voice: this.voice,
+      clips: this.clips,
       reducedMotion: () => ctx.settings.state.reducedMotion,
       name: () => this.slice.name,
       valid: (item) => this.lineStillValid(item),
@@ -1659,6 +1674,8 @@ class StoryRuntime {
     if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
     this.presenter.el.style.visibility = hudVisible && !this.echoHold && !this.talking ? '' : 'hidden';
+    // a recorded line pauses with the game (pause menu, a modal) and while an echo holds it
+    this.presenter.setPaused(ctx.pause.paused || this.echoHold);
     // the staged ending flies the camera (after it followed the player this frame)
     this.stage.frame();
   }
@@ -1683,7 +1700,16 @@ class StoryRuntime {
         this.engine.skip();
       },
       start: (name) => this.start(name ?? t('story.name.suggest')),
-      say: (speaker, text) => this.ctx.events.emit('dialogue:say', { speaker, text }),
+      say: (speaker, text, id) => this.ctx.events.emit('dialogue:say', { speaker, text, ...(id ? { id } : {}) }),
+      voice: {
+        stats: () => ({
+          ...(this.clips?.stats() ?? { manifest: 'none' as const, lines: 0, cached: 0, loading: 0, queued: 0, failed: 0, stale: 0, opus: false, lastFormat: null }),
+          ...this.presenter.voiceStats,
+          playing: this.presenter.clipPlaying,
+          ctx: this.ctx.audio.ctx?.state ?? 'locked',
+        }),
+        preload: (ids) => this.clips?.preload(ids.map((id) => ({ id }))),
+      },
       finishTyping: () => this.presenter.finishTyping(),
       flush: () => this.flush(),
       caught: (by = 'pack', holdMs) => {

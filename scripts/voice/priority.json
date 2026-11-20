@@ -1,0 +1,35 @@
+{
+  "$comment": "Generation order for scripts/voice/generate.mjs. Tiers run top to bottom; inside a tier lines follow play order; the first tier that matches a line takes it. Selector keys (AND inside one selector, OR across the list): ids (globs, * and ?), beats ('<chapter>:<beatId>' globs), chapter, pack, source ('pack'|'story'|'quest'), quests (quest-id globs), all. Quest lines carry no id in the game; their ids here are 'quest.<questId>.<field>.<n>' and playback has to match them by textHash.",
+  "tiers": [
+    {
+      "name": "1-quelle",
+      "speakers": ["laub", "marlene"],
+      "select": [{ "beats": ["prolog:p3q", "prolog:p3r"] }]
+    },
+    {
+      "name": "2-prolog-key",
+      "speakers": ["laub", "marlene"],
+      "select": [{ "ids": ["laub.p.intro*", "marlene.p.01b", "marlene.p.bauwagen", "marlene.p.relief", "marlene.p.damm", "marlene.p.weg", "marlene.p.flug"] }]
+    },
+    {
+      "name": "3-prolog-rest",
+      "speakers": ["laub", "marlene"],
+      "select": [{ "chapter": "prolog", "source": "pack" }, { "chapter": "prolog", "source": "story" }]
+    },
+    {
+      "name": "4-barks",
+      "speakers": ["laub", "marlene"],
+      "select": [{ "pack": "voices" }]
+    },
+    {
+      "name": "5-prolog-quests",
+      "speakers": ["laub", "marlene"],
+      "select": [{ "chapter": "prolog", "source": "quest" }]
+    },
+    {
+      "name": "6-rest",
+      "speakers": ["laub", "marlene"],
+      "select": [{ "all": true }]
+    }
+  ]
+}
