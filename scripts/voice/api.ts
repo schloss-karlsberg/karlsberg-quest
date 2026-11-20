@@ -82,6 +82,7 @@ export async function tts(key: string, r: TtsRequest, log?: (s: string) => void)
   if (r.voiceSettings) body.voice_settings = r.voiceSettings;
   const path = `/v1/text-to-speech/${encodeURIComponent(r.voiceId)}?output_format=${r.outputFormat ?? 'mp3_44100_128'}`;
   const res = await call(key, path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify(body) }, { log });
-  const billed = Number(res.headers.get('character-cost') ?? res.headers.get('x-character-count'));
+  // `character-cost`: integer credits billed for this call (confirmed in casting)
+  const billed = Number(res.headers.get('character-cost'));
   return { audio: Buffer.from(await res.arrayBuffer()), billed: Number.isFinite(billed) && billed > 0 ? billed : null };
 }

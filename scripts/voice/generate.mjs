@@ -205,6 +205,12 @@ let spent = 0;
 let done = 0;
 for (const [i, r] of todo.entries()) {
   const id = r.line.id;
+  // The subscription counter lags 20-60 s: cap on the start-of-run remaining count (in `cap`) minus
+  // the running sum of billed `character-cost`, never on re-polling.
+  if (r.credits > 0 && spent + r.credits > cap) {
+    console.log(`Stopping before ${id}: ${spent} credits billed so far + ~${r.credits} would pass the cap of ${cap}.`);
+    break;
+  }
   process.stdout.write(`[${i + 1}/${todo.length}] ${id} (${r.voice.provider}, ${r.chars} chars, ~${r.credits} cr) … `);
   let res;
   try {

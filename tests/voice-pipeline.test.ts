@@ -32,6 +32,7 @@ import {
 import { audioUrl, elevenLabsProvider, fillParams, hfSpaceProvider, isHfHost, type GradioConnect } from '../scripts/voice/providers.ts';
 import priority from '../scripts/voice/priority.json';
 import speechJson from '../scripts/voice/speech.json';
+import voicesJson from '../scripts/voice/voices.json';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -398,6 +399,15 @@ describe('elevenlabs provider (stubbed fetch, no network)', () => {
     expect(url).not.toContain('sk_secret');
     expect((init.headers as Record<string, string>)['xi-api-key']).toBe('sk_secret');
     expect(JSON.parse(init.body as string)).toMatchObject({ text: 'Hallo', model_id: 'eleven_flash_v2_5', language_code: 'de' });
+  });
+  it('sends each speaker\'s voice_settings from voices.json; character-cost is the billed credits', async () => {
+    const fetchMock = vi.fn(async (_u: string, _i: RequestInit) => new Response(new Uint8Array([1]), { headers: { 'character-cost': '54' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const voice = resolveVoice('marlene', voicesJson as VoicesConfig)!;
+    expect(voice).toMatchObject({ voiceId: 'XrExE9yKIg1WjnnlVkGX', placeholder: false });
+    const res = await elevenLabsProvider('k').synthesize({ text: 'Hallo', voice, model: voice.model, lang: 'de' });
+    expect(res.billedCredits).toBe(54);
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body as string).voice_settings).toMatchObject({ stability: 0.45, similarity_boost: 0.75, style: 0, speed: 1.06 });
   });
   it('error messages never carry the key', async () => {
     vi.stubGlobal('fetch', async () => new Response('bad key sk_secret', { status: 400 }));

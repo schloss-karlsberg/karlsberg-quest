@@ -1,5 +1,5 @@
 {
-  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId) or 'hf-space' (voicePrompt for voice design, or voiceId). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model'. Casting is open: PLACEHOLDER voices are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
+  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId) or 'hf-space' (voicePrompt for voice design, or voiceId). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model'. voiceSettings = ElevenLabs voice_settings per speaker, sent with every TTS request. Laub and Marlene are provisional casting picks (owner to confirm). PLACEHOLDER voices are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
   "providers": {
     "elevenlabs": {
       "defaultModel": "eleven_flash_v2_5",
@@ -12,21 +12,41 @@
       "licence": "apache-2.0-model",
       "space": "Qwen/Qwen3-TTS",
       "apiName": "PLACEHOLDER_CHECK_USE_VIA_API",
-      "params": { "text": "$text", "voice_description": "$voicePrompt", "language": "German" }
+      "params": {
+        "text": "$text",
+        "voice_description": "$voicePrompt",
+        "language": "German"
+      }
     }
   },
   "speakers": {
     "laub": {
       "provider": "elevenlabs",
-      "voiceId": "PLACEHOLDER_LAUB",
+      "voiceId": "nPczCjzI2devNBz1zQrb",
+      "name": "Brian",
+      "note": "provisional, owner to confirm",
       "model": null,
-      "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "style": 0, "use_speaker_boost": true, "speed": 1 }
+      "voiceSettings": {
+        "stability": 0.55,
+        "similarity_boost": 0.75,
+        "style": 0,
+        "use_speaker_boost": true,
+        "speed": 0.97
+      }
     },
     "marlene": {
       "provider": "elevenlabs",
-      "voiceId": "PLACEHOLDER_MARLENE",
+      "voiceId": "XrExE9yKIg1WjnnlVkGX",
+      "name": "Matilda",
+      "note": "provisional, owner to confirm",
       "model": null,
-      "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "style": 0, "use_speaker_boost": true, "speed": 1 }
+      "voiceSettings": {
+        "stability": 0.45,
+        "similarity_boost": 0.75,
+        "style": 0,
+        "use_speaker_boost": true,
+        "speed": 1.06
+      }
     }
   },
   "$examples": {

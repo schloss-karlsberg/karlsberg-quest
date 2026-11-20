@@ -38,8 +38,9 @@ export function textHash(text: string): string {
 // ---------------------------------------------------------------------------------------------
 // Credits
 
-/** Credits per character by model (ElevenLabs docs, checked 2026-11-20: Flash/Turbo v2.5 are
- * "50% lower price per character" than Multilingual v2 / v3, which cost 1 credit per character). */
+/** Credits per character by model. Measured in casting (2026-11-20) from the `character-cost`
+ * response header: flash v2.5 = 0.50 and multilingual v2 = 1.00, exactly. Turbo v2.5 is
+ * functionally Flash; v3 bills like Multilingual (docs). */
 export const CREDITS_PER_CHAR: Readonly<Record<string, number>> = {
   eleven_v3: 1.0,
   eleven_multilingual_v2: 1.0,
@@ -356,7 +357,11 @@ export interface SpeakerVoice {
   voicePrompt?: string | null;
   model?: string | null;
   licence?: Licence;
+  /** ElevenLabs voice_settings for this speaker (stability, similarity_boost, style, speed, …), sent with each request */
   voiceSettings?: Record<string, number | boolean>;
+  /** voice name and casting status, for humans (not used by the script) */
+  name?: string;
+  note?: string;
 }
 export interface VoicesConfig {
   providers?: Partial<Record<ProviderName, ProviderConfig>>;
