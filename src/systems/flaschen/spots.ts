@@ -63,7 +63,7 @@ export const FLASCHEN: readonly FlaschenSpot[] = [
   { id: 'fl.heute.westblick', era: 'today', anchor: 'survey point westblick', ax: 214, az: -899, x: 207.58, z: -893.15, lie: true, yaw: 300, verb: 'crouch', cover: { kind: 'stone', x: 208.3, z: -893.3, yaw: 20 }, spot: 'at the forest edge, under a sandstone block' },
   { id: 'fl.heute.tschifflik', era: 'today', anchor: 'Tschifflik ruin r03-12', ax: 1616.89, az: 237.17, x: 1612, z: 240, lie: true, yaw: 10, verb: 'relief', cover: { kind: 'stone', x: 1612.4, z: 240.3, yaw: 60 }, spot: 'in a gap of the ruin wall' },
   // ---- 1789 (6) -------------------------------------------------------------------------------
-  { id: 'fl.1789.quelle', era: '1789', anchor: 'Brunnenstube', ax: QX, az: QZ, ...q(-0.27, -0.12), base: 'quelle-wall', dy: 0.43, yaw: 30, verb: 'look', spot: 'in the niche beside the bronze spout, behind the basin rim' },
+  { id: 'fl.1789.quelle', era: '1789', anchor: 'Brunnenstube', ax: QX, az: QZ, ...q(-0.27, 0.19), base: 'quelle-wall', dy: 0.425, yaw: 30, verb: 'look', spot: 'on the niche sill beside the bronze spout, behind the basin rim' },
   { id: 'fl.1789.orangerie', era: '1789', anchor: 'Orangerie KB-B10', ax: 1241.9, az: -967.0, x: 1230.6, z: -972.4, lie: true, yaw: 70, verb: 'unseen', cover: { kind: 'tub', x: 1230.0, z: -972.0 }, spot: 'behind an orange tub on the terrace' },
   { id: 'fl.1789.gitter', era: '1789', anchor: 'ehrenhof-gitter / Wachhaus Süd KB-B37', ax: 1192.45, az: -1114.55, x: 1171.15, z: -1099.3, dy: 1.04, verb: 'unseen', spot: 'on the window ledge of the Wachhaus Süd' },
   { id: 'fl.1789.bauplatz', era: '1789', anchor: 'k1-bauplatz', ax: 1288, az: -1230, x: 1293.2, z: -1217.4, lie: true, yaw: 15, verb: 'walk', spot: 'between the ashlar blocks of the stack' },
