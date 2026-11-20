@@ -195,13 +195,14 @@ test('walk (d): perf — 16 bodies vs. none at the high and the low tier; screen
         await page.waitForTimeout(2500);
       }
     }
-    const st = await page.evaluate(() => window.kq!.walk!.stats());
+    const st = await page.evaluate(() => ({ walk: window.kq!.walk!.stats(), people: (window.kq as unknown as { people?: { stats(): unknown } }).people?.stats() ?? null }));
     console.log(`[walk d] ${tier}: stats ${JSON.stringify(st)}`);
   }
   const f = (v: number, d = 1) => v.toFixed(d).padStart(9);
   const lines = ['tier    group   frames      fps   frameMs    cpuMs      calls  triangles   walkMs'];
   for (const r of rows) lines.push(`${r.tier.padEnd(7)} ${String(r.group).padEnd(6)} ${String(r.frames).padStart(6)} ${f(r.fps)} ${f(r.frameMs, 2)} ${f(r.cpuMs, 2)} ${f(r.calls, 0)} ${f(r.triangles, 0).padStart(10)} ${f(r.walkMs, 3)}`);
-  console.log(`[walk d] perf\n${lines.join('\n')}`);
-  writeFileSync(`${OUT}/perf.json`, JSON.stringify(rows, null, 2));
+  const label = (await page.evaluate(() => window.kq!.walk!.stats().people)) ? 'stand-in people v0.1 bodies' : 'walk stand-in bodies (no ctx.people)';
+  console.log(`[walk d] perf (${label})\n${lines.join('\n')}`);
+  writeFileSync(`${OUT}/perf.json`, JSON.stringify({ label, rows }, null, 2));
   for (const r of rows) expect(r.frames).toBeGreaterThan(5);
 });

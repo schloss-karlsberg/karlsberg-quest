@@ -179,7 +179,7 @@ let sys: WalkSystem | null = null;
 
 export default defineSystem({
   id: 'walk',
-  after: ['npc'],
+  after: ['people', 'npc'],
   init(ctx) {
     sys = new WalkSystem(ctx);
   },

@@ -1,73 +1,59 @@
 /**
- * Bodies for the walk system: the people API (kq-characters, `ctx.people`) when it is there,
- * else cheap stand-ins — low-poly modern visitors built with the scenery Kit on the shared prop
+ * Bodies for the walk system: the people API (kq-characters, `ctx.people`) — the primary path —
+ * and, only when `ctx.people` is undefined (people system failed / not registered), cheap stand-ins — low-poly modern visitors built with the scenery Kit on the shared prop
  * material (world light, fog, one draw call for the body and one per leg, no shadows), legs
  * swinging with the distance walked. Good for 16 at once at every tier.
  */
-import { Group, Mesh, type Object3D, type Scene, type ShaderMaterial } from 'three';
+import { Group, Mesh, type Scene, type ShaderMaterial } from 'three';
 import { Kit, rng, tint } from '../scenery/kit';
 import { propMaterial } from '../scenery/material';
+import type { PeopleApi, PersonSpawnOpts } from '../people/types';
 import type { Body, BodyClip, BodyFactory, BodySpawn } from './runtime';
 
-// ---- the people API (frozen contract of chars/people-api, src/systems/people/types.ts) --------
+// ---- the people API (kq-characters, src/systems/people/types.ts) -----------------------------
 
-type PersonClip = 'idle' | 'walk' | 'run' | 'talk' | 'point' | 'wave' | 'lookAround' | 'sit' | 'sitTalk' | 'interact';
-interface PersonSpawnOpts {
-  x: number;
-  z: number;
-  y?: number;
-  yaw?: number;
-  look?: 'solid' | 'ghost';
-  tier?: 'hero' | 'featured' | 'extra';
-  seed?: number;
-  name?: string;
-  speaker?: string;
-}
-interface Person {
-  id: string;
-  specId: string;
-  root: Object3D;
-  setSpeed(mps: number): void;
-  play(clip: PersonClip, o?: { loop?: boolean; fade?: number; speed?: number }): void;
-  face(yaw: number): void;
-  setVisible(on: boolean): void;
-  dispose(): void;
-}
-export interface PeopleApiLike {
-  spawn(specId: string, opts: PersonSpawnOpts): Person;
-  specs(): readonly string[] | readonly { id: string }[];
-}
+export type PeopleApiLike = Pick<PeopleApi, 'spawn' | 'specs'>;
 
-/** Feature-detect `ctx.people` (not typed on ctx until the people system lands). */
-export function peopleOf(ctx: unknown): PeopleApiLike | null {
-  const p = (ctx as { people?: unknown }).people as Partial<PeopleApiLike> | undefined;
-  return p && typeof p.spawn === 'function' ? (p as PeopleApiLike) : null;
+/** `ctx.people` when the people system runs (undefined when it failed or is not registered). */
+export function peopleOf(ctx: { people?: PeopleApi | undefined }): PeopleApiLike | null {
+  const p = ctx.people;
+  return p && typeof p.spawn === 'function' ? p : null;
 }
 
 export function peopleSpecs(api: PeopleApiLike): string[] | null {
   try {
-    const s = api.specs();
-    return s.map((v) => (typeof v === 'string' ? v : v.id));
+    return [...api.specs()];
   } catch {
     return null;
   }
 }
 
-/** A Body over a people-API person (it animates and does its own LOD; we move the root). */
+/**
+ * A Body over a people-API person. The people system animates (locomotion from `setSpeed`) and
+ * does its own distance LOD; we move `root` and turn with `face` (never root.rotation, never
+ * lookAt: they would fight the person's own smooth turn). `play('walk' | 'run' | 'idle')` is left
+ * out on purpose: locomotion follows the speed, and the npc system plays talk / idle in a
+ * conversation.
+ */
 export function personBody(api: PeopleApiLike, o: BodySpawn): Body {
   const opts: PersonSpawnOpts = { x: o.x, z: o.z, y: o.y, yaw: o.yaw, look: 'solid', tier: o.tier, seed: o.seed, name: o.npc };
   if (o.speaker) opts.speaker = o.speaker;
   const p = api.spawn(o.spec, opts);
   let speed = -1;
+  let yaw = Number.NaN;
   return {
     setPos: (x, y, z) => p.root.position.set(x, y, z),
-    face: (yaw) => p.face(yaw),
+    face: (v) => {
+      if (Math.abs(v - yaw) < 1e-3) return;
+      yaw = v;
+      p.face(v);
+    },
     setSpeed: (v) => {
       if (Math.abs(v - speed) < 0.02) return;
       speed = v;
       p.setSpeed(v);
     },
-    play: (clip: BodyClip) => p.play(clip, { loop: true, fade: 0.25 }),
+    play: (_clip: BodyClip) => {},
     setVisible: (on) => p.setVisible(on),
     dispose: () => p.dispose(),
   };

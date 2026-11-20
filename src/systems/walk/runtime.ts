@@ -176,6 +176,13 @@ export class WalkRuntime {
     ev.on('player:teleport', (() => (this.jumped = true)) as (p: never) => void);
   }
 
+  /** The player talks to this npc (the conversation names the placement: our id or its speaker). */
+  isTalking(id: string): boolean {
+    if (!this.talking.size) return false;
+    const sp = speakerFor(id);
+    return this.talking.has(id) || (sp !== undefined && this.talking.has(sp));
+  }
+
   private warn(msg: string): void {
     (this.o.log ?? ((m: string) => console.warn(m)))(`[walk] ${msg}`);
   }
@@ -530,7 +537,7 @@ export class WalkRuntime {
     }
     for (const w of this.walkers.values()) {
       const n = this.npcs.get(w.npc);
-      if (this.talking.has(w.npc)) {
+      if (this.isTalking(w.npc)) {
         // the player talks to the walker: it stands (and the group with it)
         if (n) n.speed = 0;
         continue;
@@ -549,7 +556,7 @@ export class WalkRuntime {
     if (slotTick) this.slotT = 0;
     for (const g of this.groups.values()) {
       if (slotTick || g.slots.length !== g.members.length) this.reslot(g);
-      const paused = this.talking.has(g.leader);
+      const paused = this.isTalking(g.leader);
       g.members.forEach((m, i) => {
         const n = this.npcs.get(m);
         const sl = g.slots[g.assign[i] ?? -1];
@@ -622,6 +629,11 @@ export class WalkRuntime {
       const vis = inEra && Math.hypot(n.x - p.x, n.z - p.z) < VIS_DIST;
       this.setVisible(n, vis);
       if (!vis) continue;
+      if (this.isTalking(n.id)) {
+        // in a conversation the npc system turns the body (face / lookAt / talk): hands off
+        b.setSpeed(0);
+        continue;
+      }
       b.setPos(n.x, this.o.world.heightAt(n.x, n.z), n.z);
       b.face(n.yaw);
       b.setSpeed(n.speed);

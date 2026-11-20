@@ -185,7 +185,11 @@ describe('walk system', () => {
     s.step(3);
     const before = s.rt.walkers.get('imhoff')!.s;
     s.bus.emit('npc:conversation', { npc: 'imhoff', open: true });
+    // hands off the guide's body while the npc system turns it to the player
+    const gb = s.bodies.find((b) => b.spawn.npc === 'imhoff')!;
+    gb.yaw = 42;
     s.step(5);
+    expect(gb.yaw).toBe(42);
     expect(s.rt.walkers.get('imhoff')!.s).toBeCloseTo(before, 6);
     expect(s.rt.npcs.get('double.hanne')!.speed).toBe(0);
     s.bus.emit('npc:conversation', { npc: 'imhoff', open: false });
