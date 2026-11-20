@@ -34,6 +34,7 @@ import type { EnemyGroupState } from '../src/rpg/types';
 import { FightLog, type FightRecord } from '../src/systems/combat/fightlog';
 import { DODGE, HEAVY, SKILLS, type SkillId, forwardOf, headingOf, inCone, isFrontal, skillsForLevel, upsertGroup, wrapAngle } from '../src/systems/combat/rules';
 import { BOSS_INTRO, CombatSim, type Enemy, type SimInput } from '../src/systems/combat/sim';
+import { BOSS_BOUNCE_AFTER } from '../src/systems/combat/strings';
 import type { Build, Encounter } from './combat-bots';
 
 export interface HumanProfile {
@@ -55,11 +56,11 @@ export interface HumanProfile {
   readHint: number;
   /** Flares by habit when the charges are full and two or more enemies are in the cone. */
   habitFlare: boolean;
-  /** Bounces in a row before the game says the way in (index.ts: 4). */
+  /** Bounces in a row before the game says the way in (strings.ts `BOSS_BOUNCE_AFTER`: 2). */
   bossWayAfter: number;
 }
 
-export const HUMAN: HumanProfile = { reaction: 0.25, jitter: 0.06, misread: 0.15, offscreenNotice: 0.3, offscreenDelay: 0.15, aimDeg: 12, timing: 0.07, balsam: 2, readHint: 0.85, habitFlare: true, bossWayAfter: 4 };
+export const HUMAN: HumanProfile = { reaction: 0.25, jitter: 0.06, misread: 0.15, offscreenNotice: 0.3, offscreenDelay: 0.15, aimDeg: 12, timing: 0.07, balsam: 2, readHint: 0.85, habitFlare: true, bossWayAfter: BOSS_BOUNCE_AFTER };
 
 export interface HumanResult {
   won: boolean;
@@ -459,7 +460,7 @@ export function humanFight(build: Build, enc: Encounter, seed: number, o: HumanO
       if (ev.type === 'hit' && ev.armored && !ev.e.boss) armoured.add(ev.e.kind);
       if (ev.type === 'reflect') mirrors.add(ev.e.kind);
       if (ev.type === 'intro') hintAt = sim.time + BOSS_INTRO;
-      if (ev.type === 'immune' && ev.e.boss) bossImmune++;
+      if ((ev.type === 'immune' || ev.type === 'bossGuard') && ev.e.boss) bossImmune++;
       if (ev.type === 'hit' && ev.e.boss && ev.armored) {
         bounced++;
         bounces++;

@@ -69,10 +69,36 @@ export const BOSS_HINT: Record<string, string> = {
   steinbrecher: 'Triff die Fugen – von der Seite, von hinten.',
 };
 
+/**
+ * What a boss's armour or seal says after `BOSS_BOUNCE_AFTER` bounces in a row (balance round
+ * 2026-11-20, docs/BALANCE.md): per boss and true to its rule — the Schuldbuch's seal holds from
+ * every side (no "front"), the Strohmann and the Steinbrecher are hard in front only. The Pikeur
+ * has no armour and never bounces.
+ */
+export const BOSS_BOUNCE: Record<string, string> = {
+  schuldbuch: 'Das Siegel hält jeden Schlag ab – Bannlicht!',
+  strohmann: 'Vorne ist das Stroh zu dicht. Geh ihm in den Rücken, wo die Garben gebunden sind.',
+  steinbrecher: 'Vorne prallt alles ab. Triff die Fugen – von der Seite, von hinten.',
+};
+
+/** Bounces in a row before the boss's way in is said (was 4). */
+export const BOSS_BOUNCE_AFTER = 2;
+
+/**
+ * A blow during a boss's reveal or phase roar (`bossGuard`): it cannot be hurt for that moment.
+ * Not the Bannlicht's line — the flare has nothing to do with it.
+ */
+export const BOSS_GUARD: Record<string, string> = {
+  schuldbuch: 'Die Seiten wirbeln auf – warte, bis es sich gesammelt hat.',
+  pikeur: 'Der Pikeur bäumt sich auf – warte.',
+  strohmann: 'Der Strohmann richtet sich auf – warte.',
+  steinbrecher: 'Der Steinbrecher türmt sich auf – warte.',
+};
+
 addStrings('de', {
+  'combat.bossGuard': 'Er sammelt sich – warte.',
   'combat.immune': 'Der Stab geht hindurch – erst das Bannlicht ({key}).',
   'combat.bounce': 'Abgeprallt',
-  'combat.bossWay': 'Vorne prallt alles ab. {hint}',
   'combat.bossWayFirst': 'Der Weg hinein: {hint}',
   'combat.tut.dodge': 'Er duckt sich, gleich springt er. Leertaste – zur Seite!',
   'combat.tut.dodge.hint': 'Er holt aus – [Leertaste]: zur Seite ausweichen!',

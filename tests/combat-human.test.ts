@@ -11,6 +11,8 @@ import { CombatSim, type SimInput } from '../src/systems/combat/sim';
 import { CHAPTERS } from './combat-bots';
 import { contentEncounters } from './combat-encounters';
 import { cameraModel, humanFight } from './combat-human';
+import { BOSS_BOUNCE, BOSS_BOUNCE_AFTER, BOSS_GUARD } from '../src/systems/combat/strings';
+import { sealClosedPulse } from '../src/systems/combat/visuals';
 
 const feedback = { sound: true, particles: true, shake: true, numbers: true };
 
@@ -101,5 +103,23 @@ describe('human-like bot (smoke)', () => {
     const boss = humanFight(CHAPTERS.k3!.build, { kind: 'strohmann', count: 1, tier: 1, era: '1793-07' }, 3, { seconds: 30 });
     expect(boss.fights[0]?.boss).toBe('strohmann');
     expect(boss.learnt).not.toBeNull();
+  });
+});
+
+describe('balance round 2026-11-20 (docs/BALANCE.md §5)', () => {
+  it('a blow into a boss reveal is a bossGuard, never the Bannlicht "immune" line; per-boss bounce lines; the closed seal throbs', () => {
+    const r = humanFight(CHAPTERS.k2!.build, { kind: 'pikeur', count: 1, tier: 1, era: '1793-02' }, 1, { seconds: 20 });
+    expect(r.bossImmune).toBeGreaterThan(0);
+    for (const k of ['schuldbuch', 'pikeur', 'strohmann', 'steinbrecher']) {
+      expect(BOSS_GUARD[k]).toBeTruthy();
+      expect(BOSS_GUARD[k]).not.toMatch(/Bannlicht/);
+    }
+    // the Pikeur has no armour: no bounce line; the Schuldbuch's names the seal, not a front
+    expect(BOSS_BOUNCE.pikeur).toBeUndefined();
+    expect(BOSS_BOUNCE.schuldbuch).toMatch(/Siegel/);
+    expect(BOSS_BOUNCE.schuldbuch).not.toMatch(/[Vv]orne/);
+    expect(BOSS_BOUNCE_AFTER).toBe(2);
+    const v = [0, 0.2, 0.4, 0.6, 0.8, 1, 1.2].map((t) => sealClosedPulse(t));
+    expect(Math.max(...v) - Math.min(...v)).toBeGreaterThan(0.5);
   });
 });

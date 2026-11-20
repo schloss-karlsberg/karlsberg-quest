@@ -52,7 +52,7 @@ describe('packs: elites and escorts', () => {
     for (const el of Object.values(ELITES)) {
       expect(enemyDef(el.kind), el.kind).toBeTruthy();
       expect(el.name_de.length).toBeGreaterThan(3);
-      expect(el.extra.telegraph).toBeGreaterThanOrEqual(0.4);
+      expect(el.extra.telegraph).toBeGreaterThanOrEqual(0.5);
       expect(el.hpMul).toBeGreaterThan(1.5);
     }
     // the caster is in the roster, ranged plus the veil it lays on its pack, labelled fiction

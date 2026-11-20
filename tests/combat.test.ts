@@ -147,12 +147,12 @@ describe('combat rules: timing', () => {
     expect(s.exhausted).toBe(false);
   });
 
-  it('every roster telegraph is at least 0.4 s (and gentle mode lengthens it)', () => {
+  it('every roster telegraph is at least 0.5 s (and gentle mode lengthens it)', () => {
     for (const e of ENEMIES)
       for (const a of e.attacks) {
-        expect(a.telegraph, `${e.id}.${a.id}`).toBeGreaterThanOrEqual(0.4);
-        expect(telegraphTime(a)).toBeGreaterThanOrEqual(0.4);
-        expect(telegraphTime(a, true)).toBeCloseTo(Math.max(0.4, a.telegraph * 1.4), 5);
+        expect(a.telegraph, `${e.id}.${a.id}`).toBeGreaterThanOrEqual(0.5);
+        expect(telegraphTime(a)).toBeGreaterThanOrEqual(0.5);
+        expect(telegraphTime(a, true)).toBeCloseTo(Math.max(0.5, a.telegraph * 1.4), 5);
       }
   });
 });

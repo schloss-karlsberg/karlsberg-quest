@@ -39,7 +39,7 @@ import { FightLog, type FightReport, type FightView } from './fightlog';
 import { CombatHud, type PipTarget, type SkillSlot } from './hud';
 import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
-import { BOSS_HINT, BOSS_TITLE, TELL } from './strings';
+import { BOSS_BOUNCE, BOSS_BOUNCE_AFTER, BOSS_GUARD, BOSS_HINT, BOSS_TITLE, TELL } from './strings';
 import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
 import { Viewmodel, stageOf } from './viewmodel';
 import { type TargetCandidate, Targeting } from './targeting';
@@ -706,17 +706,19 @@ class Combat {
         // at the body (not above the head: at melee range a boss's head projects onto the boss bar)
         if (st.damageNumbers !== false) this.hud.number(String(ev.damage), e.x, e.y + Math.min(top * 0.6, 1.5), e.z, `${ev.heavy || ev.finisher ? 'heavy' : ''} ${ev.weak ? 'weak' : ''} ${ev.armored ? 'armored' : ''}`, e.id, this.numberSpan(e));
         if (ev.weak && e.kind === 'strohmann') this.captionOnce('back', t('combat.back'), 'info', 12);
-        // a blow a boss's armour throws back: loud and visible, and after four of them in a row the
-        // way in is said out loud (playtest round 5: a masher hit the Steinbrecher's front for 52 s)
+        // a blow a boss's armour throws back: loud and visible, and after two of them in a row the
+        // way in is said out loud, per boss (playtest round 5: a masher hit the Steinbrecher's front
+        // for 52 s; balance round 2026-11-20: "Vorne prallt alles ab" sent players round the
+        // Schuldbuch, whose seal holds from every side)
         if (e.boss && ev.armored) {
           this.visuals.glance(e.x - ev.dirX * e.radius * 0.7, y, e.z - ev.dirZ * e.radius * 0.7);
           const now = ctx.loop.time;
           this.bounces = now - this.bounceAt < 12 ? this.bounces + 1 : 1;
           this.bounceAt = now;
           this.captionOnce('bounce', t('combat.bounce'), 'info', 3, 900);
-          if (this.bounces >= 4 && BOSS_HINT[e.kind]) {
+          if (this.bounces >= BOSS_BOUNCE_AFTER && BOSS_BOUNCE[e.kind]) {
             this.bounces = 0;
-            this.captionOnce('bossWay', t('combat.bossWay', { hint: BOSS_HINT[e.kind]! }), 'boss', 14, 3600);
+            this.captionOnce('bossWay', BOSS_BOUNCE[e.kind]!, 'boss', 14, 3600);
           }
         } else if (e.boss && ev.weak) this.bounces = 0;
         this.emit('combat:hit', { target: 'enemy', id: e.id, kind: e.kind, damage: ev.damage, heavy: ev.heavy, x: e.x, z: e.z });
@@ -729,6 +731,14 @@ class Combat {
         if (this.safe) this.captionOnce('safe', t('combat.safe'), 'info', 8);
         else this.captionOnce('immune', t('combat.immune', { key: keyLabel(ctx.input.bindings.bannlicht[1] ?? 'KeyG') }), 'info', 6, 2600);
         if (st.damageNumbers !== false) this.hud.number('–', e.x, e.y + 0.8, e.z, 'immune', undefined, this.numberSpan(e));
+        break;
+      }
+      case 'bossGuard': {
+        // the reveal / the phase roar: nobody is hurt for that moment — a soft glance, and "wait"
+        const e = ev.e;
+        this.visuals.glance(e.x, e.y + 1, e.z);
+        this.audio.whiff();
+        this.captionOnce('bossGuard', BOSS_GUARD[e.kind] ?? t('combat.bossGuard'), 'info', 5, 1800);
         break;
       }
       case 'immuneHint':
