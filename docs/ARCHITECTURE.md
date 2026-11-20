@@ -552,7 +552,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 ## 12. Feature systems
 
 Registered in `src/systems/index.ts` in this order: `survey`, `footsteps`, `ambience`, `hunt`,
-`menagerie`, `fx`, `chronik`, `story`, `interiors`, `npc`, `barks`, `skills`, `tools`, `scenery`,
+`menagerie`, `fx`, `chronik`, `story`, `interiors`, `people`, `fauna`, `npc`, `barks`, `skills`, `tools`, `scenery`,
 then the Action-RPG systems `progression`, `combat`, `quests` (§12.1). They talk only through the events in `src/systems/contracts.ts` (plus the
 private ones listed below), `ctx.state` and a few additive world hooks. How they work together:
 
@@ -974,6 +974,222 @@ Round-4 (polish: set dressing) integration rules:
   flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.
 - State `systems.npc {placed, said}`. Hooks `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state/mark/choose`.
+- Talking to people: a placement can be bound to a live person of the people system (next
+  section, "Talking to people"); `kq.npc.list()` reports it as `bound` (the person id).
+
+### people (`src/systems/people/`) – People contract v0
+Modern NPCs (the tour guide, about 15 tour members, the modern doubles of historical figures, a
+child, the two historical twins) walking paths together. Other systems (path walk, groups, the
+tour) spawn them through a **mesh-independent handle API**. Today rigged CC0 stand-ins draw them.
+The **real authored character meshes come later behind the same interface**: callers do not
+change.
+
+- **The contract** is `src/systems/people/types.ts` (frozen 2026-11-20, v0.1 additive). Import
+  it with `import type` only:
+
+  ```ts
+  type PersonClip = 'idle' | 'walk' | 'run' | 'talk' | 'point' | 'wave' | 'lookAround' | 'sit' | 'sitTalk' | 'interact';
+  type PersonLook = 'solid' | 'ghost';
+  type BudgetTier = 'hero' | 'featured' | 'extra';
+  interface PersonSpawnOpts { x; z; y?; yaw?; look?; tier?; seed?; name?; speaker? }  // y: ground; yaw: radians, 0 faces −z
+  interface PersonInfo { specId; tier; height; radius; clips }                       // clips: really supported
+  interface Person {
+    id; specId; root; info; ready /* Promise<boolean> */;
+    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw); lookAt(p | null);
+    setLook(look); setVisible(v); dispose();
+  }
+  interface PeopleApi { spawn(specId, opts): Person; get(id); list(); clear(); specs(); bySpeaker(speaker) }
+  ```
+
+- **How a system gets it:** `ctx.people` (`PeopleApi | undefined`). The people module declares it
+  on `GameContext` by declaration merging and sets it in `init`, so the core is not edited.
+  Declare `after: ['people']` and read `ctx.people` in `init` or later. It is undefined only when
+  the people system failed or is missing.
+  - Why a ctx service and not events: a spawn returns a handle, which a fire-and-forget event
+    with a plain payload cannot carry.
+  - Like `ctx.assets`, it is a service. What the people *do* in the story still travels through
+    events and state.
+  - People are not saved: whoever spawned them spawns them again after a load.
+- **Rules**
+  - The people system updates every person each frame; callers never call update. They move and
+    rotate `root` (world space, feet at the origin; `root.rotation.y = yaw` in the player's
+    convention, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.
+  - `setSpeed` blends idle → walk → run by ground speed with phase-locked feet. Above 0.2 m/s it
+    overrides the looping clips.
+  - Looping clips: idle, talk, sit, sitTalk, lookAround. Walk and run follow `setSpeed` only:
+    `play('walk' | 'run')` ends a looping action and hands the body back to locomotion.
+  - One-shots: point, wave, interact. Afterwards the looping clip that was playing (idle unless
+    another loop was set) or locomotion takes over. A one-shot over walking legs moves the upper
+    body only.
+  - A clip outside `info.clips` plays its nearest fallback (`CLIP_FALLBACK`).
+  - `ready` resolves true when the mesh is in, false on a fallback. The handle works before that
+    and stays invisible until then.
+- **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
+  - animation at full rate within 15 m, about 10 Hz within 40 m, frozen beyond
+  - hidden beyond the draw limit (stand-in: 60 m)
+  - frustum culling stays on
+- **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
+  - hero: ≤ 25k tris, ≤ 8 draw calls
+  - featured: ≤ 12k tris, ≤ 4
+  - extra: ≤ 6k tris, ≤ 2
+  - LOD1 at about 50 % beyond 15 m
+- **Spec ids** (provisional, `specs.ts`):
+  - `guide`: the placeholder guide Gerold Imhoff, 1.95 m, big, skinny, bald
+  - `double.herzog`, `double.mannlich`, `double.hanne`, `double.peter`, `double.jost`,
+    `double.soll`, `double.liese`: modern clothes, featured
+  - `child.compass`: 1.25 m, featured
+  - `extra.1` … `extra.7`: extra
+  - `twin.herzog`, `twin.mannlich`: featured, default look 'ghost' (the roster's period costume,
+    height and tint)
+  - Capsule radius: 0.3 for featured adults, 0.28 for extras, 0.22 for the child.
+  - An unknown id gets the generic extra and one `console.warn` per id. The handle keeps the
+    requested `specId`.
+- **Stand-in build** (`standin.ts`, `registry.ts`, `locomotion.ts` pure):
+  - Bodies: the Quaternius adventurer / farmer / woman (lazy, `ctx.assets`). Each is recoloured
+    per spec from the palette table, scaled to the spec height, and given a width factor
+    (`build`). The guide's Hair slot is hidden. The child and one hiker carry the backpack.
+  - Clip map: one table, `STANDIN_CLIPS`.
+    - idle → `Idle_Neutral`, walk → `Walk`, run → `Run` (by speed)
+    - talk → idle plus `Interact` gestures
+    - point / interact → `Interact`, wave → `Wave`
+    - lookAround → idle with a head sweep
+    - sit / sitTalk → idle with the root lowered 0.42 m
+    - `info.clips` = idle, walk, run, talk, wave, lookAround, interact.
+  - Strides are measured from each clip's foot track (`strideFromFeet`): Walk 0.98, Run 1.31 m
+    per loop per metre of height.
+  - `face` is an eased turn, capped at 5 rad/s. `lookAt` turns neck and head
+    (`Rig.turnBone`, ±60°, no owl neck).
+  - 'solid' = per-person clones of the model's slots lit by `kqStandard`. 'ghost' = the NPC ghost
+    shader with its depth pre-pass.
+  - Each skinned part gets one conservative bound round the whole body, so frustum culling works
+    on skinned meshes.
+  - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
+    capsule. Geometry belongs to the asset cache.
+  - A failed load shows a capsule.
+- **Talking to people** (v0.1):
+  - Spawn the person with `speaker: '<content speaker id>'`. The npc system then binds that
+    speaker's story placement (`npc:spawn`) to `ctx.people.bySpeaker(id)` (`npc/bind.ts`).
+  - While bound, the placement has no figure of its own. Talk range, the E prompt, the quest
+    glyph and the conversation framing follow `person.root`. The placement's own x/z wait unused.
+  - During the conversation the person turns to the player (`face`), looks at the eyes
+    (`lookAt`) and plays 'talk'. At the end it plays 'idle' and `lookAt(null)`.
+  - A walking person stays talkable. The walk system may pause itself on `npc:conversation`.
+  - Disposing the person unbinds it, and the figure comes back at the placement.
+- **Hooks:** `kq.people`
+  - `spawn(specId, x, z, {yawDeg | yaw, look, tier, seed, name, speaker}) → id`
+  - `list()`
+  - `get(id)`: state (position, yaw, speed, clip / playing / shot, look, LOD, measured strides,
+    weights, head, tris, draw calls)
+  - `clear()`
+  - `stats()`: count, drawn, approx tris, draw calls, LOD bands
+  - `specs()`
+  - `drive(id, mps)`: debug walking along the facing
+  - Tests: `tests/people.test.ts`. They load the real GLBs in node: strides, poses, bounds,
+    disposal.
+- **Stand-in limits:**
+  - 10–15 draw calls and 5.3k–10.2k tris per body (above the featured / extra budgets), twice
+    that for a ghost
+  - no real point / sit clips
+  - no LOD1 mesh
+  - per-person materials
+  - no foot IK on slopes
+
+### fauna (`src/systems/fauna/`) – Fauna contract v0
+Animal bodies for the tour: the roe doe and her fawn (a photo / sneak moment) and Jost's dogs Diane
+and Bijou (they follow him, bolt into the forest, sit at stops, lie at the party). The people
+system's sibling, built the same way: a **mesh-independent handle API**, today rigged CC0
+stand-ins, the **authored meshes later behind the same interface**.
+
+- **The contract** is `src/systems/fauna/types.ts` (frozen 2026-11-20). Import it with
+  `import type` only:
+
+  ```ts
+  type AnimalClip = 'idle' | 'walk' | 'run' | 'alert' | 'graze' | 'sniff' | 'sit' | 'lie' | 'sleep' | 'bark' | 'shake';
+  interface AnimalSpawnOpts { x; z; y?; yaw?; seed?; name?; keepAlive? }   // y: ground; yaw: radians, 0 faces −z
+  interface AnimalInfo { specId; length; height; radius; headHeight; speeds: { walk; run }; clips }
+  interface Animal {
+    id; specId; root; info; ready /* Promise<boolean> */;
+    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw); lookAt(p | null);
+    headWorld(out); setEyeShine(k); setVisible(v); dispose();
+  }
+  interface FaunaApi { spawn(specId, opts): Animal; get(id); list(); clear(); specs() }
+  ```
+
+- **Who does what:** fauna owns the BODIES (meshes, clips, poses, LOD). The BEHAVIOUR is
+  kq-systems' `src/systems/animals/`: flee and sneak, following Jost, alert events, save /
+  restore, its own hooks. It drives the bodies like the walk system drives people.
+  - It gets them through `ctx.fauna` (`FaunaApi | undefined`, declaration merge, set in `init`).
+    Declare `after: ['fauna']`.
+  - Nothing spawns an animal by default. Animals are not saved: the behaviour layer spawns them
+    again from its own slice after a load.
+- **Rules** (as for people unless noted)
+  - The fauna system ticks every animal each frame. Callers move and rotate `root` (feet at the
+    origin, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.
+  - `setSpeed` blends idle → walk → run at thresholds from the spec's own speeds, with
+    phase-locked paws. Above 0.2 m/s (`MOVE_OVERRIDE`) it overrides the looping clips; a pose
+    (sit, lie) waits until the animal stops.
+  - Loops: idle, alert, graze, sniff, sit, lie, sleep. One-shots: bark, shake; over moving legs
+    they move head and neck only. `play('walk' | 'run')` hands the body back to `setSpeed`.
+  - A clip outside `info.clips` plays the species' stand-in look if it has one (a dog's bark),
+    otherwise its nearest fallback (`CLIP_FALLBACK`: graze → sniff → idle, sleep → lie → idle,
+    bark → alert → idle, shake / sit → idle).
+  - `headWorld(out)`: the live point between the eyes (the head bone carries it), for the photo
+    framing and sight lines. Before the body is in: root + eye height.
+  - `setEyeShine(k)` (0..1): tiny additive glints at the eyes for a torch at night. Hidden at 0,
+    one extra draw call when on, no lights.
+  - `keepAlive`: full rate and drawn at any distance (a scene animal far from the camera).
+- **Distance LOD** (`FAUNA_LOD`): full rate within 15 m, about 10 Hz within 40 m, frozen beyond,
+  hidden beyond 60 m; frustum culling stays on. **Budget** (`FAUNA_BUDGET`, authored meshes):
+  featured ≤ 8k tris, ≤ 2 draw calls, LOD1 at about 50 % beyond 15 m.
+- **Spec ids** (provisional, `specs.ts`):
+  - `reh.ricke`: shoulder 0.75 m, 1.15 m long, eyes 0.95 m, walk 1.2 / run 8 m/s
+  - `reh.kitz`: 0.68 m, 1.05 m, eyes 0.86 m (the contract gives no speeds: the doe's)
+  - `dog.diane`: lean hunting dog, 0.58 m, 0.95 m, eyes 0.62 m, 1.4 / 7 m/s, liver and white
+  - `dog.bijou`: small, 0.32 m, 0.55 m, eyes 0.36 m, 1.2 / 5 m/s, tan / wheaten
+  - An unknown id gets a generic dog and one `console.warn` per id; the handle keeps the
+    requested `specId`.
+- **Stand-in build** (`standin.ts`, `registry.ts`; pure maths in `locomotion.ts`, which reuses
+  the people helpers with per-species gaits, head limits and LOD bands):
+  - Bodies: the Quaternius wolf (dogs) and horse (deer), lazy via `ctx.assets`. Scaled to the
+    spec's shoulder height (the torso top), stretched to its length, slimmed (`build`), neck,
+    head and tail resized per spec. Recoloured per slot and by vertex-colour paint rules (the
+    roe's white rump and throat, Diane's liver patches); the horse's mane and tail are hidden.
+    Both roe deer are winter grey; the fawn has no spots.
+  - Clip map (`STANDIN_CLIPS`): idle → `Idle`, walk → `Walk`, run → `Gallop` (by speed). The rest
+    are procedural over Idle:
+    - alert → Idle slowed, head and ears up
+    - graze / sniff → nose to the ground (the neck pitch learnt from the nose height, never
+      behind the forefeet), the front of the body lowered (pose 'nose'), chewing / a sniffing
+      drift
+    - sit (dog) / lie → a body pose: the torso pitched about the hips, two-bone leg IK onto
+      ground targets, tail along the ground
+    - sleep → lie with the head down
+    - bark / shake (dog) → stand-in one-shots over `Idle_HitReact_Left`: a head snap, a roll
+      wave; not in `info.clips`
+    - `info.clips`: dog idle, walk, run, sniff, alert, sit, lie, sleep; deer idle, walk, run,
+      graze, sniff, alert, lie, sleep
+  - Strides are measured from the IK paw tracks: walk 0.62 / 0.56 / 0.69 / 0.40 m per loop (doe,
+    fawn, Diane, Bijou). The Gallop clips are nearly in place (about 1.1 body lengths per loop),
+    so the run cycle takes a floor of two body lengths (`RUN_STRIDE_PER_LENGTH`); the paws slip a
+    little in the short gallop stance.
+  - The head carriage puts the idle eyes at the spec's `headHeight` (within 2 %).
+  - `dispose()` frees the animal's own materials, the glint geometry, skeletons and the mixer.
+    The asset geometry and the shared paint geometry stay cached.
+  - A failed load shows a capsule.
+- **Hooks:** `kq.fauna`
+  - `spawn(specId, x, z, {yawDeg | yaw, seed, name, keepAlive}) → id`
+  - `list()`, `get(id)`: state (position, yaw, speed, clip / playing / shot, pose, weights, head,
+    eye point, strides, LOD, tris, draw calls)
+  - `clear()`, `stats()`, `specs()`
+  - `drive(id, mps)`: debug walking along the facing
+  - `play(id, clip, o?)`, `shine(id, k)`: debug
+  - Tests: `tests/fauna.test.ts`. They load the real GLBs in node: sizes, strides, poses against
+    the ground, clip fallbacks, bounds, look-at, glints, LOD, disposal.
+- **Stand-in limits:**
+  - 4 (dog) / 7 (deer) draw calls and about 2k tris (over the 2-call budget)
+  - a reshaped horse and wolf: the roe keeps a horse's heavier head, the dogs a wolf's build
+  - sit, lie, graze, bark and shake are procedural; no shake of the coat
+  - no LOD1 mesh, no paw IK on slopes, a small paw skid in the gallop
 
 ### barks (`src/systems/barks/`) – Laub's and Marlene's remarks
 - Rules (`rules.ts`, bible 08-stimmen): random line per group, same line not within 600 s, one bark
