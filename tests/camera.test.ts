@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { BOOM_MIN, CameraRig, type CameraHints, type CameraWorld, CRANE_MAX, INDOOR_BOOM, NEAR_COMFORT, RISE_MAX, ZOOM_MAX, ZOOM_MIN, frameTilt, squeezeRise, twoShot } from '../src/player/camera';
 import { SEE_CONE, SEE_HALF, SEE_HALF_FIGHT, applySeeThrough, seeAmount } from '../src/player/seeThrough';
 import { FootprintCollider } from '../src/world/collision';
+import { clamp01, dirXZ, finite3, finiteOr, loop01, safeDt, turnToward } from '../src/player/guards';
+import { lensVis } from '../src/systems/combat/visuals';
 import { DEFAULT_BINDINGS, REBINDABLE } from '../src/player/input';
 import { pickTarget, type TargetCandidate } from '../src/systems/combat/targeting';
 
@@ -354,6 +356,152 @@ describe('camera probes against footprints (round 10)', () => {
     c.setPassZones('gate', [{ poly: 0, x: 0, z: 5, r: 1.5 }]);
     expect(c.hits(0, 5, 0.22)).toBe(false);
     expect(c.hits(0, 8, 0.22)).toBe(true);
+  });
+});
+
+describe('NaN guards (F-15)', () => {
+  const fin = (c: PerspectiveCamera) => finite3(c.position) && Number.isFinite(c.rotation.x + c.rotation.y + c.rotation.z);
+
+  it('the pure helpers: dt, clamps, zero-length directions, angles, loops', () => {
+    expect(safeDt(Number.NaN)).toBe(0);
+    expect(safeDt(-1)).toBe(0);
+    expect(safeDt(0)).toBe(0);
+    expect(safeDt(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(safeDt(5)).toBe(0.1);
+    expect(safeDt(1 / 60)).toBeCloseTo(1 / 60, 9);
+    expect(clamp01(Number.NaN)).toBe(0);
+    expect(clamp01(Number.POSITIVE_INFINITY)).toBe(1);
+    expect(clamp01(Number.NEGATIVE_INFINITY)).toBe(0);
+    expect(clamp01(0.3)).toBe(0.3);
+    expect(finiteOr(Number.NaN, 2)).toBe(2);
+    expect(finiteOr(-3, 2)).toBe(-3);
+    const o = { x: 9, z: 9 };
+    expect(dirXZ(0, 0, o)).toEqual({ x: 0, z: -1 });
+    expect(dirXZ(Number.NaN, 1, o, 1, 0)).toEqual({ x: 1, z: 0 });
+    expect(dirXZ(1e-12, 0, o)).toEqual({ x: 0, z: -1 });
+    dirXZ(3, 4, o);
+    expect(o.x).toBeCloseTo(0.6, 9);
+    expect(o.z).toBeCloseTo(0.8, 9);
+    // turning: a NaN wish keeps the facing, a NaN facing restarts at the fallback, dt 0 holds
+    expect(turnToward(1, Number.NaN, 11, 1 / 60, 0)).toBe(1);
+    expect(turnToward(Number.NaN, 1, 11, 1 / 60, 0.5)).toBeGreaterThan(0.5);
+    expect(turnToward(1, 2, 11, 0, 0)).toBe(1);
+    expect(turnToward(1, 2, 11, Number.NaN, 0)).toBe(1);
+    // the short way round, over ±π (not back through 0)
+    const t = turnToward(3, -3, 1000, 0.1, 0);
+    expect(t).toBeGreaterThan(3);
+    expect(Math.cos(t + 3)).toBeCloseTo(1, 6);
+    expect(loop01(1.5, 1)).toBeCloseTo(0.5, 9);
+    expect(loop01(-0.25, 1)).toBeCloseTo(0.75, 9);
+    expect(loop01(3, 0)).toBe(0);
+    expect(loop01(Number.NaN, 2)).toBe(0);
+    expect(loop01(Number.POSITIVE_INFINITY, 2)).toBe(0);
+  });
+
+  it('the camera maths never return NaN', () => {
+    expect(squeezeRise(Number.NaN)).toBe(0);
+    // the point exactly at the lens, a NaN point, a NaN fov
+    expect(frameTilt(0, 1.65, 0, 0, 1.65, 0, 0, 0, 70)).toBe(0);
+    expect(frameTilt(0, 2, 3, Number.NaN, 1.65, 0, 0, 0, 70)).toBe(0);
+    expect(frameTilt(0, 2, 3, 0, 1.65, 0, 0, 0, Number.NaN)).toBe(0);
+    const o = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
+    // the speaker on the character's spot, a NaN speaker
+    for (const s of [
+      [0, 1.7, 0],
+      [Number.NaN, 1.7, -2],
+      [0, Number.POSITIVE_INFINITY, -2],
+    ] as const) {
+      twoShot(0, 1.65, 0, s[0], s[1], s[2], 1, 70, o);
+      expect(Number.isFinite(o.x + o.y + o.z + o.yaw + o.pitch)).toBe(true);
+      expect(Math.hypot(o.x, o.z)).toBeGreaterThan(1);
+    }
+    // a NaN side, a NaN fov
+    twoShot(0, 1.65, 0, 0, 1.7, -2, Number.NaN, Number.NaN, o);
+    expect(Number.isFinite(o.x + o.y + o.z + o.yaw + o.pitch)).toBe(true);
+    // a NaN character: nothing to frame, the shot is left as it was
+    const before = { ...o };
+    twoShot(Number.NaN, 1.65, 0, 0, 1.7, -2, 1, 70, o);
+    expect(o).toEqual(before);
+  });
+
+  it('the rig with dt 0, a NaN dt and a huge dt stays finite and settled', () => {
+    for (const dt of [0, Number.NaN, 30, -1]) {
+      const rig = new CameraRig();
+      const cam = new PerspectiveCamera(70, 16 / 9, 0.2, 1000);
+      settle(rig, cam, flat, input());
+      const z0 = cam.position.z;
+      for (let i = 0; i < 30; i++) rig.update(cam, input({ dt }), flat, noHints());
+      expect(fin(cam)).toBe(true);
+      expect(cam.position.z).toBeCloseTo(z0, 3);
+    }
+  });
+
+  it('a NaN position or look holds the last good camera, and the rig recovers next frame', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera(70, 16 / 9, 0.2, 1000);
+    settle(rig, cam, flat, input());
+    const p0 = cam.position.clone();
+    for (const bad of [{ x: Number.NaN }, { y: Number.POSITIVE_INFINITY }, { yaw: Number.NaN }, { pitch: Number.NaN }, { eye: Number.NaN }]) {
+      rig.update(cam, input(bad), flat, noHints());
+      expect(fin(cam)).toBe(true);
+      expect(cam.position.distanceTo(p0)).toBeLessThan(1e-9);
+    }
+    settle(rig, cam, flat, input({ x: 5 }), noHints(), 120);
+    expect(fin(cam)).toBe(true);
+    expect(cam.position.x).toBeGreaterThan(4);
+  });
+
+  it('NaN from the world or the hints never reaches the camera', () => {
+    const cam = new PerspectiveCamera(70, 16 / 9, 0.2, 1000);
+    const worlds: CameraWorld[] = [
+      { heightAt: () => Number.NaN, blocked: () => false },
+      { heightAt: (_x, z) => (z > 2 ? Number.POSITIVE_INFINITY : 0), blocked: () => false },
+      { heightAt: () => 0, blocked: () => false, ceiling: () => Number.NaN },
+      { heightAt: () => 0, blocked: () => false, space: () => Number.NaN },
+    ];
+    for (const w of worlds) {
+      const rig = new CameraRig();
+      settle(rig, cam, flat, input(), noHints(), 10);
+      settle(rig, cam, w, input(), noHints(), 60);
+      expect(fin(cam)).toBe(true);
+    }
+    const nan = Number.NaN;
+    const hints: CameraHints[] = [
+      { fight: [{ x: nan, z: 1, r: 0.5, top: 1 }], focus: null, boss: 0 },
+      { fight: [{ x: 1, z: 1, r: nan, top: nan }], focus: null, boss: nan },
+      { fight: [], focus: { x: nan, y: 1.7, z: -2 }, boss: 0 },
+      { fight: [], focus: { x: 0, y: 1.7, z: 0 }, boss: 0 },
+      { fight: [], focus: null, boss: 0, bodies: [{ x: 0, z: 2, r: nan, top: 3 }] },
+    ];
+    for (const h of hints) {
+      const rig = new CameraRig();
+      settle(rig, cam, flat, input(), h, 60);
+      expect(fin(cam)).toBe(true);
+    }
+    // a NaN zoom from outside, and NaN wheel notches
+    const rig = new CameraRig();
+    rig.addZoom(Number.NaN);
+    expect(rig.zoom).toBe(3.6);
+    rig.zoom = Number.NaN;
+    settle(rig, cam, flat, input(), noHints(), 30);
+    expect(fin(cam)).toBe(true);
+    expect(rig.zoom).toBe(3.6);
+  });
+
+  it('the see-through switches off on a NaN lens, ignores a NaN subject; lensVis keeps a body drawn', () => {
+    const u = { uSeeCam: { value: new Vector4() }, uSeeP: { value: new Vector4() }, uSeeT: { value: new Vector4() }, uSeeK: { value: new Vector4() } };
+    applySeeThrough({ on: true, cam: { x: Number.NaN, y: 2, z: 4 }, chest: { x: 0, y: 1, z: 0 }, fight: false, subject: null }, u);
+    expect(u.uSeeCam.value.w).toBe(0);
+    applySeeThrough({ on: true, cam: { x: 0, y: 2, z: 4 }, chest: { x: 0, y: 1, z: 0 }, fight: true, subject: { x: Number.NaN, y: 1, z: -5, w: 0.8 } }, u);
+    expect(u.uSeeT.value.w).toBe(0);
+    for (const c of [u.uSeeCam.value, u.uSeeP.value, u.uSeeK.value]) expect(Number.isFinite(c.x + c.y + c.z + c.w)).toBe(true);
+    const e = { x: 0, y: 0, z: 0, heading: 0, radius: 0.5 };
+    const v = { hull: { r: 0.5, f: 0.5 }, t: { top: 1.5 } };
+    expect(lensVis(e, v, { x: Number.NaN, y: 1, z: 0 })).toBe(1);
+    expect(lensVis({ ...e, x: Number.NaN }, v, { x: 0, y: 1, z: 0 })).toBe(1);
+    // the lens at the body's axis (zero distance): hidden, not NaN
+    expect(lensVis(e, v, { x: 0, y: 1, z: 0 })).toBe(0);
+    expect(lensVis(e, v, { x: 3, y: 1, z: 0 })).toBe(1);
   });
 });
 

@@ -84,16 +84,17 @@ export function seeAmount(u: { cam: V4; p: V4; t: V4; k: V4 }, base: V3, r: numb
 /** Write the see-through uniforms for this frame (pure; tested). */
 export function applySeeThrough(o: SeeInput, u: SeeUniforms): void {
   const c = u.uSeeCam.value;
-  if (!o.on) {
+  const cam = o.cam;
+  const ch = o.chest;
+  // off, or a NaN lens / chest (F-15: never a NaN uniform in every tree shader)
+  if (!o.on || !Number.isFinite(cam.x + cam.y + cam.z + ch.x + ch.y + ch.z)) {
     c.w = 0;
     return;
   }
-  const cam = o.cam;
-  const ch = o.chest;
   // anything farther from the lens than the farthest subject (plus a margin) cannot be in the way
   let reach = Math.hypot(ch.x - cam.x, ch.z - cam.z);
   let top = Math.max(cam.y, ch.y);
-  const s = o.subject;
+  const s = o.subject && Number.isFinite(o.subject.x + o.subject.y + o.subject.z + o.subject.w) ? o.subject : null;
   if (s) {
     reach = Math.max(reach, Math.hypot(s.x - cam.x, s.z - cam.z));
     top = Math.max(top, s.y);

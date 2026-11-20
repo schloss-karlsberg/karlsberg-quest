@@ -1,4 +1,5 @@
 import { type PerspectiveCamera, Vector3 } from 'three';
+import { finiteOr, safeDt } from './guards';
 
 /**
  * Third-person action camera (playtest round 8: first-person melee was unreadable — enemies sat
@@ -125,6 +126,7 @@ function ease(cur: number, want: number, up: number, down: number, dt: number, s
  * `RISE_MAX` at the shortest boom.
  */
 export function squeezeRise(distance: number): number {
+  if (!Number.isFinite(distance)) return 0;
   return RISE_MAX * (1 - smooth01(BOOM_MIN, NEAR_COMFORT, distance));
 }
 
@@ -140,7 +142,8 @@ export function frameTilt(cx: number, cy: number, cz: number, tx: number, ty: nu
   const hi = e - Math.atan(low * tanH);
   const lo = e - Math.atan(high * tanH);
   const p = Math.min(hi, Math.max(lo, pitch));
-  return p - pitch;
+  // NaN anywhere (a point at the lens, a broken fov): no tilt rather than a NaN view (F-15)
+  return Number.isFinite(p - pitch) ? p - pitch : 0;
 }
 
 /**
@@ -150,15 +153,27 @@ export function frameTilt(cx: number, cy: number, cz: number, tx: number, ty: nu
  * right of the line from the character to the speaker, −1 = the mirror (character right).
  */
 export function twoShot(px: number, py: number, pz: number, sx: number, sy: number, sz: number, side: number, fovV: number, out: { x: number; y: number; z: number; yaw: number; pitch: number }): typeof out {
+  // nothing to frame: the caller keeps its last good camera (F-15)
+  if (!Number.isFinite(px + py + pz)) return out;
+  if (!Number.isFinite(sx + sy + sz)) {
+    sx = px;
+    sy = py;
+    sz = pz - 1;
+  }
+  side = side < 0 ? -1 : 1;
+  fovV = finiteOr(fovV, 70);
   let ux = sx - px;
   let uz = sz - pz;
-  const D = Math.max(0.6, Math.hypot(ux, uz));
-  ux /= D;
-  uz /= D;
-  if (!Number.isFinite(ux) || (ux === 0 && uz === 0)) {
+  const L = Math.hypot(ux, uz);
+  if (L > 1e-6) {
+    ux /= L;
+    uz /= L;
+  } else {
+    // the speaker on the character's spot: any line will do
     ux = 0;
     uz = -1;
   }
+  const D = Math.max(0.6, L);
   const back = 1.0 + 0.1 * Math.min(4, D);
   const off = (1.25 + 0.15 * Math.min(4, D)) * side;
   // right of the line p → s is (−uz, ux)
@@ -239,10 +254,15 @@ export class CameraRig {
   /** Effective mode last frame (the avatar hides in first person). */
   thirdPerson = false;
   readonly debug: RigDebug = { distance: 0, head: 0, rise: 0, crane: 0, enemyLift: 0, tilt: 0, indoor: 0, focus: 0, space: -1, lensSpace: -1 };
+  /** The last camera placement that was finite (F-15: a NaN never reaches the camera). */
+  private readonly good = new Vector3();
+  private goodYaw = 0;
+  private goodPitch = 0;
+  private goodInit = false;
 
   /** Wheel notches → zoom. */
   addZoom(notches: number): void {
-    if (!notches) return;
+    if (!notches || !Number.isFinite(notches)) return;
     this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.zoom * Math.pow(1.12, notches)));
   }
 
@@ -270,11 +290,32 @@ export class CameraRig {
     return 1;
   }
 
+  /** Back to the last good placement and restart every smoothed state (F-15). */
+  private fallBack(camera: PerspectiveCamera): void {
+    if (this.goodInit) {
+      camera.position.copy(this.good);
+      camera.rotation.set(this.goodPitch, this.goodYaw, 0, 'YXZ');
+    }
+    this.pivotInit = false;
+    this.distance = this.zoom;
+    this.pull = this.lift = this.bodyLift = 0;
+    this.rise = this.crane = this.enemyLift = this.tilt = this.indoor = 0;
+    this.shoulder = SHOULDER;
+    this.focusMix = 0;
+    this.shotInit = false;
+  }
+
   /** Place the camera. Returns true in third person. */
   update(camera: PerspectiveCamera, o: RigInput, world: CameraWorld, hints: CameraHints = cameraHints): boolean {
-    const dt = Math.min(0.1, Math.max(0, o.dt));
+    const dt = safeDt(o.dt);
     const third = this.mode === 'third' && !o.flying;
     this.thirdPerson = third;
+    if (!Number.isFinite(this.zoom)) this.zoom = 3.6;
+    // a broken input (NaN feet or look): hold the last good camera rather than pass it on (F-15)
+    if (!Number.isFinite(o.x + o.y + o.z + o.yaw + o.pitch + o.eye)) {
+      this.fallBack(camera);
+      return third;
+    }
     camera.rotation.set(o.pitch, o.yaw, 0, 'YXZ');
     if (!third) {
       camera.position.set(o.x, o.y + o.eye, o.z);
@@ -282,6 +323,10 @@ export class CameraRig {
       this.pivotInit = false;
       this.focusMix = 0;
       this.shotInit = false;
+      this.good.copy(camera.position);
+      this.goodYaw = o.yaw;
+      this.goodPitch = o.pitch;
+      this.goodInit = true;
       return false;
     }
     const snap = !this.pivotInit;
@@ -299,7 +344,8 @@ export class CameraRig {
     }
     const instant = o.reducedMotion || snap;
     // a room over the character: the closer, higher indoor preset (F-31)
-    const ceil = world.ceiling?.(o.x, o.z, o.y) ?? null;
+    const ceilAt = world.ceiling?.(o.x, o.z, o.y) ?? null;
+    const ceil = ceilAt !== null && Number.isFinite(ceilAt) ? ceilAt : null;
     this.indoor = ease(this.indoor, ceil !== null ? 1 : 0, 3, 3, dt, instant);
     const ind = this.indoor;
     // the character's walkable space (a door's reveal counts as the side the boom comes from)
@@ -312,7 +358,7 @@ export class CameraRig {
       let top = 0;
       for (const e of hints.fight) {
         const d = Math.hypot(e.x - o.x, e.z - o.z) + e.r;
-        if (d > 16) continue;
+        if (!(d <= 16) || !Number.isFinite(e.top)) continue;
         spread = Math.max(spread, d);
         top = Math.max(top, e.top);
       }
@@ -321,11 +367,12 @@ export class CameraRig {
         wantLift = Math.min(1.0, 0.45 + Math.max(0, top - 2) * 0.12);
       }
     }
-    if (hints.boss > 0) {
+    if (hints.boss > 0 && Number.isFinite(hints.boss)) {
       wantPull = Math.max(wantPull, Math.min(4.5, 1.2 + hints.boss * 0.6));
       wantLift = Math.max(wantLift, Math.min(1.2, 0.35 + hints.boss * 0.15));
     }
-    const focus = hints.focus;
+    const hf = hints.focus;
+    const focus = hf && Number.isFinite(hf.x + hf.y + hf.z) ? hf : null;
     if (focus) {
       wantPull = 0;
       wantLift = 0;
@@ -367,13 +414,14 @@ export class CameraRig {
     // it (playtest round 9: the camera sat inside the Pikeur's ghost horse)
     let needLift = 0;
     for (const b of hints.bodies ?? []) {
+      if (!Number.isFinite(b.x + b.z + b.r + b.top)) continue;
       for (let t = 0.6; t <= boom; t += 0.4) {
         const x = _s.x - _f.x * t;
         const z = _s.z - _f.z * t;
         if (Math.hypot(x - b.x, z - b.z) > b.r + 0.5) continue;
         const top = world.heightAt(b.x, b.z) + b.top + 0.4;
         const y = _s.y + this.bodyLift - _f.y * t;
-        needLift = Math.max(needLift, Math.min(3, top - (y - this.bodyLift)));
+        needLift = Math.max(needLift, finiteOr(Math.min(3, top - (y - this.bodyLift)), 0));
       }
     }
     this.bodyLift += (Math.max(0, needLift) - this.bodyLift) * Math.min(1, dt * (needLift > this.bodyLift ? 4 : 1.2));
@@ -415,7 +463,7 @@ export class CameraRig {
     let wantEnemy = 0;
     for (const e of hints.fight) {
       const dh = Math.hypot(_c.x - e.x, _c.z - e.z) - e.r;
-      if (dh > ENEMY_CLEAR) continue;
+      if (!(dh <= ENEMY_CLEAR)) continue;
       const over = world.heightAt(e.x, e.z, o.y) + e.top + 0.5 - (_c.y + this.enemyLift);
       if (over > 0) wantEnemy = Math.max(wantEnemy, Math.min(1.3, this.enemyLift + over) * (1 - smooth01(0.5, ENEMY_CLEAR, dh)));
     }
@@ -447,8 +495,17 @@ export class CameraRig {
       yaw += dy * k;
       pitch += (this.shot.pitch - pitch) * k;
     } else if (!focus) this.shotInit = false;
+    // a NaN that slipped through (the world's heights, a probe): keep the last good camera (F-15)
+    if (!Number.isFinite(px + pyC + pz + pitch + yaw)) {
+      this.fallBack(camera);
+      return true;
+    }
     camera.position.set(px, pyC, pz);
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    this.good.set(px, pyC, pz);
+    this.goodYaw = yaw;
+    this.goodPitch = pitch;
+    this.goodInit = true;
     const d = this.debug;
     d.distance = this.distance;
     d.head = Math.hypot(px - this.pivot.x, pyC - this.pivot.y, pz - this.pivot.z);

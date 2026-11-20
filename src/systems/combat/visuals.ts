@@ -933,6 +933,8 @@ export function occlusionVis(e: Enemy, v: { hull: { r: number; f: number }; t: {
  * body at the near plane fades out completely. Render only; the fight is untouched.
  */
 export function lensVis(e: Pick<Enemy, 'x' | 'y' | 'z' | 'heading' | 'radius'>, v: { hull: { r: number; f: number }; t: { top: number } }, cam: { x: number; y: number; z: number }): number {
+  // a NaN lens or body: drawn as usual, never hidden by accident (F-15)
+  if (!Number.isFinite(cam.x + cam.y + cam.z + e.x + e.y + e.z)) return 1;
   if (cam.y < e.y - 0.6 || cam.y > e.y + v.t.top + 0.6) return 1;
   const q = hullDistance(e, v.hull, cam.x, cam.z);
   const d = Math.hypot(cam.x - e.x, cam.z - e.z);
