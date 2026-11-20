@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
 import { LORE } from '../src/systems/travel/lore';
-import { ACTIVATE_RADIUS, SURVEY_POINTS, activateRadius, announceFor, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceFor, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -78,6 +78,15 @@ describe('survey points', () => {
     expect(announceFor({ x: 1822, z: 70 }, { x: 1800, z: 0 }, [])).toBeNull();
     expect(announceFor({ x: 1822, z: 70 }, { x: 1165, z: -1571 }, ['karlslust'])).toBeNull();
     expect(announceFor({ x: 600, z: -1600 }, { x: 1800, z: 0 }, [])).toBeNull();
+  });
+
+  it('announces from 400 m (playtest round 10): the Feldstation → Ehrenhof leg qualifies, 350 m does not', () => {
+    expect(ANNOUNCE_MIN).toBe(400);
+    // K1 start: from the Feldstation tripod to the Ehrenhof Q spot, ~496 m (> 400, < the old 600)
+    const fs = pointById('feldstation')!;
+    expect(announceFor({ x: 1222, z: -1119 }, { x: fs.x, z: fs.z }, [])?.id).toBe('ehrenhof');
+    expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 350, z: -1119 }, [])).toBeNull();
+    expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 410, z: -1119 }, [])?.id).toBe('ehrenhof');
   });
 
   it('journeys: free in the present, in the past only while nothing holds you', () => {

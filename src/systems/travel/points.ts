@@ -109,9 +109,15 @@ export function travelBlock(w: TravelWorld): TravelBlock {
  * then known without the walk (so a chapter never starts with a 1.8 km march). Returns the point to
  * announce, or null.
  */
+/**
+ * How far away (m) a goal must be before Laub announces the point beside it. 600 until playtest
+ * round 10: the Feldstation → Ehrenhof leg (~500 m) then never qualified.
+ */
+export const ANNOUNCE_MIN = 400;
+
 export function announceFor(goal: { x: number; z: number } | null, player: { x: number; z: number }, known: readonly string[]): SurveyPoint | null {
   if (!goal) return null;
-  if (Math.hypot(goal.x - player.x, goal.z - player.z) < 600) return null;
+  if (Math.hypot(goal.x - player.x, goal.z - player.z) < ANNOUNCE_MIN) return null;
   const near = nearestPoint(goal.x, goal.z, SURVEY_POINTS);
   if (!near || near.d > 140) return null;
   if (near.point.known || known.includes(near.point.id)) return null;
