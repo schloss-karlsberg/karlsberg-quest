@@ -142,6 +142,8 @@ class QuestRuntime {
   private hintKey = '';
   private hint: { quest: string; obj: string; text: string } | null = null;
   private leadDist = '';
+  /** What the tracker's lead line was last rendered from (quest / objective / label). */
+  private leadKey = '';
   /**
    * A second, silver waymark over the nearest tracked side goal that is not the lead (playtest:
    * „Lichter am Weiher“ had a compass mark only; at night nobody found the Irrlichter).
@@ -727,6 +729,14 @@ class QuestRuntime {
     const p = ctx.player.position;
     const lead0 = this.computeLead();
     this.lead = lead0;
+    // the tracker's „→“ line reads the lead: a new lead (the story's own line changed with no quest
+    // event) re-renders it — it stayed stale (after the Karlsbergquelle's shift it still said „den
+    // Hang hinunter zur Karlsbergquelle“ in 1789)
+    const leadKey = lead0 ? `${lead0.quest?.id ?? ''}/${lead0.obj?.id ?? ''}/${lead0.label}` : '';
+    if (leadKey !== this.leadKey) {
+      this.leadKey = leadKey;
+      this.dirty = true;
+    }
     const lead = this.viaEntrance(lead0);
     this.leadDoor = lead !== lead0 && lead?.target ? { x: lead.target.x, z: lead.target.z } : null;
     if (lead?.target) want.set('kqq:obj', { kind: 'obj', x: lead.target.x, z: lead.target.z, dist: Math.hypot(lead.target.x - p.x, lead.target.z - p.z), edge: true });

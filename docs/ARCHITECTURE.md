@@ -369,6 +369,11 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Art polish (`e2e/polish-art.spec.ts`): ghost costumes by day / night, forest LOD stats and the
   eras' seasons, the Festsaal on arrival (heat) and burning, hounds in fog at 30–60 m; screenshots
   `pol-art-*.png`.
+- Karlsbergquelle (`src/systems/quelle`): `tests/quelle.test.ts` (the pure layout on a flat and a
+  sloped synthetic heightfield: frame, water per era, the jet, who may touch, brook, clearings);
+  `e2e/quelle.spec.ts` (p3q → E at the trough → the scene on game time → shift to 1789 / p3r, held
+  until `shift:done` → hold Q → p4); the prologue driver walks the same way (`touchSpring` in
+  `e2e/helpers/prolog.ts`).
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
   prologue across all four systems (new game → hub → Pinnwand opens the Journal → objective →
   scan → clues → Q → shift → echo → pack → caught (nothing lost) → station → Journal codex holds
