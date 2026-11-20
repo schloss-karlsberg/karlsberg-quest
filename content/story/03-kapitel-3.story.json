@@ -6,7 +6,7 @@
   "era": "1793-07",
   "start": "k3_0",
   "next": "k4",
-  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
   "on": [
     { "id": "teil-b", "when": { "have": { "clue": "clue.k3.chronik" } }, "do": [{ "do": "flag", "set": { "flag.k3_teil_b": true } }] },
     {
@@ -244,7 +244,7 @@
   "beats": [
     {
       "id": "k3_0",
-      "title_de": "Feldstation",
+      "title_de": "An der Quelle",
       "enter": [
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "story.laub": true } },
@@ -672,9 +672,9 @@
         { "do": "look", "time": "dusk" },
         { "do": "anchor", "to": null },
         { "do": "say", "line": "marlene.k3.abend", "delay": 3 },
-        { "do": "objective", "id": "k3.station", "text": "Zur Feldstation", "x": 760.6, "z": -910.4, "delay": 1 }
+        { "do": "objective", "id": "k3.station", "text": "Zur Quelle", "x": 1059.3, "z": -833.1, "delay": 1 }
       ],
-      "complete": { "any": [{ "event": "hub:enter" }, { "enter": { "x": 760, "z": -915, "r": 15, "era": "today" } }] }
+      "complete": { "any": [{ "event": "hub:enter" }, { "enter": { "x": 1061, "z": -834.5, "r": 12, "era": "today" } }] }
     },
     {
       "id": "k3_10",

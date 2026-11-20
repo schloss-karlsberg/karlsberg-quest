@@ -2,10 +2,13 @@ import { clue, noun, say, seq, hints, src, write } from './common.mjs';
 
 const ch = 'k4';
 const E = '1796';
-const STATION = [760, -930];
-// Marlene's note lies on the step of the Bauwagen (spawn 760/−902 faces it), so E there finds it
-// before the other chapters' station notes (760/−930, r 30)
-const STUFE = [760, -908];
+// Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
+// south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
+// the trough's E zone (HOME.troughR) stay outside, the story grants them anyway
+const STATION = [1051.3, -827.4];
+// Marlene's note lies on the mossy edge block by the steps at the spring (local u −3.4, w 3.2),
+// 3.7 m from the wake spot: reachable, and its 1.2 m circle stays clear of the trough's E zone
+const STUFE = [1056.4, -835.4];
 const TAL = [497, -900];
 const WEST = [200, -905];
 const BAU = [503, -836];
@@ -25,7 +28,7 @@ const ZW = [1216, -1571];
 
 const clues = [
   clue('clue.k4.marlene', {
-    title: 'Marlenes Zettel', kind: 'document', at: STUFE, r: 6, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
+    title: 'Marlenes Zettel', kind: 'document', at: STUFE, r: 1.2, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
     text: '„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Belegt: Steine der Ruine stecken in Homburger Häusern.)',
     nouns: ['n.r_neuanfang'],
   }),
@@ -112,11 +115,11 @@ const clues = [
     nouns: ['n.r_heimtreiben', 'n.r_vergessen'], flags: ['flag.horn'], req: { flags: ['flag.k4_finale'] },
   }),
   clue('clue.k4.nur_steine', {
-    title: 'Nur Steine', kind: 'dialogue', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
-    text: 'Feldstation, nach dem Finale, vor der Wahl.', nouns: ['n.r_nur_steine'], req: { clues: ['clue.k4.jost'] },
+    title: 'Nur Steine', kind: 'dialogue', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
+    text: 'An der Quelle, nach dem Finale, vor der Wahl.', nouns: ['n.r_nur_steine'], req: { clues: ['clue.k4.jost'] },
   }),
   clue('clue.k4.foto', {
-    title: 'Ein Foto auf Marlenes Handy', kind: 'object', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
+    title: 'Ein Foto auf Marlenes Handy', kind: 'object', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
     text: 'Der Stein über der Kellertür von Marlenes Schwager in der Homburger Altstadt: ein Winkel mit drei Punkten. (FIKTION: Kein echtes Haus ist gemeint.) Wandernde Steine 4/4.',
     flags: ['flag.stein_4'], req: { clues: ['clue.k4.jost'] },
   }),

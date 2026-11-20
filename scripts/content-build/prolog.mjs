@@ -5,31 +5,33 @@ const ch = 'p';
 const E = '1789';
 const T = 'today';
 const EH = [1216, -1114]; // Ehrenhof (TF-01)
-// Inside the field station's trailer (story/hub/station.ts STATION, 760/−915): the hub items and
-// the tablet / compass page. The walls keep the player > 1.35 m from the centre, so these never
-// become world markers or E targets — the story grants them with a card (hub items, P7).
-const BAUWAGEN = [760, -915];
-// What the printouts at the station show in their card sketch: the palace site (Corps de logis)
+// Home is the Karlsbergquelle (src/systems/story/hub/home.ts HOME): the hub items and the tablet /
+// compass page lie inside the spring's retaining wall (quelle/layout.ts local u −1.6, w −0.25, the
+// left solid box; ≥ 6 m from today's bottle behind the spring house), r 0.5: the wall keeps the
+// player out, so they never become E targets — the story grants them with a card (hub items, P7).
+export const QUELLE_MAUER = [1060.3, -835.9];
+const HOME_ITEMS = QUELLE_MAUER;
+// What the printouts at home show in their card sketch: the palace site (Corps de logis)
 const PALAST = [1195, -1095];
 const clues = [
   clue('clue.p.lageplan', {
-    title: 'Lageplan an der Pinnwand', kind: 'document', at: BAUWAGEN, r: 1, era: T, anchor: 'loc.p.station', chapter: ch, fiction: false, sketch: [...PALAST, 260],
+    title: 'Lageplan an der Pinnwand', kind: 'document', at: HOME_ITEMS, r: 0.5, era: T, anchor: 'loc.quelle', chapter: ch, fiction: false, sketch: [...PALAST, 260],
     text: 'Ein großer Ausdruck „Lageplan Schloss Karlsberg, Forschungsstand 2006 (Nachzeichnung)“, darunter klein: „Grundlage: schloss-carlsberg.de, CC BY-SA 2.0 DE“. Die Legende nennt Ehrenhof, Corps de logis, Galerie, Orangerie, Marstall, Reithalle, Exerzierplatz, Zwinger, Eiskeller. Den Ehrenhof umschließen drei Flügel. Reithalle und Exerzierplatz liegen weit im Norden. Der Titelstempel lautet „Rekonstruktion Sommer 1789 – Hypothese“.',
     nouns: ['n.ehrenhof', 'n.exerzierplatz', 'n.reitbahn', 'n.orangerie', 'n.galerie', 'n.marstall', 'n.eiskeller', 'n.jahr_1789'],
   }),
   clue('clue.p.messtischblatt', {
-    title: 'Messtischblatt an der Pinnwand', kind: 'map', at: BAUWAGEN, r: 1, era: T, anchor: 'loc.p.station', chapter: ch, fiction: false, sketch: [...PALAST, 320],
+    title: 'Messtischblatt an der Pinnwand', kind: 'map', at: HOME_ITEMS, r: 0.5, era: T, anchor: 'loc.quelle', chapter: ch, fiction: false, sketch: [...PALAST, 320],
     text: 'Fotokopie eines Messtischblatts. Bleistift von Marlene: „1935 – liegt nur 10–15 m daneben, gut brauchbar.“',
     nouns: ['n.jahr_1935', 'n.versatz_15'],
   }),
   clue('clue.p.handbuch', {
-    title: 'Reliefmuster-Handbuch des Forstamts', kind: 'document', at: BAUWAGEN, r: 1, era: T, anchor: 'loc.p.station', chapter: ch, fiction: false,
+    title: 'Reliefmuster-Handbuch des Forstamts', kind: 'document', at: HOME_ITEMS, r: 0.5, era: T, anchor: 'loc.quelle', chapter: ch, fiction: false,
     text: 'Im Regal: das Reliefmuster-Handbuch des Forstamts, acht Musterkarten. Die Karten stehen ab jetzt im Codex.',
     nouns: ['n.hohlweg', 'n.wassergraben', 'n.ausbruchgraben', 'n.bombentrichter', 'n.meilerplatz'],
     facts: ['rm.01', 'rm.02', 'rm.03', 'rm.04', 'rm.05', 'rm.06', 'rm.07', 'rm.08'],
   }),
   clue('clue.p.laubblatt', {
-    title: 'Kartendruck in der Schublade', kind: 'map', at: BAUWAGEN, r: 1, era: T, anchor: 'loc.p.station', chapter: ch, fiction: true, sketch: [...PALAST, 320],
+    title: 'Kartendruck in der Schublade', kind: 'map', at: HOME_ITEMS, r: 0.5, era: T, anchor: 'loc.quelle', chapter: ch, fiction: true, sketch: [...PALAST, 320],
     text: 'Druck eines bayerischen Positionsblatts mit gestochener Schrift „Ruine Carlsberg“, „Carlsbergerhof“, „Sanddorf“. Am Rand steht in Bleistift und sehr ordentlicher Kurrentschrift: „Aufgen. Nov. 1840. Q. L. – Standpunkt 17 am alten Forsthaus.“ Daneben liegt eine Messing-Bussole, kalt und still.',
     nouns: ['n.jahr_1840'], flags: ['flag.tool_map'],
   }),
@@ -69,12 +71,12 @@ const clues = [
     nouns: ['n.eiskeller'], facts: ['rm.02'], req: { scanMode: 3 },
   }),
   clue('clue.p.punktwolke', {
-    title: 'Ausschnitt aus der Punktwolke', kind: 'object', at: BAUWAGEN, r: 1, era: T, anchor: 'portable', chapter: ch, fiction: true, sketch: [...EH, 80],
+    title: 'Ausschnitt aus der Punktwolke', kind: 'object', at: HOME_ITEMS, r: 0.5, era: T, anchor: 'portable', chapter: ch, fiction: true, sketch: [...EH, 80],
     text: 'Bodenpunkte unter dem Kronendach. Quer über den Ehrenhof eine Reihe von Abdrücken, etwa 8 cm groß, paarweise, im Abstand eines Trabs.',
     nouns: ['n.hunde', 'n.wild', 'n.messfehler'], req: { clues: ['clue.p.ehrenhof'] },
   }),
   clue('clue.p.seite_eins', {
-    title: 'Eine Seite im Deckel der Bussole', kind: 'document', at: BAUWAGEN, r: 1, era: T, anchor: 'portable', chapter: ch, fiction: true, sketch: [...EH, 80],
+    title: 'Eine Seite im Deckel der Bussole', kind: 'document', at: HOME_ITEMS, r: 0.5, era: T, anchor: 'portable', chapter: ch, fiction: true, sketch: [...EH, 80],
     text: 'Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts, Überschrift: „Was der Hof schuldig blieb“. Darunter nur Spalten: „Wem – Was – Wann – Wo“. Unten ein Satz, in anderer Tinte und in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“',
     flags: ['flag.chronik_offen'], req: { clues: ['clue.p.punktwolke'] },
   }),
@@ -216,7 +218,7 @@ const dialogue = [
   say('laub.p.ehrenhof', 'laub', 'Drei Flügel, offen zur Straße. So baut man, wenn man gesehen werden will.', found('clue.p.ehrenhof', { hasClue: 'clue.p.lageplan' }), { once: true }),
   say('laub.p.nordterrasse', 'laub', 'Auch eben. Aber da haben keine Flügel gestanden, da sind Pferde im Kreis gelaufen. Vermutlich. Ich war nicht eingeladen.', found('clue.p.nordterrasse'), { once: true }),
   say('laub.p.eiskeller', 'laub', 'Bombentrichter kommen selten allein, sagt Ihr Handbuch. Und Köhler bauen ihre Meiler nicht in Löcher, sondern auf Platten.', found('clue.p.eiskeller', { hasClue: 'clue.p.handbuch' }), { once: true }),
-  // the first time the pack gets you (spoken when the curtain lifts in the field station)
+  // the first time the pack gets you (spoken when the curtain lifts at home)
   // (only once Laub is there, and only for the pack: after a fight lost to the mist in 2025 his
   // horn-and-lantern advice made no sense — playtest round 5)
   ...seq({ event: 'player:caught', chapter: 'prolog', by: 'pack', flag: 'story.laub' }, [
@@ -267,7 +269,7 @@ const LIDAR = src('LIDAR');
 // Terrain-checked spots (scripts/content-build/probe.mjs + terrain.mjs, 2026-11-16): dry, walkable,
 // outside every footprint of their era, inside the playable area.
 export const P_SPOTS = {
-  stab: [762.2, -912.3], // right of the trailer door (playtest 1792841; the story's p1 objective and src/systems/story/hub/station.ts agree)
+  stab: [762.2, -912.3], // at the old field-station spot by the forest road, where the bridged prologue still starts (p1 objective agrees)
   quelle: [1059.3, -833.1], // in front of the Karlsbergquelle's trough (src/systems/quelle/layout.ts)
   eiskeller: [1508, -1296], // the pit (KB-50); in 1789 the Eiskeller house KB-B28 stands here — the fight is today
   streuner: [1206, -1113], // inside the Ehrenhof (gravel), not behind the closed gitter (playtest)
@@ -291,13 +293,13 @@ const prologQuests = {
       // playtest round 4: in control and in a first small fight inside a minute; the station's
       // Pinnwand / Regal / Schublade are optional now (the hub grants their clues, no quest)
       title_de: 'Der Messstab',
-      summary_de: 'Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der draußen am Bauwagen lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.',
+      summary_de: 'Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der am Wegrand lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.',
       giver: { voice: 'marlene' }, turnin: 'auto',
       // the greeting is the first offer line: it comes before the request (playtest round 5: the order
       // was request first, then „Bist du gut angekommen?“), and the quest is active at once
       offer: [
         ln('marlene', '{Name}? Hier Marlene, Revier Karlsberg. Bist du gut angekommen? Gut. Der Auftrag ist einfach: Prüf mir die Laserdaten vom letzten Winter.'),
-        ln('marlene', 'Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm.'),
+        ln('marlene', 'Nimm den Messstab mit, der lehnt da vorn am Weg. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm.'),
       ],
       turnin_lines: [ln('marlene', 'Du schnaufst ja. Was war da unten? … Egal. Der Stab ist zum Messen gebaut. Zum Gehen ist er auch nicht schlecht.')],
       history: [
@@ -305,14 +307,14 @@ const prologQuests = {
         ln('marlene', 'Und die eine Regel: Wir schauen, wir graben nicht. Der Karlsberg ist ein Bodendenkmal. Wer etwas findet, meldet es.', { fact: 'cx.35', src: [src('SDSCHG'), src('HE-BW')] }),
       ],
       objectives: [
-        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)',
-          hint_de: 'Der Messstab lehnt rechts neben der Wagentür, im goldenen Lichtstrahl: geradeaus zum Wagen, dann E drücken (oder einfach darüberlaufen).',
+        { id: 'stab', type: 'collect', item: 'item.stab.esche', text_de: 'Den Messstab nehmen: er lehnt am Wegrand (hingehen, E)',
+          hint_de: 'Der Messstab lehnt am Wegrand, im goldenen Lichtstrahl: geradeaus hin, dann E drücken (oder einfach darüberlaufen).',
           place: [place(...P_SPOTS.stab, 0, T0)] },
         {
           id: 'nebel', type: 'kill', enemy: 'nebelling', count: 3, after: ['stab'],
           text_de: 'Unten am Damm: drei Nebelinge vertreiben (Klick oder K)',
           hint_de: 'Den Hang hinunter zur Markierung am Damm. Nebelinge mit dem Stab treffen: Klick oder K, gehalten ein Wuchthieb; holt einer aus, Leertaste: ausweichen.',
-          // outside the station's safe ring (40 m round 760/−915), on the flat ground at the foot of
+          // outside the old station's safe ring (40 m round 760/−915; combat moves it to the Quelle, WP-02), on the flat ground at the foot of
           // the slope (277 m): playtest round 10 F-04, at 803/−889 they sat 4.5 m below the convex crest
           // and the player saw only their HP bars; from 809/−890 the group is in view from x ≈ 790
           where: place(809, -890, 24, T0),
@@ -324,9 +326,9 @@ const prologQuests = {
     {
       id: 'q.p.relief', kind: 'main', era: T0,
       title_de: 'Was der Wald verbirgt',
-      summary_de: 'Marlene will wissen, was unter dem Wald liegt. Erst der Damm hinter dem Wagen, dann der Weg hinauf bis zur großen Stufe im Wald. Der Laserscan zeigt, was die Bäume verdecken.',
+      summary_de: 'Marlene will wissen, was unter dem Wald liegt. Erst der Damm am Weiher, dann der Weg hinauf bis zur großen Stufe im Wald. Der Laserscan zeigt, was die Bäume verdecken.',
       giver: { voice: 'marlene' }, turnin: 'auto',
-      offer: [ln('marlene', 'Erste Aufgabe: Geh zum Damm hinter dem Wagen und sag mir, was der Wald da versteckt. Dann den Weg hinauf nach Osten, bis zu der hohen Stufe im Wald.')],
+      offer: [ln('marlene', 'Erste Aufgabe: Geh zum Damm am Weiher und sag mir, was der Wald da versteckt. Dann den Weg hinauf nach Osten, bis zu der hohen Stufe im Wald.')],
       turnin_lines: [
         ln('marlene', 'Eine Mauer am Damm und eine Stufe, die keiner gepflanzt hat. Siehst du? Der Wald macht keine rechten Winkel.'),
         ln('marlene', 'Und das am Damm, das mit den Augen? Ich hab nichts gesehen. Schreib es trotzdem auf. Genau so, wie es war.'),
@@ -336,7 +338,7 @@ const prologQuests = {
         ln('marlene', 'Und der Weiher ist kein Naturteich. Ein gerader Damm quer zum Tal, dahinter eine glatte Fläche: Der Scan findet auf Wasser keine Punkte und füllt es flach.', { fact: 'rm.08', src: [src('HE-BW'), LIDAR] }),
       ],
       objectives: [
-        { id: 'damm', type: 'reach', text_de: 'Zum Damm am Karlsbergweiher, hinter dem Bauwagen', where: place(819, -875, 32, T0) },
+        { id: 'damm', type: 'reach', text_de: 'Zum Damm am Karlsbergweiher', where: place(819, -875, 32, T0) },
         {
           id: 'mauer', type: 'examine', clue: 'clue.p.mauerrest',
           text_de: 'Am Damm: Taste 2 (Lokales Relief) drücken, dann zur Markierung gehen',

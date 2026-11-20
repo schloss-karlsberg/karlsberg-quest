@@ -170,11 +170,11 @@
       "kind": "dialogue",
       "text_de": "Marlene bringt Kaffee und erzählt von einem Bauern aus Rohrbach.",
       "where": {
-        "x": 760,
-        "z": -930,
-        "radius": 30,
+        "x": 1051.3,
+        "z": -827.4,
+        "radius": 8,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -599,13 +599,13 @@
       "id": "clue.k2.laub_treue",
       "title_de": "Laub über den Warner",
       "kind": "dialogue",
-      "text_de": "Laub in der Feldstation, nach dem ersten Wechsel.",
+      "text_de": "Laub an der Quelle, nach dem ersten Wechsel.",
       "where": {
-        "x": 760,
-        "z": -930,
-        "radius": 30,
+        "x": 1051.3,
+        "z": -827.4,
+        "radius": 8,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [

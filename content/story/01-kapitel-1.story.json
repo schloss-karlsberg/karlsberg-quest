@@ -3631,7 +3631,7 @@
     },
     {
       "id": "k1_16",
-      "title_de": "Feldstation",
+      "title_de": "Heute",
       "enter": [
         {
           "do": "look",
@@ -3654,7 +3654,7 @@
         {
           "do": "objective",
           "id": "k1.ende",
-          "text": "Feldstation. Durchatmen.",
+          "text": "Heute. Durchatmen.",
           "delay": 1
         },
         {
