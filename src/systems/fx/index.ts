@@ -23,6 +23,7 @@
  * The fire stops by itself when the era leaves 1793-07, oblivion when it leaves 1796.
  * Debug: window.kq.fx (see FxHooks). URL: ?fxq=low|high (quality).
  */
+import { stepsDriveVisualsNow } from '../../core/bullet';
 import { Color } from 'three';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
@@ -293,6 +294,8 @@ export default defineSystem({
     fire.update(dt);
     obl.update(dt);
     k3.update(dt);
+    // bullet time: the era shift runs on the fixed steps, not on frame time (playtest round 10)
+    if (stepsDriveVisualsNow(ctx.loop.manual, ctx.params) && !frozen) shift.advance(dt);
     sliceTimer -= dt;
     if (sliceTimer <= 0) {
       sliceTimer = 1;
@@ -305,7 +308,7 @@ export default defineSystem({
   frame(dt, ctx) {
     installHooks(ctx);
     if (quality.sample(dt)) fire.rebuild();
-    if (!frozen) shift.advance(dt);
+    if (!frozen && !stepsDriveVisualsNow(ctx.loop.manual, ctx.params)) shift.advance(dt);
     else if (shift.active) shift.advance(0);
     if (!pulseHold) pulse.frame(dt);
     fire.frame(dt);

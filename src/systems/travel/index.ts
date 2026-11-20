@@ -21,6 +21,7 @@
  * The map key M belongs to this system; the survey system's map overlays (1836–41 / 1935–40) are
  * buttons on the map page (event `survey:show-map`). State `systems.travel`; hooks `kq.travel.*`.
  */
+import { skipRealTimeWaits } from '../../core/bullet';
 import { type Group, Group as ThreeGroup } from 'three';
 import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
@@ -369,8 +370,9 @@ class Travel {
       this.bestD = Infinity;
       ctx.save.autosave('travel', true);
     };
-    if (ctx.params.has('manual')) {
-      // deterministic tests: no real-time wait
+    if (skipRealTimeWaits(ctx.loop.manual, ctx.params)) {
+      // deterministic tests and bullet time (also switched on at runtime, playtest round 10): no
+      // real-time wait while the game stands still
       arrive();
       ctx.pause.pop('travel');
       curtain.remove();
