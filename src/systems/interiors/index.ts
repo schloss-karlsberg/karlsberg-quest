@@ -31,6 +31,7 @@ import { PlanQuery } from './collide';
 import { FallingBeams } from './beams';
 import { FestsaalObjects, type FestsaalKey, festsaalSpots } from './festsaal';
 import { FESTSAAL_ROOM, festsaalSpots as dressedFestsaalSpots } from '../scenery/worldsets';
+import { passageFloor } from '../scenery/passage';
 import { FlameLayer } from './flames';
 import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
@@ -144,7 +145,14 @@ function current(): { plan: FullPlan; query: PlanQuery } | null {
   if (!p) {
     const ctx = rt.ctx;
     const hf = ctx.world.heightfields[rt.mode === 'today' ? '2025' : '1789'];
-    const plan = buildPlan({ rooms: ctx.data.rooms, footprints: ctx.data.footprints.buildings, mode: rt.mode, terrain: (x, z) => hf.heightAt(x, z), openings: rt.openings });
+    // while the palace stands, the ground before the Tempelzimmer's glass doors is the rotunda's
+    // colonnade (scenery/passage.ts): flush with the door, so no steps down are built there
+    const intact = rt.mode === 'intact';
+    const terrain = (x: number, z: number) => {
+      const h = hf.heightAt(x, z);
+      return (intact ? passageFloor(x, z, h) : null) ?? h;
+    };
+    const plan = buildPlan({ rooms: ctx.data.rooms, footprints: ctx.data.footprints.buildings, mode: rt.mode, terrain, openings: rt.openings });
     p = { plan, query: new PlanQuery(plan) };
     rt.plans.set(rt.mode, p);
   }

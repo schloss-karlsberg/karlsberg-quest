@@ -11,6 +11,7 @@ import { evaluate } from '../src/systems/story/engine';
 import { validateStories } from '../src/systems/story/validate';
 import type { Condition, StoryFile } from '../src/systems/story/types';
 import { loadPalaceData } from './interiors-fixture';
+import { TEMPEL_DOOR, passageFloor } from '../src/systems/scenery/passage';
 
 const d = loadPalaceData();
 const t89 = (x: number, z: number) => d.h1789.heightAt(x, z);
@@ -76,6 +77,15 @@ describe('interiors layout', () => {
     }
     const gallery = room(intact, 'B06.1.bildergalerie');
     expect(intact.windows.filter((w) => w.room === gallery.index).length).toBeGreaterThan(4);
+  });
+
+  it('opens the Tempelzimmer flush onto the rotunda’s colonnade (no steps down there)', () => {
+    const at = (p: FullPlan) => p.doors.find((x) => x.b === -1 && Math.hypot(x.cx - TEMPEL_DOOR.x, x.cz - TEMPEL_DOOR.z) < 0.5)!;
+    // on the bare terrain the door would get a flight down to the lawn (1.2 m) …
+    expect(at(intact).stoop!.ground).toBeLessThan(TEMPEL_DOOR.floor - 1);
+    // … with the colonnade's floor (as the interiors system builds the plan) it is flush
+    const colonnade = buildPlan({ rooms: d.rooms, footprints: d.footprints, mode: 'intact', terrain: (x, z) => passageFloor(x, z, t89(x, z)) ?? t89(x, z) });
+    expect(Math.abs(at(colonnade).stoop!.ground - TEMPEL_DOOR.floor)).toBeLessThan(0.1);
   });
 
   it('ruin walls are deterministic stubs, some low enough to climb through', () => {
