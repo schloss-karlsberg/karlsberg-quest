@@ -388,9 +388,36 @@ export class GroundCover {
   }
 
   setEra(era: Era): void {
+    this.era = era;
     this.look = COVER_LOOKS[era] ?? COVER_LOOKS.today!;
     this.tiles.clear();
     this.dirty = true;
+  }
+
+  private era: Era = 'today';
+  /** Mown / cleared circles (a laundry green, linen laid on the grass), in some eras or all. */
+  private readonly mown: { x: number; z: number; r: number; keep: number; eras?: readonly Era[] }[] = [];
+
+  /**
+   * Mow a circle: grass keeps `keep` × its height there (0 = none at all), no flowers or reeds.
+   * `eras`: only in those (default all). Rebuilds the tiles.
+   */
+  addClearing(x: number, z: number, r: number, keep = 0, eras?: readonly Era[]): void {
+    this.mown.push({ x, z, r, keep, eras });
+    this.tiles.clear();
+    this.dirty = true;
+  }
+
+  /** Height factor of the grass at x/z (1 = untouched; a mown circle grows back over its outer quarter). */
+  private mowAt(x: number, z: number): number {
+    let k = 1;
+    for (const m of this.mown) {
+      if (m.keep >= k || (m.eras && !m.eras.includes(this.era))) continue;
+      const d = Math.hypot(x - m.x, z - m.z);
+      if (d >= m.r) continue;
+      k = Math.min(k, m.keep > 0 ? m.keep + (1 - m.keep) * smoothstep(m.r * 0.72, m.r, d) : 0);
+    }
+    return k;
   }
 
   /** Force a rebuild (teleports, era / tier change). */
@@ -421,13 +448,15 @@ export class GroundCover {
         const x = (gx - 0.1 + 1.2 * hash2(gx, gz, 101)) * cell;
         const z = (gz - 0.1 + 1.2 * hash2(gz, gx, 103)) * cell;
         if (!this.src.inside(x, z)) continue;
+        const mow = this.mown.length ? this.mowAt(x, z) : 1;
+        if (mow <= 0) continue;
         const c = this.sample(x, z);
         const r = hash2(gx, gz, 107);
         const v = hash2(gx, gz, 109);
         const rot = hash2(gx, gz, 113) * Math.PI * 2;
         // reeds on the shore band (stand on the sunk lake bed)
         const rc = reedChance(c, this.look);
-        if (rc > 0 && r < rc) {
+        if (rc > 0 && r < rc && mow >= 1) {
           const bed = this.bedDepth * smoothstep(0.15, 0.85, c.water);
           reeds.push(x, this.src.height(x, z) - bed - 0.05, z, 1.5 + 0.9 * v + bed, rot, v);
           continue;
@@ -439,7 +468,7 @@ export class GroundCover {
         const slope = (Math.atan(Math.hypot(sx, sz)) * 180) / Math.PI;
         const patch = valueNoise(x * 0.07, z * 0.07, 5);
         const fc = flowerChance(c, this.look);
-        if (fc > 0 && hash2(gx, gz, 127) < fc * (0.4 + patch)) {
+        if (fc > 0 && mow >= 1 && hash2(gx, gz, 127) < fc * (0.4 + patch)) {
           flowers.push(x, h - 0.02, z, 0.32 + 0.22 * v, rot, hash2(gx, gz, 131));
           continue;
         }
@@ -447,7 +476,7 @@ export class GroundCover {
         const clump = smoothstep(0.22, 0.78, valueNoise(x * 0.33, z * 0.33, 17));
         const gc = grassChance(c, slope, patch, this.look) * (0.35 + 0.95 * clump);
         if (gc > 0 && r < gc) {
-          const tall = (0.26 + 0.26 * v) * (1 - 0.45 * c.lawn) * (0.7 + 0.6 * patch) * (0.75 + 0.5 * clump);
+          const tall = (0.26 + 0.26 * v) * (1 - 0.45 * c.lawn) * (0.7 + 0.6 * patch) * (0.75 + 0.5 * clump) * mow;
           grass.push(x, h - 0.03, z, tall, rot, hash2(gx, gz, 137));
         }
       }
