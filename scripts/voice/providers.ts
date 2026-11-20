@@ -1,10 +1,12 @@
 /**
  * TTS providers behind one interface: `synthesize({text, voice, model, lang}) → {audio, billedCredits?}`.
  * Secrets (ELEVENLABS_API_KEY, HF_TOKEN) are passed in by the caller, sent only as auth headers,
- * and redacted from every error message.
+ * and redacted from every error message. The local `moss` provider works in batches instead
+ * (`batches()`: ≤ 6 lines per model load, inside the heavy lock; see moss.ts).
  */
 import { tts } from './api.ts';
 import { redact, type ProviderConfig, type ProviderName, type ResolvedVoice } from './lib.ts';
+import { mossBatches, type BatchResult, type MossConfig, type MossDeps, type MossItem } from './moss.ts';
 
 export interface SynthRequest {
   text: string;
@@ -20,6 +22,28 @@ export interface SynthResult {
 export interface Provider {
   readonly name: ProviderName;
   synthesize(r: SynthRequest): Promise<SynthResult>;
+}
+
+/** A provider that renders many lines per process (one model load) into WAV files. */
+export interface BatchProvider {
+  readonly name: ProviderName;
+  batches(reqs: (SynthRequest & { id: string })[]): AsyncGenerator<BatchResult>;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Local MOSS-TTS-v1.5 (mlx-audio): 0 credits, machine-wide heavy lock, quiet window
+
+export function mossProvider(o: { cfg: MossConfig; repo: string; workDir: string; log?: (s: string) => void }, deps: MossDeps = {}): BatchProvider {
+  return {
+    name: 'moss',
+    batches(reqs) {
+      const items: MossItem[] = reqs.map((r) => {
+        if (r.voice.provider !== 'moss' || !r.voice.moss) throw new Error(`moss: ${r.id} is not a moss voice`);
+        return { id: r.id, text: r.text, moss: r.voice.moss };
+      });
+      return mossBatches(items, o, deps);
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------------------------

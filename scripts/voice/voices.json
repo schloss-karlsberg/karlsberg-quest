@@ -1,5 +1,5 @@
 {
-  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId) or 'hf-space' (voicePrompt for voice design, or voiceId). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model'. voiceSettings = ElevenLabs voice_settings per speaker, sent with every TTS request. Laub and Marlene are provisional casting picks (owner to confirm). PLACEHOLDER voices are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
+  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId), 'hf-space' (voicePrompt for voice design, or voiceId) or 'moss' (local MOSS-TTS-v1.5: reference = WAV file name inside KQ_MOSS_VOICES, default ~/kq-models/voices; seed; language; instruction; params). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model'. voiceSettings = ElevenLabs voice_settings per speaker. postprocess.maxPauseSec (any provider) caps internal pauses. moss voiceId = moss:<speaker>:<sha8 of reference>:<seed>, so a new reference or seed regenerates. PLACEHOLDER voices (and moss speakers whose reference file is missing) are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
   "providers": {
     "elevenlabs": {
       "defaultModel": "eleven_flash_v2_5",
@@ -17,9 +17,46 @@
         "voice_description": "$voicePrompt",
         "language": "German"
       }
+    },
+    "moss": {
+      "$comment": "Local, 0 credits. OpenMOSS-Team/MOSS-TTS-v1.5 @ cdd3b911 + MOSS-Audio-Tokenizer @ 3cd226ba via mlx-audio 0.6.7, offline. Runs only inside scripts/dev/heavy.sh, <= 6 lines per model load. Output CC0; credit 'MOSS-TTS-v1.5, OpenMOSS, Apache-2.0'.",
+      "defaultModel": "MOSS-TTS-v1.5@cdd3b91",
+      "licence": "apache-2.0-model"
     }
   },
   "speakers": {
+    "laub": {
+      "provider": "moss",
+      "reference": "laub-ref.wav",
+      "seed": 102,
+      "language": "German",
+      "instruction": "A middle-aged man with a warm baritone voice, slightly formal, with dry humour. He speaks at a natural, brisk conversational pace.",
+      "params": {
+        "max_tokens": 1000
+      },
+      "postprocess": {
+        "maxPauseSec": 0.45
+      },
+      "name": "MOSS casting laub-brisk-s102",
+      "note": "picked 2026-11-20 by criteria, owner may override",
+      "model": null
+    },
+    "marlene": {
+      "provider": "moss",
+      "reference": "marlene-ref.wav",
+      "seed": 205,
+      "language": "German",
+      "instruction": "Eine Frau Mitte dreißig mit freundlicher, heller, klarer Stimme. Praktisch, schnell, etwas locker. Sie spricht in natürlichem, zügigem Gesprächstempo.",
+      "params": {
+        "max_tokens": 1000
+      },
+      "name": "MOSS casting marlene-de-s205",
+      "note": "picked 2026-11-20 by criteria, owner may override",
+      "model": null
+    }
+  },
+  "$alternatives": {
+    "$comment": "Not read by the script. The earlier ElevenLabs casting picks, kept as the alternative route: copy an entry into speakers to switch back.",
     "laub": {
       "provider": "elevenlabs",
       "voiceId": "nPczCjzI2devNBz1zQrb",

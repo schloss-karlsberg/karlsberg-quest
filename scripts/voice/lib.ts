@@ -5,7 +5,7 @@
  *
  * Contract with in-game playback (do not change): manifest `public/voice/manifest.json`
  *   { version: 1, lines: { <lineId>: { files: { opus, aac }, textHash, speechHash, speaker, provider, voiceId,
- *     model, licence, date, chars, credits, durationMs } } }
+ *     model, licence, date, chars, credits, durationMs, attribution? } } }
  * files = `<lineId>.<sha256(bytes)[0..8]>.webm|.m4a` (the runtime reads names only from the manifest);
  * textHash = FNV-1a 32 over UTF-8 of the normalised display text_de (the runtime matches on it).
  */
@@ -53,13 +53,14 @@ export function supportsLanguageCode(model: string): boolean {
   return model !== 'eleven_multilingual_v2' && !model.startsWith('eleven_monolingual');
 }
 
-export type ProviderName = 'elevenlabs' | 'hf-space';
-export const PROVIDERS: readonly ProviderName[] = ['elevenlabs', 'hf-space'];
+export type ProviderName = 'elevenlabs' | 'hf-space' | 'moss';
+export const PROVIDERS: readonly ProviderName[] = ['elevenlabs', 'hf-space', 'moss'];
 
 /** Credits for one line. ElevenLabs bills per character by model; an HF Space costs 0 credits
- * (it spends ZeroGPU minutes instead, guarded by --max-lines). */
+ * (it spends ZeroGPU minutes instead, guarded by --max-lines); local MOSS costs 0 (machine time,
+ * guarded by --max-lines and the heavy lock). */
 export function creditsFor(chars: number, model: string, provider: ProviderName = 'elevenlabs'): number {
-  if (provider === 'hf-space') return 0;
+  if (provider === 'hf-space' || provider === 'moss') return 0;
   const rate = CREDITS_PER_CHAR[model];
   if (rate === undefined) throw new Error(`unknown model "${model}": add it to CREDITS_PER_CHAR`);
   return Math.ceil(chars * rate);
@@ -350,8 +351,25 @@ export interface ProviderConfig {
   params?: Record<string, unknown>;
 }
 
+/** Post-processing per speaker (any provider). */
+export interface PostprocessConfig {
+  /** shorten internal silences longer than this to about this length (seconds); lead/tail trim is separate */
+  maxPauseSec?: number;
+}
+
 export interface SpeakerVoice {
   provider?: ProviderName;
+  /** moss: reference WAV file name relative to KQ_MOSS_VOICES (a synthetic casting pick, never an ElevenLabs clip) */
+  reference?: string;
+  /** moss: fixed seed (mx.random / numpy / random) */
+  seed?: number;
+  /** moss: MOSS `language` (e.g. "German") */
+  language?: string;
+  /** moss: MOSS `instruction` (voice description) */
+  instruction?: string;
+  /** moss: extra mlx-audio generate() params (e.g. max_tokens) */
+  params?: Record<string, unknown>;
+  postprocess?: PostprocessConfig;
   voiceId?: string | null;
   /** hf-space voice design: a German description of the voice */
   voicePrompt?: string | null;
@@ -379,16 +397,48 @@ export interface ResolvedVoice {
   licence: Licence;
   placeholder: boolean;
   voiceSettings?: Record<string, number | boolean>;
+  /** moss only */
+  moss?: MossVoice;
+  postprocess?: PostprocessConfig;
 }
 
-const DEFAULT_MODEL: Record<ProviderName, string> = { elevenlabs: 'eleven_flash_v2_5', 'hf-space': 'qwen3-tts' };
-const DEFAULT_LICENCE: Record<ProviderName, Licence> = { elevenlabs: 'elevenlabs-free-noncommercial', 'hf-space': 'apache-2.0-model' };
+/** What the moss runner needs per speaker. */
+export interface MossVoice {
+  speaker: string;
+  /** file name relative to KQ_MOSS_VOICES */
+  reference: string;
+  /** first 8 hex of sha256 of the reference file, null when the file is missing */
+  refSha8: string | null;
+  seed: number;
+  language: string;
+  instruction?: string;
+  params: Record<string, unknown>;
+}
+
+/** Model id recorded for moss clips (MOSS-TTS-v1.5 at the pinned snapshot revision). */
+export const MOSS_MODEL = 'MOSS-TTS-v1.5@cdd3b91';
+/** Attribution for moss clips (manifest `attribution`, credits screen). */
+export const MOSS_ATTRIBUTION = 'MOSS-TTS-v1.5, OpenMOSS, Apache-2.0';
+
+/** `moss:<speaker>:<sha8 of reference>:<seed>`: a new reference file or seed regenerates the speaker's lines. */
+export function mossVoiceId(speaker: string, refSha8: string | null, seed: number): string {
+  return `moss:${speaker}:${refSha8 ?? 'MISSING'}:${seed}`;
+}
+
+const DEFAULT_MODEL: Record<ProviderName, string> = { elevenlabs: 'eleven_flash_v2_5', 'hf-space': 'qwen3-tts', moss: MOSS_MODEL };
+const DEFAULT_LICENCE: Record<ProviderName, Licence> = { elevenlabs: 'elevenlabs-free-noncommercial', 'hf-space': 'apache-2.0-model', moss: 'apache-2.0-model' };
+
+export interface ResolveOptions {
+  /** moss: sha8 of a reference file name (relative to KQ_MOSS_VOICES), null when missing. Without it the
+   * reference counts as missing (placeholder: planned in a dry run, skipped in a real run). */
+  refSha8?: (reference: string) => string | null;
+}
 
 /**
  * Speaker → voice. Model: the speaker's own, else `runModel` (`--model`, ElevenLabs speakers only),
  * else the provider's default. Licence: the speaker's, else the provider's.
  */
-export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: string): ResolvedVoice | null {
+export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: string, ro: ResolveOptions = {}): ResolvedVoice | null {
   const v = voices.speakers[speaker];
   if (!v) return null;
   const provider = v.provider ?? 'elevenlabs';
@@ -396,7 +446,15 @@ export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: s
   const pc = voices.providers?.[provider] ?? {};
   let voiceId: string;
   let placeholder: boolean;
-  if (provider === 'hf-space') {
+  let moss: MossVoice | undefined;
+  if (provider === 'moss') {
+    if (!v.reference || typeof v.seed !== 'number' || !Number.isInteger(v.seed)) return null;
+    if (/[\\/]|^\.\.?$/.test(v.reference)) throw new Error(`speaker ${speaker}: moss reference must be a plain file name inside KQ_MOSS_VOICES`);
+    const refSha8 = ro.refSha8?.(v.reference) ?? null;
+    moss = { speaker, reference: v.reference, refSha8, seed: v.seed, language: v.language ?? 'German', instruction: v.instruction, params: v.params ?? {} };
+    voiceId = mossVoiceId(speaker, refSha8, v.seed);
+    placeholder = refSha8 === null;
+  } else if (provider === 'hf-space') {
     const prompt = v.voicePrompt ?? '';
     if (!prompt && !v.voiceId) return null;
     voiceId = v.voiceId || `prompt:${textHash(prompt)}`;
@@ -409,7 +467,10 @@ export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: s
   const model = v.model || (provider === 'elevenlabs' ? runModel : undefined) || pc.defaultModel || DEFAULT_MODEL[provider];
   const licence = v.licence ?? pc.licence ?? DEFAULT_LICENCE[provider];
   if (!LICENCES.includes(licence)) throw new Error(`speaker ${speaker}: unknown licence "${licence}"`);
-  return { provider, voiceId, voicePrompt: v.voicePrompt ?? undefined, model, licence, placeholder, voiceSettings: v.voiceSettings };
+  const r: ResolvedVoice = { provider, voiceId, voicePrompt: v.voicePrompt ?? undefined, model, licence, placeholder, voiceSettings: v.voiceSettings };
+  if (moss) r.moss = moss;
+  if (v.postprocess) r.postprocess = v.postprocess;
+  return r;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -431,6 +492,8 @@ export interface ManifestEntry {
   chars: number;
   credits: number;
   durationMs: number;
+  /** model credit line where the licence asks for one (moss: MOSS_ATTRIBUTION); ignored by the runtime */
+  attribution?: string;
 }
 export interface Manifest {
   version: 1;
@@ -578,6 +641,7 @@ export function buildPlan(
     speech?: SpeechOverrides;
     maxLines?: Partial<Record<ProviderName, number>>;
     limit?: number;
+    resolve?: ResolveOptions;
   },
 ): Plan {
   const rows: PlanRow[] = [];
@@ -590,7 +654,7 @@ export function buildPlan(
   const limited = new Set<ProviderName>();
   const staleOverrides: VoiceLine[] = [];
   for (const { line, tier } of selected) {
-    const voice = resolveVoice(line.speaker, o.voices, o.runModel);
+    const voice = resolveVoice(line.speaker, o.voices, o.runModel, o.resolve);
     if (!voice) {
       skipped.push({ line, reason: 'no-voice' });
       continue;

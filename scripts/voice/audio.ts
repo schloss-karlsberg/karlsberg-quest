@@ -1,5 +1,5 @@
 /**
- * ffmpeg post-processing: trim silence to ~60 ms at each end, two-pass loudnorm to I=-18 LUFS /
+ * ffmpeg post-processing: optional per-speaker pause cap (voices.json postprocess.maxPauseSec), trim silence to ~60 ms at each end, two-pass loudnorm to I=-18 LUFS /
  * TP=-1.5 dBTP, mono 24 kHz, then two encodings: Opus 24 kbps (voip) in WebM, and AAC ~48 kbps in
  * .m4a (macOS Safari's Opus support is partial); ffprobe for the real duration.
  */
@@ -19,6 +19,37 @@ const TRIM =
   `silenceremove=start_periods=1:start_threshold=${THRESH}:start_silence=${KEEP},areverse`;
 
 const quiet = ['-hide_banner', '-loglevel', 'error', '-y'];
+
+export interface ClipOptions {
+  /** shorten internal silences longer than this (seconds) to about this length; undefined/0 = off */
+  maxPauseSec?: number;
+}
+
+/**
+ * Pause cap: `silenceremove` with `stop_periods=-1` acts on every silence after the first sound
+ * (the lead is left alone: start_periods=0). In ffmpeg ≥ 6.1 (rewritten filter; Homebrew ships 9)
+ * a silence of at least `stop_duration` is cut down to `stop_duration + stop_silence`, shorter ones
+ * pass untouched, so stop_duration = cap and stop_silence = 0 caps pauses at the cap (measured on a
+ * 1.5 s gap: 0.45 → ~0.47 s kept, a 0.3 s gap unchanged). The tail it leaves is trimmed by TRIM.
+ */
+export function pauseCapFilter(maxPauseSec?: number): string | null {
+  if (maxPauseSec === undefined || maxPauseSec === null) return null;
+  if (!Number.isFinite(maxPauseSec) || maxPauseSec <= 0) return null;
+  if (maxPauseSec < 0.1 || maxPauseSec > 5) throw new Error(`maxPauseSec ${maxPauseSec} out of range (0.1–5 s)`);
+  const d = Number(maxPauseSec.toFixed(3));
+  return `silenceremove=stop_periods=-1:stop_duration=${d}:stop_threshold=${THRESH}:stop_silence=0`;
+}
+
+/** The `-af` chain of the first pass: optional pause cap, then lead/tail trim. */
+export function clipFilter(o: ClipOptions = {}): string {
+  const cap = pauseCapFilter(o.maxPauseSec);
+  return cap ? `${cap},${TRIM}` : TRIM;
+}
+
+/** ffmpeg args of the first pass (pause cap + trim, mono 48 kHz WAV). */
+export function trimArgs(input: string, output: string, o: ClipOptions = {}): string[] {
+  return [...quiet, '-i', input, '-af', clipFilter(o), '-ac', '1', '-ar', '48000', output];
+}
 
 export function ffmpegAvailable(): boolean {
   try {
@@ -50,11 +81,11 @@ function measure(file: string): LoudMeasure {
  * Process `input` (any audio ffmpeg reads) into `opusOut` (WebM/Opus) and `aacOut` (MP4/AAC).
  * Returns durationMs of the Opus file.
  */
-export function processClip(input: string, opusOut: string, aacOut: string): number {
+export function processClip(input: string, opusOut: string, aacOut: string, o: ClipOptions = {}): number {
   const trimmed = `${opusOut}.trim.wav`;
   const normed = `${opusOut}.norm.wav`;
   try {
-    execFileSync(FFMPEG, [...quiet, '-i', input, '-af', TRIM, '-ac', '1', '-ar', '48000', trimmed]);
+    execFileSync(FFMPEG, trimArgs(input, trimmed, o));
     const m = measure(trimmed);
     const ln =
       `loudnorm=${LOUD}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:` +

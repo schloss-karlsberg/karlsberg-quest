@@ -41,8 +41,37 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `sim-combat.ts` (`pnpm sim:combat`: the human-like combat bot's balance table, docs/BALANCE.md), `scripts/dev/` screenshot helpers for a running dev server |
-| `scripts/voice/` | AI voice clips for dialogue lines: `pnpm voice:plan` (dry run: priority order, credits, stale lines, dist size) / `pnpm voice:gen`. Providers behind one `synthesize()` interface (`providers.ts`): `elevenlabs` (REST) and `hf-space` (Gradio Space, e.g. Qwen3-TTS; built and unit-tested, not run yet; 0 credits, `--max-lines` guard). `lib.ts` (pure: line collection from packs, story `say` and quest lines, FNV-1a `textHash`, TTS text prep, priority tiers, budget, manifest), `voices.json` (speaker → provider, voiceId or voicePrompt, model; licence per provider), `priority.json` (tiers), `speech.json` (spoken-text overrides per line id, e.g. for `{Name}` lines; `forText` pins the text version, manifest `speechHash` regenerates on change). Secrets `ELEVENLABS_API_KEY` / `HF_TOKEN` from the main checkout's `.env` only (never `VITE_`, never in `src/`). Output: ffmpeg loudnorm −18 LUFS, Opus 24 kbps WebM + AAC 48 kbps m4a named `<lineId>.<sha256[0..8]>.<ext>`, `manifest.json` entries `{files {opus, aac}, textHash, speechHash, speaker, provider, voiceId, model, licence, date, chars, credits, durationMs}`. `public/voice/` is gitignored (ElevenLabs free output is non-commercial: never commit it); the game fetches `voice/manifest.json` and falls back to the murmur |
+| `scripts/voice/` | AI voice clips for dialogue lines: `pnpm voice:plan` (dry run: priority order, credits, stale lines, dist size) / `pnpm voice:gen`. Providers behind one `synthesize()` interface (`providers.ts`): `elevenlabs` (REST), `hf-space` (Gradio Space, e.g. Qwen3-TTS; built and unit-tested, not run yet; 0 credits, `--max-lines` guard) and `moss` (local MOSS-TTS-v1.5, batches inside the heavy lock; see "moss provider" below; laub and marlene use it, the ElevenLabs picks stay in `voices.json` `$alternatives`). Per-speaker `postprocess.maxPauseSec` caps internal pauses (ffmpeg `silenceremove stop_periods=-1`). `lib.ts` (pure: line collection from packs, story `say` and quest lines, FNV-1a `textHash`, TTS text prep, priority tiers, budget, manifest), `voices.json` (speaker → provider, voiceId or voicePrompt, model; licence per provider), `priority.json` (tiers), `speech.json` (spoken-text overrides per line id, e.g. for `{Name}` lines; `forText` pins the text version, manifest `speechHash` regenerates on change). Secrets `ELEVENLABS_API_KEY` / `HF_TOKEN` from the main checkout's `.env` only (never `VITE_`, never in `src/`). Output: ffmpeg loudnorm −18 LUFS, Opus 24 kbps WebM + AAC 48 kbps m4a named `<lineId>.<sha256[0..8]>.<ext>`, `manifest.json` entries `{files {opus, aac}, textHash, speechHash, speaker, provider, voiceId, model, licence, date, chars, credits, durationMs}`. `public/voice/` is gitignored (ElevenLabs free output is non-commercial: never commit it); the game fetches `voice/manifest.json` and falls back to the murmur |
 | `tests/`, `e2e/` | vitest, Playwright |
+
+### moss provider (local voice clips)
+
+`provider: "moss"` in `scripts/voice/voices.json` generates lines with OpenMOSS-Team/MOSS-TTS-v1.5
+(Apache-2.0, output released CC0; credit "MOSS-TTS-v1.5, OpenMOSS, Apache-2.0") on this Mac via mlx-audio.
+Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `mossProvider`,
+`scripts/voice/moss/runner.py` (the only part that loads the model), tests in `tests/voice-moss.test.ts`.
+
+- **Setup lives outside the repo**, in `~/kq-models` (see its `README.md`): venv `venv-moss` (Python 3.12,
+  mlx-audio 0.6.7, `requirements-lock.txt`), HF cache `hf/` with MOSS-TTS-v1.5 @ `cdd3b911` and
+  MOSS-Audio-Tokenizer @ `3cd226ba` (official safetensors, no repo code, no `trust_remote_code`), loaded
+  offline (`HF_HUB_OFFLINE=1`) from the snapshot paths. Override with `KQ_MOSS_VENV`, `KQ_MOSS_HOME`,
+  `KQ_MOSS_VOICES` in the env or the main checkout's `.env`; defaults resolve from the home dir.
+- **References:** each speaker has one fixed synthetic reference WAV in `~/kq-models/voices/` (copies of
+  the MOSS casting picks: laub = seed 102, marlene = seed 205; sources and sha256 in that folder's README)
+  and a fixed seed; generation is direct clone mode (reference + seed + the casting instruction), as in
+  the casting consistency batch. The manifest `voiceId` is `moss:<speaker>:<sha8 of reference>:<seed>`,
+  so a new reference or seed regenerates the speaker's lines; `model` `MOSS-TTS-v1.5@cdd3b91`, `licence`
+  `apache-2.0-model`, `credits` 0, plus `attribution`. Guard (runner and `moss.ts`): a reference must
+  resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
+  checks every reference before the model loads. Reference WAVs and clips are never committed.
+- **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`.
+  No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
+  lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
+  after the lock is released (trim, pause cap, loudnorm −18 LUFS, Opus + AAC). `--max-lines` (default 40)
+  caps new moss clips per run.
+- `pnpm voice:plan` shows the moss lines, characters, estimated minutes (RTF ~1.1 plus a model load
+  per batch), lock batches and dist MB; it never loads the model.
 
 ## 2. Coordinate frame
 
