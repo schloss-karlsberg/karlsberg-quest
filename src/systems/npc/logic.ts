@@ -74,3 +74,34 @@ export function clueFor(chapter: string, npc: string): string {
 export function askedTopics(flags: Readonly<Record<string, unknown>>, chapter: string, npc: string, topics: string[]): Set<string> {
   return new Set(topics.filter((tp) => !!flags[talkedFlag(chapter, npc, tp)]));
 }
+
+// ---- turning to the player (playtest round 10, F-33: Soll talked with his back to the player) ----
+
+/** Seconds a person takes to turn round to the player when a conversation opens. */
+export const TALK_TURN_S = 0.4;
+/** Seconds back to the idle heading after the talk. */
+export const IDLE_TURN_S = 1.2;
+/** Seconds of the slow turn towards a player who comes close (procedural figures: no head look). */
+export const NEAR_TURN_S = 1.8;
+
+/** Signed shortest arc from `from` to `to` (radians, in [−π, π)). */
+export function shortestArc(from: number, to: number): number {
+  const d = (((to - from) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI);
+  return d - Math.PI;
+}
+
+/** The object yaw at which a figure at (x, z) faces (tx, tz) — the figure faces +z (rotation.y = 0). */
+export function yawToward(x: number, z: number, tx: number, tz: number): number {
+  return Math.atan2(tx - x, tz - z);
+}
+
+/**
+ * One step of a turn from `current` towards `target` along the shortest arc: an exponential
+ * approach that has covered 95 % of the angle after `seconds` (frame-rate independent). `snap`
+ * (reduced motion) or `seconds <= 0` lands on the target at once. The result is wrapped to [−π, π).
+ */
+export function approachYaw(current: number, target: number, dt: number, seconds: number, snap = false): number {
+  const arc = shortestArc(current, target);
+  const k = snap || seconds <= 0 ? 1 : 1 - Math.exp((-3 * Math.max(0, dt)) / seconds);
+  return shortestArc(0, current + arc * k);
+}
