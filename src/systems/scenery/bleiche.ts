@@ -572,7 +572,8 @@ function basket(b: SetBuilder): void {
   const [x, z] = toWorld(P.u, P.w);
   const y = lowGround(b, P.u, P.w, 0.3) - 0.01;
   k.place(x, y, z, face(BLEICHE.facing + 20));
-  // the Poly Haven basket is ~16.6k triangles (four times the rest of the green): high tier only
+  // the Poly Haven basket (16.6k triangles when this was decided, 8.9k since the tri phase B
+  // re-pack): high tier only
   b.model(
     'architecture.basket',
     () => {

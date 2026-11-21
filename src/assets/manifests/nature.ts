@@ -12,9 +12,9 @@ const entries: AssetEntry[] = [
     url: 'models/nature/tree_stump_01.glb',
     area: 'forest',
     eras: ['today', '1796'],
-    bytes: 946064,
+    bytes: 851248,
     licence: 'polyhaven.tree_stump_01',
-    note: 'Pipeline reference asset (foundation): ~1.2 m wide, pivot at the ground; simplified to 30 %, 1k WebP PBR set.',
+    note: 'Pipeline reference asset (foundation): ~1.2 m wide, pivot at the ground; simplified to 4.5 % (1.8 k triangles), 1k WebP PBR set.',
   },
   {
     id: 'nature.ground.albedo',
@@ -59,7 +59,7 @@ const entries: AssetEntry[] = [
   { id: 'nature.fern.02', kind: 'model', url: 'models/nature/fern_02.glb', area: 'forest', bytes: 286960, licence: 'polyhaven.fern_02', note: '~2 m wide fern clump, instanced on the forest floor near the player.' },
   { id: 'nature.rocks.moss01', kind: 'model', url: 'models/nature/rock_moss_set_01.glb', area: 'forest', bytes: 444544, licence: 'polyhaven.rock_moss_set_01', note: 'Set of 6 mossy rocks (each child mesh is one variant), simplified to ≈ 12 %.' },
   { id: 'nature.rocks.moss02', kind: 'model', url: 'models/nature/rock_moss_set_02.glb', area: 'forest', bytes: 568852, licence: 'polyhaven.rock_moss_set_02', note: 'Set of 7 mossy rocks, simplified to ≈ 12 %.' },
-  { id: 'nature.log.01', kind: 'model', url: 'models/nature/dead_tree_trunk.glb', area: 'forest', bytes: 658324, licence: 'polyhaven.dead_tree_trunk', note: '~3 m fallen trunk, simplified to 6 %.' },
-  { id: 'nature.stump.02', kind: 'model', url: 'models/nature/tree_stump_02.glb', area: 'forest', bytes: 936764, licence: 'polyhaven.tree_stump_02', note: '~1.5 m stump with roots, simplified to 12 %.' },
+  { id: 'nature.log.01', kind: 'model', url: 'models/nature/dead_tree_trunk.glb', area: 'forest', bytes: 621496, licence: 'polyhaven.dead_tree_trunk', note: '~3 m fallen trunk, simplified to 1.8 % (1.8 k triangles).' },
+  { id: 'nature.stump.02', kind: 'model', url: 'models/nature/tree_stump_02.glb', area: 'forest', bytes: 880144, licence: 'polyhaven.tree_stump_02', note: '~1.5 m stump with roots, simplified to 3 % (1.9 k triangles).' },
 ];
 export default entries;

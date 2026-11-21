@@ -195,6 +195,67 @@ re-use; "peak" = the most expensive frame. Before = `4a3c98c`.
   walk-up to the furnished wing: no visible difference except the wind phase (session scratchpad
   `tri-phase-a/`).
 
+### 3.5 Triangle budget, phase B (2026-11-21)
+
+After phase A, Hoch still drew 2.1–2.7 M triangles on average at the palace plateau, the Quelle and
+the Felsenpfad. Most of that was the forest model trees and the CC0 props, each drawn twice (main
+and shadow pass). Three changes, each checked with before / after look pairs:
+
+1. **Props re-packed** (`pnpm assets:pack --simplify`, fresh Poly Haven 1k sources, UVs /
+   textures / credits kept; `tests/asset-tris.test.ts` caps them): tree_stump_01 12.3 k → 1.8 k,
+   tree_stump_02 8.1 k → 1.9 k, dead_tree_trunk 6.1 k → 1.8 k, both crates 6.6 / 5.2 k → 1.9 / 1.8 k,
+   ArmChair_01 5.6 k → 1.8 k, wine_barrel_01 10.8 k → 4.6 k, wicker_basket_01 16.6 k → 8.9 k. The
+   barrel and basket stop higher. At ≈ 2 k the barrel's hoops tore away from the staves, and the
+   basket's walls vanished because the weave is made of separate strands. Rule: compare the
+   simplified surface area with the source; a loss of more than ≈ 5 % shows. The Apfelallee props
+   (80–120 k per view) are procedural kit apple trees, not packed assets; they are the next knob
+   there.
+2. **Quelle ferns as a distance LOD** (`systems/scenery/quelle.ts` `fernDetailed`): the scanned
+   clump (`nature.fern.02`, ≈ 5.6 k triangles) stays within 9 m of the trough or 3 m of the trail
+   through the hollow. The 10 brook-bank clumps up the ravine use the stylised forest fern
+   (`nature2.ferns#fern`, 288 triangles) at the same spot, height and footprint. Together they
+   cost less than 75 % of the old triangles (`tests/quelle-ferns.test.ts`).
+3. **Trees** (`world/vegetation/trees.ts`): the lod1 → impostor ring moved from 78·k to 72·k.
+   At 60·k and 66·k the pines across the Weiher looked flatter in an A/B flip, so it backed off to
+   72. In the shadow pass the model trees draw caster lists with the lod1 geometry (lod0 trees
+   included), sorted by distance from the expected shadow focus. Only casters within box + 30 m
+   are drawn, which is the same limit the vertex shaders already applied. So the cut changes no
+   shadow, but the dropped casters no longer cost vertex work (`renderer.info` counted the
+   collapsed instances). The lod1 casters move the edges of near trunk shadows by a few pixels.
+
+The Quelle water box was checked as well. The reflected body is the Weiher, 102 m away, seen
+through the trunks (≈ 200 px of 0.92 M). The box is the body plus its bank pad, so it is not a
+bounds bug and was left alone.
+
+Measured as in §3.4 (real GPU, Apple M5 Pro, ANGLE Metal, headless Chromium 1280 × 720). Before is
+`3b6739d` (phase A plus main).
+
+| View | Tier | Calls avg / peak | Triangles avg / peak | Peak, shadow every frame | Per pass after (main / shadow / reflection, avg M) |
+|---|---|---|---|---|---|
+| Palace plateau, 270° | Hoch | 154 / 182 → **150 / 173** | 2.08 / 2.60 M → **1.50 / 1.77 M** | 2.60 → 1.77 M | 1.23 / 0.27 / – |
+| Quelle, 270° | Hoch | 182 / 197 → **180 / 199** | 2.72 / 2.79 M → **1.98 / 2.17 M** | 3.87 → 2.76 M | 1.20 / 0.29 / 0.49 |
+| Felsenpfad, 90° | Hoch | 135 / 160 → **130 / 149** | 2.24 / 2.85 M → **1.51 / 1.80 M** | 2.85 → 1.80 M | 1.23 / 0.29 / – |
+| Weiher, 90° | Hoch | 163 / 169 → **160 / 169** | 1.57 / 1.59 M → **1.23 / 1.38 M** | 2.15 → 1.64 M | 0.81 / 0.13 / 0.28 |
+| 1789 plateau, 180° | Hoch | 161 / 188 → **160 / 187** | 0.91 / 1.10 M → **0.75 / 0.89 M** | 1.10 → 0.89 M | 0.62 / 0.13 / – |
+| 1789 front, 90° | Hoch | 184 / 213 → **184 / 212** | 1.27 / 1.46 M → **1.01 / 1.15 M** | 1.46 → 1.15 M | 0.88 / 0.14 / – |
+| Palace plateau | Mittel | 147 / 172 → 144 / 166 | 1.21 / 1.51 M → **0.95 / 1.12 M** | | 0.78 / 0.17 / – |
+| Quelle | Mittel | 130 / 155 → 125 / 147 | 1.49 / 1.91 M → **1.04 / 1.24 M** | | 0.83 / 0.21 / – |
+| Felsenpfad | Mittel | 133 / 158 → 128 / 147 | 1.46 / 1.85 M → **1.05 / 1.24 M** | | 0.86 / 0.19 / – |
+| Weiher | Mittel | 132 / 155 → 128 / 148 | 0.83 / 1.00 M → **0.62 / 0.70 M** | | 0.55 / 0.07 / – |
+| 1789 plateau | Mittel | 152 / 174 → 152 / 173 | 0.84 / 0.99 M → **0.68 / 0.78 M** | | 0.58 / 0.10 / – |
+| 1789 front | Mittel | 179 / 206 → 179 / 205 | 1.14 / 1.33 M → **0.89 / 1.02 M** | | 0.76 / 0.13 / – |
+
+- Hoch is now at or near the 1.5 M budget on average everywhere except the Quelle (1.98 M). There
+  the water reflection (0.49 M, the Weiher through the trunks) is the remaining knob. A minimum
+  screen coverage for the reflection would remove it, but that changes the look.
+- Look checks were done with a frozen clock and a fixed camera before / after:
+  - Every re-packed prop at 2–3 m and 10 m: same silhouette and texture, slightly simpler edges.
+  - The ferns from the home-base view, down the brook, and on the far bank from 6 / 10 m.
+  - The trees and shadows at the Felsenpfad, across the Weiher, and at the palace clearing.
+  - The impostor ring at 60 / 66 / 72 / 78.
+  - What differs: the wind phase, and near trunk-shadow edges that move a few pixels (lod1 casters)
+    (session scratchpad `tri-phase-b/`).
+
 ## 4. Loading
 
 Measured with `e2e/perf.spec.ts` (preview build on localhost, cold cache, SwiftShader).

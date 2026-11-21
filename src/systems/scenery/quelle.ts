@@ -227,18 +227,62 @@ function icicle(b: SetBuilder, x: number, y: number, z: number, r: number, len: 
   b.kit.cone(r, len, x, y, z, ICE, 5, [Math.PI, 0, 0]);
 }
 
+/**
+ * Distance LOD of the fern clumps (tri budget phase B, docs/PERFORMANCE.md §3.5): the scanned CC0
+ * clump (`nature.fern.02`, four ferns, ~5.6k triangles, drawn in the main, shadow and water
+ * reflection passes) stays where the player stands at home base: within `FERN_NEAR` m of the
+ * trough, or within `FERN_TRAIL` m of the trail's stretch through the hollow (its points within
+ * `FERN_TRAIL_SPAN` m of the trough). Further out a clump is the stylised forest fern of the
+ * scattered props (`nature2.ferns#fern`, 288 triangles) at the same spot, height and footprint.
+ */
+export const FERN_NEAR = 9;
+export const FERN_TRAIL = 3;
+export const FERN_TRAIL_SPAN = 14;
+
+/** Local (u, w) points of the trail through the hollow, every 0.5 m. */
+let hollowTrail: [number, number][] | null = null;
+function hollowTrailPoints(): [number, number][] {
+  if (hollowTrail) return hollowTrail;
+  const T = PIECES.trough;
+  hollowTrail = TRAIL.flatMap((s) => trailLine(s, 0.5))
+    .map((p) => toLocal(p.x, p.z))
+    .filter(([u, w]) => Math.hypot(u - T.u, w - T.w) <= FERN_TRAIL_SPAN);
+  return hollowTrail;
+}
+
+/** Whether the fern clump at local (u, w) keeps the detailed CC0 model (see `FERN_NEAR`). */
+export function fernDetailed(u: number, w: number): boolean {
+  const T = PIECES.trough;
+  if (Math.hypot(u - T.u, w - T.w) <= FERN_NEAR) return true;
+  return hollowTrailPoints().some(([tu, tw]) => Math.hypot(u - tu, w - tw) <= FERN_TRAIL);
+}
+
+/**
+ * Height of the stylised fern for a clump of scale `s` (m): about the detailed clump's crown
+ * (0.4 m authored × 0.55 × s) with a little more for the rosette's droop; its ~3.3 × wider spread
+ * then covers the clump's footprint (~1.1 m × s).
+ */
+export const fernFarHeight = (s: number) => 0.3 * s;
+/** Authored height of `nature2.ferns#fern` (assets:set units). */
+const FERN_FAR_AUTHORED = 2.69;
+
 /** A fern clump (CC0 model on medium / high, three leaf cones on low). */
 function fern(b: SetBuilder, u: number, w: number, s: number, seed: number, snow: boolean): void {
   at(b, u, w, g(b, u, w) - 0.05, seed * 37);
   const k = b.kit;
-  b.model(
-    'nature.fern.02',
-    () => {
-      const col = snow ? 0x6d6a55 : FERN;
-      for (let i = 0; i < 3; i++) k.cone(0.16 * s, 0.7 * s, Math.cos(i * 2.1) * 0.18 * s, 0, Math.sin(i * 2.1) * 0.18 * s, tint(col, rng(seed + i), 0.15), 5, [Math.cos(i * 2.1) * 0.5, 0, Math.sin(i * 2.1) * 0.5]);
-    },
-    { yaw: seed * 1.3, scale: s * 0.55 },
-  );
+  const fallback = () => {
+    const col = snow ? 0x6d6a55 : FERN;
+    for (let i = 0; i < 3; i++) k.cone(0.16 * s, 0.7 * s, Math.cos(i * 2.1) * 0.18 * s, 0, Math.sin(i * 2.1) * 0.18 * s, tint(col, rng(seed + i), 0.15), 5, [Math.cos(i * 2.1) * 0.5, 0, Math.sin(i * 2.1) * 0.5]);
+  };
+  // the detailed clump's four ferns spread over x 0–2 / z 0–1.7 (authored): the far fern sits at
+  // that footprint's centre
+  if (fernDetailed(u, w)) b.model('nature.fern.02', fallback, { yaw: seed * 1.3, scale: s * 0.55 });
+  else {
+    const yaw = seed * 1.3;
+    const cx = 0.45 * s * 0.55;
+    const cz = 0.44 * s * 0.55;
+    b.model('nature2.ferns#fern', fallback, { x: Math.cos(yaw) * cx + Math.sin(yaw) * cz, z: -Math.sin(yaw) * cx + Math.cos(yaw) * cz, yaw, scale: fernFarHeight(s) / FERN_FAR_AUTHORED });
+  }
 }
 
 /**
