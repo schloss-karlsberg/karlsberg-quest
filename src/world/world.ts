@@ -359,7 +359,7 @@ export class World {
     const g = atmosphere.uGlowPos.value;
     (this.sky.uniforms.uGlowDir!.value as Vector3).set(g.x - camera.position.x, 0, g.z - camera.position.z).normalize();
     this.terrain.update(camera);
-    this.forest.update(camera);
+    this.forest.update(camera, agl);
     this.nature.frame(camera);
     this.water.frame(camera, dt);
   }

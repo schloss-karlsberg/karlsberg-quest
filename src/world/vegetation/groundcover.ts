@@ -13,6 +13,7 @@ import {
 import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
 import { ATMOS_GLSL, atmosphere } from '../atmosphere';
+import { ViewCone } from '../viewCone';
 import { COVER_LOOKS, type CoverLook, type CoverSample, flowerChance, grassChance, hash2, reedChance, valueNoise } from './scatter';
 
 /** What the nature layers read from the world (current era's terrain and land cover). */
@@ -42,6 +43,23 @@ interface TileData {
   grass: Float32Array;
   flowers: Float32Array;
   reeds: Float32Array;
+}
+
+/** Always drawn within this horizontal distance (m) of the camera, whatever the view (it turns fast). */
+export const COVER_NEAR = 3;
+/** Beyond about this distance (m) a grass tuft is the sparse distance tuft (±2 m dithered per tuft). */
+export const FAR_TUFT = 12;
+/** Turn margin (rad) of the view cone; the lists are rebuilt after half of it. */
+const CONE_MARGIN = 0.7;
+
+/**
+ * Which list a cover instance goes into (pure; exported for tests): null = outside the view cone
+ * (culled), 'near' = the full tuft, 'far' = the sparse distance tuft (grass beyond `FAR_TUFT`,
+ * dithered by the instance's variant `v` so no ring shows). `d` = horizontal distance (m).
+ */
+export function coverPick(cone: ViewCone, x: number, y: number, z: number, d: number, v: number, grass: boolean): 'near' | 'far' | null {
+  if (d > COVER_NEAR && !cone.keeps(x, y + 0.3, z, 0.6, COVER_NEAR)) return null;
+  return grass && d > FAR_TUFT + (v - 0.5) * 4 ? 'far' : 'near';
 }
 
 const TIERS: Record<GraphicsLevel, { cell: number; radius: number; maxGrass: number } | null> = {
@@ -328,7 +346,8 @@ void main() {
 export class GroundCover {
   readonly object = new Group();
   readonly material: ShaderMaterial;
-  private readonly layers: { grass: Layer; flowers: Layer; reeds: Layer };
+  private readonly layers: { grass: Layer; grassFar: Layer; flowers: Layer; reeds: Layer };
+  private readonly cone = new ViewCone();
   private tier = TIERS.low;
   private look: CoverLook = COVER_LOOKS.today!;
   private readonly tiles = new Map<string, TileData>();
@@ -336,7 +355,7 @@ export class GroundCover {
   private lastZ = Infinity;
   private dirty = true;
   private readonly cov = new Float32Array(4);
-  readonly stats = { grass: 0, flowers: 0, reeds: 0, tiles: 0 };
+  readonly stats = { grass: 0, grassFar: 0, flowers: 0, reeds: 0, tiles: 0 };
   /** Lake-bed depth of the terrain shader (reeds stand on the sunk bed). */
   bedDepth = 1.6;
 
@@ -370,6 +389,8 @@ export class GroundCover {
     };
     this.layers = {
       grass: make(merge([tuftGeometry(22, 0, 3, 0.022, 0.26, 3, 0.42)]), 20000, 'nature-grass'),
+      // the distance tuft (beyond FAR_TUFT): 10 blades of about twice the width, same height and spread
+      grassFar: make(merge([tuftGeometry(10, 0, 3, 0.046, 0.26, 3, 0.42)]), 20000, 'nature-grass-far'),
       flowers: make(flowerGeometry(), 2500, 'nature-flowers'),
       reeds: make(reedGeometry(), 3000, 'nature-reeds'),
     };
@@ -490,16 +511,22 @@ export class GroundCover {
     return t;
   }
 
+  /**
+   * Rebuild the instance lists when the camera moved 3 m or turned 20°: only what lies in the 3D
+   * view cone (frustum corner + 40°) or within `COVER_NEAR`; grass beyond `FAR_TUFT` as the
+   * sparse distance tuft.
+   */
   update(camera: PerspectiveCamera): void {
     const tier = this.tier;
     if (!tier) return;
     const p = camera.position;
-    if (!this.dirty && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 3) return;
+    if (!this.dirty && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 3 && !this.cone.turned(camera, CONE_MARGIN / 2)) return;
     this.dirty = false;
     this.lastX = p.x;
     this.lastZ = p.z;
+    this.cone.set(camera, CONE_MARGIN);
     const rad = tier.radius;
-    const counts = { grass: 0, flowers: 0, reeds: 0 };
+    const counts = { grass: 0, grassFar: 0, flowers: 0, reeds: 0 };
     const t0x = Math.floor((p.x - rad) / TILE);
     const t1x = Math.floor((p.x + rad) / TILE);
     const t0z = Math.floor((p.z - rad) / TILE);
@@ -515,18 +542,26 @@ export class GroundCover {
           if (Math.hypot(cx, cz) > rad + TILE * 0.71) continue;
           const t = this.tile(tx, tz);
           tiles++;
-          for (const k of ['grass', 'flowers', 'reeds'] as const) {
-            const src = t[k];
-            const L = this.layers[k];
-            const max = k === 'grass' ? Math.min(L.max, tier.maxGrass) : L.max;
-            const ia = L.inst.array as Float32Array;
-            const va = L.vary.array as Float32Array;
+          for (const k0 of ['grass', 'flowers', 'reeds'] as const) {
+            const src = t[k0];
+            const grass = k0 === 'grass';
             for (let o = 0; o < src.length; o += R) {
-              const n = counts[k];
-              if (n >= max) break;
+              if (grass && counts.grass + counts.grassFar >= tier.maxGrass) break;
               const dx = src[o]! - p.x;
               const dz = src[o + 2]! - p.z;
-              if (dx * dx + dz * dz > rad * rad) continue;
+              const d2 = dx * dx + dz * dz;
+              if (d2 > rad * rad) continue;
+              const pick = coverPick(this.cone, src[o]!, src[o + 1]!, src[o + 2]!, Math.sqrt(d2), src[o + 5]!, grass);
+              if (!pick) continue;
+              const k = pick === 'far' ? 'grassFar' : k0;
+              const L = this.layers[k];
+              const n = counts[k];
+              if (n >= L.max) {
+                if (grass) continue;
+                break;
+              }
+              const ia = L.inst.array as Float32Array;
+              const va = L.vary.array as Float32Array;
               ia[n * 4] = src[o]!;
               ia[n * 4 + 1] = src[o + 1]!;
               ia[n * 4 + 2] = src[o + 2]!;
@@ -538,7 +573,7 @@ export class GroundCover {
           }
         }
     }
-    for (const k of ['grass', 'flowers', 'reeds'] as const) {
+    for (const k of ['grass', 'grassFar', 'flowers', 'reeds'] as const) {
       const L = this.layers[k];
       const n = counts[k];
       L.geo.instanceCount = n;
@@ -550,7 +585,8 @@ export class GroundCover {
       L.vary.needsUpdate = true;
       L.mesh.visible = n > 0;
     }
-    this.stats.grass = counts.grass;
+    this.stats.grass = counts.grass + counts.grassFar;
+    this.stats.grassFar = counts.grassFar;
     this.stats.flowers = counts.flowers;
     this.stats.reeds = counts.reeds;
     this.stats.tiles = tiles;
