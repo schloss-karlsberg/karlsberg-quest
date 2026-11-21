@@ -87,7 +87,9 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.start('Alex');
-    k.step(200);
+    // the opening beat waits for the chapter card (5.5 s + 0.8 s of its fade, M-11); the radio
+    // quest offer follows 0.7 s after that
+    k.step(500);
   });
   // Marlene on the radio, with her portrait and the fiction label
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-speaker', 'marlene', { timeout: 10_000 });
