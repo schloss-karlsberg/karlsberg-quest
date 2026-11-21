@@ -66,7 +66,9 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, W hands the
   const stats = await page.evaluate(() => window.kq!.party!.stats());
   console.log(`[party a] stats ${JSON.stringify(stats)}`);
   expect(stats.bodies).toBe(16);
-  expect(stats.setDrawCalls).toBe(2);
+  // the set (fest.ts): 3 calls on Niedrig (SwiftShader), 5 on Mittel / Hoch; budget 12
+  expect(stats.setDrawCalls).toBeGreaterThanOrEqual(3);
+  expect(stats.setDrawCalls).toBeLessThanOrEqual(12);
   // the bodies stand in the clearing and are drawn
   const vis = await page.evaluate(() => window.kq!.ctx.people!.list().filter((p) => p.root.visible).length);
   expect(vis).toBeGreaterThanOrEqual(16);

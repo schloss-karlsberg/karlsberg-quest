@@ -1,6 +1,7 @@
 /**
  * The party's set pieces behind a small interface (`PartySet`), so a 3D pass can swap the
- * placeholder primitives for authored meshes without touching the party logic.
+ * placeholder primitives for authored meshes without touching the party logic. The game builds
+ * the real set (fest.ts, `FestPartySet`); the placeholder below stays as a minimal reference.
  *
  * Placeholder (`PlaceholderPartySet`): primitives on the scenery Kit, cheap:
  *  - ONE merged mesh for every static prop on the shared prop material (`propMaterial`, vertex

@@ -9,7 +9,8 @@
  * Uses:           ctx.people (16 people, speakers bound so they stay talkable), 'animal:request'
  *                 (Diane and Bijou: spawn / lie / shine), 'cinematic:play' (the camera way round the
  *                 party, `lockInput: false`, not skippable by any key) and 'cinematic:stop', the
- *                 placeholder set (set.ts, 2 draw calls).
+ *                 set (fest.ts: table, cake, gas stove with mulled wine, fire bowl, fairy lights,
+ *                 lanterns; 5 draw calls on Mittel / Hoch, 3 on Niedrig).
  * Input:          moving or looking during the orbit hands the camera back (0.4 s), the strip runs
  *                 on to its end (credits:done {skipped: false}); Enter or the strip's button
  *                 „Abspann überspringen" ends the credits (skipped: true); Esc pauses; E talks.
@@ -24,7 +25,8 @@ import { defineSystem } from '../../core/systems';
 import { addStrings } from '../../i18n';
 import { PARTY_CHECKPOINT, TF01, yawTo } from './placements';
 import { PartyRuntime, type PartyBus, CREDITS_CINEMATIC } from './runtime';
-import { PlaceholderPartySet, type PartySet } from './set';
+import { FestPartySet } from './fest';
+import type { PartySet } from './set';
 import { CreditsStrip } from './strip';
 import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
 import './types';
@@ -69,11 +71,14 @@ const SKIP_KEYS = /^(Enter|NumpadEnter)$/;
 class PartySystem {
   readonly rt: PartyRuntime;
   private hooks = false;
-  /** The set builder; a 3D pass swaps this for authored meshes. */
+  /** The set builder (fest.ts; set.ts keeps the primitive placeholder behind the same interface). */
   setBuilder: PartySet;
 
   constructor(private readonly ctx: GameContext) {
-    this.setBuilder = new PlaceholderPartySet((x, z) => ctx.world.heightAt(x, z));
+    this.setBuilder = new FestPartySet(
+      (x, z) => ctx.world.heightAt(x, z),
+      () => ctx.quality.level,
+    );
     const strip = new CreditsStrip({ hint: ctx.t('party.hint'), hintCamera: ctx.t('party.hint.camera'), button: ctx.t('party.skip') }, () => this.rt.skip());
     this.rt = new PartyRuntime({
       bus: ctx.events as unknown as PartyBus,
