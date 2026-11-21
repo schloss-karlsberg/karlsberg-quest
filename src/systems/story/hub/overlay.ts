@@ -1,13 +1,13 @@
 /**
- * Field-station hub overlay (field-book spread): Chronik pin board, radio (Marlene), shelf
- * (collections), map table (chapter select / continue), field bed (rest = save) and the drawer.
+ * The hub overlay at the Quelle (field-book spread, contract C4): the Chronik, the phone (Marlene's
+ * messages), the shelf on the wall's edge (RPG counts), the drawer (the wall niche: the Bussole's
+ * state), the map (chapter select / continue) and the bench (rest = save).
  * Every use emits `hub:use { item }` (story-private event) so beats can react to it.
  */
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
 import { shelfItems } from '../../../ui/journal';
 import type { ModalHandle, ModalManager } from '../../../ui/modal';
-import { portraitSvg } from '../dialogue/portraits';
 import type { HubItem } from '../types';
 
 /** The Regal's numbers (RPG stats). */
@@ -43,7 +43,7 @@ export interface HubDeps {
   goto(chapter: string): void;
   rest(): boolean;
   counts(): HubCounts;
-  /** Next radio line (Marlene) or null. */
+  /** Marlene's next message on the phone, or null. */
   radioLine(): string | null;
   drawerState(): 'full' | 'empty';
   blip(): void;
@@ -53,10 +53,10 @@ export interface HubDeps {
 
 const ICON: Record<HubItem, string> = {
   chronik: `<svg viewBox="0 0 64 64"><rect x="6" y="8" width="52" height="44" rx="2" fill="#b98f5a" stroke="#2a2118" stroke-width="1.6"/><rect x="6" y="8" width="52" height="44" fill="url(#kqs-h1)" opacity=".35"/><rect x="11" y="13" width="17" height="21" fill="#efe6d0" stroke="#2a2118" transform="rotate(-6 19 23)"/><rect x="33" y="15" width="19" height="15" fill="#efe6d0" stroke="#2a2118" transform="rotate(4 42 22)"/><rect x="24" y="33" width="20" height="15" fill="#e3d4b0" stroke="#2a2118" transform="rotate(-3 34 40)"/><path d="M19 16L42 18L34 36L19 16" fill="none" stroke="#a33a24" stroke-width="1.1"/><g fill="#a33a24"><circle cx="19" cy="16" r="1.8"/><circle cx="42" cy="18" r="1.8"/><circle cx="34" cy="36" r="1.8"/></g><path d="M14 20h9M14 24h8M14 28h10M36 21h12M36 25h9" stroke="#2a2118" stroke-width=".6"/></svg>`,
-  radio: '',
+  phone: `<svg viewBox="0 0 64 64"><rect x="20" y="6" width="24" height="52" rx="4" fill="#2a2118" stroke="#2a2118" stroke-width="1.4"/><rect x="23" y="12" width="18" height="36" rx="1" fill="#c3cba6"/><path d="M26 18h12M26 22h9M26 30h12M26 34h7" stroke="#2a2118" stroke-width=".9"/><rect x="25" y="16" width="14" height="9" rx="2" fill="#efe6d0" stroke="#2a2118" stroke-width=".6"/><rect x="27" y="28" width="12" height="8" rx="2" fill="#45563a" opacity=".6"/><circle cx="32" cy="53" r="2" fill="#efe6d0"/><path d="M48 14c3 3 3 9 0 12M51 11c5 5 5 13 0 18" stroke="#a33a24" stroke-width="1.2" fill="none"/></svg>`,
   shelf: `<svg viewBox="0 0 64 64"><path d="M8 6v52M56 6v52M8 22h48M8 40h48M8 57h48" stroke="#2a2118" stroke-width="2" fill="none"/><g stroke="#2a2118" stroke-width=".9"><rect x="11" y="9" width="5" height="13" fill="#7c3022"/><rect x="16" y="11" width="4" height="11" fill="#45563a"/><rect x="20" y="8" width="6" height="14" fill="#b58b3d"/><rect x="27" y="12" width="3" height="10" fill="#efe6d0" transform="rotate(12 28 17)"/><rect x="38" y="27" width="14" height="13" fill="#efe6d0"/><rect x="12" y="29" width="5" height="11" fill="#2d4d6b"/><rect x="17" y="27" width="5" height="13" fill="#7a5634"/><circle cx="46" cy="16" r="5" fill="url(#kqs-brass)"/><rect x="12" y="46" width="22" height="11" fill="url(#kqs-h2)"/><rect x="40" y="47" width="10" height="10" rx="2" fill="#c3cba6"/></g></svg>`,
   map: `<svg viewBox="0 0 64 64"><path d="M6 40h52M12 40l-4 18M52 40l4 18" stroke="#2a2118" stroke-width="2" fill="none"/><path d="M10 38L16 18H52L56 38Z" fill="#efe6d0" stroke="#2a2118" stroke-width="1.3"/><path d="M18 24c8 2 10 8 18 6s10 4 16 3M16 31c6-2 12 3 18 1M30 20l-4 18M40 20l2 18" stroke="#2a2118" stroke-width=".6" fill="none"/><path d="M38 26h6v5h-6z" fill="#a33a24" opacity=".7"/><path d="M24 12l8 22M24 12l-4 22" stroke="#2a2118" stroke-width="1.4"/><circle cx="24" cy="12" r="2" fill="url(#kqs-brass)" stroke="#2a2118"/></svg>`,
-  bed: `<svg viewBox="0 0 64 64"><path d="M6 46h52M8 46v10M56 46v10M8 34v12" stroke="#2a2118" stroke-width="2" fill="none"/><path d="M8 36h48v10H8z" fill="#45563a" stroke="#2a2118" stroke-width="1.2"/><path d="M8 36h48v10H8z" fill="url(#kqs-h2)" opacity=".5"/><ellipse cx="17" cy="33" rx="8" ry="4" fill="#efe6d0" stroke="#2a2118"/><path d="M30 34c6-3 14-3 26 0" stroke="#2a2118" stroke-width=".8" fill="none"/><path d="M44 20c2-4 7-4 8 0" stroke="#2a2118" stroke-width=".8" fill="none"/><text x="46" y="18" font-family="Caveat, cursive" font-size="9" fill="#2a2118">z</text><text x="51" y="12" font-family="Caveat, cursive" font-size="7" fill="#2a2118">z</text></svg>`,
+  bench: `<svg viewBox="0 0 64 64"><path d="M14 44v12M50 44v12M10 56h12M42 56h12" stroke="#2a2118" stroke-width="2.2" fill="none"/><rect x="6" y="38" width="52" height="7" rx="1.5" fill="#7a5634" stroke="#2a2118" stroke-width="1.2"/><path d="M8 41h48" stroke="#2a2118" stroke-width=".6"/><rect x="8" y="24" width="48" height="6" rx="1.5" fill="#7a5634" stroke="#2a2118" stroke-width="1.2" transform="rotate(-4 32 27)"/><path d="M14 30v8M50 28v10" stroke="#2a2118" stroke-width="1.6"/><path d="M38 18c2-4 7-4 8 0" stroke="#2a2118" stroke-width=".8" fill="none"/><text x="40" y="16" font-family="Caveat, cursive" font-size="9" fill="#2a2118">z</text><text x="46" y="10" font-family="Caveat, cursive" font-size="7" fill="#2a2118">z</text></svg>`,
   drawer: `<svg viewBox="0 0 64 64"><path d="M6 20h52v34H6z" fill="#7a5634" stroke="#2a2118" stroke-width="1.6"/><path d="M6 20h52v34H6z" fill="url(#kqs-h1)" opacity=".35"/><path d="M10 28h44v22H10z" fill="#6f4a2c" stroke="#2a2118"/><rect x="26" y="36" width="12" height="4" rx="2" fill="url(#kqs-brass)" stroke="#2a2118"/><path d="M10 20l6-10h32l6 10" fill="#5a3c22" stroke="#2a2118"/><circle class="kqs-drawer-compass" cx="32" cy="15" r="6" fill="url(#kqs-brass)" stroke="#2a2118"/></svg>`,
 };
 
@@ -88,7 +88,7 @@ export class HubOverlay {
   }
 
   private tile(item: HubItem, label: string, status: string, onClick: () => void): HTMLElement {
-    const icon = item === 'radio' ? portraitSvg('radio') : ICON[item];
+    const icon = ICON[item];
     return h('button.kqs-hub-tile', { 'data-testid': `hub-${item}`, onclick: onClick }, [
       h('span.kqs-hub-icon', svg(icon)),
       h('span.kqs-hub-label', label),
@@ -100,34 +100,34 @@ export class HubOverlay {
     const m = this.m;
     if (!m) return;
     const c = this.d.counts();
-    const transcript = h('div.kqs-hub-radio', { 'data-testid': 'hub-transcript' }, [h('span.kqs-hub-radio-hint', t('story.hub.radio.idle'))]);
+    const transcript = h('div.kqs-hub-radio', { 'data-testid': 'hub-transcript' }, [h('span.kqs-hub-radio-hint', t('story.hub.phone.idle'))]);
     const grid = h('div.kqs-hub-grid', [
       this.tile('chronik', t('story.hub.chronik'), t('story.hub.chronik.status'), () => this.d.use('chronik')),
-      this.tile('radio', t('story.hub.radio'), t('story.hub.radio.status'), () => {
-        this.d.use('radio');
+      this.tile('phone', t('story.hub.phone'), t('story.hub.phone.status'), () => {
+        this.d.use('phone');
         this.radio(transcript);
       }),
       this.tile('shelf', t('story.hub.shelf'), t('story.hub.shelf.status', { n: c.codex, total: c.codexTotal }), () => {
         this.d.use('shelf');
         this.shelf();
       }),
-      this.tile('map', t('story.hub.map'), this.d.currentBeatTitle(), () => {
-        this.d.use('map');
-        this.mapTable();
-      }),
-      this.tile('bed', t('story.hub.bed'), t('story.hub.bed.status'), () => {
-        this.d.use('bed');
-        const ok = this.d.rest();
-        bed.querySelector('.kqs-hub-status')!.textContent = ok ? t('story.hub.bed.saved') : t('story.hub.bed.nosave');
-        bed.classList.add('kqs-done');
-      }),
       this.tile('drawer', t('story.hub.drawer'), this.d.drawerState() === 'full' ? t('story.hub.drawer.full') : t('story.hub.drawer.empty'), () => {
         this.d.use('drawer');
         drawer.classList.add('kqs-done');
         drawer.querySelector('.kqs-hub-status')!.textContent = t('story.hub.drawer.taken');
       }),
+      this.tile('map', t('story.hub.map'), this.d.currentBeatTitle(), () => {
+        this.d.use('map');
+        this.mapTable();
+      }),
+      this.tile('bench', t('story.hub.bench'), t('story.hub.bench.status'), () => {
+        this.d.use('bench');
+        const ok = this.d.rest();
+        bench.querySelector('.kqs-hub-status')!.textContent = ok ? t('story.hub.bench.saved') : t('story.hub.bench.nosave');
+        bench.classList.add('kqs-done');
+      }),
     ]);
-    const bed = grid.querySelector('[data-testid="hub-bed"]') as HTMLElement;
+    const bench = grid.querySelector('[data-testid="hub-bench"]') as HTMLElement;
     const drawer = grid.querySelector('[data-testid="hub-drawer"]') as HTMLElement;
     if (this.d.drawerState() === 'empty') drawer.classList.add('kqs-empty');
     m.setBody([h('p.kqs-hub-sub', t('story.hub.sub')), grid, transcript, h('div.actions', h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'hub-leave' }, t('story.hub.leave')))], t('story.hub.title'));
@@ -136,8 +136,8 @@ export class HubOverlay {
   private radio(box: HTMLElement): void {
     const line = this.d.radioLine();
     window.clearInterval(this.radioTimer);
-    const text = line ?? t('story.hub.radio.silent');
-    const who = h('span.kqs-who', line ? t('story.hub.radio.marlene') : '');
+    const text = line ?? t('story.hub.phone.silent');
+    const who = h('span.kqs-who', line ? t('story.hub.phone.marlene') : '');
     const span = h('span.kqs-typed');
     box.replaceChildren(who, span);
     if (this.d.reducedMotion()) {

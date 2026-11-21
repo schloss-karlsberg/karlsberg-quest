@@ -5,7 +5,7 @@ import { type Page, expect, test } from '@playwright/test';
  * Chronik and Journal (Action-RPG rework, docs/ACTION-RPG.md §8.4 / §12): clue markers + examine
  * cards, relief finds behind the scan modes, echoes (hold E), nothing lost when caught; the
  * Journal that replaced the deduction board: J opens it, the tabs are keyboard-reachable,
- * clue facts land in its codex, the Pinnwand at the field station opens it. No board, no blanks,
+ * clue facts land in its codex, the Pinnwand (the hub at the Quelle) opens it. No board, no blanks,
  * no noun selection, no batches, no hint ladder.
  * Screenshots: test-results/screens/chronik-*.png. `?placeholder` forces the test pack
  * (content/test/chronik-test.pack.json) even once real content exists.
@@ -235,14 +235,14 @@ test.describe('chronik', () => {
     expect(errors).toEqual([]);
   });
 
-  test('journal: the Pinnwand at the field station opens it and returns to the hub', async ({ page }) => {
+  test('journal: the Pinnwand at the Quelle opens it and returns to the hub', async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page);
     await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.quests, null, { timeout: 180_000 });
     await page.evaluate(() => {
       const k = window.kq!;
       k.setEra('today');
-      k.teleport(760, -905, 0);
+      k.teleport(1059.3, -833.1, 50);
       k.step(3);
       k.ctx.ui.modals.closeAll();
       k.story!.hub(true);

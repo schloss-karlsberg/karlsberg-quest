@@ -206,14 +206,14 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await install(page);
   await page.evaluate(() => (window.kq as Any).combat.god(true));
   await o.at?.('k4:start');
-  // ---- 4.0 station at night: Marlene's note (q.k4.zettel) -------------------------------------
+  // ---- 4.0 the Quelle at night: Marlene's note by the steps (q.k4.zettel) ----------------------
   let s = await story(page);
   expect(s.chapter).toBe('k4');
   expect(s.beat).toBe('k4_0');
   expect(s.era).toBe('today');
   await untilQuest(page, 'q.k4.zettel', 'active');
   await shot(page, '00-station-night');
-  await examineHere(page, 'clue.k4.marlene', 760, -906);
+  await examineHere(page, 'clue.k4.marlene', 1056.4, -835.4);
   await run(page, 0.5);
   expect(await beat(page)).toBe('k4_1');
   await drainLines(page);
@@ -511,7 +511,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await has(page, 'clue.k4.jost')).toBe(true);
   expect(await shownSince(page, shownMark, 'jost.k4.08', 20)).toBe(true);
 
-  // ---- dawn at the station ------------------------------------------------------------------------
+  // ---- dawn at the Quelle -------------------------------------------------------------------------
   expect(await untilLine(page, 'marlene.end.morgen', 60)).toBe(true);
   s = await story(page);
   expect(s.beat).toBe('k4_14');

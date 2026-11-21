@@ -8,6 +8,8 @@
 | Ende | Fallseite „Vermessung“ ganz bestätigt → Kapitel 1 offen |
 | Stimmung | Klar, kühl, neugierig. Unbehagen nur am Rand: ein Hund, wo keiner sein kann |
 
+> **Brücke (2026-11-20, Tour-WP-01/03):** Zuhause ist jetzt die **Karlsbergquelle** (`HOME`, 1061/−834.5), nicht mehr die Feldstation. Den Bauwagen gibt es nicht mehr; Pinnwand, Funkgerät, Regal, Schublade und Feldbett sind die Kacheln der Pause an der Quelle (Chronik, Handy, Mauerkante, Mauernische, Karte, Bank). Wer gestellt wird, wacht an der Quelle auf (1059.3/−833.1). Bis die Führung (Tour, `docs/design/tour`) diesen Prolog ersetzt, **beginnt** er noch am alten Platz am Waldweg (760/−902: Messstab, erster Kampf am Damm); P10 führt in der Dämmerung zur Quelle zurück (zu Fuß, Dreibein Karlsbergquelle oder noch Feldstation), P11 endet auf der Bank. Die Texte unten beschreiben weiter den alten Ablauf; die Neufassung kommt mit der Tour.
+
 ---
 
 ## 1. Ablauf (Beats in Reihenfolge)

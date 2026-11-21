@@ -48,7 +48,7 @@
       "kind": "main",
       "era": "today",
       "title_de": "Ein Zettel auf der Stufe",
-      "summary_de": "Marlene ist heimgegangen. Auf der Stufe des Bauwagens liegt ein Zettel. Danach hinunter ins Tal, zu den Wachhäusern am Taleingang, und nach 1796.",
+      "summary_de": "Marlene ist heimgegangen. An der Quelle, unten an den Stufen, liegt ein Zettel. Danach hinunter ins Tal, zu den Wachhäusern am Taleingang, und nach 1796.",
       "giver": {
         "voice": "marlene"
       },
@@ -72,9 +72,9 @@
           "text_de": "Marlenes Zettel auf der Stufe lesen",
           "clue": "clue.k4.marlene",
           "where": {
-            "x": 760,
-            "z": -908,
-            "r": 4,
+            "x": 1056.4,
+            "z": -835.4,
+            "r": 2,
             "era": "today"
           }
         },

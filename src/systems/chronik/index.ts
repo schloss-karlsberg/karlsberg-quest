@@ -29,6 +29,7 @@ import {
   caseComplete,
   clueDistance,
   clueEras,
+  CHAPTER_ORDER,
   clueRetired,
   clueStatus,
   discover,
@@ -122,14 +123,20 @@ function progress(ctx: GameContext, caseId: string): CaseProgress {
 
 /** Story chapter ids → the `Clue.chapter` ids of the packs ('prolog' → 'p'). */
 /**
- * While the story plays the prologue, only the prologue's clues are in the world: the later
- * chapters' notes at the field station (Marlene's letters, Laub's tins …) would otherwise show
- * their markers and take E before the story has introduced the Chronik. null = no gating (any
- * other chapter, sandbox, `?notitle` tests): every clue is in the world as before.
+ * Only the clues of the chapters the story has reached are in the world: the later chapters' notes
+ * at home (Marlene's letters at the Quelle, Laub's tins …) would otherwise show their markers and
+ * take E before their chapter (the prologue: before the story has introduced the Chronik; chapter
+ * 1: at the spring, where it starts). null = no gating (no story, sandbox, `?notitle` tests, a
+ * chapter outside the order): every clue is in the world as before.
  */
 function reachedChapters(ctx: GameContext): Set<string> | null {
   const story = (ctx.state.state.systems as Record<string, unknown>).story as { active?: boolean; chapter?: string | null } | undefined;
-  return story?.active && story.chapter === 'prolog' ? new Set(['p', 'prolog']) : null;
+  if (!story?.active || !story.chapter) return null;
+  const i = CHAPTER_ORDER.indexOf(story.chapter === 'prolog' ? 'p' : story.chapter);
+  if (i < 0) return null;
+  const set = new Set(CHAPTER_ORDER.slice(0, i + 1));
+  set.add('prolog');
+  return set;
 }
 
 /** The clue `chapter` key of the running story chapter ('p' for the prologue), or null without a story. */

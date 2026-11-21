@@ -6,11 +6,10 @@
  * Today the home is the Karlsbergquelle (it replaces the Feldstation): the spring from
  * `QUELLE` with the design's 12 m ring.
  *
- * SWITCH POINT: once the story system exports its `HOME` constant (tour WP-01,
- * `src/systems/story/hub/home.ts`), this helper becomes the one line
- * `return { x: HOME.x, z: HOME.z, r: HOME.r };` — nothing else needs to change.
+ * The values come from the story system's `HOME` constant (tour WP-01,
+ * `src/systems/story/hub/home.ts`).
  */
-import { QUELLE } from './quelle/layout';
+import { HOME } from './story/hub/home';
 
 export interface HomeSpot {
   readonly x: number;
@@ -22,9 +21,7 @@ export interface HomeSpot {
   readonly r: number;
 }
 
-const SPRING: HomeSpot = Object.freeze({ x: QUELLE.x, z: QUELLE.z, r: 12 });
-
 /** The home base (centre and ring radius, local frame). */
 export function homeSpot(): HomeSpot {
-  return SPRING;
+  return { x: HOME.x, z: HOME.z, r: HOME.r };
 }

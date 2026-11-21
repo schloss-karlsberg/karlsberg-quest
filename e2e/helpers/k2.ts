@@ -269,13 +269,13 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   await o.at?.('k2:start');
   await installQuestPlay(page);
   await page.setViewportSize(SMALL);
-  // ---- the field station: Marlene, Laub's quest "Die Spur im Raureif" ------------------------------
+  // ---- home at the Quelle: Marlene, Laub's quest "Die Spur im Raureif" ------------------------------
   await settle(page, 30);
   let s = await story(page);
   expect(s).toMatchObject({ chapter: 'k2', beat: 'k2_0', era: 'today' });
   expect(await qs(page, 'q.k2.spur')).toBe('active');
   expect(await clues(page)).toContain('clue.k2.marlene');
-  await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
+  await page.evaluate(() => window.kq!.teleport(1053, -828, 51, -3));
   await shot(page, '01-station');
 
   // ---- Q at the fence: the frost night, the scrap of wool, the trail -------------------------------
@@ -589,7 +589,7 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.setViewportSize(SMALL);
   expect(await page.evaluate(() => window.kq!.skills!.levels().kartograf)).toBe(3);
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBe('item.stab.silber');
-  await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
+  await page.evaluate(() => window.kq!.teleport(1053, -828, 51, -3));
   await settle(page, 4);
   expect(['k2_12', 'k2_13']).toContain((await story(page)).beat);
   await shot(page, '14-rauch');

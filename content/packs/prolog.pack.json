@@ -121,11 +121,11 @@
       "kind": "document",
       "text_de": "Ein großer Ausdruck „Lageplan Schloss Karlsberg, Forschungsstand 2006 (Nachzeichnung)“, darunter klein: „Grundlage: schloss-carlsberg.de, CC BY-SA 2.0 DE“. Die Legende nennt Ehrenhof, Corps de logis, Galerie, Orangerie, Marstall, Reithalle, Exerzierplatz, Zwinger, Eiskeller. Den Ehrenhof umschließen drei Flügel. Reithalle und Exerzierplatz liegen weit im Norden. Der Titelstempel lautet „Rekonstruktion Sommer 1789 – Hypothese“.",
       "where": {
-        "x": 760,
-        "z": -915,
-        "radius": 1,
+        "x": 1060.3,
+        "z": -835.9,
+        "radius": 0.5,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -153,11 +153,11 @@
       "kind": "map",
       "text_de": "Fotokopie eines Messtischblatts. Bleistift von Marlene: „1935 – liegt nur 10–15 m daneben, gut brauchbar.“",
       "where": {
-        "x": 760,
-        "z": -915,
-        "radius": 1,
+        "x": 1060.3,
+        "z": -835.9,
+        "radius": 0.5,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -179,11 +179,11 @@
       "kind": "document",
       "text_de": "Im Regal: das Reliefmuster-Handbuch des Forstamts, acht Musterkarten. Die Karten stehen ab jetzt im Codex.",
       "where": {
-        "x": 760,
-        "z": -915,
-        "radius": 1,
+        "x": 1060.3,
+        "z": -835.9,
+        "radius": 0.5,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -213,11 +213,11 @@
       "kind": "map",
       "text_de": "Druck eines bayerischen Positionsblatts mit gestochener Schrift „Ruine Carlsberg“, „Carlsbergerhof“, „Sanddorf“. Am Rand steht in Bleistift und sehr ordentlicher Kurrentschrift: „Aufgen. Nov. 1840. Q. L. – Standpunkt 17 am alten Forsthaus.“ Daneben liegt eine Messing-Bussole, kalt und still.",
       "where": {
-        "x": 760,
-        "z": -915,
-        "radius": 1,
+        "x": 1060.3,
+        "z": -835.9,
+        "radius": 0.5,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -409,9 +409,9 @@
       "kind": "object",
       "text_de": "Bodenpunkte unter dem Kronendach. Quer über den Ehrenhof eine Reihe von Abdrücken, etwa 8 cm groß, paarweise, im Abstand eines Trabs.",
       "where": {
-        "x": 760,
-        "z": -915,
-        "radius": 1,
+        "x": 1060.3,
+        "z": -835.9,
+        "radius": 0.5,
         "era": "today",
         "anchor": "portable"
       },
@@ -441,9 +441,9 @@
       "kind": "document",
       "text_de": "Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts, Überschrift: „Was der Hof schuldig blieb“. Darunter nur Spalten: „Wem – Was – Wann – Wo“. Unten ein Satz, in anderer Tinte und in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“",
       "where": {
-        "x": 760,
-        "z": -915,
-        "radius": 1,
+        "x": 1060.3,
+        "z": -835.9,
+        "radius": 0.5,
         "era": "today",
         "anchor": "portable"
       },

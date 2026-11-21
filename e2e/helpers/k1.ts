@@ -157,7 +157,7 @@ export async function shiftToPast(page: Page): Promise<void> {
   await frames(page, 60);
   expect((await story(page)).era).toBe('1789');
 }
-/** Hold Q in the past → back to today, in place. */
+/** Hold Q in the past → back to today, home at the Quelle (WP-04). */
 export async function holdQ(page: Page): Promise<void> {
   await installQuestPlay(page);
   await holdHome(page);

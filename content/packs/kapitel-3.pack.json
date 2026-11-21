@@ -170,11 +170,11 @@
       "kind": "dialogue",
       "text_de": "Marlene erzählt von der Ausstellung „Steinerne Macht“ (2018).",
       "where": {
-        "x": 760,
-        "z": -930,
-        "radius": 30,
+        "x": 1051.3,
+        "z": -827.4,
+        "radius": 8,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "flags": [

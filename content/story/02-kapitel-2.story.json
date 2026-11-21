@@ -6,7 +6,7 @@
   "era": "1793-02",
   "start": "k2_0",
   "next": "k3",
-  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
   "on": [
     {
       "id": "k2-mannlich",
@@ -163,7 +163,7 @@
   "beats": [
     {
       "id": "k2_0",
-      "title_de": "Feldstation",
+      "title_de": "An der Quelle",
       "enter": [
         { "do": "look", "time": "day" },
         { "do": "quest", "op": "offer", "id": "q.k2.spur", "onResume": true },
@@ -188,7 +188,7 @@
         {
           "id": "k2_0-hund",
           "when": {
-            "all": [{ "era": "today" }, { "leave": { "x": 760, "z": -902, "r": 380 } }]
+            "all": [{ "era": "today" }, { "leave": { "x": 1061, "z": -834.5, "r": 380 } }]
           },
           "do": [
             { "do": "sound", "sound": "howl", "x": 1460, "z": -260, "caption": "[Ein Hund bellt, fern]" },
@@ -998,7 +998,7 @@
           "id": "k2_11-weg",
           "when": { "quest": { "id": "q.k2.parforce", "objective": "pikeur" } },
           "do": [
-            { "do": "objective", "id": "k2.heim", "text": "Q halten: zurück in die Feldstation", "x": 819, "z": -875 },
+            { "do": "objective", "id": "k2.heim", "text": "Q halten: zurück zur Quelle", "x": 819, "z": -875 },
             { "do": "say", "line": "laub.k2.damm.weg", "delay": 1.5 },
             { "do": "say", "line": "laub.k2.wasser", "delay": 1 },
             { "do": "say", "line": "laub.k2.kalkoefen", "delay": 1 },
@@ -1028,9 +1028,9 @@
     },
     {
       "id": "k2_12",
-      "title_de": "Feldstation",
+      "title_de": "An der Quelle",
       "enter": [
-        { "do": "objective", "id": "k2.ende", "text": "Feldstation. Die Nacht ist vorbei." },
+        { "do": "objective", "id": "k2.ende", "text": "An der Quelle. Die Nacht ist vorbei." },
         { "do": "autosave" },
         { "do": "say", "line": "marlene.k2.abend", "delay": 2.5 }
       ],

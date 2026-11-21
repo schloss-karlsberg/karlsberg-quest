@@ -132,11 +132,11 @@
       "kind": "document",
       "text_de": "„Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.“ Auf der Rückseite ein PS. (Belegt: Steine der Ruine stecken in Homburger Häusern.)",
       "where": {
-        "x": 760,
-        "z": -908,
-        "radius": 6,
+        "x": 1056.4,
+        "z": -835.4,
+        "radius": 1.2,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -534,13 +534,13 @@
       "id": "clue.k4.nur_steine",
       "title_de": "Nur Steine",
       "kind": "dialogue",
-      "text_de": "Feldstation, nach dem Finale, vor der Wahl.",
+      "text_de": "An der Quelle, nach dem Finale, vor der Wahl.",
       "where": {
-        "x": 760,
-        "z": -930,
-        "radius": 30,
+        "x": 1051.3,
+        "z": -827.4,
+        "radius": 8,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "nouns": [
@@ -561,11 +561,11 @@
       "kind": "object",
       "text_de": "Der Stein über der Kellertür von Marlenes Schwager in der Homburger Altstadt: ein Winkel mit drei Punkten. (FIKTION: Kein echtes Haus ist gemeint.) Wandernde Steine 4/4.",
       "where": {
-        "x": 760,
-        "z": -930,
-        "radius": 30,
+        "x": 1051.3,
+        "z": -827.4,
+        "radius": 8,
         "era": "today",
-        "anchor": "loc.p.station"
+        "anchor": "loc.quelle"
       },
       "reveals": {
         "flags": [

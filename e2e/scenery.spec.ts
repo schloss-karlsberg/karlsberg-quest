@@ -198,9 +198,9 @@ test.describe('scenery', () => {
     expect(errors).toEqual([]);
   });
 
-  test('dawn: Morgengrauen at the field station', async ({ page }) => {
+  test('dawn: Morgengrauen at the Quelle', async ({ page }) => {
     const errors = trackErrors(page);
-    await place(page, { era: 'today', x: 760, z: -902, yaw: 100, pitch: 4 });
+    await place(page, { era: 'today', x: 1053, z: -828, yaw: 51, pitch: 4 });
     await page.evaluate(() => {
       window.kq!.story!.look('dawn');
       window.kq!.step(4);

@@ -1,6 +1,6 @@
 /**
  * Story feature: data-driven chapters/beats (content/story/*.story.json), the dialogue presenter,
- * objectives with Laub's compass, the field station hub, the new-game flow on the title, being
+ * objectives with Laub's compass, the hub at the Quelle, the new-game flow on the title, being
  * caught, endings and credits.
  *
  * Talks to other features only through events (contracts.ts + the story-private events below)
@@ -28,7 +28,7 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HubOverlay } from './hub/overlay';
-import { FieldStation, STATION } from './hub/station';
+import { HOME, bringHome, hubAt } from './hub/home';
 import { ObjectiveView, bearingDeg } from './objectives';
 import { StoryOverlays } from './overlays';
 import { playStorySound } from './sfx';
@@ -61,8 +61,10 @@ declare module '../../core/state' {
 }
 declare module '../../core/events' {
   interface GameEvents {
-    /** A field-station item was used (hub overlay). */
+    /** A hub item was used (the hub overlay at the Quelle). */
     'hub:use': { item: HubItem };
+    /** The player was brought home to the Quelle (HOME.spawn): Q held in the past (contract C4). */
+    'home:arrived': { reason: 'return' | 'caught' | 'checkpoint' };
     /** Free-form story cue for other features (e.g. { id: 'k2.fire.start' }). */
     'story:cue': { id: string; data?: Record<string, FlagValue> };
     /** The credits were closed (the story is finished). */
@@ -126,7 +128,7 @@ declare module '../../debug/hooks' {
   }
 }
 
-// ---- looks for the present day at the field station -----------------------------------------
+// ---- looks for the present day ----------------------------------------------------------------
 type LookPatch = { [K in keyof EraLook]?: Partial<EraLook[K]> } & { disc?: EraLook['disc'] };
 const LOOKS: Record<Exclude<LookTime, 'day'>, LookPatch> = {
   // Morgengrauen: the sun just up in the east, pink horizon, mist lying in the valleys
@@ -237,7 +239,6 @@ class StoryRuntime {
   readonly presenter: DialoguePresenter;
   readonly objectives: ObjectiveView;
   readonly overlays: StoryOverlays;
-  readonly station = new FieldStation();
   readonly hub: HubOverlay;
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
@@ -257,7 +258,7 @@ class StoryRuntime {
   private hubToastShown = false;
   private storyPrompt = false;
   private hubPrompt = false;
-  private shiftPending: { to: Era; age: number } | null = null;
+  private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
   /** The pack is chasing the player (hunt:alert): holding Q does not bring you home (bible: "nicht, solange Sie jemand ansieht"). */
   private packChasing = false;
@@ -273,7 +274,6 @@ class StoryRuntime {
   private lastSaid = new Map<string, number>();
   /** Dialogue that is never spoken by the trigger runner (example packs, placeholder packs). */
   private readonly mutedLines: Set<string>;
-  private stationPlaced = false;
   private hooksInstalled = false;
   private quietCard = false;
   /** Seconds the caught curtain has been down (game time); hold = caughtHold / 1000. */
@@ -360,10 +360,8 @@ class StoryRuntime {
     });
     this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
 
-    // field station in the world (today only) + a clearing in the forest around it
-    this.station.addTo(ctx.scene);
-    ctx.world.forest.addClearing(STATION.x, STATION.z, 18);
-    this.placeStation();
+    // home is the Karlsbergquelle (hub/home.ts): no mesh of its own, the spring's set and its
+    // clearings belong to the quelle system
 
     this.hub = new HubOverlay({
       modals: ctx.ui.modals,
@@ -381,7 +379,7 @@ class StoryRuntime {
       currentBeatTitle: () => this.engine.beat()?.title_de ?? '—',
       goto: (ch) => this.goto(ch),
       rest: () => {
-        const ok = ctx.save.save('auto', 'bed');
+        const ok = ctx.save.save('auto', 'bench');
         return ok;
       },
       counts: () => {
@@ -477,16 +475,16 @@ class StoryRuntime {
     ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
       this.dropShiftObjective(to);
-      this.stationSolid(to === 'today');
-      if (to === 'today') this.placeStation();
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
     });
     ctx.events.on('shift:begin', () => {
       this.shiftPending = null;
       this.shifting = true;
     });
-    ctx.events.on('shift:done', ({ to }) => {
+    ctx.events.on('shift:done', ({ to, reason }) => {
       this.shifting = false;
+      // Q held in the past: home to the Quelle (WP-04); not after being caught (its own wake)
+      this.homeAfterShift({ to, reason });
       // where the oil is not the chapter's timer (no oil meter), every trip into the past starts
       // with a full lantern (playtest K4: it ran dry mid-chapter and nothing refilled it)
       if (to !== 'today' && !this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: ctx.player.stats.lanternLit, refill: true });
@@ -635,12 +633,11 @@ class StoryRuntime {
     for (const a of actions) {
       if (resume && !runsOnResume(a)) continue;
       at += a.delay ?? 0;
+      // measure a line BEFORE it runs: an immediate say marks itself said, and would then take no time
+      const text = a.do === 'say' ? (this.sayText(a) ?? '') : '';
       if (at <= 0) this.withScope(scope, () => this.exec(a));
       else this.schedule(at, () => this.exec(a), scope, !PRESENTATION.has(a.do));
-      if (a.do === 'say') {
-        const text = this.sayText(a) ?? '';
-        if (text) at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
-      }
+      if (text && a.do === 'say') at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
     }
   }
 
@@ -1105,7 +1102,18 @@ class StoryRuntime {
       this.shiftPending = null;
       // fx answered synchronously ('shift:begin' already ran): no fallback timer, or Q stays
       // dead for 1.5 s after every shift
-    } else if (!this.shifting && ctx.era.current !== to) this.shiftPending = { to, age: 0 };
+    } else if (!this.shifting && ctx.era.current !== to) this.shiftPending = { to, age: 0, reason };
+    // no fx to finish the shift (it switched directly): home now, as shift:done would
+    if (ctx.era.current === to && !ctx.systems.get('fx')) this.homeAfterShift({ to, reason });
+  }
+
+  /** A shift is done: after a Q-hold, home to the Quelle (HOME.spawn, facing the water) + `home:arrived`. */
+  private homeAfterShift(e: { to: Era; reason?: string }): void {
+    bringHome(e, {
+      caught: this.caughtBusy,
+      teleport: (x, z, yaw) => this.teleport(x, z, yaw),
+      arrived: (reason) => this.ctx.events.emit('home:arrived', { reason }),
+    });
   }
 
   private sound(kind: Parameters<typeof playStorySound>[1], x?: number, z?: number, caption?: string, signal?: Parameters<typeof playStorySound>[3]): void {
@@ -1138,23 +1146,6 @@ class StoryRuntime {
     else if (past && past.era === ctx.era.current) ctx.world.look = lookFor(past.time, ctx.era.current);
     else return;
     ctx.world.applyLook();
-  }
-
-  private placeStation(): void {
-    if (this.stationPlaced) return;
-    const hf = this.ctx.world.heightfields['2025'];
-    this.station.place((x, z) => hf.heightAt(x, z));
-    this.station.dress(this.ctx.assets, this.ctx.quality.level !== 'low');
-    this.stationPlaced = true;
-    this.stationSolid(this.ctx.era.current === 'today');
-  }
-
-  /**
-   * The trailer as a collider solid in its era (playtest round 9: the third-person camera's spring
-   * arm went through the wagon — walls see-through, the player inside; only the walk was pushed out).
-   */
-  private stationSolid(on: boolean): void {
-    this.ctx.world.collider.setSolids('station', on ? [{ kind: 'box', x: STATION.x, z: STATION.z, ux: Math.cos(STATION.yaw), uz: -Math.sin(STATION.yaw), hu: STATION.halfLen + 0.15, hv: STATION.halfWid + 0.15 }] : []);
   }
 
   // ------------------------------------------------------------------------------------------
@@ -1309,7 +1300,7 @@ class StoryRuntime {
     // of the hub instead of after it has been closed
     if (this.slice.active && !this.caughtBusy) this.engine.tick(0, this.env());
     if (this.slice.chapter !== chapter) {
-      // the item ended the chapter (the prologue's field bed): out of the trailer, into the next one
+      // the item ended the chapter (the bridged prologue's bench): close the hub, the next one starts
       this.hub.close();
       return;
     }
@@ -1324,27 +1315,30 @@ class StoryRuntime {
   private updateHub(): void {
     const ctx = this.ctx;
     const p = ctx.player.position;
-    const inside = ctx.era.current === 'today' && Math.hypot(p.x - STATION.x, p.z - STATION.z) < STATION.r && !ctx.player.flying;
-    if (inside !== this.inHub) {
-      this.inHub = inside;
-      ctx.events.emit(inside ? 'hub:enter' : 'hub:leave', {});
-      if (inside && !this.hubToastShown) {
+    // at the trough while the story calls the spring (`quelle.call`), E is the Quelle's „Wasser
+    // berühren“: the hub keeps out of the way there (contract C4), not only behind the Quelle's
+    // prompt (the hub's is low) but also on the frame the Quelle has not claimed E yet (system order)
+    const at = hubAt({ era: ctx.era.current, x: p.x, z: p.z, flying: ctx.player.flying, flags: ctx.state.state.flags });
+    if (at.inside !== this.inHub) {
+      this.inHub = at.inside;
+      ctx.events.emit(at.inside ? 'hub:enter' : 'hub:leave', {});
+      if (at.inside && !this.hubToastShown) {
         this.hubToastShown = true;
         ctx.ui.toast(t('story.hub.enterToast'), 3200);
       }
     }
-    const showPrompt = inside && !this.storyPrompt && !this.hub.open;
+    const showPrompt = at.prompt && !this.storyPrompt && !this.hub.open;
     if (showPrompt !== this.hubPrompt) {
       this.hubPrompt = showPrompt;
-      // a low prompt: anything else that wants E here (the Messstab at the wagon, a clue, an npc)
-      // comes first, the hub waits (playtest 2026-11-19: "E – Feldstation" over the first task)
+      // a low prompt: anything else that wants E here (a clue, an npc, the spring's water) comes
+      // first, the hub waits (playtest 2026-11-19: "E – Feldstation" over the first task)
       ctx.ui.hud.prompt(showPrompt ? 'E' : null, showPrompt ? t('story.hub.prompt') : undefined, 'hub', { low: true });
     }
-    if (inside && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0 && ctx.ui.hud.promptOwner() === 'hub') this.hub.show();
+    if (at.prompt && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0 && ctx.ui.hud.promptOwner() === 'hub') this.hub.show();
   }
 
   // ------------------------------------------------------------------------------------------
-  // caught → field station
+  // caught → home (the Quelle)
   // ------------------------------------------------------------------------------------------
 
   private caughtHold = 2400;
@@ -1385,26 +1379,29 @@ class StoryRuntime {
     this.caughtT += dt;
     if (this.caughtT < this.caughtHoldS) return;
     if (ctx.era.current !== 'today') this.requestShift('today', 'caught', true);
-    // where you come to: the resumed beat's wake place, else the caught beat's, else the chapter's checkpoint
+    // where you come to: the resumed beat's wake place, else the caught beat's, else the chapter's
+    // wake (home at the Quelle), else its checkpoint, else home
     // … unless the way back into the past starts somewhere else: then wake at that anchor, so the
     // player does not walk half the map back (playtest: K3 garden, K4 Ehrenhof, K2 after anchor B)
     let wake = this.wakePlace();
     const anchor = this.anchorFromFlags();
     let atAnchor = false;
-    // (not in the prologue: there the station is the lesson, and the way back is short and taught)
+    // (not in the prologue: there home is the lesson, and the way back is short and taught)
     const prolog = this.engine.chapter()?.chapter === 'prolog';
     if (anchor && !anchor.anywhere && !prolog && (!wake || Math.hypot(wake.x - anchor.x, wake.z - anchor.z) > 150)) {
       wake = { x: anchor.x + 3, z: anchor.z + 3, yaw: wake?.yaw ?? 0, text: t('story.caught.wakeAnchor') };
       atAnchor = true;
     }
-    let cp = wake ?? this.engine.chapter()?.checkpoint ?? { x: STATION.spawn.x, z: STATION.spawn.z, yaw: STATION.spawn.yaw };
+    const chapter = this.engine.chapter();
+    let cp = wake ?? chapter?.wake ?? chapter?.checkpoint ?? { x: HOME.spawn.x, z: HOME.spawn.z, yaw: HOME.spawn.yaw };
+    if (!wake && chapter?.wake?.text) wake = chapter.wake;
     // undone in an ordinary fight: come to at the nearest surveyed point, not at the far end of the
     // walk (playtest round 4: death was a free fast travel to the Karlslust 1300 m on, and the K4
     // stockpile woke you 270 m away at the Westblick). Bosses and the story's threats keep their wake.
     const at = this.caughtAt;
     this.caughtAt = null;
     // the prologue: a fight lost on the way wakes you at the nearest landmark of its walk, not 800 m
-    // back at the station (playtest round 5: a 93 s sprint back to repeat the Eiskeller tutorial)
+    // back home (playtest round 5: a 93 s sprint back to repeat the Eiskeller tutorial)
     if (at && at.by === 'combat' && prolog) {
       const near = prologWake(at.x, at.z);
       if (near && near.d + 60 < Math.hypot(cp.x - at.x, cp.z - at.z)) {
@@ -1457,7 +1454,7 @@ class StoryRuntime {
   private dropShiftObjective(to: Era): void {
     const o = this.slice.objective;
     if (!o?.text || !/\bQ\b/.test(o.text)) return;
-    const home = /Heute|Feldstation|Gegenwart/.test(o.text);
+    const home = /Heute|Quelle|Feldstation|Gegenwart/.test(o.text);
     if ((to === 'today') !== home) return;
     this.slice.objective = null;
     this.objectives.set(null);
@@ -1517,20 +1514,14 @@ class StoryRuntime {
     if (this.shiftPending) {
       this.shiftPending.age += dt;
       if (this.shiftPending.age > 1.5) {
-        if (ctx.era.current !== this.shiftPending.to) ctx.era.set(this.shiftPending.to);
+        const pending = this.shiftPending;
+        if (ctx.era.current !== pending.to) ctx.era.set(pending.to);
         this.shiftPending = null;
+        // fx never answered: the shift is done now (home after a Q-hold, as on shift:done)
+        this.homeAfterShift(pending);
       }
     }
     this.updateShiftKey(dt);
-    // station: solid walls
-    if (ctx.era.current === 'today' && !ctx.player.flying) {
-      const p = ctx.player.position;
-      const o = FieldStation.pushOut(p.x, p.z);
-      if (o) {
-        p.x = o.x;
-        p.z = o.z;
-      }
-    }
     this.updateHub();
     this.updateAfterword();
     if (this.calmToasts.length && !ctx.ui.hud.inAction) {
@@ -1646,6 +1637,7 @@ class StoryRuntime {
       this.qHold += dt;
       if (this.qHold > 1.2) {
         this.qHold = 0;
+        // WP-04: the 'return' reason brings you home to the Quelle when the shift is done
         this.requestShift('today', 'return');
       }
     } else this.qHold = 0;
@@ -1670,9 +1662,6 @@ class StoryRuntime {
     const tx = Number(tracker?.dataset.tx), tz = Number(tracker?.dataset.tz);
     const questTarget = questLed && tracker?.dataset.tx !== undefined && Number.isFinite(tx) && Number.isFinite(tz) ? { x: tx, z: tz } : null;
     this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed, questTarget });
-    const today = ctx.era.current === 'today';
-    this.station.setVisible(today);
-    if (today) this.station.frame(dt, ctx.settings.state.reducedMotion);
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
     this.presenter.el.style.visibility = hudVisible && !this.echoHold && !this.talking ? '' : 'hidden';
     // a recorded line pauses with the game (pause menu, a modal) and while an echo holds it
@@ -1754,7 +1743,6 @@ class StoryRuntime {
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
     this.stage.dispose();
-    this.station.object.removeFromParent();
   }
 }
 

@@ -185,7 +185,13 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   expect(said.find((d) => d.id === 'test.jahre')?.text).toContain('{jahre:1793}');
   await page.evaluate(() => window.kq!.story!.finishTyping());
   await expect(page.getByTestId('dialogue')).toContainText(/Nach (zweihundert\S+|über zweihundert) Jahren, Mara\./);
-  expect(await page.evaluate(() => window.kq!.barks!.state().quiet)).toBe('memorial:test.gedenk');
+  // the memorial follows the line (an opening line takes its time before the beat's next action)
+  const quiet = await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 40 && k.barks!.state().quiet !== 'memorial:test.gedenk'; i++) k.step(30);
+    return k.barks!.state().quiet;
+  });
+  expect(quiet).toBe('memorial:test.gedenk');
   await page.evaluate(() => {
     window.kq!.story!.room('B03.1.eg-registratur');
     window.kq!.step(2);
@@ -282,7 +288,7 @@ test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; the Journal fr
   await page.evaluate(() => {
     const k = window.kq!;
     k.setEra('today');
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(3);
     k.ctx.ui.modals.closeAll();
     k.story!.hub(true);

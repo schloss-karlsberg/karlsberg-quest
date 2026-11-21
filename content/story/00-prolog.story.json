@@ -7,6 +7,7 @@
   "start": "p1",
   "next": "k1",
   "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "wake": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
   "on": [
     {
       "id": "pinnwand",
@@ -103,12 +104,12 @@
   "beats": [
     {
       "id": "p1",
-      "title_de": "Die Feldstation",
+      "title_de": "Der Messstab",
       "enter": [
         { "do": "look", "time": "day" },
         { "do": "flag", "set": { "laub.silent": true } },
         { "do": "prompt", "key": "W A S D", "text": "Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen" },
-        { "do": "objective", "id": "station", "text": "Der Messstab lehnt draußen am Wagen: hingehen", "x": 762.2, "z": -912.3, "delay": 0.3 },
+        { "do": "objective", "id": "station", "text": "Der Messstab lehnt am Wegrand: hingehen", "x": 762.2, "z": -912.3, "delay": 0.3 },
         { "do": "sound", "sound": "radio", "caption": "[Das Funkgerät rauscht]", "delay": 0.2 },
         { "do": "quest", "op": "offer", "id": "q.p.feldstation", "delay": 0.2, "onResume": true }
       ],
@@ -156,7 +157,7 @@
       "enter": [
         { "do": "skill", "id": "relief", "tier": 1, "toast": "Relief-Blick 1 (Taste 1) freigeschaltet" },
         { "do": "quest", "op": "offer", "id": "q.p.relief", "onResume": true },
-        { "do": "objective", "id": "damm", "text": "Zum Damm des Karlsbergweihers, hinter dem Bauwagen", "x": 819, "z": -875, "delay": 0.5 },
+        { "do": "objective", "id": "damm", "text": "Zum Damm des Karlsbergweihers", "x": 819, "z": -875, "delay": 0.5 },
         { "do": "say", "line": "marlene.p.relief", "delay": 3.5, "until": { "any": [{ "scan": 1 }, { "enter": { "x": 819, "z": -875, "r": 32, "era": "today" } }] } },
         { "do": "prompt", "key": "1", "text": "Relief-Blick: der Boden ohne Wald" }
       ],
@@ -655,8 +656,8 @@
         { "do": "meter", "id": "oil", "active": false },
         { "do": "prompt", "key": null, "text": null },
         { "do": "look", "time": "dusk" },
-        { "do": "objective", "id": "station", "text": "Zurück zur Feldstation: M – Karte, die Feldstation anklicken, hinreisen (oder F: fliegen)", "x": 760, "z": -915 },
-        { "do": "prompt", "key": "M", "text": "Karte: zur Feldstation reisen", "delay": 2 },
+        { "do": "objective", "id": "station", "text": "Zurück zur Quelle: den Hang hinab (oder M – Karte: zur Karlsbergquelle reisen · F: fliegen)", "x": 1059.3, "z": -833.1 },
+        { "do": "prompt", "key": "M", "text": "Karte: zur Quelle reisen", "delay": 2 },
         { "do": "autosave" }
       ],
       "on": [
@@ -668,10 +669,14 @@
         {
           "id": "daheim",
           "when": {
-            "any": [{ "enter": { "x": 760, "z": -915, "r": 18, "era": "today" } }, { "event": "travel:arrived", "match": { "id": "feldstation" } }]
+            "any": [
+              { "enter": { "x": 1061, "z": -834.5, "r": 14, "era": "today" } },
+              { "event": "travel:arrived", "match": { "id": "karlsbergquelle" } },
+              { "event": "travel:arrived", "match": { "id": "feldstation" } }
+            ]
           },
           "do": [
-            { "do": "objective", "id": "station", "text": "Feierabend: in den Bauwagen (E an der Tür). Pinnwand, Regal, Schublade: wenn du magst", "x": 760.6, "z": -910.4 },
+            { "do": "objective", "id": "station", "text": "Feierabend an der Quelle: E – Pause. Chronik, Mauerkante, Mauernische: wenn du magst", "x": 1059.3, "z": -833.1 },
             { "do": "say", "line": "marlene.p.abend", "delay": 1.5 },
             { "do": "toast", "text": "L: Laterne. Das Öl reicht nicht ewig.", "ms": 4200, "delay": 6 }
           ]
@@ -680,7 +685,13 @@
       "complete": {
         "all": [
           { "quest": { "id": "q.p.punktwolke" } },
-          { "any": [{ "enter": { "x": 760, "z": -915, "r": 22, "era": "today" } }, { "event": "travel:arrived", "match": { "id": "feldstation" } }] },
+          {
+            "any": [
+              { "enter": { "x": 1061, "z": -834.5, "r": 18, "era": "today" } },
+              { "event": "travel:arrived", "match": { "id": "karlsbergquelle" } },
+              { "event": "travel:arrived", "match": { "id": "feldstation" } }
+            ]
+          },
           { "timer": 9 }
         ]
       },
@@ -695,9 +706,9 @@
         {
           "do": "objective",
           "id": "bett",
-          "text": "Schlafen: das Feldbett im Bauwagen (E an der Tür, dann Feldbett)",
-          "x": 760.6,
-          "z": -910.4,
+          "text": "Ausruhen: die Bank an der Quelle (E – Pause, dann Bank)",
+          "x": 1059.3,
+          "z": -833.1,
           "delay": 0.5
         },
         { "do": "unlock", "chapter": "k1" },
@@ -706,7 +717,7 @@
           "do": "say",
           "id": "laptop.p.neu",
           "speaker": "laptop",
-          "text": "Neue Punkte in der Punktwolke vom Februar 2025. Die Spur läuft vom Ehrenhof den Hang herunter, über den Damm, bis an die Tür des Bauwagens. Dort hört sie auf.",
+          "text": "Neue Punkte in der Punktwolke vom Februar 2025. Die Spur läuft vom Ehrenhof den Hang herunter, bis an die Quelle. Dort hört sie auf.",
           "delay": 0.8,
           "ms": 7500
         },
@@ -725,7 +736,7 @@
         { "do": "autosave" }
       ],
       "complete": {
-        "any": [{ "hub": "bed" }, { "timer": 150 }]
+        "any": [{ "hub": "bench" }, { "timer": 150 }]
       },
       "exit": [{ "do": "objective", "text": null }]
     }
