@@ -29,6 +29,7 @@ import type { Solid } from '../../world/collision';
 import { basinBase, wallBase, lookFor } from '../quelle/layout';
 import { clink } from './audio';
 import { disposeLabel, labelCanvas } from './label';
+import { registerEraMaterials } from '../fx/shift/prewarm';
 import { type BottleVisual, buildBottle, buildCover, disposeCover } from './model';
 import { FLASCHEN, FLASCHEN_TOTAL, type FlaschenBase, type FlaschenSpot, MILESTONES, countByEra } from './spots';
 import { FLASCHEN_DE } from './strings';
@@ -522,6 +523,7 @@ export default defineSystem({
     style.textContent = CSS;
     document.head.append(style);
     sys = new Flaschen(ctx);
+    registerEraMaterials('flaschen.bottle', '*', () => [buildBottle(true, 0).group]);
     sys.wire();
     sys.applyCosmetics();
     hooks = sys.hooks();

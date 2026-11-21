@@ -41,7 +41,8 @@ import { Quality, type QualityLevel } from './quality';
 import { ScanPulse } from './scan/pulse';
 import { instantShift } from './shift/instant';
 import { ShiftEffect } from './shift/shift';
-import { ShiftWarmer, glRendererName, nextEraTemplates, warmEnabled } from './shift/warm';
+import { eraPrewarm, registerEraMaterials } from './shift/prewarm';
+import { ShiftWarmer, glRendererName, nextEra, nextEraTemplates, warmEnabled } from './shift/warm';
 import { StageDirector } from './stage';
 import './strings';
 import { FxUI } from './ui';
@@ -231,7 +232,7 @@ export default defineSystem({
     if (ctx.params.has('manual')) quality.auto = false; // deterministic tests
     shift = new ShiftEffect(ctx, ui, quality);
     // M-17: compile / upload what the other era and the shift itself need before the first shift
-    warmer = warmEnabled(ctx.params, glRendererName(ctx.renderer.getContext())) ? new ShiftWarmer(ctx, { effect: () => shift.warmObjects(), extraTextures: () => ctx.world.eraTextures(), templates: () => nextEraTemplates(ctx) }) : null;
+    warmer = warmEnabled(ctx.params, glRendererName(ctx.renderer.getContext())) ? new ShiftWarmer(ctx, { effect: () => shift.warmObjects(), extraTextures: () => ctx.world.eraTextures(), templates: () => nextEraTemplates(ctx), registered: () => eraPrewarm.objects(nextEra(ctx.era.current, ctx.state.state.flags['shift.target'])) }) : null;
     pulse = new ScanPulse();
     ctx.scene.add(pulse.mesh);
     fire = new FireController(ctx, ui, quality);
@@ -241,6 +242,7 @@ export default defineSystem({
     // no snow in the rooms: the buildings with interiors (and the passage pavilion) keep it out
     ambient.setRoofs(roofQuads(ctx.data.footprints.buildings, ['KB-B07']));
     ctx.scene.add(ambient.object);
+    registerEraMaterials('fx.ambient', '*', (era) => { const a = new AmbientParticles(ctx.world); a.setEra(era, false); return a.object; });
     // staged set pieces (K2 / K4 / endings): what the captions used to tell, in the world
     stage = new StageDirector(ctx);
     quality.onChange(() => fire.rebuild());

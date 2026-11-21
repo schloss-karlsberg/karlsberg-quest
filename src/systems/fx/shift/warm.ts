@@ -252,6 +252,8 @@ export interface WarmSources {
    * shared with every copy, so warming the template warms the copies.
    */
   templates: () => Promise<Object3D[]>;
+  /** Samples of the materials the systems build once the next era is active (prewarm.ts). */
+  registered: () => Object3D[];
 }
 
 export class ShiftWarmer {
@@ -435,6 +437,11 @@ export class ShiftWarmer {
     const meshes: Drawable[] = [];
     for (const root of roots) root.traverse((o) => void ((o as Mesh).isMesh && meshes.push(o as Drawable)));
     yield* this.warm(standIns(meshes, this.seen, true));
+    // what the systems build only once the next era is active (prewarm.ts registry)
+    const samples: Drawable[] = [];
+    for (const root of this.src.registered()) root.traverse((o) => void ((o as Drawable).geometry && (o as Drawable).material && samples.push(o as Drawable)));
+    yield;
+    yield* this.warm(standIns(samples, this.seen));
     // the other era's terrain data (not referenced by any material until the era switches)
     const r = ctx.renderer;
     for (const t of this.src.extraTextures()) {
