@@ -1472,3 +1472,9 @@ fight (seen in the K1 Rund shot); the carts echo does not yet turn your view to 
   maps itself with `packCones`, no behaviour change); npc gains `npc:yaw` / `kq.npc.setYaw`, the watch
   sweep and a `pike` look flag (pike in the rigged hand, `PIKE_BESIDE` on the low tier). Content (k1
   quests, roster looks, lines, codex) comes next, against this API.
+- **Story track, 2026-11-20 — tour opening and party endings (drafts only):** the owner's redesign of
+  the opening as a guided tour (visitor, guide placeholder Gerold Imhoff, Karlsberger Hof → Felsenpfad
+  → Weiher → Karlsbergquelle, no combat, roe deer photo, the Quelle as home base, the whole journey
+  during the break) and a credits party on the plateau after each ending. Drafts, work packages,
+  systems, pacing targets and open questions in `docs/design/tour/` (status: draft for the release
+  after 0.5.0); nothing built, §11.0 unchanged until then.
