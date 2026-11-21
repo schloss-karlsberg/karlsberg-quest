@@ -142,6 +142,15 @@ const STATES: State[] = [
     run: async (c) => {
       await expect(c.page.getByTestId('title-new')).toBeEnabled({ timeout: 180_000 });
       await c.shot();
+      // portrait phones: the rotate overlay already covers the title (touch mode is on from the
+      // first frame). Shot as is above; then hidden by the runner so the title, news, settings and
+      // new-game screens can still be judged for portrait readability.
+      if (unit.phonePortrait && (await c.page.locator('.kq-rotate').isVisible())) {
+        c.f.notes.push('portrait phone: the rotate overlay covers the title screen and blocks every tap; the runner hides it for the title-flow states');
+        hideRotate = true;
+        await c.page.evaluate(NOROTATE);
+        await c.shot('no-overlay', 'overlay hidden by the runner');
+      }
     },
   },
   {
@@ -217,6 +226,9 @@ const STATES: State[] = [
     portrait: true,
     run: async (c) => {
       await c.tidy();
+      hideRotate = false;
+      await c.page.evaluate(() => document.getElementById('kq-tour-norotate')?.remove());
+      await c.page.waitForTimeout(200);
       const rotate = await c.page.locator('.kq-rotate').isVisible();
       if (!rotate && unit.phonePortrait) await c.shot('missing', 'expected the rotate overlay on a portrait phone');
       if (!unit.portrait) return c.na('landscape: no rotate overlay');
@@ -633,6 +645,15 @@ function selected(): State[] {
   return list;
 }
 
+/** Portrait phones: the runner hides the rotate overlay during the title-flow states (see `title`). */
+let hideRotate = false;
+const NOROTATE = () => {
+  const st = document.createElement('style');
+  st.id = 'kq-tour-norotate';
+  st.textContent = 'html[data-kq-touch] .kq-rotate.kq-rotate{display:none!important}';
+  document.head.append(st);
+};
+
 const nn = (s: State) => String(STATES.indexOf(s) + 1).padStart(2, '0');
 
 test.use({
@@ -714,6 +735,7 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
     if (css) await page.addStyleTag({ content: css });
     await page.addStyleTag({ content: '.kq-debug,.kq-perf,[data-testid=perf-hud],[data-testid=debug-panel]{display:none!important}' });
     await page.evaluate(QUEST_PLAY);
+    if (hideRotate) await page.evaluate(NOROTATE);
     f.gpu = await page.evaluate(() => {
       const gl = window.kq!.ctx.renderer.getContext();
       const e = gl.getExtension('WEBGL_debug_renderer_info');
@@ -749,7 +771,7 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
     shot: async () => undefined,
     tap: async (testid, finger = 1) => {
       const loc = page.getByTestId(testid).first();
-      let b = await loc.boundingBox();
+      let b = await loc.boundingBox({ timeout: 8000 });
       if (!b) throw new Error(`tap: ${testid} has no box`);
       if (b.y + b.height / 2 > unit.height || b.y + b.height / 2 < 0 || b.x + b.width / 2 > unit.width || b.x + b.width / 2 < 0) {
         f.notes.push(`${testid}: off-screen (centre ${Math.round(b.x + b.width / 2)}/${Math.round(b.y + b.height / 2)} in ${unit.width}×${unit.height}); scrolled into view to tap it`);
@@ -760,7 +782,7 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
       await page.waitForTimeout(150);
     },
     tapSel: async (selector, finger = 1) => {
-      const b = await page.locator(selector).last().boundingBox();
+      const b = await page.locator(selector).last().boundingBox({ timeout: 8000 });
       if (!b) throw new Error(`tap: ${selector} has no box`);
       await new Finger(cdp, finger).tap(b.x + b.width / 2, b.y + b.height / 2);
       await page.waitForTimeout(150);
