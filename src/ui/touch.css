@@ -197,6 +197,16 @@ html[data-kq-touch] textarea {
   text-overflow: ellipsis;
   pointer-events: none;
 }
+/* the pill is the only prompt on touch (the HUD pill steps aside): a long one wraps to two lines
+   instead of being cut */
+.kq-t-btn.interact.lit .kq-t-label {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.1;
+  text-align: left;
+}
 
 /* hold ring (Wuchthieb charge, era return): fills while held */
 .kq-t-ring {
@@ -304,6 +314,11 @@ html[data-kq-touch] .kq-hud .kq-toasts {
 }
 html[data-kq-touch] .kq-hud .kq-prompt {
   bottom: 18px;
+}
+/* one prompt, not two: while the Aktion pill carries the interact prompt's text („Feldstation“),
+   the HUD's prompt pill at the bottom says the same and steps aside */
+html[data-kq-touch]:has(.kq-touch:not(.kq-hidden) .kq-t-btn.interact.lit) .kq-hud .kq-prompt {
+  display: none;
 }
 html[data-kq-touch] .kq-prompt kbd.kq-touch-key {
   display: inline-grid;
