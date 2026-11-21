@@ -35,7 +35,8 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, livePointIds, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, livePointIds, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
 import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
@@ -79,7 +80,7 @@ declare module '../../core/events' {
 }
 
 export interface TravelHooks {
-  state(): TravelSlice & { inCombat: boolean; hunt: string; block: string | null; sprint: number; goal: { x: number; z: number } | null };
+  state(): TravelSlice & { inCombat: boolean; hunt: string; block: string | null; sprint: number; goal: { x: number; z: number } | null; quiet: boolean };
   points(): { id: string; name: string; x: number; z: number; known: boolean; activated: boolean }[];
   activate(id: string): void;
   /** Travel now (ignores the map; respects the rules unless `force`). Returns false if blocked. */
@@ -175,11 +176,14 @@ class Travel {
   private card: HTMLElement | null = null;
   private cardT = 0;
   private time = 0;
+  /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
+  private readonly quiet: QuietGate;
 
   constructor(private readonly ctx: GameContext) {
     this.slice = this.loadSlice();
     this.root.name = 'travel';
     ctx.scene.add(this.root);
+    this.quiet = hideWhileQuiet(ctx.events, this.root);
     this.root.add(this.trail.mesh);
     const hf = ctx.world.heightfields['1789'];
     this.pois = generatePois(undefined, {
@@ -315,7 +319,7 @@ class Travel {
         continue;
       }
       if (t) t.lit = known.has(sp.id) ? 1 : t.lit;
-      if (d < activateRadius(sp) && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
+      if (mayActivate(sp, d, this.slice.activated, { flying: ctx.player.flying, quiet: this.quiet.quiet })) this.activate(sp.id);
     }
   }
 
@@ -818,7 +822,7 @@ class Travel {
     this.updateTrail(dt);
     // Laub announces the point beside a far goal
     const ann = announceFor(this.currentGoal(), ctx.player.position, [...this.slice.activated, ...this.slice.announced]);
-    if (ann && !this.caughtPending) {
+    if (ann && !this.caughtPending && !this.quiet.quiet) {
       this.slice.announced.push(ann.id);
       ctx.events.emit('dialogue:say', { speaker: 'laub', text: TRAVEL_DE.announced(ann.name), priority: 'low' });
     }
@@ -917,7 +921,7 @@ class Travel {
   hooks(): TravelHooks {
     const ctx = this.ctx;
     return {
-      state: () => ({ ...structuredClone(this.slice), inCombat: this.inCombat, hunt: this.hunt, block: this.blockReason(), sprint: this.sprint, goal: this.currentGoal() }),
+      state: () => ({ ...structuredClone(this.slice), inCombat: this.inCombat, hunt: this.hunt, block: this.blockReason(), sprint: this.sprint, goal: this.currentGoal(), quiet: this.quiet.quiet }),
       points: () => {
         const known = new Set(this.known().map((k) => k.id));
         return SURVEY_POINTS.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z, known: known.has(p.id), activated: this.slice.activated.includes(p.id) }));
@@ -979,6 +983,7 @@ class Travel {
   }
 
   dispose(): void {
+    this.quiet.dispose();
     this.closeMap();
     this.hideCard();
     this.dropAllVisuals();
