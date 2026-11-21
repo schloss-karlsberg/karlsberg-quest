@@ -246,8 +246,16 @@ Measured as in §3.4 (real GPU, Apple M5 Pro, ANGLE Metal, headless Chromium 128
 | 1789 front | Mittel | 179 / 206 → 179 / 205 | 1.14 / 1.33 M → **0.89 / 1.02 M** | | 0.76 / 0.13 / – |
 
 - Hoch is now at or near the 1.5 M budget on average everywhere except the Quelle (1.98 M). There
-  the water reflection (0.49 M, the Weiher through the trunks) is the remaining knob. A minimum
-  screen coverage for the reflection would remove it, but that changes the look.
+  the water reflection (0.49 M, the Weiher through the trunks) was the remaining cost.
+- **Reflection screen coverage** (`world/water.ts` `waterCoverage`, `REFLECT_MIN_COVERAGE` 2 %): the
+  reflected body's box rectangle at its level is projected and clipped to the screen. Below 2 % the
+  planar reflection is skipped and the shader uses the tree-line band. Between 2 % and 4 % it fades
+  in, so it does not pop. The Weiher covers 0.4–1.2 % from the Quelle trough and the first 40 m of
+  the way down; it reaches 2.3 % at 60 m (fading in) and 5.7 % at 80 m (full), and 20 % on its
+  shore. Quelle, Hoch: 1.96 / 2.15 M → **1.49 / 1.78 M** (calls 177 → 142), and 2.73 → 1.78 M with
+  the shadow map every frame. The Weiher shore is unchanged. The look pairs (the Quelle play
+  view, the trough toward the Weiher, every 20 m of the walk down, the shore) differ by less than
+  0.03 mean; the sliver through the trunks looks the same with the band.
 - Look checks were done with a frozen clock and a fixed camera before / after:
   - Every re-packed prop at 2–3 m and 10 m: same silhouette and texture, slightly simpler edges.
   - The ferns from the home-base view, down the brook, and on the far bank from 6 / 10 m.
