@@ -3,7 +3,7 @@ import type { EventBus } from '../core/events';
 import type { SettingsStore } from '../core/save';
 import { addStrings, t } from '../i18n';
 import type { Action, Input } from '../player/input';
-import { TOUCH, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, stickToMove, touchActive, touchIconFor } from '../player/touchMap';
+import { TOUCH, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchIconFor, touchPromptIcon } from '../player/touchMap';
 import { h, svg } from './dom';
 import type { Hud } from './hud';
 import { addSettingsRows } from './settings';
@@ -26,6 +26,7 @@ addStrings('de', {
   'touch.dodge': 'Ausweichen',
   'touch.up': 'Steigen',
   'touch.down': 'Sinken',
+  'touch.crouch': 'Ducken (Schleichen)',
   'touch.bannlicht': 'Bannlicht',
   'touch.lock': 'Ziel fassen',
   'touch.balm': 'Balsam',
@@ -45,8 +46,33 @@ addStrings('de', {
   'touch.skill3': 'Wirbel',
   'touch.stick': 'Bewegen',
   'touch.look': 'Umsehen',
-  'touch.rotate': 'Bitte das Gerät quer halten – Karlsberg Quest spielt im Querformat.',
+  'touch.rotate': 'Bitte das Gerät quer halten.',
+  'touch.rotate.sub': 'Karlsberg Quest spielt sich im Querformat.',
 });
+
+/** A phone turning from upright to sideways, with a curved arrow (drawn for this project). */
+const ROTATE_SVG = `<svg viewBox="0 0 96 96" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<g class="kq-rotate-phone"><rect x="34" y="18" width="28" height="50" rx="5"/><path d="M44 23h8"/><circle cx="48" cy="61" r="2"/></g>
+<path class="kq-rotate-arrow" d="M18 46a30 30 0 0 1 24-29"/><path class="kq-rotate-arrow" d="M36 12l6 5-5 6"/>
+<path class="kq-rotate-arrow" d="M78 50a30 30 0 0 1-24 29"/><path class="kq-rotate-arrow" d="M60 84l-6-5 5-6"/>
+</svg>`;
+
+/**
+ * After a touch button's pointerup the browser still sends a click to whatever lies under the
+ * finger by then. A button that opens a page (Pause, Feldbuch, Karte) put that page's × or a menu
+ * entry under the finger, and the click closed it again at once. Swallow that one click.
+ */
+function swallowNextClick(from: HTMLElement): void {
+  const stop = (e: MouseEvent) => {
+    window.removeEventListener('click', stop, true);
+    clearTimeout(timer);
+    if (from.contains(e.target as Node)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  const timer = window.setTimeout(() => window.removeEventListener('click', stop, true), 600);
+  window.addEventListener('click', stop, true);
+}
 
 let touchForms = 0;
 addSettingsRows((settings) => {
@@ -76,6 +102,8 @@ export interface TouchDeps {
   flying(): boolean;
   /** Ability n (1 Ausfall, 2 Erdstoß, 3 Wirbel) learnt? Its button hides until then. Absent: always shown. */
   skillUnlocked?(n: 1 | 2 | 3): boolean;
+  /** The player's stance ('stand' | 'crouch' | 'prone'): the crouch button's state after a load. */
+  stance?(): string;
 }
 
 interface Btn {
@@ -99,11 +127,15 @@ export class TouchControls {
   private readonly interactBtn: Btn;
   private readonly interactText: HTMLElement;
   private readonly flyBtn: Btn;
-  private readonly downBtn: Btn;
+  /** Crouch toggle on foot, hold to sink while flying (C on the keyboard). */
+  private readonly crouchBtn: Btn;
+  private stance = 'stand';
   private readonly dodgeBtn: Btn;
   private readonly scanPop: HTMLElement;
   private readonly skillBtns: HTMLButtonElement[];
   private readonly attackBtn: HTMLButtonElement;
+  private readonly rotateEl: HTMLElement;
+  private titleEl: HTMLElement | null = null;
   /** Touch UI wanted (setting / device). */
   private wanted = false;
   /** Gameplay running without a modal (boot decides). */
@@ -133,7 +165,9 @@ export class TouchControls {
     this.interactBtn = btn('interact', I.interact, t('touch.interact'), ['listen'], this.interactText);
     this.dodgeBtn = btn('dodge', I.dodge, t('touch.dodge'), ['dodge', 'up']);
     this.flyBtn = btn('fly', I.fly, t('touch.fly'), ['fly']);
-    this.downBtn = btn('down', I.down, t('touch.down'), ['down']);
+    // 'crouch' toggles the stance on foot (the player ignores it while flying), 'down' sinks while
+    // flying (nothing reads it on foot): the same pair as C
+    this.crouchBtn = btn('crouch', I.crouch, t('touch.crouch'), ['crouch', 'down']);
     const shift = btn('shift', I.shift, t('touch.shift'), ['shift']);
     shift.el.append(h('i.kq-t-ring'));
     const attack = btn('attack', I.attack, t('touch.attack'), ['attack', 'interact']);
@@ -154,7 +188,7 @@ export class TouchControls {
     });
     // the phone (photo mode): toggles like N; while it is up, the attack button is the shutter
     const photo = btn('photo', I.photo, t('touch.photo'), ['photo']);
-    const top = h('div.kq-t-top', [this.flyBtn.el, this.downBtn.el, scanBtn, photo.el, btn('journal', I.journal, t('touch.journal'), ['journal']).el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
+    const top = h('div.kq-t-top', [this.flyBtn.el, scanBtn, photo.el, btn('journal', I.journal, t('touch.journal'), ['journal']).el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
     deps.events.on('photo:open', () => this.setPhoto(true, photo.el));
     deps.events.on('photo:close', () => this.setPhoto(false, photo.el));
     this.skillBtns = ([1, 2, 3] as const).map((n) => btn(`skill${n}`, I.skill, t(`touch.skill${n}`), [`skill${n}`], h('span.kq-t-num', String(n))).el);
@@ -166,6 +200,7 @@ export class TouchControls {
       btn('lock', I.lock, t('touch.lock'), ['lockOn']).el,
       btn('balm', I.balm, t('touch.balm'), ['quickUse']).el,
       shift.el,
+      this.crouchBtn.el,
       this.interactBtn.el,
     ]);
     this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, this.scanPop]);
@@ -173,7 +208,28 @@ export class TouchControls {
     this.el.addEventListener('pointermove', (e) => this.surfaceMove(e));
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) this.el.addEventListener(ev, (e) => this.surfaceUp(e));
     this.el.addEventListener('contextmenu', (e) => e.preventDefault());
-    deps.root.append(this.el, h('div.kq-rotate', { 'aria-live': 'polite' }, t('touch.rotate')));
+    this.rotateEl = h('div.kq-rotate', { 'data-testid': 'rotate', role: 'alert' }, [
+      h('div.kq-rotate-card', [
+        h('div.kq-rotate-title', t('game.title')),
+        h('div.kq-rotate-icon', svg(ROTATE_SVG)),
+        h('p.kq-rotate-line', t('touch.rotate')),
+        h('p.kq-rotate-sub', t('touch.rotate.sub')),
+      ]),
+    ]);
+    deps.root.append(this.el, this.rotateEl);
+    // the title (and the new-game flow inside it) is not gameplay: no rotate overlay over it
+    const watchTitle = () => {
+      const title = deps.root.querySelector<HTMLElement>(':scope > .kq-title');
+      if (title && title !== this.titleEl) {
+        this.titleEl = title;
+        new MutationObserver(() => this.syncRotate()).observe(title, { attributes: true, attributeFilter: ['class'] });
+      }
+      this.syncRotate();
+    };
+    new MutationObserver(watchTitle).observe(deps.root, { childList: true });
+    watchTitle();
+    window.addEventListener('resize', () => this.syncRotate());
+    window.addEventListener('orientationchange', () => this.syncRotate());
 
     // auto mode: the first real touch anywhere turns the touch UI on (touch laptops)
     window.addEventListener(
@@ -192,8 +248,14 @@ export class TouchControls {
     deps.hud.onPrompt = (key, text) => this.setPrompt(key, text);
     deps.events.on('player:fly', () => this.syncFly());
     deps.events.on('era:change', () => this.syncFly());
+    deps.events.on('player:stance', ({ stance }) => {
+      this.stance = stance;
+      this.syncFly();
+    });
     // abilities unlock by level (combat: skillsForLevel); a fresh game or a loaded save may change them
     for (const ev of ['level:up', 'stats:changed', 'game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncSkills());
+    // a load sets the stance without a player:stance event: read it back
+    for (const ev of ['game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncFly());
     this.refresh();
   }
 
@@ -223,7 +285,21 @@ export class TouchControls {
     if (was !== this.wanted) this.onActiveChange?.(this.wanted);
   }
 
+  /** The title screen (or its new-game flow) is up. */
+  private titleUp(): boolean {
+    const el = this.titleEl;
+    return !!el && el.isConnected && !el.classList.contains('kq-hidden') && !el.classList.contains('fade-out');
+  }
+
+  /** Portrait phone in gameplay: the rotate overlay (M-02). */
+  private syncRotate(): void {
+    const on = rotateWanted({ touch: this.wanted, width: window.innerWidth, height: window.innerHeight, inGame: !this.titleUp() });
+    document.documentElement.toggleAttribute('data-kq-rotate', on);
+    this.rotateEl?.setAttribute('aria-hidden', String(!on));
+  }
+
   private syncVisible(): void {
+    this.syncRotate();
     this.el.classList.toggle('kq-hidden', !(this.wanted && this.playing));
     if (!(this.wanted && this.playing)) this.scanPop.classList.add('kq-hidden');
   }
@@ -247,7 +323,11 @@ export class TouchControls {
     const fl = this.deps.flying();
     this.flyBtn.el.classList.toggle('kq-hidden', !can && !fl);
     this.flyBtn.el.classList.toggle('on', fl);
-    this.downBtn.el.classList.toggle('kq-hidden', !fl);
+    const cr = crouchButtonMode(fl, this.deps.stance?.() ?? this.stance);
+    this.crouchBtn.el.replaceChildren(svg(TOUCH_ICONS[cr.icon]));
+    this.crouchBtn.el.classList.toggle('on', cr.on);
+    this.crouchBtn.el.setAttribute('aria-label', t(cr.label));
+    this.crouchBtn.el.setAttribute('aria-pressed', String(cr.on));
     this.dodgeBtn.el.replaceChildren(svg(fl ? TOUCH_ICONS.up : TOUCH_ICONS.dodge));
     this.dodgeBtn.el.setAttribute('aria-label', t(fl ? 'touch.up' : 'touch.dodge'));
   }
@@ -257,7 +337,7 @@ export class TouchControls {
    * an interact prompt's text ("Lauschen", "Untersuchen" …).
    */
   setPrompt(key: string | null, text: string | null): void {
-    const icon = key ? touchIconFor(key) : text ? 'interact' : null;
+    const icon = touchPromptIcon(key, text);
     const mine = icon === 'interact' && !!text?.trim();
     this.interactText.textContent = mine ? text! : t('touch.interact.short');
     this.interactBtn.el.classList.toggle('lit', mine);
@@ -286,6 +366,7 @@ export class TouchControls {
       this.btnHeld.delete(e.pointerId);
       for (const a of acts) this.deps.input.press(a, false);
       b.el.classList.remove('down');
+      if (e.type === 'pointerup') swallowNextClick(b.el);
       after?.();
     };
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.el.addEventListener(ev, up);
@@ -306,6 +387,7 @@ export class TouchControls {
     });
     el.addEventListener('pointerup', (e) => {
       e.stopPropagation();
+      swallowNextClick(el);
       fn();
     });
     el.addEventListener('click', (e) => {

@@ -58,15 +58,52 @@ const AZ = 8;
 const MAX_LOD0 = 900;
 const MAX_LOD1 = 2600;
 const MAX_IMP = 40000;
+/** Impostors that may cast sun shadows (the nearest within the shadow box's reach). */
+const MAX_IMP_SHADOW = 6000;
+
+/**
+ * LOD rings (× k = preset · tree height): lod0 → lod1 at `TREE_N0`, lod1 → impostor at `TREE_N1`,
+ * each cross-faded over ± `TREE_BAND`. Tri budget phase B (docs/PERFORMANCE.md §3.5) moved the
+ * impostor switch from 78 to 72 (60 and 66 were tried: the pines across the Weiher, ~70–90 m out,
+ * then read visibly flatter as impostors than as lod1 in an A/B flip).
+ */
+export const TREE_N0 = 30;
+export const TREE_N1 = 72;
+export const TREE_BAND = 5;
+
+/**
+ * Shadow casters (phase B): the shadow pass draws every model tree with the lod1 geometry (lod0
+ * trees too: in a 2048² map over ±75 m a texel is 7 cm, the lod0 bark and card detail do not show),
+ * and only trees within the shadow box plus `SHADOW_REACH` m of the focus, the same limit the
+ * vertex shaders already applied (`uShadowCenter.w + 30.0`), now on the CPU so the draw skips them.
+ */
+export const SHADOW_REACH = 30;
+
+/** Shadow-pass level of a main-pass level: lod0 casts as lod1 (pure; tested). */
+export function shadowLevel(level: number): number {
+  return level === 0 ? 1 : level;
+}
+
+/** Number of leading entries of an ascending list (first `n`) that are ≤ `limit` (pure; tested). */
+export function castCount(sorted: ArrayLike<number>, n: number, limit: number): number {
+  let lo = 0;
+  let hi = n;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid]! <= limit) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
 
 /**
  * Level for a tree at distance d (pure; tested): which levels draw it and the dither split.
  * Rings scale with `k` (preset · tree height). Returns [level, lo, hi] pairs (1 or 2 entries).
  */
-export function treeLevels(d: number, k: number, out: number[]): number {
-  const n0 = 30 * k;
-  const n1 = 78 * k;
-  const b = 5 * k;
+export function treeLevels(d: number, k: number, out: number[], impAt = TREE_N1): number {
+  const n0 = TREE_N0 * k;
+  const n1 = impAt * k;
+  const b = TREE_BAND * k;
   out.length = 0;
   if (d < n0 - b) out.push(0, 0, 2);
   else if (d < n0 + b) {
@@ -701,6 +738,86 @@ interface Batch {
   n: number;
 }
 
+function writeInst(b: Batch, i: number, x: number, y: number, z: number, h: number, rot: number, vr: number, lo: number, hi: number): void {
+  const ia = b.inst.array as Float32Array;
+  const va = b.vary.array as Float32Array;
+  ia[i * 4] = x;
+  ia[i * 4 + 1] = y;
+  ia[i * 4 + 2] = z;
+  ia[i * 4 + 3] = h;
+  va[i * 4] = rot;
+  va[i * 4 + 1] = vr;
+  va[i * 4 + 2] = lo;
+  va[i * 4 + 3] = hi;
+}
+
+/**
+ * Shadow-pass-only instances of one batch, sorted by the distance from the rebuild's reference
+ * point, so a pass draws just the leading ones within reach (`show`). Hidden outside the pass.
+ */
+class ShadowList {
+  n = 0;
+  private readonly rec: Float32Array;
+  private readonly dist: Float32Array;
+  private readonly sorted: Float32Array;
+  private order: number[] = [];
+
+  constructor(readonly batch: Batch) {
+    this.rec = new Float32Array(batch.max * 8);
+    this.dist = new Float32Array(batch.max);
+    this.sorted = new Float32Array(batch.max);
+  }
+
+  add(d: number, x: number, y: number, z: number, h: number, rot: number, vr: number, lo: number, hi: number): void {
+    if (this.n >= this.batch.max) return;
+    const i = this.n++;
+    const r = this.rec;
+    const o = i * 8;
+    r[o] = x;
+    r[o + 1] = y;
+    r[o + 2] = z;
+    r[o + 3] = h;
+    r[o + 4] = rot;
+    r[o + 5] = vr;
+    r[o + 6] = lo;
+    r[o + 7] = hi;
+    this.dist[i] = d;
+  }
+
+  /** Sort by distance and upload (end of a rebuild). */
+  flush(): void {
+    const n = this.n;
+    const order = this.order;
+    order.length = n;
+    for (let i = 0; i < n; i++) order[i] = i;
+    const dist = this.dist;
+    order.sort((a, b) => dist[a]! - dist[b]!);
+    const r = this.rec;
+    const b = this.batch;
+    for (let j = 0; j < n; j++) {
+      const i = order[j]! * 8;
+      writeInst(b, j, r[i]!, r[i + 1]!, r[i + 2]!, r[i + 3]!, r[i + 4]!, r[i + 5]!, r[i + 6]!, r[i + 7]!);
+      this.sorted[j] = dist[order[j]!]!;
+    }
+    b.n = n;
+    b.inst.clearUpdateRanges();
+    b.inst.addUpdateRange(0, n * 4);
+    b.inst.needsUpdate = true;
+    b.vary.clearUpdateRanges();
+    b.vary.addUpdateRange(0, n * 4);
+    b.vary.needsUpdate = true;
+    b.mesh.visible = false;
+  }
+
+  /** Show the leading instances within `limit` for the shadow pass; returns how many. */
+  show(limit: number): number {
+    const c = castCount(this.sorted, this.n, limit);
+    this.batch.geo.instanceCount = c;
+    this.batch.mesh.visible = c > 0;
+    return c;
+  }
+}
+
 function makeBatch(src: BufferGeometry, mat: ShaderMaterial, max: number, name: string, parent: Group): Batch {
   const geo = new InstancedBufferGeometry();
   for (const k of Object.keys(src.attributes)) geo.setAttribute(k, src.getAttribute(k));
@@ -732,8 +849,19 @@ export class ModelTrees {
   readonly impMaterial: ShaderMaterial;
   private readonly atlas: WebGLRenderTarget;
   readonly variants: number;
-  readonly stats = { lod0: 0, lod1: 0, imp: 0, calls: 0 };
+  readonly stats = { lod0: 0, lod1: 0, imp: 0, calls: 0, shadowLod: 0, shadowImp: 0 };
   private readonly lv: number[] = [];
+  /** lod1 → impostor ring (× k); `TREE_N1`, a field for look checks. */
+  impAt = TREE_N1;
+  /** Shadow casters per variant (lod1 geometry) and impostors, sorted by distance (`ShadowList`). */
+  private readonly shadowLod: ShadowList[] = [];
+  private readonly shadowImp: ShadowList;
+  /** Rebuild-time reference point of the shadow lists (the expected shadow focus) and their radius. */
+  private refX = 0;
+  private refZ = 0;
+  private castMax = Infinity;
+  private readonly mainVis: boolean[] = [];
+  private mainBatches: Batch[] | null = null;
 
   constructor(root: Object3D, renderer: WebGLRenderer, tile: number, shared: Record<string, { value: unknown }>) {
     this.object.name = 'trees-model';
@@ -790,6 +918,7 @@ export class ModelTrees {
       const fam = TREE_VARIANTS[i]!.family;
       this.lod[0]!.push(makeBatch(s.l0.geo, this.materials[fam]!, MAX_LOD0, `trees-${TREE_VARIANTS[i]!.name}-lod0`, this.object));
       this.lod[1]!.push(makeBatch(s.l1.geo, lod1Mats[fam]!, MAX_LOD1, `trees-${TREE_VARIANTS[i]!.name}-lod1`, this.object));
+      this.shadowLod.push(new ShadowList(makeBatch(s.l1.geo, lod1Mats[fam]!, MAX_LOD0 + MAX_LOD1, `trees-${TREE_VARIANTS[i]!.name}-shadow`, this.object)));
     });
 
     // ---- impostor atlas: AZ sides per variant, one row per variant
@@ -868,6 +997,7 @@ export class ModelTrees {
     quad.setAttribute('position', new BufferAttribute(new Float32Array([-1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 1, 0, 1, 2, 0, -1, 2, 0]), 3));
     quad.setIndex([0, 1, 2, 0, 2, 3, 3, 2, 4, 3, 4, 5]);
     this.imp = makeBatch(quad, this.impMaterial, MAX_IMP, 'trees-impostor', this.object);
+    this.shadowImp = new ShadowList(makeBatch(quad, this.impMaterial, MAX_IMP_SHADOW, 'trees-impostor-shadow', this.object));
     this.materials.push(...lod1Mats);
   }
 
@@ -880,9 +1010,19 @@ export class ModelTrees {
     }
   }
 
-  begin(): void {
+  /**
+   * Start a rebuild. (refX, refZ): where the shadow focus is expected (the shadow lists are sorted
+   * by the distance from it); `castMax`: the radius around it that may cast at all (the shadow box
+   * plus `SHADOW_REACH` plus room for the focus to move until the next rebuild).
+   */
+  begin(refX = 0, refZ = 0, castMax = Infinity): void {
     for (const l of this.lod) for (const b of l) b.n = 0;
     this.imp.n = 0;
+    for (const s of this.shadowLod) s.n = 0;
+    this.shadowImp.n = 0;
+    this.refX = refX;
+    this.refZ = refZ;
+    this.castMax = castMax;
   }
 
   /**
@@ -891,23 +1031,55 @@ export class ModelTrees {
    */
   push(x: number, y: number, z: number, h: number, rot: number, v: number, variant: number, d: number, k: number): void {
     const lv = this.lv;
-    const n = treeLevels(d, k, lv);
+    const n = treeLevels(d, k, lv, this.impAt);
+    const vr = variant + Math.min(0.999, v);
     for (let j = 0; j < n; j++) {
       const level = lv[j * 3]!;
       const b = level === 2 ? this.imp : this.lod[level]![variant]!;
       if (!b || b.n >= b.max) continue;
-      const i = b.n++;
-      const ia = b.inst.array as Float32Array;
-      const va = b.vary.array as Float32Array;
-      ia[i * 4] = x;
-      ia[i * 4 + 1] = y;
-      ia[i * 4 + 2] = z;
-      ia[i * 4 + 3] = h;
-      va[i * 4] = rot;
-      va[i * 4 + 1] = variant + Math.min(0.999, v);
-      va[i * 4 + 2] = lv[j * 3 + 1]!;
-      va[i * 4 + 3] = lv[j * 3 + 2]!;
+      writeInst(b, b.n++, x, y, z, h, rot, vr, lv[j * 3 + 1]!, lv[j * 3 + 2]!);
     }
+    // shadow casters: lod0 as lod1 (a tree fading lod0 → lod1 is one full lod1 caster)
+    const ds = Math.hypot(x - this.refX, z - this.refZ);
+    if (ds > this.castMax) return;
+    if (n === 2 && lv[0] === 0) {
+      this.shadowLod[variant]?.add(ds, x, y, z, h, rot, vr, 0, 2);
+      return;
+    }
+    for (let j = 0; j < n; j++) {
+      const level = shadowLevel(lv[j * 3]!);
+      const s = level === 2 ? this.shadowImp : this.shadowLod[variant];
+      s?.add(ds, x, y, z, h, rot, vr, lv[j * 3 + 1]!, lv[j * 3 + 2]!);
+    }
+  }
+
+  /**
+   * Shadow pass hook (render/shadows.ts `onPass`): during the pass only the caster lists draw,
+   * each up to the trees within `range + SHADOW_REACH` of the focus (plus the focus's drift from
+   * the rebuild's reference point, so the cut never drops a tree the shader would have kept).
+   * Returns that drift (m).
+   */
+  shadowPass(on: boolean, fx: number, fz: number, range: number): number {
+    const main = (this.mainBatches ??= [...this.lod[0]!, ...this.lod[1]!, this.imp]);
+    const drift = Math.hypot(fx - this.refX, fz - this.refZ);
+    if (on) {
+      const limit = range + SHADOW_REACH + drift;
+      let lod = 0;
+      let imp = 0;
+      for (let i = 0; i < main.length; i++) {
+        this.mainVis[i] = main[i]!.mesh.visible;
+        main[i]!.mesh.visible = false;
+      }
+      for (const s of this.shadowLod) lod += s.show(limit);
+      imp = this.shadowImp.show(limit);
+      this.stats.shadowLod = lod;
+      this.stats.shadowImp = imp;
+    } else {
+      for (let i = 0; i < main.length; i++) main[i]!.mesh.visible = this.mainVis[i] ?? false;
+      for (const s of this.shadowLod) s.batch.mesh.visible = false;
+      this.shadowImp.batch.mesh.visible = false;
+    }
+    return drift;
   }
 
   end(): void {
@@ -934,6 +1106,8 @@ export class ModelTrees {
       l1 += b.n;
     }
     flush(this.imp);
+    for (const s of this.shadowLod) s.flush();
+    this.shadowImp.flush();
     this.stats.lod0 = l0;
     this.stats.lod1 = l1;
     this.stats.imp = this.imp.n;

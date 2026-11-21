@@ -17,9 +17,21 @@
   transition: opacity 0.35s ease;
   width: max-content;
 }
+/* off: out of the layout, not just transparent. An invisible meter kept the boss dock (top
+   centre) 70 px tall and the skill card below the compass overlapped it (pol-flow at 1280x720) */
 .kq-court-meter.kq-court-off {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
+}
+.kq-court-meter:not(.kq-court-off) {
+  animation: kq-court-in 0.35s ease;
+}
+@keyframes kq-court-in {
+  from {
+    opacity: 0;
+  }
+}
+html[data-kq-reduced-motion] .kq-court-meter {
+  animation: none;
 }
 .kq-court-eye svg {
   width: 40px;

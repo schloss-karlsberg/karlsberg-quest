@@ -1,5 +1,5 @@
 import { type Page, expect } from '@playwright/test';
-import { type PlayOptions, SCREENS } from './common';
+import { type PlayOptions, SCREENS, throughParty } from './common';
 import { type Any, clearCards, install, killGroup, questTalk, takeAll, voiceStance } from './k3';
 import { putAwayPages } from './prolog';
 
@@ -554,9 +554,12 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await shot(page, 'epilog');
   await o.at?.('ending:epilogue');
   await page.getByTestId('ending-credits').click();
-  await expect(page.getByTestId('credits')).toBeVisible();
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 90 && k.party?.state().credits !== 'playing'; i++) k.step(60);
+  });
   await o.at?.('ending:credits');
-  await page.getByTestId('credits-back').click();
+  await throughParty(page);
   await run(page, 4);
   s = await story(page);
   expect(s.ending).toBe('keep');

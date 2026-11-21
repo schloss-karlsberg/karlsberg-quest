@@ -1009,6 +1009,10 @@ html[data-kq-contrast] .kq-era-label,
 html[data-kq-contrast] .kq-status,
 html[data-kq-contrast] .kq-stance,
 html[data-kq-contrast] .kq-prompt,
+/* photo mode: the phone is up, the pointer-lock hint means nothing there (M-15) */
+html[data-kq-photo] .kq-click-to-play {
+  display: none !important;
+}
 html[data-kq-contrast] .kq-click-to-play {
   opacity: 1;
   background: rgba(0, 0, 0, 0.8);

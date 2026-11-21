@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
-import { SCREENS, trackErrors } from './helpers/common';
+import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { K1_START, distTo, playK1 } from './helpers/k1';
 import { playK2 } from './helpers/k2';
 import { playK3 } from './helpers/k3';
@@ -415,9 +415,7 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
     expect(await epi.innerText()).not.toMatch(/\{[A-Za-z_]+\}|undefined|null/);
     await shot(page, `end-${e.id}-epilogue`);
     await page.getByTestId('ending-credits').click();
-    await expect(page.getByTestId('credits')).toBeVisible();
-    await expect(page.getByTestId('credits')).toContainText('Mara');
-    await page.getByTestId('credits-back').click();
+    await throughParty(page);
     await page.evaluate(() => window.kq!.step(4));
     const st = await page.evaluate(() => ({ story: window.kq!.story!.state(), flags: window.kq!.state().flags }));
     expect(st.story.ending).toBe(e.id);

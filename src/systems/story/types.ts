@@ -375,6 +375,12 @@ export interface PromptAction extends ActionBase {
   do: 'prompt';
   key?: string | null;
   text?: string | null;
+  /**
+   * The text in touch mode (Touch-Steuerung; read when shown and again when the mode switches):
+   * touch words instead of mouse and keys („Wischen: Schauen“). Short: an interact prompt also
+   * labels the Aktion button (about 18 characters fit).
+   */
+  touch?: string;
 }
 /** Generic cue for other features (`story:cue` event): set pieces, camera moves … */
 export interface CueAction extends ActionBase {

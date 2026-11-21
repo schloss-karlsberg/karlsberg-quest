@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_BINDINGS, Input, virtualCode } from '../src/player/input';
-import { TOUCH, diffHeld, isTouchSetting, lookDelta, stickToMove, touchActive, touchIconFor, touchName } from '../src/player/touchMap';
+import { TOUCH, crouchButtonMode, diffHeld, isTouchSetting, lookDelta, rotateWanted, stickToMove, touchActive, touchIconFor, touchName, touchPromptIcon } from '../src/player/touchMap';
 import { actionLabel } from '../src/ui/actionLabel';
 import { mobileLevel } from '../src/render/mobileDefaults';
 
@@ -72,6 +72,31 @@ describe('prompt key → touch icon', () => {
   });
   it('falls back to the interact button', () => {
     expect(touchIconFor('Ü')).toBe('interact');
+  });
+  it('maps N to the phone and C to the crouch button', () => {
+    expect(touchIconFor('N')).toBe('photo');
+    expect(touchIconFor('C')).toBe('crouch');
+    expect(touchIconFor('Ducken')).toBe('crouch');
+    expect(touchIconFor('Sinken')).toBe('crouch');
+  });
+  it('gives the mouse (look / aim) the swipe hint, never the interact hand', () => {
+    expect(touchIconFor('Maus')).toBe('look');
+    expect(touchIconFor('Maus / Pfeiltasten')).toBe('look');
+    expect(touchPromptIcon('Maus', 'Umsehen')).toBe('look');
+    // the mouse buttons keep their own buttons
+    expect(touchIconFor('Maus links')).toBe('attack');
+    expect(touchIconFor('Maus rechts')).toBe('bannlicht');
+  });
+});
+
+describe('crouchButtonMode', () => {
+  it('toggles crouching on foot and is active while crouched', () => {
+    expect(crouchButtonMode(false, 'stand')).toEqual({ icon: 'crouch', on: false, label: 'touch.crouch' });
+    expect(crouchButtonMode(false, 'crouch')).toEqual({ icon: 'crouch', on: true, label: 'touch.crouch' });
+    expect(crouchButtonMode(false, 'prone').on).toBe(false);
+  });
+  it('sinks while flying', () => {
+    expect(crouchButtonMode(true, 'stand')).toEqual({ icon: 'down', on: false, label: 'touch.down' });
   });
 });
 
@@ -176,5 +201,35 @@ describe('touch names in text (actionLabel)', () => {
     expect(touchIconFor('Bannlicht')).toBe('bannlicht');
     expect(touchIconFor('Balsam')).toBe('balm');
     expect(touchIconFor('Ziel')).toBe('lock');
+  });
+});
+
+describe('rotateWanted (M-02)', () => {
+  const q = { touch: true, width: 375, height: 667, inGame: true };
+  it('asks a portrait phone in gameplay to turn', () => {
+    expect(rotateWanted(q)).toBe(true);
+    expect(rotateWanted({ ...q, width: 430, height: 932 })).toBe(true);
+  });
+  it('leaves the title and the new-game screens alone', () => {
+    expect(rotateWanted({ ...q, inGame: false })).toBe(false);
+  });
+  it('never shows in landscape, without touch, or on a tablet', () => {
+    expect(rotateWanted({ ...q, width: 667, height: 375 })).toBe(false);
+    expect(rotateWanted({ ...q, touch: false })).toBe(false);
+    expect(rotateWanted({ ...q, width: 820, height: 1180 })).toBe(false);
+    expect(rotateWanted({ ...q, width: 600, height: 960 })).toBe(false);
+  });
+});
+
+describe('touchPromptIcon (M-05)', () => {
+  it('leaves a movement prompt to the stick', () => {
+    expect(touchPromptIcon('W A S D', 'Gehen · ins Bild klicken, dann Maus: Schauen')).toBeNull();
+    expect(touchPromptIcon('WASD', 'Gehen')).toBeNull();
+  });
+  it('maps keys and key-less interact prompts as before', () => {
+    expect(touchPromptIcon('E', 'Untersuchen')).toBe('interact');
+    expect(touchPromptIcon('Q', 'Epoche wechseln')).toBe('shift');
+    expect(touchPromptIcon(null, 'Lauschen')).toBe('interact');
+    expect(touchPromptIcon(null, '')).toBeNull();
   });
 });

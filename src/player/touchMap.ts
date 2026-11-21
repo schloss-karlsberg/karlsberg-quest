@@ -73,6 +73,27 @@ export function touchActive(setting: TouchSetting | undefined, coarse: boolean, 
   return coarse || touchSeen;
 }
 
+/** Below this short side (CSS px) a device counts as a phone: tablets keep portrait. */
+export const ROTATE_MAX_SHORT_SIDE = 600;
+
+export interface RotateQuery {
+  /** Touch UI on. */
+  touch: boolean;
+  /** Viewport in CSS px. */
+  width: number;
+  height: number;
+  /** Gameplay (no title screen, no new-game flow); a modal over gameplay still counts. */
+  inGame: boolean;
+}
+
+/**
+ * The "please turn the phone" overlay: only on a touch phone held upright, and only in gameplay.
+ * The title, Neuigkeiten, the settings and the new-game screens read fine in portrait (M-02).
+ */
+export function rotateWanted(q: RotateQuery): boolean {
+  return q.touch && q.inGame && q.height > q.width && Math.min(q.width, q.height) < ROTATE_MAX_SHORT_SIDE;
+}
+
 export function isTouchSetting(v: unknown): v is TouchSetting {
   return v === 'auto' || v === 'on' || v === 'off';
 }
@@ -80,9 +101,10 @@ export function isTouchSetting(v: unknown): v is TouchSetting {
 /**
  * The touch button that stands for a prompt's key label (what the HUD shows instead of the key
  * cap): 'E' → interact … Unknown labels fall back to the interact button (every in-world prompt
- * is answered with it).
+ * is answered with it). 'Maus' (look / aim) has no button: it gets the neutral swipe hint ('look'),
+ * never the interact hand.
  */
-export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'journal' | 'map' | 'balm' | 'lock' | 'down' | 'relief' | 'pause';
+export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'journal' | 'map' | 'balm' | 'lock' | 'crouch' | 'relief' | 'pause' | 'photo' | 'look';
 const KEY_ICON: Record<string, TouchIcon> = {
   E: 'interact',
   F: 'fly',
@@ -100,8 +122,11 @@ const KEY_ICON: Record<string, TouchIcon> = {
   M: 'map',
   H: 'balm',
   TAB: 'lock',
-  C: 'down',
-  X: 'down',
+  C: 'crouch',
+  X: 'crouch',
+  N: 'photo',
+  MAUS: 'look',
+  MOUSE: 'look',
   '1': 'relief',
   '2': 'relief',
   '3': 'relief',
@@ -118,13 +143,25 @@ const KEY_ICON: Record<string, TouchIcon> = {
   FELDBUCH: 'journal',
   KARTE: 'map',
   FLIEGEN: 'fly',
-  SINKEN: 'down',
+  SINKEN: 'crouch',
+  DUCKEN: 'crouch',
   PAUSE: 'pause',
 };
 
 export function touchIconFor(key: string): TouchIcon {
   const k = key.trim().toUpperCase();
   return KEY_ICON[k] ?? KEY_ICON[k.split(/\s*[/·]\s*/)[0] ?? ''] ?? 'interact';
+}
+
+/**
+ * Which touch button answers a HUD prompt (key + text): null when none does. A movement prompt
+ * („W A S D: Gehen …“) belongs to the stick, not to the Aktion button: the button keeps „Aktion“
+ * instead of carrying „Gehen · ins Bild klick…“ (M-05).
+ */
+export function touchPromptIcon(key: string | null, text: string | null | undefined): TouchIcon | null {
+  if (!key) return text?.trim() ? 'interact' : null;
+  if (/^\s*W\s*[,·/]?\s*A\s*[,·/]?\s*S\s*[,·/]?\s*D\b/i.test(key)) return null;
+  return touchIconFor(key);
 }
 
 /**
@@ -146,6 +183,7 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
   fly: 'Fliegen',
   up: 'Steigen',
   down: 'Sinken',
+  crouch: 'Ducken',
   pause: 'Pause',
   skill1: '1',
   skill2: '2',
@@ -154,4 +192,12 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
 
 export function touchName(action: Action): string | null {
   return TOUCH_NAMES[action] ?? null;
+}
+
+/**
+ * The crouch button in the thumb arc (one button, two jobs, like C on the keyboard): on foot a
+ * tap toggles crouching (sneaking; active while crouched), in the spirit view it is held to sink.
+ */
+export function crouchButtonMode(flying: boolean, stance: string): { icon: 'crouch' | 'down'; on: boolean; label: 'touch.crouch' | 'touch.down' } {
+  return flying ? { icon: 'down', on: false, label: 'touch.down' } : { icon: 'crouch', on: stance === 'crouch', label: 'touch.crouch' };
 }

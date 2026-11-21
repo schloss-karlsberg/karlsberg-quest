@@ -23,7 +23,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/world/` | Terrain (chunked, LOD, shader), sky, forest (instanced), palace (glb), collision, atmosphere (shared uniforms + GLSL), era looks |
 | `src/player/` | Input (bindings, pointer lock, `simulate`, wheel), stances, Player controller, `camera.ts` (third-person spring arm `CameraRig`, `cameraHints` fight / focus / boss / `bodies`; pitch −55°…+35° and auto-levelling while walking in third person; round 10: walkable-space sweep, terrain crane, rise over the shoulder, keep-in-frame tilt, indoor preset, side two-shot, lift over an enemy at the lens — see §3 „Third-person camera“), `seeThrough.ts` (the see-through uniforms for trees and props), `guards.ts` (NaN guards for the camera and avatar maths), `avatar.ts` (the rigged player character; dithered fade when the lens is close or the locked target is behind the body, never under 45 % in a fight), `pose.ts` (`actionPose`: combat → avatar) |
 | `src/render/post.ts` | Post FX: MSAA HDR target with depth texture (`setSamples(n)`), half-res SAO, bloom chain, ACES (Hill fit), white balance, split toning, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing); `setFeatures({bloom, ao, grade})` from the tier; `debug` 1 = AO / 2 = bloom buffer |
-| `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`); `every` / `ShadowReuse`: a frame may keep the last map (tier `shadowEvery` 2) while the focus moved < ¾ texel, the sun did not turn and the map is ≤ 25 ms old (never in `?manual` or a fight) |
+| `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`); `onPass` listeners run right before / after the depth pass (the model trees swap in their caster lists); `every` / `ShadowReuse`: a frame may keep the last map (tier `shadowEvery` 2) while the focus moved < ¾ texel, the sun did not turn and the map is ≤ 25 ms old (never in `?manual` or a fight) |
 | `src/render/standard.ts` | `kqStandard(mat)` / `kqStandardize(root)`: imported PBR materials lit by the world (era sun + shadow, hemisphere fill, lantern, fire glow, sky IBL, `kqFog`); `EnvLight` (PMREM of the era sky, rebuilt on `world.lookVersion`) |
 | `src/assets/` | CC0 art assets: `types.ts` (manifest / licence types, `checkManifest`, budgets), `manifest.ts` (merges `manifests/*.ts`, one per art track), `loader.ts` (`AssetLoader` = `ctx.assets`) — see docs/ART-DIRECTION.md §8; glTF transmission (the chandelier glass) becomes alpha-blended glass at load (`dropTransmission`: no transmission pre-pass redrawing the opaque scene) |
 | `public/assets/` | `models/`, `textures/`, `hdri/` + `LICENSES.json` (every file, CC0 only); copied to `dist/assets/` (the bundle goes to `dist/app/`) |
@@ -65,13 +65,88 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`.
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
   after the lock is released (trim, pause cap, pre-limit + make-up to −18 LUFS, Opus + AAC). `--max-lines` (default 40)
   caps new moss clips per run.
 - `pnpm voice:plan` shows the moss lines, characters, estimated minutes (RTF ~1.1 plus a model load
   per batch), lock batches and dist MB; it never loads the model.
+- **Order:** with `--ids`, lines are generated in exactly the listed order (a glob expands in content
+  order, each line once), and each runner job keeps that order, so the first id is the first real clip
+  after the warm-up. Without `--ids`: priority tiers, then play order.
+- **Engine marker:** moss manifest entries carry `engine: { model: "MOSS-TTS-v1.5@<rev>", tokenizer:
+  "MOSS-Audio-Tokenizer@<rev>", warmup: "v1" }` (`lib.ts` `MOSS_ENGINE`, full pinned revisions). An entry
+  whose `engine` is missing or differs is `stale-engine` and is regenerated; the `voiceId` format stays
+  `moss:<speaker>:<sha8>:<seed>` (checked by `assetRules.ts`, which accepts the `engine` field).
+
+The in-process path above is **direct mode**, the default and the fallback. Service mode (next section)
+hands the same lines to the standalone moss-service instead.
+
+#### moss service mode (moss-service jobs)
+
+`KQ_MOSS_MODE=service` (or `--moss-service`) sends moss lines as jobs to the local, standalone
+**moss-service** (its own folder outside this repo; interface agreed with kq-moss in its
+`docs/client-interface.md`). The pipeline never loads the model and never takes the heavy lock in this
+mode: the owner starts the service runner `moss-run`, which shows the queue, takes the lock, loads the
+model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in `tests/voice-service.test.ts`.
+
+- **Env:** `KQ_MOSS_SERVICE_CLIENT` = path to the service's node client (`clients/node/moss.mjs`). It is
+  required in service mode and is set in the env or the main checkout's `.env`, never in the repo (the
+  repo holds no machine path; missing → a clear error). `KQ_MOSS_VOICES` stays as before: the local
+  reference files give the `voiceId` sha8 and are checked against the registry.
+- **Two steps** (default; same command both times):
+  1. `KQ_MOSS_MODE=service pnpm voice:gen --speakers laub --max-lines 200` submits one job per line that
+     needs (re)generation per the manifest (incl. `stale-engine`): `{project: "karlsberg-quest", id,
+     voice: <speaker>, text: <the prepared speech text that speechHash is taken over>, output: {path:
+     <raw-dir>/<id>.wav, format: "wav"}}`, with no seed or params (those come from the registry, so keys
+     stay stable). It prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
+     refuses are listed and the exit code is 1.
+  2. After the owner ran `moss-run`, the same command (or `--collect`) reads each line's result. `ok` /
+     `cached`: the record's `text_sha256` must equal the sha256 of the text we submitted, the WAV's
+     sha256 must equal `sha256`, voice and seed must match, and the result's engine identity (mapped to
+     `{model, tokenizer, warmup}`, `OpenMOSS-Team/` dropped) must equal `MOSS_ENGINE`; then the usual
+     post-processing runs and the manifest entry is written with the same `voiceId`, plus
+     `serviceKey` (the service job key) and `sha256Raw`. A failed check, `failed` or `refused` is reported
+     (exit 1) and the manifest entry stays as it was; `queued` / `running` print "still queued".
+  Without `--submit` / `--collect`, lines with a current result are collected, lines without one (or with
+  a result for an older text) are submitted. `--submit` only submits. `--wait [min]` (default 30) polls
+  the client's `waitAll` after submitting and collects what finished; on timeout it prints "still queued"
+  and exits 0.
+- **Raw WAVs:** `--raw-dir` (default `.voice-raw/raw-service/` in the checkout, gitignored). Never under
+  `public/` (refused here and by the service, which also refuses tracked paths in a git work tree). They
+  are kept after post-processing: the service cache serves a later identical job only while the original
+  WAV still exists with its recorded sha256.
+- **Consistency guard** before every submit: the registry (`registry()` from the client if it has one,
+  else `moss-registry list --json` next to the client's `SUBMIT`; read-only) must match `voices.json`
+  for every speaker submitted: seed, `ref_sha256[0:8]` vs the local reference, language, instruction,
+  params, and `engine_identity` (model and tokenizer revisions, warm-up v1) vs `MOSS_ENGINE`. Any
+  difference fails with a per-field diff and nothing is submitted (voices.json is the source; fix the
+  registry with `moss-registry add --force …`).
+- **Never submitted** (client side, before the service's own guard): the private test voice
+  `guest-test`, and any registry voice whose `visibility` is not `public`.
+- `--dry-run` in service mode prints the plan plus each line's state (submit / still queued / collect),
+  read from the client's result files, and the registry check; it submits nothing. Whether a job will
+  be answered from the service cache is known only after submitting ("M cached").
+
+#### warmup v1 (moss-tts)
+
+Fixed spec, identical in the `moss` provider (`runner.py` `warmup_v1`) and in the standalone moss-service
+(`moss_host.py`), agreed 2026-11-21. It runs once after **every** model load (`load(model_dir, lazy=True)`),
+before the first real clip, in this order:
+
+1. `mx.eval(model.parameters())`: materialize all weights now.
+2. `mx.random.seed(0); np.random.seed(0); random.seed(0)`, then one throw-away
+   `next(model.generate(text="Hallo.", ref_audio=<ref of the first real clip in this batch>,
+   audio_tokenizer_source=<tokenizer dir>, language=<that clip's language>, max_tokens=50))` with no
+   instruction and no other params; `mx.eval(res.audio)`; nothing is written.
+3. Real clips then reseed per clip (`mx.random`, `np.random`, `random` = the clip's seed) exactly as before.
+
+The runner logs `warmup v1 done in X s`. Why: without it, the first clip after a lazy load came out as a
+different take than the same (seed, text, reference) later in the batch; output must not depend on batch
+position. **Any change to this procedure is "v2"**: bump `WARMUP` in `runner.py` and `MOSS_ENGINE.warmup`
+together (every moss clip regenerates), and it must match moss-service's warm-up of the same version.
 
 ## 2. Coordinate frame
 
@@ -388,7 +463,7 @@ all within 30 m); looking steeply down keeps the full ring only more than 20 m a
 (`update(camera, agl)`: flying, spirit view), on foot whole 64 m tiles outside the 3D view cone
 (`src/world/viewCone.ts`: frustum corner + 40°) are dropped.
 
-Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees outside the shadow box collapse there. The low tier never fetches the models.
+Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees outside the shadow box collapse there. Rings (× k = preset · tree height): lod0 → lod1 at `TREE_N0` 30, lod1 → impostor at `TREE_N1` 72 (78 before tri phase B), ±5 dithered. Shadow casters (tri phase B, docs/PERFORMANCE.md §3.5): the depth pass does not draw the main batches; through `shadows.onPass` → `forest.shadowPass` → `ModelTrees.shadowPass` it draws per-variant `ShadowList`s with the lod1 geometry (lod0 trees included) and an impostor list, filled at each forest rebuild and sorted by the distance from the expected shadow focus (camera + 0.35 · box ahead); a pass draws the leading casters within box + `SHADOW_REACH` 30 m + the focus drift (`castCount`), the same limit the shaders apply, and a drift past 20 m forces a rebuild. The low tier never fetches the models.
 
 Nature layers (`src/world/vegetation/`, docs/ART-DIRECTION.md §5.1): `world.nature` (`Nature`) owns
 `cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles; only what lies in the 3D view
@@ -1024,9 +1099,9 @@ Round-4 (polish: set dressing) integration rules:
 ### people (`src/systems/people/`) – People contract v0
 Modern NPCs (the tour guide, about 15 tour members, the modern doubles of historical figures, a
 child, the two historical twins) walking paths together. Other systems (path walk, groups, the
-tour) spawn them through a **mesh-independent handle API**. Today rigged CC0 stand-ins draw them.
-The **real authored character meshes come later behind the same interface**: callers do not
-change.
+tour) spawn them through a **mesh-independent handle API**. Rigged CC0 stand-ins draw most of
+them; the **authored MPFB bodies drop in behind the same interface** one spec at a time (today:
+the guide, opt-in with `?people=authored`), and callers do not change.
 
 - **The contract** is `src/systems/people/types.ts` (frozen 2026-11-20, v0.1 additive). Import
   it with `import type` only:
@@ -1078,7 +1153,7 @@ change.
   - extra: ≤ 6k tris, ≤ 2
   - LOD1 at about 50 % beyond 15 m
 - **Spec ids** (provisional, `specs.ts`):
-  - `guide`: the placeholder guide Gerold Imhoff, 1.95 m, big, skinny, bald
+  - `guide`: the placeholder guide Gerold Imhoff, 1.95 m, big, skinny, bald (authored body, opt-in)
   - `double.herzog`, `double.mannlich`, `double.hanne`, `double.peter`, `double.jost`,
     `double.soll`, `double.liese`: modern clothes, featured
   - `child.compass`: 1.25 m, featured
@@ -1110,6 +1185,40 @@ change.
   - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
     capsule. Geometry belongs to the asset cache.
   - A failed load shows a capsule.
+- **Authored bodies** (`authored.ts`; the person logic stays `standin.ts`, through a `BodyKit`):
+  - A spec with `authored: { model, cloth }` draws its MPFB build (`scripts/chars/mpfb/specs/<id>.json`,
+    packed into `public/assets/models/chars/`, manifest `chars-mpfb.ts`). Every other spec keeps its
+    stand-in. Today: `guide` → `chars.people.guide` (1.95 m, LOD0 11.6k tris, LOD1 5.8k tris,
+    1 draw call each).
+  - **Switch:** `PEOPLE_AUTHORED_DEFAULT` (`specs.ts`, one line) turns authored bodies on or off;
+    `?people=authored` / `?people=standin` force either for the session (read once at people init).
+    It is `false` for now: the authored guide is opt-in (`?people=authored`) until his look passes
+    review; by default every person, the guide too, draws its stand-in.
+  - **One shared material.** The pipeline bakes every surface colour of a body into its vertex
+    colours and gives the mesh ONE material `People` (`kqchar/palette.py`). The people system draws
+    every such mesh, in every authored person and every GLB, with the same `MeshStandardMaterial`
+    instance (`peopleMaterial()`: vertex colours, `kqStandard` world light). So a person costs one
+    draw call, nothing is cloned per person, and the renderer does not switch materials or programs
+    between people. A person never disposes it. The ghost look still gets per-person shader
+    materials.
+  - **LOD1:** the GLB carries `avatar-body_lod1` (about half the triangles, the same skin, no
+    morphs). The person shows it beyond `PEOPLE_LOD.lod1` (15 m, ±0.5 m hysteresis,
+    `lod1Level`); the registry passes the camera distance to each tick.
+  - **Clips: one table** (`AUTHORED_SOURCE`, `AUTHORED_CLIPS`): idle → `Idle`, walk → `Walk`,
+    run → `Run`, interact → `Interact`, wave → `Wave`, point → `Point` (the retargeted Interact
+    with a pointing hand, `retarget.py --point`). talk / lookAround as for the stand-in; sit /
+    sitTalk fall back (idle sunk 0.42 m). `info.clips` = idle, walk, run, talk, point, wave,
+    lookAround, interact.
+  - **Bones:** a small local alias table (`AUTHORED_BONES`: `neck_01`, `foot_l` / `foot_r`, the
+    upper-body split mapped from the stand-in's), looked up with `Rig.bone`. No width factor
+    (`build` is the stand-in's): the authored body has its own build.
+  - A load failure shows the capsule, as for the stand-in.
+  - Measured (2026-11-21, real GPU, Apple M5 Pro, high tier, `kq.people.stats()` person draw
+    calls / whole frame incl. the shadow pass): a group of 16 (guide, 7 doubles, the child, 7 extras)
+    182 / 474 with all stand-ins, 173 / 456 with the authored guide; 16 guides 160 / 430 as
+    stand-ins, 16 / 142 authored (one shared material instance; the empty view: 127). The
+    authored body casts sun shadows: the shadow pass draws it as one more call (40 → 41, LOD0
+    +11.3k tris, measured with the first build); none of its meshes is on the pass's skip list.
 - **Talking to people** (v0.1):
   - Spawn the person with `speaker: '<content speaker id>'`. The npc system then binds that
     speaker's story placement (`npc:spawn`) to `ctx.people.bySpeaker(id)` (`npc/bind.ts`).
@@ -1123,20 +1232,21 @@ change.
   - `spawn(specId, x, z, {yawDeg | yaw, look, tier, seed, name, speaker}) → id`
   - `list()`
   - `get(id)`: state (position, yaw, speed, clip / playing / shot, look, LOD, measured strides,
-    weights, head, tris, draw calls)
+    weights, head, tris, draw calls, `body` 'standin' | 'authored', `lodLevel` 0 | 1)
   - `clear()`
   - `stats()`: count, drawn, approx tris, draw calls, LOD bands
   - `specs()`
   - `drive(id, mps)`: debug walking along the facing
   - Tests: `tests/people.test.ts`. They load the real GLBs in node: strides, poses, bounds,
-    disposal.
-- **Stand-in limits:**
+    disposal; for the authored guide the budget per LOD, LOD1 and its switch, the one shared
+    material across two people, and the contract calls.
+- **Stand-in limits** (the specs without an authored body):
   - 10–15 draw calls and 5.3k–10.2k tris per body (above the featured / extra budgets), twice
     that for a ghost
   - no real point / sit clips
   - no LOD1 mesh
   - per-person materials
-  - no foot IK on slopes
+  - no foot IK on slopes (authored bodies neither)
 
 ### fauna (`src/systems/fauna/`) – Fauna contract v0
 Animal bodies for the tour: the roe doe and her fawn (a photo / sneak moment) and Jost's dogs Diane
@@ -1359,7 +1469,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   groups, servants crossing, a guard's round, a coach with its horse.
 - Look (medium / high tier): the kit gives every piece a CC0 surface layer and metre UVs
   (`src/world/surfaces.ts`, docs/ART-DIRECTION.md §8.2); `models.ts` instances CC0 prop GLBs
-  (`SetBuilder.model(id, fallback)`; the fallback kit prop is used on `low`). Dropped sets mark
+  (`SetBuilder.model(id, fallback)`; the fallback kit prop is used on `low`; `'set#node'` takes one
+  top-level node of a variant set, e.g. `nature2.ferns#fern`). The Karlsbergquelle's fern clumps are a
+  distance LOD (`fernDetailed`): the scanned clump within `FERN_NEAR` 9 m of the trough or 3 m of the
+  trail through the hollow, the stylised forest fern beyond. Dropped sets mark
   their group `detached` so late model loads add nothing.
 - Hohenburg (`hohenburg.ts`): silhouette at its real bearing beyond the terrain data, drawn scaled
   towards the eye (`pullFactor`, with the hill's `reach` so its near foot stays beyond the edge)
@@ -1454,6 +1567,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   case costs ~10–25 ms per route (~9 000 cells; tests/travel.test.ts logs it; e2e
   `e2e/travel-paths.spec.ts`).
 - After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
+- `world:quiet {on, reason}` (`src/core/quiet.ts`, `QuietGate`; the party holds it): the travel root
+  (tripods, POIs, trail) hides, no point is eingemessen (`mayActivate`) and Laub announces nothing; the
+  slice is untouched, so a held point activates on the next step after. Chronik clue markers and quest
+  beacons hide the same way (`hideWhileQuiet`). `kq.travel.state().quiet`.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
   `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
@@ -1600,6 +1717,12 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   (`who` = the people spec id: the 7 doubles `double.*` and Mats `child.compass` round the
   clearing, then Gerold `guide` last as the host's closing shot; Marlene none; the story plays the
   §8.4 line on a match), `credits:start {seconds}`, `credits:done {skipped}` (exactly once per run).
+- **Quiet world** (`src/core/quiet.ts`): from `party:set` (before `party:ready`; also `party:credits`)
+  until the end of the credits, `party:clear`, a load or dispose, the party holds `world:quiet {on,
+  reason: 'party'}` (one on, one off). Travel, chronik and quests hide their marker roots (tripod
+  beams and rings, POIs, trail; clue markers; objective beacons) and travel holds the survey-point
+  activation (the Ehrenhof tripod's 16 m reach the clearing). A party re-issued after the credits
+  (resume into the free play) does not go quiet. e2e `party (c)`.
 - **People** (`ctx.people`, placed directly, no walk): the guide (`guide`, speaker `imhoff`),
   Marlene (no spec yet: stand-in `extra.7` with seed 9071, speaker `marlene`; a `marlene` spec is
   used once `specs()` has it), the 7 doubles (speakers `herzogd`, `mannd`, `hanned`, `peterd`,

@@ -129,6 +129,8 @@ Kaum sitzt du auf der Bank, kommen Diane und Bijou, ohne dass Jost sie ruft, und
 | Mats (Kind) | „Mein Kompass zeigt wieder komisch.“ (A: „… zeigt jetzt richtig!“) | Laub, ohne Doppelgänger |
 | Gerold Imhoff | „Danke, dass ihr mitgekommen seid. Und denkt dran: gucken ja, graben nein.“ | `cx.35` |
 
+**Im Spiel (05-enden.story.json, Beat e3):** jede Halt-Einstellung dauert ≈ 2,2 s, darum sind die Zeilen dort auf höchstens 46 Zeichen gekürzt (z. B. Carl Herzog: „Nächstes Mal fahr ich aber hoch.“, Gerold: „Danke fürs Mitkommen. Gucken ja, graben nein.“). Die langen Fassungen oben leben teils in den Nachspielzeilen beim Ansprechen nach dem Abspann (`content/packs/party.pack.json`). Gerolds Rede (§8.3) läuft vor dem Abspann; Schritt 2 (Marlene, der Stab) und das letzte Bild je Ende (Schritt 5) sind noch nicht gebaut.
+
 Laub ist beim Fest **nur Stimme** in der Bussole (A: schweigt, „pensioniert“; B: wird leiser, wie im alten Ende; C: ein Satz, nur für dich: „Gute Gesellschaft. Ich bleibe im Dienst.“).
 
 ### 8.5 Regeln

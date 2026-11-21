@@ -194,7 +194,7 @@ describe('bleiche layout', () => {
     expect(KEEP_CLEAR.some(([x, z]) => Math.hypot(x - BLEICHE.x, z - BLEICHE.z) < 1)).toBe(true);
   });
 
-  it('places the 16.6k-triangle CC0 basket on high only (the procedural one on medium and low)', () => {
+  it('places the CC0 basket on high only (the procedural one on medium and low)', () => {
     const baskets = (detailed: boolean, high: boolean) => {
       const b = new SetBuilder(heightAt, detailed, high);
       bleicheSet.build(b, { era: '1789', gateOpen: 0 });

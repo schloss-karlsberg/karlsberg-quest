@@ -35,7 +35,8 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, livePointIds, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, livePointIds, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
 import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
@@ -80,7 +81,7 @@ declare module '../../core/events' {
 }
 
 export interface TravelHooks {
-  state(): TravelSlice & { inCombat: boolean; hunt: string; block: string | null; sprint: number; goal: { x: number; z: number } | null };
+  state(): TravelSlice & { inCombat: boolean; hunt: string; block: string | null; sprint: number; goal: { x: number; z: number } | null; quiet: boolean };
   points(): { id: string; name: string; x: number; z: number; known: boolean; activated: boolean }[];
   activate(id: string): void;
   /** Travel now (ignores the map; respects the rules unless `force`). Returns false if blocked. */
@@ -175,12 +176,17 @@ class Travel {
   private wayMarker: number | null = null;
   private card: HTMLElement | null = null;
   private cardT = 0;
+  /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
+  private cardBanner = false;
   private time = 0;
+  /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
+  private readonly quiet: QuietGate;
 
   constructor(private readonly ctx: GameContext) {
     this.slice = this.loadSlice();
     this.root.name = 'travel';
     ctx.scene.add(this.root);
+    this.quiet = hideWhileQuiet(ctx.events, this.root);
     this.root.add(this.trail.mesh);
     const hf = ctx.world.heightfields['1789'];
     this.pois = generatePois(undefined, {
@@ -316,7 +322,7 @@ class Travel {
         continue;
       }
       if (t) t.lit = known.has(sp.id) ? 1 : t.lit;
-      if (d < activateRadius(sp) && !this.slice.activated.includes(sp.id) && !ctx.player.flying) this.activate(sp.id);
+      if (mayActivate(sp, d, this.slice.activated, { flying: ctx.player.flying, quiet: this.quiet.quiet })) this.activate(sp.id);
     }
   }
 
@@ -602,7 +608,7 @@ class Travel {
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
   showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
-    this.card?.remove();
+    this.hideCard();
     const c = document.createElement('div');
     c.className = testid === 'travel-card-lore' ? 'kqt-card' : 'kqt-card kqt-banner';
     c.dataset.testid = testid;
@@ -628,11 +634,30 @@ class Travel {
     this.ctx.ui.add(c);
     this.card = c;
     this.cardT = seconds;
+    this.cardBanner = testid !== 'travel-card-lore';
+    if (this.cardBanner) c.classList.toggle('kqt-aside', this.bannerAside());
   }
 
   hideCard(): void {
     this.card?.remove();
     this.card = null;
+    if (this.cardBanner) this.ctx.ui.cards.release(BANNER_TOKEN);
+    this.cardBanner = false;
+  }
+
+  /**
+   * M-18 (docs/MOBILE-UI-PASS.md): the activation banner never stacks on another centre card (the
+   * skill card, a level or reward card, a field-book page). It takes the slot when it is free, so a
+   * card that comes later waits for it; while another card holds the slot, the banner waits (or
+   * steps aside) and its clock stops. A spoken line or a fight does not keep it back: it is short.
+   * On a landscape phone it shares the top band with the dialogue card, so there it waits while a
+   * line is up (touch.css places it).
+   */
+  private bannerAside(): boolean {
+    const cards = this.ctx.ui.cards;
+    if (phoneBand() && document.querySelector('.kqs-dlg.kqs-show')) return true;
+    if (cards.claim(BANNER_TOKEN)) return false;
+    return cards.showing !== null;
   }
 
   // ---- Laufschritt -------------------------------------------------------------------------------
@@ -819,7 +844,7 @@ class Travel {
     this.updateTrail(dt);
     // Laub announces the point beside a far goal
     const ann = announceFor(this.currentGoal(), ctx.player.position, [...this.slice.activated, ...this.slice.announced]);
-    if (ann && !this.caughtPending) {
+    if (ann && !this.caughtPending && !this.quiet.quiet) {
       this.slice.announced.push(ann.id);
       ctx.events.emit('dialogue:say', { speaker: 'laub', text: TRAVEL_DE.announced(ann.name), priority: 'low' });
     }
@@ -828,6 +853,9 @@ class Travel {
       if (this.wakeAt < 0) this.wakeHint();
     }
     if (this.card) {
+      const aside = this.cardBanner && this.bannerAside();
+      this.card.classList.toggle('kqt-aside', aside);
+      if (aside) return;
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
@@ -918,7 +946,7 @@ class Travel {
   hooks(): TravelHooks {
     const ctx = this.ctx;
     return {
-      state: () => ({ ...structuredClone(this.slice), inCombat: this.inCombat, hunt: this.hunt, block: this.blockReason(), sprint: this.sprint, goal: this.currentGoal() }),
+      state: () => ({ ...structuredClone(this.slice), inCombat: this.inCombat, hunt: this.hunt, block: this.blockReason(), sprint: this.sprint, goal: this.currentGoal(), quiet: this.quiet.quiet }),
       points: () => {
         const known = new Set(this.known().map((k) => k.id));
         return SURVEY_POINTS.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z, known: known.has(p.id), activated: this.slice.activated.includes(p.id) }));
@@ -980,6 +1008,7 @@ class Travel {
   }
 
   dispose(): void {
+    this.quiet.dispose();
     this.closeMap();
     this.hideCard();
     this.dropAllVisuals();
@@ -987,6 +1016,12 @@ class Travel {
     this.root.removeFromParent();
   }
 }
+
+/** The activation banner's token on the centre-card slot (ui/cards.ts). */
+const BANNER_TOKEN = 'travel:banner';
+/** A landscape phone in touch mode: the banner lives in the top band (touch.css, max-height 500px). */
+const phoneBand = (): boolean =>
+  typeof matchMedia === 'function' && document.documentElement.hasAttribute('data-kq-touch') && matchMedia('(max-height: 500px)').matches;
 
 let travel: Travel | null = null;
 let hooks: TravelHooks | null = null;

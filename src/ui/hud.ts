@@ -184,6 +184,8 @@ export class Hud {
         // under them); too little room → the tracker goes compact (titles and the next goal),
         // only then is the column cut, with a fade
         const top = this.bottomLeftTop();
+        // the phone dialogue card ends above this zone too (touch.css reads --kq-bl-top)
+        document.documentElement.style.setProperty('--kq-bl-top', `${Math.round(top)}px`);
         const tlTop = this.tl.getBoundingClientRect().top || 12;
         this.tl.style.maxHeight = `${Math.max(80, Math.round(top - ZONE_GAP - tlTop))}px`;
         this.tl.classList.remove('kq-tl-tight');

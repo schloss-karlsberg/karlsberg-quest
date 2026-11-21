@@ -19,6 +19,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { Era } from '../core/era';
 import { kqStandardize } from '../render/standard';
+import { applyCharacterShading } from '../systems/characters/toon';
 import { ASSETS, ASSET_BY_ID } from './manifest';
 import type { AssetArea, AssetEntry, LicencesFile } from './types';
 
@@ -63,6 +64,7 @@ export type AssetProgress = (loadedBytes: number, totalBytes: number) => void;
  * - models: glTF / GLB, meshopt (EXT_meshopt_compression), Draco and KTX2 textures supported
  *   (decoders bundled by Vite, fetched only when a file needs them); standard materials are
  *   patched to the world light (render/standard.ts) unless the entry says `worldLight: false`,
+ *   and an authored character whose entry opts in (`shading: 'toon'`) gets the toon variant,
  * - textures: WebP / PNG / JPG via TextureLoader, `.ktx2` via KTX2Loader (Basis), colour space,
  *   wrapping and anisotropy from the entry,
  * - areas: `loadArea('forest')` fetches every entry of a group (byte progress), `prefetchEra`
@@ -141,7 +143,10 @@ export class AssetLoader {
         this.loadedBytes += e.bytes;
         onBytes?.(Math.max(0, e.bytes - last));
         const m: LoadedModel = { scene: g.scene, animations: g.animations };
-        if (e.worldLight !== false) kqStandardize(m.scene);
+        if (e.worldLight !== false) {
+          kqStandardize(m.scene);
+          applyCharacterShading(m.scene, e.shading);
+        }
         dropTransmission(m.scene);
         m.scene.name = `asset:${id}`;
         this.ready.set(id, m);

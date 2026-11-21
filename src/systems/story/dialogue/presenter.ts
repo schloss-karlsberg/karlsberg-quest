@@ -2,7 +2,8 @@
  * Dialogue presenter: a queue of spoken lines shown as a field-book card with an etched portrait,
  * a typing effect and a voice: the line's recorded clip when one is ready (./voiceClips.ts; the
  * typing then paces itself to the clip), else the procedural murmur. Subtitles always show.
- * Enter / click skips (finish typing → next line); skipping or advancing stops the clip.
+ * Enter / click / tap skips (finish typing → next line); skipping or advancing stops the clip.
+ * The hint under the line reads „Enter weiter“, in touch mode „Tippen: weiter“ (read per line).
  * Driven by `update(dt)` from the system's fixed update (game time: stops while the game is
  * paused, and headless `kq.step` advances it deterministically).
  */
@@ -73,6 +74,8 @@ export interface PresenterOptions {
   valid?: (item: DialogueItem) => boolean;
   /** Must this line wait now (lore while a fight is on)? It stays queued; later lines go first. */
   held?: (item: DialogueItem) => boolean;
+  /** Touch mode now (Settings → Touch-Steuerung can switch it at runtime): the hint says „Tippen“. */
+  touch?: () => boolean;
 }
 
 const CHARS_PER_S = 42;
@@ -98,6 +101,8 @@ export class DialoguePresenter {
   private readonly typedEl: HTMLElement;
   private readonly restEl: HTMLElement;
   private readonly srcEl: HTMLElement;
+  private readonly skipEl: HTMLElement;
+  private skipTouch: boolean | null = null;
   /** Waiting lines (cap, stale and place rules: ./queue.ts). */
   private readonly queue: LineQueue<DialogueItem>;
   private cur: Active | null = null;
@@ -116,14 +121,17 @@ export class DialoguePresenter {
     this.typedEl = h('span.kqs-typed');
     this.restEl = h('span.kqs-rest');
     this.srcEl = h('span.kqs-src');
+    this.skipEl = h('span.kqs-skip');
+    this.skipHint();
     this.el = h('div.kqs-dlg', { 'data-testid': 'dialogue', role: 'status' }, [
       this.portraitEl,
       h('div.kqs-dlg-body', [
         h('div.kqs-dlg-head', [this.whoEl, this.tagEl]),
         h('div.kqs-dlg-text', { 'aria-live': 'polite' }, [this.typedEl, this.restEl]),
-        h('div.kqs-dlg-foot', [this.srcEl, h('span.kqs-skip', [h('kbd', 'Enter'), ` ${t('story.dialogue.next')}`])]),
+        h('div.kqs-dlg-foot', [this.srcEl, this.skipEl]),
       ]),
     ]);
+    // a click, and on a phone a tap (its compatibility mousedown), advances
     this.el.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       this.skip();
@@ -248,8 +256,18 @@ export class DialoguePresenter {
     this.srcEl.textContent = item.source ? `${t('story.source')}: ${item.source}` : '';
     this.el.classList.add('kqs-show', 'kqs-speaking');
     this.el.classList.toggle('kqs-echo', meta.echo);
+    this.skipHint();
     this.render();
     this.o.onShow?.(item);
+  }
+
+  /** „Enter weiter“, or „Tippen: weiter“ in touch mode (rebuilt only when the mode changed). */
+  private skipHint(): void {
+    const touch = this.o.touch?.() === true;
+    if (touch === this.skipTouch) return;
+    this.skipTouch = touch;
+    if (touch) this.skipEl.replaceChildren(t('story.dialogue.tap'));
+    else this.skipEl.replaceChildren(h('kbd', 'Enter'), ` ${t('story.dialogue.next')}`);
   }
 
   private render(): void {

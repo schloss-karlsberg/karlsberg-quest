@@ -102,6 +102,12 @@ export class SunShadows {
   }
   /** Shadow passes drawn / re-used since start (perf readouts). */
   readonly stats = { drawn: 0, reused: 0 };
+  /**
+   * Called right before (true) and after (false) the depth pass with the focus and the box's half
+   * extent: layers that draw their casters differently (the model trees: lod1 geometry, CPU
+   * distance cut) swap their meshes here.
+   */
+  readonly onPass = new Set<(on: boolean, focus: Vector3, range: number) => void>();
   private skip: Object3D[] = [];
   private skipAge = 1e9;
   private readonly tmpM = new Matrix4();
@@ -188,7 +194,9 @@ export class SunShadows {
     renderer.setRenderTarget(this.target);
     renderer.clear(true, true, false);
     a.uShadowPass.value = 1;
+    for (const f of this.onPass) f(true, focus, r);
     renderer.render(scene, cam);
+    for (const f of this.onPass) f(false, focus, r);
     a.uShadowPass.value = 0;
     renderer.setRenderTarget(prev);
     for (let i = 0; i < skip.length; i++) skip[i]!.visible = this.vis[i]!;

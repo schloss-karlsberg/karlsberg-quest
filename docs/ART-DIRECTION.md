@@ -179,6 +179,15 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   band seams, chipped paint and mud towards the shoe.
 - **Player character (camera track, 2026-11-19):** see §16 — a rigged CC0 surveyor seen over the
   shoulder.
+- **Authored characters, toon option (2026-11-21):** an authored character's manifest entry may opt
+  into a soft toon variant of the world-light bridge (`shading: 'toon'`,
+  `src/systems/characters/toon.ts`): the sun through 2–3 soft bands (no hard cel lines), a warm
+  terminator and a warm shadow fill (never grey or lavender), a subtle rim, catchlight glints on
+  the eyes. It is still lit by the era sun and its shadows, the era ambient, the sky IBL, the lantern
+  and the fire glow; world materials never use it. The authored people keep their one shared palette
+  material: a toon GLB draws every person with one shared toon twin of it. Opt-in per entry; the
+  look is calibrated on the character (its palette and per-slot toon settings), never on the scene
+  lights or the tone mapping. The face can be stylised in the build (`face.stylize`, scripts/chars/mpfb).
 - **Never:** gore, real victims or animals as enemies. No likeness of a real living person without
   that person's consent. Historical figures may be modelled from public-domain portraits (§21).
 
@@ -310,7 +319,8 @@ their candle flames at the model's candle tips, fauteuils) and the field station
 crate and barrel. The low tier keeps the procedural kit props. Glass materials of the models are
 made thin and see-through (`lightenGlass`). A costly model can be kept to the high tier
 (`b.model(id, fallback, { high: true })`): its procedural fallback then stands on medium too. The
-Bleiche's wicker basket (16.6k triangles, four times the rest of the green) is the first.
+Bleiche's wicker basket (then 16.6k triangles, four times the rest of the green; 8.9k since the
+tri-budget phase B re-pack, docs/PERFORMANCE.md §3.5) is the first.
 
 **Field station** (`src/systems/story/hub/station.ts`): green board-and-batten Bauwagen on a steel
 chassis (longerons, disc wheels, mudguards, A-frame drawbar, jockey wheel), tin barrel roof with

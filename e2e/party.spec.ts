@@ -159,6 +159,54 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, W hands the
   expect(errors).toEqual([]);
 });
 
+test('party (c): ?party=museum — the world is quiet: no tripod beam, no marker, no survey toast; all back after', async ({ page }) => {
+  const errors = trackErrors(page);
+  await boot(page, 'museum');
+  /** What the world shows near the party: tripods (lit = tall beam), beacons, clue markers, their roots' visibility. */
+  const look = () =>
+    page.evaluate(() => {
+      const kq = window.kq!;
+      const sc = kq.ctx.scene;
+      const p = kq.ctx.player.position;
+      const tripods: { x: number; z: number; d: number; beam: boolean }[] = [];
+      sc.getObjectByName('travel')?.traverse((o) => {
+        if (o.name !== 'travel-tripod') return;
+        const beam = o.children.find((c) => (c as { renderOrder?: number }).renderOrder === 9);
+        tripods.push({ x: Math.round(o.position.x), z: Math.round(o.position.z), d: Math.round(Math.hypot(o.position.x - p.x, o.position.z - p.z)), beam: !!beam && beam.scale.y > 3 });
+      });
+      return {
+        roots: ['travel', 'quest-beacons', 'chronik-markers'].map((n) => sc.getObjectByName(n)?.visible ?? null),
+        tripods,
+        beacons: kq.quests?.beacons() ?? [],
+        clues: kq.chronik?.markers().filter((m) => m.vis > 0.01) ?? [],
+        travel: kq.travel!.state(),
+      };
+    });
+  await step(page, 60);
+  const during = await look();
+  console.log(`[party c] during ${JSON.stringify({ ...during, travel: { quiet: during.travel.quiet, activated: during.travel.activated } })}`);
+  expect(during.travel.quiet).toBe(true);
+  expect(during.roots).toEqual([false, false, false]);
+  // a guest walks over to the Ehrenhof tripod (16 m radius) during the credits: not eingemessen, no card
+  const was = during.travel.activated.includes('ehrenhof');
+  await page.evaluate(() => window.kq!.teleport(1226, -1123, 0, 0));
+  await step(page, 60 * 2);
+  const held = await page.evaluate(() => window.kq!.travel!.state().activated);
+  expect(held.includes('ehrenhof')).toBe(was);
+  await expect(page.getByTestId('travel-card-activated')).toHaveCount(0);
+  // the credits end: markers back, the point activates normally on the next steps
+  await page.evaluate(() => window.kq!.party!.skip());
+  await step(page, 30);
+  const after = await look();
+  expect(after.travel.quiet).toBe(false);
+  expect(after.roots[0]).toBe(true);
+  expect(after.roots[1]).toBe(true);
+  expect(after.roots[2]).toBe(true);
+  expect(after.travel.activated).toContain('ehrenhof');
+  if (!was) await expect(page.getByTestId('travel-card-activated')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('party (b): ?party=keep — the dogs lie at the player\'s feet with an eye glint', async ({ page }) => {
   const errors = trackErrors(page);
   const t0 = Date.now();
