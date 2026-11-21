@@ -1,21 +1,24 @@
 /**
- * The stand-in build of the people contract (./types.ts): a rigged CC0 Quaternius human
- * (characters/catalog.ts models, lazy-loaded through `ctx.assets` like the NPC bodies) in the
- * spec's stand-in colours, scaled to the spec height, behind the `Person` interface. The authored
- * meshes replace this file; the contract, the spec ids and the people system stay.
+ * The rigged-body build of the people contract (./types.ts). A `BodyKit` says which body: the
+ * stand-in (`STANDIN_KIT`: a rigged CC0 Quaternius human, characters/catalog.ts, lazy-loaded through
+ * `ctx.assets` like the NPC bodies, in the spec's stand-in colours) or, for a spec with `authored`,
+ * its MPFB build (./authored.ts `AUTHORED_KIT`: one shared palette material, a LOD1 mesh beyond
+ * 15 m). Either is scaled to the spec height behind the `Person` interface; the person logic below
+ * is shared. The contract, the spec ids and the people system stay as they are.
  *
  * Animation (one AnimationMixer per person, weights set by hand, no cross-fade chains — the
  * avatar's scheme): idle / walk / run blended by the ground speed the caller sets, feet
  * phase-locked (one cycle counter drives walk and run over the stride MEASURED from each clip's foot
- * track), one-shots (Interact, Wave) full-body while standing and upper-body over walking legs, the
+ * track), one-shots (Interact, Wave, Point where the body has it) full-body while standing and upper-body over walking legs, the
  * head turned after the mixer (`Rig.turnBone`) toward a look target within limits. Clip times are
  * set directly and the mixer evaluates at dt 0, so the distance LOD only decides WHEN the pose is
  * evaluated (every frame / ~10 Hz / frozen); the clocks always run.
  *
- * Looks: 'solid' = the model's own slots cloned per person, recoloured and lit by the world
- * (`kqStandard`, like the avatar); 'ghost' = the NPC ghost shader (characters/shaders.ts) with its
- * depth pre-pass twins. Geometry is shared with the asset cache and never disposed here; the
- * materials, the fallback capsule and the mixer's actions are.
+ * Looks: 'solid' = for the stand-in the model's own slots cloned per person, recoloured and lit by
+ * the world (`kqStandard`, like the avatar); for an authored body the one shared people material.
+ * 'ghost' = the NPC ghost shader (characters/shaders.ts) with its depth pre-pass twins. Geometry is
+ * shared with the asset cache and never disposed here; the owned materials, the fallback capsule and
+ * the mixer's actions are.
  */
 import {
   type AnimationAction,
@@ -40,9 +43,9 @@ import {
 } from 'three';
 import type { LoadedModel } from '../../assets/loader';
 import { kqStandard } from '../../render/standard';
-import type { CharacterModel } from '../characters/catalog';
 import { Rig } from '../characters/rig';
 import { ghostMaterials, ghostShared, linHex } from '../characters/shaders';
+import { AUTHORED_KIT, lod1Level } from './authored';
 import {
   type AnimRate,
   FACE_SECONDS,
@@ -62,7 +65,7 @@ import {
   sweepYaw,
   wrapPi,
 } from './locomotion';
-import { type PersonSpec, standinColour, standinShows } from './specs';
+import { type PersonModel, type PersonSpec, standinColour, standinShows } from './specs';
 import { MOVE_OVERRIDE, type Person, type PersonClip, type PersonInfo, type PersonLook, type PersonSpawnOpts } from './types';
 
 // ---- the stand-in clip map (one table: the authored build swaps it) ----------------------------
@@ -74,10 +77,15 @@ export const STANDIN_SOURCE = {
   run: ['Run'],
   interact: ['Interact'],
   wave: ['Wave'],
+  /** No pointing clip in the CC0 pack: point plays Interact (STANDIN_CLIPS). */
+  point: [],
 } as const;
 
 type LocoSrc = 'idle' | 'walk' | 'run';
-type ShotSrc = 'interact' | 'wave';
+type ShotSrc = 'interact' | 'wave' | 'point';
+/** The one-shot sources, in a fixed order. */
+const SHOT_SRCS = ['interact', 'wave', 'point'] as const;
+type SrcKey = LocoSrc | ShotSrc;
 
 export interface StandInPlan {
   /** A looping clip (idle under the speed-driven locomotion), or a one-shot over it. */
@@ -117,16 +125,89 @@ export const STANDIN_CLIPS: Readonly<Record<PersonClip, StandInPlan>> = {
 /** The clips the stand-in really supports (`info.clips`). */
 export const STANDIN_SUPPORTED: readonly PersonClip[] = (Object.keys(STANDIN_CLIPS) as PersonClip[]).filter((c) => STANDIN_CLIPS[c].native);
 
+/** Bones of the stand-in's upper-body layer (one-shots over walking legs; the avatar's split). */
+const UPPER = /^(Torso|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb)/;
+
+// ---- body kits: what differs between the stand-in and an authored body --------------------------
+
+/** How one model part is drawn in the solid look. */
+export interface Dressed {
+  solid: MeshStandardMaterial;
+  /** Cloned for this person (faded in, disposed with it); false = a shared material (never touched). */
+  owned: boolean;
+  /** Ghost look: the cloth colour (linear). */
+  cloth: Color;
+  /** 0 = the full mesh, 1 = the LOD1 copy (shown beyond PEOPLE_LOD.lod1). */
+  lod: 0 | 1;
+}
+
+/**
+ * A body build behind the same person logic: the stand-in (rigged CC0 Quaternius humans,
+ * `STANDIN_KIT`) or an authored MPFB body (./authored.ts `AUTHORED_KIT`).
+ */
+export interface BodyKit {
+  readonly name: 'standin' | 'authored';
+  /** The asset this spec's body loads. */
+  model(spec: PersonSpec): PersonModel;
+  /** Source clip names per source (first present wins). */
+  readonly source: Readonly<Record<SrcKey, readonly string[]>>;
+  /** PersonClip → what plays; `supported` is `info.clips`. */
+  readonly plans: Readonly<Record<PersonClip, StandInPlan>>;
+  readonly supported: readonly PersonClip[];
+  /** Bones of the upper-body layer (one-shots over walking legs). */
+  readonly upper: RegExp;
+  /** The neck bone (as loaded) and the two feet. */
+  readonly neck: string;
+  readonly feet: readonly [RegExp, RegExp];
+  /** The spec's width factor (`build`) applies; an authored body brings its own build. */
+  readonly widthScale: boolean;
+  /** The solid look of a model part, or null when the part is not drawn. `slot`: its material's name. */
+  dress(mesh: Mesh, slot: string, spec: PersonSpec): Dressed | null;
+}
+
+/** The stand-in kit: the spec's Quaternius human, recoloured per person (a material clone per part). */
+export const STANDIN_KIT: BodyKit = {
+  name: 'standin',
+  model: (spec) => spec.model,
+  source: STANDIN_SOURCE,
+  plans: STANDIN_CLIPS,
+  supported: STANDIN_SUPPORTED,
+  upper: UPPER,
+  neck: 'Neck',
+  feet: [/^Foot_?L$/, /^Foot_?R$/],
+  widthScale: true,
+  dress(mesh, slot, spec) {
+    const mat = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as MeshStandardMaterial | undefined;
+    if (!mat || !standinShows(spec, mesh.name, slot)) return null;
+    const hex = standinColour(spec, mesh.name, slot);
+    const solid = mat.clone() as MeshStandardMaterial;
+    delete solid.userData.kqStandard;
+    if (hex !== null) solid.color.setHex(hex);
+    solid.roughness = slot === 'Skin' ? 0.62 : slot === 'Gold' ? 0.4 : slot === 'Eye' ? 0.3 : 0.82;
+    solid.metalness = slot === 'Gold' ? 0.5 : 0;
+    kqStandard(solid, { ambient: 1.15 });
+    // screen-door fade in (no sorting)
+    solid.alphaHash = true;
+    solid.opacity = 0;
+    return { solid, owned: true, cloth: hex !== null ? linHex(hex) : solid.color.clone(), lod: 0 };
+  },
+};
+
+/**
+ * The kit a spec's body uses: its authored MPFB build when it has one and authored bodies are on
+ * (`authored`, ./specs.ts `authoredBodiesOn`), else the stand-in.
+ */
+export function kitFor(spec: PersonSpec, authored = true): BodyKit {
+  return authored && spec.authored ? AUTHORED_KIT : STANDIN_KIT;
+}
+
 /** Default weight fade (s) of `play()`. */
 const DEFAULT_FADE = 0.25;
 /** Seconds of one cycle of a looping clip played with `loop: false` (then back to idle / sit). */
 const CYCLE: Partial<Record<PersonClip, number>> = { talk: 4.5, sitTalk: 4.5, lookAround: 5.7 };
 
-/** Bones of the upper-body layer (one-shots over walking legs; the avatar's split). */
-const UPPER = /^(Torso|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb)/;
-
-function splitClip(c: AnimationClip, upper: boolean): AnimationClip {
-  const tracks = c.tracks.filter((t) => UPPER.test(t.name.split('.')[0] ?? '') === upper);
+function splitClip(c: AnimationClip, upper: boolean, re: RegExp): AnimationClip {
+  const tracks = c.tracks.filter((t) => re.test(t.name.split('.')[0] ?? '') === upper);
   return new AnimationClip(`${c.name}_${upper ? 'up' : 'low'}`, c.duration, tracks);
 }
 
@@ -135,28 +216,29 @@ interface ClipSet {
   shots: Record<ShotSrc, { up: AnimationClip; full: AnimationClip } | null>;
 }
 
-/** Split clips per source model (shared by every person wearing it). */
+/** Split clips per source model (shared by every person wearing it; a model always goes with one kit). */
 const clipCache = new WeakMap<LoadedModel, ClipSet>();
 
-function clipsFor(src: LoadedModel): ClipSet {
+function findClip(src: LoadedModel, names: readonly string[]): AnimationClip | null {
+  for (const n of names) {
+    const c = src.animations.find((a) => a.name === n);
+    if (c) return c;
+  }
+  return null;
+}
+
+function clipsFor(src: LoadedModel, kit: BodyKit): ClipSet {
   const hit = clipCache.get(src);
   if (hit) return hit;
-  const find = (names: readonly string[]) => {
-    for (const n of names) {
-      const c = src.animations.find((a) => a.name === n);
-      if (c) return c;
-    }
-    return null;
-  };
   const loco = (k: LocoSrc) => {
-    const c = find(STANDIN_SOURCE[k]);
-    return c ? { low: splitClip(c, false), up: splitClip(c, true) } : null;
+    const c = findClip(src, kit.source[k]);
+    return c ? { low: splitClip(c, false, kit.upper), up: splitClip(c, true, kit.upper) } : null;
   };
   const shot = (k: ShotSrc) => {
-    const c = find(STANDIN_SOURCE[k]);
-    return c ? { up: splitClip(c, true), full: c } : null;
+    const c = findClip(src, kit.source[k]);
+    return c ? { up: splitClip(c, true, kit.upper), full: c } : null;
   };
-  const set: ClipSet = { loco: { idle: loco('idle'), walk: loco('walk'), run: loco('run') }, shots: { interact: shot('interact'), wave: shot('wave') } };
+  const set: ClipSet = { loco: { idle: loco('idle'), walk: loco('walk'), run: loco('run') }, shots: { interact: shot('interact'), wave: shot('wave'), point: shot('point') } };
   clipCache.set(src, set);
   return set;
 }
@@ -178,19 +260,19 @@ function findBone(rig: Rig, re: RegExp): Bone | null {
  * (its root still at the origin): the feet sampled through each clip (`strideFromFeet`). The rig's
  * bones are put back afterwards.
  */
-export function measureStrides(rig: Rig, src: LoadedModel, height: number): { walk: number; run: number; measured: boolean } {
+export function measureStrides(rig: Rig, src: LoadedModel, height: number, kit: BodyKit = STANDIN_KIT): { walk: number; run: number; measured: boolean } {
   const hit = strideCache.get(src);
   if (hit) return hit;
   const out: { walk: number; run: number; measured: boolean } = { walk: STRIDE_PER_HEIGHT.walk, run: STRIDE_PER_HEIGHT.run, measured: false };
-  const fl = findBone(rig, /^Foot_?L$/);
-  const fr = findBone(rig, /^Foot_?R$/);
+  const fl = findBone(rig, kit.feet[0]);
+  const fr = findBone(rig, kit.feet[1]);
   if (fl && fr) {
     const snap = [...rig.bones.values()].map((b) => [b, b.position.clone(), b.quaternion.clone(), b.scale.clone()] as const);
     const mixer = new AnimationMixer(rig.model);
     rig.root.updateMatrixWorld(true);
     _m.copy(rig.root.matrixWorld).invert();
     for (const k of ['walk', 'run'] as const) {
-      const clip = src.animations.find((a) => a.name === STANDIN_SOURCE[k][0]);
+      const clip = findClip(src, kit.source[k]);
       if (!clip) continue;
       const a = mixer.clipAction(clip);
       a.play();
@@ -228,10 +310,10 @@ export function measureStrides(rig: Rig, src: LoadedModel, height: number): { wa
 
 // ---- the person ---------------------------------------------------------------------------------
 
-/** How the stand-in gets its models (the people system passes `ctx.assets`). */
+/** How a person gets its body models, stand-in or authored (the people system passes `ctx.assets`). */
 export interface StandInLoader {
-  model(id: CharacterModel): Promise<LoadedModel>;
-  peek(id: CharacterModel): LoadedModel | null;
+  model(id: PersonModel): Promise<LoadedModel>;
+  peek(id: PersonModel): LoadedModel | null;
 }
 
 /** One frame of the people system for one person. */
@@ -242,6 +324,8 @@ export interface PersonTick {
   hidden: boolean;
   reducedMotion: boolean;
   reducedFlash: boolean;
+  /** Distance from the camera (m): an authored body shows its LOD1 beyond PEOPLE_LOD.lod1 (default 0: LOD0). */
+  dist?: number;
 }
 
 /** Debug / test snapshot of a person (`kq.people.get`). */
@@ -271,21 +355,27 @@ export interface PersonState {
   radius: number;
   /** Measured strides (m per loop at this height). */
   stride: { walk: number; run: number; measured: boolean };
-  weights: Record<'idle' | 'walk' | 'run' | 'interact' | 'wave', number>;
+  weights: Record<'idle' | 'walk' | 'run' | ShotSrc, number>;
   drop: number;
   head: { yaw: number; pitch: number };
   tris: number;
   drawCalls: number;
+  /** Which body draws the person, and its mesh LOD (an authored body: 1 beyond PEOPLE_LOD.lod1). */
+  body: BodyKit['name'];
+  lodLevel: 0 | 1;
 }
 
 interface Part {
   mesh: Mesh;
   solid: MeshStandardMaterial;
+  /** The solid material is this person's (faded in, disposed with it), not a shared one. */
+  owned: boolean;
   cloth: Color;
   sphere: Sphere;
   ghost?: { body: ShaderMaterial; depth: ShaderMaterial };
   twin?: Mesh;
   tris: number;
+  lod: 0 | 1;
 }
 
 interface Base {
@@ -311,9 +401,15 @@ interface Shot {
 
 let autoSeed = 0;
 
+/**
+ * A person on a rigged body: the stand-in (a Quaternius human) or, for a spec with `authored`, its
+ * MPFB build (./authored.ts). The body kit decides the model, the clip names, the bones and the
+ * materials; everything else is shared.
+ */
 export class StandInPerson implements Person {
   readonly root = new Group();
   readonly info: PersonInfo;
+  readonly kit: BodyKit;
   readonly ready: Promise<boolean>;
   readonly name: string;
   readonly speaker: string | undefined;
@@ -343,11 +439,13 @@ export class StandInPerson implements Person {
   private shot: Shot | null = null;
   private gestureT = 0;
   private gestures = 0;
-  private readonly w = { idle: 1, walk: 0, run: 0, interact: 0, wave: 0 };
-  private readonly shotTime = { interact: 0, wave: 0 };
+  private readonly w = { idle: 1, walk: 0, run: 0, interact: 0, wave: 0, point: 0 };
+  private readonly shotTime = { interact: 0, wave: 0, point: 0 };
   private loco: Record<LocoSrc, { low: AnimationAction; up: AnimationAction } | null> = { idle: null, walk: null, run: null };
-  private shots: Record<ShotSrc, { up: AnimationAction; full: AnimationAction } | null> = { interact: null, wave: null };
+  private shots: Record<ShotSrc, { up: AnimationAction; full: AnimationAction } | null> = { interact: null, wave: null, point: null };
   private drop = 0;
+  private lodLevel: 0 | 1 = 0;
+  private hasLod1 = false;
   // turning, head
   private faceTarget: number | null = null;
   private readonly lookTarget = new Vector3();
@@ -373,8 +471,10 @@ export class StandInPerson implements Person {
     o: PersonSpawnOpts & { y: number },
     loader: StandInLoader,
     private readonly onDispose: (p: StandInPerson) => void,
+    kit?: BodyKit,
   ) {
-    this.info = Object.freeze({ specId, tier: o.tier ?? spec.tier, height: spec.height, radius: spec.radius, clips: STANDIN_SUPPORTED });
+    this.kit = kit ?? kitFor(spec);
+    this.info = Object.freeze({ specId, tier: o.tier ?? spec.tier, height: spec.height, radius: spec.radius, clips: this.kit.supported });
     this.name = o.name ?? specId;
     this.speaker = o.speaker;
     this.look = o.look ?? spec.look;
@@ -395,12 +495,13 @@ export class StandInPerson implements Person {
       this.isReady = ok;
       this.resolveReady(ok);
     };
-    const have = loader.peek(spec.model);
+    const model = this.kit.model(spec);
+    const have = loader.peek(model);
     if (have) done(this.build(have));
     else {
       let p: Promise<LoadedModel>;
       try {
-        p = loader.model(spec.model);
+        p = loader.model(model);
       } catch (e) {
         p = Promise.reject(e);
       }
@@ -408,7 +509,7 @@ export class StandInPerson implements Person {
         (m) => done(this.disposed ? false : this.build(m)),
         (e: unknown) => {
           if (this.disposed) return done(false);
-          console.warn(`[people] ${spec.model} failed, ${id} is a capsule`, e);
+          console.warn(`[people] ${model} failed, ${id} is a capsule`, e);
           this.buildFallback();
           done(false);
         },
@@ -423,14 +524,16 @@ export class StandInPerson implements Person {
     if (this.disposed) return false;
     try {
       const spec = this.spec;
+      const kit = this.kit;
       const rig = new Rig(src, spec.height);
-      // strides measured at the model's own build (cached per model), then the width factor: the
-      // feet's forward travel shrinks with the z scale, and so does the stride
-      const st = measureStrides(rig, src, spec.height);
-      this.stride = { walk: st.walk * spec.height * spec.build, run: st.run * spec.height * spec.build, measured: st.measured };
-      if (spec.build !== 1) {
-        rig.holder.scale.x *= spec.build;
-        rig.holder.scale.z *= spec.build;
+      // strides measured at the model's own build (cached per model), then the stand-in's width
+      // factor: the feet's forward travel shrinks with the z scale, and so does the stride
+      const st = measureStrides(rig, src, spec.height, kit);
+      const build = kit.widthScale ? spec.build : 1;
+      this.stride = { walk: st.walk * spec.height * build, run: st.run * spec.height * build, measured: st.measured };
+      if (build !== 1) {
+        rig.holder.scale.x *= build;
+        rig.holder.scale.z *= build;
       }
       // a conservative bound for every part in its own frame (one sphere round the whole body,
       // arms up or striding included), so frustum culling stays on for skinned parts
@@ -439,21 +542,14 @@ export class StandInPerson implements Person {
       for (const m of rig.meshes) {
         const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as MeshStandardMaterial | undefined;
         const slot = mat?.name ?? '';
-        if (!mat || !standinShows(spec, m.name, slot)) {
+        const d = mat ? kit.dress(m, slot, spec) : null;
+        if (!d) {
           m.visible = false;
           continue;
         }
-        const hex = standinColour(spec, m.name, slot);
-        const solid = mat.clone() as MeshStandardMaterial;
-        delete solid.userData.kqStandard;
-        if (hex !== null) solid.color.setHex(hex);
-        solid.roughness = slot === 'Skin' ? 0.62 : slot === 'Gold' ? 0.4 : slot === 'Eye' ? 0.3 : 0.82;
-        solid.metalness = slot === 'Gold' ? 0.5 : 0;
-        kqStandard(solid, { ambient: 1.15 });
-        // screen-door fade in (no sorting)
-        solid.alphaHash = true;
-        solid.opacity = 0;
-        this.owned.push(solid);
+        const { solid, owned, cloth, lod } = d;
+        if (owned) this.owned.push(solid);
+        if (lod === 1) this.hasLod1 = true;
         _m.copy(m.matrixWorld).invert();
         const centre = _w.set(0, spec.height * 0.5, 0).applyMatrix4(_m).clone();
         const scale = m.matrixWorld.getMaxScaleOnAxis();
@@ -463,10 +559,11 @@ export class StandInPerson implements Person {
         m.material = solid;
         const g = m.geometry;
         const tris = Math.round((g.index ? g.index.count : g.getAttribute('position').count) / 3);
-        this.parts.push({ mesh: m, solid, cloth: hex !== null ? linHex(hex) : solid.color.clone(), sphere, tris });
+        this.parts.push({ mesh: m, solid, owned, cloth, sphere, tris, lod });
       }
+      this.showLod();
       // clips: locomotion split into legs / upper body; one-shots as upper-only and full-body copies
-      const set = clipsFor(src);
+      const set = clipsFor(src, kit);
       const act = (c: AnimationClip) => {
         const a = rig.mixer.clipAction(c);
         a.play();
@@ -478,11 +575,11 @@ export class StandInPerson implements Person {
         const c = set.loco[k];
         this.loco[k] = c ? { low: act(c.low), up: act(c.up) } : null;
       }
-      for (const k of ['interact', 'wave'] as const) {
+      for (const k of SHOT_SRCS) {
         const c = set.shots[k];
         this.shots[k] = c ? { up: act(c.up), full: act(c.full) } : null;
       }
-      this.neck = rig.bones.get('Neck') ?? null;
+      this.neck = rig.bone(kit.neck) ?? null;
       this.head = rig.info.head ? (rig.bones.get(rig.info.head) ?? null) : null;
       // the model faces +z, the contract's root faces −z: the body turns round inside the root
       rig.root.rotation.y = Math.PI;
@@ -545,13 +642,23 @@ export class StandInPerson implements Person {
         p.mesh.material = p.ghost.body;
         p.mesh.renderOrder = 7;
         p.mesh.castShadow = false;
-        p.twin!.visible = true;
+        p.twin!.visible = !this.hasLod1 || p.lod === this.lodLevel;
       } else {
         p.mesh.material = p.solid;
         p.mesh.renderOrder = 0;
         p.mesh.castShadow = true;
         if (p.twin) p.twin.visible = false;
       }
+    }
+  }
+
+  /** Show the parts of the current mesh LOD (bodies without a LOD1 always show everything). */
+  private showLod(): void {
+    if (!this.hasLod1) return;
+    for (const p of this.parts) {
+      const on = p.lod === this.lodLevel;
+      p.mesh.visible = on;
+      if (p.twin) p.twin.visible = on && this.look === 'ghost';
     }
   }
 
@@ -566,14 +673,15 @@ export class StandInPerson implements Person {
   }
 
   play(clip: PersonClip, o: { loop?: boolean; fade?: number; speed?: number } = {}): void {
-    const plan = STANDIN_CLIPS[clip];
+    const plan = this.kit.plans[clip];
     if (!plan) {
       console.warn(`[people] unknown clip '${String(clip)}', playing idle`);
       return this.play('idle', o);
     }
     this.requested = clip;
     if (plan.kind === 'shot') {
-      const src = plan.shot!;
+      // a body without its own clip for this one-shot (a GLB without Point) reaches with Interact
+      const src = this.rig && !this.shots[plan.shot!] ? 'interact' : plan.shot!;
       const a = this.shots[src];
       this.shot = { clip, auto: false, src, t: 0, dur: a?.full.getClip().duration ?? 1.2, speed: Math.max(0.05, o.speed ?? 1), loop: o.loop ?? false, fade: o.fade ?? DEFAULT_FADE };
       return;
@@ -592,7 +700,7 @@ export class StandInPerson implements Person {
 
   private makeBase(clip: PersonClip, o: { loop?: boolean; fade?: number; speed?: number }): Base {
     if (clip === 'talk' || clip === 'sitTalk') this.gestureT = 0;
-    return { clip, plan: STANDIN_CLIPS[clip], loop: o.loop ?? true, fade: Math.max(0, o.fade ?? DEFAULT_FADE), speed: Math.max(0.05, o.speed ?? 1), t: 0 };
+    return { clip, plan: this.kit.plans[clip], loop: o.loop ?? true, fade: Math.max(0, o.fade ?? DEFAULT_FADE), speed: Math.max(0.05, o.speed ?? 1), t: 0 };
   }
 
   face(yaw: number): void {
@@ -662,6 +770,13 @@ export class StandInPerson implements Person {
     this.lodHidden = f.hidden;
     this.rate = f.rate;
     this.updateVisible();
+    if (this.hasLod1) {
+      const l = lod1Level(f.dist ?? 0, this.lodLevel);
+      if (l !== this.lodLevel) {
+        this.lodLevel = l;
+        this.showLod();
+      }
+    }
     if (wasHidden && this.root.visible) this.needsPose = true;
     const rig = this.rig;
     if (!rig) return;
@@ -698,7 +813,7 @@ export class StandInPerson implements Person {
     this.w.idle = easeWeight(this.w.idle, lw.idle, dt, fade);
     this.w.walk = easeWeight(this.w.walk, lw.walk, dt, fade);
     this.w.run = easeWeight(this.w.run, lw.run, dt, fade);
-    for (const k of ['interact', 'wave'] as const) {
+    for (const k of SHOT_SRCS) {
       const on = s && s.src === k ? shotTarget(s.t * s.speed, s.dur, s.fade, s.loop) : 0;
       this.w[k] = easeWeight(this.w[k], on, dt, s && s.src === k ? s.fade : DEFAULT_FADE);
       if (s && s.src === k) this.shotTime[k] = s.loop ? (s.t * s.speed) % s.dur : Math.min(s.t * s.speed, s.dur * 0.999);
@@ -729,7 +844,7 @@ export class StandInPerson implements Person {
     const still = 1 - moveAmount(this.eff);
     let fullW = 0;
     let upperW = 0;
-    for (const k of ['interact', 'wave'] as const) {
+    for (const k of SHOT_SRCS) {
       const a = this.shots[k];
       if (!a) continue;
       const w = this.w[k];
@@ -782,7 +897,7 @@ export class StandInPerson implements Person {
     if (this.alpha < 1) {
       this.alpha = Math.min(1, this.alpha + dt / 0.35);
       const o = this.alpha >= 1 ? 1 : this.alpha;
-      for (const p of this.parts) p.solid.opacity = o;
+      for (const p of this.parts) if (p.owned) p.solid.opacity = o;
     }
     const u = this.shared;
     if (u && this.look === 'ghost' && this.root.visible && this.rig) {
@@ -804,6 +919,7 @@ export class StandInPerson implements Person {
     let calls = 0;
     const k = this.look === 'ghost' ? 2 : 1;
     for (const p of this.parts) {
+      if (!p.mesh.visible) continue;
       tris += p.tris * k;
       calls += k;
     }
@@ -842,11 +958,13 @@ export class StandInPerson implements Person {
       height: this.info.height,
       radius: this.info.radius,
       stride: { walk: round(this.stride.walk), run: round(this.stride.run), measured: this.stride.measured },
-      weights: { idle: round(this.w.idle), walk: round(this.w.walk), run: round(this.w.run), interact: round(this.w.interact), wave: round(this.w.wave) },
+      weights: { idle: round(this.w.idle), walk: round(this.w.walk), run: round(this.w.run), interact: round(this.w.interact), wave: round(this.w.wave), point: round(this.w.point) },
       drop: round(this.drop),
       head: { yaw: round(this.headYaw), pitch: round(this.headPitch) },
       tris: st.tris,
       drawCalls: st.calls,
+      body: this.kit.name,
+      lodLevel: this.lodLevel,
     };
   }
 

@@ -55,7 +55,7 @@ export interface LicenceRecord {
   /** Asset name as on the source site. */
   name: string;
   author: string;
-  /** Page of the asset on the official site (polyhaven.com, ambientcg.com, kenney.nl, quaternius.com, poly.pizza). */
+  /** Page of the asset on the official site (polyhaven.com, ambientcg.com, kenney.nl, quaternius.com, poly.pizza, MakeHuman / MPFB2). */
   source: string;
   /** SPDX id: always 'CC0-1.0' for art assets. */
   licence: string;
@@ -94,7 +94,16 @@ export interface VoiceCredit {
 }
 
 /** Sources the art pipeline may download from (docs/ART-DIRECTION.md §8). */
-export const ALLOWED_SOURCES = ['https://polyhaven.com/', 'https://ambientcg.com/', 'https://kenney.nl/', 'https://quaternius.com/', 'https://poly.pizza/'];
+export const ALLOWED_SOURCES = [
+  'https://polyhaven.com/',
+  'https://ambientcg.com/',
+  'https://kenney.nl/',
+  'https://quaternius.com/',
+  'https://poly.pizza/',
+  // MakeHuman / MPFB2 core assets (CC0; the MPFB extension itself is GPL code, used only at build time)
+  'https://static.makehumancommunity.org/',
+  'https://extensions.blender.org/add-ons/mpfb/',
+];
 
 /** Budgets (bytes): whole asset folder, and the core (first playable) group. */
 export const ASSET_BUDGET = { total: 150 * 1024 * 1024, core: 40 * 1024 * 1024 };

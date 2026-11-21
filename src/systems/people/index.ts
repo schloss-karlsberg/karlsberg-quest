@@ -1,7 +1,11 @@
 /**
  * Feature "people": the people contract v0 (./types.ts) — modern NPCs (the guide, tour members,
  * the doubles, the child, the historical twins) spawned by other systems through a
- * mesh-independent handle API, drawn today by rigged CC0 stand-ins (./standin.ts).
+ * mesh-independent handle API, drawn by rigged CC0 stand-ins (./standin.ts) or, for a spec with an
+ * authored body (today the guide), its MPFB build with the one shared people material (./authored.ts).
+ * Authored bodies are off by default for now (`PEOPLE_AUTHORED_DEFAULT`, ./specs.ts: opt-in until the
+ * guide's look passes review); `?people=authored` / `?people=standin` force one or the other for the
+ * session.
  *
  * How a system gets it: `ctx.people` (declared below by declaration merging, set in `init`).
  * Declare `after: ['people']` and import only the types (`import type { Person } from
@@ -19,7 +23,8 @@ import type { LoadedModel } from '../../assets/loader';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { type PeopleStats, PeopleRegistry } from './registry';
-import { type PersonState, type StandInLoader, StandInPerson } from './standin';
+import { authoredBodiesOn } from './specs';
+import { type PersonState, type StandInLoader, StandInPerson, kitFor } from './standin';
 import type { PeopleApi, PersonSpawnOpts } from './types';
 
 declare module '../../core/context' {
@@ -93,12 +98,22 @@ export default defineSystem({
       model: (id) => ctx.assets.model(id),
       peek: (id) => ctx.assets.peek<LoadedModel>(id),
     };
+    // authored bodies on / off for the session: ?people=authored|standin, else PEOPLE_AUTHORED_DEFAULT
+    const authored = authoredBodiesOn(ctx.params);
     reg = new PeopleRegistry<StandInPerson>(
       ({ id, specId, spec, opts, onDispose }) => {
-        const p = new StandInPerson(id, specId, spec, opts, loader, (q) => {
-          drives.delete(q.id);
-          onDispose(q);
-        });
+        const p = new StandInPerson(
+          id,
+          specId,
+          spec,
+          opts,
+          loader,
+          (q) => {
+            drives.delete(q.id);
+            onDispose(q);
+          },
+          kitFor(spec, authored),
+        );
         ctx.scene.add(p.root);
         return p;
       },

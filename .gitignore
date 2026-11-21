@@ -23,3 +23,7 @@ public/**/*TEST-synthetic*
 !.env.example
 # moss-service raw WAVs (generate.mjs service mode, --raw-dir default): local only, the service cache keeps pointing at them
 /.voice-raw/
+
+# Python bytecode (Blender build scripts)
+__pycache__/
+*.pyc
