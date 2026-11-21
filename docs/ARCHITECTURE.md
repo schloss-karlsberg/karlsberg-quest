@@ -25,7 +25,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `src/render/post.ts` | Post FX: MSAA HDR target with depth texture (`setSamples(n)`), half-res SAO, bloom chain, ACES (Hill fit), white balance, split toning, colour grade, vignette, grain, `uShift/uFlash/uDesaturate`, `uFlashScale` (reduced flashing); `setFeatures({bloom, ao, grade})` from the tier; `debug` 1 = AO / 2 = bloom buffer |
 | `src/render/shadows.ts` | `SunShadows` (`world.shadows`): fitted, texel-snapped orthographic sun / moon shadow map around the player, rendered with the scene's own materials; sampled by `kqShadow` inside `kqLight`; `castsShadow(o)` (opt out: `userData.noShadow`); `every` / `ShadowReuse`: a frame may keep the last map (tier `shadowEvery` 2) while the focus moved < ¾ texel, the sun did not turn and the map is ≤ 25 ms old (never in `?manual` or a fight) |
 | `src/render/standard.ts` | `kqStandard(mat)` / `kqStandardize(root)`: imported PBR materials lit by the world (era sun + shadow, hemisphere fill, lantern, fire glow, sky IBL, `kqFog`); `EnvLight` (PMREM of the era sky, rebuilt on `world.lookVersion`) |
-| `src/assets/` | CC0 art assets: `types.ts` (manifest / licence types, `checkManifest`, budgets), `manifest.ts` (merges `manifests/*.ts`, one per art track), `loader.ts` (`AssetLoader` = `ctx.assets`) — see docs/ART-DIRECTION.md §8 |
+| `src/assets/` | CC0 art assets: `types.ts` (manifest / licence types, `checkManifest`, budgets), `manifest.ts` (merges `manifests/*.ts`, one per art track), `loader.ts` (`AssetLoader` = `ctx.assets`) — see docs/ART-DIRECTION.md §8; glTF transmission (the chandelier glass) becomes alpha-blended glass at load (`dropTransmission`: no transmission pre-pass redrawing the opaque scene) |
 | `public/assets/` | `models/`, `textures/`, `hdri/` + `LICENSES.json` (every file, CC0 only); copied to `dist/assets/` (the bundle goes to `dist/app/`) |
 | `scripts/assets/` | `pnpm assets:pack` (glTF → meshopt GLB with WebP textures), `pnpm assets:tex` (texture → WebP) |
 | `src/render/perf.ts` | `PERF_BUDGET` (draw calls, triangles, CPU ms, frame ms), `PerfMonitor` (per-frame CPU/GPU time, calls, triangles; ring buffer), `frameStats` |
@@ -383,19 +383,26 @@ camera-facing impostor quad whose silhouette and fake normal come from the shade
 stay for the point-cloud and `forestClear.ts` patches. Seasons per era in the shader: summer 1789,
 autumn today, bare frosted twigs and snow 1793-02, sparse 1796 (`leafDensity`, `twigShow`).
 `forest.stats` = `{near, mid, far, total, drawCalls, culled}` (debug panel and F3 overlay show them).
+Culling (`forestCullMode`): a level view drops trees outside the horizontal sector (half-FOV + 40°,
+all within 30 m); looking steeply down keeps the full ring only more than 20 m above the ground
+(`update(camera, agl)`: flying, spirit view), on foot whole 64 m tiles outside the 3D view cone
+(`src/world/viewCone.ts`: frustum corner + 40°) are dropped.
 
 Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees outside the shadow box collapse there. The low tier never fetches the models.
 
 Nature layers (`src/world/vegetation/`, docs/ART-DIRECTION.md §5.1): `world.nature` (`Nature`) owns
-`cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles) and `props` (`NatureProps`:
+`cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles; only what lies in the 3D view
+cone or within 3 m, grass beyond ≈ 12 m as a 10-blade distance tuft `nature-grass-far`) and `props` (`NatureProps`:
 instanced CC0 ferns, rocks, logs, stumps, 16 m tiles), and on medium / high loads the ground and bark
 texture strips into the terrain (`terrain.setGroundSet`) and forest (`forest.setBark`). `world.setDetail(level)`
 is a quality listener (alpha-to-coverage for crowns, layer radii, water reflection); nothing loads on low.
 `world.water` (`src/world/water.ts`): water bodies from the ground raster per terrain set
 (`findWaterBodies` / `shoreDistance`, pure), one transparent mesh per body, `levelAt`, era looks
-(`ERA_WATER`), and on high `renderReflection(renderer, scene, camera)` (called by boot before the main
-render) draws a half-resolution planar reflection of the nearest body in view (`reflectionSkip`
-hides the near layers). Stats: `nature.cover.stats`, `nature.props.stats`, `water.stats`.
+(`ERA_WATER`), and on high `renderReflection(renderer, scene, camera, shadowDrawn)` (called by boot
+before the main render) draws a half-resolution planar reflection of the nearest body whose box is
+in the frustum within `reflectDist` (150 m, fading to the tree-line band over the last 30 %;
+`reflectionDistance`), re-rendered off-phase with the shadow map (`ReflectionSchedule`: never on
+the same frame, a cut forces a fresh one; `reflectionSkip` hides the near layers). Stats: `nature.cover.stats`, `nature.props.stats`, `water.stats`.
 
 Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 diverging local
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
@@ -1294,7 +1301,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   sky; today low mossy foundations only (no collision).
 - Medium / high tier: the finishes take the CC0 surface layers (parquet, plaster, boards,
   marble, damask …) and the chandeliers / fauteuils are CC0 models (`Built.models`, instanced
-  beside the mesh, dropped with it; candle flames sit at the model's candle tips). `low` keeps
+  beside the mesh, dropped with it; candle flames sit at the model's candle tips). The model groups
+  (`interior-<id>-models`) are drawn only inside the building or within 25 m (`interiorModelsView`,
+  hidden again beyond 28 m) and cast sun shadows only while the player is inside. `low` keeps
   the procedural furniture and finishes.
 - Shell (`shell.ts`, runtime patch of the palace shader like fx): glass of built buildings cut
   away, door boxes cut through the facade, other model parts poking into a built room clipped,

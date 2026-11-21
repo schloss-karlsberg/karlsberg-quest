@@ -132,6 +132,69 @@ Measured with the per-system timers (`systems.stats()`, overlay "Systeme"):
 The whole rendered frame stays ≤ 1 ms CPU in most scenes on the M5 Pro, 2.3 ms at the burning
 palace from outside (fire particles).
 
+### 3.4 Triangle budget, phase A (2026-11-21)
+
+Hoch peaked at 2.3–4.2 M triangles (budget 1.5 M) at the palace plateau, the Quelle, the
+Felsenpfad and the Weiher, and 1789 at the palace at 2.5–3.7 M with 321–359 calls. Five fixes,
+all meant to be invisible at normal viewing distance:
+
+1. **Water reflection only when the water is on screen and near** (`world/water.ts`): the planar
+   reflection re-rendered forest, terrain and scenery for any body within 450 m whose centre lay
+   ahead, also off screen. Now only a body whose bounding box is in the camera frustum and within
+   `reflectDist` = 150 m (`reflectionDistance`); over the last 30 % (105–150 m) the reflection fades
+   into the shader's tree-line band (the Mittel look), beyond it the reflection pass is skipped.
+2. **Reflection off-phase with the shadow map** (`ReflectionSchedule`): the shadow map re-renders
+   every 2nd frame on Hoch; the reflection renders on the frames that re-use it (or after standing
+   one frame), so with the usual pattern no frame pays for both. The reflection matrix is
+   world-anchored, a one-frame-old image stays in place; a cut (camera jump > 2 m, turn > 3.4°,
+   another body, new target, era change) forces a fresh one. When the shadow map re-renders every
+   frame (sprinting, fights, bullet time) the reflection renders every 2nd frame.
+3. **Forest looking down** (`world/forest.ts` `forestCullMode`): looking steeply down disabled
+   culling and drew the whole 700 m ring (17 k impostors in the Quelle ravine). The full ring now
+   stays only more than 20 m above the ground (flying, spirit view); on foot whole 64 m tiles
+   outside a 3D view cone (frustum corner + 40°, rebuilt after a 20° turn; `world/viewCone.ts`) are
+   dropped, everything within 30 m always stays.
+4. **Ground cover culling and a distance tuft** (`world/vegetation/groundcover.ts`): the 360° ring
+   is cut to the same view cone (everything within 3 m stays, the camera turns fast; rebuilt after
+   3 m or a 20° turn), and grass beyond ≈ 12 m (dithered ±2 m per tuft, no ring line) is a 10-blade
+   tuft of twice the blade width (60 instead of 132 triangles), where the blades are a pixel wide
+   or less. Up close nothing changes.
+5. **1789 palace** (`assets/loader.ts`, `systems/interiors/`): the CC0 chandelier's glass came with
+   `KHR_materials_transmission`, which makes three.js redraw every opaque object in a transmission
+   pre-pass whenever it is in view; at load it becomes alpha-blended glass (`dropTransmission`).
+   The interior model groups (fauteuils, chandeliers; one building alone had 28 armchairs at 5.6 k
+   triangles) are drawn only inside the building or within 25 m of it (hidden again beyond 28 m) and
+   cast sun shadows only while the player is inside (`interiorModelsView`).
+
+Measured on the real GPU (Apple M5 Pro, ANGLE Metal, headless Chromium 1280 × 720, pixel ratio 1,
+uncapped), third-person camera 3.6 m, FOV 80°, pitch −6°; 3 s per view with the tier's own shadow
+re-use; "peak" = the most expensive frame. Before = `4a3c98c`.
+
+| View | Tier | Calls avg / peak | Triangles avg / peak | Per pass after (main / shadow / reflection, avg M) |
+|---|---|---|---|---|
+| Palace plateau (1216 / −1114), 270° | Hoch | 231 / 259 → **154 / 182** | 3.44 / 3.95 M → **2.08 / 2.60 M** | 1.57 / 0.52 / – (reflection 0.93 → off) |
+| Quelle (1059 / −833), 270° | Hoch | 227 / 254 → **182 / 197** | 3.56 / 4.21 M → **2.72 / 2.79 M** | 1.56 / 0.61 / 0.54 (17 k → 9.7 k impostors) |
+| Felsenpfad (683 / −596), 90° | Hoch | 134 / 159 → **135 / 160** | 2.35 / 2.97 M → **2.24 / 2.85 M** | 1.62 / 0.62 / – |
+| Weiher (897 / −845), 90° | Hoch | 192 / 215 → **163 / 169** | 1.98 / 2.26 M → **1.57 / 1.59 M** | 0.99 / 0.28 / 0.30 |
+| 1789 plateau (1216 / −1114), 180° | Hoch | 330 / 359 → **161 / 188** | 2.18 / 2.50 M → **0.91 / 1.10 M** | 0.73 / 0.19 / – |
+| 1789 front (1184 / −1126), 90° | Hoch | 290 / 321 → **184 / 213** | 3.41 / 3.74 M → **1.27 / 1.46 M** | 1.08 / 0.19 / – |
+| Palace plateau | Mittel | 146 / 171 → 147 / 172 | 1.32 / 1.62 M → **1.21 / 1.51 M** | 0.92 / 0.30 / – |
+| Quelle | Mittel | 128 / 152 → 130 / 155 | 1.54 / 1.97 M → **1.49 / 1.91 M** | 1.07 / 0.42 / – |
+| Felsenpfad | Mittel | 132 / 157 → 133 / 158 | 1.49 / 1.88 M → **1.46 / 1.85 M** | 1.07 / 0.39 / – |
+| Weiher | Mittel | 131 / 154 → 132 / 155 | 0.86 / 1.03 M → **0.83 / 1.00 M** | 0.66 / 0.17 / – |
+| 1789 plateau | Mittel | 223 / 247 → **152 / 174** | 1.62 / 1.91 M → **0.84 / 0.99 M** | 0.69 / 0.15 / – |
+| 1789 front | Mittel | 283 / 312 → **179 / 206** | 2.54 / 2.86 M → **1.14 / 1.33 M** | 0.96 / 0.18 / – |
+
+- Peaks with the shadow map forced every frame (the old worst case): Weiher 2.26 → 2.15 M, Quelle
+  4.21 → 3.87 M (reflection and shadow coincide every 2nd frame there).
+- Still over budget on Hoch: the Felsenpfad and the Quelle (forest model trees and the props,
+  each drawn twice: main and shadow pass) and the palace plateau (the shadow pass, 1.03 M at its
+  peak). Next phase.
+- Look checks: the same camera before / after at every view, the Weiher from 100 / 125 / 160 m
+  with the reflection forced on, off and as shipped, the chandelier at 1.8 m and 3 m, the
+  walk-up to the furnished wing: no visible difference except the wind phase (session scratchpad
+  `tri-phase-a/`).
+
 ## 4. Loading
 
 Measured with `e2e/perf.spec.ts` (preview build on localhost, cold cache, SwiftShader).
@@ -175,6 +238,8 @@ programs); later era first frames ~85 ms. Not run under WebDriver (keeps e2e tim
 - **Energiesparen** (off by default): 30 fps, pixel ratio ≤ 1, no AO, no planar water
   reflection, on top of any preset. On battery (Battery API, Chromium only) a toast suggests it
   once, 15 s after the start; nothing switches by itself.
+- **Planar water reflection** (Hoch only): the nearest body on screen within 150 m, fading to
+  the tree-line band from 105 m; re-rendered on the frames that re-use the shadow map (§3.4).
 - **Shadow re-use**: a frame keeps the last shadow map only while it is still exact: the focus
   moved less than ¾ of a texel (walking 3.2 m/s = 5.3 cm a 60 fps frame keeps it on Hoch and
   Mittel; sprinting 6.2 m/s = 10.3 cm re-renders), the sun did not turn, the map is ≤ 25 ms old

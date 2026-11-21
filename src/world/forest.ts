@@ -17,6 +17,7 @@ import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { FOLIAGE_GLSL } from './vegetation/foliage';
 import { type ModelTrees, pickVariant } from './vegetation/trees';
+import { ViewCone } from './viewCone';
 
 /**
  * Procedural forest: three species (beech, spruce, oak), three detail levels, one draw call per
@@ -44,6 +45,39 @@ const KINDS = 3;
 const MAX_NEAR = 2500;
 const MAX_MID = 9000;
 const MAX_FAR = 40000;
+
+/** Looking steeply down keeps the full ring only this high (m) above the ground (flying, spirit view). */
+export const FULL_RING_AGL = 20;
+
+/**
+ * How the instance lists are culled (pure; exported for tests): `full` ring (culling off, or
+ * looking steeply down from high above the ground), the horizontal `sector` (level view), or the
+ * 3D view `cone` per 64 m tile (looking steeply down on foot: the Quelle ravine). `dirY` = the
+ * view direction's y, `agl` = camera height above the terrain (m).
+ */
+export function forestCullMode(cull: boolean, dirY: number, agl: number): 'full' | 'sector' | 'cone' {
+  if (!cull) return 'full';
+  if (dirY >= -0.55) return 'sector';
+  return agl > FULL_RING_AGL ? 'full' : 'cone';
+}
+
+/** Bounding sphere of every tile's trees, base to crown top (cx, cy, cz, r; pure, exported for tests). */
+export function tileSpheres(tiles: Map<string, Float32Array>): Map<string, Float32Array> {
+  const out = new Map<string, Float32Array>();
+  for (const [key, arr] of tiles) {
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (let k = 0; k < arr.length; k += F) {
+      y0 = Math.min(y0, arr[k + 1]!);
+      y1 = Math.max(y1, arr[k + 1]! + arr[k + 3]!);
+    }
+    if (!(y1 >= y0)) continue;
+    const [tx, tz] = key.split('_').map(Number) as [number, number];
+    // half the tile diagonal and height, plus a crown's reach over the tile edge
+    out.set(key, new Float32Array([(tx + 0.5) * TILE, (y0 + y1) / 2, (tz + 0.5) * TILE, Math.hypot(TILE / 2, TILE / 2, (y1 - y0) / 2) + 8]));
+  }
+  return out;
+}
 
 export interface ForestSource {
   hf: Heightfield;
@@ -754,6 +788,7 @@ export class Forest {
   readonly object = new Group();
   readonly material: ShaderMaterial;
   private tiles = new Map<string, Float32Array>();
+  private spheres = new Map<string, Float32Array>();
   private readonly batches: Batch[] = [];
   private lastX = Infinity;
   private lastZ = Infinity;
@@ -770,7 +805,9 @@ export class Forest {
   /** View direction the instance lists were built for (sector culling). */
   private lastYaw = 0;
   private lastDown = false;
+  private lastMode = '';
   private lastFov = 0;
+  private readonly cone = new ViewCone();
   private counts: number[] = [];
   private readonly dir = new Vector3();
   /** Sector culling on (debug / tests can switch it off). */
@@ -874,6 +911,7 @@ export class Forest {
 
   setTrees(tiles: Map<string, Float32Array>): void {
     this.tiles = tiles;
+    this.spheres = tileSpheres(tiles);
     let n = 0;
     for (const t of tiles.values()) n += t.length / F;
     this.stats.total = n;
@@ -897,24 +935,30 @@ export class Forest {
 
   /**
    * Rebuild the instance lists when the camera moved 8 m or turned 20°. Trees outside a sector
-   * around the view direction (horizontal half-FOV + 40°, everything within 30 m) are left out;
-   * looking steeply down (from the air) keeps the full ring.
+   * around the view direction (horizontal half-FOV + 40°, everything within 30 m) are left out.
+   * Looking steeply down keeps the full ring only from high above the ground (`agl` > 20 m:
+   * flying, spirit view); on foot whole 64 m tiles outside the 3D view cone (frustum corner + 40°)
+   * are left out instead, rebuilt when the view turned 20° (`forestCullMode`).
    */
-  update(camera: PerspectiveCamera): void {
+  update(camera: PerspectiveCamera, agl = 0): void {
     const p = camera.position;
     camera.getWorldDirection(this.dir);
     const down = this.dir.y < -0.55;
+    const mode = forestCullMode(this.cull, this.dir.y, agl);
     const yaw = Math.atan2(this.dir.x, -this.dir.z);
     let dYaw = Math.abs(yaw - this.lastYaw);
     if (dYaw > Math.PI) dYaw = 2 * Math.PI - dYaw;
-    const turned = this.cull && !down && dYaw > 0.35;
-    if (!this.dirty && !turned && down === this.lastDown && camera.fov === this.lastFov && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
+    const turned = mode === 'sector' ? dYaw > 0.35 : mode === 'cone' && this.cone.turned(camera, 0.35);
+    if (!this.dirty && !turned && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
     this.dirty = false;
     this.lastX = p.x;
     this.lastZ = p.z;
     this.lastYaw = yaw;
     this.lastDown = down;
+    this.lastMode = mode;
     this.lastFov = camera.fov;
+    const cone = mode === 'cone';
+    if (cone) this.cone.set(camera, 0.7);
     // horizontal view direction and the sector's cosine limit
     const hl = Math.hypot(this.dir.x, this.dir.z) || 1;
     const fx = this.dir.x / hl;
@@ -941,6 +985,11 @@ export class Forest {
       for (let tx = t0x; tx <= t1x; tx++) {
         const arr = this.tiles.get(`${tx}_${tz}`);
         if (!arr) continue;
+        const sp = cone ? this.spheres.get(`${tx}_${tz}`) : undefined;
+        if (sp && !this.cone.keeps(sp[0]!, sp[1]!, sp[2]!, sp[3]!, 30 + TILE * 0.71)) {
+          culled += arr.length / F;
+          continue;
+        }
         for (let k = 0; k < arr.length; k += F) {
           const dx = arr[k]! - p.x;
           const dz = arr[k + 2]! - p.z;

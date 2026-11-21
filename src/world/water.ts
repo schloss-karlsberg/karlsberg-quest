@@ -1,6 +1,8 @@
 import {
+  type Box3,
   BufferAttribute,
   BufferGeometry,
+  Frustum,
   Group,
   HalfFloatType,
   LinearFilter,
@@ -22,6 +24,55 @@ import { GROUND } from '../data/types';
 import { ATMOS_GLSL, atmosphere } from './atmosphere';
 import type { GridDesc, Heightfield } from './heightfield';
 import type { Sky } from './sky';
+
+/** Planar reflection only for a body within this distance (m); the last 30 % fade to the band. */
+export const REFLECT_DIST = 150;
+
+/**
+ * Does a water body get the planar reflection (pure; exported for tests)? Its bounding box must
+ * touch the camera frustum and lie within `maxDist` (horizontal); returns that distance, or -1.
+ */
+export function reflectionDistance(frustum: { intersectsBox(box: Box3): boolean }, box: Box3, cam: { x: number; z: number }, maxDist: number): number {
+  const dx = Math.max(box.min.x - cam.x, 0, cam.x - box.max.x);
+  const dz = Math.max(box.min.z - cam.z, 0, cam.z - box.max.z);
+  const d = Math.hypot(dx, dz);
+  return d <= maxDist && frustum.intersectsBox(box) ? d : -1;
+}
+
+/**
+ * When to re-render the planar reflection (pure; exported for tests): off-phase with the shadow
+ * map, so no frame pays for both — on a frame whose shadow map was re-used, or when the last
+ * reflection already stood one frame. The reflection matrix is world-anchored, so a one-frame-old
+ * image stays in place; a cut (the camera jumped `jump` m or turned `turn` rad, or another body)
+ * forces a fresh render.
+ */
+export class ReflectionSchedule {
+  jump = 2;
+  turn = 0.06;
+  private skipped = 0;
+  private readonly pos = new Vector3(Infinity, 0, 0);
+  private readonly dir = new Vector3();
+  private body = -1;
+
+  /** True = render the reflection this frame. `shadowDrawn` = the shadow map was re-rendered this frame. */
+  due(shadowDrawn: boolean, pos: Vector3, dir: Vector3, body: number): boolean {
+    const cut = body !== this.body || this.pos.distanceToSquared(pos) > this.jump * this.jump || this.dir.dot(dir) < Math.cos(this.turn);
+    if (!cut && shadowDrawn && this.skipped < 1) {
+      this.skipped++;
+      return false;
+    }
+    this.skipped = 0;
+    this.pos.copy(pos);
+    this.dir.copy(dir);
+    this.body = body;
+    return true;
+  }
+
+  /** The last image is gone (new target, no body in view): the next frame renders. */
+  invalidate(): void {
+    this.body = -1;
+  }
+}
 
 /**
  * Lakes and ponds (Karlsbergweiher, the Schwanenweiher, the Karlslust ponds …): a stylized water
@@ -250,13 +301,13 @@ void main() {
   // the shore forest reflected as a dark band low on the water (cheap tiers)
   refl = mix(refl, uDeep * 0.6 + uGroundAmbient * 0.12, uTreeLine * (1.0 - smoothstep(0.02, 0.28, r.y)));
 #ifdef KQ_WATER_REFL
-  if (uReflOn > 0.5) {
+  if (uReflOn > 0.0) {
     vec4 rp = uReflMatrix * vec4(vWorld + vec3(n.x, 0.0, n.z) * 1.2, 1.0);
     vec2 ruv = rp.xy / rp.w;
     if (ruv.x > 0.0 && ruv.y > 0.0 && ruv.x < 1.0 && ruv.y < 1.0) {
       vec3 pr = texture2D(uRefl, ruv).rgb;
       float edge = smoothstep(0.0, 0.04, min(min(ruv.x, ruv.y), min(1.0 - ruv.x, 1.0 - ruv.y)));
-      refl = mix(refl, pr, edge);
+      refl = mix(refl, pr, edge * uReflOn);
     }
   }
 #endif
@@ -344,9 +395,14 @@ export class Water {
   private readonly size2 = new Vector2();
   /** Hidden during the reflection pass (set by World: near ground cover, props). */
   reflectionSkip: { visible: boolean }[] = [];
-  readonly stats = { bodies: 0, reflection: false, reflectedLevel: 0 };
+  readonly stats = { bodies: 0, reflection: false, reflectedLevel: 0, drawn: 0, reused: 0 };
   /** Planar reflection allowed (off under „Energiesparen“; the tier decides the rest). */
   reflections = true;
+  /** Planar reflection range (m): beyond, the tree-line band of the medium tier. */
+  reflectDist = REFLECT_DIST;
+  readonly schedule = new ReflectionSchedule();
+  private readonly frustum = new Frustum();
+  private readonly viewProj = new Matrix4();
 
   constructor(
     ground: Uint8Array,
@@ -493,6 +549,7 @@ export class Water {
     for (const k of ['2025', '1789'] as const) for (const bm of this.sets[k]) bm.mesh.visible = k === terrain;
     this.active = this.sets[terrain];
     this.stats.bodies = this.active.length;
+    this.schedule.invalidate();
     const L = ERA_WATER[era];
     const u = this.material.uniforms;
     (u.uDeep!.value as Vector3).set(L.deep[0], L.deep[1], L.deep[2]);
@@ -524,33 +581,41 @@ export class Water {
   frame(_camera: PerspectiveCamera, _dt: number): void {}
 
   /**
-   * Planar reflection (high tier): the scene mirrored at the nearest visible body's surface,
-   * half resolution, with an oblique near plane at the water. Skipped when no body is within
-   * 450 m and in front of the camera. Call after the shadow map, before the main render.
+   * Planar reflection (high tier): the scene mirrored at the nearest body on screen (its box in
+   * the frustum) within `reflectDist`, half resolution, with an oblique near plane at the water;
+   * otherwise the shader's tree-line band. Re-rendered off-phase with the shadow map
+   * (`ReflectionSchedule`; `shadowDrawn` = the shadow map was re-rendered this frame). Call after
+   * the shadow map, before the main render.
    */
-  renderReflection(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera): void {
+  renderReflection(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera, shadowDrawn = false): void {
     const u = this.material.uniforms;
-    u.uReflOn!.value = 0;
     this.stats.reflection = false;
-    if (this.level !== 'high' || !this.reflections || this.active.length === 0) return;
-    // nearest body in view
+    if (this.level !== 'high' || !this.reflections || this.active.length === 0) {
+      u.uReflOn!.value = 0;
+      return;
+    }
+    // nearest body on screen
     let best: WaterBody | null = null;
-    let bestD = 450;
-    camera.getWorldDirection(this.tmpV);
+    let bestD = Infinity;
+    camera.updateMatrixWorld();
+    this.frustum.setFromProjectionMatrix(this.viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     for (const { body, mesh } of this.active) {
-      if (!mesh.visible) continue;
-      const dx = Math.max(body.x0 - camera.position.x, 0, camera.position.x - body.x1);
-      const dz = Math.max(body.z0 - camera.position.z, 0, camera.position.z - body.z1);
-      const d = Math.hypot(dx, dz);
-      if (d > bestD) continue;
-      const fx = body.cx - camera.position.x;
-      const fz = body.cz - camera.position.z;
-      if (d > 30 && (fx * this.tmpV.x + fz * this.tmpV.z) < 0) continue;
-      if (camera.position.y < body.level + 0.2) continue;
+      if (!mesh.visible || camera.position.y < body.level + 0.2) continue;
+      const d = reflectionDistance(this.frustum, mesh.geometry.boundingBox!, camera.position, this.reflectDist);
+      if (d < 0 || d >= bestD) continue;
       best = body;
       bestD = d;
     }
-    if (!best) return;
+    if (!best) {
+      u.uReflOn!.value = 0;
+      this.schedule.invalidate();
+      return;
+    }
+    // fade to the band over the last 30 % of the range (no pop)
+    const f = Math.min(1, Math.max(0, (bestD - this.reflectDist * 0.7) / (this.reflectDist * 0.3)));
+    u.uReflOn!.value = Math.max(0.001, 1 - f * f * (3 - 2 * f));
+    this.stats.reflection = true;
+    this.stats.reflectedLevel = best.level;
     const size = renderer.getDrawingBufferSize(this.size2);
     const w = Math.max(64, Math.round(size.x * 0.5));
     const h = Math.max(64, Math.round(size.y * 0.5));
@@ -558,7 +623,13 @@ export class Water {
       this.refl?.dispose();
       this.refl = new WebGLRenderTarget(w, h, { type: HalfFloatType, minFilter: LinearFilter, magFilter: LinearFilter, depthBuffer: true });
       u.uRefl!.value = this.refl.texture;
+      this.schedule.invalidate();
     }
+    if (!this.schedule.due(shadowDrawn, camera.position, camera.getWorldDirection(this.tmpV), best.id)) {
+      this.stats.reused++;
+      return;
+    }
+    this.stats.drawn++;
     const L = best.level + 0.04;
     const m = this.mirror;
     m.copy(camera, false);
@@ -599,9 +670,6 @@ export class Water {
     renderer.setRenderTarget(prev);
     this.reflectionSkip.forEach((o, i) => (o.visible = skipVis[i]!));
     this.object.visible = vis;
-    u.uReflOn!.value = 1;
-    this.stats.reflection = true;
-    this.stats.reflectedLevel = best.level;
   }
 
   dispose(): void {
