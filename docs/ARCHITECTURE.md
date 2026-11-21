@@ -1263,7 +1263,7 @@ stand-ins, the **authored meshes later behind the same interface**.
   interface AnimalInfo { specId; length; height; radius; headHeight; speeds: { walk; run }; clips }
   interface Animal {
     id; specId; root; info; ready /* Promise<boolean> */;
-    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw); lookAt(p | null);
+    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw, {seconds?} /* 0 = at once */); lookAt(p | null);
     headWorld(out); setEyeShine(k); setVisible(v); dispose();
   }
   interface FaunaApi { spawn(specId, opts): Animal; get(id); list(); clear(); specs() }
@@ -1371,12 +1371,19 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   unseen); line of sight from each self-led deer (`hunt/perception.ts` `lineOfSight`, deer eye
   0.95 m to the stance's `TARGET_HEIGHT`, transmittance > 0.15) at 5 Hz, only inside notice + 2 m;
   `walkable` = no water, no footprint, slope < 35°; no noise events yet (none exist), mask 0. Then
-  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
-  `setSpeed` on change, `play(clip)` only when the clip hint changes.
+  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`
+  on change (a dog's with `seconds: 0`), `setSpeed` on change, `play(clip)` only when the clip hint
+  changes.
+- Dog motion: the core turns a dog at most `DOGS.TURN` (5 rad/s) and moves it only forward along its
+  yaw, the speed eased (`ACCEL` 6 / `DECEL` 10 m/s²): a slot behind it is a turn, never a reverse; a
+  slot just passed (< `AT_SLOT`) is waited for. Near the slot of a walking leader it matches the
+  leader's speed (plus `GAIN` per metre ahead) instead of stopping and starting. Its body faces the
+  core's yaw at once (no second smoothing lagging behind the motion).
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
-  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
-  0). Unresolvable → the dog idles where it is.
+  `player`, `animal:<id>`. Speed and heading from the motion since the ref last moved, low-passed
+  (`REF_TAU` 0.25 s): a people root moves only on drawn frames, so between ticks it jumps or stands
+  (a jump > 15 m/s counts as 0). Unresolvable → the dog idles where it is.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).

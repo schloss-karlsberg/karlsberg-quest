@@ -13,8 +13,11 @@
  *
  * Targets are resolved by the caller (`resolve(ref)`), so the core knows no npc / player system.
  * Yaw: heading, `atan2(-dx, -dz)` (0 faces −z).
+ * Motion: the core turns the dog (TURN rad/s) and moves it only forward along its yaw, at a speed
+ * eased by ACCEL / DECEL, so `motion.yaw` is the body's facing and `motion.speed` its ground speed:
+ * the body shows both as they are (no second smoothing that would lag behind the motion).
  */
-import type { AnimalEvent, AnimalLook, AnimalMotion, AnimalRequest, AnimalSpawnOp, DogSave } from './types';
+import type { AnimalClipHint, AnimalEvent, AnimalLook, AnimalMotion, AnimalRequest, AnimalSpawnOp, DogSave } from './types';
 
 /** fauna v0 speeds per dog (m/s). */
 export const DOG_SPEEDS: Record<'diane' | 'bijou', { walk: number; run: number }> = {
@@ -49,6 +52,24 @@ export const DOGS = {
   /** lie at a target's feet: this far in front of it (m), a little to the dog's slot side. */
   LIE_FEET: 0.8,
   LIE_SLEEP: 20,
+  /**
+   * Body turn rate (rad/s). A dog turns, then walks: its root only ever moves along its facing,
+   * so it never slides sideways or backwards, and a slot behind it is a turn, not a reverse.
+   */
+  TURN: 5,
+  /** Speed change limits (m/s²): no idle / walk flicker from one tick to the next. */
+  ACCEL: 6,
+  DECEL: 10,
+  /** Catch-up speed per metre of gap ahead to the slot (1/s), on top of the target's speed. */
+  GAIN: 1.5,
+  /** Slowest walk to the slot of a standing target (m/s): no creeping on the spot. */
+  MIN_WALK: 0.5,
+  /** At a point (the slot of a standing target, the lie spot) within this (m). */
+  ARRIVE: 0.15,
+  /** Within this of the slot of a moving target the dog heads where the target heads (m). */
+  NEAR: 0.4,
+  /** A gallop eases back to a trot below this many walk speeds (and starts at 2). */
+  RUN_LEAVE: 1.7,
 } as const;
 
 export type DogState = 'idle' | 'follow' | 'sit' | 'bolt' | 'return' | 'lie';
@@ -87,11 +108,16 @@ export interface Dog {
   readonly run: number;
   /** Sniff phase offset (s), from the id. */
   readonly phase: number;
+  /** Current ground speed along the facing (m/s). */
+  v: number;
   motion: AnimalMotion;
 }
 
 export const headingOf = (dx: number, dz: number): number => Math.atan2(-dx, -dz);
 const DEG = Math.PI / 180;
+const TAU = Math.PI * 2;
+const wrapPi = (a: number): number => a - TAU * Math.floor((a + Math.PI) / TAU);
+const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
 
 function hashStr(s: string): number {
   let h = 2166136261;
@@ -126,6 +152,7 @@ export function createDog(op: AnimalSpawnOp, slot?: number, at?: { x: number; z:
     walk: sp.walk,
     run: sp.run,
     phase: (hashStr(op.id) % 1000) / 1000 * DOGS.SNIFF_EVERY,
+    v: 0,
     motion: { tx: x, tz: z, speed: 0, yaw, clip: 'idle' },
   };
 }
@@ -177,26 +204,60 @@ export function applyDogRequest(dog: Dog, req: AnimalRequest): AnimalEvent[] {
   return out;
 }
 
-function moveTo(dog: Dog, tx: number, tz: number, step: number): boolean {
-  const dx = tx - dog.x;
-  const dz = tz - dog.z;
-  const l = Math.hypot(dx, dz);
-  if (l <= step || l < 1e-6) {
-    dog.x = tx;
-    dog.z = tz;
-    return true;
-  }
-  dog.x += (dx / l) * step;
-  dog.z += (dz / l) * step;
-  dog.yaw = headingOf(dx, dz);
-  return false;
+/** Turn toward heading `hd` by at most TURN·dt. Returns the heading error left (rad). */
+function turnToward(dog: Dog, hd: number, dt: number): number {
+  const cap = DOGS.TURN * dt;
+  dog.yaw = wrapPi(dog.yaw + clamp(wrapPi(hd - dog.yaw), -cap, cap));
+  return wrapPi(hd - dog.yaw);
 }
 
-/** Ground speed toward a point at distance d (walk near, trot mid, gallop far), matching a moving target. */
-function chaseSpeed(dog: Dog, d: number, targetSpeed: number): number {
-  if (d < 0.05) return 0;
-  if (d > DOGS.RUN_DIST) return dog.run;
-  return Math.min(dog.run, Math.max(targetSpeed, dog.walk * Math.min(1.5, Math.max(0.5, d))));
+/**
+ * Move forward along the facing: the speed eases toward `goal` (ACCEL / DECEL) but never exceeds
+ * `max` (braking into a point, no circling round it). `land`: a point the dog steps onto when it is
+ * within this tick's step (the last few cm of an approach).
+ */
+function advance(dog: Dog, goal: number, max: number, dt: number, land?: { x: number; z: number }): void {
+  const dv = clamp(goal - dog.v, -DOGS.DECEL * dt, DOGS.ACCEL * dt);
+  dog.v = Math.max(0, Math.min(max, dog.v + dv));
+  if (dog.v < 0.02 && goal <= 0) dog.v = 0;
+  const step = dog.v * dt;
+  if (step <= 0) return;
+  const fx = -Math.sin(dog.yaw);
+  const fz = -Math.cos(dog.yaw);
+  // land only on a point ahead: a step onto a point behind would be a step backwards
+  if (land && Math.hypot(land.x - dog.x, land.z - dog.z) <= step && (land.x - dog.x) * fx + (land.z - dog.z) * fz > 0) {
+    dog.x = land.x;
+    dog.z = land.z;
+    return;
+  }
+  dog.x += fx * step;
+  dog.z += fz * step;
+}
+
+/** Hard speed caps toward a point at distance d, heading error err: no orbit round it; `stop`: brake to stand on it. */
+function pointCap(d: number, err: number, stop: boolean): number {
+  const s = Math.abs(Math.sin(err));
+  // the turning circle (radius v / TURN) must fit inside the circle through the point tangent to the facing
+  const orbit = s > 1e-3 ? (DOGS.TURN * d) / (2 * s) : Infinity;
+  return stop ? Math.min(orbit, Math.sqrt(2 * DOGS.DECEL * d)) : orbit;
+}
+
+/** Head for a fixed point at up to `want` m/s: turn first, slow through the turn. Returns the distance left. */
+function goTo(dog: Dog, tx: number, tz: number, want: number, dt: number, stop: boolean): number {
+  const d = Math.hypot(tx - dog.x, tz - dog.z);
+  if (d < 1e-6) {
+    advance(dog, 0, 0, dt);
+    return 0;
+  }
+  const err = turnToward(dog, headingOf(tx - dog.x, tz - dog.z), dt);
+  advance(dog, want * Math.max(0, Math.cos(err)), pointCap(d, err, stop), dt, { x: tx, z: tz });
+  return Math.hypot(tx - dog.x, tz - dog.z);
+}
+
+/** The walk / trot / gallop clip of the current speed (a gallop eases out a little later than it starts). */
+function gaitClip(dog: Dog, was: AnimalClipHint): AnimalClipHint {
+  if (dog.v >= dog.walk * (was === 'run' ? DOGS.RUN_LEAVE : 2)) return 'run';
+  return dog.v > 0.05 ? 'walk' : 'idle';
 }
 
 /** Lie target in world space, or null when its follow target is absent. */
@@ -222,9 +283,9 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
   dog.t += dt;
   const target = dog.follow ? resolve(dog.follow) : null;
   const m = dog.motion;
+  const was = m.clip;
   m.tx = dog.x;
   m.tz = dog.z;
-  m.speed = 0;
   m.clip = 'idle';
 
   switch (dog.state) {
@@ -232,13 +293,18 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
     case 'sit': {
       if (!target) {
         dog.state = 'idle';
+        advance(dog, 0, Infinity, dt);
         break;
       }
-      dog.still = target.speed < DOGS.STILL_SPEED ? dog.still + dt : 0;
+      // a walking target counts as walking down to half the still speed (no flicker round the line)
+      const moving = target.speed > DOGS.STILL_SPEED * (dog.still > 0 ? 1 : 0.5);
+      dog.still = moving ? 0 : dog.still + dt;
       const s = dogSlot(target, dog.slot, dog.spacing);
+      m.tx = s.x;
+      m.tz = s.z;
       const d = Math.hypot(s.x - dog.x, s.z - dog.z);
       if (dog.state === 'sit') {
-        if (target.speed > DOGS.STILL_SPEED || d > DOGS.SIT_BREAK) {
+        if (moving || d > DOGS.SIT_BREAK) {
           dog.state = 'follow';
           dog.t = 0;
         } else {
@@ -246,45 +312,56 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
           break;
         }
       }
-      const v = d <= DOGS.AT_SLOT * 0.25 ? 0 : chaseSpeed(dog, d, target.speed);
-      if (v > 0) moveTo(dog, s.x, s.z, v * dt);
-      m.tx = s.x;
-      m.tz = s.z;
-      m.speed = v;
-      if (v < DOGS.STILL_SPEED) dog.yaw = target.yaw;
-      if (dog.still >= DOGS.SIT_AFTER && d <= DOGS.AT_SLOT) {
+      if (moving || d > (dog.v > 0 ? DOGS.ARRIVE : DOGS.AT_SLOT)) {
+        // the slot's offset along the facing: ahead (> 0) the dog closes in, behind it lets the slot come
+        const along = (yaw: number) => -(s.x - dog.x) * Math.sin(yaw) - (s.z - dog.z) * Math.cos(yaw);
+        const bearing = d > 1e-6 ? headingOf(s.x - dog.x, s.z - dog.z) : dog.yaw;
+        let hd = bearing;
+        if (d <= DOGS.AT_SLOT && along(dog.yaw) <= 0) hd = moving ? target.yaw : dog.yaw; // just past it: never turn round for that
+        else if (moving) hd = target.yaw + wrapPi(bearing - target.yaw) * clamp((d - DOGS.ARRIVE) / (DOGS.NEAR - DOGS.ARRIVE), 0, 1);
+        turnToward(dog, hd, dt);
+        const ts = moving ? target.speed : 0;
+        const ceil = d > DOGS.RUN_DIST ? dog.run : Math.min(dog.run, Math.max(ts, dog.walk * 1.5));
+        const a = along(dog.yaw);
+        let goal = clamp(ts + DOGS.GAIN * a, 0, ceil);
+        if (!moving && a > 0) goal = Math.max(goal, Math.min(DOGS.MIN_WALK, ceil) * Math.max(0, Math.cos(wrapPi(bearing - dog.yaw))));
+        advance(dog, goal, moving ? Infinity : pointCap(d, wrapPi(bearing - dog.yaw), true), dt, moving ? undefined : s);
+      } else {
+        // at the slot of a standing target: stand, turn to where the target faces
+        dog.v = 0;
+        turnToward(dog, target.yaw, dt);
+      }
+      const gap = Math.hypot(s.x - dog.x, s.z - dog.z);
+      if (dog.still >= DOGS.SIT_AFTER && gap <= DOGS.AT_SLOT && dog.v === 0) {
         dog.state = 'sit';
         dog.t = 0;
         m.clip = 'sit';
-      } else if (v > 0 && v <= dog.walk * 1.2 && (dog.t + dog.phase) % DOGS.SNIFF_EVERY < DOGS.SNIFF_S) m.clip = 'sniff';
-      else m.clip = v >= dog.walk * 2 ? 'run' : v > 0 ? 'walk' : 'idle';
+      } else if (dog.v > 0.05 && dog.v <= dog.walk * 1.2 && (dog.t + dog.phase) % DOGS.SNIFF_EVERY < DOGS.SNIFF_S) m.clip = 'sniff';
+      else m.clip = gaitClip(dog, was);
       break;
     }
     case 'bolt': {
       const path = dog.path;
-      if (!path || dog.i >= path.length) {
-        finishBolt(dog, target, out);
-        break;
-      }
-      let step = dog.run * dt;
-      while (step > 0 && dog.i < path.length) {
-        const [px, pz] = path[dog.i]!;
-        const d = Math.hypot(px - dog.x, pz - dog.z);
-        if (d <= step + DOGS.PATH_EPS) {
-          moveTo(dog, px, pz, d);
-          step -= d;
+      // a path point counts as passed within PATH_EPS: the dog curves on to the next, no snapping
+      const pass = (): void => {
+        while (path && dog.i < path.length && Math.hypot(path[dog.i]![0] - dog.x, path[dog.i]![1] - dog.z) <= DOGS.PATH_EPS) {
           const inner = dog.i > 0 && dog.i < path.length - 1;
           if (inner && dog.bark) out.push({ type: 'bark', id: dog.id, x: dog.x, z: dog.z });
           dog.i++;
-        } else {
-          moveTo(dog, px, pz, step);
-          step = 0;
         }
+      };
+      pass();
+      if (!path || dog.i >= path.length) {
+        finishBolt(dog, target, out);
+        m.clip = gaitClip(dog, was);
+        break;
       }
+      const [px, pz] = path[dog.i]!;
+      goTo(dog, px, pz, dog.run, dt, false);
+      pass();
       const next = path[Math.min(dog.i, path.length - 1)]!;
       m.tx = next[0];
       m.tz = next[1];
-      m.speed = dog.run;
       m.clip = 'run';
       if (dog.i >= path.length) finishBolt(dog, target, out);
       break;
@@ -296,21 +373,15 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
         break;
       }
       const s = dogSlot(target, dog.slot, dog.spacing);
-      const d = Math.hypot(s.x - dog.x, s.z - dog.z);
-      if (d <= DOGS.RETURN_RADIUS) {
-        dog.state = 'follow';
-        dog.t = 0;
-        dog.still = 0;
-        out.push({ type: 'animal:returned', id: dog.id });
-        break;
-      }
-      const v = d > DOGS.RUN_DIST ? dog.run : Math.max(dog.walk * 1.5, target.speed);
-      moveTo(dog, s.x, s.z, v * dt);
       m.tx = s.x;
       m.tz = s.z;
-      m.speed = v;
-      m.clip = v >= dog.walk * 2 ? 'run' : 'walk';
-      if (Math.hypot(s.x - dog.x, s.z - dog.z) <= DOGS.RETURN_RADIUS) {
+      let d = Math.hypot(s.x - dog.x, s.z - dog.z);
+      if (d > DOGS.RETURN_RADIUS) {
+        const want = d > DOGS.RUN_DIST ? dog.run : Math.max(dog.walk * 1.5, target.speed);
+        d = goTo(dog, s.x, s.z, want, dt, false);
+        m.clip = gaitClip(dog, was) === 'run' ? 'run' : 'walk';
+      }
+      if (d <= DOGS.RETURN_RADIUS) {
         dog.state = 'follow';
         dog.t = 0;
         dog.still = 0;
@@ -321,31 +392,36 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
     case 'lie': {
       const p = dog.lie ? liePoint(dog, resolve) : null;
       if (!p) {
+        dog.v = 0;
         m.clip = 'lie';
         break;
       }
+      m.tx = p.x;
+      m.tz = p.z;
       const d = Math.hypot(p.x - dog.x, p.z - dog.z);
-      if (d > 0.15) {
-        const v = d > DOGS.RUN_DIST ? dog.run : dog.walk;
-        moveTo(dog, p.x, p.z, v * dt);
+      const down = dog.v === 0 && (was === 'lie' || was === 'sleep');
+      if (d > (down ? DOGS.AT_SLOT : DOGS.ARRIVE)) {
+        goTo(dog, p.x, p.z, d > DOGS.RUN_DIST ? dog.run : dog.walk, dt, true);
         dog.t = 0;
-        m.tx = p.x;
-        m.tz = p.z;
-        m.speed = v;
-        m.clip = v >= dog.walk * 2 ? 'run' : 'walk';
+        m.clip = gaitClip(dog, was);
+        if (m.clip === 'idle') m.clip = 'walk';
       } else {
-        dog.yaw = p.face;
+        dog.v = 0;
+        turnToward(dog, p.face, dt);
         m.clip = dog.t >= DOGS.LIE_SLEEP ? 'sleep' : 'lie';
       }
       break;
     }
     case 'idle':
+      advance(dog, 0, Infinity, dt);
+      m.clip = gaitClip(dog, was);
       if (target) {
         dog.state = 'follow';
         dog.t = 0;
       }
       break;
   }
+  m.speed = dog.v;
   m.yaw = dog.yaw;
   return out;
 }
@@ -391,6 +467,7 @@ export function serializeDog(dog: Dog): DogSave {
     s.back = dog.back;
   }
   if (dog.lie) s.lie = { x: Number.isNaN(dog.lie.x) ? dog.x : dog.lie.x, z: Number.isNaN(dog.lie.z) ? dog.z : dog.lie.z, follow: dog.lie.follow };
+  if (dog.v > 0) s.v = dog.v;
   return s;
 }
 
@@ -406,6 +483,7 @@ export function restoreDog(s: DogSave): Dog {
   dog.bark = s.bark ?? false;
   dog.back = s.back ?? false;
   dog.lie = s.lie ? { ...s.lie } : null;
+  dog.v = typeof s.v === 'number' && Number.isFinite(s.v) ? Math.max(0, Math.min(dog.run, s.v)) : 0;
   if (dog.state === 'bolt' && !dog.path) dog.state = dog.back ? 'return' : 'idle';
   if (dog.state === 'lie' && !dog.lie) dog.lie = { x: dog.x, z: dog.z, follow: '' };
   dog.motion.yaw = dog.yaw;
