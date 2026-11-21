@@ -40,6 +40,63 @@ export function reflectionDistance(frustum: { intersectsBox(box: Box3): boolean 
 }
 
 /**
+ * Below this share of the screen the planar reflection is skipped (the tree-line band instead);
+ * it fades in up to twice this share. A far lake seen as a sliver (the Weiher from the Quelle,
+ * through the trunks) costs a whole mirrored scene pass for a few hundred pixels.
+ */
+export const REFLECT_MIN_COVERAGE = 0.02;
+
+/**
+ * Screen share (0–1) of a water body's box rectangle at its level (pure; exported for tests):
+ * the rectangle [x0, x1] × [z0, z1] at height `y`, clipped to the near plane and the screen.
+ * Occluders are ignored, so it is an upper bound of what is visible.
+ */
+export function waterCoverage(viewProj: Matrix4, x0: number, z0: number, x1: number, z1: number, y: number): number {
+  const e = viewProj.elements;
+  // clip-space corners
+  let poly: number[][] = [
+    [x0, z0],
+    [x1, z0],
+    [x1, z1],
+    [x0, z1],
+  ].map(([x, z]) => [e[0]! * x! + e[4]! * y + e[8]! * z! + e[12]!, e[1]! * x! + e[5]! * y + e[9]! * z! + e[13]!, e[2]! * x! + e[6]! * y + e[10]! * z! + e[14]!, e[3]! * x! + e[7]! * y + e[11]! * z! + e[15]!]);
+  // clip against the near plane (z > -w) in homogeneous space
+  poly = clipPoly(poly, (p) => p[2]! + p[3]!);
+  if (poly.length < 3) return 0;
+  let pts = poly.map((p) => [p[0]! / p[3]!, p[1]! / p[3]!]);
+  // clip to the screen square
+  pts = clipPoly(pts, (p) => 1 - p[0]!);
+  pts = clipPoly(pts, (p) => p[0]! + 1);
+  pts = clipPoly(pts, (p) => 1 - p[1]!);
+  pts = clipPoly(pts, (p) => p[1]! + 1);
+  if (pts.length < 3) return 0;
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]!;
+    const q = pts[(i + 1) % pts.length]!;
+    a += p[0]! * q[1]! - q[0]! * p[1]!;
+  }
+  return Math.min(1, Math.abs(a) / 8);
+}
+
+/** Sutherland–Hodgman: keep the part of a convex polygon where `side(p) >= 0`. */
+function clipPoly(poly: number[][], side: (p: number[]) => number): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % poly.length]!;
+    const sa = side(a);
+    const sb = side(b);
+    if (sa >= 0) out.push(a);
+    if (sa >= 0 !== sb >= 0) {
+      const t = sa / (sa - sb);
+      out.push(a.map((v, k) => v + (b[k]! - v) * t));
+    }
+  }
+  return out;
+}
+
+/**
  * When to re-render the planar reflection (pure; exported for tests): off-phase with the shadow
  * map, so no frame pays for both — on a frame whose shadow map was re-used, or when the last
  * reflection already stood one frame. The reflection matrix is world-anchored, so a one-frame-old
@@ -395,11 +452,13 @@ export class Water {
   private readonly size2 = new Vector2();
   /** Hidden during the reflection pass (set by World: near ground cover, props). */
   reflectionSkip: { visible: boolean }[] = [];
-  readonly stats = { bodies: 0, reflection: false, reflectedLevel: 0, drawn: 0, reused: 0 };
+  readonly stats = { bodies: 0, reflection: false, reflectedLevel: 0, drawn: 0, reused: 0, coverage: 0 };
   /** Planar reflection allowed (off under „Energiesparen“; the tier decides the rest). */
   reflections = true;
   /** Planar reflection range (m): beyond, the tree-line band of the medium tier. */
   reflectDist = REFLECT_DIST;
+  /** Minimum screen share of the reflected body (`waterCoverage`); 0 = off. */
+  minCoverage = REFLECT_MIN_COVERAGE;
   readonly schedule = new ReflectionSchedule();
   private readonly frustum = new Frustum();
   private readonly viewProj = new Matrix4();
@@ -596,6 +655,7 @@ export class Water {
     }
     // nearest body on screen
     let best: WaterBody | null = null;
+    let bestBox: Box3 | null = null;
     let bestD = Infinity;
     camera.updateMatrixWorld();
     this.frustum.setFromProjectionMatrix(this.viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
@@ -604,7 +664,19 @@ export class Water {
       const d = reflectionDistance(this.frustum, mesh.geometry.boundingBox!, camera.position, this.reflectDist);
       if (d < 0 || d >= bestD) continue;
       best = body;
+      bestBox = mesh.geometry.boundingBox!;
       bestD = d;
+    }
+    // a sliver of a far body: the band instead (fades in from minCoverage to twice that)
+    let g = 1;
+    this.stats.coverage = 0;
+    if (best && bestBox) {
+      const cov = waterCoverage(this.viewProj, bestBox.min.x, bestBox.min.z, bestBox.max.x, bestBox.max.z, best.level);
+      this.stats.coverage = cov;
+      if (this.minCoverage > 0) {
+        g = Math.min(1, Math.max(0, (cov - this.minCoverage) / this.minCoverage));
+        if (g <= 0) best = null;
+      }
     }
     if (!best) {
       u.uReflOn!.value = 0;
@@ -613,7 +685,7 @@ export class Water {
     }
     // fade to the band over the last 30 % of the range (no pop)
     const f = Math.min(1, Math.max(0, (bestD - this.reflectDist * 0.7) / (this.reflectDist * 0.3)));
-    u.uReflOn!.value = Math.max(0.001, 1 - f * f * (3 - 2 * f));
+    u.uReflOn!.value = Math.max(0.001, Math.min(1 - f * f * (3 - 2 * f), g * g * (3 - 2 * g)));
     this.stats.reflection = true;
     this.stats.reflectedLevel = best.level;
     const size = renderer.getDrawingBufferSize(this.size2);

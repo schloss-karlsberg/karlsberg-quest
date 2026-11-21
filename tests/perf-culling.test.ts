@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FULL_RING_AGL, forestCullMode, tileSpheres } from '../src/world/forest';
 import { COVER_NEAR, FAR_TUFT, coverPick } from '../src/world/vegetation/groundcover';
 import { ViewCone, frustumCornerAngle } from '../src/world/viewCone';
-import { REFLECT_DIST, ReflectionSchedule, reflectionDistance } from '../src/world/water';
+import { REFLECT_DIST, REFLECT_MIN_COVERAGE, ReflectionSchedule, reflectionDistance, waterCoverage } from '../src/world/water';
 
 /** A camera at (x, y, z) looking along yaw (0 = -z, 90 = +x) and pitch (degrees, negative = down). */
 function cam(x: number, y: number, z: number, yawDeg: number, pitchDeg: number, fov = 80, aspect = 16 / 9): PerspectiveCamera {
@@ -43,6 +43,36 @@ describe('water reflection: only a body on screen and near', () => {
   it('standing on the shore (inside the box) the distance is 0', () => {
     const b = new Box3(new Vector3(-50, 0, -50), new Vector3(50, 0, 10));
     expect(reflectionDistance(f, b, c.position, REFLECT_DIST)).toBe(0);
+  });
+});
+
+describe('water reflection: screen coverage', () => {
+  const vp = (c: PerspectiveCamera) => new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse);
+
+  it('standing on a wide shore looking down at the water covers most of the lower screen', () => {
+    const c = cam(0, 3, 0, 0, -30);
+    const v = waterCoverage(vp(c), -200, -300, 200, -1, 0);
+    expect(v).toBeGreaterThan(0.4);
+    expect(v).toBeLessThanOrEqual(1);
+  });
+
+  it('a far lake seen almost edge-on from a few metres up is a sliver below the threshold', () => {
+    const c = cam(0, 4, 0, 0, -6);
+    // 140 × 56 m at 100 m (the Weiher from the Quelle)
+    expect(waterCoverage(vp(c), -70, -156, 70, -100, 0)).toBeLessThan(REFLECT_MIN_COVERAGE);
+  });
+
+  it('the same lake from its shore is far above it', () => {
+    const c = cam(0, 4, -95, 0, -6);
+    expect(waterCoverage(vp(c), -70, -156, 70, -100, 0)).toBeGreaterThan(REFLECT_MIN_COVERAGE * 4);
+  });
+
+  it('a lake behind the camera covers nothing; one straddling the camera is clipped at the near plane', () => {
+    const c = cam(0, 3, 0, 0, -6);
+    expect(waterCoverage(vp(c), -20, 60, 20, 100, 0)).toBe(0);
+    const v = waterCoverage(vp(c), -50, -50, 50, 50, 0);
+    expect(v).toBeGreaterThan(0.2);
+    expect(Number.isFinite(v)).toBe(true);
   });
 });
 
