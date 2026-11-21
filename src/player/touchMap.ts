@@ -73,6 +73,27 @@ export function touchActive(setting: TouchSetting | undefined, coarse: boolean, 
   return coarse || touchSeen;
 }
 
+/** Below this short side (CSS px) a device counts as a phone: tablets keep portrait. */
+export const ROTATE_MAX_SHORT_SIDE = 600;
+
+export interface RotateQuery {
+  /** Touch UI on. */
+  touch: boolean;
+  /** Viewport in CSS px. */
+  width: number;
+  height: number;
+  /** Gameplay (no title screen, no new-game flow); a modal over gameplay still counts. */
+  inGame: boolean;
+}
+
+/**
+ * The "please turn the phone" overlay: only on a touch phone held upright, and only in gameplay.
+ * The title, Neuigkeiten, the settings and the new-game screens read fine in portrait (M-02).
+ */
+export function rotateWanted(q: RotateQuery): boolean {
+  return q.touch && q.inGame && q.height > q.width && Math.min(q.width, q.height) < ROTATE_MAX_SHORT_SIDE;
+}
+
 export function isTouchSetting(v: unknown): v is TouchSetting {
   return v === 'auto' || v === 'on' || v === 'off';
 }
@@ -125,6 +146,17 @@ const KEY_ICON: Record<string, TouchIcon> = {
 export function touchIconFor(key: string): TouchIcon {
   const k = key.trim().toUpperCase();
   return KEY_ICON[k] ?? KEY_ICON[k.split(/\s*[/·]\s*/)[0] ?? ''] ?? 'interact';
+}
+
+/**
+ * Which touch button answers a HUD prompt (key + text): null when none does. A movement prompt
+ * („W A S D: Gehen …“) belongs to the stick, not to the Aktion button: the button keeps „Aktion“
+ * instead of carrying „Gehen · ins Bild klick…“ (M-05).
+ */
+export function touchPromptIcon(key: string | null, text: string | null | undefined): TouchIcon | null {
+  if (!key) return text?.trim() ? 'interact' : null;
+  if (/^\s*W\s*[,·/]?\s*A\s*[,·/]?\s*S\s*[,·/]?\s*D\b/i.test(key)) return null;
+  return touchIconFor(key);
 }
 
 /**
