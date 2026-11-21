@@ -8,7 +8,7 @@ import { FootprintCollider, type Ring } from './collision';
 import { ERA_LOOKS, type EraLook, dirFromAzEl } from './eraPresets';
 import { Forest, generateTrees } from './forest';
 import { Heightfield, classAt } from './heightfield';
-import { OPEN_GROUND, Palace, RUIN_KEEP } from './palace';
+import { OPEN_GROUND, OPEN_SOLIDS, Palace, RUIN_KEEP } from './palace';
 import { buildCover, buildPathRaster, buildSurface, rasterAt } from './rasters';
 import { Sky } from './sky';
 import { Terrain, type TerrainDataset, makeDataTexture, makeHeightTexture } from './terrain';
@@ -250,6 +250,8 @@ export class World {
     this.forest.setTrees(era === 'today' ? this.trees.today : this.trees.historic);
     this.palace.setMode(info.palace);
     this.collider.enabled = info.palace === 'intact';
+    // the standing parts of the palace's open-ground footprints (the Altan's pillars)
+    this.collider.setSolids('palace-open', info.palace === 'intact' ? [...OPEN_SOLIDS] : []);
     // the buildings that survive the ruin (Baumagazin, the guard houses) stay solid in 1796
     this.collider.keep = info.palace === 'ruin' ? this.ruinKeep : new Set();
     this.terrain.uniforms.uRuin!.value = info.palace === 'ruin' ? 1 : 0;
