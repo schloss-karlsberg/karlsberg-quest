@@ -354,18 +354,20 @@ export class AnimalsRuntime {
       let vx = 0;
       let vz = 0;
       let idle = 0;
+      let jumped = false;
       if (prev) {
         const dx = at.x - prev.x;
         const dz = at.z - prev.z;
         const d = Math.hypot(dx, dz);
         const span = prev.idle + this.dt;
         if (d > 1e-6) {
-          // moved: the displacement since it last moved, over that time; a jump starts over at rest
+          // moved: the displacement since it last moved, over that time; a jump (teleport, a fade's
+          // warp, the walk's snap) starts over at rest, and the dogs far behind land in their places
           if (d / span <= JUMP_SPEED) {
             const k = 1 - Math.exp(-span / REF_TAU);
             vx = prev.vx + (dx / span - prev.vx) * k;
             vz = prev.vz + (dz / span - prev.vz) * k;
-          }
+          } else jumped = true;
         } else {
           // standing: a tick without a render holds the speed, a longer stand lets it decay
           idle = span;
@@ -378,7 +380,7 @@ export class AnimalsRuntime {
       const speed = Math.hypot(vx, vz);
       let yaw = at.yaw ?? prev?.yaw ?? 0;
       if (at.yaw === undefined && speed > 0.3) yaw = headingOf(vx, vz);
-      out = { x: at.x, z: at.z, yaw, speed, vx, vz, idle };
+      out = { x: at.x, z: at.z, yaw, speed, vx, vz, idle, jumped };
     }
     this.tickRefs.set(ref, out);
     return out;

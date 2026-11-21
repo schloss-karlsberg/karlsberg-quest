@@ -1383,7 +1383,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
   `player`, `animal:<id>`. Speed and heading from the motion since the ref last moved, low-passed
   (`REF_TAU` 0.25 s): a people root moves only on drawn frames, so between ticks it jumps or stands
-  (a jump > 15 m/s counts as 0). Unresolvable → the dog idles where it is.
+  (a jump > 15 m/s counts as 0). A jump (teleport, a fade's warp, `kq.walk.snap`) lands every dog
+  following that ref and farther than `DOGS.SNAP_FAR` (12 m) from its place in that place, standing,
+  facing the leader's way (no gallop through the forest from far behind; a return then counts as
+  back). Unresolvable → the dog idles where it is.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).

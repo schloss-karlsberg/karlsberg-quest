@@ -70,6 +70,11 @@ export const DOGS = {
   NEAR: 0.4,
   /** A gallop eases back to a trot below this many walk speeds (and starts at 2). */
   RUN_LEAVE: 1.7,
+  /**
+   * When the target jumps (a teleport, a fade's warp, the walk's snap), a following dog farther than
+   * this from its place lands there at once (m): no gallop through the forest from far behind.
+   */
+  SNAP_FAR: 12,
 } as const;
 
 export type DogState = 'idle' | 'follow' | 'sit' | 'bolt' | 'return' | 'lie';
@@ -80,6 +85,8 @@ export interface DogTarget {
   yaw: number;
   /** Ground speed m/s. */
   speed: number;
+  /** The target jumped this tick (teleport, warp, snap); the caller detects it. */
+  jumped?: boolean;
 }
 /** Resolve 'npc:double.jost' / 'player' / 'animal:<id>' to a live pose, or null when absent. */
 export type DogResolve = (ref: string) => DogTarget | null;
@@ -261,7 +268,7 @@ function gaitClip(dog: Dog, was: AnimalClipHint): AnimalClipHint {
 }
 
 /** Lie target in world space, or null when its follow target is absent. */
-function liePoint(dog: Dog, resolve: DogResolve): { x: number; z: number; face: number } | null {
+function liePoint(dog: Dog, resolve: DogResolve): { x: number; z: number; face: number; jumped: boolean } | null {
   const l = dog.lie!;
   if (l.follow) {
     const t = resolve(l.follow);
@@ -273,10 +280,20 @@ function liePoint(dog: Dog, resolve: DogResolve): { x: number; z: number; face: 
     const rz = -Math.sin(t.yaw);
     const x = t.x + fx * DOGS.LIE_FEET + rx * side * 0.6;
     const z = t.z + fz * DOGS.LIE_FEET + rz * side * 0.6;
-    return { x, z, face: headingOf(t.x - x, t.z - z) };
+    return { x, z, face: headingOf(t.x - x, t.z - z), jumped: t.jumped === true };
   }
-  if (Number.isNaN(l.x)) return { x: dog.x, z: dog.z, face: dog.yaw };
-  return { x: l.x, z: l.z, face: dog.yaw };
+  if (Number.isNaN(l.x)) return { x: dog.x, z: dog.z, face: dog.yaw, jumped: false };
+  return { x: l.x, z: l.z, face: dog.yaw, jumped: false };
+}
+
+/** The target jumped and the dog is far from its place: it lands there, standing, facing `yaw`. Returns whether it did. */
+function landAfterJump(dog: Dog, jumped: boolean | undefined, x: number, z: number, yaw: number): boolean {
+  if (!jumped || Math.hypot(x - dog.x, z - dog.z) <= DOGS.SNAP_FAR) return false;
+  dog.x = x;
+  dog.z = z;
+  dog.yaw = yaw;
+  dog.v = 0;
+  return true;
 }
 
 export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEvent[] = []): AnimalEvent[] {
@@ -302,6 +319,7 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
       const s = dogSlot(target, dog.slot, dog.spacing);
       m.tx = s.x;
       m.tz = s.z;
+      landAfterJump(dog, target.jumped, s.x, s.z, target.yaw);
       const d = Math.hypot(s.x - dog.x, s.z - dog.z);
       if (dog.state === 'sit') {
         if (moving || d > DOGS.SIT_BREAK) {
@@ -375,6 +393,7 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
       const s = dogSlot(target, dog.slot, dog.spacing);
       m.tx = s.x;
       m.tz = s.z;
+      landAfterJump(dog, target.jumped, s.x, s.z, target.yaw);
       let d = Math.hypot(s.x - dog.x, s.z - dog.z);
       if (d > DOGS.RETURN_RADIUS) {
         const want = d > DOGS.RUN_DIST ? dog.run : Math.max(dog.walk * 1.5, target.speed);
@@ -398,6 +417,7 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
       }
       m.tx = p.x;
       m.tz = p.z;
+      landAfterJump(dog, p.jumped, p.x, p.z, p.face);
       const d = Math.hypot(p.x - dog.x, p.z - dog.z);
       const down = dog.v === 0 && (was === 'lie' || was === 'sleep');
       if (d > (down ? DOGS.AT_SLOT : DOGS.ARRIVE)) {

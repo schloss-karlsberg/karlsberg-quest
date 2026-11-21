@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { Animal, AnimalSpawnOpts } from '../src/systems/fauna/types';
 import { createCinematicBridge, createPhotoBridge } from '../src/systems/animals/photoBridge';
 import { AnimalsRuntime, type AnimalsBus, type PersonLike } from '../src/systems/animals/runtime';
-import { DOGS, applyDogRequest, createDog, headingOf, stepDog, type DogTarget } from '../src/systems/animals/dogs';
+import { DOGS, applyDogRequest, createDog, dogSlot, headingOf, stepDog, type DogTarget } from '../src/systems/animals/dogs';
 import { FACE_SECONDS, easeYaw, wrapPi } from '../src/systems/people/locomotion';
 
 const DT = 1 / 60;
@@ -83,6 +83,9 @@ interface Metrics {
   maxDSpeed: number;
   /** Clip changes per dog. */
   clips: number;
+  /** The same two checks on the core (`state(id).yaw` against its move between steps), per tick. */
+  coreBackwards: number;
+  coreMaxErr: number;
   exact: boolean;
   states: Record<string, string>;
   gaps: number[];
@@ -110,8 +113,9 @@ function walkLeg(gaps: number[], seconds = 24): Metrics {
   bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', x: -1, z: 1.5, follow: 'npc:double.jost' });
   bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'bijou', id: 'bijou', x: 1, z: 2, follow: 'npc:double.jost' });
   const walker = { x: 0, z: 0 };
-  const m: Metrics = { backwards: 0, maxErr: 0, maxDSpeed: 0, clips: 0, exact: true, states: {}, gaps: [] };
+  const m: Metrics = { backwards: 0, maxErr: 0, maxDSpeed: 0, clips: 0, coreBackwards: 0, coreMaxErr: 0, exact: true, states: {}, gaps: [] };
   const last = new Map<string, { x: number; z: number; speed: number }>();
+  const core = new Map<string, { x: number; z: number }>();
   let frame = 0;
   let next = gaps[0]!;
   let since = 0;
@@ -122,6 +126,18 @@ function walkLeg(gaps: number[], seconds = 24): Metrics {
     walker.x -= Math.sin(p.h) * p.v * DT;
     walker.z -= Math.cos(p.h) * p.v * DT;
     rt.update(DT);
+    for (const id of ['diane', 'bijou']) {
+      const st = rt.state(id)!;
+      const [x, z, yaw] = [st['x'], st['z'], st['yaw']] as number[];
+      const l = core.get(id);
+      if (l) {
+        const v = Math.hypot(x! - l.x, z! - l.z) / DT;
+        const err = Math.abs(wrapPi(yaw! - headingOf(x! - l.x, z! - l.z))) * DEG;
+        if (v > 0.05 && err > 90) m.coreBackwards++;
+        if (v > 0.5) m.coreMaxErr = Math.max(m.coreMaxErr, err);
+      }
+      core.set(id, { x: x!, z: z! });
+    }
     since++;
     if (since < next) continue;
     // a rendered frame: the walk puts Jost's root where he is (his body turns smoothly), then the dog bodies sync
@@ -171,6 +187,8 @@ describe('dogs follow a walking leader (rendered-frame root)', () => {
       expect(m.exact).toBe(true);
       expect(m.backwards).toBe(0);
       expect(m.maxErr).toBeLessThan(15);
+      expect(m.coreBackwards).toBe(0);
+      expect(m.coreMaxErr).toBeLessThan(15);
       // speed changes are eased: at most DECEL over the longest frame gap (plus the sit / stand steps)
       expect(m.maxDSpeed).toBeLessThanOrEqual(DOGS.DECEL * DT * Math.max(...gaps) + 0.55);
       expect(m.clips).toBeLessThan(16);
@@ -183,6 +201,84 @@ describe('dogs follow a walking leader (rendered-frame root)', () => {
     const m = walkLeg([2], 18.4);
     expect(m.states).toEqual({ diane: 'sit', bijou: 'sit' });
     expect(m.backwards).toBe(0);
+  });
+});
+
+describe('dogs land in their places when the leader jumps (a fade warp, kq.walk.snap, a teleport)', () => {
+  function rig() {
+    const jost = { specId: 'double.jost', root: { position: { x: 0, z: 0 }, rotation: { y: 0 } } };
+    const player = { x: 5, z: 5, speed: 0, stance: 'stand' as const };
+    const bus = new Bus();
+    const bodies = new Map<string, Body>();
+    const rt = new AnimalsRuntime({
+      bus,
+      fauna: () => fauna(bodies),
+      load: () => undefined,
+      save: () => {},
+      log: () => {},
+      photo: createPhotoBridge({}),
+      cinematic: createCinematicBridge({}),
+      world: { heightAt: () => 0, era: () => 'today', player: () => player, los: () => true, people: () => [jost], npcs: () => [] },
+    });
+    const step = (n: number, each?: () => void) => {
+      for (let i = 0; i < n; i++) {
+        each?.();
+        rt.update(DT);
+        rt.sync();
+      }
+    };
+    return { jost, player, bus, bodies, rt, step };
+  }
+
+  it("Jost's root warps 150 m (the walk's snap moves the people): both dogs are in their slots on the next tick", () => {
+    const { jost, bus, bodies, rt, step } = rig();
+    bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', x: -1, z: 1.5, follow: 'npc:double.jost' });
+    bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'bijou', id: 'bijou', x: 1, z: 2, follow: 'npc:double.jost' });
+    step(120, () => (jost.root.position.z -= 1.2 * DT));
+    jost.root.position.x += 120;
+    jost.root.position.z -= 90;
+    jost.root.rotation.y = 1;
+    step(1);
+    const t: DogTarget = { x: jost.root.position.x, z: jost.root.position.z, yaw: 1, speed: 0 };
+    for (const [id, slot] of [['diane', 0], ['bijou', 1]] as const) {
+      const s = dogSlot(t, slot, DOGS.SPACING);
+      const b = bodies.get(id)!;
+      expect(Math.hypot(b.x - s.x, b.z - s.z)).toBeLessThan(0.1);
+      expect(Math.abs(wrapPi(b.yaw - 1))).toBeLessThan(0.1); // facing the way Jost faces
+      expect(rt.state(id)!['speed']).toBe(0);
+    }
+    // and they stay there with him: no gallop afterwards
+    step(60);
+    for (const id of ['diane', 'bijou']) expect(rt.state(id)!['speed'] as number).toBeLessThan(1);
+  });
+
+  it('a player teleport lands the dogs that follow the player; a dog near its new place just walks', () => {
+    const { player, bus, bodies, step } = rig();
+    bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', x: 4, z: 7, follow: 'player' });
+    step(120);
+    player.x += 150;
+    step(1);
+    expect(Math.hypot(bodies.get('diane')!.x - player.x, bodies.get('diane')!.z - player.z)).toBeLessThan(3);
+    // a 1 m jump (a small correction): no landing, the dog walks over
+    const d = createDog({ op: 'spawn', id: 'bijou', kind: 'hund', look: 'bijou', x: 0, z: 1.95, follow: 'player' });
+    const before = { x: d.x, z: d.z };
+    stepDog(d, DT, () => ({ x: 1, z: 0, yaw: 0, speed: 0, jumped: true }));
+    expect(Math.hypot(d.x - before.x, d.z - before.z)).toBeLessThan(0.05);
+  });
+
+  it('the core: a dog on its way back, or lying at the feet of a target, lands too (the return reports animal:returned)', () => {
+    const far: DogTarget = { x: 300, z: 300, yaw: 0, speed: 0, jumped: true };
+    const back = createDog({ op: 'spawn', id: 'diane', kind: 'hund', look: 'diane', x: 0, z: 0, follow: 'npc:double.jost' });
+    back.state = 'return';
+    const ev = stepDog(back, DT, () => far);
+    expect(ev).toEqual([{ type: 'animal:returned', id: 'diane' }]);
+    expect(back.state).toBe('follow');
+    expect(Math.hypot(back.x - 300, back.z - 300)).toBeLessThan(3);
+    const lie = createDog({ op: 'spawn', id: 'bijou', kind: 'hund', look: 'bijou', x: 0, z: 0, follow: 'player' });
+    applyDogRequest(lie, { op: 'lie', id: 'bijou', follow: 'player' });
+    stepDog(lie, DT, () => far);
+    expect(Math.hypot(lie.x - 300, lie.z - 300)).toBeLessThan(1.5);
+    expect(lie.motion.clip).toBe('lie');
   });
 });
 

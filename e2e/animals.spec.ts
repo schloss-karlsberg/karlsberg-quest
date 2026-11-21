@@ -163,6 +163,15 @@ test('animals (c): the dogs follow the player; a run with back → animal:return
   });
   console.log(`[animals c] dog gaps after a 4 s walk ${JSON.stringify(gaps)}`);
   expect(Math.max(...gaps)).toBeLessThan(5);
+  // a teleport (as after a fade): the dogs land at the player's side instead of galloping after.
+  // Back to the car park, settle, then on to the abzweig stop 35 m away (both walkable).
+  await page.evaluate((s) => window.kq!.teleport(s.x, s.z), START);
+  await step(page, 120);
+  await page.evaluate(() => window.kq!.teleport(515.2, -729.9));
+  await step(page, 3);
+  const landed = await page.evaluate(() => window.kq!.animals!.list().filter((a) => a.kind === 'hund').map((a) => a.dist));
+  console.log(`[animals c] dog gaps 3 ticks after a 35 m teleport ${JSON.stringify(landed)}`);
+  expect(Math.max(...landed)).toBeLessThan(5);
   await step(page, 20);
   const following = await shot(page, 'dogs-following');
   // the t5 bolt: out 20 m and back, barking, then back at the player
