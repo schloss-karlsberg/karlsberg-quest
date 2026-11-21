@@ -128,6 +128,7 @@ export const de: Record<string, string> = {
   'action.skill3': 'Wirbel (ab Stufe 6)',
   'action.lockOn': 'Ziel erfassen / wechseln',
   'action.cameraMode': 'Kamera: Schulter / Ich-Sicht',
+  'action.photo': 'Handy-Kamera (Fotomodus)',
   'action.lookLeft': 'Nach links sehen',
   'action.lookRight': 'Nach rechts sehen',
   'action.lookUp': 'Nach oben sehen',

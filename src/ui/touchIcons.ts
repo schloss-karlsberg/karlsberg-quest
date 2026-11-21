@@ -6,7 +6,7 @@ import type { TouchIcon } from '../player/touchMap';
  */
 const S = (body: string) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
-export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up', string> = {
+export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'photo' | 'shutter', string> = {
   // an open hand reaching
   interact: S('<path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v7M14 10.5V5.5a1.5 1.5 0 0 1 3 0V13M8 11.5 6.6 10a1.6 1.6 0 0 0-2.4 2.1l3.4 4.7A6 6 0 0 0 12.5 20H13a4 4 0 0 0 4-4v-3"/>'),
   // the surveyor's staff, swung, with a strike mark
@@ -35,6 +35,10 @@ export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up', string> = {
   relief: S('<path d="M2 19l6-9 4 5 3-4 7 8z"/><path d="M5.5 15h5M14 15h4"/>'),
   // pause bars
   pause: S('<path d="M9 5v14M15 5v14" stroke-width="2.6"/>'),
+  // a smartphone with its camera lens (photo mode, N)
+  photo: S('<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><circle cx="12" cy="9.5" r="2.6"/><path d="M10.5 18.5h3"/>'),
+  // the shutter: a ring with the aperture blades
+  shutter: S('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5 15 12M20.5 12 12 15M12 20.5 9 12M3.5 12 12 9"/>'),
   // a star burst for the abilities
   skill: S('<path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3"/>'),
 };

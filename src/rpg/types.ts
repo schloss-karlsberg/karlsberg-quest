@@ -100,8 +100,10 @@ export type ObjectiveType =
   | 'survive'
   | 'use'
   | 'event'
-  | 'manual';
-export const OBJECTIVE_TYPES: readonly ObjectiveType[] = ['kill', 'collect', 'reach', 'talk', 'room', 'examine', 'echo', 'calm', 'escort', 'survive', 'use', 'event', 'manual'];
+  | 'manual'
+  /** A good smartphone photo of a target (src/systems/photo, `photo:good { id }`). */
+  | 'photo';
+export const OBJECTIVE_TYPES: readonly ObjectiveType[] = ['kill', 'collect', 'reach', 'talk', 'room', 'examine', 'echo', 'calm', 'escort', 'survive', 'use', 'event', 'manual', 'photo'];
 
 export interface QuestObjective {
   /** Unique inside the quest (a-z0-9_-). Mirrored as `flags['quest.<quest>.<id>']` = count. */
@@ -151,6 +153,8 @@ export interface QuestObjective {
   to?: QuestPlace;
   /** survive: seconds to hold out (with `spawn`). */
   seconds?: number;
+  /** photo: a photo target id of content/photo/targets.json (counts `photo:good` with that id). */
+  target?: string;
   /** event: any game event (escape hatch, e.g. 'hunt:goal' with match {mode:'parforce'}). */
   event?: string;
   match?: Record<string, FlagValue>;

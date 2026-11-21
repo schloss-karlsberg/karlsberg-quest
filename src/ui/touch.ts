@@ -36,6 +36,8 @@ addStrings('de', {
   'touch.journal': 'Feldbuch',
   'touch.map': 'Karte',
   'touch.pause': 'Pause',
+  'touch.photo': 'Handy-Kamera',
+  'touch.shutter': 'Auslöser: Foto machen',
   'touch.relief': 'Reliefansicht',
   'touch.relief.0': 'Aus',
   'touch.skill1': 'Ausfall',
@@ -101,6 +103,7 @@ export class TouchControls {
   private readonly dodgeBtn: Btn;
   private readonly scanPop: HTMLElement;
   private readonly skillBtns: HTMLButtonElement[];
+  private readonly attackBtn: HTMLButtonElement;
   /** Touch UI wanted (setting / device). */
   private wanted = false;
   /** Gameplay running without a modal (boot decides). */
@@ -135,6 +138,7 @@ export class TouchControls {
     shift.el.append(h('i.kq-t-ring'));
     const attack = btn('attack', I.attack, t('touch.attack'), ['attack', 'interact']);
     attack.el.append(h('i.kq-t-ring'));
+    this.attackBtn = attack.el;
     const scanBtn = h('button.kq-t-btn.relief', { type: 'button', 'aria-label': t('touch.relief'), 'data-testid': 'touch-relief' }, svg(I.relief));
     this.scanPop = h('div.kq-t-pop.kq-hidden', { 'data-testid': 'touch-relief-pop' });
     for (const n of [1, 2, 3, 0] as const) {
@@ -148,7 +152,11 @@ export class TouchControls {
       this.releaseAll();
       this.deps.openPause();
     });
-    const top = h('div.kq-t-top', [this.flyBtn.el, this.downBtn.el, scanBtn, btn('journal', I.journal, t('touch.journal'), ['journal']).el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
+    // the phone (photo mode): toggles like N; while it is up, the attack button is the shutter
+    const photo = btn('photo', I.photo, t('touch.photo'), ['photo']);
+    const top = h('div.kq-t-top', [this.flyBtn.el, this.downBtn.el, scanBtn, photo.el, btn('journal', I.journal, t('touch.journal'), ['journal']).el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
+    deps.events.on('photo:open', () => this.setPhoto(true, photo.el));
+    deps.events.on('photo:close', () => this.setPhoto(false, photo.el));
     this.skillBtns = ([1, 2, 3] as const).map((n) => btn(`skill${n}`, I.skill, t(`touch.skill${n}`), [`skill${n}`], h('span.kq-t-num', String(n))).el);
     const skills = h('div.kq-t-skills', this.skillBtns);
     const arc = h('div.kq-t-arc', [
@@ -218,6 +226,14 @@ export class TouchControls {
   private syncVisible(): void {
     this.el.classList.toggle('kq-hidden', !(this.wanted && this.playing));
     if (!(this.wanted && this.playing)) this.scanPop.classList.add('kq-hidden');
+  }
+
+  /** Photo mode: the attack button becomes the shutter, the camera button lights up. */
+  private setPhoto(on: boolean, photoBtn: HTMLElement): void {
+    photoBtn.classList.toggle('on', on);
+    this.attackBtn.classList.toggle('shutter', on);
+    this.attackBtn.replaceChildren(svg(on ? TOUCH_ICONS.shutter : TOUCH_ICONS.attack), h('i.kq-t-ring'));
+    this.attackBtn.setAttribute('aria-label', t(on ? 'touch.shutter' : 'touch.attack'));
   }
 
   /** Hide the ability buttons not learnt yet. */

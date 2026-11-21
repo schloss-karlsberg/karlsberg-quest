@@ -242,7 +242,9 @@ class Progression {
     });
     on('talent:learned', () => this.tabs.refresh());
     on('stats:changed', () => this.tabs.refresh());
-    on('codex:unlocked', ({ factId }) => {
+    on('codex:unlocked', ({ factId, noXp }) => {
+      // a photo's codex card gives no XP (owner decision 2026-11-20, src/systems/photo)
+      if (noXp) return;
       const got = this.core.codex(factId);
       if (got > 0) {
         this.hud.line('xp', `+${got} Erfahrung · Codex`);

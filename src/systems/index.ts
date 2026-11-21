@@ -15,6 +15,10 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./chronik'),
   () => import('./story'),
   () => import('./interiors'),
+  // people contract v0 (modern NPCs behind a mesh-independent handle API, ctx.people); before npc, which binds talkable people
+  () => import('./people'),
+  // fauna contract v0 (animal bodies behind a mesh-independent handle API, ctx.fauna); the behaviour layer (animals) declares after: ['fauna']
+  () => import('./fauna'),
   () => import('./npc'),
   () => import('./barks'),
   () => import('./skills'),
@@ -30,6 +34,10 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./flaschen'),
   // the Karlsbergquelle: its living water and the touch that starts the time travel (prologue p3q)
   () => import('./quelle'),
+  // the tour group: Gerold walks the route, the group follows (WP-16, era today)
+  () => import('./walk'),
+  // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
+  () => import('./photo'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
   () => import('./notes'),
 ];

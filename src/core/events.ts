@@ -31,6 +31,8 @@ export interface GameEvents {
   /** A save was loaded into the state store. */
   'save:loaded': { slot: string };
   'settings:change': { key: string };
+  /** The camera was taken over (a cinematic, kq.setCamera) or given back to the rig. */
+  'camera:override': { active: boolean };
   /** Free-form UI notification (toast). */
   'ui:toast': { text: string; ms?: number };
 }

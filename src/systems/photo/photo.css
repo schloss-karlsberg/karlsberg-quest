@@ -1,0 +1,307 @@
+/* Smartphone photo mode (src/systems/photo): the phone frame, the flash, the result card, the album. */
+.kq-root > .kq-photo,
+.kq-photo {
+  position: fixed;
+  inset: 0;
+  /* above the HUD, below the touch controls (14: the attack button is the shutter) and modals */
+  z-index: 13;
+  pointer-events: none;
+  color: #fff;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.kq-photo.kq-hidden {
+  display: none;
+}
+.kq-photo-body {
+  position: absolute;
+  inset: 8px;
+  border: 14px solid #141416;
+  border-radius: 38px;
+  box-shadow:
+    0 0 0 2px #3a3a40,
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 60px rgba(0, 0, 0, 0.35);
+}
+/* the front camera on the left edge (the phone is held landscape) */
+.kq-photo-body::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #2a2c34;
+  box-shadow: 0 0 0 1px #000;
+}
+.kq-photo-status {
+  position: absolute;
+  top: 10px;
+  left: 26px;
+  right: 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.kq-photo-net {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kq-photo-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.kq-photo-bars i {
+  display: block;
+  width: 3px;
+  background: #fff;
+  border-radius: 1px;
+}
+.kq-photo-bars i:nth-child(1) { height: 4px; }
+.kq-photo-bars i:nth-child(2) { height: 6px; }
+.kq-photo-bars i:nth-child(3) { height: 9px; }
+.kq-photo-bars i:nth-child(4) { height: 12px; }
+.kq-photo.kq-nonet .kq-photo-bars i {
+  background: rgba(255, 255, 255, 0.28);
+}
+.kq-photo-batt {
+  width: 22px;
+  height: 11px;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+  position: relative;
+}
+.kq-photo-batt::after {
+  content: '';
+  position: absolute;
+  inset: 1px 6px 1px 1px;
+  background: #fff;
+  border-radius: 1px;
+}
+/* thirds grid: the middle cell is where the subject must sit */
+.kq-photo-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent calc(33.333% - 0.5px), rgba(255, 255, 255, 0.28) calc(33.333% - 0.5px), rgba(255, 255, 255, 0.28) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px), transparent calc(66.666% - 0.5px), rgba(255, 255, 255, 0.28) calc(66.666% - 0.5px), rgba(255, 255, 255, 0.28) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px)),
+    linear-gradient(180deg, transparent calc(33.333% - 0.5px), rgba(255, 255, 255, 0.28) calc(33.333% - 0.5px), rgba(255, 255, 255, 0.28) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px), transparent calc(66.666% - 0.5px), rgba(255, 255, 255, 0.28) calc(66.666% - 0.5px), rgba(255, 255, 255, 0.28) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px));
+}
+.kq-photo-focus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border: 1.5px solid rgba(255, 214, 92, 0.9);
+  border-radius: 6px;
+  transition: transform 0.15s ease-out;
+}
+.kq-photo.kq-shaky .kq-photo-focus {
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: scale(1.18);
+}
+.kq-photo-nonet {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  border-radius: 16px;
+  background: rgba(20, 20, 22, 0.72);
+  font-size: 16px;
+  font-weight: 700;
+  display: none;
+}
+.kq-photo.kq-nonet .kq-photo-nonet {
+  display: block;
+}
+.kq-root > .kq-photo-zoom,
+.kq-photo-zoom {
+  position: fixed;
+  z-index: 15;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 20px;
+  background: rgba(20, 20, 22, 0.55);
+  pointer-events: auto;
+}
+.kq-photo-zoom.kq-hidden {
+  display: none;
+}
+.kq-photo-zoom button {
+  min-width: 40px;
+  height: 32px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: #fff;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+.kq-photo-zoom button[aria-pressed='true'] {
+  background: rgba(255, 214, 92, 0.92);
+  color: #141416;
+}
+.kq-photo-hint {
+  position: absolute;
+  bottom: 22px;
+  left: 30px;
+  max-width: 34%;
+  font-size: 13px;
+  line-height: 1.35;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  opacity: 0.92;
+}
+html[data-kq-touch] .kq-photo-hint {
+  display: none;
+}
+/* the HUD's crosshair and prompt step back while the phone is up */
+html[data-kq-photo] .kq-crosshair {
+  visibility: hidden;
+}
+
+/* flash */
+.kq-root > .kq-photo-flash,
+.kq-photo-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+}
+.kq-photo-flash.go {
+  animation: kq-photo-flash 0.42s ease-out;
+}
+@keyframes kq-photo-flash {
+  0% { opacity: 0.92; }
+  100% { opacity: 0; }
+}
+html[data-kq-reduced-motion] .kq-photo-flash.go,
+html[data-kq-reduced-flash] .kq-photo-flash.go {
+  animation: kq-photo-flash-soft 0.2s linear;
+}
+@keyframes kq-photo-flash-soft {
+  0% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+/* result card */
+.kq-root > .kq-photo-card,
+.kq-photo-card {
+  position: fixed;
+  right: 34px;
+  bottom: 70px;
+  z-index: 13;
+  width: 240px;
+  padding: 8px 8px 10px;
+  border-radius: 14px;
+  background: rgba(20, 20, 22, 0.88);
+  color: #fff;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: kq-photo-card-in 0.25s ease-out;
+}
+.kq-photo-card.kq-hidden {
+  display: none;
+}
+html[data-kq-reduced-motion] .kq-photo-card {
+  animation: none;
+}
+@keyframes kq-photo-card-in {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.kq-photo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #fff;
+}
+.kq-photo-card .kq-photo-stars {
+  margin-top: 8px;
+}
+.kq-photo-stars {
+  font-size: 20px;
+  letter-spacing: 3px;
+  color: #ffd65c;
+}
+.kq-photo-stars .off {
+  color: rgba(255, 255, 255, 0.25);
+}
+.kq-photo-verdict {
+  font-size: 16px;
+  font-weight: 700;
+}
+.kq-photo-label {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* album tab */
+.kq-album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+}
+.kq-album-entry {
+  margin: 0;
+  padding: 6px 6px 8px;
+  border-radius: 8px;
+  background: rgba(30, 24, 18, 0.07);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.kq-album-entry img,
+.kq-album-entry .kq-album-stock {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.kq-album-stock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #e9dfc6, #cdbf9d);
+  color: #3b2f22;
+  font-style: italic;
+  text-align: center;
+}
+.kq-album-entry .kq-photo-stars {
+  font-size: 16px;
+  color: #b8860b;
+}
+.kq-album-entry .kq-photo-stars .off {
+  color: rgba(0, 0, 0, 0.18);
+}
+.kq-album-entry figcaption {
+  margin-top: 4px;
+  font-size: 14px;
+}
+.kq-album-meta {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.kq-album-empty {
+  font-style: italic;
+  opacity: 0.8;
+}
