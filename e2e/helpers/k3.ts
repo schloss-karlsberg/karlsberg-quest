@@ -769,7 +769,7 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     k.story.flush();
     k.step(10);
     const down = h.walk(
-      [[1265.6, -1130.2], [1266.6, -1132.2], [1266.6, -1142], [1261.4, -1142], [1261.6, -1132], [1261.8, -1129.5], [1265, -1126], [1270.3, -1125.1], [1276, -1125]],
+      [[1265.6, -1130.2], [1266.6, -1132.2], [1266.6, -1142], [1261.4, -1142], [1261.6, -1132], [1261.8, -1129.5], [1265.5, -1126.8], [1270.6, -1127.6], [1276, -1128.5]],
       { sprint: true, chunk: 4 },
     );
     k.step(10);
@@ -791,7 +791,8 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   const sneak = await page.evaluate(() => {
     const k = window.kq as Any;
     const h = (window as Any).k3h;
-    const w = h.walk([[1290, -1180], [1285, -1238], [1267, -1252], [1266.5, -1285], [1270.5, -1290.5]], { crouch: true, chunk: 24, max: 3000, wary: 18 });
+    // (round the rotunda KB-B07's portico and steps, not across them)
+    const w = h.walk([[1290, -1180], [1293, -1226], [1291, -1238], [1267, -1252], [1266.5, -1285], [1270.5, -1290.5]], { crouch: true, chunk: 24, max: 3000, wary: 18 });
     k.step(30);
     return { w, beat: k.story.state().beat };
   });

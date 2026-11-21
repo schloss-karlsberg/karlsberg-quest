@@ -4,6 +4,7 @@
  *    snow-laden in February 1793, many felled by 1796), with a board at its foot;
  *  - the menagerie of the Karlslust: iron-barred cages along the terraces with name plates, the
  *    bear boxes, a paddock fence, and boards that say where you are ("Menagerie", "Das Rund");
+ *    the solids of the model's rows of animal houses on the terraces (KL-B43, open ground);
  *  - the Festsaal in July 1793: what the looters left (framed paintings stacked to be carried
  *    off, an overturned gilded chair, the last chandelier on the floor) and the things Hanne lets
  *    you choose from, placed in the room: the gilded clock on its console, the ducat on the
@@ -17,6 +18,7 @@ import { rng, tint } from './kit';
 import { fence } from './linear';
 import { type OrchardLook, appleTree, stump } from './orchard';
 import { C, barrel, kennel, post, straw, trough } from './props';
+import type { Solid } from '../../world/collision';
 import { RUND } from './rund';
 import type { SetDef } from './sets';
 import { quelleSet } from './quelle';
@@ -108,12 +110,46 @@ const apfelallee: SetDef = {
 // The menagerie of the Karlslust (bible 1.6, 3.10): cages, bear boxes, boards
 // ---------------------------------------------------------------------------------------------
 
-/** The menagerie terraces' west edge (footprint KL-B43), north → south. */
+/**
+ * The menagerie terraces' west edge (footprint KL-B43), north → south. Open ground since the
+ * research-wave model (world/palace.ts OPEN_GROUND): no wall runs along it.
+ */
 const MEN_EDGE: [number, number][] = [
   [2020, 50],
   [1962, 138],
   [1985, 178],
 ];
+
+/**
+ * The six rows of animal houses on the terraces KL-B43 (catalogue facade.menagerie.rows, local
+ * frame): each row's terrace wall runs from p0 (west) to p1 (east), its single-storey houses stand
+ * in front of it (towards front_azimuth 156.1, downhill) with the runs before them; a broad
+ * watercourse crosses the rows in the middle. Row 1 is the highest, next to the Rund.
+ */
+export const TERRACE_ROWS: readonly { p0: [number, number]; p1: [number, number] }[] = [
+  { p0: [1975.1, 155.0], p1: [2061.8, 131.8] },
+  { p0: [1983.8, 170.1], p1: [2069.7, 147.0] },
+  { p0: [1991.4, 186.4], p1: [2077.0, 163.5] },
+  { p0: [1998.6, 205.5], p1: [2085.3, 182.2] },
+  { p0: [2006.0, 225.0], p1: [2093.9, 201.4] },
+  { p0: [2016.1, 251.4], p1: [2105.4, 227.5] },
+];
+
+/**
+ * One box solid per row: the terrace wall and the houses (4.4 m deep, centres 1.7 m in front of the
+ * wall line). The runs, the ends of the rows and the ground round them are free to walk.
+ */
+export function terraceSolids(): Solid[] {
+  return TERRACE_ROWS.map(({ p0, p1 }) => {
+    const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    const ux = (p1[0] - p0[0]) / len;
+    const uz = (p1[1] - p0[1]) / len;
+    // towards the fronts: right of west → east
+    const vx = -uz;
+    const vz = ux;
+    return { kind: 'box', x: (p0[0] + p1[0]) / 2 + vx * 1.7, z: (p0[1] + p1[1]) / 2 + vz * 1.7, ux, uz, hu: len / 2 + 0.3, hv: 2.35 } as Solid;
+  });
+}
 
 function cage(b: SetBuilder, x: number, z: number, deg: number, seed: number, name: string): void {
   const k = b.kit;
@@ -170,7 +206,9 @@ const menagerie: SetDef = {
   ],
   build(b, o) {
     const k = b.kit;
-    // cages along the terrace edge, facing the Rund (outwards, west / south-west)
+    // the model's rows of animal houses on the terraces hold you (their plot is open ground)
+    b.solids.push(...terraceSolids());
+    // cages along the terraces' north-west edge, facing the Rund (outwards, west / south-west)
     const [a, c] = [MEN_EDGE[0]!, MEN_EDGE[1]!];
     const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
     const ux = (c[0] - a[0]) / len;
@@ -187,7 +225,8 @@ const menagerie: SetDef = {
       const z = a[1] + uz * s + nz * 4.2;
       cage(b, x, z, faceDeg, 700 + i, name);
     });
-    // the bear boxes on the second stretch, below the terrace
+    // the bear boxes on the second stretch: below the west ends of the first two rows, where the
+    // ground climbs to the terraces (k1_10's clue at 1958/146 looks up at them)
     const [p, q] = [MEN_EDGE[1]!, MEN_EDGE[2]!];
     const l2 = Math.hypot(q[0] - p[0], q[1] - p[1]);
     const vx = (q[0] - p[0]) / l2;

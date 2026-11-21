@@ -11,7 +11,8 @@
  *  - Fireworks (fireworks.ts) while the Chronik plays `echo.k1.feuerwerk`.
  *  - Lit windows (windows.ts) by story cue: `{do:'cue', id:'scenery:windows', data:{building,
  *    era?, on?, share?}}`; the Ehrenhof gate by `{id:'scenery:gate', data:{open:true|false}}`.
- *  - The passage through KB-B07 from the Tempelzimmer's glass doors (passage.ts), intact eras.
+ *  - The passage through the rotunda KB-B07 from the Tempelzimmer's glass doors (passage.ts),
+ *    intact eras: its doors cut open, its floors as `world.floorPatch`; in 1789 a building site.
  *  - The Bleiche (bleiche.ts, 1789): its linen parts around the player; Kaspar's coat leaves the line
  *    by `setCoatVisible(false)` or the cue `{id:'scenery:coat', data:{visible:false}}` (saved).
  *
@@ -30,10 +31,10 @@ import { applySurfaceQuality } from '../../world/surfaces';
 import { Lehnstuhl } from './chair';
 import { CONVOY_ROAD, Convoy } from './convoy';
 import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, pullFactor } from './hohenburg';
+import { disposeModels, instanceModels } from './models';
 import { Kit } from './kit';
 import { propMaterial } from './material';
-import { disposeModels, instanceModels } from './models';
-import { buildPassage, passageCollision, patchPalace, setPassageCut } from './passage';
+import { passageCollision, passageFloor, patchPalace, rotundaFooting, setPassageCut } from './passage';
 import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
 import { RUND, RundTally } from './rund';
@@ -131,6 +132,8 @@ let fwMaxLine = -1;
 let fwOwnClock = 0;
 const lit = new Map<string, LitWindows>();
 let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolean; b07: number } | null = null;
+/** The world whose `floorPatch` the passage set (cleared on dispose). */
+let floorWorld: { floorPatch: unknown } | null = null;
 let solidsDirty = true;
 let lastEra: Era | null = null;
 let tally: RundTally | null = null;
@@ -239,21 +242,31 @@ function ensurePassage(ctx: GameContext): void {
   const b07 = ctx.world.palace.buildings.find((b) => b.id === 'KB-B07')?.index ?? -1;
   const poly = ctx.data.footprints.buildings.findIndex((f) => f.id === 'KB-B07');
   if (b07 < 0 || poly < 0) return;
+  // the footings that carry the rotunda down to our terrain
   const k = new Kit();
-  buildPassage(k, (x, z) => ctx.world.heightfields['1789'].heightAt(x, z));
+  rotundaFooting(k, (x, z) => ctx.world.heightfields['1789'].heightAt(x, z));
   const group = new Group();
   group.name = 'scenery-passage';
   const m = new (Object.getPrototypeOf(mesh).constructor as typeof import('three').Mesh)(k.build(), propMaterial());
-  m.name = 'scenery-passage-walls';
+  m.name = 'scenery-rotunda-footing';
   group.add(m);
   root.add(group);
   const { zones, solids } = passageCollision(poly);
   const patched = patchPalace(mesh, b07);
   passage = { group, zones, solids, patched, b07 };
-  const intact = ERA_INFO[ctx.era.current].palace === 'intact';
-  group.visible = intact;
-  setPassageCut(mesh, intact ? b07 : -10);
+  applyPassage(ctx, mesh);
   solidsDirty = true;
+}
+
+/** The passage per era: doors open and floors walkable while the palace stands; 1789 the site. */
+function applyPassage(ctx: GameContext, mesh: Mesh | null): void {
+  if (!passage) return;
+  const era = ctx.era.current;
+  const intact = ERA_INFO[era].palace === 'intact';
+  passage.group.visible = intact;
+  if (mesh) setPassageCut(mesh, intact ? passage.b07 : -10, era === '1789');
+  ctx.world.floorPatch = intact ? passageFloor : null;
+  floorWorld = ctx.world;
 }
 
 function applyEra(ctx: GameContext): void {
@@ -262,12 +275,7 @@ function applyEra(ctx: GameContext): void {
     const l = live.get(id)!;
     if (l.era !== era) dropSet(id);
   }
-  const intact = ERA_INFO[era].palace === 'intact';
-  if (passage) {
-    passage.group.visible = intact;
-    const mesh = palaceMesh(ctx);
-    if (mesh) setPassageCut(mesh, intact ? passage.b07 : -10);
-  }
+  applyPassage(ctx, palaceMesh(ctx));
   for (const [key, w] of lit) w.setOn(key.endsWith(`@${era}`) ? 1 : 0);
   solidsDirty = true;
 }
@@ -634,6 +642,16 @@ export default defineSystem({
   },
   dispose() {
     for (const id of [...live.keys()]) dropSet(id);
+    if (floorWorld?.floorPatch === passageFloor) floorWorld.floorPatch = null;
+    floorWorld = null;
+    passage?.group.traverse((o) => {
+      const m = o as Mesh;
+      if (m.isMesh) {
+        m.geometry.dispose();
+        (m.material as ShaderMaterial).dispose();
+      }
+    });
+    passage = null;
     fireworks?.dispose();
     convoy?.dispose();
     convoy = null;

@@ -119,6 +119,8 @@ class MenagerieSystem {
         const w = ctx.world;
         if (w.surfaceAt(x, z) === 'water') return false;
         if (w.collider.enabled && w.collider.footprintAt(x, z) >= 0) return false;
+        // set solids too: the terraces KL-B43 are open ground, their rows of houses are solids
+        if (w.collider.solidAt(x, z, 0.3)) return false;
         return w.heightfield.slopeDeg(x, z) < 46;
       },
     });
@@ -402,7 +404,7 @@ class MenagerieSystem {
     const nx = pl.position.x + dx * 0.9;
     const nz = pl.position.z + dz * 0.9;
     const w = ctx.world;
-    if (w.surfaceAt(nx, nz) !== 'water' && !(w.collider.enabled && w.collider.footprintAt(nx, nz) >= 0)) {
+    if (w.surfaceAt(nx, nz) !== 'water' && !(w.collider.enabled && w.collider.footprintAt(nx, nz) >= 0) && !w.collider.solidAt(nx, nz, 0.3)) {
       pl.position.x = nx;
       pl.position.z = nz;
       pl.position.y = w.heightAt(nx, nz);
