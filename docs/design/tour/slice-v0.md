@@ -43,8 +43,13 @@ Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'n
 - The group despawns in t17 at most ~20–40 m up the slope; it may vanish in view.
 - A good photo needs doe and fawn in the frame (`needAll` of the placeholder targets).
 - A save made in the tour resumes only with `?tour`.
-- Pacing not yet measured in a real run (see below).
+- The chapter title card „Die Führung“ stays up through the first ~100 s (cards wait while someone talks, and Gerold talks a lot).
+- At the Quelle the base game's own layer shows through: the „E Pause an der Quelle“ prompt and Marlene's radio lines play during station 4, the break and the Laub scene.
+- The 15 walkers look dithered/see-through at ~10 m at the car park (people LOD fade).
+- Barks never fired in the e2e (it keeps up with the group); untested in a run.
 
 ## Timings
 
-Estimate from the route lengths at 1.9 m/s plus the line times (a player who keeps up): deer stop ≈ 5:50, deer photo ≈ 7–8 min, the touch ≈ 12 min. The e2e writes measured game seconds to `test-results/tour/timings.json`.
+Estimate from the route lengths at 1.9 m/s plus the line times (a player who keeps up): deer stop ≈ 5:50, deer photo ≈ 7–8 min, the touch ≈ 12 min.
+
+Measured (e2e 2026-11-21, game time, a scripted player who keeps up, snaps the photo at once and walks straight to the trough): deer stop 4:39, deer photo 4:41, the touch 8:17, 1789 at 8:20. A real player who sneaks and frames the shot adds 1–3 min at the deer and some at the break, so the slice runs short of the 8 / 12 min targets: lengthen the walks (or the station lines) before the next round. The e2e writes these to `test-results/tour/timings.json`.

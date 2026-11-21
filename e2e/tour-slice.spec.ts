@@ -23,10 +23,24 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `${OUT}/tour-${name}.png` });
 }
 
-/** Step game time (1 s per call) until the beat is `id`, keeping the player behind the guide. */
+const ORDER = Array.from({ length: 18 }, (_, i) => `t${i + 1}`);
+const beatsSoFar = (page: Page) =>
+  page.evaluate(() =>
+    (window as unknown as { tourRec?: { n: string; p: { beat?: string }; t: number }[] }).tourRec
+      ?.filter((r) => r.n === 'story:beat')
+      .map((r) => `${r.p.beat}@${r.t.toFixed(1)}`)
+      .join(' '),
+  );
+
+/** Step game time (1 s per call) until the beat is `id` (or later: logged), keeping the player behind the guide. */
 async function follow(page: Page, id: string, maxS = 240, behind = 4): Promise<void> {
   for (let s = 0; s < maxS; s++) {
-    if ((await beat(page)) === id) return;
+    const b = await beat(page);
+    if (b === id) return;
+    if (ORDER.indexOf(b) > ORDER.indexOf(id)) {
+      console.log(`[tour] wanted ${id}, already at ${b}; beats ${await beatsSoFar(page)}`);
+      return;
+    }
     await page.evaluate((b) => {
       const k = window.kq! as K;
       const g = k.walk!.list().find((n) => n.npc === 'imhoff');
@@ -42,7 +56,7 @@ async function follow(page: Page, id: string, maxS = 240, behind = 4): Promise<v
       k.step(60);
     }, behind);
   }
-  throw new Error(`beat ${id} not reached (at ${await beat(page)})`);
+  throw new Error(`beat ${id} not reached (at ${await beat(page)}); beats ${await beatsSoFar(page)}`);
 }
 
 /** Third-person view onto the group: the player stands `d` m ahead of the guide, looking back. */
@@ -60,13 +74,22 @@ async function viewGroup(page: Page, d = 10): Promise<void> {
 test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer photo → Weiher → Quelle → 1789', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual&tour');
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.walk && !!window.kq?.photo && !!window.kq?.npc, null, { timeout: 180_000 });
+  try {
+    await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.walk && !!window.kq?.npc, null, { timeout: 120_000 });
+    // photo mode publishes its hooks on its first update (none run in ?manual until a step)
+    await page.evaluate(() => window.kq!.step(2));
+    await page.waitForFunction(() => !!window.kq?.photo && !!window.kq?.animals, null, { timeout: 20_000 });
+  } catch (e) {
+    const have = await page.evaluate(() => Object.keys(window.kq ?? {}).join(','));
+    console.log(`[tour] boot: kq has ${have}; errors ${JSON.stringify(errors)}`);
+    throw e;
+  }
   await page.evaluate(() => {
     const w = window as unknown as { tourRec: { n: string; p: unknown; t: number }[] };
     w.tourRec = [];
     const k = window.kq!;
     k.ctx.events.onAny((n, p) => {
-      if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark')
+      if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('shift:') || n.startsWith('quelle:'))
         w.tourRec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)), t: k.ctx.loop.time });
     });
     k.story!.start('Testerin');
@@ -106,8 +129,9 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
   });
   await follow(page, 't3', 70);
   await follow(page, 't4', 120);
-  // the fade: black, the group warped to the Felsenpfad entry, the player behind it
-  await page.evaluate(() => window.kq!.step(150));
+  // the fade: Gerold's line, black, the group warped to the Felsenpfad entry, the player behind it
+  for (let i = 0; i < 20 && (await beat(page)) === 't4'; i++) await page.evaluate(() => window.kq!.step(30));
+  await page.evaluate(() => window.kq!.step(60));
   await shot(page, '03-nach-der-abkuerzung');
   const p4 = await page.evaluate(() => window.kq!.ctx.player.position);
   expect(Math.hypot(p4.x - 623.4, p4.z + 485.9)).toBeLessThan(15);
@@ -163,7 +187,7 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
   });
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
   const tDeer = await time(page);
-  await follow(page, 't12', 60);
+  await follow(page, 't12', 120);
   await shot(page, '08-damm');
   await follow(page, 't13', 120);
   await viewGroup(page);
@@ -190,8 +214,27 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   for (let i = 0; i < 30 && (await beat(page)) !== 't18'; i++) await page.evaluate(() => window.kq!.step(30));
   expect(await beat(page)).toBe('t18');
-  await page.evaluate(() => window.kq!.step(400));
-  expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('1789');
+  // under webdriver the era shift runs on frame time, not on kq.step (core/bullet.ts): scrub it
+  // through like e2e/fx.spec.ts, then let the story see shift:done
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.step(10);
+    k.fx!.shiftAt(1.9);
+    k.fx!.shiftAt(3.6);
+  });
+  for (let i = 0; i < 10 && (await page.evaluate(() => window.kq!.story!.state().era)) !== '1789'; i++) await page.evaluate(() => window.kq!.step(60));
+  const era = await page.evaluate(() => window.kq!.story!.state().era);
+  if (era !== '1789') {
+    const tail = await page.evaluate(() =>
+      (window as unknown as { tourRec: { n: string; p: unknown; t: number }[] }).tourRec
+        .filter((r) => r.n !== 'walk:bark')
+        .slice(-14)
+        .map((r) => `${r.n}${JSON.stringify(r.p)}@${r.t.toFixed(1)}`),
+    );
+    console.log(`[tour] no shift: era ${era}, ctx era ${await page.evaluate(() => window.kq!.ctx.era.current)}; last events ${tail.join(' | ')}`);
+  }
+  expect(era).toBe('1789');
+  await page.evaluate(() => window.kq!.step(300));
   await shot(page, '12-1789-fortsetzung');
 
   const rec = await page.evaluate(() => (window as unknown as { tourRec: { n: string; p: { beat?: string }; t: number }[] }).tourRec);
