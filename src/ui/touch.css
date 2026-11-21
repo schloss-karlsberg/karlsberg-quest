@@ -163,6 +163,14 @@ html[data-kq-touch] textarea {
   width: 52px;
   height: 52px;
 }
+/* crouch (tap: on / off) on foot, sink (hold) while flying: right edge, between Ziel (top 148)
+   and the Aktion pill (right 64), 8 px clear of both; under the skill row on every layout */
+.kq-t-btn.crouch {
+  right: 4px;
+  bottom: 160px;
+  width: 52px;
+  height: 52px;
+}
 /* the contextual action: a pill that carries the prompt's text */
 .kq-t-btn.interact {
   /* above the Epoche button (right 160, bottom 120..172) with 10 px air: they overlapped (M-06) */
@@ -524,12 +532,9 @@ html[data-kq-touch] .kqj-foot kbd {
   html[data-kq-touch] body .kqs-dlg.kqs-show {
     transform: none;
   }
-  /* the spirit view adds Fliegen (and Sinken) to the top row */
+  /* the spirit view adds Fliegen to the top row */
   html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) body .kqs-dlg {
     right: calc(314px + var(--kq-safe-r));
-  }
-  html[data-kq-touch]:has(.kq-t-btn.down:not(.kq-hidden)) body .kqs-dlg {
-    right: calc(364px + var(--kq-safe-r));
   }
   /* no portrait on a landscape phone: the name in the card says who speaks, the text gets the
      width (the radio sat on the era label), and the torn tab has nothing to point at */
@@ -627,9 +632,6 @@ html[data-kq-touch] .kqj-foot kbd {
   }
   html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) .kqt-card.kqt-banner {
     right: calc(314px + var(--kq-safe-r));
-  }
-  html[data-kq-touch]:has(.kq-t-btn.down:not(.kq-hidden)) .kqt-card.kqt-banner {
-    right: calc(364px + var(--kq-safe-r));
   }
   html[data-kq-touch] .kqt-card.kqt-banner h3 {
     font-size: 17px;

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_BINDINGS, Input, virtualCode } from '../src/player/input';
-import { TOUCH, diffHeld, isTouchSetting, lookDelta, rotateWanted, stickToMove, touchActive, touchIconFor, touchName, touchPromptIcon } from '../src/player/touchMap';
+import { TOUCH, crouchButtonMode, diffHeld, isTouchSetting, lookDelta, rotateWanted, stickToMove, touchActive, touchIconFor, touchName, touchPromptIcon } from '../src/player/touchMap';
 import { actionLabel } from '../src/ui/actionLabel';
 import { mobileLevel } from '../src/render/mobileDefaults';
 
@@ -89,6 +89,16 @@ describe('prompt key → touch icon', () => {
   });
 });
 
+describe('crouchButtonMode', () => {
+  it('toggles crouching on foot and is active while crouched', () => {
+    expect(crouchButtonMode(false, 'stand')).toEqual({ icon: 'crouch', on: false, label: 'touch.crouch' });
+    expect(crouchButtonMode(false, 'crouch')).toEqual({ icon: 'crouch', on: true, label: 'touch.crouch' });
+    expect(crouchButtonMode(false, 'prone').on).toBe(false);
+  });
+  it('sinks while flying', () => {
+    expect(crouchButtonMode(true, 'stand')).toEqual({ icon: 'down', on: false, label: 'touch.down' });
+  });
+});
 
 describe('mobile first-run level', () => {
   it('phones and mobile GPUs → Niedrig, big tablets → Mittel', () => {

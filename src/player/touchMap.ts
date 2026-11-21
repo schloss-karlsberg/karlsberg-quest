@@ -193,3 +193,11 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
 export function touchName(action: Action): string | null {
   return TOUCH_NAMES[action] ?? null;
 }
+
+/**
+ * The crouch button in the thumb arc (one button, two jobs, like C on the keyboard): on foot a
+ * tap toggles crouching (sneaking; active while crouched), in the spirit view it is held to sink.
+ */
+export function crouchButtonMode(flying: boolean, stance: string): { icon: 'crouch' | 'down'; on: boolean; label: 'touch.crouch' | 'touch.down' } {
+  return flying ? { icon: 'down', on: false, label: 'touch.down' } : { icon: 'crouch', on: stance === 'crouch', label: 'touch.crouch' };
+}
