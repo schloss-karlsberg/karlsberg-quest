@@ -544,9 +544,16 @@ html[data-kq-touch] .kqj-foot kbd {
     font-size: clamp(14px, calc(var(--sub-size) * 0.7), 22px);
     line-height: 1.32;
   }
+  /* the „weiter“ hint (and a source) stays in view: a footer stuck to the card's lower edge while
+     a long line scrolls under it (the body's 5 px bottom padding is pulled in) */
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-foot {
+    position: sticky;
+    bottom: -5px;
+    margin: 1px 0 -5px;
+    padding: 2px 0 5px;
     font-size: 12px;
-    margin-top: 1px;
+    background: var(--paper);
+    box-shadow: 0 -5px 5px -3px var(--paper);
   }
   /* the era label (top-left) lies under the card: it steps back while a line is up */
   html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kq-hud .kq-tl {
