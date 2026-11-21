@@ -13,6 +13,39 @@
 import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, NormalBlending, ShaderMaterial } from 'three';
 import type { PackSim } from './sim';
 
+/**
+ * One fan on the ground. `yaw` is a heading in radians whose forward is (−sin yaw, −cos yaw) —
+ * the pack's `agent.heading` (for a placement yaw θ in degrees, 0 = north / 90 = east: yaw = −θ·π/180).
+ * `fov` in radians, `range` in metres. `level` 0..1 deepens the colour (pack: awareness); `seen`
+ * 0..1 pushes it to red (pack: sees). `rgb` (linear 0..1) overrides the pack's colour formula
+ * (the court's pale → orange → red, src/systems/court).
+ */
+export interface ConeSpec {
+  x: number;
+  z: number;
+  yaw: number;
+  range: number;
+  fov: number;
+  level: number;
+  seen?: number;
+  rgb?: readonly [number, number, number];
+}
+
+/** The pack's fans (one per standing hound), exactly as K2 drew them before the cones took a list. */
+export function packCones(sim: PackSim): ConeSpec[] {
+  const st = sim.state;
+  const alertMul = st === 'chasing' ? 1.35 : st === 'searching' ? 1.15 : 1;
+  const fov = ((st === 'chasing' ? 230 : st === 'searching' ? 180 : 140) * Math.PI) / 180;
+  const range = Math.max(4, sim.lastSight * alertMul);
+  const out: ConeSpec[] = [];
+  for (const a of sim.agents) {
+    if (out.length >= MAXC) break;
+    if (a.kind !== 'hound' || a.lie > 0.5) continue;
+    out.push({ x: a.x, z: a.z, yaw: a.heading, range, fov, level: Math.min(1, a.awareness), seen: Math.min(1, a.sees * 2) });
+  }
+  return out;
+}
+
 const MAXC = 8;
 const SEG = 22;
 const RINGS = 6;
@@ -136,8 +169,9 @@ export class SightCones {
     this.object.visible = false;
   }
 
-  /** `sim` null fades the cones out. */
-  update(sim: PackSim | null, time: number, dt: number, heightAt: (x: number, z: number) => number): void {
+  /** `sim` null fades the cones out. A list of fans (`ConeSpec[]`) draws those instead of a pack's. */
+  update(input: PackSim | readonly ConeSpec[] | null, time: number, dt: number, heightAt: (x: number, z: number) => number): void {
+    const sim = input === null ? null : Array.isArray(input) ? (input as readonly ConeSpec[]) : packCones(input as PackSim);
     // on at once (the danger is there the moment the hounds are), a short fade when they go
     this.k = sim ? 1 : Math.max(0, this.k - dt * 2);
     this.object.visible = this.k > 0.001 && !!(sim ?? this.last);
@@ -159,26 +193,23 @@ export class SightCones {
     (this.fGeo.getAttribute('color') as BufferAttribute).needsUpdate = true;
   }
 
-  private last: PackSim | null = null;
+  private last: readonly ConeSpec[] | null = null;
 
-  private fill(sim: PackSim, time: number, heightAt: (x: number, z: number) => number): void {
+  private fill(cones: readonly ConeSpec[], time: number, heightAt: (x: number, z: number) => number): void {
     const vPer = (SEG + 1) * (RINGS + 1);
-    const st = sim.state;
-    const alertMul = st === 'chasing' ? 1.35 : st === 'searching' ? 1.15 : 1;
-    const fov = ((st === 'chasing' ? 230 : st === 'searching' ? 180 : 140) * Math.PI) / 180;
-    const range = Math.max(4, sim.lastSight * alertMul);
     let c = 0;
-    for (const a of sim.agents) {
+    for (const a of cones) {
       if (c >= MAXC) break;
-      if (a.kind !== 'hound' || a.lie > 0.5) continue;
-      const aw = Math.min(1, a.awareness);
-      const seen = Math.min(1, a.sees * 2);
+      const aw = Math.min(1, Math.max(0, a.level));
+      const seen = Math.min(1, Math.max(0, a.seen ?? 0));
       const hot = Math.max(aw, seen);
+      const range = a.range;
+      const fov = a.fov;
       // deep amber → orange → red: a dark warm stain reads on bright frost where a pale one vanished
       // (playtest round 5: "I could not see any fan on the snow")
-      const r = 0.78 + 0.14 * hot;
-      const g = 0.3 - 0.12 * aw - 0.22 * seen;
-      const bl = 0.02;
+      const r = a.rgb ? a.rgb[0] : 0.78 + 0.14 * hot;
+      const g = a.rgb ? a.rgb[1] : 0.3 - 0.12 * aw - 0.22 * seen;
+      const bl = a.rgb ? a.rgb[2] : 0.02;
       const pulse = 0.85 + 0.15 * Math.sin(time * 3 + c);
       const base = c * vPer;
       for (let ri = 0; ri <= RINGS; ri++) {
@@ -187,7 +218,7 @@ export class SightCones {
         const d = 0.6 + f * (range - 0.6);
         for (let si = 0; si <= SEG; si++) {
           const u = si / SEG;
-          const ang = a.heading + (u - 0.5) * fov;
+          const ang = a.yaw + (u - 0.5) * fov;
           const x = a.x - Math.sin(ang) * d;
           const z = a.z - Math.cos(ang) * d;
           const v = base + ri * (SEG + 1) + si;
@@ -221,7 +252,8 @@ export class SightCones {
         const along = i <= RINGS ? i / RINGS : i >= OUTLINE - RINGS - 1 ? (OUTLINE - 1 - i) / RINGS : 1;
         const hgt = FENCE_H * Math.min(1, along * 1.6) * this.k;
         this.fPos.set([x, y, z, x, y + Math.max(0.01, hgt), z], o * 3);
-        this.fCol.set([fr, fg, 0.05, hgt > 0.02 ? 0 : -1, fr, fg, 0.05, hgt > 0.02 ? 1 : -1], o * 4);
+        const fb = a.rgb ? Math.min(1, bl * 1.15) : 0.05;
+        this.fCol.set([fr, fg, fb, hgt > 0.02 ? 0 : -1, fr, fg, fb, hgt > 0.02 ? 1 : -1], o * 4);
       }
       c++;
     }

@@ -37,6 +37,8 @@ import {
   Vector3,
 } from 'three';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
+import { ghostMaterials, ghostShared, linHex } from '../characters/shaders';
+import { PIKE_BESIDE, pikeGeometry } from '../court/props';
 import { ERA_TINT, type NpcLook } from './roster';
 
 /** sRGB hex → linear colour (the world renders linear HDR before tone mapping). */
@@ -855,6 +857,8 @@ export class GhostFigure {
   talk = 0;
   /** 0..1 down on one knee (legs folded in the shader; the caller lowers the object). */
   kneel = 0;
+  /** A Gardist's pike standing beside the procedural body (look.pike; ghost material), or null. */
+  private readonly pike: { mesh: Mesh; shared: Record<string, { value: unknown }> } | null = null;
 
   constructor(look: NpcLook, era: string) {
     this.look = look;
@@ -931,6 +935,27 @@ export class GhostFigure {
     this.proc = [depthMesh, bodyMesh];
     this.object.name = `npc-${look.id}`;
     this.mats = [body, depth, this.motes, this.pool];
+    // a Gardist's pike beside the procedural body (court/props.ts PIKE_BESIDE), a ghost like him
+    if (look.pike) {
+      const shared = ghostShared(tint.clone(), look.seed, look.mood === 'eerie' ? 1 : look.mood === 'neutral' ? 0.4 : 0);
+      shared.uHeight!.value = look.height;
+      const pg = pikeGeometry();
+      this.geos.push(pg);
+      const { body: pb, depth: pd } = ghostMaterials(shared, linHex(0x8a7a66));
+      const mesh = new Mesh(pg, pb);
+      mesh.name = 'npc-pike';
+      const twin = new Mesh(pg, pd);
+      mesh.renderOrder = 7;
+      twin.renderOrder = 6;
+      const s = look.height / 1.7;
+      mesh.position.set(PIKE_BESIDE.x * s * look.build, 0, PIKE_BESIDE.z * s);
+      mesh.rotation.y = -Math.PI / 2;
+      mesh.add(twin);
+      mesh.frustumCulled = twin.frustumCulled = false;
+      this.object.add(mesh);
+      this.mats.push(pb, pd);
+      this.pike = { mesh, shared };
+    }
   }
 
   private tintFor(era: string): Color {
@@ -942,6 +967,7 @@ export class GhostFigure {
   setEra(era: string): void {
     const c = this.tintFor(era);
     for (const m of this.mats) (m.uniforms.uTint?.value as Color | undefined)?.copy(c);
+    (this.pike?.shared.uTint!.value as Color | undefined)?.copy(c);
     this.rigged?.setTint(c);
   }
 
@@ -988,6 +1014,15 @@ export class GhostFigure {
     // the rigged body stands in, except on one knee (the procedural legs fold for that)
     const rigged = this.rigged !== null && this.kneel < 0.01;
     for (const m of this.proc) m.visible = !rigged;
+    if (this.pike) {
+      // the rigged body holds its own pike (rigged.ts); the standing one is the procedural figure's
+      this.pike.mesh.visible = !rigged;
+      const ps = this.pike.shared;
+      ps.uAlpha!.value = this.alpha;
+      ps.uMotion!.value = motion;
+      this.object.updateMatrixWorld();
+      ps.uBaseY!.value = this.object.matrixWorld.elements[13];
+    }
     if (this.rigged) {
       this.rigged.rig.root.visible = rigged;
       if (rigged && this.object.visible)

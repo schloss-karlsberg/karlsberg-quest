@@ -11,6 +11,7 @@ import type { LoadedModel } from '../../assets/loader';
 import { builtInHat, costumeFor, HIDDEN_MESHES, modelFor, slotColour } from '../characters/catalog';
 import { Rig } from '../characters/rig';
 import { ghostMaterials, ghostShared, linHex } from '../characters/shaders';
+import { attachPike, pikeGeometry } from '../court/props';
 import { figureExtras } from './figure';
 import type { NpcLook } from './roster';
 
@@ -131,6 +132,12 @@ export class RiggedGhost {
         const col = this.look.prop === 'ledger' ? 0x3b2418 : this.look.prop === 'basket' ? 0xa9824a : 0x5a4028;
         if (this.rig.attach('WristR', prop)) this.dress(prop, linHex(col));
       } else ex.prop.dispose();
+    }
+    // a Gardist's pike (court, docs/IDEAS-ROUND11.md §2): plumb in the right hand, ghost material
+    if (this.look.pike) {
+      const m = new Mesh(pikeGeometry());
+      this.geos.push(m.geometry);
+      if (attachPike(this.rig, m)) this.dress(m, linHex(0x8a7a66));
     }
   }
 
