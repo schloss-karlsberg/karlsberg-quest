@@ -1454,7 +1454,7 @@ WP-16, design contract C2 (`docs/design/tour/systems.md`). Pure core: `route.ts`
 validator rules), `walker.ts` (one walker: leash with hysteresis, catch-up, arrival once,
 `snapAhead`, save), `group.ts` (follow / gather slots, separation, trunk push-out, stable slot
 assignment, `stepMember`); `runtime.ts` (the system, headless: requests, groups, events, save) on a
-`BodyFactory` and a `WalkWorld`; `bodies.ts` (body adapters); `index.ts` (wiring, hooks). Runs
+`BodyFactory` and a `WalkWorld`; `bodies.ts` (the people-API body adapter, required, no fallback); `index.ts` (wiring, hooks). Runs
 `after: ['people', 'npc']`. The group exists only in era `today`: other eras hide the bodies and
 pause the logic.
 - Requests: `npc:walk` `WalkRequest` (types.ts; the story's `do: 'npc'` ops), also
@@ -1496,9 +1496,11 @@ pause the logic.
   `guide`, spec ids pass through), tier hero / featured / extra, `root.position` moved, turns via
   `face`, locomotion via `setSpeed` (no `play` for walking, no `root.rotation`, no `lookAt`). A
   group's members that are not spec ids (`extra.mats`, …) take the extra specs the group does not use
-  yet, in member order, then wrap with another seed (`memberLooks`), so no two look the same. Without
-  `ctx.people` (people system failed / not registered): stand-ins built with the scenery Kit on the
-  prop material (3 draw calls each, no shadows, legs swinging with the distance walked).
+  yet, in member order, then wrap with another seed (`memberLooks`), so no two look the same. The
+  people API is required, there is no fallback figure: without `ctx.people` (people system failed /
+  not registered) `walkBodies` spawns no bodies at all and logs `console.error('[walk] people API
+  missing: walk bodies disabled')` once; walkers, groups, events (`npc:arrived`, …) and the save
+  slice run on bodiless, so story beats never hang. `kq.walk.stats().peopleApi` tells which case.
 - State `systems.walk {walkers: WalkerSave[], groups: GroupSave[]}` (written twice a second and
   after every request / arrival): per walker `{npc, route, to, s, waiting, path?, speed?, wait?}`,
   per group `{group, leader, members, mode, around?, face?, at?, route?, r?, spacing?}`. People are
@@ -1510,7 +1512,7 @@ pause the logic.
 - Hooks `kq.walk.go(npc, route, to, {speed?, wait?})`, `snap(group, stop)`, `groups()` → `{group,
   leader, at, waiting}[]`, `demo({to?, speed?, r?})` (guide + 14 members at the car park, group,
   follow, walk to `abzweig` at 1.9 m/s with `wait {r: 25, bark: 'imhoff.bark.wait'}`), `stats()` →
-  `{bodies, visible, ms, updateMs, syncMs, people}`, `list()`, `walker(npc)`, `request(r)`,
+  `{bodies, visible, ms, updateMs, syncMs, people, peopleApi}`, `list()`, `walker(npc)`, `request(r)`,
   `restore()`. Tests: `tests/walk-{route,walker,group,system}.test.ts`, `e2e/walk.spec.ts` (demo
   arrival, leash, snap + warp, perf with 16 bodies at high / low, screenshots `test-results/walk/`).
 
