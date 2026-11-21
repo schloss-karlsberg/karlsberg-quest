@@ -510,10 +510,17 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `hurt`, `dodge` (perfect), `evade`, `ko`, `died`, `bounce` (guard), `guardBreak`, `flank`,
   `immune`, `telegraph` (attack, dur), `strike`, `swing`, `whiff`, `stun`, `phase`, `heal`, `bann`,
   `shotHit`, `hazardHit`, …, and `inputDropped {input: attack|dodge, reason}` for a press that had
-  no effect: `recovery` (a swing runs, outside the combo buffer), `hitstop`, `blocked`, `skill`,
-  `dodging`, `tired`, `noDodge`, `interact` (the click went to the interact target), `dead`; `t` =
-  seconds into the act; tapped by wrapping the live `CombatSim.step` and reading the player state
-  before / after, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
+  no effect. A press that lands in the combat input buffer (`p.bufAtk` / `p.bufDodge`,
+  `INPUT_BUFFER` = 0.25 s, kept also through hit-stop) is not a drop: `PressTracker` follows it
+  and reports it only if it never acts. Reasons: `bufferExpired` (it waited in the buffer and its
+  0.25 s ran out unused, e.g. a roll pressed too early in a roll, or a hit-stop longer than the
+  buffer), `dead`, `blocked` (attacks off: modal, measuring, flying, talking …; also clears a
+  waiting press), `skill` (an ability owns the hands; also clears a waiting press), `tired`,
+  `dodging`, `noDodge`, `interact` (the click went to the interact target), `recovery` / `hitstop`
+  (only for a press that did not reach the buffer; normally such presses are buffered), `unknown`;
+  each press is reported at most once; `t` = seconds into the act; tapped by wrapping the live
+  `CombatSim.step` and reading the player state, buffer included, before / after, nothing in
+  combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
   same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
   story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
