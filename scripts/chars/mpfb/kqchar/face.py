@@ -180,7 +180,7 @@ def skin_colours(co, nrm, groups, lm, palette):
     base = hex_lin(palette['skin'])
     col = np.tile(base, (n, 1))
     rosy = hex_lin(palette.get('cheeks', '#d77a6a'))
-    r = lm['eye_radius']
+    r = lm.get('eye_radius_ref', lm['eye_radius'])  # the face's scale (before any eye stylisation)
     cp = palette.get('cheek_place', [0.55, -0.6, -2.0, 1.15])  # side, forward, down (eye radii), spread
     for e, s in ((lm['eye_l'], 1), (lm['eye_r'], -1)):
         c = e + np.array([s * cp[0] * r, cp[1] * r, cp[2] * r])

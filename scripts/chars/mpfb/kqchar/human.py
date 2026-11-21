@@ -214,16 +214,30 @@ def build(spec):
         if eb is not None and eb.tail[2] > lm1['head_top']:
             eb.tail = (eb.tail[0], eb.tail[1], lm1['head_top'])
         bpy.ops.object.mode_set(mode='OBJECT')
+    keys = {k: co + d for k, d in morph_d.items()}
+    # stylisation of the face (bigger eyes, simpler planes): optional, see stylize.py
+    sty = face.get('stylize')
+    eye_r_ref = None
+    if sty:
+        from . import stylize
+
+        lm1 = landmarks(co, groups)
+        eye_r_ref = lm1['eye_radius']
+        body = groups['body'] > 0.5
+        bfaces = [f for f in h.faces if body[list(f)].all()]
+        co, keys = stylize.apply(co, keys, bfaces, groups, wh, lm1, sty)
     obj.data.vertices.foreach_set('co', co.ravel())
     obj.data.update()
     h.co = co
-    h.keys = {k: co + d for k, d in morph_d.items()}
+    h.keys = keys
     W[eyes] = 0.0
     if hb is not None:
         W[eyes, hb] = 1.0
     h.weights = W
     h.lm = landmarks(co, groups)
     h.lm['head_weight'] = wh
+    # the face's own scale (glasses, cheek paint): the eye radius before any eye stylisation
+    h.lm['eye_radius_ref'] = eye_r_ref if eye_r_ref is not None else h.lm['eye_radius']
     return h
 
 

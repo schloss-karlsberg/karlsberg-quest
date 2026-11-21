@@ -253,6 +253,7 @@ def build(skin, lm, spec, palette, bones, seed=7):
     # ---- clump coverage: nearest comb line sample per vertex
     C = np.zeros(len(D))
     Ctip = np.zeros(len(D))
+    Sv = np.zeros(len(D))  # position along the owning clump (0 root, 1 tip)
     lid = np.full(len(D), -1)
     for k, L in enumerate(lines):
         P = L['pts']
@@ -267,6 +268,7 @@ def build(skin, lm, spec, palette, bones, seed=7):
         better = c > C
         C = np.where(better, c, C)
         lid = np.where(better, k, lid)
+        Sv = np.where(better, sv, Sv)
         Ctip = np.maximum(Ctip, np.clip(c, 0, 1) * smoothstep(0.35, 0.7, sv))
     Cc = np.clip(C, 0, 1)
     h = st.hairline(th)
@@ -284,6 +286,16 @@ def build(skin, lm, spec, palette, bones, seed=7):
         groove = np.exp(-((D[:, 0] - px) / pg.get('width', 0.035)) ** 2) * smoothstep(pg.get('from_y', -1.0), pg.get('from_y', -1.0) + 0.15, -D[:, 1] * -1)
         groove = groove * smoothstep(pg.get('to_y', 0.2) + 0.12, pg.get('to_y', 0.2) - 0.05, D[:, 1]) * smoothstep(0.1, 0.35, D[:, 2])
         rad = rad - vol * e * pg.get('depth', 0.6) * groove
+    if spec.get('smooth_passes'):
+        # soften the shell (stylised look): smooth the hair's own height over the scalp grid, so
+        # the clumps stay big rounded forms without small lumps; the tucked rim is held
+        hh = (rad[:-1] - r[:-1]).reshape(NJ, M)
+        held = (sink[:-1] > 1e-5).reshape(NJ, M) | (e[:-1] < 0.05).reshape(NJ, M)
+        for _ in range(int(spec['smooth_passes'])):
+            avg = hh.copy()
+            avg[:, 1:-1] = 0.5 * hh[:, 1:-1] + 0.125 * (np.roll(hh, 1, 0)[:, 1:-1] + np.roll(hh, -1, 0)[:, 1:-1] + hh[:, :-2] + hh[:, 2:])
+            hh = np.where(held, hh, avg)
+        rad = np.append(r[:-1] + hh.ravel(), rad[-1])
     co = hc + D * rad[:, None]
     # ---- colour: a tint per clump (the lighter strands), darker grooves, a soft crest highlight
     tint = np.array([L['tint'] for L in lines] + [0.0])
@@ -295,6 +307,15 @@ def build(skin, lm, spec, palette, bones, seed=7):
     if spec.get('tips'):
         # lighter strand tips (the clump ends catch light, so the hair keeps its colour at a distance)
         col = mix(col, light[None] * spec.get('tip_boost', 1.12), spec['tips'] * np.clip(Ctip, 0, 1))
+    rt = spec.get('root_tip')
+    if rt:
+        # a painterly value gradient along each clump: darker roots, lighter tips (big shapes, no noise)
+        col = mix(col, dark[None], rt[0] * smoothstep(0.45, 0.0, Sv) * (lid >= 0))
+        col = mix(col, light[None], rt[1] * smoothstep(0.35, 0.95, Sv) * Cc)
+    ud = spec.get('under_dark')
+    if ud:
+        # darker underneath (the nape and the low sides sit in the head's own shade)
+        col = mix(col, dark[None], ud * smoothstep(0.25, -0.35, D[:, 2]))
     if pg:
         col = mix(col, dark[None] * 0.8, pg.get('dark', 0.6) * groove)
         if 'scalp' in pg:

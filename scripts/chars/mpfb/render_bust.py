@@ -1,7 +1,7 @@
 """Preview renders of a built character (studio light, not the game's light).
 
     blender -b --factory-startup --disable-autoexec -P scripts/chars/mpfb/render_bust.py -- \
-        <character.glb|character.blend> <out_dir> [--engine cycles|eevee] [--views front,34,side,back,full,close,close34,backfull] [--hide Skin,...] [--view 'ACES 1.3'|AgX|Filmic] \
+        <character.glb|character.blend> <out_dir> [--engine cycles|eevee] [--views front,34,side,back,full,close,close34,backfull,mouth,eyes] [--hide Skin,...] [--view 'ACES 1.3'|AgX|Filmic] \
         [--size 640] [--morph smile=1] [--samples 24]
 
 Cycles renders on the CPU (no GPU lock needed, a few seconds per view at 640 px). Eevee uses the GPU:
@@ -119,12 +119,16 @@ if engine == 'cycles':
 else:
     scene.render.engine = 'BLENDER_EEVEE_NEXT' if 'BLENDER_EEVEE_NEXT' in [e.identifier for e in scene.render.bl_rna.properties['engine'].enum_items] else 'BLENDER_EEVEE'
 
-ANG = {'neck34': 50, 'necktour': -30, 'hem34': 30, 'wrist': 70, 'top': 0, 'front': 0, '34': 35, 'side': 90, 'back': 180, 'otherside': -90, 'full': 20, 'close': 0, 'close34': 45, 'backfull': 160, 'mouth': 0, 'mouth34': 40}
+ANG = {'neck34': 50, 'necktour': -30, 'hem34': 30, 'wrist': 70, 'top': 0, 'front': 0, '34': 35, 'side': 90, 'back': 180, 'otherside': -90, 'full': 20, 'close': 0, 'close34': 45, 'backfull': 160, 'mouth': 0, 'mouth34': 40, 'eyes': 0, 'eyes34': 35}
 for v in views:
     a = math.radians(ANG.get(v, 0))
     if v.startswith('mouth'):
         tz = zmax - 0.2
         dist = 0.35
+        cam_d.lens = 70
+    elif v.startswith('eyes'):
+        tz = zmax - 0.15
+        dist = 0.32
         cam_d.lens = 70
     elif v.startswith('close'):
         tz = zmax - 0.14

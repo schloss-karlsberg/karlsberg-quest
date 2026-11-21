@@ -64,7 +64,8 @@ def _tube(path, ups, w, h, n_side=6):
 
 
 def build(skin, lm, spec, palette, bones, skin_keys=None, skin_faces=None):
-    sc = lm['eye_radius'] / 0.0158
+    # sized to the face (the eye radius before any eye stylisation), not to stylised big eyes
+    sc = lm.get('eye_radius_ref', lm['eye_radius']) / 0.0158
     a = spec.get('lens_w', 0.052) * sc / 2
     b = spec.get('lens_h', 0.039) * sc / 2
     p = spec.get('squareness', 3.4)
