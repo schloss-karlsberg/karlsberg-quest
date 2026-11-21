@@ -633,12 +633,11 @@ class StoryRuntime {
     for (const a of actions) {
       if (resume && !runsOnResume(a)) continue;
       at += a.delay ?? 0;
+      // measure a line BEFORE it runs: an immediate say marks itself said, and would then take no time
+      const text = a.do === 'say' ? (this.sayText(a) ?? '') : '';
       if (at <= 0) this.withScope(scope, () => this.exec(a));
       else this.schedule(at, () => this.exec(a), scope, !PRESENTATION.has(a.do));
-      if (a.do === 'say') {
-        const text = this.sayText(a) ?? '';
-        if (text) at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
-      }
+      if (text && a.do === 'say') at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
     }
   }
 
