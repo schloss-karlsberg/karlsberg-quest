@@ -8,10 +8,47 @@
  * NPC costumes in characters/catalog.ts; `pack` colours the adventurer's backpack). Modern-ish
  * clothes: the guide in a dark jacket, the doubles and extras in everyday colours. The historical
  * twins wear the roster's period costume (catalog `costumeFor`).
+ *
+ * Authored bodies: a spec with `authored` draws its MPFB build (scripts/chars/mpfb/specs/<id>.json,
+ * packed into public/assets/models/chars/) with the shared palette material (./authored.ts); its
+ * stand-in fields stay for the capsule fallback colour. Today: the guide. `PEOPLE_AUTHORED_DEFAULT` and
+ * `?people=authored|standin` switch the authored bodies on or off for the whole session.
  */
 import { type CharacterModel, type Costume, costumeFor } from '../characters/catalog';
 import { lookFor } from '../npc/roster';
 import type { BudgetTier, PersonLook } from './types';
+
+/** Asset ids of the authored people GLBs (src/assets/manifests/chars-mpfb.ts). */
+export type AuthoredModel = 'chars.people.guide';
+
+/** Any body a person can load: a stand-in Quaternius human or an authored MPFB build. */
+export type PersonModel = CharacterModel | AuthoredModel;
+
+/** The authored body of a spec (scripts/chars/mpfb): the packed GLB and its ghost-look colour. */
+export interface AuthoredBody {
+  model: AuthoredModel;
+  /** Ghost look: the cloth colour (sRGB) the ghost shader lays over the body (its `top` palette slot). */
+  cloth: number;
+}
+
+/**
+ * Authored bodies on or off, the one line to flip: on, a spec with `authored` draws its MPFB build;
+ * off, every person keeps its stand-in (the authored guide is then opt-in by URL). The URL wins over it
+ * (`authoredBodiesOn`). Off for now: the authored guide is opt-in (`?people=authored`) until his look
+ * passes review.
+ */
+export const PEOPLE_AUTHORED_DEFAULT = false;
+
+/**
+ * Are authored bodies drawn? `?people=authored` forces them, `?people=standin` forces the stand-ins;
+ * without the parameter `fallback` (PEOPLE_AUTHORED_DEFAULT) decides. Read once at people init.
+ */
+export function authoredBodiesOn(params: URLSearchParams, fallback: boolean = PEOPLE_AUTHORED_DEFAULT): boolean {
+  const v = params.get('people');
+  if (v === 'authored') return true;
+  if (v === 'standin') return false;
+  return fallback;
+}
 
 export interface PersonSpec {
   id: string;
@@ -24,6 +61,8 @@ export interface PersonSpec {
   radius: number;
   /** Look when spawned without one. */
   look: PersonLook;
+  /** The authored MPFB body (replaces the stand-in model; see ./authored.ts). */
+  authored?: AuthoredBody;
   // ---- stand-in only
   model: CharacterModel;
   /** Width factor (x / z scale of the body; 1 = the model's own build). */
@@ -70,11 +109,12 @@ const mannlich = lookFor('mannlich');
 export const PERSON_SPECS: readonly PersonSpec[] = [
   {
     id: 'guide',
-    label: 'Gerold Imhoff (placeholder guide): big, skinny, bald, dark jacket',
+    label: 'Gerold Imhoff (placeholder guide): big, skinny, bald, forest-green softshell, mustard lanyard',
     tier: 'featured',
     height: 1.95,
     radius: 0.3,
     look: 'solid',
+    authored: { model: 'chars.people.guide', cloth: 0x3e6a4c },
     model: ADV,
     build: 0.86,
     palette: adv(0x22262d, 0x2c3139, 0x3b3d40, 0x2a2622, 0x6b5a48, SKIN_PALE),

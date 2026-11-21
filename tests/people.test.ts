@@ -1,12 +1,13 @@
 /**
  * People contract v0 / v0.1 (src/systems/people, docs/ARCHITECTURE.md "People contract v0"): the pure
  * locomotion / LOD / yaw logic, the spec table, the unknown-spec fallback, the registry, contract
- * conformance of the stand-in (type level and at run time, with the real CC0 model loaded in node)
- * and the npc binding helpers (talking to people).
+ * conformance of the stand-in and of the authored MPFB guide (type level and at run time, with the
+ * real GLBs loaded in node: budget, LOD1, the one shared palette material) and the npc binding
+ * helpers (talking to people).
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Group, type SkinnedMesh, Vector3 } from 'three';
+import { Box3, Group, type Material, type Mesh, type SkinnedMesh, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
@@ -31,9 +32,10 @@ import {
   strideFromFeet,
   wrapPi,
 } from '../src/systems/people/locomotion';
+import { AUTHORED_BONES, AUTHORED_CLIPS, AUTHORED_KIT, AUTHORED_SOURCE, AUTHORED_SUPPORTED, LOD1_SUFFIX, PEOPLE_EYE_MATERIAL, PEOPLE_MATERIAL, lod1Level, peopleMaterial } from '../src/systems/people/authored';
 import { PeopleRegistry, type PersonFactoryArgs, type PersonRuntime } from '../src/systems/people/registry';
-import { GENERIC_EXTRA, PERSON_SPECS, SPEC_IDS, resolveSpec, standinColour, standinShows } from '../src/systems/people/specs';
-import { STANDIN_CLIPS, STANDIN_SUPPORTED, type StandInLoader, StandInPerson } from '../src/systems/people/standin';
+import { GENERIC_EXTRA, PEOPLE_AUTHORED_DEFAULT, PERSON_SPECS, SPEC_IDS, authoredBodiesOn, resolveSpec, standinColour, standinShows } from '../src/systems/people/specs';
+import { STANDIN_CLIPS, STANDIN_KIT, STANDIN_SUPPORTED, type StandInLoader, StandInPerson, kitFor } from '../src/systems/people/standin';
 import { CLIP_FALLBACK, PEOPLE_LOD, TIER_BUDGET, type PeopleApi, type Person, type PersonClip } from '../src/systems/people/types';
 
 const PI = Math.PI;
@@ -249,6 +251,10 @@ describe('spec table v0', () => {
     expect(by('guide').height).toBe(1.95);
     expect(by('guide').build).toBeLessThan(0.95); // skinny
     expect(by('guide').hideSlots).toContain('Hair'); // bald
+    expect(by('guide').authored?.model).toBe('chars.people.guide');
+    // every other spec keeps its stand-in
+    for (const s of PERSON_SPECS) if (s.id !== 'guide') expect(kitFor(s)).toBe(STANDIN_KIT);
+    expect(kitFor(GENERIC_EXTRA)).toBe(STANDIN_KIT);
     expect(by('child.compass').height).toBeCloseTo(1.25, 2);
     expect(by('twin.herzog').height).toBe(ROSTER.herzog!.height);
     expect(by('twin.mannlich').height).toBe(ROSTER.mannlich!.height);
@@ -456,24 +462,29 @@ describe('contract conformance', () => {
 // ---- the stand-in on the real CC0 model (node, no GPU) -----------------------------------------
 
 const models = new Map<string, Promise<LoadedModel>>();
-function loadModel(file: string): Promise<LoadedModel> {
-  let p = models.get(file);
+/** A GLB below public/assets/models/characters (or `dir`), parsed in node. */
+function loadModel(file: string, dir = 'characters'): Promise<LoadedModel> {
+  let p = models.get(`${dir}/${file}`);
   if (!p) {
     p = (async () => {
       await MeshoptDecoder.ready;
-      const buf = readFileSync(resolve(import.meta.dirname, '../public/assets/models/characters', file));
+      const buf = readFileSync(resolve(import.meta.dirname, '../public/assets/models', dir, file));
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder);
       const g = await loader.parseAsync(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, '');
       return { scene: g.scene, animations: g.animations };
     })();
-    models.set(file, p);
+    models.set(`${dir}/${file}`, p);
   }
   return p;
 }
 const adventurer = () => loadModel('human_adventurer.glb');
+const guideGlb = () => loadModel('guide-mpfb.glb', 'chars');
 
-async function realRegistry() {
+/** The authored path, forced as `?people=authored` does (whatever PEOPLE_AUTHORED_DEFAULT says). */
+const FORCED_AUTHORED = authoredBodiesOn(new URLSearchParams('?people=authored'));
+
+async function realRegistry(authored = FORCED_AUTHORED) {
   const files: Record<string, string> = {
     'characters.human.adventurer': 'human_adventurer.glb',
     'characters.human.farmer': 'human_farmer.glb',
@@ -481,8 +492,9 @@ async function realRegistry() {
   };
   const loaded = new Map<string, LoadedModel>();
   for (const [id, f] of Object.entries(files)) loaded.set(id, await loadModel(f));
+  loaded.set('chars.people.guide', await guideGlb());
   const loader: StandInLoader = { model: async (id) => loaded.get(id)!, peek: (id) => loaded.get(id) ?? null };
-  return new PeopleRegistry<StandInPerson>((a) => new StandInPerson(a.id, a.specId, a.spec, a.opts, loader, a.onDispose), () => 0);
+  return new PeopleRegistry<StandInPerson>((a) => new StandInPerson(a.id, a.specId, a.spec, a.opts, loader, a.onDispose, kitFor(a.spec, authored)), () => 0);
 }
 
 const run = (reg: PeopleRegistry<StandInPerson>, s: number, cam = { x: 0, y: 1.6, z: 0 }) => {
@@ -499,9 +511,12 @@ describe('stand-in on the rigged Quaternius humans', () => {
       expect(st.fallback).toBe(false);
       expect(st.stride.measured).toBe(true);
       const spec = resolveSpec(id).spec;
-      // Walk ≈ 0.98 m per loop per metre of height, Run ≈ 1.31 (strideFromFeet on the clips' foot tracks)
-      expect(st.stride.walk / (spec.height * spec.build)).toBeGreaterThan(0.85);
-      expect(st.stride.walk / (spec.height * spec.build)).toBeLessThan(1.1);
+      expect(st.body).toBe(spec.authored ? 'authored' : 'standin');
+      // Walk ≈ 0.98 m per loop per metre of height, Run ≈ 1.31 (strideFromFeet on the clips' foot
+      // tracks); the stand-in's width factor scales it, an authored body brings its own build
+      const build = spec.authored ? 1 : spec.build;
+      expect(st.stride.walk / (spec.height * build)).toBeGreaterThan(0.85);
+      expect(st.stride.walk / (spec.height * build)).toBeLessThan(1.1);
       expect(st.stride.run).toBeGreaterThan(st.stride.walk);
       expect(st.look).toBe(spec.look);
     }
@@ -612,7 +627,8 @@ describe('stand-in on the rigged Quaternius humans', () => {
           expect(sphere.containsPoint(v)).toBe(true);
         }
       });
-      expect(parts).toBeGreaterThan(8);
+      // a stand-in is a dozen parts, the authored guide one mesh (of the LOD shown)
+      expect(parts).toBeGreaterThanOrEqual(q.info.specId === 'guide' ? 1 : 9);
     };
     for (const q of [p, c]) {
       q.setSpeed(4.5);
@@ -692,6 +708,244 @@ describe('stand-in on the rigged Quaternius humans', () => {
     expect(reg.get(p.id)).toBeUndefined();
     expect(p.body).toBeNull();
     p.dispose(); // twice is harmless
+  });
+});
+
+// ---- the authored guide (MPFB build, one shared palette material) -------------------------------
+
+const meshesOf = (root: { traverse(f: (o: unknown) => void): void }): Mesh[] => {
+  const out: Mesh[] = [];
+  root.traverse((o) => {
+    if ((o as Mesh).isMesh) out.push(o as Mesh);
+  });
+  return out;
+};
+const trisOf = (ms: readonly Mesh[]) => ms.reduce((s, m) => s + (m.geometry.index ? m.geometry.index.count : m.geometry.getAttribute('position').count) / 3, 0);
+
+describe('authored guide (MPFB build behind the contract)', () => {
+  it('the GLB fits the featured budget: ≤ 12k tris and ≤ 4 draw calls per LOD, LOD1 at about half, skinned to the same rig', async () => {
+    const g = await guideGlb();
+    const all = meshesOf(g.scene);
+    const lod0 = all.filter((m) => !m.name.endsWith(LOD1_SUFFIX));
+    const lod1 = all.filter((m) => m.name.endsWith(LOD1_SUFFIX));
+    expect(lod0.length).toBeGreaterThan(0);
+    expect(lod1.length).toBeGreaterThan(0);
+    // GLTFLoader makes one Mesh per primitive: one draw call each
+    expect(lod0.length).toBeLessThanOrEqual(TIER_BUDGET.featured.drawCalls);
+    expect(lod1.length).toBeLessThanOrEqual(TIER_BUDGET.featured.drawCalls);
+    expect(trisOf(lod0)).toBeLessThanOrEqual(TIER_BUDGET.featured.tris);
+    const ratio = trisOf(lod1) / trisOf(lod0);
+    expect(ratio).toBeGreaterThan(PEOPLE_LOD.lod1Ratio - 0.1);
+    expect(ratio).toBeLessThan(PEOPLE_LOD.lod1Ratio + 0.1);
+    // the palette material (plus the eyes' own, budget.eye_call), colours in the vertices; LOD1 drives the same bones
+    for (const m of all) {
+      expect([PEOPLE_MATERIAL, PEOPLE_EYE_MATERIAL]).toContain((m.material as Material).name);
+      expect(m.geometry.getAttribute('color')).toBeTruthy();
+      expect((m as SkinnedMesh).isSkinnedMesh).toBe(true);
+    }
+    const bones0 = (lod0[0] as SkinnedMesh).skeleton.bones;
+    expect((lod1[0] as SkinnedMesh).skeleton.bones).toEqual(bones0);
+    expect(bones0.length).toBe(53);
+  });
+
+  it('one clip table: every MPFB source clip is in the GLB, the upper-body split cuts each one', async () => {
+    const g = await guideGlb();
+    for (const names of Object.values(AUTHORED_SOURCE)) expect(g.animations.some((a) => (names as readonly string[]).includes(a.name))).toBe(true);
+    for (const n of ['Idle', 'Walk', 'Run', 'Interact', 'Wave', 'Point']) {
+      const c = g.animations.find((a) => a.name === n)!;
+      const up = c.tracks.filter((t) => AUTHORED_BONES.upper.test(t.name.split('.')[0]!));
+      expect(up.length).toBeGreaterThan(10);
+      expect(c.tracks.length - up.length).toBeGreaterThan(5);
+    }
+    expect(Object.keys(AUTHORED_CLIPS).sort()).toEqual([...ALL_CLIPS].sort());
+    for (const c of AUTHORED_SUPPORTED) expect(AUTHORED_CLIPS[c].native).toBe(true);
+    // the authored body points for real (the baked Point clip); only the sits fall back
+    expect(resolveClip('point', AUTHORED_SUPPORTED)).toBe('point');
+    expect([...AUTHORED_SUPPORTED].sort()).toEqual(['idle', 'interact', 'lookAround', 'point', 'run', 'talk', 'walk', 'wave']);
+    expect(resolveClip('sit', AUTHORED_SUPPORTED)).toBe('idle');
+  });
+
+  it('the authored-bodies switch: ?people=authored / ?people=standin force a mode, else PEOPLE_AUTHORED_DEFAULT', async () => {
+    const q = (s: string) => new URLSearchParams(s);
+    expect(authoredBodiesOn(q(''))).toBe(PEOPLE_AUTHORED_DEFAULT);
+    expect(authoredBodiesOn(q('?people=other'), false)).toBe(false);
+    expect(authoredBodiesOn(q('?people=other'), true)).toBe(true);
+    // forced, whatever the default
+    for (const fallback of [true, false]) {
+      expect(authoredBodiesOn(q('?people=authored'), fallback)).toBe(true);
+      expect(authoredBodiesOn(q('?people=standin'), fallback)).toBe(false);
+    }
+    const guide = resolveSpec('guide').spec;
+    expect(kitFor(guide, true)).toBe(AUTHORED_KIT);
+    expect(kitFor(guide, false)).toBe(STANDIN_KIT);
+    expect(kitFor(resolveSpec('extra.1').spec, true)).toBe(STANDIN_KIT);
+    // forced authored: the guide draws its MPFB body
+    const on = await realRegistry(authoredBodiesOn(q('?people=authored'), false));
+    const a = on.spawn('guide', { x: 0, z: -6 });
+    expect(await a.ready).toBe(true);
+    expect(a.state().body).toBe('authored');
+    expect(a.info.clips).toEqual(AUTHORED_SUPPORTED);
+    on.clear();
+    // forced stand-in: the same spec on its Quaternius stand-in, the same contract numbers
+    const off = await realRegistry(authoredBodiesOn(q('?people=standin'), true));
+    const b = off.spawn('guide', { x: 0, z: -6 });
+    expect(await b.ready).toBe(true);
+    run(off, 0.3);
+    expect(b.state().body).toBe('standin');
+    expect(b.info).toMatchObject({ specId: 'guide', tier: 'featured', height: 1.95, radius: 0.3 });
+    expect(b.info.clips).toEqual(STANDIN_SUPPORTED);
+    off.clear();
+  });
+
+  it('lod1Level switches at 15 m with hysteresis', () => {
+    expect(lod1Level(5, 0)).toBe(0);
+    expect(lod1Level(20, 0)).toBe(1);
+    expect(lod1Level(15.2, 1)).toBe(1);
+    expect(lod1Level(15.2, 0)).toBe(0);
+    expect(lod1Level(14, 1)).toBe(0);
+    expect(lod1Level(Number.NaN, 1)).toBe(1);
+  });
+
+  it('spawn("guide") draws the authored body: ready, 1.95 m, featured budget, info.clips, MPFB strides', async () => {
+    const reg = await realRegistry();
+    const p = reg.spawn('guide', { x: 0, z: -6 });
+    expect(await p.ready).toBe(true);
+    run(reg, 0.3);
+    const st = p.state();
+    expect(st.body).toBe('authored');
+    expect(st.fallback).toBe(false);
+    expect(st.lodLevel).toBe(0);
+    expect(p.info).toMatchObject({ specId: 'guide', tier: 'featured', height: 1.95, radius: 0.3 });
+    expect(p.info.clips).toEqual(AUTHORED_SUPPORTED);
+    expect(st.drawCalls).toBeGreaterThan(0);
+    expect(st.drawCalls).toBeLessThanOrEqual(TIER_BUDGET.featured.drawCalls);
+    expect(st.tris).toBeLessThanOrEqual(TIER_BUDGET.featured.tris);
+    expect(st.stride.measured).toBe(true);
+    // standing in the idle pose: about the spec height (head top, feet on the ground)
+    p.root.updateMatrixWorld(true);
+    const box = new Box3().setFromObject(p.body!, true);
+    expect(box.max.y - box.min.y).toBeGreaterThan(1.85);
+    expect(box.max.y - box.min.y).toBeLessThan(2.0);
+    expect(Math.abs(box.min.y)).toBeLessThan(0.05);
+    reg.clear();
+  });
+
+  it('LOD1 beyond 15 m (with hysteresis): half the triangles, the same draw calls', async () => {
+    const reg = await realRegistry();
+    const p = reg.spawn('guide', { x: 0, z: 0 });
+    await p.ready;
+    run(reg, 0.1, { x: 0, y: 1.6, z: 10 });
+    const near = p.drawStats();
+    expect(p.state().lodLevel).toBe(0);
+    run(reg, 0.1, { x: 0, y: 1.6, z: 20 });
+    const far = p.drawStats();
+    expect(p.state().lodLevel).toBe(1);
+    expect(far.calls).toBe(near.calls);
+    expect(far.tris / near.tris).toBeGreaterThan(0.4);
+    expect(far.tris / near.tris).toBeLessThan(0.6);
+    // only the LOD shown is drawn
+    const shown = meshesOf(p.root).filter((m) => m.visible);
+    expect(shown.length).toBe(far.calls);
+    expect(shown.every((m) => m.name.endsWith(LOD1_SUFFIX))).toBe(true);
+    run(reg, 0.1, { x: 0, y: 1.6, z: 15.2 });
+    expect(p.state().lodLevel).toBe(1);
+    run(reg, 0.1, { x: 0, y: 1.6, z: 14 });
+    expect(p.state().lodLevel).toBe(0);
+    reg.clear();
+  });
+
+  it('one shared material instance across people: never cloned, never disposed by a person', async () => {
+    const reg = await realRegistry();
+    const a = reg.spawn('guide', { x: 0, z: -5 });
+    const b = reg.spawn('guide', { x: 2, z: -5, yaw: 1 });
+    await Promise.all([a.ready, b.ready]);
+    run(reg, 0.2);
+    const mats = (q: Person) => new Set(meshesOf(q.root).filter((m) => m.visible).map((m) => m.material as Material));
+    const shared = peopleMaterial();
+    expect([...mats(a)]).toEqual([shared]);
+    expect([...mats(b)]).toEqual([shared]);
+    expect(shared.vertexColors).toBe(true);
+    // the ghost look is per person; back to solid is the shared instance again
+    a.setLook('ghost');
+    run(reg, 0.1);
+    expect(mats(a).has(shared)).toBe(false);
+    a.setLook('solid');
+    run(reg, 0.1);
+    expect([...mats(a)]).toEqual([shared]);
+    let disposed = false;
+    shared.addEventListener('dispose', () => (disposed = true));
+    a.dispose();
+    expect(disposed).toBe(false);
+    expect([...mats(b)]).toEqual([shared]);
+    reg.clear();
+    expect(disposed).toBe(false);
+  });
+
+  it('contract conformance on the authored body: locomotion, one-shots, fallbacks, lookAt, looks', async () => {
+    const reg = await realRegistry();
+    const p = reg.spawn('guide', { x: 0, z: 0, yaw: 0 });
+    await p.ready;
+    run(reg, 0.3);
+    expect(p.state().weights.idle).toBeGreaterThan(0.95);
+    p.setSpeed(1.4);
+    run(reg, 0.6);
+    expect(p.state().weights.walk).toBeGreaterThan(0.95);
+    // the MPFB feet travel through the stride while walking (root frame), under the body
+    const foot = p.body!.getObjectByName('foot_l')!;
+    const at = () => {
+      p.root.updateMatrixWorld(true);
+      return p.root.worldToLocal(foot.getWorldPosition(new Vector3()));
+    };
+    const f0 = at();
+    run(reg, 0.3);
+    const f1 = at();
+    expect(Math.hypot(f1.x - f0.x, f1.y - f0.y, f1.z - f0.z)).toBeGreaterThan(0.1);
+    expect(Math.abs(f1.z)).toBeLessThan(0.8);
+    p.setSpeed(4.5);
+    run(reg, 0.6);
+    expect(p.state().weights.run).toBeGreaterThan(0.95);
+    p.setSpeed(0);
+    run(reg, 0.8);
+    p.play('wave');
+    run(reg, 0.5);
+    expect(p.state().shot).toBe('wave');
+    expect(p.state().weights.wave).toBeGreaterThan(0.5);
+    run(reg, 2.5);
+    expect(p.state().weights.wave).toBeLessThan(0.05);
+    p.play('point');
+    expect(p.state().playing).toBe('point');
+    run(reg, 0.5);
+    expect(p.state().shot).toBe('point');
+    expect(p.state().weights.point).toBeGreaterThan(0.5);
+    expect(p.state().weights.interact).toBeLessThan(0.05);
+    run(reg, 1.6);
+    expect(p.state().weights.point).toBeLessThan(0.05);
+    p.play('talk');
+    run(reg, 0.5);
+    expect(p.state().playing).toBe('talk');
+    p.play('sit');
+    run(reg, 2);
+    expect(p.state().playing).toBe('idle');
+    expect(p.state().drop).toBeGreaterThan(0.3);
+    p.play('idle');
+    p.lookAt({ x: 3, y: 1.9, z: -1 });
+    run(reg, 1.5);
+    expect(p.state().head.yaw).toBeLessThan(-0.4);
+    expect(Math.abs(p.state().head.yaw)).toBeLessThanOrEqual(HEAD_YAW + 1e-6);
+    p.lookAt(null);
+    p.face(PI / 2);
+    run(reg, 1.5);
+    expect(p.root.rotation.y).toBeCloseTo(PI / 2, 2);
+    const solid = p.drawStats();
+    p.setLook('ghost');
+    run(reg, 0.1);
+    expect(p.drawStats().calls).toBe(solid.calls * 2);
+    p.setVisible(false);
+    run(reg, 0.1);
+    expect(p.drawStats()).toEqual({ tris: 0, calls: 0 });
+    p.dispose();
+    expect(reg.list()).toEqual([]);
+    expect(p.root.parent).toBeNull();
   });
 });
 

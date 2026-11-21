@@ -1,6 +1,6 @@
 /**
  * The people registry: `PeopleApi` over whatever body implementation the factory builds (the
- * stand-in today, the authored meshes later). It resolves spec ids (unknown → the generic extra and
+ * stand-in, or an authored MPFB body for the specs that have one). It resolves spec ids (unknown → the generic extra and
  * one warning per id), grounds spawns, hands out unique ids, and once per frame runs the distance
  * LOD and every person's tick. No three.js beyond the persons' `root` positions; unit-tested with a
  * fake factory in tests/people.test.ts.
@@ -13,7 +13,8 @@ import type { PeopleApi, Person, PersonSpawnOpts } from './types';
 export interface PersonRuntime extends Person {
   readonly name: string;
   readonly speaker: string | undefined;
-  tick(f: { dt: number; rate: AnimRate; hidden: boolean; reducedMotion: boolean; reducedFlash: boolean }): void;
+  /** `dist`: metres from the camera (the mesh LOD of an authored body). */
+  tick(f: { dt: number; rate: AnimRate; hidden: boolean; reducedMotion: boolean; reducedFlash: boolean; dist?: number }): void;
   drawStats(): { tris: number; calls: number };
 }
 
@@ -110,7 +111,7 @@ export class PeopleRegistry<P extends PersonRuntime = PersonRuntime> implements 
       const d = Math.hypot(r.x - cam.x, r.y - cam.y, r.z - cam.z);
       const l = lodFor(d, env.drawLimit);
       this.lods.set(p.id, l.hidden ? 'hidden' : l.rate);
-      p.tick({ dt, rate: l.rate, hidden: l.hidden, reducedMotion: env.reducedMotion, reducedFlash: env.reducedFlash });
+      p.tick({ dt, rate: l.rate, hidden: l.hidden, reducedMotion: env.reducedMotion, reducedFlash: env.reducedFlash, dist: d });
     }
   }
 
