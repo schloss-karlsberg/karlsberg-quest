@@ -33,6 +33,7 @@ interface FakeAnimal extends Animal {
   clips: string[];
   speeds: number[];
   yaws: number[];
+  shine: number[];
 }
 
 function fakeFauna() {
@@ -53,6 +54,7 @@ function fakeFauna() {
         clips: [],
         speeds: [],
         yaws: [],
+        shine: [],
         setSpeed: (v) => a.speeds.push(v),
         play: (c) => a.clips.push(c),
         face: (y) => a.yaws.push(y),
@@ -62,7 +64,7 @@ function fakeFauna() {
           out.y = pos.y + 0.95;
           out.z = pos.z;
         },
-        setEyeShine: () => {},
+        setEyeShine: (k) => a.shine.push(k),
         setVisible: (v) => (a.visible = v),
         dispose: () => (a.disposed = true),
       };
@@ -292,5 +294,17 @@ describe('animals runtime (C5)', () => {
     c.step(4);
     expect(c.bus.of('animal:fled')).toHaveLength(0);
     expect(rt.calm('nobody', 1)).toBe(false);
+  });
+
+  it("op 'shine' sets the body's eye glint (clamped), rejects unknown ids and bad k", () => {
+    const { bus, rt, spawned } = setup();
+    bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', x: 1, z: 1 });
+    expect(rt.request({ op: 'shine', id: 'diane', k: 0.6 })).toBe(true);
+    expect(spawned[0]!.shine).toEqual([0.6]);
+    bus.emit('story:cue', { id: 'animal', data: { op: 'shine', id: 'diane', k: 3 } });
+    expect(spawned[0]!.shine).toEqual([0.6, 1]);
+    expect(rt.request({ op: 'shine', id: 'nobody', k: 0.5 })).toBe(false);
+    expect(rt.request({ op: 'shine', id: 'diane' })).toBe(false);
+    expect(rt.slots.get('diane')!.shine).toBe(1);
   });
 });

@@ -100,6 +100,9 @@ export class CinematicRuntime {
     ev.on('story:cue', ({ id, data }) => {
       if (id === 'cinematic') void this.play(data);
     });
+    ev.on('cinematic:stop', (p) => {
+      if (p && this.cur && this.cur.plan.id === p.id) this.end(true);
+    });
     ev.on('save:loaded', () => this.afterLoad());
     // the game started on a save that held a playing cinematic (a cinematic started by a
     // game:start handler before this one keeps playing)

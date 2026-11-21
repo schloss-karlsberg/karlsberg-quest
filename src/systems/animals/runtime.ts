@@ -94,6 +94,8 @@ interface Slot {
   speed: number;
   yaw: number;
   visible: boolean;
+  /** Eye glint 0..1 (op 'shine'); not saved: a restore starts at 0, whoever set it sets it again. */
+  shine: number;
   undo: (() => void)[];
 }
 
@@ -180,6 +182,16 @@ export class AnimalsRuntime {
       return true;
     }
     if (r.op === 'despawn') return this.remove(r.id);
+    if (r.op === 'shine') {
+      const s = this.slots.get(r.id);
+      if (!s) {
+        this.log(`[animals] no animal '${r.id}' for op 'shine'`);
+        return false;
+      }
+      s.shine = r.k;
+      s.body?.setEyeShine(r.k);
+      return true;
+    }
     const deer = this.deer.find((d) => d.id === r.id);
     if (deer) {
       if (!applyDeerRequest(deer, r)) {
@@ -204,7 +216,7 @@ export class AnimalsRuntime {
   }
 
   private addSlot(id: string, kind: AnimalKind, look: string, x: number, z: number, yaw: number, keepAlive: boolean): void {
-    const s: Slot = { id, kind, body: null, keepAlive, clip: null, speed: -1, yaw: Number.NaN, visible: true, undo: [] };
+    const s: Slot = { id, kind, body: null, keepAlive, clip: null, speed: -1, yaw: Number.NaN, visible: true, shine: 0, undo: [] };
     this.slots.set(id, s);
     this.spawnBody(s, look, x, z, yaw);
   }

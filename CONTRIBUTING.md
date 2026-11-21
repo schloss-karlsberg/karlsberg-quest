@@ -30,6 +30,7 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `?kapitel=2\|3\|4` | A new game starts at that chapter, with matching skills and level |
 | `?era=1789` | Start in that era: `today`, `1789`, `1793-02`, `1793-07`, `1796` |
 | `?x=…&z=…` | Start at a local position |
+| `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling |
 | `?manual` | Bullet time: the game advances only when stepped |
 | `window.kq` | Debug API in the browser console: teleport, set the era, step, press keys, combat hooks |
 | `kq.pilot` | Scripted play on top of `window.kq`: act, observe, choose, `bulletTime(true)`, `showStrip(true)` |
