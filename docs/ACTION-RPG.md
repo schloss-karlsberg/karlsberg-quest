@@ -851,7 +851,7 @@ prologue beat (no quest, no gate); the p10 objective suggests them in the evenin
 As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapitel1.mjs`); ends at level 6.
 
 **Opening at the Karlsbergquelle** (owner, 2026-11-20; design `docs/IDEAS-ROUND11.md` §1, phase 1;
-story `k1_0` → `k1_0b` → `k1_1`): the chapter checkpoint is the spring (1059.3/−833.1, yaw 50: the prologue's spot, within reach of the water), so
+story `k1_0` → `k1_0b` → `k1_0c` → `k1_1`): the chapter checkpoint is the spring (1059.3/−833.1, yaw 50: the prologue's spot, within reach of the water), so
 the chapter opens there at dawn (`k1_0` „Morgengrauen an der Quelle“, `look dawn`), not in the station
 bed. Marlene radios („Du bist ja schon weg“), Laub says why it takes a second touch: yesterday's drop
 dried in the Bussole overnight (FIKTION, cx.42). `k1_0` sets no Q anchor (Q at the spring would skip
@@ -861,17 +861,40 @@ Ehrenhof gate (1200/−1116, r 14); flag `k1.vorspiel` keeps the oil meter and t
 `k1_1` clears it. Caught or back in today on the way: you wake at the spring, and Q there (anchor
 1061/−834.5 r 10) takes you back. **Anchor rule:** Q never anchors inside the Ehrenhof before the
 flag `court.admitted`; `k1_1` sets it (also `k1_2`/`k1_3`, so older saves keep their anchor), and the
-`k1_1`–`k1_3` today reactions anchor at the Ehrenhof only with it, else at the spring. `k1_0b` is the
-seam for the round-11 disguise (phase 2). Old saves in `k1_0` resume at the spring (an `onResume`
+`k1_1`–`k1_3` today reactions anchor at the Ehrenhof only with it, else at the spring. Old saves in `k1_0` resume at the spring (an `onResume`
 teleport) with the old Ehrenhof anchor cleared. e2e `chapter-k1-quelle.spec.ts`, unit `tests/story.test.ts`.
+
+**"Unauffällig": the disguise** (round 11 phase 2, design `docs/IDEAS-ROUND11.md` §2, system §4.6 /
+`src/systems/court`). `k1_0b` „Die Brunnenstube, Sommer“ now switches the court's watch set `k1` on
+(`court:on`) and spawns Liese at her Bleiche (1004.85/−870.3, no watch block, see §14), the Hofgärtner
+on the Orangerie lawn (1221/−993, watch, zone `court.orangerie`, the teaching zone), the gate's
+Gardist (`gardist-tor`, 1194.6/−1111.5, watch with `inspector: true`, pike), a second Gardist
+(1218/−1100, pike) and a Lakai (1238/−1124) inside the gitter. It offers `q.k1.kleider`; when that is
+done, `q.k1.brief`. Taking the coat (E behind line B at COAT_REACH 1001.08/−880.9, `clue.k1.rock`) sets
+`disguise.coat`, `flag.k1_kleid = genommen`, hides the coat (`scenery:coat`) and emits `court:take`;
+the favour (talk Liese „rock“, 3 Mahnbriefe on the meadow at 998/−890, 21 m from her) sets the same
+with `geliehen` and her line. Paper: talk to the Hofgärtner („papier“, grants `clue.k1.papier`); the
+letter: E at his table (1226/−1003, `clue.k1.brief`, cx.46) sets `disguise.letter`. `k1_0b` completes
+with coat + letter (or `court.admitted`, for old saves). `k1_0c` „Die Musterung“ (same wake / anchor
+rules, still `k1.vorspiel`) completes on `court.admitted`, which the court system sets when the
+inspection at the gate passes (and opens the gate, `scenery:gate`). `k1_1` still sets the flag and cues
+the gate open (fallback, as do `k1_2`/`k1_3`); `k1_2` switches the set off (`court:off`), so the
+festplaene Mahnbriefe and the Bijou in the Orangerie zone come only after the watchers stop. The
+chapter's court lines (inspection, refusals, barks, `court.eject.<zone>.1–8`) live in
+`src/systems/court-k1` (content strings, loaded after `court`). Epilogue: deed slot `kleid`. Route
+spring → Bleiche → lawn → gate ≈ 430 m, about 4–5 min with the talks; the prelude stays under 8 min.
+e2e `chapter-k1-disguise.spec.ts` (helper `playDisguise`, used by `playK1` and the long walk in
+`openAtSpring`), unit `tests/k1-disguise.test.ts`, `tests/story.test.ts`.
 
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
-| `q.k1.registratur` "Der Kanzlist zählt" | main | Soll (Registratur, 1198.8/−1152.6) → Soll | Rechenbrett, Kaufbrief, Schlözer-Heft (room); **6 Mahnbriefe** flutter into the Küchenhof (1212/−1180) | mahnbrief ×6 | 130 XP, Solls Rechenpfennig | cx.07, cx.05, cx.02 (STRITTIG) |
+| `q.k1.kleider` "Kleider machen Leute" | main | Laub → auto | the coat (`rock`, manual, set by the story: taken unseen from line B, or) Liese asked (`bitte`, optional) → **3 Mahnbriefe** out of her linen (`zettel`, optional, 998/−890) | mahnbrief ×3 (optional) | 60 XP, Kaspars Rock | cx.46 (FIKTION) |
+| `q.k1.brief` "Ein Brief in fremdem Namen" | main | Laub → auto (after `q.k1.kleider`) | paper from the Hofgärtner (`papier`, talk, 1221/−993); write the letter at his table (`schreiben`, `clue.k1.brief`, 1226/−1003); then the Musterung at the gitter (beat `k1_0c`) | — | 70 XP, Empfehlungsschreiben | cx.44, cx.43 (STRITTIG), cx.45 |
+| `q.k1.registratur` "Der Kanzlist zählt" | main | Soll (Registratur, 1198.8/−1152.6) → Soll | Rechenbrett, Kaufbrief, Schlözer-Heft (room); **6 Mahnbriefe** flutter into the Küchenhof (1212/−1180) | mahnbrief ×6 | 100 XP (was 130), Solls Rechenpfennig | cx.07, cx.05, cx.02 (STRITTIG) |
 | `q.k1.lohn` "Matthes' Lohn" | main | Hanne (Bauplatz, 1287/−1228) → Hanne | ask Soll about Matthes (`matthes`); Matthes' mark (`clue.k1.zeichen`, item `item.k1.zeichen`); at dusk **Das Schuldbuch** rises at 1294/−1234; pick up the **Lohnzettel** it drops | **schuldbuch** (boss) | 260 XP, **Messstab II**; stance `flag.k1_lohn` | cx.08, cx.10, cx.09 (LEGENDE) |
-| `q.k1.zwinger` "Tausend Hunde" | main | Jost (Zwinger, 1174.6/−1571) → Jost | Jost's hiding lesson (`verstecken`); 5 pieces of meat (Jägerhaus yard ~1210/−1625); bring them to the kennel; **3 Streuner** (1169/−1636) | streuner ×3 | 160 XP, Josts Hundemarke, Spurenleser 1 | cx.06, cx.37 |
-| `q.k1.karlslust` "Die Karlslust bei Nacht" | main | Laub → auto (`quiet` turn-in) | Q at the Tschifflik terrace (1822/70); count the Rund; bear boxes; **5 Irrlichter** over the Schwanenweiher (1852/248, the pack waits until they are out); the **Rondell** (memorial: quiet, no spawns) — `clue.k1.feuerwerk`; the **Chronikseite**; run to the Tosbecken (1812/203); home | irrlicht ×5; the pack (threat) | 240 XP, Kartograf 2 | cx.12, cx.13 (STRITTIG), cx.14 (quiet), cx.15 |
+| `q.k1.zwinger` "Tausend Hunde" | main | Jost (Zwinger, 1174.6/−1571) → Jost | Jost's hiding lesson (`verstecken`); 5 pieces of meat (Jägerhaus yard ~1210/−1625); bring them to the kennel; **3 Streuner** (1169/−1636) | streuner ×3 | 120 XP (was 160), Josts Hundemarke, Spurenleser 1 | cx.06, cx.37 |
+| `q.k1.karlslust` "Die Karlslust bei Nacht" | main | Laub → auto (`quiet` turn-in) | Q at the Tschifflik terrace (1822/70); count the Rund; bear boxes; **5 Irrlichter** over the Schwanenweiher (1852/248, the pack waits until they are out); the **Rondell** (memorial: quiet, no spawns) — `clue.k1.feuerwerk`; the **Chronikseite**; run to the Tosbecken (1812/203); home | irrlicht ×5; the pack (threat) | 180 XP (was 240), Kartograf 2 | cx.12, cx.13 (STRITTIG), cx.14 (quiet), cx.15 |
 | `q.k1.kasuar` "Der Kasuar ist los" | side | the gardener (`gaertner`, 1903/87) → gardener (after `q.k1.lohn`) | **calm the cassowary** (menagerie: never an enemy) | — | 90 XP, Kasuarfeder | cx.12 |
 | `q.k1.festplaene` "Mannlichs Festpläne" | side | the servant (`diener`, Pfeilersaal) → servant (after `q.k1.registratur`) | **4 Mahnbriefe** in the Orangerie garden (1274/−986); collect 3 Festplan sheets (collection `festplaene`); Mannlich's echoes (`clue.k1.mannlich`, `clue.k1.mannlich_lohn`) | mahnbrief ×4 | 100 XP | cx.04, cx.40, cx.15 |
 | `q.k1.hundenamen` "Die Namen der Hunde" | side | Jost (after `q.k1.zwinger`) → Jost | five collars (collection `hundemarken`), each guarded by one Streuner | streuner ×5 | 130 XP | hound names (FIKTION), cx.06 |
@@ -986,6 +1009,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| "Unauffällig" in chapter 1 (content, 2026-11-20): gaps in the court system | **Bleiche:** watchers count only in court zones and there is none at the Bleiche, so Liese has no watch block; the coat is "unseen" by geometry (COAT_REACH behind line B, out of her view) and `court:take` is still emitted. Needed: a `court.bleiche` zone (around 1001.5/−876.5, r ≈ 11, exit on the trail ≈ 1016/−866) that counts only `take` (no `hivis` there, or the talk path breaks), an escort line by Liese; content then adds her watch and a `court:ejected` handler that hangs the coat back. **Strings:** `court/strings.ts` registers at import, after the content packs, so chapter lines must load after it (`src/systems/court-k1`, one loader line after `court`); a content hook in the system would be cleaner |
 | First-person melee feels floaty | third person by default (camera track); viewmodel anticipation + follow-through, hit-stop, knockback, sound layers; soft lock and lock-on; tune in e2e screenshots and by hand |
 | Combat breaks the dread | few enemies, placed by content; the hunt stays unfightable; memorials are quiet; nights stay dark |
 | SwiftShader e2e too slow for fights | `?manual` + `kq.step`, debug hooks (`kq.combat.kill`, `god`), short arenas |

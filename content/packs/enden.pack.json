@@ -318,6 +318,30 @@
       "once": false
     },
     {
+      "id": "epilog.kleid.1",
+      "speaker": "epilog",
+      "text_de": "Den Rock, in dem ich an den Hof kam, hatte mir die Wäscherin Liese geliehen, für drei Zettel aus ihrer Wäsche. Er gehörte einem kranken Lakaien namens Kaspar.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "kleid",
+        "flag": "flag.k1_kleid",
+        "value": "geliehen"
+      },
+      "once": false
+    },
+    {
+      "id": "epilog.kleid.2",
+      "speaker": "epilog",
+      "text_de": "Den Rock, in dem ich an den Hof kam, hatte ich der Wäscherin Liese von der Leine genommen, als sie zum Weg schaute. Er gehörte einem kranken Lakaien namens Kaspar.",
+      "trigger": {
+        "event": "epilog:line",
+        "block": "kleid",
+        "flag": "flag.k1_kleid",
+        "value": "genommen"
+      },
+      "once": false
+    },
+    {
       "id": "epilog.flucht.1",
       "speaker": "epilog",
       "text_de": "In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Als die Wagen abfuhren, habe ich ihnen geleuchtet.",

@@ -261,4 +261,11 @@ Alle [Z]-Zeilen dieses Abschnitts sind am OCR-Text des archive.org-Scans gegenge
 
 ## 8. Nebenfiguren (FIKTION, namenlos)
 
+### 8.1 Unauffällig (Kapitel 1, `k1_0b`/`k1_0c`, FIKTION `cx.46`)
+
+- **Liese, Wäscherin** (`liese`): warm, praktisch, redet in Arbeit und Wetter; sagt „Er“ zum Fremden. Leiht den Rock gegen einen Gefallen („Sag Er keinem, woher, und bring Er ihn mir sauber wieder.“). Kaspar ist ein kranker Lakai, sein Rock hängt auf ihrer Leine.
+- **Der Hofgärtner** (`hofgaertner`): knapp, stolz auf seinen Rasen, misstrauisch gegen alles, was rennt („Ein Gärtner rennt nie.“). Gibt Papier und Siegellack, wenn man ordentlich aussieht.
+- **Die Gardisten** (`gardist`, `gardist-tor`) und **der Lakai** (`lakai`): Dienst nach Vorschrift, trocken, nie grausam. Musterung: „Der Herr Sekretär vom Herrn Hofrat Amsel. Steht drin.“ Hinausbegleiten als Running Gag, acht Varianten je Zone (`court.eject.<zone>.1–8`, `src/systems/court-k1`).
+- Keine 1789-Figur zitiert Knigges „Umgang“; nur Laub darf („Sey ernsthaft…“, `laub.k1.wahrhaftig`, Quelle KNIGGE-UMGANG-1790). Hofrat Amsel ist erfunden; kein Brief in Knigges Namen.
+
 Wachen, Diener, Soldaten, Plünderer, Fuhrleute. Sie sprechen nur in ihren Echos (Kapiteldateien), immer mit Marke „Erinnerung (Fiktion)“. Regeln: kurze Sätze, Alltag, Arbeit, Geld, Wetter. Keine Gräuel, keine Beleidigungen von Gruppen. Französische Soldaten sprechen Deutsch mit einem einzelnen französischen Wort, nicht mit Akzent-Schreibung.

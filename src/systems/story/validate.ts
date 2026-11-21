@@ -73,7 +73,7 @@ export function stageDirection(text: string, speaker?: string): string | null {
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar']);
 const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
-const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann']);
+const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);
 const METER_FULL = new Set(['return', 'caught', 'none']);
 const QUEST_OPS = new Set(['offer', 'start', 'progress', 'complete', 'fail', 'reset']);
 const QUEST_COND_STATES = new Set(['offered', 'active', 'ready', 'done', 'failed']);

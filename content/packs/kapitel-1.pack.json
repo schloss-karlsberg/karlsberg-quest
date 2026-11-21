@@ -203,14 +203,77 @@
   ],
   "clues": [
     {
+      "id": "clue.k1.rock",
+      "title_de": "Kaspars Rock",
+      "kind": "object",
+      "text_de": "Auf der hinteren Leine, zwischen Laken und Hemden, hängt ein dunkelblauer Rock mit Messingknöpfen, an den Ärmeln etwas zu lang. Liese schaut zum Weg. Hinter der zweiten Leine sieht sie dich nicht. (Fiktion: Liese, Kaspar und sein Rock sind erfunden.)",
+      "where": {
+        "x": 1001.08,
+        "z": -880.9,
+        "radius": 1.4,
+        "era": "1789"
+      },
+      "reveals": {
+        "facts": [
+          "cx.46"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.papier",
+      "title_de": "Papier vom Hofgärtner",
+      "kind": "dialogue",
+      "text_de": "Der Hofgärtner schreibt Schildchen für die Kübelpflanzen. Papier und Siegellack liegen auf seinem Tisch, und er hat nichts gesehen.",
+      "where": {
+        "x": 1221,
+        "z": -993,
+        "radius": 6,
+        "era": "1789"
+      },
+      "reveals": {
+        "facts": [
+          "cx.46"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1"
+    },
+    {
+      "id": "clue.k1.brief",
+      "title_de": "Ein Brief in fremdem Namen",
+      "kind": "document",
+      "text_de": "„Hochwohlgeborener Herr! Der Hofrat Justus Amsel aus Celle, Verfasser des Werkes ‚Vom Betragen bei Hofe‘, bittet unterthänigst, den Carlsberg besehen zu dürfen, und schickt seinen Sekretär voraus, welcher hiermit namentlich genannt sey.“ Gesiegelt mit grünem Gärtnerwachs. (Wortlaut erfunden, der Hofrat und sein Buch auch. Echt ist die Regel: ohne ausdrückliche Erlaubnis niemand auf den Berg, jeder Begleiter mit Namen; Knigge (Hg.) 1793, S. 26 f.)",
+      "where": {
+        "x": 1226,
+        "z": -1003,
+        "radius": 2.5,
+        "era": "1789"
+      },
+      "reveals": {
+        "facts": [
+          "cx.44"
+        ]
+      },
+      "requires": {
+        "clues": [
+          "clue.k1.papier"
+        ]
+      },
+      "fiction": true,
+      "chapter": "k1",
+      "prop": "paper"
+    },
+    {
       "id": "clue.k1.wache",
       "title_de": "Erinnerung: Die Wache am Gitter",
       "kind": "echo",
       "text_de": "Die Wache am Ehrenhofgitter, automatisch beim Betreten.",
       "where": {
-        "x": 1201,
+        "x": 1203,
         "z": -1115,
-        "radius": 12,
+        "radius": 8,
         "era": "1789",
         "anchor": "KB-B39"
       },
@@ -616,7 +679,7 @@
       "id": "clue.k1.insel",
       "title_de": "Die Insel",
       "kind": "dialogue",
-      "text_de": "Blick zur Insel mit dem Pavillon.",
+      "text_de": "Blick zur Insel mit dem Pavillon. (Seine Form folgt den 2016 gefundenen Grundmauern; Hypothese.)",
       "where": {
         "x": 1935,
         "z": 87,
@@ -636,7 +699,7 @@
       "id": "clue.k1.baerenkaesten",
       "title_de": "Die Bären-Kästen",
       "kind": "object",
-      "text_de": "Am Fuß der Terrassenmauer, hinaufgezogen auf die erste Stufe: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
+      "text_de": "Am oberen Rand der Terrassen, vor der ersten Reihe Tierhäuser: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
       "where": {
         "x": 1958,
         "z": 146,
@@ -709,7 +772,7 @@
         "z": 363,
         "radius": 4,
         "era": "1789",
-        "anchor": "KL-B49"
+        "anchor": "TF-36"
       },
       "reveals": {
         "flags": [
@@ -1378,6 +1441,214 @@
       }
     },
     {
+      "id": "liese.k1.01",
+      "speaker": "liese",
+      "text_de": "Jesses, wie sieht Er denn aus? Wie ein Feuersalamander.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": true
+    },
+    {
+      "id": "liese.k1.dank.greet",
+      "speaker": "liese",
+      "text_de": "Steht Ihm besser als Kaspar. Sag Er keinem, woher.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "greet",
+        "flag": "flag.k1_kleid",
+        "value": "geliehen"
+      },
+      "priority": 5
+    },
+    {
+      "id": "liese.k1.weg.greet",
+      "speaker": "liese",
+      "text_de": "Kaspars Rock ist weg. Der Wind war’s, sagt der Wind. Ich sag nichts. Ich wasch.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "greet",
+        "flag": "flag.k1_kleid",
+        "value": "genommen"
+      },
+      "priority": 5
+    },
+    {
+      "id": "liese.k1.02",
+      "speaker": "liese",
+      "text_de": "Einen Rock? Auf der hinteren Leine hängt Kaspars. Der Lakai liegt seit drei Wochen mit Fieber, der braucht ihn grad nicht.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "rock",
+        "step": 1
+      },
+      "once": false
+    },
+    {
+      "id": "liese.k1.03",
+      "speaker": "liese",
+      "text_de": "Aber erst helf Er mir. Die Zettel da fliegen mir in die Wäsche, und sie beißen. Wäschelohn: angewiesen. Steht auf allen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "rock",
+        "step": 2
+      },
+      "once": false
+    },
+    {
+      "id": "liese.k1.04",
+      "speaker": "liese",
+      "text_de": "Gebleicht wird in der Sonne. Gießen, wenden, gießen. Für den Hof muss es weißer sein als weiß. Der Herzog sieht’s nicht, aber der Kammerdiener.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "waesche"
+      }
+    },
+    {
+      "id": "liese.k1.05",
+      "speaker": "liese",
+      "text_de": "Kaspar trägt die Schüsseln von der Küche hinauf ins Schloss. Seit er krank ist, trägt sie ein anderer. Den Rock wasch ich ihm, bis er wiederkommt.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "kaspar"
+      }
+    },
+    {
+      "id": "liese.k1.bye",
+      "speaker": "liese",
+      "text_de": "Und tret Er mir nicht aufs Laken.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "liese",
+        "chapter": "k1",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "hofgaertner.k1.01",
+      "speaker": "hofgaertner",
+      "text_de": "Sieh an, Kaspars Rock. Und wer steckt drin? Sag Er’s nicht. Ich will’s nicht wissen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hofgaertner",
+        "chapter": "k1",
+        "topic": "greet",
+        "flag": "disguise.coat"
+      },
+      "once": true
+    },
+    {
+      "id": "hofgaertner.k1.02",
+      "speaker": "hofgaertner",
+      "text_de": "Er gehört nicht hierher. Das sieht man bis zur Kaskade.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hofgaertner",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "priority": -1
+    },
+    {
+      "id": "hofgaertner.k1.03",
+      "speaker": "hofgaertner",
+      "text_de": "Papier? Wozu braucht ein Lakai Papier? … Gut. Ich frag nicht.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hofgaertner",
+        "chapter": "k1",
+        "topic": "papier",
+        "step": 1
+      },
+      "once": false
+    },
+    {
+      "id": "hofgaertner.k1.04",
+      "speaker": "hofgaertner",
+      "text_de": "Am Tisch da hinten liegt meins, für die Schildchen an den Kübeln. Siegellack auch. Nehm Er sich, was Er braucht. Ich hab nichts gesehen. Ich hab Rasen.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hofgaertner",
+        "chapter": "k1",
+        "topic": "papier",
+        "step": 2
+      },
+      "once": false
+    },
+    {
+      "id": "hofgaertner.k1.05",
+      "speaker": "hofgaertner",
+      "text_de": "Den Rasen betritt der Gärtner. Sonst keiner. Man sieht jeden Fußtritt bis zum Abend.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hofgaertner",
+        "chapter": "k1",
+        "topic": "rasen"
+      }
+    },
+    {
+      "id": "hofgaertner.k1.bye",
+      "speaker": "hofgaertner",
+      "text_de": "Und schreib Er schön.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "hofgaertner",
+        "chapter": "k1",
+        "topic": "bye"
+      }
+    },
+    {
+      "id": "gardist-tor.k1.01",
+      "speaker": "gardist-tor",
+      "text_de": "Weiter. Zu Fuß, wenn’s beliebt.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "gardist-tor",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": false
+    },
+    {
+      "id": "gardist.k1.01",
+      "speaker": "gardist",
+      "text_de": "Nicht stehen bleiben. Hier wird nicht gestanden, hier wird gewacht.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "gardist",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": false
+    },
+    {
+      "id": "lakai.k1.01",
+      "speaker": "lakai",
+      "text_de": "Ich trag nur. Fragen Sie wen, der was weiß.",
+      "trigger": {
+        "event": "npc:talk",
+        "npc": "lakai",
+        "chapter": "k1",
+        "topic": "greet"
+      },
+      "once": false
+    },
+    {
       "id": "laub.k1.morgen.quelle",
       "speaker": "laub",
       "text_de": "Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.",
@@ -1391,13 +1662,167 @@
     {
       "id": "laub.k1.brunnenstube",
       "speaker": "laub",
-      "text_de": "Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle.",
+      "text_de": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k1",
         "beat": "1.0b"
       },
       "once": true
+    },
+    {
+      "id": "laub.k1.fremde",
+      "speaker": "laub",
+      "text_de": "Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · Einl. S. XXXIII (Stollreither: 100 Gardisten)"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.bleiche",
+      "speaker": "laub",
+      "text_de": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-bleiche"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.rock.genommen",
+      "speaker": "laub",
+      "text_de": "Genommen. Im Dienst der Wissenschaft. Ich trage es ein, unter „geliehen, ohne zu fragen“.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-rock"
+      },
+      "once": true
+    },
+    {
+      "id": "liese.k1.dank",
+      "speaker": "liese",
+      "text_de": "Da, nimm Er ihn. Steht Ihm besser als Kaspar. Sag Er keinem, woher, und bring Er ihn mir sauber wieder.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-rock"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.rock.geliehen",
+      "speaker": "laub",
+      "text_de": "Ehrlich erworben. Das wird der Hof nie begreifen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-rock"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.papier",
+      "speaker": "laub",
+      "text_de": "Einen Rock haben wir. Jetzt Papier und Siegel. Vor der Orangerie schneidet der Hofgärtner Rasen. Ab da schaut der Hof: langsam gehen, Stab weg. Die hellen Fächer am Boden, das sind Blicke.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-papier"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.brief",
+      "speaker": "laub",
+      "text_de": "Wir schreiben im Namen des Hofrats Justus Amsel aus Celle. Er reist, er schreibt Bücher, eins heißt ‚Vom Betragen bei Hofe‘. Sie sind sein Sekretär, vorausgeschickt. Den Hofrat gibt es nicht. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-brief"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.erlaubnis",
+      "speaker": "laub",
+      "text_de": "Ohne ausdrückliche Erlaubnis des Herzogs kommt keiner hier herauf. Und jeder, der mitkommt, muss mit Namen drinstehen. Also schreiben wir Sie hinein.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-brief"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+          "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+          "note": "P · S. 26 f."
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "P · S. 355"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.umgang",
+      "speaker": "laub",
+      "text_de": "Ein echtes Buch über den Umgang mit Menschen gibt es schon, vom Freiherrn Knigge, letztes Jahr erschienen. Seinen Namen leihen wir uns nicht.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0b-brief"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Knigge,_Adolph_Freiherr",
+          "label": "ADB: Knigge, Adolph Freiherr (Erich Schmidt, 1882)",
+          "note": "Umgang 1788"
+        }
+      ]
+    },
+    {
+      "id": "laub.k1.musterung",
+      "speaker": "laub",
+      "text_de": "Jetzt ruhig. Stab weg, Laterne aus, und stehen bleiben, wenn er schaut. Die Wache liest nicht. Sie schaut aufs Wachs.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0c"
+      },
+      "once": true
+    },
+    {
+      "id": "laub.k1.wahrhaftig",
+      "speaker": "laub",
+      "text_de": "Knigge schreibt, in einer späteren Auflage: ‚Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!‘ Vier von fünf haben wir geschafft.",
+      "trigger": {
+        "event": "story:beat",
+        "chapter": "k1",
+        "beat": "1.0c-drin"
+      },
+      "once": true,
+      "sources": [
+        {
+          "url": "https://www.digitale-sammlungen.de/en/view/bsb10041018",
+          "label": "Knigge: Ueber den Umgang mit Menschen, 3. Aufl., Teil 3 (Hannover 1790)",
+          "note": "Z · Teil 3, Kap. 3, Abschn. 3, S. 53 f.; ob schon in der Ausgabe von 1788: nicht geprüft"
+        }
+      ]
     },
     {
       "id": "laub.k1.start",
@@ -1489,9 +1914,14 @@
       "once": true,
       "sources": [
         {
+          "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+          "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+          "note": "Z · S. 28 f.; Brief vom 11. Mai [1792], Schreiber ungenannt, Knigge als Herausgeber"
+        },
+        {
           "url": "https://archive.org/details/eindeutschermale00mann",
           "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
-          "note": "Z · Einl. S. XXXIV (Knigge)"
+          "note": "Z · Einl. S. XXXIV (zitiert den Brief)"
         }
       ]
     },
