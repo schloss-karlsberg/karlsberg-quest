@@ -1,5 +1,6 @@
 import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, ShaderLib, SphereGeometry, type WebGLRenderer } from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { entryShading } from '../src/assets/loader';
 import { ASSETS } from '../src/assets/manifest';
 import { kqStandard } from '../src/render/standard';
 import { TOON_DEFAULT, applyCharacterShading, kqToon, shadingOf, toonParamsFor, toonShaderPatch } from '../src/systems/characters/toon';
@@ -27,6 +28,22 @@ describe('character toon shading (opt-in, systems/characters/toon.ts)', () => {
       expect(e.kind).toBe('model');
       expect(e.worldLight).not.toBe(false);
       if (e.shading === 'toon') expect(e.id.startsWith('chars.')).toBe(true);
+    }
+  });
+
+  it('the loader enforces it too: a non-chars toon entry loads standard, with one warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(entryShading({ id: 'nature.stump.oak', shading: 'toon' })).toBe('standard');
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain('nature.stump.oak');
+      warn.mockClear();
+      expect(entryShading({ id: 'chars.player.mpfb', shading: 'toon' })).toBe('toon');
+      expect(entryShading({ id: 'nature.stump.oak', shading: 'standard' })).toBe('standard');
+      expect(entryShading({ id: 'nature.stump.oak' })).toBeUndefined();
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
     }
   });
 
@@ -62,7 +79,7 @@ describe('character toon shading (opt-in, systems/characters/toon.ts)', () => {
     expect(s.fragmentShader).toContain('kqShadow(vKqWorld');
     expect(s.fragmentShader).toContain('uLanternPos');
     expect(s.fragmentShader).toContain('kqFog(');
-    expect(Object.keys(s.uniforms)).toEqual(expect.arrayContaining(['uSunDir', 'uSunColor', 'uToonBand', 'uToonMix', 'uToonShade', 'uToonRim', 'uToonLit', 'uToonGlint']));
+    expect(Object.keys(s.uniforms)).toEqual(expect.arrayContaining(['uSunDir', 'uSunColor', 'uToonBand', 'uToonMix', 'uToonShade', 'uToonRim', 'uToonLit', 'uToonGlint', 'uToonSunSat']));
     expect(m.customProgramCacheKey()).toContain('kq-toon-1');
     // per-slot params: the eyes keep a bright catchlight, the skin has none
     expect(toonParamsFor('Eye').glint).toBeGreaterThan(0);

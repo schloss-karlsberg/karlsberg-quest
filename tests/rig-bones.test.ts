@@ -1,8 +1,59 @@
-import { Bone, BoxGeometry, Group, Mesh, type Object3D, PropertyBinding, Quaternion } from 'three';
+import { Bone, BoxGeometry, Float32BufferAttribute, Group, Mesh, type Object3D, PropertyBinding, Quaternion, Skeleton, SkinnedMesh, Uint16BufferAttribute } from 'three';
 import { describe, expect, it } from 'vitest';
 import type { AssetLoader, LoadedModel } from '../src/assets/loader';
 import { PIKEUR_RIG } from '../src/systems/characters/catalog';
-import { findBone, Rig } from '../src/systems/characters/rig';
+import { cloneRigged, findBone, Rig } from '../src/systems/characters/rig';
+
+describe('rig clone: shared skeletons', () => {
+  /** Outfit pieces on one rig: `shared` meshes on one skeleton, plus one mesh on a skeleton of its own. */
+  function pieces(shared: number): LoadedModel {
+    const scene = new Group();
+    const hips = new Bone();
+    hips.name = 'pelvis';
+    const spine = new Bone();
+    spine.name = 'spine_01';
+    spine.position.y = 0.2;
+    hips.add(spine);
+    scene.add(hips);
+    const mesh = (name: string, sk: Skeleton): SkinnedMesh => {
+      const g = new BoxGeometry(0.4, 1.7, 0.3);
+      const n = g.getAttribute('position').count;
+      g.setAttribute('skinIndex', new Uint16BufferAttribute(new Array(n * 4).fill(0), 4));
+      g.setAttribute('skinWeight', new Float32BufferAttribute(Array.from({ length: n * 4 }, (_, i) => (i % 4 === 0 ? 1 : 0)), 4));
+      const m = new SkinnedMesh(g);
+      m.name = name;
+      m.bind(sk);
+      scene.add(m);
+      return m;
+    };
+    const one = new Skeleton([hips, spine]);
+    for (let i = 0; i < shared; i++) mesh(`avatar-piece-${i}`, one);
+    mesh('other', new Skeleton([hips, spine]));
+    return { scene, animations: [] };
+  }
+
+  it('meshes sharing a skeleton in the source share one in the clone, bound to the cloned bones', () => {
+    const src = pieces(4);
+    const copy = cloneRigged(src.scene);
+    const skinned: SkinnedMesh[] = [];
+    copy.traverse((o) => (o as SkinnedMesh).isSkinnedMesh && skinned.push(o as SkinnedMesh));
+    expect(skinned.length).toBe(5);
+    const shared = new Set(skinned.slice(0, 4).map((m) => m.skeleton));
+    expect(shared.size).toBe(1);
+    expect(skinned[4]!.skeleton).not.toBe(skinned[0]!.skeleton);
+    const sk = skinned[0]!.skeleton;
+    expect(sk.bones[0]).toBe(copy.getObjectByName('pelvis'));
+    expect(sk.bones[0]).not.toBe(src.scene.getObjectByName('pelvis'));
+    expect(skinned[4]!.skeleton.bones[0]).toBe(copy.getObjectByName('pelvis'));
+  });
+
+  it('Rig uses it: one skeleton for the pieces', () => {
+    const rig = new Rig(pieces(3), 1.8);
+    const sk = new Set(rig.meshes.filter((m) => m.name.startsWith('avatar-piece-')).map((m) => (m as SkinnedMesh).skeleton));
+    expect(sk.size).toBe(1);
+    rig.dispose();
+  });
+});
 import { EnemyRigs, type RigPose } from '../src/systems/combat/rigged';
 import type { Enemy } from '../src/systems/combat/sim';
 
