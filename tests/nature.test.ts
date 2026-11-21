@@ -7,7 +7,7 @@ import { GROUND_LAYERS, GROUND_TILE_M, BARK_LAYERS } from '../src/world/vegetati
 import { PROP_KINDS } from '../src/world/vegetation/props';
 import NATURE1 from '../src/assets/manifests/nature';
 import NATURE2 from '../src/assets/manifests/nature2';
-import { FAMILY_CROWN, TREE_VARIANTS, pickVariant, treeLevels, treeScaleY } from '../src/world/vegetation/trees';
+import { FAMILY_CROWN, SHADOW_REACH, TREE_BAND, TREE_N0, TREE_N1, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY } from '../src/world/vegetation/trees';
 
 const NATURE_ASSETS = [...NATURE1, ...NATURE2];
 
@@ -160,6 +160,40 @@ describe('model trees (nature round 2)', () => {
     expect(out[3]).toBe(1);
     // the nearer level keeps [t, 2), the farther [0, t): every pixel is drawn by exactly one
     expect(out[1]).toBeCloseTo(out[5]!, 6);
+  });
+
+  it('switches lod1 → impostor at 72·k (tri budget phase B, was 78·k)', () => {
+    expect([TREE_N0, TREE_N1, TREE_BAND]).toEqual([30, 72, 5]);
+    const out: number[] = [];
+    // k = 1: lod1 alone up to 67 m, the band 67–77 m, impostors beyond
+    treeLevels(66, 1, out);
+    expect(out).toEqual([1, 0, 2]);
+    treeLevels(72, 1, out);
+    expect(out.length).toBe(6);
+    expect(out[0]).toBe(1);
+    expect(out[3]).toBe(2);
+    expect(out[1]).toBeCloseTo(0.5, 6);
+    treeLevels(78, 1, out);
+    expect(out).toEqual([2, 0, 2]);
+    // tall trees (k up to 1.4 on high) keep lod1 further out; the old ring stays reachable
+    treeLevels(95, 1.4, out);
+    expect(out[0]).toBe(1);
+    treeLevels(78, 1, out, 78);
+    expect(out[0]).toBe(1);
+  });
+
+  it('shadow casters: lod0 casts as lod1, the CPU cut matches the shader reach', () => {
+    expect(shadowLevel(0)).toBe(1);
+    expect(shadowLevel(1)).toBe(1);
+    expect(shadowLevel(2)).toBe(2);
+    // the vertex shaders drop casters past uShadowCenter.w + 30.0
+    expect(SHADOW_REACH).toBe(30);
+    const d = new Float32Array([1, 5, 5, 9, 40, 120, 0]);
+    expect(castCount(d, 6, 0.5)).toBe(0);
+    expect(castCount(d, 6, 5)).toBe(3);
+    expect(castCount(d, 6, 105)).toBe(5);
+    expect(castCount(d, 6, 1e9)).toBe(6);
+    expect(castCount(d, 0, 1e9)).toBe(0);
   });
 
   it('the stand height maps the crown base and keeps the crown size', () => {
