@@ -146,12 +146,12 @@ const clues = [
   }),
   clue('clue.k1.insel', {
     title: 'Die Insel', kind: 'dialogue', at: AMPH, r: 42, era: E, anchor: 'KL-B41', chapter: ch, fiction: false,
-    text: 'Blick zur Insel mit dem Pavillon.', nouns: ['n.insel'],
+    text: 'Blick zur Insel mit dem Pavillon. (Seine Form folgt den 2016 gefundenen Grundmauern; Hypothese.)', nouns: ['n.insel'],
   }),
-  // at the foot of the lowest terrace wall (the terraces KL-B43 are one solid block in the model)
+  // at the upper edge of the terraces KL-B43 (six rows of animal houses on open ground, no wall)
   clue('clue.k1.baerenkaesten', {
     title: 'Die Bären-Kästen', kind: 'object', at: [1958, 146], r: 4, era: E, anchor: 'KL-B43', chapter: ch, fiction: false,
-    text: 'Am Fuß der Terrassenmauer, hinaufgezogen auf die erste Stufe: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)',
+    text: 'Am oberen Rand der Terrassen, vor der ersten Reihe Tierhäuser: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)',
     nouns: ['n.herzogsterrassen'],
   }),
   clue('clue.k1.kasuar', {
@@ -166,7 +166,7 @@ const clues = [
     nouns: ['n.einziges_geruest', 'n.karlslust', 'n.zwoelf'], facts: ['entry.k1.gedenk'],
   }),
   clue('clue.k1.seite', {
-    title: 'Eine Chronikseite auf den Stufen', kind: 'document', at: [1811, 363], r: 4, era: E, anchor: 'KL-B49', chapter: ch, fiction: true, lantern: true,
+    title: 'Eine Chronikseite auf den Stufen', kind: 'document', at: [1811, 363], r: 4, era: E, anchor: 'TF-36', chapter: ch, fiction: true, lantern: true,
     text: 'Eine Chronikseite. Oben in großer, ungelenker Schrift: „Diane. Sultan. Fanfare. Rauhreif. Bijou.“ Darunter in feiner Kanzleischrift: „Hanne, Witwe des Steinhauers Matthes. Lohn: offen.“ Sobald man sie aufhebt, bläst das Horn zweimal kurz.',
     flags: ['flag.k1_seite'], req: { clues: ['clue.k1.feuerwerk'] },
   }),
@@ -417,10 +417,10 @@ const spawn = (kind, [x, z], count, radius, extra = {}) => ({ kind, x, z, era: E
 
 // Terrain-checked spots (probe.mjs / terrain.mjs, 2026-11-16): dry, walkable in 1789, outside the
 // 1789 footprints, inside the playable area. The Schuldbuch arena moved 18 m east of the catalogue
-// value (1276/−1228 lies inside the pavilion KB-B07) onto the open Bauplatz lawn.
+// value (1276/−1228 lies inside the rotunda KB-B07) onto the open Bauplatz lawn.
 export const K1_SPOTS = {
   kuechenhof: [1212, -1180], // Küchenhof (TF-02), cobbles, behind the north wing
-  // the Bauplatz lawn north-east of the pavilion KB-B07, 29 m from Hanne (1287/−1228): her 6 m talk
+  // the Bauplatz lawn north-east of the rotunda KB-B07, 29 m from Hanne (1287/−1228): her 6 m talk
   // bubble must not overlap the boss's arena (playtest round 2: the book healed when you stepped near her)
   bauplatz: [1300, -1254],
   fleisch: [[1212, -1626], [1206, -1630], [1216, -1618], [1208, -1612], [1214, -1634]], // the Jägerhaus yard (east of KB-B24)
@@ -643,7 +643,7 @@ const k1Quests = {
       objectives: [
         { id: 'terrasse', type: 'reach', text_de: 'Auf der Tschifflik-Terrasse: Q – die Karlslust 1789', where: place(1822, 70, 16) },
         { id: 'rund', type: 'examine', clue: 'clue.k1.amphitheater', text_de: 'Einmal um das Rund: die Häuschen zählen' },
-        { id: 'baeren', type: 'examine', clue: 'clue.k1.baerenkaesten', text_de: 'Oben an der Terrassenmauer: die Bären-Kästen' },
+        { id: 'baeren', type: 'examine', clue: 'clue.k1.baerenkaesten', text_de: 'Oben an den Terrassen: die Bären-Kästen' },
         {
           id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 5, after: ['baeren'],
           text_de: 'Irrlichter über dem Schwanenweiher bannen',

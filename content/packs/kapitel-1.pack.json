@@ -679,7 +679,7 @@
       "id": "clue.k1.insel",
       "title_de": "Die Insel",
       "kind": "dialogue",
-      "text_de": "Blick zur Insel mit dem Pavillon.",
+      "text_de": "Blick zur Insel mit dem Pavillon. (Seine Form folgt den 2016 gefundenen Grundmauern; Hypothese.)",
       "where": {
         "x": 1935,
         "z": 87,
@@ -699,7 +699,7 @@
       "id": "clue.k1.baerenkaesten",
       "title_de": "Die Bären-Kästen",
       "kind": "object",
-      "text_de": "Am Fuß der Terrassenmauer, hinaufgezogen auf die erste Stufe: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
+      "text_de": "Am oberen Rand der Terrassen, vor der ersten Reihe Tierhäuser: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)",
       "where": {
         "x": 1958,
         "z": 146,
@@ -772,7 +772,7 @@
         "z": 363,
         "radius": 4,
         "era": "1789",
-        "anchor": "KL-B49"
+        "anchor": "TF-36"
       },
       "reveals": {
         "flags": [

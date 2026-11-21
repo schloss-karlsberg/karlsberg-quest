@@ -2649,7 +2649,7 @@
               "do": "say",
               "id": "laub.k1.zaehl.1",
               "speaker": "laub",
-              "text": "Fünf auf dieser Seite. Ich zähle mit. Zählen ist das Einzige, was man mir nie verboten hat."
+              "text": "Eine Seite gezählt. Ich zähle mit. Zählen ist das Einzige, was man mir nie verboten hat."
             }
           ]
         },
@@ -2902,7 +2902,7 @@
             {
               "do": "objective",
               "id": "k1.terrassen",
-              "text": "Oberhalb des Runds: die Terrassen. Was steht an der untersten Mauer?",
+              "text": "Südöstlich des Runds: die Terrassen. Was steht vor der ersten Reihe?",
               "x": 1958,
               "z": 146
             }

@@ -35,7 +35,7 @@
 
 **1.8 – Das Amphitheater.** Ein Rund aus kleinen Häusern mit Schieferdach um einen Wassergraben, in der Mitte eine Insel mit Pavillon. Tierlaute: Papageien, ein Affe, irgendwo ein Fauchen. Echo `echo.k1.mannlich_menagerie`. Man kann die Häuschen zählen (`clue.k1.amphitheater`). Optional: der Kasuar (`clue.k1.kasuar`, Nebenbeat).
 
-**1.9 – Die Terrassen.** Oberhalb des Runds liegen die Menagerie-Terrassen. Dort stehen eiserne Kästen mit einer Feuerluke an der Außenseite (`clue.k1.baerenkaesten`).
+**1.9 – Die Terrassen.** Südöstlich des Runds stufen sich die Menagerie-Terrassen ab, sechs Reihen Tierhäuser ohne Mauer. Am oberen Rand, vor der ersten Reihe, stehen eiserne Kästen mit einer Feuerluke an der Außenseite (`clue.k1.baerenkaesten`).
 
 **1.10 – Die Nacht kommt.** Die Sonne ist weg. Das erste Horn: ein langer Ton (Anblasen). Drei Hunde aus Rauch kommen die Apfelallee herunter. Erste echte Begegnung mit der Meute, Teil 1 des Jagd-Tutorials (Abschnitt 9).
 
@@ -56,7 +56,7 @@
 | `loc.k1.quelle` | Karlsbergquelle mit Trog (heute) und Brunnenstube (1789, FIKTION `cx.42`) | OSM-KQ, LiDAR Quellmulde 1061/−835, `cx.41` | 1061 | −834,5 | 10 | heute (Morgengrauen) → 1789-07 | Kapitelstart (Checkpoint 1059,3/−833,1); E „Wasser berühren“ (`quelle:touch`); Q-Anker zurück nach 1789, solange `court.admitted` fehlt; Aufwachort in `k1_0b` |
 | `loc.k1.ehrenhof` | Ehrenhof mit Gitter und Wachhäusern | TF-01, KB-B37, KB-B38, KB-B39 | 1192 | −1115 | 40 | 1789-07 | Anker A; `echo.k1.wache` beim Betreten |
 | `loc.k1.registratur` | Registratur, Nordflügel EG | B03.1.eg-registratur (KB-B03) | 1202 | −1153 | 6 (Raumpolygon) | 1789-07 | Soll |
-| `loc.k1.bauplatz` | Bauplatz am Galerie-Ostende | KB-B07 (Platzhalter für Rotunde 1789), KB-B06 | 1276 | −1228 | 25 | 1789-07 | Hanne; Zeichen am Quader (1262/−1224, r 3) |
+| `loc.k1.bauplatz` | Bauplatz am Galerie-Ostende | KB-B07 (Rotunde, 1789 im Bau), KB-B06 | 1276 | −1228 | 25 | 1789-07 | Hanne; Zeichen am Quader (1262/−1224, r 3) |
 | `loc.k1.pfeilersaal` | Pfeilersaal der Orangerie | B10.1.s-pfeilersaal (KB-B10) | 1242 | −967 | 10 (Raumpolygon) | 1789-07 | Festplan; Mannlich-Echos |
 | `loc.k1.zwinger` | Hundezwinger und Zwingerhaus | KB-B23, KB-B35; Jägerhaus KB-B24 | 1216 | −1571 | 35 | 1789-07 | Jost; Tutorial |
 | `loc.k1.tschifflik` | Tschifflik-Pavillon auf der Terrasse gegenüber der Kaskade | KL-B46, TF-35 | 1822 | 49 | 20 | 1789-07 | Anker B |
@@ -359,7 +359,7 @@ Kapitel 1 läuft jetzt als Questkette (`content/quests/01-kapitel-1.quests.json`
 
 - **Zu Fuß, außer einem** (Laub): Q am Ehrenhof, das Echo der Wache, die Flügel.
 - **Der Kanzlist zählt** (Soll gibt die Quest, über seinem Kopf steht eine Glyphe): Rechenbrett, Kaufbrief, Schlözer-Heft. Danach flattern **sechs Mahnbriefe** in den Küchenhof; das ist komisch, nicht grausam. Bei der Abgabe an Soll kommen die Zahlen als Geschichtszeile mit Quelle. Belohnung: Solls Rechenpfennig.
-- **Matthes' Lohn** (Hanne): Soll nach Matthes fragen, das Steinmetzzeichen ansehen. Bei Dämmerung steigt auf dem Bauplatz **das Schuldbuch** auf (Boss, 1294/−1234). Aus seinen Seiten fällt der **Lohnzettel**. Die Haltung bei Hanne steht in `flag.k1_lohn`. Belohnung: Messstab II.
+- **Matthes' Lohn** (Hanne): Soll nach Matthes fragen, das Steinmetzzeichen ansehen. Bei Dämmerung steigt auf dem Bauplatz **das Schuldbuch** auf (Boss, 1300/−1254). Aus seinen Seiten fällt der **Lohnzettel**. Die Haltung bei Hanne steht in `flag.k1_lohn`. Belohnung: Messstab II.
 - **Tausend Hunde** (Jost): Josts Lehre vom Verstecken, fünf Stück Fleisch zum Zwinger bringen, **drei Streuner**. Belohnung: Hundemarke, Spurenleser 1.
 - **Die Karlslust bei Nacht** (Laub):
   - die Terrasse, das Rund zählen, die Bärenkästen
