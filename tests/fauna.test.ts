@@ -157,9 +157,9 @@ describe('clips and fallbacks', () => {
 // ---- the contract's numbers and the spec table -------------------------------------------------
 
 describe('spec table v0', () => {
-  it('LOD and budget numbers match the contract (and the people bands)', () => {
+  it('LOD and budget numbers match the contract (slow band shared with people)', () => {
     expect(FAUNA_LOD).toMatchObject({ fullRate: 15, slowRate: 40, slowHz: 10, drawLimit: 60, lod1: 15, lod1Ratio: 0.5 });
-    expect(FAUNA_LOD.fullRate).toBe(PEOPLE_LOD.fullRate);
+    // fauna's full-rate band stays 15 m; the people band is 25 m (trailing tour camera), so only slowRate is shared
     expect(FAUNA_LOD.slowRate).toBe(PEOPLE_LOD.slowRate);
     expect(FAUNA_BUDGET).toEqual({ featured: { tris: 8000, drawCalls: 2 } });
   });

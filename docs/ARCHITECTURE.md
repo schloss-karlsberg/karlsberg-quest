@@ -1062,7 +1062,7 @@ change.
   - `ready` resolves true when the mesh is in, false on a fallback. The handle works before that
     and stays invisible until then.
 - **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
-  - animation at full rate within 15 m, about 10 Hz within 40 m, frozen beyond
+  - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
   - hidden beyond the draw limit (stand-in: 60 m)
   - frustum culling stays on
 - **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
