@@ -57,7 +57,8 @@ body:has(.kqn-modal) .kq-dock-feed {
   border: 1px solid currentColor;
 }
 .kqn-tag.fic {
-  color: #8a5a2b;
+  /* 6.4:1 on the paper (was #8a5a2b, 4.3:1) */
+  color: #6b4219;
 }
 .kqn-tag.hist {
   color: #2f5d7a;

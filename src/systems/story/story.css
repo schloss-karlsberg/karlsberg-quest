@@ -141,7 +141,8 @@ body.kq-in-combat .kqs-dlg-body::before {
   border-color: rgba(45, 77, 107, 0.5);
 }
 .kqs-tag.echo {
-  color: #6a4a8a;
+  /* the echo card is 88 % opaque over the scene: 4.9:1 even over black (was #6a4a8a, 3.6:1) */
+  color: #553673;
   border-color: rgba(106, 74, 138, 0.45);
   font-style: italic;
 }
