@@ -310,7 +310,8 @@ their candle flames at the model's candle tips, fauteuils) and the field station
 crate and barrel. The low tier keeps the procedural kit props. Glass materials of the models are
 made thin and see-through (`lightenGlass`). A costly model can be kept to the high tier
 (`b.model(id, fallback, { high: true })`): its procedural fallback then stands on medium too. The
-Bleiche's wicker basket (16.6k triangles, four times the rest of the green) is the first.
+Bleiche's wicker basket (then 16.6k triangles, four times the rest of the green; 8.9k since the
+tri-budget phase B re-pack, docs/PERFORMANCE.md §3.5) is the first.
 
 **Field station** (`src/systems/story/hub/station.ts`): green board-and-batten Bauwagen on a steel
 chassis (longerons, disc wheels, mudguards, A-frame drawbar, jockey wheel), tin barrel roof with
