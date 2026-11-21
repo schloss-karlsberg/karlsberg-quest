@@ -427,7 +427,7 @@ chime (no flash). From level 6: a second charm slot. Mirrored as `flags['rpg.lev
 
 ### 6.2 Talents (`TALENTS` in `src/rpg/stats.ts`)
 
-Three short branches, 11 points over the campaign, respec free at the field station:
+Three short branches, 11 points over the campaign, respec free at the home base (the Karlsbergquelle since tour WP-02):
 
 | Stab (staff) | Laterne (lantern) | Feldbuch (field book) |
 | --- | --- | --- |

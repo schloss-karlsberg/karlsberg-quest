@@ -18,14 +18,13 @@ export interface SurveyPoint {
   z: number;
   /** One line under the name on the map (what is here). */
   note: string;
-  /** Known from the start (the field station). */
+  /** Known from the start (the home base, the Karlsbergquelle). */
   known?: boolean;
   /** Activation radius (m) when it is not ACTIVATE_RADIUS. */
   r?: number;
 }
 
 export const SURVEY_POINTS: readonly SurveyPoint[] = [
-  { id: 'feldstation', name: 'Feldstation', x: 776, z: -902, note: 'Marlenes Tisch, die Bussole, der Heimweg', known: true },
   { id: 'ehrenhof', name: 'Ehrenhof', x: 1230, z: -1127, note: 'Der Hof vor dem Corps de logis. Hier geht es hinüber', r: 16 },
   { id: 'galerie', name: 'Galerie, Ostende', x: 1300, z: -1192, note: 'Bauplatz, Hanne, der Garten hinter dem Schloss' },
   { id: 'orangerie', name: 'Orangerie', x: 1322, z: -906, note: 'Mannlichs Fenster, der Ladehof' },
@@ -39,9 +38,29 @@ export const SURVEY_POINTS: readonly SurveyPoint[] = [
   // playtest round 10 (A4): on the small bench east of the Karlsbergquelle, 5 m off the path,
   // 14.7 m from the trough's water. Its 7 m circle never reaches the trough's E zone
   // (quelle/layout.ts REACH) nor the story's 5 m step zone at the spring, so the tripod's card can
-  // never be up because you stand at the trough. Last in the list: the index seeds the tripod look.
-  { id: 'karlsbergquelle', name: 'Karlsbergquelle', x: 1072, z: -825, note: 'Der Trog im Hang, der Bach, der Weg hinauf zum Schloss' },
+  // never be up because you stand at the trough. Last in the list: the index seeds the tripod look
+  // (TRIPOD_SEED_BASE). Known from the start since the tour redesign (WP-05): the spring is home.
+  { id: 'karlsbergquelle', name: 'Karlsbergquelle', x: 1072, z: -825, note: 'Der Trog im Hang, der Bach, der Weg hinauf zum Schloss', known: true },
 ];
+
+/**
+ * Points that are gone (tour redesign WP-05: the Feldstation trailer is no longer home). Old saves
+ * may still list them in `activated` / `announced`; `livePointIds` drops them on load.
+ */
+export const RETIRED_POINTS: readonly string[] = ['feldstation'];
+
+/** Saved point ids without retired or unknown ones (order kept, duplicates dropped). */
+export function livePointIds(ids: readonly unknown[] | undefined): string[] {
+  const out: string[] = [];
+  for (const id of ids ?? []) if (typeof id === 'string' && !out.includes(id) && SURVEY_POINTS.some((p) => p.id === id)) out.push(id);
+  return out;
+}
+
+/**
+ * Seed of a tripod's look: list index + this. It was index + 3 while the retired `feldstation`
+ * stood first in the list; + 4 keeps every remaining tripod looking as before.
+ */
+export const TRIPOD_SEED_BASE = 4;
 
 export function pointById(id: string): SurveyPoint | undefined {
   return SURVEY_POINTS.find((p) => p.id === id);
@@ -54,7 +73,7 @@ export const ACTIVATE_RADIUS = 7;
  * A point's own activation radius. The Ehrenhof tripod stands 11 m from the Ehrenhof time anchor
  * (1222, -1119) and 15 m from the prologue's "Q in der Mitte des Ehrenhofs" spot (1218, -1118).
  * With 7 m a player who walked straight to the compass rose never got it (playtest round 10: K1
- * started with a 470 m walk from the Feldstation), so it takes 16 m and both Q spots lie inside.
+ * started with a 470 m walk from the old Feldstation), so it takes 16 m and both Q spots lie inside.
  */
 export function activateRadius(p: SurveyPoint): number {
   return p.r ?? ACTIVATE_RADIUS;
@@ -70,8 +89,8 @@ export function cardMayTakeE(flags: Readonly<Record<string, unknown>>): boolean 
 }
 
 /**
- * Points that count as known: walked up to (`activated`) or pre-surveyed (`known`, e.g. the field
- * station, or one Laub announced because the next goal lies beside it).
+ * Points that count as known: walked up to (`activated`) or pre-surveyed (`known`, e.g. the
+ * Karlsbergquelle, or one Laub announced because the next goal lies beside it).
  */
 export function knownPoints(activated: readonly string[], announced: readonly string[]): SurveyPoint[] {
   const set = new Set([...activated, ...announced]);
@@ -125,7 +144,7 @@ export function travelBlock(w: TravelWorld): TravelBlock {
  */
 /**
  * How far away (m) a goal must be before Laub announces the point beside it. 600 until playtest
- * round 10: the Feldstation → Ehrenhof leg (~500 m) then never qualified.
+ * round 10: the (old) Feldstation → Ehrenhof leg (~500 m) then never qualified.
  */
 export const ANNOUNCE_MIN = 400;
 

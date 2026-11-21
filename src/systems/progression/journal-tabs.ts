@@ -2,7 +2,7 @@
  * Journal tabs of the progression system (src/ui/journal.ts, docs/ACTION-RPG.md §8.4):
  * 40 "Ausrüstung" — the Messstab, charm slots, supplies (choose the quick item, use one), quest
  * items, lore texts, the derived numbers; 50 "Talente" — three branches, rank pips, "Lernen",
- * respec at the field station; the badge counts unspent points.
+ * respec at the home base (the spring); the badge counts unspent points.
  *
  * The quests system owns the journal modal; until it exists (or when it does not open on I) the
  * progression system shows these tabs in a small fallback modal (index.ts).
@@ -20,7 +20,7 @@ export interface TabApi {
   core: ProgressionCore;
   item(id: string): ItemDef | undefined;
   name(id: string): string;
-  inStation(): boolean;
+  atHome(): boolean;
   quickKey(): string;
   /** Something changed from the journal (save, HUD). */
   changed(reason: string): void;
@@ -88,7 +88,7 @@ function renderGear(el: HTMLElement, api: TabApi): void {
             h('p.kqp-g-text', wdef.text_de),
           ]),
         ])
-      : h('p.kqp-g-empty', 'Noch kein Stab. Die Feldstation hat einen.'),
+      : h('p.kqp-g-empty', 'Noch kein Stab. Marlene hat einen für dich.'),
     ...others.map((id) =>
       h('div.kqp-g-row', [
         icon(id),
@@ -180,14 +180,14 @@ function renderGear(el: HTMLElement, api: TabApi): void {
 function renderTalents(el: HTMLElement, api: TabApi): void {
   const { core } = api;
   const sl = core.slice();
-  const station = api.inStation();
+  const home = api.atHome();
   const spent = Object.values(sl.talents).reduce((a, b) => a + b, 0);
   const head = h('div.kqp-t-head', [
     h('div.kqp-t-points', { 'data-testid': 'talent-points', dataset: { points: String(sl.points) } }, sl.points ? [h('span.kqp-t-big', String(sl.points)), sl.points === 1 ? ' Talentpunkt frei' : ' Talentpunkte frei'] : 'Alle Talentpunkte verteilt'),
     h('div.kqp-t-level', `Stufe ${sl.level}${sl.level >= MAX_LEVEL ? ' (Höchststufe)' : ''} · jede Stufe ein Punkt`),
     h('div.kqp-t-respec', [
-      h('button.kq-btn', { 'data-testid': 'talent-respec', disabled: !station || spent === 0, onclick: () => (core.respec(), api.changed('respec')) }, 'Neu verteilen'),
-      h('span.kqp-g-small', station ? ' An der Feldstation: kostenlos.' : ' Nur an der Feldstation.'),
+      h('button.kq-btn', { 'data-testid': 'talent-respec', disabled: !home || spent === 0, onclick: () => (core.respec(), api.changed('respec')) }, 'Neu verteilen'),
+      h('span.kqp-g-small', home ? ' An der Quelle: kostenlos.' : ' Nur an der Quelle.'),
     ]),
   ]);
   const cols = BRANCHES.map((b) =>

@@ -39,7 +39,8 @@ export interface Poi {
 
 /** The walks (local frame), per chapter and era. */
 export const ROUTES: readonly Route[] = [
-  // prologue (today): station → dam → the slope below the Orangerie → the Ehrenhof → the Bussole
+  // prologue (today): the old Feldstation → dam → the slope below the Orangerie → the Ehrenhof →
+  // the Bussole (kept as it is: its POI ids `poi.p-hang.<n>` sit in saves)
   { id: 'p-hang', chapter: 'prolog', era: 'today', pts: [[790, -905], [880, -880], [1040, -905], [1138, -931], [1237, -966], [1232, -1060], [1218, -1118]] },
   { id: 'p-garten', chapter: 'prolog', era: 'today', pts: [[1240, -1250], [1330, -1270], [1420, -1285], [1508, -1296]] },
   // K1 (1789): the Ehrenhof → the garden → the Zwinger; the Karlslust at night
@@ -69,6 +70,10 @@ export const ROUTES: readonly Route[] = [
   // and share the per-era spacing and Fundstück pools, so a route added earlier would move or
   // re-kind the POIs of the routes after it, and their ids (`poi.<route>.<n>`) sit in saves.
   { id: 'p-weiher', chapter: 'prolog', era: 'today', pts: [[816, -896], [830, -909], [861, -908], [898, -908], [938, -909], [963, -901], [1010, -912], [1080, -935], [1160, -950], [1225, -968]], start: 110, gap: 62 },
+  // tour redesign (WP-05): the guided tour's walk (prologue, today). Appended LAST for the same
+  // reason as p-weiher: nothing before it may renumber. TODO(tour WP-05/WP-06): the stops come from
+  // kq-story; until then it has no points, so it is valid and inert (no POIs, no ids).
+  { id: 'p-fuehrung', chapter: 'prolog', era: 'today', pts: [] },
 ];
 
 /**

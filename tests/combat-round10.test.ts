@@ -116,13 +116,13 @@ describe('round 10 · F-05: one roll away does not end the fight', () => {
     run(s, 1);
     expect(e.aggro).toBe(true);
     e.hp = 5;
-    // a short dip into the field station's circle: nothing happens
-    run(s, RESET.grace - 1, { safe: 'station' });
+    // a short dip into the home's (the spring's) circle: nothing happens
+    run(s, RESET.grace - 1, { safe: 'home' });
     expect(e.aggro).toBe(true);
     run(s, 0.5);
     expect(e.leashT).toBe(0);
     // staying there: after the grace it gives up and walks home, still wounded
-    run(s, RESET.grace + 0.1, { safe: 'station' });
+    run(s, RESET.grace + 0.1, { safe: 'home' });
     expect(e.aggro).toBe(false);
     expect(['return', 'idle']).toContain(e.state);
     expect(e.hp).toBeLessThanOrEqual(5);
@@ -139,18 +139,18 @@ describe('round 10 · F-05: one roll away does not end the fight', () => {
     expect(quest.e.quest).toBe('q.test');
     run(quest.s, 1);
     quest.e.hp = 5;
-    run(quest.s, 30, { safe: 'station' });
+    run(quest.s, 30, { safe: 'home' });
     expect(quest.e.aggro).toBe(false);
     expect(quest.e.hp).toBe(5);
 
     const wild = one('nebelling', 0, -4);
     run(wild.s, 1);
     wild.e.hp = 5;
-    run(wild.s, RESET.grace + 3, { safe: 'station' });
+    run(wild.s, RESET.grace + 3, { safe: 'home' });
     expect(wild.e.aggro).toBe(false);
     // home but not yet rested: still 5
     expect(wild.e.hp).toBe(5);
-    run(wild.s, 30, { safe: 'station' });
+    run(wild.s, 30, { safe: 'home' });
     expect(wild.e.hp).toBeGreaterThan(5);
     // slow: at most RESET.regenPerS of its strength per second
     expect(wild.e.hp).toBeLessThanOrEqual(5 + wild.e.maxHp * RESET.regenPerS * 30 + 1e-6);
