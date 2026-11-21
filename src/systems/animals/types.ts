@@ -10,7 +10,7 @@
 /** C5 `AnimalAction` without the story's `ActionBase` (kq-story extends it with delay / onResume). */
 export interface AnimalAction {
   do?: 'animal';
-  op: 'spawn' | 'despawn' | 'run' | 'lie' | 'follow';
+  op: 'spawn' | 'despawn' | 'run' | 'lie' | 'follow' | 'shine';
   /** Instance id: 'ricke', 'kitz', 'diane', 'bijou'. */
   id: string;
   /** spawn only. */
@@ -31,6 +31,8 @@ export interface AnimalAction {
   path?: [number, number][];
   bark?: boolean;
   back?: boolean;
+  /** shine: eye glint 0..1 (the keep ending's party: "eyes catching the fire a little too brightly"). */
+  k?: number;
 }
 
 export type AnimalKind = 'reh' | 'hund';
@@ -64,7 +66,9 @@ export interface AnimalRunOp { op: 'run'; id: string; path: [number, number][]; 
 export interface AnimalLieOp { op: 'lie'; id: string; x?: number; z?: number; follow?: string }
 /** follow: `follow` omitted or '' stops following (the animal stays where it is). */
 export interface AnimalFollowOp { op: 'follow'; id: string; follow?: string; spacing?: number }
-export type AnimalRequest = AnimalSpawnOp | AnimalDespawnOp | AnimalRunOp | AnimalLieOp | AnimalFollowOp;
+/** shine: the body's eye glint (fauna `setEyeShine`), 0 = off; clamped to 0..1. Not saved: whoever set it sets it again. */
+export interface AnimalShineOp { op: 'shine'; id: string; k: number }
+export type AnimalRequest = AnimalSpawnOp | AnimalDespawnOp | AnimalRunOp | AnimalLieOp | AnimalFollowOp | AnimalShineOp;
 
 /** Narrow a flat C5 action to its op shape; null when a required field is missing. */
 export function toRequest(a: AnimalAction): AnimalRequest | null {
@@ -83,6 +87,9 @@ export function toRequest(a: AnimalAction): AnimalRequest | null {
       return { op, id, x: a.x, z: a.z, follow: a.follow };
     case 'follow':
       return { op, id, follow: a.follow, spacing: a.spacing };
+    case 'shine':
+      if (typeof a.k !== 'number' || !Number.isFinite(a.k)) return null;
+      return { op, id, k: Math.max(0, Math.min(1, a.k)) };
     default:
       return null;
   }

@@ -40,6 +40,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./cinematic'),
   // the tour group: Gerold walks the route, the group follows (WP-16, era today)
   () => import('./walk'),
+  // the end-of-game party on today's plateau: people, dogs, set, credits strip and orbit (bible 06 §8)
+  () => import('./party'),
   // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
   () => import('./photo'),
   // "Unauffällig": the court's watchers, suspicion, the gate inspection (after npc / scenery / story)
