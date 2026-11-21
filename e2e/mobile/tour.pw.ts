@@ -586,10 +586,12 @@ const STATES: State[] = [
       });
       if (!ok) return c.na('no travel point');
       await c.page.waitForTimeout(400);
+      const shown = () => c.page.evaluate(() => !!document.querySelector('.kqt-banner:not(.kqt-aside)'));
+      const upAtOnce = await shown();
       await c.shot();
+      if (upAtOnce) return c.tidy();
       // the banner waits while another centre card or (on a phone) a line is up: tap the lines
       // away until it shows, then shoot it
-      const shown = () => c.page.evaluate(() => !!document.querySelector('.kqt-banner:not(.kqt-aside)'));
       const until = Date.now() + 20_000;
       while (!(await shown()) && Date.now() < until) {
         if (await c.page.evaluate(() => !!document.querySelector('.kqs-dlg.kqs-show'))) await c.tapSel('.kqs-dlg.kqs-show .kqs-dlg-body').catch(() => undefined);

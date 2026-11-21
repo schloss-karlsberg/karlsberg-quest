@@ -628,16 +628,22 @@ html[data-kq-touch] .kqj-foot kbd {
     right: calc(264px + var(--kq-safe-r));
     width: auto;
     transform: none;
-    padding: 6px 12px;
+    padding: 5px 12px 6px;
+    /* like the dialogue card: it ends above the vitals (the title first; a long sub line is cut) */
+    max-height: clamp(48px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh);
+    overflow: hidden;
+    box-sizing: border-box;
   }
   html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) .kqt-card.kqt-banner {
     right: calc(314px + var(--kq-safe-r));
   }
   html[data-kq-touch] .kqt-card.kqt-banner h3 {
-    font-size: 17px;
+    font-size: 15px;
+    line-height: 1.2;
   }
   html[data-kq-touch] .kqt-card.kqt-banner p {
-    font-size: 13px;
+    font-size: 12.5px;
+    line-height: 1.3;
   }
 }
 
