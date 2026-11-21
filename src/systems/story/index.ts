@@ -257,6 +257,9 @@ class StoryRuntime {
   inHub = false;
   private hubToastShown = false;
   private storyPrompt = false;
+  /** The story's prompt on screen (re-rendered when Touch-Steuerung switches) and the mode it was shown in. */
+  private promptShown: { key: string | null; text: string; touch?: string } | null = null;
+  private promptTouch = false;
   private hubPrompt = false;
   private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
@@ -318,6 +321,7 @@ class StoryRuntime {
         if (this.storyPrompt) {
           ctx.ui.hud.prompt(null, undefined, 'story');
           this.storyPrompt = false;
+          this.promptShown = null;
         }
       },
       chapterCompleted: (f) => {
@@ -342,6 +346,7 @@ class StoryRuntime {
       clips: this.clips,
       reducedMotion: () => ctx.settings.state.reducedMotion,
       name: () => this.slice.name,
+      touch: () => ctx.input.touchMode,
       valid: (item) => this.lineStillValid(item),
       onShow: (item) => {
         if (!item.id) return;
@@ -804,8 +809,10 @@ class StoryRuntime {
         if (!a.key && !a.text) {
           if (this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
           this.storyPrompt = false;
+          this.promptShown = null;
         } else {
-          ctx.ui.hud.prompt(a.key ?? null, a.text ?? '', 'story');
+          this.promptShown = { key: a.key ?? null, text: a.text ?? '', ...(a.touch ? { touch: a.touch } : {}) };
+          this.renderPrompt();
           this.storyPrompt = true;
         }
         return;
@@ -1554,6 +1561,8 @@ class StoryRuntime {
     this.updateShiftKey(dt);
     this.updateHub();
     this.updateAfterword();
+    // Touch-Steuerung switched while a prompt with a touch text is up: say it the other way
+    if (this.storyPrompt && this.promptShown?.touch && ctx.input.touchMode !== this.promptTouch) this.renderPrompt();
     if (this.calmToasts.length && !ctx.ui.hud.inAction) {
       const tt = this.calmToasts.shift()!;
       ctx.ui.toast(tt.text, tt.ms);
@@ -1566,6 +1575,14 @@ class StoryRuntime {
       this.pendingAutosave = false;
       ctx.save.autosave('beat', true);
     }
+  }
+
+  /** The story's prompt in the current input mode: the `touch` text on a touch screen (mode read now). */
+  private renderPrompt(): void {
+    const p = this.promptShown;
+    if (!p) return;
+    this.promptTouch = this.ctx.input.touchMode;
+    this.ctx.ui.hud.prompt(p.key, this.promptTouch && p.touch ? p.touch : p.text, 'story');
   }
 
   /** The follow pack of ending C is out (in the era it was configured in). */

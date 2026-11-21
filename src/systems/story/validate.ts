@@ -398,6 +398,13 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
       case 'cue':
         if (!isStr(a.id)) err(file, where, 'cue needs an id');
         break;
+      case 'prompt':
+        if (a.touch !== undefined) {
+          if (!isStr(a.touch)) err(file, where, 'prompt touch must be a text');
+          // an interact prompt's text labels the Aktion button on a touch screen
+          else if (a.touch.length > 22) warn(file, where, `prompt touch '${a.touch}' is longer than the Aktion button (22 characters)`);
+        }
+        break;
       case 'choice':
         if (!isStr(a.id) || !isStr(a.prompt) || !Array.isArray(a.options) || a.options.length < 2) err(file, where, 'choice needs id, prompt and ≥ 2 options');
         else
