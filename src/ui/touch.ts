@@ -102,6 +102,8 @@ export interface TouchDeps {
   flying(): boolean;
   /** Ability n (1 Ausfall, 2 Erdstoß, 3 Wirbel) learnt? Its button hides until then. Absent: always shown. */
   skillUnlocked?(n: 1 | 2 | 3): boolean;
+  /** The player's stance ('stand' | 'crouch' | 'prone'): the crouch button's state after a load. */
+  stance?(): string;
 }
 
 interface Btn {
@@ -252,6 +254,8 @@ export class TouchControls {
     });
     // abilities unlock by level (combat: skillsForLevel); a fresh game or a loaded save may change them
     for (const ev of ['level:up', 'stats:changed', 'game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncSkills());
+    // a load sets the stance without a player:stance event: read it back
+    for (const ev of ['game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncFly());
     this.refresh();
   }
 
@@ -319,7 +323,7 @@ export class TouchControls {
     const fl = this.deps.flying();
     this.flyBtn.el.classList.toggle('kq-hidden', !can && !fl);
     this.flyBtn.el.classList.toggle('on', fl);
-    const cr = crouchButtonMode(fl, this.stance);
+    const cr = crouchButtonMode(fl, this.deps.stance?.() ?? this.stance);
     this.crouchBtn.el.replaceChildren(svg(TOUCH_ICONS[cr.icon]));
     this.crouchBtn.el.classList.toggle('on', cr.on);
     this.crouchBtn.el.setAttribute('aria-label', t(cr.label));

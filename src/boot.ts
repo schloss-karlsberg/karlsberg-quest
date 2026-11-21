@@ -214,6 +214,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     openPause: () => openPauseMenu(),
     canFly: () => ERA_INFO[world.currentEra].spiritView,
     flying: () => player.flying,
+    stance: () => player.stance,
     skillUnlocked: (n) => skillsForLevel(state.state.systems.progression?.level ?? 1).includes(SKILL_IDS[n - 1]!),
   });
   touch.onActiveChange = (on) => {
