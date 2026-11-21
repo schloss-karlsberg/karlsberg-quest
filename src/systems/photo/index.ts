@@ -375,6 +375,8 @@ class Photo {
     this.el.classList.remove('kq-hidden');
     this.zoomBar.classList.remove('kq-hidden');
     document.documentElement.toggleAttribute('data-kq-photo', true);
+    // level, skill and reward cards wait while the phone is up: not in the viewfinder (M-18)
+    this.ctx.ui.cards.hold('photo', true);
     this.syncSignal();
     if (this.ctx.era.current !== 'today') this.ctx.ui.toast(t('photo.toast.nonet'));
     this.ctx.events.emit('photo:open', {});
@@ -390,6 +392,7 @@ class Photo {
     this.el.classList.add('kq-hidden');
     this.zoomBar.classList.add('kq-hidden');
     document.documentElement.toggleAttribute('data-kq-photo', false);
+    this.ctx.ui.cards.hold('photo', false);
     this.ctx.events.emit('photo:close', {});
   }
 

@@ -6,7 +6,7 @@ import type { TouchIcon } from '../player/touchMap';
  */
 const S = (body: string) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
-export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'photo' | 'shutter', string> = {
+export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'down' | 'shutter', string> = {
   // an open hand reaching
   interact: S('<path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v7M14 10.5V5.5a1.5 1.5 0 0 1 3 0V13M8 11.5 6.6 10a1.6 1.6 0 0 0-2.4 2.1l3.4 4.7A6 6 0 0 0 12.5 20H13a4 4 0 0 0 4-4v-3"/>'),
   // the surveyor's staff, swung, with a strike mark
@@ -29,6 +29,10 @@ export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'photo' | 'shutter
   lock: S('<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'),
   // down
   down: S('<path d="M12 4v15M6 13l6 6 6-6"/>'),
+  // a figure crouched low (sneaking)
+  crouch: S('<circle cx="14" cy="5.5" r="2"/><path d="M13 8.5 9.5 13l3.5 2-1.5 5"/><path d="M9.5 13 6 14.5M13 15l4.5-1 .5 6"/><path d="M12.5 9.5l3.5 2"/>'),
+  // look / aim has no button: a neutral swipe hint (two arrows apart)
+  look: S('<path d="M3.5 12h17M7 8.5 3.5 12 7 15.5M17 8.5l3.5 3.5-3.5 3.5"/>'),
   // up
   up: S('<path d="M12 20V5M6 11l6-6 6 6"/>'),
   // relief contours

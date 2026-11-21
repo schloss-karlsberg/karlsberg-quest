@@ -429,6 +429,7 @@ html[data-kq-reduced-motion] .kqt-travel-curtain .kqt-cross { animation: none; }
 @keyframes kqt-spin { to { transform: rotate(360deg); } }
 .kqt-card { position: fixed; left: 50%; top: max(150px, 22vh); transform: translateX(-50%); z-index: 22; width: min(460px, 88vw); padding: 16px 22px 14px; pointer-events: auto;
   background: #efe4c9; color: #2a2118; border: 1px solid #b9a57c; box-shadow: 0 6px 24px rgba(0,0,0,0.35); font-family: var(--serif, Georgia), serif; animation: kq-in 0.25s ease-out; }
+.kqt-card.kqt-aside { display: none; }
 .kqt-card.kqt-banner { top: 64px; width: min(420px, 70vw); padding: 10px 18px; text-align: center; background: rgba(239, 228, 201, 0.94); }
 .kqt-card.kqt-banner h3 { font-size: 19px; }
 .kqt-card.kqt-banner p { font-size: 14px; font-style: italic; }

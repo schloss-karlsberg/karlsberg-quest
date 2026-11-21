@@ -163,6 +163,14 @@ html[data-kq-touch] textarea {
   width: 52px;
   height: 52px;
 }
+/* crouch (tap: on / off) on foot, sink (hold) while flying: right edge, between Ziel (top 148)
+   and the Aktion pill (right 64), 8 px clear of both; under the skill row on every layout */
+.kq-t-btn.crouch {
+  right: 4px;
+  bottom: 160px;
+  width: 52px;
+  height: 52px;
+}
 /* the contextual action: a pill that carries the prompt's text */
 .kq-t-btn.interact {
   /* above the Epoche button (right 160, bottom 120..172) with 10 px air: they overlapped (M-06) */
@@ -196,6 +204,16 @@ html[data-kq-touch] textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+}
+/* the pill is the only prompt on touch (the HUD pill steps aside): a long one wraps to two lines
+   instead of being cut */
+.kq-t-btn.interact.lit .kq-t-label {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.1;
+  text-align: left;
 }
 
 /* hold ring (Wuchthieb charge, era return): fills while held */
@@ -304,6 +322,11 @@ html[data-kq-touch] .kq-hud .kq-toasts {
 }
 html[data-kq-touch] .kq-hud .kq-prompt {
   bottom: 18px;
+}
+/* one prompt, not two: while the Aktion pill carries the interact prompt's text („Feldstation“),
+   the HUD's prompt pill at the bottom says the same and steps aside */
+html[data-kq-touch]:has(.kq-touch:not(.kq-hidden) .kq-t-btn.interact.lit) .kq-hud .kq-prompt {
+  display: none;
 }
 html[data-kq-touch] .kq-prompt kbd.kq-touch-key {
   display: inline-grid;
@@ -509,33 +532,27 @@ html[data-kq-touch] .kqj-foot kbd {
   html[data-kq-touch] body .kqs-dlg.kqs-show {
     transform: none;
   }
-  /* the spirit view adds Fliegen (and Sinken) to the top row */
+  /* the spirit view adds Fliegen to the top row */
   html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) body .kqs-dlg {
     right: calc(314px + var(--kq-safe-r));
   }
-  html[data-kq-touch]:has(.kq-t-btn.down:not(.kq-hidden)) body .kqs-dlg {
-    right: calc(364px + var(--kq-safe-r));
-  }
-  html[data-kq-touch] body .kqs-dlg .kqs-portrait {
-    width: 44px;
-    height: 44px;
+  /* no portrait on a landscape phone: the name in the card says who speaks, the text gets the
+     width (the radio sat on the era label), and the torn tab has nothing to point at */
+  html[data-kq-touch] body .kqs-dlg .kqs-portrait,
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-body::before {
+    display: none;
   }
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-body {
     min-width: 0;
-    max-height: 36vh;
+    /* ends above the bottom-left zone (vitals: „Lebenskraft“), whose top edge the HUD publishes
+       as --kq-bl-top; never more than 36vh, never less than 84 px (then it scrolls inside) */
+    max-height: clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh);
     overflow-y: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
     padding: 6px 12px 5px 14px;
     background-size: auto, auto 22px, auto;
     transform: none;
-  }
-  html[data-kq-touch] body .kqs-dlg .kqs-dlg-body::before {
-    bottom: auto;
-    top: 14px;
-    width: 12px;
-    height: 12px;
-    left: -6px;
   }
   html[data-kq-touch] body .kqs-dlg .kqs-who {
     font-size: 16px;
@@ -547,9 +564,21 @@ html[data-kq-touch] .kqj-foot kbd {
     font-size: clamp(14px, calc(var(--sub-size) * 0.7), 22px);
     line-height: 1.32;
   }
+  /* the „weiter“ hint (and a source) stays in view: a footer stuck to the card's lower edge while
+     a long line scrolls under it (the body's 5 px bottom padding is pulled in) */
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-foot {
+    position: sticky;
+    bottom: -5px;
+    margin: 1px 0 -5px;
+    padding: 2px 0 5px;
     font-size: 12px;
-    margin-top: 1px;
+    background: var(--paper);
+    box-shadow: 0 -5px 5px -3px var(--paper);
+  }
+  /* the era label (top-left) lies under the card: it steps back while a line is up */
+  html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kq-hud .kq-tl {
+    opacity: 0;
+    transition: opacity 0.25s;
   }
   /* the tracker under the card steps back while a line is up (it would show through the edges) */
   html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kqq-tracker {
@@ -589,6 +618,32 @@ html[data-kq-touch] .kqj-foot kbd {
     top: 196px;
     left: 44%;
     max-width: 62vw;
+  }
+  /* the travel banner („Vermessungspunkt eingemessen“, src/systems/travel) sat at 64 px, on the
+     top row; mid-screen it covered the vitals and the Aktion pill. It takes the dialogue card's
+     top band instead (travel holds it back while a line is up) */
+  html[data-kq-touch] .kqt-card.kqt-banner {
+    top: calc(6px + var(--kq-safe-t));
+    left: calc(8px + var(--kq-safe-l));
+    right: calc(264px + var(--kq-safe-r));
+    width: auto;
+    transform: none;
+    padding: 5px 12px 6px;
+    /* like the dialogue card: it ends above the vitals (the title first; a long sub line is cut) */
+    max-height: clamp(48px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh);
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) .kqt-card.kqt-banner {
+    right: calc(314px + var(--kq-safe-r));
+  }
+  html[data-kq-touch] .kqt-card.kqt-banner h3 {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  html[data-kq-touch] .kqt-card.kqt-banner p {
+    font-size: 12.5px;
+    line-height: 1.3;
   }
 }
 

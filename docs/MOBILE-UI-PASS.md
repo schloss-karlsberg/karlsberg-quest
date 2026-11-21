@@ -134,7 +134,7 @@ The runner gives each issue a severity hint (`findings.json`). The playtester co
 - If headless ever falls back to software on this Mac, `--headed` runs a visible Chromium window. That needs the logged-in desktop session; the lock rules are the same.
 - The renderer string is stored in `findings.json` (`gpu`).
 
-**Re-shooting a subset.** `--states journal,combat` shoots only those states (ids or prefixes) and merges them into the unit's existing `findings.json`. A title-flow step brings its predecessors (`lantern` → `warning`, `name`). Gameplay states start a new game by taps when the title is still up.
+**Re-shooting a subset.** `--states journal,combat` shoots only those states (ids or prefixes) and merges them into the unit's existing `findings.json`. Notes are tagged with their state (`[journal] …`): a full unit run starts with none, and a subset run replaces the notes of the states it re-shoots (untagged notes from older runs are dropped). A title-flow step brings its predecessors (`lantern` → `warning`, `name`). Gameplay states start a new game by taps when the title is still up.
 
 ## 7. Run commands (one unit per lock hold)
 
@@ -364,7 +364,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Suggested fix:** on coarse-pointer or low quality, lighten the shift effect (fewer passes or particles) and pre-warm the 1789 materials before the shift starts.
 - **Likely file:** `src/systems/fx/` (shift).
 
-**M-18 · S3 · all units · travel-card, level-card, photo** → *open* (see §8.1)
+**M-18 · S3 · all units · travel-card, level-card, photo** → *fixed* (see §8.2)
 - **What's wrong:** centre cards stack on each other:
   - the „Vermessungspunkt eingemessen“ banner lies on top of the Kartograf skill card;
   - in photo mode the „Stufe IX“ level card sits in the middle of the viewfinder.
@@ -425,7 +425,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 | M-15 | fixed | `html[data-kq-photo] .kq-click-to-play { display: none }` (desktop). | desktop only; not shot |
 | M-16 | fixed | On phones the arc is scaled 0.9 instead of 0.86 with 52 px base buttons, Balsam and Ziel are 50 px, and the top-row buttons are 44 px with 6 px gaps. Every arc target is ≥ 45 px after the scale. | `small-landscape/08-hud-idle.png` → same name |
 | M-17 | measured | Era shift, mid-effect: p95 33 ms on every unit; max 150 ms (small and large landscape), 167 ms (tablet landscape), 183 ms (tablet portrait); 2–3 frames over 50 ms. The 1789 arrival on small-landscape: p95 50 ms, max 83 ms. The one long stall at the start of the shift looks like material or shader warm-up for 1789. Not changed: this is `src/systems/fx/` (shift), handed over. | `*/19-era-shift-mid.png`, `_before/*/findings.json` → `frames` |
-| M-18 | open | Not done in this pass (the travel banner through `CardDirector` is `src/systems/travel/`). | — |
+| M-18 | fixed in §8.2 | Not done in this pass. | — |
 | M-19 | handed over | Tag contrast and „Enter weiter“: kq-story (see below). | — |
 
 **E2E, one spec per lock hold:** `touch` 4/4, `photo` 4/4 (after the photo follow-up: the first run failed because the phone button moved away from under the thumb, so it now stays in place), `smoke` 3/3, `court` 4/4, `pol-flow` 4/4.
@@ -439,3 +439,35 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Tag contrast (M-19)**: `src/systems/npc/npc.css` `.kqn-tag.fic` (`color: #8a5a2b`, about 3:1 on paper) and `src/systems/story/story.css` `.kqs-tag` (`color: var(--ink-soft)`). Suggestion: a darker ink such as `#6b4219` to reach 4.5:1.
 - **M-11 timing**: hold the first radio line of a chapter until the chapter card has faded (the quest banner already waits). Placement on phones is ours and done.
 - **Base dialogue width**: `.kqs-dlg { width: min(820px, 92vw, calc(100vw - 380px)) }` is what made the 287 px column. Our phone rule replaces it on touch; between 501 and 760 px of height (small tablets, not in the matrix) the base rule still applies.
+
+### 8.2 Follow-up pass (2026-11-21)
+
+**Branch** `mobile/ui-pass-2`, from 92f4146, with main merged after `mobile/ui-pass` landed (ef5c8c3). Our files only: `src/ui/touch.css`, `src/ui/touch.ts`, `src/ui/touchIcons.ts`, `src/ui/hud.ts` (one CSS variable), `src/player/touchMap.ts`, `src/systems/travel/`, `src/systems/photo/index.ts` (one card hold), `e2e/mobile/tour.pw.ts`. `CardDirector` (`src/ui/cards.ts`) is only used, not changed. Desktop: the layout does not change; the two non-CSS changes that reach desktop (the travel banner waits while another centre card is up; level, skill and reward cards wait while the phone is up) are covered by smoke, photo, travel-paths and world.
+
+**Screenshots.** Before: `test-results/mobile-tour/_before/<unit>/` (not overwritten). After: `test-results/mobile-tour/_after/<unit>/`, same file names. This pass shot:
+- small-landscape: `lantern, hud-idle, touch-buttons, dialogue, combat, travel-card, photo, k1-card`;
+- large-landscape: `hud-idle, touch-buttons, dialogue, combat, travel-card, photo`;
+- tablet-landscape and large-portrait: the full unit (the missing after shots of §8.1).
+- New shot: `20-travel-card-shown.png`, the banner once nothing holds it back. It has no "before" (the old banner never waited); compare it with `_before/<unit>/20-travel-card.png`.
+
+| item | status | what changed | before → after |
+|---|---|---|---|
+| Dialogue card vs the HUD (landscape phones) | fixed | The card ends above the bottom-left zone: the HUD publishes that zone's top as `--kq-bl-top`, and the card body is capped at `clamp(84px, --kq-bl-top − 14px, 36vh)`; a longer line scrolls inside. The radio portrait and its torn tab are gone on landscape phones (the name says who speaks, and the text gets about 50 px more width), and the era column fades while a line is up. „Lebenskraft“ and the health bar stay clear. | `small-landscape/12-dialogue.png`, `06-lantern-first-frame.png`, `17-combat-lock-on.png`; `large-landscape/12-dialogue.png` |
+| Double action prompt | fixed | While the Aktion pill carries the interact prompt (`.lit`), the HUD prompt pill steps aside, on every touch layout. A long prompt wraps to two lines in the pill instead of being cut („Mauerrest untersuchen“). | `small-landscape/12-dialogue.png`, `11-touch-buttons-cue-interact.png` |
+| Clipped „weiter“ hint | fixed | The card's footer (hint and source) is a sticky footer at the card's lower edge; the text scrolls under it. | `small-landscape/12-dialogue.png` |
+| M-18 banner stacking | fixed | The activation banner takes `CardDirector`'s slot when it is free and waits (or steps aside, its clock stopped) while another centre card holds it; a later level or skill card waits for it. On a landscape phone it takes the dialogue card's top band, smaller and capped above the vitals, and waits while a line is up. The photo system holds the slide-in cards while the phone is up (`cards.hold('photo')`), so no level card lands in the viewfinder. | `tablet-landscape/20-travel-card.png` (the banner waits behind the Kartograf card), `22-photo-open.png`; `small-landscape/20-travel-card.png` (waits for Marlene's line) → `20-travel-card-shown.png` |
+| Missing after shots | done | tablet-landscape (79 shots, all states pass) and large-portrait (20 shots, all pass), both full units. | `_after/tablet-landscape/`, `_after/large-portrait/` |
+| `findings.json` notes | fixed | Notes are tagged by state (`[dialogue] …`). A full unit run starts with none; a subset run replaces the notes of the states it re-shoots and drops untagged ones from older runs. | `_after/*/findings.json` → `notes` |
+| Crouch on touch (from kq-story) | done | The sink button moved from the top row into the thumb arc as a crouch button: on foot a tap toggles crouching (`crouch`, the C path; active state and `aria-pressed` while crouched), in the spirit view it is held to sink (`down`). Right edge of the arc, 8 px clear of Ziel and the Aktion pill, under the skill row; 52 px (47 px on phones after the 0.9 scale). Its class was `.down`, which is also the pressed state; it is `.crouch` now. `crouchButtonMode()` is unit-tested. | `small-landscape/11-touch-buttons-*.png`, `large-landscape/08-hud-idle.png` |
+| Key-cap icons (from kq-story) | done | `touchIconFor`: `N` → the phone, `C` / `X` / „Sinken“ / „Ducken“ → the crouch button, `Maus` → a neutral swipe icon (`look`) instead of the Aktion hand. `touchName('crouch')` is „Ducken“. Unit-tested. | — |
+
+**Crouch after a load.** A load sets the stance without a `player:stance` event, so `touch.ts` reads the stance back (`TouchDeps.stance`) on `game:start` and `save:loaded`.
+
+**The world spec and the banner.** `world.spec` „survey points“ expects `travel-card-activated` right after an activation. The banner only waits while another centre card is on screen (or, on a landscape phone, while a line is up); a spoken line or a fight on desktop does not hold it. With nothing else up it shows at once, so the test needed no change.
+
+**E2E, one spec per lock hold (port 5340):** `touch` 4/4, `photo` 4/4, `smoke` 3/3, `travel-paths` 1/1, `world -g "survey points"` 1/1. Gates: `pnpm typecheck`, `pnpm test` (91 files, 1268 tests), `pnpm validate`, `pnpm build`, all green. `npc` was not run: its overrides were not touched.
+
+**Still open:**
+- The first prompt („Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen“) is long enough that the HUD pill runs under Balsam and Ausweichen on a small phone (`small-landscape/06-lantern-first-frame.png`). The touch wording at kq-story fixes it; if it stays long, cap the pill's width on phones.
+- The combat callout („Nebelling duckt sich – Ausfall!“) touches the unlit Aktion pill on small-landscape (`17-combat-lock-on.png`).
+- The level card („Stufe VIII“) covers most of a landscape phone (seen in an intermediate run, after the banner released the slot); it is progression's card.
