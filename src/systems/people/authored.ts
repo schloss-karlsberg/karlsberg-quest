@@ -16,13 +16,16 @@
  *   (`peopleMaterial()`: vertex colours, the world light of render/standard.ts). Nothing is cloned
  *   per person, so the renderer draws each person in one call with no material or program switch
  *   between people. The material is never disposed by a person. (The ghost look still gets its own
- *   per-person shader, like the stand-in.)
+ *   per-person shader, like the stand-in.) A GLB whose manifest entry opts into the toon look
+ *   (`shading: 'toon'`, characters/toon.ts) draws with the ONE shared toon twin of that material
+ *   instead, again the same instance for every person.
  * - **LOD1:** the GLB carries a decimated copy of the body ('avatar-body_lod1', about half the
  *   triangles, the same skin); the person shows it beyond `PEOPLE_LOD.lod1` (15 m, ±0.5 m hysteresis).
  */
-import { type Mesh, MeshStandardMaterial } from 'three';
+import { type Material, type Mesh, MeshStandardMaterial } from 'three';
 import { kqStandard } from '../../render/standard';
 import { linHex } from '../characters/shaders';
+import { type CharacterShading, kqToon, shadingOf, toonParamsFor } from '../characters/toon';
 import type { PersonSpec } from './specs';
 import type { BodyKit, StandInPlan } from './standin';
 import { PEOPLE_LOD, type PersonClip } from './types';
@@ -89,20 +92,28 @@ export const AUTHORED_BONES = {
   upper: /^(spine_02|spine_03|neck_01|head|clavicle_|upperarm_|lowerarm_|hand_|thumb_|index_|middle_|ring_|pinky_)/,
 } as const;
 
-let bodyMat: MeshStandardMaterial | null = null;
-let eyeMat: MeshStandardMaterial | null = null;
+const shared = new Map<string, MeshStandardMaterial>();
 
 /**
  * The ONE material every authored person draws with (vertex colours; created once, never disposed
  * by a person). `eye`: the optional second material of a GLB built with `budget.eye_call`.
+ * `shading`: 'toon' gives the one shared toon twin (characters/toon.ts, the palette's toon params).
  */
-export function peopleMaterial(eye = false): MeshStandardMaterial {
-  if (eye) {
-    eyeMat ??= kqStandard(new MeshStandardMaterial({ name: 'kq-people-eye', vertexColors: true, roughness: 0.15, metalness: 0 }), { ambient: 1.15 });
-    return eyeMat;
+export function peopleMaterial(eye = false, shading: CharacterShading = 'standard'): MeshStandardMaterial {
+  const key = `${eye ? 'eye' : 'body'}:${shading}`;
+  let m = shared.get(key);
+  if (!m) {
+    m = eye
+      ? new MeshStandardMaterial({ name: 'kq-people-eye', vertexColors: true, roughness: 0.15, metalness: 0 })
+      : new MeshStandardMaterial({ name: 'kq-people', vertexColors: true, roughness: 0.72, metalness: 0 });
+    kqStandard(m, { ambient: 1.15 });
+    if (shading === 'toon') {
+      m.userData.kqToon = toonParamsFor(eye ? PEOPLE_EYE_MATERIAL : PEOPLE_MATERIAL);
+      kqToon(m);
+    }
+    shared.set(key, m);
   }
-  bodyMat ??= kqStandard(new MeshStandardMaterial({ name: 'kq-people', vertexColors: true, roughness: 0.72, metalness: 0 }), { ambient: 1.15 });
-  return bodyMat;
+  return m;
 }
 
 /** The authored body kit (see the file comment). */
@@ -120,6 +131,8 @@ export const AUTHORED_KIT: BodyKit = {
     const lod = mesh.name.endsWith(LOD1_SUFFIX) ? 1 : 0;
     const eye = slot === PEOPLE_EYE_MATERIAL;
     if (slot !== PEOPLE_MATERIAL && !eye) console.warn(`[people] authored mesh ${mesh.name}: unexpected material '${slot}', drawn with the people material`);
-    return { solid: peopleMaterial(eye), owned: false, cloth: linHex(spec.authored?.cloth ?? 0x808080), lod };
+    // the GLB's own material carries the manifest's shading (set at load, characters/toon.ts)
+    const src = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as Material | undefined;
+    return { solid: peopleMaterial(eye, shadingOf(src)), owned: false, cloth: linHex(spec.authored?.cloth ?? 0x808080), lod };
   },
 };
