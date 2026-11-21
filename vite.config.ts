@@ -114,7 +114,7 @@ function releaseNotesPage(): Plugin {
 }
 
 /**
- * Recorded voices are optional (public/voice/ is gitignored until the audio is licensed). With no
+ * Recorded voices are optional (public/voice/ holds committed synthetic MOSS clips only, and may be empty). With no
  * public/voice/manifest.json, serve / emit an empty one, so the game's manifest fetch never hits a
  * 404 (a browser console error in every e2e spec). A real manifest from the voice pipeline wins.
  */

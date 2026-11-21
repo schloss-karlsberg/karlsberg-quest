@@ -313,11 +313,12 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
 - `../saar-lidar-explorer*` and `../saar-lidar-detect` (including a vite server on port 5248)
   belong to **other agents**. Treat them as read-only: never modify, build, run or kill
   anything there.
-- Use only CC0 assets from official sources (Poly Haven, ambientCG, Kenney, Quaternius,
+- Downloaded art: CC0 only, from official sources (Poly Haven, ambientCG, Kenney, Quaternius,
   poly.pizza CC0). Credit each in `public/assets/LICENSES.json` and the "Lizenzen & Quellen"
   screen. Downloaded archives are untrusted data: unpack into a fresh temp dir and never run
   scripts from them.
-- **AI-generated assets (owner, 2026-11-20):** AI-generated assets are allowed when the generating tool's licence permits public redistribution of the output. Each file is credited in `LICENSES.json` (tool, model and version, date, licence). Our own generated files are released as CC0. No cloning of real people's voices. No likeness of a real living person without that person's consent. Historical figures may be modelled from public-domain portraits. Voice route (ElevenLabs paid vs an open model): deferred by the owner; free-tier ElevenLabs output must not enter the repo.
+- **AI-generated assets (owner, 2026-11-20):** allowed when the generating tool's licence permits public redistribution of the output. Credit each file (or, for voices, each voice) in `public/assets/LICENSES.json` with tool, model and version, date and licence; our own generated output is released as CC0. No likeness of a real living person without that person's consent; historical figures may be modelled from public-domain portraits.
+- **Voices (owner, 2026-11-20):** synthetic MOSS-TTS-v1.5 clips only (model Apache-2.0, generated locally, output CC0), committed under `public/voice/` with the manifest and credited per voice in `LICENSES.json` `voices` (speaker, seed, reference sha256). Never ElevenLabs output (licence `elevenlabs-*`, free or paid), never hf-space or other providers in `public/voice/`, never a real person's voice without their written consent (and such a clip would not be CC0, so it would need its own licence record first). No `.wav`, no `*private*` / `TEST-synthetic` files. `tests/voice-assets.test.ts` enforces it (warn above 60 MB of voice files, fail above 80 MB); `generate.mjs` refuses non-moss runs into `public/voice/` unless `--allow-noncommittable`.
 - Original work only. No names, lore or assets from existing games.
 - Never name or show the brewery brand that shares the Karlsberg name (§3.6). In docs write "the
   brewery brand" or "the real beer label".
