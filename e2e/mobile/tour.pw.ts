@@ -98,7 +98,11 @@ interface Findings {
   startedAt: string;
   shots: Shot[];
   states: Record<string, { ok: boolean; ms: number; error?: string; na?: string }>;
-  /** What the runner had to work around (each one is a finding candidate). */
+  /**
+   * What the runner had to work around (each one is a finding candidate), tagged with its state:
+   * "[journal] …". A full unit run starts empty; a subset run drops the notes of the states it
+   * re-shoots (and untagged ones from older runs), so notes no longer pile up across re-runs.
+   */
   notes: string[];
 }
 
@@ -768,7 +772,10 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
   if (prev && FILTER.length) {
     f.shots = prev.shots.filter((s) => !ids.has(s.state));
     f.states = Object.fromEntries(Object.entries(prev.states).filter(([k]) => !ids.has(k)));
-    f.notes = prev.notes ?? [];
+    f.notes = (prev.notes ?? []).filter((n) => {
+      const tag = /^\[([\w-]+)\] /.exec(n)?.[1];
+      return !!tag && !ids.has(tag);
+    });
   }
   const save = () => writeFileSync(file, JSON.stringify(f, null, 2));
 
@@ -880,6 +887,7 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
 
   for (const s of list) {
     const t0 = Date.now();
+    const notes0 = f.notes.length;
     if (!s.title) await ensurePlaying().catch((e) => console.log(`  ✗ new game: ${String((e as Error).message).split('\n')[0]}`));
     let na: string | undefined;
     let sub = 0;
@@ -952,6 +960,8 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
         await c.tidy().catch(() => boot());
       }
     }
+    // tag this state's notes, so a later subset run can replace them
+    for (let i = notes0; i < f.notes.length; i++) if (!f.notes[i]!.startsWith('[')) f.notes[i] = `[${s.id}] ${f.notes[i]}`;
     save();
   }
   if (errors.length) f.states['_pageerrors'] = { ok: false, ms: 0, error: errors.slice(0, 20).join(' | ') };
