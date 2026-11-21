@@ -89,7 +89,7 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
     w.tourRec = [];
     const k = window.kq!;
     k.ctx.events.onAny((n, p) => {
-      if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('shift:') || n.startsWith('quelle:'))
+      if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('group:') || n.startsWith('shift:') || n.startsWith('quelle:'))
         w.tourRec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)), t: k.ctx.loop.time });
     });
     k.story!.start('Testerin');
@@ -192,6 +192,47 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
   await follow(page, 't13', 120);
   await viewGroup(page);
   await shot(page, '09-weiher-station3');
+  // round 2 (owner: lost the group): on the way up to the Quelle the player falls 45 m behind and
+  // stays: Gerold waits (leash), shows on the compass, calls once; a minute on, „Zur Gruppe“ (hold Q)
+  await follow(page, 't14', 120);
+  await page.evaluate(() => window.kq!.step(240));
+  const tStray0 = await time(page);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
+    const fx = -Math.sin(g.yaw);
+    const fz = -Math.cos(g.yaw);
+    k.teleport(g.x - fx * 45, g.z - fz * 45, (-g.yaw * 180) / Math.PI + 150, -4);
+    k.step(60);
+  });
+  for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.walk!.find().called)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  const stray = await page.evaluate(() => ({ find: window.kq!.walk!.find(), walker: window.kq!.walk!.walker('imhoff') }));
+  console.log(`[tour] stray: ${JSON.stringify(stray)}`);
+  expect(stray.walker!.waiting).toBe(true);
+  expect(stray.find.marker).toBe(true);
+  expect(stray.find.called).toBe(true);
+  await shot(page, '09b-gruppe-verloren');
+  for (let i = 0; i < 80 && !(await page.evaluate(() => window.kq!.walk!.find().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  expect(await page.evaluate(() => window.kq!.walk!.find().prompt)).toBe(true);
+  await page.waitForTimeout(800);
+  await shot(page, '09c-zur-gruppe');
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.input.simulate('KeyQ', true);
+    k.step(90);
+    k.ctx.input.simulate('KeyQ', false);
+    k.step(90);
+  });
+  const back = await page.evaluate(() => {
+    const k = window.kq!;
+    const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
+    const p = k.ctx.player.position;
+    return { dist: Math.hypot(p.x - g.x, p.z - g.z), era: k.ctx.era.current };
+  });
+  console.log(`[tour] back with the group: ${JSON.stringify(back)}`);
+  expect(back.dist).toBeLessThan(30);
+  expect(back.era).toBe('today');
+  const strayS = (await time(page)) - tStray0;
   await follow(page, 't15', 240);
   await viewGroup(page, 8);
   await shot(page, '10-quelle-station4');
@@ -239,7 +280,7 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
 
   const rec = await page.evaluate(() => (window as unknown as { tourRec: { n: string; p: { beat?: string }; t: number }[] }).tourRec);
   const beats = rec.filter((r) => r.n === 'story:beat').map((r) => ({ beat: r.p.beat, t: +(r.t - t0).toFixed(1) }));
-  const out = { beats, deerStart: +(tDeer0 - t0).toFixed(1), deerPhoto: +(tDeer - t0).toFixed(1), touch: +(tTouch - t0).toFixed(1), barks: rec.filter((r) => r.n === 'walk:bark').length };
+  const out = { beats, deerStart: +(tDeer0 - t0).toFixed(1), deerPhoto: +(tDeer - t0).toFixed(1), touch: +(tTouch - t0 - strayS).toFixed(1), strayS: +strayS.toFixed(1), barks: rec.filter((r) => r.n === 'walk:bark').map((r) => (r.p as unknown as { id: string }).id) };
   writeFileSync(`${OUT}/timings.json`, JSON.stringify(out, null, 2));
   console.log(`[tour] timings ${JSON.stringify(out)}`);
   expect(errors).toEqual([]);

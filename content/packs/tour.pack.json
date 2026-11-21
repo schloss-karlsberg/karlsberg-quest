@@ -24,6 +24,18 @@
       "trigger": { "event": "walk:bark", "id": "imhoff.bark.wait" }
     },
     {
+      "id": "imhoff.bark.hier.01",
+      "speaker": "imhoff",
+      "text_de": "Hier drüben! Wir sind hier!",
+      "trigger": { "event": "walk:bark", "id": "imhoff.bark.hier" }
+    },
+    {
+      "id": "imhoff.bark.hier.02",
+      "speaker": "imhoff",
+      "text_de": "Hier drüben! Immer den Stimmen nach.",
+      "trigger": { "event": "walk:bark", "id": "imhoff.bark.hier" }
+    },
+    {
       "id": "imhoff.t.station1",
       "speaker": "imhoff",
       "text_de": "Willkommen am Fuß des Karlsbergs. Da hinten, hinter den Bäumen, steht noch ein einziges Gebäude der ganzen Schlossanlage des Herzogs Karl II. August: zur Bauzeit des Schlosses errichtet, als Vorrats- und Wohngebäude. Heute ist es Privatbesitz, da gehen wir nicht hin.",

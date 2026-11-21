@@ -27,6 +27,10 @@ then `kq.story.start('Name')`.
 
 Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'npc', op: walk|group|follow|gather|hold|release|warp}` and `{do:'npc', op:'despawn', group}` → `npc:walk` (C2), `{do:'cinematic', …}` → `cinematic:play` (C1), `{do:'animal', …}` → `animal:request` (C5), `{do:'fade', to, seconds}`; sounds `wind`, `bark`; validator cases incl. route / stop checks against `content/routes/*.json`. Tests: `tests/tour-slice.test.ts` (headless beat-by-beat run), `e2e/tour-slice.spec.ts`.
 
+## Finding the group (round 2)
+
+Owner playtest: „lost the group and couldn't find it again“. The walk system now helps (src/systems/walk/find.ts, thresholds in `FIND`): Gerold shows on the compass („Gruppe · 45 m“) beyond 24 m or when out of view; once per stray episode he calls „Hier drüben!“ (`imhoff.bark.hier.01/02`, this pack); after a minute apart or beyond 80 m the prompt „Gedrückt halten: zur Gruppe“ (Q, touch: the Epoche button) fades the player onto the path just behind the group. The leash (wait r 25 m) is unchanged; the e2e strays on the way to the Quelle and checks wait, marker, call-out and the hold. The call-out goes through the barks system, so its 45 s gap and quiet rules can swallow it (the marker and the prompt do not depend on it).
+
 ## What is faked (placeholders)
 
 - Bodies: the people stand-ins (guide and members) and the fauna stand-ins (deer, dogs) from the WIP `tour/animals-system` / `chars/fauna-api` branches.

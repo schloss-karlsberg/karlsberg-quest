@@ -83,7 +83,7 @@
         { "do": "fade", "to": 1, "seconds": 0.8 },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "felsen", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" }, "delay": 0.9 },
         { "do": "npc", "op": "warp", "group": "fuehrung", "to": "einstieg", "route": "p-fuehrung" },
-        { "do": "teleport", "x": 619.1, "z": -492.7, "yaw": 148 },
+        { "do": "teleport", "x": 622.4, "z": -479.0, "yaw": 8 },
         { "do": "fade", "to": 0, "seconds": 0.9, "delay": 0.6 },
         { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: zum Felsenpfad", "x": 682.9, "z": -596.1 },
         { "do": "flag", "set": { "tour.abkuerzung": true }, "delay": 0.5 }
@@ -115,7 +115,8 @@
       "title_de": "Weiter am Hang",
       "enter": [
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
-        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "wind", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } }
+        { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "wind", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: am Hang entlang", "x": 676.1, "z": -635.7 }
       ],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "wind" } }
     },
