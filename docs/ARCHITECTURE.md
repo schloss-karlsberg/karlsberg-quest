@@ -81,6 +81,55 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   whose `engine` is missing or differs is `stale-engine` and is regenerated; the `voiceId` format stays
   `moss:<speaker>:<sha8>:<seed>` (checked by `assetRules.ts`, which accepts the `engine` field).
 
+The in-process path above is **direct mode**, the default and the fallback. Service mode (next section)
+hands the same lines to the standalone moss-service instead.
+
+#### moss service mode (moss-service jobs)
+
+`KQ_MOSS_MODE=service` (or `--moss-service`) sends moss lines as jobs to the local, standalone
+**moss-service** (its own folder outside this repo; interface agreed with kq-moss in its
+`docs/client-interface.md`). The pipeline never loads the model and never takes the heavy lock in this
+mode: the owner starts the service runner `moss-run`, which shows the queue, takes the lock, loads the
+model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in `tests/voice-service.test.ts`.
+
+- **Env:** `KQ_MOSS_SERVICE_CLIENT` = path to the service's node client (`clients/node/moss.mjs`). It is
+  required in service mode and is set in the env or the main checkout's `.env`, never in the repo (the
+  repo holds no machine path; missing → a clear error). `KQ_MOSS_VOICES` stays as before: the local
+  reference files give the `voiceId` sha8 and are checked against the registry.
+- **Two steps** (default; same command both times):
+  1. `KQ_MOSS_MODE=service pnpm voice:gen --speakers laub --max-lines 200` submits one job per line that
+     needs (re)generation per the manifest (incl. `stale-engine`): `{project: "karlsberg-quest", id,
+     voice: <speaker>, text: <the prepared speech text that speechHash is taken over>, output: {path:
+     <raw-dir>/<id>.wav, format: "wav"}}`, with no seed or params (those come from the registry, so keys
+     stay stable). It prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
+     refuses are listed and the exit code is 1.
+  2. After the owner ran `moss-run`, the same command (or `--collect`) reads each line's result. `ok` /
+     `cached`: the record's `text_sha256` must equal the sha256 of the text we submitted, the WAV's
+     sha256 must equal `sha256`, voice and seed must match, and the result's engine identity (mapped to
+     `{model, tokenizer, warmup}`, `OpenMOSS-Team/` dropped) must equal `MOSS_ENGINE`; then the usual
+     post-processing runs and the manifest entry is written with the same `voiceId`, plus
+     `serviceKey` (the service job key) and `sha256Raw`. A failed check, `failed` or `refused` is reported
+     (exit 1) and the manifest entry stays as it was; `queued` / `running` print "still queued".
+  Without `--submit` / `--collect`, lines with a current result are collected, lines without one (or with
+  a result for an older text) are submitted. `--submit` only submits. `--wait [min]` (default 30) polls
+  the client's `waitAll` after submitting and collects what finished; on timeout it prints "still queued"
+  and exits 0.
+- **Raw WAVs:** `--raw-dir` (default `.voice-raw/raw-service/` in the checkout, gitignored). Never under
+  `public/` (refused here and by the service, which also refuses tracked paths in a git work tree). They
+  are kept after post-processing: the service cache serves a later identical job only while the original
+  WAV still exists with its recorded sha256.
+- **Consistency guard** before every submit: the registry (`registry()` from the client if it has one,
+  else `moss-registry list --json` next to the client's `SUBMIT`; read-only) must match `voices.json`
+  for every speaker submitted: seed, `ref_sha256[0:8]` vs the local reference, language, instruction,
+  params, and `engine_identity` (model and tokenizer revisions, warm-up v1) vs `MOSS_ENGINE`. Any
+  difference fails with a per-field diff and nothing is submitted (voices.json is the source; fix the
+  registry with `moss-registry add --force …`).
+- **Never submitted** (client side, before the service's own guard): the private test voice
+  `guest-test`, and any registry voice whose `visibility` is not `public`.
+- `--dry-run` in service mode prints the plan plus each line's state (submit / still queued / collect),
+  read from the client's result files, and the registry check; it submits nothing. Whether a job will
+  be answered from the service cache is known only after submitting ("M cached").
+
 #### warmup v1 (moss-tts)
 
 Fixed spec, identical in the `moss` provider (`runner.py` `warmup_v1`) and in the standalone moss-service

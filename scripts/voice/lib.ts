@@ -5,8 +5,9 @@
  *
  * Contract with in-game playback (do not change): manifest `public/voice/manifest.json`
  *   { version: 1, lines: { <lineId>: { files: { opus, aac }, textHash, speechHash, speaker, provider, voiceId,
- *     model, licence, date, chars, credits, durationMs, attribution?, engine? } } }
- * (`engine` moss only: { model, tokenizer, warmup }; the runtime ignores it)
+ *     model, licence, date, chars, credits, durationMs, attribution?, engine?, serviceKey?, sha256Raw? } } }
+ * (`engine` moss only: { model, tokenizer, warmup }; `serviceKey` / `sha256Raw` moss-service clips only:
+ * the service job key and the raw WAV's sha256; the runtime ignores all three)
  * files = `<lineId>.<sha256(bytes)[0..8]>.webm|.m4a` (the runtime reads names only from the manifest);
  * textHash = FNV-1a 32 over UTF-8 of the normalised display text_de (the runtime matches on it).
  */
@@ -518,6 +519,10 @@ export interface ManifestEntry {
   attribution?: string;
   /** moss only: model + tokenizer revisions and warm-up version that rendered the clip; ignored by the runtime */
   engine?: MossEngine;
+  /** moss-service clips only: the service's job key (sha256 hex over engine, voice, ref, seed, params, text) */
+  serviceKey?: string;
+  /** moss-service clips only: sha256 hex of the raw WAV the service rendered (checked before post-processing) */
+  sha256Raw?: string;
 }
 export interface Manifest {
   version: 1;

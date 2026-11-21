@@ -113,6 +113,15 @@ describe('checkVoiceAssets (fixtures)', () => {
     expect(errs(fixture({ 'laub.hello': entry({ engine: 'v1' }) }))).toMatch(/engine must be/);
     expect(errs(fixture({ 'laub.hello': entry({ engine: { model: engine.model, tokenizer: engine.tokenizer } }) }))).toMatch(/engine must be/);
   });
+  it('accepts the moss-service fields serviceKey + sha256Raw (sha256 hex); rejects malformed ones', () => {
+    const hex = 'a'.repeat(64);
+    expect(errs(fixture({ 'laub.hello': entry({ engine: { ...MOSS_ENGINE }, serviceKey: hex, sha256Raw: 'b'.repeat(64) }) }))).toBe('');
+    expect(errs(fixture({ 'laub.hello': entry({ serviceKey: hex }) }))).toBe('');
+    expect(errs(fixture({ 'laub.hello': entry({ serviceKey: 'abc' }) }))).toMatch(/serviceKey must be/);
+    expect(errs(fixture({ 'laub.hello': entry({ serviceKey: 'A'.repeat(64) }) }))).toMatch(/serviceKey must be/);
+    expect(errs(fixture({ 'laub.hello': entry({ sha256Raw: 42 }) }))).toMatch(/sha256Raw must be/);
+    expect(errs(fixture({ 'laub.hello': entry({ sha256Raw: null }) }))).toMatch(/sha256Raw must be/);
+  });
 
   it('fails ElevenLabs output, unknown licences and non-moss providers', () => {
     expect(errs(fixture({ 'laub.hello': entry({ licence: 'elevenlabs-free-noncommercial' }) }))).toMatch(/ElevenLabs output/);

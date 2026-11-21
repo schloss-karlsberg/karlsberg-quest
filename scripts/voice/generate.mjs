@@ -13,6 +13,11 @@
  * scripts/voice/assetRules.ts, tests/voice-assets.test.ts). A real run that would write elevenlabs or
  * hf-space clips there is refused unless --allow-noncommittable is given; use --out <scratch dir>
  * for those. ElevenLabs output must never be committed. Contract: scripts/voice/lib.ts.
+ *
+ * moss lines run in-process by default (direct mode: runner.py inside heavy.sh). Service mode
+ * (KQ_MOSS_MODE=service or --moss-service; client from KQ_MOSS_SERVICE_CLIENT) submits them to the local
+ * moss-service instead and collects its results later; the owner runs `moss-run` in between
+ * (scripts/voice/mossService.ts, docs/ARCHITECTURE.md "moss service mode").
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -40,6 +45,22 @@ import {
 } from './lib.ts';
 import { isCommittableVoiceDir, nonCommittableGuard } from './assetRules.ts';
 import { MOSS_BATCH_MAX, MOSS_RTF, QUIET_WINDOW, mossConfig, mossEstimate, refSha8For } from './moss.ts';
+import {
+  DEFAULT_RAW_DIR,
+  DEFAULT_WAIT_MIN,
+  SERVICE_PROJECT,
+  assessResult,
+  checkRawDir,
+  clientRefusals,
+  isStaleResult,
+  loadServiceClient,
+  mossMode,
+  normalizeWaitArg,
+  readRegistry,
+  registryDiffs,
+  serviceJob,
+  submitSummary,
+} from './mossService.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../..');
@@ -54,6 +75,7 @@ const MAIN_ENV = (() => {
 })();
 
 const { values: a } = parseArgs({
+  args: normalizeWaitArg(process.argv.slice(2)),
   options: {
     'dry-run': { type: 'boolean', default: false },
     env: { type: 'string', default: MAIN_ENV },
@@ -74,6 +96,11 @@ const { values: a } = parseArgs({
     'keep-raw': { type: 'string' },
     offline: { type: 'boolean', default: false },
     'allow-noncommittable': { type: 'boolean', default: false },
+    'moss-service': { type: 'boolean', default: false },
+    submit: { type: 'boolean', default: false },
+    collect: { type: 'boolean', default: false },
+    wait: { type: 'string' },
+    'raw-dir': { type: 'string', default: join(REPO, DEFAULT_RAW_DIR) },
     verbose: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -98,6 +125,13 @@ if (a.help) {
   --keep-raw <dir>     (real run) also keep each provider's raw audio there (e.g. moss WAVs, for pause metrics)
   --allow-noncommittable  let elevenlabs / hf-space clips land in public/voice anyway (local test only; never commit them)
   --content, --voices, --priority, --speech <path>   (speech.json: spoken text overrides per line id)
+moss service mode (KQ_MOSS_MODE=service; client module path from KQ_MOSS_SERVICE_CLIENT; default mode: direct):
+  --moss-service       same as KQ_MOSS_MODE=service: moss lines go to the local moss-service, no model here.
+                       Without --submit / --collect: lines with a result are collected, the rest submitted
+  --submit             only submit (re)generation jobs, then print "N queued (M cached) — owner runs: moss-run"
+  --collect            only collect results (after the owner ran moss-run); still-queued lines are skipped
+  --wait [min]         after submitting, wait for the results (default ${DEFAULT_WAIT_MIN} min), then collect
+  --raw-dir <dir>      where the service writes raw WAVs (default ${DEFAULT_RAW_DIR}, gitignored; never under public/)
   -v, --verbose        list every selected line, also those past the budget`);
   process.exit(0);
 }
@@ -138,6 +172,20 @@ delete process.env.HF_TOKEN;
 // local MOSS: KQ_MOSS_VENV / KQ_MOSS_HOME / KQ_MOSS_VOICES from env or .env, defaults under ~/kq-models
 const mossCfg = mossConfig(process.env);
 const ro = { refSha8: refSha8For(mossCfg) };
+let mode = 'direct';
+try {
+  mode = mossMode(process.env, a['moss-service']);
+} catch (e) {
+  fail(e.message);
+}
+if (mode !== 'service' && (a.submit || a.collect || a.wait !== undefined)) fail('--submit / --collect / --wait need moss service mode (KQ_MOSS_MODE=service or --moss-service)');
+if (a.submit && a.collect) fail('--submit and --collect exclude each other (without either, results are collected and the rest submitted)');
+const waitMin = a.wait === undefined ? null : num(a.wait, 'wait');
+const rawDir = resolve(a['raw-dir']);
+if (mode === 'service') {
+  const rawErr = checkRawDir(rawDir);
+  if (rawErr) fail(rawErr);
+}
 
 if (a.model && !(a.model in CREDITS_PER_CHAR)) fail(`unknown ElevenLabs model "${a.model}" (known: ${Object.keys(CREDITS_PER_CHAR).join(', ')})`);
 
@@ -201,6 +249,7 @@ if (!dry) {
 }
 
 printPlan(plan);
+if (dry && mode === 'service') await servicePlan(todo.filter((r) => r.voice.provider === 'moss'));
 if (dry) process.exit(0);
 
 // --- real run -----------------------------------------------------------------------------
@@ -209,8 +258,6 @@ if (!todo.length) {
   if (a.prune) prune();
   process.exit(0);
 }
-const { ffmpegAvailable, processClip } = await import('./audio.ts');
-if (!ffmpegAvailable()) fail('ffmpeg/ffprobe not found (set FFMPEG / FFPROBE)');
 const { elevenLabsProvider, hfSpaceProvider } = await import('./providers.ts');
 const providers = {};
 const providerFor = (name) =>
@@ -219,9 +266,17 @@ const providerFor = (name) =>
       ? elevenLabsProvider(KEY, voices.providers?.elevenlabs, (s) => console.log(s))
       : hfSpaceProvider(HF, voices.providers?.['hf-space'] ?? {}));
 
-mkdirSync(a.out, { recursive: true });
 const tmpDir = join(a.out, '.tmp');
-mkdirSync(tmpDir, { recursive: true });
+/** ffmpeg + output folders, only once something is really post-processed (a service submit needs neither) */
+let processClip = null;
+async function prepareOutput() {
+  if (processClip) return;
+  const au = await import('./audio.ts');
+  if (!au.ffmpegAvailable()) fail('ffmpeg/ffprobe not found (set FFMPEG / FFPROBE)');
+  processClip = au.processClip;
+  mkdirSync(a.out, { recursive: true });
+  mkdirSync(tmpDir, { recursive: true });
+}
 const sha8 = (f) => createHash('sha256').update(readFileSync(f)).digest('hex');
 let spent = 0;
 let done = 0;
@@ -229,8 +284,9 @@ let stopped = false;
 const total = todo.length;
 let n = 0;
 
-/** post-process one raw clip (any format ffmpeg reads) into the two encodings + manifest entry */
-function finish(r, raw, credits) {
+/** post-process one raw clip (any format ffmpeg reads) into the two encodings + manifest entry.
+ * `o.keepRaw`: leave the raw file (service WAVs stay: its cache needs them); `o.extra`: more manifest fields. */
+function finish(r, raw, credits, o = {}) {
   const id = r.line.id;
   const opusTmp = join(tmpDir, `${id}.webm.part`);
   const aacTmp = join(tmpDir, `${id}.m4a.part`);
@@ -249,7 +305,7 @@ function finish(r, raw, credits) {
   const files = { opus: contentFile(id, sha8(opusTmp), 'webm'), aac: contentFile(id, sha8(aacTmp), 'm4a') };
   renameSync(opusTmp, join(a.out, files.opus));
   renameSync(aacTmp, join(a.out, files.aac));
-  unlinkSync(raw);
+  if (!o.keepRaw) unlinkSync(raw);
   const old = manifest.lines[id];
   manifest.lines[id] = {
     files,
@@ -266,6 +322,7 @@ function finish(r, raw, credits) {
     durationMs,
     // moss: engine marker (model + tokenizer revision, warm-up version); missing / different → stale-engine
     ...(r.voice.provider === 'moss' ? { attribution: MOSS_ATTRIBUTION, engine: r.voice.engine } : {}),
+    ...o.extra,
   };
   writeManifest(manifestPath, manifest);
   // old clips go only after the manifest no longer points at them
@@ -276,7 +333,9 @@ function finish(r, raw, credits) {
   return true;
 }
 
-for (const r of todo.filter((x) => x.voice.provider !== 'moss')) {
+const otherTodo = todo.filter((x) => x.voice.provider !== 'moss');
+if (otherTodo.length) await prepareOutput();
+for (const r of otherTodo) {
   const id = r.line.id;
   // The subscription counter lags 20-60 s: cap on the start-of-run remaining count (in `cap`) minus
   // the running sum of billed `character-cost`, never on re-polling.
@@ -302,7 +361,11 @@ for (const r of todo.filter((x) => x.voice.provider !== 'moss')) {
 
 // local MOSS: ≤ 6 lines per runner process, each inside scripts/dev/heavy.sh; post-processing after the lock is released
 const mossTodo = todo.filter((x) => x.voice.provider === 'moss');
-if (mossTodo.length) {
+let exitCode = 0;
+if (mossTodo.length && mode === 'service') {
+  exitCode = await runService(mossTodo);
+} else if (mossTodo.length) {
+  await prepareOutput();
   const { mossProvider } = await import('./providers.ts');
   const byId = new Map(mossTodo.map((r) => [r.line.id, r]));
   const moss = mossProvider({ cfg: mossCfg, repo: REPO, workDir: tmpDir, log: (s) => console.log(s) });
@@ -322,7 +385,152 @@ if (mossTodo.length) {
 }
 rmSync(tmpDir, { recursive: true, force: true });
 if (a.prune) prune();
-console.log(`\nGenerated ${done}/${todo.length} clips, ~${spent} credits${stopped ? ' (stopped early)' : ''}. Manifest: ${manifestPath}`);
+if (mode !== 'service' || otherTodo.length)
+  console.log(`\nGenerated ${done}/${todo.length} clips, ~${spent} credits${stopped ? ' (stopped early)' : ''}. Manifest: ${manifestPath}`);
+process.exit(exitCode);
+
+// ------------------------------------------------------------------------------------------
+// moss service mode (scripts/voice/mossService.ts): submit / collect, never a model in this process
+
+function serviceLines(rows) {
+  return rows.map((r) => ({ r, id: r.line.id, speaker: r.line.speaker, text: r.tts, seed: r.voice.moss.seed }));
+}
+
+/** Guards before anything is submitted: client-side refusals, then voices.json vs the registry. Error text or null. */
+function submitGuard(jobs, lines, registry) {
+  const refusals = clientRefusals(jobs, registry);
+  if (refusals.length) return `refusing to submit:\n  ${refusals.join('\n  ')}\nNothing submitted.`;
+  const speakers = [...new Map(lines.map((l) => [l.speaker, l.r.voice.moss])).values()];
+  const diffs = registryDiffs(speakers, registry);
+  if (diffs.length)
+    return (
+      `moss-service registry differs from voices.json (the service would render other audio than the voiceId says):\n  ${diffs.join('\n  ')}\n` +
+      'Nothing submitted. voices.json is the source: update the registry (moss-registry add --force …), or voices.json if the registry is right.'
+    );
+  return null;
+}
+
+async function runService(rows) {
+  let client;
+  try {
+    client = await loadServiceClient(process.env);
+  } catch (e) {
+    fail(e.message);
+  }
+  const lines = serviceLines(rows);
+  let registry = null;
+  const reg = async () => (registry ??= await readRegistry(client));
+  const toSubmit = [];
+  const recs = new Map();
+  for (const l of lines) {
+    if (a.submit) {
+      toSubmit.push(l);
+      continue;
+    }
+    const rec = await client.result(SERVICE_PROJECT, l.id);
+    // default: no result yet, or a result for an older text → submit; anything else → collect
+    if (!a.collect && (rec === null || isStaleResult(rec, l.text))) toSubmit.push(l);
+    else recs.set(l.id, rec);
+  }
+  let code = 0;
+  const submitted = [];
+  if (toSubmit.length) {
+    const jobs = toSubmit.map((l) => serviceJob(l, rawDir));
+    let msg;
+    try {
+      msg = submitGuard(jobs, toSubmit, await reg());
+    } catch (e) {
+      fail(`could not read the moss-service registry: ${e.message}. Nothing submitted.`);
+    }
+    if (msg) fail(msg);
+    mkdirSync(rawDir, { recursive: true });
+    const answers = await client.submit(jobs);
+    const s = submitSummary(answers);
+    for (const r of s.refused) console.error(`refused by moss-service: ${r.id}: ${r.error ?? r.status}`);
+    for (const r of answers) if (r.status === 'queued') submitted.push(r.id);
+    console.log(`\nmoss-service: ${s.queued} queued (${s.cached} cached) — owner runs: moss-run`);
+    if (s.refused.length) {
+      console.error(`${s.refused.length} jobs refused by moss-service (see above).`);
+      code = 1;
+    }
+  }
+  // --wait: poll the client until the submitted / pending lines are final, or the timeout
+  const pending = [...submitted, ...[...recs].filter(([, r]) => r && (r.status === 'queued' || r.status === 'running')).map(([id]) => id)];
+  if (waitMin !== null && pending.length) {
+    console.log(`waiting up to ${waitMin} min for ${pending.length} moss-service results …`);
+    const got =
+      typeof client.waitAll === 'function'
+        ? await client.waitAll(SERVICE_PROJECT, pending, { timeoutMs: Math.round(waitMin * 60_000) })
+        : new Map(await Promise.all(pending.map(async (id) => [id, await client.result(SERVICE_PROJECT, id)])));
+    for (const id of pending) recs.set(id, got.get(id) ?? null);
+  }
+  if (!recs.size) return code;
+  if ([...recs.values()].some((r) => r && r.status === 'cached' && !r.engine)) {
+    try {
+      await reg();
+    } catch (e) {
+      console.error(`could not read the moss-service registry (needed to check cached results): ${e.message}`);
+    }
+  }
+  const tally = { collected: 0, queued: 0, failed: 0, none: 0 };
+  for (const l of lines) {
+    if (!recs.has(l.id)) continue;
+    const as = assessResult(l, recs.get(l.id), { registry: registry ?? undefined });
+    if (as.kind === 'none') {
+      tally.none++;
+      console.log(`${l.id}: not submitted yet (run without --collect to submit)`);
+    } else if (as.kind === 'queued') {
+      tally.queued++;
+      console.log(`${l.id}: still queued (${as.status})`);
+    } else if (as.kind === 'failed') {
+      tally.failed++;
+      console.error(`${l.id}: ${as.reason} – manifest unchanged`);
+    } else {
+      await prepareOutput();
+      process.stdout.write(`[${++n}/${total}] ${l.id} (moss-service${as.cached ? ', cached' : ''}, ${l.r.chars} chars) … `);
+      if (finish(l.r, as.wav, 0, { keepRaw: true, extra: { engine: as.engine, serviceKey: as.serviceKey, sha256Raw: as.sha256Raw } })) tally.collected++;
+      else tally.failed++;
+    }
+  }
+  console.log(`\nmoss-service collect: ${tally.collected} collected, ${tally.queued} still queued, ${tally.failed} failed, ${tally.none} not submitted. Manifest: ${manifestPath}`);
+  if (tally.failed) code = 1;
+  return code;
+}
+
+/** --dry-run in service mode: what would be submitted / collected. Reads result files and the registry; submits nothing. */
+async function servicePlan(rows) {
+  console.log(`\nmoss service mode (dry run, nothing submitted): raw WAVs → ${rawDir}`);
+  if (!rows.length) return void console.log('No moss lines to submit or collect.');
+  let client = null;
+  try {
+    client = await loadServiceClient(process.env);
+  } catch (e) {
+    console.log(`${e.message}. Without it the plan cannot show result states or check the registry.`);
+  }
+  const lines = serviceLines(rows);
+  const states = {};
+  for (const l of lines) {
+    let state = a.collect ? 'collect' : 'submit';
+    if (client && !a.submit) {
+      const rec = await client.result(SERVICE_PROJECT, l.id);
+      if (!rec) state = a.collect ? 'not submitted' : 'submit';
+      else if (!a.collect && isStaleResult(rec, l.text)) state = `submit (old ${rec.status} result for another text)`;
+      else state = rec.status === 'queued' || rec.status === 'running' ? `still ${rec.status}` : `collect ${rec.status}`;
+    }
+    states[state] = (states[state] ?? 0) + 1;
+    if (a.verbose) console.log(`  ${l.id.padEnd(40)} ${l.speaker.padEnd(9)} ${state}`);
+  }
+  console.log(`moss-service plan: ${Object.entries(states).map(([k, v]) => `${v} ${k}`).join(' · ')}${a.verbose ? '' : ' (-v lists each line)'}`);
+  console.log('Whether the service answers a job from its cache shows when it is submitted ("N queued (M cached)").');
+  if (!client) return;
+  try {
+    const registry = await readRegistry(client);
+    const msg = submitGuard(lines.map((l) => serviceJob(l, rawDir)), lines, registry);
+    console.log(msg ? `WARNING (a real submit would stop here): ${msg}` : 'Registry check: voices.json and the moss-service registry agree.');
+  } catch (e) {
+    console.log(`WARNING: could not read the moss-service registry: ${e.message}`);
+  }
+}
 
 // ------------------------------------------------------------------------------------------
 function prune() {

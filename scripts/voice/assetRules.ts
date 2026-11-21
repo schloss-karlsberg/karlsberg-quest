@@ -22,6 +22,7 @@ export const VOICE_SIZE_FAIL_MB = 80;
 const AUDIO_EXT = /\.(webm|m4a|wav|mp3|ogg|opus|flac|aac|aiff?)$/i;
 /** names that never belong in the repo (local test renders, private references) */
 const FORBIDDEN_NAME = /private|TEST-synthetic/i;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 export interface VoiceAssetReport {
   errors: string[];
@@ -93,6 +94,9 @@ export function checkVoiceAssets(dir: string, credits: readonly VoiceCredit[]): 
           if (!en || typeof en !== 'object' || Array.isArray(en) || !['model', 'tokenizer', 'warmup'].every((k) => typeof en[k] === 'string' && en[k] !== ''))
             r.errors.push(`${where}: engine must be { model, tokenizer, warmup } strings`);
         }
+        // optional moss-service fields: job key and raw WAV sha256, both lowercase sha256 hex
+        for (const k of ['serviceKey', 'sha256Raw'] as const)
+          if (e[k] !== undefined && (typeof e[k] !== 'string' || !SHA256_HEX.test(e[k] as string))) r.errors.push(`${where}: ${k} must be a lowercase sha256 hex string`);
         const fs = e.files as { opus?: unknown; aac?: unknown } | undefined;
         const list = [fs?.opus, fs?.aac, e.file].filter((f): f is string => typeof f === 'string');
         if (!list.length) r.errors.push(`${where}: no files`);
