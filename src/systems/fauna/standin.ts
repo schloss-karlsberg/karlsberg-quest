@@ -703,6 +703,7 @@ export class StandInAnimal implements Animal {
   private restored = true;
   // turning, look
   private faceTarget: number | null = null;
+  private faceSeconds = FACE_SECONDS;
   private readonly lookTarget = new Vector3();
   private looking = false;
   private headYaw = 0;
@@ -1046,8 +1047,17 @@ export class StandInAnimal implements Animal {
     return { clip, as, plan: STANDIN_CLIPS[this.species][as]!, loop: o.loop ?? true, fade: Math.max(0, o.fade ?? DEFAULT_FADE), speed: Math.max(0.05, o.speed ?? 1), t: 0 };
   }
 
-  face(yaw: number): void {
-    if (Number.isFinite(yaw)) this.faceTarget = wrapPi(yaw);
+  face(yaw: number, o: { seconds?: number } = {}): void {
+    if (!Number.isFinite(yaw)) return;
+    const s = o.seconds;
+    if (s !== undefined && Number.isFinite(s) && s <= 0) {
+      // the caller turns smoothly itself (the dogs): the body faces its yaw at once, no second lag
+      this.root.rotation.y = wrapPi(yaw);
+      this.faceTarget = null;
+      return;
+    }
+    this.faceTarget = wrapPi(yaw);
+    this.faceSeconds = s !== undefined && Number.isFinite(s) ? s : FACE_SECONDS;
   }
 
   lookAt(p: { x: number; y: number; z: number } | null): void {
@@ -1115,7 +1125,7 @@ export class StandInAnimal implements Animal {
     const dt = Math.min(0.1, Math.max(0, Number.isFinite(f.dt) ? f.dt : 0));
     // smooth body turn (cheap: at every distance)
     if (this.faceTarget !== null) {
-      const y = easeYaw(this.root.rotation.y, this.faceTarget, dt, f.reducedMotion ? 0.15 : FACE_SECONDS);
+      const y = easeYaw(this.root.rotation.y, this.faceTarget, dt, f.reducedMotion ? Math.min(0.15, this.faceSeconds) : this.faceSeconds);
       this.root.rotation.y = y;
       if (Math.abs(wrapPi(y - this.faceTarget)) < 1e-3) this.faceTarget = null;
     }
