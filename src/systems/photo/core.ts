@@ -16,6 +16,10 @@
  * 5. **steady**: the camera turned slower than `STEADY_RAD_S` on average over the last 0.3 s;
  * 6. **calm**: the target's optional `calm()` returns true (an alerted deer does not count).
  *
+ * A target's optional `state()` (an opaque string, e.g. the deer's 'graze' | 'alert' | 'flee' |
+ * 'settled') is read at the moment of the shot for every good target and carried on its judgement
+ * (`TargetJudgement.state`, then `photo:good { id, stars, state }`). It changes no stars or verdict.
+ *
  * `needAll` binds targets together: a doe that is good alone is not good unless every id in its
  * `needAll` is good in the same shot too (doe and fawn both in the picture).
  *
@@ -71,6 +75,11 @@ export interface PhotoTargetDef {
   needAll?: string[];
   /** False = alerted: the shot does not count (animals; WP-17 supplies it). */
   calm?: () => boolean;
+  /**
+   * The subject's state right now (opaque, never validated; e.g. 'graze' | 'alert' | 'flee' |
+   * 'settled'). Read at the shot for good targets only: `photo:good { id, stars, state }`.
+   */
+  state?: () => string;
   grants?: PhotoGrants;
   /** Player-facing name (album card), German. */
   label_de: string;
@@ -139,6 +148,8 @@ export interface TargetJudgement {
   clear: number;
   /** Counted only via the fallback distance. */
   fallback: boolean;
+  /** The target's `state()` at the shot (good targets with a getter only). */
+  state?: string;
 }
 
 export interface ShotResult {
@@ -299,6 +310,12 @@ export function judgeShot(targets: readonly PhotoTargetDef[], era: Era, v: Photo
       changed = true;
     }
   }
+  // the subject's state at the moment of the shot (good targets with a getter; opaque string)
+  const byId = new Map(targets.map((t) => [t.id, t]));
+  for (const d of details) {
+    const get = d.good ? byId.get(d.id)?.state : undefined;
+    if (get) d.state = get();
+  }
   const inFrame = details.filter((d) => d.inFrame);
   const goods = details.filter((d) => d.good);
   let verdict: Verdict = 'leer';
@@ -312,6 +329,23 @@ export function judgeShot(targets: readonly PhotoTargetDef[], era: Era, v: Photo
     verdict = inFrame.map((d) => d.verdict).sort((a, b) => MISS_ORDER.indexOf(a) - MISS_ORDER.indexOf(b))[0] ?? 'leer';
   }
   return { era, signal: true, targets: inFrame.map((d) => d.id), good: goods.map((d) => d.id), stars, verdict, verdict_de: VERDICT_DE[verdict], details };
+}
+
+/** The `photo:good` payload of one good target (scalar only; `state` only when the target has a getter). */
+export interface PhotoGoodEvent {
+  id: string;
+  stars: number;
+  state?: string;
+}
+
+/** One `photo:good` payload per good target of a shot (index.ts emits them in this order). */
+export function goodEvents(r: ShotResult): PhotoGoodEvent[] {
+  const out: PhotoGoodEvent[] = [];
+  for (const d of r.details) {
+    if (!d.good) continue;
+    out.push(d.state === undefined ? { id: d.id, stars: d.stars } : { id: d.id, stars: d.stars, state: d.state });
+  }
+  return out;
 }
 
 /**
@@ -362,6 +396,8 @@ export interface AlbumEntry {
   play: number;
   /** Best stars. */
   stars: number;
+  /** The subject's `state()` at that best shot (targets with a getter only). */
+  state?: string;
 }
 
 /** The photo system's save slice. */
@@ -408,11 +444,105 @@ export interface GrantSink {
   warn(msg: string): void;
 }
 
+/** A live binding for a target (`attachTarget`): position, and optionally calm / state. */
+export interface PhotoLiveBinding {
+  at: () => Vec3 | null;
+  calm?: () => boolean;
+  state?: () => string;
+}
+
+/**
+ * Why the `?debug` test deer must not bind `reh.ricke` / `reh.kitz` (null = it may): somebody
+ * else already holds a live binding, or `kq.animals` (kq-systems, optional) reports deer. The
+ * animals hook's shape is not fixed yet, so the probe is tolerant: a truthy `deer` (or a
+ * `deer()` returning something non-empty), or a `list()` / `all()` entry whose id / kind /
+ * species / spec names a deer (deer, reh, roe).
+ */
+export function debugDeerBlocker(ids: readonly string[], isAttached: (id: string) => boolean, animals?: unknown): string | null {
+  const taken = ids.filter((id) => isAttached(id));
+  if (taken.length) return `already attached: ${taken.join(', ')}`;
+  if (animals && typeof animals === 'object' && animalsReportDeer(animals as Record<string, unknown>)) return 'kq.animals reports deer';
+  return null;
+}
+
+function animalsReportDeer(a: Record<string, unknown>): boolean {
+  const nonEmpty = (v: unknown) => (Array.isArray(v) ? v.length > 0 : !!v);
+  try {
+    if (typeof a.deer === 'function') {
+      if (nonEmpty((a.deer as () => unknown)())) return true;
+    } else if (nonEmpty(a.deer)) return true;
+    for (const k of ['list', 'all'] as const) {
+      const f = a[k];
+      if (typeof f !== 'function') continue;
+      const rows = (f as () => unknown).call(a);
+      if (!Array.isArray(rows)) continue;
+      for (const r of rows) {
+        if (!r || typeof r !== 'object') continue;
+        const o = r as Record<string, unknown>;
+        if ([o.id, o.kind, o.species, o.spec, o.specId].some((v) => typeof v === 'string' && /deer|reh|roe/i.test(v))) return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 /**
  * The bookkeeping around shots, over a save slice (pure; the system wires it to the game).
  */
 export class PhotoCore {
   readonly targets = new Map<string, PhotoTargetDef>();
+  /** Live bindings per target id, a stack of handles (the top one is active). */
+  private readonly bindings = new Map<string, { base: Pick<PhotoTargetDef, 'at' | 'calm' | 'state'>; stack: PhotoLiveBinding[] }>();
+
+  /**
+   * Bind a live position (and optionally calm / state) to a target by id. Bindings stack per id:
+   * the active one is always the top remaining handle, or the target's own (data) anchor when none
+   * is left. The returned undo removes exactly this handle wherever it sits, so a binding that was
+   * detached is never restored. Missing calm / state on the active handle fall back to the
+   * target's own. Null for an unknown id.
+   */
+  attach(id: string, live: PhotoLiveBinding): (() => void) | null {
+    const t = this.targets.get(id);
+    if (!t) return null;
+    let b = this.bindings.get(id);
+    if (!b) {
+      b = { base: { at: t.at, calm: t.calm, state: t.state }, stack: [] };
+      this.bindings.set(id, b);
+    }
+    const handle: PhotoLiveBinding = { ...live };
+    b.stack.push(handle);
+    this.applyBinding(id);
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      const cur = this.bindings.get(id);
+      if (!cur) return;
+      const i = cur.stack.indexOf(handle);
+      if (i >= 0) cur.stack.splice(i, 1);
+      this.applyBinding(id);
+    };
+  }
+
+  /** True while any live binding is attached to that target. */
+  isAttached(id: string): boolean {
+    return (this.bindings.get(id)?.stack.length ?? 0) > 0;
+  }
+
+  private applyBinding(id: string): void {
+    const b = this.bindings.get(id);
+    const t = this.targets.get(id);
+    if (!b) return;
+    if (t) {
+      const top = b.stack[b.stack.length - 1];
+      t.at = top ? top.at : b.base.at;
+      t.calm = top?.calm ?? b.base.calm;
+      t.state = top?.state ?? b.base.state;
+    }
+    if (!b.stack.length) this.bindings.delete(id);
+  }
 
   constructor(private readonly slice: () => PhotoSlice) {}
 
@@ -420,6 +550,12 @@ export class PhotoCore {
   register(t: PhotoTargetDef): void {
     if (!t.id || !(t.r > 0) || !(t.maxDist > 0) || !(t.minFrac >= 0)) throw new Error(`photo: bad target '${t.id}'`);
     this.targets.set(t.id, t);
+    // a replaced target keeps its live bindings: the new def is the base, the top handle stays active
+    const b = this.bindings.get(t.id);
+    if (b) {
+      b.base = { at: t.at, calm: t.calm, state: t.state };
+      this.applyBinding(t.id);
+    }
   }
 
   unregister(id: string): void {
@@ -456,15 +592,20 @@ export class PhotoCore {
     const s = this.slice();
     const changed: AlbumEntry[] = [];
     for (const id of r.good) {
-      const stars = r.details.find((x) => x.id === id)?.stars ?? r.stars;
+      const d = r.details.find((x) => x.id === id);
+      const stars = d?.stars ?? r.stars;
+      const state = d?.state;
       const old = s.album.find((a) => a.id === id);
       if (!old) {
         const e: AlbumEntry = { id, era: r.era, at, play: Math.round(play), stars };
+        if (state !== undefined) e.state = state;
         s.album.push(e);
         changed.push(e);
         while (s.album.length > ALBUM_MAX) s.album.shift();
       } else if (stars > old.stars) {
         Object.assign(old, { era: r.era, at, play: Math.round(play), stars });
+        if (state !== undefined) old.state = state;
+        else delete old.state;
         changed.push(old);
       }
       s.best[id] = Math.max(s.best[id] ?? 0, stars);

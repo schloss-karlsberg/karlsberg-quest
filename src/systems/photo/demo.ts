@@ -157,12 +157,15 @@ function deerMesh(s: number, coat: number): Group {
 /**
  * The debug deer pair: a doe and a fawn wandering slowly in a small loop, the fawn a step behind.
  * `calm` false: both lift their heads („sichern“). Positions are read by the photo targets.
+ * `state`: an opaque string the photo targets report on `photo:good` (`kq.photo.deer.state('alert')`);
+ * it does not move the deer or touch `calm`.
  */
 export class DebugDeer {
   readonly group = new Group();
   private readonly doe = deerMesh(1, 0x7b7266);
   private readonly fawn = deerMesh(0.82, 0x857a6c);
   calm = true;
+  state = 'graze';
   private t = 0;
   private readonly posDoe: Vec3 = { x: 0, y: 0, z: 0 };
   private readonly posFawn: Vec3 = { x: 0, y: 0, z: 0 };

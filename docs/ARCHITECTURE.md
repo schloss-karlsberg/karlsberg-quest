@@ -1561,6 +1561,7 @@ pause the logic.
   `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
   the objective started counts at once, on accept, on a newly active objective and on load:
   `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
+- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry); story matches `{ "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } }`. Stars and verdicts ignore it, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without
@@ -1569,6 +1570,7 @@ pause the logic.
   whole target from code. **Placeholders** (flagged `placeholder: true`, built in `demo.ts`): the
   plain trail board at the car park (`photo.parkplatz`, grants the flag `photo.demo.parkplatz`) and,
   with `?debug` only, a blocky test doe and fawn at 817 / −704 bound to `reh.ricke` / `reh.kitz`.
+- **Bindings stack by handle:** each `attachTarget` call pushes a handle per id; the newest remaining one is active, its detach removes exactly that handle (out-of-order detach never restores a stale getter), none left → the data anchor; `isAttached(id)` says whether any binding holds it. The `?debug` deer yields: `spawnDeer` / `kq.photo.deer.spawn` returns false with a dev warning when the deer ids are already attached or `kq.animals` reports deer.
 - **Album** (journal tab „Album“, order 70) and grants: the save slice `systems.photo` keeps one
   entry per target (best stars, era, ISO time, play seconds), at most 60 (the oldest out), plus
   `good` (every target ever shot well, for `has()`), `granted`, `cards`, `best` and the fallback
@@ -1578,7 +1580,7 @@ pause the logic.
   (progression gives no XP for it), `card` → `cards` (must be in `cards[]`), `flag` → `state.flags`.
   Unknown ids are skipped with a dev warning. Photos give no XP.
 - Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`, and
-  with `?debug` `kq.photo.deer.{spawn, calm, at}`. Tests: `tests/photo.test.ts`,
+  with `?debug` `kq.photo.deer.{spawn, calm, at, state}`. Tests: `tests/photo.test.ts`,
   `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
 
 ### How to wire a chapter (story files, round 3)
