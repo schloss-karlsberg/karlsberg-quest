@@ -59,6 +59,16 @@ body.kq-in-combat .kqs-dlg-body::before {
     transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1);
   pointer-events: none;
 }
+/* below 900 px the 380 px side margin left a 287 px column: the card takes the width instead
+   (kq-mobile's ≤500 px-tall touch layout in touch.css still applies on top) */
+@media (max-width: 899px) {
+  .kqs-dlg {
+    width: min(820px, 92vw);
+  }
+  body.kq-in-combat .kqs-dlg {
+    width: min(640px, 92vw);
+  }
+}
 .kqs-dlg.kqs-show {
   opacity: 1;
   transform: translate(-50%, 0);
