@@ -170,10 +170,10 @@ describe('contentB: the shape of the chapters', () => {
     const i11 = S4.beats.findIndex((b) => b.id === 'k4_11');
     for (const b of S4.beats.slice(i11, i11 + 4)) expect(sets(b), b.id).toBe(true);
     for (const b of S5.beats) expect(sets(b), b.id).toBe(true);
-    // never switched back on before the credits
+    // never switched back on before the credits (they end the party, beat e3)
     const offs = [...actions(S4), ...actions(S5)].filter((a) => a.do === 'flag' && (a.set as Any)['combat.disabled'] === false);
     expect(offs).toHaveLength(1);
-    expect(S5.beats.find((b) => b.id === 'e2')!.exit).toContainEqual({ do: 'flag', set: { 'combat.disabled': false } });
+    expect(S5.beats.find((b) => b.id === 'e3')!.exit).toContainEqual({ do: 'flag', set: { 'combat.disabled': false } });
   });
 
   it('the Strohmann rises in the Ehrenhof of July 1793 before the torch; Glutlinge on the stairs; the Steinbrecher in 1796', () => {

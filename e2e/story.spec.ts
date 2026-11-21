@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { throughParty } from './helpers/common';
 
 /**
  * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), hub overlay,
@@ -321,10 +322,8 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await expect(page.getByTestId('epilogue')).toBeVisible();
   await shot(page, 'epilogue');
   await page.getByTestId('ending-credits').click();
-  await expect(page.getByTestId('credits')).toBeVisible();
-  await page.waitForTimeout(9000);
-  await page.screenshot({ path: `${SCREENS}/story-credits.png` });
-  await page.getByTestId('credits-back').click();
+  // the party (bible 06-enden §8): Gerold's speech, then the credits strip over the party
+  await throughParty(page);
   await page.evaluate(() => window.kq!.step(4));
   const st = await page.evaluate(() => ({ story: window.kq!.story!.state(), flags: window.kq!.state().flags }));
   expect(st.story.ending).toBe('museum');

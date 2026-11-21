@@ -75,6 +75,8 @@ const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'ma
 const HUB = new Set(['chronik', 'phone', 'shelf', 'drawer', 'map', 'bench', 'bed', 'radio']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);
+/** Speakers that stand as people (the party's guide and doubles, bible 06-enden §8): bound to a live person, no ghost. */
+const PEOPLE = new Set(['imhoff', 'herzogd', 'mannd', 'hanned', 'peterd', 'jostd', 'solld', 'liesed', 'mats', 'marlene']);
 const METER_FULL = new Set(['return', 'caught', 'none']);
 const QUEST_OPS = new Set(['offer', 'start', 'progress', 'complete', 'fail', 'reset']);
 const QUEST_COND_STATES = new Set(['offered', 'active', 'ready', 'done', 'failed']);
@@ -411,7 +413,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
       case 'npc':
         if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "npc needs op 'spawn' or 'despawn'");
         if (!isStr(a.npc)) err(file, where, 'npc needs an npc id');
-        else if (a.npc !== '*' && !NPCS.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
+        else if (a.npc !== '*' && !NPCS.has(a.npc) && !PEOPLE.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
         if (a.op === 'spawn' && ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z))))) err(file, where, 'npc spawn needs both numeric x and z (or neither: at the player)');
         if (a.era !== undefined && !isEra(a.era)) err(file, where, `npc: unknown era '${String(a.era)}'`);
         if (a.mood !== undefined && !['warm', 'eerie', 'neutral'].includes(a.mood)) err(file, where, `npc: unknown mood '${String(a.mood)}'`);

@@ -132,15 +132,7 @@ type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';   // 
 
 **Reusable code (audit §5, §8).** Hook (a) of the audit: in `endings/ui.ts:222` (the `ending-credits` button) close the modal and call a new dep `d.party?(id, done)` like `d.stage`; `done` opens a credits **strip** instead of the modal credits page. Props: `src/systems/fx/stage/*` (`{"do":"cue"}` set pieces), lit windows / lights from `scenery/windows.ts`. Crowd: §3 group (`gather` around the table) + `fx/k3-crowd.ts` for idle loops. Fire: the fire-bowl prop with the existing fire particles (K3). Fireworks: **not** used (memorial theme of 1785). Looks: `lookFor('dusk')`. `flag.end` picks the variant.
 
-**API sketch.**
-```jsonc
-// 05-enden.story.json, new beat e3 "Das Fest" after story:ending, before story.credits
-{ "id": "e3", "checkpoint": { "x": 1200, "z": -1095, "era": "today" }, "look": "dusk",
-  "on_enter": [ { "do": "cue", "id": "party:set", "data": { "variant": "{flag.end}" } },
-                { "do": "npc", "op": "spawn", "group": "fest", "set": "party" },
-                { "do": "cinematic", "id": "fest-orbit", "orbit": { "x": 1216, "z": -1114, "r": 14, "period": 40 } } ],
-  "complete": { "event": "credits:done" } }
-```
+**As built (story side, 2026-11-21).** The epilogue button (`ending-credits`) closes the modal and calls `d.party(id)`. Inside the endings chapter that only sets the flag `story.party`: beat e2 ends, beat e3 „Das Fest“ runs (card, teleport to 1200/−1095, look `dusk`, autosave). Its reactions per `flag.end` re-issue `{"do":"cue","id":"party:set","data":{"variant":"museum|burn|keep"}}` (so a resume rebuilds the party), play the arrival line and Gerold's speech (§8.3), then `{"do":"cue","id":"party:credits"}` after the speech, not on `party:ready` (the speech would collide with the spotlight lines). One reaction per `party:spotlight` (`match: {who}`) speaks one short line (≤ 46 characters, `ms` 2400). The story system turns `credits:done` into `story.credits` (`story:credits`, autosave); e3 completes on that flag and places the guide and the doubles as npc placements bound to their party bodies (one `npc:talk` greet line each, `content/packs/party.pack.json`). Post-game, every load re-issues `party:set` for the chosen ending. Outside the chapter (debug `kq.story.ending(id)`) `d.party` emits `party:set` and on `party:ready` `party:credits` itself. The credits lines are `content/party/credits.json`. Not built: §8.2 step 2 (Marlene and the staff), the per-ending last picture (§8.2 step 5).
 
 **Tests.** Unit: party variant selection from `flag.end`; the three variant prop lists; credits strip timing. e2e: `e2e/stage-k2k4.spec.ts:360–402` moves from 760/−902 to the plateau and checks each ending reaches `story.credits` through the party; screenshots for the storyboard (#25–#28).
 

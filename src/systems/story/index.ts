@@ -422,14 +422,8 @@ class StoryRuntime {
         ctx.events.emit('story:ending', { id });
         ctx.save.autosave('ending', true);
       },
-      finished: () => {
-        // the ending card told the scene; nothing the ending queued plays again after the credits
-        this.presenter.clear();
-        this.slice.finished = true;
-        ctx.state.update((s) => (s.flags['story.credits'] = true), 'story');
-        ctx.events.emit('story:credits', {});
-        ctx.save.autosave('credits', true);
-      },
+      finished: () => this.finish(),
+      party: (id) => this.toParty(id),
       sound: (k) => playStorySound(ctx.audio, k, null, 'verloren'),
       reducedMotion: () => ctx.settings.state.reducedMotion,
       name: () => this.slice.name,
@@ -452,6 +446,10 @@ class StoryRuntime {
     ctx.events.onAny((name, payload) => this.onEvent(name, payload));
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
+    // the credits over the party ended (naturally, skipped, or a load while they played): the story is finished
+    ctx.events.on('credits:done', () => {
+      if (this.slice.ending && !this.slice.finished) this.finish();
+    });
     ctx.events.on('save:loaded', () => {
       this.resync();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
@@ -566,6 +564,38 @@ class StoryRuntime {
     this.objectives.set(s.objective);
     this.applyLook();
     this.mirrorAllReadings();
+    // post-game (bible 06-enden §7.2): the party stays at dusk; people are not saved, so set it again
+    if (s.finished && s.ending) this.ctx.events.emit('party:set', { variant: s.ending });
+  }
+
+  /** The credits are over (the old credits page closed, or `credits:done` after the party). */
+  private finish(): void {
+    const ctx = this.ctx;
+    // the ending card told the scene; nothing the ending queued plays again after the credits
+    this.presenter.clear();
+    this.slice.finished = true;
+    ctx.state.update((s) => (s.flags['story.credits'] = true), 'story');
+    ctx.events.emit('story:credits', {});
+    ctx.save.autosave('credits', true);
+  }
+
+  /**
+   * The epilogue's button (bible 06-enden §8): inside the endings chapter the flag `story.party`
+   * ends beat e2 and beat e3 builds the party, plays Gerold's speech and rolls the credits (cue
+   * bridge). Outside it (debug: `kq.story.ending(id)`) the party and its credits start directly.
+   */
+  private toParty(id: EndingId): void {
+    const ctx = this.ctx;
+    const s = this.slice;
+    if (s.active && s.chapter === 'enden') {
+      ctx.state.update((st) => (st.flags['story.party'] = id), 'story');
+      return;
+    }
+    const off = ctx.events.on('party:ready', () => {
+      off();
+      ctx.events.emit('party:credits', {});
+    });
+    ctx.events.emit('party:set', { variant: id });
   }
 
   start(name: string): void {

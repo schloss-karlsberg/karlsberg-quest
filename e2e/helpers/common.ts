@@ -32,3 +32,21 @@ export interface PlayOptions {
    */
   at?: (label: string) => Promise<void>;
 }
+
+/**
+ * After the epilogue's `ending-credits` button (bible 06-enden §8): beat e3 builds the party,
+ * Gerold speaks, the credits strip rolls. Steps game time until the strip runs, then skips it (the
+ * story turns `credits:done` into `story.credits`). Resolves once the story is finished.
+ */
+export async function throughParty(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 90 && k.party?.state().credits !== 'playing'; i++) k.step(60);
+  });
+  await page.locator('[data-testid="party-credits"]').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.evaluate(() => {
+    window.kq!.party!.skip();
+    window.kq!.step(30);
+  });
+  await page.waitForFunction(() => window.kq!.story!.state().finished === true, undefined, { timeout: 10_000 });
+}
