@@ -16,6 +16,10 @@
  * 5. **steady**: the camera turned slower than `STEADY_RAD_S` on average over the last 0.3 s;
  * 6. **calm**: the target's optional `calm()` returns true (an alerted deer does not count).
  *
+ * A target's optional `state()` (an opaque string, e.g. the deer's 'graze' | 'alert' | 'flee' |
+ * 'settled') is read at the moment of the shot for every good target and carried on its judgement
+ * (`TargetJudgement.state`, then `photo:good { id, stars, state }`). It changes no stars or verdict.
+ *
  * `needAll` binds targets together: a doe that is good alone is not good unless every id in its
  * `needAll` is good in the same shot too (doe and fawn both in the picture).
  *
@@ -71,6 +75,11 @@ export interface PhotoTargetDef {
   needAll?: string[];
   /** False = alerted: the shot does not count (animals; WP-17 supplies it). */
   calm?: () => boolean;
+  /**
+   * The subject's state right now (opaque, never validated; e.g. 'graze' | 'alert' | 'flee' |
+   * 'settled'). Read at the shot for good targets only: `photo:good { id, stars, state }`.
+   */
+  state?: () => string;
   grants?: PhotoGrants;
   /** Player-facing name (album card), German. */
   label_de: string;
@@ -139,6 +148,8 @@ export interface TargetJudgement {
   clear: number;
   /** Counted only via the fallback distance. */
   fallback: boolean;
+  /** The target's `state()` at the shot (good targets with a getter only). */
+  state?: string;
 }
 
 export interface ShotResult {
@@ -299,6 +310,12 @@ export function judgeShot(targets: readonly PhotoTargetDef[], era: Era, v: Photo
       changed = true;
     }
   }
+  // the subject's state at the moment of the shot (good targets with a getter; opaque string)
+  const byId = new Map(targets.map((t) => [t.id, t]));
+  for (const d of details) {
+    const get = d.good ? byId.get(d.id)?.state : undefined;
+    if (get) d.state = get();
+  }
   const inFrame = details.filter((d) => d.inFrame);
   const goods = details.filter((d) => d.good);
   let verdict: Verdict = 'leer';
@@ -312,6 +329,23 @@ export function judgeShot(targets: readonly PhotoTargetDef[], era: Era, v: Photo
     verdict = inFrame.map((d) => d.verdict).sort((a, b) => MISS_ORDER.indexOf(a) - MISS_ORDER.indexOf(b))[0] ?? 'leer';
   }
   return { era, signal: true, targets: inFrame.map((d) => d.id), good: goods.map((d) => d.id), stars, verdict, verdict_de: VERDICT_DE[verdict], details };
+}
+
+/** The `photo:good` payload of one good target (scalar only; `state` only when the target has a getter). */
+export interface PhotoGoodEvent {
+  id: string;
+  stars: number;
+  state?: string;
+}
+
+/** One `photo:good` payload per good target of a shot (index.ts emits them in this order). */
+export function goodEvents(r: ShotResult): PhotoGoodEvent[] {
+  const out: PhotoGoodEvent[] = [];
+  for (const d of r.details) {
+    if (!d.good) continue;
+    out.push(d.state === undefined ? { id: d.id, stars: d.stars } : { id: d.id, stars: d.stars, state: d.state });
+  }
+  return out;
 }
 
 /**
@@ -362,6 +396,8 @@ export interface AlbumEntry {
   play: number;
   /** Best stars. */
   stars: number;
+  /** The subject's `state()` at that best shot (targets with a getter only). */
+  state?: string;
 }
 
 /** The photo system's save slice. */
@@ -456,15 +492,20 @@ export class PhotoCore {
     const s = this.slice();
     const changed: AlbumEntry[] = [];
     for (const id of r.good) {
-      const stars = r.details.find((x) => x.id === id)?.stars ?? r.stars;
+      const d = r.details.find((x) => x.id === id);
+      const stars = d?.stars ?? r.stars;
+      const state = d?.state;
       const old = s.album.find((a) => a.id === id);
       if (!old) {
         const e: AlbumEntry = { id, era: r.era, at, play: Math.round(play), stars };
+        if (state !== undefined) e.state = state;
         s.album.push(e);
         changed.push(e);
         while (s.album.length > ALBUM_MAX) s.album.shift();
       } else if (stars > old.stars) {
         Object.assign(old, { era: r.era, at, play: Math.round(play), stars });
+        if (state !== undefined) old.state = state;
+        else delete old.state;
         changed.push(old);
       }
       s.best[id] = Math.max(s.best[id] ?? 0, stars);

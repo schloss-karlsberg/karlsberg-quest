@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, emptySlice, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
+import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
 import { targetFromData, validatePhotoTargets } from '../src/systems/photo/data';
 import { validateQuests } from '../src/systems/quests/validate';
+import { eventMatches } from '../src/systems/story/engine';
+import type { EventCond } from '../src/systems/story/types';
 import { QuestBook, type QuestDefIn, type QuestEnv, createQuestSlice } from '../src/systems/quests/logic';
 
 /** A flat world, nothing in the way. */
@@ -418,5 +420,55 @@ describe('quest objective "photo"', () => {
     expect(loaded.state('q.test.foto')).toBe('active');
     loaded.settleKnown(() => false, (id) => photo.good.includes(id));
     expect(loaded.state('q.test.foto')).toBe('ready');
+  });
+});
+
+describe('photo:good carries the subject state', () => {
+  it('passes the state() string through on photo:good (read at the shot, stars unchanged)', () => {
+    const s = emptySlice();
+    const core = new PhotoCore(() => s);
+    let state = 'graze';
+    core.register(target({ state: () => state }));
+    state = 'alert';
+    const r = core.judge('today', view(), flat);
+    expect(goodEvents(r)).toEqual([{ id: 'reh.ricke', stars: 2, state: 'alert' }]);
+    expect(r.verdict).toBe('gut');
+    // optional: the album entry keeps the state of its shot
+    const { s: sk } = sink();
+    core.book(r, 'x', 0, sk);
+    expect(s.album[0]!.state).toBe('alert');
+  });
+
+  it('omits state without a getter (no key at all)', () => {
+    const r = judgeShot([target()], 'today', view(), flat);
+    const [e] = goodEvents(r);
+    expect(e).toEqual({ id: 'reh.ricke', stars: 2 });
+    expect('state' in e!).toBe(false);
+  });
+
+  it('only good targets read their state; a not-good target gives no event', () => {
+    let reads = 0;
+    const r = judgeShot([target({ dx: 6, state: () => (reads++, 'graze') })], 'today', view(), flat);
+    expect(goodEvents(r)).toEqual([]);
+    expect(reads).toBe(0);
+  });
+
+  it('fleeing (calm() false) still voids the shot, whatever state() says', () => {
+    const r = judgeShot([target({ calm: () => false, state: () => 'flee' })], 'today', view(), flat);
+    expect(r.good).toEqual([]);
+    expect(r.verdict).toBe('aufgeschreckt');
+    expect(goodEvents(r)).toEqual([]);
+  });
+
+  it('a story EventCond with match { id, state: "alert" } matches the photo:good payload', () => {
+    const cond: EventCond = { event: 'photo:good', match: { id: 'reh.ricke', state: 'alert' } };
+    const r = judgeShot([target({ state: () => 'alert' })], 'today', view(), flat);
+    const [e] = goodEvents(r);
+    expect(eventMatches(cond, 'photo:good', e)).toBe(true);
+    expect(eventMatches(cond, 'photo:good', { ...e, state: 'graze' })).toBe(false);
+    expect(eventMatches(cond, 'photo:good', { id: 'reh.ricke', stars: 2 })).toBe(false);
+    expect(eventMatches(cond, 'photo:shot', e)).toBe(false);
+    // a cond without state still matches a payload that carries one
+    expect(eventMatches({ event: 'photo:good', match: { id: 'reh.ricke' } }, 'photo:good', e)).toBe(true);
   });
 });
