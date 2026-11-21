@@ -61,6 +61,14 @@ export function activateRadius(p: SurveyPoint): number {
 }
 
 /**
+ * Does standing `d` m from the point eingemessen it now? Not twice, not while flying, not while the
+ * world is quiet ('world:quiet', the party): the point waits and activates on the next step after.
+ */
+export function mayActivate(p: SurveyPoint, d: number, activated: readonly string[], o: { flying: boolean; quiet: boolean }): boolean {
+  return d < activateRadius(p) && !activated.includes(p.id) && !o.flying && !o.quiet;
+}
+
+/**
  * May the travel card take E (close on E)? Not while something else owns E: the spring's
  * "Wasser berühren" (`e.owner` = quelle), a door or gate, an NPC in talk range (`npc.near`).
  * Otherwise one E press at the Karlsbergquelle would both close the card and touch the water.

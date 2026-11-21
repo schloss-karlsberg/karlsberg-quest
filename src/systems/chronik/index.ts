@@ -43,6 +43,7 @@ import { type ChronikBlank, type ChronikClue, type ChronikSlice, createSlice } f
 import { openClueCard } from './ui/card';
 import { chronikUniforms } from './world/gfx';
 import { ClueMarkers } from './world/markers';
+import { hideWhileQuiet } from '../../core/quiet';
 
 /** Seconds E must be held to start listening to an echo. */
 export const HOLD_SECONDS = 0.9;
@@ -482,6 +483,9 @@ export default defineSystem({
     slice(ctx);
     markers = new ClueMarkers((x, z) => ctx.world.heightAt(x, z));
     ctx.scene.add(markers.group);
+    // 'world:quiet' (the party): the clue markers hide, their state runs on underneath
+    const quiet = hideWhileQuiet(ctx.events, markers.group);
+    offs.push(() => quiet.dispose());
     hud = ctx.ui.layer('chronik-hud');
     hud.classList.remove('kq-hidden');
     hud.classList.add('ck-hud');

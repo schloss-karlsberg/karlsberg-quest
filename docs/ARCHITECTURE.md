@@ -1445,6 +1445,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   case costs ~10–25 ms per route (~9 000 cells; tests/travel.test.ts logs it; e2e
   `e2e/travel-paths.spec.ts`).
 - After a catch: the story wakes the player at the anchor; travel adds a hint 1.5 s later.
+- `world:quiet {on, reason}` (`src/core/quiet.ts`, `QuietGate`; the party holds it): the travel root
+  (tripods, POIs, trail) hides, no point is eingemessen (`mayActivate`) and Laub announces nothing; the
+  slice is untouched, so a held point activates on the next step after. Chronik clue markers and quest
+  beacons hide the same way (`hideWhileQuiet`). `kq.travel.state().quiet`.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
   `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
@@ -1591,6 +1595,12 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   (`who` = the people spec id: the 7 doubles `double.*` and Mats `child.compass` round the
   clearing, then Gerold `guide` last as the host's closing shot; Marlene none; the story plays the
   §8.4 line on a match), `credits:start {seconds}`, `credits:done {skipped}` (exactly once per run).
+- **Quiet world** (`src/core/quiet.ts`): from `party:set` (before `party:ready`; also `party:credits`)
+  until the end of the credits, `party:clear`, a load or dispose, the party holds `world:quiet {on,
+  reason: 'party'}` (one on, one off). Travel, chronik and quests hide their marker roots (tripod
+  beams and rings, POIs, trail; clue markers; objective beacons) and travel holds the survey-point
+  activation (the Ehrenhof tripod's 16 m reach the clearing). A party re-issued after the credits
+  (resume into the free play) does not go quiet. e2e `party (c)`.
 - **People** (`ctx.people`, placed directly, no walk): the guide (`guide`, speaker `imhoff`),
   Marlene (no spec yet: stand-in `extra.7` with seed 9071, speaker `marlene`; a `marlene` spec is
   used once `specs()` has it), the 7 doubles (speakers `herzogd`, `mannd`, `hanned`, `peterd`,
