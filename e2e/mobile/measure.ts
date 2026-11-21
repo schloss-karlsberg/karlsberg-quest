@@ -63,7 +63,8 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
     const r = el.getBoundingClientRect();
     const x = Math.min(vw - 1, Math.max(0, r.left + r.width / 2));
     const y = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
-    const top = document.elementFromPoint(x, y);
+    // the touch surface (.kq-touch, a transparent full-screen layer above the HUD) and the stick do not hide anything
+    const top = [...document.elementsFromPoint(x, y)].find((e) => !e.matches('.kq-touch, .kq-t-stick, .kq-t-stick *'));
     return !!top && top !== el && !el.contains(top) && !top.contains(el);
   };
 
@@ -141,7 +142,8 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
   for (const el of textEls) {
     if (!shown(el) || covered(el)) continue;
     const cs = getComputedStyle(el);
-    const px = parseFloat(cs.fontSize);
+    // effective size: CSS `zoom` (the phone HUD is zoomed 0.78) is not in the computed font-size
+    const px = Math.round(parseFloat(cs.fontSize) * ((el as Element & { currentCSSZoom?: number }).currentCSSZoom ?? 1) * 10) / 10;
     if (px < 12 && smallCount++ < 60) issues.push({ sev: px < 10 ? 'S2' : 'S3', kind: 'text-small', what: name(el), box: box(el.getBoundingClientRect()), detail: `${px}px` });
     const fg = parseRgb(cs.color);
     const bg = bgOf(el);
