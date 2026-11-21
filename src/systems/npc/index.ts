@@ -33,7 +33,7 @@ import type { LoadedModel } from '../../assets/loader';
 import { modelFor } from '../characters/catalog';
 import { GhostFigure } from './figure';
 import { RiggedGhost } from './rigged';
-import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, talkLines, talkedFlag, yawToward } from './logic';
+import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, sweepYaw, talkLines, talkedFlag, yawToward } from './logic';
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
 import { GiverGlyphs } from './glyphs';
@@ -86,6 +86,10 @@ export interface NpcHooks {
   mark(npc: string): { mark: GiverMark; shown: boolean };
   /** Choose an answer button by id (qa:<quest>, qd:<quest>, qs:<value>) or index. */
   choose(id: string | number): boolean;
+  /** Turn an NPC's idle heading (degrees, 0 = north; null = back to its placement / sweep), as 'npc:yaw'. */
+  setYaw(npc: string, yaw: number | null): void;
+  /** The idle heading an NPC turns to now (degrees: override, else sweep, else placement yaw). */
+  yaw(npc: string): number | null;
 }
 
 declare module '../../debug/hooks' {
@@ -111,6 +115,8 @@ interface Placed {
   scratch?: number;
   /** Seconds left of facing the player for a story line this person speaks (`dialogue:say`). */
   faceT?: number;
+  /** Idle heading set by 'npc:yaw' (degrees; the court's head turns), over the sweep / placement yaw. */
+  yawOverride?: number;
 }
 
 class NpcRuntime {
@@ -141,6 +147,7 @@ class NpcRuntime {
     const ev = ctx.events;
     ev.on('npc:spawn', (p) => this.spawn(p));
     ev.on('npc:despawn', ({ npc }) => this.despawn(npc));
+    ev.on('npc:yaw', ({ npc, yaw }) => this.setYaw(npc, yaw));
     // a kneeling figure asked about the hounds' names scratches the one at his knee
     ev.on('npc:talk', ({ npc, topic }) => {
       const f = this.figs.get(npc);
@@ -295,6 +302,19 @@ class NpcRuntime {
 
   private visible(f: Placed): boolean {
     return f.p.era === this.ctx.era.current;
+  }
+
+  /** Idle heading override (court head turns); null hands it back to the placement / sweep. */
+  setYaw(npc: string, yaw: number | null): void {
+    const f = this.figs.get(npc);
+    if (!f) return;
+    if (yaw === null || !Number.isFinite(yaw)) delete f.yawOverride;
+    else f.yawOverride = yaw;
+  }
+
+  /** The idle heading in degrees: the override, else the watch sweep, else the placement yaw. */
+  idleYaw(f: Placed): number {
+    return f.yawOverride ?? sweepYaw(f.p.watch, f.p.yaw, this.ctx.loop.time);
   }
 
   // ---- conversation -------------------------------------------------------------------------
@@ -617,7 +637,9 @@ class NpcRuntime {
       f.faceT = Math.max(0, (f.faceT ?? 0) - dt);
       const talkTo = this.talking?.npc === id || (f.faceT > 0 && d < 10);
       const nearTo = !talkTo && d < 8 && !f.fig.isRigged;
-      const want = talkTo || nearTo ? yawToward(f.p.x, f.p.z, p.x, p.z) : yawRad(f.p.yaw);
+      // a watcher (court) keeps its own heading close up: it turns its head by 'npc:yaw', not by proximity
+      const watching = !!f.p.watch && !talkTo;
+      const want = talkTo || (nearTo && !watching) ? yawToward(f.p.x, f.p.z, p.x, p.z) : yawRad(this.idleYaw(f));
       f.yaw = approachYaw(f.yaw, want, dt, talkTo ? TALK_TURN_S : nearTo ? NEAR_TURN_S : IDLE_TURN_S, reduced);
       o.rotation.y = f.yaw;
       // kneeling: lower and leaning forward over what lies before him; a scratching hand rocks him
@@ -686,6 +708,11 @@ class NpcRuntime {
       close: () => this.view.close(),
       mark: (n) => ({ mark: this.marks.get(n) ?? null, shown: this.glyphs.shown(n) }),
       choose: (id) => (typeof id === 'number' ? this.view.choose(id) : this.view.chooseId(id)),
+      setYaw: (n, yaw) => this.setYaw(n, yaw),
+      yaw: (n) => {
+        const f = this.figs.get(n);
+        return f ? this.idleYaw(f) : null;
+      },
       state: () => {
         const l = this.view.current;
         return {

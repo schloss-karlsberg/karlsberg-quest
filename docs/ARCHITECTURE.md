@@ -41,8 +41,37 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `sim-combat.ts` (`pnpm sim:combat`: the human-like combat bot's balance table, docs/BALANCE.md), `scripts/dev/` screenshot helpers for a running dev server |
-| `scripts/voice/` | AI voice clips for dialogue lines: `pnpm voice:plan` (dry run: priority order, credits, stale lines, dist size) / `pnpm voice:gen`. Providers behind one `synthesize()` interface (`providers.ts`): `elevenlabs` (REST) and `hf-space` (Gradio Space, e.g. Qwen3-TTS; built and unit-tested, not run yet; 0 credits, `--max-lines` guard). `lib.ts` (pure: line collection from packs, story `say` and quest lines, FNV-1a `textHash`, TTS text prep, priority tiers, budget, manifest), `voices.json` (speaker → provider, voiceId or voicePrompt, model; licence per provider), `priority.json` (tiers), `speech.json` (spoken-text overrides per line id, e.g. for `{Name}` lines; `forText` pins the text version, manifest `speechHash` regenerates on change). Secrets `ELEVENLABS_API_KEY` / `HF_TOKEN` from the main checkout's `.env` only (never `VITE_`, never in `src/`). Output: ffmpeg loudnorm −18 LUFS, Opus 24 kbps WebM + AAC 48 kbps m4a named `<lineId>.<sha256[0..8]>.<ext>`, `manifest.json` entries `{files {opus, aac}, textHash, speechHash, speaker, provider, voiceId, model, licence, date, chars, credits, durationMs}`. `public/voice/` is gitignored (ElevenLabs free output is non-commercial: never commit it); the game fetches `voice/manifest.json` and falls back to the murmur |
+| `scripts/voice/` | AI voice clips for dialogue lines: `pnpm voice:plan` (dry run: priority order, credits, stale lines, dist size) / `pnpm voice:gen`. Providers behind one `synthesize()` interface (`providers.ts`): `elevenlabs` (REST), `hf-space` (Gradio Space, e.g. Qwen3-TTS; built and unit-tested, not run yet; 0 credits, `--max-lines` guard) and `moss` (local MOSS-TTS-v1.5, batches inside the heavy lock; see "moss provider" below; laub and marlene use it, the ElevenLabs picks stay in `voices.json` `$alternatives`). Per-speaker `postprocess.maxPauseSec` caps internal pauses (ffmpeg `silenceremove stop_periods=-1`). `lib.ts` (pure: line collection from packs, story `say` and quest lines, FNV-1a `textHash`, TTS text prep, priority tiers, budget, manifest), `voices.json` (speaker → provider, voiceId or voicePrompt, model; licence per provider), `priority.json` (tiers), `speech.json` (spoken-text overrides per line id, e.g. for `{Name}` lines; `forText` pins the text version, manifest `speechHash` regenerates on change). Secrets `ELEVENLABS_API_KEY` / `HF_TOKEN` from the main checkout's `.env` only (never `VITE_`, never in `src/`). Output: ffmpeg gain + gentle pre-limiter (0.6) + static make-up to −18 LUFS measured with ebur128 (Opus +0.5 dB when its decoded peak stays under −0.5 dBFS), Opus 24 kbps WebM + AAC 48 kbps m4a named `<lineId>.<sha256[0..8]>.<ext>`, `manifest.json` entries `{files {opus, aac}, textHash, speechHash, speaker, provider, voiceId, model, licence, date, chars, credits, durationMs}`. `public/voice/` is committed but takes synthetic MOSS clips only, credited per voice in `LICENSES.json` `voices` (rules `assetRules.ts`, enforced by `tests/voice-assets.test.ts`; `generate.mjs` refuses elevenlabs / hf-space runs into it unless `--allow-noncommittable`; ElevenLabs output never enters the repo); the game fetches `voice/manifest.json` and falls back to the murmur |
 | `tests/`, `e2e/` | vitest, Playwright |
+
+### moss provider (local voice clips)
+
+`provider: "moss"` in `scripts/voice/voices.json` generates lines with OpenMOSS-Team/MOSS-TTS-v1.5
+(Apache-2.0, output released CC0; credit "MOSS-TTS-v1.5, OpenMOSS, Apache-2.0") on this Mac via mlx-audio.
+Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `mossProvider`,
+`scripts/voice/moss/runner.py` (the only part that loads the model), tests in `tests/voice-moss.test.ts`.
+
+- **Setup lives outside the repo**, in `~/kq-models` (see its `README.md`): venv `venv-moss` (Python 3.12,
+  mlx-audio 0.6.7, `requirements-lock.txt`), HF cache `hf/` with MOSS-TTS-v1.5 @ `cdd3b911` and
+  MOSS-Audio-Tokenizer @ `3cd226ba` (official safetensors, no repo code, no `trust_remote_code`), loaded
+  offline (`HF_HUB_OFFLINE=1`) from the snapshot paths. Override with `KQ_MOSS_VENV`, `KQ_MOSS_HOME`,
+  `KQ_MOSS_VOICES` in the env or the main checkout's `.env`; defaults resolve from the home dir.
+- **References:** each speaker has one fixed synthetic reference WAV in `~/kq-models/voices/` (copies of
+  the MOSS casting picks: laub = seed 102, marlene = seed 205; sources and sha256 in that folder's README)
+  and a fixed seed; generation is direct clone mode (reference + seed + the casting instruction), as in
+  the casting consistency batch. The manifest `voiceId` is `moss:<speaker>:<sha8 of reference>:<seed>`,
+  so a new reference or seed regenerates the speaker's lines; `model` `MOSS-TTS-v1.5@cdd3b91`, `licence`
+  `apache-2.0-model`, `credits` 0, plus `attribution`. Guard (runner and `moss.ts`): a reference must
+  resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
+  checks every reference before the model loads. Reference WAVs and clips are never committed.
+- **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`.
+  No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
+  lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
+  after the lock is released (trim, pause cap, pre-limit + make-up to −18 LUFS, Opus + AAC). `--max-lines` (default 40)
+  caps new moss clips per run.
+- `pnpm voice:plan` shows the moss lines, characters, estimated minutes (RTF ~1.1 plus a model load
+  per batch), lock batches and dist MB; it never loads the model.
 
 ## 2. Coordinate frame
 
@@ -218,6 +247,7 @@ Rules
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
 | `systems, loop, pause` | registry, loop (`time`, `tick`, `step`, `advance`, `renderOnce`, `requestRender(n)`, `pace`, `manual`, `paused`; §3), pause stack |
+| `cinematic` | Camera takeover (boot's override slot, `src/systems/cinematic/takeover.ts`): `takeCamera(owner, fn, { showAvatar = true, freeze = true, onRelease })` → false while another owner holds it; `releaseCamera(owner)`; `cameraOwner`. `fn(cam)` runs every drawn frame after the rig; released automatically on `shift:done` / `era:change` / `player:died` / `save:loaded`; the hand-back eases the last shot into the rig's placement over 0.4 s (a cut with reduced motion); `freeze` sets `frozen` + `lookLocked` and restores them and yaw / pitch. `camera:override { active }` on every change of the slot (also the debug `setCamera`). Never write `camera.position` from a `frame()` outside it |
 | `debug, params, t` | `?debug`, URL params, i18n |
 
 HUD slots (`ctx.ui.hud`): `dock('vitals' | 'boss' | 'feed', el, order)` (Action-RPG docks: bottom-left
@@ -510,10 +540,17 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `hurt`, `dodge` (perfect), `evade`, `ko`, `died`, `bounce` (guard), `guardBreak`, `flank`,
   `immune`, `telegraph` (attack, dur), `strike`, `swing`, `whiff`, `stun`, `phase`, `heal`, `bann`,
   `shotHit`, `hazardHit`, …, and `inputDropped {input: attack|dodge, reason}` for a press that had
-  no effect: `recovery` (a swing runs, outside the combo buffer), `hitstop`, `blocked`, `skill`,
-  `dodging`, `tired`, `noDodge`, `interact` (the click went to the interact target), `dead`; `t` =
-  seconds into the act; tapped by wrapping the live `CombatSim.step` and reading the player state
-  before / after, nothing in combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
+  no effect. A press that lands in the combat input buffer (`p.bufAtk` / `p.bufDodge`,
+  `INPUT_BUFFER` = 0.25 s, kept also through hit-stop) is not a drop: `PressTracker` follows it
+  and reports it only if it never acts. Reasons: `bufferExpired` (it waited in the buffer and its
+  0.25 s ran out unused, e.g. a roll pressed too early in a roll, or a hit-stop longer than the
+  buffer), `dead`, `blocked` (attacks off: modal, measuring, flying, talking …; also clears a
+  waiting press), `skill` (an ability owns the hands; also clears a waiting press), `tired`,
+  `dodging`, `noDodge`, `interact` (the click went to the interact target), `recovery` / `hitstop`
+  (only for a press that did not reach the buffer; normally such presses are buffered), `unknown`;
+  each press is reported at most once; `t` = seconds into the act; tapped by wrapping the live
+  `CombatSim.step` and reading the player state, buffer included, before / after, nothing in
+  combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
   same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
   story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
@@ -883,7 +920,7 @@ Round-4 (polish: set dressing) integration rules:
   does not pause clips: they run in real time while the simulation waits, and the subtitle
   completes when the clip ends. Stale counts only lines whose id the manifest knows (an id-less
   line with a changed text just finds no match); NPC conversations keep the murmur (only presenter
-  lines play clips). `public/voice/` is gitignored; the build emits an empty manifest when there is
+  lines play clips). `public/voice/` holds committed MOSS clips only; the build emits an empty manifest when there is
   none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern),
   the field station at (760, −915) with the hub overlay, the Bussole/objective HUD, the caught
   curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
@@ -1025,7 +1062,7 @@ change.
   - `ready` resolves true when the mesh is in, false on a fallback. The handle works before that
     and stays invisible until then.
 - **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
-  - animation at full rate within 15 m, about 10 Hz within 40 m, frozen beyond
+  - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
   - hidden beyond the draw limit (stand-in: 60 m)
   - frustum culling stays on
 - **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
@@ -1200,6 +1237,47 @@ stand-ins, the **authored meshes later behind the same interface**.
   hint ladder (its clock waits).
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
 - State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
+
+### animals (`src/systems/animals/`) – tour animals: the roe doe and fawn, Jost's dogs
+Tour contract C5 (`docs/design/tour/systems.md` §4 / C5), the behaviour layer over the fauna bodies.
+Pure core: `types.ts` (`AnimalAction`, `toRequest`, `specIdFor`, events, save types), `deer.ts`
+(shy state machine graze → alert (1.5 s tell) → flee (bound `shy.settle` m) → settled → graze;
+leave → gone; the fawn mirrors the doe within 2 m), `dogs.ts` (follow slots, sniff, sit, the bolt
+with bark and `back`, lie / sleep), `save.ts`; `runtime.ts` (the system, headless: requests, the
+step, bodies, events, era, save, targets; tests use fakes); `photoBridge.ts` (optional photo and
+cinematic bridges); `index.ts` (wiring, hooks). Runs `after: ['fauna', 'people']`. Animals exist
+only in era `today`: other eras hide the bodies and pause the behaviour.
+- Requests: `animal:request` `AnimalAction` (ops spawn / despawn / run / lie / follow / shine (eye glint 0..1, not saved; the party's keep ending); the C5
+  `animal:spawn` renamed, agreed with kq-story), also `story:cue {id: 'animal', data}`. An extra
+  `keepAlive: true` on a spawn passes `keepAlive` to the fauna body (cinematic close-ups).
+- Per step (60 Hz): the player as `{x, z, speed: player.stats.speed, stance}` (a flying player is
+  unseen); line of sight from each self-led deer (`hunt/perception.ts` `lineOfSight`, deer eye
+  0.95 m to the stance's `TARGET_HEIGHT`, transmittance > 0.15) at 5 Hz, only inside notice + 2 m;
+  `walkable` = no water, no footprint, slope < 35°; no noise events yet (none exist), mask 0. Then
+  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
+  `setSpeed` on change, `play(clip)` only when the clip hint changes.
+- Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
+  (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
+  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
+  0). Unresolvable → the dog idles where it is.
+- Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
+  `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
+  dog bark SFX yet).
+- **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
+  sneaking is the skill).
+- **Targets**: photo mode's `attachTarget` (`src/systems/photo/index.ts`, kq-mobile) gets
+  `reh.ricke` / `reh.kitz` (`at` = body centre, `calm` false only while fleeing, `state` = the core
+  state); the cinematic's `registerTarget` (`src/systems/cinematic/targets.ts`) gets `animal:<id>`
+  (`headWorld`). Both through an eager `import.meta.glob`: dormant (no-ops) while the module is
+  absent, active once it lands. `kq.animals.stats()` reports which.
+- State `systems.animals` (`AnimalSave {v: 1, deer, dogs}`), written at 4 Hz and after every
+  request. Restore (init, `save:loaded`) re-spawns the bodies and emits nothing.
+- Hooks `kq.animals`: `ready` (true once the `animal:request` listener is attached; kq-story's
+  temporary stand-in checks it), `spawn(op)`, `request(a)`, `list()` → `{id, kind, state, x, z,
+  dist}`, `state(id)`, `startle(id)`, `calm(id, s)`, `leave(id)`, `clear()`, `demo()` (the deer pair
+  ~40 m to the player's right in a clearing, both dogs following the player), `stats()`,
+  `restore()`, `save()`. Tests: `tests/animals-deer.test.ts`, `tests/animals-dogs.test.ts`,
+  `tests/animals-system.test.ts`, `e2e/animals.spec.ts`.
 
 ### interiors (`src/systems/interiors/`) – walkable palace rooms
 - Rooms of the footprints marked `interior: 'detailed'` (KB-B01…B06, B10) from
@@ -1376,7 +1454,7 @@ WP-16, design contract C2 (`docs/design/tour/systems.md`). Pure core: `route.ts`
 validator rules), `walker.ts` (one walker: leash with hysteresis, catch-up, arrival once,
 `snapAhead`, save), `group.ts` (follow / gather slots, separation, trunk push-out, stable slot
 assignment, `stepMember`); `runtime.ts` (the system, headless: requests, groups, events, save) on a
-`BodyFactory` and a `WalkWorld`; `bodies.ts` (body adapters); `index.ts` (wiring, hooks). Runs
+`BodyFactory` and a `WalkWorld`; `bodies.ts` (the people-API body adapter, required, no fallback); `index.ts` (wiring, hooks). Runs
 `after: ['people', 'npc']`. The group exists only in era `today`: other eras hide the bodies and
 pause the logic.
 - Requests: `npc:walk` `WalkRequest` (types.ts; the story's `do: 'npc'` ops), also
@@ -1418,9 +1496,11 @@ pause the logic.
   `guide`, spec ids pass through), tier hero / featured / extra, `root.position` moved, turns via
   `face`, locomotion via `setSpeed` (no `play` for walking, no `root.rotation`, no `lookAt`). A
   group's members that are not spec ids (`extra.mats`, …) take the extra specs the group does not use
-  yet, in member order, then wrap with another seed (`memberLooks`), so no two look the same. Without
-  `ctx.people` (people system failed / not registered): stand-ins built with the scenery Kit on the
-  prop material (3 draw calls each, no shadows, legs swinging with the distance walked).
+  yet, in member order, then wrap with another seed (`memberLooks`), so no two look the same. The
+  people API is required, there is no fallback figure: without `ctx.people` (people system failed /
+  not registered) `walkBodies` spawns no bodies at all and logs `console.error('[walk] people API
+  missing: walk bodies disabled')` once; walkers, groups, events (`npc:arrived`, …) and the save
+  slice run on bodiless, so story beats never hang. `kq.walk.stats().peopleApi` tells which case.
 - State `systems.walk {walkers: WalkerSave[], groups: GroupSave[]}` (written twice a second and
   after every request / arrival): per walker `{npc, route, to, s, waiting, path?, speed?, wait?}`,
   per group `{group, leader, members, mode, around?, face?, at?, route?, r?, spacing?}`. People are
@@ -1432,7 +1512,7 @@ pause the logic.
 - Hooks `kq.walk.go(npc, route, to, {speed?, wait?})`, `snap(group, stop)`, `groups()` → `{group,
   leader, at, waiting}[]`, `demo({to?, speed?, r?})` (guide + 14 members at the car park, group,
   follow, walk to `abzweig` at 1.9 m/s with `wait {r: 25, bark: 'imhoff.bark.wait'}`), `stats()` →
-  `{bodies, visible, ms, updateMs, syncMs, people}`, `list()`, `walker(npc)`, `request(r)`,
+  `{bodies, visible, ms, updateMs, syncMs, people, peopleApi}`, `list()`, `walker(npc)`, `request(r)`,
   `restore()`. Tests: `tests/walk-{route,walker,group,system}.test.ts`, `e2e/walk.spec.ts` (demo
   arrival, leash, snap + warp, perf with 16 bodies at high / low, screenshots `test-results/walk/`).
 
@@ -1476,6 +1556,97 @@ pause the logic.
   Lock-on: not special-cased; like the mouse, the keys turn freely inside the lock's keep-in-view
   window and the lock pulls the view back when the target would leave it.
 
+### cinematic (`src/systems/cinematic/`) – in-game cut-scenes (contract C1, docs/design/tour)
+
+Request `cinematic:play` with the full spec (`CinematicPlay` in `types.ts`: `id`, exactly one of
+`keys` / `ref` (`content/cinematics/<ref>.json`, checked by `pnpm validate`) / `orbit`, `skippable`,
+`lockInput`, `reduced`), or the story cue `story:cue { id: 'cinematic', data: <spec> }` until the
+story's own action lands. Events `cinematic:start { id, seconds }`, `cinematic:end { id, skipped }`
+(always once per request: a bad spec warns and ends skipped). Keys (`keys.ts`, pure): eye
+player-relative from a snapshot at the start (`back` / `up` / `right` / `turn`°) or absolute (y over
+the ground), look at `npc:<id>` (`kq.npc.list()`, else the npc slice), `animal:<id>`
+(`registerTarget(id, getter)` in `targets.ts`; unknown → the view holds), `player`, a point or a
+pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear easing; missing fields
+carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
+when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
+(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
+centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
+cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
+through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
+`at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
+`tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).
+
+### party (`src/systems/party/`) – the end-of-game party on today's plateau (bible 06 §8)
+`docs/design/tour/systems.md` §6, bible 06-enden §8 "Das Fest", storyboard #25–#28. After every
+ending the credits play over a party at TF-01 (the Ehrenhof clearing of today, 1216 / −1114). Pure
+parts: `placements.ts` (the §8.1 draft x/z per person and per prop spot, the per-variant moves,
+`partyLayout(variant, at)` moves everything by `at − TF01`), `credits.ts` (the lines, the camera way,
+the spotlight times, the strip clock); `runtime.ts` (the system, headless: requests, people, dogs,
+the set handle, the credits clock, the slice; tests use fakes); `set.ts` (the `PartySet` interface and
+the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `after: ['people',
+'animals', 'npc', 'cinematic']`.
+- Requests (`types.ts`, agreed with kq-story): `party:set {variant: 'museum'|'burn'|'keep', at?}`,
+  `party:credits {lines?}`, `party:clear {}`; also `story:cue {id: 'party:set'|'party:credits'|
+  'party:clear', data}`. Events (scalar fields): `party:ready {variant}`, `party:spotlight {who, i}`
+  (`who` = the people spec id: the 7 doubles `double.*` and Mats `child.compass` round the
+  clearing, then Gerold `guide` last as the host's closing shot; Marlene none; the story plays the
+  §8.4 line on a match), `credits:start {seconds}`, `credits:done {skipped}` (exactly once per run).
+- **People** (`ctx.people`, placed directly, no walk): the guide (`guide`, speaker `imhoff`),
+  Marlene (no spec yet: stand-in `extra.7` with seed 9071, speaker `marlene`; a `marlene` spec is
+  used once `specs()` has it), the 7 doubles (speakers `herzogd`, `mannd`, `hanned`, `peterd`,
+  `jostd`, `solld`, `liesed`), the 7 extras of §8.1 (Mats = `child.compass`, speaker `mats`; mother, the
+  couple, two hikers, the student = `extra.1…6`). Speaker ids confirmed by kq-story; their names
+  live in the story's content. Activities per §8.1: sit (Herzog in the camping chair, Hanne
+  and Peter on the bench), talk, lookAround, idle, interact (Gerold pouring, Soll counting, Jost's
+  stick, Liese mending: a one-shot every 4–8 s). Faces: a prop, a person, the centre. Speakers stay
+  bound, so the npc system's placements for them become talkable on the bodies; a conversation
+  holds that person's gestures.
+- **Variants** (§8.3): `museum` the archive box on the table, Gerold talks, Hanne, Marlene, Mats,
+  his mother and the student lean in round him (facing him); `burn` twelve stand in a ring round the
+  fire bowl, the flames burn high and a spark burst goes up on `party:set`, the dogs lie asleep
+  more than 10 m from the fire; `keep` the dogs lie at the player's feet (`lie` with `follow: 'player'`)
+  with eye shine 0.6 (`{op: 'shine'}`, added to the animals system for this). Dogs come through
+  `animal:request` (spawn / lie / shine; museum: at Jost's feet).
+- **Set** (`PartySet.build(scene, layout, variant) → PartySetHandle {anchors, setFire, burst,
+  update, setVisible, drawCalls, dispose}`, swappable for authored meshes): the placeholder is ONE
+  merged Kit mesh on the prop material (trestle table and bench, Hanne's and the keep bench, the
+  camping chair, cake, cash box, gas stove with the mulled-wine pot and the children's punch, the
+  fire bowl with logs and glowing coals, two placeholder posts with the fairy-light wire and 34
+  emissive bulbs on a sagging curve, three lanterns, the archive box in A) plus ONE instanced
+  glow-sprite mesh (bulb, lantern and fire halos, 18 flame tongues, 44 sparks, CPU-animated) = 2
+  draw calls. y from `world.heightAt`. No fireworks (§8.5).
+- **Credits** (`party:credits`): lines = `data.lines`, else `content/party/credits.json`
+  (`{lines}`, the story team's, bundled through an eager `import.meta.glob`, may be missing), else
+  the 3-line placeholder. The strip crawls along the bottom edge (over the letterbox, game clock,
+  `data-testid="party-credits"`); reduced motion steps the lines through, centred. The camera way is
+  a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, `skippable: false`, reduced
+  'stills'): the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the
+  keys run on the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and hold
+  close on each spotlit person in angle order (lower, fov 34; two at nearly the same angle get a
+  short drift, never an extra turn), then go on round to Gerold, emitting `party:spotlight` at each
+  hold's start; to stay ≤ 58 s (the keys' 60 s limit) the travel speeds up and the holds shorten
+  from 2.6 s, never below 2.0 s (9 spotlights: about 2.2 s). The credits last max(20 s, the camera
+  way + 0.6 s, 4 s per line). **Input** (bible 06 §8.2 step 4: walk about, E talks): movement or look
+  during the orbit (anything that moves the player > 5 cm or turns the view > 0.02 rad: keys,
+  mouse, touch stick) hands the camera back (`cinematic:stop {id}`, the takeover's 0.4 s ease), no
+  `credits:done`; the strip runs on to its end → `credits:done {skipped: false}`. Explicit skip =
+  Enter (after 1 s) or the strip's button „Abspann überspringen" (touch, mouse) → `credits:done
+  {skipped: true}`. Esc stays pause, E talks. Hint over the strip: „Enter: Abspann überspringen ·
+  Bewegen: selbst umsehen" (after the hand-back without the second part). The cinematic ending under
+  the party (era change, death) ends the credits skipped; a rejected camera (held elsewhere) does
+  not. Afterwards the party stands, no camera is held.
+- Era `today` only: other eras hide the people and the set. `party:clear` (and a new `party:set`)
+  disposes people, set and dogs; credits still running end skipped.
+- State `systems.party {variant, credits: 'none'|'playing'|'done'}`; no bodies (the story re-issues
+  `party:set` from its checkpoint). Credits playing at save time → `credits:done {skipped: true}`
+  once at game start / after the load (live credits end skipped too, one event); a loaded save
+  without a party drops the live one.
+- Dev: `?party=museum|burn|keep` (parsed by the party system itself on `game:start`): era today, the
+  player at the checkpoint 1200 / −1095 facing TF-01, `kq.story.look('dusk')`, `party:set`, then
+  `party:credits`. Hooks `kq.party`: `set(variant, at?)`, `credits(lines?)`, `skip()`, `clear()`,
+  `state()`, `stats()` → `{bodies, dogs, setDrawCalls, bodyDrawCalls, dogDrawCalls}`. Tests:
+  `tests/party.test.ts`, `e2e/party.spec.ts` (`test-results/party/party-*.png`).
+
 ### photo (`src/systems/photo/`) – Fotomodus: the smartphone camera (present day only)
 
 - **N toggles** the phone (one press up, one down; the touch top row has a camera button that does
@@ -1513,6 +1684,7 @@ pause the logic.
   `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
   the objective started counts at once, on accept, on a newly active objective and on load:
   `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
+- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry); story matches `{ "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } }`. Stars and verdicts ignore it, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without
@@ -1521,6 +1693,7 @@ pause the logic.
   whole target from code. **Placeholders** (flagged `placeholder: true`, built in `demo.ts`): the
   plain trail board at the car park (`photo.parkplatz`, grants the flag `photo.demo.parkplatz`) and,
   with `?debug` only, a blocky test doe and fawn at 817 / −704 bound to `reh.ricke` / `reh.kitz`.
+- **Bindings stack by handle:** each `attachTarget` call pushes a handle per id; the newest remaining one is active, its detach removes exactly that handle (out-of-order detach never restores a stale getter), none left → the data anchor; `isAttached(id)` says whether any binding holds it. The `?debug` deer yields: `spawnDeer` / `kq.photo.deer.spawn` returns false with a dev warning when the deer ids are already attached or `kq.animals` reports deer.
 - **Album** (journal tab „Album“, order 70) and grants: the save slice `systems.photo` keeps one
   entry per target (best stars, era, ISO time, play seconds), at most 60 (the oldest out), plus
   `good` (every target ever shot well, for `has()`), `granted`, `cards`, `best` and the fallback
@@ -1530,7 +1703,7 @@ pause the logic.
   (progression gives no XP for it), `card` → `cards` (must be in `cards[]`), `flag` → `state.flags`.
   Unknown ids are skipped with a dev warning. Photos give no XP.
 - Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`, and
-  with `?debug` `kq.photo.deer.{spawn, calm, at}`. Tests: `tests/photo.test.ts`,
+  with `?debug` `kq.photo.deer.{spawn, calm, at, state}`. Tests: `tests/photo.test.ts`,
   `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
 
 ### How to wire a chapter (story files, round 3)

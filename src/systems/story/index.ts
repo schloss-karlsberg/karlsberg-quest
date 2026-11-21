@@ -822,6 +822,7 @@ class StoryRuntime {
         if (a.topics) p.topics = a.topics;
         if (a.mood) p.mood = a.mood;
         if (a.pose) p.pose = a.pose;
+        if (a.watch) p.watch = { ...a.watch };
         ctx.events.emit('npc:spawn', p);
         return;
       }

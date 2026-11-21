@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Voice clips for dialogue lines via a TTS provider (ElevenLabs, or a Hugging Face Gradio Space).
+ * Voice clips for dialogue lines via a TTS provider (ElevenLabs, a Hugging Face Gradio Space, or
+ * local MOSS-TTS-v1.5 via mlx-audio: batches of ≤ 6 lines inside scripts/dev/heavy.sh).
  *
  *   pnpm voice:plan                       dry run: the plan, no network spend
  *   pnpm voice:gen                        generate within budget
@@ -8,13 +9,15 @@
  *
  * Reads ELEVENLABS_API_KEY and HF_TOKEN from the main checkout's .env (override: --env <path>).
  * Secrets are sent only as auth headers and never printed. Output (Opus/WebM + AAC/m4a) and the
- * manifest go to public/voice/ (gitignored: ElevenLabs free-tier output is non-commercial and must
- * never be committed). Contract: scripts/voice/lib.ts.
+ * manifest go to public/voice/, which is COMMITTED and takes synthetic MOSS clips only (rules:
+ * scripts/voice/assetRules.ts, tests/voice-assets.test.ts). A real run that would write elevenlabs or
+ * hf-space clips there is refused unless --allow-noncommittable is given; use --out <scratch dir>
+ * for those. ElevenLabs output must never be committed. Contract: scripts/voice/lib.ts.
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
@@ -33,7 +36,10 @@ import {
   spendCap,
   textHash,
   writeManifest,
+  MOSS_ATTRIBUTION,
 } from './lib.ts';
+import { isCommittableVoiceDir, nonCommittableGuard } from './assetRules.ts';
+import { MOSS_BATCH_MAX, MOSS_RTF, QUIET_WINDOW, mossConfig, mossEstimate, refSha8For } from './moss.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../..');
@@ -65,7 +71,9 @@ const { values: a } = parseArgs({
     'max-lines': { type: 'string', default: '40' },
     force: { type: 'boolean', default: false },
     prune: { type: 'boolean', default: false },
+    'keep-raw': { type: 'string' },
     offline: { type: 'boolean', default: false },
+    'allow-noncommittable': { type: 'boolean', default: false },
     verbose: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -81,11 +89,13 @@ if (a.help) {
   --ids <a,b,glob*>    explicit line ids / globs instead of the priority tiers
   --speakers <a,b>     only these speakers
   --limit <n>          at most n new clips overall
-  --max-lines <n>      at most n new hf-space clips per run (default 40; ZeroGPU quota guard)
+  --max-lines <n>      at most n new hf-space clips and n new moss clips per run (default 40; quota / machine-time guard)
   --force              regenerate even up-to-date lines
   --prune              (real run) remove manifest entries and clips of lines no longer in content
   --offline            do not ask the account for remaining credits
-  --out <dir>          output dir (default public/voice)
+  --out <dir>          output dir (default public/voice: committed, synthetic MOSS clips only)
+  --keep-raw <dir>     (real run) also keep each provider's raw audio there (e.g. moss WAVs, for pause metrics)
+  --allow-noncommittable  let elevenlabs / hf-space clips land in public/voice anyway (local test only; never commit them)
   --content, --voices, --priority, --speech <path>   (speech.json: spoken text overrides per line id)
   -v, --verbose        list every selected line, also those past the budget`);
   process.exit(0);
@@ -121,9 +131,12 @@ KEY = (process.env.ELEVENLABS_API_KEY ?? '').trim();
 HF = (process.env.HF_TOKEN ?? '').trim();
 const keyNote = KEY ? 'present' : `no key: ${envNote || `ELEVENLABS_API_KEY is empty in ${a.env}`}`;
 const hfNote = HF ? 'present' : `no token: ${envNote || `HF_TOKEN is empty in ${a.env}`}`;
-// keep the secrets out of anything spawned later (ffmpeg)
+// keep the secrets out of anything spawned later (ffmpeg, heavy.sh + the moss runner)
 delete process.env.ELEVENLABS_API_KEY;
 delete process.env.HF_TOKEN;
+// local MOSS: KQ_MOSS_VENV / KQ_MOSS_HOME / KQ_MOSS_VOICES from env or .env, defaults under ~/kq-models
+const mossCfg = mossConfig(process.env);
+const ro = { refSha8: refSha8For(mossCfg) };
 
 if (a.model && !(a.model in CREDITS_PER_CHAR)) fail(`unknown ElevenLabs model "${a.model}" (known: ${Object.keys(CREDITS_PER_CHAR).join(', ')})`);
 
@@ -139,8 +152,8 @@ const fileExists = (f) => existsSync(join(a.out, f));
 // in a real run placeholder voices are not voices
 const runVoices = dry
   ? voices
-  : { ...voices, speakers: Object.fromEntries(Object.entries(voices.speakers).filter(([k]) => !resolveVoice(k, voices)?.placeholder)) };
-const usedProviders = new Set(Object.keys(runVoices.speakers).map((k) => resolveVoice(k, runVoices)?.provider).filter(Boolean));
+  : { ...voices, speakers: Object.fromEntries(Object.entries(voices.speakers).filter(([k]) => !resolveVoice(k, voices, undefined, ro)?.placeholder)) };
+const usedProviders = new Set(Object.keys(runVoices.speakers).map((k) => resolveVoice(k, runVoices, undefined, ro)?.provider).filter(Boolean));
 
 const selected = selectLines(lines, priority, { ids: list(a.ids), speakers: list(a.speakers) });
 
@@ -169,9 +182,17 @@ const plan = buildPlan(selected, {
   force: a.force,
   speech,
   limit,
-  maxLines: { 'hf-space': maxLines },
+  maxLines: { 'hf-space': maxLines, moss: maxLines },
+  resolve: ro,
 });
 const todo = plan.rows.filter((r) => r.take);
+// public/voice/ is committed: only moss clips may land there (scripts/voice/assetRules.ts)
+const guardMsg = nonCommittableGuard({ out: a.out, repo: REPO, providers: todo.map((r) => r.voice.provider), allow: a['allow-noncommittable'] });
+if (a['keep-raw'] && isCommittableVoiceDir(a['keep-raw'], REPO)) fail('--keep-raw must point outside public/voice/ (raw renders never go into the committed folder)');
+if (guardMsg) {
+  if (!dry) fail(`${guardMsg} Nothing generated.`);
+  console.warn(`WARNING (a real run would stop here): ${guardMsg}`);
+}
 if (!dry) {
   if (todo.some((r) => r.voice.provider === 'elevenlabs') && !KEY)
     fail(`${keyNote}. Put ELEVENLABS_API_KEY into that .env (never into the repo) or pass --env <path>. Nothing generated (try --dry-run).`);
@@ -203,42 +224,32 @@ mkdirSync(tmpDir, { recursive: true });
 const sha8 = (f) => createHash('sha256').update(readFileSync(f)).digest('hex');
 let spent = 0;
 let done = 0;
-for (const [i, r] of todo.entries()) {
+let stopped = false;
+const total = todo.length;
+let n = 0;
+
+/** post-process one raw clip (any format ffmpeg reads) into the two encodings + manifest entry */
+function finish(r, raw, credits) {
   const id = r.line.id;
-  // The subscription counter lags 20-60 s: cap on the start-of-run remaining count (in `cap`) minus
-  // the running sum of billed `character-cost`, never on re-polling.
-  if (r.credits > 0 && spent + r.credits > cap) {
-    console.log(`Stopping before ${id}: ${spent} credits billed so far + ~${r.credits} would pass the cap of ${cap}.`);
-    break;
-  }
-  process.stdout.write(`[${i + 1}/${todo.length}] ${id} (${r.voice.provider}, ${r.chars} chars, ~${r.credits} cr) … `);
-  let res;
-  try {
-    res = await providerFor(r.voice.provider).synthesize({ text: r.tts, voice: r.voice, model: r.voice.model, lang: 'de' });
-  } catch (e) {
-    console.log('failed');
-    if (e.status === 401 || e.status === 402 || e.status === 403) fail(`${e.message} – stopping`);
-    console.error(`  ${redact(String(e.message), KEY, HF)} – skipped`);
-    continue;
-  }
-  const raw = join(tmpDir, `${id}.raw`);
-  writeFileSync(raw, res.audio);
   const opusTmp = join(tmpDir, `${id}.webm.part`);
   const aacTmp = join(tmpDir, `${id}.m4a.part`);
+  if (a['keep-raw']) {
+    mkdirSync(a['keep-raw'], { recursive: true });
+    copyFileSync(raw, join(a['keep-raw'], `${id}${extname(raw) || '.raw'}`));
+  }
   let durationMs;
   try {
-    durationMs = processClip(raw, opusTmp, aacTmp);
+    durationMs = processClip(raw, opusTmp, aacTmp, { maxPauseSec: r.voice.postprocess?.maxPauseSec });
   } catch (e) {
     console.log('ffmpeg failed');
     console.error(`  ${String(e.message).slice(0, 300)} – raw kept at ${raw}`);
-    continue;
+    return false;
   }
   const files = { opus: contentFile(id, sha8(opusTmp), 'webm'), aac: contentFile(id, sha8(aacTmp), 'm4a') };
   renameSync(opusTmp, join(a.out, files.opus));
   renameSync(aacTmp, join(a.out, files.aac));
   unlinkSync(raw);
   const old = manifest.lines[id];
-  const credits = res.billedCredits ?? r.credits;
   manifest.lines[id] = {
     files,
     textHash: r.hash,
@@ -252,6 +263,7 @@ for (const [i, r] of todo.entries()) {
     chars: r.chars,
     credits,
     durationMs,
+    ...(r.voice.provider === 'moss' ? { attribution: MOSS_ATTRIBUTION } : {}),
   };
   writeManifest(manifestPath, manifest);
   // old clips go only after the manifest no longer points at them
@@ -259,10 +271,56 @@ for (const [i, r] of todo.entries()) {
   spent += credits;
   done++;
   console.log(`${durationMs} ms`);
+  return true;
+}
+
+for (const r of todo.filter((x) => x.voice.provider !== 'moss')) {
+  const id = r.line.id;
+  // The subscription counter lags 20-60 s: cap on the start-of-run remaining count (in `cap`) minus
+  // the running sum of billed `character-cost`, never on re-polling.
+  if (r.credits > 0 && spent + r.credits > cap) {
+    console.log(`Stopping before ${id}: ${spent} credits billed so far + ~${r.credits} would pass the cap of ${cap}.`);
+    stopped = true;
+    break;
+  }
+  process.stdout.write(`[${++n}/${total}] ${id} (${r.voice.provider}, ${r.chars} chars, ~${r.credits} cr) … `);
+  let res;
+  try {
+    res = await providerFor(r.voice.provider).synthesize({ text: r.tts, voice: r.voice, model: r.voice.model, lang: 'de' });
+  } catch (e) {
+    console.log('failed');
+    if (e.status === 401 || e.status === 402 || e.status === 403) fail(`${e.message} – stopping`);
+    console.error(`  ${redact(String(e.message), KEY, HF)} – skipped`);
+    continue;
+  }
+  const raw = join(tmpDir, `${id}.raw`);
+  writeFileSync(raw, res.audio);
+  finish(r, raw, res.billedCredits ?? r.credits);
+}
+
+// local MOSS: ≤ 6 lines per runner process, each inside scripts/dev/heavy.sh; post-processing after the lock is released
+const mossTodo = todo.filter((x) => x.voice.provider === 'moss');
+if (mossTodo.length) {
+  const { mossProvider } = await import('./providers.ts');
+  const byId = new Map(mossTodo.map((r) => [r.line.id, r]));
+  const moss = mossProvider({ cfg: mossCfg, repo: REPO, workDir: tmpDir, log: (s) => console.log(s) });
+  try {
+    for await (const b of moss.batches(mossTodo.map((r) => ({ id: r.line.id, text: r.tts, voice: r.voice, model: r.voice.model, lang: 'de' })))) {
+      for (const c of b.clips) {
+        const r = byId.get(c.id);
+        process.stdout.write(`[${++n}/${total}] ${c.id} (moss, ${r.chars} chars, ${c.seconds} s raw, rtf ${c.rtf}) … `);
+        finish(r, c.wav, 0);
+      }
+      for (const id of b.failed) console.error(`[${++n}/${total}] ${id} (moss) failed – skipped`);
+    }
+  } catch (e) {
+    console.error(`  ${redact(String(e.message), KEY, HF)}`);
+    stopped = true;
+  }
 }
 rmSync(tmpDir, { recursive: true, force: true });
 if (a.prune) prune();
-console.log(`\nGenerated ${done}/${todo.length} clips, ~${spent} credits. Manifest: ${manifestPath}`);
+console.log(`\nGenerated ${done}/${todo.length} clips, ~${spent} credits${stopped ? ' (stopped early)' : ''}. Manifest: ${manifestPath}`);
 
 // ------------------------------------------------------------------------------------------
 function prune() {
@@ -286,8 +344,8 @@ function printPlan(p) {
   console.log(`ElevenLabs key: ${keyNote} · account: ${accountNote} · HF token: ${hfNote}`);
   console.log(`Voices: ${models.join(', ') || '-'}`);
   console.log(`Credits: budget ${budget} − reserve ${reserve}${remaining != null ? ` (account ${remaining})` : ''} → cap ${p.cap} credits`);
-  const placeholders = Object.keys(voices.speakers).filter((k) => resolveVoice(k, voices)?.placeholder);
-  if (placeholders.length) console.log(`Placeholder voices (${dry ? 'planned, but a real run skips them' : 'skipped'}): ${placeholders.join(', ')}`);
+  const placeholders = Object.keys(voices.speakers).filter((k) => resolveVoice(k, voices, undefined, ro)?.placeholder);
+  if (placeholders.length) console.log(`Placeholder voices (${dry ? 'planned, but a real run skips them' : 'skipped'}; moss: reference file missing in KQ_MOSS_VOICES): ${placeholders.join(', ')}`);
   console.log('');
   const w = Math.max(28, ...p.rows.map((r) => r.line.id.length)) + 3;
   console.log(`${lpad('#', 4)}  ${pad('line id', w)}${pad('speaker', 9)}${pad('provider', 11)}${pad('tier', 16)}${pad('status', 13)}${lpad('chars', 6)}${lpad('credits', 8)}${lpad('cum.', 7)}`);
@@ -315,6 +373,21 @@ function printPlan(p) {
   const mbRun = estimateMB(taken);
   const mbAll = estimateMB([...upToDate.map((r) => ({ chars: r.chars, durationMs: manifest.lines[r.line.id]?.durationMs })), ...taken]);
   console.log(`Dist size (Opus 24k + AAC 48k, est. ${dry ? 'from chars' : 'from chars / durations'}): this run ~${mbRun.toFixed(1)} MB · all voiced after run ~${mbAll.toFixed(1)} MB${mbAll > DIST_WARN_MB ? `  WARNING: over the ${DIST_WARN_MB} MB voice budget` : ''}`);
+  const mossRows = taken.filter((r) => r.voice.provider === 'moss');
+  if (p.rows.some((r) => r.voice.provider === 'moss')) {
+    const e = mossEstimate(mossRows);
+    const mossMB = estimateMB(mossRows);
+    const allMoss = p.rows.filter((r) => r.voice.provider === 'moss' && r.status !== 'up-to-date');
+    const ea = mossEstimate(allMoss);
+    const sp = [...new Set(p.rows.filter((r) => r.voice.moss).map((r) => `${r.line.speaker} ${r.voice.voiceId}`))];
+    console.log(
+      `moss (local, 0 credits): ${e.lines} lines · ${e.chars} chars · ~${e.minutes.toFixed(1)} min at RTF ${MOSS_RTF} incl. one model load per batch · ` +
+        `${e.batches} heavy-lock batches of ≤ ${MOSS_BATCH_MAX} · ~${mossMB.toFixed(1)} MB dist · voices ${sp.join(', ')}`,
+    );
+    if (allMoss.length > mossRows.length)
+      console.log(`moss, all ${ea.lines} selected lines not yet voiced: ${ea.chars} chars · ~${ea.minutes.toFixed(0)} min · ${ea.batches} batches · ~${estimateMB(allMoss).toFixed(1)} MB (raise --max-lines / --limit, or run again)`);
+    console.log(`moss setup: python ${existsSync(mossCfg.python) ? 'found' : 'MISSING'} (KQ_MOSS_VENV) · references in KQ_MOSS_VOICES · quiet window ${existsSync(QUIET_WINDOW) ? 'ACTIVE (batches wait)' : 'off'} · the dry run never loads the model`);
+  }
   if (rest.length) console.log(`Past the budget: ${rest.length} lines · ${rest.reduce((s, r) => s + r.chars, 0)} chars · ${rest.reduce((s, r) => s + r.credits, 0)} credits${p.stoppedAt ? ` (stopped at ${p.stoppedAt.line.id})` : ''}`);
   const byReason = {};
   for (const s of p.skipped) (byReason[s.reason] ??= {})[s.line.speaker] = (byReason[s.reason]?.[s.line.speaker] ?? 0) + 1;
@@ -335,7 +408,7 @@ function printPlan(p) {
   const nameAuto = p.rows.filter((r) => r.speechSource === 'auto' && /\{[Nn]ame\}/.test(r.line.text)).map((r) => r.line.id);
   if (nameAuto.length) console.warn(`WARNING: lines with {Name} and no current speech.json entry (name just dropped): ${nameAuto.join(', ')}`);
   const noVoice = {};
-  for (const l of lines) if (!resolveVoice(l.speaker, runVoices)) noVoice[l.speaker] = (noVoice[l.speaker] ?? 0) + 1;
+  for (const l of lines) if (!resolveVoice(l.speaker, runVoices, undefined, ro)) noVoice[l.speaker] = (noVoice[l.speaker] ?? 0) + 1;
   const nv = Object.entries(noVoice).sort((x, y) => y[1] - x[1]);
   if (nv.length) console.log(`Speakers without a voice id in voices.json (never generated): ${nv.map(([k, v]) => `${k} ${v}`).join(', ')}`);
   const orphans = Object.keys(manifest.lines).filter((id) => !lines.some((l) => l.id === id));

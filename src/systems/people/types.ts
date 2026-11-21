@@ -18,7 +18,7 @@
  *   `root.rotation.y = yaw` faces `yaw` in the player's convention (0 faces −z, north; π/2 faces
  *   −x, west; −π/2 faces +x, east). Do not use `Object3D.lookAt` on it (that aims +z).
  * - Distance LOD (`PEOPLE_LOD`, distance from the camera):
- *   - animation at full rate within 15 m, about 10 Hz within 40 m, frozen beyond
+ *   - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
  *   - hidden beyond the draw limit (stand-in: 60 m)
  *   - frustum culling stays on
  * - Budget tiers (`TIER_BUDGET`; for the authored meshes, the stand-ins just report them):
@@ -126,8 +126,8 @@ export interface PeopleApi {
 
 /** Distance LOD (m from the camera): full-rate animation, ~10 Hz, frozen; hidden beyond the draw limit. */
 export const PEOPLE_LOD = {
-  /** Animation at full rate within this distance. */
-  fullRate: 15,
+  /** Animation at full rate within this distance. 25 m, not 15: the LOD is measured from the camera and a trailing third-person camera sits 15-25 m from the tour group, where 10 Hz stutters visibly (+1-1.5 ms CPU with 16 bodies, measured on a real GPU). */
+  fullRate: 25,
   /** About `slowHz` within this distance, frozen beyond. */
   slowRate: 40,
   slowHz: 10,

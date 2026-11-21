@@ -145,11 +145,11 @@ describe('turning and the head', () => {
 });
 
 describe('distance LOD', () => {
-  it('full within 15 m, ~10 Hz within 40 m, frozen beyond, hidden past the draw limit', () => {
-    expect(PEOPLE_LOD).toMatchObject({ fullRate: 15, slowRate: 40, slowHz: 10, drawLimit: 60, lod1: 15, lod1Ratio: 0.5 });
+  it('full within 25 m, ~10 Hz within 40 m, frozen beyond, hidden past the draw limit', () => {
+    expect(PEOPLE_LOD).toMatchObject({ fullRate: 25, slowRate: 40, slowHz: 10, drawLimit: 60, lod1: 15, lod1Ratio: 0.5 });
     expect(lodFor(3)).toEqual({ rate: 'full', hidden: false });
-    expect(lodFor(15)).toEqual({ rate: 'full', hidden: false });
-    expect(lodFor(20)).toEqual({ rate: 'slow', hidden: false });
+    expect(lodFor(25)).toEqual({ rate: 'full', hidden: false });
+    expect(lodFor(30)).toEqual({ rate: 'slow', hidden: false });
     expect(lodFor(50)).toEqual({ rate: 'frozen', hidden: false });
     expect(lodFor(61)).toEqual({ rate: 'frozen', hidden: true });
     expect(lodFor(Number.NaN).hidden).toBe(true);

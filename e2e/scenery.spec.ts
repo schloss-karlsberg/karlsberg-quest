@@ -111,14 +111,18 @@ test.describe('scenery', () => {
     await place(page, { era: '1789', x: 1172, z: -1585, yaw: 70, pitch: -4 });
     expect(await page.evaluate(() => window.kq!.scenery!.built())).toContain('zwinger');
     await shot(page, 'zwinger');
-    // out through the Tempelzimmer's glass doors, through KB-B07 into the garden
+    // the rotunda KB-B07 going up: no dome yet, its centering and a scaffold round the drum
+    await place(page, { era: '1789', x: 1300.9, z: -1237.9, yaw: 246, pitch: 6 });
+    await shot(page, 'rotunda-1789');
+    // out through the Tempelzimmer's glass doors: the colonnade, up the steps, through the round
+    // room, out by the portico and down into the garden
     expect((await page.evaluate(() => window.kq!.scenery!.passage())).open).toBe(true);
     await place(page, { era: '1789', x: 1268.9, z: -1226.5, yaw: 80.5 });
     await shot(page, 'passage-door');
-    const out = await walk(page, 80.5, 360);
+    const out = await walk(page, 80.5, 420);
     const s = (out.x - 1270.34) * 0.98643 + (out.z + 1226.78) * -0.16416;
-    expect(s).toBeGreaterThan(12);
-    await place(page, { era: '1789', x: 1289, z: -1230, yaw: 262, pitch: 3 });
+    expect(s).toBeGreaterThan(20);
+    await place(page, { era: '1789', x: 1293.03, z: -1230.56, yaw: 260.5, pitch: 3 });
     await shot(page, 'passage-garden');
     // the Ehrenhof railing: the gate is shut, then opened by the cue
     await place(page, { era: '1789', x: 1178, z: -1112, yaw: 100, pitch: 2 });
@@ -187,6 +191,10 @@ test.describe('scenery', () => {
     // inside the gallery: the snow stays outside the windows
     await place(page, { era: '1793-02', x: 1215, z: -1215, yaw: 100 });
     await shot(page, 'gallery-no-snow');
+    // the rotunda KB-B07 finished (dome and pediment), no scaffold
+    await place(page, { era: '1793-02', x: 1300.9, z: -1237.9, yaw: 246, pitch: 6 });
+    expect(await page.evaluate(() => window.kq!.scenery!.built())).not.toContain('k1-bauplatz');
+    await shot(page, 'rotunda-1793');
     expect(errors).toEqual([]);
   });
 

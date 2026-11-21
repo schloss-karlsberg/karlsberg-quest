@@ -17,7 +17,18 @@ export const MAX_CUTS = 24;
 export const MAX_CLIPS = 48;
 
 const isGlass = (r: number, g: number, b: number) => Math.max(r, g, b) < 0.06;
-const isDoor = (r: number, g: number, b: number) => Math.abs(r - 0.15) < 0.025 && Math.abs(g - 0.07) < 0.025 && Math.abs(b - 0.03) < 0.025;
+
+/**
+ * Door leaves: dark brown to red-brown paint (linear vertex colour). Matched by hue and luminance,
+ * not one exact colour: the research-wave model shades its leaves 0.12–0.20 red (0.145 before) and
+ * gives some a darker underside. The luminance cap (≈ 0.095) keeps the red sandstone plinth
+ * (≥ 0.10) and the tiles out; small sills of the same hue are dropped by the opening size check.
+ */
+export function isDoor(r: number, g: number, b: number): boolean {
+  if (r < 0.09 || r < g * 1.8 || g < b || r < b * 3) return false;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.05 && lum < 0.095;
+}
 
 interface Tri {
   bld: number;
@@ -26,6 +37,8 @@ interface Tri {
   nx: number;
   nz: number;
   off: number;
+  /** Triangle area (m²). */
+  area: number;
   x0: number;
   y0: number;
   z0: number;
@@ -33,6 +46,29 @@ interface Tri {
   y1: number;
   z1: number;
 }
+
+/**
+ * A door leaf is a slab: its front, back and edge faces have different normals. Measure it on its
+ * broadest plane only (front + back), so the edges' offsets do not pull the opening off the facade.
+ */
+function broadestPlane(tris: readonly Tri[], g: readonly number[]): number[] {
+  const area = new Map<string, number>();
+  const members = new Map<string, number[]>();
+  for (const i of g) {
+    const t = tris[i]!;
+    const key = `${Math.round(t.nx * 20)}|${Math.round(t.nz * 20)}`;
+    area.set(key, (area.get(key) ?? 0) + t.area);
+    let l = members.get(key);
+    if (!l) members.set(key, (l = []));
+    l.push(i);
+  }
+  let best = '';
+  for (const [k, a] of area) if (!best || a > area.get(best)!) best = k;
+  return members.get(best) ?? [];
+}
+
+/** Door leaves need a front and a back (≥ 4 triangles on their plane); a lone painted reveal is no door. */
+const MIN_DOOR_TRIS = 4;
 
 /** Windows and doors of the given buildings (by palace building index) found in the merged model. */
 export function extractOpenings(geo: BufferGeometry, buildings: ReadonlyMap<number, string>): ShellOpening[] {
@@ -89,6 +125,7 @@ export function extractOpenings(geo: BufferGeometry, buildings: ReadonlyMap<numb
       nx,
       nz,
       off: ax * nx + az * nz,
+      area: nl / 2,
       x0: Math.min(ax, bx, cx),
       y0: Math.min(ay, by, cy),
       z0: Math.min(az, bz, cz),
@@ -103,7 +140,9 @@ export function extractOpenings(geo: BufferGeometry, buildings: ReadonlyMap<numb
   const tol = 0.04;
   const byKey = new Map<string, number[]>();
   tris.forEach((t, i) => {
-    const key = t.kind === 'window' ? `${t.bld}|w|${Math.round(t.nx * 20)}|${Math.round(t.nz * 20)}|${Math.round(t.off * 20)}` : `${t.bld}|d`;
+    // windows: one pane plane; door leaves: one facing (front and back of the slab, 0.5 m bins),
+    // so a leaf never chains into painted reveals, sills or plinth bands of the same hue
+    const key = t.kind === 'window' ? `${t.bld}|w|${Math.round(t.nx * 20)}|${Math.round(t.nz * 20)}|${Math.round(t.off * 20)}` : `${t.bld}|d|${Math.round(t.nx * 10)}|${Math.round(t.nz * 10)}|${Math.round(t.off * 2)}`;
     let l = byKey.get(key);
     if (!l) byKey.set(key, (l = []));
     l.push(i);
@@ -128,7 +167,9 @@ export function extractOpenings(geo: BufferGeometry, buildings: ReadonlyMap<numb
     l.push(i);
   });
   const out: ShellOpening[] = [];
-  for (const g of groups.values()) {
+  for (const all of groups.values()) {
+    const g = tris[all[0]!]!.kind === 'door' ? broadestPlane(tris, all) : all;
+    if (tris[all[0]!]!.kind === 'door' && g.length < MIN_DOOR_TRIS) continue;
     const t0 = tris[g[0]!]!;
     // tangent along the facade (horizontal, perpendicular to the normal)
     const tx = -t0.nz;

@@ -125,9 +125,11 @@ export interface PilotObservation {
   /**
    * Combat events since the previous act / observe (hits dealt and taken, dodges, KOs, bounces,
    * telegraphs), and `{type: 'inputDropped', input: 'attack' | 'dodge', reason}` when a press had no
-   * effect (reasons: 'recovery' = a swing runs, outside the combo buffer; 'hitstop'; 'blocked' =
-   * attacks off (modal, measuring, flying, talking …); 'skill'; 'dodging'; 'tired'; 'noDodge';
-   * 'interact' = the left click went to the interact target; 'dead'; 'unknown'), and
+   * effect. A press waiting in the combat input buffer (0.25 s, also through hit-stop) is not
+   * reported unless it never acts (reasons: 'bufferExpired' = it waited in the buffer and ran out;
+   * 'blocked' = attacks off (modal, measuring, flying, talking …); 'skill'; 'dodging'; 'tired';
+   * 'noDodge'; 'interact' = the left click went to the interact target; 'dead'; 'recovery' /
+   * 'hitstop' = only for a press that did not reach the buffer; 'unknown'), and
    * `{type: 'chooseRejected', n}` for a `choose()` that came before the previous one settled.
    */
   events: PilotEvent[];
@@ -357,6 +359,20 @@ export interface PressBefore {
   swing: boolean;
   dodging: boolean;
   skill: boolean;
+  /** Input buffer seconds left (`p.bufAtk` / `p.bufDodge`; 0 = empty). */
+  bufAtk?: number;
+  bufDodge?: number;
+}
+
+/** The player's combat state after a sim step, as far as a press needs it. */
+export interface PressAfter {
+  queued: boolean;
+  hold: number;
+  skill: boolean;
+  dead?: boolean;
+  /** Input buffer seconds left after the step: a press still waiting there was not lost (yet). */
+  bufAtk?: number;
+  bufDodge?: number;
 }
 
 export interface DroppedInput {
@@ -364,25 +380,49 @@ export interface DroppedInput {
   reason: string;
 }
 
+/** The parts of the combat sim the press bookkeeping reads (never writes). */
+interface PressSim {
+  readonly freeze: number;
+  readonly p: { dead: boolean; swing: unknown; dodge: unknown; skill: unknown; queued: boolean; hold: number; bufAtk: number; bufDodge: number };
+}
+
+/** Read the press-relevant player state before a step (read-only). */
+export function pressBefore(s: PressSim): PressBefore {
+  const p = s.p;
+  return { dead: p.dead, freeze: s.freeze, swing: !!p.swing, dodging: !!p.dodge, skill: !!p.skill, bufAtk: p.bufAtk, bufDodge: p.bufDodge };
+}
+
+/** Read the press-relevant player state after a step (read-only). */
+export function pressAfter(s: PressSim): PressAfter {
+  const p = s.p;
+  return { queued: p.queued, hold: p.hold, skill: !!p.skill, dead: p.dead, bufAtk: p.bufAtk, bufDodge: p.bufDodge };
+}
+
 /**
  * Presses a sim step swallowed (pure; the pilot taps the live sim's step with it): an attack press
- * that started no swing, queued no combo hit and began no hold, a dodge press without a roll.
+ * that started no swing, queued no combo hit, began no hold and is not waiting in the input buffer,
+ * a dodge press without a roll that is not waiting in the buffer. A buffered press is not reported
+ * here; {@link PressTracker} follows it until it acts or runs out (`bufferExpired`).
  * `pilotAttack`: the pilot pressed attack this step (a press the combat layer gave to the interact
  * target never reaches the sim).
  */
 export function droppedInputs(
   inp: { attackPressed: boolean; dodgePressed: boolean; blocked: boolean; noDodge?: boolean },
   before: PressBefore,
-  after: { queued: boolean; hold: number; skill: boolean },
+  after: PressAfter,
   out: readonly { type: string }[],
   pilotAttack = false,
 ): DroppedInput[] {
   const res: DroppedInput[] = [];
   const has = (t: string) => out.some((e) => e.type === t);
-  const gate = (): string | null => (before.dead ? 'dead' : before.freeze > 0 ? 'hitstop' : inp.blocked ? 'blocked' : null);
+  // a dead player's press still lands in the buffer (the sim skips the player's moves) but is lost
+  const gate = (): string | null => (before.freeze > 0 ? 'hitstop' : inp.blocked ? 'blocked' : null);
   if (inp.attackPressed) {
     const g = gate();
-    if (g) res.push({ input: 'attack', reason: g });
+    if (before.dead) res.push({ input: 'attack', reason: 'dead' });
+    else if ((after.bufAtk ?? 0) > 0) {
+      // buffered (hit-stop, a swing outside the combo window): it may still act
+    } else if (g) res.push({ input: 'attack', reason: g });
     else if (has('swing') || after.queued || after.hold >= 0) {
       // taken: a swing, a buffered combo hit or the start of a hold
     } else if (before.skill || after.skill) res.push({ input: 'attack', reason: 'skill' });
@@ -392,7 +432,10 @@ export function droppedInputs(
   } else if (pilotAttack) res.push({ input: 'attack', reason: 'interact' });
   if (inp.dodgePressed) {
     const g = gate();
-    if (g) res.push({ input: 'dodge', reason: g });
+    if (before.dead) res.push({ input: 'dodge', reason: 'dead' });
+    else if ((after.bufDodge ?? 0) > 0) {
+      // buffered (hit-stop, a roll in progress): it may still act
+    } else if (g) res.push({ input: 'dodge', reason: g });
     else if (inp.noDodge) res.push({ input: 'dodge', reason: 'noDodge' });
     else if (has('dodge')) {
       // taken
@@ -402,6 +445,58 @@ export function droppedInputs(
     else res.push({ input: 'dodge', reason: 'unknown' });
   }
   return res;
+}
+
+/**
+ * Follows presses through the combat sim's input buffer (INPUT_BUFFER, round 10): a press that
+ * lands in the buffer is not reported when made; it is reported later only if it never acts:
+ * `bufferExpired` when its time ran out, or the reason the buffer was cleared (dead, blocked,
+ * skill, tired, unknown). Deterministic: it reads the sim's state before and after each step and
+ * never changes it. A new press while one waits refreshes the same buffer slot (one press).
+ */
+export class PressTracker {
+  private readonly pend = { attack: false, dodge: false };
+
+  /** Is a press of this input waiting in the buffer (as far as the tracker saw)? */
+  pending(input: 'attack' | 'dodge'): boolean {
+    return this.pend[input];
+  }
+
+  step(
+    dt: number,
+    inp: { attackPressed: boolean; dodgePressed: boolean; blocked: boolean; noDodge?: boolean },
+    before: PressBefore,
+    after: PressAfter,
+    out: readonly { type: string }[],
+    pilotAttack = false,
+  ): DroppedInput[] {
+    const res = droppedInputs(inp, before, after, out, pilotAttack);
+    const has = (t: string) => out.some((e) => e.type === t);
+    for (const input of ['attack', 'dodge'] as const) {
+      const atk = input === 'attack';
+      const pressed = atk ? inp.attackPressed : inp.dodgePressed;
+      const buf = (atk ? after.bufAtk : after.bufDodge) ?? 0;
+      const prev = (atk ? before.bufAtk : before.bufDodge) ?? 0;
+      if (pressed) {
+        // a press reported as dropped also ends one that was waiting (the same buffer slot)
+        this.pend[input] = !before.dead && buf > 0 && !res.some((d) => d.input === input);
+        continue;
+      }
+      if (!this.pend[input]) continue;
+      if (buf > 0 && !after.dead) continue;
+      this.pend[input] = false;
+      let reason: string | null;
+      if (before.dead || after.dead) reason = 'dead';
+      else if (prev <= dt + 1e-9) reason = 'bufferExpired';
+      else if (atk ? has('swing') || after.queued || after.hold >= 0 : has('dodge')) reason = null;
+      else if (inp.blocked) reason = 'blocked';
+      else if (before.skill || after.skill) reason = 'skill';
+      else if (has('tired')) reason = 'tired';
+      else reason = 'unknown';
+      if (reason) res.push({ input, reason });
+    }
+    return res;
+  }
 }
 
 /** May a held attack be pressed now (a press would begin a hold, not queue a combo hit or be lost)? */
@@ -536,9 +631,10 @@ export function installPilot(ctx: GameContext): PilotApi {
     if (!s || s.__pilot) return;
     s.__pilot = true;
     const step = s.step.bind(s);
+    // presses waiting in this sim's input buffer (a new sim starts with an empty one)
+    const presses = new PressTracker();
     s.step = (dt, inp) => {
-      const p = s.p;
-      const before: PressBefore = { dead: p.dead, freeze: s.freeze, swing: !!p.swing, dodging: !!p.dodge, skill: !!p.skill };
+      const before = pressBefore(s);
       const out = step(dt, inp);
       const t = ctx.loop.time - actStart;
       for (const ev of out) {
@@ -546,9 +642,7 @@ export function installPilot(ctx: GameContext): PilotApi {
         if (pe) events.push(pe);
       }
       // swallowed presses (playtest round 10: dropped clicks looked like tooling problems)
-      if (inp.attackPressed || inp.dodgePressed || pilotAttackEdge) {
-        for (const d of droppedInputs(inp, before, { queued: p.queued, hold: p.hold, skill: !!p.skill }, out, pilotAttackEdge)) events.push({ type: 'inputDropped', t: r2(t), ...d });
-      }
+      for (const d of presses.step(dt, inp, before, pressAfter(s), out, pilotAttackEdge)) events.push({ type: 'inputDropped', t: r2(t), ...d });
       pilotAttackEdge = false;
       if (events.length > 200) events.splice(0, events.length - 200);
       return out;

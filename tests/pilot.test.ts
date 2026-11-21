@@ -5,7 +5,10 @@ import {
   ChooseGate,
   attackReady,
   compassDeg,
+  PressTracker,
   droppedInputs,
+  pressAfter,
+  pressBefore,
   lookPlan,
   promptLine,
   relBearing,
@@ -17,7 +20,10 @@ import {
   telegraphLeft,
   wrap180,
 } from '../src/debug/pilot';
-import type { SimEvent } from '../src/systems/combat/sim';
+import { CombatSim, type SimEvent, type SimInput } from '../src/systems/combat/sim';
+import { INPUT_BUFFER } from '../src/systems/combat/rules';
+import { deriveStats } from '../src/rpg/stats';
+import type { EnemyGroupState } from '../src/rpg/types';
 
 /** Bullet-time pilot (src/debug/pilot.ts): the observation's pure parts. */
 
@@ -215,5 +221,135 @@ describe('pilot frame strip', () => {
     expect(stripVisible(false, false)).toBe(true);
     expect(stripVisible(true, false)).toBe(false);
     expect(stripVisible(false, true)).toBe(false);
+  });
+});
+
+/**
+ * The pilot's inputDropped vs the round-10 input buffer (INPUT_BUFFER): the live CombatSim, stepped
+ * the way the pilot taps it (state before / after each step, read-only).
+ */
+describe('pilot inputDropped and the combat input buffer', () => {
+  const DT = 1 / 60;
+  const newSim = () => {
+    const groups: Record<string, EnemyGroupState> = {};
+    const stats = deriveStats({ level: 4, talents: {}, equipped: { weapon: 'item.stab.eisen', charms: [] } });
+    return new CombatSim({ heightAt: () => 0 }, groups, { gentle: false, reducedMotion: false, stats, sweep: false, konter: false, waerme: false, dritter: false });
+  };
+  const input = (o: Partial<SimInput> = {}): SimInput => ({
+    x: 0, y: 0, z: 0, yaw: 0, moveX: 0, moveZ: 0, attackDown: false, attackPressed: false, bannPressed: false, dodgePressed: false, running: false, blocked: false, safe: null, era: '1789', time: 'day', ...o,
+  });
+  /** A sim with the pilot's press bookkeeping on its step. */
+  const piloted = () => {
+    const s = newSim();
+    const tracker = new PressTracker();
+    const dropped: { input: string; reason: string }[] = [];
+    const evs: SimEvent[] = [];
+    const step = (o: Partial<SimInput> = {}) => {
+      const inp = input(o);
+      const before = pressBefore(s);
+      const out = s.step(DT, inp);
+      dropped.push(...tracker.step(DT, inp, before, pressAfter(s), out));
+      evs.push(...out);
+      return out;
+    };
+    const run = (sec: number, o: Partial<SimInput> = {}) => {
+      for (let t = 0; t < sec - 1e-9; t += DT) step(o);
+    };
+    return { s, tracker, dropped, evs, step, run };
+  };
+  const count = (evs: SimEvent[], type: string) => evs.filter((e) => e.type === type).length;
+
+  it('a press during hit-stop is buffered, not reported, and then executes', () => {
+    const { s, tracker, dropped, evs, step, run } = piloted();
+    step();
+    s.freeze = 0.1; // a hit just landed (hit-stop shorter than the buffer)
+    step({ attackPressed: true });
+    expect(dropped).toEqual([]);
+    expect(tracker.pending('attack')).toBe(true);
+    expect(count(evs, 'swing')).toBe(0);
+    run(0.2);
+    expect(count(evs, 'swing')).toBe(1);
+    expect(tracker.pending('attack')).toBe(false);
+    run(1);
+    expect(dropped).toEqual([]);
+  });
+
+  it('a dodge during hit-stop is buffered too and rolls when the freeze ends', () => {
+    const { s, dropped, evs, step, run } = piloted();
+    step();
+    s.freeze = 0.1;
+    step({ dodgePressed: true });
+    run(0.5);
+    expect(count(evs, 'dodge')).toBe(1);
+    expect(dropped).toEqual([]);
+  });
+
+  it('a press during the swing recovery is buffered, not reported (and becomes the next combo hit)', () => {
+    const { s, tracker, dropped, evs, step, run } = piloted();
+    step({ attackPressed: true });
+    expect(count(evs, 'swing')).toBe(1);
+    // the very next frame: still outside the combo window (the old code said 'recovery')
+    step({ attackPressed: true });
+    const w = s.p.swing!;
+    expect(w.dur - w.t).toBeGreaterThan(0.35);
+    expect(s.p.queued).toBe(false);
+    expect(dropped).toEqual([]);
+    expect(tracker.pending('attack')).toBe(true);
+    run(1);
+    expect(count(evs, 'swing')).toBe(2);
+    expect(dropped).toEqual([]);
+  });
+
+  it('a buffered press that runs out unused is reported once as bufferExpired', () => {
+    // a dodge 0.02 s into a roll: 0.33 s of roll left > the 0.25 s buffer
+    const a = piloted();
+    a.step({ dodgePressed: true });
+    a.run(0.02);
+    a.step({ dodgePressed: true });
+    expect(a.dropped).toEqual([]);
+    a.run(1);
+    expect(count(a.evs, 'dodge')).toBe(1);
+    expect(a.dropped).toEqual([{ input: 'dodge', reason: 'bufferExpired' }]);
+    // an attack pressed into a hit-stop longer than the buffer
+    const b = piloted();
+    b.step();
+    b.s.freeze = INPUT_BUFFER + 0.15;
+    b.step({ attackPressed: true });
+    b.run(INPUT_BUFFER - DT * 2);
+    expect(b.dropped).toEqual([]);
+    b.run(1);
+    expect(count(b.evs, 'swing')).toBe(0);
+    expect(b.dropped).toEqual([{ input: 'attack', reason: 'bufferExpired' }]);
+  });
+
+  it('real drops are still reported: tired, dead, blocked', () => {
+    const tired = piloted();
+    tired.s.p.st.stamina = 0;
+    tired.s.p.st.exhausted = true;
+    tired.step({ attackPressed: true });
+    expect(tired.dropped).toEqual([{ input: 'attack', reason: 'tired' }]);
+    expect(tired.tracker.pending('attack')).toBe(false);
+
+    const dead = piloted();
+    dead.step();
+    dead.s.p.dead = true;
+    dead.step({ attackPressed: true, dodgePressed: true });
+    dead.run(1);
+    // reported once, not again when the (never used) buffer runs out
+    expect(dead.dropped).toEqual([{ input: 'attack', reason: 'dead' }, { input: 'dodge', reason: 'dead' }]);
+
+    const blocked = piloted();
+    blocked.step({ attackPressed: true, blocked: true });
+    expect(blocked.dropped).toEqual([{ input: 'attack', reason: 'blocked' }]);
+  });
+
+  it('a waiting press cleared by a block is reported with that reason', () => {
+    const t = new PressTracker();
+    const idle = { dead: false, freeze: 0.05, swing: false, dodging: false, skill: false, bufAtk: 0, bufDodge: 0 };
+    const quiet = { attackPressed: false, dodgePressed: false, blocked: false };
+    expect(t.step(DT, { ...quiet, attackPressed: true }, idle, { queued: false, hold: -1, skill: false, bufAtk: INPUT_BUFFER, bufDodge: 0 }, [])).toEqual([]);
+    expect(t.pending('attack')).toBe(true);
+    expect(t.step(DT, { ...quiet, blocked: true }, { ...idle, bufAtk: INPUT_BUFFER }, { queued: false, hold: -1, skill: false, bufAtk: 0, bufDodge: 0 }, [])).toEqual([{ input: 'attack', reason: 'blocked' }]);
+    expect(t.pending('attack')).toBe(false);
   });
 });

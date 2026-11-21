@@ -12,14 +12,15 @@
  *                lines with `trigger: {event: 'walk:bark', id}`).
  * Listens:       'npc:conversation' (a walker the player talks to stands, its group too; no bark
  *                while any conversation is open), 'player:teleport' (snap), 'save:loaded'.
- * Bodies:        `ctx.people` (kq-characters' people API) when present, else stand-ins (bodies.ts).
+ * Bodies:        `ctx.people` (kq-characters' people API) is required; without it no bodies spawn
+ *                (one console.error), the walk logic, events and slice run on bodiless (bodies.ts).
  * Persistent:    slice `walk` (walkers, groups). Routes: content/routes/*.json (bundled).
  * Debug/test API: window.kq.walk (WalkHooks).
  */
 import { defineSystem } from '../../core/systems';
 import type { GameContext } from '../../core/context';
-import { StandInPool, peopleOf, peopleSpecs, personBody } from './bodies';
-import { PEOPLE_SPECS, WalkRuntime, type BodyFactory, type WalkBus } from './runtime';
+import { peopleOf, peopleSpecs, walkBodies } from './bodies';
+import { PEOPLE_SPECS, WalkRuntime, type WalkBus } from './runtime';
 import type { Route, WalkSlice } from './types';
 
 declare module '../../core/state' {
@@ -36,7 +37,7 @@ export interface WalkHooks {
   groups(): { group: string; leader: string; at: string; waiting: boolean }[];
   /** Guide + 14 members at the car park, follow, walk to `to` (default 'abzweig') with the leash. */
   demo(opts?: { to?: string; speed?: number; r?: number }): void;
-  stats(): { bodies: number; visible: number; ms: number; updateMs: number; syncMs: number; people: boolean };
+  stats(): { bodies: number; visible: number; ms: number; updateMs: number; syncMs: number; people: boolean; peopleApi: boolean };
   /** Every npc the walk system holds (position, speed, visible). */
   list(): { npc: string; spec: string; x: number; z: number; yaw: number; speed: number; visible: boolean }[];
   /** Walker state of an npc. */
@@ -81,18 +82,12 @@ export function loadRoutes(): Map<string, Route> {
 
 class WalkSystem {
   readonly rt: WalkRuntime;
-  private pool: StandInPool | null = null;
   private hooks = false;
   private frameMs = 0;
 
   constructor(private readonly ctx: GameContext) {
     const routes = loadRoutes();
-    const bodies: BodyFactory = (o) => {
-      const api = peopleOf(ctx);
-      if (api) return personBody(api, o);
-      this.pool ??= new StandInPool(ctx.scene);
-      return this.pool.factory(o);
-    };
+    const bodies = walkBodies(() => peopleOf(ctx));
     const forest = ctx.world.forest;
     this.rt = new WalkRuntime({
       bus: ctx.events as unknown as WalkBus,
@@ -126,14 +121,10 @@ class WalkSystem {
     this.rt.update(dt);
   }
 
-  frame(dt: number): void {
+  frame(_dt: number): void {
     if (!this.hooks && window.kq) this.installHooks();
     const t0 = performance.now();
     this.rt.sync();
-    if (this.pool) {
-      const c = this.ctx.camera.position;
-      this.pool.tick(dt, { x: c.x, z: c.z });
-    }
     this.frameMs = performance.now() - t0;
   }
 
@@ -156,7 +147,7 @@ class WalkSystem {
       },
       stats: () => {
         const s = rt.stats();
-        return { ...s, ms: s.updateMs + this.frameMs, people: !!peopleOf(this.ctx) };
+        return { ...s, ms: s.updateMs + this.frameMs, people: !!peopleOf(this.ctx), peopleApi: !!peopleOf(this.ctx) };
       },
       list: () => [...rt.npcs.values()].map((n) => ({ npc: n.id, spec: n.spec, x: n.x, z: n.z, yaw: n.yaw, speed: n.speed, visible: n.visible })),
       walker: (npc) => {
@@ -170,8 +161,6 @@ class WalkSystem {
 
   dispose(): void {
     this.rt.clear();
-    this.pool?.dispose();
-    this.pool = null;
   }
 }
 

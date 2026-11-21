@@ -8,7 +8,9 @@
  *   then a card with 0–3 stars and the verdict. The core (`core.ts`) judges it geometrically.
  * - **Down**: N, Esc, right click (or the camera button). Not in a conversation, a menu, a fight,
  *   the spirit view, a cut scene (`player.frozen`) or while somebody else holds the camera
- *   (`camera:override`): a toast says why, and an open phone closes.
+ *   (`camera:override`): a toast says why, and an open phone closes. Such a forced close (also
+ *   death and an era change) snaps the lens back to 1× in the same frame (`lensDown`), so a
+ *   cinematic never takes over a half-zoomed fov; the player's own close eases.
  * - **Past eras**: „Kein Netz“; the picture comes out white, nothing is judged
  *   (`photo:shot { noSignal: true }`, never `photo:good`).
  * - Targets are data (`content/photo/targets.json`); code may attach a live position and a
@@ -28,7 +30,7 @@ import { h } from '../../ui/dom';
 import { addJournalTab } from '../../ui/journal';
 import { addControlKeys } from '../../ui/menus';
 import { captureView } from '../notes/capture';
-import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, SteadyMeter, emptySlice, normaliseSlice } from './core';
+import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, lensDown, SteadyMeter, emptySlice, normaliseSlice } from './core';
 import { type PhotoTargetData, type PhotoTargetFile, targetFromData } from './data';
 import { DebugDeer, buildBoard } from './demo';
 import targetsFile from '../../../content/photo/targets.json';
@@ -60,8 +62,12 @@ declare module '../../core/events' {
     'photo:close': Record<string, never>;
     /** One shot (summary; arrays allowed). stars = best stars in the frame, 0 = nothing. noSignal: a past era („Kein Netz“). */
     'photo:shot': { targets: string[]; good: string[]; stars: number; noSignal: boolean };
-    /** One per good target in the shot (stars ≥ 2). Scalar only: story `{ "event": "photo:good", "match": { "id": … } }`. */
-    'photo:good': { id: string; stars: number };
+    /**
+     * One per good target in the shot (stars ≥ 2). Scalar only: story `{ "event": "photo:good",
+     * "match": { "id": …, "state": "alert" } }`. `state`: the target's `state()` at the shot (an
+     * opaque string, e.g. the deer's 'graze' | 'alert' | 'flee' | 'settled'); absent without a getter.
+     */
+    'photo:good': { id: string; stars: number; state?: string };
   }
 }
 
@@ -97,7 +103,14 @@ export interface PhotoHooks {
   /** Photo cards unlocked. */
   cards(): string[];
   /** ?debug only: the test deer pair (reh.ricke / reh.kitz). */
-  deer?: { spawn(x: number, z: number): void; calm(on: boolean): void; at(): { ricke: Vec3; kitz: Vec3 } | null };
+  deer?: {
+    /** False (with a dev warning) when the deer targets are already attached or kq.animals reports deer. */
+    spawn(x: number, z: number): boolean;
+    calm(on: boolean): void;
+    at(): { ricke: Vec3; kitz: Vec3 } | null;
+    /** Set (with an argument) and read the deer's `state()` string carried on `photo:good` (default 'graze'; null without deer). */
+    state(s?: string): string | null;
+  };
 }
 
 declare module '../../debug/hooks' {
@@ -132,23 +145,26 @@ export function registerTarget(def: PhotoTargetDef): () => void {
 }
 
 /**
- * Attach a live position (and optionally `calm()`) to a target from the data file by id: the
- * animals system for `animal` anchors, the npc system for `npc` anchors. Returns a detach
- * function (the target goes back to its data anchor, or out of the world).
+ * Attach a live position (and optionally `calm()` and `state()`) to a target from the data file
+ * by id: the animals system for `animal` anchors, the npc system for `npc` anchors. `state()` is
+ * an opaque string read at the shot and carried on `photo:good { id, stars, state }` (e.g. the
+ * deer's 'graze' | 'alert' | 'flee' | 'settled'); it changes no stars. Bindings stack per id by
+ * handle (`PhotoCore.attach`): the newest remaining one is active, and the returned detach removes
+ * exactly this one wherever it sits (a detached getter is never restored); with none left the
+ * target goes back to its data anchor, or out of the world.
  */
-export function attachTarget(id: string, live: { at: () => Vec3 | null; calm?: () => boolean }): () => void {
-  const t = core.targets.get(id);
-  if (!t) {
+export function attachTarget(id: string, live: PhotoLiveBinding): () => void {
+  const off = core.attach(id, live);
+  if (!off) {
     if (import.meta.env?.DEV) console.warn(`[photo] attachTarget: unknown target '${id}'`);
     return () => {};
   }
-  const prev = { at: t.at, calm: t.calm };
-  t.at = live.at;
-  if (live.calm) t.calm = live.calm;
-  return () => {
-    t.at = prev.at;
-    t.calm = prev.calm;
-  };
+  return off;
+}
+
+/** True while any live binding (`attachTarget`) holds that target. */
+export function isAttached(id: string): boolean {
+  return core.isAttached(id);
 }
 
 // ---- the system ------------------------------------------------------------------------------
@@ -156,6 +172,8 @@ export function attachTarget(id: string, live: { at: () => Vec3 | null; calm?: (
 /** Actions the phone takes over while it is up (their keys are the shutter / put-away). */
 const MUTED: Action[] = ['attack', 'interact', 'bannlicht', 'lockOn', 'dodge', 'skill1', 'skill2', 'skill3', 'quickUse', 'measure', 'listen', 'shift', 'xray', 'plans', 'pause'];
 const THUMB_W = 480;
+/** The targets the `?debug` test deer binds. */
+const DEER_IDS = ['reh.ricke', 'reh.kitz'] as const;
 const THUMB_Q = 0.72;
 const STAR = '★';
 
@@ -233,14 +251,18 @@ class Photo {
     this.offs.push(
       ev.on('npc:conversation', ({ open }) => {
         this.conversation = open;
-        if (open) this.close();
+        if (open) this.close(true);
       }),
       ev.on('camera:override', ({ active }) => {
         this.overridden = active;
-        if (active) this.close();
+        if (active) this.close(true);
       }),
-      ev.on('game:pause', ({ paused }) => paused && this.close()),
-      ev.on('era:change', () => this.syncSignal()),
+      ev.on('game:pause', ({ paused }) => paused && this.close(true)),
+      ev.on('player:died', () => this.close(true)),
+      ev.on('era:change', () => {
+        this.syncSignal();
+        this.close(true);
+      }),
       ev.on('save:loaded', () => this.thumbs.clear()),
     );
     ctx.state.subscribe((_s, reason) => {
@@ -283,18 +305,31 @@ class Photo {
     if (ctx.debug) this.spawnDeer(817, -704);
   }
 
-  spawnDeer(x: number, z: number): void {
+  /**
+   * The test deer yields to real animals: it refuses (dev warning, false) when `reh.ricke` /
+   * `reh.kitz` are already attached by someone else, or when `kq.animals` reports deer.
+   */
+  spawnDeer(x: number, z: number): boolean {
     const ctx = this.ctx;
     if (this.deer) {
       this.deer.moveTo(x, z);
-      return;
+      return true;
+    }
+    const animals = (window.kq as unknown as { animals?: unknown } | undefined)?.animals;
+    const why = debugDeerBlocker(DEER_IDS, isAttached, animals);
+    if (why) {
+      if (import.meta.env?.DEV || ctx.debug) console.warn(`[photo] debug deer not spawned: ${why}`);
+      return false;
     }
     const d = (this.deer = new DebugDeer(ctx.scene, x, z, (px, pz) => ctx.world.heightAt(px, pz)));
     const today = () => ctx.era.current === 'today';
     d.group.visible = today();
-    this.offs.push(ctx.events.on('era:change', () => (d.group.visible = today())));
-    attachTarget('reh.ricke', { at: () => (today() ? d.doeAt() : null), calm: () => d.calm });
-    attachTarget('reh.kitz', { at: () => (today() ? d.fawnAt() : null), calm: () => d.calm });
+    this.offs.push(
+      ctx.events.on('era:change', () => (d.group.visible = today())),
+      attachTarget('reh.ricke', { at: () => (today() ? d.doeAt() : null), calm: () => d.calm, state: () => d.state }),
+      attachTarget('reh.kitz', { at: () => (today() ? d.fawnAt() : null), calm: () => d.calm, state: () => d.state }),
+    );
+    return true;
   }
 
   deerHooks(): NonNullable<PhotoHooks['deer']> {
@@ -304,6 +339,11 @@ class Photo {
         if (this.deer) this.deer.calm = on;
       },
       at: () => (this.deer ? { ricke: { ...this.deer.doeAt() }, kitz: { ...this.deer.fawnAt() } } : null),
+      state: (s) => {
+        if (!this.deer) return null;
+        if (s !== undefined) this.deer.state = s;
+        return this.deer.state;
+      },
     };
   }
 
@@ -341,12 +381,11 @@ class Photo {
     return true;
   }
 
-  close(): void {
+  /** Phone down. `forced` (anything but the player's own N / Esc / right click): the lens snaps to 1×. */
+  close(forced = false): void {
     if (!this.isOpen) return;
     this.isOpen = false;
-    const pl = this.ctx.player;
-    pl.rig.setPhoto(false);
-    pl.rig.setFovScale(1);
+    lensDown(this.ctx.player.rig, this.ctx.camera, forced);
     for (const a of MUTED) this.ctx.input.muted.delete(a);
     this.el.classList.add('kq-hidden');
     this.zoomBar.classList.add('kq-hidden');
@@ -381,7 +420,7 @@ class Photo {
     const b = this.blocked();
     if (b) {
       if (b !== 'menu') this.ctx.ui.toast(t(`photo.toast.${b}`));
-      this.close();
+      this.close(true);
       return;
     }
     if (inp.wasPressed('bannlicht', true) || inp.wasPressed('pause', true)) {
@@ -452,7 +491,7 @@ class Photo {
     for (const id of r.good) if (img && !this.thumbs.has(id)) this.thumbs.set(id, img);
     this.lastShot = r;
     ctx.events.emit('photo:shot', { targets: r.targets, good: r.good, stars: r.stars, noSignal: !r.signal });
-    for (const d of r.details) if (d.good) ctx.events.emit('photo:good', { id: d.id, stars: d.stars });
+    for (const e of goodEvents(r)) ctx.events.emit('photo:good', e);
     if (booked.length) ctx.save.autosave('photo');
     this.showFlash();
     this.showCard(r, img);
@@ -566,7 +605,7 @@ class Photo {
   }
 
   dispose(): void {
-    this.close();
+    this.close(true);
     for (const off of this.offs) off();
     window.removeEventListener('keydown', this.onKey, { capture: true });
     this.deer?.dispose();

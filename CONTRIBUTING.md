@@ -30,6 +30,7 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `?kapitel=2\|3\|4` | A new game starts at that chapter, with matching skills and level |
 | `?era=1789` | Start in that era: `today`, `1789`, `1793-02`, `1793-07`, `1796` |
 | `?x=…&z=…` | Start at a local position |
+| `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling |
 | `?manual` | Bullet time: the game advances only when stepped |
 | `window.kq` | Debug API in the browser console: teleport, set the era, step, press keys, combat hooks |
 | `kq.pilot` | Scripted play on top of `window.kq`: act, observe, choose, `bulletTime(true)`, `showStrip(true)` |
@@ -85,9 +86,13 @@ These are not negotiable; pull requests that break them cannot be merged.
   [Quaternius](https://quaternius.com) and [poly.pizza](https://poly.pizza) (with the CC0 filter).
 - AI-generated assets are allowed when the generating tool's licence permits public redistribution of
   the output. Credit each file in `LICENSES.json` with the tool, model and version, date and licence;
-  our own generated files are released as CC0. No cloning of real people's voices, and no likeness of a
-  real living person without that person's consent; historical figures may be modelled from
-  public-domain portraits. Free-tier ElevenLabs output must not enter the repo.
+  our own generated files are released as CC0. No likeness of a real living person without that
+  person's consent; historical figures may be modelled from public-domain portraits.
+- Voices: synthetic MOSS-TTS-v1.5 (OpenMOSS) clips only (Apache-2.0 model,
+  generated locally, output CC0), in `public/voice/` with its manifest, each voice credited in the
+  `voices` list of `LICENSES.json`. Never ElevenLabs output (free or paid), and never a real person's
+  voice without their written consent (such a clip would not be CC0). `tests/voice-assets.test.ts`
+  enforces this, and `pnpm voice:gen` refuses to write other providers into `public/voice/`.
 - Credit **every file** in [`public/assets/LICENSES.json`](public/assets/LICENSES.json) with its
   name, author and source URL. The entry then appears in the game under „Lizenzen & Quellen“.
 - Treat downloaded archives as untrusted data: unpack them into a fresh, empty directory and never

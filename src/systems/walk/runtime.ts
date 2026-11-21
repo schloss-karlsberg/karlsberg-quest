@@ -36,7 +36,8 @@ export interface BodySpawn {
   seed: number;
   speaker?: string;
 }
-export type BodyFactory = (o: BodySpawn) => Body;
+/** A body for an npc, or null for none (no people API: the npc walks bodiless). */
+export type BodyFactory = (o: BodySpawn) => Body | null;
 
 export interface WalkWorld {
   heightAt(x: number, z: number): number;

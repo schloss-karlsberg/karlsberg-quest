@@ -12,7 +12,7 @@
  *                  "complete": { "enter": { "x": 819, "z": -875, "r": 25 } } } ] }
  */
 import type { Era } from '../../core/era';
-import type { ThreatConfig, ThreatKind } from '../contracts';
+import type { NpcWatch, ThreatConfig, ThreatKind } from '../contracts';
 
 export type FlagValue = boolean | number | string;
 
@@ -438,6 +438,11 @@ export interface NpcAction extends ActionBase {
    * centre and the ghost stands on that room's storey (upper floors too).
    */
   room?: string;
+  /**
+   * A court watcher ("Unauffällig", src/systems/court): `{fov, range, sweep?: [yawA, yawB],
+   * period?, set?, inspector?, zone?, who?}` (degrees, metres, seconds; see NpcWatch).
+   */
+  watch?: NpcWatch;
 }
 /**
  * Chapter meters. `oil`: the lantern burns `seconds` (hunt's lantern: lit + refilled; empty =

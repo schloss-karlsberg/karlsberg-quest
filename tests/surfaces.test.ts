@@ -38,6 +38,12 @@ describe('surfaces (architecture track)', () => {
     expect(palaceSurface(0.5, 0.12, 0.08, 0.6)).toBe(SURF.TILES);
     expect(palaceSurface(0.1, 0.1, 0.11, 0.6)).toBe(SURF.SLATE);
     expect(palaceSurface(0.5, 0.12, 0.08, 0)).toBe(SURF.ASHLAR);
+    // research-wave model: blue-grey shutters (#5F6F7A, linear ≈ 0.11/0.16/0.20) are paint, not plaster
+    expect(palaceSurface(0.114, 0.161, 0.196, 0)).toBe(SURF.PAINTED);
+    expect(palaceSurface(0.094, 0.133, 0.161, 0)).toBe(SURF.PAINTED);
+    // slate seen side-on stays stone, red-brown door leaves are planks
+    expect(palaceSurface(0.075, 0.075, 0.1, 0)).not.toBe(SURF.PAINTED);
+    expect(palaceSurface(0.129, 0.059, 0.027, 0)).toBe(SURF.PLANKS);
   });
 
   it('kit palette: gilt is metal, unknown paint stays untextured', () => {

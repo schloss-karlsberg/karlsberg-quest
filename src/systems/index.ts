@@ -19,6 +19,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./people'),
   // fauna contract v0 (animal bodies behind a mesh-independent handle API, ctx.fauna); the behaviour layer (animals) declares after: ['fauna']
   () => import('./fauna'),
+  // tour animals (C5): the roe doe + fawn and Jost's dogs, behaviour over the fauna bodies; today only
+  () => import('./animals'),
   () => import('./npc'),
   () => import('./barks'),
   () => import('./skills'),
@@ -34,10 +36,16 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./flaschen'),
   // the Karlsbergquelle: its living water and the touch that starts the time travel (prologue p3q)
   () => import('./quelle'),
+  // in-game cinematics (camera takeover, skip, reduced motion; contract C1)
+  () => import('./cinematic'),
   // the tour group: Gerold walks the route, the group follows (WP-16, era today)
   () => import('./walk'),
+  // the end-of-game party on today's plateau: people, dogs, set, credits strip and orbit (bible 06 §8)
+  () => import('./party'),
   // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
   () => import('./photo'),
+  // "Unauffällig": the court's watchers, suspicion, the gate inspection (after npc / scenery / story)
+  () => import('./court'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
   () => import('./notes'),
 ];
