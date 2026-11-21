@@ -584,8 +584,9 @@ html[data-kq-touch] .kqj-foot kbd {
   html[data-kq-touch] .kqs-card .kqs-card-note {
     font-size: 15px;
   }
+  /* the HUD is zoomed 0.78 on phones: 196 px land at about 153 px, under the dialogue band (6 + 36vh) */
   html[data-kq-touch] .kq-hud .kqq-banner {
-    top: 46%;
+    top: 196px;
     left: 44%;
     max-width: 62vw;
   }
@@ -931,14 +932,13 @@ html[data-kq-touch] .kq-title {
   }
 }
 
-/* ---- M-13 / M-14: photo mode on touch. Only the phone (close) button stays in the top row and it
-   moves below the frame's status bar; the combat buttons leave the viewfinder, the shutter stays;
-   the Bussole steps away. */
-html[data-kq-touch][data-kq-photo] .kq-t-top {
-  top: calc(52px + var(--kq-safe-t));
-  right: calc(30px + var(--kq-safe-r));
+/* ---- M-13 / M-14: photo mode on touch. Only the phone (close) button stays in the top row, in
+   its place (the others keep their room, so the toggle does not jump away from the thumb) and clear
+   of the frame's clock and battery at the ends; the combat buttons leave the viewfinder, the
+   shutter stays; the Bussole steps away. */
+html[data-kq-touch][data-kq-photo] .kq-t-top .kq-t-btn:not(.photo) {
+  visibility: hidden;
 }
-html[data-kq-touch][data-kq-photo] .kq-t-top .kq-t-btn:not(.photo),
 html[data-kq-touch][data-kq-photo] .kq-t-pop,
 html[data-kq-touch][data-kq-photo] .kq-t-skills,
 html[data-kq-touch][data-kq-photo] .kq-t-arc .kq-t-btn:not(.attack),

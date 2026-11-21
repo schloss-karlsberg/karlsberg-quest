@@ -199,7 +199,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 
 ### S1: blocks play
 
-**M-01 · S1 · small-landscape (667×375), and partly large-landscape · hud-idle, dialogue, combat, photo**
+**M-01 · S1 · small-landscape (667×375), and partly large-landscape · hud-idle, dialogue, combat, photo** → *fixed* (see §8.1)
 - **What's wrong:**
   - On a small phone the dialogue card (`.kqs-dlg`) shrinks to a narrow, very tall column, about 287 px wide, because of `width: calc(100vw - 380px)`. It runs from the top edge to the thumb arc, on the right half of the screen.
   - It sits above the touch layer and has `pointer-events: auto`, so while a radio line or Laub is talking it covers and **swallows taps** on the top-row buttons (Relief, Handy-Kamera, Feldbuch, Fliegen) and on the Epoche and Aktion buttons.
@@ -214,7 +214,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 
 ### S2: hurts
 
-**M-02 · S2 · small-portrait, large-portrait · title, rotate**
+**M-02 · S2 · small-portrait, large-portrait · title, rotate** → *fixed* (see §8.1)
 - **What's wrong:**
   - The rotate overlay already shows on the title screen. Touch mode is on from the first frame, and the overlay keys only on `data-kq-touch` and orientation, so it blocks every tap: no title, no „Neuigkeiten“, no settings, no new game.
   - The overlay itself is plain white text on a dimmed screen. It has no rotate icon and no title art.
@@ -225,7 +225,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - Make the overlay friendly: the game title in its small-caps face, a rotate-phone SVG with a gentle animation (still under reduced motion), the German text on two short lines, and paper or dark-wood art instead of a flat dim.
 - **Likely files:** `src/ui/touch.css` (`.kq-rotate`), `src/ui/touch.ts` (overlay markup, `touch.rotate`).
 
-**M-03 · S2 · small-portrait, large-portrait · title-settings**
+**M-03 · S2 · small-portrait, large-portrait · title-settings** → *fixed* (see §8.1)
 - **What's wrong:**
   - The settings grid keeps its two columns at 375 and 430 px. The label column is squeezed to one or two words per line, e.g. „Eine / Taste / für / Aktionen / (z. / B. …“.
   - Checkboxes, sliders and radio groups are drawn on top of the label text: „Ge✓sche“, the sliders cross „Gesamtlautstärke“, and the Grafik radios sit on „Grafik“.
@@ -234,7 +234,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Suggested fix:** under about 600 px width, stack each row: label on top, control below (`grid-template-columns: 1fr`). Let the tab chips scroll horizontally on one line.
 - **Likely files:** `src/ui/settings.ts`, `src/ui/styles.css` (`.kq-settings`).
 
-**M-04 · S2 · small-landscape · title, news**
+**M-04 · S2 · small-landscape · title, news** → *fixed* (see §8.1)
 - **What's wrong:**
   - On a 375 px tall screen the title card is taller than the viewport. „Neuigkeiten“ and „Lizenzen & Quellen“ sit below the fold, measured off-screen at y ≈ 399.
   - The tour scrolled the link into view and tapped it, and the news did not open, in both runs. The tap after the scroll seems to land on the scroll container, not the link. A manual check is needed.
@@ -246,7 +246,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - „Neuigkeiten“ and „Lizenzen“ moved next to the buttons, so everything fits without scrolling.
 - **Likely files:** `src/ui/title.ts`, `src/ui/styles.css` (`.kq-title`).
 
-**M-05 · S2 · all touch units · lantern first frame, hud-idle**
+**M-05 · S2 · all touch units · lantern first frame, hud-idle** → *partly fixed (Aktion label); wording at kq-story* (see §8.1)
 - **What's wrong:** the first gameplay prompt is desktop-only text. „Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen“ shows in the bottom prompt pill and in the Aktion button's label, where it is cut to „Gehen · ins Bild klick…“. On touch there is no mouse, no click-to-look and no Shift.
 - **Screenshots:** `tablet-landscape/06-lantern-first-frame.png`, `small-portrait/06-lantern-first-frame.png`, `large-landscape/06-lantern-first-frame.png`.
 - **Suggested fix:**
@@ -254,13 +254,13 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - Keep the Aktion button label at „Aktion“ for prompts that are not interactions. `touchIconFor` returns `interact` for this `W A S D` key.
 - **Likely files:** `content/story/00-prolog.story.json` (the p1 prompt), `src/player/touchMap.ts` (`touchIconFor`), `src/ui/touch.ts` (`setPrompt`).
 
-**M-06 · S2 · all units · every gameplay state**
+**M-06 · S2 · all units · every gameplay state** → *fixed* (see §8.1)
 - **What's wrong:** the Epoche button (`touch-shift`, hourglass) overlaps the Aktion pill (`touch-interact`) by about 34×19 px, on every device. The two have different jobs (time travel vs. interact/listen), so a thumb aiming for one can hit the other.
 - **Screenshots:** `tablet-landscape/11-touch-buttons-cue-shift.png`, `large-landscape/08-hud-idle.png`.
 - **Suggested fix:** move `.kq-t-btn.shift` left or down in the arc, or let the Aktion pill grow to the left from a fixed right edge so the two keep at least 8 px apart.
 - **Likely file:** `src/ui/touch.css` (`.kq-t-arc`, `.shift`, `.interact`).
 
-**M-07 · S2 · all units (worst on phones) · settings, title-settings, pause**
+**M-07 · S2 · all units (worst on phones) · settings, title-settings, pause** → *fixed* (see §8.1)
 - **What's wrong:** the menu controls are desktop-sized for touch:
   - checkboxes are 20×20 px: Sanfter Modus, Schadenszahlen, Energiesparen, Weniger Bewegung …;
   - sliders are 180×16 px: volumes, Sichtfeld, Auflösung;
@@ -279,7 +279,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - `.kq-btn` with `min-height: 44px`.
 - **Likely files:** `src/ui/styles.css`, `src/ui/settings.ts`, `src/ui/touch.css`.
 
-**M-08 · S2 · small-landscape, large-landscape · settings, pause, map, npc-talk**
+**M-08 · S2 · small-landscape, large-landscape · settings, pause, map, npc-talk** → *fixed* (see §8.1)
 - **What's wrong:**
   - Modals ignore the notch: content and buttons sit inside the 47 or 59 px side insets of a phone held sideways. Examples: the Grafik radio „Hoch“, „Schließen“, „Zurück“, the map's „Hinreisen“, all of Hanne's topic buttons.
   - The modal's 82 px left gutter wastes the width that is missing on the right.
@@ -287,7 +287,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Suggested fix:** for `.kq-modal-layer`, `padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)` (or the `--kq-safe-*` variables). Under `max-height: 500px`, shrink the 82 px gutter to about 36 px.
 - **Likely files:** `src/ui/styles.css` (`.kq-modal-layer`, `.kq-modal`), `src/ui/touch.css`.
 
-**M-09 · S2 · small-landscape · npc-talk**
+**M-09 · S2 · small-landscape · npc-talk** → *fixed* (see §8.1)
 - **What's wrong:** Hanne's conversation card is taller than the 375 px screen. Its top edge is above the viewport (`modal-cut`), and the 5th choice „Auf Wiedersehen“ is below the bottom edge. The card does not scroll, so the goodbye choice cannot be tapped; only the `×` closes it.
 - **Screenshot:** `small-landscape/25-npc-talk-topics.png`.
 - **Suggested fix:** on short screens:
@@ -296,7 +296,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - `max-height: calc(100vh - 16px - insets); overflow: auto` on the card.
 - **Likely files:** `src/systems/npc/npc.css`, `src/systems/npc/ui.ts`.
 
-**M-10 · S2 · small-landscape, large-landscape · journal (every tab)**
+**M-10 · S2 · small-landscape, large-landscape · journal (every tab)** → *fixed* (see §8.1)
 - **What's wrong:** on a phone in landscape the eight Feldbuch tabs wrap to two rows. With the title row, they take more than half of the about 340 px tall modal, so every tab shows only 2–3 lines of content:
   - the Codex shows only its filter buttons;
   - Ausrüstung shows only the staff;
@@ -309,7 +309,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - the modal at the full 94vh.
 - **Likely files:** `src/systems/quests/quests.css` (`.kqj-tabs`), `src/systems/quests/journal.ts`.
 
-**M-11 · S2 · small-landscape, small-portrait, large-portrait · lantern first frame, hud-idle**
+**M-11 · S2 · small-landscape, small-portrait, large-portrait · lantern first frame, hud-idle** → *partly fixed (placement; timing stays with story/quests)* (see §8.1)
 - **What's wrong:** the first gameplay frame on a phone stacks four layers in the middle of the screen at once:
   - the chapter card „Prolog · heute, ein Novembernachmittag / Vermessung“;
   - the „Neue Aufgabe · Der Messstab“ banner;
@@ -320,7 +320,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Suggested fix:** on phones, queue the quest banner until the chapter card has faded (`CardDirector`), hold the first radio line until both are gone, and keep the banner clear of the dialogue area.
 - **Likely files:** `src/ui/cards.ts`, `src/systems/quests/` (banner), `src/systems/story/story.css` (chapter card position on phones).
 
-**M-12 · S2 · small-landscape, large-landscape · combat (skills)**
+**M-12 · S2 · small-landscape, large-landscape · combat (skills)** → *fixed* (see §8.1)
 - **What's wrong:**
   - The three skill buttons (Ausfall, Erdstoß, Wirbel) are 38×38 px on phones, below 44.
   - In combat the narrow dialogue card (M-01) also sits over Ausweichen, Balsam, Epoche and Aktion: `small-landscape/17-combat-lock-on.png` has Marlene's card on the arc.
@@ -328,7 +328,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Suggested fix:** 44 px skill buttons (`.kq-t-skills .kq-t-btn` in the phone media query); with M-01 fixed, the in-combat dialogue rule (`body.kq-in-combat .kqs-dlg`) must keep clear of the arc.
 - **Likely files:** `src/ui/touch.css`, `src/systems/story/story.css`.
 
-**M-13 · S2 · all units (was "pending tour/photo"; now live on main) · photo**
+**M-13 · S2 · all units (was "pending tour/photo"; now live on main) · photo** → *fixed* (see §8.1)
 - **What's wrong:**
   - With the phone up, the touch top-row buttons lie over the phone frame's status bar: the clock „14:31“, the signal bars and the battery are under Pause, Karte and the phone button.
   - On phones the Bussole medallion also overlaps the shutter (the attack button).
@@ -340,31 +340,31 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 
 ### S3: polish
 
-**M-14 · S3 · all units (live) · photo**
+**M-14 · S3 · all units (live) · photo** → *fixed* (see §8.1)
 - **What's wrong:** while aiming the phone, the combat buttons stay up: Ausweichen, Bannlicht, Ziel, Balsam, Epoche, Aktion and the skill buttons. They clutter the viewfinder.
 - **Screenshots:** `small-landscape/22-photo-open.png`, `tablet-landscape/22-photo-open.png`.
 - **Suggested fix:** in photo mode show only the stick, look, the shutter, zoom 1×/2× and close; hide `.kq-t-arc` (except the shutter) and `.kq-t-skills`.
 - **Likely files:** `src/ui/touch.css` (photo block), `src/ui/touch.ts` (`setPhoto`).
 
-**M-15 · S3 · known from the photo screenshots (desktop) · photo**
+**M-15 · S3 · known from the photo screenshots (desktop) · photo** → *fixed (CSS, desktop)* (see §8.1)
 - **What's wrong:** the desktop pointer-lock chip „Ins Bild klicken …“ (`hud.clickToPlay`) is visible in photo mode.
 - **Tour result:** not reproduced on touch, since the chip is hidden in touch mode. It stays a desktop issue.
 - **Suggested fix:** hide `[data-testid=click-to-look]` while `photo:open`.
 - **Likely files:** `src/ui/hud.ts`, `src/boot.ts` (the click-to-play chip).
 
-**M-16 · S3 · phones · combat, dialogue, top row**
+**M-16 · S3 · phones · combat, dialogue, top row** → *fixed* (see §8.1)
 - **What's wrong:** the top-row buttons are 42×42 px and the arc buttons 43×43 px; the Balsam button is 41×41 px. All just under 44.
 - **Screenshot:** `small-landscape/08-hud-idle.png`.
 - **Suggested fix:** 44 px minimum in the `max-height: 500px` rule (`.kq-t-top .kq-t-btn`, `--kq-t-btn`), or scale the arc 0.9 instead of 0.86.
 - **Likely file:** `src/ui/touch.css`.
 
-**M-17 · S3 · all units · era-shift**
+**M-17 · S3 · all units · era-shift** → *measured, not changed (handed over)* (see §8.1)
 - **What's wrong:** the era-shift transition drops frames: p95 33 ms, max 150–167 ms, 2–3 frames over 50 ms. On the 1789 arrival, p95 is 50 ms on small-landscape. This is on an M5 Pro, so a phone will be worse.
 - **Screenshots and data:** `*/19-era-shift-mid.png`, `findings.json` → `frames`.
 - **Suggested fix:** on coarse-pointer or low quality, lighten the shift effect (fewer passes or particles) and pre-warm the 1789 materials before the shift starts.
 - **Likely file:** `src/systems/fx/` (shift).
 
-**M-18 · S3 · all units · travel-card, level-card, photo**
+**M-18 · S3 · all units · travel-card, level-card, photo** → *open* (see §8.1)
 - **What's wrong:** centre cards stack on each other:
   - the „Vermessungspunkt eingemessen“ banner lies on top of the Kartograf skill card;
   - in photo mode the „Stufe IX“ level card sits in the middle of the viewfinder.
@@ -373,7 +373,7 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - **Suggested fix:** route the travel banner through `CardDirector`; hold level and skill cards while the phone is up.
 - **Likely files:** `src/systems/travel/index.ts` (`showCard`), `src/ui/cards.ts`.
 
-**M-19 · S3 · small-landscape · npc-talk, dialogue**
+**M-19 · S3 · small-landscape · npc-talk, dialogue** → *handed over to kq-story* (see §8.1)
 - **What's wrong:**
   - The „erfunden“ tag on the NPC card and the fiction tag in dialogue have low contrast (about 3:1).
   - The „Enter weiter“ hint in the dialogue card is desktop wording on touch.
@@ -391,3 +391,51 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
   - The HUD, the dialogue (bottom centre between stick and arc), the journal tabs (two rows, plenty of room), combat, the map, the NPC card and photo mode all read well.
   - Only the general issues apply there: M-06, M-07, M-11 to a lesser degree, M-13, M-14.
   - Evidence: `tablet-portrait/08-hud-idle.png`, `12-dialogue.png`, `16-journal-gear.png`, `17-combat-approach.png`, `22-photo-open.png`.
+
+### 8.1 Fix pass (2026-11-21)
+
+**Branch** `mobile/ui-pass` with main merged (cdc8f40). Commits `b2edcef` (touch / phone layout), `bcea427` (the pol-flow HUD overlap) and a follow-up for photo mode and the banner (see `git log`).
+
+**Where the fixes live.** Everything is in our files: `src/ui/touch.css`, `src/ui/touch.ts`, `src/player/touchMap.ts`, one rule in `src/ui/styles.css`. The story, NPC and quest UI is only overridden from `touch.css`, under `html[data-kq-touch]` and `@media (max-height: 500px)` / `(max-width: 600px)`. Their own files are untouched. Desktop selectors are unchanged; the only desktop-visible change is M-15 (no click-to-look chip while the phone is up).
+
+**Screenshots.** The "before" set is in `test-results/mobile-tour/_before/<unit>/`, the "after" set in `test-results/mobile-tour/_after/<unit>/`, both with the same file names. The re-runs covered:
+- small-landscape: `title, news, title-settings, lantern, hud-idle, touch-buttons, dialogue, pause, settings, journal, combat, photo, k1-card, k1-court, npc-talk`;
+- small-portrait: the full unit;
+- large-landscape: `title, news, hud-idle, touch-buttons, dialogue, pause, settings, journal, combat, photo, k1-card, k1-court, npc-talk`;
+- tablet-portrait: `rotate, hud-idle, touch-buttons, dialogue, settings, photo`.
+
+**A second cause behind the swallowed taps (M-01).** The dialogue card was one cause. The other one was ours, in `touch.ts`. A top-row button opens its page on `pointerup`, and the browser then sends a `click` to whatever is under the finger by then. That was often the new page's `×` or a menu entry, so the page closed again at once. The runner's probe showed it: `pointerdown@touch-pause, pointerup@touch-pause, click@close`. Touch buttons now swallow that one click. Since then, real taps on Pause, Feldbuch and the phone work in every state, with or without a line up.
+
+| finding | status | what changed | before → after |
+|---|---|---|---|
+| M-01 | fixed | On a landscape phone the dialogue card is a wide, low card in the top band. It runs from the left inset to the top-row buttons (it moves over when Fliegen / Sinken are in the row), and it is capped at 36vh, with a 44 px portrait, a smaller font and its own scroll. It uses the same place in fights. Only the card's box takes taps. The runner now taps Feldbuch and Handy while a line shows: both open by a real tap. | `small-landscape/08-hud-idle.png`, `12-dialogue.png`, `17-combat-lock-on.png` → same names, plus `12-dialogue-tap-journal.png`, `12-dialogue-tap-photo.png` |
+| M-02 | fixed | `touchMap.rotateWanted()` (unit-tested): touch, portrait, short side < 600 and gameplay, which means no title or new-game flow is up. `touch.ts` watches the title element and sets `html[data-kq-rotate]`. The new overlay has the game title, an original turning-phone SVG (it holds still under reduced motion), „Bitte das Gerät quer halten.“ and „Karlsberg Quest spielt sich im Querformat.“ on dark wood. Tablets never see it. | `small-portrait/01-title.png`, `07-rotate-overlay.png` → same names (the title is tappable; the runner no longer has to hide the overlay) |
+| M-03 | fixed | Below 600 px width or 500 px height, a setting's label sits above its control (a checkbox stays beside its label) and the section chips scroll in one row. | `small-portrait/03-title-settings-*.png` → same names |
+| M-04 | fixed | On short screens the title card is compact: smaller title, the buttons in one row, no desktop key hints on touch, and the title can scroll as a fallback. „Neuigkeiten“ and „Lizenzen & Quellen“ are on screen. The news tap failed because the link sat below the fold of a non-scrolling title (ours); it now opens. | `small-landscape/01-title.png`, `02-news-error.png` → `01-title.png`, `02-news.png` |
+| M-05 | partly | The Aktion button keeps „Aktion“ for a movement prompt (`touchPromptIcon`, unit-tested). The prompt's desktop wording is in progress at kq-story. | `small-landscape/06-lantern-first-frame.png` → same name |
+| M-06 | fixed | The Aktion pill moved up (bottom 184 instead of 150), 12 px clear of the Epoche button. | `large-landscape/08-hud-idle.png`, `small-landscape/11-touch-buttons-cue-shift.png` → same names |
+| M-07 | fixed | On touch: checkboxes 28 px in 44 px rows, radio labels 44 px tall, sliders with a 44 px hit area and a 28 px thumb, chips, `.kq-btn`, links and the modal `×` at 44 px or more. | `small-landscape/14-settings-*.png`, `13-pause.png` → same names |
+| M-08 | fixed | On touch, `.kq-modal-layer` is padded by the safe-area insets plus 6 px, and the modal fits inside it. The phone gutter is now 36 px instead of 52. | `small-landscape/14-settings-graphics.png`, `15-map-bottom.png` → same names |
+| M-09 | fixed | On short screens Hanne's page has a 44 px portrait, two topic columns with 44 px rows, scrolls inside and keeps a sticky `×`. All five choices, including „Auf Wiedersehen“, show on a 375 px screen. | `small-landscape/25-npc-talk-topics.png` → same name |
+| M-10 | fixed | On landscape phones the title and the tabs share one row, the tabs scroll sideways (44 px tall, no numbers), there is no subtitle, and the page is as tall as the screen allows. | `small-landscape/16-journal-*.png` → same names |
+| M-11 | partly | On phones the chapter card and the quest banner sit mid-screen, left of the arc and under the dialogue band, at a smaller size. The banner sits at a fixed 196 px in the 0.78-zoomed HUD (about 153 px on screen), under the dialogue band. The chapter card's fade-out is 0.35 s, so the banner (which already waits for `.kqs-card.kqs-show`) no longer overlaps it. The tracker steps back while a line is up. Holding the first radio line until both are gone is story logic: see the handover list. | `small-landscape/06-lantern-first-frame.png`, `08-hud-idle.png` → same names |
+| M-12 | fixed | Skill buttons are 44 px on phones; the dialogue card no longer touches the arc in fights (M-01). | `small-landscape/17-combat-skills.png` → same name |
+| M-13 | fixed | While the phone is up on touch, only the phone (close) button stays visible in the top row, in its place (the others are hidden but keep their room), which is clear of the frame's clock and battery. The Bussole is hidden. In normal play on touch the Bussole moved bottom-left, right of the lamp-oil gauge: it used to sit under the attack button. | `small-landscape/22-photo-open.png` → same name |
+| M-14 | fixed | In photo mode the arc shows only the shutter; skills, the Relief pop-up and the HUD prompt (it sat under 1× / 2×) are hidden. | `small-landscape/22-photo-open.png` → same name |
+| M-15 | fixed | `html[data-kq-photo] .kq-click-to-play { display: none }` (desktop). | desktop only; not shot |
+| M-16 | fixed | On phones the arc is scaled 0.9 instead of 0.86 with 52 px base buttons, Balsam and Ziel are 50 px, and the top-row buttons are 44 px with 6 px gaps. Every arc target is ≥ 45 px after the scale. | `small-landscape/08-hud-idle.png` → same name |
+| M-17 | measured | Era shift, mid-effect: p95 33 ms on every unit; max 150 ms (small and large landscape), 167 ms (tablet landscape), 183 ms (tablet portrait); 2–3 frames over 50 ms. The 1789 arrival on small-landscape: p95 50 ms, max 83 ms. The one long stall at the start of the shift looks like material or shader warm-up for 1789. Not changed: this is `src/systems/fx/` (shift), handed over. | `*/19-era-shift-mid.png`, `_before/*/findings.json` → `frames` |
+| M-18 | open | Not done in this pass (the travel banner through `CardDirector` is `src/systems/travel/`). | — |
+| M-19 | handed over | Tag contrast and „Enter weiter“: kq-story (see below). | — |
+
+**E2E, one spec per lock hold:** `touch` 4/4, `photo` 4/4 (after the photo follow-up: the first run failed because the phone button moved away from under the thumb, so it now stays in place), `smoke` 3/3, `court` 4/4, `pol-flow` 4/4.
+
+**Extra (not in the tour): pol-flow at 1280×720.** `e2e/pol-flow.spec.ts:133` failed on main with `skill-card-0 × hud-boss`. The cause was the Unauffällig meter from `62f7607`: while off, it sat in the top-centre boss dock at opacity 0 and kept the dock about 75 px tall under the compass. Off now means `display: none` (it fades in when it turns on). While the meter really shows, the skill cards sit below the dock (`skills.css`). Result: pol-flow passes, 4/4.
+
+**Handover to kq-story** (their files; we only override layout):
+- **Prompt wording (M-05)**, `content/story/00-prolog.story.json` p1 prompt „Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen“: a touch variant. **In progress at kq-story** (hint lines via `actionLabel`).
+- **„Enter weiter“ (M-19)**, `src/systems/story/dialogue/presenter.ts`, `.kqs-skip`: touch wording „Tippen: weiter“ and tap-to-advance. **In progress at kq-story.**
+- **The NPC card's „E weiter“**, `src/systems/npc/ui.ts` line ~90 (`h('div.kqn-next', [h('kbd', 'E'), …])`): the same touch wording.
+- **Tag contrast (M-19)**: `src/systems/npc/npc.css` `.kqn-tag.fic` (`color: #8a5a2b`, about 3:1 on paper) and `src/systems/story/story.css` `.kqs-tag` (`color: var(--ink-soft)`). Suggestion: a darker ink such as `#6b4219` to reach 4.5:1.
+- **M-11 timing**: hold the first radio line of a chapter until the chapter card has faded (the quest banner already waits). Placement on phones is ours and done.
+- **Base dialogue width**: `.kqs-dlg { width: min(820px, 92vw, calc(100vw - 380px)) }` is what made the 287 px column. Our phone rule replaces it on touch; between 501 and 760 px of height (small tablets, not in the matrix) the base rule still applies.
