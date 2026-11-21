@@ -1,7 +1,7 @@
 /** The end-of-game party (src/systems/party): the runtime with fake people, bus, set, strip and cinematic. */
 import { describe, expect, it } from 'vitest';
 import { CAM_MAX, ORBIT, PLACEHOLDER_LINES, creditLines, creditsPlan, stripAt } from '../src/systems/party/credits';
-import { DOUBLES, PROPS, TF01, partyLayout, propsFor } from '../src/systems/party/placements';
+import { DOUBLES, PROPS, SPOT_LAST, SPOT_ROUND, TF01, partyLayout, propsFor } from '../src/systems/party/placements';
 import { CREDITS_CINEMATIC, PartyRuntime, type PartyBus, type PersonLike } from '../src/systems/party/runtime';
 import type { PartySetHandle } from '../src/systems/party/set';
 import type { PartySlice, PartyVariant } from '../src/systems/party/types';
@@ -43,8 +43,8 @@ function setup(o: { file?: unknown; cinematic?: 'auto' | 'none' | 'reject'; redu
   const bus = new FakeBus();
   const people: FakePerson[] = [];
   const sets: FakeSet[] = [];
-  const strip = { shown: [] as string[][], hidden: 0, renders: 0 };
-  const world = { era: 'today', player: { x: 1200, z: -1095 } };
+  const strip = { shown: [] as string[][], hidden: 0, renders: 0, camera: [] as boolean[] };
+  const world = { era: 'today', player: { x: 1200, z: -1095, yaw: 0.5, pitch: 0 } };
   const slice: PartySlice = o.slice ?? { variant: null, credits: 'none' };
   // a fake cinematic system: answers cinematic:play with start (or a rejection), stop = end skipped
   const cine = { playing: null as string | null, plays: [] as any[] };
@@ -66,6 +66,7 @@ function setup(o: { file?: unknown; cinematic?: 'auto' | 'none' | 'reject'; redu
     cine.playing = null;
     bus.emit('cinematic:end', { id, skipped });
   };
+  if (mode !== 'none') bus.on('cinematic:stop', (p: any) => p?.id === cine.playing && endCine(true));
   let n = 0;
   const rt = new PartyRuntime({
     bus,
@@ -116,13 +117,12 @@ function setup(o: { file?: unknown; cinematic?: 'auto' | 'none' | 'reject'; redu
     reduced: () => o.reduced === true,
     strip: {
       show: (lines) => strip.shown.push([...lines]),
+      camera: (on) => strip.camera.push(on),
       render: () => strip.renders++,
       hide: () => strip.hidden++,
     },
     cinematic: {
       available: () => mode !== 'none',
-      playing: () => cine.playing,
-      stop: () => endCine(true),
     },
   });
   const step = (seconds: number) => {
@@ -238,7 +238,7 @@ describe('party runtime', () => {
     c.bus.emit('party:set', { variant: 'keep' });
     c.bus.emit('party:credits', {});
     const play = c.cine.plays[0];
-    expect(play).toMatchObject({ id: CREDITS_CINEMATIC, skippable: true, lockInput: false });
+    expect(play).toMatchObject({ id: CREDITS_CINEMATIC, skippable: false, lockInput: false });
     expect(play.keys.at(-1).t).toBeLessThanOrEqual(60);
     const [start] = c.bus.of('credits:start');
     expect(start.seconds).toBeGreaterThanOrEqual(play.keys.at(-1).t);
@@ -248,8 +248,11 @@ describe('party runtime', () => {
     expect(c.bus.of('credits:done')).toHaveLength(0);
     c.step(start.seconds);
     const spots = c.bus.of('party:spotlight');
-    expect(spots.map((s) => s.i)).toEqual([0, 1, 2, 3, 4, 5, 6]);
-    expect(new Set(spots.map((s) => s.who))).toEqual(new Set(DOUBLES));
+    // 9: the doubles and Mats round the clearing, Gerold last; Marlene none
+    expect(spots.map((s) => s.i)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(new Set(spots.slice(0, 8).map((s) => s.who))).toEqual(new Set(SPOT_ROUND));
+    expect(spots[8].who).toBe(SPOT_LAST);
+    expect(spots.some((s) => s.who === 'marlene' || s.who === 'extra.7')).toBe(false);
     expect(c.bus.of('credits:done')).toEqual([{ skipped: false }]);
     expect(c.strip.hidden).toBe(1);
     expect(c.slice.credits).toBe('done');
@@ -260,35 +263,85 @@ describe('party runtime', () => {
     expect(c.cine.playing).toBeNull();
   });
 
-  it('credits:done once on a skip: the cinematic skip, the strip keys after the grace, kq.party.skip()', () => {
-    // the cinematic's skip
+  it('movement or look during the orbit hands the camera back: cinematic:stop, the strip runs on, credits:done {skipped: false} at its end', () => {
+    for (const move of ['walk', 'look'] as const) {
+      const c = setup();
+      c.bus.emit('party:set', { variant: 'burn' });
+      c.bus.emit('party:credits', {});
+      expect(c.strip.camera.at(-1)).toBe(true);
+      c.step(4);
+      if (move === 'walk') c.world.player.x += 0.5;
+      else c.world.player.yaw += 0.1;
+      c.step(0.1);
+      expect(c.bus.of('cinematic:stop')).toEqual([{ id: CREDITS_CINEMATIC }]);
+      expect(c.cine.playing).toBeNull();
+      expect(c.rt.credits!.cam).toBe('off');
+      expect(c.rt.credits!.handedBack).toBe(true);
+      expect(c.strip.camera.at(-1)).toBe(false);
+      expect(c.strip.hidden).toBe(0);
+      expect(c.bus.of('credits:done')).toHaveLength(0);
+      // more movement: nothing more to hand back
+      c.world.player.x += 3;
+      c.step(1);
+      expect(c.bus.of('cinematic:stop')).toHaveLength(1);
+      c.step(c.rt.credits!.plan.seconds);
+      expect(c.bus.of('credits:done')).toEqual([{ skipped: false }]);
+      expect(c.bus.of('party:spotlight')).toHaveLength(9);
+    }
+    // standing still (tiny drift) keeps the orbit
+    const d = setup();
+    d.bus.emit('party:credits', {});
+    d.world.player.x += 0.01;
+    d.step(3);
+    expect(d.bus.of('cinematic:stop')).toHaveLength(0);
+    expect(d.cine.playing).toBe(CREDITS_CINEMATIC);
+  });
+
+  it('credits:done once on an explicit skip: Enter after the grace (camera on or not), the button / kq.party.skip(); an external end (era change) ends skipped', () => {
+    // Enter while the orbit plays: ends the whole credits and stops the camera
     const a = setup();
     a.bus.emit('party:set', { variant: 'burn' });
     a.bus.emit('party:credits', {});
-    a.step(5);
-    expect(a.rt.userSkip()).toBe(false); // the cinematic owns the skip while it plays
-    a.endCine(true);
+    expect(a.rt.userSkip()).toBe(false);
+    a.step(1.5);
+    expect(a.rt.userSkip()).toBe(true);
+    expect(a.rt.userSkip()).toBe(false);
+    expect(a.cine.playing).toBeNull();
     expect(a.bus.of('credits:done')).toEqual([{ skipped: true }]);
+    expect(a.bus.of('cinematic:end')).toEqual([{ id: CREDITS_CINEMATIC, skipped: true }]);
     a.step(80);
     expect(a.bus.of('credits:done')).toHaveLength(1);
-    expect(a.bus.of('party:spotlight').length).toBeLessThan(7);
-    // no cinematic system: the strip's own keys after the grace
-    const b = setup({ cinematic: 'none' });
+    expect(a.bus.of('party:spotlight').length).toBeLessThan(9);
+    // after a hand-back, Enter still skips
+    const b = setup();
+    b.bus.emit('party:set', { variant: 'keep' });
     b.bus.emit('party:credits', {});
-    expect(b.rt.userSkip()).toBe(false);
-    b.step(1.5);
+    b.step(2);
+    b.rt.handBack();
+    b.step(2);
     expect(b.rt.userSkip()).toBe(true);
-    expect(b.rt.userSkip()).toBe(false);
     expect(b.bus.of('credits:done')).toEqual([{ skipped: true }]);
-    // the debug skip stops our cinematic too (its end is not a second done)
+    expect(b.bus.of('cinematic:stop')).toHaveLength(1);
+    // the button (kq.party.skip) at once
     const d = setup();
     d.bus.emit('party:set', { variant: 'museum' });
     d.bus.emit('party:credits', {});
-    d.step(2);
     d.rt.skip();
     expect(d.cine.playing).toBeNull();
     expect(d.bus.of('credits:done')).toEqual([{ skipped: true }]);
-    expect(d.bus.of('cinematic:end')).toEqual([{ id: CREDITS_CINEMATIC, skipped: true }]);
+    // no cinematic system: Enter after the grace
+    const e = setup({ cinematic: 'none' });
+    e.bus.emit('party:credits', {});
+    e.step(1.5);
+    expect(e.rt.userSkip()).toBe(true);
+    expect(e.bus.of('credits:done')).toEqual([{ skipped: true }]);
+    // the cinematic ended under us (era change, death): skipped
+    const f = setup();
+    f.bus.emit('party:set', { variant: 'keep' });
+    f.bus.emit('party:credits', {});
+    f.step(3);
+    f.endCine(true);
+    expect(f.bus.of('credits:done')).toEqual([{ skipped: true }]);
   });
 
   it('a rejected camera (held elsewhere) does not end the credits', () => {
@@ -299,7 +352,7 @@ describe('party runtime', () => {
     expect(c.rt.credits!.cam).toBe('off');
     c.step(c.rt.credits!.plan.seconds + 0.1);
     expect(c.bus.of('credits:done')).toEqual([{ skipped: false }]);
-    expect(c.bus.of('party:spotlight')).toHaveLength(7);
+    expect(c.bus.of('party:spotlight')).toHaveLength(9);
   });
 
   it('party:clear disposes the people, the set and the dogs', () => {
@@ -381,29 +434,33 @@ describe('party runtime', () => {
 });
 
 describe('credits plan', () => {
-  it('orbits r 14 round the centre, lingers 2–3 s per double in angle order, stays within the cinematic key limit', () => {
+  it('orbits r 14 round the centre, holds ≥ 2 s per person in angle order with Gerold last, stays within the cinematic key limit', () => {
     for (const v of ['museum', 'burn', 'keep'] as const) {
       const L = partyLayout(v);
-      const doubles = L.people.filter((p) => p.double);
-      const plan = creditsPlan(L.centre, doubles, 3);
-      expect(plan.spots).toHaveLength(7);
+      const ppl = L.people.map((p) => ({ who: p.spec, x: p.x, z: p.z }));
+      const circle = ppl.filter((p) => (SPOT_ROUND as readonly string[]).includes(p.who));
+      const last = ppl.find((p) => p.who === SPOT_LAST)!;
+      const plan = creditsPlan(L.centre, circle, 3, last);
+      expect(plan.spots).toHaveLength(9);
+      expect(plan.spots[8]!.who).toBe('guide');
       expect(plan.camSeconds).toBeLessThanOrEqual(CAM_MAX);
       for (let i = 1; i < plan.keys.length; i++) expect(plan.keys[i]!.t).toBeGreaterThan(plan.keys[i - 1]!.t);
       for (const k of plan.keys) {
         const e = k.eye as { x: number; z: number };
         expect(Math.hypot(e.x - L.centre.x, e.z - L.centre.z)).toBeCloseTo(ORBIT.r, 1);
       }
-      // a dwell key right after each spot looks at that double
+      // the hold after each spot looks at that person (a key at the hold's end)
       for (const s of plan.spots) {
-        const d = doubles.find((p) => p.who === s.who)!;
-        const k = plan.keys.find((q) => Math.abs(q.t - (s.t + ORBIT.dwell)) < 1e-6)!;
-        expect(k.look).toMatchObject({ x: d.x, z: d.z });
+        const d = ppl.find((p) => p.who === s.who)!;
+        const k = plan.keys.find((q) => q.t > s.t && q.t <= s.t + ORBIT.dwell + 1e-6 && q.ease === 'linear' && (q.look as { x: number })?.x === d.x)!;
+        expect(k, `${v} ${s.who}`).toBeTruthy();
+        expect(k.t - s.t).toBeGreaterThanOrEqual(ORBIT.minDwell - 1e-6);
       }
-      for (let i = 1; i < plan.spots.length; i++) expect(plan.spots[i]!.t - plan.spots[i - 1]!.t).toBeGreaterThanOrEqual(ORBIT.dwell);
+      for (let i = 1; i < plan.spots.length; i++) expect(plan.spots[i]!.t - plan.spots[i - 1]!.t).toBeGreaterThanOrEqual(ORBIT.minDwell);
     }
     // many lines: the strip sets the length
     const L = partyLayout('keep');
-    expect(creditsPlan(L.centre, L.people.filter((p) => p.double), 40).seconds).toBe(160);
+    expect(creditsPlan(L.centre, L.people.filter((p) => p.double).map((p) => ({ who: p.spec, x: p.x, z: p.z })), 40).seconds).toBe(160);
     expect(stripAt(5, 10, 4, true)).toEqual({ crawl: 0.5, line: 2 });
     expect(stripAt(20, 10, 4, false).crawl).toBe(1);
   });

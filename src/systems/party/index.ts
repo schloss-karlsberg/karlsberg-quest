@@ -8,7 +8,11 @@
  *                 line on a match), 'credits:start' {seconds}, 'credits:done' {skipped} (exactly once).
  * Uses:           ctx.people (16 people, speakers bound so they stay talkable), 'animal:request'
  *                 (Diane and Bijou: spawn / lie / shine), 'cinematic:play' (the camera way round the
- *                 party, `lockInput: false`, skippable), the placeholder set (set.ts, 2 draw calls).
+ *                 party, `lockInput: false`, not skippable by any key) and 'cinematic:stop', the
+ *                 placeholder set (set.ts, 2 draw calls).
+ * Input:          moving or looking during the orbit hands the camera back (0.4 s), the strip runs
+ *                 on to its end (credits:done {skipped: false}); Enter or the strip's button
+ *                 „Abspann überspringen" ends the credits (skipped: true); Esc pauses; E talks.
  * Persistent:     slice `party` {variant, credits} only: no bodies (the story re-issues party:set on
  *                 resume); credits playing at save time → credits:done {skipped: true} after the load.
  * Dev:            `?party=museum|burn|keep` boots into the party at dusk and rolls the credits.
@@ -17,6 +21,7 @@
 import type { Mesh, Object3D } from 'three';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
+import { addStrings } from '../../i18n';
 import { PARTY_CHECKPOINT, TF01, yawTo } from './placements';
 import { PartyRuntime, type PartyBus, CREDITS_CINEMATIC } from './runtime';
 import { PlaceholderPartySet, type PartySet } from './set';
@@ -49,8 +54,17 @@ function meshCalls(root: Object3D | undefined): number {
   return n;
 }
 
-/** Keys that skip the strip when no cinematic of ours owns the skip (walking does not). */
-const SKIP_KEYS = /^(Escape|Enter|NumpadEnter|Space)$/;
+addStrings('de', {
+  'party.hint': 'Enter: Abspann überspringen',
+  'party.hint.camera': 'Enter: Abspann überspringen · Bewegen: selbst umsehen',
+  'party.skip': 'Abspann überspringen',
+});
+
+/**
+ * The explicit skip of the whole credits (also the strip's button). Esc stays pause; movement and
+ * look hand the orbit camera back (runtime), E talks.
+ */
+const SKIP_KEYS = /^(Enter|NumpadEnter)$/;
 
 class PartySystem {
   readonly rt: PartyRuntime;
@@ -60,14 +74,14 @@ class PartySystem {
 
   constructor(private readonly ctx: GameContext) {
     this.setBuilder = new PlaceholderPartySet((x, z) => ctx.world.heightAt(x, z));
-    const strip = new CreditsStrip();
+    const strip = new CreditsStrip({ hint: ctx.t('party.hint'), hintCamera: ctx.t('party.hint.camera'), button: ctx.t('party.skip') }, () => this.rt.skip());
     this.rt = new PartyRuntime({
       bus: ctx.events as unknown as PartyBus,
       people: () => ctx.people,
       buildSet: (layout, variant) => this.setBuilder.build(ctx.scene, layout, variant),
       world: {
         heightAt: (x, z) => ctx.world.heightAt(x, z),
-        player: () => ({ x: ctx.player.position.x, z: ctx.player.position.z }),
+        player: () => ({ x: ctx.player.position.x, z: ctx.player.position.z, yaw: ctx.player.yaw, pitch: ctx.player.pitch }),
         era: () => ctx.era.current,
       },
       slice: () => this.slice,
@@ -76,8 +90,6 @@ class PartySystem {
       strip,
       cinematic: {
         available: () => !!ctx.systems.get('cinematic') && !ctx.systems.stats().find((s) => s.id === 'cinematic')?.failed,
-        playing: () => window.kq?.cinematic?.playing() ?? null,
-        stop: () => window.kq?.cinematic?.skip(),
       },
     });
     if (typeof window !== 'undefined') window.addEventListener('keydown', this.onKey, true);

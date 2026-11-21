@@ -5,7 +5,7 @@
  */
 import type { CinematicPlay } from '../cinematic/types';
 import { type CreditsPlan, SKIP_GRACE, creditLines, creditsPlan, stripAt } from './credits';
-import { type Activity, MARLENE_SPEC, MARLENE_STANDIN, type PartyLayout, type Placement, TF01, type XZ, faceYaw, partyLayout } from './placements';
+import { type Activity, MARLENE_SPEC, MARLENE_STANDIN, SPOT_LAST, SPOT_ROUND, type PartyLayout, type Placement, TF01, type XZ, faceYaw, partyLayout } from './placements';
 import type { PartySetHandle } from './set';
 import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
 
@@ -13,6 +13,9 @@ import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
 export const CREDITS_CINEMATIC = 'party-credits';
 /** The party exists only in this era (today's plateau). */
 export const PARTY_ERA = 'today';
+/** The player moved this far (m) or turned this much (rad) during the orbit: the camera hands back. */
+export const HAND_BACK_MOVE = 0.05;
+export const HAND_BACK_TURN = 0.02;
 /** Seconds between two one-shot gestures of an `interact` person (seeded within). */
 const INTERACT_EVERY: [number, number] = [4, 8];
 
@@ -41,7 +44,15 @@ export interface StripLike {
   show(lines: readonly string[], reduced: boolean): void;
   /** Crawl 0..1 / the line index with reduced motion. */
   render(crawl: number, line: number): void;
+  /** The orbit camera is on (the hint offers "Bewegen: selbst umsehen") or handed back. */
+  camera?(on: boolean): void;
   hide(): void;
+}
+
+/** The player as the party reads it: position, and the view for the hand-back. */
+export interface PartyPlayer extends XZ {
+  yaw?: number;
+  pitch?: number;
 }
 
 export interface PartyDeps {
@@ -51,7 +62,7 @@ export interface PartyDeps {
   buildSet(layout: PartyLayout, variant: PartyVariant): PartySetHandle | null;
   world: {
     heightAt(x: number, z: number): number;
-    player(): XZ;
+    player(): PartyPlayer;
     era(): string;
   };
   slice(): PartySlice;
@@ -62,9 +73,6 @@ export interface PartyDeps {
   cinematic: {
     /** The cinematic system is there (it answers cinematic:play). */
     available(): boolean;
-    playing(): string | null;
-    /** End the playing cinematic (skipped). */
-    stop(): void;
   };
   log?: (msg: string) => void;
 }
@@ -98,6 +106,10 @@ interface Credits {
   /** The camera: asked for, playing, or not (rejected / ended / no cinematic system). */
   cam: 'pending' | 'on' | 'off';
   reduced: boolean;
+  /** Where the player stood / looked when the orbit took the camera (movement or look → hand-back). */
+  base: Required<PartyPlayer> | null;
+  /** The player took the camera back (moved / looked) during this run. */
+  handedBack: boolean;
 }
 
 function hash(s: string): number {
@@ -129,15 +141,21 @@ export class PartyRuntime {
       else if (c.id === 'party:clear') this.clear();
     });
     bus.on('cinematic:start', (p: { id: string }) => {
-      if (p?.id === CREDITS_CINEMATIC && this.credits?.cam === 'pending') this.credits.cam = 'on';
+      const c = this.credits;
+      if (p?.id !== CREDITS_CINEMATIC || c?.cam !== 'pending') return;
+      c.cam = 'on';
+      c.base = this.playerPose();
+      this.deps.strip?.camera?.(true);
     });
     bus.on('cinematic:end', (p: { id: string; skipped: boolean }) => {
       const c = this.credits;
       if (p?.id !== CREDITS_CINEMATIC || !c) return;
       const was = c.cam;
       c.cam = 'off';
-      // rejected before it started (the camera is held): the credits run on without the orbit;
-      // reduced motion's two stills end on their own (not skipped): the strip runs on
+      this.deps.strip?.camera?.(false);
+      // rejected before it started (the camera is held), reduced motion's two stills ending, our own
+      // hand-back (cam already 'off'): the strip runs on. Ended under us while on (era change,
+      // death): the credits end skipped.
       if (was === 'on' && p.skipped) this.finish(true);
     });
     bus.on('npc:conversation', (p: { npc: string; open: boolean }) => this.conversation(p?.npc, p?.open === true));
@@ -271,20 +289,26 @@ export class PartyRuntime {
     }
     const override = isObj(raw) ? raw.lines : undefined;
     const lines = creditLines(override, this.deps.creditsFile());
-    const doubles = (this.party?.layout.people ?? []).filter((p) => p.double).map((p) => ({ who: p.who, x: p.x, z: p.z }));
+    const ppl = this.party?.layout.people ?? [];
+    const spot = (spec: string) => ppl.filter((p) => p.spec === spec).map((p) => ({ who: p.spec, x: p.x, z: p.z }));
+    const round = SPOT_ROUND.flatMap(spot);
+    const last = spot(SPOT_LAST)[0];
     const centre = this.party?.layout.centre ?? TF01;
-    const plan = creditsPlan(centre, doubles, lines.length);
+    const plan = creditsPlan(centre, round, lines.length, last);
     const reduced = this.deps.reduced();
-    const c: Credits = { lines, plan, t: 0, spot: 0, cam: 'off', reduced };
+    const c: Credits = { lines, plan, t: 0, spot: 0, cam: 'off', reduced, base: null, handedBack: false };
     this.credits = c;
     this.spotlights.length = 0;
     this.slice.credits = 'playing';
     this.deps.strip?.show(lines, reduced);
+    this.deps.strip?.camera?.(false);
     this.deps.strip?.render(0, reduced ? 0 : -1);
     this.deps.bus.emit('credits:start', { seconds: plan.seconds });
     if (this.deps.cinematic.available() && plan.keys.length >= 2) {
       c.cam = 'pending';
-      const spec: CinematicPlay = { id: CREDITS_CINEMATIC, keys: plan.keys, skippable: true, lockInput: false, reduced: 'stills' };
+      // not skippable by the cinematic's any-key: the party routes the input (movement / look hands the
+      // camera back, Enter or the button skips the credits)
+      const spec: CinematicPlay = { id: CREDITS_CINEMATIC, keys: plan.keys, skippable: false, lockInput: false, reduced: 'stills' };
       this.deps.bus.emit('cinematic:play', spec);
       // the system answered synchronously: a 'pending' left means nobody played it
       if (this.credits === c && c.cam === 'pending') c.cam = 'off';
@@ -292,17 +316,33 @@ export class PartyRuntime {
     return true;
   }
 
-  /** Skip the credits (debug, the strip's own keys). */
+  /** Skip the credits (debug, the strip's button). */
   skip(): void {
     if (this.credits) this.finish(true);
   }
 
-  /** A key from the player while the strip runs without a camera of ours (the cinematic owns its own skip). */
+  /** The player's explicit skip (Enter): after a short grace, ends the whole credits. */
   userSkip(): boolean {
     const c = this.credits;
-    if (!c || c.cam === 'on' || c.t < SKIP_GRACE) return false;
+    if (!c || c.t < SKIP_GRACE) return false;
     this.finish(true);
     return true;
+  }
+
+  /** The player moved or looked during the orbit: give the camera back (0.4 s hand-back), the strip runs on. */
+  handBack(): boolean {
+    const c = this.credits;
+    if (!c || c.cam !== 'on') return false;
+    c.cam = 'off';
+    c.handedBack = true;
+    this.deps.strip?.camera?.(false);
+    this.deps.bus.emit('cinematic:stop', { id: CREDITS_CINEMATIC });
+    return true;
+  }
+
+  private playerPose(): Required<PartyPlayer> {
+    const p = this.deps.world.player();
+    return { x: p.x, z: p.z, yaw: p.yaw ?? 0, pitch: p.pitch ?? 0 };
   }
 
   private finish(skipped: boolean): void {
@@ -310,7 +350,10 @@ export class PartyRuntime {
     if (!c) return;
     this.credits = null;
     this.deps.strip?.hide();
-    if (this.deps.cinematic.playing() === CREDITS_CINEMATIC) this.deps.cinematic.stop();
+    if (c.cam !== 'off') {
+      c.cam = 'off';
+      this.deps.bus.emit('cinematic:stop', { id: CREDITS_CINEMATIC });
+    }
     this.slice.credits = 'done';
     this.deps.bus.emit('credits:done', { skipped });
   }
@@ -328,9 +371,9 @@ export class PartyRuntime {
   private afterLoad(): void {
     const live = this.credits;
     if (live) {
+      // the cinematic system ends its own play on a load
       this.credits = null;
       this.deps.strip?.hide();
-      if (this.deps.cinematic.playing() === CREDITS_CINEMATIC) this.deps.cinematic.stop();
     }
     const s = this.slice;
     const held = s.credits === 'playing';
@@ -357,6 +400,12 @@ export class PartyRuntime {
     }
     const c = this.credits;
     if (!c) return;
+    // movement or look input (keys, mouse, touch stick: whatever moved or turned the player) hands the camera back
+    if (c.cam === 'on' && c.base) {
+      const q = this.playerPose();
+      const turned = Math.abs(Math.atan2(Math.sin(q.yaw - c.base.yaw), Math.cos(q.yaw - c.base.yaw))) > HAND_BACK_TURN || Math.abs(q.pitch - c.base.pitch) > HAND_BACK_TURN;
+      if (Math.hypot(q.x - c.base.x, q.z - c.base.z) > HAND_BACK_MOVE || turned) this.handBack();
+    }
     c.t += d;
     const spots = c.plan.spots;
     while (c.spot < spots.length && spots[c.spot]!.t <= c.t) {

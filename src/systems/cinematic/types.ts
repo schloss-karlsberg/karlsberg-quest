@@ -75,6 +75,12 @@ declare module '../../core/events' {
   interface GameEvents {
     /** story → cinematic system: play this cinematic. */
     'cinematic:play': CinematicPlay;
+    /**
+     * End cinematic `id` now if it plays (no grace, ignores `skippable`): the 0.4 s hand-back and
+     * `cinematic:end {id, skipped: true}`. Lets a feature route the input itself (the party credits:
+     * moving hands the camera back) with `skippable: false`.
+     */
+    'cinematic:stop': { id: string };
     'cinematic:start': { id: string; seconds: number };
     /** Always emitted once per play (also on a bad spec, a skip, an era change, death or a load). */
     'cinematic:end': { id: string; skipped: boolean };

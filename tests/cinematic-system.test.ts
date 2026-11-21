@@ -107,6 +107,23 @@ describe('cinematic system', () => {
     expect(s.rt.userSkip()).toBe(false);
   });
 
+  it("cinematic:stop ends that id at once (no grace, even unskippable), a wrong id does nothing; default plays unchanged", () => {
+    const s = setup();
+    s.rt.play({ ...ORBIT, skippable: false, lockInput: false });
+    expect(s.player.frozen).toBe(false);
+    s.events.emit('cinematic:stop', { id: 'other' });
+    expect(s.rt.playing).toBe('ring');
+    s.steps(2);
+    s.events.emit('cinematic:stop', { id: 'ring' });
+    expect(s.rt.playing).toBeNull();
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    s.events.emit('cinematic:stop', { id: 'ring' });
+    expect(s.named('cinematic:end')).toHaveLength(1);
+    // the camera is handed back (released through the takeover's 0.4 s ease)
+    s.render(500);
+    expect(s.takeover.cameraOwner).toBeNull();
+  });
+
   it('reduced motion stills: ≤ 3 s, first and last key', () => {
     const s = setup({ reduced: true });
     s.rt.play({ id: 'long', keys: [{ t: 0, eye: { x: 0, z: 0 } }, { t: 20, eye: { x: 50, z: 0 } }] });

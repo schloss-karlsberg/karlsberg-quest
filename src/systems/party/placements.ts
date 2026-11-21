@@ -104,7 +104,14 @@ export const PROPS: Readonly<Record<PropId, PropSpot>> = {
 export const MARLENE_SPEC = 'marlene';
 export const MARLENE_STANDIN = { spec: 'extra.7', seed: 9071 };
 
-/** The doubles in roster order (the spotlight order follows the camera's way round, see credits.ts). */
+/**
+ * Who gets a spotlight during the credits (`who` = the people spec id): the doubles and Mats in the
+ * camera's way round the clearing, then Gerold LAST as the host's closing shot. Marlene gets none.
+ */
+export const SPOT_ROUND = ['double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost', 'double.soll', 'double.liese', 'child.compass'] as const;
+export const SPOT_LAST = 'guide';
+
+/** The doubles in roster order. */
 export const DOUBLES = ['double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost', 'double.soll', 'double.liese'] as const;
 
 const BASE: readonly Placement[] = [
@@ -119,7 +126,7 @@ const BASE: readonly Placement[] = [
   { who: 'double.liese', spec: 'double.liese', speaker: 'liesed', x: 1222, z: -1114, face: { who: 'marlene' }, activity: 'interact', double: true },
   // the extras, scattered (§8.1: Mats with the toy compass and his mother; a couple from
   // Zweibrücken; two hikers; a student with a thermos)
-  { who: 'mats', spec: 'child.compass', x: 1211.4, z: -1116.6, face: { who: 'mutter' }, activity: 'lookAround' },
+  { who: 'mats', spec: 'child.compass', speaker: 'mats', x: 1211.4, z: -1116.6, face: { who: 'mutter' }, activity: 'lookAround' },
   { who: 'mutter', spec: 'extra.2', x: 1210.6, z: -1117.3, face: { who: 'mats' }, activity: 'talk' },
   { who: 'paar_a', spec: 'extra.1', x: 1219.4, z: -1109.2, face: { who: 'paar_b' }, activity: 'talk' },
   { who: 'paar_b', spec: 'extra.3', x: 1220.5, z: -1109.9, face: { who: 'paar_a' }, activity: 'talk' },

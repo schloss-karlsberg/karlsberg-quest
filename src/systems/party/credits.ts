@@ -24,8 +24,9 @@ export const ORBIT = {
   dwellY: 2.1,
   fov: 50,
   dwellFov: 34,
-  /** Seconds the camera lingers on a double (2–3 s). */
+  /** Seconds the camera lingers on a person (2–3 s; shortened down to `minDwell` to fit the cap). */
   dwell: 2.6,
+  minDwell: 2.0,
   /** Seconds of the opening move and the closing rise. */
   intro: 3,
   outro: 3.5,
@@ -79,22 +80,35 @@ export const CAM_MAX = 58;
 /** The credits outlast the camera way by this (s). */
 export const CAM_TAIL = 0.6;
 
-/** The camera way and the spotlight times for these doubles round `centre`. */
-export function creditsPlan(centre: XZ, doubles: readonly { who: string; x: number; z: number }[], lineCount: number): CreditsPlan {
-  let speed = TAU / ORBIT.period; // rad/s while travelling
-  let plan = buildPlan(centre, doubles, lineCount, speed);
-  for (let i = 0; i < 6 && plan.camSeconds > CAM_MAX; i++) {
-    speed *= (plan.camSeconds / CAM_MAX) * 1.08;
-    plan = buildPlan(centre, doubles, lineCount, speed);
+type Who = { who: string; x: number; z: number };
+
+/**
+ * The camera way and the spotlight times: the `circle` people in angle order round `centre`, then
+ * `last` (the host's closing shot, further on in the same direction). Fits under `CAM_MAX`: the
+ * travel speeds up first, then the holds shorten (not below `minDwell`).
+ */
+export function creditsPlan(centre: XZ, circle: readonly Who[], lineCount: number, last?: Who): CreditsPlan {
+  let dwell: number = ORBIT.dwell;
+  let plan: CreditsPlan;
+  for (; ; dwell = Math.max(ORBIT.minDwell, dwell - 0.2)) {
+    let speed = TAU / ORBIT.period; // rad/s while travelling
+    plan = buildPlan(centre, circle, last, lineCount, speed, dwell);
+    for (let i = 0; i < 6 && plan.camSeconds > CAM_MAX; i++) {
+      speed *= (plan.camSeconds / CAM_MAX) * 1.08;
+      plan = buildPlan(centre, circle, last, lineCount, speed, dwell);
+    }
+    // a hold over 2.4 s is worth a slightly slower way round: travel faster than one turn per 22 s looks rushed
+    if ((plan.camSeconds <= CAM_MAX && speed <= TAU / 22) || dwell <= ORBIT.minDwell) break;
   }
   return plan;
 }
 
-function buildPlan(centre: XZ, doubles: readonly { who: string; x: number; z: number }[], lineCount: number, speed: number): CreditsPlan {
+function buildPlan(centre: XZ, circle: readonly Who[], last: Who | undefined, lineCount: number, speed: number, dwell: number): CreditsPlan {
   const O = ORBIT;
   const eyeAt = (a: number, y: number) => ({ x: round(centre.x + Math.sin(a) * O.r), z: round(centre.z + Math.cos(a) * O.r), y });
   const centreLook = { x: centre.x, z: centre.z, y: 1.2 };
-  const ordered = doubles.map((d) => ({ ...d, a: angleOf(centre, d) })).sort((p, q) => p.a - q.a);
+  const ordered = circle.map((d) => ({ ...d, a: angleOf(centre, d) })).sort((p, q) => p.a - q.a);
+  if (last) ordered.push({ ...last, a: angleOf(centre, last) });
   const keys: CinematicKey[] = [];
   const spots: Spot[] = [];
   let t = 0;
@@ -122,13 +136,15 @@ function buildPlan(centre: XZ, doubles: readonly { who: string; x: number; z: nu
   };
   ordered.forEach((d, i) => {
     let to = d.a + O.lead;
-    while (to <= a + 0.05) to += TAU;
+    // two people at nearly the same angle (Jost and Soll): a short drift on, never a whole extra turn
+    if (to <= a + 0.12 && to > a - 0.8) to = a + 0.12;
+    while (to <= a) to += TAU;
     const head = { x: d.x, z: d.z, y: 1.45 };
     travel(to, O.dwellY, head, O.dwellFov, i === 0 ? O.intro : 1.6);
     spots.push({ who: d.who, i, t });
     // the dwell: drift a little further round, the lens stays on the double
     a += 0.05;
-    t = round(t + O.dwell);
+    t = round(t + dwell);
     keys.push({ t, eye: eyeAt(a, O.dwellY), look: head, fov: O.dwellFov, ease: 'linear' });
   });
   // the closing rise: a little further round, looking over the whole party

@@ -53,7 +53,7 @@ async function bodiesIn(page: Page): Promise<void> {
   });
 }
 
-test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then walk and talk to the guide', async ({ page }) => {
+test('party (a): ?party=burn — ready, bodies, credits, spotlights, W hands the camera back, Enter skips, talk to the guide', async ({ page }) => {
   const errors = trackErrors(page);
   const t0 = Date.now();
   await boot(page, 'burn');
@@ -81,18 +81,37 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then 
   const spots = await events(page, 'party:spotlight');
   expect(spots.length).toBeGreaterThanOrEqual(1);
   expect(spots[0]).toMatchObject({ i: 0 });
-  expect(spots[0].who).toMatch(/^double\./);
+  expect(spots[0].who).toMatch(/^(double\.|child\.compass$)/);
   await step(page, 40);
   shots.push(await shot(page, 'credits-strip'));
-  // skip: a real key after the grace (the cinematic's skip) → credits:done {skipped: true}
   await closeModals(page);
-  // an unbound key: with lockInput false the skip key also reaches the game (X would go prone)
-  await page.keyboard.press('KeyO');
+  await expect(page.locator('[data-testid="party-credits-hint"]')).toHaveText('Enter: Abspann überspringen · Bewegen: selbst umsehen');
+  await expect(page.locator('[data-testid="party-credits-skip"]')).toBeVisible();
+
+  // moving hands the orbit camera back: no skip, the strip runs on, the player moved
+  const w0 = await page.evaluate(() => ({ ...window.kq!.ctx.player.position }));
+  await page.evaluate(() => window.kq!.press('KeyW', 60));
+  const w1 = await page.evaluate(() => ({ ...window.kq!.ctx.player.position }));
+  expect(Math.hypot(w1.x - w0.x, w1.z - w0.z)).toBeGreaterThan(0.3);
+  expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
+  expect(await events(page, 'credits:done')).toEqual([]);
+  expect(await page.evaluate(() => window.kq!.party!.state().credits)).toBe('playing');
+  // the 0.4 s hand-back runs on drawn frames
+  for (let i = 0; i < 6; i++) {
+    await page.evaluate(() => window.kq!.screenshotReady());
+    await page.waitForTimeout(150);
+  }
+  expect(await page.evaluate(() => window.kq!.ctx.cinematic.cameraOwner)).toBeNull();
+  expect(await page.locator('[data-testid="party-credits"]').isVisible()).toBe(true);
+  await expect(page.locator('[data-testid="party-credits-hint"]')).toHaveText('Enter: Abspann überspringen');
+  await step(page, 60);
+  expect(await events(page, 'credits:done')).toEqual([]);
+  shots.push(await shot(page, 'walking-credits'));
+
+  // Enter skips the whole credits
+  await page.keyboard.press('Enter');
   await step(page, 2);
   expect(await events(page, 'credits:done')).toEqual([{ skipped: true }]);
-  expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
-  await step(page, 40);
-  expect(await page.evaluate(() => window.kq!.ctx.cinematic.cameraOwner)).toBeNull();
   expect(await page.locator('[data-testid="party-credits"]').count()).toBe(0);
   // the party still stands
   expect(await page.evaluate(() => window.kq!.party!.state().people.length)).toBe(16);
