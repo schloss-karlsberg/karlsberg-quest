@@ -65,13 +65,88 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`.
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
   after the lock is released (trim, pause cap, pre-limit + make-up to −18 LUFS, Opus + AAC). `--max-lines` (default 40)
   caps new moss clips per run.
 - `pnpm voice:plan` shows the moss lines, characters, estimated minutes (RTF ~1.1 plus a model load
   per batch), lock batches and dist MB; it never loads the model.
+- **Order:** with `--ids`, lines are generated in exactly the listed order (a glob expands in content
+  order, each line once), and each runner job keeps that order, so the first id is the first real clip
+  after the warm-up. Without `--ids`: priority tiers, then play order.
+- **Engine marker:** moss manifest entries carry `engine: { model: "MOSS-TTS-v1.5@<rev>", tokenizer:
+  "MOSS-Audio-Tokenizer@<rev>", warmup: "v1" }` (`lib.ts` `MOSS_ENGINE`, full pinned revisions). An entry
+  whose `engine` is missing or differs is `stale-engine` and is regenerated; the `voiceId` format stays
+  `moss:<speaker>:<sha8>:<seed>` (checked by `assetRules.ts`, which accepts the `engine` field).
+
+The in-process path above is **direct mode**, the default and the fallback. Service mode (next section)
+hands the same lines to the standalone moss-service instead.
+
+#### moss service mode (moss-service jobs)
+
+`KQ_MOSS_MODE=service` (or `--moss-service`) sends moss lines as jobs to the local, standalone
+**moss-service** (its own folder outside this repo; interface agreed with kq-moss in its
+`docs/client-interface.md`). The pipeline never loads the model and never takes the heavy lock in this
+mode: the owner starts the service runner `moss-run`, which shows the queue, takes the lock, loads the
+model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in `tests/voice-service.test.ts`.
+
+- **Env:** `KQ_MOSS_SERVICE_CLIENT` = path to the service's node client (`clients/node/moss.mjs`). It is
+  required in service mode and is set in the env or the main checkout's `.env`, never in the repo (the
+  repo holds no machine path; missing → a clear error). `KQ_MOSS_VOICES` stays as before: the local
+  reference files give the `voiceId` sha8 and are checked against the registry.
+- **Two steps** (default; same command both times):
+  1. `KQ_MOSS_MODE=service pnpm voice:gen --speakers laub --max-lines 200` submits one job per line that
+     needs (re)generation per the manifest (incl. `stale-engine`): `{project: "karlsberg-quest", id,
+     voice: <speaker>, text: <the prepared speech text that speechHash is taken over>, output: {path:
+     <raw-dir>/<id>.wav, format: "wav"}}`, with no seed or params (those come from the registry, so keys
+     stay stable). It prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
+     refuses are listed and the exit code is 1.
+  2. After the owner ran `moss-run`, the same command (or `--collect`) reads each line's result. `ok` /
+     `cached`: the record's `text_sha256` must equal the sha256 of the text we submitted, the WAV's
+     sha256 must equal `sha256`, voice and seed must match, and the result's engine identity (mapped to
+     `{model, tokenizer, warmup}`, `OpenMOSS-Team/` dropped) must equal `MOSS_ENGINE`; then the usual
+     post-processing runs and the manifest entry is written with the same `voiceId`, plus
+     `serviceKey` (the service job key) and `sha256Raw`. A failed check, `failed` or `refused` is reported
+     (exit 1) and the manifest entry stays as it was; `queued` / `running` print "still queued".
+  Without `--submit` / `--collect`, lines with a current result are collected, lines without one (or with
+  a result for an older text) are submitted. `--submit` only submits. `--wait [min]` (default 30) polls
+  the client's `waitAll` after submitting and collects what finished; on timeout it prints "still queued"
+  and exits 0.
+- **Raw WAVs:** `--raw-dir` (default `.voice-raw/raw-service/` in the checkout, gitignored). Never under
+  `public/` (refused here and by the service, which also refuses tracked paths in a git work tree). They
+  are kept after post-processing: the service cache serves a later identical job only while the original
+  WAV still exists with its recorded sha256.
+- **Consistency guard** before every submit: the registry (`registry()` from the client if it has one,
+  else `moss-registry list --json` next to the client's `SUBMIT`; read-only) must match `voices.json`
+  for every speaker submitted: seed, `ref_sha256[0:8]` vs the local reference, language, instruction,
+  params, and `engine_identity` (model and tokenizer revisions, warm-up v1) vs `MOSS_ENGINE`. Any
+  difference fails with a per-field diff and nothing is submitted (voices.json is the source; fix the
+  registry with `moss-registry add --force …`).
+- **Never submitted** (client side, before the service's own guard): the private test voice
+  `guest-test`, and any registry voice whose `visibility` is not `public`.
+- `--dry-run` in service mode prints the plan plus each line's state (submit / still queued / collect),
+  read from the client's result files, and the registry check; it submits nothing. Whether a job will
+  be answered from the service cache is known only after submitting ("M cached").
+
+#### warmup v1 (moss-tts)
+
+Fixed spec, identical in the `moss` provider (`runner.py` `warmup_v1`) and in the standalone moss-service
+(`moss_host.py`), agreed 2026-11-21. It runs once after **every** model load (`load(model_dir, lazy=True)`),
+before the first real clip, in this order:
+
+1. `mx.eval(model.parameters())`: materialize all weights now.
+2. `mx.random.seed(0); np.random.seed(0); random.seed(0)`, then one throw-away
+   `next(model.generate(text="Hallo.", ref_audio=<ref of the first real clip in this batch>,
+   audio_tokenizer_source=<tokenizer dir>, language=<that clip's language>, max_tokens=50))` with no
+   instruction and no other params; `mx.eval(res.audio)`; nothing is written.
+3. Real clips then reseed per clip (`mx.random`, `np.random`, `random` = the clip's seed) exactly as before.
+
+The runner logs `warmup v1 done in X s`. Why: without it, the first clip after a lazy load came out as a
+different take than the same (seed, text, reference) later in the batch; output must not depend on batch
+position. **Any change to this procedure is "v2"**: bump `WARMUP` in `runner.py` and `MOSS_ENGINE.warmup`
+together (every moss clip regenerates), and it must match moss-service's warm-up of the same version.
 
 ## 2. Coordinate frame
 
