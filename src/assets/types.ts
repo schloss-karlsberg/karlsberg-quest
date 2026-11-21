@@ -45,6 +45,12 @@ export interface AssetEntry {
    * fog; render/standard.ts). Default true. Turn off only for self-lit or custom-shaded models.
    */
   worldLight?: boolean;
+  /**
+   * Models with world light: how an authored character is shaded. 'standard' (default) is the
+   * plain bridge; 'toon' is the opt-in soft toon variant (systems/characters/toon.ts: banded sun,
+   * warm shadow, rim), still lit by the sun, era light and lantern. World assets never set it.
+   */
+  shading?: 'standard' | 'toon';
   /** Free notes for the tracks (scale, pivot, LODs …). */
   note?: string;
 }

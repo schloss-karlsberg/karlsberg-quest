@@ -68,6 +68,18 @@ export const KQ_ENV_INTENSITY = 0.45;
 
 const patched = new Set<MeshStandardMaterial>();
 
+/**
+ * Opt-in shading variants on top of the bridge, by name: a material whose `userData.kqShading`
+ * names a registered variant gets it on every kqStandard call (a clone that its owner re-patches
+ * keeps it). Authored characters register 'toon' (systems/characters/toon.ts). World materials
+ * name none, so they are never touched.
+ */
+const variants = new Map<string, (m: MeshStandardMaterial) => void>();
+
+export function registerShadingVariant(name: string, patch: (m: MeshStandardMaterial) => void): void {
+  variants.set(name, patch);
+}
+
 /** Patch one standard / physical material in place (idempotent). Returns it. */
 export function kqStandard<M extends MeshStandardMaterial>(m: M, opts: { ambient?: number; env?: number } = {}): M {
   if (m.userData.kqStandard) return m;
@@ -94,6 +106,8 @@ export function kqStandard<M extends MeshStandardMaterial>(m: M, opts: { ambient
   m.needsUpdate = true;
   patched.add(m);
   m.addEventListener('dispose', () => patched.delete(m));
+  const variant = m.userData.kqShading;
+  if (typeof variant === 'string') variants.get(variant)?.(m);
   return m;
 }
 

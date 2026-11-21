@@ -365,6 +365,8 @@ SOLID_DEFAULTS = {
     'clumps': 28, 'clump_depth': 0.22, 'lip_margin': 0.0012, 'lip_corner_pow': 6.0, 'throat': 0.0, 'near_blend': [0.012, 0.003],
     # a broken, irregular cheek line (m, between the sideburn and the moustache) and irregular clump spacing
     'edge_jitter': 0.0, 'edge_jitter_from': 24.0, 'spacing_jitter': 0.0, 'seed': 3,
+    # smoothing passes over the shell surface (more = softer, bigger forms for a stylised look)
+    'round_passes': 2,
     # stubble tint on the skin under and just beyond the beard edge (m of fade above the cheek line / below the neck line)
     'stubble_fade': [0.009, 0.012],
 }
@@ -597,7 +599,7 @@ def solid(skin, W, keys, lm, spec, palette, bones, lips=None):
     P = S + n * t[..., None]
     P[..., 2] -= s['drop'] * chin * smoothstep(0.35, 1.0, vr) * rise * (1 - throat)  # the tucked edge stays under the skin
     fixed_v = (k <= 1) | rim
-    for _ in range(2):  # round the surface (not the edge ring nor the lip rim)
+    for _ in range(int(s['round_passes'])):  # round the surface (not the edge ring nor the lip rim)
         Q = P.copy()
         Q[1:-1, 1:-1] = 0.5 * P[1:-1, 1:-1] + 0.125 * (P[:-2, 1:-1] + P[2:, 1:-1] + P[1:-1, :-2] + P[1:-1, 2:])
         P = np.where(fixed_v[..., None], P, Q)

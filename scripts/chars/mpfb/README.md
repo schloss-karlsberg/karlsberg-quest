@@ -59,6 +59,14 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
 
 1. `human.py`: MPFB base mesh, body and face targets, expression units baked as morphs (`rest`
    expression in the base, `smile` and `blink` as morph targets), the 53-bone `game_engine` rig.
+   Optional `face.stylize` (`stylize.py`) for a stylised face: the eye region grows about each eye
+   centre (`eye_scale`, sunk back by `eye_sink` so the eyeball does not bulge, `eye_spread` apart,
+   full strength inside `eye_inner` eye radii, faded out by `eye_outer`), then Taubin smoothing of
+   the face front (`smooth` passes, `smooth_weight`) removes the realistic micro-forms (folds,
+   creases, bags) while the lid margins (`lid_hold`, eye radii), lips and inner mouth are held;
+   `nose_smooth` and `ear_smooth` simplify the nose and ears. Rest and morph shapes move together,
+   so the smile and the blink keep working. Glasses and cheek paint scale with the face
+   (`eye_radius_ref`, the radius before the eyes grew), not with the bigger eyes.
 2. `beard.py`: the beard. `mode: solid` is a sculpted shell on a structured grid over
    the jaw: columns fan round the face from a centre inside the jaw, rows run from the cheek line to
    the neck line (both smooth curves from landmarks). Two rows of each column inside the mouth width
@@ -73,7 +81,10 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    strands and optional lighter clump tips as vertex colour, a side-part groove with a scalp line);
    no alpha cards. A short skin-to-hair blend below the hairline (`hair.hairline_blend`) softens the
    edge. A soft shadow
-   band below the hairline (`hair.hairline_shadow`) sets the hair into the skin.
+   band below the hairline (`hair.hairline_shadow`) sets the hair into the skin. Stylised options:
+   `smooth_passes` (softens the shell into big rounded clumps), `root_tip` ([dark, light]: darker
+   roots, lighter tips along each clump), `under_dark` (darker underneath); the beard's
+   `round_passes` (default 2) does the same smoothing for the beard shell.
 4. `lod.py`: decimates the body to the budget, keeping the face, then cuts the low body along the
    hem, cuff, boot-top and collar planes (`cut_plane`), so those zone borders are straight lines
    instead of a sawtooth of whole triangles. The collar plane is tilted (`collar_tilt`), lower at the
@@ -230,6 +241,12 @@ thumb tucked; eased in and out with the reach). The people's `point` plays it.
 - `palette`: every colour by name (sRGB hex); `materials`: roughness / specular per material, and an
   optional `emit` (linear RGB emissive factor; skin, hair and beard use a faint warm one so they keep
   their warmth under cold moon or lantern light, with no scene or tone-map change).
+
+**Shading in the game:** the manifest entry picks it. The default is the plain world-light bridge
+(`kqStandard`); `shading: 'toon'` opts into the soft toon variant (`src/systems/characters/toon.ts`:
+banded sun with soft edges, a warm terminator and warm shadow fill, a rim, catchlight glints on the
+`Eye` slot). Per-slot toon settings key on the material names (`TOON_BY_MATERIAL`); the people
+palette's `People` / `PeopleEye` have their own, and every toon person shares one toon material.
 
 **Body variants:** a variant spec only overrides what differs, for example
 `{"extends": "guide.json", "body": {"targets": {"torso-scale-horiz-decr": 0.0}}}` for a broader man,
