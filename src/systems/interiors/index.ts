@@ -20,7 +20,9 @@
  *
  * Debug: window.kq.interiors (see InteriorHooks).
  */
-import { type DataTexture, Group, Mesh, type ShaderMaterial, Vector3 } from 'three';
+import { DataTexture, Group, Mesh, type ShaderMaterial, Vector3, Vector4 } from 'three';
+import { registerEraMaterials } from '../fx/shift/prewarm';
+import { GeoBuf } from './geobuf';
 import { disposeModels, instanceModels } from '../scenery/models';
 import { ERA_INFO, type Era } from '../../core/era';
 import type { GameContext } from '../../core/context';
@@ -985,6 +987,7 @@ export default defineSystem({
       time: 0,
     };
     installWorldHooks(ctx);
+    registerEraMaterials('interiors.shell', '*', () => { const g = new GeoBuf(); g.tri([0, 0, 0], [0.01, 0, 0], [0, 0.01, 0], [0, 0, 1], { col: [1, 1, 1], mat: 0, room: 0 }); return new Mesh(g.toGeometry(), makeInteriorMaterial(new DataTexture(new Uint8Array(4), 1, 1), new Vector4(), 0)); });
     ctx.events.on('era:change', ({ from, to }) => {
       if (!(from === '1793-07' && to === '1793-07')) clearFires(ctx);
       if (rt?.ready) switchMode(ctx);

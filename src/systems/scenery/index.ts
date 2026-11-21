@@ -34,6 +34,9 @@ import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, 
 import { disposeModels, instanceModels } from './models';
 import { Kit } from './kit';
 import { propMaterial } from './material';
+import { signMesh } from './signs';
+import { workersMesh } from './workers';
+import { registerEraMaterials } from '../fx/shift/prewarm';
 import { passageCollision, passageFloor, patchPalace, rotundaFooting, setPassageCut } from './passage';
 import { GATE_CENTER, SETS, type SetDef } from './sets';
 import { type LitWindows, buildLitWindows } from './windows';
@@ -563,6 +566,7 @@ export default defineSystem({
     root = new Group();
     root.name = 'scenery';
     ctx.scene.add(root);
+    registerEraMaterials('scenery.figures', '*', () => [workersMesh([{ x: 0, z: 0, yaw: 0, pose: 'stand' }], () => 0), signMesh([{ x: 0, y: 1, z: 0, yaw: 0, w: 1, h: 0.3, text: 'Weg' }])].filter((m) => m !== null));
     // CC0 surface sets of palace, props, interiors (src/world/surfaces.ts): medium / high only
     applySurfaceQuality(ctx.assets, ctx.quality.level);
     ctx.quality.listeners.push((_p, level) => applySurfaceQuality(ctx.assets, level));

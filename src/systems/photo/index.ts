@@ -20,6 +20,7 @@
  * - Grants once per target: codex (quietly, no XP), photo cards, flags. No XP for photos.
  */
 import './photo.css';
+import { Scene } from 'three';
 import type { GameContext } from '../../core/context';
 import { ERA_INFO } from '../../core/era';
 import { defineSystem } from '../../core/systems';
@@ -29,6 +30,7 @@ import { cameraHints } from '../../player/camera';
 import { h } from '../../ui/dom';
 import { addJournalTab } from '../../ui/journal';
 import { addControlKeys } from '../../ui/menus';
+import { registerEraMaterials } from '../fx/shift/prewarm';
 import { captureView } from '../notes/capture';
 import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, lensDown, SteadyMeter, emptySlice, normaliseSlice } from './core';
 import { type PhotoTargetData, type PhotoTargetFile, targetFromData } from './data';
@@ -280,6 +282,7 @@ class Photo {
     const at = (targetsFile as unknown as PhotoTargetFile).targets.find((x) => x.id === 'photo.parkplatz')?.at;
     if (p && at) {
       const g = buildBoard(ctx.scene, at.x, 0, at.z, 0);
+      registerEraMaterials('photo.board', '*', () => buildBoard(new Scene(), 0, 0, 0));
       const ground = () => {
         const y = ctx.world.heightAt(at.x, at.z);
         if (Number.isFinite(y)) g.position.y = y - 0.05;

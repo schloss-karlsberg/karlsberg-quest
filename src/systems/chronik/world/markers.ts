@@ -4,6 +4,7 @@
  * column of pale motes and ground mist for echoes.
  */
 import { Group, Mesh, type Object3D, PlaneGeometry, type ShaderMaterial } from 'three';
+import { registerEraMaterials } from '../../fx/shift/prewarm';
 import type { ClueStatus } from '../logic';
 import type { ChronikClue } from '../types';
 import { beamMaterial, disposeTree, drapedDisc, drapedRing, hullMaterial, lin, makeMotes, mistMaterial, propMaterial, ringMaterial } from './gfx';
@@ -29,6 +30,7 @@ export class ClueMarkers {
 
   constructor(private readonly heightAt: (x: number, z: number) => number) {
     this.group.name = 'chronik-markers';
+    registerEraMaterials('chronik.markers', '*', () => [makeMotes({ count: 4, color: GOLD, height: 1, spread: 1, size: 0.06 }), new Mesh(drapedDisc(() => 0, 0, 0, 1, 2, 8), mistMaterial(ECHO)), new Mesh(drapedRing(() => 0, 0, 0, 0.8, 1, 16), ringMaterial(SCAN, 0)), new Mesh(new PlaneGeometry(), beamMaterial(SCAN)), new Mesh(buildProp('chest'), propMaterial()), new Mesh(buildProp('chest'), hullMaterial(GOLD, 0.03))]);
   }
 
   has(id: string): boolean {

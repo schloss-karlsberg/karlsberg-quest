@@ -41,6 +41,7 @@ import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
+import { registerEraMaterials } from '../fx/shift/prewarm';
 import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, disposeGroup, setCacheOpen } from './visuals';
 
 export interface TravelSlice {
@@ -1031,6 +1032,7 @@ export default defineSystem({
   init(ctx) {
     injectTravelCss();
     travel = new Travel(ctx);
+    registerEraMaterials('travel.poi', '*', () => [buildTripod(0, 0, 0, TRIPOD_SEED_BASE).group, buildShrine(0, 0, 0, 0, 1).group]);
     travel.wire();
     hooks = travel.hooks();
     let cleanup: (() => void) | null = null;

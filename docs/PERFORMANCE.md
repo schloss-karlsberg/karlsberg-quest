@@ -314,15 +314,37 @@ every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
 - The idle warm-up itself (about 1.8 s of 3 ms slices after load, 119 stand-in draws) costs one
   frame of about 100–120 ms. That is the one first use on Metal that cannot be split, and it lands
   while the player is standing at the start rather than mid-shift. p95 over the warm-up is 16–23 ms.
-- What is left in the shift is the midpoint frame (115–150 ms). It comes from the objects other
-  systems create on `era:change` near the camera: ambient layers, chronik markers, k1 workers,
-  Ehrenhof signs, the travel tripod, Flaschen bottles and the photo board. The wave reaches them
-  as soon as the void opens, so they compile in the void as before. A first version held those
-  objects too and released them all at once at void-open, which made 1789 → today worse (111 →
-  218 ms). Holding only what the wave reaches later (`HOLD_MIN_R` 10 m) and releasing by wave
-  radius fixed that. The next step would be warming those systems' materials ahead, inside the
-  systems themselves.
-- Raw data: the scratchpad `era-shift/` folder (`before.json`, `after7.json`).
+- A first version also held the objects that other systems create near the camera on
+  `era:change`, and released them all at once when the void opened. That made 1789 → today
+  worse (111 → 218 ms). Holding only what the wave reaches later (`HOLD_MIN_R` 10 m) and
+  releasing by wave radius fixed it.
+- **Era prewarm registry** (`systems/fx/shift/prewarm.ts`, follow-up). Systems that build objects
+  only once an era is active register a sample in one line:
+  `registerEraMaterials(key, eras, items | factory)`. The idle warm-up draws stand-ins of the
+  samples for the next era, and the registry keeps them alive. That matters because a system
+  that disposes its materials at the switch would otherwise free the program (three deletes a
+  program with its last material), and the new era's identical materials would compile again.
+  Registered so far: ambient layers, chronik markers, set workers and signs, Flaschen bottles,
+  travel tripod and shrine, the photo board, the interior shells (KB-B02 and the rest). A sample is best a real object (its own geometry
+  layout); a bare material is drawn on a small triangle. Measured today → 1789 against
+  `9b7972d`:
+
+  | Run (ms) | worst | frames > 50 ms | programs compiled in the shift |
+  |---|---|---|---|
+  | high | 149 → 148 | 3 → 3 | 7 → 1 |
+  | medium | 116 → 106 | 3 → 3 | 7 → 1 |
+
+  The programs are gone, but the midpoint frame is not. What remains:
+  - the one program left: a chronik echo marker's mist and the KB-B02 interior. Since then the
+    chronik sample uses real geometry and the interior shell is registered; neither change is
+    measured yet;
+  - 15 ms of `era:change` handlers on the CPU;
+  - one or two frames of about 100 ms with only 4–8 ms of CPU render time, which points to work
+    on the GPU or driver side (likely Metal pipeline states for new vertex layouts or blend
+    states, and buffer and texture uploads);
+  - at shift end (t = 3.5 s), 36 `texSubImage2D` calls take 68–91 ms. This frame was already
+    there in `9b7972d`.
+- Raw data: the scratchpad `era-shift/` folder (`before.json`, `after7.json`, `registry1.json`).
 
 ## 4. Loading
 
@@ -470,3 +492,8 @@ open dialog, visible focus outlines.
   time (no missed-frame or thermal signal, never steps back up); the first-run guess still gives
   Apple GPUs Hoch; no dynamic resolution. A live dialogue renders 15 fps after its 1.5 s settle:
   NPC idle motion behind the panel looks a little stepped.
+- Later / parked: the GPU/driver-side part of the era-shift stall (§3.6). Around the midpoint,
+  one or two frames take about 100 ms with only 4–8 ms of CPU render time. That is likely Metal
+  creating pipeline states for new vertex layouts or blend states, which compiling programs ahead
+  does not cover. At shift end (t ≈ 3.5 s), 36 `texSubImage2D` calls take 68–91 ms; the texture
+  is not identified yet. Not measured further; it needs a GPU-side trace.
