@@ -317,7 +317,7 @@ every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
   that disposes its materials at the switch would otherwise free the program (three deletes a
   program with its last material), and the new era's identical materials would compile again.
   Registered so far: ambient layers, chronik markers, set workers and signs, Flaschen bottles,
-  travel tripod and shrine, the photo board. A sample is best a real object (its own geometry
+  travel tripod and shrine, the photo board, the interior shells (KB-B02 and the rest). A sample is best a real object (its own geometry
   layout); a bare material is drawn on a small triangle. Measured today → 1789 against
   `9b7972d`:
 
@@ -327,8 +327,9 @@ every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
   | medium | 116 → 106 | 3 → 3 | 7 → 1 |
 
   The programs are gone, but the midpoint frame is not. What remains:
-  - the one program left: a chronik echo marker's mist and the KB-B02 interior; the chronik
-    sample was then switched to real geometry, which is not measured yet;
+  - the one program left: a chronik echo marker's mist and the KB-B02 interior. Since then the
+    chronik sample uses real geometry and the interior shell is registered; neither change is
+    measured yet;
   - 15 ms of `era:change` handlers on the CPU;
   - one or two frames of about 100 ms with only 4–8 ms of CPU render time, which points to work
     on the GPU or driver side (likely Metal pipeline states for new vertex layouts or blend
@@ -483,3 +484,8 @@ open dialog, visible focus outlines.
   time (no missed-frame or thermal signal, never steps back up); the first-run guess still gives
   Apple GPUs Hoch; no dynamic resolution. A live dialogue renders 15 fps after its 1.5 s settle:
   NPC idle motion behind the panel looks a little stepped.
+- Later / parked: the GPU/driver-side part of the era-shift stall (§3.6). Around the midpoint,
+  one or two frames take about 100 ms with only 4–8 ms of CPU render time. That is likely Metal
+  creating pipeline states for new vertex layouts or blend states, which compiling programs ahead
+  does not cover. At shift end (t ≈ 3.5 s), 36 `texSubImage2D` calls take 68–91 ms; the texture
+  is not identified yet. Not measured further; it needs a GPU-side trace.
