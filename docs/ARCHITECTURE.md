@@ -1565,7 +1565,8 @@ player-relative from a snapshot at the start (`back` / `up` / `right` / `turn`°
 the ground), look at `npc:<id>` (`kq.npc.list()`, else the npc slice), `animal:<id>`
 (`registerTarget(id, getter)` in `targets.ts`; unknown → the view holds), `player`, a point or a
 pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear easing; missing fields
-carry over. The timeline runs on fixed steps (Esc / modals stop it); skip after 0.5 s by any key
+carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
+when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
 (not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
 centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
 cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
@@ -1585,13 +1586,15 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
 - Requests (`types.ts`, agreed with kq-story): `party:set {variant: 'museum'|'burn'|'keep', at?}`,
   `party:credits {lines?}`, `party:clear {}`; also `story:cue {id: 'party:set'|'party:credits'|
   'party:clear', data}`. Events (scalar fields): `party:ready {variant}`, `party:spotlight {who, i}`
-  (`who` = the double's people spec id, e.g. `double.herzog`; the story plays its §8.4 line on a
-  match), `credits:start {seconds}`, `credits:done {skipped}` (exactly once per run).
+  (`who` = the people spec id: the 7 doubles `double.*` and Mats `child.compass` round the
+  clearing, then Gerold `guide` last as the host's closing shot; Marlene none; the story plays the
+  §8.4 line on a match), `credits:start {seconds}`, `credits:done {skipped}` (exactly once per run).
 - **People** (`ctx.people`, placed directly, no walk): the guide (`guide`, speaker `imhoff`),
   Marlene (no spec yet: stand-in `extra.7` with seed 9071, speaker `marlene`; a `marlene` spec is
   used once `specs()` has it), the 7 doubles (speakers `herzogd`, `mannd`, `hanned`, `peterd`,
-  `jostd`, `solld`, `liesed`), the 7 extras of §8.1 (Mats = `child.compass`, mother, the couple, two
-  hikers, the student = `extra.1…6`). Activities per §8.1: sit (Herzog in the camping chair, Hanne
+  `jostd`, `solld`, `liesed`), the 7 extras of §8.1 (Mats = `child.compass`, speaker `mats`; mother, the
+  couple, two hikers, the student = `extra.1…6`). Speaker ids confirmed by kq-story; their names
+  live in the story's content. Activities per §8.1: sit (Herzog in the camping chair, Hanne
   and Peter on the bench), talk, lookAround, idle, interact (Gerold pouring, Soll counting, Jost's
   stick, Liese mending: a one-shot every 4–8 s). Faces: a prop, a person, the centre. Speakers stay
   bound, so the npc system's placements for them become talkable on the bodies; a conversation
@@ -1614,15 +1617,22 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   (`{lines}`, the story team's, bundled through an eager `import.meta.glob`, may be missing), else
   the 3-line placeholder. The strip crawls along the bottom edge (over the letterbox, game clock,
   `data-testid="party-credits"`); reduced motion steps the lines through, centred. The camera way is
-  a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, skippable, reduced 'stills'):
-  the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the keys run on
-  the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and dwell 2.6 s close
-  on each double in angle order (lower, fov 34), emitting `party:spotlight` at each dwell's start;
-  the travel speeds up so the way stays ≤ 58 s (the keys' 60 s limit). The credits last max(20 s,
-  the camera way + 0.6 s, 4 s per line). Skip: the cinematic's any key / click after 0.5 s (its
-  `cinematic:end {skipped: true}` ends the credits skipped); without a camera of ours (rejected,
-  no cinematic system, after reduced motion's stills) Esc / Enter / Space after 1 s. A rejected
-  camera (held elsewhere) does not end the credits. Afterwards the party stands, no camera is held.
+  a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, `skippable: false`, reduced
+  'stills'): the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the
+  keys run on the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and hold
+  close on each spotlit person in angle order (lower, fov 34; two at nearly the same angle get a
+  short drift, never an extra turn), then go on round to Gerold, emitting `party:spotlight` at each
+  hold's start; to stay ≤ 58 s (the keys' 60 s limit) the travel speeds up and the holds shorten
+  from 2.6 s, never below 2.0 s (9 spotlights: about 2.2 s). The credits last max(20 s, the camera
+  way + 0.6 s, 4 s per line). **Input** (bible 06 §8.2 step 4: walk about, E talks): movement or look
+  during the orbit (anything that moves the player > 5 cm or turns the view > 0.02 rad: keys,
+  mouse, touch stick) hands the camera back (`cinematic:stop {id}`, the takeover's 0.4 s ease), no
+  `credits:done`; the strip runs on to its end → `credits:done {skipped: false}`. Explicit skip =
+  Enter (after 1 s) or the strip's button „Abspann überspringen" (touch, mouse) → `credits:done
+  {skipped: true}`. Esc stays pause, E talks. Hint over the strip: „Enter: Abspann überspringen ·
+  Bewegen: selbst umsehen" (after the hand-back without the second part). The cinematic ending under
+  the party (era change, death) ends the credits skipped; a rejected camera (held elsewhere) does
+  not. Afterwards the party stands, no camera is held.
 - Era `today` only: other eras hide the people and the set. `party:clear` (and a new `party:set`)
   disposes people, set and dogs; credits still running end skipped.
 - State `systems.party {variant, credits: 'none'|'playing'|'done'}`; no bodies (the story re-issues
