@@ -119,15 +119,42 @@ export const FADE_TARGET = 0.4;
 export const FADE_FIGHT_FLOOR = 0.45;
 
 /**
+ * The character's own measurements for its fade (`Avatar.fadeBounds`, measured once per model load):
+ * `head` the head bone's height above the feet, `halfWidth` the body's half-width above 1.2 m (m).
+ * The defaults are the surveyor's.
+ */
+export interface FadeBounds {
+  head: number;
+  halfWidth: number;
+}
+export const FADE_BOUNDS_DEFAULT: Readonly<FadeBounds> = { head: 1.45, halfWidth: 0.45 };
+/** The plausible range (m) of measured bounds: an odd bone or a wide cape cannot push the fade far off. */
+export const FADE_BOUNDS_RANGE = { head: [1.2, 2.0], halfWidth: [0.25, 0.6] } as const;
+
+/** Measured bounds clamped into `FADE_BOUNDS_RANGE`; null when a value is missing or not finite. */
+export function plausibleFadeBounds(head: number | null, halfWidth: number | null): FadeBounds | null {
+  if (head === null || halfWidth === null || !Number.isFinite(head) || !Number.isFinite(halfWidth)) return null;
+  const clamp = (v: number, [lo, hi]: readonly [number, number]): number => Math.min(hi, Math.max(lo, v));
+  return { head: clamp(head, FADE_BOUNDS_RANGE.head), halfWidth: clamp(halfWidth, FADE_BOUNDS_RANGE.halfWidth) };
+}
+
+/**
  * How solid (0..1) the third-person character should be drawn this frame (playtest round 9; round
  * 10 F-07): the lens close to the head (from `FADE_NEAR` m in) thins it down to 0.3, the fight's
  * target standing behind the body on screen to 0.4; in a fight never under 0.45 (the rig rises over
- * the shoulder instead of pressing into the head). `feet`: the character's ground point.
+ * the shoulder instead of pressing into the head). `feet`: the character's ground point; `bounds`:
+ * its head height and half-width (`FadeBounds`).
  */
-export function characterFadeWant(cam: PerspectiveCamera, feet: V3, target: { x: number; z: number } | null, fight: boolean): number {
+export function characterFadeWant(
+  cam: PerspectiveCamera,
+  feet: V3,
+  target: { x: number; z: number } | null,
+  fight: boolean,
+  bounds: Readonly<FadeBounds> = FADE_BOUNDS_DEFAULT,
+): number {
   let want = 1;
   const c = cam.position;
-  const dc = Math.hypot(c.x - feet.x, c.y - (feet.y + 1.45), c.z - feet.z);
+  const dc = Math.hypot(c.x - feet.x, c.y - (feet.y + bounds.head), c.z - feet.z);
   if (dc < FADE_NEAR) want = Math.min(want, FADE_NEAR_MIN + (1 - FADE_NEAR_MIN) * Math.max(0, (dc - 0.55) / 0.75));
   // the target behind the body: both on screen, the target farther away, close together in x
   if (target) {
@@ -136,8 +163,8 @@ export function characterFadeWant(cam: PerspectiveCamera, feet: V3, target: { x:
     const dT = Math.hypot(target.x - c.x, target.z - c.z);
     const dA = Math.hypot(feet.x - c.x, feet.z - c.z);
     if (_fa.z < 1 && _fb.z < 1 && dT > dA + 0.3) {
-      // the body is ~0.5 m wide: its half-width on screen in NDC, plus a margin
-      const half = 0.45 / Math.max(0.5, dA) / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.5, cam.aspect);
+      // the body's half-width on screen in NDC, plus a margin
+      const half = bounds.halfWidth / Math.max(0.5, dA) / Math.tan((cam.fov * Math.PI) / 360) / Math.max(0.5, cam.aspect);
       const ox = Math.abs(_fa.x - _fb.x);
       if (ox < half + 0.05 && Math.abs(_fa.y - _fb.y) < 0.5) want = Math.min(want, FADE_TARGET);
     }
@@ -156,8 +183,8 @@ export class CharacterFade {
   value = 1;
 
   /** Advance one frame; returns the opacity to draw with (exactly 1 when nearly solid: no dither noise). */
-  step(cam: PerspectiveCamera, feet: V3, target: { x: number; z: number } | null, fight: boolean, dt: number): number {
-    this.value += (characterFadeWant(cam, feet, target, fight) - this.value) * Math.min(1, dt * 8);
+  step(cam: PerspectiveCamera, feet: V3, target: { x: number; z: number } | null, fight: boolean, dt: number, bounds?: Readonly<FadeBounds>): number {
+    this.value += (characterFadeWant(cam, feet, target, fight, bounds) - this.value) * Math.min(1, dt * 8);
     if (!Number.isFinite(this.value)) this.value = 1;
     return this.value > 0.98 ? 1 : this.value;
   }

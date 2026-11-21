@@ -1,7 +1,7 @@
 import { PerspectiveCamera, Vector3, Vector4 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { BOOM_MIN, CameraRig, type CameraHints, type CameraWorld, CRANE_MAX, INDOOR_BOOM, NEAR_COMFORT, RISE_MAX, ZOOM_MAX, ZOOM_MIN, frameTilt, squeezeRise, twoShot } from '../src/player/camera';
-import { CharacterFade, FADE_FIGHT_FLOOR, FADE_NEAR_MIN, FADE_TARGET, SEE_CONE, SEE_HALF, SEE_HALF_FIGHT, applySeeThrough, characterFadeWant, seeAmount } from '../src/player/seeThrough';
+import { CharacterFade, FADE_BOUNDS_DEFAULT, FADE_BOUNDS_RANGE, FADE_FIGHT_FLOOR, FADE_NEAR_MIN, FADE_TARGET, SEE_CONE, SEE_HALF, SEE_HALF_FIGHT, applySeeThrough, characterFadeWant, plausibleFadeBounds, seeAmount } from '../src/player/seeThrough';
 import { FootprintCollider } from '../src/world/collision';
 import { clamp01, dirXZ, finite3, finiteOr, loop01, ribbonStep, safeDt, turnToward, usablePos } from '../src/player/guards';
 import { lensVis } from '../src/systems/combat/visuals';
@@ -551,6 +551,52 @@ describe('the character fade (camera side of src/player/avatar.ts)', () => {
     expect(characterFadeWant(cam, feet, { x: 4, z: -4 }, false)).toBe(1);
     expect(characterFadeWant(cam, feet, { x: 0, z: -4 }, true)).toBe(FADE_FIGHT_FLOOR);
     expect(characterFadeWant(camAt(0.4), feet, null, true)).toBe(FADE_FIGHT_FLOOR);
+  });
+
+  it('reads the avatar bounds: the defaults change nothing, a higher head moves the lens fade with it', () => {
+    // the defaults, given or not, are the old literals (head 1.45, half-width 0.45)
+    const cams = [camAt(3.6), camAt(1.2), camAt(0.9), camAt(0.6), camAt(0.4), camAt(0.9, 1.2), camAt(3.6, 2.4)];
+    for (const c of cams)
+      for (const t of [null, { x: 0, z: -4 }, { x: 1, z: -4 }, { x: 4, z: -4 }])
+        for (const fight of [false, true]) expect(characterFadeWant(c, feet, t, fight, FADE_BOUNDS_DEFAULT)).toBe(characterFadeWant(c, feet, t, fight));
+    const f1 = new CharacterFade();
+    const f2 = new CharacterFade();
+    for (let i = 0; i < 30; i++) expect(f1.step(camAt(0.7), feet, null, false, 1 / 60)).toBe(f2.step(camAt(0.7), feet, null, false, 1 / 60, FADE_BOUNDS_DEFAULT));
+    // the MPFB head (1.553): measured from its own head, so a lens at its head height fades like the
+    // default lens at 1.45 does on the default head …
+    const tall = { head: 1.553, halfWidth: 0.36 };
+    for (const z of [1.25, 1.0, 0.8, 0.6]) expect(characterFadeWant(camAt(z, 1.553), feet, null, false, tall)).toBeCloseTo(characterFadeWant(camAt(z, 1.45), feet, null, false), 12);
+    // … and a lens at the default head height (under the taller head) starts fading later (closer in)
+    const onset = (b?: typeof tall): number => {
+      let z = 2;
+      while (z > 0.3 && characterFadeWant(camAt(z, 1.45), feet, null, false, b) === 1) z -= 0.001;
+      return z;
+    };
+    expect(onset(tall)).toBeLessThan(onset() - 0.002);
+    for (const z of [1.2, 0.9, 0.6]) expect(characterFadeWant(camAt(z, 1.45), feet, null, false, tall)).toBeGreaterThan(characterFadeWant(camAt(z, 1.45), feet, null, false));
+    // a narrower body hides less of the fight's target
+    const side = { x: 1.32, z: -4 };
+    expect(characterFadeWant(camAt(3.6), feet, side, false)).toBe(FADE_TARGET);
+    expect(characterFadeWant(camAt(3.6), feet, side, false, tall)).toBe(1);
+  });
+
+  it('clamps measured bounds to a plausible range; a missing or non-finite value gives none (the defaults)', () => {
+    // in range: as measured (the MPFB player, the defaults)
+    expect(plausibleFadeBounds(1.564, 0.345)).toEqual({ head: 1.564, halfWidth: 0.345 });
+    expect(plausibleFadeBounds(FADE_BOUNDS_DEFAULT.head, FADE_BOUNDS_DEFAULT.halfWidth)).toEqual(FADE_BOUNDS_DEFAULT);
+    // under the range (an odd head bone, a stick-thin trunk), over it (a tall hat bone, a wide cape)
+    expect(plausibleFadeBounds(0.4, 0.05)).toEqual({ head: FADE_BOUNDS_RANGE.head[0], halfWidth: FADE_BOUNDS_RANGE.halfWidth[0] });
+    expect(plausibleFadeBounds(3.1, 1.4)).toEqual({ head: FADE_BOUNDS_RANGE.head[1], halfWidth: FADE_BOUNDS_RANGE.halfWidth[1] });
+    expect(plausibleFadeBounds(0.4, 1.4)).toEqual({ head: 1.2, halfWidth: 0.6 });
+    expect(plausibleFadeBounds(2.5, 0.1)).toEqual({ head: 2.0, halfWidth: 0.25 });
+    const bad: [number | null, number | null][] = [
+      [Number.NaN, 0.3],
+      [1.5, Number.POSITIVE_INFINITY],
+      [Number.NEGATIVE_INFINITY, 0.3],
+      [null, 0.3],
+      [1.5, null],
+    ];
+    for (const [h, w] of bad) expect(plausibleFadeBounds(h, w)).toBeNull();
   });
 
   it('eases, snaps to solid above 0.98 and restarts solid on a NaN lens (F-15)', () => {

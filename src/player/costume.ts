@@ -3,10 +3,16 @@
  * unit-testable without WebGL (tests/avatar-costume.test.ts). The avatar (avatar.ts) lays them over
  * the model's material slots.
  *
- * Slot keys: a material name of the Quaternius adventurer (`Green`, `LightGreen`, `Skin`, `Hair`,
- * `Brown`, `Brown2`, `Black`, `Grey`, `Gold`, `Eyebrows`, `Eye`), optionally prefixed with the model
- * part it sits on (`Backpack.LightGreen`), which wins over the bare slot. Parts: `Body`, `Head`,
- * `Legs`, `Feet`, `Backpack`.
+ * Two kinds of model wear the costumes:
+ * - the Quaternius surveyor (one body, recoloured per material slot): slot keys are a material name
+ *   of the adventurer (`Green`, `LightGreen`, `Skin`, `Hair`, `Brown`, `Brown2`, `Black`, `Grey`,
+ *   `Gold`, `Eyebrows`, `Eye`), optionally prefixed with the model part it sits on
+ *   (`Backpack.LightGreen`), which wins over the bare slot. Parts: `Body`, `Head`, `Legs`, `Feet`,
+ *   `Backpack`.
+ * - the authored MPFB player (scripts/chars/mpfb, colours in vertex colours, never recoloured):
+ *   outfit pieces, meshes named `avatar-<costume>-<piece>` (`avatar-default-jacket`,
+ *   `avatar-court-coat`, …), each shown only in its own costume (`costumePiece`, `costumeHides`).
+ *   Everything else (`avatar-body`, `avatar-glasses`) is always worn.
  */
 
 export type Costume = 'default' | 'court';
@@ -57,11 +63,14 @@ const EMISSIVE: Record<Costume, CostumeColours> = {
   court: {},
 };
 
-/** Model parts a costume hides (matched against the mesh name). */
+/** Model parts a costume hides (matched against the mesh name), besides the other costumes' pieces. */
 const HIDDEN: Record<Costume, RegExp | null> = {
   default: null,
   court: /^Backpack/,
 };
+
+/** An outfit piece of the authored player: `avatar-<costume>-<piece>` (GLTFLoader may add `_<n>` per primitive). */
+const PIECE = /^avatar-([a-z]+)-/;
 
 /** Is the Messstab carried across the back while it is not in hand? */
 const STAFF_ON_BACK: Record<Costume, boolean> = { default: true, court: false };
@@ -79,8 +88,34 @@ export function costumeEmissive(c: Costume): CostumeColours {
   return EMISSIVE[resolveCostume(c)];
 }
 
-export function costumeHides(c: Costume, meshName: string): boolean {
-  return HIDDEN[resolveCostume(c)]?.test(meshName) ?? false;
+/** The costume an outfit piece belongs to (`avatar-court-coat` → 'court'), or null for a mesh worn in every costume. */
+export function costumePiece(meshName: string): Costume | null {
+  const m = PIECE.exec(meshName);
+  return m && (COSTUME_IDS as readonly string[]).includes(m[1]!) ? (m[1] as Costume) : null;
+}
+
+/** The costumes a model has outfit pieces for (from its mesh names). */
+export function piecedCostumes(meshNames: Iterable<string>): Set<Costume> {
+  const out = new Set<Costume>();
+  for (const n of meshNames) {
+    const c = costumePiece(n);
+    if (c) out.add(c);
+  }
+  return out;
+}
+
+/**
+ * Is this mesh hidden in costume `c`? A costume's outfit pieces show only in that costume. With
+ * `pieced` (the costumes the model has pieces for, `piecedCostumes`), a costume the model has no
+ * pieces for keeps the default pieces on, so a model built without court pieces never undresses.
+ */
+export function costumeHides(c: Costume, meshName: string, pieced?: ReadonlySet<Costume>): boolean {
+  const want = resolveCostume(c);
+  if (HIDDEN[want]?.test(meshName)) return true;
+  const piece = costumePiece(meshName);
+  if (piece === null) return false;
+  const shown = !pieced || pieced.has(want) ? want : 'default';
+  return piece !== shown;
 }
 
 export function staffOnBack(c: Costume): boolean {

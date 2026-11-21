@@ -246,6 +246,18 @@ a teleport (`ribbonStep`); the see-through switches off on a NaN lens. The chara
 `CharacterFade` in seeThrough.ts; avatar.ts only calls these hooks (it belongs to the character
 look work), so the camera rules live in `guards.ts` / `seeThrough.ts`.
 
+**Avatar models.** The default avatar is the surveyor (Quaternius rig, scaled to 1.78 m, costumes
+recolour its material slots). `?avatar=mpfb` or `kq.avatar.useMpfb(on?)` swaps in the authored
+MPFB player (`chars.player.mpfb`, 53-bone game_engine rig, kept at its built height, ≈ 1.74 m in
+Idle); costume and lantern tint stay (sticky). Bones and clips go through one alias table,
+`src/systems/characters/bones.ts` (logical bone → name per rig kind, `rigKindOf`, the upper-body
+layer per rig, clip-name aliases); `Rig.boneOf(logical)` resolves through it (exact name, then the
+GLTFLoader-sanitized one). The MPFB player's costumes are outfit pieces, not recolours: meshes
+named `avatar-<costume>-<piece>` show only in their costume, everything else (`avatar-body`,
+`avatar-glasses`) always (`costumeHides` in costume.ts; built by `scripts/chars/mpfb/kqchar/court.py`).
+Gear on that rig is placed from the mesh: the staff grip from the finger bones, the lantern off the
+hip per costume (it moves out over the coat skirts), the staff on the back off the jacket.
+
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop and rendering follows the pacing above. `?manual` stops the real-time simulation entirely;
 only `kq.step(n)` advances it (deterministic tests).

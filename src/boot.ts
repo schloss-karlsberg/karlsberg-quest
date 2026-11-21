@@ -12,7 +12,7 @@ import { SystemRegistry } from './core/systems';
 import { loadGameData } from './data/loader';
 import { installDebug } from './debug/hooks';
 import { t } from './i18n';
-import { AVATAR_MODEL, Avatar } from './player/avatar';
+import { AVATAR_MODELS, Avatar, type AvatarModelId, avatarModelParam } from './player/avatar';
 import { cameraHints } from './player/camera';
 import { Input } from './player/input';
 import { Player } from './player/player';
@@ -222,7 +222,10 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     else if (started && modalOpen === 0) ui.hud.showClickToPlay(!input.locked);
   };
   // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
-  const avatar = new Avatar(scene, player, () => assets.model(AVATAR_MODEL));
+  // ?avatar=mpfb wears the authored MPFB player (art review; the surveyor stays the default)
+  const avatarModel = (id: AvatarModelId) => () => assets.model(AVATAR_MODELS[id].asset);
+  const avatarFirst = avatarModelParam(params.get('avatar'));
+  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), AVATAR_MODELS[avatarFirst].height);
   let zoomSaved = 0;
   let capFps = 60;
   const applySettings = () => {
@@ -623,12 +626,16 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     state: () => ({ ...player.rig.debug, mode: player.cameraMode, third: player.thirdPerson, see: atmosphere.uSeeCam.value.w > 0, seeTarget: atmosphere.uSeeT.value.w > 0, fightHints: cameraHints.fight.length }),
   };
   window.kq!.avatar = {
-    state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom, costume: avatar.costume }),
+    state: () => ({ ready: avatar.ready, ...avatar.debug, facing: avatar.facing, mode: player.cameraMode, third: player.thirdPerson, distance: player.rig.distance, zoom: player.rig.zoom, costume: avatar.costume, fadeBounds: { ...avatar.fadeBounds } }),
     setMode: (m) => settings.update((d) => (d.cameraMode = m), 'cameraMode'),
     ready: () => avatar.whenReady(),
     costume: () => avatar.costume,
     setCostume: (c) => events.emit('player:costume', { costume: c }),
     lanternTint: () => avatar.lanternTint,
+    useMpfb: (on = true) => {
+      const id: AvatarModelId = on ? 'mpfb' : 'surveyor';
+      return avatar.useModel(avatarModel(id), AVATAR_MODELS[id].height).finally(() => loop.requestRender(2));
+    },
   };
   loop.start();
 
