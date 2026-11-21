@@ -17,7 +17,7 @@
       "kind": "main",
       "era": "today",
       "title_de": "Der Messstab",
-      "summary_de": "Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der draußen am Bauwagen lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.",
+      "summary_de": "Marlene schickt dich in den Wald, aber nicht ohne den Messstab, der am Wegrand lehnt. Unten am Damm steigt Nebel auf, der dich ansieht.",
       "giver": {
         "voice": "marlene"
       },
@@ -29,7 +29,7 @@
         },
         {
           "speaker": "marlene",
-          "text": "Nimm den Messstab mit, der lehnt draußen am Wagen. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm."
+          "text": "Nimm den Messstab mit, der lehnt da vorn am Weg. Ohne Stab gehst du mir nicht in den Wald. Dann runter zum Damm."
         }
       ],
       "turnin_lines": [
@@ -76,8 +76,8 @@
           "id": "stab",
           "type": "collect",
           "item": "item.stab.esche",
-          "text_de": "Den Messstab nehmen: er lehnt draußen am Bauwagen (hingehen, E)",
-          "hint_de": "Der Messstab lehnt rechts neben der Wagentür, im goldenen Lichtstrahl: geradeaus zum Wagen, dann E drücken (oder einfach darüberlaufen).",
+          "text_de": "Den Messstab nehmen: er lehnt am Wegrand (hingehen, E)",
+          "hint_de": "Der Messstab lehnt am Wegrand, im goldenen Lichtstrahl: geradeaus hin, dann E drücken (oder einfach darüberlaufen).",
           "place": [
             {
               "x": 762.2,
@@ -131,7 +131,7 @@
       "kind": "main",
       "era": "today",
       "title_de": "Was der Wald verbirgt",
-      "summary_de": "Marlene will wissen, was unter dem Wald liegt. Erst der Damm hinter dem Wagen, dann der Weg hinauf bis zur großen Stufe im Wald. Der Laserscan zeigt, was die Bäume verdecken.",
+      "summary_de": "Marlene will wissen, was unter dem Wald liegt. Erst der Damm am Weiher, dann der Weg hinauf bis zur großen Stufe im Wald. Der Laserscan zeigt, was die Bäume verdecken.",
       "giver": {
         "voice": "marlene"
       },
@@ -139,7 +139,7 @@
       "offer": [
         {
           "speaker": "marlene",
-          "text": "Erste Aufgabe: Geh zum Damm hinter dem Wagen und sag mir, was der Wald da versteckt. Dann den Weg hinauf nach Osten, bis zu der hohen Stufe im Wald."
+          "text": "Erste Aufgabe: Geh zum Damm am Weiher und sag mir, was der Wald da versteckt. Dann den Weg hinauf nach Osten, bis zu der hohen Stufe im Wald."
         }
       ],
       "turnin_lines": [
@@ -190,7 +190,7 @@
         {
           "id": "damm",
           "type": "reach",
-          "text_de": "Zum Damm am Karlsbergweiher, hinter dem Bauwagen",
+          "text_de": "Zum Damm am Karlsbergweiher",
           "where": {
             "x": 819,
             "z": -875,

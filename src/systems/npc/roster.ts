@@ -59,6 +59,14 @@ export const ROSTER: Record<string, NpcLook> = {
   // Side-quest givers (fiction): a Karlslust gardener, a palace servant, a villager from the road.
   gaertner: { id: 'gaertner', name: 'Der Gärtner', mood: 'warm', height: 1.66, build: 0.98, outfit: 'carter', hat: 'slouch', hair: 'queue', prop: 'basket', tint: 0xc8d9a8, seed: 31 },
   diener: { id: 'diener', name: 'Ein Diener', mood: 'neutral', height: 1.72, build: 0.9, outfit: 'livery', hat: 'none', hair: 'wig', prop: 'none', tint: 0xd9cdb4, seed: 37 },
+  // 1789, the disguise opening (story k1_0b / k1_0c, docs/IDEAS-ROUND11.md §2; fiction, added by the
+  // content track): Liese at her Bleiche, the Hofgärtner on the Orangerie lawn, the court's watchers
+  // at the gitter (the Gardisten carry the pike, src/systems/court/props.ts)
+  liese: { id: 'liese', name: 'Liese, Wäscherin', mood: 'warm', height: 1.6, build: 0.94, outfit: 'maid', hat: 'mobcap', hair: 'none', prop: 'basket', tint: 0xffd29a, seed: 53 },
+  hofgaertner: { id: 'hofgaertner', name: 'Der Hofgärtner', mood: 'neutral', height: 1.7, build: 1.0, outfit: 'carter', hat: 'slouch', hair: 'queue', prop: 'none', tint: 0xcfe0b0, seed: 59 },
+  gardist: { id: 'gardist', name: 'Ein Gardist', mood: 'eerie', height: 1.86, build: 1.08, outfit: 'official', hat: 'tricorn', hair: 'wig', prop: 'none', pike: true, tint: 0xd4dbe6, seed: 61 },
+  'gardist-tor': { id: 'gardist-tor', name: 'Ein Gardist', mood: 'eerie', height: 1.84, build: 1.1, outfit: 'official', hat: 'tricorn', hair: 'queue', prop: 'none', pike: true, tint: 0xd0d8e4, seed: 67 },
+  lakai: { id: 'lakai', name: 'Ein Lakai', mood: 'neutral', height: 1.74, build: 0.9, outfit: 'livery', hat: 'none', hair: 'wig', prop: 'none', tint: 0xe0d4bc, seed: 71 },
   mann: { id: 'mann', name: 'Ein Mann aus dem Dorf', mood: 'neutral', height: 1.74, build: 1.0, outfit: 'carter', hat: 'slouch', hair: 'short', prop: 'stick', tint: 0xc4c0b2, seed: 41 },
   // The historical twins (real people, ART-DIRECTION §21): heights and build from the portraits,
   // for now the generic official in a powdered wig, bareheaded (authored models pending).
@@ -132,6 +140,11 @@ export const TOPIC_LABELS: Record<string, string> = {
   raub: 'War das Raub?',
   schuld: 'Wer hat Schuld?',
   hanne: 'Nach Hanne fragen',
+  rock: 'Nach einem Rock fragen',
+  waesche: 'Nach der Wäsche fragen',
+  kaspar: 'Wer ist Kaspar?',
+  papier: 'Nach Papier fragen',
+  rasen: 'Nach dem Rasen fragen',
 };
 
 export function topicLabel(topic: string): string {

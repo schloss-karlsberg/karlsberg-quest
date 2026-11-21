@@ -144,14 +144,14 @@ Run from this worktree. `dist/` must exist: `pnpm build` once, outside the lock.
 
 ```sh
 cd <this worktree>
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-landscape
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-portrait
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-portrait
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-landscape
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-landscape
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-portrait
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-portrait
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-landscape
 # re-shoot a subset:
-KQ_HEAVY_OWNER=kq-mobile /Users/sebastian/develop/experiements/karlsberg-quest/scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states journal,combat
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states journal,combat
 ```
 
 **Estimated time per unit.** Boot is about 1–1.5 min: the preview server, terrain and assets on the real GPU, the title flow. Each shot takes about 3 s: 0.6 s settle, 1.5 s frame sample, measurement and a DPR 3 PNG.

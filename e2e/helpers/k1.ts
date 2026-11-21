@@ -157,7 +157,7 @@ export async function shiftToPast(page: Page): Promise<void> {
   await frames(page, 60);
   expect((await story(page)).era).toBe('1789');
 }
-/** Hold Q in the past → back to today, in place. */
+/** Hold Q in the past → back to today, home at the Quelle (WP-04). */
 export async function holdQ(page: Page): Promise<void> {
   await installQuestPlay(page);
   await holdHome(page);
@@ -357,20 +357,184 @@ export async function openAtSpring(page: Page, o: { shots?: boolean } = {}): Pro
   expect(!!s.meters.oil).toBe(false);
   await upd(page, 60);
   if (o.shots !== false) await shot(page, '00-quelle-1789');
+  // the walk up passes the Bleiche and the Orangerie: the disguise (coat, letter, the Musterung)
   let near = 1e9;
-  for (const pt of SPRING_TO_COURT) {
-    const w = await walk(page, [pt], { sprint: pt[0] < 1180, tol: 1.5 });
-    near = Math.min(near, ...(await page.evaluate(([x, z]) => window.kq!.combat!.enemies().map((e) => Math.hypot(e.x - x, e.z - z)), [w.x, w.z] as const)));
-    if (w.beat === 'k1_1') break;
-    expect(w.d, `walked to ${pt.join('/')}`).toBeLessThan(2);
-    expect(w.beat).toBe('k1_0b');
-  }
+  const track = async () => {
+    near = Math.min(near, ...(await page.evaluate(() => { const p = window.kq!.ctx.player.position; return window.kq!.combat!.enemies().map((e) => Math.hypot(e.x - p.x, e.z - p.z)); })));
+  };
+  await track();
+  await playDisguise(page, { walk: true, shots: o.shots !== false });
+  await track();
   await upd(page, 20);
   s = await story(page);
   expect(s.beat).toBe('k1_1');
   expect(await qn(page, 'q.k1.ankunft', 'wechsel')).toBe(1);
   expect(!!s.meters.oil, 'the lantern burns from the court on').toBe(true);
   return near;
+}
+
+/**
+ * The disguise opening (story k1_0b → k1_0c, docs/IDEAS-ROUND11.md §2; the court system
+ * src/systems/court): from the spring in 1789 down to Liese's Bleiche, Kaspar's coat lifted off line
+ * B unseen (behind the lines, out of her view), up to the Hofgärtner on the Orangerie lawn (the
+ * teaching zone: watched, nothing happens to a calm player in the coat), paper by asking, the letter
+ * at his table, then the Musterung at the gitter (E held 1 s, 2.5 s standing still) → court.admitted,
+ * the gate open, k1_1. `walk` walks the legs with the real controller (else short jumps between the
+ * places, for the campaign). Returns the court's state at the end.
+ */
+export const DISGUISE_SPOTS = {
+  /** From the spring down the trail to the front of the Bleiche, round its right end, behind line B. */
+  toBleiche: [
+    [1047, -845],
+    [1035.7, -855.1],
+    [1018, -866],
+    [1013.9, -867.5],
+    [1010.5, -879],
+    [1008.6, -882.8],
+    [1003.9, -883.8],
+  ] as [number, number][],
+  /** COAT_REACH (src/systems/bleiche/layout.ts): behind line B, facing the coat. */
+  coatReach: { x: 1001.08, z: -880.9 },
+  coat: { x: 1001.9, z: -880.42 },
+  /** Back up the trail, west of the Orangerie, onto its lawn. */
+  toLawn: [
+    [1003.9, -883.8],
+    [1013.9, -867.5],
+    [1035.7, -855.1],
+    [1100, -870],
+    [1150, -920],
+    [1190, -980],
+    [1195, -1000],
+    [1208, -1004],
+    [1215, -1000],
+    [1219.3, -994.6],
+  ] as [number, number][],
+  hofgaertner: { x: 1221, z: -993 },
+  /** Before his table (clue.k1.brief at 1226/−1003, r 2.5). */
+  tisch: { x: 1225.1, z: -1002.3, face: [1226, -1003] as [number, number] },
+  /** Down off the lawn and along the trail to the forecourt, in front of the gate's Gardist. */
+  toGate: [
+    [1215, -1003],
+    [1200, -1005],
+    [1195, -1010],
+    [1190, -1030],
+    [1185, -1050],
+    [1172, -1085],
+    [1170, -1112],
+    [1191.2, -1113],
+  ] as [number, number][],
+  gardist: { x: 1194.6, z: -1111.5 },
+} as const;
+
+export async function playDisguise(page: Page, o: { walk?: boolean; shots?: boolean } = {}): Promise<ReturnType<NonNullable<NonNullable<typeof window.kq>['court']>['state']>> {
+  const D = DISGUISE_SPOTS;
+  const shots = o.shots !== false;
+  await ensureHelpers(page);
+  await installQuestPlay(page);
+  expect(await beat(page)).toBe('k1_0b');
+  expect(await page.evaluate(() => window.kq!.court!.state().sets)).toContain('k1');
+  // ejections so far (a spec may have been sent out once before): the disguise itself adds none
+  const ejected0 = await page.evaluate(() => window.kq!.court!.state().ejected);
+  const go = async (pts: [number, number][], end: { x: number; z: number }) => {
+    if (o.walk) {
+      const w = await walk(page, pts, { tol: 0.6 });
+      expect(Math.hypot(w.x - end.x, w.z - end.z), `walked to ${end.x}/${end.z}`).toBeLessThan(1.2);
+    } else
+      await page.evaluate((e) => {
+        window.kq!.teleport(e.x, e.z, 0, 0);
+        window.kq!.step(4);
+      }, end);
+    await upd(page, 20);
+  };
+  /** Step towards `t` until `ok()` (or `stop` m from it): a walked leg ends up to ~1 m off its point. */
+  const closeIn = async (t: { x: number; z: number }, stop: number, ok: () => Promise<boolean>) => {
+    for (let i = 0; i < 3 && !(await ok()); i++) {
+      const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
+      const d = Math.hypot(t.x - p.x, t.z - p.z);
+      const k = Math.max(0, (d - stop) / d);
+      const e = { x: p.x + (t.x - p.x) * k, z: p.z + (t.z - p.z) * k };
+      if (o.walk) await walk(page, [[e.x, e.z]], { tol: 0.3 });
+      else
+        await page.evaluate((e) => {
+          window.kq!.teleport(e.x, e.z, 0, 0);
+          window.kq!.step(4);
+        }, e);
+      await upd(page, 20);
+    }
+  };
+  const face = (x: number, z: number) =>
+    page.evaluate(
+      ([x, z]) => {
+        (window as unknown as W).__k1.face(x, z);
+        window.kq!.ctx.player.pitch = -0.15;
+        (window as unknown as W).__k1.settle();
+      },
+      [x, z] as const,
+    );
+
+  // ---- the coat: behind line B, Liese looks at the trail ------------------------------------------
+  await upd(page, 120);
+  expect(await qs(page, 'q.k1.kleider')).toBe('active');
+  await go(D.toBleiche.concat([[D.coatReach.x, D.coatReach.z]]), D.coatReach);
+  await face(D.coat.x, D.coat.z);
+  await flush(page);
+  if (shots) await shot(page, '0b-bleiche');
+  await examine(page, 'clue.k1.rock');
+  await upd(page, 30);
+  let f = await flags(page);
+  expect(f['disguise.coat']).toBe(true);
+  expect(f['flag.k1_kleid']).toBe('genommen');
+  expect(await page.evaluate(() => window.kq!.scenery?.coat().visible ?? true), 'the coat left the line').toBe(false);
+  expect(await page.evaluate(() => window.kq!.court!.state().costume)).toBe('court');
+  // unseen: nobody escorted you anywhere
+  expect(await page.evaluate(() => window.kq!.court!.state().ejected)).toBe(ejected0);
+  expect(await untilQuest(page, 'q.k1.kleider', 'done', 10)).toBe('done');
+  expect(await untilQuest(page, 'q.k1.brief', 'active', 10)).toBe('active');
+
+  // ---- the paper: the Hofgärtner on the Orangerie lawn (the teaching zone) ------------------------
+  await go(D.toLawn, { x: D.toLawn.at(-1)![0], z: D.toLawn.at(-1)![1] });
+  // a walk ends within ~1 m of its point: close in until his talk bubble (2.8 m) has you
+  await closeIn(D.hofgaertner, 1.6, async () => (await page.evaluate(() => window.kq!.npc!.state().near)) === 'hofgaertner');
+  await face(D.hofgaertner.x, D.hofgaertner.z);
+  let c = await page.evaluate(() => window.kq!.court!.state());
+  expect(c.zone, 'on the lawn: inside the teaching zone').toBe('court.orangerie');
+  expect(c.ejected, 'the coat lets a calm player walk where the court looks').toBe(ejected0);
+  await flush(page);
+  if (shots) await shot(page, '0b-hofgaertner');
+  await talk(page, 'hofgaertner', ['papier']);
+  await upd(page, 20);
+  expect(await qn(page, 'q.k1.brief', 'papier')).toBe(1);
+  expect((await inv(page)).clues).toContain('clue.k1.papier');
+  // the letter at his table: Laub writes
+  await go([[D.tisch.x, D.tisch.z]], D.tisch);
+  await face(...D.tisch.face);
+  await examine(page, 'clue.k1.brief');
+  await upd(page, 30);
+  f = await flags(page);
+  expect(f['disguise.letter']).toBe(true);
+  expect(await untilQuest(page, 'q.k1.brief', 'done', 10)).toBe('done');
+  expect(await until(page, 'k1_0c', 6)).toBe('k1_0c');
+  expect(!!(await story(page)).meters.oil, 'still the prelude: no lantern').toBe(false);
+
+  // ---- the Musterung: E at the gate's Gardist, then stand still ------------------------------------
+  await go(D.toGate, { x: D.toGate.at(-1)![0], z: D.toGate.at(-1)![1] });
+  await closeIn(D.gardist, 2.6, async () => (await page.evaluate(() => window.kq!.court!.state().inspector)) === 'gardist-tor');
+  await face(D.gardist.x, D.gardist.z);
+  await flush(page);
+  c = await page.evaluate(() => window.kq!.court!.state());
+  expect(c.inspector, 'within reach of the inspecting Gardist').toBe('gardist-tor');
+  expect(c.admitted).toBe(false);
+  if (shots) await shot(page, '0c-musterung');
+  await page.evaluate(() => (window as unknown as W).__k1.hold('KeyE', 70));
+  c = await page.evaluate(() => window.kq!.court!.state());
+  expect(c.ring, 'the ring runs').not.toBeNull();
+  // 2.5 s standing still
+  await upd(page, 170);
+  c = await page.evaluate(() => window.kq!.court!.state());
+  expect(c.admitted).toBe(true);
+  expect(c.ejected).toBe(ejected0);
+  expect(await until(page, 'k1_1', 6)).toBe('k1_1');
+  return page.evaluate(() => window.kq!.court!.state());
 }
 
 /** The chapter's main playthrough (shared with e2e/campaign.spec.ts). */
@@ -400,11 +564,9 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   s = await story(page);
   expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });
   expect(!!s.meters.oil, 'no lantern in the prelude').toBe(false);
-  // the 380 m walk up is e2e/chapter-k1-quelle.spec.ts's: here a jump to the gate in 1789
-  await page.evaluate(() => {
-    window.kq!.teleport(1195, -1116, 90, 0);
-    window.kq!.step(4);
-  });
+  // the walk up is e2e/chapter-k1-quelle.spec.ts's: here the disguise with short jumps between its
+  // places (coat, paper, letter, the Musterung at the gitter)
+  await playDisguise(page, { shots: o.shots });
   await upd(page, 20);
   s = await story(page);
   expect(s.beat).toBe('k1_1');

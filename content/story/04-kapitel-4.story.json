@@ -6,7 +6,7 @@
   "era": "1796",
   "start": "k4_0",
   "next": "enden",
-  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" },
+  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
   "on": [
     {
       "id": "steinfrass",
@@ -750,8 +750,8 @@
         { "do": "flag", "set": { "barks.quiet": false } },
         { "do": "look", "time": "dawn", "delay": 1 },
         { "do": "cue", "id": "end-prints", "data": { "n": 5, "r": 1.7 } },
-        { "do": "card", "title": "Morgengrauen", "sub": "Feldstation · heute", "seconds": 3.5, "delay": 4.5 },
-        { "do": "teleport", "x": 760, "z": -902, "yaw": 0, "delay": 0.6 },
+        { "do": "card", "title": "Morgengrauen", "sub": "An der Quelle · heute", "seconds": 3.5, "delay": 4.5 },
+        { "do": "teleport", "x": 1059.3, "z": -833.1, "yaw": 50, "delay": 0.6 },
         { "do": "npc", "op": "despawn", "npc": "*" },
         { "do": "objective", "text": null },
         { "do": "say", "line": "marlene.end.morgen", "delay": 3 },

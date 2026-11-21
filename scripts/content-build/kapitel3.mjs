@@ -2,7 +2,10 @@ import { clue, noun, say, seq, hints, src, write, Z, P } from './common.mjs';
 
 const ch = 'k3';
 const E = '1793-07';
-const STATION = [760, -930];
+// Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
+// south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
+// the trough's E zone (HOME.troughR) stay outside, the story grants them anyway
+const STATION = [1051.3, -827.4];
 const EH = [1210, -1114];
 const REG = 'B03.1.eg-registratur';
 const NAT = 'B04.2.og-naturalienkabinett';
@@ -16,7 +19,7 @@ const PFORTE = [1267, -1290];
 
 const clues = [
   clue('clue.k3.marlene', {
-    title: 'Marlene erzählt von einer Ausstellung', kind: 'dialogue', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: false,
+    title: 'Marlene erzählt von einer Ausstellung', kind: 'dialogue', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: false,
     text: 'Marlene erzählt von der Ausstellung „Steinerne Macht“ (2018).', flags: ['flag.k3_ausstellung'],
   }),
   // Teil A

@@ -20,7 +20,7 @@ export const CHRONIK_DE: Record<string, string> = {
   'chronik.check.wrong': 'Mindestens eine Angabe stimmt nicht.',
   'chronik.check.wrongGentle': 'Mindestens eine Angabe stimmt nicht. Sanfter Modus: Die richtigen Einträge sind abgehakt.',
   'chronik.check.ok': 'Bestätigt: {n} Einträge.',
-  'chronik.check.era': 'Bestätigen lässt sich nur in der Gegenwart – an der Pinnwand der Feldstation.',
+  'chronik.check.era': 'Bestätigen lässt sich nur in der Gegenwart.',
   'chronik.gentle.right': 'stimmt',
   'chronik.stamp': 'Bestätigt',
   'chronik.stamp.ring': 'Kgl. Bayer. Landesaufnahme · Rheinkreis',

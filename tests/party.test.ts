@@ -216,6 +216,42 @@ describe('party runtime', () => {
     expect(soll.clips.filter((c) => c === 'interact').length).toBeGreaterThan(before + 1);
   });
 
+  it('world:quiet: held from party:set until the end of the credits or party:clear, once each way', () => {
+    const quiet = (c: ReturnType<typeof setup>) => c.bus.of('world:quiet');
+    // natural end of the credits: the world wakes for the free play, the party stays
+    const a = setup();
+    a.bus.emit('party:set', { variant: 'museum' });
+    const ready = a.bus.log.findIndex((e) => e.n === 'party:ready');
+    expect(a.bus.log.findIndex((e) => e.n === 'world:quiet')).toBeLessThan(ready);
+    expect(quiet(a)).toEqual([{ on: true, reason: 'party' }]);
+    a.bus.emit('party:credits', {});
+    a.step(Math.ceil((a.rt.credits!.plan.seconds + 1) / DT));
+    expect(a.bus.of('credits:done')).toEqual([{ skipped: false }]);
+    expect(quiet(a)).toEqual([
+      { on: true, reason: 'party' },
+      { on: false, reason: 'party' },
+    ]);
+    expect(a.rt.party).not.toBeNull();
+    // party:clear without credits (a re-set keeps the one hold)
+    const b = setup();
+    b.bus.emit('party:set', { variant: 'burn' });
+    b.bus.emit('party:set', { variant: 'keep' });
+    b.bus.emit('party:clear', {});
+    expect(quiet(b)).toEqual([
+      { on: true, reason: 'party' },
+      { on: false, reason: 'party' },
+    ]);
+    // a party re-issued after the credits (resume into the free play) leaves the world awake
+    const c = setup({ slice: { variant: 'keep', credits: 'done' } });
+    c.bus.emit('party:set', { variant: 'keep' });
+    expect(quiet(c)).toEqual([]);
+    // dispose gives the markers back
+    const d = setup();
+    d.bus.emit('party:set', { variant: 'museum' });
+    d.rt.dispose();
+    expect(quiet(d).at(-1)).toEqual({ on: false, reason: 'party' });
+  });
+
   it('the cue bridge: story:cue party:set / party:credits / party:clear', () => {
     const c = setup();
     c.bus.emit('story:cue', { id: 'party:set', data: { variant: 'burn', at: { x: 1220, z: -1110 } } });

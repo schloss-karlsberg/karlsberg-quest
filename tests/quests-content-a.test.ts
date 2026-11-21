@@ -165,8 +165,9 @@ describe('Action-RPG content A: prologue, chapter 1, chapter 2', () => {
   });
 
   it('every history line names its sources, except the fiction notes', () => {
-    // cx.38 (what is invented) and cx.42 (the spring's memory, the 1789 Brunnenstube) are FIKTION cards
-    const fiction = new Set(['cx.38', 'cx.42']);
+    // cx.38 (what is invented), cx.42 (the spring's memory, the 1789 Brunnenstube) and cx.46 (the
+    // disguise: Liese, the coat, Hofrat Amsel, the Musterung) are FIKTION cards
+    const fiction = new Set(['cx.38', 'cx.42', 'cx.46']);
     for (const d of data)
       for (const q of d.q.quests) for (const h of q.history ?? []) if (!fiction.has(h.fact ?? '')) expect((h.sources ?? []).length, `${q.id} ${h.fact}`).toBeGreaterThan(0);
   });

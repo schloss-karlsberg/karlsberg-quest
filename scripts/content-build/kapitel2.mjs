@@ -4,7 +4,10 @@ import { clue, noun, say, seq, hints, src, write, Z, P, ROOT } from './common.mj
 const ch = 'k2';
 const E = '1793-02';
 const KAB = 'B01.1.eg-kabinett';
-const STATION = [760, -930];
+// Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
+// south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
+// the trough's E zone (HOME.troughR) stay outside, the story grants them anyway
+const STATION = [1051.3, -827.4];
 const ORANG = [1275, -960]; // Orangeriehof / -parterre (TF-06, TF-15)
 const EH = [1205, -1115];
 const WACHE = [1180, -1120]; // east side of Wachhaus Nord (KB-B38), at the gate
@@ -13,7 +16,7 @@ const ABFAHRT = [1212, -1117]; // inside the court, behind the gate
 
 const clues = [
   clue('clue.k2.marlene', {
-    title: 'Marlene erzählt vom Warner', kind: 'dialogue', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: false,
+    title: 'Marlene erzählt vom Warner', kind: 'dialogue', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: false,
     text: 'Marlene bringt Kaffee und erzählt von einem Bauern aus Rohrbach.', nouns: ['n.pfeiffer', 'n.3_februar'],
   }),
   clue('clue.k2.zaun', {
@@ -101,8 +104,8 @@ const clues = [
     nouns: ['n.koehlermeiler'], facts: ['rm.03'],
   }),
   clue('clue.k2.laub_treue', {
-    title: 'Laub über den Warner', kind: 'dialogue', at: STATION, r: 30, era: 'today', anchor: 'loc.p.station', chapter: ch, fiction: true,
-    text: 'Laub in der Feldstation, nach dem ersten Wechsel.', nouns: ['n.r_treu', 'n.r_gewarnt'], req: { clues: ['clue.k2.warnung'] },
+    title: 'Laub über den Warner', kind: 'dialogue', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
+    text: 'Laub an der Quelle, nach dem ersten Wechsel.', nouns: ['n.r_treu', 'n.r_gewarnt'], req: { clues: ['clue.k2.warnung'] },
   }),
 ];
 
@@ -436,7 +439,7 @@ const k2Quests = {
           text_de: 'Am Damm: den Pikeur zurückschlagen, bis er abdreht',
           where: place(...KS2.damm, 30),
         },
-        { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['pikeur'], text_de: 'Q halten: zurück in die Feldstation' },
+        { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['pikeur'], text_de: 'Q halten: zurück zur Quelle' },
       ],
       rewards: { xp: 420, items: [{ item: 'item.stab.silber' }], skills: [{ id: 'kartograf', tier: 3 }] },
     },

@@ -12,6 +12,7 @@ import { figureSpeakers, isStageDirection, lineMs } from './logic';
 import { type EchoMark, type EchoStaging, NO_FIGURE, echoStaging } from './staging';
 import type { ChronikClue } from './types';
 import { GhostFigure } from './world/ghosts';
+import { type EchoFigureLike, type EchoTwin, twinEcho } from '../npc/twins';
 import { disposeTree, drapedDisc, lin, mistMaterial } from './world/gfx';
 
 export interface TranscriptLine {
@@ -31,7 +32,7 @@ interface Cue {
 }
 
 interface Figure {
-  ghost: GhostFigure;
+  ghost: EchoFigureLike;
   from: Vector3;
   to: Vector3;
   pos: Vector3;
@@ -113,9 +114,12 @@ export class EchoDirector {
     this.figures = [];
     for (let i = 0; i < figCount; i++) {
       const seed = [...(speakers[i] ?? clue.id)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 17 + i);
-      const ghost = new GhostFigure(seed, { hat: seed % 3 !== 0, dress: seed % 4 === 1, night });
+      // the historical twins (Mannlich, the Duke) will appear as themselves; until their models
+      // land twinEcho() returns null and everyone stays smoke
+      const ghost: EchoFigureLike = twinEcho(ctx, speakers[i] ?? '') ?? new GhostFigure(seed, { hat: seed % 3 !== 0, dress: seed % 4 === 1, night });
       const off = (i - (figCount - 1) / 2) * 2.1;
       const mark = st.marks?.[speakers[i] ?? ''];
+      (ghost as EchoTwin).sit = !!mark?.sit;
       const from = mark ? new Vector3(mark.x, 0, mark.z) : this.center.clone().addScaledVector(side, off - 0.8).addScaledVector(dir, (i % 2) * 0.9);
       const to = mark ? new Vector3(mark.to?.x ?? mark.x, 0, mark.to?.z ?? mark.z) : this.center.clone().addScaledVector(side, off + 0.8).addScaledVector(dir, (i % 2) * 0.9 - 0.4);
       const look0 = mark?.face ? Math.atan2(mark.face.x - from.x, mark.face.z - from.z) : Math.atan2(to.x - from.x, to.z - from.z);

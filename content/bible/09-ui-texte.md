@@ -54,7 +54,7 @@ Stil: kurz, Feldbuch-Ton (PRD §7: „a surveyor's field book“), Sie-Form nur 
 | `ui.keys.map` | [M] | Karte vergleichen: 1840 oder 1935 über das Gelände legen |
 | `ui.keys.listen` | [E] halten | Lauschen: Erinnerungen an diesem Ort hören |
 | `ui.keys.examine` | Klick | Untersuchen |
-| `ui.keys.shift` | [Q] | Zeitwechsel an einem Ankerpunkt. [Q] 3 s halten: zurück zur Feldstation (nicht, solange die Meute dich sieht) |
+| `ui.keys.shift` | [Q] | Zeitwechsel an einem Ankerpunkt. [Q] 3 s halten: zurück zur Quelle (nicht, solange die Meute dich sieht) |
 | `ui.keys.lantern` | [L] | Laterne an / aus. Licht hilft beim Lesen, aber es lockt die Meute. |
 | `ui.keys.chronik` | [Tab] | Chronik öffnen |
 | `ui.keys.measure` | [R] | Messen: Strecke und Höhenprofil (ab Kapitel 2) |
@@ -76,7 +76,7 @@ Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
 | `ui.tut.chronik` | erstes Substantiv gefunden | Neues Wort für die Chronik. Öffne sie mit [Tab]. |
 | `ui.tut.fill` | Chronik offen | Ziehe ein Wort in eine Lücke. Drei richtige Sätze werden zusammen bestätigt. |
 | `ui.tut.shift` | Anker erreicht, 1. Satz bestätigt | Hier erinnert sich das Land. Drücke [Q], um die Zeit zu wechseln. |
-| `ui.tut.return` | erster Wechsel, nach 60 s | Halte [Q] 3 Sekunden, um zur Feldstation zurückzukehren. |
+| `ui.tut.return` | erster Wechsel, nach 60 s | Halte [Q] 3 Sekunden, um zur Quelle zurückzukehren. |
 | `ui.tut.listen` | erstes Echo in Reichweite | Halte [E], um zu lauschen. |
 | `ui.tut.lantern` | erste Dämmerung | [L]: Laterne. Das Öl reicht nicht ewig. |
 | `ui.tut.sneak` | Kapitel 1, Jost | [C]: Schleichen. [X]: Hinlegen. Wasser, Hohlwege und große Steine verbergen dich. |
@@ -100,7 +100,7 @@ Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
 | `ui.hud.forget` | Vergessen |
 | `ui.hud.anchor` | Ankerpunkt · [Q] Zeitwechsel |
 | `ui.hud.anchor_locked` | Ankerpunkt · noch verschlossen |
-| `ui.hud.return_hold` | Zurück zur Feldstation … |
+| `ui.hud.return_hold` | Zurück zur Quelle … |
 | `ui.hud.return_blocked` | Nicht jetzt. Die Meute sieht dich. |
 | `ui.hud.new_noun` | Neues Wort: {Wort} |
 | `ui.hud.new_codex` | Codex: {Titel} |
@@ -125,18 +125,18 @@ Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
 | id | Text |
 | --- | --- |
 | `ui.caught.title` | Die Meute hat dich gestellt … |
-| `ui.caught.body` | Du wachst in der Feldstation auf. Der Kaffee ist kalt. |
+| `ui.caught.body` | Du wachst an der Quelle auf. Das Wasser läuft, als wäre nichts gewesen. |
 | `ui.caught.lost` | Verloren aus diesem Wechsel: {Liste der Wörter} |
 | `ui.caught.lost_none` | Du hast nichts verloren. |
 | `ui.caught.kept` | Bestätigte Einträge bleiben. |
 | `ui.smoke.title` | Der Rauch hat dich zurückgeworfen … |
-| `ui.smoke.body` | Du wachst in der Feldstation auf und riechst nach Brand. |
+| `ui.smoke.body` | Du wachst an der Quelle auf und riechst nach Brand. |
 | `ui.forget.title` | Das Vergessen hat dich eingeholt … |
-| `ui.forget.body` | Jemand ruft deinen Namen. Du wachst in der Feldstation auf. |
+| `ui.forget.body` | Jemand ruft deinen Namen. Du wachst an der Quelle auf. |
 | `ui.homed.title` | Die Meute hat dich heimgebracht … |
 | `ui.homed.body` | Nichts verloren. Nur zurückgebracht. |
 | `ui.oil.title` | Die Laterne ist erloschen … |
-| `ui.oil.body` | Im Dunkeln findet dich die Bussole zurück. Du wachst in der Feldstation auf. |
+| `ui.oil.body` | Im Dunkeln findet dich die Bussole zurück. Du wachst an der Quelle auf. |
 | `ui.retry` | Weiter |
 
 ## 8. Chronik
@@ -161,7 +161,7 @@ Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
 | `ui.chronik.label.gedenk` | Gedenkzeile |
 | `ui.chronik.fact_hint` | Tatsachen werden in Dreiergruppen bestätigt. |
 | `ui.chronik.reading_hint` | Lesarten werden nie bestätigt. Du entscheidest. Der Epilog erinnert sich daran. |
-| `ui.chronik.confirm_where` | Bestätigen kannst du nur in der Feldstation. |
+| `ui.chronik.confirm_where` | Bestätigen kannst du nur im Heute. |
 | `ui.chronik.status_open` | offen |
 | `ui.chronik.status_filled` | ausgefüllt |
 | `ui.chronik.status_confirmed` | bestätigt |
@@ -205,7 +205,7 @@ Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
 | `ui.pause.codex` | Codex |
 | `ui.pause.settings` | Einstellungen |
 | `ui.pause.help` | Steuerung |
-| `ui.pause.station` | Zur Feldstation (nur, wenn dich niemand sieht) |
+| `ui.pause.station` | Zur Quelle (nur, wenn dich niemand sieht) |
 | `ui.pause.menu` | Hauptmenü |
 | `ui.pause.saved` | Gespeichert: {Uhrzeit} |
 | `ui.set.title` | Einstellungen |
@@ -258,7 +258,7 @@ Zufällig beim Laden. Keine Lösungen, keine echten Fundstellen.
 5. Drei Einträge, die stimmen, werden zusammen bestätigt. Rate nicht, prüfe.
 6. Ein Wort kann in mehreren Kapiteln vorkommen, als Antwort und als Falle.
 7. Lesarten werden nie bestätigt. Es gibt keine falsche Lesart.
-8. Bestätigen kannst du nur im Heute, in der Feldstation.
+8. Bestätigen kannst du nur im Heute.
 9. Gerade Linien und rechte Winkel macht der Wald nicht.
 10. Ein Graben in der Form einer Mauer ist oft das Loch, in dem eine Mauer war.
 11. Die Karte von 1840 liegt rund 50 Meter daneben. Laub sagt, das liegt nicht an ihm.

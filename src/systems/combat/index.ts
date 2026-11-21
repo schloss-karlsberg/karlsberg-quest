@@ -15,7 +15,7 @@
  * Input actions: attack (LMB / K; hold = Wuchthieb), bannlicht (RMB / G), dodge (Space), the
  * abilities skill1–3 (T / Z(Y) / U: Ausfall from level 2, Erdstoß from 4, Wirbel from 6).
  * Respects flags['combat.disabled'], flags['tools.measuring'], modals, conversations, memorials,
- * the field station and the 6 m around a placed NPC (safe zones).
+ * the home base (the spring; src/systems/home.ts) and the 6 m around a placed NPC (safe zones).
  * State: `state.systems.combat` (CombatSlice, src/rpg/types.ts).
  */
 import '../contracts';
@@ -350,7 +350,7 @@ class Combat {
     });
     ev.on('hub:enter', () => {
       this.inHub = true;
-      this.restore('station');
+      this.restore('home');
     });
     ev.on('hub:leave', () => (this.inHub = false));
     ev.on('memorial:set', (m) => {
@@ -401,7 +401,7 @@ class Combat {
     addSettingsRows(damageRows);
   }
 
-  /** Full heal: the field station, anchors, waking up. */
+  /** Full heal: the home base (the spring, on hub:enter), anchors, waking up. */
   restore(by: string): void {
     const p = this.sim.p;
     const before = p.hp;

@@ -355,6 +355,8 @@ class Hunt {
       if (refill) this.refill();
       this.setLit(lit, false);
     });
+    // arriving home (the spring's hub ring, src/systems/home.ts; the story emits hub:enter) ends the
+    // pack and refills the lantern
     ev.on('hub:enter', () => {
       this.stop('hub');
       this.refill();

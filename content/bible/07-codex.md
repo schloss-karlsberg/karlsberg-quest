@@ -1,6 +1,6 @@
 # Codex
 
-Der Codex enthält **40 Karten** (`cx.01`–`cx.40`) und **8 Reliefmuster-Karten** (`rm.01`–`rm.08`). Eine Karte wird freigeschaltet, wenn der zugehörige FAKT-Eintrag bestätigt ist, oder wie in der Spalte „frei durch“ angegeben. Nach dem Ende ist der ganze Codex offen.
+Der Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`cx.42` stehen in `docs/IDEAS-ROUND11.md` §1, `cx.43`–`cx.46` unten, `cx.47` „Treibgut“ gehört zu den Fläschchen, `src/systems/flaschen`) und **8 Reliefmuster-Karten** (`rm.01`–`rm.08`). Eine Karte wird freigeschaltet, wenn der zugehörige FAKT-Eintrag bestätigt ist, oder wie in der Spalte „frei durch“ angegeben. Nach dem Ende ist der ganze Codex offen.
 
 **Felder** (passend zu `content/schema/pack.schema.json`, Typ `fact`): `id`, Titel (`title_de`), Text (`text_de`, 2–5 Sätze), Sicherheit (`confidence`: D belegt, I erschlossen, N Zeitnorm, U unbekannt), Label (FAKT / STRITTIG / LEGENDE / FIKTION), `fiction` (ja/nein), Quellen (URL + Kürzel), Streitpunkt (`contested_de`, falls vorhanden), Lizenz (`licence`).
 
@@ -40,6 +40,12 @@ Der Codex enthält **40 Karten** (`cx.01`–`cx.40`) und **8 Reliefmuster-Karten
 | HE-BW | Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald | https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf |
 | HP | Hörpfad Schloss Karlsberg | https://schloss-karlsberg.de/hoerpfad-schloss-karlsberg/ |
 | WPK | WaldPark Schloss Karlsberg (outdooractive) | https://www.outdooractive.com/de/poi/saarpfalz-kreis/waldpark-schloss-karlsberg/61542782/ |
+| KNIGGE-BRIEFE | Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793) | https://www.digitale-sammlungen.de/en/view/bsb10467161 |
+| KNIGGE-UMGANG-1790 | Knigge: Ueber den Umgang mit Menschen, 3. Aufl., Teil 3 (Hannover 1790) | https://www.digitale-sammlungen.de/en/view/bsb10041018 |
+| ADB-KNIGGE | ADB: Knigge, Adolph Freiherr (Erich Schmidt, 1882) | https://de.wikisource.org/wiki/ADB:Knigge,_Adolph_Freiherr |
+| WP-KNIGGE | de.wikipedia: Adolph Freiherr Knigge | https://de.wikipedia.org/wiki/Adolph_Freiherr_Knigge |
+| LITSAAR-KNIGGE | Literaturland Saar: Adolph Freiherr Knigge | https://www.literaturland-saar.de/personen/adolph-freiherr-knigge/ |
+| SMZW | Stadtmuseum Zweibrücken: Das Tablett „Le Château de Carlsberg“ | https://www.zweibruecken.de/de/kultur-tourismus/kultur-erleben/kulturelle-einrichtungen/stadtmuseum/neuigkeiten/ |
 | LIDAR | Eigene Auswertung im Schwesterprojekt: `saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md`, `lidar_features.geojson` | (lokal, nicht öffentlich) |
 
 ---
@@ -87,7 +93,7 @@ Der Codex enthält **40 Karten** (`cx.01`–`cx.40`) und **8 Reliefmuster-Karten
 - **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.k1.3`
 - **Text:** Bau und Betrieb des Karlsbergs kosteten nach der ADB fast 14 Millionen Gulden. Das ganze Herzogtum nahm im Jahr etwa 800 000 Gulden ein. In Knigges Reisebriefen (1793) heißt das Ganze ein „Feen-Schloß“.
 - **Quellen:** ADB; M1910 Einl. S. XXXIV; LIT; Knigge (Hg.), *Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben*, Hannover 1793, S. 28 f. (https://www.digitale-sammlungen.de/en/view/bsb10467161)
-- **Korrektur 2026-11-20:** Der Brief (datiert Zweybrücken, 11. Mai [1792]) nennt seinen Schreiber nicht; Knigge steht nur als Herausgeber auf dem Titel. Dass Knigge selbst 1792 am Karlsberg war, ist nicht belegt (siehe `docs/IDEAS-ROUND11.md` §2.2). Der Code (`scripts/content-build/codex.mjs`, cx.07) hat noch die alte Fassung.
+- **Korrektur 2026-11-20:** Der Brief (datiert Zweybrücken, 11. Mai [1792]) nennt seinen Schreiber nicht; Knigge steht nur als Herausgeber auf dem Titel. Dass Knigge selbst 1792 am Karlsberg war, ist nicht belegt (siehe `docs/IDEAS-ROUND11.md` §2.2). Der Code (`scripts/content-build/codex.mjs`, cx.07) hat die neue Fassung.
 - **Lizenz:** eigener Text
 
 ### cx.08 – Zwei Tage für einen Gulden
@@ -292,6 +298,30 @@ Der Codex enthält **40 Karten** (`cx.01`–`cx.40`) und **8 Reliefmuster-Karten
 - **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.p.2`
 - **Text:** Die Orangerie entstand ab 1780 aus der früheren Schweizerei; im Pfeilersaal standen im Winter die Kübelpflanzen, und Mannlich wohnte im Obergeschoss. Im Laserscan ist ihre Stützmauer eine schnurgerade Kante von rund 81 m mit einer Stufe von 5,3 m. Ihre Reste gehören heute zu den wenigen sichtbaren Mauern am Karlsberg.
 - **Quellen:** SBT; WP-SK; M1910; LIDAR (KB-30)
+- **Lizenz:** eigener Text
+
+### cx.43 – Knigges Reisebriefe
+- **Label:** STRITTIG · **Sicherheit:** D · **fiction:** nein · **frei durch:** `q.k1.brief`
+- **Text:** wie `scripts/content-build/codex.mjs` (Knigge, „Über den Umgang mit Menschen“ 1788 kein Benimmbuch; die „Briefe, auf einer Reise aus Lothringen nach Niedersachsen“ 1793, Brief vom 11. Mai 1792: Erlaubnis des Herzogs, Stühle, Federtapeten, Pfeifenköpfe, „Feen-Schloß“).
+- **Strittig:** Der Briefschreiber nennt keinen Namen; Knigge steht nur als Herausgeber auf dem Titel. M1910 und das Stadtmuseum Zweibrücken lesen den Brief als Knigges eigenen Besuch, Literaturland Saar nennt die Briefe „auf 1792 vordatiert“.
+- **Quellen:** KNIGGE-BRIEFE S. 26–29; M1910 Einl. S. XXXIII f.; ADB-KNIGGE; WP-KNIGGE; LITSAAR-KNIGGE; SMZW
+- **Lizenz:** eigener Text, Zitat gemeinfrei
+
+### cx.44 – Wer hinauf durfte
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `q.k1.brief`
+- **Text:** Niemand ungerufen auf den Berg (Mannlich); 1792 eine ausdrückliche Erlaubnis mit jedem Begleiter namentlich; nur der Herzog fuhr; hundert Gardisten an den Eingängen (Text des Herausgebers 1910, ohne Beleg).
+- **Quellen:** M1910 S. 355, Einl. S. XXXIII; KNIGGE-BRIEFE S. 26 f.; RLS
+- **Lizenz:** eigener Text, Zitat gemeinfrei
+
+### cx.45 – Der Prinz von Albanien
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `q.k1.brief`
+- **Text:** Ende 1777 der falsche „Prinz Castrioto von Albanien“ in Zweibrücken: Empfehlungsbrief aus Straßburg, Mannlichs Zweifel, der Hof hinter den Jalousien, die abgeschriebene Ode, Verhaftung und Ausweisung. Nach Mannlich; in Zweibrücken, vor dem Karlsberg.
+- **Quellen:** M1910 S. 345–349, 356–358
+- **Lizenz:** eigener Text
+
+### cx.46 – Ein Brief in fremdem Namen
+- **Label:** FIKTION · **Sicherheit:** D · **fiction:** ja · **frei durch:** `clue.k1.brief`
+- **Text:** Erfunden: Liese und Kaspars Rock, Hofrat Justus Amsel aus Celle und „Vom Betragen bei Hofe“, der Brief, die Musterung, die Wachen, die hinausbegleiten. Wie die Wache prüfte, eine Kleiderordnung, Livreefarben: nicht überliefert. Echt ist nur die Regel aus `cx.44`.
 - **Lizenz:** eigener Text
 
 ---

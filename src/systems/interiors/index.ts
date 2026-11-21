@@ -74,6 +74,18 @@ declare module '../../debug/hooks' {
 
 const BUILD_DIST = 60;
 const DROP_DIST = 85;
+/** Interior model groups (furniture, chandeliers) shown only inside the building or within this (m, `distTo`); hidden again beyond +3 m. */
+export const MODELS_DIST = 25;
+
+/**
+ * The interior models of a built building (pure, tested): drawn when the player is inside it or
+ * within `MODELS_DIST` (hysteresis: hidden beyond +3 m, no flicker at the edge); they cast sun
+ * shadows only while the player is inside (from outside they are seen through the windows at most).
+ */
+export function interiorModelsView(inside: boolean, d: number, wasVisible: boolean): { visible: boolean; shadows: boolean } {
+  const visible = inside || d < MODELS_DIST || (wasVisible && d < MODELS_DIST + 3);
+  return { visible, shadows: inside };
+}
 
 interface BRT {
   id: string;
@@ -281,6 +293,10 @@ function build(ctx: GameContext, b: BRT): void {
   if (built.models.length) {
     const group = new Group();
     group.name = `interior-${b.id}-models`;
+    // drawn and casting from the first frame on only when the player is near / inside (frame())
+    const view = interiorModelsView(false, dist.get(b) ?? Infinity, false);
+    group.visible = view.visible;
+    group.userData.noShadow = true;
     ctx.scene.add(group);
     void instanceModels(ctx.assets, built.models, group);
     b.models = group;
@@ -521,6 +537,13 @@ function frame(ctx: GameContext, dt: number): void {
       build(ctx, b);
       builtOne = true;
     } else if (b.mesh && d > DROP_DIST) drop(ctx, b);
+    if (b.models) {
+      const room = rt.room >= 0 ? current()?.plan.rooms[rt.room] : undefined;
+      const view = interiorModelsView(d === 0 || room?.building === b.id, d, b.models.visible);
+      b.models.visible = view.visible;
+      b.models.userData.noShadow = !view.shadows;
+      b.models.castShadow = view.shadows;
+    }
   }
   animateFire(ctx, dt);
   // shell: open the built buildings, cut the nearest doors. The cut / clip boxes of a building

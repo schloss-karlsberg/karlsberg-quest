@@ -136,9 +136,9 @@ test.describe('Fläschchen', () => {
     await expect(row).toContainText('Fläschchen 1/24 · heute 1/6 · 1789 0/6');
     await page.screenshot({ path: `${SCREENS}/fl-journal-row.png` });
     await page.evaluate(() => window.kq!.quests!.closeJournal());
-    // the Regal at the field station shows the one bottle
+    // the shelf (Mauerkante) of the hub at the Quelle shows the one bottle
     await page.evaluate(() => window.kq!.story!.hub(true));
-    await page.getByTestId('hub').getByText('Regal').first().click();
+    await page.getByTestId('hub-shelf').click();
     const shelf = page.getByTestId('flaschen-shelf');
     await expect(shelf).toBeVisible();
     await expect(shelf.locator('.kqf-shelf-bottle')).toHaveCount(1);

@@ -356,8 +356,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       // ?manual / bullet time, whose frames can lie many simulated steps apart, nor in a fight
       // (lunging enemies, dodges: every caster's shadow on time)
       const fresh = loop.manual || cameraHints.fight.length > 0 || cameraHints.boss > 0;
+      const shadowsDrawn = world.shadows.stats.drawn;
       world.shadows.update(renderer, scene, shadowFocus, fresh ? Infinity : frameDt);
-      world.water.renderReflection(renderer, scene, camera);
+      world.water.renderReflection(renderer, scene, camera, world.shadows.stats.drawn !== shadowsDrawn);
       env.update(renderer, world.lookVersion);
       post.render(renderer, scene, camera, loop.time);
       perf.end();

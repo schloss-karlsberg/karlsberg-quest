@@ -30,6 +30,15 @@ export const DEED_SLOTS = [
     offen: 'Im Sommer 1789 bekam Hanne den Lohnzettel ihres Mannes zurück, angewiesen, nicht ausgezahlt. Der Hof fütterte tausend Hunde und hatte keinen Kreuzer für einen Steinhauer.',
   },
   {
+    // the disguise opening (k1_0b, docs/IDEAS-ROUND11.md §2.7): how Kaspar's coat came to you (add-on slot)
+    id: 'kleid',
+    deeds: [
+      [{ flag: 'flag.k1_kleid', eq: 'geliehen' }, 'Den Rock, in dem ich an den Hof kam, hatte mir die Wäscherin Liese geliehen, für drei Zettel aus ihrer Wäsche. Er gehörte einem kranken Lakaien namens Kaspar.'],
+      [{ flag: 'flag.k1_kleid', eq: 'genommen' }, 'Den Rock, in dem ich an den Hof kam, hatte ich der Wäscherin Liese von der Leine genommen, als sie zum Weg schaute. Er gehörte einem kranken Lakaien namens Kaspar.'],
+    ],
+    offen: '',
+  },
+  {
     id: 'flucht',
     deeds: [
       [{ flag: 'flag.k2_tor', eq: 'leuchten' }, 'In der Februarnacht 1793 rannte Nikel Pfeiffer aus Rohrbach durch den Wald, um den Herzog zu warnen. Als die Wagen abfuhren, habe ich ihnen geleuchtet.'],

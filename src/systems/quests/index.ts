@@ -28,6 +28,7 @@ import { enemyDef } from '../../rpg/enemies';
 import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
+import { hideWhileQuiet } from '../../core/quiet';
 import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
 import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
 
@@ -204,6 +205,9 @@ class QuestRuntime {
     });
     this.beacons = new Beacons((x, z) => ctx.world.heightAt(x, z));
     ctx.scene.add(this.beacons.group);
+    // 'world:quiet' (the party): the objective beacons hide, the tracker and compass stay
+    const quiet = hideWhileQuiet(ctx.events, this.beacons.group);
+    this.offs.push(() => quiet.dispose());
     this.registerTabs();
 
     // ---- events ---------------------------------------------------------------------------

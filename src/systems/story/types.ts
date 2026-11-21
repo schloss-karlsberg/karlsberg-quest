@@ -93,9 +93,9 @@ export interface StanceCond {
 export interface LanternCond {
   lantern: boolean;
 }
-/** A hub item was used (inside the field station overlay) while the beat ran. */
+/** A hub item was used (the hub overlay at the Quelle) while the beat ran. Old ids are aliases. */
 export interface HubCond {
-  hub: HubItem;
+  hub: HubItem | HubAlias;
 }
 export interface AllCond {
   all: Condition[];
@@ -232,7 +232,15 @@ export const CONDITION_KEYS = [
 // Actions
 // ---------------------------------------------------------------------------------------------
 
-export type HubItem = 'chronik' | 'radio' | 'shelf' | 'map' | 'bed' | 'drawer';
+/** The hub's tiles at the Quelle (contract C4): the phone replaced the radio, the bench the field bed. */
+export type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';
+/** Ids of the field station's hub, still accepted in content (bed → bench, radio → phone). */
+export type HubAlias = 'bed' | 'radio';
+export const HUB_ALIAS: Readonly<Record<HubAlias, HubItem>> = { bed: 'bench', radio: 'phone' };
+/** A hub id from content as the tile it means now (aliases resolved). */
+export function hubItem(id: string): HubItem | string {
+  return (HUB_ALIAS as Record<string, HubItem>)[id] ?? id;
+}
 
 interface ActionBase {
   /** Seconds to wait before this action (relative to the previous action of the same list). */
@@ -495,7 +503,7 @@ export interface ReadingsAction extends ActionBase {
 export interface GrantAction extends ActionBase {
   do: 'grant';
   clue: string;
-  /** Show the Chronik's field-book card (as if examined), e.g. for the field-station items. */
+  /** Show the Chronik's field-book card (as if examined), e.g. for the hub's items. */
   card?: boolean;
 }
 
@@ -660,7 +668,7 @@ export interface Beat {
   /**
    * Where the player comes to after being caught / a meter returning them while this beat runs
    * (the resumed beat's `wake` wins, else this one's, else the chapter checkpoint). `text` replaces
-   * the curtain's "Du wachst in der Feldstation auf" line.
+   * the curtain's "Du wachst an der Quelle auf" line.
    */
   wake?: Checkpoint & { text?: string };
   on?: Reaction[];
@@ -681,6 +689,12 @@ export interface StoryFile {
   start: string;
   /** Where the chapter starts (teleport + era) when chosen at the map table. */
   checkpoint?: Checkpoint;
+  /**
+   * Where a caught player comes to when no beat names a `wake` (default: the checkpoint). Home at
+   * the Quelle for a chapter that starts somewhere else (the bridged prologue: start at the old
+   * field-station spot, wake at the spring).
+   */
+  wake?: Checkpoint & { text?: string };
   /** Chapter that starts automatically when this one completes. */
   next?: string;
   /** Chapters unlocked when this one completes (next is unlocked implicitly). */

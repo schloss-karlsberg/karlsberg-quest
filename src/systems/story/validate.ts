@@ -71,9 +71,10 @@ export function stageDirection(text: string, speaker?: string): string | null {
 }
 
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar']);
-const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
+// the hub at the Quelle (contract C4) + the field station's old ids as aliases (bed → bench, radio → phone)
+const HUB = new Set(['chronik', 'phone', 'shelf', 'drawer', 'map', 'bench', 'bed', 'radio']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
-const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann']);
+const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);
 const METER_FULL = new Set(['return', 'caught', 'none']);
 const QUEST_OPS = new Set(['offer', 'start', 'progress', 'complete', 'fail', 'reset']);
 const QUEST_COND_STATES = new Set(['offered', 'active', 'ready', 'done', 'failed']);
@@ -107,6 +108,11 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
     if (s.next !== undefined && !chapters.has(s.next)) err(file, ch, `next: unknown chapter '${s.next}'`);
     for (const u of s.unlocks ?? []) if (!chapters.has(u)) err(file, ch, `unlocks: unknown chapter '${u}'`);
     if (s.checkpoint) checkPoint(s.checkpoint, file, ch, err);
+    if (s.wake !== undefined) {
+      checkPoint(s.wake, file, `${ch}:wake`, err);
+      if (s.wake.era !== undefined && s.wake.era !== 'today') err(file, ch, 'wake: the curtain always lifts in the present (era today)');
+      if (s.wake.text !== undefined && !isStr(s.wake.text)) err(file, ch, 'wake: text must be a string');
+    }
     if (!Array.isArray(s.beats) || s.beats.length === 0) {
       err(file, ch, '"beats" must be a non-empty array');
       continue;
