@@ -78,7 +78,7 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
     await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.walk && !!window.kq?.npc, null, { timeout: 120_000 });
     // photo mode publishes its hooks on its first update (none run in ?manual until a step)
     await page.evaluate(() => window.kq!.step(2));
-    await page.waitForFunction(() => !!window.kq?.photo && !!window.kq?.animals, null, { timeout: 20_000 });
+    await page.waitForFunction(() => !!window.kq?.photo && window.kq?.animals?.ready === true, null, { timeout: 20_000 });
   } catch (e) {
     const have = await page.evaluate(() => Object.keys(window.kq ?? {}).join(','));
     console.log(`[tour] boot: kq has ${have}; errors ${JSON.stringify(errors)}`);
@@ -99,8 +99,8 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
   const s0 = await page.evaluate(() => window.kq!.story!.state());
   expect(s0.chapter).toBe('tour');
   expect(s0.beat).toBe('t1');
-  // the animals system is the real one (tour/animals-system), with the dogs at Jost's heels
-  expect(await page.evaluate(() => !!window.kq!.animals)).toBe(true);
+  // the animals system is the real one (main's animals system, kq.animals.ready), with the dogs at Jost's heels
+  expect(await page.evaluate(() => window.kq!.animals?.ready)).toBe(true);
   await page.evaluate(() => window.kq!.step(120));
   expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(15);
   await shot(page, '01-treffpunkt');
