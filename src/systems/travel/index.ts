@@ -644,9 +644,12 @@ class Travel {
    * skill card, a level or reward card, a field-book page). It takes the slot when it is free, so a
    * card that comes later waits for it; while another card holds the slot, the banner waits (or
    * steps aside) and its clock stops. A spoken line or a fight does not keep it back: it is short.
+   * On a landscape phone it shares the top band with the dialogue card, so there it waits while a
+   * line is up (touch.css places it).
    */
   private bannerAside(): boolean {
     const cards = this.ctx.ui.cards;
+    if (phoneBand() && document.querySelector('.kqs-dlg.kqs-show')) return true;
     if (cards.claim(BANNER_TOKEN)) return false;
     return cards.showing !== null;
   }
@@ -1009,6 +1012,9 @@ class Travel {
 
 /** The activation banner's token on the centre-card slot (ui/cards.ts). */
 const BANNER_TOKEN = 'travel:banner';
+/** A landscape phone in touch mode: the banner lives in the top band (touch.css, max-height 500px). */
+const phoneBand = (): boolean =>
+  typeof matchMedia === 'function' && document.documentElement.hasAttribute('data-kq-touch') && matchMedia('(max-height: 500px)').matches;
 
 let travel: Travel | null = null;
 let hooks: TravelHooks | null = null;

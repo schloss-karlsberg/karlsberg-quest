@@ -615,13 +615,21 @@ html[data-kq-touch] .kqj-foot kbd {
     max-width: 62vw;
   }
   /* the travel banner („Vermessungspunkt eingemessen“, src/systems/travel) sat at 64 px, on the
-     dialogue band and the top row: the same lane as the quest banner, under the band */
+     top row; mid-screen it covered the vitals and the Aktion pill. It takes the dialogue card's
+     top band instead (travel holds it back while a line is up) */
   html[data-kq-touch] .kqt-card.kqt-banner {
-    top: calc(var(--kq-safe-t) + 36vh + 14px);
-    left: 44%;
-    width: max-content;
-    max-width: min(420px, 62vw);
-    padding: 7px 14px;
+    top: calc(6px + var(--kq-safe-t));
+    left: calc(8px + var(--kq-safe-l));
+    right: calc(264px + var(--kq-safe-r));
+    width: auto;
+    transform: none;
+    padding: 6px 12px;
+  }
+  html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) .kqt-card.kqt-banner {
+    right: calc(314px + var(--kq-safe-r));
+  }
+  html[data-kq-touch]:has(.kq-t-btn.down:not(.kq-hidden)) .kqt-card.kqt-banner {
+    right: calc(364px + var(--kq-safe-r));
   }
   html[data-kq-touch] .kqt-card.kqt-banner h3 {
     font-size: 17px;
