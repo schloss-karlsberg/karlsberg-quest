@@ -17,22 +17,17 @@ type Rec = { n: string; p: any }[];
 const REC = /^(party:|credits:|cinematic:)/;
 
 async function boot(page: Page, variant: string): Promise<void> {
-  // record from the very start: the dev entry emits party:ready right after game:start
-  await page.addInitScript((src) => {
-    const re = new RegExp(src);
-    const w = window as unknown as { rec: Rec; kq?: { ctx?: { events: { onAny(fn: (n: string, p: unknown) => void): void } } } };
-    w.rec = [];
-    const t = setInterval(() => {
-      const ev = w.kq?.ctx?.events;
-      if (!ev) return;
-      clearInterval(t);
-      ev.onAny((n, p) => {
-        if (re.test(n)) w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
-      });
-    }, 2);
-  }, REC.source);
   await page.goto(`./?notitle&nosave&fresh&manual&party=${variant}`);
   await page.waitForFunction(() => window.kq?.party?.state().variant != null && !!window.kq?.cinematic, null, { timeout: 180_000 });
+  // manual loop: no game time passed yet, so nothing after party:ready / credits:start is missed
+  await page.evaluate((src) => {
+    const re = new RegExp(src);
+    const w = window as unknown as { rec: Rec };
+    w.rec = [];
+    window.kq!.ctx.events.onAny((n, p) => {
+      if (re.test(n)) w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
+    });
+  }, REC.source);
   await closeModals(page);
 }
 
@@ -62,9 +57,9 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then 
   const errors = trackErrors(page);
   const t0 = Date.now();
   await boot(page, 'burn');
-  expect(await events(page, 'party:ready')).toEqual([{ variant: 'burn' }]);
   await bodiesIn(page);
   const st = await page.evaluate(() => window.kq!.party!.state());
+  expect(st.variant).toBe('burn');
   expect(st.people).toHaveLength(16);
   expect(st.dogs).toEqual(['diane', 'bijou']);
   expect(st.credits).toBe('playing');
@@ -75,8 +70,7 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then 
   // the bodies stand in the clearing and are drawn
   const vis = await page.evaluate(() => window.kq!.ctx.people!.list().filter((p) => p.root.visible).length);
   expect(vis).toBeGreaterThanOrEqual(16);
-  const [start] = await events(page, 'credits:start');
-  expect(start.seconds).toBeGreaterThan(20);
+  expect(st.seconds).toBeGreaterThan(20);
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('party-credits');
   // the opening of the camera way: wide over the party, the strip along the bottom
   await step(page, 50);
@@ -92,7 +86,8 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then 
   shots.push(await shot(page, 'credits-strip'));
   // skip: a real key after the grace (the cinematic's skip) → credits:done {skipped: true}
   await closeModals(page);
-  await page.keyboard.press('KeyX');
+  // an unbound key: with lockInput false the skip key also reaches the game (X would go prone)
+  await page.keyboard.press('KeyO');
   await step(page, 2);
   expect(await events(page, 'credits:done')).toEqual([{ skipped: true }]);
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
@@ -111,9 +106,9 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then 
 
   // the player walks
   const p0 = await page.evaluate(() => ({ ...window.kq!.ctx.player.position }));
-  await page.evaluate(() => window.kq!.press('KeyW', 45));
+  await page.evaluate(() => window.kq!.press('KeyW', 120));
   const p1 = await page.evaluate(() => ({ ...window.kq!.ctx.player.position }));
-  expect(Math.hypot(p1.x - p0.x, p1.z - p0.z)).toBeGreaterThan(0.5);
+  expect(Math.hypot(p1.x - p0.x, p1.z - p0.z)).toBeGreaterThan(1);
 
   // the guide is talkable: the story's placement for 'imhoff' (simulated here) binds to his body
   const g = await page.evaluate(() => window.kq!.party!.state().people.find((p) => p.who === 'guide')!);
@@ -129,6 +124,17 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, skip, then 
   await expect(page.locator('.kq-prompt')).toBeVisible();
   console.log(`[party a] prompt "${await page.locator('.kq-prompt').textContent()}", ${((Date.now() - t0) / 1000).toFixed(1)} s wall`);
   console.log(`[party a] screenshots ${shots.join(', ')}`);
+  // the events of a set and a credits run through the hooks (the dev entry's came before the recorder)
+  await page.evaluate(() => {
+    window.kq!.party!.set('burn');
+    window.kq!.party!.credits(['Eins', 'Zwei']);
+  });
+  expect((await events(page, 'party:ready')).at(-1)).toEqual({ variant: 'burn' });
+  expect((await events(page, 'credits:start')).at(-1).seconds).toBeGreaterThan(20);
+  expect(await page.locator('[data-testid="party-credits"]').textContent()).toContain('Zwei');
+  await page.evaluate(() => window.kq!.party!.clear());
+  expect((await events(page, 'credits:done')).at(-1)).toEqual({ skipped: true });
+  expect(await page.evaluate(() => window.kq!.party!.state().people.length)).toBe(0);
   expect(errors).toEqual([]);
 });
 
@@ -136,7 +142,7 @@ test('party (b): ?party=keep — the dogs lie at the player\'s feet with an eye 
   const errors = trackErrors(page);
   const t0 = Date.now();
   await boot(page, 'keep');
-  expect(await events(page, 'party:ready')).toEqual([{ variant: 'keep' }]);
+  expect(await page.evaluate(() => window.kq!.party!.state().variant)).toBe('keep');
   await bodiesIn(page);
   // skip the credits through the debug hook (the key path is test a)
   await page.evaluate(() => window.kq!.party!.skip());
