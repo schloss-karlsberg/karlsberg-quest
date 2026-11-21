@@ -13,7 +13,7 @@ import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/que
 import { decodeH2025, quantToMetres } from '../src/data/decode';
 import type { TerrainMeta } from '../src/data/types';
 import { Heightfield } from '../src/world/heightfield';
-import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, activateRadius, announceFor, cardMayTakeE, knownPoints, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, RETIRED_POINTS, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -74,9 +74,28 @@ describe('survey points', () => {
     }
   });
 
-  it('only the field station is known at the start; walked or announced points join', () => {
-    expect(knownPoints([], []).map((p) => p.id)).toEqual(['feldstation']);
-    expect(knownPoints(['zwinger'], ['karlslust']).map((p) => p.id).sort()).toEqual(['feldstation', 'karlslust', 'zwinger']);
+  it('only the Karlsbergquelle (home) is known at the start; walked or announced points join', () => {
+    expect(knownPoints([], []).map((p) => p.id)).toEqual(['karlsbergquelle']);
+    expect(knownPoints(['zwinger'], ['karlslust']).map((p) => p.id).sort()).toEqual(['karlsbergquelle', 'karlslust', 'zwinger']);
+  });
+
+  it('the Feldstation point is retired: gone from the list, and an old save that knew it still loads', () => {
+    expect(pointById('feldstation')).toBeUndefined();
+    expect(SURVEY_POINTS.some((p) => p.id === 'feldstation')).toBe(false);
+    expect(RETIRED_POINTS).toContain('feldstation');
+    // an old save's travel slice: the retired id (and junk) drop out, the rest keeps its order
+    const old = ['feldstation', 'ehrenhof', 'feldstation', 'zwinger', 'ehrenhof', 42, 'nirgendwo'];
+    expect(livePointIds(old)).toEqual(['ehrenhof', 'zwinger']);
+    expect(livePointIds(undefined)).toEqual([]);
+    expect(knownPoints(['feldstation', 'ehrenhof'], ['feldstation']).map((p) => p.id).sort()).toEqual(['ehrenhof', 'karlsbergquelle']);
+    // Laub never announces a retired point
+    expect(announceFor({ x: 776, z: -902 }, { x: 1800, z: 0 }, [])?.id).not.toBe('feldstation');
+  });
+
+  it('the remaining tripods keep their look (seed = old list index)', () => {
+    // the Ehrenhof was index 1 (+3) while the Feldstation stood first: now index 0 (+4)
+    expect(SURVEY_POINTS.findIndex((p) => p.id === 'ehrenhof') + TRIPOD_SEED_BASE).toBe(4);
+    expect(SURVEY_POINTS.findIndex((p) => p.id === 'karlsbergquelle') + TRIPOD_SEED_BASE).toBe(14);
   });
 
   it('Laub announces the point beside a far goal, never a near one', () => {
@@ -86,10 +105,10 @@ describe('survey points', () => {
     expect(announceFor({ x: 600, z: -1600 }, { x: 1800, z: 0 }, [])).toBeNull();
   });
 
-  it('announces from 400 m (playtest round 10): the Feldstation → Ehrenhof leg qualifies, 350 m does not', () => {
+  it('announces from 400 m (playtest round 10): the old Feldstation → Ehrenhof leg qualifies, 350 m does not', () => {
     expect(ANNOUNCE_MIN).toBe(400);
-    // K1 start: from the Feldstation tripod to the Ehrenhof Q spot, ~496 m (> 400, < the old 600)
-    const fs = pointById('feldstation')!;
+    // K1 start: from the old Feldstation tripod (776/−902, point retired) to the Ehrenhof Q spot, ~496 m (> 400, < the old 600)
+    const fs = { x: 776, z: -902 };
     expect(announceFor({ x: 1222, z: -1119 }, { x: fs.x, z: fs.z }, [])?.id).toBe('ehrenhof');
     expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 350, z: -1119 }, [])).toBeNull();
     expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 410, z: -1119 }, [])?.id).toBe('ehrenhof');
@@ -250,10 +269,23 @@ describe('the Weiher walk on real terrain (playtest round 10, F-10)', () => {
     for (const [x, z] of route.pts.slice(0, 6)) expect(nearPath(x, z, 4), `${x}/${z}`).toBe(true);
   });
 
-  it('adding p-weiher (last in ROUTES) leaves every saved POI id where it was', () => {
-    expect(ROUTES[ROUTES.length - 1]!.id).toBe('p-weiher');
-    const before = generatePois(ROUTES.filter((r) => r.id !== 'p-weiher'), { blocked: runtimeBlocked });
-    expect(live.filter((p) => !p.id.startsWith('poi.p-weiher.'))).toEqual(before);
+  it('adding p-weiher (then p-fuehrung, appended last) leaves every saved POI id where it was', () => {
+    expect(ROUTES[ROUTES.length - 2]!.id).toBe('p-weiher');
+    const before = generatePois(ROUTES.filter((r) => r.id !== 'p-weiher' && r.id !== 'p-fuehrung'), { blocked: runtimeBlocked });
+    expect(live.filter((p) => !p.id.startsWith('poi.p-weiher.') && !p.id.startsWith('poi.p-fuehrung.'))).toEqual(before);
+  });
+
+  it('the tour route p-fuehrung is appended last and stays inert until its stops are authored', () => {
+    // the old prologue routes keep their order (saved ids are poi.<route>.<n>)
+    const ids = ROUTES.map((r) => r.id);
+    expect(ids.indexOf('p-hang')).toBeLessThan(ids.indexOf('p-garten'));
+    expect(ids.indexOf('p-garten')).toBeLessThan(ids.indexOf('p-weiher'));
+    expect(ids[ids.length - 1]).toBe('p-fuehrung');
+    const tour = ROUTES.find((r) => r.id === 'p-fuehrung')!;
+    expect(tour).toMatchObject({ chapter: 'prolog', era: 'today' });
+    // an empty route yields nothing and moves nothing
+    expect(generatePois([tour])).toEqual([]);
+    expect(generatePois(ROUTES.filter((r) => r.id !== 'p-fuehrung'), { blocked: runtimeBlocked })).toEqual(live);
   });
 });
 

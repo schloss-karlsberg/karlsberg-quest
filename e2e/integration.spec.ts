@@ -5,10 +5,10 @@ import { type Page, expect, test } from '@playwright/test';
  * Integration: the four feature systems (story, fx, hunt, chronik) working together along the
  * prologue, headless and deterministic (`?manual`, driven through window.kq):
  *
- *   new game (title flow) → field station hub → Pinnwand opens the Journal → objective + Bussole
+ *   new game (title flow) → the hub at the Quelle → Pinnwand opens the Journal → objective + Bussole
  *   → relief scan (fx pulse) → story clue + Chronik clue → Q at the anchor (story) → fx shift
  *   → 1789 → echo (Chronik subtitles only, no story duplicates) → threat:configure → hunt chase
- *   → caught (hunt hands over to the story curtain) → back at the station, today, beat checkpoint
+ *   → caught (hunt hands over to the story curtain) → home at the Quelle, today, beat checkpoint
  *   → hub → Pinnwand opens the Journal, whose codex holds the clue facts (no board, no batches,
  *   no hint ladder since the Action-RPG rework).
  *
@@ -83,12 +83,12 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
   await shot(page, '01-new-game');
 
-  // ---- 2. field station: hub:enter, E opens the hub, the Pinnwand opens the Chronik -------------
+  // ---- 2. home at the Quelle: hub:enter, E opens the hub, the Pinnwand opens the Chronik -------------
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.flush();
     k.story!.finishTyping();
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(4);
   });
   s = await story(page);
@@ -355,26 +355,26 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     caughtT: document.querySelector<HTMLElement>('.kq-hunt-caught')!.style.opacity,
     frozen: window.kq!.ctx.player.frozen,
   }));
-  expect(back.story.beat).toBe('p9'); // checkpoint of p9b: the first shift again, woken at the station
+  expect(back.story.beat).toBe('p9'); // checkpoint of p9b: the first shift again, woken at the Quelle
   expect(back.story.inHub).toBe(true);
   expect(back.hunt).toBeNull();
   expect(back.caughtT).toBe('0');
   expect(back.frozen).toBe(false);
   const p = await pos(page);
-  expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(6);
+  expect(Math.hypot(p.x - 1059.3, p.z + 833.1)).toBeLessThan(6);
   expect(await payloads(page, 'hunt:end')).toContainEqual({ reason: 'caught' });
   // nothing is lost when caught any more (docs/ACTION-RPG.md §12)
   expect(await payloads(page, 'chronik:lost')).toEqual([]);
   expect(await page.evaluate(() => window.kq!.state().inventory.clues)).toContain('ct.clue.hohlweg');
   await page.waitForTimeout(2600); // the curtain lifts
-  await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
-  await shot(page, '13-station');
+  await page.evaluate(() => window.kq!.teleport(1053, -828, 51, -3));
+  await shot(page, '13-home');
 
   // ---- 10. hub → Pinnwand → the Journal: the clue facts are in its codex ------------------------
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(2);
     k.press('KeyE', 2);
   });

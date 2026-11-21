@@ -33,6 +33,12 @@ export interface GameEvents {
   'settings:change': { key: string };
   /** The camera was taken over (a cinematic, kq.setCamera) or given back to the rig. */
   'camera:override': { active: boolean };
+  /**
+   * A scene asks the world to hold still (the party, later other set pieces): beam / ring world
+   * markers hide and survey points do not get eingemessen while any reason is on (src/core/quiet.ts).
+   * Every `on: true` is paired with an `on: false` of the same reason.
+   */
+  'world:quiet': { on: boolean; reason: string };
   /** Free-form UI notification (toast). */
   'ui:toast': { text: string; ms?: number };
 }

@@ -6,14 +6,14 @@ import { type PlayOptions, SCREENS } from './common';
  * §11.0), played headless through window.kq from the first frame after the title flow to the
  * chapter-1 title card:
  *
- *   p1 field station: Marlene's quest "Der Messstab" (the staff outside, then three Nebelinge on the
+ *   p1 the old start by the forest road: Marlene's quest "Der Messstab" (the staff outside, then three Nebelinge on the
  *   way down to the dam: the first fight inside a minute) → p2/p3 "Was der Wald verbirgt" (the dam wall in Relief 2, the Orangerie step in VAT,
  *   Laub speaks) → p3q/p3r "Wasser, das sich erinnert" (down to the Karlsbergquelle, E at the
  *   trough: the first time travel, 1789, hold Q home) → p4–p6 "Die Bussole spricht" (Ehrenhof,
  *   the 1840 map, the hollow way, the pit — and the first fight: four Nebelinge rise from the Eiskeller) → p7–p9b "Spuren in der
  *   Punktwolke" (the point cloud, J: the field book, Q at the Ehrenhof → 1789, the servant's echo,
  *   a Streuner: Bannlicht + Messstab, Q home) → the stance "Was war das?" → p10 dusk → p11 night,
- *   the Feldbett → "Kapitel 1 · Der Hof".
+ *   the bench at the Quelle → "Kapitel 1 · Der Hof".
  *
  * No Chronik board, no sentences to fill: the quests gate the beats. The shared quest helpers
  * (`installQuestPlay`, `qs`, `stance`, `fight`, `shiftTo`, `cna`) are used by k1.ts and k2.ts too.
@@ -225,7 +225,7 @@ export async function shiftTo(page: Page, x: number, z: number, yaw: number): Pr
     [x, z, yaw] as const,
   );
 }
-/** Hold Q (back to today): the long press, then the transition played through. */
+/** Hold Q (back to today, home to the Quelle — WP-04): the long press, then the transition played through. */
 export async function holdHome(page: Page): Promise<void> {
   const log = await page.evaluate(() => {
     const k = window.kq!;
@@ -560,10 +560,10 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   expect(await turninMoment(page, 'q.p.punktwolke')).toBe('done');
   expect(await until(page, 'p10', 10)).toBe('p10');
 
-  // ---- p10 / p11: dusk, home, the night, the Feldbett -> chapter 1 ----------------------------------
+  // ---- p10 / p11: dusk, home to the Quelle, the night, the bench -> chapter 1 ----------------------
   await page.evaluate(() => {
     const k = window.kq!;
-    k.teleport(757, -899, 10, -3);
+    k.teleport(1057, -829, 40, -3);
     k.step(30);
   });
   expect(await until(page, 'p11', 12)).toBe('p11');
@@ -571,14 +571,14 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
     const k = window.kq!;
     (window as unknown as QW).__cna.until(() => (k.story!.state().said as string[]).includes('laub.p.ende'), 90);
     k.story!.finishTyping();
-    k.teleport(754, -899, 22, -3);
+    k.teleport(1053, -828, 51, -3);
     k.step(2);
   });
   await shot(page, '09-night');
-  // the station's hub is optional now (no quest): Pinnwand, Regal, Schublade in the evening
+  // the hub at the Quelle is optional (no quest): Chronik, Mauerkante, Mauernische in the evening
   await page.evaluate(() => {
     const k = window.kq!;
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(4);
     k.press('KeyE', 2);
   });
@@ -596,7 +596,7 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
     });
     if (!(await page.getByTestId('hub').isVisible()))
       await page.evaluate(() => {
-        window.kq!.teleport(760, -905, 0);
+        window.kq!.teleport(1059.3, -833.1, 50);
         window.kq!.step(4);
         window.kq!.press('KeyE', 2);
       });
@@ -609,12 +609,12 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   await run(page, 10);
   await page.evaluate(() => {
     const k = window.kq!;
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(4);
     k.press('KeyE', 2);
   });
   await expect(page.getByTestId('hub')).toBeVisible();
-  await page.getByTestId('hub-bed').click();
+  await page.getByTestId('hub-bench').click();
   await page.evaluate(() => (window as unknown as QW).__cna.until(() => window.kq!.story!.state().chapter !== 'prolog', 30));
   s = await story(page);
   expect(s.chapter).toBe('k1');

@@ -8,7 +8,7 @@ import { beat, newGame, playProlog, qn, qs, said, shiftTo, shot, story, until } 
  * playthrough itself lives in e2e/helpers/prolog.ts, shared with e2e/campaign.spec.ts).
  *
  * A second test plays the bad branch: the pack catches you in 1789 → curtain, Laub explains
- * gently, back at the station; nothing is lost (the quest keeps its progress), the anchor waits.
+ * gently, home at the Quelle; nothing is lost (the quest keeps its progress), the anchor waits.
  *
  * Screenshots: test-results/screens/ch-prolog-*.png, cna-p-*.png
  */
@@ -44,7 +44,7 @@ test('prolog: the pack catches you in 1789: gently explained, nothing lost, the 
   expect((await story(page)).era).toBe('today');
   await shiftTo(page, 1205, -1119, 90);
   expect(await beat(page)).toBe('p9b');
-  // caught by the pack → the curtain, the station, the checkpoint p9
+  // caught by the pack → the curtain, home at the Quelle, the checkpoint p9
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1216, -1180, 180);
@@ -65,7 +65,7 @@ test('prolog: the pack catches you in 1789: gently explained, nothing lost, the 
     for (let i = 0; i < 60 && !(k.story!.state().said as string[]).includes('laub.p.gestellt'); i++) k.step(15);
     for (let i = 0; i < 900 && k.story!.state().dialogue?.speaker !== 'laub'; i++) k.step(10);
     k.story!.finishTyping();
-    k.teleport(757.5, -899, 4, -3);
+    k.teleport(1053, -828, 51, -3);
   });
   await shot(page, '32-laub-explains');
   expect(await said(page)).toContain('laub.p.gestellt');

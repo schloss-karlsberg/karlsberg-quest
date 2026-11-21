@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
-import { SCREENS, trackErrors } from './helpers/common';
+import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { K1_START, distTo, playK1 } from './helpers/k1';
 import { playK2 } from './helpers/k2';
 import { playK3 } from './helpers/k3';
@@ -51,7 +51,7 @@ async function shot(page: Page, name: string): Promise<void> {
 const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
 
 /**
- * The chapter after `prev` has begun: completed list, first beat, at the station in the present,
+ * The chapter after `prev` has begun: completed list, first beat, at home (the Quelle) in the present,
  * standing, and nothing of the previous chapter still being said. (Quick: the chapter's own play
  * function checks its title card next, which fades after 5.5 s of real time; the picture is taken
  * by the chapter's 'start' hook.)
@@ -415,9 +415,7 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
     expect(await epi.innerText()).not.toMatch(/\{[A-Za-z_]+\}|undefined|null/);
     await shot(page, `end-${e.id}-epilogue`);
     await page.getByTestId('ending-credits').click();
-    await expect(page.getByTestId('credits')).toBeVisible();
-    await expect(page.getByTestId('credits')).toContainText('Mara');
-    await page.getByTestId('credits-back').click();
+    await throughParty(page);
     await page.evaluate(() => window.kq!.step(4));
     const st = await page.evaluate(() => ({ story: window.kq!.story!.state(), flags: window.kq!.state().flags }));
     expect(st.story.ending).toBe(e.id);

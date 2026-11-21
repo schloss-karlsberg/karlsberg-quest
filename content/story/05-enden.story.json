@@ -6,9 +6,9 @@
   "era": "today",
   "start": "e1",
   "checkpoint": {
-    "x": 760,
-    "z": -902,
-    "yaw": 0,
+    "x": 1059.3,
+    "z": -833.1,
+    "yaw": 50,
     "era": "today"
   },
   "on": [
@@ -47,6 +47,12 @@
       "id": "e1",
       "title_de": "Die Wahl",
       "enter": [
+        {
+          "do": "cue",
+          "id": "party:clear",
+          "data": {},
+          "onResume": true
+        },
         {
           "do": "flag",
           "set": {
@@ -93,7 +99,7 @@
     },
     {
       "id": "e2",
-      "title_de": "Epilog und Abspann",
+      "title_de": "Epilog",
       "enter": [
         {
           "do": "flag",
@@ -106,14 +112,168 @@
         }
       ],
       "complete": {
+        "flag": "story.party"
+      }
+    },
+    {
+      "id": "e3",
+      "title_de": "Das Fest",
+      "enter": [
+        {
+          "do": "flag",
+          "set": {
+            "combat.disabled": true
+          }
+        },
+        {
+          "do": "objective",
+          "text": null
+        },
+        {
+          "do": "card",
+          "title": "Das Fest",
+          "sub": "heute · Dämmerung, oben auf dem Plateau",
+          "seconds": 2.6
+        },
+        {
+          "do": "teleport",
+          "x": 1200,
+          "z": -1095,
+          "yaw": 40,
+          "delay": 0.4
+        },
+        {
+          "do": "look",
+          "time": "dusk"
+        },
+        {
+          "do": "autosave"
+        }
+      ],
+      "on": [
+        {
+          "id": "fest-museum",
+          "when": { "all": [{ "flag": "flag.end", "eq": "museum" }, { "not": { "flag": "story.credits" } }] },
+          "do": [
+            { "do": "cue", "id": "party:set", "data": { "variant": "museum" } },
+            { "do": "say", "id": "imhoff.end.ankunft", "speaker": "imhoff", "text": "Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt’s wieder.", "delay": 1.5 },
+            { "do": "say", "id": "imhoff.end.museum_1", "speaker": "imhoff", "text": "Leute, guckt euch das an. Das hat unser Nachzügler da unten gefunden. Eine Liste: wem der Hof was schuldig geblieben ist. Löhne. Namen.", "delay": 0.6 },
+            { "do": "say", "id": "imhoff.end.museum_2", "speaker": "imhoff", "text": "Ob das echt ist? Das sollen die im Museum prüfen. So macht man das: erst nachsehen, dann glauben.", "delay": 0.4 },
+            { "do": "say", "id": "hanned.end.museum", "speaker": "hanned", "text": "Matthes. Mit zwei T. Komisch. So schreibt man das bei uns in der Familie auch.", "delay": 0.6 },
+            { "do": "cue", "id": "party:credits", "data": {}, "delay": 1.5 }
+          ]
+        },
+        {
+          "id": "fest-verbrennen",
+          "when": { "all": [{ "flag": "flag.end", "eq": "verbrennen" }, { "not": { "flag": "story.credits" } }] },
+          "do": [
+            { "do": "cue", "id": "party:set", "data": { "variant": "burn" } },
+            { "do": "say", "id": "imhoff.end.ankunft", "speaker": "imhoff", "text": "Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt’s wieder.", "delay": 1.5 },
+            { "do": "say", "id": "imhoff.end.verbrennen_1", "speaker": "imhoff", "text": "Feuer zum Schluss. Passt ja irgendwie. Das Schloss ist auch so zu Ende gegangen.", "delay": 0.6 },
+            { "do": "say", "id": "imhoff.end.verbrennen_2", "speaker": "imhoff", "text": "Und trotzdem ist nicht alles weg. Steht ja alles noch irgendwo: bei Mannlich, in den Akten, im Boden. Man muss nur hingucken.", "delay": 0.4 },
+            { "do": "say", "id": "mannd.end.verbrennen", "speaker": "mannd", "text": "Nee. Die Skizze behalt ich.", "delay": 0.6 },
+            { "do": "say", "id": "laub.end.fest_verbrennen", "speaker": "laub", "text": "Warm hier. Ich werde … leiser.", "delay": 0.8 },
+            { "do": "cue", "id": "party:credits", "data": {}, "delay": 1.5 }
+          ]
+        },
+        {
+          "id": "fest-behalten",
+          "when": { "all": [{ "flag": "flag.end", "eq": "behalten" }, { "not": { "flag": "story.credits" } }] },
+          "do": [
+            { "do": "cue", "id": "party:set", "data": { "variant": "keep" } },
+            { "do": "say", "id": "imhoff.end.ankunft", "speaker": "imhoff", "text": "Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt’s wieder.", "delay": 1.5 },
+            { "do": "say", "id": "jostd.end.behalten", "speaker": "jostd", "text": "Das machen die sonst nie. Bei keinem. Die mögen dich. Oder sie passen auf dich auf.", "delay": 1.2 },
+            { "do": "say", "id": "imhoff.end.behalten", "speaker": "imhoff", "text": "Die Führung ist zu Ende, aber der Berg nicht. Wer wiederkommen will: jeden zweiten Samstag, Treffpunkt wie immer.", "delay": 0.6 },
+            { "do": "sound", "sound": "horn", "signal": "verloren", "caption": "[Fern ein Horn, falsch und zu hoch]", "delay": 0.8 },
+            { "do": "say", "id": "jostd.end.horn", "speaker": "jostd", "text": "Hört ihr das?", "delay": 0.6 },
+            { "do": "say", "id": "imhoff.end.horn", "speaker": "imhoff", "text": "Jagdhornbläser. Üben wohl.", "delay": 0.2 },
+            { "do": "say", "id": "laub.end.fest_behalten", "speaker": "laub", "text": "Gute Gesellschaft. Ich bleibe im Dienst.", "delay": 0.8 },
+            { "do": "cue", "id": "party:credits", "data": {}, "delay": 1.5 }
+          ]
+        },
+        {
+          "id": "spot-herzog",
+          "when": { "event": "party:spotlight", "match": { "who": "double.herzog" } },
+          "do": [
+            { "do": "say", "id": "herzogd.fest", "speaker": "herzogd", "text": "Nächstes Mal fahr ich aber hoch.", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-mannlich",
+          "when": { "event": "party:spotlight", "match": { "who": "double.mannlich" } },
+          "do": [
+            { "do": "say", "id": "mannd.fest", "speaker": "mannd", "text": "Ich zeichne es, wie es war. Fast.", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-hanne",
+          "when": { "event": "party:spotlight", "match": { "who": "double.hanne" } },
+          "do": [
+            { "do": "say", "id": "hanned.fest", "speaker": "hanned", "text": "Ein Winkel, drei Punkte. Kennst du das?", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-peter",
+          "when": { "event": "party:spotlight", "match": { "who": "double.peter" } },
+          "do": [
+            { "do": "say", "id": "peterd.fest", "speaker": "peterd", "text": "Mama, können wir gehen?", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-jost",
+          "when": { "event": "party:spotlight", "match": { "who": "double.jost" } },
+          "do": [
+            { "do": "say", "id": "jostd.fest", "speaker": "jostd", "text": "Die Namen hat mein Opa ausgesucht.", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-soll",
+          "when": { "event": "party:spotlight", "match": { "who": "double.soll" } },
+          "do": [
+            { "do": "say", "id": "solld.fest", "speaker": "solld", "text": "Kuchenkasse stimmt. Bis auf einen.", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-liese",
+          "when": { "event": "party:spotlight", "match": { "who": "double.liese" } },
+          "do": [
+            { "do": "say", "id": "liesed.fest", "speaker": "liesed", "text": "Gib her, ich näh dir das schnell.", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-mats-museum",
+          "when": { "all": [{ "event": "party:spotlight", "match": { "who": "child.compass" } }, { "flag": "flag.end", "eq": "museum" }] },
+          "do": [
+            { "do": "say", "id": "mats.fest.museum", "speaker": "mats", "text": "Mein Kompass zeigt jetzt richtig!", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-mats",
+          "when": { "all": [{ "event": "party:spotlight", "match": { "who": "child.compass" } }, { "not": { "flag": "flag.end", "eq": "museum" } }] },
+          "do": [
+            { "do": "say", "id": "mats.fest", "speaker": "mats", "text": "Mein Kompass zeigt wieder komisch.", "ms": 2400 }
+          ]
+        },
+        {
+          "id": "spot-gerold",
+          "when": { "event": "party:spotlight", "match": { "who": "guide" } },
+          "do": [
+            { "do": "say", "id": "imhoff.fest", "speaker": "imhoff", "text": "Danke fürs Mitkommen. Gucken ja, graben nein.", "ms": 2400 }
+          ]
+        }
+      ],
+      "complete": {
         "flag": "story.credits"
       },
       "exit": [
-        {
-          "do": "look",
-          "time": "day",
-          "delay": 1
-        },
+        { "do": "npc", "op": "spawn", "npc": "imhoff", "x": 1214, "z": -1112, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "herzogd", "x": 1210, "z": -1108, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "mannd", "x": 1224, "z": -1110, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "hanned", "x": 1217.6, "z": -1122.2, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "peterd", "x": 1218.5, "z": -1122.2, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "jostd", "x": 1206, "z": -1118, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "solld", "x": 1213, "z": -1115, "era": "today", "chapter": "enden" },
+        { "do": "npc", "op": "spawn", "npc": "liesed", "x": 1222, "z": -1114, "era": "today", "chapter": "enden" },
         {
           "do": "flag",
           "set": {

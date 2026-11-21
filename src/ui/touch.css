@@ -165,8 +165,9 @@ html[data-kq-touch] textarea {
 }
 /* the contextual action: a pill that carries the prompt's text */
 .kq-t-btn.interact {
+  /* above the Epoche button (right 160, bottom 120..172) with 10 px air: they overlapped (M-06) */
   right: 64px;
-  bottom: 150px;
+  bottom: 184px;
   width: auto;
   min-width: var(--kq-t-btn);
   max-width: 220px;
@@ -324,31 +325,42 @@ html[data-kq-touch] .kq-crosshair {
 
 /* phones in landscape: everything a notch smaller */
 @media (max-height: 500px) {
+  /* every tap target stays >= 44 CSS px after the arc's scale (M-12, M-16) */
   .kq-touch {
-    --kq-t-btn: 50px;
+    --kq-t-btn: 52px;
     --kq-t-big: 72px;
   }
   .kq-t-arc {
-    transform: scale(0.86);
+    transform: scale(0.9);
     transform-origin: right bottom;
   }
+  .kq-t-btn.balm,
+  .kq-t-btn.lock {
+    width: 50px;
+    height: 50px;
+  }
   .kq-t-skills {
-    bottom: calc(232px + var(--kq-safe-b));
+    bottom: calc(250px + var(--kq-safe-b));
   }
   .kq-t-skills .kq-t-btn {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
+  }
+  .kq-t-top {
+    gap: 6px;
   }
   .kq-t-top .kq-t-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
   }
   html[data-kq-touch] .kq-hud {
     zoom: 0.78;
   }
+  html[data-kq-touch] :where(.kq-modal) {
+    max-height: 100%;
+  }
   html[data-kq-touch] .kq-modal {
-    max-height: 94vh;
-    padding: 18px 20px 16px 52px;
+    padding: 16px 18px 14px 36px;
   }
   /* the new-game lantern screen: the 250 px lantern pushed its button under the art on phones */
   .kqs-dark {
@@ -362,23 +374,94 @@ html[data-kq-touch] .kq-crosshair {
   }
 }
 
-/* portrait phones: ask to turn the device */
+/* portrait phones in gameplay: ask to turn the device (M-02). touch.ts sets data-kq-rotate only
+   during gameplay (never over the title, the new-game flow or on a tablet: touchMap.rotateWanted) */
 .kq-rotate {
   display: none;
 }
-@media (orientation: portrait) and (max-width: 600px) {
-  html[data-kq-touch] .kq-rotate {
-    position: fixed;
-    inset: 0;
-    z-index: 29;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    text-align: center;
-    background: rgba(20, 17, 13, 0.92);
-    color: #efe6d2;
-    font: 22px var(--serif);
-    pointer-events: auto;
+html[data-kq-touch][data-kq-rotate] .kq-rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + var(--kq-safe-t)) calc(24px + var(--kq-safe-r)) calc(24px + var(--kq-safe-b)) calc(24px + var(--kq-safe-l));
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(217, 130, 43, 0.18), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 23px),
+    linear-gradient(180deg, #2a1f15, #120d08);
+  color: #efe6d2;
+  font-family: var(--serif);
+  text-align: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+.kq-rotate-card {
+  max-width: 320px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.kq-rotate-title {
+  font-family: var(--sc);
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  color: #f3e9d2;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+.kq-rotate-icon {
+  width: 112px;
+  height: 112px;
+  margin: 18px 0 8px;
+  color: #e3b964;
+}
+.kq-rotate-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.kq-rotate-phone {
+  transform-box: view-box;
+  transform-origin: 48px 43px;
+  animation: kq-rotate-turn 2.8s ease-in-out infinite;
+}
+.kq-rotate-arrow {
+  opacity: 0.7;
+}
+@keyframes kq-rotate-turn {
+  0%,
+  22% {
+    transform: none;
+  }
+  48%,
+  78% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+.kq-rotate-line {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.3;
+}
+.kq-rotate-sub {
+  margin: 0;
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.4;
+  color: rgba(239, 230, 210, 0.75);
+}
+html[data-kq-reduced-motion] .kq-rotate-phone {
+  animation: none;
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kq-rotate-phone {
+    animation: none;
+    transform: rotate(90deg);
   }
 }
 
@@ -398,4 +481,471 @@ html[data-kq-touch] .kqj-foot kbd {
   background: rgba(240, 240, 240, 0.28);
   border-color: rgba(255, 255, 255, 0.85);
   color: #fff;
+}
+
+/* ======================================================================================
+   Mobile UI pass (docs/MOBILE-UI-PASS.md §8). Everything below is scoped to touch or to small
+   viewports; the desktop layout does not change. Story / NPC / quest classes are only overridden
+   here (their own CSS belongs to those systems).
+   ====================================================================================== */
+
+/* ---- M-01 / M-12: the story dialogue card on a landscape phone.
+   A wide, low card in the top band, between the left edge and the top-row buttons, capped in
+   height and scrolling inside. It never reaches the top row, the skill row or the thumb arc, and
+   only the card's own box takes taps (the story layer passes everything else through). The same
+   place in a fight, so the strip at the bottom does not sit on the thumb arc. */
+@media (max-height: 500px) {
+  html[data-kq-touch] body .kqs-dlg {
+    left: calc(8px + var(--kq-safe-l));
+    /* the top row: 5 buttons x 44 + 4 x 6 gap + 12 margin = 256 px */
+    right: calc(264px + var(--kq-safe-r));
+    top: calc(6px + var(--kq-safe-t));
+    bottom: auto;
+    width: auto;
+    gap: 8px;
+    align-items: flex-start;
+    transform: translateY(-10px);
+  }
+  html[data-kq-touch] body .kqs-dlg.kqs-show {
+    transform: none;
+  }
+  /* the spirit view adds Fliegen (and Sinken) to the top row */
+  html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) body .kqs-dlg {
+    right: calc(314px + var(--kq-safe-r));
+  }
+  html[data-kq-touch]:has(.kq-t-btn.down:not(.kq-hidden)) body .kqs-dlg {
+    right: calc(364px + var(--kq-safe-r));
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-portrait {
+    width: 44px;
+    height: 44px;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-body {
+    min-width: 0;
+    max-height: 36vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    padding: 6px 12px 5px 14px;
+    background-size: auto, auto 22px, auto;
+    transform: none;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-body::before {
+    bottom: auto;
+    top: 14px;
+    width: 12px;
+    height: 12px;
+    left: -6px;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-who {
+    font-size: 16px;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-tag {
+    font-size: 14px;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-text {
+    font-size: clamp(14px, calc(var(--sub-size) * 0.7), 22px);
+    line-height: 1.32;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-foot {
+    font-size: 12px;
+    margin-top: 1px;
+  }
+  /* the tracker under the card steps back while a line is up (it would show through the edges) */
+  html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kqq-tracker {
+    opacity: 0;
+  }
+}
+
+/* ---- M-11: the first frame on a phone. The chapter card and the „Neue Aufgabe“ banner come one
+   after the other (quests wait for .kqs-card.kqs-show); on a phone both sit mid-screen, left of the
+   thumb arc and under the dialogue band, smaller, and the chapter card fades out fast so the two
+   never overlap in its fade. */
+@media (max-height: 500px) {
+  html[data-kq-touch] .kqs-card {
+    top: 54%;
+    left: 44%;
+    min-width: 0;
+    width: max-content;
+    max-width: 62vw;
+  }
+  html[data-kq-touch] .kqs-card:not(.kqs-show) {
+    transition-duration: 0.35s;
+  }
+  html[data-kq-touch] .kqs-card .kqs-card-sub {
+    font-size: 18px;
+  }
+  html[data-kq-touch] .kqs-card .kqs-card-title {
+    font-size: 34px;
+  }
+  html[data-kq-touch] .kqs-card .kqs-card-rule {
+    margin: 8px auto 6px;
+  }
+  html[data-kq-touch] .kqs-card .kqs-card-note {
+    font-size: 15px;
+  }
+  /* the HUD is zoomed 0.78 on phones: 196 px land at about 153 px, under the dialogue band (6 + 36vh) */
+  html[data-kq-touch] .kq-hud .kqq-banner {
+    top: 196px;
+    left: 44%;
+    max-width: 62vw;
+  }
+}
+
+/* ---- the Bussole sat under the attack button on every touch layout: bottom-left (right of the
+   lamp-oil gauge), smaller (M-13) */
+html[data-kq-touch] .kqs-bussole {
+  right: auto;
+  left: calc(128px + var(--kq-safe-l));
+  bottom: calc(12px + var(--kq-safe-b));
+  width: 72px;
+  height: 72px;
+}
+@media (max-height: 500px) {
+  html[data-kq-touch] .kqs-bussole {
+    width: 60px;
+    height: 60px;
+    bottom: calc(6px + var(--kq-safe-b));
+  }
+}
+
+/* ---- M-08: modals keep clear of the notch and the home indicator */
+html[data-kq-touch] .kq-modal-layer {
+  padding: calc(6px + var(--kq-safe-t)) calc(6px + var(--kq-safe-r)) calc(6px + var(--kq-safe-b)) calc(6px + var(--kq-safe-l));
+  box-sizing: border-box;
+}
+/* :where(): a page's own height cap (the conversation page's 58vh) still wins */
+html[data-kq-touch] :where(.kq-modal) {
+  max-height: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ---- M-07 / M-16: tap targets >= 44 CSS px in every menu on touch */
+html[data-kq-touch] .kq-btn {
+  min-height: 44px;
+}
+html[data-kq-touch] .kq-modal .close {
+  min-width: 44px;
+  min-height: 44px;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+}
+html[data-kq-touch] .kq-modal .kq-link,
+html[data-kq-touch] .kq-title .kq-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+}
+html[data-kq-touch] .kq-form {
+  row-gap: 4px;
+}
+html[data-kq-touch] .kq-form > label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+html[data-kq-touch] .kq-form input[type='checkbox'] {
+  width: 28px;
+  height: 28px;
+  margin: 8px;
+}
+html[data-kq-touch] .kq-form .radios {
+  gap: 2px 6px;
+}
+html[data-kq-touch] .kq-form .radios label {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 4px;
+  border-radius: 22px;
+}
+html[data-kq-touch] .kq-form .radios input[type='radio'] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+/* sliders: a 44 px hit area with a 28 px thumb */
+html[data-kq-touch] .kq-form input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  touch-action: pan-y;
+}
+html[data-kq-touch] .kq-form input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(42, 33, 24, 0.3);
+}
+html[data-kq-touch] .kq-form input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--paper);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+html[data-kq-touch] .kq-form input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(42, 33, 24, 0.3);
+}
+html[data-kq-touch] .kq-form input[type='range']::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--paper);
+}
+html[data-kq-touch] .kq-chip {
+  min-height: 44px;
+  padding: 4px 14px 2px;
+  border-radius: 22px;
+}
+html[data-kq-touch] .kq-set-nav {
+  top: -16px;
+}
+html[data-kq-touch] .kq-set-sec {
+  scroll-margin-top: 66px;
+}
+
+/* ---- M-03: settings on narrow screens. Label above its control (a checkbox stays beside it), the
+   section chips in one row that scrolls sideways. */
+@media (max-width: 600px), (max-height: 500px) {
+  html .kq-settings .kq-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 10px;
+  }
+  html .kq-settings .kq-form > label:has(+ div),
+  html .kq-settings .kq-form > label:has(+ select),
+  html .kq-settings .kq-form > div,
+  html .kq-settings .kq-form > select {
+    grid-column: 1 / -1;
+  }
+  html .kq-settings .kq-form > label:has(+ div) {
+    min-height: 0;
+    margin-top: 8px;
+  }
+  html .kq-settings .kq-form .kq-help {
+    margin-top: -2px;
+  }
+  html .kq-settings .kq-range {
+    width: 100%;
+  }
+  html .kq-settings .kq-form input[type='range'] {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+  html .kq-set-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain;
+    margin-right: -10px;
+  }
+  html .kq-set-nav::-webkit-scrollbar {
+    display: none;
+  }
+  html .kq-set-nav .kq-chip {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 600px) {
+  html[data-kq-touch] .kq-modal {
+    padding: 18px 16px 16px 22px;
+    width: 100%;
+  }
+  html[data-kq-touch] .kq-modal h2 {
+    font-size: 28px;
+    padding-right: 36px;
+  }
+}
+
+/* ---- M-04: the title card on a landscape phone fits without a hidden scroll */
+html[data-kq-touch] .kq-title-page .controls {
+  display: none;
+}
+html[data-kq-touch] .kq-title {
+  overflow-y: auto;
+}
+@media (max-height: 500px) {
+  html .kq-title {
+    align-items: safe center;
+    padding: calc(8px + var(--kq-safe-t)) var(--kq-safe-r) calc(8px + var(--kq-safe-b)) calc(16px + var(--kq-safe-l));
+  }
+  html .kq-title-page {
+    width: min(560px, 82vw);
+    padding: 14px 22px 12px 48px;
+  }
+  html .kq-title-page h1 {
+    font-size: 34px;
+  }
+  html .kq-title-page .sub {
+    font-size: 17px;
+    margin: 0 0 4px;
+  }
+  html .kq-title-page .note {
+    font-size: 16px;
+    margin: 0 0 8px;
+  }
+  html .kq-title-page .actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+  html .kq-title-page .actions .kq-btn {
+    font-size: 17px;
+    padding: 6px 16px 4px;
+  }
+  html .kq-title-page .kq-title-extras {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+  html .kq-title-page .loading.done {
+    min-height: 0;
+  }
+  html .kq-title-page .motto {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  html .kq-title-links {
+    margin-top: 0;
+  }
+  html .kq-title-version {
+    margin-top: 0;
+  }
+}
+
+/* ---- M-09: a conversation page on a landscape phone fits the screen: smaller head, topics in two
+   columns, the page scrolls inside, the close button stays in reach */
+@media (max-height: 500px) {
+  html[data-kq-touch] .kq-modal-layer:has(.kqn-modal) {
+    padding-bottom: calc(6px + var(--kq-safe-b));
+  }
+  html[data-kq-touch] .kq-modal.kqn-modal {
+    max-height: calc(100dvh - 12px - var(--kq-safe-t) - var(--kq-safe-b));
+    padding: 10px 14px 10px 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-talk {
+    gap: 4px;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-portrait {
+    width: 44px;
+    height: 44px;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-who {
+    font-size: 20px;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-tag {
+    font-size: 15px;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-text {
+    font-size: 16px;
+    line-height: 1.35;
+    min-height: 0;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-topics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 8px;
+    margin-top: 2px;
+  }
+  html[data-kq-touch] .kqn-modal .kqn-topic {
+    min-height: 44px;
+    padding-top: 4px;
+    padding-bottom: 2px;
+    font-size: 15px;
+    align-items: center;
+  }
+  html[data-kq-touch] .kqn-modal .close {
+    position: sticky;
+    float: right;
+    top: 0;
+    margin: -6px -8px 0 0;
+    z-index: 2;
+  }
+}
+
+/* ---- M-10: the field book on a landscape phone. One sideways-scrolling row of compact tabs
+   next to the title, no subtitle, the page as tall as the screen allows. */
+@media (max-height: 500px) {
+  html[data-kq-touch] .kq-modal.kqj-modal {
+    height: 100%;
+    padding: 8px 14px 8px 20px;
+  }
+  html[data-kq-touch] .kqj-modal .kq-modal-body,
+  html[data-kq-touch] .kqj {
+    min-width: 0;
+  }
+  html[data-kq-touch] .kqj {
+    gap: 6px;
+  }
+  html[data-kq-touch] .kqj-head {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 10px;
+    padding-right: 40px;
+  }
+  html[data-kq-touch] .kq-modal h2.kqj-title {
+    font-size: 22px;
+  }
+  html[data-kq-touch] .kqj-sub,
+  html[data-kq-touch] .kqj-tn {
+    display: none;
+  }
+  html[data-kq-touch] .kqj-tabs {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+  }
+  html[data-kq-touch] .kqj-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  html[data-kq-touch] .kqj-tab {
+    flex: none;
+    min-height: 44px;
+    align-items: center;
+    padding: 4px 10px 2px;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+}
+
+/* ---- M-13 / M-14: photo mode on touch. Only the phone (close) button stays in the top row, in
+   its place (the others keep their room, so the toggle does not jump away from the thumb) and clear
+   of the frame's clock and battery at the ends; the combat buttons leave the viewfinder, the
+   shutter stays; the Bussole steps away. */
+html[data-kq-touch][data-kq-photo] .kq-t-top .kq-t-btn:not(.photo) {
+  visibility: hidden;
+}
+html[data-kq-touch][data-kq-photo] .kq-t-pop,
+html[data-kq-touch][data-kq-photo] .kq-t-skills,
+html[data-kq-touch][data-kq-photo] .kq-t-arc .kq-t-btn:not(.attack),
+html[data-kq-touch][data-kq-photo] .kqs-bussole {
+  display: none;
+}
+/* the HUD prompt pill sat under the 1x / 2x lens buttons */
+html[data-kq-touch][data-kq-photo] .kq-hud .kq-prompt {
+  display: none;
 }

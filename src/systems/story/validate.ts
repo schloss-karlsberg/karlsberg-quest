@@ -71,9 +71,12 @@ export function stageDirection(text: string, speaker?: string): string | null {
 }
 
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar']);
-const HUB = new Set(['chronik', 'radio', 'shelf', 'map', 'bed', 'drawer']);
+// the hub at the Quelle (contract C4) + the field station's old ids as aliases (bed → bench, radio → phone)
+const HUB = new Set(['chronik', 'phone', 'shelf', 'drawer', 'map', 'bench', 'bed', 'radio']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);
+/** Speakers that stand as people (the party's guide and doubles, bible 06-enden §8): bound to a live person, no ghost. */
+const PEOPLE = new Set(['imhoff', 'herzogd', 'mannd', 'hanned', 'peterd', 'jostd', 'solld', 'liesed', 'mats', 'marlene']);
 const METER_FULL = new Set(['return', 'caught', 'none']);
 const QUEST_OPS = new Set(['offer', 'start', 'progress', 'complete', 'fail', 'reset']);
 const QUEST_COND_STATES = new Set(['offered', 'active', 'ready', 'done', 'failed']);
@@ -107,6 +110,11 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
     if (s.next !== undefined && !chapters.has(s.next)) err(file, ch, `next: unknown chapter '${s.next}'`);
     for (const u of s.unlocks ?? []) if (!chapters.has(u)) err(file, ch, `unlocks: unknown chapter '${u}'`);
     if (s.checkpoint) checkPoint(s.checkpoint, file, ch, err);
+    if (s.wake !== undefined) {
+      checkPoint(s.wake, file, `${ch}:wake`, err);
+      if (s.wake.era !== undefined && s.wake.era !== 'today') err(file, ch, 'wake: the curtain always lifts in the present (era today)');
+      if (s.wake.text !== undefined && !isStr(s.wake.text)) err(file, ch, 'wake: text must be a string');
+    }
     if (!Array.isArray(s.beats) || s.beats.length === 0) {
       err(file, ch, '"beats" must be a non-empty array');
       continue;
@@ -390,6 +398,13 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
       case 'cue':
         if (!isStr(a.id)) err(file, where, 'cue needs an id');
         break;
+      case 'prompt':
+        if (a.touch !== undefined) {
+          if (!isStr(a.touch)) err(file, where, 'prompt touch must be a text');
+          // an interact prompt's text labels the Aktion button on a touch screen
+          else if (a.touch.length > 22) warn(file, where, `prompt touch '${a.touch}' is longer than the Aktion button (22 characters)`);
+        }
+        break;
       case 'choice':
         if (!isStr(a.id) || !isStr(a.prompt) || !Array.isArray(a.options) || a.options.length < 2) err(file, where, 'choice needs id, prompt and ≥ 2 options');
         else
@@ -405,7 +420,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
       case 'npc':
         if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "npc needs op 'spawn' or 'despawn'");
         if (!isStr(a.npc)) err(file, where, 'npc needs an npc id');
-        else if (a.npc !== '*' && !NPCS.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
+        else if (a.npc !== '*' && !NPCS.has(a.npc) && !PEOPLE.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
         if (a.op === 'spawn' && ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z))))) err(file, where, 'npc spawn needs both numeric x and z (or neither: at the player)');
         if (a.era !== undefined && !isEra(a.era)) err(file, where, `npc: unknown era '${String(a.era)}'`);
         if (a.mood !== undefined && !['warm', 'eerie', 'neutral'].includes(a.mood)) err(file, where, `npc: unknown mood '${String(a.mood)}'`);

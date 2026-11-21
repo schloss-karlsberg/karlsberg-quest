@@ -16,6 +16,8 @@ export const PARTY_ERA = 'today';
 /** The player moved this far (m) or turned this much (rad) during the orbit: the camera hands back. */
 export const HAND_BACK_MOVE = 0.05;
 export const HAND_BACK_TURN = 0.02;
+/** The 'world:quiet' reason the party holds (markers hidden, no survey point eingemessen). */
+export const QUIET_REASON = 'party';
 /** Seconds between two one-shot gestures of an `interact` person (seeded within). */
 const INTERACT_EVERY: [number, number] = [4, 8];
 
@@ -126,6 +128,8 @@ export class PartyRuntime {
   credits: Credits | null = null;
   /** Spotlights emitted in the current / last credits run (who, in order). */
   readonly spotlights: string[] = [];
+  /** The party holds 'world:quiet' (from party:set until party:clear or the end of the credits). */
+  quiet = false;
   private readonly log: (m: string) => void;
 
   constructor(private readonly deps: PartyDeps) {
@@ -224,6 +228,8 @@ export class PartyRuntime {
     if (v === 'burn') set?.burst();
     this.slice.variant = v;
     this.applyVisible();
+    // a party re-issued after the credits (a resume into the free play) leaves the world awake
+    if (this.slice.credits !== 'done') this.setQuiet(true);
     this.deps.bus.emit('party:ready', { variant: v });
     return true;
   }
@@ -252,6 +258,16 @@ export class PartyRuntime {
     if (!open) this.cue(m);
   }
 
+  /**
+   * The world holds still while the party stands and the credits roll: no tripod beam behind the
+   * clearing, no "Vermessungspunkt eingemessen" for the Ehrenhof tripod next to it.
+   */
+  private setQuiet(on: boolean): void {
+    if (this.quiet === on) return;
+    this.quiet = on;
+    this.deps.bus.emit('world:quiet', { on, reason: QUIET_REASON });
+  }
+
   private applyVisible(): void {
     const p = this.party;
     if (!p) return;
@@ -268,6 +284,7 @@ export class PartyRuntime {
     if (this.credits) this.finish(true);
     this.dropParty();
     this.slice.variant = null;
+    this.setQuiet(false);
   }
 
   private dropParty(): void {
@@ -300,6 +317,7 @@ export class PartyRuntime {
     this.credits = c;
     this.spotlights.length = 0;
     this.slice.credits = 'playing';
+    this.setQuiet(true);
     this.deps.strip?.show(lines, reduced);
     this.deps.strip?.camera?.(false);
     this.deps.strip?.render(0, reduced ? 0 : -1);
@@ -355,6 +373,8 @@ export class PartyRuntime {
       this.deps.bus.emit('cinematic:stop', { id: CREDITS_CINEMATIC });
     }
     this.slice.credits = 'done';
+    // free play on the plateau after the credits: the world wakes up again
+    this.setQuiet(false);
     this.deps.bus.emit('credits:done', { skipped });
   }
 
@@ -378,8 +398,12 @@ export class PartyRuntime {
     const s = this.slice;
     const held = s.credits === 'playing';
     if (held) s.credits = 'done';
+    if (live) this.setQuiet(false);
     if (live || held) this.deps.bus.emit('credits:done', { skipped: true });
-    if (!s.variant) this.dropParty();
+    if (!s.variant) {
+      this.dropParty();
+      this.setQuiet(false);
+    }
   }
 
   // ---- step -----------------------------------------------------------------------------------
@@ -428,12 +452,13 @@ export class PartyRuntime {
     }
   }
 
-  /** Drop everything without events (system dispose). */
+  /** Drop everything without party events (system dispose); the world is given back its markers. */
   dispose(): void {
     if (this.credits) {
       this.credits = null;
       this.deps.strip?.hide();
     }
     this.dropParty();
+    this.setQuiet(false);
   }
 }

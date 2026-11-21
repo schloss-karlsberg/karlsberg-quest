@@ -5,7 +5,9 @@
  *
  * Contract with in-game playback (do not change): manifest `public/voice/manifest.json`
  *   { version: 1, lines: { <lineId>: { files: { opus, aac }, textHash, speechHash, speaker, provider, voiceId,
- *     model, licence, date, chars, credits, durationMs, attribution? } } }
+ *     model, licence, date, chars, credits, durationMs, attribution?, engine?, serviceKey?, sha256Raw? } } }
+ * (`engine` moss only: { model, tokenizer, warmup }; `serviceKey` / `sha256Raw` moss-service clips only:
+ * the service job key and the raw WAV's sha256; the runtime ignores all three)
  * files = `<lineId>.<sha256(bytes)[0..8]>.webm|.m4a` (the runtime reads names only from the manifest);
  * textHash = FNV-1a 32 over UTF-8 of the normalised display text_de (the runtime matches on it).
  */
@@ -397,6 +399,8 @@ export interface ResolvedVoice {
   licence: Licence;
   placeholder: boolean;
   voiceSettings?: Record<string, number | boolean>;
+  /** moss only: what rendered the audio (manifest `engine`; a different one regenerates) */
+  engine?: MossEngine;
   /** moss only */
   moss?: MossVoice;
   postprocess?: PostprocessConfig;
@@ -417,6 +421,22 @@ export interface MossVoice {
 
 /** Model id recorded for moss clips (MOSS-TTS-v1.5 at the pinned snapshot revision). */
 export const MOSS_MODEL = 'MOSS-TTS-v1.5@cdd3b91';
+/** What rendered a moss clip: model and tokenizer at their pinned snapshot revisions (runner.py REV /
+ * TOK_REV) plus the warm-up version (runner.py WARMUP, docs/ARCHITECTURE.md "warmup v1"). */
+export interface MossEngine {
+  model: string;
+  tokenizer: string;
+  warmup: string;
+}
+/** Manifest `engine` of moss clips. A moss entry whose `engine` is missing or differs is regenerated
+ * (`stale-engine`); bump it together with runner.py (a new warm-up = "v2", kept in step with moss-service). */
+export const MOSS_ENGINE: MossEngine = Object.freeze({
+  model: 'MOSS-TTS-v1.5@cdd3b911b1585e3f2dbc7775ef10f9926f58850a',
+  tokenizer: 'MOSS-Audio-Tokenizer@3cd226ba2947efa357ef453bcad111b6eafba782',
+  warmup: 'v1',
+});
+export const sameEngine = (a: Partial<MossEngine> | null | undefined, b: MossEngine): boolean =>
+  !!a && typeof a === 'object' && a.model === b.model && a.tokenizer === b.tokenizer && a.warmup === b.warmup;
 /** Attribution for moss clips (manifest `attribution`, credits screen). */
 export const MOSS_ATTRIBUTION = 'MOSS-TTS-v1.5, OpenMOSS, Apache-2.0';
 
@@ -468,7 +488,10 @@ export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: s
   const licence = v.licence ?? pc.licence ?? DEFAULT_LICENCE[provider];
   if (!LICENCES.includes(licence)) throw new Error(`speaker ${speaker}: unknown licence "${licence}"`);
   const r: ResolvedVoice = { provider, voiceId, voicePrompt: v.voicePrompt ?? undefined, model, licence, placeholder, voiceSettings: v.voiceSettings };
-  if (moss) r.moss = moss;
+  if (moss) {
+    r.moss = moss;
+    r.engine = { ...MOSS_ENGINE };
+  }
   if (v.postprocess) r.postprocess = v.postprocess;
   return r;
 }
@@ -494,6 +517,12 @@ export interface ManifestEntry {
   durationMs: number;
   /** model credit line where the licence asks for one (moss: MOSS_ATTRIBUTION); ignored by the runtime */
   attribution?: string;
+  /** moss only: model + tokenizer revisions and warm-up version that rendered the clip; ignored by the runtime */
+  engine?: MossEngine;
+  /** moss-service clips only: the service's job key (sha256 hex over engine, voice, ref, seed, params, text) */
+  serviceKey?: string;
+  /** moss-service clips only: sha256 hex of the raw WAV the service rendered (checked before post-processing) */
+  sha256Raw?: string;
 }
 export interface Manifest {
   version: 1;
@@ -529,16 +558,17 @@ export function writeManifest(path: string, m: Manifest): void {
   renameSync(tmp, path);
 }
 
-export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | 'stale-model' | 'stale-speech' | 'missing-file';
+export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | 'stale-model' | 'stale-engine' | 'stale-speech' | 'missing-file';
 
 /**
- * Does this line need (re)generating? Provider or voice id changed → stale-voice; `speechHash`
+ * Does this line need (re)generating? Provider or voice id changed → stale-voice; a voice with an
+ * `engine` (moss) whose manifest entry has no or another `engine` → stale-engine; `speechHash`
  * catches a changed speech override / text prep under an unchanged text; both clip files must exist.
  */
 export function lineStatus(
   entry: ManifestEntry | undefined,
   hash: string,
-  voice: { voiceId: string; model: string; provider?: ProviderName },
+  voice: { voiceId: string; model: string; provider?: ProviderName; engine?: MossEngine },
   fileExists: (f: string) => boolean = () => true,
   speechHash?: string,
 ): LineStatus {
@@ -546,6 +576,7 @@ export function lineStatus(
   if (entry.textHash !== hash) return 'stale-text';
   if (entry.voiceId !== voice.voiceId || (voice.provider && (entry.provider ?? 'elevenlabs') !== voice.provider)) return 'stale-voice';
   if (entry.model !== voice.model) return 'stale-model';
+  if (voice.engine && !sameEngine(entry.engine, voice.engine)) return 'stale-engine';
   if (speechHash !== undefined && entry.speechHash !== speechHash) return 'stale-speech';
   if (!entry.files?.opus || !entry.files?.aac || !fileExists(entry.files.opus) || !fileExists(entry.files.aac)) return 'missing-file';
   return 'up-to-date';

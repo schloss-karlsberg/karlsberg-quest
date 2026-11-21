@@ -1,8 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { throughParty } from './helpers/common';
 
 /**
- * Story feature: new-game flow, dialogue presenter, field station (day/night), hub overlay,
+ * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), hub overlay,
  * objectives + Bussole, being caught, endings and credits. Screenshots: test-results/screens/story-*.png
  */
 const SCREENS = 'test-results/screens';
@@ -71,7 +72,7 @@ test('story: new game flow (warning → name → lantern) starts the prologue', 
   expect(s.chapter).toBe('prolog');
   expect(s.beat).toBe('p1');
   expect(s.name).toBe('Mara');
-  // the prologue starts at the field station
+  // the bridged prologue still starts at the old spot by the forest road (home is the Quelle)
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
   expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(5);
   await expect(page.getByTestId('story-card')).toContainText('Vermessung');
@@ -80,7 +81,7 @@ test('story: new game flow (warning → name → lantern) starts the prologue', 
   expect(errors).toEqual([]);
 });
 
-test('story: field station by day and night, dialogue portraits', async ({ page }) => {
+test('story: home at the Quelle by day and night, dialogue portraits', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {
@@ -117,22 +118,22 @@ test('story: field station by day and night, dialogue portraits', async ({ page 
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
   await shot(page, 'dialogue-laub');
 
-  // the station, day and night
+  // home at the Quelle, day and night
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.goto('prolog', 'p10');
     k.story!.look('day');
-    k.teleport(754, -900, 22, -3);
+    k.teleport(1053, -828, 51, -3);
     k.step(2);
   });
-  await shot(page, 'station-day');
+  await shot(page, 'home-day');
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.look('night');
     k.step(2);
   });
   await page.waitForTimeout(600);
-  await shot(page, 'station-night');
+  await shot(page, 'home-night');
   expect(errors).toEqual([]);
 });
 
@@ -144,12 +145,12 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
     k.story!.start('Alex');
     k.step(4);
     k.story!.flush();
-    k.teleport(760, -905, 0);
+    k.teleport(1059.3, -833.1, 50);
     k.step(4);
   });
   expect(await page.evaluate(() => window.kq!.story!.state().inHub)).toBe(true);
   await page.evaluate(() => window.kq!.press('KeyE', 2));
-  // the station's own clues (Marlene's note and stories from the chapter packs) take E first:
+  // clues at home (Marlene's notes from the chapter packs) may take E first:
   // read them, then the hub
   await page.evaluate(() => {
     const k = window.kq!;
@@ -190,14 +191,14 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await page.evaluate(() => {
     if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
   });
-  await page.getByTestId('hub-radio').click();
+  await page.getByTestId('hub-phone').click();
   await page.waitForTimeout(1500);
-  await shot(page, 'hub-radio');
+  await shot(page, 'hub-phone');
   await page.getByTestId('hub-map').click();
   await expect(page.getByTestId('chapter-prolog')).toBeVisible();
   await shot(page, 'hub-map');
   await page.getByTestId('hub-continue').click();
-  // the Messstab by the trailer: Marlene's quest "Die Feldstation" is complete
+  // the Messstab by the forest road: Marlene's quest "Der Messstab" is complete
   await page.evaluate(() => {
     const k = window.kq!;
     const pr = k.progression!;
@@ -241,7 +242,7 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('story: caught by the pack → back at the field station', async ({ page }) => {
+test('story: caught by the pack → home at the Quelle', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {
@@ -261,7 +262,7 @@ test('story: caught by the pack → back at the field station', async ({ page })
   await page.evaluate(() => window.kq!.step(9 * 60 + 5));
   expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
-  expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(5);
+  expect(Math.hypot(p.x - 1059.3, p.z + 833.1)).toBeLessThan(5);
   // resumed at the checkpoint beat (p9: the first shift again — the 1789 visit with its Streuner and
   // the Bannlicht lesson is played once more; contentA moved it from p10)
   expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p9');
@@ -321,10 +322,8 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await expect(page.getByTestId('epilogue')).toBeVisible();
   await shot(page, 'epilogue');
   await page.getByTestId('ending-credits').click();
-  await expect(page.getByTestId('credits')).toBeVisible();
-  await page.waitForTimeout(9000);
-  await page.screenshot({ path: `${SCREENS}/story-credits.png` });
-  await page.getByTestId('credits-back').click();
+  // the party (bible 06-enden §8): Gerold's speech, then the credits strip over the party
+  await throughParty(page);
   await page.evaluate(() => window.kq!.step(4));
   const st = await page.evaluate(() => ({ story: window.kq!.story!.state(), flags: window.kq!.state().flags }));
   expect(st.story.ending).toBe('museum');

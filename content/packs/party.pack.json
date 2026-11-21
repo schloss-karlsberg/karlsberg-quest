@@ -1,0 +1,65 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "pack": "party",
+  "speakers": [
+    { "id": "imhoff", "name_de": "Gerold Imhoff · Führung", "historical": false },
+    { "id": "herzogd", "name_de": "Carl Herzog", "historical": false },
+    { "id": "mannd", "name_de": "Christian Mann", "historical": false },
+    { "id": "hanned", "name_de": "Hanne Matz", "historical": false },
+    { "id": "peterd", "name_de": "Peter Matz", "historical": false },
+    { "id": "jostd", "name_de": "Jost Fendel", "historical": false },
+    { "id": "solld", "name_de": "Herr Soll", "historical": false },
+    { "id": "liesed", "name_de": "Liese Wendling", "historical": false },
+    { "id": "mats", "name_de": "Mats", "historical": false }
+  ],
+  "dialogue": [
+    {
+      "id": "imhoff.end.nach",
+      "speaker": "imhoff",
+      "text_de": "Noch nicht müde? Der Kinderpunsch ist noch warm. Und wer wiederkommen will: Treffpunkt wie immer.",
+      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "herzogd.end.nach",
+      "speaker": "herzogd",
+      "text_de": "Ich steh unten an der Schranke. Soll ich dich mitnehmen? Zu Fuß ist nichts für mich.",
+      "trigger": { "event": "npc:talk", "npc": "herzogd", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "mannd.end.nach",
+      "speaker": "mannd",
+      "text_de": "Willst du die Skizze sehen? Die Lichtung stimmt. Das Schloss hab ich dazuerfunden und dazugeschrieben.",
+      "trigger": { "event": "npc:talk", "npc": "mannd", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "hanned.end.nach",
+      "speaker": "hanned",
+      "text_de": "Der Quader am Weg geht mir nicht aus dem Kopf. Ein Winkel und drei Punkte. Das war ein Linkshänder.",
+      "trigger": { "event": "npc:talk", "npc": "hanned", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "peterd.end.nach",
+      "speaker": "peterd",
+      "text_de": "Die Tasche trag ich. Wir gehen gleich.",
+      "trigger": { "event": "npc:talk", "npc": "peterd", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "jostd.end.nach",
+      "speaker": "jostd",
+      "text_de": "Diane führt, Bijou glaubt, er wär ein Hirsch. Die Namen hat mein Opa ausgesucht. Keine Ahnung, woher.",
+      "trigger": { "event": "npc:talk", "npc": "jostd", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "solld.end.nach",
+      "speaker": "solld",
+      "text_de": "Kuchenkasse: ein Stück offen. Das buche ich unter ‚offen‘. Ordnung ist, wenn man trotzdem einträgt.",
+      "trigger": { "event": "npc:talk", "npc": "solld", "chapter": "enden", "topic": "greet" }
+    },
+    {
+      "id": "liesed.end.nach",
+      "speaker": "liesed",
+      "text_de": "Die Jacke hat einen Riss. Gib her, ich näh dir das schnell. Kleider machen Leute.",
+      "trigger": { "event": "npc:talk", "npc": "liesed", "chapter": "enden", "topic": "greet" }
+    }
+  ]
+}

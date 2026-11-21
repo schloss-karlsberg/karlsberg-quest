@@ -21,3 +21,5 @@ public/**/*TEST-synthetic*
 .env
 .env.*
 !.env.example
+# moss-service raw WAVs (generate.mjs service mode, --raw-dir default): local only, the service cache keeps pointing at them
+/.voice-raw/

@@ -9,7 +9,8 @@ import { syllableStarts } from '../src/systems/story/dialogue/voice';
 import { type StoryEnv, type StoryHost, StoryEngine, type StorySlice, createStorySlice, evaluate, runsOnResume } from '../src/systems/story/engine';
 import { composeEpilogue, nounToVariant } from '../src/systems/story/endings/epilogue';
 import { endingScenes, yearsSpelled } from '../src/systems/story/endings/scenes';
-import { STATION, FieldStation } from '../src/systems/story/hub/station';
+import { HOME, HOME_TROUGH, bringHome, hubAt } from '../src/systems/story/hub/home';
+import { REACH, canTouch, toLocal } from '../src/systems/quelle/layout';
 import { angleDiff, bearingDeg } from '../src/systems/story/objectives';
 import { HORN_SIGNALS } from '../src/systems/story/sfx';
 import type { Action, Beat, StoryFile } from '../src/systems/story/types';
@@ -238,7 +239,7 @@ describe('story files', () => {
     expect(msg).toMatch(/ghost/);
   });
 
-  it('runs the real prologue headlessly from the field station to the cliffhanger', () => {
+  it('runs the real prologue headlessly from the old start to the cliffhanger, home at the Quelle', () => {
     const h = harness(files.map((f) => f.story));
     h.engine.goto('prolog');
     const step = (e: Partial<StoryEnv>, n = 1) => {
@@ -298,18 +299,18 @@ describe('story files', () => {
     step({ ...inv(), ...quest('q.p.punktwolke', 'streuner'), era: 'today' });
     expect(h.slice.beat).toBe('p10');
     step({ ...inv(), ...quest('q.p.punktwolke') });
-    expect(h.slice.beat).toBe('p10'); // the quest alone is not enough: back home to the station
+    expect(h.slice.beat).toBe('p10'); // the quest alone is not enough: back home to the Quelle
     // home by the map (playtest round 10 F-30: no 470 m walk for one bed): the journey lands beside
-    // the Feldstation tripod (776/−902 + 2.2 m), outside the 22 m circle; the arrival itself counts
-    h.engine.onEvent('travel:arrived', { id: 'feldstation', from: { x: 1218, z: -1118 } });
-    step({ ...inv(), flags: { ...flags }, x: 778.2, z: -899.8 });
+    // the Karlsbergquelle tripod (1072/−825 + 2.2 m), outside the 14 m circle; the arrival itself counts
+    h.engine.onEvent('travel:arrived', { id: 'karlsbergquelle', from: { x: 1218, z: -1118 } });
+    step({ ...inv(), flags: { ...flags }, x: 1074.2, z: -822.8 });
     expect(h.rec.runs.some((r) => r.source === 'prolog/b:daheim')).toBe(true); // „Feierabend“ + Marlene
     expect(h.slice.beat).toBe('p10'); // the dusk lasts at least 9 s
-    step({ ...inv(), flags: { ...flags }, x: 778.2, z: -899.8 }, 20);
+    step({ ...inv(), flags: { ...flags }, x: 1074.2, z: -822.8 }, 20);
     expect(h.slice.beat).toBe('p11');
     step({}, 20);
     expect(h.slice.chapter).toBe('prolog'); // the night lasts a little
-    h.engine.onEvent('hub:use', { item: 'bed' });
+    h.engine.onEvent('hub:use', { item: 'bench' });
     step({}, 60);
     expect(h.slice.chapter).toBe('k1');
     expect(h.slice.completed).toContain('prolog');
@@ -337,6 +338,27 @@ describe('story files', () => {
     expect(half.do.map((a) => a.do)).toEqual(['say']);
     // p10: the objective offers the map at once
     expect(b('p10').enter!.some((a) => a.do === 'objective' && /M – Karte/.test(a.text ?? '') && a.delay === undefined)).toBe(true);
+  });
+
+  it('home is the Quelle in every chapter: checkpoints and wakes at HOME.spawn (the bridged prologue only starts at the old spot)', () => {
+    const at = (c: { x: number; z: number } | undefined) => !!c && Math.hypot(c.x - HOME.spawn.x, c.z - HOME.spawn.z) < 0.01;
+    for (const { story } of files) {
+      if (story.test) continue;
+      if (story.chapter === 'prolog') {
+        expect(at(story.checkpoint)).toBe(false); // the start stays by the forest road (bridge)
+        expect(at(story.wake)).toBe(true);
+      } else expect(at(story.checkpoint), story.chapter).toBe(true);
+      // nothing in the story points at the old trailer any more (760/−915 r 15, spawn 760/−902)
+      const old = JSON.stringify(story.beats).match(/"x":\s*76[02](\.\d)?,\s*"z":\s*-9(0[2-9]|1\d)/g) ?? [];
+      expect(old.filter(() => story.chapter !== 'prolog'), story.chapter).toEqual([]);
+    }
+    // the prologue's way home: walking, the Quelle's tripod or (until it retires) the Feldstation's
+    const pro = files.find((f) => f.story.chapter === 'prolog')!.story;
+    const p10 = JSON.stringify(pro.beats.find((x) => x.id === 'p10')!.complete);
+    expect(p10).toContain('"karlsbergquelle"');
+    expect(p10).toContain('"feldstation"');
+    expect(p10).toContain('"x":1061');
+    expect(JSON.stringify(pro.beats.find((x) => x.id === 'p11')!.complete)).toContain('"hub":"bench"');
   });
 
   it('opens chapter 1 at the Karlsbergquelle at dawn: touch, summer 1789, the walk up, the court', () => {
@@ -539,7 +561,7 @@ describe('dialogue', () => {
   });
 });
 
-describe('objectives, station, endings', () => {
+describe('objectives, home, endings', () => {
   it('bearing: 0 = north (−z), 90 = east', () => {
     expect(bearingDeg(0, 0, 0, -10)).toBeCloseTo(0);
     expect(bearingDeg(0, 0, 10, 0)).toBeCloseTo(90);
@@ -549,12 +571,97 @@ describe('objectives, station, endings', () => {
     expect(angleDiff(350, 10)).toBeCloseTo(-20);
   });
 
-  it('the trailer pushes the player out of its footprint', () => {
-    expect(FieldStation.pushOut(STATION.x + 20, STATION.z)).toBeNull();
-    const o = FieldStation.pushOut(STATION.x + 0.3, STATION.z + 1.2)!;
-    expect(o).not.toBeNull();
-    expect(Math.abs(o.z - STATION.z)).toBeGreaterThan(STATION.halfWid);
-    expect(Math.hypot(STATION.spawn.x - STATION.x, STATION.spawn.z - STATION.z)).toBeLessThan(STATION.r);
+  it('home is the Quelle: the wake spot is in the hub, at the trough, in reach of the water, outside the stonework', () => {
+    const sp = HOME.spawn;
+    expect(Math.hypot(sp.x - HOME.x, sp.z - HOME.z)).toBeLessThan(HOME.r);
+    const d = Math.hypot(sp.x - HOME_TROUGH.x, sp.z - HOME_TROUGH.z);
+    expect(d).toBeLessThan(HOME.troughR);
+    expect(d).toBeLessThan(REACH);
+    expect(d).toBeGreaterThan(0.7); // in front of the log, not in the water
+    // facing the water (story yaw degrees → three.js radians), in today and in 1789
+    const yaw = (-sp.yaw * Math.PI) / 180;
+    expect(canTouch(sp.x, sp.z, yaw, 'today')).toBe(true);
+    expect(canTouch(sp.x, sp.z, yaw, '1789')).toBe(true);
+  });
+
+  it('hub:enter only near HOME, only today, and not flying', () => {
+    const flags = {};
+    expect(hubAt({ era: 'today', x: HOME.x + 5, z: HOME.z - 4, flags }).inside).toBe(true);
+    expect(hubAt({ era: 'today', x: HOME.spawn.x, z: HOME.spawn.z, flags }).inside).toBe(true);
+    expect(hubAt({ era: '1789', x: HOME.x + 5, z: HOME.z - 4, flags }).inside).toBe(false);
+    expect(hubAt({ era: '1793-02', x: HOME.spawn.x, z: HOME.spawn.z, flags }).inside).toBe(false);
+    expect(hubAt({ era: 'today', x: HOME.x + 13, z: HOME.z, flags }).inside).toBe(false);
+    expect(hubAt({ era: 'today', x: HOME.x, z: HOME.z, flying: true, flags }).inside).toBe(false);
+    // the old field station is no hub any more
+    expect(hubAt({ era: 'today', x: 760, z: -915, flags }).inside).toBe(false);
+  });
+
+  it('the Quelle prompt wins at the trough while quelle.call is set; the hub prompt everywhere else in the hub', () => {
+    const sp = { era: 'today', x: HOME.spawn.x, z: HOME.spawn.z };
+    expect(hubAt({ ...sp, flags: {} }).prompt).toBe(true); // no call: the hub works at the trough too
+    const called = hubAt({ ...sp, flags: { 'quelle.call': true } });
+    expect(called.inside).toBe(true); // still home: hub:enter, heal, oil
+    expect(called.quelleOwnsE).toBe(true);
+    expect(called.prompt).toBe(false);
+    // the Quelle's own prompt up (e.owner): it owns E wherever it stands
+    expect(hubAt({ ...sp, flags: { 'e.owner': 'quelle' } }).prompt).toBe(false);
+    // further than troughR from the water: the hub's low prompt again, even with the call
+    const away = { era: 'today', x: HOME_TROUGH.x - 4, z: HOME_TROUGH.z + 4, flags: { 'quelle.call': true } };
+    expect(Math.hypot(away.x - HOME_TROUGH.x, away.z - HOME_TROUGH.z)).toBeGreaterThan(HOME.troughR);
+    expect(hubAt(away).prompt).toBe(true);
+  });
+
+  it('the notes at home sit at the Quelle, never in the trough E zone (moved from the field station)', () => {
+    type PackClue = { id: string; where: { x: number; z: number; radius: number; era: string; anchor?: string } };
+    const home: PackClue[] = [];
+    for (const f of ['prolog', 'kapitel-2', 'kapitel-3', 'kapitel-4']) {
+      const pack = JSON.parse(readFileSync(`${ROOT}content/packs/${f}.pack.json`, 'utf8')) as { clues: PackClue[] };
+      for (const c of pack.clues) {
+        expect(c.where.anchor, c.id).not.toBe('loc.p.station');
+        // the prologue's portable clues (tablet, compass page) have home as their nominal spot
+        if (c.where.anchor === 'loc.quelle' || (f === 'prolog' && c.where.anchor === 'portable')) home.push(c);
+      }
+    }
+    expect(home.map((c) => c.id)).toEqual(expect.arrayContaining(['clue.p.lageplan', 'clue.p.laubblatt', 'clue.k2.marlene', 'clue.k3.marlene', 'clue.k4.marlene', 'clue.k4.foto']));
+    for (const c of home) {
+      const { x, z, radius } = c.where;
+      expect(Math.hypot(x - HOME.x, z - HOME.z), c.id).toBeLessThan(HOME.r + 1);
+      // either inside the wall (unreachable, granted by the story) or clear of the trough's E zone
+      // (the wall: local w 0.15 at its face, 0.55 thick, u ±2.7; the player keeps 0.6 m off it)
+      const [u, w] = toLocal(x, z);
+      const inWall = radius <= 0.5 && Math.abs(u) + radius < 2.7 && w + radius < 0.15 + 0.6 && w - radius > 0.15 - 0.55 - 0.6;
+      if (!inWall) expect(Math.hypot(x - HOME_TROUGH.x, z - HOME_TROUGH.z) - radius, c.id).toBeGreaterThan(HOME.troughR);
+    }
+  });
+
+  it('holding Q brings you home (WP-04): return → HOME.spawn + home:arrived; caught and other shifts stay put', () => {
+    const run = (e: { to: string; reason?: string }, caught = false) => {
+      const log: string[] = [];
+      const went = bringHome(e, { caught, teleport: (x, z, yaw) => log.push(`tp ${x}/${z}/${yaw}`), arrived: (r) => log.push(`home:arrived ${r}`) });
+      return { went, log };
+    };
+    expect(run({ to: 'today', reason: 'return' })).toEqual({ went: true, log: [`tp ${HOME.spawn.x}/${HOME.spawn.z}/${HOME.spawn.yaw}`, 'home:arrived return'] });
+    // being caught shifts to today with its own reason and wakes by itself: no second teleport
+    expect(run({ to: 'today', reason: 'caught' }, true)).toEqual({ went: false, log: [] });
+    expect(run({ to: 'today', reason: 'return' }, true)).toEqual({ went: false, log: [] });
+    // content shifts without a reason, the spring, anchors, echoes, endings, the Steinfraß: stay put
+    for (const reason of [undefined, 'quelle', 'anchor', 'echo', 'ending', 'oblivion', 'key']) expect(run({ to: 'today', reason }).went, String(reason)).toBe(false);
+    // into the past never
+    expect(run({ to: '1789', reason: 'return' }).went).toBe(false);
+  });
+
+  it('old hub ids stay aliases: bed is the bench, radio the phone', () => {
+    const f: StoryFile = { chapter: 'h', order: 0, title_de: 'H', start: 'h1', beats: [beat('h1', { hub: 'bed' }), beat('h2', { hub: 'phone' })] };
+    const g: StoryFile = { chapter: 'g', order: 1, title_de: 'G', start: 'g1', beats: [beat('g1', { manual: true })] };
+    expect(validateStories([{ file: 'h', story: f }]).errors.filter((e) => e.message.includes('hub')).length).toBe(0);
+    const h = harness([f, g]);
+    h.engine.goto('h');
+    h.engine.onEvent('hub:use', { item: 'bench' });
+    h.engine.tick(0.1, env());
+    expect(h.slice.beat).toBe('h2');
+    h.engine.onEvent('hub:use', { item: 'radio' });
+    h.engine.tick(0.1, env());
+    expect(h.slice.completed).toContain('h');
   });
 
   it('horn signals are distinct', () => {

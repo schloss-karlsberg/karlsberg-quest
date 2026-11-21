@@ -4,6 +4,7 @@
  * the Bannlicht cone, the attack-token limit, leash / reset, group bookkeeping, respawn, boss
  * phases, safe zones and telegraph times. The simulation (sim.ts) only calls into this file.
  */
+import { homeSpot } from '../home';
 import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
 
 // ---- tuning --------------------------------------------------------------------------------
@@ -193,9 +194,8 @@ export const AI = {
 } as const;
 
 /** Safe zones (§4.6). */
-export const SAFE = { stationR: 40, npcR: 6 } as const;
-/** The field station's trailer (local frame; same as story/hub/station.ts STATION, which we may not import). */
-export const STATION_XZ = { x: 760, z: -915 } as const;
+/** `homeR`: the no-fight ring around the home base in the present (centre: `homeSpot()`, src/systems/home.ts). */
+export const SAFE = { homeR: 40, npcR: 6 } as const;
 
 /** The Pikeur never reaches 0: at this fraction he blows "verloren" and leaves. */
 export const PIKEUR_LEAVE = 0.12;
@@ -561,14 +561,15 @@ export interface SafeInput {
   engaged?: boolean;
 }
 
-export type SafeReason = 'disabled' | 'station' | 'memorial' | 'talking' | 'modal' | 'npc' | null;
+export type SafeReason = 'disabled' | 'home' | 'memorial' | 'talking' | 'modal' | 'npc' | null;
 
 /** Why no fighting can happen here (null = fighting allowed). */
 export function safeReason(s: SafeInput): SafeReason {
   if (s.disabled) return 'disabled';
   if (s.modal) return 'modal';
   if (s.talking) return 'talking';
-  if (s.hub || (s.era === 'today' && Math.hypot(s.x - STATION_XZ.x, s.z - STATION_XZ.z) <= SAFE.stationR)) return 'station';
+  const home = homeSpot();
+  if (s.hub || (s.era === 'today' && Math.hypot(s.x - home.x, s.z - home.z) <= SAFE.homeR)) return 'home';
   for (const m of s.memorials ?? []) {
     if (!m.active) continue;
     if (m.era && m.era !== s.era) continue;

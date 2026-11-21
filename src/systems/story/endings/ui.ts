@@ -1,7 +1,8 @@
 /**
  * The finale at the field-station table: choose what happens to the Chronik (three objects),
  * confirm, the closing scene, the epilogue page (a museum label / an ash-grey page / a night
- * page) and the scrolling credits with sources and data licences.
+ * page), then the party with the credits strip over it (bible 06-enden §8, `deps.party`); the
+ * scrolling credits page with sources and data licences stays for `kq.story.credits()`.
  */
 import type { AttributionItem } from '../../../data/types';
 import { t } from '../../../i18n';
@@ -41,6 +42,11 @@ export interface EndingDeps {
   chosen(ending: EndingId): void;
   /** Credits closed. */
   finished(): void;
+  /**
+   * The party after the epilogue (bible 06-enden §8): the story builds it (`party:set`), plays
+   * beat e3 and rolls the credits over it (`party:credits`). Without it the credits page plays.
+   */
+  party?(id: EndingId): void;
   sound(kind: 'horn' | 'match' | 'compass'): void;
   reducedMotion(): boolean;
   name(): string;
@@ -219,8 +225,16 @@ export class EndingScreen {
           e.coda ? h('p.kqs-epi-coda', e.coda) : null,
         ]),
       ]),
-      h('div.actions', [h('button.kq-btn.primary', { 'data-testid': 'ending-credits', onclick: () => this.credits() }, t('story.end.credits'))]),
+      h('div.actions', [h('button.kq-btn.primary', { 'data-testid': 'ending-credits', onclick: () => this.party() }, t('story.end.credits'))]),
     ]);
+  }
+
+  /** The epilogue's last button: the modal closes and the party takes over (else the credits page). */
+  private party(): void {
+    const id = this.ending;
+    if (!id || !this.d.party) return this.credits();
+    this.close();
+    this.d.party(id);
   }
 
   private creditKeys: ((e: KeyboardEvent) => void) | null = null;
