@@ -256,6 +256,66 @@ Measured as in §3.4 (real GPU, Apple M5 Pro, ANGLE Metal, headless Chromium 128
   - What differs: the wind phase, and near trunk-shadow edges that move a few pixels (lod1 casters)
     (session scratchpad `tri-phase-b/`).
 
+### 3.6 Era shift warm-up (M-17, 2026-11-21)
+
+The mobile tour (kq-mobile, M5 Pro, ANGLE Metal) found the today → 1789 shift stuttering: p95
+33 ms mid-shift, worst frame 150–183 ms. On the real GPU the long frames were programs being
+compiled at their first draw: three's first use of a program (`getProgramInfoLog` with
+`checkShaderErrors`) waits until ANGLE has compiled and linked it, 60–120 ms for a single program
+on Metal. The stalls came at the shift's start (point-cloud programs, plus 48 ms of CPU for the
+terrain cloud and palace samples), when the veil (t ≈ 0.23 s) and the fade (t ≈ 1.15 s) first
+drew, and at the midpoint, when the 1789 world appeared (9 programs, 114 ms). The boot warm-up
+did not help: it is skipped under WebDriver, and it compiled with no render target bound, so
+every program was keyed for sRGB output while the scene draws into the post target (linear
+output). None of those programs were ever reused.
+
+The fix (`systems/fx/shift/warm.ts`, `slices.ts`, `reveal.ts`) changes nothing on screen:
+
+1. **Idle warm-up** (`ShiftWarmer`), 1.5 s after the palace has loaded, in 3 ms slices. It
+   gathers everything not drawn now (the hidden palace, the other era's sets), the shift's own
+   materials (stand-ins from `ShiftEffect.warmObjects`) and the next era's model templates (the
+   story's shift target, else today ↔ 1789; their assets are prefetched, 7 MB for 1789). For each
+   distinct material × kind × vertex layout it makes one stand-in that shares the real buffers but
+   draws a single triangle. The stand-ins are compiled with `compileAsync` into the post target,
+   then each is drawn once into the post target (casters also into the shadow target,
+   `SunShadows.warm`). That builds the pipelines and uploads the buffers and textures. At most
+   one program is used for the first time per frame. The other era's terrain textures are
+   uploaded with `initTexture`. After every era change the pass runs again. It does not run on
+   software GL (e2e); `?warm` / `?nowarm` override that.
+2. **Reveal window** (`reveal.ts`). Some objects only exist once the era has switched: chronik
+   markers, ambient layers, k1 sets, travel shrine and tripods, Flaschen bottles. While the
+   shift's veil hides them (completely while it is 'full', and beyond the reassembly radius
+   while it runs 'in'), each new object whose material never drew is held back (layer mask 0)
+   while its program compiles in parallel. It comes back once a stand-in has drawn, or as soon
+   as the wave reaches it. The first uses spread over the frames of the wave.
+3. **Shift start**: the terrain cloud is built ring by ring, always at least 12 m ahead of the
+   scan wave (`TerrainCloudJob`; same points as the one-shot build). The palace samples are
+   cached by the warm-up. The boot warm-up now compiles into the post target.
+
+Measured with a scratch spec on the real GPU (headless Chromium 1280 × 720, uncapped, third-person
+camera at the palace plateau, a shift requested after the warm-up has run, then the shift back;
+every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
+
+| Run (ms) | p50 before → after | p95 before → after | worst before → after | frames > 50 ms | programs compiled in the shift |
+|---|---|---|---|---|---|
+| high, today → 1789 | 4.1 → 4.3 | 7.9 → 7.6 | 179 → 149 | 6 → 3 | 13 → 7 |
+| high, 1789 → today | 4.5 → 4.4 | 8.6 → 7.9 | 111 → 77 | 2 → 1 | |
+| medium, today → 1789 | 3.2 → 3.3 | 6.7 → 6.3 | 127 → 116 | 5 → 3 | 13 → 7 |
+| medium, 1789 → today | 2.9 → 2.3 | 7.5 → 7.4 | 73 → 72 | 2 → 1 | |
+
+- The idle warm-up itself (about 1.8 s of 3 ms slices after load, 119 stand-in draws) costs one
+  frame of about 100–120 ms. That is the one first use on Metal that cannot be split, and it lands
+  while the player is standing at the start rather than mid-shift. p95 over the warm-up is 16–23 ms.
+- What is left in the shift is the midpoint frame (115–150 ms). It comes from the objects other
+  systems create on `era:change` near the camera: ambient layers, chronik markers, k1 workers,
+  Ehrenhof signs, the travel tripod, Flaschen bottles and the photo board. The wave reaches them
+  as soon as the void opens, so they compile in the void as before. A first version held those
+  objects too and released them all at once at void-open, which made 1789 → today worse (111 →
+  218 ms). Holding only what the wave reaches later (`HOLD_MIN_R` 10 m) and releasing by wave
+  radius fixed that. The next step would be warming those systems' materials ahead, inside the
+  systems themselves.
+- Raw data: the scratchpad `era-shift/` folder (`before.json`, `after7.json`).
+
 ## 4. Loading
 
 Measured with `e2e/perf.spec.ts` (preview build on localhost, cold cache, SwiftShader).
@@ -277,7 +337,8 @@ Shader warm-up: once the palace is in, `renderer.compileAsync(scene, camera)` co
 material while the title is shown (parallel compile where the driver offers
 `KHR_parallel_shader_compile`). Without it the first 1789 frame took 2.5 s in SwiftShader (47
 programs); later era first frames ~85 ms. Not run under WebDriver (keeps e2e timing as before);
-`?warm` forces it.
+`?warm` forces it. It compiles into the post target: without one bound the programs got sRGB-output
+keys no scene pass uses (M-17). The era shift has its own idle warm-up (§3.6).
 
 ## 5. Graphics presets and the auto-downgrade
 

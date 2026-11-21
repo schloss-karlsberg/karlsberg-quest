@@ -41,6 +41,7 @@ import { Quality, type QualityLevel } from './quality';
 import { ScanPulse } from './scan/pulse';
 import { instantShift } from './shift/instant';
 import { ShiftEffect } from './shift/shift';
+import { ShiftWarmer, glRendererName, nextEraTemplates, warmEnabled } from './shift/warm';
 import { StageDirector } from './stage';
 import './strings';
 import { FxUI } from './ui';
@@ -83,6 +84,8 @@ export interface FxHooks {
   k3: ReturnType<K3Stage['hooks']>;
   state(): {
     shift: { active: boolean; t: number; from: Era; to: Era };
+    /** Era-shift warm-up (fx/shift/warm.ts): null when off (software GL, ?nowarm). */
+    warm: { steps: number; drawn: number; passes: number } | null;
     fire: { active: boolean; progress: number; clock: number; smoke: number; burning: number; collapsed: number; units: number };
     oblivion: { active: boolean; t: number };
     quality: QualityLevel;
@@ -101,6 +104,7 @@ const K3_TMP = new Color();
 let ui: FxUI | null = null;
 let quality: Quality;
 let shift: ShiftEffect;
+let warmer: ShiftWarmer | null = null;
 let pulse: ScanPulse;
 let fire: FireController;
 let obl: OblivionController;
@@ -201,6 +205,7 @@ function installHooks(ctx: GameContext): void {
       const sim = fire.sim;
       return {
         shift: { active: shift.active, t: shift.t, from: shift.from, to: shift.to },
+        warm: warmer ? { ...warmer.stats } : null,
         fire: {
           active: fire.active,
           progress: fire.progress,
@@ -225,6 +230,8 @@ export default defineSystem({
     quality = new Quality(ctx.params.get('fxq'));
     if (ctx.params.has('manual')) quality.auto = false; // deterministic tests
     shift = new ShiftEffect(ctx, ui, quality);
+    // M-17: compile / upload what the other era and the shift itself need before the first shift
+    warmer = warmEnabled(ctx.params, glRendererName(ctx.renderer.getContext())) ? new ShiftWarmer(ctx, { effect: () => shift.warmObjects(), extraTextures: () => ctx.world.eraTextures(), templates: () => nextEraTemplates(ctx) }) : null;
     pulse = new ScanPulse();
     ctx.scene.add(pulse.mesh);
     fire = new FireController(ctx, ui, quality);
@@ -306,6 +313,7 @@ export default defineSystem({
     if (quality.sample(dt)) fire.rebuild();
     if (!frozen && !stepsDriveVisualsNow(ctx.loop.manual, ctx.params)) shift.advance(dt);
     else if (shift.active) shift.advance(0);
+    warmer?.frame(dt, shift.active || fire.active || obl.active, shift.holdRadius);
     if (!pulseHold) pulse.frame(dt);
     fire.frame(dt);
     obl.frame(dt);

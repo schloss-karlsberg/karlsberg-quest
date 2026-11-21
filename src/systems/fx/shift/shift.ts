@@ -15,6 +15,7 @@ import {
   LessEqualDepth,
   LineSegments,
   Mesh,
+  type Object3D,
   Points,
   ShaderMaterial,
   SphereGeometry,
@@ -28,7 +29,8 @@ import { rng } from '../geom';
 import type { ShiftReason } from '../../contracts';
 import type { Quality } from '../quality';
 import type { FxUI } from '../ui';
-import { buildTerrainCloud, buildTreeCloud, palaceCloudGeometry, palaceSamples } from './pointcloud';
+import { TerrainCloudJob, buildTreeCloud, palaceCloudGeometry, palaceSamples } from './pointcloud';
+import { holdRadius } from './reveal';
 import { CLOUD_FRAG, CLOUD_VERT, FADE_FRAG, REWIND_FRAG, REWIND_VERT, VEIL_FRAG, VEIL_VERT } from './shaders';
 import {
   SHIFT_DURATION,
@@ -42,6 +44,10 @@ import {
 } from './timeline';
 
 const VOID = new Color(0.004, 0.008, 0.02);
+/** Frame budget for writing terrain cloud rings (ms). */
+const TERRAIN_BUDGET_MS = 3;
+/** Rings are kept built this far (m) beyond the scan-wave front (its glow fades within ~8 m). */
+const WAVE_AHEAD = 12;
 const BRASS = new Color(1.0, 0.62, 0.22);
 
 function cloudMaterial(kind: 0 | 1 | 2, size: number): ShaderMaterial {
@@ -71,6 +77,31 @@ function cloudMaterial(kind: 0 | 1 | 2, size: number): ShaderMaterial {
   });
 }
 
+function rewindMaterial(center: Vector3): ShaderMaterial {
+  return new ShaderMaterial({
+    vertexShader: REWIND_VERT,
+    fragmentShader: REWIND_FRAG,
+    uniforms: { uTime: { value: 0 }, uAlpha: { value: 0 }, uCenter: { value: center } },
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+  });
+}
+
+/** One-point geometry with the attributes a cloud layer of `kind` reads (warm-up stand-ins). */
+function stubCloudGeometry(kind: 0 | 1 | 2): BufferGeometry {
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(new Float32Array(3), 3));
+  g.setAttribute('aRand', new BufferAttribute(new Float32Array(1), 1));
+  if (kind === 0) {
+    g.setAttribute('aH2', new BufferAttribute(new Float32Array(1), 1));
+    g.setAttribute('aShade', new BufferAttribute(new Float32Array(1), 1));
+  } else g.setAttribute('aBase', new BufferAttribute(new Float32Array(1), 1));
+  if (kind === 1) g.setAttribute('aConf', new BufferAttribute(new Float32Array(1), 1));
+  if (kind === 2) g.setAttribute('aRel', new BufferAttribute(new Float32Array(1), 1));
+  return g;
+}
+
 export interface ShiftOptions {
   reduced: boolean;
   /** The 'shift:request' reason, passed through to 'shift:done'. */
@@ -98,9 +129,14 @@ export class ShiftEffect {
   private treesNew: Points | null = null;
   private rewind: LineSegments | null = null;
   private palaceGeo: BufferGeometry | null = null;
+  private terrainJob: TerrainCloudJob | null = null;
   private savedVol: { ambience: number; music: number } | null = null;
   private wasFrozen = false;
   private onDone: (() => void)[] = [];
+  private warmSet: Object3D[] | null = null;
+  private veilMode: ShiftCurves['veil'] = 'none';
+  private veilR = 0;
+  private veilAlpha = 1;
 
   constructor(
     private readonly ctx: GameContext,
@@ -124,6 +160,33 @@ export class ShiftEffect {
     ctx.scene.add(this.veil, this.fade, this.skyCover);
   }
 
+  /**
+   * Stand-ins for the effect's own shader programs (point-cloud kinds, rewind streaks) plus the
+   * hidden veil / fade / sky cover, for the warm-up (fx/shift/warm.ts) to compile before the first
+   * shift. The stand-ins are never added to the scene nor disposed: while they live, three keeps
+   * the programs cached and each shift's fresh layer materials reuse them instead of compiling on
+   * the shift's first frame (M-17). Same shaders, defines and flags as the real layers.
+   */
+  warmObjects(): Object3D[] {
+    if (!this.warmSet) {
+      const kinds = [0, 1, 2] as const;
+      const set: Object3D[] = kinds.map((k) => new Points(stubCloudGeometry(k), cloudMaterial(k, 0.22)));
+      const lg = new BufferGeometry();
+      lg.setAttribute('position', new BufferAttribute(new Float32Array(6), 3));
+      lg.setAttribute('aSeed', new BufferAttribute(new Float32Array(8), 4));
+      lg.setAttribute('aTail', new BufferAttribute(new Float32Array(2), 1));
+      set.push(new LineSegments(lg, rewindMaterial(new Vector3())));
+      for (const o of set) o.frustumCulled = false;
+      this.warmSet = set;
+    }
+    return [...this.warmSet, this.veil, this.fade, this.skyCover];
+  }
+
+  /** How far from the camera the veil still hides the new era (fx/shift/reveal.ts; 0: nothing). */
+  get holdRadius(): number {
+    return holdRadius({ active: this.active, reduced: this.reduced, switched: this.midDone, veil: this.veilMode, veilR: this.veilR, veilAlpha: this.veilAlpha });
+  }
+
   /** Begin a shift to `to`. Resolves when the effect is done. */
   start(to: Era, opts: ShiftOptions): Promise<void> {
     const ctx = this.ctx;
@@ -135,6 +198,7 @@ export class ShiftEffect {
     this.active = true;
     this.t = 0;
     this.midDone = false;
+    this.veilMode = 'none';
     this.center.copy(ctx.player.position);
     this.wasFrozen = ctx.player.frozen;
     ctx.player.frozen = true;
@@ -163,8 +227,10 @@ export class ShiftEffect {
     const cx = this.center.x;
     const cz = this.center.z;
     // terrain with both reliefs (2025 ↔ 1789 morph at the midpoint)
-    const tg = buildTerrainCloud(w.heightfields[fromI.terrain], w.heightfields[toI.terrain], cx, cz, 360, hi ? 900 : 500, hi ? 1.03 : 1.05);
-    this.addLayer(new Points(tg, cloudMaterial(0, 0.22)));
+    // built ring by ring ahead of the scan wave (apply), not all on the shift's first frame (M-17)
+    this.terrainJob = new TerrainCloudJob(w.heightfields[fromI.terrain], w.heightfields[toI.terrain], cx, cz, 360, hi ? 900 : 500, hi ? 1.03 : 1.05);
+    this.terrainJob.step(TERRAIN_BUDGET_MS, WAVE_AHEAD);
+    this.addLayer(new Points(this.terrainJob.geometry, cloudMaterial(0, 0.22)));
     // palace surface points (only if either era shows the palace)
     if (fromI.palace !== 'hidden' || toI.palace !== 'hidden') {
       const s = palaceSamples(w.palace.object);
@@ -195,17 +261,7 @@ export class ShiftEffect {
     lg.setAttribute('position', new BufferAttribute(pos, 3));
     lg.setAttribute('aSeed', new BufferAttribute(seed, 4));
     lg.setAttribute('aTail', new BufferAttribute(tail, 1));
-    this.rewind = new LineSegments(
-      lg,
-      new ShaderMaterial({
-        vertexShader: REWIND_VERT,
-        fragmentShader: REWIND_FRAG,
-        uniforms: { uTime: { value: 0 }, uAlpha: { value: 0 }, uCenter: { value: this.center } },
-        transparent: true,
-        depthWrite: false,
-        blending: AdditiveBlending,
-      }),
-    );
+    this.rewind = new LineSegments(lg, rewindMaterial(this.center));
     this.rewind.frustumCulled = false;
     this.rewind.renderOrder = 1001;
     ctx.scene.add(this.rewind);
@@ -269,6 +325,12 @@ export class ShiftEffect {
     const fromLook = ERA_INFO[this.from].palace;
     const toLook = ERA_INFO[this.to].palace;
     const c: ShiftCurves = shiftCurves(this.t, fromLook, toLook);
+    // terrain rings: always built out past the wave front (a ring only shows behind the wave)
+    const tj = this.terrainJob;
+    if (tj && !tj.done) tj.step(TERRAIN_BUDGET_MS, c.waveR + WAVE_AHEAD);
+    this.veilMode = c.veil;
+    this.veilR = c.veilR;
+    this.veilAlpha = c.veilAlpha;
     // veil: hides the solid world behind / in front of the waves
     const vm = this.veilMat;
     this.veil.visible = c.veil !== 'none';
@@ -345,6 +407,7 @@ export class ShiftEffect {
     }
     this.palaceGeo?.dispose();
     this.palaceGeo = null;
+    this.terrainJob = null;
     this.layers.length = 0;
     this.treesOld = this.treesNew = null;
     if (this.rewind) {
