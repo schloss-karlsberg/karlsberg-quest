@@ -1099,9 +1099,9 @@ Round-4 (polish: set dressing) integration rules:
 ### people (`src/systems/people/`) – People contract v0
 Modern NPCs (the tour guide, about 15 tour members, the modern doubles of historical figures, a
 child, the two historical twins) walking paths together. Other systems (path walk, groups, the
-tour) spawn them through a **mesh-independent handle API**. Today rigged CC0 stand-ins draw them.
-The **real authored character meshes come later behind the same interface**: callers do not
-change.
+tour) spawn them through a **mesh-independent handle API**. Rigged CC0 stand-ins draw most of
+them; the **authored MPFB bodies drop in behind the same interface** one spec at a time (today:
+the guide, opt-in with `?people=authored`), and callers do not change.
 
 - **The contract** is `src/systems/people/types.ts` (frozen 2026-11-20, v0.1 additive). Import
   it with `import type` only:
@@ -1153,7 +1153,7 @@ change.
   - extra: ≤ 6k tris, ≤ 2
   - LOD1 at about 50 % beyond 15 m
 - **Spec ids** (provisional, `specs.ts`):
-  - `guide`: the placeholder guide Gerold Imhoff, 1.95 m, big, skinny, bald
+  - `guide`: the placeholder guide Gerold Imhoff, 1.95 m, big, skinny, bald (authored body, opt-in)
   - `double.herzog`, `double.mannlich`, `double.hanne`, `double.peter`, `double.jost`,
     `double.soll`, `double.liese`: modern clothes, featured
   - `child.compass`: 1.25 m, featured
@@ -1185,6 +1185,40 @@ change.
   - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
     capsule. Geometry belongs to the asset cache.
   - A failed load shows a capsule.
+- **Authored bodies** (`authored.ts`; the person logic stays `standin.ts`, through a `BodyKit`):
+  - A spec with `authored: { model, cloth }` draws its MPFB build (`scripts/chars/mpfb/specs/<id>.json`,
+    packed into `public/assets/models/chars/`, manifest `chars-mpfb.ts`). Every other spec keeps its
+    stand-in. Today: `guide` → `chars.people.guide` (1.95 m, LOD0 11.6k tris, LOD1 5.8k tris,
+    1 draw call each).
+  - **Switch:** `PEOPLE_AUTHORED_DEFAULT` (`specs.ts`, one line) turns authored bodies on or off;
+    `?people=authored` / `?people=standin` force either for the session (read once at people init).
+    It is `false` for now: the authored guide is opt-in (`?people=authored`) until his look passes
+    review; by default every person, the guide too, draws its stand-in.
+  - **One shared material.** The pipeline bakes every surface colour of a body into its vertex
+    colours and gives the mesh ONE material `People` (`kqchar/palette.py`). The people system draws
+    every such mesh, in every authored person and every GLB, with the same `MeshStandardMaterial`
+    instance (`peopleMaterial()`: vertex colours, `kqStandard` world light). So a person costs one
+    draw call, nothing is cloned per person, and the renderer does not switch materials or programs
+    between people. A person never disposes it. The ghost look still gets per-person shader
+    materials.
+  - **LOD1:** the GLB carries `avatar-body_lod1` (about half the triangles, the same skin, no
+    morphs). The person shows it beyond `PEOPLE_LOD.lod1` (15 m, ±0.5 m hysteresis,
+    `lod1Level`); the registry passes the camera distance to each tick.
+  - **Clips: one table** (`AUTHORED_SOURCE`, `AUTHORED_CLIPS`): idle → `Idle`, walk → `Walk`,
+    run → `Run`, interact → `Interact`, wave → `Wave`, point → `Point` (the retargeted Interact
+    with a pointing hand, `retarget.py --point`). talk / lookAround as for the stand-in; sit /
+    sitTalk fall back (idle sunk 0.42 m). `info.clips` = idle, walk, run, talk, point, wave,
+    lookAround, interact.
+  - **Bones:** a small local alias table (`AUTHORED_BONES`: `neck_01`, `foot_l` / `foot_r`, the
+    upper-body split mapped from the stand-in's), looked up with `Rig.bone`. No width factor
+    (`build` is the stand-in's): the authored body has its own build.
+  - A load failure shows the capsule, as for the stand-in.
+  - Measured (2026-11-21, real GPU, Apple M5 Pro, high tier, `kq.people.stats()` person draw
+    calls / whole frame incl. the shadow pass): a group of 16 (guide, 7 doubles, the child, 7 extras)
+    182 / 474 with all stand-ins, 173 / 456 with the authored guide; 16 guides 160 / 430 as
+    stand-ins, 16 / 142 authored (one shared material instance; the empty view: 127). The
+    authored body casts sun shadows: the shadow pass draws it as one more call (40 → 41, LOD0
+    +11.3k tris, measured with the first build); none of its meshes is on the pass's skip list.
 - **Talking to people** (v0.1):
   - Spawn the person with `speaker: '<content speaker id>'`. The npc system then binds that
     speaker's story placement (`npc:spawn`) to `ctx.people.bySpeaker(id)` (`npc/bind.ts`).
@@ -1198,20 +1232,21 @@ change.
   - `spawn(specId, x, z, {yawDeg | yaw, look, tier, seed, name, speaker}) → id`
   - `list()`
   - `get(id)`: state (position, yaw, speed, clip / playing / shot, look, LOD, measured strides,
-    weights, head, tris, draw calls)
+    weights, head, tris, draw calls, `body` 'standin' | 'authored', `lodLevel` 0 | 1)
   - `clear()`
   - `stats()`: count, drawn, approx tris, draw calls, LOD bands
   - `specs()`
   - `drive(id, mps)`: debug walking along the facing
   - Tests: `tests/people.test.ts`. They load the real GLBs in node: strides, poses, bounds,
-    disposal.
-- **Stand-in limits:**
+    disposal; for the authored guide the budget per LOD, LOD1 and its switch, the one shared
+    material across two people, and the contract calls.
+- **Stand-in limits** (the specs without an authored body):
   - 10–15 draw calls and 5.3k–10.2k tris per body (above the featured / extra budgets), twice
     that for a ghost
   - no real point / sit clips
   - no LOD1 mesh
   - per-person materials
-  - no foot IK on slopes
+  - no foot IK on slopes (authored bodies neither)
 
 ### fauna (`src/systems/fauna/`) – Fauna contract v0
 Animal bodies for the tour: the roe doe and her fawn (a photo / sneak moment) and Jost's dogs Diane
