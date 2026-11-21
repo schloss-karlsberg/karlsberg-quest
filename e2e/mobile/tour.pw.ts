@@ -527,12 +527,28 @@ const STATES: State[] = [
     run: async (c) => {
       const has = await c.page.evaluate(() => 'photo' in (window.kq as object));
       if (!has) return c.na('no kq.photo on this branch');
-      await c.page.evaluate(() => {
-        const ph = (window.kq as unknown as { photo: { open?: () => void; toggle?: () => void } }).photo;
-        (ph.open ?? ph.toggle)?.();
-      });
-      await c.page.waitForTimeout(500);
-      await c.shot();
+      type Ph = { open(): boolean; close(): void; state(): { open: boolean } };
+      const isOpen = () => c.page.evaluate(() => (window.kq as unknown as { photo: Ph }).photo.state().open);
+      await c.tidy();
+      await c.page.evaluate(() => window.kq!.teleport(1200, -1140, 0, -2));
+      await c.page.waitForTimeout(600);
+      await c.shot('hud', 'the top row with the phone button');
+      // the top-row phone button (real touch), else the hook
+      if (await c.page.getByTestId('touch-photo').isVisible()) await c.tap('touch-photo');
+      await c.page.waitForTimeout(800);
+      if (!(await isOpen())) {
+        c.f.notes.push('photo: a tap on touch-photo did not open photo mode; opened by kq.photo.open()');
+        await c.page.evaluate(() => (window.kq as unknown as { photo: Ph }).photo.open());
+        await c.page.waitForTimeout(800);
+      }
+      await c.shot('open', 'photo mode on touch: phone frame, status bar, touch controls');
+      // the shutter is the attack button while the phone is up
+      if (await c.page.getByTestId('touch-attack').isVisible()) {
+        await c.tap('touch-attack');
+        await c.page.waitForTimeout(1200);
+        await c.shot('shutter', 'after the shutter: the photo card');
+      }
+      await c.page.evaluate(() => (window.kq as unknown as { photo: Ph }).photo.close());
       await c.tidy();
     },
   },
