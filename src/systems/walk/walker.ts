@@ -20,6 +20,17 @@ export const CATCH_UP_DIST = 6;
 export const RESUME_GAP = 13;
 /** At most one come-along bark per this many seconds while waiting. */
 export const BARK_EVERY = 20;
+/**
+ * The forgiving leash (tour playtest 2026-11-21: a player cutting a bent leg towards the marker
+ * got ahead, the guide waited for them behind, the beat never ended): a player within AHEAD_LANE m
+ * of the route and more than AHEAD_MIN m ahead of the walker along it, or closer (straight) to the
+ * target than the walker's remaining way, is ahead: no waiting, the walker hurries.
+ */
+export const AHEAD_LANE = 40;
+export const AHEAD_MIN = 3;
+/** The player is this close to the target stop while the walker is still EARLY_HIDDEN m away: the group is snapped in. */
+export const EARLY_REACH = 15;
+export const EARLY_HIDDEN = 40;
 
 export type WalkEvent =
   | { type: 'arrived'; at: string; skipped: boolean }
@@ -155,8 +166,12 @@ export function stepWalker(w: Walker, dt: number, player: { x: number; z: number
   const dx = player.x - w.x;
   const dz = player.z - w.z;
   const dist = Math.hypot(dx, dz);
+  const ahead = w.wait ? playerAhead(w, player) : false;
   if (w.wait) {
-    if (!w.waiting && dist > w.wait.r) {
+    if (ahead && w.waiting) {
+      w.waiting = false;
+      out.push({ type: 'resumed' });
+    } else if (!ahead && !w.waiting && dist > w.wait.r) {
       w.waiting = true;
       out.push({ type: 'waiting', dist });
       if (w.wait.bark) {
@@ -187,7 +202,8 @@ export function stepWalker(w: Walker, dt: number, player: { x: number; z: number
   w.line.pointAt(w.s, pt);
   // player close and not ahead of the walker (along its walking direction): don't dawdle
   const along = (dx * pt.dirX + dz * pt.dirZ) * sign;
-  const v = w.speed * (dist <= CATCH_UP_DIST && along <= 0 ? CATCH_UP : 1);
+  // player close behind: don't dawdle; player well ahead: catch up with them
+  const v = w.speed * ((dist <= CATCH_UP_DIST && along <= 0) || (ahead && dist > 2 * CATCH_UP_DIST) ? CATCH_UP : 1);
   const step = Math.min(Math.abs(gap), v * dt);
   placeAt(w, w.s + sign * step, sign);
   w.moving = step > 0;
@@ -196,6 +212,36 @@ export function stepWalker(w: Walker, dt: number, player: { x: number; z: number
     w.s = w.targetS;
     arrive(w, false, out);
   }
+  return out;
+}
+
+/** The player is ahead of the walker on its way (see AHEAD_LANE). */
+export function playerAhead(w: Walker, player: { x: number; z: number }): boolean {
+  if (w.arrived) return false;
+  const sign = w.targetS >= w.s ? 1 : -1;
+  const left = Math.abs(w.targetS - w.s);
+  const pr = w.line.project(player.x, player.z);
+  if (pr.dist <= AHEAD_LANE && (pr.s - w.s) * sign > AHEAD_MIN && (pr.s - w.targetS) * sign < AHEAD_LANE) return true;
+  // off the route but nearer the stop than the guide, and beyond his leash (never just beside him)
+  const end = w.line.pointAt(w.targetS);
+  const far = Math.hypot(player.x - w.x, player.z - w.z) > (w.wait?.r ?? 25);
+  return far && Math.hypot(end.x - player.x, end.z - player.z) < Math.min(left, Math.hypot(end.x - w.x, end.z - w.z)) - AHEAD_MIN;
+}
+
+/** The player reached the walker's target first and the walker is still far (out of sight): snap it in. */
+export function earlyArrival(w: Walker, player: { x: number; z: number }): boolean {
+  if (w.arrived) return false;
+  const end = w.line.pointAt(w.targetS);
+  return Math.hypot(end.x - player.x, end.z - player.z) <= EARLY_REACH && Math.hypot(w.x - player.x, w.z - player.z) > EARLY_HIDDEN;
+}
+
+/** Put the walker at its target (arrived, skipped). */
+export function arriveAtTarget(w: Walker): WalkEvent[] {
+  const out: WalkEvent[] = [];
+  placeAt(w, w.targetS, w.targetS >= w.s ? 1 : -1);
+  w.s = w.targetS;
+  w.waiting = false;
+  arrive(w, true, out);
   return out;
 }
 

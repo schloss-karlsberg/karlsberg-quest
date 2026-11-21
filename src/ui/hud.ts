@@ -234,9 +234,10 @@ export class Hud {
   /**
    * A marker on the compass at a grid bearing (deg). Pass null to remove. `opts.dist` (metres)
    * prints the distance under it; `opts.edge` keeps it on the strip's edge (with an arrow) when it
-   * is behind you, so the way to the tracked goal is always on screen.
+   * is behind you, so the way to the tracked goal is always on screen. `opts.label` names it in
+   * front of the distance („Gruppe · 45 m“).
    */
-  setMarker(id: string, bearingDeg: number | null, color = '#e9c46a', opts: { dist?: number | null; edge?: boolean } = {}): void {
+  setMarker(id: string, bearingDeg: number | null, color = '#e9c46a', opts: { dist?: number | null; edge?: boolean; label?: string } = {}): void {
     let m = this.markers.get(id);
     if (bearingDeg === null) {
       m?.remove();
@@ -253,7 +254,8 @@ export class Hud {
     if (opts.edge) m.dataset.edge = '1';
     else delete m.dataset.edge;
     const dt = typeof opts.dist === 'number' && opts.dist >= 6 ? (opts.dist < 1000 ? `${Math.round(opts.dist / (opts.dist < 100 ? 1 : 10)) * (opts.dist < 100 ? 1 : 10)} m` : `${(opts.dist / 1000).toFixed(1).replace('.', ',')} km`) : '';
-    if (dt) m.dataset.dist = dt;
+    const text = opts.label ? (dt ? `${opts.label} · ${dt}` : opts.label) : dt;
+    if (text) m.dataset.dist = text;
     else delete m.dataset.dist;
     this.placeMarker(m);
   }

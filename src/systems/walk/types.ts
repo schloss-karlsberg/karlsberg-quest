@@ -69,5 +69,15 @@ declare module '../../core/events' {
      * Never sent during a conversation; at most every 20 s per walker.
      */
     'walk:bark': { npc: string; id: string };
+    /**
+     * Finding the group (find.ts): the „Zur Gruppe“ offer is up / gone. While it is up, holding
+     * the Epoche key (Q) belongs to it (the story leaves a Q press alone).
+     */
+    'group:find': { group: string; prompt: boolean };
+    /**
+     * The player held „Zur Gruppe“: place them at x/z facing yaw (radians, the player's yaw). The
+     * story answers with a fade and the teleport; without a story the walk system teleports.
+     */
+    'group:rejoin': { group: string; x: number; z: number; yaw: number };
   }
 }

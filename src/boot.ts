@@ -560,6 +560,10 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       state.replace(createInitialState(), 'new');
       restore();
       player.teleport(DEFAULT_SPAWN.x, DEFAULT_SPAWN.z, DEFAULT_SPAWN.yaw);
+      // „Neues Spiel“ over an old save: every system that rebuilds from the state on a load (walk,
+      // animals, npc, quests, court, combat, hunt …) rebuilds from the fresh one now, before
+      // game:start starts the story (tour playtest 2026-11-21: the old group and deer stayed)
+      events.emit('save:loaded', { slot: 'new' });
     }
     started = true;
     title.hide();

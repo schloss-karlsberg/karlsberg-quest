@@ -4,9 +4,10 @@
  * save slice. No three.js: bodies come from a `BodyFactory`, the world from `WalkWorld`, so
  * tests/walk-system.test.ts drives it with fakes. index.ts wires it to the game.
  */
+import { FIND, rejoinArc } from './find';
 import { buildRoute, type BuiltRoute } from './route';
 import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, pushOutOfTrunks, separate, stepMember, type MemberSpeeds, type Slot, type TrunksNear } from './group';
-import { createWalker, headingOf, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from './walker';
+import { arriveAtTarget, createWalker, earlyArrival, headingOf, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from './walker';
 import type { GatherOp, GroupSave, Route, WalkRequest, WalkSlice } from './types';
 
 /** Clips the walk system asks for (a subset of the people API's PersonClip). */
@@ -588,6 +589,16 @@ export class WalkRuntime {
         if (n) n.speed = 0;
         continue;
       }
+      // the player got to the stop first (cut a bent leg): the group is there when the guide is
+      // out of sight anyway — snapped in, members in their slots, npc:arrived {skipped: true}
+      if (earlyArrival(w, p)) {
+        const was = w.waiting;
+        arriveAtTarget(w);
+        if (was) for (const g of this.groups.values()) if (g.leader === w.npc) this.o.bus.emit('group:resumed', { group: g.id, leader: w.npc });
+        this.jumpDone(w, w.to, true);
+        this.writeSlice();
+        continue;
+      }
       const evs = stepWalker(w, dt, p, this.now);
       if (n) {
         n.x = w.x;
@@ -764,9 +775,50 @@ export class WalkRuntime {
     this.talking.clear();
   }
 
+  // ---- finding the group (find.ts) -----------------------------------------------------------
+
+  /** The nearest group's guide to the player (only groups, no implicit followers; none outside the group era). */
+  nearestGuide(): { group: string; leader: string; x: number; z: number; dist: number } | null {
+    if (!this.active) return null;
+    const p = this.o.world.player();
+    let best: { group: string; leader: string; x: number; z: number; dist: number } | null = null;
+    for (const g of this.groups.values()) {
+      if (g.implicit) continue;
+      const n = this.npcs.get(g.leader);
+      if (!n) continue;
+      const dist = Math.hypot(n.x - p.x, n.z - p.z);
+      if (!best || dist < best.dist) best = { group: g.id, leader: g.leader, x: n.x, z: n.z, dist };
+    }
+    return best;
+  }
+
+  /**
+   * Where a player rejoining `group` lands: on the guide's route, FIND.behind m behind the group's
+   * tail, facing along the route (yaw as the player's: radians, headingOf). Without a route: behind
+   * the guide against his facing.
+   */
+  rejoinPose(group: string): { x: number; z: number; yaw: number } | null {
+    const g = this.groups.get(group);
+    const lead = g && this.npcs.get(g.leader);
+    if (!g || !lead) return null;
+    let tail = 0;
+    for (const id of g.members) {
+      const m = this.npcs.get(id);
+      if (m) tail = Math.max(tail, Math.hypot(m.x - lead.x, m.z - lead.z));
+    }
+    const w = this.walkers.get(g.leader);
+    if (w) {
+      const at = w.line.pointAt(rejoinArc(w.s, tail));
+      return { x: at.x, z: at.z, yaw: headingOf(at.dirX, at.dirZ) };
+    }
+    const back = Math.min(FIND.maxTail, tail) + FIND.behind;
+    // headingOf(dx, dz) = atan2(-dx, -dz): forward is (-sin yaw, -cos yaw)
+    return { x: lead.x + Math.sin(lead.yaw) * back, z: lead.z + Math.cos(lead.yaw) * back, yaw: lead.yaw };
+  }
+
   // ---- debug ---------------------------------------------------------------------------------
 
-  groupList(): { group: string; leader: string; at: string; waiting: boolean }[] {
+  groupList():{ group: string; leader: string; at: string; waiting: boolean }[] {
     return [...this.groups.values()]
       .filter((g) => !g.implicit)
       .map((g) => {
