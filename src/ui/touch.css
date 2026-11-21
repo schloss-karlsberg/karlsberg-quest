@@ -516,26 +516,23 @@ html[data-kq-touch] .kqj-foot kbd {
   html[data-kq-touch]:has(.kq-t-btn.down:not(.kq-hidden)) body .kqs-dlg {
     right: calc(364px + var(--kq-safe-r));
   }
-  html[data-kq-touch] body .kqs-dlg .kqs-portrait {
-    width: 44px;
-    height: 44px;
+  /* no portrait on a landscape phone: the name in the card says who speaks, the text gets the
+     width (the radio sat on the era label), and the torn tab has nothing to point at */
+  html[data-kq-touch] body .kqs-dlg .kqs-portrait,
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-body::before {
+    display: none;
   }
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-body {
     min-width: 0;
-    max-height: 36vh;
+    /* ends above the bottom-left zone (vitals: „Lebenskraft“), whose top edge the HUD publishes
+       as --kq-bl-top; never more than 36vh, never less than 84 px (then it scrolls inside) */
+    max-height: clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh);
     overflow-y: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
     padding: 6px 12px 5px 14px;
     background-size: auto, auto 22px, auto;
     transform: none;
-  }
-  html[data-kq-touch] body .kqs-dlg .kqs-dlg-body::before {
-    bottom: auto;
-    top: 14px;
-    width: 12px;
-    height: 12px;
-    left: -6px;
   }
   html[data-kq-touch] body .kqs-dlg .kqs-who {
     font-size: 16px;
@@ -550,6 +547,11 @@ html[data-kq-touch] .kqj-foot kbd {
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-foot {
     font-size: 12px;
     margin-top: 1px;
+  }
+  /* the era label (top-left) lies under the card: it steps back while a line is up */
+  html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kq-hud .kq-tl {
+    opacity: 0;
+    transition: opacity 0.25s;
   }
   /* the tracker under the card steps back while a line is up (it would show through the edges) */
   html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kqq-tracker {
