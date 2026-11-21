@@ -169,13 +169,18 @@ export async function examine(page: Page, id: string): Promise<void> {
   expect(await page.evaluate(() => window.kq!.chronik!.target())).toBe(id);
   await page.evaluate(() => window.kq!.press('KeyE', 1));
   // one centre card at a time (src/ui/cards.ts): the page waits while something fights you — a
-  // straggler from an earlier group swatting at the player: clear it and let the 3 s linger pass
+  // straggler from an earlier group swatting at the player: clear it and let the 3 s linger pass.
+  // Only a fight holds it ('action') and only what is fighting: the clue that completes an
+  // objective can spawn its group in the same tick (the Registratur's third paper → the six
+  // Mahnbriefe in the Küchenhof), idle and in range, and a dialogue line ('soft:dialogue') may
+  // hold the slot then: those are not stragglers (campaign, 3 of 6 Mahnbriefe gone).
   const held = await page.evaluate(() => {
     const k = window.kq!;
     const reasons = k.ctx.ui.cards.holdReasons();
     if (!document.querySelector('[data-testid="chronik-card"]') && reasons.length) {
       const p = k.ctx.player.position;
-      for (const e of k.combat?.enemies() ?? []) if (Math.hypot(e.x - p.x, e.z - p.z) < 30) k.combat!.kill(e.id);
+      if (reasons.includes('action'))
+        for (const e of k.combat?.enemies() ?? []) if (e.state !== 'idle' && e.state !== 'notice' && Math.hypot(e.x - p.x, e.z - p.z) < 30) k.combat!.kill(e.id);
       for (let i = 0; i < 240 && !document.querySelector('[data-testid="chronik-card"]'); i++) k.step(1);
     }
     return reasons;
