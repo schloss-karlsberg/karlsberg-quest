@@ -105,3 +105,20 @@ export function approachYaw(current: number, target: number, dt: number, seconds
   const k = snap || seconds <= 0 ? 1 : 1 - Math.exp((-3 * Math.max(0, dt)) / seconds);
   return shortestArc(0, current + arc * k);
 }
+
+/**
+ * A watcher's sweep (court, "Unauffällig"): the heading in degrees (0 = north, 90 = east) at game
+ * time `t`, easing back and forth between `sweep[0]` and `sweep[1]` along the shorter arc once per
+ * `period` seconds (default 8). Without a sweep: `base` (the placement yaw, default 180).
+ */
+export function sweepYaw(watch: { sweep?: [number, number]; period?: number } | undefined, base: number | undefined, t: number): number {
+  const b = base ?? 180;
+  const sw = watch?.sweep;
+  if (!sw) return b;
+  const period = watch.period && watch.period > 0 ? watch.period : 8;
+  let arc = (sw[1] - sw[0]) % 360;
+  if (arc > 180) arc -= 360;
+  if (arc < -180) arc += 360;
+  const k = 0.5 - 0.5 * Math.cos((2 * Math.PI * t) / period);
+  return sw[0] + arc * k;
+}

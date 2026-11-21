@@ -78,7 +78,7 @@ const _FWD = new Vector3(0, 0, 1);
 
 /** Turn a bone after the mixer about an axis given in the rig root's frame (radians). */
 function turnAbout(rig: Rig, name: string, ax: Vector3, angle: number): void {
-  const b = rig.bones.get(name);
+  const b = rig.bone(name);
   const p = b?.parent;
   if (!b || !p) return;
   p.getWorldQuaternion(_qa).invert();
@@ -207,11 +207,12 @@ export class EnemyRigs {
       if (!p.frozen) r.update(dt);
       if (b.seat) {
         // seated: thighs forward and out over the flanks, shins down. The turns are made on the
-        // mixer's pose; frozen (no mixer update) the saved pose is restored first, so they never pile up
+        // mixer's pose; frozen (no mixer update) the saved pose is restored first, so they never pile up.
+        // The loader stores these bones as 'UpperLegL' etc. (sanitized names); rig.bone() finds both
         const legs = ['UpperLeg.L', 'UpperLeg.R', 'LowerLeg.L', 'LowerLeg.R'];
         b.legPose ??= legs.map(() => new Quaternion());
         legs.forEach((n, i) => {
-          const q = r.bones.get(n)?.quaternion;
+          const q = r.bone(n)?.quaternion;
           if (!q) return;
           if (p.frozen && b.legSaved) q.copy(b.legPose![i]!);
           else b.legPose![i]!.copy(q);

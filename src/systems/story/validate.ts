@@ -33,6 +33,20 @@ const isEra = (v: unknown) => typeof v === 'string' && (ERAS as readonly string[
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const PACK_MODES = new Set(['patrol', 'drive', 'finale', 'parforce', 'follow', 'stand', 'kennel']);
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
+
+/** The court `watch` block of an npc spawn (src/systems/court; NpcWatch in contracts.ts). */
+function checkWatch(w: unknown, file: string, where: string, err: Report): void {
+  if (!w || typeof w !== 'object') return err(file, where, 'npc watch must be an object {fov, range, …}');
+  const o = w as Record<string, unknown>;
+  if (!isNum(o.fov) || o.fov <= 0 || o.fov > 360) err(file, where, 'npc watch needs fov (degrees, 0 < fov ≤ 360)');
+  if (!isNum(o.range) || o.range <= 0 || o.range > 60) err(file, where, 'npc watch needs range (m, 0 < range ≤ 60)');
+  if (o.sweep !== undefined && !(Array.isArray(o.sweep) && o.sweep.length === 2 && o.sweep.every(isNum))) err(file, where, 'npc watch sweep must be [yawA, yawB] (degrees)');
+  if (o.period !== undefined && (!isNum(o.period) || o.period <= 0)) err(file, where, 'npc watch period must be > 0 (s)');
+  for (const k of ['set', 'zone', 'who'] as const) if (o[k] !== undefined && !isStr(o[k])) err(file, where, `npc watch ${k} must be a string`);
+  if (o.inspector !== undefined && typeof o.inspector !== 'boolean') err(file, where, 'npc watch inspector must be true/false');
+  const known = new Set(['fov', 'range', 'sweep', 'period', 'set', 'inspector', 'zone', 'who']);
+  for (const k of Object.keys(o)) if (!known.has(k)) err(file, where, `npc watch: unknown key '${k}'`);
+}
 /** Palace room ids: catalogue 'B01.2.og-festsaal', full 'KB-B01/B01.2.og-festsaal' or building 'KB-B01'. */
 const ROOM_RE = /^(KB-[A-Z0-9]+|(KB-[A-Z0-9]+\/)?B[0-9]+\.[0-9]+\.[a-z0-9-]+)$/;
 const isRoomId = (v: unknown): v is string => isStr(v) && ROOM_RE.test(v);
@@ -397,6 +411,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (a.mood !== undefined && !['warm', 'eerie', 'neutral'].includes(a.mood)) err(file, where, `npc: unknown mood '${String(a.mood)}'`);
         if (a.pose !== undefined && a.pose !== 'kneel') err(file, where, `npc: unknown pose '${String(a.pose)}'`);
         if (a.room !== undefined && (!isRoomId(a.room) || !a.room.includes('.'))) err(file, where, `npc: room needs a room id (not a building): '${String(a.room)}'`);
+        if (a.watch !== undefined) checkWatch(a.watch, file, where, err);
         break;
       case 'meter':
         if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'meter needs an id');

@@ -187,6 +187,8 @@ export function hintFor(o: QuestObjective & { hint_de?: string }, h: HintContext
       return `Vorausgehen, die Person folgt dir${go}.`;
     case 'room':
       return `Den Raum im Schloss finden${go}.`;
+    case 'photo':
+      return `N: Handy-Kamera. Das Motiv mittig ins Bild, nah genug, ruhig halten, dann Klick${go}.`;
     default:
       return where ? `Der Lichtstrahl zeigt das Ziel: ${where}.` : 'Weiter, wie es im Tracker steht.';
   }

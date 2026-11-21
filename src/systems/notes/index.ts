@@ -22,6 +22,7 @@ import { addControlKeys, notesPauseHooks } from '../../ui/menus';
 import type { ModalHandle } from '../../ui/modal';
 import { type DeathRecord, EventRing, type RingEvent, type Situation, Telemetry, type TelemetryState, normaliseTelemetry } from './logic';
 import { type NoteStore, openNoteStore } from './store';
+import { captureView } from './capture';
 
 addStrings('de', {
   'notes.title': 'Notiz an die Entwickler',
@@ -251,22 +252,7 @@ class Notes {
 
   /** Render the current view once more and read it back (preserveDrawingBuffer is off). */
   private screenshot(): string | null {
-    const { renderer, post, scene, camera, loop } = this.ctx;
-    try {
-      post.render(renderer, scene, camera, loop.time);
-      const src = renderer.domElement;
-      if (!src.width || !src.height) return null;
-      const c = document.createElement('canvas');
-      c.width = SHOT_W;
-      c.height = Math.max(1, Math.round((SHOT_W * src.height) / src.width));
-      const g = c.getContext('2d');
-      if (!g) return null;
-      g.drawImage(src, 0, 0, c.width, c.height);
-      return c.toDataURL('image/jpeg', SHOT_Q);
-    } catch (err) {
-      console.warn('[notes] screenshot failed', err);
-      return null;
-    }
+    return captureView(this.ctx, SHOT_W, SHOT_Q);
   }
 
   /** Everything about this moment except the text. */

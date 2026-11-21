@@ -4,6 +4,9 @@
  *
  * Agreed deviation from C1: `cinematic:play` carries the full spec (`CinematicPlay`), not only the
  * id. `ref` names a file `content/cinematics/<ref>.json` (src/systems/cinematic/data.ts).
+ *
+ * `camera:override { active }` (boot's override slot, emitted only by takeover.ts `OverrideSlot`)
+ * is declared in src/core/events.ts.
  */
 
 /** What the camera looks at: a roster NPC, an animal (registered target), or the player. */
@@ -75,11 +78,6 @@ declare module '../../core/events' {
     'cinematic:start': { id: string; seconds: number };
     /** Always emitted once per play (also on a bad spec, a skip, an era change, death or a load). */
     'cinematic:end': { id: string; skipped: boolean };
-    /**
-     * The boot.ts camera override slot changed between free and taken (ctx.cinematic.takeCamera,
-     * auto-releases, the debug setCamera). Shared with kq-mobile's photo mode: same name, same payload.
-     */
-    'camera:override': { active: boolean };
   }
 }
 

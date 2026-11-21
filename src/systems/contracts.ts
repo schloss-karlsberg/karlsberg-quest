@@ -156,13 +156,20 @@ declare module '../core/events' {
     'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
     'chronik:case-complete': { caseId: string };
-    'codex:unlocked': { factId: string };
+    /** noXp: unlocked by a photo (no XP for photos, owner 2026-11-20; progression skips it). */
+    'codex:unlocked': { factId: string; noXp?: boolean };
 
     // ---- round 2: NPCs, barks, story meters (owners noted per event) ------------------------
     /** story → npc: place a ghostly NPC (era: only visible in that era; chapter: whose lines). */
     'npc:spawn': NpcPlacement;
     /** story → npc: remove an NPC ('*' = all). */
     'npc:despawn': { npc: string };
+    /**
+     * court → npc: turn a placed NPC's idle heading (head turn of a watcher, docs/IDEAS-ROUND11.md
+     * §2.6). `yaw` in degrees (0 = north, 90 = east); null hands the heading back to its placement
+     * yaw / watch sweep. Rare (on a change of mind), never per tick.
+     */
+    'npc:yaw': { npc: string; yaw: number | null };
     /**
      * npc: the player asked an NPC about a topic (greet / <topic> / bye). The npc system plays the
      * dialogue lines with trigger { event: 'npc:talk', npc, chapter, topic, step? } itself.
@@ -392,6 +399,31 @@ export interface NpcPlacement {
    * then every figure is a ghost.
    */
   look?: 'ghost' | 'solid';
+  /** A court watcher (src/systems/court, "Unauffällig"): its sight fan and sweep. */
+  watch?: NpcWatch;
+}
+
+/**
+ * The `watch` block of an npc spawn (docs/IDEAS-ROUND11.md §2.6, src/systems/court/index.ts).
+ * The court system reads it; the npc system only turns the figure along `sweep`.
+ */
+export interface NpcWatch {
+  /** Field of view (degrees, whole fan; 70 in the design). */
+  fov: number;
+  /** Sight range (m; 12–16 in the design). */
+  range: number;
+  /** Looks back and forth between these two headings (degrees, 0 = north, 90 = east). */
+  sweep?: [number, number];
+  /** Seconds for one sweep there and back (default 8). */
+  period?: number;
+  /** Watcher set this watcher belongs to; the story switches sets with `cue court:on {set}` / `court:off`. Unset: always on. */
+  set?: string;
+  /** Inspects letters at the gate ("Musterung", E "Brief vorzeigen" within 4 m). */
+  inspector?: boolean;
+  /** Court zone whose exit the player is escorted to (default: the zone the watcher stands in, else the nearest). */
+  zone?: string;
+  /** Who looks, for the captions, nominative with article: "Ein Gardist", "Ein Lakai" (default "Eine Wache"). */
+  who?: string;
 }
 
 export {};

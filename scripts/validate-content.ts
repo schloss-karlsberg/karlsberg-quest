@@ -10,6 +10,7 @@ import { type LoadedPack, formatIssues, validateContent } from '../src/content/v
 import { checkStories, loadStoryFiles } from '../src/systems/story/validate-cli.ts';
 import { checkQuests } from '../src/systems/quests/validate-cli.ts';
 import { checkCinematics } from '../src/systems/cinematic/validate-cli.ts';
+import { checkPhotoTargets } from '../src/systems/photo/validate-cli.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -53,10 +54,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   console.log(`\n${packs.length} pack(s): ${Object.entries(r.stats).map(([k, v]) => `${v} ${k}`).join(', ')}`);
   const verbose = !!process.env.STORY_VERBOSE;
   const chapters = new Set(loadStoryFiles(ROOT).files.map((f) => f.story.chapter));
+  const photo = checkPhotoTargets(ROOT, packs, gameBounds(), verbose);
   const quests = checkQuests(ROOT, packs, chapters, gameBounds(), verbose);
   const story = checkStories(ROOT, packs, verbose, { quests: quests.result.questIds, items: quests.result.itemIds });
   if (!quests.ok) {
     console.log('✗ quest files invalid');
+    process.exit(1);
+  }
+  if (!photo.ok) {
+    console.log('✗ photo targets invalid');
     process.exit(1);
   }
   if (!story.ok) {

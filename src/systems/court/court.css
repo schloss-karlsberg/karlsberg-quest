@@ -1,0 +1,87 @@
+/* "Unauffällig" (src/systems/court): the attention meter, the escort fade, the first-time hint. */
+.kq-court-meter {
+  --kq-court-col: rgb(236, 226, 190);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* below the story's "Erinnerung · Fiktion" banner, which shares the top centre */
+  margin: 40px auto 0;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
+  background: rgba(20, 14, 8, 0.72);
+  border: 1px solid rgba(233, 217, 184, 0.35);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  color: #efe3c8;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  transition: opacity 0.35s ease;
+  width: max-content;
+}
+.kq-court-meter.kq-court-off {
+  opacity: 0;
+  pointer-events: none;
+}
+.kq-court-eye svg {
+  width: 40px;
+  height: 23px;
+  display: block;
+}
+.kq-court-eye svg path {
+  stroke: var(--kq-court-col);
+  stroke-width: 2.2;
+}
+.kq-court-bar {
+  width: 120px;
+  height: 9px;
+  border-radius: 5px;
+  background: rgba(233, 217, 184, 0.16);
+  overflow: hidden;
+  position: relative;
+}
+/* the thresholds Blick (35 %) and Misstrauen (70 %) as ticks */
+.kq-court-bar::before,
+.kq-court-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(20, 14, 8, 0.8);
+  z-index: 1;
+}
+.kq-court-bar::before {
+  left: 35%;
+}
+.kq-court-bar::after {
+  left: 70%;
+}
+.kq-court-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 5px;
+  transition: width 0.12s linear;
+}
+.kq-court-label {
+  font-variant: small-caps;
+  opacity: 0.9;
+}
+.kq-court-meter[data-stage='misstrauen'] .kq-court-label,
+.kq-court-meter[data-stage='aufgefallen'] .kq-court-label {
+  color: var(--kq-court-col);
+  font-weight: 600;
+}
+.kq-court-fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+.kq-court-hint .kq-court-why {
+  font-size: 1.15em;
+}
+.kq-court-hint .kq-court-lossless {
+  opacity: 0.8;
+  font-style: italic;
+}

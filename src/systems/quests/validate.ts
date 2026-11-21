@@ -20,6 +20,8 @@ export interface QuestRefs {
   clues?: Set<string>;
   chapters?: Set<string>;
   bounds?: { x0: number; z0: number; x1: number; z1: number };
+  /** Photo target ids (content/photo/targets.json); without it a photo objective only warns. */
+  photoTargets?: Set<string>;
   /** NPCs the stories place (for the safe-zone overlap check). */
   npcs?: readonly { npc: string; x: number; z: number; era?: string; chapter?: string }[];
 }
@@ -266,6 +268,11 @@ export function validateQuests(files: { file: string; data: QuestFile }[], refs:
         if (!isStr(o.event) || !EVENT_RE.test(o.event)) err(file, id, `event: malformed event '${String(o.event)}'`);
         break;
       case 'manual':
+        break;
+      case 'photo':
+        if (!isStr(o.target)) err(file, id, 'photo needs target (a photo target id)');
+        else if (refs.photoTargets && !refs.photoTargets.has(o.target)) err(file, id, `photo: unknown target '${o.target}' (content/photo/targets.json)`);
+        else if (!refs.photoTargets) warn(file, id, `photo: target '${o.target}' not checked (no target list)`);
         break;
     }
     void warn;
