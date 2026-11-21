@@ -19,6 +19,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./people'),
   // fauna contract v0 (animal bodies behind a mesh-independent handle API, ctx.fauna); the behaviour layer (animals) declares after: ['fauna']
   () => import('./fauna'),
+  // tour animals (C5): the roe doe + fawn and Jost's dogs, behaviour over the fauna bodies; today only
+  () => import('./animals'),
   () => import('./npc'),
   () => import('./barks'),
   () => import('./skills'),

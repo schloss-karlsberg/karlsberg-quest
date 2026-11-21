@@ -1201,6 +1201,47 @@ stand-ins, the **authored meshes later behind the same interface**.
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
 - State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
 
+### animals (`src/systems/animals/`) – tour animals: the roe doe and fawn, Jost's dogs
+Tour contract C5 (`docs/design/tour/systems.md` §4 / C5), the behaviour layer over the fauna bodies.
+Pure core: `types.ts` (`AnimalAction`, `toRequest`, `specIdFor`, events, save types), `deer.ts`
+(shy state machine graze → alert (1.5 s tell) → flee (bound `shy.settle` m) → settled → graze;
+leave → gone; the fawn mirrors the doe within 2 m), `dogs.ts` (follow slots, sniff, sit, the bolt
+with bark and `back`, lie / sleep), `save.ts`; `runtime.ts` (the system, headless: requests, the
+step, bodies, events, era, save, targets; tests use fakes); `photoBridge.ts` (optional photo and
+cinematic bridges); `index.ts` (wiring, hooks). Runs `after: ['fauna', 'people']`. Animals exist
+only in era `today`: other eras hide the bodies and pause the behaviour.
+- Requests: `animal:request` `AnimalAction` (ops spawn / despawn / run / lie / follow; the C5
+  `animal:spawn` renamed, agreed with kq-story), also `story:cue {id: 'animal', data}`. An extra
+  `keepAlive: true` on a spawn passes `keepAlive` to the fauna body (cinematic close-ups).
+- Per step (60 Hz): the player as `{x, z, speed: player.stats.speed, stance}` (a flying player is
+  unseen); line of sight from each self-led deer (`hunt/perception.ts` `lineOfSight`, deer eye
+  0.95 m to the stance's `TARGET_HEIGHT`, transmittance > 0.15) at 5 Hz, only inside notice + 2 m;
+  `walkable` = no water, no footprint, slope < 35°; no noise events yet (none exist), mask 0. Then
+  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
+  `setSpeed` on change, `play(clip)` only when the clip hint changes.
+- Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
+  (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
+  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
+  0). Unresolvable → the dog idles where it is.
+- Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
+  `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
+  dog bark SFX yet).
+- **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
+  sneaking is the skill).
+- **Targets**: photo mode's `attachTarget` (`src/systems/photo/index.ts`, kq-mobile) gets
+  `reh.ricke` / `reh.kitz` (`at` = body centre, `calm` false only while fleeing, `state` = the core
+  state); the cinematic's `registerTarget` (`src/systems/cinematic/targets.ts`) gets `animal:<id>`
+  (`headWorld`). Both through an eager `import.meta.glob`: dormant (no-ops) while the module is
+  absent, active once it lands. `kq.animals.stats()` reports which.
+- State `systems.animals` (`AnimalSave {v: 1, deer, dogs}`), written at 4 Hz and after every
+  request. Restore (init, `save:loaded`) re-spawns the bodies and emits nothing.
+- Hooks `kq.animals`: `ready` (true once the `animal:request` listener is attached; kq-story's
+  temporary stand-in checks it), `spawn(op)`, `request(a)`, `list()` → `{id, kind, state, x, z,
+  dist}`, `state(id)`, `startle(id)`, `calm(id, s)`, `leave(id)`, `clear()`, `demo()` (the deer pair
+  ~40 m to the player's right in a clearing, both dogs following the player), `stats()`,
+  `restore()`, `save()`. Tests: `tests/animals-deer.test.ts`, `tests/animals-dogs.test.ts`,
+  `tests/animals-system.test.ts`, `e2e/animals.spec.ts`.
+
 ### interiors (`src/systems/interiors/`) – walkable palace rooms
 - Rooms of the footprints marked `interior: 'detailed'` (KB-B01…B06, B10) from
   `public/data/palace/rooms.json`. `layout.ts` (pure, unit-tested) turns the catalogue quads into a
