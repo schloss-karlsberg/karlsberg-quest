@@ -9,6 +9,11 @@
   pointer-events: none;
   perspective: 900px;
 }
+/* something shows in the boss dock (the court's Unauffällig meter, top 108 + 40 px margin, about
+   75 px tall): the cards go below it instead of over it (pol-flow at 1280x720) */
+body:has(.kq-dock-boss > :not(.kq-court-off):not([style*='display: none'])) .kqk-cards {
+  top: 196px;
+}
 .kqk-card {
   position: relative;
   display: flex;
