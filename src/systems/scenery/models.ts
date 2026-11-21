@@ -9,7 +9,7 @@ import { type BufferGeometry, Group, InstancedMesh, type Material, Matrix4, type
 import type { AssetLoader } from '../../assets/loader';
 
 export interface ModelPlacement {
-  /** Manifest id, e.g. 'architecture.barrel'. */
+  /** Manifest id, e.g. 'architecture.barrel'; 'nature2.ferns#fern' takes one top-level node of a variant set. */
   id: string;
   /** World matrix of the model's root. */
   matrix: Matrix4;
@@ -41,8 +41,10 @@ export async function instanceModels(assets: AssetLoader, placements: readonly M
   await Promise.all(
     [...byId].map(async ([id, mats]) => {
       let model: { scene: Object3D };
+      // 'set#node': one top-level node of a variant set (nature2 kits of `pnpm assets:set`)
+      const [assetId, nodeName] = id.split('#') as [string, string | undefined];
       try {
-        model = await assets.model(id);
+        model = await assets.model(assetId);
       } catch (e) {
         console.warn(`[models] ${id} failed`, e);
         return;
@@ -51,9 +53,14 @@ export async function instanceModels(assets: AssetLoader, placements: readonly M
       lightenGlass(model.scene);
       model.scene.updateMatrixWorld(true);
       const rootInv = new Matrix4().copy(model.scene.matrixWorld).invert();
+      const source = nodeName === undefined ? model.scene : model.scene.children.find((c) => c.name === nodeName);
+      if (!source) {
+        console.warn(`[models] ${id}: no node ${nodeName}`);
+        return;
+      }
       const group = new Group();
       group.name = `models:${id}`;
-      model.scene.traverse((o) => {
+      source.traverse((o) => {
         const m = o as Mesh;
         if (!m.isMesh) return;
         const local = new Matrix4().multiplyMatrices(rootInv, m.matrixWorld);
