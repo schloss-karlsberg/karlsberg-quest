@@ -3,6 +3,8 @@ import {
   type Group,
   LinearSRGBColorSpace,
   LoadingManager,
+  type Material,
+  type Mesh,
   type Object3D,
   RepeatWrapping,
   SRGBColorSpace,
@@ -26,6 +28,32 @@ export interface LoadedModel {
   /** The loaded scene. Do not add it to the world directly; use `assets.instance(id)`. */
   scene: Group;
   animations: AnimationClip[];
+}
+
+/**
+ * No KHR_materials_transmission in the world (the chandelier glass, factor 0.7): whenever such a
+ * material is in view, three.js runs a transmission pre-pass that redraws every opaque object
+ * (+0.7–1.5M triangles, +100 calls in the 1789 palace). At load it becomes plain alpha-blended
+ * glass of about the same see-through (roughness, metalness and IOR kept); the models' glass
+ * pass (scenery/models.ts `lightenGlass`) tunes it further. Returns how many materials changed.
+ */
+export function dropTransmission(root: Object3D): number {
+  let n = 0;
+  root.traverse((o) => {
+    const mesh = o as Mesh;
+    if (!mesh.isMesh) return;
+    for (const mat of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      const pm = mat as Material & { transmission?: number };
+      if (!pm.transmission || pm.transmission <= 0) continue;
+      pm.opacity = Math.min(pm.opacity, 1 - 0.7 * pm.transmission);
+      pm.transmission = 0;
+      pm.transparent = true;
+      pm.depthWrite = false;
+      pm.needsUpdate = true;
+      n++;
+    }
+  });
+  return n;
 }
 
 export type AssetProgress = (loadedBytes: number, totalBytes: number) => void;
@@ -114,6 +142,7 @@ export class AssetLoader {
         onBytes?.(Math.max(0, e.bytes - last));
         const m: LoadedModel = { scene: g.scene, animations: g.animations };
         if (e.worldLight !== false) kqStandardize(m.scene);
+        dropTransmission(m.scene);
         m.scene.name = `asset:${id}`;
         this.ready.set(id, m);
         return m;
