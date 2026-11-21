@@ -25,6 +25,7 @@ export const RADIO_LINES = [
 addStrings('de', {
   'story.name.default': 'Vermesser*in',
   'story.dialogue.next': 'weiter',
+  'story.dialogue.tap': 'Tippen: weiter',
   'story.tag.historical': 'historisch · nach Quelle',
   'story.tag.echo': 'Erinnerung (Fiktion)',
   'story.tag.fiction': 'Fiktion',

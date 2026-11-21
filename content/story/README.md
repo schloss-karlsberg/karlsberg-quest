@@ -109,6 +109,12 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | `loot` | `id, item, x?, z?, era?, count?, room?, clear?` | a glowing pickup (`loot:place`; `clear: true` → `loot:clear`) |
 | `xp`, `item` | `amount, reason?` / `item, count?, quiet?` | XP and items to the progression system (`xp:grant`, `item:grant`; ids: `src/rpg/items.ts` or a quest file's `items`). One-shots |
 
+**Prompts on a touch screen.** `prompt {key, text, touch?}`: `touch` replaces `text` in touch mode
+(Touch-Steuerung, read when the prompt shows and again when the mode switches). Write it in touch
+words („Wischen: Schauen“, „Bannlicht, dann Hieb“; the button names are in `src/player/touchMap.ts`)
+and keep it within 22 characters: an interact prompt also labels the Aktion button. The dialogue
+card's hint says „Enter weiter“, on touch „Tippen: weiter“ (a tap on the card advances).
+
 **Choices.** `modal` (default) is a field-book card that pauses the game; options are picked by
 click or keys 1–n. `modal: false` is an inline card while the game runs on; an option with
 `when` (any condition without events, e.g. `{ "lantern": true }`) is taken as soon as it holds

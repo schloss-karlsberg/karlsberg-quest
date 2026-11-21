@@ -1,5 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
-import { SCREENS, trackErrors } from './helpers/common';
+import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helpers/k1';
 
 /**
@@ -273,8 +273,7 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   await expect(btn).toBeInViewport();
   await shot(page, 'epilogue-1280x720');
   await btn.click();
-  await expect(page.getByTestId('credits')).toBeVisible();
-  await page.getByTestId('credits-back').click();
+  await throughParty(page);
   await page.evaluate(() => window.kq!.step(4));
   expect(await page.evaluate(() => window.kq!.story!.state().ending)).toBe('keep');
 
