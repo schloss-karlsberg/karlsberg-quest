@@ -549,6 +549,7 @@ animation and input. The feel would drift from the main game.
 >   - It is rendered to **one** texture and **one** material in `src/systems/flaschen/label.ts`. Nothing else holds the text.
 >   - Plain text in our own font only. No logo artwork, emblem, label layout, label colours or bottle shape copied from the brewery.
 > - The name never appears in codex cards, quests, dialogue, journal text, item names, toasts or docs. Docs say "the real beer label".
+> - **Place name (owner, 2026-11-20):** the place name "Karlsberger Hof" is allowed as a location only (the tour's meeting point; `docs/design/tour/`), with no logo, signage, slogans, products, advertising tone or beer talk. It is not the label text.
 > - **Swap = one edit (planned unit test):** `tests/flaschen.test.ts` checks that the label text appears in exactly one collectibles source file (`content/collectibles/flaschen.json`) and nowhere else under `content/` or `src/`, so swapping it stays a single edit.
 
 ```jsonc

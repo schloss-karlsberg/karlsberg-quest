@@ -32,7 +32,10 @@ import { finiteOr, safeDt } from './guards';
  * **Photo mode** (src/systems/photo, additive; nothing changes while it is off): `setPhoto(true)`
  * puts the lens where the phone is held, at the eyes and a hand ahead of the face (`PHOTO_AHEAD`),
  * and hides the character (boom 0); `setFovScale(k)` narrows the field of view k-fold (the phone's
- * 2× zoom: the focal length doubles), eased unless reduced motion. Tests: tests/camera-photo.test.ts.
+ * 2× zoom: the focal length doubles), eased unless reduced motion. `snapFov(camera)` ends the
+ * zoom at once (a forced close: a cut scene, a fight, death): the base fov is written in the same
+ * frame and the rig lets go of `camera.fov` — while the scale is 1 and nothing is easing, the rig
+ * never writes the fov (a cinematic takeover captures and restores it). Tests: tests/camera-photo.test.ts.
  */
 export type CameraMode = 'third' | 'first';
 
@@ -290,6 +293,26 @@ export class CameraRig {
   /** Narrow the field of view k-fold (≥ 1; photo zoom). 1 = the settings' fov. */
   setFovScale(k: number): void {
     this.fovWant = Number.isFinite(k) ? Math.max(1, Math.min(4, k)) : 1;
+  }
+
+  /**
+   * End the fov narrowing now (photo mode's forced close): scale 1, the base (settings) fov
+   * written to the camera in this call, no easing and no later writes. A camera the rig never
+   * narrowed is left alone.
+   */
+  snapFov(camera: PerspectiveCamera): void {
+    if (this.fovSet >= 0) {
+      // somebody else (the settings) wrote the fov since our last write: that is the base
+      if (camera.fov !== this.fovSet) this.fovBase = camera.fov;
+      const base = this.fovBase || 70;
+      if (camera.fov !== base) {
+        camera.fov = base;
+        camera.updateProjectionMatrix();
+      }
+    }
+    this.fovWant = 1;
+    this.fovK = 1;
+    this.fovSet = -1;
   }
 
   get fovScale(): number {

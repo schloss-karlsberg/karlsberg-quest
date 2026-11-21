@@ -4,13 +4,16 @@ import { buildDebris, buildInterior, foundationStones, lookOf } from '../src/sys
 import { PlanQuery } from '../src/systems/interiors/collide';
 import { type FullPlan, buildPlan, classifyRoom, ruinTop } from '../src/systems/interiors/layout';
 import { bakeLight } from '../src/systems/interiors/lightmap';
-import { extractOpenings } from '../src/systems/interiors/shell';
+import { extractOpenings, isDoor } from '../src/systems/interiors/shell';
 import { frameXZ, stairHeight } from '../src/systems/interiors/stairs';
 import { readFileSync } from 'node:fs';
 import { evaluate } from '../src/systems/story/engine';
 import { validateStories } from '../src/systems/story/validate';
 import type { Condition, StoryFile } from '../src/systems/story/types';
+import type { ShellOpening } from '../src/systems/interiors/types';
+import { along } from '../src/systems/interiors/geom';
 import { loadPalaceData } from './interiors-fixture';
+import { TEMPEL_DOOR, passageFloor } from '../src/systems/scenery/passage';
 
 const d = loadPalaceData();
 const t89 = (x: number, z: number) => d.h1789.heightAt(x, z);
@@ -76,6 +79,49 @@ describe('interiors layout', () => {
     }
     const gallery = room(intact, 'B06.1.bildergalerie');
     expect(intact.windows.filter((w) => w.room === gallery.index).length).toBeGreaterThan(4);
+  });
+
+  it('takes a mullioned window and its panes as one window; the Orangerie gets distinct garden doors', () => {
+    // the Orangerie hall's long edges, with windows like the research-wave model's: per bay a tall
+    // window reaching down to the floor (whole window + two panes) and an upper one above it
+    const pf = room(intact, 'B10.1.s-pfeilersaal');
+    const ops: ShellOpening[] = [];
+    for (const x of pf.ext) {
+      const e = pf.edges[x.edge]!;
+      const win = (s: number, w: number, y0: number, y1: number) => {
+        const [mx, mz] = along(e, s);
+        const ox = mx + e.nx * x.gap;
+        const oz = mz + e.nz * x.gap;
+        ops.push({ building: 'KB-B10', kind: 'window', ax: ox - (e.tx * w) / 2, az: oz - (e.tz * w) / 2, bx: ox + (e.tx * w) / 2, bz: oz + (e.tz * w) / 2, y0, y1 });
+      };
+      for (let s = 3; s < e.len - 3; s += 3.3) {
+        win(s, 1.4, pf.floor + 0.05, pf.floor + 4.5);
+        win(s - 0.45, 0.55, pf.floor + 0.05, pf.floor + 4.5);
+        win(s + 0.45, 0.55, pf.floor + 0.05, pf.floor + 4.5);
+        win(s, 1.2, pf.floor + 7.1, pf.floor + 9.8);
+      }
+    }
+    const p = buildPlan({ rooms: d.rooms, footprints: d.footprints, mode: 'intact', terrain: t89, openings: ops });
+    const r = room(p, 'B10.1.s-pfeilersaal');
+    const bays = pf.ext.reduce((n, x) => n + Math.ceil((pf.edges[x.edge]!.len - 6) / 3.3), 0);
+    const wins = p.windows.filter((w) => w.room === r.index);
+    const doors = p.doors.filter((x) => x.a === r.index && x.b === -1);
+    // two windows a bay (minus those the doors replaced), each as wide as the whole window
+    expect(wins.length).toBe(bays * 2 - doors.length);
+    for (const w of wins.filter((q) => q.y0 < r.floor + 1)) expect(w.width).toBeCloseTo(1.45, 1);
+    // garden doors: in the tall windows, none on top of another
+    expect(doors.length).toBeGreaterThanOrEqual(2);
+    for (const a of doors) for (const b of doors) if (a !== b) expect(Math.hypot(a.cx - b.cx, a.cz - b.cz)).toBeGreaterThan(2);
+    for (const a of doors) expect(a.top).toBeLessThan(r.floor + 6);
+  });
+
+  it('opens the Tempelzimmer flush onto the rotunda’s colonnade (no steps down there)', () => {
+    const at = (p: FullPlan) => p.doors.find((x) => x.b === -1 && Math.hypot(x.cx - TEMPEL_DOOR.x, x.cz - TEMPEL_DOOR.z) < 0.5)!;
+    // on the bare terrain the door would get a flight down to the lawn (1.2 m) …
+    expect(at(intact).stoop!.ground).toBeLessThan(TEMPEL_DOOR.floor - 1);
+    // … with the colonnade's floor (as the interiors system builds the plan) it is flush
+    const colonnade = buildPlan({ rooms: d.rooms, footprints: d.footprints, mode: 'intact', terrain: (x, z) => passageFloor(x, z, t89(x, z)) ?? t89(x, z) });
+    expect(Math.abs(at(colonnade).stoop!.ground - TEMPEL_DOOR.floor)).toBeLessThan(0.1);
   });
 
   it('ruin walls are deterministic stubs, some low enough to climb through', () => {
@@ -244,7 +290,11 @@ describe('interiors shell', () => {
       }
     };
     quad(0, 1.2, 1, 3, 5, [0.02, 0.02, 0.03], 3);
+    // the door leaf is a slab: front and back (the research-wave model's red-brown shade)
     quad(3, 4.4, 0, 2.6, 5, [0.15, 0.07, 0.03], 3);
+    quad(3, 4.4, 0, 2.6, 5.03, [0.17, 0.06, 0.03], 3);
+    // a lone painted reveal of the same hue is no door
+    quad(7, 7.3, 0, 2.6, 5, [0.15, 0.07, 0.03], 3);
     quad(10, 11, 1, 3, 5, [0.02, 0.02, 0.03], 4); // another building
     const g = new BufferGeometry();
     g.setAttribute('position', new Float32BufferAttribute(pos, 3));
@@ -255,7 +305,18 @@ describe('interiors shell', () => {
     const w = ops.find((o) => o.kind === 'window')!;
     expect(Math.hypot(w.bx - w.ax, w.bz - w.az)).toBeCloseTo(1.2, 3);
     expect(w.y1 - w.y0).toBeCloseTo(2, 3);
-    expect(ops.find((o) => o.kind === 'door')!.building).toBe('KB-B01');
+    const d = ops.find((o) => o.kind === 'door')!;
+    expect(d.building).toBe('KB-B01');
+    expect(Math.hypot(d.bx - d.ax, d.bz - d.az)).toBeCloseTo(1.4, 3);
+  });
+
+  it('door paint: brown and red-brown leaves, not the red plinth, tiles or green paint', () => {
+    expect(isDoor(0.15, 0.07, 0.03)).toBe(true);
+    expect(isDoor(0.129, 0.059, 0.027)).toBe(true);
+    expect(isDoor(0.2, 0.06, 0.035)).toBe(true);
+    expect(isDoor(0.38, 0.114, 0.067)).toBe(false); // red sandstone plinth
+    expect(isDoor(0.06, 0.09, 0.05)).toBe(false); // green shutters
+    expect(isDoor(0.04, 0.02, 0.01)).toBe(false); // near black
   });
 });
 

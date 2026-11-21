@@ -359,10 +359,10 @@ export function buildPlan(inp: LayoutInput): FullPlan {
         const y0 = Math.max(o.y0, r.floor + 0.05);
         const y1 = Math.min(o.y1, r.ceiling - 0.1);
         if (y1 - y0 < 0.6 || o.y0 < r.floor - 0.4 || o.y1 > r.ceiling + 0.4) continue;
-        if (wins.some((w) => Math.abs(paramOf(e, w.cx, w.cz) - m!.s) < 0.4 && Math.abs(w.y0 - y0) < 0.4)) continue;
         const [cx, cz] = along(e, m!.s);
         wins.push({ edge: x.edge, cx, cz, tx: e.tx, tz: e.tz, nx: e.nx, nz: e.nz, width: m!.w, y0, y1, reveal: Math.max(0, Math.min(x.gap, m!.d)), depth: x.gap });
       }
+      mergeWindows(wins, e);
       if (!inp.openings?.length && !(mode === 'intact' && r.kind === 'gallery' && isHangingWall(r, x.edge))) {
         // procedural: one window bay every ~3.8 m
         const n = Math.floor((e.len - 0.8) / 3.8);
@@ -439,12 +439,16 @@ export function buildPlan(inp: LayoutInput): FullPlan {
         const x = r.ext.find((q) => q.edge === bestEdge);
         if (x) {
           const e = r.edges[x.edge]!;
+          // (the tall windows reaching down to the floor, not those of the upper row above them)
           const wins = plan.windows
-            .filter((w) => w.room === r.index && w.edge === x.edge)
-            .sort((p, q) => Math.abs(paramOf(e, p.cx, p.cz) - e.len / 2) - Math.abs(paramOf(e, q.cx, q.cz) - e.len / 2))
-            .slice(0, 3);
+            .filter((w) => w.room === r.index && w.edge === x.edge && w.y0 < r.floor + 1.2)
+            .sort((p, q) => Math.abs(paramOf(e, p.cx, p.cz) - e.len / 2) - Math.abs(paramOf(e, q.cx, q.cz) - e.len / 2));
+          let made = 0;
           for (const w of wins) {
+            if (made >= 3) break;
             const s = paramOf(e, w.cx, w.cz);
+            if (r.openings.some((o) => o.edge === x.edge && o.kind === 'door' && !(s + w.width / 2 + 0.3 < o.s0 || s - w.width / 2 - 0.3 > o.s1))) continue;
+            made++;
             const tryIt = () => {
               const [cx, cz] = along(e, s);
               const t = inp.terrain(cx + e.nx * (x.gap + 1.2), cz + e.nz * (x.gap + 1.2));
@@ -633,6 +637,41 @@ function nearestWindow(plan: Plan, room: number, edge: number, s: number, e: Edg
 }
 
 /** Map a facade opening onto a room edge (parallel, behind it, within the edge). */
+/**
+ * Each window has an outer and an inner pane, and mullioned windows come as the whole window plus
+ * its single panes (research-wave model): windows on one edge that overlap (along the edge, and
+ * over at least half the height of the lower one) become one, their union, keeping the reveal of
+ * the first (the pane closest to the room face).
+ */
+function mergeWindows(wins: Omit<Win, 'room'>[], e: Edge): void {
+  const span = (w: Omit<Win, 'room'>): [number, number] => {
+    const s = paramOf(e, w.cx, w.cz);
+    return [s - w.width / 2, s + w.width / 2];
+  };
+  for (let merged = true; merged; ) {
+    merged = false;
+    for (let i = 0; i < wins.length && !merged; i++) {
+      for (let j = i + 1; j < wins.length; j++) {
+        const a = wins[i]!;
+        const b = wins[j]!;
+        const [a0, a1] = span(a);
+        const [b0, b1] = span(b);
+        const vy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+        if (b0 > a1 + 0.1 || b1 < a0 - 0.1 || vy <= 0.5 * Math.min(a.y1 - a.y0, b.y1 - b.y0)) continue;
+        const s0 = Math.min(a0, b0);
+        const s1 = Math.max(a1, b1);
+        [a.cx, a.cz] = along(e, (s0 + s1) / 2);
+        a.width = s1 - s0;
+        a.y0 = Math.min(a.y0, b.y0);
+        a.y1 = Math.max(a.y1, b.y1);
+        wins.splice(j, 1);
+        merged = true;
+        break;
+      }
+    }
+  }
+}
+
 function mapOpening(e: Edge, gap: number, o: ShellOpening): { s: number; w: number; d: number } | null {
   const dx = o.bx - o.ax;
   const dz = o.bz - o.az;

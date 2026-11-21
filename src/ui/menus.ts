@@ -37,9 +37,28 @@ export function setAssetLicences(f: LicencesFile | null): void {
   assetLicences = f;
 }
 
-/** The CC0 art assets and the decoder libraries (empty when LICENSES.json is missing). */
+/** The synthetic voices (LICENSES.json `voices`): one summary line plus one entry per voice. */
+export function voiceLicencesBody(f: LicencesFile | null = assetLicences): HTMLElement[] {
+  const v = f?.voices ?? [];
+  if (!v.length) return [];
+  const names = v.map((x) => x.name);
+  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} ${t('licences.voices.and')} ${names[names.length - 1]}` : names[0]!;
+  const tools = [...new Set(v.map((x) => `${x.tool.replace(/\s*\(.*\)$/, '')} (${x.toolLicence})`))].join(', ');
+  return [
+    h('h3', t('licences.voices.title')),
+    h('p', { 'data-testid': 'voice-licences-summary' }, t('licences.voices.summary', { names: list, tools })),
+    h(
+      'ul.kq-attrib',
+      { 'data-testid': 'voice-licences' },
+      v.map((x) => h('li', [h('span.lbl', `${x.name}: `), t('licences.voices.entry', { tool: x.tool, toolLicence: x.toolLicence, outputLicence: x.outputLicence, seed: x.seed, ref: x.referenceSha256.slice(0, 8) })])),
+    ),
+  ];
+}
+
+/** The CC0 art assets, the decoder libraries and the synthetic voices (empty when LICENSES.json is missing). */
 export function assetLicencesBody(f: LicencesFile | null = assetLicences): HTMLElement[] {
-  if (!f || (!f.assets.length && !f.libraries?.length)) return [];
+  if (!f || (!f.assets.length && !f.libraries?.length && !f.voices?.length)) return [];
+  if (!f.assets.length && !f.libraries?.length) return voiceLicencesBody(f);
   return [
     h('h3', t('licences.assets.title')),
     h('p', t('licences.assets.intro')),
@@ -49,6 +68,7 @@ export function assetLicencesBody(f: LicencesFile | null = assetLicences): HTMLE
       f.assets.map((a) => h('li', [h('span.lbl', `${a.name}: `), `${a.author} — ${a.licence} `, h('a', { href: a.source, target: '_blank', rel: 'noopener' }, a.source), a.modified ? h('em', ` (${a.modified})`) : null])),
     ),
     ...(f.libraries?.length ? [h('ul.kq-attrib', f.libraries.map((l) => h('li', [h('span.lbl', `${l.name}: `), `${l.licence} — ${l.source}`])))] : []),
+    ...voiceLicencesBody(f),
   ];
 }
 

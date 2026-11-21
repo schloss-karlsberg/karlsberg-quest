@@ -418,8 +418,9 @@ function buildDoor(g: GeoBuf, plan: FullPlan, d: Door, li: number, look: Look, t
       wallBox(g, e, l0 + 0.02, l1 - 0.02, 0.0, 0.05, d.floor + 0.02, d.top - 0.04, leafSurf);
     }
   }
-  // outdoor steps
-  if (d.stoop) {
+  // outdoor steps (none where the ground outside is flush with the door: a slab there would only
+  // flicker with that floor)
+  if (d.stoop && Math.abs(d.stoop.ground - d.floor) >= 0.1) {
     const L = d.stoop.length;
     const dh = d.stoop.ground - d.floor;
     const n = Math.max(1, Math.round(Math.abs(dh) / 0.16));

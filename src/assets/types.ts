@@ -72,6 +72,25 @@ export interface LicencesFile {
   assets: LicenceRecord[];
   /** Decoder libraries shipped with the assets (not art; three.js examples, own licences). */
   libraries?: { name: string; licence: string; files: string[]; source: string }[];
+  /** Synthetic voices whose clips may sit in public/voice/ (rules: scripts/voice/assetRules.ts). */
+  voices?: VoiceCredit[];
+}
+
+/** One synthetic voice (LICENSES.json `voices`), credited under "Lizenzen & Quellen". */
+export interface VoiceCredit {
+  /** speaker key in content and scripts/voice/voices.json */
+  speaker: string;
+  /** display name in the credits screen */
+  name: string;
+  provider: 'moss';
+  tool: string;
+  toolLicence: string;
+  outputLicence: string;
+  seed: number;
+  /** sha256 of the local reference WAV (KQ_MOSS_VOICES; never committed) */
+  referenceSha256: string;
+  generatedLocally: true;
+  note: string;
 }
 
 /** Sources the art pipeline may download from (docs/ART-DIRECTION.md §8). */

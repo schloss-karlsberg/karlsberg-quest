@@ -4,6 +4,9 @@
  *
  *   pnpm prepare-data            (expects ../saar-lidar-explorer next to this repo)
  *   KQ_SISTER=/path/to/saar-lidar-explorer pnpm prepare-data
+ *   pnpm prepare-data --palace   only the palace (glb, footprints, pinned rooms) + manifest sizes
+ *   KQ_ROOMS=catalogue …         regenerate rooms.json from the catalogue (breaks quests that name
+ *                                rooms the catalogue has since dropped or moved; see lib/palace-data.ts)
  *
  * Output (all coordinates in the local frame x = E − 381000, y = h, z = −(N − 5465000)):
  *   terrain/meta.json                grid description + file list
@@ -14,22 +17,24 @@
  *   maps/hist1840.jpg                Bavarian survey 1836–41, 2 m/px, crop-aligned
  *   maps/hist1935.jpg                TK25 1935–40 ("Messtischblatt"), 2 m/px, crop-aligned (karlsberg AOI, overall fallback)
  *   pointcloud/ground.kqp.deflate    ALS 2025 ground points around the palace (Röntgenblick), see the section below
- *   palace/buildings.glb             1789 light model (copied verbatim, meshopt)
- *   palace/footprints.json           91 footprints (local x/z) + heights/confidence
- *   palace/rooms.json                114 named rooms, polygons converted to local x/z
+ *   palace/buildings.glb             1789 light model (copied verbatim, meshopt, int16 + node transforms)
+ *   palace/footprints.json           103 footprints (local x/z) + heights/confidence
+ *   palace/rooms.json                114 named rooms in local x/z, PINNED (game-owned, checked against
+ *                                    the footprints; catalogue v2 as of the 2026-11-01 export)
  *   pois.json                        44 POIs with sources, local coords
  *   paths.json                       OSM path graph (nodes with heights, edges) + water/barrier lines
  *   attribution.json                 licence strings for the attribution screen
  *   manifest.json                    index of everything above, sizes, generation date
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 import proj4 from 'proj4';
-import { type P2, centroid, nearestOnLine, openRing, planFrame, stToEN } from './lib/frame.ts';
+import { type P2 } from './lib/frame.ts';
+import { preparePalace } from './lib/palace-data.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SISTER = resolve(process.env.KQ_SISTER ?? join(ROOT, '..', 'saar-lidar-explorer'));
@@ -64,8 +69,27 @@ function write(rel: string, data: Buffer | string) {
 }
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
-for (const p of Object.values(SRC)) {
+const PALACE_ONLY = process.argv.includes('--palace');
+const ROOMS = process.env.KQ_ROOMS === 'catalogue' ? 'catalogue' : 'pinned';
+
+for (const p of PALACE_ONLY ? [SRC.recon, SRC.catalogue] : Object.values(SRC)) {
   if (!existsSync(p)) throw new Error(`missing sister input: ${p} (set KQ_SISTER)`);
+}
+
+/** Sizes of the listed files on disk → manifest.json. */
+function writeManifest(files: string[]): void {
+  const sizes = Object.fromEntries(files.map((f) => [f, statSync(join(OUT, f)).size]));
+  const total = Object.values(sizes).reduce((s, v) => s + v, 0);
+  write('manifest.json', JSON.stringify({ format: 'kq-data-v1', generated: new Date().toISOString(), totalBytes: total, files: sizes }, null, 1));
+  for (const [f, s] of Object.entries(sizes)) log(`${(s / 1024).toFixed(0).padStart(7)} KiB  ${f}`);
+  log(`total ${(total / 1048576).toFixed(2)} MiB`);
+}
+
+if (PALACE_ONLY) {
+  // terrain, maps, point cloud, POIs and paths stay as they are; the manifest keeps its file list
+  preparePalace({ recon: SRC.recon, catalogue: SRC.catalogue, out: OUT, rooms: ROOMS, E0, N0, log });
+  writeManifest(Object.keys(readJson<{ files: Record<string, number> }>(join(OUT, 'manifest.json')).files));
+  process.exit(0);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -409,115 +433,9 @@ const extent = { x0: west - E0, x1: g.east - E0, z0: -(north - N0), z1: -(g.sout
 const inside = (x: number, zz: number, m = 0) => x >= extent.x0 + m && x <= extent.x1 - m && zz >= extent.z0 + m && zz <= extent.z1 - m;
 
 // ---------------------------------------------------------------------------------------------
-// Palace: glb copy, footprints, rooms
+// Palace: glb copy, footprints, rooms (pinned by default, lib/palace-data.ts)
 // ---------------------------------------------------------------------------------------------
-mkdirSync(join(OUT, 'palace'), { recursive: true });
-copyFileSync(join(SRC.recon, 'buildings.glb'), join(OUT, 'palace/buildings.glb'));
-const reconIndex = readJson(join(SRC.recon, 'index.json'));
-const catalogue = readJson(SRC.catalogue);
-const catById = new Map<string, any>(catalogue.buildings.map((b: any) => [b.id, b]));
-const reconById = new Map<string, any>(reconIndex.buildings.map((b: any) => [b.id, b]));
-const fpGeo = readJson(join(SRC.recon, 'footprints.geojson'));
-const footprints = fpGeo.features.map((f: any) => {
-  const id = f.properties.id as string;
-  const cat = catById.get(id);
-  const rec = reconById.get(id);
-  const ring = openRing(f.geometry.coordinates[0]).map(([E, N]: P2) => toLocal(E, N).map(r2));
-  return {
-    id,
-    name_de: f.properties.name_de,
-    confidence: f.properties.confidence,
-    base_h: cat?.base_h ?? null,
-    eaves_h: rec?.eaves_h ?? null,
-    ridge_h: rec?.ridge_h ?? null,
-    cls: cat?.cls ?? rec?.cls ?? null,
-    interior: cat?.interior ?? null,
-    ring,
-  };
-});
-
-function courtTowardEN(b: any, from: P2): P2 {
-  const v = b.court_toward;
-  if (Array.isArray(v)) return v as P2;
-  if (typeof v === 'string') {
-    const f = catalogue.terrain_features.find((x: any) => x.id === v);
-    if (f) {
-      const gg = f.geometry;
-      if (gg.type === 'LineString') return nearestOnLine(gg.coordinates, from);
-      if (gg.type === 'Polygon') return centroid(gg.coordinates[0]);
-      if (gg.type === 'Point') return [gg.coordinates[0], gg.coordinates[1]];
-      if (gg.type === 'MultiPoint') {
-        const n = gg.coordinates.length;
-        return [gg.coordinates.reduce((s: number, p: P2) => s + p[0], 0) / n, gg.coordinates.reduce((s: number, p: P2) => s + p[1], 0) / n];
-      }
-    }
-    const ob = catById.get(v);
-    if (ob?.footprint) return centroid(ob.footprint);
-  }
-  return catalogue.palace_grid.origin_EN as P2;
-}
-const evidenceOf = (tag: string | undefined): string => {
-  const m = /^\s*(HMS|D->|D|I|N|U)\b/.exec(tag ?? '');
-  return m ? m[1]! : 'U';
-};
-const rooms: any[] = [];
-for (const b of catalogue.buildings) {
-  if (!b.rooms?.length || !b.footprint) continue;
-  const ring = b.footprint as P2[];
-  const frame = planFrame(ring, courtTowardEN(b, centroid(ring)));
-  for (const room of b.rooms) {
-    const poly = (room.polygon as P2[]).map((p) => {
-      const [E, N] = stToEN(frame, p);
-      return toLocal(E, N).map(r2);
-    });
-    const storey = b.storeys[room.storey];
-    rooms.push({
-      id: `${b.id}/${room.id}`,
-      roomId: room.id,
-      building: b.id,
-      name_de: room.name_de,
-      function: room.function,
-      storey: room.storey,
-      storey_de: storey?.name ?? null,
-      floor_h: room.floor_h,
-      ceiling_h: room.ceiling_h,
-      evidence: evidenceOf(room.tag),
-      tag: room.tag,
-      polygon: poly,
-    });
-  }
-}
-// Self-check: every room vertex must lie inside (or within 1 m of) its building footprint.
-{
-  const fpById = new Map<string, P2[]>(footprints.map((f: any) => [f.id, f.ring]));
-  let bad = 0;
-  let worst = 0;
-  for (const r of rooms) {
-    const ring = fpById.get(r.building);
-    if (!ring) continue;
-    for (const v of r.polygon as P2[]) {
-      if (pointInRing(v, ring)) continue;
-      const d = distToRing(v, ring);
-      worst = Math.max(worst, d);
-      if (d > 1) bad++;
-    }
-  }
-  log(`rooms: ${rooms.length}; vertices outside footprint by > 1 m: ${bad} (worst ${worst.toFixed(2)} m)`);
-  if (bad > 0) throw new Error('room frame mismatch - did the catalogue frame rules change?');
-}
-function pointInRing(pt: P2, ring: readonly P2[]): boolean {
-  let ins = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i]!;
-    const [xj, yj] = ring[j]!;
-    if (yi > pt[1] !== yj > pt[1] && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ins = !ins;
-  }
-  return ins;
-}
-function distToRing(pt: P2, ring: readonly P2[]): number {
-  const q = nearestOnLine([...ring, ring[0]!], pt);
-  return Math.hypot(q[0] - pt[0], q[1] - pt[1]);
-}
+const { reconIndex } = preparePalace({ recon: SRC.recon, catalogue: SRC.catalogue, out: OUT, rooms: ROOMS, E0, N0, log });
 
 // ---------------------------------------------------------------------------------------------
 // POIs
@@ -680,8 +598,6 @@ const terrainMeta = {
   ...(pointMeta ? { pointcloud: pointMeta } : {}),
 };
 write('terrain/meta.json', JSON.stringify(terrainMeta, null, 1));
-write('palace/footprints.json', JSON.stringify({ format: 'kq-footprints-v1', disclaimer_de: reconIndex.disclaimer_de, anchor: { x: r2(reconIndex.anchor.E - E0), z: r2(-(reconIndex.anchor.N - N0)) }, buildings: footprints }));
-write('palace/rooms.json', JSON.stringify({ format: 'kq-rooms-v1', catalogueVersion: catalogue.version, note: 'polygon = room outline in local x/z (open ring); floor_h/ceiling_h absolute heights; evidence = leading tag D/D->/I/N/U/HMS', rooms }));
 write('pois.json', JSON.stringify({ format: 'kq-pois-v1', attribution: poiGeo.attribution, pois }));
 write('paths.json', JSON.stringify(paths));
 
@@ -718,8 +634,4 @@ const files = [
   'paths.json',
   'attribution.json',
 ];
-const sizes = Object.fromEntries(files.map((f) => [f, statSync(join(OUT, f)).size]));
-const total = Object.values(sizes).reduce((s, v) => s + v, 0);
-write('manifest.json', JSON.stringify({ format: 'kq-data-v1', generated: new Date().toISOString(), totalBytes: total, files: sizes }, null, 1));
-for (const [f, s] of Object.entries(sizes)) log(`${(s / 1024).toFixed(0).padStart(7)} KiB  ${f}`);
-log(`total ${(total / 1048576).toFixed(2)} MiB`);
+writeManifest(files);
