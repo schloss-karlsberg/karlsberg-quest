@@ -8,7 +8,9 @@
  *   then a card with 0–3 stars and the verdict. The core (`core.ts`) judges it geometrically.
  * - **Down**: N, Esc, right click (or the camera button). Not in a conversation, a menu, a fight,
  *   the spirit view, a cut scene (`player.frozen`) or while somebody else holds the camera
- *   (`camera:override`): a toast says why, and an open phone closes.
+ *   (`camera:override`): a toast says why, and an open phone closes. Such a forced close (also
+ *   death and an era change) snaps the lens back to 1× in the same frame (`lensDown`), so a
+ *   cinematic never takes over a half-zoomed fov; the player's own close eases.
  * - **Past eras**: „Kein Netz“; the picture comes out white, nothing is judged
  *   (`photo:shot { noSignal: true }`, never `photo:good`).
  * - Targets are data (`content/photo/targets.json`); code may attach a live position and a
@@ -28,7 +30,7 @@ import { h } from '../../ui/dom';
 import { addJournalTab } from '../../ui/journal';
 import { addControlKeys } from '../../ui/menus';
 import { captureView } from '../notes/capture';
-import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, SteadyMeter, emptySlice, normaliseSlice } from './core';
+import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, lensDown, SteadyMeter, emptySlice, normaliseSlice } from './core';
 import { type PhotoTargetData, type PhotoTargetFile, targetFromData } from './data';
 import { DebugDeer, buildBoard } from './demo';
 import targetsFile from '../../../content/photo/targets.json';
@@ -249,14 +251,18 @@ class Photo {
     this.offs.push(
       ev.on('npc:conversation', ({ open }) => {
         this.conversation = open;
-        if (open) this.close();
+        if (open) this.close(true);
       }),
       ev.on('camera:override', ({ active }) => {
         this.overridden = active;
-        if (active) this.close();
+        if (active) this.close(true);
       }),
-      ev.on('game:pause', ({ paused }) => paused && this.close()),
-      ev.on('era:change', () => this.syncSignal()),
+      ev.on('game:pause', ({ paused }) => paused && this.close(true)),
+      ev.on('player:died', () => this.close(true)),
+      ev.on('era:change', () => {
+        this.syncSignal();
+        this.close(true);
+      }),
       ev.on('save:loaded', () => this.thumbs.clear()),
     );
     ctx.state.subscribe((_s, reason) => {
@@ -375,12 +381,11 @@ class Photo {
     return true;
   }
 
-  close(): void {
+  /** Phone down. `forced` (anything but the player's own N / Esc / right click): the lens snaps to 1×. */
+  close(forced = false): void {
     if (!this.isOpen) return;
     this.isOpen = false;
-    const pl = this.ctx.player;
-    pl.rig.setPhoto(false);
-    pl.rig.setFovScale(1);
+    lensDown(this.ctx.player.rig, this.ctx.camera, forced);
     for (const a of MUTED) this.ctx.input.muted.delete(a);
     this.el.classList.add('kq-hidden');
     this.zoomBar.classList.add('kq-hidden');
@@ -415,7 +420,7 @@ class Photo {
     const b = this.blocked();
     if (b) {
       if (b !== 'menu') this.ctx.ui.toast(t(`photo.toast.${b}`));
-      this.close();
+      this.close(true);
       return;
     }
     if (inp.wasPressed('bannlicht', true) || inp.wasPressed('pause', true)) {
@@ -600,7 +605,7 @@ class Photo {
   }
 
   dispose(): void {
-    this.close();
+    this.close(true);
     for (const off of this.offs) off();
     window.removeEventListener('keydown', this.onKey, { capture: true });
     this.deer?.dispose();

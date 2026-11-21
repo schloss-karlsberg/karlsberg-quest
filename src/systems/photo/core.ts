@@ -634,3 +634,23 @@ export class PhotoCore {
     return this.slice().good.includes(id);
   }
 }
+
+/** The bits of the camera rig (src/player/camera.ts `CameraRig`) the phone drives. */
+export interface PhotoLensRig<C> {
+  setPhoto(on: boolean): void;
+  setFovScale(k: number): void;
+  snapFov(camera: C): void;
+}
+
+/**
+ * Put the phone's lens down. A normal close (N, Esc, right click: the player's own) eases the
+ * 2× back to 1×. A `forced` close (a cut scene or takeover via `camera:override`, `player.frozen`,
+ * death, an era change, a fight, a conversation, a menu) snaps: the base fov is on the camera in
+ * this call and the rig writes `camera.fov` no more, so a takeover that captures the fov next
+ * never captures a half-zoomed lens.
+ */
+export function lensDown<C>(rig: PhotoLensRig<C>, camera: C, forced: boolean): void {
+  rig.setPhoto(false);
+  if (forced) rig.snapFov(camera);
+  else rig.setFovScale(1);
+}
