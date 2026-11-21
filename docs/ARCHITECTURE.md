@@ -218,6 +218,7 @@ Rules
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
 | `systems, loop, pause` | registry, loop (`time`, `tick`, `step`, `advance`, `renderOnce`, `requestRender(n)`, `pace`, `manual`, `paused`; §3), pause stack |
+| `cinematic` | Camera takeover (boot's override slot, `src/systems/cinematic/takeover.ts`): `takeCamera(owner, fn, { showAvatar = true, freeze = true, onRelease })` → false while another owner holds it; `releaseCamera(owner)`; `cameraOwner`. `fn(cam)` runs every drawn frame after the rig; released automatically on `shift:done` / `era:change` / `player:died` / `save:loaded`; the hand-back eases the last shot into the rig's placement over 0.4 s (a cut with reduced motion); `freeze` sets `frozen` + `lookLocked` and restores them and yaw / pitch. `camera:override { active }` on every change of the slot (also the debug `setCamera`). Never write `camera.position` from a `frame()` outside it |
 | `debug, params, t` | `?debug`, URL params, i18n |
 
 HUD slots (`ctx.ui.hud`): `dock('vitals' | 'boss' | 'feed', el, order)` (Action-RPG docks: bottom-left
@@ -1523,6 +1524,25 @@ pause the logic.
   and bots) and needs no pointer lock, in both camera modes. `lookLocked` (cut-scenes) stops it.
   Lock-on: not special-cased; like the mouse, the keys turn freely inside the lock's keep-in-view
   window and the lock pulls the view back when the target would leave it.
+
+### cinematic (`src/systems/cinematic/`) – in-game cut-scenes (contract C1, docs/design/tour)
+
+Request `cinematic:play` with the full spec (`CinematicPlay` in `types.ts`: `id`, exactly one of
+`keys` / `ref` (`content/cinematics/<ref>.json`, checked by `pnpm validate`) / `orbit`, `skippable`,
+`lockInput`, `reduced`), or the story cue `story:cue { id: 'cinematic', data: <spec> }` until the
+story's own action lands. Events `cinematic:start { id, seconds }`, `cinematic:end { id, skipped }`
+(always once per request: a bad spec warns and ends skipped). Keys (`keys.ts`, pure): eye
+player-relative from a snapshot at the start (`back` / `up` / `right` / `turn`°) or absolute (y over
+the ground), look at `npc:<id>` (`kq.npc.list()`, else the npc slice), `animal:<id>`
+(`registerTarget(id, getter)` in `targets.ts`; unknown → the view holds), `player`, a point or a
+pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear easing; missing fields
+carry over. The timeline runs on fixed steps (Esc / modals stop it); skip after 0.5 s by any key
+(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
+centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
+cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
+through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
+`at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
+`tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).
 
 ### photo (`src/systems/photo/`) – Fotomodus: the smartphone camera (present day only)
 
