@@ -143,7 +143,7 @@ class NpcRuntime {
 
   constructor(private readonly ctx: GameContext) {
     this.voice = new Voice(ctx.audio);
-    this.view = new ConversationView(ctx.ui.modals, this.voice, () => ctx.settings.state.reducedMotion);
+    this.view = new ConversationView(ctx.ui.modals, this.voice, () => ctx.settings.state.reducedMotion, ctx.input);
     const ev = ctx.events;
     ev.on('npc:spawn', (p) => this.spawn(p));
     ev.on('npc:despawn', ({ npc }) => this.despawn(npc));
