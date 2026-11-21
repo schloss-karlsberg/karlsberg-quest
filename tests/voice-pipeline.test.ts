@@ -403,7 +403,9 @@ describe('elevenlabs provider (stubbed fetch, no network)', () => {
   it('sends each speaker\'s voice_settings from voices.json; character-cost is the billed credits', async () => {
     const fetchMock = vi.fn(async (_u: string, _i: RequestInit) => new Response(new Uint8Array([1]), { headers: { 'character-cost': '54' } }));
     vi.stubGlobal('fetch', fetchMock);
-    const voice = resolveVoice('marlene', voicesJson as VoicesConfig)!;
+    // the ElevenLabs picks live on in voices.json `$alternatives` (laub / marlene now use moss)
+    const alt = (voicesJson as unknown as { $alternatives: VoicesConfig['speakers'] }).$alternatives;
+    const voice = resolveVoice('marlene', { ...(voicesJson as unknown as VoicesConfig), speakers: { marlene: alt.marlene! } })!;
     expect(voice).toMatchObject({ voiceId: 'XrExE9yKIg1WjnnlVkGX', placeholder: false });
     const res = await elevenLabsProvider('k').synthesize({ text: 'Hallo', voice, model: voice.model, lang: 'de' });
     expect(res.billedCredits).toBe(54);
