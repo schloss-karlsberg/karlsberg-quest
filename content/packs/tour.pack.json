@@ -2,11 +2,7 @@
   "$schema": "../schema/pack.schema.json",
   "pack": "tour",
   "speakers": [
-    { "id": "imhoff", "name_de": "Gerold Imhoff · Führung", "historical": false },
-    { "id": "player", "name_de": "Du", "historical": false },
-    { "id": "jostd", "name_de": "Jost Fendel", "historical": false },
-    { "id": "solld", "name_de": "Herr Soll", "historical": false },
-    { "id": "mats", "name_de": "Mats", "historical": false }
+    { "id": "player", "name_de": "Du", "historical": false }
   ],
   "dialogue": [
     {
