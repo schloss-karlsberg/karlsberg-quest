@@ -2,7 +2,8 @@
  * The credits strip (bible 06 §8.2 step 4: "Laufschrift am Bildrand"): a band along the bottom edge
  * (over the cinematic's lower letterbox bar) with the lines crawling right to left, driven by the
  * party's game clock (it stops with the game). Reduced motion: no crawl, the lines step through one
- * at a time, centred.
+ * at a time, centred. While it runs `html[data-kq-credits]` hides the HUD (Bussole, objective,
+ * tracker, compass, vitals) the way a cinematic does; subtitles, story lines and the strip stay.
  */
 import { h } from '../../ui/dom';
 import type { StripLike } from './runtime';
@@ -71,6 +72,8 @@ export class CreditsStrip implements StripLike {
     this.el.setAttribute('aria-label', lines.join(' – '));
     document.body.appendChild(this.el);
     document.body.appendChild(this.bar!);
+    // the HUD steps aside while the credits roll (party.css), also after the camera is handed back
+    document.documentElement.toggleAttribute('data-kq-credits', true);
     void this.el.offsetWidth;
     this.el.classList.add('on');
   }
@@ -98,6 +101,7 @@ export class CreditsStrip implements StripLike {
   }
 
   hide(): void {
+    if (typeof document !== 'undefined') document.documentElement.removeAttribute('data-kq-credits');
     this.el?.classList.remove('on');
     this.el?.remove();
     this.bar?.remove();

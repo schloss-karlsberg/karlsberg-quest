@@ -109,12 +109,22 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, W hands the
   await step(page, 60);
   expect(await events(page, 'credits:done')).toEqual([]);
   shots.push(await shot(page, 'walking-credits'));
+  // the HUD steps aside while the credits roll, even with the camera handed back: nothing sits on the skip button
+  const hudVis = () => page.evaluate(() => ['.kqs-bussole', '.kqs-objective'].map((q) => { const e = document.querySelector(q); return e ? getComputedStyle(e).visibility : 'none'; }));
+  expect(await hudVis()).not.toContain('visible');
+  const covered = await page.evaluate(() => {
+    const b = document.querySelector('[data-testid="party-credits-skip"]')!.getBoundingClientRect();
+    const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    return hit?.closest('[data-testid="party-credits-skip"]') ? null : (hit?.className ?? 'nothing');
+  });
+  expect(covered).toBeNull();
 
   // Enter skips the whole credits
   await page.keyboard.press('Enter');
   await step(page, 2);
   expect(await events(page, 'credits:done')).toEqual([{ skipped: true }]);
   expect(await page.locator('[data-testid="party-credits"]').count()).toBe(0);
+  expect(await page.evaluate(() => document.documentElement.hasAttribute('data-kq-credits'))).toBe(false);
   // the party still stands
   expect(await page.evaluate(() => window.kq!.party!.state().people.length)).toBe(16);
 
