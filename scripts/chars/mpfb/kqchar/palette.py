@@ -26,7 +26,6 @@ Spec:
                        creases keep their shade under a flat ambient light.
 """
 import json
-import math
 
 import numpy as np
 
@@ -112,14 +111,6 @@ def apply(objs, spec, log=print):
     return [body]
 
 
-def _hemisphere(n_rays, seed=7):
-    """Cosine-weighted unit directions around +z (a fixed, even spread: a Fibonacci disc lifted)."""
-    k = np.arange(n_rays) + 0.5
-    r = np.sqrt(k / n_rays)
-    a = k * math.pi * (3 - math.sqrt(5)) + seed
-    return np.stack([r * np.cos(a), r * np.sin(a), np.sqrt(np.clip(1 - r * r, 0, 1))], 1)
-
-
 def bake_ao(body, names, face_zone, ao, log=print):
     """Ambient occlusion baked into the vertex colours (`spec.ao`): the shared material has no
     texture, so the creases (eye sockets, under the brows, nose and chin, the ears, the collar, the
@@ -127,9 +118,10 @@ def bake_ao(body, names, face_zone, ao, log=print):
     `ao`: {"distance": m, "rays": n, "zones": {zone: strength 0..1}, "default": strength,
     "smooth": passes of neighbour averaging, "floor": lowest visibility kept}. The
     colour is multiplied by mix(1, visibility, strength) (visibility = unoccluded share, closer hits
-    count more)."""
-    from mathutils import Vector
+    count more). The core is shared with the hero's per-costume bake (ao.py)."""
     from mathutils.bvhtree import BVHTree
+
+    from . import ao as ao_mod
 
     me = body.data
     nv = len(me.vertices)
@@ -141,62 +133,9 @@ def bake_ao(body, names, face_zone, ao, log=print):
     nrm = nrm.reshape(nv, 3)
     polys = [tuple(p.vertices) for p in me.polygons]
     tree = BVHTree.FromPolygons([tuple(v) for v in co], polys, all_triangles=False)
-    dist = float(ao.get('distance', 0.1))
-    dirs = _hemisphere(int(ao.get('rays', 24)))
-    # strength per vertex: the strongest zone of its faces
-    zs = ao.get('zones', {})
-    face_s = np.array([zs.get(names[i], ao.get('default', 0.5)) for i in face_zone])
-    vs = np.zeros(nv)
-    loops = np.empty(len(me.loops), dtype=np.int64)
-    me.loops.foreach_get('vertex_index', loops)
-    starts = np.empty(len(me.polygons), dtype=np.int64)
-    me.polygons.foreach_get('loop_start', starts)
-    counts = np.empty(len(me.polygons), dtype=np.int64)
-    me.polygons.foreach_get('loop_total', counts)
-    loop_face = np.repeat(np.arange(len(me.polygons)), counts)
-    np.maximum.at(vs, loops, face_s[loop_face])
-    vis = np.ones(nv)
-    for i in range(nv):
-        if vs[i] <= 0:
-            continue
-        n = nrm[i]
-        t = np.cross(n, (1.0, 0.0, 0.0) if abs(n[0]) < 0.9 else (0.0, 1.0, 0.0))
-        t /= np.linalg.norm(t) + 1e-12
-        b = np.cross(n, t)
-        o = Vector(co[i] + n * 0.0015)
-        occ = 0.0
-        for d in dirs:
-            w = t * d[0] + b * d[1] + n * d[2]
-            hit = tree.ray_cast(o, Vector(w), dist)
-            if hit[0] is not None:
-                occ += 1.0 - 0.5 * hit[3] / dist
-        vis[i] = 1.0 - occ / len(dirs)
-    if ao.get('smooth'):
-        # a few passes of neighbour averaging over the mesh edges: no jagged dark specks on a coarse
-        # mesh (the ear's bowl, the collar), the shade keeps its overall shape
-        ev = np.empty(len(me.edges) * 2, dtype=np.int64)
-        me.edges.foreach_get('vertices', ev)
-        ev = ev.reshape(-1, 2)
-        deg = np.bincount(ev.ravel(), minlength=nv).astype(float)
-        for _ in range(int(ao['smooth'])):
-            acc = np.zeros(nv)
-            np.add.at(acc, ev[:, 0], vis[ev[:, 1]])
-            np.add.at(acc, ev[:, 1], vis[ev[:, 0]])
-            vis = np.where(deg > 0, 0.5 * vis + 0.5 * acc / np.maximum(deg, 1), vis)
-    if ao.get('floor') is not None:
-        # never darker than this share of the colour (a soft crease, not a black hole)
-        vis = ao['floor'] + (1 - ao['floor']) * vis
-    f = 1.0 - vs * (1.0 - vis)
-    ca = me.color_attributes.active_color or me.color_attributes[0]
-    m = len(ca.data)
-    col = np.empty(m * 4, dtype=np.float32)
-    ca.data.foreach_get('color', col)
-    col = col.reshape(m, 4)
-    per = f[loops] if ca.domain == 'CORNER' else f
-    col[:, :3] *= per[:, None].astype(np.float32)
-    ca.data.foreach_set('color', col.ravel())
-    me.update()
-    log(f'[palette] ao baked: {nv} vertices, {len(dirs)} rays, {dist} m; visibility mean {vis.mean():.2f}, min {vis.min():.2f}')
+    vs = ao_mod.vertex_strength(me, [names[i] for i in face_zone], ao)
+    vis = ao_mod.shade(me, ao_mod.visibility(co, nrm, vs, tree, ao), vs, ao)
+    log(f'[palette] ao baked: {nv} vertices, {int(ao.get("rays", 24))} rays, {float(ao.get("distance", 0.1))} m; visibility mean {vis.mean():.2f}, min {vis.min():.2f}')
 
 
 def zones(obj):

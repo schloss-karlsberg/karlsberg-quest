@@ -518,6 +518,13 @@ Steinbrecher stays blocky by design but could use broken edges; no CC0 rigged cr
   rotates); off-screen attackers as chevrons around the character, pulsing on a wind-up; enemies
   keep 0.95 m + radius off the body so they never sit inside it.
 - Before / after (headed Chromium, Metal, 1440 × 900, high): `test-results/look/shots/v2-camera-*`.
+- **Authored player (behind a flag, 2026-11-21):** `?avatar=mpfb` plays the MPFB character
+  (built by `scripts/chars/mpfb` from `specs/player.json`; its look is described in that README's
+  player section) until the look is approved; the surveyor stays the default. Its court disguise
+  is built as outfit pieces, not a recolour: a plain 1780s secretary in a dark-blue coat cut away
+  over a cream waistcoat, skirts to the knee, a white stock, black breeches, white stockings, black
+  buckled shoes and a plain black tricorn. Each costume stays within the hero budget (≤ 25k
+  triangles, ≤ 8 draw calls visible).
 
 ## 17. Integration of the round 8 tracks (2026-11-19)
 

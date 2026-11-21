@@ -66,7 +66,7 @@ def eye_part(name, center, radius, palette, bones, forward=(0.0, -1.0, 0.0), seg
             for s in range(segments):
                 faces.append((A[s], A[(s + 1) % segments], B[(s + 1) % segments], B[s]))
     # catchlight: a small white disc floating just off the cornea, up and to one side of the pupil
-    cl = palette.get('catchlight', [14.0, 11.0, 0.15])  # (degrees up, degrees to +x, radius / eye radius)
+    cl = palette.get('catchlight', [14.0, 11.0, 0.15])  # (degrees up, degrees to +x, radius / eye radius[, aspect, segments])
     if cl:
         up_a, side_a, rr = math.radians(cl[0]), math.radians(cl[1]), cl[2]
         dc = math.cos(up_a) * math.cos(side_a) * f + math.sin(up_a) * up + math.cos(up_a) * math.sin(side_a) * np.array([1.0, 0.0, 0.0])
@@ -77,10 +77,11 @@ def eye_part(name, center, radius, palette, bones, forward=(0.0, -1.0, 0.0), seg
         c0 = len(co)
         co.append(center + radius * 1.012 * dc)
         col.append(hex_lin('#ffffff'))
-        ns = 8
+        ns = int(cl[4]) if len(cl) > 4 else 8
+        asp = cl[3] if len(cl) > 3 else 0.8
         for s in range(ns):
             t = 2 * math.pi * s / ns
-            co.append(center + radius * 1.006 * dc + radius * rr * (math.cos(t) * u + math.sin(t) * v * 0.8))
+            co.append(center + radius * 1.006 * dc + radius * rr * (math.cos(t) * u + math.sin(t) * v * asp))
             col.append(hex_lin('#ffffff'))
         for s in range(ns):
             a, b = c0 + 1 + s, c0 + 1 + (s + 1) % ns
@@ -220,6 +221,21 @@ def skin_colours(co, nrm, groups, lm, palette):
             fan = np.exp(-(u / (0.7 * r)) ** 2 - (v / (0.45 * r + 0.25 * np.clip(u, 0, None))) ** 2) * (u > -0.4 * r)
             lines = 0.6 + 0.4 * np.cos(np.arctan2(v, np.abs(u) + 1e-4) * 9.0)
             col = mix(col, col * crease[None] / max(crease.max(), 1e-3), ec[1] * fan * lines * (nrm[:, 1] < 0.6))
+    fr = palette.get('freckles')
+    if fr:
+        # faint freckles over the nose bridge and the upper cheeks (`freckles`: [amount, share of the
+        # vertices, colour]): single vertices from a position hash, mixed toward the freckle colour at
+        # a low amount, so they show in a close-up and melt into the skin tone further away
+        amt, share, fc = fr[0], fr[1], hex_lin(fr[2] if len(fr) > 2 else '#a0603f')
+        h = np.sin(co[:, 0] * 12989.8 + co[:, 1] * 78233.1 + co[:, 2] * 37719.3) * 43758.5453
+        h = h - np.floor(h)
+        zone = np.zeros(n)
+        for c in (lm['nose_tip'] + np.array([0.0, 0.0, 0.6 * r]), lm['eye_l'] + np.array([-0.2 * r, -0.4 * r, -1.9 * r]),
+                  lm['eye_r'] + np.array([0.2 * r, -0.4 * r, -1.9 * r])):
+            d2 = (((co - c) * np.array([1.0, 1.0, 1.4])) ** 2).sum(1)
+            zone = np.maximum(zone, np.exp(-d2 / (2 * (1.3 * r) ** 2)))
+        dots = (h < share) * zone * (nrm[:, 1] < -0.3) * (0.6 + 0.4 * (h / max(share, 1e-6)))
+        col = mix(col, fc[None], amt * dots)
     # a soft lid line around the eyes (reads at game distance; faint behind glasses)
     for e in (lm['eye_l'], lm['eye_r']):
         d = np.linalg.norm(co - e, axis=1)
@@ -253,6 +269,10 @@ def teeth_part(skin, lm, bones, palette, spec):
         top.append(edge)
         ys.append(ye)
     top, ys = np.array(top), np.array(ys)
+    if spec.get('edge_median') and len(top) > 2:
+        # one column's rays can miss the lip line (a notch in the strip): a median of three
+        top = np.array([np.median(top[max(0, i - 1):i + 2]) for i in range(len(top))])
+        ys = np.array([np.median(ys[max(0, i - 1):i + 2]) for i in range(len(ys))])
     if spec.get('debug'):
         print('[mpfb] teeth edge z', np.round(top, 4).tolist(), 'y', np.round(ys, 4).tolist())
     ax = np.abs(xs) / half

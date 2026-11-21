@@ -154,8 +154,11 @@ def build(skin, lm, spec, palette, bones, skin_keys=None, skin_faces=None):
                 f.append(quad[::-1] if s > 0 else quad)
         add(np.array(rings), f, np.array(cols))
         # the hinge: outer edge, a little above the centre line
-        kh = int(round(n * 0.04)) % n
-        hinge[side] = c + xa * (outline[kh, 0] + onrm[kh, 0] * rim * 0.9) + za * (outline[kh, 1] + 0.004 * sc) - fa * depth * 0.3
+        # (`hinge_at`: where on the outline, as a fraction of the turn from the outer middle towards
+        # the top; `hinge_up`: m above that point). Higher up, the temple runs back level instead of
+        # rising behind the rim (no nubs over the top corners from the front)
+        kh = int(round(n * spec.get('hinge_at', 0.04))) % n
+        hinge[side] = c + xa * (outline[kh, 0] + onrm[kh, 0] * rim * 0.9) + za * (outline[kh, 1] + spec.get('hinge_up', 0.004) * sc) - fa * depth * 0.3
         ki = int(round(n * 0.40)) % n
         inner_top[side] = c + xa * (outline[ki, 0] + onrm[ki, 0] * rim * 0.5) + za * outline[ki, 1]
     # bridge: an arc over the nose between the inner rims

@@ -7,7 +7,7 @@ import bpy
 import numpy as np
 
 from . import beard as beard_mod
-from . import face, glasses, hair, human, lod, outfit
+from . import court, face, glasses, hair, human, lod, outfit
 from .bind import Surface, vertex_normals
 from .parts import Part, build_object
 from .util import hex_lin, mix, smoothstep
@@ -78,6 +78,7 @@ def run(spec, out_glb, out_blend=None, log=print):
             col = np.stack([beard_w, beard_w * 0 + 0.2, 1 - beard_w], axis=1)
     elif solid_beard:
         beard_part, stubble = beard_mod.solid(skin, sW, skeys, lm, bspec, pal, bones, lips=sG['lips'])
+        sG = {**sG, 'beard_cover': stubble}  # carried through the decimation (beard.skin_sink)
         if 'stubble' in pal:
             col = mix(col, hex_lin(pal['stubble'])[None], pal.get('stubble_amount', 0.5) * stubble)
     elif bspec.get('style', 'none') != 'none':
@@ -145,6 +146,8 @@ def run(spec, out_glb, out_blend=None, log=print):
     else:
         lco, lfaces, lW, lcol, lG, lkeys = sco, sfaces, sW, col, sG, skeys
     log(f'[mpfb] skin lod: {sum(len(f) - 2 for f in lfaces)} tris ({time.time() - t0:.1f}s)')
+    # costumes cut their own zone borders into a copy of the decimated skin (court.py)
+    costume_base = (lco, lfaces, lW, lcol, lG, lkeys)
     # ---- clean zone borders: cut the low skin along the hem, cuff and boot-top planes
     if spec.get('budget', {}).get('cut_borders', True):
         jk_ = outfit.slots(spec.get('wardrobe', {})).get('jacket')
@@ -166,6 +169,13 @@ def run(spec, out_glb, out_blend=None, log=print):
         off = off + shell.hang(lco + lnrm * off[:, None], lnrm, lfaces, mats, lW, bones, h.rig, jkh, outfit.body_hem(lco, h.rig, jkh))
     lco2 = lco + lnrm * off[:, None]
     lkeys2 = {k: v + lnrm * off[:, None] for k, v in lkeys.items()}
+    sink = bspec.get('skin_sink', 0.0) if solid_beard else 0.0
+    if sink and 'beard_cover' in lG:
+        # the skin right under the beard sinks a little, so no skin bump pokes through the shell
+        # where its rim tucks in (the moustache ends)
+        dz = smoothstep(0.96, 1.0, lG['beard_cover'])[:, None] * lnrm * sink
+        lco2 = lco2 - dz
+        lkeys2 = {k: v - dz for k, v in lkeys2.items()}
     mat_col = outfit.cloth_colours(lco, lnrm, wardrobe, pal, h.rig)
     skin_part = Part('skin', 'Skin', lco2, lfaces, col=lcol, weights=lW, keys=lkeys2, face_mat=mats, mat_col=mat_col)
     if bspec.get('style', 'none') != 'none' and not skin_beard and not solid_beard:
@@ -177,9 +187,13 @@ def run(spec, out_glb, out_blend=None, log=print):
     # ---- eyes, brows, beard, hair, collar
     epal = {k[4:]: v for k, v in pal.items() if k.startswith('eye_')}
     epal['iris'] = pal['iris']
+    # `face.eye_yaw_deg`: each eye turned that much outward (the iris sits in the middle of its lid
+    # opening from the front, instead of towards the nose)
+    yaw = np.radians(spec['face'].get('eye_yaw_deg', 0.0))
     for side in ('l', 'r'):
         c = lm['eye_' + side]
-        parts.append(face.eye_part('eye_' + side, c, lm['eye_radius'] * spec['face'].get('eye_fill', 0.985), epal, bones))
+        fwd = ((1.0 if side == 'l' else -1.0) * np.sin(yaw), -np.cos(yaw), 0.0)
+        parts.append(face.eye_part('eye_' + side, c, lm['eye_radius'] * spec['face'].get('eye_fill', 0.985), epal, bones, forward=fwd))
     if spec['face'].get('brows', True):
         bs = spec['face'].get('brow', {})
         for side in ('l', 'r'):
@@ -236,13 +250,15 @@ def run(spec, out_glb, out_blend=None, log=print):
         hide_lo = hem_v + (jk2 or {}).get('skirt', {}).get('show_below', 0.035) if skirt_top is not None else 9.0
 
         n_hid = {'shoes': 0, 'skirt': 0}
+        # a band of the body under the skirt's top stays (skirt.hide_top, m): the skirt overlaps it, so no gap opens at the seam
+        top_keep = (jk2 or {}).get('skirt', {}).get('hide_top', 0.004)
 
         def hidden_face(k, f):
             m = skin_part.face_mat[k]
             if so2 and so2.get('solid') and m == so2['material'] and all(z_[i] < so2['top'] + 1e-4 for i in f):
                 n_hid['shoes'] += 1
                 return True
-            if skirt_top is not None and m in (trm, jk2['material']) and all(hide_lo <= z_[i] <= skirt_top - 0.004 and not arm_[i] for i in f):
+            if skirt_top is not None and m in (trm, jk2['material']) and all(hide_lo <= z_[i] <= skirt_top - top_keep and not arm_[i] for i in f):
                 n_hid['skirt'] += 1
                 return True
             return False
@@ -253,18 +269,31 @@ def run(spec, out_glb, out_blend=None, log=print):
         skin_part.face_mat = [skin_part.face_mat[k] for k in keep_f]
     parts += lanyard.build(Surface(lco2, lfaces), h.rig, wardrobe, pal, bones)
     materials = spec.get('materials', {})
-    obj = build_object('avatar-body', parts, bones, h.rig, key_names, materials)
-    objs = [obj]
+    if spec.get('costumes'):
+        # outfit pieces: the body, the default outfit and each costume as their own meshes (court.py)
+        groups = court.split_default(parts, outfit.garment_materials(wardrobe))
+        groups.update(court.build(spec, costume_base, h.rig, lm, bones, parts, log))
+        objs = court.objects(groups, bones, h.rig, key_names, materials, court.court_spec(spec))
+    else:
+        objs = [build_object('avatar-body', parts, bones, h.rig, key_names, materials)]
     gpart = None
     if spec.get('glasses', {}).get('style', 'none') != 'none':
         gpart, gy = glasses.build(skin, lm, spec['glasses'], pal, bones, skin_keys=skeys)
         gobj = build_object('avatar-glasses', [gpart], bones, h.rig, [], materials)
         objs.append(gobj)
+    if spec.get('ao') and not palette.applies(spec):
+        from . import ao as ao_mod
+
+        ao_mod.bake_costumes(objs, spec['ao'], log)  # hero: baked occlusion per costume (ao.py)
     if palette.applies(spec):
         objs = palette.apply(objs, spec, log)  # one shared material (featured / extra tiers)
     # the MPFB working mesh is not exported
     bpy.data.objects.remove(h.obj, do_unlink=True)
     stats = report(parts + ([gpart] if gpart else []), objs)
+    if spec.get('costumes'):
+        # visible at once per costume (the hero budget applies to each)
+        stats['costumes'] = court.stats(objs, groups)
+        stats['draw_calls'] = stats['costumes']['default']['draw_calls']
     stats['mpfb'] = human.mpfb_version()
     stats['bones'] = len(bones)
     stats['morphs'] = key_names

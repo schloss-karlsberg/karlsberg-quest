@@ -16,6 +16,11 @@ Steps (each optional, all in metres / eye radii of the rest shape):
   realistic micro-forms (nasolabial folds, lid creases, under-eye bags, lumpy cheeks) and keeps the
   big shapes. The lid margins, the lips and the inner mouth are held (they carry the expression).
 - `nose_smooth` / `ear_smooth`: extra smoothing passes on the nose and the ears (simpler shapes).
+- `lower_lid`: smiling eyes. {deg, inner, outer, corner: [full, none]}: the lower lid and the upper
+  cheek turn up round each eye's horizontal axis by up to `deg` (so the lid margin slides up over
+  the eyeball and stays on it), full inside `inner` eye radii, faded out by `outer`; less towards the
+  eye corners (|x| in eye radii, `corner`), so the lid line curves up in the middle. The morph shapes
+  take the same turn by their own positions (a blink still meets the raised lid).
 """
 import numpy as np
 
@@ -72,6 +77,26 @@ def eye_map(p, centres, r, s, sink, spread, inner, outer, mid=0.014):
     return out
 
 
+def lower_lid(p, centres, r, spec, body):
+    """The smiling-eyes turn of points (N,3), see the module doc."""
+    out = p.copy()
+    deg = float(spec.get('deg', 12.0))
+    inner, outer = spec.get('inner', 1.0), spec.get('outer', 2.3)
+    c0, c1 = spec.get('corner', [0.9, 1.5])
+    for c in centres:
+        side = 1.0 if c[0] > 0 else -1.0
+        rel = p - c
+        u, v = -rel[:, 1], rel[:, 2]  # forward, up
+        d = np.linalg.norm(rel, axis=1) / r
+        below = smoothstep(0.2, -0.35, v / np.maximum(np.hypot(u, v), 1e-9))
+        w = smoothstep(outer, inner, d) * below * smoothstep(c1, c0, np.abs(rel[:, 0]) / r) * (u > -0.2 * r) * body
+        w = w * smoothstep(0.0, 0.014, p[:, 0] * side)
+        t = np.radians(deg) * w
+        out[:, 1] += -(u * np.cos(t) - v * np.sin(t)) - rel[:, 1]
+        out[:, 2] += (u * np.sin(t) + v * np.cos(t)) - rel[:, 2]
+    return out
+
+
 def apply(co, morph_pos, faces, groups, wh, lm, spec, log=print):
     """Stylise the rest shape `co` (N,3) and the morph shapes `morph_pos` {name: (N,3)} in place of
     the face. `faces`: the body polygons; `groups`: MPFB vertex groups; `wh`: head weight (N,);
@@ -86,6 +111,13 @@ def apply(co, morph_pos, faces, groups, wh, lm, spec, log=print):
         morph_pos = {k: eye_map(v, *args) for k, v in morph_pos.items()}
         log(f'[mpfb] stylize: eyes x{s:.2f} (radius {r:.4f} -> {r * s:.4f})')
     r2 = r * s
+    if spec.get('lower_lid'):
+        cs2 = [c + np.array([(1.0 if c[0] > 0 else -1.0) * spec.get('eye_spread', 0.0), r * (s - 1.0) * spec.get('eye_sink', 0.6), 0.0]) for c in centres]
+        body_m = (groups['body'] > 0.5).astype(float)
+        co2 = lower_lid(co, cs2, r2, spec['lower_lid'], body_m)
+        log(f"[mpfb] stylize: lower lids up {spec['lower_lid'].get('deg', 12.0)} deg (max move {np.abs(co2 - co).max() * 1000:.1f} mm)")
+        co = co2
+        morph_pos = {k: lower_lid(v, cs2, r2, spec['lower_lid'], body_m) for k, v in morph_pos.items()}
     nb = _neighbours(n, faces)
     lips = np.clip(groups['lips'], 0, 1)
     ears = np.clip(groups['ears'], 0, 1)

@@ -6,8 +6,10 @@ game_engine rig of a built character, and measure how well they transfer.
         [--clips Idle,Walk,Run,...|all] [--abduct 10] [--out <with-clips.blend>] [--glb <with-clips.glb>] [--report <report.json>] \\
         [--point Interact]   (also bake 'Point': that reaching clip with the reaching hand pointing, see point_clip)
         [--stand Idle,Interact,Wave] [--stand-width 0.03] [--stand-abduct -8]   (standing clips: stance, arms in)
+        [--stand-shoulders 7]   (standing clips: the shoulders dropped, degrees)
         [--stand-knee 5] [--stand-feet 0.095] [--stand-toe 8] [--stand-upright 0.8] [--stand-lean 5] [--level-head 1]
         [--relax-fingers 30]   (people tiers: the standing pose and relaxed hands, see below)
+        [--knees 1 --knees-loco 0.6]   (straighter planted legs: pelvis_lift, see below)
 
 Method: world-space rotation transfer with rest-pose alignment. For every mapped bone pair the
 target's rest direction is first swung onto the source's rest direction (the Quaternius rest is a
@@ -35,8 +37,12 @@ pitch of the upper spine, neck and head against the rest pose); `--stand-lean` t
 forward lean of the upper spine and neck (degrees); `--level-head 1` rolls the neck and head level.
 `--relax-fingers` curls every finger gently toward the palm in every clip (relax_fingers).
 
+Legs: `--knees` (and `--knees-loco` for the idle and locomotion clips) raise the pelvis before the
+lock so planted knees bend that fraction of the source's flexion (`pelvis_lift`): a lower-hipped rig
+does not crouch to reach its pinned feet.
+
 Checks per clip (report): foot sliding against the source (scaled), sole pitch while planted (tiptoe),
-knee / elbow bend direction against the source, shoulder drop, hands inside the torso radius.
+knee / elbow bend direction against the source, shoulder drop, hands inside the trunk (per costume).
 """
 import json
 import math
@@ -66,6 +72,8 @@ SK_S = ['Hips', 'Foot.L', 'Foot.R', 'UpperLeg.L', 'LowerLeg.L', 'UpperLeg.R', 'L
         'UpperArm.L', 'LowerArm.L', 'Wrist.L', 'UpperArm.R', 'LowerArm.R', 'Wrist.R']
 SK_T = ['pelvis', 'foot_l', 'foot_r', 'thigh_l', 'calf_l', 'thigh_r', 'calf_r',
         'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'neck_01', 'spine_03', 'ball_l', 'ball_r']
+#: an upper arm's children that swing with it (the girth swing, --abduct)
+ARM_CHAIN = ('lowerarm_', 'hand_', 'thumb_', 'index_', 'middle_', 'ring_', 'pinky_')
 FOOT_REST = {}
 SOLE_REST = {}  # rest pitch of the ankle -> ball line (degrees), per foot
 SHOULDER_REST = [0.0, 0.0]
@@ -157,17 +165,12 @@ def _eval_co(obj):
     return co
 
 
-def _to_head(rig, co):
-    hm = np.array((rig.matrix_world @ rig.pose.bones['head'].matrix).inverted())
-    return co @ hm[:3, :3].T + hm[:3, 3]
-
-
-def mesh_setup(scene, rig):
-    """Vertex sets for the mesh checks, measured in the rest pose."""
-    body = bpy.data.objects['avatar-body']
-    glasses = bpy.data.objects.get('avatar-glasses')
-    names = [g.name for g in body.vertex_groups]
-    me = body.data
+def _dominant(obj):
+    """Per vertex: the dominant bone's name and the zone of (one of) its faces; per face its zone.
+    A people-tier body has one palette material and keeps its zones in the face attribute `kq_zone`
+    (kqchar/palette.py); a hero body (and every outfit piece) has one material per zone."""
+    names = [g.name for g in obj.vertex_groups]
+    me = obj.data
     nv = len(me.vertices)
     dom = np.full(nv, -1)
     best = np.zeros(nv)
@@ -175,9 +178,7 @@ def mesh_setup(scene, rig):
         for g in v.groups:
             if g.weight > best[v.index]:
                 best[v.index], dom[v.index] = g.weight, g.group
-    # semantic zone per face: a people-tier body has one palette material and keeps its zones in
-    # the face attribute `kq_zone` (kqchar/palette.py); a hero body has one material per zone
-    mats = [s.material.name if s.material else '' for s in body.material_slots]
+    mats = [s.material.name if s.material else '' for s in obj.material_slots]
     zone = me.attributes.get('kq_zone')
     if zone is not None and 'kq_zones' in me:
         zn = json.loads(me['kq_zones'])
@@ -190,13 +191,57 @@ def mesh_setup(scene, rig):
     for p in me.polygons:
         for vi in p.vertices:
             vmat[vi] = fz[p.index]
-    gname = [names[g] if g >= 0 else '' for g in dom]
+    return names, dom, fz, vmat, [names[g] if g >= 0 else '' for g in dom]
+
+
+def _to_head(rig, co):
+    hm = np.array((rig.matrix_world @ rig.pose.bones['head'].matrix).inverted())
+    return co @ hm[:3, :3].T + hm[:3, 3]
+
+
+def mesh_setup(scene, rig):
+    """Vertex sets for the mesh checks, measured in the rest pose."""
+    body = bpy.data.objects['avatar-body']
+    glasses = bpy.data.objects.get('avatar-glasses')
+    names, dom, fz, vmat, gname = _dominant(body)
+    me = body.data
     fingers = ('thumb', 'index', 'middle', 'ring', 'pinky')
     hand = np.array([(m == 'Skin') and (n.startswith('hand_') or n.startswith(fingers)) for n, m in zip(gname, vmat)])
     trunk_bones = {'pelvis', 'spine_01', 'spine_02', 'spine_03'}
-    trunk_v = np.array([n in trunk_bones for n in gname])
-    trunk_f = [list(p.vertices) for p in me.polygons
-               if trunk_v[list(p.vertices)].all() and fz[p.index] in ('Jacket', 'Shirt', 'Skin', 'Trousers')]
+    pelvis_y = (rig.matrix_world @ rig.data.bones['pelvis'].head_local).y
+
+    def trunk_of(objs, materials, skirts=False):
+        """(object, faces) of the trunk surface the hands must stay out of. With `skirts`, the coat
+        skirts count too (pelvis at the waist, thighs at the hem): their outer cloth only, so a hand
+        that passes through into the gap between the skirts and the legs shows as inside."""
+        out = []
+        for o in objs:
+            _, _, ofz, _, ogname = _dominant(o)
+            trunk_v = np.array([n in trunk_bones for n in ogname])
+            thigh_v = np.array([n.startswith('thigh_') for n in ogname])
+            fs = []
+            for p in o.data.polygons:
+                vs = list(p.vertices)
+                m = ofz[p.index]
+                if m not in materials:
+                    continue
+                if trunk_v[vs].all():
+                    fs.append(vs)
+                elif skirts and m == 'Coat' and (trunk_v[vs] | thigh_v[vs]).all():
+                    radial = Vector((p.center.x, p.center.y - pelvis_y, 0.0))
+                    if radial.length > 1e-6 and p.normal.dot(radial.normalized()) > 0.5:
+                        fs.append(vs)
+            if fs:
+                out.append((o, fs))
+        return out
+
+    # per costume: the body plus that costume's pieces when the character has them (kqchar/court.py:
+    # avatar-default-jacket, -trousers …; avatar-court-coat, -waistcoat, -breeches)
+    def pieces(c):
+        return [o for o in bpy.data.objects if o.type == 'MESH' and o.name.startswith(f'avatar-{c}-')]
+    trunks = {'default': trunk_of([body] + pieces('default'), ('Jacket', 'Shirt', 'Skin', 'Trousers'))}
+    if pieces('court'):
+        trunks['court'] = trunk_of([body] + pieces('court'), ('Skin', 'Coat', 'Waistcoat', 'Breeches'), skirts=True)
     beard = np.where(vmat == 'Beard')[0]
     head_i = names.index('head') if 'head' in names else -1
     beard_head = beard[dom[beard] == head_i]
@@ -223,9 +268,10 @@ def mesh_setup(scene, rig):
     b = q.inverted() @ (rig.matrix_world @ rig.data.bones['upperarm_r'].head_local - c3)
     SHOULDER_REST[:] = [(a - b).length, (a.y + b.y) / 2]
     rig.data.pose_position = 'POSE'
-    info = {'hand_verts': int(hand.sum()), 'trunk_faces': len(trunk_f), 'beard_head_verts': int(len(beard_head)),
-            'beard_verts': int(len(beard)), 'glasses_verts': 0 if rest_g is None else int(len(rest_g))}
-    return {'body': body, 'glasses': glasses, 'hand': np.where(hand)[0], 'trunk_f': trunk_f, 'beard_head': beard_head,
+    info = {'hand_verts': int(hand.sum()), 'trunk_faces': {c: sum(len(fs) for _, fs in t) for c, t in trunks.items()},
+            'beard_head_verts': int(len(beard_head)), 'beard_verts': int(len(beard)),
+            'glasses_verts': 0 if rest_g is None else int(len(rest_g))}
+    return {'body': body, 'glasses': glasses, 'hand': np.where(hand)[0], 'trunks': trunks, 'beard_head': beard_head,
             'beard': beard, 'face_f': face_f, 'rest_gap': rest_gap,
             'rest_b': rest_b, 'rest_g': rest_g, 'rest_info': info}
 
@@ -245,20 +291,31 @@ def _gaps(co, faces, pts):
 def mesh_checks(scene, rig, chk, f0, f1):
     """Deformed-mesh checks per frame: hands inside the trunk; beard and glasses riding the head."""
     from mathutils.bvhtree import BVHTree
-    depth_max, pen_frames, drift_b, drift_g = 0.0, 0, [], []
+    pen = {c: {'frames': 0, 'max': 0.0} for c in chk['trunks']}
+    drift_b, drift_g = [], []
     bt_frames, bt_max = 0, 0.0
     for f in range(f0, f1 + 1):
         scene.frame_set(f)
         co = _eval_co(chk['body'])
-        tree = BVHTree.FromPolygons([tuple(c) for c in co], chk['trunk_f'])
-        deep = 0.0
-        for vi in chk['hand']:
-            p = Vector(co[vi])
-            loc, nrm, _, _ = tree.find_nearest(p, 0.08)
-            if loc is not None:
-                deep = max(deep, -(p - loc).dot(nrm))
-        depth_max = max(depth_max, deep)
-        pen_frames += deep > 0.012
+        evald = {chk['body'].name: co}
+        # hands inside the trunk, in each costume (the body plus that costume's pieces)
+        for c, trunk in chk['trunks'].items():
+            tco, tf = [], []
+            for o, fs in trunk:
+                oc = evald.get(o.name)
+                if oc is None:
+                    oc = evald[o.name] = _eval_co(o)
+                tf += [[i + len(tco) for i in fc] for fc in fs]
+                tco += [tuple(v) for v in oc]
+            tree = BVHTree.FromPolygons(tco, tf)
+            deep = 0.0
+            for vi in chk['hand']:
+                p = Vector(co[vi])
+                loc, nrm, _, _ = tree.find_nearest(p, 0.08)
+                if loc is not None:
+                    deep = max(deep, -(p - loc).dot(nrm))
+            pen[c]['max'] = max(pen[c]['max'], deep)
+            pen[c]['frames'] += deep > 0.012
         drift_b.append(np.linalg.norm(_to_head(rig, co[chk['beard_head']]) - chk['rest_b'], axis=1))
         gap = _gaps(co, chk['face_f'], co[chk['beard']]) if len(chk['beard']) else np.zeros(0)
         # beard vertices that sat on top of the skin at rest and now lie under it (skin pokes through)
@@ -268,7 +325,9 @@ def mesh_checks(scene, rig, chk, f0, f1):
         if chk['glasses'] is not None:
             drift_g.append(np.linalg.norm(_to_head(rig, _eval_co(chk['glasses'])) - chk['rest_g'], axis=1).max())
     db = np.concatenate(drift_b + [np.zeros(1)]) * 1000
-    return {'hand_in_trunk_frames': int(pen_frames), 'hand_in_trunk_max_cm': round(depth_max * 100, 1),
+    by = {c: {'frames': int(v['frames']), 'max_cm': round(v['max'] * 100, 1)} for c, v in pen.items()}
+    return {'hand_in_trunk_frames': max(v['frames'] for v in by.values()), 'hand_in_trunk_max_cm': max(v['max_cm'] for v in by.values()),
+            'hand_in_trunk_by_costume': by,
             'beard_drift_mm_p95': round(float(np.percentile(db, 95)), 2), 'beard_drift_mm_max': round(float(db.max()), 2),
             'skin_through_beard_frames': int(bt_frames), 'skin_through_beard_max_mm': round(bt_max * 1000, 2),
             'glasses_drift_mm_max': round(float(max(drift_g)) * 1000, 2) if drift_g else None}
@@ -290,8 +349,9 @@ def verdict(r):
             issues.append(f"{k} sole not flat while planted ({sp[0]} .. {sp[1]} deg)")
     if r['shoulder_height_delta_cm'][0] < -4:
         issues.append(f"shoulders drop {r['shoulder_height_delta_cm'][0]} cm")
-    if r['hand_in_trunk_frames']:
-        issues.append(f"hand inside the trunk in {r['hand_in_trunk_frames']} frames (max {r['hand_in_trunk_max_cm']} cm)")
+    for c, v in r.get('hand_in_trunk_by_costume', {}).items():
+        if v['frames']:
+            issues.append(f"hand inside the trunk ({c}) in {v['frames']} frames (max {v['max_cm']} cm)")
     if r['glasses_drift_mm_max'] and r['glasses_drift_mm_max'] > 0.5:
         issues.append(f"glasses drift {r['glasses_drift_mm_max']} mm against the head")
     # beard_drift (against the head bone) is informative only: the under-chin beard follows the neck
@@ -327,6 +387,69 @@ def _phases(contact):
             out.append((a, f - 1))
             a = None
     return out
+
+
+def _contact(src, up, contact_cm, min_frames):
+    """Planted frames of a source ankle path: within `contact_cm` of its lowest, phases of at least
+    `min_frames`; also the path's height along `up`."""
+    h = np.asarray(src) @ np.array(up)
+    contact = h < h.min() + contact_cm / 100.0
+    for a, b in _phases(contact):
+        if b - a + 1 < min_frames:
+            contact[a:b + 1] = False
+    return contact, h
+
+
+def _knee_flex(h, k, a):
+    """Knee flexion (degrees, 0 = straight) of a hip, knee, ankle triple."""
+    u, v = (Vector(k) - Vector(h)).normalized(), (Vector(a) - Vector(k)).normalized()
+    return math.degrees(u.angle(v)) if u.length and v.length else 0.0
+
+
+def pelvis_lift(frames, src_feet, src_flex, legs, bones, up, rest_z, ratio, contact_cm=1.5, ramp=3, min_frames=2, upright=None):
+    """Straighter planted legs, in place on baked armature-space pose matrices (before `foot_lock`).
+
+    A rig whose hips sit lower on its legs than the source's (or a stockier build carried on the
+    source's hip height) ends up crouched once the feet are pinned: the IK bends the knees to reach.
+    Per frame, the pelvis (and everything on it) is raised until each planted leg, its ankle where the
+    lock will pin it, bends `ratio` times the source's own knee flexion at that frame (1 = as the
+    source; never lowered, never past 99.5 % of the leg's reach; double support takes the smaller
+    lift). Unplanted frames take the planted ones' lift, smoothed. Returns the lift per frame (m)."""
+    up = Vector(up).normalized()
+    upn = np.array(up)
+    F = len(frames)
+    need = np.full((len(legs), F), np.nan)
+    for li, (thigh, calf, foot, _ball, _desc) in enumerate(legs):
+        contact, h = _contact(src_feet[foot], up, contact_cm, min_frames)
+        l1 = (bones[calf].head_local - bones[thigh].head_local).length
+        l2 = (bones[foot].head_local - bones[calf].head_local).length
+        for f in np.nonzero(contact)[0]:
+            fr = frames[f]
+            H = np.array(fr[thigh].translation)
+            A = np.array(fr[foot].translation)
+            A = A + (rest_z[foot] + (h[f] - h.min()) - A @ upn) * upn  # where the lock pins it
+            v = H - A
+            vz = v @ upn
+            horiz2 = max(0.0, v @ v - vz * vz)
+            phi = math.radians(max(0.0, ratio * src_flex[foot][f]))
+            d = min(math.sqrt(l1 * l1 + l2 * l2 + 2 * l1 * l2 * math.cos(phi)), 0.995 * (l1 + l2))
+            need[li, f] = max(0.0, math.sqrt(max(0.0, d * d - horiz2)) - vz)
+    lift = np.nanmin(np.where(np.isnan(need), np.inf, need), axis=0)
+    lift[~np.isfinite(lift)] = np.nan
+    idx = np.nonzero(~np.isnan(lift))[0]
+    if len(idx) == 0:
+        return np.zeros(F)
+    lift = np.interp(np.arange(F), idx, lift[idx])  # flight / swing: from the planted frames around
+    k = np.exp(-0.5 * (np.arange(-ramp, ramp + 1) / max(ramp / 2.0, 1e-6)) ** 2)
+    lift = np.convolve(np.pad(lift, ramp, mode='edge'), k / k.sum(), mode='valid')
+    if upright is not None:
+        lift = lift * np.asarray(upright)
+    root = next((b.name for b in bones if b.parent is None), None)
+    for f, fr in enumerate(frames):
+        for name, M in fr.items():
+            if name != root:
+                M.translation = M.translation + up * float(lift[f])
+    return lift
 
 
 def foot_lock(frames, src_feet, legs, bones, up, rest_z, contact_cm=1.5, ramp=3, flat=1.0, min_frames=2, upright=None, spread=None, heading=None):
@@ -573,7 +696,15 @@ def main():
     stand_toe = opt('stand-toe')
     stand_lean = math.radians(float(opt('stand-lean', '0')))
     stand_upright = float(opt('stand-upright', '0'))
+    # standing clips: the shoulders dropped this many degrees (the clavicles turned down about the
+    # chest's forward axis; the arms keep their direction, so only the shoulder line comes down)
+    stand_shoulders = math.radians(float(opt('stand-shoulders', '0')))
     level_head = opt('level-head', '0') == '1'
+    # planted knees: bend this fraction of the source's knee flexion (the pelvis rises, pelvis_lift);
+    # the locomotion and idle clips (`--loco`) can stand straighter still (`--knees-loco`)
+    knees = float(opt('knees')) if opt('knees') else None
+    knees_loco = float(opt('knees-loco')) if opt('knees-loco') else knees
+    loco = set(opt('loco', 'Idle,Idle_Sword,Walk,Run,Run_Back,Run_Left,Run_Right').split(','))
     ankle_ref = opt('ankle-ref', 'Idle')
     bpy.ops.wm.open_mainfile(filepath=char, load_ui=False, use_scripts=False)
     tgt = bpy.data.objects['avatar-rig']
@@ -682,11 +813,12 @@ def main():
         out = bpy.data.actions.new(clip)
         tgt.animation_data.action = out
         rec = {'s': [], 't': [], 't_rot': [], 'frames': f1 - f0 + 1}
-        baked, src_feet = [], {'foot_l': [], 'foot_r': []}
+        baked, src_feet, src_flex = [], {'foot_l': [], 'foot_r': []}, {'foot_l': [], 'foot_r': []}
         for f in range(f0, f1 + 1):
             scene.frame_set(f)
             spose = {s: sw @ srcarm.pose.bones[s].matrix for s, _ in pairs}
             pm = {}  # target pose matrices, armature space
+            swing = {}  # per side: the arm's girth swing (applied to the whole arm, see below)
             for name in order:
                 b = tbones[name]
                 pb = tgt.pose.bones[name]
@@ -699,12 +831,21 @@ def main():
                     q = qn(rot(spose[s])) @ qn(rot(srest[s])).inverted() @ C[name] @ rot(trest[name])
                     if name in ('upperarm_l', 'upperarm_r') and abd:
                         # girth compensation: a stockier trunk than the source's; swing a hanging
-                        # arm out a little (less as the arm rises) so the hands clear the hips
+                        # arm out a little (less as the arm rises) so the hands clear the hips. The
+                        # whole arm swings (forearm, hand, fingers too, below), so the elbow keeps
+                        # the source's bend: turning only the upper arm bows the elbows out
                         ch = rot(tw @ pm['spine_03']) @ rot(trest['spine_03']).inverted()
                         fwd_c, down_c = ch @ Vector((0, -1, 0)), ch @ Vector((0, 0, -1))
                         hang = max(0.0, (q @ Vector((0, 1, 0))).dot(down_c))
                         sgn = 1.0 if name.endswith('_l') else -1.0
-                        q = Quaternion(fwd_c, sgn * abd * hang) @ q
+                        swing[name[-1]] = Quaternion(fwd_c, sgn * abd * hang)
+                        q = swing[name[-1]] @ q
+                    elif name.startswith(ARM_CHAIN) and name[-1] in swing:
+                        q = swing[name[-1]] @ q
+                    if clip in stand and stand_shoulders and name in ('clavicle_l', 'clavicle_r'):
+                        ch = rot(tw @ pm['spine_03']) @ rot(trest['spine_03']).inverted()
+                        sgn = 1.0 if name.endswith('_l') else -1.0
+                        q = Quaternion(ch @ Vector((0, -1, 0)), -sgn * stand_shoulders) @ q
                     if clip in stand and stand_upright and name in UPRIGHT:
                         # the source's stoop given back: a share of each upper bone's forward pitch
                         # against the rest pose (yaw and roll, the clip's life, stay)
@@ -729,8 +870,9 @@ def main():
                     M = chain
                 pm[name] = M
             baked.append(pm)
-            for sk, tk in (('Foot.L', 'foot_l'), ('Foot.R', 'foot_r')):
-                src_feet[tk].append(list(tw_inv @ to_t(spose[sk].translation)))
+            for sd, tk in (('L', 'foot_l'), ('R', 'foot_r')):
+                src_feet[tk].append(list(tw_inv @ to_t(spose[f'Foot.{sd}'].translation)))
+                src_flex[tk].append(_knee_flex(*(spose[f'{b}.{sd}'].translation for b in ('UpperLeg', 'LowerLeg', 'Foot'))))
             rec['s'].append({k: list(to_t(spose[k].translation)) for k in SK_S})
         rec['upright'] = np.ones(len(rec['s']))
         if lock > 0 and clip not in no_lock:
@@ -759,6 +901,10 @@ def main():
                 a_ = math.radians(float(stand_toe))
                 fwd_a = side.cross(up_a).normalized()  # the figure's forward (-Y)
                 heading = {'foot_l': list(fwd_a * math.cos(a_) + side * math.sin(a_)), 'foot_r': list(fwd_a * math.cos(a_) - side * math.sin(a_))}
+            kr = knees_loco if clip in loco else knees
+            if kr is not None:
+                lift = pelvis_lift(baked, src_feet, src_flex, legs, tbones, up_a, rest_z, kr, upright=upright)
+                rec['pelvis_lift_cm'] = [round(float(lift.min()) * 100, 2), round(float(lift.max()) * 100, 2)]
             rec_lock = foot_lock(baked, src_feet, legs, tbones, up_a, rest_z, flat=lock, upright=upright, spread=spread, heading=heading)
             if clip in stand and stand_knee is not None:
                 # straighter knees: lift the body until the mean knee bend of the more bent leg is
@@ -812,6 +958,8 @@ def main():
         r.update(mesh_checks(scene, tgt, chk, f0, f1))
         if lock > 0 and clip not in no_lock:
             r['foot_lock'] = rec_lock
+        if 'pelvis_lift_cm' in rec:
+            r['pelvis_lift_cm'] = rec['pelvis_lift_cm']
         r['ok'], r['issues'] = verdict(r)
         report['clips'][clip] = r
         print(f'[retarget] {clip}: {json.dumps(r)}')

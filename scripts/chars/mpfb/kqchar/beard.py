@@ -369,6 +369,14 @@ SOLID_DEFAULTS = {
     'round_passes': 2,
     # stubble tint on the skin under and just beyond the beard edge (m of fade above the cheek line / below the neck line)
     'stubble_fade': [0.009, 0.012],
+    # a feathered edge: the rise from the edge follows smoothstep ** edge_pow (0.5 = the default round
+    # step; ~1 = a longer, softer taper), the clump relief fades out over the edge rows (no notches
+    # along the outline), the cheek-line rows blend toward the stubble colour (`edge_tint`), and the
+    # moustache roots darken (`moustache_dark`) so it parts from the skin by value; `edge_rows_cheek`
+    # (0 = edge_rows) lengthens the rise along the cheek line only; `edge_tint_colour`
+    # (a spec key, not a default here) names the palette colour of the cheek line, default 'stubble'
+    # `clump_soft` (0..1) rounds the clump grooves and lifts their floor (shallower, lighter streaks)
+    'edge_pow': 0.5, 'clump_soft': 0.0, 'clump_edge_fade': False, 'edge_tint': 0.0, 'moustache_dark': 0.0, 'edge_rows_cheek': 0,
 }
 
 
@@ -575,14 +583,21 @@ def solid(skin, W, keys, lm, spec, palette, bones, lips=None):
     idx = np.floor(u)
     fr = u - idx
     prof_c = np.sqrt(np.clip(1 - (2 * fr - 1) ** 2, 0, 1))
+    if s['clump_soft']:
+        # rounded, shallow grooves (a soft wave, not corduroy): the valley floor is raised and flat
+        prof_c = prof_c + s['clump_soft'] * (0.55 + 0.45 * np.sin(np.pi * fr) ** 2 - prof_c)
     amp = 0.85 + 0.3 * (0.5 + 0.5 * np.sin(idx * 12.9898 + 78.233))
     if s['spacing_jitter']:
         amp = 0.7 + 0.6 * (0.5 + 0.5 * np.sin(idx * 12.9898 + 78.233)) * (0.75 + 0.25 * np.sin(vr * 6.0 + idx * 1.7))
-    T = T * (1 - s['clump_depth'] + s['clump_depth'] * prof_c * amp)
-    # ---- edge profile: the outermost ring tucks under the skin, then a rounded rise
     k = np.minimum(np.minimum(ii, NV - 1 - ii), np.minimum(jj, NT - 1 - jj)).astype(float)
     er = float(s['edge_rows'])
-    rise = np.sqrt(smoothstep(0.0, er, k - 1.0))
+    if s['edge_rows_cheek']:
+        # a longer rise along the cheek line than round the moustache (whose rows are few)
+        er = er + (float(s['edge_rows_cheek']) - er) * smoothstep(24.0, 40.0, np.abs(thetas))[None, :] * np.ones((NV, 1))
+    cd = s['clump_depth'] * (smoothstep(1.0, er, k) if s['clump_edge_fade'] else 1.0)
+    T = T * (1 - cd + cd * prof_c * amp)
+    # ---- edge profile: the outermost ring tucks under the skin, then a rounded rise
+    rise = smoothstep(0.0, er, k - 1.0) ** s['edge_pow']
     t = s['edge_min'] + (T - s['edge_min']) * rise
     t = np.where(k == 0, -s['tuck'], t)
     # thin down to the lips round the opening (distance in outline units)
@@ -637,6 +652,13 @@ def solid(skin, W, keys, lm, spec, palette, bones, lips=None):
     edge = (smoothstep(0.0, er + 1, k) * np.sqrt(smoothstep(0.0, 0.6, np.minimum(de, 5.0)))).reshape(-1)
     col = mix(dark[None], base[None], (0.35 + 0.65 * kk) * (0.55 + 0.45 * edge))
     col = mix(col, light[None], np.clip(0.55 * tip * kk + 0.25 * smoothstep(0.75, 1.0, kk), 0, 1))
+    if s['moustache_dark']:
+        col = mix(col, dark[None], s['moustache_dark'] * must.reshape(-1))
+    if s['edge_tint']:
+        # the cheek line (the top rows away from the moustache) fades into stubble
+        cheek_e = ((1 - smoothstep(0.0, er + 3.0, ii.astype(float))) ** 2 * smoothstep(20.0, 36.0, np.abs(thetas))[None, :]).reshape(-1)
+        stub = hex_lin(palette.get(spec.get('edge_tint_colour', 'stubble'), palette.get('stubble', palette['beard'])))
+        col = mix(col, stub[None], s['edge_tint'] * cheek_e)
     # ---- skinning and morphs from the skin under each grid point
     tris = skin.tris
     Wv = np.zeros((len(verts), W.shape[1]))
@@ -675,5 +697,6 @@ def solid(skin, W, keys, lm, spec, palette, bones, lips=None):
     sw = smoothstep(zu_s + fu, zu_s - 0.002, sc_[:, 2]) * smoothstep(zl_s - fl, zl_s + 0.002, sc_[:, 2])
     sw = sw * smoothstep(tmax + 6.0, tmax - 4.0, np.abs(th_s)) * (-dv[:, 1] > -0.06)
     if lips is not None:
-        sw = sw * (1 - smoothstep(0.15, 0.5, lips))
+        lc = s.get('stubble_lip_cut', [0.15, 0.5])  # the lip weights over which the stubble fades out
+        sw = sw * (1 - smoothstep(lc[0], lc[1], lips))
     return Part('beard', spec.get('material', 'Beard'), verts, faces, col=col, weights=Wv, keys=kpos), sw
