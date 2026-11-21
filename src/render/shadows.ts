@@ -199,6 +199,32 @@ export class SunShadows {
     a.uShadowCenter.value.set(focus.x, focus.y, focus.z, r * 0.98);
   }
 
+  /**
+   * Draw `scene` once into the shadow target the way the depth pass does (the era-shift warm-up's
+   * stand-ins, fx/shift/warm.ts), so the driver builds those pipelines before the casters first
+   * show. The map is overwritten: the next `update` renders it again.
+   */
+  warm(renderer: WebGLRenderer, scene: Scene): void {
+    if (!this.target) return;
+    const a = atmosphere;
+    const params = a.uShadowParams.value.x;
+    const map = a.uShadowMap.value;
+    a.uShadowParams.value.x = 0;
+    a.uShadowMap.value = NO_SHADOW_TEX;
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.target);
+    a.uShadowPass.value = 1;
+    try {
+      renderer.render(scene, this.camera);
+    } finally {
+      a.uShadowPass.value = 0;
+      renderer.setRenderTarget(prev);
+      a.uShadowParams.value.x = params;
+      a.uShadowMap.value = map;
+      this.reuse.invalidate();
+    }
+  }
+
   private collectSkips(scene: Scene): void {
     this.skipAge = 0;
     const out: Object3D[] = [];

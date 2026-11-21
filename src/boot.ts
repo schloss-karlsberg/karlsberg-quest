@@ -651,7 +651,13 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   if (!navigator.webdriver || params.has('warm')) {
     void palaceLoaded.then(() =>
       window.setTimeout(() => {
-        renderer.compileAsync(scene, camera).then(
+        // with the post target bound: the scene draws there (linear output), and the program key
+        // depends on the target (null would compile sRGB-output variants no frame uses; M-17)
+        const prev = renderer.getRenderTarget();
+        renderer.setRenderTarget(post.target);
+        const warm = renderer.compileAsync(scene, camera);
+        renderer.setRenderTarget(prev);
+        warm.then(
           () => mark('warm'),
           (err: unknown) => console.warn('[boot] shader warm-up failed', err),
         );

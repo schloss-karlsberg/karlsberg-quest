@@ -239,6 +239,12 @@ export class World {
     return { x0: b.x0 + m, z0: b.z0 + m, x1: b.x1 - m, z1: b.z1 - m };
   }
 
+  /** The terrain data textures of both datasets and both covers (the era-shift warm-up uploads the hidden ones). */
+  eraTextures(): Texture[] {
+    const d = this.datasets;
+    return [d['2025'].heightTex, d['2025'].surfTex, d['1789'].heightTex, d['1789'].surfTex, this.covers.today, this.covers.historic];
+  }
+
   setEra(era: Era): void {
     this.era = era;
     const info = ERA_INFO[era];

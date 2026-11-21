@@ -81,19 +81,26 @@ function lightenGlass(root: Object3D): void {
   root.traverse((o) => {
     const m = o as Mesh;
     if (!m.isMesh) return;
-    for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
-      const sm = mat as Material & { roughness?: number; metalness?: number; color?: { setRGB(r: number, g: number, b: number): void }; userData: Record<string, unknown> };
-      if (!/glass|crystal/i.test(sm.name) || sm.userData.kqGlass) continue;
-      sm.userData.kqGlass = true;
-      sm.transparent = true;
-      sm.opacity = 0.32;
-      sm.depthWrite = false;
-      sm.color?.setRGB(0.92, 0.95, 1.0);
-      if (sm.roughness !== undefined) sm.roughness = 0.08;
-      if (sm.metalness !== undefined) sm.metalness = 0;
-      sm.needsUpdate = true;
-    }
+    for (const mat of Array.isArray(m.material) ? m.material : [m.material]) if (isModelGlass(mat)) glassLook(mat);
   });
+}
+
+/** A model material that `instanceModels` turns into see-through glass (not done yet). */
+export function isModelGlass(mat: Material): boolean {
+  return /glass|crystal/i.test(mat.name) && !mat.userData.kqGlass;
+}
+
+/** The see-through glass look of `lightenGlass` (the era-shift warm-up uses it on copies). */
+export function glassLook(mat: Material): void {
+  const sm = mat as Material & { roughness?: number; metalness?: number; color?: { setRGB(r: number, g: number, b: number): void }; userData: Record<string, unknown> };
+  sm.userData.kqGlass = true;
+  sm.transparent = true;
+  sm.opacity = 0.32;
+  sm.depthWrite = false;
+  sm.color?.setRGB(0.92, 0.95, 1.0);
+  if (sm.roughness !== undefined) sm.roughness = 0.08;
+  if (sm.metalness !== undefined) sm.metalness = 0;
+  sm.needsUpdate = true;
 }
 
 /** Remove instanced model groups made by `instanceModels` (keeps the cached geometry). */
