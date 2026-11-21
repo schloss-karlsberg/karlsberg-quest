@@ -461,8 +461,13 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 | Crouch on touch (from kq-story) | done | The sink button moved from the top row into the thumb arc as a crouch button: on foot a tap toggles crouching (`crouch`, the C path; active state and `aria-pressed` while crouched), in the spirit view it is held to sink (`down`). Right edge of the arc, 8 px clear of Ziel and the Aktion pill, under the skill row; 52 px (47 px on phones after the 0.9 scale). Its class was `.down`, which is also the pressed state; it is `.crouch` now. `crouchButtonMode()` is unit-tested. | `small-landscape/11-touch-buttons-*.png`, `large-landscape/08-hud-idle.png` |
 | Key-cap icons (from kq-story) | done | `touchIconFor`: `N` → the phone, `C` / `X` / „Sinken“ / „Ducken“ → the crouch button, `Maus` → a neutral swipe icon (`look`) instead of the Aktion hand. `touchName('crouch')` is „Ducken“. Unit-tested. | — |
 
+**Crouch after a load.** A load sets the stance without a `player:stance` event, so `touch.ts` reads the stance back (`TouchDeps.stance`) on `game:start` and `save:loaded`.
+
+**The world spec and the banner.** `world.spec` „survey points“ expects `travel-card-activated` right after an activation. The banner only waits while another centre card is on screen (or, on a landscape phone, while a line is up); a spoken line or a fight on desktop does not hold it. With nothing else up it shows at once, so the test needed no change.
+
+**E2E, one spec per lock hold (port 5340):** `touch` 4/4, `photo` 4/4, `smoke` 3/3, `travel-paths` 1/1, `world -g "survey points"` 1/1. Gates: `pnpm typecheck`, `pnpm test` (91 files, 1268 tests), `pnpm validate`, `pnpm build`, all green. `npc` was not run: its overrides were not touched.
+
 **Still open:**
 - The first prompt („Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen“) is long enough that the HUD pill runs under Balsam and Ausweichen on a small phone (`small-landscape/06-lantern-first-frame.png`). The touch wording at kq-story fixes it; if it stays long, cap the pill's width on phones.
 - The combat callout („Nebelling duckt sich – Ausfall!“) touches the unlit Aktion pill on small-landscape (`17-combat-lock-on.png`).
 - The level card („Stufe VIII“) covers most of a landscape phone (seen in an intermediate run, after the banner released the slot); it is progression's card.
-- After a load into a crouched save, the crouch button shows „off“ until the stance changes (the load emits no `player:stance`).
