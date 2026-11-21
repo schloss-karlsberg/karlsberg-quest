@@ -93,6 +93,11 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   });
   // the chapter title card runs on the frame clock: let it pass
   await expect(page.getByTestId('story-card')).toHaveCount(0, { timeout: 60_000 });
+  // the opening beat's timeline (Hanne's offer) starts once the card has faded (M-11): a step runs it
+  await page.evaluate((q) => {
+    const k = window.kq!;
+    for (let i = 0; i < 120 && k.quests!.state().quests[q]?.state !== 'offered'; i++) k.step(1);
+  }, Q);
   expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('q1');
   expect(await page.evaluate((q) => window.kq!.quests!.state().quests[q]?.state, Q)).toBe('offered');
   expect((await flags(page))[`quest.${Q}`]).toBe('offered');

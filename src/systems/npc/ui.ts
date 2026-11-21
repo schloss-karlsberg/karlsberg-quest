@@ -1,13 +1,15 @@
 /**
  * The conversation panel: a field-book page at the bottom of the screen (the ghost stays visible
  * above it). The spoken line types out with the speaker's voice murmur; below it the questions
- * (keys 1–n, click) and "Auf Wiedersehen". Enter / Space / E / click advance. Every line carries
+ * (keys 1–n, click) and "Auf Wiedersehen". Enter / Space / E / click advance; the hint names the
+ * interact key, in touch mode the „Aktion“ button (mode read per line and per frame). Every line carries
  * its label: "erfunden" (fiction) or "historisch" with a source.
  * Typing runs on the UI clock (`tick(realDt)` from the npc system's frame: the game is paused
  * under the modal); `finish()` completes it at once (tests, screenshots).
  */
 import { t } from '../../i18n';
 import type { QuestCard } from '../../rpg/types';
+import { type ActionLabelInput, actionLabel } from '../../ui/actionLabel';
 import { h, svg } from '../../ui/dom';
 import type { ModalHandle, ModalManager } from '../../ui/modal';
 import { ensurePortraitDefs, portraitSvg } from '../story/dialogue/portraits';
@@ -77,6 +79,16 @@ export function questCardEl(c: QuestCard, mode: 'offer' | 'turnin'): HTMLElement
 
 const CPS = 46;
 
+/**
+ * The advance hint's key: „E“ on desktop (the panel's own key, `onKey`: not the interact binding,
+ * which is the mouse button in the world), the touch button's name in touch mode („Aktion“, via
+ * `actionLabel`). `touch` says which (the desktop key sits in a kbd, the button name is a word).
+ */
+export function talkHintKey(input: ActionLabelInput | null): { label: string; touch: boolean } {
+  if (!input?.touchMode) return { label: 'E', touch: false };
+  return { label: actionLabel(input, 'interact'), touch: true };
+}
+
 export class ConversationView {
   private modal: ModalHandle | null = null;
   private readonly portrait = h('div.kqn-portrait');
@@ -87,7 +99,9 @@ export class ConversationView {
   private readonly src = h('div.kqn-src');
   private readonly note = h('div.kqn-note', { 'data-testid': 'npc-note' });
   private readonly header = h('div.kqn-header', { 'data-testid': 'npc-header' });
-  private readonly hint = h('div.kqn-next', [h('kbd', 'E'), ' ', t('npc.next')]);
+  private readonly hint = h('div.kqn-next');
+  /** The hint as last rendered (label + mode): rebuilt only when it changes. */
+  private hintKey = '';
   private readonly topicsEl = h('div.kqn-topics');
   private readonly cardEl = h('div.kqn-card-slot.kqn-hidden');
   private queue: TalkLine[] = [];
@@ -101,7 +115,21 @@ export class ConversationView {
     private readonly modals: ModalManager,
     private readonly voice: Voice | null,
     private readonly reducedMotion: () => boolean,
-  ) {}
+    /** The game's input (touch mode, bindings), read when the hint renders; null: always „E“. */
+    private readonly input: ActionLabelInput | null = null,
+  ) {
+    this.renderHint();
+  }
+
+  /** „E weiter“, or „Aktion: weiter“ in touch mode (Touch-Steuerung can switch at runtime). */
+  private renderHint(): void {
+    const k = talkHintKey(this.input);
+    const sig = `${k.touch ? 't' : 'k'}:${k.label}`;
+    if (sig === this.hintKey) return;
+    this.hintKey = sig;
+    if (k.touch) this.hint.replaceChildren(`${k.label}: ${t('npc.next')}`);
+    else this.hint.replaceChildren(h('kbd', k.label), ' ', t('npc.next'));
+  }
 
   get open(): boolean {
     return !!this.modal && !this.modal.closed;
@@ -250,6 +278,7 @@ export class ConversationView {
     this.note.classList.toggle('kqn-hidden', !line.note);
     this.typed.parentElement?.classList.toggle('kqn-history', !!line.history);
     this.hint.classList.remove('kqn-hidden');
+    this.renderHint();
     this.render();
   }
 
@@ -262,6 +291,7 @@ export class ConversationView {
 
   /** UI clock (real seconds). */
   tick(dt: number): void {
+    if (this.open) this.renderHint();
     const c = this.cur;
     if (!c || c.typed >= c.line.text.length) return;
     const before = c.typed;

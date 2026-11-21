@@ -3,12 +3,79 @@
  * "caught" curtain (fade to black, a line of text, wake up in the field station), timed choices
  * (a field-book modal or an inline card with a burning-down fuse; the fallback option is taken
  * when it runs out) and the story gauges (custom meters).
+ *
+ * A chapter's title card holds the opening beat (M-11, phone pass: card, banner and the first radio
+ * line all landed in the first second): while it shows and fades (`holdsLines`) the story runtime
+ * keeps the opening beat's timeline waiting, and the dialogue presenter's `held` keeps lines from
+ * other sources (a quest offer's greeting, barks) queued.
  */
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
 import type { Hud } from '../../ui/hud';
 import type { ModalManager } from '../../ui/modal';
 import type { ChoiceAction } from './types';
+
+/** Seconds of the chapter card's fade (CSS 1.4 s) that still hold the lines: it has mostly gone. */
+export const CARD_FADE_HOLD = 0.8;
+
+/**
+ * Which clock moves a title card (pure, tested). The fixed update always does (game time: it stops
+ * behind the pause menu, and a headless `kq.step(n)` moves the card n ticks, though it renders only
+ * once). In `?manual` / bullet time the render frame also does while not paused, so a spec that
+ * waits in real time without stepping still sees the card go (as it did when cards ran on frames).
+ */
+export function cardClockDt(source: 'update' | 'frame', manual: boolean, paused: boolean, dt: number): number {
+  if (source === 'update') return dt;
+  return manual && !paused ? Math.min(dt, 0.1) : 0;
+}
+
+/**
+ * The title card's clock and its hold on the story (no DOM: unit-tested). `show` starts the card's
+ * seconds (a chapter card holds, a place card does not); `tick` counts them down and says when the
+ * card goes (its fade then still holds for CARD_FADE_HOLD); `drop` lets go at once (curtain, the
+ * ending table).
+ */
+export class CardLineHold {
+  private up = false;
+  private fade = 0;
+  private left = 0;
+  private shown = false;
+
+  show(chapter: boolean, seconds = 5.5): void {
+    this.up = chapter;
+    this.fade = 0;
+    this.left = seconds;
+    this.shown = true;
+  }
+
+  hide(): void {
+    if (this.up) this.fade = CARD_FADE_HOLD;
+    this.up = false;
+    this.shown = false;
+  }
+
+  drop(): void {
+    this.up = false;
+    this.fade = 0;
+    this.shown = false;
+  }
+
+  /** Advance by `dt` s; true when the card's time ran out now (the caller fades it out). */
+  tick(dt: number): boolean {
+    if (dt <= 0) return false;
+    if (this.fade > 0) this.fade = Math.max(0, this.fade - dt);
+    if (!this.shown) return false;
+    this.left -= dt;
+    if (this.left > 0) return false;
+    this.hide();
+    return true;
+  }
+
+  /** `present`: the card is still in the page (a test or screenshot helper may have removed it). */
+  holding(present = true): boolean {
+    return (this.up && present) || this.fade > 0;
+  }
+}
 
 interface OpenChoice {
   id: string;
@@ -27,7 +94,7 @@ interface OpenChoice {
 export class StoryOverlays {
   private cardEl: HTMLElement | null = null;
   /** Seconds the title card has left on screen (game time: it waits while the game is paused). */
-  private cardLeft = 0;
+  private readonly hold = new CardLineHold();
   readonly curtain: HTMLElement;
   private readonly curtainText: HTMLElement;
   private readonly curtainSub: HTMLElement;
@@ -49,8 +116,8 @@ export class StoryOverlays {
     layer.append(...(hud ? [] : [this.gaugeBox]), this.curtain);
   }
 
-  /** Chapter / place card: "Prolog · Vermessung". */
-  card(title: string, sub?: string, note?: string, seconds = 5.5): void {
+  /** Chapter / place card: "Prolog · Vermessung". `chapter`: it holds the opening beat while it shows. */
+  card(title: string, sub?: string, note?: string, seconds = 5.5, chapter = false): void {
     this.cardEl?.remove();
     const el = h('div.kqs-card', { 'data-testid': 'story-card' }, [
       sub ? h('div.kqs-card-sub', sub) : null,
@@ -61,13 +128,13 @@ export class StoryOverlays {
     this.layer.append(el);
     this.cardEl = el;
     requestAnimationFrame(() => el.classList.add('kqs-show'));
-    this.cardLeft = seconds;
+    this.hold.show(chapter, seconds);
   }
 
   /** Let the title card go now (the ending table opens: the chapter card must not return after the credits). */
   dropCard(): void {
-    this.cardLeft = 0;
-    this.tickCard(1);
+    this.hideCard();
+    this.hold.drop();
   }
 
   /**
@@ -75,10 +142,12 @@ export class StoryOverlays {
    * missed behind the pause menu or a modal).
    */
   tickCard(dt: number): void {
+    if (this.hold.tick(dt)) this.hideCard();
+  }
+
+  private hideCard(): void {
     const el = this.cardEl;
-    if (!el || dt <= 0) return;
-    this.cardLeft -= dt;
-    if (this.cardLeft > 0) return;
+    if (!el) return;
     el.classList.remove('kqs-show');
     window.setTimeout(() => el.remove(), 1400);
     this.cardEl = null;
@@ -88,6 +157,11 @@ export class StoryOverlays {
     return !!this.cardEl;
   }
 
+  /** A chapter card is up (or still fading): the opening beat's timeline and other lines wait for it. */
+  get holdsLines(): boolean {
+    return this.hold.holding(this.cardEl?.isConnected ?? false);
+  }
+
   /** Fade to black with a line (the caller moves the player meanwhile and lifts it). */
   curtainDown(text: string, sub: string): void {
     this.curtainText.textContent = text;
@@ -95,6 +169,7 @@ export class StoryOverlays {
     // above any title card
     this.cardEl?.remove();
     this.cardEl = null;
+    this.hold.drop();
     this.layer.append(this.curtain);
     this.curtain.classList.remove('kqs-up');
     this.curtain.classList.add('kqs-down');

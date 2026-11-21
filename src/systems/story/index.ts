@@ -22,7 +22,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume } from './engine';
+import { type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume, waitsForChapterCard } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -30,7 +30,7 @@ import { EndingScreen } from './endings/ui';
 import { HubOverlay } from './hub/overlay';
 import { HOME, bringHome, hubAt } from './hub/home';
 import { ObjectiveView, bearingDeg } from './objectives';
-import { StoryOverlays } from './overlays';
+import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound } from './sfx';
 import { loadBundledStories } from './stories';
 import { installTitleFlow } from './title/flow';
@@ -248,6 +248,16 @@ class StoryRuntime {
   private time = 0;
   private gen = 0;
   private queue: Scheduled[] = [];
+  /**
+   * The opening beat's timeline while the chapter card shows (M-11): `at` relative to the beat's
+   * start; scheduled from „now“ once the card has faded (`overlays.holdsLines` goes false).
+   */
+  private gated: Scheduled[] = [];
+  /** The chapter card just went up: the next beat entered is the opening beat whose timeline waits. */
+  private gatePending = false;
+  private gateBeat: string | null = null;
+  /** The opening beat whose timeline waits in `gated` (its clocks restart at the release). */
+  private gatedAt: { chapter: string; beat: string } | null = null;
   /** Scope of the actions being executed right now (lines emitted from them are tagged with it). */
   private scope: RunScope | null = null;
   /** Lines emitted in one go (a trigger's sequence) share a group id. */
@@ -308,12 +318,15 @@ class StoryRuntime {
     const tests = ctx.params.has('storytest');
     this.files = bundled.map((b) => b.story).filter((f) => !f.test || tests);
     this.engine = new StoryEngine(this.files, () => this.slice, {
-      run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }),
+      run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o.resume),
       beatEntered: (ch, b, o) => {
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
         this.retireScheduled(b.id);
         this.presenter.retireBeat(b.id);
+        // the chapter card is up: this opening beat's timeline waits for it (M-11)
+        this.gateBeat = this.gatePending && !o.resume ? b.id : null;
+        this.gatePending = false;
         // the beat's spoken lines: fetch and decode their clips now (never waits)
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
         ctx.events.emit('story:beat', { chapter: ch, beat: b.id });
@@ -353,9 +366,11 @@ class StoryRuntime {
         this.shownIds.push(item.id);
       },
       // history and long remarks wait out a fight; barks and short calls go on (playtest round 3)
-      // a boss's reveal (combat: title card, camera, sting) holds everything but 'now' lines
+      // a boss's reveal (combat: title card, camera, sting) holds everything but 'now' lines;
+      // so does a chapter's title card while it shows and fades: the opening beat's own timeline
+      // waits for it (run / releaseGate), this holds lines of other sources (a quest offer, barks)
       held: (item) =>
-        (ctx.ui.hud.acting('reveal') && item.priority !== 'now') ||
+        (item.priority !== 'now' && (ctx.ui.hud.acting('reveal') || this.overlays.holdsLines)) ||
         (ctx.ui.hud.acting('combat') && item.priority !== 'now' && item.priority !== 'low' && (!!item.lore || item.text.length > COMBAT_LINE_MAX)),
     });
     this.objectives = new ObjectiveView(this.layer, ctx.ui.hud);
@@ -652,7 +667,11 @@ class StoryRuntime {
       const p = ctx.player.position;
       if (Math.hypot(p.x - cp.x, p.z - cp.z) > 30) this.teleport(cp.x, cp.z, cp.yaw);
     }
-    if (!this.quietCard) this.overlays.card(f.title_de, f.sub_de, f.placeholder ? t('story.placeholder') : undefined);
+    // the chapter card holds the opening beat's timeline and other sources' lines until it has faded (M-11)
+    if (!this.quietCard) {
+      this.overlays.card(f.title_de, f.sub_de, f.placeholder ? t('story.placeholder') : undefined, undefined, true);
+      this.gatePending = true;
+    }
   }
 
   // ------------------------------------------------------------------------------------------
@@ -663,14 +682,21 @@ class StoryRuntime {
    * Run an action list: delays are relative to the previous action; spoken lines take their time
    * (lines that will not be spoken — said once already — take none, so a retry is not 18 s of silence).
    */
-  private run(actions: Action[], resume: boolean, scope: RunScope = { beat: this.slice.beat, where: null }): void {
+  private run(actions: Action[], resume: boolean, scope: RunScope = { beat: this.slice.beat, where: null }, source = ''): void {
     let at = 0;
+    // the opening beat's enter list while the chapter card shows: its timeline starts after the card
+    const gate = !resume && this.gateBeat !== null && scope.beat === this.gateBeat && source.endsWith(':enter') && this.overlays.holdsLines;
+    if (gate) {
+      this.gateBeat = null;
+      if (this.slice.chapter && scope.beat) this.gatedAt = { chapter: this.slice.chapter, beat: scope.beat };
+    }
     for (const a of actions) {
       if (resume && !runsOnResume(a)) continue;
       at += a.delay ?? 0;
       // measure a line BEFORE it runs: an immediate say marks itself said, and would then take no time
       const text = a.do === 'say' ? (this.sayText(a) ?? '') : '';
-      if (at <= 0) this.withScope(scope, () => this.exec(a));
+      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, () => this.exec(a)), beat: scope.beat, keep: !PRESENTATION.has(a.do) });
+      else if (at <= 0) this.withScope(scope, () => this.exec(a));
       else this.schedule(at, () => this.exec(a), scope, !PRESENTATION.has(a.do));
       if (text && a.do === 'say') at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
     }
@@ -709,7 +735,14 @@ class StoryRuntime {
    * run now, in order, so the story's bookkeeping never depends on how fast the player was.
    */
   private retireScheduled(beat: string): void {
-    const stale = this.queue.filter((q) => q.gen === this.gen && q.beat !== null && q.beat !== beat);
+    // the opening beat ended under its card: its waiting timeline is retired like scheduled actions
+    // (state changes run now, presentation is dropped)
+    if (this.gated.length) {
+      for (const q of this.gated) this.queue.push({ ...q, at: this.time + q.at });
+      this.gated = [];
+    }
+    if (this.gatedAt && this.gatedAt.beat !== beat) this.gatedAt = null;
+    const stale =this.queue.filter((q) => q.gen === this.gen && q.beat !== null && q.beat !== beat);
     if (!stale.length) return;
     this.queue = this.queue.filter((q) => !stale.includes(q));
     for (const q of stale.sort((a, b) => a.at - b.at)) if (q.keep) q.fn();
@@ -718,10 +751,31 @@ class StoryRuntime {
   private cancelScheduled(): void {
     this.gen++;
     this.queue = [];
+    this.gated = [];
+    this.gatePending = false;
+    this.gateBeat = null;
+    this.gatedAt = null;
+  }
+
+  /** The chapter card has faded (or let go): the opening beat's timeline starts counting now. */
+  private releaseGate(): void {
+    // the beat's timers (the p1 prompt's 12 s) count from now, like its timeline (M-11)
+    const at = this.gatedAt;
+    this.gatedAt = null;
+    if (at) this.engine.restartClock(at.chapter, at.beat);
+    if (!this.gated.length) return;
+    for (const q of this.gated) this.queue.push({ ...q, at: this.time + q.at });
+    this.gated = [];
+    // what was due at time 0 runs now, in order (an objective before the quest offer after it)
+    const due = this.queue.filter((q) => q.at <= this.time);
+    if (!due.length) return;
+    this.queue = this.queue.filter((q) => q.at > this.time);
+    for (const d of due.sort((a, b) => a.at - b.at)) if (d.gen === this.gen) d.fn();
   }
 
   /** Run every scheduled action now (debug / tests). */
   flush(): void {
+    this.releaseGate();
     let guard = 0;
     while (this.queue.length && guard++ < 200) {
       const list = this.queue.sort((a, b) => a.at - b.at);
@@ -1526,6 +1580,9 @@ class StoryRuntime {
   update(dt: number): void {
     const ctx = this.ctx;
     this.time += dt;
+    // title cards run on game time (cardClockDt): they wait behind the pause menu / a modal, and a
+    // headless `kq.step(n)` moves them n ticks (the chapter card holds the opening beat, M-11)
+    this.overlays.tickCard(cardClockDt('update', ctx.loop.manual, ctx.pause.paused, dt));
     // presentation on game time: dialogue typing, the choice fuse, the caught curtain
     this.presenter.update(this.echoHold ? 0 : dt);
     // centre cards wait while someone is talking (a soft hold: a page asked for still opens) and
@@ -1540,6 +1597,7 @@ class StoryRuntime {
       // under the curtain the story stands still (as the paused game did before)
       if (this.caughtBusy) return;
     }
+    if ((this.gated.length || this.gatedAt) && !this.overlays.holdsLines) this.releaseGate();
     if (this.queue.length) {
       const due = this.queue.filter((q) => q.at <= this.time);
       if (due.length) {
@@ -1693,10 +1751,10 @@ class StoryRuntime {
   frame(dt: number): void {
     const ctx = this.ctx;
     if (!this.hooksInstalled && window.kq) this.installHooks();
+    // in ?manual / bullet time a card also goes in real time (a spec waiting without stepping)
+    this.overlays.tickCard(cardClockDt('frame', ctx.loop.manual, ctx.pause.paused, dt));
     // a modal choice pauses the game: its fuse burns on in real time (kq.step drives it headless)
     if (ctx.pause.paused && !ctx.loop.manual && this.overlays.choiceOpen && !this.overlays.choiceInline) this.overlays.tickChoice(dt);
-    // title cards run on game time: they wait behind the pause menu / a modal
-    this.overlays.tickCard(ctx.pause.paused ? 0 : Math.min(dt, 0.1));
     for (const m of Object.values(this.slice.meters)) if (!isWrapped(m.id)) this.overlays.gauge(m.id, m.label ?? m.id, m.value);
     const p = ctx.player.position;
     const heading = ((-ctx.player.yaw * 180) / Math.PI + 360) % 360;

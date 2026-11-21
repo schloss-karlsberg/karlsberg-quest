@@ -153,6 +153,20 @@ export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);
 }
 
+/** Silent world setup: at time 0 of a chapter's opening beat it runs under the title card. */
+const OPENING_SETUP = new Set(['look', 'flag', 'npc', 'item', 'anchor', 'threat', 'shift', 'skill', 'teleport', 'unlock', 'autosave', 'meter', 'memorial', 'readings', 'enemy', 'loot']);
+
+/**
+ * Does this action of a chapter's opening beat (`at`: its time in the beat's timeline) wait for
+ * the chapter card (M-11)? The opening beat's timeline starts counting once the card has faded:
+ * everything the player sees or hears (lines, sounds, captions, objectives, prompts, quest offers,
+ * cues …) keeps its relative timing after the card. Only silent setup at time 0 (light, flags,
+ * people, the start place) runs at once, so the world stands ready under the card.
+ */
+export function waitsForChapterCard(a: Action, at: number): boolean {
+  return at > 0 || !OPENING_SETUP.has(a.do);
+}
+
 // ---------------------------------------------------------------------------------------------
 // condition helpers (pure)
 // ---------------------------------------------------------------------------------------------
@@ -438,6 +452,18 @@ export class StoryEngine {
     walkEvents(b.complete, `b:${b.id}`, bump);
     for (const r of b.on ?? []) walkEvents(r.when, `br:${r.id}`, bump);
     for (const r of f.on ?? []) walkEvents(r.when, `c:${r.id}`, bump);
+  }
+
+  /**
+   * The opening beat's chapter card has faded (M-11): its clocks start now, so `timer` reactions,
+   * `timer` completions and `chapterTimer` count from the moment the beat's timeline runs, not from
+   * the beat's entry under the card. Only for that beat (`beatId`); no-op once another beat runs.
+   */
+  restartClock(chapterId: string, beatId: string): void {
+    const s = this.s;
+    if (!s.active || s.chapter !== chapterId || s.beat !== beatId) return;
+    s.beatTime = 0;
+    s.chapterTime = 0;
   }
 
   /** Advance timers, fire reactions, complete at most one beat. */

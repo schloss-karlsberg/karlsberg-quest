@@ -28,7 +28,7 @@ Source of the texts: `content/bible/*.md`. Placeholder chapters/beats carry `"pl
 
 | Key | Meaning |
 | --- | --- |
-| `chapter`, `order`, `title_de`, `sub_de?` | id, play order, title card |
+| `chapter`, `order`, `title_de`, `sub_de?` | id, play order, title card (5.5 s; the opening beat's `enter` timeline starts counting once it has faded, so its sounds, lines, objectives and quest offers keep their relative timing and need no extra `delay`, and its `timer` / `chapterTimer` conditions count from that moment too; only silent setup at time 0 — look, flag, npc, item, anchor, threat, shift, skill, teleport … — runs under the card; lines from other sources wait for it too) |
 | `start`, `next?`, `unlocks?` | first beat; chapter that follows; chapters unlocked at the map table |
 | `era?`, `checkpoint? {x,z,yaw?,era?}` | chapter era; start position (also where being caught returns to) |
 | `placeholder?` | skeleton chapter (title card says so) |
