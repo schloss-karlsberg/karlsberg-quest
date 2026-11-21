@@ -614,6 +614,21 @@ html[data-kq-touch] .kqj-foot kbd {
     left: 44%;
     max-width: 62vw;
   }
+  /* the travel banner („Vermessungspunkt eingemessen“, src/systems/travel) sat at 64 px, on the
+     dialogue band and the top row: the same lane as the quest banner, under the band */
+  html[data-kq-touch] .kqt-card.kqt-banner {
+    top: calc(var(--kq-safe-t) + 36vh + 14px);
+    left: 44%;
+    width: max-content;
+    max-width: min(420px, 62vw);
+    padding: 7px 14px;
+  }
+  html[data-kq-touch] .kqt-card.kqt-banner h3 {
+    font-size: 17px;
+  }
+  html[data-kq-touch] .kqt-card.kqt-banner p {
+    font-size: 13px;
+  }
 }
 
 /* ---- the Bussole sat under the attack button on every touch layout: bottom-left (right of the

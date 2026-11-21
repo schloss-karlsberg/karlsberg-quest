@@ -174,6 +174,8 @@ class Travel {
   private wayMarker: number | null = null;
   private card: HTMLElement | null = null;
   private cardT = 0;
+  /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
+  private cardBanner = false;
   private time = 0;
 
   constructor(private readonly ctx: GameContext) {
@@ -600,7 +602,7 @@ class Travel {
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
   showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
-    this.card?.remove();
+    this.hideCard();
     const c = document.createElement('div');
     c.className = testid === 'travel-card-lore' ? 'kqt-card' : 'kqt-card kqt-banner';
     c.dataset.testid = testid;
@@ -626,11 +628,27 @@ class Travel {
     this.ctx.ui.add(c);
     this.card = c;
     this.cardT = seconds;
+    this.cardBanner = testid !== 'travel-card-lore';
+    if (this.cardBanner) c.classList.toggle('kqt-aside', this.bannerAside());
   }
 
   hideCard(): void {
     this.card?.remove();
     this.card = null;
+    if (this.cardBanner) this.ctx.ui.cards.release(BANNER_TOKEN);
+    this.cardBanner = false;
+  }
+
+  /**
+   * M-18 (docs/MOBILE-UI-PASS.md): the activation banner never stacks on another centre card (the
+   * skill card, a level or reward card, a field-book page). It takes the slot when it is free, so a
+   * card that comes later waits for it; while another card holds the slot, the banner waits (or
+   * steps aside) and its clock stops. A spoken line or a fight does not keep it back: it is short.
+   */
+  private bannerAside(): boolean {
+    const cards = this.ctx.ui.cards;
+    if (cards.claim(BANNER_TOKEN)) return false;
+    return cards.showing !== null;
   }
 
   // ---- Laufschritt -------------------------------------------------------------------------------
@@ -826,6 +844,9 @@ class Travel {
       if (this.wakeAt < 0) this.wakeHint();
     }
     if (this.card) {
+      const aside = this.cardBanner && this.bannerAside();
+      this.card.classList.toggle('kqt-aside', aside);
+      if (aside) return;
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
@@ -985,6 +1006,9 @@ class Travel {
     this.root.removeFromParent();
   }
 }
+
+/** The activation banner's token on the centre-card slot (ui/cards.ts). */
+const BANNER_TOKEN = 'travel:banner';
 
 let travel: Travel | null = null;
 let hooks: TravelHooks | null = null;
