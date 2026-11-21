@@ -385,3 +385,99 @@ Design goes into [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md). Nothing is built y
 - `main` HEAD after the spring build is `b90a311`. Since `f90f9a5` (round 9, the `?kapitel` link):
   the tooling merges (§3.1–3.4), the balance merge `02340f5`, the spring `21dc108` + `b90a311`.
 - Untracked: `docs/PLAYTEST-ROUND10.md` (the playtest session's file).
+
+## 7. Next sprint backlog (2026-11-21, after v0.6.0)
+
+Owner of the tour systems (`src/systems/walk/` etc.) and of the mobile/UI follow-ups is now kq-story.
+
+### 7.1 Minimap (deferred; the owner asked for a corner minimap)
+
+- A small 2D canvas in a corner, drawn from the map data the Karte view already uses
+  (`src/systems/travel/map.ts`). No extra 3D render pass: 0–1 extra draw calls, redrawn at ~10 Hz.
+- Shows the player arrow, the guide and group dots, the objective marker and nearby paths.
+- Drawn in the game's own map style; works in both eras.
+- A settings toggle (`src/ui/settings.ts`), on by default; smaller on phones and clear of the touch buttons.
+- Follow the genre convention only, not any specific game's look.
+
+### 7.2 Tour playtest findings still open
+
+Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in a temp folder
+(`playtest-tour/report.md` in the playtester's scratchpad), so the essence is copied here.
+
+- Findings 1–4 are FIXED (MR 14 `feat/tour-find-group` c2843ce + slice `tour/slice-find` 3997f28).
+- Findings 5–6 (dogs not moved by fades/warps; dogs slide backwards on 180° turns) are with kq-characters.
+
+| # | Severity | Essence |
+|---|---|---|
+| 7 | major | The dog cinematic at Wind never shows the dogs (camera 2.6 m behind the player inside the crowd). Camera beside/above, or fade out occluders |
+| 8 | minor | Quelle trough is fiddly: stuck at the wall 3 m away, trigger 1.6 m, wrong prompt „E Pause an der Quelle“ |
+| 9 | minor | At stops the group does not face the guide; the guide does not turn to the player in dialogue |
+| 10 | minor | No player–group collision; a dog clips through legs |
+| 11 | minor | Camera inside the rock face at Felsenpfad; the radio box covers the player |
+| 12 | minor | Photo mode keeps HUD and waymarks (tracker over the phone clock, bars/pill, prompt over 1×/2×, objective ring on the deer) |
+| 13 | minor | Deer photo needs ~13 m for "good"; deer half behind a boulder; sneak meter very forgiving |
+| 14 | minor | Title button flips from „Neues Feldbuch beginnen“ to „Fortsetzen“ under the cursor when loading ends |
+| 15 | minor | Lantern-gate line „Früh am Morgen, vor dem Bauwagen“ is wrong for the tour (afternoon, car park) |
+| 16 | minor | Stale „Pause an der Quelle“ prompt during the time shift; clipped tracker „◆ Gerold I“ |
+| 17 | cosmetic | Today's tripod + beam stands next to the 1789 fountain |
+| 18 | cosmetic | The guide walks before „Dann mal los“; a member stands on a boulder during „Bitte nicht auf die Felsen“ |
+
+Tooling note from the report: „Neues Spiel“ deletes the stored save even with `?nosave`.
+
+Known issues from MR 14:
+
+- The compass labels for the group and the next stop overlap at the edge when both are behind the player.
+- The barks system's 45 s gap and per-line cooldown can swallow the „Hier drüben!“ call-out.
+- The marker uses the plain ring style, not the gold diamond the objective uses.
+
+Slice polish list:
+
+- The „Die Führung“ chapter card lingers ~100 s.
+- The spring prompt and Marlene's radio lines bleed in at the Quelle.
+- Walkers look dithered at 10 m.
+- The Bussole objective lags.
+- The wait barks are untested in e2e.
+- The group vanishes in view.
+- The slice runs too short: 4:41 / 8:16 against the targets of 8 / 12 min.
+- Laub's 1789 arrival line from main does not fit the tour.
+- Use `photo:good.state` for the „Sie hat dich angesehen“ check.
+- The C prompt's touch text should come from `actionLabel(input, 'crouch')` (`src/ui/actionLabel.ts`).
+
+Mobile/UI leftovers: the credits strip vs the touch buttons on phones (MR 13, unchecked), and MR 9's
+open visual check in [`docs/MOBILE-UI-PASS.md`](MOBILE-UI-PASS.md) §8.2.
+
+### 7.3 Voices
+
+- The 125 final Laub lines were generated via moss-service for v0.6.0 (synthetic, CC0, credited).
+- Next: Marlene, the tour, present-day, endings, the prologue and hub barks, once their text is final
+  (kq-story decides), plus NPC casting (Hanne, Jost etc.).
+- Tour voice lines wait for the tour text to be final after the owner's replay.
+- Pointers: [`docs/design/tour/player-voice.md`](design/tour/player-voice.md), the voice assets and
+  `scripts/voice/voices.json`.
+
+### 7.4 Owner decisions pending
+
+- **Player-voice hosting.** The asset rules allow synthetic voices only; the player voice is a real
+  person's, so it needs an explicit owner decision plus the speaker's written consent before any clip
+  enters the repo or the game.
+- **The real guide's consent.** The placeholder „Gerold Imhoff“ stays until then.
+
+### 7.5 kq-systems handoff items
+
+Full list: [`docs/handoff/kq-systems.md`](handoff/kq-systems.md) (Open items).
+
+- Parked: tour skip / `tour.walkAll`, until the owner has played slice v0.
+- Parked: the GPU/driver side of the era-shift stall (around the midpoint 1–2 frames take ~100 ms with
+  4–8 ms CPU; at shift end 36 `texSubImage2D` calls take 68–91 ms). Needs a GPU-side trace:
+  [`docs/PERFORMANCE.md`](PERFORMANCE.md) §7, "Later / parked".
+- Occlusion culling for the Felsenpfad; a palace LOD for the past eras; fire light on people (no local-light slot).
+- Perf: add the party as a measured view and re-sample walk-group cost once kq-characters' 7 extras land.
+- Low priority: cinematic keepAlive for animals, a dog-bark SFX, deer noise and wind input.
+- Fan-round leftovers (PERFORMANCE §7): the auto-downgrade reads only frame time and never steps back up.
+
+### 7.6 How to resume the tour slice
+
+- Dev branch `tour/slice-find` (3997f28) sits on the `feat/tour-find-group` feature;
+  `slice-v0-playtest` is the last green slice commit.
+- The owner plays in `.claude/worktrees/tour-playtest` (`pnpm dev`, then http://localhost:5280/?tour).
+- Gates: the tour-slice spec + smoke, both via `scripts/dev/heavy.sh` (one spec per hold, `--workers=1`).
