@@ -206,7 +206,7 @@ test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; s
   const f = (v: number, d = 1) => v.toFixed(d).padStart(9);
   const lines = ['tier    group   frames      fps   frameMs    cpuMs      calls  triangles   walkMs'];
   for (const r of rows) lines.push(`${r.tier.padEnd(7)} ${String(r.group).padEnd(6)} ${String(r.frames).padStart(6)} ${f(r.fps)} ${f(r.frameMs, 2)} ${f(r.cpuMs, 2)} ${f(r.calls, 0)} ${f(r.triangles, 0).padStart(10)} ${f(r.walkMs, 3)}`);
-  const label = (await page.evaluate(() => window.kq!.walk!.stats().people)) ? 'stand-in people v0.1 bodies' : 'walk stand-in bodies (no ctx.people)';
+  const label = (await page.evaluate(() => window.kq!.walk!.stats().people)) ? 'stand-in people v0.1 bodies' : 'no people API: walk bodies disabled';
   console.log(`[walk d] perf (${label})\n${lines.join('\n')}`);
   writeFileSync(`${OUT}/perf.json`, JSON.stringify({ label, rows }, null, 2));
   for (const r of rows) expect(r.frames).toBeGreaterThanOrEqual(10);

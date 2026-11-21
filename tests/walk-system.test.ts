@@ -1,7 +1,8 @@
 /** WP-16 tour walk: the walk system's runtime (src/systems/walk/runtime.ts) with fake bodies and a fake bus. */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import route from '../content/routes/p-fuehrung.json';
-import { WalkRuntime, memberLooks, specFor, type Body, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
+import { PEOPLE_MISSING, walkBodies, type PeopleApiLike } from '../src/systems/walk/bodies';
+import { WalkRuntime, memberLooks, specFor, type Body, type BodyFactory, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
 import type { Route, WalkRequest, WalkSlice } from '../src/systems/walk/types';
 
 const ROUTE = route as Route;
@@ -33,7 +34,7 @@ interface FakeBody extends Body {
   clips: string[];
 }
 
-function setup(slice: WalkSlice = { walkers: [], groups: [] }) {
+function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFactory) {
   const bus = new FakeBus();
   const player = { x: 524, z: -765 };
   const world = { era: 'today' };
@@ -52,7 +53,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }) {
         if (Math.hypot(x - 512, z - -740) < r + 1) fn(512, -740, 0.5, 20);
       },
     },
-    bodies: (o) => {
+    bodies: factory ?? ((o) => {
       const b: FakeBody = {
         spawn: o,
         pos: [o.x, o.y, o.z],
@@ -79,7 +80,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }) {
       };
       bodies.push(b);
       return b;
-    },
+    }),
   });
   const step = (seconds: number, follow?: (w: { x: number; z: number }) => void) => {
     const n = Math.round(seconds / DT);
@@ -407,5 +408,72 @@ describe('walk system', () => {
     b.rt.writeSlice();
     expect(b.slice.walkers).toEqual(saved.walkers);
     expect(b.slice.groups.map((g) => ({ ...g, at: undefined }))).toEqual(saved.groups.map((g) => ({ ...g, at: undefined })));
+  });
+
+  it('no people API: no bodies, one loud error, the walk still arrives', () => {
+    const report = vi.fn();
+    const s = setup(undefined, walkBodies(() => null, report));
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith(PEOPLE_MISSING);
+    expect(PEOPLE_MISSING).toBe('[walk] people API missing: walk bodies disabled');
+    demo(s, 'abzweig', false);
+    s.step(60, (L) => {
+      s.player.x = L.x + 5;
+      s.player.z = L.z;
+    });
+    expect(s.bus.of('npc:arrived')).toEqual([{ npc: 'imhoff', at: 'abzweig', route: 'p-fuehrung', skipped: false }]);
+    expect(s.rt.npcs.size).toBe(MEMBERS.length + 1);
+    expect([...s.rt.npcs.values()].every((n) => n.body === null)).toBe(true);
+    expect(s.rt.stats().bodies).toBe(0);
+    // the save slice keeps working, a restore stays bodiless and silent
+    s.rt.writeSlice();
+    expect(s.slice.walkers[0]).toMatchObject({ npc: 'imhoff', to: 'abzweig' });
+    s.rt.restore();
+    expect(s.rt.stats().bodies).toBe(0);
+    expect(report).toHaveBeenCalledTimes(1);
+  });
+
+  it('the default report is console.error', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const f = walkBodies(() => null);
+      f({ npc: 'imhoff', spec: 'guide', x: 0, y: 0, z: 0, yaw: 0, tier: 'hero', seed: 1 });
+      expect(err).toHaveBeenCalledTimes(1);
+      expect(err).toHaveBeenCalledWith(PEOPLE_MISSING);
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  it('with a people API: a person per npc, moved, turned and disposed through it', () => {
+    const spawned: { spec: string; opts: any; pos: number[]; face: number[]; disposed: boolean }[] = [];
+    const api = {
+      specs: () => ['guide', 'double.hanne', 'extra.1', 'extra.2', 'extra.3'],
+      spawn: (spec: string, opts: any) => {
+        const rec = { spec, opts, pos: [] as number[], face: [] as number[], disposed: false };
+        spawned.push(rec);
+        return {
+          root: { position: { set: (x: number, y: number, z: number) => (rec.pos = [x, y, z]) } },
+          face: (v: number) => rec.face.push(v),
+          setSpeed: () => {},
+          setVisible: () => {},
+          dispose: () => (rec.disposed = true),
+        };
+      },
+    } as unknown as PeopleApiLike;
+    const report = vi.fn();
+    const s = setup(undefined, walkBodies(() => api, report));
+    demo(s, 'abzweig', false);
+    expect(report).not.toHaveBeenCalled();
+    expect(spawned).toHaveLength(MEMBERS.length + 1);
+    const guide = spawned.find((p) => p.opts.name === 'imhoff')!;
+    expect(guide.spec).toBe('guide');
+    expect(guide.opts).toMatchObject({ speaker: 'imhoff', tier: 'hero', look: 'solid' });
+    expect(s.rt.stats().bodies).toBe(MEMBERS.length + 1);
+    s.step(3);
+    expect(guide.pos[1]).toBe(300);
+    expect(guide.face.length).toBeGreaterThan(0);
+    s.req({ op: 'despawn', group: 'fuehrung' });
+    expect(spawned.every((p) => p.disposed)).toBe(true);
   });
 });
