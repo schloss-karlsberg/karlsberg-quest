@@ -101,9 +101,10 @@ export function isTouchSetting(v: unknown): v is TouchSetting {
 /**
  * The touch button that stands for a prompt's key label (what the HUD shows instead of the key
  * cap): 'E' → interact … Unknown labels fall back to the interact button (every in-world prompt
- * is answered with it).
+ * is answered with it). 'Maus' (look / aim) has no button: it gets the neutral swipe hint ('look'),
+ * never the interact hand.
  */
-export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'journal' | 'map' | 'balm' | 'lock' | 'down' | 'relief' | 'pause';
+export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'journal' | 'map' | 'balm' | 'lock' | 'crouch' | 'relief' | 'pause' | 'photo' | 'look';
 const KEY_ICON: Record<string, TouchIcon> = {
   E: 'interact',
   F: 'fly',
@@ -121,8 +122,11 @@ const KEY_ICON: Record<string, TouchIcon> = {
   M: 'map',
   H: 'balm',
   TAB: 'lock',
-  C: 'down',
-  X: 'down',
+  C: 'crouch',
+  X: 'crouch',
+  N: 'photo',
+  MAUS: 'look',
+  MOUSE: 'look',
   '1': 'relief',
   '2': 'relief',
   '3': 'relief',
@@ -139,7 +143,8 @@ const KEY_ICON: Record<string, TouchIcon> = {
   FELDBUCH: 'journal',
   KARTE: 'map',
   FLIEGEN: 'fly',
-  SINKEN: 'down',
+  SINKEN: 'crouch',
+  DUCKEN: 'crouch',
   PAUSE: 'pause',
 };
 
@@ -178,6 +183,7 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
   fly: 'Fliegen',
   up: 'Steigen',
   down: 'Sinken',
+  crouch: 'Ducken',
   pause: 'Pause',
   skill1: '1',
   skill2: '2',

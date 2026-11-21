@@ -73,7 +73,22 @@ describe('prompt key → touch icon', () => {
   it('falls back to the interact button', () => {
     expect(touchIconFor('Ü')).toBe('interact');
   });
+  it('maps N to the phone and C to the crouch button', () => {
+    expect(touchIconFor('N')).toBe('photo');
+    expect(touchIconFor('C')).toBe('crouch');
+    expect(touchIconFor('Ducken')).toBe('crouch');
+    expect(touchIconFor('Sinken')).toBe('crouch');
+  });
+  it('gives the mouse (look / aim) the swipe hint, never the interact hand', () => {
+    expect(touchIconFor('Maus')).toBe('look');
+    expect(touchIconFor('Maus / Pfeiltasten')).toBe('look');
+    expect(touchPromptIcon('Maus', 'Umsehen')).toBe('look');
+    // the mouse buttons keep their own buttons
+    expect(touchIconFor('Maus links')).toBe('attack');
+    expect(touchIconFor('Maus rechts')).toBe('bannlicht');
+  });
 });
+
 
 describe('mobile first-run level', () => {
   it('phones and mobile GPUs → Niedrig, big tablets → Mittel', () => {
