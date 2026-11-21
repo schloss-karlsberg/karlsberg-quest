@@ -99,14 +99,17 @@ function buildPlan(centre: XZ, doubles: readonly { who: string; x: number; z: nu
   const spots: Spot[] = [];
   let t = 0;
   let a = (ordered[0]?.a ?? 0) + O.lead - 0.9;
-  keys.push({ t: 0, eye: eyeAt(a, O.y + 0.8), look: centreLook, fov: O.fov });
+  let cy = O.y + 0.8;
+  keys.push({ t: 0, eye: eyeAt(a, cy), look: centreLook, fov: O.fov });
   const travel = (to: number, y: number, look: CinematicKey['look'], fov: number, minT: number) => {
     const span = to - a;
     const dur = Math.max(minT, span / speed);
     const n = Math.max(1, Math.ceil(Math.abs(span) / O.step));
     for (let k = 1; k <= n; k++) {
       const f = k / n;
-      const key: CinematicKey = { t: round(t + dur * f), eye: eyeAt(a + span * f, round(O.y + (y - O.y) * f, 3)), ease: k === n ? 'smooth' : 'linear' };
+      // from the height it is at to the target, rising over the party in between
+      const ey = cy + (y - cy) * f + (O.y - Math.min(cy, y)) * Math.sin(Math.PI * f);
+      const key: CinematicKey = { t: round(t + dur * f), eye: eyeAt(a + span * f, round(ey)), ease: k === n ? 'smooth' : 'linear' };
       if (k === n) {
         key.look = look;
         key.fov = fov;
@@ -115,6 +118,7 @@ function buildPlan(centre: XZ, doubles: readonly { who: string; x: number; z: nu
     }
     t = round(t + dur);
     a = to;
+    cy = y;
   };
   ordered.forEach((d, i) => {
     let to = d.a + O.lead;

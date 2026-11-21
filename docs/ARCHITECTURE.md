@@ -1218,7 +1218,7 @@ with bark and `back`, lie / sleep), `save.ts`; `runtime.ts` (the system, headles
 step, bodies, events, era, save, targets; tests use fakes); `photoBridge.ts` (optional photo and
 cinematic bridges); `index.ts` (wiring, hooks). Runs `after: ['fauna', 'people']`. Animals exist
 only in era `today`: other eras hide the bodies and pause the behaviour.
-- Requests: `animal:request` `AnimalAction` (ops spawn / despawn / run / lie / follow; the C5
+- Requests: `animal:request` `AnimalAction` (ops spawn / despawn / run / lie / follow / shine (eye glint 0..1, not saved; the party's keep ending); the C5
   `animal:spawn` renamed, agreed with kq-story), also `story:cue {id: 'animal', data}`. An extra
   `keepAlive: true` on a spawn passes `keepAlive` to the fauna body (cinematic close-ups).
 - Per step (60 Hz): the player as `{x, z, speed: player.stats.speed, stance}` (a flying player is
@@ -1543,6 +1543,68 @@ cinematic ends it skipped after the load. Reduced motion: 'stills' = first and l
 through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
 `at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
 `tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).
+
+### party (`src/systems/party/`) – the end-of-game party on today's plateau (bible 06 §8)
+`docs/design/tour/systems.md` §6, bible 06-enden §8 "Das Fest", storyboard #25–#28. After every
+ending the credits play over a party at TF-01 (the Ehrenhof clearing of today, 1216 / −1114). Pure
+parts: `placements.ts` (the §8.1 draft x/z per person and per prop spot, the per-variant moves,
+`partyLayout(variant, at)` moves everything by `at − TF01`), `credits.ts` (the lines, the camera way,
+the spotlight times, the strip clock); `runtime.ts` (the system, headless: requests, people, dogs,
+the set handle, the credits clock, the slice; tests use fakes); `set.ts` (the `PartySet` interface and
+the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `after: ['people',
+'animals', 'npc', 'cinematic']`.
+- Requests (`types.ts`, agreed with kq-story): `party:set {variant: 'museum'|'burn'|'keep', at?}`,
+  `party:credits {lines?}`, `party:clear {}`; also `story:cue {id: 'party:set'|'party:credits'|
+  'party:clear', data}`. Events (scalar fields): `party:ready {variant}`, `party:spotlight {who, i}`
+  (`who` = the double's people spec id, e.g. `double.herzog`; the story plays its §8.4 line on a
+  match), `credits:start {seconds}`, `credits:done {skipped}` (exactly once per run).
+- **People** (`ctx.people`, placed directly, no walk): the guide (`guide`, speaker `imhoff`),
+  Marlene (no spec yet: stand-in `extra.7` with seed 9071, speaker `marlene`; a `marlene` spec is
+  used once `specs()` has it), the 7 doubles (speakers `herzogd`, `mannd`, `hanned`, `peterd`,
+  `jostd`, `solld`, `liesed`), the 7 extras of §8.1 (Mats = `child.compass`, mother, the couple, two
+  hikers, the student = `extra.1…6`). Activities per §8.1: sit (Herzog in the camping chair, Hanne
+  and Peter on the bench), talk, lookAround, idle, interact (Gerold pouring, Soll counting, Jost's
+  stick, Liese mending: a one-shot every 4–8 s). Faces: a prop, a person, the centre. Speakers stay
+  bound, so the npc system's placements for them become talkable on the bodies; a conversation
+  holds that person's gestures.
+- **Variants** (§8.3): `museum` the archive box on the table, Gerold talks, Hanne, Marlene, Mats,
+  his mother and the student lean in round him (facing him); `burn` twelve stand in a ring round the
+  fire bowl, the flames burn high and a spark burst goes up on `party:set`, the dogs lie asleep
+  more than 10 m from the fire; `keep` the dogs lie at the player's feet (`lie` with `follow: 'player'`)
+  with eye shine 0.6 (`{op: 'shine'}`, added to the animals system for this). Dogs come through
+  `animal:request` (spawn / lie / shine; museum: at Jost's feet).
+- **Set** (`PartySet.build(scene, layout, variant) → PartySetHandle {anchors, setFire, burst,
+  update, setVisible, drawCalls, dispose}`, swappable for authored meshes): the placeholder is ONE
+  merged Kit mesh on the prop material (trestle table and bench, Hanne's and the keep bench, the
+  camping chair, cake, cash box, gas stove with the mulled-wine pot and the children's punch, the
+  fire bowl with logs and glowing coals, two placeholder posts with the fairy-light wire and 34
+  emissive bulbs on a sagging curve, three lanterns, the archive box in A) plus ONE instanced
+  glow-sprite mesh (bulb, lantern and fire halos, 18 flame tongues, 44 sparks, CPU-animated) = 2
+  draw calls. y from `world.heightAt`. No fireworks (§8.5).
+- **Credits** (`party:credits`): lines = `data.lines`, else `content/party/credits.json`
+  (`{lines}`, the story team's, bundled through an eager `import.meta.glob`, may be missing), else
+  the 3-line placeholder. The strip crawls along the bottom edge (over the letterbox, game clock,
+  `data-testid="party-credits"`); reduced motion steps the lines through, centred. The camera way is
+  a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, skippable, reduced 'stills'):
+  the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the keys run on
+  the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and dwell 2.6 s close
+  on each double in angle order (lower, fov 34), emitting `party:spotlight` at each dwell's start;
+  the travel speeds up so the way stays ≤ 58 s (the keys' 60 s limit). The credits last max(20 s,
+  the camera way + 0.6 s, 4 s per line). Skip: the cinematic's any key / click after 0.5 s (its
+  `cinematic:end {skipped: true}` ends the credits skipped); without a camera of ours (rejected,
+  no cinematic system, after reduced motion's stills) Esc / Enter / Space after 1 s. A rejected
+  camera (held elsewhere) does not end the credits. Afterwards the party stands, no camera is held.
+- Era `today` only: other eras hide the people and the set. `party:clear` (and a new `party:set`)
+  disposes people, set and dogs; credits still running end skipped.
+- State `systems.party {variant, credits: 'none'|'playing'|'done'}`; no bodies (the story re-issues
+  `party:set` from its checkpoint). Credits playing at save time → `credits:done {skipped: true}`
+  once at game start / after the load (live credits end skipped too, one event); a loaded save
+  without a party drops the live one.
+- Dev: `?party=museum|burn|keep` (parsed by the party system itself on `game:start`): era today, the
+  player at the checkpoint 1200 / −1095 facing TF-01, `kq.story.look('dusk')`, `party:set`, then
+  `party:credits`. Hooks `kq.party`: `set(variant, at?)`, `credits(lines?)`, `skip()`, `clear()`,
+  `state()`, `stats()` → `{bodies, dogs, setDrawCalls, bodyDrawCalls, dogDrawCalls}`. Tests:
+  `tests/party.test.ts`, `e2e/party.spec.ts` (`test-results/party/party-*.png`).
 
 ### photo (`src/systems/photo/`) – Fotomodus: the smartphone camera (present day only)
 
