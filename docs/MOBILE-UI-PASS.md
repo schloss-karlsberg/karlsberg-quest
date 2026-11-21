@@ -134,7 +134,7 @@ The runner gives each issue a severity hint (`findings.json`). The playtester co
 - If headless ever falls back to software on this Mac, `--headed` runs a visible Chromium window. That needs the logged-in desktop session; the lock rules are the same.
 - The renderer string is stored in `findings.json` (`gpu`).
 
-**Re-shooting a subset.** `--states journal,combat` shoots only those states (ids or prefixes) and merges them into the unit's existing `findings.json`. A title-flow step brings its predecessors (`lantern` → `warning`, `name`). Gameplay states start a new game by taps when the title is still up.
+**Re-shooting a subset.** `--states journal,combat` shoots only those states (ids or prefixes) and merges them into the unit's existing `findings.json`. Notes are tagged with their state (`[journal] …`): a full unit run starts with none, and a subset run replaces the notes of the states it re-shoots (untagged notes from older runs are dropped). A title-flow step brings its predecessors (`lantern` → `warning`, `name`). Gameplay states start a new game by taps when the title is still up.
 
 ## 7. Run commands (one unit per lock hold)
 
