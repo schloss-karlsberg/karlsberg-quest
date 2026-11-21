@@ -444,11 +444,105 @@ export interface GrantSink {
   warn(msg: string): void;
 }
 
+/** A live binding for a target (`attachTarget`): position, and optionally calm / state. */
+export interface PhotoLiveBinding {
+  at: () => Vec3 | null;
+  calm?: () => boolean;
+  state?: () => string;
+}
+
+/**
+ * Why the `?debug` test deer must not bind `reh.ricke` / `reh.kitz` (null = it may): somebody
+ * else already holds a live binding, or `kq.animals` (kq-systems, optional) reports deer. The
+ * animals hook's shape is not fixed yet, so the probe is tolerant: a truthy `deer` (or a
+ * `deer()` returning something non-empty), or a `list()` / `all()` entry whose id / kind /
+ * species / spec names a deer (deer, reh, roe).
+ */
+export function debugDeerBlocker(ids: readonly string[], isAttached: (id: string) => boolean, animals?: unknown): string | null {
+  const taken = ids.filter((id) => isAttached(id));
+  if (taken.length) return `already attached: ${taken.join(', ')}`;
+  if (animals && typeof animals === 'object' && animalsReportDeer(animals as Record<string, unknown>)) return 'kq.animals reports deer';
+  return null;
+}
+
+function animalsReportDeer(a: Record<string, unknown>): boolean {
+  const nonEmpty = (v: unknown) => (Array.isArray(v) ? v.length > 0 : !!v);
+  try {
+    if (typeof a.deer === 'function') {
+      if (nonEmpty((a.deer as () => unknown)())) return true;
+    } else if (nonEmpty(a.deer)) return true;
+    for (const k of ['list', 'all'] as const) {
+      const f = a[k];
+      if (typeof f !== 'function') continue;
+      const rows = (f as () => unknown).call(a);
+      if (!Array.isArray(rows)) continue;
+      for (const r of rows) {
+        if (!r || typeof r !== 'object') continue;
+        const o = r as Record<string, unknown>;
+        if ([o.id, o.kind, o.species, o.spec, o.specId].some((v) => typeof v === 'string' && /deer|reh|roe/i.test(v))) return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 /**
  * The bookkeeping around shots, over a save slice (pure; the system wires it to the game).
  */
 export class PhotoCore {
   readonly targets = new Map<string, PhotoTargetDef>();
+  /** Live bindings per target id, a stack of handles (the top one is active). */
+  private readonly bindings = new Map<string, { base: Pick<PhotoTargetDef, 'at' | 'calm' | 'state'>; stack: PhotoLiveBinding[] }>();
+
+  /**
+   * Bind a live position (and optionally calm / state) to a target by id. Bindings stack per id:
+   * the active one is always the top remaining handle, or the target's own (data) anchor when none
+   * is left. The returned undo removes exactly this handle wherever it sits, so a binding that was
+   * detached is never restored. Missing calm / state on the active handle fall back to the
+   * target's own. Null for an unknown id.
+   */
+  attach(id: string, live: PhotoLiveBinding): (() => void) | null {
+    const t = this.targets.get(id);
+    if (!t) return null;
+    let b = this.bindings.get(id);
+    if (!b) {
+      b = { base: { at: t.at, calm: t.calm, state: t.state }, stack: [] };
+      this.bindings.set(id, b);
+    }
+    const handle: PhotoLiveBinding = { ...live };
+    b.stack.push(handle);
+    this.applyBinding(id);
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      const cur = this.bindings.get(id);
+      if (!cur) return;
+      const i = cur.stack.indexOf(handle);
+      if (i >= 0) cur.stack.splice(i, 1);
+      this.applyBinding(id);
+    };
+  }
+
+  /** True while any live binding is attached to that target. */
+  isAttached(id: string): boolean {
+    return (this.bindings.get(id)?.stack.length ?? 0) > 0;
+  }
+
+  private applyBinding(id: string): void {
+    const b = this.bindings.get(id);
+    const t = this.targets.get(id);
+    if (!b) return;
+    if (t) {
+      const top = b.stack[b.stack.length - 1];
+      t.at = top ? top.at : b.base.at;
+      t.calm = top?.calm ?? b.base.calm;
+      t.state = top?.state ?? b.base.state;
+    }
+    if (!b.stack.length) this.bindings.delete(id);
+  }
 
   constructor(private readonly slice: () => PhotoSlice) {}
 
@@ -456,6 +550,12 @@ export class PhotoCore {
   register(t: PhotoTargetDef): void {
     if (!t.id || !(t.r > 0) || !(t.maxDist > 0) || !(t.minFrac >= 0)) throw new Error(`photo: bad target '${t.id}'`);
     this.targets.set(t.id, t);
+    // a replaced target keeps its live bindings: the new def is the base, the top handle stays active
+    const b = this.bindings.get(t.id);
+    if (b) {
+      b.base = { at: t.at, calm: t.calm, state: t.state };
+      this.applyBinding(t.id);
+    }
   }
 
   unregister(id: string): void {

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
+import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
 import { targetFromData, validatePhotoTargets } from '../src/systems/photo/data';
 import { validateQuests } from '../src/systems/quests/validate';
 import { eventMatches } from '../src/systems/story/engine';
@@ -470,5 +470,65 @@ describe('photo:good carries the subject state', () => {
     expect(eventMatches(cond, 'photo:shot', e)).toBe(false);
     // a cond without state still matches a payload that carries one
     expect(eventMatches({ event: 'photo:good', match: { id: 'reh.ricke' } }, 'photo:good', e)).toBe(true);
+  });
+});
+
+describe('photo: attach bindings stack by handle', () => {
+  const setup = () => {
+    const core = new PhotoCore(() => emptySlice());
+    const anchor = { x: 0, y: 1.6, z: -10 };
+    core.register(target({ id: 'reh.ricke', at: () => anchor }));
+    const t = core.targets.get('reh.ricke')!;
+    return { core, t, anchor };
+  };
+  const A = { x: 1, y: 1, z: 1 };
+  const B = { x: 2, y: 2, z: 2 };
+
+  it('out-of-order detach: A, B attach; A detach → B active; B detach → data anchor', () => {
+    const { core, t, anchor } = setup();
+    expect(core.isAttached('reh.ricke')).toBe(false);
+    const offA = core.attach('reh.ricke', { at: () => A, state: () => 'a' })!;
+    const offB = core.attach('reh.ricke', { at: () => B, state: () => 'b' })!;
+    expect(t.at()).toBe(B);
+    offA();
+    expect(t.at()).toBe(B);
+    expect(t.state?.()).toBe('b');
+    expect(core.isAttached('reh.ricke')).toBe(true);
+    offB();
+    expect(t.at()).toBe(anchor);
+    expect(t.state).toBeUndefined();
+    expect(core.isAttached('reh.ricke')).toBe(false);
+  });
+
+  it('no stale restore: a detached getter never comes back, a second undo is a no-op', () => {
+    const { core, t, anchor } = setup();
+    const offA = core.attach('reh.ricke', { at: () => A, calm: () => false })!;
+    const offB = core.attach('reh.ricke', { at: () => B })!;
+    offB();
+    expect(t.at()).toBe(A);
+    offA();
+    expect(t.at()).toBe(anchor);
+    expect(t.calm).toBeUndefined();
+    const offC = core.attach('reh.ricke', { at: () => B })!;
+    offA();
+    offB();
+    expect(t.at()).toBe(B);
+    offC();
+    expect(t.at()).toBe(anchor);
+    expect(core.attach('nope', { at: () => A })).toBeNull();
+  });
+
+  it('the debug deer refuses when a target is already attached (or kq.animals reports deer)', () => {
+    const { core } = setup();
+    core.register(target({ id: 'reh.kitz' }));
+    const ids = ['reh.ricke', 'reh.kitz'];
+    const attached = (id: string) => core.isAttached(id);
+    expect(debugDeerBlocker(ids, attached)).toBeNull();
+    const off = core.attach('reh.kitz', { at: () => A })!;
+    expect(debugDeerBlocker(ids, attached)).toMatch(/reh\.kitz/);
+    off();
+    expect(debugDeerBlocker(ids, attached, {})).toBeNull();
+    expect(debugDeerBlocker(ids, attached, { list: () => [{ id: 'reh.ricke', kind: 'deer' }] })).toMatch(/animals/);
+    expect(debugDeerBlocker(ids, attached, { list: () => [{ id: 'dog.diane', kind: 'dog' }] })).toBeNull();
   });
 });

@@ -1522,6 +1522,7 @@ pause the logic.
   whole target from code. **Placeholders** (flagged `placeholder: true`, built in `demo.ts`): the
   plain trail board at the car park (`photo.parkplatz`, grants the flag `photo.demo.parkplatz`) and,
   with `?debug` only, a blocky test doe and fawn at 817 / −704 bound to `reh.ricke` / `reh.kitz`.
+- **Bindings stack by handle:** each `attachTarget` call pushes a handle per id; the newest remaining one is active, its detach removes exactly that handle (out-of-order detach never restores a stale getter), none left → the data anchor; `isAttached(id)` says whether any binding holds it. The `?debug` deer yields: `spawnDeer` / `kq.photo.deer.spawn` returns false with a dev warning when the deer ids are already attached or `kq.animals` reports deer.
 - **Album** (journal tab „Album“, order 70) and grants: the save slice `systems.photo` keeps one
   entry per target (best stars, era, ISO time, play seconds), at most 60 (the oldest out), plus
   `good` (every target ever shot well, for `has()`), `granted`, `cards`, `best` and the fallback

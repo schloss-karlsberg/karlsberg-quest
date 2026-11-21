@@ -28,7 +28,7 @@ import { h } from '../../ui/dom';
 import { addJournalTab } from '../../ui/journal';
 import { addControlKeys } from '../../ui/menus';
 import { captureView } from '../notes/capture';
-import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, goodEvents, SteadyMeter, emptySlice, normaliseSlice } from './core';
+import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, SteadyMeter, emptySlice, normaliseSlice } from './core';
 import { type PhotoTargetData, type PhotoTargetFile, targetFromData } from './data';
 import { DebugDeer, buildBoard } from './demo';
 import targetsFile from '../../../content/photo/targets.json';
@@ -102,7 +102,8 @@ export interface PhotoHooks {
   cards(): string[];
   /** ?debug only: the test deer pair (reh.ricke / reh.kitz). */
   deer?: {
-    spawn(x: number, z: number): void;
+    /** False (with a dev warning) when the deer targets are already attached or kq.animals reports deer. */
+    spawn(x: number, z: number): boolean;
     calm(on: boolean): void;
     at(): { ricke: Vec3; kitz: Vec3 } | null;
     /** Set (with an argument) and read the deer's `state()` string carried on `photo:good` (default 'graze'; null without deer). */
@@ -145,24 +146,23 @@ export function registerTarget(def: PhotoTargetDef): () => void {
  * Attach a live position (and optionally `calm()` and `state()`) to a target from the data file
  * by id: the animals system for `animal` anchors, the npc system for `npc` anchors. `state()` is
  * an opaque string read at the shot and carried on `photo:good { id, stars, state }` (e.g. the
- * deer's 'graze' | 'alert' | 'flee' | 'settled'); it changes no stars. Returns a detach function
- * (the target goes back to its data anchor, or out of the world).
+ * deer's 'graze' | 'alert' | 'flee' | 'settled'); it changes no stars. Bindings stack per id by
+ * handle (`PhotoCore.attach`): the newest remaining one is active, and the returned detach removes
+ * exactly this one wherever it sits (a detached getter is never restored); with none left the
+ * target goes back to its data anchor, or out of the world.
  */
-export function attachTarget(id: string, live: { at: () => Vec3 | null; calm?: () => boolean; state?: () => string }): () => void {
-  const t = core.targets.get(id);
-  if (!t) {
+export function attachTarget(id: string, live: PhotoLiveBinding): () => void {
+  const off = core.attach(id, live);
+  if (!off) {
     if (import.meta.env?.DEV) console.warn(`[photo] attachTarget: unknown target '${id}'`);
     return () => {};
   }
-  const prev = { at: t.at, calm: t.calm, state: t.state };
-  t.at = live.at;
-  if (live.calm) t.calm = live.calm;
-  if (live.state) t.state = live.state;
-  return () => {
-    t.at = prev.at;
-    t.calm = prev.calm;
-    t.state = prev.state;
-  };
+  return off;
+}
+
+/** True while any live binding (`attachTarget`) holds that target. */
+export function isAttached(id: string): boolean {
+  return core.isAttached(id);
 }
 
 // ---- the system ------------------------------------------------------------------------------
@@ -170,6 +170,8 @@ export function attachTarget(id: string, live: { at: () => Vec3 | null; calm?: (
 /** Actions the phone takes over while it is up (their keys are the shutter / put-away). */
 const MUTED: Action[] = ['attack', 'interact', 'bannlicht', 'lockOn', 'dodge', 'skill1', 'skill2', 'skill3', 'quickUse', 'measure', 'listen', 'shift', 'xray', 'plans', 'pause'];
 const THUMB_W = 480;
+/** The targets the `?debug` test deer binds. */
+const DEER_IDS = ['reh.ricke', 'reh.kitz'] as const;
 const THUMB_Q = 0.72;
 const STAR = '★';
 
@@ -297,18 +299,31 @@ class Photo {
     if (ctx.debug) this.spawnDeer(817, -704);
   }
 
-  spawnDeer(x: number, z: number): void {
+  /**
+   * The test deer yields to real animals: it refuses (dev warning, false) when `reh.ricke` /
+   * `reh.kitz` are already attached by someone else, or when `kq.animals` reports deer.
+   */
+  spawnDeer(x: number, z: number): boolean {
     const ctx = this.ctx;
     if (this.deer) {
       this.deer.moveTo(x, z);
-      return;
+      return true;
+    }
+    const animals = (window.kq as unknown as { animals?: unknown } | undefined)?.animals;
+    const why = debugDeerBlocker(DEER_IDS, isAttached, animals);
+    if (why) {
+      if (import.meta.env?.DEV || ctx.debug) console.warn(`[photo] debug deer not spawned: ${why}`);
+      return false;
     }
     const d = (this.deer = new DebugDeer(ctx.scene, x, z, (px, pz) => ctx.world.heightAt(px, pz)));
     const today = () => ctx.era.current === 'today';
     d.group.visible = today();
-    this.offs.push(ctx.events.on('era:change', () => (d.group.visible = today())));
-    attachTarget('reh.ricke', { at: () => (today() ? d.doeAt() : null), calm: () => d.calm, state: () => d.state });
-    attachTarget('reh.kitz', { at: () => (today() ? d.fawnAt() : null), calm: () => d.calm, state: () => d.state });
+    this.offs.push(
+      ctx.events.on('era:change', () => (d.group.visible = today())),
+      attachTarget('reh.ricke', { at: () => (today() ? d.doeAt() : null), calm: () => d.calm, state: () => d.state }),
+      attachTarget('reh.kitz', { at: () => (today() ? d.fawnAt() : null), calm: () => d.calm, state: () => d.state }),
+    );
+    return true;
   }
 
   deerHooks(): NonNullable<PhotoHooks['deer']> {
