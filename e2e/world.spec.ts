@@ -169,10 +169,40 @@ test.describe('world', () => {
     const end = route[route.length - 1]!;
     expect(Math.hypot(end[0] - 1287, end[1] + 1228)).toBeLessThan(3);
     expect(route.length).toBeGreaterThan(2);
-    // round 3: the route goes through the north wing's Durchfahrt, never into the corner where
-    // the Corps de logis meets the wing (testers ran into it)
-    expect(route.some(([x, z]) => x > 1212 && x < 1228 && z < -1138 && z > -1162)).toBe(true);
-    expect(route.some(([x, z]) => x > 1244 && x < 1256 && z < -1140 && z > -1152)).toBe(false);
+    // round 3: the route goes through a real passage from court to garden, never into the corner
+    // where the Corps de logis meets the north wing (testers ran into it). Since the research-wave
+    // palace model (2821db1) the Corps de logis' through vestibule (B01.1.eg-vestibuel, "Durchgang
+    // Hof – Garten") has its court door from the model's own door leaf and the garden door opposite,
+    // so the shortest route now runs straight through it instead of round to the north wing's
+    // Durchfahrt; either counts. The route's points are only its bends, so sample its segments.
+    const along: [number, number][] = [];
+    for (let i = 1; i < route.length; i++) {
+      const [ax, az] = route[i - 1]!;
+      const [bx, bz] = route[i]!;
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5));
+      for (let j = 0; j <= n; j++) along.push([ax + ((bx - ax) * j) / n, az + ((bz - az) * j) / n]);
+    }
+    const vestibule: [number, number][] = [
+      [1271.2, -1123.76],
+      [1269.92, -1131.45],
+      [1254.13, -1128.81],
+      [1255.41, -1121.12],
+    ];
+    const inside = (poly: [number, number][], x: number, z: number) => {
+      let c = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, zi] = poly[i]!;
+        const [xj, zj] = poly[j]!;
+        if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c;
+      }
+      return c;
+    };
+    const durchfahrt = along.some(([x, z]) => x > 1212 && x < 1228 && z < -1138 && z > -1162);
+    // through the vestibule: in at the court door's side, out at the garden door's side
+    const vest = along.filter(([x, z]) => inside(vestibule, x, z));
+    const throughVestibule = vest.some(([x]) => x < 1258) && vest.some(([x]) => x > 1267);
+    expect(durchfahrt || throughVestibule).toBe(true);
+    expect(along.some(([x, z]) => x > 1244 && x < 1256 && z < -1140 && z > -1152)).toBe(false);
     expect(await page.evaluate(() => window.kq!.scenery!.built())).toContain('ehrenhof-weg');
     // standing in that corner with Hanne as the goal (bearing ≈ 25°, through the wall): the
     // compass gets a blue "Weg" marker towards a door (the vestibule or the Durchfahrt) instead
