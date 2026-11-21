@@ -336,7 +336,12 @@ test('campaign: new game → prologue → chapters 1–4 → ending → credits'
         expect(epi.length).toBeGreaterThan(200);
         await shot(page, '07-epilogue');
       } else if (label === 'ending:credits') {
-        await expect(page.getByTestId('credits')).toContainText('Mara');
+        // the credits strip over the party (bible 06-enden §8; content/party/credits.json); the
+        // strip carries no player name, so the name is checked in the story state instead
+        await expect(page.getByTestId('party-credits')).toBeVisible();
+        await expect(page.getByTestId('party-credits-track')).toContainText('Open-Kirrberg');
+        expect(await page.evaluate(() => window.kq!.party!.state().variant)).toBe('keep');
+        expect((await story(page)).name).toBe('Mara');
         await shot(page, '08-credits');
       }
     },
