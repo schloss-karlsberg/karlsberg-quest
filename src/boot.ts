@@ -28,6 +28,7 @@ import { openNews } from './ui/news';
 import { TitleScreen } from './ui/title';
 import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
+import { CameraTakeover, OverrideSlot } from './systems/cinematic/takeover';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
@@ -320,7 +321,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
       perf.begin();
       if (!pause.paused) player.look();
       player.applyCamera(camera, alpha, frameDt);
-      cameraOverride?.(camera);
+      cameraOverride.fn?.(camera);
       if (reasons.has('title')) {
         // title backdrop: slow drift of the view
         const tt = performance.now() / 1000;
@@ -328,8 +329,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
         camera.rotation.x = -0.02 + Math.sin(tt * 0.05) * 0.02;
       }
       systems.frame(frameDt, ctx);
-      // the character (after the systems: combat's pose of this frame, cut-scene cameras known)
-      avatar.frame({ dt: pause.paused && !reasons.has('title') ? 0 : frameDt, time: loop.time, camera, hidden: cameraOverride !== null, reducedMotion: settings.state.reducedMotion, reducedFlash: settings.state.reducedFlash === true });
+      // the character (after the systems: combat's pose of this frame, cut-scene cameras known);
+      // a cinematic's takeover keeps it in the picture (showAvatar), the debug camera hides it
+      avatar.frame({ dt: pause.paused && !reasons.has('title') ? 0 : frameDt, time: loop.time, camera, hidden: cameraOverride.fn !== null && !takeover.showsAvatar(cameraOverride.fn), reducedMotion: settings.state.reducedMotion, reducedFlash: settings.state.reducedFlash === true });
       // see-through (round 10): trunks, ferns, rocks in front of the character / the target / the
       // speaker, or at the lens, dither away (src/player/seeThrough.ts, SEE_GLSL)
       updateSee();
@@ -386,13 +388,19 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   let frames = 0;
   let lastRenderAt = 0;
   let zoomTimer = 0;
-  let cameraOverride: ((cam: PerspectiveCamera) => void) | null = null;
+  // the one camera override slot (debug setCamera, ctx.cinematic.takeCamera); `camera:override
+  // { active }` on every change between free and taken (src/systems/cinematic/takeover.ts)
+  const cameraOverride = new OverrideSlot(
+    (active) => events.emit('camera:override', { active }),
+    () => loop.requestRender(),
+  );
+  const takeover = new CameraTakeover({ slot: cameraOverride, player, events, reducedMotion: () => settings.state.reducedMotion, requestRender: () => loop.requestRender(), titleActive: () => reasons.has('title') });
   const seeChest = { x: 0, y: 0, z: 0 };
   const seeSubject = { x: 0, y: 0, z: 0, w: 0 };
   const see: SeeInput = { on: false, cam: camera.position, chest: seeChest, fight: false, subject: null };
   const updateSee = () => {
     const p = player.renderPos;
-    see.on = player.thirdPerson && cameraOverride === null && !reasons.has('title');
+    see.on = player.thirdPerson && cameraOverride.fn === null && !reasons.has('title');
     seeChest.x = p.x;
     seeChest.y = p.y + player.eyeHeight * 0.62;
     seeChest.z = p.z;
@@ -439,6 +447,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     systems,
     loop,
     pause,
+    cinematic: takeover,
     debug,
     params,
     t,
@@ -593,13 +602,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     frames: () => frames,
     perf,
     quality,
-    setCamera: (fn) => {
-      const was = cameraOverride !== null;
-      cameraOverride = fn;
-      // features that own the view (photo mode) step aside while somebody else holds the camera
-      if (was !== (fn !== null)) events.emit('camera:override', { active: fn !== null });
-      loop.requestRender();
-    },
+    setCamera: (fn) => cameraOverride.set(fn),
     ready: palaceReady,
   });
 

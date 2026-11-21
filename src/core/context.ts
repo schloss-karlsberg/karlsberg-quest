@@ -33,6 +33,29 @@ export interface PauseController {
   readonly reasons: ReadonlySet<string>;
 }
 
+export interface TakeCameraOptions {
+  /** Draw the player character while the camera is taken (default true). */
+  showAvatar?: boolean;
+  /** Freeze the player (`frozen` + `lookLocked`, yaw / pitch restored on release; default true). */
+  freeze?: boolean;
+  /** Called once when the camera is given back (reason: 'release', 'shift', 'era', 'death', 'load', 'error'). */
+  onRelease?: (reason: string) => void;
+}
+
+/**
+ * The production camera takeover (boot.ts's override slot; src/systems/cinematic/takeover.ts).
+ * One owner at a time; `fn` runs every rendered frame after the third-person rig placed the camera.
+ * Released automatically on an era change (`shift:done`, `era:change`), the player's death and a load.
+ * The hand-back eases from the shot to the rig over 0.4 s (a cut with reduced motion).
+ */
+export interface CinematicCamera {
+  /** False when another owner holds the camera. */
+  takeCamera(owner: string, fn: (cam: PerspectiveCamera) => void, opts?: TakeCameraOptions): boolean;
+  releaseCamera(owner: string): void;
+  /** The current owner, null when free. */
+  readonly cameraOwner: string | null;
+}
+
 /**
  * Everything a feature system may use. Passed to `init/update/frame` and exposed as `window.kq.ctx`.
  * Rule of thumb: talk to other features through `events` and `state`, not through each other.
@@ -65,6 +88,8 @@ export interface GameContext {
   systems: SystemRegistry;
   loop: FixedStepLoop;
   pause: PauseController;
+  /** Camera takeover for cut-scenes (`takeCamera` / `releaseCamera`). */
+  cinematic: CinematicCamera;
   /** `?debug` URL flag. */
   debug: boolean;
   /** URL query flags (e.g. `?era=1789&x=…`). */

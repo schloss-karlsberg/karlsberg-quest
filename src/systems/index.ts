@@ -36,6 +36,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./flaschen'),
   // the Karlsbergquelle: its living water and the touch that starts the time travel (prologue p3q)
   () => import('./quelle'),
+  // in-game cinematics (camera takeover, skip, reduced motion; contract C1)
+  () => import('./cinematic'),
   // the tour group: Gerold walks the route, the group follows (WP-16, era today)
   () => import('./walk'),
   // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")

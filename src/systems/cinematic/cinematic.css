@@ -1,0 +1,59 @@
+/* Cinematic (src/systems/cinematic): letterbox, fade, skip hint; the HUD steps back except the subtitles. */
+html[data-kq-cinematic] .kq-hud > :not(.kq-subtitles),
+html[data-kq-cinematic] .kq-touch {
+  visibility: hidden !important;
+}
+.kq-cine {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  /* under the UI root (z 10: subtitles, the radio box, modals stay readable over the black) */
+  z-index: 9;
+}
+.kq-cine-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7vh;
+  background: #000;
+  transition: transform 0.45s ease-out;
+}
+.kq-cine-bar.top {
+  top: 0;
+  transform: translateY(-100%);
+}
+.kq-cine-bar.bottom {
+  bottom: 0;
+  transform: translateY(100%);
+}
+.kq-cine.on .kq-cine-bar {
+  transform: none;
+}
+.kq-cine-fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+}
+.kq-cine-skip {
+  position: absolute;
+  right: 22px;
+  bottom: calc(7vh + 12px);
+  font: 500 13px/1.3 system-ui, sans-serif;
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 1px 3px #000;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.kq-cine-skip.on {
+  opacity: 1;
+}
+html[data-kq-reduced-motion] .kq-cine-bar,
+html[data-kq-reduced-motion] .kq-cine-skip {
+  transition: none;
+}
+html[data-kq-contrast] .kq-cine-skip {
+  color: #fff;
+  background: #000;
+  padding: 2px 8px;
+}
