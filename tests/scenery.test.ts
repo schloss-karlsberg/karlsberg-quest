@@ -20,7 +20,7 @@ import { lookFor } from '../src/systems/story/index';
 import { validateStories } from '../src/systems/story/validate';
 import type { StoryFile } from '../src/systems/story/types';
 import { FootprintCollider, type Ring, pointInRing } from '../src/world/collision';
-import { OPEN_GROUND, RUIN_KEEP } from '../src/world/palace';
+import { OPEN_GROUND, OPEN_SOLIDS, RUIN_KEEP } from '../src/world/palace';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
 const rings = footprints.map((f) => f.ring as Ring);
@@ -332,6 +332,48 @@ describe('the Karlslust in the research-wave model', () => {
     }
     // inside the plot, away from the rows, nothing pushes you out any more
     expect(c.resolve(1975, 120, 0.35).hit).toBe(false);
+  });
+});
+
+describe('the Altan KB-B02a (open ground in front of the Durchfahrt)', () => {
+  // the outdoor collider as the intact palace has it: detailed footprints handed to the interiors
+  const altanCollider = (): FootprintCollider => {
+    const c = new FootprintCollider(footprints.map((f) => (OPEN_GROUND.includes(f.id) ? [] : f.ring) as Ring));
+    const passable = new Set(footprints.flatMap((f, i) => (f.interior === 'detailed' ? [i] : [])));
+    c.overlay = { passable, resolve: (x, z) => ({ x, z, hit: false }) };
+    c.setSolids('palace-open', [...OPEN_SOLIDS]);
+    return c;
+  };
+
+  it('its pillars stand inside its outline and hold; the way under it is 4 m wide', () => {
+    expect(OPEN_GROUND).toContain('KB-B02a');
+    const ring = footprints.find((f) => f.id === 'KB-B02a')!.ring as Ring;
+    const c = altanCollider();
+    expect(OPEN_SOLIDS.length).toBe(4);
+    for (const s of OPEN_SOLIDS) {
+      expect(pointInRing(s.x, s.z, ring)).toBe(true);
+      expect(c.solidAt(s.x, s.z)).toBe(true);
+    }
+    // across the carriage way between the free pillars: over 4 m from pedestal to pedestal, i.e. a
+    // band of more than 3.3 m for the centre of a 0.35 m body
+    const [sw, se] = [OPEN_SOLIDS[2]!, OPEN_SOLIDS[3]!];
+    const span = Math.hypot(se.x - sw.x, se.z - sw.z);
+    const free = Array.from({ length: 101 }, (_, i) => {
+      const t = i / 100;
+      return !c.solidAt(sw.x + (se.x - sw.x) * t, sw.z + (se.z - sw.z) * t, 0.35);
+    }).filter(Boolean).length;
+    expect((free / 100) * span).toBeGreaterThan(3.3);
+  });
+
+  it('the walk from the garden under the Altan into the Durchfahrt is free (k2 "Die Warnung")', () => {
+    const c = altanCollider();
+    let [x, z] = [1235, -1076];
+    for (let i = 0; i < 80; i++) {
+      const r = c.resolve(x, z - 0.1, 0.35);
+      expect(r.hit).toBe(false);
+      [x, z] = [r.x, r.z];
+    }
+    expect(z).toBeLessThan(-1083.9);
   });
 });
 

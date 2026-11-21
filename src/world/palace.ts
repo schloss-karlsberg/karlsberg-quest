@@ -16,6 +16,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Footprint } from '../data/types';
 import { ATMOS_GLSL, atmosphere } from './atmosphere';
+import type { Solid } from './collision';
 import { SURF, SURF_GLSL, planarUv, surfaces } from './surfaces';
 
 const PALACE_VERT = /* glsl */ `
@@ -137,12 +138,32 @@ void main() {
 export const RUIN_KEEP = ['KB-B29', 'KB-B63', 'KB-B64'];
 
 /**
- * Footprints that are open ground with free-standing parts, so their outline must not block: the
- * menagerie terraces KL-B43 (research-wave model: six rows of animal houses with their runs, no wall
- * round the plot). The collider leaves them out; their rows are solids of the menagerie set
- * (scenery/worldsets.ts `TERRACE_ROWS`).
+ * Footprints that are open ground with free-standing parts, so their outline must not block:
+ * - the menagerie terraces KL-B43 (research-wave model: six rows of animal houses with their runs,
+ *   no wall round the plot); their rows are solids of the menagerie set (scenery/worldsets.ts
+ *   `TERRACE_ROWS`);
+ * - the Altan KB-B02a in front of the south wing's Durchfahrt (garden side): a balcony on two free
+ *   pillars and two pilasters, open beneath from the ground to its beams (350.5), so the carriage
+ *   way into the Durchfahrt runs under it; its pillars are `OPEN_SOLIDS`.
+ * The collider leaves their outlines out.
  */
-export const OPEN_GROUND: readonly string[] = ['KL-B43'];
+export const OPEN_GROUND: readonly string[] = ['KL-B43', 'KB-B02a'];
+
+/** Wing axis of the south wing KB-B02 (west → east) in the local frame. */
+const B02_U = { x: 0.9863, z: -0.1655 };
+
+/**
+ * The standing parts of the open-ground footprints that belong to the palace itself (solid while the
+ * palace is intact): the Altan KB-B02a's pillar pedestals as the model draws them (343.8 … 346.2,
+ * pillars on top up to the beams), the two free ones 0.91 m square, the pilasters 0.67 × 0.19 m
+ * against the wing's wall. Between them the way into the Durchfahrt is 4.4 m wide.
+ */
+export const OPEN_SOLIDS: readonly Solid[] = [
+  { x: 1232.675, z: -1083.21, hu: 0.335, hv: 0.1 }, // pilaster west
+  { x: 1237.75, z: -1084.055, hu: 0.335, hv: 0.1 }, // pilaster east
+  { x: 1233.275, z: -1079.555, hu: 0.46, hv: 0.46 }, // pillar south-west
+  { x: 1238.365, z: -1080.4, hu: 0.46, hv: 0.46 }, // pillar south-east
+].map((p) => ({ kind: 'box', ux: B02_U.x, uz: B02_U.z, ...p }) as Solid);
 
 export interface PalaceBuilding {
   id: string;
