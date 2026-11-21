@@ -26,6 +26,8 @@ const STORY_FLAGS = new Set([
   'flag.k3_teil_b', // ch. 3 part B opens after 6 chapter nouns or the 1st confirmation
   'flag.k4_finale', // ch. 4 finale opens with the 2nd confirmation
   'flag.k2_tor', // ch. 2 choice at the gate: leuchten / dunkel
+  'flag.k1_kleid', // ch. 1 Kaspar's coat: geliehen / genommen (story k1_0b)
+  'disguise.coat', // ch. 1 the court coat (story k1_0b; the court system reads it)
   'flag.k3_objekt', // ch. 3 rescued object: tuergriff / dukat / uhr / nichts
   'k2.wache_frei', // ch. 2 Wachhaus Irrlichter banned (story rule k2_4-frei)
   'story.laub', // set by the prologue story when Laub first speaks (00-prolog.story.json)
@@ -73,9 +75,9 @@ describe('campaign packs', () => {
     expect(r.warnings.filter((w) => w.file.startsWith('content/packs/')).map((w) => `${w.id}: ${w.message}`)).toEqual([]);
   });
 
-  it('has 43 codex cards (cx.47 Fläschchen), 8 relief patterns and a label on every fact', () => {
+  it('has 47 codex cards (cx.43–46 the disguise, cx.47 Fläschchen), 8 relief patterns and a label on every fact', () => {
     const codex = packs.find((p) => p.file.endsWith('codex.pack.json'))!.pack.facts!;
-    expect(codex.filter((f) => /^cx\.\d\d$/.test(f.id))).toHaveLength(43);
+    expect(codex.filter((f) => /^cx\.\d\d$/.test(f.id))).toHaveLength(47);
     const rm = codex.filter((f) => f.id.startsWith('rm.'));
     expect(rm).toHaveLength(8);
     expect(rm.every((f) => f.tags?.includes('reliefmuster'))).toBe(true);

@@ -240,7 +240,7 @@ describe('the pike look flag (npc figure, low tier)', () => {
   it('a look with pike: true stands a ghost pike beside the procedural figure; others have none', async () => {
     const { GhostFigure } = await import('../src/systems/npc/figure');
     const { lookFor } = await import('../src/systems/npc/roster');
-    const plain = new GhostFigure(lookFor('gardist'), '1789');
+    const plain = new GhostFigure({ ...lookFor('gardist'), pike: false }, '1789');
     const armed = new GhostFigure({ ...lookFor('gardist'), pike: true }, '1789');
     const pikes = (f: InstanceType<typeof GhostFigure>) => f.object.children.filter((c) => c.name === 'npc-pike');
     expect(pikes(plain)).toHaveLength(0);

@@ -3,6 +3,20 @@
   "chapter": "k1",
   "items": [
     {
+      "id": "item.k1.rock",
+      "kind": "quest",
+      "fiction": true,
+      "name_de": "Kaspars Rock",
+      "text_de": "Dunkelblaue Wolle, Messingknöpfe, an den Ärmeln etwas zu lang. Er gehört Kaspar, dem Lakaien, der seit drei Wochen mit Fieber liegt. (Fiktion)"
+    },
+    {
+      "id": "item.k1.empfehlung",
+      "kind": "quest",
+      "fiction": true,
+      "name_de": "Ein Empfehlungsschreiben",
+      "text_de": "Im Namen des Hofrats Justus Amsel aus Celle: Sein Sekretär reise voraus und bitte, den Berg besehen zu dürfen. Gesiegelt mit grünem Gärtnerwachs. Den Hofrat gibt es nicht. (Fiktion)"
+    },
+    {
       "id": "item.k1.lohnzettel",
       "kind": "quest",
       "fiction": true,
@@ -174,6 +188,194 @@
       }
     },
     {
+      "id": "q.k1.kleider",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Kleider machen Leute",
+      "summary_de": "In Orange kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Ein Rock, der nicht leuchtet. Unten an der Bleiche hängt einer. Fragen oder nehmen, das überlasse ich Ihnen. Ich bin nur eine Stimme."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Dunkelblau. Das Orange ist darunter, aber das weiß nur ich."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Fußnote: Wie man sich bei Hof zu kleiden hatte und wie die Wache am Gitter prüfte, steht nirgends. Liese, Kaspar und sein Rock sind erfunden. Die Wäsche, die irgendwer für den Hof gebleicht hat, nicht.",
+          "fact": "cx.46"
+        }
+      ],
+      "objectives": [
+        {
+          "id": "rock",
+          "type": "manual",
+          "text_de": "Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche",
+          "where": {
+            "x": 1001.5,
+            "z": -876.5,
+            "r": 12,
+            "era": "1789"
+          },
+          "hint_de": "Die Bleiche liegt unten am Bach, westlich der Quelle. Hinter der zweiten Leine stehen und E drücken, solange Liese zum Weg schaut. Oder mit ihr reden."
+        },
+        {
+          "id": "bitte",
+          "type": "talk",
+          "npc": "liese",
+          "topic": "rock",
+          "optional": true,
+          "noMarker": true,
+          "text_de": "Oder: Liese nach dem Rock fragen"
+        },
+        {
+          "id": "zettel",
+          "type": "kill",
+          "enemy": "mahnbrief",
+          "count": 3,
+          "optional": true,
+          "after": [
+            "bitte"
+          ],
+          "text_de": "Für Liese: die Zettel aus der Wäsche jagen",
+          "where": {
+            "x": 998,
+            "z": -890,
+            "r": 10,
+            "era": "1789"
+          },
+          "spawn": [
+            {
+              "kind": "mahnbrief",
+              "x": 998,
+              "z": -890,
+              "era": "1789",
+              "count": 3,
+              "radius": 3,
+              "leash": 22,
+              "escorts": [],
+              "wave": []
+            }
+          ]
+        }
+      ],
+      "rewards": {
+        "xp": 60,
+        "items": [
+          {
+            "item": "item.k1.rock"
+          }
+        ]
+      }
+    },
+    {
+      "id": "q.k1.brief",
+      "kind": "main",
+      "era": "1789",
+      "title_de": "Ein Brief in fremdem Namen",
+      "summary_de": "Ohne Erlaubnis kommt niemand auf den Berg, und jeder Begleiter muss mit Namen im Schreiben stehen. Laub erfindet einen Reisenden, den Hofrat Justus Amsel aus Celle, und schreibt dich als seinen Sekretär hinein. Papier und Siegellack hat der Hofgärtner vor der Orangerie.",
+      "giver": {
+        "voice": "laub"
+      },
+      "turnin": "auto",
+      "offer": [
+        {
+          "speaker": "laub",
+          "text": "Papier, Siegel, ein Name. Den Namen erfinde ich. Das Papier hat der Hofgärtner."
+        }
+      ],
+      "turnin_lines": [
+        {
+          "speaker": "laub",
+          "text": "Gesiegelt. Grünes Wachs, für Kübelpflanzen. Die Wache wird es für Celler Mode halten."
+        }
+      ],
+      "history": [
+        {
+          "speaker": "laub",
+          "text": "Den Karlsberg sah kaum ein Fremder von innen. Niemand wagte sich zu zeigen, ohne gerufen zu sein, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und darin musste jeder Begleiter mit Namen stehen.",
+          "fact": "cx.44",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 355"
+            },
+            {
+              "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+              "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+              "note": "P · S. 26 f."
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Der Reisende steht in einem Buch, das Knigge 1793 herausgab. Ob Knigge selbst der Reisende war, ist nicht sicher; er nennt sich nicht. Den Herzog hat er nicht getroffen. Der war gerade abwesend.",
+          "fact": "cx.43",
+          "sources": [
+            {
+              "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+              "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+              "note": "P · S. 26 f.; Titel: „herausgegeben von“"
+            },
+            {
+              "url": "https://www.literaturland-saar.de/personen/adolph-freiherr-knigge/",
+              "label": "Literaturland Saar: Adolph Freiherr Knigge"
+            }
+          ]
+        },
+        {
+          "speaker": "laub",
+          "text": "Einen falschen Prinzen hat der Hof schon gehabt, Ende 1777 in Zweibrücken, mit einem Empfehlungsbrief aus Straßburg. Der Hof sah ihm heimlich hinter den Jalousien zu und lachte. Danach wurde er verhaftet. Wir sind bescheidener: Wir wollen nur hinein.",
+          "fact": "cx.45",
+          "sources": [
+            {
+              "url": "https://archive.org/details/eindeutschermale00mann",
+              "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+              "note": "P · S. 346–349, 356–358"
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "id": "papier",
+          "type": "talk",
+          "npc": "hofgaertner",
+          "topic": "papier",
+          "text_de": "Papier und Siegellack: den Hofgärtner vor der Orangerie fragen",
+          "hint_de": "Der Hofgärtner steht auf dem Rasen vor der Westseite der Orangerie. Im Rock hingehen, langsam, den Stab weg, und mit ihm reden (E)."
+        },
+        {
+          "id": "schreiben",
+          "type": "examine",
+          "clue": "clue.k1.brief",
+          "after": [
+            "papier"
+          ],
+          "text_de": "Am Tisch des Hofgärtners: Laub schreibt den Brief (E)"
+        }
+      ],
+      "rewards": {
+        "xp": 70,
+        "items": [
+          {
+            "item": "item.k1.empfehlung"
+          }
+        ]
+      }
+    },
+    {
       "id": "q.k1.registratur",
       "kind": "main",
       "era": "1789",
@@ -325,7 +527,7 @@
         }
       ],
       "rewards": {
-        "xp": 130,
+        "xp": 100,
         "items": [
           {
             "item": "item.charm.rechenpfennig"
@@ -651,7 +853,7 @@
         }
       ],
       "rewards": {
-        "xp": 160,
+        "xp": 120,
         "items": [
           {
             "item": "item.charm.hundemarke"
@@ -789,7 +991,7 @@
           "id": "baeren",
           "type": "examine",
           "clue": "clue.k1.baerenkaesten",
-          "text_de": "Oben an der Terrassenmauer: die Bären-Kästen"
+          "text_de": "Oben an den Terrassen: die Bären-Kästen"
         },
         {
           "id": "lichter",
@@ -858,7 +1060,7 @@
         }
       ],
       "rewards": {
-        "xp": 240,
+        "xp": 180,
         "skills": [
           {
             "id": "kartograf",

@@ -46,6 +46,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./photo'),
   // "Unauffällig": the court's watchers, suspicion, the gate inspection (after npc / scenery / story)
   () => import('./court'),
+  // chapter 1's lines for the court (content strings only; after court so they override its placeholders)
+  () => import('./court-k1'),
   // F8 notes + passive local telemetry (docs/ARCHITECTURE.md "Notizen & Telemetrie"), last: listens to everyone
   () => import('./notes'),
 ];

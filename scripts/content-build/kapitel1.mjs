@@ -7,6 +7,25 @@ const REG = 'B03.1.eg-registratur';
 const PFS = 'B10.1.s-pfeilersaal';
 const ZW = [1177, -1571]; // west side of the Zwinger (KB-B23 is a solid walled court), on the Allee
 const AMPH = [1935, 87];
+
+/**
+ * The disguise opening (docs/IDEAS-ROUND11.md §2, story k1_0b / k1_0c): Liese's Bleiche by the
+ * Karlsbergbach (src/systems/bleiche/layout.ts: LIESE, COAT_REACH), the Hofgärtner on the lawn in
+ * front of the Orangerie's west front (inside the teaching zone court.orangerie, 1260/−985 r 45;
+ * the lawn 1214–1230/−1004…−986 lies at 335.2 m) and his table at its north end (11 m from him, so
+ * E there never means "talk").
+ */
+export const DISGUISE = {
+  bleiche: [1001.5, -876.5],
+  liese: [1004.85, -870.3],
+  coatReach: [1001.08, -880.9],
+  // the Mahnbriefe blown out of Liese's linen (the favour): on the meadow north of the green, 21 m
+  // from her (her talk bubble must not touch the fight, quests validator ≥ 19.4 m)
+  zettel: [998, -890],
+  hofgaertner: [1221, -993],
+  tisch: [1226, -1003],
+};
+const DZ = DISGUISE;
 const RONDELL = [1815, 348];
 
 /**
@@ -21,10 +40,28 @@ const PROPS = { 'clue.k1.baerenkaesten': 'chest', 'clue.k1.seite': 'paper' };
 
 const clues = [
   // Teil A – am Schloss
+  // the disguise opening (k1_0b): the coat, the paper, the letter
+  clue('clue.k1.rock', {
+    title: 'Kaspars Rock', kind: 'object', at: DZ.coatReach, r: 1.4, era: E, chapter: ch, fiction: true,
+    text: 'Auf der hinteren Leine, zwischen Laken und Hemden, hängt ein dunkelblauer Rock mit Messingknöpfen, an den Ärmeln etwas zu lang. Liese schaut zum Weg. Hinter der zweiten Leine sieht sie dich nicht. (Fiktion: Liese, Kaspar und sein Rock sind erfunden.)',
+    facts: ['cx.46'],
+  }),
+  clue('clue.k1.papier', {
+    title: 'Papier vom Hofgärtner', kind: 'dialogue', at: DZ.hofgaertner, r: 6, era: E, chapter: ch, fiction: true,
+    text: 'Der Hofgärtner schreibt Schildchen für die Kübelpflanzen. Papier und Siegellack liegen auf seinem Tisch, und er hat nichts gesehen.',
+    facts: ['cx.46'],
+  }),
+  at(clue('clue.k1.brief', {
+    title: 'Ein Brief in fremdem Namen', kind: 'document', at: DZ.tisch, r: 2.5, era: E, chapter: ch, fiction: true,
+    text: '„Hochwohlgeborener Herr! Der Hofrat Justus Amsel aus Celle, Verfasser des Werkes ‚Vom Betragen bei Hofe‘, bittet unterthänigst, den Carlsberg besehen zu dürfen, und schickt seinen Sekretär voraus, welcher hiermit namentlich genannt sey.“ Gesiegelt mit grünem Gärtnerwachs. (Wortlaut erfunden, der Hofrat und sein Buch auch. Echt ist die Regel: ohne ausdrückliche Erlaubnis niemand auf den Berg, jeder Begleiter mit Namen; Knigge (Hg.) 1793, S. 26 f.)',
+    facts: ['cx.44'], req: { clues: ['clue.k1.papier'] },
+  }), ...DZ.tisch, 2.5, { prop: 'paper' }),
+  // inside the gitter only (x ≥ 1195 at the gate; the gitter line is at x ≈ 1192.4): the echo never
+  // talks over the Musterung outside the gate (k1_0c)
   at(clue('clue.k1.wache', {
     title: 'Erinnerung: Die Wache am Gitter', kind: 'echo', at: [1199, -1115], r: 12, era: E, anchor: 'KB-B39', chapter: ch, fiction: true,
     text: 'Die Wache am Ehrenhofgitter, automatisch beim Betreten.', nouns: ['n.herzog'],
-  }), 1201, -1115, 12, { auto: true }),
+  }), 1203, -1115, 8, { auto: true }),
   clue('clue.k1.fluegel', {
     title: 'Blick auf die Flügel', kind: 'dialogue', at: [1222, -1116], r: 20, era: E, anchor: 'TF-01', chapter: ch, fiction: false,
     text: 'Vom Ehrenhof nach Osten: rechts der Südflügel der Herzogin, links der Nordflügel des Herzogs, dazwischen der Hof.',
@@ -109,12 +146,12 @@ const clues = [
   }),
   clue('clue.k1.insel', {
     title: 'Die Insel', kind: 'dialogue', at: AMPH, r: 42, era: E, anchor: 'KL-B41', chapter: ch, fiction: false,
-    text: 'Blick zur Insel mit dem Pavillon.', nouns: ['n.insel'],
+    text: 'Blick zur Insel mit dem Pavillon. (Seine Form folgt den 2016 gefundenen Grundmauern; Hypothese.)', nouns: ['n.insel'],
   }),
-  // at the foot of the lowest terrace wall (the terraces KL-B43 are one solid block in the model)
+  // at the upper edge of the terraces KL-B43 (six rows of animal houses on open ground, no wall)
   clue('clue.k1.baerenkaesten', {
     title: 'Die Bären-Kästen', kind: 'object', at: [1958, 146], r: 4, era: E, anchor: 'KL-B43', chapter: ch, fiction: false,
-    text: 'Am Fuß der Terrassenmauer, hinaufgezogen auf die erste Stufe: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)',
+    text: 'Am oberen Rand der Terrassen, vor der ersten Reihe Tierhäuser: mehrere Kästen aus Eisen mit Gittertür. An der Außenseite jedes Kastens sitzt eine kleine Feuerluke. (Eiserne „Bären-Kästen“, 1786, von außen beheizt; nach Saarpfalz-Touristik.)',
     nouns: ['n.herzogsterrassen'],
   }),
   clue('clue.k1.kasuar', {
@@ -129,7 +166,7 @@ const clues = [
     nouns: ['n.einziges_geruest', 'n.karlslust', 'n.zwoelf'], facts: ['entry.k1.gedenk'],
   }),
   clue('clue.k1.seite', {
-    title: 'Eine Chronikseite auf den Stufen', kind: 'document', at: [1811, 363], r: 4, era: E, anchor: 'KL-B49', chapter: ch, fiction: true, lantern: true,
+    title: 'Eine Chronikseite auf den Stufen', kind: 'document', at: [1811, 363], r: 4, era: E, anchor: 'TF-36', chapter: ch, fiction: true, lantern: true,
     text: 'Eine Chronikseite. Oben in großer, ungelenker Schrift: „Diane. Sultan. Fanfare. Rauhreif. Bijou.“ Darunter in feiner Kanzleischrift: „Hanne, Witwe des Steinhauers Matthes. Lohn: offen.“ Sobald man sie aufhebt, bläst das Horn zweimal kurz.',
     flags: ['flag.k1_seite'], req: { clues: ['clue.k1.feuerwerk'] },
   }),
@@ -268,16 +305,52 @@ const dialogue = [
   ], { once: false }),
   say('jost.k1.11', 'jost', 'Die Meute reißt nicht. Sie stellt. Reißen tut, was danach kommt.', talk('jost', 'stellen')),
   say('jost.k1.12', 'jost', 'Heut Nacht laufen sie in der Karlslust. Wenn du dahin gehst: Bleib am Wasser.', talk('jost', 'bye')),
+  // Liese (the Bleiche, k1_0b): the coat by asking, the favour, the coat by taking
+  say('liese.k1.01', 'liese', 'Jesses, wie sieht Er denn aus? Wie ein Feuersalamander.', talk('liese', 'greet'), { once: true }),
+  say('liese.k1.dank.greet', 'liese', 'Steht Ihm besser als Kaspar. Sag Er keinem, woher.', { ...talk('liese', 'greet'), flag: 'flag.k1_kleid', value: 'geliehen' }, { priority: 5 }),
+  say('liese.k1.weg.greet', 'liese', 'Kaspars Rock ist weg. Der Wind war’s, sagt der Wind. Ich sag nichts. Ich wasch.', { ...talk('liese', 'greet'), flag: 'flag.k1_kleid', value: 'genommen' }, { priority: 5 }),
+  ...seq(talk('liese', 'rock'), [
+    ['liese.k1.02', 'liese', 'Einen Rock? Auf der hinteren Leine hängt Kaspars. Der Lakai liegt seit drei Wochen mit Fieber, der braucht ihn grad nicht.'],
+    ['liese.k1.03', 'liese', 'Aber erst helf Er mir. Die Zettel da fliegen mir in die Wäsche, und sie beißen. Wäschelohn: angewiesen. Steht auf allen.'],
+  ], { once: false }),
+  say('liese.k1.04', 'liese', 'Gebleicht wird in der Sonne. Gießen, wenden, gießen. Für den Hof muss es weißer sein als weiß. Der Herzog sieht’s nicht, aber der Kammerdiener.', talk('liese', 'waesche')),
+  say('liese.k1.05', 'liese', 'Kaspar trägt die Schüsseln von der Küche hinauf ins Schloss. Seit er krank ist, trägt sie ein anderer. Den Rock wasch ich ihm, bis er wiederkommt.', talk('liese', 'kaspar')),
+  say('liese.k1.bye', 'liese', 'Und tret Er mir nicht aufs Laken.', talk('liese', 'bye')),
+  // the Hofgärtner (the Orangerie lawn, the teaching zone): paper and seal wax, no questions
+  say('hofgaertner.k1.01', 'hofgaertner', 'Sieh an, Kaspars Rock. Und wer steckt drin? Sag Er’s nicht. Ich will’s nicht wissen.', { ...talk('hofgaertner', 'greet'), flag: 'disguise.coat' }, { once: true }),
+  say('hofgaertner.k1.02', 'hofgaertner', 'Er gehört nicht hierher. Das sieht man bis zur Kaskade.', talk('hofgaertner', 'greet'), { priority: -1 }),
+  ...seq(talk('hofgaertner', 'papier'), [
+    ['hofgaertner.k1.03', 'hofgaertner', 'Papier? Wozu braucht ein Lakai Papier? … Gut. Ich frag nicht.'],
+    ['hofgaertner.k1.04', 'hofgaertner', 'Am Tisch da hinten liegt meins, für die Schildchen an den Kübeln. Siegellack auch. Nehm Er sich, was Er braucht. Ich hab nichts gesehen. Ich hab Rasen.'],
+  ], { once: false }),
+  say('hofgaertner.k1.05', 'hofgaertner', 'Den Rasen betritt der Gärtner. Sonst keiner. Man sieht jeden Fußtritt bis zum Abend.', talk('hofgaertner', 'rasen')),
+  say('hofgaertner.k1.bye', 'hofgaertner', 'Und schreib Er schön.', talk('hofgaertner', 'bye')),
+  // the watchers at the gitter (after the Musterung they may be talked to; before it, E is the letter)
+  say('gardist-tor.k1.01', 'gardist-tor', 'Weiter. Zu Fuß, wenn’s beliebt.', talk('gardist-tor', 'greet'), { once: false }),
+  say('gardist.k1.01', 'gardist', 'Nicht stehen bleiben. Hier wird nicht gestanden, hier wird gewacht.', talk('gardist', 'greet'), { once: false }),
+  say('lakai.k1.01', 'lakai', 'Ich trag nur. Fragen Sie wen, der was weiß.', talk('lakai', 'greet'), { once: false }),
   // Laub
   say('laub.k1.morgen.quelle', 'laub', 'Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.', beat('1.0'), { once: true }),
-  say('laub.k1.brunnenstube', 'laub', 'Sommer 1789. Die Bussole ist wieder nass. Zum Schloss geht es zu Fuß, den Hang hinauf, an der Orangerie vorbei. Wie alle.', beat('1.0b'), { once: true }),
+  // the disguise opening (k1_0b / k1_0c): spoken by the story (inline say actions with these ids)
+  say('laub.k1.brunnenstube', 'laub', 'Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.', beat('1.0b'), { once: true }),
+  say('laub.k1.fremde', 'laub', 'Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche.', beat('1.0b'), { once: true, src: [P('Einl. S. XXXIII (Stollreither: 100 Gardisten)')] }),
+  say('laub.k1.bleiche', 'laub', 'Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein.', beat('1.0b-bleiche'), { once: true }),
+  say('laub.k1.rock.genommen', 'laub', 'Genommen. Im Dienst der Wissenschaft. Ich trage es ein, unter „geliehen, ohne zu fragen“.', beat('1.0b-rock'), { once: true }),
+  say('liese.k1.dank', 'liese', 'Da, nimm Er ihn. Steht Ihm besser als Kaspar. Sag Er keinem, woher, und bring Er ihn mir sauber wieder.', beat('1.0b-rock'), { once: true }),
+  say('laub.k1.rock.geliehen', 'laub', 'Ehrlich erworben. Das wird der Hof nie begreifen.', beat('1.0b-rock'), { once: true }),
+  say('laub.k1.papier', 'laub', 'Einen Rock haben wir. Jetzt Papier und Siegel. Vor der Orangerie schneidet der Hofgärtner Rasen. Ab da schaut der Hof: langsam gehen, Stab weg. Die hellen Fächer am Boden, das sind Blicke.', beat('1.0b-papier'), { once: true }),
+  say('laub.k1.brief', 'laub', 'Wir schreiben im Namen des Hofrats Justus Amsel aus Celle. Er reist, er schreibt Bücher, eins heißt ‚Vom Betragen bei Hofe‘. Sie sind sein Sekretär, vorausgeschickt. Den Hofrat gibt es nicht. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen.', beat('1.0b-brief'), { once: true }),
+  say('laub.k1.erlaubnis', 'laub', 'Ohne ausdrückliche Erlaubnis des Herzogs kommt keiner hier herauf. Und jeder, der mitkommt, muss mit Namen drinstehen. Also schreiben wir Sie hinein.', beat('1.0b-brief'), { once: true, src: [src('KNIGGE-BRIEFE', 'P · S. 26 f.'), P('S. 355')] }),
+  say('laub.k1.umgang', 'laub', 'Ein echtes Buch über den Umgang mit Menschen gibt es schon, vom Freiherrn Knigge, letztes Jahr erschienen. Seinen Namen leihen wir uns nicht.', beat('1.0b-brief'), { once: true, src: [src('ADB-KNIGGE', 'Umgang 1788')] }),
+  say('laub.k1.musterung', 'laub', 'Jetzt ruhig. Stab weg, Laterne aus, und stehen bleiben, wenn er schaut. Die Wache liest nicht. Sie schaut aufs Wachs.', beat('1.0c'), { once: true }),
+  say('laub.k1.wahrhaftig', 'laub', 'Knigge schreibt, in einer späteren Auflage: ‚Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!‘ Vier von fünf haben wir geschafft.', beat('1.0c-drin'), { once: true, src: [src('KNIGGE-UMGANG-1790', 'Z · Teil 3, Kap. 3, Abschn. 3, S. 53 f.; ob schon in der Ausgabe von 1788: nicht geprüft')] }),
   say('laub.k1.start', 'laub', '1789. Der Hof auf seiner Höhe. Genießen Sie die Aussicht, sie ist bezahlt. Nicht vom Herzog, aber bezahlt.', beat('1.1'), { once: true, priority: 10 }),
   say('laub.k1.fluegel', 'laub', 'Rechts der Flügel der Herzogin, links der des Herzogs. Dazwischen ein Hof, damit sie sich nicht zufällig begegnen.', found('clue.k1.fluegel'), { once: true }),
   say('laub.k1.registratur', 'laub', 'Eine Registratur. Mein natürlicher Lebensraum. Halten Sie sich an den Mann mit den Ärmelschonern.', beat('1.2'), { once: true }),
   say('laub.k1.gegenbuch', 'laub', 'Haben Sie die Überschrift gesehen? … Ich auch.', found('clue.k1.gegenbuch'), { once: true }),
   say('laub.k1.bauplatz', 'laub', 'Die Galerie ist nagelneu und schon wird angebaut. Ein Schloss, das nie fertig wird, ist die teuerste Art, eines zu haben.', beat('1.3'), { once: true, src: [src('SKD', 'Das Schloss wurde nie fertig')] }),
   say('laub.k1.orangerie', 'laub', 'Hier hat der Baudirektor gewohnt. Über den Orangen. Ein Maler, der Ställe bauen musste. Ich mag ihn. Er hat auch nie bekommen, was ihm zustand.', beat('1.4'), { once: true, src: [src('M1910', 'S. 421: Leibrente ab 1791 nicht gezahlt')] }),
-  say('laub.k1.feenschloss', 'laub', 'Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.', found('clue.k1.feenschloss'), { once: true, src: [Z('Einl. S. XXXIV (Knigge)')] }),
+  say('laub.k1.feenschloss', 'laub', 'Ein Reisender nennt das alles 1792 ein ‚Feen-Schloß‘. Er hat die Rechnungen nicht gesehen.', found('clue.k1.feenschloss'), { once: true, src: [src('KNIGGE-BRIEFE', 'Z · S. 28 f.; Brief vom 11. Mai [1792], Schreiber ungenannt, Knigge als Herausgeber'), Z('Einl. S. XXXIV (zitiert den Brief)')] }),
   say('laub.k1.gagern', 'laub', 'Ein Herr von Gagern hat es später so aufgeschrieben: ‚tausend Pferde im Marstall, noch mehr Hunde in den Zwingern, das ganze Land ein Thiergarten zum Verderben der Unterthanen!‘ Er war Diplomat. Das ist für einen Diplomaten sehr deutlich.', found('clue.k1.gagern'), { once: true, src: [Z('Einl. S. XXXV (Gagern)')] }),
   // spoken by the story on the way home after the Zwinger (k1_6); the Chronik batches are gone
   ...seq(beat('1.5-flug'), [
@@ -344,10 +417,10 @@ const spawn = (kind, [x, z], count, radius, extra = {}) => ({ kind, x, z, era: E
 
 // Terrain-checked spots (probe.mjs / terrain.mjs, 2026-11-16): dry, walkable in 1789, outside the
 // 1789 footprints, inside the playable area. The Schuldbuch arena moved 18 m east of the catalogue
-// value (1276/−1228 lies inside the pavilion KB-B07) onto the open Bauplatz lawn.
+// value (1276/−1228 lies inside the rotunda KB-B07) onto the open Bauplatz lawn.
 export const K1_SPOTS = {
   kuechenhof: [1212, -1180], // Küchenhof (TF-02), cobbles, behind the north wing
-  // the Bauplatz lawn north-east of the pavilion KB-B07, 29 m from Hanne (1287/−1228): her 6 m talk
+  // the Bauplatz lawn north-east of the rotunda KB-B07, 29 m from Hanne (1287/−1228): her 6 m talk
   // bubble must not overlap the boss's arena (playtest round 2: the book healed when you stepped near her)
   bauplatz: [1300, -1254],
   fleisch: [[1212, -1626], [1206, -1630], [1216, -1618], [1208, -1612], [1214, -1634]], // the Jägerhaus yard (east of KB-B24)
@@ -378,6 +451,8 @@ const PLAN = {
 const k1Quests = {
   chapter: 'k1',
   items: [
+    { id: 'item.k1.rock', kind: 'quest', fiction: true, name_de: 'Kaspars Rock', text_de: 'Dunkelblaue Wolle, Messingknöpfe, an den Ärmeln etwas zu lang. Er gehört Kaspar, dem Lakaien, der seit drei Wochen mit Fieber liegt. (Fiktion)' },
+    { id: 'item.k1.empfehlung', kind: 'quest', fiction: true, name_de: 'Ein Empfehlungsschreiben', text_de: 'Im Namen des Hofrats Justus Amsel aus Celle: Sein Sekretär reise voraus und bitte, den Berg besehen zu dürfen. Gesiegelt mit grünem Gärtnerwachs. Den Hofrat gibt es nicht. (Fiktion)' },
     { id: 'item.k1.lohnzettel', kind: 'quest', fiction: true, name_de: 'Matthes’ Lohnzettel', text_de: '„Matthes, Steinhauer, Galerieflügel. Lohnrest: 1 fl. 30 kr. Angewiesen.“ Darunter kein Stempel „ausgezahlt“. (Fiktion)' },
     { id: 'item.k1.fleisch', kind: 'quest', fiction: true, name_de: 'Fleisch für den Zwinger', text_de: 'Ein Stück Pansen aus der Hundemetzgerei am Jägerhaus. Die Hunde fressen vor den Steinhauern.' },
     { id: 'item.k1.zeichen', kind: 'lore', set: 'steinzeichen', fiction: true, name_de: 'Matthes’ Zeichen I: der Abrieb', text_de: 'Ein Abrieb mit Kohle auf Papier vom Quader am Fuß der Galerie: offener Winkel, darunter drei Punkte. Der Stein bleibt, wo er ist. (Erfundenes Steinmetzzeichen)' },
@@ -404,6 +479,48 @@ const k1Quests = {
         { id: 'fluegel', type: 'examine', clue: 'clue.k1.fluegel', text_de: 'Die beiden Flügel ansehen' },
       ],
       rewards: { xp: 60 },
+    },
+    // ---- the disguise opening (docs/IDEAS-ROUND11.md §2; story k1_0b / k1_0c): the coat, then the letter
+    {
+      id: 'q.k1.kleider', kind: 'main', era: E,
+      title_de: 'Kleider machen Leute',
+      summary_de: 'In Orange kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Ein Rock, der nicht leuchtet. Unten an der Bleiche hängt einer. Fragen oder nehmen, das überlasse ich Ihnen. Ich bin nur eine Stimme.')],
+      turnin_lines: [ln('laub', 'Dunkelblau. Das Orange ist darunter, aber das weiß nur ich.')],
+      history: [ln('laub', 'Fußnote: Wie man sich bei Hof zu kleiden hatte und wie die Wache am Gitter prüfte, steht nirgends. Liese, Kaspar und sein Rock sind erfunden. Die Wäsche, die irgendwer für den Hof gebleicht hat, nicht.', { fact: 'cx.46' })],
+      objectives: [
+        // set by the story (k1_0b): the coat taken from the line (clue.k1.rock) or Liese's favour done
+        { id: 'rock', type: 'manual', text_de: 'Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche', where: place(...DZ.bleiche, 12),
+          hint_de: 'Die Bleiche liegt unten am Bach, westlich der Quelle. Hinter der zweiten Leine stehen und E drücken, solange Liese zum Weg schaut. Oder mit ihr reden.' },
+        { id: 'bitte', type: 'talk', npc: 'liese', topic: 'rock', optional: true, noMarker: true, text_de: 'Oder: Liese nach dem Rock fragen' },
+        {
+          id: 'zettel', type: 'kill', enemy: 'mahnbrief', count: 3, optional: true, after: ['bitte'],
+          text_de: 'Für Liese: die Zettel aus der Wäsche jagen',
+          where: place(...DZ.zettel, 10),
+          spawn: [spawn('mahnbrief', DZ.zettel, 3, 3, { leash: 22, escorts: [], wave: [] })],
+        },
+      ],
+      rewards: { xp: 60, items: [{ item: 'item.k1.rock' }] },
+    },
+    {
+      id: 'q.k1.brief', kind: 'main', era: E,
+      title_de: 'Ein Brief in fremdem Namen',
+      summary_de: 'Ohne Erlaubnis kommt niemand auf den Berg, und jeder Begleiter muss mit Namen im Schreiben stehen. Laub erfindet einen Reisenden, den Hofrat Justus Amsel aus Celle, und schreibt dich als seinen Sekretär hinein. Papier und Siegellack hat der Hofgärtner vor der Orangerie.',
+      giver: { voice: 'laub' }, turnin: 'auto',
+      offer: [ln('laub', 'Papier, Siegel, ein Name. Den Namen erfinde ich. Das Papier hat der Hofgärtner.')],
+      turnin_lines: [ln('laub', 'Gesiegelt. Grünes Wachs, für Kübelpflanzen. Die Wache wird es für Celler Mode halten.')],
+      history: [
+        ln('laub', 'Den Karlsberg sah kaum ein Fremder von innen. Niemand wagte sich zu zeigen, ohne gerufen zu sein, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und darin musste jeder Begleiter mit Namen stehen.', { fact: 'cx.44', src: [P('S. 355'), src('KNIGGE-BRIEFE', 'P · S. 26 f.')] }),
+        ln('laub', 'Der Reisende steht in einem Buch, das Knigge 1793 herausgab. Ob Knigge selbst der Reisende war, ist nicht sicher; er nennt sich nicht. Den Herzog hat er nicht getroffen. Der war gerade abwesend.', { fact: 'cx.43', src: [src('KNIGGE-BRIEFE', 'P · S. 26 f.; Titel: „herausgegeben von“'), src('LITSAAR-KNIGGE')] }),
+        ln('laub', 'Einen falschen Prinzen hat der Hof schon gehabt, Ende 1777 in Zweibrücken, mit einem Empfehlungsbrief aus Straßburg. Der Hof sah ihm heimlich hinter den Jalousien zu und lachte. Danach wurde er verhaftet. Wir sind bescheidener: Wir wollen nur hinein.', { fact: 'cx.45', src: [P('S. 346–349, 356–358')] }),
+      ],
+      objectives: [
+        { id: 'papier', type: 'talk', npc: 'hofgaertner', topic: 'papier', text_de: 'Papier und Siegellack: den Hofgärtner vor der Orangerie fragen',
+          hint_de: 'Der Hofgärtner steht auf dem Rasen vor der Westseite der Orangerie. Im Rock hingehen, langsam, den Stab weg, und mit ihm reden (E).' },
+        { id: 'schreiben', type: 'examine', clue: 'clue.k1.brief', after: ['papier'], text_de: 'Am Tisch des Hofgärtners: Laub schreibt den Brief (E)' },
+      ],
+      rewards: { xp: 70, items: [{ item: 'item.k1.empfehlung' }] },
     },
     {
       id: 'q.k1.registratur', kind: 'main', era: E,
@@ -438,7 +555,7 @@ const k1Quests = {
           spawn: [spawn('mahnbrief', KS.kuechenhof, 6, 7, { leash: 35, escorts: [{ kind: 'foliant', n: 1 }], wave: [{ kind: 'mahnbrief', n: 2 }] })],
         },
       ],
-      rewards: { xp: 130, items: [{ item: 'item.charm.rechenpfennig' }] },
+      rewards: { xp: 100, items: [{ item: 'item.charm.rechenpfennig' }] },
       next: 'q.k1.lohn',
     },
     {
@@ -504,7 +621,7 @@ const k1Quests = {
           spawn: [spawn('streuner', KS.allee, 4, 6, { leash: 40, escorts: [], wave: [{ kind: 'streuner', n: 1 }] })],
         },
       ],
-      rewards: { xp: 160, items: [{ item: 'item.charm.hundemarke' }], skills: [{ id: 'spurenleser', tier: 1 }] },
+      rewards: { xp: 120, items: [{ item: 'item.charm.hundemarke' }], skills: [{ id: 'spurenleser', tier: 1 }] },
     },
     {
       id: 'q.k1.karlslust', kind: 'main', era: E,
@@ -526,7 +643,7 @@ const k1Quests = {
       objectives: [
         { id: 'terrasse', type: 'reach', text_de: 'Auf der Tschifflik-Terrasse: Q – die Karlslust 1789', where: place(1822, 70, 16) },
         { id: 'rund', type: 'examine', clue: 'clue.k1.amphitheater', text_de: 'Einmal um das Rund: die Häuschen zählen' },
-        { id: 'baeren', type: 'examine', clue: 'clue.k1.baerenkaesten', text_de: 'Oben an der Terrassenmauer: die Bären-Kästen' },
+        { id: 'baeren', type: 'examine', clue: 'clue.k1.baerenkaesten', text_de: 'Oben an den Terrassen: die Bären-Kästen' },
         {
           id: 'lichter', type: 'kill', enemy: 'irrlicht', count: 5, after: ['baeren'],
           text_de: 'Irrlichter über dem Schwanenweiher bannen',
@@ -538,7 +655,7 @@ const k1Quests = {
         { id: 'flucht', type: 'reach', after: ['seite'], text_de: 'Hinunter zum Tosbecken! Wasser verwischt die Spur', where: place(1812, 203, 12) },
         { id: 'heim', type: 'event', event: 'era:change', match: { to: 'today' }, after: ['flucht'], text_de: 'Q halten: zurück ins Heute' },
       ],
-      rewards: { xp: 240, skills: [{ id: 'kartograf', tier: 2 }] },
+      rewards: { xp: 180, skills: [{ id: 'kartograf', tier: 2 }] },
     },
     // ---- side quests ------------------------------------------------------------------------------
     {

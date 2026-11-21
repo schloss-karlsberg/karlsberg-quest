@@ -150,7 +150,7 @@
     {
       "id": "cx.07",
       "title_de": "Vierzehn Millionen",
-      "text_de": "Bau und Betrieb des Karlsbergs kosteten nach der ADB fast 14 Millionen Gulden. Das ganze Herzogtum nahm im Jahr etwa 800 000 Gulden ein. Ein Reisender, Adolph von Knigge, nannte das Ganze 1792 ein „Feen-Schloß“.",
+      "text_de": "Bau und Betrieb des Karlsbergs kosteten nach der ADB fast 14 Millionen Gulden. Das ganze Herzogtum nahm im Jahr etwa 800 000 Gulden ein. In Knigges Reisebriefen (1793) heißt das Ganze ein „Feen-Schloß“.",
       "confidence": "D",
       "fiction": false,
       "sources": [
@@ -166,6 +166,11 @@
         {
           "url": "https://www.literaturland-saar.de/orte/homburg/",
           "label": "Literaturland Saar: Homburg"
+        },
+        {
+          "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+          "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+          "note": "S. 28 f.; Brief vom 11. Mai [1792], Schreiber ungenannt, Knigge als Herausgeber"
         }
       ],
       "tags": [
@@ -898,7 +903,7 @@
     {
       "id": "cx.38",
       "title_de": "Was in diesem Spiel erfunden ist",
-      "text_de": "Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, das Wasser der Karlsbergquelle, das sich erinnert, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.",
+      "text_de": "Erfunden sind: Geometer Quirin Laub und seine Bussole, Marlene, der Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Wäscherin Liese und Kaspars Rock, der Hofgärtner, die Gardisten und der Lakai am Gitter, der Hofrat Justus Amsel aus Celle und sein Buch „Vom Betragen bei Hofe“, der Brief in seinem Namen und die Musterung am Gitter, die Namen der Hunde, die Chronik „Was der Hof schuldig blieb“, die Meute als Spuk, das Wasser der Karlsbergquelle, das sich erinnert, der Steinfraß, das Steinmetzzeichen, alle Laufwege, alle Dialoge außer den markierten Zitaten. Historische Personen sagen nur, was Mannlich überliefert. Die „Erinnerungen“ im Spiel sind keine Rekonstruktion, sondern Vorstellung.",
       "confidence": "D",
       "fiction": true,
       "sources": [],
@@ -1000,6 +1005,107 @@
       "id": "cx.42",
       "title_de": "Das Wasser erinnert sich",
       "text_de": "Erfunden: dass das Wasser der Karlsbergquelle sich erinnert und dass, wer es berührt, in ein anderes Jahr gerät. Erfunden ist, dass ein Tropfen davon in der Bussole den Weg in andere Jahre offen hält, bis er über Nacht eintrocknet. Erfunden ist auch die barocke Brunnenstube mit Steinbecken und Bronzespeier, die das Spiel für 1789 bis 1796 an die Quelle stellt: Wie die Quelle im 18. Jahrhundert gefasst war, ist nicht überliefert.",
+      "confidence": "D",
+      "fiction": true,
+      "sources": [],
+      "tags": [
+        "label:FIKTION"
+      ],
+      "licence": "eigener Text"
+    },
+    {
+      "id": "cx.43",
+      "title_de": "Knigges Reisebriefe",
+      "text_de": "Adolph Freiherr Knigge (1752–1796) war Hofmann, Schriftsteller und Aufklärer. 1788 erschien sein Buch „Über den Umgang mit Menschen“. Es ist kein Benimmbuch, wie man heute oft meint, sondern handelt davon, wie Menschen verschiedener Stände, Berufe und Gemüter miteinander auskommen. 1793 gab Knigge „Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben“ heraus. In einem Brief vom 11. Mai 1792 besucht der Reisende den Karlsberg. Ohne ausdrückliche Erlaubnis des Herzogs, schreibt er, dürfe sich niemand dem Berg nähern; er hatte sie über den Hof in Saarbrücken bekommen. Der Herzog war gerade abwesend. Der Reisende sah Stühle, die angeblich fünfzig neue Louisdor das Stück kosteten, Tapeten aus den Federn ausländischer Vögel und ein Kabinett mit mehr als tausend seltenen Pfeifenköpfen. „Es ist der Mühe werth, dies Feen-Schloß mit seinen Schätzen zu sehn.“",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+          "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+          "note": "Vierter Brief, Zweybrücken, 11. Mai [1792], S. 26–29; Zitat S. 28 f."
+        },
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "Einl. S. XXXIII f. (zitiert den Brief, Anm. 13)"
+        },
+        {
+          "url": "https://de.wikisource.org/wiki/ADB:Knigge,_Adolph_Freiherr",
+          "label": "ADB: Knigge, Adolph Freiherr (Erich Schmidt, 1882)"
+        },
+        {
+          "url": "https://de.wikipedia.org/wiki/Adolph_Freiherr_Knigge",
+          "label": "de.wikipedia: Adolph Freiherr Knigge",
+          "note": "kein Benimmbuch"
+        },
+        {
+          "url": "https://www.literaturland-saar.de/personen/adolph-freiherr-knigge/",
+          "label": "Literaturland Saar: Adolph Freiherr Knigge",
+          "note": "für den Streitpunkt"
+        },
+        {
+          "url": "https://www.zweibruecken.de/de/kultur-tourismus/kultur-erleben/kulturelle-einrichtungen/stadtmuseum/neuigkeiten/",
+          "label": "Stadtmuseum Zweibrücken: Das Tablett „Le Château de Carlsberg“",
+          "note": "für den Streitpunkt"
+        }
+      ],
+      "contested_de": "Der Briefschreiber nennt keinen Namen und stellt sich als jemand vor, der in Lothringen gelebt hat; Knigge steht nur als Herausgeber auf dem Titel. Mannlichs Herausgeber (1910) und das Stadtmuseum Zweibrücken lesen den Brief als Knigges eigenen Besuch, Literaturland Saar nennt die Briefe „auf 1792 vordatiert“.",
+      "tags": [
+        "label:STRITTIG"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.44",
+      "title_de": "Wer hinauf durfte",
+      "text_de": "Den Karlsberg sah kaum ein Fremder von innen. Schon in den ersten Jahren auf dem Berg nahm der Herzog den Platzmangel als Vorwand, niemanden vorzulassen: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die Erlaubnis dazu erhalten zu haben“, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und die musste jeden Begleiter mit Namen nennen. Nur der Herzog fuhr hinauf, alle anderen gingen zu Fuß. Die Eingänge des Schlosses bewachten, so schreibt der Herausgeber von Mannlichs Erinnerungen 1910, hundert Gardisten.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 355 (niemand ungerufen) und Einl. S. XXXIII (100 Gardisten, Text des Herausgebers, ohne Beleg)"
+        },
+        {
+          "url": "https://www.digitale-sammlungen.de/en/view/bsb10467161",
+          "label": "Knigge (Hg.): Briefe, auf einer Reise aus Lothringen nach Niedersachsen geschrieben (Hannover 1793)",
+          "note": "S. 26 f. (Erlaubnis, jeder Begleiter namentlich)"
+        },
+        {
+          "url": "https://www.rosalux.de/news/id/692/der-karlsberg-von-barocker-pracht-zur-baustoffhandlung",
+          "label": "Rosa-Luxemburg-Stiftung 2015: Der Karlsberg – von barocker Pracht zur Baustoffhandlung",
+          "note": "nur der Herzog fuhr hinauf"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.45",
+      "title_de": "Der Prinz von Albanien",
+      "text_de": "Ende 1777 kam ein Fremder nach Zweibrücken, mit einer Börse voller Dukaten und losen Diamanten in Papier. Er brachte einen warmen Empfehlungsbrief aus Straßburg an den ersten Leibarzt des Herzogs mit. Der Arzt erzählte überall, der Fremde sei ein Prinz, der inkognito reise, um jedes Zeremoniell zu meiden; er habe einen Brief mit preußischem Siegel an den „Prinzen Castrioto von Albanien“ bekommen. Mannlich glaubte ihm nicht: Er hatte auf Reisen so viele falsche Barone getroffen, warum nicht auch falsche Prinzen? Der Prinz versuchte mehrmals, bei Hof vorgestellt zu werden. Der Herzog lachte darüber, wollte ihn aber doch sehen: Mannlich lockte ihn in seinen Garten, und der Hof sah ihm heimlich hinter den Jalousien zu. Eine Ode, die der Prinz drucken ließ, war Wort für Wort abgeschrieben. Später ließ der Herzog ihn verhaften und des Landes verweisen.",
+      "confidence": "D",
+      "fiction": false,
+      "sources": [
+        {
+          "url": "https://archive.org/details/eindeutschermale00mann",
+          "label": "M1910: Mannlich, Ein deutscher Maler und Hofmann (hg. Stollreither, 1910)",
+          "note": "S. 346–349 (Ankunft, Brief, inkognito, Jalousien, Ode), S. 356–358 (Verhaftung, Ausweisung); Datum nach S. 345 Anm. 24 und S. 349. Nach Mannlichs Erinnerungen; in Zweibrücken, vor dem Karlsberg"
+        }
+      ],
+      "tags": [
+        "label:FAKT"
+      ],
+      "licence": "eigener Text; kurze Zitate nach Quelle"
+    },
+    {
+      "id": "cx.46",
+      "title_de": "Ein Brief in fremdem Namen",
+      "text_de": "Erfunden: die Wäscherin Liese und Kaspars Rock, der Hofrat Justus Amsel aus Celle und sein Buch „Vom Betragen bei Hofe“, der Brief, den du mit Laub in seinem Namen schreibst, die Musterung am Gitter und die Wachen, die dich hinausbegleiten. Einen Hofrat Amsel hat es nie gegeben. Wie die Wache am Gitter prüfte, ob es eine Kleiderordnung gab und welche Farben die Livreen hatten, ist nicht überliefert. Echt ist nur die Regel: Ohne Erlaubnis des Herzogs kam niemand auf den Karlsberg (cx.44).",
       "confidence": "D",
       "fiction": true,
       "sources": [],
