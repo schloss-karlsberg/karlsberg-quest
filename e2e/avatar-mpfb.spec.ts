@@ -3,10 +3,10 @@ import type { SkinnedMesh } from 'three';
 import { trackErrors } from './helpers/common';
 
 /**
- * The authored MPFB player behind `?avatar=mpfb` (src/player/avatar.ts): the model loads, its
+ * The authored MPFB player, the default avatar (src/player/avatar.ts; `?avatar=mpfb` is explicit here): the model loads, its
  * outfit pieces share one skeleton, its fade bounds are measured, and one costume round trip runs
  * through the story's path ('player:costume'): the court pieces dither in, the default ones out,
- * and back. The surveyor stays the default avatar (covered by the combat / camera specs).
+ * and back. `?avatar=surveyor` falls back to the CC0 surveyor.
  */
 
 /** Visibility of the costume pieces (`avatar-<costume>-<piece>`) under the player avatar. */

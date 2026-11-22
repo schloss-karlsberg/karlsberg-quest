@@ -3,8 +3,7 @@
  * the doubles, the child, the historical twins) spawned by other systems through a
  * mesh-independent handle API, drawn by rigged CC0 stand-ins (./standin.ts) or, for a spec with an
  * authored body (today the guide), its MPFB build with the one shared people material (./authored.ts).
- * Authored bodies are off by default for now (`PEOPLE_AUTHORED_DEFAULT`, ./specs.ts: opt-in until the
- * guide's look passes review); `?people=authored` / `?people=standin` force one or the other for the
+ * Authored bodies are on by default (`PEOPLE_AUTHORED_DEFAULT`, ./specs.ts); `?people=authored` / `?people=standin` force one or the other for the
  * session.
  *
  * How a system gets it: `ctx.people` (declared below by declaration merging, set in `init`).

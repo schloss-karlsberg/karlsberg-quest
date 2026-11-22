@@ -14,8 +14,8 @@
  *   timing so the blow lands on the hit frame;
  * - full-body overrides: the dodge roll, being undone (death), the abilities' lunge / spin.
  *
- * Models (`AVATAR_MODELS`): the CC0 surveyor is the default; `?avatar=mpfb` (or
- * `kq.avatar.useMpfb()`) wears the authored MPFB player instead (scripts/chars/mpfb, its height as
+ * Models (`AVATAR_MODELS`): the authored MPFB player is the default; `?avatar=surveyor` (or
+ * `kq.avatar.useMpfb(false)`) wears the CC0 surveyor instead; the MPFB player (scripts/chars/mpfb, its height as
  * built, vertex-colour palette, its own outfit pieces for the costumes). Bones are looked up by
  * logical name (characters/bones.ts), so the same code drives both rigs; any MPFB player GLB with
  * the game_engine rig and the retargeted clips drops in.
@@ -112,7 +112,7 @@ export type AvatarModelId = keyof typeof AVATAR_MODELS;
 
 /** The model from the `?avatar=` URL flag: 'mpfb' wears the authored player, anything else the surveyor. */
 export function avatarModelParam(v: string | null): AvatarModelId {
-  return v === 'mpfb' ? 'mpfb' : 'surveyor';
+  return v === 'surveyor' ? 'surveyor' : 'mpfb';
 }
 
 /** A clip's upper-body (swings, charge, flare, hit over the walking legs) or lower-body tracks (bones.ts). */

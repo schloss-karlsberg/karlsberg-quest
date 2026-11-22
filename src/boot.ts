@@ -222,7 +222,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     else if (started && modalOpen === 0) ui.hud.showClickToPlay(!input.locked);
   };
   // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
-  // ?avatar=mpfb wears the authored MPFB player (art review; the surveyor stays the default)
+  // the authored MPFB player is the default; ?avatar=surveyor wears the CC0 surveyor (fallback)
   const avatarModel = (id: AvatarModelId) => () => assets.model(AVATAR_MODELS[id].asset);
   const avatarFirst = avatarModelParam(params.get('avatar'));
   const avatar = new Avatar(scene, player, avatarModel(avatarFirst), AVATAR_MODELS[avatarFirst].height);

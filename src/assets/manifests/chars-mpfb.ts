@@ -7,8 +7,8 @@ import type { AssetEntry } from '../types';
  * packed with pnpm assets:pack. Pivot at the feet, facing +z, metres. Bind pose (A-pose); clips
  * retargeted from the Quaternius humans already in the repo.
  *
- * - The player (hero tier, `chars.player.mpfb`): the playable avatar behind `?avatar=mpfb` /
- *   kq.avatar.useMpfb() (src/player/avatar.ts); area 'dev', loaded only on demand. Toon shading
+ * - The player (hero tier, `chars.player.mpfb`): the default playable avatar (src/player/avatar.ts;
+ *   `?avatar=surveyor` falls back to the CC0 surveyor), loaded at boot. Toon shading
  *   (`shading: 'toon'`, src/systems/characters/toon.ts). Pivot at the feet, facing +z, metres.
  *   Morph targets smile, blink (on avatar-body). Outfit pieces (scripts/chars/mpfb/kqchar/court.py):
  *   avatar-body and avatar-glasses always, avatar-default-* for the default outfit, avatar-court-*
@@ -23,7 +23,7 @@ const entries: AssetEntry[] = [
     id: 'chars.player.mpfb',
     kind: 'model',
     url: 'models/chars/player-head-mpfb.glb',
-    area: 'dev',
+    area: 'characters',
     bytes: 606340,
     licence: 'makehuman.mpfb2.player',
     shading: 'toon',
@@ -37,7 +37,7 @@ const entries: AssetEntry[] = [
     bytes: 338964,
     licence: 'makehuman.mpfb2.people',
     shading: 'toon',
-    note: 'The placeholder tour guide (people spec `guide`, an invented generic face in the shared face style B, specs/_style_b.json; toon shading), built by scripts/chars/mpfb/build.py from specs/guide.json: 1.95 m, lanky, about 50, bald, a hip-length forest-green softshell that hangs from the shoulder blades (stiff closed collar with a zip garage, centre zip, a yoke and a chest pocket in vertex colour, cuffs), grey trousers with a clean hem, brown walking shoes with light soles, a mustard lanyard with a light badge. Featured tier: avatar-body 11.9k tris and avatar-body_lod1 6.0k tris, one material `People` (vertex colours with baked occlusion), morphs smile / blink on LOD0. Clips Idle, Walk, Run, Interact, Wave (retarget.py, foot lock; the standing clips with a forward lean, straight knees, the hips under the chest, relaxed fingers; Walk with an arm swing), Point (Interact with a pointing hand, retarget.py --point) and Talk (a 4 s explaining loop made from Idle, retarget.py --talk). Opt-in for now: the game draws it only with ?people=authored (PEOPLE_AUTHORED_DEFAULT false) until his look passes review.',
+    note: 'The placeholder tour guide (people spec `guide`, an invented generic face in the shared face style B, specs/_style_b.json; toon shading), built by scripts/chars/mpfb/build.py from specs/guide.json: 1.95 m, lanky, about 50, bald, a hip-length forest-green softshell that hangs from the shoulder blades (stiff closed collar with a zip garage, centre zip, a yoke and a chest pocket in vertex colour, cuffs), grey trousers with a clean hem, brown walking shoes with light soles, a mustard lanyard with a light badge. Featured tier: avatar-body 11.9k tris and avatar-body_lod1 6.0k tris, one material `People` (vertex colours with baked occlusion), morphs smile / blink on LOD0. Clips Idle, Walk, Run, Interact, Wave (retarget.py, foot lock; the standing clips with a forward lean, straight knees, the hips under the chest, relaxed fingers; Walk with an arm swing), Point (Interact with a pointing hand, retarget.py --point) and Talk (a 4 s explaining loop made from Idle, retarget.py --talk). Drawn by default (PEOPLE_AUTHORED_DEFAULT true); ?people=standin falls back to the capsule stand-in.',
   },
 ];
 export default entries;

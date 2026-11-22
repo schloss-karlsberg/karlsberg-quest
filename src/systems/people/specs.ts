@@ -34,10 +34,9 @@ export interface AuthoredBody {
 /**
  * Authored bodies on or off, the one line to flip: on, a spec with `authored` draws its MPFB build;
  * off, every person keeps its stand-in (the authored guide is then opt-in by URL). The URL wins over it
- * (`authoredBodiesOn`). Off for now: the authored guide is opt-in (`?people=authored`) until his look
- * passes review.
+ * (`authoredBodiesOn`). On: the authored guide is drawn by default; `?people=standin` falls back.
  */
-export const PEOPLE_AUTHORED_DEFAULT = false;
+export const PEOPLE_AUTHORED_DEFAULT = true;
 
 /**
  * Are authored bodies drawn? `?people=authored` forces them, `?people=standin` forces the stand-ins;
