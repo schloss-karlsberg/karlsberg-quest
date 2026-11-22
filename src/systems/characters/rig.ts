@@ -26,6 +26,7 @@ import {
 } from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { LoadedModel } from '../../assets/loader';
+import { type LogicalBone, type RigKind, boneName, rigKindOf } from './bones';
 
 export interface RigInfo {
   /** Bind-pose height and lowest point (model units). */
@@ -46,8 +47,33 @@ const _q = new Quaternion();
 const _q2 = new Quaternion();
 const _axis = new Vector3();
 
+/** Outfit pieces other than the default one (`avatar-<costume>-<piece>`, see src/player/costume.ts). */
+const ALT_OUTFIT = /^avatar-(?!default-)[a-z]+-/;
+
 function isSkinned(o: Object3D): o is SkinnedMesh {
   return (o as SkinnedMesh).isSkinnedMesh === true;
+}
+
+/**
+ * A skinned clone (SkeletonUtils.clone) in which meshes that share one skeleton in the source share
+ * one in the clone too: SkeletonUtils gives every mesh its own copy, and three updates and uploads
+ * each skeleton's bone matrices once per frame (the MPFB player's outfit pieces: one, not eight).
+ */
+export function cloneRigged(source: Object3D): Object3D {
+  const copy = cloneSkinned(source);
+  const src: SkinnedMesh[] = [];
+  const dst: SkinnedMesh[] = [];
+  source.traverse((o) => isSkinned(o) && src.push(o));
+  copy.traverse((o) => isSkinned(o) && dst.push(o));
+  const shared = new Map<SkinnedMesh['skeleton'], SkinnedMesh['skeleton']>();
+  dst.forEach((m, i) => {
+    const from = src[i]?.skeleton;
+    if (!from) return;
+    const first = shared.get(from);
+    if (first) m.bind(first, m.bindMatrix);
+    else shared.set(from, m.skeleton);
+  });
+  return copy;
 }
 
 /**
@@ -76,8 +102,9 @@ export function rigInfo(src: LoadedModel): RigInfo {
   const pts: Vector3[] = [];
   scene.traverse((o) => {
     const m = o as Mesh;
-    // gear that sticks out (the adventurer's backpack) is not the body
-    if (!m.isMesh || /backpack/i.test(m.name)) return;
+    // gear that sticks out (the adventurer's backpack) is not the body, nor are the pieces of an
+    // alternate outfit (the MPFB player's avatar-court-*: hidden until worn, src/player/costume.ts)
+    if (!m.isMesh || /backpack/i.test(m.name) || ALT_OUTFIT.test(m.name)) return;
     const pos = m.geometry.getAttribute('position');
     const eye = /^eyes?(_black)?$/i.test((m.material as { name?: string }).name ?? '');
     for (let i = 0; i < pos.count; i++) {
@@ -148,6 +175,8 @@ export class Rig {
   readonly scale: number;
   readonly bones = new Map<string, Bone>();
   readonly meshes: Mesh[] = [];
+  /** Which rig this is (bones.ts: Quaternius or the MPFB game_engine rig), null for others (animals). */
+  readonly kind: RigKind | null;
   private readonly clips = new Map<string, AnimationClip>();
   private readonly actions = new Map<string, AnimationAction>();
   current: AnimationAction | null = null;
@@ -155,7 +184,7 @@ export class Rig {
 
   constructor(src: LoadedModel, height: number) {
     this.info = rigInfo(src);
-    this.model = cloneSkinned(src.scene);
+    this.model = cloneRigged(src.scene);
     this.scale = height / this.info.height;
     this.holder.scale.setScalar(this.scale);
     this.holder.position.y = -this.info.minY * this.scale;
@@ -170,11 +199,23 @@ export class Rig {
     });
     for (const c of src.animations) this.clips.set(c.name, c);
     this.mixer = new AnimationMixer(this.model);
+    this.kind = rigKindOf((n) => this.bones.has(n));
   }
 
   /** A bone by its name as given or in GLTFLoader's sanitized form (see `findBone`). */
   bone(name: string): Bone | undefined {
     return this.bones.get(name) ?? this.bones.get(PropertyBinding.sanitizeNodeName(name));
+  }
+
+  /** A logical bone (bones.ts: 'hips', 'hand_r' …) under this rig's own name. */
+  boneOf(bone: LogicalBone): Bone | undefined {
+    const n = this.kind ? boneName(this.kind, bone) : null;
+    return n ? this.bone(n) : undefined;
+  }
+
+  /** The key of a logical bone in `bones` (the loaded, sanitized name), for `turnBone` / `boneWorld`. */
+  boneNameOf(bone: LogicalBone): string | null {
+    return this.boneOf(bone)?.name ?? null;
   }
 
   has(name: string): boolean {

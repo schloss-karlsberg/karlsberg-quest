@@ -19,7 +19,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { Era } from '../core/era';
 import { kqStandardize } from '../render/standard';
-import { applyCharacterShading } from '../systems/characters/toon';
+import { type CharacterShading, applyCharacterShading } from '../systems/characters/toon';
 import { ASSETS, ASSET_BY_ID } from './manifest';
 import type { AssetArea, AssetEntry, LicencesFile } from './types';
 
@@ -55,6 +55,18 @@ export function dropTransmission(root: Object3D): number {
     }
   });
   return n;
+}
+
+/**
+ * The shading a model entry loads with. The toon variant is for authored characters only: an
+ * entry that asks for `shading: 'toon'` but whose id is not `chars.*` loads with the standard
+ * bridge and logs one warning (the manifest test catches it too; this keeps a world asset safe
+ * if one slips through).
+ */
+export function entryShading(e: Pick<AssetEntry, 'id' | 'shading'>): CharacterShading | undefined {
+  if (e.shading !== 'toon' || e.id.startsWith('chars.')) return e.shading;
+  console.warn(`[assets] '${e.id}' asks for toon shading, which is only for chars.* entries: loading it with standard shading`);
+  return 'standard';
 }
 
 export type AssetProgress = (loadedBytes: number, totalBytes: number) => void;
@@ -145,7 +157,7 @@ export class AssetLoader {
         const m: LoadedModel = { scene: g.scene, animations: g.animations };
         if (e.worldLight !== false) {
           kqStandardize(m.scene);
-          applyCharacterShading(m.scene, e.shading);
+          applyCharacterShading(m.scene, entryShading(e));
         }
         dropTransmission(m.scene);
         m.scene.name = `asset:${id}`;

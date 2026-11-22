@@ -5,11 +5,13 @@ import {
   costumeColours,
   costumeEmissive,
   costumeHides,
+  costumePiece,
   FLAME_DEFAULT,
   LANTERN_DEFAULT,
   lanternColours,
   mixHex,
   partOf,
+  piecedCostumes,
   resolveCostume,
   resolveTint,
   slotHex,
@@ -112,5 +114,45 @@ describe('lantern tint', () => {
     expect(resolveTint('red')).toBeNull();
     expect(resolveTint(0x00ff00)).toBe(0x00ff00);
     expect(mixHex(0x000000, 0xffffff, 0.5)).toBe(0x808080);
+  });
+});
+
+describe('outfit pieces of the authored (MPFB) player', () => {
+  /** The meshes of the MPFB player GLB as GLTFLoader names them (one per primitive: `_1`, `_2`…). */
+  const MPFB = ['avatar-body_1', 'avatar-body_2', 'avatar-body_3', 'avatar-body_4', 'avatar-default-jacket', 'avatar-default-trousers', 'avatar-default-gear', 'avatar-court-coat', 'avatar-court-waistcoat', 'avatar-court-breeches', 'avatar-glasses'];
+  const shown = (c: 'default' | 'court', names: string[], pieced = piecedCostumes(names)) => names.filter((n) => !costumeHides(c, n, pieced));
+
+  it('names the costume a piece belongs to', () => {
+    expect(costumePiece('avatar-court-coat')).toBe('court');
+    expect(costumePiece('avatar-default-gear_2')).toBe('default');
+    expect(costumePiece('avatar-body_1')).toBeNull();
+    expect(costumePiece('avatar-glasses')).toBeNull();
+    expect(costumePiece('avatar-ballgown-dress')).toBeNull();
+    expect(costumePiece('Adventurer_Body_1')).toBeNull();
+    expect([...piecedCostumes(MPFB)].sort()).toEqual(['court', 'default']);
+  });
+
+  it('the default costume shows its pieces, the body and the glasses; the court pieces are hidden', () => {
+    expect(shown('default', MPFB)).toEqual(['avatar-body_1', 'avatar-body_2', 'avatar-body_3', 'avatar-body_4', 'avatar-default-jacket', 'avatar-default-trousers', 'avatar-default-gear', 'avatar-glasses']);
+  });
+
+  it('the court costume swaps every default piece for the court pieces; avatar-body and avatar-glasses stay', () => {
+    expect(shown('court', MPFB)).toEqual(['avatar-body_1', 'avatar-body_2', 'avatar-body_3', 'avatar-body_4', 'avatar-court-coat', 'avatar-court-waistcoat', 'avatar-court-breeches', 'avatar-glasses']);
+    // and back
+    expect(shown('default', MPFB)).not.toContain('avatar-court-coat');
+  });
+
+  it('a model without court pieces keeps its default pieces on in court (never undressed)', () => {
+    const noCourt = MPFB.filter((n) => !n.startsWith('avatar-court-'));
+    expect(shown('court', noCourt)).toEqual(noCourt);
+    // a model without any pieces (an older single-mesh build): everything stays
+    expect(shown('court', ['avatar-body_1', 'avatar-glasses'])).toEqual(['avatar-body_1', 'avatar-glasses']);
+  });
+
+  it('unknown costumes resolve to the default pieces; the surveyor keeps its backpack rule', () => {
+    expect(costumeHides('ballgown' as never, 'avatar-court-coat', piecedCostumes(MPFB))).toBe(true);
+    expect(costumeHides('ballgown' as never, 'avatar-default-jacket', piecedCostumes(MPFB))).toBe(false);
+    expect(costumeHides('court', 'Backpack_2', new Set())).toBe(true);
+    expect(costumeHides('default', 'Backpack_2', new Set())).toBe(false);
   });
 });

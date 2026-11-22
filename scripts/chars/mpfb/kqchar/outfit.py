@@ -46,6 +46,12 @@ def slots(wardrobe):
     return out
 
 
+def garment_materials(wardrobe):
+    """The materials the wardrobe's slots use: the default outfit's pieces (court.py splits them
+    off the body as avatar-default-<material>)."""
+    return {s['material'] for s in slots(wardrobe).values()}
+
+
 def bone_pos(rig, name):
     b = rig.data.bones[name]
     return np.array(b.head_local), np.array(b.tail_local)
@@ -110,6 +116,12 @@ def cut_planes(W, bones, rig, wardrobe):
         def trunk(co, W_):
             return ~np.array([d.startswith(arm_like) for d in dom_of(W_)])
         out.append(('hem', None, np.array([0.0, 0.0, 1.0]), trunk))  # point None: at body_hem
+        if jk.get('blocks') and jk.get('yoke_cut'):
+            # the colour-blocked yoke's border, over the chest, the back and the shoulders
+            def upper(co, W_):
+                return ~np.array([d in ('head', 'neck_01') or d.startswith(('hand_', 'thumb', 'index', 'middle', 'ring', 'pinky')) for d in dom_of(W_)])
+            yz = bone_pos(rig, 'upperarm_l')[0][2] - jk.get('yoke_below_shoulder', 0.075)
+            out.append(('yoke', np.array([0.0, 0.0, yz]), np.array([0.0, 0.0, 1.0]), upper))
         for s in ('l', 'r'):
             h, t = bone_pos(rig, f'lowerarm_{s}')
             ax = (t - h) / np.linalg.norm(t - h)
@@ -229,7 +241,11 @@ def zones(co, faces, W, bones, rig, lm, wardrobe):
 def cloth_colours(co, nrm, wardrobe, palette, rig=None):
     """Per-material vertex colours for the zones on the body (a soft top-light gradient on each);
     a jacket with `blocks` gets colour-blocked panels: a yoke over chest and shoulders (with a seam
-    line), darker side panels, and pocket flaps (no textures)."""
+    line), darker side panels, and pocket flaps (no textures). Optional painted detail (no
+    geometry): `jacket.folds` (shade in the crook of each elbow), `trousers.knees` ([lighter knee
+    fronts, darker hollows behind]), `shoes.details` ({toe: shade of the toe cap, toe_from: m in
+    front of the ankle, welt: [height, colour], laces: colour, lace_w: m, lace_strip: {colour, rows,
+    width, below_top, above_sole, tongue} laces as a strip of geometry down the boot front})."""
     S = slots(wardrobe)
     out = {}
     up = smoothstep(-0.6, 0.9, nrm[:, 2])
@@ -258,8 +274,41 @@ def cloth_colours(co, nrm, wardrobe, palette, rig=None):
             base = mix(base, panel_c, side * (~arm))
             base = mix(base, trim_c, np.maximum(seam * 0.85, flap * 0.9) * (~arm))
         col = base * (lo + (1 - lo) * up)[:, None]
+        if rig is not None and key == 'jacket' and s.get('folds'):
+            for sd in ('l', 'r'):
+                el, _ = bone_pos(rig, f'lowerarm_{sd}')
+                d2 = ((co - el) ** 2).sum(1)
+                crook = np.exp(-d2 / (2 * 0.03 ** 2)) * smoothstep(-0.2, 0.5, -nrm[:, 1])
+                col = col * (1 - s['folds'] * crook)[:, None]
+        if rig is not None and key == 'trousers' and s.get('knees'):
+            kf, kb = s['knees']
+            for sd in ('l', 'r'):
+                kn, _ = bone_pos(rig, f'calf_{sd}')
+                near = np.exp(-((co - kn) ** 2).sum(1) / (2 * 0.06 ** 2))
+                fr = smoothstep(-0.1, 0.6, -nrm[:, 1])
+                bk = smoothstep(-0.1, 0.6, nrm[:, 1])
+                col = col * (1 + kf * near * fr - kb * near * bk)[:, None]
         if key == 'shoes':
             sole = co[:, 2] < s['sole_h']
+            dt = s.get('details')
+            if dt and rig is not None:
+                for sd in ('l', 'r'):
+                    fh, _ = bone_pos(rig, f'foot_{sd}')
+                    near = (np.abs(co[:, 0] - fh[0]) < 0.1) & (co[:, 2] < s['top'] + 0.01)
+                    fwd = fh[1] - co[:, 1]  # in front of the ankle (the front is -y)
+                    t0 = dt.get('toe_from', 0.08)
+                    toe = smoothstep(t0, t0 + 0.035, fwd) * near
+                    col = col * (1 - (1 - dt.get('toe', 0.8)) * toe)[:, None]
+                    if dt.get('laces'):
+                        lw = dt.get('lace_w', 0.014)
+                        lace = (smoothstep(lw, lw * 0.5, np.abs(co[:, 0] - fh[0])) * smoothstep(-0.02, 0.0, fwd) * smoothstep(t0 + 0.01, t0 - 0.01, fwd)
+                                * smoothstep(s['sole_h'] + 0.02, s['sole_h'] + 0.04, co[:, 2]) * smoothstep(s['top'] - 0.005, s['top'] - 0.025, co[:, 2])
+                                * smoothstep(0.2, 0.6, -nrm[:, 1] + nrm[:, 2]) * near)
+                        col = mix(col, _pal(palette, dt['laces'], '#2a2420')[None], 0.85 * lace)
+                if dt.get('welt'):
+                    wh, wc = dt['welt']
+                    welt = smoothstep(s['sole_h'] - 0.002, s['sole_h'] + 0.002, co[:, 2]) * smoothstep(s['sole_h'] + wh + 0.003, s['sole_h'] + wh - 0.001, co[:, 2])
+                    col = mix(col, _pal(palette, wc, '#8a6a4a')[None], 0.8 * welt)
             col[sole] = _pal(palette, s['sole'], '#1e1c1a')[None] * (0.9 + 0.1 * up[sole])[:, None]
         out[s['material']] = np.hstack([col, np.ones((len(co), 1))])
     return out
@@ -467,6 +516,27 @@ def extras(surface, rig, lm, wardrobe, palette, bones, hem=None):
                                        lambda a: [(u - 0.004, 0.002, dark, True), (u + ch * 0.5, co_, dark, True), (u + ch, 0.002, dark, True)], dark, 0.004, closed=True)
             parts.append(Part(f'boot_collar_{s}', so['material'], co, faces, col=np.hstack([col, np.ones((len(co), 1))]),
                               weights=_weights(len(co), bones, {f'calf_{s}': 1.0})))
+    lace = (so or {}).get('details', {}).get('lace_strip') if so else None
+    if lace:
+        # laces as geometry (the boot zone is too coarse for painted ones): a strip down the boot
+        # front from under the collar to the instep, rows alternating lace / tongue
+        lc = _pal(palette, lace.get('colour', 'boot_laces'), '#1e1a18')
+        tongue = _pal(palette, so['colour']) * lace.get('tongue', 1.15)
+        for s_ in ('l', 'r'):
+            ah, at = bone_pos(rig, f'foot_{s_}')
+            x = ah[0] * 0.6 + at[0] * 0.4
+            zs = np.linspace(so['top'] - lace.get('below_top', 0.03), so['sole_h'] + lace.get('above_sole', 0.035), int(lace.get('rows', 12)))
+            pt = _strip(surface, lambda z, x=x, y=ah[1]: (np.array([x, y - 0.5, z]), np.array([0.0, 1.0, 0.0])), zs,
+                        lace.get('width', 0.022), lace.get('lift', 0.002), lc, bones, {f'foot_{s_}': 1.0}, f'laces_{s_}', so['material'])
+            zz = pt.co[:, 2]
+            wf = smoothstep(so['top'] - 0.03, so['sole_h'] + 0.07, zz)
+            Wl = np.zeros((len(zz), len(bones)))
+            Wl[:, bones.index(f'foot_{s_}')] = wf
+            Wl[:, bones.index(f'calf_{s_}')] = 1.0 - wf
+            pt.weights = Wl
+            row = np.arange(len(zz)) // 2
+            pt.col[row % 2 == 1, :3] = tongue
+            parts.append(pt)
     if bag:
         parts += daypack(surface, rig, bag, palette, bones, neck_h, sp3)
     if sh and sh['collar'] and not (jk and jk['collar']):

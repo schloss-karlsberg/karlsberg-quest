@@ -2,8 +2,8 @@
 
 Data-driven characters on the MakeHuman base mesh, built in headless Blender. A new character is
 **write a spec, run the build**. The people of the tour (featured / extra tiers, drawn by
-`src/systems/people/`) start with `specs/guide.json`; the player spec (hero tier) and its build
-script ship with the avatar MR. Install MPFB first (see [`../README.md`](../README.md)).
+`src/systems/people/`) start with `specs/guide.json`; the player (hero tier) is `specs/player.json`,
+built by `build_player.py`. Install MPFB first (see [`../README.md`](../README.md)).
 
 ## Commands
 
@@ -18,7 +18,7 @@ blender -b --factory-startup --disable-autoexec --python-exit-code 1 \
 blender -b --factory-startup --disable-autoexec --python-exit-code 1 \
   -P scripts/chars/mpfb/retarget.py -- --char /tmp/kq-chars/<name>.blend \
   --src /tmp/kq-chars/surveyor.glb --clips all --glb /tmp/kq-chars/<name>.glb --report /tmp/kq-chars/retarget.json \
-  --abduct 16 --stand Idle,Idle_Sword,Interact,Wave,HitRecieve --stand-width 0.06 --stand-abduct 8
+  --abduct 6 --stand Idle,Idle_Sword,Interact,Wave,HitRecieve --stand-width 0.06 --stand-abduct 4 --knees 1 --knees-loco 0.6
 
 # pack for the browser (meshopt, prune) into the repo
 pnpm assets:pack /tmp/kq-chars/<name>.glb public/assets/models/chars/<name>.glb
@@ -28,11 +28,36 @@ blender -b --factory-startup --disable-autoexec -P scripts/chars/mpfb/render_bus
   /tmp/kq-chars/<name>.blend /tmp/kq-chars/r --views front,34,side --size 440 [--view AgX] [--morph smile]
 blender -b --factory-startup --disable-autoexec -P scripts/chars/mpfb/render_clips.py -- \
   <blend with clips> /tmp/kq-chars/clips --clips Walk,Run,Wave,Sword_Slash --frames 4
+# either script: --costume court shows the court pieces instead of the default outfit
 ```
 
-The player GLB is not in the repo yet (it ships with the avatar MR); once packed and listed in
-`src/assets/manifests/chars-mpfb.ts`, `kq.spawnAsset('<asset id>', x, z, { yaw })` places it for art
-review.
+A packed model listed in `src/assets/manifests/chars-mpfb.ts` can be placed for art review with
+`kq.spawnAsset('<asset id>', x, z, { yaw })`.
+
+### The player (hero tier)
+
+```sh
+blender -b --factory-startup --disable-autoexec --python-exit-code 1 \
+  -P scripts/chars/mpfb/build_player.py -- --out /tmp/kq-chars/player.raw.glb \
+  --blend /tmp/kq-chars/player.blend --stats /tmp/kq-chars/player.stats.json
+blender -b --factory-startup --disable-autoexec --python-exit-code 1 \
+  -P scripts/chars/mpfb/retarget.py -- --char /tmp/kq-chars/player.blend \
+  --src /tmp/kq-chars/surveyor.glb --clips all --glb /tmp/kq-chars/player.glb --report /tmp/kq-chars/player.retarget.json \
+  --abduct 10 --stand Idle,Idle_Sword,Interact,Wave,HitRecieve --stand-width 0.06 --stand-abduct 8 --knees 1 --knees-loco 0.6 \
+  --stand-upright 0.8 --stand-shoulders 7 --level-head 1 --relax-fingers 30
+pnpm assets:pack /tmp/kq-chars/player.glb public/assets/models/chars/player-head-mpfb.glb
+```
+
+The look (`specs/player.json`): a stylised face with big, open blue-grey eyes and catchlights,
+smiling lower lids (`face.stylize.lower_lid`) and raised cheeks, an open smile with a soft hint of
+teeth, fair rosy skin with pink cheeks, soft arched brows, bold glasses, a full copper beard (a
+2-3 cm shell with soft clumps) with a darker moustache root and a feathered cheek edge, swept-back
+copper hair with a side part, full on top and over the upper ears; a stocky build (wider waist and
+hips, thick legs, a big head, about 5.6 heads tall); a matte red hiking jacket with a darker yoke,
+a closed collar and a solid zip, a hanging hip part over slate trousers, dark brown laced ankle
+boots, a teal daypack; and the court costume (`costumes.court`, an ivory waistcoat). Vertex colours with occlusion baked
+per costume (`ao`), toon shading in the game (`shading: 'toon'`). The build's stats JSON lists each
+costume's triangles and draw calls (`costumes`).
 
 ### A person of the tour (featured / extra tier): the guide
 
@@ -66,7 +91,12 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    creases, bags) while the lid margins (`lid_hold`, eye radii), lips and inner mouth are held;
    `nose_smooth` and `ear_smooth` simplify the nose and ears. Rest and morph shapes move together,
    so the smile and the blink keep working. Glasses and cheek paint scale with the face
-   (`eye_radius_ref`, the radius before the eyes grew), not with the bigger eyes.
+   (`eye_radius_ref`, the radius before the eyes grew), not with the bigger eyes. `lower_lid`
+   ({`deg`, `inner`, `outer`, `corner`: [full, none]}) turns the lower lid and the upper cheek up
+   about each eye's horizontal axis, strongest at the outer corner, for smiling eyes; with eye
+   slit / height targets narrowing the upper lid the eyes read about a quarter narrower.
+   `face.eye_yaw_deg` turns each eyeball outward, so the iris sits in the middle of an opening that
+   the lid targets moved outward (the eyes look straight ahead, not to the side).
 2. `beard.py`: the beard. `mode: solid` is a sculpted shell on a structured grid over
    the jaw: columns fan round the face from a centre inside the jaw, rows run from the cheek line to
    the neck line (both smooth curves from landmarks). Two rows of each column inside the mouth width
@@ -74,7 +104,15 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    that follows the smile. Thickness is fullest at the chin; the outer ring tucks under the skin.
    Downward clumps carry darker roots and lighter tips, at uneven spacing (`spacing_jitter`). The
    cheek line is broken into tufts and notches (`edge_jitter`), and the skin under and just beyond
-   the beard edge takes a stubble tint (`palette.stubble`). The fourth `lip_margins` value tucks the
+   the beard edge takes a stubble tint (`palette.stubble`). A feathered edge: `edge_rows` rows rise
+   from the skin to the full thickness (`edge_rows_cheek` lengthens that along the cheek line only),
+   `edge_pow` shapes the rise, `clump_soft` (0..1) rounds the clump grooves and lifts their floor
+   (soft waves, no hard dark streaks), `clump_edge_fade` fades the clump grooves out over the edge rows, and
+   `edge_tint` mixes the cheek edge toward `palette[edge_tint_colour]` (default `stubble`), so the
+   border melts into the skin. `moustache_dark` darkens the moustache roots so it parts from the
+   skin by value. `stubble_lip_cut` [lo, hi] sets the lip weights over which the stubble tint fades
+   out, and `skin_sink` (m) sinks the skin right under the beard, so no skin bump pokes through the
+   shell where its rim tucks in. The fourth `lip_margins` value tucks the
    lower lip under the beard (a fraction of the lips' height). Weights and morphs come from the skin
    under each grid point (blended with nearby skin where the shell hangs close to it).
 3. `hair.py`: a solid sculpted hair shell over the scalp (comb field, streamline clumps, lighter
@@ -94,15 +132,45 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    The neck skin inside the collar is shaded up to just under the collar's top edge
    (`palette.collar_shadow`), and the neck faces hidden inside the collar are removed (`collar_cull`),
    so no pale gap, no slivers and no jacket shards show between the collar and the neck.
+   Painted detail without geometry: `jacket.folds` (shade in the crook of each elbow),
+   `trousers.knees` ([lighter knee fronts, darker hollows behind]), `shoes.details` ({`toe`: shade
+   of the toe cap, `toe_from`: m in front of the ankle, `welt`: [height, colour], `laces`: colour,
+   `lace_w`, `lace_strip`: {`colour`, `rows`, `width`, `below_top`, `above_sole`, `tongue`}: laces as
+   a thin strip of geometry down the boot front, rows alternating lace and tongue}); `jacket.yoke_cut` (with `blocks`) cuts the body along the yoke line
+   (`yoke_below_shoulder`, m), so the colour-blocked yoke has a crisp border.
 6. `face.py`: skin colours (rosy cheek apples kept below the lens rim with `cheek_top`, a rosy nose
-   tip, a warmer neck, an upper-lid line, soft smile creases at the outer eye corners, a lip
-   outline), eyes (with a
-   catchlight), brows and a strip of upper teeth behind the upper lip (with tooth separations);
+   tip, a warmer neck, an upper-lid line, optional soft smile creases at the outer eye corners
+   (`palette.eye_crease`), a lip outline, optional faint freckles over the nose bridge and upper
+   cheeks: `palette.freckles` [amount, share of the vertices, colour], low contrast so they show
+   only in a close-up), eyes (with a catchlight: `palette.eye_catchlight` [degrees up, degrees to
+   +x, radius, aspect, segments]), brows and a strip of upper teeth behind the upper lip (with tooth
+   separations; `face.teeth: null` leaves them out for a closed smile; `edge_median` takes a
+   median of three over the columns' lip edge, so one missed column leaves no notch);
    `glasses.py`: a separate `avatar-glasses` object, rigid on the head bone. The temples run
    straight back from the hinges (`temple_straight`) and only follow the head out near the ear, into
    the hair, so they never splay out past the face (`temple_drop` points, if any, bend the ends down).
+   `hinge_at` (share of the temple length) and `hinge_up` (m) place the hinge block; 0.09 and 0 tuck
+   it into the temple, so no nub sticks out at the frame corner.
 7. `parts.py`: joins everything into one skinned mesh (`avatar-body`), one material per semantic
    name, flat palette colours in a vertex colour attribute (no textures).
+8. `court.py` (a spec with `costumes`, the player): outfit pieces instead of one mesh, all skinned to
+   the one rig, so the game swaps costumes (`src/player/costume.ts`) by showing and hiding meshes:
+   - `avatar-body`: what every costume wears (the bare skin of head, neck and hands and everything
+     on the head: materials Skin, Eye, Hair, Beard), plus `avatar-glasses`;
+   - `avatar-default-<material>`: the wardrobe above, one mesh per garment material
+     (`avatar-default-jacket`, `-trousers`, `-gear`);
+   - `avatar-court-<material>`: the court disguise (`costumes.court`), hidden in the .blend renders
+     (`hide_render`) and hidden by the game until worn: `avatar-court-coat` (coat, skirts, collar,
+     cuffs, buttons, tricorn), `-waistcoat` (waistcoat, stock, shirt cuffs, stockings), `-breeches`
+     (breeches, knee bands, shoes, buckles).
+   A plain 1780s secretary: a dark-blue coat cut away over a cream waistcoat, skirts to the knee with
+   a back vent, a white stock, black breeches, white stockings, black buckled shoes, a plain black
+   tricorn; `avatar-body` and `avatar-glasses` stay. The garments that hug the body are zones on a copy of the
+   decimated skin, cut along their own planes (neckline, stock top, waist, waistcoat hem, knee, shoe
+   top, cuffs, the coat's front edges); trims, skirts, buttons and the hat are solids. The skirts
+   are weighted from the pelvis and spine at the waist towards the thighs at the hem (each vent half
+   mostly to its own thigh), so they follow the legs in Walk, Run and Sword_Slash. Morph targets
+   stay on `avatar-body` only (nothing else moves with them).
 
 8. `palette.py` (featured / extra tiers only): the shared palette and the budget check (below).
 9. `lod.py` `lod1`: the LOD1 copy (below). `lanyard.py`: the guide's lanyard and name badge
@@ -118,6 +186,15 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    solids (the feet, the hips under the skirt) are dropped, which pays for them.
 
 Budget (hero tier): at most 25k triangles, 8 draw calls, textures at most 1k (the player uses none).
+With costumes the budget holds per costume, visible at once: `stats.costumes` lists triangles and
+draw calls of each (body + glasses + that costume's pieces) and the court pieces' parts. The player:
+default 24 495 triangles / 8 draw calls, court 24 715 / 8 (the hip skirt, collar, eye cups and no
+teeth drop hidden faces, which pays for the yoke cut and the solids).
+
+**Occlusion for the hero tier** (`ao`, `kqchar/ao.py`): the same hemisphere bake as the people
+tiers (below), per costume: the body and the default pieces see each other, and the court pieces
+are baked against the body and each other; glasses cast nothing. The palette tiers use the same
+module (`palette.bake_ao`).
 
 ## People tiers: one shared palette material, LOD1
 
@@ -229,15 +306,23 @@ thumb tucked; eased in and out with the reach). The people's `point` plays it.
   ([amount, spread m]) tints the skin under and round the brow.
 - `wardrobe.jacket` (people tiers): `hem_above_crotch`, `hang` {`from`, `slope`, `amount`}, `skirt`
   {`above_hem`, `columns`, `rows`, `clearance`, `flare`, `settle`, `legs`, `band`, `band_out`, `lip`,
-  `colour_band`, `show_below`, `tuck`}, `zip_solid` with `zip_samples`, `zip_width`, `zip_thick`,
+  `colour_band`, `show_below`, `hide_top`, `tuck`}, `zip_solid` with `zip_samples`, `zip_width`, `zip_thick`,
   `zip_raise`, `zip_colour`, `zip_pull`; `collar_closed`, `collar_segments`, `collar_smooth`,
   `collar_lining`, `collar_trim_colour`; `cuff_colour`, `cuff_lift`, `cuff_smooth`.
 - `wardrobe.shoes.solid` with `top` (the ankle plane), `sole_h`, `sole_flare`, `toe_h`, `collar_z`,
   `sections`, `around`.
 - `wardrobe.lanyard`: also `samples` and `smooth` (the strap path smoothed, never into the cloth).
-- `ao` (people tiers): `distance`, `rays`, `default`, `smooth`, `floor`, `zones` (strength per zone), see above.
+- `ao`: `distance`, `rays`, `default`, `smooth`, `floor`, `zones` (strength per zone), see above;
+  for the people tiers and, per costume, for the player.
+- `face.teeth: null` (no teeth), `face.eye_yaw_deg`, `face.stylize.lower_lid`, the beard's edge
+  keys and `glasses.hinge_at` / `hinge_up` (see the pipeline above); `palette.freckles`.
+- `wardrobe.jacket.folds` / `yoke_cut`, `wardrobe.trousers.knees`, `wardrobe.shoes.details` (see
+  `outfit.py` above).
 - `palette_slots` (people tiers): the six slots, see above.
 - `wardrobe.lanyard`: `colour`, `badge`, `width`, `badge_size`, `badge_below_neck`, `strap_x`.
+- `costumes.court` (optional): the court disguise as outfit pieces (`kqchar/court.py`, which lists
+  its keys: palette, materials, coat, waistcoat, stock, skirts, breeches, stockings, shoes, hat;
+  merged over its defaults). Without `costumes` the build makes the single `avatar-body` mesh.
 - `palette`: every colour by name (sRGB hex); `materials`: roughness / specular per material, and an
   optional `emit` (linear RGB emissive factor; skin, hair and beard use a faint warm one so they keep
   their warmth under cold moon or lantern light, with no scene or tone-map change).
@@ -286,9 +371,19 @@ The bake is a world-space rotation transfer with rest-pose alignment:
   bone's rest-to-pose transform first.
 - The pelvis takes the hips' motion, scaled by the hip-height ratio.
 - `--abduct` swings hanging arms out a few degrees so a stockier trunk keeps the hands clear of the
-  hips. Standing clips (`--stand`) can use their own, smaller value (`--stand-abduct`, arms closer
-  to the body; negative brings a slim body's arms in) and a wider stance (`--stand-width`, metres
-  added between the planted feet).
+  hips. The whole arm swings as one (forearm, hand and fingers too), so the elbow keeps the source's
+  bend and does not bow out. Standing clips (`--stand`) can use their own, smaller value
+  (`--stand-abduct`, arms closer to the body; negative brings a slim body's arms in) and a wider stance (`--stand-width`, metres added
+  between the planted feet). The player uses 10 and 8 degrees: the least that keeps the hands out
+  of its stockier hips and the court coat's skirts. `--stand-shoulders` (degrees) drops both
+  clavicles in the standing clips, so the shoulders sit down and relaxed.
+- **Straighter legs** (`pelvis_lift`, before the foot lock; `--knees`, off by default): with the feet
+  pinned, a rig whose hips sit lower on its legs than the source's ends up crouched. Per frame the
+  pelvis rises until each planted leg bends `--knees` times the source's knee flexion (1 = as the
+  source). The idle and locomotion clips (`--loco`, default Idle, Idle_Sword, Walk and the Runs) can
+  stand straighter still (`--knees-loco`; the player uses 1 and 0.6). The lift is never negative and
+  stops short of a locked knee. Frames with no planted foot take the lift of the planted frames
+  around them, smoothed, and the lift fades out while the body is down.
 - **Feet:** the source's Idle stance is the flat-foot reference (`--ankle-ref Idle`), since its
   T-pose rest feet are not flat.
 - **Foot lock** (`foot_lock`, a reusable step on the baked pose matrices; `--lock 0` turns it off,
@@ -307,5 +402,7 @@ The report checks each clip for:
 - knee / elbow bend against the source,
 - foot sliding while planted, against the source, and the sole's pitch while planted (tiptoe),
 - shoulder drop,
-- hands inside the trunk (on the deformed mesh),
+- hands inside the trunk (on the deformed mesh: the body, plus each costume's pieces when the
+  character has costumes; for the court costume this includes the coat skirts over the hips and
+  thighs; reported per costume as `hand_in_trunk_by_costume`),
 - glasses staying on the head, and the skin never coming through the beard.

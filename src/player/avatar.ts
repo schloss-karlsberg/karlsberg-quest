@@ -14,6 +14,12 @@
  *   timing so the blow lands on the hit frame;
  * - full-body overrides: the dodge roll, being undone (death), the abilities' lunge / spin.
  *
+ * Models (`AVATAR_MODELS`): the CC0 surveyor is the default; `?avatar=mpfb` (or
+ * `kq.avatar.useMpfb()`) wears the authored MPFB player instead (scripts/chars/mpfb, its height as
+ * built, vertex-colour palette, its own outfit pieces for the costumes). Bones are looked up by
+ * logical name (characters/bones.ts), so the same code drives both rigs; any MPFB player GLB with
+ * the game_engine rig and the retargeted clips drops in.
+ *
  * Visual only: the simulation lives in Player (movement) and combat (fight).
  */
 import {
@@ -37,6 +43,7 @@ import {
   type PerspectiveCamera,
   Quaternion,
   type Scene,
+  type SkinnedMesh,
   ShaderMaterial,
   SphereGeometry,
   TorusGeometry,
@@ -44,17 +51,20 @@ import {
 } from 'three';
 import type { LoadedModel } from '../assets/loader';
 import { kqStandard } from '../render/standard';
-import { Rig } from '../systems/characters/rig';
+import { type LogicalBone, type RigKind, isUpperTrack, resolveClipName } from '../systems/characters/bones';
+import { Rig, rigInfo } from '../systems/characters/rig';
+import { STRIDE_PER_HEIGHT } from '../systems/people/locomotion';
+import { measureStrides } from '../systems/people/standin';
 import { lanternPose } from '../systems/hunt/lantern';
 import { type WeaponStage, buildStaff, staffMaterial } from '../systems/combat/viewmodel';
 import { atmosphere } from '../world/atmosphere';
 import { BOOM_MIN } from './camera';
-import { type Costume, costumeColours, costumeEmissive, costumeHides, lanternColours, partOf, resolveCostume, resolveTint, slotHex, staffOnBack } from './costume';
+import { COSTUME_IDS, type Costume, costumeColours, costumeEmissive, costumeHides, lanternColours, partOf, piecedCostumes, resolveCostume, resolveTint, slotHex, staffOnBack } from './costume';
 // camera session hooks (round 10): NaN guards (F-15) and the character's fade (round 9, F-07)
 import { clamp01, finiteOr, ribbonStep, safeDt, turnToward, usablePos } from './guards';
 import type { Player } from './player';
 import { actionPose } from './pose';
-import { CharacterFade } from './seeThrough';
+import { CharacterFade, FADE_BOUNDS_DEFAULT, type FadeBounds, plausibleFadeBounds } from './seeThrough';
 
 export { type Costume, SURVEYOR_COSTUME } from './costume';
 
@@ -62,7 +72,7 @@ declare module '../debug/hooks' {
   interface KqHooks {
     /** Third-person character (src/player/avatar.ts): state for tests, camera mode switch. */
     avatar?: {
-      state(): Record<string, unknown> & { ready: boolean; visible: boolean; clip: string; upper: string; full: string; mode: string; third: boolean; distance: number; facing: number; costume: Costume };
+      state(): Record<string, unknown> & { ready: boolean; visible: boolean; clip: string; upper: string; full: string; mode: string; third: boolean; distance: number; facing: number; costume: Costume; model: string; fadeBounds: FadeBounds };
       setMode(m: 'third' | 'first'): void;
       ready(): Promise<boolean>;
       /** The costume asked for (sticky; the model may still be fading into it). */
@@ -71,6 +81,8 @@ declare module '../debug/hooks' {
       setCostume(c: Costume): void;
       /** The lantern tint (sRGB hex), null = the warm default. */
       lanternTint(): number | null;
+      /** Wear the authored MPFB player (true) or the surveyor (false); resolves when the model is in. */
+      useMpfb(on?: boolean): Promise<boolean>;
     };
   }
 }
@@ -87,18 +99,39 @@ declare module '../core/events' {
 export const AVATAR_MODEL = 'camera.player.surveyor';
 export const AVATAR_HEIGHT = 1.78;
 
-/** Bones of the upper-body layer (swings, charge, flare, hit play over the walking legs). */
-const UPPER = /^(Torso|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb)/;
+/**
+ * The models the avatar can wear: the CC0 surveyor (default, scaled to 1.78 m) and the authored
+ * MPFB player (scripts/chars/mpfb; height null = as built). The default stays the surveyor until
+ * the authored look is approved.
+ */
+export const AVATAR_MODELS = {
+  surveyor: { asset: AVATAR_MODEL, height: AVATAR_HEIGHT },
+  mpfb: { asset: 'chars.player.mpfb', height: null },
+} as const satisfies Record<string, { asset: string; height: number | null }>;
+export type AvatarModelId = keyof typeof AVATAR_MODELS;
 
-function splitClip(c: AnimationClip, upper: boolean): AnimationClip {
-  const tracks = c.tracks.filter((t) => UPPER.test(t.name.split('.')[0] ?? '') === upper);
+/** The model from the `?avatar=` URL flag: 'mpfb' wears the authored player, anything else the surveyor. */
+export function avatarModelParam(v: string | null): AvatarModelId {
+  return v === 'mpfb' ? 'mpfb' : 'surveyor';
+}
+
+/** A clip's upper-body (swings, charge, flare, hit over the walking legs) or lower-body tracks (bones.ts). */
+function splitClip(c: AnimationClip, upper: boolean, kind: RigKind): AnimationClip {
+  const tracks = c.tracks.filter((t) => isUpperTrack(kind, t.name) === upper);
   return new AnimationClip(`${c.name}_${upper ? 'up' : 'low'}`, c.duration, tracks);
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
-/** Distance one loop of a clip covers at the model's own stride (m), and the clip lengths. */
+/** Distance one loop of a clip covers at the model's own stride (m), and the clip lengths (the surveyor at 1.78 m). */
 const STRIDE = { walk: 1.75, run: 3.3 };
+
+/**
+ * Where the gear sits on the authored (MPFB) body, measured on the mesh in the Idle pose so any
+ * body / outfit fits: the lantern this far (m) outside the hip's surface, the staff this far behind
+ * the back (any gear on the back included).
+ */
+const MPFB_GEAR = { lanternOut: 0.088, lanternDown: 0.1, lanternFwd: 0.04, backOut: 0.028 };
 
 interface Loco {
   name: string;
@@ -148,6 +181,15 @@ export class Avatar {
   private flameMat: MeshBasicMaterial | null = null;
   private readonly trail: Trail;
   private readonly materials: Material[] = [];
+  /** Rig of the model in (bones.ts), and its stride per loop (m). */
+  private kind: RigKind | null = null;
+  private stride = { ...STRIDE };
+  /** The bone the crouch bends (logical 'spine': Abdomen / spine_01), looked up once per model. */
+  private crouchBone: string | null = null;
+  /** The lantern's place on the hip bone per costume (the court coat's skirts stand off the hip). */
+  private lanternAt: Partial<Record<Costume, Vector3>> = {};
+  /** Costumes the model has outfit pieces for (MPFB avatar-<costume>-*). */
+  private pieced: ReadonlySet<Costume> = new Set();
   /** Geometry built here (the model's own is shared with the asset cache and never disposed). */
   private readonly geos: BufferGeometry[] = [];
   /** The model's costumed materials: one clone per part and slot (the backpack's orange is its own). */
@@ -159,13 +201,37 @@ export class Avatar {
   private swapK = 1;
   private swapDir: -1 | 0 | 1 = 0;
   private tint: number | null = null;
-  /** Exposed for tests / debug. */
-  readonly debug = { clip: '', upper: '', full: '', weights: {} as Record<string, number>, visible: false, armed: false };
+  private bounds: Readonly<FadeBounds> = FADE_BOUNDS_DEFAULT;
+  /** Exposed for tests / debug (`measured`: the fade bounds as measured on the model, see `fadeBounds`). */
+  readonly debug = {
+    clip: '',
+    upper: '',
+    full: '',
+    weights: {} as Record<string, number>,
+    visible: false,
+    armed: false,
+    model: '' as '' | RigKind,
+    measured: null as FadeBounds | null,
+  };
 
+  /**
+   * The body's measurements for the camera's character fade (seeThrough.ts), measured once per
+   * model load in the idle pose: the head bone's height above the feet and the body's half-width
+   * above 1.2 m. The surveyor keeps the defaults (they were tuned on it).
+   */
+  get fadeBounds(): Readonly<FadeBounds> {
+    return this.bounds;
+  }
+
+  /**
+   * `load`: the model; `height`: metres to scale it to (null = as built, the MPFB player). Both
+   * can change later (`useModel`).
+   */
   constructor(
     scene: Scene,
     private readonly player: Player,
-    private readonly load: () => Promise<LoadedModel>,
+    private load: () => Promise<LoadedModel>,
+    private height: number | null = AVATAR_HEIGHT,
   ) {
     this.root.name = 'player-avatar';
     this.root.visible = false;
@@ -232,8 +298,10 @@ export class Avatar {
       if (hex !== null) d.mat.color.setHex(hex);
       d.mat.emissive.setHex(slotHex(emi, d.part, d.slot) ?? 0);
     }
-    for (const m of this.parts) m.visible = !costumeHides(c, m.name);
+    for (const m of this.parts) m.visible = !costumeHides(c, m.name, this.pieced);
     this.staffBack.visible = staffOnBack(c);
+    const at = this.lanternAt[c] ?? this.lanternAt.default;
+    if (at) this.lantern.position.copy(at);
   }
 
   private applyTint(): void {
@@ -290,9 +358,15 @@ export class Avatar {
       console.warn('[avatar] model failed', e);
       return;
     }
-    const rig = new Rig(src, AVATAR_HEIGHT);
+    // the surveyor is scaled to AVATAR_HEIGHT; the authored player keeps its height as built
+    const rig = new Rig(src, this.height ?? rigInfo(src).height);
+    const kind = rig.kind ?? 'quaternius';
+    this.kind = kind;
+    this.debug.model = kind;
+    this.pieced = piecedCostumes(rig.meshes.map((m) => m.name));
     // own costume: clone the shared (world-lit) materials per model part and slot, so a costume can
-    // colour the backpack's orange apart from the vest's (applyCostume)
+    // colour the backpack's orange apart from the vest's (applyCostume). The authored player keeps
+    // its vertex colours and its own roughness: its costumes are outfit pieces, not recolours.
     const cache = new Map<string, MeshStandardMaterial>();
     for (const m of rig.meshes) {
       m.castShadow = true;
@@ -305,15 +379,18 @@ export class Avatar {
         if (!c) {
           const cl = mat.clone() as MeshStandardMaterial;
           delete cl.userData.kqStandard;
-          cl.roughness = mat.name === 'LightGreen' ? 0.55 : mat.name === 'Skin' ? 0.62 : 0.82;
-          cl.metalness = mat.name === 'Gold' ? 0.6 : 0;
+          if (kind === 'quaternius') {
+            cl.roughness = mat.name === 'LightGreen' ? 0.55 : mat.name === 'Skin' ? 0.62 : 0.82;
+            cl.metalness = mat.name === 'Gold' ? 0.6 : 0;
+          }
           if (!cl.emissive) cl.emissive = new Color(0);
           kqStandard(cl, { ambient: 1.15 });
-          // screen-door fade (no sorting): opacity < 1 dithers the body away (see fade below)
+          // screen-door fade (no sorting): opacity < 1 dithers the body away (see fade below);
+          // glass lenses (none on today's models: the glasses are frames only) stay out of the fade
           cl.alphaHash = true;
           cache.set(key, cl);
-          this.materials.push(cl);
-          this.dressed.push({ mat: cl, part, slot: mat.name });
+          if (!/lens/i.test(mat.name)) this.materials.push(cl);
+          if (kind === 'quaternius') this.dressed.push({ mat: cl, part, slot: mat.name });
           c = cl;
         }
         return c;
@@ -321,13 +398,30 @@ export class Avatar {
       m.material = Array.isArray(m.material) ? out : out[0]!;
     }
     this.root.add(rig.root);
+    // stride per loop: the surveyor's tuned values; another model's scaled by how far its own Walk /
+    // Run cover against the Quaternius clips (measured from the foot tracks, people/standin.ts)
+    this.stride = { ...STRIDE };
+    if (kind !== 'quaternius') {
+      const h = rig.info.height * rig.scale;
+      const st = measureStrides(rig, src, h);
+      if (st.measured) {
+        const k = h / AVATAR_HEIGHT;
+        this.stride = { walk: (STRIDE.walk * k * st.walk) / STRIDE_PER_HEIGHT.walk, run: (STRIDE.run * k * st.run) / STRIDE_PER_HEIGHT.run };
+      }
+    }
+    this.crouchBone = rig.boneNameOf('spine');
     // clips: locomotion split into legs / upper body, actions as upper-only and full-body copies
-    const clip = (n: string) => src.animations.find((a) => a.name === n) ?? null;
+    // (names through the alias table, characters/bones.ts)
+    const names = src.animations.map((a) => a.name);
+    const clip = (n: string) => {
+      const r = resolveClipName(names, n);
+      return r ? (src.animations.find((a) => a.name === r) ?? null) : null;
+    };
     for (const n of ['Idle', 'Idle_Sword', 'Walk', 'Run', 'Run_Left', 'Run_Right', 'Run_Back']) {
       const c = clip(n);
       if (!c) continue;
-      const low = rig.mixer.clipAction(splitClip(c, false));
-      const up = rig.mixer.clipAction(splitClip(c, true));
+      const low = rig.mixer.clipAction(splitClip(c, false, kind));
+      const up = rig.mixer.clipAction(splitClip(c, true, kind));
       for (const a of [low, up]) {
         a.play();
         a.setEffectiveWeight(0);
@@ -338,7 +432,7 @@ export class Avatar {
     for (const n of ['Sword_Slash', 'Punch_Right', 'Punch_Left', 'HitRecieve', 'Interact', 'Wave', 'Roll', 'Death']) {
       const c = clip(n);
       if (!c) continue;
-      const up = rig.mixer.clipAction(splitClip(c, true));
+      const up = rig.mixer.clipAction(splitClip(c, true, kind));
       const full = rig.mixer.clipAction(c);
       for (const a of [up, full]) {
         a.play();
@@ -349,11 +443,57 @@ export class Avatar {
     }
     this.buildStaffAnchors(rig);
     this.buildLantern(rig);
+    this.measureFadeBounds(rig);
     this.rig = rig;
     this.root.traverse((o) => (o.frustumCulled = false));
     // sticky: a costume / tint asked for before the model was in
     this.swapNow();
     this.applyTint();
+  }
+
+  /**
+   * Wear another model (kq.avatar.useMpfb): the current one is torn down, the costume and the
+   * lantern tint stay (sticky). Resolves true when the new model is in.
+   */
+  async useModel(load: () => Promise<LoadedModel>, height: number | null): Promise<boolean> {
+    await this.building;
+    this.teardown();
+    this.load = load;
+    this.height = height;
+    this.building = this.build();
+    await this.building;
+    return this.rig !== null;
+  }
+
+  /** Drop the model and everything built on it (materials, clips, gear geometry); the groups stay. */
+  private teardown(): void {
+    lanternPose.anchor = null;
+    this.rig?.dispose();
+    this.rig = null;
+    this.kind = null;
+    this.debug.model = '';
+    for (const m of this.materials) m.dispose();
+    this.materials.length = 0;
+    this.dressed.length = 0;
+    this.parts.length = 0;
+    this.locos.length = 0;
+    this.acts.clear();
+    for (const c of [...this.lantern.children]) c.removeFromParent();
+    for (const g of this.geos) g.dispose();
+    this.geos.length = 0;
+    this.lanternGlow?.dispose();
+    this.flameMat?.dispose();
+    this.lanternGlow = null;
+    this.flameMat = null;
+    this.flame = null;
+    for (const g of [this.lantern, this.staffHand, this.staffBack]) g.removeFromParent();
+    this.lanternAt = {};
+    this.pieced = new Set();
+    this.crouchBone = null;
+    this.bounds = FADE_BOUNDS_DEFAULT;
+    this.debug.measured = null;
+    this.trail.clear();
+    this.building = null;
   }
 
   /**
@@ -393,28 +533,94 @@ export class Avatar {
     bone.add(obj);
   }
 
+  /**
+   * Skinned vertices of the meshes a costume shows, in the current pose (root frame, see
+   * `attachAt`): the largest `pick(p)` over the points that pass `near`, or null. Build time only.
+   */
+  private bodyExtent(rig: Rig, c: Costume, near: (p: Vector3) => boolean, pick: (p: Vector3) => number): number | null {
+    let best: number | null = null;
+    const p = new Vector3();
+    for (const m of rig.meshes) {
+      if (costumeHides(c, m.name, this.pieced)) continue;
+      const pos = m.geometry.getAttribute('position');
+      const sk = (m as SkinnedMesh).isSkinnedMesh ? (m as SkinnedMesh) : null;
+      for (let i = 0; i < pos.count; i++) {
+        if (sk) sk.getVertexPosition(i, p);
+        else p.fromBufferAttribute(pos, i);
+        p.applyMatrix4(m.matrixWorld).sub(rig.root.position);
+        if (!near(p)) continue;
+        const v = pick(p);
+        if (best === null || v > best) best = v;
+      }
+    }
+    return best;
+  }
+
+  /** `fadeBounds` for this model, in the idle pose (the default costume's meshes). Build time only. */
+  private measureFadeBounds(rig: Rig): void {
+    this.poseFor(rig, 'Idle');
+    const head = rig.boneOf('head');
+    const y = head ? head.getWorldPosition(new Vector3()).y - rig.root.position.y : null;
+    const w = this.bodyExtent(rig, 'default', (p) => p.y > 1.2, (p) => Math.hypot(p.x, p.z));
+    // debug keeps the raw measurement; the fade uses it clamped to a plausible range
+    const fit = plausibleFadeBounds(y, w);
+    this.debug.measured = fit && y !== null && w !== null ? { head: y, halfWidth: w } : null;
+    this.bounds = this.kind === 'quaternius' || !fit ? FADE_BOUNDS_DEFAULT : fit;
+  }
+
   /** Hand grip (sword pose) and back strap (idle pose), calibrated in the rig's own poses. */
   private buildStaffAnchors(rig: Rig): void {
-    const wrist = findBone(rig, /^Wrist.?R$/);
-    if (wrist) {
-      // measured on the Quaternius hand: the fingers run along the wrist's +y, the line across
-      // the knuckles (pinky -> index) along its -x — a held sword's blade. The pole sits in the
-      // curled fingers, its shoe out past the index finger.
-      const ws = wrist.getWorldScale(new Vector3()).x;
-      this.staffHand.position.set(0, 0.085 / ws, -0.012 / ws);
-      this.staffHand.quaternion.setFromUnitVectors(new Vector3(0, 0, -1), new Vector3(-1, 0, 0));
-      this.staffHand.scale.setScalar(1 / ws);
-      wrist.add(this.staffHand);
-    }
-    const chest = findBone(rig, /^Chest$/) ?? findBone(rig, /^Torso$/);
+    if (this.kind === 'quaternius') {
+      const wrist = rig.boneOf('hand_r');
+      if (wrist) {
+        // measured on the Quaternius hand: the fingers run along the wrist's +y, the line across
+        // the knuckles (pinky -> index) along its -x — a held sword's blade. The pole sits in the
+        // curled fingers, its shoe out past the index finger.
+        const ws = wrist.getWorldScale(new Vector3()).x;
+        this.staffHand.position.set(0, 0.085 / ws, -0.012 / ws);
+        this.staffHand.quaternion.setFromUnitVectors(new Vector3(0, 0, -1), new Vector3(-1, 0, 0));
+        this.staffHand.scale.setScalar(1 / ws);
+        wrist.add(this.staffHand);
+      }
+    } else this.gripFromFingers(rig);
+    const chest = rig.boneOf('chest') ?? rig.boneOf('spine2');
     if (chest) {
       this.poseFor(rig, 'Idle');
       const c = chest.getWorldPosition(new Vector3());
-      // across the backpack: diagonal, the shoe down by the right hip, the butt over the left shoulder
-      const pos = c.clone().add(new Vector3(0.0, 0.02, -0.27));
+      // across the backpack: diagonal, the shoe down by the right hip, the butt over the left
+      // shoulder. The authored body: just behind its back (any gear on the back included), measured on the mesh.
+      let back = -0.27;
+      if (this.kind !== 'quaternius') {
+        const z = this.bodyExtent(rig, 'default', (p) => Math.abs(p.x - c.x) < 0.12 && p.y > c.y - 0.16 && p.y < c.y + 0.1, (p) => -p.z);
+        back = z === null ? -0.25 : -z - c.z - MPFB_GEAR.backOut;
+      }
+      const pos = c.clone().add(new Vector3(0.0, 0.02, back));
       const dir = new Vector3(-0.38, -0.92, 0).normalize();
       this.attachAt(rig, chest, this.staffBack, pos, dir, new Vector3(0, 0, -1));
     }
+  }
+
+  /**
+   * The grip of a rig whose hand axes we do not assume (the authored player): measured in the
+   * armed idle pose from the finger joints. The pole runs along the knuckle line (pinky → index,
+   * a held sword's blade), through the curled fingers just in from the knuckles, on the palm side.
+   */
+  private gripFromFingers(rig: Rig): void {
+    const bone = (b: LogicalBone) => rig.boneOf(b)?.getWorldPosition(new Vector3()) ?? null;
+    const hand = rig.boneOf('hand_r');
+    if (!hand) return;
+    this.poseFor(rig, rig.has('Idle_Sword') ? 'Idle_Sword' : 'Idle');
+    const w = bone('hand_r')!;
+    const idx = bone('index1_r');
+    const pin = bone('pinky1_r');
+    const mid = bone('middle1_r') ?? idx;
+    if (!idx || !pin || !mid) return;
+    const knuckles = idx.clone().sub(pin).normalize();
+    const reach = mid.clone().sub(w);
+    const fingers = reach.clone().normalize();
+    const palm = new Vector3().crossVectors(knuckles, fingers).normalize();
+    const pos = w.clone().addScaledVector(reach, 1.08).addScaledVector(palm, 0.022).add(rig.root.position);
+    this.attachAt(rig, hand, this.staffHand, pos, knuckles, fingers);
   }
 
   private setStage(stage: WeaponStage): void {
@@ -434,7 +640,7 @@ export class Avatar {
   }
 
   private buildLantern(rig: Rig): void {
-    const hips = findBone(rig, /^Hips$/);
+    const hips = rig.boneOf('hips');
     if (!hips) return;
     const brass = kqStandard(new MeshStandardMaterial({ color: 0x8a6a2c, metalness: 0.75, roughness: 0.38 }), { ambient: 1.2 });
     this.materials.push(brass);
@@ -465,7 +671,20 @@ export class Avatar {
     // on the left hip, hanging from the belt (calibrated in the idle pose; +x is the model's left)
     this.poseFor(rig, 'Idle');
     const h = hips.getWorldPosition(new Vector3());
-    this.attachAt(rig, hips, g, h.add(new Vector3(0.21, -0.1, 0.04)), new Vector3(0, 0, -1), new Vector3(0, 1, 0));
+    if (this.kind === 'quaternius') {
+      this.attachAt(rig, hips, g, h.add(new Vector3(0.21, -0.1, 0.04)), new Vector3(0, 0, -1), new Vector3(0, 1, 0));
+    } else {
+      // the authored body: just outside the hip's surface in each costume (the court coat's
+      // skirts stand off the hip), measured on the mesh; applyCostume moves it
+      const G = MPFB_GEAR;
+      const y = h.y - G.lanternDown;
+      for (const c of COSTUME_IDS) {
+        const x = this.bodyExtent(rig, c, (p) => p.x > h.x && Math.abs(p.y - y) < 0.08 && p.z > h.z + G.lanternFwd - 0.09 && p.z < h.z + G.lanternFwd + 0.09, (p) => p.x);
+        const pos = new Vector3((x ?? h.x + 0.18) + G.lanternOut, y, h.z + G.lanternFwd);
+        if (c === 'default') this.attachAt(rig, hips, g, pos, new Vector3(0, 0, -1), new Vector3(0, 1, 0));
+        this.lanternAt[c] = hips.worldToLocal(pos.add(rig.root.position));
+      }
+    }
     g.scale.multiplyScalar(1.25);
   }
 
@@ -551,7 +770,7 @@ export class Avatar {
       wl.Run! += moveK * runK;
     }
     // phase-locked feet: one cycle counter for every loop
-    const stride = STRIDE.walk + (STRIDE.run - STRIDE.walk) * runK;
+    const stride = this.stride.walk + (this.stride.run - this.stride.walk) * runK;
     if (!A.frozen) this.phase += (Math.max(sp, 0) / stride) * dt;
     // crouch / prone: slower, lower
     this.crouch += ((pl.stance === 'crouch' ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
@@ -670,7 +889,7 @@ export class Avatar {
     rig.update(0);
     // crouch: bend at the waist and sink; prone: lie forward along the facing
     if (this.crouch > 0.01) {
-      rig.turnBone(findBoneName(rig, /^Abdomen$/), 0, 0.42 * this.crouch);
+      rig.turnBone(this.crouchBone, 0, 0.42 * this.crouch);
       rig.holder.position.y = -rig.info.minY * rig.scale - 0.2 * this.crouch;
     } else rig.holder.position.y = -rig.info.minY * rig.scale;
     if (this.prone > 0.01) {
@@ -724,7 +943,7 @@ export class Avatar {
   /** Opacity of every material in `materials` (alphaHash: dithered, no sorting): camera fade × costume swap dip. */
   private fadeFrame(f: AvatarFrame, dt: number, p: Vector3): void {
     this.swapFrame(dt);
-    const o = this.see.step(f.camera, p, actionPose.target, actionPose.inCombat, dt) * this.swapK;
+    const o = this.see.step(f.camera, p, actionPose.target, actionPose.inCombat, dt, this.bounds) * this.swapK;
     for (const m of this.materials) m.opacity = o;
     if (this.staff) this.staff.visible = this.staff.visible && o > 0.35;
   }
@@ -741,16 +960,6 @@ export class Avatar {
     this.staff?.geometry.dispose();
     this.staffMat?.dispose();
   }
-}
-
-function findBone(rig: Rig, re: RegExp): Bone | undefined {
-  for (const [n, b] of rig.bones) if (re.test(n)) return b;
-  return undefined;
-}
-
-function findBoneName(rig: Rig, re: RegExp): string | null {
-  for (const n of rig.bones.keys()) if (re.test(n)) return n;
-  return null;
 }
 
 /** A ribbon behind the staff's shoe while it swings (world space, additive, ~0.12 s long). */

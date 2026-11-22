@@ -7,14 +7,28 @@ import type { AssetEntry } from '../types';
  * packed with pnpm assets:pack. Pivot at the feet, facing +z, metres. Bind pose (A-pose); clips
  * retargeted from the Quaternius humans already in the repo.
  *
- * - The player (hero tier): built by the same pipeline; its spec, build script, GLB and manifest
- *   entry ship with the avatar MR, not here.
+ * - The player (hero tier, `chars.player.mpfb`): the playable avatar behind `?avatar=mpfb` /
+ *   kq.avatar.useMpfb() (src/player/avatar.ts); area 'dev', loaded only on demand. Toon shading
+ *   (`shading: 'toon'`, src/systems/characters/toon.ts). Pivot at the feet, facing +z, metres.
+ *   Morph targets smile, blink (on avatar-body). Outfit pieces (scripts/chars/mpfb/kqchar/court.py):
+ *   avatar-body and avatar-glasses always, avatar-default-* for the default outfit, avatar-court-*
+ *   for the court costume (shown only in it); all on one skin.
  * - People (featured / extra tiers): drawn by the people system (src/systems/people/authored.ts)
  *   with ONE shared palette material: every surface colour sits in the vertex colours, the GLB has
  *   one material 'People' and a decimated LOD1 mesh ('avatar-body_lod1', about half the triangles,
  *   same skin) for beyond 15 m.
  */
 const entries: AssetEntry[] = [
+  {
+    id: 'chars.player.mpfb',
+    kind: 'model',
+    url: 'models/chars/player-head-mpfb.glb',
+    area: 'dev',
+    bytes: 606340,
+    licence: 'makehuman.mpfb2.player',
+    shading: 'toon',
+    note: 'Built by scripts/chars/mpfb/build_player.py from specs/player.json (stylised: big open eyes with smiling lids, an open smile, simple planes, a big head, about 5.6 heads tall, stocky). Object avatar-body: Skin, Hair (incl. brows), Beard (a sculpted solid shell) and Eye, each with a faint warm emissive; avatar-default-jacket: Jacket (shell with a colour-blocked yoke, collar, solid zip, cuffs, chest pocket flap, and the hip part as a hanging skirt with a hem band); avatar-default-trousers: Trousers; avatar-default-gear: Gear (laced ankle boots with collars, daypack); avatar-glasses: Glasses; the court costume, hidden until worn: avatar-court-coat: Coat (coat, skirts, collar, cuffs, buttons, tricorn), avatar-court-waistcoat: Waistcoat (waistcoat, stock, shirt cuffs, stockings), avatar-court-breeches: Breeches (breeches, knee bands, buckled shoes). Vertex colours with occlusion baked per costume. Each costume: under 25k triangles and 8 draw calls visible. Clips: the Quaternius humanoid clips already in the repo, bake-retargeted with a foot lock (scripts/chars/mpfb/retarget.py); the standing clips take a wider, upright stance with a level head and lowered, relaxed shoulders; the idle and locomotion clips stand straighter than the source (the pelvis raised so planted knees bend 0.6 of its flexion); relaxed, gently curled fingers in every clip. All meshes share one skin.',
+  },
   {
     id: 'chars.people.guide',
     kind: 'model',

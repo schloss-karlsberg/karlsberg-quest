@@ -2,7 +2,7 @@
 
     blender -b --factory-startup --disable-autoexec -P scripts/chars/mpfb/render_bust.py -- \
         <character.glb|character.blend> <out_dir> [--engine cycles|eevee] [--views front,34,side,back,full,close,close34,backfull,mouth,eyes] [--hide Skin,...] [--view 'ACES 1.3'|AgX|Filmic] \
-        [--size 640] [--morph smile=1] [--samples 24]
+        [--size 640] [--morph smile=1] [--samples 24] [--costume default|court]
 
 Cycles renders on the CPU (no GPU lock needed, a few seconds per view at 640 px). Eevee uses the GPU:
 run it through the machine-wide heavy-job lock (docs/NEXT-SESSION.md §4). The judged shots are the
@@ -44,6 +44,11 @@ scene = bpy.context.scene
 for o in list(scene.objects):
     if o.type in ('CAMERA', 'LIGHT'):
         bpy.data.objects.remove(o, do_unlink=True)
+# outfit pieces (kqchar/court.py): show one costume's pieces, hide the others'
+costume = opt('costume', 'default')
+for o in scene.objects:
+    if o.name.startswith(('avatar-default-', 'avatar-court-')):
+        o.hide_render = not o.name.startswith(f'avatar-{costume}-')
 meshes = [o for o in scene.objects if o.type == 'MESH' and not o.hide_render]
 for o in meshes:
     if o.data.shape_keys:

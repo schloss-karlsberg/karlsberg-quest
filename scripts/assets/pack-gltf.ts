@@ -10,7 +10,8 @@
  *   (default 1024; use 2048 only for hero / terrain sets, docs/ART-DIRECTION.md §8),
  * - `--anims`: keep only these animation clips (matched on the name after the last '|', so
  *   'CharacterArmature|Walk' is 'Walk'), renamed to that short name; duplicates are dropped,
- * - meshopt compression (EXT_meshopt_compression) with quantised attributes.
+ * - meshopt compression (EXT_meshopt_compression) with quantised attributes (over the whole
+ *   scene's volume when several skinned meshes share one skin, so they keep sharing it).
  * The input is untrusted data: this script only parses it (no code from the download runs).
  * Prints the output size; record it as `bytes` in the manifest entry.
  */
@@ -18,7 +19,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { NodeIO } from '@gltf-transform/core';
+import { Node, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression, EXTTextureWebP } from '@gltf-transform/extensions';
 import { dedup, prune, quantize, reorder, simplify, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
@@ -87,7 +88,13 @@ for (const t of doc.getRoot().listTextures()) {
 if (converted) doc.createExtension(EXTTextureWebP).setRequired(true);
 
 if (!process.argv.includes('--no-meshopt')) {
-  await doc.transform(reorder({ encoder: MeshoptEncoder }), quantize());
+  // skinned meshes that share one skin (outfit pieces on one rig) keep sharing it: quantising each
+  // mesh in its own volume would give each its own copy of the skin (and three its own skeleton)
+  const sharedSkin = doc
+    .getRoot()
+    .listSkins()
+    .some((s) => s.listParents().filter((p) => p instanceof Node).length > 1);
+  await doc.transform(reorder({ encoder: MeshoptEncoder }), quantize(sharedSkin ? { quantizationVolume: 'scene' } : undefined));
   doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE });
 }
 fs.mkdirSync(path.dirname(output), { recursive: true });

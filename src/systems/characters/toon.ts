@@ -52,6 +52,9 @@ export interface ToonParams {
   spec: number;
   /** Catchlight glow (white vertex colours), 0 = off. */
   glint: number;
+  /** Saturation of the sun's colour on this material (1 = as lit, 0 = its luminance only): a low
+   * sun's orange cast is kept off skin and hair without touching the scene light. */
+  sunSat: number;
 }
 
 export const TOON_DEFAULT: ToonParams = {
@@ -66,6 +69,7 @@ export const TOON_DEFAULT: ToonParams = {
   rim: 0.26,
   spec: 0.45,
   glint: 0,
+  sunSat: 1,
 };
 
 /**
@@ -73,18 +77,28 @@ export const TOON_DEFAULT: ToonParams = {
  * people palette materials (kqchar/palette.py). Unknown slots take `TOON_DEFAULT`.
  */
 export const TOON_BY_MATERIAL: Record<string, Partial<ToonParams>> = {
-  // skin: the warmest terminator (a painted subsurface glow), a faint highlight
-  Skin: { terminator: 0.28, warm: 0.5, spec: 0.25, rim: 0.24, shade: 0xffb898, smooth: 0.3 },
-  // hair and beard: softer bands (the clumps carry the shape), no warm edge in the grooves
-  Hair: { terminator: 0, spec: 0.5, rim: 0.4, lit: 0.74, smooth: 0.4, soft: 0.18 },
-  Beard: { terminator: 0, spec: 0.35, rim: 0.4, lit: 0.76, smooth: 0.4, soft: 0.18 },
+  // skin: a soft, mostly smooth ramp (no hard creases across the cheeks), a faint warm terminator and
+  // highlight, a lower lit band, a light shade tint and a desaturated sun, so skin keeps its own colour
+  // in a low orange sun and takes no cold cast at night
+  Skin: { terminator: 0.15, warm: 0.8, spec: 0.2, rim: 0.2, shade: 0xffe0d8, smooth: 0.55, soft: 0.3, lit: 0.55, mid: 0.32, sunSat: 0.45 },
+  // hair and beard: softer bands (the clumps carry the shape), no warm edge in the grooves; a lower
+  // lit band and a desaturated sun, so saturated colours keep their hue in strong or low sun
+  Hair: { terminator: 0, spec: 0.4, rim: 0.35, lit: 0.5, mid: 0.36, smooth: 0.4, soft: 0.2, sunSat: 0.45 },
+  Beard: { terminator: 0, spec: 0.25, rim: 0.35, lit: 0.5, mid: 0.36, smooth: 0.45, soft: 0.22, sunSat: 0.45 },
   // eyes (and the teeth): flatter, a wet highlight, the catchlight stays bright
-  Eye: { edges: [-0.3, 0.2], mid: 0.75, terminator: 0, rim: 0, spec: 1.0, glint: 1.4, warm: 0.3 },
+  Eye: { edges: [-0.3, 0.2], mid: 0.75, terminator: 0, rim: 0, spec: 1.0, glint: 1.4, warm: 0.1, sunSat: 0.3 },
   Glasses: { terminator: 0, spec: 1.0, rim: 0.25, warm: 0.2 },
-  // a saturated top layer: a lower lit band, so the tone map keeps a strong hue (a red stays red)
-  Jacket: { terminator: 0.2, lit: 0.64, mid: 0.34 },
+  // a saturated top layer: a lower lit band, so the tone map keeps a strong hue (a red stays red);
+  // matte (a faint highlight and rim, no sheen)
+  Jacket: { terminator: 0.15, lit: 0.6, mid: 0.34, spec: 0.08, rim: 0.12, sunSat: 0.7 },
   Trousers: { rim: 0.3, terminator: 0.15 },
   Gear: { terminator: 0.2 },
+  // the player's court costume (kqchar/court.py): the dark coat and breeches like the trousers, the
+  // light waistcoat and stockings with a lower lit band (they must not blow out to white), no warm
+  // edge and little warm fill (a light cloth must not take a skin tone in its folds)
+  Coat: { rim: 0.3, terminator: 0.15 },
+  Waistcoat: { terminator: 0, warm: 0.15, lit: 0.65, rim: 0.15, spec: 0.15 },
+  Breeches: { rim: 0.3, terminator: 0.15 },
   // the people palette: skin, cloth and hair in one vertex-coloured material, so a middle setting
   // (a skin-like warm edge, no glint: white cloth must not glow); the eye material as `Eye`
   People: { terminator: 0.18, warm: 0.45, spec: 0.3, rim: 0.28, shade: 0xffbc9c, smooth: 0.3 },
@@ -103,6 +117,7 @@ uniform vec3 uToonShade;
 uniform float uToonGlint;
 uniform float uToonRim;
 uniform float uToonLit;
+uniform float uToonSunSat;
 float kqToonRamp(float ndl) {
   float s = uToonBand.w;
   float a = smoothstep(uToonBand.x - s, uToonBand.x + s, ndl);
@@ -116,11 +131,12 @@ vec3 kqToonWarm(vec3 c) {
 }
 void kqToonDirect(const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight) {
   float ndl = dot(geometryNormal, directLight.direction);
-  vec3 irr = directLight.color * kqToonRamp(ndl);
+  vec3 sunC = mix(vec3(dot(directLight.color, vec3(0.2126, 0.7152, 0.0722))), directLight.color, uToonSunSat);
+  vec3 irr = sunC * kqToonRamp(ndl);
   reflectedLight.directDiffuse += irr * BRDF_Lambert(material.diffuseContribution);
   // the warm band where the light turns (luminance of the light, the warm tint of the shade)
   float term = smoothstep(uToonBand.x - 0.16, uToonBand.x + 0.02, ndl) * (1.0 - smoothstep(uToonBand.x + 0.02, uToonBand.x + 0.24, ndl));
-  reflectedLight.directDiffuse += directLight.color * term * uToonMix.y * BRDF_Lambert(material.diffuseContribution * uToonShade * uToonShade);
+  reflectedLight.directDiffuse += sunC * term * uToonMix.y * BRDF_Lambert(material.diffuseContribution * uToonShade * uToonShade);
   reflectedLight.directSpecular += irr * BRDF_GGX(directLight.direction, geometryViewDir, geometryNormal, material) * material.multiScatteringCompensation * uToonMix.z;
 }
 `;
@@ -179,6 +195,7 @@ export function toonUniforms(p: ToonParams): Record<string, { value: unknown }> 
     uToonGlint: { value: p.glint },
     uToonRim: { value: p.rim },
     uToonLit: { value: p.lit },
+    uToonSunSat: { value: p.sunSat },
   };
 }
 
