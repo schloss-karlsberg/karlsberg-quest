@@ -1,4 +1,11 @@
 /* The party's credits strip (src/systems/party/strip.ts): a band along the bottom edge, over the cinematic letterbox. */
+/* while it runs the HUD steps aside like in a cinematic (the Bussole sat on the skip button at
+   1280×720); subtitles, the dialogue card and the touch controls (walking stays possible) stay */
+html[data-kq-credits] .kq-hud > :not(.kq-subtitles),
+html[data-kq-credits] .kqs-bussole,
+html[data-kq-credits] .kqs-objective {
+  visibility: hidden !important;
+}
 .kq-party-strip {
   position: fixed;
   left: 0;
