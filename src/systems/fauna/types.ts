@@ -80,7 +80,7 @@ export interface Animal {
   readonly ready: Promise<boolean>;  // true when the mesh is in, false on fallback; usable before (invisible until ready)
   setSpeed(mps: number): void;       // idle → walk → run by ground speed, feet phase-locked; > 0.2 m/s overrides looping action clips
   play(clip: AnimalClip, o?: { loop?: boolean; fade?: number; speed?: number }): void;
-  face(yaw: number): void;           // smooth body turn (radians, player convention)
+  face(yaw: number, o?: { seconds?: number }): void; // smooth body turn (radians, player convention); seconds: turn time (default FACE_SECONDS), 0 = at once for a caller that turns smoothly itself
   lookAt(p: { x: number; y: number; z: number } | null): void; // head turn within limits; null = forward
   headWorld(out: { x: number; y: number; z: number }): void;    // current head position (photo framing, cinematic target)
   setEyeShine(k: number): void;      // 0..1 eye glint (keep ending: "eyes catching the fire a little too brightly")

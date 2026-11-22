@@ -33,6 +33,14 @@ export const LOS_HZ = 5;
 export const SAVE_HZ = 4;
 /** A leader moving faster than this in one tick jumped (teleport, warp): its speed counts as 0. */
 export const JUMP_SPEED = 15;
+/**
+ * Velocity filter of a follow ref (s). A people root moves only on rendered frames (the walk syncs
+ * its bodies in the frame hook), so between fixed ticks it jumps or stands still (at 30 fps: 2v, 0,
+ * 2v, 0 …). The ref's speed is its displacement over the time since it last moved, low-passed.
+ */
+export const REF_TAU = 0.25;
+/** A ref that has not moved for this long has stopped (s); shorter gaps are ticks without a render. */
+export const REF_HOLD = 0.15;
 /** lineOfSight transmittance below this = the deer cannot see the player. */
 export const LOS_MIN = 0.15;
 /** Photo `at`: body centre at this fraction of the shoulder height. */
@@ -99,11 +107,12 @@ interface Slot {
   undo: (() => void)[];
 }
 
-interface RefSample {
-  x: number;
-  z: number;
-  yaw: number;
-  speed: number;
+interface RefSample extends DogTarget {
+  /** Filtered velocity (m/s). */
+  vx: number;
+  vz: number;
+  /** Seconds since the position last changed. */
+  idle: number;
 }
 
 function hash(s: string): number {
@@ -126,7 +135,7 @@ export class AnimalsRuntime {
   private saveT = 0;
   /** Last known pose of each follow ref (speed / heading from the motion between ticks). */
   private readonly refs = new Map<string, RefSample>();
-  private tickRefs = new Map<string, DogTarget | null>();
+  private tickRefs = new Map<string, RefSample | null>();
   private dt = 1 / 60;
   private readonly log: (m: string) => void;
 
@@ -339,18 +348,39 @@ export class AnimalsRuntime {
   resolve = (ref: string): DogTarget | null => {
     if (this.tickRefs.has(ref)) return this.tickRefs.get(ref)!;
     const at = this.locate(ref);
-    let out: DogTarget | null = null;
+    let out: RefSample | null = null;
     if (at) {
       const prev = this.refs.get(ref);
-      let speed = 0;
-      let yaw = at.yaw ?? prev?.yaw ?? 0;
+      let vx = 0;
+      let vz = 0;
+      let idle = 0;
+      let jumped = false;
       if (prev) {
-        const d = Math.hypot(at.x - prev.x, at.z - prev.z);
-        const v = d / this.dt;
-        speed = v > JUMP_SPEED ? 0 : v;
-        if (at.yaw === undefined && d > 0.01 && v <= JUMP_SPEED) yaw = headingOf(at.x - prev.x, at.z - prev.z);
+        const dx = at.x - prev.x;
+        const dz = at.z - prev.z;
+        const d = Math.hypot(dx, dz);
+        const span = prev.idle + this.dt;
+        if (d > 1e-6) {
+          // moved: the displacement since it last moved, over that time; a jump (teleport, a fade's
+          // warp, the walk's snap) starts over at rest, and the dogs far behind land in their places
+          if (d / span <= JUMP_SPEED) {
+            const k = 1 - Math.exp(-span / REF_TAU);
+            vx = prev.vx + (dx / span - prev.vx) * k;
+            vz = prev.vz + (dz / span - prev.vz) * k;
+          } else jumped = true;
+        } else {
+          // standing: a tick without a render holds the speed, a longer stand lets it decay
+          idle = span;
+          const keep = idle > REF_HOLD ? Math.exp(-this.dt / REF_TAU) : 1;
+          vx = prev.vx * keep;
+          vz = prev.vz * keep;
+          if (Math.hypot(vx, vz) < 0.02) vx = vz = 0;
+        }
       }
-      out = { x: at.x, z: at.z, yaw, speed };
+      const speed = Math.hypot(vx, vz);
+      let yaw = at.yaw ?? prev?.yaw ?? 0;
+      if (at.yaw === undefined && speed > 0.3) yaw = headingOf(vx, vz);
+      out = { x: at.x, z: at.z, yaw, speed, vx, vz, idle, jumped };
     }
     this.tickRefs.set(ref, out);
     return out;
@@ -359,7 +389,7 @@ export class AnimalsRuntime {
   /** End of tick: remember where each ref was. */
   private sampleRefs(): void {
     this.refs.clear();
-    for (const [ref, t] of this.tickRefs) if (t) this.refs.set(ref, { x: t.x, z: t.z, yaw: t.yaw, speed: t.speed });
+    for (const [ref, t] of this.tickRefs) if (t) this.refs.set(ref, t);
     this.tickRefs = new Map();
   }
 
@@ -455,9 +485,12 @@ export class AnimalsRuntime {
       if (!b) continue;
       b.root.position.set(a.x, w.heightAt(a.x, a.z), a.z);
       const m = a.motion;
-      if (Math.abs(m.yaw - s.yaw) > 1e-3) {
+      // `!(… <= …)`: the slot starts at NaN (no yaw sent yet), and a NaN comparison is always false;
+      // `abs(… - NaN) > 1e-3` never let a face() through, so the bodies kept their spawn yaw for good
+      if (!(Math.abs(m.yaw - s.yaw) <= 1e-3)) {
         s.yaw = m.yaw;
-        b.face(m.yaw);
+        // a dog's core turns smoothly and walks along its yaw: the body shows that yaw as it is
+        b.face(m.yaw, s.kind === 'hund' ? { seconds: 0 } : undefined);
       }
       if (Math.abs(m.speed - s.speed) > 0.02) {
         s.speed = m.speed;
