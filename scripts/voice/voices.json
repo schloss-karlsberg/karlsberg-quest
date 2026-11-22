@@ -53,6 +53,70 @@
       "name": "MOSS casting marlene-de-s205",
       "note": "picked 2026-11-20 by criteria, owner may override",
       "model": null
+    },
+    "imhoff": {
+      "provider": "moss",
+      "reference": "imhoff-ref.wav",
+      "seed": 3101,
+      "language": "German",
+      "instruction": "An older man in his late sixties, a volunteer tour guide, with a calm, warm, slightly dry male voice. Friendly, clear and unhurried, precise, natural and not theatrical. He speaks at a natural, steady conversational pace.",
+      "params": {
+        "max_tokens": 1000
+      },
+      "postprocess": {
+        "maxPauseSec": 0.45
+      },
+      "name": "MOSS tour casting imhoff",
+      "note": "tour cast 2026-11-22: synthetic MOSS voice designed from this instruction (no reference, no real person); the reference is the design candidate picked by the tour casting rank (design seeds 3101-3103), owner may override. seed = line seed. Until imhoff-ref.wav exists the speaker is skipped (missing reference).",
+      "model": null
+    },
+    "solld": {
+      "provider": "moss",
+      "reference": "solld-ref.wav",
+      "seed": 3201,
+      "language": "German",
+      "instruction": "A retired tax adviser in his sixties with a slightly high, thin, precise male voice. Politely formal and very exact, comic only through his seriousness, natural and not theatrical. He speaks at a natural, brisk conversational pace.",
+      "params": {
+        "max_tokens": 1000
+      },
+      "postprocess": {
+        "maxPauseSec": 0.45
+      },
+      "name": "MOSS tour casting solld",
+      "note": "tour cast 2026-11-22: synthetic MOSS voice designed from this instruction (no reference, no real person); the reference is the design candidate picked by the tour casting rank (design seeds 3201-3202), owner may override. seed = line seed. Until solld-ref.wav exists the speaker is skipped (missing reference).",
+      "model": null
+    },
+    "jostd": {
+      "provider": "moss",
+      "reference": "jostd-ref.wav",
+      "seed": 3301,
+      "language": "German",
+      "instruction": "A young man in his early twenties, a dog trainer, with a bright, warm, lively male voice. Cheeky and good-hearted, plain and natural, not theatrical. He speaks at a natural, brisk conversational pace.",
+      "params": {
+        "max_tokens": 1000
+      },
+      "postprocess": {
+        "maxPauseSec": 0.45
+      },
+      "name": "MOSS tour casting jostd",
+      "note": "tour cast 2026-11-22: synthetic MOSS voice designed from this instruction (no reference, no real person); the reference is the design candidate picked by the tour casting rank (design seeds 3301-3302), owner may override. seed = line seed. Until jostd-ref.wav exists the speaker is skipped (missing reference).",
+      "model": null
+    },
+    "mats": {
+      "provider": "moss",
+      "reference": "mats-ref.wav",
+      "seed": 3401,
+      "language": "German",
+      "instruction": "Ein achtjähriger Junge mit heller, klarer Kinderstimme. Neugierig und ein bisschen enttäuscht, ganz natürlich, nicht gespielt. Er spricht in natürlichem Gesprächstempo.",
+      "params": {
+        "max_tokens": 1000
+      },
+      "postprocess": {
+        "maxPauseSec": 0.45
+      },
+      "name": "MOSS tour casting mats",
+      "note": "tour cast 2026-11-22: synthetic MOSS voice designed from this instruction (no reference, no real person); the reference is the design candidate picked by the tour casting rank (design seeds 3401-3402), owner may override. seed = line seed. Until mats-ref.wav exists the speaker is skipped (missing reference).",
+      "model": null
     }
   },
   "$alternatives": {

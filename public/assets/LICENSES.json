@@ -112,6 +112,10 @@
   ],
   "voices": [
     {"speaker": "laub", "name": "Quirin Laub", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 102, "referenceSha256": "537c23107e7967befcf16231915ca4d1f3c1541e149a2a084c012f5e28ec3224", "generatedLocally": true, "note": "synthetic voice, no real person"},
-    {"speaker": "marlene", "name": "Marlene", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 205, "referenceSha256": "306617d973bd73094ebe432e4ef9c8d56c29a9e44bbcbac58e61180fb2712dfa", "generatedLocally": true, "note": "synthetic voice, no real person"}
+    {"speaker": "marlene", "name": "Marlene", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 205, "referenceSha256": "306617d973bd73094ebe432e4ef9c8d56c29a9e44bbcbac58e61180fb2712dfa", "generatedLocally": true, "note": "synthetic voice, no real person"},
+    {"speaker": "imhoff", "name": "Gerold Imhoff", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 3101, "referenceSha256": "26ce59176d8048d1583c4f2ac0f75368bc7dc5e1b91f16d41019684dc486b840", "generatedLocally": true, "note": "synthetic voice, no real person"},
+    {"speaker": "solld", "name": "Herr Soll", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 3201, "referenceSha256": "0b33b394c40fce0fd364dc7e6176694279294f4925c8f10cc398c9ce2954758f", "generatedLocally": true, "note": "synthetic voice, no real person"},
+    {"speaker": "jostd", "name": "Jost Fendel", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 3301, "referenceSha256": "e55edcd06c028452b2317e45c89917816497741ce096604f023c51161c2a9232", "generatedLocally": true, "note": "synthetic voice, no real person"},
+    {"speaker": "mats", "name": "Mats", "provider": "moss", "tool": "MOSS-TTS-v1.5 (OpenMOSS)", "toolLicence": "Apache-2.0", "outputLicence": "CC0-1.0", "seed": 3401, "referenceSha256": "a94d225e5b5e2d63680c8ccdf4f1b7f9170a2ec5da455da23fcd17c04296c65a", "generatedLocally": true, "note": "synthetic voice, no real person"}
   ]
 }
