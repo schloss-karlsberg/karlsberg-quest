@@ -273,6 +273,10 @@ class StoryRuntime {
   private hubPrompt = false;
   private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
+  /** The walk system offers „Zur Gruppe“ (group:find): Q is its hold then. */
+  private findPrompt = false;
+  /** „Zur Gruppe“ under way: the teleport when the fade is black (game time; never dropped). */
+  private rejoin: { t: number; x: number; z: number; yaw: number } | null = null;
   /** The pack is chasing the player (hunt:alert): holding Q does not bring you home (bible: "nicht, solange Sie jemand ansieht"). */
   private packChasing = false;
   private blockedToastAt = -99;
@@ -494,6 +498,13 @@ class StoryRuntime {
     ctx.events.on('era:change', ({ to }) => {
       this.dropShiftObjective(to);
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
+    });
+    // finding the group (walk/find.ts): while „Zur Gruppe“ is offered, Q belongs to it; the hold
+    // ends in a fade, the teleport behind the group, and the fade back
+    ctx.events.on('group:find', ({ prompt }) => (this.findPrompt = prompt));
+    ctx.events.on('group:rejoin', ({ x, z, yaw }) => {
+      this.overlays.fade(1, 0.45);
+      this.rejoin = { t: 0.5, x, z, yaw };
     });
     ctx.events.on('shift:begin', () => {
       this.shiftPending = null;
@@ -1616,6 +1627,13 @@ class StoryRuntime {
         this.homeAfterShift(pending);
       }
     }
+    if (this.rejoin && (this.rejoin.t -= dt) <= 0) {
+      const r = this.rejoin;
+      this.rejoin = null;
+      ctx.player.teleport(r.x, r.z, r.yaw);
+      ctx.world.forest.invalidate();
+      this.overlays.fade(0, 0.8);
+    }
     this.updateShiftKey(dt);
     this.updateHub();
     this.updateAfterword();
@@ -1720,7 +1738,8 @@ class StoryRuntime {
     const p = ctx.player.position;
     if (era === 'today') {
       this.qHold = 0;
-      if (!ctx.input.wasPressed('shift')) return;
+      // „Zur Gruppe“ is on offer: the hold is the walk system's
+      if (this.findPrompt || !ctx.input.wasPressed('shift')) return;
       const a = this.anchorFromFlags();
       if (a && (a.anywhere || Math.hypot(p.x - a.x, p.z - a.z) <= a.r)) this.requestShift(a.to, 'anchor');
       else if (a || ctx.state.state.flags['shift.allowed'] === false) ctx.ui.toast(t('story.shift.notHere'), 2200);

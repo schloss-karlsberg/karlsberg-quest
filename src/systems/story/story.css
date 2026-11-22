@@ -471,6 +471,13 @@ body.kq-in-combat .kqs-dlg-body::before {
   font-size: 19px;
   opacity: 0.85;
 }
+.kqs-fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
 .kqs-curtain {
   position: absolute;
   inset: 0;

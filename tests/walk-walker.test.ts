@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildRoute } from '../src/systems/walk/route';
 import type { Route } from '../src/systems/walk/types';
-import { BARK_EVERY, CATCH_UP, WALK_SPEED, createWalker, figureYaw, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from '../src/systems/walk/walker';
+import { BARK_EVERY, CATCH_UP, WALK_SPEED, arriveAtTarget, createWalker, earlyArrival, figureYaw, playerAhead, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from '../src/systems/walk/walker';
 import { yawToward } from '../src/systems/npc/logic';
 
 // straight east, 100 m, a point every 10 m
@@ -195,5 +195,55 @@ describe('walker', () => {
 
   it('rejects an unknown stop', () => {
     expect(() => createWalker({ npc: 'g', route: RT, to: 'nirgends' })).toThrow(/no stop/);
+  });
+});
+
+// an L: 100 m east, then 100 m north (the bent leg a player cuts towards the marker)
+const BENT: Route = {
+  id: 'p-bent',
+  points: [...Array.from({ length: 11 }, (_, i) => [1000 + i * 10, -1000] as [number, number]), ...Array.from({ length: 10 }, (_, i) => [1100, -1010 - i * 10] as [number, number])],
+  stops: [
+    { id: 'start', x: 1000, z: -1000 },
+    { id: 'ecke', x: 1100, z: -1000 },
+    { id: 'ziel', x: 1100, z: -1100 },
+  ],
+};
+
+describe('walker: the forgiving leash (tour playtest 2026-11-21)', () => {
+  it('a player ahead along the route never makes the guide wait; he hurries instead', () => {
+    const w = createWalker({ npc: 'imhoff', route: buildRoute(BENT), to: 'ziel', speed: 1.9, wait: { for: 'player', r: 25 } });
+    // the player runs 45 m ahead on the route: no waiting
+    const evs = run(w, 5, (ww) => ({ x: ww.x + 45, z: -1000 }));
+    expect(evs.some((e) => e.type === 'waiting')).toBe(false);
+    expect(playerAhead(w, { x: w.x + 45, z: -1000 })).toBe(true);
+    expect(w.speedNow).toBeCloseTo(1.9 * CATCH_UP, 3);
+  });
+
+  it('a player cutting the corner (nearer the stop, off the route) is ahead; behind him is not', () => {
+    const w = createWalker({ npc: 'imhoff', route: buildRoute(BENT), to: 'ziel', speed: 1.9, wait: { for: 'player', r: 25 } });
+    run(w, 10, beside);
+    // diagonal across the L, 50 m from the route
+    expect(playerAhead(w, { x: 1070, z: -1060 })).toBe(true);
+    // behind the guide on the route, 30 m back: waits as before
+    expect(playerAhead(w, { x: w.x - 30, z: -1000 })).toBe(false);
+    // right beside him on a bend: not „ahead“ (no hurrying because of the shortcut geometry)
+    expect(playerAhead(w, { x: w.x + 1, z: -1005 })).toBe(false);
+    // a waiting guide resumes when the player gets ahead
+    run(w, 3, (ww) => ({ x: ww.x - 40, z: -1000 }));
+    expect(w.waiting).toBe(true);
+    const evs = run(w, 0.2, () => ({ x: 1095, z: -1080 }));
+    expect(evs).toContainEqual({ type: 'resumed' });
+  });
+
+  it('the player at the stop first while the guide is out of sight: early arrival, skipped', () => {
+    const w = createWalker({ npc: 'imhoff', route: buildRoute(BENT), to: 'ziel', speed: 1.9, wait: { for: 'player', r: 25 } });
+    expect(earlyArrival(w, { x: 1100, z: -1095 })).toBe(true);
+    // the guide close by (< 40 m): he walks in himself
+    run(w, 1, beside);
+    expect(earlyArrival(w, { x: w.x + 20, z: w.z })).toBe(false);
+    expect(arriveAtTarget(w)).toEqual([{ type: 'arrived', at: 'ziel', skipped: true }]);
+    expect(w.arrived).toBe(true);
+    expect(Math.hypot(w.x - 1100, w.z - -1100)).toBeLessThan(0.01);
+    expect(earlyArrival(w, { x: 1100, z: -1100 })).toBe(false);
   });
 });

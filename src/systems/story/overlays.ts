@@ -93,6 +93,7 @@ interface OpenChoice {
 
 export class StoryOverlays {
   private cardEl: HTMLElement | null = null;
+  private fadeEl: HTMLElement | null = null;
   /** Seconds the title card has left on screen (game time: it waits while the game is paused). */
   private readonly hold = new CardLineHold();
   readonly curtain: HTMLElement;
@@ -182,6 +183,23 @@ export class StoryOverlays {
     }
     this.curtain.classList.add('kqs-up');
     window.setTimeout(() => this.curtain.classList.remove('kqs-down', 'kqs-up'), 2600);
+  }
+
+  /**
+   * A plain fade to black (`to` 1) or back (0) over `seconds` (the tour's transitions, „Zur
+   * Gruppe“). No text; prepended to the layer, so subtitles and cards stay readable on top.
+   */
+  fade(to: 0 | 1, seconds: number): void {
+    let el = this.fadeEl;
+    if (!el) {
+      el = this.fadeEl = h('div.kqs-fade', { 'data-testid': 'story-fade' });
+      this.layer.prepend(el);
+    }
+    el.style.transition = `opacity ${Math.max(0, seconds)}s linear`;
+    // the transition needs a frame between append and the new value
+    void el.offsetWidth;
+    el.style.opacity = String(to);
+    el.dataset['to'] = String(to);
   }
 
   get curtainIsDown(): boolean {

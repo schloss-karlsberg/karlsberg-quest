@@ -14,13 +14,19 @@
  *                while any conversation is open), 'player:teleport' (snap), 'save:loaded'.
  * Bodies:        `ctx.people` (kq-characters' people API) is required; without it no bodies spawn
  *                (one console.error), the walk logic, events and slice run on bodiless (bodies.ts).
+ * Finding:       find.ts: the guide on the compass when far / out of sight, one call-out per stray
+ *                episode ('walk:bark' {id: '<speaker>.bark.hier'}), the „Zur Gruppe“ hold (Q /
+ *                Epoche) → 'group:rejoin' {x, z, yaw} (the story fades and teleports). Off with
+ *                `?nofind` or flag `walk.find` = false.
  * Persistent:    slice `walk` (walkers, groups). Routes: content/routes/*.json (bundled).
  * Debug/test API: window.kq.walk (WalkHooks).
  */
 import { defineSystem } from '../../core/systems';
 import type { GameContext } from '../../core/context';
+import { actionLabel } from '../../ui/actionLabel';
 import { peopleOf, peopleSpecs, walkBodies } from './bodies';
-import { PEOPLE_SPECS, WalkRuntime, type WalkBus } from './runtime';
+import { createFindState, stepFind, type FindState } from './find';
+import { PEOPLE_SPECS, WalkRuntime, speakerFor, type WalkBus } from './runtime';
 import type { Route, WalkSlice } from './types';
 
 declare module '../../core/state' {
@@ -43,6 +49,8 @@ export interface WalkHooks {
   /** Walker state of an npc. */
   walker(npc: string): { route: string; to: string; s: number; targetS: number; waiting: boolean; arrived: boolean; x: number; z: number } | null;
   request(r: unknown): void;
+  /** Finding the group: marker / prompt state and the last decision (tests). */
+  find(): { group: string | null; dist: number | null; marker: boolean; prompt: boolean; called: boolean; apart: number; progress: number };
   /** Rebuild from the slice (as after a load). */
   restore(): void;
 }
@@ -80,10 +88,25 @@ export function loadRoutes(): Map<string, Route> {
   return out;
 }
 
+/** Compass marker id and colour of the guide (find.ts). */
+const GUIDE_MARKER = 'walk.guide';
+const GUIDE_COLOUR = '#f4a259';
+/** Line-group id suffix of the call-out („Hier drüben!“): '<speaker>.bark.hier'. */
+export const CALL_SUFFIX = '.bark.hier';
+
 class WalkSystem {
   readonly rt: WalkRuntime;
   private hooks = false;
   private frameMs = 0;
+  private readonly findState: FindState = createFindState();
+  private findGroup: string | null = null;
+  private findDist: number | null = null;
+  private findProgress = 0;
+  private markerUp = false;
+  private promptUp = false;
+  private cinematic = false;
+  private lastFindPos: { x: number; z: number } | null = null;
+  private readonly findOff: boolean;
 
   constructor(private readonly ctx: GameContext) {
     const routes = loadRoutes();
@@ -106,6 +129,9 @@ class WalkSystem {
       },
     });
     ctx.events.on('save:loaded', () => this.rt.restore());
+    ctx.events.on('cinematic:play', () => (this.cinematic = true));
+    ctx.events.on('cinematic:end', () => (this.cinematic = false));
+    this.findOff = ctx.params.has('nofind');
     this.rt.restore();
   }
 
@@ -119,6 +145,59 @@ class WalkSystem {
   update(dt: number): void {
     if (!this.hooks && window.kq) this.installHooks();
     this.rt.update(dt);
+    this.updateFind(dt);
+  }
+
+  /** Finding the group (find.ts): marker, call-out, „Zur Gruppe“. */
+  private updateFind(dt: number): void {
+    const ctx = this.ctx;
+    const g = this.findOff || ctx.state.state.flags['walk.find'] === false ? null : this.rt.nearestGuide();
+    if (!g) {
+      this.findGroup = null;
+      this.findDist = null;
+      this.showFind(null, false);
+      Object.assign(this.findState, createFindState());
+      return;
+    }
+    if (g.group !== this.findGroup) Object.assign(this.findState, createFindState());
+    this.findGroup = g.group;
+    this.findDist = g.dist;
+    const p = ctx.player.position;
+    const bearing = ((Math.atan2(g.x - p.x, -(g.z - p.z)) * 180) / Math.PI + 360) % 360;
+    const heading = ((-ctx.player.yaw * 180) / Math.PI + 360) % 360;
+    const quiet = this.cinematic || this.rt.isTalking(g.leader) || ctx.player.frozen;
+    const moved = this.lastFindPos ? Math.hypot(p.x - this.lastFindPos.x, p.z - this.lastFindPos.z) : 0;
+    this.lastFindPos = { x: p.x, z: p.z };
+    const moving = dt > 0 && moved / dt > 0.4;
+    const out = stepFind(this.findState, { dt, dist: g.dist, bearing, heading, holding: ctx.input.isDown('shift'), moving, quiet });
+    this.findProgress = out.progress;
+    if (out.call) ctx.events.emit('walk:bark', { npc: g.leader, id: `${speakerFor(g.leader) ?? g.leader}${CALL_SUFFIX}` });
+    this.showFind(out.marker, out.prompt, g.group);
+    if (out.rejoin) {
+      const pose = this.rt.rejoinPose(g.group);
+      if (!pose) return;
+      ctx.events.emit('group:rejoin', { group: g.group, ...pose });
+      // nobody fades (no story): go at once
+      if (!ctx.systems.get('story')) ctx.player.teleport(pose.x, pose.z, pose.yaw);
+    }
+  }
+
+  private showFind(marker: { bearing: number; dist: number } | null, prompt: boolean, group = this.findGroup ?? ''): void {
+    const hud = this.ctx.ui.hud;
+    if (marker) {
+      hud.setMarker(GUIDE_MARKER, marker.bearing, GUIDE_COLOUR, { dist: marker.dist, edge: true, label: 'Gruppe' });
+      this.markerUp = true;
+    } else if (this.markerUp) {
+      hud.setMarker(GUIDE_MARKER, null);
+      this.markerUp = false;
+    }
+    if (prompt !== this.promptUp) {
+      this.promptUp = prompt;
+      const touch = this.ctx.input.touchMode;
+      if (prompt) hud.prompt(actionLabel(this.ctx.input, 'shift', 0, 'KeyQ'), touch ? 'Halten: zur Gruppe' : 'Gedrückt halten: zur Gruppe', 'walk');
+      else hud.prompt(null, undefined, 'walk');
+      this.ctx.events.emit('group:find', { group, prompt });
+    }
   }
 
   frame(_dt: number): void {
@@ -155,6 +234,15 @@ class WalkSystem {
         return w ? { route: w.route, to: w.to, s: w.s, targetS: w.targetS, waiting: w.waiting, arrived: w.arrived, x: w.x, z: w.z } : null;
       },
       request: (r) => rt.request(r as Parameters<WalkRuntime['request']>[0]),
+      find: () => ({
+        group: this.findGroup,
+        dist: this.findDist === null ? null : Math.round(this.findDist * 10) / 10,
+        marker: this.markerUp,
+        prompt: this.promptUp,
+        called: this.findState.called,
+        apart: Math.round(this.findState.apart * 10) / 10,
+        progress: this.findProgress,
+      }),
       restore: () => rt.restore(),
     };
   }
