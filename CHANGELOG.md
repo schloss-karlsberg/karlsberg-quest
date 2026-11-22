@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.7.0](https://github.com/schloss-karlsberg/karlsberg-quest/compare/v0.6.0...v0.7.0) (2026-11-22)
+
+
+### Features
+
+* **characters:** stylized guide r5 for the authored people ([767a67f](https://github.com/schloss-karlsberg/karlsberg-quest/commit/767a67f63fb941edaee389ae742cc7835a6dbd7d))
+* **player:** the MPFB avatar and the authored people are the default ([1ace200](https://github.com/schloss-karlsberg/karlsberg-quest/commit/1ace200466625dc9303c73ab27ff4c695a0e62e1))
+* **story:** the tour is the start of the game ([90c9c00](https://github.com/schloss-karlsberg/karlsberg-quest/commit/90c9c0016fcba0d645ef221b08913fed890d8123))
+* **story:** the tour is the start of the game ([51b0cca](https://github.com/schloss-karlsberg/karlsberg-quest/commit/51b0cca7110489c20726d44bd8fd482f94be2c4c))
+* **story:** tour slice faces the group after the fade, follows on the hillside, calls „Hier drüben!“ ([693594c](https://github.com/schloss-karlsberg/karlsberg-quest/commit/693594cbc8c2afb4b118966a1a2aa571e93baa7e))
+* **story:** tour slice v0 (dev entry ?tour) ([86c17d2](https://github.com/schloss-karlsberg/karlsberg-quest/commit/86c17d2202e07b5474d5d2e9f1c6d1159d7556ef))
+
+
+### Bug Fixes
+
+* **story:** tour slice uses the shared party speakers and touch prompts ([60acc43](https://github.com/schloss-karlsberg/karlsberg-quest/commit/60acc43ae3b9c54550ecc762c8994cb53f0d7820))
+
+
+### Documentation
+
+* measured pacing and what looked wrong. ([34b32d4](https://github.com/schloss-karlsberg/karlsberg-quest/commit/34b32d4109ba186616897d6ad5a31bef0753f1aa))
+
 ## [0.6.0](https://github.com/schloss-karlsberg/karlsberg-quest/compare/v0.5.0...v0.6.0) (2026-11-22)
 
 
