@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.0](https://github.com/schloss-karlsberg/karlsberg-quest/compare/v0.7.0...v0.8.0) (2026-11-22)
+
+
+### Features
+
+* **voice:** cast the tour speakers ([cad6a66](https://github.com/schloss-karlsberg/karlsberg-quest/commit/cad6a665ab900cc493345d69477f426f07eb6d7f))
+* **voice:** the tour speaks ([d39879b](https://github.com/schloss-karlsberg/karlsberg-quest/commit/d39879b4ff03e6f56a6518fb71bf7955345546b9))
+* **voice:** the tour speaks ([cc917b3](https://github.com/schloss-karlsberg/karlsberg-quest/commit/cc917b30374ef2307a688aabe5687988bc66ab21))
+
 ## [0.7.0](https://github.com/schloss-karlsberg/karlsberg-quest/compare/v0.6.0...v0.7.0) (2026-11-22)
 
 
