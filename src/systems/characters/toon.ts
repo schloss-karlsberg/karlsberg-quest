@@ -99,10 +99,17 @@ export const TOON_BY_MATERIAL: Record<string, Partial<ToonParams>> = {
   Coat: { rim: 0.3, terminator: 0.15 },
   Waistcoat: { terminator: 0, warm: 0.15, lit: 0.65, rim: 0.15, spec: 0.15 },
   Breeches: { rim: 0.3, terminator: 0.15 },
-  // the people palette: skin, cloth and hair in one vertex-coloured material, so a middle setting
-  // (a skin-like warm edge, no glint: white cloth must not glow); the eye material as `Eye`
-  People: { terminator: 0.18, warm: 0.45, spec: 0.3, rim: 0.28, shade: 0xffbc9c, smooth: 0.3 },
-  PeopleEye: { edges: [-0.3, 0.2], mid: 0.75, terminator: 0, rim: 0, spec: 1.0, glint: 1.4, warm: 0.3 },
+  // the people palette: skin, cloth and hair in one vertex-coloured material, shared by every person,
+  // calibrated on the skin (no glint: white cloth must not glow). A light shade tint (a saturated one
+  // turns the shadow side of a face red-orange and a green cloth olive); almost no terminator band
+  // (on a face it draws a hard orange edge down the nose, a ring in the eye socket and a crease
+  // through one mouth corner that reads as a smirk); wide, mostly smooth bands (a soft light-to-
+  // shadow step); a faint rim (a warm rim edges grey cloth pink); a lower lit band and a desaturated
+  // sun, so a low warm sun neither turns skin orange nor a green cloth yellow; a stronger warm pull of
+  // the indirect light, so skin keeps its warmth at night instead of going grey and sallow under the
+  // blue ambient; the eye material as `Eye`
+  People: { terminator: 0.04, warm: 0.75, spec: 0.25, rim: 0.1, shade: 0xffe0d8, smooth: 0.6, soft: 0.4, lit: 0.56, mid: 0.33, sunSat: 0.4 },
+  PeopleEye: { edges: [-0.3, 0.2], mid: 0.75, terminator: 0, rim: 0, spec: 1.0, glint: 1.4, warm: 0.3, sunSat: 0.3 },
 };
 
 /** The params of a material slot by its name. */

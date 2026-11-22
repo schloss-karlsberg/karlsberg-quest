@@ -51,8 +51,9 @@ export function lod1Level(dist: number, now: 0 | 1): 0 | 1 {
 /**
  * The people clip sources → MPFB clip names (first present wins). The retarget bake
  * (scripts/chars/mpfb/retarget.py) keeps the Quaternius clip names; `Point` is its pointing gesture
- * made from Interact (`--point Interact`: the same reach, index straight, the other fingers curled).
- * The GLB is packed with exactly these six.
+ * made from Interact (`--point Interact`: the same reach, index straight, the other fingers curled),
+ * `Talk` its talking loop made from Idle (`--talk Idle`: about 4 s of open-palm explaining gestures,
+ * mostly one hand, small nods, the feet as Idle's). The GLB is packed with exactly these seven.
  */
 export const AUTHORED_SOURCE = {
   idle: ['Idle'],
@@ -61,18 +62,20 @@ export const AUTHORED_SOURCE = {
   interact: ['Interact'],
   wave: ['Wave'],
   point: ['Point'],
+  talk: ['Talk'],
 } as const;
 
 /**
- * PersonClip → what the authored body plays. The stand-in's plan (talk = idle with Interact
- * gestures, lookAround = idle with a head sweep) plus a real point (the baked Point clip); sit /
- * sitTalk are fallbacks (idle sunk onto the seat) until a sitting clip is baked.
+ * PersonClip → what the authored body plays. The stand-in's plan (lookAround = idle with a head
+ * sweep) plus a real point (the baked Point clip) and a real talk (the baked Talk loop in place of
+ * idle; a GLB without it falls back to the stand-in's idle with Interact gestures); sit / sitTalk are
+ * fallbacks (idle sunk onto the seat, sitTalk with the gestures) until a sitting clip is baked.
  */
 export const AUTHORED_CLIPS: Readonly<Record<PersonClip, StandInPlan>> = {
   idle: { kind: 'loop', native: true },
   walk: { kind: 'loop', native: true },
   run: { kind: 'loop', native: true },
-  talk: { kind: 'loop', gestures: true, native: true },
+  talk: { kind: 'loop', talkLoop: true, native: true },
   point: { kind: 'shot', shot: 'point', native: true },
   wave: { kind: 'shot', shot: 'wave', native: true },
   lookAround: { kind: 'loop', sweep: true, native: true },

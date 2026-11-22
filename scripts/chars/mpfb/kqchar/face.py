@@ -175,6 +175,60 @@ def brow_tint(co, nrm, col, lm, palette, spec):
     return col
 
 
+def age_lines(co, nrm, col, lm, r, spec):
+    """Soft age lines painted on the skin, no geometry (`palette.age_lines`: {amount, tint, folds,
+    forehead, crows}): the skin turns toward `tint` x its own colour (a little darker, a little
+    warm) in broad soft bands, so the lines read as shading in a close-up and melt away at a distance.
+    The nose-to-mouth folds run from beside the nostril wings to just outside the mouth corners
+    (a slight outward bow), three light lines cross the forehead above the brows (arched, the outer
+    two broken in the middle), and short crow's-feet fan out from the outer eye corners. `folds`,
+    `forehead` and `crows` scale each set (default 1, 0 leaves it out); `amount` is the darkest
+    share. The bands are several millimetres wide on purpose: the colours are painted on the full
+    skin and carried onto the decimated one, where a thin line would break up. `r` is the face's
+    scale (the eye radius before any stylisation)."""
+    tint = np.array(spec.get('tint', [0.8, 0.74, 0.72]))
+    kf, kh, kc = spec.get('folds', 1.0), spec.get('forehead', 1.0), spec.get('crows', 1.0)
+    nt, m = lm['nose_tip'], lm['mouth']
+    mc = lm.get('mouth_corner_x', lm['mouth_w'] * 0.4)
+    re = lm['eye_radius']
+    p2 = np.stack([co[:, 0], co[:, 2]], 1)
+    w_front = np.zeros(len(co))  # folds and forehead: front-facing skin only
+    w_side = np.zeros(len(co))  # crow's-feet: round the side of the eye
+    if kf:
+        for sd in (1.0, -1.0):
+            a = np.array([sd * 1.05 * r, nt[2] + 0.1 * r])  # beside the nostril wing (x, z)
+            b = np.array([sd * (mc + 0.5 * r), m[2] - 0.6 * r])  # just outside, below the mouth corner
+            ab = b - a
+            t = np.clip(((p2 - a) @ ab) / (ab @ ab), 0, 1)
+            q = a + t[:, None] * ab + (4 * t * (1 - t))[:, None] * np.array([sd * 0.2 * r, 0.0])
+            d = np.linalg.norm(p2 - q, axis=1)
+            fade = smoothstep(0.0, 0.25, t) * smoothstep(1.0, 0.7, t)
+            near = (co[:, 1] < nt[1] + 3.0 * r) & (co[:, 0] * sd > 0)
+            w_front = np.maximum(w_front, kf * np.exp(-(d / (0.3 * r)) ** 2) * fade * near)
+    if kh:
+        ez = (lm['eye_l'][2] + lm['eye_r'][2]) / 2
+        span = abs(lm['eye_l'][0]) + 1.5 * r
+        ends = smoothstep(span, 0.5 * span, np.abs(co[:, 0]))
+        for k, dz in enumerate((2.6, 3.3, 4.0)):
+            zl = ez + dz * r + 0.3 * r * np.cos(np.clip(co[:, 0] / span, -1, 1) * np.pi / 2)
+            band = np.exp(-((co[:, 2] - zl) / (0.2 * r)) ** 2)
+            gap = 1.0 if k == 1 else smoothstep(0.06 * span, 0.3 * span, np.abs(co[:, 0]))
+            w_front = np.maximum(w_front, kh * band * ends * gap * (1.0 - 0.2 * k) * (co[:, 1] < nt[1] + 4.0 * r))
+    if kc:
+        for e, sd in ((lm['eye_l'], 1.0), (lm['eye_r'], -1.0)):
+            c = e + np.array([sd * 1.1 * re, 0.0, -0.05 * re])  # the outer eye corner
+            u = (co[:, 0] - c[0]) * sd  # outwards
+            v = co[:, 2] - c[2]
+            for ang in (-30.0, -8.0, 14.0):
+                ca, sa = np.cos(np.radians(ang)), np.sin(np.radians(ang))
+                t = u * ca + v * sa
+                dp = np.abs(-u * sa + v * ca)
+                seg = smoothstep(0.1 * re, 0.3 * re, t) * smoothstep(1.1 * re, 0.6 * re, t)
+                w_side = np.maximum(w_side, kc * np.exp(-(dp / (0.13 * re)) ** 2) * seg * (co[:, 1] < e[1] + 1.5 * re))
+    w = np.maximum(w_front * smoothstep(0.1, 0.5, -nrm[:, 1]), w_side * smoothstep(-0.3, 0.2, -nrm[:, 1]))
+    return mix(col, col * tint[None], spec.get('amount', 0.35) * np.clip(w, 0, 1))
+
+
 def skin_colours(co, nrm, groups, lm, palette):
     """Painted skin: base tone, soft rosy cheeks / nose / ears, lips, darker inner mouth."""
     n = len(co)
@@ -236,6 +290,8 @@ def skin_colours(co, nrm, groups, lm, palette):
             zone = np.maximum(zone, np.exp(-d2 / (2 * (1.3 * r) ** 2)))
         dots = (h < share) * zone * (nrm[:, 1] < -0.3) * (0.6 + 0.4 * (h / max(share, 1e-6)))
         col = mix(col, fc[None], amt * dots)
+    if palette.get('age_lines'):
+        col = age_lines(co, nrm, col, lm, r, palette['age_lines'])
     # a soft lid line around the eyes (reads at game distance; faint behind glasses)
     for e in (lm['eye_l'], lm['eye_r']):
         d = np.linalg.norm(co - e, axis=1)

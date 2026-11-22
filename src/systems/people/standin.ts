@@ -79,13 +79,19 @@ export const STANDIN_SOURCE = {
   wave: ['Wave'],
   /** No pointing clip in the CC0 pack: point plays Interact (STANDIN_CLIPS). */
   point: [],
+  /** No talking loop in the CC0 pack: talk is idle with Interact gestures (STANDIN_CLIPS). */
+  talk: [],
 } as const;
 
 type LocoSrc = 'idle' | 'walk' | 'run';
+/** The looping sources: locomotion, and a body's own talking loop (in place of idle while it talks). */
+type LoopSrc = LocoSrc | 'talk';
+/** The looping sources, in a fixed order. */
+const LOOP_SRCS = ['idle', 'walk', 'run', 'talk'] as const;
 type ShotSrc = 'interact' | 'wave' | 'point';
 /** The one-shot sources, in a fixed order. */
 const SHOT_SRCS = ['interact', 'wave', 'point'] as const;
-type SrcKey = LocoSrc | ShotSrc;
+type SrcKey = LoopSrc | ShotSrc;
 
 export interface StandInPlan {
   /** A looping clip (idle under the speed-driven locomotion), or a one-shot over it. */
@@ -93,6 +99,11 @@ export interface StandInPlan {
   shot?: ShotSrc;
   /** Interact gestures now and then (talk). */
   gestures?: boolean;
+  /**
+   * The body's own talking loop (source `talk`) in place of idle while standing (the authored talk);
+   * a body without that clip falls back to the Interact gestures.
+   */
+  talkLoop?: boolean;
   /** A slow head sweep (lookAround). */
   sweep?: boolean;
   /** The root lowered by this much (m): the stand-in's "sit" is idle sunk onto the seat. */
@@ -212,7 +223,7 @@ function splitClip(c: AnimationClip, upper: boolean, re: RegExp): AnimationClip 
 }
 
 interface ClipSet {
-  loco: Record<LocoSrc, { low: AnimationClip; up: AnimationClip } | null>;
+  loco: Record<LoopSrc, { low: AnimationClip; up: AnimationClip } | null>;
   shots: Record<ShotSrc, { up: AnimationClip; full: AnimationClip } | null>;
 }
 
@@ -230,7 +241,7 @@ function findClip(src: LoadedModel, names: readonly string[]): AnimationClip | n
 function clipsFor(src: LoadedModel, kit: BodyKit): ClipSet {
   const hit = clipCache.get(src);
   if (hit) return hit;
-  const loco = (k: LocoSrc) => {
+  const loco = (k: LoopSrc) => {
     const c = findClip(src, kit.source[k]);
     return c ? { low: splitClip(c, false, kit.upper), up: splitClip(c, true, kit.upper) } : null;
   };
@@ -238,7 +249,10 @@ function clipsFor(src: LoadedModel, kit: BodyKit): ClipSet {
     const c = findClip(src, kit.source[k]);
     return c ? { up: splitClip(c, true, kit.upper), full: c } : null;
   };
-  const set: ClipSet = { loco: { idle: loco('idle'), walk: loco('walk'), run: loco('run') }, shots: { interact: shot('interact'), wave: shot('wave'), point: shot('point') } };
+  const set: ClipSet = {
+    loco: { idle: loco('idle'), walk: loco('walk'), run: loco('run'), talk: loco('talk') },
+    shots: { interact: shot('interact'), wave: shot('wave'), point: shot('point') },
+  };
   clipCache.set(src, set);
   return set;
 }
@@ -355,7 +369,7 @@ export interface PersonState {
   radius: number;
   /** Measured strides (m per loop at this height). */
   stride: { walk: number; run: number; measured: boolean };
-  weights: Record<'idle' | 'walk' | 'run' | ShotSrc, number>;
+  weights: Record<LoopSrc | ShotSrc, number>;
   drop: number;
   head: { yaw: number; pitch: number };
   tris: number;
@@ -432,6 +446,8 @@ export class StandInPerson implements Person {
   private eff = 0;
   private phase = 0;
   private idleT: number;
+  /** The talking loop's clock (from 0 when talk starts, so the hand comes up first). */
+  private talkT = 0;
   private stride = { walk: 0, run: 0, measured: false };
   // clips
   private requested: PersonClip = 'idle';
@@ -439,9 +455,9 @@ export class StandInPerson implements Person {
   private shot: Shot | null = null;
   private gestureT = 0;
   private gestures = 0;
-  private readonly w = { idle: 1, walk: 0, run: 0, interact: 0, wave: 0, point: 0 };
+  private readonly w = { idle: 1, walk: 0, run: 0, talk: 0, interact: 0, wave: 0, point: 0 };
   private readonly shotTime = { interact: 0, wave: 0, point: 0 };
-  private loco: Record<LocoSrc, { low: AnimationAction; up: AnimationAction } | null> = { idle: null, walk: null, run: null };
+  private loco: Record<LoopSrc, { low: AnimationAction; up: AnimationAction } | null> = { idle: null, walk: null, run: null, talk: null };
   private shots: Record<ShotSrc, { up: AnimationAction; full: AnimationAction } | null> = { interact: null, wave: null, point: null };
   private drop = 0;
   private lodLevel: 0 | 1 = 0;
@@ -571,7 +587,7 @@ export class StandInPerson implements Person {
         a.setEffectiveWeight(0);
         return a;
       };
-      for (const k of ['idle', 'walk', 'run'] as const) {
+      for (const k of LOOP_SRCS) {
         const c = set.loco[k];
         this.loco[k] = c ? { low: act(c.low), up: act(c.up) } : null;
       }
@@ -700,7 +716,18 @@ export class StandInPerson implements Person {
 
   private makeBase(clip: PersonClip, o: { loop?: boolean; fade?: number; speed?: number }): Base {
     if (clip === 'talk' || clip === 'sitTalk') this.gestureT = 0;
+    if (this.kit.plans[clip]?.talkLoop) this.talkT = 0;
     return { clip, plan: this.kit.plans[clip], loop: o.loop ?? true, fade: Math.max(0, o.fade ?? DEFAULT_FADE), speed: Math.max(0.05, o.speed ?? 1), t: 0 };
+  }
+
+  /** The plan plays the body's own talking loop (it has one). */
+  private talking(plan: StandInPlan): boolean {
+    return plan.talkLoop === true && this.loco.talk !== null;
+  }
+
+  /** The plan talks with Interact gestures now and then (a talking loop without the clip falls back to them). */
+  private gesturing(plan: StandInPlan): boolean {
+    return plan.gestures === true || (plan.talkLoop === true && this.loco.talk === null);
   }
 
   face(yaw: number): void {
@@ -791,9 +818,13 @@ export class StandInPerson implements Person {
     const plan = b.plan;
     this.eff = this.speed;
     this.phase = advancePhase(this.phase, this.eff, this.stride.walk, this.stride.run, dt);
-    this.idleT += dt * this.tempo * (moving ? 1 : b.speed) * (f.reducedMotion ? 0.6 : 1);
-    // talk: a hand comes up every few seconds (not while walking, not with reduced motion)
-    if (plan.gestures && !moving && !f.reducedMotion) {
+    const clock = dt * this.tempo * (moving ? 1 : b.speed) * (f.reducedMotion ? 0.6 : 1);
+    this.idleT += clock;
+    this.talkT += clock;
+    // talk: the body's own talking loop in place of idle (not with reduced motion), or else a hand
+    // comes up every few seconds (not while walking, not with reduced motion)
+    const talkLoop = this.talking(plan) && !f.reducedMotion;
+    if (this.gesturing(plan) && !moving && !f.reducedMotion) {
       if (!this.shot) this.gestureT += dt;
       if (this.gestureT > 3.2 + (this.gestures % 2) * 1.3 + hash01(this.seed + this.gestures) * 0.9) {
         this.gestureT = 0;
@@ -810,7 +841,8 @@ export class StandInPerson implements Person {
     // ---- weights (eased every frame)
     const lw = locoWeights(this.eff);
     const fade = b.fade;
-    this.w.idle = easeWeight(this.w.idle, lw.idle, dt, fade);
+    this.w.idle = easeWeight(this.w.idle, talkLoop ? 0 : lw.idle, dt, fade);
+    this.w.talk = easeWeight(this.w.talk, talkLoop ? lw.idle : 0, dt, fade);
     this.w.walk = easeWeight(this.w.walk, lw.walk, dt, fade);
     this.w.run = easeWeight(this.w.run, lw.run, dt, fade);
     for (const k of SHOT_SRCS) {
@@ -856,11 +888,11 @@ export class StandInPerson implements Person {
     }
     fullW = Math.min(1, fullW);
     upperW = Math.min(1, upperW);
-    for (const k of ['idle', 'walk', 'run'] as const) {
+    for (const k of LOOP_SRCS) {
       const l = this.loco[k];
       if (!l) continue;
       const d = l.low.getClip().duration;
-      const t = k === 'idle' ? this.idleT % d : this.phase * d;
+      const t = k === 'idle' ? this.idleT % d : k === 'talk' ? this.talkT % d : this.phase * d;
       l.low.time = l.up.time = t;
       l.low.setEffectiveWeight(this.w[k] * (1 - fullW));
       l.up.setEffectiveWeight(this.w[k] * (1 - fullW) * (1 - upperW));
@@ -879,7 +911,7 @@ export class StandInPerson implements Person {
       yaw = a.yaw;
       pitch = a.pitch;
     } else if (plan.sweep && !moving) yaw = reduced ? 0 : sweepYaw(this.idleT, this.seed);
-    if (plan.gestures && !moving && !reduced) pitch += Math.sin(this.idleT * 6.5) * 0.035;
+    if (this.gesturing(plan) && !moving && !reduced) pitch += Math.sin(this.idleT * 6.5) * 0.035;
     const k = 1 - Math.exp(-dt * (reduced ? 12 : 5));
     this.headYaw += (yaw - this.headYaw) * k;
     this.headPitch += (pitch - this.headPitch) * k;
@@ -904,7 +936,7 @@ export class StandInPerson implements Person {
       u.uAlpha!.value = this.alpha;
       this.rig.root.getWorldPosition(_v);
       u.uBaseY!.value = _v.y;
-      u.uTalk!.value = this.base.plan.gestures ? 1 : 0;
+      u.uTalk!.value = this.gesturing(this.base.plan) || this.talking(this.base.plan) ? 1 : 0;
       u.uMotion!.value = f.reducedMotion ? 0.4 : 1;
       u.uStutter!.value = f.reducedFlash ? 0 : 1;
     }
@@ -958,7 +990,15 @@ export class StandInPerson implements Person {
       height: this.info.height,
       radius: this.info.radius,
       stride: { walk: round(this.stride.walk), run: round(this.stride.run), measured: this.stride.measured },
-      weights: { idle: round(this.w.idle), walk: round(this.w.walk), run: round(this.w.run), interact: round(this.w.interact), wave: round(this.w.wave), point: round(this.w.point) },
+      weights: {
+        idle: round(this.w.idle),
+        walk: round(this.w.walk),
+        run: round(this.w.run),
+        talk: round(this.w.talk),
+        interact: round(this.w.interact),
+        wave: round(this.w.wave),
+        point: round(this.w.point),
+      },
       drop: round(this.drop),
       head: { yaw: round(this.headYaw), pitch: round(this.headPitch) },
       tris: st.tris,

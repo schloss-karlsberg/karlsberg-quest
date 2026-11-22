@@ -90,6 +90,21 @@ def collar_plane(rig, top):
     return np.array([0.0, neck_h[1], z]), n / np.linalg.norm(n)
 
 
+def yoke_z(rig, jk):
+    """Height of the jacket's yoke seam (`yoke.below_shoulder` under the shoulder joints)."""
+    return float(bone_pos(rig, 'upperarm_l')[0][2]) - jk['yoke'].get('below_shoulder', 0.08)
+
+
+def pocket_box(rig, jk):
+    """The chest pocket's zip on the jacket front: (x centre, half width, z bottom, z top)."""
+    cp = jk['chest_pocket']
+    if jk.get('yoke'):
+        z1 = yoke_z(rig, jk) - cp.get('below_yoke', 0.03)
+    else:
+        z1 = float(bone_pos(rig, 'upperarm_l')[0][2]) - cp.get('below_shoulder', 0.11)
+    return cp.get('x', 0.095), cp.get('width', 0.011) / 2, z1 - cp.get('length', 0.13), z1
+
+
 def collar_top(rig, top, co):
     """Height of the stand collar's top edge at each point's angle round the neck (the collar is
     lower at the front, `collar_front_drop` / `collar_front_low`)."""
@@ -129,6 +144,22 @@ def cut_planes(W, bones, rig, wardrobe):
             def forearm(co, W_, s=s):
                 return np.array([d.startswith((f'lowerarm_{s}', f'hand_{s}')) or (d.startswith(('thumb', 'index', 'middle', 'ring', 'pinky')) and d.endswith(s)) for d in dom_of(W_)])
             out.append((f'cuff_{s}', h + (t - h) * jk['cuff_at'], ax, forearm))
+    if jk and jk.get('yoke'):
+        # the yoke seam: one plane across the chest, the back and the shoulder caps (vertex colour
+        # only: the border between two zone colours is crisp along the cut)
+        def upper_body(co, W_):
+            return ~np.array([d.startswith(arm_like[1:] + ('thigh', 'calf', 'foot', 'ball', 'head', 'neck')) for d in dom_of(W_)])
+        out.append(('yoke', np.array([0.0, 0.0, yoke_z(rig, jk)]), np.array([0.0, 0.0, 1.0]), upper_body))
+    if jk and jk.get('chest_pocket'):
+        # the chest pocket's zip: a narrow rectangle cut into the front (its two sides, top and bottom)
+        x0, hw, z0, z1 = pocket_box(rig, jk)
+
+        def near_pocket(co, W_, x0=x0, hw=hw, z0=z0, z1=z1):
+            return (co[:, 1] < 0) & (np.abs(co[:, 0] - x0) < hw + 0.03) & (co[:, 2] > z0 - 0.03) & (co[:, 2] < z1 + 0.03)
+        for xx in (x0 - hw, x0 + hw):
+            out.append(('pocket', np.array([xx, 0.0, 0.0]), np.array([1.0, 0.0, 0.0]), near_pocket))
+        for zz in (z0, z1):
+            out.append(('pocket', np.array([0.0, 0.0, zz]), np.array([0.0, 0.0, 1.0]), near_pocket))
     top = jk or S.get('shirt')
     if top and top.get('collar_tilt') is not None:
         def neck(co, W_):
@@ -164,6 +195,13 @@ def zones(co, faces, W, bones, rig, lm, wardrobe):
 
     torso_mat = jk['material'] if jk else (sh['material'] if sh else 'Skin')
     cplane = collar_plane(rig, top) if top and top.get('collar_tilt') is not None else None
+    yk = (jk or {}).get('yoke')
+    yz = yoke_z(rig, jk) if yk else None
+    pk = pocket_box(rig, jk) if jk and jk.get('chest_pocket') else None
+    us = (top or {}).get('undershirt')
+    if us and cplane is not None:
+        # the neck inside the collar shows as an undershirt (no pink skin in the collar's opening)
+        zt_f, _ = collar_top(rig, top, fc)
     mats = []
     for k, f in enumerate(faces):
         c = fc[k]
@@ -186,7 +224,8 @@ def zones(co, faces, W, bones, rig, lm, wardrobe):
         else:
             above = c[2] > collar_z + 0.02 * (1 if c[1] > neck_h[1] else 0)
         if above and any(d in ('head', 'neck_01') for d in ds):
-            mats.append('Skin')
+            inside = us and cplane is not None and not any(d == 'head' for d in ds) and all(co[i][2] < zt_f[k] - us.get('below_top', 0.004) for i in f)
+            mats.append(us.get('material', 'Undershirt') if inside else 'Skin')
             continue
         # a solid shoe (`shoes.solid`) covers the foot: only what is under the shoe top is shoe (no
         # foot-weighted wedges up the calf); the faces inside it are dropped later
@@ -205,6 +244,12 @@ def zones(co, faces, W, bones, rig, lm, wardrobe):
             if c[1] < neck_h[1] and 0 <= vz <= 1 and abs(c[0]) < jk['v_half_width'] * (1 - vz) + 0.012:
                 mats.append(sh['material'])
                 continue
+        if pk and torso_mat == jk['material'] and c[1] < 0 and abs(c[0] - pk[0]) < pk[1] and pk[2] < c[2] < pk[3]:
+            mats.append(jk['chest_pocket'].get('material', 'JacketZip'))
+            continue
+        if yk and torso_mat == jk['material'] and c[2] > yz and not any(d.startswith('lowerarm') for d in ds):
+            mats.append(yk.get('material', 'JacketYoke'))
+            continue
         mats.append(torso_mat)
     off_by = {'Skin': np.zeros(len(co))}
     for s in (sh, tr, so):
@@ -228,6 +273,10 @@ def zones(co, faces, W, bones, rig, lm, wardrobe):
             near_sh = np.array([d.startswith('upperarm') or d.startswith('clavicle') or d in ('spine_03', 'neck_01') for d in dom])
             jo = np.where(near_sh, jo * (1 - band) + jk['shoulder_offset'] * band, jo)
         off_by[jk['material']] = jo
+        if yk:
+            off_by[yk.get('material', 'JacketYoke')] = jo
+        if pk:
+            off_by[jk['chest_pocket'].get('material', 'JacketZip')] = jo
     off = np.zeros(len(co))
     for k, f in enumerate(faces):
         o = off_by.get(mats[k])
@@ -288,6 +337,14 @@ def cloth_colours(co, nrm, wardrobe, palette, rig=None):
                 fr = smoothstep(-0.1, 0.6, -nrm[:, 1])
                 bk = smoothstep(-0.1, 0.6, nrm[:, 1])
                 col = col * (1 + kf * near * fr - kb * near * bk)[:, None]
+        if key == 'jacket':
+            # vertex-colour panels on the same shell: the yoke, the chest pocket's zip
+            if s.get('yoke'):
+                yc = _pal(palette, s['yoke'].get('colour', 'jacket_yoke'), '#355E43')[None]
+                out[s['yoke'].get('material', 'JacketYoke')] = np.hstack([yc * (lo + (1 - lo) * up)[:, None], np.ones((len(co), 1))])
+            if s.get('chest_pocket'):
+                zc = _pal(palette, s['chest_pocket'].get('colour', 'jacket_zip'), '#1E2822')[None]
+                out[s['chest_pocket'].get('material', 'JacketZip')] = np.hstack([zc * (0.85 + 0.15 * up)[:, None], np.ones((len(co), 1))])
         if key == 'shoes':
             sole = co[:, 2] < s['sole_h']
             dt = s.get('details')
@@ -311,6 +368,10 @@ def cloth_colours(co, nrm, wardrobe, palette, rig=None):
                     col = mix(col, _pal(palette, wc, '#8a6a4a')[None], 0.8 * welt)
             col[sole] = _pal(palette, s['sole'], '#1e1c1a')[None] * (0.9 + 0.1 * up[sole])[:, None]
         out[s['material']] = np.hstack([col, np.ones((len(co), 1))])
+    us = (S.get('jacket') or S.get('shirt') or {}).get('undershirt')
+    if us:
+        uc = _pal(palette, us.get('colour', 'undershirt'), '#2F3337')[None]
+        out[us.get('material', 'Undershirt')] = np.hstack([uc * (0.75 + 0.25 * up)[:, None], np.ones((len(co), 1))])
     return out
 
 
@@ -413,17 +474,30 @@ def extras(surface, rig, lm, wardrobe, palette, bones, hem=None):
             ctrim = _pal(palette, jk.get('collar_trim_colour', jk['trim']), '#26262a')
             lining = _pal(palette, jk.get('collar_lining', jk['trim']), '#26262a')
 
+            gar = jk.get('collar_garage')  # a zip garage at the front: {colour, deg (half width), edge (where the collar colour is back)}
+            gar_c = _pal(palette, gar.get('colour', 'jacket_garage'), '#2A302C') if gar else None
+
             def rows(a):
                 f = 0.5 + 0.5 * math.cos(math.radians(a))
                 zb = z0 - jk.get('collar_front_drop', 0.014) * f
                 zt = zb + hgt * (1 - jk.get('collar_front_low', 0.3) * f)
                 so = jk['collar_stand_off']
-                return [(zb, 0.004, jacket_c, True), (zb + 0.4 * (zt - zb), so * 0.8, jacket_c, True), (zt - tr_h, so, jacket_c, False), (zt - tr_h, so, ctrim, True), (zt, so + 0.001, ctrim, True)]
+                body, tc = jacket_c, ctrim
+                if gar and abs((a + 180.0) % 360.0 - 180.0) <= gar.get('deg', 4.0) + 1e-6:
+                    body = tc = gar_c
+                if jk.get('collar_stiff'):
+                    # a stiff stand collar: straight up from the base, no hug toward the neck
+                    return [(zb, 0.004, body, True), (zt - tr_h, so, body, False), (zt - tr_h, so, tc, True), (zt, so + 0.001, tc, True)]
+                return [(zb, 0.004, body, True), (zb + 0.4 * (zt - zb), so * 0.8, body, True), (zt - tr_h, so, body, False), (zt - tr_h, so, tc, True), (zt, so + 0.001, tc, True)]
 
             g = jk['collar_gap_deg']
             closed = bool(jk.get('collar_closed'))  # zipped up to the top: one ring, the zip over the front
             angs = np.linspace(0, 360, jk.get('collar_segments', 33), endpoint=False) if closed else np.linspace(g, 360 - g, jk.get('collar_segments', 33))
-            co, faces, col = geom.band(surface, origin, zaxis, front, angs, rows, lining, 0.004, closed=closed,
+            if gar and closed:
+                # two extra sections at the garage's edges keep its colour patch narrow
+                gd, ge = gar.get('deg', 4.0), gar.get('edge', 2.0 * gar.get('deg', 4.0))
+                angs = np.unique(np.round(np.concatenate([angs, [gd, ge, 360.0 - ge, 360.0 - gd]]), 6))
+            co, faces, col = geom.band(surface, origin, zaxis, front, angs, rows, lining, jk.get('collar_thick', 0.004), closed=closed,
                                        stand=jk.get('collar_taper', 0.008), smooth=jk.get('collar_smooth', 0))
             parts.append(Part('collar', mat, co, faces, col=np.hstack([col, np.ones((len(co), 1))]), weights=_weights(len(co), bones, {'neck_01': 0.5, 'spine_03': 0.5})))
         if jk['hood']:

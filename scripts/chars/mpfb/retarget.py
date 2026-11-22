@@ -6,10 +6,13 @@ game_engine rig of a built character, and measure how well they transfer.
         [--clips Idle,Walk,Run,...|all] [--abduct 10] [--out <with-clips.blend>] [--glb <with-clips.glb>] [--report <report.json>] \\
         [--point Interact]   (also bake 'Point': that reaching clip with the reaching hand pointing, see point_clip)
         [--stand Idle,Interact,Wave] [--stand-width 0.03] [--stand-abduct -8]   (standing clips: stance, arms in)
-        [--stand-shoulders 7]   (standing clips: the shoulders dropped, degrees)
+        [--stand-shoulders 7] [--walk-shoulders 6]   (standing clips / Walk: the shoulders dropped, degrees)
         [--stand-knee 5] [--stand-feet 0.095] [--stand-toe 8] [--stand-upright 0.8] [--stand-lean 5] [--level-head 1]
         [--relax-fingers 30]   (people tiers: the standing pose and relaxed hands, see below)
         [--knees 1 --knees-loco 0.6]   (straighter planted legs: pelvis_lift, see below)
+        [--stand-hips 0.85] [--relax-fingers 30]   (people tiers: the standing pose and relaxed hands, see below)
+        [--talk Idle] [--talk-seconds 4] [--talk-open 0.7]   (also bake 'Talk': a looping explaining clip on that standing clip)
+        [--arm-swing Walk=26] [--walk-lean 5]   (an arm counter-swing per clip, a forward lean of Walk)
 
 Method: world-space rotation transfer with rest-pose alignment. For every mapped bone pair the
 target's rest direction is first swung onto the source's rest direction (the Quaternius rest is a
@@ -34,8 +37,19 @@ that many degrees (half the frames; the rest reach full stretch) and pins the fe
 `--stand-feet` sets the planted ankles at +-x m, level front to back; `--stand-toe` turns the toes
 out that many degrees; `--stand-upright` gives back that share of the source's stoop (the forward
 pitch of the upper spine, neck and head against the rest pose); `--stand-lean` then adds a slight
-forward lean of the upper spine and neck (degrees); `--level-head 1` rolls the neck and head level.
-`--relax-fingers` curls every finger gently toward the palm in every clip (relax_fingers).
+forward lean of the upper spine and neck (degrees); `--stand-hips` turns that share of the hips'
+yaw back under the chest (the trunk above keeps its heading); `--level-head 1` rolls the neck and
+head level. `--relax-fingers` curls every finger gently toward the palm in every clip (relax_fingers).
+
+Pose edits (kqchar/motion.py, on the baked frames): `--arm-swing Clip=deg` swings each upper arm
+against its own thigh (the elbow bending more as the arm comes forward); `--walk-lean` leans Walk's
+upper spine and neck forward (degrees); `--talk Idle` bakes 'Talk', that clip's baked frames played
+twice over `--talk-seconds` with open-palm explaining gestures on top (motion.talk_frames: the right
+hand explains at chest height in three beats, the left joins for a sweep, small nods; the feet stay
+the clip's, so its foot lock holds), the explaining fingers opened (open_fingers; `--talk-open`
+the share they open by at full gesture weight, 0.7 by default, lower keeps more of the relaxed
+curl). `--walk-shoulders` drops the shoulders in Walk as `--stand-shoulders` does in the standing
+clips.
 
 Legs: `--knees` (and `--knees-loco` for the idle and locomotion clips) raise the pelvis before the
 lock so planted knees bend that fraction of the source's flexion (`pelvis_lift`): a lower-hipped rig
@@ -52,6 +66,9 @@ import sys
 import bpy
 import numpy as np
 from mathutils import Matrix, Quaternion, Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from kqchar import motion  # noqa: E402
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 
@@ -672,6 +689,47 @@ def relax_fingers(tgt, scene, actions, deg):
     print(f'[retarget] relaxed hands: {len(curl)} finger bones, {deg} deg in {len(actions)} clips')
 
 
+def key_frames(tgt, tbones, order, s2t, frames, f0):
+    """Key baked frames (armature-space pose matrices per bone) into the rig's current action from
+    frame f0: each bone's local rotation from its pose and its parent's; mapped bones only (unmapped
+    ones stay at rest, no channel), plus the pelvis's location."""
+    for f, pm in enumerate(frames, f0):
+        for name in order:
+            b = tbones[name]
+            pb = tgt.pose.bones[name]
+            M = pm[name]
+            if b.parent is not None:
+                basis = (b.parent.matrix_local.inverted() @ b.matrix_local).inverted() @ pm[b.parent.name].inverted() @ M
+            else:
+                basis = b.matrix_local.inverted() @ M
+            loc, q, _ = basis.decompose()
+            pb.rotation_mode = 'QUATERNION'
+            pb.rotation_quaternion = q
+            if name in s2t:  # unmapped bones stay at rest: no channel at all (smaller clips)
+                pb.keyframe_insert('rotation_quaternion', frame=f, group=name)
+            if name == 'pelvis':
+                pb.location = loc
+                pb.keyframe_insert('location', frame=f, group=name)
+
+
+def open_fingers(tgt, scene, act, hand_w, share=0.7):
+    """The explaining hands of the Talk loop open up: every finger joint of a hand turns back toward
+    the rest hand (straight fingers lying together) by `share` x that hand's gesture weight."""
+    tgt.animation_data.action = act
+    f0 = int(round(act.frame_range[0]))
+    names = {s: [f'{g}_0{k}_{s}' for g in RELAX_FINGER for k in (1, 2, 3) if f'{g}_0{k}_{s}' in tgt.pose.bones] for s in ('l', 'r')}
+    for i, (wr, wl) in enumerate(hand_w):
+        scene.frame_set(f0 + i)
+        for s, w in (('r', wr), ('l', wl)):
+            if w < 1e-4:
+                continue
+            for bn in names[s]:
+                pb = tgt.pose.bones[bn]
+                pb.rotation_mode = 'QUATERNION'
+                pb.rotation_quaternion = pb.rotation_quaternion.slerp(Quaternion(), share * w)
+                pb.keyframe_insert('rotation_quaternion', frame=f0 + i, group=bn)
+
+
 def rot(m):
     """Rotation part of a 4x4 (scale removed) as a quaternion."""
     return m.to_3x3().normalized().to_quaternion()
@@ -699,12 +757,21 @@ def main():
     # standing clips: the shoulders dropped this many degrees (the clavicles turned down about the
     # chest's forward axis; the arms keep their direction, so only the shoulder line comes down)
     stand_shoulders = math.radians(float(opt('stand-shoulders', '0')))
+    walk_shoulders = math.radians(float(opt('walk-shoulders', '0')))  # the same drop in Walk
     level_head = opt('level-head', '0') == '1'
     # planted knees: bend this fraction of the source's knee flexion (the pelvis rises, pelvis_lift);
     # the locomotion and idle clips (`--loco`) can stand straighter still (`--knees-loco`)
     knees = float(opt('knees')) if opt('knees') else None
     knees_loco = float(opt('knees-loco')) if opt('knees-loco') else knees
     loco = set(opt('loco', 'Idle,Idle_Sword,Walk,Run,Run_Back,Run_Left,Run_Right').split(','))
+    # people tiers, more clips and motion: a forward lean in Walk too (degrees, LEAN shares), a
+    # counter-swing of the arms (`--arm-swing Walk=22`: clip=degrees), and the Talk loop made from a
+    # standing clip (`--talk Idle`, `--talk-seconds 4`; see kqchar/motion.py talk_frames)
+    stand_hips = float(opt('stand-hips', '0'))
+    walk_lean = math.radians(float(opt('walk-lean', '0')))
+    swing = {k: float(v) for k, v in (p.split('=') for p in opt('arm-swing', '').split(',') if '=' in p)}
+    talk_src = opt('talk')
+    talk_base = None
     ankle_ref = opt('ankle-ref', 'Idle')
     bpy.ops.wm.open_mainfile(filepath=char, load_ui=False, use_scripts=False)
     tgt = bpy.data.objects['avatar-rig']
@@ -790,6 +857,7 @@ def main():
         legs.append(('thigh_' + sd, 'calf_' + sd, foot, ball, desc))
     up_a = (tw.to_3x3().inverted() @ Vector((0, 0, 1))).normalized()
     rest_z = {lg[2]: tbones[lg[2]].head_local.dot(up_a) for lg in legs}
+    side_a = (tw.to_3x3().inverted() @ Vector((1, 0, 0))).normalized()  # the figure's left
     tw_inv = tw.inverted()
     actions = {}
     report = {'source': os.path.basename(src), 'missing_map': missing, 'hip_ratio': hip_ratio, 'clips': {}}
@@ -842,10 +910,11 @@ def main():
                         q = swing[name[-1]] @ q
                     elif name.startswith(ARM_CHAIN) and name[-1] in swing:
                         q = swing[name[-1]] @ q
-                    if clip in stand and stand_shoulders and name in ('clavicle_l', 'clavicle_r'):
+                    sh_c = stand_shoulders if clip in stand else (walk_shoulders if clip == 'Walk' else 0.0)
+                    if sh_c and name in ('clavicle_l', 'clavicle_r'):
                         ch = rot(tw @ pm['spine_03']) @ rot(trest['spine_03']).inverted()
                         sgn = 1.0 if name.endswith('_l') else -1.0
-                        q = Quaternion(ch @ Vector((0, -1, 0)), -sgn * stand_shoulders) @ q
+                        q = Quaternion(ch @ Vector((0, -1, 0)), -sgn * sh_c) @ q
                     if clip in stand and stand_upright and name in UPRIGHT:
                         # the source's stoop given back: a share of each upper bone's forward pitch
                         # against the rest pose (yaw and roll, the clip's life, stay)
@@ -856,8 +925,14 @@ def main():
                         if dn.length > 1e-6 and dr.length > 1e-6:
                             ang = math.atan2(dr.cross(dn).dot(sx), dr.dot(dn))
                             q = Quaternion(sx, -stand_upright * UPRIGHT[name] * ang) @ q
-                    if clip in stand and stand_lean and name in LEAN:
-                        q = Quaternion(rot(tw) @ Vector((1, 0, 0)), stand_lean * LEAN[name]) @ q
+                    if clip in stand and stand_hips and name in ('pelvis', 'spine_01', 'spine_02'):
+                        # the hips turned back under the chest (a share of their yaw against the rest
+                        # pose): the jacket hangs from the chest, its zip and hem stay on the centre line
+                        fa = rot(tw).inverted() @ (q @ rot(trest[name]).inverted() @ (rot(tw) @ Vector((0, -1, 0))))
+                        q = Quaternion(rot(tw) @ Vector((0, 0, 1)), -stand_hips * math.atan2(fa.x, -fa.y)) @ q
+                    lean_c = stand_lean if clip in stand else (walk_lean if clip == 'Walk' else 0.0)
+                    if lean_c and name in LEAN:
+                        q = Quaternion(rot(tw) @ Vector((1, 0, 0)), lean_c * LEAN[name]) @ q
                     if clip in stand and level_head and name in ('neck_01', 'head'):
                         upv = rot(tw).inverted() @ (q @ Vector((0, 1, 0)))
                         q = Quaternion(rot(tw) @ Vector((0, 1, 0)), -math.atan2(upv.x, upv.z)) @ q
@@ -932,23 +1007,13 @@ def main():
                             fr[k].translation = fr[k].translation + up_a * lift
                 rec_lock = foot_lock(baked, src_feet, legs, tbones, up_a, rest_z, flat=lock, upright=upright, spread=None, heading=heading)  # the feet already sit where `spread` put them
                 print(f'[retarget] {clip}: knee bend mean {np.mean(bends):.1f} deg, lifted {lift * 100:.1f} cm for {stand_knee:.0f} deg')
+        if clip in swing:
+            motion.arm_swing(baked, tbones, side_a, up_a, swing[clip])
+            print(f'[retarget] {clip}: arm swing +-{swing[clip]:.0f} deg against the thighs')
+        if clip == talk_src:
+            talk_base = [{k: m.copy() for k, m in fr.items()} for fr in baked]
+        key_frames(tgt, tbones, order, s2t, baked, f0)
         for f, pm in zip(range(f0, f1 + 1), baked):
-            for name in order:
-                b = tbones[name]
-                pb = tgt.pose.bones[name]
-                M = pm[name]
-                if b.parent is not None:
-                    basis = (b.parent.matrix_local.inverted() @ b.matrix_local).inverted() @ pm[b.parent.name].inverted() @ M
-                else:
-                    basis = b.matrix_local.inverted() @ M
-                loc, q, _ = basis.decompose()
-                pb.rotation_mode = 'QUATERNION'
-                pb.rotation_quaternion = q
-                if name in s2t:  # unmapped bones stay at rest: no channel at all (smaller clips)
-                    pb.keyframe_insert('rotation_quaternion', frame=f, group=name)
-                if name == 'pelvis':
-                    pb.location = loc
-                    pb.keyframe_insert('location', frame=f, group=name)
             # ---- skeleton samples (world space, target frame and size)
             tpos = {n: tw @ pm[n] for n in pm}
             rec['t'].append({k: list(tpos[k].translation) for k in SK_T if k in tpos})
@@ -967,8 +1032,24 @@ def main():
     # remove the source rig and its props
     for o in new:
         bpy.data.objects.remove(o, do_unlink=True)
+    talk_w = None
+    if talk_base is not None:
+        # the Talk loop: the standing clip's frames (feet locked as baked) with explaining hands
+        gap = motion.frame_gap(talk_base[0], talk_base[-1])
+        if gap[0] > 0.004 or gap[1] > 2.0:
+            talk_base = talk_base + [talk_base[0]]  # an open loop: wrap round to its first frame
+        secs = float(opt('talk-seconds', '4'))
+        frames, talk_w = motion.talk_frames(talk_base, tbones, side_a, up_a, secs, fps)
+        out = bpy.data.actions.new('Talk')
+        tgt.animation_data.action = out
+        key_frames(tgt, tbones, order, s2t, frames, 0)
+        actions['Talk'] = out
+        report['clips']['Talk'] = {'ok': True, 'from': talk_src, 'seconds': secs, 'frames': len(frames), 'seam_gap': [round(gap[0], 4), round(gap[1], 2)]}
+        print(f'[retarget] Talk: from {talk_src} ({len(frames)} frames, {secs:.1f} s; source seam {gap[0] * 100:.2f} cm / {gap[1]:.1f} deg)')
     if float(opt('relax-fingers', '0')):
         relax_fingers(tgt, scene, actions, float(opt('relax-fingers')))
+    if talk_w is not None:
+        open_fingers(tgt, scene, actions['Talk'], talk_w, float(opt('talk-open', '0.7')))
     if opt('point') and opt('point') in actions:
         # a pointing gesture from the reaching clip (the people's 'point'; see point_clip)
         actions['Point'] = point_clip(tgt, scene, actions[opt('point')])

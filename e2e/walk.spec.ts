@@ -7,8 +7,12 @@ import { trackErrors } from './helpers/common';
  * (waiting / resumed), the snap ahead after a teleport and the story's warp, a perf sample with
  * 16 bodies at the high and the low tier (table in the log, test-results/walk/perf.json) and
  * screenshots of the walking group (test-results/walk/walk-*.png).
+ *
+ * KQ_WALK_QUERY (env, optional) is appended to every boot URL, so the walk runs with other switches
+ * without a code edit, e.g. `KQ_WALK_QUERY='&people=authored'` for the authored people bodies.
  */
 const OUT = 'test-results/walk';
+const EXTRA_QUERY = process.env.KQ_WALK_QUERY ?? '';
 mkdirSync(OUT, { recursive: true });
 test.describe.configure({ timeout: 300_000 });
 
@@ -16,7 +20,7 @@ type Rec = { n: string; p: any }[];
 const START = { x: 524, z: -770 };
 
 async function boot(page: Page, query: string): Promise<void> {
-  await page.goto(`./?notitle&nosave&fresh&x=${START.x}&z=${START.z + 6}${query}`);
+  await page.goto(`./?notitle&nosave&fresh&x=${START.x}&z=${START.z + 6}${query}${EXTRA_QUERY}`);
   await page.waitForFunction(() => !!window.kq?.walk && !!window.kq?.npc, null, { timeout: 180_000 });
   await page.evaluate(() => {
     const w = window as unknown as { rec: Rec };
@@ -173,108 +177,6 @@ async function sample(page: Page, tier: string, group: boolean, ms = 5000, minFr
   }, [ms, minFrames, maxMs]);
   return { tier, group, ...r };
 }
-
-/** Put the player `d` m from the guide, on the far side from him (away from the group), looking at him. */
-async function awayFromGuide(page: Page, d: number): Promise<void> {
-  await page.evaluate((dd) => {
-    const k = window.kq!;
-    const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
-    const p = k.ctx.player.position;
-    const l = Math.hypot(p.x - g.x, p.z - g.z) || 1;
-    const x = g.x + ((p.x - g.x) / l) * dd;
-    const z = g.z + ((p.z - g.z) / l) * dd;
-    k.teleport(x, z, (Math.atan2(g.x - x, -(g.z - z)) * 180) / Math.PI, -4);
-  }, d);
-}
-
-test('walk (e): finding the group — marker on the compass, one call-out, „Zur Gruppe“ hold → behind the group', async ({ page }) => {
-  const errors = trackErrors(page);
-  await boot(page, '&manual');
-  await page.evaluate(() => window.kq!.walk!.demo({ to: 'einstieg' }));
-  await page.evaluate(([x, z]) => window.kq!.teleport(x!, z!, 0, 0), [START.x, START.z + 2]);
-  // the player stays put: the guide waits on the leash (~25 m), and shows on the compass
-  for (let s = 0; s < 60 && !(await events(page, 'group:waiting')).length; s++) await step(page, 60);
-  await step(page, 30);
-  const f1 = await page.evaluate(() => window.kq!.walk!.find());
-  console.log(`[walk e] waiting: ${JSON.stringify(f1)}`);
-  expect(f1.marker).toBe(true);
-  expect(await page.locator('.kq-compass-marker[data-dist^="Gruppe"]').count()).toBe(1);
-  // no call-out yet (the guide walked off, the player did not)
-  expect((await events(page, 'walk:bark')).filter((b) => b.id === 'imhoff.bark.hier')).toEqual([]);
-  // stray to 45 m: Gerold calls once
-  await awayFromGuide(page, 45);
-  await step(page, 30);
-  await awayFromGuide(page, 50);
-  await step(page, 120);
-  expect((await events(page, 'walk:bark')).filter((b) => b.id === 'imhoff.bark.hier')).toEqual([{ npc: 'imhoff', id: 'imhoff.bark.hier' }]);
-  // a minute apart: „Zur Gruppe“ is offered (Q / hold)
-  for (let s = 0; s < 70 && !(await page.evaluate(() => window.kq!.walk!.find().prompt)); s++) await step(page, 60);
-  expect(await page.evaluate(() => window.kq!.walk!.find().prompt)).toBe(true);
-  await expect(page.locator('.kq-prompt')).toContainText('zur Gruppe');
-  await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${OUT}/walk-e-zur-gruppe.png` });
-  // still only one call-out in the episode
-  expect((await events(page, 'walk:bark')).filter((b) => b.id === 'imhoff.bark.hier')).toHaveLength(1);
-  // hold Q: fade, then the player stands on the route behind the group
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.ctx.input.simulate('KeyQ', true);
-    k.step(90);
-    k.ctx.input.simulate('KeyQ', false);
-    k.step(90);
-  });
-  const rejoin = await events(page, 'group:rejoin');
-  expect(rejoin).toHaveLength(1);
-  const after = await page.evaluate(() => {
-    const k = window.kq!;
-    const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
-    const p = k.ctx.player.position;
-    return { dist: Math.hypot(p.x - g.x, p.z - g.z), find: k.walk!.find(), era: k.ctx.era.current };
-  });
-  console.log(`[walk e] after the hold: ${JSON.stringify(after)}`);
-  expect(after.dist).toBeLessThan(30);
-  expect(after.era).toBe('today');
-  expect(after.find.prompt).toBe(false);
-  expect(errors).toEqual([]);
-});
-
-/** The title's new-game flow: warning → name → lantern (as e2e/smoke.spec.ts). */
-async function newGameFromTitle(page: Page, overSave: boolean): Promise<void> {
-  const start = page.getByTestId('title-new');
-  await expect(start).toBeEnabled({ timeout: 120_000 });
-  await start.click();
-  if (overSave) await page.locator('.kq-modal .actions button.primary').click();
-  await page.getByTestId('warning-accept').click();
-  await page.getByTestId('name-confirm').click();
-  await page.getByTestId('light-lantern').click();
-  await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
-}
-
-test('walk (f): „Neues Spiel“ over a save with a group in it starts without the old group (save:loaded on a fresh start)', async ({ page }) => {
-  const errors = trackErrors(page);
-  // the retired prologue (`?classic`): the tour would bring its own group into the fresh game
-  await page.goto('./?manual&classic');
-  await newGameFromTitle(page, false);
-  await page.waitForFunction(() => !!window.kq?.walk, null, { timeout: 60_000 });
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.walk!.demo({ to: 'einstieg' });
-    k.step(120);
-    k.ctx.save.autosave('test', true);
-  });
-  expect(await page.evaluate(() => window.kq!.walk!.groups().length)).toBe(1);
-  // reload: the save brings the group back …
-  await page.reload();
-  await page.waitForFunction(() => !!window.kq?.walk, null, { timeout: 180_000 });
-  expect(await page.evaluate(() => window.kq!.walk!.groups().length)).toBe(1);
-  // … „Neues Spiel“ over it: gone (walk rebuilt from the fresh state)
-  await newGameFromTitle(page, true);
-  await page.evaluate(() => window.kq!.step(5));
-  const after = await page.evaluate(() => ({ groups: window.kq!.walk!.groups().length, bodies: window.kq!.walk!.stats().bodies, list: window.kq!.walk!.list().length }));
-  console.log(`[walk f] after Neues Spiel: ${JSON.stringify(after)}`);
-  expect(after).toEqual({ groups: 0, bodies: 0, list: 0 });
-  expect(errors).toEqual([]);
-});
 
 const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
 

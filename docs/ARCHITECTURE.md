@@ -1142,7 +1142,11 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     events and state.
   - People are not saved: whoever spawned them spawns them again after a load.
 - **Rules**
-  - The people system updates every person each frame; callers never call update. They move and
+  - The people system updates every person in the render hook (`frame`, the rendered frame's dt),
+    not in the fixed `update`: `kq.step(n)` runs n updates but renders once, so it moves the people's
+    clips on by one frame only. A test or shot harness that needs n frames of people time calls
+    `kq.step(1)` n times.
+  - Callers never call update. They move and
     rotate `root` (world space, feet at the origin; `root.rotation.y = yaw` in the player's
     convention, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.
   - `setSpeed` blends idle → walk → run by ground speed with phase-locked feet. Above 0.2 m/s it
@@ -1200,8 +1204,9 @@ the guide, opt-in with `?people=authored`), and callers do not change.
 - **Authored bodies** (`authored.ts`; the person logic stays `standin.ts`, through a `BodyKit`):
   - A spec with `authored: { model, cloth }` draws its MPFB build (`scripts/chars/mpfb/specs/<id>.json`,
     packed into `public/assets/models/chars/`, manifest `chars-mpfb.ts`). Every other spec keeps its
-    stand-in. Today: `guide` → `chars.people.guide` (1.95 m, LOD0 11.6k tris, LOD1 5.8k tris,
-    1 draw call each).
+    stand-in. Today: `guide` → `chars.people.guide` (1.95 m, LOD0 11.9k tris, LOD1 6.0k tris,
+    1 draw call each; the shared face style B, `specs/_style_b.json`; toon shading, so every guide
+    draws with the one shared toon twin `peopleMaterial(eye, 'toon')`).
   - **Switch:** `PEOPLE_AUTHORED_DEFAULT` (`specs.ts`, one line) turns authored bodies on or off;
     `?people=authored` / `?people=standin` force either for the session (read once at people init).
     It is `false` for now: the authored guide is opt-in (`?people=authored`) until his look passes
@@ -1218,7 +1223,10 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     `lod1Level`); the registry passes the camera distance to each tick.
   - **Clips: one table** (`AUTHORED_SOURCE`, `AUTHORED_CLIPS`): idle → `Idle`, walk → `Walk`,
     run → `Run`, interact → `Interact`, wave → `Wave`, point → `Point` (the retargeted Interact
-    with a pointing hand, `retarget.py --point`). talk / lookAround as for the stand-in; sit /
+    with a pointing hand, `retarget.py --point`), talk → `Talk` (a 4 s loop of open-palm explaining
+    gestures made from Idle, `retarget.py --talk`; the plan's `talkLoop` plays it in place of idle
+    on its own clock, from the start when talk begins; no Interact gestures; reduced motion stands;
+    a GLB without it falls back to the stand-in's gestures). lookAround as for the stand-in; sit /
     sitTalk fall back (idle sunk 0.42 m). `info.clips` = idle, walk, run, talk, point, wave,
     lookAround, interact.
   - **Bones:** a small local alias table (`AUTHORED_BONES`: `neck_01`, `foot_l` / `foot_r`, the
@@ -1275,7 +1283,7 @@ stand-ins, the **authored meshes later behind the same interface**.
   interface AnimalInfo { specId; length; height; radius; headHeight; speeds: { walk; run }; clips }
   interface Animal {
     id; specId; root; info; ready /* Promise<boolean> */;
-    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw, {seconds?} /* 0 = at once */); lookAt(p | null);
+    setSpeed(mps); play(clip, {loop?, fade?, speed?}); face(yaw); lookAt(p | null);
     headWorld(out); setEyeShine(k); setVisible(v); dispose();
   }
   interface FaunaApi { spawn(specId, opts): Animal; get(id); list(); clear(); specs() }
@@ -1383,22 +1391,12 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   unseen); line of sight from each self-led deer (`hunt/perception.ts` `lineOfSight`, deer eye
   0.95 m to the stance's `TARGET_HEIGHT`, transmittance > 0.15) at 5 Hz, only inside notice + 2 m;
   `walkable` = no water, no footprint, slope < 35°; no noise events yet (none exist), mask 0. Then
-  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`
-  on change (a dog's with `seconds: 0`), `setSpeed` on change, `play(clip)` only when the clip hint
-  changes.
-- Dog motion: the core turns a dog at most `DOGS.TURN` (5 rad/s) and moves it only forward along its
-  yaw, the speed eased (`ACCEL` 6 / `DECEL` 10 m/s²): a slot behind it is a turn, never a reverse; a
-  slot just passed (< `AT_SLOT`) is waited for. Near the slot of a walking leader it matches the
-  leader's speed (plus `GAIN` per metre ahead) instead of stopping and starting. Its body faces the
-  core's yaw at once (no second smoothing lagging behind the motion).
+  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
+  `setSpeed` on change, `play(clip)` only when the clip hint changes.
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
-  `player`, `animal:<id>`. Speed and heading from the motion since the ref last moved, low-passed
-  (`REF_TAU` 0.25 s): a people root moves only on drawn frames, so between ticks it jumps or stands
-  (a jump > 15 m/s counts as 0). A jump (teleport, a fade's warp, `kq.walk.snap`) lands every dog
-  following that ref and farther than `DOGS.SNAP_FAR` (12 m) from its place in that place, standing,
-  facing the leader's way (no gallop through the forest from far behind; a return then counts as
-  back). Unresolvable → the dog idles where it is.
+  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
+  0). Unresolvable → the dog idles where it is.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).

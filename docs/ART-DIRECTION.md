@@ -188,6 +188,8 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   material: a toon GLB draws every person with one shared toon twin of it. Opt-in per entry; the
   look is calibrated on the character (its palette and per-slot toon settings), never on the scene
   lights or the tone mapping. The face can be stylised in the build (`face.stylize`, scripts/chars/mpfb).
+  Face style B (owner decision, 2026-11-21) is the face of every person: one shared preset
+  (`scripts/chars/mpfb/specs/_style_b.json`) that each person spec extends; the guide is the first.
 - **Never:** gore, real victims or animals as enemies. No likeness of a real living person without
   that person's consent. Historical figures may be modelled from public-domain portraits (§21).
 

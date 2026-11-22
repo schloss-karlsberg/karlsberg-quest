@@ -56,12 +56,14 @@ def _ring_smooth(r, passes):
     return r
 
 
-def hang(co, nrm, faces, mats, W, bones, rig, jk, body_hem):
+def hang(co, nrm, faces, mats, W, bones, rig, jk, body_hem, jacket_mats=None):
     """jacket.hang: {from (m over the body hem, where the cloth starts to hang), slope (m inward per
-    m down), amount (0..1)}. Extra outward offset (m, along the normals) for the jacket's trunk
+    m down), rise (m inward per m up from the seat: the drape over it), amount (0..1, at the back),
+    front (0..1, the amount at the front; between them by the angle round the body)}. Extra outward offset (m, along the normals) for the jacket's trunk
     vertices between the body hem and `from` above it: the cloth hangs straight down from the widest
     place above (the chest, the shoulder blades) and bridges the waist and the spine groove, instead
-    of hugging them. Each height's envelope is the support of the trunk's slice (convex), per angle."""
+    of hugging them. Each height's envelope is the support of the trunk's slice (convex), per angle.
+    `jacket_mats`: the zone materials that are the jacket (its panels too)."""
     hg = jk['hang']
     dom = _dom(W, bones)
     trunk = np.array([d in ('pelvis', 'spine_01', 'spine_02', 'spine_03') for d in dom])
@@ -82,10 +84,14 @@ def hang(co, nrm, faces, mats, W, bones, rig, jk, body_hem):
     R = env.copy()
     for i in range(len(Z) - 2, -1, -1):  # from the top down: never tighter than the hang from above
         R[i] = np.maximum(R[i], R[i + 1] - slope * (Z[i + 1] - Z[i]))
-    jm = jk['material']
+    rise = hg.get('rise', 0.0)
+    if rise:  # from the bottom up: the cloth drapes out over the seat in a curve, not a corner
+        for i in range(1, len(Z)):
+            R[i] = np.maximum(R[i], R[i - 1] - rise * (Z[i] - Z[i - 1]))
+    jms = set(jacket_mats or [jk['material']])
     on = np.zeros(len(co), dtype=bool)
     for k, f in enumerate(faces):
-        if mats[k] == jm:
+        if mats[k] in jms:
             on[list(f)] = True
     on &= trunk & (co[:, 2] > z0) & (co[:, 2] < z1)
     out = np.zeros(len(co))
@@ -104,7 +110,9 @@ def hang(co, nrm, faces, mats, W, bones, rig, jk, body_hem):
         Rv = (R[i0, j0] * (1 - fa) + R[i0, j1] * fa) * (1 - fz) + (R[i0 + 1, j0] * (1 - fa) + R[i0 + 1, j1] * fa) * fz
         horiz = (nrm[i, 0] * dx + nrm[i, 1] * dy) / r
         fade = smoothstep(z1, z1 - 0.06, z)  # eases in below `from`
-        out[i] = max(0.0, Rv - r) / max(horiz, 0.45) * hg.get('amount', 1.0) * fade
+        back = 0.5 - 0.5 * math.cos(a)  # 0 at the front, 1 at the back
+        amt = hg.get('front', hg.get('amount', 1.0)) + (hg.get('amount', 1.0) - hg.get('front', hg.get('amount', 1.0))) * back
+        out[i] = max(0.0, Rv - r) / max(horiz, 0.45) * amt * fade
     return out
 
 
@@ -118,6 +126,7 @@ def _axis_ray(surface, cx, cy, z, d2, fallback):
 def skirt(co, faces, W, bones, rig, jk, palette, hem, surface):
     """jacket.skirt: {above_hem (m, the top over the hem), columns, rows (fractions top -> hem),
     clearance [top, hem] (m off the envelope), flare, settle (where the rows reach the envelope),
+    top_in (m the top row sits under the jacket's surface),
     legs (thigh share at the hem), band (hem band height), band_out, lip, colour_band (palette key)}. `co` / `faces` / `W`: the dressed low skin."""
     sk = jk['skirt']
     dom = _dom(W, bones)
@@ -144,7 +153,9 @@ def skirt(co, faces, W, bones, rig, jk, palette, hem, surface):
         # from the jacket itself at the top (rays from the axis: no step where the skirt starts) to
         # the hanging envelope lower down
         body_r = np.array([_axis_ray(surface, cx, cy, z, d[k], rad[k]) for k in range(K)])
-        rad = body_r + (rad - body_r) * smoothstep(0.0, sk.get('settle', 0.55), t)
+        st = smoothstep(0.0, sk.get('settle', 0.55), t)
+        # the top row just under the jacket (no ledge to look down into): the skirt comes out of it
+        rad = body_r + (rad - body_r) * st - sk.get('top_in', 0.0) * (1.0 - st)
         if prev is not None:
             rad = np.maximum(rad, prev - 0.004)  # cloth hangs: never much tighter than above
         prev = rad
@@ -200,6 +211,60 @@ def skirt(co, faces, W, bones, rig, jk, palette, hem, surface):
 
     fcs = _orient(co_s, fcs, ref)
     return Part('skirt', jk['material'], co_s, fcs, col=np.array(col), weights=limit_weights(Wv))
+
+
+def trouser_hems(surface, W, bones, tr, so, palette):
+    """trousers.hem: {columns, height (m up from the hem), out (m off the trouser surface at the lower
+    edge), tuck (m off it at the top, negative: under it), lip (m the turned-in edge reaches in),
+    colour_lip (palette key)}: a clean straight hem ring per leg at the
+    shoe top (`shoes.top`), over the cut edge of the trouser zone, its lower edge turned in so the
+    opening shows cloth, never the inside of the leg. Rays from the leg's axis onto the dressed surface;
+    weights from the skin under it."""
+    hm = tr['hem']
+    K = int(hm.get('columns', 12))
+    z0 = so['top'] if so else 0.08
+    h = hm.get('height', 0.03)
+    base = hex_lin(palette.get(tr['colour'], '#5b5f64'))
+    lip_c = hex_lin(palette[hm['colour_lip']]) if hm.get('colour_lip') in palette else base * 0.8
+    dom = _dom(W, bones)
+    parts = []
+    for s in ('l', 'r'):
+        sel = np.array([d in (f'calf_{s}', f'foot_{s}') for d in dom]) & (surface.co[:, 2] > z0 - 0.01) & (surface.co[:, 2] < z0 + h + 0.03)
+        P = surface.co[sel]
+        cx, cy = float(P[:, 0].mean()), float(P[:, 1].mean())
+        th = np.radians(np.arange(K) * 360.0 / K)
+        d = np.stack([np.sin(th), -np.cos(th)], axis=1)
+        rows = []
+        for z, o in ((z0 + h, hm.get('tuck', -0.003)), (z0 + 0.004, hm.get('out', 0.003))):
+            # the top row tucks under the trouser surface (no gap to look down into), the lower edge
+            # stands out a little
+            rr = np.array([_axis_ray(surface, cx, cy, z, d[k], 0.06) for k in range(K)])
+            rows.append((z, _ring_smooth(rr, 1) + o))
+        bot = np.maximum(rows[0][1], rows[1][1])  # the cloth hangs: the hem no tighter than above
+        rows[1] = (rows[1][0], bot)
+        rows.append((z0 - 0.003, bot))
+        rows.append((z0 - 0.003, bot - hm.get('lip', 0.008)))
+        co_s, col = [], []
+        for r, (z, rad) in enumerate(rows):
+            for k in range(K):
+                co_s.append([cx + d[k, 0] * rad[k], cy + d[k, 1] * rad[k], z])
+                col.append(np.append(base * (0.96, 0.93, 0.9)[r] if r < 3 else lip_c, 1.0))
+        co_s = np.array(co_s)
+        fcs = []
+        for r in range(len(rows) - 1):
+            for k in range(K):
+                kn = (k + 1) % K
+                fcs.append((r * K + k, r * K + kn, (r + 1) * K + kn, (r + 1) * K + k))
+        cen = np.array([cx, cy])
+
+        def ref(c, k, cen=cen):
+            if k >= 2 * K:  # the turned-in lip faces down
+                return np.array([0.0, 0.0, -1.0])
+            v = np.array([c[0] - cen[0], c[1] - cen[1], 0.0])
+            return v / max(np.linalg.norm(v), 1e-9)
+        fcs = _orient(co_s, fcs, ref)
+        parts.append(Part(f'hem_{s}', tr['material'], co_s, fcs, col=np.array(col), weights=limit_weights(skin_weights(surface, W, co_s))))
+    return parts
 
 
 def zip_part(surfaces, weights, jk, palette, bones, z_top, z_bot):
@@ -271,8 +336,14 @@ def shoes(co, W, bones, so, palette, surface):
             top[j] = sl[:, 2].max() + off * 0.6
         for arr in (cx, hw):
             arr[1:-1] = 0.25 * arr[:-2] + 0.5 * arr[1:-1] + 0.25 * arr[2:]
-        # a rounded toe box and heel in plan (no pointed slipper)
-        hw *= np.where(ts > 0.72, np.sqrt(np.clip(1 - ((ts - 0.72) / 0.32) ** 2, 0.3, 1)), 1.0)
+        # a rounded toe box and heel in plan (no pointed slipper); `toe_box`: the toe box keeps the
+        # width of the ball of the foot and ends in a blunt, round cap
+        if so.get('toe_box'):
+            ball = int(np.argmin(np.abs(ts - 0.62)))
+            hw = np.where(ts > ts[ball], np.maximum(hw, hw[ball] * so['toe_box']), hw)
+            hw *= np.where(ts > 0.7, np.clip(1 - ((ts - 0.7) / 0.34) ** 4, 0.05, 1) ** 0.25, 1.0)
+        else:
+            hw *= np.where(ts > 0.72, np.sqrt(np.clip(1 - ((ts - 0.72) / 0.32) ** 2, 0.3, 1)), 1.0)
         hw *= np.where(ts < 0.15, np.sqrt(np.clip(1 - ((0.15 - ts) / 0.2) ** 2, 0.55, 1)), 1.0)
         collar = so.get('collar_z', 0.085)
         toe_h = so.get('toe_h', 0.028)  # the toe box's lowest top over the sole
@@ -280,36 +351,60 @@ def shoes(co, W, bones, so, palette, surface):
         h = np.where(ts > 0.8, np.maximum(h * (1 - 0.2 * (ts - 0.8) / 0.2), sole_h + toe_h * 0.85), h)
         h[1:-1] = 0.25 * h[:-2] + 0.5 * h[1:-1] + 0.25 * h[2:]
         phis = np.linspace(0.0, math.pi, M)
-        ucol, uco = [], []
+        r_heel, r_toe = hw[0] * 0.7, hw[-1] * so.get('toe_round', 0.9)
+        # the rings of the upper: the sections, plus `nose` rings of a rounded nose at the heel and the
+        # toe (quarter ellipses in plan and profile, down to an end point on the sole: the caps close
+        # onto the sole with no gap)
+        nose = int(so.get('nose', 0))
+        shade_c = so.get('toe_shade', 0.82)
+        R = []  # (y, cx, hw, h, ts)
+        for i in range(nose, 0, -1):
+            th = math.pi / 2 * i / (nose + 1)
+            R.append((ys[0] + r_heel * math.sin(th), cx[0], hw[0] * math.cos(th), sole_h + (h[0] - sole_h) * math.cos(th) ** 0.6, -1.0))
         for j in range(N):
+            R.append((ys[j], cx[j], hw[j], h[j], ts[j]))
+        for i in range(1, nose + 1):
+            th = math.pi / 2 * i / (nose + 1)
+            R.append((ys[-1] - r_toe * math.sin(th), cx[-1], hw[-1] * math.cos(th), sole_h + (h[-1] - sole_h) * math.cos(th) ** 0.6, 2.0))
+        NR = len(R)
+        lace = so.get('lace')  # {colour, from, to}: a lace line down the instep (vertex colour)
+        lace_c = hex_lin(palette[lace['colour']]) if lace else None
+        mid = (M - 1) / 2.0
+        ucol, uco = [], []
+        for y_, cx_, hw_, h_, t_ in R:
             for k, ph in enumerate(phis):
                 c_, s_ = math.cos(ph), math.sin(ph)
-                x = cx[j] + hw[j] * math.copysign(abs(c_) ** 0.55, c_)
-                z = sole_h + (h[j] - sole_h) * abs(s_) ** 0.6
-                uco.append([x, ys[j], z])
-                shade = so.get('toe_shade', 0.82) if (ts[j] < 0.12 or ts[j] > 0.82) else 1.0
-                ucol.append(np.append(upper_c * shade * (0.86 + 0.14 * abs(s_)), 1.0))
-        r_heel, r_toe = hw[0] * 0.7, hw[-1] * 0.9
-        heel_p = [cx[0], ys[0] + r_heel, sole_h + (h[0] - sole_h) * 0.5]
-        toe_p = [cx[-1], ys[-1] - r_toe, sole_h + (h[-1] - sole_h) * 0.45]
+                uco.append([cx_ + hw_ * math.copysign(abs(c_) ** 0.55, c_), y_, sole_h + (h_ - sole_h) * abs(s_) ** 0.6])
+                shade = shade_c if (t_ < 0.12 or t_ > 0.82) else 1.0
+                c0 = upper_c * shade * (0.86 + 0.14 * abs(s_))
+                if lace and lace.get('from', 0.3) <= t_ <= lace.get('to', 0.62):
+                    w = max(0.0, 1.0 - abs(k - mid) / max(lace.get('half', 0.6), 1e-3))
+                    c0 = c0 * (1 - w) + lace_c * w
+                ucol.append(np.append(c0, 1.0))
+        if nose:
+            heel_p = [cx[0], ys[0] + r_heel, sole_h]
+            toe_p = [cx[-1], ys[-1] - r_toe, sole_h]
+        else:
+            heel_p = [cx[0], ys[0] + r_heel, sole_h + (h[0] - sole_h) * 0.5]
+            toe_p = [cx[-1], ys[-1] - r_toe, sole_h + (h[-1] - sole_h) * 0.45]
         ih, it = len(uco), len(uco) + 1
         uco += [heel_p, toe_p]
-        ucol += [np.append(upper_c * so.get('toe_shade', 0.82), 1.0)] * 2
+        ucol += [np.append(upper_c * shade_c, 1.0)] * 2
         uco = np.array(uco)
         fu = []
-        for j in range(N - 1):
+        for j in range(NR - 1):
             for k in range(M - 1):
                 fu.append((j * M + k, j * M + k + 1, (j + 1) * M + k + 1, (j + 1) * M + k))
         for k in range(M - 1):
             fu.append((k + 1, k, ih))
-            fu.append(((N - 1) * M + k, (N - 1) * M + k + 1, it))
+            fu.append(((NR - 1) * M + k, (NR - 1) * M + k + 1, it))
         fu.append((0, M - 1, ih))  # the heel cap down to the sole
-        fu.append(((N - 1) * M + M - 1, (N - 1) * M, it))
+        fu.append(((NR - 1) * M + M - 1, (NR - 1) * M, it))
         fu = geom.fix_winding(uco, fu, np.array([cx.mean(), ys.mean(), sole_h + 0.02]))
         parts.append(Part(f'shoe_{s}', so['material'], uco, fu, col=np.array(ucol), weights=limit_weights(skin_weights(surface, W, uco))))
         # the sole: the upper's base outline (top inner ring), a little proud (outer rings), a flat bottom
         fl = so.get('sole_flare', 0.004)
-        inner = [[cx[j] + hw[j], ys[j]] for j in range(N)] + [[toe_p[0], toe_p[1]]] + [[cx[j] - hw[j], ys[j]] for j in range(N - 1, -1, -1)] + [[heel_p[0], heel_p[1]]]
+        inner = [[r[1] + r[2], r[0]] for r in R] + [[toe_p[0], toe_p[1]]] + [[r[1] - r[2], r[0]] for r in reversed(R)] + [[heel_p[0], heel_p[1]]]
         inner = np.array(inner)
         ctr = inner.mean(0)
         outer = ctr + (inner - ctr) * 1.0
@@ -334,6 +429,7 @@ def shoes(co, W, bones, so, palette, surface):
             fs.append((2 * nn + i2, 2 * nn + i, 3 * nn))  # the bottom
         fs = geom.fix_winding(sco, fs, np.array([ctr[0], ctr[1], sole_h * 0.5]))
         scol = np.tile(np.append(sole_c, 1.0), (len(sco), 1))
-        scol[nn:2 * nn, :3] = sole_c * 1.25  # the top edge catches a little light
+        scol[nn:2 * nn, :3] = sole_c * so.get('sole_top', 1.25)  # the top edge catches a little light
+        scol[2 * nn:, :3] = sole_c * so.get('sole_bottom', 1.0)  # the tread side
         parts.append(Part(f'sole_{s}', so['material'], sco, fs, col=scol, weights=limit_weights(skin_weights(surface, W, sco))))
     return parts

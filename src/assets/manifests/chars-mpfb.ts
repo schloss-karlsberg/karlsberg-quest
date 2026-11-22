@@ -34,9 +34,10 @@ const entries: AssetEntry[] = [
     kind: 'model',
     url: 'models/chars/guide-mpfb.glb',
     area: 'characters',
-    bytes: 281960,
+    bytes: 338964,
     licence: 'makehuman.mpfb2.people',
-    note: 'The placeholder tour guide (people spec `guide`, an invented generic face), built by scripts/chars/mpfb/build.py from specs/guide.json: 1.95 m, lanky, about 50, bald, a hip-length forest-green softshell (closed collar, centre zip, cuffs), grey trousers, brown walking shoes, a mustard lanyard with a light badge. Featured tier: avatar-body 11.6k tris and avatar-body_lod1 5.8k tris, one material `People` (vertex colours with baked occlusion), morphs smile / blink on LOD0. Clips Idle, Walk, Run, Interact, Wave (retarget.py, foot lock; the standing clips upright with straight knees, relaxed fingers) and Point (Interact with a pointing hand, retarget.py --point). Opt-in for now: the game draws it only with ?people=authored (PEOPLE_AUTHORED_DEFAULT false) until his look passes review.',
+    shading: 'toon',
+    note: 'The placeholder tour guide (people spec `guide`, an invented generic face in the shared face style B, specs/_style_b.json; toon shading), built by scripts/chars/mpfb/build.py from specs/guide.json: 1.95 m, lanky, about 50, bald, a hip-length forest-green softshell that hangs from the shoulder blades (stiff closed collar with a zip garage, centre zip, a yoke and a chest pocket in vertex colour, cuffs), grey trousers with a clean hem, brown walking shoes with light soles, a mustard lanyard with a light badge. Featured tier: avatar-body 11.9k tris and avatar-body_lod1 6.0k tris, one material `People` (vertex colours with baked occlusion), morphs smile / blink on LOD0. Clips Idle, Walk, Run, Interact, Wave (retarget.py, foot lock; the standing clips with a forward lean, straight knees, the hips under the chest, relaxed fingers; Walk with an arm swing), Point (Interact with a pointing hand, retarget.py --point) and Talk (a 4 s explaining loop made from Idle, retarget.py --talk). Opt-in for now: the game draws it only with ?people=authored (PEOPLE_AUTHORED_DEFAULT false) until his look passes review.',
   },
 ];
 export default entries;

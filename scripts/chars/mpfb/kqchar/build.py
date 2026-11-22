@@ -166,7 +166,8 @@ def run(spec, out_glb, out_blend=None, log=print):
     jkh = outfit.slots(wardrobe).get('jacket')
     if jkh and jkh.get('hang'):
         # the jacket hangs straight from the chest (people tiers): the waist and spine groove bridged
-        off = off + shell.hang(lco + lnrm * off[:, None], lnrm, lfaces, mats, lW, bones, h.rig, jkh, outfit.body_hem(lco, h.rig, jkh))
+        jmats = [jkh['material']] + [jkh[k].get('material', d) for k, d in (('yoke', 'JacketYoke'), ('chest_pocket', 'JacketZip')) if jkh.get(k)]
+        off = off + shell.hang(lco + lnrm * off[:, None], lnrm, lfaces, mats, lW, bones, h.rig, jkh, outfit.body_hem(lco, h.rig, jkh), jmats)
     lco2 = lco + lnrm * off[:, None]
     lkeys2 = {k: v + lnrm * off[:, None] for k, v in lkeys.items()}
     sink = bspec.get('skin_sink', 0.0) if solid_beard else 0.0
@@ -213,7 +214,8 @@ def run(spec, out_glb, out_blend=None, log=print):
         zt_, ang = outfit.collar_top(h.rig, jkc, lco)
         dd = (lco - cp_) @ cn_
         hidden = (dd > -0.002) & (lco[:, 2] < zt_ - jkc['collar_cull'][0]) & (np.abs(ang) > jkc['collar_cull'][1]) & (np.abs(lco[:, 0]) < 0.1)
-        keep_f = [k for k, f in enumerate(skin_part.faces) if not (skin_part.face_mat[k] == 'Skin' and all(hidden[i] for i in f))]
+        neck_mats = ('Skin', (jkc.get('undershirt') or {}).get('material', 'Undershirt'))
+        keep_f = [k for k, f in enumerate(skin_part.faces) if not (skin_part.face_mat[k] in neck_mats and all(hidden[i] for i in f))]
         log(f'[mpfb] collar: {len(skin_part.faces) - len(keep_f)} hidden neck faces removed')
         skin_part.faces = [skin_part.faces[k] for k in keep_f]
         skin_part.face_mat = [skin_part.face_mat[k] for k in keep_f]
@@ -230,35 +232,87 @@ def run(spec, out_glb, out_blend=None, log=print):
         surf_w.append(sk_part.weights)
         skirt_top = hem_v + jk2['skirt']['above_hem']
         log(f'[mpfb] skirt: hem {hem_v:.3f} m (crotch + {jk2.get("hem_above_crotch", 0.025):.3f}), top {skirt_top:.3f} m, {sk_part.tris} tris')
+        sink = jk2['skirt'].get('sink', 0.0)
+        if sink:
+            # the body under the skirt sinks a little (its straight columns cut the curved body, and the
+            # two skin a touch differently in motion): no cloth pokes through at the skirt top
+            vm = np.zeros(len(lco2), dtype=bool)
+            trm_ = (outfit.slots(wardrobe).get('trousers') or {}).get('material', 'Trousers')
+            for k, f in enumerate(skin_part.faces):
+                if skin_part.face_mat[k] in (jk2['material'], trm_):
+                    vm[list(f)] = True
+            dm_ = np.array(bones)[np.argmax(lW, axis=1)]
+            vm &= ~np.array([d.startswith(('upperarm', 'lowerarm', 'hand', 'thumb', 'index', 'middle', 'ring', 'pinky')) for d in dm_])
+            zz = lco2[:, 2]
+            ramp = np.clip((skirt_top - 0.015 - zz) / 0.014, 0.0, 1.0) * np.clip((zz - hem_v - 0.012) / 0.025, 0.0, 1.0)
+            ramp = ramp * ramp * (3.0 - 2.0 * ramp)
+            skin_part.co = skin_part.co - lnrm * (sink * ramp * vm)[:, None]
+            # the jacket faces reaching under the skirt top take a zone without baked occlusion (the
+            # skirt over them would darken them): where one shows through in motion it is the skirt's shade
+            under = jk2['skirt'].get('under_material')
+            if under:
+                skin_part.mat_col[under] = skin_part.mat_col.get(jk2['material'], skin_part.col)
+                below = zz < skirt_top - 0.004
+                fm = list(skin_part.face_mat)
+                for k, f in enumerate(skin_part.faces):
+                    if fm[k] == jk2['material'] and vm[list(f)].all() and below[list(f)].any():
+                        fm[k] = under
+                skin_part.face_mat = fm
     if jk2 and jk2.get('zip_solid'):
         cpart = next((p for p in parts if p.name == 'collar'), None)
         if cpart is not None:
             surfs.append(Surface(cpart.co, cpart.faces))
             surf_w.append(cpart.weights)
         nh2, _ = outfit.bone_pos(h.rig, 'neck_01')
-        zt2 = float(outfit.collar_top(h.rig, jk2, np.array([[0.0, nh2[1] + 0.005 - 1.0, 0.0]]))[0][0]) - 0.003
+        zt2 = float(outfit.collar_top(h.rig, jk2, np.array([[0.0, nh2[1] + 0.005 - 1.0, 0.0]]))[0][0]) - jk2.get('zip_top_below', 0.003)
         parts.append(shell.zip_part(surfs, surf_w, jk2, pal, bones, zt2, hem_v + 0.004))
     if so2 and so2.get('solid'):
         parts += shell.shoes(lco, lW, bones, so2, pal, Surface(lco, lfaces))
-    if (so2 and so2.get('solid')) or skirt_top is not None:
+    tr2 = outfit.slots(wardrobe).get('trousers')
+    if tr2 and tr2.get('hem'):
+        hems = shell.trouser_hems(dressed, lW, bones, tr2, so2, pal)
+        parts += hems
+        log(f'[mpfb] trouser hems: {sum(p.tris for p in hems)} tris')
+    tr3 = outfit.slots(wardrobe).get('trousers') or {}
+    if (so2 and so2.get('solid')) or skirt_top is not None or tr3.get('hem'):
         # body faces fully hidden under the garment solids are not drawn: the feet in the shoes,
-        # the hips under the skirt (a band just over the hem stays: it shows in the gap)
+        # the hips under the skirt (a band just over the hem stays: it shows in the gap), the leg
+        # ends under the trouser hems, the sleeve ends under the cuff bands
         dom_ = np.array(bones)[np.argmax(lW, axis=1)]
         arm_ = np.array([d.startswith(('upperarm', 'lowerarm', 'hand', 'thumb', 'index', 'middle', 'ring', 'pinky')) for d in dom_])
         z_ = lco[:, 2]
+        zd_ = lco2[:, 2]  # dressed heights: the skirt and the hems are built on the dressed surface
         trm = (outfit.slots(wardrobe).get('trousers') or {}).get('material', 'Trousers')
         hide_lo = hem_v + (jk2 or {}).get('skirt', {}).get('show_below', 0.035) if skirt_top is not None else 9.0
 
-        n_hid = {'shoes': 0, 'skirt': 0}
+        n_hid = {'shoes': 0, 'skirt': 0, 'hems': 0, 'cuffs': 0}
+        hem_top = (so2['top'] if so2 else 0.08) + tr3['hem'].get('height', 0.03) - 0.003 if tr3.get('hem') else -1.0
+        leg_ = np.array([d.startswith(('calf', 'foot')) for d in dom_])
+        # the sleeve under each cuff band: along the forearm from the band's bottom to the cuff line
+        under_cuff = np.zeros(len(lco), dtype=bool)
+        if jk2 and jk2.get('cuff_band'):
+            for sd in ('l', 'r'):
+                ha_, ta_ = outfit.bone_pos(h.rig, f'lowerarm_{sd}')
+                ax_ = ta_ - ha_
+                ln_ = float(np.linalg.norm(ax_))
+                u_ = (lco - ha_) @ ax_ / ln_
+                fa_ = np.array([d == f'lowerarm_{sd}' for d in dom_])
+                under_cuff |= fa_ & (u_ > jk2['cuff_at'] * ln_ - jk2['cuff_band'] + 0.004) & (u_ < jk2['cuff_at'] * ln_ - 0.001)
         # a band of the body under the skirt's top stays (skirt.hide_top, m): the skirt overlaps it, so no gap opens at the seam
         top_keep = (jk2 or {}).get('skirt', {}).get('hide_top', 0.004)
 
         def hidden_face(k, f):
             m = skin_part.face_mat[k]
+            if tr3.get('hem') and m == tr3.get('material', 'Trousers') and all(leg_[i] and zd_[i] < hem_top for i in f):
+                n_hid['hems'] += 1
+                return True
+            if jk2 and m == jk2['material'] and all(under_cuff[i] for i in f):
+                n_hid['cuffs'] += 1
+                return True
             if so2 and so2.get('solid') and m == so2['material'] and all(z_[i] < so2['top'] + 1e-4 for i in f):
                 n_hid['shoes'] += 1
                 return True
-            if skirt_top is not None and m in (trm, jk2['material']) and all(hide_lo <= z_[i] <= skirt_top - top_keep and not arm_[i] for i in f):
+            if skirt_top is not None and m in (trm, jk2['material'], jk2['skirt'].get('under_material')) and all(hide_lo <= zd_[i] <= skirt_top - top_keep and not arm_[i] for i in f):
                 n_hid['skirt'] += 1
                 return True
             return False

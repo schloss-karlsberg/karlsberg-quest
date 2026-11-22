@@ -202,6 +202,7 @@ describe('clips and fallbacks', () => {
     expect(STANDIN_CLIPS.sit.drop).toBeCloseTo(0.42);
     expect(STANDIN_CLIPS.sitTalk.drop).toBeCloseTo(0.42);
     expect(STANDIN_CLIPS.talk.gestures).toBe(true);
+    expect(STANDIN_CLIPS.talk.talkLoop).toBeUndefined();
     expect(STANDIN_CLIPS.lookAround.sweep).toBe(true);
     for (const c of ['point', 'wave', 'interact'] as const) expect(STANDIN_CLIPS[c].kind).toBe('shot');
     for (const c of ['idle', 'walk', 'run', 'talk', 'lookAround', 'sit', 'sitTalk'] as const) expect(STANDIN_CLIPS[c].kind).toBe('loop');
@@ -562,6 +563,7 @@ describe('stand-in on the rigged Quaternius humans', () => {
     p.setSpeed(0);
     run(reg, 6);
     expect(p.state().weights.idle).toBeGreaterThan(0.3);
+    expect(p.state().weights.talk).toBe(0);
     expect(p.state().clip).toBe('talk');
     // a one-shot plays, then the loop that was playing
     p.play('wave');
@@ -751,7 +753,7 @@ describe('authored guide (MPFB build behind the contract)', () => {
   it('one clip table: every MPFB source clip is in the GLB, the upper-body split cuts each one', async () => {
     const g = await guideGlb();
     for (const names of Object.values(AUTHORED_SOURCE)) expect(g.animations.some((a) => (names as readonly string[]).includes(a.name))).toBe(true);
-    for (const n of ['Idle', 'Walk', 'Run', 'Interact', 'Wave', 'Point']) {
+    for (const n of ['Idle', 'Walk', 'Run', 'Interact', 'Wave', 'Point', 'Talk']) {
       const c = g.animations.find((a) => a.name === n)!;
       const up = c.tracks.filter((t) => AUTHORED_BONES.upper.test(t.name.split('.')[0]!));
       expect(up.length).toBeGreaterThan(10);
@@ -763,6 +765,55 @@ describe('authored guide (MPFB build behind the contract)', () => {
     expect(resolveClip('point', AUTHORED_SUPPORTED)).toBe('point');
     expect([...AUTHORED_SUPPORTED].sort()).toEqual(['idle', 'interact', 'lookAround', 'point', 'run', 'talk', 'walk', 'wave']);
     expect(resolveClip('sit', AUTHORED_SUPPORTED)).toBe('idle');
+    // talk is the baked Talk loop (about 4 s), the gestures are the fallback of a GLB without it
+    expect(AUTHORED_CLIPS.talk.talkLoop).toBe(true);
+    expect(AUTHORED_CLIPS.talk.gestures).toBeUndefined();
+    const talk = g.animations.find((a) => a.name === 'Talk')!;
+    expect(talk.duration).toBeGreaterThan(3.5);
+    expect(talk.duration).toBeLessThan(4.5);
+  });
+
+  it('authored talk plays the Talk loop in place of idle: no Interact gestures, walking takes over, reduced motion stands', async () => {
+    const reg = await realRegistry();
+    const p = reg.spawn('guide', { x: 0, z: 0, yaw: 0 });
+    await p.ready;
+    run(reg, 0.5);
+    p.play('talk');
+    run(reg, 0.8);
+    expect(p.state().playing).toBe('talk');
+    expect(p.state().weights.talk).toBeGreaterThan(0.9);
+    expect(p.state().weights.idle).toBeLessThan(0.1);
+    // the hands are the clip's: no auto Interact one-shot over a whole loop
+    for (let i = 0; i < 10; i++) {
+      run(reg, 0.5);
+      expect(p.state().shot).toBeNull();
+      expect(p.state().weights.interact).toBeLessThan(0.01);
+    }
+    // the right hand comes up to the chest early in the loop (the clock starts with talk)
+    const hand = p.body!.getObjectByName('hand_r')!;
+    const handY = () => {
+      p.root.updateMatrixWorld(true);
+      return p.root.worldToLocal(hand.getWorldPosition(new Vector3())).y;
+    };
+    p.play('idle');
+    run(reg, 1);
+    const rest = handY();
+    p.play('talk');
+    run(reg, 1.2);
+    expect(handY() - rest).toBeGreaterThan(0.15);
+    // walking overrides it; standing again, it comes back
+    p.setSpeed(1.4);
+    run(reg, 0.8);
+    expect(p.state().weights.walk).toBeGreaterThan(0.9);
+    expect(p.state().weights.talk).toBeLessThan(0.1);
+    p.setSpeed(0);
+    run(reg, 1);
+    expect(p.state().weights.talk).toBeGreaterThan(0.9);
+    // reduced motion: no talking hands, he stands (idle)
+    for (let i = 0; i < 60; i++) reg.tick(1 / 60, { x: 0, y: 1.6, z: 0 }, { ...TICK, reducedMotion: true });
+    expect(p.state().weights.talk).toBeLessThan(0.1);
+    expect(p.state().weights.idle).toBeGreaterThan(0.9);
+    reg.clear();
   });
 
   it('the authored-bodies switch: ?people=authored / ?people=standin force a mode, else PEOPLE_AUTHORED_DEFAULT', async () => {

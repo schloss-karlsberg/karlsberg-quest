@@ -67,11 +67,13 @@ blender -b --factory-startup --disable-autoexec --python-exit-code 1 \
   --out /tmp/kq-chars/guide.raw.glb --blend /tmp/kq-chars/guide.blend --stats /tmp/kq-chars/guide.stats.json
 blender -b --factory-startup --disable-autoexec --python-exit-code 1 \
   -P scripts/chars/mpfb/retarget.py -- --char /tmp/kq-chars/guide.blend \
-  --src /tmp/kq-chars/surveyor.glb --clips Idle,Walk,Run,Interact,Wave --point Interact \
+  --src /tmp/kq-chars/surveyor.glb --clips Idle,Walk,Run,Interact,Wave --point Interact --talk Idle \
   --glb /tmp/kq-chars/guide.glb --report /tmp/kq-chars/guide.retarget.json \
-  --abduct 3 --stand Idle,Interact,Wave --stand-width 0 --stand-abduct -12 --stand-knee 5 \
-  --stand-feet 0.095 --stand-toe 8 --stand-upright 0.8 --stand-lean 5 --level-head 1 --relax-fingers 30
-pnpm assets:pack /tmp/kq-chars/guide.glb public/assets/models/chars/guide-mpfb.glb --anims Idle,Walk,Run,Interact,Wave,Point
+  --abduct -4 --stand Idle,Interact,Wave --stand-width 0 --stand-abduct -12 --stand-knee 5 \
+  --stand-feet 0.095 --stand-toe 8 --stand-upright 0.8 --stand-lean 16 --stand-hips 0.85 --level-head 1 \
+  --relax-fingers 40 --talk-seconds 4 --talk-open 0.4 --arm-swing Walk=26 --walk-lean 5 --knees 1 --knees-loco 0.6 \
+  --stand-shoulders 4 --walk-shoulders 7
+pnpm assets:pack /tmp/kq-chars/guide.glb public/assets/models/chars/guide-mpfb.glb --anims Idle,Walk,Run,Interact,Wave,Point,Talk
 ```
 
 The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, height … m` and any
@@ -142,7 +144,9 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    tip, a warmer neck, an upper-lid line, optional soft smile creases at the outer eye corners
    (`palette.eye_crease`), a lip outline, optional faint freckles over the nose bridge and upper
    cheeks: `palette.freckles` [amount, share of the vertices, colour], low contrast so they show
-   only in a close-up), eyes (with a catchlight: `palette.eye_catchlight` [degrees up, degrees to
+   only in a close-up; optional soft age lines, `palette.age_lines` {amount, tint, folds, forehead,
+   crows}: the nose-to-mouth folds, light forehead lines and crow's-feet as broad, soft bands of a
+   slightly darker, warm skin (`tint` x the skin), shading only, no geometry creases), eyes (with a catchlight: `palette.eye_catchlight` [degrees up, degrees to
    +x, radius, aspect, segments]), brows and a strip of upper teeth behind the upper lip (with tooth
    separations; `face.teeth: null` leaves them out for a closed smile; `edge_median` takes a
    median of three over the columns' lip edge, so one missed column leaves no notch);
@@ -179,11 +183,22 @@ The build log ends with `[palette] LOD0 … tris / … calls, LOD1 … tris, hei
    hang straight down from the chest and shoulder blades (it bridges the waist and the spine groove
    instead of hugging them); `jacket.skirt` is the jacket's hip part, a ring of rows from the body
    hem down to a straight hem about 8 cm over the crotch, with a hem band and an inward lip, so the
-   jacket hangs over the trousers all round; `jacket.zip_solid` sweeps a centre zip (with a lighter
+   jacket hangs over the trousers all round (`hang.rise` drapes the back out over the seat in a curve,
+   the skirt's top row sits just under the jacket, `skirt.top_in`, and the body under it sinks a few
+   mm, `skirt.sink`, in a zone without baked occlusion, `skirt.under_material`: no ledge or crease
+   at the skirt top and no darker cloth where the body shows through in motion); `jacket.zip_solid` sweeps a centre zip (with its
    pull) down the dressed front, each ring weighted like the cloth under it; `shoes.solid` builds
-   walking shoes (an upper with a rounded toe and heel, a thick sole with a proud ledge) and the
-   shoe zone ends at an ankle plane (no wedges up the calf). Body faces fully hidden under these
-   solids (the feet, the hips under the skirt) are dropped, which pays for them.
+   walking shoes (an upper with a rounded toe box and heel that close onto the sole, a thick sole
+   with a proud ledge, a lace line in vertex colour) and the shoe zone ends at an ankle plane (no
+   wedges up the calf); `trousers.hem` puts a clean hem ring over the trouser zone's cut edge at the
+   shoe top (its top tucked under the cloth, its lower edge turned in). Body faces fully hidden under
+   these solids (the feet, the hips under the skirt, the leg ends under the hems, the neck inside
+   the collar with `jacket.collar_cull`) are dropped, which pays for them.
+11. Panels in vertex colour only (`outfit.py`): a yoke seam (`jacket.yoke`, one cut plane across the
+   chest, back and shoulder caps, the yoke a zone of its own colour) and a chest pocket's zip
+   (`jacket.chest_pocket`, a narrow rectangle cut into the front): the zone borders are crisp along
+   the cuts, no extra solids. `jacket.undershirt` colours the neck inside the collar's opening;
+   `jacket.collar_garage` colours the collar's front centre as a zip garage.
 
 Budget (hero tier): at most 25k triangles, 8 draw calls, textures at most 1k (the player uses none).
 With costumes the budget holds per costume, visible at once: `stats.costumes` lists triangles and
@@ -257,30 +272,71 @@ flat ambient light, without touching the scene's lights. `ao.smooth` averages th
 edge neighbours (passes), so a coarse mesh shows no blotchy dark facets (the inner ear), and
 `ao.floor` keeps a minimum visibility.
 
+## Shared face style B (`specs/_style_b.json`)
+
+The stylised face of every person (the guide, the extras, the doubles, the child, the twins) sits
+in one preset, not in each person: `face.stylize` (bigger eyes sunk into simpler, smoothed planes,
+smoothed nose and ears, smiling lower lids lifted 17 degrees), calm eyes (the upper lids rest on the
+top of the iris: `eye-*-opened-up` 1.0 with a touch of `eye-*-closure`; more closure creases the
+inner lid corners) and an open smile (`face.expressions`), a strip of teeth (`face.teeth`), the
+eye-shape targets, the iris (40 degrees, so white shows beside it), pupil (17 degrees: no pinpoint
+pupils) and catchlight sizes and the
+drawn lid and lip lines (`palette`, numbers only). A person spec starts with
+`"extends": "_style_b.json"` and overrides only what differs (age, eye colour, smile strength,
+brows); every colour stays in the person spec. The file is no person and is never built on its
+own. The people's toon twin (`characters/toon.ts`, `People`, shared by every person) is
+calibrated on the skin: a light shade tint (a saturated one turns the shadow side of a face
+red-orange), almost no terminator band (on a face it draws a hard orange edge down the nose, a ring
+in the eye socket and a crease through one mouth corner that reads as a smirk under a side sun),
+wide, mostly smooth bands, a faint rim (a warm rim edges grey cloth pink) and a desaturated sun.
+
 ## The guide (`specs/guide.json`)
 
-The placeholder tour guide "Gerold Imhoff": an invented, generic face.
+The placeholder tour guide "Gerold Imhoff": an invented, generic face in the shared face style B
+(above), drawn with toon shading (`shading: 'toon'` on `chars.people.guide`).
 Very tall (macro height 0.635, 1.95 m) and lanky (low weight, narrow torso, thin limbs, a longer
 neck), about 50 (macro age 0.69), bald (`hair.style: bald`, no hair mesh) with a lowered, rounded
 skull (`face.skull`: the crown comes down and the slices round toward a dome, so the head is no
-cone or egg; about 7 heads tall with `head_scale` 1.17), clean-shaven, a calm friendly look (a soft,
-symmetric mouth-corner pull with the cheeks lifted, `lr-cheek-trans-up` and slightly open lids, so
-the smile reaches the eyes; soft-edged mid-brown brows, `brow.soft` and `palette.brow_tint`; dark
-pupils with a catchlight). Rounded ears (`lr-ear-shape-round`, `budget.ear_keep`). A fair-to-medium
-warm skin with rosy cheeks, nose and ears and baked occlusion (`ao`). Practical modern clothes: a
-hip-length forest-green softshell (#3E6A4C, a touch warm so it stays green and not teal at night;
-closed stand collar with a darker lining, a solid centre zip with a light pull, cuffs, a hem band,
-no chest flaps), grey straight trousers, brown walking shoes with a thick dark sole, a mustard
-lanyard (#D4A72C, warm but neither orange nor red) with a light badge (`wardrobe.lanyard`).
-Featured tier: LOD0 11.6k tris, LOD1 5.8k tris, one draw call each.
+cone or egg; about 7 heads tall with `head_scale` 1.17), clean-shaven, a calm open smile (the
+style's smile softer, `mouth-corner-puller` 0.8, the lips barely parted, `mouth-open` 0.03, a
+lighter mouth interior so the mouth reads as no dark hole at 10 m; the cheeks pushed up,
+`lr-cheek-trans-up` 0.9, so the smile reaches the eyes); thin, tapered, slightly arched taupe brows
+(`brow.shape` narrowing to the tail, `brow.soft`, `palette.brow_tint`); muted brown-hazel eyes; soft age
+lines (`palette.age_lines`: light nose-to-mouth folds, `folds` 0.4, so a side sun does not turn
+one of them into a smirk; light forehead lines; crow's-feet). Rounded ears
+(`lr-ear-shape-round`, `budget.ear_keep`). A warm neutral beige skin (#A88470) with faint warm
+cheeks, nose and ears and baked occlusion (`ao`). Practical modern clothes: a
+hip-length forest-green softshell (#3E6A4C, a touch warm so it stays green and not teal at night)
+that hangs straight from the shoulder blades (`jacket.hang` from 0.42 m over the body hem, less at
+the front, `front` 0.1, so the front follows the body and does not stand out as a belly when he
+leans) over a slimmed chest and shoulders (`measure-bust-circ-decr`, pectoral, lat and deltoid
+targets, a thinner shell with `shoulder_offset`): a stiff closed stand collar (`collar_stiff`, no
+hug toward the neck) with a darker lining and a dark zip garage, a dark undershirt in the collar's
+opening, a darker yoke and a chest pocket's zip as a thin dark-green line in vertex colour, a solid centre zip, cuffs, a flush
+hem band; grey straight trousers with a clean hem; brown walking shoes with a chunky rounded toe box,
+a thick brown-grey sole (#6E6256, a light sole reads as a sneaker) and a light lace line; a mustard
+lanyard (#D4A72C, warm but neither orange nor red) with a muted cream badge (`wardrobe.lanyard`; a
+white card flares in bright light). Featured tier: LOD0 11.9k tris, LOD1 6.0k tris, one
+draw call each.
 
 Clips: the same retarget bake (Idle, Walk, Run, Interact, Wave from the surveyor). The slim trunk
-needs no swing-out: `--abduct 3` while walking. The standing clips bring the arms in to hang close
+needs no swing-out: `--abduct -4` keeps the arms close while walking, and the shoulders come down
+there too (`--walk-shoulders 7`; `--stand-shoulders 4` in the standing clips). The planted legs stand
+straighter (`--knees 1 --knees-loco 0.6`, pelvis_lift: the walk no longer creeps on bent knees). The standing clips bring the arms in to hang close
 to the body (`--stand-abduct -12`, a negative value adducts) and stand him up: knees about 5 degrees
 (`--stand-knee`), ankles 9.5 cm off the middle with the toes 8 degrees out (`--stand-feet`,
-`--stand-toe`), the source's stoop mostly given back (`--stand-upright 0.8`) with a slight forward
-lean of the upper spine and neck (`--stand-lean 5`) and a level head (`--level-head 1`); every clip
-gets relaxed, gently curled fingers (`--relax-fingers 30`). Plus **Point**:
+`--stand-toe`), the source's stoop mostly given back (`--stand-upright 0.8`) with a forward lean of
+the upper back and neck, chin a little down (`--stand-lean 16`: the head about 16 cm ahead of the
+feet, so the lean reads from the front too, in idle, talk and point), the hips turned back under the chest (`--stand-hips
+0.85`: the source's Idle turns them 27 degrees, which pulled the jacket's zip off the centre line)
+and a level head (`--level-head 1`). Walk leans a little too (`--walk-lean 5`) and its arms swing
+against the thighs (`--arm-swing Walk=26`: each upper arm opposite its own thigh, the elbow bending
+more as the arm comes forward). Every clip gets relaxed, loosely curled fingers (`--relax-fingers
+40`). Plus **Talk**: `retarget.py --talk Idle` plays the baked Idle (feet locked as Idle's) twice
+over 4 s (`--talk-seconds`) with open-palm explaining gestures on top (`kqchar/motion.py`
+`talk_frames`): the right hand comes up to chest height and explains in three beats, the left joins
+for an open two-handed sweep, small nods on the beats, the explaining hands' fingers open part way
+(`--talk-open 0.4`, so a lower hand keeps a relaxed curl); both hands rest at the loop's seam. The people's `talk` plays it in place of idle. Plus **Point**:
 `retarget.py --point Interact` copies the retargeted Interact (a forward reach of the right arm) and
 poses the reaching hand to point (index straight, middle / ring / pinky curled into the palm, the
 thumb tucked; eased in and out with the reach). The people's `point` plays it.
@@ -304,13 +360,20 @@ thumb tucked; eased in and out with the reach). The people's `point` plays it.
   height the crown comes down), `round` (how far the slices pull toward a round dome).
 - `face.brow`: `soft` blends the brow's edge rows and tail into the skin; `palette.brow_tint`
   ([amount, spread m]) tints the skin under and round the brow.
-- `wardrobe.jacket` (people tiers): `hem_above_crotch`, `hang` {`from`, `slope`, `amount`}, `skirt`
+- `wardrobe.jacket` (people tiers): `hem_above_crotch`, `hang` {`from`, `slope`, `rise`, `amount`, `front`},
+  `shoulder_offset`, `shoulder_band`, `yoke` {`below_shoulder`, `colour`, `material`}, `chest_pocket`
+  {`x`, `width`, `below_yoke`, `length`, `colour`, `material`}, `undershirt` {`colour`, `below_top`,
+  `material`}, `collar_stiff`, `collar_taper`, `collar_thick`, `collar_garage` {`colour`, `deg`,
+  `edge`}, `collar_cull` [m under the collar top, degrees from the front], `zip_top_below`, `skirt`
   {`above_hem`, `columns`, `rows`, `clearance`, `flare`, `settle`, `legs`, `band`, `band_out`, `lip`,
-  `colour_band`, `show_below`, `hide_top`, `tuck`}, `zip_solid` with `zip_samples`, `zip_width`, `zip_thick`,
+  `colour_band`, `show_below`, `hide_top`, `tuck`, `top_in`, `sink`, `under_material`}, `zip_solid` with `zip_samples`, `zip_width`, `zip_thick`,
   `zip_raise`, `zip_colour`, `zip_pull`; `collar_closed`, `collar_segments`, `collar_smooth`,
   `collar_lining`, `collar_trim_colour`; `cuff_colour`, `cuff_lift`, `cuff_smooth`.
-- `wardrobe.shoes.solid` with `top` (the ankle plane), `sole_h`, `sole_flare`, `toe_h`, `collar_z`,
-  `sections`, `around`.
+- `wardrobe.shoes.solid` with `top` (the ankle plane), `sole_h`, `sole_flare`, `sole_top`,
+  `sole_bottom`, `toe_h`, `toe_box` (the toe box keeps the ball's width), `toe_round`, `nose` (rings
+  of the rounded toe and heel), `collar_z`, `sections`, `around`, `lace` {`colour`, `from`, `to`,
+  `half`}.
+- `wardrobe.trousers.hem`: `columns`, `height`, `out`, `tuck`, `lip`, `colour_lip`.
 - `wardrobe.lanyard`: also `samples` and `smooth` (the strap path smoothed, never into the cloth).
 - `ao`: `distance`, `rays`, `default`, `smooth`, `floor`, `zones` (strength per zone), see above;
   for the people tiers and, per costume, for the player.
@@ -384,6 +447,10 @@ The bake is a world-space rotation transfer with rest-pose alignment:
   stand straighter still (`--knees-loco`; the player uses 1 and 0.6). The lift is never negative and
   stops short of a locked knee. Frames with no planted foot take the lift of the planted frames
   around them, smoothed, and the lift fades out while the body is down.
+- **Pose edits** (`kqchar/motion.py`, on the baked frames: a bone turns with everything below it):
+  `--talk Idle` (the Talk loop; `--talk-open share`, how far its explaining fingers open), `--arm-swing
+  Clip=deg` (a counter-swing of the arms against the thighs), `--walk-lean deg`, `--walk-shoulders
+  deg` (the shoulder drop in Walk), `--stand-hips share` (the hips' yaw given back under the chest).
 - **Feet:** the source's Idle stance is the flat-foot reference (`--ankle-ref Idle`), since its
   T-pose rest feet are not flat.
 - **Foot lock** (`foot_lock`, a reusable step on the baked pose matrices; `--lock 0` turns it off,
