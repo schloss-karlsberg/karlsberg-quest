@@ -13,6 +13,9 @@
  */
 import type { Era } from '../../core/era';
 import type { NpcWatch, ThreatConfig, ThreatKind } from '../contracts';
+import type { AnimalAction as AnimalRequestFields } from '../animals/types';
+import type { CinematicPlay } from '../cinematic/types';
+import type { WalkRequest } from '../walk/types';
 
 export type FlagValue = boolean | number | string;
 
@@ -352,15 +355,18 @@ export interface CardAction extends ActionBase {
 /** A positional / UI sound, always with a caption for players who cannot rely on sound. */
 export interface SoundAction extends ActionBase {
   do: 'sound';
-  sound: 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match';
+  sound: 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match' | 'crowbar' | 'wind' | 'bark';
   x?: number;
   z?: number;
   caption?: string;
   /** Horn signal: anblasen (one long), fährte (two short), verloren (falling), sammeln (three long). */
   signal?: 'anblasen' | 'faehrte' | 'verloren' | 'sammeln';
 }
-/** Times of day a `look` action can set (`dawn`: Morgengrauen, chapter 4's end and the endings). */
-export type LookTime = 'day' | 'dawn' | 'dusk' | 'night';
+/**
+ * Times of day a `look` action can set (`dawn`: Morgengrauen, chapter 4's end and the endings;
+ * `tour`: the guided tour's mid-November afternoon, low golden sun, a little dusky).
+ */
+export type LookTime = 'day' | 'dawn' | 'dusk' | 'night' | 'tour';
 /**
  * Time of day for the present-day era (field station evenings). With `era` (a past era) the time
  * of day of that memory instead (e.g. 1789 dusk / night in the Karlslust); `day` restores its preset.
@@ -432,7 +438,7 @@ export interface ChoiceAction extends ActionBase {
   /** Small handwritten note under the prompt. */
   note?: string;
 }
-/** Place / remove a ghostly NPC (npc system). */
+/** Place / remove a ghostly NPC (npc system). The tour's walk ops are `NpcWalkAction`. */
 export interface NpcAction extends ActionBase {
   do: 'npc';
   op: 'spawn' | 'despawn';
@@ -458,6 +464,32 @@ export interface NpcAction extends ActionBase {
    */
   watch?: NpcWatch;
 }
+/**
+ * The tour group (design contract C2, src/systems/walk): `{ "do": "npc", "op": "walk" | "group" |
+ * "follow" | "gather" | "hold" | "release" | "warp", … }` and `{ "do": "npc", "op": "despawn",
+ * "group": … }` are sent as `npc:walk` with the action's fields minus do / delay / onResume.
+ */
+export type NpcWalkAction = ActionBase & { do: 'npc' } & WalkRequest;
+/** The npc ops that go to the walk system (a `despawn` with `group` and no `npc` too). */
+export const WALK_OPS: readonly string[] = ['walk', 'group', 'follow', 'gather', 'hold', 'release', 'warp'];
+/** Is this npc action a walk request (contract C2)? */
+export function isWalkAction(a: { op?: unknown; group?: unknown; npc?: unknown }): boolean {
+  return WALK_OPS.includes(String(a.op)) || (a.op === 'despawn' && typeof a.group === 'string' && a.npc === undefined);
+}
+/** An in-game cut-scene (contract C1, src/systems/cinematic): sent as `cinematic:play`. */
+export type CinematicAction = ActionBase & { do: 'cinematic' } & CinematicPlay;
+/** An animal request (contract C5, src/systems/animals): sent as `animal:request`. */
+export type AnimalStoryAction = ActionBase & AnimalRequestFields & { do: 'animal' };
+/**
+ * A full-screen fade to black (`to: 1`) or back (`to: 0`) over `seconds` (default 0.6): the tour's
+ * transitions („Kommt, wir kürzen ab.“ → fade → warp → teleport → fade in).
+ */
+export interface FadeAction extends ActionBase {
+  do: 'fade';
+  to: 0 | 1;
+  seconds?: number;
+}
+
 /**
  * Chapter meters. `oil`: the lantern burns `seconds` (hunt's lantern: lit + refilled; empty =
  * the memory lets go → back to the station). `smoke`: the fire's smoke meter (fx fire threat).
@@ -608,6 +640,10 @@ export type Action =
   | AutosaveAction
   | ChoiceAction
   | NpcAction
+  | NpcWalkAction
+  | CinematicAction
+  | AnimalStoryAction
+  | FadeAction
   | MeterAction
   | EchoAction
   | MemorialAction
@@ -646,6 +682,9 @@ export const ACTION_KINDS = [
   'loot',
   'xp',
   'item',
+  'cinematic',
+  'animal',
+  'fade',
 ] as const;
 
 /** Reaction inside a beat or chapter: when `when` becomes true, run `do` once. */
@@ -692,6 +731,23 @@ export interface StoryFile {
   placeholder?: boolean;
   /** Test chapter (e2e / examples): not loaded unless the URL has `?storytest`. */
   test?: boolean;
+  /**
+   * Dev chapter behind a URL switch: loaded only when the URL has this parameter, and then a new
+   * game starts in it instead of the first chapter.
+   */
+  dev?: string;
+  /**
+   * A retired opening (the old surveyor prologue): still bundled so a save in the middle of it
+   * resumes unchanged, but a new game starts in the first chapter by `order` (the tour); `?classic`
+   * starts the legacy chapter instead. Hidden from the bench's chapter list unless reached.
+   */
+  legacy?: boolean;
+  /**
+   * Run once when the story leaves this chapter for another one, whichever way (its last beat
+   * done, the bench's chapter list, a debug jump): the tour sends its group home and lifts its
+   * own rules (no combat, Laub silent), so no later chapter starts under them.
+   */
+  leave?: Action[];
   start: string;
   /** Where the chapter starts (teleport + era) when chosen at the map table. */
   checkpoint?: Checkpoint;

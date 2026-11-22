@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { creditLines } from '../src/systems/party/credits';
 import { SPOT_LAST, SPOT_ROUND } from '../src/systems/party/placements';
 import { type RunOptions, type StoryEnv, type StorySlice, StoryEngine, createStorySlice } from '../src/systems/story/engine';
-import type { Action, FlagValue, StoryFile } from '../src/systems/story/types';
+import type { Action, FlagValue, NpcAction, StoryFile } from '../src/systems/story/types';
 import type { ContentPack } from '../src/content/types';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -137,7 +137,7 @@ describe('beat e3: the party for each ending', () => {
     r.tick();
     expect(r.slice().active).toBe(false);
     expect(r.slice().completed).toContain('enden');
-    const npcs = r.all().filter((a): a is Extract<Action, { do: 'npc' }> => a.do === 'npc' && a.op === 'spawn');
+    const npcs = r.all().filter((a): a is NpcAction => a.do === 'npc' && a.op === 'spawn');
     expect(npcs.map((n) => n.npc).sort()).toEqual(['hanned', 'herzogd', 'imhoff', 'jostd', 'liesed', 'mannd', 'peterd', 'solld']);
     // one post-game line each (the npc system plays npc:talk greet lines of chapter 'enden')
     for (const n of npcs) {

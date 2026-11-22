@@ -1,0 +1,8 @@
+{
+  "id": "p-aufstieg",
+  "note": "tour slice v0 (kq-story): the group's leg from the Karlsbergquelle up to the plateau while the player takes the break (bible t9). The group despawns out of sight on the way. Build: node scripts/content-build/routes.mjs p-aufstieg",
+  "stops": [
+    { "id": "quelle", "x": 1059.3, "z": -833.1, "ref": "t9 station 4, trough stand (end of p-fuehrung)" },
+    { "id": "plateau", "x": 1216, "z": -1114, "ref": "t9 the group's goal, the Ehrenhof clearing (TF-01)", "offGraph": true }
+  ]
+}

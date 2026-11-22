@@ -37,7 +37,10 @@ import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
 import { COLLECTIONS } from '../../rpg/items';
-import type { Action, Checkpoint, ChoiceAction, Condition, EndingId, FlagValue, HubItem, LookTime, MeterAction, StoryFile } from './types';
+import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type HubItem, type LookTime, type MeterAction, type NpcAction, type StoryFile, isWalkAction } from './types';
+import type { WalkRequest } from '../walk/types';
+import type { AnimalAction } from '../animals/types';
+import type { CinematicPlay } from '../cinematic/types';
 import type { GameEvents } from '../../core/events';
 import type { DialogueItem } from './dialogue/presenter';
 import { knownPoints } from '../travel/points';
@@ -131,6 +134,16 @@ declare module '../../debug/hooks' {
 // ---- looks for the present day ----------------------------------------------------------------
 type LookPatch = { [K in keyof EraLook]?: Partial<EraLook[K]> } & { disc?: EraLook['disc'] };
 const LOOKS: Record<Exclude<LookTime, 'day'>, LookPatch> = {
+  // the guided tour (tour slice v0, bible 01-prolog §9 look `tour`): mid-November, about 14:45,
+  // the sun low in the south-west, golden leaves, the shade a little dusky and blue
+  tour: {
+    sun: { azimuth: 214, elevation: 13, color: '#ffc98a', intensity: 2.7 },
+    sky: { zenith: '#4a73a2', horizon: '#e8cfa6', below: '#5a5d58', clouds: 0.55, cloudColor: '#f1dcc0', stars: 0 },
+    ambient: { sky: '#8197b5', ground: '#5c442c', intensity: 0.78 },
+    fog: { color: '#b3afa4', sunColor: '#f4c27e', density: 0.00072, heightDensity: 0.0034, ground: 0.0036 },
+    grade: { exposure: 1.08, saturation: 1.12, contrast: 1.1, lift: '#0a0b10', gain: '#ffeed8', vignette: 0.34, grain: 0.03 },
+    season: 1.15,
+  },
   // Morgengrauen: the sun just up in the east, pink horizon, mist lying in the valleys
   dawn: {
     sun: { azimuth: 104, elevation: 3, color: '#ffb07e', intensity: 1.25 },
@@ -320,7 +333,8 @@ class StoryRuntime {
     const bundled = loadBundledStories();
     // test chapters (content/story/99-test.story.json, "test": true) only with ?storytest
     const tests = ctx.params.has('storytest');
-    this.files = bundled.map((b) => b.story).filter((f) => !f.test || tests);
+    // dev chapters ("dev": "<param>") only with their URL switch
+    this.files = bundled.map((b) => b.story).filter((f) => (!f.test || tests) && (!f.dev || ctx.params.has(f.dev)));
     this.engine = new StoryEngine(this.files, () => this.slice, {
       run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o.resume),
@@ -391,7 +405,8 @@ class StoryRuntime {
       modals: ctx.ui.modals,
       use: (item) => this.useHub(item),
       chapters: () =>
-        this.engine.order.map((f) => ({
+        // the retired prologue only for a save that has been there
+        this.engine.order.filter((f) => !f.legacy || this.slice.unlocked.includes(f.chapter)).map((f) => ({
           id: f.chapter,
           title: f.title_de,
           sub: f.sub_de ?? '',
@@ -591,6 +606,8 @@ class StoryRuntime {
   /** Re-apply persistent presentation after a load. */
   private resync(): void {
     this.cancelScheduled();
+    // a load never resumes in the middle of a fade (fade actions are one-shot)
+    this.overlays.fade(0, 0);
     const s = this.slice;
     this.objectives.set(s.objective);
     this.applyLook();
@@ -635,7 +652,11 @@ class StoryRuntime {
     const s = this.slice;
     Object.assign(s, createStorySlice(), { name: name.trim() || t('story.name.suggest') });
     this.objectives.set(null);
-    this.goto(first.chapter);
+    // a dev chapter behind its URL switch replaces the first chapter (the tour) of a new game;
+    // `?classic` starts the retired surveyor prologue instead
+    const dev = this.files.find((f) => f.dev && this.ctx.params.has(f.dev));
+    const classic = this.ctx.params.has('classic') ? this.files.find((f) => f.legacy) : undefined;
+    this.goto(dev?.chapter ?? classic?.chapter ?? first.chapter);
   }
 
   goto(chapter: string, beat?: string): void {
@@ -795,6 +816,31 @@ class StoryRuntime {
     }
   }
 
+  /** Place / remove a ghostly NPC (the npc system's placements; the tour's walk ops go elsewhere). */
+  private placeNpc(a: NpcAction): void {
+    const ctx = this.ctx;
+    const s = this.slice;
+    if (a.op === 'despawn') {
+      ctx.events.emit('npc:despawn', { npc: a.npc });
+      return;
+    }
+    // in a room: its centre and storey (resolved by the npc system); else at the player, on the player's storey
+    const anchor = a.room ? ctx.world.roomAnchor?.(a.room) ?? null : null;
+    const atPlayer = a.x === undefined && a.z === undefined && !anchor;
+    const p: NpcPlacement = { npc: a.npc, x: a.x ?? anchor?.x ?? ctx.player.position.x, z: a.z ?? anchor?.z ?? ctx.player.position.z, era: a.era ?? ctx.era.current };
+    if (a.room) p.room = a.room;
+    if (atPlayer) p.y = ctx.player.position.y;
+    else if (anchor && a.x === undefined) p.y = anchor.y;
+    const chapter = a.chapter ?? s.chapter;
+    if (chapter) p.chapter = chapter;
+    if (a.yaw !== undefined) p.yaw = a.yaw;
+    if (a.topics) p.topics = a.topics;
+    if (a.mood) p.mood = a.mood;
+    if (a.pose) p.pose = a.pose;
+    if (a.watch) p.watch = { ...a.watch };
+    ctx.events.emit('npc:spawn', p);
+  }
+
   private exec(a: Action): void {
     const ctx = this.ctx;
     const s = this.slice;
@@ -904,27 +950,28 @@ class StoryRuntime {
         this.overlays.openChoice(a, (i) => this.applyChoice(a, i));
         return;
       case 'npc': {
-        if (a.op === 'despawn') {
-          ctx.events.emit('npc:despawn', { npc: a.npc });
+        if (isWalkAction(a)) {
+          // the tour group (contract C2): the walk system takes the fields minus do / delay / onResume
+          const { do: _do, delay: _delay, onResume: _onResume, ...req } = a as Action & Record<string, unknown>;
+          ctx.events.emit('npc:walk', req as unknown as WalkRequest);
           return;
         }
-        // in a room: its centre and storey (resolved by the npc system); else at the player, on the player's storey
-        const anchor = a.room ? ctx.world.roomAnchor?.(a.room) ?? null : null;
-        const atPlayer = a.x === undefined && a.z === undefined && !anchor;
-        const p: NpcPlacement = { npc: a.npc, x: a.x ?? anchor?.x ?? ctx.player.position.x, z: a.z ?? anchor?.z ?? ctx.player.position.z, era: a.era ?? ctx.era.current };
-        if (a.room) p.room = a.room;
-        if (atPlayer) p.y = ctx.player.position.y;
-        else if (anchor && a.x === undefined) p.y = anchor.y;
-        const chapter = a.chapter ?? s.chapter;
-        if (chapter) p.chapter = chapter;
-        if (a.yaw !== undefined) p.yaw = a.yaw;
-        if (a.topics) p.topics = a.topics;
-        if (a.mood) p.mood = a.mood;
-        if (a.pose) p.pose = a.pose;
-        if (a.watch) p.watch = { ...a.watch };
-        ctx.events.emit('npc:spawn', p);
+        this.placeNpc(a as NpcAction);
         return;
       }
+      case 'cinematic': {
+        const { do: _do, delay: _delay, onResume: _onResume, ...spec } = a;
+        ctx.events.emit('cinematic:play', spec as CinematicPlay);
+        return;
+      }
+      case 'animal': {
+        const { delay: _delay, onResume: _onResume, ...req } = a;
+        ctx.events.emit('animal:request', req as AnimalAction);
+        return;
+      }
+      case 'fade':
+        this.overlays.fade(a.to, a.seconds ?? 0.6);
+        return;
       case 'meter':
         if (a.active) this.startMeter(a);
         else this.stopMeter(a.id);

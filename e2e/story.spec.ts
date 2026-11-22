@@ -25,7 +25,8 @@ function trackErrors(page: Page): string[] {
 }
 
 async function boot(page: Page, extra = ''): Promise<void> {
-  await page.goto(`./?notitle&nosave&fresh&manual${extra}`);
+  // story.start() here means the retired surveyor prologue (`?classic`); the tour has its own specs
+  await page.goto(`./?notitle&nosave&fresh&manual&classic${extra}`);
   await page.waitForFunction(() => !!window.kq?.story, null, { timeout: 180_000 });
 }
 
@@ -45,7 +46,7 @@ async function typed(page: Page): Promise<void> {
   await expect(page.getByTestId('dialogue')).toHaveClass(/kqs-show/);
 }
 
-test('story: new game flow (warning → name → lantern) starts the prologue', async ({ page }) => {
+test('story: new game flow (warning → name → lantern) starts the tour', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('./?nosave&fresh');
   const start = page.getByTestId('title-new');
@@ -69,15 +70,16 @@ test('story: new game flow (warning → name → lantern) starts the prologue', 
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   const s = await page.evaluate(() => window.kq!.story!.state());
   expect(s.active).toBe(true);
-  expect(s.chapter).toBe('prolog');
-  expect(s.beat).toBe('p1');
+  expect(s.chapter).toBe('tour');
+  expect(s.beat).toBe('t1');
   expect(s.name).toBe('Mara');
-  // the bridged prologue still starts at the old spot by the forest road (home is the Quelle)
+  // the tour starts at the Wanderparkplatz (its checkpoint), with its own title card, once
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
-  expect(Math.hypot(p.x - 760, p.z + 902)).toBeLessThan(5);
-  await expect(page.getByTestId('story-card')).toContainText('Vermessung');
+  expect(Math.hypot(p.x - 529, p.z + 777)).toBeLessThan(5);
+  await expect(page.getByTestId('story-card')).toContainText('Die Führung');
+  expect(await page.evaluate(() => window.kq!.state().flags['combat.disabled'])).toBe(true);
   await page.waitForTimeout(1800);
-  await page.screenshot({ path: `${SCREENS}/story-prolog-card.png` });
+  await page.screenshot({ path: `${SCREENS}/story-tour-card.png` });
   expect(errors).toEqual([]);
 });
 

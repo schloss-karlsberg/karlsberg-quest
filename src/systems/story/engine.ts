@@ -147,7 +147,7 @@ export interface StoryHost {
 
 /** Actions that are NOT repeated when a beat is resumed (unless `onResume: true`). */
 // (RPG: quest commands, xp and items are granted once; enemy groups and pickups are idempotent by id)
-const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant', 'quest', 'xp', 'item']);
+const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 'cue', 'chronik', 'ending', 'echo', 'grant', 'quest', 'xp', 'item', 'cinematic', 'fade']);
 
 export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);
@@ -370,6 +370,9 @@ export class StoryEngine {
     if (!f.beats.some((b) => b.id === beat)) throw new Error(`story: chapter '${chapterId}' has no beat '${beat}'`);
     const s = this.s;
     const resume = !!opts.resume;
+    // the chapter being left lifts its own rules first (its `leave` list)
+    const prev = s.chapter ? this.chapters.get(s.chapter) : undefined;
+    if (prev && prev !== f && prev.leave?.length) this.host.run(prev.leave, { resume: false, source: `${prev.chapter}:leave`, beat: null });
     s.active = true;
     s.chapter = chapterId;
     s.chapterTime = 0;

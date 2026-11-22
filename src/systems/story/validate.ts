@@ -8,7 +8,10 @@ import { ERAS } from '../../core/era';
 import type { Issue } from '../../content/validate';
 import { ENEMY_IDS } from '../../rpg/enemies';
 import { ITEM_IDS } from '../../rpg/items';
-import { ACTION_KINDS, CONDITION_KEYS, type Action, type Condition, type StoryFile } from './types';
+import { normalize as normalizeCinematic } from '../cinematic/keys';
+import { checkPath, checkRoute } from '../walk/route';
+import type { Route } from '../walk/types';
+import { ACTION_KINDS, CONDITION_KEYS, type Action, type AnimalStoryAction, type Condition, type NpcAction, type NpcWalkAction, type StoryFile, isWalkAction } from './types';
 
 export interface StoryValidation {
   ok: boolean;
@@ -26,6 +29,10 @@ export interface StoryRefs {
   quests?: Set<string>;
   /** Items declared by quest files (`items`), in addition to src/rpg/items.ts. */
   items?: Set<string>;
+  /** Route files (content/routes/*.json): walk `route` / `to` / warp stops are checked when given. */
+  routes?: Map<string, Route>;
+  /** Cinematic file ids (content/cinematics/*.json): a `ref` must name one when given. */
+  cinematics?: Set<string>;
 }
 
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/i;
@@ -70,7 +77,7 @@ export function stageDirection(text: string, speaker?: string): string | null {
   return null;
 }
 
-const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar']);
+const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar', 'wind', 'bark']);
 // the hub at the Quelle (contract C4) + the field station's old ids as aliases (bed → bench, radio → phone)
 const HUB = new Set(['chronik', 'phone', 'shelf', 'drawer', 'map', 'bench', 'bed', 'radio']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
@@ -110,6 +117,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
     if (s.next !== undefined && !chapters.has(s.next)) err(file, ch, `next: unknown chapter '${s.next}'`);
     for (const u of s.unlocks ?? []) if (!chapters.has(u)) err(file, ch, `unlocks: unknown chapter '${u}'`);
     if (s.checkpoint) checkPoint(s.checkpoint, file, ch, err);
+    if (s.leave !== undefined) lines += checkActions(s.leave, file, `${ch}:leave`, err, warn, refs, chapters);
     if (s.wake !== undefined) {
       checkPoint(s.wake, file, `${ch}:wake`, err);
       if (s.wake.era !== undefined && s.wake.era !== 'today') err(file, ch, 'wake: the curtain always lifts in the present (era today)');
@@ -392,7 +400,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         else if (!isStr(a.caption) && a.sound !== 'match') warn(file, where, `sound '${a.sound}' has no caption (accessibility)`);
         break;
       case 'look':
-        if (!['day', 'dawn', 'dusk', 'night'].includes(a.time)) err(file, where, `look: unknown time '${String(a.time)}'`);
+        if (!['day', 'dawn', 'dusk', 'night', 'tour'].includes(a.time)) err(file, where, `look: unknown time '${String(a.time)}'`);
         if (a.era !== undefined && !isEra(a.era)) err(file, where, `look: unknown era '${String(a.era)}'`);
         break;
       case 'cue':
@@ -418,7 +426,12 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (a.modal === false && !a.seconds && !(a.options ?? []).some((o) => o.when)) warn(file, where, `inline choice '${a.id}' has neither seconds nor 'when' options: it can only be picked by kq.story.choose`);
         break;
       case 'npc':
-        if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "npc needs op 'spawn' or 'despawn'");
+        if (isWalkAction(a)) {
+          checkWalk(a as NpcWalkAction, file, where, err, warn, refs);
+          break;
+        }
+        if (!isNpcPlacement(a)) break;
+        if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "npc needs op 'spawn', 'despawn' or a walk op (walk, group, follow, gather, hold, release, warp)");
         if (!isStr(a.npc)) err(file, where, 'npc needs an npc id');
         else if (a.npc !== '*' && !NPCS.has(a.npc) && !PEOPLE.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
         if (a.op === 'spawn' && ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z))))) err(file, where, 'npc spawn needs both numeric x and z (or neither: at the player)');
@@ -493,6 +506,23 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
       case 'xp':
         if (!isNum(a.amount) || a.amount <= 0) err(file, where, 'xp needs an amount > 0');
         break;
+      case 'cinematic': {
+        if (a.ref !== undefined && a.keys === undefined && a.orbit === undefined) {
+          if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'cinematic needs an id');
+          if (refs.cinematics && !refs.cinematics.has(a.ref)) err(file, where, `cinematic: unknown ref '${a.ref}' (content/cinematics/)`);
+        } else {
+          const n = normalizeCinematic(a);
+          if (!n.ok) err(file, where, `cinematic: ${n.error}`);
+        }
+        break;
+      }
+      case 'animal':
+        checkAnimal(a, file, where, err);
+        break;
+      case 'fade':
+        if (a.to !== 0 && a.to !== 1) err(file, where, 'fade needs to: 0 (back) or 1 (black)');
+        if (a.seconds !== undefined && (!isNum(a.seconds) || a.seconds < 0 || a.seconds > 10)) err(file, where, 'fade: seconds must be 0…10');
+        break;
       case 'item':
         if (!isStr(a.item) || !(ITEM_IDS.has(a.item) || refs.items?.has(a.item))) err(file, where, `item: unknown item '${String(a.item)}'`);
         if (a.count !== undefined && (!isNum(a.count) || a.count < 1)) err(file, where, 'item: count must be ≥ 1');
@@ -502,4 +532,80 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
     }
   }
   return lines;
+}
+
+const isNpcPlacement = (a: Action): a is NpcAction => a.do === 'npc' && !isWalkAction(a);
+
+const WALK_MEMBER_RE = /^(imhoff|guide|double\.[a-z_]+|extra\.[a-z0-9_]+|child\.[a-z_]+|[a-z][a-z0-9_]*)$/;
+
+/** The tour group's ops (contract C2, src/systems/walk/types.ts). */
+function checkWalk(a: NpcWalkAction, file: string, where: string, err: Report, warn: Report, refs: StoryRefs): void {
+  const route = (id: string | undefined, to: string | undefined, what: string) => {
+    if (!id || !refs.routes) return;
+    const r = refs.routes.get(id);
+    if (!r) err(file, where, `${what}: unknown route '${id}'`);
+    else if (to !== undefined && !r.stops.some((s) => s.id === to)) err(file, where, `${what}: route '${id}' has no stop '${to}'`);
+  };
+  switch (a.op) {
+    case 'walk': {
+      if (!isStr(a.npc)) err(file, where, 'npc walk needs an npc id');
+      const hasRoute = a.route !== undefined;
+      if (hasRoute === (a.path !== undefined)) err(file, where, 'npc walk needs exactly one of route + to, or path');
+      if (hasRoute) {
+        if (!isStr(a.to)) err(file, where, 'npc walk: a route needs its stop "to"');
+        route(a.route, a.to, 'npc walk');
+      }
+      if (a.path !== undefined) for (const m of checkPath(a.path)) err(file, where, `npc walk: ${m}`);
+      if (a.speed !== undefined && (!isNum(a.speed) || a.speed < 0.5 || a.speed > 4)) err(file, where, 'npc walk: speed must be 0.5…4 m/s');
+      if (a.wait !== undefined && (a.wait.for !== 'player' || !isNum(a.wait.r) || a.wait.r < 8 || a.wait.r > 60)) err(file, where, "npc walk: wait needs for: 'player' and r 8…60");
+      break;
+    }
+    case 'group':
+      if (!isStr(a.group) || !isStr(a.leader) || !Array.isArray(a.members) || !a.members.length) err(file, where, 'npc group needs group, leader and members');
+      else for (const m of a.members) if (!isStr(m) || !WALK_MEMBER_RE.test(m)) err(file, where, `npc group: malformed member id '${String(m)}'`);
+      if (a.era !== undefined && a.era !== 'today') err(file, where, "npc group: era must be 'today'");
+      break;
+    case 'follow':
+      if (!isStr(a.leader)) err(file, where, 'npc follow needs a leader');
+      if (!isStr(a.group) && !isStr(a.npc)) err(file, where, 'npc follow needs group or npc');
+      break;
+    case 'gather':
+    case 'hold':
+    case 'release':
+      if (!isStr(a.group)) err(file, where, `npc ${a.op} needs a group`);
+      break;
+    case 'despawn':
+      if (!isStr(a.group)) err(file, where, 'npc despawn (group) needs a group');
+      break;
+    case 'warp':
+      if (!isStr(a.group) || !isStr(a.to)) err(file, where, 'npc warp needs group and to');
+      if (a.route) route(a.route, a.to, 'npc warp');
+      else if (refs.routes && ![...refs.routes.values()].some((r) => r.stops.some((s) => s.id === a.to))) warn(file, where, `npc warp: no route has a stop '${a.to}'`);
+      break;
+  }
+}
+
+const ANIMAL_IDS = new Set(['ricke', 'kitz', 'diane', 'bijou']);
+const inExtent = (x: unknown, z: unknown) => isNum(x) && isNum(z) && x >= 150 && x <= 2300 && z >= -2150 && z <= 500;
+
+/** Animals (contract C5, src/systems/animals/types.ts). */
+function checkAnimal(a: AnimalStoryAction, file: string, where: string, err: Report): void {
+  if (!['spawn', 'despawn', 'run', 'lie', 'follow'].includes(a.op)) err(file, where, `animal: unknown op '${String(a.op)}'`);
+  if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'animal needs an id');
+  else if (!ANIMAL_IDS.has(a.id)) err(file, where, `animal: unknown id '${a.id}' (ricke, kitz, diane, bijou)`);
+  if (a.era !== undefined && a.era !== 'today') err(file, where, "animal: era must be 'today'");
+  if (a.op === 'spawn') {
+    if (a.kind !== 'reh' && a.kind !== 'hund') err(file, where, "animal spawn needs kind 'reh' or 'hund'");
+    if (a.follow === undefined && !inExtent(a.x, a.z)) err(file, where, 'animal spawn needs x/z inside the map (or follow)');
+    if (a.shy && !(a.shy.notice > a.shy.flee && a.shy.flee > 0 && a.shy.settle > 0)) err(file, where, 'animal: shy needs notice > flee > 0 and settle > 0');
+  }
+  if (a.op === 'run' && (!Array.isArray(a.path) || a.path.length < 2 || !a.path.every((p) => inExtent(p[0], p[1])))) err(file, where, 'animal run needs a path of ≥ 2 points inside the map');
+  if (a.follow !== undefined && a.follow !== '' && !/^(player|npc:[a-z0-9._-]+|animal:[a-z0-9._-]+)$/.test(a.follow)) err(file, where, `animal: follow must be player, npc:<id> or animal:<id> (got '${a.follow}')`);
+}
+
+/** Route files: every point inside the map, every stop on the line (walk/route.ts checkRoute). */
+export function checkRoutes(routes: Map<string, Route>): Issue[] {
+  const out: Issue[] = [];
+  for (const [id, r] of routes) for (const m of checkRoute(r)) out.push({ level: 'error', file: `content/routes/${id}.json`, id, message: m });
+  return out;
 }

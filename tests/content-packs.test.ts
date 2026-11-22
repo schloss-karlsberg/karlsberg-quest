@@ -40,6 +40,8 @@ const KNOWN_EVENTS = new Set([
   'clue:found', 'quest:completed', 'echo:start', 'echo:end', 'chronik:batch', 'chronik:case-complete', 'codex:unlocked', 'oblivion:progress',
   // custom (documented in the hand-off): NPC conversation topics, barks, epilogue blocks
   'npc:talk', 'bark:idle', 'bark:enter-fire', 'bark:npc-near', 'epilog:line',
+  // the tour group's come-along barks (src/systems/walk: walk:bark {npc, id})
+  'walk:bark',
 ]);
 const INTACT = new Set(['1789', '1793-02', '1793-07']);
 
