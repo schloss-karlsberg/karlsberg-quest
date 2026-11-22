@@ -1,20 +1,21 @@
 /**
- * Tour slice v0 (content/story/00-tour.story.json, dev entry ?tour): the chapter runs beat by beat
- * from the car park to the shift to 1789, headless. The story engine is driven with simulated
+ * The tour (content/story/00-tour.story.json, the opening of a new game): the chapter runs beat by
+ * beat from the car park to the shift to 1789 and on into chapter 1, headless. The story engine is driven with simulated
  * world events (npc:arrived, animal:returned, photo:good, quelle:touch); flag actions are applied
  * to the env like the story system does, the rest is recorded as the requests it would send.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice } from '../src/systems/story/engine';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
-import { loadWalkRefs } from '../src/systems/story/validate-cli';
+import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
 import type { Route } from '../src/systems/walk/types';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const tour = JSON.parse(readFileSync(`${ROOT}content/story/00-tour.story.json`, 'utf8')) as StoryFile;
+const k1 = JSON.parse(readFileSync(`${ROOT}content/story/01-kapitel-1.story.json`, 'utf8')) as StoryFile;
 const route = JSON.parse(readFileSync(`${ROOT}content/routes/p-fuehrung.json`, 'utf8')) as Route;
 
 function harness() {
@@ -34,7 +35,7 @@ function harness() {
       else sent.push({ kind: a.do, a });
     }
   };
-  const engine = new StoryEngine([tour], () => slice, {
+  const engine = new StoryEngine([tour, k1], () => slice, {
     run: (actions) => apply(actions),
     chapterEntered: () => {},
     beatEntered: () => {},
@@ -67,17 +68,22 @@ function harness() {
     sent,
     said,
     beat: () => slice.beat,
+    completed: () => slice.completed,
+    chapter: () => slice.chapter,
     era: () => era,
     reset: () => (slice = createStorySlice()),
   };
 }
 
 describe('tour slice v0 (00-tour.story.json)', () => {
-  it('validates against the routes and is a dev chapter behind ?tour', () => {
-    const r = validateStories([{ file: 'content/story/00-tour.story.json', story: tour }], loadWalkRefs(ROOT));
+  it('validates against the routes and opens the game, leading into chapter 1', () => {
+    const questItems = new Set<string>();
+    for (const f of readdirSync(`${ROOT}content/quests`).filter((n) => n.endsWith('.quests.json')))
+      for (const it of (JSON.parse(readFileSync(`${ROOT}content/quests/${f}`, 'utf8')) as { items?: { id: string }[] }).items ?? []) questItems.add(it.id);
+    const r = validateStories(loadStoryFiles(ROOT).files, { ...loadWalkRefs(ROOT), items: questItems });
     expect(r.errors.map((e) => `${e.id}: ${e.message}`)).toEqual([]);
-    expect(tour.dev).toBe('tour');
-    expect(tour.next).toBeUndefined();
+    expect(tour.dev).toBeUndefined();
+    expect(tour.next).toBe('k1');
     // walk stops the chapter uses exist on p-fuehrung, in route order
     const used = JSON.stringify(tour).match(/"to": ?"([a-z]+)"/g)?.map((m) => m.replace(/.*"([a-z]+)"$/, '$1')) ?? [];
     const stops = route.stops.map((s) => s.id);
@@ -85,7 +91,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(stops.indexOf('reh')).toBeGreaterThan(stops.indexOf('wind'));
   });
 
-  it('runs beat by beat from the car park to the shift to 1789', () => {
+  it('runs beat by beat from the car park to the shift to 1789 and into chapter 1', () => {
     const h = harness();
     h.engine.goto('tour');
     expect(h.beat()).toBe('t1');
@@ -161,7 +167,15 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.era()).toBe('1789');
     expect(h.beat()).toBe('t18');
     expect(h.flags['quelle.call']).toBeUndefined();
-    expect(h.sent.some((s) => s.kind === 'card' && (s.a as { title: string }).title === 'Fortsetzung folgt')).toBe(true);
+    // no „Fortsetzung folgt“: a look round in 1789, then the hand-over into chapter 1
+    expect(h.sent.some((s) => s.kind === 'card')).toBe(false);
+    for (let i = 0; i < 80 && h.beat() === 't18'; i++) h.tick();
+    expect(h.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789']));
+    expect(h.flags['combat.disabled']).toBeUndefined();
+    expect(h.flags['tour.slice']).toBeUndefined();
+    expect(h.completed()).toContain('tour');
+    expect(h.chapter()).toBe('k1');
+    expect(h.beat()).toBe('k1_0');
   });
 
   it('the deer never block the tour: a plain good photo praises, a flight close by says „Zu schnell.“ and moves on', () => {

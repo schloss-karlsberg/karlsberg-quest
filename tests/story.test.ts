@@ -197,17 +197,21 @@ describe('story files', () => {
       for (const it of (JSON.parse(readFileSync(`${ROOT}content/quests/${f}`, 'utf8')) as { items?: { id: string }[] }).items ?? []) questItems.add(it.id);
     const r = validateStories(files, { items: questItems });
     expect(r.errors.map((e) => `${e.file} ${e.id ?? ''}: ${e.message}`)).toEqual([]);
+    // tour (the opening) + the retired prologue + four chapters + endings
     // + the test chapter (99-test.story.json, "test": true; loaded only with ?storytest)
-    // + the tour slice (00-tour.story.json, "dev": "tour"; loaded only with ?tour)
     expect(r.stats.chapters).toBe(8);
-    expect(files.filter((f) => f.story.dev).map((f) => f.story.chapter)).toEqual(['tour']);
+    expect(files.filter((f) => f.story.dev).map((f) => f.story.chapter)).toEqual([]);
+    expect(files.filter((f) => f.story.legacy).map((f) => f.story.chapter)).toEqual(['prolog']);
     expect(files.filter((f) => f.story.test).map((f) => f.story.chapter)).toEqual(['test']);
     expect(r.stats.beats).toBeGreaterThan(35);
     const prolog = files.find((f) => f.story.chapter === 'prolog')!.story;
     expect(prolog.placeholder).toBeFalsy();
     expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p3q', 'p3r', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
-    // chapters chain to the endings
-    const order = files.map((f) => f.story).filter((f) => !f.test && !f.dev).sort((a, b) => a.order - b.order);
+    // chapters chain to the endings: a new game opens with the tour; the retired prologue (kept
+    // for saves in the middle of it, and ?classic) leads into chapter 1 the same way
+    const order = files.map((f) => f.story).filter((f) => !f.test && !f.dev && !f.legacy).sort((a, b) => a.order - b.order);
+    expect(order[0]!.chapter).toBe('tour');
+    expect(prolog.next).toBe('k1');
     for (let i = 0; i < order.length - 1; i++) expect(order[i]!.next).toBe(order[i + 1]!.chapter);
     expect(order.at(-1)!.epilogue).toBeTruthy();
   });

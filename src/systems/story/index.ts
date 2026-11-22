@@ -333,7 +333,7 @@ class StoryRuntime {
     const bundled = loadBundledStories();
     // test chapters (content/story/99-test.story.json, "test": true) only with ?storytest
     const tests = ctx.params.has('storytest');
-    // dev chapters (the tour slice: "dev": "tour") only with their URL switch (?tour)
+    // dev chapters ("dev": "<param>") only with their URL switch
     this.files = bundled.map((b) => b.story).filter((f) => (!f.test || tests) && (!f.dev || ctx.params.has(f.dev)));
     this.engine = new StoryEngine(this.files, () => this.slice, {
       run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
@@ -405,7 +405,8 @@ class StoryRuntime {
       modals: ctx.ui.modals,
       use: (item) => this.useHub(item),
       chapters: () =>
-        this.engine.order.map((f) => ({
+        // the retired prologue only for a save that has been there
+        this.engine.order.filter((f) => !f.legacy || this.slice.unlocked.includes(f.chapter)).map((f) => ({
           id: f.chapter,
           title: f.title_de,
           sub: f.sub_de ?? '',
@@ -651,9 +652,11 @@ class StoryRuntime {
     const s = this.slice;
     Object.assign(s, createStorySlice(), { name: name.trim() || t('story.name.suggest') });
     this.objectives.set(null);
-    // a dev chapter behind its URL switch (?tour) replaces the first chapter of a new game
+    // a dev chapter behind its URL switch replaces the first chapter (the tour) of a new game;
+    // `?classic` starts the retired surveyor prologue instead
     const dev = this.files.find((f) => f.dev && this.ctx.params.has(f.dev));
-    this.goto(dev?.chapter ?? first.chapter);
+    const classic = this.ctx.params.has('classic') ? this.files.find((f) => f.legacy) : undefined;
+    this.goto(dev?.chapter ?? classic?.chapter ?? first.chapter);
   }
 
   goto(chapter: string, beat?: string): void {

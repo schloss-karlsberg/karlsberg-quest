@@ -117,6 +117,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
     if (s.next !== undefined && !chapters.has(s.next)) err(file, ch, `next: unknown chapter '${s.next}'`);
     for (const u of s.unlocks ?? []) if (!chapters.has(u)) err(file, ch, `unlocks: unknown chapter '${u}'`);
     if (s.checkpoint) checkPoint(s.checkpoint, file, ch, err);
+    if (s.leave !== undefined) lines += checkActions(s.leave, file, `${ch}:leave`, err, warn, refs, chapters);
     if (s.wake !== undefined) {
       checkPoint(s.wake, file, `${ch}:wake`, err);
       if (s.wake.era !== undefined && s.wake.era !== 'today') err(file, ch, 'wake: the curtain always lifts in the present (era today)');

@@ -1,11 +1,21 @@
 {
   "chapter": "tour",
-  "order": 90,
-  "dev": "tour",
+  "order": -1,
   "title_de": "Die Führung",
-  "sub_de": "Tour-Test · heute, ein Novembernachmittag",
+  "sub_de": "Prolog · heute, ein Novembernachmittag",
   "era": "today",
   "start": "t1",
+  "next": "k1",
+  "leave": [
+    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "quelle.call": null, "quelle.guide": null } },
+    { "do": "npc", "op": "despawn", "group": "fuehrung" },
+    { "do": "npc", "op": "despawn", "npc": "imhoff" },
+    { "do": "animal", "op": "despawn", "id": "diane" },
+    { "do": "animal", "op": "despawn", "id": "bijou" },
+    { "do": "animal", "op": "despawn", "id": "ricke" },
+    { "do": "animal", "op": "despawn", "id": "kitz" },
+    { "do": "fade", "to": 0, "seconds": 1.2 }
+  ],
   "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" },
   "wake": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
   "beats": [
@@ -322,12 +332,25 @@
     },
     {
       "id": "t18",
-      "title_de": "Fortsetzung folgt",
+      "title_de": "Sommer 1789",
       "enter": [
-        { "do": "flag", "set": { "combat.disabled": null } },
-        { "do": "card", "title": "Fortsetzung folgt", "sub": "Die Führung · Testfassung", "note": "Hier endet der Tour-Test (slice v0).", "seconds": 600, "delay": 5 }
+        { "do": "say", "id": "player.q.wo", "speaker": "player", "text": "Wo sind die alle hin?", "delay": 3.5 },
+        { "do": "say", "id": "laub.t.1789", "speaker": "laub", "text": "Nicht fort. Nur zweihundert Jahre weiter, je nachdem, wie man rechnet. Sommer 1789. Atmen Sie. Für heute genügt ein Blick.", "delay": 0.6 },
+        { "do": "say", "id": "laub.t.seite", "speaker": "laub", "text": "Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Lesen Sie es später, im Feldbuch.", "delay": 0.8 },
+        { "do": "fade", "to": 1, "seconds": 1.4, "delay": 0.6 },
+        { "do": "flag", "set": { "tour.ende": true }, "delay": 1.6, "onResume": true }
       ],
-      "complete": { "manual": true }
+      "complete": { "flag": "tour.ende" },
+      "exit": [
+        { "do": "skill", "id": "relief", "tier": 3 },
+        { "do": "skill", "id": "kartograf", "tier": 1 },
+        { "do": "item", "item": "item.stab.esche", "quiet": true },
+        { "do": "item", "item": "item.p.seite" },
+        { "do": "item", "item": "item.balsam", "count": 4, "quiet": true },
+        { "do": "item", "item": "item.lampenoel", "count": 1, "quiet": true },
+        { "do": "xp", "amount": 549, "reason": "story:tour" },
+        { "do": "unlock", "chapter": "k1" }
+      ]
     }
   ]
 }

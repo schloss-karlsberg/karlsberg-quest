@@ -1,12 +1,16 @@
 # Tour slice v0 (playable test of the guided-tour opening)
 
-A separate dev chapter `tour` (`content/story/00-tour.story.json`, `"dev": "tour"`): loaded only with
-the URL switch `?tour`, and then a new game starts in it instead of the prologue. The prologue, the
-campaign, the XP bands and the save migration are unchanged. Design: `docs/design/tour/` (MR 4),
+**The tour is the start of the game** (owner, 2026-11-22: „Everything new should be standard“): the
+chapter `tour` (`content/story/00-tour.story.json`, order −1, `next: k1`) opens every new game; no URL
+switch. Its end hands over into chapter 1 with the state the old prologue left (relief 3, Kartograf 1,
+the Bussole, the „Seite im Deckel der Bussole“, the main path's balms / oil, its XP → level 3; diffed in
+`tests/tour-handover.test.ts`); tour-only extras (the deer photo) come on top. The old surveyor
+prologue stays bundled (`"legacy": true`) so a save in the middle of it resumes unchanged (no
+conversion, no XP lost); `?classic` starts it for a new game. Design: `docs/design/tour/` (MR 4),
 bible `01-prolog.md` t1–t10. Gerold Imhoff is a placeholder name.
 
-**Start:** `pnpm dev`, open `http://localhost:5280/?tour` → „Neues Spiel“. Tests: `?notitle&tour`,
-then `kq.story.start('Name')`.
+**Start:** `pnpm dev` → „Neues Spiel“. Tests: `?notitle`, then `kq.story.start('Name')`; e2e fast
+path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 
 ## What is in
 
@@ -23,7 +27,7 @@ then `kq.story.start('Name')`.
 | t12–t13 | Marlene's one cameo line at the dam (text only, no body). Station 3 at the Weiher: date and purpose **offen**. |
 | t14–t15 Quelle | Station 4: Quelle, Bach, Wassertretbecken „in der Nähe“; supply / Fassung **offen**. „Ruh dich kurz aus, wir sind oben am Plateau.“ The group walks off on `p-aufstieg`. |
 | t16–t17 | Alone: `player.q.fund`, step into the trough → `item.bussole`, `story.compass`, `story.laub`; `laub.t.intro`, `player.q.laub`, `laub.t.intro.b`, `laub.t.quelle`, `laub.t.trog`; `quelle.call` → the Quelle's own E „Wasser berühren“ → shift to 1789 (reason `quelle`). |
-| t18 | Card „Fortsetzung folgt“. Stop. |
+| t18 Sommer 1789 | `player.q.wo`, `laub.t.1789`, `laub.t.seite`; fade out. Exit: the hand-over grants (relief 3, Kartograf 1, Messstab, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
 
 Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'npc', op: walk|group|follow|gather|hold|release|warp}` and `{do:'npc', op:'despawn', group}` → `npc:walk` (C2), `{do:'cinematic', …}` → `cinematic:play` (C1), `{do:'animal', …}` → `animal:request` (C5), `{do:'fade', to, seconds}`; sounds `wind`, `bark`; validator cases incl. route / stop checks against `content/routes/*.json`. Tests: `tests/tour-slice.test.ts` (headless beat-by-beat run), `e2e/tour-slice.spec.ts`.
 

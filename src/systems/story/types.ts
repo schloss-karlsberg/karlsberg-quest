@@ -732,10 +732,22 @@ export interface StoryFile {
   /** Test chapter (e2e / examples): not loaded unless the URL has `?storytest`. */
   test?: boolean;
   /**
-   * Dev chapter behind a URL switch: loaded only when the URL has this parameter (the tour slice:
-   * `"dev": "tour"` → `?tour`), and then a new game starts in it instead of the first chapter.
+   * Dev chapter behind a URL switch: loaded only when the URL has this parameter, and then a new
+   * game starts in it instead of the first chapter.
    */
   dev?: string;
+  /**
+   * A retired opening (the old surveyor prologue): still bundled so a save in the middle of it
+   * resumes unchanged, but a new game starts in the first chapter by `order` (the tour); `?classic`
+   * starts the legacy chapter instead. Hidden from the bench's chapter list unless reached.
+   */
+  legacy?: boolean;
+  /**
+   * Run once when the story leaves this chapter for another one, whichever way (its last beat
+   * done, the bench's chapter list, a debug jump): the tour sends its group home and lifts its
+   * own rules (no combat, Laub silent), so no later chapter starts under them.
+   */
+  leave?: Action[];
   start: string;
   /** Where the chapter starts (teleport + era) when chosen at the map table. */
   checkpoint?: Checkpoint;

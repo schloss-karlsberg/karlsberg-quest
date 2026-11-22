@@ -299,6 +299,8 @@ class QuestRuntime {
   private dropEarlier(chapter: string): void {
     const order = ['prolog', 'k1', 'k2', 'k3', 'k4', 'enden'];
     // a chapter outside the campaign (the e2e `test` chapter) comes after all of it
+    // the tour opens the game in the prologue's place
+    if (chapter === 'tour') chapter = 'prolog';
     const at = order.includes(chapter) ? order.indexOf(chapter) : order.length;
     for (const q of this.defs.values()) {
       const i = order.indexOf(q.chapter ?? '');

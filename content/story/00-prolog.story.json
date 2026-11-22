@@ -1,6 +1,7 @@
 {
   "chapter": "prolog",
   "order": 0,
+  "legacy": true,
   "title_de": "Vermessung",
   "sub_de": "Prolog · heute, ein Novembernachmittag",
   "era": "today",

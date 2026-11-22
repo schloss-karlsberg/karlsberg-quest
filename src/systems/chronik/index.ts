@@ -133,7 +133,8 @@ function progress(ctx: GameContext, caseId: string): CaseProgress {
 function reachedChapters(ctx: GameContext): Set<string> | null {
   const story = (ctx.state.state.systems as Record<string, unknown>).story as { active?: boolean; chapter?: string | null } | undefined;
   if (!story?.active || !story.chapter) return null;
-  const i = CHAPTER_ORDER.indexOf(story.chapter === 'prolog' ? 'p' : story.chapter);
+  // the tour opens the game in the prologue's place
+  const i = CHAPTER_ORDER.indexOf(story.chapter === 'prolog' || story.chapter === 'tour' ? 'p' : story.chapter);
   if (i < 0) return null;
   const set = new Set(CHAPTER_ORDER.slice(0, i + 1));
   set.add('prolog');
@@ -144,7 +145,7 @@ function reachedChapters(ctx: GameContext): Set<string> | null {
 function runningChapter(ctx: GameContext): string | null {
   const story = (ctx.state.state.systems as Record<string, unknown>).story as { active?: boolean; chapter?: string | null } | undefined;
   if (!story?.active || !story.chapter) return null;
-  return story.chapter === 'prolog' ? 'p' : story.chapter;
+  return story.chapter === 'prolog' || story.chapter === 'tour' ? 'p' : story.chapter;
 }
 
 function env(ctx: GameContext) {
