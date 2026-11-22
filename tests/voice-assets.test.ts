@@ -74,8 +74,8 @@ function fixture(lines: Record<string, Record<string, unknown>>, o: { skip?: str
 const errs = (d: string) => checkVoiceAssets(d, credits).errors.join('\n');
 
 describe('voice credits in LICENSES.json', () => {
-  it('lists Laub and Marlene as synthetic MOSS voices with CC0 output', () => {
-    expect(credits.map((c) => c.speaker).sort()).toEqual(['laub', 'marlene']);
+  it('lists every voiced speaker as a synthetic MOSS voice with CC0 output', () => {
+    expect(credits.map((c) => c.speaker).sort()).toEqual(['imhoff', 'jostd', 'laub', 'marlene', 'mats', 'solld']);
     for (const c of credits) {
       expect(c).toMatchObject({ provider: 'moss', tool: 'MOSS-TTS-v1.5 (OpenMOSS)', toolLicence: 'Apache-2.0', outputLicence: 'CC0-1.0', generatedLocally: true, note: 'synthetic voice, no real person' });
       expect(c.referenceSha256).toMatch(/^[0-9a-f]{64}$/);
