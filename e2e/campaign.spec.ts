@@ -5,11 +5,12 @@ import { K1_START, distTo, playK1 } from './helpers/k1';
 import { playK2 } from './helpers/k2';
 import { playK3 } from './helpers/k3';
 import { playK4 } from './helpers/k4';
-import { newGame, playProlog } from './helpers/prolog';
+import { newGame } from './helpers/prolog';
+import { expectHandover, throughTour } from './helpers/tour';
 
 /**
  * The whole campaign in one go, the way a player meets it: a new game from the title screen
- * (content warning, name, lantern), then prologue → chapter 1 → 2 → 3 → 4 → the ending →
+ * (content warning, name, lantern), then the tour → chapter 1 → 2 → 3 → 4 → the ending →
  * epilogue → credits, each chapter played by the same steps as its chapter spec
  * (e2e/helpers/<chapter>.ts) but on the state the previous chapters really left behind (skills,
  * clues, flags, inventory) instead of a chapter-select start.
@@ -24,6 +25,9 @@ import { newGame, playProlog } from './helpers/prolog';
  *
  * A second test plays each of the three endings (museum / burn / keep) from a story shortcut
  * and checks that its scene, epilogue and credits render.
+ *
+ * The tour runs on its fast path (e2e/helpers/tour.ts `throughTour`; its walk is e2e/tour-slice.spec.ts).
+ * `CAMPAIGN_TO=k1` stops once chapter 1 has begun (the new-game path alone: title → tour → k1).
  *
  * Chapters 3 and 4 are quest chains (contentB): `CAMPAIGN_FROM=k3` starts there, from the kept save
  * of an earlier run or, without one, from a new game with the skills and level of that point.
@@ -63,7 +67,7 @@ async function chapterStart(page: Page, prev: string, chapter: string, first: st
   expect(s.beat, `${chapter} starts at its first beat`).toBe(first);
   expect(s.era).toBe('today');
   expect(s.finished).toBeFalsy();
-  expect(s.dialogue?.id ?? '', 'no line of the previous chapter runs on').not.toMatch(new RegExp(`\\.${prev === 'prolog' ? 'p' : prev}\\.`));
+  expect(s.dialogue?.id ?? '', 'no line of the previous chapter runs on').not.toMatch(new RegExp(`\\.${prev === 'prolog' ? 'p' : prev === 'tour' ? 't' : prev}\\.`));
   expect(await page.evaluate(() => window.kq!.ctx.player.stance)).toBe('stand');
   console.log(`[campaign] ${chapter} starts · ${Math.round(await page.evaluate(() => window.kq!.state().meta.playSeconds))} s of game time so far`);
 }
@@ -245,40 +249,38 @@ async function resumeFrom(page: Page, chapter: string): Promise<void> {
   }, chapter);
 }
 
-const ORDER = ['prolog', 'k1', 'k2', 'k3', 'k4'] as const;
+const ORDER = ['tour', 'k1', 'k2', 'k3', 'k4'] as const;
 
-test('campaign: new game → prologue → chapters 1–4 → ending → credits', async ({ page }) => {
+test('campaign: new game → tour → chapters 1–4 → ending → credits', async ({ page }) => {
   const errors = trackErrors(page);
   const t0 = Date.now();
   const lap = (what: string) => console.log(`[campaign] ${what} after ${Math.round((Date.now() - t0) / 60_000)} min`);
-  const from = (process.env.CAMPAIGN_FROM ?? 'prolog') as (typeof ORDER)[number];
+  const from = (process.env.CAMPAIGN_FROM ?? 'tour') as (typeof ORDER)[number];
   expect(ORDER).toContain(from);
   const play = (c: (typeof ORDER)[number]) => ORDER.indexOf(c) >= ORDER.indexOf(from);
   let s;
 
-  if (from === 'prolog') {
-    // ---- a new game from the title screen, with saves on ----------------------------------------
+  if (from === 'tour') {
+    // ---- a new game from the title screen, with saves on: it opens with the tour ----------------
     await newGame(page, 'Mara', false, './?manual');
     s = await story(page);
-    expect(s).toMatchObject({ active: true, chapter: 'prolog', beat: 'p1', name: 'Mara', era: 'today' });
+    expect(s).toMatchObject({ active: true, chapter: 'tour', beat: 't1', name: 'Mara', era: 'today' });
     expect(await page.evaluate(() => window.kq!.ctx.save.has())).toBe(true);
+    await page.waitForTimeout(1500);
+    await shot(page, '00-tour-start');
 
-    // ---- the prologue -----------------------------------------------------------------------------
-    await playProlog(page, {
-      shots: false,
-      at: async (label) => {
-        if (label === 'prolog:card') await shot(page, '00-prolog-start');
-      },
-    });
-    lap('prologue');
-    await chapterStart(page, 'prolog', 'k1', 'k1_0');
-    // chapter 1 opens at the Karlsbergquelle at dawn (its checkpoint), not in the station bed
+    // ---- the tour (fast path) and the hand-over -------------------------------------------------
+    await throughTour(page);
+    lap('tour');
+    await chapterStart(page, 'tour', 'k1', 'k1_0');
+    // chapter 1 opens at the Karlsbergquelle (its checkpoint)
     expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
-    // what the prologue really leaves behind (the chapter-1 spec grants Relief 2 + Kartograf 1)
-    const sk = (await page.evaluate(() => window.kq!.state().skills)) as Record<string, number>;
-    expect(sk['relief'] ?? 0).toBeGreaterThanOrEqual(2);
-    expect(sk['kartograf'] ?? 0).toBeGreaterThanOrEqual(1);
-    expect(await page.evaluate(() => window.kq!.state().inventory.items)).toContain('item.bussole');
+    // what the old prologue left behind, now from the tour (tests/tour-handover.test.ts)
+    await expectHandover(page);
+    if (process.env.CAMPAIGN_TO === 'k1') {
+      expect(errors).toEqual([]);
+      return;
+    }
     // from here on, as in the chapter specs: no random barks (deterministic lines; barks have their own specs)
     await page.evaluate(() => {
       window.kq!.ctx.state.mutable.flags['barks.quiet'] = true;
@@ -327,7 +329,7 @@ test('campaign: new game → prologue → chapters 1–4 → ending → credits'
       await startShot(page, 'k4:start', '05-k4-start')(label);
       if (label === 'ending:choice') {
         s = await story(page);
-        expect(s.completed).toEqual(expect.arrayContaining(from === 'prolog' ? ['prolog', 'k1', 'k2', 'k3', 'k4'] : ['k4']));
+        expect(s.completed).toEqual(expect.arrayContaining(from === 'tour' ? ['tour', 'k1', 'k2', 'k3', 'k4'] : ['k4']));
         expect(s.chapter).toBe('enden');
         await shot(page, '06-ending-choice');
       } else if (label === 'ending:epilogue') {

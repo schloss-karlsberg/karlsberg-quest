@@ -252,7 +252,8 @@ async function newGameFromTitle(page: Page, overSave: boolean): Promise<void> {
 
 test('walk (f): „Neues Spiel“ over a save with a group in it starts without the old group (save:loaded on a fresh start)', async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto('./?manual');
+  // the retired prologue (`?classic`): the tour would bring its own group into the fresh game
+  await page.goto('./?manual&classic');
   await newGameFromTitle(page, false);
   await page.waitForFunction(() => !!window.kq?.walk, null, { timeout: 60_000 });
   await page.evaluate(() => {

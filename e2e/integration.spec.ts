@@ -17,7 +17,8 @@ import { type Page, expect, test } from '@playwright/test';
  */
 const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
-const URL = './?nosave&fresh&manual&placeholder';
+// the retired surveyor prologue (`?classic`): a new game opens with the tour otherwise
+const URL = './?nosave&fresh&manual&placeholder&classic';
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 

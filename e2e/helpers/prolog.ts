@@ -342,7 +342,8 @@ export async function examine(page: Page, x: number, z: number, yaw: number, pit
   await page.evaluate(() => (window as unknown as QW).__cna.tidy());
 }
 
-export async function newGame(page: Page, name: string, shots = false, url = './?nosave&fresh&manual'): Promise<void> {
+/** A new game from the title. The default URL starts the retired surveyor prologue (`?classic`): a new game opens with the tour otherwise. */
+export async function newGame(page: Page, name: string, shots = false, url = './?nosave&fresh&manual&classic'): Promise<void> {
   await page.goto(url);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });

@@ -3,9 +3,11 @@ import { trackErrors } from './helpers/common';
 import { beat, newGame, playProlog, qn, qs, said, shiftTo, shot, story, until } from './helpers/prolog';
 
 /**
- * Chapter spec: the whole prologue ("Vermessung") as a quest chain (docs/ACTION-RPG.md §11.0),
+ * Chapter spec: the retired prologue ("Vermessung") as a quest chain (docs/ACTION-RPG.md §11.0),
  * played headless through window.kq from the title screen to the chapter-1 title card (the
- * playthrough itself lives in e2e/helpers/prolog.ts, shared with e2e/campaign.spec.ts).
+ * playthrough itself lives in e2e/helpers/prolog.ts). A new game opens with the tour now; the old
+ * prologue stays bundled for saves in the middle of it and starts with `?classic` (newGame's default
+ * URL), which is what this spec plays.
  *
  * A second test plays the bad branch: the pack catches you in 1789 → curtain, Laub explains
  * gently, home at the Quelle; nothing is lost (the quest keeps its progress), the anchor waits.

@@ -1,10 +1,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
+import { expectHandover } from './helpers/tour';
 
 /**
- * Tour slice v0 (content/story/00-tour.story.json, dev entry `?tour`): a smoke run from the car
- * park to the shift to 1789. The player keeps behind the guide by debug teleports (as a player
+ * The tour (content/story/00-tour.story.json, the opening of a new game): a smoke run from the
+ * car park to the shift to 1789 and the hand-over into chapter 1. The player keeps behind the guide by debug teleports (as a player
  * walking along would be), talks to Gerold, takes the deer photo from 12 m (calm via
  * kq.animals), steps to the trough and touches the water. Game seconds per beat are written to
  * test-results/tour/timings.json (the walking pace is the group's, so they approximate a player who
@@ -23,7 +24,7 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `${OUT}/tour-${name}.png` });
 }
 
-const ORDER = Array.from({ length: 18 }, (_, i) => `t${i + 1}`);
+const ORDER = [...Array.from({ length: 18 }, (_, i) => `t${i + 1}`), 'k1_0'];
 const beatsSoFar = (page: Page) =>
   page.evaluate(() =>
     (window as unknown as { tourRec?: { n: string; p: { beat?: string }; t: number }[] }).tourRec
@@ -71,9 +72,9 @@ async function viewGroup(page: Page, d = 10): Promise<void> {
   }, d);
 }
 
-test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer photo → Weiher → Quelle → 1789', async ({ page }) => {
+test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Weiher → Quelle → 1789 → chapter 1', async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto('./?notitle&nosave&fresh&manual&tour');
+  await page.goto('./?notitle&nosave&fresh&manual');
   try {
     await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.walk && !!window.kq?.npc, null, { timeout: 120_000 });
     // photo mode publishes its hooks on its first update (none run in ?manual until a step)
@@ -276,7 +277,18 @@ test('tour slice v0: car park → Felsenpfad → wind and dogs → the deer phot
   }
   expect(era).toBe('1789');
   await page.evaluate(() => window.kq!.step(300));
-  await shot(page, '12-1789-fortsetzung');
+  await shot(page, '12-1789');
+  // a look round in 1789, then the hand-over into chapter 1 (no „Fortsetzung folgt“)
+  for (let i = 0; i < 80 && (await page.evaluate(() => window.kq!.story!.state().chapter)) === 'tour'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  const s1 = await page.evaluate(() => window.kq!.story!.state());
+  expect(s1.completed).toContain('tour');
+  expect(s1.chapter).toBe('k1');
+  expect(s1.beat).toBe('k1_0');
+  await expectHandover(page);
+  // the deer photo is a tour-only extra on top
+  expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
+  await page.evaluate(() => window.kq!.step(120));
+  await shot(page, '13-k1-start');
 
   const rec = await page.evaluate(() => (window as unknown as { tourRec: { n: string; p: { beat?: string }; t: number }[] }).tourRec);
   const beats = rec.filter((r) => r.n === 'story:beat').map((r) => ({ beat: r.p.beat, t: +(r.t - t0).toFixed(1) }));
