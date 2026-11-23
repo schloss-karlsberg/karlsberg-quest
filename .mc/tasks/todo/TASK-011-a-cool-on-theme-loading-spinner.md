@@ -173,6 +173,7 @@ _Status: approved 2026-11-24_
 - 2026-11-24: Ship review found that late terrain responses could replace a boot error. The loader now stops reporting progress after a failed request, with a regression test for a delayed sibling response.
 - 2026-11-24: Typecheck, all 1,456 unit tests and the production build passed. Content validation passed via `node --import tsx scripts/validate-content.ts` because the sandbox blocked the `pnpm validate` launcher's IPC socket. All five selected title-screen cases and the Röntgenblick case passed in Chromium against the production files. The desktop handoff and terrain-failure cases passed on rerun in fresh browser processes.
 - 2026-11-24: Uploaded the matching landscape phone screenshots and verified both in the PR description.
+- 2026-11-24: Rechecked the 1796 quarry in Chromium with a barrel load held. The compass appeared for the attached set, cleared when the player left, and stayed hidden when the model request was released. The check passed with the render loop stopped while the scenery system stepped.
 - PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/7
 
 ## Notes
