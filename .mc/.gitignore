@@ -1,0 +1,3 @@
+data/*.json
+.mc-api.lock
+.mc-write.lock
