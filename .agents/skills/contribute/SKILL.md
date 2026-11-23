@@ -23,10 +23,12 @@ Speak to the contributor directly and neutrally ("you", "the contributor", they/
 | `/contribute TASK-00X` | Jump to that task's current phase (see *Detect the phase*). |
 | `/contribute TASK-00X plan\|implement\|ship` | Force that phase (warn if earlier phases look unfinished). |
 
+In Codex the same calls start with `$contribute` instead of `/contribute`.
+
 ## Tasks and the mc tool
 
 Tasks are Markdown files with YAML frontmatter in `.mc/tasks/todo/` (open) and `.mc/tasks/done/`,
-managed by MissionControl (`mc`). Run from the repo root.
+managed by MissionControl (`mc`). Run it from the repo (or worktree) root, without `--root`.
 
 | Need | With `mc` | Without `mc` (fallback) |
 | --- | --- | --- |
@@ -37,6 +39,14 @@ managed by MissionControl (`mc`). Run from the repo root.
 
 Statuses: `backlog`, `todo`, `in-progress`, `review`, `done`, `cancelled`. Finish with `mc validate`
 when `mc` is installed. Task file edits are committed together with the work.
+
+## Sandboxed agents
+
+A sandbox (e.g. Codex `workspace-write`) can block a local server, Chromium, the network (`git
+push`, `gh`) or, in a git worktree, `git commit`. Don't work around it with substitute commands or
+ad-hoc configs: do everything else, note the blocked step in `## Progress`, and give the
+contributor the exact command to run (Codex worktree: add `--add-dir <repo>/.git` to commit).
+A gate or spec you could not run as written is not green.
 
 ## Detect the phase
 

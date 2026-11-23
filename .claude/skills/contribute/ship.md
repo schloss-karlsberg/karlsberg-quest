@@ -29,6 +29,8 @@ fix(story): deer stay visible until the player reaches them
 Refs: TASK-001
 ```
 
+Task-file updates ride along in those commits; a commit that only touches `.mc/` is `chore(mc): ...`.
+
 ## Screenshots (visible changes)
 
 Before shots are taken in the plan phase on the unchanged code; after shots now, same views.
@@ -57,6 +59,7 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
    - **Screenshots / notes:** `gh` cannot upload images and the repo has no image convention, so
      put the placeholder `<!-- images below: before / after -->` and tell the contributor exactly
      which files to drag into the PR description on GitHub (full paths under `test-results/contribute/TASK-00X/`).
+     Don't drive their browser or desktop to upload them.
    - Risks and notes.
 
 ## Close out

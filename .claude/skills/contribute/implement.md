@@ -7,10 +7,11 @@ Goal: every plan step done, tests added, the four gates green. Resumable at any 
 1. **Re-read** the task file: `## Plan` (approved) and `## Progress`. Say where you resume.
 2. **Branch** (first entry only; afterwards check you are on it):
    `git switch main && git pull && git switch -c fix/task-00x-short-slug` (`feat/...` for features,
-   `docs/...`, `refactor/...` as fits). Note the branch name in `## Progress`.
+   `docs/...`, `refactor/...` as fits). Already on a branch for this task (e.g. a worktree)? Keep
+   it. Note the branch name in `## Progress`.
 3. **Work step by step.** For each plan step: implement, run the narrowest useful check
    (`pnpm exec vitest run tests/<file>.test.ts`, `pnpm typecheck`), tick the step in the task file
-   (`- [x]`), and add one line to the log:
+   (`- [x]`), and add one line to the log, right after that step, not in one batch at the end:
 
    ```markdown
    ## Progress
@@ -18,7 +19,8 @@ Goal: every plan step done, tests added, the four gates green. Resumable at any 
    - YYYY-MM-DD: step 1 done - spawn moved to t10 enter; tests/animals-deer.test.ts extended.
    ```
 
-   Plan turns out wrong? Update the plan (and tell the contributor) rather than drifting silently.
+   Plan turns out wrong (including the test plan)? Update the plan and say so in `## Progress`
+   rather than drifting silently.
 4. **Commit as you go** in logical pieces (see ship.md "Commits"); include the task file update.
 5. **Tests:** add or adjust unit tests (vitest, `tests/`) for the logic you changed; extend an e2e
    spec in `e2e/` when gameplay flow changes. Content changes: `pnpm validate`.
