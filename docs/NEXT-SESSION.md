@@ -1,8 +1,12 @@
 # Next session: let Claude really *play* Karlsberg Quest
 
 Handoff written 2026-11-20 for the next agent. This agent controls the user's Chrome through the
-**Claude in Chrome** extension. Read this file first, then `PRD.md`, `docs/ACTION-RPG.md`,
+**Claude in Chrome** extension. Read this file first, then `docs/design/tour/README.md` (the current
+concept: the guided tour with time travel), `docs/PRD.md`, `docs/ACTION-RPG.md`,
 `docs/ART-DIRECTION.md` and `docs/ARCHITECTURE.md`.
+
+> §§2–5c were written on 2026-11-20, before the guided tour replaced the surveyor prologue; read their
+> mentions of the prologue, the Feldstation / Bauwagen and the lantern start as history. §7 is the current backlog.
 
 ## 1. What the game is
 
@@ -13,7 +17,8 @@ set on the real LiDAR terrain of Schloss Karlsberg (Homburg, Saarland).
 - **No quizzes, no word puzzles.** History is taught through quest turn-ins, dialogue and codex cards.
 - There is one open world with five eras (Q switches): today (2025), 1789, Feb 1793 (night),
   Jul 1793 (night), 1796 (ruin).
-- The story has a prologue plus chapters 1–4.
+- The story opens with the guided tour (the prologue „Die Führung“, no combat; `docs/design/tour/`), the first
+  time travel at the Karlsbergquelle, then chapters 1–4 and three endings, each followed by a party.
 - The look is "stylized modern game": rich colour, soft light, bloom, CC0 assets allowed.
 - Stack: Vite, TypeScript, three.js 0.187, pnpm, vitest, Playwright e2e.
 
@@ -252,11 +257,10 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   | `?debug` | Stats and validation |
 
 - **Fresh new game by hand:**
-  1. Click "Laterne anzünden" (title gate).
-  2. Click "Neues Spiel" and "Verstanden".
-  3. Enter a name, click "Eintragen".
-  4. Click "Laterne anzünden" again.
-  5. Click into the canvas for mouse look.
+  1. Click „Neues Feldbuch beginnen“ (confirm the overwrite if a save exists), then „Verstanden“.
+  2. Enter a name, click „Eintragen“.
+  3. Click „Laterne anzünden“ (a screen left over from the surveyor concept; TASK-007 replaces it).
+  4. Click into the canvas for mouse look. The guided tour starts.
 - **Controls:**
   - WASD move, Shift sprint, Space dodge.
   - LMB or K attack (hold for Wuchthieb), RMB or G Bannlicht, H Balsam.
@@ -335,7 +339,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   was blocked. Use the Chrome extension, plus one-shot scripts if needed.
 - Keep the user's personal data private.
 - Chat with the user only in short updates. The living docs are the `.md` files in the repo;
-  update them (`docs/ACTION-RPG.md` §14 log, `PRD.md` changelog) when you change things.
+  update them (`docs/ACTION-RPG.md` §14 log, `docs/PRD.md` changelog) when you change things.
 - Close tabs and browsers and kill dev servers you start.
 
 ## 5b. Session 2026-11-20 status (updated after the spring build)

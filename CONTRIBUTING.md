@@ -7,6 +7,13 @@ in the game is German**.
 By contributing you agree that your code and texts are released under the MIT License (see
 [`LICENSE`](LICENSE)) and that you follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+**Looking for something to work on?** Open tasks (tagged `community` or `bug`) live in
+[`.mc/tasks/`](.mc/tasks/) (MissionControl: `mc list tasks --open --tag community`,
+or just read the Markdown files). With Claude Code or Codex, say "I want to contribute" or run
+`/contribute`: the `contribute` skill (`.claude/skills/contribute/`, `.agents/skills/contribute/`)
+lists them and guides you through plan, implementation and pull request. Agents also read
+[`AGENTS.md`](AGENTS.md).
+
 ## Setup
 
 You need **Node.js 24** and **pnpm** (the version is pinned in `package.json` → `packageManager`;
@@ -125,8 +132,10 @@ messages are English.
 
 ## Story content
 
-The story packs in `content/` (`content/packs`, `content/quests`, `content/story`) are
-**generated and committed**. Do not edit the generated JSON by hand. Instead:
+Most story packs in `content/` (`content/packs`, `content/quests`, `content/story`) are
+**generated and committed**. Do not edit the generated JSON by hand. (Exceptions without a builder,
+edited directly: the tour, `content/story/00-tour.story.json` and `content/packs/tour.pack.json`,
+the party pack and the `99-test` files.) Instead:
 
 1. Edit the builders in [`scripts/content-build/`](scripts/content-build/) (e.g. `prolog.mjs`,
    `kapitel1.mjs`, `codex.mjs`).
@@ -141,11 +150,12 @@ The story packs in `content/` (`content/packs`, `content/quests`, `content/story
 
 ## Documentation
 
-[`PRD.md`](PRD.md) and the files in [`docs/`](docs/) are living documents. When you change
+[`docs/PRD.md`](docs/PRD.md) and the other files in [`docs/`](docs/) are living documents; the current game
+concept (the guided tour with time travel) is in [`docs/design/tour/README.md`](docs/design/tour/README.md). When you change
 behaviour, content or design, update them in the same pull request:
 
 - add a row to the log in [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md) §14, and
-- add an entry to the changelog table at the top of [`PRD.md`](PRD.md).
+- add an entry to the changelog table at the top of [`docs/PRD.md`](docs/PRD.md).
 
 ## Commit messages: Conventional Commits
 

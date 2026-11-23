@@ -7,6 +7,8 @@
 > Coordinates are local metres (x east, z south). **(prüfen)** = checked once with
 > `scripts/content-build/probe.mjs` (ground type and height) but not yet walked; check again on the terrain.
 
+> **Note (2026-11-23):** written before the guided-tour redesign. Mentions of the surveyor, the Feldstation and the vest describe the opening of that time; for the current concept see `docs/design/tour/` (the tour bible notes the changes to the disguise in `bible/01-prolog.md`).
+
 Contents: [0 Overview](#0-overview) · [1 Chapter 1 opens at the spring](#1-chapter-1-opens-at-the-karlsbergquelle) ·
 [2 The disguise](#2-1789-the-court-lets-no-strangers-in-the-disguise-opening) ·
 [3 Ausreißer chambers](#3-side-activity-ausreißer-point-cloud-chambers) ·
@@ -423,7 +425,7 @@ happened **in Zweibrücken**, before the Karlsberg existed.
 | `src/systems/story/types.ts` + `validate.ts` | `watch` on the npc action (additive) |
 | story, `kapitel1.mjs`, `codex.mjs`, `common.mjs`, `speakers.mjs`, `epilogue-deeds.mjs` | content (§2.5, §2.8) |
 | `content/bible/02-kapitel-1.md`, `07-codex.md`, `08-stimmen.md` | text sources |
-| `docs/ACTION-RPG.md` §4.6 (where fighting happens: court zones), §11.1, §14; `PRD.md` §3.4 (a new pressure: "Aufmerksamkeit") + changelog | docs |
+| `docs/ACTION-RPG.md` §4.6 (where fighting happens: court zones), §11.1, §14; `docs/PRD.md` §3.4 (a new pressure: "Aufmerksamkeit") + changelog | docs |
 | `e2e/court.spec.ts` (new) | tells → suspicion; ejection is lossless; inspection refusals (no letter, orange, running, staff); the steal path; fast travel while not admitted |
 
 ### 2.10 Effort, risks, order

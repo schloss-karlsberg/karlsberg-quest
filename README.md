@@ -4,9 +4,11 @@ A German-language action RPG that runs in the browser. It is set on the real ter
 Karlsberg near Homburg (Saarland). The landscape comes from open LiDAR elevation data and historic
 maps. The palace of 1789 is a hypothetical reconstruction.
 
-You take on quests from the people you meet, fight the shadows of the past and travel between five
-eras: today, summer 1789, February and July 1793, and 1796. Along the way you learn real regional
-history; invented parts are labelled as fiction in the in-game Chronik.
+You start as a visitor on a guided tour of the Karlsberg one November afternoon. At the
+Karlsbergquelle the time travel begins: you take on quests from the people you meet, fight the
+shadows of the past and travel between five eras: today, summer 1789, February and July 1793, and
+1796. Every ending closes with a party. Along the way you learn real regional history; invented
+parts are labelled as fiction in the in-game Chronik.
 
 **Play:** https://schloss-karlsberg.github.io/karlsberg-quest/ ·
 **What's new (German):** [Neuigkeiten](https://schloss-karlsberg.github.io/karlsberg-quest/neu.html)
@@ -26,23 +28,35 @@ history; invented parts are labelled as fiction in the in-game Chronik.
 
 ## How to play
 
-1. Click „Laterne entzünden“, then „Neues Feldbuch beginnen“, and enter a name.
+1. Click „Neues Feldbuch beginnen“, read the content note, enter a name and click „Laterne anzünden“.
+   (These start screens still come from the game's earlier concept and will be reworked.)
 2. Click into the game to capture the mouse. Press Esc to open the pause menu.
+3. A new game opens with the guided tour: follow the guide, talk to people and take photos. The
+   tour has no fighting; the first fight is a short guided training after the time travel.
 
 | Action | Keys |
 | --- | --- |
-| Move / sprint / dodge | W A S D · Shift · Space |
+| Move / sprint | W A S D · Shift |
+| Crouch (sneak) | C |
+| Interact / talk | E |
+| Smartphone camera (in the present) | N |
+| Journal / map | J · M |
+| First / third person | F5 · mouse wheel to zoom |
+| Turn without the mouse | ← / → |
+
+From the time travel on:
+
+| Action | Keys |
+| --- | --- |
+| Dodge | Space |
 | Attack (hold for Wuchthieb) | Left mouse or K |
 | Bannlicht | Right mouse or G |
 | Balsam (heal) | H |
-| Interact / talk | E |
-| Era shift | Q |
+| Era shift (hold to return to the Karlsbergquelle) | Q |
 | Lock on | Tab or middle mouse |
 | Geisterblick | F |
-| Inventory / journal / map | I · J · M |
+| Inventory | I |
 | Lantern | L |
-| First / third person | F5 · mouse wheel to zoom |
-| Turn without the mouse | ← / → |
 
 ## Development
 
@@ -52,12 +66,13 @@ pnpm dev          # http://localhost:5280
 pnpm typecheck && pnpm test && pnpm validate && pnpm build
 ```
 
-Built with Vite, TypeScript and three.js. The design documents live in [`PRD.md`](PRD.md) and
-[`docs/`](docs/). Every push to `main` is deployed by GitHub Actions (`.github/workflows/pages.yml`);
+Built with Vite, TypeScript and three.js. The design documents live in [`docs/`](docs/): start with
+[`docs/design/tour/README.md`](docs/design/tour/README.md) (the current concept), then
+[`docs/PRD.md`](docs/PRD.md). Every push to `main` is deployed by GitHub Actions (`.github/workflows/pages.yml`);
 versions, the changelog and the player notes (`content/release-notes/`, shown in the game under
 „Neuigkeiten“ and on `neu.html`) come from release-please; see [`docs/RELEASE.md`](docs/RELEASE.md).
 
-- [Storyboard](docs/storyboard/) — **Spoiler**: every beat, place and creature, illustrated.
+- [Storyboard](docs/storyboard/) — **Spoiler**: every beat, place and creature, illustrated (the prologue pictures still show the game's earlier concept).
 
 ## Credits
 

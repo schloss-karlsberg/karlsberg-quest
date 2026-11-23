@@ -177,8 +177,8 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   downloads). The other kinds are sculpted procedural creatures (§15). View model: a gloved fist
   with four curled fingers, knuckles, thumb and cuff; per-part gloss (satin paint, leather, iron),
   band seams, chipped paint and mud towards the shoe.
-- **Player character (camera track, 2026-11-19):** see §16 — a rigged CC0 surveyor seen over the
-  shoulder.
+- **Player character (camera track, 2026-11-19):** see §16 — seen over the shoulder; the default is
+  the authored MPFB player (an ordinary visitor), the earlier rigged CC0 surveyor is the fallback.
 - **Authored characters, toon option (2026-11-21):** an authored character's manifest entry may opt
   into a soft toon variant of the world-light bridge (`shading: 'toon'`,
   `src/systems/characters/toon.ts`): the sun through 2–3 soft bands (no hard cel lines), a warm
@@ -307,7 +307,7 @@ shader through the `surfaces` uniforms and `SURF_GLSL`:
 - **Who uses it:** the palace shell (per-vertex class from colour + normal: plaster, ashlar
   trims, roofs, shutters, glass), the scenery kit (`kit.ts`: layer from the palette colour or
   given per piece; metre UVs), the interiors (per finish: parquet, plaster, boiserie, boards,
-  masonry, marble, damask, iron / gilt …) and the field station.
+  masonry, marble, damask, iron / gilt …) and, until the tour redesign removed it, the field station.
 - **Tiers:** `low` sets `uSurfOn = 0` and every shader takes the old flat path (e2e /
   SwiftShader unchanged); `medium` uploads 512 px layers, `high` 1024 px.
 
@@ -318,13 +318,14 @@ meshopt + 1k WebP, ≈ 8 MB) instanced per set (one `InstancedMesh` per model pa
 high tier only: the scenery sets (Baumagazin barrels and tools, kennels, post lanterns, Orangerie
 crates and chest, Festsaal fauteuils and chandelier in 1793-07), the interiors (chandeliers with
 their candle flames at the model's candle tips, fauteuils) and the field station's table, stools,
-crate and barrel. The low tier keeps the procedural kit props. Glass materials of the models are
+crate and barrel (the field station is gone since tour WP-01). The low tier keeps the procedural kit props. Glass materials of the models are
 made thin and see-through (`lightenGlass`). A costly model can be kept to the high tier
 (`b.model(id, fallback, { high: true })`): its procedural fallback then stands on medium too. The
 Bleiche's wicker basket (then 16.6k triangles, four times the rest of the green; 8.9k since the
 tri-budget phase B re-pack, docs/PERFORMANCE.md §3.5) is the first.
 
-**Field station** (`src/systems/story/hub/station.ts`): green board-and-batten Bauwagen on a steel
+**Field station (removed; kept for the record).** The tour redesign took the Bauwagen out of the world (tour
+WP-01, `docs/design/tour/`); `src/systems/story/hub/station.ts` no longer exists. It was a green board-and-batten Bauwagen on a steel
 chassis (longerons, disc wheels, mudguards, A-frame drawbar, jockey wheel), tin barrel roof with
 gutters and downpipe, framed windows with sills and open shutters, planked door with a lit pane,
 steps on stringers, awning, gas bottle, extinguisher, firewood under a tin sheet; textured via the
@@ -356,7 +357,7 @@ HUD sits on a subtle dark vignette, never on flat boxes.
   and a crisp ground ring with an outward pulse over the lead; other open goals are fainter and
   era-tinted. Additive, no textures: same cost on every tier.
 - **Prompts:** a glass pill with a key cap (`E`, `W A S D`) and a real verb ("Messstab nehmen",
-  "Riechsalz aufheben"); low-priority prompts (the Feldstation hub) yield to any other.
+  "Riechsalz aufheben"); low-priority prompts (the hub at the Quelle, legacy — TASK-007) yield to any other.
 - **Dialogue card:** narrower, lower, parchment kept; radio icon on the left.
 
 ## 10. References (described, not copied)
@@ -508,7 +509,9 @@ Steinbrecher stays blocky by design but could use broken edges; no CC0 rigged cr
 
 ## 16. Third-person camera and the player character (2026-11-19)
 
-- **Who you are:** a present-day surveyor — olive field jacket, hi-vis orange vest panel, dark
+- **Who you are:** a present-day visitor. The default is now the authored MPFB player (see below and
+  `scripts/chars/mpfb/README.md`); the rest of this bullet describes the earlier CC0 surveyor
+  (`?avatar=surveyor`) — olive field jacket, hi-vis orange vest panel, dark
   work trousers, boots, an orange backpack, a brass lantern on the left hip (lit at night, it lights
   the scene from the character) and the red / white Messstab across the back, in hand in a fight.
   Model: CC0 Quaternius adventurer (poly.pizza), recoloured per material slot, kqStandard shading,
@@ -520,9 +523,9 @@ Steinbrecher stays blocky by design but could use broken edges; no CC0 rigged cr
   rotates); off-screen attackers as chevrons around the character, pulsing on a wind-up; enemies
   keep 0.95 m + radius off the body so they never sit inside it.
 - Before / after (headed Chromium, Metal, 1440 × 900, high): `test-results/look/shots/v2-camera-*`.
-- **Authored player (behind a flag, 2026-11-21):** `?avatar=mpfb` plays the MPFB character
-  (built by `scripts/chars/mpfb` from `specs/player.json`; its look is described in that README's
-  player section) until the look is approved; the surveyor stays the default. Its court disguise
+- **Authored player (2026-11-21, now the default):** the MPFB character (built by
+  `scripts/chars/mpfb` from `specs/player.json`; its look is described in that README's player
+  section); `?avatar=surveyor` wears the earlier CC0 surveyor. Its court disguise
   is built as outfit pieces, not a recolour: a plain 1780s secretary in a dark-blue coat cut away
   over a cream waistcoat, skirts to the knee, a white stock, black breeches, white stockings, black
   buckled shoes and a plain black tricorn. Each costume stays within the hero budget (≤ 25k

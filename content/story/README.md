@@ -3,7 +3,8 @@
 One file per chapter, played in `order`. The story system (`src/systems/story/`) runs them as a
 state machine of **beats**; `pnpm validate` and `tests/story.test.ts` check every file
 (schema: `src/systems/story/types.ts`, validator: `src/systems/story/validate.ts`).
-Source of the texts: `content/bible/*.md`. Placeholder chapters/beats carry `"placeholder": true`.
+Source of the texts: `content/bible/*.md`; for the tour (`00-tour`, the default opening) and the party
+endings the drafts in `docs/design/tour/bible/` win where they differ. Placeholder chapters/beats carry `"placeholder": true`.
 
 ```jsonc
 {
@@ -41,8 +42,7 @@ Source of the texts: `content/bible/*.md`. Placeholder chapters/beats carry `"pl
 
 **Wake places.** `wake {x, z, yaw?, era: "today", text?}` on a beat: being caught or an empty
 meter while it runs brings you to the present *there* (the resumed beat's `wake` wins, else the
-running beat's, else the chapter `checkpoint`), and `text` replaces "Du wachst in der Feldstation
-auf". Chapters 1 and 2 wake you at the anchor of the part you were in (Ehrenhof, Tschifflik
+running beat's, else the chapter `checkpoint`), and `text` replaces the default "Du wachst an der Quelle auf". Chapters 1 and 2 wake you at the anchor of the part you were in (Ehrenhof, Tschifflik
 terrace, Parkzaun) so Q takes you straight back.
 
 **Beat scope.** Delayed actions belong to the beat that ran them (`exit` actions to the next beat;
@@ -99,7 +99,7 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | `skill`, `give` | `id, tier` / `clue \| noun \| item, kind?, toast?` | skills, inventory |
 | `grant` | `clue` | discover a clue the Chronik way (`clue:grant`: nouns, codex, flags; no card) |
 | `toast`, `teleport`, `card`, `prompt`, `sound` | as before | presentation |
-| `look` | `time: day \| dawn \| dusk \| night, era?` | time of day (`dawn` = Morgengrauen: chapter 4's end, the endings): the present (field station) or, with `era`, that past era (e.g. 1789 dusk / night in the Karlslust; `day` restores the era's preset). Persisted, re-applied whenever that era is entered |
+| `look` | `time: day \| dawn \| dusk \| night, era?` | time of day (`dawn` = Morgengrauen: chapter 4's end, the endings): the present (home at the Karlsbergquelle) or, with `era`, that past era (e.g. 1789 dusk / night in the Karlslust; `day` restores the era's preset). Persisted, re-applied whenever that era is entered |
 | `cue`, `chronik`, `unlock`, `ending`, `autosave` | `cue {id, data?}` | `story:cue`, open the board, map table, endings. `cue menagerie:spawn` with `data {animal, x, z, id?, heading?, count?}` / `menagerie:clear {id?}` places the escaped animals |
 | `choice` | `id, prompt, note?, options[], seconds?, fallback?, modal?` | see below |
 | `npc` | `op: spawn \| despawn, npc, x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | place / remove a ghost (`npc:spawn` / `npc:despawn`; x/z default to the player (on the player's storey), era to the current one, chapter to the running one; `room` = a palace room id: its centre and its storey, upstairs too; `npc: "*"` removes all) |

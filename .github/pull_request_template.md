@@ -21,7 +21,7 @@
       see CONTRIBUTING.md → Brands and trademarks).
 - [ ] Story changes were made in `scripts/content-build/`, re-generated with
       `node scripts/content-build/build.mjs`, and the packs are committed.
-- [ ] Docs updated if behaviour or design changed (`docs/ACTION-RPG.md` §14, `PRD.md` changelog).
+- [ ] Docs updated if behaviour or design changed (`docs/ACTION-RPG.md` §14, `docs/PRD.md` changelog).
 
 ## Screenshots / notes
 

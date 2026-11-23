@@ -1,0 +1,67 @@
+# MissionControl Configuration (embedded mode)
+# Stored in .mc/ alongside an existing project.
+
+site:
+  name: Karlsberg Quest
+  description: Project knowledge base
+
+paths:
+  meetings: meetings/
+  research: research/
+  tasks: tasks/
+  milestones: milestones/
+  sprints: sprints/
+  proposals: proposals/
+  data: data/
+  templates: templates/
+  archive: archive/
+
+id_prefixes:
+  meeting: MTG
+  research: RES
+  task: TASK
+  milestone: MS
+  sprint: SPR
+  proposal: PROP
+
+statuses:
+  meeting:
+    - scheduled
+    - completed
+    - cancelled
+  research:
+    - draft
+    - in-progress
+    - final
+    - outdated
+  task:
+    - backlog
+    - todo
+    - in-progress
+    - review
+    - done
+    - cancelled
+  milestone:
+    - planned
+    - active
+    - completed
+    - cancelled
+  sprint:
+    - planning
+    - active
+    - review
+    - completed
+    - cancelled
+  proposal:
+    - draft
+    - proposed
+    - accepted
+    - rejected
+    - superseded
+    - withdrawn
+
+priorities:
+  1: critical
+  2: high
+  3: medium
+  4: low

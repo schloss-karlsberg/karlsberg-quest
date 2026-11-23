@@ -1,6 +1,8 @@
 # UI-Texte
 
-Alle Texte der Oberfläche, auf Deutsch. IDs im Format `ui.<bereich>.<name>`. Platzhalter in geschweiften Klammern. Tastennamen stehen in eckigen Klammern und werden aus der Tastenbelegung ersetzt (umbelegbare Tasten, PRD §7), z. B. `[Q]`.
+> **Teilweise altes Konzept (Stand 2026-11-23):** Start-, Namens- und Laternen-Texte, „Vermesserin / Vermesser“ und die Tutorials an Bauwagen/Feldstation stammen aus dem früheren Vermesser-Konzept. Das aktuelle Konzept ist die Führung ([`docs/design/tour/`](../../docs/design/tour/README.md)); die Überarbeitung der Texte ist Teil von TASK-007.
+
+Alle Texte der OberflächeAlle Texte der Oberfläche, auf Deutsch. IDs im Format `ui.<bereich>.<name>`. Platzhalter in geschweiften Klammern. Tastennamen stehen in eckigen Klammern und werden aus der Tastenbelegung ersetzt (umbelegbare Tasten, PRD §7), z. B. `[Q]`.
 
 Stil: kurz, Feldbuch-Ton (PRD §7: „a surveyor's field book“), Sie-Form nur bei Laub; die Oberfläche spricht den Spieler mit **du** an.
 

@@ -62,8 +62,8 @@ The script:
    `--replace-message`, and drops `scripts/release/mailmap.txt` and `replace-text.txt`;
 4. prints the emails left in history and any leftover `/Users/`, first-name or old-email hits.
 
-Why `--replace-text` is needed: old versions of `PRD.md` (every version since 0.1),
-`docs/ACTION-RPG.md`, `IDEA.md`, `research/02-sister-projects.md` and `docs/NEXT-SESSION.md`
+Why `--replace-text` is needed: old versions of `PRD.md` (every version since 0.1; now `docs/PRD.md`),
+`docs/ACTION-RPG.md`, `IDEA.md` (now `docs/archive/IDEA.md`), `research/02-sister-projects.md` and `docs/NEXT-SESSION.md`
 carry the first name and a `/Users/<name>/…` path. They are scrubbed at HEAD, but the old blobs
 would still be public. No commit message contains them today; `--replace-message` uses the same
 rules in case a branch merged later adds one.

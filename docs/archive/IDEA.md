@@ -1,3 +1,5 @@
+> **Archived — describes the earlier game concept, superseded by the guided-tour concept (docs/design/tour/). Do not use as current design.**
+
 # karlsberg-quest — idea for a fun learning RPG
 
 > Status: **idea only** (2026-11-02). Research and design come later, with another agent. Working title: **"Saarpfalz-Chroniken"** (German UI).

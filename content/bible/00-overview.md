@@ -1,6 +1,8 @@
 # Karlsberg Quest – Inhaltsbibel: Überblick
 
-> Stand 2026-11-02 · Sprache der Inhalte: Deutsch (UI-Sprache) · Quelle der Spielregeln: [`PRD.md`](../../PRD.md) (§3.3 Chronik, §4.4 Tonregeln)
+> **Achtung (2026-11-23):** Das aktuelle Spielkonzept ist die **geführte Tour mit Zeitreise** ([`docs/design/tour/`](../../docs/design/tour/README.md)): Prolog „Die Führung“, Zeitreise an der Karlsbergquelle, nach jedem Ende ein Fest. Die Abschnitte dieser Datei über Vermesser\*in, Feldstation/Bauwagen und den Prolog „Vermessung“ beschreiben das frühere Konzept; die geänderten Abschnitte stehen in [`docs/design/tour/bible/00-overview.md`](../../docs/design/tour/bible/00-overview.md). Wo beide sich widersprechen, gilt die Tour. Zusammenführung: TASK-007.
+
+> Stand 2026-11-02 · Sprache der Inhalte: Deutsch (UI-Sprache) · Quelle der Spielregeln: [`docs/PRD.md`](../../docs/PRD.md) (§3.3 Chronik, §4.4 Tonregeln)
 > Diese Bibel ist **Inhalt, kein Code**. Feature-Engineers übertragen sie später in das Content-Schema. IDs sind stabil gemeint; Koordinaten sind Startwerte, die im Gelände geprüft werden.
 
 ## Dateien

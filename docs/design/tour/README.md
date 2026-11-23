@@ -1,6 +1,6 @@
 # Tour opening and party endings: design drafts
 
-**Status: draft for the release after 0.5.0.** Nothing here is built. These files are replacement drafts; `content/bible/*` stays unchanged until the owner approves and the work packages land. Player-facing text is German; docs prose is English or German as in the existing bible.
+**Status: the current game concept ("guided tour with time travel") and its design source of truth.** Written 2026-11-20 as drafts; the tour has been built since and is the default start of a new game since v0.7.0 (voiced since v0.8.0); what is in and what is still open: [`slice-v0.md`](slice-v0.md) and `docs/NEXT-SESSION.md` §7. `content/bible/*` has not been merged with these drafts yet: where they disagree, these files win (merge: TASK-007). Remaining leftovers of the earlier surveyor concept in code and UI are tracked in TASK-007. Player-facing text is German; docs prose is English or German as in the existing bible.
 
 ## Index
 

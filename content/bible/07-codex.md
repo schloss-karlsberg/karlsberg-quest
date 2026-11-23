@@ -1,6 +1,8 @@
 # Codex
 
-Der Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`cx.42` stehen in `docs/IDEAS-ROUND11.md` §1, `cx.43`–`cx.46` unten, `cx.47` „Treibgut“ gehört zu den Fläschchen, `src/systems/flaschen`) und **8 Reliefmuster-Karten** (`rm.01`–`rm.08`). Eine Karte wird freigeschaltet, wenn der zugehörige FAKT-Eintrag bestätigt ist, oder wie in der Spalte „frei durch“ angegeben. Nach dem Ende ist der ganze Codex offen.
+> **Tour-Konzept (Stand 2026-11-23):** Neue Karten und geänderte Freischaltungen der Führung stehen in [`docs/design/tour/bible/07-codex-impact.md`](../../docs/design/tour/bible/07-codex-impact.md). Zusammenführung: TASK-007.
+
+Der Codex enthältDer Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`cx.42` stehen in `docs/IDEAS-ROUND11.md` §1, `cx.43`–`cx.46` unten, `cx.47` „Treibgut“ gehört zu den Fläschchen, `src/systems/flaschen`) und **8 Reliefmuster-Karten** (`rm.01`–`rm.08`). Eine Karte wird freigeschaltet, wenn der zugehörige FAKT-Eintrag bestätigt ist, oder wie in der Spalte „frei durch“ angegeben. Nach dem Ende ist der ganze Codex offen.
 
 **Felder** (passend zu `content/schema/pack.schema.json`, Typ `fact`): `id`, Titel (`title_de`), Text (`text_de`, 2–5 Sätze), Sicherheit (`confidence`: D belegt, I erschlossen, N Zeitnorm, U unbekannt), Label (FAKT / STRITTIG / LEGENDE / FIKTION), `fiction` (ja/nein), Quellen (URL + Kürzel), Streitpunkt (`contested_de`, falls vorhanden), Lizenz (`licence`).
 

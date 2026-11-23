@@ -1,5 +1,7 @@
 # Prolog „Vermessung“
 
+> **Altes Konzept (Stand 2026-11-23).** Dieser Prolog „Vermessung“ (Vermesser\*in, Feldstation, Laterne) ist nicht mehr der Spielstart. Seit v0.7.0 beginnt jedes neue Spiel mit der Führung: [`docs/design/tour/bible/01-prolog.md`](../../docs/design/tour/bible/01-prolog.md) (gebaut in `content/story/00-tour.story.json`). Der alte Prolog bleibt nur als `legacy` geladen (`?classic`), damit alte Spielstände weiterlaufen; Entfernung: TASK-007.
+
 | | |
 | --- | --- |
 | Ära | `heute` (ein Novembernachmittag, Nebel in den Senken, 8 °C); kurzer Wechsel nach `1789-07` |

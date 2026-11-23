@@ -3,6 +3,12 @@
 > Version 1.0 · 2026-11-15 · Owner: schloss-karlsberg maintainers · Decision: PRD **D-008** (supersedes D-003 "no combat"
 > and the "no XP" rule of PRD §6.1). Contracts: `src/systems/contracts.ts`, `src/rpg/types.ts`.
 > This file is the source of truth for the rework; change it when you change the design.
+>
+> **Opening (since v0.7.0):** a new game starts with the **guided tour** ("Die Führung", no combat) and the first
+> time travel at the Karlsbergquelle, which is the home base; every ending closes with a party. Concept and owner
+> decisions: [`design/tour/README.md`](design/tour/README.md). The earlier surveyor framing (field station /
+> Bauwagen, prologue "Vermessung") is retired; where this spec still names it, it is history (§14 log) or legacy
+> code that TASK-007 removes.
 
 **The owner's request (2026-11-15, verbatim):** "it should not that much 'quiz' things and no 'word
 quizzes' or games in this. more like people give you a 'quest' and you need to go and collect some
@@ -27,8 +33,8 @@ Contents: [1 Pillars](#1-pillars) · [2 Core loop](#2-core-loop) · [3 Controls]
 
 1. **The land remembers** (kept). The real 1 m LiDAR terrain is the world; every era is the same place
    seen again. Quests send you across it: the Ehrenhof, the Karlslust, the Apfelallee, the Baumagazin.
-2. **People ask, you act.** Every task comes from a person (a ghost, Laub in the compass, Marlene on the
-   radio) with a reason. Objectives are verbs you *do*: bann, fight, collect, reach, listen, calm,
+2. **People ask, you act.** Every task comes from a person (a ghost, Laub in the compass, Marlene the
+   forester) with a reason. Objectives are verbs you *do*: bann, fight, collect, reach, listen, calm,
    escort, survive. No quizzes, no word games, no blank-filling, no multiple choice.
 3. **Fights are short, readable and juicy.** Telegraphed attacks, a dodge with i-frames, the lantern's
    Bannlicht, hit-stop and knockback, spectral enemies that come apart in mist, sparks, ash and rising
@@ -38,7 +44,7 @@ Contents: [1 Pillars](#1-pillars) · [2 Core loop](#2-core-loop) · [3 Controls]
    and reading.
 5. **Grim truth, labelled fiction** (kept). Real cruelty, debt and destruction told plainly; the
    supernatural (and every enemy) is invented and says so.
-6. **Dark world, warm hub** (kept). The field station, Laub's dry voice, Marlene's coffee.
+6. **Dark world, warm home** (kept). The Karlsbergquelle as home base, Laub's dry voice, Marlene, the tour group and the party after the ending.
 
 Tone rules (PRD §4.4) still apply in full; combat adds three:
 - **No real person is ever an enemy.** Historical people (the duke, Mannlich, Pfeiffer, Landremont …)
@@ -53,7 +59,7 @@ Tone rules (PRD §4.4) still apply in full; combat adds three:
 
 ```mermaid
 flowchart LR
-    H[Field station / anchor<br/>safe, Laub, Marlene] --> G[Talk to a giver<br/>! over the head]
+    H[Karlsbergquelle / anchor<br/>home, safe, Laub] --> G[Talk to a giver<br/>! over the head]
     G --> Q[Quest accepted<br/>tracker + compass marker]
     Q --> X[Into the land and its eras<br/>walk, scan, Q era shift]
     X --> F[Fight · collect · find<br/>bann · calm · escort · survive]
@@ -72,8 +78,12 @@ unfinished group regain their strength).
 
 ## 3. Controls
 
+The guided tour uses only the calm verbs (move, look, talk, map, journal, crouch to sneak, the smartphone camera);
+combat starts with the short guided training in 1789.
+
 | Verb | Desktop (default, remappable) | Notes |
 | --- | --- | --- |
+| **Smartphone camera** (photo mode) | **N** | Present only („Kein Netz“ in the past); good photos unlock codex cards; no XP |
 | Move / run / crouch / lie flat | WASD, Shift, C, X | Running costs **Atem** only while in combat |
 | Look | Mouse; keyboard `,` `.` Bild↑ Bild↓ | |
 | **Camera** | **Mouse wheel** zooms (1.8–8 m, kept in the save); **F5** switches over-the-shoulder ↔ first person (also in Einstellungen → Steuerung) | Third person is the default; the spirit view is always first person |
@@ -99,8 +109,8 @@ colour alone; `settings.soundIndicators` shows screen-edge arrows for off-screen
 ## 4. Combat
 
 Over the shoulder by default (camera track, 2026-11-19), first person as an option
-(Einstellungen → Steuerung, F5). The player is a modern surveyor (§4.7) holding the **Messstab**
-(the surveyor's iron-shod ranging pole, right hand, upgraded through the campaign) with the
+(Einstellungen → Steuerung, F5). The player (§4.7) holds the **Messstab**
+(an iron-shod ranging pole, right hand, upgraded through the campaign) with the
 **lantern** on the belt; in first person both are the view model as before.
 
 ### 4.0 Camera and targeting (camera track, `src/player/camera.ts`, `src/systems/combat/targeting.ts`)
@@ -121,7 +131,7 @@ Over the shoulder by default (camera track, 2026-11-19), first person as an opti
 
 | Resource | Base | Per level | Regenerates |
 | --- | --- | --- | --- |
-| **Lebenskraft** (HP) | 100 | +12 | Out of combat after 6 s: 4 / s; fully at the field station and at anchors |
+| **Lebenskraft** (HP) | 100 | +12 | Out of combat after 6 s: 4 / s; fully at the home base (Karlsbergquelle) and at anchors |
 | **Atem** (stamina) | 100 | +3 | 25 / s after 0.8 s without spending |
 | **Bannlicht charges** | 2 | talents | 1 per 11 s (`bannRecharge`; 8 s until the combat variety pass) |
 
@@ -175,6 +185,10 @@ Abilities cost Atem too: Ausfall 15 · Erdstoß 25 · Wirbel 28.
 - **Schnellgegenstand** (H): drink / use in 0.6 s (can be interrupted by a hit).
 
 ### 4.7 The player character (`src/player/avatar.ts`)
+
+> The default avatar is now the authored MPFB player (`scripts/chars/mpfb`, `specs/player.json`), an ordinary
+> visitor in a bright outdoor jacket (tour decision Q13). The paragraph below describes the earlier CC0 surveyor,
+> still available as `?avatar=surveyor`.
 
 A rigged CC0 Quaternius human (`public/assets/models/camera/surveyor.glb`) recoloured as a modern
 surveyor: olive field jacket with a hi-vis orange vest panel, dark work trousers, boots, an orange
@@ -247,7 +261,7 @@ did not move on).
 
 - Combat is on in every era, but **enemies only exist where content spawns them** (quest objectives,
   story `enemy` actions, ambient groups declared by chapters). The present (today) is calm by default.
-- **Safe zones** (no spawns, attacks do nothing, enemies leash out after 4.5 s): the field station (r 40 m),
+- **Safe zones** (no spawns, attacks do nothing, enemies leash out after 4.5 s): the home at the Karlsbergquelle (r 40 m; until tour WP-01 the field station),
   memorials (`memorial:set`), conversations, NPC talk radius (6 m), and `flags['combat.disabled']`
   (story sets it, e.g. the finale W8 and the endings).
 - **The hunt (die Meute) stays a threat, not a fight**: stealth, chases, par force, the drive and the
@@ -442,7 +456,7 @@ One weapon, five stages, all **quest rewards** (no crafting, no shop):
 
 | Stage | Item | From | Damage |
 | --- | --- | --- | --- |
-| I | Messstab (Eschenstab) `item.stab.esche` | Prologue, the field station | 12 |
+| I | Messstab (Eschenstab) `item.stab.esche` | Prologue: the tour grants it at its end (beat `t18`); TASK-007 moves it into the tour (Marlene lends it) | 12 |
 | II | mit Eisenbeschlag `item.stab.eisen` | Ch. 1 "Matthes' Lohn" (Hanne) | 16 |
 | III | mit Silberdraht `item.stab.silber` | Ch. 2 "Die Parforcejagd" | 19 ×1.15 |
 | IV | mit Bannkerben `item.stab.bann` | Ch. 3 "Die Hunde los" (Jost) | 23 ×1.2 |
@@ -459,8 +473,8 @@ The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); onl
 
 | Skill | Granted by (quest) | Opens |
 | --- | --- | --- |
-| Relief 1–3 | Prologue "Was der Wald verbirgt" (steps) | wall lines, Hohlweg, pits; hidden side-quest spots |
-| Kartograf 1 | Prologue "Die Feldstation" | map 1840 (M) |
+| Relief 1–3 | Prologue (tour: Marlene at the Weiher, relief 3 at the Quelle; legacy prologue: "Was der Wald verbirgt") | wall lines, Hohlweg, pits; hidden side-quest spots |
+| Kartograf 1 | Prologue (tour exit, beat `t18`; legacy prologue: "Die Feldstation") | map 1840 (M) |
 | Kartograf 2 | Ch. 1 "Die Karlslust bei Nacht" | map 1935; the Torhaus anchor → Ch. 2 |
 | Kartograf 3 (Messen R) | Ch. 2 "Die Parforcejagd" | measuring; bonus objective in the gallery (Ch. 3) |
 | Spurenleser 1–2 | Ch. 1 "Tausend Hunde" (Jost), Ch. 2 "Die Spur im Raureif" | horn meanings; pack routes (stealth stretches) |
@@ -501,7 +515,7 @@ The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); onl
   need a verb: a Wuchthieb shakes two out of apple trees and one out of the spring's icicles; one shows
   only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
   „Fläschchen n/24“, a row in Journal → Sammlungen (era counts only, never places) and a bottle on the
-  field station's Regal; Marlene at 8, Laub at 16; all 24: the lantern glass „Flaschengrün“ and the
+  hub's shelf (at the Quelle since tour WP-01; the hub overlay is legacy, TASK-007); Marlene at 8, Laub at 16; all 24: the lantern glass „Flaschengrün“ and the
   FIKTION card cx.47 „Treibgut“. **No XP per bottle** (the doc's 15 XP would push the prologue past
   L3: its margin is 4 XP, `tests/quests-content-a.test.ts`) and no talent point; only cx.47's usual
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
@@ -575,7 +589,7 @@ No stance cards, no answer grids: see §8.6.
   the clock stops during fights, modals and an open dialogue. `hintFor()` builds the text from the
   type, the scan key, Bannlicht for `needsBann` enemies, a time jump when the target is in another
   era, and the compass direction. Hooks `kq.quests.lead()`, `hint()`, `stall(seconds)`.
-- **Prompts name the action** ("E – Messstab nehmen"); the Feldstation hub prompt is low priority
+- **Prompts name the action** ("E – Messstab nehmen"); the hub prompt at the Quelle (legacy, TASK-007) is low priority
   and E opens the hub only when its prompt is the one shown.
 
 ### 8.4 Journal (J) and tracker
@@ -830,6 +844,11 @@ Main quests are offered by the chapter's beats; their order is the chapter's bea
 
 ### 11.0 Prolog "Vermessung" (today → first shift 1789) — tier 1, levels 1–3
 
+> **Legacy.** Since v0.7.0 a new game starts with the guided tour (`content/story/00-tour.story.json`; beats, quests
+> and XP budget in [`design/tour/bible/01-prolog.md`](design/tour/bible/01-prolog.md)); the tour also ends at level 3
+> and hands chapter 1 the same state. The surveyor prologue below is still bundled as `legacy` (`?classic`) so saves
+> in the middle of it resume; TASK-007 decides its removal.
+
 As built (`content/quests/00-prolog.quests.json`, generated by `scripts/content-build/prolog.mjs`).
 XP is tuned so the prologue (quests + kills + codex entries) ends just past level 3. The station's
 Pinnwand / Regal / Schublade (E at the door) are optional: the hub grants their clue pages in any
@@ -942,7 +961,7 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 
 ### 11.5 Endings
 
-Unchanged (bible 06-enden): the choice at the table (museum / burn / keep), the epilogue assembled from
+Unchanged (bible 06-enden), plus the party after the credits (tour WP-18, [`design/tour/bible/06-enden.md`](design/tour/bible/06-enden.md)): the choice at the table (museum / burn / keep), the epilogue assembled from
 the player's deeds (§8.6: side quests done, the lantern at the gate, `flag.k3_objekt`), told as a
 first-person story, credits, "Ende noch einmal wählen" (title and, after the credits, the pause
 menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
@@ -970,8 +989,8 @@ The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` �
 the fire and the Steinfraß; the hunt (patrol, par force, drive, finale, snow tracks) as threat; the
 menagerie (now calmed in side quests); ghosts / NPC figures and conversations; echoes (hold E) and
 examined clues; the codex (40 cards + 8 relief patterns) with sources and confidence; survey skills
-and tools (scan, maps, measure, X-ray, plans, pack routes); Laub's dry voice and Marlene; the field
-station; story beats, checkpoints and wake places; memorials; endings and epilogue; every wow moment
+and tools (scan, maps, measure, X-ray, plans, pack routes); Laub's dry voice and Marlene; the home base
+(the field station then, the Karlsbergquelle since the tour); story beats, checkpoints and wake places; memorials; endings and epilogue; every wow moment
 W1–W8; gentle mode and Rauhnacht; accessibility; performance budget; procedural art and audio
 (D-007); save format (new slices only, `STATE_VERSION` unchanged).
 
@@ -995,7 +1014,7 @@ architect's contract files are frozen except for additive, documented changes.
 Architect-owned (frozen, additive changes only, announce in this file): `src/systems/contracts.ts`,
 `src/rpg/types.ts`, `src/systems/story/{types,engine,validate,validate-cli}.ts` (RPG parts),
 `src/player/input.ts`, `src/ui/journal.ts`, `src/systems/index.ts`, `docs/ACTION-RPG.md`,
-`PRD.md`, `docs/ARCHITECTURE.md` (each track adds its own system section at the end of §12).
+`docs/PRD.md`, `docs/ARCHITECTURE.md` (each track adds its own system section at the end of §12).
 
 **Merge order:** progression → combat → quests → contentA → contentB (content last: it depends on
 the systems only through the contract, so it can be written in parallel and merged last). After the
@@ -1076,7 +1095,7 @@ Results: Steinbrecher win 68 → 88 %, Raffschatten pack HP left 39 → 46 %. Th
   is already in the inventory). A `settleKnown` on accept in the quests system would make them redundant.
 - **Q-11** Ranged option (thrown Kalkstaub is the only one) — enough? Lean: yes for v1.
 - **Q-12** Damage numbers default on? Lean: on, small, handwritten; one switch.
-- **Q-13** Respec cost? Lean: free at the field station.
+- **Q-13** Respec cost? Lean: free at the home base (the Karlsbergquelle since tour WP-02).
 - ~~**Q-14**~~ (resolved at integration: roster + validator know `gaertner`, `diener`, `mann`) (contentA) The story validator's NPC set (`src/systems/story`) knows soll, hanne, jost, peter, matthes, pikeur but not the side-quest givers `gaertner` and `diener`: their spawns validate as "generic ghost" warnings (k1_0 ×2, k2_0 ×1), and `src/systems/npc/roster.ts` has no look for them yet. Needs: add both to the roster/validator set (src owner).
 - ~~**Q-15**~~ (resolved at integration: settle on accept / objective) (contentA) QuestBook counts a clue only when its objective is open; clues found earlier settle only on restore. The prolog/k1/k2 stories work around it with `settle.<quest>.<obj>` reactions. Nicer: settle known clues on accept in QuestBook.
 - ~~**Q-16**~~ (resolved: `k4_15` fills every open reading with „offen“ when any stance flag is missing, so an unset `flag.k2_lichter` is covered) (contentA) Kapitel 4 still reads `flag.k2_lichter` as before; it is now set by the stance of `q.k2.lichter` (a side quest), so it may be unset — K4 needs an `offen` fallback.

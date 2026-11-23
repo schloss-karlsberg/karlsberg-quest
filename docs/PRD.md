@@ -1,9 +1,15 @@
 # Karlsberg Quest — PRD / Game Design Document (living)
 
-> Version 0.5.0 · 2026-11-20 · Owner: schloss-karlsberg maintainers · Source idea: [`IDEA.md`](IDEA.md)
-> Status: **in production — action-RPG rework** (D-008). The full campaign is playable (D-006); the owner asked
-> to turn it from a deduction game into an action RPG with quests and fights. The rework's living spec is
-> [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md); where it and this file disagree, the newer decision wins.
+> Version 0.8.0 · 2026-11-23 · Owner: schloss-karlsberg maintainers · First idea paper (archived): [`archive/IDEA.md`](archive/IDEA.md)
+> Status: **in production — action RPG with a guided-tour opening.** The full campaign is playable (D-006) as an
+> action RPG with quests and fights (D-008). Since v0.7.0 a new game opens with the **guided tour** of the Karlsberg
+> (D-010): the time travel starts at the Karlsbergquelle, and every ending closes with a party. The tour's design and
+> the owner's decisions are in [`design/tour/README.md`](design/tour/README.md); the action-RPG spec is
+> [`ACTION-RPG.md`](ACTION-RPG.md). Where they and this file disagree, the newer decision wins.
+>
+> **Concept change (D-010, 2026-11-20).** The game started as "a LiDAR surveyor with a field book, a Feldstation /
+> Bauwagen and a lantern". That framing is retired: the player is an ordinary visitor on a guided tour. Passages
+> below that still describe the earlier concept are marked as history or as legacy code that TASK-007 removes.
 
 ## 0. How this document works
 
@@ -16,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-23 | **Docs aligned with the guided-tour concept (D-010):** this file moved from the repo root to `docs/PRD.md`; the pitch, pillars, setting, story premise, characters and §6.3 describe the tour opening, the Karlsbergquelle as home base and the party endings; surveyor / Feldstation passages are marked as history or as legacy code (TASK-007). `IDEA.md` moved to `docs/archive/`. |
 | unreleased | 2026-11-21 | **Triangle budget, phase A (performance, no visible change):** on Hoch the planar water reflection is drawn only for a lake on screen within 150 m (fading into the tree-line band from 105 m) and on the frames that re-use the shadow map; grass and flowers are drawn only in the view (everything within 3 m always) with a sparser tuft beyond 12 m; looking steeply down keeps the whole forest ring only from the air; the 1789 chandelier glass no longer uses transmission (which redrew the whole scene) and palace furniture is drawn only within 25 m of its building or inside. Peaks on the real GPU: palace plateau 3.95 → 2.60 M triangles, Weiher 2.26 → 1.59 M, 1789 front 3.74 → 1.46 M (docs/PERFORMANCE.md §3.4). |
 | unreleased | 2026-11-21 | **The party after the ending (system, WP-18):** after every ending the credits can play over a party on today's palace plateau at dusk: Gerold, Marlene, the seven doubles, seven tour members and Jost's dogs around a trestle table with cake, a mulled-wine pot, a fire bowl, fairy lights and lanterns; per ending the group leans in round the archive box (museum), stands round the high fire with sparks rising (burn) or the dogs lie at your feet with their eyes catching the light (keep). The credits crawl along the bottom edge while the camera circles the party and lingers on each double, on Mats and last on Gerold; walking or looking about gives you the camera back while the credits run on, Enter or a button skips them, and afterwards the party stays and its people stay talkable. Placeholder props; the story wiring follows (docs/ARCHITECTURE.md party, ACTION-RPG §14) |
 | unreleased | 2026-11-21 | **Tour animals (system, C5):** the roe doe and her fawn graze in a clearing and notice a standing or running player, lift their heads for 1.5 s and bound 25 m away, then stop and graze again (no fail state); a crouched, slow approach reaches photo range unnoticed. Jost's dogs Diane and Bijou follow him (or whoever the story names), sniff, sit when he stops, bolt barking along a path and come back, and lie down at the party. Present day only; saved and restored with the game (docs/ARCHITECTURE.md animals, ACTION-RPG §14) |
@@ -50,9 +57,9 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 ## 1. Vision & pitch
 
-> **On 28 July 1793 the Karlsberg burned. You map the forest that grew over it, and the land remembers everything: the court, the fire, and the duke's hounds, which never stopped hunting.**
+> **On 28 July 1793 the Karlsberg burned. You join a guided tour through the forest that grew over it, and at the Karlsbergquelle the land starts to remember: the court, the fire, and the duke's hounds, which never stopped hunting.**
 
-Karlsberg Quest is a grim first-person **action RPG** for adults, set in the real landscape around Homburg, Kirrberg and the Karlsberg (D-008). You play a LiDAR surveyor who can step into the land's memory at the place where they stand. The ghosts of the court give you quests: you go into the land and its eras, fight the spectral things that have grown out of debt, greed, fire and stone, collect what was lost, escort and protect — and when you come back, they tell you what really happened. The history is real and sourced and becomes your codex. The ghosts and every enemy are fiction, and the game always says which is which.
+Karlsberg Quest is a grim first-person **action RPG** for adults, set in the real landscape around Homburg, Kirrberg and the Karlsberg (D-008). You play an ordinary visitor on a guided tour of the Karlsberg one November afternoon. The tour teaches walking, looking, talking, the map, the codex, the smartphone camera and sneaking; at the Karlsbergquelle the group walks on, a talking brass compass lies in the water, and touching the spring starts the time travel. The whole journey happens during that break. The ghosts of the court give you quests: you go into the land and its eras, fight the spectral things that have grown out of debt, greed, fire and stone, collect what was lost, escort and protect — and when you come back, they tell you what really happened. The history is real and sourced and becomes your codex. The ghosts and every enemy are fiction, and the game always says which is which.
 
 ### 1.1 Pillars
 
@@ -60,7 +67,7 @@ Karlsberg Quest is a grim first-person **action RPG** for adults, set in the rea
 2. **People ask, you act.** Every task comes from a person with a reason. Objectives are verbs you do — fight, collect, reach, calm, escort, survive. No quizzes, no word games, no blanks to fill (D-008).
 3. **Short, readable, juicy fights.** Telegraphed attacks, a dodge roll, the lantern's Bannlicht, hit-stop and knockback against invented spectral enemies that dissolve into mist, ash or grit. The hound pack stays a threat you escape, not a fight (D-008 replaces D-003).
 4. **History is the reward.** Turning in a quest earns XP and loot *and* the true story, told by the giver with sources and stored as a codex card. Grim truth, labelled fiction: no gore, no real person is ever an enemy, and the player never commits atrocities.
-5. **Dark world, warm hub.** Each descent into the past ends back at the present-day field station, where knowledge is sorted, people react, and a dry voice finds the joke in power and vanity.
+5. **Dark world, warm home.** Each descent into the past ends back at the Karlsbergquelle in the present, the home base and wake spot, where people react and a dry voice finds the joke in power and vanity. Every ending closes with a party with the guide and the tour group (D-010).
 
 ### 1.2 Audience & rating
 
@@ -83,11 +90,11 @@ Karlsberg Quest is a grim first-person **action RPG** for adults, set in the rea
 
 ## 2. Research summary
 
-Three research passes on 2026-11-02 shaped this draft. The full notes, each with the sources that were opened, are in [`research/`](research/):
+Three research passes on 2026-11-02 shaped this draft. The full notes, each with the sources that were opened, are in [`research/`](../research/):
 
-- [`research/01-regional-history.md`](research/01-regional-history.md): dark, sourced history and legends of the region; fact/legend/fiction labels; conflicting sources; 15 story hooks.
-- [`research/02-sister-projects.md`](research/02-sister-projects.md): stack, data and gaps in `saar-lidar-explorer` and `schloss-karlsberg`.
-- [`research/03-game-design.md`](research/03-game-design.md): how dark-but-fun games, deduction games and history games work; rating rules.
+- [`research/01-regional-history.md`](../research/01-regional-history.md): dark, sourced history and legends of the region; fact/legend/fiction labels; conflicting sources; 15 story hooks.
+- [`research/02-sister-projects.md`](../research/02-sister-projects.md): stack, data and gaps in `saar-lidar-explorer` and `schloss-karlsberg`.
+- [`research/03-game-design.md`](../research/03-game-design.md): how dark-but-fun games, deduction games and history games work; rating rules.
 
 ### 2.1 What the history gives us
 
@@ -101,7 +108,7 @@ The region adds the Schlossberghöhlen (sandstone caves used from the fortress e
 
 | # | Lesson | Where it lands |
 | --- | --- | --- |
-| L1 | Dark world, warm loop: a safe hub where knowledge is sorted | Field station (§3.1) |
+| L1 | Dark world, warm loop: a safe hub where knowledge is sorted | The Karlsbergquelle as home base (§6.3); originally the field station (§3.1) |
 | L2 | One original guide voice with gallows humour, aimed at power, never at victims | The compass voice (§5) |
 | L3 | Deduction as the core verb, confirmed in batches of three so guessing doesn't pay | The Chronik (§3.3) |
 | L4 | Confirm settled facts, keep interpretations open | Facts vs. readings (§3.3) |
@@ -120,13 +127,13 @@ The research suggested USK 12 for reach. This draft follows the owner's decision
 
 > **Superseded in part (D-008, 2026-11-15).** The core loop is now **quest → go → fight / collect → turn
 > in → hear the history → level up**; the full design (controls, combat, enemies, progression, loot,
-> quests, journal, quest catalogue per chapter) is [`docs/ACTION-RPG.md`](docs/ACTION-RPG.md). §3.1 and
+> quests, journal, quest catalogue per chapter) is [`docs/ACTION-RPG.md`](ACTION-RPG.md). §3.1 and
 > §3.3 below describe the 0.2 deduction loop and stay for the record; §3.2 verbs and §3.4 threats remain
 > valid, extended by the combat verbs (Hieb, Wuchthieb, Ausweichen, Bannlicht, Schnellgegenstand).
 
 ```mermaid
 flowchart LR
-    H[Field station / anchor] --> G[Quest giver]
+    H[Karlsbergquelle / anchor] --> G[Quest giver]
     G --> X[Into the land and its eras]
     X --> F[Fight · collect · find · escort]
     F --> T[Turn in: XP, loot, the real history, codex card]
@@ -134,7 +141,7 @@ flowchart LR
     L --> G
 ```
 
-The original core verb was **deduce**: walk the real land, step into its memory, bring back clues, and prove what happened.
+The original core verb (0.2) was **deduce**: walk the real land, step into its memory, bring back clues, and prove what happened.
 
 ### 3.1 Core loop
 
@@ -152,6 +159,11 @@ flowchart LR
 Getting caught is cheap. You are thrown back to the field station and lose only the clues from that shift that you had not yet confirmed. Confirmed Chronik entries are never lost. Autosave happens at every shift.
 
 ### 3.2 Verbs and controls
+
+> The guided tour teaches only the calm verbs (walk, look, talk, map, codex, smartphone photo mode on N, sneaking);
+> it has no combat. The first fight is a short guided training in 1789. The combat keys are in
+> [`ACTION-RPG.md`](ACTION-RPG.md) §3. Spirit view, scan, maps and measuring below are survey skills from the
+> earlier concept that the code still has; their place in the tour concept is TBD — see TASK-007.
 
 | Verb | What it does | Desktop control |
 | --- | --- | --- |
@@ -198,7 +210,7 @@ The MVP plays in the real `karlsberg` area (3 × 3 km). v1.0 extends to the `ove
 
 | Era | Places | Dark theme (fact) | In |
 | --- | --- | --- | --- |
-| Today (2025) | Forest over the ruin, field station | What the forest hides; looking, not digging | MVP |
+| Today (2025) | Forest over the ruin; the tour route (Wanderparkplatz → Felsenpfad → Karlsbergweiher → Karlsbergquelle) and the palace plateau (the party) | What the forest hides; looking, not digging | MVP |
 | 1785–1789 | Palace and court, Karlslust menagerie, building site | Debt, unpaid wages, the 1785 fireworks deaths, a land that is "one single hunting ground" | v1.0 Ch. 1 |
 | 9 Feb 1793 | Roads from Rohrbach to the palace, winter forest | The duke's flight by night | v1.0 Ch. 2 |
 | 28 Jul 1793 | The burning palace | Plunder and fire; villagers join the looting | **MVP** + Ch. 3 |
@@ -209,17 +221,19 @@ The MVP plays in the real `karlsberg` area (3 × 3 km). v1.0 extends to the `ove
 
 _Everything in this section is fiction unless it cites a fact from §2.1._
 
-**Premise.** The player is a surveyor (player-named, any gender) hired by the forest office to check the 2025 LiDAR of the Karlsberg forest. In the relief they find the palace's footprints, which are real. They also find the ring of 19 cages of the menagerie, which is real too. And they find hound tracks in a point cloud that was recorded in an empty forest. In the field station's drawer lies a brass surveyor's compass from the 1840 Bavarian survey. It points to where the land remembers, and it talks.
+**Premise (D-010, the guided tour).** The player (player-named, any gender) is an ordinary visitor on a guided tour of the Karlsberg on a mid-November afternoon. The guide (placeholder name **Gerold Imhoff**, modelled on a real guide whose consent is pending) leads a group of 15 from the Wanderparkplatz at the forest edge along the Felsenpfad and the Karlsbergweiher to the Karlsbergquelle. The group includes modern doubles of the historical cast; modern Jost has two dogs. On the way the wind picks up and the dogs run barking into the forest (a foreshadowing of the Meute), a roe doe and her fawn are the first wow moment and the sneak tutorial, and Marlene, a forester, offers optional side quests. Full beats: [`design/tour/bible/01-prolog.md`](design/tour/bible/01-prolog.md).
 
-**The first shift (2026-11-20).** The first time travel is not a keybind. When the Bussole wakes at the Orangerie wall, Laub "hears water that remembers" and leads the player down to the **Karlsbergquelle**, a real spring in the ravine below the Orangerie where the Karlsbergbach begins (fact, codex cx.41). Touching its water (E „Wasser berühren“) stops the moment, the brook runs backwards, and the land shifts to 1789, where an invented baroque Brunnenstube stands (fiction, cx.42). A drop of that water now sits in the Bussole, which is why Q works later at places that remember; the first self-made shift follows at the Ehrenhof.
+**The first shift.** The first time travel is not a keybind. At the **Karlsbergquelle**, a real spring in the ravine below the Orangerie where the Karlsbergbach begins (fact, codex cx.41), the player takes a break while the group walks on. A brass surveyor's compass from the 1840 Bavarian survey lies in the water, and it talks (Laub). Touching the water stops the moment, the brook runs backwards, and the land shifts to 1789, where an invented baroque Brunnenstube stands (fiction, cx.42). A short guided training follows (the first fight). A drop of that water now sits in the Bussole, which is why Q works later at places that remember. The whole time journey happens during that break; the Quelle is the home base and wake spot.
 
-**The central mystery: what did the fire not eat?** In 1793 the court painter and building director Mannlich rescued the collections. A legend tells of a hidden trapdoor in the picture gallery (source: [`research/02-sister-projects.md`](research/02-sister-projects.md), schloss-karlsberg.de). Our fiction: a chronicle of the palace's last years was hidden there, and its pages were scattered when the palace burned and its stones were carted away. Whoever carries its memory is hunted by the duke's hounds, which the fiction says were left behind when he fled and still hunt for a master who never returned.
+> **History:** in the earlier concept (0.1–0.6) the player was a surveyor hired by the forest office, the compass lay in the drawer of a Feldstation (Bauwagen), and the prologue "Vermessung" taught reading the relief. That prologue is still bundled as `legacy` (dev switch `?classic`) so old saves resume; TASK-007 decides its removal.
 
-**Ending.** The player decides what to do with the completed chronicle: **give it to the museum** (truth, with sources), **let it burn** (rest for the hounds), or **keep it** (the land keeps remembering, a hook for expansions). No ending is "correct".
+**The central mystery: what did the fire not eat?** In 1793 the court painter and building director Mannlich rescued the collections. A legend tells of a hidden trapdoor in the picture gallery (source: [`research/02-sister-projects.md`](../research/02-sister-projects.md), schloss-karlsberg.de). Our fiction: a chronicle of the palace's last years was hidden there, and its pages were scattered when the palace burned and its stones were carted away. Whoever carries its memory is hunted by the duke's hounds, which the fiction says were left behind when he fled and still hunt for a master who never returned.
+
+**Ending.** The player decides what to do with the completed chronicle: **give it to the museum** (truth, with sources), **let it burn** (rest for the hounds), or **keep it** (the land keeps remembering, a hook for expansions). No ending is "correct". After each ending comes a credits party on today's palace plateau at dusk with the guide and the tour group (the historical characters as their modern doubles): museum → the guide shows the chronicle, burn → a fire bowl, keep → two dogs at your feet ([`design/tour/bible/06-enden.md`](design/tour/bible/06-enden.md)).
 
 **Chapter structure (v1.0):**
 
-1. **Prologue "Vermessung"** (today): tutorial; read relief, find the palace footprint, first shift.
+1. **Prologue "Die Führung"** (today, one November afternoon): the guided tour as tutorial, no combat; the first time travel at the Karlsbergquelle and a short guided training in 1789. (The earlier prologue "Vermessung" is legacy.)
 2. **Ch. 1 "Der Hof"** (1789): the court at its height; the unpaid builders, the menagerie, a quiet memorial to the 1785 fireworks victims.
 3. **Ch. 2 "Die Flucht"** (9 Feb 1793): the night race of the warner from Rohrbach, with the hunt at your heels. Warn the duke, or let the French come?
 4. **Ch. 3 "Die Nacht"** (28 Jul 1793): the fire. Save one object and find it again in a museum "today". _The MVP slice is a cut of this chapter._
@@ -227,7 +241,7 @@ _Everything in this section is fiction unless it cites a fact from §2.1._
 
 ### 4.3 Expansion hooks
 
-All fiction, each grown from a sourced fact in [`research/01-regional-history.md`](research/01-regional-history.md) §10:
+All fiction, each grown from a sourced fact in [`research/01-regional-history.md`](../research/01-regional-history.md) §10:
 
 - **"Verliese des Elends"**: the Schlossberghöhlen, each level sealed by a later era (1708 spoiled stores → 1872 backfill → 1945 shelter → 1950s bunker → 2003 collapse).
 - **"Die Stele vom Rabenhorst"**: why grave 6 has no grave goods and lies under the broken stele. The answer stays open.
@@ -250,9 +264,10 @@ All fiction, each grown from a sourced fact in [`research/01-regional-history.md
 
 | Character | Real or fiction | Era | Role |
 | --- | --- | --- | --- |
-| The surveyor | Fiction | Today | Player character, player-named |
+| The player | Fiction | Today | An ordinary visitor on the guided tour, player-named (the earlier concept made them a surveyor) |
+| Gerold Imhoff (placeholder name), the guide | Modelled on a real living guide (consent pending; no real name or personal details) | Today | Leads the guided tour and hosts the party after each ending |
 | **Geometer Quirin Laub**, the compass voice | Fiction | 1840 → today | The guide (L2): a dry Bavarian survey official bound into his compass. Gallows humour, footnotes, contempt for dukes who don't pay their surveyors |
-| Marlene, district forester | Fiction | Today | Radio voice at the field station; warmth, and the present day's practical questions |
+| Marlene, district forester | Fiction | Today | A forester (Forstamt) along the tour route; gives optional side quests during the tour and later in the present, sends messages to the phone; warmth, and the present day's practical questions |
 | Johann Christian von Mannlich | **Historical** (court painter, building director) | 1789–1793 | Echo guide in the palace; his words come from his memoirs only |
 | Karl II. August | **Historical** | 1789–1793 | Never seen directly. Present through decrees, portraits, the hunting horn. Sourced quotes only |
 | Nikel Pfeiffer | **Historical** (farmer from Rohrbach who warned the duke) | 9 Feb 1793 | Playable in the Ch. 2 flashback |
@@ -296,9 +311,11 @@ Progress comes only from confirmed Chronik entries. They unlock skills, eras and
 - **The wandering stones:** marked blocks traced across eras.
 - **Menagerie animals:** found, not captured.
 
-### 6.3 The field station (hub)
+### 6.3 Home base: the Karlsbergquelle
 
-The hub grows as the player learns: a pin board for the Chronik, a darkroom for echo photos, a radio for Marlene, shelves for collections. The upgrades are comfort and story only; there is no currency.
+The Karlsbergquelle is the home base in every chapter (tour decision 11): the wake spot after being caught, the place a held Q returns you to, and where you heal. The smartphone album (good photos from the present unlock codex cards) is a collection of its own. There is no currency.
+
+> **Legacy (to be removed, TASK-007):** the code still opens a hub overlay at the spring (Chronik, phone, shelf, drawer, map, bench). Where its functions go is undecided — TBD, see TASK-007. The original plan here was a field station (Bauwagen) with a pin board, darkroom, radio and shelves; the Bauwagen was removed from the world in the tour redesign.
 
 ### 6.4 Replayability and fairness
 
@@ -313,14 +330,14 @@ The hub grows as the player learns: a pin board for the Chronik, a darkroom for 
 
 | Era | Look | Sound |
 | --- | --- | --- |
-| Today | Clean survey look: relief shading, cool daylight, UI overlays | Wind, birds, distant traffic, the field station's radio |
+| Today | Mid-November afternoon: golden leaves, slightly dusky light; relief shading and UI overlays as tools | Wind, birds, distant traffic, the tour group's voices |
 | 1789 | Warm candlelight and painted skies; copperplate-like textures | Court music, building-site noise, the menagerie |
 | 28 Jul 1793 | Desaturated blue night cut by fire orange; smoke | Crackle, collapse, distant shouting; the horn under it all |
 | 1796 onward | Grey ash, moss taking over | Picks and carts; then silence |
 
 - **Characters:** 2D portrait cards in an etching style. Ghosts are silhouettes and particles. The hounds are smoke and eyes. No full humanoid models in the MVP.
-- **UI:** a surveyor's field book: ruled paper, plan sheets pinned to the Chronik board, handwritten annotations.
-- **Audio:** browsers need a click before audio can play; the game makes that the first in-world action, "light the lantern". The hunting horn is the main threat telegraph, and the hounds are placed in 3D space.
+- **UI:** a field-book look: ruled paper, plan sheets, handwritten annotations. (The journal is still called „Feldbuch“ in the game; whether the term stays is TBD — see TASK-007.)
+- **Audio:** browsers need a click before audio can play. The code still makes that click "light the lantern" on a screen from the earlier concept (legacy, to be replaced by a tour intro, TASK-007). The hunting horn is the main threat telegraph, and the hounds are placed in 3D space.
 - **Accessibility:** subtitles; visual indicators for threat sounds; colour-blind-safe era palettes; reduced motion; remappable keys; gentle mode.
 - **Asset sourcing:** CC0 assets from the listed sites (D-009, docs/ART-DIRECTION.md §8).
 
@@ -377,6 +394,8 @@ The castle viewer runs at 4.36 M triangles and a 445 MB JS heap, and neither app
 | R-4 | Fix the data-contract note that says the palace dataset is local-only (RELEASING.md publishes it) | saar-lidar-explorer |
 
 ## 9. Scope: MVP / vertical slice
+
+> **History (0.1 plan).** D-006 replaced the slice-first plan with a full campaign; this section and §10 describe the original surveyor-era plan and stay for the record.
 
 **"Die Nacht vom Karlsberg":** one case, two eras (today and 28 July 1793), in the 3 × 3 km `karlsberg` area. Target play time: 30–45 minutes.
 
@@ -466,19 +485,20 @@ gantt
 - **Q-6 Voice:** text only, or voice for the compass? **Lean:** text until 1.0.
 - **Q-7 Languages:** German first; English at 1.0? **Lean:** yes.
 - **Q-8 Review partner:** who checks history before release: the Historisches Museum, the city of Homburg, or the Landesdenkmalamt? **Lean:** ask at M4.
-- **Q-9 Learning goals:** keep IDEA.md's goals (explain LiDAR, "look, don't dig") as secondary goals? **Lean:** yes, they fit the surveyor.
+- **Q-9 Learning goals:** keep IDEA.md's goals (explain LiDAR, "look, don't dig") as secondary goals? **Lean:** yes (written for the earlier surveyor concept; recheck for the tour).
 - **Q-10 Mannlich quotes:** most echo quotes come from the 1910 German edition of Mannlich's memoirs, translated by Eugen Stollreither (d. 31 Mar 1956, [Deutsche Biographie](https://www.deutsche-biographie.de/sfz127799.html)). The translation is protected until 31 Dec 2026 and public domain from 1 Jan 2027. **Lean:** keep the quotes short (quotation right) and publish after 1 Jan 2027, or shorten `echo.k2.warnung`, `echo.k3.koenig` and `echo.k3.galerie` before any earlier release.
 
 ## 12. Decision log
 
 | # | Date | Decision | Why | Replaces |
 | --- | --- | --- | --- | --- |
+| D-010 | 2026-11-20 | **Guided-tour opening and party endings.** The prologue is a guided tour of the Karlsberg (a tutorial, no combat) with a real-person guide (placeholder name in the repo); the player is an ordinary visitor; the first time travel happens at the Karlsbergquelle during a break, which becomes the home base; the three endings stay and each closes with a party on today's palace plateau. No surveyor, Feldstation or Bauwagen. The tour is the default start since v0.7.0. Decisions: [`design/tour/README.md`](design/tour/README.md) | Owner redesign of the opening | The surveyor prologue "Vermessung", the field station hub (§6.3) |
 | D-009 | 2026-11-19 | **Stylized modern game look with free CC0 assets.** Rich colour, soft warm light, bloom, painterly textures, lush vegetation (not photoreal); CC0 1.0 assets from Poly Haven, ambientCG, Kenney, Quaternius and Poly Pizza (CC0 filter) are allowed, each recorded in `public/assets/LICENSES.json` and shown in-game; never assets from or imitating commercial games. Spec: `docs/ART-DIRECTION.md` | Owner, after playing on a real GPU (2026-11-19): "the whole game looks like a 1990 game … objects, world, everything looks ugly and buggy"; chose the stylized look and allowed free CC0 assets | D-007 (procedural only) for art; audio stays procedural |
 | D-008 | 2026-11-15 | **Action RPG.** Quests from givers (kill / collect / reach / talk / calm / escort / survive objectives), real-time first-person combat against invented spectral enemies with one boss per chapter, XP, levels 1–12, talents, a quest-upgraded weapon, charms and consumable loot; the Chronik board (blanks, nouns, batches of three) leaves the critical path for a journal; history is taught by the giver at turn-in, codex cards, echoes and collectibles; the old readings become stances asked at turn-in. Never: real people, menagerie animals or victims as enemies, gore, quizzes. The hunt, the fire, memorials and the finale stay non-combat. Spec: `docs/ACTION-RPG.md` | Owner request (2026-11-15): "not that much quiz … more like people give you a quest and you need to go and collect some things or kill some things — like in WoW or Witcher … a fun, action learn role play game" | D-003, §6.1 "no XP", §3.3 as the core loop |
 | D-007 | 2026-11-02 | **(Art part superseded by D-009, 2026-11-19)** Art and audio are procedural in v1.0: real terrain, shaders, particles, Web Audio synthesis; no third-party art packs | No licence risk, small payload, no asset pipeline needed; partly answers Q-5 | — |
 | D-006 | 2026-11-02 | Build the complete campaign (prologue, Ch. 1–4, three endings) in one compressed production pass, about 2–3 h of play, instead of slice-first over M0–M9 | Owner request: "build the complete game … loop until it's finished and playable" | §10 schedule (order kept, dates dropped) |
 | D-005 | 2026-11-02 | The game is a self-contained static Vite app. `scripts/prepare-data` reads sister data **read-only** and writes compact assets into `public/data/`; no sister source code is imported | Sister projects are under active development by other agents; importing their modules would couple us to moving code. R-1 becomes optional | Q-3, §8.2 "reuse by import" |
-| D-004 | 2026-11-02 | The living document is `PRD.md` in this repo; no external doc | Agents and humans work from the same file, versioned with the code | — |
+| D-004 | 2026-11-02 | The living document is `PRD.md` in this repo (since 2026-11-23 at `docs/PRD.md`); no external doc | Agents and humans work from the same file, versioned with the code | — |
 | D-003 | 2026-11-02 | **(Superseded by D-008, 2026-11-15)** No combat; tension comes from stealth, chases, time pressure and a corrupting threat | Keeps focus on exploration and deduction; no fights against historical people | IDEA.md (no rule) |
 | D-002 | 2026-11-02 | Core genre: mystery-exploration RPG (clues, deduction, eras), keeping quests, skills and codex | Deduction makes learning real facts feel like play | IDEA.md §4 (MMORPG-style quest focus) |
 | D-001 | 2026-11-02 | Audience: adults 16+, grim tone | Owner wants a darker game; drops the school/family audience as primary target | IDEA.md §9 Q1 (families, schools) |
