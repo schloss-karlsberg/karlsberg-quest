@@ -103,7 +103,7 @@ with the workflow token do not trigger other workflows (no PR-title check on the
       - or rewrite the history before the first push (for example `git filter-repo --mailmap`).
         Rewriting changes every hash, and the docs cite hashes.
 - [ ] **Internal docs in a public repo:** `docs/NEXT-SESSION.md` and `research/02-sister-projects.md`
-      contain local absolute paths (`/Users/<name>/…`) and the owner's first name. `IDEA.md` names a
+      contain local absolute paths (`/Users/<name>/…`) and the owner's first name. `IDEA.md` (now `docs/archive/IDEA.md`) names a
       commercial game as genre inspiration. Agent handoff notes are part of the history.
       - Keep them as they are, trim them, or publish from a clean squashed repo.
 - [x] **Release flag: decided.** The debug API stays on (community project); see §4.

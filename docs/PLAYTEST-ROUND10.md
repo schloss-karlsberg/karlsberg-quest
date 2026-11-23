@@ -1,5 +1,7 @@
 # Playtest round 10 (2026-11-20): newcomer play in bullet time, real GPU
 
+> **History:** this playtest (2026-11-20) covers the earlier surveyor prologue (Feldstation / Bauwagen, lantern start). Since v0.7.0 a new game opens with the guided tour (`docs/design/tour/`); the findings below are a record, not a description of the current opening.
+
 Tester: Claude (playtester agent), via the Claude in Chrome extension in the owner's real Chrome.
 Build: play copy at http://localhost:5290/?nosave (lead-run server). Fresh new game by hand, name "Jona",
 Sanfter Modus **off**. Fights in bullet time (`kq.pilot.act`, ~15 steps per act).

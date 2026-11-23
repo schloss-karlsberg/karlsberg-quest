@@ -4,6 +4,8 @@
 
 The captions and the page are written by hand in `index.html`. Only the pictures are generated.
 
+> **Out of date:** the page still shows the earlier surveyor prologue (Feldstation / Bauwagen) instead of the guided tour, and no party endings. The tour's shots are planned in [`../design/tour/storyboard-beats.md`](../design/tour/storyboard-beats.md) and are not captured yet.
+
 ## Regenerate the pictures
 
 Do this on a machine with a real GPU. The script warns if Chromium falls back to a software renderer, because those pictures will not match the real look.

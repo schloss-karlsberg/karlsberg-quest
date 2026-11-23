@@ -1,6 +1,8 @@
 # Stimmen
 
-Dieses Dokument legt fest, **wie** die Figuren sprechen, und enthält alle Zeilen, die nicht an einen Ort gebunden sind (Barks). Die ortsgebundenen Dialoge stehen in den Kapiteldateien.
+> **Tour-Konzept (Stand 2026-11-23):** Gerold Imhoff (Platzhaltername), die Doppelgänger, Marlene als Försterin unterwegs (persönlich/Handy statt Funk/Bauwagen) und die neuen Barks stehen in [`docs/design/tour/bible/08-stimmen.md`](../../docs/design/tour/bible/08-stimmen.md); wo sich beide widersprechen, gilt die Tour. Zusammenführung: TASK-007.
+
+Dieses Dokument legt festDieses Dokument legt fest, **wie** die Figuren sprechen, und enthält alle Zeilen, die nicht an einen Ort gebunden sind (Barks). Die ortsgebundenen Dialoge stehen in den Kapiteldateien.
 
 In v1.0 sind alle Stimmen **Text** (Untertitel und Sprechblasen; PRD D-007: Audio prozedural). Wenn später Sprachaufnahmen dazukommen, gelten die Sprechhinweise unten.
 

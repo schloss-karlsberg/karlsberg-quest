@@ -180,7 +180,7 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 | Playing | the cap: settings „Bildrate“ 30 / **60** (default) / unbegrenzt, „Energiesparen“ 30 (`frameCap`) |
 | Title | ≤ 30 |
 | Live modal (default of `modals.open`: dialogue, story choice, endings) | the cap for 1.5 s after the modal stack changed (the two-shot camera eases in), then ≤ 15 |
-| Still modal (`backdrop: 'still'`: pause menu with settings, journal, map, licences, confirms, Chronik cards, field-station hub) | 0, the last frame is held (over the title: ≤ 15) |
+| Still modal (`backdrop: 'still'`: pause menu with settings, journal, map, licences, confirms, Chronik cards, the hub at the Quelle) | 0, the last frame is held (over the title: ≤ 15) |
 | Other pause (travel curtain) | ≤ 15 |
 | Bullet time / `?manual` | 0, frames only on request |
 | Hidden tab | 0 (and the AudioContext is suspended) |
@@ -246,10 +246,10 @@ a teleport (`ribbonStep`); the see-through switches off on a NaN lens. The chara
 `CharacterFade` in seeThrough.ts; avatar.ts only calls these hooks (it belongs to the character
 look work), so the camera rules live in `guards.ts` / `seeThrough.ts`.
 
-**Avatar models.** The default avatar is the surveyor (Quaternius rig, scaled to 1.78 m, costumes
-recolour its material slots). `?avatar=mpfb` or `kq.avatar.useMpfb(on?)` swaps in the authored
-MPFB player (`chars.player.mpfb`, 53-bone game_engine rig, kept at its built height, ≈ 1.74 m in
-Idle); costume and lantern tint stay (sticky). Bones and clips go through one alias table,
+**Avatar models.** The default avatar is the authored MPFB player (`chars.player.mpfb`, 53-bone
+game_engine rig, kept at its built height, ≈ 1.74 m in Idle). `?avatar=surveyor` or
+`kq.avatar.useMpfb(false)` swaps in the earlier CC0 surveyor (Quaternius rig, scaled to 1.78 m,
+costumes recolour its material slots); costume and lantern tint stay (sticky). Bones and clips go through one alias table,
 `src/systems/characters/bones.ts` (logical bone → name per rig kind, `rigKindOf`, the upper-body
 layer per rig, clip-name aliases); `Rig.boneOf(logical)` resolves through it (exact name, then the
 GLTFLoader-sanitized one). The MPFB player's costumes are outfit pieces, not recolours: meshes
@@ -992,7 +992,10 @@ Round-4 (polish: set dressing) integration rules:
   `kq.tools.plans(view)`, `kq.tools.tracks(on)`, `kq.tools.state()`; `kq.survey.map(0|1840|1935)`.
 - Keys: R measure, V / 4 Röntgenblick, B plans, M maps, 0–3 relief (all listed on the controls page).
 
-### story (`src/systems/story/`) – chapters, dialogue, field station, objectives, endings
+### story (`src/systems/story/`) – chapters, dialogue, home base, objectives, endings
+- A new game starts with the guided tour (`content/story/00-tour.story.json`, order −1, `next: k1`). The
+  earlier surveyor prologue (`00-prolog`) stays loaded as `legacy` so a save in the middle of it resumes;
+  `?classic` starts it for a new game. Design: `docs/design/tour/`.
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by
   `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
   endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
@@ -1015,8 +1018,10 @@ Round-4 (polish: set dressing) integration rules:
   completes when the clip ends. Stale counts only lines whose id the manifest knows (an id-less
   line with a changed text just finds no match); NPC conversations keep the murmur (only presenter
   lines play clips). `public/voice/` holds committed MOSS clips only; the build emits an empty manifest when there is
-  none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern),
-  the field station at (760, −915) with the hub overlay, the Bussole/objective HUD, the caught
+  none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern
+  screen; the name and lantern screens still speak of the surveyor concept — legacy, TASK-007),
+  the home at the Karlsbergquelle (`hub/home.ts`, `HOME`) with the hub overlay (legacy, to be removed by
+  TASK-007; until tour WP-01 this was the field station at 760 / −915), the Bussole/objective HUD, the caught
   curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
   threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the prologue.
@@ -1042,7 +1047,7 @@ Round-4 (polish: set dressing) integration rules:
   cleared at the credits. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
   player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
   `slice.sayCount`). Beats take `wake {x, z, yaw, era:'today', text}`: being caught / an empty
-  meter brings you to the present there instead of the field station. Ending choice: the field
+  meter brings you to the present there instead of the home at the Quelle. Ending choice: the field
   book before the table is saved to slot `ending` (`ENDING_SLOT`); the title offers it again.
   Ending C ("keep", finished): the past is at night and a `follow` pack of five comes along.
   After the choice the ending is staged in the engine (`endings/stage.ts`, ~11 s real time, before
@@ -1878,7 +1883,7 @@ Lines come from the content packs by trigger, or from `say` actions. Worked exam
 | `timer` / `chapterTimer` | seconds in the beat / chapter (game time) | pacing |
 | `era`, `scan` (≥), `map`, `stance`, `lantern` | world / player state | `{stance:'prone'}`, `{lantern:true}` |
 | `have {clue\|noun\|item}`, `confirmed {case?\|prefix?, n}`, `caseComplete` | inventory, Chronik | gates on findings |
-| `hub` | a field-station item was used | Pinnwand, map table |
+| `hub` | a hub item was used (hub overlay at the Quelle, legacy — TASK-007) | Chronik, map |
 | `room` | in a palace room: `"B01.2.og-festsaal"`, `"KB-B01/B01.2.og-festsaal"` or `"KB-B01"` | interiors objectives |
 | `talked {npc, chapter?, topic?}` | an NPC conversation / topic happened | after a ghost |
 | `reading` (+ `eq`) | a reading was chosen (entry flag or entry id) | branch on LESARTEN |
@@ -2054,7 +2059,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 - **Interact wins LMB**: an attack from the mouse is ignored while any `.kq-prompt` is shown
   (npc / chronik / menagerie); K always swings. Attacks are also blocked while measuring, flying,
   frozen, in a modal or a conversation, and with `flags['combat.disabled']` („Du hebst den Stab nicht.“).
-- **Safe zones** (`safeReason`): `combat.disabled`, the field station (40 m) / hub, active
+- **Safe zones** (`safeReason`): `combat.disabled`, the home at the Quelle (40 m) / hub, active
   `memorial:set` areas, conversations, modals, 6 m around an NPC placed by `npc:spawn`. Enemies do
   not engage and swings glance off.
 - **Time of day** for `group.time`: night if the era is a night era, the sky shows the moon or
