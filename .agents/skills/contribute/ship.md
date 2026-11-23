@@ -29,7 +29,7 @@ fix(story): deer stay visible until the player reaches them
 Refs: TASK-001
 ```
 
-Task-file updates ride along in those commits; a commit that only touches `.mc/` is `chore(mc): ...`.
+Task-file updates ride along in those commits; a commit that only touches `.mc/` is `chore: ...` (`mc` is not a lint scope).
 
 ## Screenshots (visible changes)
 
