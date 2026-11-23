@@ -304,6 +304,7 @@ test.describe('skills and survey tools', () => {
 
   test('Röntgenblick: ground points under the canopy, trees fade', async ({ page }) => {
     const errors = trackErrors(page);
+    await expect(page.getByTestId('title-loading')).toBeHidden();
     await page.evaluate(() => {
       const k = window.kq!;
       k.skills!.grant('roentgen', 1, true);
@@ -311,11 +312,35 @@ test.describe('skills and survey tools', () => {
       k.step(2);
     });
     await shot(page, 'xray-before');
-    await page.evaluate(() => window.kq!.press('KeyV', 2));
-    expect(await page.evaluate(() => window.kq!.tools!.state().xray)).toBe(true);
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const cloud = '**/data/pointcloud/ground.kqp.deflate';
+    await page.route(cloud, async (route) => {
+      await pending;
+      await route.fallback();
+    });
+    const indicator = page.getByRole('progressbar', { name: 'Punktwolke wird geladen …' });
+    try {
+      const requested = page.waitForRequest(cloud);
+      await page.evaluate(() => window.kq!.press('KeyV', 2));
+      await requested;
+      expect(await page.evaluate(() => window.kq!.tools!.state().xray)).toBe(true);
+      await expect(indicator).toBeVisible();
+      await expect(indicator).not.toHaveAttribute('aria-valuenow', /.+/);
+      await page.evaluate(() => window.kq!.press('KeyV', 2));
+      await expect(indicator).toBeHidden();
+      expect(await page.evaluate(() => window.kq!.tools!.state().xray)).toBe(false);
+      const response = page.waitForResponse(cloud);
+      release();
+      expect((await response).ok()).toBe(true);
+      await expect(indicator).toBeHidden();
+    } finally {
+      release();
+    }
     const r = await page.evaluate(() => window.kq!.tools!.xray(true));
     expect(r.loaded).toBe(true);
     expect(r.points).toBeGreaterThan(5000);
+    await expect(indicator).toBeHidden();
     await page.evaluate(() => window.kq!.step(90));
     await page.waitForTimeout(1600);
     expect(await page.evaluate(() => window.kq!.tools!.state().clear)).toBeGreaterThan(0.9);
