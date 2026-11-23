@@ -20,6 +20,7 @@ addStrings('de', {
   'tools.xray.on': 'Röntgenblick: Bodenpunkte von 2025',
   'tools.xray.off': 'Röntgenblick aus',
   'tools.xray.loading': 'Punktwolke wird geladen …',
+  'tools.xray.failed': 'Die Punktwolke konnte nicht geladen werden.',
   'tools.xray.none': 'Hier gibt es keine Punktwolke.',
   'tools.xray.badge': 'Röntgenblick · Punktwolke 2025 (ALS, Bodenpunkte)',
   'tools.xray.paws': 'Spuren in der Punktwolke: Fiktion',

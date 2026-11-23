@@ -50,7 +50,7 @@ const bin = async (url: string, slot: ReturnType<ByteTracker['add']> | null = nu
 export async function loadGameData(baseUrl = DATA_URL, onProgress?: (done: number, total: number) => void): Promise<GameData> {
   const meta = await json<TerrainMeta>(`${baseUrl}terrain/meta.json`);
   let done = 0;
-  const total = 8;
+  const total = 9;
   // progress: finished files, refined by the bytes of the four big rasters as they stream in
   let bytesGot = 0;
   let bytesTotal = 0;
@@ -78,6 +78,7 @@ export async function loadGameData(baseUrl = DATA_URL, onProgress?: (done: numbe
       report();
       return v;
     });
+  report();
   const [b2025, b1789, ground, canopy, footprints, rooms, pois, paths, attribution] = await Promise.all([
     tick(bin(`${baseUrl}${meta.files.h2025.path}`, tracker.add())),
     tick(bin(`${baseUrl}${meta.files.h1789.path}`, tracker.add())),
@@ -86,9 +87,13 @@ export async function loadGameData(baseUrl = DATA_URL, onProgress?: (done: numbe
     tick(json<GameData['footprints']>(`${baseUrl}palace/footprints.json`)),
     tick(json<{ rooms: Room[] }>(`${baseUrl}palace/rooms.json`)),
     tick(json<{ pois: Poi[] }>(`${baseUrl}pois.json`)),
-    json<PathGraphFile>(`${baseUrl}paths.json`),
-    json<GameData['attribution']>(`${baseUrl}attribution.json`),
-  ]);
+    tick(json<PathGraphFile>(`${baseUrl}paths.json`)),
+    tick(json<GameData['attribution']>(`${baseUrl}attribution.json`)),
+  ]).catch((err: unknown) => {
+    // Sibling requests can still report bytes after the boot error is on screen.
+    onProgress = undefined;
+    throw err;
+  });
   const q2025 = decodeH2025(b2025, meta);
   const q1789 = decodeH1789(b1789, q2025);
   return {
