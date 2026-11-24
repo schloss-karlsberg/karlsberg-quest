@@ -4,7 +4,7 @@ aliases:
 - TASK-009
 title: 'Rework the popovers: less intrusive, keyboard-closable'
 slug: rework-the-popovers-less-intrusive-keyboard-closable
-status: in-progress
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -184,6 +184,7 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — The contributor's mobile tour passed all six selected states. Small landscape covered `hud-idle` and `toasts`. Small portrait covered `title`, `news`, `title-settings` and `rotate`. The landscape toast view had 33 findings against 38 on main, including 14 S1 findings on each.
 - 2026-11-24 — Compared the three unchanged/verified screenshot pairs under `test-results/contribute/TASK-009/`. The two-toast view now shows only “Karte ergänzt”. The Kasuar payout moved from the centre to the right edge and the feather appears once. The map covers the underlying notice. The matching captures are `after-1-two-toasts.png`, `after-2-quest-payout.png` and `after-3-map-over-notice.png`.
 - 2026-11-24 — Ship self-review covered the full diff against main, including notice priority and resumption, input ownership, payout receipts, German UI strings and browser assertions. `git diff --check` passed. The branch includes the earlier TASK-011 status change in `cdb95d0`. The remaining popover and whole-UI criteria are tracked in the follow-up checklist.
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/9
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.
