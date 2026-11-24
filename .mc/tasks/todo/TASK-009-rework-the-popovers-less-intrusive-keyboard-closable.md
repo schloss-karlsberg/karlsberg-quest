@@ -112,7 +112,7 @@ _Status: approved 2026-11-24_
 
 - [x] 1. Let a HUD toast claim and release the existing director slot. Keep the bounded queue, duplicate suppression, fight/talk holds and priority for requested pages. An obscured notice resumes with reading time left.
 - [x] 2. Render the quest payout as a compact, non-focusable status at the HUD edge. Show the quest title and gains, keep full details accessible in the existing journal, and retain timeout and walk-away dismissal.
-- [ ] 3. Suppress the matching pickup row when the payout already reports the item. Preserve grants, ordinary pickups and inventory-full feedback. Check the displayed quantities against what the player received.
+- [x] 3. Suppress the matching pickup row when the payout already reports the item. Preserve grants, ordinary pickups and inventory-full feedback. Check the displayed quantities against what the player received.
 - [ ] 4. Give the top modal first refusal, including required choices. In free play, Escape dismisses the visible notice, then a separate press can pause. Account for key repeat and browser pointer-lock loss. Use Enter, Space or E only when free, respecting bindings, typing, focused controls, dialogue and photo mode.
 - [ ] 5. Recognize a completed outside tap on the play surface or the top closable modal's backdrop. Preserve button activation, modal scrolling, stick movement and camera drags.
 - [ ] 6. Fit long German summaries around the tracker and thumb controls. Use the game's reduced-motion setting for both appearance and dismissal, and keep the world view and camera interactive.
@@ -166,6 +166,7 @@ _Status: approved 2026-11-24_
   - `test-results/contribute/TASK-009/before-3-map-over-notice.png`
 - 2026-11-24 — Step 1 added the six-entry waiting queue to the card director. Toasts deduplicate, yield to modal pages and fight/talk holds, and count down on visible frames. `pnpm exec vitest run tests/cards.test.ts` passed.
 - 2026-11-24 — Step 2 moved the quest payout to the right-edge HUD dock with a Codex count and a pointer to the field book for details. The notice retains the timeout, walk-away threshold and quiet quest presentation. `pnpm typecheck` passed.
+- 2026-11-24 — Step 3 suppressed the quest item pickup row and used progression's synchronous receipts for actual item counts and quest XP. The focused card, quest and progression tests and `pnpm typecheck` passed.
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.

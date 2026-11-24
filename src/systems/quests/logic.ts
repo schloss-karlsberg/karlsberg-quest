@@ -449,9 +449,15 @@ export class QuestBook {
     if (st === 'done' || (!force && st !== 'ready')) return null;
     const r: QuestRewards = q.rewards ?? {};
     const xp = r.xp ?? 0;
-    if (xp > 0) this.env.emit('xp:grant', { amount: xp, reason: `quest:${id}` });
-    const items = (r.items ?? []).map((i) => ({ item: i.item, count: i.count ?? 1 }));
-    for (const i of items) this.env.emit('item:grant', { item: i.item, count: i.count, reason: `quest:${id}` });
+    const reason = `quest:${id}`;
+    const xpReceipt = { amount: 0 };
+    if (xp > 0) this.env.emit('xp:grant', { amount: xp, reason, receipt: xpReceipt });
+    const items: QuestPayout['items'] = [];
+    for (const i of r.items ?? []) {
+      const receipt = { amount: 0 };
+      this.env.emit('item:grant', { item: i.item, count: i.count ?? 1, reason, receipt });
+      if (receipt.amount > 0) items.push({ item: i.item, count: receipt.amount });
+    }
     const facts = [...(q.history ?? []).map((l) => l.fact).filter((f): f is string => !!f), ...(r.codex ?? [])];
     const fresh: string[] = [];
     for (const f of facts) {
@@ -468,7 +474,7 @@ export class QuestBook {
     this.cleanup(q);
     this.track(id, false);
     if (!this.slice.unseen.includes(`q:${id}`)) this.slice.unseen.push(`q:${id}`);
-    const pay: QuestPayout = { id, title: q.title_de, xp, items, codex: fresh, skills: [...(r.skills ?? [])], quiet: !!q.quiet, main: q.kind === 'main' };
+    const pay: QuestPayout = { id, title: q.title_de, xp: xpReceipt.amount, items, codex: fresh, skills: [...(r.skills ?? [])], quiet: !!q.quiet, main: q.kind === 'main' };
     this.onPayout(pay);
     if (q.next) this.offer(q.next);
     this.onChange('complete');

@@ -199,8 +199,9 @@ class Progression {
       disposeFns.push(off);
       return off;
     };
-    on('xp:grant', ({ amount, reason, x, z }) => {
+    on('xp:grant', ({ amount, reason, x, z, receipt }) => {
       const gained = this.core.grantXp(amount, reason, reason === 'debug');
+      if (receipt) receipt.amount = gained;
       if (gained <= 0) return;
       if (x !== undefined && z !== undefined && Number.isFinite(x) && Number.isFinite(z)) this.hud.float(`+${gained} EP`, x, ctx.world.heightAt(x, z) + 1.9, z);
       else if (reason !== 'debug') this.hud.line('xp', `+${gained} Erfahrung`);
@@ -215,16 +216,19 @@ class Progression {
       this.cards.push(level, points);
       this.tabs.refresh();
     });
-    on('item:grant', ({ item, count, quiet }) => {
+    on('item:grant', ({ item, count, reason, quiet, receipt }) => {
       const want = Math.max(1, count ?? 1);
-      const got = this.core.grantItem(item, want, { quiet });
+      const got = this.core.grantItem(item, want, { reason, quiet });
+      if (receipt) receipt.amount = got;
       if (got < want && !quiet) this.refuse(`Kein Platz mehr: ${this.name(item)} (${this.core.count(item)})`);
       this.changed('item');
     });
-    on('item:pickup', ({ item, count, total }) => {
+    on('item:pickup', ({ item, count, total, reason }) => {
       if (!this.core.quietNow) {
         const def = this.item(item);
-        this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (def?.kind === 'consumable' && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
+        if (!reason?.startsWith('quest:')) {
+          this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (def?.kind === 'consumable' && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
+        }
         pickupSound(ctx.audio, def?.kind ?? 'quest');
       }
       this.updateQuick();
