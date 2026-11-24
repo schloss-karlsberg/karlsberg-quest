@@ -43,6 +43,9 @@ node scripts/dev/shot.mjs "http://localhost:5280/?debug&nosave&fresh&x=704&z=-77
 
 `scripts/dev/shot.mjs <url> <out.png> [js]` (one view; the optional js runs against `window.kq`
 first); `scripts/dev/shots.mjs <outdir>` takes several views from `VIEWS='[{"name":..,"x":..,"z":..}]'`.
+`?notitle` skips the title but starts **no story** (free roam): for a chapter opening, a story card
+or a new-game path, start it in the js (e.g. `kq.story.start('Gast')`) and check the chapter/beat in
+the log before trusting the shot. Look at every before shot once: it must show the view the plan names.
 Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.ts` with
 `playwright.gpu.config.ts`. `test-results/` is gitignored: **never commit screenshots.**
 
