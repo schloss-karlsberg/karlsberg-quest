@@ -4,7 +4,7 @@ aliases:
 - TASK-007
 title: Remove leftovers of the first game concept; align everything with the guided tour with time travel
 slug: remove-leftovers-of-the-first-game-concept-align-everything-with-the-guided-tour
-status: todo
+status: in-progress
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Remove leftovers of the first game concept; align everything with the guided tour with time travel
@@ -180,6 +180,100 @@ moved to the new defaults (settings migration).
 - [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green
 - [ ] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+
+## Plan
+
+_Status: approved 2026-11-24_
+
+**Approach:** Retire the Feldbuch as a navigation system (§6) and change its save wording (§1). Pause is the primary route to all eight destinations on desktop and touch. Render each existing tab body in a plain modal with “Zurück”, using the current modal manager and dependencies. The phone gallery belongs to TASK-006. The complete legacy prologue belongs to the `?classic` follow-up, together with its save migration and tests against real v0.6–v0.8 saves.
+
+**Files to touch:**
+
+- `src/ui/menus.ts`, `src/ui/journal.ts`, `src/boot.ts` — connect registered feature pages to Pause and the existing modal manager. Preserve the independent shelf and collection-section registrations.
+- `src/systems/quests/{index,journal,hud,strings}.ts`, `quests.css` — extract the Aufgaben, Codex and Sammlungen views from the book shell, including badges, tracking, sources and history.
+- `src/systems/progression/{index,journal-tabs}.ts`, `progression.css` — use the equipment and talent renderers directly and remove the delayed inventory fallback.
+- `src/systems/travel/index.ts`, `src/systems/flaschen/index.ts`, `src/systems/story/hub/overlay.ts` — carry over Karte, Funde, bottle counts and shelf access.
+- `src/systems/photo/index.ts` — register the existing Album renderer as a Pause destination.
+- `src/systems/chronik/{index,strings}.ts`, `src/systems/chronik/ui/card.ts` — point the clue card and the hub's Chronik path at Codex.
+- `src/player/{input,touchMap}.ts`, `src/ui/{touch.ts,touchIcons.ts,touch.css}` — remove the journal action, button, icon and mobile book layout.
+- `src/i18n/{de,de.content}.ts`, `src/systems/{story,skills}/strings.ts` — update save, name, skill and control text. The credits end line mentioned in §6 is already absent from `src/systems/story/endings/ui.ts`.
+- `scripts/content-build/enden.mjs` → `content/story/05-enden.story.json` — make the endings builder own the free-roam objective text (`end.frei`) on a normal `node scripts/content-build/build.mjs` run. Its current optional `--story` path only writes epilogue data.
+- `README.md`, `docs/ACTION-RPG.md`, `docs/PRD.md` — update “How to play”, the current journal controls and §14 row, and the PRD changelog. Unit and browser files are named below.
+
+**Steps:**
+
+- [ ] 1. List Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album in Pause. Use their existing tab renderers as plain modal bodies, including their refresh and close callbacks. “Zurück” returns focus to the entry. Make the list scrollable in landscape and keep the story's conditional pause actions available.
+- [ ] 2. Keep I → Ausrüstung and M → Karte as shortcuts. Connect the clue-card action to Codex and preserve the hub's pending clue cards, its `chronik:open/opened/closed` events and its return from Codex to the Pinnwand. Check the map's cleanup when leaving the view.
+- [ ] 3. Remove both journal shells, the J listener, journal default and rebind row, touch button and icon mappings, tab navigation and obsolete journal debug hooks. Update the HUD, controls, skill messages and name-entry heading. Use “Mehr dazu unter Pause → Aufgaben”, “Neu im Codex” and “Codex öffnen”. Point the free-roam ending at Pause in the endings builder, regenerate with `node scripts/content-build/build.mjs` and verify the generated story diff is confined to `end.frei`. Preserve the four owner-pending pages, their records and the `feldbuch.*` talents.
+- [ ] 4. Set title buttons to “Neues Spiel” and “Weiter”, and the overwrite prompt to “Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?”. Use “Speichern” for the pause action, “Spielstand gespeichert.” for its confirmation and save toast, and “Ausgeruht. Spielstand gespeichert.” for a successful rest. Update the corresponding README instructions and the two design-doc entries without linking task files.
+- [ ] 5. Update the affected unit tests, Playwright specs and shared prologue helper. Run the four gates and compare the contributor's before/after views. Record results against this slice and keep the epic in progress.
+
+**Test plan:**
+
+- **Screenshots.** The contributor takes both before shots on unchanged code and repeats the same views after implementation. Save all four images in the **main checkout** under `test-results/contribute/TASK-007/`.
+  1. **Desktop title, 1280×720.** In a disposable browser profile, start `http://localhost:5280/?notitle&fresh&q=low` and save once through Pause. Open `http://localhost:5280/?q=low` in that profile and wait for enabled `title-continue` and `title-new`. Capture both labels in `before-title.png` and later `after-title.png`.
+  2. **Phone Pause, 844×390 landscape.** Enable touch emulation (`hasTouch: true`, mobile/coarse pointer) and open `http://localhost:5280/?notitle&fresh&nosave&q=low`. Once the opening card clears and the HUD is active, tap `touch-pause`. Capture the top of the menu in `before-pause-touch.png` and later `after-pause-touch.png` at the same scroll position.
+- **Units.** Change the J assertions in `tests/camera.test.ts`, `tests/rpg-contracts.test.ts` and `tests/touchMap.test.ts`. In `tests/perf-settings.test.ts` cover an old settings record with a journal override plus a custom binding for a surviving action. Verify the retired action is ignored and the other binding still works. Keep quest tracking, talent ranks, album entries and save round-trip coverage green. Run `pnpm typecheck && pnpm test && pnpm validate && pnpm build`.
+- **Selector and hook audit.** The recursive search includes `e2e/helpers/` and `e2e/mobile/`. Repeat against the final diff for each removed or renamed selector, hook and player-facing label. The old surface includes `journal`, `journal-fallback`, `journal-tab-*`, `journal-panel-*`, `touch-journal`, `bind-journal`, tab roles/selection and arrow/digit keys, `KeyJ` and quoted lowercase `'j'`. Migrate `window.kq.quests.journal/closeJournal/journalOpen` and `window.kq.progression.journal` callers to player controls. Retain the Chronik debug surface over Codex and the existing inner content selectors (including quest detail/history, gear/talents, Codex and album entries).
+
+  ```sh
+  rg -ni -e 'journal|feldbuch|weiter vermessen|keyj|[\x22\x27\x60]j[\x22\x27\x60]|kqj-|kqp-jf|data-tab|role=.tab|aria-selected' \
+    -e 'chronik[!?.]+(open|isOpen|tab|close)\(|chronik:(open|closed)|hub-chronik' e2e/
+  ```
+
+  | Affected Playwright file | What to exercise |
+  | --- | --- |
+  | `quests.spec.ts` | Reward hint, Pause → Aufgaben, quest detail/history and sources, Codex and Sammlungen. |
+  | `chronik.spec.ts` | Replace J and tab-strip arrow/digit assertions with keyboard entry, focus, Back/Escape, direct card → Codex and hub return. On default settings J alone opens nothing. |
+  | `integration.spec.ts`, `npc.spec.ts` | Replace the journal root and Codex tab assertions. Close Codex to return to the originating hub exactly once. |
+  | `progression.spec.ts`, `flaschen.spec.ts` | I → Ausrüstung, Pause → Talente, learn a talent, and Pause → Sammlungen for the bottle row. Replace the fallback selector and quest journal hooks. |
+  | `photo.spec.ts` | Take a successful shot, put the phone away, open Pause → Album and verify the saved entry. |
+  | `touch.spec.ts` | Replace the journal-button tap with `touch-pause`. Reach all eight destinations, scroll to the last entry and return with “Zurück”. |
+  | `chapter-prolog.spec.ts` via `helpers/prolog.ts` | Replace only the journal open/close calls and screenshot in `playProlog` with Pause → Aufgaben and a return to play. |
+  | `smoke.spec.ts`, `story.spec.ts` | Smoke plus title, overwrite/cancel, pause save/reload and bench feedback with saving enabled in an isolated profile. Preserve the title flow and hub clue-card queue. |
+
+  `notes.spec.ts` injects its own Feldbuch toast and `perf.spec.ts` mentions the old title in a comment. Neither uses a retired control. The key search found `KeyJ` calls in quests, chronik and photo, and zero quoted lowercase `'j'` calls.
+
+- **Contributor's browser run after the build.** Use keyboard events, touch taps and DOM buttons throughout. With `&manual`, wait for base `window.kq`, call `kq.step(1)` while polling for feature hooks, then drive the UI. Exercise the Pause list at both viewport sizes, the reduced-motion setting, Tab/Shift+Tab, one-layer dismissal, saved data after reload and the existing I/M shortcuts. The tests must run without acquiring real pointer lock.
+
+  ```sh
+  scripts/dev/heavy.sh -- pnpm exec playwright test \
+    e2e/{smoke,quests,chronik,integration,npc,progression,flaschen,photo,touch,chapter-prolog,story}.spec.ts --workers=1
+  ```
+
+  The separate `e2e/mobile/tour.pw.ts` audit found `touch-journal`, dynamic `journal-tab-*` selectors and `quests.journal()` calls. Limit its edits to those broken interactions, retaining its state names and `scripts/dev/mobile-tour.ts` runner. The contributor's run comprises the eleven specs above.
+
+  Audit player text with `rg -ni 'Feldbuch|\(J\)|\[J\]' src content`. Expect legacy prologue hits until the `?classic` slice removes `00-prolog.story.json`, its builder, pack and quests. Check the implementation diff for accidental changes to these files after regeneration.
+
+**Risks:** Closing Codex can reopen the hub, and leaving Karte must release its map listeners. Run each cleanup once and restore focus to the originating control. Use the existing scrollable modal and still backdrop for touch and reduced motion. Verify save confirmation with saving enabled.
+
+**Open questions:** Where should Sammlungen, Funde, Ausrüstung and Talente ultimately live? All four stay usable as separate Pause entries pending the owner's decision. The owner also retains the decision on the “Feldbuch” talent label and in-fiction notebook references, including voiced lines. These decisions can follow this slice.
+
+**Acceptance criteria coverage** (in epic order, planned scope)
+
+| Epic criterion | Coverage | Slice outcome |
+| --- | --- | --- |
+| 1. Title, new game and pause language | partial | Save actions and name heading. Title identity, lantern and wider opening copy follow. |
+| 2. One-click tour map start | follow-up | New-game flow. |
+| 3. Journal, Feldbuch wording and destinations | partial | Both shells and default J/touch entrances removed, all eight destinations reachable from Pause and save UI renamed. Legacy prompts, the phone gallery and owner-pending wording have later slices. |
+| 4. Survey keymap and mobile controls | follow-up | Survey controls have their own slice. |
+| 5. Classic removal and single bible | follow-up | Legacy migration and bible merge have separate slices. |
+| 6. Visible Messstab handoff | follow-up | Tour item and avatar work. |
+| 7. Hub move and spring E conflict | follow-up | Only the existing hub's Codex round trip is in scope. |
+| 8. v0.6–v0.8 saves and migration test | follow-up | Existing formats and talent IDs are reused here. Legacy progress migration and its real-save test go together. |
+| 9. Smoke, affected e2e and units | full | Required for this slice, including contributor-run browser checks. |
+| 10. PRD, ACTION-RPG and README | partial | Changelog, §14 row and current controls/how-to. The broader concept rewrite follows. |
+| 11. Four gates | full | All four must pass on the implemented slice. |
+
+**Follow-up slices:**
+
+- [ ] §5 — Retire `?classic`, legacy story/quests/pack, builder and exclusive voices. Migrate every legacy beat/quest state and test real v0.6–v0.8 saves for preserved progress and grants.
+- [ ] §§1–2 — Tour title, icons, hints, metadata and one-tap route-map/audio start, including the remaining opening copy.
+- [ ] §3 — Tour Messstab handoff, avatar visibility and XP budget.
+- [ ] §§4–5 — Relocate the hub after the placement decision, restore the spring interaction and reconcile station IDs, endings and the “Bauwagen” text on the e1-wahl card.
+- [ ] §6 — Resolve permanent destinations, talent wording and in-fiction/voiced references with the owner.
+- [ ] §7 — Survey keymap, settings migration, touch expansion and tutorials.
+- [ ] §§5, 8 — Merge the bibles, reconcile remaining PRD/architecture/gameplay docs, historical material and dead references.
 
 ## Notes
 - Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.
