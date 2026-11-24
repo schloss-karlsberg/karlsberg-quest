@@ -213,6 +213,7 @@ describe('job building and batching', () => {
   it('clips carry the guarded absolute reference, seed, language, instruction and params', () => {
     const [laub, marlene] = buildClips(items.slice(0, 2), cfg);
     expect(laub).toEqual({ id: 'line.0', text: 'Satz 0.', reference: expect.stringMatching(/kq-models\/voices\/laub-ref\.wav$/), seed: 102, language: 'German', instruction: 'brisk', params: { max_tokens: 1000 } });
+    expect(buildClips([{ id: 'other.take', text: 'Hallo.', moss: { ...v('laub'), takeSeed: 0 } }], cfg)[0]?.seed).toBe(0);
     expect(marlene).not.toHaveProperty('instruction');
     expect(() => buildClips([{ id: 'x', text: 'y', moss: { ...v('laub'), reference: '../../casting/clips/brian.mp3' } }], cfg)).toThrow(/ElevenLabs|outside/);
   });

@@ -102,8 +102,12 @@ model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in
   1. `KQ_MOSS_MODE=service pnpm voice:gen --speakers laub --max-lines 200` submits one job per line that
      needs (re)generation per the manifest (incl. `stale-engine`): `{project: "karlsberg-quest", id,
      voice: <serviceVoice or speaker>, text: <the prepared speech text that speechHash is taken over>, output: {path:
-     <raw-dir>/<id>.wav, format: "wav"}}`, with no seed or params (those come from the registry, so keys
-     stay stable). It prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
+     <raw-dir>/<id>.wav, format: "wav"}}`. The registry supplies the default seed and params.
+     To reroll one line, set its ID in the speaker's `lineSeeds` map in `scripts/voice/voices.json`.
+     The generator sends that job's `seed`, which changes the service cache key, and requests
+     `<id>~<seed>.wav` so cached results that omit the seed can still be matched to the take.
+     Collection records the override as `takeSeed`. The credited speaker seed still determines `voiceId`.
+     Submission prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
      refuses are listed and the exit code is 1.
   2. After the owner ran `moss-run`, the same command (or `--collect`) reads each line's result. `ok` /
      `cached`: the record's `text_sha256` must equal the sha256 of the text we submitted, the WAV's
@@ -113,7 +117,7 @@ model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in
      `serviceKey` (the service job key) and `sha256Raw`. A failed check, `failed` or `refused` is reported
      (exit 1) and the manifest entry stays as it was; `queued` / `running` print "still queued".
   Without `--submit` / `--collect`, lines with a current result are collected, lines without one (or with
-  a result for an older text) are submitted. `--submit` only submits. `--wait [min]` (default 30) polls
+  a result for older text or another take) are submitted. `--submit` only submits. `--wait [min]` (default 30) polls
   the client's `waitAll` after submitting and collects what finished; on timeout it prints "still queued"
   and exits 0.
 - **Raw WAVs:** `--raw-dir` (default `.voice-raw/raw-service/` in the checkout, gitignored). Never under

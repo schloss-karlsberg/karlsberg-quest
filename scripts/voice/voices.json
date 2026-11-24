@@ -107,6 +107,7 @@
       "serviceVoice": "guest-test",
       "refSha256": "7acb49ed513b9c26b8fb645714b794fd62981bac1f5d99622ca98527c0d2fec5",
       "seed": 7,
+      "lineSeeds": { "player.t.wind": 8 },
       "language": "German",
       "params": {
         "max_tokens": 150

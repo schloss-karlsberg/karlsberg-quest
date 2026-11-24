@@ -127,11 +127,11 @@ export interface MossItem {
   moss: MossVoice;
 }
 
-/** One runner clip per line: the speaker's fixed reference + seed (direct clone mode, as in the casting consistency batch). */
+/** One runner clip per line with the speaker's reference and the seed for the requested take. */
 export function buildClips(items: MossItem[], cfg: Pick<MossConfig, 'voices'>): MossClip[] {
   return items.map(({ id, text, moss }) => {
     if (!moss.reference) throw new Error(`moss: ${moss.speaker} requires service mode`);
-    const c: MossClip = { id, text, reference: checkReference(moss.reference, cfg.voices), seed: moss.seed, language: moss.language, params: { ...moss.params } };
+    const c: MossClip = { id, text, reference: checkReference(moss.reference, cfg.voices), seed: moss.takeSeed ?? moss.seed, language: moss.language, params: { ...moss.params } };
     if (moss.instruction) c.instruction = moss.instruction;
     return c;
   });

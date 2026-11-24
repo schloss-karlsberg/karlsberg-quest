@@ -288,10 +288,20 @@ describe('mossService helpers', () => {
       expect(assessResult(l, ok({ seed: 7 }), deps)).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/seed/) });
     });
     it('a final result for another text is stale (resubmitted, not collected)', () => {
-      expect(isStaleResult(ok({ text_sha256: textSha256('old') }), 'Guten Tag.')).toBe(true);
-      expect(isStaleResult(ok(), 'Guten Tag.')).toBe(false);
-      expect(isStaleResult({ status: 'queued' }, 'Guten Tag.')).toBe(false);
-      expect(isStaleResult(null, 'Guten Tag.')).toBe(false);
+      expect(isStaleResult(ok({ text_sha256: textSha256('old') }), l)).toBe(true);
+      expect(isStaleResult(ok(), l)).toBe(false);
+      expect(isStaleResult({ status: 'queued' }, l)).toBe(false);
+      expect(isStaleResult(null, l)).toBe(false);
+    });
+    it('recognizes a requested take in fresh and seedless cached results', () => {
+      const take = { ...l, takeSeed: 8 };
+      expect(isStaleResult(ok(), take)).toBe(true);
+      expect(assessResult(take, ok({ seed: 8 }), deps).kind).toBe('ready');
+      const cached = ok({ status: 'cached', seed: undefined });
+      expect(assessResult(take, cached, deps).kind).toBe('failed');
+      const output = serviceJob(take, RAW).output.path;
+      expect(assessResult(take, { ...cached, output }, deps).kind).toBe('ready');
+      expect(isStaleResult({ ...cached, output }, l)).toBe(true);
     });
   });
 
@@ -455,6 +465,23 @@ describe('generate.mjs service mode (fake client)', () => {
       return { status: 'ok', key: 'a'.repeat(64), output: out, sha256: sha256File(out), text_sha256: textSha256(SPOKEN[id]!), engine: { ...SVC_ENGINE }, seed: 102, voice: 'laub', project: SERVICE_PROJECT, id, ...over };
     };
     const manifest = () => (existsSync(join(OUT, 'manifest.json')) ? JSON.parse(readFileSync(join(OUT, 'manifest.json'), 'utf8')) : { lines: {} });
+
+    it.skipIf(!haveFfmpeg)('rerolls only the configured line and records its take under the credited voice ID', () => {
+      const voices = voicesFile({ laub: { ...laubVoice, lineSeeds: { 'laub.a': 103 } } }, 'voices-reroll.json');
+      state('results.json', { 'laub.a': okRec('laub.a'), 'laub.b': okRec('laub.b') });
+      expect(gen(['--collect']).status).toBe(0);
+      const submit = gen(['--submit'], {}, voices);
+      expect(submit.status, submit.stderr).toBe(0);
+      expect(readState('submitted.json')).toEqual([
+        { project: SERVICE_PROJECT, id: 'laub.a', voice: 'laub', text: SPOKEN['laub.a'], seed: 103, output: { path: join(RAW, 'laub.a~103.wav'), format: 'wav' } },
+      ]);
+      state('results.json', { 'laub.a': okRec('laub.a', { seed: 103 }) });
+      const collect = gen(['--collect'], {}, voices);
+      expect(collect.status, collect.stderr).toBe(0);
+      expect(manifest().lines['laub.a']).toMatchObject({ voiceId: mossVoiceId('laub', LAUB_SHA.slice(0, 8), 102), takeSeed: 103 });
+      expect(manifest().lines['laub.b']).not.toHaveProperty('takeSeed');
+      expect(gen(['--submit'], {}, voices).stdout).toContain('Nothing to generate');
+    });
 
     it.skipIf(!haveFfmpeg)('checks consent on collect and keeps player as the manifest speaker for a cached guest-test clip', () => {
       state('results.json', {

@@ -316,6 +316,7 @@ function finish(r, raw, credits, o = {}) {
     speaker: r.line.speaker,
     provider: r.voice.provider,
     voiceId: r.voice.voiceId,
+    takeSeed: r.voice.moss?.takeSeed,
     model: r.voice.model,
     licence: r.voice.licence,
     date: new Date().toISOString(),
@@ -395,7 +396,10 @@ process.exit(exitCode);
 // moss service mode (scripts/voice/mossService.ts): submit / collect, never a model in this process
 
 function serviceLines(rows) {
-  return rows.map((r) => ({ r, id: r.line.id, speaker: r.line.speaker, serviceVoice: r.voice.moss.serviceVoice, text: r.tts, seed: r.voice.moss.seed }));
+  return rows.map((r) => {
+    const { serviceVoice, seed, takeSeed } = r.voice.moss;
+    return { r, id: r.line.id, speaker: r.line.speaker, text: r.tts, serviceVoice, seed, takeSeed };
+  });
 }
 
 function serviceCreditGuard(rows) {
@@ -438,8 +442,7 @@ async function runService(rows) {
       continue;
     }
     const rec = await client.result(SERVICE_PROJECT, l.id);
-    // default: no result yet, or a result for an older text → submit; anything else → collect
-    if (!a.collect && (rec === null || isStaleResult(rec, l.text))) toSubmit.push(l);
+    if (!a.collect && (rec === null || isStaleResult(rec, l))) toSubmit.push(l);
     else recs.set(l.id, rec);
   }
   let code = 0;
@@ -534,7 +537,7 @@ async function servicePlan(rows) {
     if (client && !a.submit) {
       const rec = await client.result(SERVICE_PROJECT, l.id);
       if (!rec) state = a.collect ? 'not submitted' : 'submit';
-      else if (!a.collect && isStaleResult(rec, l.text)) state = `submit (old ${rec.status} result for another text)`;
+      else if (!a.collect && isStaleResult(rec, l)) state = `submit (old ${rec.status} result for another text or take)`;
       else state = rec.status === 'queued' || rec.status === 'running' ? `still ${rec.status}` : `collect ${rec.status}`;
     }
     states[state] = (states[state] ?? 0) + 1;

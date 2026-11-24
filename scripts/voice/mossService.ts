@@ -45,6 +45,7 @@ export interface ServiceJob {
   id: string;
   voice: string;
   text: string;
+  seed?: number;
   output: { path: string; format: 'wav' };
 }
 /** One `submit()` answer per job. `cached`: the runner will answer it from the service cache. */
@@ -145,15 +146,19 @@ export async function readRegistry(client: ServiceClient, exec: ExecFn = default
 export const textSha256 = (text: string): string => createHash('sha256').update(Buffer.from(text, 'utf8')).digest('hex');
 export const sha256File = (path: string): string => createHash('sha256').update(readFileSync(path)).digest('hex');
 
-export const rawPath = (rawDir: string, id: string): string => join(resolve(rawDir), `${id}.wav`);
+const rawName = (id: string, takeSeed?: number): string => takeSeed === undefined ? `${id}.wav` : `${id}~${takeSeed}.wav`;
+export const rawPath = (rawDir: string, id: string, takeSeed?: number): string => join(resolve(rawDir), rawName(id, takeSeed));
 
 /**
  * One job per line. `text` is the prepared speech text the pipeline hashes into `speechHash`
- * (speech.json override or auto-prep), never the raw display text. No seed or params: those come
- * from the service registry, so the service keys stay stable (and the consistency guard checks them).
+ * (speech.json override or auto-prep). Only a line with a configured take overrides the registry seed.
  */
-export function serviceJob(l: Pick<ServiceLine, 'id' | 'speaker' | 'serviceVoice' | 'text'>, rawDir: string): ServiceJob {
-  return { project: SERVICE_PROJECT, id: l.id, voice: l.serviceVoice ?? l.speaker, text: l.text, output: { path: rawPath(rawDir, l.id), format: 'wav' } };
+export function serviceJob(l: Pick<ServiceLine, 'id' | 'speaker' | 'serviceVoice' | 'text' | 'takeSeed'>, rawDir: string): ServiceJob {
+  return {
+    project: SERVICE_PROJECT, id: l.id, voice: l.serviceVoice ?? l.speaker, text: l.text,
+    ...(l.takeSeed === undefined ? {} : { seed: l.takeSeed }),
+    output: { path: rawPath(rawDir, l.id, l.takeSeed), format: 'wav' },
+  };
 }
 
 /** realpath, or the realpath of the nearest existing parent + the rest. */
@@ -258,6 +263,7 @@ export interface ServiceLine {
   /** the exact text submitted */
   text: string;
   seed: number;
+  takeSeed?: number;
 }
 
 export type Assessment =
@@ -268,9 +274,19 @@ export type Assessment =
 
 const FINAL = ['ok', 'cached', 'failed', 'refused'];
 
-/** A final result whose text is not the one we would submit now (an older text): to be resubmitted, not collected. */
-export const isStaleResult = (rec: ResultRecord | null, text: string): boolean =>
-  !!rec && FINAL.includes(rec.status) && typeof rec.text_sha256 === 'string' && rec.text_sha256 !== textSha256(text);
+function matchesTake(l: ServiceLine, rec: ResultRecord): boolean {
+  if (rec.seed !== undefined) return rec.seed === (l.takeSeed ?? l.seed);
+  // Cached records omit the seed but retain the output path of the submitted job.
+  if (rec.status === 'cached') return typeof rec.output === 'string' && basename(rec.output) === rawName(l.id, l.takeSeed);
+  return l.takeSeed === undefined && !l.serviceVoice;
+}
+
+/** A final result for older speech or another take should be resubmitted. */
+export const isStaleResult = (rec: ResultRecord | null, l: ServiceLine): boolean =>
+  !!rec && FINAL.includes(rec.status) && (
+    (typeof rec.text_sha256 === 'string' && rec.text_sha256 !== textSha256(l.text)) ||
+    ((rec.status === 'ok' || rec.status === 'cached') && !matchesTake(l, rec))
+  );
 
 /**
  * What a result record means for one line. ok/cached are checked before anything is post-processed:
@@ -292,8 +308,8 @@ export function assessResult(
   if (rec.text_sha256 !== want) return { kind: 'failed', reason: `text_sha256 ${show(rec.text_sha256)} != sha256 of the submitted text ${want}` };
   const voice = l.serviceVoice ?? l.speaker;
   if ((l.serviceVoice || rec.voice !== undefined) && rec.voice !== voice) return { kind: 'failed', reason: `voice ${rec.voice} != ${voice}` };
-  if ((rec.seed !== undefined || (l.serviceVoice && rec.status === 'ok')) && rec.seed !== l.seed)
-    return { kind: 'failed', reason: `seed ${rec.seed} != voices.json seed ${l.seed}` };
+  if (!matchesTake(l, rec))
+    return { kind: 'failed', reason: `result does not match the requested seed ${l.takeSeed ?? l.seed}` };
   if (typeof rec.key !== 'string' || !/^[0-9a-f]{64}$/.test(rec.key)) return { kind: 'failed', reason: `no valid key (${show(rec.key)})` };
   if (typeof rec.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(rec.sha256)) return { kind: 'failed', reason: `no valid sha256 (${show(rec.sha256)})` };
   if (typeof rec.output !== 'string' || !(o.exists ?? existsSync)(rec.output)) return { kind: 'failed', reason: `WAV missing: ${show(rec.output)}` };

@@ -368,6 +368,8 @@ export interface SpeakerVoice {
   refSha256?: string;
   /** moss: fixed seed (mx.random / numpy / random) */
   seed?: number;
+  /** MOSS synthesis seed overrides keyed by dialogue line ID. */
+  lineSeeds?: Record<string, number>;
   /** moss: MOSS `language` (e.g. "German") */
   language?: string;
   /** moss: MOSS `instruction` (voice description) */
@@ -418,6 +420,7 @@ export interface MossVoice {
   /** first 8 hex of sha256 of the reference, null when the local file is missing */
   refSha8: string | null;
   seed: number;
+  takeSeed?: number;
   language: string;
   instruction?: string;
   params: Record<string, unknown>;
@@ -529,6 +532,8 @@ export interface ManifestEntry {
   engine?: MossEngine;
   /** moss-service clips only: the service's job key (sha256 hex over engine, voice, ref, seed, params, text) */
   serviceKey?: string;
+  /** MOSS synthesis seed when the line overrides the credited speaker seed in voiceId. */
+  takeSeed?: number;
   /** moss-service clips only: sha256 hex of the raw WAV the service rendered (checked before post-processing) */
   sha256Raw?: string;
 }
@@ -576,13 +581,14 @@ export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | '
 export function lineStatus(
   entry: ManifestEntry | undefined,
   hash: string,
-  voice: { voiceId: string; model: string; provider?: ProviderName; engine?: MossEngine },
+  voice: { voiceId: string; model: string; provider?: ProviderName; engine?: MossEngine; moss?: MossVoice },
   fileExists: (f: string) => boolean = () => true,
   speechHash?: string,
 ): LineStatus {
   if (!entry) return 'new';
   if (entry.textHash !== hash) return 'stale-text';
   if (entry.voiceId !== voice.voiceId || (voice.provider && (entry.provider ?? 'elevenlabs') !== voice.provider)) return 'stale-voice';
+  if (entry.takeSeed !== voice.moss?.takeSeed) return 'stale-voice';
   if (entry.model !== voice.model) return 'stale-model';
   if (voice.engine && !sameEngine(entry.engine, voice.engine)) return 'stale-engine';
   if (speechHash !== undefined && entry.speechHash !== speechHash) return 'stale-speech';
@@ -697,6 +703,12 @@ export function buildPlan(
     if (!voice) {
       skipped.push({ line, reason: 'no-voice' });
       continue;
+    }
+    const takeSeed = o.voices.speakers[line.speaker]?.lineSeeds?.[line.id];
+    if (voice.moss && takeSeed !== undefined) {
+      if (!Number.isInteger(takeSeed) || takeSeed < 0 || takeSeed > 0xffffffff)
+        throw new Error(`${line.id}: MOSS line seed must be an unsigned 32-bit integer`);
+      voice.moss.takeSeed = takeSeed;
     }
     const sp = speechFor(line, o.speech);
     if (sp.staleOverride) staleOverrides.push(line);
