@@ -36,7 +36,13 @@ const QUERY = '?debug&nosave&fresh&manual&q=high';
 const HELPERS = () => {
   const k = window.kq;
   const deg = Math.PI / 180;
-  let marlene;
+  const tourMembers = [
+    'double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost',
+    'double.soll', 'double.liese', 'child.compass', 'extra.1', 'extra.2', 'extra.3',
+    'extra.4', 'extra.5', 'extra.6',
+  ];
+  const stagedPeople = [];
+  const stagedRocks = [];
   let previousWeapon;
   let previousPlaySeconds;
   const h = {
@@ -125,8 +131,11 @@ const HELPERS = () => {
       k.npc?.despawn('*');
       k.walk.request({ op: 'despawn', group: 'fuehrung' });
       k.animals.clear();
-      marlene?.dispose();
-      marlene = undefined;
+      for (const person of stagedPeople.splice(0)) person.dispose();
+      for (const rock of stagedRocks.splice(0)) {
+        rock.removeFromParent();
+        rock.traverse((node) => { if (node.isMesh) node.material.dispose(); });
+      }
       if (previousWeapon !== undefined) {
         k.ctx.state.mutable.systems.progression.equipped.weapon = previousWeapon;
         k.ctx.events.emit('equip:change', { slot: 'weapon', item: previousWeapon });
@@ -175,13 +184,8 @@ const HELPERS = () => {
     },
     /** Stage the shipped tour roster and land it in formation at a route stop. */
     tour(stop, { gather = true, dogs = true } = {}) {
-      const members = [
-        'double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost',
-        'double.soll', 'double.liese', 'child.compass', 'extra.1', 'extra.2', 'extra.3',
-        'extra.4', 'extra.5', 'extra.6',
-      ];
       k.walk.go('imhoff', 'p-fuehrung', 'parkplatz');
-      k.walk.request({ op: 'group', group: 'fuehrung', leader: 'imhoff', members, era: 'today' });
+      k.walk.request({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: tourMembers, era: 'today' });
       if (gather) k.walk.request({ op: 'gather', group: 'fuehrung', around: 'imhoff', face: 'player' });
       else k.walk.request({ op: 'follow', group: 'fuehrung', leader: 'imhoff' });
       if (!k.walk.snap('fuehrung', stop)) throw new Error(`could not stage the tour at ${stop}`);
@@ -190,20 +194,59 @@ const HELPERS = () => {
       }
       k.step(12);
     },
-    /** Use the shipped doe and fawn, with an approach for the two close shots. */
-    deer({ approach = false } = {}) {
-      const p = k.ctx.player.position;
-      k.animals.spawn({
-        id: 'ricke', kind: 'reh', look: 'ricke', x: 704, z: -779, era: 'today',
-        yaw: h.bearing(704, -779, p.x, p.z), shy: { notice: 30, flee: 20, settle: 25 },
+    /** Stage a person for a still and clean up their body before the next shot. */
+    person(spec, x, z, tx, tz, { seed = 0, speaker } = {}) {
+      const person = k.ctx.people.spawn(spec, {
+        x, z, yaw: -h.bearing(x, z, tx, tz) * deg, seed, speaker,
       });
-      k.animals.spawn({ id: 'kitz', kind: 'reh', look: 'kitz', follow: 'animal:ricke', spacing: 1.5, era: 'today' });
-      if (approach) {
-        for (let i = 0; i < 8 && k.animals.state('ricke').state === 'graze'; i++) k.press('KeyW', 6);
-        k.ctx.player.setStance('crouch');
+      stagedPeople.push(person);
+      return person;
+    },
+    /** Stage the same half circle for both trailhead camera angles. */
+    parkingGroup(look) {
+      const guide = h.person('guide', 524, -770, look?.x ?? 524, look?.z ?? -766);
+      tourMembers.forEach((spec, i) => {
+        const inner = i < 8;
+        const radius = inner ? 3 : 4.5;
+        const angle = ((inner ? i / 7 : (i - 8) / 5) - 0.5) * 155 * deg;
+        const x = 524 + radius * Math.sin(angle);
+        const z = -770 + radius * Math.cos(angle);
+        h.person(spec, x, z, look?.x ?? 524, look?.z ?? -770, { seed: i });
+      });
+      return guide;
+    },
+    async sandstone() {
+      const set = await k.ctx.assets.instance('nature2.rocks');
+      for (const [variant, x, z, yaw] of [['rock1', 685.8, -594, 0.4], ['rock2', 687.1, -594.8, -0.8]]) {
+        const rock = set.getObjectByName(variant);
+        if (!rock) throw new Error(`missing sandstone stand-in: ${variant}`);
+        rock.traverse((node) => {
+          if (!node.isMesh) return;
+          node.material = node.material.clone();
+          node.material.color.set('#d99a78');
+          node.material.metalness = 0;
+        });
+        rock.position.set(x, k.ctx.world.heightAt(x, z) - 0.25, z);
+        rock.rotation.y = yaw;
+        k.ctx.scene.add(rock);
+        stagedRocks.push(rock);
       }
-      k.animals.calm('ricke', 5);
+    },
+    /** Keep the shipped pair in the open at the roe-deer stop for the three camera angles. */
+    async deer(tx, tz) {
+      for (const [id, x, z] of [['ricke', 704, -779], ['kitz', 705.4, -777.9]]) {
+        k.animals.spawn({ id, kind: 'reh', look: id, x, z, era: 'today', yaw: -h.bearing(x, z, tx, tz) });
+        k.animals.calm(id, 5);
+      }
       k.step(2);
+      const deer = k.ctx.fauna.list().filter((body) => body.specId.startsWith('reh.'));
+      await Promise.all(deer.map((body) => body.ready));
+      for (const body of deer) body.play('alert');
+    },
+    /** Let actors load and finish their screen-door fade on rendered frames. */
+    async settle(actors = stagedPeople) {
+      await Promise.all(actors.map((actor) => actor.ready));
+      await h.frames(60);
     },
     phone(zoom = 1, clock) {
       if (clock) {
@@ -222,14 +265,8 @@ const HELPERS = () => {
     },
     forester(x, z) {
       const p = k.ctx.player.position;
-      const people = k.ctx.people;
-      const spec = people.specs().includes('marlene') ? 'marlene' : 'extra.7';
-      marlene = people.spawn(spec, {
-        x, z, y: k.ctx.world.heightAt(x, z), yaw: -h.bearing(x, z, p.x, p.z) * deg,
-        seed: 9071, speaker: 'marlene',
-      });
-      marlene.play('talk');
-      k.step(12);
+      const spec = k.ctx.people.specs().includes('marlene') ? 'marlene' : 'extra.7';
+      h.person(spec, x, z, p.x, p.z, { seed: 9071, speaker: 'marlene' }).play('talk');
     },
     /** Spawn a group, freeze it, place its members on an arc in front of the player facing it. */
     enemies(kind, { n = 1, d = 7, spread = 24, a = 0, boss = false, tier, group, era, freeze = true, windup, steps = 30 } = {}) {
@@ -322,20 +359,26 @@ const SHOTS = [
   },
   {
     id: 't1-treffpunkt',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 530, z: -760, tx: 524, tz: -770, pitch: -4, zoom: 5 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 524, z: -766 });
       h.look('tour');
-      h.tour('parkplatz');
-      k.ctx.people.bySpeaker('imhoff')?.play('wave');
+      const guide = h.parkingGroup();
+      h.camera({ x: 517, z: -775, y: 1.8, tx: 524, tz: -768.5, ty: 1.05, fov: 38 });
+      await h.settle();
+      guide.play('wave');
+      await h.frames(22);
     },
   },
   {
     id: 't2-station1',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 527, z: -758, tx: 519, tz: -813, pitch: 2, zoom: 4.5 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 524, z: -766 });
       h.look('tour');
-      h.tour('parkplatz');
-      k.ctx.people.bySpeaker('imhoff')?.play('point');
+      const guide = h.parkingGroup({ x: 519, z: -813 });
+      h.camera({ x: 524.4, z: -763.2, y: 2.25, tx: 522.6, tz: -778, ty: 1.25, fov: 44 });
+      await h.settle();
+      guide.play('point');
+      await h.frames(24);
     },
   },
   {
@@ -349,72 +392,99 @@ const SHOTS = [
   },
   {
     id: 't4-felsenpfad',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 672, z: -584, tx: 689, tz: -599, pitch: 2, zoom: 4.5 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 683, z: -596 });
       h.look('tour');
-      h.tour('felsen');
-      k.ctx.people.bySpeaker('imhoff')?.play('point');
+      await h.sandstone();
+      const guide = h.person('guide', 682.3, -598.2, 685.8, -594);
+      const sketcher = h.person('double.mannlich', 684.8, -597.1, 685.8, -594);
+      h.person('double.hanne', 681.2, -597.2, 685.8, -594);
+      h.person('extra.1', 681.6, -599.65, 682.3, -598.2);
+      h.camera({ x: 679, z: -600.4, y: 2.1, tx: 684.2, tz: -596.5, ty: 1.15, fov: 47 });
+      await h.settle();
+      guide.play('point');
+      sketcher.play('interact');
+      await h.frames(24);
     },
   },
   {
     id: 't5-wind',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 688, z: -642, tx: 700, tz: -641 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 696, z: -639 });
       h.look('tour');
-      h.tour('wind', { gather: false, dogs: false });
+      // Start on the uphill leg so both dogs are galloping in the near field at the same time.
       const runs = [
-        ['diane', [[676, -636], [700, -640], [722, -646]]],
-        ['bijou', [[677, -637], [701, -642], [718, -652]]],
+        ['diane', [[696, -639.4], [710, -641.8], [722, -646]]],
+        ['bijou', [[697.4, -642], [711, -644.7], [718, -652]]],
       ];
       for (const [id, path] of runs) {
-        const [[x, z]] = path;
-        k.animals.spawn({ id, kind: 'hund', look: id, x, z, era: 'today' });
-        k.animals.request({ op: 'run', id, path, bark: true, back: true });
+        const [[x, z], [tx, tz]] = path;
+        k.animals.spawn({ id, kind: 'hund', look: id, x, z, era: 'today', yaw: -h.bearing(x, z, tx, tz) });
       }
-      for (let i = 0; i < 90 && k.animals.list().some((dog) => dog.x < 699); i++) k.step(6);
-      h.camera({ x: 688, z: -642, y: 1.3, tx: 702, tz: -642, ty: 0.6, fov: 44 });
+      await h.settle(k.ctx.fauna.list().filter((body) => body.specId.startsWith('dog.')));
+      for (const [id, path] of runs) k.animals.request({ op: 'run', id, path, bark: true });
+      k.step(55);
+      const [diane, bijou] = k.animals.list();
+      h.camera({
+        x: 702.7, z: -636.1, y: 1.05, tx: (diane.x + bijou.x) / 2, tz: (diane.z + bijou.z) / 2,
+        ty: 0.55, fov: 47,
+      });
+      await h.frames(20);
     },
   },
   {
     id: 't6-reh-sicht',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 725, z: -753, tx: 704, tz: -779 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 714, z: -775, tx: 704, tz: -779 });
       h.look('tour');
-      h.tour('reh', { gather: false });
-      h.deer();
-      h.camera({ x: 730, z: -747, y: 2.1, tx: 705, tz: -779, ty: 1.1, fov: 24 });
+      await h.deer(714, -775);
+      const guide = h.person('guide', 710.6, -777.8, 704, -779);
+      h.person('double.jost', 711.4, -775, 704, -779);
+      h.person('double.hanne', 712, -776.8, 704, -779);
+      h.camera({ x: 714, z: -775, y: 1.83, tx: 705.1, tz: -778.7, ty: 0.78, fov: 32 });
+      await h.settle();
+      guide.play('wave');
+      await h.frames(22);
     },
   },
   {
     id: 't6-reh-pirsch',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 714, z: -770, tx: 704, tz: -779, pitch: -8, zoom: 2.8 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 708.5, z: -776.3, tx: 704, tz: -779 });
       h.look('tour');
-      h.deer({ approach: true });
+      k.ctx.player.setStance('crouch');
+      await h.deer(708.5, -776.3);
+      h.camera({ x: 711.3, z: -775.5, y: 1.18, tx: 706.6, tz: -778.1, ty: 0.9, fov: 42, showAvatar: true });
+      await h.frames(60);
     },
   },
   {
     id: 't6-reh-foto',
     ui: '.kq-photo',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 714, z: -778, tx: 704, tz: -779, pitch: -6 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 708.25, z: -777.88, tx: 705.4, tz: -777.9, pitch: -6 });
       h.look('tour');
-      h.deer({ approach: true });
+      k.ctx.player.setStance('crouch');
+      await h.deer(708.25, -777.88);
+      await h.frames(40);
       const fawn = k.photo.targets().find((target) => target.id === 'reh.kitz')?.at;
       if (!fawn) throw new Error('the tour fawn has no photo target');
       const p = k.ctx.player;
       p.yaw = -h.bearing(p.position.x, p.position.z, fawn.x, fawn.z) * Math.PI / 180;
       p.pitch = Math.atan2(fawn.y - p.position.y - p.eyeHeight, Math.hypot(fawn.x - p.position.x, fawn.z - p.position.z));
       h.phone(2);
+      await h.frames(45);
     },
   },
   {
     id: 't7-marlene',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 824, z: -865.5, tx: 826, tz: -866, pitch: -3, zoom: 3 });
+    run: async (k, h) => {
+      h.place({ era: 'today', x: 824.5, z: -867.2, tx: 825.9, tz: -864.4 });
       h.look('tour');
       h.staff();
-      h.forester(826, -866);
+      h.forester(825.9, -864.4);
+      h.camera({ x: 817.7, z: -866.3, y: 3.1, tx: 825.4, tz: -865.5, ty: 1.25, fov: 37, showAvatar: true });
+      await h.settle();
     },
   },
   {
@@ -986,27 +1056,24 @@ const SHOTS = [
   },
   {
     id: 'e-museum-fest',
-    run: (k, h) => {
+    run: async (k, h) => {
       h.place({ era: 'today', x: 1210.7, z: -1117.6, tx: 1214, tz: -1112 });
       h.look('dusk');
-      k.story.ending('museum', true);
-      k.story.stageSkip();
-      document.querySelector('[data-testid="ending-next"]').click();
-      document.querySelector('[data-testid="ending-credits"]').click();
-      if (k.party.state().variant !== 'museum') throw new Error('museum party did not start');
-      k.party.skip();
-      k.ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'off' } });
+      // Start at the reunion, after the staged ending's ghost hound tableau.
+      k.party.set('museum');
       h.camera({ x: 1211.6, z: -1117.3, y: 1.55, tx: 1214, tz: -1112.4, ty: 1.22, fov: 44 });
+      await h.settle(k.ctx.people.list());
     },
   },
   {
     id: 'e-burn-fest',
-    run: (k, h) => {
+    run: async (k, h) => {
       h.place({ era: 'today', x: 1216, z: -1114, tx: 1217.2, tz: -1117.6 });
       h.look('dusk');
       k.party.set('burn');
-      h.camera({ x: 1216, z: -1114, y: 0.65, tx: 1217.2, tz: -1117.6, ty: 0.95, fov: 58 });
-      k.step(20);
+      // Look through a gap in the fire circle with the nearest bodies 5 m from the lens.
+      h.camera({ x: 1217.2, z: -1125.3, y: 1.75, tx: 1217.2, tz: -1117.6, ty: 1.1, fov: 46 });
+      await h.settle(k.ctx.people.list());
     },
   },
   {
@@ -1022,12 +1089,21 @@ const SHOTS = [
   {
     id: 'e-fest-abspann',
     ui: '[data-testid="party-credits"]',
-    run: (k, h) => {
+    run: async (k, h) => {
       h.place({ era: 'today', x: 1200, z: -1095, tx: 1216, tz: -1114 });
       h.look('dusk');
       k.party.set('museum');
+      await h.settle(k.ctx.people.list());
       if (!k.party.credits()) throw new Error('party credits did not start');
-      k.step(240);
+      if (k.cinematic.playing() !== 'party-credits') throw new Error('party credits camera did not start');
+      // Hold the wide opening of the orbit while the real credits crawl enters the frame.
+      k.cinematic.at('party-credits', 0);
+      k.step();
+      const line = document.querySelector('[data-testid="party-credits-track"] .kq-party-line');
+      const onScreen = () => line && line.getBoundingClientRect().left <= innerWidth * 0.25;
+      for (let i = 0; i < 60 && !onScreen(); i++) k.step(12);
+      if (!onScreen()) throw new Error('party credits text did not enter the frame');
+      await h.frames(60);
     },
   },
 ];

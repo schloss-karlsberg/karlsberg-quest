@@ -61,7 +61,7 @@ Source of truth for the new beats:
 ## Acceptance Criteria
 - [ ] No Feldstation / Bauwagen / lantern / surveyor prologue left in `index.html`, `img/` or `SHOTS`
 - [ ] The page shows the tour, the first time travel, the three endings and the party, in story order
-- [ ] Pictures captured on a real GPU (the script's software-renderer warning did not fire)
+- [x] Pictures captured on a real GPU (the script's software-renderer warning did not fire)
 - [ ] `img/` stays within the budget (about 8 MB, about 60 pictures); the page still opens from disk with no network
 - [x] `docs/storyboard/README.md` updated; captions in German
 - [ ] If `scripts/dev/storyboard.mjs` changed: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
@@ -94,9 +94,9 @@ _Status: approved 2026-11-24_
 - [x] 2. I will retire or replace the 20 `SHOTS` entries listed in the beat sheet and stage all 28 beats. Reuse the spring touch and Brunnenstube framing. In `h.look`, use the game's `tour` light and lower its sun for a script-local `pause` look. Set up each shot for `--only` and reset actors, camera, lighting and UI between shots.
 - [x] 3. I will order the page from the guided tour through the spring crossing, 1789 training and K1–K4, then show the ending choice, the museum, burn and keep parties, and the credits. Use German card and lightbox captions, preserve FAKT/FIKTION labels, and update Places, Cast and Items wherever they refer to the old prologue. In captions and Cast, use only the placeholder name “Gerold Imhoff” for the guide. Show Marlene as the forester at the dam.
 - [x] 4. I will update the storyboard README's capture examples, outdated notice, coverage notes and budget, then compare `node scripts/dev/storyboard.mjs --list` with the page's thumbnail and full-size references before handing over for capture.
-- [ ] 5. You will build, preview and capture the full set on your GPU directly into this worktree's `docs/storyboard/img/` using the commands below. Confirm the renderer and completed shot count, review every picture, and report weak or missing shots by ID with what you saw.
+- [x] 5. You will build, preview and capture the full set on your GPU directly into this worktree's `docs/storyboard/img/` using the commands below. Confirm the renderer and completed shot count, review every picture, and report weak or missing shots by ID with what you saw.
 - [ ] 6. I will fix the reported framing, lighting, UI or captions. You will recapture the affected IDs in place with `--only`. Repeat for any picture still unreadable.
-- [ ] 7. I will delete the retired JPEGs after checking their references and record the final image count and size in the storyboard README.
+- [ ] 7. You will delete the retired JPEGs after checking their references and record the final image count and size in the storyboard README.
 - [ ] 8. You will open `docs/storyboard/index.html` from disk with the network off, check the chapter order, images and lightbox, and run `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. I will record your capture and gate results in this task.
 
 **Test plan:** For step 1, use the grid metadata and present-day or 1789 height raster in `public/data/terrain/` to sample ground height and slope at each proposed camera and subject. Check the following compositions in step 5.
@@ -160,6 +160,12 @@ scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ -
 
 - 2026-11-24: The contributor committed steps 1–4 (`cd5c39b`, `c596d07`, `5c57616`). The first GPU capture timed out during boot because the photo hook registers on update and the manual loop had not stepped. Boot now waits for the core hooks and steps until photo registers, with a 60-step limit and a photo-specific error. `node --check scripts/dev/storyboard.mjs` passed. GPU capture retry is pending.
   - Staging this round was blocked by the linked worktree's `index.lock` permission error. Both edits are unstaged.
+- 2026-11-24: Step 5 done. The contributor committed the boot fix as `8e2ae57`, captured 68/68 on ANGLE Metal (Apple M5 Pro) without a software-renderer warning, and reviewed the pictures. The chapter frames and 17 new frames passed visual review.
+- 2026-11-24: Final retake round. Framed the trailhead group from two angles and staged the guide and sketcher beside tinted rock stand-ins at the Felsenpfad. Moved the cameras closer to the running dogs and the deer, gave the crouch and phone zoom time to settle, and framed Marlene and the player from above the reeds. The party shots wait for the people to load and fade in. The museum starts at the reunion, the burn camera is outside the fire circle, and the credits wait for the first line to enter the frame. `node --check` and `--list` passed. GPU review of these 11 retakes is pending:
+
+  ```sh
+  scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ --only t1-treffpunkt,t2-station1,t4-felsenpfad,t5-wind,t6-reh-sicht,t6-reh-pirsch,t6-reh-foto,t7-marlene,e-museum-fest,e-burn-fest,e-fest-abspann
+  ```
 
 ## Notes
 - Do not name or depict the real tour guide: the guide stays the placeholder until written consent exists.
