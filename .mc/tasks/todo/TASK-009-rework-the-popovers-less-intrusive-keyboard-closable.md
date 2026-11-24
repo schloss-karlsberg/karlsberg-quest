@@ -116,7 +116,7 @@ _Status: approved 2026-11-24_
 - [x] 4. Give the top modal first refusal, including required choices. In free play, Escape dismisses the visible notice, then a separate press can pause. Account for key repeat and browser pointer-lock loss. Use Enter, Space or E only when free, respecting bindings, typing, focused controls, dialogue and photo mode.
 - [x] 5. Recognize a completed outside tap on the play surface or the top closable modal's backdrop. Preserve button activation, modal scrolling, stick movement and camera drags.
 - [x] 6. Fit long German summaries around the tracker and thumb controls. Use the game's reduced-motion setting for both appearance and dismissal, and keep the world view and camera interactive.
-- [ ] 7. Cover queue release, holds and resumption in Vitest. Extend payout, pacing and real-touch specs to cover the input and duplicate-feedback cases below.
+- [x] 7. Cover queue release, holds and resumption in Vitest. Extend payout, pacing and real-touch specs to cover the input and duplicate-feedback cases below.
 - [ ] 8. Update the gameplay notes and mobile tour expectation to match the new behavior.
 - [ ] 9. Run the four gates and focused browser specs. Compare the listed before/after views and check both phone orientations.
 
@@ -170,6 +170,7 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Step 4 routed Escape through the top modal or camera before free-play dismissal, coalesced the keyboard and pointer-lock signals, and checked bindings and focus for optional dismissal keys. `pnpm typecheck` passed. Browser verification is pending.
 - 2026-11-24 — Step 5 added completed backdrop and play-surface tap detection with cancellation for drags, pointer cancellation and competing touches. `pnpm typecheck` passed. Real-touch verification is pending.
 - 2026-11-24 — Step 6 added wrapping and safe-area placement for the shared dock, including room for the phone's top buttons and skill row. Reduced motion removes the entry and exit fades. `pnpm typecheck` passed. Visual verification is pending.
+- 2026-11-24 — Step 7 added queue and resumption tests, updated the real NPC turn-in fixture for a partial grant, and added keyboard, real-touch and portrait checks. The focused Vitest run passed all 44 tests. `pnpm typecheck` passed with the browser specs included.
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.

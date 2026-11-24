@@ -163,6 +163,80 @@ for (const [name, device] of Object.entries(DEVICES)) {
   });
 }
 
+test.describe('notices on a small landscape phone', () => {
+  test.use({ ...DEVICES['iphone-13'], viewport: { width: 667, height: 375 } });
+
+  test('outside taps dismiss, while drags, action buttons and modal scrolling still work', async ({ page }) => {
+    test.setTimeout(240_000);
+    await bootField(page);
+    const finger = new Finger(await page.context().newCDPSession(page), 1);
+    const text = 'Feldbuch ergänzt: Wasser, das sich erinnert – die Aufzeichnungen der Vermessungskommission';
+    await page.evaluate((message) => {
+      const k = window.kq!;
+      k.ctx.settings.update((s) => (s.reducedMotion = true), 'reducedMotion');
+      k.ctx.ui.toast(message, 30000);
+    }, text);
+    const toast = page.locator('.kq-toast', { hasText: text });
+    await expect(toast).toBeVisible();
+    await expect(toast).toHaveCSS('animation-name', 'none');
+    const bounds = (await toast.boundingBox())!;
+    expect(bounds.x).toBeGreaterThan(0);
+    expect(bounds.x + bounds.width).toBeLessThan(667);
+    const topButtons = (await page.locator('.kq-t-top').boundingBox())!;
+    expect(bounds.y).toBeGreaterThan(topButtons.y + topButtons.height);
+
+    await finger.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await expect(toast).toBeVisible();
+
+    const yaw = await page.evaluate(() => window.kq!.ctx.player.yaw);
+    await finger.start(350, 195);
+    await finger.move(436, 195);
+    await finger.end();
+    await expect.poll(() => page.evaluate(() => Math.abs(window.kq!.ctx.player.yaw - yaw), yaw)).toBeGreaterThan(0.1);
+    await expect(toast).toBeVisible();
+
+    await finger.start(90, 250);
+    await finger.move(90, 200);
+    expect(await page.evaluate(() => window.kq!.ctx.input.isDown('forward'))).toBe(true);
+    await finger.end();
+    await expect(toast).toBeVisible();
+
+    const action = await center(page, 'touch-interact');
+    await finger.start(action.x, action.y);
+    expect(await page.evaluate(() => window.kq!.ctx.input.isDown('listen'))).toBe(true);
+    await finger.end();
+    await expect(toast).toBeVisible();
+
+    await page.evaluate(() => {
+      const body = document.createElement('div');
+      body.style.height = '1100px';
+      window.kq!.ctx.ui.modals.open({ title: 'Feldbuch', body });
+    });
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible();
+    await expect(toast).toBeHidden();
+    await finger.start(334, 255);
+    await finger.move(334, 115);
+    await finger.end();
+    await expect.poll(() => modal.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    await expect(modal).toBeVisible();
+
+    // A short drag on the backdrop preserves the modal. A subsequent tap dismisses that layer.
+    await finger.start(4, 140);
+    await finger.move(4, 215);
+    await finger.end();
+    await expect(modal).toBeVisible();
+    await finger.tap(4, 140);
+    await expect(modal).toBeHidden();
+    await expect(toast).toBeVisible();
+
+    await finger.start(360, 195);
+    await expect(toast).toBeVisible();
+    await finger.end();
+    await expect(toast).toHaveCount(0); // reduced motion removes the element without an exit fade
+  });
+});
+
 test.describe('touch: title and settings by tap', () => {
   test.use({ ...DEVICES['iphone-13'] });
 
@@ -195,5 +269,28 @@ test.describe('touch: title and settings by tap', () => {
     await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
     await expect(page.getByTestId('touch')).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
+  test('portrait keeps title menus usable and shows the rotate overlay during play', async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('./?nosave&fresh');
+    const start = page.getByTestId('title-new');
+    const rotate = page.getByTestId('rotate');
+    await expect(start).toBeEnabled({ timeout: 90_000 });
+    await expect(rotate).toBeHidden();
+    await page.getByTestId('title-settings').tap();
+    await expect(page.getByTestId('settings')).toBeVisible();
+    await expect(rotate).toBeHidden();
+    await page.locator('.kq-modal button.close').tap();
+    await start.tap();
+    await page.getByTestId('warning-accept').tap();
+    await page.getByTestId('name-confirm').tap();
+    await page.getByTestId('light-lantern').tap();
+    await expect(page.getByTestId('title')).toBeHidden();
+    await expect(rotate).toBeVisible();
+    await page.setViewportSize({ width: 667, height: 375 });
+    await expect(rotate).toBeHidden();
+    await expect(page.getByTestId('touch')).toBeVisible();
   });
 });

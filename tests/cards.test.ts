@@ -4,11 +4,13 @@ import type { ModalHandle } from '../src/ui/modal';
 
 /** Card discipline (playtest round 4): one centre card at a time, held in fights and conversations. */
 function rig() {
+  let toast: string | null = null;
+  let toastHeld = false;
   const hud = {
     inAction: false,
-    showToast() {},
-    holdToast() {},
-    closeToast() {},
+    showToast(text: string) { toast = text; toastHeld = false; },
+    holdToast(held: boolean) { toastHeld = held; },
+    closeToast() { toast = null; },
   };
   const open: ModalHandle[] = [];
   const modals = { get count() { return open.filter((m) => !m.closed).length; } };
@@ -26,7 +28,7 @@ function rig() {
     return m;
   };
   const top = () => open.filter((m) => !m.closed).at(-1)!;
-  return { hud, d, card, top, open };
+  return { hud, d, card, top, toast: () => toastHeld ? null : toast };
 }
 
 describe('CardDirector', () => {
@@ -95,6 +97,65 @@ describe('CardDirector', () => {
     expect(d.drain<string>('skill')).toEqual([]);
     waiting = [];
     expect(d.drain<string>('nothing')).toEqual([]);
+  });
+});
+
+describe('HUD toast slot', () => {
+  it('deduplicates the active and waiting text, bounds the queue, and observes the gap', () => {
+    const { d, toast } = rig();
+    d.enqueueToast('First', 2000);
+    d.tick(0);
+    expect(toast()).toBe('First');
+    expect(d.claim('reward')).toBe(false);
+    d.enqueueToast('First');
+    d.enqueueToast('Old');
+    for (let i = 1; i <= 6; i++) d.enqueueToast(`Queued ${i}`);
+    d.enqueueToast('Queued 6');
+    expect(d.dismissNotice()).toBe(true);
+    expect(d.dismissNotice()).toBe(false);
+    d.tick(CARD_GAP / 2);
+    expect(toast()).toBeNull();
+    for (let i = 1; i <= 6; i++) {
+      d.tick(CARD_GAP);
+      expect(toast()).toBe(`Queued ${i}`);
+      d.dismissNotice();
+    }
+    d.tick(CARD_GAP);
+    expect(toast()).toBeNull();
+    expect(d.claim('reward')).toBe(true);
+  });
+
+  it('holds waiting toasts through fights and talk, and resumes the active one with its time left', () => {
+    const { d, hud, card, top, toast } = rig();
+    d.enqueueToast('Read this', 2000);
+    hud.inAction = true;
+    d.tick(4);
+    expect(toast()).toBeNull();
+    hud.inAction = false;
+    d.hold('talk', true);
+    d.tick(4);
+    expect(toast()).toBeNull();
+    d.hold('talk', false);
+    d.tick(0);
+    d.tick(0.75);
+    expect(toast()).toBe('Read this');
+
+    const open = card([], 'Map');
+    open(); // a regular modal that does not own the card director's slot
+    d.tick(10);
+    expect(toast()).toBeNull();
+    expect(d.dismissNotice()).toBe(false);
+    top().close();
+    d.modal('clue:a', card([], 'Clue'));
+    expect(d.showing).toBe('clue:a');
+    d.tick(10);
+    expect(toast()).toBeNull();
+    top().close();
+    d.tick(1);
+    expect(toast()).toBe('Read this');
+    d.tick(0.25);
+    expect(toast()).toBeNull();
+    expect(d.showing).toBeNull();
   });
 });
 

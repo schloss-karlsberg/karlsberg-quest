@@ -157,6 +157,11 @@ export class CardDirector {
     this.release('toast');
   };
 
+  clearToasts(): void {
+    this.toasts.length = 0;
+    if (this.toast) this.closeToast();
+  }
+
   private tickToast(dt: number): void {
     if (!this.toast) {
       if (this.toasts.length && this.claim('toast', this.closeToast)) {
@@ -232,11 +237,9 @@ export class CardDirector {
   /** Forget everything (a new game, a load). */
   clear(): void {
     this.queue.length = 0;
+    this.clearToasts();
     this.owner = null;
     this.dismissOwner = null;
-    this.toasts.length = 0;
-    this.toast = null;
-    this.hud.closeToast();
     this.modalOwner = null;
     this.modalHandle = null;
     this.gap = 0;

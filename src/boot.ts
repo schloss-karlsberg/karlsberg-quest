@@ -303,7 +303,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   if (!params.has('fresh') && save.has()) save.load();
   restore();
   // any later load (e.g. the title's "Ende noch einmal wählen") puts the world where the state is
-  events.on('save:loaded', () => restore());
+  events.on('save:loaded', () => {
+    ui.cards.clearToasts();
+    restore();
+  });
   // URL overrides (debug / e2e / sharing a spot)
   const qEra = params.get('era');
   if (isEra(qEra)) era.set(qEra);
@@ -647,6 +650,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     input.enabled = false;
     touch.setPlaying(false);
     input.releaseLock();
+    ui.cards.clearToasts();
     ui.hud.show(false);
     pause.push('title');
     if (!title.el.isConnected) ui.add(title.el);

@@ -309,8 +309,6 @@ export class ConversationView {
 
   private readonly onKey = (e: KeyboardEvent): void => {
     if (!this.open) return;
-    // a card over the conversation (the quest reward card) takes the keys while it shows
-    if (document.querySelector('[data-kq-keytrap]')) return;
     const tg = e.target as HTMLElement | null;
     if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA')) return;
     const d = /^(Digit|Numpad)(\d)$/.exec(e.code);
