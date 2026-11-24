@@ -126,7 +126,7 @@ The owner dislikes the name and thinks the game does not need a journal. What "F
 | In-fiction mentions: Laub's notebook, Marlene's loose page, quest "Feldbuch-Notiz", story lines ("steht im Feldbuch") | `content/story/00-tour.story.json` (`laub.t.seite`), `01-kapitel-1`, `04-kapitel-4`, `05-enden` (`keep`, free-roam hint "im Feldbuch (J)"), `content/packs/*.pack.json`, `content/quests/04-kapitel-4.quests.json`, `src/systems/travel/lore.ts` | **verify with owner**: Laub's own field book as a story object may stay; lines that point the player to "das Feldbuch (J)" must change. Voiced lines need new clips |
 
 - [ ] Remove the journal modal, its key J and the touch button; nothing is lost: every surviving tab above has a new home
-- [ ] Quest log and Codex reachable from the phone or the pause menu (pick one primary route, keep it consistent on desktop and mobile)
+- [x] Quest log and Codex reachable from the phone or the pause menu (pick one primary route, keep it consistent on desktop and mobile)
 - [ ] Rename the save UI as in the table; no "Feldbuch" left in UI strings (`grep -rn Feldbuch src content`), except in-fiction lines the owner keeps
 - [ ] Rows marked "verify with owner" decided before work starts
 
@@ -202,10 +202,10 @@ _Status: approved 2026-11-24_
 
 **Steps:**
 
-- [ ] 1. List Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album in Pause. Use their existing tab renderers as plain modal bodies, including their refresh and close callbacks. “Zurück” returns focus to the entry. Make the list scrollable in landscape and keep the story's conditional pause actions available.
-- [ ] 2. Keep I → Ausrüstung and M → Karte as shortcuts. Connect the clue-card action to Codex and preserve the hub's pending clue cards, its `chronik:open/opened/closed` events and its return from Codex to the Pinnwand. Check the map's cleanup when leaving the view.
-- [ ] 3. Remove both journal shells, the J listener, journal default and rebind row, touch button and icon mappings, tab navigation and obsolete journal debug hooks. Update the HUD, controls, skill messages and name-entry heading. Use “Mehr dazu unter Pause → Aufgaben”, “Neu im Codex” and “Codex öffnen”. Point the free-roam ending at Pause in the endings builder, regenerate with `node scripts/content-build/build.mjs` and verify the generated story diff is confined to `end.frei`. Preserve the four owner-pending pages, their records and the `feldbuch.*` talents.
-- [ ] 4. Set title buttons to “Neues Spiel” and “Weiter”, and the overwrite prompt to “Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?”. Use “Speichern” for the pause action, “Spielstand gespeichert.” for its confirmation and save toast, and “Ausgeruht. Spielstand gespeichert.” for a successful rest. Update the corresponding README instructions and the two design-doc entries without linking task files.
+- [x] 1. List Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album in Pause. Use their existing tab renderers as plain modal bodies, including their refresh and close callbacks. “Zurück” returns focus to the entry. Make the list scrollable in landscape and keep the story's conditional pause actions available.
+- [x] 2. Keep I → Ausrüstung and M → Karte as shortcuts. Connect the clue-card action to Codex and preserve the hub's pending clue cards, its `chronik:open/opened/closed` events and its return from Codex to the Pinnwand. Check the map's cleanup when leaving the view.
+- [x] 3. Remove both journal shells, the J listener, journal default and rebind row, touch button and icon mappings, tab navigation and obsolete journal debug hooks. Update the HUD, controls, skill messages and name-entry heading. Use “Mehr dazu unter Pause → Aufgaben”, “Neu im Codex” and “Codex öffnen”. Point the free-roam ending at Pause in the endings builder, regenerate with `node scripts/content-build/build.mjs` and verify the generated story diff is confined to `end.frei`. Preserve the four owner-pending pages, their records and the `feldbuch.*` talents.
+- [x] 4. Set title buttons to “Neues Spiel” and “Weiter”, and the overwrite prompt to “Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?”. Use “Speichern” for the pause action, “Spielstand gespeichert.” for its confirmation and save toast, and “Ausgeruht. Spielstand gespeichert.” for a successful rest. Update the corresponding README instructions and the two design-doc entries without linking task files.
 - [ ] 5. Update the affected unit tests, Playwright specs and shared prologue helper. Run the four gates and compare the contributor's before/after views. Record results against this slice and keep the epic in progress.
 
 **Test plan:**
@@ -274,6 +274,27 @@ _Status: approved 2026-11-24_
 - [ ] §6 — Resolve permanent destinations, talent wording and in-fiction/voiced references with the owner.
 - [ ] §7 — Survey keymap, settings migration, touch expansion and tutorials.
 - [ ] §§5, 8 — Merge the bibles, reconcile remaining PRD/architecture/gameplay docs, historical material and dead references.
+
+## Progress
+
+- Branch: `refactor/task-007-journal-classic`
+- 2026-11-24: Step 1 implemented. Pause lists the eight existing feature views with badges, a scrollable list and a Back action. The conditional story actions remain available.
+- 2026-11-24: Step 2 implemented. I opens Ausrüstung, M retains its map and comparison behavior, and the map cancels its frame and key listeners on close. Codex opens from clue cards and above the Pinnwand, preserving the hub and its clue queue.
+- 2026-11-24: Step 3 implemented. Removed both journal shells, J and the touch entry. Regenerated content with `node scripts/content-build/build.mjs`. The generated diff changes only `end.frei`. Pending labels and legacy prologue content remain in place.
+
+- 2026-11-24: Step 4 implemented. Updated the title, overwrite, pause, toast and bench wording, README “How to play”, ACTION-RPG §14 and the PRD changelog.
+- 2026-11-24: Step 5 implementation and selector audit complete. Retained the inner quest, gear and talent test IDs. The only remaining J in e2e verifies that the retired binding does nothing. `helpers/prolog.ts` uses Pause in `playProlog` and steps the manual loop while `newGame` waits for hooks.
+- 2026-11-24: `pnpm typecheck`, `pnpm test` (1,471 tests in 110 files), `pnpm build` and `git diff --check` passed. `pnpm validate` was blocked by `tsx` receiving `EPERM` while opening its IPC socket. Run `pnpm validate` outside the sandbox.
+- 2026-11-24: Playwright specs awaiting the contributor's run, one worker per spec. Changed behavior or assertions: `smoke`, `quests`, `chronik`, `integration`, `npc`, `progression`, `flaschen`, `photo`, `touch`, `chapter-prolog` and `story`. The other specs that call the changed `newGame` helper are `campaign`, `pacing` and `quelle`. The audited `e2e/mobile/tour.pw.ts` runner uses the new controls. Title and landscape Pause after shots and the before/after comparison are pending.
+- 2026-11-24: `git commit` was denied access to the worktree's `index.lock` after initial staging. Run the two commits from the contributor shell.
+
+```sh
+pnpm validate
+pnpm build
+for spec in smoke quests chronik integration npc progression flaschen photo touch chapter-prolog story pacing quelle campaign; do
+  scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+done
+```
 
 ## Notes
 - Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.

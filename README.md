@@ -8,7 +8,7 @@ You start as a visitor on a guided tour of the Karlsberg one November afternoon.
 Karlsbergquelle the time travel begins: you take on quests from the people you meet, fight the
 shadows of the past and travel between five eras: today, summer 1789, February and July 1793, and
 1796. Every ending closes with a party. Along the way you learn real regional history; invented
-parts are labelled as fiction in the in-game Chronik.
+parts are labelled as fiction in the Codex.
 
 **Play:** https://schloss-karlsberg.github.io/karlsberg-quest/ ·
 **What's new (German):** [Neuigkeiten](https://schloss-karlsberg.github.io/karlsberg-quest/neu.html)
@@ -28,9 +28,11 @@ parts are labelled as fiction in the in-game Chronik.
 
 ## How to play
 
-1. Click „Neues Feldbuch beginnen“, read the content note, enter a name and click „Laterne anzünden“.
-   (These start screens still come from the game's earlier concept and will be reworked.)
-2. Click into the game to capture the mouse. Press Esc to open the pause menu.
+1. Click „Neues Spiel“, read the content note, enter a name and click „Laterne anzünden“.
+   Choose „Weiter“ on the title screen to load a saved game.
+2. Click into the game to capture the mouse. Press Esc or tap Pause to open the menu. Choose
+   „Speichern“ to save. Pause also opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente,
+   Karte and Album.
 3. A new game opens with the guided tour: follow the guide, talk to people and take photos. The
    tour has no fighting; the first fight is a short guided training after the time travel.
 
@@ -40,7 +42,7 @@ parts are labelled as fiction in the in-game Chronik.
 | Crouch (sneak) | C |
 | Interact / talk | E |
 | Smartphone camera (in the present) | N |
-| Journal / map | J · M |
+| Map | M |
 | First / third person | F5 · mouse wheel to zoom |
 | Turn without the mouse | ← / → |
 
