@@ -24,6 +24,9 @@ Goal: every plan step done, tests added, the four gates green. Resumable at any 
 4. **Commit as you go** in logical pieces (see ship.md "Commits"); include the task file update.
 5. **Tests:** add or adjust unit tests (vitest, `tests/`) for the logic you changed; extend an e2e
    spec in `e2e/` when gameplay flow changes. Content changes: `pnpm validate`.
+   Pick the specs to run by grepping `e2e/` (specs and `e2e/helpers/`) for every selector, test id,
+   `window.kq` hook and helper you changed or removed, not only the obvious spec. Can't run them
+   (sandbox)? List them all in `## Progress` as unverified.
 6. **Gates**, all four:
 
    ```sh

@@ -45,7 +45,8 @@ when `mc` is installed. Task file edits are committed together with the work.
 A sandbox (e.g. Codex `workspace-write`) can block a local server, Chromium, the network (`git
 push`, `gh`) or, in a git worktree, `git commit`. Don't work around it with substitute commands or
 ad-hoc configs: do everything else, note the blocked step in `## Progress`, and give the
-contributor the exact command to run (Codex worktree: add `--add-dir <repo>/.git` to commit).
+contributor the exact command to run (Codex worktree: add `--add-dir <repo>/.git` to commit;
+`codex exec resume` has no `--add-dir`, pass `-c 'sandbox_workspace_write.writable_roots=["<repo>/.git"]'`).
 A gate or spec you could not run as written is not green.
 
 ## Detect the phase
