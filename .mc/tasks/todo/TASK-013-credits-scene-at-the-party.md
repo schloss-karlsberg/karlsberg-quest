@@ -4,7 +4,7 @@ aliases:
 - TASK-013
 title: Credits scene at the party
 slug: credits-scene-at-the-party
-status: in-progress
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -78,12 +78,12 @@ sequence lists **everyone who contributed**: people, the asset authors, and the 
 - [x] `content/credits.json` exists with the three seed entries; format checked by validate or a test
 - [x] Credits run at the party after all three endings and list people, asset authors (from `LICENSES.json`), tools and libraries, data sources
 - [x] Adding an entry to `content/credits.json` or `LICENSES.json` shows up without code changes
-- [ ] Skippable; Enter / Escape closes it; works on mobile; reduced motion shows a static scrolling list
+- [x] Skippable; Enter / Escape closes it; works on mobile; reduced motion shows a static scrolling list
 - [x] Every named person has agreed to be listed.
 - [x] The real tour guide is not named anywhere in the credits
 - [x] e2e: an ending spec reaches the credits and skips them (`--workers=1`); unit tests for the generated author list
 - [ ] Screenshot (desktop and phone width) in the PR
-- [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+- [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
 ## Plan
 
@@ -107,7 +107,7 @@ _Status: approved 2026-11-24_
 - [x] 3. Feed both existing views the assembled credits. Preserve party cues, explicit line overrides, storyboard selectors, the normal camera orbit and movement hand-back.
 - [x] 4. Provide a visible, tappable „Überspringen“ button and Enter/Escape dismissal. Return to free roam once. For reduced motion (game setting or OS preference), leave a static, manually scrollable list open until dismissed and suppress the orbit. Keep text and skip clear of touch controls.
 - [x] 5. Cover the three ending routes and player inputs. Exercise the real skip button locally in the story spec. Update the party design note, add the ACTION-RPG §14 row and record the behaviour change in the PRD changelog.
-- [ ] 6. Run the four gates. The contributor runs browser checks and captures the matching after screenshots outside the sandbox.
+- [x] 6. Run the four gates. The contributor runs browser checks and captures the matching after screenshots outside the sandbox.
 
 **Test plan:**
 
@@ -154,7 +154,12 @@ _Status: approved 2026-11-24_
 - Git staging was denied on the worktree's `index.lock` after the two content commits. The remaining changes are ready for staging outside the sandbox.
 - 2026-11-24 — The contributor committed the implementation and tests as `5787c85` and `fd6ad2d`. All four gates passed externally (1,467 tests). Story passed 5/5 and smoke passed 7/7. Party passed 3/4 because headless Chromium did not acquire pointer lock in party (b). Desktop and reduced-motion phone visuals passed review. On the animated phone view, the lower letterbox obscured the edge of the credits band.
 - [x] 2026-11-24 — Fix round 1. Party (b) exercises Escape directly and still checks that both dogs lie at the player's feet. Headless unit tests cover a browser-reported unlock, Escape followed by an unlock, and a game-initiated release or failed lock request. The animated phone band now sits above the lower letterbox and clips the crawl at its edges. The party spec checks that geometry at 844×390. Typecheck and 32 focused Vitest tests passed.
-- [ ] Rebuild outside the sandbox, rerun `e2e/party.spec.ts` with one worker, and refresh `after-phone.png` at 844×390 with motion enabled.
+- [x] Rebuild outside the sandbox, rerun `e2e/party.spec.ts` with one worker, and refresh `after-phone.png` at 844×390 with motion enabled.
+- 2026-11-24 — The contributor committed fix round 1 as `2433166` (`fix(ui): contain the phone credits and cover Escape dismissal`). On that commit, the contributor ran all four gates outside the sandbox. Typecheck, all 1,470 unit tests, content validation and the production build passed. Playwright passed with `--workers=1` under `scripts/dev/heavy.sh` for party (5/5), story (5/5) and smoke (7/7).
+- 2026-11-24 — Verified all five SwiftShader captures in the main checkout under `test-results/contribute/TASK-013/`. The desktop pair (`before-desktop.png`, `after-desktop.png`) is 1280×720. The landscape touch pair (`before-phone.png`, `after-phone.png`) and `after-phone-reduced.png` are 844×390. The contributor used `/?notitle&nosave&fresh&manual&party=burn` and stepped 300 frames after the bodies were ready. The reduced-motion capture shows the static scrollable list. Attaching the images to the PR is pending.
+- 2026-11-24 — Self-reviewed `git diff e3a37d5...2433166`, including the credits data in both views, dismissal and camera hand-back, the phone layout and test coverage. Found no blocking issues. `git diff --check` passed.
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/13
+- 2026-11-24 — The implementation branch was pushed and the PR opened. `mc validate` passed with the review status and PR URL in this file. The sandbox denied the close-out commit on the worktree's `index.lock` after staging. The contributor can stage this final note, commit the task update and push it to the open PR.
 
 ## Notes
 - Builds on the party feature (`docs/design/tour/systems.md` §6, `content/bible/06-enden.md` §8).
