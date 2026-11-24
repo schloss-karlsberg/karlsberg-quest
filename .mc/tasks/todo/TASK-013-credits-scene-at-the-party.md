@@ -79,7 +79,7 @@ sequence lists **everyone who contributed**: people, the asset authors, and the 
 - [x] Credits run at the party after all three endings and list people, asset authors (from `LICENSES.json`), tools and libraries, data sources
 - [x] Adding an entry to `content/credits.json` or `LICENSES.json` shows up without code changes
 - [x] Skippable; Enter / Escape closes it; works on mobile; reduced motion shows a static scrolling list
-- [x] Every named person has agreed to be listed.
+- [ ] Every named person has agreed to be listed. (Pending: owner to confirm consent before release.)
 - [x] The real tour guide is not named anywhere in the credits
 - [x] e2e: an ending spec reaches the credits and skips them (`--workers=1`); unit tests for the generated author list
 - [ ] Screenshot (desktop and phone width) in the PR
