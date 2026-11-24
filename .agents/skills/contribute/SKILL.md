@@ -47,6 +47,8 @@ push`, `gh`) or, in a git worktree, `git commit`. Don't work around it with subs
 ad-hoc configs: do everything else, note the blocked step in `## Progress`, and give the
 contributor the exact command to run (Codex worktree: add `--add-dir <repo>/.git` to commit;
 `codex exec resume` has no `--add-dir`, pass `-c 'sandbox_workspace_write.writable_roots=["<repo>/.git"]'`).
+Even with that, `git add` can be denied on the worktree's `index.lock`: don't retry, hand over the exact
+`git add` / `git commit` commands with the messages.
 A gate or spec you could not run as written is not green.
 
 ## Detect the phase

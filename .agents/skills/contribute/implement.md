@@ -38,6 +38,7 @@ Goal: every plan step done, tests added, the four gates green. Resumable at any 
 
    Fix failures before moving on. When green, log `gates green` with the date in `## Progress`.
 7. Docs: behaviour or design changed → a row in `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog.
+   Never link a task file from docs or code (`.mc/` files move between folders); name the task ID.
 8. **Pause point:** if the session is getting long, make sure `## Progress` is current and tell the
    contributor they can compact or start fresh and run `/contribute TASK-00X` to resume.
    When all steps are ticked and gates are green → ship.md.
