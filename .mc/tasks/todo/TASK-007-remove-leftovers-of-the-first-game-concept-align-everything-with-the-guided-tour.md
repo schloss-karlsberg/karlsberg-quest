@@ -47,9 +47,9 @@ kept on a conflict-free keymap, and the two story bibles merged in this task.
 - [ ] **Decision: working title along the lines of "Schloss Karlsberg Tour"** on the title screen (`game.title` / title page); final wording is the owner's, keep it in one string so it is a one-line change
 - [ ] **Decision: remove** the surveyor motto `title.motto` ("Fakten mit Quelle. ... Schauen, nicht graben.") and the subtitle `game.subtitle` ("Das Land erinnert sich") from the title screen (check other users of `game.subtitle`, e.g. `story.credits.sub`, `content/party/credits.json`; same decision there unless the owner says otherwise)
 - [ ] Buttons without lantern icons (`LANTERN_SVG`, `.kq-lantern-btn`) and in plain wording: "Weiter" (`title.continue`, was "Weiter vermessen"), "Neues Spiel" (`title.newGame`, was "Neues Feldbuch beginnen"); delete `title.light` "Laterne entzünden"
-- [ ] `title.confirmNew`: "Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?"
+- [x] `title.confirmNew`: "Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?"
 - [ ] `title.hint` lists combat keys (Hieb, Wuchthieb, Bannlicht, Balsam) although the tour has no combat: show the tour's keys (move, interact, the survey-skill keys from section 6)
-- [ ] Pause / toasts in plain wording: "Speichern" (`pause.save`), "Spielstand gespeichert." (`pause.saved`, `toast.saved`), "Ausgeruht. Spielstand gespeichert." (`story.hub.bench.saved`, if the rest action survives)
+- [x] Pause / toasts in plain wording: "Speichern" (`pause.save`), "Spielstand gespeichert." (`pause.saved`, `toast.saved`), "Ausgeruht. Spielstand gespeichert." (`story.hub.bench.saved`, if the rest action survives)
 - [ ] `index.html` meta description: "Ein düsteres Erkundungs-Rätselspiel ..." (a puzzle game; the game is an action RPG)
 - [ ] README "How to play" still says "Laterne entzünden", "Neues Feldbuch beginnen"
 
@@ -125,7 +125,7 @@ The owner dislikes the name and thinks the game does not need a journal. What "F
 | Other UI strings: "Noch keine Pläne im Feldbuch", skill card "Neu im Feldbuch" | `src/systems/skills/strings.ts` | plain wording ("Noch keine Pläne", "Neue Fähigkeit") |
 | In-fiction mentions: Laub's notebook, Marlene's loose page, quest "Feldbuch-Notiz", story lines ("steht im Feldbuch") | `content/story/00-tour.story.json` (`laub.t.seite`), `01-kapitel-1`, `04-kapitel-4`, `05-enden` (`keep`, free-roam hint "im Feldbuch (J)"), `content/packs/*.pack.json`, `content/quests/04-kapitel-4.quests.json`, `src/systems/travel/lore.ts` | **verify with owner**: Laub's own field book as a story object may stay; lines that point the player to "das Feldbuch (J)" must change. Voiced lines need new clips |
 
-- [ ] Remove the journal modal, its key J and the touch button; nothing is lost: every surviving tab above has a new home
+- [x] Remove the journal modal, its key J and the touch button; nothing is lost: every surviving tab above has a new home
 - [x] Quest log and Codex reachable from the phone or the pause menu (pick one primary route, keep it consistent on desktop and mobile)
 - [ ] Rename the save UI as in the table; no "Feldbuch" left in UI strings (`grep -rn Feldbuch src content`), except in-fiction lines the owner keeps
 - [ ] Rows marked "verify with owner" decided before work starts
@@ -177,9 +177,9 @@ moved to the new defaults (settings migration).
 - [ ] The Messstab is received visibly during the tour, before the first time travel, and not shown before
 - [ ] No menu at the spring; its functions open at the Bauwagen (or, if the owner rejects the restore, through Marlene); the spring's touch has no E conflict
 - [ ] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
-- [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green
+- [x] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green
 - [ ] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
-- [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+- [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
 ## Plan
 
@@ -206,7 +206,7 @@ _Status: approved 2026-11-24_
 - [x] 2. Keep I → Ausrüstung and M → Karte as shortcuts. Connect the clue-card action to Codex and preserve the hub's pending clue cards, its `chronik:open/opened/closed` events and its return from Codex to the Pinnwand. Check the map's cleanup when leaving the view.
 - [x] 3. Remove both journal shells, the J listener, journal default and rebind row, touch button and icon mappings, tab navigation and obsolete journal debug hooks. Update the HUD, controls, skill messages and name-entry heading. Use “Mehr dazu unter Pause → Aufgaben”, “Neu im Codex” and “Codex öffnen”. Point the free-roam ending at Pause in the endings builder, regenerate with `node scripts/content-build/build.mjs` and verify the generated story diff is confined to `end.frei`. Preserve the four owner-pending pages, their records and the `feldbuch.*` talents.
 - [x] 4. Set title buttons to “Neues Spiel” and “Weiter”, and the overwrite prompt to “Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?”. Use “Speichern” for the pause action, “Spielstand gespeichert.” for its confirmation and save toast, and “Ausgeruht. Spielstand gespeichert.” for a successful rest. Update the corresponding README instructions and the two design-doc entries without linking task files.
-- [ ] 5. Update the affected unit tests, Playwright specs and shared prologue helper. Run the four gates and compare the contributor's before/after views. Record results against this slice and keep the epic in progress.
+- [x] 5. Update the affected unit tests, Playwright specs and shared prologue helper. Run the four gates and compare the contributor's before/after views. Record results against this slice and keep the epic in progress.
 
 **Test plan:**
 
@@ -278,6 +278,7 @@ _Status: approved 2026-11-24_
 ## Progress
 
 - Branch: `refactor/task-007-journal-classic`
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/15
 - 2026-11-24: Step 1 implemented. Pause lists the eight existing feature views with badges, a scrollable list and a Back action. The conditional story actions remain available.
 - 2026-11-24: Step 2 implemented. I opens Ausrüstung, M retains its map and comparison behavior, and the map cancels its frame and key listeners on close. Codex opens from clue cards and above the Pinnwand, preserving the hub and its clue queue.
 - 2026-11-24: Step 3 implemented. Removed both journal shells, J and the touch entry. Regenerated content with `node scripts/content-build/build.mjs`. The generated diff changes only `end.frei`. Pending labels and legacy prologue content remain in place.
@@ -289,13 +290,11 @@ _Status: approved 2026-11-24_
 - 2026-11-24: `git commit` was denied access to the worktree's `index.lock` after initial staging. Run the two commits from the contributor shell.
 - 2026-11-24: Round 1. The contributor committed the slice (`fabbd44`, `05d40c5`) and passed all four gates outside the sandbox. Playwright reported 45 passed and one failure in `story.spec.ts`. Removed the duplicate title overrides so the main dictionary supplies „Weiter“ and „Neues Spiel“, and aligned the story alias and quest comment. Typecheck and 41 related unit tests passed. The browser rerun is pending. The sandbox denied `git add` access to the worktree's `index.lock`.
 
-```sh
-pnpm validate
-pnpm build
-for spec in smoke quests chronik integration npc progression flaschen photo touch chapter-prolog story pacing quelle campaign; do
-  scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
-done
-```
+- 2026-11-24: Fix round 1 committed as `5f8db36` (`fix(ui): use the plain continue label on the title`). The contributor ran all four gates outside the sandbox on this commit. Typecheck passed, all 1,471 unit tests passed, content validation passed and the production build passed.
+- 2026-11-24: The contributor ran smoke, quests, chronik, integration, npc, progression, flaschen, photo, touch, chapter-prolog, story, pacing, quelle and campaign with `--workers=1` under `scripts/dev/heavy.sh`. Across `fabbd44`–`05d40c5`, 45/46 passed. The sole failure at `story.spec.ts:94` showed “Fortsetzen” on the saved-game title. After the fix, story and smoke passed 13/13 on `5f8db36`.
+- 2026-11-24: Compared the four SwiftShader captures in the main checkout under `test-results/contribute/TASK-007/`. At 1280×720, `before-title.png` and `after-title.png` show “Fortsetzen” changing to “Weiter” for the saved game. At 844×390, `before-pause-touch.png` and `after-pause-touch.png` show all eight destinations added to landscape Pause.
+- 2026-11-24: Self-reviewed `git diff c344059...5f8db36`, including the retired inputs, stacked dialogs, map cleanup, German labels and generated ending. `git diff --check` passed. The hub now stays open under Codex. One obsolete comment in `src/systems/story/index.ts` still describes reopening it. Slice 1 is ready for review. The seven follow-up slices keep the epic in progress.
+- 2026-11-24: Pushed `5f8db36` and opened PR #15. The sandbox denied the task-file commit at the worktree's `index.lock`. The contributor can stage this record, commit it and push it to the open PR.
 
 ## Notes
 - Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.
