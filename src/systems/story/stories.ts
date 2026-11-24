@@ -7,3 +7,10 @@ export function loadBundledStories(): { file: string; story: StoryFile }[] {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([file, story]) => ({ file: file.replace(/^\//, ''), story }));
 }
+
+/** Chapters available to the story engine, chapter selector and debug jumps. */
+export function storiesInPlay(files: { story: StoryFile }[], params: URLSearchParams): StoryFile[] {
+  return files.map(({ story }) => story).filter((story) =>
+    !story.legacy && (!story.test || params.has('storytest')) && (!story.dev || params.has(story.dev)),
+  );
+}

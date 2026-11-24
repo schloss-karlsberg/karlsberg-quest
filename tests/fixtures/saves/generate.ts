@@ -44,7 +44,7 @@ export function generateReleaseSlot(tag: string, output: string): void {
       hp: 61, stamina: 92, bann: 2, deaths: 1,
       groups: { [group]: { group, quest, objective: 'nebel', kind: 'nebelling', era: 'today', x: 820, z: -875, count: 1, killed: 0 } },
     };
-    state.systems.photo = { good: ['test-photo'] };
+    state.systems.photo = { album: [], good: ['test-photo'], granted: [], cards: [], best: {}, near: {} };
     progression.placed = {
       'drop.0.0': { id: 'drop.0.0', item: 'item.balsam', x: 820, z: -875, era: 'today', drop: true },
     };

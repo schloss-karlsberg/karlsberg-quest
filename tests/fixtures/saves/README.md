@@ -26,6 +26,6 @@ import { test } from 'vitest';
 import { generateReleaseSlot } from './generate';
 test('capture the release auto slot', () => generateReleaseSlot(process.env.KQ_FIXTURE_TAG!, process.env.KQ_FIXTURE_OUTPUT!));
 TS
-  (cd "$release_dir" && KQ_FIXTURE_TAG="$tag" KQ_FIXTURE_OUTPUT="$fixture_dir/$tag.json" pnpm exec vitest run tests/fixtures/saves/generate.test.ts) || exit
+  (cd "$release_dir" && KQ_FIXTURE_TAG="$tag" KQ_FIXTURE_OUTPUT="$fixture_dir/$tag.json" ./node_modules/.bin/vitest run tests/fixtures/saves/generate.test.ts) || exit
 done
 ```

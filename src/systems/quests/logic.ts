@@ -241,7 +241,7 @@ export class QuestBook {
    */
   tracked(): string[] {
     if (this.running().some((q) => q.kind === 'main' && !this.slice.tracked.includes(q.id))) this.track('', true);
-    return [...this.slice.tracked];
+    return this.slice.tracked.filter((id) => this.defs.has(id));
   }
 
   /**
