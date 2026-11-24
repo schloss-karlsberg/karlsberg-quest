@@ -29,6 +29,7 @@ export class Hud {
   private readonly statusEl: HTMLElement;
   private readonly stanceEl: HTMLElement;
   private readonly toastsEl: HTMLElement;
+  private toastEl: HTMLElement | null = null;
   private readonly clickEl: HTMLElement;
   /** "⏸ Bullet-Time" chip while the simulation only advances by `kq.step` / `kq.pilot` (?manual). */
   private readonly bulletEl = h('div.kq-bullet-time.kq-hidden', { 'data-testid': 'bullet-time', title: 'Bullet-Time: das Spiel läuft nur über kq.pilot / kq.step weiter' }, '⏸ Bullet-Time');
@@ -414,31 +415,19 @@ export class Hud {
     this.stanceEl.textContent = text;
   }
 
-  /**
-   * A short note top right. At most two at a time (playtest round 4: four tips stacked over the
-   * chapter title in the first seconds); the rest wait their turn, the same text never twice.
-   */
-  toast(text: string, ms = 2600): void {
-    if (this.toastWait.some((x) => x.text === text) || [...this.toastsEl.children].some((el) => el.textContent === text)) return;
-    this.toastWait.push({ text, ms });
-    // a waiting tip is stale after a while: drop the oldest beyond six
-    while (this.toastWait.length > 6) this.toastWait.shift();
-    this.pumpToasts();
+  /** Render the toast that owns the card director's slot. */
+  showToast(text: string): void {
+    this.toastEl = h('div.kq-toast', { role: 'status' }, text);
+    this.toastsEl.append(this.toastEl);
   }
 
-  private readonly toastWait: { text: string; ms: number }[] = [];
+  holdToast(held: boolean): void {
+    if (this.toastEl) this.toastEl.hidden = held;
+  }
 
-  private pumpToasts(): void {
-    while (this.toastWait.length && this.toastsEl.childElementCount < 2) {
-      const { text, ms } = this.toastWait.shift()!;
-      const el = h('div.kq-toast', text);
-      this.toastsEl.append(el);
-      setTimeout(() => {
-        el.remove();
-        // the next one after a short beat
-        setTimeout(() => this.pumpToasts(), 250);
-      }, ms);
-    }
+  closeToast(): void {
+    this.toastEl?.remove();
+    this.toastEl = null;
   }
 
   showClickToPlay(on: boolean): void {

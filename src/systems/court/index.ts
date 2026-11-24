@@ -346,7 +346,7 @@ class CourtRuntime {
     if (id !== 'ehrenhof' || ctx.era.current !== '1789' || this.admitted) return;
     if (!this.active().length) return;
     ctx.player.teleport(EHRENHOF_OUTSIDE.x, EHRENHOF_OUTSIDE.z, -(EHRENHOF_OUTSIDE.yaw * Math.PI) / 180);
-    ctx.ui.hud.toast(t('court.travel.outside'), 4200);
+    ctx.ui.toast(t('court.travel.outside'), 4200);
   }
 
   // ---- sight --------------------------------------------------------------------------------
@@ -640,7 +640,7 @@ class CourtRuntime {
     ctx.state.update((s) => (s.flags['court.admitted'] = true), 'court');
     ctx.events.emit('story:cue', { id: 'scenery:gate', data: { open: true } });
     ctx.ui.hud.subtitle(this.speaker(watcher), t('court.inspect.ok'), 3200);
-    ctx.ui.hud.toast(t('court.admitted'));
+    ctx.ui.toast(t('court.admitted'));
     this.hush(null);
     ctx.events.emit('court:admitted', { watcher });
   }

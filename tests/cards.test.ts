@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_GAP, CardDirector } from '../src/ui/cards';
-import type { Hud } from '../src/ui/hud';
-import type { ModalHandle, ModalManager } from '../src/ui/modal';
+import type { ModalHandle } from '../src/ui/modal';
 
 /** Card discipline (playtest round 4): one centre card at a time, held in fights and conversations. */
 function rig() {
-  const hud = { inAction: false } as unknown as Hud & { inAction: boolean };
+  const hud = {
+    inAction: false,
+    showToast() {},
+    holdToast() {},
+    closeToast() {},
+  };
   const open: ModalHandle[] = [];
-  const modals = { get count() { return open.filter((m) => !m.closed).length; } } as unknown as ModalManager;
+  const modals = { get count() { return open.filter((m) => !m.closed).length; } };
   const d = new CardDirector(hud, modals);
   const card = (log: string[], name: string) => () => {
     let closed = false;

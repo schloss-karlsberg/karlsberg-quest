@@ -342,6 +342,9 @@ body.kq-in-combat .kq-waymark {
   transform: none;
   text-align: right;
 }
+.kq-root:has(> .kq-modal-layer, .kqs-choice-card.kqs-show) .kq-toasts {
+  display: none;
+}
 
 /* ---- "click into the picture" (pointer lock) ---- */
 .kq-hud .kq-click-to-play {
