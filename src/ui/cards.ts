@@ -255,7 +255,7 @@ export class CardDirector {
         return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05 && r.width > 2 && r.height > 2;
       });
     if (vis('[data-testid="chronik-card"]')) out.push('clue');
-    if (vis('.kqq-reward:not(.kqq-out):not(.kqq-held)')) out.push('reward');
+    if (vis('.kqq-reward:not(.kq-notice-out):not([hidden])')) out.push('reward');
     if (vis('.kq-toast:not(.kq-notice-out):not([hidden])')) out.push('toast');
     if (vis('.kqp-card:not(.kqp-out):not(.kqp-held)')) out.push('level');
     if (vis('.kqk-card:not(.kqk-out):not(.kqk-held)')) out.push('skill');

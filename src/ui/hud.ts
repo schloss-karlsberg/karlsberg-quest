@@ -28,7 +28,7 @@ export class Hud {
   private readonly eraEl: HTMLElement;
   private readonly statusEl: HTMLElement;
   private readonly stanceEl: HTMLElement;
-  private readonly toastsEl: HTMLElement;
+  readonly noticeDock: HTMLElement;
   private toastEl: HTMLElement | null = null;
   private readonly clickEl: HTMLElement;
   /** "⏸ Bullet-Time" chip while the simulation only advances by `kq.step` / `kq.pilot` (?manual). */
@@ -147,7 +147,7 @@ export class Hud {
     this.eraEl = h('div.kq-era-label');
     this.statusEl = h('div.kq-status');
     this.stanceEl = h('div.kq-stance');
-    this.toastsEl = h('div.kq-toasts');
+    this.noticeDock = h('div.kq-toasts');
     this.clickEl = h('div.kq-click-to-play.kq-hidden', { 'data-testid': 'click-to-look' }, [
       svg(MOUSE_SVG),
       h('div.kq-ctp-text', [h('b', t('hud.clickToPlay')), h('span', t('hud.clickToPlaySub'))]),
@@ -214,7 +214,7 @@ export class Hud {
       this.promptEl,
       this.oilEl,
       this.stanceEl,
-      this.toastsEl,
+      this.noticeDock,
       this.clickEl,
       this.bulletEl,
     ]);
@@ -417,8 +417,8 @@ export class Hud {
 
   /** Render the toast that owns the card director's slot. */
   showToast(text: string): void {
-    this.toastEl = h('div.kq-toast', { role: 'status' }, text);
-    this.toastsEl.append(this.toastEl);
+    this.toastEl = h('div.kq-toast.kq-notice', { role: 'status' }, text);
+    this.noticeDock.append(this.toastEl);
   }
 
   holdToast(held: boolean): void {

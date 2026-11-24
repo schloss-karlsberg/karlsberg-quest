@@ -1,11 +1,11 @@
 /**
  * Quest HUD pieces: the tracker (top-left column, `hud.stack(el, 35)`), objective ticks (right
- * edge, `hud.dock('feed', el, 20)`), the "Neue Aufgabe" banner and the reward card (an overlay
- * above the conversation panel). DOM only; the quests system feeds them.
+ * edge, `hud.dock('feed', el, 20)`), the "Neue Aufgabe" banner and the compact payout notice.
+ * The quests system feeds them.
  */
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
-import type { Confidence } from '../../content/types';
+import type { CardDirector } from '../../ui/cards';
 
 export interface TrackerObjective {
   id: string;
@@ -158,153 +158,81 @@ export function showBanner(layer: HTMLElement, kicker: string, title: string, ma
 export interface RewardView {
   title: string;
   xp: number;
-  quiet: boolean;
   items: { name: string; count: number }[];
-  codex: { id: string; title: string; confidence: Confidence; label: string }[];
+  codex: number;
   skills: string[];
-  /** "Mehr im Feldbuch (J)": history kept for the journal (voice turn-ins). */
-  more?: string;
+  /** Point to the field book for newly unlocked facts or extra turn-in history. */
+  more: boolean;
 }
 
-/** The bit of the card director (src/ui/cards.ts) the reward card needs. */
-export interface CardSlot {
-  claim(token: string): boolean;
-  release(token: string): void;
-  readonly held: boolean;
-}
+/** Seconds the payout stays; metres you walk away before it goes by itself. */
+const REWARD_SECONDS = 5;
+const REWARD_WALK_AWAY = 4.5;
 
-/** Seconds a reward card stays at most; metres you walk away before it goes by itself. */
-export const REWARD_SECONDS = 5;
-export const REWARD_WALK_AWAY = 4.5;
-
-/**
- * The reward card: "Aufgabe erfüllt", the XP stamp, items, "Neu im Codex: …" with the confidence
- * badge. One centre card at a time (playtest round 4): it waits for the card director's slot — not
- * over a conversation (the turn-in card already showed what you get), not in a fight — and goes by
- * itself after five seconds or as soon as you walk away from where it came up; a click takes it
- * away at once. Payouts that arrive together wait in a short queue.
- */
-export class RewardCard {
+export class RewardNotice {
   private el: HTMLElement | null = null;
-  private timer = 0;
   private shown = 0;
-  private onDone: (() => void) | null = null;
-  private readonly waiting: { v: RewardView; onDone?: () => void }[] = [];
+  private readonly waiting: RewardView[] = [];
   private anchor: { x: number; z: number } | null = null;
 
   constructor(
-    private readonly layer: HTMLElement,
-    private readonly slot: CardSlot | null = null,
+    private readonly dock: HTMLElement,
+    private readonly cards: CardDirector,
   ) {}
 
   get open(): boolean {
     return !!this.el;
   }
 
-  /** Cards waiting for the slot (tests). */
   get pending(): number {
     return this.waiting.length;
   }
 
-  /** Queue a card; it shows when the director gives it the slot (or at once without a director). */
-  push(v: RewardView, onDone?: () => void): void {
-    this.waiting.push({ v, onDone });
-    if (!this.slot && !this.el) this.next();
+  push(view: RewardView): void {
+    this.waiting.push(view);
   }
 
-  private next(): void {
-    const w = this.waiting.shift();
-    if (w) this.show(w.v, false, w.onDone);
-  }
-
-  /** `keys`: E / Enter / Space dismiss it (only over a conversation; in play those keys are the player's). */
-  show(v: RewardView, keys = false, onDone?: () => void): void {
-    this.close();
-    this.onDone = onDone ?? null;
-    this.anchor = null;
+  private show(view: RewardView, at: { x: number; z: number }): void {
+    this.anchor = { x: at.x, z: at.z };
     this.shown = 0;
-    const badge = (c: Confidence) => h('span.kqq-conf', { dataset: { c }, title: t(`journal.codex.${c}`), 'aria-label': `${c}: ${t(`journal.codex.${c}`)}` }, c);
-    this.el = h(`div.kqq-reward.kq-paper${v.quiet ? '.kqq-quiet' : ''}`, { 'data-testid': 'quest-reward', role: 'dialog', 'aria-label': t('quest.done') }, [
+    const gains = [...view.items.map(({ name, count }) => count > 1 ? `${count}× ${name}` : name), ...view.skills];
+    this.el = h('div.kqq-reward.kq-notice', { 'data-testid': 'quest-reward', role: 'status' }, [
       h('div.kqq-r-kick', t('quest.done')),
-      h('div.kqq-r-title', v.title),
-      v.xp > 0 && !v.quiet ? h('div.kqq-r-xp', { 'data-testid': 'quest-reward-xp' }, [h('span', t('quest.xp', { n: v.xp }))]) : null,
-      v.items.length
-        ? h('div.kqq-r-row', [h('span.kqq-r-lbl', t('quest.items')), h('div.kqq-r-items', v.items.map((i) => h('span.kqq-r-item', `${i.count > 1 ? `${i.count}× ` : ''}${i.name}`)))])
-        : null,
-      v.skills.length ? h('div.kqq-r-row', [h('span.kqq-r-lbl', t('quest.skill')), h('div.kqq-r-items', v.skills.map((s) => h('span.kqq-r-item', s)))]) : null,
-      v.codex.length
-        ? h('div.kqq-r-row.kqq-r-codex', { 'data-testid': 'quest-reward-codex' }, [
-            h('span.kqq-r-lbl', t('quest.codexNew')),
-            h('div.kqq-r-items', v.codex.map((c) => h('span.kqq-r-card', { dataset: { fact: c.id } }, [badge(c.confidence), h('span', c.title), h('span.kqq-lab', { dataset: { l: c.label } }, t(`journal.codex.label.${c.label}`))]))),
-          ])
-        : null,
-      v.more ? h('div.kqq-r-more', v.more) : null,
-      // E only dismisses it over a conversation; in open play E is the interact key
-      h('div.kqq-r-next', keys ? [h('kbd', 'E'), ` ${t('quest.continue')}`] : [t('quest.continueClick')]),
+      h('strong.kqq-r-title', view.title),
+      view.xp > 0 ? h('div.kqq-r-xp', { 'data-testid': 'quest-reward-xp' }, t('quest.xp', { n: view.xp })) : null,
+      gains.length ? h('div.kqq-r-gains', gains.join(' · ')) : null,
+      view.codex ? h('div.kqq-r-codex', { 'data-testid': 'quest-reward-codex' }, t('quest.codexNew', { n: view.codex })) : null,
+      view.more ? h('div.kqq-r-more', t('quest.moreJournal')) : null,
     ]);
-    this.el.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
-      this.close();
-    });
-    this.layer.append(this.el);
-    this.layer.classList.remove('kq-hidden');
-    if (keys) {
-      // the conversation panel leaves its keys to the card while it shows (data-kq-keytrap)
-      this.el.dataset.kqKeytrap = '1';
-      window.addEventListener('keydown', this.onKey, true);
-    }
-    this.timer = REWARD_SECONDS;
+    this.dock.append(this.el);
   }
 
-  /** UI clock (real seconds). `at`: the player's position (walking away dismisses the card). */
-  tick(dt: number, at?: { x: number; z: number }): void {
+  /** Count only visible time. Walking away can dismiss after a moment to read. */
+  tick(dt: number, at: { x: number; z: number }): void {
     if (!this.el) {
-      if (this.waiting.length && (!this.slot || this.slot.claim('reward'))) this.next();
+      if (this.waiting.length && this.cards.claim('reward', this.close)) this.show(this.waiting.shift()!, at);
       return;
     }
-    // a fight or a conversation came up: the card steps aside, its clock stops
-    const held = !!this.slot?.held;
-    this.el.classList.toggle('kqq-held', held);
+    const held = this.cards.held;
+    this.el.hidden = held;
     if (held) return;
-    // a modal other than the conversation, or a story choice, holds the card back (CSS hides it)
-    if (typeof document !== 'undefined' && document.querySelector('.kq-modal:not(.kqn-modal), .kqs-choice-card.kqs-show')) return;
     this.shown += dt;
-    if (at) {
-      if (!this.anchor) this.anchor = { x: at.x, z: at.z };
-      else if (this.shown > 1.2 && Math.hypot(at.x - this.anchor.x, at.z - this.anchor.z) > REWARD_WALK_AWAY) {
-        this.close();
-        return;
-      }
+    const anchor = this.anchor!;
+    if (this.shown >= REWARD_SECONDS || (this.shown > 1.2 && Math.hypot(at.x - anchor.x, at.z - anchor.z) > REWARD_WALK_AWAY)) {
+      this.close();
     }
-    this.timer -= dt;
-    if (this.timer <= 0) this.close();
   }
 
-  close(): void {
+  private readonly close = (): void => {
     if (!this.el) return;
-    window.removeEventListener('keydown', this.onKey, true);
-    const el = this.el;
-    delete el.dataset.kqKeytrap;
+    this.el.remove();
     this.el = null;
-    el.classList.add('kqq-out');
-    setTimeout(() => el.remove(), 350);
-    this.slot?.release('reward');
-    const fn = this.onDone;
-    this.onDone = null;
-    fn?.();
-  }
+    this.cards.release('reward');
+  };
 
   /** Drop everything (a new game, a load). */
   clear(): void {
     this.waiting.length = 0;
     this.close();
   }
-
-  private readonly onKey = (e: KeyboardEvent): void => {
-    if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter') {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      this.close();
-    }
-  };
 }
