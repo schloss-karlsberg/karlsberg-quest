@@ -67,7 +67,7 @@ describe('prompt key → touch icon', () => {
     expect(touchIconFor('F')).toBe('fly');
     expect(touchIconFor('Leertaste')).toBe('dodge');
     expect(touchIconFor('Maus rechts')).toBe('bannlicht');
-    expect(touchIconFor('J')).toBe('journal');
+    expect(touchIconFor('J')).toBe('interact');
     expect(touchIconFor('G / Maus rechts')).toBe('bannlicht');
   });
   it('falls back to the interact button', () => {
@@ -188,7 +188,6 @@ describe('touch names in text (actionLabel)', () => {
     expect(actionLabel(touch, 'listen')).toBe('Aktion');
     expect(actionLabel(touch, 'interact')).toBe('Aktion');
     expect(actionLabel(touch, 'shift')).toBe('Epoche');
-    expect(actionLabel(touch, 'journal')).toBe('Feldbuch');
     expect(actionLabel(touch, 'map')).toBe('Karte');
     expect(actionLabel(touch, 'skill2')).toBe('2');
   });

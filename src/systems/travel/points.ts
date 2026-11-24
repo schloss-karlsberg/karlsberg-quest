@@ -1,7 +1,7 @@
 /**
  * Vermessungspunkte (survey markers): Laub's tripods across the land. Walk up to one and it is
- * "eingemessen" (a beam rises, rings run over the ground); after that the map (M) or the Journal's
- * "Karte" tab takes you there in a breath. Pure data and rules (no three.js, no DOM), unit-tested in
+ * "eingemessen" (a beam rises, rings run over the ground). The map (M or Pause → Karte) then takes
+ * you there in a breath. Pure data and rules (no three.js, no DOM), unit-tested in
  * tests/travel.test.ts.
  *
  * Placement rules (checked in the tests): outside every palace footprint, inside the story's time

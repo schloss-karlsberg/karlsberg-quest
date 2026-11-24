@@ -15,7 +15,7 @@
  *   (`photo:shot { noSignal: true }`, never `photo:good`).
  * - Targets are data (`content/photo/targets.json`); code may attach a live position and a
  *   `calm()` to a target by id (`attachTarget`), or register a whole target (`registerTarget`).
- * - The album (journal tab „Album“) is in the save: one entry per target (best stars, era, time),
+ * - The album (Pause → Album) is in the save: one entry per target (best stars, era, time),
  *   max 60, no images; this session's JPEG thumbnails stay in memory.
  * - Grants once per target: codex (quietly, no XP), photo cards, flags. No XP for photos.
  */
@@ -28,7 +28,7 @@ import { addStrings, t } from '../../i18n';
 import type { Action } from '../../player/input';
 import { cameraHints } from '../../player/camera';
 import { h } from '../../ui/dom';
-import { addJournalTab } from '../../ui/journal';
+import { addPausePage } from '../../ui/pause-pages';
 import { addControlKeys } from '../../ui/menus';
 import { registerEraMaterials } from '../fx/shift/prewarm';
 import { captureView } from '../notes/capture';
@@ -273,7 +273,7 @@ class Photo {
     });
     window.addEventListener('keydown', this.onKey, { capture: true });
     addControlKeys('photo');
-    addJournalTab({ id: 'album', label: t('photo.album'), order: 70, render: (el) => this.renderAlbum(el) });
+    addPausePage({ id: 'album', label: t('photo.album'), order: 70, render: (el) => this.renderAlbum(el) });
   }
 
   /** PLACEHOLDER subjects (demo.ts): the car-park board, and with ?debug the test deer. */

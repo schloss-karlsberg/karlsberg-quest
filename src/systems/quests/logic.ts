@@ -86,7 +86,7 @@ export function normaliseSlice(s: Partial<QuestSlice> | undefined | null): Quest
 }
 
 /**
- * The Feldbuch's „Laufend“ list: every quest that runs (active / ready) and every main quest on
+ * The quest log's „Laufend“ list: every quest that runs (active / ready) and every main quest on
  * offer — the next main step waits at its giver and belongs in the log as soon as the story gave it
  * (playtest round 10, F-41: „Der Bauplatz …: Hanne“ led the HUD while the log listed side quests
  * only). Main first, then the latest change first.
@@ -161,7 +161,7 @@ const DEFAULT_ACCEPT = 'Ich kümmere mich darum.';
 
 /**
  * History lines told at a turn-in itself (playtest round 3: four-line lectures). The rest waits
- * for "Erzähl mehr" (npc givers) or the journal (voices); every line's codex card unlocks at once.
+ * for "Erzähl mehr" (npc givers) or the quest log (voices); every line's codex card unlocks at once.
  */
 export const HISTORY_AT_TURNIN = 1;
 
@@ -308,7 +308,7 @@ export class QuestBook {
 
   /**
    * Put a quest into the tracker (main quests first, at most three). A running main quest cannot
-   * be taken out (the journal's toggle, `kq.quests.track(id, false)`), and every running main quest
+   * be taken out (the quest log's toggle, `kq.quests.track(id, false)`), and every running main quest
    * missing from the list comes back with any call.
    */
   track(id: string, on = true): void {

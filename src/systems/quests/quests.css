@@ -1,4 +1,4 @@
-/* Quests: tracker, objective ticks, banner, payout notice, compass shapes and the Journal. */
+/* Quests: tracker, objective ticks, banner, payout notice, compass shapes and the Pause pages. */
 
 /* ---------- tracker (top-left column, order 35) ----------
    Restyle 2026-11-19 (docs/ART-DIRECTION.md §9): no box, a soft glass fade behind it; the quest
@@ -375,7 +375,7 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
   font-size: 0.88em;
 }
 
-/* confidence badge + label (shared with the Journal) */
+/* confidence badge + label (shared with the Pause pages) */
 .kqq-conf {
   display: inline-flex;
   align-items: center;
@@ -479,121 +479,8 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
   font-size: 17px;
 }
 
-/* ---------- the Journal ---------- */
-.kq-modal.kqj-modal {
-  width: min(1120px, calc(100vw - 32px));
-  height: min(86vh, 760px);
-  max-height: none;
-  padding: 18px 24px 12px 74px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.kq-modal.kqj-modal > h2 {
-  display: none;
-}
-.kq-modal.kqj-modal .kq-modal-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-}
-.kqj {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.kqj-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  border-bottom: 1.5px solid rgba(42, 33, 24, 0.35);
-  padding-bottom: 2px;
-  padding-right: 40px;
-}
-.kqj-titles {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-.kq-modal h2.kqj-title {
-  margin: 0;
-  font-size: 32px;
-}
-.kqj-sub {
-  font-family: var(--hand);
-  font-size: 19px;
-  color: var(--ink-soft);
-}
-.kqj-tabs {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.kqj-tab {
-  font-family: var(--sc);
-  font-size: 18px;
-  color: var(--ink-soft);
-  background: rgba(42, 33, 24, 0.05);
-  border: 1.5px solid rgba(42, 33, 24, 0.3);
-  border-bottom: none;
-  border-radius: 5px 5px 0 0;
-  padding: 6px 14px 4px;
-  cursor: pointer;
-  display: inline-flex;
-  gap: 7px;
-  align-items: baseline;
-  position: relative;
-  top: 2px;
-}
-.kqj-tab:hover {
-  background: rgba(42, 33, 24, 0.1);
-}
-.kqj-tab:focus-visible {
-  outline: 3px solid rgba(140, 47, 31, 0.55);
-  outline-offset: 1px;
-}
-.kqj-tab.kqj-sel {
-  color: var(--ink);
-  background: var(--paper);
-  border-color: rgba(42, 33, 24, 0.55);
-  box-shadow: 0 -2px 0 var(--accent) inset;
-}
-.kqj-tn {
-  font-family: var(--serif);
-  font-size: 13px;
-  opacity: 0.6;
-}
-.kqj-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: var(--accent);
-  color: var(--paper);
-  font-family: var(--serif);
-  font-size: 13px;
-}
-.kqj-panel {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  outline: none;
-  padding-right: 4px;
-}
-.kqj-foot {
-  font-family: var(--hand);
-  font-size: 16px;
-  color: var(--ink-soft);
-  text-align: right;
-}
-.kqj h4 {
+/* ---------- quests, Codex and collections ---------- */
+:is(.kqj-quests, .kqj-codex, .kqj-sets) h4 {
   font-family: var(--sc);
   font-weight: 400;
   font-size: 18px;
@@ -1026,9 +913,6 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
   }
   .kqj-codex {
     grid-template-columns: 1fr;
-  }
-  .kq-modal.kqj-modal {
-    padding-left: 30px;
   }
 }
 

@@ -654,6 +654,35 @@ body.kq-in-combat .kq-prompt.show {
   align-items: flex-start;
   gap: 10px;
 }
+.kq-pause-destinations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.kq-pause-destinations .kq-btn {
+  padding-inline: 8px;
+}
+.kq-pause-badge {
+  margin-inline-start: 6px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--paper);
+  font-size: 0.8em;
+}
+.kq-modal.kq-pause-page {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.kq-pause-page > .kq-modal-body {
+  min-height: 0;
+  overflow: auto;
+}
+.kq-pause-page > .actions {
+  margin-top: 12px;
+}
 .kq-form {
   display: grid;
   grid-template-columns: 1fr auto;

@@ -104,7 +104,7 @@ export function isTouchSetting(v: unknown): v is TouchSetting {
  * is answered with it). 'Maus' (look / aim) has no button: it gets the neutral swipe hint ('look'),
  * never the interact hand.
  */
-export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'journal' | 'map' | 'balm' | 'lock' | 'crouch' | 'relief' | 'pause' | 'photo' | 'look';
+export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'relief' | 'pause' | 'photo' | 'look';
 const KEY_ICON: Record<string, TouchIcon> = {
   E: 'interact',
   F: 'fly',
@@ -118,7 +118,6 @@ const KEY_ICON: Record<string, TouchIcon> = {
   K: 'attack',
   LEERTASTE: 'dodge',
   SPACE: 'dodge',
-  J: 'journal',
   M: 'map',
   H: 'balm',
   TAB: 'lock',
@@ -140,7 +139,6 @@ const KEY_ICON: Record<string, TouchIcon> = {
   BALSAM: 'balm',
   AKTION: 'interact',
   EPOCHE: 'shift',
-  FELDBUCH: 'journal',
   KARTE: 'map',
   FLIEGEN: 'fly',
   SINKEN: 'crouch',
@@ -178,7 +176,6 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
   interact: 'Aktion',
   listen: 'Aktion',
   shift: 'Epoche',
-  journal: 'Feldbuch',
   map: 'Karte',
   fly: 'Fliegen',
   up: 'Steigen',

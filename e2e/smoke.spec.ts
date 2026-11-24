@@ -73,6 +73,7 @@ test('title screen loads, lights the lantern and starts the game', async ({ page
   await expect(page.getByTestId('title')).toBeVisible();
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 90_000 });
+  await expect(start).toHaveText('Neues Spiel');
   await expect(page.getByTestId('title')).toContainText('Karlsberg');
   await page.waitForTimeout(500); // let the backdrop draw a few frames
   await page.screenshot({ path: `${SCREENS}/title.png` });

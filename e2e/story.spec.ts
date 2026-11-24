@@ -1,5 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SAVE_KEY } from '../src/core/save';
+import { openPause, waitForHooks } from './helpers/pause';
 
 /**
  * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), hub overlay,
@@ -55,6 +57,7 @@ test('story: new game flow (warning → name → lantern) starts the tour', asyn
   await page.goto('./?nosave&fresh');
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
+  await expect(start).toHaveText('Neues Spiel');
   await start.click();
   await expect(page.getByTestId('content-warning')).toBeVisible();
   await expect(page.getByTestId('content-warning')).toContainText('16');
@@ -63,6 +66,7 @@ test('story: new game flow (warning → name → lantern) starts the tour', asyn
   await page.getByTestId('warning-accept').click();
   const name = page.getByTestId('player-name');
   await expect(name).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dein Name' })).toBeVisible();
   await name.fill('Mara');
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${SCREENS}/story-name.png` });
@@ -85,6 +89,60 @@ test('story: new game flow (warning → name → lantern) starts the tour', asyn
   await page.waitForTimeout(1800);
   await page.screenshot({ path: `${SCREENS}/story-tour-card.png` });
   expect(errors).toEqual([]);
+});
+
+test('story: save from Pause and the bench, cancel overwrite, then continue', async ({ page }) => {
+  await page.goto('./?notitle&fresh&manual&q=low');
+  await waitForHooks(page, ['story', 'progression']);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.progression!.grant('item.balsam', 1, true);
+    k.ctx.state.mutable.flags['test.pauseSaved'] = true;
+  });
+  await openPause(page);
+  const save = page.getByTestId('pause-save');
+  await expect(save).toHaveText('Speichern');
+  await save.click();
+  await expect(page.getByText('Spielstand gespeichert.', { exact: true })).toBeVisible();
+  const savedFlags = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).flags, SAVE_KEY('auto'));
+  expect((await savedFlags())['test.pauseSaved']).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(save).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pause-menu')).toBeHidden();
+
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(1059.3, -833.1, 50);
+    k.ctx.state.mutable.flags['test.benchSaved'] = true;
+    k.story!.hub(true);
+  });
+  const bench = page.getByTestId('hub-bench');
+  await bench.click();
+  await expect(bench).toContainText('Ausgeruht. Spielstand gespeichert.');
+  expect((await savedFlags())['test.benchSaved']).toBe(true);
+
+  await page.goto('./?manual&q=low');
+  const start = page.getByTestId('title-new');
+  const resume = page.getByTestId('title-continue');
+  await expect(start).toBeEnabled({ timeout: 180_000 });
+  await expect(start).toHaveText('Neues Spiel');
+  await expect(resume).toBeEnabled();
+  await expect(resume).toHaveText('Weiter');
+  await start.click();
+  const confirm = page.getByRole('dialog');
+  await expect(confirm).toContainText('Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?');
+  await confirm.getByRole('button', { name: 'Nein', exact: true }).click();
+  await expect(confirm).toBeHidden();
+  await expect(page.getByTestId('content-warning')).toBeHidden();
+  await resume.click();
+  await expect(page.getByTestId('title')).toBeHidden();
+  await waitForHooks(page, ['story', 'progression']);
+  expect(await page.evaluate(() => {
+    const k = window.kq!;
+    const flags = k.state().flags;
+    return { pause: flags['test.pauseSaved'], bench: flags['test.benchSaved'], balsam: k.progression!.state().inventory['item.balsam'] };
+  })).toEqual({ pause: true, bench: true, balsam: 1 });
 });
 
 test('story: home at the Quelle by day and night, dialogue portraits', async ({ page }) => {
@@ -172,7 +230,7 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await shot(page, 'hub');
   await page.getByTestId('hub-chronik').click();
   // prologue p1: the Pinnwand hands out two cards (Messtischblatt, Lageplan) on top of the hub;
-  // the Chronik board itself opens from the Pinnwand once the cards are read (p8: Tab)
+  // a later visit to the Pinnwand opens Codex once the cards have been read
   if (await page.evaluate(() => !!window.kq!.chronik)) {
     await expect(page.getByTestId('chronik-card')).toHaveCount(1);
     await page.evaluate(() => {

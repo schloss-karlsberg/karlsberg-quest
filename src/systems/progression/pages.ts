@@ -1,28 +1,19 @@
-/**
- * Journal tabs of the progression system (src/ui/journal.ts, docs/ACTION-RPG.md §8.4):
- * 40 "Ausrüstung" — the Messstab, charm slots, supplies (choose the quick item, use one), quest
- * items, lore texts, the derived numbers; 50 "Talente" — three branches, rank pips, "Lernen",
- * respec at the home base (the spring); the badge counts unspent points.
- *
- * The quests system owns the journal modal; until it exists (or when it does not open on I) the
- * progression system shows these tabs in a small fallback modal (index.ts).
- */
-import type { GameContext } from '../../core/context';
+/** Ausrüstung and Talente renderers. */
 import { ITEMS } from '../../rpg/items';
 import { BASE_STATS, MAX_LEVEL, TALENTS, type TalentBranch, charmSlots, talentBlock, weaponPower } from '../../rpg/stats';
 import type { DerivedStats, ItemDef } from '../../rpg/types';
 import { h, svg } from '../../ui/dom';
-import { addJournalTab } from '../../ui/journal';
+import { addPausePage, refreshPausePage } from '../../ui/pause-pages';
 import { iconFor } from './icons';
 import type { ProgressionCore } from './logic';
 
-export interface TabApi {
+export interface PageApi {
   core: ProgressionCore;
   item(id: string): ItemDef | undefined;
   name(id: string): string;
   atHome(): boolean;
   quickKey(): string;
-  /** Something changed from the journal (save, HUD). */
+  /** Equipment or talents changed (save, HUD). */
   changed(reason: string): void;
 }
 
@@ -65,7 +56,7 @@ function statRows(s: DerivedStats): [string, string][] {
   ];
 }
 
-function renderGear(el: HTMLElement, api: TabApi): void {
+function renderGear(el: HTMLElement, api: PageApi): void {
   const { core } = api;
   const sl = core.slice();
   const stats = core.stats();
@@ -177,7 +168,7 @@ function renderGear(el: HTMLElement, api: TabApi): void {
   el.replaceChildren(h('div.kqp-gear', { 'data-testid': 'journal-gear' }, [h('div.kqp-g-col', [weapon, charms, statsEl]), h('div.kqp-g-col', [supplies, finds, writings])]));
 }
 
-function renderTalents(el: HTMLElement, api: TabApi): void {
+function renderTalents(el: HTMLElement, api: PageApi): void {
   const { core } = api;
   const sl = core.slice();
   const home = api.atHome();
@@ -221,22 +212,14 @@ function renderTalents(el: HTMLElement, api: TabApi): void {
   el.replaceChildren(h('div.kqp-talents', { 'data-testid': 'journal-talents' }, [head, h('div.kqp-t-cols', cols)]));
 }
 
-/** Register both tabs. `refresh()` re-renders whichever of them is on screen. */
-export function installJournalTabs(api: TabApi): { refresh(): void } {
-  const live = new Map<string, HTMLElement>();
-  const render = (id: string, el: HTMLElement) => {
-    live.set(id, el);
-    if (id === 'gear') renderGear(el, api);
-    else renderTalents(el, api);
-  };
-  addJournalTab({ id: 'gear', label: 'Ausrüstung', order: 40, render: (el: HTMLElement, _ctx: GameContext) => render('gear', el), hide: () => live.delete('gear') });
-  addJournalTab({ id: 'talents', label: 'Talente', order: 50, render: (el: HTMLElement) => render('talents', el), badge: () => api.core.slice().points, hide: () => live.delete('talents') });
+/** Register both pages and refresh either one when progression changes. */
+export function installProgressionPages(api: PageApi): { refresh(): void } {
+  addPausePage({ id: 'gear', label: 'Ausrüstung', order: 40, render: (el) => renderGear(el, api) });
+  addPausePage({ id: 'talents', label: 'Talente', order: 50, render: (el) => renderTalents(el, api), badge: () => api.core.slice().points });
   return {
     refresh() {
-      for (const [id, el] of live) {
-        if (el.isConnected) render(id, el);
-        else live.delete(id);
-      }
+      refreshPausePage('gear');
+      refreshPausePage('talents');
     },
   };
 }

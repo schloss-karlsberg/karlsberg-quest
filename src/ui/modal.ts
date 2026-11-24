@@ -21,7 +21,7 @@ export interface ModalOptions {
   /**
    * What the game behind the panel does (render pacing, core/loop.ts `renderRate`): 'live' (default:
    * a dialogue camera or figures still move, the view renders at 15 fps) or 'still' (pause menu,
-   * journal, map, cards: the paused view cannot change, its last frame is held).
+   * map, cards: the paused view cannot change, its last frame is held).
    */
   backdrop?: 'live' | 'still';
   onClose?: () => void;
@@ -36,7 +36,7 @@ export interface ModalHandle {
 }
 
 /**
- * Stacked field-book panels. While any modal is open the game is paused and gameplay input is
+ * Stacked panels. While any modal is open the game is paused and gameplay input is
  * disabled (via the `onChange` callback wired in boot). Features reuse this for the Chronik,
  * codex cards, dialogue choices etc.
  */
@@ -89,6 +89,8 @@ export class ModalManager {
   }
 
   open(o: ModalOptions): ModalHandle {
+    const parent = this.stack.at(-1);
+    const previousFocus = document.activeElement;
     const closable = o.closable ?? true;
     const page = h(`div.kq-modal.kq-paper${o.wide ? '.wide' : ''}`, { role: 'dialog', 'aria-modal': 'true' });
     if (o.className) page.classList.add(...o.className.split(' '));
@@ -119,9 +121,12 @@ export class ModalManager {
         closed = true;
         layer.remove();
         const i = this.stack.indexOf(handle);
+        const wasTop = this.stack.at(-1) === handle;
         if (i >= 0) this.stack.splice(i, 1);
         o.onClose?.();
         this.onChange(this.stack.length);
+        if (wasTop && parent && this.stack.at(-1) === parent &&
+            previousFocus instanceof HTMLElement && parent.el.contains(previousFocus)) previousFocus.focus();
       },
     };
     handle.setBody(o.body, o.title ?? '');
@@ -157,7 +162,9 @@ export class ModalManager {
     this.root.append(layer);
     this.stack.push(handle);
     this.onChange(this.stack.length);
-    queueMicrotask(() => (page.querySelector('button.kq-btn, button, input') as HTMLElement | null)?.focus());
+    queueMicrotask(() => {
+      if (this.stack.at(-1) === handle) page.querySelector<HTMLElement>('button.kq-btn, button, input')?.focus();
+    });
     return handle;
   }
 

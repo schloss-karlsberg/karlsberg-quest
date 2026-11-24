@@ -35,7 +35,6 @@ addStrings('de', {
   'touch.interact.short': 'Aktion',
   'touch.shift': 'Epochenwechsel (halten: zurück)',
   'touch.fly': 'Geisterblick: Fliegen',
-  'touch.journal': 'Feldbuch',
   'touch.map': 'Karte',
   'touch.pause': 'Pause',
   'touch.photo': 'Handy-Kamera',
@@ -60,7 +59,7 @@ const ROTATE_SVG = `<svg viewBox="0 0 96 96" aria-hidden="true" fill="none" stro
 
 /**
  * After a touch button's pointerup the browser still sends a click to whatever lies under the
- * finger by then. A button that opens a page (Pause, Feldbuch, Karte) put that page's × or a menu
+ * finger by then. A button that opens a page (Pause, Karte) put that page's × or a menu
  * entry under the finger, and the click closed it again at once. Swallow that one click.
  */
 function swallowNextClick(from: HTMLElement): void {
@@ -119,7 +118,7 @@ interface Btn {
  *  - right part: drag to look (`Input.addLook`)
  *  - thumb arc: Hieb (hold = Wuchthieb), Ausweichen, Bannlicht, Ziel, Balsam, abilities
  *  - context: Interagieren with the prompt's text (hold = Lauschen), Epoche (hold = zurück)
- *  - top: Relief, Feldbuch, Karte, Pause (and Fliegen in the spirit view)
+ *  - top: Relief, Karte, Pause (and Fliegen in the spirit view)
  * Buttons press binding-independent virtual actions (`Input.press`), so features read them like keys.
  */
 export class TouchControls {
@@ -191,7 +190,7 @@ export class TouchControls {
     });
     // the phone (photo mode): toggles like N; while it is up, the attack button is the shutter
     const photo = btn('photo', I.photo, t('touch.photo'), ['photo']);
-    const top = h('div.kq-t-top', [this.flyBtn.el, scanBtn, photo.el, btn('journal', I.journal, t('touch.journal'), ['journal']).el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
+    const top = h('div.kq-t-top', [this.flyBtn.el, scanBtn, photo.el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
     deps.events.on('photo:open', () => this.setPhoto(true, photo.el));
     deps.events.on('photo:close', () => this.setPhoto(false, photo.el));
     this.skillBtns = ([1, 2, 3] as const).map((n) => btn(`skill${n}`, I.skill, t(`touch.skill${n}`), [`skill${n}`], h('span.kq-t-num', String(n))).el);

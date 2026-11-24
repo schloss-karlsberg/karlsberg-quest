@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type CDPSession, type Page, expect, test } from '@playwright/test';
 import { QUEST_PLAY } from '../helpers/prolog';
+import { openPause } from '../helpers/pause';
 import { type MobileUnit, findUnit } from './devices';
 import { type UiMeasure, measureUi, sampleFrames, scrollModalToBottom } from './measure';
 
@@ -238,9 +239,9 @@ const STATES: State[] = [
       if (!unit.portrait) return c.na('landscape: no rotate overlay');
       await c.shot(rotate ? 'overlay' : 'none');
       // what lies above / below it: a modal opened under the overlay, the touch controls
-      await c.page.evaluate(() => window.kq!.quests!.journal());
+      await openPause(c.page);
       await c.page.waitForTimeout(400);
-      await c.shot('with-journal', 'is a modal above or below the overlay?');
+      await c.shot('with-pause', 'is a modal above or below the overlay?');
       await c.tidy();
     },
   },
@@ -346,7 +347,7 @@ const STATES: State[] = [
       await c.page.waitForTimeout(200);
       await c.shot('xl', 'largest subtitle size: collisions with the thumb arc?');
       await c.page.evaluate(() => window.kq!.ctx.ui.hud.setSubtitleSize('m'));
-      // M-01: with a line up, the top-row buttons still take a real tap (Feldbuch, Handy)
+      // M-01: with a line up, the top-row buttons still take a real tap (Pause, Handy)
       const say = () =>
         c.page.evaluate(() => {
           const k = window.kq!;
@@ -356,14 +357,14 @@ const STATES: State[] = [
       const lineUp = () => c.page.locator('.kqs-dlg.kqs-show').isVisible();
       await say();
       await c.page.waitForTimeout(300);
-      const upJ = await lineUp();
-      await c.tap('touch-journal');
-      const journal = await c.page
+      const upMenu = await lineUp();
+      await c.tap('touch-pause');
+      const pause = await c.page
         .waitForFunction(() => window.kq!.ctx.ui.modals.count > 0, null, { timeout: 3000 })
         .then(() => true)
         .catch(() => false);
-      c.f.notes.push(`dialogue: a tap on touch-journal while a line shows (line up: ${upJ}) ${journal ? 'opened' : 'did NOT open'} the field book`);
-      if (journal) await c.shot('tap-journal', 'the field book opened by a real tap while a line was up');
+      c.f.notes.push(`dialogue: a tap on touch-pause while a line shows (line up: ${upMenu}) ${pause ? 'opened' : 'did NOT open'} Pause`);
+      if (pause) await c.shot('tap-pause', 'Pause opened by a real tap while a line was up');
       await c.page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
       await c.page.waitForTimeout(300);
       if (await c.page.evaluate(() => 'photo' in (window.kq as object))) {
@@ -479,28 +480,20 @@ const STATES: State[] = [
         p.grant('item.balsam', 3, true);
         p.grant('item.lampenoel', 2, true);
       });
-      await c.tap('touch-journal');
-      const opened = await c.page
-        .waitForFunction(() => window.kq!.ctx.ui.modals.count > 0, null, { timeout: 4000 })
-        .then(() => true)
-        .catch(() => false);
-      if (!opened) {
-        const why = await c.page.evaluate(() => {
-          const b = document.querySelector('[data-testid=touch-journal]')!.getBoundingClientRect();
-          const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2) as HTMLElement | null;
-          return { paused: window.kq!.ctx.pause.paused, touch: !!document.querySelector('[data-testid=touch]:not(.kq-hidden)'), at: top ? `${top.tagName}.${top.className}[${top.dataset.testid ?? ''}]` : null, modals: window.kq!.ctx.ui.modals.count };
-        });
-        c.f.notes.push(`journal: a tap on touch-journal did not open the field book (${JSON.stringify(why)}); opened by kq.quests.journal()`);
-        await c.page.evaluate(() => window.kq!.quests!.journal());
-        await expect.poll(() => c.page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBeGreaterThan(0);
-      }
-      const tabs = await c.page.locator('[data-testid^="journal-tab-"]').evaluateAll((els) => [...new Set(els.filter((e) => (e as HTMLElement).offsetParent).map((e) => (e as HTMLElement).dataset.testid!))]);
-      for (const tid of tabs) {
-        await c.tap(tid);
-        await c.page.waitForTimeout(250);
-        const sub = tid.replace('journal-tab-', '');
+      await c.tap('touch-pause');
+      await expect(c.page.getByTestId('pause-menu')).toBeVisible();
+      const pages = await c.page.getByTestId('pause-menu').locator('.kq-pause-destinations button').evaluateAll(
+        (buttons) => buttons.map((button) => (button as HTMLButtonElement).dataset.testid!),
+      );
+      for (const entry of pages) {
+        await c.tap(entry);
+        const sub = entry.slice('pause-'.length);
+        const panel = c.page.getByTestId(`page-${sub}`);
+        await expect(panel).toBeVisible();
         await c.shot(sub, sub === 'codex' ? 'codex' : sub === 'gear' ? 'inventory and equipment' : undefined);
         await c.scrollShot(sub);
+        await panel.getByRole('button', { name: 'Zurück', exact: true }).tap();
+        await expect(panel).toBeHidden();
       }
       await c.tidy();
     },
@@ -864,7 +857,7 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
     shot: async () => undefined,
     tap: async (testid, finger = 1) => {
       const loc = page.getByTestId(testid).first();
-      // inside a sideways-scrolling row (the field-book tabs on a phone) a finger scrolls first
+      // Scroll the control into reach before tapping.
       await loc.scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => undefined);
       let b = await loc.boundingBox({ timeout: 8000 });
       if (!b) throw new Error(`tap: ${testid} has no box`);

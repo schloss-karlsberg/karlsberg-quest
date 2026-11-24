@@ -1,11 +1,11 @@
 /**
- * Feature "quests" — quest givers, objectives, turn-in, the Journal (J / Tab) and the HUD tracker
+ * Feature "quests" — quest givers, objectives, turn-in, the quest and Codex pages and the HUD tracker
  * (docs/ACTION-RPG.md §8–§9; ARCHITECTURE.md §12.1 "quests").
  *
  * Contract (src/systems/contracts.ts, "quests"): listens to quest:command (story), quest:accept /
  * decline / turnin / told (npc), enemy:killed, item:pickup, npc:talk, room:enter, clue:found,
  * echo:end, menagerie:calmed, item:use (and any event an `event` objective names), story:chapter,
- * chronik:open (→ opens the Journal); emits quest:offered / accepted / progress / objective /
+ * chronik:open (→ opens Codex); emits quest:offered / accepted / progress / objective /
  * ready / completed / failed, npc:topics, npc:marker, npc:follow, codex:unlocked, and the requests
  * enemy:spawn / despawn, loot:place / clear, xp:grant, item:grant, skill:grant. Mirrors
  * `flags['quest.<id>']` (state) and `flags['quest.<id>.<objective>']` (count) for the story's
@@ -18,7 +18,7 @@ import './quests.css';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { t } from '../../i18n';
-import { addJournalTab, journalTabs } from '../../ui/journal';
+import { addPausePage, openPausePage, pausePageHandle, refreshPausePage } from '../../ui/pause-pages';
 import { itemDef, ITEMS } from '../../rpg/items';
 import type { GiverMark, ItemDef, QuestCard, QuestDef, QuestLine, QuestSlice, QuestTopic } from '../../rpg/types';
 import { acceptSound, objectiveSound, pageSound, readySound, tickSound, turninSound } from './audio';
@@ -29,7 +29,7 @@ import { loadBundledQuests, questsInPlay } from './data';
 import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
-import { JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
+import { renderCodex, renderQuests, renderSets, type PageData } from './pages';
 import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
 
 declare module '../../core/state' {
@@ -55,9 +55,6 @@ export interface QuestsHooks {
   /** Quest topics / glyph for an NPC right now. */
   topics(npc: string): QuestTopic[];
   mark(npc: string): GiverMark;
-  journal(tab?: string): void;
-  closeJournal(): void;
-  journalOpen(): { open: boolean; tab: string };
   /** Reward card on screen. */
   reward(): boolean;
   /** Reward cards waiting for the centre slot (src/ui/cards.ts). */
@@ -130,7 +127,6 @@ class QuestRuntime {
   private readonly layer: HTMLElement;
   private readonly reward: RewardNotice;
   private bannerQ: (() => void)[] = [];
-  readonly journal: JournalModal;
   private readonly beacons: Beacons;
   private readonly sentTopics = new Map<string, string>();
   private readonly sentMarks = new Map<string, GiverMark>();
@@ -192,23 +188,12 @@ class QuestRuntime {
     this.layer.style.zIndex = '17';
     this.layer.style.pointerEvents = 'none';
     this.reward = new RewardNotice(ctx.ui.hud.noticeDock, ctx.ui.cards);
-    this.journal = new JournalModal(ctx, {
-      opened: () => {
-        pageSound(ctx.audio);
-        ctx.events.emit('chronik:opened', { caseId: null });
-      },
-      closed: () => {
-        ctx.events.emit('chronik:closed', {});
-        this.dirty = true;
-      },
-      page: () => pageSound(ctx.audio),
-    });
     this.beacons = new Beacons((x, z) => ctx.world.heightAt(x, z));
     ctx.scene.add(this.beacons.group);
     // 'world:quiet' (the party): the objective beacons hide, the tracker and compass stay
     const quiet = hideWhileQuiet(ctx.events, this.beacons.group);
     this.offs.push(() => quiet.dispose());
-    this.registerTabs();
+    this.registerPages();
 
     // ---- events ---------------------------------------------------------------------------
     const ev = ctx.events;
@@ -243,7 +228,7 @@ class QuestRuntime {
         this.dirty = true;
       }),
       ev.on('level:up', () => (this.availIn = 0)),
-      ev.on('chronik:open', () => this.journal.show()),
+      ev.on('chronik:open', () => openPausePage(ctx.ui.modals, 'codex')),
       ev.on('save:loaded', () => this.restore()),
       // a new game replaces the whole state: the book must follow the new slice, or it keeps
       // writing into the old one and nothing it records is saved any more
@@ -255,7 +240,7 @@ class QuestRuntime {
       ev.on('codex:unlocked', ({ factId }) => {
         const s = this.book.slice;
         if (!s.unseen.includes(factId)) s.unseen.push(factId);
-        this.journal.refresh();
+        refreshPausePage('codex');
       }),
       // deeds: a thing taken in the world sets its flag (first taken wins)
       ev.on('item:pickup', ({ item }) => {
@@ -462,7 +447,7 @@ class QuestRuntime {
       items: p.items.map((i) => ({ name: this.itemName(i.item), count: i.count })),
       codex: p.codex.length,
       skills: p.skills.map((s) => `${SKILL_NAME[s.id] ?? s.id} ${s.tier}`),
-      // voices tell one line; the rest is in the journal (an npc offers "Erzähl mehr")
+      // voices tell one line; the rest is in the quest log (an npc offers "Erzähl mehr")
       more: p.codex.length > 0 || ((ti === 'auto' || 'voice' in ti) && hist.length > historyAtTurnin(q)),
     };
     this.reward.push(view);
@@ -473,7 +458,9 @@ class QuestRuntime {
       for (const l of lines) this.say(l, undefined, true);
     }
     this.dirty = true;
-    this.journal.refresh();
+    refreshPausePage('quests');
+    refreshPausePage('codex');
+    refreshPausePage('sets');
   }
 
   /** The RPG quest card (offer / turn-in) the conversation draws. */
@@ -516,8 +503,6 @@ class QuestRuntime {
       this.pending = this.pending.filter((p) => p.at > this.gameTime);
       for (const p of due) p.run();
     }
-    if (ctx.input.wasPressed('journal')) this.journal.show();
-    else if (ctx.input.wasPressed('inventory') && journalTabs().some((x) => x.id === 'gear')) this.journal.show('gear');
     const p = ctx.player.position;
     const room = String(ctx.state.state.flags['interior.room'] ?? '');
     if (this.settle) {
@@ -917,12 +902,12 @@ class QuestRuntime {
     return this.hint?.text ?? null;
   }
 
-  // ---- journal ------------------------------------------------------------------------------
+  // ---- pause pages ------------------------------------------------------------------------------
 
-  private registerTabs(): void {
+  private registerPages(): void {
     const ctx = this.ctx;
     const book = this.book;
-    const data: JournalData = {
+    const data: PageData = {
       ctx,
       quests: () => [...this.defs.values()],
       progress: (id) => book.progressOf(id),
@@ -946,10 +931,7 @@ class QuestRuntime {
       seen: (id) => {
         const s = book.slice;
         const i = s.unseen.indexOf(id);
-        if (i >= 0) {
-          s.unseen.splice(i, 1);
-          queueMicrotask(() => this.journal.refreshTabs());
-        }
+        if (i >= 0) s.unseen.splice(i, 1);
       },
       bestiary: () => book.slice.bestiary ?? {},
       speaker: (id) => ctx.content.speakers.get(id)?.name_de ?? id,
@@ -958,10 +940,18 @@ class QuestRuntime {
         return so?.objective?.text || null;
       },
     };
+    const opened = () => pageSound(ctx.audio);
     const codexUnseen = () => book.slice.unseen.filter((x) => !x.startsWith('q:') && ctx.state.state.codex.facts.includes(x)).length;
-    addJournalTab({ id: 'quests', label: t('journal.tab.quests'), order: 10, render: (el) => renderQuests(el, data), badge: () => book.slice.unseen.filter((x) => x.startsWith('q:')).length });
-    addJournalTab({ id: 'codex', label: t('journal.tab.codex'), order: 20, render: (el) => renderCodex(el, data), badge: codexUnseen });
-    addJournalTab({ id: 'sets', label: t('journal.tab.sets'), order: 30, render: (el) => renderSets(el, data) });
+    addPausePage({ id: 'quests', label: t('page.quests'), order: 10, opened, hide: () => { this.dirty = true; }, render: (el) => renderQuests(el, data), badge: () => book.slice.unseen.filter((x) => x.startsWith('q:')).length });
+    addPausePage({
+      id: 'codex', label: t('page.codex'), order: 20, render: (el) => renderCodex(el, data), badge: codexUnseen,
+      opened: () => {
+        opened();
+        ctx.events.emit('chronik:opened', { caseId: null });
+      },
+      hide: () => ctx.events.emit('chronik:closed', {}),
+    });
+    addPausePage({ id: 'sets', label: t('page.sets'), order: 30, opened, render: (el) => renderSets(el, data) });
   }
 
   hooks(): QuestsHooks {
@@ -978,9 +968,6 @@ class QuestRuntime {
       tracked: () => b.tracked(),
       topics: (npc) => b.topicsFor(npc),
       mark: (npc) => b.markFor(npc),
-      journal: (tab) => this.journal.show(tab),
-      closeJournal: () => this.journal.close(),
-      journalOpen: () => ({ open: this.journal.open, tab: this.journal.tab }),
       reward: () => this.reward.open,
       rewardPending: () => this.reward.pending,
       beacons: () => this.beacons.state(),
@@ -1001,7 +988,7 @@ class QuestRuntime {
 
   dispose(): void {
     for (const off of this.offs.splice(0)) off();
-    this.journal.close();
+    for (const id of ['quests', 'codex', 'sets']) pausePageHandle(id)?.close();
     this.reward.clear();
     this.beacons.dispose();
     this.sideMark.el.remove();

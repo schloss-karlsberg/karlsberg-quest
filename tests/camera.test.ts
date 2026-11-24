@@ -517,9 +517,9 @@ describe('lock-on targeting', () => {
     expect(pickTarget([c('side', 5, 0)], 0, 0, 0, 24, 60)).toBeNull();
     expect(pickTarget([c('far', 0, -40)], 0, 0, 0, 24, 120)).toBeNull();
   });
-  it('lock-on keys: Tab and the middle mouse button, rebindable; the journal stays on J', () => {
+  it('lock-on keys: Tab and the middle mouse button, rebindable', () => {
     expect(DEFAULT_BINDINGS.lockOn).toEqual(['Tab', 'Mouse1']);
-    expect(DEFAULT_BINDINGS.journal).toEqual(['KeyJ']);
+    expect(Object.values(DEFAULT_BINDINGS).flat()).not.toContain('KeyJ');
     expect(REBINDABLE).toContain('lockOn');
     expect(REBINDABLE).toContain('cameraMode');
   });

@@ -1,7 +1,7 @@
 /**
  * The field-book card shown when a clue is examined (or an echo has been heard): kind, title,
  * an etched sketch of the real terrain at the spot, the text (or the echo's transcript), the
- * fiction label, and what was newly noted (nouns, codex cards).
+ * fiction label, and what was newly added to Codex.
  */
 import './chronik.css';
 import type { ChronikContent, Discovery } from '../logic';
@@ -18,7 +18,7 @@ export interface CardDeps {
   content: ChronikContent;
   heightAt: HeightFn | null;
   reducedMotion: boolean;
-  onChronik(): void;
+  onCodex(): void;
 }
 
 export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | null, transcript?: TranscriptLine[]): ModalHandle {
@@ -42,7 +42,7 @@ export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | 
   const body = h('div.ck-card', { dataset: { testid: 'chronik-card', clue: clue.id } }, [
     h('div.ck-card-kind', [h('span', t(`chronik.card.kind.${clue.kind}`)), clue.fiction ? h('span.ck-fic', t('chronik.fiction')) : null]),
     h('div.ck-card-grid', [h('figure', [canvas, h('figcaption', `${t('chronik.card.sketch')} · ${t(clue.sketch ? 'chronik.card.sketchStation' : 'chronik.card.sketchHere')}`)]), h('div.ck-card-text', textKids)]),
-    facts.length ? h('div.ck-chips', [h('span', `${t('chronik.card.codex')}:`), ...facts.map((n, i) => chip(n, i, true))]) : null,
+    facts.length ? h('div.ck-chips', [h('span', `${t('chronik.card.new')}:`), ...facts.map((n, i) => chip(n, i, true))]) : null,
   ]);
   return d.open({
     title: clue.title_de,
@@ -50,7 +50,7 @@ export function openClueCard(d: CardDeps, clue: ChronikClue, found: Discovery | 
     className: `ck-card-modal${d.reducedMotion ? ' ck-reduced' : ''}`,
     backdrop: 'still',
     actions: [
-      { label: t('chronik.card.openChronik'), onClick: () => d.onChronik() },
+      { label: t('chronik.card.openCodex'), onClick: () => d.onCodex() },
       { label: t('chronik.card.ok'), primary: true },
     ],
   });

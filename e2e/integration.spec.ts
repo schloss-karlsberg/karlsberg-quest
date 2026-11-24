@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { waitForHooks } from './helpers/pause';
 
 /**
  * Integration: the four feature systems (story, fx, hunt, chronik) working together along the
@@ -68,7 +69,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.goto(URL);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.fx, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'fx']);
   await recordEvents(page);
   await start.click();
   await page.getByTestId('warning-accept').click();
@@ -116,19 +117,21 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.getByTestId('hub-shelf').click();
   await readCards();
   await page.getByTestId('hub-back').click();
-  // nothing new to read at the Pinnwand: now it opens the Journal (the board is gone)
+  // nothing new to read at the Pinnwand: now it opens Codex
   await page.getByTestId('hub-chronik').click();
-  // story → chronik:open → the hub closes and the Journal opens
-  await expect(page.getByTestId('journal')).toBeVisible();
+  // story → chronik:open → Codex opens over the hub
+  await expect(page.getByTestId('page-codex')).toBeVisible();
   await expect(page.locator('.ck-board')).toHaveCount(0);
-  await expect(page.getByTestId('hub')).toBeHidden();
+  expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
   expect(await payloads(page, 'hub:use')).toEqual(expect.arrayContaining([{ item: 'drawer' }, { item: 'chronik' }, { item: 'shelf' }]));
   expect((await events(page, 'chronik:open')).length).toBe(1);
   expect((await events(page, 'chronik:opened')).length).toBe(1);
   await shot(page, '03-hub-chronik');
-  await page.evaluate(() => window.kq!.chronik!.close());
-  await expect(page.getByTestId('journal')).toBeHidden();
-  // opened from the Pinnwand: closing the Journal returns to the hub overlay
+  await page.getByTestId('page-codex').getByRole('button', { name: 'Zurück', exact: true }).click();
+  await expect(page.getByTestId('page-codex')).toBeHidden();
+  await expect(page.getByTestId('hub-chronik')).toBeFocused();
+  await expect(page.getByTestId('hub')).toHaveCount(1);
+  // opened from the Pinnwand: closing Codex returns to the hub overlay
   await expect(page.getByTestId('hub')).toBeVisible();
   await page.getByTestId('hub-leave').click();
   await expect(page.getByTestId('hub')).toBeHidden();
@@ -371,7 +374,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.evaluate(() => window.kq!.teleport(1053, -828, 51, -3));
   await shot(page, '13-home');
 
-  // ---- 10. hub → Pinnwand → the Journal: the clue facts are in its codex ------------------------
+  // ---- 10. hub → Pinnwand → Codex: the clue facts are there ------------------------
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
@@ -381,8 +384,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   });
   await expect(page.getByTestId('hub')).toBeVisible();
   await page.getByTestId('hub-chronik').click();
-  await expect(page.getByTestId('journal')).toBeVisible();
-  await page.getByTestId('journal-tab-codex').click();
+  await expect(page.getByTestId('page-codex')).toBeVisible();
   const facts = await page.evaluate(() => window.kq!.state().codex.facts);
   expect(facts.length).toBeGreaterThan(0);
   // relief patterns (rm.NN) have their own filter; everything else shows under "Alle"
@@ -394,9 +396,11 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   }
   const plain = facts.find((f) => !relief.includes(f));
   if (plain) await expect(page.getByTestId(`codex-card-${plain}`)).toBeVisible();
-  await shot(page, '14-journal-codex');
-  await page.evaluate(() => window.kq!.chronik!.close());
-  await expect(page.getByTestId('journal')).toBeHidden();
+  await shot(page, '14-codex');
+  await page.getByTestId('page-codex').getByRole('button', { name: 'Zurück', exact: true }).click();
+  await expect(page.getByTestId('page-codex')).toBeHidden();
+  await expect(page.getByTestId('hub-chronik')).toBeFocused();
+  await expect(page.getByTestId('hub')).toHaveCount(1);
   // no batches and no hint ladder any more
   expect(await payloads(page, 'chronik:batch')).toEqual([]);
 
@@ -415,11 +419,7 @@ test('integration: round 2 tour (interiors, npc, skills/tools, snow tracks)', as
   test.setTimeout(600_000);
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual&storytest');
-  await page.waitForFunction(
-    () => !!window.kq?.story && !!window.kq?.interiors && !!window.kq?.npc && !!window.kq?.tools && !!window.kq?.skills && !!window.kq?.hunt && !!window.kq?.chronik,
-    null,
-    { timeout: 180_000 },
-  );
+  await waitForHooks(page, ['story', 'interiors', 'npc', 'tools', 'skills', 'hunt', 'chronik']);
   await recordEvents(page);
   await page.evaluate(() => {
     const k = window.kq!;

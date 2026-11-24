@@ -211,7 +211,7 @@ describe('input contract', () => {
     }
     expect(SHARED_KEYS).toContainEqual(['interact', 'attack']);
     expect(SHARED_KEYS).toContainEqual(['up', 'dodge']);
-    expect(DEFAULT_BINDINGS.journal).toEqual(['KeyJ']);
+    expect(Object.values(DEFAULT_BINDINGS).flat()).not.toContain('KeyJ');
     expect(DEFAULT_BINDINGS.lockOn).toContain('Tab');
   });
 });
