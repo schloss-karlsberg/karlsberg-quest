@@ -192,7 +192,7 @@ test.describe('notices on a small landscape phone', () => {
     await finger.start(350, 195);
     await finger.move(436, 195);
     await finger.end();
-    await expect.poll(() => page.evaluate(() => Math.abs(window.kq!.ctx.player.yaw - yaw), yaw)).toBeGreaterThan(0.1);
+    await expect.poll(() => page.evaluate((startYaw) => Math.abs(window.kq!.ctx.player.yaw - startYaw), yaw)).toBeGreaterThan(0.1);
     await expect(toast).toBeVisible();
 
     await finger.start(90, 250);

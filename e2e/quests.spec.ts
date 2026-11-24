@@ -215,7 +215,8 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1294, -1218.5, 322, 5);
-    k.step(12);
+    // Let progression's 1.5 s startup cooldown for inventory warnings elapse in manual mode.
+    k.step(96);
   });
   await expect(page.getByTestId('npc-glyph-hanne')).toHaveAttribute('data-mark', 'ready');
   await expect(page.getByTestId('npc-glyph-hanne')).toBeVisible();

@@ -413,6 +413,11 @@ const STATES: State[] = [
         .catch(() => false);
       if (!paused) {
         c.f.notes.push(`pause: a tap on touch-pause did not open the menu (stack before: ${before}; events: ${log.join(', ')}; modals: ${await c.page.evaluate(() => window.kq!.ctx.ui.modals.count)}); opened by Escape`);
+        await c.page.evaluate(() => {
+          const { cards } = window.kq!.ctx.ui;
+          cards.clearToasts();
+          cards.dismissNotice();
+        });
         await c.page.keyboard.press('Escape');
       }
       await expect(c.page.getByTestId('resume')).toBeVisible();

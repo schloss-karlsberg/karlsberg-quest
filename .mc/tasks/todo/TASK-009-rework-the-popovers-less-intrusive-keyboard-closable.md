@@ -80,7 +80,7 @@ prompts (settings or save slice) so they don't repeat after reload or on replay.
 - [ ] e2e updated (specs that wait for or click cards / modals)
   - **Partly.** The first cut updates payout, pacing and touch specs and the mobile toast view. Specs for deferred surfaces follow their respective changes.
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
-  - **Pending.** Typecheck, unit tests and build passed. The sandbox blocked `pnpm validate` before content validation started.
+  - **Round 1.** The contributor passed all four gates. After the spec fixes, typecheck, unit tests and build passed again. The sandbox blocked the rerun of `pnpm validate` before content validation started.
 
 ## Plan
 _Status: approved 2026-11-24_
@@ -174,21 +174,25 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Step 8 updated the gameplay notes, architecture and PRD. The mobile tour checks one visible toast after queuing two, and the court spec waits for its queued notice. `pnpm typecheck` passed.
 - 2026-11-24 — The final integration review kept the Bannlicht instruction available during combat in the existing combat caption and held queued notices through fast travel and the phone's rotate screen.
 - 2026-11-24 — Step 9 is awaiting contributor verification. On the final implementation, `pnpm typecheck`, `pnpm test` (1,459 tests in 108 files) and `pnpm build` passed. `pnpm validate` was blocked before checking content because `tsx` received `listen EPERM` opening its local IPC socket. Playwright, mobile tour and screenshot runs are pending as requested.
+- 2026-11-24 — Contributor round 1 passed all four gates (1,459 tests) and the `pacing`, `npc`, `photo`, `court`, `progression`, `combat` and `smoke` specs. Failures in `quests`, `touch` and `notes` are recorded in `test-results/contribute/TASK-009/e2e-fail-r1.log`.
+- 2026-11-24 — The quest grant still uses the pre-existing inventory warning path. Its 1.5-second startup cooldown hadn't elapsed on the fixture's simulation clock. The quest spec now advances the clock before turn-in and still asserts the warning. The touch spec passes the starting yaw into the browser callback. The notes spec sets up one visible notice and checks that Escape cancels the modal, dismisses the notice, then opens pause on separate presses.
+- 2026-11-24 — The Escape audit also cleared notices before opening the post-epilogue pause menu in `pol-flow` and before the mobile tour's keyboard fallback. The other pause callers start from fresh fixtures or explicitly handle notices. Focused Vitest passed all 86 tests. `pnpm typecheck`, `pnpm test` (1,459 tests) and `pnpm build` passed. The sandbox again blocked `pnpm validate` at the `tsx` IPC socket with `listen EPERM`.
 
-Run `pnpm validate` outside the sandbox. Run the focused Playwright specs one at a time after `pnpm build`. The court, progression and combat specs cover callers affected by the shared slot and the live Bannlicht caption.
+Run `pnpm validate` outside the sandbox. Rerun the three corrected Playwright specs and the epilogue pause flow after `pnpm build`.
 
 ```sh
 (
-  for spec in quests pacing touch notes npc photo court progression combat; do
+  for spec in quests touch notes; do
     scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 || exit 1
   done
 )
+scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test e2e/pol-flow.spec.ts --grep 'endings: epilogue' --workers=1
 ```
 
-Run the mobile tour for the small landscape toast view and small portrait title, menus and rotate overlay.
+Run the mobile tour for the small landscape toast and pause views and the small portrait title, menus and rotate overlay.
 
 ```sh
-scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states hud-idle,toasts
+scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states hud-idle,toasts,pause
 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait --states title,news,title-settings,rotate
 ```
 

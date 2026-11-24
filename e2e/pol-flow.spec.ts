@@ -307,6 +307,11 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   // (playtest round 4: the slot loaded but the choice card never came)
   const autoKey = await page.evaluate(() => Object.keys(localStorage).find((k) => k.endsWith('save.v1.auto')) ?? '');
   const autoRaw = await page.evaluate((k) => localStorage.getItem(k), autoKey);
+  await page.evaluate(() => {
+    const { cards } = window.kq!.ctx.ui;
+    cards.clearToasts();
+    cards.dismissNotice();
+  });
   await page.keyboard.press('Escape');
   await page.getByTestId('pause-ending-again').click();
   await page.evaluate(() => {

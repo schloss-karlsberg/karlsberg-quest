@@ -104,13 +104,25 @@ test.describe('F8 notes and arrow-key turning', () => {
     expect(n).toHaveProperty('quest');
     expect(n.player).toHaveProperty('level');
 
-    // F8 + Esc: nothing saved, no pause menu behind it
+    // Give the cancel flow one visible notice, independent of the saved-note confirmation.
+    await page.evaluate(() => {
+      const { ui } = window.kq!.ctx;
+      ui.cards.clearToasts();
+      ui.toast('Hinweis zum Feldbuch', 30_000);
+    });
+    const notice = page.locator('.kq-toast:not(.kq-notice-out)', { hasText: 'Hinweis zum Feldbuch' });
+    const pauseMenu = page.locator('.kq-pause');
+    await expect(notice).toBeVisible();
+
+    // F8 + Esc cancels the modal and returns to the notice.
     await page.keyboard.press('F8');
     await expect(modal).toBeVisible();
+    await expect(notice).toBeHidden();
     await page.keyboard.type('verwerfen');
     await page.keyboard.press('Escape');
     await expect(modal).toHaveCount(0);
-    await expect(page.locator('.kq-pause')).toHaveCount(0);
+    await expect(notice).toBeVisible();
+    await expect(pauseMenu).toHaveCount(0);
     expect(await page.evaluate(() => window.kq!.notes!.count())).toBe(1);
 
     // telemetry: stuck episode, deaths list, summary
@@ -122,9 +134,12 @@ test.describe('F8 notes and arrow-key turning', () => {
     expect(tele.summary.stuckEpisodes).toBe(1);
     expect(Array.isArray(tele.deaths)).toBe(true);
 
-    // pause menu: export (download) …
+    // The next Escape dismisses the notice. A separate press opens pause for export.
     await page.keyboard.press('Escape');
-    await expect(page.locator('.kq-pause')).toBeVisible();
+    await expect(notice).toHaveCount(0);
+    await expect(pauseMenu).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(pauseMenu).toBeVisible();
     const exp = page.getByTestId('pause-notes-export');
     await expect(exp).toHaveText('Notizen exportieren (1)');
     const [dl] = await Promise.all([page.waitForEvent('download'), exp.click()]);
