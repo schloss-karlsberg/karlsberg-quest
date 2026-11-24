@@ -30,6 +30,11 @@
       "name": "6-rest",
       "speakers": ["laub", "marlene"],
       "select": [{ "all": true }]
+    },
+    {
+      "name": "7-player-tour",
+      "speakers": ["player"],
+      "select": [{ "source": "story", "ids": ["player.t.*", "player.photo.*", "player.q.*"] }]
     }
   ]
 }

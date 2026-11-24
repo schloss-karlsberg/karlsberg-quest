@@ -322,7 +322,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   screen. Downloaded archives are untrusted data: unpack into a fresh temp dir and never run
   scripts from them.
 - **AI-generated assets (owner, 2026-11-20):** allowed when the generating tool's licence permits public redistribution of the output. Credit each file (or, for voices, each voice) in `public/assets/LICENSES.json` with tool, model and version, date and licence; our own generated output is released as CC0. No likeness of a real living person without that person's consent; historical figures may be modelled from public-domain portraits.
-- **Voices (owner, 2026-11-20):** synthetic MOSS-TTS-v1.5 clips only (model Apache-2.0, generated locally, output CC0), committed under `public/voice/` with the manifest and credited per voice in `LICENSES.json` `voices` (speaker, seed, reference sha256). Never ElevenLabs output (licence `elevenlabs-*`, free or paid), never hf-space or other providers in `public/voice/`, never a real person's voice without their written consent (and such a clip would not be CC0, so it would need its own licence record first). No `.wav`, no `*private*` / `TEST-synthetic` files. `tests/voice-assets.test.ts` enforces it (warn above 60 MB of voice files, fail above 80 MB); `generate.mjs` refuses non-moss runs into `public/voice/` unless `--allow-noncommittable`.
+- **Voices (owner, 2026-11-24):** `public/voice/` holds credited MOSS-TTS-v1.5 clips and the playback manifest. Synthetic clips use CC0. Real-person clips require written public consent in moss-service, a named credit in `LICENSES.json` and a game-only licence. Keep WAVs and private test audio in local storage. `tests/voice-assets.test.ts` enforces the asset rules and warns above 60 MB of voice files, with an 80 MB limit.
 - Original work only. No names, lore or assets from existing games.
 - Never name or show the brewery brand that shares the Karlsberg name (§3.6). In docs write "the
   brewery brand" or "the real beer label".
@@ -456,14 +456,12 @@ open visual check in [`docs/MOBILE-UI-PASS.md`](MOBILE-UI-PASS.md) §8.2.
 - Next: Marlene, the tour, present-day, endings, the prologue and hub barks, once their text is final
   (kq-story decides), plus NPC casting (Hanne, Jost etc.).
 - Tour voice lines wait for the tour text to be final after the owner's replay.
+- The owner approved the real-person player voice on 2026-11-24. On 2026-11-25 the `guest-test` registry entry confirmed written public consent and eight tour clips were queued. The owner starts the runner before the clips can be collected. The „Spielerstimme“ toggle is planned.
 - Pointers: [`docs/design/tour/player-voice.md`](design/tour/player-voice.md), the voice assets and
   `scripts/voice/voices.json`.
 
 ### 7.4 Owner decisions pending
 
-- **Player-voice hosting.** The asset rules allow synthetic voices only; the player voice is a real
-  person's, so it needs an explicit owner decision plus the speaker's written consent before any clip
-  enters the repo or the game.
 - **The real guide's consent.** The placeholder „Gerold Imhoff“ stays until then.
 
 ### 7.5 kq-systems handoff items

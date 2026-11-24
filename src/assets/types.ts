@@ -78,11 +78,11 @@ export interface LicencesFile {
   assets: LicenceRecord[];
   /** Decoder libraries shipped with the assets (not art; three.js examples, own licences). */
   libraries?: { name: string; licence: string; files: string[]; source: string }[];
-  /** Synthetic voices whose clips may sit in public/voice/ (rules: scripts/voice/assetRules.ts). */
+  /** Voices whose clips may sit in public/voice/ (rules: scripts/voice/assetRules.ts). */
   voices?: VoiceCredit[];
 }
 
-/** One synthetic voice (LICENSES.json `voices`), credited under "Lizenzen & Quellen". */
+/** One MOSS voice (LICENSES.json `voices`), credited under "Lizenzen & Quellen". */
 export interface VoiceCredit {
   /** speaker key in content and scripts/voice/voices.json */
   speaker: string;
@@ -92,8 +92,11 @@ export interface VoiceCredit {
   tool: string;
   toolLicence: string;
   outputLicence: string;
+  realPerson?: boolean;
+  /** Public use in Karlsberg Quest is authorized. The service verifies written consent separately. */
+  consent?: 'public';
   seed: number;
-  /** sha256 of the local reference WAV (KQ_MOSS_VOICES; never committed) */
+  /** sha256 of the local or service reference WAV, which stays outside the repo */
   referenceSha256: string;
   generatedLocally: true;
   note: string;

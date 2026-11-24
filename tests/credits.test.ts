@@ -54,6 +54,7 @@ it('assembles the real credits in reading order and lists the voice model once',
   expect(lines.filter((line) => line.includes('MOSS-TTS'))).toEqual([
     'Synthetische Stimmen: MOSS-TTS-v1.5 (OpenMOSS) (Apache-2.0), Aufnahmen: CC0-1.0',
   ]);
+  expect(lines).toContain('Jan Eric Rippel · Stimme mit Einwilligung, nur zur Verwendung in Karlsberg Quest.');
   const text = lines.join('\n');
   expect(text).toMatch(/GeoBasis-DE\/LVGL-SL/);
   expect(text).toMatch(/OpenStreetMap/);

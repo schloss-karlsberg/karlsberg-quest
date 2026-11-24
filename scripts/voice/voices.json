@@ -1,5 +1,5 @@
 {
-  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId), 'hf-space' (voicePrompt for voice design, or voiceId) or 'moss' (local MOSS-TTS-v1.5: reference = WAV file name inside KQ_MOSS_VOICES, default ~/kq-models/voices; seed; language; instruction; params). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model'. voiceSettings = ElevenLabs voice_settings per speaker. postprocess.maxPauseSec (any provider) caps internal pauses. moss voiceId = moss:<speaker>:<sha8 of reference>:<seed>, so a new reference or seed regenerates. PLACEHOLDER voices (and moss speakers whose reference file is missing) are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
+  "$comment": "Speaker -> voice. provider: 'elevenlabs' (voiceId), 'hf-space' (voicePrompt for voice design, or voiceId) or 'moss' (local MOSS-TTS-v1.5: reference = WAV file name inside KQ_MOSS_VOICES, default ~/kq-models/voices; seed; language; instruction; params). model per speaker overrides --model / the provider default (null = default). licence per provider (or per speaker) goes into each manifest entry: 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model' | 'speaker-permission'. Service-only MOSS voices use serviceVoice (registry id) and refSha256 instead of reference. voiceSettings = ElevenLabs voice_settings per speaker. postprocess.maxPauseSec (any provider) caps internal pauses. moss voiceId = moss:<speaker>:<sha8 of reference>:<seed>, so a new reference or seed regenerates. PLACEHOLDER voices (and moss speakers whose reference file is missing) are planned in --dry-run and skipped in a real run. Speakers not listed keep the murmur.",
   "providers": {
     "elevenlabs": {
       "defaultModel": "eleven_flash_v2_5",
@@ -101,6 +101,18 @@
       "name": "MOSS tour casting jostd",
       "note": "tour cast 2026-11-22: synthetic MOSS voice designed from this instruction (no reference, no real person); the reference is the design candidate picked by the tour casting rank (design seeds 3301-3302), owner may override. seed = line seed. Until jostd-ref.wav exists the speaker is skipped (missing reference).",
       "model": null
+    },
+    "player": {
+      "provider": "moss",
+      "serviceVoice": "guest-test",
+      "refSha256": "7acb49ed513b9c26b8fb645714b794fd62981bac1f5d99622ca98527c0d2fec5",
+      "seed": 7,
+      "lineSeeds": { "player.t.wind": 8 },
+      "language": "German",
+      "params": {
+        "max_tokens": 150
+      },
+      "licence": "speaker-permission"
     },
     "mats": {
       "provider": "moss",

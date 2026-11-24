@@ -1,8 +1,7 @@
 /**
- * What may be committed under public/voice/ (owner, 2026-11-20): synthetic MOSS-TTS-v1.5 clips only
- * (Apache-2.0 model, our output CC0), each credited per voice in public/assets/LICENSES.json `voices`.
- * Never ElevenLabs output, never a real person's voice. Enforced by tests/voice-assets.test.ts and,
- * for the pipeline, by `nonCommittableGuard` in generate.mjs.
+ * public/voice/ holds credited MOSS-TTS-v1.5 clips. Synthetic output is CC0. Real-person output
+ * requires public consent, a named credit in LICENSES.json and a game-only licence.
+ * Enforced by tests/voice-assets.test.ts and generate.mjs.
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import type { VoiceCredit } from '../../src/assets/types.ts';
@@ -12,8 +11,9 @@ export type { VoiceCredit };
 
 /** The only provider whose clips may sit in public/voice/. */
 export const COMMITTABLE_PROVIDER = 'moss';
-/** The only manifest licence allowed in public/voice/. */
-export const COMMITTABLE_LICENCE = 'apache-2.0-model';
+const SYNTHETIC_LICENCE = 'apache-2.0-model';
+const SPEAKER_PERMISSION = 'speaker-permission';
+export const SPEAKER_PERMISSION_NOTICE = 'Used with permission of the speaker. No reuse outside Karlsberg Quest. Not CC0.';
 /** Voice files total: warn above, fail above (MB = 1e6 bytes). ~60 MB is roughly 1.8 h of speech at
  * Opus 24k + AAC 48k; past 80 MB the repo and the Pages deploy get too heavy for a browser game. */
 export const VOICE_SIZE_WARN_MB = 60;
@@ -41,6 +41,27 @@ function walk(dir: string): string[] {
 export function parseMossVoiceId(id: string): { speaker: string; sha8: string; seed: number } | null {
   const m = /^moss:([^:]+):([0-9a-f]{8}):(\d+)$/.exec(id);
   return m ? { speaker: m[1]!, sha8: m[2]!, seed: Number(m[3]) } : null;
+}
+
+/** Check the licence and credit that authorize an individual manifest entry. */
+export function voiceCreditErrors(e: { speaker?: unknown; licence?: unknown; voiceId?: unknown }, c?: VoiceCredit): string[] {
+  const errors: string[] = [];
+  const real = e.licence === SPEAKER_PERMISSION || c?.realPerson === true;
+  const licence = real ? SPEAKER_PERMISSION : SYNTHETIC_LICENCE;
+  if (typeof e.licence === 'string' && e.licence.startsWith('elevenlabs')) errors.push(`ElevenLabs output (${e.licence}) must never enter the repo`);
+  else if (e.licence !== licence) errors.push(`licence "${String(e.licence)}" is not allowed (only ${licence})`);
+  if (!c) return [...errors, `speaker "${String(e.speaker)}" has no voice credit in LICENSES.json voices`];
+  if (real && (c.provider !== COMMITTABLE_PROVIDER || c.realPerson !== true || c.consent !== 'public' ||
+    typeof c.name !== 'string' || !c.name.trim() || c.outputLicence !== SPEAKER_PERMISSION_NOTICE)) {
+    errors.push('speaker-permission requires a named real-person MOSS credit with public consent and the game-only output licence');
+  }
+  const v = typeof e.voiceId === 'string' ? parseMossVoiceId(e.voiceId) : null;
+  if (!v) return [...errors, `voiceId "${String(e.voiceId)}" is not moss:<speaker>:<sha8>:<seed>`];
+  if (v.speaker !== c.speaker) errors.push(`voiceId speaker ${v.speaker} != ${c.speaker}`);
+  if (v.seed !== c.seed) errors.push(`voiceId seed ${v.seed} != credited seed ${c.seed}`);
+  const sha8 = c.referenceSha256.slice(0, 8);
+  if (v.sha8 !== sha8) errors.push(`voiceId reference ${v.sha8} != credited reference ${sha8}`);
+  return errors;
 }
 
 /**
@@ -75,19 +96,8 @@ export function checkVoiceAssets(dir: string, credits: readonly VoiceCredit[]): 
       for (const [id, e] of Object.entries(m.lines)) {
         const where = `manifest ${id}`;
         if (e.provider !== COMMITTABLE_PROVIDER) r.errors.push(`${where}: provider "${String(e.provider)}" is not committable (only ${COMMITTABLE_PROVIDER})`);
-        if (typeof e.licence === 'string' && e.licence.startsWith('elevenlabs')) r.errors.push(`${where}: ElevenLabs output (${e.licence}) must never enter the repo`);
-        else if (e.licence !== COMMITTABLE_LICENCE) r.errors.push(`${where}: licence "${String(e.licence)}" is not allowed (only ${COMMITTABLE_LICENCE})`);
         const c = typeof e.speaker === 'string' ? credit.get(e.speaker) : undefined;
-        if (!c) r.errors.push(`${where}: speaker "${String(e.speaker)}" has no voice credit in LICENSES.json voices`);
-        else {
-          const v = typeof e.voiceId === 'string' ? parseMossVoiceId(e.voiceId) : null;
-          if (!v) r.errors.push(`${where}: voiceId "${String(e.voiceId)}" is not moss:<speaker>:<sha8>:<seed>`);
-          else {
-            if (v.speaker !== c.speaker) r.errors.push(`${where}: voiceId speaker ${v.speaker} != ${c.speaker}`);
-            if (v.seed !== c.seed) r.errors.push(`${where}: voiceId seed ${v.seed} != credited seed ${c.seed}`);
-            if (v.sha8 !== c.referenceSha256.slice(0, 8)) r.errors.push(`${where}: voiceId reference ${v.sha8} != credited reference ${c.referenceSha256.slice(0, 8)}`);
-          }
-        }
+        r.errors.push(...voiceCreditErrors(e, c).map((error) => `${where}: ${error}`));
         // optional engine marker (moss: { model, tokenizer, warmup }, see lib.ts MOSS_ENGINE); other fields stay free
         if (e.engine !== undefined) {
           const en = e.engine as Record<string, unknown> | null;
@@ -142,7 +152,7 @@ export function nonCommittableGuard(o: { out: string; repo: string; providers: I
   const bad = [...new Set(o.providers)].filter((p) => p !== COMMITTABLE_PROVIDER).sort();
   if (!bad.length || o.allow || !isCommittableVoiceDir(o.out, o.repo)) return null;
   return (
-    `refusing to write ${bad.join(', ')} clips into ${relative(o.repo, resolve(o.out)) || o.out}: public/voice/ is committed and takes synthetic MOSS clips only. ` +
+    `refusing to write ${bad.join(', ')} clips into ${relative(o.repo, resolve(o.out)) || o.out}: public/voice/ is committed and takes credited MOSS clips only. ` +
     'Use --out <dir outside public/voice> (e.g. a scratch dir), or pass --allow-noncommittable for a local listening test and never commit the result.'
   );
 }

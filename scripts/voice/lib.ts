@@ -337,8 +337,8 @@ export function selectLines(lines: VoiceLine[], cfg: PriorityConfig, o: { ids?: 
 // ---------------------------------------------------------------------------------------------
 // Voices (scripts/voice/voices.json)
 
-export type Licence = 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model';
-export const LICENCES: readonly Licence[] = ['elevenlabs-free-noncommercial', 'elevenlabs-paid', 'apache-2.0-model'];
+export type Licence = 'elevenlabs-free-noncommercial' | 'elevenlabs-paid' | 'apache-2.0-model' | 'speaker-permission';
+export const LICENCES: readonly Licence[] = ['elevenlabs-free-noncommercial', 'elevenlabs-paid', 'apache-2.0-model', 'speaker-permission'];
 
 export interface ProviderConfig {
   defaultModel?: string;
@@ -363,8 +363,13 @@ export interface SpeakerVoice {
   provider?: ProviderName;
   /** moss: reference WAV file name relative to KQ_MOSS_VOICES (a synthetic casting pick, never an ElevenLabs clip) */
   reference?: string;
+  /** moss: registry ID and pinned reference hash for a real-person voice handled by moss-service */
+  serviceVoice?: string;
+  refSha256?: string;
   /** moss: fixed seed (mx.random / numpy / random) */
   seed?: number;
+  /** MOSS synthesis seed overrides keyed by dialogue line ID. */
+  lineSeeds?: Record<string, number>;
   /** moss: MOSS `language` (e.g. "German") */
   language?: string;
   /** moss: MOSS `instruction` (voice description) */
@@ -406,14 +411,16 @@ export interface ResolvedVoice {
   postprocess?: PostprocessConfig;
 }
 
-/** What the moss runner needs per speaker. */
+/** What the direct runner or moss-service needs per speaker. */
 export interface MossVoice {
   speaker: string;
-  /** file name relative to KQ_MOSS_VOICES */
-  reference: string;
-  /** first 8 hex of sha256 of the reference file, null when the file is missing */
+  reference?: string;
+  serviceVoice?: string;
+  refSha256?: string;
+  /** first 8 hex of sha256 of the reference, null when the local file is missing */
   refSha8: string | null;
   seed: number;
+  takeSeed?: number;
   language: string;
   instruction?: string;
   params: Record<string, unknown>;
@@ -464,14 +471,20 @@ export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: s
   const provider = v.provider ?? 'elevenlabs';
   if (!PROVIDERS.includes(provider)) throw new Error(`speaker ${speaker}: unknown provider "${provider}"`);
   const pc = voices.providers?.[provider] ?? {};
+  const licence = v.licence ?? pc.licence ?? DEFAULT_LICENCE[provider];
+  if (!LICENCES.includes(licence)) throw new Error(`speaker ${speaker}: unknown licence "${licence}"`);
+  if (v.serviceVoice || licence === 'speaker-permission') {
+    if (provider !== 'moss' || licence !== 'speaker-permission' || !v.serviceVoice || v.reference || !/^[0-9a-f]{64}$/.test(v.refSha256 ?? ''))
+      throw new Error(`speaker ${speaker}: speaker-permission requires a MOSS serviceVoice and a full refSha256`);
+  }
   let voiceId: string;
   let placeholder: boolean;
   let moss: MossVoice | undefined;
   if (provider === 'moss') {
-    if (!v.reference || typeof v.seed !== 'number' || !Number.isInteger(v.seed)) return null;
-    if (/[\\/]|^\.\.?$/.test(v.reference)) throw new Error(`speaker ${speaker}: moss reference must be a plain file name inside KQ_MOSS_VOICES`);
-    const refSha8 = ro.refSha8?.(v.reference) ?? null;
-    moss = { speaker, reference: v.reference, refSha8, seed: v.seed, language: v.language ?? 'German', instruction: v.instruction, params: v.params ?? {} };
+    if ((!v.reference && !v.serviceVoice) || typeof v.seed !== 'number' || !Number.isInteger(v.seed)) return null;
+    if (v.reference && /[\\/]|^\.\.?$/.test(v.reference)) throw new Error(`speaker ${speaker}: moss reference must be a plain file name inside KQ_MOSS_VOICES`);
+    const refSha8 = v.serviceVoice ? v.refSha256!.slice(0, 8) : ro.refSha8?.(v.reference!) ?? null;
+    moss = { speaker, reference: v.reference, serviceVoice: v.serviceVoice, refSha256: v.refSha256, refSha8, seed: v.seed, language: v.language ?? 'German', instruction: v.instruction, params: v.params ?? {} };
     voiceId = mossVoiceId(speaker, refSha8, v.seed);
     placeholder = refSha8 === null;
   } else if (provider === 'hf-space') {
@@ -485,8 +498,6 @@ export function resolveVoice(speaker: string, voices: VoicesConfig, runModel?: s
     placeholder = isPlaceholderVoice(v.voiceId);
   }
   const model = v.model || (provider === 'elevenlabs' ? runModel : undefined) || pc.defaultModel || DEFAULT_MODEL[provider];
-  const licence = v.licence ?? pc.licence ?? DEFAULT_LICENCE[provider];
-  if (!LICENCES.includes(licence)) throw new Error(`speaker ${speaker}: unknown licence "${licence}"`);
   const r: ResolvedVoice = { provider, voiceId, voicePrompt: v.voicePrompt ?? undefined, model, licence, placeholder, voiceSettings: v.voiceSettings };
   if (moss) {
     r.moss = moss;
@@ -521,6 +532,8 @@ export interface ManifestEntry {
   engine?: MossEngine;
   /** moss-service clips only: the service's job key (sha256 hex over engine, voice, ref, seed, params, text) */
   serviceKey?: string;
+  /** MOSS synthesis seed when the line overrides the credited speaker seed in voiceId. */
+  takeSeed?: number;
   /** moss-service clips only: sha256 hex of the raw WAV the service rendered (checked before post-processing) */
   sha256Raw?: string;
 }
@@ -568,13 +581,14 @@ export type LineStatus = 'new' | 'up-to-date' | 'stale-text' | 'stale-voice' | '
 export function lineStatus(
   entry: ManifestEntry | undefined,
   hash: string,
-  voice: { voiceId: string; model: string; provider?: ProviderName; engine?: MossEngine },
+  voice: { voiceId: string; model: string; provider?: ProviderName; engine?: MossEngine; moss?: MossVoice },
   fileExists: (f: string) => boolean = () => true,
   speechHash?: string,
 ): LineStatus {
   if (!entry) return 'new';
   if (entry.textHash !== hash) return 'stale-text';
   if (entry.voiceId !== voice.voiceId || (voice.provider && (entry.provider ?? 'elevenlabs') !== voice.provider)) return 'stale-voice';
+  if (entry.takeSeed !== voice.moss?.takeSeed) return 'stale-voice';
   if (entry.model !== voice.model) return 'stale-model';
   if (voice.engine && !sameEngine(entry.engine, voice.engine)) return 'stale-engine';
   if (speechHash !== undefined && entry.speechHash !== speechHash) return 'stale-speech';
@@ -689,6 +703,12 @@ export function buildPlan(
     if (!voice) {
       skipped.push({ line, reason: 'no-voice' });
       continue;
+    }
+    const takeSeed = o.voices.speakers[line.speaker]?.lineSeeds?.[line.id];
+    if (voice.moss && takeSeed !== undefined) {
+      if (!Number.isInteger(takeSeed) || takeSeed < 0 || takeSeed > 0xffffffff)
+        throw new Error(`${line.id}: MOSS line seed must be an unsigned 32-bit integer`);
+      voice.moss.takeSeed = takeSeed;
     }
     const sp = speechFor(line, o.speech);
     if (sp.staleOverride) staleOverrides.push(line);

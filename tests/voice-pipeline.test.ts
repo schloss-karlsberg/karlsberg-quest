@@ -185,7 +185,20 @@ describe('real content', () => {
       'laub.p.quelle.zurueck',
       'laub.p.quelle.heute',
     ]);
-    expect(sel.every((s) => s.line.speaker === 'laub' || s.line.speaker === 'marlene')).toBe(true);
+    expect(new Set(sel.map((s) => s.line.speaker))).toEqual(new Set(['laub', 'marlene', 'player']));
+  });
+  it('selects each tour player clip once with only the speaker filter', () => {
+    const sel = selectLines(lines, priority as PriorityConfig, { speakers: ['player'] });
+    expect(sel.map((s) => s.line.id)).toEqual([
+      'player.t.fuehrer',
+      'player.t.wind',
+      'player.t.hunde',
+      'player.photo.gut',
+      'player.photo.weg',
+      'player.q.fund',
+      'player.q.laub',
+      'player.q.wo',
+    ]);
   });
 });
 

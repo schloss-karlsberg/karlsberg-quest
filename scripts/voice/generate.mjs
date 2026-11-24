@@ -9,7 +9,7 @@
  *
  * Reads ELEVENLABS_API_KEY and HF_TOKEN from the main checkout's .env (override: --env <path>).
  * Secrets are sent only as auth headers and never printed. Output (Opus/WebM + AAC/m4a) and the
- * manifest go to public/voice/, which is COMMITTED and takes synthetic MOSS clips only (rules:
+ * manifest go to public/voice/, which is COMMITTED and takes credited MOSS clips only (rules:
  * scripts/voice/assetRules.ts, tests/voice-assets.test.ts). A real run that would write elevenlabs or
  * hf-space clips there is refused unless --allow-noncommittable is given; use --out <scratch dir>
  * for those. ElevenLabs output must never be committed. Contract: scripts/voice/lib.ts.
@@ -43,7 +43,7 @@ import {
   writeManifest,
   MOSS_ATTRIBUTION,
 } from './lib.ts';
-import { isCommittableVoiceDir, nonCommittableGuard } from './assetRules.ts';
+import { isCommittableVoiceDir, nonCommittableGuard, voiceCreditErrors } from './assetRules.ts';
 import { MOSS_BATCH_MAX, MOSS_RTF, QUIET_WINDOW, mossConfig, mossEstimate, refSha8For } from './moss.ts';
 import {
   DEFAULT_RAW_DIR,
@@ -121,7 +121,7 @@ if (a.help) {
   --force              regenerate even up-to-date lines
   --prune              (real run) remove manifest entries and clips of lines no longer in content
   --offline            do not ask the account for remaining credits
-  --out <dir>          output dir (default public/voice: committed, synthetic MOSS clips only)
+  --out <dir>          output dir (default public/voice: committed, credited MOSS clips only)
   --keep-raw <dir>     (real run) also keep each provider's raw audio there (e.g. moss WAVs, for pause metrics)
   --allow-noncommittable  let elevenlabs / hf-space clips land in public/voice anyway (local test only; never commit them)
   --content, --voices, --priority, --speech <path>   (speech.json: spoken text overrides per line id)
@@ -198,10 +198,10 @@ const manifestPath = join(a.out, 'manifest.json');
 const manifest = readManifest(manifestPath);
 const fileExists = (f) => existsSync(join(a.out, f));
 
-// in a real run placeholder voices are not voices
+// Real runs skip placeholders and leave service-only voices to moss-service.
 const runVoices = dry
   ? voices
-  : { ...voices, speakers: Object.fromEntries(Object.entries(voices.speakers).filter(([k]) => !resolveVoice(k, voices, undefined, ro)?.placeholder)) };
+  : { ...voices, speakers: Object.fromEntries(Object.entries(voices.speakers).filter(([k, v]) => (mode === 'service' || !v.serviceVoice) && !resolveVoice(k, voices, undefined, ro)?.placeholder)) };
 const usedProviders = new Set(Object.keys(runVoices.speakers).map((k) => resolveVoice(k, runVoices, undefined, ro)?.provider).filter(Boolean));
 
 const selected = selectLines(lines, priority, { ids: list(a.ids), speakers: list(a.speakers) });
@@ -235,8 +235,10 @@ const plan = buildPlan(selected, {
   resolve: ro,
 });
 const todo = plan.rows.filter((r) => r.take);
-// public/voice/ is committed: only moss clips may land there (scripts/voice/assetRules.ts)
-const guardMsg = nonCommittableGuard({ out: a.out, repo: REPO, providers: todo.map((r) => r.voice.provider), allow: a['allow-noncommittable'] });
+const serviceOnly = todo.filter((r) => r.voice.moss?.serviceVoice);
+const providerGuard = nonCommittableGuard({ out: a.out, repo: REPO, providers: todo.map((r) => r.voice.provider), allow: a['allow-noncommittable'] });
+const creditGuard = serviceOnly.length && isCommittableVoiceDir(a.out, REPO) ? serviceCreditGuard(serviceOnly) : null;
+const guardMsg = providerGuard || creditGuard;
 if (a['keep-raw'] && isCommittableVoiceDir(a['keep-raw'], REPO)) fail('--keep-raw must point outside public/voice/ (raw renders never go into the committed folder)');
 if (guardMsg) {
   if (!dry) fail(`${guardMsg} Nothing generated.`);
@@ -314,6 +316,7 @@ function finish(r, raw, credits, o = {}) {
     speaker: r.line.speaker,
     provider: r.voice.provider,
     voiceId: r.voice.voiceId,
+    takeSeed: r.voice.moss?.takeSeed,
     model: r.voice.model,
     licence: r.voice.licence,
     date: new Date().toISOString(),
@@ -393,20 +396,31 @@ process.exit(exitCode);
 // moss service mode (scripts/voice/mossService.ts): submit / collect, never a model in this process
 
 function serviceLines(rows) {
-  return rows.map((r) => ({ r, id: r.line.id, speaker: r.line.speaker, text: r.tts, seed: r.voice.moss.seed }));
+  return rows.map((r) => {
+    const { serviceVoice, seed, takeSeed } = r.voice.moss;
+    return { r, id: r.line.id, speaker: r.line.speaker, text: r.tts, serviceVoice, seed, takeSeed };
+  });
 }
 
-/** Guards before anything is submitted: client-side refusals, then voices.json vs the registry. Error text or null. */
-function submitGuard(jobs, lines, registry) {
-  const refusals = clientRefusals(jobs, registry);
-  if (refusals.length) return `refusing to submit:\n  ${refusals.join('\n  ')}\nNothing submitted.`;
+function serviceCreditGuard(rows) {
+  const { voices: credits } = JSON.parse(readFileSync(join(REPO, 'public/assets/LICENSES.json'), 'utf8'));
+  const speakers = new Map(rows.map(({ line, voice }) => [line.speaker, voice]));
+  for (const [speaker, voice] of speakers) {
+    const credit = credits?.find((c) => c.speaker === speaker);
+    const errors = voiceCreditErrors({ speaker, licence: voice.licence, voiceId: voice.voiceId }, credit);
+    if (credit && credit.referenceSha256 !== voice.moss.refSha256) errors.push('full reference hash differs from the voice credit');
+    if (errors.length) return `speaker ${speaker}: ${errors.join('. ')}`;
+  }
+  return null;
+}
+
+function registryGuard(lines, registry) {
+  const refusals = clientRefusals(lines, registry);
+  if (refusals.length) return refusals.join('\n  ');
   const speakers = [...new Map(lines.map((l) => [l.speaker, l.r.voice.moss])).values()];
   const diffs = registryDiffs(speakers, registry);
   if (diffs.length)
-    return (
-      `moss-service registry differs from voices.json (the service would render other audio than the voiceId says):\n  ${diffs.join('\n  ')}\n` +
-      'Nothing submitted. voices.json is the source: update the registry (moss-registry add --force …), or voices.json if the registry is right.'
-    );
+    return `moss-service registry differs from voices.json:\n  ${diffs.join('\n  ')}`;
   return null;
 }
 
@@ -428,21 +442,20 @@ async function runService(rows) {
       continue;
     }
     const rec = await client.result(SERVICE_PROJECT, l.id);
-    // default: no result yet, or a result for an older text → submit; anything else → collect
-    if (!a.collect && (rec === null || isStaleResult(rec, l.text))) toSubmit.push(l);
+    if (!a.collect && (rec === null || isStaleResult(rec, l))) toSubmit.push(l);
     else recs.set(l.id, rec);
   }
   let code = 0;
   const submitted = [];
   if (toSubmit.length) {
-    const jobs = toSubmit.map((l) => serviceJob(l, rawDir));
     let msg;
     try {
-      msg = submitGuard(jobs, toSubmit, await reg());
+      msg = registryGuard(toSubmit, await reg());
     } catch (e) {
       fail(`could not read the moss-service registry: ${e.message}. Nothing submitted.`);
     }
-    if (msg) fail(msg);
+    if (msg) fail(`refusing to submit:\n  ${msg}\nNothing submitted.`);
+    const jobs = toSubmit.map((l) => serviceJob(l, rawDir));
     mkdirSync(rawDir, { recursive: true });
     const answers = await client.submit(jobs);
     const s = submitSummary(answers);
@@ -465,6 +478,16 @@ async function runService(rows) {
     for (const id of pending) recs.set(id, got.get(id) ?? null);
   }
   if (!recs.size) return code;
+  const realResults = lines.filter((l) => l.serviceVoice && ['ok', 'cached'].includes(recs.get(l.id)?.status));
+  if (realResults.length) {
+    let msg;
+    try {
+      msg = registryGuard(realResults, await reg());
+    } catch (e) {
+      fail(`could not read the moss-service registry: ${e.message}. Nothing collected.`);
+    }
+    if (msg) fail(`refusing to collect:\n  ${msg}\nNothing collected.`);
+  }
   if ([...recs.values()].some((r) => r && r.status === 'cached' && !r.engine)) {
     try {
       await reg();
@@ -514,7 +537,7 @@ async function servicePlan(rows) {
     if (client && !a.submit) {
       const rec = await client.result(SERVICE_PROJECT, l.id);
       if (!rec) state = a.collect ? 'not submitted' : 'submit';
-      else if (!a.collect && isStaleResult(rec, l.text)) state = `submit (old ${rec.status} result for another text)`;
+      else if (!a.collect && isStaleResult(rec, l)) state = `submit (old ${rec.status} result for another text or take)`;
       else state = rec.status === 'queued' || rec.status === 'running' ? `still ${rec.status}` : `collect ${rec.status}`;
     }
     states[state] = (states[state] ?? 0) + 1;
@@ -525,7 +548,7 @@ async function servicePlan(rows) {
   if (!client) return;
   try {
     const registry = await readRegistry(client);
-    const msg = submitGuard(lines.map((l) => serviceJob(l, rawDir)), lines, registry);
+    const msg = registryGuard(lines, registry);
     console.log(msg ? `WARNING (a real submit would stop here): ${msg}` : 'Registry check: voices.json and the moss-service registry agree.');
   } catch (e) {
     console.log(`WARNING: could not read the moss-service registry: ${e.message}`);
@@ -556,6 +579,9 @@ function printPlan(p) {
   console.log(`Credits: budget ${budget} − reserve ${reserve}${remaining != null ? ` (account ${remaining})` : ''} → cap ${p.cap} credits`);
   const placeholders = Object.keys(voices.speakers).filter((k) => resolveVoice(k, voices, undefined, ro)?.placeholder);
   if (placeholders.length) console.log(`Placeholder voices (${dry ? 'planned, but a real run skips them' : 'skipped'}; moss: reference file missing in KQ_MOSS_VOICES): ${placeholders.join(', ')}`);
+  const serviceSpeakers = [...new Set(selected.filter(({ line }) => voices.speakers[line.speaker]?.serviceVoice).map(({ line }) => line.speaker))];
+  if (mode === 'direct' && serviceSpeakers.length)
+    console.log(`MOSS voices requiring service mode (${dry ? 'included in this plan' : 'skipped'}): ${serviceSpeakers.join(', ')}. Set KQ_MOSS_MODE=service to use them.`);
   console.log('');
   const w = Math.max(28, ...p.rows.map((r) => r.line.id.length)) + 3;
   console.log(`${lpad('#', 4)}  ${pad('line id', w)}${pad('speaker', 9)}${pad('provider', 11)}${pad('tier', 16)}${pad('status', 13)}${lpad('chars', 6)}${lpad('credits', 8)}${lpad('cum.', 7)}`);
@@ -618,7 +644,7 @@ function printPlan(p) {
   const nameAuto = p.rows.filter((r) => r.speechSource === 'auto' && /\{[Nn]ame\}/.test(r.line.text)).map((r) => r.line.id);
   if (nameAuto.length) console.warn(`WARNING: lines with {Name} and no current speech.json entry (name just dropped): ${nameAuto.join(', ')}`);
   const noVoice = {};
-  for (const l of lines) if (!resolveVoice(l.speaker, runVoices, undefined, ro)) noVoice[l.speaker] = (noVoice[l.speaker] ?? 0) + 1;
+  for (const l of lines) if (!voices.speakers[l.speaker]?.serviceVoice && !resolveVoice(l.speaker, runVoices, undefined, ro)) noVoice[l.speaker] = (noVoice[l.speaker] ?? 0) + 1;
   const nv = Object.entries(noVoice).sort((x, y) => y[1] - x[1]);
   if (nv.length) console.log(`Speakers without a voice id in voices.json (never generated): ${nv.map(([k, v]) => `${k} ${v}`).join(', ')}`);
   const orphans = Object.keys(manifest.lines).filter((id) => !lines.some((l) => l.id === id));

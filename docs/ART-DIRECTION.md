@@ -232,8 +232,9 @@ the in-game „Lizenzen & Quellen“ screen lists it. `tests/assets.test.ts` fai
 a record, a record that is not CC0 or not from an allowed site, a wrong byte count, or a budget
 overrun.
 
-**AI-generated assets (owner, 2026-11-20):** AI-generated assets are allowed when the generating tool's licence permits public redistribution of the output. Each file is credited in `LICENSES.json` (tool, model and version, date, licence). Our own generated files are released as CC0. No cloning of real people's voices. No likeness of a real living person without that person's consent. Historical figures may be modelled from public-domain portraits. Voice route (ElevenLabs paid vs an open model): deferred by the owner; free-tier ElevenLabs output must not enter the repo. Until `tests/assets.test.ts` knows such records, it still
-accepts CC0 only.
+**AI-generated assets (owner, 2026-11-20):** AI-generated assets are allowed when the tool's licence permits public redistribution of the output. Credit each file in `LICENSES.json` with the tool, model, version, date and licence. Release generated art under CC0. Use a living person's likeness only with their consent. Historical figures may be modelled from public-domain portraits.
+
+**Voices (owner, 2026-11-24):** Public voice clips use MOSS-TTS-v1.5. Synthetic output is CC0. Real-person output requires written public consent in moss-service, a named credit and a game-only licence. See [Contributing](../CONTRIBUTING.md#art-assets-cc0-or-licensed-ai-generated).
 
 **Downloads are untrusted data:** unpack each archive into a fresh empty temp dir (the
 scratchpad), copy out only the model / texture files, never run anything from it.
