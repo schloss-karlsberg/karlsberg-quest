@@ -177,16 +177,20 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Contributor round 1 passed all four gates (1,459 tests) and the `pacing`, `npc`, `photo`, `court`, `progression`, `combat` and `smoke` specs. Failures in `quests`, `touch` and `notes` are recorded in `test-results/contribute/TASK-009/e2e-fail-r1.log`.
 - 2026-11-24 — The quest grant still uses the pre-existing inventory warning path. Its 1.5-second startup cooldown hadn't elapsed on the fixture's simulation clock. The quest spec now advances the clock before turn-in and still asserts the warning. The touch spec passes the starting yaw into the browser callback. The notes spec sets up one visible notice and checks that Escape cancels the modal, dismisses the notice, then opens pause on separate presses.
 - 2026-11-24 — The Escape audit also cleared notices before opening the post-epilogue pause menu in `pol-flow` and before the mobile tour's keyboard fallback. The other pause callers start from fresh fixtures or explicitly handle notices. Focused Vitest passed all 86 tests. `pnpm typecheck`, `pnpm test` (1,459 tests) and `pnpm build` passed. The sandbox again blocked `pnpm validate` at the `tsx` IPC socket with `listen EPERM`.
-
-Run `pnpm validate` outside the sandbox. Rerun the three corrected Playwright specs and the epilogue pause flow after `pnpm build`.
+- 2026-11-24 — Contributor round 2 passed `quests`, `touch`, `notes` and `smoke`. The three-size HUD overlap check in `pol-flow` found no skill card and passed on unchanged `origin/main`.
+- 2026-11-24 — The Registratur walk queues room-entry toasts. At the end of Laub's eight-second soft hold, the director can give a toast the shared slot before the skills system next tries to claim it. The existing soft-hold limit and the layout spec still apply. Payouts and unlock cards now take priority over routine toasts, which resume with their remaining time ahead of the waiting queue. The new Vitest case reproduced the failed skill claim before the fix and verifies the full handoff. Focused Vitest passed all 45 tests. `pnpm typecheck`, `pnpm test` (1,460 tests) and `pnpm build` passed. Browser verification is pending.
+- 2026-11-24 — The sandbox denied writes to the shared Git worktree's `index.lock`, so the fix is ready to commit outside the sandbox.
 
 ```sh
-(
-  for spec in quests touch notes; do
-    scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 || exit 1
-  done
-)
-scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test e2e/pol-flow.spec.ts --grep 'endings: epilogue' --workers=1
+git add .mc/tasks/todo/TASK-009-rework-the-popovers-less-intrusive-keyboard-closable.md docs/ACTION-RPG.md docs/ARCHITECTURE.md src/ui/cards.ts tests/cards.test.ts
+git commit -m 'fix(ui): give unlock cards priority over routine toasts' -m 'Refs: TASK-009'
+```
+
+After `pnpm build`, rerun the three-size HUD overlap check and the card pacing spec.
+
+```sh
+scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test e2e/pol-flow.spec.ts --grep 'HUD: the top-left column' --workers=1
+scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test e2e/pacing.spec.ts --workers=1
 ```
 
 Run the mobile tour for the small landscape toast and pause views and the small portrait title, menus and rotate overlay.

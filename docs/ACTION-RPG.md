@@ -833,6 +833,8 @@ boss bar.
 quest payouts and HUD toasts use the same slot. A requested field-book page can open in front of a
 notice. A covered notice resumes with its remaining reading time. Fights, chases, boss reveals and
 NPC conversations hold automatic notices back. Skill unlocks can ride on the level card.
+When a payout, level or skill card is ready, it can take the slot from a routine toast. The toast
+resumes with its remaining reading time after the card.
 
 The payout names the quest and summarizes earned EP, items that fit in the inventory, skill gains
 and the number of newly unlocked Codex entries. Their sources and confidence badges are in the

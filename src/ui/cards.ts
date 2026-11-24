@@ -49,7 +49,7 @@ export class CardDirector {
   private readonly queue: QueuedModal[] = [];
   private readonly holds = new Set<string>();
   private gap = 0;
-  /** Extra hold for the slide-in cards (the story's title card / curtain), set by the story system. */
+  /** A screen that covers the card or notice, such as a title card or a curtain. */
   extraHold: (() => boolean) | null = null;
 
   constructor(
@@ -129,10 +129,14 @@ export class CardDirector {
   /**
    * A non-modal card asks for the slot. True when it owns it (keep showing) or just got it.
    * A card that already owns the slot keeps it while held (it steps aside itself).
+   * Quest payouts and unlock cards can take the slot from a routine toast.
    */
   claim(token: string, dismiss?: () => void): boolean {
     if (this.owner === token) return true;
-    if (this.owner !== null || this.gap > 0 || this.held || this.queue.length > 0) return false;
+    if (this.gap > 0 || this.held || this.queue.length > 0) return false;
+    const replacesToast = this.owner === 'toast' && (token === 'skill' || token === 'level' || token === 'reward');
+    if (this.owner !== null && !replacesToast) return false;
+    if (replacesToast) this.hud.holdToast(true);
     this.owner = token;
     this.dismissOwner = dismiss ?? null;
     return true;
@@ -168,6 +172,11 @@ export class CardDirector {
         this.toast = this.toasts.shift()!;
         this.hud.showToast(this.toast.text);
       }
+      return;
+    }
+    // Resume an interrupted toast before taking the next one off the queue.
+    if (this.owner !== 'toast') {
+      if (this.claim('toast', this.closeToast)) this.hud.holdToast(false);
       return;
     }
     const held = this.held;

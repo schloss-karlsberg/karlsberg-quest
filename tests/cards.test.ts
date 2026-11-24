@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_GAP, CardDirector } from '../src/ui/cards';
+import { CARD_GAP, CardDirector, SOFT_MAX } from '../src/ui/cards';
 import type { ModalHandle } from '../src/ui/modal';
 
 /** Card discipline (playtest round 4): one centre card at a time, held in fights and conversations. */
@@ -106,7 +106,7 @@ describe('HUD toast slot', () => {
     d.enqueueToast('First', 2000);
     d.tick(0);
     expect(toast()).toBe('First');
-    expect(d.claim('reward')).toBe(false);
+    expect(d.claim('travel:banner')).toBe(false);
     d.enqueueToast('First');
     d.enqueueToast('Old');
     for (let i = 1; i <= 6; i++) d.enqueueToast(`Queued ${i}`);
@@ -157,6 +157,39 @@ describe('HUD toast slot', () => {
     expect(toast()).toBeNull();
     expect(d.showing).toBeNull();
   });
+
+  it('lets a waiting skill unlock go ahead of room toasts when a long dialogue reaches its limit', () => {
+    const { d, toast } = rig();
+    d.soft('dialogue', true);
+    d.enqueueToast('Durchfahrt zum Küchenhof', 2000);
+    d.enqueueToast('Korridor', 2000);
+    d.tick(0);
+    expect(d.claim('skill')).toBe(false);
+    expect(toast()).toBeNull();
+
+    // The director can start a toast before the skills system next tries to claim.
+    d.tick(SOFT_MAX);
+    expect(toast()).toBe('Durchfahrt zum Küchenhof');
+    d.tick(0.5);
+    expect(d.claim('skill')).toBe(true);
+    expect(d.showing).toBe('skill');
+    expect(toast()).toBeNull();
+    expect(d.dismissNotice()).toBe(false);
+    d.tick(6);
+    expect(toast()).toBeNull();
+
+    d.release('skill');
+    d.tick(CARD_GAP / 2);
+    expect(toast()).toBeNull();
+    d.tick(CARD_GAP / 2);
+    expect(toast()).toBe('Durchfahrt zum Küchenhof');
+    d.tick(1.25);
+    expect(toast()).toBe('Durchfahrt zum Küchenhof');
+    d.tick(0.25);
+    expect(toast()).toBeNull();
+    d.tick(CARD_GAP);
+    expect(toast()).toBe('Korridor');
+  });
 });
 
 describe('CardDirector soft holds (playtest round 5)', () => {
@@ -184,8 +217,7 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     expect(d.claim('reward')).toBe(true);
   });
 
-  it('a long spell of talk does not bury a waiting card (SOFT_MAX)', async () => {
-    const { SOFT_MAX } = await import('../src/ui/cards');
+  it('a long spell of talk does not bury a waiting card (SOFT_MAX)', () => {
     const { d } = rig();
     d.soft('dialogue', true);
     d.tick(0.1);

@@ -389,8 +389,9 @@ share one skill card (`skill-card-also`), and a fresh unlock waits 0.45 s (`SETT
 XP and skill land on one card. The payout (`RewardNotice.push`) and HUD toasts share the same slot
 and right-edge dock. The payout times out after 5 s or goes away after a short reading interval
 when the player has moved 4.5 m. Toasts use a bounded queue of six waiting messages and deduplicate
-by text. In free play, Escape or a completed outside touch tap calls `cards.dismissNotice()`. The
-quest tracker strikes a done goal
+by text. Payouts and unlock cards can take the slot from a toast. It resumes ahead of waiting
+toasts when the slot frees. In free play, Escape or a completed outside touch tap calls
+`cards.dismissNotice()`. The quest tracker strikes a done goal
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
 `e2e/pacing.spec.ts` (one visible notice, modal priority, and the Pinnwand's two pages in sequence).
 
