@@ -41,7 +41,7 @@ pnpm prepare-data   # rebuild public/data from the sister projects (read-only ac
 | `content/` | Content packs (`*.pack.json`), JSON schema, story bible (`content/bible/`, written separately) |
 | `public/data/` | Prepared static data (see §9), committed |
 | `scripts/` | `prepare-data.ts`, `validate-content.ts`, `sim-combat.ts` (`pnpm sim:combat`: the human-like combat bot's balance table, docs/BALANCE.md), `scripts/dev/` screenshot helpers for a running dev server |
-| `scripts/voice/` | AI voice clips for dialogue lines: `pnpm voice:plan` (dry run: priority order, credits, stale lines, dist size) / `pnpm voice:gen`. Providers behind one `synthesize()` interface (`providers.ts`): `elevenlabs` (REST), `hf-space` (Gradio Space, e.g. Qwen3-TTS; built and unit-tested, not run yet; 0 credits, `--max-lines` guard) and `moss` (local MOSS-TTS-v1.5, batches inside the heavy lock; see "moss provider" below; laub and marlene use it, the ElevenLabs picks stay in `voices.json` `$alternatives`). Per-speaker `postprocess.maxPauseSec` caps internal pauses (ffmpeg `silenceremove stop_periods=-1`). `lib.ts` (pure: line collection from packs, story `say` and quest lines, FNV-1a `textHash`, TTS text prep, priority tiers, budget, manifest), `voices.json` (speaker → provider, voiceId or voicePrompt, model; licence per provider), `priority.json` (tiers), `speech.json` (spoken-text overrides per line id, e.g. for `{Name}` lines; `forText` pins the text version, manifest `speechHash` regenerates on change). Secrets `ELEVENLABS_API_KEY` / `HF_TOKEN` from the main checkout's `.env` only (never `VITE_`, never in `src/`). Output: ffmpeg gain + gentle pre-limiter (0.6) + static make-up to −18 LUFS measured with ebur128 (Opus +0.5 dB when its decoded peak stays under −0.5 dBFS), Opus 24 kbps WebM + AAC 48 kbps m4a named `<lineId>.<sha256[0..8]>.<ext>`, `manifest.json` entries `{files {opus, aac}, textHash, speechHash, speaker, provider, voiceId, model, licence, date, chars, credits, durationMs}`. `public/voice/` is committed but takes synthetic MOSS clips only, credited per voice in `LICENSES.json` `voices` (rules `assetRules.ts`, enforced by `tests/voice-assets.test.ts`; `generate.mjs` refuses elevenlabs / hf-space runs into it unless `--allow-noncommittable`; ElevenLabs output never enters the repo); the game fetches `voice/manifest.json` and falls back to the murmur |
+| `scripts/voice/` | AI voice clips for dialogue lines: `pnpm voice:plan` (dry run: priority order, credits, stale lines, dist size) / `pnpm voice:gen`. Providers behind one `synthesize()` interface (`providers.ts`): `elevenlabs` (REST), `hf-space` (Gradio Space, e.g. Qwen3-TTS; built and unit-tested, not run yet; 0 credits, `--max-lines` guard) and `moss` (local MOSS-TTS-v1.5, batches inside the heavy lock; see "moss provider" below; laub and marlene use it, the ElevenLabs picks stay in `voices.json` `$alternatives`). Per-speaker `postprocess.maxPauseSec` caps internal pauses (ffmpeg `silenceremove stop_periods=-1`). `lib.ts` (pure: line collection from packs, story `say` and quest lines, FNV-1a `textHash`, TTS text prep, priority tiers, budget, manifest), `voices.json` (speaker → provider, voiceId or voicePrompt, model; licence per provider), `priority.json` (tiers), `speech.json` (spoken-text overrides per line id, e.g. for `{Name}` lines; `forText` pins the text version, manifest `speechHash` regenerates on change). Secrets `ELEVENLABS_API_KEY` / `HF_TOKEN` from the main checkout's `.env` only (never `VITE_`, never in `src/`). Output: ffmpeg gain + gentle pre-limiter (0.6) + static make-up to −18 LUFS measured with ebur128 (Opus +0.5 dB when its decoded peak stays under −0.5 dBFS), Opus 24 kbps WebM + AAC 48 kbps m4a named `<lineId>.<sha256[0..8]>.<ext>`, `manifest.json` entries `{files {opus, aac}, textHash, speechHash, speaker, provider, voiceId, model, licence, date, chars, credits, durationMs}`. `public/voice/` holds MOSS clips credited in `LICENSES.json` `voices`. Synthetic output is CC0 and real-person output needs written public consent and a game-only licence (rules `assetRules.ts`, enforced by `tests/voice-assets.test.ts`; `generate.mjs` refuses elevenlabs / hf-space runs into it unless `--allow-noncommittable`; ElevenLabs output never enters the repo); the game fetches `voice/manifest.json` and falls back to the murmur |
 | `tests/`, `e2e/` | vitest, Playwright |
 
 ### moss provider (local voice clips)
@@ -94,12 +94,14 @@ model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in
 
 - **Env:** `KQ_MOSS_SERVICE_CLIENT` = path to the service's node client (`clients/node/moss.mjs`). It is
   required in service mode and is set in the env or the main checkout's `.env`, never in the repo (the
-  repo holds no machine path; missing → a clear error). `KQ_MOSS_VOICES` stays as before: the local
-  reference files give the `voiceId` sha8 and are checked against the registry.
+  repo holds no machine path; missing → a clear error). Synthetic voices take their `voiceId` sha8
+  from reference files in `KQ_MOSS_VOICES`. A real-person voice uses a service-only `serviceVoice` and
+  a full `refSha256` pin in `voices.json`. The player uses registry voice `guest-test` and manifest
+  speaker `player`.
 - **Two steps** (default; same command both times):
   1. `KQ_MOSS_MODE=service pnpm voice:gen --speakers laub --max-lines 200` submits one job per line that
      needs (re)generation per the manifest (incl. `stale-engine`): `{project: "karlsberg-quest", id,
-     voice: <speaker>, text: <the prepared speech text that speechHash is taken over>, output: {path:
+     voice: <serviceVoice or speaker>, text: <the prepared speech text that speechHash is taken over>, output: {path:
      <raw-dir>/<id>.wav, format: "wav"}}`, with no seed or params (those come from the registry, so keys
      stay stable). It prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
      refuses are listed and the exit code is 1.
@@ -118,14 +120,15 @@ model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in
   `public/` (refused here and by the service, which also refuses tracked paths in a git work tree). They
   are kept after post-processing: the service cache serves a later identical job only while the original
   WAV still exists with its recorded sha256.
-- **Consistency guard** before every submit: the registry (`registry()` from the client if it has one,
-  else `moss-registry list --json` next to the client's `SUBMIT`; read-only) must match `voices.json`
-  for every speaker submitted: seed, `ref_sha256[0:8]` vs the local reference, language, instruction,
-  params, and `engine_identity` (model and tokenizer revisions, warm-up v1) vs `MOSS_ENGINE`. Any
-  difference fails with a per-field diff and nothing is submitted (voices.json is the source; fix the
-  registry with `moss-registry add --force …`).
-- **Never submitted** (client side, before the service's own guard): the private test voice
-  `guest-test`, and any registry voice whose `visibility` is not `public`.
+- **Consistency guard:** the read-only live registry (`registry()` from the client, otherwise
+  `moss-registry list --json`) must match the seed, reference hash, language, instruction, parameters
+  and engine identity before submission. Synthetic voice hashes use the first eight characters of
+  the local reference hash. Real-person voice hashes use the full pin from `voices.json`.
+- **Real-person voices:** submission and collection of successful results require `visibility: public`
+  and a successful service registry check for a real-person recording. The registry check requires
+  written consent with public scope, which only the owner records. The game reserves `guest-test`
+  for the `player` mapping. Writing its clips into `public/voice/` also requires a matching named
+  consent credit in `LICENSES.json` and records `licence: "speaker-permission"` in the manifest.
 - `--dry-run` in service mode prints the plan plus each line's state (submit / still queued / collect),
   read from the client's result files, and the registry check; it submits nothing. Whether a job will
   be answered from the service cache is known only after submitting ("M cached").

@@ -21,8 +21,6 @@ import { MOSS_ENGINE, sameEngine, type MossEngine, type MossVoice } from './lib.
 
 /** `project` of every job this repo submits. */
 export const SERVICE_PROJECT = 'karlsberg-quest';
-/** Registry voices the game never submits, whatever the registry says (the private test voice). */
-export const NEVER_SUBMIT: readonly string[] = ['guest-test'];
 /** Default `--wait` timeout in minutes. */
 export const DEFAULT_WAIT_MIN = 30;
 /** Default raw WAV folder for service output, relative to the repo (gitignored, outside public/). */
@@ -154,8 +152,8 @@ export const rawPath = (rawDir: string, id: string): string => join(resolve(rawD
  * (speech.json override or auto-prep), never the raw display text. No seed or params: those come
  * from the service registry, so the service keys stay stable (and the consistency guard checks them).
  */
-export function serviceJob(l: { id: string; speaker: string; text: string }, rawDir: string): ServiceJob {
-  return { project: SERVICE_PROJECT, id: l.id, voice: l.speaker, text: l.text, output: { path: rawPath(rawDir, l.id), format: 'wav' } };
+export function serviceJob(l: Pick<ServiceLine, 'id' | 'speaker' | 'serviceVoice' | 'text'>, rawDir: string): ServiceJob {
+  return { project: SERVICE_PROJECT, id: l.id, voice: l.serviceVoice ?? l.speaker, text: l.text, output: { path: rawPath(rawDir, l.id), format: 'wav' } };
 }
 
 /** realpath, or the realpath of the nearest existing parent + the rest. */
@@ -176,13 +174,22 @@ export function checkRawDir(rawDir: string): string | null {
   return null;
 }
 
-/** Jobs the client never sends: `guest-test`, and any voice the registry marks other than public. */
-export function clientRefusals(jobs: ServiceJob[], registry: Registry): string[] {
+/** Refuse non-public voices and require a successful live registry check for real-person voices. */
+export function clientRefusals(lines: Pick<ServiceLine, 'id' | 'speaker' | 'serviceVoice'>[], registry: Registry): string[] {
   const out: string[] = [];
-  for (const j of jobs) {
-    if (NEVER_SUBMIT.includes(j.voice)) out.push(`${j.id}: voice ${j.voice} is never submitted by the game (private test voice)`);
-    else if (registry[j.voice] && registry[j.voice]!.visibility !== 'public')
-      out.push(`${j.id}: registry voice ${j.voice} has visibility "${String(registry[j.voice]!.visibility)}"; the game submits public voices only`);
+  for (const l of lines) {
+    const voice = l.serviceVoice ?? l.speaker;
+    const r = registry[voice];
+    if (voice === 'guest-test' && l.speaker !== 'player')
+      out.push(`${l.id}: voice guest-test is reserved for the player mapping`);
+    else if (r && r.visibility !== 'public')
+      out.push(`${l.id}: registry voice ${voice} has visibility "${String(r.visibility)}"; the game uses public voices only`);
+    else if (l.serviceVoice) {
+      // The live service check validates written public consent for a public real-person recording.
+      if (r?.ref_source !== 'real-person-recording' || r.ok !== true)
+        out.push(`${l.id}: registry voice ${voice} must pass the public real-person consent check${r?.error ? `: ${r.error}` : ''}`);
+    } else if (r?.ref_source === 'real-person-recording')
+      out.push(`${l.id}: real-person registry voice ${voice} requires an explicit serviceVoice mapping`);
   }
   return out;
 }
@@ -216,17 +223,20 @@ const show = (v: unknown) => (v === undefined ? '(none)' : JSON.stringify(v));
 export function registryDiffs(speakers: MossVoice[], registry: Registry, engine: MossEngine = MOSS_ENGINE): string[] {
   const out: string[] = [];
   for (const s of speakers) {
-    const r = registry[s.speaker];
+    const serviceVoice = s.serviceVoice ?? s.speaker;
+    const r = registry[serviceVoice];
     const d = (field: string, ours: unknown, theirs: unknown) => out.push(`${s.speaker}.${field}: voices.json ${show(ours)} != registry ${show(theirs)}`);
     if (!r) {
-      out.push(`${s.speaker}: not in the moss-service registry (add it with moss-registry add)`);
+      out.push(`${s.speaker}: voice ${serviceVoice} is missing from the moss-service registry`);
       continue;
     }
     if (r.ok === false) out.push(`${s.speaker}: the registry's own check fails: ${r.error ?? 'unknown error'}`);
     if (r.engine !== 'moss-tts') d('engine', 'moss-tts', r.engine);
     if (r.seed !== s.seed) d('seed', s.seed, r.seed);
     const theirSha8 = typeof r.ref_sha256 === 'string' ? r.ref_sha256.slice(0, 8) : undefined;
-    if (!s.refSha8) out.push(`${s.speaker}.ref_sha256: the local reference ${s.reference} is missing, cannot compare (registry ${show(theirSha8)})`);
+    if (s.refSha256) {
+      if (r.ref_sha256 !== s.refSha256) d('ref_sha256', s.refSha256, r.ref_sha256);
+    } else if (!s.refSha8) out.push(`${s.speaker}.ref_sha256: the local reference ${s.reference} is missing, cannot compare (registry ${show(theirSha8)})`);
     else if (theirSha8 !== s.refSha8) d('ref_sha256[0:8]', s.refSha8, theirSha8);
     if ((r.language ?? undefined) !== s.language) d('language', s.language, r.language ?? undefined);
     if ((r.instruction || undefined) !== (s.instruction || undefined)) d('instruction', s.instruction || undefined, r.instruction || undefined);
@@ -244,6 +254,7 @@ export function registryDiffs(speakers: MossVoice[], registry: Registry, engine:
 export interface ServiceLine {
   id: string;
   speaker: string;
+  serviceVoice?: string;
   /** the exact text submitted */
   text: string;
   seed: number;
@@ -279,14 +290,16 @@ export function assessResult(
   if (rec.status !== 'ok' && rec.status !== 'cached') return { kind: 'failed', reason: `unknown status "${rec.status}"` };
   const want = textSha256(l.text);
   if (rec.text_sha256 !== want) return { kind: 'failed', reason: `text_sha256 ${show(rec.text_sha256)} != sha256 of the submitted text ${want}` };
-  if (rec.voice !== undefined && rec.voice !== l.speaker) return { kind: 'failed', reason: `voice ${rec.voice} != ${l.speaker}` };
-  if (rec.seed !== undefined && rec.seed !== l.seed) return { kind: 'failed', reason: `seed ${rec.seed} != voices.json seed ${l.seed}` };
+  const voice = l.serviceVoice ?? l.speaker;
+  if ((l.serviceVoice || rec.voice !== undefined) && rec.voice !== voice) return { kind: 'failed', reason: `voice ${rec.voice} != ${voice}` };
+  if ((rec.seed !== undefined || (l.serviceVoice && rec.status === 'ok')) && rec.seed !== l.seed)
+    return { kind: 'failed', reason: `seed ${rec.seed} != voices.json seed ${l.seed}` };
   if (typeof rec.key !== 'string' || !/^[0-9a-f]{64}$/.test(rec.key)) return { kind: 'failed', reason: `no valid key (${show(rec.key)})` };
   if (typeof rec.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(rec.sha256)) return { kind: 'failed', reason: `no valid sha256 (${show(rec.sha256)})` };
   if (typeof rec.output !== 'string' || !(o.exists ?? existsSync)(rec.output)) return { kind: 'failed', reason: `WAV missing: ${show(rec.output)}` };
   const got = (o.hashFile ?? sha256File)(rec.output);
   if (got !== rec.sha256) return { kind: 'failed', reason: `WAV sha256 ${got} != recorded ${rec.sha256}` };
-  const idSrc = rec.engine ?? (rec.status === 'cached' ? o.registry?.[l.speaker]?.engine_identity : undefined);
+  const idSrc = rec.engine ?? (rec.status === 'cached' ? o.registry?.[voice]?.engine_identity : undefined);
   const e = mapEngineIdentity(idSrc);
   if (!e || !sameEngine(e, engine)) return { kind: 'failed', reason: `engine ${show(e ?? idSrc)} != ${show(engine)}` };
   return { kind: 'ready', wav: rec.output, engine: { model: e.model!, tokenizer: e.tokenizer!, warmup: e.warmup! }, serviceKey: rec.key, sha256Raw: rec.sha256, cached: rec.status === 'cached' };

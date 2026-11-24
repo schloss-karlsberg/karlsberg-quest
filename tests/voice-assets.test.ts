@@ -1,6 +1,5 @@
 /**
- * What may be committed under public/voice/ (owner, 2026-11-20): synthetic MOSS clips only, each voice
- * credited in public/assets/LICENSES.json `voices`; never ElevenLabs output, never a real person's voice.
+ * public/voice/ holds credited MOSS clips. Real-person clips require public consent and a game-only licence.
  * The real folder is checked first (passes when empty or absent); the failure cases run on temp-dir
  * fixtures with tiny fake files, so no audio is ever committed for the tests.
  *
@@ -13,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
+  SPEAKER_PERMISSION_NOTICE,
   VOICE_SIZE_FAIL_MB,
   VOICE_SIZE_WARN_MB,
   checkVoiceAssets,
@@ -20,13 +20,14 @@ import {
   nonCommittableGuard,
   parseMossVoiceId,
 } from '../scripts/voice/assetRules.ts';
-import { MOSS_ENGINE } from '../scripts/voice/lib.ts';
+import { MOSS_ENGINE, type VoicesConfig } from '../scripts/voice/lib.ts';
 import type { LicencesFile, VoiceCredit } from '../src/assets/types';
 
 const REPO = resolve(__dirname, '..');
 const VOICE_DIR = join(REPO, 'public/voice');
 const licences = JSON.parse(readFileSync(join(REPO, 'public/assets/LICENSES.json'), 'utf8')) as LicencesFile;
 const credits: VoiceCredit[] = licences.voices ?? [];
+const player = credits.find((c) => c.speaker === 'player')!;
 
 const tmpRoots: string[] = [];
 const tmp = () => {
@@ -75,23 +76,30 @@ const errs = (d: string) => checkVoiceAssets(d, credits).errors.join('\n');
 
 describe('voice credits in LICENSES.json', () => {
   it('lists every voiced speaker as a synthetic MOSS voice with CC0 output', () => {
-    expect(credits.map((c) => c.speaker).sort()).toEqual(['imhoff', 'jostd', 'laub', 'marlene', 'mats', 'solld']);
-    for (const c of credits) {
+    const synthetic = credits.filter((c) => c.speaker !== 'player');
+    expect(synthetic.map((c) => c.speaker).sort()).toEqual(['imhoff', 'jostd', 'laub', 'marlene', 'mats', 'solld']);
+    for (const c of synthetic) {
       expect(c).toMatchObject({ provider: 'moss', tool: 'MOSS-TTS-v1.5 (OpenMOSS)', toolLicence: 'Apache-2.0', outputLicence: 'CC0-1.0', generatedLocally: true, note: 'synthetic voice, no real person' });
+      expect(c.realPerson).toBeUndefined();
       expect(c.referenceSha256).toMatch(/^[0-9a-f]{64}$/);
     }
     expect(laub().seed).toBe(102);
     expect(credits.find((c) => c.speaker === 'marlene')!.seed).toBe(205);
   });
 
-  it('matches the seeds in scripts/voice/voices.json for every credited moss speaker', () => {
-    const voices = JSON.parse(readFileSync(join(REPO, 'scripts/voice/voices.json'), 'utf8')) as { speakers: Record<string, { provider?: string; seed?: number }> };
+  it('credits the player by name under the game-only licence and matches the configured service voice', () => {
+    expect(player).toMatchObject({
+      name: 'Jan Eric Rippel', provider: 'moss', realPerson: true, consent: 'public', outputLicence: SPEAKER_PERMISSION_NOTICE,
+    });
+    expect(player.referenceSha256).toMatch(/^[0-9a-f]{64}$/);
+    const voices = JSON.parse(readFileSync(join(REPO, 'scripts/voice/voices.json'), 'utf8')) as VoicesConfig;
+    expect(voices.speakers.player).toMatchObject({ serviceVoice: 'guest-test', refSha256: player.referenceSha256, licence: 'speaker-permission', seed: 7 });
     for (const c of credits) expect(voices.speakers[c.speaker]?.seed, c.speaker).toBe(c.seed);
   });
 });
 
 describe('public/voice (the committed folder)', () => {
-  it('holds only credited synthetic MOSS clips (passes when there is no manifest and no clip)', () => {
+  it('holds only credited MOSS clips (passes when there is no manifest and no clip)', () => {
     const r = checkVoiceAssets(VOICE_DIR, credits);
     expect(r.errors).toEqual([]);
     for (const w of r.warnings) console.warn(`voice assets: ${w}`);
@@ -130,6 +138,20 @@ describe('checkVoiceAssets (fixtures)', () => {
     expect(errs(fixture({ 'laub.hello': entry({ licence: undefined }) }))).toMatch(/licence "undefined" is not allowed/);
     expect(errs(fixture({ 'laub.hello': entry({ provider: 'elevenlabs' }) }))).toMatch(/provider "elevenlabs" is not committable/);
     expect(errs(fixture({ 'laub.hello': entry({ provider: 'hf-space' }) }))).toMatch(/provider "hf-space" is not committable/);
+  });
+
+  it('accepts the player clip with named consent and the game-only licence', () => {
+    const id = 'player.t.fuehrer';
+    const clip = entry({ speaker: 'player', licence: 'speaker-permission', voiceId: 'moss:player:7acb49ed:7' }, id);
+    const dir = fixture({ [id]: clip });
+    expect(errs(dir)).toBe('');
+    expect(checkVoiceAssets(dir, []).errors).toEqual([expect.stringContaining('has no voice credit')]);
+    for (const over of [{ realPerson: undefined }, { consent: undefined }, { name: ' ' }, { outputLicence: 'CC0-1.0' }]) {
+      expect(checkVoiceAssets(dir, [{ ...player, ...over }]).errors).toEqual([expect.stringContaining('requires a named real-person MOSS credit')]);
+    }
+    expect(errs(fixture({ [id]: { ...clip, licence: 'apache-2.0-model' } }))).toMatch(/only speaker-permission/);
+    expect(errs(fixture({ [id]: { ...clip, provider: 'elevenlabs' } }))).toMatch(/provider "elevenlabs" is not committable/);
+    expect(errs(fixture({ 'laub.hello': entry({ licence: 'speaker-permission' }) }))).toMatch(/requires a named real-person MOSS credit/);
   });
 
   it('fails speakers without a credit and voiceIds whose seed or reference differ from it', () => {

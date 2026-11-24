@@ -95,11 +95,10 @@ These are not negotiable; pull requests that break them cannot be merged.
   the output. Credit each file in `LICENSES.json` with the tool, model and version, date and licence;
   our own generated files are released as CC0. No likeness of a real living person without that
   person's consent; historical figures may be modelled from public-domain portraits.
-- Voices: synthetic MOSS-TTS-v1.5 (OpenMOSS) clips only (Apache-2.0 model,
-  generated locally, output CC0), in `public/voice/` with its manifest, each voice credited in the
-  `voices` list of `LICENSES.json`. Never ElevenLabs output (free or paid), and never a real person's
-  voice without their written consent (such a clip would not be CC0). `tests/voice-assets.test.ts`
-  enforces this, and `pnpm voice:gen` refuses to write other providers into `public/voice/`.
+- Voice clips in `public/voice/` use MOSS-TTS-v1.5 (OpenMOSS, Apache-2.0 model). Credit each voice in
+  the `voices` list of `LICENSES.json`. Synthetic output is CC0. A real-person voice requires a
+  named credit, written public consent in moss-service and an output licence limited to this game.
+  `tests/voice-assets.test.ts` enforces the asset rules, including the exclusion of ElevenLabs output.
 - Credit **every file** in [`public/assets/LICENSES.json`](public/assets/LICENSES.json) with its
   name, author and source URL. The entry then appears in the game under „Lizenzen & Quellen“.
 - Treat downloaded archives as untrusted data: unpack them into a fresh, empty directory and never

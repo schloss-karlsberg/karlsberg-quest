@@ -1,11 +1,11 @@
 # Player voice: line list and recording notes
 
-> **DRAFT for the release after 0.5.0.** Companion to `bible/08-stimmen.md` (voices) and `storyboard-beats.md` (beat ids). The player voice is produced privately and is not in the repo; it ships only after the speaker's written consent (pending). Until then player lines are text only (silent, no murmur, no placeholder voice). **The speaker stays unnamed in the repo, docs and commits.** The texts below may be committed; they are FIKTION.
+> **Status (2026-11-25).** The owner confirmed consent on 2026-11-24 to use Jan Eric Rippel's MOSS-cloned player voice in Karlsberg Quest. The game names him in `content/credits.json`, and `public/assets/LICENSES.json` credits the voice with permission limited to the game. The service registry confirms written public consent. All eight unique clips for the tour's nine player dialogue actions are queued in moss-service. Rendering and collection are pending. The dialogue texts below are FIKTION.
 
 ## 1. Principles
 
 - **A mostly quiet protagonist.** The player is a calm visitor, male, 30–40, on a public guided tour in November. He reacts and never explains: short, dry, a little amazed, never a joke at someone else's cost. At most one player line per beat, and none when another speaker already says the same thing. Most beats have no player line at all.
-- **Optional.** Setting **„Spielerstimme an/aus“** (Einstellungen › Audio). Default: **ON once the consent and the clips exist; until then text only**, with the toggle shown disabled and the hint „Aufnahmen folgen“. OFF means the player lines still appear as subtitles, silently.
+- **Optional (planned).** Setting **„Spielerstimme an/aus“** (Einstellungen › Audio). The design calls for it to default to ON once clips exist. OFF keeps the subtitles and silences the player voice. The toggle is still a follow-up.
 - **Subtitles always.** Every player line is shown in the dialogue card, whether or not a clip plays (same rule as every other speaker, PRD §4.4).
 - **Never says the player's name.** `{Name}` is spoken only by Laub and Marlene (`content/bible/08-stimmen.md`, enforced by `tests/story.test.ts` „{Name} only in Marlene/Laub“) and, in the tour draft, by Gerold Imhoff (`bible/08-stimmen.md` §0, the test is to be extended). The player never says it, never introduces himself, and is never asked a question that needs his name as an answer. The recording therefore never contains a name, which also keeps every clip valid for every player.
 - **Forms of address stay with the others.** Laub siezt, Marlene, Gerold, Jost and the doubles duzen, Liese and the 1789 people use „Er“. The player addresses nobody by name and avoids „Sie“/„du“ where he can (short reactions instead of sentences).
@@ -120,7 +120,7 @@ Calm, low-middle register, unhurried, close to the microphone (an inner voice th
 ### 3.3 Takes and files
 
 - **2 takes per line**, plus the soft-start variants marked above (`player.q.laub` is already queued with one).
-- Clips are kept **outside the repo**, privately, until the written consent arrives. No WAV/WebM/M4A of this voice in `public/voice/`, `.voice-raw/` or any commit.
+- Keep reference WAVs outside the repo and render WAVs in local scratch storage. After the service verifies written public consent, approved WebM/M4A clips can ship in `public/voice/` under the game-only licence.
 - File names follow the pipeline (`<id>.<hash>.webm` / `.m4a`); the manifest entry carries the speaker `player`.
 - The cues (§2.6) are **not** recorded in v1.
 
@@ -134,22 +134,20 @@ Calm, low-middle register, unhurried, close to the microphone (an inner voice th
 
 **Existing mechanism.** Story lines are `say` actions with `id`, `speaker`, `text`. The dialogue presenter (`src/systems/story/dialogue/presenter.ts`) asks the clip provider (`voiceClips.ts`) for a ready clip by **line id** and text: `voice/manifest.json` maps ids to files and stores a `textHash` (FNV-1a over the raw text). A clip plays only while the hash still matches the line text; otherwise, or if no clip is decoded in time, the line falls back to the procedural murmur (`voice.ts`). Clips play on the `voice` bus (volume slider „Stimmen“). Laub and Marlene lines are looked up the same way (`laub.t.intro`, `marlene.k1.morgen.quelle` …).
 
-**What the player voice needs (code, for the owning session, not this branch):**
-1. **Speaker `player`** in `dialogue/speakers.ts` (on main it does not exist; the slice already uses `"speaker": "player"`). Label „Du“ (not `{Name}`), portrait none or a small silhouette, fiction speaker (`historical: false`, `echo: false`). Its murmur is **muted**: a player line without a clip is silent text, never blips (a murmuring protagonist would not be quiet).
-2. **Setting** `playerVoice: boolean` in the save settings (`src/core/save.ts`), a toggle „Spielerstimme an/aus“ in `src/ui/settings.ts` under the volume sliders. When OFF, the presenter skips the clip lookup for speaker `player` (subtitle only, typed at reading speed).
-3. **Clip source outside the public manifest.** `scripts/voice/assetRules.ts` only admits the synthetic voices in `public/voice/`, so a privately produced player voice needs the owner's OK for any hosting. Proposal: a second, optional manifest (e.g. `voice-player/manifest.json`, gitignored, deployed separately) loaded only if present; absent = text only. **Decided (kq-story):** yes, this manifest. Any hosting of the player clips (and any change to `assetRules.ts`) needs the owner's OK once the consent arrives.
-4. **Fallbacks, in order:** setting OFF → text; no consent / no manifest / 404 → text; hash mismatch (text changed) → text; clip not decoded in time → text. Never a murmur, never a delay of the dialogue for a player clip.
-5. **Combat gate.** Drop `player.*` dialogue lines while `combat:state.inCombat`; the `player.cue.*` captions use the existing caption path (`do: "sound"` captions style), not the dialogue card.
-6. **Tests to add with the code:** extend the `{Name}` test so `player` lines never contain `{Name}` (and add `imhoff` to the allowed speakers per `bible/08-stimmen.md` §0); a validator check that every `player.*` id matches `^player\.(t|photo|q|k1|end|cue)\.[a-z0-9_]+$`.
+The tour pack already defines `player` with the label „Du“. The voice pipeline maps this speaker to the moss-service registry entry `guest-test` and keeps `player` in the standard public voice manifest. The game-only manifest licence is `speaker-permission`. The owner records written public consent in the service registry and starts the runner after submission. The voice pipeline then collects the clips.
+
+**Follow-ups:**
+
+- Add the planned `playerVoice` save setting and „Spielerstimme an/aus“ toggle under the volume sliders. OFF skips the clip lookup for `player` and displays the subtitles at reading speed.
+- Make player subtitles silent when there is no matching decoded clip. The current presenter uses the standard murmur fallback.
+- Drop `player.*` dialogue lines while `combat:state.inCombat`. The `player.cue.*` captions use the existing caption path.
+- Extend the `{Name}` test to forbid it in player lines and add `imhoff` to the allowed speakers per `bible/08-stimmen.md` §0. Validate the `player.*` id scheme.
 
 ## 5. Decisions and open points
 
 Decided by kq-story (2026-11-21, the owner can overrule):
 - Speaker label for player lines: „Du“ (never the player's name).
 - `player.end.fest` is a spoken line (no „[nickt]“ caption).
-- The player voice uses a separate, gitignored, optional manifest (§4.3); the `assetRules.ts` change needs the owner's OK.
-- A player line without a clip is silent text: the murmur is muted for speaker `player`.
-- Extend the `{Name}` test to forbid `{Name}` in player lines: proposal for the code follow-up (§4.6), no code now.
+- A player line without a clip should appear as silent text.
 
-Open:
-- Consent: until it is in writing, the setting stays text-only and no player clip is published anywhere.
+The owner approved publication under the game-only licence on 2026-11-24. The player clips use the shared manifest (§4).

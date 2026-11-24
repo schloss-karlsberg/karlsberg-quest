@@ -58,6 +58,10 @@ const voicesFile = (speakers: Record<string, unknown>, name: string) => {
 };
 const VOICES = voicesFile({ laub: laubVoice }, 'voices.json');
 const VOICES_GUEST = voicesFile({ 'guest-test': { ...laubVoice, reference: 'guest-ref.wav', seed: 7 } }, 'voices-guest.json');
+const GUEST_SHA = sha256File(join(VOICES_DIR, 'guest-ref.wav'));
+const VOICES_PLAYER = voicesFile({
+  player: { provider: 'moss', serviceVoice: 'guest-test', refSha256: GUEST_SHA, seed: 7, params: { max_tokens: 150 }, licence: 'speaker-permission' },
+}, 'voices-player.json');
 
 const CONTENT = join(tmp, 'content');
 mkdirSync(join(CONTENT, 'packs'), { recursive: true });
@@ -65,12 +69,13 @@ const LINES = [
   { id: 'laub.a', speaker: 'laub', text_de: 'Guten Tag.' },
   { id: 'laub.b', speaker: 'laub', text_de: 'Gehen Sie hin, {Name}.' },
   { id: 'guest.a', speaker: 'guest-test', text_de: 'Hallo.' },
+  { id: 'player.a', speaker: 'player', text_de: 'Hallo.' },
 ];
 writeFileSync(join(CONTENT, 'packs', 'voices.pack.json'), JSON.stringify({ pack: 'voices', dialogue: LINES }));
 // speech.json override for laub.a; laub.b is auto-prepped ({Name} dropped)
 const SPEECH = join(tmp, 'speech.json');
 writeFileSync(SPEECH, JSON.stringify({ 'laub.a': { forText: textHash('Guten Tag.'), speech: 'Guten Tag, gnädige Frau.' } }));
-const SPOKEN: Record<string, string> = { 'laub.a': 'Guten Tag, gnädige Frau.', 'laub.b': 'Gehen Sie hin.', 'guest.a': 'Hallo.' };
+const SPOKEN: Record<string, string> = { 'laub.a': 'Guten Tag, gnädige Frau.', 'laub.b': 'Gehen Sie hin.', 'guest.a': 'Hallo.', 'player.a': 'Hallo.' };
 
 const regVoice = (over: Partial<RegistryVoice> = {}): RegistryVoice => ({
   engine: 'moss-tts',
@@ -85,6 +90,9 @@ const regVoice = (over: Partial<RegistryVoice> = {}): RegistryVoice => ({
   error: null,
   engine_identity: { ...SVC_ENGINE },
   ...over,
+});
+const playerRegistry = (over: Partial<RegistryVoice> = {}): Registry => ({
+  'guest-test': regVoice({ seed: 7, ref_sha256: GUEST_SHA, ref_source: 'real-person-recording', instruction: null, params: { max_tokens: 150 }, ...over }),
 });
 
 // the fake client: state files in FAKE_MOSS_STATE (registry.json, results.json, answers.json → submitted.json)
@@ -176,18 +184,18 @@ describe('mossService helpers', () => {
     expect(checkRawDir(join(tmp, 'publicity'))).toBeNull();
   });
 
-  it('never submits guest-test or a private registry voice', () => {
-    const jobs: ServiceJob[] = [
-      serviceJob({ id: 'a', speaker: 'laub', text: 'x' }, RAW),
-      serviceJob({ id: 'b', speaker: 'guest-test', text: 'x' }, RAW),
-      serviceJob({ id: 'c', speaker: 'secret', text: 'x' }, RAW),
+  it('reserves guest-test for the player mapping and rejects private registry voices', () => {
+    const lines = [
+      { id: 'a', speaker: 'laub' },
+      { id: 'b', speaker: 'guest-test' },
+      { id: 'c', speaker: 'secret' },
     ];
     const reg: Registry = { laub: regVoice(), 'guest-test': regVoice({ visibility: 'public' }), secret: regVoice({ visibility: 'private' }) };
-    const r = clientRefusals(jobs, reg);
+    const r = clientRefusals(lines, reg);
     expect(r).toHaveLength(2);
-    expect(r[0]).toMatch(/^b: voice guest-test is never submitted/);
+    expect(r[0]).toMatch(/^b: voice guest-test is reserved for the player mapping/);
     expect(r[1]).toMatch(/^c: registry voice secret has visibility "private"/);
-    expect(clientRefusals([jobs[1]!], {})).toHaveLength(1); // guest-test even when the registry does not list it
+    expect(clientRefusals([lines[1]!], {})).toHaveLength(1);
   });
 
   describe('consistency guard (voices.json vs registry)', () => {
@@ -218,7 +226,7 @@ describe('mossService helpers', () => {
       expect(d.join('\n')).toMatch(re);
     });
     it('fails when the voice is not registered, or our reference is missing', () => {
-      expect(registryDiffs([ours], {})).toEqual(['laub: not in the moss-service registry (add it with moss-registry add)']);
+      expect(registryDiffs([ours], {})).toEqual(['laub: voice laub is missing from the moss-service registry']);
       expect(diff({}, { refSha8: null }).join()).toMatch(/local reference laub-ref\.wav is missing/);
     });
     it('our side: instruction absent on both sides is equal; on one side only it differs', () => {
@@ -377,16 +385,45 @@ describe('generate.mjs service mode (fake client)', () => {
     expect(readState('submitted.json')).toBeUndefined();
   });
 
-  it('never submits guest-test, nor a voice the registry marks private', () => {
+  it('refuses guest-test as a speaker and respects private registry visibility', () => {
     const r = gen(['--speakers', 'guest-test'], {}, VOICES_GUEST);
     expect(r.status).toBe(1);
-    expect(r.stderr).toMatch(/guest\.a: voice guest-test is never submitted/);
+    expect(r.stderr).toMatch(/guest\.a: voice guest-test is reserved for the player mapping/);
     expect(readState('submitted.json')).toBeUndefined();
     state('registry.json', { laub: regVoice({ visibility: 'private' }) });
     const p = gen(['--speakers', 'laub']);
     expect(p.status).toBe(1);
     expect(p.stderr).toMatch(/visibility "private"/);
     expect(readState('submitted.json')).toBeUndefined();
+  });
+
+  it('submits player lines through the approved service mapping without a local reference', () => {
+    state('registry.json', playerRegistry());
+    const r = gen(['--speakers', 'player', '--submit'], {}, VOICES_PLAYER);
+    expect(r.status, r.stderr).toBe(0);
+    expect(readState('submitted.json')).toEqual([
+      { project: SERVICE_PROJECT, id: 'player.a', voice: 'guest-test', text: 'Hallo.', output: { path: join(RAW, 'player.a.wav'), format: 'wav' } },
+    ]);
+  });
+
+  it.each([
+    [{ visibility: 'private' }, /visibility "private"/],
+    [{ ok: false, error: 'public consent required' }, /public real-person consent check/],
+    [{ ref_source: 'moss-synthetic' }, /public real-person consent check/],
+    [{ ref_sha256: GUEST_SHA.slice(0, 8) + '0'.repeat(56) }, /player\.ref_sha256:/],
+  ])('refuses a player submission for registry override %j', (over, reason) => {
+    state('registry.json', playerRegistry(over));
+    const r = gen(['--speakers', 'player', '--submit'], {}, VOICES_PLAYER);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(reason);
+    expect(readState('submitted.json')).toBeUndefined();
+  });
+
+  it('skips the service-only player voice in direct mode', () => {
+    const r = gen(['--speakers', 'player'], { KQ_MOSS_MODE: 'direct' }, VOICES_PLAYER);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/requiring service mode \(skipped\): player/);
+    expect(r.stdout).toMatch(/Nothing to generate/);
   });
 
   it('--dry-run prints the service plan and the registry check, submits nothing', () => {
@@ -418,6 +455,23 @@ describe('generate.mjs service mode (fake client)', () => {
       return { status: 'ok', key: 'a'.repeat(64), output: out, sha256: sha256File(out), text_sha256: textSha256(SPOKEN[id]!), engine: { ...SVC_ENGINE }, seed: 102, voice: 'laub', project: SERVICE_PROJECT, id, ...over };
     };
     const manifest = () => (existsSync(join(OUT, 'manifest.json')) ? JSON.parse(readFileSync(join(OUT, 'manifest.json'), 'utf8')) : { lines: {} });
+
+    it.skipIf(!haveFfmpeg)('checks consent on collect and keeps player as the manifest speaker for a cached guest-test clip', () => {
+      state('results.json', {
+        'player.a': okRec('player.a', { status: 'cached', engine: undefined, seed: undefined, voice: 'guest-test' }),
+      });
+      state('registry.json', playerRegistry({ visibility: 'private' }));
+      const refused = gen(['--speakers', 'player', '--collect'], {}, VOICES_PLAYER);
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toMatch(/visibility "private"/);
+      expect(existsSync(OUT)).toBe(false);
+      state('registry.json', playerRegistry());
+      const collected = gen(['--speakers', 'player', '--collect'], {}, VOICES_PLAYER);
+      expect(collected.status, collected.stderr).toBe(0);
+      expect(manifest().lines['player.a']).toMatchObject({
+        speaker: 'player', voiceId: mossVoiceId('player', GUEST_SHA.slice(0, 8), 7), licence: 'speaker-permission',
+      });
+    });
 
     it.skipIf(!haveFfmpeg)('ok and cached results are post-processed into manifest entries with serviceKey + sha256Raw', () => {
       const a = okRec('laub.a');

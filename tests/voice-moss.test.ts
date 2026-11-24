@@ -486,7 +486,12 @@ describe('committed voices.json', () => {
       const v = resolveVoice(k, vj, undefined, { refSha8: () => 'deadbeef' })!;
       expect(PROVIDERS).toContain(v.provider);
       expect(LICENCES).toContain(v.licence);
-      if (v.provider === 'moss') expect(v).toMatchObject({ model: MOSS_MODEL, licence: 'apache-2.0-model', voiceId: `moss:${k}:deadbeef:${vj.speakers[k]!.seed}` });
+      if (k === 'player') {
+        expect(v).toMatchObject({ model: MOSS_MODEL, licence: 'speaker-permission', voiceId: 'moss:player:7acb49ed:7', placeholder: false });
+        expect(v.moss?.reference).toBeUndefined();
+      } else if (v.provider === 'moss') {
+        expect(v).toMatchObject({ model: MOSS_MODEL, licence: 'apache-2.0-model', voiceId: `moss:${k}:deadbeef:${vj.speakers[k]!.seed}` });
+      }
     }
     expect(JSON.stringify(voicesJson)).not.toMatch(/\/Users\/|\/home\/[a-z]/);
   });

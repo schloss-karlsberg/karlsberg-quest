@@ -20,7 +20,7 @@ interface CreditSection {
 
 type CreditManifest = {
   assets: readonly Pick<LicenceRecord, 'source' | 'author' | 'licence'>[];
-  voices?: readonly Pick<VoiceCredit, 'tool' | 'toolLicence' | 'outputLicence'>[];
+  voices?: readonly Pick<VoiceCredit, 'name' | 'realPerson' | 'tool' | 'toolLicence' | 'outputLicence'>[];
   libraries?: LicencesFile['libraries'];
 };
 
@@ -53,8 +53,10 @@ const rows = (lines: readonly string[]): CreditRow[] => lines.map((text) => ({ t
 
 /** The same ordered credits for the party strip and the ending's credits page. */
 export function creditSections(manifest: CreditManifest | null, contributors: Contributors = contributorsFile): CreditSection[] {
-  const voices = new Set(manifest?.voices?.map(({ tool, toolLicence, outputLicence }) =>
-    `Synthetische Stimmen: ${tool} (${toolLicence}), Aufnahmen: ${outputLicence}`,
+  const voices = new Set(manifest?.voices?.map(({ name, realPerson, tool, toolLicence, outputLicence }) =>
+    realPerson
+      ? `${name} · Stimme mit Einwilligung, nur zur Verwendung in Karlsberg Quest.`
+      : `Synthetische Stimmen: ${tool} (${toolLicence}), Aufnahmen: ${outputLicence}`,
   ));
   const libraries = manifest?.libraries?.map(({ name, licence }) => `${name.split(' (')[0]} (${licence})`) ?? ['three.js (MIT)'];
   const assets = [...assetCredits(manifest?.assets ?? []), ...voices];
