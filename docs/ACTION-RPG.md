@@ -1039,6 +1039,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Guide narration and casting (TASK-010, 2026-11-25) | The [tour script](design/tour/sources.md) maps the 18 live beats and gives each station short, sourced German lines with spoken uncertainty. Three synthetic guide candidates are queued for owner listening. The station sequences at the Felsenpfad, pond and spring need to finish or be skipped before departure at integration. |
 | Saves from the surveyor opening (TASK-007, 2026-11-24) | Continue in „Der Hof“ at the Karlsbergquelle. Apply the tour's handover as minimums, award pending quest payouts once and retain earned progress. Retired objectives leave the tracker. Old bookmarks open the tour. |
 | Feldbuch navigation and save wording (TASK-007, 2026-11-24) | Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album on desktop and touch. I and M retain their shortcuts. Clue cards and the Pinnwand open Codex. The title and save actions use „Neues Spiel“, „Weiter“ and „Speichern“. |
 | Quest payouts and HUD toasts crowd the world view (TASK-009, 2026-11-24) | A shared HUD slot shows one compact notice at a time and pauses its timer whenever a modal covers it. Escape and outside touch taps dismiss one layer at a time. |

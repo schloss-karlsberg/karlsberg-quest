@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-25 | **Guide narration and casting (TASK-010).** The [tour script](design/tour/sources.md) documents four German station sequences, their historical sources and the handoff to Laub. A local listening page compares three synthetic voices before recording. |
 | unreleased | 2026-11-24 | **Surveyor opening retired (TASK-007).** Old `?classic` bookmarks open the guided tour. Saves in „Vermessung“ continue at the Karlsbergquelle at the start of „Der Hof“ with the tour's level 3 handover and their earned progress. |
 | unreleased | 2026-11-24 | **Pause navigation and saving (TASK-007).** Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album on desktop and touch. I and M retain their shortcuts. The clue card and the Pinnwand open Codex directly. The title and saving use „Neues Spiel“, „Weiter“, „Speichern“ and „Spielstand gespeichert.“ |
 | unreleased | 2026-11-24 | **Party credits (TASK-013).** All three endings credit contributors, asset authors, tools and sources. The credits page uses the same list. Enter, Escape and the touch-friendly skip button return the player to the party. Reduced motion shows a scrollable list with no camera orbit. |
