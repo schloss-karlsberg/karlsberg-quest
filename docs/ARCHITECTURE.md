@@ -995,9 +995,11 @@ Round-4 (polish: set dressing) integration rules:
 - Keys: R measure, V / 4 Röntgenblick, B plans, M maps, 0–3 relief (all listed on the controls page).
 
 ### story (`src/systems/story/`) – chapters, dialogue, home base, objectives, endings
-- A new game starts with the guided tour (`content/story/00-tour.story.json`, order −1, `next: k1`). The
-  earlier surveyor prologue (`00-prolog`) stays loaded as `legacy` so a save in the middle of it resumes;
-  `?classic` starts it for a new game. Design: `docs/design/tour/`.
+- A new game starts with the guided tour (`content/story/00-tour.story.json`, order −1, `next: k1`).
+  The engine excludes chapters marked `legacy` from play. `deserializeState` migrates saves in
+  `prolog` to `k1/k1_0` before systems restore. It retains quest history and applies the tour
+  handover as minimums. The legacy quest file still supplies the tour's page item. Design at
+  `docs/design/tour/`.
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by
   `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
   endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
@@ -1026,7 +1028,7 @@ Round-4 (polish: set dressing) integration rules:
   TASK-007; until tour WP-01 this was the field station at 760 / −915), the Bussole/objective HUD, the caught
   curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
-  threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the prologue.
+  threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the tour.
 - Round 2: conditions `room`, `talked`, `reading`, `meter`, `chosen`, `chapterTimer`; actions `npc`,
   `meter` (oil / smoke / vergessen / custom gauges, `lossless` → `flags['chronik.noLoss']`), `echo`,
   `memorial`, `readings`, `grant`, `say.text_by_era`, choices with `modal:false` + `when` / `key` /

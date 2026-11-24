@@ -4,10 +4,11 @@
 chapter `tour` (`content/story/00-tour.story.json`, order −1, `next: k1`) opens every new game; no URL
 switch. Its end hands over into chapter 1 with the state the old prologue left (relief 3, Kartograf 1,
 the Bussole, the „Seite im Deckel der Bussole“, the main path's balms / oil, its XP → level 3; diffed in
-`tests/tour-handover.test.ts`); tour-only extras (the deer photo) come on top. The old surveyor
-prologue stays bundled (`"legacy": true`) so a save in the middle of it resumes unchanged (no
-conversion, no XP lost); `?classic` starts it for a new game. Design: `docs/design/tour/` (MR 4),
-bible `01-prolog.md` t1–t10. Gerold Imhoff is a placeholder name.
+`tests/tour-handover.test.ts`). The tour also offers the deer photo. In v0.7–v0.8,
+`?classic` selected the old surveyor prologue and saves could resume there. Old bookmarks now
+open the tour. Saves in „Vermessung“ continue in „Der Hof“ at the Karlsbergquelle with the tour
+handover and their earned progress (TASK-007). The beats are described in the tour bible
+(`bible/01-prolog.md`). Gerold Imhoff is a placeholder name.
 
 **Start:** `pnpm dev` → „Neues Spiel“. Tests: `?notitle`, then `kq.story.start('Name')`; e2e fast
 path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).

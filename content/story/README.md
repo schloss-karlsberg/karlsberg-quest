@@ -34,7 +34,7 @@ endings the drafts in `docs/design/tour/bible/` win where they differ. Placehold
 | `era?`, `checkpoint? {x,z,yaw?,era?}` | chapter era; start position (also where being caught returns to) |
 | `placeholder?` | skeleton chapter (title card says so) |
 | `test?` | test chapter (`99-test.story.json`): validated, but loaded only with `?storytest` |
-| `legacy?` | retired opening (the surveyor prologue `00-prolog`): still loaded, so a save in the middle of it resumes unchanged; a new game starts in the first chapter by `order` (the tour, `00-tour`, order −1), `?classic` starts the legacy chapter; hidden from the bench's chapter list unless reached |
+| `legacy?` | Historical chapter data, excluded from play and chapter select. Saves in `00-prolog` migrate to the Chapter 1 checkpoint before the engine resumes. |
 | `dev?` | dev chapter: loaded only with the URL switch of that name, and a new game then starts in it |
 | `leave?` | actions run once when the story leaves the chapter for another, whichever way (last beat, chapter list, debug jump): the tour sends its group home and lifts its rules (no combat, Laub silent) |
 | `on?` | chapter-wide reactions `{id, when, do, repeat?, cooldown?}` (`cooldown`: with `repeat`, not again within that many seconds) |
