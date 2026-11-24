@@ -114,7 +114,7 @@ _Status: approved 2026-11-24_
 - [x] 2. Render the quest payout as a compact, non-focusable status at the HUD edge. Show the quest title and gains, keep full details accessible in the existing journal, and retain timeout and walk-away dismissal.
 - [x] 3. Suppress the matching pickup row when the payout already reports the item. Preserve grants, ordinary pickups and inventory-full feedback. Check the displayed quantities against what the player received.
 - [x] 4. Give the top modal first refusal, including required choices. In free play, Escape dismisses the visible notice, then a separate press can pause. Account for key repeat and browser pointer-lock loss. Use Enter, Space or E only when free, respecting bindings, typing, focused controls, dialogue and photo mode.
-- [ ] 5. Recognize a completed outside tap on the play surface or the top closable modal's backdrop. Preserve button activation, modal scrolling, stick movement and camera drags.
+- [x] 5. Recognize a completed outside tap on the play surface or the top closable modal's backdrop. Preserve button activation, modal scrolling, stick movement and camera drags.
 - [ ] 6. Fit long German summaries around the tracker and thumb controls. Use the game's reduced-motion setting for both appearance and dismissal, and keep the world view and camera interactive.
 - [ ] 7. Cover queue release, holds and resumption in Vitest. Extend payout, pacing and real-touch specs to cover the input and duplicate-feedback cases below.
 - [ ] 8. Update the gameplay notes and mobile tour expectation to match the new behavior.
@@ -168,6 +168,7 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Step 2 moved the quest payout to the right-edge HUD dock with a Codex count and a pointer to the field book for details. The notice retains the timeout, walk-away threshold and quiet quest presentation. `pnpm typecheck` passed.
 - 2026-11-24 — Step 3 suppressed the quest item pickup row and used progression's synchronous receipts for actual item counts and quest XP. The focused card, quest and progression tests and `pnpm typecheck` passed.
 - 2026-11-24 — Step 4 routed Escape through the top modal or camera before free-play dismissal, coalesced the keyboard and pointer-lock signals, and checked bindings and focus for optional dismissal keys. `pnpm typecheck` passed. Browser verification is pending.
+- 2026-11-24 — Step 5 added completed backdrop and play-surface tap detection with cancellation for drags, pointer cancellation and competing touches. `pnpm typecheck` passed. Real-touch verification is pending.
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.

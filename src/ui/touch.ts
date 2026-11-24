@@ -6,6 +6,7 @@ import type { Action, Input } from '../player/input';
 import { TOUCH, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchIconFor, touchPromptIcon } from '../player/touchMap';
 import { h, svg } from './dom';
 import type { Hud } from './hud';
+import { PointerTap } from './pointerTap';
 import { addSettingsRows } from './settings';
 import { TOUCH_ICONS } from './touchIcons';
 
@@ -98,6 +99,7 @@ export interface TouchDeps {
   /** Where the overlay goes (ui.root). */
   root: HTMLElement;
   openPause(): void;
+  dismissNoticeAt(x: number, y: number): void;
   canFly(): boolean;
   flying(): boolean;
   /** Ability n (1 Ausfall, 2 Erdstoß, 3 Wirbel) learnt? Its button hides until then. Absent: always shown. */
@@ -146,6 +148,7 @@ export class TouchControls {
   private stickOrigin = { x: 0, y: 0 };
   private held: Action[] = [];
   private readonly looks = new Map<number, { x: number; y: number }>();
+  private surfaceTap: PointerTap | null = null;
   /** pointerId → actions that button holds. */
   private readonly btnHeld = new Map<number, Action[]>();
   /** Called whenever the active state flips (boot: pointer lock, click-to-play chip). */
@@ -204,6 +207,9 @@ export class TouchControls {
       this.interactBtn.el,
     ]);
     this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, this.scanPop]);
+    this.el.addEventListener('pointerdown', (e) => {
+      if (this.surfaceTap?.id !== e.pointerId) this.surfaceTap = null;
+    }, true);
     this.el.addEventListener('pointerdown', (e) => this.surfaceDown(e));
     this.el.addEventListener('pointermove', (e) => this.surfaceMove(e));
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) this.el.addEventListener(ev, (e) => this.surfaceUp(e));
@@ -396,6 +402,7 @@ export class TouchControls {
   }
 
   private surfaceDown(e: PointerEvent): void {
+    if (e.pointerType === 'touch' && e.isPrimary && e.target === this.el) this.surfaceTap = new PointerTap(e);
     e.preventDefault();
     this.scanPop.classList.add('kq-hidden');
     try {
@@ -419,6 +426,7 @@ export class TouchControls {
   }
 
   private surfaceMove(e: PointerEvent): void {
+    if (this.surfaceTap?.id === e.pointerId && !this.surfaceTap.withinSlop(e)) this.surfaceTap = null;
     if (e.pointerId === this.stickId) {
       this.moveStick(e.clientX, e.clientY);
       return;
@@ -438,6 +446,10 @@ export class TouchControls {
       this.setHeld([]);
     }
     this.looks.delete(e.pointerId);
+    if (this.surfaceTap?.id !== e.pointerId) return;
+    const tapped = this.surfaceTap.completes(e);
+    this.surfaceTap = null;
+    if (tapped && document.elementFromPoint(e.clientX, e.clientY) === this.el) this.deps.dismissNoticeAt(e.clientX, e.clientY);
   }
 
   private moveStick(x: number, y: number): void {
@@ -460,6 +472,7 @@ export class TouchControls {
     this.stickId = null;
     this.stick.classList.add('kq-hidden');
     this.looks.clear();
+    this.surfaceTap = null;
     this.btnHeld.clear();
     for (const b of this.el.querySelectorAll('.down')) b.classList.remove('down');
     this.deps.input.releaseVirtual();

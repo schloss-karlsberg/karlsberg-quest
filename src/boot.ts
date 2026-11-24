@@ -213,6 +213,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     events,
     root: ui.root,
     openPause: () => openPauseMenu(),
+    dismissNoticeAt: (x, y) => {
+      const rect = ui.hud.noticeDock.getBoundingClientRect();
+      if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) dismissPlayNotice();
+    },
     canFly: () => ERA_INFO[world.currentEra].spiritView,
     flying: () => player.flying,
     stance: () => player.stance,

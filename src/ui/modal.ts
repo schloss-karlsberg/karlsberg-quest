@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { clear, h } from './dom';
+import { PointerTap } from './pointerTap';
 
 export interface ModalAction {
   label: string;
@@ -134,7 +135,25 @@ export class ModalManager {
       );
     }
     if (!o.actions?.length) actionsEl.remove();
-    if (closable) layer.addEventListener('mousedown', (e) => e.target === layer && handle.close());
+    if (closable) {
+      let tap: PointerTap | null = null;
+      layer.addEventListener('pointerdown', (e) => {
+        tap = e.target === layer && e.button === 0 && e.isPrimary && this.stack.at(-1) === handle ? new PointerTap(e) : null;
+      });
+      layer.addEventListener('pointermove', (e) => {
+        if (tap?.id === e.pointerId && !tap.withinSlop(e)) tap = null;
+      });
+      for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
+        layer.addEventListener(event, (e) => {
+          if (tap?.id !== e.pointerId) return;
+          const close = tap.completes(e) && this.stack.at(-1) === handle && document.elementFromPoint(e.clientX, e.clientY) === layer;
+          tap = null;
+          if (close) handle.close();
+        });
+      }
+      // A mouse drag can leave the layer entirely (touch has implicit pointer capture).
+      layer.addEventListener('pointerleave', () => { tap = null; });
+    }
     this.root.append(layer);
     this.stack.push(handle);
     this.onChange(this.stack.length);
