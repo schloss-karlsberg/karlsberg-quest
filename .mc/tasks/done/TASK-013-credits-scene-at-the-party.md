@@ -4,7 +4,7 @@ aliases:
 - TASK-013
 title: Credits scene at the party
 slug: credits-scene-at-the-party
-status: review
+status: done
 priority: 2
 owner: ''
 projects: []

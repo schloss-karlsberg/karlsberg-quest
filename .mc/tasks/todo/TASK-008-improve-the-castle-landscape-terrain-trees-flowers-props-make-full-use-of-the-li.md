@@ -13,12 +13,12 @@ tags:
 - dev
 - 3d
 - world
-sprint: ''
+sprint: "[[SPR-001]]"
 milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Improve the castle landscape: terrain, trees, flowers, props; make full use of the LiDAR data
@@ -99,3 +99,4 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 ## Notes
 - `pnpm prepare-data` needs the sister repo checked out next to this one; external contributors cannot run it.
 - Wrap GPU screenshot runs in `scripts/dev/heavy.sh` if present.
+%% mc-links: [[SPR-001]] %%

@@ -14,12 +14,12 @@ tags:
 - audio
 - content
 - history
-sprint: ''
+sprint: "[[SPR-001]]"
 milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # More tour audio: a real, historically accurate guided tour
@@ -84,3 +84,4 @@ eras) and SFX at the stops.
 - [ ] Audio settings respected (bus volumes, mute); voice ducks ambience
 - [ ] Voice size stays within the budget
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass; docs updated (`docs/ACTION-RPG.md` §14, `docs/PRD.md`)
+%% mc-links: [[SPR-001]] %%

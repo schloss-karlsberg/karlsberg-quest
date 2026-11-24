@@ -4,7 +4,7 @@ aliases:
 - TASK-012
 title: Update the storyboard to the guided-tour concept
 slug: update-the-storyboard-to-the-guided-tour-concept
-status: review
+status: done
 priority: 3
 owner: ''
 projects: []

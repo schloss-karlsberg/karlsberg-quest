@@ -4,7 +4,7 @@ aliases:
 - TASK-009
 title: 'Rework the popovers: less intrusive, keyboard-closable'
 slug: rework-the-popovers-less-intrusive-keyboard-closable
-status: review
+status: done
 priority: 2
 owner: ''
 projects: []
