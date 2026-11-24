@@ -177,7 +177,7 @@ moved to the new defaults (settings migration).
 - [ ] The Messstab is received visibly during the tour, before the first time travel, and not shown before
 - [ ] No menu at the spring; its functions open at the Bauwagen (or, if the owner rejects the restore, through Marlene); the spring's touch has no E conflict
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
-- [x] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green
+- [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
 - [ ] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
 - [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
@@ -207,7 +207,8 @@ _Status: approved 2026-11-24_
 - [x] 3. Retire `classic`, `PROLOG_WAKES` / `prologWake` and the playable `prolog` entry. Register the retired file’s item definitions independently of its playable quests. Verify that chapter select and debug jumps cannot reach the prologue, the normal tour and test/dev chapters still work, and K1 offers its first quest and accepts the spring touch after Continue.
 - [x] 4. Replace the legacy browser playthrough with bookmark and saved-game Continue coverage. Move pacing, spring, hub and cross-system assertions onto tour/K1 beats or existing test content. Keep the shared `newGame`, quest and spring helpers used by later chapters. Update the affected docs.
 - [x] 5. Run the migration matrix, identifier audit and four gates. The contributor runs the named browser checks, compares the desktop pair and checks the touch Continue view. Record results under Progress. Allow at most two fix rounds after implementation. If issues remain after round two, record them and stop for the contributor.
-  - [ ] Contributor verification. Run `pnpm validate`, the 16 named browser specs and the mobile runner. Compare the desktop screenshots and check the touch Continue capture.
+  - [x] Contributor verification. Run `pnpm validate` and the 16 named browser specs, compare the desktop screenshots and check the touch Continue capture. Results and the known guard callout failure are recorded under Progress.
+  - [ ] Run the standalone mobile-tour `hud-idle` check on `small-landscape`.
 
 **Test plan:**
 
@@ -236,7 +237,7 @@ _Status: approved 2026-11-24_
 
 - **Screenshots.** The contributor keeps the captures in the main checkout's `test-results/contribute/TASK-007/`.
 
-  - Desktop 1280×720: the contributor captured `before-classic-start-desktop.png` on unchanged code at `http://localhost:5280/?classic&notitle&fresh&nosave&q=low`. Repeat that URL and the same start action and framing for `after-classic-start-desktop.png`.
+  - Desktop 1280×720: load `http://localhost:5280/?classic&notitle&fresh&nosave&q=low` on each revision. The `notitle` flag skips the title screen and waits for an explicit start. Once the story hook is ready, run `kq.story.start('Alex')` and capture the opening card. Use `before-classic-start-desktop.png` for „Vermessung“ (`prolog/p1`) and `after-classic-start-desktop.png` for „Die Führung“ (`tour/t1`).
   - Phone 844×390 landscape touch, reduced motion: on the implementation, inject the populated legacy fixture at `kq.save.v1.auto` before loading `http://localhost:5280/?manual` in a clean profile. Tap „Weiter“, wait for the K1 objective at the Quelle and capture `after-classic-continue-touch.png` (after only).
 
 **Risks:** `StoryEngine.resume(false)` returns silently if a saved chapter or beat is absent. Restore also reasserts active quests and combat groups. Migrating before either runs, keeping the old slot's metadata and testing Continue through the first K1 interaction cover the blank-world and stale-objective failures.
@@ -255,13 +256,13 @@ _Status: approved 2026-11-24_
 | 6. Visible Messstab handoff | follow-up | §3. |
 | 7. Hub move and spring E conflict | follow-up | §§4–5. |
 | 8. v0.6–v0.8 saves | full | Tagged legacy slots migrate and reload with grants. Mid-tour and later saves retain their progress. |
-| 9. Smoke, affected e2e and units | full | Requires green units and contributor-run browser checks for this slice. |
+| 9. Smoke, affected e2e and units | partial | All 1,493 units passed. The nine original browser failures passed on rerun. The guard callout also fails on main, and the standalone mobile runner is outstanding. |
 | 10. PRD, ACTION-RPG and README | partial | PRD changelog, §14 and active opening/save references. Slice 1 updated README controls. The wider docs sweep follows. |
-| 11. Four gates | full | Requires green results on the implementation. |
+| 11. Four gates | full | The contributor passed all four gates on `da4d945`. |
 
 **Follow-up slices:**
 
-- [ ] §5 — Extract the shared page item and K4 nouns, rehome codex unlocks and retain earned epilogue deeds. Delete `content/story/00-prolog.story.json`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, `scripts/content-build/prolog.mjs` and its `build.mjs` entry. Audit exclusive voice IDs, text hashes, priority selectors and manifest/clip references against the tour, chapters, speakers and shared barks before pruning. Retarget the content, budget, wayfinding, travel and voice tests. Edit builders, run `node scripts/content-build/build.mjs`, inspect generated diffs and run `pnpm validate`.
+- [ ] §5 — Extract the shared page item and K4 nouns, rehome codex unlocks and retain earned epilogue deeds. Preserve the retired quest definitions needed for save payouts and historical log entries before deleting `content/story/00-prolog.story.json`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, `scripts/content-build/prolog.mjs` and its `build.mjs` entry. Audit exclusive voice IDs, text hashes, priority selectors and manifest/clip references against the tour, chapters, speakers and shared barks before pruning. Retarget the content, budget, wayfinding, travel and voice tests. Edit builders, run `node scripts/content-build/build.mjs`, inspect generated diffs and run `pnpm validate`.
 - [ ] §§1–2 — Tour title, icons, hints, metadata and one-tap route-map/audio start, including the remaining opening copy.
 - [ ] §3 — Tour Messstab handoff, avatar visibility and XP budget.
 - [ ] §§4–5 — Relocate the hub after placement is settled, restore the spring interaction and reconcile station IDs, endings and the e1-wahl card.
@@ -311,6 +312,11 @@ _Status: approved 2026-11-24_
 - 2026-11-24: Round 1 typecheck and all 1,493 unit tests passed. Playwright discovered 23 tests in the eight specs for rerun. The browser rerun is pending for `chapter-k1-disguise`, `chapter-k1-quelle`, `integration`, `pacing`, `story` and the other K1 boot consumers `chapter-k1`, `quelle`, `pol-flow`.
 
 - 2026-11-24: The sandbox denied the round 1 `git add` at the worktree index.lock. The fix commit is pending in the contributor shell.
+
+- 2026-11-24: The contributor committed the fix as `da4d945` and verified all four gates outside the sandbox. Typecheck, 1,493 unit tests in 110 files, content validation and the production build passed.
+- 2026-11-24: Playwright ran with one worker under `scripts/dev/heavy.sh`. The first run across all 16 specs had 38 passes and nine failures across chapter-k1-disguise (2), chapter-k1-quelle (2), integration (1), pacing (2) and story (2). On `da4d945` the contributor reran smoke, chapter-k1-disguise, chapter-k1-quelle, integration, pacing, story, chapter-k1, quelle, pol-flow, chapter-prolog and touch. All nine original failures passed. The rerun had 37 passes and one failure at `e2e/pol-flow.spec.ts:148` (guard calls out a runner), also reproduced on main at line 147. Campaign, quests, tour-slice, chapter-k2 and chapter-k4 passed in the first run and the fix did not edit those specs. The standalone mobile-tour runner was not run.
+- 2026-11-24: The 1280×720 desktop pair in `test-results/contribute/TASK-007/` shows the same bookmark and explicit start changing from „Vermessung“ to „Die Führung“. The 844×390 landscape touch capture with reduced motion shows Continue from the v0.8.0 slot at the spring. The contributor confirmed `k1/k1_0` with objective `k1.quelle`. Laub's line and „Wasser berühren“ are visible alongside level 3 and 149/350 EP toward the next level (549 total XP).
+- 2026-11-24: Checked the existing ACTION-RPG §14 row and PRD changelog. The epic stays in progress with the seven follow-up slices above. The standalone mobile-tour check and investigation of the guard callout on main remain open.
 
 ## Notes
 - Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.
