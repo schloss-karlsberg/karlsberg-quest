@@ -4153,28 +4153,29 @@
     },
     "player.t.wind": {
       "files": {
-        "opus": "player.t.wind.bc873022.webm",
-        "aac": "player.t.wind.601f8c6a.m4a"
+        "opus": "player.t.wind.1603a163.webm",
+        "aac": "player.t.wind.dad26851.m4a"
       },
       "textHash": "e12759d4",
       "speechHash": "e12759d4",
       "speaker": "player",
       "provider": "moss",
       "voiceId": "moss:player:7acb49ed:7",
+      "takeSeed": 8,
       "model": "MOSS-TTS-v1.5@cdd3b91",
       "licence": "speaker-permission",
-      "date": "2026-11-24T23:10:30.901Z",
+      "date": "2026-11-24T23:30:30.343Z",
       "chars": 17,
       "credits": 0,
-      "durationMs": 4568,
+      "durationMs": 968,
       "attribution": "MOSS-TTS-v1.5, OpenMOSS, Apache-2.0",
       "engine": {
         "model": "MOSS-TTS-v1.5@cdd3b911b1585e3f2dbc7775ef10f9926f58850a",
         "tokenizer": "MOSS-Audio-Tokenizer@3cd226ba2947efa357ef453bcad111b6eafba782",
         "warmup": "v1"
       },
-      "serviceKey": "8bdb7bea4ea6eea95f9a13d27a7b02a3d390bb3ffd9fffe7db77075f6241c198",
-      "sha256Raw": "83c16061fe83f0d63292ff2a78eb258d1522fc203d9cc3d545ff26fd832c63d4"
+      "serviceKey": "fc0bfadd6e653185760cc65abe0a4c25c281b53ea75b092dea8a5977fdd07200",
+      "sha256Raw": "a03169d5dad68237cbf6f1772efadb5a67892df2a03c67c8eb65894003ff9299"
     },
     "solld.t.01": {
       "files": {
