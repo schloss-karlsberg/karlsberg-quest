@@ -4,7 +4,7 @@ aliases:
 - TASK-011
 title: A cool, on-theme loading spinner
 slug: a-cool-on-theme-loading-spinner
-status: review
+status: done
 priority: 3
 owner: ''
 projects: []
