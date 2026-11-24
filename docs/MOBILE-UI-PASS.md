@@ -56,7 +56,7 @@ Each unit shoots these states in order. The file name is `<NN>-<state>[-<sub>].p
 | 06 | `lantern` | ✱ | lantern screen, `-first-frame` (the prologue card) | **tap** `name-confirm`, **tap** `light-lantern` |
 | 07 | `rotate` | ✱ | portrait: `-overlay`, `-with-journal` (a modal under the overlay); landscape: N/A | — |
 | 08 | `hud-idle` | | HUD at rest: compass, quest tracker, vitals, touch controls | `story.goto('prolog','p1')`, teleport to the station |
-| 09 | `toasts` | | two toasts, an XP float, the tracker | `ui.toast`, `progression.xp` |
+| 09 | `toasts` | | the first of two queued toasts, an XP float, the tracker | `ui.toast`, `progression.xp` |
 | 10 | `touch-stick` | | stick `-walk`, `-sprint` (at the rim), `-walk-look` (2 fingers) | **real touch**, held during the shot |
 | 11 | `touch-buttons` | | `-attack-held` (pressed), `-cue-interact` (Aktion lit with the prompt text), `-cue-shift` (cue ring), `-relief-pop` | **real touch**, `hud.prompt` |
 | 12 | `dialogue` | | subtitles + portrait at the default size, `-xl` (largest subtitle size vs. the thumb arc) | `story.say('laub', …)` |

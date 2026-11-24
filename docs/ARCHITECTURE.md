@@ -330,7 +330,7 @@ Rules
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
-| `ui` | `hud`, `modals`, `cards` (one centre card at a time, below), `toast(text)`, `layer(id)`, `add(el)` |
+| `ui` | `hud`, `modals`, `cards` (shared card and notice slot, below), `toast(text)`, `layer(id)`, `add(el)` |
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
 | `systems, loop, pause` | registry, loop (`time`, `tick`, `step`, `advance`, `renderOnce`, `requestRender(n)`, `pace`, `manual`, `paused`; §3), pause stack |
@@ -343,7 +343,7 @@ above the oil gauge, top centre under the threat eye, right edge under the toast
 `setMarker(id, bearingDeg|null, color)` (compass markers),
 `prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
 one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
-`setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `toast`,
+`setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `noticeDock`,
 `stack(el, order)`. `hud.staged` is true while a boss reveal (`busy('reveal')`) or a staged climax
 (`busy('stage' | 'stage-…')`) holds the screen: edge markers (combat's attacker / wave arrows, the
 hunt's sound arrows) are not drawn then.
@@ -365,10 +365,9 @@ up above the dialogue card while it shows. Title cards and skill cards count gam
 screen steps aside (`kqk-held`, its clock stops) while a story title card or the curtain shows.
 `e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
 
-**Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`, playtest round 4): ONE centre card on
-screen at a time. The clue card (a modal field-book page, `cards.modal('clue:<id>', open)`) is
-something the player asked for: it goes in front of a slide-in card (which steps aside, its clock
-stopped, and comes back after) and queues behind another page, 0.35 s apart; the slide-in cards ask for the slot every frame
+**Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`). The clue card (a modal field-book page,
+`cards.modal('clue:<id>', open)`) goes in front of a card or notice, whose countdown pauses until
+the page closes. Clue pages queue behind each other, 0.35 s apart. Cards ask for the slot every frame
 (`cards.claim('reward' | 'level' | 'skill')`, `cards.release(…)` when gone). The slot is *held*
 while `hud.inAction` (a fight + 3 s, a chase, a boss reveal, being knocked down, a staged climax
 while it plays, no linger — the memory's own page comes right after: the fx `StageDirector`'s
@@ -376,7 +375,7 @@ rewind / 1840 / Kabinett door / departure / riders pieces until their echo ends 
 torch as `stage-k3`, the Zwinger breakout from the moment the gates open (set before `hunt:release`, so the clue page granted on it waits) until the hounds are gone as `stage-kennel`) and while an NPC
 conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a card already up
 steps aside and its clock stops. **Soft holds** (`cards.soft(reason, on)`, playtest round 5) keep
-only slide-in cards back (reward, level, skill; a clue page or modal may still open) and linger
+automatic feedback back (payout, toast, level and skill), while a clue page or modal may still open. They linger
 `SOFT_LINGER` = 1.2 s after they end, but never more than `SOFT_MAX` = 8 s of unbroken holding (a
 chain of lines must not bury a card): a spoken story line that is not low priority (`dialogue`), an
 active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
@@ -387,11 +386,13 @@ unlocks that wait as a level card comes up ride along on it (`cards.source('skil
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the
 same way through `cards.source('ability', …)`), unlocks that arrive together
 share one skill card (`skill-card-also`), and a fresh unlock waits 0.45 s (`SETTLE`) so a reward's
-XP and skill land on one card. The reward card is queued (`RewardCard.push`), goes after 5 s or
-as soon as the player walks 4.5 m from where it came up, a click takes it away. Toasts: at most two
-at a time, the rest queue, the same text never twice. The quest tracker strikes a done goal
+XP and skill land on one card. The payout (`RewardNotice.push`) and HUD toasts share the same slot
+and right-edge dock. The payout times out after 5 s or goes away after a short reading interval
+when the player has moved 4.5 m. Toasts use a bounded queue of six waiting messages and deduplicate
+by text. In free play, Escape or a completed outside touch tap calls `cards.dismissNotice()`. The
+quest tracker strikes a done goal
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
-`e2e/pacing.spec.ts` (never two centre cards; the Pinnwand's two pages one after the other).
+`e2e/pacing.spec.ts` (one visible notice, modal priority, and the Pinnwand's two pages in sequence).
 
 **Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch

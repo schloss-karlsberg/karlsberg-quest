@@ -348,7 +348,7 @@ test('court: the costume follows the coat and the era; fast travel lands outside
   });
   let p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
   expect(Math.hypot(p.x - 1180, p.z + 1112)).toBeLessThan(1.5);
-  expect(await page.evaluate(() => [...document.querySelectorAll('.kq-toast')].map((e) => e.textContent).join('|'))).toContain('vor dem Gitter');
+  await expect(page.locator('.kq-toast', { hasText: 'vor dem Gitter' })).toBeVisible();
   // admitted: the tripod as before
   await setFlags(page, { 'court.admitted': true });
   await page.evaluate(() => {
