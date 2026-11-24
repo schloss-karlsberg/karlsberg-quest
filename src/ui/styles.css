@@ -224,11 +224,37 @@ body {
   color: var(--ink-faint);
   line-height: 1.4;
 }
-.kq-title-page .loading {
-  font-style: italic;
-  font-size: 15px;
+.kq-title:has(> .kq-loader:not([hidden])) {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  align-items: safe center;
+  overflow-y: auto;
+}
+.kq-title > .kq-loader {
+  --loader-brass: #765221;
+  --loader-needle: var(--accent);
   color: var(--ink-soft);
-  min-height: 20px;
+}
+.kq-title .kq-loader-display {
+  background: linear-gradient(165deg, var(--paper), var(--paper-2));
+  border-color: var(--paper-edge);
+  box-shadow: 0 4px 16px #14110d55;
+}
+.kq-root > .kq-loader--game {
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  pointer-events: none;
+}
+.kq-loader--game .kq-loader-display {
+  min-height: 36px;
+  padding: 3px 9px;
+  gap: 7px;
+  font-size: 15px;
+}
+.kq-loader--game svg {
+  width: 28px;
+  height: 28px;
 }
 .kq-lantern-btn {
   display: inline-flex;
@@ -1069,6 +1095,9 @@ html[data-kq-reduced-motion] .kq-toast,
 html[data-kq-reduced-motion] .kq-modal-layer {
   animation: none;
 }
+html[data-kq-reduced-motion] .kq-loader-display[role="progressbar"] .kq-loader-needle {
+  animation: none;
+}
 html[data-kq-contrast] .kqs-objective {
   color: #fff;
   background: rgba(0, 0, 0, 0.82);
@@ -1078,31 +1107,6 @@ html[data-kq-contrast] .kqs-objective {
 }
 html[data-kq-contrast] .kqs-obj-dist {
   opacity: 1;
-}
-
-/* title: loading line with an ink progress rule */
-.kq-title-page .loading:not(.done) {
-  position: relative;
-  padding-bottom: 7px;
-  width: 100%;
-}
-.kq-title-page .loading:not(.done)::before,
-.kq-title-page .loading:not(.done)::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 2px;
-}
-.kq-title-page .loading:not(.done)::before {
-  right: 0;
-  background: var(--ink-faint);
-  opacity: 0.35;
-}
-.kq-title-page .loading:not(.done)::after {
-  width: var(--p, 0%);
-  background: var(--ink-soft);
-  transition: width 0.2s ease-out;
 }
 
 /* Subtitles keep clear of the side gutters (vitals dock bottom-left, gauges / bussole bottom-right)

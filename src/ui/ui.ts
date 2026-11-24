@@ -3,6 +3,7 @@ import './hud-restyle.css';
 import { h } from './dom';
 import { CardDirector } from './cards';
 import { Hud } from './hud';
+import { LoaderView, LoadingRequests } from './loader';
 import { ModalManager } from './modal';
 
 /**
@@ -16,13 +17,16 @@ export class UI {
   readonly root: HTMLElement;
   readonly hud = new Hud();
   readonly modals: ModalManager;
+  readonly loading: LoadingRequests;
   /** One centre card at a time, held during fights and conversations (./cards.ts). */
   readonly cards: CardDirector;
   private readonly layers = new Map<string, HTMLElement>();
 
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, compass: SVGSVGElement) {
     this.root = h('div.kq-root');
-    this.root.append(this.hud.el);
+    const loader = LoaderView.inGame(compass);
+    this.loading = new LoadingRequests(loader);
+    this.root.append(this.hud.el, loader.el);
     parent.append(this.root);
     this.modals = new ModalManager(this.root);
     this.cards = new CardDirector(this.hud, this.modals);

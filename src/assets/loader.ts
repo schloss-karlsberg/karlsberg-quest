@@ -93,6 +93,8 @@ export class AssetLoader {
   private readonly textures = new Map<string, Promise<Texture>>();
   private readonly ready = new Map<string, LoadedModel | Texture>();
   private licencesP: Promise<LicencesFile | null> | null = null;
+  /** Optional feedback for explicit area requests. Era prefetch can run silently. */
+  onAreaLoad?: () => { progress: AssetProgress; finish(): void };
   /** Bytes fetched so far (all areas), for the perf HUD / tests. */
   loadedBytes = 0;
 
@@ -224,23 +226,43 @@ export class AssetLoader {
     onProgress?.(0, total);
     const failed: string[] = [];
     await Promise.all(
-      entries.map((e) =>
-        this.load(e.id, (n) => {
-          done = Math.min(total, done + n);
+      entries.map(async (e) => {
+        let loaded = 0;
+        const report = (value: number) => {
+          const next = Math.min(e.bytes, value);
+          if (next <= loaded) return;
+          done += next - loaded;
+          loaded = next;
           onProgress?.(done, total);
-        }).catch((err: unknown) => {
+        };
+        try {
+          await this.load(e.id, onProgress ? (n) => report(loaded + n) : undefined);
+        } catch (err) {
           failed.push(e.id);
           console.warn(`[assets] ${e.id} failed`, err);
-        }),
-      ),
+        } finally {
+          // Cached loads skip byte callbacks. Once an entry settles, retire its remaining weight.
+          report(e.bytes);
+        }
+      }),
     );
     onProgress?.(total, total);
     return failed;
   }
 
   /** Everything of an area (e.g. 'core' behind the title, 'palace' when the past opens). */
-  loadArea(area: AssetArea, onProgress?: AssetProgress): Promise<string[]> {
-    return this.loadMany(this.list(area), onProgress);
+  async loadArea(area: AssetArea, onProgress?: AssetProgress): Promise<string[]> {
+    const entries = this.list(area);
+    const feedback = this.onAreaLoad?.();
+    const knownTotal = entries.every((entry) => entry.bytes > 0);
+    try {
+      return await this.loadMany(entries, (done, total) => {
+        feedback?.progress(done, knownTotal ? total : 0);
+        onProgress?.(done, total);
+      });
+    } finally {
+      feedback?.finish();
+    }
   }
 
   /** Background prefetch of the entries that list this era. */

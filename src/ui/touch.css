@@ -44,6 +44,10 @@ html[data-kq-touch] textarea {
 .kq-touch.kq-hidden {
   display: none;
 }
+html[data-kq-touch] .kq-root > .kq-loader--game {
+  top: calc(110px + var(--kq-safe-t));
+  max-width: calc(100% - 32px - var(--kq-safe-l) - var(--kq-safe-r));
+}
 
 /* ---- floating stick */
 .kq-t-stick {
@@ -870,9 +874,6 @@ html[data-kq-touch] .kq-title {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px 10px;
-  }
-  html .kq-title-page .loading.done {
-    min-height: 0;
   }
   html .kq-title-page .motto {
     margin-top: 8px;

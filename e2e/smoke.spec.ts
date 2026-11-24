@@ -9,6 +9,12 @@ import { type Page, expect, test } from '@playwright/test';
 const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
+function holdRequest() {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  return { pending, release };
+}
+
 /** Console noise that is not an error of ours (software WebGL perf warnings, pointer lock in headless). */
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
@@ -92,6 +98,97 @@ test('title screen loads, lights the lantern and starts the game', async ({ page
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
   expect(errors).toEqual([]);
+});
+
+for (const view of [
+  { name: 'desktop', viewport: { width: 1280, height: 720 }, mobile: false },
+  { name: 'phone', viewport: { width: 667, height: 375 }, mobile: true },
+]) {
+  test.describe(view.name, () => {
+    test.use({ viewport: view.viewport, hasTouch: view.mobile, isMobile: view.mobile, deviceScaleFactor: view.mobile ? 3 : 1 });
+
+    test('title screen takes over the first-paint Bussole in place', async ({ page }) => {
+      const bundle = holdRequest();
+      const meta = holdRequest();
+      const terrain = holdRequest();
+      await page.route(/\/app\/index-[^/]+\.js$/, async (route) => {
+        await bundle.pending;
+        await route.fallback();
+      });
+      await page.route('**/data/terrain/meta.json', async (route) => {
+        await meta.pending;
+        await route.fallback();
+      });
+      await page.route('**/data/terrain/h2025.u16.deflate', async (route) => {
+        await terrain.pending;
+        await route.fallback();
+      });
+      if (view.mobile) {
+        await page.addInitScript(() => localStorage.setItem('kq.settings.v1', JSON.stringify({ reducedMotion: true })));
+      } else {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+      }
+
+      try {
+        await page.goto('./?nosave&fresh', { waitUntil: 'commit' });
+        const indicator = page.getByTestId('title-loading');
+        const dial = indicator.locator('svg');
+        const needle = dial.locator('.kq-loader-needle');
+        await expect(page.getByTestId('title')).toHaveCount(0);
+        await expect(indicator).toBeVisible();
+        await expect(indicator).toHaveAccessibleName('Lädt …');
+        await expect(indicator).not.toHaveAttribute('aria-valuenow', /.+/);
+        await expect(needle).toHaveCSS('animation-name', view.mobile ? 'kq-needle' : 'none');
+        const before = await dial.boundingBox();
+        await page.screenshot({ path: `${SCREENS}/title-first-paint-${view.name}.png`, timeout: 60_000 });
+
+        bundle.release();
+        await expect(page.getByTestId('title').getByTestId('title-loading')).toBeVisible();
+        await expect(needle).toHaveCSS('animation-name', 'none');
+        expect(await dial.boundingBox()).toEqual(before);
+        await expect(page.getByTestId('title-new')).toBeDisabled();
+
+        meta.release();
+        const region = page.locator('#boot-loader');
+        await expect(region).toHaveAttribute('aria-busy', 'true');
+        await expect(indicator).toHaveAccessibleName('Gelände wird geladen …');
+        await expect(indicator).toHaveAttribute('aria-valuenow', '89');
+        await expect(indicator).toHaveText('Gelände wird geladen … 89 %');
+        expect(await dial.boundingBox()).toEqual(before);
+        await page.screenshot({ path: `${SCREENS}/title-loading-${view.name}.png`, timeout: 60_000 });
+
+        terrain.release();
+        await expect(page.getByTestId('title-new')).toBeFocused({ timeout: 90_000 });
+        await expect(indicator).toBeHidden();
+        await expect(region).not.toHaveAttribute('aria-busy', /.+/);
+      } finally {
+        bundle.release();
+        meta.release();
+        terrain.release();
+      }
+    });
+  });
+}
+
+test('title screen clears busy state if terrain loading fails', async ({ page }) => {
+  await page.route('**/data/terrain/meta.json', (route) => route.fulfill({ status: 503 }));
+  await page.goto('./?nosave&fresh');
+  await expect(page.getByTestId('title').getByRole('alert')).toHaveText('Das Spiel konnte nicht geladen werden.');
+  await expect(page.locator('#boot-loader')).not.toHaveAttribute('aria-busy', /.+/);
+  await expect(page.getByTestId('title-new')).toBeDisabled();
+});
+
+test('title screen startup reports a renderer error before the title mounts', async ({ page }) => {
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...options: unknown[]) {
+      return type.startsWith('webgl') ? null : Reflect.apply(getContext, this, [type, ...options]);
+    } as typeof getContext;
+  });
+  await page.goto('./?nosave&fresh');
+  await expect(page.getByTestId('title')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveText('Das Spiel konnte nicht geladen werden.');
+  await expect(page.locator('#boot-loader')).not.toHaveAttribute('aria-busy', /.+/);
 });
 
 test.describe('world', () => {

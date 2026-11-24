@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { LANTERN_SVG, h, svg } from './dom';
+import type { BootLoader } from './loader';
 import { newsUnseen, versionLabel } from './news';
 
 export interface TitleCallbacks {
@@ -41,19 +42,17 @@ export class TitleScreen {
   private readonly newBtn: HTMLButtonElement;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly extrasEl: HTMLElement;
-  private readonly loadingEl: HTMLElement;
   private readonly newsBadge: HTMLElement;
   private hasSave = false;
   private busy = false;
 
-  constructor(private readonly cb: TitleCallbacks) {
+  constructor(private readonly cb: TitleCallbacks, private readonly loader?: BootLoader) {
     this.startBtn = h('button.kq-btn.primary.kq-lantern-btn.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start(false) }, [
       svg(LANTERN_SVG),
       h('span', t('title.continue')),
     ]);
     this.newBtn = h('button.kq-btn.kq-lantern-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => void this.newGame() }, [svg(LANTERN_SVG), h('span', t('title.newGame'))]);
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
-    this.loadingEl = h('div.loading', { role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0', 'data-testid': 'title-loading' }, t('title.loading', { pct: 0 }));
     this.extrasEl = h('div.kq-title-extras');
     this.newsBadge = h('span.kq-news-badge', { 'aria-label': t('news.unseen'), title: t('news.unseen') });
     const newsBtn = h('button.kq-link.kq-news-link', { 'data-testid': 'title-news', onclick: () => cb.onNews?.() }, [h('span', t('title.news')), this.newsBadge]);
@@ -62,7 +61,7 @@ export class TitleScreen {
       h('h1', t('game.title')),
       h('p.sub', t('game.subtitle')),
       h('p.note', t('title.headphones')),
-      h('div.actions', [this.startBtn, this.newBtn, this.extrasEl, this.settingsBtn, this.loadingEl]),
+      h('div.actions', [this.startBtn, this.newBtn, this.extrasEl, this.settingsBtn]),
       h('p.motto', t('title.motto')),
       h('p.controls', t('title.hint')),
       h('div.kq-title-links', [newsBtn, h('button.kq-link', { onclick: () => cb.onLicences() }, t('title.licences'))]),
@@ -71,20 +70,14 @@ export class TitleScreen {
     this.el = h('div.kq-title', { 'data-testid': 'title' }, page);
   }
 
+  /** Move the first-paint loader only once the title is connected, keeping its viewport position. */
+  adoptLoader(): void {
+    if (this.loader) this.el.append(this.loader.el);
+  }
+
   /** Show or hide the „neu“ badge on „Neuigkeiten“ (newest notes not opened yet). */
   refreshNews(): void {
     this.newsBadge.classList.toggle('kq-hidden', !newsUnseen());
-  }
-
-  setProgress(frac: number): void {
-    const pct = Math.max(0, Math.min(100, Math.round(frac * 100)));
-    this.loadingEl.textContent = t('title.loading', { pct });
-    this.loadingEl.setAttribute('aria-valuenow', String(pct));
-    this.loadingEl.style.setProperty('--p', `${pct}%`);
-  }
-
-  setFailed(msg: string): void {
-    this.loadingEl.textContent = `${t('title.loadFailed')} (${msg})`;
   }
 
   setReady(hasSave: boolean): void {
@@ -92,9 +85,7 @@ export class TitleScreen {
     this.busy = false;
     this.startBtn.disabled = false;
     this.newBtn.disabled = false;
-    this.loadingEl.textContent = '';
-    this.loadingEl.classList.add('done');
-    this.loadingEl.removeAttribute('role');
+    this.loader?.hide();
     (this.startBtn.lastElementChild as HTMLElement).textContent = t('title.continue');
     (this.newBtn.lastElementChild as HTMLElement).textContent = t('title.newGame');
     this.startBtn.classList.toggle('kq-hidden', !hasSave);

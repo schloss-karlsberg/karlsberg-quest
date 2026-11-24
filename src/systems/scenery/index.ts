@@ -118,6 +118,7 @@ interface Live {
   era: Era;
   gate: number;
   lastStrike: number[];
+  finishLoading?: () => void;
 }
 
 let slice: ScenerySlice;
@@ -189,6 +190,7 @@ function windowKey(w: { building: string; era: string }): string {
 function dropSet(id: string): void {
   const l = live.get(id);
   if (!l) return;
+  l.finishLoading?.();
   l.built.group.removeFromParent();
   l.built.group.userData.detached = true;
   disposeModels(l.built.group);
@@ -210,8 +212,13 @@ function buildSet(ctx: GameContext, def: SetDef, era: Era): void {
   def.build(b, { era, gateOpen: slice.gate });
   const built = b.build(def.id);
   root.add(built.group);
-  if (built.models.length) void instanceModels(ctx.assets, built.models, built.group);
-  live.set(def.id, { def, built, era, gate: slice.gate, lastStrike: built.strikes.map(() => Number.NaN) });
+  const load = built.models.length ? ctx.ui.loading.begin(ctx.t('loader.area')) : undefined;
+  if (load) {
+    void instanceModels(ctx.assets, built.models, built.group)
+      .catch((err: unknown) => console.warn(`[scenery] ${def.id} models failed`, err))
+      .finally(load.finish);
+  }
+  live.set(def.id, { def, built, era, gate: slice.gate, lastStrike: built.strikes.map(() => Number.NaN), finishLoading: load?.finish });
   solidsDirty = true;
 }
 

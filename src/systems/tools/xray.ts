@@ -134,13 +134,12 @@ export class Xray {
   readonly material: ShaderMaterial;
   private readonly geo = new BufferGeometry();
   private data: GroundPoints | null = null;
-  private loading: Promise<void> | null = null;
+  private loading: Promise<boolean> | null = null;
   private built: { x: number; z: number; era: string; r: number; dense: boolean } | null = null;
   private target = 0;
   mix = 0;
   /** Radius of the disc (m). */
   radius = 70;
-  error: string | null = null;
   private trail: { x: number; y: number; z: number }[] | null = null;
   private trailEra = '';
   count = 0;
@@ -173,21 +172,23 @@ export class Xray {
     return !!this.data;
   }
 
-  /** Load + decode the cloud once (resolves immediately when there is no cloud in the data). */
-  load(): Promise<void> {
-    if (this.data || !this.ctx.data.meta.pointcloud) return Promise.resolve();
+  /** Share the fetch and decode across activations. Allow another attempt after failure. */
+  load(): Promise<boolean> {
+    if (this.data) return Promise.resolve(true);
+    const meta = this.ctx.data.meta.pointcloud;
+    if (!meta) return Promise.resolve(false);
     this.loading ??= (async () => {
-      const meta = this.ctx.data.meta.pointcloud!;
       try {
         const res = await fetch(`${this.ctx.data.baseUrl}${meta.path}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const bytes = await inflate(await res.arrayBuffer());
         this.data = decodeGroundPoints(bytes, meta);
+        return true;
       } catch (err) {
-        this.error = String(err);
         console.warn('[tools] point cloud failed to load', err);
+        return false;
       }
-    })();
+    })().finally(() => { this.loading = null; });
     return this.loading;
   }
 
@@ -196,7 +197,6 @@ export class Xray {
     if (on) {
       this.material.uniforms.uReveal!.value = this.ctx.settings.state.reducedMotion ? this.radius * 1.3 : 0;
       this.built = null;
-      void this.load();
     }
   }
 

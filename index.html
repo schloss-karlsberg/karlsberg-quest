@@ -10,9 +10,66 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="description" content="Ein düsteres Erkundungs-Rätselspiel auf dem echten LiDAR-Gelände des Karlsbergs bei Homburg." />
     <meta name="theme-color" content="#14110d" />
+    <style>
+      body { margin: 0; background: #14110d; }
+      .kq-loader {
+        --loader-brass: #d8b575;
+        --loader-needle: #df865e;
+        position: fixed;
+        z-index: 18;
+        box-sizing: border-box;
+        color: #f0e1c2;
+        pointer-events: none;
+      }
+      .kq-loader[hidden] { display: none; }
+      .kq-loader--boot {
+        width: min(300px, calc(100% - 32px));
+        left: 50%;
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        transform: translateX(-50%);
+      }
+      .kq-loader-display {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 4px 12px;
+        box-sizing: border-box;
+        border: 1px solid #856b435c;
+        border-radius: 5px;
+        background: #211b14;
+        font: italic 16px/1.2 var(--serif, Georgia, serif);
+      }
+      .kq-loader svg { display: block; width: 38px; height: 38px; flex: none; color: var(--loader-brass); }
+      .kq-loader-ring { stroke-dasharray: 22 100; }
+      .kq-loader-display[aria-valuenow] .kq-loader-ring { stroke-dasharray: var(--loaded) 100; }
+      .kq-loader-needle { transform-origin: 24px 24px; }
+      .kq-loader-display[role="progressbar"]:not([aria-valuenow]) .kq-loader-needle {
+        animation: kq-needle 2.4s ease-in-out infinite alternate;
+      }
+      @keyframes kq-needle { from { transform: rotate(-28deg); } to { transform: rotate(28deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .kq-loader .kq-loader-display .kq-loader-needle { animation: none !important; }
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="boot-loader" class="kq-loader kq-loader--boot" aria-busy="true">
+      <div class="kq-loader-display" role="progressbar" aria-label="Lädt …" data-testid="title-loading">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" opacity=".35"/>
+          <circle class="kq-loader-ring" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2.5" pathLength="100" transform="rotate(-90 24 24)"/>
+          <path d="M24 9v3m15 12h-3M24 39v-3M9 24h3M14 14l2 2m18-2l-2 2m2 18l-2-2m-18 2l2-2" fill="none" stroke="currentColor" opacity=".7"/>
+          <g class="kq-loader-needle">
+            <path d="m24 12 4 12-4 12-4-12z" fill="currentColor"/>
+            <path d="m24 12 4 12h-8z" fill="var(--loader-needle)"/>
+            <circle cx="24" cy="24" r="1.7" fill="#211b14"/>
+          </g>
+        </svg>
+        <span>Lädt …</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

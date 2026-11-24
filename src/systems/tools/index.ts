@@ -16,6 +16,7 @@ import './tools.css';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { h } from '../../ui/dom';
+import type { LoadingRequest } from '../../ui/loader';
 import { type PlanView, canMeasure, canXray, gateFrom, nextPlanView, showPackRoutes, showRoomLayout, showRoomNames } from '../skills/logic';
 import { ForestClear } from './forestClear';
 import type { V3 } from './geom';
@@ -51,6 +52,7 @@ declare module '../../debug/hooks' {
 
 let measure: MeasureTool | null = null;
 let xray: Xray | null = null;
+let xrayLoad: LoadingRequest | undefined;
 let plans: Plans | null = null;
 let tracks: Tracks | null = null;
 let clear: ForestClear | null = null;
@@ -64,12 +66,36 @@ let toolHooks: ToolsHooks | null = null;
 
 const gate = (ctx: GameContext) => gateFrom(ctx.state.state, ctx.params);
 
-function toggleXray(ctx: GameContext, on: boolean): void {
-  if (!xray) return;
-  xray.set(on);
-  if (on && !ctx.data.meta.pointcloud) ctx.ui.toast(ctx.t('tools.xray.none'));
-  else if (on && !xray.loaded) ctx.ui.toast(ctx.t('tools.xray.loading'));
-  else ctx.ui.toast(ctx.t(on ? 'tools.xray.on' : 'tools.xray.off'));
+function stopXray(): void {
+  xrayLoad?.finish();
+  xrayLoad = undefined;
+  xray?.set(false);
+}
+
+async function toggleXray(ctx: GameContext, on: boolean): Promise<void> {
+  const tool = xray;
+  if (!tool) return;
+  if (!on) {
+    stopXray();
+    ctx.ui.toast(ctx.t('tools.xray.off'));
+    return;
+  }
+  if (xrayLoad) {
+    await tool.load();
+    return;
+  }
+  tool.set(true);
+  if (!ctx.data.meta.pointcloud) ctx.ui.toast(ctx.t('tools.xray.none'));
+  else if (tool.loaded) ctx.ui.toast(ctx.t('tools.xray.on'));
+  else {
+    const request = ctx.ui.loading.begin(ctx.t('tools.xray.loading'), 2);
+    xrayLoad = request;
+    const loaded = await tool.load();
+    request.finish();
+    if (xrayLoad !== request) return;
+    xrayLoad = undefined;
+    ctx.ui.toast(ctx.t(loaded ? 'tools.xray.on' : 'tools.xray.failed'));
+  }
 }
 
 function setPlans(ctx: GameContext, v: PlanView): void {
@@ -105,7 +131,7 @@ export default defineSystem({
     ctx.events.on('era:change', () => measure?.stop());
     ctx.events.on('game:start', () => {
       measure?.stop();
-      xray?.set(false);
+      stopXray();
       plans?.setView('off', false);
     });
 
@@ -132,8 +158,7 @@ export default defineSystem({
         },
       },
       xray: async (on = true) => {
-        toggleXray(ctx, on);
-        await xray!.load();
+        await toggleXray(ctx, on);
         xray!.frame(0, ctx.settings.state.graphics !== 'low');
         return { on: xray!.active, points: xray!.count, loaded: xray!.loaded };
       },
@@ -173,9 +198,9 @@ export default defineSystem({
     if (measure!.active) flags['tools.measuring'] = true;
     else if (flags['tools.measuring']) delete flags['tools.measuring'];
     if (inp.wasPressed('xray')) {
-      if (xray!.active) toggleXray(ctx, false);
+      if (xray!.active) void toggleXray(ctx, false);
       else if (!canXray(g)) ctx.ui.toast(ctx.t('skills.locked.xray'));
-      else toggleXray(ctx, true);
+      else void toggleXray(ctx, true);
     }
     if (inp.wasPressed('plans')) {
       const next = nextPlanView(plans!.view, g);
@@ -186,7 +211,7 @@ export default defineSystem({
       }
     }
     // skills can drop (debug reset / load): close what is no longer allowed
-    if (xray!.active && !canXray(g)) xray!.set(false);
+    if (xray!.active && !canXray(g)) stopXray();
     if (measure!.active && !canMeasure(g)) measure!.stop();
   },
   frame(dt, ctx) {
@@ -209,6 +234,7 @@ export default defineSystem({
   },
   dispose() {
     measure?.dispose();
+    stopXray();
     xray?.dispose();
     plans?.dispose();
     tracks?.dispose();

@@ -23,6 +23,7 @@ import { PostFX } from './render/post';
 import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
 import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
+import type { BootLoader, LoadingRequest } from './ui/loader';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
 import { openNews } from './ui/news';
 import { TitleScreen } from './ui/title';
@@ -39,7 +40,7 @@ import { World } from './world/world';
  * Order: renderer + UI (title visible at once) → data → world → state/save → player →
  * feature systems → loop. Gameplay starts on "Laterne entzünden" (or at once with ?debug).
  */
-export async function boot(container: HTMLElement): Promise<GameContext> {
+export async function boot(container: HTMLElement, loader: BootLoader): Promise<GameContext> {
   const params = new URLSearchParams(location.search);
   const debug = params.has('debug');
   // load timeline (ms since navigation start) for docs/PERFORMANCE.md and e2e/perf.spec.ts
@@ -47,6 +48,9 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   (window as unknown as { __kqReady: Record<string, number> }).__kqReady = ready;
   const mark = (k: string) => (ready[k] = Math.round(performance.now()));
   const skipTitle = debug || params.has('notitle');
+  const storage = defaultStorage();
+  const settings = new SettingsStore(storage);
+  document.documentElement.toggleAttribute('data-kq-reduced-motion', settings.state.reducedMotion);
 
   // ---- renderer, scene, camera
   const renderer = new WebGLRenderer({ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: params.has('preserve') });
@@ -79,13 +83,12 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
 
   // ---- core services
   const events = new EventBus();
-  const storage = defaultStorage();
-  const settings = new SettingsStore(storage);
   const state = new GameStateStore(createInitialState());
   const save = new SaveManager(state, storage, events);
   if (params.has('nosave')) save.enabled = false;
   const audio = new AudioManager();
-  const ui = new UI(document.body);
+  const ui = new UI(document.body, loader.compass);
+  assets.onAreaLoad = () => ui.loading.begin(t('loader.area'));
   const content = loadBundledContent();
   const systems = new SystemRegistry();
 
@@ -127,17 +130,15 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     onLicences: () => openLicences({ modals: ui.modals, attribution: () => ctxRef?.data.attribution.items ?? [] }),
     onNews: () => openNews(ui.modals, () => title.refreshNews()),
     confirm: (text) => ui.modals.confirm(text),
-  });
-  if (!skipTitle) ui.add(title.el);
+  }, skipTitle ? undefined : loader);
+  if (!skipTitle) {
+    ui.add(title.el);
+    title.adoptLoader();
+  }
 
   // ---- data + world
-  let data;
-  try {
-    data = await loadGameData(undefined, (d, n) => title.setProgress(d / n));
-  } catch (err) {
-    title.setFailed((err as Error).message);
-    throw err;
-  }
+  const data = await loadGameData(undefined, (done, total) => loader.setProgress(done, total));
+  loader.show(t('loader.starting'));
   mark('data');
   const world = new World(data, scene, post);
   mark('world');
@@ -474,8 +475,33 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   // the character's costume (the story's court disguise) and lantern tint (src/player/avatar.ts)
   events.on('player:costume', ({ costume }) => avatar.setCostume(costume));
   events.on('player:lantern-tint', ({ hex }) => avatar.setLanternTint(hex));
-  // art assets that belong to an era stream in when it opens (src/assets, lazy)
-  events.on('era:change', ({ to }) => void assets.prefetchEra(to));
+  // The shift already covers its own wait. Only offer a loader for prefetch that outlasts it.
+  let shifting = false;
+  let eraLoad: { feedback?: LoadingRequest } | undefined;
+  const showEraLoad = () => {
+    if (eraLoad && !eraLoad.feedback) eraLoad.feedback = ui.loading.begin(t('loader.era'), 1);
+  };
+  events.on('shift:begin', () => {
+    shifting = true;
+    ui.loading.setEnabled(false);
+    eraLoad?.feedback?.finish();
+    if (eraLoad) eraLoad.feedback = undefined;
+  });
+  events.on('shift:done', () => {
+    shifting = false;
+    showEraLoad();
+    ui.loading.setEnabled(started);
+  });
+  events.on('era:change', ({ to }) => {
+    eraLoad?.feedback?.finish();
+    const load: NonNullable<typeof eraLoad> = {};
+    eraLoad = load;
+    if (!shifting) showEraLoad();
+    void assets.prefetchEra(to).finally(() => {
+      load.feedback?.finish();
+      if (eraLoad === load) eraLoad = undefined;
+    });
+  });
 
   // ---- modals pause the game and free the mouse
   ui.modals.onChange = (n) => {
@@ -570,6 +596,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
     }
     started = true;
     title.hide();
+    ui.loading.setEnabled(!shifting);
     ui.hud.show(true);
     input.enabled = true;
     touch.setPlaying(modalOpen === 0);
@@ -585,6 +612,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   function toTitle(): void {
     save.autosave('title', true);
     started = false;
+    ui.loading.setEnabled(false);
     input.enabled = false;
     touch.setPlaying(false);
     input.releaseLock();
@@ -651,6 +679,7 @@ export async function boot(container: HTMLElement): Promise<GameContext> {
   if (skipTitle) {
     await palaceLoaded;
     startGame(false);
+    loader.hide();
   } else {
     // the title takes input while the palace model (4.5 MB, only shown in the past eras) still
     // streams in: the lantern flow alone takes longer than the download on any usual connection
