@@ -341,7 +341,7 @@ class QuestRuntime {
     this.interest = this.computeInterest();
     this.syncFollow();
     // a restore (boot, save:loaded) changes nothing worth saving — and at boot it would write an
-    // empty save before the title, which then offers "Fortsetzen" on a fresh start
+    // empty save before the title, which then offers "Weiter" on a fresh start
     // taking, finishing and failing a quest are milestones: forced saves
     if (why !== 'restore') this.ctx.save.autosave(`quest-${why}`, why === 'accept' || why === 'complete' || why === 'fail');
   }

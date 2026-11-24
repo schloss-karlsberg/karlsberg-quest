@@ -106,11 +106,9 @@ addStrings('de', {
   // choices
   'story.choice.timer': 'Noch {s} s',
 
-  // title flow (the title screen's own buttons, renamed for the story menu)
-  'title.newGame': 'Neues Spiel',
-  'title.continue': 'Fortsetzen',
+  // title flow
   'story.title.new': 'Neues Spiel',
-  'story.title.continue': 'Fortsetzen',
+  'story.title.continue': 'Weiter',
   'story.title.settings': 'Einstellungen',
   'story.title.licences': 'Lizenzen',
   'story.warning.title': 'Bevor du anfängst',

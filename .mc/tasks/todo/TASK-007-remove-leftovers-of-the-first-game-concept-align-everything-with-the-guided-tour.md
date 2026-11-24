@@ -287,6 +287,7 @@ _Status: approved 2026-11-24_
 - 2026-11-24: `pnpm typecheck`, `pnpm test` (1,471 tests in 110 files), `pnpm build` and `git diff --check` passed. `pnpm validate` was blocked by `tsx` receiving `EPERM` while opening its IPC socket. Run `pnpm validate` outside the sandbox.
 - 2026-11-24: Playwright specs awaiting the contributor's run, one worker per spec. Changed behavior or assertions: `smoke`, `quests`, `chronik`, `integration`, `npc`, `progression`, `flaschen`, `photo`, `touch`, `chapter-prolog` and `story`. The other specs that call the changed `newGame` helper are `campaign`, `pacing` and `quelle`. The audited `e2e/mobile/tour.pw.ts` runner uses the new controls. Title and landscape Pause after shots and the before/after comparison are pending.
 - 2026-11-24: `git commit` was denied access to the worktree's `index.lock` after initial staging. Run the two commits from the contributor shell.
+- 2026-11-24: Round 1. The contributor committed the slice (`fabbd44`, `05d40c5`) and passed all four gates outside the sandbox. Playwright reported 45 passed and one failure in `story.spec.ts`. Removed the duplicate title overrides so the main dictionary supplies „Weiter“ and „Neues Spiel“, and aligned the story alias and quest comment. Typecheck and 41 related unit tests passed. The browser rerun is pending. The sandbox denied `git add` access to the worktree's `index.lock`.
 
 ```sh
 pnpm validate
