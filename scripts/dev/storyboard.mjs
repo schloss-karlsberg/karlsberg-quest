@@ -1055,8 +1055,15 @@ async function boot() {
   await page.waitForFunction(() => {
     const k = window.kq;
     return k?.ctx.input.enabled && k.story && k.combat && k.npc && k.quelle && k.fx
-      && k.walk && k.animals && k.photo && k.progression && k.cinematic && k.party && k.ctx.people;
+      && k.walk && k.animals && k.progression && k.cinematic && k.party && k.ctx.people;
   }, null, { timeout: 180_000 });
+  await page.evaluate(() => {
+    const k = window.kq;
+    // Photo registers on update after window.kq is installed. Manual mode needs explicit steps.
+    const maxSteps = 60;
+    for (let i = 0; i < maxSteps && !k.photo; i++) k.step();
+    if (!k.photo) throw new Error(`Storyboard boot: window.kq.photo did not initialize after ${maxSteps} manual steps`);
+  });
   await page.addStyleTag({ content: `
     .kq-debug, .kq-perf { display: none !important; }
     body.sb-clean .kq-root, body.sb-clean > div:not(#app):not(.kq-root) { visibility: hidden !important; }

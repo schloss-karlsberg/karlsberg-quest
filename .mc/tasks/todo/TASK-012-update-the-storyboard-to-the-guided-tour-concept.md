@@ -158,6 +158,9 @@ scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ -
   git commit -m 'docs(story): document the storyboard capture and handoff' -m 'Refs: TASK-012'
   ```
 
+- 2026-11-24: The contributor committed steps 1–4 (`cd5c39b`, `c596d07`, `5c57616`). The first GPU capture timed out during boot because the photo hook registers on update and the manual loop had not stepped. Boot now waits for the core hooks and steps until photo registers, with a 60-step limit and a photo-specific error. `node --check scripts/dev/storyboard.mjs` passed. GPU capture retry is pending.
+  - Staging this round was blocked by the linked worktree's `index.lock` permission error. Both edits are unstaged.
+
 ## Notes
 - Do not name or depict the real tour guide: the guide stays the placeholder until written consent exists.
 - Depends loosely on TASK-007 (title, lantern screen, hub at the spring): shoot the UI shots after those land, or re-shoot them then.
