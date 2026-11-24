@@ -1,50 +1,41 @@
 # Storyboard
 
-`index.html` is a static page with the story, places, cast and items in pictures. Open it straight from disk. It needs no build, no server and no network. Images live in `img/`; the fonts (IM Fell English, OFL) live in `fonts/`.
-
-The captions and the page are written by hand in `index.html`. Only the pictures are generated.
-
-> **Out of date:** the page still shows the earlier surveyor prologue (Feldstation / Bauwagen) instead of the guided tour, and no party endings. The tour's shots are planned in [`../design/tour/storyboard-beats.md`](../design/tour/storyboard-beats.md) and are not captured yet.
+Open [index.html](index.html) from disk to see the guided tour, the first crossing and training, chapters 1–4, the three party endings, and the credits. The German captions and the page are maintained by hand. The capture script writes only the pictures to `img/`. The page uses local JPEGs and the bundled IM Fell English fonts.
 
 ## Regenerate the pictures
 
-Do this on a machine with a real GPU. The script warns if Chromium falls back to a software renderer, because those pictures will not match the real look.
+Run from the worktree root on a machine with a real GPU. Keep the preview running and capture in a second shell.
 
 ```sh
-# 1. build into a temp folder
-npx vite build --outDir /tmp/kq-storyboard
+# 1. Build into a temporary directory
+pnpm exec vite build --outDir /tmp/kq-storyboard
 
-# 2. serve it on a free port of your own
-npx vite preview --outDir /tmp/kq-storyboard --port 5370 --strictPort --host localhost
+# 2. Serve the build on a free port
+pnpm exec vite preview --outDir /tmp/kq-storyboard --port 5370 --strictPort --host localhost
 
-# 3. capture (in a second shell); writes docs/storyboard/img/<id>.jpg
-node scripts/dev/storyboard.mjs http://localhost:5370/
+# 3. Capture in a second shell
+scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/
 ```
 
-Options:
+- `node scripts/dev/storyboard.mjs --list` prints the 68 shot IDs.
+- `scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ --only t6-reh-sicht,e-keep-fest` retakes two shots in script order.
+- `--out <dir>` writes to a different directory. `--quality 72` sets the JPEG quality, with 72 as the default.
 
-- `--list` prints the shot ids.
-- `--only p3q-quelle,k2-orangerie` re-shoots only these shots, in list order.
-- `--out <dir>` writes somewhere else, for example a scratch folder for review.
-- `--quality 72` sets the JPEG quality.
+The script opens the game with `?debug&nosave&fresh&manual&q=high` and uses `window.kq` to stage the lighting, actors, effects and UI. Each frame is 1280 × 720. Check the `GPU:` line for the hardware renderer, the log for failed shots, and the final count for `68/68 shots`. A failed shot triggers a reload and the capture continues. Review every picture, then open the page from disk to check the thumbnails and lightbox.
 
-The script uses `?debug&nosave&fresh&manual&q=high` with the `window.kq` debug hooks. Each shot sets its own era, light, teleport and framing, and stages its own NPCs, enemies, hounds and effects. A full run of 60 shots takes a few minutes. If a shot fails, the page reloads and the run continues.
-
-Budget: keep `img/` under about 8 MB and 60 pictures. It is 6.4 MB now. If you add a shot, drop one, or reuse an existing picture in the page: Places and Cast reuse story pictures.
+**Image budget.** The 68 JPEGs in `img/` take up about 7.3 MB (7,484 KiB). Places and Cast reuse story pictures where they show the subject.
 
 ## What is not captured, and why
 
-- **K1 par force down the cascade** and **K2 "Augen im Nebel"**: the hounds are only small dots at a distance. The pack is shown in the K2 Parforcejagd card instead (`c-meute`).
-- **The jaguar (K3)**: too dark and small to read. It is mentioned in the Garten card only.
-- **Schreibkabinett, K2**: the interior frame was weak. The card shows the palace with lit windows (`k2-schloss`) instead.
-- **Laub's 1840 map overlay (M)** is washed out from above. The Ehrenhof card shows the relief view (key 2) instead.
-- **The point cloud / X-ray tool** gave no points headless (`kq.tools.xray` returned 0). The Punktwolke card shows the Bussole springing open instead.
-- **K3 afternoon light**: the 1793-07 era preset is a night look and starts the palace fire as scenery. The pre-fire K3 shots switch the fire off and use the dusk look.
-- **The Festsaal choice UI** and the **Steinbrecher block throws** are not staged. There are no hooks to freeze them at a readable moment.
-- **The Schuldbuch fight** is set at dusk in the game. The picture is lit by day so the boss reads.
+- The guided-tour ticket is a capture-only mockup. The training uses the combat hooks. The shipped tour ends on arrival in 1789. Revisit `t0-ticket` and `t14-pause-hub` if TASK-007 changes the title flow or the spring hub.
+- The reunion, fire bowl and dogs use the shipped party set and animations. The museum frame uses the archive box and group around the table. The lifted page and the player's seated pose are design beats. The choice at the edge uses the ending panel in front of the party, with capture-only wording for the fire bowl and the Bussole.
+- The storyboard stages Marlene with the available party stand-in and the player's staff. The handoff and tripod at the dam, the physical horn at the spring, and the compass coming out of the trough are told in the captions.
+- The hillside chase in K1 and the eyes in the fog in K2 are represented by the closer K2 Parforcejagd picture (`c-meute`). The garden caption covers the K3 jaguar, which was hard to read in the dark. The K2 warning uses the exterior view of the palace (`k2-schloss`).
+- The map and point cloud overlays were hard to read in previous captures. The dam uses the game's relief view (`t7-relief`).
+- The K3 frames before the fire use the dusk look with the scenery fire switched off. The Festsaal card shows the room and Hanne. The Steinbrecher frame shows its reveal. The Schuldbuch frame uses daylight so the boss reads.
 
-## Gotchas, if you edit the script
+## Editing the capture script
 
-- Undo enemies **before** jumping the story. `kq.story.goto` only stashes them, and they came back later at full strength.
-- The era-shift effect, the dialogue card, NPC fade-in and the staged endings run on real frames. The helpers wait for them with `requestAnimationFrame`.
-- A boss's left-over pieces come apart on render frames. `reset()` waits about 150 frames after a kill.
+- Clear visible enemies before jumping the story. An era or story jump can stash a live group and bring it back later.
+- The game drives the spring touch on fixed updates. Camera settling, fades and the staged endings need render frames. The helpers use both clocks.
+- Keep the thumbnails and lightbox references in sync with `--list`. The expected story order and frame descriptions live in [the beat sheet](../design/tour/storyboard-beats.md).
