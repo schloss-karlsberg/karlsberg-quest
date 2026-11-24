@@ -172,6 +172,7 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Step 6 added wrapping and safe-area placement for the shared dock, including room for the phone's top buttons and skill row. Reduced motion removes the entry and exit fades. `pnpm typecheck` passed. Visual verification is pending.
 - 2026-11-24 — Step 7 added queue and resumption tests, updated the real NPC turn-in fixture for a partial grant, and added keyboard, real-touch and portrait checks. The focused Vitest run passed all 44 tests. `pnpm typecheck` passed with the browser specs included.
 - 2026-11-24 — Step 8 updated the gameplay notes, architecture and PRD. The mobile tour checks one visible toast after queuing two, and the court spec waits for its queued notice. `pnpm typecheck` passed.
+- 2026-11-24 — The final integration review kept the Bannlicht instruction available during combat in the existing combat caption and held queued notices through fast travel and the phone's rotate screen.
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.

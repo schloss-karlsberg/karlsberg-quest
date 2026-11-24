@@ -31,7 +31,7 @@ export class UI {
     this.modals = new ModalManager(this.root);
     this.cards = new CardDirector(this.hud, this.modals);
     this.cards.extraHold = () => !!document.querySelector(
-      '.kq-title:not(.kq-hidden):not(.fade-out), .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show',
+      '.kq-title:not(.kq-hidden):not(.fade-out), .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show, .kqt-travel-curtain, html[data-kq-rotate]',
     );
   }
 

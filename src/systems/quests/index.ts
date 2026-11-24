@@ -48,7 +48,7 @@ export interface QuestsHooks {
   progress(id: string, objective: string, n?: number): boolean;
   /** Force-complete (story `quest complete`): rewards now, from any state but done. */
   complete(id: string): boolean;
-  /** Turn in a ready quest (as the conversation does): rewards, history unlocks, reward card. */
+  /** Turn in a ready quest (as the conversation does): grants, history unlocks and payout notice. */
   turnin(id: string): boolean;
   reset(id: string): boolean;
   tracked(): string[];
@@ -405,7 +405,7 @@ class QuestRuntime {
     const q = this.defs.get(id);
     if (!q) return;
     acceptSound(this.ctx.audio);
-    // a banner never stamps over the reward card: it waits until the card is gone
+    // The banner waits until the payout notice is gone.
     const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
     const xp = q.rewards?.xp ?? 0;
     const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
@@ -449,7 +449,7 @@ class QuestRuntime {
     this.feed.push(t('quest.turnin.feed', { title: q.title_de }), 'ready', 4200);
   }
 
-  /** A turn-in paid out: the reward card; voice / auto turn-ins also speak a short turn-in moment. */
+  /** Queue the payout notice; voice or auto turn-ins also give a short spoken line. */
   private onPayout(p: QuestPayout): void {
     const q = this.defs.get(p.id);
     if (!q) return;
@@ -552,9 +552,9 @@ class QuestRuntime {
 
   frame(dt: number): void {
     const ctx = this.ctx;
-    // reward card on the UI clock (the conversation pauses the game)
+    // The payout uses the UI clock. The director holds it during a conversation.
     this.reward.tick(Math.min(dt, 0.1), ctx.player.position);
-    // the "Neue Aufgabe" stamp waits for the reward card and the chapter title card (they overlapped)
+    // The "Neue Aufgabe" stamp waits for the payout and the chapter title.
     if (this.bannerQ.length && !this.reward.open && !this.reward.pending && !document.querySelector('.kqs-card.kqs-show')) this.bannerQ.shift()?.();
     if (this.dirty) {
       this.dirty = false;

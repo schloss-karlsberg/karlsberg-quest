@@ -554,8 +554,7 @@ E near a giver opens the field-book conversation. Quest topics come first, marke
    Voice givers (Laub, Marlene) accept at once: the banner shows title, first goal and EP.
 2. *While active*: `progress` lines (a hint in the giver's voice — never a riddle).
 3. *Turn-in*: `turnin_lines` → the **turn-in card** (every goal ticked, the reward) → **Übergeben**
-   → ONE history
-   line as the moment of it (`HISTORY_AT_TURNIN` in `src/systems/quests/logic.ts`; its source and
+   → one history line (`HISTORY_AT_TURNIN` in `src/systems/quests/logic.ts`, with its source and
    codex card under the line) → `next` quest offered. A compact HUD notice summarizes the payout
    after the conversation. The other history lines wait for the **„Erzähl mehr: <title>“** topic
    at the same giver in the same chapter (`quest:told` when heard) and are

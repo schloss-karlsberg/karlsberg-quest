@@ -743,10 +743,13 @@ class Combat {
         this.captionOnce('bossGuard', BOSS_GUARD[e.kind] ?? t('combat.bossGuard'), 'info', 5, 1800);
         break;
       }
-      case 'immuneHint':
+      case 'immuneHint': {
         this.audio.whiff();
-        ctx.ui.toast(t(ctx.input.touchMode ? 'combat.immuneHint.touch' : 'combat.immuneHint', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') }) + (ev.refilled ? ` ${t('combat.immuneRefill')}` : ''), 3200);
+        const hint = t(ctx.input.touchMode ? 'combat.immuneHint.touch' : 'combat.immuneHint', { key: actionLabel(ctx.input, 'bannlicht', 1, 'KeyG') });
+        // The player needs this instruction while the fight is holding back automatic notices.
+        this.hud.caption(hint + (ev.refilled ? ` ${t('combat.immuneRefill')}` : ''), 'info', 3200, true);
         break;
+      }
       case 'reform': {
         // playtest round 10 (F-22 / F-34): shown every time (puff, a ring pulling in, a word over it),
         // explained in full the first time per kind; the bar said „formt sich neu“ beforehand

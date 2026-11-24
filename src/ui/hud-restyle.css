@@ -366,7 +366,9 @@ html[data-kq-reduced-motion] .kq-hud .kq-notice {
     opacity: 0;
   }
 }
-.kq-root:has(> .kq-modal-layer, .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show) .kq-toasts {
+.kq-root:has(> .kq-modal-layer, .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show) .kq-toasts,
+body:has(.kqt-travel-curtain) .kq-toasts,
+html[data-kq-rotate] .kq-toasts {
   display: none;
 }
 

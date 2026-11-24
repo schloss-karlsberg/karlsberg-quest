@@ -2010,10 +2010,10 @@ Each RPG track adds its own subsection here when it fills its system in.
   leading to the giver). The journal's „Laufend“ is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
-  goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the reward
-  card and the chapter title card), reward card (EP stamp, items, codex facts with confidence +
-  label; queued for the card director's slot: never over a conversation or a fight, gone after 5 s
-  or when the player walks away; `kq.quests.rewardPending()`).
+  goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
+  and the chapter title) and payout notice (earned EP, items, skills and a Codex count). The
+  payout uses the director's slot and leaves after five visible seconds or when the player walks
+  away. `kq.quests.rewardPending()` reports waiting payouts.
 - `beacons.ts`: soft volumetric beam (view-angle edges, sparks) + pulsing ground ring over open
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
@@ -2113,8 +2113,9 @@ Rules that came out of it:
   Lebenskraft bars or the ability row (`e2e/readability.spec.ts` checks 1280×720, 1366×768,
   1920×1080 in a fight with a boss bar). The level card is pushed right of the column as far as the feed allows
   (`left: max(50%, min(column + 253px, 100vw − feed − 251px))`), and drops below a boss bar
-  (`body:has(.kq-dock-boss:not(:empty))`). The quest reward card uses the same horizontal rule and steps
-  aside while a chapter title card shows. The feed fades while a conversation page is open.
+  (`body:has(.kq-dock-boss:not(:empty))`). Quest payouts share the right-edge toast dock, which
+  moves inward on short landscape viewports to clear the touch buttons. The feed fades while a
+  conversation page is open.
 - **Journal**: the quests system's Journal modal (`data-testid=journal`) renders progression's tabs 40 / 50;
   I (`inventory`) opens it on Ausrüstung. Progression keeps a small "Feldbuch" fallback
   (`data-testid=journal-fallback`) that only opens if no modal and no Journal appeared within three
@@ -2142,8 +2143,7 @@ Rules that came out of it:
   `e2e/chapter-k4.spec.ts`, `e2e/campaign.spec.ts` (`CAMPAIGN_FROM=k3` works without a kept save);
   screens `cnb-k3-*.png`, `cnb-k4-*.png`. `K3_FROM=strohmann` (development only) lets the K3 spec skip
   the afternoon; its two afternoon side quests are then not checked.
-- The e2e helpers click a reward card away (`clearCards`) instead of pressing E: in play E is the
-  player's talk / examine key and would reopen the conversation.
+- The e2e screenshot helpers dismiss a visible payout with the director before capturing the scene.
 
 ### Input: keyboard, mouse and touch (`src/player/input.ts`, `src/ui/touch.ts`)
 

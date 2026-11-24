@@ -1,4 +1,4 @@
-/* Quests: tracker, objective ticks, banner, reward card, compass shapes, the Journal. Field-book look. */
+/* Quests: tracker, objective ticks, banner, payout notice, compass shapes and the Journal. */
 
 /* ---------- tracker (top-left column, order 35) ----------
    Restyle 2026-11-19 (docs/ART-DIRECTION.md §9): no box, a soft glass fade behind it; the quest
@@ -290,7 +290,7 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
   }
 }
 
-/* ---------- banner + reward card (layer above the conversation) ---------- */
+/* ---------- quest acceptance banner ---------- */
 .kqq-layer {
   pointer-events: none;
 }
