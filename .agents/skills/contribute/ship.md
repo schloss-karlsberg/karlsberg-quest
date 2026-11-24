@@ -58,7 +58,8 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
    - **Content and assets:** the template's checklist.
    - **Screenshots / notes:** `gh` cannot upload images and the repo has no image convention, so
      put the placeholder `<!-- images below: before / after -->` and tell the contributor exactly
-     which files to drag into the PR description on GitHub (full paths under `test-results/contribute/TASK-00X/`).
+     which files to drag into the PR description on GitHub (full paths under `test-results/contribute/TASK-00X/`;
+     in a git worktree, use the main checkout's `test-results/` so the paths survive removing the worktree).
      Don't drive their browser or desktop to upload them.
    - Risks and notes.
 
