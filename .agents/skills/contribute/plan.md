@@ -35,7 +35,7 @@ Goal: an approved plan written into the task file. No code changes yet.
    ```
 
    Keep steps small enough to tick off one at a time. More than about ten steps or many systems?
-   Propose a smaller first cut and list the rest as follow-ups. Use the real commands (`pnpm typecheck`,
+   Propose a smaller first cut and list the rest as follow-ups (epics: see SKILL.md "Epics"). Use the real commands (`pnpm typecheck`,
    `pnpm test`, `pnpm validate`, `pnpm build`, `pnpm exec playwright test e2e/<spec>.spec.ts --workers=1`).
 6. **Ask for approval:** show the plan, ask the contributor to approve or adjust. Edit until approved,
    then set `_Status: approved <today>_`.

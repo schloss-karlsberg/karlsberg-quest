@@ -27,6 +27,8 @@ Goal: every plan step done, tests added, the four gates green. Resumable at any 
    Pick the specs to run by grepping `e2e/` (specs and `e2e/helpers/`) for every selector, test id,
    `window.kq` hook and helper you changed or removed, not only the obvious spec. Can't run them
    (sandbox)? List them all in `## Progress` as unverified.
+   Renaming a UI string? Grep the key in every `strings.ts` too: systems override `src/i18n/de.ts`
+   (e.g. `src/systems/story/strings.ts` overrides `title.*`), so a rename there may never show.
 6. **Gates**, all four:
 
    ```sh

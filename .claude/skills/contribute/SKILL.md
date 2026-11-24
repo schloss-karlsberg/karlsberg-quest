@@ -93,6 +93,15 @@ whole. Keep their status `todo`. Write the contributor's plan and progress under
 `## Plan: <contributor> - <model>` / `## Progress: <contributor> - <model>`, and on Ship append a
 line to "Models so far" instead of closing the task.
 
+## Epics
+
+Tasks marked **Epic** (a checklist across several systems, e.g. TASK-007) are done in slices: one
+PR per slice. In the plan, pick ONE self-contained system (about five steps), skip every item the
+task marks "verify with owner", and list the rest as `**Follow-up slices:**` (one line each) inside
+`## Plan`; mark each acceptance criterion full / partial / follow-up. The epic stays `in-progress`
+on Ship (never `review` or `done`) until its last slice; the next slice starts a fresh `## Plan`
+round from the follow-up list.
+
 ## Ground rules (from CONTRIBUTING.md)
 
 German in-game text; English code, comments and commits. CC0 or own-work assets only, credited in
