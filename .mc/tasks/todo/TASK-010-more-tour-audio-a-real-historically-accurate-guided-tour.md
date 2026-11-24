@@ -67,6 +67,14 @@ eras) and SFX at the stops.
   pipe and tobacco-box collection), the painting gallery that became the core of the Alte Pinakothek,
   the Herzogskastanien (already in the codex, `scripts/content-build/codex.mjs`).
 
+### Owner notes (2026-11-25)
+
+- "It should be a historically correct audio tour, and the guide voice should be awesome to listen to."
+- Treat the guide's voice as a casting decision: run a MOSS casting round for Gerold Imhoff (warm, engaged,
+  storytelling pace; a voice people enjoy for minutes, not just single barks) and let the owner pick by ear
+  before generating the new narration. The current Imhoff clips are re-generated with the pick.
+- The player voice (the speaker named in the credits, real-person MOSS voice) is on branch `feat/player-voice`.
+
 ### Proposed steps
 
 1. Audit the tour stops for missing or thin narration (per beat in `00-tour.story.json`).
