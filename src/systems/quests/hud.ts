@@ -6,6 +6,7 @@
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
 import type { CardDirector } from '../../ui/cards';
+import { retireNotice } from '../../ui/hud';
 
 export interface TrackerObjective {
   id: string;
@@ -225,7 +226,7 @@ export class RewardNotice {
 
   private readonly close = (): void => {
     if (!this.el) return;
-    this.el.remove();
+    retireNotice(this.el);
     this.el = null;
     this.cards.release('reward');
   };

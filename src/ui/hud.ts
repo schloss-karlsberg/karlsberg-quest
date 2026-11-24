@@ -10,6 +10,18 @@ const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="tr
 
 export type HudDockArea = 'vitals' | 'boss' | 'feed';
 
+/** Retire a status immediately for reduced motion, or give it a short opacity fade. */
+export function retireNotice(el: HTMLElement): void {
+  if (el.hidden || document.documentElement.hasAttribute('data-kq-reduced-motion')) {
+    el.remove();
+    return;
+  }
+  el.setAttribute('aria-hidden', 'true');
+  el.classList.add('kq-notice-out');
+  // A modal can hide the dock during dismissal, which cancels the animation.
+  window.setTimeout(() => el.remove(), 200);
+}
+
 /**
  * HUD slots. Each is a tiny API so feature systems never touch the DOM structure:
  *   compass (heading + markers), prompt, subtitles, threat, lantern oil, era label, stance, toasts.
@@ -426,7 +438,7 @@ export class Hud {
   }
 
   closeToast(): void {
-    this.toastEl?.remove();
+    if (this.toastEl) retireNotice(this.toastEl);
     this.toastEl = null;
   }
 

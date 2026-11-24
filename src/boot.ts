@@ -87,7 +87,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   const save = new SaveManager(state, storage, events);
   if (params.has('nosave')) save.enabled = false;
   const audio = new AudioManager();
-  const ui = new UI(document.body, loader.compass);
+  const ui = new UI(document.body, loader.compass, () => loopRef?.requestRender());
   assets.onAreaLoad = () => ui.loading.begin(t('loader.area'));
   const content = loadBundledContent();
   const systems = new SystemRegistry();

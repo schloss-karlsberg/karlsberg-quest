@@ -321,12 +321,12 @@ body.kq-in-combat .kq-waymark {
     0 0 10px rgba(242, 199, 107, 0.45);
 }
 
-/* ---- toasts: small glass notes on the right ---- */
+/* ---- toasts and payouts share the right-edge HUD dock ---- */
 .kq-hud .kq-toasts {
+  position: absolute;
   top: 66px;
   right: 18px;
-  gap: 6px;
-  max-width: min(380px, 32vw);
+  max-width: min(360px, 37vw);
 }
 .kq-hud .kq-notice {
   font-family: var(--serif);
@@ -339,8 +339,32 @@ body.kq-in-combat .kq-waymark {
   border-radius: 6px 0 0 6px;
   padding: 6px 12px 7px 14px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  transform: none;
   text-align: right;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  pointer-events: none;
+  animation: kq-notice-in 0.15s ease-out;
+}
+.kq-hud .kq-notice-out {
+  animation: kq-notice-out 0.18s ease-in both;
+}
+.kq-notice[hidden],
+.kq-toasts:has(.kq-notice:not(.kq-notice-out)) .kq-notice-out,
+html[data-kq-reduced-motion] .kq-notice-out {
+  display: none;
+}
+html[data-kq-reduced-motion] .kq-hud .kq-notice {
+  animation: none;
+}
+@keyframes kq-notice-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes kq-notice-out {
+  to {
+    opacity: 0;
+  }
 }
 .kq-root:has(> .kq-modal-layer, .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show) .kq-toasts {
   display: none;

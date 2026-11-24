@@ -383,6 +383,16 @@ html[data-kq-touch] .kq-crosshair {
   html[data-kq-touch] .kq-hud {
     zoom: 0.78;
   }
+  /* The dock fits between the tracker and the skills, below the top buttons. The extra inset
+     compensates for the HUD zoom while the controls use the full device safe area. */
+  html[data-kq-touch] .kq-hud .kq-toasts {
+    top: calc(78px + var(--kq-safe-t) / 3);
+    right: calc(218px + var(--kq-safe-r) / 3);
+    max-width: min(320px, 39vw);
+  }
+  html[data-kq-touch] .kq-hud .kq-notice {
+    font-size: 17px;
+  }
   html[data-kq-touch] :where(.kq-modal) {
     max-height: 100%;
   }

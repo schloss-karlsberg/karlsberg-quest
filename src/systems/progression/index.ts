@@ -513,14 +513,8 @@ class Progression {
       this.updateXp(true);
     }
     this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight);
-    const storyCard = !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show');
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
-    // one centre card at a time: the level card waits for the quest reward card and a choice
-    const otherCard = !!document.querySelector('.kqq-reward:not(.kqq-out), .kqs-choice-card.kqs-show');
-    // and never in a fight, a chase or while knocked down (playtest round 2: it covered the boss)
-    // … nor over a person talking, an echo, a hunt or a choice (src/ui/cards.ts holds, playtest round 5)
-    let hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard || ctx.ui.hud.inAction || ctx.ui.cards.held;
-    // one centre card at a time (src/ui/cards.ts): the level card asks for the slot
+    let hold = ctx.pause.reasons.has('title') || skillCard || ctx.ui.cards.held;
     if (this.cards.wants && !hold && !ctx.ui.cards.claim('level')) hold = true;
     this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
     if (!this.cards.wants) ctx.ui.cards.release('level');

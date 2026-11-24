@@ -22,7 +22,7 @@ export class UI {
   readonly cards: CardDirector;
   private readonly layers = new Map<string, HTMLElement>();
 
-  constructor(parent: HTMLElement, compass: SVGSVGElement) {
+  constructor(parent: HTMLElement, compass: SVGSVGElement, private readonly requestRender: () => void) {
     this.root = h('div.kq-root');
     const loader = LoaderView.inGame(compass);
     this.loading = new LoadingRequests(loader);
@@ -37,6 +37,7 @@ export class UI {
 
   toast(text: string, ms?: number): void {
     this.cards.enqueueToast(text, ms);
+    this.requestRender();
   }
 
   /** A named overlay container for a feature (created on first use, hidden by default). */
