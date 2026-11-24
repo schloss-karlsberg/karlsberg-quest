@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.9.0](https://github.com/schloss-karlsberg/karlsberg-quest/compare/v0.8.0...v0.9.0) (2026-11-24)
+
+
+### Features
+
+* **content:** assemble credits from contributor and asset records ([9b31eef](https://github.com/schloss-karlsberg/karlsberg-quest/commit/9b31eef2b9687b884b423ebfea6cef074333efc2))
+* **content:** seed the contributor credits ([61e673f](https://github.com/schloss-karlsberg/karlsberg-quest/commit/61e673f4dca5bfd409fb5e0f6df94ca1a9dd3a47))
+* **story:** play shared skippable credits after every ending ([5787c85](https://github.com/schloss-karlsberg/karlsberg-quest/commit/5787c85db4e1d5753e53e3aff6b468af1f148dca))
+* **story:** show shared credits after every ending ([c344059](https://github.com/schloss-karlsberg/karlsberg-quest/commit/c34405922e2408ad9b5227b070deef6ec022ab28))
+* **ui:** share the card slot with hud toasts ([6743d93](https://github.com/schloss-karlsberg/karlsberg-quest/commit/6743d932f926a1c27621b5758f233c70d62e8a74))
+* **ui:** share the hud notice slot for quest payouts and toasts ([c74d6e2](https://github.com/schloss-karlsberg/karlsberg-quest/commit/c74d6e2f7cd63c0ac6a6048cbb424ae2d8452bfc))
+* **ui:** show quest payouts at the hud edge ([ebae60d](https://github.com/schloss-karlsberg/karlsberg-quest/commit/ebae60dc5fabe6d71102bf849f27287deb502716))
+* **ui:** show the Bussole during startup and longer in-game loads ([8940b67](https://github.com/schloss-karlsberg/karlsberg-quest/commit/8940b67034dc683de2945013b600d978704a0fc3))
+* **ui:** show the Bussole during startup and longer in-game loads ([ec89e90](https://github.com/schloss-karlsberg/karlsberg-quest/commit/ec89e90e6e401b1e5ab075234602fc8c98f55843))
+
+
+### Bug Fixes
+
+* **story:** synchronize tour and chapter smoke tests ([da4d945](https://github.com/schloss-karlsberg/karlsberg-quest/commit/da4d9456d4272290f3dc4815293fb50c6db4dac6))
+* **touch:** dismiss notices on completed outside taps ([947eb03](https://github.com/schloss-karlsberg/karlsberg-quest/commit/947eb0300d852566a6ab776ea3632dcf8c1daa58))
+* **ui:** contain the phone credits and cover Escape dismissal ([2433166](https://github.com/schloss-karlsberg/karlsberg-quest/commit/2433166864315a9db44944e3faef642b5cbb95e2))
+* **ui:** fit the notice dock around touch controls ([12a5345](https://github.com/schloss-karlsberg/karlsberg-quest/commit/12a5345e8b2b51c0a7033f0f1c7ceb066f19dc65))
+* **ui:** give escape one dismissal at a time ([6252adc](https://github.com/schloss-karlsberg/karlsberg-quest/commit/6252adc4d9a7215f3e78d612f0236224526f6c7a))
+* **ui:** give unlock cards priority over routine toasts ([761f32a](https://github.com/schloss-karlsberg/karlsberg-quest/commit/761f32aa0145ccb3ab121484d8356d908698425d))
+* **ui:** keep live guidance available during play ([1e98dda](https://github.com/schloss-karlsberg/karlsberg-quest/commit/1e98dda38c82de59f82f302e36c6d2ef23871c33))
+* **ui:** report the quest gains actually received ([35c24a6](https://github.com/schloss-karlsberg/karlsberg-quest/commit/35c24a610a22dc469118b7d739e5bd059a62620e))
+* **ui:** use the plain continue label on the title ([5f8db36](https://github.com/schloss-karlsberg/karlsberg-quest/commit/5f8db367663cb579b77b6499cd9113ff66ff53db))
+
+
+### Documentation
+
+* **agents:** add AGENTS.md and CLAUDE.md ([f67dfa4](https://github.com/schloss-karlsberg/karlsberg-quest/commit/f67dfa441c43887f4431e8b5b91d9342e964621a))
+* align docs with the guided-tour concept ([d6d333d](https://github.com/schloss-karlsberg/karlsberg-quest/commit/d6d333d14a241127aa39da651b131ff3dbe07772))
+* move PRD to docs/ and archive IDEA ([4df6e7a](https://github.com/schloss-karlsberg/karlsberg-quest/commit/4df6e7a618cee1a24ff44a9b1a72e2330dc45a3e))
+* **story:** capture the guided tour storyboard on a real GPU ([03b5615](https://github.com/schloss-karlsberg/karlsberg-quest/commit/03b5615782173a98c5879746b1568092032069fe))
+* **story:** document the storyboard capture and handoff ([5c57616](https://github.com/schloss-karlsberg/karlsberg-quest/commit/5c57616baf2fd470b465464a12345752f1b5c882))
+* **story:** record the final storyboard image budget ([b056a41](https://github.com/schloss-karlsberg/karlsberg-quest/commit/b056a416facada6185a915434d0572a6af083187))
+* **story:** record the legacy save migration ([85eafa9](https://github.com/schloss-karlsberg/karlsberg-quest/commit/85eafa9fabdfd9b310b459100a173531a60de401))
+* **story:** reframe the weak tour and party shots ([dfa8991](https://github.com/schloss-karlsberg/karlsberg-quest/commit/dfa89912c7e8e007a2baa6bb2b8f6ceb1b1421e8))
+* **story:** stage the guided tour and party captures ([cd5c39b](https://github.com/schloss-karlsberg/karlsberg-quest/commit/cd5c39b996ee616a0172da36a67f0486f75cb8cf))
+* **story:** tell the guided tour in the storyboard ([c596d07](https://github.com/schloss-karlsberg/karlsberg-quest/commit/c596d07576f5618f45b371a16e28692eac935178))
+* **story:** update the storyboard for the guided tour and party endings ([e3a37d5](https://github.com/schloss-karlsberg/karlsberg-quest/commit/e3a37d5b37de1e0dd3d0e041f26451ee529607bd))
+* **story:** wait for the photo hook before capturing ([8e2ae57](https://github.com/schloss-karlsberg/karlsberg-quest/commit/8e2ae5718320c06184dfdac5cf55c78976c31dce))
+* **ui:** describe the shared hud notice behavior ([924bdeb](https://github.com/schloss-karlsberg/karlsberg-quest/commit/924bdeb346209e214d5d74e6493c69d1567ba774))
+* **ui:** document pause navigation and save controls ([05d40c5](https://github.com/schloss-karlsberg/karlsberg-quest/commit/05d40c53c983a9bf63ccf5cfdeb56f8d65573c0f))
+* **ui:** record the quarry loader verification ([4337789](https://github.com/schloss-karlsberg/karlsberg-quest/commit/43377896371ec78f42cb447ea2dfee3aa9537a7e))
+
 ## [0.8.0](https://github.com/schloss-karlsberg/karlsberg-quest/compare/v0.7.0...v0.8.0) (2026-11-22)
 
 
