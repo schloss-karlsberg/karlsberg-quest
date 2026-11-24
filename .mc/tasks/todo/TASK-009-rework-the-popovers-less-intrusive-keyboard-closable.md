@@ -79,8 +79,8 @@ prompts (settings or save slice) so they don't repeat after reload or on replay.
   - **Partly.** The first cut checks landscape notice placement and gestures, plus portrait menus and the rotate overlay. The broader mobile pass is a follow-up.
 - [ ] e2e updated (specs that wait for or click cards / modals)
   - **Partly.** The first cut updates payout, pacing and touch specs and the mobile toast view. Specs for deferred surfaces follow their respective changes.
-- [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
-  - **Round 1.** The contributor passed all four gates. After the spec fixes, typecheck, unit tests and build passed again. The sandbox blocked the rerun of `pnpm validate` before content validation started.
+- [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+  - **Verified on `761f32a`.** The contributor ran all four gates outside the sandbox. All passed, including 1,460 unit tests.
 
 ## Plan
 _Status: approved 2026-11-24_
@@ -118,7 +118,7 @@ _Status: approved 2026-11-24_
 - [x] 6. Fit long German summaries around the tracker and thumb controls. Use the game's reduced-motion setting for both appearance and dismissal, and keep the world view and camera interactive.
 - [x] 7. Cover queue release, holds and resumption in Vitest. Extend payout, pacing and real-touch specs to cover the input and duplicate-feedback cases below.
 - [x] 8. Update the gameplay notes and mobile tour expectation to match the new behavior.
-- [ ] 9. Run the four gates and focused browser specs. Compare the listed before/after views and check both phone orientations.
+- [x] 9. Run the four gates and focused browser specs. Compare the listed before/after views and check both phone orientations.
 
 **Test plan:**
 
@@ -179,28 +179,11 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — The Escape audit also cleared notices before opening the post-epilogue pause menu in `pol-flow` and before the mobile tour's keyboard fallback. The other pause callers start from fresh fixtures or explicitly handle notices. Focused Vitest passed all 86 tests. `pnpm typecheck`, `pnpm test` (1,459 tests) and `pnpm build` passed. The sandbox again blocked `pnpm validate` at the `tsx` IPC socket with `listen EPERM`.
 - 2026-11-24 — Contributor round 2 passed `quests`, `touch`, `notes` and `smoke`. The three-size HUD overlap check in `pol-flow` found no skill card and passed on unchanged `origin/main`.
 - 2026-11-24 — The Registratur walk queues room-entry toasts. At the end of Laub's eight-second soft hold, the director can give a toast the shared slot before the skills system next tries to claim it. The existing soft-hold limit and the layout spec still apply. Payouts and unlock cards now take priority over routine toasts, which resume with their remaining time ahead of the waiting queue. The new Vitest case reproduced the failed skill claim before the fix and verifies the full handoff. Focused Vitest passed all 45 tests. `pnpm typecheck`, `pnpm test` (1,460 tests) and `pnpm build` passed. Browser verification is pending.
-- 2026-11-24 — The sandbox denied writes to the shared Git worktree's `index.lock`, so the fix is ready to commit outside the sandbox.
-
-```sh
-git add .mc/tasks/todo/TASK-009-rework-the-popovers-less-intrusive-keyboard-closable.md docs/ACTION-RPG.md docs/ARCHITECTURE.md src/ui/cards.ts tests/cards.test.ts
-git commit -m 'fix(ui): give unlock cards priority over routine toasts' -m 'Refs: TASK-009'
-```
-
-After `pnpm build`, rerun the three-size HUD overlap check and the card pacing spec.
-
-```sh
-scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test e2e/pol-flow.spec.ts --grep 'HUD: the top-left column' --workers=1
-scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test e2e/pacing.spec.ts --workers=1
-```
-
-Run the mobile tour for the small landscape toast and pause views and the small portrait title, menus and rotate overlay.
-
-```sh
-scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states hud-idle,toasts,pause
-scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait --states title,news,title-settings,rotate
-```
-
-Use `pnpm dev` and the three JS snippets under **Screenshot views** to capture the matching after images with `node scripts/dev/shot.mjs <url> <out.png> '<js>'`. Save them alongside the before captures as `after-1-two-toasts.png`, `after-2-quest-payout.png` and `after-3-map-over-notice.png`. In headed play, click into the world to acquire pointer lock with a notice showing and check that the first Escape dismisses the notice and a separate Escape opens pause. With the map above a notice, close the map and check that the notice returns with reading time left.
+- 2026-11-24 — The contributor verified the final implementation at `761f32a` outside the sandbox. `pnpm typecheck`, `pnpm test` (1,460 passed), `pnpm validate` and `pnpm build` all passed.
+- 2026-11-24 — The contributor ran each Playwright spec with one worker under `scripts/dev/heavy.sh`. Results were `quests` 2/2, `pacing` 3/3, `touch` 6/6, `notes` 2/2, `npc` 2/2, `photo` 4/4, `court` 4/4, `progression` 3/3, `combat` 6/6, `chapter-prolog` 2/2, `chapter-k1` 2/2, `integration` 2/2, `quelle` 1/1, `smoke` 7/7 and `pol-flow` 3/4. The only failure was the chapter 1 guard line at `e2e/pol-flow.spec.ts:147`. It also failed on both runs against unchanged `origin/main`.
+- 2026-11-24 — The contributor's mobile tour passed all six selected states. Small landscape covered `hud-idle` and `toasts`. Small portrait covered `title`, `news`, `title-settings` and `rotate`. The landscape toast view had 33 findings against 38 on main, including 14 S1 findings on each.
+- 2026-11-24 — Compared the three unchanged/verified screenshot pairs under `test-results/contribute/TASK-009/`. The two-toast view now shows only “Karte ergänzt”. The Kasuar payout moved from the centre to the right edge and the feather appears once. The map covers the underlying notice. The matching captures are `after-1-two-toasts.png`, `after-2-quest-payout.png` and `after-3-map-over-notice.png`.
+- 2026-11-24 — Ship self-review covered the full diff against main, including notice priority and resumption, input ownership, payout receipts, German UI strings and browser assertions. `git diff --check` passed. The branch includes the earlier TASK-011 status change in `cdb95d0`. The remaining popover and whole-UI criteria are tracked in the follow-up checklist.
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.
