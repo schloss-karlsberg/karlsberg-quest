@@ -30,7 +30,7 @@ updated: 2026-11-24
 At the end, during the party on today's palace plateau after **each** of the three endings, a credits
 sequence lists **everyone who contributed**: people, the asset authors, and the tools and libraries.
 
-### What exists today
+### Baseline before TASK-013
 - The party: `src/systems/party/` (`index.ts`, `runtime.ts`, `strip.ts`, `credits.ts`): after every
   ending the story emits `party:set` and `party:credits`; a credits **strip** runs over the party while
   the camera circles and lingers on the people (`ORBIT` in `credits.ts`). Its lines come from
@@ -75,12 +75,12 @@ sequence lists **everyone who contributed**: people, the asset authors, and the 
 - **Do not name the real tour guide.** The guide stays the placeholder until written consent exists.
 
 ## Acceptance Criteria
-- [ ] `content/credits.json` exists with the three seed entries; format checked by validate or a test
-- [ ] Credits run at the party after all three endings and list people, asset authors (from `LICENSES.json`), tools and libraries, data sources
-- [ ] Adding an entry to `content/credits.json` or `LICENSES.json` shows up without code changes
+- [x] `content/credits.json` exists with the three seed entries; format checked by validate or a test
+- [x] Credits run at the party after all three endings and list people, asset authors (from `LICENSES.json`), tools and libraries, data sources
+- [x] Adding an entry to `content/credits.json` or `LICENSES.json` shows up without code changes
 - [ ] Skippable; Enter / Escape closes it; works on mobile; reduced motion shows a static scrolling list
-- [ ] Every named person has agreed to be listed.
-- [ ] The real tour guide is not named anywhere in the credits
+- [x] Every named person has agreed to be listed.
+- [x] The real tour guide is not named anywhere in the credits
 - [ ] e2e: an ending spec reaches the credits and skips them (`--workers=1`); unit tests for the generated author list
 - [ ] Screenshot (desktop and phone width) in the PR
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
@@ -104,9 +104,9 @@ _Status: approved 2026-11-24_
 
 - [x] 1. Seed `content/credits.json` with the two exact contributor name/role pairs above and a separate closing line, „und alle, die noch kommen“. Validate nonblank names and roles and optional HTTP(S) links in a unit test.
 - [x] 2. Assemble title, contributors, asset authors, voice model, tools/libraries, data sources and licences, fiction note and „Danke fürs Spielen“, in that order. Read asset authors from `public/assets/LICENSES.json`, split comma-separated coauthors, trim and deduplicate within each source, and display the names with that source’s licence(s). Preserve collective credits such as MakeHuman Community. Exclude emails, machine paths and the real guide’s name.
-- [ ] 3. Feed both existing views the assembled credits. Preserve party cues, explicit line overrides, storyboard selectors, the normal camera orbit and movement hand-back.
-- [ ] 4. Provide a visible, tappable „Überspringen“ button and Enter/Escape dismissal. Return to free roam once. For reduced motion (game setting or OS preference), leave a static, manually scrollable list open until dismissed and suppress the orbit. Keep text and skip clear of touch controls.
-- [ ] 5. Cover the three ending routes and player inputs. Exercise the real skip button locally in the story spec. Update the party design note, add the ACTION-RPG §14 row and record the behaviour change in the PRD changelog.
+- [x] 3. Feed both existing views the assembled credits. Preserve party cues, explicit line overrides, storyboard selectors, the normal camera orbit and movement hand-back.
+- [x] 4. Provide a visible, tappable „Überspringen“ button and Enter/Escape dismissal. Return to free roam once. For reduced motion (game setting or OS preference), leave a static, manually scrollable list open until dismissed and suppress the orbit. Keep text and skip clear of touch controls.
+- [x] 5. Cover the three ending routes and player inputs. Exercise the real skip button locally in the story spec. Update the party design note, add the ACTION-RPG §14 row and record the behaviour change in the PRD changelog.
 - [ ] 6. Run the four gates. The contributor runs browser checks and captures the matching after screenshots outside the sandbox.
 
 **Test plan:**
@@ -146,7 +146,12 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Plan approved for `feat/task-013-credits-scene`. The contributor captured the desktop and landscape phone baselines on unchanged code.
 - 2026-11-24 — Step 1 complete. Added the approved seed entries, the closing line and the editing example. `pnpm exec vitest run tests/credits.test.ts` passed.
 - 2026-11-24 — Step 2 complete. Assembled ordered credits from the content files and the asset manifest. The credits unit tests passed with the current manifest and fixture bylines.
-- External e2e baseline: `e2e/party.spec.ts`, `e2e/story.spec.ts`, `e2e/smoke.spec.ts`. Current grep finds the credits selectors/hooks in `party`, `story`, `campaign`, `pol-flow` and the helpers `common.ts` and `k4.ts`. The current plan keeps changes local to the party and story specs. If `throughParty` in `common.ts` changes, its callers include story, pol-flow, campaign and chapter-k4 (via `playK4`). If `playK4` changes, its callers are chapter-k4 and campaign. Record the actual selector/hook matches and helper consumers here after implementation.
+- 2026-11-24 — Step 3 complete. Both views use the existing asset loader and the same credits assembly. The fallback page retains the bibliography and detailed data attributions. Typecheck and the four focused unit test files passed. `pnpm validate` was blocked when tsx tried to open its IPC socket (`EPERM`).
+- 2026-11-24 — Step 4 implemented. The party strip can be dismissed by button, Enter or Escape. The game consumes a pointer-lock exit during credits as the same dismissal. Reduced motion keeps all lines in a scrollable list without an orbit. The focused unit tests passed, including a run past the animated duration and repeated dismissal.
+- 2026-11-24 — Step 5 implemented. The unit tests cover the shared credits data and all ending cues. The story spec adds a manifest author fixture to verify both credits views and clicks the real party skip button. The party spec exercises Enter, Escape with pointer lock and a landscape phone with OS reduced motion. Updated the party systems note, ACTION-RPG §14 and the PRD.
+- External e2e (unverified, one worker each via `scripts/dev/heavy.sh`): `e2e/party.spec.ts`, `e2e/story.spec.ts`, `e2e/smoke.spec.ts`. Selector and hook matches: party, story, campaign and `helpers/common.ts`; `pol-flow.spec.ts` exercises the same credits path through `throughParty`. `helpers/k4.ts` also uses that path and is called by campaign and chapter-k4. The edits to test boot helpers are local to party and story. The shared helpers were untouched.
+- 2026-11-24 — Step 6 pending external verification. `pnpm typecheck`, `pnpm test` (1,467 tests), `pnpm build` and `mc validate` passed locally. `pnpm validate` failed before the validator ran because the sandbox denied tsx's IPC socket (`EPERM)). The contributor will run `pnpm validate`, rebuild, run the three listed specs, and capture `after-desktop.png` and `after-phone.png` beside the baselines.
+- Git staging was denied on the worktree's `index.lock` after the two content commits. The remaining changes are ready for staging outside the sandbox.
 
 ## Notes
 - Builds on the party feature (`docs/design/tour/systems.md` §6, `content/bible/06-enden.md` §8).
