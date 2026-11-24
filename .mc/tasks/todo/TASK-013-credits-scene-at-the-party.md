@@ -102,7 +102,7 @@ _Status: approved 2026-11-24_
 
 **Steps:**
 
-- [ ] 1. Seed `content/credits.json` with the two exact contributor name/role pairs above and a separate closing line, „und alle, die noch kommen“. Validate nonblank names and roles and optional HTTP(S) links in a unit test.
+- [x] 1. Seed `content/credits.json` with the two exact contributor name/role pairs above and a separate closing line, „und alle, die noch kommen“. Validate nonblank names and roles and optional HTTP(S) links in a unit test.
 - [ ] 2. Assemble title, contributors, asset authors, voice model, tools/libraries, data sources and licences, fiction note and „Danke fürs Spielen“, in that order. Read asset authors from `public/assets/LICENSES.json`, split comma-separated coauthors, trim and deduplicate within each source, and display the names with that source’s licence(s). Preserve collective credits such as MakeHuman Community. Exclude emails, machine paths and the real guide’s name.
 - [ ] 3. Feed both existing views the assembled credits. Preserve party cues, explicit line overrides, storyboard selectors, the normal camera orbit and movement hand-back.
 - [ ] 4. Provide a visible, tappable „Überspringen“ button and Enter/Escape dismissal. Return to free roam once. For reduced motion (game setting or OS preference), leave a static, manually scrollable list open until dismissed and suppress the orbit. Keep text and skip clear of touch controls.
@@ -144,6 +144,7 @@ _Status: approved 2026-11-24_
 ## Progress
 
 - 2026-11-24 — Plan approved for `feat/task-013-credits-scene`. The contributor captured the desktop and landscape phone baselines on unchanged code.
+- 2026-11-24 — Step 1 complete. Added the approved seed entries, the closing line and the editing example. `pnpm exec vitest run tests/credits.test.ts` passed.
 - External e2e baseline: `e2e/party.spec.ts`, `e2e/story.spec.ts`, `e2e/smoke.spec.ts`. Current grep finds the credits selectors/hooks in `party`, `story`, `campaign`, `pol-flow` and the helpers `common.ts` and `k4.ts`. The current plan keeps changes local to the party and story specs. If `throughParty` in `common.ts` changes, its callers include story, pol-flow, campaign and chapter-k4 (via `playK4`). If `playK4` changes, its callers are chapter-k4 and campaign. Record the actual selector/hook matches and helper consumers here after implementation.
 
 ## Notes
