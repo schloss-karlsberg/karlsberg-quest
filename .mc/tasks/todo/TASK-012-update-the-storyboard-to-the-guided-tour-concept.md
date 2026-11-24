@@ -59,21 +59,21 @@ Source of truth for the new beats:
    why", the shot count and the image budget.
 
 ## Acceptance Criteria
-- [ ] No Feldstation / Bauwagen / lantern / surveyor prologue left in `index.html`, `img/` or `SHOTS`
-- [ ] The page shows the tour, the first time travel, the three endings and the party, in story order
+- [x] No Feldstation / Bauwagen / lantern / surveyor prologue left in `index.html`, `img/` or `SHOTS`
+- [x] The page shows the tour, the first time travel, the three endings and the party, in story order
 - [x] Pictures captured on a real GPU (the script's software-renderer warning did not fire)
-- [ ] `img/` stays within the budget (about 8 MB, about 60 pictures); the page still opens from disk with no network
+- [x] `img/` stays within the budget (about 8 MB, about 60 pictures); the page still opens from disk with no network
 - [x] `docs/storyboard/README.md` updated; captions in German
-- [ ] If `scripts/dev/storyboard.mjs` changed: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+- [x] If `scripts/dev/storyboard.mjs` changed: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
 ### Coverage
 
-- **Full** — Remove the retired prologue from the page, JPEGs and shot definitions.
-- **Full** — Show the tour, first time travel, chapters, three endings and parties in story order.
-- **Full** — The contributor captures on a real GPU and checks the renderer log.
-- **Partial** — Target about 8 MB and verify the page opens offline. The planned 68 pictures exceed the original “about 60” and fall within the owner-approved 66–68 in [storyboard-beats.md](../../../docs/design/tour/storyboard-beats.md).
-- **Full** — Update the storyboard README and write German captions.
-- **Full** — The contributor runs all four gates and reports the results.
+- **Full** — The page and capture script use the guided-tour opening. All 19 retired JPEGs were removed and the ending choice was recaptured in place.
+- **Full** — The 28 new story cards cover the tour, spring crossing and training, and the ending choice through the three parties and credits. K1–K4 sit between the crossing and the endings.
+- **Full** — The contributor reviewed all 68 GPU captures and accepted all 11 retakes on ANGLE Metal.
+- **Full** — The 68 JPEGs occupy 7,484 KiB (about 7.3 MB), within the [approved range of 66–68 pictures](../../../docs/design/tour/storyboard-beats.md). The page loaded from disk with zero network requests and zero failed loads.
+- **Full** — The README records the measured budget, capture instructions and staged scenes. Card and lightbox captions are in German.
+- **Full** — All four gates passed on `03b5615`, as did all seven smoke tests with one worker.
 
 ## Plan
 
@@ -95,9 +95,9 @@ _Status: approved 2026-11-24_
 - [x] 3. I will order the page from the guided tour through the spring crossing, 1789 training and K1–K4, then show the ending choice, the museum, burn and keep parties, and the credits. Use German card and lightbox captions, preserve FAKT/FIKTION labels, and update Places, Cast and Items wherever they refer to the old prologue. In captions and Cast, use only the placeholder name “Gerold Imhoff” for the guide. Show Marlene as the forester at the dam.
 - [x] 4. I will update the storyboard README's capture examples, outdated notice, coverage notes and budget, then compare `node scripts/dev/storyboard.mjs --list` with the page's thumbnail and full-size references before handing over for capture.
 - [x] 5. You will build, preview and capture the full set on your GPU directly into this worktree's `docs/storyboard/img/` using the commands below. Confirm the renderer and completed shot count, review every picture, and report weak or missing shots by ID with what you saw.
-- [ ] 6. I will fix the reported framing, lighting, UI or captions. You will recapture the affected IDs in place with `--only`. Repeat for any picture still unreadable.
-- [ ] 7. You will delete the retired JPEGs after checking their references and record the final image count and size in the storyboard README.
-- [ ] 8. You will open `docs/storyboard/index.html` from disk with the network off, check the chapter order, images and lightbox, and run `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. I will record your capture and gate results in this task.
+- [x] 6. I will fix the reported framing, lighting, UI or captions. You will recapture the affected IDs in place with `--only`. Repeat for any picture still unreadable.
+- [x] 7. You will delete the retired JPEGs after checking their references and record the final image count and size in the storyboard README.
+- [x] 8. You will open `docs/storyboard/index.html` from disk with the network off, check the chapter order, images and lightbox, and run `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. I will record your capture and gate results in this task.
 
 **Test plan:** For step 1, use the grid metadata and present-day or 1789 height raster in `public/data/terrain/` to sample ground height and slope at each proposed camera and subject. Check the following compositions in step 5.
 
@@ -130,6 +130,9 @@ scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ -
 
 - [ ] Re-shoot the ticket or spring hub if TASK-007 changes their UI. Record any pending frame in the storyboard README.
 - [ ] If a party prop or planned pose is unavailable, document what the reviewed frame actually shows and identify that shot for a future retake.
+- [ ] Improve the separation of the tinted rock stand-ins in `t4-felsenpfad`. They read as one dark shape.
+- [ ] Frame the small deer closer in `t6-reh-sicht`.
+- [ ] Bring the forester closer and away from the edge of the frame in `t7-marlene`.
 
 ## Progress
 
@@ -166,6 +169,12 @@ scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ -
   ```sh
   scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ --only t1-treffpunkt,t2-station1,t4-felsenpfad,t5-wind,t6-reh-sicht,t6-reh-pirsch,t6-reh-foto,t7-marlene,e-museum-fest,e-burn-fest,e-fest-abspann
   ```
+
+- 2026-11-24 — Step 6 complete. The contributor captured all 11 retakes on the real GPU (ANGLE Metal) without a software-renderer warning and reviewed them. All 11 are usable. The remaining framing issues are in the follow-up list.
+- 2026-11-24 — Step 7 complete. The contributor removed 19 retired JPEGs and committed all captures in `03b5615`. Every file in `img/` is referenced by `index.html` and every referenced file exists. The README now records the measured 68 pictures and 7,484 KiB (about 7.3 MB).
+- 2026-11-24 — Step 8 complete. The contributor opened the page from disk in headless Chromium with non-file requests blocked. There were zero network requests, zero failed loads and no broken storyboard images. The lightbox image starts empty, as on `main`. Chapter order was Die Führung → Die erste Zeitreise → K1–K4 → Was das Feuer nicht fraß → Das Fest.
+- 2026-11-24 — On `03b5615` the contributor ran `pnpm typecheck`, `pnpm test` (1,460 passed), `pnpm validate` (content valid, one pre-existing warning) and `pnpm build`. All four passed. No game code changed. All seven tests in `e2e/smoke.spec.ts` passed with `--workers=1` under `scripts/dev/heavy.sh`.
+- 2026-11-24 — During shipping, `git add` could not create the linked worktree's `index.lock` (Operation not permitted). The README and task updates were ready to commit at that point.
 
 ## Notes
 - Do not name or depict the real tour guide: the guide stays the placeholder until written consent exists.

@@ -23,7 +23,7 @@ scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/
 
 The script opens the game with `?debug&nosave&fresh&manual&q=high` and uses `window.kq` to stage the lighting, actors, effects and UI. Each frame is 1280 × 720. Check the `GPU:` line for the hardware renderer, the log for failed shots, and the final count for `68/68 shots`. A failed shot triggers a reload and the capture continues. Review every picture, then open the page from disk to check the thumbnails and lightbox.
 
-**Image budget.** The page references 68 distinct JPEGs, with a target of about 8 MB total after cleanup. Places and Cast reuse story pictures where they show the subject. The final byte count is pending GPU capture, review and removal of the retired files listed in [TASK-012](../../.mc/tasks/todo/TASK-012-update-the-storyboard-to-the-guided-tour-concept.md#progress).
+**Image budget.** The 68 JPEGs in `img/` take up about 7.3 MB (7,484 KiB). Places and Cast reuse story pictures where they show the subject.
 
 ## What is not captured, and why
 
