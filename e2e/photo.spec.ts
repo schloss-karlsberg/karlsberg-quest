@@ -1,8 +1,9 @@
 import { type CDPSession, type Page, devices, expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
+import { openPause } from './helpers/pause';
 
 /**
- * Smartphone photo mode (src/systems/photo, WP-14): N raises the phone at the car park, a click
+ * Smartphone photo mode (src/systems/photo, WP-14): N raises the phone at the car park, the attack key
  * shoots the placeholder board (photo.parkplatz), the card shows stars, the album has the entry;
  * in 1789 there is no signal („Kein Netz“, a white picture, nothing in the album); on a phone the
  * top-row camera button opens it and the attack button is the shutter.
@@ -52,8 +53,8 @@ test.describe('photo mode', () => {
     await page.screenshot({ path: `${SCREENS}/photo-frame-2x.png` });
     await page.evaluate(() => window.kq!.photo!.zoom(1));
     await page.waitForTimeout(600);
-    // a real left click is the shutter
-    await page.mouse.click(640, 360);
+    // The phone uses the attack binding as its shutter.
+    await page.keyboard.press('KeyK');
     await expect(page.getByTestId('photo-card')).toBeVisible();
     const shot = await page.evaluate(() => window.kq!.photo!.state().lastShot);
     expect(shot, JSON.stringify(shot?.details)).not.toBeNull();
@@ -68,12 +69,12 @@ test.describe('photo mode', () => {
     expect(await page.evaluate(() => window.kq!.photo!.has('photo.parkplatz'))).toBe(true);
     // the placeholder's grant (a flag) fired once
     expect(await page.evaluate(() => window.kq!.state().flags['photo.demo.parkplatz'])).toBe(true);
-    // N puts the phone away; the journal's „Album“ tab shows the entry
+    // N puts the phone away; Pause → Album shows the entry
     await page.keyboard.press('KeyN');
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(false);
     await expect(page.getByTestId('photo')).toBeHidden();
-    await page.keyboard.press('KeyJ');
-    await page.getByTestId('journal-tab-album').click();
+    await openPause(page);
+    await page.getByTestId('pause-album').click();
     await expect(page.getByTestId('album-entry-photo.parkplatz')).toBeVisible();
     await expect(page.getByTestId('album-entry-photo.parkplatz')).toHaveAttribute('data-thumb', 'true');
     await page.screenshot({ path: `${SCREENS}/photo-album.png` });

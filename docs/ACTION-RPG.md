@@ -22,7 +22,7 @@ sourced history** — which lands in your codex. Nobody ever asks you to fill in
 
 Contents: [1 Pillars](#1-pillars) · [2 Core loop](#2-core-loop) · [3 Controls](#3-controls) ·
 [4 Combat](#4-combat) · [5 Enemies](#5-enemies) · [6 Progression](#6-progression) ·
-[7 Loot and collections](#7-loot-items-collections) · [8 Quests, journal, history](#8-quests-journal-and-how-history-is-taught) ·
+[7 Loot and collections](#7-loot-items-collections) · [8 Quests, Codex, history](#8-quests-codex-and-how-history-is-taught) ·
 [9 Technical contract](#9-technical-contract) · [10 HUD layout](#10-hud-layout) ·
 [11 Quest catalogue](#11-quest-catalogue) · [12 Removed / kept](#12-removed-and-kept) ·
 [13 Tracks](#13-tracks-file-ownership-and-merge-order) · [14 Risks](#14-risks-and-open-questions)
@@ -92,10 +92,10 @@ combat starts with the short guided training in 1789.
 | **Wuchthieb** (heavy, charged) | **hold LMB / K** ≥ 0.45 s, release | Breaks armour, staggers; slows you while charging |
 | **Ausweichen** (dodge roll, i-frames) | **Space** (+ direction) | Space still stands you up from crouch / prone and climbs while flying |
 | **Bannlicht** (lantern flare) | **RMB** or **G** | Cone; stuns spectral enemies, makes Irrlichter hittable, scatters the pack |
-| **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default; choose the item in the Ausrüstung tab |
+| **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default. Choose the item in Ausrüstung. |
 | **Fähigkeiten** (abilities, §4.2): Ausfall · Erdstoß · Wirbel | **T** · **Z** (Y on a US layout) · **U** | Unlocked at levels 2 · 4 · 6; one row of free keys; a HUD slot each with a cooldown ring |
 | Talk / examine / pick up / listen (hold) | **E** | Accept / turn in quests in the conversation |
-| **Journal** (quests, codex, collections, gear, talents) | **J**; **I** opens Ausrüstung | Replaces the Chronik board (Tab moved to the lock-on, camera track 2026-11-19) |
+| **Pause** | **Esc** or tap Pause | Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album. I opens Ausrüstung directly. |
 | Lantern | L | |
 | Era shift | Q (at an anchor), hold Q to return | Kept |
 | Scan 0–3, maps M, measure R, Röntgenblick V, plans B, spirit view F | as before | Survey skills, now quest rewards |
@@ -514,7 +514,7 @@ The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); onl
   (captioned with its side) and a glint when the camera faces one within 15° and 12 m in light. Some
   need a verb: a Wuchthieb shakes two out of apple trees and one out of the spring's icicles; one shows
   only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
-  „Fläschchen n/24“, a row in Journal → Sammlungen (era counts only, never places) and a bottle on the
+  „Fläschchen n/24“, a row in Pause → Sammlungen (era counts only) and a bottle on the
   hub's shelf (at the Quelle since tour WP-01; the hub overlay is legacy, TASK-007); Marlene at 8, Laub at 16; all 24: the lantern glass „Flaschengrün“ and the
   FIKTION card cx.47 „Treibgut“. **No XP per bottle** (the doc's 15 XP would push the prologue past
   L3: its margin is 4 XP, `tests/quests-content-a.test.ts`) and no talent point; only cx.47's usual
@@ -524,7 +524,7 @@ The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); onl
 - **Inventory**: journal tab "Ausrüstung": weapon, charm slots, consumables (set the quick-use item),
   quest items, lore (read the text).
 
-## 8. Quests, journal and how history is taught
+## 8. Quests, Codex and how history is taught
 
 ### 8.1 Lifecycle
 
@@ -592,16 +592,16 @@ No stance cards, no answer grids: see §8.6.
 - **Prompts name the action** ("E – Messstab nehmen"); the hub prompt at the Quelle (legacy, TASK-007) is low priority
   and E opens the hub only when its prompt is the one shown.
 
-### 8.4 Journal (J) and tracker
+### 8.4 Pause pages and tracker
 
 - **Tracker** (HUD top-left column, `hud.stack(el, 35)`): up to three tracked quests (main first),
   title + active objectives with counters ("Irrlichter bannen 2/5"), ticks when done, a soft pulse
   on progress (no flash).
-- **Journal** (one modal, field-book look, tabs from `src/ui/journal.ts`):
-  10 **Aufgaben** (active / done; summaries; the history told at turn-in can be re-read) ·
-  20 **Codex** (cards with source, confidence D/I/N/U, label FAKT / STRITTIG / LEGENDE / FIKTION, "neu") ·
-  30 **Sammlungen** (collections, bestiary page) · 40 **Ausrüstung** · 50 **Talente** (progression).
-  The station's Pinnwand (hub item `chronik`) opens the journal (`chronik:open` → journal).
+- **Pause** opens separate pages for **Aufgaben** (active and completed quests, tracking and
+  turn-in history), **Codex** (sources, confidence, fact or fiction labels), **Sammlungen**
+  (collections and bestiary), **Funde**, **Ausrüstung**, **Talente**, **Karte** and **Album**.
+  Back or Esc closes the page and returns focus to the Pause entry. A clue card or the Pinnwand at
+  the Quelle can open Codex directly. Closing it from the Pinnwand returns to the same hub.
 
 ### 8.5 How history is taught — without quizzes
 
@@ -774,7 +774,7 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
   `pushed`.
 - **HUD** (`src/ui/hud.ts`): `hud.dock('vitals' | 'boss' | 'feed', el, order)` (§10) next to
   `hud.stack(el, order)`.
-- **Journal tabs** (`src/ui/journal.ts`): `addJournalTab({id, label, order, render, badge?, hide?})`.
+- **Pause pages** (`src/ui/pause-pages.ts`): `addPausePage({id, label, order, render, badge?, hide?})`.
 - **Debug** (`window.kq`): `kq.quests`, `kq.combat`, `kq.progression` (each track extends its own:
   e.g. `kq.quests.accept/complete/progress/turnin`, `kq.combat.spawn/hit/kill/god/state`,
   `kq.progression.grant/xp/level/equip/use/state`).
@@ -979,9 +979,8 @@ Unchanged (bible 06-enden), plus the party after the credits (tour WP-18, [`desi
 the player's deeds (§8.6: side quests done, the lantern at the gate, `flag.k3_objekt`), told as a
 first-person story, credits, "Ende noch einmal wählen" (title and, after the credits, the pause
 menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
-both count. After the credits the HUD line says what is left to do (free roam, Feldbuch, the choice
-again); the ending's own lines are told on the ending card only (`story:ending` lines are not
-spoken by the trigger runner), and the presenter is cleared at the credits.
+both count. After the credits the HUD points to Sammlungen, Codex and the ending replay action in
+Pause. The ending card presents the ending's own lines, and the presenter is cleared at the credits.
 `flags['combat.disabled']` is set from the finale on (`k4_11` … `e2`; cleared after the credits).
 The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` ≡ `herzog` …).
 
@@ -1018,16 +1017,16 @@ architect's contract files are frozen except for additive, documented changes.
 
 | Track | Owns (writes) | Uses (read-only) | Must not touch |
 | --- | --- | --- | --- |
-| **quests** | `src/systems/quests/**`, `src/systems/npc/**`, `src/systems/chronik/**`, `content/quests/99-test.quests.json`, `content/quests/README.md`, `content/schema/quests.schema.json`, `tests/quests*.test.ts`, `tests/chronik.test.ts`, `e2e/quests.spec.ts`, `e2e/chronik.spec.ts`, `e2e/npc.spec.ts` | contracts, `src/rpg/*`, story actions / conditions, `src/ui/journal.ts`, `hud.stack/dock` | combat / progression folders, `src/ui/hud.ts`, chapter story / quest files, packs |
+| **quests** | `src/systems/quests/**`, `src/systems/npc/**`, `src/systems/chronik/**`, `content/quests/99-test.quests.json`, `content/quests/README.md`, `content/schema/quests.schema.json`, `tests/quests*.test.ts`, `tests/chronik.test.ts`, `e2e/quests.spec.ts`, `e2e/chronik.spec.ts`, `e2e/npc.spec.ts` | contracts, `src/rpg/*`, story actions / conditions, `src/ui/pause-pages.ts`, `hud.stack/dock` | combat / progression folders, `src/ui/hud.ts`, chapter story / quest files, packs |
 | **combat** | `src/systems/combat/**`, `src/rpg/enemies.ts` (numbers, new ids), `src/player/player.ts` (additive), `src/systems/hunt/**` (Bannlicht scatter), `src/systems/menagerie/**` (calm / catch), `tests/combat*.test.ts`, `e2e/combat.spec.ts` | contracts, `src/rpg/types.ts`, `src/rpg/stats.ts` (`deriveStats`) | quests / progression / npc / chronik / story folders, `src/ui/hud.ts`, content |
-| **progression** | `src/systems/progression/**`, `src/rpg/items.ts`, `src/rpg/stats.ts`, `src/ui/hud.ts` (only if a dock is missing; prefer docks), `tests/progression*.test.ts`, `e2e/progression.spec.ts` | contracts, `src/rpg/types.ts`, `src/ui/journal.ts` | combat / quests / npc / story folders, content |
+| **progression** | `src/systems/progression/**`, `src/rpg/items.ts`, `src/rpg/stats.ts`, `src/ui/hud.ts` (only if a dock is missing; prefer docks), `tests/progression*.test.ts`, `e2e/progression.spec.ts` | contracts, `src/rpg/types.ts`, `src/ui/pause-pages.ts` | combat / quests / npc / story folders, content |
 | **contentA** | `content/story/00-prolog`, `01-kapitel-1`, `02-kapitel-2`.story.json; `content/quests/00-prolog`, `01-kapitel-1`, `02-kapitel-2`.quests.json; `scripts/content-build/{prolog,kapitel1,kapitel2}.mjs` (+ their generated packs); `content/bible/01–03` (rework notes); `e2e/helpers/{prolog,k1,k2}.ts`, `e2e/chapter-{prolog,k1,k2}.spec.ts`; their `it` blocks in `tests/story*.test.ts`; `tests/quests-content-a.test.ts` | everything else | system code, other chapters, `codex.mjs` / `speakers.mjs` (ask the architect) |
-| **world** (round 2) | `src/world/**` (`route.ts`, era looks), `src/systems/scenery/**`, `src/systems/travel/**` (survey points, map UI, route POIs, Wegweiser), `tests/travel.test.ts`, `e2e/world.spec.ts`, `e2e/scenery.spec.ts` | contracts, combat / story / quests hooks and events, `src/ui/journal.ts` (`addJournalTab`) | combat / quests / story folders, content |
+| **world** (round 2) | `src/world/**` (`route.ts`, era looks), `src/systems/scenery/**`, `src/systems/travel/**` (survey points, map UI, route POIs, Wegweiser), `tests/travel.test.ts`, `e2e/world.spec.ts`, `e2e/scenery.spec.ts` | contracts, combat / story / quests hooks and events, `src/ui/pause-pages.ts` (`addPausePage`) | combat / quests / story folders, content |
 | **contentB** | `content/story/03-kapitel-3`, `04-kapitel-4`, `05-enden`.story.json; `content/quests/03-kapitel-3`, `04-kapitel-4`.quests.json; `scripts/content-build/{kapitel3,kapitel4,enden}.mjs` (+ packs); `content/bible/04–06`; `e2e/helpers/{k3,k4}.ts`, `e2e/chapter-{k3,k4}.spec.ts`, `e2e/campaign.spec.ts`; their `it` blocks; `tests/quests-content-b.test.ts` | everything else | system code, other chapters |
 
 Architect-owned (frozen, additive changes only, announce in this file): `src/systems/contracts.ts`,
 `src/rpg/types.ts`, `src/systems/story/{types,engine,validate,validate-cli}.ts` (RPG parts),
-`src/player/input.ts`, `src/ui/journal.ts`, `src/systems/index.ts`, `docs/ACTION-RPG.md`,
+`src/player/input.ts`, `src/ui/pause-pages.ts`, `src/systems/index.ts`, `docs/ACTION-RPG.md`,
 `docs/PRD.md`, `docs/ARCHITECTURE.md` (each track adds its own system section at the end of §12).
 
 **Merge order:** progression → combat → quests → contentA → contentB (content last: it depends on
@@ -1042,6 +1041,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Feldbuch navigation and save wording (TASK-007, 2026-11-24) | Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album on desktop and touch. I and M retain their shortcuts. Clue cards and the Pinnwand open Codex. The title and save actions use „Neues Spiel“, „Weiter“ and „Speichern“. |
 | Quest payouts and HUD toasts crowd the world view (TASK-009, 2026-11-24) | A shared HUD slot shows one compact notice at a time and pauses its timer whenever a modal covers it. Escape and outside touch taps dismiss one layer at a time. |
 | Loading feedback (TASK-011, 2026-11-24) | The Bussole starts on the night background and stays in place as the title takes over. The ring fills as terrain or an explicit asset area loads. In play the indicator appears after 300 ms for nearby scenery batches, era prefetch still pending after a shift and Röntgenblick. Players can keep moving. The operating-system preference and the in-game reduced-motion setting both keep the needle still. |
 | "Unauffällig" in chapter 1 (content, 2026-11-20): gaps in the court system | **Bleiche:** watchers count only in court zones and there is none at the Bleiche, so Liese has no watch block; the coat is "unseen" by geometry (COAT_REACH behind line B, out of her view) and `court:take` is still emitted. Needed: a `court.bleiche` zone (around 1001.5/−876.5, r ≈ 11, exit on the trail ≈ 1016/−866) that counts only `take` (no `hivis` there, or the talk path breaks), an escort line by Liese; content then adds her watch and a `court:ejected` handler that hangs the coat back. **Strings:** `court/strings.ts` registers at import, after the content packs, so chapter lines must load after it (`src/systems/court-k1`, one loader line after `court`); a content hook in the system would be cleaner |

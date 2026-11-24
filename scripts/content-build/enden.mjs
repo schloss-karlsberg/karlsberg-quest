@@ -71,11 +71,17 @@ const dialogue = [
 
 write('enden', { pack: 'enden', dialogue });
 
-// --story: copy the deeds and the frame into the fallback epilogue of 05-enden.story.json (its
-// other keys and the rest of the file stay as they are)
+// Update the generated objective without reformatting the hand-authored beats.
+const file = `${ROOT}/content/story/05-enden.story.json`;
+const source = readFileSync(file, 'utf8');
+const freeRoam = /("do":\s*"objective",\s*"id":\s*"end\.frei",\s*"text":\s*)"(?:[^"\\]|\\.)*"/;
+if (!freeRoam.test(source)) throw new Error('end.frei objective not found');
+const objective = 'Frei unterwegs: Sammlungen und Codex unter Pause · Esc → „Ende noch einmal wählen“';
+const updated = source.replace(freeRoam, (_, key) => key + JSON.stringify(objective));
+
+// --story also copies the deeds and frame into the fallback epilogue.
 if (process.argv.includes('--story')) {
-  const file = `${ROOT}/content/story/05-enden.story.json`;
-  const story = JSON.parse(readFileSync(file, 'utf8'));
+  const story = JSON.parse(updated);
   const e = story.epilogue;
   e.intro = { ...EPILOGUE_FRAME.intro };
   e.outro = { ...EPILOGUE_FRAME.outro };
@@ -87,4 +93,7 @@ if (process.argv.includes('--story')) {
   }));
   writeFileSync(file, JSON.stringify(story, null, 2) + '\n');
   console.log('wrote 05-enden.story.json epilogue');
+} else if (updated !== source) {
+  writeFileSync(file, updated);
+  console.log('wrote 05-enden.story.json end.frei');
 }

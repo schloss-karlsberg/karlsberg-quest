@@ -162,7 +162,7 @@ export interface RewardView {
   items: { name: string; count: number }[];
   codex: number;
   skills: string[];
-  /** Point to the field book for newly unlocked facts or extra turn-in history. */
+  /** Point to Aufgaben for newly unlocked facts or extra turn-in history. */
   more: boolean;
 }
 
@@ -203,7 +203,7 @@ export class RewardNotice {
       view.xp > 0 ? h('div.kqq-r-xp', { 'data-testid': 'quest-reward-xp' }, t('quest.xp', { n: view.xp })) : null,
       gains.length ? h('div.kqq-r-gains', gains.join(' · ')) : null,
       view.codex ? h('div.kqq-r-codex', { 'data-testid': 'quest-reward-codex' }, t('quest.codexNew', { n: view.codex })) : null,
-      view.more ? h('div.kqq-r-more', t('quest.moreJournal')) : null,
+      view.more ? h('div.kqq-r-more', t('quest.moreInPause')) : null,
     ]);
     this.dock.append(this.el);
   }

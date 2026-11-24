@@ -180,6 +180,15 @@ describe('key remapping', () => {
 });
 
 describe('settings store', () => {
+  it('ignores a retired journal binding and keeps other custom keys', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ bindings: { journal: ['KeyO'], inventory: ['KeyZ'] } }));
+    const bindings = effectiveBindings(new SettingsStore(storage).state.bindings);
+    expect(bindings).not.toHaveProperty('journal');
+    expect(Object.values(bindings).flat()).not.toContain('KeyO');
+    expect(diffBindings(bindings)).toEqual({ inventory: ['KeyZ'] });
+  });
+
   it('older saved settings gain the new fields (voice volume, accessibility, quality)', () => {
     const storage = new MemoryStorage();
     storage.setItem(SETTINGS_KEY, JSON.stringify({ mouseSensitivity: 1.4, volume: { master: 0.5, music: 0.1, sfx: 0.9, ambience: 0.8 }, graphics: 'low' }));

@@ -3,7 +3,7 @@
  *
  * Action-RPG rework (docs/ACTION-RPG.md §12): the deduction board (blanks, nouns, "Prüfen",
  * batches of three), Laub's hint ladder and losing unconfirmed finds when caught are gone from
- * play. J / Tab and `chronik:open` open the quests system's Journal instead. The case logic
+ * play. `chronik:open` opens Codex. The case logic
  * (./logic.ts) stays for old saves and the story's `confirmed` / `caseComplete` / `reading`
  * conditions; the hooks fill / check / solve still work on the state for tests.
  *
@@ -41,6 +41,7 @@ import {
   setBlank,
 } from './logic';
 import { type ChronikBlank, type ChronikClue, type ChronikSlice, createSlice } from './types';
+import { pausePageHandle } from '../../ui/pause-pages';
 import { openClueCard } from './ui/card';
 import { chronikUniforms } from './world/gfx';
 import { ClueMarkers } from './world/markers';
@@ -51,11 +52,11 @@ export const HOLD_SECONDS = 0.9;
 const MARKER_RANGE = 95;
 
 export interface ChronikHooks {
-  /** Opens the Journal (the board is gone): `chronik:open`. */
+  /** Opens Codex via `chronik:open`. */
   open(caseId?: string): void;
-  /** Closes the Journal. */
+  /** Closes Codex. */
   close(): void;
-  /** 'codex' opens the Journal's Codex tab, 'board' its first tab. */
+  /** Legacy view selector. Both values open Codex. */
   tab(tab: 'board' | 'codex'): void;
   /** Find every clue (no cards): all nouns, codex cards from clues, flags. */
   grantAll(): void;
@@ -192,7 +193,7 @@ function showCard(ctx: GameContext, clue: ChronikClue, d: Discovery | null, tran
       content,
       heightAt: (x, z) => ctx.world.heightAt(x, z),
       reducedMotion: ctx.settings.state.reducedMotion,
-      onChronik: () => queueMicrotask(() => openJournal(ctx)),
+      onCodex: () => queueMicrotask(() => ctx.events.emit('chronik:open', {})),
     },
     clue,
     d,
@@ -320,13 +321,6 @@ function check(ctx: GameContext, caseId: string, force = false): (BatchResult & 
   return r;
 }
 
-/** The Journal replaces the board: J / Tab, the Pinnwand and "Chronik öffnen" on a card open it. */
-function openJournal(ctx: GameContext, tab?: string): void {
-  const q = window.kq?.quests;
-  if (tab && q) q.journal(tab);
-  else ctx.events.emit('chronik:open', {});
-}
-
 // ---------------------------------------------------------------------------------------------
 // world: markers, target, prompt
 
@@ -425,9 +419,9 @@ function installHooks(ctx: GameContext): void {
   if (!kq || kq.chronik) return;
   const getClue = (id: string) => content.clues.get(id);
   kq.chronik = {
-    open: () => openJournal(ctx),
-    close: () => window.kq?.quests?.closeJournal(),
-    tab: (tab) => openJournal(ctx, tab === 'codex' ? 'codex' : 'quests'),
+    open: (caseId) => ctx.events.emit('chronik:open', caseId ? { caseId } : {}),
+    close: () => pausePageHandle('codex')?.close(),
+    tab: () => ctx.events.emit('chronik:open', {}),
     grantAll: () => {
       for (const c of content.clues.values()) doDiscover(ctx, c, true);
     },
@@ -476,7 +470,7 @@ function installHooks(ctx: GameContext): void {
     },
     slice: () => structuredClone(slice(ctx)),
     content: () => ({ clues: [...content.clues.keys()], cases: [...content.cases.keys()], facts: [...content.facts.keys()], nouns: [...content.nouns.keys()] }),
-    isOpen: () => !!window.kq?.quests?.journalOpen().open,
+    isOpen: () => !!pausePageHandle('codex'),
   };
 }
 

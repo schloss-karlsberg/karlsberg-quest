@@ -63,7 +63,7 @@ addStrings('de', {
   'story.hub.map.continue': 'Weiter: {beat}',
   'story.hub.bench': 'Bank',
   'story.hub.bench.status': 'Ausruhen (sichern)',
-  'story.hub.bench.saved': 'Ausgeruht. Feldbuch gesichert.',
+  'story.hub.bench.saved': 'Ausgeruht. Spielstand gespeichert.',
   'story.hub.bench.nosave': 'Ausgeruht. (Sichern ist abgeschaltet.)',
   'story.hub.drawer': 'Mauernische',
   'story.hub.drawer.full': 'Etwas Schweres darin',
@@ -106,11 +106,9 @@ addStrings('de', {
   // choices
   'story.choice.timer': 'Noch {s} s',
 
-  // title flow (the title screen's own buttons, renamed for the story menu)
-  'title.newGame': 'Neues Spiel',
-  'title.continue': 'Fortsetzen',
+  // title flow
   'story.title.new': 'Neues Spiel',
-  'story.title.continue': 'Fortsetzen',
+  'story.title.continue': 'Weiter',
   'story.title.settings': 'Einstellungen',
   'story.title.licences': 'Lizenzen',
   'story.warning.title': 'Bevor du anfängst',
@@ -121,7 +119,7 @@ addStrings('de', {
   'story.warning.gentle': 'Sanfter Modus – wenn dir Kämpfe oder Jagd zu viel werden: Gegner halten weniger aus, treffen nur halb so hart und kündigen ihre Angriffe länger an; die Meute ist langsamer. (Jederzeit änderbar.)',
   'story.warning.accept': 'Verstanden',
   'story.warning.back': 'Zurück',
-  'story.name.title': 'Feldbuch',
+  'story.name.title': 'Dein Name',
   'story.name.prompt': 'Auf die erste Seite gehört ein Name. Wie heißt du? (So nennt dich Marlene.)',
   'story.name.label': 'Vermessung Karlsberg-Wald, Laserscan 2025 – geprüft von:',
   'story.name.placeholder': 'Dein Name',

@@ -1,12 +1,13 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { openPause, waitForHooks } from './helpers/pause';
 
 /**
  * Action-RPG quests (docs/ACTION-RPG.md §8): Hanne gives a task (! over her head) → accept in the
  * conversation (the quest card: title, giver, pitch, goals, reward) → the tracker counts three
  * Mahnbriefe → the Lohnzettel → ? → turn in (the turn-in card, „Übergeben“), the payout notice, one
  * history line told with its source, „Erzähl mehr“ for the rest — no stance card → the story moves on
- * → the Journal (J) shows the task, the history and the new codex cards. No Chronik board ever.
+ * → Pause → Aufgaben shows the task, the history and the new codex cards. No Chronik board ever.
  * Test chapter content/story/99-test.story.json + content/quests/99-test.quests.json (?storytest).
  * Screenshots: test-results/screens/qst-*.png
  */
@@ -32,7 +33,7 @@ type Rec = { n: string; p: unknown }[];
 
 async function boot(page: Page): Promise<void> {
   await page.goto('./?notitle&nosave&fresh&manual&storytest');
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.npc && !!window.kq?.quests, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'npc', 'quests']);
   await page.evaluate(() => {
     const w = window as unknown as { rec: Rec; board: boolean };
     w.rec = [];
@@ -80,7 +81,7 @@ async function killOne(page: Page, i: number): Promise<void> {
   }, i);
 }
 
-test('quests: Hanne gives a task, the tracker counts, the turn-in tells the history; the journal keeps it', async ({ page }) => {
+test('quests: Hanne gives a task, the tracker counts, the turn-in tells the history; the quest log keeps it', async ({ page }) => {
   test.setTimeout(900_000);
   const errors = trackErrors(page);
   await boot(page);
@@ -313,7 +314,7 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.getByTestId('quest-reward-xp')).toHaveText('+120 EP');
   await expect(reward.locator('.kqq-r-gains')).toHaveText('Kräuterbalsam');
   await expect(page.getByTestId('quest-reward-codex')).toHaveText('Neu im Codex (2)');
-  await expect(reward).toContainText('Mehr dazu im Feldbuch');
+  await expect(reward).toContainText('Mehr dazu unter Pause → Aufgaben');
   await page.waitForTimeout(700);
   await shot(page, 'reward');
 
@@ -349,12 +350,11 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(tracker).toContainText('Lichter über dem Bauplatz');
   await expect(tracker).not.toContainText('Der Lohnzettel');
 
-  // ---- the journal (J) ---------------------------------------------------------------------------
-  await page.evaluate(() => window.kq!.press('KeyJ', 1));
-  const journal = page.getByTestId('journal');
-  await expect(journal).toBeVisible();
-  await expect(page.getByTestId('journal-tab-quests')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByTestId('journal-panel-quests')).toContainText('Laufend');
+  // ---- the Pause pages ---------------------------------------------------------------------------
+  await openPause(page);
+  await page.getByTestId('pause-quests').click();
+  const quests = page.getByTestId('page-quests');
+  await expect(quests).toContainText('Laufend');
   await page.getByTestId(`journal-quest-${Q}`).click();
   const detail = page.getByTestId('journal-quest-detail');
   await expect(detail).toContainText('TEST: Der Lohnzettel');
@@ -362,7 +362,8 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.getByTestId('journal-history')).toContainText('en.wikipedia: Karlsberg Castle');
   await expect(detail).not.toContainText('Deine Haltung');
   await shot(page, 'journal-quests');
-  await page.getByTestId('journal-tab-codex').click();
+  await quests.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await page.getByTestId('pause-codex').click();
   await expect(page.getByTestId('codex-card-cx.08')).toBeVisible();
   await expect(page.getByTestId('codex-card-cx.08')).toContainText('neu');
   await expect(page.getByTestId('codex-card-cx.08').locator('.kqq-lab')).toHaveText(/Fakt/i);
@@ -371,12 +372,16 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.getByTestId('codex-detail')).toContainText('Zwei Tage für einen Gulden');
   await expect(page.getByTestId('codex-detail')).toContainText('Quellen');
   await shot(page, 'journal-codex');
-  await page.getByTestId('journal-tab-sets').click();
+  await page.keyboard.press('Escape');
+  await page.getByTestId('pause-sets').click();
   await expect(page.getByTestId('bestiary')).toContainText('Mahnbrief');
   await expect(page.getByTestId('set-hundemarken')).toContainText('TEST: Hundemarke');
   await shot(page, 'journal-sets');
-  await page.keyboard.press('KeyJ');
-  await expect(journal).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('page-sets')).toBeHidden();
+  await expect(page.getByTestId('pause-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pause-menu')).toBeHidden();
 
   // no Chronik board, no noun quiz, anywhere on the way
   expect(await page.evaluate(() => (window as unknown as { board: boolean }).board)).toBe(false);

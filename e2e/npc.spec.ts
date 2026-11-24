@@ -1,10 +1,11 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { waitForHooks } from './helpers/pause';
 
 /**
  * Round 2: ghostly NPCs (Hanne at the building site 1789), conversations, story conditions and
  * actions (talked, inline + modal choices, meters, readings, rooms, memorials, lossless capture,
- * epilogue assembly), barks (idle, gap, memorial quiet) and the Journal (Pinnwand) → hub return.
+ * epilogue assembly), barks (idle, gap, memorial quiet) and Codex (Pinnwand) → hub return.
  * Runs the test chapter content/story/99-test.story.json (`?storytest`).
  * Screenshots: test-results/screens/npc-*.png
  */
@@ -29,7 +30,7 @@ type Rec = { n: string; p: unknown }[];
 
 async function boot(page: Page, extra = ''): Promise<void> {
   await page.goto(`./?notitle&nosave&fresh&manual${extra}`);
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.npc && !!window.kq?.barks && !!window.kq?.chronik, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'npc', 'barks', 'chronik']);
   await page.evaluate(() => {
     const w = window as unknown as { rec: Rec };
     w.rec = [];
@@ -227,7 +228,7 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   expect(errors).toEqual([]);
 });
 
-test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; the Journal from the Pinnwand returns to the hub', async ({ page }) => {
+test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; Codex from the Pinnwand returns to the hub', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   const spoken = () => page.evaluate(() => window.kq!.barks!.state().spoken.map((s) => s.id));
@@ -295,12 +296,14 @@ test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; the Journal fr
   });
   await expect(page.getByTestId('hub')).toBeVisible();
   await page.getByTestId('hub-chronik').click();
-  // the Pinnwand opens the Journal (the Chronik board is gone, docs/ACTION-RPG.md §12)
-  await expect(page.getByTestId('journal')).toBeVisible();
+  // the Pinnwand opens Codex
+  await expect(page.getByTestId('page-codex')).toBeVisible();
   await expect(page.locator('.ck-board')).toHaveCount(0);
-  await expect(page.getByTestId('hub')).toBeHidden();
-  await page.evaluate(() => window.kq!.chronik!.close());
-  await expect(page.getByTestId('journal')).toBeHidden();
+  expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('page-codex')).toBeHidden();
+  await expect(page.getByTestId('hub-chronik')).toBeFocused();
+  await expect(page.getByTestId('hub')).toHaveCount(1);
   await expect(page.getByTestId('hub')).toBeVisible();
   expect(errors).toEqual([]);
 });

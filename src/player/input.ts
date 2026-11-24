@@ -23,7 +23,6 @@ export type Action =
   | 'scan1'
   | 'scan2'
   | 'scan3'
-  | 'journal'
   | 'pause'
   /** Röntgenblick (point cloud under the canopy), tools system. */
   | 'xray'
@@ -43,7 +42,7 @@ export type Action =
   | 'dodge'
   /** Quick-use item (Kräuterbalsam …). */
   | 'quickUse'
-  /** Journal on the Ausrüstung tab. */
+  /** Open Ausrüstung. */
   | 'inventory'
   /** Abilities (combat variety pass, §4.2): Ausfall (level 2), Erdstoß (4), Wirbel (6). T / Z(Y) / U: one row, free keys. */
   | 'skill1'
@@ -77,7 +76,6 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   scan1: ['Digit1'],
   scan2: ['Digit2'],
   scan3: ['Digit3'],
-  journal: ['KeyJ'],
   pause: ['Escape', 'KeyP'],
   xray: ['KeyV', 'Digit4'],
   plans: ['KeyB'],
@@ -112,7 +110,7 @@ export const SHARED_KEYS: [Action, Action][] = [
 /** Actions the player can rebind in the settings, in display order. */
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
-  'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans', 'journal',
+  'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans',
   'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode', 'photo',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];

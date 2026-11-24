@@ -20,7 +20,6 @@ export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'down' | 'shutter'
   // a feather
   fly: S('<path d="M5 19 15 9"/><path d="M8.5 15.5C7 10 11 4 19 4c0 8-6 12-11.5 11.5z"/><path d="M11 13h3.5M13 10.5h3"/>'),
   // the field book
-  journal: S('<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10M9 8h5"/>'),
   // a folded map
   map: S('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>'),
   // a balm jar

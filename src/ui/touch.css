@@ -508,8 +508,7 @@ html[data-kq-reduced-motion] .kq-t-btn {
 
 /* key hints on the HUD docks mean nothing on touch: the buttons carry the icons */
 html[data-kq-touch] .kq-dock-vitals .key,
-html[data-kq-touch] .kqp-q-key,
-html[data-kq-touch] .kqj-foot kbd {
+html[data-kq-touch] .kqp-q-key {
   display: none;
 }
 
@@ -946,55 +945,6 @@ html[data-kq-touch] .kq-title {
     top: 0;
     margin: -6px -8px 0 0;
     z-index: 2;
-  }
-}
-
-/* ---- M-10: the field book on a landscape phone. One sideways-scrolling row of compact tabs
-   next to the title, no subtitle, the page as tall as the screen allows. */
-@media (max-height: 500px) {
-  html[data-kq-touch] .kq-modal.kqj-modal {
-    height: 100%;
-    padding: 8px 14px 8px 20px;
-  }
-  html[data-kq-touch] .kqj-modal .kq-modal-body,
-  html[data-kq-touch] .kqj {
-    min-width: 0;
-  }
-  html[data-kq-touch] .kqj {
-    gap: 6px;
-  }
-  html[data-kq-touch] .kqj-head {
-    flex-wrap: nowrap;
-    align-items: flex-end;
-    gap: 10px;
-    padding-right: 40px;
-  }
-  html[data-kq-touch] .kq-modal h2.kqj-title {
-    font-size: 22px;
-  }
-  html[data-kq-touch] .kqj-sub,
-  html[data-kq-touch] .kqj-tn {
-    display: none;
-  }
-  html[data-kq-touch] .kqj-tabs {
-    flex: 1;
-    min-width: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    touch-action: pan-x;
-    overscroll-behavior-x: contain;
-  }
-  html[data-kq-touch] .kqj-tabs::-webkit-scrollbar {
-    display: none;
-  }
-  html[data-kq-touch] .kqj-tab {
-    flex: none;
-    min-height: 44px;
-    align-items: center;
-    padding: 4px 10px 2px;
-    font-size: 15px;
-    white-space: nowrap;
   }
 }
 

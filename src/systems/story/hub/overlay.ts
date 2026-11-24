@@ -6,7 +6,7 @@
  */
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
-import { shelfItems } from '../../../ui/journal';
+import { shelfItems } from '../../../ui/pause-pages';
 import type { ModalHandle, ModalManager } from '../../../ui/modal';
 import type { HubItem } from '../types';
 
@@ -87,7 +87,7 @@ export class HubOverlay {
     this.d.onClose();
   }
 
-  private tile(item: HubItem, label: string, status: string, onClick: () => void): HTMLElement {
+  private tile(item: HubItem, label: string, status: string, onClick: (event: MouseEvent) => void): HTMLElement {
     const icon = ICON[item];
     return h('button.kqs-hub-tile', { 'data-testid': `hub-${item}`, onclick: onClick }, [
       h('span.kqs-hub-icon', svg(icon)),
@@ -102,7 +102,10 @@ export class HubOverlay {
     const c = this.d.counts();
     const transcript = h('div.kqs-hub-radio', { 'data-testid': 'hub-transcript' }, [h('span.kqs-hub-radio-hint', t('story.hub.phone.idle'))]);
     const grid = h('div.kqs-hub-grid', [
-      this.tile('chronik', t('story.hub.chronik'), t('story.hub.chronik.status'), () => this.d.use('chronik')),
+      this.tile('chronik', t('story.hub.chronik'), t('story.hub.chronik.status'), (event) => {
+        (event.currentTarget as HTMLButtonElement).focus();
+        this.d.use('chronik');
+      }),
       this.tile('phone', t('story.hub.phone'), t('story.hub.phone.status'), () => {
         this.d.use('phone');
         this.radio(transcript);

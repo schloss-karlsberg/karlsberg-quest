@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-24 | **Pause navigation and saving (TASK-007).** Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album on desktop and touch. I and M retain their shortcuts. The clue card and the Pinnwand open Codex directly. The title and saving use „Neues Spiel“, „Weiter“, „Speichern“ and „Spielstand gespeichert.“ |
 | unreleased | 2026-11-24 | **Party credits (TASK-013).** All three endings credit contributors, asset authors, tools and sources. The credits page uses the same list. Enter, Escape and the touch-friendly skip button return the player to the party. Reduced motion shows a scrollable list with no camera orbit. |
 | unreleased | 2026-11-24 | **Quest payouts and HUD toasts (TASK-009).** Payouts move to the HUD edge and share one slot with routine toasts. A payout reports the gains that fit and points to the field book for details. Escape and outside touch taps dismiss the notice while gameplay controls remain available. |
 | unreleased | 2026-11-24 | **Bussole loading indicator (TASK-011):** the compass appears on first paint and stays in place on the title screen. Its brass ring tracks terrain progress. During play, it appears for longer scenery, era and Röntgenblick waits. Reduced motion keeps the needle still. |
@@ -130,7 +131,7 @@ The research suggested USK 12 for reach. This draft follows the owner's decision
 
 > **Superseded in part (D-008, 2026-11-15).** The core loop is now **quest → go → fight / collect → turn
 > in → hear the history → level up**; the full design (controls, combat, enemies, progression, loot,
-> quests, journal, quest catalogue per chapter) is [`docs/ACTION-RPG.md`](ACTION-RPG.md). §3.1 and
+> quests, Pause pages, quest catalogue per chapter) is [`docs/ACTION-RPG.md`](ACTION-RPG.md). §3.1 and
 > §3.3 below describe the 0.2 deduction loop and stay for the record; §3.2 verbs and §3.4 threats remain
 > valid, extended by the combat verbs (Hieb, Wuchthieb, Ausweichen, Bannlicht, Schnellgegenstand).
 
@@ -339,7 +340,7 @@ The Karlsbergquelle is the home base in every chapter (tour decision 11): the wa
 | 1796 onward | Grey ash, moss taking over | Picks and carts; then silence |
 
 - **Characters:** 2D portrait cards in an etching style. Ghosts are silhouettes and particles. The hounds are smoke and eyes. No full humanoid models in the MVP.
-- **UI:** a field-book look: ruled paper, plan sheets, handwritten annotations. (The journal is still called „Feldbuch“ in the game; whether the term stays is TBD — see TASK-007.)
+- **UI:** ruled paper, plan sheets and handwritten annotations. Desktop and touch players reach the quest log, Codex, map and other feature pages from Pause.
 - **Audio:** browsers need a click before audio can play. The code still makes that click "light the lantern" on a screen from the earlier concept (legacy, to be replaced by a tour intro, TASK-007). The hunting horn is the main threat telegraph, and the hounds are placed in 3D space.
 - **Accessibility:** subtitles; visual indicators for threat sounds; colour-blind-safe era palettes; reduced motion; remappable keys; gentle mode.
 - **Asset sourcing:** CC0 assets from the listed sites (D-009, docs/ART-DIRECTION.md §8).

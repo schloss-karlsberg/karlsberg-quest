@@ -5,7 +5,7 @@ import { addStrings } from '../../i18n';
  * notes, settings rows and the extra key-help rows. Names/tiers follow bible 00-overview §4.
  */
 addStrings('de', {
-  'skills.card.kicker': 'Neu im Feldbuch',
+  'skills.card.kicker': 'Neue Fähigkeit',
   'skills.card.stamp': 'Freigeschaltet',
   'skills.card.tier': 'Stufe {n}',
   'skills.card.aria': '{Name} {Stufe} freigeschaltet',
@@ -74,7 +74,7 @@ addStrings('de', {
   'skills.locked.map': 'Noch keine Karte zum Vergleichen.',
   'skills.locked.measure': 'Messen lernst du noch (Kartograf 3).',
   'skills.locked.xray': 'Den Röntgenblick hast du noch nicht.',
-  'skills.locked.plans': 'Noch keine Pläne im Feldbuch (Baumeister).',
+  'skills.locked.plans': 'Noch keine Pläne (Baumeister).',
 
   // maps
   'map.1840': 'Karte 1836–41 eingeblendet',

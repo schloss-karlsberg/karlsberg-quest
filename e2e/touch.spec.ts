@@ -3,8 +3,8 @@ import { SCREENS, trackErrors } from './helpers/common';
 
 /**
  * Touch controls (src/ui/touch.ts, phase 1 of docs/PERF-MOBILE-RESEARCH.md §B) on emulated
- * phones and a tablet in landscape: walk with the stick, look by dragging, hit, open and close the
- * field book, pause, all with real touch events (CDP `Input.dispatchTouchEvent`, so the browser
+ * phones and a tablet in landscape: walk with the stick, look by dragging, hit, and navigate
+ * Pause, all with real touch events (CDP `Input.dispatchTouchEvent`, so the browser
  * makes the pointer events itself). Plus the title and the settings by tap.
  */
 
@@ -79,7 +79,7 @@ for (const [name, device] of Object.entries(DEVICES)) {
   test.describe(`touch on ${name}`, () => {
     test.use({ ...device });
 
-    test('walk, look, hit, field book, pause', async ({ page }) => {
+    test('walk, look, hit and navigate Pause', async ({ page }) => {
       test.setTimeout(240_000);
       const errors = trackErrors(page);
       await bootField(page);
@@ -137,23 +137,31 @@ for (const [name, device] of Object.entries(DEVICES)) {
       await new Finger(cdp, 3).tap(atk.x, atk.y);
       await expect.poll(() => page.evaluate(() => (window as unknown as { __swings: number }).__swings), { timeout: 10_000 }).toBeGreaterThan(0);
 
-      // field book: open by its button, close by the modal's × (a tap)
-      const book = await center(page, 'touch-journal');
-      await new Finger(cdp, 4).tap(book.x, book.y);
-      await expect.poll(() => page.evaluate(() => window.kq!.ctx.ui.modals.count), { timeout: 10_000 }).toBeGreaterThan(0);
-      await expect(page.getByTestId('touch')).toBeHidden();
-      await page.screenshot({ path: `${SCREENS}/touch-${name}-journal.png` });
-      const close = page.locator('.kq-modal-layer button.close').last();
-      await close.tap();
-      await expect.poll(() => page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(0);
-      await expect(page.getByTestId('touch')).toBeVisible();
-
-      // pause: the button opens the pause menu (pause is otherwise unreachable on touch)
+      await page.evaluate(() => window.kq!.ctx.settings.update((s) => (s.reducedMotion = true), 'reducedMotion'));
       const pz = await center(page, 'touch-pause');
-      await new Finger(cdp, 5).tap(pz.x, pz.y);
-      await expect(page.getByTestId('resume')).toBeVisible();
+      const menuFinger = new Finger(cdp, 4);
+      await menuFinger.tap(pz.x, pz.y);
+      const pause = page.getByTestId('pause-menu');
+      await expect(pause).toBeVisible();
+      await expect(page.getByTestId('touch')).toBeHidden();
       expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(true);
       await page.screenshot({ path: `${SCREENS}/touch-${name}-pause.png` });
+      for (const id of ['quests', 'codex', 'sets', 'funde', 'gear', 'talents', 'karte', 'album']) {
+        if (id === 'album' && name === 'iphone-13') {
+          const box = (await pause.boundingBox())!;
+          await menuFinger.start(box.x + box.width - 28, box.y + box.height - 55);
+          await menuFinger.move(box.x + box.width - 28, box.y + 75);
+          await menuFinger.end();
+          await expect.poll(() => pause.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+        }
+        await pause.getByTestId(`pause-${id}`).tap();
+        const view = page.getByTestId(`page-${id}`);
+        await expect(view).toBeVisible();
+        await expect(view.locator('xpath=..')).toHaveCSS('animation-name', 'none');
+        await view.getByRole('button', { name: 'Zurück', exact: true }).tap();
+        await expect(view).toBeHidden();
+        await expect(pause).toBeVisible();
+      }
       await page.getByTestId('resume').tap();
       await expect(page.getByTestId('resume')).toBeHidden();
       await expect.poll(() => page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
@@ -170,7 +178,7 @@ test.describe('notices on a small landscape phone', () => {
     test.setTimeout(240_000);
     await bootField(page);
     const finger = new Finger(await page.context().newCDPSession(page), 1);
-    const text = 'Feldbuch ergänzt: Wasser, das sich erinnert – die Aufzeichnungen der Vermessungskommission';
+    const text = 'Codex ergänzt: Wasser, das sich erinnert – die Aufzeichnungen der Vermessungskommission';
     await page.evaluate((message) => {
       const k = window.kq!;
       k.ctx.settings.update((s) => (s.reducedMotion = true), 'reducedMotion');
@@ -210,7 +218,7 @@ test.describe('notices on a small landscape phone', () => {
     await page.evaluate(() => {
       const body = document.createElement('div');
       body.style.height = '1100px';
-      window.kq!.ctx.ui.modals.open({ title: 'Feldbuch', body });
+      window.kq!.ctx.ui.modals.open({ title: 'Codex', body });
     });
     const modal = page.getByRole('dialog');
     await expect(modal).toBeVisible();

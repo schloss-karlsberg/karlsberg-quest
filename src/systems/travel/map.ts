@@ -1,5 +1,5 @@
 /**
- * The field map (M, or the Journal's "Karte" tab): the 1836–41 survey sheet as the paper, the
+ * The field map (M, or Pause → Karte): the 1836–41 survey sheet as the paper, the
  * palace footprints inked over it, Laub's survey points (brass tripods; the found ones can be
  * travelled to), the Fundstücke and caches seen so far, the goal (diamond) and you (red arrow).
  * Wheel zooms, dragging pans, a click on a point selects it, Enter / the button travels.
@@ -60,19 +60,19 @@ function fitView(m: MapModel, W: number, H: number): { cx: number; cz: number; m
   return { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, mpp };
 }
 
-/** Builds the map page into `root` (modal body or journal tab); returns a cleanup. */
-export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapModel, act: MapActions, compact = false): () => void {
+/** Builds the map page into `root` (the modal body); returns a cleanup. */
+export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapModel, act: MapActions): () => void {
   root.classList.add('kqt-map');
-  if (compact) root.classList.add('kqt-map-compact');
   const wrap = el('div', 'kqt-map-wrap');
   const canvas = el('canvas', 'kqt-map-canvas');
   canvas.dataset.testid = 'travel-map-canvas';
   canvas.setAttribute('aria-label', TRAVEL_DE.mapAria);
+  canvas.tabIndex = 0;
   const side = el('div', 'kqt-map-side');
   wrap.append(canvas, side);
   root.append(wrap);
-  const W = compact ? 520 : 640;
-  const H = compact ? 420 : 520;
+  const W = 640;
+  const H = 520;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
@@ -197,7 +197,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
         g.strokeStyle = 'rgba(140, 47, 31, 0.9)';
         g.lineWidth = 2;
         g.beginPath();
-        g.arc(0, 0, 13 + Math.sin(time / 200) * 1.5, 0, Math.PI * 2);
+        g.arc(0, 0, ctx.settings.state.reducedMotion ? 13 : 13 + Math.sin(time / 200) * 1.5, 0, Math.PI * 2);
         g.stroke();
       }
       g.fillStyle = '#b58b3d';
@@ -265,6 +265,10 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     raf = requestAnimationFrame(frame);
   }
 
+  function focusDestination(): void {
+    (side.querySelector<HTMLButtonElement>('li.sel .kqt-map-go:not(:disabled)') ?? canvas).focus();
+  }
+
   function renderSide(): void {
     side.textContent = '';
     side.append(el('p', 'kqt-map-hint', TRAVEL_DE.mapHint));
@@ -285,6 +289,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
         selected = p.id;
         view = { ...view, cx: p.x, cz: p.z };
         renderSide();
+        focusDestination();
       };
       li.append(head, el('small', undefined, p.note));
       const go = el('button', 'kq-btn kqt-map-go', TRAVEL_DE.go);
@@ -370,7 +375,8 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
       e.stopPropagation();
       selected = byDist[n - 1]!.id;
       renderSide();
-    } else if (e.key === 'Enter' && selected && !m.block) {
+      focusDestination();
+    } else if (e.key === 'Enter' && e.target === canvas && selected && !m.block) {
       e.preventDefault();
       e.stopPropagation();
       act.travel(selected);
@@ -378,13 +384,14 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
       view = { ...view, mpp: Math.max(0.6, Math.min(5, view.mpp * (e.key === '+' ? 1 / 1.25 : 1.25))) };
     }
   };
-  window.addEventListener('keydown', onKey, true);
+  const modal = root.closest<HTMLElement>('.kq-modal');
+  modal?.addEventListener('keydown', onKey);
   renderSide();
   raf = requestAnimationFrame(frame);
   return () => {
     alive = false;
     cancelAnimationFrame(raf);
-    window.removeEventListener('keydown', onKey, true);
+    modal?.removeEventListener('keydown', onKey);
   };
 }
 
@@ -398,7 +405,6 @@ const CSS = `
 .kq-modal.kqt-map-modal h2 { font-size: 30px; margin-bottom: 8px; }
 .kqt-map-wrap { display: flex; gap: 18px; align-items: flex-start; }
 .kqt-map-canvas { flex: 0 1 auto; max-width: min(640px, 62vw); height: auto; border: 1.5px solid var(--ink); box-shadow: 0 2px 10px rgba(0,0,0,0.25); cursor: grab; touch-action: none; background: #e8dcc0; }
-.kqt-map-compact .kqt-map-canvas { max-width: min(520px, 56vw); }
 .kqt-map-side { flex: 1 1 220px; min-width: 200px; max-height: 520px; overflow: auto; font-size: 15px; }
 .kqt-map-hint { font-style: italic; color: var(--ink-soft); margin: 0 0 8px; font-size: 14px; line-height: 1.35; }
 .kqt-map-block { margin: 0 0 10px; padding: 6px 10px; border-left: 3px solid var(--accent); background: rgba(140,47,31,0.08); font-size: 15px; }

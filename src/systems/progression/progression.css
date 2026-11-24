@@ -1,5 +1,5 @@
 /* Progression: XP bar + quick slot (vitals dock), pickup feed (feed dock), floating XP numbers,
-   level-up card, journal tabs Ausrüstung / Talente and the fallback journal. Tokens: src/ui/styles.css. */
+   level-up card, the Ausrüstung and Talente pages. Tokens: src/ui/styles.css. */
 
 /* The vitals dock stays inside the 190 px gutter the dialogue card leaves at 1024 px and up
    (story.css .kqs-dlg): 22 + 168 px. Combat's bars share this width. */
@@ -523,48 +523,6 @@ body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
   transition: opacity 0.3s;
 }
 
-/* ---------------------------------------------------------------- fallback journal */
-.kqp-jf.kq-modal {
-  padding-left: 64px;
-}
-.kqp-jf-tabs {
-  display: flex;
-  gap: 4px;
-  margin: -4px 0 14px;
-  border-bottom: 1.5px solid var(--ink);
-}
-.kqp-jf-tab {
-  position: relative;
-  padding: 6px 16px 5px;
-  font-family: var(--sc);
-  font-size: 20px;
-  color: var(--ink-soft);
-  background: transparent;
-  border: 1.5px solid transparent;
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-}
-.kqp-jf-tab[aria-selected='true'] {
-  color: var(--ink);
-  background: rgba(255, 250, 235, 0.45);
-  border-color: var(--ink);
-  margin-bottom: -1.5px;
-}
-.kqp-jf-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  margin-left: 6px;
-  padding: 0 5px;
-  font-family: var(--serif);
-  font-size: 13px;
-  color: var(--paper);
-  background: var(--accent);
-  border-radius: 10px;
-  vertical-align: 2px;
-}
 
 /* ---------------------------------------------------------------- Ausrüstung */
 .kqp-gear {

@@ -1,10 +1,11 @@
 import { type Page, expect, test } from '@playwright/test';
+import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS, trackErrors } from './helpers/common';
 
 /**
  * Progression (docs/ACTION-RPG.md §6–§7, §10): XP bar + level-up stamp card (and how it steps
  * aside for a story title card), `flags['rpg.level']`, a glowing pickup in the test chapter
- * (walk over it → feed → H uses it), enemy loot drops, the journal tabs Ausrüstung / Talente.
+ * (walk over it → feed → H uses it), enemy loot drops, the Ausrüstung and Talente pages.
  * Runs the test chapter (`?storytest`, beat q1). Screenshots: test-results/screens/prg-*.png.
  */
 test.describe.configure({ timeout: 420_000 });
@@ -13,7 +14,7 @@ type Rec = { n: string; p: Record<string, unknown> }[];
 
 async function boot(page: Page): Promise<void> {
   await page.goto('./?notitle&nosave&fresh&manual&storytest');
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.progression && !!window.kq?.skills && !!window.kq?.npc, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'progression', 'skills', 'npc']);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.state.mutable.flags['barks.quiet'] = true;
@@ -291,7 +292,7 @@ test('a glowing pickup at dusk: walk over it → feed → H uses it; E picks up;
   expect(errors).toEqual([]);
 });
 
-test('journal (I): Ausrüstung and Talente; learning a talent changes the stats', async ({ page }) => {
+test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes the stats', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   await quiet(page);
@@ -319,9 +320,8 @@ test('journal (I): Ausrüstung and Talente; learning a talent changes the stats'
   expect((await prog(page)).equipped.weapon).toBe('item.stab.eisen');
 
   await page.evaluate(() => window.kq!.press('KeyI', 2));
-  await page.evaluate(() => window.kq!.step(5));
-  const journal = page.locator('[data-testid="journal-fallback"], [data-testid="journal"]').first();
-  await expect(journal).toBeVisible();
+  const gear = page.getByTestId('page-gear');
+  await expect(gear).toBeVisible();
   await expect(page.getByTestId('journal-gear')).toBeVisible();
   await expect(page.getByTestId('gear-weapon')).toContainText('Messstab mit Eisenbeschlag');
   await expect(page.getByTestId('gear-supply-item.balsam')).toContainText('4 / 9');
@@ -339,8 +339,12 @@ test('journal (I): Ausrüstung and Talente; learning a talent changes the stats'
   await shot(page, 'gear-1024');
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  // Talente
-  await page.getByTestId('journal-tab-talents').click();
+  await gear.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await expect(gear).toBeHidden();
+  await openPause(page);
+  const talentEntry = page.getByTestId('pause-talents');
+  await expect(talentEntry).toContainText('2');
+  await talentEntry.click();
   await expect(page.getByTestId('journal-talents')).toBeVisible();
   await expect(page.getByTestId('talent-points')).toHaveAttribute('data-points', '2');
   await expect(page.getByTestId('talent-learn-stab.dritter')).toBeDisabled();
@@ -361,7 +365,10 @@ test('journal (I): Ausrüstung and Talente; learning a talent changes the stats'
   await shot(page, 'talents-1024');
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.keyboard.press('Escape');
-  await expect(journal).toBeHidden();
+  await expect(page.getByTestId('page-talents')).toBeHidden();
+  await expect(talentEntry.locator('.kq-pause-badge')).toBeHidden();
+  await expect(talentEntry).toBeFocused();
+  await page.keyboard.press('Escape');
   // H now pours oil: the lantern is asked to light and refill
   await page.evaluate(() => window.kq!.press('KeyH', 2));
   expect(await events(page, 'item:use')).toEqual([{ item: 'item.lampenoel' }]);

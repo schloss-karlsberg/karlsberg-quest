@@ -3,13 +3,13 @@
  * (playtest round 2: "long empty walks", "markers point through buildings").
  *
  *  - Survey points (points.ts): Laub's tripods. Walking up to one "misst es ein" (beam shoots up,
- *    rings run out, a brass chime); from then on the map (M, or the Journal's "Karte" tab) takes you
+ *    rings run out, a brass chime); from then on the map (M, or Pause → Karte) takes you
  *    there in a breath: in the present day always, in the past while nothing holds you there (no
  *    fight, no pack, no fire or story meter, no `flags['travel.locked']`). A point next to a far
  *    goal is announced by Laub, so a chapter never starts with a march across the land.
  *  - Route POIs (pois.ts): every ~120 m beside the chapters' walks a cache guarded by two to four
  *    spectral things (`enemy:spawn` group `poi.<id>`; cleared → the lid flies open, `loot:place`,
- *    `xp:grant`), a Fundstück (lore.ts: a card, EP, the Journal's "Fundstücke" tab) or a Wegstein
+ *    `xp:grant`), a Fundstück (lore.ts: a card, EP, Pause → Funde) or a Wegstein
  *    that heals once in a while.
  *  - Wegweiser (trail.ts + world/route.ts): chalk-blue motes along the walkable route to the goal
  *    (round wings, through the open gate) when a goal is new, the straight line is blocked, or the
@@ -28,7 +28,7 @@ import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
-import { addJournalTab } from '../../ui/journal';
+import { addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { PATH_COST, findRoute, pathGroundCost } from '../../world/route';
 import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
@@ -161,7 +161,6 @@ class Travel {
   private sprint = 0;
   private lastWritten = Number.NaN;
   private lastBase = 1;
-  private mapOpen: { close(): void } | null = null;
   private journeying = false;
   private goalStory: { x: number; z: number } | null = null;
   readonly trail = new Trail();
@@ -335,12 +334,13 @@ class Travel {
 
   // ---- journeys ------------------------------------------------------------------------------
 
-  go(id: string, force = false): boolean {
+  go(id: string, { force = false, fromMap = false } = {}): boolean {
     const ctx = this.ctx;
     const p = pointById(id);
     if (!p) return false;
     if (!force && (this.blockReason() || !this.known().some((k) => k.id === id))) return false;
-    this.closeMap();
+    if (fromMap) ctx.ui.modals.closeAll();
+    else this.closeMap();
     this.journeying = true;
     const from = { x: ctx.player.position.x, z: ctx.player.position.z };
     const curtain = document.createElement('div');
@@ -434,32 +434,31 @@ class Travel {
   }
 
   openMap(): void {
-    const ctx = this.ctx;
-    if (this.mapOpen || ctx.ui.modals.count > 0) return;
-    const body = document.createElement('div');
-    body.dataset.testid = 'travel-map';
-    let cleanup: (() => void) | null = null;
-    const handle = ctx.ui.modals.open({
-      title: TRAVEL_DE.mapTitle,
-      body,
-      wide: true,
-      className: 'kqt-map-modal',
-      backdrop: 'still',
-      onClose: () => {
-        cleanup?.();
-        this.mapOpen = null;
-      },
-    });
-    cleanup = renderMap(ctx, body, () => this.model(), {
-      travel: (id) => this.go(id),
-      layer: (id) => ctx.events.emit('survey:show-map', { layer: id }),
-    });
-    this.mapOpen = handle;
+    if (this.ctx.ui.modals.count === 0) openPausePage(this.ctx.ui.modals, 'karte');
   }
 
   closeMap(): void {
-    this.mapOpen?.close();
-    this.mapOpen = null;
+    pausePageHandle('karte')?.close();
+  }
+
+  registerPages(): void {
+    const ctx = this.ctx;
+    let cleanup: (() => void) | undefined;
+    addPausePage({
+      id: 'karte', label: TRAVEL_DE.mapLabel, title: TRAVEL_DE.mapTitle, className: 'kqt-map-modal', order: 60,
+      render: (el) => {
+        el.dataset.testid = 'travel-map';
+        cleanup = renderMap(ctx, el, () => this.model(), {
+          travel: (id) => this.go(id, { fromMap: true }),
+          layer: (id) => ctx.events.emit('survey:show-map', { layer: id }),
+        });
+      },
+      hide: () => {
+        cleanup?.();
+        cleanup = undefined;
+      },
+    });
+    addPausePage({ id: 'funde', label: TRAVEL_DE.fundLabel, order: 35, render: (el) => this.renderFunde(el) });
   }
 
   // ---- POIs ----------------------------------------------------------------------------------
@@ -952,11 +951,11 @@ class Travel {
         return SURVEY_POINTS.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z, known: known.has(p.id), activated: this.slice.activated.includes(p.id) }));
       },
       activate: (id) => this.activate(id),
-      go: (id, force) => this.go(id, force),
+      go: (id, force) => this.go(id, { force }),
       map: (open = true) => {
         if (open) this.openMap();
         else this.closeMap();
-        return !!this.mapOpen;
+        return !!pausePageHandle('karte');
       },
       pois: () => this.pois.map((p) => ({ ...p, state: this.poiState(p), built: this.poiVis.has(p.id) })),
       nearest: (kind) => {
@@ -984,7 +983,6 @@ class Travel {
     };
   }
 
-  /** The Journal's "Fundstücke" page. */
   renderFunde(el: HTMLElement): void {
     const found = LORE.filter((l) => this.pois.some((p) => p.lore === l.id && this.slice.done.includes(p.id)));
     const total = new Set(this.pois.filter((p) => p.lore).map((p) => p.lore)).size;
@@ -1035,32 +1033,7 @@ export default defineSystem({
     registerEraMaterials('travel.poi', '*', () => [buildTripod(0, 0, 0, TRIPOD_SEED_BASE).group, buildShrine(0, 0, 0, 0, 1).group]);
     travel.wire();
     hooks = travel.hooks();
-    let cleanup: (() => void) | null = null;
-    addJournalTab({
-      id: 'karte',
-      label: TRAVEL_DE.journalTab,
-      // last: Aufgaben 1, Codex 2, Sammlungen 3 keep their digits (M opens the map directly)
-      order: 60,
-      render: (el) => {
-        if (!travel) return;
-        const t = travel;
-        cleanup?.();
-        cleanup = renderMap(ctx, el, () => t.model(), { travel: (id) => {
-          ctx.ui.modals.closeAll();
-          t.go(id);
-        }, layer: (id) => ctx.events.emit('survey:show-map', { layer: id }) }, true);
-      },
-      hide: () => {
-        cleanup?.();
-        cleanup = null;
-      },
-    });
-    addJournalTab({
-      id: 'funde',
-      label: TRAVEL_DE.fundTab,
-      order: 35,
-      render: (el) => travel?.renderFunde(el),
-    });
+    travel.registerPages();
   },
   update(dt, ctx) {
     if (hooks && window.kq && window.kq.travel !== hooks) window.kq.travel = hooks;

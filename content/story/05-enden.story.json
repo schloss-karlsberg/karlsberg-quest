@@ -283,7 +283,7 @@
         {
           "do": "objective",
           "id": "end.frei",
-          "text": "Frei unterwegs: Sammlungen und Codex im Feldbuch (J) · Esc → „Ende noch einmal wählen“",
+          "text": "Frei unterwegs: Sammlungen und Codex unter Pause · Esc → „Ende noch einmal wählen“",
           "delay": 2
         }
       ]

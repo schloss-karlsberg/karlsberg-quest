@@ -1,177 +1,16 @@
-/**
- * The Journal (J / Tab): one field-book modal with tabs from src/ui/journal.ts (journalTabs()).
- * Replaces the Chronik board (docs/ACTION-RPG.md §8.4). The quests system registers 10 Aufgaben,
- * 20 Codex, 30 Sammlungen (renderers below); progression adds 40 Ausrüstung and 50 Talente.
- *
- * Keyboard: ←/→ (or 1–9) switch tabs, Tab cycles focus inside (the modal manager's trap),
- * J or Esc closes. Every tab is rendered fresh when shown.
- */
+/** The quest log, Codex and collections renderers. */
 import type { GameContext } from '../../core/context';
 import type { Confidence, Fact } from '../../content/types';
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
-import { type JournalTab, journalSections, journalTabs } from '../../ui/journal';
-import type { ModalHandle } from '../../ui/modal';
+import { pageSections } from '../../ui/pause-pages';
 import type { ItemDef, QuestDef, QuestProgress } from '../../rpg/types';
 import { ENEMIES } from '../../rpg/enemies';
 import { COLLECTIONS } from '../../rpg/items';
 import type { Era } from '../../core/era';
 import { journalRunning } from './logic';
 
-// ---------------------------------------------------------------------------------------------
-// the modal
-
-export class JournalModal {
-  private modal: ModalHandle | null = null;
-  private current = '';
-  private readonly tabsEl = h('div.kqj-tabs', { role: 'tablist', 'aria-label': t('journal.title') });
-  private readonly panel = h('div.kqj-panel', { role: 'tabpanel', tabindex: '-1' });
-
-  constructor(
-    private readonly ctx: GameContext,
-    private readonly hooks: { opened(): void; closed(): void; page(): void },
-  ) {}
-
-  get open(): boolean {
-    return !!this.modal && !this.modal.closed;
-  }
-
-  get tab(): string {
-    return this.current;
-  }
-
-  show(tab?: string): void {
-    const tabs = journalTabs();
-    if (!tabs.length) return;
-    const want = tab && tabs.some((x) => x.id === tab) ? tab : this.current && tabs.some((x) => x.id === this.current) ? this.current : tabs[0]!.id;
-    if (this.open) {
-      this.select(want);
-      return;
-    }
-    if (this.ctx.ui.modals.count > 0) this.ctx.ui.modals.closeAll();
-    const body = h('div.kqj', { 'data-testid': 'journal' }, [
-      h('div.kqj-head', [h('div.kqj-titles', [h('h2.kqj-title', t('journal.title')), h('span.kqj-sub', t('journal.subtitle'))]), this.tabsEl]),
-      this.panel,
-      h('div.kqj-foot', [h('kbd', 'J'), ' / ', h('kbd', 'Esc'), ` ${t('journal.close').replace(/^.*?\(.*?\)\s*/, '')}`]),
-    ]);
-    this.modal = this.ctx.ui.modals.open({
-      body,
-      className: 'kqj-modal',
-      wide: true,
-      backdrop: 'still',
-      onClose: () => {
-        window.removeEventListener('keydown', this.onKey, true);
-        journalTabs().find((x) => x.id === this.current)?.hide?.();
-        this.modal = null;
-        this.hooks.closed();
-      },
-    });
-    this.modal.el.setAttribute('aria-label', t('journal.title'));
-    window.addEventListener('keydown', this.onKey, true);
-    this.current = '';
-    this.select(want);
-    this.hooks.opened();
-  }
-
-  close(): void {
-    this.modal?.close();
-  }
-
-  /** Re-render the open tab (state changed underneath). */
-  refresh(): void {
-    if (!this.open) return;
-    const keep = this.panel.scrollTop;
-    this.renderTabs();
-    journalTabs().find((x) => x.id === this.current)?.render(this.panel, this.ctx);
-    this.panel.scrollTop = keep;
-  }
-
-  select(id: string): void {
-    const tabs = journalTabs();
-    const tab = tabs.find((x) => x.id === id) ?? tabs[0];
-    if (!tab) return;
-    if (this.current && this.current !== tab.id) {
-      tabs.find((x) => x.id === this.current)?.hide?.();
-      this.hooks.page();
-    }
-    this.current = tab.id;
-    this.renderTabs();
-    this.panel.replaceChildren();
-    this.panel.dataset.testid = `journal-panel-${tab.id}`;
-    this.panel.setAttribute('aria-labelledby', `kqj-tab-${tab.id}`);
-    tab.render(this.panel, this.ctx);
-    this.panel.scrollTop = 0;
-  }
-
-  /** Re-draw the tab strip (badges) without touching the panel. */
-  refreshTabs(): void {
-    if (this.open) this.renderTabs();
-  }
-
-  private renderTabs(): void {
-    const tabs = journalTabs();
-    const focused = document.activeElement instanceof HTMLElement && this.tabsEl.contains(document.activeElement) ? document.activeElement.dataset.tab : null;
-    this.tabsEl.replaceChildren(
-      ...tabs.map((tab: JournalTab, i) => {
-        const sel = tab.id === this.current;
-        const n = tab.badge?.(this.ctx) ?? 0;
-        return h(
-          `button.kqj-tab${sel ? '.kqj-sel' : ''}`,
-          {
-            type: 'button',
-            role: 'tab',
-            id: `kqj-tab-${tab.id}`,
-            'aria-selected': String(sel),
-            tabindex: sel ? '0' : '-1',
-            dataset: { testid: `journal-tab-${tab.id}`, tab: tab.id },
-            onclick: () => this.select(tab.id),
-          },
-          [h('span.kqj-tn', String(i + 1)), tab.label, n > 0 ? h('span.kqj-badge', { 'aria-label': `${n} neu` }, String(n)) : null],
-        );
-      }),
-    );
-    if (focused) (this.tabsEl.querySelector(`[data-tab="${CSS.escape(focused)}"]`) as HTMLElement | null)?.focus();
-  }
-
-  private readonly onKey = (e: KeyboardEvent): void => {
-    if (!this.open) return;
-    // a card / dialog above the journal keeps its keys
-    if (this.ctx.ui.modals.count > 1) return;
-    const tg = e.target as HTMLElement | null;
-    if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA')) return;
-    const tabs = journalTabs();
-    const i = tabs.findIndex((x) => x.id === this.current);
-    if (e.code === 'KeyJ') {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      this.close();
-      return;
-    }
-    const onTabs = !!tg && this.tabsEl.contains(tg);
-    if ((e.code === 'ArrowRight' || e.code === 'ArrowLeft') && (onTabs || !tg || tg === document.body || this.panel === tg)) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      const n = tabs[(i + (e.code === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]!;
-      this.select(n.id);
-      (this.tabsEl.querySelector(`[data-tab="${CSS.escape(n.id)}"]`) as HTMLElement | null)?.focus();
-      return;
-    }
-    const d = /^Digit([1-9])$/.exec(e.code);
-    if (d && !e.altKey && !e.ctrlKey && !e.metaKey) {
-      const n = tabs[Number(d[1]) - 1];
-      if (n) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        this.select(n.id);
-      }
-    }
-  };
-}
-
-// ---------------------------------------------------------------------------------------------
-// data the quests system hands to the tab renderers
-
-export interface JournalData {
+export interface PageData {
   ctx: GameContext;
   quests(): (QuestDef & { chapter: string })[];
   progress(id: string): QuestProgress | undefined;
@@ -219,7 +58,7 @@ function label(l: string): HTMLElement {
 
 let selQuest: string | null = null;
 
-export function renderQuests(el: HTMLElement, d: JournalData): void {
+export function renderQuests(el: HTMLElement, d: PageData): void {
   const all = d.quests();
   const st = (q: QuestDef) => d.progress(q.id)?.state ?? 'hidden';
   // running quests and the main quest on offer (F-41), main first
@@ -324,7 +163,7 @@ export function renderQuests(el: HTMLElement, d: JournalData): void {
 let codexFilter: 'all' | 'new' | 'relief' = 'all';
 let codexSel: string | null = null;
 
-export function renderCodex(el: HTMLElement, d: JournalData): void {
+export function renderCodex(el: HTMLElement, d: PageData): void {
   const facts = [...d.ctx.content.facts.values()];
   const have = new Set(d.ctx.state.state.codex.facts);
   const unseen = new Set(d.unseen());
@@ -400,7 +239,7 @@ export function renderCodex(el: HTMLElement, d: JournalData): void {
 // ---------------------------------------------------------------------------------------------
 // 30 Sammlungen (+ bestiary)
 
-export function renderSets(el: HTMLElement, d: JournalData): void {
+export function renderSets(el: HTMLElement, d: PageData): void {
   const members = new Map<string, ItemDef[]>();
   for (const it of d.questItems()) if (it.set) (members.get(it.set) ?? members.set(it.set, []).get(it.set)!).push(it);
   const sets = COLLECTIONS.map((c) => {
@@ -430,7 +269,7 @@ export function renderSets(el: HTMLElement, d: JournalData): void {
   });
   el.replaceChildren(
     h('div.kqj-sets', [
-      h('div.kqj-setcol', [...sets, ...journalSections('sets')]),
+      h('div.kqj-setcol', [...sets, ...pageSections('sets')]),
       h('section.kqj-bestiary', { dataset: { testid: 'bestiary' } }, [h('h4', t('journal.bestiary')), h('p.kqj-note', t('journal.bestiary.note')), h('ul', beasts)]),
     ]),
   );

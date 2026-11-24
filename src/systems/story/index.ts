@@ -317,7 +317,6 @@ class StoryRuntime {
   /** Lines triggered while the curtain is down: spoken when it lifts. */
   private wakeLines: { speaker: string; text: string; id?: string }[] = [];
   /** The Chronik was opened from the hub's Pinnwand: reopen the hub when it closes. */
-  private reopenHub = false;
   /** The open choice (for inline `when` options). */
   private choiceAction: ChoiceAction | null = null;
   /** An NPC conversation is open (npc:conversation). */
@@ -547,12 +546,6 @@ class StoryRuntime {
     });
     // readings: mirror the Chronik's reading flag into the entry's story flag (CaseEntry.flag)
     ctx.events.on('chronik:fill', ({ caseId, entryId }) => this.mirrorReading(caseId, entryId));
-    // Chronik opened from the Pinnwand → back to the hub overlay when it closes
-    ctx.events.on('chronik:closed', () => {
-      if (!this.reopenHub) return;
-      this.reopenHub = false;
-      if (this.inHub && !this.caughtBusy) queueMicrotask(() => this.ctx.ui.modals.count === 0 && this.hub.show());
-    });
     ctx.events.on('npc:conversation', ({ open }) => (this.talking = open));
     ctx.events.on('hunt:alert', ({ state }) => (this.packChasing = state === 'chasing'));
     ctx.events.on('hunt:end', () => (this.packChasing = false));
@@ -1455,12 +1448,8 @@ class StoryRuntime {
       this.hub.close();
       return;
     }
-    // something to read at the Pinnwand first (a card opened): the Chronik board waits for the next visit
-    if (item === 'chronik' && ctx.ui.modals.count <= modals) {
-      // the Chronik closes every modal (the hub too) when it opens: come back here afterwards
-      this.reopenHub = !!ctx.systems.get('chronik');
-      ctx.events.emit('chronik:open', {});
-    }
+    // The Pinnwand's clue cards take priority. Otherwise open Codex above the hub.
+    if (item === 'chronik' && ctx.ui.modals.count <= modals && ctx.ui.cards.pending === 0) ctx.events.emit('chronik:open', {});
   }
 
   private updateHub(): void {

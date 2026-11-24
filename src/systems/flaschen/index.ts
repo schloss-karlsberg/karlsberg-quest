@@ -11,7 +11,7 @@
  *  - E „Fläschchen aufheben“ within 1.5 m, facing it.
  *
  * Built only for the current era within 60 m. Hidden while a memorial or a story threat (a pack's
- * arena, a boss fight) holds the place. Rewards: the count (toast, Journal → Sammlungen row, the
+ * arena, a boss fight) holds the place. Rewards: the count (toast, Pause → Sammlungen row, the
  * field station's Regal), Marlene at 8, Laub at 16; at 24 the lantern glass „Flaschengrün“ and the
  * FIKTION card cx.47 „Treibgut“. No XP per bottle and no talent point (the chapter level bands
  * have no room for it: tests/quests-content-a.test.ts, prologue margin 4 XP).
@@ -24,7 +24,7 @@ import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { FLASCHENGRUEN, cosmetics } from '../../player/cosmetics';
 import { h } from '../../ui/dom';
-import { addJournalSection, addShelfItem } from '../../ui/journal';
+import { addPageSection, addShelfItem } from '../../ui/pause-pages';
 import type { Solid } from '../../world/collision';
 import { basinBase, wallBase, lookFor } from '../quelle/layout';
 import { clink } from './audio';
@@ -470,7 +470,7 @@ class Flaschen {
     };
   }
 
-  // ---- Journal row and the Regal --------------------------------------------------------------------
+  // ---- Sammlungen row and the Regal --------------------------------------------------------------------
 
   renderRow(): HTMLElement {
     const n = this.slice.found.length;
@@ -527,7 +527,7 @@ export default defineSystem({
     sys.wire();
     sys.applyCosmetics();
     hooks = sys.hooks();
-    addJournalSection({ id: 'flaschen', tab: 'sets', order: 10, render: () => sys?.renderRow() ?? null });
+    addPageSection({ id: 'flaschen', page: 'sets', order: 10, render: () => sys?.renderRow() ?? null });
     addShelfItem({ id: 'flaschen', order: 10, render: () => sys?.renderShelf() ?? null });
   },
   update(dt) {

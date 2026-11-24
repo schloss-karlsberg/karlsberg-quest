@@ -4,6 +4,7 @@ import type { AttributionItem } from '../data/types';
 import { t } from '../i18n';
 import { h } from './dom';
 import type { ModalHandle, ModalManager } from './modal';
+import { openPausePage, pausePages } from './pause-pages';
 
 export interface MenuDeps {
   modals: ModalManager;
@@ -17,7 +18,7 @@ export { SETTINGS_SECTIONS, type SettingsRow, type SettingsSection, addSettingsR
 import { settingsForm } from './settings';
 
 /** Key help: `ui.keys.<id>` (description) + `ui.keys.<id>.key` (key label) from the bible, in this order. */
-export const CONTROL_KEYS: string[] = ['move', 'turn', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'chronik', 'measure', 'pause'];
+export const CONTROL_KEYS: string[] = ['move', 'turn', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'inventory', 'measure', 'pause'];
 /** Feature systems append their own control ids (strings `ui.keys.<id>` / `.key` registered via addStrings). */
 export function addControlKeys(...ids: string[]): void {
   for (const id of ids) if (!CONTROL_KEYS.includes(id)) CONTROL_KEYS.push(id);
@@ -121,14 +122,39 @@ export const notesPauseHooks: { count?(): number; exportAll?(): void; clearAll?(
 /** Pause menu with sub-pages (settings, licences, controls). */
 export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
   const m = deps.modals.open({ title: t('pause.title'), onClose, className: 'kq-pause', backdrop: 'still' });
+  m.el.dataset.testid = 'pause-menu';
+  const destinations = () => {
+    const group = h('div.kq-pause-destinations');
+    const refreshBadges: (() => void)[] = [];
+    for (const page of pausePages()) {
+      const badge = h('span.kq-pause-badge');
+      const refresh = () => {
+        const n = page.badge?.() ?? 0;
+        badge.textContent = String(n);
+        badge.hidden = n === 0;
+      };
+      refreshBadges.push(refresh);
+      refresh();
+      const button = h('button.kq-btn', {
+        'data-testid': `pause-${page.id}`,
+        onclick: () => {
+          button.focus();
+          openPausePage(deps.modals, page.id, () => refreshBadges.forEach((update) => update()));
+        },
+      }, [page.label, badge]);
+      group.append(button);
+    }
+    return group;
+  };
   const main = () => {
     m.setBody(
       h('div.kq-menu', [
         h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'resume' }, t('pause.resume')),
         ...(pauseHooks.extraActions?.() ?? []).map((a) => h('button.kq-btn', { 'data-testid': a.testid, onclick: () => (m.close(), a.run()) }, a.label)),
+        destinations(),
         h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
         h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody()) }, t('pause.controls')),
-        h('button.kq-btn', { onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), backdrop: 'still', actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),
+        h('button.kq-btn', { 'data-testid': 'pause-save', onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), backdrop: 'still', actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),
         ...notesButtons(),
         h('button.kq-btn', { onclick: () => sub(t('licences.title'), licencesBody(deps.attribution())) }, t('pause.licences')),
         h('button.kq-link', { onclick: () => { m.close(); deps.toTitle(); } }, t('pause.toTitle')),

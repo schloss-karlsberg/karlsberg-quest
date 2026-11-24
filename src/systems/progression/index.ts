@@ -4,7 +4,7 @@
  * level-up card, the XP bar, the quick slot and the pickup feed (docs/ACTION-RPG.md §6–§7, §10).
  *
  * Modules: logic.ts (pure rules, tested), pickups.ts (three.js), hud.ts (docks), levelup-card.ts,
- * journal-tabs.ts (Ausrüstung / Talente), icons.ts, audio.ts, progression.css.
+ * pages.ts (Ausrüstung / Talente), icons.ts, audio.ts, progression.css.
  *
  * Contract (src/systems/contracts.ts, "progression"): listens to xp:grant, item:grant, loot:place
  * / clear, enemy:killed (loot tables), codex:unlocked (+10 XP once per fact), settings:change
@@ -31,15 +31,13 @@ import { ENEMIES } from '../../rpg/enemies';
 import { ITEMS, itemDef } from '../../rpg/items';
 import { LEVEL_XP, MAX_LEVEL } from '../../rpg/stats';
 import type { DerivedStats, ItemDef, ItemKind, PlacedPickup, ProgressionSlice } from '../../rpg/types';
-import { h } from '../../ui/dom';
-import { journalTabs } from '../../ui/journal';
-import type { ModalHandle } from '../../ui/modal';
+import { openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { actionLabel } from '../../ui/actionLabel';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { collectionSound, levelSound, pickupSound, useSound, xpTick } from './audio';
 import { ProgressionHud } from './hud';
 import { iconFor } from './icons';
-import { installJournalTabs } from './journal-tabs';
+import { installProgressionPages } from './pages';
 import { LevelCards, type MergedSkillRow } from './levelup-card';
 import { ProgressionCore, createProgressionSlice } from './logic';
 import { PickupWorld } from './pickups';
@@ -77,8 +75,6 @@ export interface ProgressionHooks {
   card(): { level: number; held: boolean } | null;
   /** Feed lines so far (text). */
   feed(): string[];
-  /** Open the journal on a tab (fallback modal if no journal is there). */
-  journal(tab?: 'gear' | 'talents'): void;
 }
 
 declare module '../../debug/hooks' {
@@ -104,13 +100,11 @@ class Progression {
   readonly hud: ProgressionHud;
   readonly cards: LevelCards;
   readonly world: PickupWorld;
-  private readonly tabs: { refresh(): void };
+  private readonly pages: { refresh(): void };
   private readonly questItems: Map<string, ItemDef>;
   private atHome = false;
   private promptFor: string | null = null;
   private promptText = '';
-  private inventoryWait = -1;
-  private fallback: ModalHandle | null = null;
   private lastRefuse = 0;
   private time = 0;
   private started = false;
@@ -147,7 +141,7 @@ class Progression {
       (id) => (this.item(id)?.kind ?? 'opaque') as ItemKind | 'opaque',
     );
     ctx.scene.add(this.world.group);
-    this.tabs = installJournalTabs({
+    this.pages = installProgressionPages({
       core: this.core,
       item: (id) => this.item(id),
       name: (id) => this.name(id),
@@ -214,7 +208,7 @@ class Progression {
     });
     on('level:up', ({ level, points }) => {
       this.cards.push(level, points);
-      this.tabs.refresh();
+      this.pages.refresh();
     });
     on('item:grant', ({ item, count, reason, quiet, receipt }) => {
       const want = Math.max(1, count ?? 1);
@@ -232,20 +226,20 @@ class Progression {
         pickupSound(ctx.audio, def?.kind ?? 'quest');
       }
       this.updateQuick();
-      this.tabs.refresh();
+      this.pages.refresh();
     });
     on('equip:change', ({ slot, item }) => {
       if (item && !this.core.quietNow && slot === 'weapon') this.hud.line('item', `In der Hand: ${this.name(item)}`, iconFor(item, this.item(item)));
-      this.tabs.refresh();
+      this.pages.refresh();
     });
     on('item:use', ({ item }) => {
       useSound(ctx.audio, item);
       this.hud.quickPulse(true);
       this.updateQuick();
-      this.tabs.refresh();
+      this.pages.refresh();
     });
-    on('talent:learned', () => this.tabs.refresh());
-    on('stats:changed', () => this.tabs.refresh());
+    on('talent:learned', () => this.pages.refresh());
+    on('stats:changed', () => this.pages.refresh());
     on('codex:unlocked', ({ factId, noXp }) => {
       // a photo's codex card gives no XP (owner decision 2026-11-20, src/systems/photo)
       if (noXp) return;
@@ -274,11 +268,11 @@ class Progression {
     });
     on('hub:enter', () => {
       this.atHome = true;
-      this.tabs.refresh();
+      this.pages.refresh();
     });
     on('hub:leave', () => {
       this.atHome = false;
-      this.tabs.refresh();
+      this.pages.refresh();
     });
     on('game:start', () => {
       this.started = true;
@@ -303,7 +297,7 @@ class Progression {
     this.syncWorld(false);
     this.updateXp(false);
     this.updateQuick();
-    this.tabs.refresh();
+    this.pages.refresh();
   }
 
   private syncWorld(animate: boolean): void {
@@ -312,7 +306,7 @@ class Progression {
 
   private changed(reason: string): void {
     this.updateQuick();
-    this.tabs.refresh();
+    this.pages.refresh();
     if (this.started) this.ctx.save.autosave(`progression-${reason}`);
   }
 
@@ -420,85 +414,14 @@ class Progression {
     }
   }
 
-  // ---- journal fallback ---------------------------------------------------------------------------
-
-  /** I pressed: if nothing else opened a journal within a few steps, show the fallback modal. */
-  private inventoryTick(): void {
-    if (this.ctx.input.wasPressed('inventory')) this.inventoryWait = 3;
-    if (this.inventoryWait < 0) return;
-    if (this.ctx.ui.modals.count > 0 || document.querySelector('[data-testid="journal"]')) {
-      this.inventoryWait = -1;
-      return;
-    }
-    if (this.inventoryWait-- === 0) this.openFallback('gear');
-  }
-
-  openJournal(tab: 'gear' | 'talents' = 'gear'): void {
-    if (this.fallback && !this.fallback.closed) {
-      this.fallback.el.querySelector<HTMLElement>(`[data-tab="${tab}"]`)?.click();
-      return;
-    }
-    this.openFallback(tab);
-  }
-
-  private openFallback(first: string): void {
-    const { ctx } = this;
-    const tabs = journalTabs();
-    if (!tabs.length) return;
-    let current: (typeof tabs)[number] | null = null;
-    const bar = h('div.kqp-jf-tabs', { role: 'tablist' });
-    const body = h('div.kqp-jf-body', { role: 'tabpanel' });
-    const show = (id: string) => {
-      const tab = tabs.find((t) => t.id === id) ?? tabs[0]!;
-      if (current && current !== tab) current.hide?.();
-      current = tab;
-      for (const b of bar.children) (b as HTMLElement).setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab.id));
-      body.replaceChildren();
-      tab.render(body, ctx);
-      paintBadges();
-    };
-    const paintBadges = () => {
-      for (const b of bar.children) {
-        const t = tabs.find((x) => x.id === (b as HTMLElement).dataset.tab);
-        const n = t?.badge?.(ctx) ?? 0;
-        const badge = b.querySelector('.kqp-jf-badge') as HTMLElement | null;
-        if (badge) {
-          badge.textContent = n ? String(n) : '';
-          badge.style.display = n ? '' : 'none';
-        }
-      }
-    };
-    for (const t of tabs) bar.append(h('button.kqp-jf-tab', { role: 'tab', 'data-tab': t.id, 'data-testid': `journal-tab-${t.id}`, onclick: () => show(t.id) }, [t.label, h('span.kqp-jf-badge')]));
-    const keys = (e: KeyboardEvent) => {
-      if ((e.code === 'KeyI' || e.code === 'KeyJ') && this.fallback && !this.fallback.closed) {
-        e.preventDefault();
-        this.fallback.close();
-      }
-    };
-    window.addEventListener('keydown', keys);
-    const offs = [ctx.events.on('talent:learned', paintBadges), ctx.events.on('level:up', paintBadges), ctx.events.on('stats:changed', paintBadges)];
-    this.fallback = ctx.ui.modals.open({
-      title: 'Feldbuch',
-      body: [bar, body],
-      wide: true,
-      className: 'kqp-jf',
-      onClose: () => {
-        current?.hide?.();
-        window.removeEventListener('keydown', keys);
-        for (const off of offs) off();
-        this.fallback = null;
-      },
-    });
-    this.fallback.el.dataset.testid = 'journal-fallback';
-    show(first);
-  }
-
   // ---- loop ---------------------------------------------------------------------------------------
 
   update(dt: number): void {
     this.time += dt;
     if (this.ctx.input.wasPressed('quickUse')) this.quickUse();
-    this.inventoryTick();
+    if (this.ctx.input.wasPressed('inventory') && this.ctx.ui.modals.count === 0) {
+      openPausePage(this.ctx.ui.modals, 'gear');
+    }
     this.pickupTick();
   }
 
@@ -521,6 +444,8 @@ class Progression {
   }
 
   dispose(): void {
+    pausePageHandle('gear')?.close();
+    pausePageHandle('talents')?.close();
     this.cards.clear();
     this.world.clear();
     this.ctx.scene.remove(this.world.group);
@@ -552,7 +477,6 @@ export default defineSystem({
         return c ? { level: c.level, held: p.cards.held } : null;
       },
       feed: () => p.hud.history.map((x) => x.text),
-      journal: (tab) => p.openJournal(tab),
     };
   },
   update(dt) {

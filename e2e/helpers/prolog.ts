@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { openPause, waitForHooks } from './pause';
 import { type PlayOptions, SCREENS } from './common';
 
 /**
@@ -349,7 +350,7 @@ export async function newGame(page: Page, name: string, shots = false, url = './
   await page.goto(url);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.quests && !!window.kq?.combat && !!window.kq?.fx, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'quests', 'combat', 'fx'], 180_000);
   await start.click();
   await expect(page.getByTestId('content-warning')).toBeVisible();
   await expect(page.getByTestId('content-warning')).toContainText('16');
@@ -520,10 +521,14 @@ export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void>
   expect(await until(page, 'p8', 150)).toBe('p8');
   expect(await clues(page)).toEqual(expect.arrayContaining(['clue.p.punktwolke', 'clue.p.seite_eins']));
   expect(await page.evaluate(() => window.kq!.progression!.state().inventory['item.p.seite'] ?? 0)).toBe(1);
-  // J: the field book (quests, finds, codex) instead of a board of blanks
-  await page.evaluate(() => window.kq!.quests!.journal());
-  await shot(page, '07-journal');
-  await page.evaluate(() => window.kq!.quests!.closeJournal());
+  await putAwayPages(page);
+  await openPause(page);
+  await page.getByTestId('pause-quests').click();
+  const quests = page.getByTestId('page-quests');
+  await expect(quests).toBeVisible();
+  await shot(page, '07-quests');
+  await quests.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await page.getByTestId('resume').click();
   expect(await until(page, 'p9', 60)).toBe('p9');
   await run(page, 12);
   await shiftTo(page, 1205, -1119, 90);
