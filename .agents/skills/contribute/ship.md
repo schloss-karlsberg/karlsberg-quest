@@ -60,6 +60,8 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
      put the placeholder `<!-- images below: before / after -->` and tell the contributor exactly
      which files to drag into the PR description on GitHub (full paths under `test-results/contribute/TASK-00X/`;
      in a git worktree, use the main checkout's `test-results/` so the paths survive removing the worktree).
+     The PR is public: in its body name the files repo-relative (`test-results/contribute/TASK-00X/after-1.png`),
+     never absolute machine paths; give the full paths only to the contributor.
      Don't drive their browser or desktop to upload them.
    - Risks and notes.
 
