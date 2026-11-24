@@ -4,7 +4,7 @@ aliases:
 - TASK-012
 title: Update the storyboard to the guided-tour concept
 slug: update-the-storyboard-to-the-guided-tour-concept
-status: in-progress
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -175,6 +175,7 @@ scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ -
 - 2026-11-24 — Step 8 complete. The contributor opened the page from disk in headless Chromium with non-file requests blocked. There were zero network requests, zero failed loads and no broken storyboard images. The lightbox image starts empty, as on `main`. Chapter order was Die Führung → Die erste Zeitreise → K1–K4 → Was das Feuer nicht fraß → Das Fest.
 - 2026-11-24 — On `03b5615` the contributor ran `pnpm typecheck`, `pnpm test` (1,460 passed), `pnpm validate` (content valid, one pre-existing warning) and `pnpm build`. All four passed. No game code changed. All seven tests in `e2e/smoke.spec.ts` passed with `--workers=1` under `scripts/dev/heavy.sh`.
 - 2026-11-24 — During shipping, `git add` could not create the linked worktree's `index.lock` (Operation not permitted). The README and task updates were ready to commit at that point.
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/11
 
 ## Notes
 - Do not name or depict the real tour guide: the guide stays the placeholder until written consent exists.
