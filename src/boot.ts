@@ -26,6 +26,7 @@ import { SYSTEM_LOADERS } from './systems';
 import type { BootLoader, LoadingRequest } from './ui/loader';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
 import { openNews } from './ui/news';
+import { createPlayDismissal } from './ui/playDismissal';
 import { TitleScreen } from './ui/title';
 import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
@@ -542,6 +543,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     openPause(menuDeps, () => (pauseMenuOpen = false));
   };
   const photoOpen = () => document.documentElement.hasAttribute('data-kq-photo');
+  const dismissPartyCredits = () => {
+    if (state.state.systems.party?.credits !== 'playing') return false;
+    events.emit('party:skip', {});
+    loop.requestRender();
+    return true;
+  };
   const dismissPlayNotice = () => {
     if (!started || pause.paused || photoOpen() || !ui.cards.dismissNotice()) return false;
     loop.requestRender();
@@ -551,13 +558,23 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // request that never got the lock (two requests in one frame), and the game's own release (a
   // modal opened) is no reason either, even when that modal has closed again by the time the event
   // arrives (several cards closed in one frame) — both opened a stray pause menu that ate the E
-  let hadLock = false;
+  const playDismissal = createPlayDismissal({
+    dismissCredits: dismissPartyCredits,
+    dismissNotice: dismissPlayNotice,
+    openPause: openPauseMenu,
+  });
+  let allowCreditsLock = true;
+  // The credits button and the static list are usable as soon as they appear.
+  events.on('credits:start', () => {
+    allowCreditsLock = false;
+    input.releaseLock();
+  });
   document.addEventListener('pointerlockchange', () => {
     const self = input.takeSelfRelease();
-    const lost = hadLock && !input.locked;
-    hadLock = input.locked;
-    // The browser can handle Escape itself and report only an unlock.
-    if (lost && !self && started && modalOpen === 0 && !dismissPlayNotice() && !debug) openPauseMenu();
+    const locked = input.locked;
+    playDismissal.pointerLockChanged(locked, self, started && modalOpen === 0, !debug);
+    // The epilogue may have requested pointer lock just before the credits appeared.
+    if (locked && !allowCreditsLock && state.state.systems.party?.credits === 'playing') input.releaseLock();
     ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0);
   });
   // Optional dismissal keys must reach gameplay, text entry or the focused control when in use.
@@ -565,7 +582,13 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     if (!['Enter', 'NumpadEnter', 'Space', 'KeyE'].includes(e.code) || e.repeat || e.defaultPrevented) return;
     if (!started || pause.paused || photoOpen() || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     const target = e.target instanceof Element ? e.target : document.activeElement;
-    if (isTyping(target) || target?.closest('button, a[href], summary, [role="button"], [role="link"]')) return;
+    if (isTyping(target)) return;
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && dismissPartyCredits()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    if (target?.closest('button, a[href], summary, [role="button"], [role="link"]')) return;
     if (Object.values(input.bindings).some((codes) => codes.includes(e.code))) return;
     if (ui.root.querySelector('.kqs-dlg.kqs-show') || !dismissPlayNotice()) return;
     e.preventDefault();
@@ -574,17 +597,16 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // Modal and photo handlers run in capture. An Escape that reaches play advances one layer.
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Escape' || e.repeat || e.defaultPrevented || !started || modalOpen > 0) return;
-    // Some browsers also report an unlock after delivering the key. Count it as the same press.
-    hadLock = false;
-    if (dismissPlayNotice()) {
+    if (playDismissal.escape()) {
       e.preventDefault();
       input.releaseLock();
-    } else {
-      openPauseMenu();
     }
   });
   renderer.domElement.addEventListener('click', () => {
-    if (started && modalOpen === 0) input.requestLock();
+    if (started && modalOpen === 0) {
+      allowCreditsLock = true;
+      input.requestLock();
+    }
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && started) save.autosave('hidden', true);

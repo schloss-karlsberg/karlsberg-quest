@@ -1,6 +1,5 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
-import { throughParty } from './helpers/common';
 
 /**
  * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), hub overlay,
@@ -27,7 +26,12 @@ function trackErrors(page: Page): string[] {
 async function boot(page: Page, extra = ''): Promise<void> {
   // story.start() here means the retired surveyor prologue (`?classic`); the tour has its own specs
   await page.goto(`./?notitle&nosave&fresh&manual&classic${extra}`);
-  await page.waitForFunction(() => !!window.kq?.story, null, { timeout: 180_000 });
+  await page.waitForFunction(() => {
+    const k = window.kq;
+    if (!k?.step || k.ctx.pause.reasons.has('title')) return false;
+    if (!k.story || !k.party) k.step();
+    return !!k.story && !!k.party;
+  }, null, { timeout: 180_000 });
 }
 
 async function ready(page: Page): Promise<void> {
@@ -299,6 +303,12 @@ test('story: caught by the pack → home at the Quelle', async ({ page }) => {
 
 test('story: ending, epilogue and credits', async ({ page }) => {
   const errors = trackErrors(page);
+  await page.route('**/assets/LICENSES.json', async (route) => {
+    const response = await route.fetch();
+    const manifest = await response.json();
+    manifest.assets.push({ author: 'Testautor A, Testautor B', source: 'https://polyhaven.com/a/test', licence: 'CC0-1.0' });
+    await route.fulfill({ response, json: manifest });
+  });
   await boot(page);
   await page.evaluate(() => {
     const k = window.kq!;
@@ -327,11 +337,27 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await shot(page, 'epilogue');
   await page.getByTestId('ending-credits').click();
   // the party (bible 06-enden §8): Gerold's speech, then the credits strip over the party
-  await throughParty(page);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 90 && k.party!.state().credits !== 'playing'; i++) k.step(60);
+  });
+  const track = page.getByTestId('party-credits-track');
+  await expect(track).toContainText('Sebastian Heußer');
+  await expect(track).toContainText('Testautor A, Testautor B');
+  await expect.poll(() => page.evaluate(() => window.kq!.ctx.input.locked)).toBe(false);
+  await page.getByTestId('party-credits-skip').click();
+  await expect(page.getByTestId('party-credits')).toHaveCount(0);
   await page.evaluate(() => window.kq!.step(4));
   const st = await page.evaluate(() => ({ story: window.kq!.story!.state(), flags: window.kq!.state().flags }));
   expect(st.story.ending).toBe('museum');
   expect(st.story.finished).toBe(true);
   expect(st.flags['flag.end']).toBe('museum');
+
+  await page.evaluate(() => window.kq!.story!.credits());
+  const fallback = page.getByTestId('credits');
+  await expect(fallback).toContainText('Sebastian Heußer');
+  await expect(fallback).toContainText('Testautor A, Testautor B');
+  await page.keyboard.press('Escape');
+  await expect(fallback).toHaveCount(0);
   expect(errors).toEqual([]);
 });

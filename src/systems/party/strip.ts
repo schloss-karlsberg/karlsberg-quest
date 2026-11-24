@@ -1,20 +1,12 @@
-/**
- * The credits strip (bible 06 §8.2 step 4: "Laufschrift am Bildrand"): a band along the bottom edge
- * (over the cinematic's lower letterbox bar) with the lines crawling right to left, driven by the
- * party's game clock (it stops with the game). Reduced motion: no crawl, the lines step through one
- * at a time, centred. While it runs `html[data-kq-credits]` hides the HUD (Bussole, objective,
- * tracker, compass, vitals) the way a cinematic does; subtitles, story lines and the strip stay.
- */
+/** The credits band crawls to the game clock or shows a manually scrollable list. */
 import { h } from '../../ui/dom';
 import type { StripLike } from './runtime';
 import './party.css';
 
-export interface StripTexts {
-  /** The hint after the camera is back: „Enter: Abspann überspringen". */
+interface StripTexts {
+  label: string;
   hint: string;
-  /** The hint while the orbit has the camera: „… · Bewegen: selbst umsehen". */
   hintCamera: string;
-  /** The skip button (touch, mouse): „Abspann überspringen". */
   button: string;
 }
 
@@ -28,71 +20,55 @@ export class CreditsStrip implements StripLike {
   private hintEl: HTMLElement | null = null;
   private bar: HTMLElement | null = null;
   private track: HTMLElement | null = null;
-  private lines: readonly string[] = [];
-  private reduced = false;
   private width = 0;
-  private shownLine = -2;
 
   show(lines: readonly string[], reduced: boolean): void {
-    if (typeof document === 'undefined') return;
-    this.lines = lines;
-    this.reduced = reduced;
-    this.width = 0;
-    this.shownLine = -2;
-    if (!this.el) {
-      this.track = h('div.kq-party-track', { 'data-testid': 'party-credits-track' });
-      this.hintEl = h('span.kq-party-hint', { 'data-testid': 'party-credits-hint' }, this.texts.hint);
-      const button = h(
-        'button.kq-party-skip',
-        {
-          type: 'button',
-          'data-testid': 'party-credits-skip',
-          onclick: (e: Event) => {
-            e.stopPropagation();
-            this.onSkip();
-          },
-        },
-        this.texts.button,
-      );
-      // keep the press on the button (the game reads pointer presses on the canvas / window)
-      button.addEventListener('pointerdown', (e) => e.stopPropagation());
-      // the bar sits outside the band's clipping box
-      this.bar = h('div.kq-party-bar', {}, [this.hintEl, button]);
-      this.el = h('div.kq-party-strip', { 'data-testid': 'party-credits', role: 'marquee', 'aria-live': 'off' }, [this.track]);
-    }
-    const track = this.track!;
-    track.replaceChildren();
-    if (!reduced) {
-      lines.forEach((l, i) => {
-        if (i) track.append(h('span.kq-party-sep', {}, '·'));
-        track.append(h('span.kq-party-line', {}, l));
+    const track = h(reduced ? 'ul.kq-party-track' : 'div.kq-party-track', { 'data-testid': 'party-credits-track' });
+    lines.forEach((line, i) => {
+      if (i && !reduced) track.append(h('span.kq-party-sep', { 'aria-hidden': 'true' }, '·'));
+      track.append(h(reduced ? 'li.kq-party-line' : 'span.kq-party-line', {}, line));
+    });
+    const el = h('div.kq-party-strip', {
+      'data-testid': 'party-credits',
+      role: reduced ? 'region' : 'marquee',
+      'aria-label': this.texts.label,
+      ...(reduced ? { tabindex: 0 } : { 'aria-live': 'off' }),
+    }, track);
+    if (reduced) {
+      // Keep native scrolling keys in the focused list instead of sending them to the player.
+      el.addEventListener('keydown', (e) => {
+        if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End)$/.test(e.code)) e.stopPropagation();
       });
     }
-    this.el.classList.toggle('reduced', reduced);
-    this.el.setAttribute('aria-label', lines.join(' – '));
-    document.body.appendChild(this.el);
-    document.body.appendChild(this.bar!);
-    // the HUD steps aside while the credits roll (party.css), also after the camera is handed back
-    document.documentElement.toggleAttribute('data-kq-credits', true);
-    void this.el.offsetWidth;
-    this.el.classList.add('on');
+
+    const hint = h('span.kq-party-hint', { 'data-testid': 'party-credits-hint' }, this.texts.hint);
+    const button = h('button.kq-party-skip', {
+      type: 'button',
+      'data-testid': 'party-credits-skip',
+      onclick: this.onSkip,
+    }, this.texts.button);
+    const bar = h('div.kq-party-bar', [hint, button]);
+    this.el = el;
+    this.track = track;
+    this.hintEl = hint;
+    this.bar = bar;
+    this.width = 0;
+    document.documentElement.setAttribute('data-kq-credits', reduced ? 'static' : 'crawl');
+    document.body.append(el, bar);
+    if (reduced) {
+      el.focus({ preventScroll: true });
+    } else {
+      void el.offsetWidth;
+    }
+    el.classList.add('on');
   }
 
-  render(crawl: number, line: number): void {
+  render(crawl: number): void {
     const el = this.el;
     const track = this.track;
-    if (!el || !track || !el.isConnected) return;
-    if (this.reduced) {
-      if (line !== this.shownLine && line >= 0) {
-        this.shownLine = line;
-        track.replaceChildren(h('span.kq-party-line', {}, this.lines[line] ?? ''));
-      }
-      track.style.transform = '';
-      return;
-    }
+    if (!el || !track) return;
     if (!this.width) this.width = track.scrollWidth;
-    const W = el.clientWidth || window.innerWidth;
-    const x = W - crawl * (W + this.width);
+    const x = el.clientWidth - crawl * (el.clientWidth + this.width);
     track.style.transform = `translate3d(${x.toFixed(1)}px, -50%, 0)`;
   }
 
@@ -101,9 +77,9 @@ export class CreditsStrip implements StripLike {
   }
 
   hide(): void {
-    if (typeof document !== 'undefined') document.documentElement.removeAttribute('data-kq-credits');
-    this.el?.classList.remove('on');
+    document.documentElement.removeAttribute('data-kq-credits');
     this.el?.remove();
     this.bar?.remove();
+    this.el = this.bar = this.track = this.hintEl = null;
   }
 }

@@ -8,7 +8,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { creditLines } from '../src/systems/party/credits';
 import { SPOT_LAST, SPOT_ROUND } from '../src/systems/party/placements';
 import { type RunOptions, type StoryEnv, type StorySlice, StoryEngine, createStorySlice } from '../src/systems/story/engine';
 import type { Action, FlagValue, NpcAction, StoryFile } from '../src/systems/story/types';
@@ -85,7 +84,9 @@ describe('beat e3: the party for each ending', () => {
       expect(enter.some((a) => a.do === 'teleport' && Math.hypot(a.x - 1200, a.z + 1095) < 1)).toBe(true);
       const cues = r.cues();
       expect(cues.filter((c) => c.id === 'party:set').map((c) => c.data?.variant)).toEqual([v.variant]);
-      expect(cues.filter((c) => c.id === 'party:credits')).toHaveLength(1);
+      const credits = cues.filter((c) => c.id === 'party:credits');
+      expect(credits).toHaveLength(1);
+      expect(credits[0]?.data?.lines).toBeUndefined();
       // the credits roll after the speech: the cue is the last action of the variant's reaction
       const reaction = r.runs.find((x) => x.actions.some((a) => a.do === 'cue' && a.id === 'party:set'))!;
       expect(reaction.actions.at(-1)).toMatchObject({ do: 'cue', id: 'party:credits' });
@@ -152,17 +153,5 @@ describe('beat e3: the party for each ending', () => {
   it('a resume after the credits ended does not rebuild the party or roll them again', () => {
     const r = run('e3', { 'flag.end': 'museum', 'story.credits': true });
     expect(r.cues().filter((c) => c.id === 'party:set' || c.id === 'party:credits')).toEqual([]);
-  });
-});
-
-describe('content/party/credits.json', () => {
-  it('is read by the party system: real lines, not the placeholder', () => {
-    const file = json<{ lines: string[] }>('content/party/credits.json');
-    const lines = creditLines(undefined, file);
-    expect(lines).toEqual(file.lines);
-    expect(lines.length).toBeGreaterThanOrEqual(8);
-    expect(lines.join(' ')).toMatch(/GeoBasis-DE\/LVGL-SL/);
-    expect(lines.join(' ')).toMatch(/OpenStreetMap/);
-    expect(lines.join(' ')).toMatch(/CC0/);
   });
 });

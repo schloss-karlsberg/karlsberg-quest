@@ -1,10 +1,11 @@
 /** The end-of-game party (src/systems/party): the runtime with fake people, bus, set, strip and cinematic. */
 import { describe, expect, it } from 'vitest';
-import { CAM_MAX, ORBIT, PLACEHOLDER_LINES, creditLines, creditsPlan, stripAt } from '../src/systems/party/credits';
+import { creditLines, creditSections } from '../src/systems/party/creditContent';
+import { CAM_MAX, ORBIT, creditsPlan } from '../src/systems/party/credits';
 import { DOUBLES, PROPS, SPOT_LAST, SPOT_ROUND, TF01, partyLayout, propsFor } from '../src/systems/party/placements';
 import { CREDITS_CINEMATIC, PartyRuntime, type PartyBus, type PersonLike } from '../src/systems/party/runtime';
 import type { PartySetHandle } from '../src/systems/party/set';
-import type { PartySlice, PartyVariant } from '../src/systems/party/types';
+import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from '../src/systems/party/types';
 
 const DT = 1 / 60;
 
@@ -39,11 +40,11 @@ interface FakeSet extends PartySetHandle {
   visible: boolean;
 }
 
-function setup(o: { file?: unknown; cinematic?: 'auto' | 'none' | 'reject'; reduced?: boolean; slice?: PartySlice; specs?: string[] } = {}) {
+function setup(o: { lines?: readonly string[]; cinematic?: 'auto' | 'none' | 'reject'; reduced?: boolean; slice?: PartySlice; specs?: string[] } = {}) {
   const bus = new FakeBus();
   const people: FakePerson[] = [];
   const sets: FakeSet[] = [];
-  const strip = { shown: [] as string[][], hidden: 0, renders: 0, camera: [] as boolean[] };
+  const strip = { shown: [] as string[][], reduced: false, hidden: 0, renders: 0, camera: [] as boolean[] };
   const world = { era: 'today', player: { x: 1200, z: -1095, yaw: 0.5, pitch: 0 } };
   const slice: PartySlice = o.slice ?? { variant: null, credits: 'none' };
   // a fake cinematic system: answers cinematic:play with start (or a rejection), stop = end skipped
@@ -113,10 +114,13 @@ function setup(o: { file?: unknown; cinematic?: 'auto' | 'none' | 'reject'; redu
     },
     world: { heightAt: () => 300, player: () => world.player, era: () => world.era },
     slice: () => slice,
-    creditsFile: () => o.file,
+    defaultLines: o.lines ?? ['Karlsberg Quest', 'Danke fürs Spielen'],
     reduced: () => o.reduced === true,
     strip: {
-      show: (lines) => strip.shown.push([...lines]),
+      show: (lines, reduced) => {
+        strip.shown.push([...lines]);
+        strip.reduced = reduced;
+      },
       camera: (on) => strip.camera.push(on),
       render: () => strip.renders++,
       hide: () => strip.hidden++,
@@ -333,29 +337,27 @@ describe('party runtime', () => {
     expect(d.cine.playing).toBe(CREDITS_CINEMATIC);
   });
 
-  it('credits:done once on an explicit skip: Enter after the grace (camera on or not), the button / kq.party.skip(); an external end (era change) ends skipped', () => {
-    // Enter while the orbit plays: ends the whole credits and stops the camera
+  it('emits credits:done once on dismissal or when the orbit is interrupted', () => {
+    // A keyboard dismissal ends the credits and stops the orbit, including at the start.
     const a = setup();
     a.bus.emit('party:set', { variant: 'burn' });
     a.bus.emit('party:credits', {});
-    expect(a.rt.userSkip()).toBe(false);
-    a.step(1.5);
-    expect(a.rt.userSkip()).toBe(true);
-    expect(a.rt.userSkip()).toBe(false);
+    a.bus.emit('party:skip', {});
+    a.bus.emit('party:skip', {});
     expect(a.cine.playing).toBeNull();
     expect(a.bus.of('credits:done')).toEqual([{ skipped: true }]);
     expect(a.bus.of('cinematic:end')).toEqual([{ id: CREDITS_CINEMATIC, skipped: true }]);
     a.step(80);
     expect(a.bus.of('credits:done')).toHaveLength(1);
     expect(a.bus.of('party:spotlight').length).toBeLessThan(9);
-    // after a hand-back, Enter still skips
+    // The keyboard also dismisses the credits after a camera hand-back.
     const b = setup();
     b.bus.emit('party:set', { variant: 'keep' });
     b.bus.emit('party:credits', {});
     b.step(2);
     b.rt.handBack();
     b.step(2);
-    expect(b.rt.userSkip()).toBe(true);
+    b.bus.emit('party:skip', {});
     expect(b.bus.of('credits:done')).toEqual([{ skipped: true }]);
     expect(b.bus.of('cinematic:stop')).toHaveLength(1);
     // the button (kq.party.skip) at once
@@ -365,11 +367,10 @@ describe('party runtime', () => {
     d.rt.skip();
     expect(d.cine.playing).toBeNull();
     expect(d.bus.of('credits:done')).toEqual([{ skipped: true }]);
-    // no cinematic system: Enter after the grace
+    // Keyboard dismissal also works without a cinematic system.
     const e = setup({ cinematic: 'none' });
     e.bus.emit('party:credits', {});
-    e.step(1.5);
-    expect(e.rt.userSkip()).toBe(true);
+    e.bus.emit('party:skip', {});
     expect(e.bus.of('credits:done')).toEqual([{ skipped: true }]);
     // the cinematic ended under us (era change, death): skipped
     const f = setup();
@@ -378,6 +379,26 @@ describe('party runtime', () => {
     f.step(3);
     f.endCine(true);
     expect(f.bus.of('credits:done')).toEqual([{ skipped: true }]);
+  });
+
+  it('keeps all lines open without animation or camera movement until a reduced-motion dismissal', () => {
+    const lines = ['Karlsberg Quest', 'Mitwirkende', 'Danke fürs Spielen'];
+    const { rt, bus, step, strip, slice } = setup({ lines, reduced: true });
+    bus.emit('party:set', { variant: 'burn' });
+    bus.emit('party:credits', {});
+    step(rt.credits!.plan.seconds + 10);
+    expect(strip.shown).toEqual([lines]);
+    expect(strip.reduced).toBe(true);
+    expect(strip.renders).toBe(0);
+    expect(bus.of('cinematic:play')).toEqual([]);
+    expect(bus.of('credits:done')).toEqual([]);
+    expect(slice.credits).toBe('playing');
+    bus.emit('party:skip', {});
+    rt.skip();
+    expect(bus.of('credits:done')).toEqual([{ skipped: true }]);
+    expect(strip.hidden).toBe(1);
+    expect(rt.quiet).toBe(false);
+    expect(rt.party?.variant).toBe('burn');
   });
 
   it('a rejected camera (held elsewhere) does not end the credits', () => {
@@ -426,20 +447,30 @@ describe('party runtime', () => {
     expect(soll.clips.length).toBeGreaterThan(n);
   });
 
-  it('the credits file and its fallback; data.lines overrides both', () => {
-    expect(creditLines(undefined, undefined)).toEqual(PLACEHOLDER_LINES);
-    expect(creditLines(undefined, { lines: ['A', ' ', 'B'] })).toEqual(['A', 'B']);
-    expect(creditLines(['X'], { lines: ['A'] })).toEqual(['X']);
-    expect(creditLines([], { lines: [] })).toEqual(PLACEHOLDER_LINES);
-    const f = setup({ file: { lines: ['Aus der Datei'] } });
-    f.bus.emit('party:credits', {});
-    expect(f.strip.shown).toEqual([['Aus der Datei']]);
-    const g = setup({ file: { lines: ['Aus der Datei'] } });
-    g.bus.emit('party:credits', { lines: ['Override'] });
-    expect(g.strip.shown).toEqual([['Override']]);
-    const h = setup();
-    h.bus.emit('party:credits', {});
-    expect(h.strip.shown).toEqual([PLACEHOLDER_LINES]);
+  it('uses the assembled lines unless the request has a nonblank override', () => {
+    const { bus, rt, strip } = setup({ lines: ['Gemeinsamer Abspann'] });
+    bus.emit('party:credits', {});
+    rt.skip();
+    bus.emit('party:credits', { lines: [' Extra ', ' ', 0] });
+    rt.skip();
+    bus.emit('party:credits', { lines: [' '] });
+    expect(strip.shown).toEqual([['Gemeinsamer Abspann'], ['Extra'], ['Gemeinsamer Abspann']]);
+  });
+
+  it.each(PARTY_VARIANTS)('shows new contributor and asset rows in the %s party', (variant) => {
+    const sections = creditSections({
+      assets: [{ source: 'https://kenney.nl/assets/test', author: 'Beispielstudio', licence: 'CC0-1.0' }],
+    }, {
+      people: [{ name: 'Beispielperson', role: 'Übersetzung', links: ['https://example.org'] }],
+      closing: 'und alle, die noch kommen',
+    });
+    const { bus, strip } = setup({ lines: creditLines(sections) });
+    bus.emit('party:set', { variant });
+    bus.emit('party:credits', {});
+    expect(strip.shown[0]).toEqual(expect.arrayContaining([
+      'Beispielperson · Übersetzung',
+      'Kenney (CC0-1.0): Beispielstudio',
+    ]));
   });
 
   it('resume: credits playing at save time end skipped once (game start or load); no party in the save clears', () => {
@@ -497,7 +528,5 @@ describe('credits plan', () => {
     // many lines: the strip sets the length
     const L = partyLayout('keep');
     expect(creditsPlan(L.centre, L.people.filter((p) => p.double).map((p) => ({ who: p.spec, x: p.x, z: p.z })), 40).seconds).toBe(160);
-    expect(stripAt(5, 10, 4, true)).toEqual({ crawl: 0.5, line: 2 });
-    expect(stripAt(20, 10, 4, false).crawl).toBe(1);
   });
 });

@@ -18,7 +18,12 @@ const REC = /^(party:|credits:|cinematic:)/;
 
 async function boot(page: Page, variant: string): Promise<void> {
   await page.goto(`./?notitle&nosave&fresh&manual&party=${variant}`);
-  await page.waitForFunction(() => window.kq?.party?.state().variant != null && !!window.kq?.cinematic, null, { timeout: 180_000 });
+  await page.waitForFunction(() => {
+    const k = window.kq;
+    if (!k?.step || k.ctx.pause.reasons.has('title')) return false;
+    if (!k.party || !k.cinematic) k.step();
+    return k.party?.state().variant != null && !!k.cinematic;
+  }, null, { timeout: 180_000 });
   // manual loop: no game time passed yet, so nothing after party:ready / credits:start is missed
   await page.evaluate((src) => {
     const re = new RegExp(src);
@@ -87,7 +92,7 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, W hands the
   await step(page, 40);
   shots.push(await shot(page, 'credits-strip'));
   await closeModals(page);
-  await expect(page.locator('[data-testid="party-credits-hint"]')).toHaveText('Enter: Abspann überspringen · Bewegen: selbst umsehen');
+  await expect(page.getByTestId('party-credits-hint')).toHaveText('Enter / Esc: Überspringen · Bewegen: selbst umsehen');
   await expect(page.locator('[data-testid="party-credits-skip"]')).toBeVisible();
 
   // moving hands the orbit camera back: no skip, the strip runs on, the player moved
@@ -105,7 +110,7 @@ test('party (a): ?party=burn — ready, bodies, credits, spotlights, W hands the
   }
   expect(await page.evaluate(() => window.kq!.ctx.cinematic.cameraOwner)).toBeNull();
   expect(await page.locator('[data-testid="party-credits"]').isVisible()).toBe(true);
-  await expect(page.locator('[data-testid="party-credits-hint"]')).toHaveText('Enter: Abspann überspringen');
+  await expect(page.getByTestId('party-credits-hint')).toHaveText('Enter / Esc: Überspringen');
   await step(page, 60);
   expect(await events(page, 'credits:done')).toEqual([]);
   shots.push(await shot(page, 'walking-credits'));
@@ -217,15 +222,18 @@ test('party (c): ?party=museum — the world is quiet: no tripod beam, no marker
   expect(errors).toEqual([]);
 });
 
-test('party (b): ?party=keep — the dogs lie at the player\'s feet with an eye glint', async ({ page }) => {
+test('party (b): Escape dismisses the credits and the dogs lie at the player\'s feet', async ({ page }) => {
   const errors = trackErrors(page);
   const t0 = Date.now();
   await boot(page, 'keep');
   expect(await page.evaluate(() => window.kq!.party!.state().variant)).toBe('keep');
   await bodiesIn(page);
-  // skip the credits through the debug hook (the key path is test a)
-  await page.evaluate(() => window.kq!.party!.skip());
+  await expect(page.getByTestId('party-credits')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('party-credits')).toHaveCount(0);
   expect(await events(page, 'credits:done')).toEqual([{ skipped: true }]);
+  expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
+  await expect(page.getByTestId('resume')).toHaveCount(0);
   // the player at the keep bench, the dogs come and lie down
   await page.evaluate(() => {
     window.kq!.teleport(1205.6, -1119.2, 210, -14);
@@ -246,4 +254,79 @@ test('party (b): ?party=keep — the dogs lie at the player\'s feet with an eye 
   const path = await shot(page, 'keep-dogs');
   console.log(`[party b] screenshot ${path}, ${((Date.now() - t0) / 1000).toFixed(1)} s wall`);
   expect(errors).toEqual([]);
+});
+
+test.describe('landscape phone', () => {
+  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+
+  test('animated credits stay inside the band above the letterbox', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await boot(page, 'burn');
+    await bodiesIn(page);
+    await step(page, 300);
+    const credits = page.getByRole('marquee');
+    await expect(credits).toBeVisible();
+    const geometry = await credits.evaluate((band) => {
+      const track = band.querySelector<HTMLElement>('[data-testid="party-credits-track"]')!;
+      const bounds = band.getBoundingClientRect();
+      const line = track.getBoundingClientRect();
+      const y = (line.top + line.bottom) / 2;
+      const left = Math.max(bounds.left, line.left);
+      const right = Math.min(bounds.right, line.right);
+      // Enable hit testing only for this measurement of the visible crop.
+      track.style.pointerEvents = 'auto';
+      const hitsTrack = (x: number) => track.contains(document.elementFromPoint(x, y));
+      const clipped = {
+        left: !hitsTrack(bounds.left - 1),
+        inside: left < right && hitsTrack((left + right) / 2),
+        right: line.right > bounds.right + 1 && !hitsTrack(bounds.right + 1),
+      };
+      track.style.removeProperty('pointer-events');
+      return {
+        clipped,
+        insideBand: line.top >= bounds.top && line.bottom <= bounds.bottom,
+        aboveLetterbox: bounds.bottom <= innerHeight * 0.93,
+      };
+    });
+    expect(geometry).toEqual({ clipped: { left: true, inside: true, right: true }, insideBand: true, aboveLetterbox: true });
+  });
+
+  test('OS reduced motion keeps the credits still, swipe scrolls, and tap dismisses', async ({ page }) => {
+    const errors = trackErrors(page);
+    // Exercise the OS preference even when an older game setting explicitly enables motion.
+    await page.addInitScript(() => localStorage.setItem('kq.settings.v1', JSON.stringify({ reducedMotion: false })));
+    await boot(page, 'burn');
+    const credits = page.getByRole('region', { name: 'Abspann' });
+    const track = page.getByTestId('party-credits-track');
+    await expect(credits).toBeVisible();
+    await expect(track).toContainText('Jan Eric Rippel');
+    await expect(track).toContainText('Danke fürs Spielen');
+    await step(page, 300);
+    await expect(track).toHaveCSS('transform', 'none');
+    expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
+    expect(await credits.evaluate((el) => el.scrollTop)).toBe(0);
+
+    const bounds = await credits.boundingBox();
+    expect(bounds).not.toBeNull();
+    const { x, y, width, height } = bounds!;
+    const client = await page.context().newCDPSession(page);
+    const point = (delta: number) => ({ x: Math.round(x + width / 2), y: Math.round(y + height * 0.8 - delta) });
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(0)] });
+    for (const delta of [20, 40, 60, 80]) {
+      await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(delta)] });
+    }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(() => credits.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+
+    const skip = page.getByRole('button', { name: 'Überspringen', exact: true });
+    expect((await skip.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await expect(page.getByTestId('touch')).toBeVisible();
+    await skip.tap();
+    await step(page, 2);
+    await expect(credits).toHaveCount(0);
+    await expect(page.getByTestId('touch')).toBeVisible();
+    expect(await events(page, 'credits:done')).toEqual([{ skipped: true }]);
+    expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
+    expect(errors).toEqual([]);
+  });
 });

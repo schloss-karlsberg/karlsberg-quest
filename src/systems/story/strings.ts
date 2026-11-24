@@ -149,20 +149,5 @@ addStrings('de', {
   'story.end.credits': 'Abspann',
   'story.end.skip': 'Überspringen',
   'story.end.today': 'heute',
-  'story.end.back': 'Zur Feldstation',
   'story.end.epilogue': 'Epilog',
-
-  // credits
-  'story.credits.title': 'Karlsberg Quest',
-  'story.credits.sub': 'Das Land erinnert sich',
-  'story.credits.made': 'Ein Projekt von Open-Kirrberg',
-  'story.credits.idea': 'Idee und Leitung',
-  'story.credits.sources': 'Quellen',
-  'story.credits.data': 'Daten und Lizenzen',
-  'story.credits.fiction': 'Was erfunden ist',
-  'story.credits.fictionText': 'Erfunden sind Quirin Laub und seine Bussole, Marlene, Kanzlist Gottlob Soll, Hanne, Matthes und Peter, der Hundejunge Jost und der Pikeur, die Namen der Hunde, die Chronik, die Meute, der Steinfraß und die Feldstation. Historische Personen sagen nur, was Mannlichs Lebenserinnerungen überliefern.',
-  'story.credits.sound': 'Alle Bilder und Klänge werden im Browser erzeugt: Gelände aus echten Laserdaten, Schraffuren, Shader, Web-Audio-Synthese.',
-  'story.credits.fonts': 'Schriften: IM Fell English (Igino Marini), Caveat – SIL Open Font License 1.1',
-  'story.credits.thanks': 'Den Toten von 1785, den unbezahlten Bauleuten und allen, deren Namen in keiner Rechnung stehen.',
-  'story.credits.motto': 'Schauen, nicht graben.',
 });

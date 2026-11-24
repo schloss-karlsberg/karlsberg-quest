@@ -12,8 +12,8 @@
  *                 set (fest.ts: table, cake, gas stove with mulled wine, fire bowl, fairy lights,
  *                 lanterns; 5 draw calls on Mittel / Hoch, 3 on Niedrig).
  * Input:          moving or looking during the orbit hands the camera back (0.4 s), the strip runs
- *                 on to its end (credits:done {skipped: false}); Enter or the strip's button
- *                 „Abspann überspringen" ends the credits (skipped: true); Esc pauses; E talks.
+ *                 on to its end (credits:done {skipped: false}); Enter, Escape or „Überspringen"
+ *                 ends the credits (skipped: true). Reduced motion shows a static list.
  * Persistent:     slice `party` {variant, credits} only: no bodies (the story re-issues party:set on
  *                 resume); credits playing at save time → credits:done {skipped: true} after the load.
  * Dev:            `?party=museum|burn|keep` boots into the party at dusk and rolls the credits.
@@ -21,8 +21,10 @@
  */
 import type { Mesh, Object3D } from 'three';
 import type { GameContext } from '../../core/context';
+import { prefersReducedMotion } from '../../core/save';
 import { defineSystem } from '../../core/systems';
 import { addStrings } from '../../i18n';
+import { creditLines, creditSections } from './creditContent';
 import { PARTY_CHECKPOINT, TF01, yawTo } from './placements';
 import { PartyRuntime, type PartyBus, CREDITS_CINEMATIC } from './runtime';
 import { FestPartySet } from './fest';
@@ -39,12 +41,6 @@ declare module '../../core/state' {
   }
 }
 
-/** content/party/credits.json (the story team's; may not exist): `{ "lines": string[] }`. */
-export function loadCreditsFile(): unknown {
-  const mods = import.meta.glob<unknown>('/content/party/credits.json', { eager: true, import: 'default' });
-  return Object.values(mods)[0];
-}
-
 /** Draw calls of the visible meshes under a root (stand-ins: one per skinned part). */
 function meshCalls(root: Object3D | undefined): number {
   if (!root || !root.visible) return 0;
@@ -57,16 +53,11 @@ function meshCalls(root: Object3D | undefined): number {
 }
 
 addStrings('de', {
-  'party.hint': 'Enter: Abspann überspringen',
-  'party.hint.camera': 'Enter: Abspann überspringen · Bewegen: selbst umsehen',
-  'party.skip': 'Abspann überspringen',
+  'party.credits': 'Abspann',
+  'party.hint': 'Enter / Esc: Überspringen',
+  'party.hint.camera': 'Enter / Esc: Überspringen · Bewegen: selbst umsehen',
+  'party.skip': 'Überspringen',
 });
-
-/**
- * The explicit skip of the whole credits (also the strip's button). Esc stays pause; movement and
- * look hand the orbit camera back (runtime), E talks.
- */
-const SKIP_KEYS = /^(Enter|NumpadEnter)$/;
 
 class PartySystem {
   readonly rt: PartyRuntime;
@@ -74,12 +65,20 @@ class PartySystem {
   /** The set builder (fest.ts; set.ts keeps the primitive placeholder behind the same interface). */
   setBuilder: PartySet;
 
-  constructor(private readonly ctx: GameContext) {
+  constructor(private readonly ctx: GameContext, defaultLines: readonly string[]) {
     this.setBuilder = new FestPartySet(
       (x, z) => ctx.world.heightAt(x, z),
       () => ctx.quality.level,
     );
-    const strip = new CreditsStrip({ hint: ctx.t('party.hint'), hintCamera: ctx.t('party.hint.camera'), button: ctx.t('party.skip') }, () => this.rt.skip());
+    const strip = new CreditsStrip({
+      label: ctx.t('party.credits'),
+      hint: ctx.t('party.hint'),
+      hintCamera: ctx.t('party.hint.camera'),
+      button: ctx.t('party.skip'),
+    }, () => {
+      this.rt.skip();
+      ctx.loop.requestRender();
+    });
     this.rt = new PartyRuntime({
       bus: ctx.events as unknown as PartyBus,
       people: () => ctx.people,
@@ -90,14 +89,13 @@ class PartySystem {
         era: () => ctx.era.current,
       },
       slice: () => this.slice,
-      creditsFile: loadCreditsFile,
-      reduced: () => ctx.settings.state.reducedMotion === true,
+      defaultLines,
+      reduced: () => ctx.settings.state.reducedMotion || prefersReducedMotion(),
       strip,
       cinematic: {
         available: () => !!ctx.systems.get('cinematic') && !ctx.systems.stats().find((s) => s.id === 'cinematic')?.failed,
       },
     });
-    if (typeof window !== 'undefined') window.addEventListener('keydown', this.onKey, true);
     this.devEntry();
   }
 
@@ -107,14 +105,6 @@ class PartySystem {
     if (!PARTY_VARIANTS.includes(s.variant as PartyVariant)) s.variant = null;
     return s;
   }
-
-  private readonly onKey = (e: KeyboardEvent): void => {
-    if (!this.rt.credits || e.repeat || !SKIP_KEYS.test(e.code) || this.ctx.ui.modals.count > 0) return;
-    if (this.rt.userSkip()) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-  };
 
   /** `?party=museum|burn|keep`: era today at the plateau checkpoint, facing the party, dusk, set, credits. */
   private devEntry(): void {
@@ -202,7 +192,6 @@ class PartySystem {
   }
 
   dispose(): void {
-    if (typeof window !== 'undefined') window.removeEventListener('keydown', this.onKey, true);
     this.rt.dispose();
   }
 }
@@ -214,8 +203,8 @@ export { CREDITS_CINEMATIC };
 export default defineSystem({
   id: 'party',
   after: ['people', 'animals', 'npc', 'cinematic'],
-  init(ctx) {
-    sys = new PartySystem(ctx);
+  async init(ctx) {
+    sys = new PartySystem(ctx, creditLines(creditSections(await ctx.assets.licences())));
   },
   update(dt) {
     sys?.update(dt);

@@ -1,6 +1,12 @@
 /* The party's credits strip (src/systems/party/strip.ts): a band along the bottom edge, over the cinematic letterbox. */
-/* while it runs the HUD steps aside like in a cinematic (the Bussole sat on the skip button at
-   1280×720); subtitles, the dialogue card and the touch controls (walking stays possible) stay */
+html[data-kq-credits] {
+  --kq-credits-height: max(7vh, 46px);
+  --kq-credits-bottom: env(safe-area-inset-bottom, 0px);
+}
+html[data-kq-credits="static"] {
+  --kq-credits-height: min(42dvh, 260px);
+}
+/* The HUD steps aside while subtitles, dialogue and touch movement remain available. */
 html[data-kq-credits] .kq-hud > :not(.kq-subtitles),
 html[data-kq-credits] .kqs-bussole,
 html[data-kq-credits] .kqs-objective {
@@ -10,11 +16,11 @@ html[data-kq-credits] .kqs-objective {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: max(7vh, 46px);
+  bottom: var(--kq-credits-bottom);
+  height: var(--kq-credits-height);
   overflow: hidden;
   pointer-events: none;
-  /* above the cinematic letterbox (z 9) and the UI root, below modals */
+  /* Above the letterbox and UI root. Yield when a modal or the rotate prompt is visible. */
   z-index: 12;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.55));
   opacity: 0;
@@ -40,14 +46,30 @@ html[data-kq-credits] .kqs-objective {
   margin: 0 1.6em;
   color: #c9a46a;
 }
-.kq-party-strip.reduced .kq-party-track {
-  left: 0;
-  right: 0;
-  text-align: center;
-  transform: translateY(-50%);
-}
-html[data-kq-reduced-motion] .kq-party-strip {
+html[data-kq-credits="static"] .kq-party-strip {
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  touch-action: pan-y;
   transition: none;
+  background: rgba(14, 11, 8, 0.94);
+  outline-offset: -2px;
+}
+html[data-kq-credits="static"] .kq-party-track {
+  position: static;
+  transform: none;
+  will-change: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: grid;
+  gap: 0.55em;
+  width: min(100%, 72ch);
+  margin: auto;
+  padding: 14px 18px;
+  list-style: none;
+}
+html[data-kq-credits="static"] .kq-subtitles {
+  bottom: calc(var(--kq-credits-bottom) + var(--kq-credits-height) + 56px);
 }
 html[data-kq-contrast] .kq-party-strip {
   background: #000;
@@ -58,7 +80,7 @@ html[data-kq-contrast] .kq-party-track {
 .kq-party-bar {
   position: fixed;
   right: 18px;
-  bottom: calc(max(7vh, 46px) + 10px);
+  bottom: calc(var(--kq-credits-bottom) + var(--kq-credits-height) + 8px);
   z-index: 12;
   display: flex;
   align-items: center;
@@ -70,9 +92,10 @@ html[data-kq-contrast] .kq-party-track {
 }
 .kq-party-skip {
   pointer-events: auto;
+  min-height: 44px;
   font: inherit;
   color: #f3e6cc;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.78);
   border: 1px solid rgba(243, 230, 204, 0.45);
   border-radius: 4px;
   padding: 6px 12px;
@@ -91,4 +114,26 @@ html[data-kq-contrast] .kq-party-skip {
   background: #000;
   color: #fff;
   border-color: #fff;
+}
+/* Reserve the right-hand touch button arc and keep the credits out of the safe areas. */
+html[data-kq-touch] .kq-party-strip {
+  left: calc(12px + var(--kq-safe-l));
+  border-radius: 5px;
+}
+/* Keep the band above the lower letterbox, including during the camera hand-back. */
+html[data-kq-touch][data-kq-credits="crawl"] {
+  --kq-credits-bottom: calc(7vh + 4px + var(--kq-safe-b));
+}
+html[data-kq-touch][data-kq-credits="crawl"] .kq-party-strip {
+  overflow: clip;
+}
+html[data-kq-touch] :is(.kq-party-strip, .kq-party-bar) {
+  right: calc(312px + var(--kq-safe-r));
+}
+html[data-kq-touch] .kq-party-hint {
+  display: none;
+}
+html[data-kq-rotate] :is(.kq-party-strip, .kq-party-bar),
+html:has(.kq-modal-layer) :is(.kq-party-strip, .kq-party-bar) {
+  display: none;
 }

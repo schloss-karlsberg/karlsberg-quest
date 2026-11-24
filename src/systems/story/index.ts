@@ -14,6 +14,7 @@ import { defineSystem } from '../../core/systems';
 import { hasString, t } from '../../i18n';
 import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
 import type { NpcPlacement, ThreatConfig, ThreatKind } from '../contracts';
+import { creditSections } from '../party/creditContent';
 import { isBarkLine, pickSequence } from '../../content/triggers';
 import { assembleEpilogue } from './endings/assemble';
 import { isWrapped, newMeter, tickMeter } from './meters';
@@ -329,7 +330,7 @@ class StoryRuntime {
   private readonly hiddenFacts: Set<string>;
   private entryFlags: Map<string, string> | null = null;
 
-  constructor(private readonly ctx: GameContext) {
+  constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
     const bundled = loadBundledStories();
     // test chapters (content/story/99-test.story.json, "test": true) only with ?storytest
     const tests = ctx.params.has('storytest');
@@ -454,6 +455,7 @@ class StoryRuntime {
     this.endings = new EndingScreen({
       modals: ctx.ui.modals,
       attribution: () => ctx.data.attribution.items,
+      credits,
       epilogue: (id) => this.epilogue(id) ?? { ending: id, intro: '', lines: [], object: '', outro: '', coda: '', variants: {} },
       chosen: (id) => {
         this.slice.ending = id;
@@ -1921,8 +1923,8 @@ let rt: StoryRuntime | null = null;
 
 export default defineSystem({
   id: 'story',
-  init(ctx) {
-    rt = new StoryRuntime(ctx);
+  async init(ctx) {
+    rt = new StoryRuntime(ctx, creditSections(await ctx.assets.licences()));
   },
   update(dt) {
     rt?.update(dt);

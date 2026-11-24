@@ -4,7 +4,7 @@
  * index.ts wires it to the game; tests/party.test.ts drives it with fakes.
  */
 import type { CinematicPlay } from '../cinematic/types';
-import { type CreditsPlan, SKIP_GRACE, creditLines, creditsPlan, stripAt } from './credits';
+import { type CreditsPlan, creditsPlan } from './credits';
 import { type Activity, MARLENE_SPEC, MARLENE_STANDIN, SPOT_LAST, SPOT_ROUND, type PartyLayout, type Placement, TF01, type XZ, faceYaw, partyLayout } from './placements';
 import type { PartySetHandle } from './set';
 import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
@@ -44,8 +44,8 @@ export interface PeopleLike {
 /** The credits strip (DOM in the game, a fake in tests). */
 export interface StripLike {
   show(lines: readonly string[], reduced: boolean): void;
-  /** Crawl 0..1 / the line index with reduced motion. */
-  render(crawl: number, line: number): void;
+  /** Crawl progress from 0 to 1. */
+  render(crawl: number): void;
   /** The orbit camera is on (the hint offers "Bewegen: selbst umsehen") or handed back. */
   camera?(on: boolean): void;
   hide(): void;
@@ -68,8 +68,7 @@ export interface PartyDeps {
     era(): string;
   };
   slice(): PartySlice;
-  /** content/party/credits.json (`{lines}`), undefined when the file does not exist. */
-  creditsFile(): unknown;
+  defaultLines: readonly string[];
   reduced(): boolean;
   strip?: StripLike;
   cinematic: {
@@ -100,7 +99,6 @@ interface Party {
 }
 
 interface Credits {
-  lines: string[];
   plan: CreditsPlan;
   t: number;
   /** Index of the next spotlight to emit. */
@@ -137,6 +135,7 @@ export class PartyRuntime {
     const bus = deps.bus;
     bus.on('party:set', (p: unknown) => void this.set(p));
     bus.on('party:credits', (p: unknown) => void this.startCredits(p));
+    bus.on('party:skip', () => this.skip());
     bus.on('party:clear', () => this.clear());
     bus.on('story:cue', (c: { id?: string; data?: unknown }) => {
       if (!c || typeof c.id !== 'string') return;
@@ -157,8 +156,8 @@ export class PartyRuntime {
       const was = c.cam;
       c.cam = 'off';
       this.deps.strip?.camera?.(false);
-      // rejected before it started (the camera is held), reduced motion's two stills ending, our own
-      // hand-back (cam already 'off'): the strip runs on. Ended under us while on (era change,
+      // Rejected before it started (the camera is held) or our own hand-back (cam already 'off'):
+      // the strip runs on. Ended under us while on (era change,
       // death): the credits end skipped.
       if (was === 'on' && p.skipped) this.finish(true);
     });
@@ -304,8 +303,10 @@ export class PartyRuntime {
       this.log('[party] credits already running');
       return false;
     }
-    const override = isObj(raw) ? raw.lines : undefined;
-    const lines = creditLines(override, this.deps.creditsFile());
+    const override = isObj(raw) && Array.isArray(raw.lines)
+      ? raw.lines.filter((line): line is string => typeof line === 'string' && line.trim().length > 0).map((line) => line.trim())
+      : [];
+    const lines = override.length ? override : this.deps.defaultLines;
     const ppl = this.party?.layout.people ?? [];
     const spot = (spec: string) => ppl.filter((p) => p.spec === spec).map((p) => ({ who: p.spec, x: p.x, z: p.z }));
     const round = SPOT_ROUND.flatMap(spot);
@@ -313,20 +314,20 @@ export class PartyRuntime {
     const centre = this.party?.layout.centre ?? TF01;
     const plan = creditsPlan(centre, round, lines.length, last);
     const reduced = this.deps.reduced();
-    const c: Credits = { lines, plan, t: 0, spot: 0, cam: 'off', reduced, base: null, handedBack: false };
+    const c: Credits = { plan, t: 0, spot: 0, cam: 'off', reduced, base: null, handedBack: false };
     this.credits = c;
     this.spotlights.length = 0;
     this.slice.credits = 'playing';
     this.setQuiet(true);
     this.deps.strip?.show(lines, reduced);
     this.deps.strip?.camera?.(false);
-    this.deps.strip?.render(0, reduced ? 0 : -1);
+    if (!reduced) this.deps.strip?.render(0);
     this.deps.bus.emit('credits:start', { seconds: plan.seconds });
-    if (this.deps.cinematic.available() && plan.keys.length >= 2) {
+    if (this.credits === c && !reduced && this.deps.cinematic.available() && plan.keys.length >= 2) {
       c.cam = 'pending';
       // not skippable by the cinematic's any-key: the party routes the input (movement / look hands the
-      // camera back, Enter or the button skips the credits)
-      const spec: CinematicPlay = { id: CREDITS_CINEMATIC, keys: plan.keys, skippable: false, lockInput: false, reduced: 'stills' };
+      // camera back, and explicit dismissal skips the credits)
+      const spec: CinematicPlay = { id: CREDITS_CINEMATIC, keys: plan.keys, skippable: false, lockInput: false };
       this.deps.bus.emit('cinematic:play', spec);
       // the system answered synchronously: a 'pending' left means nobody played it
       if (this.credits === c && c.cam === 'pending') c.cam = 'off';
@@ -334,17 +335,9 @@ export class PartyRuntime {
     return true;
   }
 
-  /** Skip the credits (debug, the strip's button). */
+  /** Skip the credits (keyboard, button or debug hook). */
   skip(): void {
     if (this.credits) this.finish(true);
-  }
-
-  /** The player's explicit skip (Enter): after a short grace, ends the whole credits. */
-  userSkip(): boolean {
-    const c = this.credits;
-    if (!c || c.t < SKIP_GRACE) return false;
-    this.finish(true);
-    return true;
   }
 
   /** The player moved or looked during the orbit: give the camera back (0.4 s hand-back), the strip runs on. */
@@ -439,17 +432,14 @@ export class PartyRuntime {
       this.deps.bus.emit('party:spotlight', { who: s.who, i: s.i });
       if (this.credits !== c) return;
     }
-    if (c.t >= c.plan.seconds) this.finish(false);
+    if (!c.reduced && c.t >= c.plan.seconds) this.finish(false);
   }
 
   /** Drawn frame: the set's flames, the strip. */
   frame(dt: number): void {
     this.party?.set?.update(dt);
     const c = this.credits;
-    if (c && this.deps.strip) {
-      const s = stripAt(c.t, c.plan.seconds, c.lines.length, c.reduced);
-      this.deps.strip.render(s.crawl, s.line);
-    }
+    if (c && !c.reduced) this.deps.strip?.render(Math.min(c.t / c.plan.seconds, 1));
   }
 
   /** Drop everything without party events (system dispose); the world is given back its markers. */

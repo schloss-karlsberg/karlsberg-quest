@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-24 | **Party credits (TASK-013).** All three endings credit contributors, asset authors, tools and sources. The credits page uses the same list. Enter, Escape and the touch-friendly skip button return the player to the party. Reduced motion shows a scrollable list with no camera orbit. |
 | unreleased | 2026-11-24 | **Quest payouts and HUD toasts (TASK-009).** Payouts move to the HUD edge and share one slot with routine toasts. A payout reports the gains that fit and points to the field book for details. Escape and outside touch taps dismiss the notice while gameplay controls remain available. |
 | unreleased | 2026-11-24 | **Bussole loading indicator (TASK-011):** the compass appears on first paint and stays in place on the title screen. Its brass ring tracks terrain progress. During play, it appears for longer scenery, era and Röntgenblick waits. Reduced motion keeps the needle still. |
 | unreleased | 2026-11-23 | **Docs aligned with the guided-tour concept (D-010):** this file moved from the repo root to `docs/PRD.md`; the pitch, pillars, setting, story premise, characters and §6.3 describe the tour opening, the Karlsbergquelle as home base and the party endings; surveyor / Feldstation passages are marked as history or as legacy code (TASK-007). `IDEA.md` moved to `docs/archive/`. |

@@ -19,7 +19,7 @@ export interface PartySetRequest {
   at?: { x: number; z: number };
 }
 export interface PartyCreditsRequest {
-  /** Override the credits lines (else content/party/credits.json, else a 3-line placeholder). */
+  /** Override the assembled credits for this run. */
   lines?: string[];
 }
 
@@ -34,12 +34,14 @@ declare module '../../core/events' {
   interface GameEvents {
     'party:set': PartySetRequest;
     'party:credits': PartyCreditsRequest;
+    /** Dismiss the credits (gameplay Enter, Escape or the browser's pointer-lock exit). */
+    'party:skip': Record<string, never>;
     'party:clear': Record<string, never>;
     /** The party stands (people, dogs and props spawned). */
     'party:ready': { variant: string };
     /** The camera lingers 2–3 s on a double (`who` = people spec id, e.g. 'double.herzog'); i = 0.. in order. The story plays its line on a match. */
     'party:spotlight': { who: string; i: number };
-    /** The credits run for `seconds` (game time). */
+    /** Nominal duration of the animated credits in game time. */
     'credits:start': { seconds: number };
     /** Exactly once per credits run (a skip, the natural end, a load while they played). */
     'credits:done': { skipped: boolean };
