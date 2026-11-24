@@ -12,9 +12,6 @@
 import type { CinematicKey } from '../cinematic/types';
 import type { XZ } from './placements';
 
-/** Fallback when content/party/credits.json is missing (the story team owns that file). */
-export const PLACEHOLDER_LINES = ['Karlsberg Quest', 'Ein Spiel über einen verschwundenen Ort', 'Danke fürs Spielen'];
-
 export const ORBIT = {
   r: 14,
   /** Seconds per full turn (nominal; the dwells slow it down). */
@@ -36,23 +33,10 @@ export const ORBIT = {
   step: 0.45,
 } as const;
 
-/** Seconds the strip needs per line (horizontal crawl / reduced-motion step). */
+/** Seconds the strip needs per line of the horizontal crawl. */
 export const STRIP_SECONDS_PER_LINE = 4;
 /** The credits run at least this long. */
 export const MIN_SECONDS = 20;
-/** Grace before Esc / Enter / Space skip the strip when no cinematic owns the skip (s). */
-export const SKIP_GRACE = 1;
-
-/** Pick the lines: the request's override, else the file, else the placeholder. Blank entries dropped. */
-export function creditLines(override: unknown, file: unknown): string[] {
-  const clean = (v: unknown): string[] | null => {
-    if (!Array.isArray(v)) return null;
-    const out = v.filter((s): s is string => typeof s === 'string' && s.trim().length > 0).map((s) => s.trim());
-    return out.length ? out : null;
-  };
-  const fromFile = file && typeof file === 'object' ? clean((file as { lines?: unknown }).lines) : null;
-  return clean(override) ?? fromFile ?? [...PLACEHOLDER_LINES];
-}
 
 export interface Spot {
   who: string;
@@ -153,13 +137,4 @@ function buildPlan(centre: XZ, circle: readonly Who[], last: Who | undefined, li
   // the camera way ends a moment before the credits, so the cinematic ends on its own (not stopped by us)
   const seconds = Math.max(MIN_SECONDS, camSeconds + CAM_TAIL, lineCount * STRIP_SECONDS_PER_LINE);
   return { keys, spots, camSeconds, seconds: Math.ceil(seconds * 100) / 100 };
-}
-
-/**
- * The strip at time t of T: horizontal crawl offset 0..1 (0 = the first line enters at the right
- * edge, 1 = the last line has left at the left), or with reduced motion the index of the line shown.
- */
-export function stripAt(t: number, T: number, lines: number, reduced: boolean): { crawl: number; line: number } {
-  const k = T > 0 ? Math.max(0, Math.min(1, t / T)) : 1;
-  return { crawl: k, line: reduced ? Math.min(lines - 1, Math.floor(k * lines)) : -1 };
 }

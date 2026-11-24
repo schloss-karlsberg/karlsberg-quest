@@ -542,6 +542,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     openPause(menuDeps, () => (pauseMenuOpen = false));
   };
   const photoOpen = () => document.documentElement.hasAttribute('data-kq-photo');
+  const dismissPartyCredits = () => {
+    if (state.state.systems.party?.credits !== 'playing') return false;
+    events.emit('party:skip', {});
+    loop.requestRender();
+    return true;
+  };
   const dismissPlayNotice = () => {
     if (!started || pause.paused || photoOpen() || !ui.cards.dismissNotice()) return false;
     loop.requestRender();
@@ -552,12 +558,20 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // modal opened) is no reason either, even when that modal has closed again by the time the event
   // arrives (several cards closed in one frame) — both opened a stray pause menu that ate the E
   let hadLock = false;
+  let allowCreditsLock = true;
+  // The credits button and the static list are usable as soon as they appear.
+  events.on('credits:start', () => {
+    allowCreditsLock = false;
+    input.releaseLock();
+  });
   document.addEventListener('pointerlockchange', () => {
     const self = input.takeSelfRelease();
     const lost = hadLock && !input.locked;
     hadLock = input.locked;
+    // The epilogue may have requested pointer lock just before the credits appeared.
+    if (hadLock && !allowCreditsLock && state.state.systems.party?.credits === 'playing') input.releaseLock();
     // The browser can handle Escape itself and report only an unlock.
-    if (lost && !self && started && modalOpen === 0 && !dismissPlayNotice() && !debug) openPauseMenu();
+    if (lost && !self && started && modalOpen === 0 && !dismissPartyCredits() && !dismissPlayNotice() && !debug) openPauseMenu();
     ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0);
   });
   // Optional dismissal keys must reach gameplay, text entry or the focused control when in use.
@@ -565,7 +579,13 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     if (!['Enter', 'NumpadEnter', 'Space', 'KeyE'].includes(e.code) || e.repeat || e.defaultPrevented) return;
     if (!started || pause.paused || photoOpen() || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     const target = e.target instanceof Element ? e.target : document.activeElement;
-    if (isTyping(target) || target?.closest('button, a[href], summary, [role="button"], [role="link"]')) return;
+    if (isTyping(target)) return;
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && dismissPartyCredits()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    if (target?.closest('button, a[href], summary, [role="button"], [role="link"]')) return;
     if (Object.values(input.bindings).some((codes) => codes.includes(e.code))) return;
     if (ui.root.querySelector('.kqs-dlg.kqs-show') || !dismissPlayNotice()) return;
     e.preventDefault();
@@ -576,7 +596,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     if (e.code !== 'Escape' || e.repeat || e.defaultPrevented || !started || modalOpen > 0) return;
     // Some browsers also report an unlock after delivering the key. Count it as the same press.
     hadLock = false;
-    if (dismissPlayNotice()) {
+    if (dismissPartyCredits() || dismissPlayNotice()) {
       e.preventDefault();
       input.releaseLock();
     } else {
@@ -584,7 +604,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     }
   });
   renderer.domElement.addEventListener('click', () => {
-    if (started && modalOpen === 0) input.requestLock();
+    if (started && modalOpen === 0) {
+      allowCreditsLock = true;
+      input.requestLock();
+    }
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && started) save.autosave('hidden', true);

@@ -5,9 +5,11 @@
  * scrolling credits page with sources and data licences stays for `kq.story.credits()`.
  */
 import type { AttributionItem } from '../../../data/types';
+import { prefersReducedMotion } from '../../../core/save';
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
 import type { ModalHandle, ModalManager } from '../../../ui/modal';
+import type { creditSections } from '../../party/creditContent';
 import { portraitSvg } from '../dialogue/portraits';
 import type { EndingId } from '../types';
 import type { Epilogue } from './epilogue';
@@ -37,6 +39,7 @@ export function creditData(items: readonly AttributionItem[]): { label: string; 
 export interface EndingDeps {
   modals: ModalManager;
   attribution(): AttributionItem[];
+  credits: ReturnType<typeof creditSections>;
   epilogue(ending: EndingId): Epilogue;
   /** The ending is chosen and confirmed (set flags, emit story:ending, autosave). */
   chosen(ending: EndingId): void;
@@ -91,7 +94,6 @@ export class EndingScreen {
   }
 
   close(): void {
-    this.dropCreditKeys();
     window.clearTimeout(this.vigTimer);
     this.m?.close();
     this.m = null;
@@ -141,7 +143,6 @@ export class EndingScreen {
   private play(): void {
     const id = this.ending!;
     if (!this.d.stage) return this.vignette();
-    this.dropCreditKeys();
     this.m?.close();
     this.m = null;
     this.d.stage(id, () => {
@@ -237,48 +238,41 @@ export class EndingScreen {
     this.d.party(id);
   }
 
-  private creditKeys: ((e: KeyboardEvent) => void) | null = null;
-
-  private dropCreditKeys(): void {
-    if (this.creditKeys) document.removeEventListener('keydown', this.creditKeys);
-    this.creditKeys = null;
-  }
-
   /** The credits roll (also reachable directly for tests). */
   credits(): void {
-    if (!this.open) this.show();
-    const sec = (title: string, ...kids: (HTMLElement | string | null)[]) => h('section.kqs-cr-sec', [h('h3', title), ...kids]);
-    const attrib = this.d.attribution();
-    const roll = h('div.kqs-cr-roll', [
-      h('div.kqs-cr-title', t('story.credits.title')),
-      h('div.kqs-cr-sub', t('story.credits.sub')),
-      h('p.kqs-cr-made', 'Ein Spiel über einen Ort, den es nicht mehr gibt.'),
-      sec(t('story.credits.idea'), h('p', t('story.credits.made'))),
-      sec('In Erinnerung an', h('p', 'die Arbeiter am Karlsberg, deren Namen nicht überliefert sind, und an Major Magnier und seine Leute, Dezember 1785.')),
-      sec(t('story.credits.sources'), h('ul', CREDIT_SOURCES.map((s) => h('li', [s.label, h('a', { href: s.url, target: '_blank', rel: 'noopener' }, new URL(s.url).hostname.replace(/^www\./, ''))])))),
-      sec(
-        t('story.credits.data'),
-        // player-facing: one clean label, one holder, the licence once (CREDIT_DATA)
-        h('ul', creditData(attrib).map((a) => h('li', [h('b', `${a.label}: `), a.text, ` — ${a.licence}`]))),
-      ),
-      sec(t('story.credits.fiction'), h('p', t('story.credits.fictionText'))),
-      sec('Bild und Klang', h('p', t('story.credits.sound')), h('p', t('story.credits.fonts'))),
-      h('p.kqs-cr-motto', t('story.credits.motto')),
-      h('p.kqs-cr-note', 'Der Karlsberg ist ein Bodendenkmal. Funde gehören gemeldet, nicht mitgenommen.'),
-      h('p.kqs-cr-thanks', t('story.credits.thanks')),
-      h('p.kqs-cr-thanks', 'Danke an alle, die den Karlsberg pflegen, erforschen und erklären.'),
-      h('p.kqs-cr-end', `${this.d.name() || t('story.name.default')} · Feldbuch geschlossen`),
-    ]);
-    const viewport = h('div.kqs-cr-view', { 'data-testid': 'credits' }, roll);
-    if (this.d.reducedMotion()) viewport.classList.add('kqs-static');
-    else {
+    if (this.open && this.stage === 'credits') return;
+    const previous = this.m;
+    const modal = this.d.modals.open({
+      className: 'kqs-ending',
+      wide: true,
+      onClose: () => {
+        this.m = null;
+        this.d.finished();
+      },
+    });
+    this.m = modal;
+    modal.el.dataset.testid = 'ending';
+    previous?.close();
+    const link = (url: string) => h('a', { href: url, target: '_blank', rel: 'noopener' }, new URL(url).hostname.replace(/^www\./, ''));
+    const roll = h('div.kqs-cr-roll', this.d.credits.map(({ kind, title, rows }) => h('section.kqs-cr-sec', [
+      title ? h(kind === 'intro' ? 'h3.kqs-cr-title' : 'h3', title) : null,
+      h('ul', rows.map(({ text, links }) => h('li', [text, ...(links?.map(link) ?? [])]))),
+      ...(kind === 'sources' ? [
+        h('ul', CREDIT_SOURCES.map(({ label, url }) => h('li', [label, link(url)]))),
+        h('ul', creditData(this.d.attribution()).map(({ label, text, licence }) => h('li', [h('b', `${label}: `), text, ` — ${licence}`]))),
+      ] : []),
+    ])));
+    const reduced = this.d.reducedMotion() || prefersReducedMotion();
+    const viewport = h('div.kqs-cr-view', { 'data-testid': 'credits', tabindex: 0, 'aria-label': 'Abspann', role: 'region' }, roll);
+    if (reduced) viewport.classList.add('kqs-static');
+    const scrub = (s: number) => {
+      const a = roll.getAnimations?.()[0];
+      if (!a) return;
+      const now = Number(a.currentTime ?? 0);
+      a.currentTime = Math.max(0, Math.min(95_000, now + s * 1000));
+    };
+    if (!reduced) {
       // the roll keeps running (a resting cursor no longer freezes it); wheel and arrow keys scrub
-      const scrub = (s: number) => {
-        const a = roll.getAnimations?.()[0];
-        if (!a) return;
-        const now = Number(a.currentTime ?? 0);
-        a.currentTime = Math.max(0, Math.min(95_000, now + s * 1000));
-      };
       viewport.addEventListener(
         'wheel',
         (e) => {
@@ -287,16 +281,21 @@ export class EndingScreen {
         },
         { passive: false },
       );
-      this.creditKeys = (e: KeyboardEvent) => {
-        if (e.code === 'ArrowDown' || e.code === 'PageDown') scrub(e.code === 'PageDown' ? 10 : 3);
-        else if (e.code === 'ArrowUp' || e.code === 'PageUp') scrub(e.code === 'PageUp' ? -10 : -3);
-      };
-      document.addEventListener('keydown', this.creditKeys);
     }
+    modal.el.addEventListener('keydown', (e) => {
+      if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && !(e.target instanceof Element && e.target.closest('a[href]'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        modal.close();
+      }
+      if (reduced) return;
+      if (e.code === 'ArrowDown' || e.code === 'PageDown') scrub(e.code === 'PageDown' ? 10 : 3);
+      else if (e.code === 'ArrowUp' || e.code === 'PageUp') scrub(e.code === 'PageUp' ? -10 : -3);
+    });
     this.page('credits', 'kqs-end-credits', [
       viewport,
       h('div.actions', [
-        h('button.kq-btn.primary', { 'data-testid': 'credits-back', onclick: () => (this.dropCreditKeys(), this.close(), this.d.finished()) }, t('story.end.back')),
+        h('button.kq-btn.primary', { 'data-testid': 'credits-back', onclick: () => modal.close() }, t('story.end.skip')),
       ]),
     ]);
   }

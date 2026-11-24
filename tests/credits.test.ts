@@ -60,3 +60,19 @@ it('assembles the real credits in reading order and lists the voice model once',
   expect(text).toMatch(/FIKTION/);
   expect(text).not.toMatch(/@|\/(Users|home)\//);
 });
+
+it('includes new contributor links and asset bylines in the sections rendered by the credits page', () => {
+  const links = ['https://example.org'];
+  const sections = creditSections({
+    assets: [{ source: 'https://ambientcg.com/view?id=Test', author: 'Beispielatelier', licence: 'CC0-1.0' }],
+  }, {
+    people: [{ name: 'Beispielperson', role: 'Übersetzung', links }],
+    closing: contributors.closing,
+  });
+  expect(sections.find(({ title }) => title === 'Mitwirkende')?.rows[0]).toEqual({
+    text: 'Beispielperson · Übersetzung', links,
+  });
+  expect(sections.find(({ title }) => title === 'Modelle, Texturen und Stimmen')?.rows).toEqual([
+    { text: 'ambientCG (CC0-1.0): Beispielatelier' },
+  ]);
+});

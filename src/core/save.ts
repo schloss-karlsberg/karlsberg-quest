@@ -86,8 +86,12 @@ export interface Settings {
   bindings: Record<string, string[]>;
 }
 
+export function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function defaultSettings(): Settings {
-  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = prefersReducedMotion();
   return {
     mouseSensitivity: 1,
     invertY: false,

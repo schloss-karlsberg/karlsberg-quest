@@ -1203,6 +1203,8 @@ body.kq-in-combat .kqs-dlg-body::before {
 }
 .kqs-cr-view.kqs-static {
   overflow: auto;
+  mask-image: none;
+  touch-action: pan-y;
 }
 .kqs-cr-roll {
   width: min(680px, 90%);
@@ -1220,21 +1222,6 @@ body.kq-in-combat .kqs-dlg-body::before {
     transform: translateY(-100%);
   }
 }
-.kqs-cr-title {
-  font-family: var(--sc);
-  font-size: 64px;
-  color: #f1e3c2;
-}
-.kqs-cr-sub {
-  font-family: var(--hand);
-  font-size: 30px;
-  color: #c9a76a;
-}
-.kqs-cr-made {
-  font-style: italic;
-  opacity: 0.8;
-  color: #e8dcc0 !important;
-}
 .kqs-cr-sec {
   margin: 46px 0;
 }
@@ -1246,7 +1233,10 @@ body.kq-in-combat .kqs-dlg-body::before {
   margin: 0 0 12px;
   letter-spacing: 0.05em;
 }
-.kqs-cr-sec p,
+.kqs-cr-sec .kqs-cr-title {
+  font-size: clamp(30px, 6vw, 64px);
+  color: #f1e3c2;
+}
 .kqs-cr-sec li {
   color: #e8dcc0 !important;
   font-size: 17px !important;
@@ -1264,23 +1254,6 @@ body.kq-in-combat .kqs-dlg-body::before {
   display: block;
   font-size: 13px;
   color: #9d8c6b;
-}
-.kqs-cr-motto {
-  font-family: var(--sc);
-  font-size: 34px !important;
-  color: #f1e3c2 !important;
-  margin-top: 60px;
-}
-.kqs-cr-note,
-.kqs-cr-thanks {
-  color: #bfb294 !important;
-  font-style: italic;
-}
-.kqs-cr-end {
-  margin-top: 70px;
-  font-family: var(--hand);
-  font-size: 28px !important;
-  color: #c9a76a !important;
 }
 
 @media (max-width: 720px) {
