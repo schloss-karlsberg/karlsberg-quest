@@ -4,7 +4,7 @@ aliases:
 - TASK-013
 title: Credits scene at the party
 slug: credits-scene-at-the-party
-status: todo
+status: in-progress
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Credits scene at the party
@@ -84,6 +84,67 @@ sequence lists **everyone who contributed**: people, the asset authors, and the 
 - [ ] e2e: an ending spec reaches the credits and skips them (`--workers=1`); unit tests for the generated author list
 - [ ] Screenshot (desktop and phone width) in the PR
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+
+## Plan
+
+_Status: approved 2026-11-24_
+
+**Approach:** Extend the party strip used by museum, burn and keep. The storyboard shot `e-fest-abspann` already captures it through `[data-testid="party-credits"]`. Give the strip and the existing fallback page `credits()` the same ordered German credits. This uses the current scene and dependencies.
+
+**Files to touch:**
+
+- `content/credits.json`, `content/README.md` — the contributor list, its closing line and a one-line editing example.
+- `content/party/credits.json` — project, tools, data licences, fiction note and final thanks.
+- `src/systems/party/{credits,index,runtime,strip}.ts`, `src/systems/party/party.css` — assembly, playback, inputs and mobile layout.
+- `src/systems/story/endings/ui.ts` — reuse the assembled list on the fallback page.
+- `tests/{story-party,party}.test.ts`, `e2e/{party,story}.spec.ts` — content, playback and player-input checks.
+- `docs/design/tour/systems.md` §6, `docs/ACTION-RPG.md` §14, `docs/PRD.md` — party behaviour, feature row and PRD changelog entry.
+
+**Steps:**
+
+- [ ] 1. Seed `content/credits.json` with the two exact contributor name/role pairs above and a separate closing line, „und alle, die noch kommen“. Validate nonblank names and roles and optional HTTP(S) links in a unit test.
+- [ ] 2. Assemble title, contributors, asset authors, voice model, tools/libraries, data sources and licences, fiction note and „Danke fürs Spielen“, in that order. Read asset authors from `public/assets/LICENSES.json`, split comma-separated coauthors, trim and deduplicate within each source, and display the names with that source’s licence(s). Preserve collective credits such as MakeHuman Community. Exclude emails, machine paths and the real guide’s name.
+- [ ] 3. Feed both existing views the assembled credits. Preserve party cues, explicit line overrides, storyboard selectors, the normal camera orbit and movement hand-back.
+- [ ] 4. Provide a visible, tappable „Überspringen“ button and Enter/Escape dismissal. Return to free roam once. For reduced motion (game setting or OS preference), leave a static, manually scrollable list open until dismissed and suppress the orbit. Keep text and skip clear of touch controls.
+- [ ] 5. Cover the three ending routes and player inputs. Exercise the real skip button locally in the story spec. Update the party design note, add the ACTION-RPG §14 row and record the behaviour change in the PRD changelog.
+- [ ] 6. Run the four gates. The contributor runs browser checks and captures the matching after screenshots outside the sandbox.
+
+**Test plan:**
+
+- Unit tests cover seed validation, multi-author splitting, deduplication within each source, licence display and new fixture entries reaching both views. Check all three ending cues, reduced motion beyond the normal end time, and exactly one `credits:done` on dismissal.
+- Run `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. The contributor runs the Vite build externally if blocked in the sandbox.
+- External e2e baseline: party, story and smoke. Use the story spec for an ending-to-button-skip path. Use the party spec for Enter, Escape, touch tap, scrolling and free roam. With `&manual`, wait for `window.kq.step` and step the loop to register the party/story hooks before waiting on them. Grep `e2e/` for each selector and hook touched during implementation, trace callers of changed helpers, and list matches and runnable specs in Progress. Add every spec using a changed helper to the external run.
+
+  ```sh
+  for spec in party story smoke; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 || exit 1
+  done
+  ```
+
+- Before screenshots are in the main checkout at `test-results/contribute/TASK-013/before-desktop.png` and `before-phone.png`. For the after pair, use `/?notitle&nosave&fresh&manual&party=burn`, wait for the party bodies to be ready, then call `window.kq.step(300)`. Match desktop 1280×720 and phone 844×390 landscape with touch. Portrait shows the rotate prompt. Save `after-desktop.png` and `after-phone.png` alongside the originals for the PR. Check reduced-motion scrolling separately.
+
+**Acceptance criteria coverage** (planned scope)
+
+| Criterion | Coverage |
+| --- | --- |
+| Seed file and format check | full — step 1 |
+| All endings and credit categories | full — all three routes use the shared list, including named asset authors grouped by source with licences. |
+| New contributor or manifest entry appears automatically | full — fixture additions exercise both data sources. |
+| Skip, mobile and reduced motion | full — step 4 and party input checks |
+| Every named person has agreed | full — the owner confirmed the two contributor seeds. Asset bylines reproduce the public CC0 manifest credits. |
+| Real tour guide omitted | full — check the credits text in both views. |
+| Ending-to-skip e2e and author-list unit tests | full — story spec and grouping fixtures |
+| Desktop and phone screenshots in the PR | full — both baselines captured, matching after pair planned. |
+| Four passing gates | full — step 6, results pending implementation. |
+
+**Risks:** Escape can also release pointer lock and open pause. Verify that one press dismisses the credits and leaves the player in free roam.
+
+**Open questions:** None.
+
+## Progress
+
+- 2026-11-24 — Plan approved for `feat/task-013-credits-scene`. The contributor captured the desktop and landscape phone baselines on unchanged code.
+- External e2e baseline: `e2e/party.spec.ts`, `e2e/story.spec.ts`, `e2e/smoke.spec.ts`. Current grep finds the credits selectors/hooks in `party`, `story`, `campaign`, `pol-flow` and the helpers `common.ts` and `k4.ts`. The current plan keeps changes local to the party and story specs. If `throughParty` in `common.ts` changes, its callers include story, pol-flow, campaign and chapter-k4 (via `playK4`). If `playK4` changes, its callers are chapter-k4 and campaign. Record the actual selector/hook matches and helper consumers here after implementation.
 
 ## Notes
 - Builds on the party feature (`docs/design/tour/systems.md` §6, `content/bible/06-enden.md` §8).
