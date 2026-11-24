@@ -1,9 +1,8 @@
 /**
- * Card discipline (playtest round 4, docs/ACTION-RPG.md §10): ONE centre card on screen at a time.
+ * Card discipline (docs/ACTION-RPG.md §10): one card or HUD notice on screen at a time.
  *
- * Every card that takes the centre of the screen — the clue card (a modal field-book page), the
- * quest reward card, the level-up card (which takes pending skill unlocks with it) and a lone skill
- * unlock card — asks this director for the slot. A card that does not get it waits in its own
+ * The clue page, quest payout, level-up, standalone skill unlock and HUD toast share the slot.
+ * A card that does not get it waits in its own
  * queue; nothing stacks. While a fight, a chase, a boss reveal, the curtain or an NPC conversation
  * is on, the slot is *held*: no card comes up (a card already up steps aside — its own CSS — and
  * its clock stops), so cards never cover a fight or talk over a person.
@@ -33,21 +32,29 @@ export const SOFT_LINGER = 1.2;
 /** Longest a soft reason keeps a waiting card back in one go (s): a chain of lines must not bury it. */
 export const SOFT_MAX = 8;
 
+interface Toast {
+  text: string;
+  left: number;
+}
+
 export class CardDirector {
-  /** The slide-in card on the slot (reward, level, skill). */
+  /** The non-modal card or notice on the slot. */
   private owner: string | null = null;
+  private dismissOwner: (() => void) | null = null;
+  private toast: Toast | null = null;
+  private readonly toasts: Toast[] = [];
   /** The modal page open now (it goes in front of a slide-in card). */
   private modalOwner: string | null = null;
   private modalHandle: ModalHandle | null = null;
   private readonly queue: QueuedModal[] = [];
   private readonly holds = new Set<string>();
   private gap = 0;
-  /** Extra hold for the slide-in cards (the story's title card / curtain), set by the story system. */
+  /** A screen that covers the card or notice, such as a title card or a curtain. */
   extraHold: (() => boolean) | null = null;
 
   constructor(
-    private readonly hud: Hud,
-    private readonly modals: ModalManager,
+    private readonly hud: Pick<Hud, 'inAction' | 'showToast' | 'holdToast' | 'closeToast'>,
+    private readonly modals: Pick<ModalManager, 'count'>,
   ) {}
 
   private readonly sources = new Map<string, () => unknown[]>();
@@ -105,7 +112,7 @@ export class CardDirector {
 
   /** Must a slide-in card step aside now (held, a soft reason, or a field-book page in front of it)? */
   get held(): boolean {
-    return this.busy || this.softBusy || this.modalOwner !== null;
+    return this.busy || this.softBusy || this.modalOwner !== null || this.modals.count > 0 || !!this.extraHold?.();
   }
 
   /** Why it is held (tests / debug). */
@@ -122,15 +129,61 @@ export class CardDirector {
   /**
    * A non-modal card asks for the slot. True when it owns it (keep showing) or just got it.
    * A card that already owns the slot keeps it while held (it steps aside itself).
+   * Quest payouts and unlock cards can take the slot from a routine toast.
    */
-  claim(token: string): boolean {
+  claim(token: string, dismiss?: () => void): boolean {
     if (this.owner === token) return true;
-    if (this.owner !== null || this.modalOwner !== null || this.gap > 0 || this.busy || this.softBusy || this.queue.length > 0) return false;
-    // another modal (a menu, the journal, the conversation) or the chapter title card / curtain is
-    // up: the slide-in cards wait for it
-    if (this.modals.count > 0 || this.extraHold?.()) return false;
+    if (this.gap > 0 || this.held || this.queue.length > 0) return false;
+    const replacesToast = this.owner === 'toast' && (token === 'skill' || token === 'level' || token === 'reward');
+    if (this.owner !== null && !replacesToast) return false;
+    if (replacesToast) this.hud.holdToast(true);
     this.owner = token;
+    this.dismissOwner = dismiss ?? null;
     return true;
+  }
+
+  /** Dismiss only the notice the player can currently see. */
+  dismissNotice(): boolean {
+    if (!this.dismissOwner || this.held) return false;
+    this.dismissOwner();
+    return true;
+  }
+
+  enqueueToast(text: string, ms = 2600): void {
+    if (this.toast?.text === text || this.toasts.some((toast) => toast.text === text)) return;
+    this.toasts.push({ text, left: ms / 1000 });
+    if (this.toasts.length > 6) this.toasts.shift();
+  }
+
+  private readonly closeToast = () => {
+    this.toast = null;
+    this.hud.closeToast();
+    this.release('toast');
+  };
+
+  clearToasts(): void {
+    this.toasts.length = 0;
+    if (this.toast) this.closeToast();
+  }
+
+  private tickToast(dt: number): void {
+    if (!this.toast) {
+      if (this.toasts.length && this.claim('toast', this.closeToast)) {
+        this.toast = this.toasts.shift()!;
+        this.hud.showToast(this.toast.text);
+      }
+      return;
+    }
+    // Resume an interrupted toast before taking the next one off the queue.
+    if (this.owner !== 'toast') {
+      if (this.claim('toast', this.closeToast)) this.hud.holdToast(false);
+      return;
+    }
+    const held = this.held;
+    this.hud.holdToast(held);
+    if (held) return;
+    this.toast.left -= dt;
+    if (this.toast.left <= 0) this.closeToast();
   }
 
   /** The card is gone: the slot frees after a short gap. */
@@ -141,6 +194,7 @@ export class CardDirector {
       this.gap = CARD_GAP;
     } else if (this.owner === token) {
       this.owner = null;
+      this.dismissOwner = null;
       this.gap = CARD_GAP;
     }
   }
@@ -165,6 +219,7 @@ export class CardDirector {
     if (this.gap > 0) this.gap = Math.max(0, this.gap - dt);
     if (this.modalHandle?.closed) this.release(this.modalOwner ?? '');
     this.pump();
+    this.tickToast(dt);
   }
 
   private pump(): void {
@@ -191,7 +246,9 @@ export class CardDirector {
   /** Forget everything (a new game, a load). */
   clear(): void {
     this.queue.length = 0;
+    this.clearToasts();
     this.owner = null;
+    this.dismissOwner = null;
     this.modalOwner = null;
     this.modalHandle = null;
     this.gap = 0;
@@ -199,7 +256,7 @@ export class CardDirector {
     this.softSince = -1;
   }
 
-  /** The kinds of centre cards visible in the DOM now (tests: never more than one). */
+  /** The kinds of cards and notices visible in the DOM now (tests: never more than one). */
   static visible(): string[] {
     if (typeof document === 'undefined') return [];
     const out: string[] = [];
@@ -210,7 +267,8 @@ export class CardDirector {
         return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05 && r.width > 2 && r.height > 2;
       });
     if (vis('[data-testid="chronik-card"]')) out.push('clue');
-    if (vis('.kqq-reward:not(.kqq-out):not(.kqq-held)')) out.push('reward');
+    if (vis('.kqq-reward:not(.kq-notice-out):not([hidden])')) out.push('reward');
+    if (vis('.kq-toast:not(.kq-notice-out):not([hidden])')) out.push('toast');
     if (vis('.kqp-card:not(.kqp-out):not(.kqp-held)')) out.push('level');
     if (vis('.kqk-card:not(.kqk-out):not(.kqk-held)')) out.push('skill');
     if (vis('.kqs-choice-card.kqs-show')) out.push('choice');

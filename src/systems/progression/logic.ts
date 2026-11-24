@@ -245,7 +245,9 @@ export class ProgressionCore {
     s.inventory[id] = this.count(id) + add;
     this.quietNow = !!o.quiet;
     try {
-      this.env.emit('item:pickup', { item: id, count: add, total: s.inventory[id]!, id: o.pickup?.id, x: o.pickup?.x, z: o.pickup?.z });
+      this.env.emit('item:pickup', {
+        item: id, count: add, total: s.inventory[id]!, id: o.pickup?.id, x: o.pickup?.x, z: o.pickup?.z, reason: o.reason,
+      });
       if (def?.kind === 'weapon' && weaponPower(id) > weaponPower(s.equipped.weapon)) this.equip(id);
       else if (def?.kind === 'charm' && !s.equipped.charms.includes(id) && s.equipped.charms.length < charmSlots(s.level)) this.equip(id);
     } finally {

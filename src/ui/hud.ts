@@ -10,6 +10,18 @@ const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="tr
 
 export type HudDockArea = 'vitals' | 'boss' | 'feed';
 
+/** Retire a status immediately for reduced motion, or give it a short opacity fade. */
+export function retireNotice(el: HTMLElement): void {
+  if (el.hidden || document.documentElement.hasAttribute('data-kq-reduced-motion')) {
+    el.remove();
+    return;
+  }
+  el.setAttribute('aria-hidden', 'true');
+  el.classList.add('kq-notice-out');
+  // A modal can hide the dock during dismissal, which cancels the animation.
+  window.setTimeout(() => el.remove(), 200);
+}
+
 /**
  * HUD slots. Each is a tiny API so feature systems never touch the DOM structure:
  *   compass (heading + markers), prompt, subtitles, threat, lantern oil, era label, stance, toasts.
@@ -28,7 +40,8 @@ export class Hud {
   private readonly eraEl: HTMLElement;
   private readonly statusEl: HTMLElement;
   private readonly stanceEl: HTMLElement;
-  private readonly toastsEl: HTMLElement;
+  readonly noticeDock: HTMLElement;
+  private toastEl: HTMLElement | null = null;
   private readonly clickEl: HTMLElement;
   /** "⏸ Bullet-Time" chip while the simulation only advances by `kq.step` / `kq.pilot` (?manual). */
   private readonly bulletEl = h('div.kq-bullet-time.kq-hidden', { 'data-testid': 'bullet-time', title: 'Bullet-Time: das Spiel läuft nur über kq.pilot / kq.step weiter' }, '⏸ Bullet-Time');
@@ -146,7 +159,7 @@ export class Hud {
     this.eraEl = h('div.kq-era-label');
     this.statusEl = h('div.kq-status');
     this.stanceEl = h('div.kq-stance');
-    this.toastsEl = h('div.kq-toasts');
+    this.noticeDock = h('div.kq-toasts');
     this.clickEl = h('div.kq-click-to-play.kq-hidden', { 'data-testid': 'click-to-look' }, [
       svg(MOUSE_SVG),
       h('div.kq-ctp-text', [h('b', t('hud.clickToPlay')), h('span', t('hud.clickToPlaySub'))]),
@@ -213,7 +226,7 @@ export class Hud {
       this.promptEl,
       this.oilEl,
       this.stanceEl,
-      this.toastsEl,
+      this.noticeDock,
       this.clickEl,
       this.bulletEl,
     ]);
@@ -414,31 +427,19 @@ export class Hud {
     this.stanceEl.textContent = text;
   }
 
-  /**
-   * A short note top right. At most two at a time (playtest round 4: four tips stacked over the
-   * chapter title in the first seconds); the rest wait their turn, the same text never twice.
-   */
-  toast(text: string, ms = 2600): void {
-    if (this.toastWait.some((x) => x.text === text) || [...this.toastsEl.children].some((el) => el.textContent === text)) return;
-    this.toastWait.push({ text, ms });
-    // a waiting tip is stale after a while: drop the oldest beyond six
-    while (this.toastWait.length > 6) this.toastWait.shift();
-    this.pumpToasts();
+  /** Render the toast that owns the card director's slot. */
+  showToast(text: string): void {
+    this.toastEl = h('div.kq-toast.kq-notice', { role: 'status' }, text);
+    this.noticeDock.append(this.toastEl);
   }
 
-  private readonly toastWait: { text: string; ms: number }[] = [];
+  holdToast(held: boolean): void {
+    if (this.toastEl) this.toastEl.hidden = held;
+  }
 
-  private pumpToasts(): void {
-    while (this.toastWait.length && this.toastsEl.childElementCount < 2) {
-      const { text, ms } = this.toastWait.shift()!;
-      const el = h('div.kq-toast', text);
-      this.toastsEl.append(el);
-      setTimeout(() => {
-        el.remove();
-        // the next one after a short beat
-        setTimeout(() => this.pumpToasts(), 250);
-      }, ms);
-    }
+  closeToast(): void {
+    if (this.toastEl) retireNotice(this.toastEl);
+    this.toastEl = null;
   }
 
   showClickToPlay(on: boolean): void {

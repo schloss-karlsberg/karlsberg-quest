@@ -568,33 +568,12 @@ body.kq-in-combat .kq-prompt.show {
   width: min(460px, 60vw);
   align-items: center;
 }
-/* right edge, under the toasts column (top 90 px, ≤ 4 toasts) */
+/* Right edge, below the notice dock. */
 .kq-dock-feed {
   right: 22px;
   top: 300px;
   align-items: flex-end;
   max-width: min(320px, 34vw);
-}
-.kq-toasts {
-  position: absolute;
-  top: 90px;
-  right: 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-.kq-toast {
-  font-family: var(--hand);
-  font-size: 23px;
-  background: rgba(232, 220, 192, 0.92);
-  color: var(--ink);
-  text-shadow: none;
-  padding: 4px 14px;
-  border-radius: 2px;
-  box-shadow: 2px 3px 10px rgba(0, 0, 0, 0.45);
-  transform: rotate(0.8deg);
-  animation: kq-in 0.25s ease-out;
 }
 .kq-crosshair {
   position: absolute;
@@ -1071,11 +1050,6 @@ html[data-kq-contrast] .kq-oil-gauge {
   border: 2.5px solid #fff;
   background: #000;
 }
-html[data-kq-contrast] .kq-toast {
-  background: #fff;
-  color: #000;
-  border: 2px solid #000;
-}
 html[data-kq-contrast] .kq-threat svg path {
   stroke: #fff;
   stroke-width: 2.6;
@@ -1091,7 +1065,6 @@ html[data-kq-reduced-flash] .kq-lantern-btn .flame {
   animation: none;
 }
 html[data-kq-reduced-motion] .kq-subtitles .line,
-html[data-kq-reduced-motion] .kq-toast,
 html[data-kq-reduced-motion] .kq-modal-layer {
   animation: none;
 }

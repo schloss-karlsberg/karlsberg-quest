@@ -199,8 +199,9 @@ class Progression {
       disposeFns.push(off);
       return off;
     };
-    on('xp:grant', ({ amount, reason, x, z }) => {
+    on('xp:grant', ({ amount, reason, x, z, receipt }) => {
       const gained = this.core.grantXp(amount, reason, reason === 'debug');
+      if (receipt) receipt.amount = gained;
       if (gained <= 0) return;
       if (x !== undefined && z !== undefined && Number.isFinite(x) && Number.isFinite(z)) this.hud.float(`+${gained} EP`, x, ctx.world.heightAt(x, z) + 1.9, z);
       else if (reason !== 'debug') this.hud.line('xp', `+${gained} Erfahrung`);
@@ -215,16 +216,19 @@ class Progression {
       this.cards.push(level, points);
       this.tabs.refresh();
     });
-    on('item:grant', ({ item, count, quiet }) => {
+    on('item:grant', ({ item, count, reason, quiet, receipt }) => {
       const want = Math.max(1, count ?? 1);
-      const got = this.core.grantItem(item, want, { quiet });
+      const got = this.core.grantItem(item, want, { reason, quiet });
+      if (receipt) receipt.amount = got;
       if (got < want && !quiet) this.refuse(`Kein Platz mehr: ${this.name(item)} (${this.core.count(item)})`);
       this.changed('item');
     });
-    on('item:pickup', ({ item, count, total }) => {
+    on('item:pickup', ({ item, count, total, reason }) => {
       if (!this.core.quietNow) {
         const def = this.item(item);
-        this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (def?.kind === 'consumable' && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
+        if (!reason?.startsWith('quest:')) {
+          this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (def?.kind === 'consumable' && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
+        }
         pickupSound(ctx.audio, def?.kind ?? 'quest');
       }
       this.updateQuick();
@@ -509,14 +513,8 @@ class Progression {
       this.updateXp(true);
     }
     this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight);
-    const storyCard = !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show');
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
-    // one centre card at a time: the level card waits for the quest reward card and a choice
-    const otherCard = !!document.querySelector('.kqq-reward:not(.kqq-out), .kqs-choice-card.kqs-show');
-    // and never in a fight, a chase or while knocked down (playtest round 2: it covered the boss)
-    // … nor over a person talking, an echo, a hunt or a choice (src/ui/cards.ts holds, playtest round 5)
-    let hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || skillCard || otherCard || ctx.ui.hud.inAction || ctx.ui.cards.held;
-    // one centre card at a time (src/ui/cards.ts): the level card asks for the slot
+    let hold = ctx.pause.reasons.has('title') || skillCard || ctx.ui.cards.held;
     if (this.cards.wants && !hold && !ctx.ui.cards.claim('level')) hold = true;
     this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
     if (!this.cards.wants) ctx.ui.cards.release('level');

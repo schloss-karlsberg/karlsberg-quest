@@ -26,10 +26,10 @@ import { Beacons, type BeaconSpec } from './beacons';
 import { type HintContext, type WayDeps, type WayPoint, StallWatch, distanceText, hintFor, objectiveTarget, storyHint, targetVisible } from './wayfinding';
 import { enemyDef } from '../../rpg/enemies';
 import { loadBundledQuests, questsInPlay } from './data';
-import { Feed, RewardCard, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
+import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
-import { factLabel, JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
+import { JournalModal, renderCodex, renderQuests, renderSets, type JournalData } from './journal';
 import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
 
 declare module '../../core/state' {
@@ -48,7 +48,7 @@ export interface QuestsHooks {
   progress(id: string, objective: string, n?: number): boolean;
   /** Force-complete (story `quest complete`): rewards now, from any state but done. */
   complete(id: string): boolean;
-  /** Turn in a ready quest (as the conversation does): rewards, history unlocks, reward card. */
+  /** Turn in a ready quest (as the conversation does): grants, history unlocks and payout notice. */
   turnin(id: string): boolean;
   reset(id: string): boolean;
   tracked(): string[];
@@ -128,7 +128,7 @@ class QuestRuntime {
   private readonly tracker = new Tracker();
   private readonly feed = new Feed();
   private readonly layer: HTMLElement;
-  private readonly reward: RewardCard;
+  private readonly reward: RewardNotice;
   private bannerQ: (() => void)[] = [];
   readonly journal: JournalModal;
   private readonly beacons: Beacons;
@@ -191,7 +191,7 @@ class QuestRuntime {
     // above the HUD, below modals (pause menu, clue cards: playtest z-order)
     this.layer.style.zIndex = '17';
     this.layer.style.pointerEvents = 'none';
-    this.reward = new RewardCard(this.layer, ctx.ui.cards);
+    this.reward = new RewardNotice(ctx.ui.hud.noticeDock, ctx.ui.cards);
     this.journal = new JournalModal(ctx, {
       opened: () => {
         pageSound(ctx.audio);
@@ -405,7 +405,7 @@ class QuestRuntime {
     const q = this.defs.get(id);
     if (!q) return;
     acceptSound(this.ctx.audio);
-    // a banner never stamps over the reward card: it waits until the card is gone
+    // The banner waits until the payout notice is gone.
     const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
     const xp = q.rewards?.xp ?? 0;
     const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
@@ -449,7 +449,7 @@ class QuestRuntime {
     this.feed.push(t('quest.turnin.feed', { title: q.title_de }), 'ready', 4200);
   }
 
-  /** A turn-in paid out: the reward card; voice / auto turn-ins also speak a short turn-in moment. */
+  /** Queue the payout notice; voice or auto turn-ins also give a short spoken line. */
   private onPayout(p: QuestPayout): void {
     const q = this.defs.get(p.id);
     if (!q) return;
@@ -458,18 +458,13 @@ class QuestRuntime {
     const hist = q.history ?? [];
     const view: RewardView = {
       title: p.title,
-      xp: p.xp,
-      quiet: p.quiet,
+      xp: p.quiet ? 0 : p.xp,
       items: p.items.map((i) => ({ name: this.itemName(i.item), count: i.count })),
-      codex: p.codex.map((f) => {
-        const fact = this.ctx.content.facts.get(f);
-        return { id: f, title: fact?.title_de ?? f, confidence: fact?.confidence ?? 'U', label: fact ? factLabel(fact) : 'FAKT' };
-      }),
+      codex: p.codex.length,
       skills: p.skills.map((s) => `${SKILL_NAME[s.id] ?? s.id} ${s.tier}`),
       // voices tell one line; the rest is in the journal (an npc offers "Erzähl mehr")
-      more: (ti === 'auto' || 'voice' in ti) && hist.length > historyAtTurnin(q) ? t('quest.moreJournal', { n: hist.length - historyAtTurnin(q) }) : undefined,
+      more: p.codex.length > 0 || ((ti === 'auto' || 'voice' in ti) && hist.length > historyAtTurnin(q)),
     };
-    // one centre card at a time: it waits for the slot (not over the conversation, not in a fight)
     this.reward.push(view);
     if (ti === 'auto' || 'voice' in ti) {
       // a turn-in moment, not a lecture (playtest round 3): the thanks (one line) and one history
@@ -557,9 +552,9 @@ class QuestRuntime {
 
   frame(dt: number): void {
     const ctx = this.ctx;
-    // reward card on the UI clock (the conversation pauses the game)
+    // The payout uses the UI clock. The director holds it during a conversation.
     this.reward.tick(Math.min(dt, 0.1), ctx.player.position);
-    // the "Neue Aufgabe" stamp waits for the reward card and the chapter title card (they overlapped)
+    // The "Neue Aufgabe" stamp waits for the payout and the chapter title.
     if (this.bannerQ.length && !this.reward.open && !this.reward.pending && !document.querySelector('.kqs-card.kqs-show')) this.bannerQ.shift()?.();
     if (this.dirty) {
       this.dirty = false;

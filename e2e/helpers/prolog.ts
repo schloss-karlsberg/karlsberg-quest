@@ -41,8 +41,10 @@ export async function shot(page: Page, name: string): Promise<void> {
 }
 /** The action-RPG review screenshots (test-results/screens/cna-*.png), taken in every mode. */
 export async function cna(page: Page, name: string): Promise<void> {
-  // an earlier reward card is clicked away (as a player would) so it does not cover the scene
-  await page.evaluate(() => document.querySelector('[data-testid="quest-reward"]')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await page.evaluate(() => {
+    const cards = window.kq!.ctx.ui.cards;
+    if (cards.showing === 'reward') cards.dismissNotice();
+  });
   // level / skill / chapter-title cards run out on rendered frames, which `?manual` stepping
   // barely produces: in a real session they are long gone by now, so they stay out of the review set
   await page.evaluate(() => {

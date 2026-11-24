@@ -5,6 +5,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { GameEvents } from '../src/core/events';
 import type { FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
 import { questsInPlay } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
@@ -20,7 +21,16 @@ function env(seed = 7): QuestEnv & { log: Ev[]; flags: Record<string, FlagValue>
     log,
     flags: {},
     codex: [],
-    emit: (n, p) => log.push({ n, p: p as unknown as Record<string, unknown> }),
+    emit: <K extends keyof GameEvents>(n: K, p: GameEvents[K]) => {
+      if (n === 'xp:grant') {
+        const grant = p as GameEvents['xp:grant'];
+        if (grant.receipt) grant.receipt.amount = grant.amount;
+      } else if (n === 'item:grant') {
+        const grant = p as GameEvents['item:grant'];
+        if (grant.receipt) grant.receipt.amount = grant.count ?? 1;
+      }
+      log.push({ n, p: p as unknown as Record<string, unknown> });
+    },
     now: () => 0,
     rng,
   };
@@ -308,7 +318,7 @@ describe('availability, stance, rewards, reset, restore', () => {
     b.tick(0.1, { x: 10, z: 10, era: '1789' });
     b.progress('q.test.kette', 'c', 2);
     const pay = b.complete('q.test.kette')!;
-    expect(of('xp:grant')).toContainEqual({ amount: 100, reason: 'quest:q.test.kette' });
+    expect(of('xp:grant')).toContainEqual({ amount: 100, reason: 'quest:q.test.kette', receipt: { amount: 100 } });
     expect(of('skill:grant')).toEqual([{ skill: 'kartograf', level: 2 }]);
     expect(e.flags['flag.kette']).toBe(true);
     expect(of('quest:completed')).toEqual([{ id: 'q.test.kette', xp: 100, main: false }]);
@@ -317,11 +327,31 @@ describe('availability, stance, rewards, reset, restore', () => {
     b.offer('q.test.lohnzettel');
     b.accept('q.test.lohnzettel');
     const p2 = b.complete('q.test.lohnzettel', true)!;
-    expect(of('item:grant')).toEqual([{ item: 'item.balsam', count: 2, reason: 'quest:q.test.lohnzettel' }]);
+    expect(of('item:grant')).toEqual([{ item: 'item.balsam', count: 2, reason: 'quest:q.test.lohnzettel', receipt: { amount: 2 } }]);
     expect(of('codex:unlocked')).toEqual([{ factId: 'cx.08' }]);
     expect(p2.codex).toEqual(['cx.08']);
     expect(e.codex).toEqual(['cx.10', 'cx.08']);
     expect(b.slice.unseen).toContain('cx.08');
+  });
+
+  it('summarizes the XP and items accepted by progression', () => {
+    const { b, e } = book([chain({ rewards: {
+      xp: 100,
+      items: [{ item: 'item.balsam', count: 2 }, { item: 'item.test.zettel' }],
+    } })]);
+    const emit = e.emit;
+    e.emit = (name, payload) => {
+      emit(name, payload);
+      if (name === 'xp:grant') (payload as GameEvents['xp:grant']).receipt!.amount = 120;
+      if (name === 'item:grant') {
+        const grant = payload as GameEvents['item:grant'];
+        grant.receipt!.amount = grant.item === 'item.balsam' ? 1 : 0;
+      }
+    };
+    expect(b.complete('q.test.kette', true)).toMatchObject({
+      xp: 120,
+      items: [{ item: 'item.balsam', count: 1 }],
+    });
   });
 
   it('reset clears counts and flags and asks for despawn and loot clear', () => {

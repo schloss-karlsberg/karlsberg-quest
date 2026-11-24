@@ -11,18 +11,18 @@ import { ModalManager } from './modal';
  *   ctx.ui.hud.prompt('E', 'Lauschen')   ctx.ui.hud.subtitle('Laub', '…')   ctx.ui.toast('…')
  *   ctx.ui.modals.open({ title, body, actions })
  *   ctx.ui.layer('chronik')  → a full-screen container element a feature can fill (kept below modals)
- *   ctx.ui.cards.claim('reward') / .modal('clue:x', open)  → one centre card at a time (./cards.ts)
+ *   ctx.ui.cards.claim('reward') / .modal('clue:x', open)  → one card or notice at a time (./cards.ts)
  */
 export class UI {
   readonly root: HTMLElement;
   readonly hud = new Hud();
   readonly modals: ModalManager;
   readonly loading: LoadingRequests;
-  /** One centre card at a time, held during fights and conversations (./cards.ts). */
+  /** One card or notice at a time, held during fights and conversations (./cards.ts). */
   readonly cards: CardDirector;
   private readonly layers = new Map<string, HTMLElement>();
 
-  constructor(parent: HTMLElement, compass: SVGSVGElement) {
+  constructor(parent: HTMLElement, compass: SVGSVGElement, private readonly requestRender: () => void) {
     this.root = h('div.kq-root');
     const loader = LoaderView.inGame(compass);
     this.loading = new LoadingRequests(loader);
@@ -30,10 +30,14 @@ export class UI {
     parent.append(this.root);
     this.modals = new ModalManager(this.root);
     this.cards = new CardDirector(this.hud, this.modals);
+    this.cards.extraHold = () => !!document.querySelector(
+      '.kq-title:not(.kq-hidden):not(.fade-out), .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show, .kqt-travel-curtain, html[data-kq-rotate]',
+    );
   }
 
   toast(text: string, ms?: number): void {
-    this.hud.toast(text, ms);
+    this.cards.enqueueToast(text, ms);
+    this.requestRender();
   }
 
   /** A named overlay container for a feature (created on first use, hidden by default). */

@@ -344,10 +344,10 @@ declare module '../core/events' {
     'menagerie:calmed': { id: string; animal: MenagerieAnimal };
 
     // ---- requests to progression (owners: quests, story, combat) ----------------------------
-    /** Grant XP (quest rewards, kills, codex cards, bonus objectives). */
-    'xp:grant': { amount: number; reason: string; x?: number; z?: number };
-    /** Put items into the inventory (quest rewards, story). quiet: no toast. */
-    'item:grant': { item: string; count?: number; reason?: string; quiet?: boolean };
+    /** Grant XP. Progression fills the optional receipt with the amount gained during emit. */
+    'xp:grant': { amount: number; reason: string; x?: number; z?: number; receipt?: { amount: number } };
+    /** Put items into the inventory. Progression fills the optional receipt with the accepted count. */
+    'item:grant': { item: string; count?: number; reason?: string; quiet?: boolean; receipt?: { amount: number } };
     /** Place a glowing pickup in the world (quest collect objectives, lore, story `loot`). Idempotent by id. */
     'loot:place': { id: string; item: string; x: number; z: number; era: Era; count?: number; y?: number; room?: string; quest?: string };
     /** Remove pickups placed by id, or all of a quest. */
@@ -357,7 +357,7 @@ declare module '../core/events' {
     'xp:gain': { amount: number; total: number; reason: string };
     'level:up': { level: number; points: number };
     /** An item entered the inventory (world pickup, loot, grant). id = the pickup's id, if any. */
-    'item:pickup': { item: string; count: number; total: number; id?: string; x?: number; z?: number };
+    'item:pickup': { item: string; count: number; total: number; id?: string; x?: number; z?: number; reason?: string };
     /** A consumable was used (quick-use H or the inventory). */
     'item:use': { item: string };
     /** Enemy loot dropped on the ground (pickups follow as loot:place). */

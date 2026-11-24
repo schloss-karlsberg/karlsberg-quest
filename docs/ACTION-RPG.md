@@ -554,12 +554,12 @@ E near a giver opens the field-book conversation. Quest topics come first, marke
    Voice givers (Laub, Marlene) accept at once: the banner shows title, first goal and EP.
 2. *While active*: `progress` lines (a hint in the giver's voice — never a riddle).
 3. *Turn-in*: `turnin_lines` → the **turn-in card** (every goal ticked, the reward) → **Übergeben**
-   → the reward card (XP stamp, items, "Neu im Codex: …" with the confidence badge) → ONE history
-   line as the moment of it (`HISTORY_AT_TURNIN` in `src/systems/quests/logic.ts`; its source and
-   codex card under the line) → `next` quest offered. The other history lines wait for the
-   **„Erzähl mehr: <title>“** topic at the same giver (same chapter; `quest:told` when heard) and are
+   → one history line (`HISTORY_AT_TURNIN` in `src/systems/quests/logic.ts`, with its source and
+   codex card under the line) → `next` quest offered. A compact HUD notice summarizes the payout
+   after the conversation. The other history lines wait for the **„Erzähl mehr: <title>“** topic
+   at the same giver in the same chapter (`quest:told` when heard) and are
    always in the journal. Voice / auto turn-ins say one thanks line and one history line (held
-   while a fight is on) and the reward card says "Mehr dazu im Feldbuch (J)".
+   while a fight is on) and the notice points to the field book for further history.
 
 No stance cards, no answer grids: see §8.6.
 
@@ -809,7 +809,7 @@ Objective types: `kill` (enemy / group / spawn) · `collect` (item; `place` pick
 | Top-left column (`hud.stack`) | era 0, status 10, room 20, story objective 30, **quest tracker 35**, story gauges 40 | core / tools / story / **quests** |
 | Top centre | compass strip (markers), threat eye, **boss bar** (`dock('boss')`) | core / **combat** |
 | Bottom-left (`dock('vitals')`, above the oil gauge) | **Lebenskraft + Atem** 10, **Bannlicht charges** 20, **abilities** (glyph, key, cooldown ring) 25, **level + XP bar** 30, **quick-use slot** 40 | **combat** / **progression** |
-| Right edge (`dock('feed')`, under the toasts) | pickup feed ("+ Kräuterbalsam"), objective ticks | **progression** / **quests** |
+| Right edge | shared notice dock for quest payouts and HUD toasts, above the pickup feed and objective ticks (`dock('feed')`) | **core** / **progression** / **quests** |
 | Bottom centre | prompt, subtitles, dialogue card (kept) | story / npc |
 | Bottom-right | Bussole (kept), fx gauges | story / fx |
 | Over the world | giver glyphs (npc), beacons (quests), pickups (progression), enemy health pips + gebannt ring + trait tags „Deckung“ / „Schleier“ / „Spiegel“ / „Rufer“ (combat), **target ring** under the locked enemy and **chevrons around the character** for off-screen attackers (combat, third person) | |
@@ -829,11 +829,25 @@ capped (`clamp(16px, 3.2vh, 25px)`, heavy ≤ 29 px) and sit beside the target's
 never on it. `e2e/readability.spec.ts` checks 1280×720, 1366×768 and 1920×1080 in a fight with a
 boss bar.
 
-**One centre card at a time** (playtest round 4, `src/ui/cards.ts`, docs/ARCHITECTURE.md §5):
-clue page, reward, level and skill cards share one slot with a queue; nothing comes up during a
-fight (+3 s), a chase, a boss reveal or an NPC conversation; skill unlocks ride on the level card
-(and on each other); the reward card goes by itself after 5 s or when you walk away; the tracker
-folds done goals away; at most two toasts at a time.
+**Shared card slot** (`src/ui/cards.ts`, docs/ARCHITECTURE.md §5). Clue pages, level and skill cards,
+quest payouts and HUD toasts use the same slot. A requested field-book page can open in front of a
+notice. A covered notice resumes with its remaining reading time. Fights, chases, boss reveals and
+NPC conversations hold automatic notices back. Skill unlocks can ride on the level card.
+When a payout, level or skill card is ready, it can take the slot from a routine toast. The toast
+resumes with its remaining reading time after the card.
+
+The payout names the quest and summarizes earned EP, items that fit in the inventory, skill gains
+and the number of newly unlocked Codex entries. Their sources and confidence badges are in the
+field book. Quest items reported here skip the pickup row. Inventory-full feedback still appears.
+The payout lasts up to five visible seconds and can end sooner when the player walks away. Toasts
+deduplicate by text and queue up to six waiting messages.
+
+In free play Escape dismisses the visible payout or toast. A separate press opens pause when the
+slot is clear. Enter, Space or E can dismiss only when gameplay, the current dialogue and the
+focused UI have no use for the key. The top modal handles Escape first and required choices stay
+open until answered. A touch tap on the play surface outside the notice dismisses it. Tapping a
+closable modal's backdrop closes that modal. Movement, camera drags, buttons and scrolling remain
+available. Reduced motion removes both fades.
 
 ## 11. Quest catalogue
 
@@ -1028,6 +1042,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Quest payouts and HUD toasts crowd the world view (TASK-009, 2026-11-24) | A shared HUD slot shows one compact notice at a time and pauses its timer whenever a modal covers it. Escape and outside touch taps dismiss one layer at a time. |
 | Loading feedback (TASK-011, 2026-11-24) | The Bussole starts on the night background and stays in place as the title takes over. The ring fills as terrain or an explicit asset area loads. In play the indicator appears after 300 ms for nearby scenery batches, era prefetch still pending after a shift and Röntgenblick. Players can keep moving. The operating-system preference and the in-game reduced-motion setting both keep the needle still. |
 | "Unauffällig" in chapter 1 (content, 2026-11-20): gaps in the court system | **Bleiche:** watchers count only in court zones and there is none at the Bleiche, so Liese has no watch block; the coat is "unseen" by geometry (COAT_REACH behind line B, out of her view) and `court:take` is still emitted. Needed: a `court.bleiche` zone (around 1001.5/−876.5, r ≈ 11, exit on the trail ≈ 1016/−866) that counts only `take` (no `hivis` there, or the talk path breaks), an escort line by Liese; content then adds her watch and a `court:ejected` handler that hangs the coat back. **Strings:** `court/strings.ts` registers at import, after the content packs, so chapter lines must load after it (`src/systems/court-k1`, one loader line after `court`); a content hook in the system would be cleaner |
 | First-person melee feels floaty | third person by default (camera track); viewmodel anticipation + follow-through, hit-stop, knockback, sound layers; soft lock and lock-on; tune in e2e screenshots and by hand |

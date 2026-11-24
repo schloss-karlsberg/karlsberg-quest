@@ -166,8 +166,7 @@ export default defineSystem({
   frame(dt, ctx) {
     if (skillHooks && typeof window !== 'undefined' && window.kq && window.kq.skills !== skillHooks) window.kq.skills = skillHooks;
     if (!cards) return;
-    const storyCard = typeof document !== 'undefined' && !!document.querySelector('.kqs-card.kqs-show, .kqs-curtain.kqs-show, .kqs-choice-card.kqs-show, .kqq-reward:not(.kqq-out)');
-    let hold = ctx.ui.modals.count > 0 || ctx.pause.reasons.has('title') || storyCard || ctx.ui.hud.inAction || ctx.ui.cards.held;
+    let hold = ctx.pause.reasons.has('title') || ctx.ui.cards.held;
     // one centre card at a time (src/ui/cards.ts)
     if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
     // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen

@@ -4,7 +4,7 @@ import { type Page, expect, test } from '@playwright/test';
 /**
  * Action-RPG quests (docs/ACTION-RPG.md §8): Hanne gives a task (! over her head) → accept in the
  * conversation (the quest card: title, giver, pitch, goals, reward) → the tracker counts three
- * Mahnbriefe → the Lohnzettel → ? → turn in (the turn-in card, „Übergeben“), the reward card, one
+ * Mahnbriefe → the Lohnzettel → ? → turn in (the turn-in card, „Übergeben“), the payout notice, one
  * history line told with its source, „Erzähl mehr“ for the rest — no stance card → the story moves on
  * → the Journal (J) shows the task, the history and the new codex cards. No Chronik board ever.
  * Test chapter content/story/99-test.story.json + content/quests/99-test.quests.json (?storytest).
@@ -215,7 +215,8 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await page.evaluate(() => {
     const k = window.kq!;
     k.teleport(1294, -1218.5, 322, 5);
-    k.step(12);
+    // Let progression's 1.5 s startup cooldown for inventory warnings elapse in manual mode.
+    k.step(96);
   });
   await expect(page.getByTestId('npc-glyph-hanne')).toHaveAttribute('data-mark', 'ready');
   await expect(page.getByTestId('npc-glyph-hanne')).toBeVisible();
@@ -239,17 +240,34 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.locator('[data-testid^="npc-topic-qs:"]')).toHaveCount(0);
   await shot(page, 'turnin-card');
   expect(await events(page, 'quest:completed')).toEqual([]);
+  // The two-balm reward only has room for one.
+  const balsamFeedBefore = await page.evaluate(() => {
+    const k = window.kq!;
+    const owned = k.progression!.state().inventory['item.balsam'] ?? 0;
+    if (owned < 8) k.progression!.grant('item.balsam', 8 - owned, true);
+    return k.progression!.feed().filter((line) => line === '+ Kräuterbalsam').length;
+  });
   await page.getByTestId(`npc-topic-qt:${Q}`).click();
   expect((await flags(page))['flag.test_lohn']).toBeUndefined();
 
-  // ---- the reward card ------------------------------------------------------------------------
+  // ---- the payout -----------------------------------------------------------------------------
   expect(await events(page, 'quest:turnin')).toEqual([{ id: Q, npc: 'hanne' }]);
   expect(await events(page, 'quest:completed')).toEqual([{ id: Q, xp: 120, main: true }]);
-  expect(await events(page, 'xp:grant')).toContainEqual({ amount: 120, reason: `quest:${Q}` });
-  expect(await events(page, 'item:grant')).toContainEqual({ item: 'item.balsam', count: 2, reason: `quest:${Q}` });
+  expect(await events(page, 'xp:grant')).toContainEqual({ amount: 120, reason: `quest:${Q}`, receipt: { amount: 120 } });
+  expect(await events(page, 'item:grant')).toContainEqual({ item: 'item.balsam', count: 2, reason: `quest:${Q}`, receipt: { amount: 1 } });
+  expect(await events(page, 'item:pickup')).toContainEqual(expect.objectContaining({
+    item: 'item.balsam', count: 1, total: 9, reason: `quest:${Q}`,
+  }));
+  const inventory = await page.evaluate(() => {
+    const p = window.kq!.progression!;
+    return { balsam: p.state().inventory['item.balsam'], feed: p.feed() };
+  });
+  expect(inventory.balsam).toBe(9);
+  expect(inventory.feed.filter((line) => line === '+ Kräuterbalsam')).toHaveLength(balsamFeedBefore);
+  expect(inventory.feed).toContain('Kein Platz mehr: Kräuterbalsam (9)');
   expect(await events(page, 'codex:unlocked')).toEqual(expect.arrayContaining([{ factId: 'cx.08' }, { factId: 'cx.10' }]));
   expect(await page.evaluate(() => window.kq!.state().codex.facts)).toEqual(expect.arrayContaining(['cx.08', 'cx.10']));
-  // one centre card at a time (src/ui/cards.ts): the reward card waits while Hanne talks
+  // The payout waits while Hanne talks.
   const reward = page.getByTestId('quest-reward');
   await page.evaluate(() => window.kq!.step(4));
   await expect(reward).toHaveCount(0);
@@ -275,7 +293,7 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.test.irrlichter']?.state)).toBe('active');
   await page.evaluate(() => window.kq!.npc!.close());
 
-  // ---- the reward card, after the conversation ---------------------------------------------------
+  // ---- the payout notice, after the conversation ------------------------------------------------
   // the 120 EP crossed a level: the level card has the slot first (it runs on rendered frames),
   // the reward follows it — never both at once
   for (let i = 0; i < 40 && !(await reward.count()); i++) {
@@ -290,13 +308,29 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
     expect(both).toBe(false);
   }
   await expect(reward).toBeVisible();
+  await expect(reward).toHaveAttribute('role', 'status');
   await expect(reward).toContainText('Aufgabe erfüllt');
   await expect(page.getByTestId('quest-reward-xp')).toHaveText('+120 EP');
-  await expect(reward).toContainText('Kräuterbalsam');
-  await expect(page.getByTestId('quest-reward-codex')).toContainText('Neu im Codex');
-  await expect(page.getByTestId('quest-reward-codex').locator('.kqq-conf').first()).toHaveText('D');
+  await expect(reward.locator('.kqq-r-gains')).toHaveText('Kräuterbalsam');
+  await expect(page.getByTestId('quest-reward-codex')).toHaveText('Neu im Codex (2)');
+  await expect(reward).toContainText('Mehr dazu im Feldbuch');
   await page.waitForTimeout(700);
   await shot(page, 'reward');
+
+  const pose = () => page.evaluate(() => {
+    const p = window.kq!.ctx.player;
+    return { x: p.position.x, z: p.position.z, yaw: p.yaw };
+  });
+  const before = await pose();
+  await page.keyboard.down('w');
+  await page.keyboard.down('ArrowRight');
+  await page.evaluate(() => window.kq!.step(24));
+  await page.keyboard.up('ArrowRight');
+  await page.keyboard.up('w');
+  const after = await pose();
+  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(0.1);
+  expect(Math.abs(after.yaw - before.yaw)).toBeGreaterThan(0.1);
+  await expect(reward).toBeVisible();
   // walking away takes it away by itself
   await page.evaluate(() => {
     const k = window.kq!;
@@ -332,6 +366,7 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await expect(page.getByTestId('codex-card-cx.08')).toBeVisible();
   await expect(page.getByTestId('codex-card-cx.08')).toContainText('neu');
   await expect(page.getByTestId('codex-card-cx.08').locator('.kqq-lab')).toHaveText(/Fakt/i);
+  await expect(page.getByTestId('codex-card-cx.08').locator('.kqq-conf')).toHaveText('D');
   await page.getByTestId('codex-card-cx.08').click();
   await expect(page.getByTestId('codex-detail')).toContainText('Zwei Tage für einen Gulden');
   await expect(page.getByTestId('codex-detail')).toContainText('Quellen');

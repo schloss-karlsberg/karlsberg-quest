@@ -330,7 +330,7 @@ Rules
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
-| `ui` | `hud`, `modals`, `cards` (one centre card at a time, below), `toast(text)`, `layer(id)`, `add(el)` |
+| `ui` | `hud`, `modals`, `cards` (shared card and notice slot, below), `toast(text)`, `layer(id)`, `add(el)` |
 | `era` | `current`, `info` (`terrain`, `palace`, `spiritView`, `night`), `set(era)` |
 | `content` | `ContentDB`: `facts/nouns/clues/cases/speakers/dialogue/hints` maps, `cluesAt(x,z,era)`, `dialogueFor(event)` |
 | `systems, loop, pause` | registry, loop (`time`, `tick`, `step`, `advance`, `renderOnce`, `requestRender(n)`, `pace`, `manual`, `paused`; §3), pause stack |
@@ -343,7 +343,7 @@ above the oil gauge, top centre under the threat eye, right edge under the toast
 `setMarker(id, bearingDeg|null, color)` (compass markers),
 `prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
 one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
-`setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `toast`,
+`setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `noticeDock`,
 `stack(el, order)`. `hud.staged` is true while a boss reveal (`busy('reveal')`) or a staged climax
 (`busy('stage' | 'stage-…')`) holds the screen: edge markers (combat's attacker / wave arrows, the
 hunt's sound arrows) are not drawn then.
@@ -365,10 +365,9 @@ up above the dialogue card while it shows. Title cards and skill cards count gam
 screen steps aside (`kqk-held`, its clock stops) while a story title card or the curtain shows.
 `e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
 
-**Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`, playtest round 4): ONE centre card on
-screen at a time. The clue card (a modal field-book page, `cards.modal('clue:<id>', open)`) is
-something the player asked for: it goes in front of a slide-in card (which steps aside, its clock
-stopped, and comes back after) and queues behind another page, 0.35 s apart; the slide-in cards ask for the slot every frame
+**Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`). The clue card (a modal field-book page,
+`cards.modal('clue:<id>', open)`) goes in front of a card or notice, whose countdown pauses until
+the page closes. Clue pages queue behind each other, 0.35 s apart. Cards ask for the slot every frame
 (`cards.claim('reward' | 'level' | 'skill')`, `cards.release(…)` when gone). The slot is *held*
 while `hud.inAction` (a fight + 3 s, a chase, a boss reveal, being knocked down, a staged climax
 while it plays, no linger — the memory's own page comes right after: the fx `StageDirector`'s
@@ -376,7 +375,7 @@ rewind / 1840 / Kabinett door / departure / riders pieces until their echo ends 
 torch as `stage-k3`, the Zwinger breakout from the moment the gates open (set before `hunt:release`, so the clue page granted on it waits) until the hounds are gone as `stage-kennel`) and while an NPC
 conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a card already up
 steps aside and its clock stops. **Soft holds** (`cards.soft(reason, on)`, playtest round 5) keep
-only slide-in cards back (reward, level, skill; a clue page or modal may still open) and linger
+automatic feedback back (payout, toast, level and skill), while a clue page or modal may still open. They linger
 `SOFT_LINGER` = 1.2 s after they end, but never more than `SOFT_MAX` = 8 s of unbroken holding (a
 chain of lines must not bury a card): a spoken story line that is not low priority (`dialogue`), an
 active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
@@ -387,11 +386,14 @@ unlocks that wait as a level card comes up ride along on it (`cards.source('skil
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the
 same way through `cards.source('ability', …)`), unlocks that arrive together
 share one skill card (`skill-card-also`), and a fresh unlock waits 0.45 s (`SETTLE`) so a reward's
-XP and skill land on one card. The reward card is queued (`RewardCard.push`), goes after 5 s or
-as soon as the player walks 4.5 m from where it came up, a click takes it away. Toasts: at most two
-at a time, the rest queue, the same text never twice. The quest tracker strikes a done goal
+XP and skill land on one card. The payout (`RewardNotice.push`) and HUD toasts share the same slot
+and right-edge dock. The payout times out after 5 s or goes away after a short reading interval
+when the player has moved 4.5 m. Toasts use a bounded queue of six waiting messages and deduplicate
+by text. Payouts and unlock cards can take the slot from a toast. It resumes ahead of waiting
+toasts when the slot frees. In free play, Escape or a completed outside touch tap calls
+`cards.dismissNotice()`. The quest tracker strikes a done goal
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
-`e2e/pacing.spec.ts` (never two centre cards; the Pinnwand's two pages one after the other).
+`e2e/pacing.spec.ts` (one visible notice, modal priority, and the Pinnwand's two pages in sequence).
 
 **Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
@@ -2009,10 +2011,10 @@ Each RPG track adds its own subsection here when it fills its system in.
   leading to the giver). The journal's „Laufend“ is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
-  goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the reward
-  card and the chapter title card), reward card (EP stamp, items, codex facts with confidence +
-  label; queued for the card director's slot: never over a conversation or a fight, gone after 5 s
-  or when the player walks away; `kq.quests.rewardPending()`).
+  goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
+  and the chapter title) and payout notice (earned EP, items, skills and a Codex count). The
+  payout uses the director's slot and leaves after five visible seconds or when the player walks
+  away. `kq.quests.rewardPending()` reports waiting payouts.
 - `beacons.ts`: soft volumetric beam (view-angle edges, sparks) + pulsing ground ring over open
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
@@ -2112,8 +2114,9 @@ Rules that came out of it:
   Lebenskraft bars or the ability row (`e2e/readability.spec.ts` checks 1280×720, 1366×768,
   1920×1080 in a fight with a boss bar). The level card is pushed right of the column as far as the feed allows
   (`left: max(50%, min(column + 253px, 100vw − feed − 251px))`), and drops below a boss bar
-  (`body:has(.kq-dock-boss:not(:empty))`). The quest reward card uses the same horizontal rule and steps
-  aside while a chapter title card shows. The feed fades while a conversation page is open.
+  (`body:has(.kq-dock-boss:not(:empty))`). Quest payouts share the right-edge toast dock, which
+  moves inward on short landscape viewports to clear the touch buttons. The feed fades while a
+  conversation page is open.
 - **Journal**: the quests system's Journal modal (`data-testid=journal`) renders progression's tabs 40 / 50;
   I (`inventory`) opens it on Ausrüstung. Progression keeps a small "Feldbuch" fallback
   (`data-testid=journal-fallback`) that only opens if no modal and no Journal appeared within three
@@ -2141,8 +2144,7 @@ Rules that came out of it:
   `e2e/chapter-k4.spec.ts`, `e2e/campaign.spec.ts` (`CAMPAIGN_FROM=k3` works without a kept save);
   screens `cnb-k3-*.png`, `cnb-k4-*.png`. `K3_FROM=strohmann` (development only) lets the K3 spec skip
   the afternoon; its two afternoon side quests are then not checked.
-- The e2e helpers click a reward card away (`clearCards`) instead of pressing E: in play E is the
-  player's talk / examine key and would reopen the conversation.
+- The e2e screenshot helpers dismiss a visible payout with the director before capturing the scene.
 
 ### Input: keyboard, mouse and touch (`src/player/input.ts`, `src/ui/touch.ts`)
 

@@ -8,7 +8,7 @@ import { newGame } from './helpers/prolog';
  *  1. From "Neues Spiel" the player is in control at once and in a first small fight within 60 s:
  *     a simulated player who only walks where the Bussole points (no menus, no reading pauses)
  *     takes the Messstab off the trailer and meets three Nebelinge rising at the dam.
- *  2. Never two centre cards at once: the fight's reward / skill cards come one after the other
+ *  2. One notice at a time: the fight's payout and skill cards come one after the other
  *     (and not during the fight), the Pinnwand's two field-book pages open one after the other.
  *
  * Screenshots: test-results/screens/s5-pacing-*.png
@@ -16,7 +16,7 @@ import { newGame } from './helpers/prolog';
 // SwiftShader under a parallel suite: the card sampling and screenshots alone can take 15 min
 test.describe.configure({ timeout: 1_800_000 });
 
-/** The centre cards visible now (the same selectors as CardDirector.visible()). */
+/** The cards and notices visible now (the same selectors as CardDirector.visible()). */
 const CARDS_JS = `(() => {
   const vis = (sel) => [...document.querySelectorAll(sel)].some((el) => {
     const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
@@ -24,7 +24,8 @@ const CARDS_JS = `(() => {
   });
   const out = [];
   if (vis('[data-testid="chronik-card"]')) out.push('clue');
-  if (vis('.kqq-reward:not(.kqq-out):not(.kqq-held)')) out.push('reward');
+  if (vis('.kqq-reward:not(.kq-notice-out):not([hidden])')) out.push('reward');
+  if (vis('.kq-toast:not(.kq-notice-out):not([hidden])')) out.push('toast');
   if (vis('.kqp-card:not(.kqp-out):not(.kqp-held)')) out.push('level');
   if (vis('.kqk-card:not(.kqk-out):not(.kqk-held)')) out.push('skill');
   return out;
@@ -187,4 +188,82 @@ test('the Pinnwand hands out two field-book pages: they come one after the other
   const clues = await page.evaluate(() => window.kq!.state().inventory.clues);
   expect(clues).toEqual(expect.arrayContaining(['clue.p.lageplan', 'clue.p.messtischblatt']));
   expect(errors).toEqual([]);
+});
+
+test('Escape handles the top panel, then the visible toast, then pause', async ({ page }) => {
+  await page.goto('./?notitle&nosave&fresh&manual&idle&x=1452&z=-640');
+  await page.waitForFunction(() => !!window.kq?.travel && !!window.kq?.notes && !window.kq.ctx.pause.reasons.has('title'));
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.ui.toast('Karte ergänzt', 30000);
+    k.ctx.ui.toast('Aufgabe erfüllt', 30000);
+    k.step(1);
+  });
+  const activeToast = page.locator('.kq-toast:not(.kq-notice-out)');
+  await expect(activeToast).toHaveText('Karte ergänzt');
+
+  await page.keyboard.press('e');
+  await page.keyboard.press('Space');
+  const bindingsReached = await page.evaluate(() => {
+    const { input } = window.kq!.ctx;
+    return input.wasPressed('listen') && input.wasPressed('dodge');
+  });
+  expect(bindingsReached).toBe(true);
+  await expect(activeToast).toHaveText('Karte ergänzt');
+
+  await page.evaluate(() => window.kq!.travel!.map(true));
+  const map = page.getByTestId('travel-map');
+  await expect(map).toBeVisible();
+  await expect(activeToast).toBeHidden();
+  await page.keyboard.down('Escape');
+  await expect(map).toBeHidden();
+  await expect(activeToast).toBeVisible();
+  await page.keyboard.down('Escape'); // held key, delivered as a repeat
+  await page.keyboard.up('Escape');
+  await expect(activeToast).toHaveText('Karte ergänzt');
+  await expect(page.getByTestId('resume')).toBeHidden();
+
+  await page.keyboard.press('F8');
+  const notesText = page.getByTestId('notes-text');
+  await expect(notesText).toBeFocused();
+  await notesText.fill('Eintrag');
+  await page.keyboard.press('Space');
+  await expect(notesText).toHaveValue('Eintrag ');
+  await expect(activeToast).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(notesText).toBeHidden();
+  await expect(activeToast).toHaveText('Karte ergänzt');
+
+  await page.evaluate(() => {
+    window.kq!.ctx.ui.modals.open({
+      title: 'Eine Wahl treffen',
+      closable: false,
+      actions: [{ label: 'Auswählen' }],
+    });
+  });
+  const choice = page.getByRole('button', { name: 'Auswählen' });
+  await expect(choice).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(choice).toBeFocused();
+  await expect(activeToast).toBeHidden();
+  await page.keyboard.press('Enter');
+  await expect(choice).toBeHidden();
+  await expect(activeToast).toBeVisible();
+
+  await page.keyboard.down('Escape');
+  await expect(activeToast).toHaveCount(0);
+  await page.evaluate(() => {
+    for (let i = 0; i < 24; i++) window.kq!.step(1);
+  });
+  await expect(activeToast).toHaveText('Aufgabe erfüllt');
+  await page.keyboard.down('Escape');
+  await page.keyboard.up('Escape');
+  await expect(activeToast).toHaveText('Aufgabe erfüllt');
+
+  await page.keyboard.press('Enter');
+  await expect(activeToast).toHaveCount(0);
+  const resume = page.getByTestId('resume');
+  await expect(resume).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(resume).toBeVisible();
 });

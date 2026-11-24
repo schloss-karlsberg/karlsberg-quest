@@ -24,15 +24,15 @@ let SHOTS = true;
 
 
 
-/** Put away a reward card (a click, as a player would) and let a level card run out, so the scene shows. */
+/** Put away the payout notice and let a level card run out, so the scene shows. */
 export async function clearCards(page: Page): Promise<void> {
   for (let i = 0; i < 6; i++) {
     const busy = await page.evaluate(() => {
       const k = window.kq as Any;
-      const r = document.querySelector('[data-testid="quest-reward"]:not(.kqq-out)');
-      if (r) r.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      const cards = k.ctx.ui.cards;
+      const dismissed = cards.showing === 'reward' && cards.dismissNotice();
       if (k.progression?.card()) k.step(60);
-      return !!r || !!k.progression?.card();
+      return dismissed || !!k.progression?.card();
     });
     if (!busy) break;
     await page.waitForTimeout(400);

@@ -207,6 +207,7 @@ class Photo {
     if (!this.isOpen || e.code !== 'Escape') return;
     e.preventDefault();
     e.stopImmediatePropagation();
+    if (e.repeat) return;
     // the browser lets go of the pointer on Esc: mark it as ours, or the pause menu opens
     this.ctx.input.releaseLock();
     this.close();

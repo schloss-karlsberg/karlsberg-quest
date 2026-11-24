@@ -14,7 +14,7 @@ import { installDebug } from './debug/hooks';
 import { t } from './i18n';
 import { AVATAR_MODELS, Avatar, type AvatarModelId, avatarModelParam } from './player/avatar';
 import { cameraHints } from './player/camera';
-import { Input } from './player/input';
+import { Input, isTyping } from './player/input';
 import { Player } from './player/player';
 import { actionPose } from './player/pose';
 import { applySeeThrough, type SeeInput } from './player/seeThrough';
@@ -87,7 +87,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   const save = new SaveManager(state, storage, events);
   if (params.has('nosave')) save.enabled = false;
   const audio = new AudioManager();
-  const ui = new UI(document.body, loader.compass);
+  const ui = new UI(document.body, loader.compass, () => loopRef?.requestRender());
   assets.onAreaLoad = () => ui.loading.begin(t('loader.area'));
   const content = loadBundledContent();
   const systems = new SystemRegistry();
@@ -213,6 +213,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     events,
     root: ui.root,
     openPause: () => openPauseMenu(),
+    dismissNoticeAt: (x, y) => {
+      const rect = ui.hud.noticeDock.getBoundingClientRect();
+      if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) dismissPlayNotice();
+    },
     canFly: () => ERA_INFO[world.currentEra].spiritView,
     flying: () => player.flying,
     stance: () => player.stance,
@@ -299,7 +303,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   if (!params.has('fresh') && save.has()) save.load();
   restore();
   // any later load (e.g. the title's "Ende noch einmal wählen") puts the world where the state is
-  events.on('save:loaded', () => restore());
+  events.on('save:loaded', () => {
+    ui.cards.clearToasts();
+    restore();
+  });
   // URL overrides (debug / e2e / sharing a spot)
   const qEra = params.get('era');
   if (isEra(qEra)) era.set(qEra);
@@ -534,6 +541,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     pauseMenuOpen = true;
     openPause(menuDeps, () => (pauseMenuOpen = false));
   };
+  const photoOpen = () => document.documentElement.hasAttribute('data-kq-photo');
+  const dismissPlayNotice = () => {
+    if (!started || pause.paused || photoOpen() || !ui.cards.dismissNotice()) return false;
+    loop.requestRender();
+    return true;
+  };
   // pause only when a lock the player HAD is lost: Chromium also sends an unlocked change for a
   // request that never got the lock (two requests in one frame), and the game's own release (a
   // modal opened) is no reason either, even when that modal has closed again by the time the event
@@ -543,11 +556,32 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     const self = input.takeSelfRelease();
     const lost = hadLock && !input.locked;
     hadLock = input.locked;
-    if (lost && !self && started && modalOpen === 0 && !debug) openPauseMenu();
+    // The browser can handle Escape itself and report only an unlock.
+    if (lost && !self && started && modalOpen === 0 && !dismissPlayNotice() && !debug) openPauseMenu();
     ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0);
   });
+  // Optional dismissal keys must reach gameplay, text entry or the focused control when in use.
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && started && modalOpen === 0) openPauseMenu();
+    if (!['Enter', 'NumpadEnter', 'Space', 'KeyE'].includes(e.code) || e.repeat || e.defaultPrevented) return;
+    if (!started || pause.paused || photoOpen() || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const target = e.target instanceof Element ? e.target : document.activeElement;
+    if (isTyping(target) || target?.closest('button, a[href], summary, [role="button"], [role="link"]')) return;
+    if (Object.values(input.bindings).some((codes) => codes.includes(e.code))) return;
+    if (ui.root.querySelector('.kqs-dlg.kqs-show') || !dismissPlayNotice()) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  // Modal and photo handlers run in capture. An Escape that reaches play advances one layer.
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape' || e.repeat || e.defaultPrevented || !started || modalOpen > 0) return;
+    // Some browsers also report an unlock after delivering the key. Count it as the same press.
+    hadLock = false;
+    if (dismissPlayNotice()) {
+      e.preventDefault();
+      input.releaseLock();
+    } else {
+      openPauseMenu();
+    }
   });
   renderer.domElement.addEventListener('click', () => {
     if (started && modalOpen === 0) input.requestLock();
@@ -616,6 +650,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     input.enabled = false;
     touch.setPlaying(false);
     input.releaseLock();
+    ui.cards.clearToasts();
     ui.hud.show(false);
     pause.push('title');
     if (!title.el.isConnected) ui.add(title.el);
