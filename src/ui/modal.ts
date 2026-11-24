@@ -49,11 +49,9 @@ export class ModalManager {
       (e) => {
         if (e.code !== 'Escape' || !this.stack.length) return;
         const top = this.stack[this.stack.length - 1]!;
-        if (top.closable) {
-          e.stopImmediatePropagation();
-          e.preventDefault();
-          top.close();
-        }
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        if (top.closable && !e.repeat) top.close();
       },
       true,
     );
