@@ -1002,7 +1002,7 @@ menagerie (now calmed in side quests); ghosts / NPC figures and conversations; e
 examined clues; the codex (40 cards + 8 relief patterns) with sources and confidence; survey skills
 and tools (scan, maps, measure, X-ray, plans, pack routes); Laub's dry voice and Marlene; the home base
 (the field station then, the Karlsbergquelle since the tour); story beats, checkpoints and wake places; memorials; endings and epilogue; every wow moment
-W1–W8; gentle mode and Rauhnacht; accessibility; performance budget; procedural art and audio
+W1–W8; gentle mode and Rauhnacht; accessibility; performance budget; procedural art, sound effects and ambience
 (D-007); save format (new slices only, `STATE_VERSION` unchanged).
 
 The Chronik **content** in the packs (cases, nouns, hints) stays in the files for now (validated,

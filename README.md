@@ -98,7 +98,9 @@ The full list is in the game, under „Lizenzen & Quellen“ (title screen and p
   License 1.1. The licence texts are in [`public/fonts/`](public/fonts/) (shipped with the site as
   `fonts/OFL-*.txt` and linked from „Lizenzen & Quellen“); the originals sit next to the font files in
   [`src/ui/fonts/`](src/ui/fonts/).
-- **Sound:** all sounds are generated in the browser (Web Audio).
+- **Sound:** The browser synthesizes effects and ambience with Web Audio. Dialogue uses voice clips
+  generated locally with MOSS-TTS-v1.5. Synthetic voices are CC0. Jan Eric Rippel licensed his
+  voice for the player in Karlsberg Quest only. [Voice credits](public/assets/LICENSES.json)
 - **Libraries:** [three.js](https://threejs.org) (MIT, © 2010-2026 three.js authors), including
   from its examples the meshoptimizer decoder (MIT), KTX-Parse and zstddec (MIT), and the Draco and
   Basis Universal decoders (Apache-2.0). Listed under `libraries` in

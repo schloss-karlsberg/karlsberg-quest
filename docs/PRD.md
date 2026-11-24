@@ -487,7 +487,8 @@ gantt
 - ~~**Q-3 Engine path**~~ → answered by D-005.
 - **Q-4 Capacity:** how many hours a week go into this? The milestone dates assume about 20.
 - **Q-5 Art:** own work, open-licence assets, or AI-generated with a licence check? **Lean:** AI-assisted concepts, final portraits by hand or with a clear licence trail.
-- **Q-6 Voice:** text only, or voice for the compass? **Lean:** text until 1.0.
+- ~~**Q-6 Voice**~~ → the compass and other speakers use locally generated dialogue clips. The
+  procedural audio policy in D-007 and D-009 still applies to sound effects and ambience.
 - **Q-7 Languages:** German first; English at 1.0? **Lean:** yes.
 - **Q-8 Review partner:** who checks history before release: the Historisches Museum, the city of Homburg, or the Landesdenkmalamt? **Lean:** ask at M4.
 - **Q-9 Learning goals:** keep IDEA.md's goals (explain LiDAR, "look, don't dig") as secondary goals? **Lean:** yes (written for the earlier surveyor concept; recheck for the tour).

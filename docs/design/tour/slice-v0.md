@@ -25,7 +25,7 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | t7–t8 Wind | At `wind`: gust (synth wind, caption), both dogs bolt barking uphill and come back (`animal:run` with `back`), a 6 s skippable cinematic on the dogs, `player.t.wind`, Jost, `player.t.hunde`, Gerold „Wildschweine, wahrscheinlich. Oder Rehe.“ |
 | t9–t10 Reh | New route stop `reh` (727.4/−751.5). Ricke + Kitz at 704/−779, 36 m down the slope in forest (terrain line of sight from the stop checked). Sneak prompt [C], photo prompt [N]. Good photo → praise; good photo after `animal:alert` → „Sie hat dich angesehen. Gutes Bild.“; flight within 16 m → „Und weg.“ / „Zu schnell.“, the tour goes on 45 s later; hard fallback 180 s. Never a fail state. |
 | t11 fade 2 | „Weiter zum Weiher.“ → fade → `warp` to `damm`, deer despawned, player behind the group. |
-| t12–t13 | Marlene's one cameo line at the dam (text only, no body). Station 3 at the Weiher: date and purpose **offen**. |
+| t12–t13 | Marlene speaks one line at the dam. Station 3 at the Weiher: date and purpose **offen**. |
 | t14–t15 Quelle | Station 4: Quelle, Bach, Wassertretbecken „in der Nähe“; supply / Fassung **offen**. „Ruh dich kurz aus, wir sind oben am Plateau.“ The group walks off on `p-aufstieg`. |
 | t16–t17 | Alone: `player.q.fund`, step into the trough → `item.bussole`, `story.compass`, `story.laub`; `laub.t.intro`, `player.q.laub`, `laub.t.intro.b`, `laub.t.quelle`, `laub.t.trog`; `quelle.call` → the Quelle's own E „Wasser berühren“ → shift to 1789 (reason `quelle`). |
 | t18 Sommer 1789 | `player.q.wo`, `laub.t.1789`, `laub.t.seite`; fade out. Exit: the hand-over grants (relief 3, Kartograf 1, Messstab, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
@@ -39,11 +39,11 @@ Owner playtest: „lost the group and couldn't find it again“. The walk system
 ## What is faked (placeholders)
 
 - Bodies: the people stand-ins (guide and members) and the fauna stand-ins (deer, dogs) from the WIP `tour/animals-system` / `chars/fauna-api` branches.
-- All lines are text only (no voice). The barks have no `{Name}`.
+- The barks have no `{Name}`.
 - The Bussole pickup: stepping right up to the trough picks it up (no E interaction, no glint effect).
 - The wind: a synthesised gust plus a caption; leaves and crowns do not react.
 - Dog barks: a short synth placeholder.
-- Marlene: one subtitle line, no figure.
+- Marlene speaks off screen with subtitles.
 - „Schau zum Berg“ (camera tutorial) is a prompt only; no look-direction check.
 
 ## Known issues
