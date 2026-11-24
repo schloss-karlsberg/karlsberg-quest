@@ -245,7 +245,7 @@ export async function ensureHelpers(page: Page): Promise<void> {
 
 export async function boot(page: Page, b?: string): Promise<void> {
   await page.goto(URL);
-  await waitForHooks(page, ['story', 'chronik', 'npc', 'hunt', 'menagerie', 'quests', 'combat', 'quelle', 'skills', 'fx']);
+  await waitForHooks(page, ['story', 'chronik', 'npc', 'hunt', 'menagerie', 'quests', 'combat', 'quelle', 'skills', 'fx', 'court']);
   await ensureHelpers(page);
   await installQuestPlay(page);
   await page.evaluate((b) => {

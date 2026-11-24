@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { SAVE_KEY } from '../src/core/save';
-import { throughTour } from './helpers/tour';
+import { openTourHub, throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
 
 /**
@@ -147,26 +147,24 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
     const k = window.kq!;
     k.story!.start('Alex');
     k.story!.goto('k1');
-    k.story!.flush();
-    k.step(2);
+    k.step(380);
   });
-  await page.waitForFunction(() => {
+  const waitForLine = (lineId: string) => page.waitForFunction((id) => {
     const k = window.kq!;
+    if (k.story!.state().dialogue?.id === id) return true;
     k.story!.finishTyping();
-    k.step(6);
-    return k.story!.state().dialogue?.speaker === 'marlene';
-  }, null, { timeout: 30_000 });
+    k.step(30);
+    return k.story!.state().dialogue?.id === id;
+  }, lineId, { timeout: 90_000 });
+
+  // Keep the chapter timeline and let the quest's initial radio line finish first.
+  await waitForLine('marlene.k1.morgen.quelle');
   await typed(page);
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-speaker', 'marlene');
   await expect(page.getByTestId('dialogue')).toContainText('Alex');
   await shot(page, 'dialogue-marlene');
 
-  await page.waitForFunction(() => {
-    const k = window.kq!;
-    k.story!.finishTyping();
-    k.step(6);
-    return k.story!.state().dialogue?.speaker === 'laub';
-  }, null, { timeout: 30_000 });
+  await waitForLine('laub.k1.morgen.quelle');
   await typed(page);
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
   await shot(page, 'dialogue-laub');
@@ -192,27 +190,9 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
 test('story: hub overlay, objective and Bussole', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.start('Alex');
-    k.step(4);
-    k.story!.flush();
-    k.teleport(1059.3, -833.1, 50);
-    k.step(4);
-  });
-  expect(await page.evaluate(() => window.kq!.story!.state().inHub)).toBe(true);
-  await page.evaluate(() => window.kq!.press('KeyE', 2));
-  // clues at home (Marlene's notes from the chapter packs) may take E first:
-  // read them, then the hub
-  await page.evaluate(() => {
-    const k = window.kq!;
-    for (let i = 0; i < 8 && !document.querySelector('[data-testid="hub"]'); i++) {
-      k.ctx.ui.modals.closeAll();
-      k.step(2);
-      k.press('KeyE', 2);
-    }
-  });
-  await expect(page.getByTestId('hub')).toBeVisible();
+  await waitForHooks(page, ['walk']);
+  await page.evaluate(() => window.kq!.story!.start('Alex'));
+  await openTourHub(page);
   await shot(page, 'hub');
   await page.getByTestId('hub-chronik').click();
   await expect(page.getByTestId('page-codex')).toBeVisible();

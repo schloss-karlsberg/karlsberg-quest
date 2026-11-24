@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 import { newGame } from './helpers/prolog';
+import { openTourHub } from './helpers/tour';
 
 // Tour onboarding, queued clue pages and the order in which Escape dismisses UI.
 test.describe.configure({ timeout: 600_000 });
@@ -40,35 +41,39 @@ test('the test quest holds its payout during combat and shares the notice slot',
   await newGame(page, 'Mara', false, './?nosave&fresh&manual&storytest');
   await waitForHooks(page, ['skills']);
   const quest = 'q.test.lohnzettel';
-  const group = `${quest}.briefe`;
+  // Turning in the test quest removes its own enemies. Keep a separate fight active.
+  const group = 'pacing.mahnbrief';
   await page.evaluate(({ quest, group }) => {
     const k = window.kq!;
     k.story!.goto('test', 'q1');
-    k.story!.flush();
     k.setEra('1789');
     k.teleport(1270, -1215, 0);
+    k.step(420);
     k.quests!.accept(quest);
     k.combat!.god(true);
-    k.step(6);
-    for (const e of k.combat!.enemies().filter((enemy) => enemy.group === group)) {
-      k.combat!.place(e.id, 1270, -1217, true);
-    }
-    k.step(12);
+    k.combat!.spawn('mahnbrief', { group, x: 1270, z: -1217, radius: 0 });
+    k.combat!.windup(group);
+    k.step(2);
   }, { quest, group });
   expect(await page.evaluate(() => window.kq!.combat!.state().inCombat)).toBe(true);
-  await page.evaluate((id) => {
+  const during = await page.evaluate((id) => {
     const k = window.kq!;
     k.quests!.complete(id);
     k.skills!.grant('relief', 1);
     k.step(1);
+    return {
+      inCombat: k.combat!.state().inCombat,
+      rewardOpen: k.quests!.reward(),
+      rewardPending: k.quests!.rewardPending(),
+    };
   }, quest);
-  expect(await page.evaluate(() => window.kq!.quests!.reward())).toBeNull();
+  expect(during).toEqual({ inCombat: true, rewardOpen: false, rewardPending: 1 });
   await page.evaluate((id) => window.kq!.combat!.kill(id), group);
   await page.waitForFunction(() => {
     const k = window.kq!;
     k.story!.finishTyping();
-    k.step(3);
-    return !k.combat!.state().inCombat && !!k.quests!.reward();
+    k.step(15);
+    return !k.combat!.state().inCombat && k.quests!.reward();
   });
   expect(await page.evaluate(() => window.kq!.ctx.ui.cards.showing)).toBe('reward');
   expect(await page.evaluate(() => window.kq!.skills!.card())).toBeNull();
@@ -80,14 +85,8 @@ test('two clue pages at the hub open one at a time', async ({ page }) => {
   const errors = trackErrors(page);
   await newGame(page, 'Alex', false, './?nosave&fresh&manual&placeholder');
   await waitForHooks(page, ['chronik']);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1053, -828, 51);
-    k.step(4);
-    k.press('KeyE', 2);
-  });
+  await openTourHub(page);
   const hub = page.getByTestId('hub');
-  await expect(hub).toBeVisible();
   await page.evaluate(() => {
     const k = window.kq!;
     k.chronik!.examine('ct.clue.hohlweg');

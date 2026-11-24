@@ -20,8 +20,10 @@ async function startInSummer(page: import('@playwright/test').Page): Promise<voi
     k.teleport(1059.3, -833.1, 50, 0);
     k.step(4);
   });
-  await upd(page, 60);
+  // A direct chapter jump shows the chapter card. Its hold includes the court cue and quest offer.
+  await upd(page, 420);
   expect(await story(page)).toMatchObject({ era: '1789', beat: 'k1_0b' });
+  expect(await page.evaluate(() => window.kq!.court!.state().sets)).toContain('k1');
 }
 
 /** Every subtitle shown since `recordSubs` (lines last 3–4 s; the checks come later). */

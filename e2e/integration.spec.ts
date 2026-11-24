@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { waitForHooks } from './helpers/pause';
 import { installQuestPlay, touchSpring } from './helpers/prolog';
+import { openTourHub } from './helpers/tour';
 
 // Cross-system play on the tour and K1, with the Chronik test pack enabled.
 const SCREENS = 'test-results/screens';
@@ -56,7 +57,7 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   await page.goto(URL);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
-  await waitForHooks(page, ['story', 'chronik', 'hunt', 'fx', 'quelle', 'skills', 'quests', 'lantern']);
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'fx', 'quelle', 'skills', 'quests', 'lantern', 'walk']);
   await recordEvents(page);
   await start.click();
   await page.getByTestId('warning-accept').click();
@@ -65,25 +66,15 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   await page.getByTestId('light-lantern').click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await page.evaluate(() => window.kq!.step(30));
-  let s = await story(page);
+  const s = await story(page);
   expect(s).toMatchObject({ active: true, chapter: 'tour', beat: 't1', name: 'Alex', era: 'today' });
   expect(await payloads(page, 'story:chapter')).toEqual([{ id: 'tour' }]);
   await expect(page.getByTestId('story-card')).toContainText('Die Führung');
   await shot(page, '01-new-game');
 
-  // ---- 2. home at the Quelle: hub:enter, E opens the hub, the Pinnwand opens the Chronik -------------
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.flush();
-    k.story!.finishTyping();
-    k.teleport(1053, -828, 51);
-    k.step(4);
-  });
-  s = await story(page);
-  expect(s.inHub).toBe(true);
+  // The spring break leaves E available for the hub.
+  await openTourHub(page);
   expect((await events(page, 'hub:enter')).length).toBeGreaterThan(0);
-  await page.evaluate(() => window.kq!.press('KeyE', 2));
-  await expect(page.getByTestId('hub')).toBeVisible();
   await shot(page, '02-hub');
   await page.getByTestId('hub-drawer').click();
   await page.getByTestId('hub-shelf').click();
