@@ -80,7 +80,7 @@ prompts (settings or save slice) so they don't repeat after reload or on replay.
 - [ ] e2e updated (specs that wait for or click cards / modals)
   - **Partly.** The first cut updates payout, pacing and touch specs and the mobile toast view. Specs for deferred surfaces follow their respective changes.
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
-  - **Fully.** All four gates are required for the first cut. Results are pending implementation.
+  - **Pending.** Typecheck, unit tests and build passed. The sandbox blocked `pnpm validate` before content validation started.
 
 ## Plan
 _Status: approved 2026-11-24_
@@ -173,6 +173,26 @@ _Status: approved 2026-11-24_
 - 2026-11-24 — Step 7 added queue and resumption tests, updated the real NPC turn-in fixture for a partial grant, and added keyboard, real-touch and portrait checks. The focused Vitest run passed all 44 tests. `pnpm typecheck` passed with the browser specs included.
 - 2026-11-24 — Step 8 updated the gameplay notes, architecture and PRD. The mobile tour checks one visible toast after queuing two, and the court spec waits for its queued notice. `pnpm typecheck` passed.
 - 2026-11-24 — The final integration review kept the Bannlicht instruction available during combat in the existing combat caption and held queued notices through fast travel and the phone's rotate screen.
+- 2026-11-24 — Step 9 is awaiting contributor verification. On the final implementation, `pnpm typecheck`, `pnpm test` (1,459 tests in 108 files) and `pnpm build` passed. `pnpm validate` was blocked before checking content because `tsx` received `listen EPERM` opening its local IPC socket. Playwright, mobile tour and screenshot runs are pending as requested.
+
+Run `pnpm validate` outside the sandbox. Run the focused Playwright specs one at a time after `pnpm build`. The court, progression and combat specs cover callers affected by the shared slot and the live Bannlicht caption.
+
+```sh
+(
+  for spec in quests pacing touch notes npc photo court progression combat; do
+    scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 || exit 1
+  done
+)
+```
+
+Run the mobile tour for the small landscape toast view and small portrait title, menus and rotate overlay.
+
+```sh
+scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states hud-idle,toasts
+scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait --states title,news,title-settings,rotate
+```
+
+Use `pnpm dev` and the three JS snippets under **Screenshot views** to capture the matching after images with `node scripts/dev/shot.mjs <url> <out.png> '<js>'`. Save them alongside the before captures as `after-1-two-toasts.png`, `after-2-quest-payout.png` and `after-3-map-over-notice.png`. In headed play, click into the world to acquire pointer lock with a notice showing and check that the first Escape dismisses the notice and a separate Escape opens pause. With the map above a notice, close the map and check that the notice returns with reading time left.
 
 ## Notes
 - Overlaps TASK-007 (hub overlay removal); coordinate.
