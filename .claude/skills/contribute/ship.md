@@ -71,6 +71,7 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
   (`mc task move TASK-00X review`). It stays there until the PR is merged; the maintainer moves it to
   `done` after the merge. (This repo uses `review` so open PRs are visible on `mc task board`.)
   Commit and push that task-file change on the branch.
+- Epics: keep the task `in-progress` (only `updated` changes) until the last slice ships.
 - Collection tasks: append a line to "Models so far" (`- [x] <German name> (<English>) · <file> · @author · PR <url>`),
   keep the task `todo`.
 - `mc validate` if `mc` is installed.
