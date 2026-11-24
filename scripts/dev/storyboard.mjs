@@ -7,11 +7,9 @@
 // Every shot stages its scene directly: era, time of day (`kq.story.look`), a teleport with a third-
 // person framing (player in shot, facing the subject), ghosts (`kq.npc`), enemies (`kq.combat`,
 // frozen in place), the pack (`kq.hunt`), the menagerie, fx set pieces (era shift, fire, Steinfraß,
-// fireworks, K3 stage) and the staged endings. A few shots jump the story to their beat
-// (`kq.story.goto`) where that is cheap and sets things up (p1, p3q, k2_1, k3_3, k4_3); between shots
-// the story is parked on a quiet beat and switched off, so no beat reacts to the next staging.
-// The HUD and debug overlays are hidden unless a shot asks for UI (`ui`: the dialogue card, the
-// Bussole, the ending choice). Shot order matters a little: the staged endings run last.
+// fireworks, K3 stage), the tour group and the parties. Some chapter shots jump to a live beat
+// (k2_1, k3_3, k4_3). Between shots the story is parked on a quiet beat and switched off, so no
+// beat reacts to the next staging. The HUD and debug overlays are hidden unless a shot asks for UI.
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +36,9 @@ const QUERY = '?debug&nosave&fresh&manual&q=high';
 const HELPERS = () => {
   const k = window.kq;
   const deg = Math.PI / 180;
+  let marlene;
+  let previousWeapon;
+  let previousPlaySeconds;
   const h = {
     /** Close modals / cards, finish typing. */
     tidy() {
@@ -74,12 +75,24 @@ const HELPERS = () => {
     },
     /** Park the story on a quiet beat and switch it off (no beat reacts to the next staging). */
     idle() {
-      k.story.goto('k1', 'k1_6');
+      const state = k.story.state();
+      if (state.active || state.chapter !== 'k1' || state.beat !== 'k1_6') k.story.goto('k1', 'k1_6');
       k.ctx.state.slice('story').active = false;
     },
     /** Everything the previous shot staged goes away. */
     async reset() {
-      // a staged ending gives the camera back
+      const cameraHeld = !!k.ctx.cinematic.cameraOwner;
+      k.photo.close();
+      k.ctx.player.rig.snapFov(k.ctx.camera);
+      if (previousPlaySeconds !== undefined) {
+        k.ctx.state.mutable.meta.playSeconds = previousPlaySeconds;
+        previousPlaySeconds = undefined;
+      }
+      k.party.clear();
+      k.cinematic.skip();
+      k.ctx.cinematic.releaseCamera('storyboard');
+      if (cameraHeld) await h.frames(30);
+      document.querySelector('.sb-ticket')?.remove();
       if (k.story.stage().active) {
         k.story.stageHold(null);
         k.story.stageSkip();
@@ -110,6 +123,15 @@ const HELPERS = () => {
       k.quelle?.hold(null);
       for (let i = 0; i < 20 && k.quelle?.info().scene !== null; i++) k.step(30);
       k.npc?.despawn('*');
+      k.walk.request({ op: 'despawn', group: 'fuehrung' });
+      k.animals.clear();
+      marlene?.dispose();
+      marlene = undefined;
+      if (previousWeapon !== undefined) {
+        k.ctx.state.mutable.systems.progression.equipped.weapon = previousWeapon;
+        k.ctx.events.emit('equip:change', { slot: 'weapon', item: previousWeapon });
+        previousWeapon = undefined;
+      }
       k.menagerie?.clear();
       k.hunt?.freeze(false);
       k.hunt?.stop();
@@ -125,12 +147,89 @@ const HELPERS = () => {
       k.lantern?.toggle(false);
       k.ctx.player.setFlying(false);
       if (k.ctx.player.stance !== 'stand') k.ctx.player.setStance('stand');
+      k.ctx.player.cameraMode = 'third';
+      k.ctx.player.rig.zoom = 3.6;
+      if (k.ctx.era.current !== 'today') k.setEra('today');
       k.story?.look('day');
       for (const e of ['1789', '1793-02', '1793-07', '1796']) k.story?.look('day', e);
       k.ctx.state.mutable.flags['barks.quiet'] = true;
+      for (const flag of ['combat.disabled', 'laub.silent', 'story.compass', 'tour.slice', 'quelle.call', 'quelle.guide']) {
+        delete k.ctx.state.mutable.flags[flag];
+      }
       k.ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'off' } });
       k.step(30);
       h.tidy();
+    },
+    /** A fixed eye and target, with heights measured above the local ground. */
+    camera({ x, z, y, tx, tz, ty, fov = 48, showAvatar = false }) {
+      const w = k.ctx.world;
+      const eye = w.heightAt(x, z) + y;
+      const target = w.heightAt(tx, tz) + ty;
+      if (!k.ctx.cinematic.takeCamera('storyboard', (cam) => {
+        cam.position.set(x, eye, z);
+        cam.lookAt(tx, target, tz);
+        cam.fov = fov;
+        cam.updateProjectionMatrix();
+      }, { showAvatar, freeze: false })) throw new Error('storyboard camera is busy');
+      k.step(2);
+    },
+    /** Stage the shipped tour roster and land it in formation at a route stop. */
+    tour(stop, { gather = true, dogs = true } = {}) {
+      const members = [
+        'double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost',
+        'double.soll', 'double.liese', 'child.compass', 'extra.1', 'extra.2', 'extra.3',
+        'extra.4', 'extra.5', 'extra.6',
+      ];
+      k.walk.go('imhoff', 'p-fuehrung', 'parkplatz');
+      k.walk.request({ op: 'group', group: 'fuehrung', leader: 'imhoff', members, era: 'today' });
+      if (gather) k.walk.request({ op: 'gather', group: 'fuehrung', around: 'imhoff', face: 'player' });
+      else k.walk.request({ op: 'follow', group: 'fuehrung', leader: 'imhoff' });
+      if (!k.walk.snap('fuehrung', stop)) throw new Error(`could not stage the tour at ${stop}`);
+      if (dogs) for (const id of ['diane', 'bijou']) {
+        k.animals.spawn({ id, kind: 'hund', look: id, follow: 'npc:double.jost', era: 'today' });
+      }
+      k.step(12);
+    },
+    /** Use the shipped doe and fawn, with an approach for the two close shots. */
+    deer({ approach = false } = {}) {
+      const p = k.ctx.player.position;
+      k.animals.spawn({
+        id: 'ricke', kind: 'reh', look: 'ricke', x: 704, z: -779, era: 'today',
+        yaw: h.bearing(704, -779, p.x, p.z), shy: { notice: 30, flee: 20, settle: 25 },
+      });
+      k.animals.spawn({ id: 'kitz', kind: 'reh', look: 'kitz', follow: 'animal:ricke', spacing: 1.5, era: 'today' });
+      if (approach) {
+        for (let i = 0; i < 8 && k.animals.state('ricke').state === 'graze'; i++) k.press('KeyW', 6);
+        k.ctx.player.setStance('crouch');
+      }
+      k.animals.calm('ricke', 5);
+      k.step(2);
+    },
+    phone(zoom = 1, clock) {
+      if (clock) {
+        const [hours, minutes] = clock.split(':').map(Number);
+        previousPlaySeconds = k.ctx.state.state.meta.playSeconds;
+        k.ctx.state.mutable.meta.playSeconds = (hours * 60 + minutes - (14 * 60 + 31)) * 60;
+      }
+      if (!k.photo.open()) throw new Error(`phone unavailable: ${k.photo.state().blocked}`);
+      k.photo.zoom(zoom);
+      k.step(4);
+    },
+    staff() {
+      previousWeapon = k.progression.state().equipped.weapon;
+      k.progression.grant('item.stab.esche', 1, true);
+      if (!k.progression.equip('item.stab.esche')) throw new Error('could not equip the measuring staff');
+    },
+    forester(x, z) {
+      const p = k.ctx.player.position;
+      const people = k.ctx.people;
+      const spec = people.specs().includes('marlene') ? 'marlene' : 'extra.7';
+      marlene = people.spawn(spec, {
+        x, z, y: k.ctx.world.heightAt(x, z), yaw: -h.bearing(x, z, p.x, p.z) * deg,
+        seed: 9071, speaker: 'marlene',
+      });
+      marlene.play('talk');
+      k.step(12);
     },
     /** Spawn a group, freeze it, place its members on an arc in front of the player facing it. */
     enemies(kind, { n = 1, d = 7, spread = 24, a = 0, boss = false, tier, group, era, freeze = true, windup, steps = 30 } = {}) {
@@ -155,7 +254,10 @@ const HELPERS = () => {
     },
     /** Real frames pass (things that ease on render frames). */
     async frames(n) {
-      for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r));
+      for (let i = 0; i < n; i++) {
+        k.ctx.loop.requestRender();
+        await new Promise((r) => requestAnimationFrame(r));
+      }
     },
     /** A boss at x/z: it notices the player and reveals itself (arms up, flare); held there. */
     boss(kind, x, z, steps = 70) {
@@ -179,24 +281,24 @@ const HELPERS = () => {
     /** A spoken line on the dialogue card (speaker id as in the content packs). */
     async say(speaker, text) {
       k.story.say(speaker, text);
-      k.step(6);
-      await h.frames(20);
-      k.story.finishTyping();
-      await h.frames(45);
-      k.story.finishTyping();
+      for (let i = 0; i < 30; i++) {
+        k.step(15);
+        if (k.story.state().dialogue?.text === text) {
+          k.story.finishTyping();
+          await h.frames(30);
+          return;
+        }
+      }
+      throw new Error(`dialogue did not appear: ${speaker}`);
     },
     /** Time of day: today, or a past era like the story's `look` action. */
     look(time, era) {
-      if (era && era !== 'today') k.story.look(time, era);
-      else k.story.look(time);
+      k.story.look(time === 'pause' ? 'tour' : time, era);
+      if (time === 'pause') {
+        k.ctx.world.look.sun.elevation = 8;
+        k.ctx.world.applyLook();
+      }
       k.step(2);
-    },
-    /** Put the player `d` m in front of x/z (on the line from `fx`/`fz`), facing it. */
-    faceAt(x, z, d, fx, fz, o = {}) {
-      const dx = fx - x;
-      const dz = fz - z;
-      const l = Math.hypot(dx, dz) || 1;
-      h.place({ ...o, x: x + (dx / l) * d, z: z + (dz / l) * d, tx: x, tz: z });
     },
   };
   window.__sb = h;
@@ -206,47 +308,176 @@ const HELPERS = () => {
 // The shots. `run(k, h)` is serialised into the page (no closures). `story` starts a story first.
 // ---------------------------------------------------------------------------------------------
 const SHOTS = [
-  // ==== Story: Prologue "Vermessung" (today) =================================================
+  // ==== Story: the guided tour and the first crossing =====================================
   {
-    id: 'p1-feldstation',
-    run: (k, h) => {
-      k.story.goto('prolog', 'p1');
-      h.place({ era: 'today', x: 763.5, z: -897.5, tx: 760.6, tz: -910.4, pitch: -4, zoom: 4.2 });
-      h.run(1);
+    id: 't0-ticket',
+    ui: '.sb-ticket',
+    run: () => {
+      // The ticket is still a design beat. Stage it here until the title flow has one.
+      const ticket = document.createElement('div');
+      ticket.className = 'sb-ticket';
+      ticket.innerHTML = '<div><strong>Öffentliche Führung</strong><span>Schloss Karlsberg</span><span>Treffpunkt: Wanderparkplatz am Karlsberg</span><span>14:30 Uhr</span></div>';
+      document.body.append(ticket);
     },
   },
   {
-    id: 'p2-damm',
+    id: 't1-treffpunkt',
     run: (k, h) => {
-      h.place({ era: 'today', x: 798, z: -896, tx: 819, tz: -875, pitch: -14, zoom: 6, fly: 4 });
+      h.place({ era: 'today', x: 530, z: -760, tx: 524, tz: -770, pitch: -4, zoom: 5 });
+      h.look('tour');
+      h.tour('parkplatz');
+      k.ctx.people.bySpeaker('imhoff')?.play('wave');
+    },
+  },
+  {
+    id: 't2-station1',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 527, z: -758, tx: 519, tz: -813, pitch: 2, zoom: 4.5 });
+      h.look('tour');
+      h.tour('parkplatz');
+      k.ctx.people.bySpeaker('imhoff')?.play('point');
+    },
+  },
+  {
+    id: 't3-handy',
+    ui: '.kq-photo',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 552, z: -616, yaw: 214, pitch: 13 });
+      h.look('tour');
+      h.phone();
+    },
+  },
+  {
+    id: 't4-felsenpfad',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 672, z: -584, tx: 689, tz: -599, pitch: 2, zoom: 4.5 });
+      h.look('tour');
+      h.tour('felsen');
+      k.ctx.people.bySpeaker('imhoff')?.play('point');
+    },
+  },
+  {
+    id: 't5-wind',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 688, z: -642, tx: 700, tz: -641 });
+      h.look('tour');
+      h.tour('wind', { gather: false, dogs: false });
+      const runs = [
+        ['diane', [[676, -636], [700, -640], [722, -646]]],
+        ['bijou', [[677, -637], [701, -642], [718, -652]]],
+      ];
+      for (const [id, path] of runs) {
+        const [[x, z]] = path;
+        k.animals.spawn({ id, kind: 'hund', look: id, x, z, era: 'today' });
+        k.animals.request({ op: 'run', id, path, bark: true, back: true });
+      }
+      for (let i = 0; i < 90 && k.animals.list().some((dog) => dog.x < 699); i++) k.step(6);
+      h.camera({ x: 688, z: -642, y: 1.3, tx: 702, tz: -642, ty: 0.6, fov: 44 });
+    },
+  },
+  {
+    id: 't6-reh-sicht',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 725, z: -753, tx: 704, tz: -779 });
+      h.look('tour');
+      h.tour('reh', { gather: false });
+      h.deer();
+      h.camera({ x: 730, z: -747, y: 2.1, tx: 705, tz: -779, ty: 1.1, fov: 24 });
+    },
+  },
+  {
+    id: 't6-reh-pirsch',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 714, z: -770, tx: 704, tz: -779, pitch: -8, zoom: 2.8 });
+      h.look('tour');
+      h.deer({ approach: true });
+    },
+  },
+  {
+    id: 't6-reh-foto',
+    ui: '.kq-photo',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 714, z: -778, tx: 704, tz: -779, pitch: -6 });
+      h.look('tour');
+      h.deer({ approach: true });
+      const fawn = k.photo.targets().find((target) => target.id === 'reh.kitz')?.at;
+      if (!fawn) throw new Error('the tour fawn has no photo target');
+      const p = k.ctx.player;
+      p.yaw = -h.bearing(p.position.x, p.position.z, fawn.x, fawn.z) * Math.PI / 180;
+      p.pitch = Math.atan2(fawn.y - p.position.y - p.eyeHeight, Math.hypot(fawn.x - p.position.x, fawn.z - p.position.z));
+      h.phone(2);
+    },
+  },
+  {
+    id: 't7-marlene',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 824, z: -865.5, tx: 826, tz: -866, pitch: -3, zoom: 3 });
+      h.look('tour');
+      h.staff();
+      h.forester(826, -866);
+    },
+  },
+  {
+    id: 't7-relief',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 798, z: -896, tx: 813, tz: -903, pitch: -14, zoom: 6, fly: 4 });
+      h.look('tour');
       k.setScanMode(2);
       k.step(20);
     },
   },
   {
-    // Laub wakes in the Bussole at the Orangerie wall: his first line on the card
-    id: 'p3-orangeriemauer',
+    id: 't7-weiher',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 898, z: -840, tx: 891, tz: -869, pitch: -6, zoom: 4.5 });
+      h.look('tour');
+      h.tour('weiher');
+    },
+  },
+  {
+    id: 't9-quelle-gruppe',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1059.3, z: -833.1, tx: 1065.8, tz: -829, pitch: 8, zoom: 3.3 });
+      h.look('pause');
+      h.tour('quelle', { gather: false });
+      k.walk.go('imhoff', 'p-aufstieg', 'plateau');
+      k.step(250);
+    },
+  },
+  {
+    id: 't10-allein',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 50 });
+      h.look('pause');
+      h.camera({ x: 1055, z: -830.7, y: 1, tx: 1061, tz: -834.5, ty: 1.4, fov: 56, showAvatar: true });
+    },
+  },
+  {
+    id: 't10-bussole',
+    ui: '.kqs-bussole',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 50 });
+      h.look('pause');
+      k.ctx.state.mutable.flags['story.compass'] = true;
+      h.camera({ x: 1059, z: -832.7, y: 1.55, tx: 1060.1, tz: -833.8, ty: 0.65 });
+    },
+  },
+  {
+    id: 't10-laub',
     ui: '.kqs-dlg, .kqs-bussole',
     run: async (k, h) => {
-      h.place({ era: 'today', x: 1214, z: -958, tx: 1237, tz: -966, pitch: 2, zoom: 4.5 });
+      h.place({ era: 'today', x: 1057.7, z: -832.5, tx: 1060.6, tz: -834.4, pitch: -8, zoom: 3 });
+      h.look('pause');
       k.ctx.state.mutable.flags['story.compass'] = true;
       k.ctx.events.emit('story:cue', { id: 'bussole:jolt', data: { hold: 4 } });
-      await h.say('laub', 'Fünf Meter dreißig. Für Orangen.');
+      await h.say('laub', 'Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.');
     },
   },
   {
-    id: 'p3q-quelle',
-    run: (k, h) => {
-      k.story.goto('prolog', 'p3q');
-      h.run(2);
-      h.place({ era: 'today', x: 1056.8, z: -831.0, tx: 1061.6, tz: -834.2, pitch: -10, zoom: 3.4 });
-      h.run(1);
-    },
-  },
-  {
-    id: 'p3q-touch',
+    id: 't10-touch',
     run: (k, h) => {
       h.place({ era: 'today', x: 1058.2, z: -831.4, tx: 1060.6, tz: -834.4, pitch: -16, zoom: 2.6 });
+      h.look('pause');
       k.quelle.touch();
       k.step(60);
       k.quelle.hold(1.6);
@@ -254,88 +485,57 @@ const SHOTS = [
     },
   },
   {
-    id: 'p3r-brunnenstube',
+    id: 't11-brunnenstube',
+    ui: '.kq-photo-status',
     run: (k, h) => {
       h.place({ era: '1789', x: 1055.6, z: -831.6, tx: 1061, tz: -834.5, pitch: -6, zoom: 4.5 });
+      h.phone();
+      // Keep the established third-person view with just the phone's status overlaid.
+      k.ctx.player.rig.setPhoto(false);
       k.step(30);
     },
   },
   {
-    id: 'p4-ehrenhof',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 1192, z: -1108, tx: 1262, tz: -1126, pitch: -18, zoom: 6, fly: 5 });
-      k.setScanMode(2);
-      k.step(20);
-    },
-  },
-  {
-    id: 'p5-hohlweg',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 1172, z: -1220, yaw: 180, pitch: -8, zoom: 4 });
-      k.step(20);
-    },
-  },
-  {
-    id: 'p6-eiskeller',
-    run: (k, h) => {
-      h.place({ era: 'today', x: 1501, z: -1287, tx: 1508, tz: -1296, pitch: -14, zoom: 4 });
-      h.enemies('nebelling', { n: 4, d: 6, spread: 60, tier: 1 });
-    },
-  },
-  {
-    // back at the Ehrenhof the Bussole springs open and a scorched page rises from it
-    id: 'p7-punktwolke',
-    ui: '.kqs-bussole, .kqs-dlg',
+    id: 't12-training',
+    ui: '.kqs-dlg',
     run: async (k, h) => {
-      h.place({ era: 'today', x: 1200, z: -1112, tx: 1262, tz: -1126, pitch: -4, zoom: 4 });
-      k.ctx.state.mutable.flags['story.compass'] = true;
-      k.ctx.events.emit('story:cue', { id: 'bussole:open' });
-      k.step(50);
-      await h.say('laub', 'Hunde.');
+      h.place({ era: '1789', x: 1030, z: -852, tx: 1035, tz: -849, pitch: -4, zoom: 3.6 });
+      h.look('dawn', '1789');
+      h.staff();
+      h.enemies('nebelling', { n: 3, d: 5, spread: 40, tier: 0, windup: 'lunge' });
+      await h.say('laub', 'Im letzten Moment zur Seite. Dann schlagen, wenn der Nebeling sich wieder sammelt.');
     },
   },
   {
-    id: 'p8-regeln',
-    ui: '.kqs-dlg, .kqs-bussole',
-    run: async (k, h) => {
-      h.place({ era: 'today', x: 1186, z: -1104, tx: 1216, tz: -1114, pitch: -2, zoom: 4.5 });
-      k.ctx.state.mutable.flags['story.compass'] = true;
-      await h.say('laub', 'Erstens: Sie können nur dort hinüber, wo die Nadel steht. Dort erinnert sich der Boden. Taste Q.');
-    },
-  },
-  {
-    id: 'p9-wechsel',
+    id: 't12-bannlicht',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1200, z: -1112, tx: 1262, tz: -1126, pitch: 4, zoom: 4 });
-      void k.fx.shift('1789');
-      k.fx.shiftAt(2.4);
-      k.step(2);
-    },
-  },
-  {
-    id: 'p9b-sommer-1789',
-    run: (k, h) => {
-      h.place({ era: '1789', x: 1200, z: -1114, tx: 1262, tz: -1126, pitch: 0, zoom: 3.6 });
-      h.enemies('streuner', { n: 2, d: 5, spread: 44, steps: 150 });
-    },
-  },
-  {
-    id: 'p10-abend',
-    run: (k, h) => {
-      h.look('dusk');
-      h.place({ era: 'today', x: 765.5, z: -898.5, tx: 760.6, tz: -910.4, pitch: -2, zoom: 4.2 });
+      h.place({ era: '1789', x: 1030, z: -852, tx: 1035, tz: -849, pitch: -3, zoom: 3.6 });
+      h.look('dawn', '1789');
+      h.staff();
       k.lantern.toggle(true);
-      k.step(20);
+      h.enemies('mahnbrief', { n: 2, d: 4.3, spread: 24, tier: 0 });
+      k.press('KeyG', 1);
+      k.step(4);
     },
   },
   {
-    id: 'p11-nacht',
+    id: 't13-heulen',
+    ui: '.kqs-bussole',
     run: (k, h) => {
-      h.look('night');
-      h.place({ era: 'today', x: 764.5, z: -902, tx: 760.6, tz: -910.4, pitch: 0, zoom: 3.6 });
-      k.lantern.toggle(true);
-      k.stage.cue('frost-breath', { s: 9 });
-      k.step(60);
+      h.place({ era: '1789', x: 1035, z: -850, tx: 1216, tz: -1571, pitch: 7, zoom: 4.5 });
+      h.look('dawn', '1789');
+      k.ctx.state.mutable.flags['story.compass'] = true;
+      k.ctx.events.emit('story:cue', { id: 'bussole:jolt', data: { x: 1216, z: -1571, hold: 4 } });
+      k.step(15);
+    },
+  },
+  {
+    id: 't14-pause-hub',
+    ui: '[data-testid="hub"]',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1058, z: -832.1, tx: 1061, tz: -834.5, pitch: -9, zoom: 3.4 });
+      h.look('pause');
+      k.story.hub();
     },
   },
 
@@ -700,14 +900,6 @@ const SHOTS = [
 
   // ==== Cast & creatures ===================================================================
   {
-    id: 'c-marlene',
-    ui: '.kqs-dlg',
-    run: async (k, h) => {
-      h.place({ era: 'today', x: 763.5, z: -897.5, tx: 760.6, tz: -910.4, pitch: -4, zoom: 4.2 });
-      await h.say('marlene', 'Ein Trichter, rund, mit Wall? Bleib draußen. Ich hab’s notiert. Nicht reingehen, nicht buddeln, nicht mal reinspucken.');
-    },
-  },
-  {
     id: 'c-geister',
     run: async (k, h) => {
       const ids = ['hanne', 'soll', 'jost', 'pikeur', 'peter', 'matthes', 'gaertner', 'diener', 'mann'];
@@ -766,50 +958,77 @@ const SHOTS = [
     },
   },
 
-  // ==== Story: the endings (last: a staged ending owns the camera) ==========================
+  // ==== Story: the ending choice and the parties =========================================
+  {
+    id: 'e0-erwachen',
+    ui: '.kq-photo-status',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 50, pitch: -5, zoom: 4.2 });
+      h.look('dusk');
+      h.phone(1, '16:44');
+      k.ctx.player.rig.setPhoto(false);
+      k.step(4);
+    },
+  },
   {
     id: 'e1-wahl',
     ui: '.kqs-ending',
-    run: async (k, h) => {
-      h.look('dawn');
-      h.place({ era: 'today', x: 764, z: -899, tx: 760.6, tz: -910.4, pitch: 0, zoom: 3.6 });
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1200, z: -1095, tx: 1216, tz: -1114 });
+      h.look('dusk');
+      k.party.set('museum');
+      h.camera({ x: 1203, z: -1098, y: 2.1, tx: 1210, tz: -1116, ty: 1.3, fov: 51 });
       k.story.ending();
-      k.step(4);
-      await h.frames(60);
+      // Use the objects in the clearing for the storyboard's choice.
+      document.querySelector('[data-testid="ending-burn"] .kqs-end-what').textContent = 'Die Feuerschale';
+      document.querySelector('[data-testid="ending-keep"] .kqs-end-what').textContent = 'Bei dir, mit der Bussole';
     },
   },
   {
-    id: 'e-museum',
-    run: async (k, h) => {
-      h.place({ era: 'today', x: 760, z: -902, yaw: 0, pitch: 0 });
-      h.look('dawn');
+    id: 'e-museum-fest',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1210.7, z: -1117.6, tx: 1214, tz: -1112 });
+      h.look('dusk');
       k.story.ending('museum', true);
-      for (let i = 0; i < 300 && !document.querySelector('[data-testid="ending-stage"]'); i++) await h.frames(1);
-      k.story.stageHold(6.5);
+      k.story.stageSkip();
+      document.querySelector('[data-testid="ending-next"]').click();
+      document.querySelector('[data-testid="ending-credits"]').click();
+      if (k.party.state().variant !== 'museum') throw new Error('museum party did not start');
+      k.party.skip();
+      k.ctx.events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'off' } });
+      h.camera({ x: 1211.6, z: -1117.3, y: 1.55, tx: 1214, tz: -1112.4, ty: 1.22, fov: 44 });
     },
-    wait: 5000,
   },
   {
-    id: 'e-burn',
-    run: async (k, h) => {
-      h.place({ era: 'today', x: 760, z: -902, yaw: 0, pitch: 0 });
-      h.look('night');
-      k.story.ending('burn', true);
-      for (let i = 0; i < 300 && !document.querySelector('[data-testid="ending-stage"]'); i++) await h.frames(1);
-      k.story.stageHold(6.5);
+    id: 'e-burn-fest',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1216, z: -1114, tx: 1217.2, tz: -1117.6 });
+      h.look('dusk');
+      k.party.set('burn');
+      h.camera({ x: 1216, z: -1114, y: 0.65, tx: 1217.2, tz: -1117.6, ty: 0.95, fov: 58 });
+      k.step(20);
     },
-    wait: 5000,
   },
   {
-    id: 'e-keep',
-    run: async (k, h) => {
-      h.place({ era: 'today', x: 760, z: -902, yaw: 0, pitch: 0 });
+    id: 'e-keep-fest',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1205.6, z: -1119.2, tx: 1217.2, tz: -1117.6 });
       h.look('night');
-      k.story.ending('keep', true);
-      for (let i = 0; i < 300 && !document.querySelector('[data-testid="ending-stage"]'); i++) await h.frames(1);
-      k.story.stageHold(8);
+      k.party.set('keep');
+      h.camera({ x: 1203.7, z: -1120.8, y: 0.85, tx: 1206.3, tz: -1118.1, ty: 0.45, fov: 57, showAvatar: true });
+      k.step(24);
     },
-    wait: 5000,
+  },
+  {
+    id: 'e-fest-abspann',
+    ui: '[data-testid="party-credits"]',
+    run: (k, h) => {
+      h.place({ era: 'today', x: 1200, z: -1095, tx: 1216, tz: -1114 });
+      h.look('dusk');
+      k.party.set('museum');
+      if (!k.party.credits()) throw new Error('party credits did not start');
+      k.step(240);
+    },
   },
 ];
 
@@ -833,8 +1052,27 @@ page.on('pageerror', (e) => console.log(`  [pageerror] ${e.message}`));
 
 async function boot() {
   await page.goto(`${base}${QUERY}`);
-  await page.waitForFunction(() => !!window.kq?.ctx && !!window.kq.story && !!window.kq.combat && !!window.kq.npc && !!window.kq.quelle && !!window.kq.fx, null, { timeout: 180_000 });
-  await page.addStyleTag({ content: '.kq-debug,.kq-perf{display:none!important} body.sb-clean .kq-root, body.sb-clean > div:not(#app):not(.kq-root){visibility:hidden!important}' });
+  await page.waitForFunction(() => {
+    const k = window.kq;
+    return k?.ctx.input.enabled && k.story && k.combat && k.npc && k.quelle && k.fx
+      && k.walk && k.animals && k.photo && k.progression && k.cinematic && k.party && k.ctx.people;
+  }, null, { timeout: 180_000 });
+  await page.addStyleTag({ content: `
+    .kq-debug, .kq-perf { display: none !important; }
+    body.sb-clean .kq-root, body.sb-clean > div:not(#app):not(.kq-root) { visibility: hidden !important; }
+    .sb-ticket {
+      position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: #080706;
+    }
+    .sb-ticket > div {
+      display: grid; gap: 14px; padding: 44px 64px; text-align: center;
+      border: 6px double #97764c; background: #e8d8b6; color: #382719; font: 24px Georgia, serif;
+    }
+    .sb-ticket strong { font-size: 36px; }
+    body.sb-ui .kqs-ending[data-stage="choose"] {
+      position: fixed; top: 50%; left: 24px; transform: translateY(-50%);
+      width: 490px; max-height: calc(100vh - 48px);
+    }
+  ` });
   await page.evaluate(`(${HELPERS.toString()})()`);
   const gpu = await page.evaluate(() => {
     const gl = window.kq.ctx.renderer.getContext();
@@ -846,6 +1084,8 @@ async function boot() {
   await page.evaluate(() => {
     const k = window.kq;
     k.story.start('Alex');
+    // The debug placeholders yield the photo IDs to the real tour deer while those are staged.
+    k.photo.deer?.spawn(200, -2100);
     k.step(4);
   });
 }
@@ -872,6 +1112,7 @@ for (const s of list) {
     }, s.run.toString());
     if (s.wait) await page.waitForTimeout(s.wait);
     await page.evaluate(() => window.kq.screenshotReady());
+    if (s.ui) await page.locator(s.ui).first().waitFor({ state: 'visible', timeout: 3000 });
     await page.screenshot({ path: `${outDir}/${s.id}.jpg`, type: 'jpeg', quality });
     n++;
     console.log(`✓ ${s.id} (${Date.now() - t0} ms)${out !== undefined && out !== null ? ' ' + JSON.stringify(out).slice(0, 300) : ''}`);
