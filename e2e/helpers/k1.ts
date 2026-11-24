@@ -1,5 +1,6 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
+import { waitForHooks } from './pause';
 import { cna, fight, flag, holdHome, installQuestPlay, pickUp, qn, qs, talkQuest, until, untilQuest } from './prolog';
 
 /**
@@ -244,14 +245,14 @@ export async function ensureHelpers(page: Page): Promise<void> {
 
 export async function boot(page: Page, b?: string): Promise<void> {
   await page.goto(URL);
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.npc && !!window.kq?.hunt && !!window.kq?.menagerie && !!window.kq?.quests && !!window.kq?.combat, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'chronik', 'npc', 'hunt', 'menagerie', 'quests', 'combat', 'quelle', 'skills', 'fx', 'court']);
   await ensureHelpers(page);
   await installQuestPlay(page);
   await page.evaluate((b) => {
     const k = window.kq!;
     // deterministic screenshots: no random barks
     k.ctx.state.mutable.flags['barks.quiet'] = true;
-    // what the prologue leaves behind (quietly: no unlock cards over the first screenshots)
+    // the survey skills from the tour (quietly: no unlock cards over the first screenshots)
     k.story!.start('Alex');
     // (a fresh game queues the Relief-Blick card; clear it, then grant quietly)
     k.skills!.reset();
@@ -259,8 +260,6 @@ export async function boot(page: Page, b?: string): Promise<void> {
     k.skills!.grant('kartograf', 1, true);
     if (b) k.story!.goto('k1', b);
     else k.story!.goto('k1');
-    // a chapter boot: the prologue was not played here, its open quests leave the tracker
-    for (const id of k.quests!.ids()) if (id.startsWith('q.p.') && k.quests!.state().quests[id]?.state !== 'done') k.quests!.reset(id);
     k.step(10);
   }, b);
 }
@@ -306,8 +305,7 @@ export const distTo = (page: Page, x: number, z: number) =>
   page.evaluate(([x, z]) => Math.hypot(window.kq!.ctx.player.position.x - x, window.kq!.ctx.player.position.z - z), [x, z] as const);
 
 /**
- * The touch at the Karlsbergquelle (k1_0; shaped to move to helpers/prolog.ts later: it needs only
- * the page and window.kq). Steps to the trough (unless `stay`: k1 opens within reach), faces the water, expects the
+ * The touch at the Karlsbergquelle (k1_0). Steps to the trough (unless `stay`: k1 opens within reach), faces the water, expects the
  * spring's E prompt, presses E, runs the ~2.7 s touch scene on game time, jumps past the fx shift
  * transition and expects 1789 with the quest objective counted (`quest`/`objective`, default
  * q.k1.ankunft/quelle).
@@ -559,7 +557,7 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(npcs.sort()).toEqual(['diener@1789', 'gaertner@1789', 'hanne@1789', 'jost@1789', 'soll@1789']);
   await upd(page, 400);
   expect(await qs(page, 'q.k1.ankunft')).toBe('active');
-  // the Messstab comes along (the prologue's; in a chapter boot it is handed over quietly)
+  // the Messstab comes along from the tour (a K1 boot hands it over quietly)
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBeTruthy();
 
   // ======================= Teil A: the day =======================================================

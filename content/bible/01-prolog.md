@@ -1,6 +1,10 @@
 # Prolog „Vermessung“
 
-> **Altes Konzept (Stand 2026-11-23).** Dieser Prolog „Vermessung“ (Vermesser\*in, Feldstation, Laterne) ist nicht mehr der Spielstart. Seit v0.7.0 beginnt jedes neue Spiel mit der Führung: [`docs/design/tour/bible/01-prolog.md`](../../docs/design/tour/bible/01-prolog.md) (gebaut in `content/story/00-tour.story.json`). Der alte Prolog bleibt nur als `legacy` geladen (`?classic`), damit alte Spielstände weiterlaufen; Entfernung: TASK-007.
+> **Historischer Prolog.** Seit v0.7.0 beginnt ein neues Spiel mit der
+> [Führung](../../docs/design/tour/bible/01-prolog.md). Die Versionen v0.7–v0.8 boten
+> „Vermessung“ noch über `?classic` an. Alte Lesezeichen öffnen jetzt die Führung.
+> Ein Spielstand aus „Vermessung“ setzt „Der Hof“ an der Karlsbergquelle fort.
+> Ausrüstung, Erfahrung und abgeschlossene Aufgaben bleiben erhalten (TASK-007).
 
 | | |
 | --- | --- |

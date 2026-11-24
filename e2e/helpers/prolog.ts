@@ -1,28 +1,8 @@
 import { type Page, expect } from '@playwright/test';
-import { openPause, waitForHooks } from './pause';
-import { type PlayOptions, SCREENS } from './common';
+import { waitForHooks } from './pause';
+import { SCREENS } from './common';
 
-/**
- * The prologue ("Vermessung", bible 01-prolog.md) as an action-RPG quest chain (docs/ACTION-RPG.md
- * §11.0), played headless through window.kq from the first frame after the title flow to the
- * chapter-1 title card:
- *
- *   p1 the old start by the forest road: Marlene's quest "Der Messstab" (the staff outside, then three Nebelinge on the
- *   way down to the dam: the first fight inside a minute) → p2/p3 "Was der Wald verbirgt" (the dam wall in Relief 2, the Orangerie step in VAT,
- *   Laub speaks) → p3q/p3r "Wasser, das sich erinnert" (down to the Karlsbergquelle, E at the
- *   trough: the first time travel, 1789, hold Q home) → p4–p6 "Die Bussole spricht" (Ehrenhof,
- *   the 1840 map, the hollow way, the pit — and the first fight: four Nebelinge rise from the Eiskeller) → p7–p9b "Spuren in der
- *   Punktwolke" (the point cloud, J: the field book, Q at the Ehrenhof → 1789, the servant's echo,
- *   a Streuner: Bannlicht + Messstab, Q home) → the stance "Was war das?" → p10 dusk → p11 night,
- *   the bench at the Quelle → "Kapitel 1 · Der Hof".
- *
- * No Chronik board, no sentences to fill: the quests gate the beats. The shared quest helpers
- * (`installQuestPlay`, `qs`, `stance`, `fight`, `shiftTo`, `cna`) are used by k1.ts and k2.ts too.
- * Used by e2e/chapter-prolog.spec.ts and e2e/campaign.spec.ts. Screenshots: ch-prolog-*.png and
- * the action-RPG review set cna-*.png.
- */
-let SHOTS = true;
-
+// Shared opening, spring and quest controls for the chapter playthroughs.
 async function snap(page: Page, file: string): Promise<void> {
   // software WebGL on a loaded machine: a frame can stall; one retry, then go on (pictures are
   // for review, the assertions carry the test)
@@ -36,9 +16,6 @@ async function snap(page: Page, file: string): Promise<void> {
       if (attempt === 1) console.warn(`screenshot ${file} skipped: ${(e as Error).message.split('\n')[0]}`);
     }
   }
-}
-export async function shot(page: Page, name: string): Promise<void> {
-  if (SHOTS) await snap(page, `ch-prolog-${name}`);
 }
 /** The action-RPG review screenshots (test-results/screens/cna-*.png), taken in every mode. */
 export async function cna(page: Page, name: string): Promise<void> {
@@ -60,9 +37,6 @@ export async function cna(page: Page, name: string): Promise<void> {
 }
 
 export const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
-export const beat = async (page: Page) => (await story(page)).beat;
-export const clues = (page: Page) => page.evaluate(() => window.kq!.state().inventory.clues);
-export const said = (page: Page) => page.evaluate(() => window.kq!.story!.state().said as string[]);
 export const flag = (page: Page, f: string) => page.evaluate((f) => window.kq!.state().flags[f], f);
 
 // ---------------------------------------------------------------------------------------------
@@ -127,9 +101,6 @@ export async function until(page: Page, id: string, seconds = 60): Promise<strin
     { id, seconds },
   );
 }
-/** Let game time pass like a player who reads every card (kept for the campaign). */
-export const play = (page: Page, seconds: number) => run(page, seconds);
-
 /**
  * A voice turn-in is a short moment, never a stance card (playtest round 3): no card opens; the
  * quest's deed is its state. Returns the quest state.
@@ -206,28 +177,6 @@ export async function fight(page: Page, target: string, o: { hits?: number; shot
   return before;
 }
 
-/** Stand at the anchor and press Q: the shift into `era`, the transition played through. */
-export async function shiftTo(page: Page, x: number, z: number, yaw: number): Promise<void> {
-  await page.evaluate(
-    ([x, z, yaw]) => {
-      const k = window.kq!;
-      const h = (window as unknown as Partial<QW>).__cna;
-      const era0 = k.story!.state().era;
-      // a card on screen pauses the game (and Q with it): read it away first, then press Q
-      for (let i = 0; i < 3 && k.story!.state().era === era0; i++) {
-        h?.tidy();
-        k.teleport(x, z, yaw, 2);
-        k.step(6);
-        h?.tidy();
-        k.press('KeyQ', 1);
-        k.fx!.shiftAt(3.6);
-        k.fx!.freeze(false);
-        k.step(12);
-      }
-    },
-    [x, z, yaw] as const,
-  );
-}
 /** Hold Q (back to today, home to the Quelle — WP-04): the long press, then the transition played through. */
 export async function holdHome(page: Page): Promise<void> {
   const log = await page.evaluate(() => {
@@ -257,11 +206,11 @@ export async function holdHome(page: Page): Promise<void> {
   });
   if (log.length) console.log('[holdHome] retried:', log.join(' | '));
 }
-/** Before the Karlsbergquelle's trough, facing the water (P_SPOTS.quelle; compass 54 = the spring's 234° front − 180). */
+/** Before the Karlsbergquelle's trough, facing the water. */
 export const QUELLE_STAND = { x: 1059.3, z: -833.1, yaw: 54 } as const;
 
 /**
- * The Karlsbergquelle (prologue p3q, src/systems/quelle): stand before the trough facing the water,
+ * The Karlsbergquelle (src/systems/quelle): stand before the trough facing the water,
  * wait for "E Wasser berühren", press E, let the touch scene run on game time (the dip, the
  * stillness, the brook running back; the touch at 2.7 s) until the story's shift starts, then play
  * the transition through. `atScene` runs once the moment stands still (a screenshot). Returns what
@@ -319,34 +268,8 @@ export async function pickUp(page: Page, x: number, z: number): Promise<void> {
     [x, z] as const,
   );
 }
-/** Stand at (x, z) facing `yaw`, set the relief mode and press E on what the Chronik targets. */
-export async function examine(page: Page, x: number, z: number, yaw: number, pitch: number, scan: number, clue: string): Promise<void> {
-  await page.evaluate(
-    ([x, z, yaw, pitch, scan]) => {
-      const k = window.kq!;
-      k.teleport(x, z, yaw, pitch);
-      k.setScanMode(scan);
-      k.step(30);
-    },
-    [x, z, yaw, pitch, scan] as const,
-  );
-  expect(await page.evaluate(() => window.kq!.chronik!.target())).toBe(clue);
-  // a page held back earlier (one centre card at a time, src/ui/cards.ts; under step() the fight's
-  // 3 s linger counts rendered frames only) must not open over this one and swallow the E
-  await page.evaluate(() => {
-    const k = window.kq!;
-    for (let i = 0; i < 300 && (k.ctx.ui.cards.pending || k.ctx.ui.modals.count); i++) {
-      (window as unknown as QW).__cna.tidy();
-      k.step(1);
-    }
-  });
-  await page.evaluate(() => window.kq!.press('KeyE', 2));
-  await expect.poll(() => clues(page)).toContain(clue);
-  await page.evaluate(() => (window as unknown as QW).__cna.tidy());
-}
-
-/** A new game from the title. The default URL starts the retired surveyor prologue (`?classic`): a new game opens with the tour otherwise. */
-export async function newGame(page: Page, name: string, shots = false, url = './?nosave&fresh&manual&classic'): Promise<void> {
+/** Start the tour from the title screen. */
+export async function newGame(page: Page, name: string, shots = false, url = './?nosave&fresh&manual'): Promise<void> {
   await page.goto(url);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
@@ -354,281 +277,16 @@ export async function newGame(page: Page, name: string, shots = false, url = './
   await start.click();
   await expect(page.getByTestId('content-warning')).toBeVisible();
   await expect(page.getByTestId('content-warning')).toContainText('16');
-  if (shots) await shot(page, '00a-warning');
+  if (shots) await snap(page, 'opening-00a-warning');
   await page.getByTestId('warning-accept').click();
   await page.getByTestId('player-name').fill(name);
-  if (shots) await shot(page, '00b-name');
+  if (shots) await snap(page, 'opening-00b-name');
   await page.getByTestId('name-confirm').click();
   await expect(page.getByTestId('light-lantern')).toBeVisible();
-  if (shots) await shot(page, '00c-lantern');
+  if (shots) await snap(page, 'opening-00c-lantern');
   await page.getByTestId('light-lantern').click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await installQuestPlay(page);
-}
-
-/** The chapter's main playthrough (shared with e2e/campaign.spec.ts). */
-export async function playProlog(page: Page, o: PlayOptions = {}): Promise<void> {
-  SHOTS = o.shots ?? true;
-  await installQuestPlay(page);
-  // ---- p1: the field station: "Die Feldstation" ---------------------------------------------------
-  let s = await story(page);
-  expect(s).toMatchObject({ active: true, chapter: 'prolog', beat: 'p1', era: 'today' });
-  await expect(page.getByTestId('story-card')).toContainText('Vermessung');
-  await page.evaluate(() => window.kq!.step(70));
-  await shot(page, '01-card');
-  await o.at?.('prolog:card');
-  await installQuestPlay(page);
-  // Marlene gives the quest by radio while you walk (a voice giver: taken at once)
-  expect(await untilQuest(page, 'q.p.feldstation', 'active', 10)).toBe('active');
-  await page.evaluate(() => window.kq!.step(20));
-  await expect(page.getByTestId('quest-tracker')).toContainText('Messstab');
-  await shot(page, '02-tracker');
-  // the Messstab leans outside the trailer, three metres from the door: walk over it
-  expect(await beat(page)).toBe('p1');
-  await pickUp(page, 762.2, -912.3);
-  await expect.poll(() => page.evaluate(() => window.kq!.progression!.state().equipped?.weapon ?? null)).toBe('item.stab.esche');
-  // the first fight, inside the first minute: three Nebelinge rise at the foot of the dam
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(792, -893, 75, -4);
-    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.group === 'q.p.feldstation.nebel').length < 3; i++) k.step(15);
-  });
-  expect(await fight(page, 'q.p.feldstation.nebel', { shot: 'p-first-fight' })).toBe(3);
-  expect(await qn(page, 'q.p.feldstation', 'nebel')).toBe(3);
-  expect(await untilQuest(page, 'q.p.feldstation', 'done', 10)).toBe('done');
-  expect(await until(page, 'p2', 10)).toBe('p2');
-  expect(await page.evaluate(() => window.kq!.skills!.levels().kartograf ?? 0)).toBeGreaterThanOrEqual(1); // the quest's reward
-  expect(await page.evaluate(() => window.kq!.state().flags['story.compass'])).toBe(true); // the Bussole hangs on the staff
-
-  // ---- p2 / p3: "Was der Wald verbirgt": the dam wall, the Orangerie step -------------------------
-  expect(await qs(page, 'q.p.relief')).toBe('active');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(812, -880, 180, -18);
-    k.step(30);
-  });
-  await run(page, 6);
-  await examine(page, 813, -892, 180, -22, 2, 'clue.p.mauerrest');
-  await shot(page, '03-relief2-mauerrest');
-  // the first fight: one weak Nebelling rises from the wall
-  await page.evaluate(() => {
-    const k = window.kq!;
-    for (let i = 0; i < 60 && !k.combat!.enemies().some((e) => e.group === 'q.p.relief.nebel'); i++) k.step(10);
-  });
-  expect(await fight(page, 'q.p.relief.nebel', { shot: '03b-first-nebelling' })).toBeGreaterThanOrEqual(1);
-  expect(await qn(page, 'q.p.relief', 'nebel')).toBe(1);
-  expect(await until(page, 'p3', 10)).toBe('p3');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.setScanMode(0);
-    k.teleport(1186, -962, 90, -6);
-    k.step(10);
-    k.setScanMode(3);
-    k.step(30);
-  });
-  await shot(page, '04-vat-orangerie');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1222, -966, 90, -10);
-    k.step(10);
-  });
-  expect(await untilQuest(page, 'q.p.relief', 'done', 10)).toBe('done');
-  expect(await until(page, 'p3q', 8)).toBe('p3q');
-  // Laub speaks for the first time (p3's exit), then hears the water
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.setScanMode(0);
-    for (let i = 0; i < 900 && k.story!.state().dialogue?.speaker !== 'laub'; i++) k.step(10);
-    k.story!.finishTyping();
-  });
-  await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
-  await shot(page, '05-laub-speaks');
-
-  // ---- p3q / p3r: "Wasser, das sich erinnert": the Karlsbergquelle, the first time travel ---------
-  expect(await untilQuest(page, 'q.p.quelle', 'active', 40)).toBe('active');
-  expect(await flag(page, 'quelle.call')).toBe(true);
-  const touch = await touchSpring(page, async () => shot(page, '05b-quelle-touch'));
-  expect(touch.scene, JSON.stringify(touch)).toBeGreaterThan(0);
-  s = await story(page);
-  expect(s.era).toBe('1789');
-  expect(s.beat).toBe('p3r');
-  expect(await qn(page, 'q.p.quelle', 'beruehren')).toBe(1);
-  expect(await flag(page, 'quelle.call')).toBeUndefined();
-  // the tracker follows the story: no stale „→ den Hang hinunter zur Karlsbergquelle“ line in 1789
-  // (a few rendered frames: the lead refreshes every 0.1 s)
-  expect(
-    await page.evaluate(() => {
-      for (let i = 0; i < 20; i++) window.kq!.step(1);
-      return document.querySelector('[data-testid="quest-via"]')?.textContent ?? null;
-    }),
-  ).toBeNull();
-  await shot(page, '05c-quelle-1789');
-  // Laub explains the rule; then hold Q: home
-  await run(page, 6);
-  await holdHome(page);
-  expect((await story(page)).era).toBe('today');
-  expect(await untilQuest(page, 'q.p.quelle', 'done', 10)).toBe('done');
-  expect(await until(page, 'p4', 10)).toBe('p4');
-  // Laub's own quest comes on the way up to the Ehrenhof (round 9: never over his first words)
-  expect(await untilQuest(page, 'q.p.bussole', 'active', 40)).toBe('active');
-
-  // ---- p4–p6: "Die Bussole spricht" ----------------------------------------------------------------
-  await run(page, 16);
-  await examine(page, 1200, -1110, 90, -12, 2, 'clue.p.ehrenhof');
-  await run(page, 6);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    // the Ehrenhof clue's page can still be held back (the slot counts real seconds: a slower
-    // renderer keeps it longer); it must not open over the map press and swallow the M
-    for (let i = 0; i < 300 && (k.ctx.ui.cards.pending || k.ctx.ui.modals.count); i++) {
-      (window as unknown as QW).__cna.tidy();
-      k.step(1);
-    }
-    k.setScanMode(0);
-    k.teleport(1185, -1112, 90, -8);
-    k.press('KeyM', 2);
-    k.step(60);
-  });
-  await shot(page, '06-kartenvergleich');
-  expect(await until(page, 'p5', 10)).toBe('p5');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.press('KeyM', 2);
-    k.setMapMix(0);
-  });
-  await run(page, 8);
-  await examine(page, 1166, -1222, 180, -20, 2, 'clue.p.hohlweg');
-  expect(await until(page, 'p6', 8)).toBe('p6');
-  await run(page, 4);
-  await examine(page, 1496, -1296, 90, -24, 3, 'clue.p.eiskeller');
-  // the pit breathes out fog with eyes: the first fight
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.setScanMode(0);
-    k.teleport(1494, -1300, 70, -6);
-    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.kind === 'nebelling').length < 4; i++) k.step(15);
-  });
-  expect(await page.evaluate(() => window.kq!.combat!.enemies().filter((e) => e.kind === 'nebelling').length)).toBe(4);
-  await fight(page, 'nebelling', { hits: 5, shot: 'p-eiskeller-fight' });
-  expect(await qn(page, 'q.p.bussole', 'nebel')).toBe(4);
-  expect(await untilQuest(page, 'q.p.bussole', 'done', 10)).toBe('done');
-  expect(await until(page, 'p7', 8)).toBe('p7');
-  // the history went to the codex: the Ehrenhof and the Eiskeller cards
-  expect(await page.evaluate(() => window.kq!.progression!.state().xp)).toBeGreaterThan(150);
-
-  // ---- p7–p9b: "Spuren in der Punktwolke" -----------------------------------------------------------
-  expect(await qs(page, 'q.p.punktwolke')).toBe('active');
-  expect(await until(page, 'p8', 150)).toBe('p8');
-  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.p.punktwolke', 'clue.p.seite_eins']));
-  expect(await page.evaluate(() => window.kq!.progression!.state().inventory['item.p.seite'] ?? 0)).toBe(1);
-  await putAwayPages(page);
-  await openPause(page);
-  await page.getByTestId('pause-quests').click();
-  const quests = page.getByTestId('page-quests');
-  await expect(quests).toBeVisible();
-  await shot(page, '07-quests');
-  await quests.getByRole('button', { name: 'Zurück', exact: true }).click();
-  await page.getByTestId('resume').click();
-  expect(await until(page, 'p9', 60)).toBe('p9');
-  await run(page, 12);
-  await shiftTo(page, 1205, -1119, 90);
-  s = await story(page);
-  expect(s.era).toBe('1789');
-  expect(s.beat).toBe('p9b');
-  await shot(page, '08-1789-palace');
-  expect(await qn(page, 'q.p.punktwolke', 'wechsel')).toBe(1);
-  // the servant's echo, then a growl at the west edge of the court
-  await page.evaluate(() => {
-    const k = window.kq!;
-    const h = (window as unknown as QW).__cna;
-    h.until(() => k.chronik!.echo().id === 'echo.p.diener', 30);
-    k.chronik!.advanceEcho(200);
-    k.step(4);
-    h.until(() => !k.chronik!.echo().id, 10);
-    h.until(() => !!k.state().flags['story.p.heulen'], 30);
-    (window as unknown as QW).__cna.until(() => k.combat!.enemies().some((e) => e.kind === 'streuner'), 10);
-  });
-  expect(await qn(page, 'q.p.punktwolke', 'echo')).toBe(1);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1192, -1114, 270, -4);
-    k.step(20);
-  });
-  await fight(page, 'streuner', { hits: 4, shot: 'p-streuner-bannlicht' });
-  expect(await qn(page, 'q.p.punktwolke', 'streuner')).toBe(1);
-  // hold Q (no one is looking yet): home, at dusk; Laub asks what it was
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1216, -1114, 180, 2);
-    k.step(2);
-  });
-  await holdHome(page);
-  expect((await story(page)).era).toBe('today');
-  expect(await untilQuest(page, 'q.p.punktwolke', 'done', 10)).toBe('done');
-  expect(await turninMoment(page, 'q.p.punktwolke')).toBe('done');
-  expect(await until(page, 'p10', 10)).toBe('p10');
-
-  // ---- p10 / p11: dusk, home to the Quelle, the night, the bench -> chapter 1 ----------------------
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1057, -829, 40, -3);
-    k.step(30);
-  });
-  expect(await until(page, 'p11', 12)).toBe('p11');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    (window as unknown as QW).__cna.until(() => (k.story!.state().said as string[]).includes('laub.p.ende'), 90);
-    k.story!.finishTyping();
-    k.teleport(1053, -828, 51, -3);
-    k.step(2);
-  });
-  await shot(page, '09-night');
-  // the hub at the Quelle is optional (no quest): Chronik, Mauerkante, Mauernische in the evening
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1059.3, -833.1, 50);
-    k.step(4);
-    k.press('KeyE', 2);
-  });
-  await expect(page.getByTestId('hub')).toBeVisible();
-  for (const item of ['chronik', 'drawer', 'shelf'] as const) {
-    await page.getByTestId(`hub-${item}`).click({ force: true });
-    await page.evaluate(() => {
-      const k = window.kq!;
-      // the field-book pages come one after the other (src/ui/cards.ts): read each away
-      for (let i = 0; i < 4; i++) {
-        k.step(2);
-        for (const m of [...((k.ctx.ui.modals as unknown as { stack: { el: HTMLElement; close(): void }[] }).stack ?? [])]) if (m.el.dataset.testid !== 'hub') m.close();
-        for (let j = 0; j < 24; j++) k.step(1);
-      }
-    });
-    if (!(await page.getByTestId('hub').isVisible()))
-      await page.evaluate(() => {
-        window.kq!.teleport(1059.3, -833.1, 50);
-        window.kq!.step(4);
-        window.kq!.press('KeyE', 2);
-      });
-  }
-  await page.evaluate(() => (window as unknown as QW).__cna.tidy());
-  expect(await clues(page)).toEqual(expect.arrayContaining(['clue.p.lageplan', 'clue.p.handbuch', 'clue.p.laubblatt']));
-  expect(await said(page)).toEqual(expect.arrayContaining(['laptop.p.neu', 'laub.p.ende']));
-  // level 3 is in reach after the side quests; the main chain alone gives level 2 at least
-  expect(await page.evaluate(() => window.kq!.progression!.state().level)).toBeGreaterThanOrEqual(2);
-  await run(page, 10);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1059.3, -833.1, 50);
-    k.step(4);
-    k.press('KeyE', 2);
-  });
-  await expect(page.getByTestId('hub')).toBeVisible();
-  await page.getByTestId('hub-bench').click();
-  await page.evaluate(() => (window as unknown as QW).__cna.until(() => window.kq!.story!.state().chapter !== 'prolog', 30));
-  s = await story(page);
-  expect(s.chapter).toBe('k1');
-  await expect(page.getByTestId('story-card')).toContainText('Der Hof');
-  if (SHOTS) await page.screenshot({ path: `${SCREENS}/ch-prolog-10-kapitel1.png`, timeout: 90_000 }).catch(() => undefined);
-  expect((await story(page)).objective).toBeFalsy();
 }
 
 /**

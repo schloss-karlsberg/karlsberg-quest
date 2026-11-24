@@ -8,7 +8,7 @@ import { type UiMeasure, measureUi, sampleFrames, scrollModalToBottom } from './
 /**
  * The mobile UI tour (docs/MOBILE-UI-PASS.md): one device/orientation unit per run, real GPU
  * (ANGLE Metal, e2e/mobile/playwright.config.ts), touch emulation, safe-area insets. Walks a fresh
- * player's way (title → new game → the prologue → the first minutes of K1), screenshots every
+ * player's way (title → new game → the guided tour → the first minutes of K1), screenshots every
  * state into test-results/mobile-tour/<unit>/<NN>-<state>[-<sub>].png and writes findings.json
  * (tap targets, overlaps, text, safe areas, scroll, frame times per shot).
  *
@@ -222,7 +222,7 @@ const STATES: State[] = [
       await c.tap('light-lantern');
       await expect(c.page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
       await c.page.waitForTimeout(1200);
-      await c.shot('first-frame', 'the prologue card over the first frame');
+      await c.shot('first-frame', 'the tour chapter card over the first frame');
     },
   },
   // ---- the rotate overlay (phone portrait), else the first HUD ------------------------------------
@@ -245,19 +245,20 @@ const STATES: State[] = [
       await c.tidy();
     },
   },
-  // ---- prologue HUD ----------------------------------------------------------------------------
+  // ---- tour HUD ----------------------------------------------------------------------------
   {
     id: 'hud-idle',
     run: async (c) => {
       await c.page.evaluate(() => {
         const k = window.kq!;
         const s = k.story!.state();
-        if (s.chapter !== 'prolog') k.story!.goto('prolog', 'p1');
-        k.teleport(762, -906, 60, -6);
+        if (s.chapter !== 'tour' || s.beat !== 't1') k.story!.goto('tour', 't1');
+        k.teleport(532, -783, 330, -6);
+        k.story!.flush();
         k.ctx.ui.modals.closeAll();
         k.story!.finishTyping();
       });
-      await c.page.waitForTimeout(2500); // Marlene's radio quest lands in the tracker
+      await c.page.waitForTimeout(2500);
       await c.tidy();
       await c.shot('', 'HUD at rest: compass, tracker, vitals, touch controls');
     },
@@ -657,7 +658,6 @@ const STATES: State[] = [
         k.skills!.grant('relief', 2, true);
         k.skills!.grant('kartograf', 1, true);
         k.story!.goto('k1');
-        for (const id of k.quests!.ids()) if (id.startsWith('q.p.') && k.quests!.state().quests[id]?.state !== 'done') k.quests!.reset(id);
       });
       await c.page.waitForTimeout(800);
       await c.shot('', 'chapter card „Der Hof“ at the spring');

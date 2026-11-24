@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-24 | **Surveyor opening retired (TASK-007).** Old `?classic` bookmarks open the guided tour. Saves in „Vermessung“ continue at the Karlsbergquelle at the start of „Der Hof“ with the tour's level 3 handover and their earned progress. |
 | unreleased | 2026-11-24 | **Pause navigation and saving (TASK-007).** Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album on desktop and touch. I and M retain their shortcuts. The clue card and the Pinnwand open Codex directly. The title and saving use „Neues Spiel“, „Weiter“, „Speichern“ and „Spielstand gespeichert.“ |
 | unreleased | 2026-11-24 | **Party credits (TASK-013).** All three endings credit contributors, asset authors, tools and sources. The credits page uses the same list. Enter, Escape and the touch-friendly skip button return the player to the party. Reduced motion shows a scrollable list with no camera orbit. |
 | unreleased | 2026-11-24 | **Quest payouts and HUD toasts (TASK-009).** Payouts move to the HUD edge and share one slot with routine toasts. A payout reports the gains that fit and points to the field book for details. Escape and outside touch taps dismiss the notice while gameplay controls remain available. |
@@ -229,7 +230,7 @@ _Everything in this section is fiction unless it cites a fact from §2.1._
 
 **The first shift.** The first time travel is not a keybind. At the **Karlsbergquelle**, a real spring in the ravine below the Orangerie where the Karlsbergbach begins (fact, codex cx.41), the player takes a break while the group walks on. A brass surveyor's compass from the 1840 Bavarian survey lies in the water, and it talks (Laub). Touching the water stops the moment, the brook runs backwards, and the land shifts to 1789, where an invented baroque Brunnenstube stands (fiction, cx.42). A short guided training follows (the first fight). A drop of that water now sits in the Bussole, which is why Q works later at places that remember. The whole time journey happens during that break; the Quelle is the home base and wake spot.
 
-> **History:** in the earlier concept (0.1–0.6) the player was a surveyor hired by the forest office, the compass lay in the drawer of a Feldstation (Bauwagen), and the prologue "Vermessung" taught reading the relief. That prologue is still bundled as `legacy` (dev switch `?classic`) so old saves resume; TASK-007 decides its removal.
+> **History:** in the earlier concept (0.1–0.6) the player was a surveyor hired by the forest office, the compass lay in the drawer of a Feldstation (Bauwagen), and the prologue "Vermessung" taught reading the relief. Releases v0.7–v0.8 kept that opening available through `?classic`. Old bookmarks now open „Die Führung“. Continue moves a save in „Vermessung“ to the start of „Der Hof“ at the Karlsbergquelle with its quest history, gear and earned progress (TASK-007).
 
 **The central mystery: what did the fire not eat?** In 1793 the court painter and building director Mannlich rescued the collections. A legend tells of a hidden trapdoor in the picture gallery (source: [`research/02-sister-projects.md`](../research/02-sister-projects.md), schloss-karlsberg.de). Our fiction: a chronicle of the palace's last years was hidden there, and its pages were scattered when the palace burned and its stones were carted away. Whoever carries its memory is hunted by the duke's hounds, which the fiction says were left behind when he fled and still hunt for a master who never returned.
 
@@ -237,7 +238,7 @@ _Everything in this section is fiction unless it cites a fact from §2.1._
 
 **Chapter structure (v1.0):**
 
-1. **Prologue "Die Führung"** (today, one November afternoon): the guided tour as tutorial, no combat; the first time travel at the Karlsbergquelle and a short guided training in 1789. (The earlier prologue "Vermessung" is legacy.)
+1. **Prologue "Die Führung"** (today, one November afternoon): the guided tour as tutorial, no combat; the first time travel at the Karlsbergquelle and a short guided training in 1789.
 2. **Ch. 1 "Der Hof"** (1789): the court at its height; the unpaid builders, the menagerie, a quiet memorial to the 1785 fireworks victims.
 3. **Ch. 2 "Die Flucht"** (9 Feb 1793): the night race of the warner from Rohrbach, with the hunt at your heels. Warn the duke, or let the French come?
 4. **Ch. 3 "Die Nacht"** (28 Jul 1793): the fire. Save one object and find it again in a museum "today". _The MVP slice is a cut of this chapter._

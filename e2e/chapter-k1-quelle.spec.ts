@@ -15,7 +15,8 @@ test('chapter 1 opens at the Karlsbergquelle: the touch, summer 1789, the walk u
   test.setTimeout(600_000);
   const errors = trackErrors(page);
   await boot(page);
-  await upd(page, 60);
+  // Advance through the chapter card and its fade, then the objective's half-second delay.
+  await upd(page, 420);
   const s = await story(page);
   expect(s).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today' });
   expect(s.objective?.id).toBe('k1.quelle');
@@ -49,7 +50,9 @@ test('chapter 1: caught on the walk up, you wake at the spring and Q there takes
     k.teleport(1150, -920, 0, 0);
     k.step(4);
   });
-  await upd(page, 20);
+  // Let the chapter entry enable the court before being caught retires its pending timeline.
+  await upd(page, 420);
+  expect(await page.evaluate(() => window.kq!.court!.state().sets)).toContain('k1');
   // the prelude: the lantern is out (k1.vorspiel)
   let s = await story(page);
   expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });

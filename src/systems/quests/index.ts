@@ -121,6 +121,7 @@ export const STALL_SECONDS = 60;
 class QuestRuntime {
   readonly book: QuestBook;
   readonly defs: Map<string, QuestDefIn>;
+  private readonly retired: Map<string, QuestDefIn>;
   readonly items: Map<string, ItemDef>;
   private readonly tracker = new Tracker();
   private readonly feed = new Feed();
@@ -159,10 +160,11 @@ class QuestRuntime {
   private readonly offs: (() => void)[] = [];
 
   constructor(private readonly ctx: GameContext) {
-    const { quests, items } = questsInPlay(loadBundledQuests(), ctx.params.has('storytest'));
+    const { quests, items, retired } = questsInPlay(loadBundledQuests(), ctx.params.has('storytest'));
     this.sideMark.el.dataset.testid = 'waymark-side';
     this.sideMark.el.classList.add('kq-wm-near');
     this.defs = quests;
+    this.retired = retired;
     this.items = items;
     const self = this;
     this.book = new QuestBook(this.defs, this.slice(), {
@@ -282,10 +284,8 @@ class QuestRuntime {
    * quests of a past era of an earlier chapter end (ready → paid, active → failed).
    */
   private dropEarlier(chapter: string): void {
-    const order = ['prolog', 'k1', 'k2', 'k3', 'k4', 'enden'];
+    const order = ['tour', 'k1', 'k2', 'k3', 'k4', 'enden'];
     // a chapter outside the campaign (the e2e `test` chapter) comes after all of it
-    // the tour opens the game in the prologue's place
-    if (chapter === 'tour') chapter = 'prolog';
     const at = order.includes(chapter) ? order.indexOf(chapter) : order.length;
     for (const q of this.defs.values()) {
       const i = order.indexOf(q.chapter ?? '');
@@ -294,15 +294,12 @@ class QuestRuntime {
       // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone
       if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.book.reset(q.id);
       // side quests bound to a past era of that chapter cannot be finished any more: a finished one
-      // pays out (its giver is gone), an open one fails. Present-day side quests (the prologue's)
-      // keep running — the station is visited in every chapter.
+      // pays out (its giver is gone), an open one fails. Present-day side quests carry over.
       else if (q.kind === 'side' && q.era && q.era !== 'today') {
         if (st === 'ready') this.book.complete(q.id, true);
         else if (st === 'active') this.book.fail(q.id, 'chapter');
       }
-      // … but not for ever: two chapters on, a present-day side quest ends too (playtest round 4:
-      // the prologue's Irrlichter rose again at the dam on every retry of the K2 Pikeur, and
-      // „Nicht anfassen“ / „Lichter am Weiher“ sat in the tracker through K3)
+      // Two chapters on, a present-day side quest ends too.
       else if (q.kind === 'side' && at - i >= 2) {
         if (st === 'ready') this.book.complete(q.id, true);
         else if (st === 'active') this.book.fail(q.id, 'chapter');
@@ -907,9 +904,13 @@ class QuestRuntime {
   private registerPages(): void {
     const ctx = this.ctx;
     const book = this.book;
+    const logQuests = () => [...this.defs.values(), ...[...this.retired.values()].filter((q) => {
+      const status = book.state(q.id);
+      return status === 'done' || status === 'failed';
+    })];
     const data: PageData = {
       ctx,
-      quests: () => [...this.defs.values()],
+      quests: logQuests,
       progress: (id) => book.progressOf(id),
       count: (id, o) => book.count(id, o),
       objectiveVisible: (q, o) => {
@@ -942,7 +943,7 @@ class QuestRuntime {
     };
     const opened = () => pageSound(ctx.audio);
     const codexUnseen = () => book.slice.unseen.filter((x) => !x.startsWith('q:') && ctx.state.state.codex.facts.includes(x)).length;
-    addPausePage({ id: 'quests', label: t('page.quests'), order: 10, opened, hide: () => { this.dirty = true; }, render: (el) => renderQuests(el, data), badge: () => book.slice.unseen.filter((x) => x.startsWith('q:')).length });
+    addPausePage({ id: 'quests', label: t('page.quests'), order: 10, opened, hide: () => { this.dirty = true; }, render: (el) => renderQuests(el, data), badge: () => logQuests().filter((q) => book.slice.unseen.includes(`q:${q.id}`)).length });
     addPausePage({
       id: 'codex', label: t('page.codex'), order: 20, render: (el) => renderCodex(el, data), badge: codexUnseen,
       opened: () => {

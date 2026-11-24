@@ -1,6 +1,7 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS, throughParty } from './common';
 import { type Any, clearCards, install, killGroup, questTalk, takeAll, voiceStance } from './k3';
+import { waitForHooks } from './pause';
 import { putAwayPages } from './prolog';
 
 /**
@@ -25,7 +26,7 @@ let SHOTS = true;
 
 export async function boot(page: Page): Promise<void> {
   await page.goto('./?notitle&nosave&fresh&manual');
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.npc, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'npc']);
   await recordEvents(page);
 }
 

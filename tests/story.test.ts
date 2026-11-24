@@ -13,6 +13,7 @@ import { HOME, HOME_TROUGH, bringHome, hubAt } from '../src/systems/story/hub/ho
 import { REACH, canTouch, toLocal } from '../src/systems/quelle/layout';
 import { angleDiff, bearingDeg } from '../src/systems/story/objectives';
 import { HORN_SIGNALS } from '../src/systems/story/sfx';
+import { storiesInPlay } from '../src/systems/story/stories';
 import type { Action, Beat, NpcAction, StoryFile } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles } from '../src/systems/story/validate-cli';
@@ -207,13 +208,26 @@ describe('story files', () => {
     const prolog = files.find((f) => f.story.chapter === 'prolog')!.story;
     expect(prolog.placeholder).toBeFalsy();
     expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p3q', 'p3r', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
-    // chapters chain to the endings: a new game opens with the tour; the retired prologue (kept
-    // for saves in the middle of it, and ?classic) leads into chapter 1 the same way
-    const order = files.map((f) => f.story).filter((f) => !f.test && !f.dev && !f.legacy).sort((a, b) => a.order - b.order);
+    // Playable chapters start with the tour and chain to the endings.
+    const { engine, rec } = harness(storiesInPlay(files, new URLSearchParams('classic')));
+    const order = engine.order;
+    expect(() => engine.goto('prolog', 'p1')).toThrow("unknown chapter 'prolog'");
+    engine.goto(engine.first!.chapter);
+    expect(rec.beats).toEqual(['tour/t1']);
     expect(order[0]!.chapter).toBe('tour');
     expect(prolog.next).toBe('k1');
     for (let i = 0; i < order.length - 1; i++) expect(order[i]!.next).toBe(order[i + 1]!.chapter);
     expect(order.at(-1)!.epilogue).toBeTruthy();
+  });
+
+  it('includes test and dev chapters only with their switches', () => {
+    const files = [...loadStoryFiles(ROOT).files, { story: { ...chapterA, dev: 'storydev' } }];
+    const normal = storiesInPlay(files, new URLSearchParams());
+    expect(normal.map((f) => f.chapter)).not.toContain('test');
+    expect(normal).not.toContainEqual(expect.objectContaining({ dev: 'storydev' }));
+    const enabled = storiesInPlay(files, new URLSearchParams('storytest&storydev&classic'));
+    expect(enabled.map((f) => f.chapter)).toEqual(expect.arrayContaining(['test', 'a', 'tour']));
+    expect(enabled.map((f) => f.chapter)).not.toContain('prolog');
   });
 
   it('every non-historical line is marked by a fiction speaker; {Name} only in Marlene/Laub', () => {

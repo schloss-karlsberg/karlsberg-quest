@@ -176,8 +176,8 @@ moved to the new defaults (settings migration).
 - [ ] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
 - [ ] The Messstab is received visibly during the tour, before the first time travel, and not shown before
 - [ ] No menu at the spring; its functions open at the Bauwagen (or, if the owner rejects the restore, through Marlene); the spring's touch has no E conflict
-- [ ] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
-- [x] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green
+- [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
+- [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
 - [ ] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
 - [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
@@ -185,98 +185,94 @@ moved to the new defaults (settings migration).
 
 _Status: approved 2026-11-24_
 
-**Approach:** Retire the Feldbuch as a navigation system (§6) and change its save wording (§1). Pause is the primary route to all eight destinations on desktop and touch. Render each existing tab body in a plain modal with “Zurück”, using the current modal manager and dependencies. The phone gallery belongs to TASK-006. The complete legacy prologue belongs to the `?classic` follow-up, together with its save migration and tests against real v0.6–v0.8 saves.
+**Approach:** Slice 2 retires the playable §5 opening. A new game from an old `?classic` bookmark opens „Die Führung“. Continuing a save in `prolog` starts „Der Hof“ at the Karlsbergquelle with the tour's handover and the player's earned progress. Limit refactoring to what removing the path and migrating saves require. Shared content deletion follows in its own slice.
 
 **Files to touch:**
 
-- `src/ui/menus.ts`, `src/ui/journal.ts`, `src/boot.ts` — connect registered feature pages to Pause and the existing modal manager. Preserve the independent shelf and collection-section registrations.
-- `src/systems/quests/{index,journal,hud,strings}.ts`, `quests.css` — extract the Aufgaben, Codex and Sammlungen views from the book shell, including badges, tracking, sources and history.
-- `src/systems/progression/{index,journal-tabs}.ts`, `progression.css` — use the equipment and talent renderers directly and remove the delayed inventory fallback.
-- `src/systems/travel/index.ts`, `src/systems/flaschen/index.ts`, `src/systems/story/hub/overlay.ts` — carry over Karte, Funde, bottle counts and shelf access.
-- `src/systems/photo/index.ts` — register the existing Album renderer as a Pause destination.
-- `src/systems/chronik/{index,strings}.ts`, `src/systems/chronik/ui/card.ts` — point the clue card and the hub's Chronik path at Codex.
-- `src/player/{input,touchMap}.ts`, `src/ui/{touch.ts,touchIcons.ts,touch.css}` — remove the journal action, button, icon and mobile book layout.
-- `src/i18n/{de,de.content}.ts`, `src/systems/{story,skills}/strings.ts` — update save, name, skill and control text. The credits end line mentioned in §6 is already absent from `src/systems/story/endings/ui.ts`.
-- `scripts/content-build/enden.mjs` → `content/story/05-enden.story.json` — make the endings builder own the free-roam objective text (`end.frei`) on a normal `node scripts/content-build/build.mjs` run. Its current optional `--story` path only writes epilogue data.
-- `README.md`, `docs/ACTION-RPG.md`, `docs/PRD.md` — update “How to play”, the current journal controls and §14 row, and the PRD changelog. Unit and browser files are named below.
+- `src/core/state.ts` — migrate in `deserializeState`, after defaults and before restore. Both `SaveManager.peek` and `load` use it, including Continue and loads during play.
+- `src/systems/story/index.ts`, `types.ts` — remove the URL branch, legacy chapter-select exception and prologue-only combat wake. Exclude the legacy story from the engine's playable files, including debug jumps. Document what the retained data marker means.
+- `src/systems/quests/data.ts` — separate registration of the retired quests from their shared item definition. Check `src/systems/quests/index.ts` and `logic.ts` so restored quests retain their history and retired objectives leave the tracker.
+- `src/systems/story/strings.ts` — remove `story.caught.wakeNear` with its last caller. The key search across all 13 `strings.ts` files and `src/i18n/` found that single definition.
+- `tests/fixtures/saves/` (new), including `README.md` — exact autosave JSON from each tagged serializer and instructions to reproduce each fixture.
+- `tests/tour-handover.test.ts`, `tests/story.test.ts`, `tests/quests-tracker.test.ts` — playable chapter selection, handover and tracker regression cases.
+- `e2e/helpers/prolog.ts`, the specs and mobile runner below — retire the legacy playthrough and reuse the shared quest controls and tour helpers.
+- `docs/ACTION-RPG.md` (§11.0 and the §14 row), `docs/PRD.md` (opening history and unreleased changelog), `docs/ARCHITECTURE.md`, `content/story/README.md`, `content/bible/01-prolog.md`, `docs/design/tour/slice-v0.md` — distinguish the historical release behavior from the new save destination. Keep task-file links out of docs.
+
+**Dependency findings:** K1 starts at `k1_0` and offers `q.k1.ankunft` without a `q.p.*` prerequisite. The tour's `t18` grants `item.p.seite`, whose sole definition is in `00-prolog.quests.json`. K4's pack uses five nouns from `prolog.pack.json`, including `n.hohlweg`. Codex tags reference `entry.p.1` and `clue.p.handbuch`. The endings read three legacy side-quest deed flags. Laub and Marlene have tour lines and shared barks, while the voice priority catalogue selects legacy beats, line IDs and quest speech. `scripts/validate-content.ts` discovers files and cross-checks chapter, quest, item and pack references. Content budgets, wayfinding, travel, pack and voice tests also read the old data directly. These dependencies put physical deletion in the next §5 slice.
 
 **Steps:**
 
-- [x] 1. List Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album in Pause. Use their existing tab renderers as plain modal bodies, including their refresh and close callbacks. “Zurück” returns focus to the entry. Make the list scrollable in landscape and keep the story's conditional pause actions available.
-- [x] 2. Keep I → Ausrüstung and M → Karte as shortcuts. Connect the clue-card action to Codex and preserve the hub's pending clue cards, its `chronik:open/opened/closed` events and its return from Codex to the Pinnwand. Check the map's cleanup when leaving the view.
-- [x] 3. Remove both journal shells, the J listener, journal default and rebind row, touch button and icon mappings, tab navigation and obsolete journal debug hooks. Update the HUD, controls, skill messages and name-entry heading. Use “Mehr dazu unter Pause → Aufgaben”, “Neu im Codex” and “Codex öffnen”. Point the free-roam ending at Pause in the endings builder, regenerate with `node scripts/content-build/build.mjs` and verify the generated story diff is confined to `end.frei`. Preserve the four owner-pending pages, their records and the `feldbuch.*` talents.
-- [x] 4. Set title buttons to “Neues Spiel” and “Weiter”, and the overwrite prompt to “Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?”. Use “Speichern” for the pause action, “Spielstand gespeichert.” for its confirmation and save toast, and “Ausgeruht. Spielstand gespeichert.” for a successful rest. Update the corresponding README instructions and the two design-doc entries without linking task files.
-- [x] 5. Update the affected unit tests, Playwright specs and shared prologue helper. Run the four gates and compare the contributor's before/after views. Record results against this slice and keep the epic in progress.
+- [x] 1. Generate a legacy prologue slot for each of `v0.6.0`, `v0.7.0` and `v0.8.0` without a browser. For each tag, run `mkdir -p "$TMPDIR/kq-$tag"` and `git archive "$tag" | tar -x -C "$TMPDIR/kq-$tag"`. Run tsx or Vitest inside that extracted tree, reusing the main worktree's `node_modules` if needed. Use the tag's state constructors and its own `SaveManager.save('auto')` with `MemoryStorage`. Write the exact string stored at `kq.save.v1.auto` to the fixture. At least one slot must stand mid-prologue with objective counts, earned gear and XP. In `tests/fixtures/saves/README.md`, record the tag, resolved commit, beat, state setup and exact generation commands for each slot. If the tagged serializer cannot be run through either runner, stop and give the contributor exact browser capture instructions for the affected tag, beat and slot.
+- [x] 2. Migrate by current story chapter, independent of beat or quest state. Resume active `k1/k1_0` in `today` at the chapter checkpoint (1059.3, −833.1, yaw 50°). Mark the replacement opening `tour` complete and add K1 to the unlocked chapters. Preserve name, completed beats/chapters, quest counts and deeds, codex, playtime and unrelated system slices. Clear the retired objective, latches, timers, threats, anchor, tracked objectives and their spawned groups/pickups before restore. Preserve quest history and credit earned pending rewards once. Apply the `t17/t18` handover as minimums. Bring XP to at least 549 (level 3), credit the newly earned level points, keep higher totals, talents and equipment. Set relief ≥3, kartograf ≥1, the Bussole in story inventory, `story.compass` and `story.laub`. In RPG inventory ensure the Eschenstab, `item.p.seite`, four Balsam and one Lampenöl, preserving higher counts.
+- [x] 3. Retire `classic`, `PROLOG_WAKES` / `prologWake` and the playable `prolog` entry. Register the retired file’s item definitions independently of its playable quests. Verify that chapter select and debug jumps cannot reach the prologue, the normal tour and test/dev chapters still work, and K1 offers its first quest and accepts the spring touch after Continue.
+- [x] 4. Replace the legacy browser playthrough with bookmark and saved-game Continue coverage. Move pacing, spring, hub and cross-system assertions onto tour/K1 beats or existing test content. Keep the shared `newGame`, quest and spring helpers used by later chapters. Update the affected docs.
+- [x] 5. Run the migration matrix, identifier audit and four gates. The contributor runs the named browser checks, compares the desktop pair and checks the touch Continue view. Record results under Progress. Allow at most two fix rounds after implementation. If issues remain after round two, record them and stop for the contributor.
+  - [x] Contributor verification. Run `pnpm validate` and the 16 named browser specs, compare the desktop screenshots and check the touch Continue capture. Results and the known guard callout failure are recorded under Progress.
+  - [ ] Run the standalone mobile-tour `hud-idle` check on `small-landscape`.
 
 **Test plan:**
 
-- **Screenshots.** The contributor takes both before shots on unchanged code and repeats the same views after implementation. Save all four images in the **main checkout** under `test-results/contribute/TASK-007/`.
-  1. **Desktop title, 1280×720.** In a disposable browser profile, start `http://localhost:5280/?notitle&fresh&q=low` and save once through Pause. Open `http://localhost:5280/?q=low` in that profile and wait for enabled `title-continue` and `title-new`. Capture both labels in `before-title.png` and later `after-title.png`.
-  2. **Phone Pause, 844×390 landscape.** Enable touch emulation (`hasTouch: true`, mobile/coarse pointer) and open `http://localhost:5280/?notitle&fresh&nosave&q=low`. Once the opening card clears and the HUD is active, tap `touch-pause`. Capture the top of the menu in `before-pause-touch.png` and later `after-pause-touch.png` at the same scroll position.
-- **Units.** Change the J assertions in `tests/camera.test.ts`, `tests/rpg-contracts.test.ts` and `tests/touchMap.test.ts`. In `tests/perf-settings.test.ts` cover an old settings record with a journal override plus a custom binding for a surviving action. Verify the retired action is ignored and the other binding still works. Keep quest tracking, talent ranks, album entries and save round-trip coverage green. Run `pnpm typecheck && pnpm test && pnpm validate && pnpm build`.
-- **Selector and hook audit.** The recursive search includes `e2e/helpers/` and `e2e/mobile/`. Repeat against the final diff for each removed or renamed selector, hook and player-facing label. The old surface includes `journal`, `journal-fallback`, `journal-tab-*`, `journal-panel-*`, `touch-journal`, `bind-journal`, tab roles/selection and arrow/digit keys, `KeyJ` and quoted lowercase `'j'`. Migrate `window.kq.quests.journal/closeJournal/journalOpen` and `window.kq.progression.journal` callers to player controls. Retain the Chronik debug surface over Codex and the existing inner content selectors (including quest detail/history, gear/talents, Codex and album entries).
+- Feed the **unmodified release slot bytes** into `MemoryStorage` under `SAVE_KEY('auto')`, then `peek`, `load`, resume against the playable chapters, save and reload. Assert the actual K1 beat, location/era, first quest, historical progress, both inventories, skill tiers, XP, level and points. Compare the second load for duplicate grants. A constructed `StorySlice` or an existing K1 campaign snapshot cannot exercise this regression.
+- Supplement the release-generated saves with table cases for all 14 legacy beats (`p1–p11`, including `p3q`, `p3r`, `p9b`) and missing/hidden, offered, active, ready, done and failed quest records. Include an over-budget character. Load mid-tour and post-tour controls, including a later chapter with legacy history, and assert that their chapter, beat, XP, gear, skills and progress survive. Keep `tests/quests-content-a.test.ts` and the tour handover's 549-XP reference green.
+- **Identifier audit.** Before editing, take the beat IDs from `00-prolog.story.json` and the eight quest IDs from `00-prolog.quests.json` (feldstation, relief, quelle, bussole, punktwolke, meiler, trichter, irrlichter under `q.p.`). Search literal IDs, prefixes and derived objective/group IDs recursively in `e2e/`, including `e2e/helpers/`. Include `classic`, `prolog`, `chapter-prolog`, `story.goto` arguments, `playProlog`, `newGame`, helper imports, and the referenced clue/echo/dialogue IDs. Feed the full token list to `rg -nF -f <token-file> e2e/`. Follow indirect imports through helpers k1, k2 and k4. Repeat with **every** removed/renamed hook, selector, URL flag, helper, quest and beat from the implementation diff, including dynamically built test IDs. Check every changed string key with `rg -nF -g 'strings.ts' -g 'src/i18n/**' -- '<key>' .` and check its call sites. The shared `window.kq` APIs and title controls still have callers.
+- **Browser coverage** (contributor, outside the sandbox, one worker):
 
-  ```sh
-  rg -ni -e 'journal|feldbuch|weiter vermessen|keyj|[\x22\x27\x60]j[\x22\x27\x60]|kqj-|kqp-jf|data-tab|role=.tab|aria-selected' \
-    -e 'chronik[!?.]+(open|isOpen|tab|close)\(|chronik:(open|closed)|hub-chronik' e2e/
-  ```
-
-  | Affected Playwright file | What to exercise |
+  | Specs or runner | What to exercise |
   | --- | --- |
-  | `quests.spec.ts` | Reward hint, Pause → Aufgaben, quest detail/history and sources, Codex and Sammlungen. |
-  | `chronik.spec.ts` | Replace J and tab-strip arrow/digit assertions with keyboard entry, focus, Back/Escape, direct card → Codex and hub return. On default settings J alone opens nothing. |
-  | `integration.spec.ts`, `npc.spec.ts` | Replace the journal root and Codex tab assertions. Close Codex to return to the originating hub exactly once. |
-  | `progression.spec.ts`, `flaschen.spec.ts` | I → Ausrüstung, Pause → Talente, learn a talent, and Pause → Sammlungen for the bottle row. Replace the fallback selector and quest journal hooks. |
-  | `photo.spec.ts` | Take a successful shot, put the phone away, open Pause → Album and verify the saved entry. |
-  | `touch.spec.ts` | Replace the journal-button tap with `touch-pause`. Reach all eight destinations, scroll to the last entry and return with “Zurück”. |
-  | `chapter-prolog.spec.ts` via `helpers/prolog.ts` | Replace only the journal open/close calls and screenshot in `playProlog` with Pause → Aufgaben and a return to play. |
-  | `smoke.spec.ts`, `story.spec.ts` | Smoke plus title, overwrite/cancel, pause save/reload and bench feedback with saving enabled in an isolated profile. Preserve the title flow and hub clue-card queue. |
+  | `chapter-prolog.spec.ts` | Repurpose both old scenarios. Test the old bookmark opening the tour and Continue with an injected release slot at `?manual`. Exercise the first K1 spring interaction, save and reload. |
+  | `story.spec.ts`, `integration.spec.ts`, `pacing.spec.ts`, `quelle.spec.ts` | Replace explicit and helper-default classic starts, old chapter selector, quest groups and beat jumps. Retain hub, FX/hunt/Chronik, input pacing, spring touch and return coverage on playable content. |
+  | `quests.spec.ts`, `pol-flow.spec.ts` | Remove the obsolete `q.p.*` event exclusion. The printout sketch uses the retained clue pack and can still be checked. |
+  | `campaign.spec.ts`, `tour-slice.spec.ts` | Tour start, handover and continued chapter play. Campaign already passes its own URL to `newGame`. |
+  | `chapter-k1.spec.ts`, `chapter-k1-disguise.spec.ts`, `chapter-k1-quelle.spec.ts`, `chapter-k2.spec.ts`, `chapter-k4.spec.ts` | Direct and indirect consumers of shared quest, spring and modal helpers. |
+  | `smoke.spec.ts`, `touch.spec.ts`, `e2e/mobile/tour.pw.ts` | Boot, landscape taps and reduced motion. Retarget the mobile runner's explicit `goto('prolog','p1')` and old quest cleanup. |
 
-  `notes.spec.ts` injects its own Feldbuch toast and `perf.spec.ts` mentions the old title in a comment. Neither uses a retired control. The key search found `KeyJ` calls in quests, chronik and photo, and zero quoted lowercase `'j'` calls.
-
-- **Contributor's browser run after the build.** Use keyboard events, touch taps and DOM buttons throughout. With `&manual`, wait for base `window.kq`, call `kq.step(1)` while polling for feature hooks, then drive the UI. Exercise the Pause list at both viewport sizes, the reduced-motion setting, Tab/Shift+Tab, one-layer dismissal, saved data after reload and the existing I/M shortcuts. The tests must run without acquiring real pointer lock.
+  Use `e2e/helpers/pause.ts`'s `waitForHooks`: once base `window.kq` exists, step `kq.step(1)` while polling for feature hooks under `&manual`. Drive DOM buttons, keyboard events, taps and existing debug controls without real pointer lock.
 
   ```sh
-  scripts/dev/heavy.sh -- pnpm exec playwright test \
-    e2e/{smoke,quests,chronik,integration,npc,progression,flaschen,photo,touch,chapter-prolog,story}.spec.ts --workers=1
+  pnpm exec vitest run tests/tour-handover.test.ts tests/story.test.ts tests/quests-tracker.test.ts tests/quests-content-a.test.ts
+  pnpm typecheck && pnpm test && pnpm validate && pnpm build
+  scripts/dev/heavy.sh -- pnpm exec playwright test e2e/{smoke,chapter-prolog,story,integration,pacing,quelle,quests,pol-flow,campaign,tour-slice,chapter-k1,chapter-k1-disguise,chapter-k1-quelle,chapter-k2,chapter-k4,touch}.spec.ts --workers=1
+  scripts/dev/heavy.sh -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states hud-idle
   ```
 
-  The separate `e2e/mobile/tour.pw.ts` audit found `touch-journal`, dynamic `journal-tab-*` selectors and `quests.journal()` calls. Limit its edits to those broken interactions, retaining its state names and `scripts/dev/mobile-tour.ts` runner. The contributor's run comprises the eleven specs above.
+- **Screenshots.** The contributor keeps the captures in the main checkout's `test-results/contribute/TASK-007/`.
 
-  Audit player text with `rg -ni 'Feldbuch|\(J\)|\[J\]' src content`. Expect legacy prologue hits until the `?classic` slice removes `00-prolog.story.json`, its builder, pack and quests. Check the implementation diff for accidental changes to these files after regeneration.
+  - Desktop 1280×720: load `http://localhost:5280/?classic&notitle&fresh&nosave&q=low` on each revision. The `notitle` flag skips the title screen and waits for an explicit start. Once the story hook is ready, run `kq.story.start('Alex')` and capture the opening card. Use `before-classic-start-desktop.png` for „Vermessung“ (`prolog/p1`) and `after-classic-start-desktop.png` for „Die Führung“ (`tour/t1`).
+  - Phone 844×390 landscape touch, reduced motion: on the implementation, inject the populated legacy fixture at `kq.save.v1.auto` before loading `http://localhost:5280/?manual` in a clean profile. Tap „Weiter“, wait for the K1 objective at the Quelle and capture `after-classic-continue-touch.png` (after only).
 
-**Risks:** Closing Codex can reopen the hub, and leaving Karte must release its map listeners. Run each cleanup once and restore focus to the originating control. Use the existing scrollable modal and still backdrop for touch and reduced motion. Verify save confirmation with saving enabled.
+**Risks:** `StoryEngine.resume(false)` returns silently if a saved chapter or beat is absent. Restore also reasserts active quests and combat groups. Migrating before either runs, keeping the old slot's metadata and testing Continue through the first K1 interaction cover the blank-world and stale-objective failures.
 
-**Open questions:** Where should Sammlungen, Funde, Ausrüstung and Talente ultimately live? All four stay usable as separate Pause entries pending the owner's decision. The owner also retains the decision on the “Feldbuch” talent label and in-fiction notebook references, including voiced lines. These decisions can follow this slice.
+**Open questions:** None for this slice.
 
-**Acceptance criteria coverage** (in epic order, planned scope)
+**Acceptance criteria coverage** (planned for slice 2)
 
-| Epic criterion | Coverage | Slice outcome |
+| Epic criterion | Coverage | Outcome |
 | --- | --- | --- |
-| 1. Title, new game and pause language | partial | Save actions and name heading. Title identity, lantern and wider opening copy follow. |
-| 2. One-click tour map start | follow-up | New-game flow. |
-| 3. Journal, Feldbuch wording and destinations | partial | Both shells and default J/touch entrances removed, all eight destinations reachable from Pause and save UI renamed. Legacy prompts, the phone gallery and owner-pending wording have later slices. |
-| 4. Survey keymap and mobile controls | follow-up | Survey controls have their own slice. |
-| 5. Classic removal and single bible | follow-up | Legacy migration and bible merge have separate slices. |
-| 6. Visible Messstab handoff | follow-up | Tour item and avatar work. |
-| 7. Hub move and spring E conflict | follow-up | Only the existing hub's Codex round trip is in scope. |
-| 8. v0.6–v0.8 saves and migration test | follow-up | Existing formats and talent IDs are reused here. Legacy progress migration and its real-save test go together. |
-| 9. Smoke, affected e2e and units | full | Required for this slice, including contributor-run browser checks. |
-| 10. PRD, ACTION-RPG and README | partial | Changelog, §14 row and current controls/how-to. The broader concept rewrite follows. |
-| 11. Four gates | full | All four must pass on the implemented slice. |
+| 1. Title, new game and Pause wording | follow-up | Slice 1 covered save wording. The tour title and remaining copy follow. |
+| 2. One-tap tour map | follow-up | The opening gesture belongs to §§1–2. |
+| 3. Journal, Feldbuch and destinations | partial | Slice 1 delivered Pause navigation. This slice retires playable surveyor beats. The remaining terminology and destinations are separate. |
+| 4. Survey keymap and mobile controls | follow-up | §7. |
+| 5. Classic removal and single bible | partial | Playable legacy route and switch retired. Shared content extraction, deletion and the bible merge follow. |
+| 6. Visible Messstab handoff | follow-up | §3. |
+| 7. Hub move and spring E conflict | follow-up | §§4–5. |
+| 8. v0.6–v0.8 saves | full | Tagged legacy slots migrate and reload with grants. Mid-tour and later saves retain their progress. |
+| 9. Smoke, affected e2e and units | partial | All 1,493 units passed. The nine original browser failures passed on rerun. The guard callout also fails on main, and the standalone mobile runner is outstanding. |
+| 10. PRD, ACTION-RPG and README | partial | PRD changelog, §14 and active opening/save references. Slice 1 updated README controls. The wider docs sweep follows. |
+| 11. Four gates | full | The contributor passed all four gates on `da4d945`. |
 
 **Follow-up slices:**
 
-- [ ] §5 — Retire `?classic`, legacy story/quests/pack, builder and exclusive voices. Migrate every legacy beat/quest state and test real v0.6–v0.8 saves for preserved progress and grants.
+- [ ] §5 — Extract the shared page item and K4 nouns, rehome codex unlocks and retain earned epilogue deeds. Preserve the retired quest definitions needed for save payouts and historical log entries before deleting `content/story/00-prolog.story.json`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, `scripts/content-build/prolog.mjs` and its `build.mjs` entry. Audit exclusive voice IDs, text hashes, priority selectors and manifest/clip references against the tour, chapters, speakers and shared barks before pruning. Retarget the content, budget, wayfinding, travel and voice tests. Edit builders, run `node scripts/content-build/build.mjs`, inspect generated diffs and run `pnpm validate`.
 - [ ] §§1–2 — Tour title, icons, hints, metadata and one-tap route-map/audio start, including the remaining opening copy.
 - [ ] §3 — Tour Messstab handoff, avatar visibility and XP budget.
-- [ ] §§4–5 — Relocate the hub after the placement decision, restore the spring interaction and reconcile station IDs, endings and the “Bauwagen” text on the e1-wahl card.
-- [ ] §6 — Resolve permanent destinations, talent wording and in-fiction/voiced references with the owner.
+- [ ] §§4–5 — Relocate the hub after placement is settled, restore the spring interaction and reconcile station IDs, endings and the e1-wahl card.
+- [ ] §6 — Remaining destinations, talent wording and in-fiction/voiced references, once settled.
 - [ ] §7 — Survey keymap, settings migration, touch expansion and tutorials.
-- [ ] §§5, 8 — Merge the bibles, reconcile remaining PRD/architecture/gameplay docs, historical material and dead references.
+- [ ] §§5, 8 — Merge the bibles and reconcile remaining PRD, architecture, gameplay and historical references.
 
 ## Progress
 
+- 2026-11-24: Slice 1 merged in PR #15. Its five steps covered Pause navigation, shortcuts and touch, journal removal, save wording and regression checks.
 - Branch: `refactor/task-007-journal-classic`
 - PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/15
 - 2026-11-24: Step 1 implemented. Pause lists the eight existing feature views with badges, a scrollable list and a Back action. The conditional story actions remain available.
@@ -295,6 +291,33 @@ _Status: approved 2026-11-24_
 - 2026-11-24: Compared the four SwiftShader captures in the main checkout under `test-results/contribute/TASK-007/`. At 1280×720, `before-title.png` and `after-title.png` show “Fortsetzen” changing to “Weiter” for the saved game. At 844×390, `before-pause-touch.png` and `after-pause-touch.png` show all eight destinations added to landscape Pause.
 - 2026-11-24: Self-reviewed `git diff c344059...5f8db36`, including the retired inputs, stacked dialogs, map cleanup, German labels and generated ending. `git diff --check` passed. The hub now stays open under Codex. One obsolete comment in `src/systems/story/index.ts` still describes reopening it. Slice 1 is ready for review. The seven follow-up slices keep the epic in progress.
 - 2026-11-24: Pushed `5f8db36` and opened PR #15. The sandbox denied the task-file commit at the worktree's `index.lock`. The contributor can stage this record, commit it and push it to the open PR.
+- 2026-11-24: Contributor approved slice 2 on `refactor/task-007-remove-classic` after the dependency and release-format audit. Fixtures will use the tagged serializers. The contributor captured the desktop baseline on unchanged code. Desktop and touch after shots are due after implementation.
+
+- Slice 2 branch: `refactor/task-007-remove-classic`
+- 2026-11-24: Slice 2 step 1 complete. Vitest ran the serializer from each tagged archive and captured three exact auto slots. The tsx runner was blocked by IPC EPERM.
+
+- 2026-11-24: Slice 2 step 2 complete. Deserialization moves legacy saves to the K1 checkpoint, preserves historical records and earned progression, and clears retired objectives and spawns. The 24 handover and migration tests passed. Regenerated the v0.8 fixture with the full photo slice and verified the documented direct Vitest command on all three archives.
+
+- 2026-11-24: Slice 2 step 3 complete. The playable chapter catalog excludes the legacy prologue from new games, chapter select and debug jumps. Retired quests are excluded from runtime registration, with completed and failed entries still visible in the quest log. The shared page item remains registered. Typecheck and 67 focused tests passed, including resumed K1 quest and spring-event coverage.
+- 2026-11-24: Fixture commit `b1b2b94` succeeded. The next `git add` was denied at the worktree index.lock. Remaining commits will be handed to the contributor without retrying.
+
+- 2026-11-24: Slice 2 step 4 complete. Replaced the legacy playthrough with bookmark and release-save Continue scenarios, including a landscape touch run with reduced motion. Pacing, spring, hub and cross-system specs use playable content. Updated the mobile runner, shared helpers and all six planned docs. Browser checks and captures are pending outside the sandbox.
+
+- 2026-11-24: Slice 2 step 5 local checks complete. The migration matrix covers all three tagged slots, 14 beats across seven quest states, higher progression and tour/later-chapter controls. Typecheck, all 1,493 unit tests in 110 files, the production build, `mc validate` and `git diff --check` passed. `pnpm validate` was attempted and stopped at the tsx IPC socket with EPERM. The full K1 script stays in the story chunk.
+- 2026-11-24: Audited the removed URL switch, quest and beat IDs, derived objective groups and pickups, legacy clues/echoes/dialogue, dynamic chapter selector and shared helper callers. The deleted `story.caught.wakeNear` key has no remaining references in `strings.ts`, `src/i18n/` or its former call site. Legacy content and builders are intact.
+- 2026-11-24: Playwright discovered 47 tests in the approved 16 specs and one mobile runner test with `--list`. Browser execution is pending for `smoke`, `chapter-prolog`, `story`, `integration`, `pacing`, `quelle`, `quests`, `pol-flow`, `campaign`, `tour-slice`, `chapter-k1`, `chapter-k1-disguise`, `chapter-k1-quelle`, `chapter-k2`, `chapter-k4`, `touch` and mobile `hud-idle`. The contributor's desktop before shot is on record. The desktop after comparison and touch Continue capture are pending.
+
+- 2026-11-24: Slice 2 fix round 1 of 2. The contributor committed `ea409bf`, `aa138c6` and `85eafa9` on top of `b1b2b94` and passed all four gates outside the sandbox. Playwright reported 38 passed and nine failed across the 16 specs, with `pol-flow` passing.
+- 2026-11-24: Compared the failures and page snapshots against `origin/main`. The unchanged chapter-card gate held K1's court cue, quest offer and delayed objective when the direct-boot specs acted. Being caught retired the pending court cue before it could be applied. The K1 specs now step through entry before those checks. The portrait spec runs the chapter's authored radio timeline and waits for both named lines. At the spring, the tour's distant-group Q prompt owned the HUD and blocked the low-priority hub prompt. The three hub specs now set up the spring break with the group nearby and press E after checking the hub owns the prompt. The payout spec checks the hook's boolean result and keeps a separate fight active through turn-in to verify the payout stays queued.
+- 2026-11-24: Round 1 typecheck and all 1,493 unit tests passed. Playwright discovered 23 tests in the eight specs for rerun. The browser rerun is pending for `chapter-k1-disguise`, `chapter-k1-quelle`, `integration`, `pacing`, `story` and the other K1 boot consumers `chapter-k1`, `quelle`, `pol-flow`.
+
+- 2026-11-24: The sandbox denied the round 1 `git add` at the worktree index.lock. The fix commit is pending in the contributor shell.
+
+- 2026-11-24: The contributor committed the fix as `da4d945` and verified all four gates outside the sandbox. Typecheck, 1,493 unit tests in 110 files, content validation and the production build passed.
+- 2026-11-24: Playwright ran with one worker under `scripts/dev/heavy.sh`. The first run across all 16 specs had 38 passes and nine failures across chapter-k1-disguise (2), chapter-k1-quelle (2), integration (1), pacing (2) and story (2). On `da4d945` the contributor reran smoke, chapter-k1-disguise, chapter-k1-quelle, integration, pacing, story, chapter-k1, quelle, pol-flow, chapter-prolog and touch. All nine original failures passed. The rerun had 37 passes and one failure at `e2e/pol-flow.spec.ts:148` (guard calls out a runner), also reproduced on main at line 147. Campaign, quests, tour-slice, chapter-k2 and chapter-k4 passed in the first run and the fix did not edit those specs. The standalone mobile-tour runner was not run.
+- 2026-11-24: The 1280×720 desktop pair in `test-results/contribute/TASK-007/` shows the same bookmark and explicit start changing from „Vermessung“ to „Die Führung“. The 844×390 landscape touch capture with reduced motion shows Continue from the v0.8.0 slot at the spring. The contributor confirmed `k1/k1_0` with objective `k1.quelle`. Laub's line and „Wasser berühren“ are visible alongside level 3 and 149/350 EP toward the next level (549 total XP).
+- 2026-11-24: Checked the existing ACTION-RPG §14 row and PRD changelog. The epic stays in progress with the seven follow-up slices above. The standalone mobile-tour check and investigation of the guard callout on main remain open.
+- 2026-11-24: Pushed slice 2 on `refactor/task-007-remove-classic` and opened it for review against `main`. PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/17
 
 ## Notes
 - Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.

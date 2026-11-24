@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { waitForHooks } from './helpers/pause';
 import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helpers/k1';
 
@@ -8,7 +9,7 @@ import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helper
  *   cards, the compass, the dialogue card or the subtitles — at 1280×720, 1920×1080 and 1024×768;
  * - chapter 1: the guard calls out a runner in the Ehrenhof (running joke), being caught in
  *   Teil B wakes you at the Tschifflik terrace (not the field station);
- * - the prologue's printout card sketches the palace site, not the field station;
+ * - the archived printout card sketches the palace site, not the field station;
  * - the epilogue fits 1280×720 with its button visible; after an ending the main menu offers
  *   "Ende noch einmal wählen"; ending C lets the five hounds follow you at night.
  * Screenshots: test-results/screens/pol-flow-*.png.
@@ -217,10 +218,10 @@ test('chapter 1: the guard calls out a runner; caught in Teil B → awake at the
   expect(errors).toEqual([]);
 });
 
-test('prologue: the printout card sketches the palace site (not the field station)', async ({ page }) => {
+test('the printout card sketches the palace site', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'chronik']);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.state.mutable.flags['barks.quiet'] = true;
@@ -245,7 +246,7 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   const errors = trackErrors(page);
   // saving on: the field book before the choice goes to the 'ending' slot
   await page.goto('./?notitle&fresh&manual');
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.hunt, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'hunt']);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.state.mutable.flags['barks.quiet'] = true;
@@ -332,7 +333,7 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   await expect(again).toBeEnabled({ timeout: 180_000 });
   await shot(page, 'title-ending-again');
   await again.click();
-  await page.waitForFunction(() => !!window.kq?.story, null, { timeout: 60_000 });
+  await waitForHooks(page, ['story'], 60_000);
   // the table again: the choice opens 1.2 s into the resumed beat
   await page.evaluate(() => {
     const k = window.kq!;

@@ -33,7 +33,7 @@ import { HOME, bringHome, hubAt } from './hub/home';
 import { ObjectiveView, bearingDeg } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound } from './sfx';
-import { loadBundledStories } from './stories';
+import { loadBundledStories, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
@@ -219,30 +219,6 @@ const isLowLine = (id: string | undefined) => !!id && (isBarkLine(id) || id.star
 /** Story lines about the past's dangers: dropped when the era they were said in is left. */
 const ERA_BOUND_IDS = new Set(['laub.p.zurueck', 'laub.p.hinlegen']);
 
-/**
- * Where a prologue fight lost on the way wakes you (today): walkable landmarks of its walk — the
- * dam, the slope below the Orangerie, the Ehrenhof, the garden on the way to the Eiskeller. The
- * nearest one at least 22 m from where you fell (out of the pack's reach).
- */
-const PROLOG_WAKES: readonly { x: number; z: number; yaw: number }[] = [
-  { x: 819, z: -875, yaw: 90 },
-  { x: 1040, z: -905, yaw: 90 },
-  { x: 1138, z: -931, yaw: 90 },
-  { x: 1232, z: -1060, yaw: 180 },
-  { x: 1218, z: -1118, yaw: 90 },
-  { x: 1330, z: -1270, yaw: 90 },
-  { x: 1420, z: -1285, yaw: 90 },
-];
-function prologWake(x: number, z: number): { x: number; z: number; yaw: number; d: number } | null {
-  let best: { x: number; z: number; yaw: number; d: number } | null = null;
-  for (const w of PROLOG_WAKES) {
-    const d = Math.hypot(w.x - x, w.z - z);
-    if (d < 22) continue;
-    if (!best || d < best.d) best = { ...w, d };
-  }
-  return best;
-}
-
 /** Longer lines than this (characters) are lore in a fight: held until it is over. */
 const COMBAT_LINE_MAX = 120;
 
@@ -330,11 +306,7 @@ class StoryRuntime {
   private entryFlags: Map<string, string> | null = null;
 
   constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
-    const bundled = loadBundledStories();
-    // test chapters (content/story/99-test.story.json, "test": true) only with ?storytest
-    const tests = ctx.params.has('storytest');
-    // dev chapters ("dev": "<param>") only with their URL switch
-    this.files = bundled.map((b) => b.story).filter((f) => (!f.test || tests) && (!f.dev || ctx.params.has(f.dev)));
+    this.files = storiesInPlay(loadBundledStories(), ctx.params);
     this.engine = new StoryEngine(this.files, () => this.slice, {
       run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o.resume),
@@ -405,8 +377,7 @@ class StoryRuntime {
       modals: ctx.ui.modals,
       use: (item) => this.useHub(item),
       chapters: () =>
-        // the retired prologue only for a save that has been there
-        this.engine.order.filter((f) => !f.legacy || this.slice.unlocked.includes(f.chapter)).map((f) => ({
+        this.engine.order.map((f) => ({
           id: f.chapter,
           title: f.title_de,
           sub: f.sub_de ?? '',
@@ -647,11 +618,9 @@ class StoryRuntime {
     const s = this.slice;
     Object.assign(s, createStorySlice(), { name: name.trim() || t('story.name.suggest') });
     this.objectives.set(null);
-    // a dev chapter behind its URL switch replaces the first chapter (the tour) of a new game;
-    // `?classic` starts the retired surveyor prologue instead
-    const dev = this.files.find((f) => f.dev && this.ctx.params.has(f.dev));
-    const classic = this.ctx.params.has('classic') ? this.files.find((f) => f.legacy) : undefined;
-    this.goto(dev?.chapter ?? classic?.chapter ?? first.chapter);
+    // A dev chapter behind its URL switch replaces the tour on a new game.
+    const dev = this.files.find((f) => f.dev);
+    this.goto(dev?.chapter ?? first.chapter);
   }
 
   goto(chapter: string, beat?: string): void {
@@ -1526,9 +1495,7 @@ class StoryRuntime {
     let wake = this.wakePlace();
     const anchor = this.anchorFromFlags();
     let atAnchor = false;
-    // (not in the prologue: there home is the lesson, and the way back is short and taught)
-    const prolog = this.engine.chapter()?.chapter === 'prolog';
-    if (anchor && !anchor.anywhere && !prolog && (!wake || Math.hypot(wake.x - anchor.x, wake.z - anchor.z) > 150)) {
+    if (anchor && !anchor.anywhere && (!wake || Math.hypot(wake.x - anchor.x, wake.z - anchor.z) > 150)) {
       wake = { x: anchor.x + 3, z: anchor.z + 3, yaw: wake?.yaw ?? 0, text: t('story.caught.wakeAnchor') };
       atAnchor = true;
     }
@@ -1540,17 +1507,7 @@ class StoryRuntime {
     // stockpile woke you 270 m away at the Westblick). Bosses and the story's threats keep their wake.
     const at = this.caughtAt;
     this.caughtAt = null;
-    // the prologue: a fight lost on the way wakes you at the nearest landmark of its walk, not 800 m
-    // back home (playtest round 5: a 93 s sprint back to repeat the Eiskeller tutorial)
-    if (at && at.by === 'combat' && prolog) {
-      const near = prologWake(at.x, at.z);
-      if (near && near.d + 60 < Math.hypot(cp.x - at.x, cp.z - at.z)) {
-        cp = { x: near.x, z: near.z, yaw: near.yaw };
-        wake = { ...cp, text: t('story.caught.wakeNear') };
-        atAnchor = false;
-      }
-    }
-    if (at && at.by === 'combat' && !at.boss && !prolog) {
+    if (at && at.by === 'combat' && !at.boss) {
       const near = nearestSurveyed(this.ctx.state.state.systems.travel, at.x, at.z);
       if (near && near.d + 60 < Math.hypot(cp.x - at.x, cp.z - at.z)) {
         cp = { x: near.x + 2.5, z: near.z + 2.5, yaw: cp.yaw };

@@ -736,11 +736,7 @@ export interface StoryFile {
    * game starts in it instead of the first chapter.
    */
   dev?: string;
-  /**
-   * A retired opening (the old surveyor prologue): still bundled so a save in the middle of it
-   * resumes unchanged, but a new game starts in the first chapter by `order` (the tour); `?classic`
-   * starts the legacy chapter instead. Hidden from the bench's chapter list unless reached.
-   */
+  /** Historical chapter data excluded from play. Saves in the surveyor prologue migrate to chapter 1. */
   legacy?: boolean;
   /**
    * Run once when the story leaves this chapter for another one, whichever way (its last beat
