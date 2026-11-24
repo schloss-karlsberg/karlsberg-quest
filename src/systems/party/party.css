@@ -120,6 +120,13 @@ html[data-kq-touch] .kq-party-strip {
   left: calc(12px + var(--kq-safe-l));
   border-radius: 5px;
 }
+/* Keep the band above the lower letterbox, including during the camera hand-back. */
+html[data-kq-touch][data-kq-credits="crawl"] {
+  --kq-credits-bottom: calc(7vh + 4px + var(--kq-safe-b));
+}
+html[data-kq-touch][data-kq-credits="crawl"] .kq-party-strip {
+  overflow: clip;
+}
 html[data-kq-touch] :is(.kq-party-strip, .kq-party-bar) {
   right: calc(312px + var(--kq-safe-r));
 }

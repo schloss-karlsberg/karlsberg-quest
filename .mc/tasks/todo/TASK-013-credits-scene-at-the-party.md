@@ -81,7 +81,7 @@ sequence lists **everyone who contributed**: people, the asset authors, and the 
 - [ ] Skippable; Enter / Escape closes it; works on mobile; reduced motion shows a static scrolling list
 - [x] Every named person has agreed to be listed.
 - [x] The real tour guide is not named anywhere in the credits
-- [ ] e2e: an ending spec reaches the credits and skips them (`--workers=1`); unit tests for the generated author list
+- [x] e2e: an ending spec reaches the credits and skips them (`--workers=1`); unit tests for the generated author list
 - [ ] Screenshot (desktop and phone width) in the PR
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
@@ -152,6 +152,9 @@ _Status: approved 2026-11-24_
 - External e2e (unverified, one worker each via `scripts/dev/heavy.sh`): `e2e/party.spec.ts`, `e2e/story.spec.ts`, `e2e/smoke.spec.ts`. Selector and hook matches: party, story, campaign and `helpers/common.ts`; `pol-flow.spec.ts` exercises the same credits path through `throughParty`. `helpers/k4.ts` also uses that path and is called by campaign and chapter-k4. The edits to test boot helpers are local to party and story. The shared helpers were untouched.
 - 2026-11-24 — Step 6 pending external verification. `pnpm typecheck`, `pnpm test` (1,467 tests), `pnpm build` and `mc validate` passed locally. `pnpm validate` failed before the validator ran because the sandbox denied tsx's IPC socket (`EPERM)). The contributor will run `pnpm validate`, rebuild, run the three listed specs, and capture `after-desktop.png` and `after-phone.png` beside the baselines.
 - Git staging was denied on the worktree's `index.lock` after the two content commits. The remaining changes are ready for staging outside the sandbox.
+- 2026-11-24 — The contributor committed the implementation and tests as `5787c85` and `fd6ad2d`. All four gates passed externally (1,467 tests). Story passed 5/5 and smoke passed 7/7. Party passed 3/4 because headless Chromium did not acquire pointer lock in party (b). Desktop and reduced-motion phone visuals passed review. On the animated phone view, the lower letterbox obscured the edge of the credits band.
+- [x] 2026-11-24 — Fix round 1. Party (b) exercises Escape directly and still checks that both dogs lie at the player's feet. Headless unit tests cover a browser-reported unlock, Escape followed by an unlock, and a game-initiated release or failed lock request. The animated phone band now sits above the lower letterbox and clips the crawl at its edges. The party spec checks that geometry at 844×390. Typecheck and 32 focused Vitest tests passed.
+- [ ] Rebuild outside the sandbox, rerun `e2e/party.spec.ts` with one worker, and refresh `after-phone.png` at 844×390 with motion enabled.
 
 ## Notes
 - Builds on the party feature (`docs/design/tour/systems.md` §6, `content/bible/06-enden.md` §8).

@@ -136,7 +136,7 @@ type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';   // 
 
 **Credits (TASK-013).** The party strip and the fallback page use the same contributor names and roles from `content/credits.json`, asset authors grouped by source from `public/assets/LICENSES.json`, and German tools, data and closing text from `content/party/credits.json`. Players can use Enter, Escape or „Überspringen“ to return to free play. Escape also dismisses the credits when the browser reports a pointer-lock exit. The animated strip keeps rolling when movement hands back the orbit camera. The in-game reduced-motion setting or the system preference shows a static list that players can scroll until they dismiss it. No orbit plays in that mode.
 
-**Tests.** Unit coverage checks the ending cues for all three variants, the author grouping, reduced-motion timing and the single completion event. The story spec reaches the credits from the epilogue and clicks the skip button. The party spec covers Enter, Escape with pointer lock, and scrolling and tapping on a landscape phone. The storyboard uses the existing party strip selector for `e-fest-abspann`.
+**Tests.** Unit coverage checks the ending cues for all three variants, the author grouping, reduced-motion timing, the single completion event and Escape reported as a pointer-lock exit. The story spec reaches the credits from the epilogue and clicks the skip button. The party spec covers Enter, Escape, landscape phone crawl clipping, and scrolling and tapping with reduced motion. The storyboard uses the existing party strip selector for `e-fest-abspann`.
 
 ---
 

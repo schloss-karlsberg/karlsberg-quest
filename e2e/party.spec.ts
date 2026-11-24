@@ -222,19 +222,15 @@ test('party (c): ?party=museum — the world is quiet: no tripod beam, no marker
   expect(errors).toEqual([]);
 });
 
-test('party (b): Escape with pointer lock dismisses the credits and the keep party stays', async ({ page }) => {
+test('party (b): Escape dismisses the credits and the dogs lie at the player\'s feet', async ({ page }) => {
   const errors = trackErrors(page);
   const t0 = Date.now();
   await boot(page, 'keep');
   expect(await page.evaluate(() => window.kq!.party!.state().variant)).toBe('keep');
   await bodiesIn(page);
-  const locked = () => page.evaluate(() => window.kq!.ctx.input.locked);
-  await expect.poll(locked).toBe(false);
-  await page.locator('#app canvas').click({ position: { x: 640, y: 240 } });
-  await expect.poll(locked).toBe(true);
+  await expect(page.getByTestId('party-credits')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('party-credits')).toHaveCount(0);
-  await expect.poll(locked).toBe(false);
   expect(await events(page, 'credits:done')).toEqual([{ skipped: true }]);
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
   await expect(page.getByTestId('resume')).toHaveCount(0);
@@ -262,6 +258,38 @@ test('party (b): Escape with pointer lock dismisses the credits and the keep par
 
 test.describe('landscape phone', () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+
+  test('animated credits stay inside the band above the letterbox', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await boot(page, 'burn');
+    await bodiesIn(page);
+    await step(page, 300);
+    const credits = page.getByRole('marquee');
+    await expect(credits).toBeVisible();
+    const geometry = await credits.evaluate((band) => {
+      const track = band.querySelector<HTMLElement>('[data-testid="party-credits-track"]')!;
+      const bounds = band.getBoundingClientRect();
+      const line = track.getBoundingClientRect();
+      const y = (line.top + line.bottom) / 2;
+      const left = Math.max(bounds.left, line.left);
+      const right = Math.min(bounds.right, line.right);
+      // Enable hit testing only for this measurement of the visible crop.
+      track.style.pointerEvents = 'auto';
+      const hitsTrack = (x: number) => track.contains(document.elementFromPoint(x, y));
+      const clipped = {
+        left: !hitsTrack(bounds.left - 1),
+        inside: left < right && hitsTrack((left + right) / 2),
+        right: line.right > bounds.right + 1 && !hitsTrack(bounds.right + 1),
+      };
+      track.style.removeProperty('pointer-events');
+      return {
+        clipped,
+        insideBand: line.top >= bounds.top && line.bottom <= bounds.bottom,
+        aboveLetterbox: bounds.bottom <= innerHeight * 0.93,
+      };
+    });
+    expect(geometry).toEqual({ clipped: { left: true, inside: true, right: true }, insideBand: true, aboveLetterbox: true });
+  });
 
   test('OS reduced motion keeps the credits still, swipe scrolls, and tap dismisses', async ({ page }) => {
     const errors = trackErrors(page);
