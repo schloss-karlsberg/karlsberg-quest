@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Karlsberg Quest Storyboard</title>
-<meta name="description" content="The story, places, cast and items of Karlsberg Quest in in-engine pictures, with very short captions.">
+<meta name="description" content="Die Handlung, Orte, Figuren und Gegenstände von Karlsberg Quest in Bildern aus dem Spiel.">
 <style>
 @font-face { font-family: 'IM Fell English'; src: url('fonts/im-fell-english.woff2') format('woff2'); font-display: swap; }
 @font-face { font-family: 'IM Fell English'; font-style: italic; src: url('fonts/im-fell-english-italic.woff2') format('woff2'); font-display: swap; }
@@ -78,9 +78,6 @@ button.ph { display: block; width: 100%; padding: 0; margin: 0; border: 0; backg
 button.ph img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
 button.ph:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
 button.ph:hover img { filter: brightness(1.06); }
-.more { display: flex; gap: 2px; background: var(--night); }
-.more button.ph { width: 34%; }
-.more::before { content: 'also'; font: 600 11px/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: #c9bf9f; align-self: center; padding: 0 10px; }
 
 .note { margin: 10px 0 0 !important; font: 13px/1.4 var(--sans); color: var(--ink-soft); }
 .tag { display: inline-block; font: 700 10.5px/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 6px 3px; border-radius: 3px; margin-right: 4px; vertical-align: 1px; }
@@ -110,6 +107,7 @@ footer code { font-size: 12.5px; color: #efe6cf; }
 .lb { position: fixed; inset: 0; z-index: 50; background: rgba(12, 10, 8, 0.94); display: none; align-items: center; justify-content: center; flex-direction: column; padding: 16px; }
 .lb.open { display: flex; }
 .lb img { max-width: min(96vw, 1600px); max-height: calc(100vh - 150px); width: auto; height: auto; border: 1px solid rgba(210, 169, 78, 0.5); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+.lb img[hidden] { display: none; }
 .lb p { color: #efe6cf; max-width: 900px; text-align: center; margin: 14px 8px 0; font-size: 17px; }
 .lb .count { font: 12px/1 var(--sans); color: #a99f84; margin-top: 8px; }
 .lb button { position: absolute; background: rgba(29, 52, 39, 0.85); color: #efe6cf; border: 1px solid rgba(210, 169, 78, 0.5); border-radius: 50%; width: 46px; height: 46px; font: 22px/1 var(--sans); cursor: pointer; }
@@ -134,61 +132,1156 @@ footer code { font-size: 12.5px; color: #efe6cf; }
 <body>
 <header class="top">
   <div class="wrap">
-    <p class="kicker">Storyboard · contains every spoiler</p>
+    <p class="kicker">Storyboard · enthält Spoiler zur ganzen Handlung</p>
     <h1>Karlsberg <span>Quest</span></h1>
-    <p class="lead">A German-language browser action RPG on the real Karlsberg near Homburg (Saar), where Duke Karl II. August’s palace stood from 1778 to 1793. You travel between today and four moments of the past, guided by Laub, a surveyor from 1840 who lives in a brass compass.</p>
+    <p class="lead">Eine Führung am Karlsberg bei Homburg beginnt am Waldrand. An der Karlsbergquelle findest du eine Messingbussole, die dich in die Zeit des Schlosses führt. Am Abend trifft sich die Gruppe wieder auf dem Plateau.</p>
     <ul class="facts">
-      <li><b>Eras</b> today · summer 1789 · Feb 1793 · Jul 1793 · 1796</li>
-      <li><b>Question</b> “Was hat das Feuer nicht gefressen?”</li>
-      <li><b>Pictures</b> 60 in-engine captures</li>
+      <li><b>Epochen</b> heute · Sommer 1789 · Februar 1793 · Juli 1793 · 1796</li>
+      <li><b>Frage</b> „Was hat das Feuer nicht gefressen?“</li>
+      <li><b>Bilder</b> 68 Motive</li>
     </ul>
   </div>
 </header>
-<nav class="bar" aria-label="Sections">
+<nav class="bar" aria-label="Abschnitte">
   <div class="wrap">
-    <a class="main" href="#story">Story</a><a href="#prolog">Prologue</a><a href="#k1">Chapter 1</a><a href="#k2">Chapter 2</a><a href="#k3">Chapter 3</a><a href="#k4">Chapter 4</a><a href="#enden">Endings</a><span class="sep"></span>
-    <a class="main" href="#places">Places</a>
-    <a class="main" href="#cast">Cast</a>
-    <a class="main" href="#items">Items</a>
+    <a class="main" href="#story">Handlung</a>
+    <a href="#prolog">Führung</a>
+    <a href="#zeitreise">Erste Zeitreise</a>
+    <a href="#k1">Kapitel 1</a>
+    <a href="#k2">Kapitel 2</a>
+    <a href="#k3">Kapitel 3</a>
+    <a href="#k4">Kapitel 4</a>
+    <a href="#enden">Enden</a>
+    <a href="#fest">Fest</a>
+    <span class="sep"></span>
+    <a class="main" href="#places">Orte</a>
+    <a class="main" href="#cast">Figuren</a>
+    <a class="main" href="#items">Gegenstände</a>
   </div>
 </nav>
 <main class="wrap">
   <section class="block" id="story">
-    <h2>Story</h2>
-    <p class="intro">One card per beat, in play order. German titles as in the game; click any picture to enlarge, then use the arrow keys.</p>
-    <div class="legend"><span><span class="tag fact">Fact</span> from the sources</span><span><span class="tag fiction">Fiction</span> the game’s invention</span></div>
-    <section class="chapter" id="prolog"><header class="ch-head"><p class="kicker">Prologue</p><h3>Vermessung</h3><p class="era">Today · a November afternoon</p><p class="blurb">You learn to read the land, and step into 1789 for the first time.</p></header><div class="grid"><article class="card"><button class="ph" data-full="img/p1-feldstation.jpg" data-cap="Die Feldstation — Today · day. You check the 2025 laser scan of the Karlsberg forest for the forestry office. Fetch the survey staff leaning at the trailer."><img src="img/p1-feldstation.jpg" alt="Die Feldstation: You check the 2025 laser scan of the Karlsberg forest for the forestry office." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Feldstation</h4><p class="meta">Today · day</p><p>You check the 2025 laser scan of the Karlsberg forest for the forestry office.</p><p>Fetch the survey staff leaning at the trailer.</p></div></article><article class="card"><button class="ph" data-full="img/p2-damm.jpg" data-cap="Der Damm — Today · day. At the Karlsbergweiher dam, relief view (key 2) shows straight edges. Mist with eyes rises: your first fight."><img src="img/p2-damm.jpg" alt="Der Damm: At the Karlsbergweiher dam, relief view (key 2) shows straight edges." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Damm</h4><p class="meta">Today · day</p><p>At the Karlsbergweiher dam, relief view (key 2) shows straight edges.</p><p>Mist with eyes rises: your first fight.</p></div></article><article class="card"><button class="ph" data-full="img/p3-orangeriemauer.jpg" data-cap="Der Weg nach oben — Today · day. Uphill, a tall straight step in the woods: the Orangerie wall. The compass jolts, and Laub speaks for the first time."><img src="img/p3-orangeriemauer.jpg" alt="Der Weg nach oben: Uphill, a tall straight step in the woods: the Orangerie wall." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Weg nach oben</h4><p class="meta">Today · day</p><p>Uphill, a tall straight step in the woods: the Orangerie wall.</p><p>The compass jolts, and Laub speaks for the first time.</p><p class="note fiction"><span class="tag">Fiction</span> Laub and his compass are invented.</p></div></article><article class="card"><button class="ph" data-full="img/p3q-quelle.jpg" data-cap="Die Quelle — Today · day. Laub hears water that remembers: the Karlsbergquelle down the slope. Touch the water (E) and time runs backwards."><img src="img/p3q-quelle.jpg" alt="Die Quelle: Laub hears water that remembers: the Karlsbergquelle down the slope." loading="lazy" width="1280" height="720"></button><div class="more"><button class="ph thumb" data-full="img/p3q-touch.jpg" data-cap="Die Quelle — Today · day. Laub hears water that remembers: the Karlsbergquelle down the slope. Touch the water (E) and time runs backwards."><img src="img/p3q-touch.jpg" alt="Die Quelle (2)" loading="lazy" width="1280" height="720"></button></div><div class="body"><h4>Die Quelle</h4><p class="meta">Today · day</p><p>Laub hears water that remembers: the Karlsbergquelle down the slope.</p><p>Touch the water (E) and time runs backwards.</p><p class="note fact"><span class="tag">Fact</span> The spring is real. Whether it fed the palace is not documented.</p></div></article><article class="card"><button class="ph" data-full="img/p3r-brunnenstube.jpg" data-cap="Die Brunnenstube — Summer 1789 · day. First time travel: the spring house in 1789, the palace on the hill. Look around, then hold Q to return."><img src="img/p3r-brunnenstube.jpg" alt="Die Brunnenstube: First time travel: the spring house in 1789, the palace on the hill." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Brunnenstube</h4><p class="meta">Summer 1789 · day</p><p>First time travel: the spring house in 1789, the palace on the hill.</p><p>Look around, then hold Q to return.</p><p class="note fiction"><span class="tag">Fiction</span> Travelling through the spring is the game’s idea.</p></div></article><article class="card"><button class="ph" data-full="img/p4-ehrenhof.jpg" data-cap="Der Ehrenhof — Today · day. A flat clearing on the terrace; the relief shows wall lines around it. Laub’s 1840 map (key M) puts the palace right here."><img src="img/p4-ehrenhof.jpg" alt="Der Ehrenhof: A flat clearing on the terrace; the relief shows wall lines around it." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Ehrenhof</h4><p class="meta">Today · day</p><p>A flat clearing on the terrace; the relief shows wall lines around it.</p><p>Laub’s 1840 map (key M) puts the palace right here.</p><p class="note fact"><span class="tag">Fact</span> The laser scan shows the court of honour.</p></div></article><article class="card"><button class="ph" data-full="img/p5-hohlweg.jpg" data-cap="Der Hohlweg — Today · day. West of the palace, a sunken road runs deep in the ground. Scan it with key 2 or 3."><img src="img/p5-hohlweg.jpg" alt="Der Hohlweg: West of the palace, a sunken road runs deep in the ground." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Hohlweg</h4><p class="meta">Today · day</p><p>West of the palace, a sunken road runs deep in the ground.</p><p>Scan it with key 2 or 3.</p></div></article><article class="card"><button class="ph" data-full="img/p6-eiskeller.jpg" data-cap="Die Grube — Today · day. East of the palace: a round pit with a ring wall, the ice cellar. Nebelinge attack. Learn the heavy blow and the dodge."><img src="img/p6-eiskeller.jpg" alt="Die Grube: East of the palace: a round pit with a ring wall, the ice cellar." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Grube</h4><p class="meta">Today · day</p><p>East of the palace: a round pit with a ring wall, the ice cellar.</p><p>Nebelinge attack. Learn the heavy blow and the dodge.</p></div></article><article class="card"><button class="ph" data-full="img/p7-punktwolke.jpg" data-cap="Die Punktwolke — Today · day. Footprints cross the February point cloud, though the forest was closed. The Bussole springs open. Laub knows what walked there: “Hunde.”"><img src="img/p7-punktwolke.jpg" alt="Die Punktwolke: Footprints cross the February point cloud, though the forest was closed." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Punktwolke</h4><p class="meta">Today · day</p><p>Footprints cross the February point cloud, though the forest was closed.</p><p>The Bussole springs open. Laub knows what walked there: “Hunde.”</p></div></article><article class="card"><button class="ph" data-full="img/p8-regeln.jpg" data-cap="Die Regeln — Today · day. Laub’s rules: you can only cross where the needle points. There the ground remembers. Key Q."><img src="img/p8-regeln.jpg" alt="Die Regeln: Laub’s rules: you can only cross where the needle points." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Regeln</h4><p class="meta">Today · day</p><p>Laub’s rules: you can only cross where the needle points.</p><p>There the ground remembers. Key Q.</p></div></article><article class="card"><button class="ph" data-full="img/p9-wechsel.jpg" data-cap="Der eigene Wechsel — Today → 1789. Stand in the court of honour and press Q yourself. The palace rises out of the ground, edge by edge."><img src="img/p9-wechsel.jpg" alt="Der eigene Wechsel: Stand in the court of honour and press Q yourself." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der eigene Wechsel</h4><p class="meta">Today → 1789</p><p>Stand in the court of honour and press Q yourself.</p><p>The palace rises out of the ground, edge by edge.</p></div></article><article class="card"><button class="ph" data-full="img/p9b-sommer-1789.jpg" data-cap="Sommer 1789 — Summer 1789 · day. The court of honour stands complete. Streuner, stray hounds of the pack, are waiting. Drive them off."><img src="img/p9b-sommer-1789.jpg" alt="Sommer 1789: The court of honour stands complete." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Sommer 1789</h4><p class="meta">Summer 1789 · day</p><p>The court of honour stands complete.</p><p>Streuner, stray hounds of the pack, are waiting. Drive them off.</p><p class="note fact"><span class="tag">Fact</span> The palace stood here from 1778 to 1793.</p></div></article><article class="card"><button class="ph" data-full="img/p10-abend.jpg" data-cap="Zurück — Today · dusk. Back to the field station at dusk; the ghost view (F) shows the way. Pinboard, shelf, drawer: look around if you like."><img src="img/p10-abend.jpg" alt="Zurück: Back to the field station at dusk; the ghost view (F) shows the way." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Zurück</h4><p class="meta">Today · dusk</p><p>Back to the field station at dusk; the ghost view (F) shows the way.</p><p>Pinboard, shelf, drawer: look around if you like.</p></div></article><article class="card"><button class="ph" data-full="img/p11-nacht.jpg" data-cap="Neue Punkte — Today · night. Night and frost breath at the trailer. Sleep on the cot. Morning brings new points in the scan."><img src="img/p11-nacht.jpg" alt="Neue Punkte: Night and frost breath at the trailer." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Neue Punkte</h4><p class="meta">Today · night</p><p>Night and frost breath at the trailer.</p><p>Sleep on the cot. Morning brings new points in the scan.</p></div></article></div></section><section class="chapter" id="k1"><header class="ch-head"><p class="kicker">Chapter 1</p><h3>Der Hof</h3><p class="era">Summer 1789 · day → dusk → night</p><p class="blurb">The court at its height, the unpaid wage, the menagerie, and the quiet place of 1785.</p></header><div class="grid"><article class="card"><button class="ph" data-full="img/k1-ankunft.jpg" data-cap="Ankunft — Summer 1789 · day. Enter the court on foot, like everyone, past the gate guard. Hold E at the railings to listen."><img src="img/k1-ankunft.jpg" alt="Ankunft: Enter the court on foot, like everyone, past the gate guard." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Ankunft</h4><p class="meta">Summer 1789 · day</p><p>Enter the court on foot, like everyone, past the gate guard.</p><p>Hold E at the railings to listen.</p></div></article><article class="card"><button class="ph" data-full="img/k1-registratur.jpg" data-cap="Die Registratur — Summer 1789 · day. Clerk Gottlob Soll counts what the court has and what it spends. Then his dunning letters fly out of the window."><img src="img/k1-registratur.jpg" alt="Die Registratur: Clerk Gottlob Soll counts what the court has and what it spends." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Registratur</h4><p class="meta">Summer 1789 · day</p><p>Clerk Gottlob Soll counts what the court has and what it spends.</p><p>Then his dunning letters fly out of the window.</p><p class="note fiction"><span class="tag">Fiction</span> Soll, Hanne and Jost are invented.</p></div></article><article class="card"><button class="ph" data-full="img/k1-schuldbuch.jpg" data-cap="Der Bauplatz — Summer 1789. Hanne, a stonemason’s widow, waits for her husband’s last wage. At dusk a ledger rises: the boss Das Schuldbuch."><img src="img/k1-schuldbuch.jpg" alt="Der Bauplatz: Hanne, a stonemason’s widow, waits for her husband’s last wage." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Bauplatz</h4><p class="meta">Summer 1789</p><p>Hanne, a stonemason’s widow, waits for her husband’s last wage.</p><p>At dusk a ledger rises: the boss Das Schuldbuch.</p></div></article><article class="card"><button class="ph" data-full="img/k1-zwinger.jpg" data-cap="Der Zwinger — Summer 1789 · dusk. Behind the stables, dog boy Jost feeds the pack and needs hands. He shows you how to hide from hounds."><img src="img/k1-zwinger.jpg" alt="Der Zwinger: Behind the stables, dog boy Jost feeds the pack and needs hands." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Zwinger</h4><p class="meta">Summer 1789 · dusk</p><p>Behind the stables, dog boy Jost feeds the pack and needs hands.</p><p>He shows you how to hide from hounds.</p><p class="note fact"><span class="tag">Fact</span> Mannlich wrote of a kennel “for a thousand dogs”.</p></div></article><article class="card"><button class="ph" data-full="img/k1-karlslust.jpg" data-cap="Die Karlslust — Summer 1789 · dusk. South in the Karlslust: the duke’s animals, the bear pens, the cascade. The cassowary is loose. Tire it out; never strike it."><img src="img/k1-karlslust.jpg" alt="Die Karlslust: South in the Karlslust: the duke’s animals, the bear pens, the cascade." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Karlslust</h4><p class="meta">Summer 1789 · dusk</p><p>South in the Karlslust: the duke’s animals, the bear pens, the cascade.</p><p>The cassowary is loose. Tire it out; never strike it.</p></div></article><article class="card"><button class="ph" data-full="img/k1-irrlichter.jpg" data-cap="Die Nacht kommt — Summer 1789 · night. Lights dance over the swan pond. Bannlicht first, then the staff."><img src="img/k1-irrlichter.jpg" alt="Die Nacht kommt: Lights dance over the swan pond." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Nacht kommt</h4><p class="meta">Summer 1789 · night</p><p>Lights dance over the swan pond.</p><p>Bannlicht first, then the staff.</p></div></article><article class="card"><button class="ph" data-full="img/k1-rondell.jpg" data-cap="Das Rondell — Memory · December 1785. Hold E at the Rondell: the fireworks of December 1785 return. Then the pack hunts you down the cascade to the water."><img src="img/k1-rondell.jpg" alt="Das Rondell: Hold E at the Rondell: the fireworks of December 1785 return." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Das Rondell</h4><p class="meta">Memory · December 1785</p><p>Hold E at the Rondell: the fireworks of December 1785 return.</p><p>Then the pack hunts you down the cascade to the water.</p><p class="note fact"><span class="tag">Fact</span> In 1785 the fireworks exploded above the Great Cascade.</p></div></article></div></section><section class="chapter" id="k2"><header class="ch-head"><p class="kicker">Chapter 2</p><h3>Die Flucht</h3><p class="era">Night of 9/10 February 1793 · frost, fog</p><p class="blurb">The night the duke fled. You follow the warner’s trail, then the hunt follows you.</p></header><div class="grid"><article class="card"><button class="ph" data-full="img/k2-parkzaun.jpg" data-cap="Der Parkzaun — Feb 1793 · night. Wool on the park fence, a trail in the hoarfrost: someone ran uphill. Halfway up, the night has eyes. Lantern off, crouch past."><img src="img/k2-parkzaun.jpg" alt="Der Parkzaun: Wool on the park fence, a trail in the hoarfrost: someone ran uphill." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Parkzaun</h4><p class="meta">Feb 1793 · night</p><p>Wool on the park fence, a trail in the hoarfrost: someone ran uphill.</p><p>Halfway up, the night has eyes. Lantern off, crouch past.</p></div></article><article class="card"><button class="ph" data-full="img/k2-orangerie.jpg" data-cap="Die Orangerie — Feb 1793 · night. Light burns in Mannlich’s windows. Hold E to listen. A general asks about lights in the woods: “Das sind Kalköfen.”"><img src="img/k2-orangerie.jpg" alt="Die Orangerie: Light burns in Mannlich’s windows. Hold E to listen." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Orangerie</h4><p class="meta">Feb 1793 · night</p><p>Light burns in Mannlich’s windows. Hold E to listen.</p><p>A general asks about lights in the woods: “Das sind Kalköfen.”</p><p class="note fact"><span class="tag">Fact</span> The lime-kiln answer comes from Mannlich’s memoirs.</p></div></article><article class="card"><button class="ph" data-full="img/k2-wachhaus.jpg" data-cap="Das Wachhaus — Feb 1793 · night. The trail ends at the guardhouse; Irrlichter circle the watch fire. Banish them, then read the guard book."><img src="img/k2-wachhaus.jpg" alt="Das Wachhaus: The trail ends at the guardhouse; Irrlichter circle the watch fire." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Das Wachhaus</h4><p class="meta">Feb 1793 · night</p><p>The trail ends at the guardhouse; Irrlichter circle the watch fire.</p><p>Banish them, then read the guard book.</p></div></article><article class="card"><button class="ph" data-full="img/k2-schloss.jpg" data-cap="Ins Schloss — Feb 1793 · night. Into the palace, to the study’s half-open door. Listen as the duke hears the warning."><img src="img/k2-schloss.jpg" alt="Ins Schloss: Into the palace, to the study’s half-open door." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Ins Schloss</h4><p class="meta">Feb 1793 · night</p><p>Into the palace, to the study’s half-open door.</p><p>Listen as the duke hears the warning.</p><p class="note fact"><span class="tag">Fact</span> The duke fled that night.</p></div></article><article class="card"><button class="ph" data-full="img/k2-abfahrt.jpg" data-cap="Die Abfahrt — Feb 1793 · night. The carriages leave. Lantern on or off as they pass? Afterwards Hanne and Jost wait at the railings."><img src="img/k2-abfahrt.jpg" alt="Die Abfahrt: The carriages leave. Lantern on or off as they pass?" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Abfahrt</h4><p class="meta">Feb 1793 · night</p><p>The carriages leave. Lantern on or off as they pass?</p><p>Afterwards Hanne and Jost wait at the railings.</p></div></article><article class="card"><button class="ph" data-full="img/c-meute.jpg" data-cap="Die Parforcejagd — Feb 1793 · night. Someone who is not Jost blows the hunt. Run: the Orangerie, down the slope, to the water."><img src="img/c-meute.jpg" alt="Die Parforcejagd: Someone who is not Jost blows the hunt." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Parforcejagd</h4><p class="meta">Feb 1793 · night</p><p>Someone who is not Jost blows the hunt.</p><p>Run: the Orangerie, down the slope, to the water.</p><p class="note fiction"><span class="tag">Fiction</span> A hunt never called off keeps running.</p></div></article><article class="card"><button class="ph" data-full="img/k2-pikeur.jpg" data-cap="Am Damm — Feb 1793 · night. The Pikeur waits at the dam, a faceless rider. Lure his charge onto running water; it stops him."><img src="img/k2-pikeur.jpg" alt="Am Damm: The Pikeur waits at the dam, a faceless rider." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Am Damm</h4><p class="meta">Feb 1793 · night</p><p>The Pikeur waits at the dam, a faceless rider.</p><p>Lure his charge onto running water; it stops him.</p></div></article></div></section><section class="chapter" id="k3"><header class="ch-head"><p class="kicker">Chapter 3</p><h3>Die Nacht</h3><p class="era">Sunday 28 July 1793 · afternoon → night</p><p class="blurb">The fire. The gallery is empty, the hall comes down, and you save exactly one thing.</p></header><div class="grid"><article class="card"><button class="ph" data-full="img/k3-nachmittag.jpg" data-cap="Der Nachmittag — Jul 1793 · late afternoon. Soldiers unload straw; villagers stream through the gate. In the kitchen court, Raffschatten snatch Hanne’s basket."><img src="img/k3-nachmittag.jpg" alt="Der Nachmittag: Soldiers unload straw; villagers stream through the gate." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Nachmittag</h4><p class="meta">Jul 1793 · late afternoon</p><p>Soldiers unload straw; villagers stream through the gate.</p><p>In the kitchen court, Raffschatten snatch Hanne’s basket.</p></div></article><article class="card"><button class="ph" data-full="img/k3-galerie.jpg" data-cap="Das graue Buch — Jul 1793 · late afternoon. Soll’s grey book lies under the empty picture gallery. Paler patches show where the paintings hung."><img src="img/k3-galerie.jpg" alt="Das graue Buch: Soll’s grey book lies under the empty picture gallery." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Das graue Buch</h4><p class="meta">Jul 1793 · late afternoon</p><p>Soll’s grey book lies under the empty picture gallery.</p><p>Paler patches show where the paintings hung.</p><p class="note fact"><span class="tag">Fact</span> Mannlich had the paintings taken to Mannheim.</p></div></article><article class="card"><button class="ph" data-full="img/k3-strohmann.jpg" data-cap="Der Strohmann — Jul 1793 · dusk. The straw of a hundred wagons rises, with arms. Hit its back, where the bundles are tied."><img src="img/k3-strohmann.jpg" alt="Der Strohmann: The straw of a hundred wagons rises, with arms." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Strohmann</h4><p class="meta">Jul 1793 · dusk</p><p>The straw of a hundred wagons rises, with arms.</p><p>Hit its back, where the bundles are tied.</p></div></article><article class="card"><button class="ph" data-full="img/k3-fackel.jpg" data-cap="Die Fackel — Jul 1793 · dusk. What comes next, everyone knows: the torch."><img src="img/k3-fackel.jpg" alt="Die Fackel: What comes next, everyone knows: the torch." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Fackel</h4><p class="meta">Jul 1793 · dusk</p><p>What comes next, everyone knows: the torch.</p><p class="note fact"><span class="tag">Fact</span> The Karlsberg burned on 28 July 1793.</p></div></article><article class="card"><button class="ph" data-full="img/k3-festsaal.jpg" data-cap="Der Festsaal — Jul 1793 · night. The palace burns from below; smoke hangs under the ceiling. Hanne stands in the hall. Save one thing: handle, ducat or clock."><img src="img/k3-festsaal.jpg" alt="Der Festsaal: The palace burns from below; smoke hangs under the ceiling." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Festsaal</h4><p class="meta">Jul 1793 · night</p><p>The palace burns from below; smoke hangs under the ceiling.</p><p>Hanne stands in the hall. Save one thing: handle, ducat or clock.</p></div></article><article class="card"><button class="ph" data-full="img/k3-garten.jpg" data-cap="Der Garten — Jul 1793 · night. Out into the garden. Hanne and Soll watch the palace burn. The menagerie’s jaguar prowls the hedges: light, no blows."><img src="img/k3-garten.jpg" alt="Der Garten: Out into the garden. Hanne and Soll watch the palace burn." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Garten</h4><p class="meta">Jul 1793 · night</p><p>Out into the garden. Hanne and Soll watch the palace burn.</p><p>The menagerie’s jaguar prowls the hedges: light, no blows.</p></div></article><article class="card"><button class="ph" data-full="img/k3-zwinger.jpg" data-cap="Der Zwinger — Jul 1793 · night. The real hounds bark, locked in, and the fire is coming. Jost is there. Let them out."><img src="img/k3-zwinger.jpg" alt="Der Zwinger: The real hounds bark, locked in, and the fire is coming." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Zwinger</h4><p class="meta">Jul 1793 · night</p><p>The real hounds bark, locked in, and the fire is coming.</p><p>Jost is there. Let them out.</p></div></article></div></section><section class="chapter" id="k4"><header class="ch-head"><p class="kicker">Chapter 4</p><h3>Der Steinbruch</h3><p class="era">1796 → 1840 → today</p><p class="blurb">The ruin loses its stones, forgetting sets in, and the truth about the pack comes out.</p></header><div class="grid"><article class="card"><button class="ph" data-full="img/k4-taleingang.jpg" data-cap="Der Taleingang — 1796 · day. Carts haul the palace’s stones west, into town. Steinfresser gnaw at the empty guardhouses."><img src="img/k4-taleingang.jpg" alt="Der Taleingang: Carts haul the palace’s stones west, into town." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Taleingang</h4><p class="meta">1796 · day</p><p>Carts haul the palace’s stones west, into town.</p><p>Steinfresser gnaw at the empty guardhouses.</p><p class="note fact"><span class="tag">Fact</span> After the fire the ruin was quarried for building stone.</p></div></article><article class="card"><button class="ph" data-full="img/k4-westblick.jpg" data-cap="Der Blick nach Westen — 1796 · day. Follow the stones back: the Hohenburg on the western horizon. A short shift shows the palace, built with Hohenburg stone."><img src="img/k4-westblick.jpg" alt="Der Blick nach Westen: Follow the stones back: the Hohenburg on the western horizon." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Blick nach Westen</h4><p class="meta">1796 · day</p><p>Follow the stones back: the Hohenburg on the western horizon.</p><p>A short shift shows the palace, built with Hohenburg stone.</p></div></article><article class="card"><button class="ph" data-full="img/k4-baumagazin.jpg" data-cap="Das Baumagazin — 1796 · day. Soll now keeps books for the tenants; Peter, Hanne’s son, loads stones."><img src="img/k4-baumagazin.jpg" alt="Das Baumagazin: Soll now keeps books for the tenants; Peter, Hanne’s son, loads stones." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Das Baumagazin</h4><p class="meta">1796 · day</p><p>Soll now keeps books for the tenants; Peter, Hanne’s son, loads stones.</p><p class="note fact"><span class="tag">Fact</span> The Baumagazin was the only building left standing.</p></div></article><article class="card"><button class="ph" data-full="img/k4-steinbrecher.jpg" data-cap="Der Steinbrecher — 1796. Men break out the walls of the court of honour. The loose blocks stand up as a giant: the boss Der Steinbrecher."><img src="img/k4-steinbrecher.jpg" alt="Der Steinbrecher: Men break out the walls of the court of honour." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Steinbrecher</h4><p class="meta">1796</p><p>Men break out the walls of the court of honour.</p><p>The loose blocks stand up as a giant: the boss Der Steinbrecher.</p></div></article><article class="card"><button class="ph" data-full="img/k4-steinfrass.jpg" data-cap="Die Gräben — 1796. The Steinfraß: forgetting eats the ruin, grain by grain. Reach the trenches before the grey takes you."><img src="img/k4-steinfrass.jpg" alt="Die Gräben: The Steinfraß: forgetting eats the ruin, grain by grain." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Gräben</h4><p class="meta">1796</p><p>The Steinfraß: forgetting eats the ruin, grain by grain.</p><p>Reach the trenches before the grey takes you.</p><p class="note fiction"><span class="tag">Fiction</span> The Steinfraß stands for the forgetting after the fire.</p></div></article><article class="card"><button class="ph" data-full="img/k4-meute.jpg" data-cap="Die Meute treibt — Today · night. Laub’s survey point seventeen: November 1840, the night he did not lie down. Now the pack drives you through the fog. Out, not down."><img src="img/k4-meute.jpg" alt="Die Meute treibt: Laub’s survey point seventeen: November 1840, the night he did not lie down." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Meute treibt</h4><p class="meta">Today · night</p><p>Laub’s survey point seventeen: November 1840, the night he did not lie down.</p><p>Now the pack drives you through the fog. Out, not down.</p></div></article><article class="card"><button class="ph" data-full="img/k4-stellen.jpg" data-cap="Sich stellen — Today · night. At the kennel, do not run. Lie down and light the lantern. One by one the hounds lie down around you."><img src="img/k4-stellen.jpg" alt="Sich stellen: At the kennel, do not run. Lie down and light the lantern." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Sich stellen</h4><p class="meta">Today · night</p><p>At the kennel, do not run. Lie down and light the lantern.</p><p>One by one the hounds lie down around you.</p></div></article><article class="card"><button class="ph" data-full="img/k4-jost.jpg" data-cap="Jost — Today · dawn. The Pikeur dismounts: it is Jost, grown old in memory. He hands you the horn, mouthpiece first."><img src="img/k4-jost.jpg" alt="Jost: The Pikeur dismounts: it is Jost, grown old in memory." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Jost</h4><p class="meta">Today · dawn</p><p>The Pikeur dismounts: it is Jost, grown old in memory.</p><p>He hands you the horn, mouthpiece first.</p></div></article></div></section><section class="chapter" id="enden"><header class="ch-head"><p class="kicker">Endings</p><h3>Was das Feuer nicht fraß</h3><p class="era">Today · dawn</p><p class="blurb">Three endings. None is the right one; what you learned colours the epilogue.</p></header><div class="grid"><article class="card"><button class="ph" data-full="img/e1-wahl.jpg" data-cap="Die Wahl — Today · dawn. The Chronik is complete. Choose its fate: museum, burn, or keep."><img src="img/e1-wahl.jpg" alt="Die Wahl: The Chronik is complete." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Wahl</h4><p class="meta">Today · dawn</p><p>The Chronik is complete.</p><p>Choose its fate: museum, burn, or keep.</p></div></article><article class="card"><button class="ph" data-full="img/e-museum.jpg" data-cap="Ins Museum — Ending A. The truth, with sources. You blow the horn; the hunt is called off. Far away, something lies down."><img src="img/e-museum.jpg" alt="Ins Museum: The truth, with sources. You blow the horn; the hunt is called off." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Ins Museum</h4><p class="meta">Ending A</p><p>The truth, with sources. You blow the horn; the hunt is called off.</p><p>Far away, something lies down.</p></div></article><article class="card"><button class="ph" data-full="img/e-burn.jpg" data-cap="Verbrennen — Ending B. As the pages burn, each shows one last memory. Peace for the hounds, silence for the voices."><img src="img/e-burn.jpg" alt="Verbrennen: As the pages burn, each shows one last memory." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Verbrennen</h4><p class="meta">Ending B</p><p>As the pages burn, each shows one last memory.</p><p>Peace for the hounds, silence for the voices.</p></div></article><article class="card"><button class="ph" data-full="img/e-keep.jpg" data-cap="Behalten — Ending C. The land keeps remembering. The pack follows you now: eyes in the dark, behind you."><img src="img/e-keep.jpg" alt="Behalten: The land keeps remembering." loading="lazy" width="1280" height="720"></button><div class="body"><h4>Behalten</h4><p class="meta">Ending C</p><p>The land keeps remembering.</p><p>The pack follows you now: eyes in the dark, behind you.</p></div></article></div></section>
+    <h2>Handlung</h2>
+    <p class="intro">Wähle ein Bild zum Vergrößern. Mit den Pfeiltasten oder per Wischgeste blätterst du weiter.</p>
+    <div class="legend">
+      <span><span class="tag fact">FAKT</span> aus den Quellen</span>
+      <span><span class="tag fiction">FIKTION</span> für das Spiel erfunden</span>
+    </div>
+    <section class="chapter" id="prolog">
+      <header class="ch-head">
+        <p class="kicker">Prolog · heute</p>
+        <h3>Die Führung</h3>
+        <p class="era">Heute · Mitte November</p>
+        <p class="blurb">Vom Wanderparkplatz über den Felsenpfad und den Weiher bis zur Karlsbergquelle. Dort geht die Gruppe weiter und du findest die Bussole.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t0-ticket.jpg" data-cap="Die Eintrittskarte — Heute · 14:30 Uhr. Öffentliche Führung. Treffpunkt ist der Wanderparkplatz am Karlsberg.">
+            <img src="img/t0-ticket.jpg" alt="Die Eintrittskarte" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Eintrittskarte</h4>
+            <p class="meta">Heute · 14:30 Uhr</p>
+            <p>Öffentliche Führung. Treffpunkt ist der Wanderparkplatz am Karlsberg.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Entwurf für den Einstieg.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t1-treffpunkt.jpg" data-cap="Der Treffpunkt — Heute · Novembernachmittag. Fünfzehn Leute sammeln sich am Waldrand. Gerold Imhoff begrüßt die Gruppe.">
+            <img src="img/t1-treffpunkt.jpg" alt="Der Treffpunkt" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Treffpunkt</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>Fünfzehn Leute sammeln sich am Waldrand. Gerold Imhoff begrüßt die Gruppe.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t2-station1.jpg" data-cap="Station 1 · Der Waldrand — Heute · Novembernachmittag. Gerold zeigt in den Wald. Dort steht das einzige erhaltene Gebäude des Schlosses, vom Parkplatz aus verborgen.">
+            <img src="img/t2-station1.jpg" alt="Station 1 · Der Waldrand" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Station 1 · Der Waldrand</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>Gerold zeigt in den Wald. Dort steht das einzige erhaltene Gebäude des Schlosses, vom Parkplatz aus verborgen.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t3-handy.jpg" data-cap="Das erste Foto — Heute · Gegenlicht. Auf dem Forstweg summt das Handy. Im Sucher fängt ein Buchenblatt die tief stehende Sonne.">
+            <img src="img/t3-handy.jpg" alt="Das erste Foto" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das erste Foto</h4>
+            <p class="meta">Heute · Gegenlicht</p>
+            <p>Auf dem Forstweg summt das Handy. Im Sucher fängt ein Buchenblatt die tief stehende Sonne.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t4-felsenpfad.jpg" data-cap="Station 2 · Der Felsenpfad — Heute · Novembernachmittag. An der kleinen Holzbrücke zeigt Gerold den roten Fels. Einer aus der Gruppe skizziert ihn.">
+            <img src="img/t4-felsenpfad.jpg" alt="Station 2 · Der Felsenpfad" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Station 2 · Der Felsenpfad</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>An der kleinen Holzbrücke zeigt Gerold den roten Fels. Einer aus der Gruppe skizziert ihn.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Der Felsenpfad führt an Buntsandstein vorbei.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t5-wind.jpg" data-cap="Wind im Wald — Heute · unter den Buchen. Der Wind treibt die Blätter quer über den Hang. Diane und Bijou rennen bellend bergauf.">
+            <img src="img/t5-wind.jpg" alt="Wind im Wald" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Wind im Wald</h4>
+            <p class="meta">Heute · unter den Buchen</p>
+            <p>Der Wind treibt die Blätter quer über den Hang. Diane und Bijou rennen bellend bergauf.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t6-reh-sicht.jpg" data-cap="Ricke und Kitz — Heute · Novembernachmittag. Gerold hält die Gruppe an. Zwischen den Buchen stehen eine graue Ricke und ihr Kitz im Winterfell.">
+            <img src="img/t6-reh-sicht.jpg" alt="Ricke und Kitz" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Ricke und Kitz</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>Gerold hält die Gruppe an. Zwischen den Buchen stehen eine graue Ricke und ihr Kitz im Winterfell.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t6-reh-pirsch.jpg" data-cap="Die Pirsch — Heute · Novembernachmittag. Du gehst geduckt näher. Sobald die Ricke den Kopf hebt, hältst du still.">
+            <img src="img/t6-reh-pirsch.jpg" alt="Die Pirsch" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Pirsch</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>Du gehst geduckt näher. Sobald die Ricke den Kopf hebt, hältst du still.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t6-reh-foto.jpg" data-cap="Das Rehfoto — Heute · im Handysucher. Das Kitz schaut in die Linse. Für das Foto bleibst du geduckt.">
+            <img src="img/t6-reh-foto.jpg" alt="Das Rehfoto" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das Rehfoto</h4>
+            <p class="meta">Heute · im Handysucher</p>
+            <p>Das Kitz schaut in die Linse. Für das Foto bleibst du geduckt.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t7-marlene.jpg" data-cap="Marlene am Damm — Heute · Novembernachmittag. Die Försterin vermisst den Damm und gibt dir ihren Messstab.">
+            <img src="img/t7-marlene.jpg" alt="Marlene am Damm" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Marlene am Damm</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>Die Försterin vermisst den Damm und gibt dir ihren Messstab.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Marlene gehört zur Spielhandlung.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t7-relief.jpg" data-cap="Der Damm im Relief — Heute · Reliefansicht. In der Reliefansicht tritt die gerade Kante des Damms hervor.">
+            <img src="img/t7-relief.jpg" alt="Der Damm im Relief" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Damm im Relief</h4>
+            <p class="meta">Heute · Reliefansicht</p>
+            <p>In der Reliefansicht tritt die gerade Kante des Damms hervor.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Damm und Insel sind im Geländescan erkennbar.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t7-weiher.jpg" data-cap="Station 3 · Der Karlsbergweiher — Heute · Novembernachmittag. Gerold hält am Nordufer. Hinter der Gruppe liegt die kleine Insel im Weiher.">
+            <img src="img/t7-weiher.jpg" alt="Station 3 · Der Karlsbergweiher" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Station 3 · Der Karlsbergweiher</h4>
+            <p class="meta">Heute · Novembernachmittag</p>
+            <p>Gerold hält am Nordufer. Hinter der Gruppe liegt die kleine Insel im Weiher.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t9-quelle-gruppe.jpg" data-cap="Station 4 · Die Karlsbergquelle — Heute · tief stehende Sonne. Am Trog verabschiedet sich Gerold. Die Gruppe geht zum Plateau weiter, du bleibst an der Quelle.">
+            <img src="img/t9-quelle-gruppe.jpg" alt="Station 4 · Die Karlsbergquelle" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Station 4 · Die Karlsbergquelle</h4>
+            <p class="meta">Heute · tief stehende Sonne</p>
+            <p>Am Trog verabschiedet sich Gerold. Die Gruppe geht zum Plateau weiter, du bleibst an der Quelle.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Hier entspringt der Karlsbergbach.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t10-allein.jpg" data-cap="Allein an der Quelle — Heute · tief stehende Sonne. Auf der Steinstufe hörst du das Wasser und die Stimmen, die am Hang verklingen.">
+            <img src="img/t10-allein.jpg" alt="Allein an der Quelle" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Allein an der Quelle</h4>
+            <p class="meta">Heute · tief stehende Sonne</p>
+            <p>Auf der Steinstufe hörst du das Wasser und die Stimmen, die am Hang verklingen.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t10-bussole.jpg" data-cap="Die Bussole im Trog — Heute · tief stehende Sonne. Im Holztrog glänzt etwas. Du ziehst eine grün angelaufene Messingbussole aus dem Wasser.">
+            <img src="img/t10-bussole.jpg" alt="Die Bussole im Trog" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Bussole im Trog</h4>
+            <p class="meta">Heute · tief stehende Sonne</p>
+            <p>Im Holztrog glänzt etwas. Du ziehst eine grün angelaufene Messingbussole aus dem Wasser.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Der Fund gehört zur Spielhandlung.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t10-laub.jpg" data-cap="Laubs Stimme — Heute · tief stehende Sonne. Die Nadel zittert. „Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.“">
+            <img src="img/t10-laub.jpg" alt="Laubs Stimme" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Laubs Stimme</h4>
+            <p class="meta">Heute · tief stehende Sonne</p>
+            <p>Die Nadel zittert. „Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.“</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Laub spricht aus der Bussole.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t10-touch.jpg" data-cap="Die Hand im Wasser — Heute → 1789. Ein Ring erstarrt auf dem Wasser. Dann fließt der Bach zurück zur Quelle.">
+            <img src="img/t10-touch.jpg" alt="Die Hand im Wasser" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Hand im Wasser</h4>
+            <p class="meta">Heute → 1789</p>
+            <p>Ein Ring erstarrt auf dem Wasser. Dann fließt der Bach zurück zur Quelle.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Die Berührung löst den ersten Zeitwechsel aus.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="zeitreise">
+      <header class="ch-head">
+        <p class="kicker">Prolog · 1789</p>
+        <h3>Die erste Zeitreise</h3>
+        <p class="era">Sommer 1789 → heute</p>
+        <p class="blurb">An der Brunnenstube führt Laub dich in den Kampf ein. Dann kehrst du zur Quelle zurück.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t11-brunnenstube.jpg" data-cap="Die Brunnenstube — Sommer 1789 · Tag. Am Hang steht eine Brunnenstube. Über der Wiese fehlt jedes vertraute Geräusch. Das Handy meldet „Kein Netz“.">
+            <img src="img/t11-brunnenstube.jpg" alt="Die Brunnenstube" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Brunnenstube</h4>
+            <p class="meta">Sommer 1789 · Tag</p>
+            <p>Am Hang steht eine Brunnenstube. Über der Wiese fehlt jedes vertraute Geräusch. Das Handy meldet „Kein Netz“.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Die Brunnenstube zeigt eine Rekonstruktion.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t12-training.jpg" data-cap="Die Übungswiese — Sommer 1789 · Morgen. Drei Nebelinge steigen aus dem Dunst am Bach. Laub erklärt, wann du ausweichst und mit dem Messstab zuschlägst.">
+            <img src="img/t12-training.jpg" alt="Die Übungswiese" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Übungswiese</h4>
+            <p class="meta">Sommer 1789 · Morgen</p>
+            <p>Drei Nebelinge steigen aus dem Dunst am Bach. Laub erklärt, wann du ausweichst und mit dem Messstab zuschlägst.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t12-bannlicht.jpg" data-cap="Das erste Bannlicht — Sommer 1789 · Morgen. Das Licht der Laterne trifft zwei fliegende Mahnbriefe. Sie stürzen wie Laub zu Boden.">
+            <img src="img/t12-bannlicht.jpg" alt="Das erste Bannlicht" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das erste Bannlicht</h4>
+            <p class="meta">Sommer 1789 · Morgen</p>
+            <p>Das Licht der Laterne trifft zwei fliegende Mahnbriefe. Sie stürzen wie Laub zu Boden.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t13-heulen.jpg" data-cap="Ein Hund im Norden — Sommer 1789 · Morgen. Von der Höhe kommt ein einzelnes Heulen. Die Nadel zuckt in Richtung Schloss.">
+            <img src="img/t13-heulen.jpg" alt="Ein Hund im Norden" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Ein Hund im Norden</h4>
+            <p class="meta">Sommer 1789 · Morgen</p>
+            <p>Von der Höhe kommt ein einzelnes Heulen. Die Nadel zuckt in Richtung Schloss.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/t14-pause-hub.jpg" data-cap="Die Pause an der Quelle — Heute · tief stehende Sonne. Fünf Minuten später bist du zurück. Auf dem Rastplatz findest du Chronik, Handy, Wandbrett, Nische und Steinstufe.">
+            <img src="img/t14-pause-hub.jpg" alt="Die Pause an der Quelle" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Pause an der Quelle</h4>
+            <p class="meta">Heute · tief stehende Sonne</p>
+            <p>Fünf Minuten später bist du zurück. Auf dem Rastplatz findest du Chronik, Handy, Wandbrett, Nische und Steinstufe.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="k1">
+      <header class="ch-head">
+        <p class="kicker">Kapitel 1</p>
+        <h3>Der Hof</h3>
+        <p class="era">Sommer 1789 · Tag → Nacht</p>
+        <p class="blurb">Der Hof auf seinem Höhepunkt. Hanne wartet auf den ausgebliebenen Lohn, und in der Karlslust kehrt eine Erinnerung an 1785 zurück.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-ankunft.jpg" data-cap="Ankunft — Sommer 1789 · Tag. Du betrittst den Hof zu Fuß, vorbei an der Wache. Am Gitter kannst du lauschen.">
+            <img src="img/k1-ankunft.jpg" alt="Ankunft" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Ankunft</h4>
+            <p class="meta">Sommer 1789 · Tag</p>
+            <p>Du betrittst den Hof zu Fuß, vorbei an der Wache. Am Gitter kannst du lauschen.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-registratur.jpg" data-cap="Die Registratur — Sommer 1789 · Tag. Gottlob Soll zählt die Einnahmen und Ausgaben des Hofs. Dann flattern die Mahnbriefe aus dem Fenster.">
+            <img src="img/k1-registratur.jpg" alt="Die Registratur" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Registratur</h4>
+            <p class="meta">Sommer 1789 · Tag</p>
+            <p>Gottlob Soll zählt die Einnahmen und Ausgaben des Hofs. Dann flattern die Mahnbriefe aus dem Fenster.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Die Mahnbriefe werden im Spiel lebendig.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-schuldbuch.jpg" data-cap="Der Bauplatz — Sommer 1789 · Tag. Die Steinmetzwitwe Hanne wartet auf den letzten Lohn ihres Mannes. Auf dem Bauplatz richtet sich das Schuldbuch auf.">
+            <img src="img/k1-schuldbuch.jpg" alt="Der Bauplatz" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Bauplatz</h4>
+            <p class="meta">Sommer 1789 · Tag</p>
+            <p>Die Steinmetzwitwe Hanne wartet auf den letzten Lohn ihres Mannes. Auf dem Bauplatz richtet sich das Schuldbuch auf.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-zwinger.jpg" data-cap="Der Zwinger — Sommer 1789 · Dämmerung. Hinter den Ställen füttert Jost die Meute. Er zeigt dir, wie du den Hunden entgehst.">
+            <img src="img/k1-zwinger.jpg" alt="Der Zwinger" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Zwinger</h4>
+            <p class="meta">Sommer 1789 · Dämmerung</p>
+            <p>Hinter den Ställen füttert Jost die Meute. Er zeigt dir, wie du den Hunden entgehst.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Mannlich beschrieb den Zwinger.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-karlslust.jpg" data-cap="Die Karlslust — Sommer 1789 · Dämmerung. Bei der Menagerie und der Kaskade läuft der Kasuar frei. Du lässt ihn sich müde laufen und führst ihn zurück.">
+            <img src="img/k1-karlslust.jpg" alt="Die Karlslust" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Karlslust</h4>
+            <p class="meta">Sommer 1789 · Dämmerung</p>
+            <p>Bei der Menagerie und der Kaskade läuft der Kasuar frei. Du lässt ihn sich müde laufen und führst ihn zurück.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-irrlichter.jpg" data-cap="Die Nacht kommt — Sommer 1789 · Nacht. Über dem Schwanenweiher tanzen Irrlichter. Das Bannlicht macht sie für den Messstab verwundbar.">
+            <img src="img/k1-irrlichter.jpg" alt="Die Nacht kommt" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Nacht kommt</h4>
+            <p class="meta">Sommer 1789 · Nacht</p>
+            <p>Über dem Schwanenweiher tanzen Irrlichter. Das Bannlicht macht sie für den Messstab verwundbar.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k1-rondell.jpg" data-cap="Das Rondell — Erinnerung · Dezember 1785. Am Rondell kehrt das Feuerwerk zurück. Danach jagt dich die Meute an der Kaskade hinunter ans Wasser.">
+            <img src="img/k1-rondell.jpg" alt="Das Rondell" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das Rondell</h4>
+            <p class="meta">Erinnerung · Dezember 1785</p>
+            <p>Am Rondell kehrt das Feuerwerk zurück. Danach jagt dich die Meute an der Kaskade hinunter ans Wasser.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Das Feuerwerk im Dezember 1785 ist überliefert.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="k2">
+      <header class="ch-head">
+        <p class="kicker">Kapitel 2</p>
+        <h3>Die Flucht</h3>
+        <p class="era">Nacht vom 9. auf den 10. Februar 1793 · Frost und Nebel</p>
+        <p class="blurb">Du folgst der Spur der Warnung bis ins Schloss. Auf dem Rückweg nimmt die Meute deine Fährte auf.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k2-parkzaun.jpg" data-cap="Der Parkzaun — Februar 1793 · Nacht. Wolle hängt am Zaun, eine Spur im Reif führt bergauf. Mit gelöschter Laterne schleichst du an den Augen im Nebel vorbei.">
+            <img src="img/k2-parkzaun.jpg" alt="Der Parkzaun" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Parkzaun</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>Wolle hängt am Zaun, eine Spur im Reif führt bergauf. Mit gelöschter Laterne schleichst du an den Augen im Nebel vorbei.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k2-orangerie.jpg" data-cap="Die Orangerie — Februar 1793 · Nacht. In Mannlichs Fenstern brennt Licht. Ein General fragt nach dem Leuchten im Wald. „Das sind Kalköfen.“">
+            <img src="img/k2-orangerie.jpg" alt="Die Orangerie" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Orangerie</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>In Mannlichs Fenstern brennt Licht. Ein General fragt nach dem Leuchten im Wald. „Das sind Kalköfen.“</p>
+            <p class="note fact"><span class="tag">FAKT</span> Mannlich überliefert die Antwort mit den Kalköfen.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k2-wachhaus.jpg" data-cap="Das Wachhaus — Februar 1793 · Nacht. Irrlichter kreisen ums Wachfeuer. Du bannst sie und liest im Wachbuch weiter.">
+            <img src="img/k2-wachhaus.jpg" alt="Das Wachhaus" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das Wachhaus</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>Irrlichter kreisen ums Wachfeuer. Du bannst sie und liest im Wachbuch weiter.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k2-schloss.jpg" data-cap="Ins Schloss — Februar 1793 · Nacht. Hinter der halb offenen Tür des Schreibkabinetts hört der Herzog die Warnung.">
+            <img src="img/k2-schloss.jpg" alt="Ins Schloss" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Ins Schloss</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>Hinter der halb offenen Tür des Schreibkabinetts hört der Herzog die Warnung.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Der Herzog floh in dieser Nacht.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k2-abfahrt.jpg" data-cap="Die Abfahrt — Februar 1793 · Nacht. Die Wagen fahren vorbei. Hanne und Jost warten danach am Gitter.">
+            <img src="img/k2-abfahrt.jpg" alt="Die Abfahrt" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Abfahrt</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>Die Wagen fahren vorbei. Hanne und Jost warten danach am Gitter.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/c-meute.jpg" data-cap="Die Parforcejagd — Februar 1793 · Nacht. Das Jagdhorn ruft die Meute. Du rennst an der Orangerie vorbei und den Hang hinunter ans Wasser.">
+            <img src="img/c-meute.jpg" alt="Die Parforcejagd" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Parforcejagd</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>Das Jagdhorn ruft die Meute. Du rennst an der Orangerie vorbei und den Hang hinunter ans Wasser.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Die Jagd ohne Ende ist erfunden.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k2-pikeur.jpg" data-cap="Am Damm — Februar 1793 · Nacht. Auf dem Damm wartet der Pikeur. Als er angreift, lockst du ihn ins fließende Wasser.">
+            <img src="img/k2-pikeur.jpg" alt="Am Damm" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Am Damm</h4>
+            <p class="meta">Februar 1793 · Nacht</p>
+            <p>Auf dem Damm wartet der Pikeur. Als er angreift, lockst du ihn ins fließende Wasser.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="k3">
+      <header class="ch-head">
+        <p class="kicker">Kapitel 3</p>
+        <h3>Die Nacht</h3>
+        <p class="era">Sonntag, 28. Juli 1793 · Nachmittag → Nacht</p>
+        <p class="blurb">Die Bildergalerie ist leer. Als das Schloss brennt, bleibt Zeit, ein Stück aus dem Festsaal zu retten.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-nachmittag.jpg" data-cap="Der Nachmittag — Juli 1793 · später Nachmittag. Soldaten laden Stroh ab. Die Leute drängen durch das Tor, im Küchenhof reißen Raffschatten Hannes Korb an sich.">
+            <img src="img/k3-nachmittag.jpg" alt="Der Nachmittag" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Nachmittag</h4>
+            <p class="meta">Juli 1793 · später Nachmittag</p>
+            <p>Soldaten laden Stroh ab. Die Leute drängen durch das Tor, im Küchenhof reißen Raffschatten Hannes Korb an sich.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-galerie.jpg" data-cap="Das graue Buch — Juli 1793 · später Nachmittag. Solls graues Buch liegt unter der leeren Bildergalerie. Helle Flecken zeigen, wo die Gemälde hingen.">
+            <img src="img/k3-galerie.jpg" alt="Das graue Buch" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das graue Buch</h4>
+            <p class="meta">Juli 1793 · später Nachmittag</p>
+            <p>Solls graues Buch liegt unter der leeren Bildergalerie. Helle Flecken zeigen, wo die Gemälde hingen.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Mannlich ließ die Gemälde vor dem Brand fortschaffen.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-strohmann.jpg" data-cap="Der Strohmann — Juli 1793 · Dämmerung. Das Stroh richtet sich zu einer Gestalt auf. Am Rücken, wo die Bündel verknotet sind, ist sie verwundbar.">
+            <img src="img/k3-strohmann.jpg" alt="Der Strohmann" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Strohmann</h4>
+            <p class="meta">Juli 1793 · Dämmerung</p>
+            <p>Das Stroh richtet sich zu einer Gestalt auf. Am Rücken, wo die Bündel verknotet sind, ist sie verwundbar.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-fackel.jpg" data-cap="Die Fackel — Juli 1793 · Dämmerung. Die Fackel setzt das Stroh in Brand.">
+            <img src="img/k3-fackel.jpg" alt="Die Fackel" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Fackel</h4>
+            <p class="meta">Juli 1793 · Dämmerung</p>
+            <p>Die Fackel setzt das Stroh in Brand.</p>
+            <p class="note fact"><span class="tag">FAKT</span> Schloss Karlsberg brannte am 28. Juli 1793.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-festsaal.jpg" data-cap="Der Festsaal — Juli 1793 · Nacht. Rauch hängt unter der Decke. Bei Hanne kannst du eines retten, den Türgriff, den Dukaten oder die Uhr.">
+            <img src="img/k3-festsaal.jpg" alt="Der Festsaal" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Festsaal</h4>
+            <p class="meta">Juli 1793 · Nacht</p>
+            <p>Rauch hängt unter der Decke. Bei Hanne kannst du eines retten, den Türgriff, den Dukaten oder die Uhr.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-garten.jpg" data-cap="Der Garten — Juli 1793 · Nacht. Hanne und Soll sehen das Schloss brennen. Der Jaguar aus der Menagerie streift durch die Hecken. Leuchte ihm den Weg frei.">
+            <img src="img/k3-garten.jpg" alt="Der Garten" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Garten</h4>
+            <p class="meta">Juli 1793 · Nacht</p>
+            <p>Hanne und Soll sehen das Schloss brennen. Der Jaguar aus der Menagerie streift durch die Hecken. Leuchte ihm den Weg frei.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k3-zwinger.jpg" data-cap="Der Zwinger — Juli 1793 · Nacht. Die eingesperrten Hunde bellen, das Feuer rückt näher. Du öffnest mit Jost den Zwinger.">
+            <img src="img/k3-zwinger.jpg" alt="Der Zwinger" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Zwinger</h4>
+            <p class="meta">Juli 1793 · Nacht</p>
+            <p>Die eingesperrten Hunde bellen, das Feuer rückt näher. Du öffnest mit Jost den Zwinger.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="k4">
+      <header class="ch-head">
+        <p class="kicker">Kapitel 4</p>
+        <h3>Der Steinbruch</h3>
+        <p class="era">1796 → 1840 → heute</p>
+        <p class="blurb">Die Ruine verliert ihre Steine. Laubs Spur führt zurück zur Meute und zu Josts Horn.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-taleingang.jpg" data-cap="Der Taleingang — 1796 · Tag. Wagen bringen Steine nach Westen in die Stadt. An den leeren Wachhäusern nagen Steinfresser.">
+            <img src="img/k4-taleingang.jpg" alt="Der Taleingang" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Taleingang</h4>
+            <p class="meta">1796 · Tag</p>
+            <p>Wagen bringen Steine nach Westen in die Stadt. An den leeren Wachhäusern nagen Steinfresser.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-westblick.jpg" data-cap="Der Blick nach Westen — 1796 · Tag. Du folgst den Steinen bis zum Westblick. Dort steht am Horizont die Hohenburg, deren Trümmer für den Schlossbau genutzt wurden.">
+            <img src="img/k4-westblick.jpg" alt="Der Blick nach Westen" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Blick nach Westen</h4>
+            <p class="meta">1796 · Tag</p>
+            <p>Du folgst den Steinen bis zum Westblick. Dort steht am Horizont die Hohenburg, deren Trümmer für den Schlossbau genutzt wurden.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-baumagazin.jpg" data-cap="Das Baumagazin — 1796 · Tag. Soll führt jetzt die Bücher der Pächter. Hannes Sohn Peter lädt Steine auf.">
+            <img src="img/k4-baumagazin.jpg" alt="Das Baumagazin" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Das Baumagazin</h4>
+            <p class="meta">1796 · Tag</p>
+            <p>Soll führt jetzt die Bücher der Pächter. Hannes Sohn Peter lädt Steine auf.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-steinbrecher.jpg" data-cap="Der Steinbrecher — 1796 · Tag. Am Ehrenhof brechen Arbeiter die Mauern ab. Die losen Blöcke richten sich als Steinbrecher auf.">
+            <img src="img/k4-steinbrecher.jpg" alt="Der Steinbrecher" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Steinbrecher</h4>
+            <p class="meta">1796 · Tag</p>
+            <p>Am Ehrenhof brechen Arbeiter die Mauern ab. Die losen Blöcke richten sich als Steinbrecher auf.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-steinfrass.jpg" data-cap="Die Gräben — 1796 · Tag. Der Steinfraß trägt die Ruine Korn für Korn ab. Du suchst die Gräben, bevor dich das Grau erreicht.">
+            <img src="img/k4-steinfrass.jpg" alt="Die Gräben" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Gräben</h4>
+            <p class="meta">1796 · Tag</p>
+            <p>Der Steinfraß trägt die Ruine Korn für Korn ab. Du suchst die Gräben, bevor dich das Grau erreicht.</p>
+            <p class="note fiction"><span class="tag">FIKTION</span> Der Steinfraß steht für das Vergessen nach dem Brand.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-meute.jpg" data-cap="Die Meute treibt — Heute · Nacht. Laubs Spur führt in den November 1840. Jetzt treibt dich die Meute durch den Nebel.">
+            <img src="img/k4-meute.jpg" alt="Die Meute treibt" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Meute treibt</h4>
+            <p class="meta">Heute · Nacht</p>
+            <p>Laubs Spur führt in den November 1840. Jetzt treibt dich die Meute durch den Nebel.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-stellen.jpg" data-cap="Sich stellen — Heute · Nacht. Am Zwinger legst du dich hin und entzündest die Laterne. Die Hunde legen sich einer nach dem anderen zu dir.">
+            <img src="img/k4-stellen.jpg" alt="Sich stellen" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Sich stellen</h4>
+            <p class="meta">Heute · Nacht</p>
+            <p>Am Zwinger legst du dich hin und entzündest die Laterne. Die Hunde legen sich einer nach dem anderen zu dir.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/k4-jost.jpg" data-cap="Jost — Heute · Morgengrauen. Der Pikeur steigt ab. Jost reicht dir sein Horn mit dem Mundstück voran.">
+            <img src="img/k4-jost.jpg" alt="Jost" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Jost</h4>
+            <p class="meta">Heute · Morgengrauen</p>
+            <p>Der Pikeur steigt ab. Jost reicht dir sein Horn mit dem Mundstück voran.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="enden">
+      <header class="ch-head">
+        <p class="kicker">Drei Enden</p>
+        <h3>Was das Feuer nicht fraß</h3>
+        <p class="era">Heute · Dämmerung</p>
+        <p class="blurb">Mit dem Horn kehrst du zurück. Die Entscheidung über die Chronik bestimmt, wie du das Fest erlebst.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/e0-erwachen.jpg" data-cap="Zurück auf der Steinstufe — Heute · Dämmerung. Du wachst an der Karlsbergquelle auf. Das Horn ist noch da. Das Handy zeigt 16:44 Uhr.">
+            <img src="img/e0-erwachen.jpg" alt="Zurück auf der Steinstufe" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Zurück auf der Steinstufe</h4>
+            <p class="meta">Heute · Dämmerung</p>
+            <p>Du wachst an der Karlsbergquelle auf. Das Horn ist noch da. Das Handy zeigt 16:44 Uhr.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/e1-wahl.jpg" data-cap="Die Wahl — Heute · Dämmerung. Auf dem Plateau leuchten schon die Lichter. Du entscheidest, ob die Chronik ins Museum kommt, verbrannt wird oder bei dir bleibt.">
+            <img src="img/e1-wahl.jpg" alt="Die Wahl" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Die Wahl</h4>
+            <p class="meta">Heute · Dämmerung</p>
+            <p>Auf dem Plateau leuchten schon die Lichter. Du entscheidest, ob die Chronik ins Museum kommt, verbrannt wird oder bei dir bleibt.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="chapter" id="fest">
+      <header class="ch-head">
+        <p class="kicker">Epilog</p>
+        <h3>Das Fest</h3>
+        <p class="era">Heute · Dämmerung → Nacht</p>
+        <p class="blurb">Auf der Lichtung am Ehrenhof ist die Gruppe wieder beisammen.</p>
+      </header>
+      <div class="grid">
+        <article class="card">
+          <button class="ph" type="button" data-full="img/e-museum-fest.jpg" data-cap="Ins Museum — Ende A · Dämmerung. Die Jagd ist abgeblasen. Unter der Lichterkette beugt sich die Gruppe mit Gerold über die graue Archivschachtel.">
+            <img src="img/e-museum-fest.jpg" alt="Ins Museum" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Ins Museum</h4>
+            <p class="meta">Ende A · Dämmerung</p>
+            <p>Die Jagd ist abgeblasen. Unter der Lichterkette beugt sich die Gruppe mit Gerold über die graue Archivschachtel.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/e-burn-fest.jpg" data-cap="Verbrennen — Ende B · blaue Stunde. Die Chronik verbrennt. Die Gruppe steht um die Feuerschale und sieht den Funken nach.">
+            <img src="img/e-burn-fest.jpg" alt="Verbrennen" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Verbrennen</h4>
+            <p class="meta">Ende B · blaue Stunde</p>
+            <p>Die Chronik verbrennt. Die Gruppe steht um die Feuerschale und sieht den Funken nach.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/e-keep-fest.jpg" data-cap="Behalten — Ende C · Nacht. Die Chronik bleibt bei dir. Bei der Bank liegen Diane und Bijou zu deinen Füßen. Ihre Augen fangen das Feuerlicht ein.">
+            <img src="img/e-keep-fest.jpg" alt="Behalten" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Behalten</h4>
+            <p class="meta">Ende C · Nacht</p>
+            <p>Die Chronik bleibt bei dir. Bei der Bank liegen Diane und Bijou zu deinen Füßen. Ihre Augen fangen das Feuerlicht ein.</p>
+          </div>
+        </article>
+        <article class="card">
+          <button class="ph" type="button" data-full="img/e-fest-abspann.jpg" data-cap="Der Abspann — Heute · Dämmerung. Die Kamera zieht um das Fest. Die Menschen aus der Führung erscheinen ein letztes Mal.">
+            <img src="img/e-fest-abspann.jpg" alt="Der Abspann" loading="lazy" width="1280" height="720">
+          </button>
+          <div class="body">
+            <h4>Der Abspann</h4>
+            <p class="meta">Heute · Dämmerung</p>
+            <p>Die Kamera zieht um das Fest. Die Menschen aus der Führung erscheinen ein letztes Mal.</p>
+          </div>
+        </article>
+      </div>
+    </section>
   </section>
   <section class="block" id="places">
-    <h2>Places</h2>
-    <p class="intro">Key places, and how they change between the eras.</p>
-    <article class="place"><div class="place-head"><h4>Karlsbergquelle</h4><p>A real spring where the Karlsbergbach begins. In the game, the first time travel starts here.</p></div><div class="eras n5"><figure><button class="ph" data-full="img/p3q-quelle.jpg" data-cap="Karlsbergquelle — Today. A real spring where the Karlsbergbach begins. In the game, the first time travel starts here."><img src="img/p3q-quelle.jpg" alt="Karlsbergquelle, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure><figure><button class="ph" data-full="img/p3r-brunnenstube.jpg" data-cap="Karlsbergquelle — 1789. A real spring where the Karlsbergbach begins. In the game, the first time travel starts here."><img src="img/p3r-brunnenstube.jpg" alt="Karlsbergquelle, 1789" loading="lazy" width="1280" height="720"></button><figcaption>1789</figcaption></figure><figure><button class="ph" data-full="img/pl-quelle-1793-02.jpg" data-cap="Karlsbergquelle — Feb 1793. A real spring where the Karlsbergbach begins. In the game, the first time travel starts here."><img src="img/pl-quelle-1793-02.jpg" alt="Karlsbergquelle, Feb 1793" loading="lazy" width="1280" height="720"></button><figcaption>Feb 1793</figcaption></figure><figure><button class="ph" data-full="img/pl-quelle-1793-07.jpg" data-cap="Karlsbergquelle — Jul 1793. A real spring where the Karlsbergbach begins. In the game, the first time travel starts here."><img src="img/pl-quelle-1793-07.jpg" alt="Karlsbergquelle, Jul 1793" loading="lazy" width="1280" height="720"></button><figcaption>Jul 1793</figcaption></figure><figure><button class="ph" data-full="img/pl-quelle-1796.jpg" data-cap="Karlsbergquelle — 1796. A real spring where the Karlsbergbach begins. In the game, the first time travel starts here."><img src="img/pl-quelle-1796.jpg" alt="Karlsbergquelle, 1796" loading="lazy" width="1280" height="720"></button><figcaption>1796</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Ehrenhof</h4><p>The court of honour before the palace. Today a clearing; the scan still shows its walls.</p></div><div class="eras n5"><figure><button class="ph" data-full="img/p4-ehrenhof.jpg" data-cap="Ehrenhof — Today. The court of honour before the palace. Today a clearing; the scan still shows its walls."><img src="img/p4-ehrenhof.jpg" alt="Ehrenhof, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure><figure><button class="ph" data-full="img/p9b-sommer-1789.jpg" data-cap="Ehrenhof — 1789. The court of honour before the palace. Today a clearing; the scan still shows its walls."><img src="img/p9b-sommer-1789.jpg" alt="Ehrenhof, 1789" loading="lazy" width="1280" height="720"></button><figcaption>1789</figcaption></figure><figure><button class="ph" data-full="img/k2-schloss.jpg" data-cap="Ehrenhof — Feb 1793. The court of honour before the palace. Today a clearing; the scan still shows its walls."><img src="img/k2-schloss.jpg" alt="Ehrenhof, Feb 1793" loading="lazy" width="1280" height="720"></button><figcaption>Feb 1793</figcaption></figure><figure><button class="ph" data-full="img/k3-nachmittag.jpg" data-cap="Ehrenhof — Jul 1793. The court of honour before the palace. Today a clearing; the scan still shows its walls."><img src="img/k3-nachmittag.jpg" alt="Ehrenhof, Jul 1793" loading="lazy" width="1280" height="720"></button><figcaption>Jul 1793</figcaption></figure><figure><button class="ph" data-full="img/k4-steinfrass.jpg" data-cap="Ehrenhof — 1796. The court of honour before the palace. Today a clearing; the scan still shows its walls."><img src="img/k4-steinfrass.jpg" alt="Ehrenhof, 1796" loading="lazy" width="1280" height="720"></button><figcaption>1796</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Orangerie</h4><p>Today a tall wall in the woods. In 1789 a long wing with a rotunda.</p></div><div class="eras n3"><figure><button class="ph" data-full="img/p3-orangeriemauer.jpg" data-cap="Orangerie — Today. Today a tall wall in the woods. In 1789 a long wing with a rotunda."><img src="img/p3-orangeriemauer.jpg" alt="Orangerie, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure><figure><button class="ph" data-full="img/pl-orangerie-1789.jpg" data-cap="Orangerie — 1789. Today a tall wall in the woods. In 1789 a long wing with a rotunda."><img src="img/pl-orangerie-1789.jpg" alt="Orangerie, 1789" loading="lazy" width="1280" height="720"></button><figcaption>1789</figcaption></figure><figure><button class="ph" data-full="img/k2-orangerie.jpg" data-cap="Orangerie — Feb 1793. Today a tall wall in the woods. In 1789 a long wing with a rotunda."><img src="img/k2-orangerie.jpg" alt="Orangerie, Feb 1793" loading="lazy" width="1280" height="720"></button><figcaption>Feb 1793</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Karlsbergweiher, Damm</h4><p>The pond dam below the field station. The Pikeur’s arena.</p></div><div class="eras n2"><figure><button class="ph" data-full="img/p2-damm.jpg" data-cap="Karlsbergweiher, Damm — Today. The pond dam below the field station. The Pikeur’s arena."><img src="img/p2-damm.jpg" alt="Karlsbergweiher, Damm, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure><figure><button class="ph" data-full="img/k2-pikeur.jpg" data-cap="Karlsbergweiher, Damm — Feb 1793. The pond dam below the field station. The Pikeur’s arena."><img src="img/k2-pikeur.jpg" alt="Karlsbergweiher, Damm, Feb 1793" loading="lazy" width="1280" height="720"></button><figcaption>Feb 1793</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Eiskeller</h4><p>A round pit with a ring wall, east of the palace.</p></div><div class="eras n2"><figure><button class="ph" data-full="img/p6-eiskeller.jpg" data-cap="Eiskeller — Today. A round pit with a ring wall, east of the palace."><img src="img/p6-eiskeller.jpg" alt="Eiskeller, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure><figure><button class="ph" data-full="img/pl-eiskeller-1789.jpg" data-cap="Eiskeller — 1789. A round pit with a ring wall, east of the palace."><img src="img/pl-eiskeller-1789.jpg" alt="Eiskeller, 1789" loading="lazy" width="1280" height="720"></button><figcaption>1789</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Hohlweg</h4><p>A sunken road west of the palace.</p></div><div class="eras n1"><figure><button class="ph" data-full="img/p5-hohlweg.jpg" data-cap="Hohlweg — Today. A sunken road west of the palace."><img src="img/p5-hohlweg.jpg" alt="Hohlweg, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Feldstation</h4><p>Your trailer in the woods. Every chapter starts and ends here.</p></div><div class="eras n3"><figure><button class="ph" data-full="img/p1-feldstation.jpg" data-cap="Feldstation — Day. Your trailer in the woods. Every chapter starts and ends here."><img src="img/p1-feldstation.jpg" alt="Feldstation, Day" loading="lazy" width="1280" height="720"></button><figcaption>Day</figcaption></figure><figure><button class="ph" data-full="img/p10-abend.jpg" data-cap="Feldstation — Dusk. Your trailer in the woods. Every chapter starts and ends here."><img src="img/p10-abend.jpg" alt="Feldstation, Dusk" loading="lazy" width="1280" height="720"></button><figcaption>Dusk</figcaption></figure><figure><button class="ph" data-full="img/p11-nacht.jpg" data-cap="Feldstation — Night. Your trailer in the woods. Every chapter starts and ends here."><img src="img/p11-nacht.jpg" alt="Feldstation, Night" loading="lazy" width="1280" height="720"></button><figcaption>Night</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Zwinger</h4><p>The kennel behind the stables, where the hunt ends.</p></div><div class="eras n3"><figure><button class="ph" data-full="img/k1-zwinger.jpg" data-cap="Zwinger — 1789. The kennel behind the stables, where the hunt ends."><img src="img/k1-zwinger.jpg" alt="Zwinger, 1789" loading="lazy" width="1280" height="720"></button><figcaption>1789</figcaption></figure><figure><button class="ph" data-full="img/k3-zwinger.jpg" data-cap="Zwinger — Jul 1793. The kennel behind the stables, where the hunt ends."><img src="img/k3-zwinger.jpg" alt="Zwinger, Jul 1793" loading="lazy" width="1280" height="720"></button><figcaption>Jul 1793</figcaption></figure><figure><button class="ph" data-full="img/k4-stellen.jpg" data-cap="Zwinger — Today. The kennel behind the stables, where the hunt ends."><img src="img/k4-stellen.jpg" alt="Zwinger, Today" loading="lazy" width="1280" height="720"></button><figcaption>Today</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Karlslust</h4><p>The duke’s pleasure ground to the south: menagerie, swan pond, cascade.</p></div><div class="eras n3"><figure><button class="ph" data-full="img/k1-karlslust.jpg" data-cap="Karlslust — 1789. The duke’s pleasure ground to the south: menagerie, swan pond, cascade."><img src="img/k1-karlslust.jpg" alt="Karlslust, 1789" loading="lazy" width="1280" height="720"></button><figcaption>1789</figcaption></figure><figure><button class="ph" data-full="img/k1-irrlichter.jpg" data-cap="Karlslust — 1789 night. The duke’s pleasure ground to the south: menagerie, swan pond, cascade."><img src="img/k1-irrlichter.jpg" alt="Karlslust, 1789 night" loading="lazy" width="1280" height="720"></button><figcaption>1789 night</figcaption></figure><figure><button class="ph" data-full="img/k1-rondell.jpg" data-cap="Karlslust — Memory 1785. The duke’s pleasure ground to the south: menagerie, swan pond, cascade."><img src="img/k1-rondell.jpg" alt="Karlslust, Memory 1785" loading="lazy" width="1280" height="720"></button><figcaption>Memory 1785</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Bildergalerie</h4><p>The picture gallery, emptied before the fire.</p></div><div class="eras n1"><figure><button class="ph" data-full="img/k3-galerie.jpg" data-cap="Bildergalerie — Jul 1793. The picture gallery, emptied before the fire."><img src="img/k3-galerie.jpg" alt="Bildergalerie, Jul 1793" loading="lazy" width="1280" height="720"></button><figcaption>Jul 1793</figcaption></figure></div></article><article class="place"><div class="place-head"><h4>Baumagazin</h4><p>The building magazine in the valley: the last house.</p></div><div class="eras n1"><figure><button class="ph" data-full="img/k4-baumagazin.jpg" data-cap="Baumagazin — 1796. The building magazine in the valley: the last house."><img src="img/k4-baumagazin.jpg" alt="Baumagazin, 1796" loading="lazy" width="1280" height="720"></button><figcaption>1796</figcaption></figure></div></article>
+    <h2>Orte</h2>
+    <p class="intro">Die Schauplätze der Führung und die Ansichten aus den anderen Epochen.</p>
+    <article class="place">
+      <div class="place-head">
+        <h4>Wanderparkplatz und Felsenpfad</h4>
+        <p>Vom Waldrand führt die Tour über den Buntsandsteinpfad zum Weiher.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/t1-treffpunkt.jpg" data-cap="Wanderparkplatz und Felsenpfad — Heute · Treffpunkt. Vom Waldrand führt die Tour über den Buntsandsteinpfad zum Weiher.">
+            <img src="img/t1-treffpunkt.jpg" alt="Wanderparkplatz und Felsenpfad · Heute · Treffpunkt" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute · Treffpunkt</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/t4-felsenpfad.jpg" data-cap="Wanderparkplatz und Felsenpfad — Heute · Felsenpfad. Vom Waldrand führt die Tour über den Buntsandsteinpfad zum Weiher.">
+            <img src="img/t4-felsenpfad.jpg" alt="Wanderparkplatz und Felsenpfad · Heute · Felsenpfad" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute · Felsenpfad</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Karlsbergweiher</h4>
+        <p>Am geraden Damm steht Marlene. In der Geschichte wartet hier auch der Pikeur.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/t7-relief.jpg" data-cap="Karlsbergweiher — Heute · Relief. Am geraden Damm steht Marlene. In der Geschichte wartet hier auch der Pikeur.">
+            <img src="img/t7-relief.jpg" alt="Karlsbergweiher · Heute · Relief" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute · Relief</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/t7-weiher.jpg" data-cap="Karlsbergweiher — Heute · Nordufer. Am geraden Damm steht Marlene. In der Geschichte wartet hier auch der Pikeur.">
+            <img src="img/t7-weiher.jpg" alt="Karlsbergweiher · Heute · Nordufer" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute · Nordufer</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k2-pikeur.jpg" data-cap="Karlsbergweiher — Februar 1793. Am geraden Damm steht Marlene. In der Geschichte wartet hier auch der Pikeur.">
+            <img src="img/k2-pikeur.jpg" alt="Karlsbergweiher · Februar 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Februar 1793</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Karlsbergquelle</h4>
+        <p>Hier entspringt der Karlsbergbach. Im Spiel beginnt an der Quelle die erste Zeitreise.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/t10-allein.jpg" data-cap="Karlsbergquelle — Heute. Hier entspringt der Karlsbergbach. Im Spiel beginnt an der Quelle die erste Zeitreise.">
+            <img src="img/t10-allein.jpg" alt="Karlsbergquelle · Heute" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/t11-brunnenstube.jpg" data-cap="Karlsbergquelle — 1789. Hier entspringt der Karlsbergbach. Im Spiel beginnt an der Quelle die erste Zeitreise.">
+            <img src="img/t11-brunnenstube.jpg" alt="Karlsbergquelle · 1789" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/pl-quelle-1793-02.jpg" data-cap="Karlsbergquelle — Februar 1793. Hier entspringt der Karlsbergbach. Im Spiel beginnt an der Quelle die erste Zeitreise.">
+            <img src="img/pl-quelle-1793-02.jpg" alt="Karlsbergquelle · Februar 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Februar 1793</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/pl-quelle-1793-07.jpg" data-cap="Karlsbergquelle — Juli 1793. Hier entspringt der Karlsbergbach. Im Spiel beginnt an der Quelle die erste Zeitreise.">
+            <img src="img/pl-quelle-1793-07.jpg" alt="Karlsbergquelle · Juli 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Juli 1793</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/pl-quelle-1796.jpg" data-cap="Karlsbergquelle — 1796. Hier entspringt der Karlsbergbach. Im Spiel beginnt an der Quelle die erste Zeitreise.">
+            <img src="img/pl-quelle-1796.jpg" alt="Karlsbergquelle · 1796" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1796</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Ehrenhof</h4>
+        <p>Der Ehrenhof lag vor dem Schloss. Auf der heutigen Lichtung endet die Führung.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/k1-ankunft.jpg" data-cap="Ehrenhof — 1789. Der Ehrenhof lag vor dem Schloss. Auf der heutigen Lichtung endet die Führung.">
+            <img src="img/k1-ankunft.jpg" alt="Ehrenhof · 1789" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k2-schloss.jpg" data-cap="Ehrenhof — Februar 1793. Der Ehrenhof lag vor dem Schloss. Auf der heutigen Lichtung endet die Führung.">
+            <img src="img/k2-schloss.jpg" alt="Ehrenhof · Februar 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Februar 1793</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k3-nachmittag.jpg" data-cap="Ehrenhof — Juli 1793. Der Ehrenhof lag vor dem Schloss. Auf der heutigen Lichtung endet die Führung.">
+            <img src="img/k3-nachmittag.jpg" alt="Ehrenhof · Juli 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Juli 1793</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k4-steinfrass.jpg" data-cap="Ehrenhof — 1796. Der Ehrenhof lag vor dem Schloss. Auf der heutigen Lichtung endet die Führung.">
+            <img src="img/k4-steinfrass.jpg" alt="Ehrenhof · 1796" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1796</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/e-fest-abspann.jpg" data-cap="Ehrenhof — Heute. Der Ehrenhof lag vor dem Schloss. Auf der heutigen Lichtung endet die Führung.">
+            <img src="img/e-fest-abspann.jpg" alt="Ehrenhof · Heute" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Orangerie</h4>
+        <p>Von dem langen Flügel mit der Rotunde ist heute eine hohe Mauer im Wald übrig.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/pl-orangerie-1789.jpg" data-cap="Orangerie — 1789. Von dem langen Flügel mit der Rotunde ist heute eine hohe Mauer im Wald übrig.">
+            <img src="img/pl-orangerie-1789.jpg" alt="Orangerie · 1789" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k2-orangerie.jpg" data-cap="Orangerie — Februar 1793. Von dem langen Flügel mit der Rotunde ist heute eine hohe Mauer im Wald übrig.">
+            <img src="img/k2-orangerie.jpg" alt="Orangerie · Februar 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Februar 1793</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Eiskeller</h4>
+        <p>Östlich des Schlosses liegt die runde Grube mit dem Ringwall.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/pl-eiskeller-1789.jpg" data-cap="Eiskeller — 1789. Östlich des Schlosses liegt die runde Grube mit dem Ringwall.">
+            <img src="img/pl-eiskeller-1789.jpg" alt="Eiskeller · 1789" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Zwinger</h4>
+        <p>Hinter den Ställen liegt der Zwinger. Hier findest du Jost wieder.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/k1-zwinger.jpg" data-cap="Zwinger — 1789. Hinter den Ställen liegt der Zwinger. Hier findest du Jost wieder.">
+            <img src="img/k1-zwinger.jpg" alt="Zwinger · 1789" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k3-zwinger.jpg" data-cap="Zwinger — Juli 1793. Hinter den Ställen liegt der Zwinger. Hier findest du Jost wieder.">
+            <img src="img/k3-zwinger.jpg" alt="Zwinger · Juli 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Juli 1793</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k4-stellen.jpg" data-cap="Zwinger — Heute. Hinter den Ställen liegt der Zwinger. Hier findest du Jost wieder.">
+            <img src="img/k4-stellen.jpg" alt="Zwinger · Heute" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Heute</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Karlslust</h4>
+        <p>Im Süden lagen die Menagerie, der Schwanenweiher und die Kaskade.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/k1-karlslust.jpg" data-cap="Karlslust — 1789. Im Süden lagen die Menagerie, der Schwanenweiher und die Kaskade.">
+            <img src="img/k1-karlslust.jpg" alt="Karlslust · 1789" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k1-irrlichter.jpg" data-cap="Karlslust — 1789 · Nacht. Im Süden lagen die Menagerie, der Schwanenweiher und die Kaskade.">
+            <img src="img/k1-irrlichter.jpg" alt="Karlslust · 1789 · Nacht" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1789 · Nacht</figcaption>
+        </figure>
+        <figure>
+          <button class="ph" type="button" data-full="img/k1-rondell.jpg" data-cap="Karlslust — Erinnerung · 1785. Im Süden lagen die Menagerie, der Schwanenweiher und die Kaskade.">
+            <img src="img/k1-rondell.jpg" alt="Karlslust · Erinnerung · 1785" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Erinnerung · 1785</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Bildergalerie</h4>
+        <p>Vor dem Brand wurden die Gemälde fortgeschafft.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/k3-galerie.jpg" data-cap="Bildergalerie — Juli 1793. Vor dem Brand wurden die Gemälde fortgeschafft.">
+            <img src="img/k3-galerie.jpg" alt="Bildergalerie · Juli 1793" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>Juli 1793</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article class="place">
+      <div class="place-head">
+        <h4>Baumagazin</h4>
+        <p>Im Tal steht das Baumagazin. Hier lädt Peter 1796 die Steine auf.</p>
+      </div>
+      <div class="eras">
+        <figure>
+          <button class="ph" type="button" data-full="img/k4-baumagazin.jpg" data-cap="Baumagazin — 1796. Im Tal steht das Baumagazin. Hier lädt Peter 1796 die Steine auf.">
+            <img src="img/k4-baumagazin.jpg" alt="Baumagazin · 1796" loading="lazy" width="1280" height="720">
+          </button>
+          <figcaption>1796</figcaption>
+        </figure>
+      </div>
+    </article>
   </section>
   <section class="block" id="cast">
-    <h2>Cast &amp; creatures</h2>
-    <p class="intro">Who you meet, what you fight.</p>
-    <h3 class="sub">People</h3><div class="grid"><article class="card small"><button class="ph" data-full="img/p8-regeln.jpg" data-cap="Quirin Laub · die Bussole. A surveyor missing since 1840, living in a brass compass. He points; you walk."><img src="img/p8-regeln.jpg" alt="Quirin Laub · die Bussole" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Quirin Laub · die Bussole</h4><p>A surveyor missing since 1840, living in a brass compass.</p><p>He points; you walk.</p><p class="note fiction"><span class="tag">Fiction</span> Invented.</p></div></article><article class="card small"><button class="ph" data-full="img/c-marlene.jpg" data-cap="Marlene. Forestry forewoman, your colleague: a voice on the radio. Knows the village, brings rolls and coffee."><img src="img/c-marlene.jpg" alt="Marlene" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Marlene</h4><p>Forestry forewoman, your colleague: a voice on the radio.</p><p>Knows the village, brings rolls and coffee.</p><p class="note fiction"><span class="tag">Fiction</span> Invented.</p></div></article><article class="card small"><button class="ph" data-full="img/c-geister.jpg" data-cap="Die Geister des Hofes. Hanne, Soll, Jost, the Pikeur, Peter, Matthes, a gardener, a servant, a villager. Memories with faces, not monsters."><img src="img/c-geister.jpg" alt="Die Geister des Hofes" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Geister des Hofes</h4><p>Hanne, Soll, Jost, the Pikeur, Peter, Matthes, a gardener, a servant, a villager.</p><p>Memories with faces, not monsters.</p></div></article></div><h3 class="sub">Creatures</h3><div class="grid"><article class="card small"><button class="ph" data-full="img/c-nebelinge.jpg" data-cap="Nebelinge. Slow mist that lunges. Anything hurts them: the tutorial foe."><img src="img/c-nebelinge.jpg" alt="Nebelinge" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Nebelinge</h4><p>Slow mist that lunges.</p><p>Anything hurts them: the tutorial foe.</p></div></article><article class="card small"><button class="ph" data-full="img/p9b-sommer-1789.jpg" data-cap="Streuner. Stray hounds of the pack: fast, flanking, pouncing. Dodge the pounce, hit the recovery."><img src="img/p9b-sommer-1789.jpg" alt="Streuner" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Streuner</h4><p>Stray hounds of the pack: fast, flanking, pouncing.</p><p>Dodge the pounce, hit the recovery.</p></div></article><article class="card small"><button class="ph" data-full="img/k2-wachhaus.jpg" data-cap="Irrlichter. Floating lights with cold sparks. Immune until the Bannlicht hits them."><img src="img/k2-wachhaus.jpg" alt="Irrlichter" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Irrlichter</h4><p>Floating lights with cold sparks.</p><p>Immune until the Bannlicht hits them.</p></div></article><article class="card small"><button class="ph" data-full="img/c-mahnbriefe.jpg" data-cap="Mahnbriefe · Foliant. Unpaid decrees swarm with paper cuts. The Foliant blocks with its board."><img src="img/c-mahnbriefe.jpg" alt="Mahnbriefe · Foliant" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Mahnbriefe · Foliant</h4><p>Unpaid decrees swarm with paper cuts.</p><p>The Foliant blocks with its board.</p></div></article><article class="card small"><button class="ph" data-full="img/c-nebelweber.jpg" data-cap="Nebelweber · Rufer. A caster spinning frost orbs, and a caller who summons small fry."><img src="img/c-nebelweber.jpg" alt="Nebelweber · Rufer" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Nebelweber · Rufer</h4><p>A caster spinning frost orbs, and a caller who summons small fry.</p></div></article><article class="card small"><button class="ph" data-full="img/c-raffschatten.jpg" data-cap="Raffschatten · Glutlinge · Scherbling. Greed shades with sacks, swelling embers, and a mirror that throws light back."><img src="img/c-raffschatten.jpg" alt="Raffschatten · Glutlinge · Scherbling" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Raffschatten · Glutlinge · Scherbling</h4><p>Greed shades with sacks, swelling embers, and a mirror that throws light back.</p></div></article><article class="card small"><button class="ph" data-full="img/c-steinfresser.jpg" data-cap="Steinfresser · Gruslinge. Armoured stone eaters, and crumb swarms from the robbed-out trenches."><img src="img/c-steinfresser.jpg" alt="Steinfresser · Gruslinge" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Steinfresser · Gruslinge</h4><p>Armoured stone eaters, and crumb swarms from the robbed-out trenches.</p></div></article><article class="card small"><button class="ph" data-full="img/c-meute.jpg" data-cap="Die Meute · der Pikeur. Smoke hounds with lantern eyes, and their faceless rider. The duke’s hunt was never called off."><img src="img/c-meute.jpg" alt="Die Meute · der Pikeur" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Die Meute · der Pikeur</h4><p>Smoke hounds with lantern eyes, and their faceless rider.</p><p>The duke’s hunt was never called off.</p><p class="note fiction"><span class="tag">Fiction</span> The kennel is fact; the ghost hunt is not.</p></div></article><article class="card small"><button class="ph" data-full="img/k1-karlslust.jpg" data-cap="Der Kasuar. Escaped from the menagerie. Let it charge until it tires, then lead it home."><img src="img/k1-karlslust.jpg" alt="Der Kasuar" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Kasuar</h4><p>Escaped from the menagerie.</p><p>Let it charge until it tires, then lead it home.</p></div></article></div><h3 class="sub">Bosses</h3><div class="grid"><article class="card small"><button class="ph" data-full="img/k1-schuldbuch.jpg" data-cap="Das Schuldbuch. A ledger as big as a door, the ducal seal for a heart. The Bannlicht breaks the seal."><img src="img/k1-schuldbuch.jpg" alt="Das Schuldbuch" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Das Schuldbuch</h4><p>A ledger as big as a door, the ducal seal for a heart.</p><p>The Bannlicht breaks the seal.</p></div></article><article class="card small"><button class="ph" data-full="img/k2-pikeur.jpg" data-cap="Der Pikeur. Never undone: at the end he blows “lost” and rides into the fog."><img src="img/k2-pikeur.jpg" alt="Der Pikeur" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Pikeur</h4><p>Never undone: at the end he blows “lost” and rides into the fog.</p></div></article><article class="card small"><button class="ph" data-full="img/k3-strohmann.jpg" data-cap="Der Strohmann. The straw of a hundred wagons. Hard in front, soft at the back."><img src="img/k3-strohmann.jpg" alt="Der Strohmann" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Strohmann</h4><p>The straw of a hundred wagons. Hard in front, soft at the back.</p></div></article><article class="card small"><button class="ph" data-full="img/k4-steinbrecher.jpg" data-cap="Der Steinbrecher. A giant of robbed-out blocks. Hit the joints; loose blocks fly west, towards Homburg."><img src="img/k4-steinbrecher.jpg" alt="Der Steinbrecher" loading="lazy" width="1280" height="720"></button><div class="body"><h4>Der Steinbrecher</h4><p>A giant of robbed-out blocks.</p><p>Hit the joints; loose blocks fly west, towards Homburg.</p></div></article></div>
+    <h2>Figuren und Tiere</h2>
+    <h3 class="sub">Menschen und Geister</h3>
+    <div class="grid">
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/t2-station1.jpg" data-cap="Gerold Imhoff. Der Gästeführer kennt den Weg und erzählt, was vom Schloss geblieben ist.">
+          <img src="img/t2-station1.jpg" alt="Gerold Imhoff" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Gerold Imhoff</h4>
+          <p>Der Gästeführer kennt den Weg und erzählt, was vom Schloss geblieben ist.</p>
+          <p class="note fiction"><span class="tag">FIKTION</span> Platzhaltername und Spielfigur.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/t7-marlene.jpg" data-cap="Marlene. Die Försterin steht mit ihrem Messstab am Damm.">
+          <img src="img/t7-marlene.jpg" alt="Marlene" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Marlene</h4>
+          <p>Die Försterin steht mit ihrem Messstab am Damm.</p>
+          <p class="note fiction"><span class="tag">FIKTION</span> Marlene gehört zur Spielhandlung.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/t10-laub.jpg" data-cap="Quirin Laub. Laub ist seit 1840 verschollen. Seine Stimme kommt aus der Messingbussole.">
+          <img src="img/t10-laub.jpg" alt="Quirin Laub" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Quirin Laub</h4>
+          <p>Laub ist seit 1840 verschollen. Seine Stimme kommt aus der Messingbussole.</p>
+          <p class="note fiction"><span class="tag">FIKTION</span> Laub gehört zur Spielhandlung.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-geister.jpg" data-cap="Die Geister des Hofs. Hanne, Soll, Jost, der Pikeur, Peter, Matthes, ein Gärtner, ein Diener und ein Dorfbewohner tragen die Erinnerungen des Hofs.">
+          <img src="img/c-geister.jpg" alt="Die Geister des Hofs" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Die Geister des Hofs</h4>
+          <p>Hanne, Soll, Jost, der Pikeur, Peter, Matthes, ein Gärtner, ein Diener und ein Dorfbewohner tragen die Erinnerungen des Hofs.</p>
+        </div>
+      </article>
+    </div>
+    <h3 class="sub">Tiere und Wesen</h3>
+    <div class="grid">
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/t5-wind.jpg" data-cap="Diane und Bijou. Die beiden Hunde laufen bei der Führung mit. Oben am Hang wittern sie etwas.">
+          <img src="img/t5-wind.jpg" alt="Diane und Bijou" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Diane und Bijou</h4>
+          <p>Die beiden Hunde laufen bei der Führung mit. Oben am Hang wittern sie etwas.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/t6-reh-foto.jpg" data-cap="Ricke und Kitz. Die Ricke sichert, ihr Kitz bleibt dicht bei ihr. Im November ist sein Fell grau.">
+          <img src="img/t6-reh-foto.jpg" alt="Ricke und Kitz" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Ricke und Kitz</h4>
+          <p>Die Ricke sichert, ihr Kitz bleibt dicht bei ihr. Im November ist sein Fell grau.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-nebelinge.jpg" data-cap="Nebelinge. Der Nebel sammelt sich und stößt vor. Auf der Übungswiese zeigt Laub, wie du ausweichst.">
+          <img src="img/c-nebelinge.jpg" alt="Nebelinge" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Nebelinge</h4>
+          <p>Der Nebel sammelt sich und stößt vor. Auf der Übungswiese zeigt Laub, wie du ausweichst.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/k2-wachhaus.jpg" data-cap="Irrlichter. Kalte Funken tragen die Irrlichter durch die Nacht. Das Bannlicht macht sie verwundbar.">
+          <img src="img/k2-wachhaus.jpg" alt="Irrlichter" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Irrlichter</h4>
+          <p>Kalte Funken tragen die Irrlichter durch die Nacht. Das Bannlicht macht sie verwundbar.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-mahnbriefe.jpg" data-cap="Mahnbriefe · Foliant. Die Mahnbriefe schneiden wie Papier. Der Foliant fängt Schläge mit seinem Brett ab.">
+          <img src="img/c-mahnbriefe.jpg" alt="Mahnbriefe · Foliant" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Mahnbriefe · Foliant</h4>
+          <p>Die Mahnbriefe schneiden wie Papier. Der Foliant fängt Schläge mit seinem Brett ab.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-nebelweber.jpg" data-cap="Nebelweber · Rufer. Der Nebelweber schleudert Frostkugeln. Der Rufer holt Verstärkung.">
+          <img src="img/c-nebelweber.jpg" alt="Nebelweber · Rufer" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Nebelweber · Rufer</h4>
+          <p>Der Nebelweber schleudert Frostkugeln. Der Rufer holt Verstärkung.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-raffschatten.jpg" data-cap="Raffschatten · Glutlinge · Scherbling. Raffschatten schleppen Säcke, Glutlinge schwellen an, der Scherbling wirft das Licht zurück.">
+          <img src="img/c-raffschatten.jpg" alt="Raffschatten · Glutlinge · Scherbling" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Raffschatten · Glutlinge · Scherbling</h4>
+          <p>Raffschatten schleppen Säcke, Glutlinge schwellen an, der Scherbling wirft das Licht zurück.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-steinfresser.jpg" data-cap="Steinfresser · Gruslinge. Gepanzerte Steinfresser und Schwärme aus Steinsplittern kommen aus den ausgeräumten Gräben.">
+          <img src="img/c-steinfresser.jpg" alt="Steinfresser · Gruslinge" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Steinfresser · Gruslinge</h4>
+          <p>Gepanzerte Steinfresser und Schwärme aus Steinsplittern kommen aus den ausgeräumten Gräben.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/c-meute.jpg" data-cap="Die Meute · der Pikeur. Rauchhunde mit leuchtenden Augen folgen dem Reiter ohne Gesicht.">
+          <img src="img/c-meute.jpg" alt="Die Meute · der Pikeur" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Die Meute · der Pikeur</h4>
+          <p>Rauchhunde mit leuchtenden Augen folgen dem Reiter ohne Gesicht.</p>
+          <p class="note fiction"><span class="tag">FIKTION</span> Den Zwinger gab es. Die Geisterjagd ist erfunden.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/k1-karlslust.jpg" data-cap="Der Kasuar. Der Vogel ist aus der Menagerie ausgebrochen. Hat er sich müde gelaufen, führst du ihn heim.">
+          <img src="img/k1-karlslust.jpg" alt="Der Kasuar" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Der Kasuar</h4>
+          <p>Der Vogel ist aus der Menagerie ausgebrochen. Hat er sich müde gelaufen, führst du ihn heim.</p>
+        </div>
+      </article>
+    </div>
+    <h3 class="sub">Bossgegner</h3>
+    <div class="grid">
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/k1-schuldbuch.jpg" data-cap="Das Schuldbuch. Ein türgroßes Buch mit dem herzoglichen Siegel als Herz. Das Bannlicht bricht das Siegel.">
+          <img src="img/k1-schuldbuch.jpg" alt="Das Schuldbuch" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Das Schuldbuch</h4>
+          <p>Ein türgroßes Buch mit dem herzoglichen Siegel als Herz. Das Bannlicht bricht das Siegel.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/k2-pikeur.jpg" data-cap="Der Pikeur. Am Ende bläst der Reiter das Signal „Verloren“ und reitet in den Nebel.">
+          <img src="img/k2-pikeur.jpg" alt="Der Pikeur" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Der Pikeur</h4>
+          <p>Am Ende bläst der Reiter das Signal „Verloren“ und reitet in den Nebel.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/k3-strohmann.jpg" data-cap="Der Strohmann. Die fest gebündelte Vorderseite hält stand. Am Rücken liegen die Knoten frei.">
+          <img src="img/k3-strohmann.jpg" alt="Der Strohmann" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Der Strohmann</h4>
+          <p>Die fest gebündelte Vorderseite hält stand. Am Rücken liegen die Knoten frei.</p>
+        </div>
+      </article>
+      <article class="card small">
+        <button class="ph" type="button" data-full="img/k4-steinbrecher.jpg" data-cap="Der Steinbrecher. Der Riese besteht aus herausgebrochenen Mauerblöcken. Seine Gelenke geben nach.">
+          <img src="img/k4-steinbrecher.jpg" alt="Der Steinbrecher" loading="lazy" width="1280" height="720">
+        </button>
+        <div class="body">
+          <h4>Der Steinbrecher</h4>
+          <p>Der Riese besteht aus herausgebrochenen Mauerblöcken. Seine Gelenke geben nach.</p>
+        </div>
+      </article>
+    </div>
   </section>
   <section class="block" id="items">
-    <h2>Items</h2>
-    <p class="intro">A few key things you carry.</p>
-    <ul class="items"><li><b>Messstab</b><span>Your survey staff and weapon. Later: iron shoe, silver wire, nine notches, Laub’s plumb bob.</span></li><li><b>Laterne · Bannlicht</b><span>Lantern light, and a flare that makes ghosts vulnerable.</span></li><li><b>Die Bussole</b><span>Laub’s brass compass. It points where the land remembers.</span></li><li><b>Seiten der Chronik</b><span>Soll’s counter-ledger: what the court never paid. The fire scattered it.</span></li><li><b>Das Horn</b><span>Jost’s horn, handed over mouthpiece first.</span></li><li><b>Türgriff · Dukat · Uhr</b><span>The one thing you save from the burning Festsaal.</span></li><li><b>Josts Hundemarke</b><span>A tag without a name, for the dog nobody counted.</span></li><li><b>Solls Rechenpfennig</b><span>A brass counter from the Registratur’s reckoning board.</span></li><li><b>Matthes’ Zeichen</b><span>A pebble with his mark: an open angle, three dots.</span></li><li><b>Kasuarfeder</b><span>Black, scruffy, freely given. Allegedly.</span></li><li><b>Kräuterbalsam · Riechsalz · Lampenöl</b><span>Heals, restores breath, refills the lantern.</span></li><li><b>Kalkstaub</b><span>Burnt lime. Thrown, it holds ghosts for a breath.</span></li></ul>
+    <h2>Gegenstände</h2>
+    <ul class="items">
+      <li><b>Handy</b><span>In der Führung hältst du damit deine Beobachtungen fest. 1789 bleibt der Sucher auch ohne Netz verfügbar.</span></li>
+      <li><b>Messstab</b><span>Von Marlene am Damm. Auf der Wiese lernst du, ihn im Kampf einzusetzen.</span></li>
+      <li><b>Laterne · Bannlicht</b><span>Die Laterne erhellt den Weg. Ihr Bannlicht macht Gegner wie die Irrlichter verwundbar.</span></li>
+      <li><b>Die Bussole</b><span>Der Messingkompass aus dem Trog. Laub spricht daraus und führt dich zu Orten, an denen sich das Gelände erinnert.</span></li>
+      <li><b>Seiten der Chronik</b><span>Sie halten fest, wem der Hof den Lohn schuldig blieb. Der Brand hat sie verstreut.</span></li>
+      <li><b>Das Horn</b><span>Jost reicht es dir mit dem Mundstück voran.</span></li>
+      <li><b>Türgriff · Dukat · Uhr</b><span>Eines dieser Stücke kannst du aus dem brennenden Festsaal retten.</span></li>
+    </ul>
   </section>
 </main>
 <footer>
   <div class="wrap">
-    <p>Pictures are in-engine captures made by <code>scripts/dev/storyboard.mjs</code> on a real GPU; see <a href="README.md">README.md</a> to regenerate them. Captions are written from the game’s content (story, quests, codex).</p>
-    <p>Fonts: IM Fell English by Igino Marini, SIL Open Font License (<a href="fonts/OFL-IMFell.txt">fonts/OFL-IMFell.txt</a>).</p>
+    <p>Die Aufnahmen entstehen mit <code>scripts/dev/storyboard.mjs</code>. Die <a href="README.md">Anleitung zur Aufnahme</a> enthält die Befehle für einen eigenen Lauf.</p>
+    <p>Grundlagen für die Texte sind die <a href="../design/tour/storyboard-beats.md">Storyboard-Szenen</a>, die <a href="../design/tour/README.md">Tourplanung</a> und die <a href="../../content/story/README.md">Spielhandlung</a>.</p>
+    <p>Schrift IM Fell English von Igino Marini, <a href="fonts/OFL-IMFell.txt">SIL Open Font License</a>.</p>
   </div>
 </footer>
 
-<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Picture" aria-hidden="true">
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Bild" aria-hidden="true">
   <img id="lb-img" alt="">
   <p id="lb-cap"></p>
   <span class="count" id="lb-count"></span>
-  <button class="x" type="button" aria-label="Close">×</button>
-  <button class="prev" type="button" aria-label="Previous picture">‹</button>
-  <button class="next" type="button" aria-label="Next picture">›</button>
+  <button class="x" type="button" aria-label="Schließen">×</button>
+  <button class="prev" type="button" aria-label="Vorheriges Bild">‹</button>
+  <button class="next" type="button" aria-label="Nächstes Bild">›</button>
 </div>
 <script>
 (function () {
@@ -202,6 +1295,7 @@ footer code { font-size: 12.5px; color: #efe6cf; }
   function show(i) {
     cur = (i + items.length) % items.length;
     var b = items[cur];
+    im.hidden = false;
     im.src = b.getAttribute('data-full');
     im.alt = b.querySelector('img').alt;
     cap.textContent = b.getAttribute('data-cap');
@@ -221,6 +1315,7 @@ footer code { font-size: 12.5px; color: #efe6cf; }
     document.body.style.overflow = '';
     if (opener) opener.focus();
   }
+  im.addEventListener('error', function () { im.hidden = true; });
   items.forEach(function (b, i) { b.addEventListener('click', function () { open(i); }); });
   lb.querySelector('.x').addEventListener('click', close);
   lb.querySelector('.prev').addEventListener('click', function (e) { e.stopPropagation(); show(cur - 1); });
