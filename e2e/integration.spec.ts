@@ -1,25 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { waitForHooks } from './helpers/pause';
+import { installQuestPlay, touchSpring } from './helpers/prolog';
 
-/**
- * Integration: the four feature systems (story, fx, hunt, chronik) working together along the
- * prologue, headless and deterministic (`?manual`, driven through window.kq):
- *
- *   new game (title flow) → the hub at the Quelle → Pinnwand opens the Journal → objective + Bussole
- *   → relief scan (fx pulse) → story clue + Chronik clue → Q at the anchor (story) → fx shift
- *   → 1789 → echo (Chronik subtitles only, no story duplicates) → threat:configure → hunt chase
- *   → caught (hunt hands over to the story curtain) → home at the Quelle, today, beat checkpoint
- *   → hub → Pinnwand opens the Journal, whose codex holds the clue facts (no board, no batches,
- *   no hint ladder since the Action-RPG rework).
- *
- * Content: the story's prologue + the Chronik test pack (content/test, forced with ?placeholder).
- * Screenshots: test-results/screens/int-*.png.
- */
+// Cross-system play on the tour and K1, with the Chronik test pack enabled.
 const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
-// the retired surveyor prologue (`?classic`): a new game opens with the tour otherwise
-const URL = './?nosave&fresh&manual&placeholder&classic';
+const URL = './?nosave&fresh&manual&placeholder';
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
@@ -61,7 +48,7 @@ async function shot(page: Page, name: string): Promise<void> {
 const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
 const pos = (page: Page) => page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
 
-test('integration: the prologue across story, fx, hunt and chronik', async ({ page }) => {
+test('integration: the tour and K1 across story, fx, hunt and chronik', async ({ page }) => {
   test.setTimeout(900_000);
   const errors = trackErrors(page);
 
@@ -69,7 +56,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.goto(URL);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
-  await waitForHooks(page, ['story', 'chronik', 'hunt', 'fx']);
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'fx', 'quelle', 'skills', 'quests', 'lantern']);
   await recordEvents(page);
   await start.click();
   await page.getByTestId('warning-accept').click();
@@ -79,10 +66,9 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await page.evaluate(() => window.kq!.step(30));
   let s = await story(page);
-  expect(s).toMatchObject({ active: true, chapter: 'prolog', beat: 'p1', name: 'Alex', era: 'today' });
-  expect(await payloads(page, 'story:chapter')).toEqual([{ id: 'prolog' }]);
-  await expect(page.getByTestId('story-card')).toContainText('Vermessung');
-  await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
+  expect(s).toMatchObject({ active: true, chapter: 'tour', beat: 't1', name: 'Alex', era: 'today' });
+  expect(await payloads(page, 'story:chapter')).toEqual([{ id: 'tour' }]);
+  await expect(page.getByTestId('story-card')).toContainText('Die Führung');
   await shot(page, '01-new-game');
 
   // ---- 2. home at the Quelle: hub:enter, E opens the hub, the Pinnwand opens the Chronik -------------
@@ -90,7 +76,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     const k = window.kq!;
     k.story!.flush();
     k.story!.finishTyping();
-    k.teleport(1059.3, -833.1, 50);
+    k.teleport(1053, -828, 51);
     k.step(4);
   });
   s = await story(page);
@@ -99,27 +85,10 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   await expect(page.getByTestId('hub')).toBeVisible();
   await shot(page, '02-hub');
-  // prologue p1: drawer, Pinnwand and shelf hand out their cards on top of the hub (Escape reads on)
-  const readCards = () =>
-    page.evaluate(() => {
-    // one field-book page at a time (src/ui/cards.ts): read each away, the next follows after a beat
-    for (let i = 0; i < 8; i++) {
-      if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
-      for (let j = 0; j < 30 && !document.querySelector('[data-testid="chronik-card"]'); j++) window.kq!.step(1);
-      if (!document.querySelector('[data-testid="chronik-card"]') && !window.kq!.ctx.ui.cards.pending) break;
-    }
-    });
   await page.getByTestId('hub-drawer').click();
-  await readCards();
-  await page.getByTestId('hub-chronik').click();
-  await readCards();
-  expect((await events(page, 'chronik:open')).length).toBe(0);
   await page.getByTestId('hub-shelf').click();
-  await readCards();
   await page.getByTestId('hub-back').click();
-  // nothing new to read at the Pinnwand: now it opens Codex
   await page.getByTestId('hub-chronik').click();
-  // story → chronik:open → Codex opens over the hub
   await expect(page.getByTestId('page-codex')).toBeVisible();
   await expect(page.locator('.ck-board')).toHaveCount(0);
   expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
@@ -136,137 +105,58 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.getByTestId('hub-leave').click();
   await expect(page.getByTestId('hub')).toBeHidden();
 
-  // ---- 3. objective: p1 done (Laub's leaf, Lageplan, Handbuch + the Messstab by the trailer:
-  // Marlene's quest "Die Feldstation" turns in by itself) → p2, the dam -------------------------------
+  // Relief scan at the hollow way: the FX pulse and a Chronik clue.
   await page.evaluate(() => {
     const k = window.kq!;
-    const pr = k.progression!;
-    const stab = pr.pickups().find((x) => x.item === 'item.stab.esche');
-    if (stab) pr.take(stab.id);
-    k.step(4);
-  });
-  // the first fight (playtest round 4): three Nebelinge rise on the way down to the dam
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(792, -893, 75, -4);
-    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.group === 'q.p.feldstation.nebel').length < 3; i++) k.step(15);
-    k.combat!.kill('q.p.feldstation.nebel');
-    k.step(10);
-  });
-  await expect.poll(() => page.evaluate(() => window.kq!.quests!.state().quests['q.p.feldstation']?.state), { timeout: 60_000 }).toBe('done');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.step(10);
-    k.story!.flush();
-    k.step(4);
-  });
-  s = await story(page);
-  expect(s.beat).toBe('p2');
-  expect(s.objective).toMatchObject({ id: 'damm', x: 819, z: -875 });
-  expect(await payloads(page, 'objective:set')).toContainEqual(expect.objectContaining({ id: 'damm', x: 819, z: -875 }));
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(780, -860, 90, -2);
-    k.step(4);
-  });
-  await expect(page.getByTestId('objective')).toHaveClass(/kqs-show/);
-  await expect(page.getByTestId('objective')).toContainText('Damm');
-  await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);
-  await shot(page, '04-objective');
-
-  // ---- 4. relief scan at the wall remains: story clue + fx scan pulse ------------------------
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.finishTyping();
-    k.teleport(813, -903, 200, -18);
+    k.skills!.grant('relief', 3, true);
+    k.teleport(1163, -1230, 135, -26);
     k.step(4);
     k.press('Digit2', 2);
     k.step(4);
   });
   expect(await payloads(page, 'scan:mode')).toContainEqual({ mode: 2 });
   await page.evaluate(() => window.kq!.fx!.pulse(2, 0.9));
-  s = await story(page);
-  expect(s.beat).toBe('p3');
-  expect(await page.evaluate(() => window.kq!.state().inventory.clues)).toContain('clue.p.mauerrest');
-  expect(await payloads(page, 'clue:found')).toContainEqual({ id: 'clue.p.mauerrest', kind: 'relief' });
   await shot(page, '05-scan');
   await page.evaluate(() => window.kq!.fx!.freeze(false));
-
-  // ---- 5. a Chronik clue: the hollow way only shows in Relief-Blick 2, E examines it ---------
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.ctx.ui.modals.closeAll(); // the wall-remains card (p2 exit)
-    k.story!.goto('prolog', 'p5');
-    k.teleport(1163, -1230, 135, -26); // 12 m off: the story's stand-on fallback (r 9) leaves the find to E
-    k.setScanMode(2);
-    k.step(30);
-  });
   expect(await page.evaluate(() => window.kq!.chronik!.status('ct.clue.hohlweg'))).toBe('available');
   await expect(page.locator('.kq-prompt')).toContainText('Untersuchen');
   await page.evaluate(() => window.kq!.press('KeyE', 2));
-  // the real prologue pack has its own hollow way on the same spot: read that card, then the test one
-  await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', /hohlweg$/);
-  if ((await page.getByTestId('chronik-card').getAttribute('data-clue')) === 'clue.p.hohlweg')
+  // The retained content has a clue at the same location.
+  const card = page.getByTestId('chronik-card');
+  await expect(card).toHaveAttribute('data-clue', /hohlweg$/);
+  if ((await card.getAttribute('data-clue')) === 'clue.p.hohlweg') {
     await page.evaluate(() => {
       const k = window.kq!;
       k.ctx.ui.modals.closeAll();
       k.step(2);
       k.press('KeyE', 2);
     });
-  await expect(page.getByTestId('chronik-card')).toHaveAttribute('data-clue', 'ct.clue.hohlweg');
+  }
+  await expect(card).toHaveAttribute('data-clue', 'ct.clue.hohlweg');
   expect(await payloads(page, 'clue:found')).toContainEqual({ id: 'ct.clue.hohlweg', kind: 'relief' });
   await shot(page, '06-clue');
+
+  // The tour introduces the Bussole. At the K1 checkpoint, the spring's E drives the shift.
+  await installQuestPlay(page);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
-    k.teleport(1168, -1236, 135, -26);
-    k.step(4);
-    k.ctx.ui.modals.closeAll(); // the story's own hollow-way card
-    k.setScanMode(0);
-    k.step(4);
-  });
-  // the same spot is the story's hollow way (scan 2 + standing in it): beat p5 completes
-  expect((await story(page)).beat).toBe('p6');
-
-  // ---- 6. Q at the anchor (story owns the key) → shift:request → fx transition → 1789 ---------
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.goto('prolog', 'p9');
+    k.story!.goto('tour', 't17');
     k.story!.flush();
-    k.teleport(1150, -1118, 88, 4);
-    k.step(4);
-    k.press('KeyQ', 1); // outside the anchor radius: "Die Nadel steht nicht hier."
-  });
-  expect(await payloads(page, 'shift:request')).toEqual([]);
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1206, -1118, 88, 4); // the middle of the court (anchor r 18)
+    k.story!.goto('k1');
+    k.story!.flush();
     k.step(4);
   });
-  await expect(page.locator('.kq-prompt')).toContainText('Zeitwechsel');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.press('KeyQ', 1);
-    k.fx!.shiftAt(2.55);
-  });
-  expect(await payloads(page, 'shift:request')).toEqual([{ to: '1789', reason: 'anchor' }]);
-  expect(await page.evaluate(() => window.kq!.fx!.state().shift)).toMatchObject({ active: true, from: 'today', to: '1789' });
-  await shot(page, '07-shift-rise');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.fx!.shiftAt(3.6); // past the end: finishes
-    k.fx!.freeze(false);
-    k.step(6);
-  });
-  // (onAny listeners run after the direct ones, so the request is logged after fx's nested shift:begin)
+  expect((await story(page)).objective).toMatchObject({ id: 'k1.quelle', x: 1059.3, z: -833.1 });
+  expect(await payloads(page, 'objective:set')).toContainEqual(expect.objectContaining({ id: 'k1.quelle', x: 1059.3, z: -833.1 }));
+  await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);
+  const spring = await touchSpring(page, () => shot(page, '07-spring'));
+  expect(spring).toMatchObject({ prompt: true, era: '1789', beat: 'k1_0b' });
+  expect(spring.scene).toBeGreaterThanOrEqual(1.5);
+  expect(await payloads(page, 'shift:request')).toEqual([{ to: '1789', reason: 'quelle' }]);
   const shiftLog = (await events(page)).filter(([n]) => (n.startsWith('shift:') && n !== 'shift:request') || n === 'era:change').map(([n]) => n);
   expect(shiftLog).toEqual(['shift:begin', 'era:change', 'shift:midpoint', 'shift:done']);
-  s = await story(page);
-  expect(s.era).toBe('1789');
-  expect(s.beat).toBe('p9b');
   expect(await page.evaluate(() => window.kq!.state().meta.shifts)).toBe(1);
-  // the prologue's first visit is a 90 s oil timer, not the chapter-4 Steinfraß
-  expect(await page.evaluate(() => window.kq!.fx!.state().oblivion.active)).toBe(false);
   await shot(page, '08-1789');
 
   // ---- 7. an echo: the Chronik plays its lines, the story does not repeat them ---------------
@@ -274,9 +164,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     const k = window.kq!;
     k.story!.flush();
     k.story!.finishTyping();
-    // the prologue plays its own echo on arrival (echo.p.diener): let it end first
-    k.step(60);
-    k.chronik!.advanceEcho(120);
+    k.ctx.events.emit('story:cue', { id: 'court:off', data: { set: 'k1' } });
     k.ctx.ui.modals.closeAll();
     k.teleport(1214, -1113, 90, 4);
     k.step(10);
@@ -288,7 +176,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     k.chronik!.advanceEcho(4.5);
     k.step(1);
   });
-  expect(await payloads(page, 'echo:start')).toEqual([{ id: 'echo.p.diener' }, { id: 'ct.echo.diener' }]);
+  expect(await payloads(page, 'echo:start')).toEqual([{ id: 'ct.echo.diener' }]);
   await expect(page.locator('.ck-memory-label')).toBeVisible();
   const echoSays = ((await payloads(page, 'dialogue:say')) as { id?: string }[]).filter((p) => p.id?.startsWith('ct.echo.'));
   expect(echoSays).toEqual([]);
@@ -359,7 +247,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
     caughtT: document.querySelector<HTMLElement>('.kq-hunt-caught')!.style.opacity,
     frozen: window.kq!.ctx.player.frozen,
   }));
-  expect(back.story.beat).toBe('p9'); // checkpoint of p9b: the first shift again, woken at the Quelle
+  expect(back.story).toMatchObject({ beat: 'k1_0b', objective: { id: 'k1.zurueck-q' } });
   expect(back.story.inHub).toBe(true);
   expect(back.hunt).toBeNull();
   expect(back.caughtT).toBe('0');
@@ -378,7 +266,7 @@ test('integration: the prologue across story, fx, hunt and chronik', async ({ pa
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
-    k.teleport(1059.3, -833.1, 50);
+    k.teleport(1053, -828, 51);
     k.step(2);
     k.press('KeyE', 2);
   });

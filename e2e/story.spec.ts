@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { SAVE_KEY } from '../src/core/save';
+import { throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
 
 /**
@@ -26,14 +27,8 @@ function trackErrors(page: Page): string[] {
 }
 
 async function boot(page: Page, extra = ''): Promise<void> {
-  // story.start() here means the retired surveyor prologue (`?classic`); the tour has its own specs
-  await page.goto(`./?notitle&nosave&fresh&manual&classic${extra}`);
-  await page.waitForFunction(() => {
-    const k = window.kq;
-    if (!k?.step || k.ctx.pause.reasons.has('title')) return false;
-    if (!k.story || !k.party) k.step();
-    return !!k.story && !!k.party;
-  }, null, { timeout: 180_000 });
+  await page.goto(`./?notitle&nosave&fresh&manual${extra}`);
+  await waitForHooks(page, ['story', 'party']);
 }
 
 async function ready(page: Page): Promise<void> {
@@ -151,35 +146,27 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.start('Alex');
-    // the opening beat waits for the chapter card (5.5 s + 0.8 s of its fade, M-11); the radio
-    // quest offer follows 0.7 s after that
-    k.step(500);
+    k.story!.goto('k1');
+    k.story!.flush();
+    k.step(2);
   });
-  // Marlene on the radio, with her portrait and the fiction label
-  await expect(page.getByTestId('dialogue')).toHaveAttribute('data-speaker', 'marlene', { timeout: 10_000 });
-  // the quest's own line ("Nimm den Messstab mit …") comes first, while you walk; then the greeting
-  await page.evaluate(() => {
+  await page.waitForFunction(() => {
     const k = window.kq!;
-    const dlg = () => document.querySelector('[data-testid="dialogue"]')?.textContent ?? '';
-    for (let i = 0; i < 240 && !dlg().includes('Alex'); i++) {
-      k.story!.finishTyping();
-      k.step(10);
-    }
-  });
+    k.story!.finishTyping();
+    k.step(6);
+    return k.story!.state().dialogue?.speaker === 'marlene';
+  }, null, { timeout: 30_000 });
   await typed(page);
+  await expect(page.getByTestId('dialogue')).toHaveAttribute('data-speaker', 'marlene');
   await expect(page.getByTestId('dialogue')).toContainText('Alex');
-  await page.evaluate(() => window.kq!.teleport(757.5, -899, 4, -3));
   await shot(page, 'dialogue-marlene');
 
-  // Laub (brass compass with a face)
-  await page.evaluate(() => {
+  await page.waitForFunction(() => {
     const k = window.kq!;
-    k.story!.goto('prolog', 'p4');
-    k.story!.say('laub', 'Fünfzig Meter. Ich sehe es selbst. Ich möchte festhalten, dass mein Blatt 1840 vollkommen in Ordnung war.');
-    k.ctx.player.teleport(1150, -1112, -Math.PI / 2);
-    k.step(4);
-  });
-  await page.waitForFunction(() => window.kq!.story!.state().dialogue?.speaker === 'laub', null, { timeout: 15_000 });
+    k.story!.finishTyping();
+    k.step(6);
+    return k.story!.state().dialogue?.speaker === 'laub';
+  }, null, { timeout: 30_000 });
   await typed(page);
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
   await shot(page, 'dialogue-laub');
@@ -187,7 +174,6 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
   // home at the Quelle, day and night
   await page.evaluate(() => {
     const k = window.kq!;
-    k.story!.goto('prolog', 'p10');
     k.story!.look('day');
     k.teleport(1053, -828, 51, -3);
     k.step(2);
@@ -229,25 +215,10 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await expect(page.getByTestId('hub')).toBeVisible();
   await shot(page, 'hub');
   await page.getByTestId('hub-chronik').click();
-  // prologue p1: the Pinnwand hands out two cards (Messtischblatt, Lageplan) on top of the hub;
-  // a later visit to the Pinnwand opens Codex once the cards have been read
-  if (await page.evaluate(() => !!window.kq!.chronik)) {
-    await expect(page.getByTestId('chronik-card')).toHaveCount(1);
-    await page.evaluate(() => {
-    // one field-book page at a time (src/ui/cards.ts): read each away, the next follows after a beat
-    for (let i = 0; i < 8; i++) {
-      if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
-      for (let j = 0; j < 30 && !document.querySelector('[data-testid="chronik-card"]'); j++) window.kq!.step(1);
-      if (!document.querySelector('[data-testid="chronik-card"]') && !window.kq!.ctx.ui.cards.pending) break;
-    }
-    });
-    await expect(page.getByTestId('hub')).toBeVisible();
-  }
+  await expect(page.getByTestId('page-codex')).toBeVisible();
+  await page.getByTestId('page-codex').getByRole('button', { name: 'Zurück', exact: true }).click();
+  await expect(page.getByTestId('hub-chronik')).toBeFocused();
   await page.getByTestId('hub-shelf').click();
-  await page.evaluate(() => {
-    // the Handbuch card on top of the shelf page
-    if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
-  });
   // the Regal in RPG terms (round 3): level, quests, spirits — no "Begriffe" / "Chronik-Einträge"
   await expect(page.getByTestId('hub')).toContainText('Aufgaben erledigt');
   await expect(page.getByTestId('hub')).not.toContainText('Begriffe gefunden');
@@ -261,42 +232,18 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await page.waitForTimeout(1500);
   await shot(page, 'hub-phone');
   await page.getByTestId('hub-map').click();
-  await expect(page.getByTestId('chapter-prolog')).toBeVisible();
+  await expect(page.getByTestId('chapter-tour')).toBeVisible();
+  await expect(page.getByTestId('chapter-prolog')).toHaveCount(0);
   await shot(page, 'hub-map');
   await page.getByTestId('hub-continue').click();
-  // the Messstab by the forest road: Marlene's quest "Der Messstab" is complete
-  await page.evaluate(() => {
-    const k = window.kq!;
-    const pr = k.progression!;
-    const stab = pr.pickups().find((x) => x.item === 'item.stab.esche');
-    if (stab) pr.take(stab.id);
-    k.step(4);
-  });
-  // the first fight (playtest round 4): three Nebelinge rise on the way down to the dam
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(792, -893, 75, -4);
-    for (let i = 0; i < 40 && k.combat!.enemies().filter((e) => e.group === 'q.p.feldstation.nebel').length < 3; i++) k.step(15);
-    k.combat!.kill('q.p.feldstation.nebel');
-    k.step(10);
-  });
-  await expect.poll(() => page.evaluate(() => window.kq!.quests!.state().quests['q.p.feldstation']?.state), { timeout: 60_000 }).toBe('done');
-  await page.evaluate(() => window.kq!.step(10));
-  // the three items examined and the Messstab taken → p1 complete → p2 (the dam)
-  const s = await page.evaluate(() => window.kq!.story!.state());
-  expect(s.beat).toBe('p2');
-  const inv = await page.evaluate(() => window.kq!.state().inventory);
-  expect(inv.items).toContain('item.bussole');
-  expect(inv.clues).toContain('clue.p.laubblatt');
 
-  // objective towards the Orangerie, facing it: the needle glows (the jump leaves the p2 quests
-  // tracked; while a main quest leads, the needle follows the tracker, so they are closed here)
+  await waitForHooks(page, ['quelle', 'fx', 'quests']);
+  await throughTour(page);
+  expect(await page.evaluate(() => window.kq!.state().inventory.items)).toContain('item.bussole');
   await page.evaluate(() => {
     const k = window.kq!;
-    for (const id of k.quests?.tracked() ?? []) k.quests!.complete(id);
-    k.story!.goto('prolog', 'p3');
     k.story!.flush();
-    k.teleport(1150, -966, 90, 2);
+    k.teleport(1052, -833.1, 90, 0);
     k.step(4);
   });
   await expect(page.getByTestId('objective')).toHaveClass(/kqs-show/);
@@ -314,7 +261,8 @@ test('story: caught by the pack → home at the Quelle', async ({ page }) => {
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.start('Alex');
-    k.story!.goto('prolog', 'p9b');
+    k.story!.goto('k1', 'k1_0b');
+    k.story!.flush();
     k.setEra('1789');
     k.teleport(1216, -1180, 180);
     k.step(2);
@@ -329,13 +277,12 @@ test('story: caught by the pack → home at the Quelle', async ({ page }) => {
   expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
   expect(Math.hypot(p.x - 1059.3, p.z + 833.1)).toBeLessThan(5);
-  // resumed at the checkpoint beat (p9: the first shift again — the 1789 visit with its Streuner and
-  // the Bannlicht lesson is played once more; contentA moved it from p10)
-  expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('p9');
+  expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('k1_0b');
+  expect(await page.evaluate(() => window.kq!.story!.state().objective?.id)).toBe('k1.zurueck-q');
 
   // the choice in the burning hall (chapter 3): four things in the room, E on one (the fuse: 40 s
   // after the offer, Hanne takes you by the arm; chapter-k3.spec.ts)
-  await page.waitForFunction(() => !!window.kq?.interiors && !!window.kq?.npc && !!window.kq?.fx, null, { timeout: 180_000 });
+  await waitForHooks(page, ['interiors', 'npc', 'fx']);
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.goto('k3', 'k3_3');

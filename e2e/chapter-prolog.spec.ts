@@ -1,83 +1,94 @@
-import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { type Page, expect, test } from '@playwright/test';
+import { SAVE_KEY } from '../src/core/save';
 import { trackErrors } from './helpers/common';
-import { beat, newGame, playProlog, qn, qs, said, shiftTo, shot, story, until } from './helpers/prolog';
+import { newGame, story } from './helpers/prolog';
+import { waitForHooks } from './helpers/pause';
+import { expectHandover } from './helpers/tour';
 
-/**
- * Chapter spec: the retired prologue ("Vermessung") as a quest chain (docs/ACTION-RPG.md §11.0),
- * played headless through window.kq from the title screen to the chapter-1 title card (the
- * playthrough itself lives in e2e/helpers/prolog.ts). A new game opens with the tour now; the old
- * prologue stays bundled for saves in the middle of it and starts with `?classic` (newGame's default
- * URL), which is what this spec plays.
- *
- * A second test plays the bad branch: the pack catches you in 1789 → curtain, Laub explains
- * gently, home at the Quelle; nothing is lost (the quest keeps its progress), the anchor waits.
- *
- * Screenshots: test-results/screens/ch-prolog-*.png, cna-p-*.png
- */
-test.describe.configure({ timeout: 2_400_000 }); // software WebGL, a whole chapter: slow on a busy machine
+test.describe.configure({ timeout: 600_000 });
 
-test('prolog: the whole chapter as quests, title screen to "Der Hof"', async ({ page }) => {
+test('an old classic bookmark starts the tour and the legacy chapter is unavailable', async ({ page }) => {
   const errors = trackErrors(page);
-  await newGame(page, 'Mara', true);
-  await playProlog(page);
+  await newGame(page, 'Mara', false, './?classic&nosave&fresh&manual&q=low');
+  expect(await story(page)).toMatchObject({ chapter: 'tour', beat: 't1', name: 'Mara', era: 'today' });
+  await expect(page.getByTestId('story-card')).toContainText('Die Führung');
+  const jump = await page.evaluate(() => {
+    try {
+      window.kq!.story!.goto('prolog', 'p1');
+      return null;
+    } catch (error) {
+      return (error as Error).message;
+    }
+  });
+  expect(jump).toContain("unknown chapter 'prolog'");
+  expect((await story(page)).chapter).toBe('tour');
   expect(errors).toEqual([]);
 });
 
-test('prolog: the pack catches you in 1789: gently explained, nothing lost, the Ehrenhof waits', async ({ page }) => {
-  const errors = trackErrors(page);
-  await newGame(page, 'Alex');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.goto('prolog', 'p7');
-    k.ctx.ui.modals.closeAll();
-    k.step(4);
+async function continueGame(page: Page): Promise<void> {
+  await waitForHooks(page, ['story', 'quests', 'combat', 'progression', 'fx', 'quelle']);
+  const button = page.getByTestId('title-continue');
+  await expect(button).toHaveText('Weiter');
+  await button.tap();
+  await expect(page.getByTestId('title')).toBeHidden();
+}
+
+test.describe('landscape touch Continue with reduced motion', () => {
+  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+
+  test('a release slot resumes at the K1 spring, crosses, saves and reloads', async ({ page }) => {
+    const errors = trackErrors(page);
+    const bytes = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
+    await page.addInitScript(({ key, bytes }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, bytes);
+    }, { key: SAVE_KEY('auto'), bytes });
+    await page.goto('./?manual&q=low');
+    await continueGame(page);
+    await page.waitForFunction(() => {
+      const k = window.kq!;
+      k.step(1);
+      return k.quelle!.info().prompt && k.story!.state().objective?.id === 'k1.quelle';
+    });
+    expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today', name: 'Mara', completed: ['tour'] });
+    await expectHandover(page);
+    const counts = await page.evaluate(() => {
+      const k = window.kq!;
+      return {
+        quests: k.quests!.state().quests,
+        tracker: k.quests!.tracked(),
+        retiredGroups: Object.keys(k.state().systems.combat?.groups ?? {}).filter((id) => id.startsWith('q.p.')),
+        xp: k.progression!.state().xp,
+      };
+    });
+    expect(counts.quests).toMatchObject({
+      'q.p.feldstation': { state: 'done', counts: { stab: 1, nebel: 3 } },
+      'q.p.relief': { state: 'active', counts: { damm: 1, mauer: 1 } },
+      'q.k1.ankunft': { state: 'active' },
+    });
+    expect(counts.tracker).toEqual(['q.k1.ankunft']);
+    expect(counts.retiredGroups).toEqual([]);
+    expect(counts.xp).toBe(549);
+
+    await page.getByTestId('touch-interact').tap();
+    await page.evaluate(() => {
+      const k = window.kq!;
+      for (let i = 0; i < 60 && !k.fx!.state().shift.active; i++) k.step(6);
+      k.fx!.shiftAt(3.6);
+      k.fx!.freeze(false);
+      k.step(12);
+    });
+    expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789' });
+    expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.ankunft']?.counts.quelle)).toBe(1);
+
+    await page.getByTestId('touch-pause').tap();
+    await page.getByTestId('pause-save').tap();
+    await expect(page.getByText('Spielstand gespeichert.', { exact: true })).toBeVisible();
+    await page.reload();
+    await continueGame(page);
+    expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789', name: 'Mara' });
+    expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.ankunft']?.counts.quelle)).toBe(1);
+    expect(await page.evaluate(() => window.kq!.progression!.state().xp)).toBe(549);
+    expect(errors).toEqual([]);
   });
-  expect(await qs(page, 'q.p.punktwolke')).toBe('active');
-  expect(await until(page, 'p9', 150)).toBe('p9');
-  expect(await qn(page, 'q.p.punktwolke', 'wolke')).toBe(1);
-  // fairness: Q only works at the anchor
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1150, -1118, 90, 4);
-    k.step(4);
-    k.press('KeyQ', 1);
-    k.step(4);
-  });
-  expect((await story(page)).era).toBe('today');
-  await shiftTo(page, 1205, -1119, 90);
-  expect(await beat(page)).toBe('p9b');
-  // caught by the pack → the curtain, home at the Quelle, the checkpoint p9
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1216, -1180, 180);
-    k.step(2);
-    k.story!.caught('pack', 6000);
-  });
-  await expect(page.getByTestId('story-curtain')).toHaveClass(/kqs-down/);
-  await expect(page.getByTestId('story-curtain')).toContainText('gestellt');
-  await page.waitForTimeout(900);
-  await shot(page, '31-caught');
-  await page.evaluate(() => window.kq!.step(6 * 60 + 10));
-  await page.waitForTimeout(2600);
-  const s = await story(page);
-  expect(s.era).toBe('today');
-  expect(s.beat).toBe('p9');
-  await page.evaluate(() => {
-    const k = window.kq!;
-    for (let i = 0; i < 60 && !(k.story!.state().said as string[]).includes('laub.p.gestellt'); i++) k.step(15);
-    for (let i = 0; i < 900 && k.story!.state().dialogue?.speaker !== 'laub'; i++) k.step(10);
-    k.story!.finishTyping();
-    k.teleport(1053, -828, 51, -3);
-  });
-  await shot(page, '32-laub-explains');
-  expect(await said(page)).toContain('laub.p.gestellt');
-  await expect(page.getByTestId('dialogue')).not.toContainText('bestätigt');
-  // nothing lost: the quest still runs with what was done
-  expect(await qs(page, 'q.p.punktwolke')).toBe('active');
-  expect(await qn(page, 'q.p.punktwolke', 'wolke')).toBe(1);
-  expect(await qn(page, 'q.p.punktwolke', 'wechsel')).toBe(1);
-  // and the way back is the same: the Ehrenhof, Q
-  await shiftTo(page, 1205, -1119, 90);
-  expect(await beat(page)).toBe('p9b');
-  expect(errors).toEqual([]);
 });

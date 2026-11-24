@@ -1,5 +1,6 @@
 import { type Page, expect } from '@playwright/test';
 import { type PlayOptions, SCREENS } from './common';
+import { waitForHooks } from './pause';
 import { type QW, cna, fight, holdHome, installQuestPlay, putAwayPages, qn, qs, talkQuest, turninMoment, untilQuest } from './prolog';
 
 /**
@@ -192,16 +193,14 @@ export async function walk(page: Page, pts: [number, number][], o: { sprint?: bo
 
 export async function boot(page: Page): Promise<void> {
   await page.goto(URL);
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.fx && !!window.kq?.npc && !!window.kq?.lantern && !!window.kq?.skills && !!window.kq?.quests && !!window.kq?.combat, null, {
-    timeout: 180_000,
-  });
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'fx', 'npc', 'lantern', 'skills', 'quests', 'combat']);
   await recordEvents(page);
   await installQuestPlay(page);
   await page.setViewportSize(SMALL);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.state.mutable.flags['barks.quiet'] = true; // clean pictures, deterministic lines
-    // what the prologue and chapter 1 leave behind (no unlock cards over the pictures)
+    // what the tour and chapter 1 leave behind (no unlock cards over the pictures)
     for (const [id, tier] of [['relief', 2], ['kartograf', 2], ['baumeister', 1], ['spurenleser', 1]] as const) k.skills!.grant(id, tier, true);
     k.story!.start('Alex');
     k.story!.goto('k2', 'k2_0');

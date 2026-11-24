@@ -5,6 +5,7 @@ import { K1_START, distTo, playK1 } from './helpers/k1';
 import { playK2 } from './helpers/k2';
 import { playK3 } from './helpers/k3';
 import { playK4 } from './helpers/k4';
+import { waitForHooks } from './helpers/pause';
 import { newGame } from './helpers/prolog';
 import { expectHandover, throughTour } from './helpers/tour';
 
@@ -67,7 +68,7 @@ async function chapterStart(page: Page, prev: string, chapter: string, first: st
   expect(s.beat, `${chapter} starts at its first beat`).toBe(first);
   expect(s.era).toBe('today');
   expect(s.finished).toBeFalsy();
-  expect(s.dialogue?.id ?? '', 'no line of the previous chapter runs on').not.toMatch(new RegExp(`\\.${prev === 'prolog' ? 'p' : prev === 'tour' ? 't' : prev}\\.`));
+  expect(s.dialogue?.id ?? '', 'no line of the previous chapter runs on').not.toMatch(new RegExp(`\\.${prev === 'tour' ? 't' : prev}\\.`));
   expect(await page.evaluate(() => window.kq!.ctx.player.stance)).toBe('stand');
   console.log(`[campaign] ${chapter} starts · ${Math.round(await page.evaluate(() => window.kq!.state().meta.playSeconds))} s of game time so far`);
 }
@@ -170,7 +171,7 @@ async function reloadAndContinue(page: Page): Promise<void> {
   const cont = page.getByTestId('title-continue');
   await expect(cont).toBeVisible({ timeout: 180_000 });
   await expect(cont).toBeEnabled({ timeout: 180_000 });
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.npc && !!window.kq?.menagerie, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'npc', 'menagerie']);
   await shot(page, '02b-reload-title');
   const resumed = page.evaluate(() => new Promise<boolean>((res) => window.kq!.ctx.events.on('game:start', ({ resumed }) => res(resumed))));
   await cont.click();
@@ -215,7 +216,7 @@ async function resumeFrom(page: Page, chapter: string): Promise<void> {
   if (!existsSync(`${SAVES}/${chapter}.json`)) {
     const level: Record<string, number> = { k1: 3, k2: 5, k3: 8, k4: 10 };
     await page.goto('./?notitle&fresh&manual');
-    await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.npc && !!window.kq?.menagerie, null, { timeout: 180_000 });
+    await waitForHooks(page, ['story', 'chronik', 'hunt', 'npc', 'menagerie']);
     await page.evaluate(
       ({ c, lvl }) => {
         const k = window.kq!;
@@ -240,7 +241,7 @@ async function resumeFrom(page: Page, chapter: string): Promise<void> {
   await page.goto('./?manual');
   const cont = page.getByTestId('title-continue');
   await expect(cont).toBeEnabled({ timeout: 180_000 });
-  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!window.kq?.hunt && !!window.kq?.npc && !!window.kq?.menagerie, null, { timeout: 180_000 });
+  await waitForHooks(page, ['story', 'chronik', 'hunt', 'npc', 'menagerie']);
   await cont.click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await page.evaluate((c) => {
@@ -371,7 +372,7 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
   const errors = trackErrors(page);
   for (const e of ENDINGS) {
     await page.goto('./?notitle&nosave&fresh&manual');
-    await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik, null, { timeout: 180_000 });
+    await waitForHooks(page, ['story', 'chronik']);
     await page.evaluate(() => {
       const k = window.kq!;
       k.ctx.state.mutable.flags['barks.quiet'] = true;

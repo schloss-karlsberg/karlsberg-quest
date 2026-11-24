@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
+import { waitForHooks } from './helpers/pause';
 import { expectHandover } from './helpers/tour';
 
 /**
@@ -76,10 +77,11 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   try {
-    await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.walk && !!window.kq?.npc, null, { timeout: 120_000 });
-    // photo mode publishes its hooks on its first update (none run in ?manual until a step)
-    await page.evaluate(() => window.kq!.step(2));
-    await page.waitForFunction(() => !!window.kq?.photo && window.kq?.animals?.ready === true, null, { timeout: 20_000 });
+    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals'], 120_000);
+    await page.waitForFunction(() => {
+      window.kq!.step(1);
+      return window.kq!.animals?.ready === true;
+    }, null, { timeout: 20_000 });
   } catch (e) {
     const have = await page.evaluate(() => Object.keys(window.kq ?? {}).join(','));
     console.log(`[tour] boot: kq has ${have}; errors ${JSON.stringify(errors)}`);
