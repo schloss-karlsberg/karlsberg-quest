@@ -1035,6 +1035,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |
 | Retired station references in old saves (TASK-007, 2026-11-25) | Continue keeps playable chapters in progress and moves their former station objectives to the Karlsbergquelle. The survey map retains known live points and found POIs. The „Wissen“ talent branch retains its earned ranks. |
 | Guided-tour story bible (TASK-007, 2026-11-25) | The [bible](../content/bible/00-overview.md) brings together the guided opening, endings, Codex and voice design. It records the shipped handover and distinguishes pending designs and earlier surveyor-era material. |
 | Weiher staff handoff and survey controls (TASK-007, 2026-11-25) | Marlene lends the staff during the tour and the pickup feed confirms it. Both camera modes require the equipped staff to be owned before drawing it. The tour still grants 549 XP. Survey tools use the number row and M, or „Erkunden“ on touch. |

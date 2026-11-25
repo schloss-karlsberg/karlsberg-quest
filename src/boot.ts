@@ -35,6 +35,7 @@ import { CameraTakeover, OverrideSlot } from './systems/cinematic/takeover';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
+import { ArchitectureSurfaces } from './world/surfaces';
 import { World } from './world/world';
 
 /**
@@ -188,7 +189,18 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // never under WebDriver (e2e screenshots stay comparable) or in deterministic ?manual runs
   quality.autoAllowed = !params.has('manual') && (!navigator.webdriver || params.has('autoq'));
   quality.apply();
-  const palaceReady = world.loadPalace().catch((err) => console.error('[palace] failed to load', err));
+
+  let palaceReady: Promise<void> | undefined;
+  const loadPalace = () => palaceReady ??= world.loadPalace().then(() => {
+    mark('palace');
+    loopRef?.requestRender();
+  }).catch((err: unknown) => console.error('[palace] failed to load', err));
+  const architecture = new ArchitectureSurfaces(assets, () => loopRef?.requestRender());
+  let surfaceReady: Promise<void> | undefined;
+  const updateSurfaceQuality = () => {
+    surfaceReady = architecture.applyQuality(quality.level, started || skipTitle || world.currentEra !== 'today');
+  };
+  quality.listeners.push(updateSurfaceQuality);
 
   // ---- input + player
   const input = new Input(renderer.domElement);
@@ -304,6 +316,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       state.mutable.era = e;
       ui.hud.setEraLabel(t(ERA_INFO[e].labelKey));
       if (from !== e) {
+        if (ERA_INFO[e].palace !== 'hidden') void loadPalace();
+        updateSurfaceQuality();
         quality.hold();
         events.emit('era:change', { from, to: e });
         if (started) save.autosave('era', true);
@@ -329,6 +343,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   if (isEra(qEra)) era.set(qEra);
   if (params.has('x') && params.has('z')) player.teleport(Number(params.get('x')), Number(params.get('z')), params.has('yaw') ? (Number(params.get('yaw')) * Math.PI) / 180 : undefined);
   ui.hud.setEraLabel(t(ERA_INFO[world.currentEra].labelKey));
+  if (skipTitle) void loadPalace();
+  updateSurfaceQuality();
 
   // ---- loop
   const loop = new FixedStepLoop({
@@ -670,6 +686,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ui.hud.show(true);
     input.enabled = true;
     loadTerrainDetail();
+    void loadPalace();
+    updateSurfaceQuality();
     touch.setPlaying(modalOpen === 0);
     pause.pop('title');
     input.requestLock();
@@ -712,7 +730,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     perf,
     quality,
     setCamera: (fn) => cameraOverride.set(fn),
-    ready: palaceReady,
+    ready: () => Promise.all([palaceReady, surfaceReady]),
   });
 
   // Playtesting a later chapter: ?kapitel=2|3|4 turns a NEW game into a start at that chapter,
@@ -747,22 +765,20 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     const r = ctx.content.validate(world.bounds());
     if (!r.ok) console.warn('[content] validation errors', r.errors);
   }
-  const palaceLoaded = palaceReady.then(() => mark('palace'));
   if (skipTitle) {
-    await palaceLoaded;
+    await loadPalace();
     startGame(false);
     loader.hide();
   } else {
-    // the title takes input while the palace model (4.5 MB, only shown in the past eras) still
-    // streams in: the lantern flow alone takes longer than the download on any usual connection
+    // The present-day title needs only the opening assets. The palace streams once play starts.
     title.setReady(save.has());
   }
   mark('ready');
-  // shader warm-up while the title is shown: compile every material in the scene in parallel
-  // (KHR_parallel_shader_compile), so the first era shift does not hitch. Not under WebDriver
+  // Compile the current scene in parallel (KHR_parallel_shader_compile). The shift's own warmer
+  // prepares the deferred palace once it is loaded. Not under WebDriver
   // (SwiftShader compiles serially; e2e timing stays as it was) unless ?warm.
   if (!navigator.webdriver || params.has('warm')) {
-    void palaceLoaded.then(() =>
+    void Promise.resolve(palaceReady).then(() =>
       window.setTimeout(() => {
         // with the post target bound: the scene draws there (linear output), and the program key
         // depends on the target (null would compile sRGB-output variants no frame uses; M-17)

@@ -208,10 +208,12 @@ lantern, card transitions) run as before; the travel map's 2D canvas redraws at 
 
 Boot order (marks in `window.__kqReady`, ms since navigation): `boot` → `data` (terrain rasters
 streamed with byte progress on the title bar) → `world` → `systems` → `ready` (title takes
-input). The palace glb (4.5 MB, only visible in the past eras) loads in parallel and does **not**
-block the title (`palace` mark); `?notitle` / skip-title still waits for it. After it arrives a
-shader warm-up (`renderer.compileAsync`, mark `warm`) compiles all scene materials while the
-title is shown (skipped under WebDriver unless `?warm`).
+input). The palace GLB starts when play begins from a present-day title and loads in parallel
+for a historical title view. Skip-title still waits for it. The `palace` mark records when the
+mesh is ready. The opening architecture layers load during boot, and historical layers fill
+the same arrays after start or for a historical title view. Shader warm-up
+(`renderer.compileAsync`, mark `warm`) compiles the boot scene (skipped under WebDriver unless
+`?warm`). The shift warmer prepares the palace after it streams in.
 The palace is kept twice in memory: `palace-merged` (one geometry, hidden, layer 31, no shadow) is
 what systems read (openings, lit windows, point cloud, picker, the shader patches share its
 material); what is drawn are the same pieces merged per 48 m cell (`palace-cell:x,z`), so cells

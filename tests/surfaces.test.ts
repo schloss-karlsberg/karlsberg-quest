@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { Texture } from 'three';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import architecture from '../src/assets/manifests/architecture';
-import { SURF, SURFACE_SETS, planarUv, surfAssetId } from '../src/world/surfaces';
+import { ArchitectureSurfaces, SURF, SURFACE_SETS, planarUv, surfAssetId, surfaces } from '../src/world/surfaces';
 import { SURF_GLASS, palaceSurface } from '../src/world/palace';
 import { surfFor } from '../src/systems/scenery/kit';
 
@@ -51,5 +52,96 @@ describe('surfaces (architecture track)', () => {
     expect(surfFor(0xe2d6bc)).toBe(SURF.NONE);
     expect(surfFor(0x111111)).toBe(SURF.IRON);
     expect(surfFor(0xffb35c, 2)).toBe(SURF.NONE);
+  });
+});
+
+describe('architecture surface streaming', () => {
+  const surfaceIds = (historic: boolean) => SURFACE_SETS.filter((s) => !!s.historic === historic)
+    .flatMap((s) => [surfAssetId(s, 'col'), surfAssetId(s, 'nrm')]);
+
+  function stubCanvas() {
+    vi.stubGlobal('OffscreenCanvas', class {
+      getContext() {
+        return {
+          clearRect() {},
+          drawImage() {},
+          getImageData: () => ({ data: Uint8ClampedArray.of(128, 128, 128, 255) }),
+        };
+      }
+    });
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps low flat and adds the historic layers to the same arrays after the opening', async () => {
+    stubCanvas();
+    const texture = vi.fn<(id: string) => Promise<Texture>>().mockResolvedValue(new Texture({}));
+    const loaded = vi.fn();
+    const loader = new ArchitectureSurfaces({ texture }, loaded);
+    await loader.applyQuality('low', true);
+    expect(texture).not.toHaveBeenCalled();
+
+    const opening = loader.applyQuality('medium', false);
+    expect(loader.applyQuality('medium', false)).toBe(opening);
+    await opening;
+    const { uSurfOn, uSurfCol, uSurfNrm, uSurfReady } = surfaces;
+    const col = uSurfCol.value;
+    expect(col.image.width).toBe(512);
+    expect(uSurfNrm.value.image.width).toBe(256);
+    expect(uSurfOn.value).toBe(1);
+    expect(texture.mock.calls.flat()).toEqual(surfaceIds(false));
+    expect([...uSurfReady.value]).toEqual(SURFACE_SETS.map((s) => s.historic ? 0 : 1));
+    const woodOffset = SURF.PLANKS * col.image.width ** 2 * 4;
+    expect(col.image.data?.[woodOffset]).toBe(128);
+    expect(loaded).toHaveBeenCalledTimes(1);
+
+    const historic = loader.applyQuality('medium', true);
+    expect(loader.applyQuality('medium', true)).toBe(historic);
+    loader.applyQuality('low', false);
+    await historic;
+    expect(uSurfCol.value).toBe(col);
+    expect(col.image.data?.[woodOffset]).toBe(128);
+    expect(texture.mock.calls.flat()).toEqual([...surfaceIds(false), ...surfaceIds(true)]);
+    expect([...uSurfReady.value]).toEqual(SURFACE_SETS.map(() => 1));
+    expect(uSurfOn.value).toBe(0);
+    await loader.applyQuality('medium', true);
+    expect(uSurfOn.value).toBe(1);
+    expect(loaded).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the current preset when an earlier load completes out of order', async () => {
+    stubCanvas();
+    const asset = new Texture({});
+    let finishMedium!: (value: Texture) => void;
+    const slow = new Promise<Texture>((resolve) => { finishMedium = resolve; });
+    const texture = vi.fn<(id: string) => Promise<Texture>>().mockReturnValueOnce(slow).mockResolvedValue(asset);
+    const loader = new ArchitectureSurfaces({ texture }, vi.fn());
+    const medium = loader.applyQuality('medium', true);
+    await loader.applyQuality('high', true);
+    finishMedium(asset);
+    await medium;
+    expect(surfaces.uSurfCol.value.image.width).toBe(1024);
+    expect(surfaces.uSurfNrm.value.image.width).toBe(512);
+    expect([...surfaces.uSurfReady.value]).toEqual(SURFACE_SETS.map(() => 1));
+  });
+
+  it('retains opening layers if a historical texture fails and allows the batch to retry', async () => {
+    stubCanvas();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const texture = vi.fn<(id: string) => Promise<Texture>>().mockResolvedValue(new Texture({}));
+    const loader = new ArchitectureSurfaces({ texture }, vi.fn());
+    await loader.applyQuality('medium', false);
+    const col = surfaces.uSurfCol.value;
+    texture.mockRejectedValueOnce(new Error('historical surface unavailable'));
+    await loader.applyQuality('medium', true);
+    expect(surfaces.uSurfCol.value).toBe(col);
+    expect(surfaces.uSurfReady.value[SURF.STONE]).toBe(1);
+    expect(surfaces.uSurfReady.value[SURF.TILES]).toBe(0);
+    await loader.applyQuality('medium', true);
+    expect(surfaces.uSurfCol.value).toBe(col);
+    expect(surfaces.uSurfReady.value[SURF.TILES]).toBe(1);
   });
 });

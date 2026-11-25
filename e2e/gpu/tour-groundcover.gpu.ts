@@ -5,11 +5,12 @@ import { frameStats, PERF_BUDGET } from '../../src/render/perf';
 import { isSoftwareGpu } from '../../src/render/quality';
 import { trackErrors } from '../helpers/common';
 
-/** TASK-008. Use slice2-before/after for the prop views or slice3-before/after for DGM1. */
+/** TASK-008. Labels select the matched prop, terrain-detail and startup-budget views. */
 const LABEL = process.env.PERF_LABEL ?? 'after';
 const OUT = `test-results/contribute/TASK-008/${LABEL}`;
-const TOUR_PROP_VIEWS = LABEL === 'slice2-before' || LABEL === 'slice2-after';
-const TERRAIN_DETAIL_VIEWS = LABEL === 'slice3-before' || LABEL === 'slice3-after';
+const STARTUP_VIEWS = LABEL === 'slice4-before' || LABEL === 'slice4-after';
+const TOUR_PROP_VIEWS = STARTUP_VIEWS || LABEL === 'slice2-before' || LABEL === 'slice2-after';
+const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || LABEL === 'slice3-before' || LABEL === 'slice3-after';
 const VIEWS = [
   { id: '01-karlsberger-hof', era: 'today', x: 524, z: -770, yaw: 253 },
   { id: '02-felsenpfad', era: 'today', x: 683, z: -596, yaw: 90 },
@@ -96,7 +97,7 @@ async function shootViews(page: Page, prefix: string, terrainDetail = false) {
 function checkTourSets(views: Awaited<ReturnType<typeof shootViews>>) {
   if (!TOUR_PROP_VIEWS) return;
   for (const view of views) {
-    const expected = LABEL === 'slice2-after' && PROP_YAWS[view.id] !== undefined ? [`tour-${view.id.slice(3)}`] : [];
+    const expected = LABEL !== 'slice2-before' && PROP_YAWS[view.id] !== undefined ? [`tour-${view.id.slice(3)}`] : [];
     expect.soft(view.tourSets, view.id).toEqual(expected);
   }
 }
@@ -181,6 +182,35 @@ function checkWalk(sample: Awaited<ReturnType<typeof walkAndTurn>>, label: strin
 
 test.describe.configure({ timeout: 300_000 });
 
+test('Hoch opening from the title at Karlsberger Hof', async ({ page }) => {
+  test.skip(!STARTUP_VIEWS, 'use a slice4 capture label');
+  const errors = trackErrors(page);
+  await page.goto('./?nosave&fresh&q=high&cam=third');
+  const newGame = page.getByTestId('title-new');
+  await expect(newGame).toBeEnabled({ timeout: 120_000 });
+  await newGame.click();
+  await page.getByTestId('warning-accept').click();
+  await page.getByTestId('player-name').fill('Mara');
+  await page.getByTestId('name-confirm').click();
+  await page.getByTestId('start-tour').click();
+  await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
+  const opening = await page.evaluate(() => {
+    const k = window.kq!;
+    return {
+      graphics: k.ctx.quality.level,
+      chapter: k.story!.state().chapter,
+      era: k.ctx.era.current,
+      fromCheckpoint: Math.hypot(k.ctx.player.position.x - 529, k.ctx.player.position.z + 777),
+    };
+  });
+  expect(opening).toMatchObject({ graphics: 'high', chapter: 'tour', era: 'today' });
+  expect(opening.fromCheckpoint).toBeLessThan(5);
+  await page.screenshot({ path: `${OUT}/desktop-high-opening.png` });
+  // The byte spec checks request timing. Here the palace must arrive after entry through the title.
+  await page.waitForFunction(() => window.kq!.ctx.world.palace.triangles > 0, null, { timeout: 120_000 });
+  expect(errors).toEqual([]);
+});
+
 test('six matched Niedrig ground-cover views', async ({ page }) => {
   const errors = trackErrors(page);
   const profile = await boot(page, false);
@@ -238,23 +268,24 @@ test.describe('667×375 landscape touch', () => {
 });
 
 test.describe('DGM1 surface on desktop', () => {
-  test.skip(!TERRAIN_DETAIL_VIEWS, 'use PERF_LABEL=slice3-before or slice3-after');
+  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3 or slice4 capture label');
 
   for (const graphics of ['medium', 'high'] as const) {
     test(`${graphics}: six matched terrain views and five live route samples`, async ({ page }) => {
       const errors = trackErrors(page);
       const profile = await boot(page, false, graphics);
-      const after = LABEL === 'slice3-after';
-      await page.waitForFunction((after) => {
+      const hasDetail = LABEL !== 'slice3-before';
+      await page.waitForFunction((hasDetail) => {
         const { terrain, nature } = window.kq!.ctx.world;
-        return terrain.splat && nature.status.trees === 'on' && (!after || !!terrain.uniforms.uSurfDetail?.value);
-      }, after, { timeout: 120_000 });
+        return terrain.splat && nature.status.trees === 'on' && (!hasDetail || !!terrain.uniforms.uSurfDetail?.value);
+      }, hasDetail, { timeout: 120_000 });
       const source = await page.evaluate(() => {
         const { terrain } = window.kq!.ctx.world;
         return terrain.uniforms.uSurfDetail?.value ? terrain.uniforms.uSurfDetailGrid!.value as number[] : null;
       });
-      expect(source).toEqual(after ? [448, -1248, 896, 832] : null);
+      expect(source).toEqual(hasDetail ? [448, -1248, 896, 832] : null);
       const views = await shootViews(page, `desktop-${graphics}`, true);
+      if (STARTUP_VIEWS) checkTourSets(views);
       writeJson(`desktop-${graphics}-views`, { profile, source, views });
 
       await page.evaluate(() => window.kq!.setEra('today'));

@@ -62,8 +62,8 @@ export interface DebugInfo {
   quality: QualityManager;
   /** Install / clear a per-frame camera override (bench). */
   setCamera: (fn: ((cam: PerspectiveCamera) => void) | null) => void;
-  /** Resolves when the streamed assets (palace model) are in. */
-  ready: Promise<unknown>;
+  /** Wait for the palace and architecture surface loads that are already scheduled. */
+  ready: () => Promise<unknown>;
 }
 
 /** The watchdog with the player-tied roots (avatar, combat viewmodel; looked up by name, cached). */
@@ -119,7 +119,7 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       return structuredClone(ctx.state.state) as GameState;
     },
     async screenshotReady() {
-      await info.ready.catch(() => {});
+      await info.ready().catch(() => {});
       const f0 = info.frames();
       // three frames: instance buffers and textures uploaded, LODs settled for the current view
       // (asked for explicitly: bullet time and held menus draw only on request)

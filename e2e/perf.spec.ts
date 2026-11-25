@@ -1,5 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import architecture from '../src/assets/manifests/architecture';
+import { SURFACE_SETS, surfAssetId } from '../src/world/surfaces';
 
 /**
  * Performance, loading, settings and accessibility (docs/PERFORMANCE.md).
@@ -15,6 +17,12 @@ const OUT = 'test-results/perf';
 mkdirSync(SCREENS, { recursive: true });
 mkdirSync(OUT, { recursive: true });
 const LABEL = process.env.PERF_LABEL ?? 'after';
+const historicSurfaceIds = new Set(SURFACE_SETS.filter((s) => s.historic).flatMap((s) => [surfAssetId(s, 'col'), surfAssetId(s, 'nrm')]));
+const afterStartPaths = [
+  '/data/terrain/surface2025.rgba.deflate',
+  '/data/palace/buildings.glb',
+  ...architecture.filter((asset) => historicSurfaceIds.has(asset.id)).map((asset) => `/assets/${asset.url}`),
+];
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
@@ -79,10 +87,11 @@ test.describe('performance', () => {
   test('bytes and time before the first input', async ({ page }) => {
     const t0 = Date.now();
     const files: { url: string; bytes: number; type: string }[] = [];
-    const terrainDetailRequests: string[] = [];
+    const earlyRequests: string[] = [];
     let ready = false;
     page.on('request', (req) => {
-      if (!ready && new URL(req.url()).pathname.endsWith('/terrain/surface2025.rgba.deflate')) terrainDetailRequests.push(req.url());
+      const path = new URL(req.url()).pathname;
+      if (!ready && afterStartPaths.some((deferred) => path.endsWith(deferred))) earlyRequests.push(path);
     });
     page.on('requestfinished', async (req) => {
       if (ready) return;
@@ -101,7 +110,7 @@ test.describe('performance', () => {
     const timing = await page.evaluate(() => (window as unknown as { __kqReady?: Record<string, number> }).__kqReady ?? null);
     writeFileSync(`${OUT}/load-${LABEL}.json`, JSON.stringify({ totalBytes: total, ms, timing, files: files.sort((a, b) => b.bytes - a.bytes) }, null, 2));
     await page.screenshot({ path: `${SCREENS}/pol-perf-title.png` });
-    expect(terrainDetailRequests).toEqual([]);
+    expect(earlyRequests).toEqual([]);
     expect(total).toBeLessThan(20 * 1024 * 1024);
   });
 

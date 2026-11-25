@@ -27,7 +27,6 @@ import { clink } from './audio';
 import { type BuiltSet, SetBuilder } from './builder';
 import { FIREWORKS_ECHO, Fireworks, type FireworksPhase } from './fireworks';
 import { atmosphere } from '../../world/atmosphere';
-import { applySurfaceQuality } from '../../world/surfaces';
 import { Lehnstuhl } from './chair';
 import { CONVOY_ROAD, Convoy } from './convoy';
 import { type Extent, HILL_REACH, HOHENBURG, Hohenburg, MAG_ACROSS, MAG_HEIGHT, pullFactor } from './hohenburg';
@@ -574,9 +573,6 @@ export default defineSystem({
     root.name = 'scenery';
     ctx.scene.add(root);
     registerEraMaterials('scenery.figures', '*', () => [workersMesh([{ x: 0, z: 0, yaw: 0, pose: 'stand' }], () => 0), signMesh([{ x: 0, y: 1, z: 0, yaw: 0, w: 1, h: 0.3, text: 'Weg' }])].filter((m) => m !== null));
-    // CC0 surface sets of palace, props, interiors (src/world/surfaces.ts): medium / high only
-    applySurfaceQuality(ctx.assets, ctx.quality.level);
-    ctx.quality.listeners.push((_p, level) => applySurfaceQuality(ctx.assets, level));
     hohenburg = new Hohenburg();
     root.add(hohenburg.mesh);
     // the Bleiche's green (1789): no scattered rocks / stumps / ferns on it (the 1789 land cover there
