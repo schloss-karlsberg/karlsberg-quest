@@ -181,9 +181,10 @@
       "title_de": "Ricke und Kitz",
       "enter": [
         { "do": "npc", "op": "hold", "group": "fuehrung" },
+        { "do": "cinematic", "id": "tour.reh", "ref": "reh", "skippable": true },
         { "do": "say", "id": "imhoff.t.reh1", "speaker": "imhoff", "text": "Pssst. Da unten. Nicht bewegen." },
         { "do": "say", "id": "imhoff.t.reh2", "speaker": "imhoff", "text": "Wer ein gutes Foto will: ganz langsam. Geduckt. Und stillhalten, wenn sie guckt." },
-        { "do": "prompt", "key": "C", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: stillhalten", "touch": "Langsam heranpirschen" },
+        { "do": "prompt", "key": "C", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: stillhalten", "touch": "Langsam heranpirschen", "delay": 6.5 },
         { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: anschleichen [C], Handy [N]", "x": 704, "z": -779 }
       ],
       "on": [

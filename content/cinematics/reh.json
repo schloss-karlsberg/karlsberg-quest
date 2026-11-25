@@ -2,7 +2,7 @@
   "id": "reh",
   "skippable": true,
   "keys": [
-    { "t": 0, "eye": { "rel": "player", "back": -0.2, "up": 1.5 }, "look": { "target": "animal:kitz" }, "fov": 40 },
+    { "t": 0, "eye": { "x": 725.8, "z": -753.4, "y": 1.6 }, "look": { "target": "animal:kitz" }, "fov": 40 },
     { "t": 2.5, "fov": 18 },
     { "t": 6, "fov": 18, "look": { "target": "animal:ricke" } }
   ]
