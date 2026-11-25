@@ -1035,6 +1035,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |
 | Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |
 | Retired station references in old saves (TASK-007, 2026-11-25) | Continue keeps playable chapters in progress and moves their former station objectives to the Karlsbergquelle. The survey map retains known live points and found POIs. The „Wissen“ talent branch retains its earned ranks. |
 | Guided-tour story bible (TASK-007, 2026-11-25) | The [bible](../content/bible/00-overview.md) brings together the guided opening, endings, Codex and voice design. It records the shipped handover and distinguishes pending designs and earlier surveyor-era material. |

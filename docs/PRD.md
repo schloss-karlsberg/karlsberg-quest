@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-25 | **Ricke und Kitz in view (TASK-001).** When the group stops above the deer, a short skippable shot zooms in on the fawn, then the doe, while Gerold whispers. The camera stands a step ahead of the stop, so the shot works wherever the player waits. The sneak prompt follows the shot. |
 | unreleased | 2026-11-25 | **Retired station and interface wording (TASK-007).** Continue updates old station return objectives and discards retired survey points while keeping chapter progress and POI discoveries. The visitor name defaults to „Alex“, and „Wissen“ is the talent branch heading. |
 | unreleased | 2026-11-25 | **Guided-tour story bible (TASK-007).** Merged the opening, endings, Codex and voice drafts into [the story bible](../content/bible/00-overview.md). The bible records the shipped tour and handover, pending designs and historical chapter material. |
 | unreleased | 2026-11-25 | **Staff handoff and survey controls (TASK-007).** Marlene lends the Messstab at the Weiher, with a pickup notice and the staff visible after equipping. Survey tools use 1–5 and M on desktop and the „Erkunden“ submenu on touch. Older tour saves and custom bindings are supported. |
