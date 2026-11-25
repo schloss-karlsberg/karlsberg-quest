@@ -97,10 +97,10 @@ that measures how many pixels the deer cover during the shot.
 - [x] 1. `reh.json`: eye `{ "x": 725.8, "z": -753.4, "y": 1.6 }` on key 0 (2.5 m from the stop toward the deer, see Progress); keep t / fov / look.
 - [x] 2. `00-tour.story.json` `t10`: add the cinematic after `npc hold`; `delay` on the [C] prompt (about 6.5 s) so it shows after the shot.
 - [x] 3. Unit test in `tests/tour-slice.test.ts` (fails on today's data, passes after 1-2).
-- [ ] 4. e2e test (d) in `e2e/animals.spec.ts` (pixel coverage; fails today from 23 m before the stop and without the cinematic).
+- [x] 4. e2e test (d) in `e2e/animals.spec.ts` (pixel coverage; fails today from 23 m before the stop and without the cinematic).
 - [x] 5. Manual check in the dev build: new game → tour → `t9`/`t10`; shot plays, Esc / any key skips, then sneak + photo (good, alert, "zu schnell").
 - [x] 6. Docs row in `slice-v0.md` (plus the ACTION-RPG §14 row and the PRD changelog, per implement.md).
-- [ ] 7. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/animals.spec.ts --workers=1`.
+- [x] 7. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/animals.spec.ts --workers=1`.
 
 **Test plan:** unit: `pnpm exec vitest run tests/tour-slice.test.ts tests/cinematic-keys.test.ts
 tests/cinematic-system.test.ts`. e2e: `e2e/animals.spec.ts` with one worker. Manual:
@@ -127,6 +127,8 @@ chromium`: approved by the contributor 2026-11-25.)
 - 2026-11-25: step 4 written - `e2e/animals.spec.ts` "animals (d)"; not run yet.
 - 2026-11-25: step 6 done - docs: `slice-v0.md` t9-t10 row, ACTION-RPG §14 row, PRD changelog row.
 - 2026-11-25: gates (Windows 11, Node 22.18): `pnpm typecheck` green, `pnpm validate` green (1 pre-existing warning in `content/examples`), `pnpm build` green. `pnpm test`: 1,481 passed, 4 failed in `tests/content-packs.test.ts`, `voice-moss`, `voice-assets`, `voice-service` - the same files fail on untouched `main` on this machine (Windows paths `C:\C:\…`, symlink EPERM, `\` vs `/`, a 5 s timeout), unrelated to this change; expected green on CI (Linux, Node 24).
+- 2026-11-25: step 4 done - `e2e/animals.spec.ts` "animals (d)" runs the real hand-over: `t9` (waits for the chapter card), player at the stop or 23 m back, `npc:arrived imhoff reh` → `t10` → `tour.reh`; holds the shot at 3 s and 5.9 s and reads back the deer's share of the frame (with / without the deer, and alone). On the fix: ~0.32 % of 1280×720 from both spots, ≥ 99 % unoccluded; the normal view from the stop is 0.006-0.06 % (logged only). Threshold 0.15 %. On the old content (rebuilt from `main`) it fails: `t10` plays no shot. A real key press skips the shot (`cinematic:end {skipped: true}`).
+- 2026-11-25: e2e green: `pnpm build && pnpm exec playwright test e2e/animals.spec.ts --workers=1` → (a), (b), (c) passed (11.8 min run), (d) passed (re-run alone after the hand-over rewrite, 4.1 min). Gates green except the pre-existing Windows-only unit failures above.
 
 ## Notes
 - Reported by the owner; root cause confirmed 2026-11-25 (see Plan).

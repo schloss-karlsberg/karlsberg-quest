@@ -192,3 +192,110 @@ test('animals (c): the dogs follow the player; a run with back → animal:return
   expect(returned.map((r) => r.id).sort()).toEqual(['bijou', 'diane']);
   expect(errors).toEqual([]);
 });
+
+/**
+ * How much of the frame the deer cover and how much of that is in view: the scene drawn with and
+ * without the deer bodies, read back, and the same with the deer alone (nothing in front of them).
+ */
+const deerCover = (page: Page) =>
+  page.evaluate(() => {
+    const k = window.kq!;
+    const r = k.ctx.renderer;
+    const sc = k.ctx.scene;
+    const cam = k.ctx.camera;
+    const gl = r.getContext();
+    const deer = sc.children.filter((o) => /^animal:reh\./.test(o.name));
+    const w = gl.drawingBufferWidth;
+    const h = gl.drawingBufferHeight;
+    const grab = () => {
+      r.setRenderTarget(null);
+      r.render(sc, cam);
+      const b = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b);
+      return b;
+    };
+    const diff = (a: Uint8Array, b: Uint8Array) => {
+      let n = 0;
+      for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i]! - b[i]!) + Math.abs(a[i + 1]! - b[i + 1]!) + Math.abs(a[i + 2]! - b[i + 2]!) > 24) n++;
+      return n;
+    };
+    const show = (os: { visible: boolean }[], v: boolean) => os.forEach((o) => (o.visible = v));
+    const all = grab();
+    show(deer, false);
+    const none = grab();
+    show(deer, true);
+    const others = sc.children.filter((o) => !deer.includes(o) && o.visible);
+    show(others, false);
+    const alone = grab();
+    show(deer, false);
+    const empty = grab();
+    show(deer, true);
+    show(others, true);
+    const seen = diff(all, none);
+    const free = diff(alone, empty);
+    return { bodies: deer.length, px: w * h, seen, free, share: seen / (w * h) };
+  });
+
+test('animals (d): t10 opens on the deer with the reh shot, from the stop and from 23 m back (TASK-001)', async ({ page }) => {
+  const errors = trackErrors(page);
+  const REH = { x: 727.4, z: -751.5 };
+  await page.goto(`./?notitle&nosave&fresh&manual&x=${REH.x}&z=${REH.z}`);
+  await page.waitForFunction(() => !!window.kq?.animals && !!window.kq?.fauna && !!window.kq?.story && !!window.kq?.cinematic, null, { timeout: 180_000 });
+  await page.evaluate(() => {
+    const w = window as unknown as { rec: Rec };
+    w.rec = [];
+    window.kq!.ctx.events.onAny((n, p) => {
+      if (n.startsWith('cinematic:') && n !== 'cinematic:play') w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
+    });
+  });
+
+  // Gerold waits for a player up to 25 m behind him: t10 starts wherever the player stands then
+  const spots = [
+    { name: 'stop', x: REH.x, z: REH.z },
+    { name: '23m-back', x: 709.7, z: -736.7 },
+  ];
+  for (const s of spots) {
+    // t9 spawns Ricke and Kitz (a jump into the chapter lands at its checkpoint first; on the first
+    // jump the beat's actions wait for the chapter card to fade, on game time)
+    await page.evaluate(() => window.kq!.story!.goto('tour', 't9'));
+    for (let i = 0; i < 30 && (await page.evaluate(() => window.kq!.animals!.stats().deer)) < 2; i++) await step(page, 60);
+    expect(await page.evaluate(() => window.kq!.animals!.stats())).toMatchObject({ deer: 2, bodies: 2, visible: 2 });
+    if (s.name === 'stop') {
+      // without the shot: the pair is a few dozen pixels, 36 m down the slope (logged: the bug's picture)
+      await page.evaluate((p) => window.kq!.teleport(p.x, p.z, -40.4, -16), REH);
+      await step(page, 10);
+      await page.evaluate(() => window.kq!.screenshotReady());
+      console.log(`[animals d] normal view from the stop: ${JSON.stringify(await deerCover(page))}`);
+    }
+    await page.evaluate((p) => window.kq!.teleport(p.x, p.z, 160, 0), s);
+    await step(page, 10);
+    // Gerold reaches the stop: t9 → t10
+    await page.evaluate(() => window.kq!.ctx.events.emit('npc:arrived', { npc: 'imhoff', at: 'reh', route: 'p-fuehrung', skipped: false }));
+    await step(page, 5);
+    expect(await page.evaluate(() => window.kq!.state().systems.story?.beat)).toBe('t10');
+    expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('tour.reh');
+    const at = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
+    expect(Math.hypot(at.x - s.x, at.z - s.z)).toBeLessThan(1);
+    for (const t of [3, 5.9]) {
+      await page.evaluate((tt) => window.kq!.cinematic!.at('tour.reh', tt), t);
+      await step(page, 3);
+      await page.evaluate(() => window.kq!.screenshotReady());
+      const c = await deerCover(page);
+      console.log(`[animals d] ${s.name} t=${t}: ${JSON.stringify(c)}`);
+      expect(c.bodies).toBe(2);
+      // in view (not behind trunks or the slope) and big enough to read: ≥ 0.15 % of the frame
+      // (the shot gives ~0.3 %; the normal view from the stop well under 0.1 %)
+      expect(c.seen / Math.max(1, c.free)).toBeGreaterThan(0.8);
+      expect(c.share).toBeGreaterThan(0.0015);
+      if (t === 3) await shot(page, `deer-shot-${s.name}`);
+    }
+    // any key skips (after the grace); the beat goes on
+    await page.evaluate(() => window.kq!.cinematic!.at('tour.reh', -1));
+    await page.keyboard.press('KeyX');
+    await step(page, 30);
+    expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
+    const ends = (await page.evaluate(() => (window as unknown as { rec: Rec }).rec)).filter((e) => e.n === 'cinematic:end' && e.p.id === 'tour.reh');
+    expect(ends.at(-1)?.p).toEqual({ id: 'tour.reh', skipped: true });
+  }
+  expect(errors).toEqual([]);
+});
