@@ -4,7 +4,7 @@ aliases:
 - TASK-001
 title: Fix the deer bug
 slug: fix-the-deer-bug
-status: in-progress
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -129,6 +129,8 @@ chromium`: approved by the contributor 2026-11-25.)
 - 2026-11-25: gates (Windows 11, Node 22.18): `pnpm typecheck` green, `pnpm validate` green (1 pre-existing warning in `content/examples`), `pnpm build` green. `pnpm test`: 1,481 passed, 4 failed in `tests/content-packs.test.ts`, `voice-moss`, `voice-assets`, `voice-service` - the same files fail on untouched `main` on this machine (Windows paths `C:\C:\…`, symlink EPERM, `\` vs `/`, a 5 s timeout), unrelated to this change; expected green on CI (Linux, Node 24).
 - 2026-11-25: step 4 done - `e2e/animals.spec.ts` "animals (d)" runs the real hand-over: `t9` (waits for the chapter card), player at the stop or 23 m back, `npc:arrived imhoff reh` → `t10` → `tour.reh`; holds the shot at 3 s and 5.9 s and reads back the deer's share of the frame (with / without the deer, and alone). On the fix: ~0.32 % of 1280×720 from both spots, ≥ 99 % unoccluded; the normal view from the stop is 0.006-0.06 % (logged only). Threshold 0.15 %. On the old content (rebuilt from `main`) it fails: `t10` plays no shot. A real key press skips the shot (`cinematic:end {skipped: true}`).
 - 2026-11-25: e2e green: `pnpm build && pnpm exec playwright test e2e/animals.spec.ts --workers=1` → (a), (b), (c) passed (11.8 min run), (d) passed (re-run alone after the hand-over rewrite, 4.1 min). Gates green except the pre-existing Windows-only unit failures above.
+- 2026-11-25: rebased onto `main` `fd18dcd` (#36, #37; the PRD changelog and ACTION-RPG §14 rows conflicted, both rows kept, TASK-001 on top). Re-ran on the rebased branch: typecheck, validate, build green; `pnpm test` 1,493 passed, the same 4 Windows-only failures; `e2e/animals.spec.ts` (a)-(d) green (deer share in the shot 0.32 % from the stop and from 23 m back, normal view 0.06 %). `e2e/cinematic.spec.ts` "orbit" times out in `page.screenshot` (line 138) under SwiftShader: twice on this branch and once on untouched `main` `fd18dcd`, so pre-existing on this machine and unrelated (it plays its own orbit, not `reh`).
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/38
 
 ## Notes
 - Reported by the owner; root cause confirmed 2026-11-25 (see Plan).
