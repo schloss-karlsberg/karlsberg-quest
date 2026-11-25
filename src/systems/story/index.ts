@@ -304,6 +304,7 @@ class StoryRuntime {
   /** Facts of hidden packs (examples, placeholders without ?placeholder): not counted in the hub. */
   private readonly hiddenFacts: Set<string>;
   private entryFlags: Map<string, string> | null = null;
+  private readonly unbindGuideVoice: () => void;
 
   constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
@@ -339,6 +340,12 @@ class StoryRuntime {
     this.hiddenFacts = new Set(hidden.flatMap((p) => (p.pack.facts ?? []).map((f) => f.id)));
     this.layer = ctx.ui.layer('story');
     this.layer.classList.remove('kq-hidden');
+    this.unbindGuideVoice = ctx.audio.bindVoiceEmitter('imhoff', () => {
+      const guide = ctx.era.current === 'today' ? ctx.people?.bySpeaker('imhoff') : undefined;
+      if (!guide) return undefined;
+      const { x, y, z } = guide.root.position;
+      return { x, y: y + guide.info.height * 0.9, z };
+    });
     this.voice = new Voice(ctx.audio);
     this.clips = typeof window !== 'undefined' && typeof fetch === 'function' ? new VoiceClips(ctx.audio) : null;
     this.clips?.init();
@@ -1861,6 +1868,8 @@ class StoryRuntime {
 
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
+    this.presenter.clear();
+    this.unbindGuideVoice();
     this.stage.dispose();
   }
 }

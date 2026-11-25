@@ -2,6 +2,7 @@ import type { Camera } from 'three';
 import { Vector3 } from 'three';
 
 export type Bus = 'music' | 'sfx' | 'ambience' | 'voice';
+type Position = { x: number; y: number; z: number };
 
 export interface Source3D {
   /** Connect your synth output here. */
@@ -21,6 +22,11 @@ export class AudioManager {
   ctx: AudioContext | null = null;
   master: GainNode | null = null;
   private readonly buses = new Map<Bus, GainNode>();
+  private readonly voiceDuck = new Map<'music' | 'ambience', GainNode>();
+  private readonly voiceEmitters = new Map<string, { position: () => Position | undefined; source: Source3D | null }>();
+  private activeVoices = 0;
+  private ducked = false;
+  private paused = false;
   private readonly unlockHandlers: ((ctx: AudioContext) => void)[] = [];
   private readonly fwd = new Vector3();
   private readonly up = new Vector3();
@@ -40,16 +46,22 @@ export class AudioManager {
         const ctx = new Ctor({ latencyHint: 'interactive' });
         this.ctx = ctx;
         this.master = ctx.createGain();
+        this.master.gain.value = this.masterVolume();
         const comp = ctx.createDynamicsCompressor();
         comp.threshold.value = -12;
         comp.ratio.value = 3;
         this.master.connect(comp).connect(ctx.destination);
         for (const b of ['music', 'sfx', 'ambience', 'voice'] as Bus[]) {
           const g = ctx.createGain();
-          g.connect(this.master);
+          g.gain.value = this.volumes[b];
+          if (b === 'music' || b === 'ambience') {
+            const duck = ctx.createGain();
+            g.connect(duck).connect(this.master);
+            this.voiceDuck.set(b, duck);
+          } else g.connect(this.master);
           this.buses.set(b, g);
         }
-        this.applyVolumes();
+        this.updateVoiceDuck();
         for (const fn of this.unlockHandlers.splice(0)) fn(ctx);
       }
       if (this.ctx.state === 'suspended') void this.ctx.resume();
@@ -67,17 +79,64 @@ export class AudioManager {
   setVolumes(v: Partial<AudioManager['volumes']>): void {
     Object.assign(this.volumes, v);
     this.applyVolumes();
+    this.updateVoiceDuck();
   }
 
   private applyVolumes(): void {
     if (!this.ctx || !this.master) return;
     const t = this.ctx.currentTime;
-    this.master.gain.setTargetAtTime(this.volumes.master, t, 0.05);
+    this.master.gain.setTargetAtTime(this.masterVolume(), t, 0.05);
     for (const [b, g] of this.buses) g.gain.setTargetAtTime(this.volumes[b], t, 0.05);
   }
 
   bus(b: Bus): GainNode | null {
     return this.buses.get(b) ?? null;
+  }
+
+  /** Count overlapping speech until each source ends or is stopped. */
+  holdVoice(): () => void {
+    this.activeVoices++;
+    this.updateVoiceDuck();
+    let held = true;
+    return () => {
+      if (!held) return;
+      held = false;
+      this.activeVoices--;
+      this.updateVoiceDuck();
+    };
+  }
+
+  private updateVoiceDuck(): void {
+    if (!this.ctx) return;
+    const ducked = this.activeVoices > 0 && this.volumes.voice > 0;
+    if (ducked === this.ducked) return;
+    this.ducked = ducked;
+    const t = this.ctx.currentTime;
+    const fade = ducked ? 0.035 : 0.28;
+    this.voiceDuck.get('ambience')?.gain.setTargetAtTime(ducked ? 0.38 : 1, t, fade);
+    this.voiceDuck.get('music')?.gain.setTargetAtTime(ducked ? 0.50 : 1, t, fade);
+  }
+
+  /** A speaker may supply a live world position for both recorded and synthesized speech. */
+  bindVoiceEmitter(id: string, position: () => Position | undefined): () => void {
+    this.voiceEmitters.get(id)?.source?.dispose();
+    const emitter = { position, source: null };
+    this.voiceEmitters.set(id, emitter);
+    return () => {
+      const bound = this.voiceEmitters.get(id);
+      if (bound !== emitter) return;
+      bound.source?.dispose();
+      this.voiceEmitters.delete(id);
+    };
+  }
+
+  voiceOutput(id?: string): GainNode | null {
+    const emitter = id ? this.voiceEmitters.get(id) : undefined;
+    const p = emitter?.position();
+    if (!emitter || !p) return this.bus('voice');
+    emitter.source ??= this.createSource3D('voice', { refDistance: 5, rolloff: 0.6 });
+    emitter.source?.setPosition(p.x, p.y, p.z);
+    return emitter.source?.input ?? this.bus('voice');
   }
 
   private hiddenSuspend = false;
@@ -104,8 +163,13 @@ export class AudioManager {
 
   /** Duck/fade all sound (pause menu). */
   setPaused(paused: boolean): void {
+    this.paused = paused;
     if (!this.ctx || !this.master) return;
-    this.master.gain.setTargetAtTime(paused ? this.volumes.master * 0.25 : this.volumes.master, this.ctx.currentTime, 0.15);
+    this.master.gain.setTargetAtTime(this.masterVolume(), this.ctx.currentTime, 0.15);
+  }
+
+  private masterVolume(): number {
+    return this.volumes.master * (this.paused ? 0.25 : 1);
   }
 
   /** A positional source on a bus. Returns null while locked. */
@@ -122,14 +186,22 @@ export class AudioManager {
       rolloffFactor: opts.rolloff ?? 1,
     });
     input.connect(panner).connect(dest);
+    let positioned = false;
     return {
       input,
       panner,
       setPosition(x, y, z) {
         const t = ctx.currentTime;
-        panner.positionX.setTargetAtTime(x, t, 0.02);
-        panner.positionY.setTargetAtTime(y, t, 0.02);
-        panner.positionZ.setTargetAtTime(z, t, 0.02);
+        if (positioned) {
+          panner.positionX.setTargetAtTime(x, t, 0.02);
+          panner.positionY.setTargetAtTime(y, t, 0.02);
+          panner.positionZ.setTargetAtTime(z, t, 0.02);
+        } else {
+          panner.positionX.setValueAtTime(x, t);
+          panner.positionY.setValueAtTime(y, t);
+          panner.positionZ.setValueAtTime(z, t);
+          positioned = true;
+        }
       },
       dispose() {
         input.disconnect();
@@ -177,6 +249,12 @@ export class AudioManager {
       l.upZ.setTargetAtTime(this.up.z, t, 0.02);
     } else {
       (l as unknown as { setPosition(x: number, y: number, z: number): void }).setPosition(p.x, p.y, p.z);
+    }
+    for (const emitter of this.voiceEmitters.values()) {
+      if (!emitter.source) continue;
+      // A line already playing can outlive the speaker's body during a cut or era change.
+      const q = emitter.position() ?? p;
+      emitter.source.setPosition(q.x, q.y, q.z);
     }
   }
 }

@@ -1028,9 +1028,11 @@ Round-4 (polish: set dressing) integration rules:
   length; skip / next stops it; the game's pause and an echo pause it; a suspended context (hidden
   tab, `AudioManager.setHidden`) freezes it and no clip starts then. Bullet time (`loop.manual`)
   does not pause clips: they run in real time while the simulation waits, and the subtitle
-  completes when the clip ends. Stale counts only lines whose id the manifest knows (an id-less
-  line with a changed text just finds no match); NPC conversations keep the murmur (only presenter
-  lines play clips). `public/voice/` holds committed MOSS clips only; the build emits an empty manifest when there is
+  completes when the clip ends. If a source's end event is delayed, the audio clock still marks
+  the clip as ended and releases speech ducking on the next playback state check. Stale counts
+  only lines whose id the manifest knows (an id-less line with a changed text just finds no match).
+  NPC conversations keep the murmur (only presenter lines play clips). `public/voice/` holds
+  committed MOSS clips only; the build emits an empty manifest when there is
   none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern
   screen; the name and lantern screens still speak of the surveyor concept — legacy, TASK-007),
   the home at the Karlsbergquelle (`hub/home.ts`, `HOME`) with the hub overlay (legacy, to be removed by
