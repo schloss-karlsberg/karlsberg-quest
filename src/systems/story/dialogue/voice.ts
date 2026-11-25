@@ -288,6 +288,7 @@ export class VoiceClip {
   private noiseOut: GainNode | null = null;
   private startedAt = 0;
   private offset = 0;
+  private releaseDuck: (() => void) | null = null;
   state: 'playing' | 'paused' | 'ended' | 'stopped' = 'paused';
 
   constructor(
@@ -295,6 +296,7 @@ export class VoiceClip {
     readonly buffer: AudioBuffer,
     private readonly chain: VoiceChain,
     private readonly beds: RadioBeds | null,
+    private readonly holdVoice: () => () => void,
   ) {}
 
   get playing(): boolean {
@@ -322,6 +324,7 @@ export class VoiceClip {
     };
     const offset = Math.min(this.offset, this.buffer.duration);
     src.start(ctx.currentTime, offset);
+    this.releaseDuck = this.holdVoice();
     this.startedAt = ctx.currentTime - offset;
     this.src = src;
     this.out = out;
@@ -348,6 +351,8 @@ export class VoiceClip {
   }
 
   private release(fade = 0, ended = false): void {
+    this.releaseDuck?.();
+    this.releaseDuck = null;
     const src = this.src, noise = this.noise, out = this.out, noiseOut = this.noiseOut;
     this.src = this.out = this.noiseOut = null;
     this.noise = [];
@@ -375,7 +380,7 @@ export class VoiceClip {
 }
 
 export class Voice {
-  private readonly chains = new Map<string, VoiceChain>();
+  private readonly chains = new Map<AudioNode, Map<string, VoiceChain>>();
   private chainCtx: BaseAudioContext | null = null;
   private beds: RadioBeds | null = null;
   private last = 0;
@@ -383,20 +388,25 @@ export class Voice {
   constructor(private readonly audio: AudioManager) {}
 
   /** The speaker's long-lived chain on the voice bus (null while audio is locked). */
-  private chain(spec: Fx, mode: ChainMode): VoiceChain | null {
+  private chain(spec: VoiceSpec, mode: ChainMode): VoiceChain | null {
     const ctx = this.audio.ctx;
-    const bus = this.audio.bus('voice') ?? this.audio.bus('sfx');
-    if (!ctx || !bus) return null;
+    const dest = this.audio.voiceOutput(spec.emitter) ?? this.audio.bus('sfx');
+    if (!ctx || !dest) return null;
     if (this.chainCtx !== ctx) {
       this.chains.clear();
       this.beds = null;
       this.chainCtx = ctx;
     }
+    let chains = this.chains.get(dest);
+    if (!chains) {
+      chains = new Map();
+      this.chains.set(dest, chains);
+    }
     const key = fxKey(spec, mode);
-    let c = this.chains.get(key);
+    let c = chains.get(key);
     if (!c) {
-      c = buildVoiceChain(ctx, bus, spec, mode);
-      this.chains.set(key, c);
+      c = buildVoiceChain(ctx, dest, spec, mode);
+      chains.set(key, c);
     }
     return c;
   }
@@ -411,17 +421,18 @@ export class Voice {
     const chain = this.chain(spec, 'clip');
     if (!chain) return null;
     if (spec.radio && !this.beds) this.beds = makeRadioBeds(ctx);
-    const clip = new VoiceClip(ctx, buffer, chain, spec.radio ? this.beds : null);
+    const clip = new VoiceClip(ctx, buffer, chain, spec.radio ? this.beds : null, () => this.audio.holdVoice());
     return clip.start() ? clip : null;
   }
 
   /** One syllable. `stress` 0..1 raises pitch/level a little (sentence starts, capitals). */
   blip(spec: VoiceSpec, stress = 0): void {
     const ctx = this.audio.ctx;
-    const dest = this.chain(spec, 'blip')?.input;
-    if (!ctx || !dest) return;
+    if (!ctx || ctx.state !== 'running') return;
     const now = ctx.currentTime;
     if (now - this.last < 0.045) return; // never machine-gun
+    const dest = this.chain(spec, 'blip')?.input;
+    if (!dest) return;
     this.last = now;
     const f = spec.base * (1 + (Math.random() - 0.5) * spec.spread) * (1 + stress * 0.12);
     const dur = 0.055 + Math.random() * 0.05;
@@ -440,6 +451,7 @@ export class Voice {
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
     osc.connect(f1).connect(g).connect(dest);
     osc.start(now);
+    osc.onended = this.audio.holdVoice();
     osc.stop(now + dur + 0.02);
     const crackle = RADIO_CHAIN.blip.crackle;
     if (spec.radio && Math.random() < crackle.chance) noiseBurst(this.audio, dest, { freq: crackle.bandHz, q: crackle.bandQ, duration: 0.03, gain: crackle.gain });

@@ -157,4 +157,58 @@ _Status: approved (2026-11-25, coordinator for the owner)_
 
 **Owner pick pending.** After the whole-stop comparison, record the winning candidate, design seed (for B/C/D), registry ID, reference SHA-256, line seed, language, instruction and synthesis parameters from `candidates.json`. Use the production line list in `docs/design/tour/sources.md` once the script is approved.
 
+## Plan — slice 3
+
+_Status: approved (2026-11-25, coordinator for the owner)_
+
+**Approach:** Core dev will add procedural ambience along the guided walk and the ascent to the palace plateau. Blend the beds using the player's location and era, reuse the spring scene's local water source, and caption distinctive water and 1789 activity in German. Mix speech through its existing bus with separate ducking for ambience and music, and position Gerold's dialogue at his live tour body. Treat the imagined 1789 activity as Fiktion.
+
+**Files to touch:**
+
+- `src/audio/` — synthesize water and distant activity, add speech ducking and maintain the positional voice output.
+- `src/systems/ambience/` — zone and era profiles, scene lifecycle and German captions.
+- `src/systems/story/index.ts` and the voice and speaker modules — connect Gerold's existing speech paths to the live body and bind ducking to voice playback. Keep the tour script and dialogue timing and queue available to `feat/task-010-guide-voice`.
+- `tests/`, `docs/ACTION-RPG.md` §14 and `docs/PRD.md` — protect audio and settings behavior and document the slice.
+
+**Steps:**
+
+- [x] 1. Map the route to blended forest, Weiher, Quelle and plateau beds with era-specific profiles and tests.
+- [x] 2. Add the synthesized beds and occasional captioned 1789 activity, and wire them to audio unlock and the existing ambience controls.
+- [x] 3. Duck ambience and music under voice, route Gerold's speech to the live NPC, and verify playback lifecycle and settings in unit tests.
+- [x] 4. Update both design docs, run the four gates and `mc validate`, list the browser verification, and prepare the local commit.
+
+**Test plan:** Run `pnpm typecheck`, `pnpm test`, `pnpm validate` (use `node --import tsx scripts/validate-content.ts` if the tsx IPC listener is blocked), and `pnpm build`. Unit-test the route transitions, era selection, ambience lifecycle, speech ducking and spatial routing. List `e2e/tour-slice.spec.ts`, `e2e/voice.spec.ts`, `e2e/npc.spec.ts`, `e2e/chronik.spec.ts`, `e2e/smoke.spec.ts`, `e2e/touch.spec.ts` and `e2e/perf.spec.ts` for one-worker browser verification. For listening and caption checks, use `?debug&nosave&fresh` at the car park, Weiher (897, −845), Quelle (1062, −837) and plateau (1216, −1114), comparing today and 1789 and checking master, voice, ambience and music at zero, then resume. Browser execution and screenshots are outside this session's scope.
+
+**Risks:** Keep ambience and score ducking independent of saved bus levels and the spring and era transition fades. Use the existing live guide binding for story and NPC talk. Keep the route ambience gradual and the historical cues infrequent enough to hear the narration and read the captions.
+
+**Open questions:** Final levels and intelligibility need an in-game listening pass.
+
+**Acceptance criteria coverage** (planned for slice 3)
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Guide narration and ambience at every stop | partial | Area beds cover the walk and ascent. Narration production is separate. |
+| 2. Sources and unverified claims | full | The earlier script covers sourced claims. The generated 1789 scenes are fiction. |
+| 3. Licences and credits | partial | This slice synthesizes audio at runtime. Voice production credits are separate. |
+| 4. Subtitles and captions | partial | Caption distinctive water and 1789 activity. Scripted stop cues are separate. |
+| 5. Audio settings and ducking | full | Verify the mix, mute and saved levels during speech. |
+| 6. Voice size budget | follow-up | Measure when the production voice files land. |
+| 7. Four gates and docs | full | Run and log the slice gates and update both docs. |
+
+**Follow-up slices:**
+
+- Complete the guide voice casting, production and integration on the voice track.
+- Add the scripted dog, deer, gravel and compass cues. Obtain owner approval for any new recorded source.
+- Verify the historical topics from TASK-003 and TASK-004 with the owner and check independent sources.
+
+## Progress — slice 3
+
+- Branch `feat/task-010-ambience`.
+- 2026-11-25 — Step 1 complete. Blended profiles use the bundled walk and ascent stops. Three focused tests passed, covering the route, area boundaries and the five eras. Installed the locked dependencies offline in the worktree after the shared dependency symlink proved read-only.
+- 2026-11-25 — Step 2 complete. Added a lapping shore, a ravine brook bed, and alternating fictional hoofbeats and court murmurs. The existing spring spout still supplies the close water sound. Five focused tests passed, including caption timing, era exit and disposal.
+- 2026-11-25 — Step 3 complete. Dedicated ambience and music gains duck under recorded voices, procedural murmurs and voiced Chronik whispers. Gerold's voice panner follows the live walking body. The focused mix and ambience suites passed all eight tests, including overlap, mute, pause, resume, skip and clip completion. Added the NPC and Chronik specs to the browser test list because they share speech playback.
+- 2026-11-25 — Step 4 complete. Updated ACTION-RPG §14 and the PRD changelog. `pnpm typecheck`, `pnpm test` (1,512 tests), `pnpm build`, `mc validate` and `git diff --check` passed. The sandbox denied the tsx IPC socket used by `pnpm validate`. The requested `node --import tsx scripts/validate-content.ts` fallback passed with the existing content warnings.
+- Browser specs and listening remain unverified in this session. Run `scripts/dev/heavy.sh -- pnpm exec playwright test e2e/tour-slice.spec.ts e2e/voice.spec.ts e2e/npc.spec.ts e2e/chronik.spec.ts e2e/smoke.spec.ts e2e/touch.spec.ts e2e/perf.spec.ts --workers=1` after building.
+- 2026-11-25 — The sandbox denied creation of the worktree `index.lock` during `git add`. The slice is ready for the local commit `feat(audio): add tour ambience and speech ducking`.
+
 %% mc-links: [[SPR-001]] %%

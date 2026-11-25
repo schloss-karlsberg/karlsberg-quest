@@ -139,6 +139,7 @@ export function whisper(am: AudioManager, dest: AudioNode | null, seconds: numbe
     t += syl + (rnd() < 0.22 ? 0.18 + rnd() * 0.25 : 0.02 + rnd() * 0.05);
   }
   src.start(t0);
+  src.onended = am.holdVoice();
   src.stop(end + 0.4);
 }
 

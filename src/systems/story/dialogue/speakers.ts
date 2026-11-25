@@ -23,6 +23,8 @@ export interface VoiceSpec {
   ring?: boolean;
   /** Distant hall (echoes / memories). */
   hall?: boolean;
+  /** Optional live source bound by the world. */
+  emitter?: string;
 }
 
 export interface SpeakerMeta {
@@ -47,6 +49,7 @@ const V = (base: number, formant: number, wave: OscillatorType = 'triangle', ext
 });
 
 const BUILTIN: Record<string, Omit<SpeakerMeta, 'id'>> = {
+  imhoff: { name: 'Gerold Imhoff', portrait: 'cameo', historical: false, echo: false, voice: V(160, 1000, 'triangle', { emitter: 'imhoff' }) },
   laub: { name: 'Quirin Laub', portrait: 'compass', historical: false, echo: false, voice: V(150, 1250, 'sawtooth', { ring: true, q: 7, gain: 0.035 }) },
   marlene: { name: 'Marlene · Funk', portrait: 'radio', historical: false, echo: false, voice: V(215, 1050, 'triangle', { radio: true, gain: 0.06 }) },
   kollege: { name: 'Ein Kollege · Funk', portrait: 'radio', historical: false, echo: false, voice: V(120, 800, 'triangle', { radio: true, gain: 0.05 }) },
