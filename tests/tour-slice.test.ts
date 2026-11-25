@@ -7,7 +7,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice } from '../src/systems/story/engine';
+import type { CinematicFile } from '../src/systems/cinematic/types';
+import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
@@ -36,7 +37,7 @@ function harness() {
     }
   };
   const engine = new StoryEngine([tour, k1], () => slice, {
-    run: (actions) => apply(actions),
+    run: (actions, { resume }) => apply(resume ? actions.filter(runsOnResume) : actions),
     chapterEntered: () => {},
     beatEntered: () => {},
     chapterCompleted: () => {},
@@ -207,5 +208,53 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     go(c);
     c.tick(181);
     expect(c.beat()).not.toBe('t10');
+  });
+
+  it('t10 opens on the deer: the reh shot from the group stop, then the sneak prompt (TASK-001)', () => {
+    // 36 m down the slope in the haze the pair covers a few dozen pixels in the normal view: the
+    // scene needs the zoomed shot, filmed from the stop so it does not depend on where the player is,
+    // a step ahead of it toward the deer (Imhoff stands on the stop, the group round him)
+    const shot = JSON.parse(readFileSync(`${ROOT}content/cinematics/reh.json`, 'utf8')) as CinematicFile;
+    const reh = route.stops.find((s) => s.id === 'reh')!;
+    const eye = shot.keys![0]!.eye as { x: number; z: number; rel?: string };
+    expect(eye.rel).toBeUndefined();
+    const t9 = tour.beats.find((b) => b.id === 't9')!;
+    const doe = (t9.enter ?? []).find((a) => a.do === 'animal' && (a as { id: string }).id === 'ricke') as unknown as { x: number; z: number };
+    const fromStop = Math.hypot(eye.x - reh.x, eye.z - reh.z);
+    expect(fromStop).toBeGreaterThan(1);
+    expect(fromStop).toBeLessThan(4);
+    expect(Math.hypot(eye.x - doe.x, eye.z - doe.z)).toBeLessThan(Math.hypot(reh.x - doe.x, reh.z - doe.z));
+    const spawned = (t9.enter ?? []).filter((a) => a.do === 'animal').map((a) => `animal:${(a as { id: string }).id}`);
+    const looks = shot.keys!.map((k) => (k.look as { target?: string } | undefined)?.target).filter(Boolean);
+    expect(looks.length).toBeGreaterThan(0);
+    for (const t of looks) expect(spawned).toContain(t);
+
+    const h = harness();
+    h.engine.goto('tour', 't10');
+    const kinds = h.sent.map((s) => s.kind);
+    const cine = h.sent.find((s) => s.kind === 'cinematic')?.a as { ref?: string; skippable?: boolean } | undefined;
+    expect(cine).toMatchObject({ ref: 'reh', skippable: true });
+    expect(kinds.indexOf('cinematic')).toBeLessThan(kinds.indexOf('prompt'));
+  });
+
+  it('t10 prepares the sneak prompt and objective at once, including on Continue', () => {
+    const enter = tour.beats.find((b) => b.id === 't10')!.enter!;
+    // The cinematic hides the HUD until it ends. A delayed line would also delay later actions.
+    const setup = enter.slice(0, enter.findIndex((a) => a.do === 'say'));
+    expect(setup.map((a) => a.do)).toEqual(['npc', 'cinematic', 'prompt', 'objective']);
+    expect(setup.every((a) => (a.delay ?? 0) === 0)).toBe(true);
+
+    const h = harness();
+    h.engine.goto('tour', 't10');
+    h.sent.length = 0;
+    h.said.length = 0;
+    h.engine.resume();
+    expect(h.beat()).toBe('t10');
+    expect(h.sent.map(({ a }) => a)).toMatchObject([
+      { do: 'npc', op: 'hold', group: 'fuehrung' },
+      { do: 'prompt', key: 'C', touch: 'Langsam heranpirschen' },
+      { do: 'objective', id: 'tour', x: 704, z: -779 },
+    ]);
+    expect(h.said).toEqual([]);
   });
 });

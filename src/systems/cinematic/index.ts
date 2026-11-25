@@ -35,7 +35,7 @@ export type { CineTarget, CinematicFile, CinematicKey, CinematicOrbit, Cinematic
 export { registerTarget } from './targets';
 
 addStrings('de', {
-  'cinematic.skip': 'Beliebige Taste: überspringen',
+  'cinematic.skip': 'Zum Überspringen tippen oder eine Taste drücken',
 });
 
 export interface CinematicSlice {
