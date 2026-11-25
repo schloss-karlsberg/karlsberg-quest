@@ -112,17 +112,7 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   expect(await page.evaluate(() => window.kq!.chronik!.status('ct.clue.hohlweg'))).toBe('available');
   await expect(page.locator('.kq-prompt')).toContainText('Untersuchen');
   await page.evaluate(() => window.kq!.press('KeyE', 2));
-  // The retained content has a clue at the same location.
   const card = page.getByTestId('chronik-card');
-  await expect(card).toHaveAttribute('data-clue', /hohlweg$/);
-  if ((await card.getAttribute('data-clue')) === 'clue.p.hohlweg') {
-    await page.evaluate(() => {
-      const k = window.kq!;
-      k.ctx.ui.modals.closeAll();
-      k.step(2);
-      k.press('KeyE', 2);
-    });
-  }
   await expect(card).toHaveAttribute('data-clue', 'ct.clue.hohlweg');
   expect(await payloads(page, 'clue:found')).toContainEqual({ id: 'ct.clue.hohlweg', kind: 'relief' });
   await shot(page, '06-clue');

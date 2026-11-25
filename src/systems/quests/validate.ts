@@ -60,9 +60,9 @@ export const REPO_PATH = /(?:saar-lidar-|research\/\d|\b[\w-]+\/[\w-]+\.md\b)/;
 /** NPCs with a figure in the roster (others become a generic ghost: warning). */
 const ROSTER = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'wache', 'fuhrmann', 'frau', 'mann', 'junge']);
 
-/** Chapter id → the short form used in quest / item ids (prolog → p, enden → end). */
+/** Chapter id → the short form used in quest / item ids (enden → end). */
 export function chapterKey(chapter: string): string {
-  return chapter === 'prolog' ? 'p' : chapter === 'enden' ? 'end' : chapter;
+  return chapter === 'enden' ? 'end' : chapter;
 }
 
 export function validateQuests(files: { file: string; data: QuestFile }[], refs: QuestRefs = {}): QuestValidation {

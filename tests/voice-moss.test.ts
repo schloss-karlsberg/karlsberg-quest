@@ -77,7 +77,7 @@ writeFileSync(join(CLIPS, 'brian.mp3'), 'eleven');
 symlinkSync(join(CLIPS, 'brian.mp3'), join(VOICES, 'sneaky.wav'));
 const cfg = mossConfig({}, HOME);
 
-const line = (id: string, speaker: string, text: string, order = 0): VoiceLine => ({ id, speaker, text, chapter: 'prolog', beats: [], source: 'pack', file: 'prolog', order });
+const line = (id: string, speaker: string, text: string, order = 0): VoiceLine => ({ id, speaker, text, chapter: 'tour', beats: [], source: 'story', file: '00-tour.story.json', order });
 
 const mossVoices: VoicesConfig = {
   providers: { moss: { defaultModel: MOSS_MODEL, licence: 'apache-2.0-model' } },
@@ -258,18 +258,18 @@ describe('heavy lock and quiet window (mocked child process)', () => {
 
   it('--ids order is the batch order: the first listed id is the first real clip after the warm-up', async () => {
     // content order: nah before b; --ids asks for b first
-    const lines = [line('laub.p.quelle.nah', 'laub', 'Da. Die Karlsbergquelle.', 1), line('laub.p.quelle.b', 'laub', 'Gehen Sie hin.', 2), line('laub.p.other', 'laub', 'Anders.', 0)];
-    const sel = selectLines(lines, { tiers: [] }, { ids: ['laub.p.quelle.b', 'laub.p.quelle.nah'] });
-    expect(sel.map((s) => s.line.id)).toEqual(['laub.p.quelle.b', 'laub.p.quelle.nah']);
-    expect(selectLines(lines, { tiers: [] }, { ids: ['laub.p.quelle.nah', 'laub.p.quelle.b'] }).map((s) => s.line.id)).toEqual(['laub.p.quelle.nah', 'laub.p.quelle.b']);
-    expect(selectLines(lines, { tiers: [] }, { ids: ['laub.p.quelle.b', 'laub.p.*'] }).map((s) => s.line.id)).toEqual(['laub.p.quelle.b', 'laub.p.quelle.nah', 'laub.p.other']); // globs: content order, no repeats
+    const lines = [line('laub.t.quelle.nah', 'laub', 'Da. Die Karlsbergquelle.', 1), line('laub.t.quelle.b', 'laub', 'Gehen Sie hin.', 2), line('laub.t.other', 'laub', 'Anders.', 0)];
+    const sel = selectLines(lines, { tiers: [] }, { ids: ['laub.t.quelle.b', 'laub.t.quelle.nah'] });
+    expect(sel.map((s) => s.line.id)).toEqual(['laub.t.quelle.b', 'laub.t.quelle.nah']);
+    expect(selectLines(lines, { tiers: [] }, { ids: ['laub.t.quelle.nah', 'laub.t.quelle.b'] }).map((s) => s.line.id)).toEqual(['laub.t.quelle.nah', 'laub.t.quelle.b']);
+    expect(selectLines(lines, { tiers: [] }, { ids: ['laub.t.quelle.b', 'laub.t.*'] }).map((s) => s.line.id)).toEqual(['laub.t.quelle.b', 'laub.t.quelle.nah', 'laub.t.other']); // globs: content order, no repeats
     const todo = buildPlan(sel, { voices: mossVoices, manifest: emptyManifest(), cap: 0, resolve: ro }).rows.filter((r) => r.take);
     const { run, calls } = fakeRunner();
     const p = mossProvider({ cfg, repo: ROOT, workDir: join(tmp, 'work-order') }, { run, exists: () => false, fileExists: () => true, env: {} });
     for await (const _ of p.batches(todo.map((r) => ({ id: r.line.id, text: r.tts, voice: r.voice, model: r.voice.model, lang: 'de' })))) void _;
     expect(calls.length).toBe(1);
     const job = JSON.parse(readFileSync(calls[0]!.args.at(-1)!, 'utf8')) as { clips: { id: string }[] };
-    expect(job.clips.map((c) => c.id)).toEqual(['laub.p.quelle.b', 'laub.p.quelle.nah']);
+    expect(job.clips.map((c) => c.id)).toEqual(['laub.t.quelle.b', 'laub.t.quelle.nah']);
   });
 
   it('no batch starts while /tmp/kq-quiet-window exists', async () => {

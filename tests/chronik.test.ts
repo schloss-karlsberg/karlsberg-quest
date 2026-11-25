@@ -83,9 +83,9 @@ describe('clue status', () => {
   it('hides clues of chapters that are not in the world (the prologue: no spoilers at the station)', () => {
     const c: ChronikClue = { ...clues().get('ct.clue.hohlweg')!, chapter: 'k2' };
     expect(clueStatus(c, env({ scanMode: 2 }))).toBe('available');
-    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['p']) }))).toBe('hidden');
-    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['p', 'k2']) }))).toBe('available');
-    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['p']), found: new Set(['ct.clue.hohlweg']) }))).toBe('found');
+    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['tour']) }))).toBe('hidden');
+    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['tour', 'k2']) }))).toBe('available');
+    expect(clueStatus(c, env({ scanMode: 2, chapters: new Set(['tour']), found: new Set(['ct.clue.hohlweg']) }))).toBe('found');
   });
 
   it('hides clues behind flags, clues and skills; lantern clues glint until lit', () => {
@@ -261,19 +261,19 @@ describe('Laub hints', () => {
 
 describe('past chapters retire their markers', () => {
   it('only clues of an earlier chapter than the running one retire', () => {
-    expect(clueRetired({ chapter: 'p' }, 'k2')).toBe(true);
+    expect(clueRetired({ chapter: 'tour' }, 'k2')).toBe(true);
     expect(clueRetired({ chapter: 'k1' }, 'k2')).toBe(true);
     expect(clueRetired({ chapter: 'k2' }, 'k2')).toBe(false);
     expect(clueRetired({ chapter: 'k3' }, 'k2')).toBe(false);
     expect(clueRetired({ chapter: 'k4' }, 'enden')).toBe(true);
     // no story (sandbox / tests), clues without a chapter, unknown chapters: nothing retires
-    expect(clueRetired({ chapter: 'p' }, null)).toBe(false);
+    expect(clueRetired({ chapter: 'tour' }, null)).toBe(false);
     expect(clueRetired({}, 'k4')).toBe(false);
-    expect(clueRetired({ chapter: 'p' }, 'test')).toBe(false);
+    expect(clueRetired({ chapter: 'tour' }, 'test')).toBe(false);
   });
 
   it('no clue depends on a clue of an earlier chapter (a retired marker blocks nothing)', () => {
-    const packs = ['prolog', 'kapitel-1', 'kapitel-2', 'kapitel-3', 'kapitel-4'].map(
+    const packs = ['kapitel-1', 'kapitel-2', 'kapitel-3', 'kapitel-4'].map(
       (n) => JSON.parse(readFileSync(`content/packs/${n}.pack.json`, 'utf8')) as ContentPack,
     );
     const chapterOf = new Map<string, string | undefined>();

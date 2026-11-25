@@ -184,7 +184,7 @@ export interface QuestAvailability {
 }
 
 export interface QuestDef {
-  /** `q.<chapter>.<name>` (chapter = prolog p | k1 … k4 | end | test). */
+  /** `q.<chapter>.<name>` (chapter = k1 … k4 | end | test). */
   id: string;
   kind: QuestKind;
   title_de: string;
@@ -225,7 +225,7 @@ export interface QuestDef {
 /** One file per chapter. `items` declares quest / lore items local to the chapter. */
 export interface QuestFile {
   $schema?: string;
-  /** Story chapter id (prolog, k1 … k4, enden, test). */
+  /** Story chapter id (k1 … k4, enden, test). */
   chapter: string;
   /** Test file (99-test): validated, loaded only with `?storytest`. */
   test?: boolean;

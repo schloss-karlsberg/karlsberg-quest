@@ -42,7 +42,7 @@ On a shared machine, wrap e2e and GPU runs in `scripts/dev/heavy.sh` if present.
   every file credited in `public/assets/LICENSES.json` (checked by `tests/assets.test.ts`).
   See `docs/ART-DIRECTION.md` §8 and CONTRIBUTING.md.
 - **Generated content:** most of `content/packs/`, `content/quests/` and `content/story/` is written
-  by `scripts/content-build/` (prologue, chapters 1-4, endings, codex, speakers, voices). Edit the
+  by `scripts/content-build/` (chapters 1-4, endings, codex, speakers, voices). Edit the
   builders, then `node scripts/content-build/build.mjs` and `pnpm validate`. The tour
   (`00-tour.story.json`, `tour.pack.json`), the party pack and the `99-test` files have no builder
   and are edited directly; grep `scripts/content-build/` when unsure.

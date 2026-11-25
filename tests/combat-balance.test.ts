@@ -13,9 +13,6 @@
  *    first, breaks guards and mirrors with the Wuchthieb, tears veils with the Bannlicht and uses
  *    the Ausfall, the Erdstoß and the Wirbel: it must win comfortably (more than a third of its
  *    Lebenskraft left) in a fight that still takes a while.
- *
- * The prologue's first pack (the present, a tutorial: no elite, no escorts, three more Nebelinge
- * from behind) asks less of the tank and the masher.
  */
 import { describe, expect, it } from 'vitest';
 import { CHAPTERS, fight } from './combat-bots';
@@ -23,16 +20,15 @@ import { FIRST, contentEncounters } from './combat-encounters';
 
 describe('combat balance per chapter: mashing hurts, skill wins', () => {
   for (const [ch, { build, enc }] of Object.entries(CHAPTERS)) {
-    const tutorial = ch === 'prolog';
-    const need = tutorial ? 0.2 : 0.4;
+    const need = 0.4;
     it(`${ch}: ${enc.count} × ${enc.kind} (tier ${enc.tier}) at level ${build.level} — the tank loses ≥ ${need * 100} %`, () => {
       const r = fight(build, enc, 'tank');
       expect(r.dead || r.lost >= r.max * need, JSON.stringify(r)).toBe(true);
     });
-    it(`${ch}: the masher takes ≥ ${tutorial ? 12 : 15} s and loses ≥ ${need * 100} %`, () => {
+    it(`${ch}: the masher takes ≥ 15 s and loses ≥ ${need * 100} %`, () => {
       const r = fight(build, enc, 'masher');
       expect(r.dead || r.lost >= r.max * need, JSON.stringify(r)).toBe(true);
-      expect(r.seconds, JSON.stringify(r)).toBeGreaterThanOrEqual(tutorial ? 12 : 15);
+      expect(r.seconds, JSON.stringify(r)).toBeGreaterThanOrEqual(15);
     });
     it(`${ch}: the skilled bot wins comfortably`, () => {
       const r = fight(build, enc, 'skilled');
@@ -83,7 +79,7 @@ describe('combat balance per chapter: mashing hurts, skill wins', () => {
 /**
  * Every fight content places (playtest round 5): the chapter's first fight must not kill a
  * button-masher (the K3 basket fight did, at the intended build); the escorts fit the scene (hounds
- * with hounds, no paper in a hound fight); the prologue's lessons come without company; a pair of
+ * with hounds, no paper in a hound fight); a pair of
  * Irrlichter is not three seconds of clicking any more.
  */
 describe('combat balance per content encounter', () => {
@@ -126,27 +122,23 @@ describe('combat balance per content encounter', () => {
     }
   });
 
-  it('hounds fight with hounds; the prologue lessons come alone; the K3 basket thieves are Raffschatten', () => {
+  it('hounds fight with hounds and the K3 basket thieves are Raffschatten', () => {
     for (const c of regular.filter((x) => x.enc.kind === 'streuner' && (x.chapter === 'k1' || x.chapter === 'k3'))) {
       const r = fight(c.build, c.enc, 'tank', { seconds: 30 });
       expect(r.kinds.map((k) => k.replace('*', '')).filter((k) => k !== 'streuner'), c.id).toEqual([]);
-    }
-    for (const c of regular.filter((x) => x.chapter === 'prolog')) {
-      const r = fight(c.build, c.enc, 'tank', { seconds: 30 });
-      expect(new Set(r.kinds.map((k) => k.replace('*', ''))).size, `${c.id} ${r.kinds}`).toBe(1);
     }
     const k3 = all.find((x) => x.id === 'q.k3.nachmittag.schatten')!;
     expect([...new Set(fight(k3.build, k3.enc, 'tank', { seconds: 40 }).kinds.map((k) => k.replace('*', '')))]).toEqual(['raffschatten']);
   });
 
-  it("the prologue's Streuner is veiled: staff blows go through until a Bannlicht lands", () => {
-    const c = all.find((x) => x.id === 'q.p.punktwolke.streuner')!;
-    expect(c.enc.extra?.veiled).toBe(true);
+  it('a veiled Streuner resists staff blows until a Bannlicht lands', () => {
+    const { build, enc } = CHAPTERS.k1!;
+    const veiled = { ...enc, count: 1, extra: { veiled: true } };
     // the tank never flares: it cannot undo it
-    const t = fight(c.build, c.enc, 'tank', { seconds: 20 });
+    const t = fight(build, veiled, 'tank', { seconds: 20 });
     expect(t.killed).toBe(0);
     // the masher flares and then wins
-    const m = fight(c.build, c.enc, 'masher');
+    const m = fight(build, veiled, 'masher');
     expect(m.killed).toBe(1);
   });
 });

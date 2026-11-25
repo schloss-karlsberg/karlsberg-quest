@@ -8,18 +8,18 @@ endings the drafts in `docs/design/tour/bible/` win where they differ. Placehold
 
 ```jsonc
 {
-  "chapter": "prolog", "order": 0, "title_de": "Vermessung", "sub_de": "Prolog · …",
-  "start": "p1", "next": "k1",                // next chapter starts when the last beat completes
-  "checkpoint": { "x": 760, "z": -902, "yaw": 0, "era": "today" }, // chapter start / after being caught
+  "chapter": "tour", "order": -1, "title_de": "Die Führung", "sub_de": "Prolog · …",
+  "start": "t1", "next": "k1",                // next chapter starts when the last beat completes
+  "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" }, // chapter start / after being caught
   "on": [ /* chapter-wide reactions */ ],
   "beats": [
     {
-      "id": "p2", "title_de": "Der Damm",
+      "id": "t1", "title_de": "Treffpunkt",
       "enter": [ /* actions when the beat starts */ ],
-      "complete": { "all": [{ "enter": { "x": 813, "z": -903, "r": 26 } }, { "scan": 2 }] },
+      "complete": { "any": [{ "enter": { "x": 524, "z": -770, "r": 7 } }, { "timer": 25 }] },
       "exit": [ /* actions when it completes */ ],
-      "checkpoint": "p1",                     // beat to resume at after being caught
-      "on": [{ "id": "am-damm", "when": { … }, "do": [ … ], "repeat": false }]
+      "checkpoint": "t1",                     // beat to resume at after being caught
+      "on": [{ "id": "am-treffpunkt", "when": { … }, "do": [ … ], "repeat": false }]
     }
   ]
 }
@@ -34,7 +34,6 @@ endings the drafts in `docs/design/tour/bible/` win where they differ. Placehold
 | `era?`, `checkpoint? {x,z,yaw?,era?}` | chapter era; start position (also where being caught returns to) |
 | `placeholder?` | skeleton chapter (title card says so) |
 | `test?` | test chapter (`99-test.story.json`): validated, but loaded only with `?storytest` |
-| `legacy?` | Historical chapter data, excluded from play and chapter select. Saves in `00-prolog` migrate to the Chapter 1 checkpoint before the engine resumes. |
 | `dev?` | dev chapter: loaded only with the URL switch of that name, and a new game then starts in it |
 | `leave?` | actions run once when the story leaves the chapter for another, whichever way (last beat, chapter list, debug jump): the tour sends its group home and lifts its rules (no combat, Laub silent) |
 | `on?` | chapter-wide reactions `{id, when, do, repeat?, cooldown?}` (`cooldown`: with `repeat`, not again within that many seconds) |
@@ -200,7 +199,7 @@ The full list of actions, conditions and recipes for wiring chapters: `docs/ARCH
 
 ## Debug (browser console)
 
-`kq.story.goto('prolog', 'p9')`, `.state()`, `.skip()`, `.flush()`, `.choose(i)`, `.choice()`,
+`kq.story.goto('tour', 't17')`, `.state()`, `.skip()`, `.flush()`, `.choose(i)`, `.choice()`,
 `.meters()`, `.meter(id, v)`, `.room(id | null)`, `.caught(by, holdMs)` (the curtain holds
 `holdMs` of game time), `.epilogue(id)`; `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state`;
 `kq.barks.state/advance/reset`.

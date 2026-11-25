@@ -156,6 +156,7 @@
       "kind": "document",
       "prop": "paper",
       "where": { "x": 1150, "z": -1131, "radius": 3, "era": "today", "anchor": "loc.p.station" },
+      "sketch": { "x": 1195, "z": -1095, "size": 260 },
       "reveals": { "nouns": ["ct.n.ehrenhof", "ct.n.exerzierplatz", "ct.n.reitbahn", "ct.n.orangerie", "ct.n.galerie", "ct.n.marstall", "ct.n.eiskeller", "ct.n.jahr_1789"] }
     },
     {

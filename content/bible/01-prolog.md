@@ -252,7 +252,7 @@ Keine. Das Unbehagen kommt nur aus drei Signalen: die Pfotenspur in der Punktwol
 
 ## Action-RPG-Umbau (Quests statt Fallakte)
 
-Der Prolog läuft jetzt als Questkette (`content/quests/00-prolog.quests.json`, Katalog in `docs/ACTION-RPG.md` §11.0). Es gibt keine Lückentexte und keine Bestätigung im Chronik-Brett mehr. Was man findet, steht im Feldbuch (J). Die Geschichte kommt bei der Abgabe als Zeile mit Quelle und als Codex-Karte.
+In v0.8.0 lief der Prolog als Questkette (`content/quests/00-prolog.quests.json` im Tag `v0.8.0`, Katalog in `docs/ACTION-RPG.md` §11.0). Es gibt keine Lückentexte und keine Bestätigung im Chronik-Brett mehr. Was man findet, steht im Feldbuch (J). Die Geschichte kommt bei der Abgabe als Zeile mit Quelle und als Codex-Karte.
 
 - **Die Feldstation** (Marlene): Lageplan, Handbuch, Schublade, dann den **Messstab** aufheben. Kartograf 1 ist jetzt die Belohnung dieser Quest.
 - **Was der Wald verbirgt** (Marlene): Damm, Mauerrest und Orangerie-Stufe mit Relief.

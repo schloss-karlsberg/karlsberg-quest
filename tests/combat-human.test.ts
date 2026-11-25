@@ -91,8 +91,8 @@ describe('fight metrics (FightLog)', () => {
 });
 
 describe('human-like bot (smoke)', () => {
-  it('fights the prologue pack and a boss through the real simulation, deterministically per seed', () => {
-    const enc = contentEncounters().find((c) => c.id === 'q.p.bussole.nebel')!;
+  it('fights the K1 Zwinger pack and a boss through the real simulation, deterministically per seed', () => {
+    const enc = contentEncounters().find((c) => c.id === 'q.k1.zwinger.streuner')!;
     const a = humanFight(enc.build, enc.enc, 1);
     const b = humanFight(enc.build, enc.enc, 1);
     expect(a).toEqual(b);

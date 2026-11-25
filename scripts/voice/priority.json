@@ -4,35 +4,20 @@
     {
       "name": "1-quelle",
       "speakers": ["laub", "marlene"],
-      "select": [{ "beats": ["prolog:p3q", "prolog:p3r"] }]
+      "select": [{ "beats": ["tour:t17", "tour:t18"] }]
     },
     {
-      "name": "2-prolog-key",
-      "speakers": ["laub", "marlene"],
-      "select": [{ "ids": ["laub.p.intro*", "marlene.p.01b", "marlene.p.bauwagen", "marlene.p.relief", "marlene.p.damm", "marlene.p.weg", "marlene.p.flug"] }]
-    },
-    {
-      "name": "3-prolog-rest",
-      "speakers": ["laub", "marlene"],
-      "select": [{ "chapter": "prolog", "source": "pack" }, { "chapter": "prolog", "source": "story" }]
-    },
-    {
-      "name": "4-barks",
+      "name": "2-barks",
       "speakers": ["laub", "marlene"],
       "select": [{ "pack": "voices" }]
     },
     {
-      "name": "5-prolog-quests",
-      "speakers": ["laub", "marlene"],
-      "select": [{ "chapter": "prolog", "source": "quest" }]
-    },
-    {
-      "name": "6-rest",
+      "name": "3-rest",
       "speakers": ["laub", "marlene"],
       "select": [{ "all": true }]
     },
     {
-      "name": "7-player-tour",
+      "name": "4-player-tour",
       "speakers": ["player"],
       "select": [{ "source": "story", "ids": ["player.t.*", "player.photo.*", "player.q.*"] }]
     }

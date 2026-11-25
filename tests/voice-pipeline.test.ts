@@ -40,10 +40,10 @@ const line = (id: string, speaker: string, text: string, o: Partial<VoiceLine> =
   id,
   speaker,
   text,
-  chapter: 'prolog',
+  chapter: 'tour',
   beats: [],
   source: 'pack',
-  file: 'prolog',
+  file: 'tour',
   order,
   ...o,
 });
@@ -81,8 +81,8 @@ describe('textHash (contract)', () => {
     expect(textHash('Hallo.')).not.toBe(textHash('Hallo'));
   });
   it('clip file name is <lineId>.<sha256[0..8]>.<ext>', () => {
-    expect(contentFile('laub.p.quelle', '9f02b107deadbeef', 'webm')).toBe('laub.p.quelle.9f02b107.webm');
-    expect(contentFile('laub.p.quelle', 'abcdef0123', 'm4a')).toBe('laub.p.quelle.abcdef01.m4a');
+    expect(contentFile('laub.t.quelle', '9f02b107deadbeef', 'webm')).toBe('laub.t.quelle.9f02b107.webm');
+    expect(contentFile('laub.t.quelle', 'abcdef0123', 'm4a')).toBe('laub.t.quelle.abcdef01.m4a');
   });
 });
 
@@ -126,64 +126,62 @@ describe('credits', () => {
 
 describe('selection', () => {
   const lines = [
-    line('marlene.p.01b', 'marlene', 'a', { beats: ['prolog:p1'] }, 0),
-    line('laub.p.intro', 'laub', 'b', { beats: ['prolog:p3'] }, 1),
-    line('laub.p.quelle', 'laub', 'c', { beats: ['prolog:p3q'] }, 2),
-    line('laub.p.quelle.1789', 'laub', 'd', { beats: ['prolog:p3r'] }, 3),
+    line('marlene.t.cameo', 'marlene', 'a', { beats: ['tour:t12'] }, 0),
+    line('laub.t.intro', 'laub', 'b', { beats: ['tour:t16'] }, 1),
+    line('laub.t.quelle', 'laub', 'c', { beats: ['tour:t17'] }, 2),
+    line('laub.t.quelle.zurueck', 'laub', 'd', { beats: ['tour:t18'] }, 3),
     line('soll.k1.01', 'soll', 'e', { chapter: 'k1', file: 'kapitel-1' }, 4),
     line('laub.bark.idle.01', 'laub', 'f', { chapter: null, file: 'voices' }, 5),
   ];
   const cfg: PriorityConfig = {
     tiers: [
-      { name: 'quelle', speakers: ['laub', 'marlene'], select: [{ beats: ['prolog:p3q', 'prolog:p3r'] }] },
-      { name: 'prolog', speakers: ['laub', 'marlene'], select: [{ chapter: 'prolog' }] },
+      { name: 'quelle', speakers: ['laub', 'marlene'], select: [{ beats: ['tour:t17', 'tour:t18'] }] },
+      { name: 'tour', speakers: ['laub', 'marlene'], select: [{ chapter: 'tour' }] },
       { name: 'barks', select: [{ pack: 'voices' }] },
     ],
   };
   it('orders by tier, then play order; a line appears once; unmatched lines drop out', () => {
     expect(selectLines(lines, cfg).map((s) => `${s.tier}:${s.line.id}`)).toEqual([
-      'quelle:laub.p.quelle',
-      'quelle:laub.p.quelle.1789',
-      'prolog:marlene.p.01b',
-      'prolog:laub.p.intro',
+      'quelle:laub.t.quelle',
+      'quelle:laub.t.quelle.zurueck',
+      'tour:marlene.t.cameo',
+      'tour:laub.t.intro',
       'barks:laub.bark.idle.01',
     ]);
   });
   it('explicit ids / globs replace the tiers, in list order', () => {
-    expect(selectLines(lines, cfg, { ids: ['laub.bark.*', 'laub.p.quelle*'] }).map((s) => s.line.id)).toEqual([
+    expect(selectLines(lines, cfg, { ids: ['laub.bark.*', 'laub.t.quelle*'] }).map((s) => s.line.id)).toEqual([
       'laub.bark.idle.01',
-      'laub.p.quelle',
-      'laub.p.quelle.1789',
+      'laub.t.quelle',
+      'laub.t.quelle.zurueck',
     ]);
-    expect(selectLines(lines, cfg, { ids: ['*'], speakers: ['marlene'] }).map((s) => s.line.id)).toEqual(['marlene.p.01b']);
+    expect(selectLines(lines, cfg, { ids: ['*'], speakers: ['marlene'] }).map((s) => s.line.id)).toEqual(['marlene.t.cameo']);
   });
 });
 
 describe('real content', () => {
   const lines = collectLines(loadContent(join(ROOT, 'content')));
   const byId = new Map(lines.map((l) => [l.id, l]));
-  it('maps the Karlsbergquelle beats p3q / p3r to their pack lines', () => {
+  it('maps the guided tour’s spring beats to their inline lines', () => {
     const of = (b: string) => lines.filter((l) => l.beats.includes(b)).map((l) => l.id);
-    expect(of('prolog:p3q')).toEqual(['laub.p.quelle', 'laub.p.quelle.b', 'laub.p.quelle.nah', 'laub.p.quelle.trog']);
-    expect(of('prolog:p3r')).toEqual(['laub.p.quelle.1789', 'laub.p.quelle.regel', 'laub.p.quelle.zurueck', 'laub.p.quelle.heute']);
+    expect(of('tour:t17')).toEqual(['laub.t.intro', 'player.q.laub', 'laub.t.intro.b', 'laub.t.quelle', 'laub.t.trog']);
+    expect(of('tour:t18')).toEqual(['player.q.wo', 'laub.t.1789', 'laub.t.seite']);
   });
-  it('ids are unique; inline story lines and quest lines are included; test chapters are not', () => {
+  it('ids are unique; inline story lines and quest lines are included; test chapters are excluded', () => {
     expect(byId.size).toBe(lines.length);
-    expect(byId.get('marlene.p.trichter')?.source).toBe('story');
-    expect(byId.get('quest.q.p.quelle.offer.0')?.speaker).toBe('laub');
+    expect(byId.get('marlene.t.cameo')?.source).toBe('story');
+    expect(byId.get('quest.q.k1.ankunft.offer.0')?.speaker).toBe('laub');
     expect([...byId.keys()].some((id) => id.startsWith('test.'))).toBe(false);
   });
-  it('the committed priority starts with the Quelle scene', () => {
+  it('the committed priority starts with Laub’s tour lines at the Quelle', () => {
     const sel = selectLines(lines, priority as PriorityConfig);
-    expect(sel.slice(0, 8).map((s) => s.line.id)).toEqual([
-      'laub.p.quelle',
-      'laub.p.quelle.b',
-      'laub.p.quelle.nah',
-      'laub.p.quelle.trog',
-      'laub.p.quelle.1789',
-      'laub.p.quelle.regel',
-      'laub.p.quelle.zurueck',
-      'laub.p.quelle.heute',
+    expect(sel.slice(0, 6).map((s) => s.line.id)).toEqual([
+      'laub.t.intro',
+      'laub.t.intro.b',
+      'laub.t.quelle',
+      'laub.t.trog',
+      'laub.t.1789',
+      'laub.t.seite',
     ]);
     expect(new Set(sel.map((s) => s.line.speaker))).toEqual(new Set(['laub', 'marlene', 'player']));
   });

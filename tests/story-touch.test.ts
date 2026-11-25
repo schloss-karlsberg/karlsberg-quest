@@ -10,7 +10,7 @@ import type { Action, PromptAction, StoryFile } from '../src/systems/story/types
 import { validateStories } from '../src/systems/story/validate';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const PROLOG = JSON.parse(readFileSync(`${ROOT}content/story/00-prolog.story.json`, 'utf8')) as StoryFile;
+const TOUR = JSON.parse(readFileSync(`${ROOT}content/story/00-tour.story.json`, 'utf8')) as StoryFile;
 
 /** Every action anywhere in a story file (enter / exit / reactions / choice options). */
 function actions(f: StoryFile): Action[] {
@@ -33,11 +33,11 @@ function actions(f: StoryFile): Action[] {
 const DESKTOP = /\b(Maus|Maustaste|LMB|RMB|Leertaste|Shift|klicken|Klick)\b|\b[A-Z]: |\(in der Luft: F/;
 
 describe('story prompts on a touch screen', () => {
-  const prompts = actions(PROLOG).filter((a): a is PromptAction => a.do === 'prompt' && !!a.text);
+  const prompts = actions(TOUR).filter((a): a is PromptAction => a.do === 'prompt' && !!a.text);
 
-  it('every prologue prompt that names mouse or keys has a short touch text without them', () => {
-    const desktop = prompts.filter((p) => DESKTOP.test(p.text!));
-    expect(desktop.length).toBeGreaterThanOrEqual(5);
+  it('every tour prompt that names mouse or keys has a short touch text without them', () => {
+    const desktop = prompts.filter((p) => p.key || DESKTOP.test(p.text!));
+    expect(desktop.length).toBeGreaterThanOrEqual(4);
     for (const p of desktop) {
       expect(p.touch, p.text!).toBeTruthy();
       expect(p.touch!).not.toMatch(DESKTOP);

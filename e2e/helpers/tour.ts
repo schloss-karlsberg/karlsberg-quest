@@ -7,7 +7,7 @@ import { waitForHooks } from './pause';
  * Bussole, Laub), the hand into the water, the shift to 1789 and the hand-over into chapter 1.
  * The walk with the group itself is covered by e2e/tour-slice.spec.ts; what chapter 1 reads is
  * granted in t17 and at the tour's end (t18 exit, the chapter's `leave`), so the state at k1_0 is the
- * same as after the full walk (tests/tour-handover.test.ts diffs it against the old prologue).
+ * same as after the full walk (tests/tour-handover.test.ts checks the authored grants).
  *
  * Ends with the story at k1 / k1_0, in the present, at the Quelle.
  */
@@ -45,7 +45,7 @@ export async function throughTour(page: Page): Promise<void> {
   expect(s.beat).toBe('k1_0');
 }
 
-/** What the old prologue left for chapter 1, checked after {@link throughTour}. */
+/** The opening grants expected in chapter 1 after {@link throughTour}. */
 export async function expectHandover(page: Page): Promise<void> {
   const st = await page.evaluate(() => {
     const k = window.kq!;

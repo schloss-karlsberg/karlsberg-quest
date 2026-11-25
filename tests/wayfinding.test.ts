@@ -30,18 +30,18 @@ describe('objectiveTarget', () => {
     expect(t!.r).toBeLessThan(6);
   });
 
-  it('a portable clue (the tablet) gives no world target: no 840 m marker to the Feldstation (F-25)', () => {
+  it('a portable clue gives no world target', () => {
     const clue = () => ({ x: 760, z: -915, r: 1, eras: ['today'], anchor: 'portable' });
-    expect(objectiveTarget(Q, obj({ type: 'examine', clue: 'clue.p.punktwolke' }), deps({ player: { x: 1150, z: -1000 }, clue }))).toBeNull();
-    expect(objectiveTarget(Q, obj({ type: 'echo', clue: 'clue.p.punktwolke' }), deps({ clue }))).toBeNull();
+    expect(objectiveTarget(Q, obj({ type: 'examine', clue: 'clue.k2.laterne' }), deps({ player: { x: 1150, z: -1000 }, clue }))).toBeNull();
+    expect(objectiveTarget(Q, obj({ type: 'echo', clue: 'clue.k2.laterne' }), deps({ clue }))).toBeNull();
     // an anchored clue still has its marker
-    const anchored = () => ({ x: 816, z: -884, r: 9, eras: ['today'], anchor: 'loc.p.damm' });
+    const anchored = () => ({ x: 816, z: -884, r: 9, eras: ['today'], anchor: 'loc.test.damm' });
     expect(objectiveTarget(Q, obj({ type: 'examine', clue: 'clue.a' }), deps({ clue: anchored }))).toMatchObject({ x: 816, z: -884 });
   });
 
-  it('the prologue punktwolke clue is portable in the content pack', () => {
-    const pack = JSON.parse(readFileSync(`${ROOT}content/packs/prolog.pack.json`, 'utf8')) as { clues: { id: string; where: { anchor?: string } }[] };
-    expect(pack.clues.find((c) => c.id === 'clue.p.punktwolke')?.where.anchor).toBe('portable');
+  it('the chapter 2 lantern clue is portable in the content pack', () => {
+    const pack = JSON.parse(readFileSync(`${ROOT}content/packs/kapitel-2.pack.json`, 'utf8')) as { clues: { id: string; where: { anchor?: string } }[] };
+    expect(pack.clues.find((c) => c.id === 'clue.k2.laterne')?.where.anchor).toBe('portable');
   });
 
   it('collect points at the nearest pickup still lying in this era', () => {
@@ -115,9 +115,9 @@ describe('StallWatch', () => {
   });
 });
 
-describe('prologue content (the lake)', () => {
-  it('every examine/echo step of the prologue main quests resolves to a place', () => {
-    const quests = JSON.parse(readFileSync(`${ROOT}content/quests/00-prolog.quests.json`, 'utf8')) as { quests: { id: string; kind: string; objectives: QuestObjective[] }[] };
+describe('chapter 1 content', () => {
+  it('every examine/echo step of the chapter 1 main quests resolves to a place', () => {
+    const quests = JSON.parse(readFileSync(`${ROOT}content/quests/01-kapitel-1.quests.json`, 'utf8')) as { quests: { id: string; kind: string; objectives: QuestObjective[] }[] };
     for (const q of quests.quests.filter((x) => x.kind === 'main')) {
       for (const o of q.objectives) {
         if (o.type !== 'examine' && o.type !== 'echo') continue;

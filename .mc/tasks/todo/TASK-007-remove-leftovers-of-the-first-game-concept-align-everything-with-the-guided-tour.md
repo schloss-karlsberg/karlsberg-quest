@@ -96,7 +96,7 @@ the shelf (RPG counts), the drawer (Bussole state), the map (chapter select / co
 
 ### 5. Sweep: other old-concept candidates
 
-- [ ] **Decision: remove the legacy `?classic` prologue in this task, with save migration**: `content/story/00-prolog.story.json` (`legacy`), the `?classic` branch in `src/systems/story/index.ts` (~line 656) and its doc in `src/systems/story/types.ts` (~line 741), the builder `scripts/content-build/prolog.mjs`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, and the voice lines only it uses. **Old saves must still load**: a save that stands in the legacy prologue (any beat, any quest state) is migrated, e.g. to the matching point of the tour or to the start of chapter 1 with the prologue's XP, items and skills granted (level 3, as the tour ends), never to a blank game; a unit test feeds real v0.6–v0.8 legacy saves through the migration
+- [x] **Decision: remove the legacy `?classic` prologue in this task, with save migration**: `content/story/00-prolog.story.json` (`legacy`), the `?classic` branch in `src/systems/story/index.ts` (~line 656) and its doc in `src/systems/story/types.ts` (~line 741), the builder `scripts/content-build/prolog.mjs`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, and the voice lines only it uses. **Old saves must still load**: a save that stands in the legacy prologue (any beat, any quest state) is migrated, e.g. to the matching point of the tour or to the start of chapter 1 with the prologue's XP, items and skills granted (level 3, as the tour ends), never to a blank game; a unit test feeds real v0.6–v0.8 legacy saves through the migration
 - [ ] Feldstation remnants: `RETIRED_POINTS` in `src/systems/travel/points.ts`, comments in `travel/pois.ts`, `story.end.back` "Zur Feldstation", `story.credits.fictionText` (lists "die Feldstation")
 - [ ] `docs/archive/IDEA.md` (working title "Saarpfalz-Chroniken", the pre-design idea): archive or mark historical
 - [ ] `docs/PRD.md`: §6.1 "No XP" (already marked superseded), §6.3 "The field station (hub)", §3 core loop and §4.2 story: rewrite for the tour concept
@@ -270,7 +270,7 @@ _Status: approved 2026-11-24_
 - [ ] §7 — Survey keymap, settings migration, touch expansion and tutorials.
 - [ ] §§5, 8 — Merge the bibles and reconcile remaining PRD, architecture, gameplay and historical references.
 
-## Plan
+## Slice 3 plan (history)
 
 _Status: approved 2026-11-25_ (slice 3, coordinator approval for the owner)
 
@@ -317,6 +317,55 @@ _Status: approved 2026-11-25_ (slice 3, coordinator approval for the owner)
 **Follow-up slices:**
 
 - §5 — Extract shared content and retire the remaining classic files and exclusive voice clips.
+- §3 — Tour Messstab handoff, avatar visibility and XP budget.
+- §§4–5 — Hub relocation, spring interaction, station IDs and endings.
+- §6 — Remaining destinations, talent wording and in-fiction references pending owner decisions.
+- §7 — Survey keymap, settings migration, touch expansion and tutorials.
+- §§5, 8 — Bible merge and remaining design and architecture references.
+
+## Plan
+_Status: approved 2026-11-25_ (coordinator approves for the owner)
+
+**Approach:** Slice 4 removes the remaining surveyor chapter, quest and pack content from the live catalogs. Move the Bussole page and shared nouns to live content and keep the Codex facts and historical deed checks. Give save migration and the completed quest log a small archive with the original IDs, objective counts, history and payouts.
+
+**Files to touch:**
+
+- `src/core/legacy-prologue.ts`, `src/core/legacy-prologue-quests.ts`, `src/systems/quests/data.ts` — isolate old-save payouts and quest-log history from live quest files.
+- `src/rpg/items.ts`, `scripts/content-build/kapitel4.mjs`, `scripts/content-build/codex.mjs` — retain the shared Bussole page, collective noun definitions and sourced Codex entries.
+- `content/story/00-prolog.story.json`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, `scripts/content-build/prolog.mjs`, `scripts/content-build/build.mjs` — remove classic content and rebuild.
+- `src/systems/story/`, `src/systems/chronik/`, `src/systems/combat/`, `scripts/voice/` — retire catalog and encounter branches and voice metadata. Verify whether `public/voice/` contains any exclusive recordings.
+- `tests/`, `e2e/`, `content/{story,quests}/README.md`, `docs/{ACTION-RPG,PRD}.md` — exercise migration with the existing release fixtures, test live content and document the change.
+
+**Steps:**
+
+- [x] 1. Extract the saved-quest records and payout inputs. Preserve finished/failed quest log entries, Codex grants, and old ending deeds. Re-run the release-save and quest-tracker tests.
+- [x] 2. Move the shared item and nouns and remove obsolete Codex tags. Delete the classic chapter, quests, pack and builder, rebuild, and check cross-references.
+- [x] 3. Retire the exclusive voice configuration and remove any matching entries or clips. Check ID and text-hash consumers and validate the voice assets.
+- [x] 4. Audit removed IDs in `e2e/` (including helpers), `tests/` and every `strings.ts`. Adapt affected tests to live content, preserve migration cases and record the removal in the docs.
+- [x] 5. Run the four gates and `mc validate`, review the diff, and list the affected Playwright specs. Record the local commit outcome in Progress.
+
+**Test plan:** Run the migration and tracker tests, the tour handover and content validators, then `pnpm typecheck`, `pnpm test`, `pnpm validate` and `pnpm build`. If the tsx IPC socket blocks validation, run `node --import tsx scripts/validate-content.ts`. List the affected Playwright specs with one worker for an external run. The user's browser restriction also leaves screenshots pending.
+
+**Risks:** Old reward thresholds, save IDs and the tour's 549 XP need to stay stable. Old quest history includes codex unlocks, and unnamed dialogue can resolve a recording by text hash.
+
+**Open questions:** None for this slice.
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1. Title, new game and Pause wording | full | Covered in slices 1 and 3. |
+| 2. One-tap tour map | full | Covered in slice 3. |
+| 3. Journal, Feldbuch and destinations | partial | Remaining wording and owner decisions are in §6. |
+| 4. Survey keymap and mobile controls | follow-up | §7. |
+| 5. Classic removal and single bible | partial | Retire the classic content here. Merge the bible in a later slice. |
+| 6. Visible Messstab handoff | follow-up | §3. |
+| 7. Hub move and spring E conflict | follow-up | §§4–5. |
+| 8. v0.6–v0.8 saves | full | The three tagged slots and payout regression cases verify compatibility. |
+| 9. Smoke, affected e2e and units | partial | The browser specs will be listed for an external run. |
+| 10. PRD, ACTION-RPG and README | partial | Document removal and migration. The wider docs sweep follows. |
+| 11. Four gates | partial | Typecheck, unit tests and build passed. The content validator passed via the Node loader after the tsx CLI socket was denied. |
+
+**Follow-up slices:**
+
 - §3 — Tour Messstab handoff, avatar visibility and XP budget.
 - §§4–5 — Hub relocation, spring interaction, station IDs and endings.
 - §6 — Remaining destinations, talent wording and in-fiction references pending owner decisions.
@@ -398,6 +447,33 @@ _Status: approved 2026-11-25_ (slice 3, coordinator approval for the owner)
   ```sh
   git add -u -- .
   git commit -m 'feat(ui): open new games with the Karlsberg tour map' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+  ```
+
+- 2026-11-25: Slice 4 approved by the coordinator for the owner on `refactor/task-007-legacy-prologue`. The branch starts at `origin/main` (`9996dc8`). This cleanup fills the five-step slice.
+
+- 2026-11-25: Slice 4 step 1 complete. The save and quest-log archive retains objective counts, historical text and payout inputs. The 31 handover, release-save and tracker tests passed using a worktree-local copy of the installed dependencies.
+
+- 2026-11-25: Slice 4 step 2 complete. The Bussole page is a core item, five reused nouns are in the K4 builder, and the Codex facts retain their IDs. Deleted the four legacy source files and rebuilt. The full content validator passed via the Node loader.
+
+- 2026-11-25: Slice 4 step 3 complete. Removed the old priority selectors and three speech overrides. The deleted content had 103 exclusive line IDs and no committed recordings. All 168 manifest entries resolve to live IDs, and all 21 voice asset tests passed.
+
+- 2026-11-25: Slice 4 step 4 complete. Searched 156 legacy identifiers across e2e, its helpers, tests and all feature dictionaries. Gameplay references now use live content or the Chronik fixture. Retained save fixture IDs, archive data, negative chapter checks and three ending deed flags for older saves.
+
+- 2026-11-25: Slice 4 step 5 checks complete. Typecheck, all 1,497 unit tests in 110 files, build, `mc validate` and `git diff --check` passed. `pnpm validate` reached the tsx IPC socket and received `EPERM`; `node --import tsx scripts/validate-content.ts` passed. The worktree used a local copy of the installed dependencies with pnpm's reinstall check disabled because the shared installation is read-only here. Cross-checked the archive's quest-log and payout fields against all eight original definitions. The combat simulation starts and runs against current encounters.
+- 2026-11-25: Playwright discovered 39 tests in 12 specs. Browser runs and screenshots are pending. Run these commands outside the sandbox from the worktree root.
+
+  ```sh
+  pnpm build
+  for spec in smoke chapter-prolog story integration pol-flow chronik pacing campaign tour-slice chapter-k4 quests progression; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  ```
+
+- 2026-11-25: The sandbox denied `git add` at the worktree's `index.lock`. Stage the new archive and the four deleted legacy files with the rest of the slice, then commit from the contributor shell.
+
+  ```sh
+  git add -A -- AGENTS.md CONTRIBUTING.md .mc/tasks/todo/TASK-007-*.md content docs e2e scripts src tests
+  git commit -m 'refactor(content): retire the legacy prologue' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
   ```
 
 ## Notes

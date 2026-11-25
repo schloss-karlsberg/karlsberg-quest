@@ -107,12 +107,12 @@ export interface VoiceLine {
   speaker: string;
   /** displayed text (`text_de` / `text`), hashed as is */
   text: string;
-  /** chapter id as in the story files (`prolog`, `k1` … `enden`), null for global packs (barks) */
+  /** chapter id as in the story files (`tour`, `k1` … `enden`), null for global packs (barks) */
   chapter: string | null;
   /** `<chapter>:<beatId>` of every beat that speaks it */
   beats: string[];
   source: LineSource;
-  /** pack name (`prolog`, `voices`, …), story or quest file name */
+  /** pack name (`kapitel-1`, `voices`, …), story or quest file name */
   file: string;
   /** quest id for quest lines */
   quest?: string;
@@ -122,7 +122,6 @@ export interface VoiceLine {
 
 /** story chapter → pack name holding its lines */
 export const CHAPTER_PACK: Readonly<Record<string, string>> = {
-  prolog: 'prolog',
   k1: 'kapitel-1',
   k2: 'kapitel-2',
   k3: 'kapitel-3',
