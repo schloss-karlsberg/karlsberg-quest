@@ -261,8 +261,8 @@ export class PickupWorld {
   /**
    * Stand-ins for the shader warm-up (src/systems/fx/shift/prewarm.ts): a plain pickup and a precious
    * one (with its light column), not added to the world. Each pickup builds its materials anew and
-   * frees them when it goes, so without this the first pickup of a session compiles its programs in
-   * the frame it appears (about 1.8 s on an integrated GPU; the tour's chestnuts in t3).
+   * frees them when it goes, so without this the first pickup of a session compiles its three
+   * programs in the frame it appears (the tour's chestnuts in t3; docs/PERFORMANCE.md §3.6).
    */
   samples(): Group[] {
     const make = (item: string) => this.create({ id: `prewarm.${item}`, item, x: 0, z: 0, era: 'today' }, false, false).root;
