@@ -36,7 +36,7 @@ export interface Checkpoint {
 export interface EnterCond {
   enter: { x: number; z: number; r: number; era?: Era };
 }
-/** Leave a circle (e.g. "walk away from the station"). */
+/** Leave a circle (e.g. "walk away from the spring"). */
 export interface LeaveCond {
   leave: { x: number; z: number; r: number };
 }
@@ -237,7 +237,7 @@ export const CONDITION_KEYS = [
 
 /** The hub's tiles at the Quelle (contract C4): the phone replaced the radio, the bench the field bed. */
 export type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';
-/** Ids of the field station's hub, still accepted in content (bed → bench, radio → phone). */
+/** Legacy hub aliases accepted in content (bed → bench, radio → phone). */
 export type HubAlias = 'bed' | 'radio';
 export const HUB_ALIAS: Readonly<Record<HubAlias, HubItem>> = { bed: 'bench', radio: 'phone' };
 /** A hub id from content as the tile it means now (aliases resolved). */
@@ -368,7 +368,7 @@ export interface SoundAction extends ActionBase {
  */
 export type LookTime = 'day' | 'dawn' | 'dusk' | 'night' | 'tour';
 /**
- * Time of day for the present-day era (field station evenings). With `era` (a past era) the time
+ * Time of day for the present-day era. With `era` (a past era) the time
  * of day of that memory instead (e.g. 1789 dusk / night in the Karlslust); `day` restores its preset.
  */
 export interface LookAction extends ActionBase {
@@ -492,10 +492,10 @@ export interface FadeAction extends ActionBase {
 
 /**
  * Chapter meters. `oil`: the lantern burns `seconds` (hunt's lantern: lit + refilled; empty =
- * the memory lets go → back to the station). `smoke`: the fire's smoke meter (fx fire threat).
+ * the memory lets go → back to the spring). `smoke`: the fire's smoke meter (fx fire threat).
  * `vergessen`: the Steinfraß / oblivion meter (fx). Any other id: a story gauge that fills over
  * `seconds` of game time (paused during echoes and conversations; `still` fills faster while
- * standing still). Full → `full` (default 'return': curtain with `text`, back to the station).
+ * standing still). Full → `full` (default 'return': curtain with `text`, back to the spring).
  * `lossless`: being caught / returned loses nothing (bible 4.6). `active: false` stops it.
  */
 export interface MeterAction extends ActionBase {
@@ -747,8 +747,7 @@ export interface StoryFile {
   checkpoint?: Checkpoint;
   /**
    * Where a caught player comes to when no beat names a `wake` (default: the checkpoint). Home at
-   * the Quelle for a chapter that starts somewhere else (the bridged prologue: start at the old
-   * field-station spot, wake at the spring).
+   * the Quelle for a chapter that starts somewhere else.
    */
   wake?: Checkpoint & { text?: string };
   /** Chapter that starts automatically when this one completes. */

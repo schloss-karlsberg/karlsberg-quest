@@ -97,13 +97,13 @@ the shelf (RPG counts), the drawer (Bussole state), the map (chapter select / co
 ### 5. Sweep: other old-concept candidates
 
 - [x] **Decision: remove the legacy `?classic` prologue in this task, with save migration**: `content/story/00-prolog.story.json` (`legacy`), the `?classic` branch in `src/systems/story/index.ts` (~line 656) and its doc in `src/systems/story/types.ts` (~line 741), the builder `scripts/content-build/prolog.mjs`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, and the voice lines only it uses. **Old saves must still load**: a save that stands in the legacy prologue (any beat, any quest state) is migrated, e.g. to the matching point of the tour or to the start of chapter 1 with the prologue's XP, items and skills granted (level 3, as the tour ends), never to a blank game; a unit test feeds real v0.6–v0.8 legacy saves through the migration
-- [ ] Feldstation remnants: `RETIRED_POINTS` in `src/systems/travel/points.ts`, comments in `travel/pois.ts`, `story.end.back` "Zur Feldstation", `story.credits.fictionText` (lists "die Feldstation")
+- [x] Feldstation remnants: `RETIRED_POINTS` in `src/systems/travel/points.ts`, comments in `travel/pois.ts`, `story.end.back` "Zur Feldstation", `story.credits.fictionText` (lists "die Feldstation")
 - [x] `docs/archive/IDEA.md` (working title "Saarpfalz-Chroniken", the pre-design idea): archive or mark historical
 - [x] `docs/PRD.md`: §6.1 "No XP" (already marked superseded), §6.3 "The field station (hub)", §3 core loop and §4.2 story: rewrite for the tour concept
 - [x] `content/bible/*` vs `docs/design/tour/bible/*`: **decided, merge in this task**, see section 8
 - [x] `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`: sections that still describe the surveyor start, the Feldstation, the hub overlay
-- [ ] Save fields: story slice name default, hub state, any `feldstation` ids (see `src/core/save.ts`, story `migrate` maps)
-- [ ] Dead code after the above (unused strings in `src/i18n/de.ts` and `story/strings.ts`, CSS, SVGs)
+- [x] Save fields: normalize the visitor name, retired station objectives and survey points. The current hub has no dedicated save slice. Retain earned quest records and talent IDs.
+- [x] Dead code from this cleanup (unused strings, CSS and SVGs). Recheck hub-specific code after §4.
 
 ### 6. Feldbuch: no journal, plain save wording (owner decision 2026-11-23)
 
@@ -119,7 +119,7 @@ The owner dislikes the name and thinks the game does not need a journal. What "F
 | Tab "Karte" (60) | `src/systems/travel/index.ts` ~line 1039 | **survives** as the map (M already opens maps); also a phone app |
 | Tab "Album" (70, photos) | `src/systems/photo/index.ts` ~line 275 | **survives** in the phone's gallery (see TASK-006) |
 | Tabs "Ausrüstung" (40, key I) and "Talente" (50) | `src/systems/progression/journal-tabs.ts` | **verify with owner**: the chapters after the tour still have combat; proposal: one small "Ausrüstung & Talente" screen on I / the pause menu |
-| Talent branch named "Feldbuch" ("Wissen und Vorrat") | `src/systems/progression/journal-tabs.ts` (`BRANCHES`, id `feldbuch`) | rename the label (e.g. "Wissen"); keep the internal id `feldbuch` so saves keep their talent points; **verify with owner** |
+| Talent branch named "Feldbuch" ("Wissen und Vorrat") | `src/systems/progression/journal-tabs.ts` (`BRANCHES`, id `feldbuch`) | use "Wissen" for the heading (slice 7). Keep the internal id `feldbuch` so saves keep their talent points. |
 | Name entry titled "Feldbuch" | `story.name.title` in `src/systems/story/strings.ts` | plain title (e.g. "Dein Name"), see section 2 |
 | Credits end line "{name} · Feldbuch geschlossen" | `src/systems/story/endings/ui.ts` ~line 270 | drop "Feldbuch geschlossen" |
 | Other UI strings: "Noch keine Pläne im Feldbuch", skill card "Neu im Feldbuch" | `src/systems/skills/strings.ts` | plain wording ("Noch keine Pläne", "Neue Fähigkeit") |
@@ -127,7 +127,7 @@ The owner dislikes the name and thinks the game does not need a journal. What "F
 
 - [x] Remove the journal modal, its key J and the touch button; nothing is lost: every surviving tab above has a new home
 - [x] Quest log and Codex reachable from the phone or the pause menu (pick one primary route, keep it consistent on desktop and mobile)
-- [ ] Rename the save UI as in the table; no "Feldbuch" left in UI strings (`grep -rn Feldbuch src content`), except in-fiction lines the owner keeps
+- [x] Rename the save UI as in the table and remove "Feldbuch" from interface copy. Retain in-fiction lines.
 - [ ] Rows marked "verify with owner" decided before work starts
 
 ### 7. Survey skills: keep them, conflict-free keys (owner decision 2026-11-23)
@@ -420,7 +420,7 @@ _Status: approved 2026-11-25_ (coordinator approves for the owner)
 - [ ] §6 — Talent wording, destinations and in-fiction Feldbuch choices (verify with owner).
 - [ ] §§5, 8 — Merge the bibles and update links. Review remaining obsolete code after the hub move.
 
-## Plan
+## Slice 6 plan (history)
 
 _Status: approved 2026-11-25_ (slice 6, coordinator approves for the owner)
 
@@ -466,6 +466,50 @@ _Status: approved 2026-11-25_ (slice 6, coordinator approves for the owner)
 - [ ] §§4–5 — Bauwagen placement (verify with owner), hub relocation, spring interaction and associated station IDs, save fields, ending checks and obsolete code.
 - [ ] §6 — Talent wording, destinations and in-fiction Feldbuch choices (verify with owner).
 - [ ] Complete the previously listed contributor browser and mobile checks.
+
+## Plan
+
+_Status: approved 2026-11-25_ (slice 7, coordinator approves for the owner)
+
+**Approach:** Finish the live Feldstation and Feldbuch cleanup in §§5–6 around the guided tour and Karlsbergquelle. Normalize legacy story and travel data when a slot is read. Keep historical quest and talent IDs where saves use them. The hub interaction and Bauwagen placement are outside this slice.
+
+**Files to touch:**
+
+- `src/core/state.ts`, `src/systems/story/` and `src/systems/travel/` — normalize the visitor name and retired travel point, clean up stale location wording and keep generated POI IDs stable.
+- `src/i18n/`, `src/systems/progression/pages.ts`, the K4 quest file and affected UI styles — replace the remaining interface wording and remove orphaned strings, rules and artwork where verified.
+- `tests/fixtures/saves/`, focused tests and affected e2e specs or helpers — exercise old-slot reads and audit changed keys, copy, selectors and IDs.
+- `docs/ACTION-RPG.md`, `docs/PRD.md` and this task — document behavior, test results and the Bauwagen asset inventory.
+
+**Steps:**
+
+- [x] 1. Clean up the retired travel point and story copy. Inspect the asset filenames and licence manifest for a Bauwagen model and record the result.
+- [x] 2. Normalize older story and travel saves before systems restore. Cover a legacy station slot through preview, load, save and reload. Preserve the character's active beat and earned progress where playable, and retain archived quest records.
+- [x] 3. Remove Feldbuch from interface labels and item descriptions. Retain authored in-fiction lines. Remove verified unused localization, CSS and SVG markup.
+- [x] 4. Audit IDs and keys in e2e, its helpers, tests and every strings.ts. Update docs and list smoke, save, map, progression, endings and touch/reduced-motion coverage as applicable.
+- [x] 5. Run the four gates and MissionControl validation, review the diff and attempt the local commit with the requested trailer. Record any sandbox block.
+
+**Test plan:** Run the focused travel, legacy-save, story and progression tests. Run `pnpm typecheck`, `pnpm test --maxWorkers=2`, `pnpm validate` and `pnpm build`. If the validator CLI hits the tsx IPC block, run `node --import tsx scripts/validate-content.ts`. Use Playwright discovery to list the affected specs for a one-worker run outside this session. For visual checking, open Talente and the survey map after Continue on desktop and in landscape touch with reduced motion. Browser runs and captures are outside this session.
+
+**Risks:** POI list order seeds saved IDs. Old station quest IDs and talent ranks are player history. The touch action and the spring hub share existing prompt handling, which this slice leaves in place.
+
+**Open questions:** The owner still needs to decide Bauwagen placement and the remaining interface destinations.
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1–2. Opening copy and tour map | full | Retain the shipped opening and consolidate the name fallback. |
+| 3. Journal, Feldbuch and destinations | partial | Finish the live interface wording. Owner-dependent destinations remain open. |
+| 4–6. Survey controls, classic retirement, bible and staff | full | Earlier slices completed these items. |
+| 7. Hub move and spring E conflict | follow-up | Bauwagen placement is pending. |
+| 8. Old saves | full | Add compatibility coverage for the station point and visitor name. |
+| 9. Smoke, affected e2e and units | partial | Run unit tests and list browser specs for follow-up. |
+| 10. PRD, ACTION-RPG and README | full | Update the design and migration notes. |
+| 11. Four gates | full | Run the gates with the documented validation fallback if required. |
+
+**Follow-up slices:**
+
+- [ ] §4 — Confirm Bauwagen placement with the owner, then move the hub functions, restore the spring's sole E interaction and reconcile hub triggers and endings.
+- [ ] §6 — Confirm remaining interface destinations and any further changes to in-fiction lines with the owner.
+- [ ] Complete the listed contributor browser and mobile checks.
 
 ## Progress
 
@@ -631,7 +675,28 @@ _Status: approved 2026-11-25_ (slice 6, coordinator approves for the owner)
   git commit -m 'test(world): allow more time for real-data checks' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
   ```
 
+- 2026-11-25: Slice 7 approved by the coordinator for the owner on `refactor/task-007-slice7`, based on `7f74d8d`.
+- 2026-11-25: Slice 7 step 1 complete. Removed the unused retired-point list, retained the tripod seed and POI ordering, and updated location comments. All 33 travel tests passed. Bauwagen model in `public/assets`: none. The original trailer was procedural; `git show 4cd2559^:src/systems/story/hub/station.ts` retrieves its source. `story.end.back` and `story.credits.fictionText` were already absent.
+- 2026-11-25: Slice 7 step 2 complete. Save preview and load now normalize the visitor name, live survey point lists and three retired station objective forms. The K3 slot is byte-for-byte reproducible with the historical serializer. It retains the active beat, character position, earned talent rank, items, POI history and archived quest. Typecheck and all 93 focused tests passed.
+- 2026-11-25: Slice 7 step 3 complete. Talente shows „Wissen“, the K4 item and Fundstücke metadata use plain copy, and the bench uses „speichern“. The in-fiction Laub lines stay. Removed orphaned strings, the unused DOM ending fallback with its hound SVG and CSS, and the unused hand-font utility. The engine ending stage still provides the live motion and reduced-motion paths. Content regeneration produced no incidental changes. All 181 focused tests passed.
+- 2026-11-25: Slice 7 step 4 complete. Audited 56 keys and IDs across e2e, its helpers, tests and all 13 feature dictionaries. Checked dynamic translation lookups, including the live turning controls and the three ending choices. Updated PRD and ACTION-RPG. Playwright discovered 82 tests across 21 specs and one mobile runner test. Browser execution and visual checks are pending. Run each spec with one worker.
+
+  ```sh
+  pnpm build
+  for spec in smoke story chapter-prolog chapter-k2 chapter-k3 chapter-k4 campaign world progression touch notes npc chronik integration pacing pol-flow setpieces stage-k2k4 camera cinematic perf; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  scripts/dev/heavy.sh -- pnpm exec playwright test -c e2e/mobile/playwright.config.ts --workers=1
+  ```
+- 2026-11-25: Slice 7 step 5 checks complete. Typecheck, the production build, all 1,528 unit tests in 113 files with two workers, MissionControl validation and `git diff --check` passed. `pnpm validate` hit the tsx IPC socket `EPERM`. `node --import tsx scripts/validate-content.ts` passed with existing warnings. Tests also cover saves in which an earlier build persisted the untranslated name fallback key. Gate commands used a local copy of the installed dependencies with pnpm's reinstall check disabled.
+- 2026-11-25: The sandbox denied staging at the worktree's `index.lock`. Run these commands from the worktree root. The additions are the migration module and historical slot. The SVG and CSS cleanup removes inline code.
+
+  ```sh
+  git add -A -- .mc/tasks/todo/TASK-007-*.md content docs e2e scripts src tests src/systems/story/migrate.ts tests/fixtures/saves/pre-quelle-k3.json
+  git commit -m 'refactor(story): retire field station interface remnants' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+  ```
+
 ## Notes
-- Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.
+- Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, which in-fiction "Feldbuch" lines stay.
 - Story content: chapters are generated by `scripts/content-build/`; the tour file is hand-authored.
 %% mc-links: [[SPR-001]] %%

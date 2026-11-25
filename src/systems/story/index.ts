@@ -23,7 +23,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume, waitsForChapterCard } from './engine';
+import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume, waitsForChapterCard } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -105,7 +105,7 @@ export interface StoryHooks {
   /** Emit player:caught; `holdMs` keeps the black curtain down longer (screenshots). */
   caught(by?: ThreatKind, holdMs?: number): void;
   hub(open?: boolean): void;
-  ending(id?: EndingId, vignette?: boolean): void;
+  ending(id?: EndingId, staged?: boolean): void;
   credits(): void;
   epilogue(id: EndingId): Epilogue | null;
   choose(index: number): boolean;
@@ -569,7 +569,7 @@ class StoryRuntime {
       return;
     }
     if (params.has('story') && !this.slice.active && !this.slice.finished) {
-      this.start(params.get('name') ?? t('story.name.suggest'));
+      this.start(params.get('name') ?? undefined);
       return;
     }
     this.resync();
@@ -619,11 +619,11 @@ class StoryRuntime {
     ctx.events.emit('party:set', { variant: id });
   }
 
-  start(name: string): void {
+  start(name = DEFAULT_VISITOR_NAME): void {
     const first = this.engine.first;
     if (!first) return;
     const s = this.slice;
-    Object.assign(s, createStorySlice(), { name: name.trim() || t('story.name.suggest') });
+    Object.assign(s, createStorySlice(), { name: name.trim() || DEFAULT_VISITOR_NAME });
     this.objectives.set(null);
     // A dev chapter behind its URL switch replaces the tour on a new game.
     const dev = this.files.find((f) => f.dev);
@@ -1542,7 +1542,7 @@ class StoryRuntime {
       ctx.events.emit('objective:set', { text, x: anchor.x, z: anchor.z, id: 'story.back' });
     }
     // a fight lost says so on the way up too (playtest round 9: "no visible KO card, I was just at
-    // the wagon") — the wake line under „Niedergeworfen. Nicht verloren.“
+    // the wake spot") — the wake line under „Niedergeworfen. Nicht verloren.“
     this.overlays.curtainUp(wake?.text ?? t('story.caught.wake'), this.caughtCombat ? t('story.caught.sub.combat') : undefined);
     this.caughtCombat = false;
     const lines = this.wakeLines;
@@ -1558,7 +1558,7 @@ class StoryRuntime {
   private dropShiftObjective(to: Era): void {
     const o = this.slice.objective;
     if (!o?.text || !/\bQ\b/.test(o.text)) return;
-    const home = /Heute|Quelle|Feldstation|Gegenwart/.test(o.text);
+    const home = /Heute|Quelle|Gegenwart/.test(o.text);
     if ((to === 'today') !== home) return;
     this.slice.objective = null;
     this.objectives.set(null);
@@ -1815,7 +1815,7 @@ class StoryRuntime {
         this.cancelScheduled();
         this.engine.skip();
       },
-      start: (name) => this.start(name ?? t('story.name.suggest')),
+      start: (name) => this.start(name),
       say: (speaker, text, id) => this.ctx.events.emit('dialogue:say', { speaker, text, ...(id ? { id } : {}) }),
       voice: {
         stats: () => ({
@@ -1833,7 +1833,7 @@ class StoryRuntime {
         this.ctx.events.emit('player:caught', { by });
       },
       hub: (open = true) => (open ? this.hub.show() : this.hub.close()),
-      ending: (id, vignette) => this.endings.show(id, vignette),
+      ending: (id, staged) => this.endings.show(id, staged),
       credits: () => this.endings.credits(),
       epilogue: (id) => this.epilogue(id),
       choose: (i) => this.overlays.pickChoice(i),

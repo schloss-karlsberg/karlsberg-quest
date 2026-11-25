@@ -89,7 +89,7 @@ test.describe('cinematic', () => {
         if (n.startsWith('cinematic:') || n === 'camera:override') (window as unknown as { __cine: [string, unknown][] }).__cine.push([n, p]);
       });
       k.ctx.settings.update((d) => (d.reducedMotion = false), 'reducedMotion');
-      // an open meadow by the Feldstation, looking north-east, a gentle downward look
+      // An open meadow by the Weiher, looking north-east and slightly down.
       k.teleport(830, -930, 40, -10);
       k.step(40);
     });

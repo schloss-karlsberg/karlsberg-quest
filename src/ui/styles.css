@@ -161,10 +161,6 @@ body {
 .kq-link:hover {
   color: var(--accent);
 }
-.kq-hand {
-  font-family: var(--hand);
-}
-
 /* ---------- title ---------- */
 .kq-title {
   position: fixed;

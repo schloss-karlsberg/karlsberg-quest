@@ -5,7 +5,7 @@ import { type PlayOptions, SCREENS } from './common';
  * Chapter 3 "Die Nacht" as a chain of quests, played through headless (`?manual`, driven through
  * window.kq), with the real content (story 03-kapitel-3 + quests 03-kapitel-3 + kapitel-3 pack):
  *
- *   Feldstation → Q at the Ehrenhof → q.k3.nachmittag (straw echo, the armchair, five Raffschatten
+ *   Karlsbergquelle → Q at the Ehrenhof → q.k3.nachmittag (straw echo, the armchair, five Raffschatten
  *   with Hanne's basket, turn-in with her stance) · side q.k3.lehnstuhl (Peter's chair, escort) →
  *   q.k3.buch from Soll (shades at the Durchfahrt, Waffensammlung, Naturalienkabinett, the gallery
  *   echo + tape, the trapdoor, the grey book, the one page) · side q.k3.kabinett (labels) → dusk:

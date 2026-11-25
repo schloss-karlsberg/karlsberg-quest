@@ -1,4 +1,5 @@
 import { addStrings } from '../../i18n';
+import { DEFAULT_VISITOR_NAME } from './engine';
 
 /**
  * Marlene's general lines (bible 08-stimmen.md §2.1), on the hub's phone at the Quelle as messages
@@ -23,7 +24,7 @@ export const RADIO_LINES = [
 ];
 
 addStrings('de', {
-  'story.name.default': 'Alex',
+  'story.name.default': DEFAULT_VISITOR_NAME,
   'story.dialogue.next': 'weiter',
   'story.dialogue.tap': 'Tippen: weiter',
   'story.tag.historical': 'historisch · nach Quelle',
@@ -62,9 +63,9 @@ addStrings('de', {
   'story.hub.map.confirm': '„{title}“ (neu) beginnen? Stufe, Gegenstände und Codex bleiben erhalten.',
   'story.hub.map.continue': 'Weiter: {beat}',
   'story.hub.bench': 'Bank',
-  'story.hub.bench.status': 'Ausruhen (sichern)',
+  'story.hub.bench.status': 'Ausruhen und speichern',
   'story.hub.bench.saved': 'Ausgeruht. Spielstand gespeichert.',
-  'story.hub.bench.nosave': 'Ausgeruht. (Sichern ist abgeschaltet.)',
+  'story.hub.bench.nosave': 'Ausgeruht. Speichern ist deaktiviert.',
   'story.hub.drawer': 'Mauernische',
   'story.hub.drawer.full': 'Etwas Schweres darin',
   'story.hub.drawer.empty': 'Moos und Bleistiftstaub',
@@ -100,7 +101,6 @@ addStrings('de', {
 
   // shift fallback (when no era-shift feature is installed)
   'story.shift.notHere': 'Die Nadel steht nicht hier.',
-  'story.shift.hold': 'Q halten: zurück',
 
   // choices
   'story.choice.timer': 'Noch {s} s',
@@ -126,7 +126,6 @@ addStrings('de', {
   // endings
   'story.end.title': 'Was das Feuer nicht fraß',
   'story.end.intro': 'Auf dem Tisch im Bauwagen liegt die Chronik, jetzt vollständig: die Seiten aus allen Kapiteln, die Namen, die Beträge, mit Laubs Kurrent zwischen den Zeilen. Daneben das Horn und die Bussole.',
-  'story.end.gaps': 'Laub: „Sie haben noch Lücken gelassen. Das darf man. Aber man muss es wollen.“',
   'story.end.museum': 'Ins Museum',
   'story.end.museum.obj': 'Die graue Archivschachtel, die Marlene mitgebracht hat',
   'story.end.museum.hint': 'Die Wahrheit, mit Quellen. Die Jagd wird abgeblasen.',
@@ -140,6 +139,5 @@ addStrings('de', {
   'story.end.next': 'Weiter',
   'story.end.credits': 'Abspann',
   'story.end.skip': 'Überspringen',
-  'story.end.today': 'heute',
   'story.end.epilogue': 'Epilog',
 });

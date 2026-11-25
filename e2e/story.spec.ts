@@ -61,6 +61,7 @@ test('story: new game flow (warning → name → tour map) starts the tour', asy
   await page.getByTestId('warning-accept').click();
   const name = page.getByTestId('player-name');
   await expect(name).toBeVisible();
+  await expect(name).toHaveValue('Alex');
   await expect(page.getByRole('heading', { name: 'Dein Name' })).toBeVisible();
   await name.fill('Mara');
   await page.waitForTimeout(400);

@@ -1,6 +1,6 @@
 # Legacy auto slots
 
-Each JSON file is the exact string that the tagged release's `SaveManager.save('auto')` wrote to
+Each JSON file is the exact string that the historical checkout's `SaveManager.save('auto')` wrote to
 `kq.save.v1.auto` in `MemoryStorage`. The generator sets up representative checkpoints with the
 release's state constructors and fixes the save timestamp for reproducibility.
 
@@ -28,4 +28,23 @@ test('capture the release auto slot', () => generateReleaseSlot(process.env.KQ_F
 TS
   (cd "$release_dir" && KQ_FIXTURE_TAG="$tag" KQ_FIXTURE_OUTPUT="$fixture_dir/$tag.json" ./node_modules/.bin/vitest run tests/fixtures/saves/generate.test.ts) || exit
 done
+```
+
+`pre-quelle-k3.json` uses the serializer from `c75a0e6d17e2f5618d210c48046e8038bee52693`
+(`4cd2559^`). It captures the old K3 Heimweg objective and station point, a completed
+station quest, the former fallback name and an earned talent rank.
+
+```sh
+fixture_dir="$PWD/tests/fixtures/saves"
+archive_dir=$(mktemp -d "${TMPDIR:-/tmp}/kq-station.XXXXXX")
+git archive '4cd2559^' src | tar -x -C "$archive_dir"
+mkdir -p "$archive_dir/tests/fixtures/saves"
+cp package.json "$archive_dir/"
+cp "$fixture_dir/generate.ts" "$archive_dir/tests/fixtures/saves/"
+ln -s "$PWD/node_modules" "$archive_dir/node_modules"
+cat > "$archive_dir/generate.mts" <<'TS'
+import { generateStationSlot } from './tests/fixtures/saves/generate.ts';
+generateStationSlot(process.argv[2]!);
+TS
+node --import tsx "$archive_dir/generate.mts" "$fixture_dir/pre-quelle-k3.json"
 ```

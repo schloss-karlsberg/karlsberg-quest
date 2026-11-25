@@ -5,7 +5,7 @@ import { type Page, expect, test } from '@playwright/test';
  * Performance, loading, settings and accessibility (docs/PERFORMANCE.md).
  *  - the bench route (`kq.bench()`) over every era, the burning Festsaal and the night pack:
  *    draw calls and triangles stay within budget (SwiftShader: absolute fps mean nothing here)
- *  - bytes and time before the first input (title "Neues Feldbuch" enabled)
+ *  - bytes and time before the first input (title "Neues Spiel" enabled)
  *  - quality presets, the settings page, high contrast / subtitles / colour-blind relief, key remapping
  * Screenshots: test-results/screens/pol-perf-*.png, numbers: test-results/perf/*.json.
  * `PERF_LABEL=before` names the JSON (for before/after comparisons).

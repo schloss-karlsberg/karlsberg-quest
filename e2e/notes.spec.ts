@@ -108,9 +108,9 @@ test.describe('F8 notes and arrow-key turning', () => {
     await page.evaluate(() => {
       const { ui } = window.kq!.ctx;
       ui.cards.clearToasts();
-      ui.toast('Hinweis zum Feldbuch', 30_000);
+      ui.toast('Hinweis zum Codex', 30_000);
     });
-    const notice = page.locator('.kq-toast:not(.kq-notice-out)', { hasText: 'Hinweis zum Feldbuch' });
+    const notice = page.locator('.kq-toast:not(.kq-notice-out)', { hasText: 'Hinweis zum Codex' });
     const pauseMenu = page.locator('.kq-pause');
     await expect(notice).toBeVisible();
 

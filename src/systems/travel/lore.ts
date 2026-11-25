@@ -3,7 +3,7 @@
  * (marked so in the game), written around what the sources tell (the palace built from 1778 for
  * Duke Karl II. August, Mannlich as building director, the kennels and the menagerie, the duke's
  * flight in February 1793, the fire of 28 July 1793, the ruin as a quarry afterwards). Nobody asks
- * anything about them: you find one, you read it, it lands in the Journal ("Fundstücke").
+ * anything about them: you find one, you read it, and it appears under Funde.
  */
 
 export type LoreKind = 'brief' | 'zettel' | 'marke' | 'muenze';
@@ -23,7 +23,7 @@ export const LORE: readonly LoreEntry[] = [
   // ---- today: what the land still holds -----------------------------------------------------
   { id: 'lore.heute.flasche', era: 'today', kind: 'zettel', title: 'Ein Etikett im Laub', from: 'Wanderer, ohne Jahr', text: 'Auf der Rückseite eines Etiketts, mit Bleistift: „Hier soll ein Schloss gestanden haben, größer als Versailles. Ich sehe Buchen.“ Darunter, in anderer Schrift: „Dann schau tiefer.“' },
   { id: 'lore.heute.grenzstein', era: 'today', kind: 'marke', title: 'Ein Bolzen im Stein', from: 'Vermessungsmarke', text: 'Ein Messingbolzen, in einen Sandsteinbrocken gesetzt. Jemand hat den Brocken als Grenzstein benutzt. Der Stein ist älter als die Grenze: Er hat eine Kante, die ein Steinmetz gehauen hat, für eine Wand, die es nicht mehr gibt.' },
-  { id: 'lore.heute.marlene', era: 'today', kind: 'zettel', title: 'Marlenes Notiz', from: 'Marlene, Feldbuch, lose Seite', text: '„Punkt 14 versetzt, Wurzelteller. Die Kante im Gelände läuft weiter als die Karte. Laub sagt, das ist die Gartenmauer. Laub sagt viel.“' },
+  { id: 'lore.heute.marlene', era: 'today', kind: 'zettel', title: 'Marlenes Notiz', from: 'Marlene, lose Seite', text: '„Punkt 14 versetzt, Wurzelteller. Die Kante im Gelände läuft weiter als die Karte. Laub sagt, das ist die Gartenmauer. Laub sagt viel.“' },
   { id: 'lore.heute.scherbe', era: 'today', kind: 'muenze', title: 'Eine grüne Scherbe', from: 'Glas, 18. Jahrhundert (Fiktion)', text: 'Grünes Glas, blasig, mit einer Spur Gold am Rand. Ein Becher aus der Hofkellerei vielleicht. Er ist nicht im Feuer zersprungen, er ist später unter einem Karrenrad gebrochen.' },
   { id: 'lore.heute.wurzel', era: 'today', kind: 'zettel', title: 'Unter der Buche', from: 'Forstkarte, Randnotiz', text: '„Im Windwurf: Ziegel, gebrannter Kalk, ein Stück Fensterblei. Liegen lassen. Melden.“ Niemand hat es gemeldet. Die Buche ist wieder gerade gewachsen.' },
   // ---- 1789: the court at its height ----------------------------------------------------------

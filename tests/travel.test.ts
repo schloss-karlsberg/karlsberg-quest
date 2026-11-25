@@ -13,7 +13,7 @@ import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/que
 import { decodeH2025, quantToMetres } from '../src/data/decode';
 import type { TerrainMeta } from '../src/data/types';
 import { Heightfield } from '../src/world/heightfield';
-import { ACTIVATE_RADIUS, ANNOUNCE_MIN, RETIRED_POINTS, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -81,15 +81,13 @@ describe('survey points', () => {
 
   it('the Feldstation point is retired: gone from the list, and an old save that knew it still loads', () => {
     expect(pointById('feldstation')).toBeUndefined();
-    expect(SURVEY_POINTS.some((p) => p.id === 'feldstation')).toBe(false);
-    expect(RETIRED_POINTS).toContain('feldstation');
     // an old save's travel slice: the retired id (and junk) drop out, the rest keeps its order
     const old = ['feldstation', 'ehrenhof', 'feldstation', 'zwinger', 'ehrenhof', 42, 'nirgendwo'];
     expect(livePointIds(old)).toEqual(['ehrenhof', 'zwinger']);
     expect(livePointIds(undefined)).toEqual([]);
     expect(knownPoints(['feldstation', 'ehrenhof'], ['feldstation']).map((p) => p.id).sort()).toEqual(['ehrenhof', 'karlsbergquelle']);
     // Laub never announces a retired point
-    expect(announceFor({ x: 776, z: -902 }, { x: 1800, z: 0 }, [])?.id).not.toBe('feldstation');
+    expect(announceFor({ x: 776, z: -902 }, { x: 1800, z: 0 }, [])).toBeNull();
   });
 
   it('the remaining tripods keep their look (seed = old list index)', () => {
@@ -105,11 +103,8 @@ describe('survey points', () => {
     expect(announceFor({ x: 600, z: -1600 }, { x: 1800, z: 0 }, [])).toBeNull();
   });
 
-  it('announces from 400 m (playtest round 10): the old Feldstation → Ehrenhof leg qualifies, 350 m does not', () => {
+  it('announces a point near the goal once the player is at least 400 m away', () => {
     expect(ANNOUNCE_MIN).toBe(400);
-    // K1 start: from the old Feldstation tripod (776/−902, point retired) to the Ehrenhof Q spot, ~496 m (> 400, < the old 600)
-    const fs = { x: 776, z: -902 };
-    expect(announceFor({ x: 1222, z: -1119 }, { x: fs.x, z: fs.z }, [])?.id).toBe('ehrenhof');
     expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 350, z: -1119 }, [])).toBeNull();
     expect(announceFor({ x: 1222, z: -1119 }, { x: 1222 - 410, z: -1119 }, [])?.id).toBe('ehrenhof');
   });

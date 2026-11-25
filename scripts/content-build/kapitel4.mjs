@@ -5,7 +5,7 @@ const E = '1796';
 // Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
 // south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
 // the trough's E zone (HOME.troughR) stay outside, the story grants them anyway
-const STATION = [1051.3, -827.4];
+const QUELLE_NOTES = [1051.3, -827.4];
 // Marlene's note lies on the mossy edge block by the steps at the spring (local u −3.4, w 3.2),
 // 3.7 m from the wake spot: reachable, and its 1.2 m circle stays clear of the trough's E zone
 const STUFE = [1056.4, -835.4];
@@ -115,11 +115,11 @@ const clues = [
     nouns: ['n.r_heimtreiben', 'n.r_vergessen'], flags: ['flag.horn'], req: { flags: ['flag.k4_finale'] },
   }),
   clue('clue.k4.nur_steine', {
-    title: 'Nur Steine', kind: 'dialogue', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
+    title: 'Nur Steine', kind: 'dialogue', at: QUELLE_NOTES, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
     text: 'An der Quelle, nach dem Finale, vor der Wahl.', nouns: ['n.r_nur_steine'], req: { clues: ['clue.k4.jost'] },
   }),
   clue('clue.k4.foto', {
-    title: 'Ein Foto auf Marlenes Handy', kind: 'object', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
+    title: 'Ein Foto auf Marlenes Handy', kind: 'object', at: QUELLE_NOTES, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: true,
     text: 'Der Stein über der Kellertür von Marlenes Schwager in der Homburger Altstadt: ein Winkel mit drei Punkten. (FIKTION: Kein echtes Haus ist gemeint.) Wandernde Steine 4/4.',
     flags: ['flag.stein_4'], req: { clues: ['clue.k4.jost'] },
   }),
@@ -265,7 +265,7 @@ const dialogue = [
   say('jost.k4.06', 'jost', 'Jetzt haben sie Namen. Gut. Diane. Sultan. Fanfare. Rauhreif. Bijou. Jetzt hat sie einer beim Namen genannt, der nicht ich bin.', talk('pikeur', 'namen')),
   say('jost.k4.07', 'jost', 'Da. Abblasen musst du. Ich kann’s nicht. Ich hab’s nie gelernt, ich kann nur anblasen.', talk('pikeur', 'bye')),
   say('jost.k4.08', 'jost', 'Die Chronik ist voll, glaub ich. Was du damit machst, ist deine Sache. Ich hab nur aufgepasst.', beat('4.9-horn'), { once: true }),
-  // After the finale (station)
+  // After the finale, at the spring
   say('laub.k4.nur_steine', 'laub', 'Die Steine in Homburg? Das sind nur Steine. Was daran hängt, hängen wir dran.', found('clue.k4.nur_steine'), { once: true }),
   say('marlene.k4.foto', 'marlene', 'Guck. Mein Schwager hat mir das geschickt. Der Stein über seiner Kellertür in der Altstadt. Da ist so ein komisches Zeichen drauf. Ein Winkel mit drei Punkten. Sagt dir das was?', found('clue.k4.foto'), { once: true }),
 ];

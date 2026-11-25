@@ -11,34 +11,7 @@
  */
 export const deContent: Record<string, string> = {
   // 1. Titel und Start
-  'ui.title.name': 'Karlsberg Quest',
-  'ui.title.subtitle': 'Was das Feuer nicht fraß',
-  'ui.title.tagline': 'Ein Schloss, das es nicht mehr gibt. Ein Wald, der sich erinnert. Eine Jagd, die nie abgeblasen wurde.',
-  'ui.start.audio': 'Tour starten',
-  'ui.start.audio_hint': '(Damit startet auch der Ton.)',
-  'ui.menu.new': 'Neues Spiel',
-  'ui.menu.continue': 'Weiter ({chapter}, {date})',
-  'ui.menu.chapters': 'Kapitel wählen',
-  'ui.menu.settings': 'Einstellungen',
-  'ui.menu.codex': 'Codex',
-  'ui.menu.credits': 'Mitwirkende und Quellen',
   'ui.menu.ending_again': 'Ende noch einmal wählen',
-  'ui.menu.name_prompt': 'Wie heißt du?',
-  'ui.menu.name_default': 'Alex',
-  'ui.menu.mode_prompt': 'Wie willst du spielen?',
-  'ui.menu.mode_normal': 'Normal – Die Meute jagt. Wer gestellt wird, verliert, was er in diesem Wechsel noch nicht bestätigt hat.',
-  'ui.menu.mode_gentle': 'Sanft – Gegner halten weniger aus, treffen schwächer und kündigen Angriffe länger an. Die Meute ist langsamer.',
-  'ui.menu.mode_rauhnacht': 'Rauhnacht – Die Meute ist schneller, das Öl reicht kürzer, und der Pikeur reitet früher.',
-  'ui.menu.mode_note': 'Du kannst den Modus jederzeit in den Einstellungen ändern.',
-
-  // 2. Inhaltshinweis
-  'ui.warn.title': 'Bevor du anfängst',
-  'ui.warn.body':
-    'Karlsberg Quest ist ein düsteres Action-Rollenspiel für Menschen ab 16 Jahren. Du kämpfst mit einem Messstab gegen erfundene Spukgestalten aus Nebel, Stein, Stroh und Papier und kannst dabei niedergeworfen werden. Es gibt eine unheimliche Atmosphäre, Schreckmomente, Verfolgung durch eine geisterhafte Meute, ein Feuer, in dem du dich zurechtfinden musst, und belastende Themen: Armut, unbezahlte Arbeit, ein tödlicher Unfall (1785), Plünderung und Zerstörung. Es gibt kein Blut und keine Gewalt gegen Menschen; was Menschen einander angetan haben, wird angedeutet, nicht gezeigt.',
-  'ui.warn.fiction': 'Das Spiel erzählt von echten Orten und echten Ereignissen. Was belegt ist, steht mit Quelle im Codex. Was erfunden ist, ist als „Fiktion“ gekennzeichnet.',
-  'ui.warn.real_place': 'Der Karlsberg bei Homburg ist ein geschütztes Bodendenkmal. Schauen, nicht graben. Dieses Spiel zeigt keine Fundstellen und gibt keine Grabtipps.',
-  'ui.warn.gentle': 'Wenn dir Kämpfe oder Jagd zu viel werden: Der sanfte Modus nimmt den Druck heraus.',
-  'ui.warn.ok': 'Verstanden',
 
   // 3. Steuerung
   'ui.keys.move': 'Gehen',
@@ -197,7 +170,6 @@ export const deContent: Record<string, string> = {
   'ui.pause.codex': 'Codex',
   'ui.pause.settings': 'Einstellungen',
   'ui.pause.help': 'Steuerung',
-  'ui.pause.station': 'Zur Quelle (nur, wenn dich niemand sieht)',
   'ui.pause.menu': 'Hauptmenü',
   'ui.pause.saved': 'Gespeichert: {time}',
   'ui.set.title': 'Einstellungen',

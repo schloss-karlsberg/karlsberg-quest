@@ -1,6 +1,6 @@
 /**
  * Full-screen story overlays in the story layer: chapter title cards (field-book stamp), the
- * "caught" curtain (fade to black, a line of text, wake up in the field station), timed choices
+ * "caught" curtain (fade to black, a line of text, wake up at a checkpoint), timed choices
  * (a field-book modal or an inline card with a burning-down fuse; the fallback option is taken
  * when it runs out) and the story gauges (custom meters).
  *

@@ -20,7 +20,7 @@ export interface PageApi {
 const BRANCHES: { id: TalentBranch; name: string; sub: string }[] = [
   { id: 'stab', name: 'Stab', sub: 'Der Messstab' },
   { id: 'laterne', name: 'Laterne', sub: 'Das Bannlicht' },
-  { id: 'feldbuch', name: 'Feldbuch', sub: 'Wissen und Vorrat' },
+  { id: 'feldbuch', name: 'Wissen', sub: 'Erkundung und Vorrat' },
 ];
 
 const CONSUMABLES = ITEMS.filter((i) => i.kind === 'consumable').map((i) => i.id);
