@@ -221,7 +221,9 @@ class Progression {
       if (!this.core.quietNow) {
         const def = this.item(item);
         if (!reason?.startsWith('quest:')) {
-          this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (def?.kind === 'consumable' && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
+          // consumables and collectibles show the running count: "×1 (7)"
+          const counted = def?.kind === 'consumable' || def?.kind === 'collectible';
+          this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (counted && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
         }
         pickupSound(ctx.audio, def?.kind ?? 'quest');
       }

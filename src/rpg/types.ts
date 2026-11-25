@@ -335,7 +335,11 @@ export interface EnemyDef {
 // Items, loot, collections (src/rpg/items.ts — data owned by the progression track)
 // =============================================================================================
 
-export type ItemKind = 'weapon' | 'charm' | 'consumable' | 'quest' | 'lore' | 'key';
+/**
+ * `collectible`: a plain thing to gather for its count (the tour's chestnuts). It stacks, cannot
+ * be used or equipped, and lies in the world as a small pickup without a light column.
+ */
+export type ItemKind = 'weapon' | 'charm' | 'consumable' | 'quest' | 'lore' | 'key' | 'collectible';
 
 export interface ItemDef {
   /** 'item.<name>' (core) or 'item.<chapter>.<name>' (declared in a quest file). */

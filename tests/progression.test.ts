@@ -213,6 +213,29 @@ describe('items and equipment', () => {
     expect(t.core.use('item.balsam')).toBe(true);
     expect(t.slice.inventory['item.balsam']).toBeUndefined();
   });
+
+  it('collectibles (the tour chestnut, TASK-002): stack to 99, never used or equipped, the count survives a save', () => {
+    const t = setup();
+    const nut = 'item.kastanie';
+    expect(itemDef(nut)?.kind).toBe('collectible');
+    expect(stackLimit(itemDef(nut))).toBe(99);
+    t.core.place({ id: 'tour.kastanie.01', item: nut, x: 0, z: 0, era: 'today' });
+    t.core.place({ id: 'tour.kastanie.02', item: nut, x: 1, z: 0, era: 'today' });
+    expect(t.core.take('tour.kastanie.01')).toBe(1);
+    expect(t.core.take('tour.kastanie.02')).toBe(1);
+    // the running count rides on item:pickup (the feed shows "×1 (2)")
+    expect(t.of('item:pickup').at(-1)).toMatchObject({ item: nut, count: 1, total: 2, id: 'tour.kastanie.02' });
+    expect(t.core.use(nut)).toBe(false);
+    expect(t.core.setQuick(nut)).toBe(false);
+    expect(t.core.equip(nut)).toBe(false);
+    expect(t.slice.equipped).toEqual({ weapon: null, charms: [] });
+    // a save brings the count back; taken chestnuts stay taken
+    const re = setup({ slice: JSON.parse(JSON.stringify(t.slice)) as ProgressionSlice });
+    re.core.restore();
+    expect(re.core.count(nut)).toBe(2);
+    expect(re.core.place({ id: 'tour.kastanie.01', item: nut, x: 0, z: 0, era: 'today' })).toBe(false);
+    expect(re.core.grantItem(nut, 200)).toBe(97);
+  });
 });
 
 describe('derived stats integration', () => {
