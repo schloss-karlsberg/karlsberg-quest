@@ -67,14 +67,15 @@ async function shoot(page: Page, name: string, v: View): Promise<void> {
   await page.screenshot({ path: `${SCREENS}/${name}.png` });
 }
 
-test('title screen loads, lights the lantern and starts the game', async ({ page }) => {
+test('title screen loads and the tour map starts the game with audio', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('./?nosave&fresh');
   await expect(page.getByTestId('title')).toBeVisible();
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 90_000 });
   await expect(start).toHaveText('Neues Spiel');
-  await expect(page.getByTestId('title')).toContainText('Karlsberg');
+  await expect(start.locator('svg')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Schloss Karlsberg Tour', exact: true })).toBeVisible();
   await page.waitForTimeout(500); // let the backdrop draw a few frames
   await page.screenshot({ path: `${SCREENS}/title.png` });
 
@@ -89,14 +90,20 @@ test('title screen loads, lights the lantern and starts the game', async ({ page
   await expect(page.getByTestId('news')).toBeHidden();
   await expect(badge).toBeHidden();
 
-  // new game: content warning → name → light the lantern (story feature's title flow)
+  // new game: content warning → name → tour map (story feature's title flow)
   await start.click();
   await page.getByTestId('warning-accept').click();
   await page.getByTestId('name-confirm').click();
-  const btn = page.getByTestId('light-lantern');
-  await btn.click();
+  const map = page.getByRole('dialog', { name: 'Die Route der Führung' });
+  await expect(map.getByRole('button')).toHaveCount(1);
+  const tourStart = map.getByTestId('start-tour');
+  await expect(tourStart).toHaveAccessibleName('Tour starten');
+  await expect(tourStart).toBeFocused();
+  expect(await page.evaluate(() => window.kq!.ctx.audio.ctx === null)).toBe(true);
+  await tourStart.click();
   // (the fade-out runs on real time: generous on a busy machine with software WebGL)
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => window.kq!.ctx.audio.unlocked)).toBe(true);
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
   expect(errors).toEqual([]);
 });

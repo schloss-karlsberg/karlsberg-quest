@@ -39,7 +39,7 @@ import { World } from './world/world';
 /**
  * Wires everything together. main.ts only calls `boot()`.
  * Order: renderer + UI (title visible at once) → data → world → state/save → player →
- * feature systems → loop. Gameplay starts on "Laterne entzünden" (or at once with ?debug).
+ * feature systems → loop. A new game starts on "Tour starten" (or at once with ?debug).
  */
 export async function boot(container: HTMLElement, loader: BootLoader): Promise<GameContext> {
   const params = new URLSearchParams(location.search);
@@ -651,7 +651,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       events.emit('save:loaded', { slot: 'new' });
     }
     started = true;
-    title.hide();
+    title.hide(settings.state.reducedMotion);
     ui.loading.setEnabled(!shifting);
     ui.hud.show(true);
     input.enabled = true;

@@ -39,7 +39,7 @@ it('groups new asset bylines by source, with distinct authors and licences', () 
 
 it('assembles the real credits in reading order and lists the voice model once', () => {
   const lines = creditLines(creditSections(manifest));
-  expect(lines[0]).toBe('Karlsberg Quest · Das Land erinnert sich');
+  expect(lines[0]).toBe('Karlsberg Quest');
   const order = [
     'Mitwirkende',
     'Jan Eric Rippel · Inspiration der Tour, Stimme des Spielers',

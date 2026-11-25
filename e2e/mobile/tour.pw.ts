@@ -212,14 +212,14 @@ const STATES: State[] = [
     },
   },
   {
-    id: 'lantern',
+    id: 'tour-map',
     title: true,
     portrait: true,
     run: async (c) => {
       await c.tap('name-confirm');
-      await expect(c.page.getByTestId('light-lantern')).toBeVisible();
+      await expect(c.page.getByTestId('start-tour')).toBeVisible();
       await c.shot();
-      await c.tap('light-lantern');
+      await c.tap('start-tour');
       await expect(c.page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
       await c.page.waitForTimeout(1200);
       await c.shot('first-frame', 'the tour chapter card over the first frame');
@@ -721,7 +721,7 @@ function selected(): State[] {
   if (!FILTER.length) return playable;
   const want = new Set(playable.filter((s) => FILTER.some((f) => s.id === f || s.id.startsWith(f))).map((s) => s.id));
   // the new-game chain cannot start half-way: a later step brings its predecessors
-  const chain = ['warning', 'name', 'lantern'];
+  const chain = ['warning', 'name', 'tour-map'];
   for (let i = chain.length - 1; i > 0; i--) if (want.has(chain[i]!)) want.add(chain[i - 1]!);
   const list = playable.filter((s) => want.has(s.id));
   if (!list.length) throw new Error(`no state matches ${FILTER.join(',')} on ${unit.id}; states: ${playable.map((s) => s.id).join(', ')}`);
@@ -891,7 +891,7 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
   /** Before the first gameplay state: through the new-game screens if the title is still up. */
   const ensurePlaying = async () => {
     if (!(await page.getByTestId('title').isVisible().catch(() => false))) return;
-    for (const tid of ['title-new', 'warning-accept', 'name-confirm', 'light-lantern']) {
+    for (const tid of ['title-new', 'warning-accept', 'name-confirm', 'start-tour']) {
       const el = page.getByTestId(tid);
       await el.waitFor({ state: 'visible', timeout: 60_000 });
       await c.tap(tid);

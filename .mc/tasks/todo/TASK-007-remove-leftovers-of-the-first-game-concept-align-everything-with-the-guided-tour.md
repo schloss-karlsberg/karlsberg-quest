@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # Remove leftovers of the first game concept; align everything with the guided tour with time travel
@@ -44,14 +44,14 @@ kept on a conflict-free keymap, and the two story bibles merged in this task.
 ### 1. Main menu / title (owner: "still reflects the old concept")
 
 `src/ui/title.ts` (TitleScreen), strings in `src/i18n/de.ts`:
-- [ ] **Decision: working title along the lines of "Schloss Karlsberg Tour"** on the title screen (`game.title` / title page); final wording is the owner's, keep it in one string so it is a one-line change
-- [ ] **Decision: remove** the surveyor motto `title.motto` ("Fakten mit Quelle. ... Schauen, nicht graben.") and the subtitle `game.subtitle` ("Das Land erinnert sich") from the title screen (check other users of `game.subtitle`, e.g. `story.credits.sub`, `content/party/credits.json`; same decision there unless the owner says otherwise)
-- [ ] Buttons without lantern icons (`LANTERN_SVG`, `.kq-lantern-btn`) and in plain wording: "Weiter" (`title.continue`, was "Weiter vermessen"), "Neues Spiel" (`title.newGame`, was "Neues Feldbuch beginnen"); delete `title.light` "Laterne entzünden"
+- [x] **Decision: working title along the lines of "Schloss Karlsberg Tour"** on the title screen (`game.title` / title page); final wording is the owner's, keep it in one string so it is a one-line change
+- [x] **Decision: remove** the surveyor motto `title.motto` ("Fakten mit Quelle. ... Schauen, nicht graben.") and the subtitle `game.subtitle` ("Das Land erinnert sich") from the title screen (check other users of `game.subtitle`, e.g. `story.credits.sub`, `content/party/credits.json`; same decision there unless the owner says otherwise)
+- [x] Buttons without lantern icons (`LANTERN_SVG`, `.kq-lantern-btn`) and in plain wording: "Weiter" (`title.continue`, was "Weiter vermessen"), "Neues Spiel" (`title.newGame`, was "Neues Feldbuch beginnen"); delete `title.light` "Laterne entzünden"
 - [x] `title.confirmNew`: "Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?"
-- [ ] `title.hint` lists combat keys (Hieb, Wuchthieb, Bannlicht, Balsam) although the tour has no combat: show the tour's keys (move, interact, the survey-skill keys from section 6)
+- [x] `title.hint` lists combat keys (Hieb, Wuchthieb, Bannlicht, Balsam) although the tour has no combat: show the tour's keys (move, interact, the survey-skill keys from section 6)
 - [x] Pause / toasts in plain wording: "Speichern" (`pause.save`), "Spielstand gespeichert." (`pause.saved`, `toast.saved`), "Ausgeruht. Spielstand gespeichert." (`story.hub.bench.saved`, if the rest action survives)
-- [ ] `index.html` meta description: "Ein düsteres Erkundungs-Rätselspiel ..." (a puzzle game; the game is an action RPG)
-- [ ] README "How to play" still says "Laterne entzünden", "Neues Feldbuch beginnen"
+- [x] `index.html` meta description: "Ein düsteres Erkundungs-Rätselspiel ..." (a puzzle game; the game is an action RPG)
+- [x] README "How to play" still says "Laterne entzünden", "Neues Feldbuch beginnen"
 
 ### 2. The "lamp thing" before game start
 
@@ -60,10 +60,10 @@ content warning (16+) → name entry for the **surveyor** ("Feldbuch", default "
 a dark screen "Früh am Morgen, vor dem Bauwagen." with a big storm lantern and a matchbox and the
 button "Laterne anzünden" (`story.lantern.*` in `src/systems/story/strings.ts`). The click also
 unlocks audio. Styles in `src/systems/story/story.css` (`kqs-*`).
-- [ ] **Decision: replace the lantern screen with a tour map screen** that shows the route **Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle** (stops and path drawn on the map, in the UI's ink-on-paper style). It keeps exactly **one click / tap, "Tour starten"**, because that gesture unlocks audio. Remove `story.lantern.*`, the lantern and matchbox art and their `kqs-*` styles; the e2e test id changes (e.g. `start-tour` instead of `light-lantern`)
-- [ ] Rework the name entry wording (visitor, not surveyor; `story.name.*`)
-- [ ] Review the content warning text (`story.warning.body1` "Du kämpfst mit einem Messstab ...") against the tour opening
-- [ ] Update `e2e` specs that click `light-lantern` / `title-new` (about 20 hits in `e2e/` and `tests/`)
+- [x] **Decision: replace the lantern screen with a tour map screen** that shows the route **Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle** (stops and path drawn on the map, in the UI's ink-on-paper style). It keeps exactly **one click / tap, "Tour starten"**, because that gesture unlocks audio. Remove `story.lantern.*`, the lantern and matchbox art and their `kqs-*` styles; the e2e test id changes (e.g. `start-tour` instead of `light-lantern`)
+- [x] Rework the name entry wording (visitor, not surveyor; `story.name.*`)
+- [x] Review the content warning text (`story.warning.body1` "Du kämpfst mit einem Messstab ...") against the tour opening
+- [x] Update `e2e` specs that click `light-lantern` / `title-new` (about 20 hits in `e2e/` and `tests/`)
 
 ### 3. The Messstab (the "stick")
 
@@ -169,8 +169,8 @@ moved to the new defaults (settings migration).
 - [ ] Old-concept chapters in the bible (surveyor prologue `01-prolog.md`, Feldstation) rewritten or marked historical; `09-ui-texte.md` loses the "Feldbuch-Ton" rule
 
 ## Acceptance Criteria
-- [ ] Title, new-game flow and pause menu speak of the tour, not of a surveyor / lantern / Feldstation (German text); working title on the title screen, no motto / subtitle
-- [ ] The lantern screen is a tour map (Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle) with one "Tour starten" click that unlocks audio
+- [x] Title, new-game flow and pause menu speak of the tour, not of a surveyor / lantern / Feldstation (German text); working title on the title screen, no motto / subtitle
+- [x] The lantern screen is a tour map (Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle) with one "Tour starten" click that unlocks audio
 - [ ] No journal and no "Feldbuch" in the UI; save UI in plain wording; quest log, codex, map and album reachable as decided (section 6)
 - [ ] Survey skills on the new keymap (no clash with the WASD hand) and behind one expanding button on mobile
 - [ ] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
@@ -179,9 +179,9 @@ moved to the new defaults (settings migration).
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
 - [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
 - [ ] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
-- [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+- [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
-## Plan
+## Slice 2 plan (history)
 
 _Status: approved 2026-11-24_
 
@@ -263,12 +263,65 @@ _Status: approved 2026-11-24_
 **Follow-up slices:**
 
 - [ ] §5 — Extract the shared page item and K4 nouns, rehome codex unlocks and retain earned epilogue deeds. Preserve the retired quest definitions needed for save payouts and historical log entries before deleting `content/story/00-prolog.story.json`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, `scripts/content-build/prolog.mjs` and its `build.mjs` entry. Audit exclusive voice IDs, text hashes, priority selectors and manifest/clip references against the tour, chapters, speakers and shared barks before pruning. Retarget the content, budget, wayfinding, travel and voice tests. Edit builders, run `node scripts/content-build/build.mjs`, inspect generated diffs and run `pnpm validate`.
-- [ ] §§1–2 — Tour title, icons, hints, metadata and one-tap route-map/audio start, including the remaining opening copy.
+- [x] §§1–2 — Tour title, icons, hints, metadata and one-tap route-map/audio start, including the remaining opening copy.
 - [ ] §3 — Tour Messstab handoff, avatar visibility and XP budget.
 - [ ] §§4–5 — Relocate the hub after placement is settled, restore the spring interaction and reconcile station IDs, endings and the e1-wahl card.
 - [ ] §6 — Remaining destinations, talent wording and in-fiction/voiced references, once settled.
 - [ ] §7 — Survey keymap, settings migration, touch expansion and tutorials.
 - [ ] §§5, 8 — Merge the bibles and reconcile remaining PRD, architecture, gameplay and historical references.
+
+## Plan
+
+_Status: approved 2026-11-25_ (slice 3, coordinator approval for the owner)
+
+**Approach:** Align the title and new-game screens with the guided tour (§§1–2). Keep one localized working title for the title screen. Present the ordered route as a static illustrated paper map and start the game through the existing audio-unlock path on its sole action. Show the current survey bindings, since the new keymap and mobile survey menu belong to §7.
+
+**Files to touch:**
+
+- `src/boot.ts` — skip the title fade under reduced motion.
+- `src/ui/title.ts`, `src/ui/dom.ts`, `src/ui/styles.css`, `src/ui/touch.css`, `src/i18n/de.ts` — tour title, plain actions and current controls.
+- `src/systems/story/title/flow.ts`, `src/systems/story/story.css`, `src/systems/story/strings.ts` — visitor name and warning, paper map, responsive layout and one start action.
+- `src/audio/audio.ts`, `src/systems/hunt/audio.ts` — update comments for the existing audio-unlock path.
+- `index.html`, `content/party/credits.json`, `README.md`, `docs/PRD.md`, `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`, `docs/MOBILE-UI-PASS.md` — metadata, credits and current opening instructions.
+- `e2e/` (including helpers and mobile runner), `tests/credits.test.ts` — update the opening selectors, screenshots and credits expectation. Check all feature dictionaries for overrides.
+
+**Steps:**
+
+- [x] 1. Update the title, buttons, credits heading, controls and metadata. Remove obsolete title art and rules.
+- [x] 2. Reframe the warning and name entry. Draw the four stops and route, remove the lantern screen and resolve the start from its button's gesture. Check focus, touch and reduced motion.
+- [x] 3. Update the README and design changelogs. Audit all affected identifiers and copy. Update browser coverage for the stops, sole action, audio and touch, as well as the credits unit test.
+- [x] 4. Run the four gates, validate the task, and run the affected browser specs if the sandbox permits the preview server. Record the results and any sandbox blocks.
+
+**Test plan:** Run `pnpm exec vitest run tests/credits.test.ts`, then `pnpm typecheck`, `pnpm test`, `pnpm validate` and `pnpm build`. Audit `e2e/`, `e2e/helpers/`, `tests/`, `src/i18n/` and each `strings.ts` for changed keys and selectors. Run the title, tour-start and helper callers with `pnpm exec playwright test e2e/<spec>.spec.ts --workers=1` under `scripts/dev/heavy.sh`, one spec per lock hold. At `?nosave&fresh`, capture the title and the screen after name entry at 1280×720, phone landscape and phone portrait. Compare the title and onboarding against the unchanged revision if captures are available. The owner requested no browser or computer tools, so captures depend on Playwright.
+
+**Risks:** Web Audio requires the start gesture. Check that no context exists on the map and that it runs after the single click or tap. Check the entire map and action fit on a short landscape phone. Continue and the overwrite confirmation use the existing save path.
+
+**Open questions:** None for this slice.
+
+**Acceptance criteria coverage**
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1. Title, new game and Pause wording | full | This slice completes the opening copy and title. Slice 1 covered save wording in Pause. |
+| 2. One-tap tour map | full | Four stops, one action and the existing audio unlock. |
+| 3. Journal, Feldbuch and destinations | partial | Plain name entry in this slice. Remaining §6 terminology and destinations follow. |
+| 4. Survey keymap and mobile controls | follow-up | §7. |
+| 5. Classic removal and single bible | partial | Slice 2 retired the playable classic path. Content extraction and the bible merge follow. |
+| 6. Visible Messstab handoff | follow-up | §3. |
+| 7. Hub move and spring E conflict | follow-up | §§4–5. |
+| 8. v0.6–v0.8 saves | full | Covered in slice 2. |
+| 9. Smoke, affected e2e and units | partial | Updated coverage, with 1,504 unit tests green. Browser execution and visual checks are pending. |
+| 10. PRD, ACTION-RPG and README | partial | Update the opening and changelogs. The wider docs sweep follows. |
+| 11. Four gates | partial | Typecheck, unit tests and build passed. Content validation is blocked by the sandbox. |
+
+**Follow-up slices:**
+
+- §5 — Extract shared content and retire the remaining classic files and exclusive voice clips.
+- §3 — Tour Messstab handoff, avatar visibility and XP budget.
+- §§4–5 — Hub relocation, spring interaction, station IDs and endings.
+- §6 — Remaining destinations, talent wording and in-fiction references pending owner decisions.
+- §7 — Survey keymap, settings migration, touch expansion and tutorials.
+- §§5, 8 — Bible merge and remaining design and architecture references.
 
 ## Progress
 
@@ -318,6 +371,34 @@ _Status: approved 2026-11-24_
 - 2026-11-24: The 1280×720 desktop pair in `test-results/contribute/TASK-007/` shows the same bookmark and explicit start changing from „Vermessung“ to „Die Führung“. The 844×390 landscape touch capture with reduced motion shows Continue from the v0.8.0 slot at the spring. The contributor confirmed `k1/k1_0` with objective `k1.quelle`. Laub's line and „Wasser berühren“ are visible alongside level 3 and 149/350 EP toward the next level (549 total XP).
 - 2026-11-24: Checked the existing ACTION-RPG §14 row and PRD changelog. The epic stays in progress with the seven follow-up slices above. The standalone mobile-tour check and investigation of the guard callout on main remain open.
 - 2026-11-24: Pushed slice 2 on `refactor/task-007-remove-classic` and opened it for review against `main`. PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/17
+
+- 2026-11-25: Slice 3 approved by the coordinator for the owner on `feat/task-007-title-tour-map`. The branch starts at `origin/main` (`6d28827`).
+
+- 2026-11-25: Slice 3 step 1 complete. The title and rotate screen share `game.title`. Main-menu buttons are text, the hint uses the active defaults and the credits omit the subtitle. The credits unit file passed 4/4.
+- 2026-11-25: Slice 3 step 2 complete. Content notice and name entry lead to the static paper route. The title controls are inert during onboarding. The sole start action resolves within the gesture and starts the existing audio path. Reduced motion skips the title fade.
+- 2026-11-25: Slice 3 step 3 complete. Updated the README, design logs and browser checks including desktop, touch, helper and mobile runner paths. Audited all feature dictionaries and all consumers of the changed copy and selectors. The `title-new` selector remains valid for the plain button. Current survey bindings are advertised pending §7.
+
+- 2026-11-25: Slice 3 step 4 checks. `pnpm typecheck`, `pnpm test` (1,504 tests in 110 files), `pnpm build`, `mc validate` and `git diff --check` passed. An initial FFmpeg-backed voice-service timeout passed in isolation and on both complete reruns. `pnpm validate` was attempted and blocked by `listen EPERM` on the tsx IPC socket.
+- 2026-11-25: Playwright discovered 39 tests across the nine affected standard specs and one standalone mobile runner. The smoke run was blocked before Chromium by Vite preview's `listen EPERM` on loopback. The desktop and mobile visual checks are pending.
+  Run these commands outside the sandbox from the worktree root. The mobile state includes the warning and name steps.
+
+  ```sh
+  pnpm validate
+  pnpm build
+  for spec in smoke story touch integration framerate perf campaign chapter-prolog pacing; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  for device in small-landscape small-portrait; do
+    scripts/dev/heavy.sh -- pnpm exec tsx scripts/dev/mobile-tour.ts --device "$device" --states title,tour-map
+  done
+  ```
+
+- 2026-11-25: Initial staging succeeded. The sandbox denied `git commit` at the worktree's `index.lock`. Stage this progress entry with the rest of the slice and commit from the contributor shell.
+
+  ```sh
+  git add -u -- .
+  git commit -m 'feat(ui): open new games with the Karlsberg tour map' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+  ```
 
 ## Notes
 - Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, the "Feldbuch" talent branch label, which in-fiction "Feldbuch" lines stay.

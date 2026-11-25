@@ -12,7 +12,7 @@ This page holds the plan, the checklist, the rubric and the run commands. The fi
 A fresh player's way through the game:
 
 1. The title screen.
-2. A new game: the content warning, the name, the lantern screen.
+2. A new game: the content warning, the name, the tour map.
 3. The whole prologue ("Vermessung"): the HUD, the first fights, Relief, the first time travel, the Bussole, the field book, the night.
 4. The first minutes of K1 ("Der Hof"): the chapter card at the spring, the 1789 court, the first conversation (Hanne).
 
@@ -53,7 +53,7 @@ Each unit shoots these states in order. The file name is `<NN>-<state>[-<sub>].p
 | 03 | `title-settings` | ✱ | settings from the title: every tab (`game` `controls` `graphics` `access` `audio`), each `-bottom` | **tap** `title-settings`, **tap** `set-nav-*`, swipe |
 | 04 | `warning` | ✱ | content warning (16+) | **tap** `title-new` |
 | 05 | `name` | ✱ | name entry, `-typed` | **tap** `warning-accept`, **tap** the field |
-| 06 | `lantern` | ✱ | lantern screen, `-first-frame` (the prologue card) | **tap** `name-confirm`, **tap** `light-lantern` |
+| 06 | `tour-map` | ✱ | route map, `-first-frame` (the first tour card) | **tap** `name-confirm`, **tap** `start-tour` |
 | 07 | `rotate` | ✱ | portrait: `-overlay`, `-with-journal` (a modal under the overlay); landscape: N/A | — |
 | 08 | `hud-idle` | | HUD at rest: compass, quest tracker, vitals, touch controls | `story.goto('prolog','p1')`, teleport to the station |
 | 09 | `toasts` | | the first of two queued toasts, an XP float, the tracker | `ui.toast`, `progression.xp` |
@@ -134,7 +134,7 @@ The runner gives each issue a severity hint (`findings.json`). The playtester co
 - If headless ever falls back to software on this Mac, `--headed` runs a visible Chromium window. That needs the logged-in desktop session; the lock rules are the same.
 - The renderer string is stored in `findings.json` (`gpu`).
 
-**Re-shooting a subset.** `--states journal,combat` shoots only those states (ids or prefixes) and merges them into the unit's existing `findings.json`. Notes are tagged with their state (`[journal] …`): a full unit run starts with none, and a subset run replaces the notes of the states it re-shoots (untagged notes from older runs are dropped). A title-flow step brings its predecessors (`lantern` → `warning`, `name`). Gameplay states start a new game by taps when the title is still up.
+**Re-shooting a subset.** `--states journal,combat` shoots only those states (ids or prefixes) and merges them into the unit's existing `findings.json`. Notes are tagged with their state (`[journal] …`): a full unit run starts with none, and a subset run replaces the notes of the states it re-shoots (untagged notes from older runs are dropped). A title-flow step brings its predecessors (`tour-map` → `warning`, `name`). Gameplay states start a new game by taps when the title is still up.
 
 ## 7. Run commands (one unit per lock hold)
 

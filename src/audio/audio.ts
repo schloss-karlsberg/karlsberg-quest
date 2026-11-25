@@ -14,7 +14,7 @@ export interface Source3D {
 /**
  * Web Audio manager: master → {music, sfx, ambience, voice} buses, 3D sources (PannerNode, HRTF),
  * listener bound to the camera. The AudioContext is created on `unlock()`, which must run
- * inside a user gesture (the "Laterne entzünden" click). Before that, `ctx` is null and helpers
+ * inside a user gesture (such as "Tour starten"). Before that, `ctx` is null and helpers
  * no-op, so systems can call them freely.
  */
 export class AudioManager {

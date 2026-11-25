@@ -48,5 +48,4 @@ export function svg(markup: string): SVGSVGElement {
   return t.content.firstElementChild as SVGSVGElement;
 }
 
-export const LANTERN_SVG = `<svg viewBox="0 0 26 34" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M9 4h8M13 1v3M7 8h12l-1.5 3H8.5z"/><path d="M8.5 11v15M17.5 11v15M7 26h12l-1 3H8z"/></g><path class="flame" d="M13 13c2.6 3 3 5.3 3 7a3 3 0 0 1-6 0c0-1.7.6-3.6 3-7z" fill="#d9822b"/></svg>`;
 export const EYE_SVG = `<svg viewBox="0 0 46 26" aria-hidden="true"><path d="M2 13C9 3 37 3 44 13 37 23 9 23 2 13z" fill="none" stroke="#e9d9b8" stroke-width="1.6"/><circle class="pupil" cx="23" cy="13" r="6" fill="#a33a24"/></svg>`;

@@ -59,7 +59,7 @@ test.describe('render pacing', () => {
   test('title: at most 30 fps', async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page, 'idle');
-    await expect(page.getByTestId('title-new')).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Neues Spiel', exact: true })).toBeEnabled();
     expect(await rendersPerSecond(page, 2000)).toBeLessThanOrEqual(31);
     expect(errors).toEqual([]);
   });

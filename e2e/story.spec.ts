@@ -47,7 +47,7 @@ async function typed(page: Page): Promise<void> {
   await expect(page.getByTestId('dialogue')).toHaveClass(/kqs-show/);
 }
 
-test('story: new game flow (warning → name → lantern) starts the tour', async ({ page }) => {
+test('story: new game flow (warning → name → tour map) starts the tour', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('./?nosave&fresh');
   const start = page.getByTestId('title-new');
@@ -66,10 +66,14 @@ test('story: new game flow (warning → name → lantern) starts the tour', asyn
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${SCREENS}/story-name.png` });
   await page.getByTestId('name-confirm').click();
-  await expect(page.getByTestId('light-lantern')).toBeVisible();
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: `${SCREENS}/story-lantern.png` });
-  await page.getByTestId('light-lantern').click();
+  const map = page.getByTestId('tour-map');
+  const stops = ['Karlsberger Hof', 'Felsenpfad', 'Weiher', 'Karlsbergquelle'];
+  await expect(map.getByRole('img', { name: stops.join(' → ') })).toBeVisible();
+  await expect(map.locator('[data-stop]')).toHaveText(stops);
+  const tourStart = map.getByTestId('start-tour');
+  await expect(tourStart).toBeVisible();
+  await page.screenshot({ path: `${SCREENS}/story-tour-map.png` });
+  await tourStart.click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   const s = await page.evaluate(() => window.kq!.story!.state());
   expect(s.active).toBe(true);
@@ -124,6 +128,7 @@ test('story: save from Pause and the bench, cancel overwrite, then continue', as
   await expect(start).toHaveText('Neues Spiel');
   await expect(resume).toBeEnabled();
   await expect(resume).toHaveText('Weiter');
+  await expect(resume.locator('svg')).toHaveCount(0);
   await start.click();
   const confirm = page.getByRole('dialog');
   await expect(confirm).toContainText('Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?');

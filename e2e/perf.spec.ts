@@ -87,7 +87,7 @@ test.describe('performance', () => {
       files.push({ url: req.url().replace(/^https?:\/\/[^/]+\//, ''), bytes: (sizes?.responseBodySize ?? 0) + (sizes?.responseHeadersSize ?? 0), type: res?.headers()['content-type'] ?? '' });
     });
     await page.goto('./?nosave&fresh');
-    await expect(page.getByTestId('title-new')).toBeEnabled({ timeout: 120_000 });
+    await expect(page.getByRole('button', { name: 'Neues Spiel', exact: true })).toBeEnabled({ timeout: 120_000 });
     ready = true;
     const ms = Date.now() - t0;
     await page.waitForTimeout(300);

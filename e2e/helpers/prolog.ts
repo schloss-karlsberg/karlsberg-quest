@@ -282,9 +282,9 @@ export async function newGame(page: Page, name: string, shots = false, url = './
   await page.getByTestId('player-name').fill(name);
   if (shots) await snap(page, 'opening-00b-name');
   await page.getByTestId('name-confirm').click();
-  await expect(page.getByTestId('light-lantern')).toBeVisible();
-  if (shots) await snap(page, 'opening-00c-lantern');
-  await page.getByTestId('light-lantern').click();
+  await expect(page.getByTestId('start-tour')).toBeVisible();
+  if (shots) await snap(page, 'opening-00c-tour-map');
+  await page.getByTestId('start-tour').click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await installQuestPlay(page);
 }
