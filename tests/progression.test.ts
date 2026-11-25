@@ -150,6 +150,18 @@ describe('items and equipment', () => {
     expect(t.of('item:pickup').at(-1)).toMatchObject({ item: 'item.k9.raetsel', count: 3, total: 3 });
   });
 
+  it('the tour staff grant emits the pickup before auto-equipping the staff', () => {
+    const t = setup();
+    const staff = 'item.stab.esche';
+    expect(t.core.grantItem(staff, 1, { reason: 'story:tour' })).toBe(1);
+    expect(t.events.slice(0, 2)).toEqual([
+      { type: 'item:pickup', p: { item: staff, count: 1, total: 1, reason: 'story:tour' } },
+      { type: 'equip:change', p: { slot: 'weapon', item: staff } },
+    ]);
+    expect(t.slice.inventory[staff]).toBe(1);
+    expect(t.slice.equipped.weapon).toBe(staff);
+  });
+
   it('a weapon equips itself only when it is stronger', () => {
     const t = setup();
     t.core.grantItem('item.stab.esche');
