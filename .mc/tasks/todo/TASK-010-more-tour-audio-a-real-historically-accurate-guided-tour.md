@@ -93,7 +93,7 @@ eras) and SFX at the stops.
 - [ ] Voice size stays within the budget
 - [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass and docs updated (`docs/ACTION-RPG.md` §14, `docs/PRD.md`) for slice 1
 
-## Plan
+## Plan · Slice 1
 
 _Status: approved (2026-11-25, coordinator for the owner)_
 
@@ -141,7 +141,7 @@ _Status: approved (2026-11-25, coordinator for the owner)_
 - Mix the guide at their world position, duck ambience and music during speech, and verify mute and saved bus levels through skip, pause and resume.
 - Revisit the owner-verification topics from TASK-003/TASK-004 (hunting and enclosures, saved treasures, the gallery and Herzogskastanien) after owner verification and independent sourcing.
 
-## Progress
+## Progress · Slice 1
 
 - Branch `feat/task-010-tour-audio`.
 - 2026-11-25 — Casting correction. Removed exactly 18 queued B/C inbox files for `karlsberg-quest-task010-audition`, checking each against its original request. The service provides no cancellation command. The nine A (`imhoff`) files were verified byte for byte. Laub and Jost retain their own roles.
@@ -155,7 +155,45 @@ _Status: approved (2026-11-25, coordinator for the owner)_
 - 2026-11-25 — The sourced script and original casting setup were committed in `d2c1b76`. For the casting correction, typecheck, all 1,493 tests on retry, build and `mc validate` passed. The sandbox denied the tsx IPC socket for `pnpm validate` on this rerun.
 - 2026-11-25 — The sandbox denied creation of the worktree index.lock during staging. The casting correction is ready for the local commit `docs(tour): recast the guide audition with new voices`.
 
-**Owner pick pending.** After the whole-stop comparison, record the winning candidate, design seed (for B/C/D), registry ID, reference SHA-256, line seed, language, instruction and synthesis parameters from `candidates.json`. Use the production line list in `docs/design/tour/sources.md` once the script is approved.
+## Plan
+
+_Status: approved 2026-11-25 (coordinator for the owner)_
+
+**Approach:** Slice 2 adopts the owner's choice of candidate D, deep documentary, from design job `kq010-guide-d-design-s6301`. Use its instruction, German language setting and seed 6301 for production, and pin the public synthetic registry entry and credit to the copied reference. Integrate the reviewed script at the four stops and use the dialogue presenter to hold each station until its lines finish or are skipped. Submit the full Imhoff line set for service generation.
+
+**Files to touch:**
+
+- `scripts/voice/voices.json`, `scripts/voice/speech.json`, `public/assets/LICENSES.json` and `public/voice/` — pin the selected voice, remove superseded speech overrides and retire the previous Imhoff clips when changing their credit.
+- `content/story/00-tour.story.json` and `content/packs/tour.pack.json` — add the reviewed lines in route order and retain the parking-lot greeting interaction.
+- The story timeline, dialogue presenter and their tests — wait for the station lines to clear before departure, including when the player skips a subtitle or resumes a save.
+- `e2e/tour-slice.spec.ts`, `docs/design/tour/sources.md`, `docs/ACTION-RPG.md` §14 and `docs/PRD.md` — verify the stop flow and record the integration.
+- Local voice directory and moss-service registry — copy the synthetic reference WAV as `imhoff-doc-ref.wav` and register it under `imhoff`.
+
+**Steps:**
+
+- [x] 1. Copy, hash and register the voice. Update production settings and credit, and retire the previous encoded clips and manifest entries.
+- [x] 2. Integrate the 19 reviewed lines, preserve the interaction and walking beats, and add checks for subtitle order, skip and the departure hold.
+- [x] 3. Check that the voice plan selects every Imhoff line, including all barks, and submit the batch with the Node service client.
+- [ ] 4. Run the four gates and the two requested single-worker Playwright specs where the sandbox permits. Record the results and commit locally.
+
+**Test plan:** Run the story and voice asset unit tests, `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`, and `mc validate`. Run `scripts/dev/heavy.sh -- pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1` and the same command for `e2e/voice.spec.ts`. Check captions at the parking lot, Felsenpfad, pond and spring using the tour spec's station views.
+
+**Risks:** Stale recordings would link the new credit to the old reference. The source text and procedural speech remain available while replacement recordings are pending. Early arrival, subtitle skip and reloads can change station timing; check the exact departure conditions.
+
+**Open questions:** None for this slice.
+
+**Acceptance criteria coverage:** Guide narration and subtitles at the four stops are full for the reviewed script and partial for the final audio. Sourcing is full. Voice credit and asset checks cover the replacement configuration. Ambience, sound captions, mixing and the final encoded voice budget remain follow-ups. The four gates and docs apply to this slice in full.
+
+**Follow-up slices:** Collect and encode the service results, connect the existing NPC conversation panel to recorded clips, and verify the recorded tour and voice budget. Add ambience, captioned SFX and the final mix. Owner-verification research topics remain open.
+
+## Progress
+
+- Branch `feat/task-010-guide-voice`.
+- 2026-11-25 — Step 1. Copied the owner's D reference to `imhoff-doc-ref.wav` outside Git and verified public synthetic registry entry `imhoff`. Design and line seed 6301, language German, `max_tokens=1000`, SHA-256 `7021a50b5206133183ba4a6a4cd3ee4d888b74fe8cf613c7656803e87b3b92ab`. The instruction is pinned in `scripts/voice/voices.json`. Updated the credit, removed two superseded speech overrides and retired the 24 old recordings and their 48 encoded files.
+- 2026-11-25 — Step 2. Integrated all 19 reviewed subtitles. The station timeline advances when each current subtitle and recording clear or the player skips it. The guided walk waits while the parking-lot conversation is open, with a timeout for players who pass on it. Added checks for all three greetings and the tour's departure conditions. Updated the tour sources, ACTION-RPG §14 and the PRD changelog.
+- 2026-11-25 — Step 3. Submitted all 43 Imhoff lines under the `karlsberg-quest` service project, including five barks and nine party or ending lines. The service returned 43 queued and zero cached. Used `--ids 'imhoff.*'` because the default priority tiers omit this speaker.
+- 2026-11-25 — Step 4. `pnpm typecheck`, `pnpm test` (1,505 passed), `pnpm build`, `mc validate` and `git diff --check` passed. The sandbox denied the `tsx` IPC socket for `pnpm validate`. The sandbox also denied the preview server bind at `127.0.0.1:5281` before `e2e/tour-slice.spec.ts` and `e2e/voice.spec.ts` could run. Both were invoked individually through `scripts/dev/heavy.sh` with one worker.
+- 2026-11-25 — Staged the slice. The sandbox denied the worktree `index.lock` during `git commit`. The pending local commit is `feat(tour): integrate reviewed guide narration`.
 
 ## Plan — slice 3
 

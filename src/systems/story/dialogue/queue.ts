@@ -66,6 +66,10 @@ export class LineQueue<T extends QueuedLine> {
     return this.items.length;
   }
 
+  some(test: (item: T) => boolean): boolean {
+    return this.items.some(test);
+  }
+
   tick(dt: number): void {
     this.clock += dt;
   }

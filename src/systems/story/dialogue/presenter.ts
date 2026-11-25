@@ -151,6 +151,11 @@ export class DialoguePresenter {
     return this.queue.length;
   }
 
+  hasLine(id: string, beat: string | null): boolean {
+    const matches = (item: DialogueItem) => item.id === id && item.beat === beat;
+    return (this.cur !== null && matches(this.cur.item)) || this.queue.some(matches);
+  }
+
   /** Lines dropped as stale, invalid or over the cap (tests / debug). */
   get dropped(): number {
     return this.queue.dropped;
