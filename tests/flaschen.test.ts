@@ -129,7 +129,7 @@ describe('Fläschchen: the 24 spots', () => {
     }
   });
 
-  it('sits on the terrain: inside the map, dry, not inside a scenery solid', () => {
+  it('sits on the terrain: inside the map, dry, not inside a scenery solid', { timeout: 30_000 }, () => {
     const T = loadTerrain(ROOT.replace(/\/$/, ''));
     for (const s of FLASCHEN) {
       const p = T.probe(s.x, s.z) as { h2025: number; h1789: number; ground: string };

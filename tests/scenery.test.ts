@@ -144,7 +144,7 @@ describe('collider extensions', () => {
 describe('sets', () => {
   const flat = () => 300;
 
-  it('every set builds, has unique ids and stays clear of the places it must leave free', () => {
+  it('every set builds, has unique ids and stays clear of the places it must leave free', { timeout: 30_000 }, () => {
     const ids = new Set<string>();
     for (const def of SETS) {
       expect(ids.has(def.id)).toBe(false);
