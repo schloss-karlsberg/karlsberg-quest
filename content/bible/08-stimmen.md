@@ -1,10 +1,10 @@
 # Stimmen
 
-> **Tour-Konzept (Stand 2026-11-23):** Gerold Imhoff (Platzhaltername), die Doppelgänger, Marlene als Försterin unterwegs (persönlich/Handy statt Funk/Bauwagen) und die neuen Barks stehen in [`docs/design/tour/bible/08-stimmen.md`](../../docs/design/tour/bible/08-stimmen.md); wo sich beide widersprechen, gilt die Tour. Zusammenführung: TASK-007.
-
-Dieses Dokument legt festDieses Dokument legt fest, **wie** die Figuren sprechen, und enthält alle Zeilen, die nicht an einen Ort gebunden sind (Barks). Die ortsgebundenen Dialoge stehen in den Kapiteldateien.
-
-In v1.0 sind alle Stimmen **Text** (Untertitel und Sprechblasen; PRD D-007: Audio prozedural). Wenn später Sprachaufnahmen dazukommen, gelten die Sprechhinweise unten.
+Character direction and dialogue sketches. The [story files](../story/README.md) and
+[content packs](../packs/) define the lines used in-game. Recorded lines use the voice manifest
+and unrecorded speakers use the dialogue fallback. TASK-010 tracks the guide recording and
+TASK-014 the rest of the cast. Gerold Imhoff remains a placeholder name. Keep personal details and
+a real guide’s wording out of this fictional character.
 
 **Für alle Figuren gilt (PRD §4.4):**
 - Opfer sind nie Monster und nie Rätsel. Über die Toten von 1785 und über Matthes wird nicht gewitzelt.
@@ -12,7 +12,44 @@ In v1.0 sind alle Stimmen **Text** (Untertitel und Sprechblasen; PRD D-007: Audi
 - Humor zielt nach oben (Hof, Pracht, Bürokratie), nie auf die Armen, die Plünderer oder die Tiere.
 - Keine Blutbeschreibungen, kein Gore. Die Meute „stellt“, sie „reißt“ nicht.
 - Kein Figurentext gibt Hinweise, wo man im echten Wald graben könnte. „Schauen, nicht graben.“
-- Gendern: Der Spieler wird von Laub gesiezt, von Marlene geduzt, von Jost geduzt, von Soll in umständlichem Sie angeredet („mein Herr, meine Dame, mein … Sie“). Der Spielername erscheint als `{Name}`.
+- Gendern: Der Spieler wird von Laub gesiezt, von Marlene geduzt, von Jost geduzt, von Soll in umständlichem Sie angeredet („mein Herr, meine Dame, mein … Sie“). Der Spielername erscheint als `{Name}`. Gerold duzt die Gruppe („ihr“) und den Spieler („du“). Herr Soll und Carl Herzog siezen.
+
+---
+
+## 0. Gerold Imhoff (FIKTION, Platzhalter)
+
+**Wer.** Führer der öffentlichen Führung. Groß, hager, kahl. Ehrenamtlich, seit vielen Jahren. Trägt einen zusammengeklappten Schirm als Zeigestock und eine Umhängetasche mit Laminatkarten. Keine Uniform, kein Abzeichen, kein Logo.
+
+**Wie.** Ruhig, freundlich, ein wenig trocken. Er ist **genau mit Quellen**: Er sagt laut, was belegt ist, und genauso laut, was man nicht weiß. Damit ist er die Stimme der FAKT/OFFEN-Regel im Heute, so wie Laub sie in der Vergangenheit ist. Er erzählt Geschichte mit Zahlen und Vergleichen aus dem Alltag („Fünfzehn Jahre. Kürzer als so mancher Kredit.“), nie mit Spuk. An Gedenkorten (wenn er sie erwähnt) wird er leise und macht keine Witze.
+
+**Ticks.**
+- Beginnt jede Station mit „So.“ und zählt die Gruppe mit dem Schirm durch, ohne Zahlen zu sagen (die sagt Herr Soll).
+- „Ehrlich: Das weiß man nicht.“ — sein Satz für alles Unbelegte. Nie „man munkelt“, nie eine erfundene Sage. Gibt es eine echte Überlieferung, sagt er „Man erzählt sich …, belegt ist das nicht“ und das Spiel markiert sie als LEGENDE.
+- „Guckt mal hoch.“ — er lässt die Leute schauen, bevor er erklärt.
+- Ruft Nachzügler auf den Weg zurück. Die gespielten Warte- und Rufzeilen stehen im Tour-Pack.
+
+**Wortschatz.** belegt, nicht belegt, Station, Leute, guckt mal, ehrlich gesagt, so.
+
+**Tabu.** Erfindet keine Fakten. Spricht nicht über die Besitzverhältnisse des Karlsberger Hofs über „Privatbesitz“ hinaus, kein Wort über Bier oder Marken. Glaubt nicht an Geister. Erklärt dem Spieler nie das Spiel (keine Tasten), das tun die Lehrzeilen.
+
+**Sprechhinweis.** Tief, langsam, klare Konsonanten, saarländische Färbung nur in der Melodie, keine Mundart-Schreibung.
+
+### 0.1 Bark- und Nachrichten-Entwürfe (`imhoff.bark.*`)
+
+**Wartet** (Ideen für Rufe bei Abstand zur Gruppe)
+1. „Kommst du? Wir warten vorne.“
+2. „Nicht verlaufen! Der Weg ist der mit den Leuten drauf.“
+3. „Wer fotografiert, darf trödeln. Aber nicht ewig.“
+
+**Unterwegs** (zufällig, höchstens einer pro Wegstück)
+1. „Achtung, Wurzeln. Die waren auch schon da, als hier noch Kies lag. Nein, das stimmt nicht, die sind jünger.“
+2. „Wer Fragen hat: fragen. Wer keine hat: auch fragen.“
+3. „Hier links runter. Nein, mein anderes Links.“
+
+**Nach Gestelltwerden, als Handy-Nachricht im Heute** (`imhoff.msg.*`)
+1. „Alles gut bei dir? Wir sind noch oben.“
+2. „Wir haben dir ein Stück Kuchen aufgehoben. Herr Soll hat's notiert.“
+3. „Falls du dich verlaufen hast: Immer bergauf, dann kommst du an.“
 
 ---
 
@@ -24,7 +61,7 @@ In v1.0 sind alle Stimmen **Text** (Untertitel und Sprechblasen; PRD D-007: Audi
 
 **Ticks.** Rechnet Längen nach („Fünf Meter dreißig. Für Orangen.“). Verteidigt die 50 m Versatz seiner Karte. Erwähnt sein nie gezahltes Tagegeld (höchstens einmal pro Kapitel).
 
-**Tabu.** Laub erklärt keine Lösung. Er sagt nie „richtig“ oder „falsch“ zu einem Eintrag vor der Bestätigung. Er lügt nie über Fakten, er verschweigt nur (bis Kapitel 4).
+**Tabu.** Laub lügt nie über Fakten. Er verschweigt die eigene Geschichte bis Kapitel 4.
 
 **Sprechhinweis.** Mittlere Stimme, leicht nasal, bayerisch-pfälzische Färbung nur in den Vokalen, keine Mundart.
 
@@ -105,37 +142,105 @@ Jede Gruppe wird zufällig gezogen, jede Zeile frühestens nach 10 min wieder. H
 
 ---
 
-## 2. Marlene (FIKTION)
+### 1.3 Entwürfe für Handy und Gruppe
 
-**Wer.** Vorarbeiterin im Forstbetrieb, Anfang fünfzig, aus der Gegend (Schwager in Rohrbach, später Homburg). Bringt Brötchen und Kaffee. Weiß viel aus dem Dorf und manches aus dem Internet und sagt dazu, woher.
+**Kein Netz** (`laub.bark.netz.*`, höchstens einmal pro Kapitel, in der Vergangenheit, wenn die Kamera geöffnet wird)
+1. „Was immer das Kästchen sucht, es ist noch nicht erfunden.“
+2. „Sie wollen 1789 fotografieren? 1789 möchte nicht fotografiert werden. Es hat sich nicht frisiert.“
+3. „Weiß. Natürlich. Die Erinnerung hat kein Licht für Ihren Apparat.“
 
-**Wie.** Herzlich, praktisch, leise Saarpfälzer Färbung in Wortwahl („Guck mal“, „gell“ höchstens einmal pro Kapitel), keine Mundart-Schreibung. Duzt. Glaubt nicht an Geister und fragt nicht nach, wenn der Spieler nach Rauch riecht. Erklärt Werkzeuge (Relief, Karte) ohne Fachjargon.
+**Wiedererkennen** (`laub.bark.kennen.*`, einmal pro Doppelgänger-Figur, höchstens drei im Spiel)
+1. „Sie schauen den Mann an, als kennten Sie ihn. Das ist unhöflich. Und interessant.“
+2. „Sie haben diese Frau schon einmal gesehen. Nein, sagen Sie nichts. Ich will es nicht wissen. Doch, ich will.“
+3. „Der Junge. Der Hund. Merkwürdig, wie wenig sich manche Dinge ändern.“
 
-**Funktion.** Tutorial, Ortskenntnis, Quellen von heute (Internet, Ausstellung, Schwager) und Verankerung im Jetzt. Sie ist die Stimme, die am Ende den Namen ruft (W7).
+**Rückkehr** (ersetzt `laub.bark.return.*`, nach Q halten, jetzt an der Quelle)
+1. „Wieder im November. Fünf Minuten später. Mir kam es länger vor.“
+2. „Zurück an der Quelle. Schreiben Sie auf, bevor Sie vergessen.“
+3. „Ihre Gesellschaft ist noch oben. Sie haben Zeit. Ich hatte nie welche.“
+4. (nach Gestelltwerden) „Gestellt. Nicht gerissen. Merken Sie sich den Unterschied.“ (bleibt)
 
-**Tabu.** Marlene erfindet keine Fakten. Wenn sie etwas nicht genau weiß, sagt sie es („Ich müsste meinen Schwager fragen“).
+`laub.bark.lantern_low.2` „Zurück zur Station …“ → „Zurück zur Quelle wäre jetzt keine Feigheit, sondern Verwaltung.“
 
-### 2.1 Allgemeine Zeilen (`marlene.gen.*`, Feldstation, zufällig, höchstens eine pro Rückkehr)
+---
 
-1. „Kaffee steht da. Er ist nicht gut, aber heiß.“
-2. „Hast du die Nordseite schon gemacht? Das Forstamt will den Bericht bis Freitag.“
-3. „Die Bussole hat heut Nacht getickt. Ich hab sie in die Schublade gelegt. Hat nicht geholfen.“
-4. „Im Relief sieht man mehr als im Wald. Im Wald sieht man dafür, wo man hintritt.“
-5. „Pass auf die Gräben auf. Nicht reinfallen und nicht reingraben, das gibt Ärger mit dem Denkmalamt.“
-6. „Mein Schwager sagt, auf dem Karlsberg spukt's. Mein Schwager sagt auch, er kann Skat.“
-7. „Wenn du die alte Karte drüberlegst, verrutscht alles um ein Stück. Ich glaub, die waren damals einfach müde.“
-8. „Es wird früh dunkel. Nimm die Lampe mit. Und Öl.“
-9. „Die Wildschweine waren wieder am Weiher. Die graben, das dürfen die.“
-10. „Brauchst du was? Ich fahr nachher nach Homburg.“
-11. „Du redest im Schlaf. Gestern hast du ‚Bijou‘ gesagt. Ist das ein Hund?“
-12. „Schreib's auf, sonst vergisst du's. Hat meine Oma immer gesagt. Sie hat alles vergessen, aber aufgeschrieben.“
-13. „Ich mag den Nebel hier oben. Da sieht der Wald aus, als würd er sich an was erinnern.“
-14. „Der Laserscan ist ja neu. Zweitausendfünfundzwanzig geflogen, im Winter, ohne Laub. Sonst sieht man nix.“
-15. „Wenn's dir zu viel wird, mach eine Pause. Der Berg läuft nicht weg. Der ist schon weggelaufen, vor zweihundert Jahren.“
+## 2. Die Doppelgänger (FIKTION)
 
-### 2.2 Tutorial-Zeilen (Prolog, siehe `01-prolog.md`)
+**Regel.** Sieben Menschen in der Gruppe ähneln Figuren von 1789. Jeder hat **ein** Erkennungszeichen, leicht, liebevoll, nie spöttisch. Sie wissen nichts von 1789 und werden nie aufgeklärt. Ihre Namen sind erfunden und bewusst alltäglich; keiner steht für einen echten Menschen. Historische Personen (Herzog, Mannlich) behalten ihre Regel: Ihre **Doppelgänger** sind heutige Privatleute und sprechen frei, sie zitieren nie Mannlich und behaupten nichts über die historischen Personen.
 
-Die Tutorial-Zeilen (Relief 1–3, M, F) stehen im Prolog. Wiederholt man ein Tutorial (Menü „Hilfe“), spricht Marlene dieselben Zeilen.
+| Heute | Beruf / Rolle | 1789 | Erkennungszeichen (Tell) | Ton |
+| --- | --- | --- | --- | --- |
+| **Carl Herzog** | pensionierter Autohändler, Ende sechzig, mit Schiebermütze; einziger mit Campingstuhl beim Fest | Herzog Karl II. August | will überall hinfahren („Kann man da nicht hochfahren?“, „Gibt's oben einen Parkplatz?“); hat Schnupfen (FAKT S. 422 für den Herzog 1793); liebt Hunde und fragt Jost nach jedem Detail | gutmütig, großzügig mit Worten, knauserig mit dem Kuchengeld (nie bösartig) |
+| **Christian Mann** | Architekt und Freizeitmaler, Anfang fünfzig | Johann Christian von Mannlich | Skizzenbuch und eine Papprolle; zeichnet an jeder Station; korrigiert sanft Gerolds Jahreszahlen und hat fast immer unrecht | höflich, ein bisschen eitel auf seine Skizzen |
+| **Hanne Matz** | Steinmetzin, Mitte dreißig, Arbeitsjacke mit Steinstaub in den Nähten | Hanne, Witwe des Steinhauers Matthes | streicht über Sandsteinkanten und sagt, wer sie gehauen hat („Das war ein Linkshänder.“); sagt Namen gern mit Buchstabierung („mit zwei T“) | gerade, trocken, warm |
+| **Peter Matz** | ihr Sohn, 15, Kopfhörer | Peter (1796, Fuhrmann) | wortkarg; trägt ungefragt Hannes schwere Tasche | still, nie Witzfigur |
+| **Jost Fendel** | Hundetrainer, Anfang zwanzig; zwei Hunde, **Diane** (führt) und **Bijou** (klein, hält sich für einen Hirsch) | Jost, der Hundejunge | kennt jeden Hund im Wald beim Namen; redet in Bildern („Die riechen den Regen von morgen.“); die Hunde rennen in t5 in den Wald | frech, herzlich |
+| **Herr Soll** (Gerd Soll) | Steuerberater im Ruhestand | Kanzlist Gottlob Soll | zählt die Gruppe an jeder Station („… vierzehn, fünfzehn. Stimmt.“); führt die Kuchenkasse; unterscheidet „zugesagt“ und „bezahlt“ | umständlich höflich, siezt, komisch durch Ernst |
+| **Liese Wendling** | Schneiderin am Stadttheater | Liese, die Wäscherin | Nähzeug in der Jackentasche; kommentiert Kleidung („Schöne Jacke. Leuchtet ja.“ — das Echo zu „Feuersalamander“); flickt beim Fest | resolut, hilfsbereit |
+
+**Ohne Doppelgänger:** Matthes (Tabu: Tote sind kein Spiel), der Pikeur (er *ist* Jost). Marlene ist sie selbst (heute), Gerold hat keine Figur in 1789.
+
+**Laub: kein Doppelgänger, ein Augenzwinkern.** Laub ist eine Stimme ohne Körper; ein Mensch mit seinem Gesicht würde das Geheimnis kleiner machen. Stattdessen trägt das Kind **Mats** (Extra, etwa acht) einen Spielzeugkompass und sagt am Treffpunkt: „Meiner zeigt nicht nach Norden.“ Beim Fest im Museums-Ende: „… jetzt zeigt er richtig!“ Sonst kein Wort.
+
+**Die übrigen Mitglieder der Gruppe (Extras, ohne Namen außer Mats):** Mats und seine Mutter; ein Paar aus Zweibrücken mit gleichen Jacken; zwei Wanderinnen mit Stöcken; ein Student mit Thermoskanne. Zusammen mit dem Spieler und den sieben Doppelgängern: 15.
+
+### 2.1 Dialogskizzen
+
+| id | Wer | Wann | Text |
+| --- | --- | --- | --- |
+| `herzogd.t.01` | Carl Herzog | t2 | „Kann man da nicht hochfahren? Mit dem Auto, meine ich.“ |
+| `herzogd.t.02` | Carl Herzog | t8 | „Jost, sagen Sie, wie viele Hunde kann ein Mensch eigentlich halten? Rein theoretisch.“ |
+| `mannd.t.01` | Christian Mann | t4 | „Ich zeichne mal die Felsen. Das Schloss kann ich ja nicht zeichnen. Noch nicht.“ |
+| `mannd.t.02` | Christian Mann | t7 | „Siebzehnhundertneunundsiebzig, nicht achtundsiebzig. Oder? … Nein, Sie haben recht.“ |
+| `hanned.t.01` | Hanne Matz | t8 | „Guck. Das ist gehauen, nicht gewachsen. Das war ein Linkshänder.“ |
+| `jostd.t.01` | Jost Fendel | t1 | „Keine Angst, die tun nix. Diane passt auf, Bijou glaubt, er wär ein Hirsch.“ |
+| `jostd.t.hunde` | Jost Fendel | Wind-Szene | „Diane! Bijou! … Was habt ihr denn? Da ist doch nix.“ |
+| `solld.t.01` | Herr Soll | Treffpunkt und beim Sammeln | „… dreizehn, vierzehn, fünfzehn. Stimmt.“ (bei einem Nachzügler: „… vierzehn. Einer fehlt. Ich notier's.“) |
+| `liesed.t.01` | Liese Wendling | t8 | „Schöne Jacke. Leuchtet ja. Im Wald sieht man dich wenigstens.“ |
+
+### 2.2 Bark-Entwürfe der Gruppe (`gruppe.bark.*`, nur Heute, nur im Prolog, höchstens einer pro 40 s, nie während Gerold spricht)
+
+1. „Ist das hier schon der Schlosspark?“ — „Das ist alles Schlosspark. War.“
+2. „Hast du Empfang?“ — „Einen Strich.“
+3. „Die Buchen sind ja golden. Guck mal.“
+4. „Der Mann weiß aber viel.“ — „Der sagt auch, was er nicht weiß. Das find ich gut.“
+5. (Mats) „Wann kommt das Schloss?“
+
+---
+
+## Marlene (FIKTION)
+
+**Wer.** Försterin im Forstamt, Anfang fünfzig, aus der Gegend (Schwager in Rohrbach). Misst im Gelände nach, was der Laserscan von 2025 zeigt: Stativ, Messstab, Tablet, Gummistiefel. Kennt Gerold seit Jahren. Am Weiher spricht sie persönlich. Für spätere Szenen sind Begegnungen an Messpunkten und Handy-Nachrichten vorgesehen. Einige gespielte Kapitelzeilen laufen noch über Funk.
+
+**Wie.** Unverändert: herzlich, praktisch, leise saarpfälzische Färbung („Guck mal“, „gell“ höchstens einmal pro Kapitel), duzt, glaubt nicht an Geister, erklärt Werkzeuge ohne Fachjargon, sagt, woher sie etwas weiß.
+
+**Funktion.** Am Weiher (`t13`) leiht sie den Messstab. Ihre [freiwilligen Messaufträge](01-prolog.md#4-zeit-und-offene-entwürfe) und das „Ach, behalt ihn“ beim Fest gehören zum Entwurf.
+
+**Wo im Heute.** Sie ruft beim Damm (`t12`) und erscheint am Ufer (`t13`, 895,5/−843,5). Danach je Kapitel ein Messpunkt auf der Route zwischen Weiher und Ehrenhof (Vorschlag: K1 Weiher, K2 Kohlplatte 1040/−902, K3 Orangerie-Fuß 1215/−955, K4 unterhalb der Ruine; alle prüfen). Diese späteren Messpunkte sind geplant.
+
+**Tabu.** Erfindet keine Fakten (unverändert). Sagt nie, wo man im echten Wald graben könnte.
+
+**Portrait und Stimme (Entwurf).** „Marlene · Forstamt“, Porträt als Försterin, Stimme ohne Funkfilter.
+
+### Allgemeine Zeilen (Entwurf für `marlene.gen.*`)
+
+1. „Du schon wieder! Gerold sucht dich übrigens nicht. Noch nicht.“
+2. „Im Relief sieht man mehr als im Wald. Im Wald sieht man dafür, wo man hintritt.“ (bleibt)
+3. „Pass auf die Gräben auf. Nicht reinfallen und nicht reingraben, das gibt Ärger mit dem Denkmalamt.“ (bleibt)
+4. „Mein Schwager sagt, auf dem Karlsberg spukt's. Mein Schwager sagt auch, er kann Skat.“ (bleibt)
+5. „Wenn du die alte Karte drüberlegst, verrutscht alles um ein Stück. Ich glaub, die waren damals einfach müde.“ (bleibt)
+6. „Es wird früh dunkel im November. Gerold hat dir doch eine Laterne gegeben?“
+7. „Die Wildschweine waren wieder am Weiher. Die graben, das dürfen die.“ (bleibt)
+8. „Du warst eben ganz woanders, oder? So guckst du.“
+9. „Schreib's auf, sonst vergisst du's. Hat meine Oma immer gesagt. Sie hat alles vergessen, aber aufgeschrieben.“ (bleibt)
+10. „Ich mag das Licht hier um die Zeit. Da sieht der Wald aus, als würd er sich an was erinnern.“
+11. „Der Laserscan ist ja neu. Zweitausendfünfundzwanzig geflogen, im Winter, ohne Laub. Sonst sieht man nix.“ (bleibt)
+12. „Den Stab bringst du mir oben mit, ja? Kein Stress.“
+Gestrichen: alle Zeilen mit Kaffee im Bauwagen, der Bussole in der Schublade, Nacht und Schlaf (alt 1, 2, 3, 8, 11, 15); alt 10 („Brauchst du was? Ich fahr nachher nach Homburg.“) kann als 13 bleiben.
+
+### Kapitelzeilen (Entwurf)
+
+Alle `marlene.k1–k4.*` und `marlene.end.*` werden von Funk/Bauwagen auf persönlich/Handy umgeschrieben (Liste in [WP-08](../../docs/design/tour/impact.md)). Muster: „Morgen, {Name}! Die Brötchen liegen auf der Stufe“ → Handy-Nachricht „Bist du noch an der Quelle? Gerold fragt, ob du Kuchen willst.“ Die Suppe (`marlene.k4.ruf` „Die Suppe wird kalt!“) → „Der Glühwein wird kalt!“, gerufen vom Weg her.
 
 ---
 

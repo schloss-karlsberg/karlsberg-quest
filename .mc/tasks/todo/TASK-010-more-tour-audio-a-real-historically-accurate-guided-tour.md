@@ -36,8 +36,8 @@ eras) and SFX at the stops.
 
 - **Tour script:** `content/story/00-tour.story.json` (beats `t1`–`t18`, hand-authored), route
   `content/routes/p-fuehrung.json` (points `wind`, `reh`, `weiher`, ...). Design with stop texts and
-  sources: `docs/design/tour/bible/01-prolog.md` (stations at the Wanderparkplatz, Felsenpfad, Weiher,
-  Quelle), codex sources `docs/design/tour/bible/07-codex-impact.md`, voices `08-stimmen.md`.
+  sources: `content/bible/01-prolog.md` (stations at the Wanderparkplatz, Felsenpfad, Weiher,
+  Quelle), codex sources `content/bible/07-codex.md`, voices `content/bible/08-stimmen.md`.
   The tour has 37 `say` actions (about 23 guide lines) and only 3 `sound` actions (wind, bark, compass).
 - **Voice clips:** `public/voice/` (~13 MB, Opus `.webm` + AAC `.m4a` per line, `manifest.json`),
   loaded by `src/systems/story/dialogue/voiceManifest.ts` / `voiceClips.ts`, played by `voice.ts`

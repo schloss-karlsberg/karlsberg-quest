@@ -1,5 +1,9 @@
 # Kapitel 1 „Der Hof“
 
+> The chapter outline retains the original case-page and surveyor-era staging. Mentions of the
+> Feldstation, old opening and confirmed sentences are historical. For the playable progression,
+> use the [chapter files](../story/README.md) and the [quest catalogue](../../docs/ACTION-RPG.md#11-quest-catalogue).
+
 | | |
 | --- | --- |
 | Ära | `1789-07` (ein Sommertag; Teil A Vormittag bis Nachmittag am Schloss, Teil B Abend und Nacht in der Karlslust). Echo `1785-12` am Rondell |

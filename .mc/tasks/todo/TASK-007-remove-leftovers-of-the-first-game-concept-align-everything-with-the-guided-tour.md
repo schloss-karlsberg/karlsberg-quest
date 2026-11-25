@@ -100,7 +100,7 @@ the shelf (RPG counts), the drawer (Bussole state), the map (chapter select / co
 - [ ] Feldstation remnants: `RETIRED_POINTS` in `src/systems/travel/points.ts`, comments in `travel/pois.ts`, `story.end.back` "Zur Feldstation", `story.credits.fictionText` (lists "die Feldstation")
 - [x] `docs/archive/IDEA.md` (working title "Saarpfalz-Chroniken", the pre-design idea): archive or mark historical
 - [x] `docs/PRD.md`: §6.1 "No XP" (already marked superseded), §6.3 "The field station (hub)", §3 core loop and §4.2 story: rewrite for the tour concept
-- [ ] `content/bible/*` vs `docs/design/tour/bible/*`: **decided, merge in this task**, see section 8
+- [x] `content/bible/*` vs `docs/design/tour/bible/*`: **decided, merge in this task**, see section 8
 - [x] `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`: sections that still describe the surveyor start, the Feldstation, the hub overlay
 - [ ] Save fields: story slice name default, hub state, any `feldstation` ids (see `src/core/save.ts`, story `migrate` maps)
 - [ ] Dead code after the above (unused strings in `src/i18n/de.ts` and `story/strings.ts`, CSS, SVGs)
@@ -165,15 +165,15 @@ moved to the new defaults (settings migration).
 
 ### 8. Story bible merge (owner decision 2026-11-23: merge now, in this task)
 
-- [ ] Merge `docs/design/tour/bible/*` (00-overview, 01-prolog, 06-enden, 07-codex-impact, 08-stimmen) into `content/bible/*` so `content/bible/` is the one bible for the tour concept; then delete or archive `docs/design/tour/bible/` and update every link to it (`docs/design/tour/README.md`, `impact.md`, `content/story/README.md`, AGENTS.md / CLAUDE.md if they mention it)
-- [ ] Old-concept chapters in the bible (surveyor prologue `01-prolog.md`, Feldstation) rewritten or marked historical; `09-ui-texte.md` loses the "Feldbuch-Ton" rule
+- [x] Merge `docs/design/tour/bible/*` (00-overview, 01-prolog, 06-enden, 07-codex-impact, 08-stimmen) into `content/bible/*` so `content/bible/` is the one bible for the tour concept; then delete or archive `docs/design/tour/bible/` and update every link to it (`docs/design/tour/README.md`, `impact.md`, `content/story/README.md`, AGENTS.md / CLAUDE.md if they mention it)
+- [x] Old-concept chapters in the bible (surveyor prologue `01-prolog.md`, Feldstation) rewritten or marked historical; `09-ui-texte.md` loses the "Feldbuch-Ton" rule
 
 ## Acceptance Criteria
 - [x] Title, new-game flow and pause menu speak of the tour, not of a surveyor / lantern / Feldstation (German text); working title on the title screen, no motto / subtitle
 - [x] The lantern screen is a tour map (Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle) with one "Tour starten" click that unlocks audio
 - [ ] No journal and no "Feldbuch" in the UI; save UI in plain wording; quest log, codex, map and album reachable as decided (section 6)
 - [x] Survey skills on the new keymap (no clash with the WASD hand) and behind one expanding button on mobile
-- [ ] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
+- [x] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
 - [x] The Messstab is received visibly during the tour, before the first time travel, and not shown before
 - [ ] No menu at the spring; its functions open at the Bauwagen (or, if the owner rejects the restore, through Marlene); the spring's touch has no E conflict
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
@@ -372,7 +372,8 @@ _Status: approved 2026-11-25_ (coordinator approves for the owner)
 - §7 — Survey keymap, settings migration, touch expansion and tutorials.
 - §§5, 8 — Bible merge and remaining design and architecture references.
 
-## Plan
+## Slice 5 plan (history)
+
 _Status: approved 2026-11-25_ (coordinator approves for the owner)
 
 **Approach:** Slice 5 moves the Messstab to Marlene's stop at the Weiher. Apply the §7 survey bindings on the number row and put the six survey controls in one touch menu. Update the remaining actionable German wording and the live gameplay documentation for the tour.
@@ -418,6 +419,53 @@ _Status: approved 2026-11-25_ (coordinator approves for the owner)
 - [ ] §§4–5 — Bauwagen placement (verify with owner), hub relocation, spring interaction and associated station IDs and ending checks.
 - [ ] §6 — Talent wording, destinations and in-fiction Feldbuch choices (verify with owner).
 - [ ] §§5, 8 — Merge the bibles and update links. Review remaining obsolete code after the hub move.
+
+## Plan
+
+_Status: approved 2026-11-25_ (slice 6, coordinator approves for the owner)
+
+**Approach:** Complete §§5 and 8's merge into `content/bible/`. Reconcile the guided opening, endings, Codex and character voices with the live content and label proposals whose scenes or unlocks are still pending. Mark obsolete surveyor and station descriptions where the chapter drafts still contain them. Queue the two authorized voice lines in TASK-014 and give the three real-data checks more time under load.
+
+**Files to touch:**
+
+- `content/bible/` and `docs/design/tour/bible/` — merge the five tour documents and remove their superseded copies.
+- `content/story/README.md`, `docs/design/tour/`, PRD, ACTION-RPG and other tracked references — use canonical bible paths.
+- TASK-007, TASK-010 and TASK-014 — record the slice, repair design references and queue the two exact tour lines for later recording.
+- `tests/{flaschen,scenery,travel}.test.ts` — explicit per-test timeouts for the three specified real-data cases.
+
+**Steps:**
+
+- [x] 1. Merge the overview and guided prologue. Reconcile the current beat IDs, route, grants, XP and save migration with the live story. Preserve authored draft material where it still informs the design, with its status marked.
+- [x] 2. Merge the endings and party, Codex sources and unlocks, and voice guidance. Preserve the later chapters' retained design and distinguish their obsolete hub references and other historical draft material. Bring the UI writing rules and opening/control references up to date.
+- [x] 3. Remove the five superseded tour drafts, update all incoming links and canonical-path references, and record both slice 5 line IDs and texts in TASK-014's recording queue.
+- [x] 4. Add 30-second budgets to the three named real-data unit tests and run their files together.
+- [x] 5. Audit the referenced IDs and keys in `e2e/`, `e2e/helpers/`, `tests/` and all `strings.ts` files. Check local documentation links, run the four gates and `mc validate`, list external Playwright checks and attempt the local commit.
+
+**Test plan:** Run the three focused unit suites, then `pnpm typecheck`, `pnpm test --maxWorkers=2`, `pnpm validate` and `pnpm build`. If the tsx CLI IPC socket is denied, run `node --import tsx scripts/validate-content.ts` and record both results. List one-worker Playwright smoke, tour, touch, party, voice, Codex and related travel checks based on the identifier audit. This slice edits documentation and unit test timeouts. Browser runs and screenshots are outside this session.
+
+**Risks:** Some tour draft material was superseded by shipped beats, grant sources or chapter loading. Retain story and source guidance with explicit status, and use the live JSON, generators and migration code for shipped details. Historical quest IDs can still describe effects on legacy saves.
+
+**Open questions:** None for this slice.
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1. Title, new game and Pause wording | full | Record the current wording in the bible. |
+| 2. One-tap tour map | full | Document the shipped opening. |
+| 3. Journal, Feldbuch and destinations | partial | Update the UI guide. Owner-dependent decisions remain open. |
+| 4. Survey keymap and mobile controls | full | Record the desktop defaults and touch survey menu. |
+| 5. Classic removal and single bible | full | Merge the design drafts after the classic content retirement. |
+| 6. Visible Messstab handoff | full | Document the shipped handoff and queue the new line. |
+| 7. Hub move and spring E conflict | follow-up | Owner placement decision pending. |
+| 8. v0.6–v0.8 saves | full | Document the shipped migration and its retained quest history. |
+| 9. Smoke, affected e2e and units | partial | Target the three load-sensitive tests and record the browser checks. |
+| 10. PRD, ACTION-RPG and README | full | Record the consolidated design location and update canonical links. |
+| 11. Four gates | partial | Typecheck, both unit runs, the production build and the Node content validator passed. The pnpm validator wrapper hit the sandbox’s tsx IPC denial. |
+
+**Follow-up slices:**
+
+- [ ] §§4–5 — Bauwagen placement (verify with owner), hub relocation, spring interaction and associated station IDs, save fields, ending checks and obsolete code.
+- [ ] §6 — Talent wording, destinations and in-fiction Feldbuch choices (verify with owner).
+- [ ] Complete the previously listed contributor browser and mobile checks.
 
 ## Progress
 
@@ -548,6 +596,39 @@ _Status: approved 2026-11-25_ (coordinator approves for the owner)
   ```sh
   git add -A -- README.md .mc/tasks/todo/TASK-007-*.md content docs e2e public/voice/manifest.json public/voice/laub.t.seite.977b1f12.m4a public/voice/laub.t.seite.eb4cb03e.webm scripts src tests
   git commit -m 'feat(tour): add the Weiher staff handoff and survey controls' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+  ```
+
+- 2026-11-25: Slice 6 approved by the coordinator for the owner on `refactor/task-007-slice6`, based on `eb43993`.
+
+- 2026-11-25: Slice 6 step 1 complete. Merged the opening and overview around the 18 shipped beats, Weiher staff handoff, spring touch, 549 EP and migration to K1. Optional quests and 1789 training are design proposals. All 38 focused tour, handover and content-budget tests passed.
+
+- 2026-11-25: Slice 6 step 2 complete. Consolidated the endings, party sketches, Codex sources and voice direction. Marked older chapter and interface material as historical and documented the live startup, pause wording and touch controls. The 115 focused story, party, credits and voice tests passed.
+
+- 2026-11-25: Slice 6 step 3 complete. Removed the five superseded tour drafts, repointed their references and queued the exact t13 Marlene and t18 Laub lines in TASK-014. No recordings were generated.
+
+- 2026-11-25: Slice 6 step 4 complete. Added a 30-second timeout to each requested real-data test. The three files passed all 64 tests together. The travel route’s existing 150 ms performance assertion still applies.
+
+- 2026-11-25: Slice 6 step 5 complete. Audited documented identifiers and keys in e2e, its helpers, tests and all 13 feature dictionaries plus src/i18n. No runtime identifiers changed. The legacy station point remains covered by its save-compatibility test. Relative documentation links and git diff --check passed.
+
+- 2026-11-25: Typecheck and the production build passed. All 1,520 unit tests in 113 files passed with both the default worker count and `--maxWorkers=2`. `pnpm validate` hit the tsx IPC socket `EPERM`. `node --import tsx scripts/validate-content.ts` passed with the existing content warnings. MissionControl validation passed. Gate commands used a local copy of the installed dependencies and disabled pnpm’s automatic reinstall check.
+- 2026-11-25: Playwright discovered 55 tests across 17 specs and one mobile tour test. Browser runs are pending. Run each spec with one worker.
+
+  ```sh
+  pnpm build
+  for spec in smoke chapter-prolog tour-slice walk story integration pacing quelle chapter-k1-quelle campaign party chronik voice touch flaschen scenery travel-paths; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  scripts/dev/heavy.sh -- pnpm exec playwright test -c e2e/mobile/playwright.config.ts --workers=1
+  ```
+
+- 2026-11-25: The sandbox denied staging at the worktree’s `index.lock`. Stage the documentation, including the five deleted drafts under `docs/design/tour`, and the three test edits from the contributor shell.
+
+  ```sh
+  git add -A -- .mc/tasks/todo/TASK-010-*.md .mc/tasks/todo/TASK-014-*.md content/bible content/story/README.md docs/ACTION-RPG.md docs/IDEAS-ROUND11.md docs/PRD.md docs/design/tour scripts/content-build/routes/p-fuehrung.spec.json
+  git commit -m 'docs(story): merge the guided-tour story bible' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+
+  git add -- .mc/tasks/todo/TASK-007-*.md tests/flaschen.test.ts tests/scenery.test.ts tests/travel.test.ts
+  git commit -m 'test(world): allow more time for real-data checks' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
   ```
 
 ## Notes

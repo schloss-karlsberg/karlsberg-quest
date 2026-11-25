@@ -1,104 +1,82 @@
-# Die Enden
+# Die Enden und das Abschlussfest
 
-> **Tour-Konzept (Stand 2026-11-23):** Nach jedem Ende folgt das Fest auf dem Schlossplateau; Bauwagen-Bezüge entfallen. Maßgeblich ist [`docs/design/tour/bible/06-enden.md`](../../docs/design/tour/bible/06-enden.md); Zusammenführung: TASK-007.
-
-> **Action-RPG-Umbau> **Action-RPG-Umbau (2026-11, docs/ACTION-RPG.md §11.5).** Die Enden bleiben, wie sie sind: Wahl am Tisch (Museum / Feuer / Behalten), Epilog aus den Haltungen und `flag.k3_objekt`, Abspann, „Ende noch einmal wählen“. Die Haltungen kommen jetzt aus den Abgaben der Aufträge (Hanne, Laub, Peter, Jost) und tragen die Werte der Enden-Datei (`herzog_selbst`, `lohn_steine`, `herr_suchen`, `chronik_bewachen` …); der Ersatz-Epilog in der Story-Datei kennt beide Schreibweisen. Vom Finale (W8) bis zum Abspann ist der Kampf aus (`combat.disabled`): Hier gewinnt niemand etwas mit einem Stab.
-
-Alles in dieser Datei ist **FIKTION**, außer den ausdrücklich markierten Sätzen. Kein Ende ist richtig oder falsch. Es gibt keine Wertung, keine Punkte, keinen „wahren“ Schluss.
-
-| | |
-| --- | --- |
-| Ära | `heute`, Morgengrauen nach dem Finale |
-| Ort | Zwinger (Ende des Finales) → Feldstation (760/−930) |
-| Dauer | ≈ 5 min, davon 2–3 min Epilog zum Lesen |
-| Voraussetzung | Finale gespielt (`flag.k4_finale`), Horn genommen |
-
----
+Die drei Enden führen über die Wahl, Laubs Szene und den Epilog zum Fest auf dem heutigen
+Schlossplateau. Die [Enden-Datei](../story/05-enden.story.json) und das
+[Party-Pack](../packs/party.pack.json) enthalten die gespielten Szenen und Zeilen.
+Die Szenen sind **FIKTION**. Alle drei Entscheidungen schließen die Geschichte ab.
 
 ## 1. Übergang
 
-Nach dem Finale (W8) wird es hell. Die Hunde sind fort, nur ihre Abdrücke liegen im Raureif, im Kreis um die Stelle, an der du gelegen hast. Du stehst auf. Das Horn liegt in deiner Hand, kalt und echt.
-
-Abblende. Feldstation. Marlene sitzt auf der Stufe des Bauwagens, zwei Becher Kaffee neben sich.
-
-- `marlene.end.morgen`: „Da bist du ja. Ich hab die ganze Nacht Licht gesehen da oben am alten Zwinger. Erst dachte ich, Kalköfen.“ (Pause.) „Das war ein Witz. Kalköfen gibt's hier keine mehr.“
-- `laub.end.morgen`: „Sagen Sie ihr nichts. Oder alles. Sie wird es ohnehin aufschreiben.“
-
-Auf dem Tisch im Bauwagen liegt die Chronik, jetzt vollständig: die Fallseiten aller Kapitel, mit Laubs Kurrent zwischen den Zeilen und Solls Spalten „Wem – Was – Wann – Wo“. Daneben das Horn, die Bussole und der Gegenstand aus dem Festsaal (`flag.k3_objekt`; wenn „nichts“, liegt dort nichts).
-
-Wenn noch eine LESART leer ist, sagt Laub: „Sie haben noch Lücken gelassen. Das darf man. Aber man muss es wollen.“ Der Spieler kann sie füllen oder mit „Leer lassen“ bestätigen (`flag = offen`).
-
----
+Nach dem Finale am Zwinger beginnt `enden/e1` im Heute. Der Checkpoint des Kapitels liegt an der
+Karlsbergquelle. Der Kampf bleibt bis zum Abschluss gesperrt. Der Entwurf für die Verlegung der
+Wahl an den Rand des Plateaus sieht Laubs letzten Rat an der Quelle und Nachrichten von Gerold,
+Marlene und Soll vor. Die gespielte Auswahl und einige gesprochene Zeilen beziehen sich noch auf
+den Bauwagen. Diese Bezüge gehören zur ausstehenden Abstimmung über den Hub (TASK-007).
 
 ## 2. Die Wahl
 
-Drei Handlungen, alle am Tisch. Interaktion: E auf den jeweiligen Gegenstand halten (3 s), dann eine Bestätigung „Bist du sicher? Das lässt sich nicht ändern.“ Danach gibt es kein Zurück, außer einem neuen Spiel (der Spielstand bleibt; im Hauptmenü „Ende noch einmal wählen“ für alle, die alle drei sehen wollen).
+Laub sagt vor der Wahl: „Es ist Ihr Buch jetzt. Soll hätte gesagt: Hauptsache, die Namen stimmen.“
+Der Spieler wählt im Dialog und bestätigt die Entscheidung. Die Objekte in der letzten Spalte
+gehören zur geplanten Inszenierung am Plateaurand.
 
-| id | Handlung | Taste/Objekt | Was mit dem Horn geschieht | `flag.end` |
-| --- | --- | --- | --- | --- |
-| `end.museum` | Die Chronik in die graue Archivschachtel legen, die Marlene mitgebracht hat | Schachtel | Du bläst es einmal, lang und fallend: abgeblasen | `museum` |
-| `end.verbrennen` | Die Chronik in den Ofen des Bauwagens legen | Ofen | Du legst es zurück auf die Mauer am Zwinger | `verbrennen` |
-| `end.behalten` | Die Chronik zur Bussole in die Schublade legen | Schublade | Du hängst es an den Haken neben der Tür | `behalten` |
+| Runtime-ID | Entscheidung | Entwurf am Plateau |
+| --- | --- | --- |
+| `museum` | Ins Museum | Graue Archivschachtel von Marlene. Das Horn bläst die Jagd ab. |
+| `burn` | Verbrennen | Feuerschale. Das Horn bleibt auf einem Baumstumpf am Rand der Lichtung. |
+| `keep` | Behalten | Chronik und Bussole im Rucksack. Das Horn bleibt um den Hals. |
 
-Laub sagt vor der Wahl genau einen Satz (`laub.end.vorher`): „Es ist Ihr Buch jetzt. Soll hätte gesagt: Hauptsache, die Namen stimmen.“
+## 3. Ende A: Ins Museum
 
----
+Marlene legt die Chronik in die Archivschachtel. Die Jagd wird abgeblasen und Laubs Nadel richtet
+sich nach Norden. Die Museumsfassung des Epilogs betont Namen, Belege und Quellen.
 
-## 3. Ende A: Ins Museum (`end.museum`)
-
-**Szene.** Du legst die Seiten in die Schachtel. Marlene schreibt mit Filzstift „Karlsberg, Funde ohne Fundort“ darauf und streicht „Funde“ wieder durch. Draußen auf der Lichtung setzt du das Horn an. Kein schöner Ton, ein fallender, kratziger. Im Wald antwortet nichts. Dann, sehr weit weg, legt sich etwas hin. Man hört es nicht, man weiß es.
-
-**Laub.**
-- `laub.end.museum_1`: „Abgeblasen. Nach zweihundertdreiunddreißig Jahren. Ich werde das als Überstunden einreichen.“ (1793 bis 2026; wenn das Spiel das Jahr nicht kennt, ohne Zahl: „Nach über zweihundert Jahren.“)
+- `laub.end.museum_1`: „Abgeblasen. Nach {jahre:1793} Jahren. Ich werde das als Überstunden einreichen.“
 - `laub.end.museum_2`: „Eine Akte, die geschlossen wird, ist eine Akte, die man lesen kann. Bringen Sie sie dahin, wo man nachschaut, bevor man glaubt. Mit Quellen. Auch die, die mir nicht gefallen.“
 - `laub.end.museum_3`: „Und schreiben Sie auf das Schild, dass ich die fünfzig Meter nicht verschuldet habe.“
-- (Die Nadel der Bussole dreht sich zum ersten Mal im Spiel ruhig nach Norden und bleibt dort. Laub ist still. Er ist nicht fort, er ist pensioniert.)
+- `marlene.end.museum`: „Ich fahr’s nächste Woche hin. Und dem Forstamt sag ich, sie sollen die Gräben dem Denkmalamt melden. Gucken ja, graben nein. Das hast du mir beigebracht.“ (Denkmalschutz: `cx.35`.)
 
-**Marlene.**
-- `marlene.end.museum`: „Ich fahr's nächste Woche hin. Und dem Forstamt sag ich, sie sollen die Gräben dem Denkmalamt melden. Gucken ja, graben nein. Das hast du mir beigebracht.“ (FAKT im Kern: Bodendenkmäler sind im Saarland geschützt, Fundmeldepflicht nach SDschG; `cx.35`.)
+## 4. Ende B: Verbrennen
 
-**Bild zum Schluss.** Eine Vitrine in einem Museum, nicht näher benannt. Darin der Gegenstand aus dem Festsaal (siehe Abschnitt 6) und eine einzelne Chronikseite unter Glas. Das Schild davor ist der Epilog (Abschnitt 6).
+In den einrollenden Seiten blitzen letzte Erinnerungen auf, bis die Schrift zu Asche wird.
+Laubs Stimme wird leiser. Der Festentwurf greift das Bild mit einer Feuerschale auf.
 
----
-
-## 4. Ende B: Verbrennen (`end.verbrennen`)
-
-**Szene.** Du öffnest die Ofenklappe. Die Seiten brennen nicht schnell, sie rollen sich ein und werden durchsichtig, und für einen Atemzug sieht man durch jede eine Erinnerung: den Ehrenhof im Abendlicht von 1789, ein Feuerwerk über den Dächern, die Meute im Nebel der Apfelallee. Dann ist es Asche. Du gehst zum Zwinger und legst das Horn auf den Mauerrest. Kein Horn mehr in der Nacht.
-
-**Laub.**
 - `laub.end.verbrennen_1`: „Gut. Sie haben lange genug gesucht. Die Hunde und ich.“
 - `laub.end.verbrennen_2`: „Was im Buch stand, steht auch woanders. Bei Mannlich, in den Akten, im Boden. Nur die Namen nicht. Die Namen tragen jetzt Sie.“
 - `laub.end.verbrennen_3`: „Machen Sie das Licht aus, wenn Sie gehen. Das habe ich nie gelernt.“
-- (Seine Stimme wird leiser, nicht abrupt. Die Bussole ist danach eine gewöhnliche Bussole. Ihre Nadel zeigt nach Norden, ein wenig zittrig, wie alle Nadeln.)
+- `marlene.end.verbrennen`: „Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier. … Hast du gut gemacht. Ich weiß nicht, was, aber gut.“
 
-**Marlene.**
-- `marlene.end.verbrennen`: „Riecht nach Herbstfeuer. Komisch. Riecht gar nicht nach Papier.“ (Pause.) „Hast du gut gemacht. Ich weiß nicht, was, aber gut.“
+## 5. Ende C: Behalten
 
-**Bild zum Schluss.** Der Zwinger im Morgenlicht, Raureif, das Horn auf der Mauer. Kein Abdruck im Raureif außer deinem eigenen.
+Laub bleibt im Dienst. Die Jagd bleibt offen und die Hunde folgen dem Spieler. Im Festmotiv liegen
+Diane und Bijou zu seinen Füßen. Der Entwurf verlegt die fünf Abdrücke aus dem Raureif ins Laub
+am Rand der Lichtung.
 
----
-
-## 5. Ende C: Behalten (`end.behalten`)
-
-**Szene.** Du legst die Chronik in die Schublade zur Bussole und schiebst sie zu. Das Horn hängst du an den Haken neben der Tür. Marlene sieht es an und sagt nichts. Am Abend, als du den Bauwagen abschließt, liegen fünf Abdrücke im Raureif vor der Stufe. Sie führen nicht weg.
-
-**Laub.**
 - `laub.end.behalten_1`: „Sie behalten uns. Das ist unvernünftig. Ich bin sehr gerührt.“
 - `laub.end.behalten_2`: „Dann bleibt die Jagd offen. Die Hunde laufen weiter, aber jetzt hinter Ihnen her, nicht vor Ihnen weg. Das ist ein Unterschied, den man spürt, wenn es dunkel wird.“
 - `laub.end.behalten_3`: „Und ich bleibe im Dienst. Ohne Tagegeld. Wie gehabt.“
-
-**Marlene.**
-- `marlene.end.behalten`: „Lass das Horn da hängen. Das passt zum Bauwagen. Aber blas nicht drauf, wenn ich schlafe.“
-
-**Bild zum Schluss.** Nacht. Von der Kuppe über dem Tal sieht man die Lichter von Homburg und darüber den dunklen Schlossberg. Ganz leise, aus der Richtung der Hohenburg, ein Horn, falsch und zu hoch. Jost hat nie richtig blasen gelernt.
-
-**Spielfolge:** Im freien Spiel nach dem Ende C (falls gebaut) erscheinen nachts fünf Hunde in 20 m Abstand hinter dem Spieler und bleiben stehen, wenn er stehen bleibt. Sie stellen niemanden mehr.
-
----
+- `marlene.end.behalten` (Entwurf am Plateau): „Lass das Horn um. Steht dir. Aber blas nicht drauf, wenn Gerold redet.“
 
 ## 6. Der Epilog (Text, aus Bausteinen)
 
-Der Epilog ist ein Text auf einer Seite, wie das Schild im Museum (A), eine letzte Notiz im Ofenlicht (B) oder ein Eintrag in Laubs Kurrent auf der letzten Seite (C). Er besteht aus: **Einleitung je Ende** → **sechs Lesart-Sätze** (in dieser Reihenfolge) → **Gegenstand** → **Schluss je Ende**. Jeder Baustein ist ein Satz. Fehlende Flags (`offen`) nehmen den Satz „offen“.
+Der [Generator](../../scripts/content-build/epilogue-deeds.mjs) enthält die gespielte Fassung.
+Nach der Einleitung je Ende folgt pro Abschnitt der erste zutreffende Taten-Satz oder die
+Ersatzzeile. Der optionale Gegenstand aus dem Festsaal (`flag.k3_objekt`) und der Schluss hängen
+vom Ende ab. Die drei Taten aus „Vermessung“ können aus alten Spielständen stammen.
+Die Umschreibung von Ofen- und Schubladenbildern auf Feuerschale und Rucksack gehört zur
+geplanten Anpassung der Enden.
+
+### Entwurf für den Abschnitt „Führung“
+
+- Alle Messaufträge erledigt – „Für Marlene habe ich den halben Wald nachgemessen. Sie sagt, ich darf wiederkommen, ohne Führung.“
+- Einzelne Messaufträge erledigt – „Für Marlene habe ich ein paar Stellen im Wald nachgemessen. Gegraben habe ich nicht.“
+- Standard – „Ich war auf einer Führung. Das Reh habe ich fotografiert, den Rest habe ich mir gemerkt.“
+- Irrlichter gebannt – „Über dem Weiher waren Lichter. Ich habe sie nicht gefragt, woher.“
+- Alle vorgesehenen Motive im Album – „Im Telefon habe ich sieben Bilder, und auf keinem ist ein Schloss.“
+
+### Historische Lesart-Fassung
+
+Die folgenden Textbausteine stammen aus dem Fallseiten-Entwurf. Sie halten frühere Varianten fest.
+Die aktuelle Auswahl beruht auf den Taten im Spiel.
 
 ### 6.1 Einleitung
 
@@ -174,9 +152,90 @@ FAKT-Hinweis für den Codex: Ein Türgriff, ein Dukat mit Schlossansicht und ein
 
 ## 7. Nach dem Epilog
 
-1. Abspann (Credits, Quellen und Lizenzen, siehe `09-ui-texte.md`).
-2. Danach die Feldstation im Heute, frei begehbar. Alle Werkzeuge bleiben. Kein Zeitwechsel mehr möglich, außer bei Ende C (dort ist Q an allen Ankern weiter offen, ohne Meute).
-3. Hauptmenü: Eintrag „Ende noch einmal wählen“ lädt den Stand vor 6.2.
-4. Codex vollständig freigeschaltet.
+Der Beat `e3` setzt das Fest in der Dämmerung am Rand des Plateaus an. Gerolds Rede, die
+Kamerafahrt mit Abspann und das anschließende freie Spiel schließen die Tour ab.
+„Ende noch einmal wählen“ in der Pause lädt die Wahl erneut.
 
-**Errungenschaften (optional, keine Wertung):** „Abgeblasen“ (A), „Ruhe“ (B), „Fortgesetzt“ (C), „Alle Steine“ (Wandernde Steine 4/4), „Nichts genommen“ (`flag.k3_objekt = nichts`), „Leer gelassen“ (mindestens eine LESART offen). Keine Errungenschaft für Tempo oder fürs Gestelltwerden.
+Als optionale Errungenschaften waren „Abgeblasen“, „Ruhe“, „Fortgesetzt“, „Alle Steine“ und
+„Nichts genommen“ vorgesehen. Zum Fallseiten-Entwurf gehörte außerdem „Leer gelassen“.
+
+## 8. Das Fest
+
+**Szenenentwurf.** Die folgenden Orts-, Figuren- und Dialogskizzen geben die Richtung vor. Den gespielten Ablauf und die kurzen Zeilen definiert der Beat `e3`.
+
+**Ort.** Plateau, die heutige Ehrenhof-Lichtung (TF-01, 1216/−1114, eben, r ≈ 35), mit Wald und flachen Mauerzügen.
+**Licht.** Dämmerung, letzter roter Streifen im Westen, warmweiße Lichterketten, Feuerschale und Laternen der Gruppe. Das Feuerwerk gehört zur Erinnerung an 1785 (`cx.14`).
+**Ton:** leises Stimmengewirr, ein Kind, Hunde, Gläserklirren, kein Musikstück mit Text.
+
+### 8.1 Wer da ist
+
+| Person (heute) | Figur 1789 | Ort beim Fest (x/z, prüfen) | Tun |
+| --- | --- | --- | --- |
+| Gerold Imhoff | – | 1214/−1112, am Tisch | schenkt Glühwein aus, hält die Abschlussrede |
+| Marlene | (sie selbst) | 1220/−1118 | Stativ zusammengeklappt, „Ach, behalt ihn“ zur Leihgabe |
+| Carl Herzog | Herzog Karl II. August | 1210/−1108, einziger Campingstuhl | sitzt, hat Schnupfen, hat sein Auto bis an die Schranke gefahren |
+| Christian Mann | Mannlich | 1224/−1110 | zeichnet die Lichtung, zeigt dir die Skizze |
+| Hanne Matz und Peter | Hanne, Peter | 1218/−1122 | Hanne isst Kuchen auf der Bank, Peter mit Kopfhörern |
+| Jost Fendel, Diane, Bijou | Jost, die Meute | 1206/−1118 | wirft einen Stock; die Hunde |
+| Herr Soll | Kanzlist Soll | 1213/−1115 | zählt die Kuchenkasse |
+| Liese Wendling | Liese, Wäscherin | 1222/−1114 | flickt Bijous Halstuch, hat Nähzeug dabei |
+| Extras (7) | – | verstreut | das Kind Mats mit dem Spielzeugkompass und seine Mutter; ein Paar aus Zweibrücken; zwei Wanderinnen; ein Student mit Thermoskanne |
+
+### 8.2 Ablauf (gleich für alle Enden, ≈ 3–4 min, Abspann ab Schritt 4)
+
+1. **Ankunft.** Du trittst in den Lichtkreis. Gerold: „Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt's wieder.“ Herr Soll hakt etwas ab.
+2. **Der Stab.** Marlene kommt dir entgegen, du gibst ihr den Messstab zurück (das Item verlässt das Inventar nur für die Szene; im freien Spiel danach ist er wieder da, Marlene: „Ach, behalt ihn. Ich hab ja noch einen.“).
+   - `marlene.end.fest`: „Danke. Und? Hast du was gefunden da unten an der Quelle?“ — Antwort wählt der Spieler nicht; Laub antwortet leise für dich nur hörbar: „Sagen Sie: Wasser.“
+3. **Gerolds Abschlussrede** (Variante je Ende, §8.3).
+4. **Der Abspann beginnt** als Laufschrift am Bildrand; die Kamera geht in langsamen Kreisen über das Fest (Kameraweg aus `stage.ts`, spielerrelativ), bleibt bei jedem Doppelgänger zwei, drei Sekunden. Jeder sagt **eine** Zeile (§8.4). Der Spieler kann umhergehen; der Abspann läuft weiter, E spricht Leute an.
+5. **Letztes Bild** (Variante je Ende), dann „Ende“ und der Hinweis „Frei weiterspielen“.
+
+### 8.3 Varianten je Ende
+
+**A – Museum: Gerold zeigt die Chronik.**
+Marlene hat die Archivschachtel auf den Tisch gestellt. Gerold hebt die oberste Seite vorsichtig ins Licht der Lichterkette.
+- `imhoff.end.museum_1`: „Leute, guckt euch das an. Das hat unser Nachzügler da unten gefunden, sagt Marlene. Eine Liste. Wem der Hof was schuldig geblieben ist. Löhne. Namen.“
+- `imhoff.end.museum_2`: „Ob das echt ist? Das sollen die im Museum prüfen. So macht man das: erst nachsehen, dann glauben.“
+- Hanne Matz liest über seine Schulter und tippt auf eine Zeile: „Matthes. Mit zwei T.“ (Pause.) „Komisch. So schreibt man das bei uns in der Familie auch.“ (FIKTION; keine Behauptung einer Abstammung, nur ein Echo.)
+- Mats' Spielzeugkompass zeigt zum ersten Mal brav nach Norden. Laubs Nadel auch.
+- **Letztes Bild:** die Schachtel unter der Lichterkette, Gerolds Hand flach auf dem Deckel.
+
+**B – Verbrennen: die Feuerschale.**
+Die Seiten sind schon Asche. Die Feuerschale brennt hoch; die Gruppe steht im Kreis darum und wärmt die Hände.
+- `imhoff.end.verbrennen_1`: „Feuer zum Schluss. Passt ja irgendwie. Das Schloss ist auch so zu Ende gegangen.“ (Gerold spricht nur vom Gebäude; kein Witz über Menschen.)
+- `imhoff.end.verbrennen_2`: „Und trotzdem ist nicht alles weg. Steht ja alles noch irgendwo: bei Mannlich, in den Akten, im Boden. Man muss nur hingucken.“
+- Christian Mann hält seine Skizze kurz übers Feuer, nimmt sie dann zurück: „Nee. Die behalt ich.“
+- Josts Hunde liegen weit weg vom Feuer und schlafen.
+- **Letztes Bild:** Funken steigen in den dunkelblauen Himmel und verlöschen, einer nach dem anderen, wie Augen (das einzige Bild der Meute in diesem Ende).
+
+**C – Behalten: zwei Hunde zu deinen Füßen.**
+Kaum sitzt du auf der Bank, kommen Diane und Bijou, ohne dass Jost sie ruft, und legen sich dir zu Füßen, Köpfe auf den Pfoten. Die Augen spiegeln die Feuerschale, einen Moment zu hell.
+- `jostd.end.behalten`: „Das machen die sonst nie. Bei keinem.“ (Pause.) „Die mögen dich. Oder sie passen auf dich auf.“
+- `imhoff.end.behalten`: „Und die Führung ist zu Ende, aber der Berg nicht. Wer wiederkommen will: jeden zweiten Samstag, Treffpunkt wie immer.“
+- Fern, aus der Richtung der Hohenburg, ein Horn, falsch und zu hoch (bleibt aus dem alten Ende C). Jost Fendel hebt den Kopf: „Hört ihr das?“ Gerold: „Jagdhornbläser. Üben wohl.“
+- **Letztes Bild:** Nacht über dem Plateau, die zwei Hunde und deine Laterne; im Laub am Rand fünf Abdrücke, die nicht wegführen.
+
+### 8.4 Eine Zeile je Doppelgänger (alle Enden, Abspann)
+
+| Person | Zeile (Entwurf) | Echo zu |
+| --- | --- | --- |
+| Carl Herzog | „Schön war's. Nächstes Mal fahr ich aber hoch. Zu Fuß ist nichts für mich.“ | `cx.11` „Zu Fuß, außer einem“ |
+| Christian Mann | „Ich zeichne das Schloss mal so, wie es war. Nach den Quellen natürlich. Den Rest erfind ich und schreib's dazu.“ | Mannlich, Baudirektor und Maler; FAKT/FIKTION-Regel |
+| Hanne Matz | „Ich bin Steinmetzin. Da unten am Weg lag ein Quader mit einem Zeichen drauf. Ein Winkel und drei Punkte. Kennst du das?“ | `clue.k1.zeichen` (FIKTION) |
+| Peter | (nimmt einen Kopfhörer raus) „Mama, können wir gehen?“ (setzt ihn wieder ein) | Peter, wortkarg |
+| Jost Fendel | „Diane führt, Bijou glaubt, er wär ein Hirsch. Die Namen hat mein Opa ausgesucht. Keine Ahnung, woher.“ | Josts Hunde |
+| Herr Soll | „Kuchenkasse stimmt. Bis auf einen. Den buch ich unter ‚offen‘.“ | Soll, „Was der Hof schuldig blieb“ |
+| Liese Wendling | „Die Jacke hat jetzt einen Riss. Gib her, ich näh dir das schnell. Kleider machen Leute.“ | Liese, `q.k1.kleider` |
+| Mats (Kind) | „Mein Kompass zeigt wieder komisch.“ (A: „… zeigt jetzt richtig!“) | Laub, ohne Doppelgänger |
+| Gerold Imhoff | „Danke, dass ihr mitgekommen seid. Und denkt dran: gucken ja, graben nein.“ | `cx.35` |
+
+**Im Spiel (05-enden.story.json, Beat e3):** jede Halt-Einstellung dauert ≈ 2,2 s, darum sind die Zeilen dort auf höchstens 46 Zeichen gekürzt (z. B. Carl Herzog: „Nächstes Mal fahr ich aber hoch.“, Gerold: „Danke fürs Mitkommen. Gucken ja, graben nein.“). Die langen Fassungen oben leben teils in den Nachspielzeilen beim Ansprechen nach dem Abspann (`content/packs/party.pack.json`). Gerolds Rede (§8.3) läuft vor dem Abspann; Der Stab-Dialog (Schritt 2) und die letzten Bilder (Schritt 5) sind Entwürfe.
+
+Laub ist beim Fest **nur Stimme** in der Bussole (A: schweigt, „pensioniert“; B: wird leiser, wie im alten Ende; C: ein Satz, nur für dich: „Gute Gesellschaft. Ich bleibe im Dienst.“).
+
+### 8.5 Regeln
+
+- Kein Alkohol im Bild trinken; Glühwein steht da, Becher in der Hand ist in Ordnung, niemand wird betrunken. Ein Kinderpunsch-Topf daneben. Keine Marke an Bechern, Töpfen, Tisch.
+- Die Doppelgänger werden nie aufgeklärt („Ich bin der Herzog von früher“ gibt es nicht). Nur Echos.
+- Keine Fanfare, kein Feuerwerk, keine Wertung des Endes.
+- `combat.disabled` bleibt bis nach dem Fest gesetzt; Ende C schaltet danach die Folge-Meute (5 Hunde in 20 m) wie bisher.

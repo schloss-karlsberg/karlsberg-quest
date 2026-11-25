@@ -1,16 +1,20 @@
-# Tour opening and party endings: design drafts
+# Guided tour opening and party endings
 
-**Status: the current game concept ("guided tour with time travel") and its design source of truth.** Written 2026-11-20 as drafts; the tour has been built since and is the default start of a new game since v0.7.0 (voiced since v0.8.0); what is in and what is still open: [`slice-v0.md`](slice-v0.md) and `docs/NEXT-SESSION.md` §7. `content/bible/*` has not been merged with these drafts yet: where they disagree, these files win (merge: TASK-007). Remaining leftovers of the earlier surveyor concept in code and UI are tracked in TASK-007. Player-facing text is German; docs prose is English or German as in the existing bible.
+The guided tour with time travel has been the default opening since v0.7.0. The
+[story bible](../../../content/bible/00-overview.md) contains the story, Codex and voice design.
+This directory records the feature design and owner decisions. The work packages and original
+slice notes document the rollout. The [live story files](../../../content/story/README.md)
+define shipped content.
 
 ## Index
 
 | File | What |
 |---|---|
-| [`bible/00-overview.md`](bible/00-overview.md) | Changed sections of the overview: Ausgangslage, Meute, Bogen, Ende, chapter table, travel, wow moments, unlocks, fiction list |
-| [`bible/01-prolog.md`](bible/01-prolog.md) | Full rewrite of the prologue as „Die Führung“: beats t0–t15, stops with x/z, dialogue sketches, tutorials, photo targets, the deer, the dogs, Marlene's quests, the break at the Quelle, the 1789 training, XP budget, save migration |
-| [`bible/06-enden.md`](bible/06-enden.md) | The three endings with the new choice place and the party per ending |
-| [`bible/07-codex-impact.md`](bible/07-codex-impact.md) | New cards (stops, roe deer, photo cards), changed unlocks, the cx.32 conflict |
-| [`bible/08-stimmen.md`](bible/08-stimmen.md) | Gerold Imhoff, the doubles, Marlene as forester, new barks |
+| [`content/bible/00-overview.md`](../../../content/bible/00-overview.md) | Story, chapters, set pieces, unlocks and fiction |
+| [`content/bible/01-prolog.md`](../../../content/bible/01-prolog.md) | Shipped beats, route, handover and optional quest design |
+| [`content/bible/06-enden.md`](../../../content/bible/06-enden.md) | Three choices, epilogue and party at dusk |
+| [`content/bible/07-codex.md`](../../../content/bible/07-codex.md) | Codex sources, tour-card proposals and open source questions |
+| [`content/bible/08-stimmen.md`](../../../content/bible/08-stimmen.md) | Gerold Imhoff, the modern doubles, Marlene and barks |
 | [`storyboard-beats.md`](storyboard-beats.md) | 28 storyboard beats mapped onto `SHOTS`, and the shots they replace |
 | [`impact.md`](impact.md) | 25 work packages with files, change, size and dependencies |
 | [`systems.md`](systems.md) | Photo mode, cinematic, tour group, animals, Quelle hub, party, training flag; pacing targets |
@@ -33,7 +37,7 @@
 13. The three endings stay; after each comes a credits party on today's palace plateau at dusk with the guide and the group (cake, mulled wine, fairy lights), the historical characters as their modern doubles; per ending: museum → the guide shows the chronicle, burn → a fire bowl, keep → two dogs at your feet.
 14. Kept: FAKT/FIKTION labels, tone rules, German player-facing content, the XP budget (prologue incl. the 1789 training ends at level 3).
 15. Unverified facts (the Weiher's date and purpose, whether the Quelle fed the palace, palace-era quarrying on the Felsenpfad) are never FAKT; they are marked open, in the guide's mouth too.
-16. The cx.32 re-check is an open task (`bible/07-codex-impact.md` §4).
+16. The owner ruled that the disputed use of the Baumagazin should be dropped from cx.32. The builder update is pending. [Codex source notes](../../../content/bible/07-codex.md#offene-quellenfragen)
 
 ## Decisions (owner, 2026-11-20)
 
@@ -69,7 +73,9 @@ All open questions are resolved.
 
 The story contracts these owners build against are in [`systems.md`](systems.md) § "Story contracts".
 
-## The five hard problems, solved on paper
+## Original rollout proposals
+
+These notes describe the initial design. The [prologue bible](../../../content/bible/01-prolog.md) records the shipped grants, beats and save migration.
 
 - **Prologue-only grants:** relief 1–2 from Marlene at the Weiher (main path), relief 3 unlocked there and taught at the Quelle; `item.bussole` + `story.compass` + `story.laub` + kartograf 1 when the compass comes out of the trough (t10); `item.stab.esche` lent by Marlene (t7). All on the main path, none in an optional quest.
 - **Epilogue deeds:** the slot `vermessung` (read `q.p.trichter/meiler/irrlichter`) becomes `fuehrung`, counting Marlene's optional quests with a default line for none, plus Irrlichter and album add-ons.

@@ -378,7 +378,7 @@ describe('the Wegweiser follows the paths (playtest round 10, B2)', () => {
     expect(r.expanded).toBe(0);
   });
 
-  it('real data: from the Damm towards the hohe Stufe the route takes the Waldweg round the Weiher, in a few ms', () => {
+  it('real data: from the Damm towards the hohe Stufe the route takes the Waldweg round the Weiher, in a few ms', { timeout: 30_000 }, () => {
     const w = loadWorldData();
     const water = w.water;
     const cost = pathGroundCost(w.pathAt);

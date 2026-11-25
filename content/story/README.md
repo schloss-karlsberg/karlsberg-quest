@@ -3,8 +3,9 @@
 One file per chapter, played in `order`. The story system (`src/systems/story/`) runs them as a
 state machine of **beats**; `pnpm validate` and `tests/story.test.ts` check every file
 (schema: `src/systems/story/types.ts`, validator: `src/systems/story/validate.ts`).
-Source of the texts: `content/bible/*.md`; for the tour (`00-tour`, the default opening) and the party
-endings the drafts in `docs/design/tour/bible/` win where they differ. Placeholder chapters/beats carry `"placeholder": true`.
+The [story bible](../bible/00-overview.md) holds the writing and design notes, including the
+[guided tour](../bible/01-prolog.md) and [party endings](../bible/06-enden.md). The story files
+and their generators define the shipped beats and dialogue. Placeholders carry `"placeholder": true`.
 
 ```jsonc
 {
