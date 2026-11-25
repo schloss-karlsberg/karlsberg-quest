@@ -5,6 +5,7 @@
  *   pnpm prepare-data            (expects ../saar-lidar-explorer next to this repo)
  *   KQ_SISTER=/path/to/saar-lidar-explorer pnpm prepare-data
  *   pnpm prepare-data --palace   only the palace (glb, footprints, pinned rooms) + manifest sizes
+ *   pnpm prepare-data --surface-detail   only the 1 m present-day shading crop + metadata
  *   KQ_ROOMS=catalogue …         regenerate rooms.json from the catalogue (breaks quests that name
  *                                rooms the catalogue has since dropped or moved; see lib/palace-data.ts)
  *
@@ -12,6 +13,7 @@
  *   terrain/meta.json                grid description + file list
  *   terrain/h2025.u16.deflate        2 m heights today, uint16 cm above hMin, left-delta coded, zlib
  *   terrain/h1789.u16.deflate        2 m heights 1789 hypothesis, int16 cm difference to 2025, zlib
+ *   terrain/surface2025.rgba.deflate 1 m normals and relief along the present-day tour, left-delta coded, zlib
  *   terrain/ground.u8.deflate        2 m land-cover classes (catalogue classes 0..7)
  *   terrain/canopy.u8.deflate        2 m canopy height today (DOM − DGM, max-pooled), 0.25 m units
  *   maps/hist1840.jpg                Bavarian survey 1836–41, 2 m/px, crop-aligned
@@ -33,6 +35,8 @@ import { deflateSync } from 'node:zlib';
 import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 import proj4 from 'proj4';
+import type { GameData, TerrainMeta, TerrainSurfaceMeta } from '../src/data/types.ts';
+import { buildSurface } from '../src/world/rasters.ts';
 import { type P2 } from './lib/frame.ts';
 import { preparePalace } from './lib/palace-data.ts';
 
@@ -70,9 +74,11 @@ function write(rel: string, data: Buffer | string) {
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 const PALACE_ONLY = process.argv.includes('--palace');
+const SURFACE_ONLY = process.argv.includes('--surface-detail');
 const ROOMS = process.env.KQ_ROOMS === 'catalogue' ? 'catalogue' : 'pinned';
 
-for (const p of PALACE_ONLY ? [SRC.recon, SRC.catalogue] : Object.values(SRC)) {
+if (PALACE_ONLY && SURFACE_ONLY) throw new Error('choose one data subset');
+for (const p of PALACE_ONLY ? [SRC.recon, SRC.catalogue] : SURFACE_ONLY ? [SRC.terrain] : Object.values(SRC)) {
   if (!existsSync(p)) throw new Error(`missing sister input: ${p} (set KQ_SISTER)`);
 }
 
@@ -104,11 +110,55 @@ const cols = Math.floor(cols1 / CELL);
 const rows = Math.floor(rows1 / CELL);
 const west = g.west as number;
 const north = g.north as number;
+const z = (a: ArrayBufferView) => deflateSync(Buffer.from(a.buffer, a.byteOffset, a.byteLength), { level: 9 });
+const detailPath = 'terrain/surface2025.rgba.deflate';
+const dgmFiles = ['data/terrain/h2025.u16.deflate', `data/${detailPath}`];
 
 function readF32(name: string): Float32Array {
   const b = readFileSync(join(SRC.terrain, name));
   return new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
 }
+
+function bakeSurface2025(src: Float32Array) {
+  const crop: TerrainSurfaceMeta = { path: detailPath, x0: 448, z0: -1248, cols: 896, rows: 832 };
+  const c0 = crop.x0 - (west - E0);
+  const r0 = crop.z0 - (N0 - north);
+  if (c0 < 0 || r0 < 0 || c0 + crop.cols > cols1 || r0 + crop.rows > rows1 || src.length !== cols1 * rows1) {
+    throw new Error('surface crop outside the source DGM');
+  }
+  const heights = new Float32Array(crop.cols * crop.rows);
+  for (let r = 0; r < crop.rows; r++) {
+    const start = (r0 + r) * cols1 + c0;
+    heights.set(src.subarray(start, start + crop.cols), r * crop.cols);
+  }
+  if (!heights.every(Number.isFinite)) throw new Error('non-finite height in surface crop');
+  const rgba = buildSurface(heights, { ...crop, cell: 1 });
+  // Delta each channel against the previous pixel in its row, working right to left in place.
+  const stride = crop.cols * 4;
+  for (let row = 0; row < rgba.length; row += stride) {
+    for (let i = row + stride - 1; i >= row + 4; i--) rgba[i] = rgba[i]! - rgba[i - 4]!;
+  }
+  const data = z(rgba);
+  if (data.length > 2 * 1024 * 1024) throw new Error('surface crop exceeds the 2 MiB compressed budget');
+  write(crop.path, data);
+  return { ...crop, encoding: 'zlib(left-delta RGBA8 normal X/Z and coarse/fine local relief)' };
+}
+
+if (SURFACE_ONLY) {
+  const meta = readJson<TerrainMeta>(join(OUT, 'terrain/meta.json'));
+  const attribution = readJson<GameData['attribution']>(join(OUT, 'attribution.json'));
+  const dgm = attribution.items.find((item) => item.id === 'dgm');
+  if (!dgm) throw new Error('missing DGM attribution');
+  const files = readJson<{ files: Record<string, number> }>(join(OUT, 'manifest.json')).files;
+  const { hist1840, hist1935, pointcloud, ...terrain } = meta;
+  const surface2025 = bakeSurface2025(readF32(tmeta.files.dtm2025));
+  write('terrain/meta.json', JSON.stringify({ ...terrain, surface2025, hist1840, hist1935, pointcloud }, null, 1));
+  dgm.files = dgmFiles;
+  write('attribution.json', JSON.stringify(attribution, null, 1));
+  writeManifest([...new Set([...Object.keys(files), detailPath])]);
+  process.exit(0);
+}
+
 function down2(src: Float32Array): Float32Array {
   const out = new Float32Array(cols * rows);
   for (let r = 0; r < rows; r++) {
@@ -119,7 +169,9 @@ function down2(src: Float32Array): Float32Array {
   }
   return out;
 }
-const h2025 = down2(readF32(tmeta.files.dtm2025));
+const dtm2025 = readF32(tmeta.files.dtm2025);
+const surface2025 = bakeSurface2025(dtm2025);
+const h2025 = down2(dtm2025);
 const h1789 = down2(readF32(tmeta.files.dtm1789));
 let hMin = Infinity;
 let hMax = -Infinity;
@@ -148,7 +200,6 @@ for (let r = 0; r < rows; r++) {
 const d1789 = new Int16Array(cols * rows);
 for (let i = 0; i < d1789.length; i++) d1789[i] = q1789[i]! - q2025[i]!;
 
-const z = (a: ArrayBufferView) => deflateSync(Buffer.from(a.buffer, a.byteOffset, a.byteLength), { level: 9 });
 write('terrain/h2025.u16.deflate', z(d2025));
 write('terrain/h1789.u16.deflate', z(d1789));
 
@@ -593,6 +644,7 @@ const terrainMeta = {
     ground: { path: 'terrain/ground.u8.deflate', encoding: 'zlib(uint8 class)', classes: gm.classes },
     canopy: { path: 'terrain/canopy.u8.deflate', encoding: 'zlib(uint8 canopy height in 0.25 m)', note: 'today (ALS 2025 DOM - DGM), max of 1 m cells, LoD2 building cells removed' },
   },
+  surface2025,
   hist1840: { path: 'maps/hist1840.jpg', covered: histCovered / (cols * rows), note: 'georeferencing off by tens of metres in places' },
   hist1935: { path: 'maps/hist1935.jpg', covered: h35Covered / (cols * rows), note: 'TK25 1935–40, ≈ 10–15 m off near the palace' },
   ...(pointMeta ? { pointcloud: pointMeta } : {}),
@@ -604,7 +656,7 @@ write('paths.json', JSON.stringify(paths));
 const attribution = {
   generated: new Date().toISOString(),
   items: [
-    { id: 'dgm', label_de: 'Gelände (DGM1 2025)', text: tmeta.attribution, licence: 'dl-de/by-2-0', url: 'https://www.govdata.de/dl-de/by-2-0' },
+    { id: 'dgm', label_de: 'Gelände (DGM1 2025)', text: tmeta.attribution, licence: 'dl-de/by-2-0', url: 'https://www.govdata.de/dl-de/by-2-0', files: dgmFiles },
     { id: 'terrain1789', label_de: 'Gelände 1789', text: '1789-Gelände = Hypothese des Teilprojekts schloss-karlsberg (Generator-Regeln aus dem Katalog), abgeleitet aus GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0', licence: 'dl-de/by-2-0' },
     { id: 'canopy', label_de: 'Vegetationshöhe', text: '© GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0, Daten bearbeitet (DOM1 − DGM1)', licence: 'dl-de/by-2-0' },
     { id: 'hist1840', label_de: hist.label_de, text: hist.attribution, source: hist.source, licence: 'dl-de/by-2-0' },
@@ -624,6 +676,7 @@ const files = [
   'terrain/h1789.u16.deflate',
   'terrain/ground.u8.deflate',
   'terrain/canopy.u8.deflate',
+  detailPath,
   'maps/hist1840.jpg',
   'maps/hist1935.jpg',
   ...(pointMeta ? ['pointcloud/ground.kqp.deflate'] : []),

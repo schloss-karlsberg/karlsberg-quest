@@ -61,6 +61,8 @@ uniform float uPalette;    // 0 default, 1 colour-blind safe (settings.colorblin
 uniform float uRuin;       // 1796: burnt patches on the building grounds
 #ifdef KQ_SPLAT
 precision highp sampler2DArray;
+uniform sampler2D uSurfDetail;
+uniform vec4 uSurfDetailGrid; // north-west edge x/z, width/height in metres (one texel per metre)
 // CC0 ground set (vegetation/strips.ts): 0 litter, 1 forest floor, 2 grass, 3 gravel, 4 rock,
 // 5 snow, 6 mud, 7 burnt. Albedo (sRGB) and normal xy + height in one array each.
 uniform sampler2DArray uGroundAlb;
@@ -107,11 +109,24 @@ void main() {
   vec2 uv = ((vWorld.xz - uGrid.xy) / uGrid.z + 0.5) / uGridSize;
   vec4 s = texture2D(uSurf, uv);
   vec4 cov = texture2D(uCover, uv);
+  float dist = length(vWorld - uCamPos);
+#ifdef KQ_SPLAT
+  if (uHistoric < 0.5 && uSurfDetailGrid.z > 0.0 && uScanMix <= 0.001 && uMapMix <= 0.001) {
+    vec2 metres = vWorld.xz - uSurfDetailGrid.xy;
+    vec2 edge = min(metres, uSurfDetailGrid.zw - metres);
+    float detail = smoothstep(0.0, 16.0, min(edge.x, edge.y))
+      * (1.0 - smoothstep(45.0, 100.0, dist)) * (1.0 - smoothstep(0.03, 0.18, cov.g));
+    // Use explicit gradients for mip selection even when neighbouring fragments skip the read.
+    vec2 uvDetail = metres / uSurfDetailGrid.zw;
+    vec2 dx = dFdx(uvDetail);
+    vec2 dy = dFdy(uvDetail);
+    if (detail > 0.0) s = mix(s, textureGrad(uSurfDetail, uvDetail, dx, dy), detail);
+  }
+#endif
   vec3 n = vec3(s.r * 2.0 - 1.0, 0.0, s.g * 2.0 - 1.0);
   n.y = sqrt(max(1.0 - n.x * n.x - n.z * n.z, 0.01));
   float slrm = (s.b - 0.5) * 6.0;   // m, local relief ±3
   float fine = (s.a - 0.5) * 2.0;   // m, fine relief ±1
-  float dist = length(vWorld - uCamPos);
   vec3 n0 = n; // data normal without the procedural micro detail (used by the scan modes)
   // relief scan coverage first: where the scan paints the ground completely, the lit terrain
   // underneath (≈ 15 noise evaluations, lighting, fog) is never seen and is skipped

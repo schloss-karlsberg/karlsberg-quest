@@ -19,11 +19,23 @@ export interface TerrainMeta {
     ground: { path: string; classes: Record<string, { name: string; label_de: string }> };
     canopy: { path: string };
   };
+  /** Optional DGM1 surface shading for the present-day tour and palace. */
+  surface2025?: TerrainSurfaceMeta;
   hist1840: { path: string; covered: number };
   /** TK25 1935–40 (Kartograf 2), same crop as hist1840. */
   hist1935?: { path: string; covered: number };
   /** ALS 2025 ground points around the palace (Röntgenblick), format kq-pts-v1 (scripts/prepare-data.ts). */
   pointcloud?: PointCloudMeta;
+}
+
+export interface TerrainSurfaceMeta {
+  path: string;
+  /** North-west pixel edge in local metres. The texel centres are offset by half a metre. */
+  x0: number;
+  z0: number;
+  /** Pixel dimensions at 1 m per texel. */
+  cols: number;
+  rows: number;
 }
 
 export interface PointCloudMeta {

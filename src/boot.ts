@@ -172,8 +172,15 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps);
     world.shadows.every = p.shadowEvery;
   });
+  const loadTerrainDetail = () => {
+    if (!started || quality.level === 'low') return;
+    void world.loadTerrainDetail().then((loaded) => { if (loaded) loopRef?.requestRender(); });
+  };
   // nature track: CC0 ground / bark sets, grass, props and water detail follow the tier
-  quality.listeners.push((_p, level) => world.setDetail(level));
+  quality.listeners.push((_p, level) => {
+    world.setDetail(level);
+    loadTerrainDetail();
+  });
   world.attachAssets(assets, renderer);
   const env = new EnvLight(world.sky.mesh);
   const shadowFocus = new Vector3();
@@ -662,6 +669,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ui.loading.setEnabled(!shifting);
     ui.hud.show(true);
     input.enabled = true;
+    loadTerrainDetail();
     touch.setPlaying(modalOpen === 0);
     pause.pop('title');
     input.requestLock();

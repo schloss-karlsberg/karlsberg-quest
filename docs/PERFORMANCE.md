@@ -57,6 +57,14 @@ the e2e test fails when a scene is over.
   times. Compare per-window fps, frame and CPU percentiles, frames over 25 ms and all-pass peaks
   in `phone-quelle-recheck.json`. `PERF_LABEL=pr26-before` and `PERF_LABEL=pr26-after` use the
   original six stills for the historical comparison. GPU captures and the recheck are pending.
+- **DGM1 surface shading (TASK-008, slice 3):** `PERF_LABEL=slice3-before` and
+  `PERF_LABEL=slice3-after` extend the same GPU spec to Mittel and Hoch. It takes six fixed stills
+  per tier and records five live walking and turning windows per tier at 1280 × 720 and a 60 fps
+  cap. Keep the existing Niedrig phone bench and route as controls. Compare
+  `desktop-{medium,high}-route.json` for rendered fps, frame and CPU p95, long frames and all-pass
+  peaks. Report Hoch's paired triangle peaks alongside the existing overruns in §3.5. Run the
+  first-input test with `PERF_LOAD_QUALITY=high` to check the 20 MB cap and that the detail request
+  starts after play. Hardware captures and timing are pending.
 
 ## 3. Results
 
@@ -403,11 +411,20 @@ keys no scene pass uses (M-17). The era shift has its own idle warm-up (§3.6).
 | fx particles | low | high | high |
 | Point cloud (Röntgenblick) | sparser | full | full |
 | Ground cover radius | 14 m, present day | 21 m | 30 m |
+| Present-day terrain shading | 2 m | 1 m near the tour and palace | 1 m near the tour and palace |
 
 Niedrig samples one ground-cover candidate per square metre and caps the visible list at 128
 10-blade grass tufts, 16 reed clumps and 8 flowers. With all three caps filled, the procedural meshes
 submit three draws and 11,088 triangles. The layer is excluded from shadow and reflection passes
 and adds no asset requests.
+
+The optional 896 × 832 DGM1 crop streams once after play starts on Mittel or Hoch. It uses
+1,816,196 compressed bytes and one mipmapped RGBA8 texture (about 3.8 MiB including mipmaps).
+The terrain pass uses up to one additional filtered texture read per fragment in the blend, with
+zero extra geometry, draw calls or render passes. The blend fades across the outer 16 m of the
+crop, from 45 m to 100 m from the camera and through the shallow shore. Historic eras and survey
+overlays use the base surface; Niedrig skips the detail read and a Niedrig-only session skips the
+request. The 2 m heightfield still supplies geometry and collision on all three presets.
 
 - **Bildrate** 30 / **60** / unbegrenzt (default 60): the most frames a second while playing
   (`core/loop.ts` `FramePacer`: on a 120 Hz screen 60 draws every 2nd display frame with even

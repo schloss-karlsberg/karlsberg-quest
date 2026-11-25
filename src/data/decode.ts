@@ -1,5 +1,5 @@
 /** Pure decoders for the prepared terrain files (inflated bytes in, typed arrays out). */
-import type { TerrainMeta } from './types';
+import type { TerrainMeta, TerrainSurfaceMeta } from './types';
 
 function asInt16(bytes: Uint8Array): Int16Array {
   const copy = bytes.byteOffset % 2 === 0 ? bytes : bytes.slice();
@@ -39,6 +39,16 @@ export function decodeCanopy(bytes: Uint8Array): Float32Array {
   const out = new Float32Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) out[i] = bytes[i]! * 0.25;
   return out;
+}
+
+/** Surface RGBA8: undo the per-row left deltas in the inflated buffer. */
+export function decodeSurface(bytes: Uint8Array, { cols, rows }: Pick<TerrainSurfaceMeta, 'cols' | 'rows'>): Uint8Array {
+  if (bytes.length !== cols * rows * 4) throw new Error('terrain surface: size mismatch');
+  const stride = cols * 4;
+  for (let row = 0; row < bytes.length; row += stride) {
+    for (let i = row + 4; i < row + stride; i++) bytes[i] = bytes[i]! + bytes[i - 4]!;
+  }
+  return bytes;
 }
 
 /** Inflate a zlib ('deflate') stream in the browser via DecompressionStream. */

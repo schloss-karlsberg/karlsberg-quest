@@ -78,6 +78,13 @@ objects, enemies, UI focus).
 - Imported glTF materials are patched to the world light automatically (`kqStandard`, §7):
   author them for a neutral white key light.
 
+The present-day tour and palace use 1 m DGM normals and local relief on Mittel and Hoch (TASK-008,
+slice 3). The crop spans Karlsberger Hof, Felsenpfad, the Weiher, the Quelle ravine and the palace
+plateau. Fine banks, hollows and terrace edges can catch the light along the walk. The shading fades
+toward the wet shore and into the base 2 m surface at distance. The same 2 m terrain mesh sets the
+silhouette across presets. The source is the existing GeoBasis-DE/LVGL-SL DGM1 export, credited in
+`public/data/attribution.json`.
+
 ## 5. Vegetation style
 
 - **Lush and layered:** canopy (beech, oak, spruce), understorey (saplings, holly, ferns),

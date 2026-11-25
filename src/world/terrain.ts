@@ -24,6 +24,7 @@ import {
   Vector3,
   type PerspectiveCamera,
 } from 'three';
+import type { TerrainSurfaceMeta } from '../data/types';
 import { atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { TERRAIN_FRAG, TERRAIN_VERT } from './terrainShader';
@@ -154,6 +155,8 @@ export class Terrain {
         ...atmosphere,
         uHeight: { value: null },
         uSurf: { value: null },
+        uSurfDetail: { value: null as DataTexture | null },
+        uSurfDetailGrid: { value: [0, 0, 0, 0] },
         uCover: { value: null },
         uMap: { value: null as Texture | null },
         uGrid: { value: [x0, z0, cell, 3] },
@@ -227,6 +230,13 @@ export class Terrain {
 
   get uniforms() {
     return this.material.uniforms;
+  }
+
+  /** Present-day surface shading only. The active height and cover textures still come from the dataset. */
+  setSurfaceDetail(data: Uint8Array, { x0, z0, cols, rows }: TerrainSurfaceMeta): void {
+    this.uniforms.uSurfDetail!.value?.dispose();
+    this.uniforms.uSurfDetail!.value = makeDataTexture(data, cols, rows, false);
+    this.uniforms.uSurfDetailGrid!.value = [x0, z0, cols, rows];
   }
 
   /**

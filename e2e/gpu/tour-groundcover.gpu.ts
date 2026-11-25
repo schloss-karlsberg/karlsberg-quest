@@ -1,13 +1,15 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import type { GraphicsLevel } from '../../src/core/save';
 import { frameStats, PERF_BUDGET } from '../../src/render/perf';
 import { isSoftwareGpu } from '../../src/render/quality';
 import { trackErrors } from '../helpers/common';
 
-/** TASK-008. Use slice2-before / slice2-after for the matching tour prop views. */
+/** TASK-008. Use slice2-before/after for the prop views or slice3-before/after for DGM1. */
 const LABEL = process.env.PERF_LABEL ?? 'after';
 const OUT = `test-results/contribute/TASK-008/${LABEL}`;
 const TOUR_PROP_VIEWS = LABEL === 'slice2-before' || LABEL === 'slice2-after';
+const TERRAIN_DETAIL_VIEWS = LABEL === 'slice3-before' || LABEL === 'slice3-after';
 const VIEWS = [
   { id: '01-karlsberger-hof', era: 'today', x: 524, z: -770, yaw: 253 },
   { id: '02-felsenpfad', era: 'today', x: 683, z: -596, yaw: 90 },
@@ -29,14 +31,14 @@ function writeJson(name: string, result: unknown): void {
   writeFileSync(`${OUT}/${name}.json`, JSON.stringify(result, null, 2));
 }
 
-async function boot(page: Page, reducedMotion: boolean) {
-  await page.goto('./?notitle&nosave&fresh&manual&q=low&cam=third');
+async function boot(page: Page, reducedMotion: boolean, graphics: GraphicsLevel = 'low') {
+  await page.goto(`./?notitle&nosave&fresh&manual&q=${graphics}&cam=third`);
   await page.waitForFunction(() => window.kq?.ctx.input.enabled && !window.kq.ctx.loop.paused, null, { timeout: 120_000 });
   await page.addStyleTag({ content: '.kq-bullet-time,.kq-click-to-play{display:none!important}' });
-  await page.evaluate(async (reduced) => {
+  await page.evaluate(async ({ reduced, graphics }) => {
     const k = window.kq!;
     k.ctx.settings.update((s) => {
-      s.graphics = 'low';
+      s.graphics = graphics;
       s.fov = 80;
       s.cameraZoom = 3.6;
       s.fpsCap = 60;
@@ -45,7 +47,7 @@ async function boot(page: Page, reducedMotion: boolean) {
     }, 'graphics');
     await k.avatar?.ready();
     await k.screenshotReady();
-  }, reducedMotion);
+  }, { reduced: reducedMotion, graphics });
   const profile = await page.evaluate(() => {
     const { renderer, settings, quality, input } = window.kq!.ctx;
     const gl = renderer.getContext();
@@ -63,18 +65,22 @@ async function boot(page: Page, reducedMotion: boolean) {
   });
   expect(profile.gpu, 'ANGLE Metal renderer').toMatch(/metal/i);
   expect(isSoftwareGpu(profile.gpu)).toBe(false);
-  expect(profile).toMatchObject({ graphics: 'low', fpsCap: 60, powerSave: false, reducedMotion });
+  expect(profile).toMatchObject({ graphics, fpsCap: 60, powerSave: false, reducedMotion });
   return profile;
 }
 
-async function shootViews(page: Page, prefix: string) {
+async function shootViews(page: Page, prefix: string, terrainDetail = false) {
   const results = [];
   for (const view of VIEWS) {
-    const still = { ...view, yaw: TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw };
-    const result = await page.evaluate(async ({ era, x, z, yaw }) => {
+    const still = {
+      ...view,
+      yaw: TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw,
+      pitch: terrainDetail && view.era === 'today' ? -18 : -6,
+    };
+    const result = await page.evaluate(async ({ era, x, z, yaw, pitch }) => {
       const k = window.kq!;
       k.setEra(era);
-      k.teleport(x, z, yaw, -6);
+      k.teleport(x, z, yaw, pitch);
       k.step(2);
       await k.screenshotReady();
       const { calls, triangles } = k.ctx.renderer.info.render;
@@ -165,12 +171,12 @@ async function walkAndTurn(page: Page, view: View) {
   };
 }
 
-function checkWalk(sample: Awaited<ReturnType<typeof walkAndTurn>>, label: string) {
+function checkWalk(sample: Awaited<ReturnType<typeof walkAndTurn>>, label: string, checkTriangles = true) {
   expect.soft(sample.frameMs.n, `${label} sampled frames`).toBeGreaterThan(0);
   expect.soft(sample.walkedM, `${label} walked metres`).toBeGreaterThan(0.5);
   expect.soft(sample.cpuMs.p95, `${label} CPU p95`).toBeLessThanOrEqual(PERF_BUDGET.cpuMs);
   expect.soft(sample.callsMax, `${label} all-pass draws`).toBeLessThanOrEqual(PERF_BUDGET.calls);
-  expect.soft(sample.trianglesMax, `${label} all-pass triangles`).toBeLessThanOrEqual(PERF_BUDGET.triangles);
+  if (checkTriangles) expect.soft(sample.trianglesMax, `${label} all-pass triangles`).toBeLessThanOrEqual(PERF_BUDGET.triangles);
 }
 
 test.describe.configure({ timeout: 300_000 });
@@ -226,6 +232,41 @@ test.describe('667×375 landscape touch', () => {
     expect(bench).toMatchObject({ size: [667, 375], quality: 'low' });
     expect(bench.scenes).toHaveLength(9);
     for (const scene of bench.scenes) expect.soft(scene.withinBudget, scene.id).toBe(true);
+    expect(await page.evaluate(() => !!window.kq!.ctx.world.terrain.uniforms.uSurfDetail?.value)).toBe(false);
     expect(errors).toEqual([]);
   });
+});
+
+test.describe('DGM1 surface on desktop', () => {
+  test.skip(!TERRAIN_DETAIL_VIEWS, 'use PERF_LABEL=slice3-before or slice3-after');
+
+  for (const graphics of ['medium', 'high'] as const) {
+    test(`${graphics}: six matched terrain views and five live route samples`, async ({ page }) => {
+      const errors = trackErrors(page);
+      const profile = await boot(page, false, graphics);
+      const after = LABEL === 'slice3-after';
+      await page.waitForFunction((after) => {
+        const { terrain, nature } = window.kq!.ctx.world;
+        return terrain.splat && nature.status.trees === 'on' && (!after || !!terrain.uniforms.uSurfDetail?.value);
+      }, after, { timeout: 120_000 });
+      const source = await page.evaluate(() => {
+        const { terrain } = window.kq!.ctx.world;
+        return terrain.uniforms.uSurfDetail?.value ? terrain.uniforms.uSurfDetailGrid!.value as number[] : null;
+      });
+      expect(source).toEqual(after ? [448, -1248, 896, 832] : null);
+      const views = await shootViews(page, `desktop-${graphics}`, true);
+      writeJson(`desktop-${graphics}-views`, { profile, source, views });
+
+      await page.evaluate(() => window.kq!.setEra('today'));
+      const route = [];
+      for (const view of VIEWS.slice(0, 5)) {
+        const sample = await walkAndTurn(page, view);
+        route.push(sample);
+        // Hoch has known baseline triangle overruns (docs/PERFORMANCE.md §3.5). Record both runs.
+        checkWalk(sample, view.id, graphics === 'medium');
+      }
+      writeJson(`desktop-${graphics}-route`, { profile, budget: PERF_BUDGET, longFrameMs: LONG_FRAME_MS, route });
+      expect(errors).toEqual([]);
+    });
+  }
 });

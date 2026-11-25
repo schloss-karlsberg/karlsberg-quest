@@ -1,5 +1,6 @@
 import { Color, LinearSRGBColorSpace, type PerspectiveCamera, type Scene, SRGBColorSpace, type Texture, TextureLoader, Vector3, type WebGLRenderer } from 'three';
 import { ERA_INFO, type Era } from '../core/era';
+import { loadTerrainSurface } from '../data/loader';
 import { GROUND_NAMES, type GameData } from '../data/types';
 import type { PostFX } from '../render/post';
 import { SunShadows } from '../render/shadows';
@@ -50,6 +51,7 @@ export class World {
   private scanTarget = 0;
   private mapTarget = 0;
   private mapTex: Texture | null = null;
+  private terrainDetailLoad: Promise<boolean> | null = null;
   /** Current look (copy of the era preset; features may tweak it and call `applyLook`). */
   look: EraLook = structuredClone(ERA_LOOKS.today);
   readonly grid: { cols: number; rows: number; cell: number; x0: number; z0: number };
@@ -126,6 +128,21 @@ export class World {
     this.forest.setAlphaToCoverage(level !== 'low');
     this.nature.setLevel(level);
     this.water.setLevel(level);
+  }
+
+  /** Load the optional surface once per session. Keep the base shading if it is unavailable. */
+  loadTerrainDetail(): Promise<boolean> {
+    const meta = this.data.meta.surface2025;
+    if (!meta) return Promise.resolve(false);
+    return this.terrainDetailLoad ??= loadTerrainSurface(this.data.baseUrl, meta)
+      .then((data) => {
+        this.terrain.setSurfaceDetail(data, meta);
+        return true;
+      })
+      .catch((err: unknown) => {
+        console.warn('[terrain] surface detail unavailable, keeping the base shading', err);
+        return false;
+      });
   }
 
   /** Land cover [forest, water, bare, lawn] 0..1 at x/z in the current era. */
