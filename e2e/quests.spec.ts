@@ -292,19 +292,14 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   await page.evaluate(() => window.kq!.npc!.close());
 
   // ---- the payout notice, after the conversation ------------------------------------------------
-  // the 120 EP crossed a level: the level card has the slot first (it runs on rendered frames),
-  // the reward follows it — never both at once
-  for (let i = 0; i < 40 && !(await reward.count()); i++) {
-    const both = await page.evaluate(() => {
-      let both = false;
-      for (let j = 0; j < 12 && !document.querySelector('[data-testid="quest-reward"]'); j++) {
-        window.kq!.step(1);
-        both ||= !!document.querySelector('[data-testid="level-card"]') && !!document.querySelector('[data-testid="quest-reward"]');
-      }
-      return both;
-    });
-    expect(both).toBe(false);
-  }
+  // The level card gets extra reading time for the Ausfall unlock. Render until the payout takes the slot.
+  const payoutFrame = await page.waitForFunction(() => {
+    const payout = '[data-testid="quest-reward"]';
+    for (let frame = 0; frame < 12 && !document.querySelector(payout); frame++) window.kq!.step(1);
+    if (!document.querySelector(payout)) return false;
+    return document.querySelector('[data-testid="level-card"]') ? 'overlap' : 'reward';
+  });
+  expect(await payoutFrame.jsonValue()).toBe('reward');
   await expect(reward).toBeVisible();
   await expect(reward).toHaveAttribute('role', 'status');
   await expect(reward).toContainText('Aufgabe erfüllt');
