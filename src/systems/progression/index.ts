@@ -33,6 +33,7 @@ import { LEVEL_XP, MAX_LEVEL } from '../../rpg/stats';
 import type { DerivedStats, ItemDef, ItemKind, PlacedPickup, ProgressionSlice } from '../../rpg/types';
 import { openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { actionLabel } from '../../ui/actionLabel';
+import { registerEraMaterials } from '../fx/shift/prewarm';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { collectionSound, levelSound, pickupSound, useSound, xpTick } from './audio';
 import { ProgressionHud } from './hud';
@@ -141,6 +142,8 @@ class Progression {
       (id) => (this.item(id)?.kind ?? 'opaque') as ItemKind | 'opaque',
     );
     ctx.scene.add(this.world.group);
+    // the pickups' programs compile in the idle warm-up, not in the frame the first one appears
+    registerEraMaterials('progression.pickups', '*', () => this.world.samples());
     this.pages = installProgressionPages({
       core: this.core,
       item: (id) => this.item(id),

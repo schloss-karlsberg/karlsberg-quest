@@ -27,8 +27,8 @@ export const ICONS: Record<string, string> = {
   horn: G(`<path d="M3.5 9c6 .5 11-1 15.5-5v10c-4.5-3-9.5-3.4-15.5-2.6z"/><path d="M3.5 8.5v4" stroke-width="2.4"/><path d="M8 11.2c0 3 1.6 5.6 4.4 6.6" opacity=".7"/>`),
   // a tag (dog collar mark)
   marke: G(`<path d="M8 4h8l3 4-7 13L5 8z"/><circle cx="12" cy="8" r="1.4"/><path d="M9.5 12.5l5 0" opacity=".6"/>`),
-  // a sweet chestnut: pointed tip, round shoulders, the pale flat base
-  kastanie: G(`<path d="M12 3.5c-1.6 2.4-7 5.6-7 10.6A7 7 0 0 0 19 14.1c0-5-5.4-8.2-7-10.6z"/><path d="M12 3.5V2"/><path d="M6.4 17.6c3.6 1.6 7.6 1.6 11.2 0" opacity=".7"/><path d="M9.4 9.6c-.9 1.2-1.4 2.6-1.4 4" opacity=".5"/>`),
+  // a sweet chestnut: wider than tall, a tassel at the tip, the pale rough base as a dotted band
+  kastanie: G(`<path d="M12 6.5c-1 1-2.6 1.8-4.4 2.7C5 10.5 3.5 12.6 3.5 15c0 3.2 3.8 5.5 8.5 5.5s8.5-2.3 8.5-5.5c0-2.4-1.5-4.5-4.1-5.8-1.8-.9-3.4-1.7-4.4-2.7z"/><path d="M12 6.5L11 3.6M12 6.5l1-2.9M12 6.5V3"/><path d="M4.6 16.6c4.6 2 10.2 2 14.8 0"/><path d="M7.5 18.6h.01M10.5 19.2h.01M13.5 19.2h.01M16.5 18.6h.01" stroke-width="1.4"/><path d="M8 11.2c1-.7 2-1.1 3-1.3" opacity=".55"/>`),
   // a marked stone
   stein: G(`<path d="M4 15c0-4.5 3.5-9 8.5-9S20 9.5 20 14c0 3.5-3 6-8 6s-8-1.8-8-5z"/><path d="M9 14l3-4 3 4M10.5 16.5h.01M12 16.5h.01M13.5 16.5h.01" />`),
 };

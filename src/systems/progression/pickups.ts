@@ -258,7 +258,18 @@ export class PickupWorld {
     for (const id of [...this.items.keys()]) this.remove(id);
   }
 
-  private create(p: PlacedPickup, animate: boolean): Vis {
+  /**
+   * Stand-ins for the shader warm-up (src/systems/fx/shift/prewarm.ts): a plain pickup and a precious
+   * one (with its light column), not added to the world. Each pickup builds its materials anew and
+   * frees them when it goes, so without this the first pickup of a session compiles its programs in
+   * the frame it appears (about 1.8 s on an integrated GPU; the tour's chestnuts in t3).
+   */
+  samples(): Group[] {
+    const make = (item: string) => this.create({ id: `prewarm.${item}`, item, x: 0, z: 0, era: 'today' }, false, false).root;
+    return [make('item.kastanie'), make('prewarm.opaque')];
+  }
+
+  private create(p: PlacedPickup, animate: boolean, attach = true): Vis {
     const kind = this.kindOf(p.item);
     const precious = BEAM_KINDS.has(kind);
     // (round 9: at ×5–6 HDR the glints bloomed into huge white orbs that washed out the frame)
@@ -327,8 +338,8 @@ export class PickupWorld {
     root.name = `pickup:${p.id}`;
     root.add(pool, glow, motes, token);
     if (beam) root.add(beam);
-    this.group.add(root);
-    const ground = this.heightAt(p.x, p.z, p.y);
+    if (attach) this.group.add(root);
+    const ground = attach ? this.heightAt(p.x, p.z, p.y) : 0;
     return { p, root, glow, motes, pool, beam, token, vis: 0, born: animate ? 0 : -1, taken: -1, seed, ground, pull: new Vector3() };
   }
 
