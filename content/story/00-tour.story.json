@@ -22,7 +22,7 @@
   "wake": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
   "on": [
     { "id": "kastanie-1", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" } },
-      "do": [{ "do": "say", "id": "imhoff.t.kastanie1", "speaker": "imhoff", "text": "Esskastanien. Hier oben stehen alte Bäume, die man Herzogskastanien nennt, über zweihundert Jahre alt." }] },
+      "do": [{ "do": "say", "id": "imhoff.t.kastanie1", "speaker": "imhoff", "text": "Esskastanien. Am Karlsberg gab es die Herzogskastanien. Die sollen über zweihundert Jahre alt gewesen sein." }] },
     { "id": "kastanie-12", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" }, "gte": { "total": 12 } },
       "do": [{ "do": "say", "id": "solld.t.kastanie12", "speaker": "solld", "text": "Zwölf Kastanien. Ich zähl ja sowieso." }] },
     { "id": "kastanie-24", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" }, "gte": { "total": 24 } },

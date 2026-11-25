@@ -7,9 +7,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { createInitialState, deserializeState, serializeState } from '../src/core/state';
 import { itemDef } from '../src/rpg/items';
 import { FLASCHEN } from '../src/systems/flaschen/spots';
+import { createProgressionSlice } from '../src/systems/progression/logic';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice } from '../src/systems/story/engine';
+import { missingTourChestnuts } from '../src/systems/story/stories';
 import type { Action, LootAction, Reaction, SayAction, StoryFile } from '../src/systems/story/types';
 import type { Route } from '../src/systems/walk/types';
 
@@ -119,6 +122,28 @@ describe('the tour chestnuts (TASK-002)', () => {
     const clear = leave.findIndex((a) => a.do === 'loot' && (a as LootAction).clear && (a as LootAction).group === GROUP);
     expect(clear).toBeGreaterThanOrEqual(0);
     expect(clear).toBeLessThan(leave.findIndex((a) => a.do === 'fade'));
+  });
+
+  it('restores completed walks in an older tour save and preserves placed and taken chestnuts', () => {
+    const state = createInitialState();
+    state.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'tour', beat: 't5',
+      doneBeats: ['tour/t1', 'tour/t2', 'tour/t3', 'tour/t4'],
+    };
+    const saved = deserializeState(serializeState(state));
+    const story = saved.systems.story!;
+    const ids = () => missingTourChestnuts(tour, story, saved.systems.progression).map((a) => a.id);
+    expect(ids()).toEqual(['tour.kastanie.01', 'tour.kastanie.02', 'tour.kastanie.03']);
+
+    const progression = saved.systems.progression = createProgressionSlice();
+    progression.taken.push('tour.kastanie.01');
+    progression.inventory[ITEM] = 1;
+    progression.placed = {
+      'tour.kastanie.02': { id: 'tour.kastanie.02', item: ITEM, x: 510.9, z: -758.5, era: 'today', quest: GROUP },
+    };
+    expect(ids()).toEqual(['tour.kastanie.03']);
+    expect(progression.inventory[ITEM]).toBe(1);
+    expect(missingTourChestnuts({ ...tour, chapter: 'k1' }, story, progression)).toEqual([]);
   });
 
   it('the engine says each line once, when the count gets there', () => {

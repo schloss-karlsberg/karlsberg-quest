@@ -143,7 +143,7 @@ class Progression {
     );
     ctx.scene.add(this.world.group);
     // the pickups' programs compile in the idle warm-up, not in the frame the first one appears
-    registerEraMaterials('progression.pickups', '*', () => this.world.samples());
+    disposeFns.push(registerEraMaterials('progression.pickups', '*', () => this.world.samples()));
     this.pages = installProgressionPages({
       core: this.core,
       item: (id) => this.item(id),
@@ -452,7 +452,7 @@ class Progression {
     pausePageHandle('gear')?.close();
     pausePageHandle('talents')?.close();
     this.cards.clear();
-    this.world.clear();
+    this.world.dispose();
     this.ctx.scene.remove(this.world.group);
   }
 }

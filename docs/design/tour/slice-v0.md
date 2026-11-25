@@ -55,9 +55,11 @@ Placement:
 Picking up:
 - E (or the touch interact button) picks one up within 2.7 m, „Kastanie aufheben“; walking over one (1.3 m) picks it up too.
 - The feed counts them („+ Kastanie ×1 (7)“), and the count is part of the inventory and the save.
+- The saved count is visible under Ausrüstung → Fundstücke. When a present-day tour save predates
+  TASK-002, Continue places any missing chestnuts from the walking beats already completed.
 
-Lines (chapter reactions on `item:pickup`; dialogue fallback, no voice clip yet):
-- 1st, Gerold: „Esskastanien. Hier oben stehen alte Bäume, die man Herzogskastanien nennt, über zweihundert Jahre alt.“ The fact is from cx.39.
+Lines (fictional dialogue on `item:pickup`, with the voice fallback):
+- 1st, Gerold mentions the Herzogskastanien and their reported age. [Codex cx.39](../../../content/bible/07-codex.md#cx39--der-karlsberg-heute) records the sources and the uncertainty about which trees survived the 1990 storm.
 - 12th, Herr Soll: „Zwölf Kastanien. Ich zähl ja sowieso.“
 - 24th, Gerold: „Alle vierundzwanzig? Die Eichhörnchen werden sich beschweren.“
 

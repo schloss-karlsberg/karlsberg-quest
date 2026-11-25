@@ -131,6 +131,7 @@ describe('story actions and conditions of the RPG layer', () => {
           { do: 'enemy', op: 'spawn', group: 'g', kind: 'drache' },
           { do: 'loot', id: 'l', item: 'item.gold' },
           { do: 'loot', clear: true },
+          { do: 'loot', id: 'l1', group: 'some.group', clear: true },
           { do: 'loot', id: 'l2', item: 'item.balsam', group: 'kein gruppenname' },
           { do: 'xp', amount: 0 },
           { do: 'item', item: 'item.gold' },
@@ -140,7 +141,7 @@ describe('story actions and conditions of the RPG layer', () => {
       },
     ]);
     const m = errors(bad).join(' | ');
-    for (const s of ["unknown op 'explode'", "malformed id 'lohn'", "unknown kind 'drache'", "loot: unknown item 'item.gold'", 'loot needs an id', "loot: bad group 'kein gruppenname'", 'xp needs an amount', "item: unknown item 'item.gold'", 'quest progress needs an objective', "unknown state 'vergessen'", 'level must be 1..12']) expect(m).toContain(s);
+    for (const s of ["unknown op 'explode'", "malformed id 'lohn'", "unknown kind 'drache'", "loot: unknown item 'item.gold'", 'loot needs an id', 'loot clear needs either id or group', "loot: bad group 'kein gruppenname'", 'xp needs an amount', "item: unknown item 'item.gold'", 'quest progress needs an objective', "unknown state 'vergessen'", 'level must be 1..12']) expect(m).toContain(s);
   });
   it('quest condition reads the flag mirror: default done, active also while ready, objective counts', () => {
     const f = { 'quest.q.k1.lohn': 'ready', 'quest.q.k1.lohn.zettel': 1 };

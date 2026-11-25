@@ -3,12 +3,14 @@
  * talents, items and equipment, consumables, loot rolls, world pickups, collections, codex XP,
  * restore from a save and the `rpg.level` flag mirror.
  */
-import { describe, expect, it } from 'vitest';
+import { type BufferGeometry, type Material, type Mesh, PerspectiveCamera, Vector3 } from 'three';
+import { describe, expect, it, vi } from 'vitest';
 import { ENEMIES } from '../src/rpg/enemies';
 import { COLLECTIONS, ITEMS, LOOT, itemDef } from '../src/rpg/items';
 import { LEVEL_XP, MAX_LEVEL, TALENTS, charmSlots, deriveStats, weaponPower } from '../src/rpg/stats';
 import type { CollectionSet, ItemDef, ProgressionSlice } from '../src/rpg/types';
 import { CODEX_XP, MAX_DROPS, ProgressionCore, XP_CAP, createProgressionSlice, hashString, mulberry32, normalizeSlice, rollLoot, stackLimit } from '../src/systems/progression/logic';
+import { PickupWorld } from '../src/systems/progression/pickups';
 
 type Ev = { type: string; p: Record<string, unknown> };
 
@@ -312,6 +314,43 @@ describe('loot', () => {
 });
 
 describe('world pickups', () => {
+  it('reuses the detached warm-up samples, with a light column only on the precious sample', () => {
+    const heightAt = vi.fn(() => 0);
+    const world = new PickupWorld(heightAt, (id) => itemDef(id)?.kind ?? 'opaque');
+    const [plain, precious] = world.samples();
+    const second = world.samples();
+    expect(second[0]).toBe(plain);
+    expect(second[1]).toBe(precious);
+    expect(plain!.children).toHaveLength(4);
+    expect(precious!.children).toHaveLength(5);
+    expect(world.group.children).toEqual([]);
+    expect(heightAt).not.toHaveBeenCalled();
+    const disposed = vi.fn();
+    for (const root of second) {
+      for (const child of root.children) (child as Mesh<BufferGeometry, Material>).material.addEventListener('dispose', disposed);
+    }
+    world.dispose();
+    expect(disposed).toHaveBeenCalledTimes(9);
+  });
+
+  it('keeps the chestnut in place as it appears and fades out with reduced motion', () => {
+    const world = new PickupWorld(() => 2, () => 'collectible');
+    const camera = new PerspectiveCamera();
+    const player = new Vector3(3, 2, 4);
+    world.sync([{ id: 'nut', item: 'item.kastanie', x: 5, z: 6, era: 'today' }], true);
+    const frame = (dt: number, time: number) => world.frame(dt, time, camera, 720, player, () => true, true);
+    frame(0.1, 1);
+    const root = world.group.children[0]!;
+    expect(root.position.toArray()).toEqual([5, 2, 6]);
+    expect(root.children[3]!.position.y).toBeCloseTo(0.62);
+    world.collect('nut');
+    frame(0.2, 2);
+    expect(root.position.toArray()).toEqual([5, 2, 6]);
+    expect(root.children[3]!.position.y).toBeCloseTo(0.62);
+    frame(0.3, 3);
+    expect(world.group.children).toEqual([]);
+  });
+
   it('place is idempotent, take grants with the pickup id, taken ids never come back, clear by quest', () => {
     const t = setup();
     expect(t.core.place({ id: 't1', item: 'item.balsam', x: 1, z: 2, era: '1789' })).toBe(true);

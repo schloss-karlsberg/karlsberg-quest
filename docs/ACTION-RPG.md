@@ -525,6 +525,8 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   (`docs/design/tour/slice-v0.md`). Story `loot` actions tag them with `group: tour.kastanien`, and
   the tour's `leave` clears what is still lying. There is no XP, no collection reward and no item
   grant, so the prologue margin holds.
+- **Inventory** in the journal tab "Ausrüstung" shows the weapon, charm slots, consumables (with
+  quick-use selection), quest items, lore and collectible counts under "Fundstücke".
 - **Hidden Bauwagen.** A present-day detour off the forest track below the dam. Looking at the
   trailer door in reach reveals the examine action on E and touch. The fictional surveyor's note
   unlocks „Die letzte Messung“ in Pause → Codex and appears in the discovery feed. The find grants

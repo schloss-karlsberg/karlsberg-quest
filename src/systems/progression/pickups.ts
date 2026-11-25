@@ -215,6 +215,7 @@ interface Vis {
 export class PickupWorld {
   readonly group = new Group();
   private readonly items = new Map<string, Vis>();
+  private warmSamples: Vis[] = [];
   private readonly tmp = new Vector3();
   private readonly tmp2 = new Vector3();
 
@@ -258,6 +259,12 @@ export class PickupWorld {
     for (const id of [...this.items.keys()]) this.remove(id);
   }
 
+  dispose(): void {
+    this.clear();
+    for (const v of this.warmSamples) this.disposeMaterials(v);
+    this.warmSamples = [];
+  }
+
   /**
    * Stand-ins for the shader warm-up (src/systems/fx/shift/prewarm.ts): a plain pickup and a precious
    * one (with its light column), not added to the world. Each pickup builds its materials anew and
@@ -265,8 +272,11 @@ export class PickupWorld {
    * programs in the frame it appears (the tour's chestnuts in t3; docs/PERFORMANCE.md §3.6).
    */
   samples(): Group[] {
-    const make = (item: string) => this.create({ id: `prewarm.${item}`, item, x: 0, z: 0, era: 'today' }, false, false).root;
-    return [make('item.kastanie'), make('prewarm.opaque')];
+    if (!this.warmSamples.length) {
+      const make = (item: string) => this.create({ id: `prewarm.${item}`, item, x: 0, z: 0, era: 'today' }, false, false);
+      this.warmSamples = [make('item.kastanie'), make('prewarm.opaque')];
+    }
+    return this.warmSamples.map((v) => v.root);
   }
 
   private create(p: PlacedPickup, animate: boolean, attach = true): Vis {
@@ -347,12 +357,16 @@ export class PickupWorld {
     const v = this.items.get(id);
     if (!v) return;
     this.group.remove(v.root);
+    this.disposeMaterials(v);
+    this.items.delete(id);
+  }
+
+  private disposeMaterials(v: Vis): void {
     v.glow.material.dispose();
     v.motes.material.dispose();
     v.pool.material.dispose();
     v.beam?.material.dispose();
     v.token.material.dispose();
-    this.items.delete(id);
   }
 
   /**
