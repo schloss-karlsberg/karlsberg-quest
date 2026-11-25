@@ -79,14 +79,20 @@ test.describe('performance', () => {
   test('bytes and time before the first input', async ({ page }) => {
     const t0 = Date.now();
     const files: { url: string; bytes: number; type: string }[] = [];
+    const terrainDetailRequests: string[] = [];
     let ready = false;
+    page.on('request', (req) => {
+      if (!ready && new URL(req.url()).pathname.endsWith('/terrain/surface2025.rgba.deflate')) terrainDetailRequests.push(req.url());
+    });
     page.on('requestfinished', async (req) => {
       if (ready) return;
       const sizes = await req.sizes().catch(() => null);
       const res = await req.response().catch(() => null);
       files.push({ url: req.url().replace(/^https?:\/\/[^/]+\//, ''), bytes: (sizes?.responseBodySize ?? 0) + (sizes?.responseHeadersSize ?? 0), type: res?.headers()['content-type'] ?? '' });
     });
-    await page.goto('./?nosave&fresh');
+    const url = new URL('./?nosave&fresh', test.info().project.use.baseURL);
+    if (process.env.PERF_LOAD_QUALITY) url.searchParams.set('q', process.env.PERF_LOAD_QUALITY);
+    await page.goto(url.href);
     await expect(page.getByRole('button', { name: 'Neues Spiel', exact: true })).toBeEnabled({ timeout: 120_000 });
     ready = true;
     const ms = Date.now() - t0;
@@ -95,6 +101,7 @@ test.describe('performance', () => {
     const timing = await page.evaluate(() => (window as unknown as { __kqReady?: Record<string, number> }).__kqReady ?? null);
     writeFileSync(`${OUT}/load-${LABEL}.json`, JSON.stringify({ totalBytes: total, ms, timing, files: files.sort((a, b) => b.bytes - a.bytes) }, null, 2));
     await page.screenshot({ path: `${SCREENS}/pol-perf-title.png` });
+    expect(terrainDetailRequests).toEqual([]);
     expect(total).toBeLessThan(20 * 1024 * 1024);
   });
 

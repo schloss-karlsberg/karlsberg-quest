@@ -102,6 +102,14 @@
    "note": "today (ALS 2025 DOM - DGM), max of 1 m cells, LoD2 building cells removed"
   }
  },
+ "surface2025": {
+  "path": "terrain/surface2025.rgba.deflate",
+  "x0": 448,
+  "z0": -1248,
+  "cols": 896,
+  "rows": 832,
+  "encoding": "zlib(left-delta RGBA8 normal X/Z and coarse/fine local relief)"
+ },
  "hist1840": {
   "path": "maps/hist1840.jpg",
   "covered": 1,

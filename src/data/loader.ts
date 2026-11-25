@@ -1,5 +1,5 @@
-import { decodeCanopy, decodeH1789, decodeH2025, inflate, quantToMetres } from './decode';
-import type { GameData, PathGraphFile, Poi, Room, TerrainMeta } from './types';
+import { decodeCanopy, decodeH1789, decodeH2025, decodeSurface, inflate, quantToMetres } from './decode';
+import type { GameData, PathGraphFile, Poi, Room, TerrainMeta, TerrainSurfaceMeta } from './types';
 
 /** Base URL of the prepared data (Vite `public/data`, works under any sub-path). */
 export const DATA_URL = `${import.meta.env.BASE_URL}data/`;
@@ -46,6 +46,11 @@ async function concatRest(head: Uint8Array, value: Uint8Array, reader: ReadableS
 }
 
 const bin = async (url: string, slot: ReturnType<ByteTracker['add']> | null = null): Promise<Uint8Array> => inflate(await readBytes(await fetchOk(url), slot));
+
+/** Optional post-start raster, outside the critical terrain fetches. */
+export async function loadTerrainSurface(baseUrl: string, meta: TerrainSurfaceMeta): Promise<Uint8Array> {
+  return decodeSurface(await bin(`${baseUrl}${meta.path}`), meta);
+}
 
 export async function loadGameData(baseUrl = DATA_URL, onProgress?: (done: number, total: number) => void): Promise<GameData> {
   const meta = await json<TerrainMeta>(`${baseUrl}terrain/meta.json`);

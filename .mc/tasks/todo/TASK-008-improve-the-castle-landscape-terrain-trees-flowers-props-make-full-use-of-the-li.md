@@ -103,6 +103,126 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 
 _Status: approved 2026-11-25 (coordinator for the owner)_
 
+**Approach:** Slice 3 uses the local 1 m present-day DGM to sharpen the shading on trail banks,
+the Quelle ravine and the palace terraces. Bake normals and local relief into one cropped,
+mipmapped surface raster that reaches west to Karlsberger Hof. Stream it after play starts on
+Mittel and Hoch. Blend into the 2 m shading at the crop edge, at distance and toward water.
+The 2 m terrain mesh and height queries continue to set the silhouette and walking surface.
+
+**Files to touch:**
+
+- `scripts/prepare-data.ts`, `src/world/rasters.ts` — bake the crop from the existing attributed DGM and support a detail-only rebuild.
+- `public/data/` — check in the derived raster, catalogue it and link it to the existing DGM attribution.
+- `src/data/`, `src/world/`, `src/boot.ts` — load the optional raster after start and blend it into present-day terrain lighting.
+- `tests/terrain-detail.test.ts` (new), `e2e/gpu/tour-groundcover.gpu.ts` — test the raster and loading, add matched higher-tier captures and live samples.
+- `docs/ART-DIRECTION.md`, `docs/PERFORMANCE.md`, `docs/ACTION-RPG.md`, `docs/PRD.md` — document the visible change and its limits.
+
+**Steps:**
+
+- [x] 1. Bake the 1 m crop from the existing DGM, preserving the metre-scale relief filters, and register its bytes and attribution.
+- [x] 2. Wire the optional load and terrain blend. Keep it off Niedrig, during title loading, in historic eras and in survey overlays. Add unit tests for the raster, byte ceiling and optional loading.
+- [x] 3. Extend the GPU spec for six fixed views and live route samples on Mittel and Hoch. Keep the existing Niedrig phone run and first-input checks in the capture recipe.
+- [x] 4. Run the four gates and document the change, hardware checks and capture commands.
+- [ ] 5. Capture and inspect matched images and measure performance on ANGLE Metal.
+
+**Test plan:** Run `pnpm exec vitest run tests/terrain-detail.test.ts`, `pnpm typecheck`,
+`pnpm test --maxWorkers=2`, `pnpm validate`, and `pnpm build`. Use `node --import tsx
+scripts/validate-content.ts` if the `tsx` IPC socket is blocked. On ANGLE Metal, use matched
+Karlsberger Hof, Felsenpfad, Weiher, Quelle and palace plateau views in today and an Ehrenhof
+control in 1789. Compare with the same capture spec on `eb43993`. Check dry trail relief, the
+shore blend, and the six Niedrig phone views. Run the first-input byte spec and the tour flow.
+
+**Risks:** The effect depends on the scene lighting and only changes surface shading. Bound the
+cost to one extra filtered texture read per shaded fragment in the active region, no extra terrain
+draws or triangles, and at most 2 MiB compressed after start. Hoch has existing over-budget triangle
+peaks at route stops. Report the paired hardware costs and check the 1.5 M triangle, 300 draw, 8 ms
+CPU, 16.7 ms frame and 20 MB first-input budgets using the commands below.
+
+**Open questions:** Hardware look and timing checks remain for the coordinator.
+
+**Acceptance criteria coverage**
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Used and unused data | partial | Reuse the 1 m DGM in the surface raster and document the crop. |
+| 2. Higher terrain detail and data budget | partial | 1 m surface shading along the route and palace; geometric refinement follows. |
+| 3. Trees, bushes, flowers and props | follow-up | Present-day crowns and understory remain separate slices. |
+| 4. Mobile frame rate and reduced version | partial | Niedrig keeps the 2 m shading and its ground cover; paired hardware checks pending. |
+| 5. Before/after GPU views in the PR | full | Six paired views per tier, pending hardware captures. |
+| 6. Assets and credits | full | No downloads; use the local DGM under its existing attribution. |
+| 7. Gates and docs | full | Run the four gates and update the design and performance guides. |
+
+**Follow-up slices:**
+
+- Evaluate a small 1 m geometry pilot at the Quelle or palace terraces. Verify seams, collision and placement heights before extending it along the route.
+- Place present-day trees at 1 m CHM crown maxima and check the forest LOD and shadow budgets.
+- Place bushes and meadow flowers from canopy edges, slope and openness. Compare `ground2025.u8` and the current mask before changing it.
+- Evaluate expanded Röntgenblick coverage and vegetation returns against the scan payload budget and data attribution.
+
+## Progress
+
+- Branch `feat/task-008-slice3`, based on `eb43993` (slice 2 merged in PR #32).
+- 2026-11-25 — The coordinator approved the plan for the owner. The source DGM is available in the read-only sister checkout. The sandbox cannot run the baseline or after GPU captures.
+- 2026-11-25 — Step 1 complete. The 896 × 832 crop uses lossless byte deltas before deflate and is 1,816,196 bytes on disk. The data manifest and DGM attribution include the raster. The `tsx` CLI hit the IPC block, so the data builder ran with `node --import tsx scripts/prepare-data.ts --surface-detail`.
+- 2026-11-25 — Step 2 complete. The post-start load is optional and the higher-tier shader blends it into dry ground. Typecheck and all 20 targeted tests passed. Vitest uses a worktree-local copy of the installed dependencies because the original link points outside the sandbox's writable roots.
+- 2026-11-25 — Step 3 complete. Playwright discovers four GPU cases with the slice 3 label and
+  discovers the first-input and tour cases. The high-preset byte test also checks for early detail requests.
+- 2026-11-25 — Step 4 complete. Typecheck and build passed. `pnpm test --maxWorkers=2` passed
+  all 1,525 tests in 114 files, including asset credits. pnpm used `--config.verify-deps-before-run=false`
+  with the local dependency copy. `pnpm validate` hit the tsx IPC `EPERM` block, and
+  `node --import tsx scripts/validate-content.ts` passed with content warnings. `mc validate` passed.
+- 2026-11-25 — Step 5 is pending. ANGLE Metal captures, GPU and frame timings, all-pass peaks,
+  first-input bytes and the tour playthrough require the coordinator's machine.
+- 2026-11-25 — Git staging failed with `Operation not permitted` on the worktree's
+  `index.lock`. The slice is in the worktree pending the local commit.
+
+### Slice 3 coordinator capture commands
+
+Run from this worktree with Chromium installed on an ANGLE Metal machine. The baseline worktree
+uses the same specs and camera poses. Each Playwright run takes the shared lock separately.
+
+```sh
+capture_root=$(mktemp -d /tmp/kq-task-008-slice3.XXXXXX)
+git worktree add --detach "$capture_root/before" eb4399333c1420bb4b937d9973b225e45da2d1d5
+cp e2e/gpu/tour-groundcover.gpu.ts "$capture_root/before/e2e/gpu/"
+cp e2e/perf.spec.ts "$capture_root/before/e2e/"
+
+capture_gpu() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts --workers=1
+}
+capture_bytes() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" PERF_LOAD_QUALITY=high scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test e2e/perf.spec.ts --grep 'bytes and time before the first input' --workers=1
+}
+
+(cd "$capture_root/before" && pnpm install --frozen-lockfile && pnpm build)
+pnpm build
+(cd "$capture_root/before" && capture_gpu slice3-before)
+capture_gpu slice3-after
+(cd "$capture_root/before" && capture_bytes slice3-before)
+capture_bytes slice3-after
+CI=1 KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- \
+  pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1
+
+mkdir -p test-results/contribute/TASK-008 test-results/perf
+cp -R "$capture_root/before/test-results/contribute/TASK-008/slice3-before" test-results/contribute/TASK-008/
+cp "$capture_root/before/test-results/perf/load-slice3-before.json" test-results/perf/
+```
+
+Compare `desktop-medium-*.png` and `desktop-high-*.png` under
+`test-results/contribute/TASK-008/{slice3-before,slice3-after}/`. Check the tread and banks at
+Karlsberger Hof and Felsenpfad, the shore at the Weiher, the Quelle ravine and the palace terrace.
+The 1789 Ehrenhof and 667 × 375 Niedrig touch stills are controls. Compare the Mittel and Hoch
+route JSON with the paired Niedrig `phone-route.json`, `phone-quelle-recheck.json` and
+`phone-bench.json` results. Use the all-pass peaks, rendered fps and frame/CPU p95, and report any
+Hoch overruns alongside the baseline values. Compare `test-results/perf/load-slice3-*.json`
+against the first-input budget. Review the tour flow through the deer photo, staff and spring.
+
+## Slice 2 plan
+
+_Status: approved 2026-11-25 (coordinator for the owner)_
+
 **Approach:** Slice 2 dresses three present-day tour stops. A bench and wayfinder establish the
 meeting point at Karlsberger Hof, a marker and low sandstone stones mark the Felsenpfad stop, and
 a bench and wayfinder mark the Weiher stop. These are the three stops that lack the Quelle's
@@ -161,7 +281,7 @@ frames, so keep the three repeat windows separate when comparing the reported 60
 - Place bushes and meadow flowers from canopy edges, slope and openness. Compare `ground2025.u8` with the current masks and check imagery rights before using orthophotos.
 - Evaluate expanded Röntgenblick coverage and vegetation returns against the scan payload budget and data attribution.
 
-## Progress
+## Slice 2 progress
 
 - Branch `feat/task-008-slice2`, based on `1cebc82`. Slice 1 merged in PR #26 (`cd55ebb`).
 - 2026-11-25 — Plan approved by the coordinator for the owner. The three stops have nearby dry verges on the shipped DGM. The sandbox has no browser or GPU access for the baseline or after captures.

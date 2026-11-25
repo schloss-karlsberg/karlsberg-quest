@@ -1,9 +1,9 @@
 {
  "format": "kq-data-v1",
- "generated": "2026-11-20T19:06:29.110Z",
- "totalBytes": 12586517,
+ "generated": "2026-11-25T10:40:02.149Z",
+ "totalBytes": 14403020,
  "files": {
-  "terrain/meta.json": 3112,
+  "terrain/meta.json": 3317,
   "terrain/h2025.u16.deflate": 1434991,
   "terrain/h1789.u16.deflate": 1038146,
   "terrain/ground.u8.deflate": 21837,
@@ -16,6 +16,7 @@
   "palace/rooms.json": 49358,
   "pois.json": 19850,
   "paths.json": 124443,
-  "attribution.json": 3163
+  "attribution.json": 3265,
+  "terrain/surface2025.rgba.deflate": 1816196
  }
 }

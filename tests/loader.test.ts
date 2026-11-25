@@ -88,6 +88,7 @@ describe('loading progress', () => {
       h2025: { path: 'h2025.deflate' }, h1789: { path: 'h1789.deflate' },
       ground: { path: 'ground.deflate' }, canopy: { path: 'canopy.deflate' },
     },
+    surface2025: { path: 'surface2025.deflate', x0: 0, z0: 0, cols: 1, rows: 1 },
   };
   function terrainResponse(url: string): Response {
     if (url.endsWith('meta.json')) return Response.json(meta);
@@ -100,6 +101,7 @@ describe('loading progress', () => {
     vi.stubGlobal('fetch', fetch);
     const progress = vi.fn();
     await expect(loadGameData('/data/', progress)).resolves.toMatchObject({ meta });
+    expect(fetch).not.toHaveBeenCalledWith('/data/surface2025.deflate');
     const total = fetch.mock.calls.length - 1;
     expect(progress.mock.calls).toEqual(Array.from({ length: total + 1 }, (_, done) => [done, total]));
   });

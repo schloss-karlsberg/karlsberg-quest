@@ -47,8 +47,8 @@ const toByte = (v: number) => (v <= 0 ? 0 : v >= 1 ? 255 : Math.round(v * 255));
 export function buildSurface(h: Float32Array, g: GridDesc): Uint8Array {
   const { cols, rows, cell } = g;
   const out = new Uint8Array(cols * rows * 4);
-  const coarse = boxBlur(h, cols, rows, 3, 2); // 2 passes of 7 cells ≈ ±12 m
-  const fine = boxBlur(h, cols, rows, 1, 2); // ≈ ±4 m
+  const coarse = boxBlur(h, cols, rows, Math.max(1, Math.round(6 / cell)), 2); // ≈ ±12 m
+  const fine = boxBlur(h, cols, rows, Math.max(1, Math.round(2 / cell)), 2); // ≈ ±4 m
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const i = r * cols + c;

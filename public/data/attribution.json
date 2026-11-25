@@ -6,7 +6,11 @@
    "label_de": "Gelände (DGM1 2025)",
    "text": "Gelände: GeoBasis-DE/LVGL-SL (2026), dl-de/by-2-0; 1789-Gelände = Hypothese (Generator-Regeln)",
    "licence": "dl-de/by-2-0",
-   "url": "https://www.govdata.de/dl-de/by-2-0"
+   "url": "https://www.govdata.de/dl-de/by-2-0",
+   "files": [
+    "data/terrain/h2025.u16.deflate",
+    "data/terrain/surface2025.rgba.deflate"
+   ]
   },
   {
    "id": "terrain1789",
