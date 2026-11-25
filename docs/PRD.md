@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-25 | **Hidden Bauwagen (TASK-007, slice 8).** The old trailer returns beside the forest track below the dam. Examining the door note unlocks „Die letzte Messung“, a FIKTION Codex card. The discovery is off the tour, maps, objectives, Bussole guidance and main story. The owner confirmed „Wissen“ as the talent heading. |
 | unreleased | 2026-11-25 | **Ricke und Kitz in view (TASK-001).** When the group stops above the deer, a short skippable shot zooms in on the fawn, then the doe, while Gerold whispers. The camera stands a step ahead of the stop, so the shot works wherever the player waits. The sneak prompt follows the shot. |
 | unreleased | 2026-11-25 | **Retired station and interface wording (TASK-007).** Continue updates old station return objectives and discards retired survey points while keeping chapter progress and POI discoveries. The visitor name defaults to „Alex“, and „Wissen“ is the talent branch heading. |
 | unreleased | 2026-11-25 | **Guided-tour story bible (TASK-007).** Merged the opening, endings, Codex and voice drafts into [the story bible](../content/bible/00-overview.md). The bible records the shipped tour and handover, pending designs and historical chapter material. |
@@ -324,7 +325,9 @@ The tour grants Relief-Blick 3 and Kartograf 1. The campaign unlocks the remaini
 
 The Karlsbergquelle is the home base in every chapter (tour decision 11): the wake spot after being caught, the place a held Q returns you to, and where you heal. The smartphone album (good photos from the present unlock codex cards) is a collection of its own. There is no currency.
 
-At the spring, the hub gives access to the Chronik, Marlene’s messages, RPG counts, the Bussole state, the chapter map and the bench save action. The water interaction has priority at the trough. The planned Bauwagen placement and hub move are tracked in TASK-007.
+At the spring, the hub gives access to the Chronik, Marlene’s messages, RPG counts, the Bussole state, the chapter map and the bench save action. The water interaction has priority at the trough. Pause provides saving and access to the game's feature pages.
+
+The present-day Bauwagen is a fictional optional discovery beside the forest track. Its door note adds a Codex card and has no campaign role.
 
 ### 6.4 Replayability and fairness
 
@@ -502,6 +505,7 @@ gantt
 
 | # | Date | Decision | Why | Replaces |
 | --- | --- | --- | --- | --- |
+| D-011 | 2026-11-25 | **Bauwagen as a hidden easter egg.** Restore the old spot beside the track for optional exploration in the present. Keep it off the tour, maps, objectives, Bussole guidance and main story. | Owner decision for TASK-007 | The proposed move of hub functions to the trailer |
 | D-010 | 2026-11-20 | **Guided-tour opening and party endings.** The prologue is a guided tour of the Karlsberg (a tutorial, no combat) with a real-person guide (placeholder name in the repo); the player is an ordinary visitor; the first time travel happens at the Karlsbergquelle during a break, which becomes the home base; the three endings stay and each closes with a party on today's palace plateau. No surveyor, Feldstation or Bauwagen. The tour is the default start since v0.7.0. Decisions: [`design/tour/README.md`](design/tour/README.md) | Owner redesign of the opening | The surveyor prologue "Vermessung", the field station hub (§6.3) |
 | D-009 | 2026-11-19 | **Stylized modern game look with free CC0 assets.** Rich colour, soft warm light, bloom, painterly textures, lush vegetation (not photoreal); CC0 1.0 assets from Poly Haven, ambientCG, Kenney, Quaternius and Poly Pizza (CC0 filter) are allowed, each recorded in `public/assets/LICENSES.json` and shown in-game; never assets from or imitating commercial games. Spec: `docs/ART-DIRECTION.md` | Owner, after playing on a real GPU (2026-11-19): "the whole game looks like a 1990 game … objects, world, everything looks ugly and buggy"; chose the stylized look and allowed free CC0 assets | D-007 (procedural only) for art; audio stays procedural |
 | D-008 | 2026-11-15 | **Action RPG.** Quests from givers (kill / collect / reach / talk / calm / escort / survive objectives), real-time first-person combat against invented spectral enemies with one boss per chapter, XP, levels 1–12, talents, a quest-upgraded weapon, charms and consumable loot; the Chronik board (blanks, nouns, batches of three) leaves the critical path for a journal; history is taught by the giver at turn-in, codex cards, echoes and collectibles; the old readings become stances asked at turn-in. Never: real people, menagerie animals or victims as enemies, gore, quizzes. The hunt, the fire, memorials and the finale stay non-combat. Spec: `docs/ACTION-RPG.md` | Owner request (2026-11-15): "not that much quiz … more like people give you a quest and you need to go and collect some things or kill some things — like in WoW or Witcher … a fun, action learn role play game" | D-003, §6.1 "no XP", §3.3 as the core loop |

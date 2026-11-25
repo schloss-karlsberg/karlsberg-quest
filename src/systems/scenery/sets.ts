@@ -15,6 +15,7 @@ import { RUND, rundGrilles } from './rund';
 import { ROTUNDA, rotundaAt, rotundaSite } from './passage';
 import { C, barrel, blockStack, cart, firePit, hoist, kennel, mortar, post, rubblePile, scale, sentryBox, straw, table, tools, trough, wagon, woodStack } from './props';
 import { TOUR_STOP_SETS } from './tour';
+import { BAUWAGEN_SET } from './bauwagen';
 
 export interface SetDef {
   id: string;
@@ -507,4 +508,4 @@ const rund: SetDef = {
   },
 };
 
-export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund, EHRENHOF_1789, ...WORLD_SETS, ...TOUR_STOP_SETS];
+export const SETS: readonly SetDef[] = [baumagazin, taleingang, ehrenhofRuin, bauplatz, zwinger, parkzaun, gitter, orangerieHof, rund, EHRENHOF_1789, ...WORLD_SETS, ...TOUR_STOP_SETS, BAUWAGEN_SET];

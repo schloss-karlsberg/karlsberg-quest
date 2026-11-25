@@ -156,8 +156,10 @@ declare module '../core/events' {
     'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
     'chronik:case-complete': { caseId: string };
-    /** noXp: unlocked by a photo (no XP for photos, owner 2026-11-20; progression skips it). */
+    /** noXp: unlock without an XP award (photos and optional discoveries). */
     'codex:unlocked': { factId: string; noXp?: boolean };
+    /** A hidden find was examined. The shared HUD feed names the find. */
+    'discovery:found': { title: string };
 
     // ---- round 2: NPCs, barks, story meters (owners noted per event) ------------------------
     /** story → npc: place a ghostly NPC (era: only visible in that era; chapter: whose lines). */

@@ -16,6 +16,7 @@ export const QUESTS_DE: Record<string, string> = {
   'quest.optional': 'freiwillig',
   'quest.xp': '+{n} EP',
   'quest.codexNew': 'Neu im Codex ({n})',
+  'quest.discovery.feed': 'Neu im Codex: {title}',
   'quest.moreInPause': 'Mehr dazu unter Pause → Aufgaben',
   'quest.card.offer': 'Auftrag',
   'quest.card.turnin': 'Abgabe',

@@ -12,6 +12,7 @@ import {
   Vector3,
   type PerspectiveCamera,
 } from 'three';
+import type { Era } from '../core/era';
 import { GROUND } from '../data/types';
 import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
@@ -812,8 +813,10 @@ export class Forest {
   private readonly dir = new Vector3();
   /** Sector culling on (debug / tests can switch it off). */
   cull = true;
-  /** Circles kept free of trees (feature buildings such as the field station). */
-  private readonly clearings: { x: number; z: number; r: number }[] = [];
+  /** Circles kept free of trees for feature buildings. */
+  private readonly clearings: { x: number; z: number; r: number; eras?: readonly Era[] }[] = [];
+  private activeClearings: typeof this.clearings = [];
+  private era: Era = 'today';
   /** CC0 model trees with baked impostors (medium / high, vegetation/trees.ts); null = procedural. */
   private models: ModelTrees | null = null;
 
@@ -924,7 +927,9 @@ export class Forest {
     return this.models !== null;
   }
 
-  setTrees(tiles: Map<string, Float32Array>): void {
+  setTrees(tiles: Map<string, Float32Array>, era: Era): void {
+    this.era = era;
+    this.updateClearings();
     this.tiles = tiles;
     this.spheres = tileSpheres(tiles);
     let n = 0;
@@ -1017,7 +1022,7 @@ export class Forest {
             culled++;
             continue;
           }
-          if (this.clearings.length && this.inClearing(arr[k]!, arr[k + 2]!)) continue;
+          if (this.activeClearings.length && this.inClearing(arr[k]!, arr[k + 2]!)) continue;
           const kind = Math.min(KINDS - 1, Math.max(0, Math.round(arr[k + 5]!)));
           // taller trees keep their detail a little further out
           const hk = (0.8 + Math.min(0.6, arr[k + 3]! / 60)) * ls;
@@ -1083,14 +1088,19 @@ export class Forest {
   }
 
   private inClearing(x: number, z: number): boolean {
-    for (const c of this.clearings) if (Math.hypot(x - c.x, z - c.z) < c.r) return true;
+    for (const c of this.activeClearings) if ((x - c.x) ** 2 + (z - c.z) ** 2 < c.r ** 2) return true;
     return false;
   }
 
-  /** Keep a circle free of trees in every era (e.g. a feature's building). */
-  addClearing(x: number, z: number, r: number): void {
-    this.clearings.push({ x, z, r });
+  private updateClearings(): void {
+    this.activeClearings = this.clearings.filter((c) => !c.eras || c.eras.includes(this.era));
     this.dirty = true;
+  }
+
+  /** Keep a circle free of trees, in every era by default. */
+  addClearing(x: number, z: number, r: number, eras?: readonly Era[]): void {
+    this.clearings.push({ x, z, r, eras });
+    this.updateClearings();
   }
 
   /** Force an instance rebuild on the next update (after teleports). */
@@ -1118,7 +1128,7 @@ export class Forest {
           const h = arr[k + 3]!;
           const tr = 0.1 + h * 0.016;
           if (Math.abs(ax - x) > r + tr || Math.abs(az - z) > r + tr) continue;
-          if (this.clearings.length && this.inClearing(ax, az)) continue;
+          if (this.activeClearings.length && this.inClearing(ax, az)) continue;
           fn(ax, az, tr, arr[k + 1]! + h * 0.55);
         }
       }

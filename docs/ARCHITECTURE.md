@@ -1490,6 +1490,12 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
 ### scenery (`src/systems/scenery/`) – set dressing, Hohenburg, fireworks, lit windows, passage
+
+- The hidden Bauwagen (`bauwagen.ts`) uses the scenery set streamer and a present-day vegetation
+  clearing at 760/−915. All profiles draw one static mesh when nearby. The set supplies its footprint
+  to the shared collider. `bauwagen-discovery.ts` claims the low-priority E/touch prompt only at
+  the door and uses `codex:unlocked` with `noXp` and `discovery:found` for the shared HUD feed. The
+  autosaved Codex ID `cx.48` records completion. The site has no travel POI or objective entry.
 - Sets (`sets.ts`, built with `builder.ts` / `kit.ts` / `props.ts` / `linear.ts`, one merged mesh
   per set): 1796 quarry at the Baumagazin (carts, heaps, dressed blocks, tools, the scale, wood,
   fire pit with smoke), the road at the valley entrance and the roofless Ehrenhof; 1789 building
@@ -1557,8 +1563,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Survey points (`points.ts`, 12): glowing tripods (`visuals.ts`, beam shader that fades near the
   camera, widens with distance so a found beam stays a landmark). Walking within 7 m (the Ehrenhof:
   16 m, `activateRadius`, so both Q spots lie inside) measures one
-  in (chime, burst ring + flash — gentler with `reducedFlash` — banner card, autosave). The field
-  station is known from the start. `travelBlock`: no travel while busy (modal / story pause), in a
+  in (chime, burst ring + flash — gentler with `reducedFlash` — banner card, autosave). The
+  Karlsbergquelle is known from the start. `travelBlock`: no travel while busy (modal / story pause), in a
   fight, while hunted (chasing / searching), in a locked chapter phase or, in the past, while a
   story threat is active. Story objectives far away (> 400 m, `ANNOUNCE_MIN`; 600 m before playtest round 10) whose goal lies within 140 m of a
   known point get one Laub line "Drücken Sie M …".

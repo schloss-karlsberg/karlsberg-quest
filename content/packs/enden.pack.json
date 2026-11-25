@@ -180,7 +180,7 @@
     {
       "id": "marlene.end.behalten",
       "speaker": "marlene",
-      "text_de": "Lass das Horn da hängen. Das passt zum Bauwagen. Aber blas nicht drauf, wenn ich schlafe.",
+      "text_de": "Das Horn steht dir. Heb dir den nächsten Ton für den Wald auf.",
       "trigger": {
         "event": "story:ending",
         "id": "keep",
@@ -651,7 +651,7 @@
     {
       "id": "epilog.objekt.uhr.burn",
       "speaker": "epilog",
-      "text_de": "Die Uhr steht im Bauwagen und geht. Ich ziehe sie jeden Sonntag auf.",
+      "text_de": "Die Uhr steht bei mir zu Hause. Ich ziehe sie jeden Sonntag auf.",
       "trigger": {
         "event": "epilog:line",
         "block": "objekt",

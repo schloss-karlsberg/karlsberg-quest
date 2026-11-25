@@ -42,7 +42,7 @@ const dialogue = [
     ['laub.end.behalten_1', 'laub', 'Sie behalten uns. Das ist unvernünftig. Ich bin sehr gerührt.'],
     ['laub.end.behalten_2', 'laub', 'Dann bleibt die Jagd offen. Die Hunde laufen weiter, aber jetzt hinter Ihnen her, nicht vor Ihnen weg. Das ist ein Unterschied, den man spürt, wenn es dunkel wird.'],
     ['laub.end.behalten_3', 'laub', 'Und ich bleibe im Dienst. Ohne Tagegeld. Wie gehabt.'],
-    ['marlene.end.behalten', 'marlene', 'Lass das Horn da hängen. Das passt zum Bauwagen. Aber blas nicht drauf, wenn ich schlafe.'],
+    ['marlene.end.behalten', 'marlene', 'Das Horn steht dir. Heb dir den nächsten Ton für den Wald auf.'],
   ]),
 
   // 6. Epilog — 6.1 Einleitung (told as a story: epilogue-deeds.mjs)
@@ -56,7 +56,7 @@ const dialogue = [
   ...[
     ['tuergriff', 'Daneben: ein Türgriff. Er war an der Tür zum Festsaal. Die Wand dahinter hat Matthes gemauert.', 'Den Türgriff habe ich behalten. Eine Tür, die es nicht mehr gibt, braucht trotzdem einen Griff.', 'Der Türgriff liegt in der Schublade bei der Bussole. Manchmal fasse ich ihn an, bevor ich hinausgehe.'],
     ['dukat', 'Daneben: ein Dukat mit dem Bild des Schlosses. Einen solchen bekam ein Bauer aus Rohrbach, oder auch nicht.', 'Den Dukaten habe ich Marlene gegeben. Sie sagt, sie kauft sich nichts davon.', 'Der Dukat liegt in der Schublade. Er ist das einzige Geld, das der Hof je zurückgezahlt hat, und auch nur an mich.'],
-    ['uhr', 'Daneben: eine vergoldete Uhr mit Alabaster. Sie geht noch. Sie weiß nicht, was passiert ist.', 'Die Uhr steht im Bauwagen und geht. Ich ziehe sie jeden Sonntag auf.', 'Die Uhr tickt in der Schublade, neben der Bussole. Laub sagt, sie geht vor.'],
+    ['uhr', 'Daneben: eine vergoldete Uhr mit Alabaster. Sie geht noch. Sie weiß nicht, was passiert ist.', 'Die Uhr steht bei mir zu Hause. Ich ziehe sie jeden Sonntag auf.', 'Die Uhr tickt in der Schublade, neben der Bussole. Laub sagt, sie geht vor.'],
     ['nichts', 'Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: ‚Was nicht gerettet wurde.‘', 'Gerettet habe ich nichts. Das ist auch eine Antwort.', 'In der Schublade ist Platz für etwas, das ich nicht genommen habe.'],
   ].flatMap(([v, a, b, c]) => [
     line(`epilog.objekt.${v}.museum`, 'objekt', a, { ending: E.museum, flag: 'flag.k3_objekt', value: v }),

@@ -40,7 +40,7 @@ export function endingScenes(year?: number): Record<EndingId, EndingScene> {
       id: 'burn',
       flag: 'verbrennen',
       scene:
-        'Die Ofenklappe fällt zu. Was gebrannt hat, ist Asche, noch warm. Kein Horn mehr in der Nacht.',
+        'Die letzte Seite zerfällt zu Asche. Die Glut ist noch warm. Kein Horn mehr in der Nacht.',
       laub: [
         'Gut. Sie haben lange genug gesucht. Die Hunde und ich.',
         'Was im Buch stand, steht auch woanders. Bei Mannlich, in den Akten, im Boden. Nur die Namen nicht. Die Namen tragen jetzt Sie.',
@@ -53,13 +53,13 @@ export function endingScenes(year?: number): Record<EndingId, EndingScene> {
       id: 'keep',
       flag: 'behalten',
       scene:
-        'Du legst die Chronik in die Schublade zur Bussole und schiebst sie zu. Das Horn hängst du an den Haken neben der Tür. Marlene sieht es an und sagt nichts. Am Abend, als du den Bauwagen abschließt, liegen fünf Abdrücke im Raureif vor der Stufe. Sie führen nicht weg.',
+        'Du steckst die Chronik und die Bussole ein und legst dir das Horn um. Marlene sieht es an und sagt nichts. Als du später am Waldrand stehen bleibst, liegen fünf Abdrücke im Raureif. Sie führen nicht weg.',
       laub: [
         'Sie behalten uns. Das ist unvernünftig. Ich bin sehr gerührt.',
         'Dann bleibt die Jagd offen. Die Hunde laufen weiter, aber jetzt hinter Ihnen her, nicht vor Ihnen weg. Das ist ein Unterschied, den man spürt, wenn es dunkel wird.',
         'Und ich bleibe im Dienst. Ohne Tagegeld. Wie gehabt.',
       ],
-      marlene: 'Lass das Horn da hängen. Das passt zum Bauwagen. Aber blas nicht drauf, wenn ich schlafe.',
+      marlene: 'Das Horn steht dir. Heb dir den nächsten Ton für den Wald auf.',
       picture: 'Nacht. Von der Kuppe über dem Tal sieht man die Lichter von Homburg und darüber den dunklen Schlossberg. Ganz leise, aus der Richtung der Hohenburg, ein Horn, falsch und zu hoch. Jost hat nie richtig blasen gelernt.',
     },
   };

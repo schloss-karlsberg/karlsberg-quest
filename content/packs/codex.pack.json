@@ -1125,6 +1125,19 @@
       "licence": "eigener Text"
     },
     {
+      "id": "cx.48",
+      "title_de": "Die letzte Messung",
+      "text_de": "Erfunden: der grüne Bauwagen und die Notiz an seiner Tür. „Letzter Arbeitstag. Messstab eingepackt. Die Laterne kann hierbleiben. Das Stativ mit dem krummen Bein hat sich den Ruhestand genauso verdient wie ich.“",
+      "confidence": "D",
+      "fiction": true,
+      "sources": [],
+      "tags": [
+        "label:FIKTION"
+      ],
+      "era": "today",
+      "licence": "eigener Text"
+    },
+    {
       "id": "rm.01",
       "title_de": "Terrasse und Planie",
       "text_de": "Im Relief: Eine auffällig ebene Fläche mit geraden Kanten, an einer Seite in den Hang geschnitten, an der anderen aufgeschüttet. Im Lokalen Relief hell an der Böschungsoberkante, dunkel am Fuß. Verwechslung: Forstwege-Kehren, Holzlagerplätze (meist jünger, ohne rechte Winkel). Am Karlsberg: der Ehrenhof auf 344,8 m und die Stufe zum Nordplateau.",

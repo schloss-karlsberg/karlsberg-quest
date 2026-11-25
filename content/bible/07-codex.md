@@ -4,7 +4,10 @@ The [Codex builder](../../scripts/content-build/codex.mjs) defines the shipped c
 The [tour cards and photo cards](#tour-karten-und-fotokarten) collect drafts for the four stations
 and the deer scene. Their working IDs reserve no runtime entries.
 
-Der Codex enthältDer Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`cx.42` stehen in `docs/IDEAS-ROUND11.md` §1, `cx.43`–`cx.46` unten, `cx.47` „Treibgut“ gehört zu den Fläschchen, `src/systems/flaschen`) und **8 Reliefmuster-Karten** (`rm.01`–`rm.08`). Eine Karte wird freigeschaltet, wenn der zugehörige FAKT-Eintrag bestätigt ist, oder wie in der Spalte „frei durch“ angegeben. Nach dem Ende ist der ganze Codex offen.
+The Codex has **48 numbered cards** (`cx.01`–`cx.48`) and **8 relief pattern cards**
+(`rm.01`–`rm.08`). `cx.41` and `cx.42` are described in `docs/IDEAS-ROUND11.md` §1 and
+`cx.43`–`cx.46` are described below. The Fläschchen collection unlocks `cx.47` „Treibgut“.
+Examining the note at the hidden Bauwagen unlocks `cx.48` „Die letzte Messung“ (FIKTION).
 
 **Felder** (passend zu `content/schema/pack.schema.json`, Typ `fact`): `id`, Titel (`title_de`), Text (`text_de`, 2–5 Sätze), Sicherheit (`confidence`: D belegt, I erschlossen, N Zeitnorm, U unbekannt), Label (FAKT / STRITTIG / LEGENDE / FIKTION), `fiction` (ja/nein), Quellen (URL + Kürzel), Streitpunkt (`contested_de`, falls vorhanden), Lizenz (`licence`).
 
