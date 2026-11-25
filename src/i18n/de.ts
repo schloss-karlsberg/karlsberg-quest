@@ -155,8 +155,6 @@ export const de: Record<string, string> = {
   'controls.title': 'Steuerung',
   'ui.keys.turn': 'Umsehen ohne Maus: drehen (auch Komma / Punkt) und Blick heben / senken',
   'ui.keys.turn.key': '[←][→] [Bild↑][Bild↓]',
-  'controls.body':
-    'WASD / Pfeil hoch, runter: gehen · Maus oder Pfeil links, rechts: umsehen · Bild↑ / Bild↓: Blick heben, senken · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · 1: Geisterblick (nur heute) · 2: Relief wechseln · Umschalt+2: rückwärts · ^: Relief aus · 3: Messen · 4: Röntgenblick · 5: Planblatt · M: Karte · Esc: Pause',
 
   'hud.compass.n': 'N',
   'hud.compass.e': 'O',
@@ -174,7 +172,6 @@ export const de: Record<string, string> = {
   'scan.exit': '{key}: normale Sicht',
   'scan.exit.touch': 'Erkunden → Relief → Aus',
   'scan.auto0': 'Gefunden. Wieder normale Sicht.',
-  'map.on': 'Karte 1836–41 eingeblendet',
   'map.off': 'Karte ausgeblendet',
 
   'toast.noSpirit': 'Der Geisterblick trägt nur in der Gegenwart.',
@@ -189,7 +186,6 @@ export const de: Record<string, string> = {
 
   'modal.close': 'Schließen',
   'modal.ok': 'Gut',
-  'modal.cancel': 'Abbrechen',
   'common.yes': 'Ja',
   'common.no': 'Nein',
 };

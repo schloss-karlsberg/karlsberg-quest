@@ -85,14 +85,12 @@ test.describe('third-person camera (round 10)', () => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.combat !== undefined, null, { timeout: 90_000 });
     await page.evaluate(() => {
-      // the staff in hand (a new game picks it up at the trailer): a real fight stance
+      // Equip the staff for the fight stance, as after the Weiher handoff in the tour.
       const k = window.kq!;
       k.progression!.grant('item.stab.esche', 1, true);
       k.progression!.equip('item.stab.esche');
     });
-    // F-03: the slope from the Bauwagen down to the Damm, three Nebellinge, several views. The
-    // reported spot (790 / −900) lies inside the Feldstation's 40 m safe ring (no fight starts
-    // there); the other two are just outside it, where the fight is on
+    // F-03: reproduce the reported camera angle below the dam (790 / −900) and two nearby views.
     for (const [i, at] of [
       { x: 790, z: -900, yaw: 200, fight: false },
       { x: 800, z: -893, yaw: 160, fight: true },

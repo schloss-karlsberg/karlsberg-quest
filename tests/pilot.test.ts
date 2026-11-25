@@ -135,7 +135,7 @@ describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
     expect(promptLine({ key: 'E', text: 'Sprechen' }, false)).toBe('E Sprechen');
     expect(promptLine({ key: null, text: 'Lauschen' }, false)).toBe('Lauschen');
     expect(promptLine(null, false)).toBe('');
-    expect(promptLine({ key: 'E', text: 'Feldstation' }, true)).toBe('');
+    expect(promptLine({ key: 'E', text: 'Pause an der Quelle' }, true)).toBe('');
   });
 
   it('turnDeg is done up front (3 steps by default), dx/dy spread over lookSteps', () => {

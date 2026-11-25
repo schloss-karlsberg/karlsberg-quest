@@ -346,6 +346,7 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
   await expect(talentEntry).toContainText('2');
   await talentEntry.click();
   await expect(page.getByTestId('journal-talents')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Wissen Erkundung und Vorrat' })).toBeVisible();
   await expect(page.getByTestId('talent-points')).toHaveAttribute('data-points', '2');
   await expect(page.getByTestId('talent-learn-stab.dritter')).toBeDisabled();
   const before = (await events(page, 'stats:changed')).length;

@@ -3,7 +3,7 @@
  * frame"): before the text card, the camera leaves the player's eyes and the world itself plays
  * the picture, then the card opens.
  *
- *  museum  dawn at the field station: the camera rises over the clearing, the horn sounds
+ *  museum  dawn in the present: the camera rises over the clearing, the horn sounds
  *          "Sammeln", five hounds lie down one after another and their eyes go out, the fog lifts
  *          and the sun comes up.
  *  burn    the pages burn in the air before you: they curl, glow at the edges and fall apart into

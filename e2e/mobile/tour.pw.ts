@@ -270,12 +270,12 @@ const STATES: State[] = [
       await c.page.evaluate(() => {
         const k = window.kq!;
         k.ctx.ui.cards.clearToasts();
-        k.ctx.ui.toast('Feldbuch ergänzt: Mauerrest am Damm (Relief 2)', 12000);
-        k.ctx.ui.toast('Neue Aufgabe im Feldbuch: Wasser, das sich erinnert', 12000);
+        k.ctx.ui.toast('Neuer Fund: Mauerrest am Damm (Relief 2)', 12000);
+        k.ctx.ui.toast('Neue Aufgabe: Wasser, das sich erinnert', 12000);
         k.progression!.xp(40, { x: k.ctx.player.position.x, z: k.ctx.player.position.z });
       });
       const toast = c.page.locator('.kq-toast:not(.kq-notice-out)');
-      await expect(toast).toHaveText('Feldbuch ergänzt: Mauerrest am Damm (Relief 2)');
+      await expect(toast).toHaveText('Neuer Fund: Mauerrest am Damm (Relief 2)');
       await expect(toast).toBeVisible();
       await c.shot('', 'one toast, an XP float, the tracker');
       await c.page.evaluate(() => window.kq!.ctx.ui.cards.clearToasts());

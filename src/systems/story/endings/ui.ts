@@ -1,5 +1,5 @@
 /**
- * The finale at the field-station table: choose what happens to the Chronik (three objects),
+ * The finale at the table: choose what happens to the Chronik (three objects),
  * confirm, the closing scene, the epilogue page (a museum label / an ash-grey page / a night
  * page), then the party with the credits strip over it (bible 06-enden §8, `deps.party`); the
  * scrolling credits page with sources and data licences stays for `kq.story.credits()`.
@@ -55,9 +55,9 @@ export interface EndingDeps {
   name(): string;
   /**
    * Stage the ending in the engine (endings/stage.ts): the modal closes, the world plays the
-   * picture, `done` opens the text card. Without it the DOM vignette plays over the frame.
+   * picture, and `done` opens the text card.
    */
-  stage?(id: EndingId, done: () => void): void;
+  stage(id: EndingId, done: () => void): void;
 }
 
 const OBJECT_SVG: Record<EndingId, string> = {
@@ -76,25 +76,24 @@ export class EndingScreen {
     return !!this.m && !this.m.closed;
   }
 
-  get stage(): string {
+  private get stage(): string {
     return this.m?.el.dataset.stage ?? 'closed';
   }
 
   /** Opens the choice (or `ending` directly at the scene, for debugging). */
-  show(ending?: EndingId, vignette = false): void {
+  show(ending?: EndingId, staged = false): void {
     if (!this.open) {
       this.m = this.d.modals.open({ closable: false, className: 'kqs-ending', wide: true });
       this.m.el.dataset.testid = 'ending';
     }
     if (ending) {
       this.ending = ending;
-      if (vignette) this.play();
+      if (staged) this.play();
       else this.scene();
     } else this.choose();
   }
 
   close(): void {
-    window.clearTimeout(this.vigTimer);
     this.m?.close();
     this.m = null;
   }
@@ -102,7 +101,7 @@ export class EndingScreen {
   private page(stage: string, cls: string, body: HTMLElement[]): void {
     const m = this.m!;
     m.el.dataset.stage = stage;
-    m.el.classList.remove('kqs-end-museum', 'kqs-end-burn', 'kqs-end-keep', 'kqs-end-credits', 'kqs-end-vig-museum', 'kqs-end-vig-burn', 'kqs-end-vig-keep');
+    m.el.classList.remove('kqs-end-museum', 'kqs-end-burn', 'kqs-end-keep', 'kqs-end-credits');
     if (cls) m.el.classList.add(cls);
     m.setBody(body, '');
     m.el.scrollTop = 0;
@@ -137,60 +136,14 @@ export class EndingScreen {
     ]);
   }
 
-  private vigTimer = 0;
-
-  /** The picture before the card: staged in the engine when the story offers it, else the vignette. */
+  /** Play the scene in the world before opening its text card. */
   private play(): void {
     const id = this.ending!;
-    if (!this.d.stage) return this.vignette();
     this.m?.close();
     this.m = null;
     this.d.stage(id, () => {
       if (!this.open) this.show(id);
     });
-  }
-
-  /**
-   * A short picture over the live world before the text card (playtest round 2: the ending was
-   * only text): museum, the fog lifts and the hounds lie down; burn, the eras flash through the
-   * fire; keep, eyes open in the dark behind you. Six seconds, a click skips it.
-   */
-  private vignette(): void {
-    const id = this.ending!;
-    if (this.d.reducedMotion()) return this.scene();
-    const m = this.m!;
-    m.el.closest('.kq-modal-layer')?.classList.add('kqs-vig-layer');
-    const layers: HTMLElement[] = [];
-    if (id === 'museum') {
-      layers.push(h('div.kqs-vig-fog'), h('div.kqs-vig-fog.b'));
-      const hounds = h('div.kqs-vig-hounds');
-      hounds.innerHTML = Array.from({ length: 5 }, (_, i) => {
-        const x = 8 + i * 19;
-        return `<svg class="kqs-vig-hound" style="left:${x}%;animation-delay:${1.6 + i * 0.35}s" viewBox="0 0 120 60"><path d="M8 44c6-14 22-20 40-20h34c8 0 12-10 20-12l6 4-4 6c4 2 8 6 8 10l-6 2-10-4c-6 6-10 12-18 14H40c-8 0-14 4-20 6z" fill="#0b0907"/></svg>`;
-      }).join('');
-      layers.push(hounds);
-    } else if (id === 'burn') {
-      layers.push(h('div.kqs-vig-fire'));
-      const eras = ['1785', '1789', '1793', '1796', '1840', '1935', 'heute'];
-      layers.push(h('div.kqs-vig-eras', eras.map((e, i) => h('span', { style: `animation-delay:${0.5 + i * 0.62}s` }, e))));
-      layers.push(h('div.kqs-vig-flash'));
-    } else {
-      layers.push(h('div.kqs-vig-dark'));
-      const eyes = h('div.kqs-vig-eyes');
-      const spots: [number, number, number][] = [[12, 58, 0.8], [26, 70, 1.6], [78, 62, 1.1], [88, 48, 2.2], [64, 76, 2.8], [40, 52, 3.4], [6, 40, 3.9]];
-      eyes.innerHTML = spots.map(([x, y, d]) => `<i style="left:${x}%;top:${y}%;animation-delay:${d}s"><b></b><b></b></i>`).join('');
-      layers.push(eyes);
-    }
-    const next = () => {
-      window.clearTimeout(this.vigTimer);
-      if (!this.open || this.m!.el.dataset.stage !== 'vignette') return;
-      this.m!.el.closest('.kq-modal-layer')?.classList.remove('kqs-vig-layer');
-      this.scene();
-    };
-    this.page('vignette', `kqs-end-vig-${id}`, [
-      h('div.kqs-vig', { 'data-testid': 'ending-vignette', onclick: next }, [...layers, h('button.kqs-vig-skip', { onclick: next }, t('story.end.next'))]),
-    ]);
-    this.vigTimer = window.setTimeout(next, 6200);
   }
 
   private scene(): void {

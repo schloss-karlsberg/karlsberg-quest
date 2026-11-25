@@ -17,6 +17,8 @@ export interface ObjectiveState {
   id?: string;
 }
 
+export const DEFAULT_VISITOR_NAME = 'Alex';
+
 /** Persisted story progress (JSON only). */
 export interface StorySlice {
   /** The story runs (false before the prologue starts and after the credits). */
@@ -39,7 +41,7 @@ export interface StorySlice {
   objective: ObjectiveState | null;
   /** Last threat configuration per kind (re-sent after a reload). */
   threats: Record<string, ThreatConfig>;
-  /** Present-day time of day at the field station. */
+  /** Present-day time of day. */
   look: LookTime;
   /** Time of day of one past era (look action with `era`); null = that era's preset. */
   lookPast?: { era: string; time: Exclude<LookTime, 'day'> } | null;
@@ -83,7 +85,7 @@ export function createStorySlice(): StorySlice {
     unlocked: [],
     completed: [],
     doneBeats: [],
-    name: '',
+    name: DEFAULT_VISITOR_NAME,
     said: [],
     objective: null,
     threats: {},

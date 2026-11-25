@@ -43,23 +43,13 @@ export const SURVEY_POINTS: readonly SurveyPoint[] = [
   { id: 'karlsbergquelle', name: 'Karlsbergquelle', x: 1072, z: -825, note: 'Der Trog im Hang, der Bach, der Weg hinauf zum Schloss', known: true },
 ];
 
-/**
- * Points that are gone (tour redesign WP-05: the Feldstation trailer is no longer home). Old saves
- * may still list them in `activated` / `announced`; `livePointIds` drops them on load.
- */
-export const RETIRED_POINTS: readonly string[] = ['feldstation'];
-
-/** Saved point ids without retired or unknown ones (order kept, duplicates dropped). */
-export function livePointIds(ids: readonly unknown[] | undefined): string[] {
-  const out: string[] = [];
-  for (const id of ids ?? []) if (typeof id === 'string' && !out.includes(id) && SURVEY_POINTS.some((p) => p.id === id)) out.push(id);
-  return out;
+/** Keep only live survey point IDs from a saved list, in order and without duplicates. */
+export function livePointIds(ids: unknown): string[] {
+  if (!Array.isArray(ids)) return [];
+  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && pointById(id) !== undefined))];
 }
 
-/**
- * Seed of a tripod's look: list index + this. It was index + 3 while the retired `feldstation`
- * stood first in the list; + 4 keeps every remaining tripod looking as before.
- */
+/** Offset the list index to preserve tripod appearances after removing the original first point. */
 export const TRIPOD_SEED_BASE = 4;
 
 export function pointById(id: string): SurveyPoint | undefined {
@@ -72,8 +62,7 @@ export const ACTIVATE_RADIUS = 7;
 /**
  * A point's own activation radius. The Ehrenhof tripod stands 11 m from the Ehrenhof time anchor
  * (1222, -1119) and 15 m from the prologue's "Q in der Mitte des Ehrenhofs" spot (1218, -1118).
- * With 7 m a player who walked straight to the compass rose never got it (playtest round 10: K1
- * started with a 470 m walk from the old Feldstation), so it takes 16 m and both Q spots lie inside.
+ * Give this tripod a 16 m radius so a player who walks straight to either Q spot activates it.
  */
 export function activateRadius(p: SurveyPoint): number {
   return p.r ?? ACTIVATE_RADIUS;
@@ -145,17 +134,10 @@ export function travelBlock(w: TravelWorld): TravelBlock {
   return null;
 }
 
-/**
- * Laub "announces" a point when the goal lies beside it and the player is far away: the point is
- * then known without the walk (so a chapter never starts with a 1.8 km march). Returns the point to
- * announce, or null.
- */
-/**
- * How far away (m) a goal must be before Laub announces the point beside it. 600 until playtest
- * round 10: the (old) Feldstation → Ehrenhof leg (~500 m) then never qualified.
- */
+/** Minimum distance (m) to a goal before Laub announces the point beside it. */
 export const ANNOUNCE_MIN = 400;
 
+/** Find a point Laub can announce near a distant goal, making it known without the walk. */
 export function announceFor(goal: { x: number; z: number } | null, player: { x: number; z: number }, known: readonly string[]): SurveyPoint | null {
   if (!goal) return null;
   if (Math.hypot(goal.x - player.x, goal.z - player.z) < ANNOUNCE_MIN) return null;

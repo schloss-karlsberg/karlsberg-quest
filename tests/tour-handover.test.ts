@@ -20,6 +20,60 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const json = <T>(p: string) => JSON.parse(readFileSync(`${ROOT}${p}`, 'utf8')) as T;
 const story = (name: string) => json<StoryFile>(`content/story/${name}.story.json`);
 
+describe('saves from before the spring became home', () => {
+  it('continues and re-saves the legacy K3 Heimweg slot', () => {
+    const bytes = readFileSync(new URL('./fixtures/saves/pre-quelle-k3.json', import.meta.url), 'utf8');
+    const original = JSON.parse(bytes) as ReturnType<typeof createInitialState>;
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY('auto'), bytes);
+    const store = new GameStateStore(createInitialState());
+    const saves = new SaveManager(store, storage, undefined, () => Date.parse(original.meta.savedAt!));
+    const preview = saves.peek();
+    expect(storage.getItem(SAVE_KEY('auto'))).toBe(bytes);
+    expect(saves.load()).toBe(true);
+    expect(store.state).toEqual(preview);
+    const returnGoal = story('03-kapitel-3').beats.find((beat) => beat.id === 'k3_9')
+      ?.enter?.find((action) => action.do === 'objective');
+    expect(returnGoal).toMatchObject({ id: 'k3.quelle', text: 'Zur Quelle', x: 1059.3, z: -833.1 });
+    expect(store.state.systems.story).toMatchObject({
+      name: 'Alex', active: true, chapter: 'k3', beat: 'k3_9', beatTime: 8, look: 'dusk',
+      objective: { id: 'k3.quelle', text: 'Zur Quelle', x: 1059.3, z: -833.1 },
+      unlocked: original.systems.story!.unlocked, completed: original.systems.story!.completed,
+    });
+    expect(store.state.systems.travel).toEqual({
+      ...original.systems.travel, activated: ['ehrenhof'], announced: ['zwinger'],
+    });
+    expect(store.state.systems.quests).toEqual(original.systems.quests);
+    expect(store.state.systems.progression).toEqual(original.systems.progression);
+    expect(store.state.flags).toEqual(original.flags);
+    expect(store.state.player).toEqual(original.player);
+    expect(store.state.meta).toEqual(original.meta);
+    expect(saves.save()).toBe(true);
+    expect(saves.load()).toBe(true);
+    expect(store.state).toEqual(preview);
+  });
+
+  it.each([
+    ['k2.heim', 'Q halten: zurück in die Feldstation', 'Q halten: zurück zur Quelle'],
+    ['k2.ende', 'Feldstation. Die Nacht ist vorbei.', 'An der Quelle. Die Nacht ist vorbei.'],
+    ['k2.heim', 'Zurück in die Nacht: zum Ehrenhof (mit Geisterblick), dort Q', 'Zurück in die Nacht: zum Ehrenhof (mit Geisterblick), dort Q'],
+  ])('restores the saved K2 objective %s and keeps the player name', (id, text, expected) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), name: 'Mara', chapter: 'k2', objective: { id, text } };
+    const saved = deserializeState(JSON.stringify(state));
+    expect(saved.systems.story).toMatchObject({ name: 'Mara', objective: { id, text: expected } });
+  });
+
+  it.each([undefined, '', '  ', 'story.name.suggest'])('uses the visitor default when the saved name is %j', (name) => {
+    const state = createInitialState();
+    const saved = deserializeState(JSON.stringify({
+      ...state, systems: { story: { ...createStorySlice(), name } },
+    }));
+    expect(createStorySlice().name).toBe('Alex');
+    expect(saved.systems.story?.name).toBe('Alex');
+  });
+});
+
 describe('the tour hands over into chapter 1', () => {
   it('grants the handover items, survey skills and level 3 XP', () => {
     const tour = story('00-tour');

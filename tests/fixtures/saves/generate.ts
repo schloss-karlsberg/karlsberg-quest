@@ -1,10 +1,10 @@
 // Run in an archive of the release, as described in README.md.
 import { writeFileSync } from 'node:fs';
 import { MemoryStorage, SaveManager, SAVE_KEY } from '../../../src/core/save';
-import { createInitialState, GameStateStore } from '../../../src/core/state';
+import { type GameState, createInitialState, GameStateStore } from '../../../src/core/state';
 import { createProgressionSlice } from '../../../src/systems/progression/logic';
 import { createQuestSlice } from '../../../src/systems/quests/logic';
-import { createStorySlice } from '../../../src/systems/story/engine';
+import { type StorySlice, createStorySlice } from '../../../src/systems/story/engine';
 
 export function generateReleaseSlot(tag: string, output: string): void {
   if (!['v0.6.0', 'v0.7.0', 'v0.8.0'].includes(tag)) throw new Error(`Unexpected tag: ${tag}`);
@@ -50,8 +50,37 @@ export function generateReleaseSlot(tag: string, output: string): void {
     };
   }
 
+  writeSlot(state, Date.UTC(2026, 10, 24, 12), output);
+}
+
+/** Set up the Heimweg beat as it ran before the hub moved to the spring. */
+export function generateStationSlot(output: string): void {
+  const state = createInitialState();
+  Object.assign(state.player, { x: 812, z: -875 });
+  state.meta.playSeconds = 12450;
+  state.flags['quest.q.p.feldstation'] = 'done';
+  const story: StorySlice = {
+    ...createStorySlice(), active: true, chapter: 'k3', beat: 'k3_9', beatTime: 8,
+    name: 'Vermesser*in', look: 'dusk', unlocked: ['prolog', 'k1', 'k2', 'k3'],
+    completed: ['prolog', 'k1', 'k2'],
+    objective: { id: 'k3.station', text: 'Zur Feldstation', x: 760.6, z: -910.4 },
+  };
+  const travel = {
+    activated: ['feldstation', 'ehrenhof'], announced: ['zwinger', 'feldstation'],
+    seen: ['poi.p-hang.0'], done: ['poi.p-hang.0'], shrineT: {}, tips: [],
+  };
+  const quests = createQuestSlice();
+  quests.quests['q.p.feldstation'] = { state: 'done', counts: { stab: 1, nebel: 3 }, t: 69 };
+  const progression = Object.assign(createProgressionSlice(), {
+    xp: 3200, level: 8, talents: { 'feldbuch.atem': 1 },
+    inventory: { 'item.stab.esche': 1, 'item.balsam': 3 }, equipped: { weapon: 'item.stab.esche', charms: [] },
+  });
+  Object.assign(state.systems, { story, travel, quests, progression });
+  writeSlot(state, Date.UTC(2026, 10, 20, 14), output);
+}
+
+function writeSlot(state: GameState, savedAt: number, output: string): void {
   const storage = new MemoryStorage();
-  const savedAt = Date.UTC(2026, 10, 24, 12);
   const save = new SaveManager(new GameStateStore(state), storage, undefined, () => savedAt);
   if (!save.save('auto')) throw new Error('Release slot could not be saved');
   writeFileSync(output, storage.getItem(SAVE_KEY('auto'))!);

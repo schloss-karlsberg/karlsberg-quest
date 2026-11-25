@@ -68,7 +68,7 @@ Exactly one key per condition object. Event-like conditions are latched while th
 | `chapterTimer` | seconds since the chapter started (game time) |
 | `era`, `scan` (≥ mode), `map`, `stance`, `lantern` | world / player state |
 | `have {clue\|noun\|item}`, `confirmed {case?\|prefix?, n}`, `caseComplete` | inventory and Chronik |
-| `hub` | a field-station item was used |
+| `hub` | an item in the Quelle hub was used |
 | `room` | the player stands in a walkable palace room: catalogue id `"B06.1.bildergalerie"`, full id `"KB-B06/B06.1.bildergalerie"` or a building `"KB-B06"` (interiors flags `interior.room` / `interior.building`); also latched when a matching `room:enter {roomId, building, id, name}` happened in the beat |
 | `talked {npc, chapter?, topic?}` | an NPC was spoken to (flags `talked.<chapter>.<npc>[.<topic>]`; chapter defaults to the running one) |
 | `reading` (+ `eq?`) | a reading was chosen: the entry's story flag (`CaseEntry.flag`, e.g. `flag.k1_lohn`) or its entry id; `eq` = noun id or bare key (`n.r_will_nicht` ≡ `will_nicht`, `offen`) |

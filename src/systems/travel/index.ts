@@ -35,7 +35,7 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, livePointIds, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
 import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
 import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
@@ -195,9 +195,6 @@ class Travel {
 
   loadSlice(): TravelSlice {
     const s = this.ctx.state.slice('travel', () => ({ activated: [], announced: [], seen: [], done: [], shrineT: {}, tips: [] }));
-    // retired points (the old Feldstation) and unknown ids from old saves drop out quietly
-    s.activated = livePointIds(s.activated);
-    s.announced = livePointIds(s.announced);
     s.seen ??= [];
     s.done ??= [];
     s.shrineT ??= {};

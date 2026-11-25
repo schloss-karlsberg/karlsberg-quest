@@ -157,6 +157,7 @@ for (const [name, device] of Object.entries(DEVICES)) {
         await pause.getByTestId(`pause-${id}`).tap();
         const view = page.getByTestId(`page-${id}`);
         await expect(view).toBeVisible();
+        if (id === 'talents') await expect(view.getByRole('heading', { name: 'Wissen Erkundung und Vorrat' })).toBeVisible();
         await expect(view.locator('xpath=..')).toHaveCSS('animation-name', 'none');
         await view.getByRole('button', { name: 'Zurück', exact: true }).tap();
         await expect(view).toBeHidden();

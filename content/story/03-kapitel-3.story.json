@@ -672,7 +672,7 @@
         { "do": "look", "time": "dusk" },
         { "do": "anchor", "to": null },
         { "do": "say", "line": "marlene.k3.abend", "delay": 3 },
-        { "do": "objective", "id": "k3.station", "text": "Zur Quelle", "x": 1059.3, "z": -833.1, "delay": 1 }
+        { "do": "objective", "id": "k3.quelle", "text": "Zur Quelle", "x": 1059.3, "z": -833.1, "delay": 1 }
       ],
       "complete": { "any": [{ "event": "hub:enter" }, { "enter": { "x": 1061, "z": -834.5, "r": 12, "era": "today" } }] }
     },

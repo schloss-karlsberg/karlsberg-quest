@@ -78,7 +78,7 @@ export function stageDirection(text: string, speaker?: string): string | null {
 }
 
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar', 'wind', 'bark']);
-// the hub at the Quelle (contract C4) + the field station's old ids as aliases (bed → bench, radio → phone)
+// The Quelle hub and its legacy aliases (bed → bench, radio → phone).
 const HUB = new Set(['chronik', 'phone', 'shelf', 'drawer', 'map', 'bench', 'bed', 'radio']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);

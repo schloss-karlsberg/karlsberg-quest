@@ -5,7 +5,7 @@ const E = '1793-07';
 // Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
 // south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
 // the trough's E zone (HOME.troughR) stay outside, the story grants them anyway
-const STATION = [1051.3, -827.4];
+const QUELLE_NOTES = [1051.3, -827.4];
 const EH = [1210, -1114];
 const REG = 'B03.1.eg-registratur';
 const NAT = 'B04.2.og-naturalienkabinett';
@@ -19,7 +19,7 @@ const PFORTE = [1267, -1290];
 
 const clues = [
   clue('clue.k3.marlene', {
-    title: 'Marlene erzählt von einer Ausstellung', kind: 'dialogue', at: STATION, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: false,
+    title: 'Marlene erzählt von einer Ausstellung', kind: 'dialogue', at: QUELLE_NOTES, r: 8, era: 'today', anchor: 'loc.quelle', chapter: ch, fiction: false,
     text: 'Marlene erzählt von der Ausstellung „Steinerne Macht“ (2018).', flags: ['flag.k3_ausstellung'],
   }),
   // Teil A
@@ -315,7 +315,7 @@ const dialogue = [
   say('laub.k3.jaguar', 'laub', 'Augen. Gelb, auf Kniehöhe. Das ist kein Hund, das ist der Jaguar aus der Menagerie. Der Herzog hat ihn kommen lassen, damit man ihn ansieht. Jetzt sieht er uns an. Laterne an. Licht mag er nicht.', beat('3.11-jaguar'), { once: true }),
   say('laub.k3.jaguar_down', 'laub', 'Er wollte nur wissen, ob Sie echt sind. Sie sind es. Aufstehen. Leise.', beat('3.11-jaguar-down'), { once: true }),
   say('beat.k3.hunde', 'laub', 'Echte Hunde. Nicht aus Rauch. Keiner sieht sich um.', beat('3.12-hunde'), { once: true }),
-  // 3.13: the rescued object, found again today in the field station (06-enden §6.3: it lies on the table next to the Bussole)
+  // 3.13: the rescued object, found again in the present (06-enden §6.3: it lies on the table next to the Bussole)
   say('laub.k3.heute.tuergriff', 'laub', 'Ein Türgriff. Messing, angelaufen, und er riecht nach Rauch. Fragen Sie mich nicht, wie er hierherkommt. Ich wohne in einer Bussole, ich stelle solche Fragen nicht mehr.', beat('3.13-objekt'), { once: true }),
   say('laub.k3.heute.dukat', 'laub', 'Ein Dukat mit dem Schloss darauf. Er ist noch warm. Fragen Sie mich nicht, wie er hierherkommt. Ausgeben würde ich ihn nicht.', beat('3.13-objekt'), { once: true }),
   say('laub.k3.heute.uhr', 'laub', 'Hören Sie das? Die Uhr mit dem Alabaster. Sie tickt. Sie geht nach, um ungefähr zweihundert Jahre, aber sie geht.', beat('3.13-objekt'), { once: true }),
