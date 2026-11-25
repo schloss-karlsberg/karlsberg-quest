@@ -59,8 +59,11 @@ const ID = 'e2e.voice.hallo';
 const TEXT = 'Grüß Gott. Die Bussole hört zu, und sie spricht jetzt mit eigener Stimme.';
 const CLIP_S = 2.4;
 
-type Stats = { lastFormat: string | null; opus: boolean; manifest: string; lines: number; cached: number; failed: number; stale: number; clips: number; murmured: number; lastClip: string | null; playing: boolean; ctx: string };
-const stats = (page: Page) => page.evaluate(() => window.kq!.story!.voice.stats() as Stats);
+const stats = (page: Page) => page.evaluate(() => ({
+  ...window.kq!.story!.voice.stats(),
+  audioTime: window.kq!.ctx.audio.ctx?.currentTime ?? 0,
+  visibility: document.visibilityState,
+}));
 
 test('voice: a recorded line plays through its chain, its subtitle shows and types to the clip', async ({ page }) => {
   test.skip(!FFMPEG, 'ffmpeg is needed to encode the test clip');
@@ -91,6 +94,15 @@ test('voice: a recorded line plays through its chain, its subtitle shows and typ
     return r.fulfill({ contentType: 'audio/mp4', body: tone.aac });
   });
 
+  // Chromium's silent sink renders the native Web Audio graph without a host output device.
+  await page.addInitScript(() => {
+    window.AudioContext = class extends AudioContext {
+      constructor(options?: AudioContextOptions) {
+        const silentOptions = { ...options, sinkId: { type: 'none' } };
+        super(silentOptions);
+      }
+    };
+  });
   await page.goto('./?notitle&nosave&fresh&manual');
   await page.waitForFunction(() => !!window.kq?.story, null, { timeout: 180_000 });
   await page.evaluate(() => window.kq!.ctx.audio.unlock());
@@ -114,29 +126,36 @@ test('voice: a recorded line plays through its chain, its subtitle shows and typ
 
   // the voiced line: the clip starts, the subtitle shows
   const before = await stats(page);
-  await page.evaluate(([id, text]) => {
-    window.kq!.story!.say('laub', text!, id);
-    window.kq!.step(1);
-  }, [ID, TEXT]);
-  let s = await stats(page);
-  expect(s.clips).toBe(before.clips + 1);
-  expect(s.lastClip).toBe(ID);
-  expect(s.playing).toBe(true);
+  const { audioStart, started, typed } = await page.evaluate(({ id, text }) => {
+    const kq = window.kq!;
+    const audioStart = kq.ctx.audio.ctx!.currentTime;
+    kq.story!.say('laub', text, id);
+    kq.ctx.loop.advance(1);
+    const started = kq.story!.voice.stats();
+    // Measure a third of the 2.4 s clip's typing in the same task, before a GPU render or locator wait.
+    kq.ctx.loop.advance(48);
+    return { audioStart, started, typed: document.querySelector('.kqs-typed')?.textContent ?? '' };
+  }, { id: ID, text: TEXT });
+  expect(started.clips).toBe(before.clips + 1);
+  expect(started.lastClip).toBe(ID);
+  expect(started.playing).toBe(true);
+  expect(typed.length).toBeGreaterThan(TEXT.length * 0.2);
+  expect(typed.length).toBeLessThan(TEXT.length * 0.5);
   const dlg = page.getByTestId('dialogue');
   await expect(dlg).toHaveClass(/kqs-show/);
   await expect(dlg).toBeVisible();
 
-  // typing paces itself to the clip (2.4 s): a third through after 0.8 s of game time
-  await page.evaluate(() => window.kq!.step(48));
-  const typed = (await page.locator('.kqs-typed').textContent()) ?? '';
-  expect(typed.length).toBeGreaterThan(TEXT.length * 0.2);
-  expect(typed.length).toBeLessThan(TEXT.length * 0.5);
   await page.evaluate(() => window.kq!.step(100));
   await expect(page.locator('.kqs-typed')).toHaveText(TEXT);
   await expect(dlg).toContainText(TEXT);
 
-  // the line stays up while the clip still speaks, then the clip ends on its own
-  await expect.poll(async () => (await stats(page)).playing, { timeout: 10_000 }).toBe(false);
+  // With simulation parked, the native source must end on its own. Report the clock and context
+  // state on failure so a stalled audio renderer can be distinguished from a missing end event.
+  await expect(async () => {
+    const { playing, ctx, audioTime, visibility } = await stats(page);
+    const elapsed = (audioTime - audioStart).toFixed(3);
+    expect({ playing, ctx }, `Web Audio advanced ${elapsed} s while the page was ${visibility}`).toEqual({ playing: false, ctx: 'running' });
+  }).toPass({ timeout: 10_000 });
 
   // a changed text: the recording is stale → the line murmurs
   await page.evaluate(() => {
@@ -144,20 +163,22 @@ test('voice: a recorded line plays through its chain, its subtitle shows and typ
     window.kq!.story!.say('laub', 'Ein ganz anderer Satz als der aufgenommene.', 'e2e.voice.hallo');
     window.kq!.step(1);
   });
-  s = await stats(page);
+  const s = await stats(page);
   expect(s.stale).toBeGreaterThanOrEqual(1);
   expect(s.clips).toBe(before.clips + 1);
   expect(s.murmured).toBeGreaterThan(before.murmured);
   expect(s.playing).toBe(false);
 
   // the voiced line again, skipped with Enter: its clip stops
-  await page.evaluate(([id, text]) => {
-    window.kq!.step(400);
-    window.kq!.story!.say('laub', text!, id);
-    window.kq!.step(1);
-  }, [ID, TEXT]);
-  expect((await stats(page)).playing).toBe(true);
-  expect((await stats(page)).clips).toBe(before.clips + 2);
+  const replay = await page.evaluate(({ id, text }) => {
+    const kq = window.kq!;
+    kq.step(400);
+    kq.story!.say('laub', text, id);
+    kq.ctx.loop.advance(1);
+    return kq.story!.voice.stats();
+  }, { id: ID, text: TEXT });
+  expect(replay.playing).toBe(true);
+  expect(replay.clips).toBe(before.clips + 2);
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await stats(page)).playing).toBe(false);
   await expect(page.locator('.kqs-typed')).toHaveText(TEXT);
