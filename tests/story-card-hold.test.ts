@@ -85,12 +85,11 @@ describe('the opening beat timeline waits for the chapter card', () => {
     expect(waitsForChapterCard({ do: 'flag', set: { a: 1 } } as Action, 0.5)).toBe(true);
   });
 
-  it('prologue p1: prompt, objective, the radio crackle and the quest offer (its radio line) all wait, in order', () => {
-    const p1 = opening(story('00-prolog.story.json')).filter((x) => ['prompt', 'objective', 'sound', 'quest'].includes(x.a.do));
-    expect(p1.map((x) => x.a.do)).toEqual(['prompt', 'objective', 'sound', 'quest']);
-    expect(p1.every((x) => x.waits)).toBe(true);
-    const at = Object.fromEntries(p1.map((x) => [x.a.do, x.at]));
-    expect(at.objective).toBeLessThan(at.quest!);
+  it('tour t1: movement prompt precedes the waypoint and both wait for the card', () => {
+    const first = opening(story('00-tour.story.json')).filter((x) => x.a.do === 'prompt' || x.a.do === 'objective');
+    expect(first.map((x) => x.a.do)).toEqual(['prompt', 'objective']);
+    expect(first.every((x) => x.waits)).toBe(true);
+    expect(first[0]!.at).toBeLessThan(first[1]!.at);
   });
 
   it('kapitel 1: the radio crackle and Marlene stay 0.3 s apart (both wait for the card)', () => {
@@ -105,8 +104,8 @@ describe('the opening beat timeline waits for the chapter card', () => {
 describe('the opening beat clocks restart when the chapter card lets go', () => {
   const env: StoryEnv = {
     era: 'today',
-    x: 760,
-    z: -902,
+    x: 529,
+    z: -795,
     flags: {},
     inventory: { clues: [], nouns: [], items: [] },
     chronik: {},
@@ -116,43 +115,42 @@ describe('the opening beat clocks restart when the chapter card lets go', () => 
     lantern: false,
     caseFacts: () => null,
   };
-  const p1Prompt = () => {
+  const tourStart = () => {
     const slice = createStorySlice();
-    const runs: string[] = [];
-    const engine = new StoryEngine([story('00-prolog.story.json')], () => slice, {
-      run: (_a, o) => runs.push(o.source),
+    const engine = new StoryEngine([story('00-tour.story.json')], () => slice, {
+      run: () => undefined,
       chapterEntered: () => undefined,
       beatEntered: () => undefined,
       chapterCompleted: () => undefined,
     });
-    engine.goto('prolog');
+    engine.goto('tour');
     const step = (s: number) => {
       for (let i = 0; i < Math.round(s * 10); i++) engine.tick(0.1, env);
     };
-    const fired = () => runs.some((r) => r.endsWith(':gegangen'));
-    return { engine, slice, step, fired };
+    const finished = () => slice.beat === 't2';
+    return { engine, slice, step, finished };
   };
 
-  it('prologue p1: the movement prompt keeps its 12 s, counted from the release, not the entry', () => {
-    const t = p1Prompt();
+  it('tour t1: the 25 s arrival fallback counts from the release', () => {
+    const t = tourStart();
     // under the chapter card (5.5 s + 0.8 s of the fade)
     t.step(6.3);
-    expect(t.fired()).toBe(false);
-    t.engine.restartClock('prolog', 'p1');
+    expect(t.finished()).toBe(false);
+    t.engine.restartClock('tour', 't1');
     expect(t.slice.beatTime).toBe(0);
-    t.step(11.8);
-    expect(t.fired()).toBe(false);
+    t.step(24.8);
+    expect(t.finished()).toBe(false);
     t.step(0.4);
-    expect(t.fired()).toBe(true);
+    expect(t.finished()).toBe(true);
   });
 
   it('without a card (or for another beat) the clock is left alone', () => {
-    const t = p1Prompt();
+    const t = tourStart();
     t.step(6.3);
-    t.engine.restartClock('prolog', 'p2');
-    t.engine.restartClock('k1', 'p1');
-    t.step(5.9);
-    expect(t.fired()).toBe(true);
+    t.engine.restartClock('tour', 't2');
+    t.engine.restartClock('k1', 't1');
+    t.step(19);
+    expect(t.finished()).toBe(true);
   });
 });
 

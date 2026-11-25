@@ -123,30 +123,24 @@ function progress(ctx: GameContext, caseId: string): CaseProgress {
   return p;
 }
 
-/** Story chapter ids → the `Clue.chapter` ids of the packs ('prolog' → 'p'). */
 /**
  * Only the clues of the chapters the story has reached are in the world: the later chapters' notes
  * at home (Marlene's letters at the Quelle, Laub's tins …) would otherwise show their markers and
- * take E before their chapter (the prologue: before the story has introduced the Chronik; chapter
- * 1: at the spring, where it starts). null = no gating (no story, sandbox, `?notitle` tests, a
- * chapter outside the order): every clue is in the world as before.
+ * take E before their chapter, including during the guided tour. Return null to expose all clues
+ * in the sandbox, in tests without a running story, and in chapters outside the order.
  */
 function reachedChapters(ctx: GameContext): Set<string> | null {
   const story = (ctx.state.state.systems as Record<string, unknown>).story as { active?: boolean; chapter?: string | null } | undefined;
   if (!story?.active || !story.chapter) return null;
-  // the tour opens the game in the prologue's place
-  const i = CHAPTER_ORDER.indexOf(story.chapter === 'prolog' || story.chapter === 'tour' ? 'p' : story.chapter);
-  if (i < 0) return null;
-  const set = new Set(CHAPTER_ORDER.slice(0, i + 1));
-  set.add('prolog');
-  return set;
+  const i = CHAPTER_ORDER.indexOf(story.chapter);
+  return i < 0 ? null : new Set(CHAPTER_ORDER.slice(0, i + 1));
 }
 
-/** The clue `chapter` key of the running story chapter ('p' for the prologue), or null without a story. */
+/** The clue `chapter` key of the running story chapter, or null without a story. */
 function runningChapter(ctx: GameContext): string | null {
   const story = (ctx.state.state.systems as Record<string, unknown>).story as { active?: boolean; chapter?: string | null } | undefined;
   if (!story?.active || !story.chapter) return null;
-  return story.chapter === 'prolog' || story.chapter === 'tour' ? 'p' : story.chapter;
+  return story.chapter;
 }
 
 function env(ctx: GameContext) {
@@ -356,7 +350,7 @@ function refreshMarkers(ctx: GameContext): void {
     if (!c || npcOwnsTalk(ctx, c)) continue;
     const st = clueStatus(c, e);
     if (st !== 'available' && st !== 'needs-lantern') continue;
-    // overlapping clues: the running chapter's come first (a prologue echo missed on the Ehrenhof
+    // overlapping clues: the running chapter's come first (an earlier echo missed on the Ehrenhof
     // must not take E from chapter 1's guard echo at the gate, nor keep that one from starting)
     const other = running !== null && c.chapter !== undefined && c.chapter !== running ? 1 : 0;
     const d = clueDistance(c, p.x, p.z) / c.where.radius + other;

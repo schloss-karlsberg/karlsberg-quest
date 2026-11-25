@@ -7,9 +7,9 @@
  * following beat). When the last beat completes, the chapter is complete, `unlocks` chapters are
  * unlocked and `next` chapter starts.
  *
- *   { "chapter": "prolog", "order": 0, "title_de": "Vermessung", "start": "p1",
- *     "beats": [ { "id": "p1", "enter": [ { "do": "say", "speaker": "marlene", "text": "…" } ],
- *                  "complete": { "enter": { "x": 819, "z": -875, "r": 25 } } } ] }
+ *   { "chapter": "tour", "order": -1, "title_de": "Die Führung", "start": "t1",
+ *     "beats": [ { "id": "t1", "enter": [ { "do": "say", "speaker": "imhoff", "text": "…" } ],
+ *                  "complete": { "enter": { "x": 524, "z": -770, "r": 7 } } } ] }
  */
 import type { Era } from '../../core/era';
 import type { NpcWatch, ThreatConfig, ThreatKind } from '../contracts';
@@ -736,8 +736,6 @@ export interface StoryFile {
    * game starts in it instead of the first chapter.
    */
   dev?: string;
-  /** Historical chapter data excluded from play. Saves in the surveyor prologue migrate to chapter 1. */
-  legacy?: boolean;
   /**
    * Run once when the story leaves this chapter for another one, whichever way (its last beat
    * done, the bench's chapter list, a debug jump): the tour sends its group home and lifts its

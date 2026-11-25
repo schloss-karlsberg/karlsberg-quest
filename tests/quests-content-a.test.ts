@@ -1,12 +1,12 @@
 /**
- * Action-RPG content, track A (docs/ACTION-RPG.md §11.0–11.2): the prologue, chapter 1 and chapter 2
- * as quest chains. No quiz gates are left in their story files; every main quest is wired into the
+ * Action-RPG content, track A (docs/ACTION-RPG.md §11.0–11.2): the guided tour and chapters 1–2. No quiz gates are left in their story files; every main quest is wired into the
  * beats; no stance cards (the epilogue reads deeds); the catalogue's codex facts are taught;
  * nothing spawns at a memorial; and the XP carries the player to the level targets.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { legacyPrologueQuests } from '../src/core/legacy-prologue-quests';
 import { ENEMIES } from '../src/rpg/enemies';
 import { levelForXp } from '../src/rpg/stats';
 import { CODEX_XP } from '../src/systems/progression/logic';
@@ -30,7 +30,6 @@ interface Quest {
   kind: 'main' | 'side';
   history?: { fact?: string; sources?: unknown[] }[];
   rewards?: { xp?: number; codex?: string[] };
-  stance?: { flag: string; options: { value: string }[] };
   objectives: Obj[];
 }
 interface QuestFile {
@@ -40,10 +39,10 @@ interface QuestFile {
 type Json = Record<string, unknown>;
 
 const CHAPTERS = [
-  { id: 'prolog', story: 'content/story/00-prolog.story.json', quests: 'content/quests/00-prolog.quests.json', levels: [3, 3] },
   { id: 'k1', story: 'content/story/01-kapitel-1.story.json', quests: 'content/quests/01-kapitel-1.quests.json', levels: [5, 6] },
   { id: 'k2', story: 'content/story/02-kapitel-2.story.json', quests: 'content/quests/02-kapitel-2.quests.json', levels: [7, 8] },
 ] as const;
+const tour = json<Json>('content/story/00-tour.story.json');
 const data = CHAPTERS.map((c) => ({ ...c, s: json<Json>(c.story), q: json<QuestFile>(c.quests) }));
 
 /** Every object in a JSON tree. */
@@ -65,14 +64,14 @@ function conditions(s: Json): unknown[] {
   return out;
 }
 
-describe('Action-RPG content A: prologue, chapter 1, chapter 2', () => {
+describe('Action-RPG content A: guided tour, chapter 1 and chapter 2', () => {
   it('no Chronik gates are left: no confirmed / caseComplete / reading conditions', () => {
-    for (const d of data) {
-      const keys = [...walk(conditions(d.s))].flatMap((o) => Object.keys(o));
-      expect(keys.filter((k) => k === 'confirmed' || k === 'caseComplete' || k === 'reading'), d.id).toEqual([]);
+    for (const [id, story] of [['tour', tour] as const, ...data.map((d) => [d.id, d.s] as const)]) {
+      const keys = [...walk(conditions(story))].flatMap((o) => Object.keys(o));
+      expect(keys.filter((k) => k === 'confirmed' || k === 'caseComplete' || k === 'reading'), id).toEqual([]);
       // nor actions that open the board or fill readings
-      const actions = [...walk(d.s)].filter((o) => typeof o.do === 'string').map((o) => o.do);
-      expect(actions.filter((a) => a === 'chronik' || a === 'readings'), d.id).toEqual([]);
+      const actions = [...walk(story)].filter((o) => typeof o.do === 'string').map((o) => o.do);
+      expect(actions.filter((a) => a === 'chronik' || a === 'readings'), id).toEqual([]);
     }
   });
 
@@ -97,31 +96,31 @@ describe('Action-RPG content A: prologue, chapter 1, chapter 2', () => {
     }
   });
 
-  it('no stance cards: every side quest of the prologue, K1 and K2 is a deed the epilogue tells', () => {
+  it('no stance cards: every historical and live side quest in the catalogue is a deed the epilogue tells', () => {
     const S5 = json<{ epilogue: { readings: { deeds?: { flag: string }[] }[] } }>('content/story/05-enden.story.json');
     const PACK = json<{ dialogue: { trigger: { flag?: string } }[] }>('content/packs/enden.pack.json');
     const story = new Set(S5.epilogue.readings.flatMap((r) => (r.deeds ?? []).map((d) => d.flag)));
     const pack = new Set(PACK.dialogue.map((d) => d.trigger.flag).filter(Boolean));
-    for (const d of data)
-      for (const q of d.q.quests) {
-        expect(q.stance, q.id).toBeUndefined();
-        if (q.kind === 'side') {
-          expect(story.has(`quest.${q.id}`), `${q.id} (story fallback)`).toBe(true);
-          expect(pack.has(`quest.${q.id}`), `${q.id} (endings pack)`).toBe(true);
-        }
+    for (const q of [...legacyPrologueQuests, ...data.flatMap((d) => d.q.quests)]) {
+      expect('stance' in q, q.id).toBe(false);
+      if (q.kind === 'side') {
+        expect(story.has(`quest.${q.id}`), `${q.id} (story fallback)`).toBe(true);
+        expect(pack.has(`quest.${q.id}`), `${q.id} (endings pack)`).toBe(true);
       }
+    }
   });
 
-  it('every codex fact of the catalogue (§11.0–11.2) is taught by a history line or a reward', () => {
+  it('historical and live quest facts resolve to Codex cards', () => {
     const doc = readFileSync(`${ROOT}docs/ACTION-RPG.md`, 'utf8');
     const part = doc.slice(doc.indexOf('### 11.0'), doc.indexOf('### 11.3'));
     const catalogue = new Set(part.match(/\b(?:cx|rm)\.\d+\b/g) ?? []);
     expect(catalogue.size).toBeGreaterThan(30);
-    const taught = new Set(data.flatMap((d) => d.q.quests.flatMap((q) => [...(q.history ?? []).map((h) => h.fact), ...(q.rewards?.codex ?? [])])).filter(Boolean));
+    const taught = new Set([...legacyPrologueQuests, ...data.flatMap((d) => d.q.quests)]
+      .flatMap((q) => [...(q.history ?? []).flatMap((h) => h.fact ? [h.fact] : []), ...(q.rewards?.codex ?? [])]));
     expect([...catalogue].filter((f) => !taught.has(f))).toEqual([]);
     // facts are real: every one is in the codex pack
     const codex = new Set(json<{ facts: { id: string }[] }>('content/packs/codex.pack.json').facts.map((f) => f.id));
-    expect([...taught].filter((f) => !codex.has(f!))).toEqual([]);
+    expect([...taught].filter((f) => !codex.has(f))).toEqual([]);
   });
 
   it('nothing spawns or lies at a memorial (quest objectives and story actions)', () => {
@@ -141,10 +140,11 @@ describe('Action-RPG content A: prologue, chapter 1, chapter 2', () => {
     for (const m of memorials) for (const p of pts) expect(Math.hypot(p.x - m.x, p.z - m.z), p.what).toBeGreaterThan(m.r + 40);
   });
 
-  it('the XP carries the player to the level targets (prologue L3, chapter 1 L5–6, chapter 2 L7–8)', () => {
+  it('the XP carries the player to the level targets (tour L3, chapter 1 L5–6, chapter 2 L7–8)', () => {
     const xpOf = new Map(ENEMIES.map((e) => [e.id, e.xp]));
     const seen = new Set<string>();
-    let total = 0;
+    let total = [...walk(tour)].reduce((xp, a) => xp + (a.do === 'xp' && typeof a.amount === 'number' ? a.amount : 0), 0);
+    expect(levelForXp(total)).toBe(3);
     for (const d of data) {
       for (const q of d.q.quests) {
         total += q.rewards?.xp ?? 0;

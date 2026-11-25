@@ -165,8 +165,8 @@ describe('story engine', () => {
     const e = env({
       flags: { a: 1, b: 0, s: 'x' },
       inventory: { clues: ['c1'], nouns: [], items: ['item.bussole'] },
-      chronik: { 'case.p': { confirmed: ['entry.p.1', 'entry.p.2', 'entry.p.3'] }, other: { confirmed: ['entry.p.4'] } },
-      caseFacts: (id) => (id === 'case.p' ? ['entry.p.1', 'entry.p.2', 'entry.p.3'] : null),
+      chronik: { 'case.example': { confirmed: ['entry.example.1', 'entry.example.2', 'entry.example.3'] }, other: { confirmed: ['entry.example.4'] } },
+      caseFacts: (id) => (id === 'case.example' ? ['entry.example.1', 'entry.example.2', 'entry.example.3'] : null),
     });
     const ev = (c: Parameters<typeof evaluate>[0]) => evaluate(c, e, {}, 'k', 3);
     expect(ev({ flag: 'a' })).toBe(true);
@@ -174,9 +174,9 @@ describe('story engine', () => {
     expect(ev({ flag: 's', eq: 'x' })).toBe(true);
     expect(ev({ have: { clue: 'c1', item: 'item.bussole' } })).toBe(true);
     expect(ev({ have: { noun: 'n' } })).toBe(false);
-    expect(ev({ confirmed: { prefix: 'entry.p.', n: 4 } })).toBe(true);
-    expect(ev({ confirmed: { case: 'case.p', n: 4 } })).toBe(false);
-    expect(ev({ caseComplete: 'case.p' })).toBe(true);
+    expect(ev({ confirmed: { prefix: 'entry.example.', n: 4 } })).toBe(true);
+    expect(ev({ confirmed: { case: 'case.example', n: 4 } })).toBe(false);
+    expect(ev({ caseComplete: 'case.example' })).toBe(true);
     expect(ev({ caseComplete: 'other' })).toBe(false);
     expect(ev({ timer: 2 })).toBe(true);
     expect(ev({ not: { timer: 2 } })).toBe(false);
@@ -198,16 +198,12 @@ describe('story files', () => {
       for (const it of (JSON.parse(readFileSync(`${ROOT}content/quests/${f}`, 'utf8')) as { items?: { id: string }[] }).items ?? []) questItems.add(it.id);
     const r = validateStories(files, { items: questItems });
     expect(r.errors.map((e) => `${e.file} ${e.id ?? ''}: ${e.message}`)).toEqual([]);
-    // tour (the opening) + the retired prologue + four chapters + endings
+    // tour (the opening) + four chapters + endings
     // + the test chapter (99-test.story.json, "test": true; loaded only with ?storytest)
-    expect(r.stats.chapters).toBe(8);
+    expect(r.stats.chapters).toBe(7);
     expect(files.filter((f) => f.story.dev).map((f) => f.story.chapter)).toEqual([]);
-    expect(files.filter((f) => f.story.legacy).map((f) => f.story.chapter)).toEqual(['prolog']);
     expect(files.filter((f) => f.story.test).map((f) => f.story.chapter)).toEqual(['test']);
     expect(r.stats.beats).toBeGreaterThan(35);
-    const prolog = files.find((f) => f.story.chapter === 'prolog')!.story;
-    expect(prolog.placeholder).toBeFalsy();
-    expect(prolog.beats.map((b) => b.id)).toEqual(['p1', 'p2', 'p3', 'p3q', 'p3r', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p9b', 'p10', 'p11']);
     // Playable chapters start with the tour and chain to the endings.
     const { engine, rec } = harness(storiesInPlay(files, new URLSearchParams('classic')));
     const order = engine.order;
@@ -215,7 +211,6 @@ describe('story files', () => {
     engine.goto(engine.first!.chapter);
     expect(rec.beats).toEqual(['tour/t1']);
     expect(order[0]!.chapter).toBe('tour');
-    expect(prolog.next).toBe('k1');
     for (let i = 0; i < order.length - 1; i++) expect(order[i]!.next).toBe(order[i + 1]!.chapter);
     expect(order.at(-1)!.epilogue).toBeTruthy();
   });
@@ -259,108 +254,7 @@ describe('story files', () => {
     expect(msg).toMatch(/ghost/);
   });
 
-  it('runs the real prologue headlessly from the old start to the cliffhanger, home at the Quelle', () => {
-    const h = harness(files.map((f) => f.story));
-    h.engine.goto('prolog');
-    const step = (e: Partial<StoryEnv>, n = 1) => {
-      for (let i = 0; i < n; i++) h.engine.tick(0.5, env(e));
-    };
-    // clues are state: the engine grants them (clue:grant), the harness keeps the inventory
-    const clues: string[] = [];
-    const inv = (...add: string[]) => {
-      clues.push(...add);
-      return { inventory: { clues: [...clues], nouns: [], items: [] } };
-    };
-    // quests are state too: the quests system mirrors `quest.<id>` / `quest.<id>.<objective>` into flags
-    const flags: Record<string, string | number> = {};
-    const quest = (id: string, objective?: string, n = 1) => {
-      if (objective) flags[`quest.${id}.${objective}`] = n;
-      else flags[`quest.${id}`] = 'done';
-      return { flags: { ...flags } };
-    };
-    for (const item of ['chronik', 'shelf', 'drawer']) h.engine.onEvent('hub:use', { item });
-    step(inv('clue.p.lageplan', 'clue.p.laubblatt', 'clue.p.handbuch'));
-    expect(h.slice.beat).toBe('p1'); // the Messstab is still leaning outside
-    step({ ...inv(), ...quest('q.p.feldstation') });
-    expect(h.slice.beat).toBe('p2');
-    step({ ...inv(), x: 813, z: -903, scan: 2 });
-    expect(h.slice.beat).toBe('p3');
-    step({ ...inv('clue.p.mauerrest'), x: 1237, z: -966, scan: 3 });
-    expect(h.slice.beat).toBe('p3'); // the step is there, but Marlene's quest wants the dam and the wall first
-    step({ ...inv(), ...quest('q.p.relief'), x: 1237, z: -966, scan: 3 });
-    expect(h.slice.beat).toBe('p3q'); // Laub hears the water: down to the Karlsbergquelle
-    step({ ...inv(), x: 1059.3, z: -833.1 });
-    expect(h.slice.beat).toBe('p3q'); // at the trough: the touch is the player's
-    h.engine.onEvent('quelle:touch', { era: 'today' });
-    step({ ...inv(), x: 1059.3, z: -833.1 });
-    expect(h.slice.beat).toBe('p3r'); // the shift to 1789 (fx), the Brunnenstube
-    step({ ...inv(), era: '1789', x: 1059.3, z: -833.1 }, 4);
-    expect(h.slice.beat).toBe('p3r');
-    step({ ...inv(), ...quest('q.p.quelle'), era: 'today', x: 1059.3, z: -833.1 });
-    expect(h.slice.beat).toBe('p4');
-    // the Ehrenhof clue first, then the 1840 map overlay grants the Kartenvergleich
-    step({ ...inv('clue.p.orangeriemauer', 'clue.p.ehrenhof'), x: 1216, z: -1114, map: true });
-    step({ ...inv('clue.p.kartenvergleich'), x: 1216, z: -1114 });
-    expect(h.slice.beat).toBe('p5');
-    step({ ...inv(), x: 1172, z: -1238, scan: 2 });
-    expect(h.slice.beat).toBe('p6');
-    step({ ...inv('clue.p.hohlweg'), x: 1508, z: -1296, scan: 3 });
-    expect(h.slice.beat).toBe('p6'); // the pit is found; the Nebelinge are still in it
-    step({ ...inv('clue.p.eiskeller'), ...quest('q.p.bussole', 'nebel', 4), ...quest('q.p.bussole') });
-    expect(h.slice.beat).toBe('p7');
-    step(inv('clue.p.punktwolke', 'clue.p.seite_eins'), 8);
-    expect(h.slice.beat).toBe('p8'); // the rules: J opens the field book, no board to fill
-    step({ ...inv(), flags: { ...flags } }, 13);
-    expect(h.slice.beat).toBe('p9');
-    step({ ...inv(), flags: { ...flags }, era: '1789', x: 1216, z: -1114 });
-    expect(h.slice.beat).toBe('p9b');
-    step({ ...inv(), flags: { ...flags }, era: 'today' });
-    expect(h.slice.beat).toBe('p9b'); // home too early: the Streuner still waits at the Ehrenhof
-    step({ ...inv(), ...quest('q.p.punktwolke', 'streuner'), era: 'today' });
-    expect(h.slice.beat).toBe('p10');
-    step({ ...inv(), ...quest('q.p.punktwolke') });
-    expect(h.slice.beat).toBe('p10'); // the quest alone is not enough: back home to the Quelle
-    // home by the map (playtest round 10 F-30: no 470 m walk for one bed): the journey lands beside
-    // the Karlsbergquelle tripod (1072/−825 + 2.2 m), outside the 14 m circle; the arrival itself counts
-    h.engine.onEvent('travel:arrived', { id: 'karlsbergquelle', from: { x: 1218, z: -1118 } });
-    step({ ...inv(), flags: { ...flags }, x: 1074.2, z: -822.8 });
-    expect(h.rec.runs.some((r) => r.source === 'prolog/b:daheim')).toBe(true); // „Feierabend“ + Marlene
-    expect(h.slice.beat).toBe('p10'); // the dusk lasts at least 9 s
-    step({ ...inv(), flags: { ...flags }, x: 1074.2, z: -822.8 }, 20);
-    expect(h.slice.beat).toBe('p11');
-    step({}, 20);
-    expect(h.slice.chapter).toBe('prolog'); // the night lasts a little
-    h.engine.onEvent('hub:use', { item: 'bench' });
-    step({}, 60);
-    expect(h.slice.chapter).toBe('k1');
-    expect(h.slice.completed).toContain('prolog');
-  });
-
-  it('prologue pacing (playtest round 10): the file before the radio, Geisterblick after the wall, Marlene halfway, home by the map', () => {
-    const pro = files.find((f) => f.story.chapter === 'prolog')!.story;
-    const b = (id: string) => pro.beats.find((x) => x.id === id)!;
-    // p7: the clue is granted before Marlene's radio lines (the tracker never points at the portable clue's station)
-    const p7 = b('p7').enter!;
-    const grant = p7.findIndex((a) => a.do === 'grant' && a.clue === 'clue.p.punktwolke');
-    const radio = p7.findIndex((a) => a.do === 'say' && a.line === 'marlene.p.punkte');
-    expect(grant).toBeGreaterThanOrEqual(0);
-    expect(grant).toBeLessThan(radio);
-    expect(p7.findIndex((a) => a.do === 'objective')).toBeLessThan(grant);
-    // p3: F is taught once the wall's Nebelling is gone (not during that fight), and stays in the objective
-    const p3 = b('p3');
-    expect(p3.enter!.some((a) => a.do === 'say' && a.line === 'marlene.p.flug')).toBe(false);
-    const flug = p3.on!.find((r) => r.id === 'flug')!;
-    expect(JSON.stringify(flug.when)).toContain('"objective":"nebel"');
-    expect(flug.do.some((a) => a.do === 'say' && a.line === 'marlene.p.flug')).toBe(true);
-    expect(flug.do.some((a) => a.do === 'objective' && /F: /.test(a.text ?? ''))).toBe(true);
-    // halfway up the Waldweg: a line, no fight (the prologue's XP budget is untouched)
-    const half = p3.on!.find((r) => r.id === 'halbweg')!;
-    expect(half.do.map((a) => a.do)).toEqual(['say']);
-    // p10: the objective offers the map at once
-    expect(b('p10').enter!.some((a) => a.do === 'objective' && /M – Karte/.test(a.text ?? '') && a.delay === undefined)).toBe(true);
-  });
-
-  it('home is the Quelle in every chapter: checkpoints and wakes at HOME.spawn (the bridged prologue only starts at the old spot)', () => {
+  it('home is the Quelle in every chapter: checkpoints and wakes at HOME.spawn', () => {
     const at = (c: { x: number; z: number } | undefined) => !!c && Math.hypot(c.x - HOME.spawn.x, c.z - HOME.spawn.z) < 0.01;
     for (const { story } of files) {
       if (story.test) continue;
@@ -370,21 +264,11 @@ describe('story files', () => {
         expect(at(story.wake)).toBe(true);
         continue;
       }
-      if (story.chapter === 'prolog') {
-        expect(at(story.checkpoint)).toBe(false); // the start stays by the forest road (bridge)
-        expect(at(story.wake)).toBe(true);
-      } else expect(at(story.checkpoint), story.chapter).toBe(true);
+      expect(at(story.checkpoint), story.chapter).toBe(true);
       // nothing in the story points at the old trailer any more (760/−915 r 15, spawn 760/−902)
       const old = JSON.stringify(story.beats).match(/"x":\s*76[02](\.\d)?,\s*"z":\s*-9(0[2-9]|1\d)/g) ?? [];
-      expect(old.filter(() => story.chapter !== 'prolog'), story.chapter).toEqual([]);
+      expect(old, story.chapter).toEqual([]);
     }
-    // the prologue's way home: walking, the Quelle's tripod or (until it retires) the Feldstation's
-    const pro = files.find((f) => f.story.chapter === 'prolog')!.story;
-    const p10 = JSON.stringify(pro.beats.find((x) => x.id === 'p10')!.complete);
-    expect(p10).toContain('"karlsbergquelle"');
-    expect(p10).toContain('"feldstation"');
-    expect(p10).toContain('"x":1061');
-    expect(JSON.stringify(pro.beats.find((x) => x.id === 'p11')!.complete)).toContain('"hub":"bench"');
   });
 
   it('opens chapter 1 at the Karlsbergquelle at dawn: touch, summer 1789, the walk up, the court', () => {
@@ -545,13 +429,13 @@ describe('story files', () => {
 
 describe('dialogue', () => {
   const line = (id: string, trigger: DialogueLine['trigger'], extra: Partial<DialogueLine> = {}): DialogueLine => ({ id, speaker: 'laub', text_de: id, trigger, ...extra });
-  const ctx = { era: 'today', flags: { 'story.laub': true }, chapter: 'prolog', beat: 'p3' };
+  const ctx = { era: 'today', flags: { 'story.laub': true }, chapter: 'tour', beat: 't17' };
 
   it('matches triggers on event, era (payload.to), flags, chapter and payload keys', () => {
     expect(matchTrigger(line('a', { event: 'era:change', era: '1789' }), 'era:change', { from: 'today', to: '1789' }, ctx)).toBe(true);
     expect(matchTrigger(line('a', { event: 'era:change', era: '1789' }), 'era:change', { from: '1789', to: 'today' }, ctx)).toBe(false);
     expect(matchTrigger(line('a', { event: 'hub:use', item: ['radio', 'bed'] }), 'hub:use', { item: 'bed' }, ctx)).toBe(true);
-    expect(matchTrigger(line('a', { event: 'hub:use', flag: 'story.laub', chapter: 'prolog' }), 'hub:use', {}, ctx)).toBe(true);
+    expect(matchTrigger(line('a', { event: 'hub:use', flag: 'story.laub', chapter: 'tour' }), 'hub:use', {}, ctx)).toBe(true);
     expect(matchTrigger(line('a', { event: 'hub:use', flag: 'nope' }), 'hub:use', {}, ctx)).toBe(false);
   });
 
@@ -640,15 +524,14 @@ describe('objectives, home, endings', () => {
   it('the notes at home sit at the Quelle, never in the trough E zone (moved from the field station)', () => {
     type PackClue = { id: string; where: { x: number; z: number; radius: number; era: string; anchor?: string } };
     const home: PackClue[] = [];
-    for (const f of ['prolog', 'kapitel-2', 'kapitel-3', 'kapitel-4']) {
+    for (const f of ['kapitel-2', 'kapitel-3', 'kapitel-4']) {
       const pack = JSON.parse(readFileSync(`${ROOT}content/packs/${f}.pack.json`, 'utf8')) as { clues: PackClue[] };
       for (const c of pack.clues) {
         expect(c.where.anchor, c.id).not.toBe('loc.p.station');
-        // the prologue's portable clues (tablet, compass page) have home as their nominal spot
-        if (c.where.anchor === 'loc.quelle' || (f === 'prolog' && c.where.anchor === 'portable')) home.push(c);
+        if (c.where.anchor === 'loc.quelle') home.push(c);
       }
     }
-    expect(home.map((c) => c.id)).toEqual(expect.arrayContaining(['clue.p.lageplan', 'clue.p.laubblatt', 'clue.k2.marlene', 'clue.k3.marlene', 'clue.k4.marlene', 'clue.k4.foto']));
+    expect(home.map((c) => c.id)).toEqual(expect.arrayContaining(['clue.k2.marlene', 'clue.k3.marlene', 'clue.k4.marlene', 'clue.k4.foto']));
     for (const c of home) {
       const { x, z, radius } = c.where;
       expect(Math.hypot(x - HOME.x, z - HOME.z), c.id).toBeLessThan(HOME.r + 1);

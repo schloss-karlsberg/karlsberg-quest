@@ -136,8 +136,8 @@ Most story packs in `content/` (`content/packs`, `content/quests`, `content/stor
 edited directly: the tour, `content/story/00-tour.story.json` and `content/packs/tour.pack.json`,
 the party pack and the `99-test` files.) Instead:
 
-1. Edit the builders in [`scripts/content-build/`](scripts/content-build/) (e.g. `prolog.mjs`,
-   `kapitel1.mjs`, `codex.mjs`).
+1. Edit the builders in [`scripts/content-build/`](scripts/content-build/) (e.g. `kapitel1.mjs`
+   and `codex.mjs`).
 2. Re-run all builders:
 
    ```sh

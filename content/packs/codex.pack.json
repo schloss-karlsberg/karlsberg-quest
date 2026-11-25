@@ -24,8 +24,7 @@
         }
       ],
       "tags": [
-        "label:FAKT",
-        "unlock:entry.p.1"
+        "label:FAKT"
       ],
       "licence": "eigener Text"
     },
@@ -828,8 +827,7 @@
         }
       ],
       "tags": [
-        "label:FAKT",
-        "unlock:entry.p.1"
+        "label:FAKT"
       ],
       "licence": "eigener Text; Daten dl-de/by-2-0, © GeoBasis-DE/LVGL-SL"
     },
@@ -1145,8 +1143,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1169,8 +1166,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1188,8 +1184,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1212,8 +1207,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1236,8 +1230,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1255,8 +1248,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1279,8 +1271,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     },
@@ -1303,8 +1294,7 @@
       ],
       "tags": [
         "label:FAKT",
-        "reliefmuster",
-        "unlock:clue.p.handbuch"
+        "reliefmuster"
       ],
       "licence": "eigener Text"
     }

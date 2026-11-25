@@ -9,7 +9,7 @@ import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helper
  *   cards, the compass, the dialogue card or the subtitles — at 1280×720, 1920×1080 and 1024×768;
  * - chapter 1: the guard calls out a runner in the Ehrenhof (running joke), being caught in
  *   Teil B wakes you at the Tschifflik terrace (not the field station);
- * - the archived printout card sketches the palace site, not the field station;
+ * - the printout card sketches the palace site;
  * - the epilogue fits 1280×720 with its button visible; after an ending the main menu offers
  *   "Ende noch einmal wählen"; ending C lets the five hounds follow you at night.
  * Screenshots: test-results/screens/pol-flow-*.png.
@@ -220,7 +220,7 @@ test('chapter 1: the guard calls out a runner; caught in Teil B → awake at the
 
 test('the printout card sketches the palace site', async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto('./?notitle&nosave&fresh&manual');
+  await page.goto('./?notitle&nosave&fresh&manual&placeholder');
   await waitForHooks(page, ['story', 'chronik']);
   await page.evaluate(() => {
     const k = window.kq!;
@@ -229,12 +229,12 @@ test('the printout card sketches the palace site', async ({ page }) => {
     k.story!.flush();
     k.ctx.ui.modals.closeAll();
     k.step(4);
-    k.chronik!.examine('clue.p.lageplan');
+    k.chronik!.examine('ct.clue.lageplan');
     k.step(4);
   });
   const card = page.getByTestId('chronik-card');
-  await expect(card).toHaveAttribute('data-clue', 'clue.p.lageplan');
-  // the sketch is centred on the palace site (Corps de logis), not on the trailer at (760, −915)
+  await expect(card).toHaveAttribute('data-clue', 'ct.clue.lageplan');
+  // the sketch is centred on the palace site (Corps de logis), away from the printout’s find spot
   // (round 3: the caption names the place, never raw coordinates)
   await expect(card.locator('figcaption')).toContainText('der Ort, um den es geht');
   await expect(card.locator('figcaption')).not.toContainText('/ -');

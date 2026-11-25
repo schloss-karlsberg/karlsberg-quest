@@ -68,7 +68,6 @@ export interface FightResult {
 
 /** A chapter's standard encounter at its intended build (levels, staff and talents per §6, §11). */
 export const CHAPTERS: Record<string, { build: Build; enc: Encounter }> = {
-  prolog: { build: { level: 2, weapon: 'item.stab.esche' }, enc: { kind: 'nebelling', count: 4, tier: 1, era: 'today' } },
   k1: { build: { level: 4, weapon: 'item.stab.eisen', talents: { 'stab.wucht': 1, 'stab.standfest': 1, 'laterne.weit': 1 } }, enc: { kind: 'streuner', count: 3, tier: 1, era: '1789' } },
   k2: { build: { level: 6, weapon: 'item.stab.eisen', talents: { 'stab.wucht': 2, 'stab.standfest': 1, 'laterne.weit': 1, 'feldbuch.atem': 1 } }, enc: { kind: 'streuner', count: 4, tier: 2, era: '1793-02' } },
   k3: { build: { level: 8, weapon: 'item.stab.silber', talents: { 'stab.wucht': 3, 'stab.dritter': 1, 'stab.standfest': 2, 'laterne.weit': 1 } }, enc: { kind: 'raffschatten', count: 4, tier: 3, era: '1793-07' } },

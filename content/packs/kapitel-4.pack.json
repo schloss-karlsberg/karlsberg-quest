@@ -10,6 +10,36 @@
   ],
   "nouns": [
     {
+      "id": "n.hohlweg",
+      "label_de": "Hohlweg",
+      "category": "object",
+      "plural_de": "Hohlwege"
+    },
+    {
+      "id": "n.wassergraben",
+      "label_de": "Wassergraben",
+      "category": "object",
+      "plural_de": "Wassergräben"
+    },
+    {
+      "id": "n.ausbruchgraben",
+      "label_de": "Ausbruchgraben",
+      "category": "object",
+      "plural_de": "Ausbruchgräben"
+    },
+    {
+      "id": "n.eiskeller",
+      "label_de": "Eiskeller",
+      "category": "object",
+      "plural_de": "Eiskeller"
+    },
+    {
+      "id": "n.meilerplatz",
+      "label_de": "Meilerplatz",
+      "category": "object",
+      "plural_de": "Meilerplätze"
+    },
+    {
       "id": "n.vierzehn",
       "label_de": "14",
       "category": "other"
@@ -272,7 +302,8 @@
       },
       "reveals": {
         "nouns": [
-          "n.baumagazin"
+          "n.baumagazin",
+          "n.eiskeller"
         ],
         "facts": [
           "cx.32"
@@ -444,7 +475,10 @@
       },
       "reveals": {
         "nouns": [
-          "n.ausbruchgraben"
+          "n.ausbruchgraben",
+          "n.hohlweg",
+          "n.meilerplatz",
+          "n.wassergraben"
         ],
         "facts": [
           "rm.05"

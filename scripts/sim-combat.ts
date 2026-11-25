@@ -47,10 +47,8 @@ const byId = (id: string) => {
 const drill = (kind: string, chapter: string, era: string, tier: number): ContentEncounter => ({ id: `drill.${kind}`, chapter, build: buildOf(chapter), boss: false, first: false, enc: { kind, count: 2, tier, era } });
 
 const ROWS: Row[] = [
-  { label: 'Nebelling — prolog Bussole (4 + wave 2)', family: 'nebelling', chapter: 'prolog', enc: byId('q.p.bussole.nebel'), balsam: 1 },
-  { label: 'Irrlicht — "Lichter am Weiher" (3, lake)', family: 'irrlicht', chapter: 'prolog', enc: byId('q.p.irrlichter.lichter'), balsam: 1 },
-  { label: 'Irrlicht — "Lichter am Weiher", no habit flare', family: 'irrlicht', chapter: 'prolog', enc: byId('q.p.irrlichter.lichter'), balsam: 1, profile: { habitFlare: false } },
   { label: 'Irrlicht — K1 Karlslust (5)', family: 'irrlicht', chapter: 'k1', enc: byId('q.k1.karlslust.lichter'), balsam: 2 },
+  { label: 'Irrlicht — K1 Karlslust, no habit flare', family: 'irrlicht', chapter: 'k1', enc: byId('q.k1.karlslust.lichter'), balsam: 2, profile: { habitFlare: false } },
   { label: 'Irrlicht — K2 Lichter 3 (2 + Nebelweber + wave)', family: 'irrlicht', chapter: 'k2', enc: byId('q.k2.lichter.licht3'), balsam: 2 },
   { label: 'Streuner — K1 Zwinger (4 + wave)', family: 'streuner', chapter: 'k1', enc: byId('q.k1.zwinger.streuner'), balsam: 2 },
   { label: 'Mahnbrief — K1 Registratur (6 + Foliant + wave)', family: 'mahnbrief', chapter: 'k1', enc: byId('q.k1.registratur.briefe'), balsam: 2 },

@@ -38,7 +38,6 @@ describe('quest files', () => {
     expect(questsInPlay(files, true).items.has('item.test.zettel')).toBe(true);
   });
   it('chapter keys: prolog → p, enden → end', () => {
-    expect(chapterKey('prolog')).toBe('p');
     expect(chapterKey('enden')).toBe('end');
     expect(chapterKey('k3')).toBe('k3');
   });

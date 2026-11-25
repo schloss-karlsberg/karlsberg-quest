@@ -27,15 +27,14 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BOSSES = new Set(['schuldbuch', 'pikeur', 'strohmann', 'steinbrecher']);
 const PICK = ['escorts', 'wave', 'aggro', 'veiled'] as const;
 
-/** The build a player has in each chapter (the prologue: level 2, the ash staff). */
+/** The build a player has in each chapter. */
 export function buildOf(chapter: string): Build {
-  if (chapter === 'prolog') return { level: 2, weapon: 'item.stab.esche' };
   return CHAPTERS[chapter]!.build;
 }
 
 const chapterOfFile = (f: string): string => {
   const n = Number(f.slice(0, 2));
-  return n === 0 ? 'prolog' : `k${n}`;
+  return n === 0 ? 'tour' : `k${n}`;
 };
 
 function extra(s: Record<string, unknown>, quest?: string): Partial<EnemyGroupState> {
@@ -91,4 +90,4 @@ export function contentEncounters(): ContentEncounter[] {
 }
 
 /** The first regular fight of each chapter on the main path. */
-export const FIRST = ['q.p.feldstation.nebel', 'q.k1.registratur.briefe', 'q.k2.spur.streuner', 'q.k3.nachmittag.schatten', 'q.k4.karren.fresser'];
+export const FIRST = ['q.k1.registratur.briefe', 'q.k2.spur.streuner', 'q.k3.nachmittag.schatten', 'q.k4.karren.fresser'];

@@ -11,6 +11,6 @@ export function loadBundledStories(): { file: string; story: StoryFile }[] {
 /** Chapters available to the story engine, chapter selector and debug jumps. */
 export function storiesInPlay(files: { story: StoryFile }[], params: URLSearchParams): StoryFile[] {
   return files.map(({ story }) => story).filter((story) =>
-    !story.legacy && (!story.test || params.has('storytest')) && (!story.dev || params.has(story.dev)),
+    (!story.test || params.has('storytest')) && (!story.dev || params.has(story.dev)),
   );
 }

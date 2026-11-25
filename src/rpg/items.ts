@@ -31,6 +31,13 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'item.lampenoel', kind: 'consumable', name_de: 'Lampenöl', text_de: 'Rüböl. Füllt die Laterne zur Hälfte nach und lädt das Bannlicht auf.', stack: 5, effect: { bann: 2, oil: 0.5 } },
   { id: 'item.kalkstaub', kind: 'consumable', name_de: 'Kalkstaub', text_de: 'Eine Handvoll gebrannter Kalk aus dem Ofen am Hang. Geworfen, hält er Geister für einen Atemzug fest. „Das sind Kalköfen“, sagt Laub.', stack: 5, effect: { burst: 6 } },
 
+  // ---- tour handover (the id stays stable for older saves and the chronicle collection) ----
+  {
+    id: 'item.p.seite', kind: 'lore', set: 'chronikseiten', fiction: true,
+    name_de: 'Seite im Deckel der Bussole',
+    text_de: 'Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts: „Was der Hof schuldig blieb“. Darunter Spalten: Wem – Was – Wann – Wo. Unten in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“ (Fiktion)',
+  },
+
   // ---- the hunting horn (finale) -------------------------------------------------------
   { id: 'item.horn', kind: 'key', name_de: 'Das Horn', text_de: 'Josts Horn, das Mundstück zuerst gereicht. Kalt und echt.' },
 ];

@@ -126,7 +126,7 @@ export interface StoryEnv {
 export interface RunOptions {
   /** Re-entering a beat after a reload / being caught: one-shot actions are skipped. */
   resume: boolean;
-  /** Debug label, e.g. "prolog/p3:enter". */
+  /** Debug label, e.g. "tour/t17:enter". */
   source: string;
   /**
    * The beat these actions belong to: a beat's `enter` and its reactions → that beat; its `exit`

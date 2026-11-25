@@ -61,7 +61,7 @@ export interface QuestPayout {
  * Difficulty tier of a chapter's ordinary enemies when a spawn names none (docs/ACTION-RPG.md §5.4).
  * Bosses keep tier 1 (their HP is tuned per boss).
  */
-export const CHAPTER_TIER: Readonly<Record<string, number>> = { prolog: 1, k1: 1, k2: 2, k3: 3, k4: 4 };
+export const CHAPTER_TIER: Readonly<Record<string, number>> = { k1: 1, k2: 2, k3: 3, k4: 4 };
 const BOSS_KINDS = new Set(['schuldbuch', 'pikeur', 'strohmann', 'steinbrecher']);
 
 export const QUEST_FLAG = (id: string) => `quest.${id}`;

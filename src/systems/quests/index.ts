@@ -923,7 +923,7 @@ class QuestRuntime {
         this.dirty = true;
       },
       item: (id) => this.items.get(id) ?? itemDef(id),
-      questItems: () => [...this.items.values(), ...ITEMS.filter((i) => !!i.set)],
+      questItems: () => [...ITEMS.filter((i) => !!i.set), ...this.items.values()],
       owned: (id) => {
         const pr = (ctx.state.state.systems as Record<string, unknown>).progression as { inventory?: Record<string, number> } | undefined;
         return pr?.inventory?.[id] ?? 0;

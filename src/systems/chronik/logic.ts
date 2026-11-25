@@ -69,8 +69,8 @@ export interface ClueEnv {
   scanMode: number;
   lanternLit: boolean;
   /**
-   * Clue chapters that are in the world (`Clue.chapter` ids: 'p', 'k1' … 'k4'). A clue of any
-   * other chapter stays hidden (the prologue: no spoilers at the field station). Omitted = all open.
+   * Clue chapters that are in the world (`Clue.chapter` ids: 'tour', 'k1' … 'k4'). A clue of any
+   * other chapter stays hidden (the tour: no spoilers at the spring). Omitted = all open.
    */
   chapters?: ReadonlySet<string> | null;
 }
@@ -112,12 +112,12 @@ export function clueStatus(c: ChronikClue, env: ClueEnv): ClueStatus {
 }
 
 /** Story chapters in play order, as `Clue.chapter` ids ('enden' has no clues of its own). */
-export const CHAPTER_ORDER: readonly string[] = ['p', 'k1', 'k2', 'k3', 'k4', 'enden'];
+export const CHAPTER_ORDER: readonly string[] = ['tour', 'k1', 'k2', 'k3', 'k4', 'enden'];
 
 /**
- * A clue of a chapter the story has already left (the prologue's optional notes while chapter 2
+ * A clue of a chapter the story has already left (optional notes from chapter 1 while chapter 2
  * runs): its marker retires so the world does not keep pointing at old business. E on the spot
- * still works — nothing becomes unreachable. `running`: the running chapter's clue id ('p' …), or
+ * still works — nothing becomes unreachable. `running`: the running chapter's clue id ('tour' …), or
  * null without a story (sandbox, tests): nothing retires.
  */
 export function clueRetired(c: { chapter?: string }, running: string | null): boolean {

@@ -6,6 +6,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { itemDef } from '../src/rpg/items';
 import type { FlagValue, QuestFile, QuestSlice } from '../src/rpg/types';
 import { questsInPlay } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, createQuestSlice, journalRunning, normaliseSlice, seededRng } from '../src/systems/quests/logic';
@@ -13,7 +14,7 @@ import { QuestBook, type QuestDefIn, type QuestEnv, createQuestSlice, journalRun
 const file = (name: string) => JSON.parse(readFileSync(new URL(`../content/quests/${name}`, import.meta.url), 'utf8')) as QuestFile;
 
 function book(slice: QuestSlice = createQuestSlice()) {
-  const { quests } = questsInPlay([{ data: file('00-prolog.quests.json') }, { data: file('01-kapitel-1.quests.json') }], false);
+  const { quests } = questsInPlay([{ data: file('01-kapitel-1.quests.json') }], false);
   const e: QuestEnv & { flags: Record<string, FlagValue> } = { flags: {}, codex: [], emit: () => {}, now: () => 0, rng: seededRng(3) };
   const b = new QuestBook(quests as Map<string, QuestDefIn>, slice, e);
   const laufend = () => journalRunning([...b.defs.values()], (id) => b.progressOf(id)).map((q) => q.id);
@@ -101,10 +102,10 @@ describe('the main quest stays in the tracker and the quest log (F-30 / F-41)', 
   });
 
   it('retains the shared page item and archived definitions', () => {
-    const { quests, items, retired } = questsInPlay([{ data: file('00-prolog.quests.json') }], false);
-    expect(quests.size).toBe(0);
+    const { quests, retired } = questsInPlay([{ data: file('01-kapitel-1.quests.json') }], false);
+    expect([...retired.keys()].some((id) => quests.has(id))).toBe(false);
     expect(retired.size).toBe(8);
-    expect(items.get('item.p.seite')?.kind).toBe('lore');
+    expect(itemDef('item.p.seite')).toMatchObject({ kind: 'lore', set: 'chronikseiten' });
   });
 
   it('the offer of the current chapter wins over a stray one', () => {

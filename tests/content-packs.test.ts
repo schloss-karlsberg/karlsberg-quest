@@ -20,7 +20,7 @@ const dialogue = merged('dialogue') as NonNullable<ContentPack['dialogue']>;
 const hints = merged('hints') as NonNullable<ContentPack['hints']>;
 
 /** Chapter order; clue.chapter and case ids (case.<chapter>) use these ids. */
-const CHAPTERS = ['p', 'k1', 'k2', 'k3', 'k4'];
+const CHAPTERS = ['tour', 'k1', 'k2', 'k3', 'k4'];
 /** Flags set by story systems, not by clues (see the hand-off notes). */
 const STORY_FLAGS = new Set([
   'flag.k3_teil_b', // ch. 3 part B opens after 6 chapter nouns or the 1st confirmation
@@ -30,7 +30,7 @@ const STORY_FLAGS = new Set([
   'disguise.coat', // ch. 1 the court coat (story k1_0b; the court system reads it)
   'flag.k3_objekt', // ch. 3 rescued object: tuergriff / dukat / uhr / nichts
   'k2.wache_frei', // ch. 2 Wachhaus Irrlichter banned (story rule k2_4-frei)
-  'story.laub', // set by the prologue story when Laub first speaks (00-prolog.story.json)
+  'story.laub', // set when Laub first speaks at the spring (00-tour.story.json)
   'quest.q.k1.lohn.soll', // quest mirror: Soll asked about Matthes (Hanne's 'Angewiesen' greeting)
 ]);
 /** Events from src/core/events.ts and src/systems/contracts.ts plus the custom events of the campaign. */

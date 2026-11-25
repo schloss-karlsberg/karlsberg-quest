@@ -59,7 +59,7 @@ const clues = [
   clue('clue.k4.baumagazin', {
     title: 'Das Baumagazin', kind: 'dialogue', at: BAU, r: 25, era: E, anchor: 'KB-B29', chapter: ch, fiction: false,
     text: 'Das einzige Gebäude, das ganz steht. Im Hof Steinhaufen, Holzstapel, eine Waage. (Heute Karlsberger Hof, privat: im Heute kein Trigger, nur der Blick von der Straße.)',
-    nouns: ['n.baumagazin'], facts: ['cx.32'],
+    nouns: ['n.baumagazin', 'n.eiskeller'], facts: ['cx.32'],
   }),
   clue('clue.k4.pacht', {
     title: 'Der Pachtbrief', kind: 'document', at: TISCH, r: 3.5, era: E, anchor: 'KB-B29', chapter: ch, fiction: true,
@@ -97,7 +97,7 @@ const clues = [
   clue('clue.k4.graben_heute', {
     title: 'Die Rinne im Relief', kind: 'relief', at: GRAEBEN, r: 20, era: 'today', anchor: 'KB-06', chapter: ch, fiction: false,
     text: 'Relief-Blick 3: eine schmale Rinne mit zwei kleinen Wällen daneben, genau dort, wo 1796 der Graben war. (LIDAR-Auswertung KB-06.)',
-    nouns: ['n.ausbruchgraben'], facts: ['rm.05'], req: { scanMode: 3 },
+    nouns: ['n.ausbruchgraben', 'n.hohlweg', 'n.meilerplatz', 'n.wassergraben'], facts: ['rm.05'], req: { scanMode: 3 },
   }),
   clue('clue.k4.laub_1840', {
     title: 'Erinnerung: Standpunkt siebzehn', kind: 'echo', at: BRUNNEN, r: 12, era: E, anchor: 'KB-51', chapter: ch, fiction: true,
@@ -126,6 +126,11 @@ const clues = [
 ];
 
 const nouns = [
+  noun('n.hohlweg', 'Hohlweg', 'object', 'Hohlwege'),
+  noun('n.wassergraben', 'Wassergraben', 'object', 'Wassergräben'),
+  noun('n.ausbruchgraben', 'Ausbruchgraben', 'object', 'Ausbruchgräben'),
+  noun('n.eiskeller', 'Eiskeller', 'object', 'Eiskeller'),
+  noun('n.meilerplatz', 'Meilerplatz', 'object', 'Meilerplätze'),
   noun('n.vierzehn', '14', 'other'),
   noun('n.9_millionen', '9 Millionen', 'other'),
   noun('n.abreissen', 'abzureißen', 'action'),

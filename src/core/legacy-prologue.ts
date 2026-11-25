@@ -1,20 +1,15 @@
-import legacyQuests from '../../content/quests/00-prolog.quests.json' with { type: 'json' };
-import { itemDef } from '../rpg/items';
+import { ITEMS, itemDef } from '../rpg/items';
 import { levelForXp } from '../rpg/stats';
-import type { QuestFile } from '../rpg/types';
 import { createProgressionSlice, normalizeSlice, ProgressionCore } from '../systems/progression/logic';
 import { createQuestSlice, normaliseSlice, QuestBook, type QuestDefIn } from '../systems/quests/logic';
 import { createStorySlice } from '../systems/story/engine';
 import { EventBus } from './events';
+import { legacyPrologueQuests } from './legacy-prologue-quests';
 import type { GameState } from './state';
 
 // Capture the migration destination without pulling chapter 1's full script into the boot bundle.
 const CHAPTER_ONE = { chapter: 'k1', beat: 'k1_0', x: 1059.3, z: -833.1, yaw: 50 } as const;
-const legacy = legacyQuests as QuestFile;
-const questDefs = new Map<string, QuestDefIn>(
-  legacy.quests.map((q) => [q.id, { ...q, chapter: legacy.chapter, next: undefined }]),
-);
-const questItems = new Map(legacy.items?.map((item) => [item.id, item]));
+const questDefs = new Map<string, QuestDefIn>(legacyPrologueQuests.map((q) => [q.id, q]));
 const retiredObjective = (id: string | undefined) => id?.startsWith('q.p.') ?? false;
 
 function clearRetiredObjectives(state: GameState): void {
@@ -37,8 +32,8 @@ function settleRewards(state: GameState): void {
   const events = new EventBus();
   const progression = new ProgressionCore(() => state.systems.progression!, {
     emit: () => {},
-    item: (id) => questItems.get(id) ?? itemDef(id),
-    setMembers: (set) => [...questItems.values()].filter((item) => item.set === set).map((item) => item.id),
+    item: itemDef,
+    setMembers: (set) => ITEMS.filter((item) => item.set === set).map((item) => item.id),
     statOptions: () => ({}),
     setLevelFlag: (level) => { state.flags['rpg.level'] = level; },
   });

@@ -15,7 +15,7 @@ const f = (id, title, label, confidence, text, sources, x = {}) => {
 const facts = [
   f('cx.01', 'Der Ehrenhof', 'FAKT', 'D',
     'Die große, ebene Lichtung im Wald ist der Ehrenhof des Schlosses. Im Laserscan liegt sie auf rund 344,8 m, eine in den Hang geschnittene Terrasse, an drei Seiten von geraden Kanten begrenzt: Dort standen das Corps de logis und die beiden Flügel. Heute ist nur die Fläche geblieben, und wer sie kennt, sieht das Schloss darin.',
-    [src('SBT'), src('WP-SK'), src('LIDAR', 'Merkmal KB-01')], { tags: ['unlock:entry.p.1'] }),
+    [src('SBT'), src('WP-SK'), src('LIDAR', 'Merkmal KB-01')]),
   f('cx.02', 'Der Louisenhof', 'STRITTIG', 'D',
     'Am 27. Juli 1777 kaufte Herzog Karl II. August den Louisenhof auf dem Buchenberg. Aus dem Hofgut wurde in wenigen Jahren das Schloss Karlsberg. Nach Mannlich drängte die Mätresse des Herzogs, Caroline von Esebeck, eine Cousine des Besitzers, auf den Kauf.',
     [src('WP-SK'), src('EN-KC'), src('HIB')],
@@ -118,7 +118,7 @@ const facts = [
     [src('HIST'), src('LIDAR', 'Abschnitt 1 Nr. 8')], { licence: 'eigener Text; Kartenbild dl-de/by-2-0, © GeoBasis-DE/LVGL-SL' }),
   f('cx.34', 'Der Laserscan von 2025', 'FAKT', 'D',
     '2025 hat das Saarland aus der Luft mit Laser vermessen, im Winter ohne Laub. Seit Januar 2026 sind die Daten frei. Rechnet man Bäume und Häuser heraus, bleibt das Gelände: das Geländemodell DGM1 mit einem Messpunkt pro Meter. Relief-Ansichten wie Schummerung, Lokales Relief und VAT machen sichtbar, was unter dem Wald liegt: Terrassen, Gruben, Hohlwege, Ausbruchgräben.',
-    [src('LVGL'), src('LIDAR')], { licence: 'eigener Text; Daten dl-de/by-2-0, © GeoBasis-DE/LVGL-SL', tags: ['unlock:entry.p.1'] }),
+    [src('LVGL'), src('LIDAR')], { licence: 'eigener Text; Daten dl-de/by-2-0, © GeoBasis-DE/LVGL-SL' }),
   f('cx.35', 'Schauen, nicht graben', 'FAKT', 'D',
     'Der Karlsberg ist ein Bodendenkmal. Was im Boden liegt, ist geschützt: Graben, Sondeln und Mitnehmen sind ohne Genehmigung verboten, und Funde müssen der Denkmalbehörde gemeldet werden. Der Laserscan ist dafür da, dass man schauen kann, ohne zu graben. Dieses Spiel zeigt keine Fundstellen und keine Grabtipps.',
     [src('SDSCHG'), src('HE-BW')], { tags: ['unlock:always'] }),
@@ -168,7 +168,7 @@ const facts = [
 
 // ---- Reliefmuster (Handbuch des Forstamts): facts tagged 'reliefmuster'
 const rm = (id, title, sources, relief, confuse, here) =>
-  f(id, title, 'FAKT', 'D', `Im Relief: ${relief} Verwechslung: ${confuse} Am Karlsberg: ${here}`, sources, { tags: ['reliefmuster', 'unlock:clue.p.handbuch'] });
+  f(id, title, 'FAKT', 'D', `Im Relief: ${relief} Verwechslung: ${confuse} Am Karlsberg: ${here}`, sources, { tags: ['reliefmuster'] });
 const rms = [
   rm('rm.01', 'Terrasse und Planie', [src('HE-BW'), src('LIDAR', 'Merkmale KB-01, KB-07')],
     'Eine auffällig ebene Fläche mit geraden Kanten, an einer Seite in den Hang geschnitten, an der anderen aufgeschüttet. Im Lokalen Relief hell an der Böschungsoberkante, dunkel am Fuß.',

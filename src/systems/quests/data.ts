@@ -1,3 +1,4 @@
+import { legacyPrologueQuests } from '../../core/legacy-prologue-quests';
 import type { ItemDef, QuestDef, QuestFile } from '../../rpg/types';
 
 /** All quest files bundled by Vite (content/quests/*.quests.json), sorted by file name. */
@@ -14,13 +15,11 @@ export function loadBundledQuests(): { file: string; data: QuestFile }[] {
  */
 export function questsInPlay(files: { data: QuestFile }[], withTests: boolean) {
   const quests = new Map<string, QuestDef & { chapter: string }>();
-  const retired = new Map<string, QuestDef & { chapter: string }>();
+  const retired = new Map(legacyPrologueQuests.map((q) => [q.id, q]));
   const items = new Map<string, ItemDef>();
   for (const { data } of files) {
     if (data.test && !withTests) continue;
-    // The tour still grants the page defined in the old quest file.
-    const catalog = data.chapter === 'prolog' ? retired : quests;
-    for (const q of data.quests ?? []) catalog.set(q.id, { ...q, chapter: data.chapter });
+    for (const q of data.quests ?? []) quests.set(q.id, { ...q, chapter: data.chapter });
     for (const it of data.items ?? []) items.set(it.id, it);
   }
   return { quests, items, retired };

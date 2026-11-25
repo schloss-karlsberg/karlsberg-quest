@@ -293,12 +293,8 @@ describe('the Ehrenhof point is eingemessen at the Q spot (playtest round 10, A2
   it('takes 16 m, so the compass rose where the story asks for Q lies inside', () => {
     const e = pointById('ehrenhof')!;
     expect(activateRadius(e)).toBe(16);
-    // the Ehrenhof time anchor (centre) and the prologue's "Q in der Mitte des Ehrenhofs" spot
+    // The K1 time anchor and return waypoint both lie inside the tripod's activation radius.
     for (const [x, z] of [[1222, -1119], [1218, -1118]] as const) expect(Math.hypot(e.x - x, e.z - z)).toBeLessThan(activateRadius(e));
-    // the quest file says the same: the wechsel objective's place is inside the radius
-    const q = JSON.parse(readFileSync(new URL('../content/quests/00-prolog.quests.json', import.meta.url), 'utf8')) as { quests: { id: string; objectives: { id: string; where?: { x: number; z: number } }[] }[] };
-    const w = q.quests.find((x) => x.id === 'q.p.punktwolke')!.objectives.find((o) => o.id === 'wechsel')!.where!;
-    expect(Math.hypot(e.x - w.x, e.z - w.z)).toBeLessThan(activateRadius(e));
   });
 
   it('every other point keeps the plain 7 m, and no radius reaches another point', () => {

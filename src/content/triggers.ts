@@ -30,7 +30,7 @@ export interface TriggerContext {
 
 const eq = (want: unknown, got: unknown) => (Array.isArray(want) ? want.includes(got) : want === got);
 const truthy = (v: TriggerFlag | undefined) => v !== undefined && v !== false && v !== 0 && v !== '';
-/** Reading values: noun ids ("n.r_will_nicht", "n.hunde") and bare keys ("will_nicht") are the same. */
+/** Reading values: noun ids ("n.r_will_nicht", "n.eiskeller") and bare keys ("will_nicht") are the same. */
 export const valueKey = (v: unknown) => String(v).replace(/^n\.r_/, '').replace(/^n\./, '');
 const NUMERIC = ['oil', 't', 'level', 'value'] as const;
 const SEQ_KEYS = new Set(['event', 'step', 'seq', 'value']);

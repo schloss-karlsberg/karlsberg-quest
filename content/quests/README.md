@@ -1,16 +1,19 @@
 # Quest files
 
-One file per chapter: `00-prolog.quests.json`, `01-kapitel-1.quests.json` … `04-kapitel-4.quests.json`
+One file per quest chapter from `01-kapitel-1.quests.json` to `04-kapitel-4.quests.json`
 (`99-test.quests.json` is the worked example, `"test": true`, loaded only with `?storytest`).
 Design and the full quest catalogue: [`docs/ACTION-RPG.md`](../../docs/ACTION-RPG.md) (§8, §11).
 Types: `src/rpg/types.ts` (`QuestFile`, `QuestDef`, `QuestObjective`, `ItemDef`). Editor schema:
 `content/schema/quests.schema.json`. Authority: `src/systems/quests/validate.ts`, run by
 `pnpm validate` and `tests/rpg-contracts.test.ts`.
 
+The guided tour uses story beats. Surveyor quest history and pending payouts for older saves use
+`src/core/legacy-prologue-quests.ts`.
+
 ## Rules
 
-- Quest ids `q.<chapter>.<name>` (prolog → `p`, enden → `end`), item ids `item.<chapter>.<name>`.
-- `chapter` is a story chapter id (`prolog`, `k1` … `k4`, `enden`).
+- Quest ids `q.<chapter>.<name>` (enden → `end`), item ids `item.<chapter>.<name>`.
+- `chapter` is a story chapter id (`k1` … `k4`, `enden`).
 - **Main quests** are offered by the chapter's story beats (`{"do":"quest","op":"offer","id":…}`) and
   waited for with `{"quest":{"id":…}}`. **Side quests** offer themselves while their chapter runs and
   `available` holds.
