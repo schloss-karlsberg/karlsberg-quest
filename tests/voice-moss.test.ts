@@ -133,6 +133,9 @@ describe('moss voice id, plan and manifest fields', () => {
       model: v.model, licence: v.licence, date: '', chars: 1, credits: 0, durationMs: 1, attribution: MOSS_ATTRIBUTION, engine: MOSS_ENGINE,
     };
     expect(lineStatus(entry, 'h', v, () => true, 's')).toBe('up-to-date');
+    const bounded = { ...v, moss: { ...v.moss!, lineMaxTokens: 87 } };
+    expect(lineStatus(entry, 'h', bounded)).toBe('stale-voice');
+    expect(lineStatus({ ...entry, lineMaxTokens: 87 }, 'h', bounded)).toBe('up-to-date');
     const reseeded = resolveVoice('laub', { ...mossVoices, speakers: { laub: { ...mossVoices.speakers.laub!, seed: 103 } } }, undefined, ro)!;
     expect(reseeded.voiceId).toBe(`moss:laub:${sha}:103`);
     expect(lineStatus(entry, 'h', reseeded, () => true, 's')).toBe('stale-voice');
@@ -469,6 +472,16 @@ describe('pause cap (post-processing)', () => {
 
 describe('committed voices.json', () => {
   const vj = voicesJson as unknown as VoicesConfig & { $alternatives: Record<string, unknown> };
+  it('budgets direct Imhoff clips for their spoken length and keeps the speaker ceiling', () => {
+    const texts = ['Wir sind hier! Hier drüben!', 'a'.repeat(120), 'a'.repeat(800)];
+    const selected = texts.map((text, i) => ({ line: line(`imhoff.${i}`, 'imhoff', text), tier: 'test' }));
+    const plan = buildPlan(selected, { voices: vj, manifest: emptyManifest(), cap: 0, resolve: { refSha8: () => '7021a50b' } });
+    const clips = buildClips(plan.rows.map((row) => ({ id: row.line.id, text: row.tts, moss: row.voice.moss! })), cfg);
+    expect(clips.map((c) => c.params.max_tokens)).toEqual([87, 232, 1000]);
+    expect(clips[0]).toMatchObject({ reference: checkReference('imhoff-doc-ref.wav', VOICES), seed: 6301, language: 'German' });
+    expect(clips[0]).not.toHaveProperty('instruction');
+    expect(vj.speakers.imhoff!.params?.max_tokens).toBe(1000);
+  });
   it('laub and marlene use moss with the casting picks (seed, language, instruction); ElevenLabs kept as alternatives', () => {
     expect(vj.speakers.laub).toMatchObject({
       provider: 'moss', reference: 'laub-ref.wav', seed: 102, language: 'German', params: { max_tokens: 1000 }, postprocess: { maxPauseSec: 0.45 },

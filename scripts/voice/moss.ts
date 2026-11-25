@@ -132,6 +132,7 @@ export function buildClips(items: MossItem[], cfg: Pick<MossConfig, 'voices'>): 
   return items.map(({ id, text, moss }) => {
     if (!moss.reference) throw new Error(`moss: ${moss.speaker} requires service mode`);
     const c: MossClip = { id, text, reference: checkReference(moss.reference, cfg.voices), seed: moss.takeSeed ?? moss.seed, language: moss.language, params: { ...moss.params } };
+    if (moss.lineMaxTokens !== undefined) c.params.max_tokens = moss.lineMaxTokens;
     if (moss.instruction) c.instruction = moss.instruction;
     return c;
   });

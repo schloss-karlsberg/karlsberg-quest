@@ -303,6 +303,17 @@ describe('mossService helpers', () => {
       expect(assessResult(take, { ...cached, output }, deps).kind).toBe('ready');
       expect(isStaleResult({ ...cached, output }, l)).toBe(true);
     });
+    it('rejects an earlier result for the same seed and text rendered with another token budget', () => {
+      const bounded = { ...l, lineMaxTokens: 82 };
+      for (const result of [ok(), ok({ status: 'cached', seed: undefined })]) {
+        expect(isStaleResult(result, bounded)).toBe(true);
+        expect(assessResult(bounded, result, deps).kind).toBe('failed');
+        const updated = { ...result, output: serviceJob(bounded, RAW).output.path };
+        expect(assessResult(bounded, updated, deps).kind).toBe('ready');
+        expect(isStaleResult(updated, { ...bounded, lineMaxTokens: 83 })).toBe(true);
+        expect(isStaleResult(updated, l)).toBe(true);
+      }
+    });
   });
 
   it('--wait takes an optional number of minutes', () => {
@@ -375,6 +386,17 @@ describe('generate.mjs service mode (fake client)', () => {
     }
     expect(r.stdout).toMatch(/2 queued \(1 cached\) — owner runs: moss-run/);
     expect(existsSync(OUT)).toBe(false); // nothing post-processed, no output dir
+  });
+
+  it('sends a text-scaled max_tokens override using the prepared speech and registry defaults', () => {
+    const voices = voicesFile({ laub: { ...laubVoice, scaleMaxTokensToText: true } }, 'bounded.json');
+    const r = gen(['--speakers', 'laub', '--submit', '--force'], {}, voices);
+    expect(r.status, r.stderr).toBe(0);
+    const jobs = readState('submitted.json') as ServiceJob[];
+    expect(jobs.map((j) => [j.text, j.params, j.output.path])).toEqual([
+      [SPOKEN['laub.a'], { max_tokens: 82 }, join(RAW, 'laub.a~max82.wav')],
+      [SPOKEN['laub.b'], { max_tokens: 67 }, join(RAW, 'laub.b~max67.wav')],
+    ]);
   });
 
   it('a row refused by the service is reported with a non-zero exit', () => {

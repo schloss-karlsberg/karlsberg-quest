@@ -194,6 +194,12 @@ _Status: approved 2026-11-25 (coordinator for the owner)_
 - 2026-11-25 — Step 3. Submitted all 43 Imhoff lines under the `karlsberg-quest` service project, including five barks and nine party or ending lines. The service returned 43 queued and zero cached. Used `--ids 'imhoff.*'` because the default priority tiers omit this speaker.
 - 2026-11-25 — Step 4. `pnpm typecheck`, `pnpm test` (1,505 passed), `pnpm build`, `mc validate` and `git diff --check` passed. The sandbox denied the `tsx` IPC socket for `pnpm validate`. The sandbox also denied the preview server bind at `127.0.0.1:5281` before `e2e/tour-slice.spec.ts` and `e2e/voice.spec.ts` could run. Both were invoked individually through `scripts/dev/heavy.sh` with one worker.
 - 2026-11-25 — Staged the slice. The sandbox denied the worktree `index.lock` during `git commit`. The pending local commit is `feat(tour): integrate reviewed guide narration`.
+- 2026-11-25 — The first ten documentary takes included six at 77.44 s and a 49.84 s bark with audible-level signal through its last second. The 7.04 s design reference has about 0.25 s of trailing silence. Kept the reference and seed, removed the design instruction from line synthesis and registered the change with the service CLI. Both generation paths now size Imhoff's token budget from the prepared speech.
+- After the runner exited, the service accepted all 43 forced submissions with zero cache hits. Verified 62–256 tokens per job in the inbox. Typecheck and all 177 voice tests passed. The replacement audio awaits the owner's run and listening check. The CLI replaced 25 stale jobs by project and ID. Each suffix below follows `imhoff.t.` in the replaced ID.
+
+  - `los`, `marlene`, `pause`, `reh.alert`, `reh.schnell`, `reh1`, `reh2`, `reh3`
+  - `station1`, `station1a`, `station1b`, `station2`, `station2a`, `station2b`, `station2c`
+  - `station3`, `station3a`, `station3b`, `station3c`, `station4`, `station4a`, `station4b`, `station4c`, `weiter`, `wind`
 
 ## Plan — slice 3
 

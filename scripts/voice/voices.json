@@ -59,7 +59,8 @@
       "reference": "imhoff-doc-ref.wav",
       "seed": 6301,
       "language": "German",
-      "instruction": "A mature German man with a low, steady, softly resonant bass voice. He speaks close to the listener with the quiet attention of a documentary field narrator. Measured phrasing, precise place names, clean consonants and gentle sentence endings. Keep the pitch alive through long sentences and leave a short natural pause between thoughts.",
+      "$designInstruction": "A mature German man with a low, steady, softly resonant bass voice. He speaks close to the listener with the quiet attention of a documentary field narrator. Measured phrasing, precise place names, clean consonants and gentle sentence endings. Keep the pitch alive through long sentences and leave a short natural pause between thoughts.",
+      "scaleMaxTokensToText": true,
       "params": {
         "max_tokens": 1000
       },

@@ -107,6 +107,12 @@ model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in
      The generator sends that job's `seed`, which changes the service cache key, and requests
      `<id>~<seed>.wav` so cached results that omit the seed can still be matched to the take.
      Collection records the override as `takeSeed`. The credited speaker seed still determines `voiceId`.
+     Imhoff uses the selected documentary reference alone for voice conditioning. With
+     `scaleMaxTokensToText` enabled, direct and service jobs allow one second plus one eighth of a
+     second per spoken character. The pinned model needs 12.5 frames per second and 32 delay steps.
+     The speaker's `params.max_tokens` sets the ceiling. Service jobs override `params.max_tokens`
+     per line and append `~max<tokens>` to the raw WAV stem. The collector uses this suffix to
+     distinguish earlier takes while replacements are queued. The manifest records `lineMaxTokens`.
      Submission prints `N queued (M cached) — owner runs: moss-run` and exits 0; rows the service
      refuses are listed and the exit code is 1.
   2. After the owner ran `moss-run`, the same command (or `--collect`) reads each line's result. `ok` /
