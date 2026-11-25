@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import type { InstancedMesh } from 'three';
 import type { GraphicsLevel } from '../../src/core/save';
 import { frameStats, PERF_BUDGET } from '../../src/render/perf';
 import { isSoftwareGpu } from '../../src/render/quality';
@@ -9,8 +10,9 @@ import { trackErrors } from '../helpers/common';
 const LABEL = process.env.PERF_LABEL ?? 'after';
 const OUT = `test-results/contribute/TASK-008/${LABEL}`;
 const STARTUP_VIEWS = LABEL === 'slice4-before' || LABEL === 'slice4-after';
-const TOUR_PROP_VIEWS = STARTUP_VIEWS || LABEL === 'slice2-before' || LABEL === 'slice2-after';
-const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || LABEL === 'slice3-before' || LABEL === 'slice3-after';
+const PLATEAU_VIEWS = LABEL === 'slice5-before' || LABEL === 'slice5-after';
+const TOUR_PROP_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || LABEL === 'slice2-before' || LABEL === 'slice2-after';
+const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || LABEL === 'slice3-before' || LABEL === 'slice3-after';
 const VIEWS = [
   { id: '01-karlsberger-hof', era: 'today', x: 524, z: -770, yaw: 253 },
   { id: '02-felsenpfad', era: 'today', x: 683, z: -596, yaw: 90 },
@@ -19,7 +21,9 @@ const VIEWS = [
   { id: '05-palace-plateau', era: 'today', x: 1216, z: -1114, yaw: 270 },
   { id: '06-ehrenhof', era: '1789', x: 1138, z: -1120, yaw: 90 },
 ] as const;
-type View = (typeof VIEWS)[number];
+const PLATEAU_VIEW = { ...VIEWS[4], x: 1199, z: -1115.2, yaw: 96 } as const;
+const CAPTURE_VIEWS = PLATEAU_VIEWS ? [...VIEWS.slice(0, 4), PLATEAU_VIEW, VIEWS[5]] : VIEWS;
+type View = (typeof CAPTURE_VIEWS)[number];
 const PROP_YAWS: Partial<Record<View['id'], number>> = {
   '01-karlsberger-hof': 312,
   '02-felsenpfad': 72,
@@ -72,26 +76,42 @@ async function boot(page: Page, reducedMotion: boolean, graphics: GraphicsLevel 
 
 async function shootViews(page: Page, prefix: string, terrainDetail = false) {
   const results = [];
-  for (const view of VIEWS) {
+  for (const view of CAPTURE_VIEWS) {
     const still = {
       ...view,
       yaw: TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw,
       pitch: terrainDetail && view.era === 'today' ? -18 : -6,
     };
-    const result = await page.evaluate(async ({ era, x, z, yaw, pitch }) => {
+    await page.evaluate(({ era, x, z, yaw, pitch }) => {
       const k = window.kq!;
       k.setEra(era);
       k.teleport(x, z, yaw, pitch);
       k.step(2);
+    }, still);
+    if (LABEL === 'slice5-after' && view.id === PLATEAU_VIEW.id) {
+      await page.waitForFunction(() => window.kq!.ctx.scene.getObjectByName('scenery-palace-plateau')?.visible, null, { timeout: 30_000 });
+    }
+    const result = await page.evaluate(async () => {
+      const k = window.kq!;
       await k.screenshotReady();
       const { calls, triangles } = k.ctx.renderer.info.render;
       const tourSets = k.scenery!.built().filter((id) => id.startsWith('tour-'));
-      return { clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats }, tourSets };
-    }, still);
+      const plateau = k.ctx.scene.getObjectByName('scenery-palace-plateau') as InstancedMesh | undefined;
+      return { clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats }, tourSets, plateauParts: plateau?.count ?? 0 };
+    });
     await page.screenshot({ path: `${OUT}/${prefix}-${view.id}.png` });
     results.push({ ...still, ...result });
   }
   return results;
+}
+
+function checkPlateau(views: Awaited<ReturnType<typeof shootViews>>, graphics: GraphicsLevel) {
+  if (!PLATEAU_VIEWS) return;
+  const parts = graphics === 'low' ? 25 : 32;
+  for (const view of views) {
+    const expected = LABEL === 'slice5-after' && view.id === PLATEAU_VIEW.id ? parts : 0;
+    expect.soft(view.plateauParts, view.id).toBe(expected);
+  }
 }
 
 function checkTourSets(views: Awaited<ReturnType<typeof shootViews>>) {
@@ -217,6 +237,7 @@ test('six matched Niedrig ground-cover views', async ({ page }) => {
   const views = await shootViews(page, 'desktop');
   writeJson('desktop-views', { profile, views });
   checkTourSets(views);
+  checkPlateau(views, 'low');
   expect(views.at(-1)!.cover).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
   if (LABEL === 'before' || LABEL === 'pr26-before') {
     for (const view of views) expect(view.cover, view.id).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
@@ -237,15 +258,19 @@ test.describe('667×375 landscape touch', () => {
     const views = await shootViews(page, 'phone-reduced-motion');
     writeJson('phone-reduced-motion-views', { profile, views });
     checkTourSets(views);
+    checkPlateau(views, 'low');
     await page.evaluate(() => window.kq!.ctx.settings.update((s) => { s.reducedMotion = false; }, 'reducedMotion'));
     const liveProfile = { ...profile, reducedMotion: false };
 
     const route = [];
-    for (const view of VIEWS.slice(0, 4)) {
+    for (const view of CAPTURE_VIEWS.slice(0, PLATEAU_VIEWS ? 5 : 4)) {
       await page.evaluate(() => window.kq!.setEra('today'));
       const sample = await walkAndTurn(page, view);
       route.push(sample);
       checkWalk(sample, view.id);
+      if (LABEL === 'slice5-after' && view.id === PLATEAU_VIEW.id) {
+        expect.soft(sample.renderedFps, 'Niedrig palace plateau at the 60 fps cap').toBeGreaterThanOrEqual(57);
+      }
     }
     writeJson('phone-route', { profile: liveProfile, budget: PERF_BUDGET, longFrameMs: LONG_FRAME_MS, route });
 
@@ -268,7 +293,7 @@ test.describe('667×375 landscape touch', () => {
 });
 
 test.describe('DGM1 surface on desktop', () => {
-  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3 or slice4 capture label');
+  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3, slice4 or slice5 capture label');
 
   for (const graphics of ['medium', 'high'] as const) {
     test(`${graphics}: six matched terrain views and five live route samples`, async ({ page }) => {
@@ -285,12 +310,13 @@ test.describe('DGM1 surface on desktop', () => {
       });
       expect(source).toEqual(hasDetail ? [448, -1248, 896, 832] : null);
       const views = await shootViews(page, `desktop-${graphics}`, true);
-      if (STARTUP_VIEWS) checkTourSets(views);
+      if (STARTUP_VIEWS || PLATEAU_VIEWS) checkTourSets(views);
+      checkPlateau(views, graphics);
       writeJson(`desktop-${graphics}-views`, { profile, source, views });
 
       await page.evaluate(() => window.kq!.setEra('today'));
       const route = [];
-      for (const view of VIEWS.slice(0, 5)) {
+      for (const view of CAPTURE_VIEWS.slice(0, 5)) {
         const sample = await walkAndTurn(page, view);
         route.push(sample);
         // Hoch has known baseline triangle overruns (docs/PERFORMANCE.md §3.5). Record both runs.

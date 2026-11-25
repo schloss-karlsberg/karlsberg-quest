@@ -17,6 +17,7 @@ export interface WorldData {
   grid: GridDesc;
   ground: Uint8Array;
   paths: Float32Array;
+  graph: PathGraphFile;
   h2025: Heightfield;
   h1789: Heightfield;
   footprints: FootprintCollider;
@@ -42,6 +43,7 @@ export function loadWorldData(): WorldData {
     grid,
     ground,
     paths,
+    graph,
     h2025: new Heightfield(grid, quantToMetres(q25, meta)),
     h1789: new Heightfield(grid, quantToMetres(q89, meta)),
     footprints: new FootprintCollider(fps.map((f) => f.ring as Ring)),

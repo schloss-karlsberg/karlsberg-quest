@@ -128,6 +128,12 @@ and uses the terrain data already in memory.
   Hof and Weiher verges. Cream wayfinding boards use the tour's German place names. Low sandstone
   blocks at Felsenpfad pick up the colours of the surrounding rock. The same silhouettes appear
   on Niedrig. Keep the fittings off the group's tread and the Weiher's bank.
+- **Palace plateau (FIKTION):** weathered timber benches, broken courses of cream and muted red
+  sandstone, and short groups of verge stones frame the track through the former Ehrenhof in
+  today. The stones sit low in the ground, with uneven crowns on the broken courses and gaps
+  between groups along the verge. Niedrig keeps both benches and both courses with fewer stones.
+  The layout follows the shipped OpenStreetMap track and 2025 LiDAR heights (GeoBasis-DE/LVGL-SL).
+  [Map and terrain attribution](../public/data/attribution.json)
 - **Props (`NatureProps`):** (round 2: stylised kit, see §5.2) CC0 ferns (wind), rocks, a
   fallen dead trunk and two stumps, instanced per kind around the player (ferns 46 m, rocks 170 m),
   never on water, paths or the parterre; snow on top in February 1793.
@@ -294,6 +300,8 @@ ctx.assets.peek('nature.stump.01');                         // sync, null until 
 
 `area: 'core'` entries load behind the title; entries listing `eras` prefetch when that era
 opens (`era:change`). Ids are dotted lower-case `<track>.<thing>[.<variant>]`.
+Credit own-work runtime geometry in the `procedural` list of `public/assets/LICENSES.json`,
+using the repo-relative source file.
 
 ### 8.1 Shopping list per track (CC0, to be fetched by the tracks)
 

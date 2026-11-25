@@ -1,5 +1,8 @@
 {
   "policy": "Art assets: CC0 1.0 (public domain) only, downloaded from the official sites (polyhaven.com, ambientcg.com, kenney.nl, quaternius.com, poly.pizza with the CC0 filter; the CC0 MakeHuman core assets via the MPFB2 extension). Every file below public/assets/ is listed here with its source. Voices in public/voice/ use MOSS-TTS-v1.5 (Apache-2.0 model), with one entry per voice below. Synthetic output is CC0-1.0. Real-person output requires public consent, a named credit and permission limited to Karlsberg Quest. ElevenLabs output is prohibited. See docs/ART-DIRECTION.md §8.",
+  "procedural": [
+    {"name": "Bänke und Sandstein am Schlossplateau (FIKTION)", "author": "Karlsberg Quest", "licence": "CC0-1.0", "source": "src/systems/scenery/palace-plateau.ts"}
+  ],
   "assets": [
     {"id": "polyhaven.tree_stump_01", "name": "Tree Stump 01", "author": "Rob Tuytel", "source": "https://polyhaven.com/a/tree_stump_01", "licence": "CC0-1.0", "files": ["models/nature/tree_stump_01.glb"],"modified": "1k glTF, mesh simplified to 4.5 % (1.8 k triangles; re-packed 2026-11-21), textures WebP, meshopt compressed (pnpm assets:pack)", "retrieved": "2026-11-19"},
     {"id": "polyhaven.dry_decay_leaves", "name": "Dry Decay Leaves", "author": "Amal Kumar", "source": "https://polyhaven.com/a/dry_decay_leaves", "licence": "CC0-1.0", "files": ["textures/nature/ground_albedo.webp", "textures/nature/ground_nh.webp"],"modified": "1k Diffuse / nor_gl / Displacement maps packed into texture strips with the other layers (pnpm assets:strip: colour 1024 px WebP, normal xy + height 512 px WebP); ground set layer 0 (leaf litter)", "retrieved": "2026-11-19"},
