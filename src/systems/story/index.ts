@@ -995,11 +995,11 @@ class StoryRuntime {
       }
       case 'loot': {
         if (a.clear) {
-          ctx.events.emit('loot:clear', { id: a.id });
+          ctx.events.emit('loot:clear', a.group ? { quest: a.group } : { id: a.id });
           return;
         }
-        if (!a.item) return;
-        const l: { id: string; item: string; x: number; z: number; era: Era; count?: number; room?: string } = {
+        if (!a.item || !a.id) return;
+        const l: { id: string; item: string; x: number; z: number; era: Era; count?: number; room?: string; quest?: string } = {
           id: a.id,
           item: a.item,
           x: a.x ?? ctx.player.position.x,
@@ -1008,6 +1008,7 @@ class StoryRuntime {
         };
         if (a.count !== undefined) l.count = a.count;
         if (a.room) l.room = a.room;
+        if (a.group) l.quest = a.group;
         ctx.events.emit('loot:place', l);
         return;
       }

@@ -4,7 +4,7 @@ aliases:
 - TASK-002
 title: Collect chestnuts during the tour
 slug: collect-chestnuts-during-the-tour
-status: todo
+status: in-progress
 priority: 3
 owner: ''
 projects: []
@@ -17,7 +17,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 ---
 
 # Collect chestnuts during the tour
@@ -58,6 +58,92 @@ Relevant code and content:
 - [ ] Count is saved and survives reload; works with touch controls
 - [ ] All player-facing text is German; any new art is CC0 and credited in `public/assets/LICENSES.json`
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+
+## Plan
+_Status: approved 2026-11-25_
+
+**Approach:** Chestnuts reuse the progression system's world pickups. `{ "do": "loot" }` places them, and they persist in `systems.progression.placed`. You pick one up by walking over it (1.3 m) or with E / the touch action (2.7 m). Each pickup shows a line in the pickup feed and plays the pickup sound. The count lives in the inventory, so the save keeps it.
+
+A new item kind `collectible` makes them plain:
+- smaller glow, no light column, ordinary pickup sound;
+- not usable and not gear;
+- stacks to 99;
+- the feed shows the running count (`+ Kastanie ×1 (7)`).
+
+The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on its section of `p-fuehrung` starts. They lie in small clusters, mostly 1.5–4 m off the path, about five of them 6–10 m off. There are none near the stops (talk E) and none on the last stretch before the deer. Three chapter-wide reactions in the tour comment on them (first, 12th, all 24). There is no XP, no collection reward and no `item` action, so the XP band and the handover stay as they are. At the tour's `leave`, chestnuts nobody took are cleared, so nothing glows on the paths in chapter 1.
+
+**Files to touch:**
+- `src/rpg/types.ts` - `ItemKind` gains `collectible`.
+- `src/rpg/items.ts` - `item.kastanie` („Kastanie“, kind `collectible`, stack 99, German text).
+- `src/systems/progression/logic.ts` - `stackLimit` for `collectible` (99); not usable.
+- `src/systems/progression/index.ts` - feed shows the running count for `collectible`, like consumables; verb „aufheben“.
+- `src/systems/progression/icons.ts` - a chestnut icon, or the default icon for the kind.
+- `src/systems/story/types.ts`, `src/systems/story/index.ts` - `LootAction` gets an optional `group` (the pickup's existing `quest` field), passed on `loot:place`. `loot:clear` can then clear by group.
+- `content/story/00-tour.story.json` - 24 `loot` actions in t3, t4, t7, t9, t11 and t14 (by section); chapter `on` with three reactions; `leave` clears group `tour.kastanien`.
+- `tests/tour-kastanien.test.ts` (new) - placement rules, reactions, cleanup, no XP / item grants.
+- `tests/progression.test.ts` - `collectible` stacks, is not usable, keeps its count across serialise / load.
+- `e2e/kastanien.spec.ts` (new) - in the tour at t3: walk over one, E-pick one, feed and count, touch prompt, save and reload keeps the count.
+- `docs/design/tour/slice-v0.md` (beats table plus a „Kastanien“ line), `docs/ACTION-RPG.md` §7 (item kind) and §14, `docs/PRD.md` changelog.
+
+**Steps:**
+- [x] 1. Item kind `collectible` and `item.kastanie`: types, stack, not usable, no beam, ordinary sound, feed count, icon; unit tests.
+- [x] 2. Story `loot` with `group` (place and clear); validator accepts it; unit test.
+- [ ] 3. Positions: pick 24 spots along the walked sections with a script (route offset, terrain height and slope from the heightfield). Check them in the dev build (`?debug`, teleport): on walkable ground, not in a rock or the Weiher, visible from the path.
+- [ ] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
+- [ ] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
+- [ ] 6. `e2e/kastanien.spec.ts`; run it with one worker.
+- [ ] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
+- [ ] 8. Docs: `slice-v0.md`, ACTION-RPG §7 and §14, PRD changelog.
+- [ ] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts e2e/tour-slice.spec.ts --workers=1`.
+
+**Placement (24):**
+
+| Beat | Section | Count |
+| --- | --- | --- |
+| t3 | parkplatz → abzweig | 3 |
+| t4 | einstieg → felsen | 6 |
+| t7 | felsen → wind | 3 |
+| t9 | wind → reh | 6 |
+| t11 | damm → weiher | 2 |
+| t14 | weiher → quelle | 4 |
+
+Rules, checked by the unit test:
+- each chestnut is within 12 m of its section's route line;
+- each is ≥ 8 m from every route stop (talk circles, the group's gather points);
+- each is ≥ 40 m from the doe's spawn (704 / −779) and ≥ 15 m from the `reh` stop;
+- the ids are unique and all lie in era `today`.
+
+**Lines (German, dialogue fallback, no voice clip yet):**
+- First chestnut, imhoff: „Esskastanien. Hier oben stehen alte Bäume, die man Herzogskastanien nennt, über zweihundert Jahre alt.“ The fact is from cx.39, sources SBT and HP. The line makes no claim about which tree these chestnuts fell from.
+- 12th, solld (Herr Soll, who counts the group in t1): „Zwölf Kastanien. Ich zähl ja sowieso.“ (FIKTION, a running gag)
+- All 24, imhoff: „Alle vierundzwanzig? Die Eichhörnchen werden sich beschweren.“
+
+Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item}` and `gte {total}`.
+
+**Test plan:**
+- Unit: `pnpm exec vitest run tests/tour-kastanien.test.ts tests/tour-slice.test.ts tests/tour-handover.test.ts tests/quests-content-a.test.ts tests/progression.test.ts`.
+- e2e: `e2e/kastanien.spec.ts` and `e2e/tour-slice.spec.ts` (the tour still runs through, timings logged), with one worker.
+- Manual: `http://localhost:5280/?debug&nosave&fresh` → „Neues Spiel“, follow the tour.
+- Screenshots, saved to `test-results/contribute/TASK-002/`:
+  - before: `before-1-path-t9.png`, the path on the wind → reh section at the start of t9;
+  - after: `after-1-path-t9.png`, the same view with chestnuts;
+  - after: `after-2-feed.png`, the pickup feed with the count.
+
+**Risks:**
+- A new `ItemKind` member: exhaustive switches and validators must accept it (typecheck finds them).
+- Draw calls: each pickup is about four draws, visible within 95 m. A cluster adds about 10–25 draws near the path (docs/PERFORMANCE.md budget; checked with `?debug` stats).
+- The E prompt must not shadow a talk E. That's why they keep ≥ 8 m from the stops, and the pickup prompt already yields to an NPC's prompt.
+- Lines may overlap Gerold's station talk. Reactions queue like other `say` lines.
+- `voice-assets` manifest coverage might demand clips for new line ids. If so, use the dialogue fallback as the Marlene loan line does, and note it.
+- The positions need an in-game look: the terrain is LiDAR, with rocks at the Felsenpfad.
+
+**Open questions:** none. The plan was approved as written on 2026-11-25. That settles 24 chestnuts with the small glow. A row in Pause → Sammlungen („Kastanien: 7 von 24“) is not in this cut; it is noted as a possible follow-up.
+
+## Progress
+- Branch: `feat/task-002-chestnuts` (from `main` `fd18dcd`)
+- 2026-11-25: plan approved. Before shot `test-results/contribute/TASK-002/before-1-path-t9.png`: t9, player on the wind → reh path at route point 627 / −647, looking down the path (yaw 29.3, pitch −9). No pickups.
+- 2026-11-25: step 1 done - `ItemKind` `collectible`, `item.kastanie` („Kastanie“, stack 99). A collectible is not precious: smaller glow, no light column, the ordinary pickup sound (`BEAM_KINDS` / `pickupSound` leave it out). It is not usable or equippable. The feed shows the running count like consumables, and there is a chestnut glyph in `icons.ts`. Quest files keep their own kind list (a core-only kind). `tests/progression.test.ts` gains a collectibles case. The progression test and every test touching `ITEMS` are green (6 files, 113 tests), typecheck green.
+- 2026-11-25: step 2 done - `LootAction.group`: on place it becomes the pickup's `quest` tag. `{ group, clear: true }` (no `id`) sends `loot:clear {quest: group}`. The validator checks the group's form and allows a clear by group without an id. `content/story/README.md` row updated; `tests/rpg-contracts.test.ts` covers the good and bad cases. Typecheck and `pnpm validate` green.
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".
