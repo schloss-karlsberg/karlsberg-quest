@@ -92,9 +92,9 @@ The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on 
 - [x] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
 - [x] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
 - [x] 6. `e2e/kastanien.spec.ts`; run it with one worker.
-- [ ] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
+- [x] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
 - [x] 8. Docs: `slice-v0.md`, ACTION-RPG §7 and §14, PRD changelog.
-- [ ] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts e2e/tour-slice.spec.ts --workers=1`.
+- [x] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts e2e/tour-slice.spec.ts --workers=1`.
 
 **Placement (24):**
 
@@ -165,6 +165,17 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
   - **Draw calls:** the 6 t9 chestnuts add 41 (134 → 175, budget 300).
   - **First-use compile:** the frame in which the first pickups of a session appear compiled their 3 programs. Pickup materials were not in the era prewarm registry, and with the chestnuts that frame comes in t3 of every new game. Added `PickupWorld.samples()` plus `registerEraMaterials('progression.pickups', '*', …)`. Measured on the real GPU (`?warm` / `?nowarm`, running loop): 0 programs compiled at the appearance with it, 3 without. The longest frame is 83 ms in both (the rAF clock is coarse there); docs/PERFORMANCE.md §3.6 notes it.
 - 2026-11-25: step 8 done - docs: `slice-v0.md` (t3 row and a „Chestnuts along the way“ section), ACTION-RPG §7 (collectibles) and §14, PRD changelog, PERFORMANCE §3.6 (pickups in the prewarm registry).
+- 2026-11-25: step 9 - gates on the final state (Windows 11, Node 22.18):
+  - `pnpm typecheck`, `pnpm validate`, `pnpm build` green.
+  - `pnpm test`: 1,498 passed, 4 failed, the same 4 Windows-only files as on untouched `main` (`content-packs`, `voice-moss`, `voice-assets`, `voice-service`).
+  - e2e, one worker: `kastanien`, `progression` (3), `chapter-prolog` (2) and `touch` (7) all green.
+  - `tour-slice` fails here, as it does on untouched `main` (`fd18dcd`, run the same day): `page.screenshot` hangs under SwiftShader at shot `05-wind-hunde` (line 146), and the run hits the 10 min limit.
+  - With two local-only, uncommitted changes (no `page.screenshot`, a 45 min limit), the full tour passes with the chestnuts: car park → Felsenpfad → wind → deer photo („gut“, 2 stars) → stray and find the group → Weiher → Quelle → 1789 → k1 (37.5 min here). Expected to pass on CI (Linux) unchanged; not verified there.
+- 2026-11-25: step 7 - checked by script and screenshot, not by hand-played run:
+  - the e2e above cover collecting while following, the group waiting (the tour run's stray check), feed, count, lines, reload and touch;
+  - one real-GPU view per cluster (10, `test-results/contribute/TASK-002/clusters/`): every chestnut lies visible on open ground, none in a rock, a trunk or the Weiher (21 / 22 at the bank path, by the reeds);
+  - before / after shots: `before-1-path-t3.png`, `after-1-path-t3.png`, `after-2-feed.png`;
+  - reduced motion was not looked at separately: the pickups' reduced-motion path (no pop or fly, fade only) is unchanged code.
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".
