@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-25 | **Present-day ground cover on Niedrig (TASK-008).** The tour's open November verges have sparse dry grass and occasional flowers. Reeds follow the Weiher's shallow bank, and the gravel tread and Quelle steps and trough stay clear. |
 | unreleased | 2026-11-25 | **Tour title and route map (TASK-007).** The title screen uses the working title „Schloss Karlsberg Tour“, with plain save actions and controls for the tour. A new visitor reads the content note, enters a name and sees the route from Karlsberger Hof via Felsenpfad and the Weiher to Karlsbergquelle. „Tour starten“ begins play and unlocks sound. |
 | unreleased | 2026-11-25 | **Guide narration and casting (TASK-010).** The [tour script](design/tour/sources.md) documents four German station sequences, their historical sources and the handoff to Laub. A local listening page compares three synthetic voices before recording. |
 | unreleased | 2026-11-24 | **Surveyor opening retired (TASK-007).** Old `?classic` bookmarks open the guided tour. Saves in „Vermessung“ continue at the Karlsbergquelle at the start of „Der Hof“ with the tour's level 3 handover and their earned progress. |

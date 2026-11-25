@@ -1,7 +1,10 @@
+import { InstancedBufferGeometry, Mesh, PerspectiveCamera } from 'three';
 import { describe, expect, it } from 'vitest';
 import { GROUND } from '../src/data/types';
+import { clearings } from '../src/systems/quelle/layout';
 import { Heightfield } from '../src/world/heightfield';
 import { findWaterBodies, shoreDistance } from '../src/world/water';
+import { GroundCover, type GroundCoverSource } from '../src/world/vegetation/groundcover';
 import { COVER_LOOKS, flowerChance, grassChance, hash2, reedChance, valueNoise } from '../src/world/vegetation/scatter';
 import { GROUND_LAYERS, GROUND_TILE_M, BARK_LAYERS } from '../src/world/vegetation/strips';
 import { PROP_KINDS } from '../src/world/vegetation/props';
@@ -113,6 +116,122 @@ describe('nature scatter', () => {
     const fern = PROP_KINDS.find((k) => k.id === 'fern')!;
     expect(fern.chance({ forest: 1, water: 0, bare: 0, lawn: 0 }, 5, 1, look, 1)).toBeGreaterThan(0);
     expect(fern.chance({ forest: 0, water: 0, bare: 0, lawn: 0 }, 5, 1, look, 1)).toBe(0);
+  });
+});
+
+function coverCamera(x = 0, z = 0): PerspectiveCamera {
+  const camera = new PerspectiveCamera(80, 667 / 375, 0.2, 200);
+  camera.position.set(x, 19, z);
+  camera.lookAt(x, 15, z);
+  return camera;
+}
+
+function coverMeshes(cover: GroundCover) {
+  return cover.object.children.filter((child): child is Mesh<InstancedBufferGeometry> =>
+    child instanceof Mesh && child.geometry instanceof InstancedBufferGeometry);
+}
+
+function coverInstances(cover: GroundCover) {
+  return coverMeshes(cover).flatMap(({ geometry, name }) => {
+    const transform = geometry.getAttribute('aInst');
+    return Array.from({ length: geometry.instanceCount }, (_, i) => ({
+      name, x: transform.getX(i), y: transform.getY(i), z: transform.getZ(i), scale: transform.getW(i),
+    }));
+  });
+}
+
+const meadowCover: GroundCoverSource = {
+  height: () => 15,
+  inside: () => true,
+  cover: (_x, _z, out) => out.fill(0),
+};
+
+describe('Niedrig ground cover', () => {
+  it('places seeded plants on the verge and shore and leaves the tread and open water clear', () => {
+    const cover = new GroundCover({
+      ...meadowCover,
+      cover: (x, z, out) => {
+        out.fill(0);
+        out[1] = x < -8 ? 1 : x < -5 ? 0.3 : 0;
+        out[2] = Math.abs(z) < 1.5 ? 0.35 : 0;
+      },
+    });
+    const camera = coverCamera();
+    cover.update(camera);
+    const first = coverInstances(cover);
+    expect(cover.stats.grassFar).toBeGreaterThan(0);
+    expect(cover.stats.flowers).toBeGreaterThan(0);
+    expect(cover.stats.reeds).toBeGreaterThan(0);
+    for (const { name, x, z } of first) {
+      expect(Math.abs(z)).toBeGreaterThanOrEqual(1.5);
+      expect(Math.hypot(x, z)).toBeLessThanOrEqual(14);
+      if (name === 'nature-reeds') {
+        expect(x).toBeGreaterThanOrEqual(-8);
+        expect(x).toBeLessThan(-5);
+      } else expect(x).toBeGreaterThanOrEqual(-5);
+    }
+    camera.position.x += 80;
+    cover.update(camera);
+    expect(cover.stats.reeds).toBe(0);
+    expect(coverInstances(cover).every(({ x }) => x >= 66)).toBe(true);
+    camera.position.x -= 80;
+    cover.update(camera);
+    expect(coverInstances(cover)).toEqual(first);
+  });
+
+  it('honours the spring clearings in today, including a clearing added after tile generation', () => {
+    const circles = clearings();
+    const inside = (x: number, z: number) => circles.some(([cx, cz, r]) => Math.hypot(x - cx, z - cz) < r);
+    const [x, z] = circles[0]!;
+    const cover = new GroundCover(meadowCover);
+    const camera = coverCamera(x, z);
+    cover.update(camera);
+    expect(coverInstances(cover).some((p) => inside(p.x, p.z))).toBe(true);
+    for (const [cx, cz, r] of circles) cover.addClearing(cx, cz, r, 0, ['today']);
+    cover.update(camera);
+    expect(cover.stats.grass).toBeGreaterThan(0);
+    expect(coverInstances(cover).some((p) => inside(p.x, p.z))).toBe(false);
+    cover.setLevel('high');
+    cover.setEra('1789');
+    cover.update(camera);
+    expect(coverInstances(cover).some((p) => inside(p.x, p.z))).toBe(true);
+  });
+
+  it('caps the three meshes and clears instances on tier and era changes', () => {
+    const cover = new GroundCover({
+      ...meadowCover,
+      cover: (x, _z, out) => {
+        out.fill(0);
+        out[1] = x < -11 ? 0.3 : 0;
+      },
+    });
+    const camera = coverCamera();
+    expect(coverInstances(cover)).toEqual([]);
+    cover.update(camera);
+    const first = coverInstances(cover);
+    expect(cover.stats).toMatchObject({ grass: 128, grassFar: 128, reeds: 16, flowers: 8 });
+    const drawn = coverMeshes(cover).filter((mesh) => mesh.visible);
+    expect(drawn).toHaveLength(3);
+    expect(drawn.reduce((sum, { geometry }) => sum + geometry.instanceCount * geometry.index!.count / 3, 0)).toBeLessThanOrEqual(12_000);
+    expect(cover.material.alphaToCoverage).toBe(false);
+
+    cover.setLevel('high');
+    cover.update(camera);
+    expect(cover.stats.grass - cover.stats.grassFar).toBeGreaterThan(0);
+    expect(cover.material.alphaToCoverage).toBe(true);
+    cover.setLevel('low');
+    cover.update(camera);
+    expect(coverInstances(cover)).toEqual(first);
+
+    cover.setEra('1789');
+    expect(coverInstances(cover)).toEqual([]);
+    cover.update(camera);
+    expect(cover.object.visible).toBe(false);
+    expect(cover.stats).toEqual({ grass: 0, grassFar: 0, flowers: 0, reeds: 0, tiles: 0 });
+    cover.setEra('today');
+    cover.update(camera);
+    expect(cover.object.visible).toBe(true);
+    expect(coverInstances(cover)).toEqual(first);
   });
 });
 

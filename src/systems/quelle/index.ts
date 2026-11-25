@@ -16,7 +16,7 @@
  *  - `quelle.guide` (the story, while Laub leads you here): motes drift down the brook and hover
  *    over the water, so the place calls from afar.
  *
- * Trees and scattered props keep out of the hollow (forest / nature clearings); loot caches too
+ * Trees, scattered props and today's ground cover keep out of the hollow (forest / nature clearings); loot caches too
  * (travel/pois.ts KEEP_CLEAR).
  */
 import { Group, type Material, type Mesh, type Sprite, type SpriteMaterial, Vector3 } from 'three';
@@ -327,6 +327,7 @@ export default defineSystem({
     for (const [x, z, r] of clearings()) {
       ctx.world.forest.addClearing(x, z, r);
       ctx.world.nature.props.addClearing(x, z, r);
+      ctx.world.nature.cover.addClearing(x, z, r, 0, ['today']);
     }
     offs.push(
       ctx.events.on('era:change', () => {
