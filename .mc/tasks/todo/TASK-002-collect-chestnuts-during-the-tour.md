@@ -79,7 +79,7 @@ The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on 
 - `src/systems/progression/index.ts` - feed shows the running count for `collectible`, like consumables; verb „aufheben“.
 - `src/systems/progression/icons.ts` - a chestnut icon, or the default icon for the kind.
 - `src/systems/story/types.ts`, `src/systems/story/index.ts` - `LootAction` gets an optional `group` (the pickup's existing `quest` field), passed on `loot:place`. `loot:clear` can then clear by group.
-- `content/story/00-tour.story.json` - 24 `loot` actions in t3, t4, t7, t9, t11 and t14 (by section); chapter `on` with three reactions; `leave` clears group `tour.kastanien`.
+- `content/story/00-tour.story.json` - 24 `loot` actions in t3, t5, t7, t9, t12 and t14 (the beat in which the group walks that section); chapter `on` with three reactions; `leave` clears group `tour.kastanien`.
 - `tests/tour-kastanien.test.ts` (new) - placement rules, reactions, cleanup, no XP / item grants.
 - `tests/progression.test.ts` - `collectible` stacks, is not usable, keeps its count across serialise / load.
 - `e2e/kastanien.spec.ts` (new) - in the tour at t3: walk over one, E-pick one, feed and count, touch prompt, save and reload keeps the count.
@@ -88,8 +88,8 @@ The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on 
 **Steps:**
 - [x] 1. Item kind `collectible` and `item.kastanie`: types, stack, not usable, no beam, ordinary sound, feed count, icon; unit tests.
 - [x] 2. Story `loot` with `group` (place and clear); validator accepts it; unit test.
-- [ ] 3. Positions: pick 24 spots along the walked sections with a script (route offset, terrain height and slope from the heightfield). Check them in the dev build (`?debug`, teleport): on walkable ground, not in a rock or the Weiher, visible from the path.
-- [ ] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
+- [x] 3. Positions: pick 24 spots along the walked sections with a script (route offset, terrain height and slope from the heightfield). Check them in the dev build (`?debug`, teleport): on walkable ground, not in a rock or the Weiher, visible from the path.
+- [x] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
 - [ ] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
 - [ ] 6. `e2e/kastanien.spec.ts`; run it with one worker.
 - [ ] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
@@ -101,10 +101,10 @@ The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on 
 | Beat | Section | Count |
 | --- | --- | --- |
 | t3 | parkplatz → abzweig | 3 |
-| t4 | einstieg → felsen | 6 |
+| t5 | einstieg → felsen | 6 |
 | t7 | felsen → wind | 3 |
 | t9 | wind → reh | 6 |
-| t11 | damm → weiher | 2 |
+| t12 | damm → weiher | 2 |
 | t14 | weiher → quelle | 4 |
 
 Rules, checked by the unit test:
@@ -144,6 +144,12 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
 - 2026-11-25: plan approved. Before shot `test-results/contribute/TASK-002/before-1-path-t9.png`: t9, player on the wind → reh path at route point 627 / −647, looking down the path (yaw 29.3, pitch −9). No pickups.
 - 2026-11-25: step 1 done - `ItemKind` `collectible`, `item.kastanie` („Kastanie“, stack 99). A collectible is not precious: smaller glow, no light column, the ordinary pickup sound (`BEAM_KINDS` / `pickupSound` leave it out). It is not usable or equippable. The feed shows the running count like consumables, and there is a chestnut glyph in `icons.ts`. Quest files keep their own kind list (a core-only kind). `tests/progression.test.ts` gains a collectibles case. The progression test and every test touching `ITEMS` are green (6 files, 113 tests), typecheck green.
 - 2026-11-25: step 2 done - `LootAction.group`: on place it becomes the pickup's `quest` tag. `{ group, clear: true }` (no `id`) sends `loot:clear {quest: group}`. The validator checks the group's form and allows a clear by group without an id. `content/story/README.md` row updated; `tests/rpg-contracts.test.ts` covers the good and bad cases. Typecheck and `pnpm validate` green.
+- 2026-11-25: step 3 done (data side) - spots chosen as (arc length, side offset) per walked section of `p-fuehrung`, then checked against the running dev build's world (`heightAt`, slope over 1 m, `surfaceAt`, `collider.solidAt` r 0.3).
+  - No spot is in water or in a solid. Two first picks on the Felsenpfad were steep (0.68, 0.52): 08 moved to the other side and 04 moved closer to the path; the steepest left is 0.44, on the climb itself.
+  - Trees and rocks drawn as scenery are not in the collider, so the visual check follows in step 7 (after shots).
+- 2026-11-25: step 4 done - `00-tour.story.json`: 24 `loot` actions (era `today`, group `tour.kastanien`), three chapter `on` reactions (first, 12th, 24th pickup; `item:pickup` + `match.item` + `gte.total`), and `{ group, clear: true }` in `leave` before the fade.
+  - Plan adjusted: sections einstieg → felsen and damm → weiher place their chestnuts in **t5** and **t12**, the beats in which the group walks them, not in t4 and t11. Those two beats end on a flag right after the fade, and `tests/tour-slice.test.ts` reads t4's last six actions. t4 and t11 are unchanged.
+  - `pnpm validate` green (214 lines). `tour-slice`, `tour-handover`, `quests-content-a`, `flaschen` and story tests green. `voice-assets` shows only its 2 known Windows path failures (same on `main`).
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".
