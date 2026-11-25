@@ -4,7 +4,7 @@ aliases:
 - TASK-002
 title: Collect chestnuts during the tour
 slug: collect-chestnuts-during-the-tour
-status: in-progress
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -176,6 +176,7 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
   - one real-GPU view per cluster (10, `test-results/contribute/TASK-002/clusters/`): every chestnut lies visible on open ground, none in a rock, a trunk or the Weiher (21 / 22 at the bank path, by the reeds);
   - before / after shots: `before-1-path-t3.png`, `after-1-path-t3.png`, `after-2-feed.png`;
   - reduced motion was not looked at separately: the pickups' reduced-motion path (no pop or fly, fade only) is unchanged code.
+- 2026-11-25: shipped - self-review of `git diff main...HEAD` (no leftovers; corrected one comment that quoted an inflated 1.8 s). PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/39
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".
