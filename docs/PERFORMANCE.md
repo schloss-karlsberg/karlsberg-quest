@@ -44,7 +44,19 @@ the e2e test fails when a scene is over.
   60 fps cap with Energiesparen off. Run with the GPU config and label the baseline and changed
   builds `PERF_LABEL=before` and `PERF_LABEL=after`. Compare `phone-route.json` for rendered fps,
   average and p95 frame and CPU times, and all-pass peaks. Use `e2e/perf.spec.ts` for first-input bytes.
-  The paired GPU runs and measured route cost are pending.
+- **Tour fittings (TASK-008, slice 2):** the procedural sets at Karlsberger Hof, Felsenpfad and
+  the Weiher stream within 45 m and use the same geometry on all presets. At most one is resident
+  after scenery streaming settles, including its 80 m unload margin. Its two meshes (merged props
+  and generated sign face) have a tested ceiling of 150 triangles per pass. Across a main, shadow
+  and reflection pass the conservative ceiling is six draws and 450 triangles. The fittings make
+  zero asset requests. Measure the full route and bench against §1 using the same GPU spec with
+  `PERF_LABEL=slice2-before` and `PERF_LABEL=slice2-after`.
+- **Quelle timing recheck:** PR #26 reported 60 → 55.8 rendered fps at the Quelle on the phone
+  route with unchanged p95 frame time. The current spec keeps the original live timing camera
+  (1059 / −833, 270°), 2.5 s warm-up and 5 s timing window, then repeats the Quelle sample three
+  times. Compare per-window fps, frame and CPU percentiles, frames over 25 ms and all-pass peaks
+  in `phone-quelle-recheck.json`. `PERF_LABEL=pr26-before` and `PERF_LABEL=pr26-after` use the
+  original six stills for the historical comparison. GPU captures and the recheck are pending.
 
 ## 3. Results
 
