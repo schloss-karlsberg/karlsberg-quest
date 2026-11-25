@@ -7,7 +7,7 @@
 > Coordinates are local metres (x east, z south). **(prüfen)** = checked once with
 > `scripts/content-build/probe.mjs` (ground type and height) but not yet walked; check again on the terrain.
 
-> **Note (2026-11-23):** written before the guided-tour redesign. Mentions of the surveyor, the Feldstation and the vest describe the opening of that time; for the current concept see `docs/design/tour/` (the tour bible notes the changes to the disguise in `bible/01-prolog.md`).
+> **Note (2026-11-23):** written before the guided-tour redesign. Mentions of the surveyor, the Feldstation and the vest describe the opening of that time; for the current concept see `docs/design/tour/` (the [tour bible](../content/bible/01-prolog.md) describes the K1 handover).
 
 Contents: [0 Overview](#0-overview) · [1 Chapter 1 opens at the spring](#1-chapter-1-opens-at-the-karlsbergquelle) ·
 [2 The disguise](#2-1789-the-court-lets-no-strangers-in-the-disguise-opening) ·

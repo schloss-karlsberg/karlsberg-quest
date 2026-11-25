@@ -7,7 +7,7 @@
 - **A mostly quiet protagonist.** The player is a calm visitor, male, 30–40, on a public guided tour in November. He reacts and never explains: short, dry, a little amazed, never a joke at someone else's cost. At most one player line per beat, and none when another speaker already says the same thing. Most beats have no player line at all.
 - **Optional (planned).** Setting **„Spielerstimme an/aus“** (Einstellungen › Audio). The design calls for it to default to ON once clips exist. OFF keeps the subtitles and silences the player voice. The toggle is still a follow-up.
 - **Subtitles always.** Every player line is shown in the dialogue card, whether or not a clip plays (same rule as every other speaker, PRD §4.4).
-- **Never says the player's name.** `{Name}` is spoken only by Laub and Marlene (`content/bible/08-stimmen.md`, enforced by `tests/story.test.ts` „{Name} only in Marlene/Laub“) and, in the tour draft, by Gerold Imhoff (`bible/08-stimmen.md` §0, the test is to be extended). The player never says it, never introduces himself, and is never asked a question that needs his name as an answer. The recording therefore never contains a name, which also keeps every clip valid for every player.
+- **Never says the player's name.** `{Name}` is spoken only by Laub and Marlene (see the [voice bible](../../../content/bible/08-stimmen.md) and `tests/story.test.ts` „{Name} only in Marlene/Laub“). Allowing Gerold to address the player by name was a tour draft idea. The player never says it, never introduces himself, and is never asked a question that needs his name as an answer. The recording therefore never contains a name, which also keeps every clip valid for every player.
 - **Forms of address stay with the others.** Laub siezt, Marlene, Gerold, Jost and the doubles duzen, Liese and the 1789 people use „Er“. The player addresses nobody by name and avoids „Sie“/„du“ where he can (short reactions instead of sentences).
 - **Silent where the others are silent.** No player line at memorial places (Rondell 1785, Festsaal during W5, the finale up to `laub.k4.finale_2`), where Laub also falls silent.
 - **No lines in combat.** While `combat:state { inCombat: true }`, queued player lines are dropped (not delayed). Only the effort/pain cues (§2.6) appear, and only as **text captions** in square brackets, like the existing sound captions („[Hundegebell]“). No recorded grunts in v1.
@@ -141,7 +141,7 @@ The tour pack already defines `player` with the label „Du“. The voice pipeli
 - Add the planned `playerVoice` save setting and „Spielerstimme an/aus“ toggle under the volume sliders. OFF skips the clip lookup for `player` and displays the subtitles at reading speed.
 - Make player subtitles silent when there is no matching decoded clip. The current presenter uses the standard murmur fallback.
 - Drop `player.*` dialogue lines while `combat:state.inCombat`. The `player.cue.*` captions use the existing caption path.
-- Extend the `{Name}` test to forbid it in player lines and add `imhoff` to the allowed speakers per `bible/08-stimmen.md` §0. Validate the `player.*` id scheme.
+- Keep the `{Name}` test and validate the `player.*` ID scheme.
 
 ## 5. Decisions and open points
 

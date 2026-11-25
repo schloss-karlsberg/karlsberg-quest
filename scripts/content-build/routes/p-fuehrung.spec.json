@@ -1,15 +1,15 @@
 {
   "id": "p-fuehrung",
-  "note": "DRAFT (tour WP-16): the guided tour of the prologue, car park → Felsenpfad → Karlsbergweiher → Karlsbergquelle. Stops from docs/design/tour/bible/01-prolog.md (t1–t9, coordinates from tour-route-research). Owned by kq-story since tour slice v0 (stop reh added). Build: node scripts/content-build/routes.mjs",
+  "note": "Guided-tour route, car park → Felsenpfad → Karlsbergweiher → Karlsbergquelle. Scene references: content/bible/01-prolog.md. Build: node scripts/content-build/routes.mjs",
   "stops": [
-    { "id": "parkplatz", "x": 524, "z": -770, "ref": "t1/t2 Wanderparkplatz, chapter checkpoint; open car park, not on the path graph (19 m to the road)", "offGraph": true },
+    { "id": "parkplatz", "x": 524, "z": -770, "ref": "t1/t2 Wanderparkplatz group stop, 19 m off the path graph", "offGraph": true },
     { "id": "abzweig", "x": 515, "z": -730, "ref": "t3 turn-off at the car park onto the Feldweg (OSM 29272437)" },
-    { "id": "einstieg", "x": 623.5, "z": -486, "ref": "t3 entry to the Felsenpfad" },
-    { "id": "felsen", "x": 683, "z": -596, "ref": "t4 station 2, rocks by the little wooden bridge" },
-    { "id": "wind", "x": 676, "z": -636, "ref": "t5 wind / dogs trigger after station 2: moved from the bible's 700/-640 (prüfen), which lies 24 m off the natural route and forced an out-and-back spur, to the path junction on the route" },
+    { "id": "einstieg", "x": 623.5, "z": -486, "ref": "t4 entry to the Felsenpfad" },
+    { "id": "felsen", "x": 683, "z": -596, "ref": "t6 station 2, rocks by the little wooden bridge" },
+    { "id": "wind", "x": 676, "z": -636, "ref": "t8 wind / dogs trigger at the path junction after station 2" },
     { "id": "reh", "x": 727.4, "z": -751.5, "ref": "tour slice v0: the deer stop. The doe and fawn graze 36 m down the slope to the SW (704/-779, forest, terrain-checked clear line of sight from here, scripts probe)" },
-    { "id": "damm", "x": 837, "z": -840, "ref": "t7 end of the Felsenpfad, west end of the dam" },
-    { "id": "weiher", "x": 898, "z": -840, "ref": "t7 station 3, benches on the north shore" },
-    { "id": "quelle", "x": 1059.3, "z": -833.1, "ref": "t9 station 4, trough stand at the Karlsbergquelle (home spawn)" }
+    { "id": "damm", "x": 837, "z": -840, "ref": "t11 end of the Felsenpfad, west end of the dam" },
+    { "id": "weiher", "x": 898, "z": -840, "ref": "t13 station 3, benches on the north shore" },
+    { "id": "quelle", "x": 1059.3, "z": -833.1, "ref": "t15 station 4, trough stand at the Karlsbergquelle (home spawn)" }
   ]
 }

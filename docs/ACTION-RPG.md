@@ -969,7 +969,7 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 
 ### 11.5 Endings
 
-Unchanged (bible 06-enden), plus the party after the credits (tour WP-18, [`design/tour/bible/06-enden.md`](design/tour/bible/06-enden.md)): the choice at the table (museum / burn / keep), the epilogue assembled from
+The [ending design](../content/bible/06-enden.md) covers the choice at the table (museum / burn / keep), the plateau party with credits, and the epilogue assembled from
 the player's deeds (§8.6: side quests done, the lantern at the gate, `flag.k3_objekt`), told as a
 first-person story, credits, "Ende noch einmal wählen" (title and, after the credits, the pause
 menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
@@ -1035,6 +1035,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Guided-tour story bible (TASK-007, 2026-11-25) | The [bible](../content/bible/00-overview.md) brings together the guided opening, endings, Codex and voice design. It records the shipped handover and distinguishes pending designs and earlier surveyor-era material. |
 | Weiher staff handoff and survey controls (TASK-007, 2026-11-25) | Marlene lends the staff during the tour and the pickup feed confirms it. Both camera modes require the equipped staff to be owned before drawing it. The tour still grants 549 XP. Survey tools use the number row and M, or „Erkunden“ on touch. |
 | Surveyor content retirement (TASK-007, 2026-11-25) | The guided tour is the sole opening in the content catalog. The Bussole page stays in the Chronik collection and shared nouns and facts remain available. Older saves keep finished quest log entries and ending deeds and receive pending payouts once. |
 | Tour onboarding and audio activation (TASK-007, 2026-11-25) | „Schloss Karlsberg Tour“ shows movement, interaction and the current survey shortcuts. After the content note and name entry, a static paper map shows the four stops. One click or tap on „Tour starten“ starts play and unlocks Web Audio. The map fits short viewports, and reduced motion skips the title fade. |

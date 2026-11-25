@@ -39,7 +39,16 @@ State on 2026-11-25 (`KQ_MOSS_MODE=service node scripts/voice/generate.mjs --dry
 
 Rules: synthetic MOSS voices only (CC0 output, credited in `LICENSES.json` `voices`), never ElevenLabs output, never
 a real person except the consented player voice. Only text-final lines get clips. Model runs (`moss-run`) are
-the owner's call; agents only submit. See `docs/design/tour/bible/08-stimmen.md` and `docs/VOICE-MEDIA-RESEARCH.md`.
+the owner's call; agents only submit. See `content/bible/08-stimmen.md` and `docs/VOICE-MEDIA-RESEARCH.md`.
+
+### Tour lines queued for recording
+
+Use the current text from `content/story/00-tour.story.json` with the existing cast voices.
+
+| Beat | Line ID | Speaker | Text |
+| --- | --- | --- | --- |
+| `t13` | `marlene.t.messstab` | Marlene | Hier, nimm den Messstab ruhig mit. Beim Fest gibst du ihn mir zurück. |
+| `t18` | `laub.t.seite` | Laub | Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Sie finden es später unter Ausrüstung. |
 
 ### Proposed steps
 

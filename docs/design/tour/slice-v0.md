@@ -8,7 +8,7 @@ the Bussole, the „Seite im Deckel der Bussole“, the main path's balms / oil,
 `?classic` selected the old surveyor prologue and saves could resume there. Old bookmarks now
 open the tour. Saves in „Vermessung“ continue in „Der Hof“ at the Karlsbergquelle with the tour
 handover and their earned progress (TASK-007). The beats are described in the tour bible
-(`bible/01-prolog.md`). Gerold Imhoff is a placeholder name.
+([Prolog „Die Führung“](../../../content/bible/01-prolog.md)). Gerold Imhoff is a placeholder name.
 
 **Start:** `pnpm dev` → „Neues Spiel“. Tests: `?notitle`, then `kq.story.start('Name')`; e2e fast
 path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).

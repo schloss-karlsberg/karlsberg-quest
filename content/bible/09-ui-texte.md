@@ -1,88 +1,59 @@
 # UI-Texte
 
-> **Teilweise altes Konzept (Stand 2026-11-23):** Start-, Namens- und Laternen-Texte, „Vermesserin / Vermesser“ und die Tutorials an Bauwagen/Feldstation stammen aus dem früheren Vermesser-Konzept. Das aktuelle Konzept ist die Führung ([`docs/design/tour/`](../../docs/design/tour/README.md)); die Überarbeitung der Texte ist Teil von TASK-007.
-
-Alle Texte der OberflächeAlle Texte der Oberfläche, auf Deutsch. IDs im Format `ui.<bereich>.<name>`. Platzhalter in geschweiften Klammern. Tastennamen stehen in eckigen Klammern und werden aus der Tastenbelegung ersetzt (umbelegbare Tasten, PRD §7), z. B. `[Q]`.
-
-Stil: kurz, Feldbuch-Ton (PRD §7: „a surveyor's field book“), Sie-Form nur bei Laub; die Oberfläche spricht den Spieler mit **du** an.
-
----
+Write short, direct German. Address the player as **du** in interface copy. Laub addresses the
+player as **Sie** in dialogue. Use the configured key labels when a binding can be changed and
+include touch instructions where the action differs. The [German dictionary](../../src/i18n/de.ts),
+[story dictionary](../../src/systems/story/strings.ts) and feature dictionaries supply the shipped
+wording. The tables from §5 onward retain copy sketches from the earlier design.
 
 ## 1. Titel und Start
 
-| id | Text |
+| Schlüssel | Text |
 | --- | --- |
-| `ui.title.name` | Karlsberg Quest |
-| `ui.title.subtitle` | Was das Feuer nicht fraß |
-| `ui.title.tagline` | Ein Schloss, das es nicht mehr gibt. Ein Wald, der sich erinnert. Eine Jagd, die nie abgeblasen wurde. |
-| `ui.start.audio` | Klicke, um die Laterne anzuzünden. |
-| `ui.start.audio_hint` | (Damit startet auch der Ton.) |
-| `ui.menu.new` | Neue Vermessung |
-| `ui.menu.continue` | Weiter ({Kapitel}, {Datum}) |
-| `ui.menu.chapters` | Kapitel wählen |
-| `ui.menu.settings` | Einstellungen |
-| `ui.menu.codex` | Codex |
-| `ui.menu.credits` | Mitwirkende und Quellen |
-| `ui.menu.ending_again` | Ende noch einmal wählen |
-| `ui.menu.name_prompt` | Wie heißt du? (So nennt dich Marlene.) |
-| `ui.menu.name_default` | Vermesserin / Vermesser |
-| `ui.menu.mode_prompt` | Wie willst du spielen? |
-| `ui.menu.mode_normal` | Normal – Die Meute jagt. Wer gestellt wird, verliert, was er in diesem Wechsel noch nicht bestätigt hat. |
-| `ui.menu.mode_gentle` | Sanft – Gegner halten weniger aus, treffen schwächer und kündigen Angriffe länger an. Die Meute ist langsamer. |
-| `ui.menu.mode_rauhnacht` | Rauhnacht – Die Meute ist schneller, das Öl reicht kürzer, und der Pikeur reitet früher. |
-| `ui.menu.mode_note` | Du kannst den Modus jederzeit in den Einstellungen ändern. |
+| `game.title` | Schloss Karlsberg Tour |
+| `title.newGame` | Neues Spiel |
+| `title.continue` | Weiter |
+| `title.confirmNew` | Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen? |
+| `story.name.title` | Dein Name |
+| `story.name.default` | Alex |
+| `story.name.confirm` | Weiter |
+| `story.tourMap.title` | Die Route der Führung |
+| `story.tourMap.start` | Tour starten |
 
-## 2. Inhaltshinweis (vor dem ersten Start, immer überspringbar danach)
+Die Karte zeigt Karlsberger Hof, Felsenpfad, Weiher und Karlsbergquelle. „Tour starten“ beginnt die
+Führung und aktiviert den Ton in derselben Interaktion.
 
-| id | Text |
-| --- | --- |
-| `ui.warn.title` | Bevor du anfängst |
-| `ui.warn.body` | Karlsberg Quest ist ein düsteres Action-Rollenspiel für Menschen ab 16 Jahren. Du kämpfst mit einem Messstab gegen erfundene Spukgestalten aus Nebel, Stein, Stroh und Papier und kannst dabei niedergeworfen werden. Es gibt eine unheimliche Atmosphäre, Schreckmomente, Verfolgung durch eine geisterhafte Meute, ein Feuer, in dem du dich zurechtfinden musst, und belastende Themen: Armut, unbezahlte Arbeit, ein tödlicher Unfall (1785), Plünderung und Zerstörung. Es gibt kein Blut und keine Gewalt gegen Menschen; was Menschen einander angetan haben, wird angedeutet, nicht gezeigt. |
-| `ui.warn.fiction` | Das Spiel erzählt von echten Orten und echten Ereignissen. Was belegt ist, steht mit Quelle im Codex. Was erfunden ist, ist als „Fiktion“ gekennzeichnet. |
-| `ui.warn.real_place` | Der Karlsberg bei Homburg ist ein geschütztes Bodendenkmal. Schauen, nicht graben. Dieses Spiel zeigt keine Fundstellen und gibt keine Grabtipps. |
-| `ui.warn.gentle` | Wenn dir Kämpfe oder Jagd zu viel werden: Der sanfte Modus nimmt den Druck heraus. |
-| `ui.warn.ok` | Verstanden |
+## 2. Inhaltshinweis
 
-## 3. Steuerung (Hilfe-Seite und erste Einblendungen)
+„Bevor du anfängst“ und „16+“ stehen über dem Inhaltshinweis (`story.warning.*`). Der Text nennt
+die Führung zuerst und beschreibt Kämpfe, Verfolgung und belastende Themen der späteren Kapitel.
+Er verweist für Belege und Fiktion auf den Codex und erklärt den sanften Modus. „Verstanden“ führt
+zur Namenseingabe.
 
-| id | Taste | Text |
+## 3. Steuerung
+
+| Aktion | Desktop-Standard | Touch |
 | --- | --- | --- |
-| `ui.keys.move` | [W][A][S][D] | Gehen |
-| `ui.keys.run` | [Shift] | Rennen (laut) |
-| `ui.keys.sneak` | [C] | Schleichen (leise, langsam) |
-| `ui.keys.prone` | [X] | Hinlegen / Aufstehen. Wer flach liegt, wird von der Meute kaum gesehen und nicht gehört. |
-| `ui.keys.spirit` | [F] | Geisterblick: freier Flug über das Land (nur im Heute) |
-| `ui.keys.scan` | [1] [2] [3] | Relief-Blick: Schummerung / Lokales Relief / VAT |
-| `ui.keys.map` | [M] | Karte vergleichen: 1840 oder 1935 über das Gelände legen |
-| `ui.keys.listen` | [E] halten | Lauschen: Erinnerungen an diesem Ort hören |
-| `ui.keys.examine` | Klick | Untersuchen |
-| `ui.keys.shift` | [Q] | Zeitwechsel an einem Ankerpunkt. [Q] 3 s halten: zurück zur Quelle (nicht, solange die Meute dich sieht) |
-| `ui.keys.lantern` | [L] | Laterne an / aus. Licht hilft beim Lesen, aber es lockt die Meute. |
-| `ui.keys.chronik` | [Tab] | Chronik öffnen |
-| `ui.keys.measure` | [R] | Messen: Strecke und Höhenprofil (ab Kapitel 2) |
-| `ui.keys.pause` | [Esc] | Pause |
+| Gehen / umsehen | WASD / Maus | Stick / wischen |
+| Sprechen und interagieren | E | Antippen |
+| Schleichen / hinlegen | C / X | Haltung |
+| Handy | N | Handy |
+| Zeitwechsel / Heimkehr | Q / Q halten | Epochentaste / halten |
+| Geisterblick, Relief, Messen, Röntgenblick, Planblatt | 1, 2, 3, 4, 5 | Erkunden |
+| Karte | M | Erkunden |
+| Pause | Esc | Pause |
 
-## 4. Tutorial-Einblendungen (Prolog)
+Umschalt+2 geht einen Reliefmodus zurück, die Taste ^ schaltet das Relief aus. „Aufgaben“,
+„Codex“ und „Album“ sind direkt aus der Pause erreichbar. „Weniger Bewegung“ reduziert unter
+anderem die Übergänge beim Spielstart.
 
-Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
+## 4. Tutorial-Einblendungen der Führung
 
-| id | Auslöser | Text |
-| --- | --- | --- |
-| `ui.tut.move` | Start | Gehe mit [W][A][S][D]. Schau mit der Maus. |
-| `ui.tut.examine` | erster Gegenstand in Reichweite | Klicke, um etwas zu untersuchen. |
-| `ui.tut.scan1` | vor dem Bauwagen | Drücke [1]: Relief-Blick. So sieht der Boden ohne Wald aus. |
-| `ui.tut.scan2` | am Damm | Drücke [2]: Lokales Relief. Kleine Kanten werden sichtbar. |
-| `ui.tut.scan3` | an der Orangerie | Drücke [3]: VAT. Kanten, Gruben und Rinnen auf einmal. |
-| `ui.tut.spirit` | Feldstation, nach dem Damm | Drücke [F] für den Geisterblick und fliege zum Ehrenhof. [F] erneut: landen. |
-| `ui.tut.map` | Ehrenhof | Drücke [M]: Lege die Karte von 1840 über das Gelände. Merkst du den Versatz? |
-| `ui.tut.chronik` | erstes Substantiv gefunden | Neues Wort für die Chronik. Öffne sie mit [Tab]. |
-| `ui.tut.fill` | Chronik offen | Ziehe ein Wort in eine Lücke. Drei richtige Sätze werden zusammen bestätigt. |
-| `ui.tut.shift` | Anker erreicht, 1. Satz bestätigt | Hier erinnert sich das Land. Drücke [Q], um die Zeit zu wechseln. |
-| `ui.tut.return` | erster Wechsel, nach 60 s | Halte [Q] 3 Sekunden, um zur Quelle zurückzukehren. |
-| `ui.tut.listen` | erstes Echo in Reichweite | Halte [E], um zu lauschen. |
-| `ui.tut.lantern` | erste Dämmerung | [L]: Laterne. Das Öl reicht nicht ewig. |
-| `ui.tut.sneak` | Kapitel 1, Jost | [C]: Schleichen. [X]: Hinlegen. Wasser, Hohlwege und große Steine verbergen dich. |
-| `ui.tut.measure` | Kartograf 3 frei | [R]: Messen. Klicke Anfang und Ende. |
+Die Hinweise gehören zu den [Tour-Beats](01-prolog.md#1-ablauf). Am Treffpunkt erklären sie Bewegung
+und Kamera. Bei Gerold zeigen sie „zuhören“. Das Reh-Tutorial kombiniert langsames Anschleichen und
+Handyfoto. Am Trog löst „Wasser berühren“ den ersten Wechsel aus.
+
+## Historische UI-Entwürfe
 
 ## 5. HUD
 
@@ -209,7 +180,8 @@ Jede Einblendung erscheint einmal, unten mittig, bis die Aktion ausgeführt ist.
 | `ui.pause.help` | Steuerung |
 | `ui.pause.station` | Zur Quelle (nur, wenn dich niemand sieht) |
 | `ui.pause.menu` | Hauptmenü |
-| `ui.pause.saved` | Gespeichert: {Uhrzeit} |
+| `pause.save` | Speichern |
+| `pause.saved`, `toast.saved` | Spielstand gespeichert. |
 | `ui.set.title` | Einstellungen |
 | `ui.set.mode` | Spielmodus: Normal / Sanft / Rauhnacht |
 | `ui.set.volume_master` | Lautstärke gesamt |

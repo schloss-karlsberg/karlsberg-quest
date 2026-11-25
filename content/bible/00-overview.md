@@ -1,24 +1,24 @@
 # Karlsberg Quest – Inhaltsbibel: Überblick
 
-> **Achtung (2026-11-23):** Das aktuelle Spielkonzept ist die **geführte Tour mit Zeitreise** ([`docs/design/tour/`](../../docs/design/tour/README.md)): Prolog „Die Führung“, Zeitreise an der Karlsbergquelle, nach jedem Ende ein Fest. Die Abschnitte dieser Datei über Vermesser\*in, Feldstation/Bauwagen und den Prolog „Vermessung“ beschreiben das frühere Konzept; die geänderten Abschnitte stehen in [`docs/design/tour/bible/00-overview.md`](../../docs/design/tour/bible/00-overview.md). Wo beide sich widersprechen, gilt die Tour. Zusammenführung: TASK-007.
-
-> Stand 2026-11-02 · Sprache der Inhalte: Deutsch (UI-Sprache) · Quelle der Spielregeln: [`docs/PRD.md`](../../docs/PRD.md) (§3.3 Chronik, §4.4 Tonregeln)
-> Diese Bibel ist **Inhalt, kein Code**. Feature-Engineers übertragen sie später in das Content-Schema. IDs sind stabil gemeint; Koordinaten sind Startwerte, die im Gelände geprüft werden.
+The story bible collects the guided-tour opening, chapters, endings, source notes and character
+voices. [Tour decisions and system notes](../../docs/design/tour/README.md) hold the feature design.
+[The story files and generators](../story/README.md) define shipped content. Drafts and historical
+rules are marked where they still inform the design.
 
 ## Dateien
 
 | Datei | Inhalt |
 | --- | --- |
 | `00-overview.md` | Dieses Dokument: Rückgrat der Geschichte, Kapitel, Wow-Momente, Freischaltungen, Konventionen |
-| `01-prolog.md` | Prolog „Vermessung“ (heute) |
+| [`01-prolog.md`](01-prolog.md) | Prolog „Die Führung“ (heute → 1789) |
 | `02-kapitel-1.md` | Kapitel 1 „Der Hof“ (Sommer 1789) |
 | `03-kapitel-2.md` | Kapitel 2 „Die Flucht“ (Nacht 9./10. Februar 1793) |
 | `04-kapitel-3.md` | Kapitel 3 „Die Nacht“ (28. Juli 1793) |
 | `05-kapitel-4.md` | Kapitel 4 „Der Steinbruch“ (1796 → 1840 → heute) und Finale |
-| `06-enden.md` | Drei Enden mit Epilogen, die von den LESARTEN abhängen |
-| `07-codex.md` | 40 Codex-Karten + 8 Reliefmuster-Karten, mit Quellen und Konfidenz |
-| `08-stimmen.md` | Stimmen: Laub, Marlene, Kanzlist Soll, Hanne, Jost, Mannlich, der Herzog; Barks |
-| `09-ui-texte.md` | Alle UI-Texte |
+| [`06-enden.md`](06-enden.md) | Entscheidungen, Epilog-Bausteine und Abschlussfest |
+| [`07-codex.md`](07-codex.md) | Codex und Reliefmuster, Tour-Karten, Quellen und Konfidenz |
+| [`08-stimmen.md`](08-stimmen.md) | Figurenstimmen, Gerold, die Doppelgänger und Barks |
+| [`09-ui-texte.md`](09-ui-texte.md) | Schreibregeln, aktuelle Starttexte und frühere Entwürfe |
 
 ---
 
@@ -26,17 +26,23 @@
 
 _Alles in diesem Abschnitt ist Fiktion, soweit es nicht ausdrücklich als FAKT mit Quelle markiert ist._
 
-**Ausgangslage.** Du bist Vermesser\*in (Name frei wählbar) und prüfst für das Forstamt den Laserscan von 2025 über dem Karlsberg-Wald. Im Relief liegt ein Schloss: Terrassen, Mauerzüge, Keller, ein Ehrenhof (FAKT, LiDAR). In der Schublade deines Bauwagens liegt eine Messing-Bussole von der bayerischen Landesaufnahme um 1840. Sie zeigt dorthin, wo das Land sich erinnert. Und sie redet: In ihr steckt **Geometer Quirin Laub**, seit November 1840 „verwaltungstechnisch verschollen“.
+**Ausgangslage.** Du besuchst an einem Novembernachmittag eine öffentliche Führung. **Gerold Imhoff**
+(FIKTION, Platzhaltername) führt vom Wanderparkplatz beim Karlsberger Hof über den Felsenpfad und
+den Karlsbergweiher zur Karlsbergquelle. Einige Leute aus der Gruppe kommen dir später bekannt vor.
+Marlene leiht dir am Weiher ihren Messstab. An der Quelle geht die Gruppe zum Plateau voraus.
+Im Trog liegt eine Messing-Bussole. Darin spricht **Geometer Quirin Laub**, seit November 1840
+„verwaltungstechnisch verschollen“. Du berührst das Wasser, und es ist 1789. Die Zeitreise beginnt
+in der Pause. Für die Gruppe vergeht derselbe Nachmittag.
 
 **Die Frage.** Am 28. Juli 1793 brannte der Karlsberg (FAKT). *Was hat das Feuer nicht gefressen?* Laub kennt eine Antwort, die er nicht sagt: eine **Chronik**, die nie die Chronik des Hofes war. Der Kanzlist **Gottlob Soll** begann sie 1787 als Gegenbuch zu den Hofrechnungen (Fiktion; angeregt davon, dass der Finanzpräsident Creuzer vor seiner Flucht Papiere „sicheren Händen“ übergab, FAKT nach Mannlich). Soll schrieb auf, **was der Hof schuldig blieb**: Löhne, die Kasse der Witwen und Waisen, Versprechen. Die Steinhauerwitwe **Hanne** schrieb die Namen dazu. Der Hundejunge **Jost** schrieb die Namen der Hunde hinein, weil sie sonst niemand kannte. Im Februar 1793 versteckte Soll das Buch unter dem Boden der Bildergalerie (bei der geheimen Falltür, die nach Mannlich aus der Bildergalerie in die Werkstatt des herzoglichen Büchsenmachers führte; FAKT, M1910 S. 431). Das Feuer zerriss es, die Steinkarren verstreuten die Seiten. 1840 fand Laub eine Seite in einem ausgebrochenen Mauergraben und wollte den Rest vermessen. In der Nacht holte ihn die Meute.
 
-**Die Meute.** Die Parforcehunde des Herzogs (FAKT: ein „Zwinger für tausend Hunde“, Mannlich) wurden nie abgeblasen, denn der Herzog floh in der Nacht (FAKT). In der Fiktion jagt eine nicht abgeblasene Jagd weiter. Nachts, in jeder Erinnerung, laufen Hunde aus Rauch mit Augen wie Laternen, und ein **Pikeur** zu Pferd bläst das Horn. Wer die Chronik trägt, riecht nach dem Hof. Die Meute stellt ihn: Wer gestellt wird, wacht in der Feldstation auf.
+**Die Meute.** Die Parforcehunde des Herzogs (FAKT: ein „Zwinger für tausend Hunde“, Mannlich) wurden nie abgeblasen, denn der Herzog floh in der Nacht (FAKT). In der Fiktion jagt eine nicht abgeblasene Jagd weiter. Nachts, in jeder Erinnerung, laufen Hunde aus Rauch mit Augen wie Laternen, und ein **Pikeur** zu Pferd bläst das Horn. Wer die Chronik trägt, riecht nach dem Hof. Die Meute stellt ihn: Die Karlsbergquelle ist der Heimkehrpunkt. Schon während der Führung rennen zwei Hunde bellend ins Unterholz und kehren zurück.
 
-**Der Bogen.** Prolog: Du lernst, das Land zu lesen, und steigst zum ersten Mal ins Jahr 1789. Kapitel 1: der Hof auf seiner Höhe, der unbezahlte Lohn, die Menagerie und der stille Ort des Feuerwerksunglücks von 1785. Kapitel 2: Die Nacht der Flucht. Du läufst der Spur des Warners aus Rohrbach nach, bis der General fragt, was die Lichter im Wald sind. „Das sind Kalköfen“ (FAKT, Mannlich), und eines der Lichter ist deine Laterne. Kapitel 3: Der Brand. Die Galerie ist leer, die Kisten des Naturalienkabinetts stehen gepackt und abbestellt, der Festsaal stürzt ein, und du rettest genau einen Gegenstand. Kapitel 4: Der Steinbruch. Die Ruine verliert ihre Steine, während du dastehst, und du folgst einem markierten Block von der Hohenburg über den Karlsberg bis nach Homburg.
+**Der Bogen.** Prolog: Du folgst der Gruppe, fotografierst Ricke und Kitz, findest Laubs Bussole und berührst zum ersten Mal das Wasser. Kapitel 1: der Hof auf seiner Höhe, der unbezahlte Lohn, die Menagerie und der stille Ort des Feuerwerksunglücks von 1785. Kapitel 2: Die Nacht der Flucht. Du läufst der Spur des Warners aus Rohrbach nach, bis der General fragt, was die Lichter im Wald sind. „Das sind Kalköfen“ (FAKT, Mannlich), und eines der Lichter ist deine Laterne. Kapitel 3: Der Brand. Die Galerie ist leer, die Kisten des Naturalienkabinetts stehen gepackt und abbestellt, der Festsaal stürzt ein, und du rettest genau einen Gegenstand. Kapitel 4: Der Steinbruch. Die Ruine verliert ihre Steine, während du dastehst, und du folgst einem markierten Block von der Hohenburg über den Karlsberg bis nach Homburg.
 
 **Die Enthüllung.** Im zerfallenden Jahr 1796 frisst der **Steinfraß** die Erinnerung: das Vergessen, das nach dem Feuer kam. Die Meute treibt dich durch den Nebel, aber nicht ins Verderben, sondern hinaus. Am Hundezwinger legst du dich zum ersten Mal absichtlich hin und lässt die Laterne brennen. Die Hunde legen sich um dich. Der Pikeur steigt ab: Es ist **Jost**, alt geworden in der Erinnerung. „Die Meute reißt nicht. Sie stellt. Ich hab jeden heimgeschickt, bevor der Berg ihn frisst. Nur den Geometer nicht. Der hat sich nicht hingelegt.“ Die Chronik ist vollständig. Was das Feuer nicht fraß, waren die Steine, die Namen und die Hunde. Und das **Baumagazin**, das einzige Gebäude, das stehen blieb (FAKT), ausgerechnet ein Lager für Baumaterial, während der Rest selbst zur „Baustoffhandlung“ wurde (FAKT).
 
-**Das Ende.** Du entscheidest, was aus der Chronik wird: **Ins Museum** (die Wahrheit, mit Quellen; die Jagd wird abgeblasen), **Verbrennen** (Ruhe für die Hunde, Stille für die Stimmen) oder **Behalten** (das Land erinnert sich weiter, und die Meute folgt dir). Kein Ende ist richtig. Deine LESARTEN färben den Epilog.
+**Das Ende.** Du entscheidest, was aus der Chronik wird: **Ins Museum** (die Wahrheit, mit Quellen; die Jagd wird abgeblasen), **Verbrennen** (Ruhe für die Hunde, Stille für die Stimmen) oder **Behalten** (das Land erinnert sich weiter, und die Meute folgt dir). Kein Ende ist richtig. Deine Taten färben den Epilog. Danach holst du die Führung beim [Abschlussfest](06-enden.md#8-das-fest) auf dem Plateau ein.
 
 ---
 
@@ -46,22 +52,32 @@ Lokales Koordinatensystem: `x = E − 381000`, `z = −(N − 5465000)` (EPSG:25
 
 | Kapitel | Ära | Spielbereich (Anker, x/z, Radius) | Ziele | Bedrohungen | Set piece | Dauer |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Prolog „Vermessung“** | heute (November) | Feldstation 760/−930 r30 · Damm Karlsbergweiher 819/−875 r25 · Orangerie-Stützmauer KB-30 1237/−966 r40 · Ehrenhof TF-01 1216/−1114 r35 · Hohlweg KB-10 1172/−1238 r20 · Eiskeller KB-50 1508/−1296 r15 | Relief lesen (1–3), Karte vergleichen (M), Schlossgrundriss finden, erster Zeitwechsel | keine; nur Unbehagen (Spuren, Horn in der Ferne) | Das Schloss steigt aus dem Boden | 15–20 min |
-| **1 „Der Hof“** | Sommer 1789, Tag → Abend → Nacht | Ehrenhof 1216/−1114 · Registratur B03.1.eg-registratur 1202/−1153 · Bauplatz Galerie-Ostende KB-B07 1276/−1228 · Orangerie B10.1.s-pfeilersaal 1242/−967 · Zwinger KB-B23 1216/−1571 · Apfelallee TF-14 · Tschifflik-Terrasse KL-B46 1822/49 · Amphitheater KL-B40 1935/87 · Menagerie-Terrassen KL-B43 2037/164 · Rondell TF-36 1815/348 | Hannes Lohn, der Hof und seine Kosten, die Menagerie, der Gedenkort von 1785 | Tag: Ölvorrat; Nacht (Karlslust): erste Meute | Die Meute in der Karlslust; Gedenkzeile am Rondell | 30–35 min |
+| **Prolog „Die Führung“** | heute (November) → 1789 | Wanderparkplatz · Felsenpfad · Ricke und Kitz · Karlsbergweiher · Karlsbergquelle | Bewegung, Zuhören, Schleichen, Handyfoto, Messstab, Bussole und erster Zeitwechsel | Wind und Hunde (Stimmung) | Ricke und Kitz, Wasser und Bussole | siehe [Prolog](01-prolog.md) |
+| **1 „Der Hof“** | heute → Sommer 1789, Tag → Abend → Nacht | Karlsbergquelle · Ehrenhof 1216/−1114 · Registratur B03.1.eg-registratur 1202/−1153 · Bauplatz Galerie-Ostende KB-B07 1276/−1228 · Orangerie B10.1.s-pfeilersaal 1242/−967 · Zwinger KB-B23 1216/−1571 · Apfelallee TF-14 · Tschifflik-Terrasse KL-B46 1822/49 · Amphitheater KL-B40 1935/87 · Menagerie-Terrassen KL-B43 2037/164 · Rondell TF-36 1815/348 | Hannes Lohn, der Hof und seine Kosten, die Menagerie, der Gedenkort von 1785 | Tag: Ölvorrat; Nacht (Karlslust): erste Meute | Die Meute in der Karlslust; Gedenkzeile am Rondell | 30–35 min |
 | **2 „Die Flucht“** | Nacht 9./10. Feb. 1793, Frost, Nebel | Parkzaun am Carlsluster Torhaus KB-B84 1680/−400 r30 · Apfelallee TF-14 · Orangerie 1242/−967 · Wachhaus Nord KB-B38 1171/−1123 · Schreibkabinett B01.1.eg-kabinett 1269/−1110 · Hohlweg KB-10 · Karlsbergweiher 877/−869 | Der Spur des Warners folgen, die Warnung hören, die Abfahrt, entkommen | Meute + Pikeur (Hauptjagd) | „Die Parforcejagd“; „Das sind Kalköfen“ | 25–30 min |
 | **3 „Die Nacht“** | 28. Juli 1793, Abend → Nacht | Ehrenhof · Küchenhof TF-02 1212/−1180 · Corps de logis KB-B01 (EG + Festsaal B01.2.og-festsaal 1266/−1127) · Registratur · Sammlungsflügel KB-B04 · Bildergalerie B06.1.bildergalerie 1230/−1220 · Zwinger KB-B23 | Die Chronik unter der Galerie holen, einen Gegenstand retten, hinauskommen | Feuer (Raumgraph), Meute draußen | „Der brennende Festsaal“ | 30–35 min |
 | **4 „Der Steinbruch“** | 1796 (zerfallend) → 1840 (Echo) → heute | Wachhäuser am Taleingang KB-B63/64 497/−900 · Westrand-Sicht 200/−905 · Baumagazin KB-B29 511/−827 · Ehrenhof (Steinplatz) · Ausbruchgräben KB-06 1241/−1196 · Forsthausbrunnen KB-51 1386/−1477 · Hohlweg KB-10/KB-11 · Zwinger KB-B23 | Dem markierten Stein folgen; Laubs Geständnis; die Wahrheit über die Meute; Ende wählen | Steinfraß, Meute (treibt) | „Die Steine lösen sich auf“; „Sich stellen“ | 25–30 min |
-| **Enden** | heute, Morgengrauen | Zwinger → Feldstation | Museum / Verbrennen / Behalten | – | Epilog | 5 min |
+| **Enden** | heute, Dämmerung | Zwinger → Plateau | Museum / Verbrennen / Behalten | – | Epilog und Abschlussfest | siehe [Enden](06-enden.md) |
 
 Gesamt: etwa 2 h 10 min bis 2 h 45 min.
 
-**Reisen.** Im Heute dient der Geisterblick (F) auch als Schnellflug zwischen freigeschalteten Ankern (Richtwert 25 m/s). In der Vergangenheit geht man zu Fuß. Ein Zeitwechsel (Q) geht nur an einem Anker. Q halten (3 s) bringt dich überall zur Feldstation zurück, aber nicht, solange dich die Meute sieht.
+**Reisen.** Die Vermessungswerkzeuge liegen auf 1–5 und M, auf Touch unter „Erkunden“.
+Ein Zeitwechsel (Q) nutzt die Anker oder den Trog. Q halten führt zurück zur Karlsbergquelle.
+Während der Führung hilft dieselbe Taste, die entfernte Gruppe wiederzufinden.
 
 ---
 
 ## 3. Die Wow-Momente (filmisch beschrieben)
 
-**W1 – Das Schloss steigt aus dem Boden (Prolog, Ehrenhof).** Du stehst auf der Lichtung im kalten Novemberlicht, der Scan läuft im Modus Lokales Relief: graue Rechtecke, Kanten, eine Stufe. Du drückst Q. Der Ton fällt weg, nur ein hoher Sinuston aus der Bussole bleibt. Das Relief-Shading beginnt zu leuchten wie Kupferstich-Schraffur. Aus jeder Mauerkante wächst eine Linie nach oben, erst als Drahtgitter in Konfidenzfarben (grün, orange, rosa), dann als verputzte Wand. Die Bäume werden durchsichtig und verschwinden von unten nach oben, und mit ihnen der Wald: 1789 war der Berg offen (FAKT, Pleine vue 1791). Gras, Kies, ein Himmel wie gemalt. Das Corps de logis steht vor dir, Schieferdach, Blitzableiter (FAKT: alle Gebäude hatten welche). Ein Diener ruft „Zu Fuß, Monsieur!“. Ganz fern im Norden heult ein einziger Hund, dann zieht dich Laub zurück.
+Die Szenenskizzen beschreiben die Bildsprache der Kapitel. Die Story-Dateien bestimmen den Ablauf.
+
+**W0 – Ricke und Kitz (Prolog).** Goldenes Laub, Gegenlicht. Gerold hält die Gruppe an.
+Zwischen den Buchen stehen Ricke und Kitz in grauem Winterfell (`cx.T4`, Entwurf der Codex-Karte).
+Du schleichst geduckt heran und hältst still, wenn die Ricke den Kopf hebt.
+
+**W1 – Das Wasser erinnert sich (Prolog und Kapitel 1).** Der Bach läuft an der Quelle rückwärts.
+Der Wald weicht dem offenen Berg der Rekonstruktion. In Kapitel 1 führt der Weg an der Orangerie
+vorbei hinauf zum Schloss.
 
 **W2 – Der Ort des Feuerwerks (Kapitel 1, Rondell über der Kaskade).** Dämmerung in der Karlslust, das Rauschen der Kaskade. Halte E: Das Echo des 19. Dezember 1785 legt sich über den Sommer. Schnee auf den Stufen, Tausende Lämpchen, das Rufen einer Menge am Hang. Ein Feuerwerker sagt, er wolle nicht dreißig Schritt von diesem Gerüst entfernt sein. Dann wird es schwarz und still, kein Bild, nur ein Licht am Himmel, das langsam erlischt, und Schnee, der rückwärts fällt. Die Bussole schweigt. In der Chronik erscheint eine Zeile, die du nicht ausfüllen musst.
 
@@ -79,28 +95,15 @@ Gesamt: etwa 2 h 10 min bis 2 h 45 min.
 
 ---
 
-## 4. Fortschritt: Wissen schaltet frei
+## 4. Fortschritt und Freischaltungen
 
-Fortschritt entsteht nur durch bestätigte FAKT-Einträge (je drei richtige werden zusammen bestätigt; Regel siehe §6).
-
-| Freischaltung | Ausgelöst durch | Wirkung |
-| --- | --- | --- |
-| Relief-Blick 1 (Hillshade), Geisterblick (F), Laub-Karte 1840 (M) | Start / Tutorial | Grundwerkzeuge |
-| Relief-Blick 2 (Lokales Relief) | Tutorial-Schritt am Damm | Kleine Formen sehen |
-| Relief-Blick 3 (VAT) | Tutorial-Schritt an der Orangerie | Kanten, Gruben, Hohlwege |
-| **Zeitwechsel (Q) am Ehrenhof** | Prolog, 1. bestätigter Satz | Erster Wechsel nach 1789 |
-| Kapitel 1 offen | Prolog, 2. bestätigter Satz | Anker Ehrenhof 1789 |
-| Anker Karlslust (Tschifflik-Terrasse) | Kap. 1, 1. Satz | Zweiter Teil von Kap. 1 |
-| Spurenleser 1 (Hornrufe mit Bedeutung) | Kap. 1, 2. Satz | Untertitel nennen, was der Ruf bedeutet |
-| Kartograf 2 (Messtischblatt 1935), Anker Torhaus 1793 | Kap. 1, 3. Satz | Kapitel 2 offen |
-| Spurenleser 2 (Meute-Routen als Fährtenlinien) | Kap. 2, 1. Satz | Patrouillen im Relief sichtbar |
-| Kartograf 3 (Messen, R), Anker Ehrenhof 1793-07 | Kap. 2, 2. Satz | Kapitel 3 offen |
-| Baumeister 1 (Raumnamen in Erinnerungen) | Kap. 3, 1. Satz | Räume sind beschriftet |
-| Baumeister 2 (Konfidenzansicht D/I/N/U) | Kap. 3, 2. Satz | Was ist belegt, was vermutet? |
-| Röntgenblick (Punktwolke), Anker Taleingang 1796 | Kap. 3, 3. Satz | Kapitel 4 offen |
-| Finale (Zwinger) | Kap. 4, 2. Satz | Enthüllung, Enden |
-
-Schnittreihenfolge bei Zeitnot (PRD §10): Röntgenblick wird zur reinen Zwischensequenz; Menagerie-Nebenbeat (Kasuar) entfällt.
+| Freischaltung | Ausgelöst durch |
+| --- | --- |
+| Fotomodus und Album | Handy im Heute, Einführung bei Ricke und Kitz (`t10`) |
+| Messstab | Marlenes Leihgabe am Weiher (`t13`) |
+| Bussole, Laub, erster Zeitwechsel | Fund am Trog und „Wasser berühren“ (`t17`) |
+| Relief 3, Kartograf 1, Ausrüstung und Stufe 3 | Übergabe nach dem ersten Blick auf 1789 (`t18`) |
+| Weitere Fähigkeiten und Kapitel | Quests und Story. Siehe [Questkatalog und Freischaltungen](../../docs/ACTION-RPG.md#11-quest-catalogue). |
 
 ---
 
@@ -124,7 +127,10 @@ Schnittreihenfolge bei Zeitnot (PRD §10): Röntgenblick wird zur reinen Zwische
 
 ---
 
-## 6. Regeln für die Chronik (Zusammenfassung für Engineers)
+## 6. Historische Chronik-Regeln
+
+> The original case-page design used the rules below. The action RPG now advances through quests
+> and story objectives. Confirming old case pages is historical design context for the chapter drafts.
 
 1. Eine **Fallseite** pro Kapitel (Prolog eingeschlossen), 7–10 Einträge.
 2. Ein **FAKT**-Eintrag ist richtig, wenn alle Lücken richtig sind. Sobald **drei** FAKT-Einträge richtig sind, werden genau diese drei bestätigt (Obra-Dinn-Regel). Jede Fallseite hat 6 oder 9 FAKT-Einträge.
@@ -140,9 +146,11 @@ Schnittreihenfolge bei Zeitnot (PRD §10): Röntgenblick wird zur reinen Zwische
 
 ## 7. Was in diesem Spiel erfunden ist (Fiktionsliste)
 
-Erfunden: Quirin Laub und seine Bussole; Marlene; Kanzlist Gottlob Soll; Hanne, ihr Mann Matthes und ihr Sohn Peter; der Hundejunge Jost und der Pikeur; die Namen der Hunde; die Chronik; die Meute als Spuk; der Steinfraß; das Steinmetzzeichen; alle Laufwege der Echos; der genaue Ort von Hannes Bauplatz; Matthes' Unfall; alle Dialoge, soweit sie nicht als [Z] oder [P] markiert sind; die Hornrufe des Spiels; die Feldstation.
+Erfunden: Quirin Laub und seine Bussole; Marlene; Kanzlist Gottlob Soll; Hanne, ihr Mann Matthes und ihr Sohn Peter; der Hundejunge Jost und der Pikeur; die Namen der Hunde; die Chronik; die Meute als Spuk; der Steinfraß; das Steinmetzzeichen; alle Laufwege der Echos; der genaue Ort von Hannes Bauplatz; Matthes' Unfall; alle Dialoge, soweit sie nicht als [Z] oder [P] markiert sind; die Hornrufe des Spiels; Gerold Imhoff und die Führung; die heutigen Doppelgänger und ihre Hunde; die Bussole im Trog; Marlenes Leihgabe; das Abschlussfest.
 
-Nicht erfunden (mit Quelle im Codex): die Bauten und ihre Lage als Hypothese der Rekonstruktion; Kosten und Schulden; Gagerns und Schlözers Urteile; der Zwinger für tausend Hunde; die Menagerie; das Feuerwerksunglück von 1785; die Warnung durch einen Bauern aus Rohrbach und die Reaktion des Herzogs; „Das sind Kalköfen“; die geretteten Sammlungen und die abbestellten Kisten; Stroh, Fackel und Brand am 28. Juli 1793; die Pacht von 1796; die Hohenburg als Steinbruch; das Baumagazin; die Karte von 1836–41; die Reliefmerkmale.
+Nicht erfunden (mit Quelle im Codex): die Bauten und ihre Lage als Hypothese der Rekonstruktion; Kosten und Schulden; Gagerns und Schlözers Urteile; der Zwinger für tausend Hunde; die Menagerie; das Feuerwerksunglück von 1785; die Warnung durch einen Bauern aus Rohrbach und die Reaktion des Herzogs; „Das sind Kalköfen“; die geretteten Sammlungen und die abbestellten Kisten; Stroh, Fackel und Brand am 28. Juli 1793; die Pacht von 1796; die Hohenburg als Steinbruch; das Baumagazin; die Karte von 1836–41; die Reliefmerkmale. Die [Tour-Quellen](07-codex.md) führen das alte
+Baumagazin, den Felsenpfad, den Weiher und die Quelle auf. Baujahr und Zweck des Weihers, Fassung
+und Schlossversorgung der Quelle und ein Steinbruch am Felsenpfad bleiben offen.
 
 Historische Personen (Herzog Karl II. August, Mannlich, Esebeck, Pfeffel, Salabert, Schügens, General Landremont, Nikel Pfeiffer) sagen im Spiel nur, was Mannlich überliefert. **Nikel Pfeiffer spricht nicht**, weil von ihm keine Worte überliefert sind. Der Herzog ist nie zu sehen, nur zu hören.
 
@@ -156,4 +164,4 @@ Historische Personen (Herzog Karl II. August, Mannlich, Esebeck, Pfeffel, Salabe
 - **Fehlende Gebäude**: Die Rotunde mit Kolonnade von 1789 neben der Galerie und das Tempelzimmer am Galerie-Ostende stehen in den Quellen, aber nicht (oder nur als Pavillon KB-B07) im Modell. Die Bibel nutzt KB-B07 als Platzhalter.
 - **Wald 1789**: 1789 war der Berg offen (Wiesen, Felder, Alleen). Der heutige Wald darf in Erinnerungen nicht erscheinen (Wow-Moment W1 hängt davon ab).
 - **Privatgrund**: Das Baumagazin ist heute der Karlsberger Hof (privat). Im Heute nur von der Straße ansehen, kein Betreten. Szenen im Gebäude gibt es nur in der Erinnerung 1796.
-- **Datenstand**: Die Karte 1836–41 liegt in der georeferenzierten Fassung am Schloss um ≈ +50 m nach Osten verschoben (LIDAR-Auswertung). Das ist Spielinhalt (Prolog) und kein Bug, der behoben werden muss.
+- **Datenstand**: Die Karte 1836–41 liegt in der georeferenzierten Fassung am Schloss um ≈ +50 m nach Osten verschoben (LIDAR-Auswertung). Der Versatz dient als Ausgangspunkt für den Kartenvergleich im Entwurf.

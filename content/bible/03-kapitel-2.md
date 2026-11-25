@@ -1,5 +1,9 @@
 # Kapitel 2 „Die Flucht“
 
+> The chapter outline retains the original case-page and surveyor-era staging. Mentions of the
+> Feldstation, old opening and confirmed sentences are historical. For the playable progression,
+> use the [chapter files](../story/README.md) and the [quest catalogue](../../docs/ACTION-RPG.md#11-quest-catalogue).
+
 | | |
 | --- | --- |
 | Ära | `1793-02`: Nacht vom 9. auf den 10. Februar 1793 (ein Samstag), Frost, Bodennebel, Raureif |

@@ -1,6 +1,8 @@
 # Codex
 
-> **Tour-Konzept (Stand 2026-11-23):** Neue Karten und geänderte Freischaltungen der Führung stehen in [`docs/design/tour/bible/07-codex-impact.md`](../../docs/design/tour/bible/07-codex-impact.md). Zusammenführung: TASK-007.
+The [Codex builder](../../scripts/content-build/codex.mjs) defines the shipped cards and sources.
+The [tour cards and photo cards](#tour-karten-und-fotokarten) collect drafts for the four stations
+and the deer scene. Their working IDs reserve no runtime entries.
 
 Der Codex enthältDer Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`cx.42` stehen in `docs/IDEAS-ROUND11.md` §1, `cx.43`–`cx.46` unten, `cx.47` „Treibgut“ gehört zu den Fläschchen, `src/systems/flaschen`) und **8 Reliefmuster-Karten** (`rm.01`–`rm.08`). Eine Karte wird freigeschaltet, wenn der zugehörige FAKT-Eintrag bestätigt ist, oder wie in der Spalte „frei durch“ angegeben. Nach dem Ende ist der ganze Codex offen.
 
@@ -49,13 +51,22 @@ Der Codex enthältDer Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`
 | LITSAAR-KNIGGE | Literaturland Saar: Adolph Freiherr Knigge | https://www.literaturland-saar.de/personen/adolph-freiherr-knigge/ |
 | SMZW | Stadtmuseum Zweibrücken: Das Tablett „Le Château de Carlsberg“ | https://www.zweibruecken.de/de/kultur-tourismus/kultur-erleben/kulturelle-einrichtungen/stadtmuseum/neuigkeiten/ |
 | LIDAR | Eigene Auswertung im Schwesterprojekt: `saar-lidar-explorer/schloss-karlsberg/research/03-lidar-site-analysis.md`, `lidar_features.geojson` | (lokal, nicht öffentlich) |
+| HOM-HF17 | Kreisstadt Homburg, Historischer Führer Nr. 17 „Karlsberger Hof“ (2005), archiviert | https://web.archive.org/web/20080123101148/http://www.homburg.de/content/pages/1071.htm |
+| SPT-KR | Saarpfalz-Touristik: Karlsberg-Runde | https://www.saarpfalz-touristik.de/touren/karlsberg-runde-838271451c |
+| OSM-KW | OpenStreetMap: Karlsbergweiher (Relation 17145701) | https://www.openstreetmap.org/relation/17145701 |
+| WD-KW | Wikidata Q71702316 (Karlsbergweiher) | https://www.wikidata.org/wiki/Q71702316 |
+| OSM-KQ | OpenStreetMap: Karlsbergquelle (Knoten 368031320), Karlsbergbach (Relation 10294956) | https://www.openstreetmap.org/node/368031320 · https://www.openstreetmap.org/relation/10294956 |
+| KOMOOT-KQ | Fotos der heutigen Fassung | Quellenregister des [Codex-Builders](../../scripts/content-build/common.mjs) |
+| WB-REH | Wochenblatt, 24.07.2026: Rekord bei Saar-Jägern | https://www.wochenblatt-reporter.de/saarland/c-lokales/rekord-bei-saar-jaegern-so-viel-rehwild-wie-nie-erlegt_a834005 |
+| DWS-REH | Deutsche Wildtier Stiftung: Reh | https://www.deutschewildtierstiftung.de/wildtiere/reh |
+| WP-REH | de.wikipedia: Reh | https://de.wikipedia.org/wiki/Reh |
 
 ---
 
 ## Karten
 
 ### cx.01 – Der Ehrenhof
-- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.p.1`
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frühere Freischaltung:** `entry.p.1`
 - **Text:** Die große, ebene Lichtung im Wald ist der Ehrenhof des Schlosses. Im Laserscan liegt sie auf rund 344,8 m, eine in den Hang geschnittene Terrasse, an drei Seiten von geraden Kanten begrenzt: Dort standen das Corps de logis und die beiden Flügel. Heute ist nur die Fläche geblieben, und wer sie kennt, sieht das Schloss darin.
 - **Quellen:** SBT; WP-SK; LIDAR (KB-01)
 - **Lizenz:** eigener Text
@@ -248,19 +259,19 @@ Der Codex enthältDer Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`
 - **Lizenz:** eigener Text
 
 ### cx.32 – Das Baumagazin
-- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.k4.5`
-- **Text:** Vom ganzen Karlsberg steht nur noch ein Gebäude: das ehemalige Baumagazin am Fuß des Berges, das Lager für Baumaterial. Es war später Brauerei, Forsthaus und Villa eines Brauereidirektors und heißt heute Karlsberger Hof. Es ist Privatbesitz und nur von der Straße aus zu sehen. Der Rest des Schlosses wurde selbst zur „Baustoffhandlung“.
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** Kapitel 4, Baumagazin
+- **Text:** Vom ganzen Karlsberg steht nur noch ein Gebäude: das ehemalige Baumagazin am Fuß des Berges, das Lager für Baumaterial. Es wurde später als Forsthaus genutzt und heißt heute Karlsberger Hof. Es ist Privatbesitz und nur von der Straße aus zu sehen. Der Rest des Schlosses wurde selbst zur „Baustoffhandlung“.
 - **Quellen:** WP-SK; SKD; RLS
 - **Lizenz:** eigener Text
 
 ### cx.33 – Die Karte von 1836–41
-- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.p.5`, `entry.p.6`
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** Kapitel 4, Kartenvergleich
 - **Text:** Seit 1816 gehörte die Gegend als Rheinkreis zu Bayern. Die Bayerischen Originalpositionsblätter 1:25 000 von 1836–41 zeigen „Ruine Carlsberg“, „Carlsbergerhof“ und „Sanddorf“. In der heutigen georeferenzierten Fassung liegt das Schloss rund 50 m zu weit im Osten, mit örtlichen Abweichungen bis etwa 30 m. Den Geometer Laub, der behauptet, er habe die Karte aufgenommen, gab es nicht.
 - **Quellen:** HIST; LIDAR (Abschnitt 1 Nr. 8)
 - **Lizenz:** eigener Text; Kartenbild dl-de/by-2-0, © GeoBasis-DE/LVGL-SL
 
 ### cx.34 – Der Laserscan von 2025
-- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** `entry.p.1`
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frühere Freischaltung:** `entry.p.1`
 - **Text:** 2025 hat das Saarland aus der Luft mit Laser vermessen, im Winter ohne Laub. Seit Januar 2026 sind die Daten frei. Rechnet man Bäume und Häuser heraus, bleibt das Gelände: das Geländemodell DGM1 mit einem Messpunkt pro Meter. Relief-Ansichten wie Schummerung, Lokales Relief und VAT machen sichtbar, was unter dem Wald liegt: Terrassen, Gruben, Hohlwege, Ausbruchgräben.
 - **Quellen:** LVGL; LIDAR
 - **Lizenz:** eigener Text; Daten dl-de/by-2-0, © GeoBasis-DE/LVGL-SL
@@ -301,6 +312,16 @@ Der Codex enthältDer Codex enthält **47 Karten** (`cx.01`–`cx.47`; `cx.41`/`
 - **Text:** Die Orangerie entstand ab 1780 aus der früheren Schweizerei; im Pfeilersaal standen im Winter die Kübelpflanzen, und Mannlich wohnte im Obergeschoss. Im Laserscan ist ihre Stützmauer eine schnurgerade Kante von rund 81 m mit einer Stufe von 5,3 m. Ihre Reste gehören heute zu den wenigen sichtbaren Mauern am Karlsberg.
 - **Quellen:** SBT; WP-SK; M1910; LIDAR (KB-30)
 - **Lizenz:** eigener Text
+
+### cx.41 – Die Karlsbergquelle
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein
+- **Text:** In einer Rinne zwischen Weiher und Orangerie entspringt der Karlsbergbach. Am Trog führt ein Rohr das Wasser in einen ausgehöhlten Stamm. Hangaufwärts liegt eine kleine gewölbte Brunnenstube. Wann die Quelle gefasst wurde und ob sie das Schloss versorgte, bleibt offen.
+- **Quellen:** OSM-KQ; KOMOOT-KQ; LIDAR (Quellmulde 1061/−835)
+
+### cx.42 – Das Wasser erinnert sich
+- **Label:** FIKTION · **Sicherheit:** – · **fiction:** ja
+- **Text:** Das Wasser bewahrt Erinnerungen und kann den Besucher in ein anderes Jahr führen. Ein Tropfen in der Bussole hält den Weg eine Weile offen. Auch die barocke Brunnenstube mit Steinbecken und Bronzespeier ist für das Spiel erfunden.
+- **Quellen:** –
 
 ### cx.43 – Knigges Reisebriefe
 - **Label:** STRITTIG · **Sicherheit:** D · **fiction:** nein · **frei durch:** `q.k1.brief`
@@ -379,3 +400,81 @@ Diese Karten stehen ab dem Prolog im Codex (`clue.p.handbuch`). Jede Karte hat: 
 - **Im Relief:** Eine glatte, völlig ebene Fläche (Wasser liefert im Laserscan oft keine Punkte und wird flach gefüllt), an einer Seite ein gerader Damm quer zum Tal.
 - **Verwechslung:** Wiesen in Talauen, trockengefallene Teiche (dann sieht man den Damm ohne Wasser).
 - **Am Karlsberg:** der Karlsbergweiher mit Damm an der Westseite (819/−875), die Schwanenweiher und das Tosbecken in der Karlslust.
+
+## Tour-Karten und Fotokarten
+
+**Entwürfe.** `cx.T1`–`cx.T4` und die Fotokarten sind Arbeits-IDs. Die geplanten Auslöser
+unten gehören zum Entwurf. Die gespielte Führung nutzt die Stationstexte in der Story-Datei.
+
+### cx.T1 – Das Gebäude, das blieb
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** Station 1 (Entwurf)
+- **Text:** Am Fuß des Karlsbergs steht der Karlsberger Hof, das einzige noch erhaltene Gebäude der Schlossanlage. Er entstand zur Bauzeit des Schlosses als Vorrats- und Wohngebäude, als Lager für Baumaterial mit Wohnungen. Nach 1804 wurde er versteigert und als Hofgut bewirtschaftet; 1830 lief darin eine Zuckerraffinerie, 1850 kaufte ihn der bayerische Staat, ab 1866 war er Forsthaus. Heute ist er Privatbesitz und nur von außen zu sehen.
+- **Streitpunkt:** Die Stadt Homburg nennt 1776–85 als Bauzeit; 1776 liegt vor dem Kauf des Louisenhofs (1777, `cx.02`). Darum steht im Text nur „zur Bauzeit des Schlosses“.
+- **Quellen:** HOM-HF17; SKD
+- **Lizenz:** eigener Text
+- **Hinweis:** Keine Eigentümer- oder Markennennung. Der Name „Karlsberger Hof“ steht hier als Name des Ortes (Adresse, Quellentitel), nur als Ort (Q2 entschieden). Das Gebäude wird im Heute nicht modelliert.
+- **Zusatz (optional, Quelle nachtragen):** Das Gebäude ist heute verändert: kürzer als das Baumagazin, mit neuem Dach und einem zusätzlichen Geschoss (Ergebnis der Schwester-Repo-Prüfung, 2026-11-20). Dass es heute noch steht, sagen schon cx.32 und [Kapitel 4](../quests/04-kapitel-4.quests.json); für „verändert“ vor dem Einbau die Quelle nennen, sonst weglassen.
+- **Nicht verwechseln:** KB-B30 „Carlsberger Hof (Meierei)“ ist ein anderer Hof von 1789, rund 120 m südlich; das Baumagazin ist KB-B29.
+
+### cx.T2 – Der Felsenpfad
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** Station 2
+- **Text:** Der Felsenpfad führt vom Feldweg am Karlsberger Hof hinauf zum Karlsbergweiher und gehört zum WaldPark Schloss Karlsberg. Er führt an kleinen Felsen aus Buntsandstein vorbei, dem roten Stein der Gegend, der am Schlossberg in Homburg rund 250 Millionen Jahre alt ist. Die Felsköpfe darf man aus Sicherheitsgründen nicht betreten. Ob hier für das Schloss Stein gebrochen wurde, ist **nicht belegt**; belegt ist, dass die Trümmer der Hohenburg dem Herzog als Steinbruch dienten (`cx.31`).
+- **Quellen:** SBT; SPT-KR; EN-HB; BW
+- **Lizenz:** eigener Text
+- **Hinweis:** OSM hat keinen Namen für den Weg; „Felsenpfad“ stammt aus dem Faltblatt (SBT). Die genaue Wegführung ist aus der Schlossberg-Tour erschlossen ([Quellen zur Führung](../../docs/design/tour/sources.md)).
+
+### cx.T3 – Der Karlsbergweiher
+- **Label:** FAKT (mit offenem Teil) · **Sicherheit:** D (Relikt) / U (Baujahr, Zweck) · **fiction:** nein · **frei durch:** Station 3
+- **Text:** Der Karlsbergweiher ist ein Überbleibsel der Schlossanlage, ein Rest der Wasserbecken im Schlosspark. Im Laserscan sind der gerade Damm im Westen und die kleine Insel deutlich zu sehen. **Offen ist**, wann er angelegt wurde und ob er als Zierteich oder als Fischweiher diente; dafür gibt es keine Quelle.
+- **Streitpunkt:** Baujahr und Zweck unbekannt (keine Quelle; Schwan 2012 und Weber 1987 wären zu prüfen).
+- **Quellen:** SBT; EN-KC; WD-KW; OSM-KW; LIDAR (KB-40, KB-42)
+- **Lizenz:** eigener Text
+- **Hinweis:** Die Fläche (≈ 0,54 ha) ist aus dem OSM-Umriss gemessen, kein veröffentlichter Wert; nicht in den Kartentext.
+
+### cx.T4 – Rehe im November
+- **Label:** FAKT · **Sicherheit:** D · **fiction:** nein · **frei durch:** das gute Foto von Ricke und Kitz (Entwurf)
+- **Text:** Rehe sind im Saarland häufig: Im Jagdjahr bis März 2026 wurden gut 12.500 erlegt, Rotwild dagegen nur 170 Tiere. Die Kitze kommen im Mai und Juni zur Welt; ihre Flecken sind nach etwa zwei Monaten verschwunden. Im November sind sie fünf bis sechs Monate alt, tragen schon das graue Winterfell und folgen noch der Ricke. Erst zwischen Mitte März und Mitte Mai lösen sich die Mutterfamilien auf. Zur Zeit des Herzogs war dieser Wald Jagdrevier (→ `cx.05`, `cx.06`).
+- **Quellen:** WB-REH; DWS-REH; WP-REH; für den letzten Satz die Quellen von cx.05/cx.06 (WP-K2A, M1910)
+- **Lizenz:** eigener Text
+- **Hinweis:** Zahlen gelten für das Saarland, nicht für den Karlsberg. Rothirsche nicht zeigen.
+
+### Fotokarten (ohne EP, Album)
+
+Fotokarten sind kurze Kartenrückseiten, die ein gutes Foto freischaltet. Sie verweisen auf eine bestehende Karte und geben **keine** EP ([Prolog](01-prolog.md#5-übergabe-und-ep)).
+
+| Arbeits-ID | Titel | Freigeschaltet durch | Inhalt | Verweist auf |
+| --- | --- | --- | --- | --- |
+| `ph.sandstein` | Roter Stein | Foto Buntsandstein | ein Satz zum Buntsandstein | cx.T2 |
+| `ph.insel` | Die Insel | Foto der Insel | „Im Laserscan sieht man sie auch.“ | cx.T3, rm.08 |
+| `ph.tafel` | Was auf der Tafel steht | Foto der Infotafel an der Quelle | Kurzfassung von cx.41 (unser Text, nicht der der echten Tafel) | cx.41 |
+| `ph.orangerie` | Die Stufe | Foto der Orangerie-Stützmauer (später) | „81 m, 5,3 m tief.“ | cx.40 |
+| `ph.rund` | Neunzehn Häuser | Foto des Bärenzwinger-Runds (später) | | cx.12, cx.13 |
+| `ph.eiskeller` | Die Grube | Foto der Eiskeller-Grube (später) | | rm.02 |
+| `ph.ehrenhof` | Die Lichtung | Foto der Ehrenhof-Lichtung (später) | | cx.01 |
+
+---
+
+### Vorgesehene Codex-Anpassungen
+
+| Karten | Vorschlag |
+| --- | --- |
+| `cx.03` | Am Treffpunkt freischalten. |
+| `cx.32` | Karte zum Baumagazin von 1796 behalten, für die spätere Geschichte auf die Hof-Karte verweisen. |
+| `cx.33`–`cx.35` | Den Kartenvergleich in Marlenes vorgeschlagenen Messauftrag einbinden. Laserscan und Denkmalschutz am Weiher erklären. |
+| `cx.36` | Die erste Meute bleibt der spielbare Auslöser. Der Entwurf sieht einen früheren Zugang über die Punktwolke vor. |
+| `cx.38` | Gerold, die Doppelgänger, die Hunde von heute, den Fund im Trog und das Fest in die Fiktionsliste aufnehmen. |
+| `cx.41`, `cx.42` | Die Quelle an Station 4 vorstellen. Das Wassertretbecken liegt in der Nähe, seine genaue Lage bleibt offen. Den Fund der Bussole als FIKTION kennzeichnen. |
+| `rm.01`–`rm.08` | Das Reliefmuster-Handbuch über Marlenes App zugänglich machen. |
+
+Die alten Station-Clues `clue.p.lageplan` und `clue.p.messtischblatt` wurden mit „Vermessung“ aus
+dem spielbaren Prolog entfernt. Laminatkarte am Treffpunkt und Marlenes Tablet waren vorgeschlagene
+neue Orte für die Motive.
+
+### Offene Quellenfragen
+
+- **Baumagazin (`cx.32`).** Für die Nutzungen nach 1804 nennt HOM-HF17 ein Hofgut, eine
+  Zuckerraffinerie und ein Forsthaus. Die Entscheidung vom 20.11.2026 streicht die umstrittene
+  Formulierung zur weiteren Nutzung. Der bestehende Builder enthält noch die frühere Fassung.
+- **Weiher, Quelle und Felsenpfad.** Baujahr und Zweck des Weihers, Fassung und Schlossversorgung
+  der Quelle sowie der vermutete Steinbruch am Pfad bleiben offen. Zur weiteren Prüfung führen
+  SCHWAN12 und W. Weber, *Schloss Karlsberg* (1987).
