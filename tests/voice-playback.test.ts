@@ -12,7 +12,8 @@ it('finishes a recorded clip on the source ended event without a game update', (
     createBufferSource: () => source,
   };
   const buffer = { duration: 2.4 } as AudioBuffer;
-  const clip = new VoiceClip(context as unknown as AudioContext, buffer, { input, post: input }, null);
+  const releaseDuck = vi.fn();
+  const clip = new VoiceClip(context as unknown as AudioContext, buffer, { input, post: input }, null, () => releaseDuck);
 
   expect(clip.start()).toBe(true);
   expect(source.buffer).toBe(buffer);
@@ -22,6 +23,7 @@ it('finishes a recorded clip on the source ended event without a game update', (
   context.currentTime += buffer.duration;
   source.onended?.();
 
+  expect(releaseDuck).toHaveBeenCalledOnce();
   expect(clip.playing).toBe(false);
   expect(clip.done).toBe(true);
   expect(output.disconnect).toHaveBeenCalledOnce();
