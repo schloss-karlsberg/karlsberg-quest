@@ -64,7 +64,9 @@ describe('prompt key → touch icon', () => {
   it('maps the known keys', () => {
     expect(touchIconFor('E')).toBe('interact');
     expect(touchIconFor('q')).toBe('shift');
-    expect(touchIconFor('F')).toBe('fly');
+    expect(touchIconFor('1')).toBe('fly');
+    expect(touchIconFor('Geisterblick')).toBe('fly');
+    expect(touchIconFor('2')).toBe('relief');
     expect(touchIconFor('Leertaste')).toBe('dodge');
     expect(touchIconFor('Maus rechts')).toBe('bannlicht');
     expect(touchIconFor('J')).toBe('interact');
@@ -141,6 +143,18 @@ describe('Input.press (virtual touch actions)', () => {
     inp.press('dodge', false);
     expect(inp.wasPressed('dodge')).toBe(true);
     expect(inp.isDown('dodge')).toBe(false);
+  });
+  it('reads the Shift modifier at the relief key press', () => {
+    const inp = make();
+    inp.simulate('ShiftLeft', true);
+    inp.simulate('Digit2', true);
+    inp.simulate('Digit2', false);
+    inp.simulate('ShiftLeft', false);
+    expect(inp.wasPressedWithShift('scan')).toBe(true);
+    inp.endStep();
+    inp.press('scan', true);
+    expect(inp.wasPressed('scan')).toBe(true);
+    expect(inp.wasPressedWithShift('scan')).toBe(false);
   });
   it('works after the player remapped the key', () => {
     const inp = make();

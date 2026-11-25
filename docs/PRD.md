@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-25 | **Staff handoff and survey controls (TASK-007).** Marlene lends the Messstab at the Weiher, with a pickup notice and the staff visible after equipping. Survey tools use 1–5 and M on desktop and the „Erkunden“ submenu on touch. Older tour saves and custom bindings are supported. |
 | unreleased | 2026-11-25 | **Trail dressing (TASK-008, slice 2).** The present-day tour has German wayfinding at Karlsberger Hof, Felsenpfad and the Weiher, with benches at the Hof and Weiher and low sandstone at Felsenpfad. The group path stays clear on every graphics preset. The exact fittings and placements are FIKTION. |
 | unreleased | 2026-11-25 | **Surveyor content retirement (TASK-007).** Removed the former opening’s story, quest, clue and voice data from the active catalogs. Older saves still resume in „Der Hof“ with their history and earned rewards. The Bussole page remains part of the tour handover. |
 | unreleased | 2026-11-25 | **Present-day ground cover on Niedrig (TASK-008).** The tour's open November verges have sparse dry grass and occasional flowers. Reeds follow the Weiher's shallow bank, and the gravel tread and Quelle steps and trough stay clear. |
@@ -136,54 +137,44 @@ The research suggested USK 12 for reach. This draft follows the owner's decision
 
 ## 3. Core gameplay
 
-> **Superseded in part (D-008, 2026-11-15).** The core loop is now **quest → go → fight / collect → turn
-> in → hear the history → level up**; the full design (controls, combat, enemies, progression, loot,
-> quests, Pause pages, quest catalogue per chapter) is [`docs/ACTION-RPG.md`](ACTION-RPG.md). §3.1 and
-> §3.3 below describe the 0.2 deduction loop and stay for the record; §3.2 verbs and §3.4 threats remain
-> valid, extended by the combat verbs (Hieb, Wuchthieb, Ausweichen, Bannlicht, Schnellgegenstand).
-
-```mermaid
-flowchart LR
-    H[Karlsbergquelle / anchor] --> G[Quest giver]
-    G --> X[Into the land and its eras]
-    X --> F[Fight · collect · find · escort]
-    F --> T[Turn in: XP, loot, the real history, codex card]
-    T --> L[Level up, talent, survey skill opens a route]
-    L --> G
-```
-
-The original core verb (0.2) was **deduce**: walk the real land, step into its memory, bring back clues, and prove what happened.
+The opening is a guided tour of the present-day Karlsberg. The campaign uses the RPG loop in
+[`ACTION-RPG.md`](ACTION-RPG.md).
 
 ### 3.1 Core loop
 
+**Die Führung.** Meet the guide, follow the group and photograph the deer. At the Weiher, Marlene
+lends the player a Messstab. At the Karlsbergquelle, pick up the Bussole and touch the water to
+reach 1789. The tour ends at level 3 and hands off to „Der Hof“.
+
 ```mermaid
 flowchart LR
-    H[Field station<br/>present day, safe] --> S[Survey<br/>walk / fly, read relief,<br/>compare maps]
-    S --> X[Shift<br/>step into the era<br/>at this spot]
-    X --> I[Investigate under threat<br/>objects, echoes, documents;<br/>hide from the hunt]
-    I -->|caught or lantern out| H
-    I -->|return with clues| D[Deduce<br/>fill the Chronik,<br/>confirm in batches of 3]
-    D --> U[Unlock<br/>skill, era, route]
-    U --> H
+    H[Karlsbergquelle / anchor] --> G[Talk to a quest giver]
+    G --> X[Explore the land and shift eras]
+    X --> F[Fight · collect · find · escort]
+    F --> T[Turn in for XP, items and sourced history]
+    T --> L[Level up · learn talents · unlock survey skills]
+    L --> G
+    F -->|Caught| H
 ```
 
-Getting caught is cheap. You are thrown back to the field station and lose only the clues from that shift that you had not yet confirmed. Confirmed Chronik entries are never lost. Autosave happens at every shift.
+The player keeps earned progress when caught. Continue resumes from the latest saved state.
 
 ### 3.2 Verbs and controls
 
-> The guided tour teaches only the calm verbs (walk, look, talk, map, codex, smartphone photo mode on N, sneaking);
-> it has no combat. The first fight is a short guided training in 1789. The combat keys are in
-> [`ACTION-RPG.md`](ACTION-RPG.md) §3. Spirit view, scan, maps and measuring below are survey skills from the
-> earlier concept that the code still has; their place in the tour concept is TBD — see TASK-007.
+The guided tour teaches movement, conversation, sneaking and the phone camera. Combat begins in
+the campaign. See [`ACTION-RPG.md`](ACTION-RPG.md) §3 for the combat controls. Geisterblick and the
+survey tools help the player navigate and inspect the ground as the campaign unlocks each skill.
 
 | Verb | What it does | Desktop control |
 | --- | --- | --- |
 | Walk / sneak / lie flat | Move on the real terrain; lying flat hides you from the hunt | WASD (or ↑ / ↓ forward / back), Shift, C / X |
 | Look | Turn and tilt the view (over the shoulder or first person) | Mouse; without a mouse ← / → turn (120°/s), Bild↑ / Bild↓ tilt |
-| Spirit view | Short free flight for overview (present day only) | F |
-| Scan | Switch relief modes (hillshade → local relief → VAT) to see features under the forest | 1–3 |
+| Spirit view | Free flight for overview (present day only) | 1 |
+| Scan | Cycle unlocked relief modes and the normal view | 2 · Shift+2 backwards · ^ off |
 | Compare | Overlay the 1840 or 1935 map on the land | M |
-| Measure | Height profile and distance, from the explorer's tools | R |
+| Measure | Height profile and distance | 3 |
+| X-ray view | Ground points below the canopy | 4 |
+| Plan view | Palace footprints and reconstruction confidence | 5 |
 | Listen | Hear echoes: voices and sounds that happened here | Hold E |
 | Examine | Pick up and turn over an object; it becomes a clue | Click |
 | Shift | Use the compass to step into the era bound to this spot | Q |
@@ -191,9 +182,11 @@ Getting caught is cheap. You are thrown back to the field station and lose only 
 
 **F8** writes a note to the developers (with a picture of the view, the place and the last 30 s of events), kept in the browser's IndexedDB; the pause menu exports all notes and the local play telemetry as one JSON. Nothing is ever sent over the network.
 
-Touch controls follow in the mobile milestone (§10).
+On touch, open „Erkunden“ for Geisterblick, Relief, Messen, Röntgenblick, Planblatt and Karte.
 
 ### 3.3 The Chronik (deduction)
+
+> Historical design from 0.2. The campaign awards sourced Codex entries through quests, discoveries and conversations.
 
 The Chronik is the lost chronicle of the palace's last years, rebuilt page by page. Each **case** is a page with 6–10 **entries**. An entry is a sentence with blanks: _who_ did _what_, _where_ and _when_, and _what became of them_ or _of the object_. The player fills the blanks from nouns they have discovered: names, places, objects, causes.
 
@@ -232,9 +225,9 @@ The MVP plays in the real `karlsberg` area (3 × 3 km). v1.0 extends to the `ove
 
 _Everything in this section is fiction unless it cites a fact from §2.1._
 
-**Premise (D-010, the guided tour).** The player (player-named, any gender) is an ordinary visitor on a guided tour of the Karlsberg on a mid-November afternoon. The guide (placeholder name **Gerold Imhoff**, modelled on a real guide whose consent is pending) leads a group of 15 from the Wanderparkplatz at the forest edge along the Felsenpfad and the Karlsbergweiher to the Karlsbergquelle. The group includes modern doubles of the historical cast; modern Jost has two dogs. On the way the wind picks up and the dogs run barking into the forest (a foreshadowing of the Meute), a roe doe and her fawn are the first wow moment and the sneak tutorial, and Marlene, a forester, offers optional side quests. Full beats: [`design/tour/bible/01-prolog.md`](design/tour/bible/01-prolog.md).
+**Premise (D-010, the guided tour).** The player (player-named, any gender) is an ordinary visitor on a guided tour of the Karlsberg on a mid-November afternoon. The guide (placeholder name **Gerold Imhoff**, modelled on a real guide whose consent is pending) leads a group of 15 from the Wanderparkplatz at the forest edge along the Felsenpfad and the Karlsbergweiher to the Karlsbergquelle. The group includes modern doubles of the historical cast; modern Jost has two dogs. On the way the wind picks up and the dogs run barking into the forest (a foreshadowing of the Meute), a roe doe and her fawn are the first wow moment and the sneak tutorial, and Marlene, a forester, lends the visitor her Messstab at the Weiher. Tour design: [`design/tour/bible/01-prolog.md`](design/tour/bible/01-prolog.md).
 
-**The first shift.** The first time travel is not a keybind. At the **Karlsbergquelle**, a real spring in the ravine below the Orangerie where the Karlsbergbach begins (fact, codex cx.41), the player takes a break while the group walks on. A brass surveyor's compass from the 1840 Bavarian survey lies in the water, and it talks (Laub). Touching the water stops the moment, the brook runs backwards, and the land shifts to 1789, where an invented baroque Brunnenstube stands (fiction, cx.42). A short guided training follows (the first fight). A drop of that water now sits in the Bussole, which is why Q works later at places that remember. The whole time journey happens during that break; the Quelle is the home base and wake spot.
+**The first shift.** The first time travel is not a keybind. At the **Karlsbergquelle**, a real spring in the ravine below the Orangerie where the Karlsbergbach begins (fact, codex cx.41), the player takes a break while the group walks on. A brass surveyor's compass from the 1840 Bavarian survey lies in the water, and it talks (Laub). Touching the water stops the moment, the brook runs backwards, and the land shifts to 1789, where an invented baroque Brunnenstube stands (fiction, cx.42). Chapter 1 follows the visit to 1789 and introduces combat. A drop of that water now sits in the Bussole, which is why Q works later at places that remember. The whole time journey happens during that break; the Quelle is the home base and wake spot.
 
 > **History:** in the earlier concept (0.1–0.6) the player was a surveyor hired by the forest office, the compass lay in the drawer of a Feldstation (Bauwagen), and the prologue "Vermessung" taught reading the relief. Releases v0.7–v0.8 kept that opening available through `?classic`. Old bookmarks now open „Die Führung“. Continue moves a save in „Vermessung“ to the start of „Der Hof“ at the Karlsbergquelle with its quest history, gear and earned progress (TASK-007).
 
@@ -244,7 +237,7 @@ _Everything in this section is fiction unless it cites a fact from §2.1._
 
 **Chapter structure (v1.0):**
 
-1. **Prologue "Die Führung"** (today, one November afternoon): the guided tour as tutorial, no combat; the first time travel at the Karlsbergquelle and a short guided training in 1789.
+1. **Prologue "Die Führung"** (today, one November afternoon): the guided tour as tutorial, no combat; Marlene’s loan at the Weiher and the first time travel at the Karlsbergquelle.
 2. **Ch. 1 "Der Hof"** (1789): the court at its height; the unpaid builders, the menagerie, a quiet memorial to the 1785 fireworks victims.
 3. **Ch. 2 "Die Flucht"** (9 Feb 1793): the night race of the warner from Rohrbach, with the hunt at your heels. Warn the duke, or let the French come?
 4. **Ch. 3 "Die Nacht"** (28 Jul 1793): the fire. Save one object and find it again in a museum "today". _The MVP slice is a cut of this chapter._
@@ -298,15 +291,15 @@ All fiction, each grown from a sourced fact in [`research/01-regional-history.md
 
 ## 6. Progression, meta & replayability
 
-> **Superseded (D-008):** there are now XP, 12 levels, three short talent branches, a weapon upgraded by
-> quests, charms and consumable loot — but still no currency, shop or grind. Survey skills are quest
-> rewards. See `docs/ACTION-RPG.md` §6–7.
+The campaign has 12 XP levels, three talent branches, a staff upgraded by quests, charms and
+consumables. The tour leads to level 3. Tour milestones and later quests grant survey skills.
+See [`ACTION-RPG.md`](ACTION-RPG.md) §6–7 for XP and gear.
 
-### 6.1 No XP: knowledge unlocks (0.2, superseded)
+### 6.1 Survey skills
 
-Progress comes only from confirmed Chronik entries. They unlock skills, eras and routes. There are no levels, no stats and no loot grind.
+The tour grants Relief-Blick 3 and Kartograf 1. The campaign unlocks the remaining tiers through quest rewards.
 
-| Skill (from IDEA.md) | Tiers | Opens |
+| Skill | Tiers | Opens |
 | --- | --- | --- |
 | Relief-Blick (relief sight) | Hillshade → local relief → VAT | Hidden paths, cellar entrances, the menagerie ring |
 | Kartograf (cartographer) | 1840 map → 1935 map → measuring | Where buildings and roads stood; the wandering stones |
@@ -326,7 +319,7 @@ Progress comes only from confirmed Chronik entries. They unlock skills, eras and
 
 The Karlsbergquelle is the home base in every chapter (tour decision 11): the wake spot after being caught, the place a held Q returns you to, and where you heal. The smartphone album (good photos from the present unlock codex cards) is a collection of its own. There is no currency.
 
-> **Legacy (to be removed, TASK-007):** the code still opens a hub overlay at the spring (Chronik, phone, shelf, drawer, map, bench). Where its functions go is undecided — TBD, see TASK-007. The original plan here was a field station (Bauwagen) with a pin board, darkroom, radio and shelves; the Bauwagen was removed from the world in the tour redesign.
+At the spring, the hub gives access to the Chronik, Marlene’s messages, RPG counts, the Bussole state, the chapter map and the bench save action. The water interaction has priority at the trough. The planned Bauwagen placement and hub move are tracked in TASK-007.
 
 ### 6.4 Replayability and fairness
 

@@ -1,10 +1,12 @@
 import type { EventBus } from './events';
 import { type GameState, type GameStateStore, Store, deserializeState, serializeState } from './state';
+import { migrateSurveyBindings } from '../player/input';
 
 /** All localStorage keys of this game start with this prefix (shared origin with the explorer). */
 export const STORAGE_PREFIX = 'kq.';
 export const SAVE_KEY = (slot: string) => `${STORAGE_PREFIX}save.v1.${slot}`;
 export const SETTINGS_KEY = `${STORAGE_PREFIX}settings.v1`;
+const BINDINGS_VERSION = 1;
 
 /** The subset of the Web Storage API we use (lets tests inject a Map-backed fake). */
 export interface KeyValueStorage {
@@ -62,7 +64,7 @@ export interface Settings {
   volume: { master: number; music: number; sfx: number; ambience: number; voice: number };
   fov: number;
   /**
-   * Camera (docs/ACTION-RPG.md §3): 'third' = over-the-shoulder action camera with the surveyor in
+   * Camera (docs/ACTION-RPG.md §3): 'third' = over-the-shoulder action camera with the player in
    * view (default since playtest round 8), 'first' = the old first-person view with the staff.
    */
   cameraMode: 'third' | 'first';
@@ -119,17 +121,20 @@ export function defaultSettings(): Settings {
 export class SettingsStore extends Store<Settings> {
   constructor(private readonly storage: KeyValueStorage) {
     const base = defaultSettings();
-    let loaded: Partial<Settings> = {};
+    let loaded: Partial<Settings> & { bindingsVersion?: number } = {};
     try {
       const raw = storage.getItem(SETTINGS_KEY);
-      if (raw) loaded = JSON.parse(raw) as Partial<Settings>;
+      if (raw) loaded = (JSON.parse(raw) as typeof loaded | null) ?? {};
     } catch {
       /* ignore corrupt settings */
     }
-    super({ ...base, ...loaded, volume: { ...base.volume, ...(loaded.volume ?? {}) }, bindings: { ...(loaded.bindings ?? {}) } });
+    const { bindingsVersion, ...settings } = loaded;
+    const savedBindings = settings.bindings ?? {};
+    const bindings = (bindingsVersion ?? 0) < BINDINGS_VERSION ? migrateSurveyBindings(savedBindings) : { ...savedBindings };
+    super({ ...base, ...settings, volume: { ...base.volume, ...settings.volume }, bindings });
     this.subscribe((s) => {
       try {
-        this.storage.setItem(SETTINGS_KEY, JSON.stringify(s));
+        this.storage.setItem(SETTINGS_KEY, JSON.stringify({ ...s, bindingsVersion: BINDINGS_VERSION }));
       } catch {
         /* quota */
       }

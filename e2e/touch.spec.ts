@@ -171,6 +171,55 @@ for (const [name, device] of Object.entries(DEVICES)) {
   });
 }
 
+test.describe('survey tools on a landscape phone', () => {
+  test.use({ ...DEVICES['iphone-13'] });
+
+  test('opens one survey menu and uses relief, measurement and spirit view by touch', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await bootField(page);
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.setEra('today');
+      k.teleport(1452, -640, 330, -25);
+    });
+
+    const survey = page.getByTestId('touch-survey');
+    const menu = page.getByTestId('touch-survey-pop');
+    await expect(page.locator('.kq-t-top button')).toHaveCount(2);
+    await expect(menu).toBeHidden();
+    await survey.tap();
+    await expect(survey).toHaveAttribute('aria-expanded', 'true');
+    for (const id of ['fly', 'relief', 'measure', 'xray', 'plans', 'map']) {
+      await expect(menu.getByTestId(`touch-${id}`)).toBeVisible();
+    }
+    await menu.getByTestId('touch-relief').tap();
+    await menu.getByTestId('touch-scan2').tap();
+    await expect(menu).toBeHidden();
+    await expect.poll(() => page.evaluate(() => window.kq!.survey!.state().scan)).toBe(2);
+    await survey.tap();
+    await menu.getByTestId('touch-relief').tap();
+    await menu.getByTestId('touch-scan0').tap();
+    await expect.poll(() => page.evaluate(() => window.kq!.survey!.state().scan)).toBe(0);
+
+    await survey.tap();
+    await menu.getByTestId('touch-measure').tap();
+    await expect.poll(() => page.evaluate(() => window.kq!.tools!.measure.state().mode)).toBe('a');
+    await page.touchscreen.tap(460, 174);
+    await expect.poll(() => page.evaluate(() => window.kq!.tools!.measure.state().mode)).toBe('b');
+    await survey.tap();
+    await menu.getByTestId('touch-measure').tap();
+    await expect.poll(() => page.evaluate(() => window.kq!.tools!.measure.state().mode)).toBe('off');
+
+    await survey.tap();
+    await menu.getByTestId('touch-fly').tap();
+    await expect.poll(() => page.evaluate(() => window.kq!.ctx.player.flying)).toBe(true);
+    await survey.tap();
+    await expect(menu.getByTestId('touch-fly')).toHaveText('Landen');
+    await menu.getByTestId('touch-fly').tap();
+    await expect.poll(() => page.evaluate(() => window.kq!.ctx.player.flying)).toBe(false);
+  });
+});
+
 test.describe('notices on a small landscape phone', () => {
   test.use({ ...DEVICES['iphone-13'], viewport: { width: 667, height: 375 } });
 

@@ -10,6 +10,7 @@ import {
   Vector3,
 } from 'three';
 import type { GameContext } from '../../core/context';
+import { actionLabel } from '../../ui/actionLabel';
 import { h } from '../../ui/dom';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import { type Measurement, type ProfileSample, type V3, fmtDe, fmtDistance, heightProfile, measure, niceStep, profileStats } from './geom';
@@ -17,7 +18,7 @@ import type { PickHit, Picker } from './picker';
 import { footprintAt, roomAt } from './plans';
 
 /**
- * Kartograf 3: measuring tape (R). Click the start, click the end: distance, horizontal length,
+ * Kartograf 3: measuring tape (3). Set the start and end: distance, horizontal length,
  * height difference, grade and a terrain height profile on a field-book sheet. Picks the terrain,
  * the 1789 palace (walls and roofs) and any mesh flagged `userData.measurable` (interiors), so
  * the gallery of the model measures as the model is (≈ 83 m wing, bible 04 §2 "Modelllänge").
@@ -255,7 +256,12 @@ export class MeasureTool {
     if (this.mode === 'off') return;
     const ctx = this.ctx;
     this.reticle.classList.toggle('kqt-show', this.mode === 'a' || this.mode === 'b' || this.mode === 'done');
-    this.hint.textContent = ctx.t(this.mode === 'b' ? 'tools.measure.hint.b' : this.mode === 'done' ? 'tools.measure.hint.done' : 'tools.measure.hint.a');
+    const place = ctx.t(`tools.measure.hint.${this.mode}`);
+    const input = ctx.input.touchMode ? ctx.t('tools.measure.hint.tap') : ctx.t('tools.measure.hint.click');
+    const end = ctx.input.touchMode
+      ? ctx.t('tools.measure.hint.end.touch')
+      : actionLabel(ctx.input, 'measure');
+    this.hint.textContent = [`${input} ${place}`, end ? ctx.t('tools.measure.hint.end', { key: end }) : ''].filter(Boolean).join(' · ');
     this.hint.classList.add('kqt-show');
     // live end point at the crosshair (palace triangles every few frames: no BVH)
     let live: PickHit | null = null;

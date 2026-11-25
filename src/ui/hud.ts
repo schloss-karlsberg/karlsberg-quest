@@ -303,8 +303,7 @@ export class Hud {
   }
 
   private renderPrompt(): void {
-    // a low prompt (the Feldstation's door) yields to any other: the staff beside the trailer is
-    // taken with E, not the hub opened (playtest 2026-11-19: "E – Feldstation" over the first task)
+    // A low-priority prompt such as opening the spring hub yields to a nearby interaction.
     const all = [...this.prompts.entries()];
     const topEntry = all.filter(([, p]) => !p.low).pop() ?? all.pop();
     this.promptTop = topEntry?.[0] ?? null;

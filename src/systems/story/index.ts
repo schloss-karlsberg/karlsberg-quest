@@ -450,7 +450,7 @@ class StoryRuntime {
 
     installTitleFlow({ settings: ctx.settings, modals: ctx.ui.modals, onName: (n) => (this.pendingName = n) });
     // bible 06-enden §2 / §7.3: once an ending was reached, the main menu offers the choice again
-    // (the field book as it was before the table: slot 'ending', written when the choice opened)
+    // (the save as it was before the choice: slot 'ending', written when the choice opened)
     titleHooks.extraActions = () => {
       const auto = ctx.save.peek('auto')?.systems['story'] as Partial<StorySlice> | undefined;
       if (!auto?.ending || !ctx.save.has(ENDING_SLOT)) return [];
@@ -908,7 +908,7 @@ class StoryRuntime {
         if (!s.unlocked.includes(a.chapter)) s.unlocked.push(a.chapter);
         return;
       case 'ending':
-        // the field book before the choice: "Ende noch einmal wählen" in the main menu loads it
+        // the save before the choice: "Ende noch einmal wählen" in the main menu loads it
         if (!s.ending) ctx.save.save(ENDING_SLOT, 'ending-choice');
         this.overlays.dropCard();
         this.endings.show();
@@ -1447,7 +1447,7 @@ class StoryRuntime {
     if (showPrompt !== this.hubPrompt) {
       this.hubPrompt = showPrompt;
       // a low prompt: anything else that wants E here (a clue, an npc, the spring's water) comes
-      // first, the hub waits (playtest 2026-11-19: "E – Feldstation" over the first task)
+      // first, the hub waits so its prompt does not cover the objective
       ctx.ui.hud.prompt(showPrompt ? 'E' : null, showPrompt ? t('story.hub.prompt') : undefined, 'hub', { low: true });
     }
     if (at.prompt && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0 && ctx.ui.hud.promptOwner() === 'hub') this.hub.show();

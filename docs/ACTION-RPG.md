@@ -78,8 +78,8 @@ unfinished group regain their strength).
 
 ## 3. Controls
 
-The guided tour uses only the calm verbs (move, look, talk, map, journal, crouch to sneak, the smartphone camera);
-combat starts with the short guided training in 1789.
+The guided tour uses movement, conversation, sneaking and the phone camera. Marlene lends the
+player the Messstab at the Weiher. Combat starts in Chapter 1.
 
 | Verb | Desktop (default, remappable) | Notes |
 | --- | --- | --- |
@@ -88,7 +88,7 @@ combat starts with the short guided training in 1789.
 | Look | Mouse; keyboard `,` `.` Bild↑ Bild↓ | |
 | **Camera** | **Mouse wheel** zooms (1.8–8 m, kept in the save); **F5** switches over-the-shoulder ↔ first person (also in Einstellungen → Steuerung) | Third person is the default; the spirit view is always first person |
 | **Ziel erfassen** (lock-on) | **Tab** or **middle mouse**: lock the best enemy in view, press again for the next, hold off / walk away (30 m) to release | Without a lock, swings snap to the nearest enemy within 7.5 m and ±70° (third person) |
-| **Hieb** (light attack, 3-hit combo) | **LMB** or **K** | Shares LMB with the measuring tape: while measuring (R), LMB measures |
+| **Hieb** (light attack, 3-hit combo) | **LMB** or **K** | Shares LMB with the measuring tape: while measuring (3), LMB measures |
 | **Wuchthieb** (heavy, charged) | **hold LMB / K** ≥ 0.45 s, release | Breaks armour, staggers; slows you while charging |
 | **Ausweichen** (dodge roll, i-frames) | **Space** (+ direction) | Space still stands you up from crouch / prone and climbs while flying |
 | **Bannlicht** (lantern flare) | **RMB** or **G** | Cone; stuns spectral enemies, makes Irrlichter hittable, scatters the pack |
@@ -98,7 +98,7 @@ combat starts with the short guided training in 1789.
 | **Pause** | **Esc** or tap Pause | Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album. I opens Ausrüstung directly. |
 | Lantern | L | |
 | Era shift | Q (at an anchor), hold Q to return | Kept |
-| Scan 0–3, maps M, measure R, Röntgenblick V, plans B, spirit view F | as before | Survey skills, now quest rewards |
+| Survey tools | **1** Geisterblick · **2** Relief (Shift+2 backwards, ^ off) · **3** Messen · **4** Röntgenblick · **5** Planblatt · **M** Karte | Open „Erkunden“ on touch. Relief cycles through the modes you’ve unlocked. |
 
 Accessibility (ARCHITECTURE §5 contract, extended): `settings.reducedMotion` → no camera shake, no
 roll camera tilt, shorter hit-stop; `settings.reducedFlash` → no full-screen flashes from combat at
@@ -450,11 +450,11 @@ Three short branches, 11 points over the campaign, respec free at the home base 
 
 ### 6.3 The Messstab and charms
 
-One weapon, five stages, all **quest rewards** (no crafting, no shop):
+Marlene lends the first staff during the tour. Quests upgrade it through four further stages.
 
 | Stage | Item | From | Damage |
 | --- | --- | --- | --- |
-| I | Messstab (Eschenstab) `item.stab.esche` | Prologue: the tour grants it at its end (beat `t18`); TASK-007 moves it into the tour (Marlene lends it) | 12 |
+| I | Messstab (Eschenstab) `item.stab.esche` | Marlene’s loan at the Weiher (tour beat `t13`), with a pickup notice | 12 |
 | II | mit Eisenbeschlag `item.stab.eisen` | Ch. 1 "Matthes' Lohn" (Hanne) | 16 |
 | III | mit Silberdraht `item.stab.silber` | Ch. 2 "Die Parforcejagd" | 19 ×1.15 |
 | IV | mit Bannkerben `item.stab.bann` | Ch. 3 "Die Hunde los" (Jost) | 23 ×1.2 |
@@ -466,15 +466,14 @@ Festsaal**: Türgriff (stagger), Dukat (XP), Uhr (Bannlicht recharge) — or not
 
 ### 6.4 Survey skills become quest rewards that open routes
 
-The skills system stays as is (`skill:grant`, unlock cards, Laub's remarks); only *who* grants changes
-(quest rewards instead of Chronik confirmations):
+The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’s remarks).
 
 | Skill | Granted by (quest) | Opens |
 | --- | --- | --- |
-| Relief 1–3 | Prologue (tour: Marlene at the Weiher, relief 3 at the Quelle; legacy prologue: "Was der Wald verbirgt") | wall lines, Hohlweg, pits; hidden side-quest spots |
-| Kartograf 1 | Prologue (tour exit, beat `t18`; legacy prologue: "Die Feldstation") | map 1840 (M) |
+| Relief 1–3 | Tour exit (`t18` grants tier 3) | wall lines, Hohlweg, pits; hidden side-quest spots |
+| Kartograf 1 | Tour exit (beat `t18`) | map 1840 (M) |
 | Kartograf 2 | Ch. 1 "Die Karlslust bei Nacht" | map 1935; the Torhaus anchor → Ch. 2 |
-| Kartograf 3 (Messen R) | Ch. 2 "Die Parforcejagd" | measuring; bonus objective in the gallery (Ch. 3) |
+| Kartograf 3 (Messen, 3) | Ch. 2 "Die Parforcejagd" | measuring; bonus objective in the gallery (Ch. 3) |
 | Spurenleser 1–2 | Ch. 1 "Tausend Hunde" (Jost), Ch. 2 "Die Spur im Raureif" | horn meanings; pack routes (stealth stretches) |
 | Baumeister 1–2 | Ch. 3 "Das graue Buch" | room names, confidence view |
 | Röntgenblick | Ch. 3 "Die Hunde los" | point cloud: Grusling burrows and hidden stones in Ch. 4 |
@@ -556,8 +555,8 @@ E near a giver opens the field-book conversation. Quest topics come first, marke
    codex card under the line) → `next` quest offered. A compact HUD notice summarizes the payout
    after the conversation. The other history lines wait for the **„Erzähl mehr: <title>“** topic
    at the same giver in the same chapter (`quest:told` when heard) and are
-   always in the journal. Voice / auto turn-ins say one thanks line and one history line (held
-   while a fight is on) and the notice points to the field book for further history.
+   available under Aufgaben. Voiced or automatic turn-ins say one thanks line and one history
+   line. Combat holds those lines back. The notice points to Codex for the unlocked history.
 
 No stance cards, no answer grids: see §8.6.
 
@@ -828,15 +827,13 @@ never on it. `e2e/readability.spec.ts` checks 1280×720, 1366×768 and 1920×108
 boss bar.
 
 **Shared card slot** (`src/ui/cards.ts`, docs/ARCHITECTURE.md §5). Clue pages, level and skill cards,
-quest payouts and HUD toasts use the same slot. A requested field-book page can open in front of a
-notice. A covered notice resumes with its remaining reading time. Fights, chases, boss reveals and
+quest payouts and HUD toasts use the same slot. A requested Pause page can open in front of a notice. A covered notice resumes with its remaining reading time. Fights, chases, boss reveals and
 NPC conversations hold automatic notices back. Skill unlocks can ride on the level card.
 When a payout, level or skill card is ready, it can take the slot from a routine toast. The toast
 resumes with its remaining reading time after the card.
 
 The payout names the quest and summarizes earned EP, items that fit in the inventory, skill gains
-and the number of newly unlocked Codex entries. Their sources and confidence badges are in the
-field book. Quest items reported here skip the pickup row. Inventory-full feedback still appears.
+and the number of newly unlocked Codex entries. Their sources and confidence badges are in the Codex. Quest items reported here skip the pickup row. Inventory-full feedback still appears.
 The payout lasts up to five visible seconds and can end sooner when the player walks away. Toasts
 deduplicate by text and queue up to six waiting messages.
 
@@ -856,7 +853,7 @@ Main quests are offered by the chapter's beats; their order is the chapter's bea
 
 ### 11.0 Historical prologue "Vermessung" (today → first shift 1789)
 
-> New games open with „Die Führung“ ([tour design](design/tour/bible/01-prolog.md)). Old
+> New games open with „Die Führung“ ([live tour beats](design/tour/slice-v0.md)). Old
 > `?classic` bookmarks also open the tour. Continuing a save in „Vermessung“ begins „Der Hof“
 > at the Karlsbergquelle in the present with the tour's level 3 handover, earned progress and
 > quest history (TASK-007).
@@ -1000,7 +997,7 @@ the fire and the Steinfraß; the hunt (patrol, par force, drive, finale, snow tr
 menagerie (now calmed in side quests); ghosts / NPC figures and conversations; echoes (hold E) and
 examined clues; the codex (40 cards + 8 relief patterns) with sources and confidence; survey skills
 and tools (scan, maps, measure, X-ray, plans, pack routes); Laub's dry voice and Marlene; the home base
-(the field station then, the Karlsbergquelle since the tour); story beats, checkpoints and wake places; memorials; endings and epilogue; every wow moment
+at the Karlsbergquelle; story beats, checkpoints and wake places; memorials; endings and epilogue; every wow moment
 W1–W8; gentle mode and Rauhnacht; accessibility; performance budget; procedural art, sound effects and ambience
 (D-007); save format (new slices only, `STATE_VERSION` unchanged).
 
@@ -1038,6 +1035,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Weiher staff handoff and survey controls (TASK-007, 2026-11-25) | Marlene lends the staff during the tour and the pickup feed confirms it. Both camera modes require the equipped staff to be owned before drawing it. The tour still grants 549 XP. Survey tools use the number row and M, or „Erkunden“ on touch. |
 | Surveyor content retirement (TASK-007, 2026-11-25) | The guided tour is the sole opening in the content catalog. The Bussole page stays in the Chronik collection and shared nouns and facts remain available. Older saves keep finished quest log entries and ending deeds and receive pending payouts once. |
 | Tour onboarding and audio activation (TASK-007, 2026-11-25) | „Schloss Karlsberg Tour“ shows movement, interaction and the current survey shortcuts. After the content note and name entry, a static paper map shows the four stops. One click or tap on „Tour starten“ starts play and unlocks Web Audio. The map fits short viewports, and reduced motion skips the title fade. |
 | Guide narration and casting (TASK-010, 2026-11-25) | The [tour script](design/tour/sources.md) maps the 18 live beats and gives each station short, sourced German lines with spoken uncertainty. Three synthetic guide candidates are queued for owner listening. The station sequences at the Felsenpfad, pond and spring need to finish or be skipped before departure at integration. |

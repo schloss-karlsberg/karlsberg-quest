@@ -9,6 +9,7 @@ import {
   isFreeSurvey,
   mapLayers,
   nextMap,
+  nextScan,
   nextPlanView,
   parseSkill,
   scanAllowed,
@@ -70,6 +71,18 @@ describe('skills: gates', () => {
     expect(scanAllowed(2, gate({ relief: 2 }))).toBe(true);
     expect(scanAllowed(3, gate({ relief: 2 }))).toBe(false);
     expect(scanAllowed(3, gate({}, true))).toBe(true);
+  });
+
+  it('cycles through unlocked relief modes in both directions and wraps through off', () => {
+    const relief = gate({ relief: 2 });
+    expect(nextScan(0, gate({}), false)).toBeNull();
+    expect(nextScan(0, relief, false)).toBe(1);
+    expect(nextScan(1, relief, false)).toBe(2);
+    expect(nextScan(2, relief, false)).toBe(0);
+    expect(nextScan(0, relief, true)).toBe(2);
+    expect(nextScan(2, relief, true)).toBe(1);
+    expect(nextScan(1, relief, true)).toBe(0);
+    expect(nextScan(0, gate({}, true), true)).toBe(3);
   });
 
   it('M cycles off → 1840 → 1935 → off by Kartograf level', () => {

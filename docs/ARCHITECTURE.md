@@ -187,7 +187,7 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 | Playing | the cap: settings „Bildrate“ 30 / **60** (default) / unbegrenzt, „Energiesparen“ 30 (`frameCap`) |
 | Title | ≤ 30 |
 | Live modal (default of `modals.open`: dialogue, story choice, endings) | the cap for 1.5 s after the modal stack changed (the two-shot camera eases in), then ≤ 15 |
-| Still modal (`backdrop: 'still'`: pause menu with settings, journal, map, licences, confirms, Chronik cards, the hub at the Quelle) | 0, the last frame is held (over the title: ≤ 15) |
+| Still modal (`backdrop: 'still'`: pause menu with settings, feature pages, licences, confirms, Chronik cards, the spring hub) | 0, the last frame is held (over the title: ≤ 15) |
 | Other pause (travel curtain) | ≤ 15 |
 | Bullet time / `?manual` | 0, frames only on request |
 | Hidden tab | 0 (and the AudioContext is suspended) |
@@ -310,14 +310,14 @@ Rules
   `ATMOS_GLSL` (`kqLight`, `kqFog`, noise) so they match lighting, fog, lantern and fire glow.
 - Gameplay input: `ctx.input.wasPressed('listen')`, `isDown('sprint')` (actions in
   `DEFAULT_BINDINGS`: forward/back/left/right, sprint, crouch, prone, fly, up/down, interact,
-  listen E, lantern L, map M, measure R, shift Q, scan0–3, journal J/Tab, pause Esc/P, keyboard
+  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 ^, pause Esc/P, keyboard
   look lookLeft/lookRight/lookUp/lookDown on Comma/Period/PageUp/PageDown and Numpad 4/6/8/2).
   Bindings are physical `KeyboardEvent.code`s (layout-independent; AZERTY "forward" is on Z).
   Players remap the actions in `REBINDABLE` (settings → Steuerung → Tastenbelegung);
-  `settings.bindings` stores only the overrides, `effectiveBindings(overrides)` merges them,
-  `bindKey` takes a key away from other actions (except the shared crouch/down pair on C,
-  `SHARED_KEYS`), `ctx.input.setBindings()` applies them. Feature systems must read actions, never
-  raw key codes, and show key names via the settings' `keyLabel(code)` where possible.
+  `settings.bindings` stores overrides. `effectiveBindings(overrides)` merges them, `bindKey` takes a
+  key away from other actions except the pairs in `SHARED_KEYS`, and `ctx.input.setBindings()` applies
+  them. `SettingsStore` migrates the previous survey defaults and gives saved custom keys priority.
+  Feature systems read actions and can show their current keys with `actionLabel(input, action)`.
 
 ## 5. GameContext (`ctx`, also `window.kq.ctx`)
 
@@ -388,7 +388,7 @@ chain of lines must not bury a card): a spoken story line that is not low priori
 active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
 (`festsaal`) and a playing echo (`echo`, set on `echo:start` / `echo:end`; releasing a hold
 opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card / curtain and
-any other modal (menus, the Journal); a clue page may open over the station's hub. Merging: skill
+other modals. A clue page may open over the spring hub. Merging: skill
 unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the
 same way through `cards.source('ability', …)`), unlocks that arrive together
@@ -510,7 +510,8 @@ overlay (`setMapMix`) uses the same lens; the survey system swaps the 1935–40 
 the same `uMap` uniform (the travel map's layer buttons send `survey:show-map {layer}` — off / 1840 /
 1935, gated by the Kartograf skill; M itself opens the travel map when the `travel` system runs,
 except while the story flag `map.compare` is set or a layer lies on the terrain: then travel sends
-`survey:cycle-map` and M cycles off → 1840 → 1935 → off as before — the prologue's Kartenvergleich).
+`survey:cycle-map` and M cycles off → 1840 → 1935 → off). The relief cycle (2, Shift+2 to
+reverse) includes only unlocked modes and off. Backquote turns it off immediately.
 With `settings.colorblind` mode 2 uses blue ↔ orange (`uPalette` 1). Inside the bubble where the
 reveal is complete the terrain shader skips the lit/era colouring entirely (cheaper scan modes).
 
@@ -577,18 +578,16 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `pol-art-*.png`.
 - Karlsbergquelle (`src/systems/quelle`): `tests/quelle.test.ts` (the pure layout on a flat and a
   sloped synthetic heightfield: frame, water per era, the jet, who may touch, brook, clearings);
-  `e2e/quelle.spec.ts` (p3q → E at the trough → the scene on game time → shift to 1789 / p3r, held
-  until `shift:done` → hold Q → p4); the prologue driver walks the same way (`touchSpring` in
-  `e2e/helpers/prolog.ts`).
+  `e2e/quelle.spec.ts` checks the tour interaction at the trough, including the timed scene and the
+  shift to 1789. The tour driver uses the same path (`touchSpring` in `e2e/helpers/prolog.ts`).
 - Third-person camera (`e2e/camera.spec.ts`, round 10): the F-03 slope fight (low and Mittel),
   dodges below the hohe Stufe, a Streuner at the lens, the Küchenhof by the Nordflügel stairs with
   the boom zoomed out, the Registratur and a talk with Soll; asserts in-frame, lens-to-head
   distance, lens space = character space, indoor preset, two-shot; screenshots
   `camera-<KQ_CAM_TAG>-*.png` (`before` runs it as a probe without assertions).
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
-  prologue across all four systems (new game → hub → Pinnwand opens the Journal → objective →
-  scan → clues → Q → shift → echo → pack → caught (nothing lost) → station → Journal codex holds
-  the clue facts), screenshots `int-*.png`; `e2e/quests.spec.ts` (Hanne's test quest, `qst-*.png`);
+  cross-system flow (spring hub → Pinnwand opens Codex → survey and find clues → Q shift → echo →
+  pack → caught and returned home → Codex retains the clue facts), screenshots `int-*.png`; `e2e/quests.spec.ts` (Hanne's test quest, `qst-*.png`);
   and the round-2 tour over the test chapter's beats r1–r4 (`?storytest`): doorway into the
   Festsaal 1789 → story `room` condition → a ghost on the upper storey, E → conversation →
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
@@ -711,7 +710,7 @@ story ──story:cue 'k2-frost' / 'k2-thaw' / 'k2-candle' / 'k4-quader' / 'end-
 story ──story:cue 'bussole:jolt {x,z|bearing,hold}' / 'bussole:tick {hold}' / 'bussole:open'──▶ story ObjectiveView (the HUD Bussole)
 story ──story:cue 'hunt:tableau' {kind: lie|eyes|rest|off}──▶ hunt (W8: the pack lies down; the endings)
 story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
-story (hub Pinnwand) ──chronik:open──▶ quests (opens the Journal; the Chronik board is gone)
+story (hub Pinnwand) ──chronik:open──▶ quests (opens the Codex page)
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
 story:give ──clue:found / noun:learned (story clue ids, written to state.inventory)──▶ everyone
 story ──npc:spawn/despawn──▶ npc ──npc:talk / npc:conversation / bark:npc-near──▶ story, barks
@@ -770,10 +769,9 @@ Round-2 integration rules:
   building or inside their radius in their era (card after 1.2 s).
 - **Horn lines**: `hunt:horn` carries the pack `mode`; Laub's "Die Jagd beginnt" answers only
   patrol / par force horns (the drive's horn is the beaters' horn from behind).
-- **Keys** (`DEFAULT_BINDINGS`, unit-tested for clashes): R measure, V / 4 Röntgenblick, B plans,
-  M maps, 0–3 relief, E listen / talk / examine, L lantern, Q shift, J / Tab Chronik, X prone,
-  C crouch (and down while flying — the only shared code). Number keys inside a modal choice or a
-  conversation are captured by that card and never reach relief / Röntgenblick.
+- **Keys** (`DEFAULT_BINDINGS`, unit-tested for clashes): 1 Geisterblick, 2 relief, 3 measure,
+  4 Röntgenblick, 5 plans, M map, E listen / talk / examine, L lantern, Q shift, X prone and
+  C crouch (down while flying). Modal choices and conversations capture their own number keys.
 - **Data**: `public/data` is regenerated by `pnpm prepare-data` (sister data read only); 1789 land
   cover now has classes 8–12, mapped onto meadow / lawn / sand surfaces in `GROUND_NAMES`.
 
@@ -945,11 +943,8 @@ Round-4 (polish: set dressing) integration rules:
   (`kq.chronik.echo()` → `walking`). While it whispers on, E and the prompts are free for other
   clues; starting another echo ends the walking one as heard. Clue cards go through `ctx.ui.cards`
   (one at a time).
-- No board, no blanks, no batches, no hint ladder: J/Tab and `chronik:open` open the quests
-  system's Journal (`openJournal()`; `kq.chronik.open/close/tab/isOpen` redirect there, and
-  `chronik:opened/closed` are emitted by the Journal). `check()` only re-evaluates state for
-  older saves (`state.chronik` stays readable). `player:caught` finishes a running echo and loses
-  nothing (`chronik:lost` is no longer emitted).
+- Pause and `chronik:open` open the Codex page. `check()` re-evaluates case state for older saves
+  (`state.chronik` stays readable). `player:caught` finishes a running echo and preserves progress.
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
   real content exists or with `?placeholder`.
 - Markers of a past chapter's unfound clues retire (`clueRetired`, chapter order p → k1 … k4 →
@@ -964,9 +959,9 @@ Round-4 (polish: set dressing) integration rules:
 
 ### skills (`src/systems/skills/`) – Relief-Blick, Kartograf, Baumeister, Röntgenblick, Spurenleser
 - Levels in `state.skills[id]` (never lowered). Ids and tiers (rules: `logic.ts`, pure + tested):
-  `relief` 1–3 (scan modes 1–3) · `kartograf` 1 map 1840, 2 map 1935, 3 Messen (R) ·
-  `baumeister` 1 Planblatt (B) + room names in memories, 2 Konfidenzansicht, 3 Raumfolge ·
-  `roentgen` 1 Röntgenblick (V / 4) · `spurenleser` 1 horn captions say what the call means,
+  `relief` 1–3 (scan modes 1–3) · `kartograf` 1 map 1840, 2 map 1935, 3 Messen (3) ·
+  `baumeister` 1 Planblatt (5) + room names in memories, 2 Konfidenzansicht, 3 Raumfolge ·
+  `roentgen` 1 Röntgenblick (4) · `spurenleser` 1 horn captions say what the call means,
   2 pack routes. Aliases (`kartograph`, `xray`, `tracker`, …) and specs `'kartograf:3'` / `'kartograf3'`.
 - Raise a skill: story action `{do:'skill', id, tier}` or event `skill:grant {skill, level, quiet?}`.
   Every increase (except load/new game and quiet grants) shows the unlock card (brass medal,
@@ -984,15 +979,15 @@ Round-4 (polish: set dressing) integration rules:
 - Hooks `kq.skills.grant/all/reset/levels/gate/free/card/said`.
 
 ### tools (`src/systems/tools/`) – Messen, Röntgenblick, Planblatt, Fährtenlinien
-- **R Messen** (Kartograf 3): click A, click B (crosshair; picks terrain, the palace per building
-  with the ruin cut, any mesh with `userData.measurable`). Tape + poles + field-book sheet with
+- **3 Messen** (Kartograf 3): aim with the crosshair and click or tap to set each endpoint. It picks terrain, the palace per building
+  with the ruin cut, and any mesh with `userData.measurable`. Tape, poles and a results sheet show
   distance, horizontal, rise, grade and terrain height profile (`measure-*` testids). On B:
   `measure:done {a, b, distance, horizontal, rise, building?, room?}` and
   `flags['measured.<building>'] = distance`. Gallery KB-B06 reads ≈ 78–83 m from the model.
-- **V / 4 Röntgenblick** (Röntgenblick 1): the 2025 ground points within 70 m (52 m on low
+- **4 Röntgenblick** (Röntgenblick 1): the 2025 ground points within 70 m (52 m on low
   graphics), height-ramped glow, trees fade in the disc (forest shader patch `forestClear.ts`);
   a fictional paw trail Ehrenhof → Zwinger is labelled as fiction on screen.
-- **B Planblatt / Konfidenz** (Baumeister): footprints as chalk lines on the ground of every era
+- **5 Planblatt / Konfidenz** (Baumeister): footprints as chalk lines on the ground of every era
   (a faint second pass shows them through canopy and roofs), building labels (decluttered),
   low confidence dashed; the confidence view colours the palace Okabe-Ito (high #009E73,
   medium #E69F00, low #CC79A7 striped) and shows it as a ghost where the era has none.
@@ -1001,7 +996,7 @@ Round-4 (polish: set dressing) integration rules:
 - Shift suspends the plan sheet; `game:start` resets the tools.
 - Hooks `kq.tools.measure.{start,stop,click,at,pick,state}`, `kq.tools.xray(on)`,
   `kq.tools.plans(view)`, `kq.tools.tracks(on)`, `kq.tools.state()`; `kq.survey.map(0|1840|1935)`.
-- Keys: R measure, V / 4 Röntgenblick, B plans, M maps, 0–3 relief (all listed on the controls page).
+- On touch the Erkunden menu sends the same tool actions through virtual input.
 
 ### story (`src/systems/story/`) – chapters, dialogue, home base, objectives, endings
 - A new game starts with the guided tour (`content/story/00-tour.story.json`, order −1, `next: k1`).
@@ -1030,16 +1025,17 @@ Round-4 (polish: set dressing) integration rules:
   does not pause clips: they run in real time while the simulation waits, and the subtitle
   completes when the clip ends. If a source's end event is delayed, the audio clock still marks
   the clip as ended and releases speech ducking on the next playback state check. Stale counts
-  only lines whose id the manifest knows (an id-less line with a changed text just finds no match).
+  only lines whose id the manifest knows (an id-less line with a changed text just finds no match);
   NPC conversations keep the murmur (only presenter lines play clips). `public/voice/` holds
   committed MOSS clips only; the build emits an empty manifest when there is
-  none (no 404). Hook: `kq.story.voice.stats()/preload()`. Owns the title flow (warning, name, lantern
-  screen; the name and lantern screens still speak of the surveyor concept — legacy, TASK-007),
-  the home at the Karlsbergquelle (`hub/home.ts`, `HOME`) with the hub overlay (legacy, to be removed by
-  TASK-007; until tour WP-01 this was the field station at 760 / −915), the Bussole/objective HUD, the caught
-  curtain + return, endings, epilogue and credits. Without fx it switches eras directly.
+  none (no 404). Hook: `kq.story.voice.stats()/preload()`. The title flow asks the visitor to read the
+  content note and enter a name, then „Tour starten“ on the route map unlocks audio. At the Weiher,
+  the story grants the staff through progression's regular pickup path. It also owns the current
+  spring hub overlay, the Bussole and objective HUD, the caught curtain and return, the endings,
+  epilogue and credits. Without fx it switches eras directly.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
-  threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the tour.
+  threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the tour. Older tour
+  saves at or past t13 receive the starter staff on load if it was still due at the final beat.
 - Round 2: conditions `room`, `talked`, `reading`, `meter`, `chosen`, `chapterTimer`; actions `npc`,
   `meter` (oil / smoke / vergessen / custom gauges, `lossless` → `flags['chronik.noLoss']`), `echo`,
   `memorial`, `readings`, `grant`, `say.text_by_era`, choices with `modal:false` + `when` / `key` /
@@ -1568,7 +1564,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   from the trough's water: its 7 m circle never reaches the touch reach (`quelle/layout.ts`
   `REACH`) nor the story's 5 m step zone; travel has no E prompt of its own, and its card closes on
   E only while nothing else owns E (`cardMayTakeE`: `e.owner`, `npc.near`).
-- Map (`map.ts`): M (no modal open) or the Journal tab "Karte" — the 1836–41 sheet with inked
+- Map (`map.ts`): M (no modal open) or Pause → „Karte“ — the 1836–41 sheet with inked
   footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
   (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
@@ -1576,7 +1572,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
-  Journal tab "Funde") or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
+  Pause page „Funde“) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
@@ -1866,7 +1862,7 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   plain trail board at the car park (`photo.parkplatz`, grants the flag `photo.demo.parkplatz`) and,
   with `?debug` only, a blocky test doe and fawn at 817 / −704 bound to `reh.ricke` / `reh.kitz`.
 - **Bindings stack by handle:** each `attachTarget` call pushes a handle per id; the newest remaining one is active, its detach removes exactly that handle (out-of-order detach never restores a stale getter), none left → the data anchor; `isAttached(id)` says whether any binding holds it. The `?debug` deer yields: `spawnDeer` / `kq.photo.deer.spawn` returns false with a dev warning when the deer ids are already attached or `kq.animals` reports deer.
-- **Album** (journal tab „Album“, order 70) and grants: the save slice `systems.photo` keeps one
+- **Album** (Pause → „Album“) and grants: the save slice `systems.photo` keeps one
   entry per target (best stars, era, ISO time, play seconds), at most 60 (the oldest out), plus
   `good` (every target ever shot well, for `has()`), `granted`, `cards`, `best` and the fallback
   clocks; **no images**. This session's JPEG thumbnail (`notes/capture.ts` `captureView`: re-render
@@ -1988,15 +1984,15 @@ quests ──codex:unlocked / skill:grant──▶ codex, skills
 | Flag mirror | `flags['quest.<id>']` = state, `flags['quest.<id>.<objective>']` = count (quests); `flags['rpg.level']` (progression); `flags['combat.disabled']` (story: finale, endings); `flags['tools.measuring']` (tools: LMB belongs to the tape) | story conditions read these |
 | Story actions | `quest {op: offer\|start\|progress\|complete\|fail\|reset, id, objective?, n?}`, `enemy {op: spawn\|despawn, group, kind, x, z, era, count, radius, boss, tier, leash, respawn, time, room}`, `loot {id, item, x, z, era, clear?}`, `xp {amount, reason?}`, `item {item, count?, quiet?}` | `quest`, `xp`, `item` are one-shots on resume |
 | Story conditions | `{quest: {id, state?, objective?, gte?}}` (state defaults to done; `active` also holds while ready), `{level: n}` | `questHolds()` in `story/engine.ts` |
-| Input | actions `attack` (LMB, K), `bannlicht` (RMB, G), `dodge` (Space), `quickUse` (H), `inventory` (I), `lockOn` (Tab, middle mouse), `cameraMode` (F5), `journal` (J only); `takeWheel()` for the zoom; `SHARED_KEYS` C crouch/down, LMB interact/attack, Space up/dodge; the canvas swallows the context menu | `src/player/input.ts` |
+| Input | actions `attack` (LMB, K), `bannlicht` (RMB, G), `dodge` (Space), `quickUse` (H), `inventory` (I), `lockOn` (Tab, middle mouse), `cameraMode` (F5); `takeWheel()` for the zoom; `SHARED_KEYS` C crouch/down, LMB interact/attack, Space up/dodge; the canvas swallows the context menu | `src/player/input.ts` |
 | Player hooks | `player.moveScale` (×speed), `player.canSprint`, `player.impulse(vx, vz, seconds)` (decaying push through collision and slope rules; cleared by `teleport`), `player.pushed` | owned by combat (additive) |
-| Journal tabs | `addJournalTab({id, label, order, render, badge?, hide?})` in `src/ui/journal.ts`; the quests system owns the modal (J / Tab) and tabs 10–30, progression adds 40 Ausrüstung, 50 Talente | replaces the Chronik board |
+| Pause pages | Feature systems register their destination with `src/ui/pause-pages.ts`. Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album. | I and M remain shortcuts. |
 | Debug | `window.kq.quests`, `kq.combat`, `kq.progression` (installed on the first frame: `window.kq` exists only after `initAll`) | each track extends its own |
 | Test chapter | `?storytest` + `kq.story.goto('test', 'q1')`: Hanne offers `q.test.lohnzettel`, then Laub `q.test.irrlichter` | e2e entry point for all tracks |
 
 Each RPG track adds its own subsection here when it fills its system in.
 
-#### quests (`src/systems/quests/`) – tasks, tracker, beacons, Journal
+#### quests (`src/systems/quests/`) – tasks, tracker, beacons and Pause pages
 
 - `logic.ts` (pure, `tests/quests.test.ts`): `QuestBook` – offer / accept / progress / complete /
   fail / reset, availability (`chapter`, `era`, `after`, `level`, `flags`), all objective types
@@ -2018,10 +2014,10 @@ Each RPG track adds its own subsection here when it fills its system in.
   too (it fires before `save:loaded`, which reaches the story's resume first).
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
   a running main quest is always in `tracked()` (a lost entry heals on read, `track(id, false)`
-  ignores it, the journal shows no toggle for it). `mainOffer(chapter)`: with no main quest
+  ignores it, Aufgaben shows no toggle for it). `mainOffer(chapter)`: with no main quest
   running, the main quest on offer (content order, current chapter first) heads the tracker
   (`.kqq-offer`, „Bei <Geber> annehmen“; deliberately not `.kqq-main`, so the story's line keeps
-  leading to the giver). The journal's „Laufend“ is `journalRunning()`: running quests plus main
+  leading to the giver). The „Laufend“ view in Aufgaben is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
@@ -2042,15 +2038,11 @@ Each RPG track adds its own subsection here when it fills its system in.
   the goal (`quest-via`). In a fight only the quest whose zone the player stands in stays listed
   (`quest:hint`). Hooks `kq.quests.lead/hint/stall`. Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
   shapes, givers within 150 m).
-- `journal.ts`: the Journal modal (J / Tab, `chronik:open`, testid `journal`), tabs Aufgaben (10,
-  running / done, objectives, Lohn, "Was erzählt wurde" with sources, the player's stance), Codex
-  (20, all / new / relief-pattern filters, confidence D/I/N/U + FAKT/STRITTIG/LEGENDE/FIKTION,
-  sources), Sammlungen (30, item sets + bestiary, all fiction). ←/→ and digits switch tabs.
-  Progression's tabs (40, 50) plug in via `addJournalTab`.
-- `audio.ts`: procedural cues (accept, progress tick, ready, complete). `strings.ts`: German text.
-- Hooks `kq.quests.state/ids/offer/accept/progress/complete/turnin/reset/tracked/topics/mark/
-  journal/closeJournal/journalOpen/reward/beacons/markers`. E2E `e2e/quests.spec.ts` (Hanne's
-  test quest end to end, save/load, reset), `e2e/chronik.spec.ts` (Journal), screenshots `qst-*`.
+- `pages.ts` renders Aufgaben (objectives, rewards and sourced history), Codex (filters, confidence
+  badges and sources) and Sammlungen (sets and bestiary). All three open from Pause.
+- `audio.ts` provides procedural cues for accepting and completing quests. `strings.ts` provides
+  the German copy.
+- `e2e/quests.spec.ts` covers turn-ins and save/load. `e2e/chronik.spec.ts` covers the Codex page.
 
 #### combat (`src/systems/combat/`) – Messstab, Bannlicht, spectral enemies, four bosses
 
@@ -2098,7 +2090,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `pickups.ts` | three.js pickups: billboard core with a glint (no fog, min. on-screen size, fades past 40 m), spinning token, rising motes, ground pool, light column for quest / lore / weapon / charm items; era tint; pop-in bounce, drops drift towards a player within 3.4 m, take = fly to the bottom of the view + burst (reduced motion: fade only) |
 | `hud.ts` | `hud.dock('vitals', xp, 30)` (level medallion + brass bar with ghost gain, "+50" pop, brass ring pulse on level-up — no flash), `dock('vitals', quick, 40)` (key, glyph, name, count), `dock('feed', lines, 10)` (max 3 lines, fade after 4.2 s), floating "+N EP" at the `xp:grant` x/z |
 | `levelup-card.ts` | "Stufe N" stamp card (centre, `top: max(170px, 24vh)`), merges several level-ups, chime on the stamp; game time; steps aside (`kqp-held`) while a story title card / curtain, a modal or a skill unlock card shows |
-| `journal-tabs.ts` | `addJournalTab` 40 Ausrüstung (weapon, charm slots, supplies with "Auf H" / "Benutzen", quest items, lore with Fiktion / source label, derived numbers), 50 Talente (badge = unspent points; respec only at the field station, `hub:enter` / `hub:leave`) |
+| `pages.ts` | Ausrüstung (weapon, charms, supplies, quest items, lore and stats) and Talente (badge counts unspent points). Respec is available at the spring through `hub:enter` / `hub:leave`. |
 | `icons.ts`, `audio.ts`, `progression.css` | procedural glyphs, Web Audio sounds (pickup, level, use, collection), styles incl. high-contrast and reduced-motion rules |
 
 Rules that came out of it:
@@ -2130,13 +2122,10 @@ Rules that came out of it:
   (`body:has(.kq-dock-boss:not(:empty))`). Quest payouts share the right-edge toast dock, which
   moves inward on short landscape viewports to clear the touch buttons. The feed fades while a
   conversation page is open.
-- **Journal**: the quests system's Journal modal (`data-testid=journal`) renders progression's tabs 40 / 50;
-  I (`inventory`) opens it on Ausrüstung. Progression keeps a small "Feldbuch" fallback
-  (`data-testid=journal-fallback`) that only opens if no modal and no Journal appeared within three
-  fixed steps (i.e. never while quests is registered).
+- **Pause pages.** Ausrüstung and Talente use separate page registrations. I opens Ausrüstung.
 - **State** `state.systems.progression` (`ProgressionSlice` + additive `codexXp`, `placed`, `drops`,
   `dry`); rebuilt on `new` / `load` / `replace` (no cards). Hooks `kq.progression.state / xp / level /
-  grant / equip / use / learn / respec / place / pickups / take / stats / card / feed / journal`.
+  grant / equip / use / learn / respec / place / pickups / take / stats / card / feed`.
 - Tests: `tests/progression.test.ts`, `e2e/progression.spec.ts` (screens `prg-*.png`).
 
 #### Chapters 3, 4 and the endings as quest chains (contentB)
@@ -2186,8 +2175,9 @@ Rules that came out of it:
       on `level:up`, `stats:changed`, `game:start` and `save:loaded`).
     - Interagieren → `listen`. Holding it is Lauschen; the pill carries the prompt's text.
     - Epoche → `shift`. Holding it returns; the ring fills in 1.2 s.
-    - Top row: Relief (a popover for `scan1–3` / `scan0`), Feldbuch (`journal`), Karte (`map`),
-      Pause (opens boot's pause menu), and Fliegen (`fly`, only in a spirit-view era).
+    - Top row: phone and Pause. The separate Erkunden button opens six survey controls. Relief has
+      direct choices (`scan1–3` / `scan0`). Geisterblick appears in the present and becomes Landen
+      while flying. A tap on the play surface sets a measuring point while measuring.
 - **Detection.** The setting "Touch-Steuerung" (`settings.touchControls`: `auto` | `on` | `off`, in
   Steuerung; declared by module augmentation in `touch.ts`, strings via `addStrings`).
   - Auto means `matchMedia('(pointer: coarse)')` or the first `pointerType === 'touch'` this session
@@ -2198,8 +2188,8 @@ Rules that came out of it:
   - It also asks to turn a phone held in portrait.
 - **Key names in text.** `actionLabel(input, action, slot?, fallback?)` (`src/ui/actionLabel.ts`)
   fills a caption's or toast's `{key}`: the key label on desktop, the touch button's German name in
-  touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, Feldbuch, Karte;
-  abilities 1–3). Combat and progression use it instead of `keyLabel`.
+  touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, and the survey
+  tool names). Combat, progression and tools use it for contextual hints.
 - **Prompts.** `hud.setTouchIcons(fn)` turns a prompt's key cap into the icon of the answering
   button (`touchIconFor`: E → hand, Q → hourglass …). `hud.onPrompt(key, text)` lights that button.
 - **Mobile tier.** On first run a coarse pointer gets `mobileLevel()` (`src/render/mobileDefaults.ts`):
@@ -2209,8 +2199,8 @@ Rules that came out of it:
   - `tests/touchMap.test.ts`: stick, look, mode, icons, mobile tier, and `Input.press` / no lock in
     touch mode.
   - `e2e/touch.spec.ts`: iPhone 13, Pixel 7 and iPad Pro 11 in landscape, CDP touch events. Walk,
-    look, two fingers, hit, field book open and close, pause, then title → new game by taps and
-    "Touch-Steuerung" Aus / Auto. Screens: `touch-*.png`.
+    look, use two fingers, hit, open Pause, and start the tour by taps. Survey actions include relief,
+    measuring and flight with reduced motion enabled. Screens: `touch-*.png`.
 - **Phase 2 (open):**
   - analog movement
   - captions and toasts that still name keys ("Maus rechts", "G")

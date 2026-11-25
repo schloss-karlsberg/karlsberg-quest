@@ -1,5 +1,5 @@
 import { type Era, isEra } from './era';
-import { migrateLegacyPrologue } from './legacy-prologue';
+import { migrateLegacyPrologue, restoreTourStaff } from './legacy-prologue';
 import type { Stance } from '../player/stance';
 
 /**
@@ -155,6 +155,7 @@ export function deserializeState(json: string): GameState {
   s.version = STATE_VERSION;
   if (!isEra(s.era)) s.era = 'today';
   migrateLegacyPrologue(s);
+  restoreTourStaff(s);
   return s;
 }
 

@@ -189,6 +189,21 @@ describe('settings store', () => {
     expect(diffBindings(bindings)).toEqual({ inventory: ['KeyZ'] });
   });
 
+  it('moves old survey defaults and preserves custom keys even when they claim a new default', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ bindings: {
+      fly: ['KeyF'], scan0: ['Digit0', 'Backquote'], scan1: ['Digit1'], scan2: ['Digit2'], scan3: ['Digit3'],
+      measure: ['KeyO'], xray: ['KeyV', 'Digit4'], plans: ['KeyB'], attack: ['Digit5'], journal: ['Digit1'],
+    } }));
+    const settings = new SettingsStore(storage);
+    expect(effectiveBindings(settings.state.bindings)).toMatchObject({
+      fly: ['Digit1'], scan0: ['Backquote'], scan: ['Digit2'], scan1: [], scan2: [], scan3: [],
+      measure: ['KeyO'], xray: ['Digit4'], plans: [], attack: ['Digit5'],
+    });
+    settings.update((s) => { s.bindings.fly = ['KeyF']; });
+    expect(new SettingsStore(storage).state.bindings.fly).toEqual(['KeyF']);
+  });
+
   it('older saved settings gain the new fields (voice volume, accessibility, quality)', () => {
     const storage = new MemoryStorage();
     storage.setItem(SETTINGS_KEY, JSON.stringify({ mouseSensitivity: 1.4, volume: { master: 0.5, music: 0.1, sfx: 0.9, ambience: 0.8 }, graphics: 'low' }));

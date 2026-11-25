@@ -6,7 +6,7 @@ import { addStrings } from '../../i18n';
  */
 export const RADIO_LINES = [
   'Kaffee steht da. Er ist nicht gut, aber heiß.',
-  'Hast du die Nordseite schon gemacht? Das Forstamt will den Bericht bis Freitag.',
+  'Warst du schon auf der Nordseite? Sag Bescheid, wenn du dort eine Mauerkante siehst.',
   'Die Bussole hat heut Nacht getickt. Ich hab sie in die Schublade gelegt. Hat nicht geholfen.',
   'Im Relief sieht man mehr als im Wald. Im Wald sieht man dafür, wo man hintritt.',
   'Pass auf die Gräben auf. Nicht reinfallen und nicht reingraben, das gibt Ärger mit dem Denkmalamt.',

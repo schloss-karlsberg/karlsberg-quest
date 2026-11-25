@@ -77,7 +77,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   try {
-    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals'], 120_000);
+    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression'], 120_000);
     await page.waitForFunction(() => {
       window.kq!.step(1);
       return window.kq!.animals?.ready === true;
@@ -191,9 +191,21 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
   const tDeer = await time(page);
   await follow(page, 't12', 120);
+  const staffVisible = () => page.evaluate(() => window.kq!.ctx.scene.getObjectByName('player-staff')?.visible === true);
+  expect(await staffVisible()).toBe(false);
   await shot(page, '08-damm');
-  await follow(page, 't13', 120);
+  const staffPickup = page.getByTestId('feed-line').getByText('+ Messstab', { exact: true });
+  // The grant runs on entry to t13, and the feed expires on wall time even in ?manual.
+  await Promise.all([
+    expect(staffPickup).toBeVisible({ timeout: 120_000 }),
+    follow(page, 't13', 120),
+  ]);
+  expect(await beat(page)).toBe('t13');
+  const progression = await page.evaluate(() => window.kq!.progression!.state());
+  expect(progression.inventory['item.stab.esche']).toBe(1);
+  expect(progression.equipped.weapon).toBe('item.stab.esche');
   await viewGroup(page);
+  expect(await staffVisible()).toBe(true);
   await shot(page, '09-weiher-station3');
   // round 2 (owner: lost the group): on the way up to the Quelle the player falls 45 m behind and
   // stays: Gerold waits (leash), shows on the compass, calls once; a minute on, „Zur Gruppe“ (hold Q)

@@ -35,7 +35,8 @@ parts are labelled as fiction in the Codex.
    „Speichern“ to save. Pause also opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente,
    Karte and Album.
 3. A new game opens with the guided tour: follow the guide, talk to people and take photos. The
-   tour has no fighting; the first fight is a short guided training after the time travel.
+   tour has no fighting. Marlene lends you the Messstab at the Weiher. At the
+   Karlsbergquelle, touch the water to travel to 1789.
 
 | Action | Keys |
 | --- | --- |
@@ -43,7 +44,6 @@ parts are labelled as fiction in the Codex.
 | Crouch (sneak) | C |
 | Interact / talk | E |
 | Smartphone camera (in the present) | N |
-| Map | M |
 | First / third person | F5 · mouse wheel to zoom |
 | Turn without the mouse | ← / → |
 
@@ -57,9 +57,21 @@ From the time travel on:
 | Balsam (heal) | H |
 | Era shift (hold to return to the Karlsbergquelle) | Q |
 | Lock on | Tab or middle mouse |
-| Geisterblick | F |
 | Inventory | I |
 | Lantern | L |
+
+### Survey tools
+
+| Action | Keys |
+| --- | --- |
+| Geisterblick (present day) | 1 |
+| Cycle unlocked Relief modes | 2 · Shift+2 backwards · ^ off |
+| Measure | 3 |
+| Röntgenblick | 4 |
+| Planblatt | 5 |
+| Map | M |
+
+On touch, tap „Erkunden“ for the six survey tools.
 
 ## Development
 

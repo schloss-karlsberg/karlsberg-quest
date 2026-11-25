@@ -4,10 +4,10 @@
  * Levels live in `state.skills[id]` (numbers, never lowered). Ids and what each tier opens:
  *   relief       1 Schummerung (scan 1) · 2 Lokales Relief (scan 2) · 3 VAT (scan 3)
  *   kartograf    1 Karte 1836–41 (M) · 2 Messtischblatt 1935 (M cycles) · 3 Messen (R)
- *   baumeister   1 Planblatt (B: footprints on the ground, room names in memories)
+ *   baumeister   1 Planblatt (5: footprints on the ground, room names in memories)
  *                2 Konfidenzansicht (B cycles: palace in Okabe-Ito confidence colours)
  *                3 Raumfolge (room outlines + names on the plan sheet)
- *   roentgen     1 Röntgenblick (V / 4: ground points under the canopy)
+ *   roentgen     1 Röntgenblick (4: ground points under the canopy)
  *   spurenleser  1 horn captions say what the call means · 2 pack routes as faint lines
  *
  * "Free survey": without a running story (sandbox, `?notitle` tests) every tool is open, so the
@@ -89,6 +89,15 @@ export function scanAllowed(mode: number, g: Gate): boolean {
   return mode <= 0 || has(g, 'relief', mode);
 }
 
+/** Cycle through off and the unlocked relief modes. Null means that no relief mode is unlocked. */
+export function nextScan(current: 0 | 1 | 2 | 3, g: Gate, backwards: boolean): 0 | 1 | 2 | 3 | null {
+  const modes = ([0, 1, 2, 3] as const).filter((mode) => scanAllowed(mode, g));
+  if (modes.length === 1) return null;
+  const index = modes.indexOf(current);
+  if (index < 0) return 0;
+  return modes[(index + (backwards ? -1 : 1) + modes.length) % modes.length]!;
+}
+
 export type MapLayer = 0 | 1840 | 1935;
 
 /** Map layers open to the player, in M order. */
@@ -110,7 +119,7 @@ export function nextMap(current: MapLayer, g: Gate): MapLayer | null {
 
 export type PlanView = 'off' | 'plan' | 'conf';
 
-/** B: off → Planblatt (Baumeister 1) → Konfidenz (Baumeister 2) → off. null = locked. */
+/** 5: off → Planblatt (Baumeister 1) → Konfidenz (Baumeister 2) → off. null = locked. */
 export function nextPlanView(current: PlanView, g: Gate): PlanView | null {
   const views: PlanView[] = [];
   if (has(g, 'baumeister', 1)) views.push('plan');

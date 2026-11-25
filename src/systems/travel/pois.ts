@@ -39,8 +39,7 @@ export interface Poi {
 
 /** The walks (local frame), per chapter and era. */
 export const ROUTES: readonly Route[] = [
-  // prologue (today): the old Feldstation → dam → the slope below the Orangerie → the Ehrenhof →
-  // the Bussole (kept as it is: its POI ids `poi.p-hang.<n>` sit in saves)
+  // Present-day dam, Orangerie and Ehrenhof paths. Keep the route IDs stable for saved POIs.
   { id: 'p-hang', chapter: 'prolog', era: 'today', pts: [[790, -905], [880, -880], [1040, -905], [1138, -931], [1237, -966], [1232, -1060], [1218, -1118]] },
   { id: 'p-garten', chapter: 'prolog', era: 'today', pts: [[1240, -1250], [1330, -1270], [1420, -1285], [1508, -1296]] },
   // K1 (1789): the Ehrenhof → the garden → the Zwinger; the Karlslust at night
@@ -54,7 +53,7 @@ export const ROUTES: readonly Route[] = [
   // K2 (1793-02): the Torhaus → the Apfelallee → the Orangerie → the Wachhaus; the slope to the dam
   { id: 'k2-allee', chapter: 'k2', era: '1793-02', pts: [[1660, -430], [1600, -470], [1533, -600], [1443, -800], [1380, -900], [1275, -960]] },
   { id: 'k2-hang', chapter: 'k2', era: '1793-02', pts: [[1188, -1070], [1100, -1010], [1000, -960], [880, -900], [830, -880]] },
-  // K2 (today): the walk from the station to the Torhaus
+  // K2 (today): the path to the Torhaus
   { id: 'k2-heute', chapter: 'k2', era: 'today', pts: [[1250, -915], [1380, -880], [1460, -760], [1533, -600], [1600, -470], [1660, -420]] },
   // K3 (1793-07): the garden behind the burning palace, down to the Zwinger
   { id: 'k3-garten', chapter: 'k3', era: '1793-07', pts: [[1300, -1250], [1272, -1330], [1276, -1418], [1263, -1500]] },

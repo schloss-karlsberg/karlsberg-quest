@@ -2088,7 +2088,7 @@
           "do": [
             {
               "do": "toast",
-              "text": "Matthes’ Zeichen: ein Abrieb fürs Feldbuch",
+              "text": "Abrieb von Matthes’ Zeichen erhalten",
               "ms": 3500,
               "delay": 1.5
             }
@@ -2329,7 +2329,7 @@
         {
           "do": "objective",
           "id": "k1.tschifflik",
-          "text": "Zur Tschifflik-Terrasse in der Karlslust (F: Geisterblick), dort Q",
+          "text": "Zur Tschifflik-Terrasse in der Karlslust (mit Geisterblick), dort Q",
           "x": 1822,
           "z": 70,
           "delay": 6

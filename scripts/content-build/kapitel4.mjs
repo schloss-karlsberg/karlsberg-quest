@@ -191,7 +191,7 @@ const talk = (npc, topic, x = {}) => ({ event: 'npc:talk', npc, chapter: ch, top
 const echo = (id) => ({ event: 'echo:start', id });
 
 const dialogue = [
-  // 4.0 Feldstation
+  // 4.0 At the spring
   say('marlene.k4.zettel', 'marlene', 'Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.', found('clue.k4.marlene', { step: 1 }), { once: true, src: [src('RLS', 'P: Steine der Ruine in Homburger Häusern')] }),
   say('marlene.k4.zettel_2', 'marlene', 'PS: Wenn ein altes Schloss in Homburg in hundert Häusern steckt, ist es dann weg oder überall? Frag ich mich nur so.', found('clue.k4.marlene', { step: 2 }), { once: true }),
   say('laub.k4.gestaendnis_1', 'laub', 'Ich habe Ihnen etwas verschwiegen. Ich bin nicht verschollen, weil ich mich verlaufen habe. Ich war am alten Forsthaus, Standpunkt siebzehn. Am Tag vorher hatte ich in einem Graben eine Seite gefunden, alt, angesengt, mit Namen drauf. ‚Was der Hof schuldig blieb.‘ Ich dachte, wenn ich vermesse, wo die Seiten liegen, finde ich den Rest. Ein Geometer findet alles, wenn man ihm genug Standpunkte gibt.', beat('4.0'), { once: true, priority: 10 }),
@@ -246,7 +246,7 @@ const dialogue = [
   say('laub.k4.heimgebracht', 'laub', 'Sehen Sie? Nichts verloren. Nie gewesen, wenn man’s genau nimmt. Nur zurückgebracht.', { event: 'player:caught', by: 'pack', flag: 'flag.k4_kein_verlust' }, { once: true, priority: 10 }),
   say('laub.k4.herr', 'laub', 'Vielleicht suchen sie nur ihren Herrn. Der ist nach Mannheim gefahren und hat keinem gesagt, dass die Jagd vorbei ist.', beat('4.7', { step: 2 }), { once: true }),
   say('laub.k4.abgeblasen', 'laub', 'Eine Jagd, die keiner abbläst, hört nicht auf. Das steht in keinem Reglement. Aber es steht in jeder Sage.', beat('4.7', { step: 3 }), { once: true }),
-  // 4.8 Feldstation optional
+  // 4.8 Optional visit to the spring
   say('laub.k4.noch_nicht', 'laub', 'Noch nicht. Wir wissen noch nicht genug, um uns hinzulegen.', beat('4.8-gesperrt'), { priority: 5 }),
   say('laub.k4.weiter', 'laub', 'Weiter.', beat('4.bestaetigt-1'), { once: true }),
   // 4.9 Zwinger: Finale (W8)

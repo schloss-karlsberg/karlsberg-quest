@@ -327,6 +327,7 @@ const STATES: State[] = [
       await c.page.waitForTimeout(200);
       await c.shot('cue-shift');
       await c.page.evaluate(() => window.kq!.ctx.ui.hud.prompt(null, undefined, 'tour'));
+      await c.tap('touch-survey');
       await c.tap('touch-relief');
       await c.page.waitForTimeout(200);
       await c.shot('relief-pop');
@@ -462,6 +463,7 @@ const STATES: State[] = [
     id: 'map',
     run: async (c) => {
       await c.tidy();
+      await c.tap('touch-survey');
       await c.tap('touch-map');
       await c.page.waitForTimeout(500);
       await c.shot();

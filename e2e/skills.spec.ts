@@ -92,9 +92,9 @@ test.describe('skills and survey tools', () => {
       k.teleport(1150, -1050, 120, -14);
       k.press('Digit2', 2);
       k.press('KeyM', 2);
-      k.press('KeyR', 2);
-      k.press('KeyV', 2);
-      k.press('KeyB', 2);
+      k.press('Digit3', 2);
+      k.press('Digit4', 2);
+      k.press('Digit5', 2);
       // (M opens the travel map now; the survey layer stays off)
       k.travel?.map(false);
     });
@@ -118,9 +118,16 @@ test.describe('skills and survey tools', () => {
     await page.evaluate(() => {
       const k = window.kq!;
       k.press('Digit2', 2);
-      k.press('Digit3', 2);
+      k.press('Digit2', 2);
+      k.press('Digit2', 2);
     });
-    expect(await events(page, 'scan:mode')).toEqual([{ mode: 2 }]);
+    expect(await events(page, 'scan:mode')).toEqual([{ mode: 1 }, { mode: 2 }, { mode: 0 }]);
+    await page.keyboard.press('Shift+Digit2');
+    await page.evaluate(() => window.kq!.step(2));
+    expect(await page.evaluate(() => window.kq!.survey!.state().scan)).toBe(2);
+    await page.keyboard.press('Backquote');
+    await page.evaluate(() => window.kq!.step(2));
+    expect(await page.evaluate(() => window.kq!.survey!.state().scan)).toBe(0);
 
     // Kartograf 2: the map's layer buttons lay off → 1840 → 1935 → off on the terrain (seen from
     // the air over the palace site; the buttons send survey:show-map)
@@ -196,7 +203,7 @@ test.describe('skills and survey tools', () => {
       k.setEra('1789');
       k.teleport(1230, -1250, 0, 0);
       k.step(2);
-      k.press('KeyR', 2);
+      k.press('Digit3', 2);
     });
     expect(await page.evaluate(() => window.kq!.tools!.state().measure)).toBe('a');
     // the facade of the gallery wing that faces the Gärtnerei: just inside both corners, just under the eaves (above the low KB-B40 at the west end)
@@ -248,7 +255,7 @@ test.describe('skills and survey tools', () => {
     expect(t.distance!).toBeGreaterThan(90);
     await expect(page.locator('.kqt-profile')).toBeVisible();
     await shot(page, 'measure-terrain');
-    await page.evaluate(() => window.kq!.press('KeyR', 2));
+    await page.evaluate(() => window.kq!.press('Digit3', 2));
     expect(await page.evaluate(() => window.kq!.tools!.state().measure)).toBe('off');
     expect(errors).toEqual([]);
   });
@@ -263,7 +270,7 @@ test.describe('skills and survey tools', () => {
       k.teleport(1130, -1125, 95, -42);
       k.step(2);
       p.position.y = k.ctx.world.heightAt(1130, -1125) + 115;
-      k.press('KeyB', 2);
+      k.press('Digit5', 2);
       k.step(30);
     });
     expect(await page.evaluate(() => window.kq!.tools!.state().plans)).toBe('plan');
@@ -271,7 +278,7 @@ test.describe('skills and survey tools', () => {
     await shot(page, 'plan-sheet');
     await page.evaluate(() => {
       const k = window.kq!;
-      k.press('KeyB', 2);
+      k.press('Digit5', 2);
       k.step(40);
     });
     expect(await page.evaluate(() => window.kq!.tools!.state().plans)).toBe('conf');
@@ -294,7 +301,7 @@ test.describe('skills and survey tools', () => {
     await shot(page, 'confidence-1789');
     await page.evaluate(() => {
       const k = window.kq!;
-      k.press('KeyB', 2);
+      k.press('Digit5', 2);
       k.step(60);
     });
     expect(await page.evaluate(() => window.kq!.tools!.state().plans)).toBe('off');
@@ -322,12 +329,12 @@ test.describe('skills and survey tools', () => {
     const indicator = page.getByRole('progressbar', { name: 'Punktwolke wird geladen …' });
     try {
       const requested = page.waitForRequest(cloud);
-      await page.evaluate(() => window.kq!.press('KeyV', 2));
+      await page.evaluate(() => window.kq!.press('Digit4', 2));
       await requested;
       expect(await page.evaluate(() => window.kq!.tools!.state().xray)).toBe(true);
       await expect(indicator).toBeVisible();
       await expect(indicator).not.toHaveAttribute('aria-valuenow', /.+/);
-      await page.evaluate(() => window.kq!.press('KeyV', 2));
+      await page.evaluate(() => window.kq!.press('Digit4', 2));
       await expect(indicator).toBeHidden();
       expect(await page.evaluate(() => window.kq!.tools!.state().xray)).toBe(false);
       const response = page.waitForResponse(cloud);
@@ -425,7 +432,8 @@ test.describe('skills and survey tools', () => {
     const help = page.getByTestId('key-help');
     await expect(help).toContainText('Messen: Strecke und Höhenprofil');
     await expect(help).toContainText('Röntgenblick');
-    await expect(help).toContainText('[B]');
+    await expect(help.getByRole('row').filter({ hasText: 'Planblatt' })).toContainText('[5]');
+    await expect(help.getByRole('row').filter({ hasText: 'Relief-Blick wechseln' })).toContainText('[Umschalt+2]');
     await help.locator('tr').last().scrollIntoViewIfNeeded();
     await shot(page, 'key-help');
     expect(errors).toEqual([]);

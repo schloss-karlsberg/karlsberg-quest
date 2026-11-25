@@ -10,6 +10,7 @@
     { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "quelle.call": null, "quelle.guide": null } },
     { "do": "npc", "op": "despawn", "group": "fuehrung" },
     { "do": "npc", "op": "despawn", "npc": "imhoff" },
+    { "do": "npc", "op": "despawn", "npc": "marlene" },
     { "do": "animal", "op": "despawn", "id": "diane" },
     { "do": "animal", "op": "despawn", "id": "bijou" },
     { "do": "animal", "op": "despawn", "id": "ricke" },
@@ -262,6 +263,9 @@
       "title_de": "Station 3: am Karlsbergweiher",
       "enter": [
         { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
+        { "do": "npc", "op": "spawn", "npc": "marlene", "x": 895.5, "z": -843.5, "era": "today" },
+        { "do": "item", "item": "item.stab.esche" },
+        { "do": "say", "id": "marlene.t.messstab", "speaker": "marlene", "text": "Hier, nimm den Messstab ruhig mit. Beim Fest gibst du ihn mir zurück." },
         { "do": "say", "id": "imhoff.t.station3", "speaker": "imhoff", "text": "So. Der Karlsbergweiher. Auch er ist ein Überbleibsel vom Schloss, ein Rest der Wasserbecken im Schlosspark. Wann man ihn angelegt hat und ob er Zierteich oder Fischweiher war: Ehrlich, das weiß man nicht. Den geraden Damm und die kleine Insel sieht man sogar im Laserscan." },
         { "do": "flag", "set": { "tour.weiher": true } }
       ],
@@ -271,6 +275,7 @@
       "id": "t14",
       "title_de": "Zur Quelle",
       "enter": [
+        { "do": "npc", "op": "despawn", "npc": "marlene" },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "quelle", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
         { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: hinauf zur Karlsbergquelle", "x": 1059.3, "z": -833.1 }
@@ -336,7 +341,7 @@
       "enter": [
         { "do": "say", "id": "player.q.wo", "speaker": "player", "text": "Wo sind die alle hin?", "delay": 3.5 },
         { "do": "say", "id": "laub.t.1789", "speaker": "laub", "text": "Nicht fort. Nur zweihundert Jahre weiter, je nachdem, wie man rechnet. Sommer 1789. Atmen Sie. Für heute genügt ein Blick.", "delay": 0.6 },
-        { "do": "say", "id": "laub.t.seite", "speaker": "laub", "text": "Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Lesen Sie es später, im Feldbuch.", "delay": 0.8 },
+        { "do": "say", "id": "laub.t.seite", "speaker": "laub", "text": "Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Sie finden es später unter Ausrüstung.", "delay": 0.8 },
         { "do": "fade", "to": 1, "seconds": 1.4, "delay": 0.6 },
         { "do": "flag", "set": { "tour.ende": true }, "delay": 1.6, "onResume": true }
       ],
@@ -344,7 +349,6 @@
       "exit": [
         { "do": "skill", "id": "relief", "tier": 3 },
         { "do": "skill", "id": "kartograf", "tier": 1 },
-        { "do": "item", "item": "item.stab.esche", "quiet": true },
         { "do": "item", "item": "item.p.seite" },
         { "do": "item", "item": "item.balsam", "count": 4, "quiet": true },
         { "do": "item", "item": "item.lampenoel", "count": 1, "quiet": true },

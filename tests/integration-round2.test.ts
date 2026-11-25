@@ -110,8 +110,10 @@ describe('key bindings', () => {
     for (const [action, codes] of Object.entries(DEFAULT_BINDINGS)) for (const c of codes) owner.set(c, [...(owner.get(c) ?? []), action]);
     const clashes = [...owner].filter(([, a]) => a.length > 1).map(([c, a]) => `${c}: ${a.join('+')}`);
     expect(clashes.sort()).toEqual(['KeyC: crouch+down', 'Mouse0: interact+attack', 'Space: up+dodge']);
-    expect(DEFAULT_BINDINGS.xray).toEqual(['KeyV', 'Digit4']);
-    expect(DEFAULT_BINDINGS.plans).toEqual(['KeyB']);
+    expect(DEFAULT_BINDINGS).toMatchObject({
+      fly: ['Digit1'], scan: ['Digit2'], scan0: ['Backquote'], measure: ['Digit3'],
+      xray: ['Digit4'], plans: ['Digit5'], map: ['KeyM'],
+    });
   });
 });
 

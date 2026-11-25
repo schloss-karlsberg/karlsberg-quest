@@ -13,7 +13,7 @@ export const de: Record<string, string> = {
   'loader.area': 'Umgebung wird geladen …',
   'loader.era': 'Epoche wird geladen …',
   'title.licences': 'Lizenzen & Quellen',
-  'title.hint': 'WASD: gehen · Maus: umsehen · E: sprechen und interagieren · C: schleichen · N: Handy · M: Karte · Esc: Pause. Später: F: Geisterblick · 0–3: Relief · R: Messen · V/4: Röntgenblick · B: Planblatt.',
+  'title.hint': 'WASD: gehen · Maus: umsehen · E: sprechen und interagieren · C: schleichen · N: Handy · M: Karte · Esc: Pause. Später: 1: Geisterblick · 2: Relief · 3: Messen · 4: Röntgenblick · 5: Planblatt.',
   'title.headphones': 'Mit Kopfhörern spielen.',
   'title.news': 'Neuigkeiten',
   'title.version': 'Version {version} · Build {build}',
@@ -115,6 +115,8 @@ export const de: Record<string, string> = {
   'action.lantern': 'Laterne',
   'action.shift': 'Zeitsprung',
   'action.map': 'Karten',
+  'action.scan': 'Relief-Blick wechseln (mit Umschalt rückwärts)',
+  'action.scan0': 'Relief-Blick aus',
   'action.measure': 'Messen',
   'action.xray': 'Röntgenblick',
   'action.plans': 'Planblatt',
@@ -154,7 +156,7 @@ export const de: Record<string, string> = {
   'ui.keys.turn': 'Umsehen ohne Maus: drehen (auch Komma / Punkt) und Blick heben / senken',
   'ui.keys.turn.key': '[←][→] [Bild↑][Bild↓]',
   'controls.body':
-    'WASD / Pfeil hoch, runter: gehen · Maus oder Pfeil links, rechts: umsehen · Bild↑ / Bild↓: Blick heben, senken · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · F: Geisterblick (nur heute) · 1–3: Relief-Blick · 0: Relief aus · M: Karte 1840 · Esc: Pause',
+    'WASD / Pfeil hoch, runter: gehen · Maus oder Pfeil links, rechts: umsehen · Bild↑ / Bild↓: Blick heben, senken · Umschalt: rennen · C: ducken · X: hinlegen · Leertaste: aufstehen · 1: Geisterblick (nur heute) · 2: Relief wechseln · Umschalt+2: rückwärts · ^: Relief aus · 3: Messen · 4: Röntgenblick · 5: Planblatt · M: Karte · Esc: Pause',
 
   'hud.compass.n': 'N',
   'hud.compass.e': 'O',
@@ -169,8 +171,9 @@ export const de: Record<string, string> = {
   'scan.1': 'Relief-Blick: Schummerung',
   'scan.2': 'Relief-Blick: Lokales Relief',
   'scan.3': 'Relief-Blick: VAT',
-  'scan.exit': 'Taste {n} oder 0: normale Sicht',
-  'scan.auto0': 'Gefunden. Wieder normale Sicht (Taste {n}: Relief-Blick)',
+  'scan.exit': '{key}: normale Sicht',
+  'scan.exit.touch': 'Erkunden → Relief → Aus',
+  'scan.auto0': 'Gefunden. Wieder normale Sicht.',
   'map.on': 'Karte 1836–41 eingeblendet',
   'map.off': 'Karte ausgeblendet',
 
@@ -182,6 +185,7 @@ export const de: Record<string, string> = {
   'fly.on': 'Geisterblick',
   'fly.off': 'Zurück auf dem Boden',
   'fly.prompt': 'Landen · W: fliegen, wohin du schaust · Leertaste: steigen · C: sinken · Umschalt: schneller',
+  'fly.prompt.touch': 'Landen · Stick: fliegen · Wischen: umsehen · Steigen und Sinken rechts',
 
   'modal.close': 'Schließen',
   'modal.ok': 'Gut',

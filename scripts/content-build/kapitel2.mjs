@@ -181,7 +181,7 @@ const talk = (npc, topic, x = {}) => ({ event: 'npc:talk', npc, chapter: ch, top
 const echo = (id) => ({ event: 'echo:start', id });
 
 const dialogue = [
-  // Feldstation
+  // At the spring
   say('marlene.k2.morgen', 'marlene', 'Morgen. Frost heute Nacht, die Pfützen sind zu. Deine Bussole war beschlagen, von innen. Das geht doch gar nicht.', { event: 'story:chapter', id: ch }, { once: true }),
   ...seq(found('clue.k2.marlene'), [
     ['marlene.k2.pfeiffer', 'marlene', 'Rohrbach? Da kommt mein Schwager her. Die haben da einen Nikel Pfeiffer, Bauer und Postbote, der den Herzog gewarnt haben soll. Im Internet steht einmal der neunte Februar und einmal der dritte. Such dir einen aus.', [src('WP-K2A', 'P'), src('ADB', 'P')]],
@@ -276,7 +276,7 @@ const dialogue = [
   ]),
   say('laub.k2.tor_licht', 'laub', 'Sie haben ihm heimgeleuchtet. Das war freundlich. Sie wissen, wem.', beat('2.10', { step: 3, flag: 'flag.k2_tor', value: 'leuchten' }), { once: true }),
   say('laub.k2.tor_dunkel', 'laub', 'Sie haben im Dunkeln gestanden. Die Pferde haben Sie trotzdem gesehen. Pferde sehen alles.', beat('2.10', { step: 3, flag: 'flag.k2_tor', value: 'dunkel' }), { once: true }),
-  // Feldstation
+  // At the spring
   say('laub.k2.treue', 'laub', 'Man wird später sagen, er war treu. Vielleicht. Er hätte auch schweigen können. Er hat gewarnt. Mehr wissen wir nicht.', found('clue.k2.laub_treue'), { once: true }),
   say('marlene.k2.abend', 'marlene', 'Du bist ja ganz durchgefroren. Und du riechst nach Pferd. Ich frag nicht.', beat('2.10-zurueck'), { once: true }),
   ...seq(beat('2.11'), [
@@ -426,7 +426,7 @@ const k2Quests = {
       ],
       progress: [ln('laub', 'Laufen! Die Orangerie, dann den Hang hinab nach Westen. Zum Damm.')],
       turnin_lines: [
-        ln('laub', 'Feldstation. Heute. Sie atmen, ich höre es bis hier drinnen.'),
+        ln('laub', 'An der Quelle. Heute. Sie atmen, ich höre es bis hier drinnen.'),
         ln('laub', 'Wollen Sie wissen, was die Lichter im Wald waren? Mannlich weiß es nicht. Ich auch nicht. Und das sage ich ungern.'),
       ],
       history: [

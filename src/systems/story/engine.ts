@@ -32,7 +32,7 @@ export interface StorySlice {
   unlocked: string[];
   completed: string[];
   doneBeats: string[];
-  /** Player (surveyor) name. */
+  /** Player name. */
   name: string;
   /** Dialogue line ids already spoken (once-lines). */
   said: string[];

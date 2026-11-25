@@ -48,6 +48,18 @@ describe('the tour hands over into chapter 1', () => {
     expect(story('00-tour').next).toBe('k1');
     expect(story('01-kapitel-1').checkpoint).toMatchObject({ x: 1059.3, z: -833.1, yaw: 50, era: 'today' });
   });
+
+  it.each(['t12', 't13', 't17', 't18'])('continues a tour slot at %s with the correct staff ownership', (beat) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat };
+    state.systems.progression = createProgressionSlice();
+    const saved = deserializeState(JSON.stringify(state));
+    expect(saved.systems.story!.beat).toBe(beat);
+    expect(saved.systems.progression!.inventory['item.stab.esche']).toBe(beat === 't12' ? undefined : 1);
+    expect(saved.systems.progression!.equipped.weapon).toBe(beat === 't12' ? null : 'item.stab.esche');
+    expect(saved.systems.progression!.xp).toBe(0);
+    expect(deserializeState(JSON.stringify(saved))).toEqual(saved);
+  });
 });
 
 describe('retired prologue saves', () => {
@@ -181,7 +193,7 @@ describe('retired prologue saves', () => {
     expect(deserializeState(JSON.stringify(migrated))).toEqual(migrated);
   });
 
-  it.each([['tour', 't13'], ['k1', 'k1_3'], ['k3', 'k3_5']])('preserves a save in %s', (chapter, beat) => {
+  it.each([['tour', 't12'], ['k1', 'k1_3'], ['k3', 'k3_5']])('preserves a save in %s', (chapter, beat) => {
     const state = createInitialState();
     state.systems.story = Object.assign(createStorySlice(), { active: true, chapter, beat });
     state.systems.progression = Object.assign(createProgressionSlice(), { xp: 123, inventory: { 'item.balsam': 1 } });
