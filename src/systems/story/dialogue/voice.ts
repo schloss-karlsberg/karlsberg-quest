@@ -289,7 +289,7 @@ export class VoiceClip {
   private startedAt = 0;
   private offset = 0;
   private releaseDuck: (() => void) | null = null;
-  state: 'playing' | 'paused' | 'ended' | 'stopped' = 'paused';
+  private playbackState: 'playing' | 'paused' | 'ended' | 'stopped' = 'paused';
 
   constructor(
     private readonly ctx: AudioContext,
@@ -299,17 +299,26 @@ export class VoiceClip {
     private readonly holdVoice: () => () => void,
   ) {}
 
+  get state() {
+    // The audio clock can reach the end before the main thread receives the source event.
+    if (this.playbackState === 'playing' && this.ctx.currentTime >= this.startedAt + this.buffer.duration) {
+      this.finish();
+    }
+    return this.playbackState;
+  }
+
   get playing(): boolean {
     return this.state === 'playing';
   }
 
   get done(): boolean {
-    return this.state === 'ended' || this.state === 'stopped';
+    const state = this.state;
+    return state === 'ended' || state === 'stopped';
   }
 
   /** Start / resume. False (and nothing plays) while the context is not running. */
   start(): boolean {
-    if (this.done || this.state === 'playing' || this.ctx.state !== 'running') return false;
+    if (this.state !== 'paused' || this.ctx.state !== 'running') return false;
     const ctx = this.ctx;
     const out = gain(ctx, CLIP_GAIN);
     out.connect(this.chain.input);
@@ -317,15 +326,14 @@ export class VoiceClip {
     src.buffer = this.buffer;
     src.connect(out);
     src.onended = () => {
-      if (this.src === src && this.state === 'playing') {
-        this.state = 'ended';
-        this.release(0, true);
-      }
+      if (this.src === src) this.finish();
     };
     const offset = Math.min(this.offset, this.buffer.duration);
-    src.start(ctx.currentTime, offset);
+    const when = ctx.currentTime;
+    this.startedAt = when - offset;
+    src.start(when, offset);
+    src.stop(this.startedAt + this.buffer.duration);
     this.releaseDuck = this.holdVoice();
-    this.startedAt = ctx.currentTime - offset;
     this.src = src;
     this.out = out;
     if (this.beds) {
@@ -333,21 +341,26 @@ export class VoiceClip {
       this.noiseOut.connect(this.chain.post);
       this.noise = radioNoise(ctx, this.beds, this.noiseOut, this.buffer.duration - offset);
     }
-    this.state = 'playing';
+    this.playbackState = 'playing';
     return true;
   }
 
   pause(): void {
     if (this.state !== 'playing') return;
     this.offset = this.ctx.currentTime - this.startedAt;
-    this.state = 'paused';
+    this.playbackState = 'paused';
     this.release();
   }
 
   stop(): void {
     if (this.done) return;
-    this.state = 'stopped';
+    this.playbackState = 'stopped';
     this.release(0.04);
+  }
+
+  private finish(): void {
+    this.playbackState = 'ended';
+    this.release(0, true);
   }
 
   private release(fade = 0, ended = false): void {

@@ -48,6 +48,7 @@ class Context {
   createGain() { return new Node(); }
   createDynamicsCompressor() { return Object.assign(new Node(), { threshold: new Param(), ratio: new Param() }); }
   createBiquadFilter() { return Object.assign(new Node(), { frequency: new Param(), Q: new Param() }); }
+  createDelay() { return Object.assign(new Node(), { delayTime: new Param() }); }
   createBufferSource() { const s = new Source(); this.sources.push(s); return s; }
   createOscillator() { return this.createBufferSource(); }
 }
@@ -111,8 +112,10 @@ describe('speech mix', () => {
     ctx.currentTime = 2;
     clip.pause();
     expect(duckGain(audio, 'music')).toBe(1);
+    ctx.currentTime = 10;
     expect(clip.start()).toBe(true);
-    expect(ctx.sources[1]?.start).toHaveBeenCalledWith(2, 1);
+    expect(ctx.sources[1]?.start).toHaveBeenCalledWith(10, 1);
+    expect(ctx.sources[1]?.stop).toHaveBeenCalledWith(13);
     ctx.sources[0]?.end();
     expect(duckGain(audio, 'music')).toBe(0.50);
     clip.stop();
@@ -122,6 +125,30 @@ describe('speech mix', () => {
     ctx.sources[2]?.end();
     expect(completed.state).toBe('ended');
     expect(duckGain(audio, 'music')).toBe(1);
+  });
+
+  it('finishes a Laub clip on the audio clock when its ended event is delayed', () => {
+    const audio = new AudioManager();
+    audio.unlock();
+    const ctx = audio.ctx as unknown as Context;
+    const voice = new Voice(audio);
+    const spec = speakerMeta('laub').voice;
+    const clip = voice.playClip(buffer, spec)!;
+    expect(ctx.sources[0]!.stop).toHaveBeenCalledWith(5);
+
+    ctx.currentTime = 4.99;
+    expect(clip.playing).toBe(true);
+    expect(duckGain(audio, 'ambience')).toBe(0.38);
+
+    ctx.currentTime = 5;
+    expect(clip.playing).toBe(false);
+    expect(clip.done).toBe(true);
+    expect(duckGain(audio, 'ambience')).toBe(1);
+
+    const next = voice.playClip(buffer, spec)!;
+    ctx.sources[0]!.end();
+    expect(next.playing).toBe(true);
+    expect(duckGain(audio, 'ambience')).toBe(0.38);
   });
 
   it('routes Gerold clips and murmurs through one moving source on the voice bus', () => {
