@@ -30,7 +30,7 @@ updated: 2026-11-25
 Owner: improve the landscape around the castle and add trees, flowers and other objects. The
 LiDAR version of the castle area looks great, and the game may not use all of it.
 
-### What's used now
+### What the baseline uses (`6d288275`)
 
 - **Data prep:** `scripts/prepare-data.ts` (`pnpm prepare-data`) reads the sister project
   `../saar-lidar-explorer` read-only and writes `public/data/` (manifest `public/data/manifest.json`, ~12.6 MB total).
@@ -101,7 +101,7 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 
 ## Plan
 
-_Status: draft_
+_Status: approved (2026-11-25, coordinator for the owner)_
 
 **Approach:** Give the present-day tour a sparse November ground-cover layer on Niedrig. Players see
 the verge at walking height from the meeting at Karlsberger Hof to the spring. The shipped rasters
@@ -123,11 +123,11 @@ and reeds at the waterline using data already in memory.
 
 - [ ] 1. Capture the six baseline views below on unchanged game code. Record the nine-scene bench,
   first-input bytes and phone frame times. Check the group’s path, deer sightline and trough at walking height.
-- [ ] 2. Add a `today`/Niedrig profile to `GroundCover`. Start with a 14 m radius, roughly one
+- [x] 2. Add a `today`/Niedrig profile to `GroundCover`. Start with a 14 m radius, roughly one
   candidate per square metre, and caps of 128 sparse grass tufts, 16 reed clumps and 8 meadow flowers.
   Reuse the distance tuft, procedural reed/flower meshes, view culling and shadow/reflection exclusions.
   Together these caps cost at most three draws and 12,000 triangles for the layer, with zero new asset requests.
-- [ ] 3. Use the existing seeded scatter, canopy, slope, path and water weights. Keep the gravel tread
+- [x] 3. Use the existing seeded scatter, canopy, slope, path and water weights. Keep the gravel tread
   clear, favour dry grass on open verges, allow occasional flowers in clearings and confine reeds to the
   Weiher shore band. Use the Quelle’s existing clearing circles around its steps and trough. Check cold
   start, teleport, graphics changes and the shift to 1789 for stale instances.
@@ -192,8 +192,86 @@ and report those higher-tier baselines separately.
 
 ## Progress
 
+- Branch: `feat/task-008-landscape`
 - 2026-11-25 — Slice 1 planned on game revision `6d288275`. Baseline captures and timings are pending
   before implementation. The planning session excluded browser use.
+- 2026-11-25 — Step 1 deferred to the coordinator. Build `6d288275` for the baseline and run the same
+  capture spec against both builds. The implementation sandbox has no browser, preview server or GPU access.
+- 2026-11-25 — Step 2 complete. Niedrig uses the existing 10-blade tuft and procedural flowers and
+  reeds, with nearby tiles filled first. `pnpm typecheck` passed.
+- 2026-11-25 — Step 3 complete. Added a tread cutoff for Niedrig and wired the existing Quelle
+  clearings for today. Nature, culling and asset checks passed (41 tests), including the renderer-free
+  cold start, teleport and tier/era checks. A CPU placement check with the shipped rasters found
+  grass at Karlsberger Hof and reeds at the Weiher from the planned camera positions.
+- 2026-11-25 — Step 4 unit coverage and GPU spec are in place. Playwright's `--list` discovered
+  both tests in `tour-groundcover.gpu.ts`. Desktop and phone screenshots, the tour e2e and the
+  touch playthrough through the deer photo and spring interaction are pending.
+- 2026-11-25 — Step 5 local gates: `pnpm typecheck`, `pnpm test` (110 files, 1,507 tests) and
+  `pnpm build` passed. `pnpm validate` failed to open the `tsx` IPC socket (`EPERM`). The same
+  validator passed with `node --import tsx scripts/validate-content.ts`, with content warnings.
+  `mc validate` passed. The matched GPU runs, `e2e/perf.spec.ts`, first-input bytes and the phone
+  frame-time and all-pass budget checks are pending. The documented layer ceiling is calculated
+  from mesh indices and instance limits.
+- 2026-11-25 — `git add` succeeded. `git commit` was blocked by `EPERM` creating the worktree's
+  `index.lock`. Commit the slice with `feat(render): add present-day ground cover on low`,
+  `Refs: TASK-008` and the requested co-author trailer.
+
+### Coordinator capture commands
+
+Run from the implementation worktree with Chromium installed. The detached worktree keeps the
+baseline's production build at `6d288275`. Copying the new capture spec adds the same test harness
+to that checkout. Keep the two runs on the same machine and GPU.
+
+```sh
+capture_task008() {
+  pnpm build || return
+  local capture_status=0
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh -- \
+    pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts --workers=1 || capture_status=$?
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" PERF_BASELINE=0 scripts/dev/heavy.sh -- \
+    pnpm exec playwright test e2e/perf.spec.ts --workers=1 || capture_status=$?
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh -- \
+    pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1 || capture_status=$?
+  return "$capture_status"
+}
+
+task_dir=$PWD
+baseline_dir=$(mktemp -d /tmp/kq-task-008-before.XXXXXX)
+git worktree add --detach "$baseline_dir" 6d288275
+cp e2e/gpu/tour-groundcover.gpu.ts "$baseline_dir/e2e/gpu/"
+(cd "$baseline_dir" && pnpm install --frozen-lockfile && capture_task008 before)
+capture_task008 after
+
+mkdir -p test-results/contribute/TASK-008 test-results/perf
+cp -R "$baseline_dir/test-results/contribute/TASK-008/before" test-results/contribute/TASK-008/
+cp "$baseline_dir/test-results/perf/bench-before.json" "$baseline_dir/test-results/perf/load-before.json" test-results/perf/
+```
+
+Run the companion SwiftShader stills against the two built checkouts. The helper uses the default
+third-person rig and the SwiftShader Niedrig preset on a fresh session.
+
+```sh
+swift_task008() {
+  VIEWS='[{"name":"01-karlsberger-hof","x":524,"z":-770,"yaw":253,"pitch":-6},{"name":"02-felsenpfad","x":683,"z":-596,"yaw":90,"pitch":-6},{"name":"03-weiher","x":897.2,"z":-845.3,"yaw":0,"pitch":-6},{"name":"04-quelle","x":1059,"z":-833,"yaw":270,"pitch":-6},{"name":"05-palace-plateau","x":1216,"z":-1114,"yaw":270,"pitch":-6},{"name":"06-ehrenhof","era":"1789","x":1138,"z":-1120,"yaw":90,"pitch":-6}]' \
+  scripts/dev/heavy.sh -- bash -euc '
+    mkdir -p "$1"
+    node node_modules/vite/bin/vite.js preview --port 5361 --strictPort --host 127.0.0.1 &
+    preview_pid=$!
+    trap "kill $preview_pid 2>/dev/null || true" EXIT
+    curl --fail --silent --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:5361/ >/dev/null
+    node scripts/dev/shots.mjs "$1" http://127.0.0.1:5361/
+  ' bash "$1"
+}
+
+(cd "$baseline_dir" && swift_task008 "$task_dir/test-results/contribute/TASK-008/before/swiftshader")
+swift_task008 "$task_dir/test-results/contribute/TASK-008/after/swiftshader"
+```
+
+Compare `desktop-*.png`, `phone-reduced-motion-*.png`, `phone-route.json` and `phone-bench.json`
+under each capture label. Review `test-results/perf/load-<label>.json` for first-input bytes. On
+touch, follow the group, take the deer photo and touch the spring. Check the gravel tread, the deer
+sightline and the trough at walking height, then look both ways along the Weiher's bank. Record
+the results and pair the six GPU views for the slice PR.
 
 ## Notes
 - `pnpm prepare-data` needs the sister repo checked out next to this one; external contributors cannot run it.

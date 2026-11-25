@@ -94,8 +94,8 @@ objects, enemies, UI focus).
 
 Code: `src/world/vegetation/` (`nature.ts` owns the layers, `strips.ts`, `scatter.ts` pure rules,
 `groundcover.ts`, `props.ts`), `src/world/water.ts`, `src/world/terrainShader.ts`, `forest.ts`.
-Everything below is **off on the low tier** (SwiftShader / e2e / `?q=low`): nothing is fetched and
-the procedural terrain, bark and forest from the render baseline stay as they were.
+Niedrig uses procedural terrain, bark and trees. The present-day ground cover also runs on Niedrig
+and uses the terrain data already in memory.
 
 - **Ground (medium / high):** 8 CC0 Poly Haven sets packed into two WebP strips
   (`textures/nature/ground_albedo.webp` 8 × 1k, `ground_nh.webp` 8 × 512 with normal RG + height B,
@@ -112,6 +112,10 @@ the procedural terrain, bark and forest from the render baseline stay as they we
 - **Ground cover (`GroundCover`):** instanced grass tufts, meadow flowers (1789 most, none in the
   snow) and reeds / cattails on the shore band, deterministic per 8 m tile from the land cover; wind
   gusts, grow-in at the ring edge (high 30 m, medium 21 m), tall reeds duck away right at the camera.
+  On **Niedrig** in present-day November, the 14 m ring gives the open verges dry, sparse tufts and
+  occasional meadow flowers. Growth thins under the canopy and on steep slopes. The gravel tread
+  and the furnished Quelle hollow stay clear. Reeds follow the Weiher's shallow bank, leaving the
+  open water visible. The Niedrig ground-cover layer is present-day only.
 - **Props (`NatureProps`):** (round 2: stylised kit, see §5.2) CC0 ferns (wind), rocks, a
   fallen dead trunk and two stumps, instanced per kind around the player (ferns 46 m, rocks 170 m),
   never on water, paths or the parterre; snow on top in February 1793.

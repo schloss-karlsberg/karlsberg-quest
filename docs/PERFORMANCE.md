@@ -38,6 +38,13 @@ the e2e test fails when a scene is over.
   time and bytes are exact.
 - **Real GPU, headless**: Chromium with `--enable-gpu --ignore-gpu-blocklist --use-angle=metal`
   (add `--disable-gpu-vsync --disable-frame-rate-limit` for uncapped timing) and call `kq.bench()`.
+- **Present-day ground cover on Niedrig (TASK-008):** `e2e/gpu/tour-groundcover.gpu.ts` records six
+  fixed views, a second set at 667×375 with touch and reduced motion, a live walking and turning
+  sample at each of the four tour stops, and the nine-scene phone bench. The live sample uses the
+  60 fps cap with Energiesparen off. Run with the GPU config and label the baseline and changed
+  builds `PERF_LABEL=before` and `PERF_LABEL=after`. Compare `phone-route.json` for rendered fps,
+  average and p95 frame and CPU times, and all-pass peaks. Use `e2e/perf.spec.ts` for first-input bytes.
+  The paired GPU runs and measured route cost are pending.
 
 ## 3. Results
 
@@ -383,6 +390,12 @@ keys no scene pass uses (M-17). The era shift has its own idle warm-up (§3.6).
 | Sun shadow map | none | 1024², re-used every 2nd frame | 2048², re-used every 2nd frame |
 | fx particles | low | high | high |
 | Point cloud (Röntgenblick) | sparser | full | full |
+| Ground cover radius | 14 m, present day | 21 m | 30 m |
+
+Niedrig samples one ground-cover candidate per square metre and caps the visible list at 128
+10-blade grass tufts, 16 reed clumps and 8 flowers. With all three caps filled, the procedural meshes
+submit three draws and 11,088 triangles. The layer is excluded from shadow and reflection passes
+and adds no asset requests.
 
 - **Bildrate** 30 / **60** / unbegrenzt (default 60): the most frames a second while playing
   (`core/loop.ts` `FramePacer`: on a 120 Hz screen 60 draws every 2nd display frame with even

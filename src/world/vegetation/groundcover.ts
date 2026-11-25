@@ -26,7 +26,6 @@ export interface GroundCoverSource {
   inside(x: number, z: number): boolean;
 }
 
-/** Vertex parts: 0 grass blade, 1 flower stem, 2 flower head, 3 reed blade, 4 cattail. */
 const TILE = 8;
 /** Instance record: x, y, z, scale, rotation, variant (0..1). */
 const R = 6;
@@ -36,7 +35,6 @@ interface Layer {
   geo: InstancedBufferGeometry;
   inst: InstancedBufferAttribute;
   vary: InstancedBufferAttribute;
-  max: number;
 }
 
 interface TileData {
@@ -62,10 +60,19 @@ export function coverPick(cone: ViewCone, x: number, y: number, z: number, d: nu
   return grass && d > FAR_TUFT + (v - 0.5) * 4 ? 'far' : 'near';
 }
 
-const TIERS: Record<GraphicsLevel, { cell: number; radius: number; maxGrass: number } | null> = {
-  low: null,
-  medium: { cell: 0.62, radius: 21, maxGrass: 9000 },
-  high: { cell: 0.45, radius: 30, maxGrass: 20000 },
+interface CoverTier {
+  cell: number;
+  radius: number;
+  grass: number;
+  flowers: number;
+  reeds: number;
+}
+
+const FULL_LIMITS = { grass: 20000, flowers: 2500, reeds: 3000 };
+const TIERS: Record<GraphicsLevel, CoverTier> = {
+  low: { cell: 1, radius: 14, grass: 128, flowers: 8, reeds: 16 },
+  medium: { ...FULL_LIMITS, cell: 0.62, radius: 21, grass: 9000 },
+  high: { ...FULL_LIMITS, cell: 0.45, radius: 30 },
 };
 
 /** Unit grass tuft: `blades` curved, tapering blades around the origin, height 1. */
@@ -339,16 +346,17 @@ void main() {
 
 /**
  * Near ground cover (docs/ART-DIRECTION.md §5): instanced grass tufts, meadow flowers and shore
- * reeds in a ring around the camera. Placement is deterministic per 0.55 / 0.75 m cell (hash),
+ * reeds in a ring around the camera. Placement is deterministic per cell (hash),
  * density from the land cover, slope and era (`COVER_LOOKS`), cached per 8 m tile; blades sway in
- * the wind and grow out of the ground at the ring's edge. Off on the low tier.
+ * the wind and grow out of the ground at the ring's edge. Niedrig uses sparse tufts in today's era.
  */
 export class GroundCover {
   readonly object = new Group();
   readonly material: ShaderMaterial;
   private readonly layers: { grass: Layer; grassFar: Layer; flowers: Layer; reeds: Layer };
   private readonly cone = new ViewCone();
-  private tier = TIERS.low;
+  private level: GraphicsLevel = 'low';
+  private tier: CoverTier | null = TIERS.low;
   private look: CoverLook = COVER_LOOKS.today!;
   private readonly tiles = new Map<string, TileData>();
   private lastX = Infinity;
@@ -366,7 +374,7 @@ export class GroundCover {
       vertexShader: COVER_VERT,
       fragmentShader: COVER_FRAG,
       side: DoubleSide,
-      uniforms: { ...atmosphere, uRadius: { value: 30 } },
+      uniforms: { ...atmosphere, uRadius: { value: TIERS.low.radius } },
     });
     const make = (g: BufferGeometry, max: number, name: string): Layer => {
       const geo = new InstancedBufferGeometry();
@@ -385,34 +393,41 @@ export class GroundCover {
       mesh.userData.noShadow = true;
       mesh.visible = false;
       this.object.add(mesh);
-      return { mesh, geo, inst, vary, max };
+      return { mesh, geo, inst, vary };
     };
     this.layers = {
-      grass: make(merge([tuftGeometry(22, 0, 3, 0.022, 0.26, 3, 0.42)]), 20000, 'nature-grass'),
-      // the distance tuft (beyond FAR_TUFT): 10 blades of about twice the width, same height and spread
-      grassFar: make(merge([tuftGeometry(10, 0, 3, 0.046, 0.26, 3, 0.42)]), 20000, 'nature-grass-far'),
-      flowers: make(flowerGeometry(), 2500, 'nature-flowers'),
-      reeds: make(reedGeometry(), 3000, 'nature-reeds'),
+      grass: make(tuftGeometry(22, 0, 3, 0.022, 0.26, 3, 0.42), FULL_LIMITS.grass, 'nature-grass'),
+      // The distance tuft, also used throughout the Niedrig ring, has 10 wider blades.
+      grassFar: make(tuftGeometry(10, 0, 3, 0.046, 0.26, 3, 0.42), FULL_LIMITS.grass, 'nature-grass-far'),
+      flowers: make(flowerGeometry(), FULL_LIMITS.flowers, 'nature-flowers'),
+      reeds: make(reedGeometry(), FULL_LIMITS.reeds, 'nature-reeds'),
     };
   }
 
   setLevel(level: GraphicsLevel): void {
-    const t = TIERS[level];
-    if (t === this.tier) return;
-    this.tier = t;
-    this.tiles.clear();
-    this.dirty = true;
-    this.object.visible = t !== null;
-    this.material.alphaToCoverage = t !== null;
-    this.material.needsUpdate = true;
-    if (t) this.material.uniforms.uRadius!.value = t.radius;
+    if (level === this.level) return;
+    this.level = level;
+    const alphaToCoverage = level !== 'low';
+    if (this.material.alphaToCoverage !== alphaToCoverage) {
+      this.material.alphaToCoverage = alphaToCoverage;
+      this.material.needsUpdate = true;
+    }
+    this.resetProfile();
   }
 
   setEra(era: Era): void {
     this.era = era;
     this.look = COVER_LOOKS[era] ?? COVER_LOOKS.today!;
+    this.resetProfile();
+  }
+
+  private resetProfile(): void {
+    this.tier = this.level === 'low' && this.era !== 'today' ? null : TIERS[this.level];
+    this.object.visible = this.tier !== null;
+    if (this.tier) this.material.uniforms.uRadius!.value = this.tier.radius;
     this.tiles.clear();
     this.dirty = true;
+    this.publish({ grass: 0, grassFar: 0, flowers: 0, reeds: 0 }, 0);
   }
 
   private era: Era = 'today';
@@ -456,6 +471,7 @@ export class GroundCover {
     let t = this.tiles.get(key);
     if (t) return t;
     const tier = this.tier!;
+    const sparse = tier === TIERS.low;
     const grass: number[] = [];
     const flowers: number[] = [];
     const reeds: number[] = [];
@@ -472,6 +488,8 @@ export class GroundCover {
         const mow = this.mown.length ? this.mowAt(x, z) : 1;
         if (mow <= 0) continue;
         const c = this.sample(x, z);
+        // Path coverage is feathered at 2 m resolution. Keep the tread clear of all three plants.
+        if (sparse && c.bare >= 0.25) continue;
         const r = hash2(gx, gz, 107);
         const v = hash2(gx, gz, 109);
         const rot = hash2(gx, gz, 113) * Math.PI * 2;
@@ -495,7 +513,7 @@ export class GroundCover {
         }
         // clumps of a few metres: dense, taller tussocks with thinner gaps between them
         const clump = smoothstep(0.22, 0.78, valueNoise(x * 0.33, z * 0.33, 17));
-        const gc = grassChance(c, slope, patch, this.look) * (0.35 + 0.95 * clump);
+        const gc = grassChance(c, slope, patch, this.look) * (0.35 + 0.95 * clump) * (sparse ? 0.55 : 1);
         if (gc > 0 && r < gc) {
           const tall = (0.26 + 0.26 * v) * (1 - 0.45 * c.lawn) * (0.7 + 0.6 * patch) * (0.75 + 0.5 * clump) * mow;
           grass.push(x, h - 0.03, z, tall, rot, hash2(gx, gz, 137));
@@ -526,6 +544,7 @@ export class GroundCover {
     this.lastZ = p.z;
     this.cone.set(camera, CONE_MARGIN);
     const rad = tier.radius;
+    const sparse = tier === TIERS.low;
     const counts = { grass: 0, grassFar: 0, flowers: 0, reeds: 0 };
     const t0x = Math.floor((p.x - rad) / TILE);
     const t1x = Math.floor((p.x + rad) / TILE);
@@ -533,57 +552,63 @@ export class GroundCover {
     const t1z = Math.floor((p.z + rad) / TILE);
     // high above the ground (spirit view / flying) the cover is invisible anyway
     const agl = p.y - this.src.height(p.x, p.z);
-    let tiles = 0;
+    const nearby: { tx: number; tz: number; d: number }[] = [];
     if (agl < 40) {
       for (let tz = t0z; tz <= t1z; tz++)
         for (let tx = t0x; tx <= t1x; tx++) {
           const cx = (tx + 0.5) * TILE - p.x;
           const cz = (tz + 0.5) * TILE - p.z;
-          if (Math.hypot(cx, cz) > rad + TILE * 0.71) continue;
-          const t = this.tile(tx, tz);
-          tiles++;
-          for (const k0 of ['grass', 'flowers', 'reeds'] as const) {
-            const src = t[k0];
-            const grass = k0 === 'grass';
-            for (let o = 0; o < src.length; o += R) {
-              if (grass && counts.grass + counts.grassFar >= tier.maxGrass) break;
-              const dx = src[o]! - p.x;
-              const dz = src[o + 2]! - p.z;
-              const d2 = dx * dx + dz * dz;
-              if (d2 > rad * rad) continue;
-              const pick = coverPick(this.cone, src[o]!, src[o + 1]!, src[o + 2]!, Math.sqrt(d2), src[o + 5]!, grass);
-              if (!pick) continue;
-              const k = pick === 'far' ? 'grassFar' : k0;
-              const L = this.layers[k];
-              const n = counts[k];
-              if (n >= L.max) {
-                if (grass) continue;
-                break;
-              }
-              const ia = L.inst.array as Float32Array;
-              const va = L.vary.array as Float32Array;
-              ia[n * 4] = src[o]!;
-              ia[n * 4 + 1] = src[o + 1]!;
-              ia[n * 4 + 2] = src[o + 2]!;
-              ia[n * 4 + 3] = src[o + 3]!;
-              va[n * 2] = src[o + 4]!;
-              va[n * 2 + 1] = src[o + 5]!;
-              counts[k] = n + 1;
-            }
-          }
+          const d = Math.hypot(cx, cz);
+          if (d <= rad + TILE * 0.71) nearby.push({ tx, tz, d });
         }
     }
+    // Fill the tight Niedrig caps with nearby tiles first, whichever way the camera is facing.
+    if (sparse) nearby.sort((a, b) => a.d - b.d);
+    for (const { tx, tz } of nearby) {
+      const t = this.tile(tx, tz);
+      for (const kind of ['grass', 'flowers', 'reeds'] as const) {
+        const src = t[kind];
+        const grass = kind === 'grass';
+        const limit = tier[kind];
+        for (let o = 0; o < src.length; o += R) {
+          if (counts[kind] + (grass ? counts.grassFar : 0) >= limit) break;
+          const dx = src[o]! - p.x;
+          const dz = src[o + 2]! - p.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 > rad * rad) continue;
+          const pick = coverPick(this.cone, src[o]!, src[o + 1]!, src[o + 2]!, Math.sqrt(d2), src[o + 5]!, grass && !sparse);
+          if (!pick) continue;
+          const k = pick === 'far' || (grass && sparse) ? 'grassFar' : kind;
+          const L = this.layers[k];
+          const n = counts[k];
+          const ia = L.inst.array as Float32Array;
+          const va = L.vary.array as Float32Array;
+          ia[n * 4] = src[o]!;
+          ia[n * 4 + 1] = src[o + 1]!;
+          ia[n * 4 + 2] = src[o + 2]!;
+          ia[n * 4 + 3] = src[o + 3]!;
+          va[n * 2] = src[o + 4]!;
+          va[n * 2 + 1] = src[o + 5]!;
+          counts[k] = n + 1;
+        }
+      }
+    }
+    this.publish(counts, nearby.length);
+  }
+
+  private publish(counts: { grass: number; grassFar: number; flowers: number; reeds: number }, tiles: number): void {
     for (const k of ['grass', 'grassFar', 'flowers', 'reeds'] as const) {
       const L = this.layers[k];
       const n = counts[k];
       L.geo.instanceCount = n;
+      L.mesh.visible = n > 0;
+      if (n === 0) continue;
       L.inst.clearUpdateRanges();
       L.inst.addUpdateRange(0, n * 4);
       L.inst.needsUpdate = true;
       L.vary.clearUpdateRanges();
       L.vary.addUpdateRange(0, n * 2);
       L.vary.needsUpdate = true;
-      L.mesh.visible = n > 0;
     }
     this.stats.grass = counts.grass + counts.grassFar;
     this.stats.grassFar = counts.grassFar;
