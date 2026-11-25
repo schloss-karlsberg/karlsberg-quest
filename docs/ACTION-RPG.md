@@ -518,12 +518,19 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
   in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
   (`label.ts`); `tests/flaschen.test.ts` fails if it appears in any other file.
+- **Collectibles** (item kind `collectible`, TASK-002): plain things gathered for their count. They
+  stack to 99, cannot be used or equipped, and lie in the world as small glowing pickups: no light
+  column, ordinary pickup sound. The feed counts them („+ Kastanie ×1 (7)“). The first is
+  `item.kastanie`: the tour places 24 chestnuts along the walked sections
+  (`docs/design/tour/slice-v0.md`). Story `loot` actions tag them with `group: tour.kastanien`, and
+  the tour's `leave` clears what is still lying. There is no XP, no collection reward and no item
+  grant, so the prologue margin holds.
 - **Hidden Bauwagen.** A present-day detour off the forest track below the dam. Looking at the
   trailer door in reach reveals the examine action on E and touch. The fictional surveyor's note
   unlocks „Die letzte Messung“ in Pause → Codex and appears in the discovery feed. The find grants
   no XP and has no objective, marker or campaign prerequisite.
 - **Inventory**: journal tab "Ausrüstung": weapon, charm slots, consumables (set the quick-use item),
-  quest items, lore (read the text).
+  quest items, lore (read the text). Collectibles are not listed there.
 
 ## 8. Quests, Codex and how history is taught
 
@@ -1039,6 +1046,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Following the tour group is dull (TASK-002, 2026-11-25) | 24 chestnuts (`item.kastanie`, kind `collectible`) lie in small clusters along the sections the group walks. Most are 1.5–4 m off the path, a few up to 10 m. None lie near a stop or before the deer. E, walking over one or the touch interact button picks one up, and the feed counts. Gerold, Herr Soll and Gerold again remark on the 1st, 12th and 24th. There is no XP, so collecting never delays the group: Gerold's 25 m wait and the find-the-group help are unchanged. `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`. |
 | The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |
 | Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |
 | Hidden Bauwagen (TASK-007, 2026-11-25) | The present-day trailer at its former site offers a local examine action and a FIKTION Codex reward. The tour and endings stand on their own. The owner confirmed „Wissen“ as the talent heading. |

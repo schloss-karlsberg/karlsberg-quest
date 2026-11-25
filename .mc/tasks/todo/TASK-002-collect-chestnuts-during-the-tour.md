@@ -91,9 +91,9 @@ The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on 
 - [x] 3. Positions: pick 24 spots along the walked sections with a script (route offset, terrain height and slope from the heightfield). Check them in the dev build (`?debug`, teleport): on walkable ground, not in a rock or the Weiher, visible from the path.
 - [x] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
 - [x] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
-- [ ] 6. `e2e/kastanien.spec.ts`; run it with one worker.
+- [x] 6. `e2e/kastanien.spec.ts`; run it with one worker.
 - [ ] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
-- [ ] 8. Docs: `slice-v0.md`, ACTION-RPG §7 and §14, PRD changelog.
+- [x] 8. Docs: `slice-v0.md`, ACTION-RPG §7 and §14, PRD changelog.
 - [ ] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts e2e/tour-slice.spec.ts --workers=1`.
 
 **Placement (24):**
@@ -125,13 +125,14 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
 - e2e: `e2e/kastanien.spec.ts` and `e2e/tour-slice.spec.ts` (the tour still runs through, timings logged), with one worker.
 - Manual: `http://localhost:5280/?debug&nosave&fresh` → „Neues Spiel“, follow the tour.
 - Screenshots, saved to `test-results/contribute/TASK-002/`:
-  - before: `before-1-path-t9.png`, the path on the wind → reh section at the start of t9;
-  - after: `after-1-path-t9.png`, the same view with chestnuts;
+  - before: `before-1-path-t3.png`, the path from the car park at t3, 7 m short of the first chestnut, looking north;
+  - after: `after-1-path-t3.png`, the same view with chestnuts;
   - after: `after-2-feed.png`, the pickup feed with the count.
+  - (Changed from a t9 view in step 6: there the first t9 cluster lies behind a rise and does not show.)
 
 **Risks:**
 - A new `ItemKind` member: exhaustive switches and validators must accept it (typecheck finds them).
-- Draw calls: each pickup is about four draws, visible within 95 m. A cluster adds about 10–25 draws near the path (docs/PERFORMANCE.md budget; checked with `?debug` stats).
+- Draw calls: each pickup is about four draws, visible within 95 m. A cluster adds about 10–25 draws near the path (docs/PERFORMANCE.md budget; checked with `?debug` stats). Measured in step 6: about seven per chestnut (+41 for the six t9 ones, 134 → 175 of the 300 budget).
 - The E prompt must not shadow a talk E. That's why they keep ≥ 8 m from the stops, and the pickup prompt already yields to an NPC's prompt.
 - Lines may overlap Gerold's station talk. Reactions queue like other `say` lines.
 - `voice-assets` manifest coverage might demand clips for new line ids. If so, use the dialogue fallback as the Marlene loan line does, and note it.
@@ -141,7 +142,7 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
 
 ## Progress
 - Branch: `feat/task-002-chestnuts` (from `main` `fd18dcd`)
-- 2026-11-25: plan approved. Before shot `test-results/contribute/TASK-002/before-1-path-t9.png`: t9, player on the wind → reh path at route point 627 / −647, looking down the path (yaw 29.3, pitch −9). No pickups.
+- 2026-11-25: plan approved. Before shot taken (SwiftShader, a t9 view); replaced in step 6 by `before-1-path-t3.png` (real GPU, t3 at 509.2 / −753.1 looking north, tour file from `main`), since the t9 cluster does not show from the path.
 - 2026-11-25: step 1 done - `ItemKind` `collectible`, `item.kastanie` („Kastanie“, stack 99). A collectible is not precious: smaller glow, no light column, the ordinary pickup sound (`BEAM_KINDS` / `pickupSound` leave it out). It is not usable or equippable. The feed shows the running count like consumables, and there is a chestnut glyph in `icons.ts`. Quest files keep their own kind list (a core-only kind). `tests/progression.test.ts` gains a collectibles case. The progression test and every test touching `ITEMS` are green (6 files, 113 tests), typecheck green.
 - 2026-11-25: step 2 done - `LootAction.group`: on place it becomes the pickup's `quest` tag. `{ group, clear: true }` (no `id`) sends `loot:clear {quest: group}`. The validator checks the group's form and allows a clear by group without an id. `content/story/README.md` row updated; `tests/rpg-contracts.test.ts` covers the good and bad cases. Typecheck and `pnpm validate` green.
 - 2026-11-25: step 3 done (data side) - spots chosen as (arc length, side offset) per walked section of `p-fuehrung`, then checked against the running dev build's world (`heightAt`, slope over 1 m, `surfaceAt`, `collider.solidAt` r 0.3).
@@ -151,6 +152,19 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
   - Plan adjusted: sections einstieg → felsen and damm → weiher place their chestnuts in **t5** and **t12**, the beats in which the group walks them, not in t4 and t11. Those two beats end on a flag right after the fade, and `tests/tour-slice.test.ts` reads t4's last six actions. t4 and t11 are unchanged.
   - `pnpm validate` green (214 lines). `tour-slice`, `tour-handover`, `quests-content-a`, `flaschen` and story tests green. `voice-assets` shows only its 2 known Windows path failures (same on `main`).
 - 2026-11-25: step 5 done - `tests/tour-kastanien.test.ts` (5 cases): the item; 24 chestnuts per walking beat (t3 3, t5 6, t7 3, t9 6, t12 2, t14 4), one group, era today; ≤ 12 m from their section (≥ 16 within 4 m, ≥ 3 further off), ≥ 8 m from every stop, ≥ 40 m from the doe, ≥ 15 m from the reh stop, ≥ 6 m from the today Fläschchen, > 1.4 m apart; the three reactions (totals 1 / 12 / 24, `imhoff` / `solld`, no XP, no item grant) and the `leave` cleanup before the fade; the engine says each line once as the count rises, across later beats. Fails on the tour before step 4 (4 of 5), passes now. Note: `goto` restarts a chapter's reactions (a debug jump or chapter start); play advances beats and a reload resumes, so a line is said once.
+- 2026-11-25: step 6 done - `e2e/kastanien.spec.ts`, 1 test (touch context). It covers:
+  - t3 places 01–03; E picks the nearest (desktop) and Gerold's first line fires (`c:kastanie-1`);
+  - walking over one picks it up, and the feed reads `+ Kastanie`, `+ Kastanie ×1 (2)`;
+  - the touch interact button carries „Kastanie aufheben“ and takes one;
+  - an autosave and a reload keep the count 3 and the fired line, and a jump back into t3 asks for 01–03 again but places none (taken);
+  - t5 places 6, and `goto k1` (the tour's `leave`) clears them, with the count kept.
+  - First run failed on the test's own standing point (2 m south of 01 is 1.75 m from 02, and E took the nearest); fixed the offsets. Then green, 2.9 min (`pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts --workers=1`).
+- 2026-11-25: findings while taking the after shots:
+  - **Icon:** the first chestnut glyph read as a drop (next to the Lampenöl's), so it was redrawn wider, with a tassel and a dotted base.
+  - **Screenshot hang:** `page.screenshot` under SwiftShader hangs at this t9 spot even after the chestnuts are cleared (the same hang as `cinematic.spec.ts` on `main`), so the shots use the real GPU (Iris Xe, D3D11).
+  - **Draw calls:** the 6 t9 chestnuts add 41 (134 → 175, budget 300).
+  - **First-use compile:** the frame in which the first pickups of a session appear compiled their 3 programs. Pickup materials were not in the era prewarm registry, and with the chestnuts that frame comes in t3 of every new game. Added `PickupWorld.samples()` plus `registerEraMaterials('progression.pickups', '*', …)`. Measured on the real GPU (`?warm` / `?nowarm`, running loop): 0 programs compiled at the appearance with it, 3 without. The longest frame is 83 ms in both (the rAF clock is coarse there); docs/PERFORMANCE.md §3.6 notes it.
+- 2026-11-25: step 8 done - docs: `slice-v0.md` (t3 row and a „Chestnuts along the way“ section), ACTION-RPG §7 (collectibles) and §14, PRD changelog, PERFORMANCE §3.6 (pickups in the prewarm registry).
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".

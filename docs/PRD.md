@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-25 | **Kastanien sammeln in der Führung (TASK-002).** 24 Esskastanien lie along the paths the group walks, in small clusters, a few just off the path. Pick them up with E, by walking over them, or with the touch interact button; the feed counts them and the count is saved. Gerold remarks on the first (the old „Herzogskastanien“), Herr Soll counts the twelfth, and finding all 24 earns a last word. Optional, no XP, and the group waits as before. |
 | unreleased | 2026-11-25 | **Hidden Bauwagen (TASK-007, slice 8).** The old trailer returns beside the forest track below the dam. Examining the door note unlocks „Die letzte Messung“, a FIKTION Codex card. The discovery is off the tour, maps, objectives, Bussole guidance and main story. The owner confirmed „Wissen“ as the talent heading. |
 | unreleased | 2026-11-25 | **Ricke und Kitz in view (TASK-001).** When the group stops above the deer, a short skippable shot zooms in on the fawn, then the doe, while Gerold whispers. The camera stands a step ahead of the stop, so the shot works wherever the player waits. The sneak prompt follows the shot. |
 | unreleased | 2026-11-25 | **Retired station and interface wording (TASK-007).** Continue updates old station return objectives and discards retired survey points while keeping chapter progress and POI discoveries. The visitor name defaults to „Alex“, and „Wissen“ is the talent branch heading. |
