@@ -77,7 +77,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   try {
-    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression'], 120_000);
+    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression', 'cinematic'], 120_000);
     await page.waitForFunction(() => {
       window.kq!.step(1);
       return window.kq!.animals?.ready === true;
@@ -147,7 +147,16 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't9', 60);
   await follow(page, 't10', 240);
   const tDeer0 = await time(page);
+  expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('tour.reh');
+  await page.evaluate(() => window.kq!.step(180));
   await shot(page, '06-reh-sicht');
+  await page.evaluate(() => window.kq!.step(181));
+  expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
+  await page.waitForFunction(() => {
+    const k = window.kq!;
+    k.ctx.loop.requestRender();
+    return k.photo!.state().blocked === null;
+  });
   // the deer are there, off the route, and the photo works from 12 m (calm: no flight on teleport)
   const deer = await page.evaluate(() => window.kq!.animals!.list());
   const ricke = deer.find((d) => d.id === 'ricke')!;
@@ -172,12 +181,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
       k.teleport(px, pz, yaw, -4);
       k.ctx.player.setStance('crouch');
       k.step(20);
-      k.photo!.open();
+      const opened = k.photo!.open();
       k.step(40);
-      return { judge: k.photo!.judge('reh.ricke'), at: { x, z } };
+      return { opened, judge: k.photo!.judge('reh.ricke'), at: { x, z } };
     },
     { x: ricke.x, z: ricke.z },
   );
+  expect(shotRes.opened).toBe(true);
   console.log(`[tour] deer judge ${JSON.stringify(shotRes.judge)}`);
   await shot(page, '07-reh-handy');
   const res = await page.evaluate(() => window.kq!.photo!.shoot());

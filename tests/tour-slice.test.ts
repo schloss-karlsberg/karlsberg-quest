@@ -8,7 +8,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { CinematicFile } from '../src/systems/cinematic/types';
-import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice } from '../src/systems/story/engine';
+import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
@@ -37,7 +37,7 @@ function harness() {
     }
   };
   const engine = new StoryEngine([tour, k1], () => slice, {
-    run: (actions) => apply(actions),
+    run: (actions, { resume }) => apply(resume ? actions.filter(runsOnResume) : actions),
     chapterEntered: () => {},
     beatEntered: () => {},
     chapterCompleted: () => {},
@@ -235,9 +235,26 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const cine = h.sent.find((s) => s.kind === 'cinematic')?.a as { ref?: string; skippable?: boolean } | undefined;
     expect(cine).toMatchObject({ ref: 'reh', skippable: true });
     expect(kinds.indexOf('cinematic')).toBeLessThan(kinds.indexOf('prompt'));
-    // the [C] prompt waits for the end of the shot
-    const seconds = shot.keys!.at(-1)!.t;
-    const prompt = h.sent.find((s) => s.kind === 'prompt' && (s.a as { key?: string }).key === 'C')!.a as { delay?: number };
-    expect(prompt.delay ?? 0).toBeGreaterThanOrEqual(seconds);
+  });
+
+  it('t10 prepares the sneak prompt and objective at once, including on Continue', () => {
+    const enter = tour.beats.find((b) => b.id === 't10')!.enter!;
+    // The cinematic hides the HUD until it ends. A delayed line would also delay later actions.
+    const setup = enter.slice(0, enter.findIndex((a) => a.do === 'say'));
+    expect(setup.map((a) => a.do)).toEqual(['npc', 'cinematic', 'prompt', 'objective']);
+    expect(setup.every((a) => (a.delay ?? 0) === 0)).toBe(true);
+
+    const h = harness();
+    h.engine.goto('tour', 't10');
+    h.sent.length = 0;
+    h.said.length = 0;
+    h.engine.resume();
+    expect(h.beat()).toBe('t10');
+    expect(h.sent.map(({ a }) => a)).toMatchObject([
+      { do: 'npc', op: 'hold', group: 'fuehrung' },
+      { do: 'prompt', key: 'C', touch: 'Langsam heranpirschen' },
+      { do: 'objective', id: 'tour', x: 704, z: -779 },
+    ]);
+    expect(h.said).toEqual([]);
   });
 });
