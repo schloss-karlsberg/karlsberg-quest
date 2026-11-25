@@ -90,7 +90,7 @@ The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on 
 - [x] 2. Story `loot` with `group` (place and clear); validator accepts it; unit test.
 - [x] 3. Positions: pick 24 spots along the walked sections with a script (route offset, terrain height and slope from the heightfield). Check them in the dev build (`?debug`, teleport): on walkable ground, not in a rock or the Weiher, visible from the path.
 - [x] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
-- [ ] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
+- [x] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
 - [ ] 6. `e2e/kastanien.spec.ts`; run it with one worker.
 - [ ] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
 - [ ] 8. Docs: `slice-v0.md`, ACTION-RPG §7 and §14, PRD changelog.
@@ -150,6 +150,7 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
 - 2026-11-25: step 4 done - `00-tour.story.json`: 24 `loot` actions (era `today`, group `tour.kastanien`), three chapter `on` reactions (first, 12th, 24th pickup; `item:pickup` + `match.item` + `gte.total`), and `{ group, clear: true }` in `leave` before the fade.
   - Plan adjusted: sections einstieg → felsen and damm → weiher place their chestnuts in **t5** and **t12**, the beats in which the group walks them, not in t4 and t11. Those two beats end on a flag right after the fade, and `tests/tour-slice.test.ts` reads t4's last six actions. t4 and t11 are unchanged.
   - `pnpm validate` green (214 lines). `tour-slice`, `tour-handover`, `quests-content-a`, `flaschen` and story tests green. `voice-assets` shows only its 2 known Windows path failures (same on `main`).
+- 2026-11-25: step 5 done - `tests/tour-kastanien.test.ts` (5 cases): the item; 24 chestnuts per walking beat (t3 3, t5 6, t7 3, t9 6, t12 2, t14 4), one group, era today; ≤ 12 m from their section (≥ 16 within 4 m, ≥ 3 further off), ≥ 8 m from every stop, ≥ 40 m from the doe, ≥ 15 m from the reh stop, ≥ 6 m from the today Fläschchen, > 1.4 m apart; the three reactions (totals 1 / 12 / 24, `imhoff` / `solld`, no XP, no item grant) and the `leave` cleanup before the fade; the engine says each line once as the count rises, across later beats. Fails on the tour before step 4 (4 of 5), passes now. Note: `goto` restarts a chapter's reactions (a debug jump or chapter start); play advances beats and a reload resumes, so a line is said once.
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".
