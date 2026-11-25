@@ -191,9 +191,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
   const tDeer = await time(page);
   await follow(page, 't12', 120);
+  const staffVisible = () => page.evaluate(() => window.kq!.ctx.scene.getObjectByName('player-staff')?.visible === true);
+  expect(await staffVisible()).toBe(false);
   await shot(page, '08-damm');
   await follow(page, 't13', 120);
+  await expect(page.getByTestId('feed-line').getByText('+ Messstab', { exact: true })).toBeVisible();
   await viewGroup(page);
+  expect(await staffVisible()).toBe(true);
   await shot(page, '09-weiher-station3');
   // round 2 (owner: lost the group): on the way up to the Quelle the player falls 45 m behind and
   // stays: Gerold waits (leash), shows on the compass, calls once; a minute on, „Zur Gruppe“ (hold Q)

@@ -8,7 +8,7 @@
  *   game), plays a stamp + chime and lets Laub comment (`dialogue:say`, only once
  *   `flags['story.laub']` is set, or without a running story). Emits `skill:unlocked`.
  * - The gating itself is applied by the tools that use the skills: survey (scan 1–3, M map
- *   layers) and tools (R measure, V/4 Röntgenblick, B plans, pack routes). Hunt reads
+ *   layers) and tools (3 measure, 4 Röntgenblick, 5 plans, pack routes). Hunt reads
  *   `skills.spurenleser` for the horn captions.
  * - Settings rows (Rauhnacht, sound captions, sound indicators, graphics quality) and the key
  *   help entries are registered here (see settings.ts).

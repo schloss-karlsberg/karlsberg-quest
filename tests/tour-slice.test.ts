@@ -147,8 +147,12 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.beat()).toBe('t12');
     expect(h.sent.some((s) => s.kind === 'npc:walk' && (s.a as { op: string; to?: string }).op === 'warp' && (s.a as { to: string }).to === 'damm')).toBe(true);
     expect(h.said).toContain('marlene.t.cameo');
+    const staffGrants = () => h.sent.filter(({ a }) => a.do === 'item' && a.item === 'item.stab.esche');
+    expect(staffGrants()).toHaveLength(0);
     h.ev('npc:arrived', { npc: 'imhoff', at: 'weiher', route: 'p-fuehrung', skipped: false });
     expect(h.beat()).toBe('t13');
+    expect(h.said).toContain('marlene.t.messstab');
+    expect(staffGrants().map(({ a }) => a)).toEqual([{ do: 'item', item: 'item.stab.esche' }]);
     h.tick();
     expect(h.beat()).toBe('t14');
     h.ev('npc:arrived', { npc: 'imhoff', at: 'quelle', route: 'p-fuehrung', skipped: false });

@@ -42,16 +42,16 @@ addStrings('de', {
   'skills.desc.spurenleser.1': 'Untertitel sagen, was ein Hornruf bedeutet.',
   'skills.desc.spurenleser.2': 'Die Wege der Meute schimmern im Boden.',
 
-  'skills.key.relief.1': '[1]',
+  'skills.key.relief.1': '[2]',
   'skills.key.relief.2': '[2]',
-  'skills.key.relief.3': '[3]',
+  'skills.key.relief.3': '[2]',
   'skills.key.kartograf.1': '[M]',
   'skills.key.kartograf.2': '[M]',
-  'skills.key.kartograf.3': '[R]',
-  'skills.key.baumeister.1': '[B]',
-  'skills.key.baumeister.2': '[B]',
-  'skills.key.baumeister.3': '[B]',
-  'skills.key.roentgen.1': '[V]',
+  'skills.key.kartograf.3': '[3]',
+  'skills.key.baumeister.1': '[5]',
+  'skills.key.baumeister.2': '[5]',
+  'skills.key.baumeister.3': '[5]',
+  'skills.key.roentgen.1': '[4]',
   'skills.key.spurenleser.1': '',
   'skills.key.spurenleser.2': '',
 
@@ -89,9 +89,9 @@ addStrings('de', {
 
   // key help: tools added by this round (bible style)
   'ui.keys.xray': 'Röntgenblick: Bodenpunkte unter den Bäumen (Röntgenblick)',
-  'ui.keys.xray.key': '[V] / [4]',
+  'ui.keys.xray.key': '[4]',
   'ui.keys.plans': 'Planblatt / Konfidenzansicht der Rekonstruktion (Baumeister)',
-  'ui.keys.plans.key': '[B]',
+  'ui.keys.plans.key': '[5]',
   'ui.keys.relief_off': 'Relief-Blick aus',
-  'ui.keys.relief_off.key': '[0]',
+  'ui.keys.relief_off.key': '[^]',
 });

@@ -253,11 +253,11 @@ test.describe('world', () => {
       k.press('KeyC');
       const crouch = k.state().player.stance;
       k.press('KeyC');
-      k.press('KeyF');
+      k.press('Digit1');
       const flyToday = k.ctx.player.flying;
-      k.press('KeyF');
+      k.press('Digit1');
       k.setEra('1789');
-      k.press('KeyF');
+      k.press('Digit1');
       const fly1789 = k.ctx.player.flying;
       // save round trip into a throwaway slot
       const sm = k.ctx.save;

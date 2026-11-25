@@ -2,14 +2,15 @@ import { SRGBColorSpace, type Texture, TextureLoader } from 'three';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import type { ScanMode } from '../../world/world';
-import { type MapLayer, gateFrom, mapLayers, nextMap, scanAllowed } from '../skills/logic';
+import { type MapLayer, gateFrom, mapLayers, nextMap, nextScan, scanAllowed } from '../skills/logic';
+import { actionLabel } from '../../ui/actionLabel';
 
 /**
- * Survey: relief scan modes (keys 0–3) and the historic map overlay (M), gated by the skills
+ * Survey: relief scan cycling (2, Shift+2 back) and the historic map overlay (M), gated by the skills
  * (rules in ../skills/logic.ts):
  *   Relief-Blick n opens scan mode n; Kartograf 1 the 1836–41 map, Kartograf 2 the 1935–40
  *   Messtischblatt (M cycles off → 1840 → 1935 → off). Without a running story everything is open
- *   (free survey, see logic.ts). Locked keys leave a short field-book note instead.
+ *   (free survey, see logic.ts). Locked skills display a short notice.
  * Debug: window.kq.survey.map(0|1840|1935), .state().
  */
 /** Radius (m) of the relief scan around the player; trees inside it are hidden (ground points only). */
@@ -42,7 +43,11 @@ const textures: Partial<Record<1840 | 1935, Texture>> = {};
 
 function updateStatus(ctx: GameContext): void {
   const parts: string[] = [];
-  if (ctx.world.scanMode > 0) parts.push(`${ctx.t(`scan.${ctx.world.scanMode}`)} · ${ctx.t('scan.exit', { n: ctx.world.scanMode })}`);
+  if (ctx.world.scanMode > 0) {
+    const off = actionLabel(ctx.input, 'scan0');
+    const hint = ctx.input.touchMode ? ctx.t('scan.exit.touch') : off ? ctx.t('scan.exit', { key: off }) : '';
+    parts.push([ctx.t(`scan.${ctx.world.scanMode}`), hint].filter(Boolean).join(' · '));
+  }
   if (ctx.world.mapMix > 0) parts.push(mapLayer === 1935 ? ctx.t('map.status.1935') : ctx.t('map.status.1840'));
   ctx.ui.hud.setStatus(parts.join(' · '));
 }
@@ -92,6 +97,9 @@ export default defineSystem({
     });
     ctx.events.on('era:change', () => updateStatus(ctx));
     ctx.events.on('scan:mode', () => updateStatus(ctx));
+    ctx.settings.subscribe((_, reason) => {
+      if (reason === 'bindings' || reason === 'touchControls') updateStatus(ctx);
+    });
     ctx.events.on('survey:show-map', ({ layer }) => {
       const next: MapLayer = layer;
       if (next !== 0 && !scanMapAllowed(ctx, next)) {
@@ -114,16 +122,19 @@ export default defineSystem({
       autoOff -= dt;
       if (ctx.world.scanMode === 0) autoOff = -1;
       else if (autoOff < 0) {
-        const was = ctx.world.scanMode;
         ctx.world.setScanMode(0, ctx.settings.state.reducedMotion);
         ctx.events.emit('scan:mode', { mode: 0 });
-        ctx.ui.toast(ctx.t('scan.auto0', { n: was }), 4200);
+        ctx.ui.toast(ctx.t('scan.auto0'), 4200);
       }
     }
     if (inp.wasPressed('scan0')) mode = 0;
-    if (inp.wasPressed('scan1')) mode = 1;
-    if (inp.wasPressed('scan2')) mode = 2;
-    if (inp.wasPressed('scan3')) mode = 3;
+    else if (inp.wasPressed('scan1')) mode = 1;
+    else if (inp.wasPressed('scan2')) mode = 2;
+    else if (inp.wasPressed('scan3')) mode = 3;
+    else if (inp.wasPressed('scan')) {
+      mode = nextScan(ctx.world.scanMode, gateFrom(ctx.state.state, ctx.params), inp.wasPressedWithShift('scan'));
+      if (mode === null) ctx.ui.toast(ctx.t('skills.locked.scan', { n: 1 }));
+    }
     if (mode !== null) {
       const gate = gateFrom(ctx.state.state, ctx.params);
       if (!scanAllowed(mode, gate)) {

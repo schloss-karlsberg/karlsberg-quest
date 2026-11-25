@@ -34,13 +34,22 @@ addStrings('de', {
   'touch.interact': 'Interagieren (halten: Lauschen)',
   'touch.interact.short': 'Aktion',
   'touch.shift': 'Epochenwechsel (halten: zurück)',
-  'touch.fly': 'Geisterblick: Fliegen',
+  'touch.fly': 'Geisterblick',
+  'touch.land': 'Landen',
+  'touch.survey': 'Erkunden',
+  'touch.measure': 'Messen',
+  'touch.xray': 'Röntgenblick',
+  'touch.plans': 'Planblatt',
   'touch.map': 'Karte',
   'touch.pause': 'Pause',
   'touch.photo': 'Handy-Kamera',
   'touch.shutter': 'Auslöser: Foto machen',
-  'touch.relief': 'Reliefansicht',
+  'touch.relief': 'Relief',
   'touch.relief.0': 'Aus',
+  'touch.relief.1': 'Schummerung',
+  'touch.relief.2': 'Lokales Relief',
+  'touch.relief.3': 'VAT',
+  'touch.survey.back': 'Zurück',
   'touch.skill1': 'Ausfall',
   'touch.skill2': 'Erdstoß',
   'touch.skill3': 'Wirbel',
@@ -101,6 +110,7 @@ export interface TouchDeps {
   dismissNoticeAt(x: number, y: number): void;
   canFly(): boolean;
   flying(): boolean;
+  measuring(): boolean;
   /** Ability n (1 Ausfall, 2 Erdstoß, 3 Wirbel) learnt? Its button hides until then. Absent: always shown. */
   skillUnlocked?(n: 1 | 2 | 3): boolean;
   /** The player's stance ('stand' | 'crouch' | 'prone'): the crouch button's state after a load. */
@@ -118,7 +128,7 @@ interface Btn {
  *  - right part: drag to look (`Input.addLook`)
  *  - thumb arc: Hieb (hold = Wuchthieb), Ausweichen, Bannlicht, Ziel, Balsam, abilities
  *  - context: Interagieren with the prompt's text (hold = Lauschen), Epoche (hold = zurück)
- *  - top: Relief, Karte, Pause (and Fliegen in the spirit view)
+ *  - top: phone and Pause, with a separate survey button below
  * Buttons press binding-independent virtual actions (`Input.press`), so features read them like keys.
  */
 export class TouchControls {
@@ -132,6 +142,9 @@ export class TouchControls {
   private readonly crouchBtn: Btn;
   private stance = 'stand';
   private readonly dodgeBtn: Btn;
+  private readonly surveyBtn: HTMLButtonElement;
+  private readonly surveyPop: HTMLElement;
+  private readonly surveyTools: HTMLElement;
   private readonly scanPop: HTMLElement;
   private readonly skillBtns: HTMLButtonElement[];
   private readonly attackBtn: HTMLButtonElement;
@@ -166,7 +179,6 @@ export class TouchControls {
     this.interactText = h('span.kq-t-label', t('touch.interact.short'));
     this.interactBtn = btn('interact', I.interact, t('touch.interact'), ['listen'], this.interactText);
     this.dodgeBtn = btn('dodge', I.dodge, t('touch.dodge'), ['dodge', 'up']);
-    this.flyBtn = btn('fly', I.fly, t('touch.fly'), ['fly']);
     // 'crouch' toggles the stance on foot (the player ignores it while flying), 'down' sinks while
     // flying (nothing reads it on foot): the same pair as C
     this.crouchBtn = btn('crouch', I.crouch, t('touch.crouch'), ['crouch', 'down']);
@@ -175,14 +187,43 @@ export class TouchControls {
     const attack = btn('attack', I.attack, t('touch.attack'), ['attack', 'interact']);
     attack.el.append(h('i.kq-t-ring'));
     this.attackBtn = attack.el;
-    const scanBtn = h('button.kq-t-btn.relief', { type: 'button', 'aria-label': t('touch.relief'), 'data-testid': 'touch-relief' }, svg(I.relief));
-    this.scanPop = h('div.kq-t-pop.kq-hidden', { 'data-testid': 'touch-relief-pop' });
+    this.surveyBtn = h('button.kq-t-btn.survey', {
+      type: 'button', 'aria-label': t('touch.survey'), 'aria-expanded': 'false', 'aria-controls': 'touch-survey-pop', 'data-testid': 'touch-survey',
+    }, svg(I.relief));
+    const chip = (id: string, text: string) => h('button.kq-t-chip', { type: 'button', 'data-testid': `touch-${id}` }, text);
+    const surveyAction = (id: string, label: string, action: Action): Btn => {
+      const b = { el: chip(id, label), actions: [action] };
+      this.wire(b, () => {
+        if (document.activeElement === b.el) this.surveyBtn.focus();
+        this.setSurveyMenu(null);
+      });
+      return b;
+    };
+    this.flyBtn = surveyAction('fly', t('touch.fly'), 'fly');
+    const scanBtn = chip('relief', t('touch.relief'));
+    this.scanPop = h('div.kq-t-survey-list.kq-hidden', { 'data-testid': 'touch-relief-pop' });
     for (const n of [1, 2, 3, 0] as const) {
-      const chip = h('button.kq-t-chip', { type: 'button', 'data-testid': `touch-scan${n}` }, n === 0 ? t('touch.relief.0') : String(n));
-      this.wire({ el: chip, actions: [`scan${n}` as Action] }, () => this.scanPop.classList.add('kq-hidden'));
-      this.scanPop.append(chip);
+      this.scanPop.append(surveyAction(`scan${n}`, t(`touch.relief.${n}`), `scan${n}`).el);
     }
-    this.tap(scanBtn, () => this.scanPop.classList.toggle('kq-hidden'));
+    const scanBack = chip('relief-back', t('touch.survey.back'));
+    this.scanPop.append(scanBack);
+    this.tap(scanBack, () => {
+      this.setSurveyMenu('tools');
+      if (document.activeElement === scanBack) scanBtn.focus();
+    });
+    this.tap(scanBtn, () => {
+      this.setSurveyMenu('relief');
+      if (document.activeElement === scanBtn) this.scanPop.querySelector('button')?.focus();
+    });
+    this.surveyTools = h('div.kq-t-survey-list', [
+      this.flyBtn.el, scanBtn, surveyAction('measure', t('touch.measure'), 'measure').el,
+      surveyAction('xray', t('touch.xray'), 'xray').el, surveyAction('plans', t('touch.plans'), 'plans').el,
+      surveyAction('map', t('touch.map'), 'map').el,
+    ]);
+    this.surveyPop = h('div.kq-t-pop.kq-hidden', { id: 'touch-survey-pop', 'data-testid': 'touch-survey-pop' }, [this.surveyTools, this.scanPop]);
+    this.surveyPop.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.tap(this.surveyBtn, () => this.setSurveyMenu(this.surveyPop.classList.contains('kq-hidden') ? 'tools' : null));
+    const survey = h('div.kq-t-survey', [this.surveyBtn, this.surveyPop]);
     const pause = h('button.kq-t-btn.pause', { type: 'button', 'aria-label': t('touch.pause'), 'data-testid': 'touch-pause' }, svg(I.pause));
     this.tap(pause, () => {
       this.releaseAll();
@@ -190,7 +231,7 @@ export class TouchControls {
     });
     // the phone (photo mode): toggles like N; while it is up, the attack button is the shutter
     const photo = btn('photo', I.photo, t('touch.photo'), ['photo']);
-    const top = h('div.kq-t-top', [this.flyBtn.el, scanBtn, photo.el, btn('map', I.map, t('touch.map'), ['map']).el, pause]);
+    const top = h('div.kq-t-top', [photo.el, pause]);
     deps.events.on('photo:open', () => this.setPhoto(true, photo.el));
     deps.events.on('photo:close', () => this.setPhoto(false, photo.el));
     this.skillBtns = ([1, 2, 3] as const).map((n) => btn(`skill${n}`, I.skill, t(`touch.skill${n}`), [`skill${n}`], h('span.kq-t-num', String(n))).el);
@@ -205,7 +246,7 @@ export class TouchControls {
       this.crouchBtn.el,
       this.interactBtn.el,
     ]);
-    this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, this.scanPop]);
+    this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, survey]);
     this.el.addEventListener('pointerdown', (e) => {
       if (this.surfaceTap?.id !== e.pointerId) this.surfaceTap = null;
     }, true);
@@ -306,11 +347,19 @@ export class TouchControls {
   private syncVisible(): void {
     this.syncRotate();
     this.el.classList.toggle('kq-hidden', !(this.wanted && this.playing));
-    if (!(this.wanted && this.playing)) this.scanPop.classList.add('kq-hidden');
+    if (!(this.wanted && this.playing)) this.setSurveyMenu(null);
+  }
+
+  private setSurveyMenu(page: 'tools' | 'relief' | null): void {
+    this.surveyBtn.setAttribute('aria-expanded', String(page !== null));
+    this.surveyPop.classList.toggle('kq-hidden', page === null);
+    this.surveyTools.classList.toggle('kq-hidden', page !== 'tools');
+    this.scanPop.classList.toggle('kq-hidden', page !== 'relief');
   }
 
   /** Photo mode: the attack button becomes the shutter, the camera button lights up. */
   private setPhoto(on: boolean, photoBtn: HTMLElement): void {
+    if (on) this.setSurveyMenu(null);
     photoBtn.classList.toggle('on', on);
     this.attackBtn.classList.toggle('shutter', on);
     this.attackBtn.replaceChildren(svg(on ? TOUCH_ICONS.shutter : TOUCH_ICONS.attack), h('i.kq-t-ring'));
@@ -328,6 +377,8 @@ export class TouchControls {
     const fl = this.deps.flying();
     this.flyBtn.el.classList.toggle('kq-hidden', !can && !fl);
     this.flyBtn.el.classList.toggle('on', fl);
+    this.flyBtn.el.textContent = t(fl ? 'touch.land' : 'touch.fly');
+    this.surveyBtn.classList.toggle('on', fl);
     const cr = crouchButtonMode(fl, this.deps.stance?.() ?? this.stance);
     this.crouchBtn.el.replaceChildren(svg(TOUCH_ICONS[cr.icon]));
     this.crouchBtn.el.classList.toggle('on', cr.on);
@@ -346,8 +397,9 @@ export class TouchControls {
     const mine = icon === 'interact' && !!text?.trim();
     this.interactText.textContent = mine ? text! : t('touch.interact.short');
     this.interactBtn.el.classList.toggle('lit', mine);
-    for (const b of this.el.querySelectorAll('.kq-t-btn.cue')) b.classList.remove('cue');
+    for (const b of this.el.querySelectorAll('.cue')) b.classList.remove('cue');
     if (icon && icon !== 'interact') this.el.querySelector(`[data-testid="touch-${icon}"]`)?.classList.add('cue');
+    if (icon === 'fly' || icon === 'relief' || icon === 'map') this.surveyBtn.classList.add('cue');
   }
 
   /** A pressable button: holds its actions while the finger is down. */
@@ -381,6 +433,7 @@ export class TouchControls {
       if ((e as PointerEvent).pointerType || e.detail > 0) return;
       for (const a of b.actions) this.deps.input.press(a, true);
       setTimeout(() => b.actions.forEach((a) => this.deps.input.press(a, false)), 60);
+      after?.();
     });
   }
 
@@ -403,7 +456,7 @@ export class TouchControls {
   private surfaceDown(e: PointerEvent): void {
     if (e.pointerType === 'touch' && e.isPrimary && e.target === this.el) this.surfaceTap = new PointerTap(e);
     e.preventDefault();
-    this.scanPop.classList.add('kq-hidden');
+    this.setSurveyMenu(null);
     try {
       this.el.setPointerCapture(e.pointerId);
     } catch {
@@ -448,7 +501,12 @@ export class TouchControls {
     if (this.surfaceTap?.id !== e.pointerId) return;
     const tapped = this.surfaceTap.completes(e);
     this.surfaceTap = null;
-    if (tapped && document.elementFromPoint(e.clientX, e.clientY) === this.el) this.deps.dismissNoticeAt(e.clientX, e.clientY);
+    if (tapped && document.elementFromPoint(e.clientX, e.clientY) === this.el) {
+      if (this.deps.measuring()) {
+        this.deps.input.press('interact', true);
+        this.deps.input.press('interact', false);
+      } else this.deps.dismissNoticeAt(e.clientX, e.clientY);
+    }
   }
 
   private moveStick(x: number, y: number): void {
@@ -467,6 +525,7 @@ export class TouchControls {
 
   /** Let go of everything (modal, pause, blur, touch off). */
   releaseAll(): void {
+    this.setSurveyMenu(null);
     this.setHeld([]);
     this.stickId = null;
     this.stick.classList.add('kq-hidden');

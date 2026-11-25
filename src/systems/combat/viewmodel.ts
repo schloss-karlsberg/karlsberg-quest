@@ -519,7 +519,7 @@ export class Viewmodel {
     A.stage = this.stage ?? 'esche';
     A.target = f.target ?? null;
     A.time = f.time;
-    if (f.thirdPerson) {
+    if (f.thirdPerson || !A.armed) {
       this.root.visible = false;
       this.lower = 1;
       this.trailPts.length = 0;

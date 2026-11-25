@@ -91,7 +91,7 @@ export function migrateLegacyPrologue(state: GameState): void {
   const progression = state.systems.progression = normalizeSlice(state.systems.progression ?? createProgressionSlice());
   settleRewards(state);
 
-  // The tour's t17/t18 handover is the floor for the opening. Pay earned quest rewards first.
+  // The full tour's handover is the floor for the opening. Pay earned quest rewards first.
   progression.xp = Math.max(549, progression.xp);
   const level = Math.max(progression.level, levelForXp(progression.xp));
   progression.points += level - progression.level;
@@ -108,4 +108,15 @@ export function migrateLegacyPrologue(state: GameState): void {
   if (!state.inventory.items.includes('item.bussole')) state.inventory.items.push('item.bussole');
   state.flags['story.compass'] = true;
   state.flags['story.laub'] = true;
+}
+
+/** A saved tour can already be at or past the Weiher when the loan is introduced. */
+export function restoreTourStaff(state: GameState): void {
+  const story = state.systems.story;
+  if (story?.chapter !== 'tour' || !/^t1[3-8]$/.test(story.beat ?? '')) return;
+  const progression = state.systems.progression = normalizeSlice(state.systems.progression ?? createProgressionSlice());
+  const staff = 'item.stab.esche';
+  if ((progression.inventory[staff] ?? 0) > 0) return;
+  progression.inventory[staff] = 1;
+  progression.equipped.weapon ??= staff;
 }

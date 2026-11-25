@@ -23,6 +23,7 @@ import { PostFX } from './render/post';
 import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
 import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
+import { actionLabel } from './ui/actionLabel';
 import type { BootLoader, LoadingRequest } from './ui/loader';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
 import { openNews } from './ui/news';
@@ -220,12 +221,19 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     },
     canFly: () => ERA_INFO[world.currentEra].spiritView,
     flying: () => player.flying,
+    measuring: () => state.state.flags['tools.measuring'] === true,
     stance: () => player.stance,
     skillUnlocked: (n) => skillsForLevel(state.state.systems.progression?.level ?? 1).includes(SKILL_IDS[n - 1]!),
   });
+  const syncFlyPrompt = () => {
+    const key = actionLabel(input, 'fly') || null;
+    const hint = t(input.touchMode ? 'fly.prompt.touch' : 'fly.prompt');
+    ui.hud.prompt(player.flying ? key : null, player.flying ? hint : undefined, 'fly');
+  };
   touch.onActiveChange = (on) => {
     if (on) input.releaseLock();
     else if (started && modalOpen === 0) ui.hud.showClickToPlay(!input.locked);
+    syncFlyPrompt();
   };
   // the player character (third person): rigged CC0 surveyor, staff, belt lantern (src/player/avatar.ts)
   // the authored MPFB player is the default; ?avatar=surveyor wears the CC0 surveyor (fallback)
@@ -262,6 +270,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   };
   settings.subscribe((_, key) => {
     applySettings();
+    if (key === 'bindings') syncFlyPrompt();
     if (key === 'graphics') quality.override = null;
     if (key === 'graphics' || key === 'resolutionScale' || key === 'powerSave') quality.apply();
     events.emit('settings:change', { key });
@@ -472,9 +481,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   events.on('player:stance', ({ stance }) => ui.hud.setStance(stance === 'stand' ? '' : t(`stance.${stance}`)));
   events.on('player:fly', ({ flying }) => {
     ui.toast(t(flying ? 'fly.on' : 'fly.off'));
-    // while in the air the controls stay on screen (playtest: the story's "F: Geisterblick" hint
-    // did not say what W / Space / C do once you fly, nor how to land)
-    ui.hud.prompt(flying ? 'F' : null, flying ? t('fly.prompt') : undefined, 'fly');
+    syncFlyPrompt();
   });
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)

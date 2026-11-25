@@ -103,6 +103,7 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
     k.teleport(1163, -1230, 135, -26);
     k.step(4);
     k.press('Digit2', 2);
+    k.press('Digit2', 2);
     k.step(4);
   });
   expect(await payloads(page, 'scan:mode')).toContainEqual({ mode: 2 });

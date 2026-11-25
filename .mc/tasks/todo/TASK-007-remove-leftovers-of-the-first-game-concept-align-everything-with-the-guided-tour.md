@@ -73,10 +73,10 @@ The avatar may show the staff on the back regardless (`staffOnBack()` in `src/pl
 used in `src/player/avatar.ts`); `src/systems/combat/index.ts` (~line 1320) still talks about
 "picked up at the trailer". The tour design (Q14) says "Marlene lends it" and "Ach, behalt ihn" at
 the party; Marlene only has a cameo in the tour today (beat `t12`).
-- [ ] Keep the stick, but have the player **receive it during the tour**, before the time travel (e.g. Marlene hands it over at the Weiher, or a collect objective on the way); visible pickup feedback
-- [ ] Hide the staff on the avatar until the item is owned
-- [ ] Remove the quiet grant from `t18`; keep the XP budget (prologue ends at level 3, `tests/quests-content-a.test.ts`)
-- [ ] Fix stale comments (combat, `src/ui/hud.ts` ~line 293 "the staff beside the trailer")
+- [x] Keep the stick, but have the player **receive it during the tour**, before the time travel (e.g. Marlene hands it over at the Weiher, or a collect objective on the way); visible pickup feedback
+- [x] Hide the staff on the avatar until the item is owned
+- [x] Remove the quiet grant from `t18`; keep the XP budget (prologue ends at level 3, `tests/quests-content-a.test.ts`)
+- [x] Fix stale comments (combat, `src/ui/hud.ts` ~line 293 "the staff beside the trailer")
 
 ### 4. The spring's own menu
 
@@ -98,10 +98,10 @@ the shelf (RPG counts), the drawer (Bussole state), the map (chapter select / co
 
 - [x] **Decision: remove the legacy `?classic` prologue in this task, with save migration**: `content/story/00-prolog.story.json` (`legacy`), the `?classic` branch in `src/systems/story/index.ts` (~line 656) and its doc in `src/systems/story/types.ts` (~line 741), the builder `scripts/content-build/prolog.mjs`, `content/quests/00-prolog.quests.json`, `content/packs/prolog.pack.json`, and the voice lines only it uses. **Old saves must still load**: a save that stands in the legacy prologue (any beat, any quest state) is migrated, e.g. to the matching point of the tour or to the start of chapter 1 with the prologue's XP, items and skills granted (level 3, as the tour ends), never to a blank game; a unit test feeds real v0.6–v0.8 legacy saves through the migration
 - [ ] Feldstation remnants: `RETIRED_POINTS` in `src/systems/travel/points.ts`, comments in `travel/pois.ts`, `story.end.back` "Zur Feldstation", `story.credits.fictionText` (lists "die Feldstation")
-- [ ] `docs/archive/IDEA.md` (working title "Saarpfalz-Chroniken", the pre-design idea): archive or mark historical
-- [ ] `docs/PRD.md`: §6.1 "No XP" (already marked superseded), §6.3 "The field station (hub)", §3 core loop and §4.2 story: rewrite for the tour concept
+- [x] `docs/archive/IDEA.md` (working title "Saarpfalz-Chroniken", the pre-design idea): archive or mark historical
+- [x] `docs/PRD.md`: §6.1 "No XP" (already marked superseded), §6.3 "The field station (hub)", §3 core loop and §4.2 story: rewrite for the tour concept
 - [ ] `content/bible/*` vs `docs/design/tour/bible/*`: **decided, merge in this task**, see section 8
-- [ ] `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`: sections that still describe the surveyor start, the Feldstation, the hub overlay
+- [x] `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`: sections that still describe the surveyor start, the Feldstation, the hub overlay
 - [ ] Save fields: story slice name default, hub state, any `feldstation` ids (see `src/core/save.ts`, story `migrate` maps)
 - [ ] Dead code after the above (unused strings in `src/i18n/de.ts` and `story/strings.ts`, CSS, SVGs)
 
@@ -158,10 +158,10 @@ E, Q, J (removed with the journal, section 6) and N are unchanged. All of these 
 settings (`REBINDABLE`); stored custom bindings are kept, only bindings equal to the old defaults are
 moved to the new defaults (settings migration).
 
-- [ ] Apply the layout to `DEFAULT_BINDINGS`, `SHARED_KEYS`, the settings key list, `title.hint` and the key hints / tutorial strings (`ui.keys.*`, `tut.*`)
-- [ ] Settings migration for stored bindings (unit test)
-- [ ] **Mobile:** one small "survey" button that expands into a radial or sub-menu with the skill buttons (Geisterblick, Relief, Messen, Röntgenblick, Planblatt, Karte); builds on the existing relief pop-up (`scanPop` in `src/ui/touch.ts`); the top bar keeps only Pause (and the phone)
-- [ ] e2e specs that press F / R / V / B / digit keys updated
+- [x] Apply the layout to `DEFAULT_BINDINGS`, `SHARED_KEYS`, the settings key list, `title.hint` and the key hints / tutorial strings (`ui.keys.*`, `tut.*`)
+- [x] Settings migration for stored bindings (unit test)
+- [x] **Mobile:** one small "survey" button that expands into a radial or sub-menu with the skill buttons (Geisterblick, Relief, Messen, Röntgenblick, Planblatt, Karte); builds on the existing relief pop-up (`scanPop` in `src/ui/touch.ts`); the top bar keeps only Pause (and the phone)
+- [x] e2e specs that press F / R / V / B / digit keys updated
 
 ### 8. Story bible merge (owner decision 2026-11-23: merge now, in this task)
 
@@ -172,13 +172,13 @@ moved to the new defaults (settings migration).
 - [x] Title, new-game flow and pause menu speak of the tour, not of a surveyor / lantern / Feldstation (German text); working title on the title screen, no motto / subtitle
 - [x] The lantern screen is a tour map (Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle) with one "Tour starten" click that unlocks audio
 - [ ] No journal and no "Feldbuch" in the UI; save UI in plain wording; quest log, codex, map and album reachable as decided (section 6)
-- [ ] Survey skills on the new keymap (no clash with the WASD hand) and behind one expanding button on mobile
+- [x] Survey skills on the new keymap (no clash with the WASD hand) and behind one expanding button on mobile
 - [ ] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
-- [ ] The Messstab is received visibly during the tour, before the first time travel, and not shown before
+- [x] The Messstab is received visibly during the tour, before the first time travel, and not shown before
 - [ ] No menu at the spring; its functions open at the Bauwagen (or, if the owner rejects the restore, through Marlene); the spring's touch has no E conflict
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
 - [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
-- [ ] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
+- [x] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
 ## Slice 2 plan (history)
@@ -323,7 +323,7 @@ _Status: approved 2026-11-25_ (slice 3, coordinator approval for the owner)
 - §7 — Survey keymap, settings migration, touch expansion and tutorials.
 - §§5, 8 — Bible merge and remaining design and architecture references.
 
-## Plan
+## Slice 4 plan (history)
 _Status: approved 2026-11-25_ (coordinator approves for the owner)
 
 **Approach:** Slice 4 removes the remaining surveyor chapter, quest and pack content from the live catalogs. Move the Bussole page and shared nouns to live content and keep the Codex facts and historical deed checks. Give save migration and the completed quest log a small archive with the original IDs, objective counts, history and payouts.
@@ -371,6 +371,53 @@ _Status: approved 2026-11-25_ (coordinator approves for the owner)
 - §6 — Remaining destinations, talent wording and in-fiction references pending owner decisions.
 - §7 — Survey keymap, settings migration, touch expansion and tutorials.
 - §§5, 8 — Bible merge and remaining design and architecture references.
+
+## Plan
+_Status: approved 2026-11-25_ (coordinator approves for the owner)
+
+**Approach:** Slice 5 moves the Messstab to Marlene's stop at the Weiher. Apply the §7 survey bindings on the number row and put the six survey controls in one touch menu. Update the remaining actionable German wording and the live gameplay documentation for the tour.
+
+**Files to touch:**
+
+- `content/story/00-tour.story.json`, `src/core/`, `src/systems/combat/index.ts`, `src/ui/hud.ts` — Weiher handoff, save compatibility, staff visibility and comments.
+- `src/player/input.ts`, `src/core/save.ts`, `src/systems/{survey,skills,tools}/`, `src/i18n/` and control hints — new bindings, relief cycling and migration.
+- `src/ui/touch.ts`, `src/ui/touch.css`, `src/player/touchMap.ts` — survey submenu and touch cues.
+- `src/systems/story/`, `scripts/content-build/`, `public/voice/` if needed — current UI wording and matching voice metadata.
+- `docs/{PRD,ACTION-RPG,ARCHITECTURE}.md`, `docs/design/tour/`, `README.md`, `e2e/`, `tests/` — document and cover the changed behaviour.
+
+**Steps:**
+
+- [x] 1. Grant the Messstab visibly at the Weiher, gate both staff renders on ownership, and keep older tour saves and the 549 XP handover working.
+- [x] 2. Implement the number-row keymap, relief cycle and settings migration. Update control strings and audit keyboard callers.
+- [x] 3. Put the six survey tools behind one touch button. Preserve the tap, look, flight, and reduced-motion paths.
+- [x] 4. Sweep German UI copy and current documentation for the tour. Keep archived material and owner-dependent items pending.
+- [x] 5. Audit changed IDs and keys in e2e, e2e/helpers, tests and all dictionaries. Run the four gates and MissionControl validation, list the Playwright specs and attempt the local commit.
+
+**Test plan:** Run focused tour, save, keybinding and touch unit tests, then `pnpm typecheck`, `pnpm test`, `pnpm validate` and `pnpm build`. If the tsx IPC socket is denied, run `node --import tsx scripts/validate-content.ts`. The external one-worker specs cover the handoff and new controls. Suggested desktop comparison at `?debug&nosave&fresh` is the avatar immediately before and after the Weiher handoff. Suggested phone views are the closed and expanded survey controls in 844×390 landscape. Browser captures are outside this session.
+
+**Risks:** Older tour slots can be past the Weiher with no staff yet. Custom key overrides can claim a new default key. Survey tools still use the same skill gates and reduced-motion settings.
+
+**Open questions:** None for this slice.
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1. Title, new game and Pause wording | full | Refresh the title controls and legacy default name. |
+| 2. One-tap tour map | full | Covered in slice 3. |
+| 3. Journal, Feldbuch and destinations | partial | Sweep active UI copy. Talent wording and in-fiction decisions remain open. |
+| 4. Survey keymap and mobile controls | full | Number row, rebind migration and touch submenu. |
+| 5. Classic removal and single bible | partial | Classic is retired. Bible merge follows. |
+| 6. Visible Messstab handoff | full | Weiher loan and staff visibility. |
+| 7. Hub move and spring E conflict | follow-up | Owner placement decision pending. |
+| 8. v0.6–v0.8 saves | full | Retain legacy migration and cover older mid-tour saves. |
+| 9. Smoke, affected e2e and units | partial | Unit gates and external browser spec list. |
+| 10. PRD, ACTION-RPG and README | full | Refresh current gameplay and control documentation. |
+| 11. Four gates | partial | Typecheck, build, the two-worker unit suite and the Node content validator passed. The tsx CLI was denied its IPC socket. |
+
+**Follow-up slices:**
+
+- [ ] §§4–5 — Bauwagen placement (verify with owner), hub relocation, spring interaction and associated station IDs and ending checks.
+- [ ] §6 — Talent wording, destinations and in-fiction Feldbuch choices (verify with owner).
+- [ ] §§5, 8 — Merge the bibles and update links. Review remaining obsolete code after the hub move.
 
 ## Progress
 
@@ -474,6 +521,33 @@ _Status: approved 2026-11-25_ (coordinator approves for the owner)
   ```sh
   git add -A -- AGENTS.md CONTRIBUTING.md .mc/tasks/todo/TASK-007-*.md content docs e2e scripts src tests
   git commit -m 'refactor(content): retire the legacy prologue' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+  ```
+
+- 2026-11-25: Slice 5 approved by the coordinator for the owner on `refactor/task-007-slice5`, based on `dc82563`.
+
+- 2026-11-25: Slice 5 step 1 complete. Marlene loans the staff at the Weiher using the standard pickup feed. The staff render checks the equipped item against inventory. Older tour saves past the handoff receive the loan when loaded. All 38 focused tests passed and the tour still grants 549 XP.
+
+- 2026-11-25: Slice 5 step 2 complete. Survey keys use 1–5, Backquote and M. Shift is captured with the relief keypress, and custom settings keep priority over new defaults. The bindings, survey, settings and input suites passed 67 focused tests.
+- 2026-11-25: Slice 5 step 3 complete. Erkunden opens the six touch controls, with a nested relief view and direct mode choices. A world tap sets a measuring point; the flight and photo controls preserve their existing game modes. The touch, story touch and tools suites passed 47 focused tests.
+
+- 2026-11-25: Slice 5 step 4 complete. The tour page points to Ausrüstung, K1 uses a plain pickup toast, and the K2 return names the spring. Rebuilt generated content and removed the two recordings of the former tour line. New and revised dialogue uses the normal fallback. The current gameplay and architecture docs describe the guided start and survey controls. The owner-dependent wording remains on the follow-up list. The voice and tour suites passed 86 focused tests.
+
+- 2026-11-25: Slice 5 step 5 complete. Grepped the changed input codes, selectors, line IDs, item IDs, objectives and translation keys across `e2e/`, `e2e/helpers/`, `tests/` and all 13 `strings.ts` dictionaries. The two remaining Digit1 uses in Chronik and NPC specs exercise modal shortcuts. Typecheck, build, `mc validate` and `git diff --check` passed. The full unit suite passed all 1,507 tests in 110 files with `--maxWorkers=2` after the default parallel runs hit terrain-test timing limits. `pnpm validate` hit the tsx IPC sandbox block. `node --import tsx scripts/validate-content.ts` passed with existing warnings. The worktree used a local copy of the installed dependencies and pnpm’s dependency verification was disabled for the gate commands.
+- 2026-11-25: Playwright discovered 64 tests across the 18 selected specs, plus the mobile tour runner. Browser runs and screen captures are pending. Run from the worktree root.
+
+  ```sh
+  pnpm build
+  for spec in tour-slice chapter-prolog chapter-k1 chapter-k2 campaign story skills touch integration smoke combat camera avatar-mpfb chronik npc progression perf voice; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  scripts/dev/heavy.sh -- pnpm exec playwright test -c e2e/mobile/playwright.config.ts --workers=1
+  ```
+
+- 2026-11-25: The sandbox denied `git add` access to the worktree's `index.lock`. Run these commands from the worktree root to stage the slice and the two deleted voice clips, then commit.
+
+  ```sh
+  git add -A -- README.md .mc/tasks/todo/TASK-007-*.md content docs e2e public/voice/manifest.json public/voice/laub.t.seite.977b1f12.m4a public/voice/laub.t.seite.eb4cb03e.webm scripts src tests
+  git commit -m 'feat(tour): add the Weiher staff handoff and survey controls' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
   ```
 
 ## Notes

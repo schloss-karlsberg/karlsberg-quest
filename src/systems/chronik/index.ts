@@ -247,7 +247,7 @@ function echoDone(ctx: GameContext, clue: ChronikClue, transcript: TranscriptLin
   const sl = slice(ctx);
   if (!sl.echoes.includes(clue.id)) sl.echoes.push(clue.id);
   const d = doDiscover(ctx, clue);
-  // heard while walking on: no card that stops you mid-stride, the field book has the transcript
+  // heard while walking on: no card that stops you mid-stride, the Codex has the transcript
   if (walked) ctx.ui.toast(ctx.t('chronik.echo.noted', { title: clue.title_de }), 3200);
   else showCard(ctx, clue, d, transcript);
 }

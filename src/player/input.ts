@@ -19,6 +19,7 @@ export type Action =
   | 'map'
   | 'measure'
   | 'shift'
+  | 'scan'
   | 'scan0'
   | 'scan1'
   | 'scan2'
@@ -50,7 +51,7 @@ export type Action =
   | 'skill3'
   /** Third-person action camera: soft lock-on (Tab / middle mouse): lock the best target, cycle, release. */
   | 'lockOn'
-  /** Switch between the over-the-shoulder camera and first person (V is taken: Röntgenblick). */
+  /** Switch between the over-the-shoulder camera and first person. */
   | 'cameraMode'
   /** Smartphone photo mode (src/systems/photo): N raises / lowers the phone (P is pause). */
   | 'photo';
@@ -63,22 +64,24 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   sprint: ['ShiftLeft', 'ShiftRight'],
   crouch: ['KeyC'],
   prone: ['KeyX'],
-  fly: ['KeyF'],
+  fly: ['Digit1'],
   up: ['Space'],
   down: ['KeyC', 'ControlLeft'],
   interact: ['Mouse0'],
   listen: ['KeyE'],
   lantern: ['KeyL'],
   map: ['KeyM'],
-  measure: ['KeyR'],
+  measure: ['Digit3'],
   shift: ['KeyQ'],
-  scan0: ['Digit0', 'Backquote'],
-  scan1: ['Digit1'],
-  scan2: ['Digit2'],
-  scan3: ['Digit3'],
+  scan: ['Digit2'],
+  scan0: ['Backquote'],
+  // Direct relief modes are used by the touch submenu and old custom bindings.
+  scan1: [],
+  scan2: [],
+  scan3: [],
   pause: ['Escape', 'KeyP'],
-  xray: ['KeyV', 'Digit4'],
-  plans: ['KeyB'],
+  xray: ['Digit4'],
+  plans: ['Digit5'],
   // ← / → turn the view (§3.4: a fallback to mouse look for automation and accessibility); A / D strafe
   lookLeft: ['ArrowLeft', 'Comma', 'Numpad4'],
   lookRight: ['ArrowRight', 'Period', 'Numpad6'],
@@ -110,10 +113,36 @@ export const SHARED_KEYS: [Action, Action][] = [
 /** Actions the player can rebind in the settings, in display order. */
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
-  'listen', 'lantern', 'shift', 'map', 'measure', 'xray', 'plans',
+  'listen', 'lantern', 'shift', 'scan', 'scan0', 'map', 'measure', 'xray', 'plans',
   'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode', 'photo',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];
+
+const OLD_SURVEY_BINDINGS = {
+  fly: ['KeyF'], scan0: ['Digit0', 'Backquote'], scan1: ['Digit1'], scan2: ['Digit2'],
+  scan3: ['Digit3'], measure: ['KeyR'], xray: ['KeyV', 'Digit4'], plans: ['KeyB'],
+} satisfies Partial<Record<Action, string[]>>;
+
+/** Follow the new defaults and let existing custom keys take priority over newly assigned keys. */
+export function migrateSurveyBindings(saved: Record<string, string[]>): Record<string, string[]> {
+  const overrides = { ...saved };
+  for (const [action, old] of Object.entries(OLD_SURVEY_BINDINGS)) {
+    const codes = overrides[action];
+    if (Array.isArray(codes) && codes.length === old.length && codes.every((code, i) => code === old[i])) {
+      delete overrides[action];
+    }
+  }
+  const claimed = new Set(Object.keys(DEFAULT_BINDINGS).flatMap((action) => {
+    const codes = overrides[action];
+    return Array.isArray(codes) ? codes : [];
+  }));
+  for (const action of ['fly', 'scan', 'scan0', 'measure', 'xray', 'plans'] as const) {
+    if (Array.isArray(overrides[action])) continue;
+    const codes = DEFAULT_BINDINGS[action].filter((code) => !claimed.has(code));
+    if (codes.length !== DEFAULT_BINDINGS[action].length) overrides[action] = codes;
+  }
+  return overrides;
+}
 
 /**
  * Effective bindings: defaults with the player's per-action overrides (`settings.bindings`, full
@@ -157,6 +186,7 @@ export class Input {
   bindings: Record<Action, string[]> = structuredClone(DEFAULT_BINDINGS);
   private readonly down = new Set<string>();
   private readonly pressedCodes = new Set<string>();
+  private readonly shiftedCodes = new Set<string>();
   private mdx = 0;
   private mdy = 0;
   /** Accumulated wheel notches since the last `takeWheel()` (+ = towards you / zoom out). */
@@ -179,7 +209,10 @@ export class Input {
       const ev = e as KeyboardEvent;
       if (isTyping(ev.target)) return;
       if (!this.enabled && ev.code !== 'Escape') return;
-      if (!ev.repeat) this.pressedCodes.add(ev.code);
+      if (!ev.repeat) {
+        this.pressedCodes.add(ev.code);
+        if (ev.shiftKey) this.shiftedCodes.add(ev.code);
+      }
       this.down.add(ev.code);
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
     });
@@ -279,6 +312,11 @@ export class Input {
     return this.pressedCodes.has(virtualCode(a)) || this.bindings[a].some((c) => this.pressedCodes.has(c));
   }
 
+  /** Read Shift from the keydown, even if the key was released before the simulation step. */
+  wasPressedWithShift(a: Action): boolean {
+    return this.wasPressed(a) && this.bindings[a].some((c) => this.shiftedCodes.has(c));
+  }
+
   /** Accumulated mouse movement since the last call (pixels). */
   takeMouse(): { dx: number; dy: number } {
     const r = { dx: this.mdx, dy: this.mdy };
@@ -296,12 +334,16 @@ export class Input {
   /** Called by the loop after every fixed update: forget edge presses. */
   endStep(): void {
     this.pressedCodes.clear();
+    this.shiftedCodes.clear();
   }
 
   /** Simulate input (tests, debug hooks). `edge: false` holds a key down without a new press (pilot holds). */
   simulate(code: string, down: boolean, edge = true): void {
     if (down) {
-      if (edge) this.pressedCodes.add(code);
+      if (edge) {
+        this.pressedCodes.add(code);
+        if (this.down.has('ShiftLeft') || this.down.has('ShiftRight')) this.shiftedCodes.add(code);
+      }
       this.down.add(code);
     } else this.down.delete(code);
   }

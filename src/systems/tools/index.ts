@@ -1,8 +1,8 @@
 /**
  * Survey tools, gated by the skills (rules: ../skills/logic.ts):
- *   R      Messen (Kartograf 3): tape between two clicks, distance + height profile → measure:done
- *   V / 4  Röntgenblick (Röntgenblick 1): 2025 ground points under the canopy around the player
- *   B      Baumeister: off → Planblatt (1) → Konfidenzansicht (2) → off; Raumfolge at 3;
+ *   3      Messen (Kartograf 3): tape between two clicks, distance + height profile → measure:done
+ *   4      Röntgenblick (Röntgenblick 1): 2025 ground points under the canopy around the player
+ *   5      Baumeister: off → Planblatt (1) → Konfidenzansicht (2) → off; Raumfolge at 3;
  *          Baumeister 1 also names the room you stand in while in a memory
  *   —      Spurenleser 2: the pack's routes as faint lines (whenever a pack runs)
  * Trees fade inside the Röntgenblick disc (forest shader patch, forestClear.ts).
@@ -189,7 +189,7 @@ export default defineSystem({
         ctx.ui.toast(ctx.t('skills.locked.measure'));
       } else {
         measure!.start();
-        ctx.ui.toast(ctx.t('tools.measure.on.toast'));
+        ctx.ui.toast(ctx.t(inp.touchMode ? 'tools.measure.on.toast.touch' : 'tools.measure.on.toast'));
       }
     }
     if (measure!.active && inp.wasPressed('interact')) measure!.click();

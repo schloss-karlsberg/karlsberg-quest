@@ -291,29 +291,53 @@ html[data-kq-touch] .kq-root > .kq-loader--game {
   height: 46px;
   pointer-events: auto;
 }
-.kq-t-pop {
+.kq-t-survey {
   position: absolute;
   top: calc(64px + var(--kq-safe-t));
-  right: calc(120px + var(--kq-safe-r));
-  display: flex;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 26px;
-  background: rgba(20, 17, 13, 0.7);
+  right: calc(12px + var(--kq-safe-r));
 }
-.kq-t-pop.kq-hidden {
+.kq-t-survey > .kq-t-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+.kq-t-pop {
+  position: absolute;
+  top: 0;
+  right: 52px;
+  padding: 6px;
+  border: 1px solid rgba(239, 230, 210, 0.35);
+  border-radius: 16px;
+  background: rgba(20, 17, 13, 0.94);
+}
+.kq-t-survey-list {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 6px;
+}
+.kq-t-pop.kq-hidden,
+.kq-t-survey-list.kq-hidden,
+.kq-t-chip.kq-hidden {
   display: none;
 }
 .kq-t-chip {
   min-width: 46px;
-  height: 46px;
-  padding: 0 12px;
-  border-radius: 23px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 11px;
   border: 1.5px solid rgba(239, 230, 210, 0.45);
   background: transparent;
   color: #efe6d2;
-  font: 18px var(--sc);
+  font: 15px var(--sc);
   touch-action: none;
+}
+.kq-t-chip.cue,
+.kq-t-chip.on {
+  border-color: rgba(217, 130, 43, 0.95);
+}
+.kq-t-chip.down,
+.kq-t-btn.survey[aria-expanded='true'] {
+  background: rgba(181, 139, 61, 0.45);
 }
 
 /* ---- the HUD in touch mode: safe areas, room for the controls, smaller on phones */
@@ -523,8 +547,8 @@ html[data-kq-touch] .kqp-q-key {
 @media (max-height: 500px) {
   html[data-kq-touch] body .kqs-dlg {
     left: calc(8px + var(--kq-safe-l));
-    /* the top row: 5 buttons x 44 + 4 x 6 gap + 12 margin = 256 px */
-    right: calc(264px + var(--kq-safe-r));
+    /* Leave room for the phone, Pause, and the survey button below them. */
+    right: calc(112px + var(--kq-safe-r));
     top: calc(6px + var(--kq-safe-t));
     bottom: auto;
     width: auto;
@@ -535,9 +559,8 @@ html[data-kq-touch] .kqp-q-key {
   html[data-kq-touch] body .kqs-dlg.kqs-show {
     transform: none;
   }
-  /* the spirit view adds Fliegen to the top row */
-  html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) body .kqs-dlg {
-    right: calc(314px + var(--kq-safe-r));
+  html[data-kq-touch]:has(.kq-t-btn.survey[aria-expanded='true']) body .kqs-dlg {
+    right: calc(300px + var(--kq-safe-r));
   }
   /* no portrait on a landscape phone: the name in the card says who speaks, the text gets the
      width (the radio sat on the era label), and the torn tab has nothing to point at */
@@ -637,8 +660,8 @@ html[data-kq-touch] .kqp-q-key {
     overflow: hidden;
     box-sizing: border-box;
   }
-  html[data-kq-touch]:has(.kq-t-btn.fly:not(.kq-hidden)) .kqt-card.kqt-banner {
-    right: calc(314px + var(--kq-safe-r));
+  html[data-kq-touch]:has(.kq-t-btn.survey[aria-expanded='true']) .kqt-card.kqt-banner {
+    right: calc(300px + var(--kq-safe-r));
   }
   html[data-kq-touch] .kqt-card.kqt-banner h3 {
     font-size: 15px;
@@ -939,7 +962,7 @@ html[data-kq-touch] .kq-title {
 html[data-kq-touch][data-kq-photo] .kq-t-top .kq-t-btn:not(.photo) {
   visibility: hidden;
 }
-html[data-kq-touch][data-kq-photo] .kq-t-pop,
+html[data-kq-touch][data-kq-photo] .kq-t-survey,
 html[data-kq-touch][data-kq-photo] .kq-t-skills,
 html[data-kq-touch][data-kq-photo] .kq-t-arc .kq-t-btn:not(.attack),
 html[data-kq-touch][data-kq-photo] .kqs-bussole {

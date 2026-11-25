@@ -25,10 +25,10 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | t7–t8 Wind | At `wind`: gust (synth wind, caption), both dogs bolt barking uphill and come back (`animal:run` with `back`), a 6 s skippable cinematic on the dogs, `player.t.wind`, Jost, `player.t.hunde`, Gerold „Wildschweine, wahrscheinlich. Oder Rehe.“ |
 | t9–t10 Reh | New route stop `reh` (727.4/−751.5). Ricke + Kitz at 704/−779, 36 m down the slope in forest (terrain line of sight from the stop checked). Sneak prompt [C], photo prompt [N]. Good photo → praise; good photo after `animal:alert` → „Sie hat dich angesehen. Gutes Bild.“; flight within 16 m → „Und weg.“ / „Zu schnell.“, the tour goes on 45 s later; hard fallback 180 s. Never a fail state. |
 | t11 fade 2 | „Weiter zum Weiher.“ → fade → `warp` to `damm`, deer despawned, player behind the group. |
-| t12–t13 | Marlene speaks one line at the dam. Station 3 at the Weiher: date and purpose **offen**. |
+| t12–t13 | Marlene calls out at the dam and lends the Messstab at the Weiher in t13. The pickup feed confirms the loan and the staff is visible once equipped. Station 3: date and purpose **offen**. |
 | t14–t15 Quelle | Station 4: Quelle, Bach, Wassertretbecken „in der Nähe“; supply / Fassung **offen**. „Ruh dich kurz aus, wir sind oben am Plateau.“ The group walks off on `p-aufstieg`. |
 | t16–t17 | Alone: `player.q.fund`, step into the trough → `item.bussole`, `story.compass`, `story.laub`; `laub.t.intro`, `player.q.laub`, `laub.t.intro.b`, `laub.t.quelle`, `laub.t.trog`; `quelle.call` → the Quelle's own E „Wasser berühren“ → shift to 1789 (reason `quelle`). |
-| t18 Sommer 1789 | `player.q.wo`, `laub.t.1789`, `laub.t.seite`; fade out. Exit: the hand-over grants (relief 3, Kartograf 1, Messstab, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
+| t18 Sommer 1789 | `player.q.wo`, `laub.t.1789`, `laub.t.seite`; fade out. Exit: the hand-over grants (relief 3, Kartograf 1, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
 
 Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'npc', op: walk|group|follow|gather|hold|release|warp}` and `{do:'npc', op:'despawn', group}` → `npc:walk` (C2), `{do:'cinematic', …}` → `cinematic:play` (C1), `{do:'animal', …}` → `animal:request` (C5), `{do:'fade', to, seconds}`; sounds `wind`, `bark`; validator cases incl. route / stop checks against `content/routes/*.json`. Tests: `tests/tour-slice.test.ts` (headless beat-by-beat run), `e2e/tour-slice.spec.ts`.
 
@@ -43,7 +43,7 @@ Owner playtest: „lost the group and couldn't find it again“. The walk system
 - The Bussole pickup: stepping right up to the trough picks it up (no E interaction, no glint effect).
 - The wind: a synthesised gust plus a caption; leaves and crowns do not react.
 - Dog barks: a short synth placeholder.
-- Marlene speaks off screen with subtitles.
+- Marlene calls out from off screen at the dam and appears at the Weiher for the loan. The new loan line uses the dialogue fallback.
 - „Schau zum Berg“ (camera tutorial) is a prompt only; no look-direction check.
 
 ## Known issues
@@ -51,7 +51,6 @@ Owner playtest: „lost the group and couldn't find it again“. The walk system
 - „Sie hat dich angesehen“ fires when the doe sounded the alert at any time before the good photo (no `state` on `photo:good` yet).
 - The group despawns in t17 at most ~20–40 m up the slope; it may vanish in view.
 - A good photo needs doe and fawn in the frame (`needAll` of the placeholder targets).
-- A save made in the tour resumes only with `?tour`.
 - The chapter title card „Die Führung“ stays up through the first ~100 s (cards wait while someone talks, and Gerold talks a lot).
 - At the Quelle the base game's own layer shows through: the „E Pause an der Quelle“ prompt and Marlene's radio lines play during station 4, the break and the Laub scene.
 - The 15 walkers look dithered/see-through at ~10 m at the car park (people LOD fade).

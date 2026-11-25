@@ -1307,6 +1307,9 @@ class Combat {
     // the staff
     const f = ctx.state.state.flags;
     const sw = p.swing;
+    const gear = ctx.state.state.systems.progression;
+    const weapon = gear?.equipped?.weapon;
+    const armed = !!weapon && (gear?.inventory?.[weapon] ?? 0) > 0;
     this.viewmodel.frame({
       camera: cam,
       dt,
@@ -1320,8 +1323,8 @@ class Combat {
       flare: this.bannFx?.t ?? 0,
       hurt: 0,
       moving: this.moving,
-      // no staff in hand before the Messstab is picked up at the trailer, none over the title
-      hidden: pl.flying || ctx.ui.modals.count > 0 || (this.deadT >= 0 && this.caughtSent) || !ctx.state.state.systems.progression?.equipped?.weapon || ctx.pause.reasons.has('title'),
+      // Both camera modes use the equipped staff once it is in the inventory.
+      hidden: pl.flying || ctx.ui.modals.count > 0 || (this.deadT >= 0 && this.caughtSent) || !armed || ctx.pause.reasons.has('title'),
       lowered: f['combat.disabled'] === true || pl.stance === 'prone',
       reducedMotion: st.reducedMotion,
       reducedFlash: st.reducedFlash,
@@ -1329,7 +1332,7 @@ class Combat {
       swingYaw: sw?.yaw ?? pl.yaw,
       inCombat: p.inCombat,
       dead: this.deadT >= 0,
-      armed: !!ctx.state.state.systems.progression?.equipped?.weapon,
+      armed,
       target: this.targetPos(),
     });
     // the third-person camera frames the fight (pull back so every enemy near you fits)
