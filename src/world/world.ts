@@ -272,7 +272,7 @@ export class World {
     ds.coverTex = (era === 'today' ? this.covers.today : this.covers.historic) as TerrainDataset['coverTex'];
     this.terrain.setDataset(ds);
     this.terrain.uniforms.uHistoric!.value = era === 'today' ? 0 : 1;
-    this.forest.setTrees(era === 'today' ? this.trees.today : this.trees.historic);
+    this.forest.setTrees(era === 'today' ? this.trees.today : this.trees.historic, era);
     this.palace.setMode(info.palace);
     this.collider.enabled = info.palace === 'intact';
     // the standing parts of the palace's open-ground footprints (the Altan's pillars)

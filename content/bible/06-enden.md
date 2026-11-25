@@ -10,8 +10,7 @@ Die Szenen sind **FIKTION**. Alle drei Entscheidungen schließen die Geschichte 
 Nach dem Finale am Zwinger beginnt `enden/e1` im Heute. Der Checkpoint des Kapitels liegt an der
 Karlsbergquelle. Der Kampf bleibt bis zum Abschluss gesperrt. Der Entwurf für die Verlegung der
 Wahl an den Rand des Plateaus sieht Laubs letzten Rat an der Quelle und Nachrichten von Gerold,
-Marlene und Soll vor. Die gespielte Auswahl und einige gesprochene Zeilen beziehen sich noch auf
-den Bauwagen. Diese Bezüge gehören zur ausstehenden Abstimmung über den Hub (TASK-007).
+Marlene und Soll vor.
 
 ## 2. Die Wahl
 
@@ -137,7 +136,7 @@ Die aktuelle Auswahl beruht auf den Taten im Spiel.
 | --- | --- | --- | --- |
 | tuergriff | „Daneben: ein Türgriff. Er war an der Tür zum Festsaal. Die Wand dahinter hat Matthes gemauert.“ | „Den Türgriff habe ich behalten. Eine Tür, die es nicht mehr gibt, braucht trotzdem einen Griff.“ | „Der Türgriff liegt in der Schublade bei der Bussole. Manchmal fasse ich ihn an, bevor ich hinausgehe.“ |
 | dukat | „Daneben: ein Dukat mit dem Bild des Schlosses. Einen solchen bekam ein Bauer aus Rohrbach, oder auch nicht.“ | „Den Dukaten habe ich Marlene gegeben. Sie sagt, sie kauft sich nichts davon.“ | „Der Dukat liegt in der Schublade. Er ist das einzige Geld, das der Hof je zurückgezahlt hat, und auch nur an mich.“ |
-| uhr | „Daneben: eine vergoldete Uhr mit Alabaster. Sie geht noch. Sie weiß nicht, was passiert ist.“ | „Die Uhr steht im Bauwagen und geht. Ich ziehe sie jeden Sonntag auf.“ | „Die Uhr tickt in der Schublade, neben der Bussole. Laub sagt, sie geht vor.“ |
+| uhr | „Daneben: eine vergoldete Uhr mit Alabaster. Sie geht noch. Sie weiß nicht, was passiert ist.“ | „Die Uhr steht bei mir zu Hause. Ich ziehe sie jeden Sonntag auf.“ | „Die Uhr tickt in der Schublade, neben der Bussole. Laub sagt, sie geht vor.“ |
 | nichts | „Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: ‚Was nicht gerettet wurde.‘“ | „Gerettet habe ich nichts. Das ist auch eine Antwort.“ | „In der Schublade ist Platz für etwas, das ich nicht genommen habe.“ |
 
 FAKT-Hinweis für den Codex: Ein Türgriff, ein Dukat mit Schlossansicht und eine vergoldete Uhr mit Alabaster vom Karlsberg wurden 2018 in der Ausstellung „Steinerne Macht“ gezeigt (RP18, `cx.27`). Ob der im Spiel gerettete Gegenstand „dieser“ war, weiß niemand. Im Spiel steht kein echtes Museum.

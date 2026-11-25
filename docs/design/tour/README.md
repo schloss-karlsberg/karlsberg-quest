@@ -22,7 +22,7 @@ define shipped content.
 
 ## Decisions recorded (owner, 2026-11-20, via the coordinator)
 
-1. The opening is a guided tour (a tutorial). The player is an ordinary visitor; the look is the owner's avatar. No surveyor, Feldstation or Bauwagen.
+1. The opening is a guided tour (a tutorial). The player is an ordinary visitor with the owner's avatar. The former surveyor opening and field-station hub are retired.
 2. The guide is big, skinny and bald, modelled on a real living guide whose consent is pending. **Placeholder name: Gerold Imhoff** in all docs and dialogue; the swap is one name. No real name, no personal details.
 3. Route: meet at the car park at the forest edge (Wanderparkplatz; the building there is the Karlsberger Hof) → the hook along the farm track to the Felsenpfad → along the Karlsbergweiher → the Karlsbergquelle. The place name "Karlsberger Hof" may be named as a location (guide dialogue, map label, docs); no logo, signage, slogans, products, advertising tone or beer talk; FAKT texts stay neutral and sourced.
 4. The group has 15 people, including modern doubles of the Duke, Mannlich, Hanne, Jost and Soll, plus Peter and Liese; modern Jost has two dogs. The circle closes at the party.
@@ -38,6 +38,10 @@ define shipped content.
 14. Kept: FAKT/FIKTION labels, tone rules, German player-facing content, the XP budget (prologue incl. the 1789 training ends at level 3).
 15. Unverified facts (the Weiher's date and purpose, whether the Quelle fed the palace, palace-era quarrying on the Felsenpfad) are never FAKT; they are marked open, in the guide's mouth too.
 16. The owner ruled that the disputed use of the Baumagazin should be dropped from cx.32. The builder update is pending. [Codex source notes](../../../content/bible/07-codex.md#offene-quellenfragen)
+
+The owner confirmed on 2026-11-25 that the Bauwagen belongs at its old spot by the track as a
+hidden present-day easter egg. The guided route, map and campaign omit the trailer. Pause provides
+saving and access to feature pages.
 
 ## Decisions (owner, 2026-11-20)
 

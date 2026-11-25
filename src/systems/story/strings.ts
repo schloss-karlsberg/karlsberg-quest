@@ -125,15 +125,15 @@ addStrings('de', {
 
   // endings
   'story.end.title': 'Was das Feuer nicht fraß',
-  'story.end.intro': 'Auf dem Tisch im Bauwagen liegt die Chronik, jetzt vollständig: die Seiten aus allen Kapiteln, die Namen, die Beträge, mit Laubs Kurrent zwischen den Zeilen. Daneben das Horn und die Bussole.',
+  'story.end.intro': 'Vor dir liegt die Chronik, jetzt vollständig: die Seiten aus allen Kapiteln, die Namen, die Beträge, mit Laubs Kurrent zwischen den Zeilen. Daneben das Horn und die Bussole.',
   'story.end.museum': 'Ins Museum',
   'story.end.museum.obj': 'Die graue Archivschachtel, die Marlene mitgebracht hat',
   'story.end.museum.hint': 'Die Wahrheit, mit Quellen. Die Jagd wird abgeblasen.',
   'story.end.burn': 'Verbrennen',
-  'story.end.burn.obj': 'Der Ofen des Bauwagens',
+  'story.end.burn.obj': 'Die Chronik dem Feuer übergeben',
   'story.end.burn.hint': 'Ruhe für die Hunde. Stille für die Stimmen.',
   'story.end.keep': 'Behalten',
-  'story.end.keep.obj': 'Die Schublade, zur Bussole',
+  'story.end.keep.obj': 'Chronik und Bussole einpacken',
   'story.end.keep.hint': 'Das Land erinnert sich weiter. Die Meute folgt dir.',
   'story.end.confirm': 'Bist du sicher? Das lässt sich nicht ändern.',
   'story.end.next': 'Weiter',

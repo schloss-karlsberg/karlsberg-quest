@@ -244,6 +244,7 @@ class QuestRuntime {
         if (!s.unseen.includes(factId)) s.unseen.push(factId);
         refreshPausePage('codex');
       }),
+      ev.on('discovery:found', ({ title }) => this.feed.push(t('quest.discovery.feed', { title }), 'done')),
       // deeds: a thing taken in the world sets its flag (first taken wins)
       ev.on('item:pickup', ({ item }) => {
         const d = DEED_ITEMS[item] ?? this.items.get(item)?.deed;

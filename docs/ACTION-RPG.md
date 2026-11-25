@@ -518,6 +518,10 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
   in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
   (`label.ts`); `tests/flaschen.test.ts` fails if it appears in any other file.
+- **Hidden Bauwagen.** A present-day detour off the forest track below the dam. Looking at the
+  trailer door in reach reveals the examine action on E and touch. The fictional surveyor's note
+  unlocks „Die letzte Messung“ in Pause → Codex and appears in the discovery feed. The find grants
+  no XP and has no objective, marker or campaign prerequisite.
 - **Inventory**: journal tab "Ausrüstung": weapon, charm slots, consumables (set the quick-use item),
   quest items, lore (read the text).
 
@@ -1037,6 +1041,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | --- | --- |
 | The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |
 | Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |
+| Hidden Bauwagen (TASK-007, 2026-11-25) | The present-day trailer at its former site offers a local examine action and a FIKTION Codex reward. The tour and endings stand on their own. The owner confirmed „Wissen“ as the talent heading. |
 | Retired station references in old saves (TASK-007, 2026-11-25) | Continue keeps playable chapters in progress and moves their former station objectives to the Karlsbergquelle. The survey map retains known live points and found POIs. The „Wissen“ talent branch retains its earned ranks. |
 | Guided-tour story bible (TASK-007, 2026-11-25) | The [bible](../content/bible/00-overview.md) brings together the guided opening, endings, Codex and voice design. It records the shipped handover and distinguishes pending designs and earlier surveyor-era material. |
 | Weiher staff handoff and survey controls (TASK-007, 2026-11-25) | Marlene lends the staff during the tour and the pickup feed confirms it. Both camera modes require the equipped staff to be owned before drawing it. The tour still grants 549 XP. Survey tools use the number row and M, or „Erkunden“ on touch. |

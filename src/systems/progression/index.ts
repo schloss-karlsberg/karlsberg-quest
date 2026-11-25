@@ -241,7 +241,7 @@ class Progression {
     on('talent:learned', () => this.pages.refresh());
     on('stats:changed', () => this.pages.refresh());
     on('codex:unlocked', ({ factId, noXp }) => {
-      // a photo's codex card gives no XP (owner decision 2026-11-20, src/systems/photo)
+      // Photos and some optional discoveries unlock cards without XP.
       if (noXp) return;
       const got = this.core.codex(factId);
       if (got > 0) {

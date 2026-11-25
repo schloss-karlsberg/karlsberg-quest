@@ -77,9 +77,9 @@ describe('campaign packs', () => {
     expect(r.warnings.filter((w) => w.file.startsWith('content/packs/')).map((w) => `${w.id}: ${w.message}`)).toEqual([]);
   });
 
-  it('has 47 codex cards (cx.43–46 the disguise, cx.47 Fläschchen), 8 relief patterns and a label on every fact', () => {
+  it('has 48 Codex cards, 8 relief patterns and a label on every fact', () => {
     const codex = packs.find((p) => p.file.endsWith('codex.pack.json'))!.pack.facts!;
-    expect(codex.filter((f) => /^cx\.\d\d$/.test(f.id))).toHaveLength(47);
+    expect(codex.filter((f) => /^cx\.\d\d$/.test(f.id))).toHaveLength(48);
     const rm = codex.filter((f) => f.id.startsWith('rm.'));
     expect(rm).toHaveLength(8);
     expect(rm.every((f) => f.tags?.includes('reliefmuster'))).toBe(true);

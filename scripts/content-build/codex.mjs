@@ -164,6 +164,9 @@ const facts = [
   f('cx.47', 'Treibgut', 'FIKTION', 'D',
     'Erfunden: Seit Sie die Quelle berührt haben, spült sie kleine Fläschchen an Orte, wo jemand gern war, in jedes Jahr, auch in Jahre, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig haben Sie aufgelesen. Der Wald ist kein Keller.',
     []),
+  f('cx.48', 'Die letzte Messung', 'FIKTION', 'D',
+    'Erfunden: der grüne Bauwagen und die Notiz an seiner Tür. „Letzter Arbeitstag. Messstab eingepackt. Die Laterne kann hierbleiben. Das Stativ mit dem krummen Bein hat sich den Ruhestand genauso verdient wie ich.“',
+    [], { era: 'today' }),
 ];
 
 // ---- Reliefmuster (Handbuch des Forstamts): facts tagged 'reliefmuster'

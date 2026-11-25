@@ -1,6 +1,6 @@
 /**
  * Scenery feature: set dressing, the distant Hohenburg, the fireworks echo, lit windows and the
- * Tempelzimmer passage. Purely visual plus a few colliders; it owns no gameplay.
+ * Tempelzimmer passage, plus the hidden present-day Bauwagen discovery.
  *
  *  - Sets (sets.ts): procedural props per era and place (the 1796 quarry at the Baumagazin, the
  *    road and the Ehrenhof; the 1789 building site at the gallery; the kennels; the park fence and
@@ -18,6 +18,7 @@
  *
  * State `systems.scenery {windows: [{building, era, share}], gate, coatTaken?}`; hooks `kq.scenery.*`.
  */
+import './strings';
 import { Color, Group, type Mesh, type ShaderMaterial, Vector3 } from 'three';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
@@ -42,6 +43,8 @@ import { type LitWindows, buildLitWindows } from './windows';
 import { RUND, RundTally } from './rund';
 import { CourtLife, EHRENHOF_1789 } from './court';
 import { bleichePlayer, coatVisible, setCoatVisible } from './bleiche';
+import { BAUWAGEN_SET, BAUWAGEN_SITE } from './bauwagen';
+import { BauwagenDiscovery } from './bauwagen-discovery';
 import { clearings as bleicheClearings, coatWorld, mown as bleicheMown } from '../bleiche/layout';
 import { attachPike, pikeMesh } from '../court/props';
 import type { Rig } from '../characters/rig';
@@ -141,6 +144,7 @@ let solidsDirty = true;
 let lastEra: Era | null = null;
 let tally: RundTally | null = null;
 let life: CourtLife | null = null;
+let bauwagen: BauwagenDiscovery | null = null;
 /** The carts echo (`clue.k4.karren`): seconds the view still eases to the nearest cart. */
 let cartsLook = 0;
 let cartsCut = false;
@@ -579,6 +583,10 @@ export default defineSystem({
     // is meadow, so no 1789 trees grow on it either; today the spot is forest and stays untouched)
     for (const [x, z, r] of bleicheClearings()) ctx.world.nature.props.addClearing(x, z, r, ['1789']);
     for (const [x, z, r, keep] of bleicheMown()) ctx.world.nature.cover.addClearing(x, z, r, keep, ['1789']);
+    const { x, z, clearing } = BAUWAGEN_SITE;
+    ctx.world.forest.addClearing(x, z, clearing, ['today']);
+    ctx.world.nature.props.addClearing(x, z, clearing, ['today']);
+    bauwagen = new BauwagenDiscovery(ctx);
     ctx.events.on('era:change', () => applyEra(ctx));
     ctx.events.on('echo:start', ({ id }) => {
       if (id === FIREWORKS_ECHO) startFireworks(ctx);
@@ -631,6 +639,7 @@ export default defineSystem({
       if (!live.has(def.id) && here && d < def.range) buildSet(ctx, def, era);
     }
     syncSolids(ctx);
+    bauwagen?.update(live.has(BAUWAGEN_SET.id));
     if (live.has('bleiche')) bleichePlayer(p.x, p.y, p.z);
     playStrikes(ctx);
     updateHohenburg(ctx, dt);
@@ -648,6 +657,8 @@ export default defineSystem({
     for (const l of live.values()) for (const m of l.built.materials) if (m.uniforms.uMotion) m.uniforms.uMotion.value = reduced ? 0.6 : 1;
   },
   dispose() {
+    bauwagen?.dispose();
+    bauwagen = null;
     for (const id of [...live.keys()]) dropSet(id);
     if (floorWorld?.floorPatch === passageFloor) floorWorld.floorPatch = null;
     floorWorld = null;

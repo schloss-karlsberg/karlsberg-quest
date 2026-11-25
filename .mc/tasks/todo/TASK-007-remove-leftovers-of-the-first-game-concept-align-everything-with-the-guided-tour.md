@@ -41,6 +41,11 @@ Marlene), no journal and no "Feldbuch" name, a working title like "Schloss Karls
 instead of the lantern screen, the `?classic` prologue removed with save migration, survey skills
 kept on a conflict-free keymap, and the two story bibles merged in this task.
 
+**Owner decisions (2026-11-25):** Restore the Bauwagen at its old spot beside the track as a
+hidden easter egg. Keep it outside the guided tour, tour map, objectives, Bussole guidance and
+main story. Pause remains the way to reach the game's essential functions. The talent heading
+„Wissen“ is confirmed.
+
 ### 1. Main menu / title (owner: "still reflects the old concept")
 
 `src/ui/title.ts` (TitleScreen), strings in `src/i18n/de.ts`:
@@ -85,14 +90,12 @@ E inside the 12 m home ring opens a field-book spread with the Chronik, the phon
 the shelf (RPG counts), the drawer (Bussole state), the map (chapter select / continue) and the bench
 (rest = save). Its E prompt competes with the spring's scripted touch "Wasser berühren"
 (`src/systems/quelle/index.ts`; workaround `HOME.troughR` / `atTrough`).
-- [ ] **Decision: move the hub menu's functions into the Bauwagen** (owner rule: Bauwagen if its model still exists, else open the menu by interacting with Marlene). Finding (2026-11-23): there is **no Bauwagen asset** in `public/assets` or `LICENSES.json`; it was never a model file but procedural code, `src/systems/story/hub/station.ts` (mesh, collider, warm windows, CC0 table / stools / barrel via `instanceModels`), deleted in commit `4cd2559` ("the Karlsbergquelle is home"). It is **restorable from git**: `git show 4cd2559^:src/systems/story/hub/station.ts` (plus the clearing in `src/world/forest.ts` and the collider / push-out removed in the same commit). So: restore it from history and open the menu with E at its door
-  - Placement of the restored Bauwagen: **verify with owner** (old spot 760/−915 below the Weiher dam is off the tour route; e.g. near the spring or the Wanderparkplatz as Marlene's Forstamt trailer). Tour decision 1 in `docs/design/tour/README.md` ("No surveyor, Feldstation or Bauwagen") must be updated to match
-  - **Fallback if the owner rejects the restore:** the same menu opens by talking to Marlene (an NPC dialogue option)
-  - What moves there: Chronik (read-only view; see section 7 for the codex), chapter select / continue, rest = save ("Speichern"), the RPG counts and the Bussole state. Marlene's messages and side quests go to Marlene herself / the phone
-  - The endings already mention the Bauwagen (`src/systems/story/endings/scenes.ts`, `content/story/05-enden.story.json`, `story.end.*`): keep them consistent with the decision
-- [ ] **Then remove the hub overlay and its E prompt at the spring**, so E there is only "Wasser berühren"; drop the `HOME.troughR` / `atTrough` workaround
-- [ ] Keep what still belongs to the spring: home / wake spot, heal and hunt reset on `hub:enter`, Q-hold return
-- [ ] `hub:use` events used by story beats: find and replace them
+- [x] **Owner decision (2026-11-25):** Restore the procedural Bauwagen at 760/−915 as a hidden
+  present-day easter egg. The old hub relocation and its Marlene fallback are superseded. The
+  previous trailer geometry and placement are in `4cd2559^:src/systems/story/hub/station.ts`.
+- [ ] **Separate follow-up:** review the spring overlay and its E prompt, the `HOME.troughR`
+  workaround and any remaining `hub:use` consumers. Preserve the home and wake spot, heal and
+  hunt reset on `hub:enter`, and Q-hold return.
 
 ### 5. Sweep: other old-concept candidates
 
@@ -119,7 +122,7 @@ The owner dislikes the name and thinks the game does not need a journal. What "F
 | Tab "Karte" (60) | `src/systems/travel/index.ts` ~line 1039 | **survives** as the map (M already opens maps); also a phone app |
 | Tab "Album" (70, photos) | `src/systems/photo/index.ts` ~line 275 | **survives** in the phone's gallery (see TASK-006) |
 | Tabs "Ausrüstung" (40, key I) and "Talente" (50) | `src/systems/progression/journal-tabs.ts` | **verify with owner**: the chapters after the tour still have combat; proposal: one small "Ausrüstung & Talente" screen on I / the pause menu |
-| Talent branch named "Feldbuch" ("Wissen und Vorrat") | `src/systems/progression/journal-tabs.ts` (`BRANCHES`, id `feldbuch`) | use "Wissen" for the heading (slice 7). Keep the internal id `feldbuch` so saves keep their talent points. |
+| Talent branch named "Feldbuch" ("Wissen und Vorrat") | `src/systems/progression/journal-tabs.ts` (`BRANCHES`, id `feldbuch`) | use "Wissen" for the heading (implemented in slice 7, confirmed by the owner on 2026-11-25). Keep the internal id `feldbuch` so saves keep their talent points. |
 | Name entry titled "Feldbuch" | `story.name.title` in `src/systems/story/strings.ts` | plain title (e.g. "Dein Name"), see section 2 |
 | Credits end line "{name} · Feldbuch geschlossen" | `src/systems/story/endings/ui.ts` ~line 270 | drop "Feldbuch geschlossen" |
 | Other UI strings: "Noch keine Pläne im Feldbuch", skill card "Neu im Feldbuch" | `src/systems/skills/strings.ts` | plain wording ("Noch keine Pläne", "Neue Fähigkeit") |
@@ -175,7 +178,7 @@ moved to the new defaults (settings migration).
 - [x] Survey skills on the new keymap (no clash with the WASD hand) and behind one expanding button on mobile
 - [x] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
 - [x] The Messstab is received visibly during the tour, before the first time travel, and not shown before
-- [ ] No menu at the spring; its functions open at the Bauwagen (or, if the owner rejects the restore, through Marlene); the spring's touch has no E conflict
+- [x] The Bauwagen is a hidden, independent present-day discovery at its old spot. Essential functions remain accessible from Pause.
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
 - [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
 - [x] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
@@ -467,7 +470,7 @@ _Status: approved 2026-11-25_ (slice 6, coordinator approves for the owner)
 - [ ] §6 — Talent wording, destinations and in-fiction Feldbuch choices (verify with owner).
 - [ ] Complete the previously listed contributor browser and mobile checks.
 
-## Plan
+## Slice 7 plan (history)
 
 _Status: approved 2026-11-25_ (slice 7, coordinator approves for the owner)
 
@@ -508,6 +511,67 @@ _Status: approved 2026-11-25_ (slice 7, coordinator approves for the owner)
 **Follow-up slices:**
 
 - [ ] §4 — Confirm Bauwagen placement with the owner, then move the hub functions, restore the spring's sole E interaction and reconcile hub triggers and endings.
+- [ ] §6 — Confirm remaining interface destinations and any further changes to in-fiction lines with the owner.
+- [ ] Complete the listed contributor browser and mobile checks.
+
+## Plan
+
+_Status: approved 2026-11-25_ (slice 8, coordinator approves for the owner)
+
+**Approach:** Restore the present-day trailer beside the old forest path below the dam. Keep
+the green body, rounded roof and door-side details in one static procedural mesh. Examine the
+surveyor's trace at the door to earn a fictional Codex card and discovery feedback in an
+optional encounter with local interaction.
+
+**Files to touch:**
+
+- `src/systems/` and the world collision/vegetation integration — trailer placement, appearance
+  and interaction.
+- `scripts/content-build/`, generated packs and story ending copy — add the fictional surveyor
+  note and remove the trailer references from the endings.
+- `tests/` and `e2e/` — placement, quest/discovery flow, guidance exclusions and saved progress.
+- `docs/PRD.md`, `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md` and
+  `docs/design/tour/README.md` — record the scope of the hidden encounter.
+
+**Steps:**
+
+- [x] 1. Check the old coordinates against the terrain, forest path and tour route. Restore a
+  static present-day mesh with a small forest clearing and a collider.
+- [x] 2. Add a local E/touch interaction, a one-time optional discovery and its FIKTION Codex
+  reward. Keep it independent of chapter progression and all route and objective catalogs.
+- [x] 3. Verify placement, guidance exclusions, interaction and save round trip with unit tests.
+  Add a low-profile touch browser spec for the discovery and audit selectors and strings.
+- [x] 4. Update gameplay, architecture and tour docs. Run typecheck, Vitest with two workers,
+  build, Node-loader content validation and MissionControl validation. Review the diff and
+  record the commands for staging, committing and one-worker Playwright runs.
+
+**Test plan:** Use the shipped path graph, terrain and tour route in the placement tests.
+Check the door interaction, reward and persistence with real content and save serialization.
+Outside the sandbox, check the Niedrig profile on landscape touch with reduced motion at the
+old site from the path near 760/−899 and at the door near 761/−911. Capture before and after
+views from the path and door if needed. Browser execution is pending.
+
+**Risks:** Trees and terrain can block the doorway at the historic coordinates. A travel
+marker, auto-tracked quest or era leak would expose the secret. An extra XP reward could
+change the tour's level budget.
+
+**Open questions:** The owner has confirmed placement, scope and the talent heading. The
+remaining interface destinations are deferred.
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1–2. Opening copy and tour map | full | Earlier slices delivered these. The trailer stays outside the tour map. |
+| 3. Journal, Feldbuch and destinations | partial | Record the confirmed „Wissen“ heading. Remaining destinations are open. |
+| 4–6. Survey controls, classic retirement, bible and staff | full | Earlier slices delivered these. |
+| 7. Bauwagen and spring interaction | partial | Deliver the hidden trailer. Spring overlay review is independent. |
+| 8. Old saves | full | Preserve existing migration and check the new discovery's saved state. |
+| 9. Smoke, affected e2e and units | partial | Run unit tests and list one-worker browser runs. |
+| 10. PRD, ACTION-RPG and README | full | Update active docs and changelogs. |
+| 11. Four gates | full | Typecheck, Vitest with two workers, production build and Node-loader validation passed. |
+
+**Follow-up slices:**
+
+- [ ] §4 — Review the spring overlay, the E prompt and any `hub:use` consumers separately.
 - [ ] §6 — Confirm remaining interface destinations and any further changes to in-fiction lines with the owner.
 - [ ] Complete the listed contributor browser and mobile checks.
 
@@ -696,7 +760,30 @@ _Status: approved 2026-11-25_ (slice 7, coordinator approves for the owner)
   git commit -m 'refactor(story): retire field station interface remnants' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
   ```
 
+- 2026-11-25: Slice 8 approved by the coordinator for the owner on `feat/task-007-bauwagen`, based on `fd18dcd`.
+- 2026-11-25: Slice 8 step 1 complete. The shipped terrain and path data put the old spot on dry ground about 16 m from the forest path. The restored trailer uses one procedural scenery mesh and a present-day clearing and collider. Typecheck passed.
+- 2026-11-25: Slice 8 step 2 complete. The door note unlocks a FIKTION Codex card with the shared discovery feed and autosave. It grants no XP and uses no tracked quest. Replaced existing trailer references in the ending choice, scene and epilogue, and rebuilt content.
+- 2026-11-25: Slice 8 step 3 complete. All 29 focused Bauwagen and scenery tests passed, including route and guidance exclusions, the local examine flow and the save round trip. Added a Niedrig landscape touch spec with reduced motion. Audited changed IDs, selectors and copy across e2e, its helpers, tests and all feature dictionaries.
+
+- 2026-11-25: Slice 8 step 4 complete. Updated PRD, ACTION-RPG, ARCHITECTURE and the tour and Codex docs. The full suite caught the Codex count assertion at 47. Updated it to 48 and reran all tests. Typecheck, all 1,541 tests in 115 files, the production build, Node-loader content validation, MissionControl and `git diff --check` passed. The gates used a writable copy of installed dependencies with pnpm's automatic verification disabled.
+- 2026-11-25: Playwright discovered 42 tests in 12 specs. Browser runs and visual checks are pending. Run each spec with one worker from the worktree root.
+
+  ```sh
+  pnpm build
+  for spec in bauwagen scenery world tour-slice touch story campaign chapter-prolog smoke quests chronik integration; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  ```
+
+- 2026-11-25: Staging and commit are pending in the contributor shell because the sandbox cannot write the worktree's `index.lock`.
+
+  ```sh
+  git add -u -- .mc/tasks/todo/TASK-007-*.md content docs scripts src tests
+  git add -- e2e/bauwagen.spec.ts src/systems/scenery/bauwagen-discovery.ts src/systems/scenery/bauwagen.ts src/systems/scenery/strings.ts tests/bauwagen.test.ts
+  git commit -m 'feat(world): restore the hidden Bauwagen' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+  ```
+
 ## Notes
-- Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, Bauwagen placement, where Sammlungen / Funde / Ausrüstung / Talente go, which in-fiction "Feldbuch" lines stay.
+- Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, where Sammlungen / Funde / Ausrüstung / Talente go, which in-fiction "Feldbuch" lines stay.
 - Story content: chapters are generated by `scripts/content-build/`; the tour file is hand-authored.
 %% mc-links: [[SPR-001]] %%
