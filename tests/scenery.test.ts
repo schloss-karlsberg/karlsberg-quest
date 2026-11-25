@@ -5,7 +5,9 @@
  * keeps snow out of the rooms, and the dawn look.
  */
 import { readFileSync } from 'node:fs';
+import { Mesh } from 'three';
 import { describe, expect, it } from 'vitest';
+import tour from '../content/routes/p-fuehrung.json';
 import type { Footprint } from '../src/data/types';
 import { roofQuads, underRoof } from '../src/systems/fx/ambient/ambient';
 import { SetBuilder } from '../src/systems/scenery/builder';
@@ -13,6 +15,7 @@ import { Kit } from '../src/systems/scenery/kit';
 import { PASSAGE, ROTUNDA, TEMPEL_DOOR, passageAt, passageCollision, passageCoords, passageFloor, rotundaFooting } from '../src/systems/scenery/passage';
 import { RUND, rundHouses } from '../src/systems/scenery/rund';
 import { GATE_CENTER, SETS } from '../src/systems/scenery/sets';
+import { TOUR_STOP_SETS } from '../src/systems/scenery/tour';
 import { TERRACE_ROWS, terraceSolids } from '../src/systems/scenery/worldsets';
 import { COURT_LIFE, CourtLife, EHRENHOF_1789, ROSETTE } from '../src/systems/scenery/court';
 import { court } from '../src/systems/fx/k3-crowd';
@@ -21,11 +24,71 @@ import { validateStories } from '../src/systems/story/validate';
 import type { StoryFile } from '../src/systems/story/types';
 import { FootprintCollider, type Ring, pointInRing } from '../src/world/collision';
 import { OPEN_GROUND, OPEN_SOLIDS, RUIN_KEEP } from '../src/world/palace';
+import { loadWorldData } from './world-data';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
 const rings = footprints.map((f) => f.ring as Ring);
 const idx = (id: string) => footprints.findIndex((f) => f.id === id);
 const story = (name: string) => JSON.parse(readFileSync(new URL(`../content/story/${name}`, import.meta.url), 'utf8')) as StoryFile;
+
+describe('present-day tour dressing', () => {
+  it('streams on every tier and stays within two meshes and 150 triangles per stop', () => {
+    const { h2025 } = loadWorldData();
+    expect(TOUR_STOP_SETS.map((def) => def.id)).toEqual(['tour-karlsberger-hof', 'tour-felsenpfad', 'tour-weiher']);
+    for (const def of TOUR_STOP_SETS) {
+      expect(SETS).toContain(def);
+      expect(def.eras).toEqual(['today']);
+      expect(def.range).toBeLessThanOrEqual(45);
+      for (const { x, z, range } of TOUR_STOP_SETS.filter((other) => other !== def)) {
+        // Existing scenery keeps an active set for another 80 m beyond its build range.
+        expect(Math.hypot(def.x - x, def.z - z)).toBeGreaterThan(def.range + 80 + range);
+      }
+      expect(Math.hypot(def.x - 1059, def.z - (-833))).toBeGreaterThan(def.range + 80 + 10);
+      for (const [detailed, high] of [[false, false], [true, false], [true, true]] as const) {
+        const b = new SetBuilder((x, z) => h2025.heightAt(x, z), detailed, high);
+        def.build(b, { era: 'today', gateOpen: 0 });
+        const { group, models } = b.build(def.id);
+        expect(models).toHaveLength(0);
+        expect(group.children).toHaveLength(1);
+        expect(b.signs).toHaveLength(1);
+        const mesh = group.children[0]! as Mesh;
+        expect(mesh).toBeInstanceOf(Mesh);
+        const triangles = mesh.geometry.getAttribute('position').count / 3 + b.signs.length * 2;
+        expect(triangles).toBeLessThanOrEqual(150);
+      }
+    }
+  });
+
+  it('keeps the entire group route clear and places solids on dry verges', () => {
+    const { h2025, pathAt, water } = loadWorldData();
+    const collider = new FootprintCollider([]);
+    for (const def of TOUR_STOP_SETS) {
+      const b = new SetBuilder((x, z) => h2025.heightAt(x, z));
+      def.build(b, { era: 'today', gateOpen: 0 });
+      collider.setSolids(def.id, b.solids);
+      for (const solid of b.solids) {
+        const { x, z } = solid;
+        const radius = solid.kind === 'circle' ? solid.r : Math.hypot(solid.hu, solid.hv);
+        for (const [dx, dz] of [[0, 0], [-radius, 0], [radius, 0], [0, -radius], [0, radius]] as const) {
+          expect(water(x + dx, z + dz), `${def.id} at ${x}/${z}`).toBe(false);
+          expect(pathAt(x + dx, z + dz), `${def.id} at ${x}/${z}`).toBeLessThan(0.2);
+        }
+      }
+    }
+    for (let i = 1; i < tour.points.length; i++) {
+      const [x, z] = tour.points[i - 1]!;
+      const [nx, nz] = tour.points[i]!;
+      const dx = nx! - x!;
+      const dz = nz! - z!;
+      const steps = Math.ceil(Math.hypot(dx, dz) / 0.25);
+      for (let j = 0; j <= steps; j++) {
+        const px = x! + dx * (j / steps);
+        const pz = z! + dz * (j / steps);
+        expect(collider.solidAt(px, pz, 1.25), `group corridor at ${px}/${pz}`).toBe(false);
+      }
+    }
+  });
+});
 
 describe('collider extensions', () => {
   const square: Ring = [

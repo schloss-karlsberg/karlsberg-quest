@@ -4,9 +4,10 @@ import { frameStats, PERF_BUDGET } from '../../src/render/perf';
 import { isSoftwareGpu } from '../../src/render/quality';
 import { trackErrors } from '../helpers/common';
 
-/** TASK-008. Use PERF_LABEL=before on the baseline build and PERF_LABEL=after on the slice. */
+/** TASK-008. Use slice2-before / slice2-after for the matching tour prop views. */
 const LABEL = process.env.PERF_LABEL ?? 'after';
 const OUT = `test-results/contribute/TASK-008/${LABEL}`;
+const TOUR_PROP_VIEWS = LABEL === 'slice2-before' || LABEL === 'slice2-after';
 const VIEWS = [
   { id: '01-karlsberger-hof', era: 'today', x: 524, z: -770, yaw: 253 },
   { id: '02-felsenpfad', era: 'today', x: 683, z: -596, yaw: 90 },
@@ -16,6 +17,12 @@ const VIEWS = [
   { id: '06-ehrenhof', era: '1789', x: 1138, z: -1120, yaw: 90 },
 ] as const;
 type View = (typeof VIEWS)[number];
+const PROP_YAWS: Partial<Record<View['id'], number>> = {
+  '01-karlsberger-hof': 312,
+  '02-felsenpfad': 72,
+  '03-weiher': 20,
+};
+const LONG_FRAME_MS = 25; // 1.5 frames at the 60 fps cap
 
 function writeJson(name: string, result: unknown): void {
   mkdirSync(OUT, { recursive: true });
@@ -63,6 +70,7 @@ async function boot(page: Page, reducedMotion: boolean) {
 async function shootViews(page: Page, prefix: string) {
   const results = [];
   for (const view of VIEWS) {
+    const still = { ...view, yaw: TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw };
     const result = await page.evaluate(async ({ era, x, z, yaw }) => {
       const k = window.kq!;
       k.setEra(era);
@@ -70,12 +78,21 @@ async function shootViews(page: Page, prefix: string) {
       k.step(2);
       await k.screenshotReady();
       const { calls, triangles } = k.ctx.renderer.info.render;
-      return { clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats } };
-    }, view);
+      const tourSets = k.scenery!.built().filter((id) => id.startsWith('tour-'));
+      return { clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats }, tourSets };
+    }, still);
     await page.screenshot({ path: `${OUT}/${prefix}-${view.id}.png` });
-    results.push({ ...view, ...result });
+    results.push({ ...still, ...result });
   }
   return results;
+}
+
+function checkTourSets(views: Awaited<ReturnType<typeof shootViews>>) {
+  if (!TOUR_PROP_VIEWS) return;
+  for (const view of views) {
+    const expected = LABEL === 'slice2-after' && PROP_YAWS[view.id] !== undefined ? [`tour-${view.id.slice(3)}`] : [];
+    expect.soft(view.tourSets, view.id).toEqual(expected);
+  }
 }
 
 async function walkAndTurn(page: Page, view: View) {
@@ -140,11 +157,20 @@ async function walkAndTurn(page: Page, view: View) {
     renderedFps: sample.frames.length * 1000 / sample.elapsedMs,
     frameMs: frameStats(sample.frames),
     cpuMs: frameStats(sample.cpu),
+    longFrames: sample.frames.filter((ms) => ms > LONG_FRAME_MS).length,
     elapsedMs: sample.elapsedMs,
     walkedM: sample.walkedM,
     callsMax: sample.calls,
     trianglesMax: sample.triangles,
   };
+}
+
+function checkWalk(sample: Awaited<ReturnType<typeof walkAndTurn>>, label: string) {
+  expect.soft(sample.frameMs.n, `${label} sampled frames`).toBeGreaterThan(0);
+  expect.soft(sample.walkedM, `${label} walked metres`).toBeGreaterThan(0.5);
+  expect.soft(sample.cpuMs.p95, `${label} CPU p95`).toBeLessThanOrEqual(PERF_BUDGET.cpuMs);
+  expect.soft(sample.callsMax, `${label} all-pass draws`).toBeLessThanOrEqual(PERF_BUDGET.calls);
+  expect.soft(sample.trianglesMax, `${label} all-pass triangles`).toBeLessThanOrEqual(PERF_BUDGET.triangles);
 }
 
 test.describe.configure({ timeout: 300_000 });
@@ -154,10 +180,11 @@ test('six matched Niedrig ground-cover views', async ({ page }) => {
   const profile = await boot(page, false);
   const views = await shootViews(page, 'desktop');
   writeJson('desktop-views', { profile, views });
+  checkTourSets(views);
   expect(views.at(-1)!.cover).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
-  if (LABEL === 'before') {
+  if (LABEL === 'before' || LABEL === 'pr26-before') {
     for (const view of views) expect(view.cover, view.id).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
-  } else if (LABEL === 'after') {
+  } else if (LABEL === 'after' || LABEL === 'pr26-after') {
     expect(views[0]!.cover.grass, 'Karlsberger Hof grass').toBeGreaterThan(0);
     expect(views[2]!.cover.reeds, 'Weiher shore reeds').toBeGreaterThan(0);
   }
@@ -171,20 +198,28 @@ test.describe('667×375 landscape touch', () => {
     const errors = trackErrors(page);
     const profile = await boot(page, true);
     expect(profile).toMatchObject({ viewport: { width: 667, height: 375 }, touch: true, pixelRatio: 1 });
-    writeJson('phone-reduced-motion-views', { profile, views: await shootViews(page, 'phone-reduced-motion') });
+    const views = await shootViews(page, 'phone-reduced-motion');
+    writeJson('phone-reduced-motion-views', { profile, views });
+    checkTourSets(views);
     await page.evaluate(() => window.kq!.ctx.settings.update((s) => { s.reducedMotion = false; }, 'reducedMotion'));
+    const liveProfile = { ...profile, reducedMotion: false };
 
     const route = [];
     for (const view of VIEWS.slice(0, 4)) {
       await page.evaluate(() => window.kq!.setEra('today'));
       const sample = await walkAndTurn(page, view);
       route.push(sample);
-      expect.soft(sample.frameMs.n, `${view.id} sampled frames`).toBeGreaterThan(0);
-      expect.soft(sample.walkedM, `${view.id} walked metres`).toBeGreaterThan(0.5);
-      expect.soft(sample.callsMax, `${view.id} all-pass draws`).toBeLessThanOrEqual(PERF_BUDGET.calls);
-      expect.soft(sample.trianglesMax, `${view.id} all-pass triangles`).toBeLessThanOrEqual(PERF_BUDGET.triangles);
+      checkWalk(sample, view.id);
     }
-    writeJson('phone-route', { profile: { ...profile, reducedMotion: false }, budget: PERF_BUDGET, route });
+    writeJson('phone-route', { profile: liveProfile, budget: PERF_BUDGET, longFrameMs: LONG_FRAME_MS, route });
+
+    const repeats = [];
+    for (let run = 1; run <= 3; run++) {
+      const sample = await walkAndTurn(page, VIEWS[3]);
+      repeats.push({ run, ...sample });
+      checkWalk(sample, `${sample.id} repeat ${run}`);
+    }
+    writeJson('phone-quelle-recheck', { profile: liveProfile, budget: PERF_BUDGET, longFrameMs: LONG_FRAME_MS, repeats });
 
     const bench = await page.evaluate(() => window.kq!.bench({ frames: 60, warmup: 15, log: false }));
     writeJson('phone-bench', bench);

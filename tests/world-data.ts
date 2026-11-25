@@ -17,6 +17,7 @@ export interface WorldData {
   grid: GridDesc;
   ground: Uint8Array;
   paths: Float32Array;
+  h2025: Heightfield;
   h1789: Heightfield;
   footprints: FootprintCollider;
   /** Land cover is water (today). */
@@ -41,6 +42,7 @@ export function loadWorldData(): WorldData {
     grid,
     ground,
     paths,
+    h2025: new Heightfield(grid, quantToMetres(q25, meta)),
     h1789: new Heightfield(grid, quantToMetres(q89, meta)),
     footprints: new FootprintCollider(fps.map((f) => f.ring as Ring)),
     water: (x, z) => classAt(grid, ground, x, z) === GROUND.water,

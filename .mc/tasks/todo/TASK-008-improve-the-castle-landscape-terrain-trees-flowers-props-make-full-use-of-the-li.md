@@ -101,6 +101,152 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 
 ## Plan
 
+_Status: approved 2026-11-25 (coordinator for the owner)_
+
+**Approach:** Slice 2 dresses three present-day tour stops. A bench and wayfinder establish the
+meeting point at Karlsberger Hof, a marker and low sandstone stones mark the Felsenpfad stop, and
+a bench and wayfinder mark the Weiher stop. These are the three stops that lack the Quelle's
+existing authored landmarks. Use three short-range scenery sets and the same simple silhouettes
+on all presets. Keep the Quelle as a control and repeat the PR #26 phone timing there.
+
+**Files to touch:**
+
+- `src/systems/scenery/tour.ts` (new), `src/systems/scenery/sets.ts` — build and register the three present-day sets.
+- `tests/scenery.test.ts`, `tests/world-data.ts` — test geometry limits and clearance using the shipped terrain and tour route.
+- `e2e/gpu/tour-groundcover.gpu.ts` — frame the new props in six matched stills and repeat the live Quelle sample.
+- `docs/ART-DIRECTION.md`, `docs/PERFORMANCE.md`, `docs/ACTION-RPG.md`, `docs/PRD.md` — record the landscape changes, limits and recheck procedure.
+- `tests/voice-playback.test.ts` — update the base revision’s fixture to use the existing audio-ducking API so the build and tests can run.
+
+**Steps:**
+
+- [x] 1. Add three procedural sets. Place them on dry verges, outside the group path and gathering points.
+  Reuse the kit, sign atlas and scenery streaming. Limit each set to two meshes and 150 triangles per pass.
+- [x] 2. Test present-day registration, streaming ranges, geometry ceilings and clearance on the real route and terrain.
+- [x] 3. Extend the GPU capture spec with the three prop views and three repeat Quelle walking samples.
+  Keep the timing position, heading, warm-up and sample length from PR #26. Save average fps, frame and
+  CPU p95, long-frame counts and all-pass peaks. Preserve the nine-scene phone bench.
+- [x] 4. Run the four gates, update docs and record the pending capture commands.
+- [ ] 5. On a real GPU, capture matched baseline and slice stills and timings. Replay PR #26's before/after
+  Quelle timing and check the full tour, including the deer photo and spring interaction, on touch.
+
+**Test plan:** Run `pnpm exec vitest run tests/scenery.test.ts`, then `pnpm typecheck`, `pnpm test`,
+`pnpm validate` and `pnpm build`. Use `node --import tsx scripts/validate-content.ts` if the `tsx` CLI's
+IPC socket is blocked. The coordinator will run `e2e/gpu/tour-groundcover.gpu.ts` on ANGLE Metal,
+`e2e/perf.spec.ts` for first-input bytes and `e2e/tour-slice.spec.ts` for the story, each with one
+worker under `scripts/dev/heavy.sh`. Compare matching views of Karlsberger Hof, Felsenpfad, Weiher,
+Quelle, palace plateau and 1789 Ehrenhof on desktop and 667×375 touch with reduced motion.
+
+**Risks:** The shipped DGM can put furniture on a slope, and trees may obscure a sign. Check the
+props from walking height and keep the access corridor clear. A single p95 can miss sporadic long
+frames, so keep the three repeat windows separate when comparing the reported 60 → 55.8 fps dip.
+
+**Open questions:** None for implementation. GPU sightlines and the timing comparison require the coordinator's machine.
+
+**Acceptance criteria coverage** (planned for this slice)
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Used and unused data | partial | Sample the shipped present-day DGM and compare placements with path and water masks. |
+| 2. Higher terrain detail and data budget | follow-up | This slice uses the shipped DGM. |
+| 3. Trees, bushes, flowers and props | partial | Benches, wayfinding and sandstone at three tour stops. Crowns and understory follow. |
+| 4. Mobile frame rate and reduced version | partial | Small procedural meshes on Niedrig and a matched Quelle timing recheck on the coordinator's machine. |
+| 5. Before/after GPU views in the PR | full | Six paired views on desktop and phone, pending hardware captures. |
+| 6. Assets and credits | full | Existing scenery kit and generated sign lettering. |
+| 7. Gates and docs | full | Four gates and design/performance docs. |
+
+**Follow-up slices:**
+
+- Add a 1 m DGM core covering the palace and tour, including the western approach outside the scan box. Verify seams, collision heights and first-input bytes.
+- Place present-day trees at 1 m CHM crown maxima and check the forest LOD and shadow budgets.
+- Place bushes and meadow flowers from canopy edges, slope and openness. Compare `ground2025.u8` with the current masks and check imagery rights before using orthophotos.
+- Evaluate expanded Röntgenblick coverage and vegetation returns against the scan payload budget and data attribution.
+
+## Progress
+
+- Branch `feat/task-008-slice2`, based on `1cebc82`. Slice 1 merged in PR #26 (`cd55ebb`).
+- 2026-11-25 — Plan approved by the coordinator for the owner. The three stops have nearby dry verges on the shipped DGM. The sandbox has no browser or GPU access for the baseline or after captures.
+- 2026-11-25 — Step 1 complete. Added the three present-day sets and used the existing collider and zone streaming. Positioned the Hof board outside the seven-metre gathering area.
+- 2026-11-25 — Step 2 complete. All 24 scenery tests passed, including the shipped terrain, tour corridor and geometry checks.
+- 2026-11-25 — Step 3 complete. Playwright discovers both GPU tests with `--list`. The spec keeps the
+  original live positions and adds three individual Quelle samples with long-frame counts. A CPU check
+  using the shipped canopy and deterministic tree placement found a tree on the first Weiher sign
+  sightline, so the sign moved east and the still turns toward the bench and sign.
+- 2026-11-25 — The first gate run exposed an outdated voice fixture in `1cebc82`. It now passes the
+  existing ducking callback and checks its release on the source's `ended` event. The isolated
+  Fläschchen suite passed after a timeout in the initial concurrent gate run.
+- 2026-11-25 — Step 4 complete. Typecheck and build passed. `pnpm test --maxWorkers=4` passed all
+  1,512 tests across 113 files, including the asset suite. The default worker count timed out in the
+  Fläschchen suite. The worktree's dependency link pointed outside the write sandbox, so the gates
+  used a local copy of the installed packages with pnpm's automatic dependency reinstallation
+  disabled. `pnpm validate` encountered the `tsx` IPC `EPERM` block. The authorized
+  `node --import tsx scripts/validate-content.ts` fallback passed with content warnings.
+- 2026-11-25 — Step 5 is pending. GPU screenshots, phone fps and all-pass costs, first-input bytes
+  and the tour playthrough need the hardware runs below.
+- 2026-11-25 — The voice fixture was committed locally as `fb94556`. Staging the slice then failed
+  with `EPERM` on the worktree’s `index.lock`. The implementation and task updates are in the worktree.
+
+### Slice 2 coordinator capture commands
+
+Run from this worktree on the same ANGLE Metal machine with Chromium installed. The baseline and
+historical revisions use the same capture spec. The test-only voice fixture lets `1cebc82` build
+with its existing audio API. The PR #26 revisions are the slice 1 plan's baseline and the PR's
+implementation commit.
+
+```sh
+slice_dir=$PWD
+capture_root=$(mktemp -d /tmp/kq-task-008-slice2.XXXXXX)
+
+capture_gpu() {
+  pnpm build && CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh -- \
+    pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts --workers=1
+}
+
+capture_baseline() {
+  local label="$1" revision="$2"
+  local checkout="$capture_root/$label"
+  git worktree add --detach "$checkout" "$revision" || return
+  cp "$slice_dir/e2e/gpu/tour-groundcover.gpu.ts" "$checkout/e2e/gpu/" || return
+  if [ "$label" = slice2-before ]; then
+    cp "$slice_dir/tests/voice-playback.test.ts" "$checkout/tests/" || return
+  fi
+  (cd "$checkout" && pnpm install --frozen-lockfile && capture_gpu "$label")
+}
+
+capture_baseline slice2-before 1cebc82
+capture_gpu slice2-after
+capture_baseline pr26-before 6d288275
+capture_baseline pr26-after 8142438
+
+mkdir -p test-results/contribute/TASK-008
+for label in slice2-before pr26-before pr26-after; do
+  cp -R "$capture_root/$label/test-results/contribute/TASK-008/$label" test-results/contribute/TASK-008/
+done
+```
+
+```sh
+capture_bytes() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh -- \
+    pnpm exec playwright test e2e/perf.spec.ts --grep 'bytes and time before the first input' --workers=1
+}
+
+(cd "$capture_root/slice2-before" && capture_bytes slice2-before)
+capture_bytes slice2-after
+cp "$capture_root/slice2-before/test-results/perf/load-slice2-before.json" test-results/perf/
+CI=1 KQ_E2E_PORT=5361 scripts/dev/heavy.sh -- pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1
+```
+
+Compare the six matching desktop and phone stills in `slice2-before` and `slice2-after` under
+`test-results/contribute/TASK-008/`. The three prop stills use the same positions as slice 1 and
+face 312°, 72° and 20°. Check the wayfinding and silhouettes at walking height and follow the
+group on touch through the deer photo and spring interaction. Compare `phone-route.json`,
+`phone-bench.json` and the first-input byte totals in `test-results/perf/` with the performance
+budgets. Compare the original Quelle window in `phone-route.json` and each window in
+`phone-quelle-recheck.json` for both revision pairs. Report rendered fps, frame and CPU p95,
+frames over 25 ms and draw/triangle peaks. A p95 similar to the reported result can coexist with
+missed renders, so retain the per-window long-frame counts.
+
+## Slice 1 plan
+
 _Status: approved (2026-11-25, coordinator for the owner)_
 
 **Approach:** Give the present-day tour a sparse November ground-cover layer on Niedrig. Players see
@@ -190,7 +336,7 @@ and report those higher-tier baselines separately.
 - Dress the tour stops with benches, wayfinding and sandstone features in the scenery kit, with cheap silhouettes on Niedrig.
 - Evaluate expanded Röntgenblick coverage and vegetation returns against the scan payload budget and data attribution.
 
-## Progress
+## Slice 1 progress
 
 - Branch: `feat/task-008-landscape`
 - 2026-11-25 — Slice 1 planned on game revision `6d288275`. Baseline captures and timings are pending
@@ -216,7 +362,7 @@ and report those higher-tier baselines separately.
   `index.lock`. Commit the slice with `feat(render): add present-day ground cover on low`,
   `Refs: TASK-008` and the requested co-author trailer.
 
-### Coordinator capture commands
+### Slice 1 coordinator capture commands
 
 Run from the implementation worktree with Chromium installed. The detached worktree keeps the
 baseline's production build at `6d288275`. Copying the new capture spec adds the same test harness

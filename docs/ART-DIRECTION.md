@@ -116,6 +116,11 @@ and uses the terrain data already in memory.
   occasional meadow flowers. Growth thins under the canopy and on steep slopes. The gravel tread
   and the furnished Quelle hollow stay clear. Reeds follow the Weiher's shallow bank, leaving the
   open water visible. The Niedrig ground-cover layer is present-day only.
+- **Tour stops (FIKTION):** present-day trail fittings mark the meeting point at Karlsberger Hof,
+  the Felsenpfad stop and the Weiher. Weathered plank benches on pale sandstone feet anchor the
+  Hof and Weiher verges. Cream wayfinding boards use the tour's German place names. Low sandstone
+  blocks at Felsenpfad pick up the colours of the surrounding rock. The same silhouettes appear
+  on Niedrig. Keep the fittings off the group's tread and the Weiher's bank.
 - **Props (`NatureProps`):** (round 2: stylised kit, see §5.2) CC0 ferns (wind), rocks, a
   fallen dead trunk and two stumps, instanced per kind around the player (ferns 46 m, rocks 170 m),
   never on water, paths or the parterre; snow on top in February 1793.
