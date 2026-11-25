@@ -28,8 +28,9 @@ parts are labelled as fiction in the Codex.
 
 ## How to play
 
-1. Click „Neues Spiel“, read the content note, enter a name and click „Laterne anzünden“.
-   Choose „Weiter“ on the title screen to load a saved game.
+1. Choose „Neues Spiel“ on the „Schloss Karlsberg Tour“ title screen. Read the content note,
+   enter your name, then select „Tour starten“ on the route map to begin with sound. Choose
+   „Weiter“ on the title screen to load a saved game.
 2. Click into the game to capture the mouse. Press Esc or tap Pause to open the menu. Choose
    „Speichern“ to save. Pause also opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente,
    Karte and Album.

@@ -1,7 +1,7 @@
 /**
  * Procedural sound of the hunt (Web Audio only, no files): horn calls, baying / barking /
  * growling, panting, paw steps, hoof beats, the player's heartbeat and the "caught" rush.
- * Every call is a no-op while audio is locked (before the "Laterne entzünden" click).
+ * Every call is a no-op while audio is locked (before the game starts).
  */
 import type { AudioManager, Source3D } from '../../audio/audio';
 import { hornCall, noiseBurst } from '../../audio/synth';

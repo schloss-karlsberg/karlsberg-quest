@@ -23,7 +23,7 @@ export const RADIO_LINES = [
 ];
 
 addStrings('de', {
-  'story.name.default': 'Vermesser*in',
+  'story.name.default': 'Alex',
   'story.dialogue.next': 'weiter',
   'story.dialogue.tap': 'Tippen: weiter',
   'story.tag.historical': 'historisch · nach Quelle',
@@ -106,27 +106,22 @@ addStrings('de', {
   'story.choice.timer': 'Noch {s} s',
 
   // title flow
-  'story.title.new': 'Neues Spiel',
-  'story.title.continue': 'Weiter',
-  'story.title.settings': 'Einstellungen',
-  'story.title.licences': 'Lizenzen',
   'story.warning.title': 'Bevor du anfängst',
   'story.warning.age': '16+',
-  'story.warning.body1': 'Karlsberg Quest ist ein düsteres Action-Rollenspiel für Menschen ab 16 Jahren. Du kämpfst mit einem Messstab gegen erfundene Spukgestalten aus Nebel, Stein, Stroh und Papier und kannst dabei niedergeworfen werden. Es gibt eine unheimliche Atmosphäre, Schreckmomente, Verfolgung durch eine geisterhafte Meute, ein Feuer, in dem du dich zurechtfinden musst, und belastende Themen: Armut, unbezahlte Arbeit, ein tödlicher Unfall (1785), Plünderung und Zerstörung. Es gibt kein Blut und keine Gewalt gegen Menschen; was Menschen einander angetan haben, wird angedeutet, nicht gezeigt.',
+  'story.warning.body1': 'Das Action-Rollenspiel ab 16 Jahren beginnt mit einer Führung über den Karlsberg. Im weiteren Spielverlauf gibt es Schreckmomente, Kämpfe gegen erfundene Spukgestalten, die Verfolgung durch eine geisterhafte Meute und eine Szene in einem brennenden Gebäude. Belastende Themen sind Armut, unbezahlte Arbeit, ein tödlicher Unfall (1785), Plünderung und Zerstörung. Gewalt gegen Menschen wird angedeutet. Blut ist nicht zu sehen.',
   'story.warning.body2': 'Das Spiel erzählt von echten Orten und echten Ereignissen. Was belegt ist, steht mit Quelle im Codex. Was erfunden ist, ist als „Fiktion“ gekennzeichnet.',
   'story.warning.body3': 'Der Karlsberg bei Homburg ist ein geschütztes Bodendenkmal. Schauen, nicht graben. Dieses Spiel zeigt keine Fundstellen und gibt keine Grabtipps.',
   'story.warning.gentle': 'Sanfter Modus – wenn dir Kämpfe oder Jagd zu viel werden: Gegner halten weniger aus, treffen nur halb so hart und kündigen ihre Angriffe länger an; die Meute ist langsamer. (Jederzeit änderbar.)',
   'story.warning.accept': 'Verstanden',
   'story.warning.back': 'Zurück',
   'story.name.title': 'Dein Name',
-  'story.name.prompt': 'Auf die erste Seite gehört ein Name. Wie heißt du? (So nennt dich Marlene.)',
-  'story.name.label': 'Vermessung Karlsberg-Wald, Laserscan 2025 – geprüft von:',
-  'story.name.placeholder': 'Dein Name',
-  'story.name.suggest': 'Alex',
-  'story.name.confirm': 'Eintragen',
-  'story.lantern.title': 'Früh am Morgen, vor dem Bauwagen.',
-  'story.lantern.light': 'Laterne anzünden',
-  'story.lantern.hint': 'Mit Kopfhörern spielen. Der Klick weckt den Ton.',
+  'story.name.confirm': 'Weiter',
+  'story.tourMap.title': 'Die Route der Führung',
+  'story.tourMap.stop.hof': 'Karlsberger Hof',
+  'story.tourMap.stop.felsenpfad': 'Felsenpfad',
+  'story.tourMap.stop.weiher': 'Weiher',
+  'story.tourMap.stop.quelle': 'Karlsbergquelle',
+  'story.tourMap.start': 'Tour starten',
 
   // endings
   'story.end.title': 'Was das Feuer nicht fraß',

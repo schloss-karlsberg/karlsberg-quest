@@ -53,7 +53,7 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   test.setTimeout(900_000);
   const errors = trackErrors(page);
 
-  // ---- 1. new game: title → content warning → name → light the lantern ------------------------
+  // ---- 1. new game: title → content warning → name → tour map ------------------------
   await page.goto(URL);
   const start = page.getByTestId('title-new');
   await expect(start).toBeEnabled({ timeout: 180_000 });
@@ -63,7 +63,7 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   await page.getByTestId('warning-accept').click();
   await page.getByTestId('player-name').fill('Alex');
   await page.getByTestId('name-confirm').click();
-  await page.getByTestId('light-lantern').click();
+  await page.getByTestId('start-tour').click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await page.evaluate(() => window.kq!.step(30));
   const s = await story(page);

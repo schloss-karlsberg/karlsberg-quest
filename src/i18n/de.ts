@@ -3,9 +3,7 @@
  * their folder via `addStrings('de', {...})` (see src/i18n/index.ts) to avoid merge conflicts here.
  */
 export const de: Record<string, string> = {
-  'game.title': 'Karlsberg Quest',
-  'game.subtitle': 'Das Land erinnert sich',
-  'title.light': 'Laterne entzünden',
+  'game.title': 'Schloss Karlsberg Tour',
   'title.continue': 'Weiter',
   'title.newGame': 'Neues Spiel',
   'title.loading': 'Gelände wird geladen … {pct} %',
@@ -15,8 +13,7 @@ export const de: Record<string, string> = {
   'loader.area': 'Umgebung wird geladen …',
   'loader.era': 'Epoche wird geladen …',
   'title.licences': 'Lizenzen & Quellen',
-  'title.motto': 'Fakten mit Quelle. Fiktion als Fiktion gekennzeichnet. Schauen, nicht graben.',
-  'title.hint': 'Maus: umsehen · WASD: gehen · Klick/K: Hieb (halten: Wuchthieb) · Leertaste: ausweichen · Rechtsklick/G: Bannlicht · H: Balsam · Esc: Pause',
+  'title.hint': 'WASD: gehen · Maus: umsehen · E: sprechen und interagieren · C: schleichen · N: Handy · M: Karte · Esc: Pause. Später: F: Geisterblick · 0–3: Relief · R: Messen · V/4: Röntgenblick · B: Planblatt.',
   'title.headphones': 'Mit Kopfhörern spielen.',
   'title.news': 'Neuigkeiten',
   'title.version': 'Version {version} · Build {build}',

@@ -193,12 +193,6 @@ body {
   margin: 0 0 4px;
   letter-spacing: 0.01em;
 }
-.kq-title-page .sub {
-  font-style: italic;
-  font-size: 22px;
-  color: var(--ink-soft);
-  margin: 0 0 26px;
-}
 .kq-title-page .note {
   font-family: var(--hand);
   font-size: 22px;
@@ -212,16 +206,10 @@ body {
   align-items: flex-start;
   gap: 12px;
 }
-.kq-title-page .motto {
-  margin-top: 26px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--ink-soft);
-}
 .kq-title-page .controls {
-  margin-top: 10px;
+  margin-top: 18px;
   font-size: 13px;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   line-height: 1.4;
 }
 .kq-title:has(> .kq-loader:not([hidden])) {
@@ -255,33 +243,6 @@ body {
 .kq-loader--game svg {
   width: 28px;
   height: 28px;
-}
-.kq-lantern-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-.kq-lantern-btn svg {
-  width: 26px;
-  height: 34px;
-}
-.kq-lantern-btn .flame {
-  transform-origin: 50% 70%;
-  animation: kq-flicker 1.4s infinite alternate ease-in-out;
-}
-@keyframes kq-flicker {
-  0% {
-    transform: scale(0.92, 0.95);
-    opacity: 0.85;
-  }
-  50% {
-    transform: scale(1.04, 1.06);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.96, 1.01);
-    opacity: 0.9;
-  }
 }
 .kq-title.fade-out {
   animation: kq-fade 0.9s forwards;
@@ -1089,10 +1050,6 @@ html[data-kq-contrast] .kq-modal {
 }
 
 /* ---------- reduced motion / flash: CSS animations calm down ---------- */
-html[data-kq-reduced-motion] .kq-lantern-btn .flame,
-html[data-kq-reduced-flash] .kq-lantern-btn .flame {
-  animation: none;
-}
 html[data-kq-reduced-motion] .kq-subtitles .line,
 html[data-kq-reduced-motion] .kq-modal-layer {
   animation: none;

@@ -254,12 +254,18 @@ test.describe('touch: title and settings by tap', () => {
     await page.goto('./?nosave&fresh');
     const start = page.getByTestId('title-new');
     await expect(start).toBeEnabled({ timeout: 90_000 });
+    await expect(start).toHaveAccessibleName('Neues Spiel');
     await page.screenshot({ path: `${SCREENS}/touch-title.png` });
     await start.tap();
     await page.getByTestId('warning-accept').tap();
     await page.getByTestId('name-confirm').tap();
-    await page.getByTestId('light-lantern').tap();
+    const map = page.getByTestId('tour-map');
+    await expect(map).toBeInViewport({ ratio: 1 });
+    await expect(map.getByTestId('start-tour')).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: `${SCREENS}/touch-tour-map.png` });
+    await map.getByTestId('start-tour').tap();
     await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
+    await expect.poll(() => page.evaluate(() => window.kq!.ctx.audio.unlocked)).toBe(true);
     await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
     await expect(page.getByTestId('touch')).toBeVisible();
 
@@ -282,6 +288,7 @@ test.describe('touch: title and settings by tap', () => {
   test('portrait keeps title menus usable and shows the rotate overlay during play', async ({ page }) => {
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 375, height: 667 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./?nosave&fresh');
     const start = page.getByTestId('title-new');
     const rotate = page.getByTestId('rotate');
@@ -292,10 +299,15 @@ test.describe('touch: title and settings by tap', () => {
     await expect(rotate).toBeHidden();
     await page.locator('.kq-modal button.close').tap();
     await start.tap();
+    await expect(page.getByTestId('content-warning')).toHaveCSS('animation-name', 'none');
     await page.getByTestId('warning-accept').tap();
     await page.getByTestId('name-confirm').tap();
-    await page.getByTestId('light-lantern').tap();
+    const map = page.getByTestId('tour-map');
+    await expect(map).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: `${SCREENS}/touch-tour-map-portrait.png` });
+    await map.getByTestId('start-tour').tap();
     await expect(page.getByTestId('title')).toBeHidden();
+    await expect(page.getByTestId('title')).not.toHaveClass(/fade-out/);
     await expect(rotate).toBeVisible();
     await page.setViewportSize({ width: 667, height: 375 });
     await expect(rotate).toBeHidden();

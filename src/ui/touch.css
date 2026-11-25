@@ -399,16 +399,6 @@ html[data-kq-touch] .kq-crosshair {
   html[data-kq-touch] .kq-modal {
     padding: 16px 18px 14px 36px;
   }
-  /* the new-game lantern screen: the 250 px lantern pushed its button under the art on phones */
-  .kqs-dark {
-    gap: 6px !important;
-  }
-  .kqs-dark .kqs-lantern-stage {
-    zoom: 0.56;
-  }
-  .kqs-dark .kqs-dark-title {
-    font-size: 22px;
-  }
 }
 
 /* portrait phones in gameplay: ask to turn the device (M-02). touch.ts sets data-kq-rotate only
@@ -846,6 +836,9 @@ html[data-kq-touch] .kq-set-sec {
 html[data-kq-touch] .kq-title-page .controls {
   display: none;
 }
+html[data-kq-touch] .kq-title-page .actions .kq-btn {
+  min-height: 44px;
+}
 html[data-kq-touch] .kq-title {
   overflow-y: auto;
 }
@@ -860,10 +853,6 @@ html[data-kq-touch] .kq-title {
   }
   html .kq-title-page h1 {
     font-size: 34px;
-  }
-  html .kq-title-page .sub {
-    font-size: 17px;
-    margin: 0 0 4px;
   }
   html .kq-title-page .note {
     font-size: 16px;
@@ -883,11 +872,6 @@ html[data-kq-touch] .kq-title {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px 10px;
-  }
-  html .kq-title-page .motto {
-    margin-top: 8px;
-    font-size: 13px;
-    line-height: 1.35;
   }
   html .kq-title-links {
     margin-top: 0;
