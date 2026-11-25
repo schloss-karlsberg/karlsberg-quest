@@ -18,6 +18,7 @@
  */
 import { DataArrayTexture, LinearFilter, LinearMipmapLinearFilter, RepeatWrapping, Vector3, Vector4 } from 'three';
 import type { AssetLoader } from '../assets/loader';
+import type { GraphicsLevel } from '../core/save';
 
 export const SURF = {
   NONE: -1,
@@ -49,23 +50,25 @@ export interface SurfaceSet {
   normal: number;
   detail: number;
   metal: number;
+  /** Used by the palace or historical scenery, outside the present-day opening. */
+  historic?: true;
 }
 
 export const SURFACE_SETS: readonly SurfaceSet[] = [
   { key: 'PLASTER', ph: 'white_plaster_02', tile: 2.2, normal: 0.5, detail: 0.6, metal: 0 },
-  { key: 'ASHLAR', ph: 'medieval_blocks_03', tile: 2.4, normal: 1.0, detail: 0.85, metal: 0 },
-  { key: 'TILES', ph: 'clay_roof_tiles_02', tile: 2.5, normal: 1.1, detail: 0.9, metal: 0 },
+  { key: 'ASHLAR', ph: 'medieval_blocks_03', tile: 2.4, normal: 1.0, detail: 0.85, metal: 0, historic: true },
+  { key: 'TILES', ph: 'clay_roof_tiles_02', tile: 2.5, normal: 1.1, detail: 0.9, metal: 0, historic: true },
   { key: 'SLATE', ph: 'roof_slates_02', tile: 3.0, normal: 1.0, detail: 0.85, metal: 0 },
   { key: 'PLANKS', ph: 'weathered_brown_planks', tile: 1.8, normal: 1.0, detail: 0.9, metal: 0 },
   { key: 'PAINTED', ph: 'green_rough_planks', tile: 1.5, normal: 1.0, detail: 0.85, metal: 0 },
   { key: 'IRON', ph: 'green_metal_rust', tile: 1.0, normal: 0.8, detail: 0.8, metal: 0.7 },
   { key: 'RUBBLE', ph: 'castle_wall_varriation', tile: 2.2, normal: 1.1, detail: 0.85, metal: 0 },
-  { key: 'PARQUET', ph: 'herringbone_parquet', tile: 3.4, normal: 0.7, detail: 0.8, metal: 0 },
-  { key: 'MARBLE', ph: 'marble_01', tile: 1.5, normal: 0.6, detail: 0.9, metal: 0 },
+  { key: 'PARQUET', ph: 'herringbone_parquet', tile: 3.4, normal: 0.7, detail: 0.8, metal: 0, historic: true },
+  { key: 'MARBLE', ph: 'marble_01', tile: 1.5, normal: 0.6, detail: 0.9, metal: 0, historic: true },
   { key: 'FABRIC', ph: 'hessian_230', tile: 0.6, normal: 0.8, detail: 0.6, metal: 0 },
   { key: 'STRAW', ph: 'reed_roof_04', tile: 1.4, normal: 1.0, detail: 0.9, metal: 0 },
-  { key: 'FINEWOOD', ph: 'wood_table_worn', tile: 1.1, normal: 0.6, detail: 0.85, metal: 0 },
-  { key: 'COBBLE', ph: 'cobblestone_floor_01', tile: 1.2, normal: 1.0, detail: 0.85, metal: 0 },
+  { key: 'FINEWOOD', ph: 'wood_table_worn', tile: 1.1, normal: 0.6, detail: 0.85, metal: 0, historic: true },
+  { key: 'COBBLE', ph: 'cobblestone_floor_01', tile: 1.2, normal: 1.0, detail: 0.85, metal: 0, historic: true },
   { key: 'STONE', ph: 'sandstone_cracks', tile: 1.6, normal: 0.9, detail: 0.75, metal: 0 },
 ];
 
@@ -86,6 +89,8 @@ export const surfaces = {
   uSurfNrm: { value: blank() },
   /** 0 = flat look (low tier / not loaded yet), 1 = textured. */
   uSurfOn: { value: 0 },
+  /** Per layer: both the albedo and normal are ready in the arrays. */
+  uSurfReady: { value: new Float32Array(SURF_COUNT) },
   /** Per layer: mean linear albedo of the texture (the detail is relative to it). */
   uSurfMean: { value: SURFACE_SETS.map(() => new Vector3(0.5, 0.5, 0.5)) },
   /** Per layer: x tiles per metre, y normal strength, z detail strength, w metalness. */
@@ -101,6 +106,7 @@ export const SURF_GLSL = /* glsl */ `
 uniform highp sampler2DArray uSurfCol;
 uniform highp sampler2DArray uSurfNrm;
 uniform float uSurfOn;
+uniform float uSurfReady[${SURF_COUNT}];
 uniform vec3 uSurfMean[${SURF_COUNT}];
 uniform vec4 uSurfParam[${SURF_COUNT}];
 
@@ -123,6 +129,7 @@ vec3 kqPerturb(vec3 n, vec3 p, vec2 uv, vec2 t) {
 void kqSurface(float layer, vec2 uvM, vec3 wp, inout vec3 alb, inout vec3 n, inout float rough, inout float metal) {
   if (uSurfOn < 0.5 || layer < -0.5) return;
   int L = int(layer + 0.5);
+  if (uSurfReady[L] < 0.5) return;
   vec4 P = uSurfParam[L];
   vec3 uvw = vec3(uvM * P.x, float(L));
   vec3 c = texture(uSurfCol, uvw).rgb;
@@ -184,9 +191,6 @@ vec3 kqLightPbr(vec3 albedo, vec3 n, vec3 wp, float ao, float rough, float metal
 }
 `;
 
-let loading: Promise<void> | null = null;
-let loadedSize = 0;
-
 /** Copy an image into a layer of an RGBA byte array (resized to `size`); returns its linear mean. */
 function blit(img: CanvasImageSource, size: number, out: Uint8Array, layer: number, ctx2d: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D): Vector3 {
   ctx2d.clearRect(0, 0, size, size);
@@ -210,69 +214,99 @@ function blit(img: CanvasImageSource, size: number, out: Uint8Array, layer: numb
   return new Vector3(r / n, g / n, b / n);
 }
 
-function arrayTex(data: Uint8Array, size: number): DataArrayTexture {
-  const t = new DataArrayTexture(data, size, size, SURF_COUNT);
+function arrayTex(size: number): DataArrayTexture {
+  const t = new DataArrayTexture(new Uint8Array(size * size * 4 * SURF_COUNT), size, size, SURF_COUNT);
   t.wrapS = t.wrapT = RepeatWrapping;
   t.minFilter = LinearMipmapLinearFilter;
   t.magFilter = LinearFilter;
   t.generateMipmaps = true;
   t.anisotropy = 8;
-  t.needsUpdate = true;
   return t;
 }
 
-/**
- * Load the surface sets (idempotent per size). `size` = colour layer edge (1024 high, 512
- * medium); normal layers are half of it. Resolves when the arrays are bound and `uSurfOn` = 1.
- */
-export function loadSurfaces(assets: AssetLoader, size: number): Promise<void> {
-  if (loading && loadedSize >= size) {
-    return loading.then(() => {
-      surfaces.uSurfOn.value = 1;
-    });
-  }
-  loadedSize = size;
-  const nsize = size / 2;
-  loading = (async () => {
-    const imgs = await Promise.all(
-      SURFACE_SETS.map(async (s) => {
-        const [c, n] = await Promise.all([assets.texture(surfAssetId(s, 'col')), assets.texture(surfAssetId(s, 'nrm'))]);
-        return [c.image as CanvasImageSource, n.image as CanvasImageSource] as const;
-      }),
-    );
-    const make = (sz: number) => {
-      const cv = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(sz, sz) : Object.assign(document.createElement('canvas'), { width: sz, height: sz });
-      return cv.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-    };
-    const cc = make(size);
-    const nc = make(nsize);
-    const col = new Uint8Array(size * size * 4 * SURF_COUNT);
-    const nrm = new Uint8Array(nsize * nsize * 4 * SURF_COUNT);
-    imgs.forEach(([c, n], i) => {
-      surfaces.uSurfMean.value[i]!.copy(blit(c, size, col, i, cc));
-      blit(n, nsize, nrm, i, nc);
-    });
-    const old = [surfaces.uSurfCol.value, surfaces.uSurfNrm.value];
-    surfaces.uSurfCol.value = arrayTex(col, size);
-    surfaces.uSurfNrm.value = arrayTex(nrm, nsize);
-    for (const t of old) t.dispose();
-    surfaces.uSurfOn.value = 1;
-  })();
-  loading.catch((e) => {
-    console.warn('[surfaces] load failed', e);
-    loading = null;
-    loadedSize = 0;
-  });
-  return loading;
+function canvasContext(size: number): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D {
+  const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(size, size) : Object.assign(document.createElement('canvas'), { width: size, height: size });
+  return canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 }
 
-/** Quality tier → surfaces on / off and their resolution. Low keeps everything flat. */
-export function applySurfaceQuality(assets: AssetLoader, level: 'low' | 'medium' | 'high'): void {
-  if (level === 'low') {
-    surfaces.uSurfOn.value = 0;
-    return;
+const OPENING_SURFACES = SURFACE_SETS.filter((s) => !s.historic);
+const HISTORIC_SURFACES = SURFACE_SETS.filter((s) => s.historic);
+
+interface SurfaceBatches {
+  size: number;
+  opening?: Promise<void>;
+  historic?: Promise<void>;
+}
+
+/** Fill the shared arrays in two batches, keeping each material's layer index stable. */
+export class ArchitectureSurfaces {
+  private batches: SurfaceBatches = { size: 0 };
+  private packedSize = 0;
+  private enabled = false;
+
+  constructor(
+    private readonly assets: Pick<AssetLoader, 'texture'>,
+    private readonly onLoaded: () => void,
+  ) {}
+
+  applyQuality(level: GraphicsLevel, includeHistoric: boolean): Promise<void> | undefined {
+    this.enabled = level !== 'low';
+    surfaces.uSurfOn.value = this.enabled && this.packedSize > 0 ? 1 : 0;
+    if (!this.enabled) return;
+    const size = level === 'high' ? 1024 : 512;
+    if (size > this.batches.size) this.batches = { size };
+    const batches = this.batches;
+    batches.opening ??= this.fill(batches, OPENING_SURFACES).catch((err: unknown) => {
+      console.warn('[surfaces] opening layers unavailable', err);
+      batches.opening = undefined;
+    });
+    if (!includeHistoric) return batches.opening;
+    batches.historic ??= this.fill(batches, HISTORIC_SURFACES, batches.opening).catch((err: unknown) => {
+      console.warn('[surfaces] historical layers unavailable', err);
+      batches.historic = undefined;
+    });
+    return batches.historic;
   }
-  void loadSurfaces(assets, level === 'high' ? 1024 : 512).catch(() => undefined);
+
+  private async fill(batches: SurfaceBatches, sets: readonly SurfaceSet[], opening?: Promise<void>): Promise<void> {
+    const [images] = await Promise.all([
+      Promise.all(sets.map(async (set) => {
+        const [col, nrm] = await Promise.all([this.assets.texture(surfAssetId(set, 'col')), this.assets.texture(surfAssetId(set, 'nrm'))]);
+        return { layer: SURF[set.key], col: col.image as CanvasImageSource, nrm: nrm.image as CanvasImageSource };
+      })),
+      opening,
+    ]);
+    // A higher tier requested new arrays while these images were downloading.
+    if (batches !== this.batches) return;
+    const size = batches.size;
+    const nsize = size / 2;
+    const cc = canvasContext(size), nc = canvasContext(nsize);
+    const replace = this.packedSize !== size;
+    const col = replace ? arrayTex(size) : surfaces.uSurfCol.value;
+    const nrm = replace ? arrayTex(nsize) : surfaces.uSurfNrm.value;
+    const means = images.map((img) => {
+      const mean = blit(img.col, size, col.image.data as Uint8Array, img.layer, cc);
+      blit(img.nrm, nsize, nrm.image.data as Uint8Array, img.layer, nc);
+      return mean;
+    });
+    if (replace) {
+      surfaces.uSurfCol.value.dispose();
+      surfaces.uSurfNrm.value.dispose();
+      surfaces.uSurfCol.value = col;
+      surfaces.uSurfNrm.value = nrm;
+      surfaces.uSurfReady.value.fill(0);
+      this.packedSize = size;
+    }
+    images.forEach(({ layer }, i) => {
+      surfaces.uSurfMean.value[layer]!.copy(means[i]!);
+      col.addLayerUpdate(layer);
+      nrm.addLayerUpdate(layer);
+      surfaces.uSurfReady.value[layer] = 1;
+    });
+    col.needsUpdate = nrm.needsUpdate = true;
+    surfaces.uSurfOn.value = this.enabled ? 1 : 0;
+    this.onLoaded();
+  }
 }
 
 /**

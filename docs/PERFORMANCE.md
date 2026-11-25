@@ -16,7 +16,7 @@ the e2e test fails when a scene is over.
 | CPU per rendered frame | ≤ 8 ms | systems.frame + world.frame + issuing GL calls, leaves room for GC and audio |
 | Frame time | 16.7 ms (60 fps) on a mid laptop GPU | target; the auto-downgrade steps in above 25 ms (above 1.25 × the frame time of a lower cap) |
 | Renders per second | the cap (60 default) while playing, ≤ 30 on the title, ≤ 15 or none in menus, none in bullet time (§5.1) | fans: a 120 Hz screen must not mean 120 renders a second, and nothing renders twice for a view that cannot change |
-| Data before the first input | ≤ 20 MB | PRD D-007; we fetch 4.5 MB critical + 4.6 MB palace in parallel |
+| Data before the first input | < 20 MiB (20,971,520 bytes) | Fresh title with a cold cache, measured by `e2e/perf.spec.ts` |
 
 ## 2. Measuring
 
@@ -63,8 +63,15 @@ the e2e test fails when a scene is over.
   cap. Keep the existing Niedrig phone bench and route as controls. Compare
   `desktop-{medium,high}-route.json` for rendered fps, frame and CPU p95, long frames and all-pass
   peaks. Report Hoch's paired triangle peaks alongside the existing overruns in §3.5. Run the
-  first-input test with `PERF_LOAD_QUALITY=high` to check the 20 MB cap and that the detail request
+  first-input test with `PERF_LOAD_QUALITY=high` to check the 20 MiB cap and that the detail request
   starts after play. Hardware captures and timing are pending.
+- **Present-day title payload (TASK-008, slice 4).** The first-input test checks the total and
+  checks for requests for the LiDAR crop, the palace mesh and the six deferred surface pairs
+  before „Neues Spiel“ is enabled. Use `PERF_LOAD_QUALITY=high`, `medium` or `low`.
+  Use `PERF_LABEL=slice4-before` and `PERF_LABEL=slice4-after` in the GPU spec for the actual
+  Hoch opening, fixed views at each tier and walking samples. Compare `desktop-high-opening.png`
+  and the Karlsberger Hof and Ehrenhof stills. Review the route samples for frame and CPU p95 and
+  all-pass peaks. Verify the opening through the first shift with `e2e/tour-slice.spec.ts`.
 
 ## 3. Results
 
@@ -375,7 +382,22 @@ every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
 
 ## 4. Loading
 
-Measured with `e2e/perf.spec.ts` (preview build on localhost, cold cache, SwiftShader).
+On the fresh present-day title, the historic palace mesh and the architecture pairs for ashlar,
+clay tiles, parquet, marble, finished wood and cobbles wait until play starts. The title keeps
+present-day terrain, trees, props and surfaces at the selected preset. Karlsberger Hof's bench and
+wayfinder use the opening wood and sandstone layers. Mittel and Hoch fill the remaining slots of
+their texture arrays in the background. Niedrig uses flat architecture shading. The historic
+title and skip-title paths request their visible assets eagerly.
+
+The Hoch run from PR #35 transferred **26,753,846 bytes** before the first input. The palace mesh
+accounted for 4,373,227 bytes and the six surface pairs for 2,550,738 bytes in that file list.
+Subtracting those URLs leaves **19,829,881 bytes** against the strict 20 MiB gate. A new
+Playwright run is needed to confirm the total and first-input time.
+
+### Earlier loading measurements
+
+These measurements predate TASK-008 slice 4. They used `e2e/perf.spec.ts` on a localhost preview
+build with a cold cache and SwiftShader.
 
 | | before | after |
 |---|---|---|
@@ -386,16 +408,12 @@ Measured with `e2e/perf.spec.ts` (preview build on localhost, cold cache, SwiftS
 
 Timeline (marks in `window.__kqReady`, after): boot 26 ms → data 108 ms → world 362 ms → systems
 500 ms → ready 507 ms; palace 507 ms. Largest files: palace `buildings.glb` 4.6 MB, `h2025` 1.4 MB,
-`canopy` 1.1 MB, `h1789` 1.0 MB, main JS 285 KB gzip, four fonts 250 KB. The palace is only shown
-in the past eras, so the first minutes of play never need it; a resumed save in 1789 sees it pop in
-within the download time.
+`canopy` 1.1 MB, `h1789` 1.0 MB, main JS 285 KB gzip, four fonts 250 KB.
 
-Shader warm-up: once the palace is in, `renderer.compileAsync(scene, camera)` compiles every
-material while the title is shown (parallel compile where the driver offers
-`KHR_parallel_shader_compile`). Without it the first 1789 frame took 2.5 s in SwiftShader (47
-programs); later era first frames ~85 ms. Not run under WebDriver (keeps e2e timing as before);
-`?warm` forces it. It compiles into the post target: without one bound the programs got sRGB-output
-keys no scene pass uses (M-17). The era shift has its own idle warm-up (§3.6).
+At boot, `renderer.compileAsync(scene, camera)` warms the current scene into the post target
+(parallel compile where the driver offers `KHR_parallel_shader_compile`). The era shift's idle
+warm-up prepares the deferred palace after it has loaded (§3.6). Under WebDriver, `?warm` enables
+boot shader warm-up.
 
 ## 5. Graphics presets and the auto-downgrade
 

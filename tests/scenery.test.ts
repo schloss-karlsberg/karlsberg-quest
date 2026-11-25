@@ -24,6 +24,7 @@ import { validateStories } from '../src/systems/story/validate';
 import type { StoryFile } from '../src/systems/story/types';
 import { FootprintCollider, type Ring, pointInRing } from '../src/world/collision';
 import { OPEN_GROUND, OPEN_SOLIDS, RUIN_KEEP } from '../src/world/palace';
+import { SURF, SURFACE_SETS } from '../src/world/surfaces';
 import { loadWorldData } from './world-data';
 
 const footprints = (JSON.parse(readFileSync(new URL('../public/data/palace/footprints.json', import.meta.url), 'utf8')) as { buildings: Footprint[] }).buildings;
@@ -87,6 +88,15 @@ describe('present-day tour dressing', () => {
         expect(collider.solidAt(px, pz, 1.25), `group corridor at ${px}/${pz}`).toBe(false);
       }
     }
+  });
+
+  it('loads the materials used by the Karlsberger Hof bench and wayfinder with the opening', () => {
+    const b = new SetBuilder(() => 0, true, true);
+    TOUR_STOP_SETS[0]!.build(b, { era: 'today', gateOpen: 0 });
+    const mesh = b.build('tour-karlsberger-hof').group.children[0] as Mesh;
+    const layers = new Set(Array.from(mesh.geometry.getAttribute('aSurf').array, (layer) => layer - 1));
+    expect([...layers].sort((a, b) => a - b)).toEqual([SURF.PLANKS, SURF.STONE]);
+    for (const layer of layers) expect(SURFACE_SETS[layer]!.historic).toBeUndefined();
   });
 });
 

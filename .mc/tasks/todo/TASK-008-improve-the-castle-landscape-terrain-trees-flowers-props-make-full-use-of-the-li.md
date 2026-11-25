@@ -101,6 +101,115 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 
 ## Plan
 
+### Slice 4 — Hoch first-input budget
+
+_Status: approved 2026-11-25 (coordinator for the owner)_
+
+**Approach:** Keep the 1789 palace mesh and six historical architecture surface pairs out of the
+present-day title load. Fetch them once play begins, with eager loading for historical title views
+and the existing skip-title paths. Keep the present-day surfaces, nature assets and preset
+resolutions used at Karlsberger Hof. In the PR #35 capture, the deferred URLs account for
+6,923,965 of 26,753,846 bytes. This leaves 19,829,881 bytes by subtraction, subject to a new capture.
+
+**Files to touch:**
+
+- `src/boot.ts`, `src/debug/hooks.ts`, `src/systems/scenery/index.ts`, `src/world/surfaces.ts` — gate historical requests by startup state and keep visual and debug readiness working.
+- `tests/surfaces.test.ts`, `tests/scenery.test.ts`, `e2e/perf.spec.ts`, `e2e/gpu/tour-groundcover.gpu.ts` — test staging and the car-park materials and record browser checks.
+- `docs/PERFORMANCE.md`, `docs/ARCHITECTURE.md`, `docs/ACTION-RPG.md`, `docs/PRD.md` — document when the assets are fetched and how to capture before and after.
+
+**Steps:**
+
+- [x] 1. Stream the historical palace mesh and surface layers after start. Preserve historical saves, skip-title and quality changes.
+- [x] 2. Test request staging, preset changes and the materials used by the actual car-park scenery. Guard the first-input budget and prepare matched captures.
+- [x] 3. Run the four local gates, document the change, and record the coordinator's capture commands.
+- [ ] 4. Verify transfer bytes, the opening view and tour play on the coordinator's machine.
+
+**Test plan:** Run focused Vitest tests and all four repo gates. Capture Hoch on the present-day
+title with `PERF_LOAD_QUALITY=high` and check the strict 20 MiB cap and request timing. Compare
+matched Karlsberger Hof and historical GPU views at Mittel and Hoch, plus the Niedrig controls in
+the same GPU spec. Run `e2e/tour-slice.spec.ts`. Browser runs require the coordinator's machine.
+
+**Risks:** Background decoding could move work into the first walk. Compare frame and CPU p95
+and watch for texture or palace pop-in during the opening and first shift. Failed historical
+texture requests should leave loaded surfaces usable.
+
+**Open questions:** Paired browser bytes, GPU images and timings await capture.
+
+**Acceptance criteria coverage**
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Used and unused data | partial | Attribute the fresh Hoch transfer to measured URLs. |
+| 2. Higher terrain detail and data budget | partial | Address the first-input cap with the 1 m detail stream in place. |
+| 3. Trees, bushes, flowers and props | follow-up | Present-day crowns and understory remain separate slices. |
+| 4. Mobile frame rate and reduced version | partial | Preserve opening asset quality and run matched tier controls. |
+| 5. Before/after GPU views | partial | Pair the existing six views per tier, pending capture. |
+| 6. Assets and credits | full | Reuse the credited assets. |
+| 7. Gates and docs | full | Run all four gates and update the performance guide. |
+
+**Follow-up slices:** The terrain geometry, crown placement, understory and Röntgenblick follow-ups
+listed in slice 3 remain open.
+
+## Progress
+
+- Slice 4 branch `perf/task-008-high-first-input`, based on `44f90fa` (PR #35 merged).
+- 2026-11-25 — The coordinator approved slice 4 for the owner. Browser runs are outside this sandbox.
+- 2026-11-25 — Step 1 complete. The present-day title skips the hidden palace mesh and historical
+  layers. The opening and historical batches share their preset-sized arrays. Historical starts and
+  skip-title retain eager loading, and the shift warmer can prepare the palace once it streams in.
+- 2026-11-25 — Step 2 complete. All 33 focused tests passed. The byte spec checks request starts
+  as well as the transfer total. Playwright lists the byte spec, five GPU cases and the tour case.
+- 2026-11-25 — Step 3 complete. Typecheck, build and all 1,529 Vitest tests passed. pnpm used a
+  worktree-local dependency copy with `--config.verify-deps-before-run=false`. The `pnpm validate`
+  invocation hit the tsx IPC `EPERM` block. `node --import tsx scripts/validate-content.ts` passed
+  with content warnings.
+- 2026-11-25 — Step 4 is pending. First-input bytes, GPU stills and timings, tour flow, and other
+  browser specs using `screenshotReady()` are unverified in the sandbox.
+- 2026-11-25 — `mc validate` and `git diff --check` passed. Staging was blocked by
+  `Operation not permitted` on the worktree's `index.lock`. The changes remain in the worktree.
+
+### Slice 4 coordinator capture commands
+
+On an ANGLE Metal machine with Chromium installed, run from this worktree. The baseline uses
+the same GPU poses and its own byte spec. Keep the JSON from the expected baseline Hoch failure.
+The final low and medium runs check both tiers against the same cap.
+
+```sh
+slice4_root=$(mktemp -d /tmp/kq-task-008-slice4.XXXXXX)
+git worktree add --detach "$slice4_root/before" 44f90fa4367de004348d0647dcb69d2d7f60a13f
+cp e2e/gpu/tour-groundcover.gpu.ts "$slice4_root/before/e2e/gpu/"
+(cd "$slice4_root/before" && pnpm install --frozen-lockfile && pnpm build)
+pnpm build
+
+slice4_bytes() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LOAD_QUALITY="$1" PERF_LABEL="$2" scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test e2e/perf.spec.ts --grep 'bytes and time before the first input' --workers=1
+}
+slice4_gpu() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts --workers=1
+}
+
+(cd "$slice4_root/before" && slice4_bytes high slice4-before)
+slice4_bytes high slice4-after
+slice4_bytes medium slice4-after-medium
+slice4_bytes low slice4-after-low
+(cd "$slice4_root/before" && slice4_gpu slice4-before)
+slice4_gpu slice4-after
+CI=1 KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- \
+  pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1
+
+mkdir -p test-results/contribute/TASK-008 test-results/perf
+cp -R "$slice4_root/before/test-results/contribute/TASK-008/slice4-before" test-results/contribute/TASK-008/
+cp "$slice4_root/before/test-results/perf/load-slice4-before.json" test-results/perf/
+```
+
+Compare the title-flow `desktop-high-opening.png` and the matched Karlsberger Hof and Ehrenhof
+stills. Use the route JSON for frame and CPU p95 and all-pass peaks. Save the actual byte totals
+and first-input times from `test-results/perf/load-slice4-*.json`.
+
+## Slice 3 plan
+
 _Status: approved 2026-11-25 (coordinator for the owner)_
 
 **Approach:** Slice 3 uses the local 1 m present-day DGM to sharpen the shading on trail banks,
@@ -159,7 +268,7 @@ CPU, 16.7 ms frame and 20 MB first-input budgets using the commands below.
 - Place bushes and meadow flowers from canopy edges, slope and openness. Compare `ground2025.u8` and the current mask before changing it.
 - Evaluate expanded Röntgenblick coverage and vegetation returns against the scan payload budget and data attribution.
 
-## Progress
+## Slice 3 progress
 
 - Branch `feat/task-008-slice3`, based on `eb43993` (slice 2 merged in PR #32).
 - 2026-11-25 — The coordinator approved the plan for the owner. The source DGM is available in the read-only sister checkout. The sandbox cannot run the baseline or after GPU captures.

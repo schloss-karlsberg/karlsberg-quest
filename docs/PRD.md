@@ -26,6 +26,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 | unreleased | 2026-11-25 | **Guided-tour story bible (TASK-007).** Merged the opening, endings, Codex and voice drafts into [the story bible](../content/bible/00-overview.md). The bible records the shipped tour and handover, pending designs and historical chapter material. |
 | unreleased | 2026-11-25 | **Staff handoff and survey controls (TASK-007).** Marlene lends the Messstab at the Weiher, with a pickup notice and the staff visible after equipping. Survey tools use 1–5 and M on desktop and the „Erkunden“ submenu on touch. Older tour saves and custom bindings are supported. |
 | unreleased | 2026-11-25 | **LiDAR trail shading (TASK-008, slice 3).** Mittel and Hoch use the 1 m DGM to shade fine banks and hollows along the present-day tour and palace terraces. The shading fades toward the Weiher and at distance. The crop streams after play starts, and the walking surface uses the 2 m heightfield. |
+| unreleased | 2026-11-25 | **Tour startup payload (TASK-008, slice 4).** The present-day title keeps the assets for Karlsberger Hof at the selected preset. The historic palace mesh and six architecture surface pairs stream after play starts. |
 | unreleased | 2026-11-25 | **Trail dressing (TASK-008, slice 2).** The present-day tour has German wayfinding at Karlsberger Hof, Felsenpfad and the Weiher, with benches at the Hof and Weiher and low sandstone at Felsenpfad. The group path stays clear on every graphics preset. The exact fittings and placements are FIKTION. |
 | unreleased | 2026-11-25 | **Surveyor content retirement (TASK-007).** Removed the former opening’s story, quest, clue and voice data from the active catalogs. Older saves still resume in „Der Hof“ with their history and earned rewards. The Bussole page remains part of the tour handover. |
 | unreleased | 2026-11-25 | **Present-day ground cover on Niedrig (TASK-008).** The tour's open November verges have sparse dry grass and occasional flowers. Reeds follow the Weiher's shallow bank, and the gravel tread and Quelle steps and trough stay clear. |
@@ -423,7 +424,7 @@ The castle viewer runs at 4.36 M triangles and a 445 MB JS heap, and neither app
 - [ ] 5 external playtesters aged 16+ finish in 30–45 minutes; at least 4 of 5 want to play the next chapter.
 - [ ] No tester is stuck for more than 5 minutes without a hint.
 - [ ] The content validator passes: every fact has a source and a confidence label.
-- [ ] First input possible within 10 s; at most about 20 MB before the first input; at least 45 fps on a 2020 laptop with integrated graphics.
+- [ ] First input possible within 10 s, under 20 MiB before the first input, and at least 45 fps on a 2020 laptop with integrated graphics.
 - [ ] A historian has reviewed the slice's scripts (Q-8).
 
 ## 10. Milestones
