@@ -20,7 +20,7 @@ import { allOf, isOneOf, numberRecord } from '../../core/saved';
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
 import type { EnemyGroupState, FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
-import { isCleared } from '../combat/rules';
+import { isCleared } from '../../rpg/enemy-groups';
 import '../contracts';
 import type { MenagerieSlice } from '../menagerie';
 
