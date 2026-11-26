@@ -4,7 +4,7 @@ aliases:
 - TASK-001
 title: Fix the deer bug
 slug: fix-the-deer-bug
-status: review
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -17,7 +17,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Fix the deer bug
@@ -131,6 +131,7 @@ chromium`: approved by the contributor 2026-11-25.)
 - 2026-11-25: e2e green: `pnpm build && pnpm exec playwright test e2e/animals.spec.ts --workers=1` → (a), (b), (c) passed (11.8 min run), (d) passed (re-run alone after the hand-over rewrite, 4.1 min). Gates green except the pre-existing Windows-only unit failures above.
 - 2026-11-25: rebased onto `main` `fd18dcd` (#36, #37; the PRD changelog and ACTION-RPG §14 rows conflicted, both rows kept, TASK-001 on top). Re-ran on the rebased branch: typecheck, validate, build green; `pnpm test` 1,493 passed, the same 4 Windows-only failures; `e2e/animals.spec.ts` (a)-(d) green (deer share in the shot 0.32 % from the stop and from 23 m back, normal view 0.06 %). `e2e/cinematic.spec.ts` "orbit" times out in `page.screenshot` (line 138) under SwiftShader: twice on this branch and once on untouched `main` `fd18dcd`, so pre-existing on this machine and unrelated (it plays its own orbit, not `reh`).
 - PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/38
+- 2026-11-26 — PR #38 merged. Moved the task to done.
 
 ## Notes
 - Reported by the owner; root cause confirmed 2026-11-25 (see Plan).

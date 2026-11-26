@@ -4,7 +4,7 @@ aliases:
 - TASK-002
 title: Collect chestnuts during the tour
 slug: collect-chestnuts-during-the-tour
-status: review
+status: done
 priority: 3
 owner: ''
 projects: []
@@ -17,7 +17,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Collect chestnuts during the tour
@@ -177,6 +177,7 @@ Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item
   - before / after shots: `before-1-path-t3.png`, `after-1-path-t3.png`, `after-2-feed.png`;
   - reduced motion was not looked at separately: the pickups' reduced-motion path (no pop or fly, fade only) is unchanged code.
 - 2026-11-25: shipped - self-review of `git diff main...HEAD` (no leftovers; corrected one comment that quoted an inflated 1.8 s). PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/39
+- 2026-11-26 — PR #39 merged. Moved the task to done.
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".
