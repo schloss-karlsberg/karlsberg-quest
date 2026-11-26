@@ -169,6 +169,8 @@ export interface DogSave {
   lie?: { x: number; z: number; follow: string };
   /** Ground speed (m/s) while moving; absent = standing. */
   v?: number;
+  /** Feet planted until the dog lines up with its travel direction. */
+  turning?: boolean;
 }
 /**
  * Save slice of the animal core. The integration task decides where it lives (its own

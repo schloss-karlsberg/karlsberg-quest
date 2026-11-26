@@ -10,7 +10,7 @@ import tourRoute from '../content/routes/p-fuehrung.json';
 import type { Animal, AnimalSpawnOpts } from '../src/systems/fauna/types';
 import { createCinematicBridge, createPhotoBridge } from '../src/systems/animals/photoBridge';
 import { AnimalsRuntime, type AnimalsBus, type PersonLike } from '../src/systems/animals/runtime';
-import { DOGS, applyDogRequest, createDog, dogSlot, headingOf, stepDog, type DogTarget } from '../src/systems/animals/dogs';
+import { DOGS, applyDogRequest, createDog, dogSlot, headingOf, restoreDog, serializeDog, stepDog, type DogTarget } from '../src/systems/animals/dogs';
 import { FACE_SECONDS, easeYaw, wrapPi } from '../src/systems/people/locomotion';
 import { WalkRuntime } from '../src/systems/walk/runtime';
 import type { Route, WalkSlice } from '../src/systems/walk/types';
@@ -348,6 +348,33 @@ describe('dogs: the core moves a dog only forward along its yaw', () => {
     expect(dog.v).toBeGreaterThan(0);
     expect(dog.z).toBeGreaterThan(0);
     expect(headingOf(dog.x, dog.z)).toBeCloseTo(dog.yaw);
+  });
+
+  it('resumes a saved reversal with its feet still planted', () => {
+    const dog = createDog({ op: 'spawn', id: 'diane', kind: 'hund', x: 0, z: 0 });
+    applyDogRequest(dog, { op: 'run', id: dog.id, path: [[0, 8]] });
+    const resolve = () => null;
+    // About 89° of the reversal remains, between the enter and resume thresholds.
+    for (let i = 0; i < 19; i++) stepDog(dog, DT, resolve);
+    expect(dog.turning).toBe(true);
+
+    const save = serializeDog(dog);
+    const restored = restoreDog(JSON.parse(JSON.stringify(save)));
+    const { turning: _turning, ...legacySave } = save;
+    expect(restoreDog(legacySave).turning).toBe(false);
+
+    for (let i = 0; i < 10; i++) {
+      stepDog(dog, DT, resolve);
+      stepDog(restored, DT, resolve);
+      expect(restored.motion).toEqual(dog.motion);
+      expect(restored.turning).toBe(dog.turning);
+      expect(restored).toMatchObject({ x: dog.x, z: dog.z });
+      if (i === 5) {
+        expect(restored).toMatchObject({ x: 0, z: 0, v: 0 });
+        expect(restored.motion.clip).toBe('idle');
+      }
+    }
+    expect(restored.motion.speed).toBeGreaterThan(0);
   });
 
   it('in every state (follow through a stop and turn, the bolt with its U-turn, the return, the lie), turning at most TURN', () => {

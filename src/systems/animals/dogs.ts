@@ -534,6 +534,7 @@ export function serializeDog(dog: Dog): DogSave {
   }
   if (dog.lie) s.lie = { x: Number.isNaN(dog.lie.x) ? dog.x : dog.lie.x, z: Number.isNaN(dog.lie.z) ? dog.z : dog.lie.z, follow: dog.lie.follow };
   if (dog.v > 0) s.v = dog.v;
+  if (dog.turning) s.turning = true;
   return s;
 }
 
@@ -556,6 +557,7 @@ export function restoreDog(s: DogSave): Dog {
   const lie = s.lie;
   dog.lie = isRecord(lie) && Number.isFinite(lie.x) && Number.isFinite(lie.z) ? { x: lie.x, z: lie.z, follow: typeof lie.follow === 'string' ? lie.follow : '' } : null;
   dog.v = typeof s.v === 'number' && Number.isFinite(s.v) ? Math.max(0, Math.min(dog.run, s.v)) : 0;
+  dog.turning = s.turning === true;
   if (dog.state === 'bolt' && !dog.path) dog.state = dog.back ? 'return' : 'idle';
   if (dog.state === 'lie' && !dog.lie) dog.lie = { x: dog.x, z: dog.z, follow: '' };
   dog.motion.yaw = dog.yaw;
