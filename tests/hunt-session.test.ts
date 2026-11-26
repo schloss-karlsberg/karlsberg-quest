@@ -143,7 +143,7 @@ describe('loading a configured hunt', () => {
     if (!handedOff) expect(player.frozen).toBe(true);
     save.load('safe');
     step(3);
-    story.update(3, ctx);
+    story.update(3);
     expect(caught).toHaveBeenCalledTimes(handedOff ? 1 : 0);
     expect(shift).not.toHaveBeenCalled();
     expect(refill).not.toHaveBeenCalled();
@@ -154,7 +154,8 @@ describe('loading a configured hunt', () => {
     expect(pack.sim()).toBeNull();
     if (handedOff) {
       expect(ctx.ui.hud.busy).toHaveBeenCalledWith('caught', false, 0);
-      expect(vi.mocked(layer.append).mock.lastCall?.[0].classList.contains('kqs-down')).toBe(false);
+      const curtain = vi.mocked(layer.append).mock.lastCall?.[0] as HTMLElement;
+      expect(curtain.classList.contains('kqs-down')).toBe(false);
     }
   });
 
@@ -166,7 +167,7 @@ describe('loading a configured hunt', () => {
     expect(pack.sim()).toBeNull();
     expect(pack.tableau()?.kind).toBe('rest');
     if (kind === 'fading') events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'off' } });
-    hunt.frame(0, ctx);
+    hunt.frame(0);
     const hounds = ctx.scene.getObjectByName('hunt-pack')!;
     expect(hounds.visible).toBe(true);
     events.on('save:loaded', () => {
@@ -174,7 +175,7 @@ describe('loading a configured hunt', () => {
       expect(hounds.visible).toBe(false);
     });
     save.load('peaceful');
-    hunt.frame(0, ctx);
+    hunt.frame(0);
     expect(pack.tableau()).toBeNull();
     expect(hounds.visible).toBe(false);
   });

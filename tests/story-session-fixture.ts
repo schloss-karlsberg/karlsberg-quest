@@ -16,7 +16,7 @@ export async function initStory(ctx: GameContext, element: () => unknown) {
     audio: { ...ctx.audio, bindVoiceEmitter: () => () => {} },
     assets: { licences: async () => null },
     pause: { paused: false },
-    input: { wasPressed: () => false, ...ctx.input, isDown: () => false },
+    input: { ...ctx.input, isDown: () => false },
     ui: {
       ...ctx.ui, layer: () => layer,
       hud: { ...ctx.ui?.hud, stack: vi.fn(), prompt: vi.fn() },
