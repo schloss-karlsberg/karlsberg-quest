@@ -3432,10 +3432,17 @@
         {
           "id": "k1_14b.welle",
           "when": {
-            "event": "enemy:cleared",
-            "match": {
-              "group": "k1.enge"
-            }
+            "all": [
+              {
+                "era": "1789"
+              },
+              {
+                "event": "enemy:cleared",
+                "match": {
+                  "group": "k1.enge"
+                }
+              }
+            ]
           },
           "do": [
             {

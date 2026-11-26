@@ -17,6 +17,7 @@ import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
 import type { NpcPlacement, ThreatConfig, ThreatKind } from '../contracts';
 import { creditSections } from '../party/creditContent';
 import { isBarkLine, pickSequence } from '../../content/triggers';
+import { isCleared } from '../../rpg/enemy-groups';
 import { assembleEpilogue } from './endings/assemble';
 import { isWrapped, newMeter, tickMeter } from './meters';
 import { Voice } from './dialogue/voice';
@@ -47,7 +48,6 @@ import type { CinematicPlay } from '../cinematic/types';
 import type { GameEvents } from '../../core/events';
 import type { DialogueItem } from './dialogue/presenter';
 import { knownPoints } from '../travel/points';
-import { isCleared } from '../combat/rules';
 
 /** The nearest Vermessungspunkt the player has measured in (or knows) to x/z. */
 function nearestSurveyed(travel: unknown, x: number, z: number): { name: string; x: number; z: number; d: number } | null {
