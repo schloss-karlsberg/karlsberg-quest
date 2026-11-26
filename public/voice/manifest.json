@@ -569,6 +569,58 @@
       "serviceKey": "f16d7439704c466f6bf1bff082d0fafba702390612e7148f161a8416070527e6",
       "sha256Raw": "598148c6c0a2a7a3c75c70c141705b1cd00abb646b98cfc71fca88c9c607d4f7"
     },
+    "imhoff.t.kastanie1": {
+      "files": {
+        "opus": "imhoff.t.kastanie1.e00c4548.webm",
+        "aac": "imhoff.t.kastanie1.c16bbef5.m4a"
+      },
+      "textHash": "a4df28f9",
+      "speechHash": "a4df28f9",
+      "speaker": "imhoff",
+      "provider": "moss",
+      "voiceId": "moss:imhoff:7021a50b:6301",
+      "lineMaxTokens": 212,
+      "model": "MOSS-TTS-v1.5@cdd3b91",
+      "licence": "apache-2.0-model",
+      "date": "2026-11-26T13:41:20.018Z",
+      "chars": 107,
+      "credits": 0,
+      "durationMs": 8452,
+      "attribution": "MOSS-TTS-v1.5, OpenMOSS, Apache-2.0",
+      "engine": {
+        "model": "MOSS-TTS-v1.5@cdd3b911b1585e3f2dbc7775ef10f9926f58850a",
+        "tokenizer": "MOSS-Audio-Tokenizer@3cd226ba2947efa357ef453bcad111b6eafba782",
+        "warmup": "v1"
+      },
+      "serviceKey": "cf60171bae651f4fd650e1274e61058e1491683b92c8484cd6155f34ab03c0c7",
+      "sha256Raw": "10b4f98d9a9a6726892548e5f22b1bb8cd56f92a2b5cdd119beba9088c770b21"
+    },
+    "imhoff.t.kastanie24": {
+      "files": {
+        "opus": "imhoff.t.kastanie24.d2c9cee6.webm",
+        "aac": "imhoff.t.kastanie24.6b343ff7.m4a"
+      },
+      "textHash": "3f93fe23",
+      "speechHash": "3f93fe23",
+      "speaker": "imhoff",
+      "provider": "moss",
+      "voiceId": "moss:imhoff:7021a50b:6301",
+      "lineMaxTokens": 140,
+      "model": "MOSS-TTS-v1.5@cdd3b91",
+      "licence": "apache-2.0-model",
+      "date": "2026-11-26T13:41:20.276Z",
+      "chars": 61,
+      "credits": 0,
+      "durationMs": 4176,
+      "attribution": "MOSS-TTS-v1.5, OpenMOSS, Apache-2.0",
+      "engine": {
+        "model": "MOSS-TTS-v1.5@cdd3b911b1585e3f2dbc7775ef10f9926f58850a",
+        "tokenizer": "MOSS-Audio-Tokenizer@3cd226ba2947efa357ef453bcad111b6eafba782",
+        "warmup": "v1"
+      },
+      "serviceKey": "0bc04282222913e3e644b4ce1baa0e88e212a945cfbff750182afa8ff3c6bac1",
+      "sha256Raw": "8af125102708995a4db498ba7848b3e90f46a7a731cd42d4d923410e55366e98"
+    },
     "imhoff.t.los": {
       "files": {
         "opus": "imhoff.t.los.9829d418.webm",
