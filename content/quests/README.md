@@ -45,12 +45,20 @@ A beat that waits for a quest needs a reachable offer or start, a way to finish 
 objective in `after` order, and an available turn-in. The validator runs the quest state machine
 against the chapter's actions. It follows chained offers, checks side-quest prerequisites and
 reports a blocked gate with the quest id and the outstanding objectives or missing giver.
+It also checks that every main quest has an offer or start and a completion on a reachable
+path, even when no beat explicitly waits for it. NPC acceptance and turn-in depend on the
+placement's era. A voice turn-in needs a story completion command, and rewards apply at
+completion. The chapter transition resets unfinished earlier main quests and applies the
+runtime expiry rules to side quests.
 
 A collect objective needs a known RPG item and enough pickups while that objective is open.
 Objective placements, positive-chance drops, story loot, direct grants and quest payouts are
 possible sources. A pickup can wait on the ground. A direct grant pays immediately. An item
 granted before acceptance can satisfy a later use objective, but collecting it requires a new
-pickup. An objective cannot fund itself with its own turn-in reward.
+pickup. Pickups only credit the amount that fits in the item's stack. Deeds can come from
+world pickups as well as grants, including pickups unrelated to any quest. Kill objectives
+with authored spawns or groups count the remaining enemies in reachable eras.
+An objective cannot fund itself with its own turn-in reward.
 
 Raw event objectives count matching notifications after activation. The check scans literal
 emitters in `src/`. Dynamically dispatched names belong in the small list in

@@ -2,8 +2,25 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ERAS } from '../../src/core/era';
 import type { Issue, LoadedPack } from '../../src/content/validate';
+import type { Footprint, Room } from '../../src/data/types';
 import type { QuestFile } from '../../src/rpg/types';
 import type { Action, StoryFile } from '../../src/systems/story/types';
+
+import { loadWalkRefs } from '../../src/systems/story/validate-cli';
+import type { Route } from '../../src/systems/walk/types';
+
+export interface RuntimeWorld {
+  routes: ReadonlyMap<string, Route>;
+  rooms: readonly Pick<Room, 'id' | 'roomId' | 'building'>[];
+  buildings: ReadonlySet<string>;
+}
+
+export function runtimeWorld(root: string): RuntimeWorld {
+  const palace = join(root, 'public/data/palace');
+  const { rooms } = JSON.parse(readFileSync(join(palace, 'rooms.json'), 'utf8')) as { rooms: Room[] };
+  const { buildings } = JSON.parse(readFileSync(join(palace, 'footprints.json'), 'utf8')) as { buildings: Footprint[] };
+  return { routes: loadWalkRefs(root).routes, rooms, buildings: new Set(buildings.map(b => b.id)) };
+}
 
 export interface StoryInput { file: string; story: StoryFile }
 export interface QuestInput { file: string; data: QuestFile }

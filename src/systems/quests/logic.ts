@@ -18,7 +18,7 @@
  */
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
-import type { FlagValue, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
+import type { FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
 import '../contracts';
 
 export type QuestDefIn = QuestDef & { chapter: string };
@@ -122,6 +122,31 @@ export function turninOf(q: QuestDef): { npc: string } | { voice: string } | 'au
   return 'npc' in t ? { npc: t.npc } : { voice: t.voice };
 }
 
+/**
+ * The deed contract for physical choices (docs/ACTION-RPG.md §8.6): taking one of these things in
+ * the world (`item:pickup`) sets the flag the epilogue reads. The Festsaal (Ch. 3): whichever of the
+ * three objects is carried out first is `flag.k3_objekt`; leaving with none is the story's
+ * `nichts`. Quest-file items add theirs with `deed`.
+ */
+const DEED_ITEMS: Readonly<Record<string, { flag: string; value: string }>> = {
+  'item.charm.tuergriff': { flag: 'flag.k3_objekt', value: 'tuergriff' },
+  'item.charm.dukat': { flag: 'flag.k3_objekt', value: 'dukat' },
+  'item.charm.uhr': { flag: 'flag.k3_objekt', value: 'uhr' },
+};
+
+export function itemDeed(item: string, def: ItemDef | undefined) {
+  return DEED_ITEMS[item] ?? def?.deed;
+}
+
+export function recordItemDeed(item: string, def: ItemDef | undefined, flags: Record<string, FlagValue>) {
+  const deed = itemDeed(item, def);
+  if (!deed) return;
+  const current = flags[deed.flag];
+  if (current !== undefined && current !== '' && current !== 'nichts') return;
+  flags[deed.flag] = deed.value;
+  return deed;
+}
+
 export function giverId(q: QuestDef): string {
   return 'npc' in q.giver ? q.giver.npc : q.giver.voice;
 }
@@ -138,6 +163,27 @@ export function spawnGroup(q: QuestDef, o: QuestObjective, s: SpawnSpec, i: numb
 /** Era of a place: its own, the objective's zone, the quest's. */
 function placeEra(q: QuestDef, o: QuestObjective, p: QuestPlace | undefined): Era {
   return (p?.era ?? o.where?.era ?? q.era ?? 'today') as Era;
+}
+
+/** Whether a real kill event credits a kill objective. */
+export function killMatches(q: QuestDef, o: QuestObjective, p: Record<string, unknown>): boolean {
+  // undone by nobody (a Glutling bursting by itself, a boss's adds fading with it)
+  if (p.by === 'env') return false;
+  // a pack's escort gives XP, never a quest kill (combat packs.ts)
+  if (p.escort === true || (typeof p.group === 'string' && p.group.endsWith('+escort'))) return false;
+  if (p.quest === q.id && p.objective === o.id) return true;
+  if (o.group && p.group === o.group) return true;
+  if (!o.enemy || p.kind !== o.enemy || o.group) return false;
+  // A kill of the right kind that is not one of the objective's own spawns (quest /
+  // objective / group above) counts only at the objective's place, in its era: an Irrlicht
+  // banned in 1789 at the Schwanenweiher is not one over the dam today.
+  const spawn = o.spawn?.[0];
+  const place = o.where ?? (spawn && { x: spawn.x, z: spawn.z, r: spawn.radius ?? 6, era: spawn.era });
+  if (!place) return true;
+  const era = placeEra(q, o, place);
+  if (typeof p.era === 'string' && p.era !== era) return false;
+  const x = Number(p.x), z = Number(p.z);
+  return !Number.isFinite(x) || !Number.isFinite(z) || Math.hypot(x - place.x, z - place.z) <= Math.max(30, (place.r ?? 6) * 2);
 }
 
 function inPlace(p: QuestPlace, w: QuestWhere, scale = 1): boolean {
@@ -509,6 +555,30 @@ export class QuestBook {
     return true;
   }
 
+  /**
+   * A new chapter: main quests of earlier chapters still running and unaccepted offers leave the
+   * log (a chapter select or story jump skipped them; in a straight run they are all done); side
+   * quests of a past era of an earlier chapter end (ready → paid, active → failed).
+   */
+  dropEarlier(chapter: string): void {
+    const order = ['tour', 'k1', 'k2', 'k3', 'k4', 'enden'];
+    // a chapter outside the campaign (the e2e `test` chapter) comes after all of it
+    const at = order.includes(chapter) ? order.indexOf(chapter) : order.length;
+    for (const q of this.defs.values()) {
+      const i = order.indexOf(q.chapter ?? '');
+      if (i < 0 || i >= at) continue;
+      const st = this.state(q.id);
+      // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone
+      if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.reset(q.id);
+      // Past-era side quests expire at the next chapter, present-day ones two chapters on.
+      // A ready quest still pays out, an active one fails.
+      else if (q.kind === 'side' && ((q.era && q.era !== 'today') || at - i >= 2)) {
+        if (st === 'ready') this.complete(q.id, true);
+        else if (st === 'active') this.fail(q.id, 'chapter');
+      }
+    }
+  }
+
   /** Back to hidden: counts cleared, spawns and pickups withdrawn. */
   reset(id: string): boolean {
     const q = this.defs.get(id);
@@ -571,26 +641,7 @@ export class QuestBook {
   private counts(q: QuestDef, o: QuestObjective, name: string, p: Record<string, unknown>): number {
     switch (o.type) {
       case 'kill':
-        if (name !== 'enemy:killed') return 0;
-        // undone by nobody (a Glutling bursting by itself, a boss's adds fading with it)
-        if (p.by === 'env') return 0;
-        // a pack's escort gives XP, never a quest kill (combat packs.ts)
-        if (p.escort === true || (typeof p.group === 'string' && p.group.endsWith('+escort'))) return 0;
-        if (p.quest === q.id && p.objective === o.id) return 1;
-        if (o.group && p.group === o.group) return 1;
-        if (!o.enemy || p.kind !== o.enemy || o.group) return 0;
-        // A kill of the right kind that is not one of the objective's own spawns (quest /
-        // objective / group above) counts only at the objective's place, in its era: an Irrlicht
-        // banned in 1789 at the Schwanenweiher is not one over the dam today.
-        {
-          const place = o.where ?? (o.spawn?.[0] ? { x: o.spawn[0].x, z: o.spawn[0].z, r: o.spawn[0].radius ?? 6, era: o.spawn[0].era } : undefined);
-          if (!place) return 1;
-          const era = placeEra(q, o, place as QuestPlace);
-          if (typeof p.era === 'string' && p.era !== era) return 0;
-          const x = Number(p.x), z = Number(p.z);
-          if (Number.isFinite(x) && Number.isFinite(z) && Math.hypot(x - place.x, z - place.z) > Math.max(30, (place.r ?? 6) * 2)) return 0;
-          return 1;
-        }
+        return name === 'enemy:killed' && killMatches(q, o, p) ? 1 : 0;
       case 'collect':
         return name === 'item:pickup' && p.item === o.item ? Math.max(1, Number(p.count ?? 1)) : 0;
       case 'use':

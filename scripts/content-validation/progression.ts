@@ -1,13 +1,15 @@
+import { fileURLToPath } from 'node:url';
 import type { Issue, LoadedPack } from '../../src/content/validate';
 import { ITEMS } from '../../src/rpg/items';
 import { buildContent } from '../../src/systems/chronik/logic';
-import { objectiveEvents } from '../../src/systems/quests/logic';
-import { checkSayIds, visitStoryActions, type QuestInput, type StoryInput } from './catalog';
+import { itemDeed, objectiveEvents } from '../../src/systems/quests/logic';
+import { checkSayIds, runtimeWorld, visitStoryActions, type QuestInput, type StoryInput } from './catalog';
 import { Chapter, Findings, freshState, type Catalog, type Save } from './chapter';
 
 export function validateProgression(
   stories: StoryInput[], questFiles: QuestInput[], packs: LoadedPack[], events: ReadonlySet<string>,
 ): Issue[] {
+  const world = runtimeWorld(fileURLToPath(new URL('../..', import.meta.url)));
   const issues = checkSayIds(stories, packs);
   const findings = new Findings();
   const allQuests = questFiles.flatMap(({ file, data }) => data.quests.map(q => ({ file, q: { ...q, chapter: data.chapter }, test: data.test })));
@@ -48,7 +50,10 @@ export function validateProgression(
     for (const o of q.objectives) declaredFlags.add('quest.' + q.id + '.' + o.id);
     for (const key of Object.keys(q.rewards?.flags ?? {})) declaredFlags.add(key);
   }
-  for (const { item } of allItems) if (item.deed) declaredFlags.add(item.deed.flag);
+  for (const item of [...ITEMS, ...allItems.map(({ item }) => item)]) {
+    const deed = itemDeed(item.id, item);
+    if (deed) declaredFlags.add(deed.flag);
+  }
   for (const { pack } of packs) for (const clue of pack.clues ?? []) {
     for (const key of clue.reveals.flags ?? []) declaredFlags.add(key);
   }
@@ -69,7 +74,7 @@ export function validateProgression(
       questFiles: new Map(quests.map(({ q, file }) => [q.id, file])),
       clues: content.clues, cases: [...content.cases.values()],
       items: new Map([...ITEMS, ...allItems.filter(i => !i.test || story.test).map(i => i.item)].map(i => [i.id, i])),
-      dialogue: packs.flatMap(p => p.pack.dialogue ?? []), events, declaredFlags,
+      dialogue: packs.flatMap(p => p.pack.dialogue ?? []), events, declaredFlags, world,
     };
     const visited = new Set<string>();
     const starts = incoming.get(story.chapter) ?? [freshState()];
@@ -91,8 +96,11 @@ export function validateProgression(
         incoming.set(next, states);
       }
     }
-    if (pending.length) limited.add(file);
-    if (pending.length) issues.push({ level: 'warning', file, id: story.chapter, message: 'choice path limit reached; check remaining paths in play' });
+    if (pending.length) {
+      limited.add(file);
+      for (const q of quests) if (q.q.chapter === story.chapter) limited.add(q.file);
+      issues.push({ level: 'warning', file, id: story.chapter, message: 'choice path limit reached; check remaining paths in play' });
+    }
     for (const b of story.beats) if (!visited.has(b.id)) issues.push({
       level: story.test || pending.length ? 'warning' : 'error', file, id: story.chapter + '/' + b.id,
       message: `beat unreachable from chapter start '${story.start}'${story.test ? ' during normal play (debug goto can enter it)' : ''}`,

@@ -32,13 +32,18 @@ Run `pnpm validate` after editing beats, quests or packs. Each progression findi
 file and the chapter/beat, reaction, or quest/objective id.
 
 - A chapter starts at `start`. The check follows `next`, fallthrough and forward checkpoints.
-  An exit action can satisfy a later beat. A beat cannot use its own exit to complete.
+  A delayed exit cue arrives in the following beat. An immediate exit cue belongs to the
+  outgoing beat. A timer that completes the beat also cuts off reactions that would fire later.
+- An `npc:arrived` wait must match a reachable walk's NPC, route and destination. Pickup waits
+  count matching events, including quantity and bounds, and spend the placements they use.
+  A repeatable event reaction needs a new matching emission after its latch resets.
 - Flags must have a reachable writer with the required value. Writers include story actions,
-  choice options, quest payouts, item deeds and clue rewards. Runtime-owned flags such as
-  `court.admitted` have named exceptions in `scripts/content-validation/chapter.ts`.
-- A choice can leave a later prerequisite unset on just one branch. The diagnostic identifies
-  a failing choice. A flag supplied only by an optional reaction in an earlier beat also merits
-  a playthrough. Unreachable alternatives in an otherwise usable gate produce warnings.
+  runtime interactions such as court admission and shift anchors, choice options, quest payouts,
+  item deeds and clue rewards. Chronik confirmation gates require legacy-save or debug progress.
+- Inline choices check each option's `when` before applying its effects. A positive timeout can
+  select the fallback while the choice stays open. Reusing a choice id overwrites its saved answer.
+  The diagnostic identifies an authored choice path that leaves a later prerequisite unset.
+  Optional reactions from earlier beats and unreachable alternatives can produce warnings.
 - Every occurrence of a `say` id must resolve to the same text, including pack references,
   era overrides and ordered variants. Conflicts identify both definitions. Keep the recorded
   text intact when correcting a trigger.
