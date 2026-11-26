@@ -299,6 +299,13 @@ test('animals (d): t10 opens on the deer with the reh shot, from the stop and fr
       const photoPrompt = page.locator('.kq-prompt').filter({ hasText: 'Fotomodus öffnen' });
       await expect(photoPrompt).toBeVisible();
       await expect(camera).toHaveClass(/\bcue\b/);
+      // Gerold's phone-down briefing (imhoff.t.reh2) holds the scene; the camera opens once it ends
+      await expect
+        .poll(async () => {
+          await step(page, 15);
+          return page.evaluate(() => window.kq!.photo!.state().blocked);
+        }, { timeout: 30_000 })
+        .toBeNull();
       expect(await page.evaluate(() => window.kq!.photo!.open())).toBe(true);
       await expect(shutter).toHaveClass(/\bcue\b/);
       await expect(shutter).toHaveAccessibleName('Auslöser: Foto machen');
