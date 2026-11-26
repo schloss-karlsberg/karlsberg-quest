@@ -134,6 +134,12 @@ and uses the terrain data already in memory.
   between groups along the verge. Niedrig keeps both benches and both courses with fewer stones.
   The layout follows the shipped OpenStreetMap track and 2025 LiDAR heights (GeoBasis-DE/LVGL-SL).
   [Map and terrain attribution](../public/data/attribution.json)
+- **Castle understory (FIKTION):** dull olive and russet shrubs break up the canopy edge at the
+  Weiher, outside the Quelle hollow and on the palace plateau. Papery, pale seed heads sit in
+  small gaps in the canopy. Keep the plants below eye level and leave space around the shore,
+  trails, spring and fittings. Local canopy height, terrain grade, the water mask and OSM paths
+  guide placement. Niedrig uses fewer plants with simpler silhouettes.
+  [Map and terrain attribution](../public/data/attribution.json)
 - **Props (`NatureProps`):** (round 2: stylised kit, see §5.2) CC0 ferns (wind), rocks, a
   fallen dead trunk and two stumps, instanced per kind around the player (ferns 46 m, rocks 170 m),
   never on water, paths or the parterre; snow on top in February 1793.

@@ -23,7 +23,7 @@ const afterStartPaths = [
   '/data/palace/buildings.glb',
   ...architecture.filter((asset) => historicSurfaceIds.has(asset.id)).map((asset) => `/assets/${asset.url}`),
 ];
-const plateauChunk = /\/(?:app\/palace-plateau-[^/]+\.js|src\/systems\/scenery\/palace-plateau\.ts)$/;
+const deferredScenery = /\/(?:app\/(?:palace-plateau|castle-understory)-[^/]+\.js|src\/systems\/scenery\/(?:palace-plateau|castle-understory)\.ts)$/;
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 
@@ -92,7 +92,7 @@ test.describe('performance', () => {
     let ready = false;
     page.on('request', (req) => {
       const path = new URL(req.url()).pathname;
-      if (afterStartPaths.some((deferred) => path.endsWith(deferred)) || plateauChunk.test(path)) earlyRequests.push(path);
+      if (afterStartPaths.some((deferred) => path.endsWith(deferred)) || deferredScenery.test(path)) earlyRequests.push(path);
     });
     page.on('requestfinished', async (req) => {
       if (ready) return;
