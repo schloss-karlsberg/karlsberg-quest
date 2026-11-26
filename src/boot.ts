@@ -366,6 +366,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       systems.update(dt, ctx);
       player.writeState(state.mutable.player);
       state.mutable.meta.playSeconds += dt;
+      if (started) save.retryAutosave();
       input.endStep();
     },
     render: (frameDt, alpha, pass) => {
@@ -663,7 +664,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && started) save.autosave('hidden', true);
+    if (document.hidden && started) save.flushAutosave('hidden');
     perf.resetClock();
     quality.hold();
     // a hidden tab draws nothing (rAF stops anyway) and its sound stops too (HRTF, wind, drones)
@@ -726,7 +727,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   function toTitle(): void {
     pause.push('title');
     events.emit('game:title', {});
-    save.autosave('title', true);
+    save.flushAutosave('title');
     started = false;
     ui.loading.setEnabled(false);
     input.enabled = false;

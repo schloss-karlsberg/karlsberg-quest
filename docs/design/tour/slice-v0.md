@@ -23,7 +23,7 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | t4 fade 1 | „Kommt, wir kürzen ab.“ → fade → `warp` to `einstieg` → player teleported behind the group → fade in. |
 | t5–t6 Felsenpfad | Station 2: Buntsandstein, no climbing; quarrying by the duke: **offen** („Ehrlich: Das weiß man nicht.“), Hohenburg as quarry (cx.31). `player.t.fuehrer`. |
 | t7–t8 Wind | At `wind`: gust (synth wind, caption), both dogs bolt barking uphill and come back (`animal:run` with `back`), a 6 s skippable cinematic on the dogs, `player.t.wind`, Jost, `player.t.hunde`, Gerold „Wildschweine, wahrscheinlich. Oder Rehe.“ |
-| t9–t10 Reh | New route stop `reh` (727.4/−751.5). Ricke + Kitz at 704/−779, 36 m down the slope in forest (terrain line of sight from the stop checked). t10 opens with the skippable `reh` shot (`content/cinematics/reh.json`, camera 2.5 m ahead of the stop toward the deer, fov 40 → 18 on Kitz, then Ricke, 6 s): without it the pair is a few dozen pixels in the haze. The sneak prompt [C] and objective appear as soon as the shot ends, including after a skip or the reduced-motion stills. Continue in t10 restores both immediately. Photo prompt [N]. Good photo → praise; good photo after `animal:alert` → „Sie hat dich angesehen. Gutes Bild.“; flight within 16 m → „Und weg.“ / „Zu schnell.“, the tour goes on 45 s later; hard fallback 180 s. Never a fail state. |
+| t9–t10 Reh | The `reh` stop is at 727.4/−751.5. Ricke and Kitz graze 36 m down the slope at 698/−773 (FIKTION). t10 opens with the skippable `reh` shot (`content/cinematics/reh.json`, camera 2.5 m ahead of the stop, fov 40 → 18 on Kitz, then Ricke, 6 s). The sneak prompt uses the current crouch binding or touch button label. The prompt and objective appear after the cinematic, including after a skip or reduced-motion stills, and immediately on Continue. Photo prompt [N]. A good photo gets praise, and Gerold says „Sie hat dich angesehen. Gutes Bild.“ when the doe is alert in the shot. Flight within 16 m triggers „Und weg.“ / „Zu schnell.“ and the tour continues after 45 s. The beat advances after 180 s anyway. |
 | t11 fade 2 | „Weiter zum Weiher.“ → fade → `warp` to `damm`, deer despawned, player behind the group. |
 | t12–t13 | Marlene calls out at the dam and lends the Messstab at the Weiher in t13. The pickup feed confirms the loan and the staff is visible once equipped. Station 3: date and purpose **offen**. |
 | t14–t15 Quelle | Station 4: Quelle, Bach, Wassertretbecken „in der Nähe“; supply / Fassung **offen**. „Ruh dich kurz aus, wir sind oben am Plateau.“ The group walks off on `p-aufstieg`. |
@@ -31,6 +31,28 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | t18 Sommer 1789 | `player.q.wo`, `laub.t.1789`, `laub.t.seite`; fade out. Exit: the hand-over grants (relief 3, Kartograf 1, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
 
 Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'npc', op: walk|group|follow|gather|hold|release|warp}` and `{do:'npc', op:'despawn', group}` → `npc:walk` (C2), `{do:'cinematic', …}` → `cinematic:play` (C1), `{do:'animal', …}` → `animal:request` (C5), `{do:'fade', to, seconds}`; sounds `wind`, `bark`; validator cases incl. route / stop checks against `content/routes/*.json`. Tests: `tests/tour-slice.test.ts` (headless beat-by-beat run), `e2e/tour-slice.spec.ts`.
+
+## Deer photo and sneak tuning (TASK-017)
+
+- The phone hides gameplay overlays and world markers on desktop and touch, including the
+  measuring tape, reticle, sheet and quest giver glyphs. Touch shows the camera toggle, shutter
+  and zoom controls. Measuring taps pause and survey banners wait until the phone closes.
+- With 2× zoom, a steady shot of both animals in the middle third works from about 20–25 m. The
+  doe's sphere must cover at least 5.5% of frame height and the fawn's at least 4.4%. Each needs
+  three clear samples out of five (top, left, right, centre, bottom). Range is 27 m per target,
+  or 32 m for a two-star fallback after 90 s nearby. The fallback lowers the minimum frame
+  height to 4.5% for the doe and 3.6% for the fawn so both can pass at 95° FOV and 2× zoom.
+- In line of sight, deer notice an upright player within 30 m. Crouching or going prone at up to
+  1.7 m/s reduces that to 15 m. Inside 20 m, standing still adds 0.75 meter units/s and walking
+  upright adds 1.5/s. Running above 3.7 m/s adds 1.5/s, and sprinting above 5.2 m/s adds 2.5/s
+  within the notice radius. Moving at crouch speed at 13 m adds about 0.14/s. Holding still while
+  crouched in range drains 0.5/s. The head-up tell starts at 0.5 and lasts at least 1.5 s before a
+  full meter can trigger a 25 m flight.
+- The phone stays down through Gerold's stalking instructions and the good-photo reaction. The
+  first good shot's doe state determines one reply and is saved immediately. Continue replays an
+  unfinished reaction and the tour waits for it to finish. The phone prompt comes up within 26 m
+  horizontally of the spawn or after 20 s while awaiting a good shot. On Continue, the objective
+  points to the doe's restored position, including in saves with the old clearing.
 
 ## Chestnuts along the way (TASK-002)
 
@@ -86,7 +108,6 @@ Owner playtest: „lost the group and couldn't find it again“. The walk system
 
 ## Known issues
 
-- „Sie hat dich angesehen“ fires when the doe sounded the alert at any time before the good photo (no `state` on `photo:good` yet).
 - The group despawns in t17 at most ~20–40 m up the slope; it may vanish in view.
 - A good photo needs doe and fawn in the frame (`needAll` of the placeholder targets).
 - The chapter title card „Die Führung“ stays up through the first ~100 s (cards wait while someone talks, and Gerold talks a lot).

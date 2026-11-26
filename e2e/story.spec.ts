@@ -135,6 +135,46 @@ test('story: save from Pause, cancel overwrite, then continue', async ({ page })
   })).toEqual({ pause: true, balsam: 1 });
 });
 
+for (const transition of ['hide the tab', 'return to the title'] as const) {
+  test(`story: saves the final era during storage backoff when players ${transition}`, async ({ page }) => {
+    await page.goto('./?notitle&fresh&manual&q=low');
+    await waitForHooks(page, ['story']);
+    if (transition === 'return to the title') await openPause(page);
+    const titleButton = transition === 'return to the title'
+      ? await page.getByRole('button', { name: 'Zum Titelbild', exact: true }).elementHandle()
+      : null;
+    const result = await page.evaluate(({ key, titleButton }) => {
+      const { save, state } = window.kq!.ctx;
+      const savedEra = () => JSON.parse(localStorage.getItem(key)!).era;
+      const setItem = Storage.prototype.setItem;
+      let attempts = 0;
+      Storage.prototype.setItem = function (saveKey, value) {
+        if (saveKey === key && ++attempts <= 2) throw new DOMException('Storage unavailable', 'QuotaExceededError');
+        setItem.call(this, saveKey, value);
+      };
+      try {
+        save.autosave('era', true);
+        save.autosave('story', true);
+        save.hold('cinematic', true);
+        state.mutable.era = '1789';
+        save.autosave('ending', true);
+        save.hold('cinematic', false);
+        const before = savedEra();
+        if (titleButton instanceof HTMLElement) titleButton.click();
+        else {
+          Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+        return { before, after: savedEra(), attempts };
+      } finally {
+        Storage.prototype.setItem = setItem;
+        if (!titleButton) Reflect.deleteProperty(document, 'hidden');
+      }
+    }, { key: SAVE_KEY('auto'), titleButton });
+    expect(result).toEqual({ before: 'today', after: '1789', attempts: 3 });
+  });
+}
+
 test('story: home at the Quelle by day and night, dialogue portraits', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
