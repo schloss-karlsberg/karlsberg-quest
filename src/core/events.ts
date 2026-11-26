@@ -14,6 +14,8 @@ import type { Stance } from '../player/stance';
 export interface GameEvents {
   /** Title screen dismissed, audio unlocked, player has control. */
   'game:start': { resumed: boolean };
+  /** Returning to the title screen, before the session autosave. */
+  'game:title': {};
   /** Pause menu opened/closed (also when pointer lock is lost). */
   'game:pause': { paused: boolean };
   /** Era switched (terrain, sky, buildings already updated when this fires). */

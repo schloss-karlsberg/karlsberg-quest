@@ -953,6 +953,7 @@ class Travel {
       this.trail.clear();
       this.trailFor = '';
     };
+    ev.on('game:title', () => this.endJourney());
     ev.on('game:start', reload);
     ev.on('save:loaded', reload);
     ctx.state.subscribe((_s, reason) => {

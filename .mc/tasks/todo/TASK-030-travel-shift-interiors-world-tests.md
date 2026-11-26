@@ -33,7 +33,7 @@ Identify player-visible behaviour without unit coverage and fix defects demonstr
 - [x] Record each module's player-facing contract and existing unit coverage, including exclusions.
 - [x] Add at least 25 deterministic assertions across the four areas, with the focused set under about three seconds.
 - [x] Reproduce each confirmed defect before changing its behaviour. Record unresolved design decisions as test todos.
-- [ ] Commit the review fixes separately by behavior. The save fix is in `369e0b6`. The curtain commit is pending because Git denied the index lock.
+- [x] Include the arrival-pose and fading-curtain fixes in the branch (`6530102` and `95952ef`).
 - [x] Update affected documentation and the PRD changelog.
 - [ ] Pass all four gates as written. Typecheck, unit tests and build passed. The validator CLI was sandbox-blocked.
 - [x] Check whether the smoke spec can run and record the human-run command if the sandbox blocks its port.
@@ -62,6 +62,17 @@ Keep changes focused on independent gameplay logic.
 
 ## Progress
 
+### PR #62 review fixes (2026-11-26)
+
+- [x] Cancel pending travel and remove its curtain before saving on return to the title screen.
+- [x] Save the tour group's pending snap with the arrival pose and replay it on the first simulation tick after load.
+- [x] Reproduce both failures with focused tests and verify that a held sprint regains its boost after combat.
+
+Typecheck, the full Vitest run (124 files, 1605 passed, one todo), content validation and an
+in-memory production build passed. Vitest used `--maxWorkers=2 --configLoader runner --no-cache`
+after the default loader could not write through the shared `node_modules` symlink. Playwright
+discovered `e2e/travel-session.spec.ts`. The sandbox denied binding a loopback port for browser execution.
+
 ### Review round on `dev/task-030` (2026-11-26)
 
 **Goal:** Preserve the arrival pose in the travel autosave, clear old curtains on session changes,
@@ -72,7 +83,7 @@ and exercise the production save and load paths in the travel regressions.
 - [x] Verify that lore and shrine behavior uses the loaded slot and writes the next change to its state.
 - [x] Verify immediate curtain removal during a fade on load, game start and disposal.
 - [x] Update the travel docs and changelog, run the gates and attempt the locked smoke spec.
-- [ ] Commit the curtain fix, its regression tests and the review documentation.
+- [x] Include the curtain fix, its regression tests and the review documentation in `95952ef`.
 
 **Plan:** Add the regression assertions first and reproduce the arrival and fade failures. Update
 the arrival state before saving and keep the fading curtain and its timer available for cleanup.
@@ -124,13 +135,6 @@ in the sandbox (`listen EPERM`). No voiced lines require new text.
 - Decide whether a full-health traveller with a partly empty lantern should consume the Wegstein’s cooldown. The design question is an `it.todo` in `tests/travel-runtime.test.ts`.
 - Outside the sandbox, run `pnpm validate` and
   `KQ_E2E_PORT=5418 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
-- Stage and commit the curtain fix locally. Git accepted `369e0b6` but denied the worktree's
-  `index.lock` when staging the curtain fix.
-
-```sh
-git add src/systems/travel/index.ts tests/travel-journey.test.ts docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md .mc/tasks/todo/TASK-030-travel-shift-interiors-world-tests.md
-git commit -m 'fix(ui): clear fading fast travel curtains' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-```
 
 ## Coverage inventory
 

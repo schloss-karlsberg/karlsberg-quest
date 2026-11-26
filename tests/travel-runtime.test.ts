@@ -82,6 +82,7 @@ describe('the outdoor sprint boost', () => {
     keys.add('forward');
     keys.add('sprint');
     for (let i = 0; i < 4 * 60; i++) step();
+    expect(player.moveScale).toBeCloseTo(1.45);
     events.emit('combat:state', { inCombat: true });
     player.moveScale = 0.7;
     step();
@@ -89,5 +90,7 @@ describe('the outdoor sprint boost', () => {
     events.emit('combat:state', { inCombat: false });
     for (let i = 0; i < 59; i++) step();
     expect(player.moveScale).toBe(0.7);
+    for (let i = 0; i < 4 * 60; i++) step();
+    expect(player.moveScale).toBeCloseTo(0.7 * 1.45);
   });
 });

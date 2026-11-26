@@ -50,7 +50,12 @@ export interface GroupSave {
   spacing?: [number, number];
 }
 /** Save slice of the walk system: its own `SystemStates` key `walk` (src/systems/walk/index.ts). */
-export interface WalkSlice { walkers: WalkerSave[]; groups: GroupSave[] }
+export interface WalkSlice {
+  walkers: WalkerSave[];
+  groups: GroupSave[];
+  /** Fast travel arrived under the curtain, before the group could respond to the teleport. */
+  pendingTravelSnap?: true;
+}
 
 declare module '../../core/events' {
   interface GameEvents {

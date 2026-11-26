@@ -1610,10 +1610,12 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
   (`survey:show-map`). During fast travel, a curtain covers the scene and `travel` pauses the
   loop. The player teleports beside the tripod facing the goal, `travel:arrived` fires, and the
-  arrival pose is written into the store before autosaving. Arrival is synchronous under
-  `?manual`. Loading another save or starting a game cancels a pending arrival, releases the
-  travel pause and removes any curtain immediately, including during its fade. Disposal also
-  clears the journey and curtain.
+  arrival pose is written into the store before autosaving. The walk system saves its pending
+  tour-group snap with the arrival and runs it on the first simulation tick, including after a
+  reload. Arrival is synchronous under `?manual`. Returning to the title, loading another save,
+  starting a game or disposing the travel system cancels a pending arrival, releases the travel
+  pause and removes any curtain immediately, including during its fade. The title autosave runs
+  after this cleanup.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +

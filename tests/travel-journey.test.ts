@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import tourRoute from '../content/routes/p-fuehrung.json';
 import { createInitialState } from '../src/core/state';
 import { pointById } from '../src/systems/travel/points';
+import { WalkRuntime, type WalkBus } from '../src/systems/walk/runtime';
+import type { Route } from '../src/systems/walk/types';
 import { disposeTravel, setupTravel } from './travel-fixture';
 
 beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
@@ -39,6 +42,72 @@ it.each([true, false])('autosaves the arrival pose with manual play set to %s', 
   vi.runAllTimers();
   expect(pauseReasons.size).toBe(0);
   expect(curtain.remove).toHaveBeenCalledTimes(1);
+});
+
+it('returning to the title cancels a pending journey before saving the departure pose', () => {
+  const { hooks, events, player, pauseReasons, save, loop, body } = setupTravel();
+  loop.manual = false;
+  const { x, z } = player.position;
+  const arrived = vi.fn();
+  events.on('travel:arrived', arrived);
+  expect(hooks.go('karlsbergquelle')).toBe(true);
+  const [curtain] = body.append.mock.lastCall!;
+  expect(pauseReasons.has('travel')).toBe(true);
+
+  pauseReasons.add('title');
+  events.emit('game:title', {});
+  expect(curtain.remove).toHaveBeenCalledTimes(1);
+  expect([...pauseReasons]).toEqual(['title']);
+  expect(save.autosave('title', true)).toBe(true);
+  const departure = save.peek();
+  expect(departure?.player).toMatchObject({ x, z });
+
+  vi.runAllTimers();
+  expect(player.position.toArray()).toEqual([x, 0, z]);
+  expect(arrived).not.toHaveBeenCalled();
+  expect(save.autosave).toHaveBeenCalledExactlyOnceWith('title', true);
+  expect(save.peek()).toEqual(departure);
+});
+
+it('replays the tour group’s snap on the first tick after reloading the spring arrival save', () => {
+  const { hooks, events, player, pauseReasons, save, loop, state } = setupTravel();
+  loop.manual = false;
+  const route = tourRoute as Route;
+  const walk = new WalkRuntime({
+    bus: events as unknown as WalkBus,
+    routes: new Map([[route.id, route]]),
+    slice: () => state.slice('walk', () => ({ walkers: [], groups: [] })),
+    bodies: () => null,
+    world: { heightAt: () => 0, player: () => player.position, era: () => state.state.era },
+  });
+  events.on('save:loaded', () => walk.restore());
+  const weiher = route.stops.find(stop => stop.id === 'weiher')!;
+  const quelle = route.stops.find(stop => stop.id === 'quelle')!;
+  player.teleport(weiher.x, weiher.z);
+  walk.ensureNpc('imhoff', weiher.x, weiher.z);
+  events.emit('npc:walk', { op: 'group', group: 'fuehrung', leader: 'imhoff', members: ['extra.mats'] });
+  events.emit('npc:walk', { op: 'follow', group: 'fuehrung', leader: 'imhoff' });
+  events.emit('npc:walk', { op: 'walk', npc: 'imhoff', route: route.id, to: quelle.id, speed: 1.9, wait: { for: 'player', r: 25 } });
+  walk.update(1 / 60);
+
+  const arrivals = vi.fn();
+  events.on('npc:arrived', arrivals);
+  expect(hooks.go('karlsbergquelle')).toBe(true);
+  vi.advanceTimersByTime(450);
+  expect(pauseReasons.has('travel')).toBe(true);
+  expect(arrivals).not.toHaveBeenCalled();
+  expect(save.load()).toBe(true);
+  expect(pauseReasons.has('travel')).toBe(false);
+  expect(walk.walkers.get('imhoff')?.arrived).toBe(false);
+
+  walk.update(1 / 60);
+  const guide = walk.walkers.get('imhoff')!;
+  const member = walk.npcs.get('extra.mats')!;
+  expect(guide.arrived).toBe(true);
+  expect(Math.hypot(guide.x - quelle.x, guide.z - quelle.z)).toBeLessThan(1);
+  expect(Math.hypot(member.x - guide.x, member.z - guide.z)).toBeLessThan(6);
+  expect(state.state.systems.walk?.pendingTravelSnap).toBeUndefined();
+  expect(arrivals).toHaveBeenCalledExactlyOnceWith({ npc: 'imhoff', at: quelle.id, route: route.id, skipped: true });
 });
 
 it('abandons a pending arrival when a different game is loaded under the curtain', () => {
