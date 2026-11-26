@@ -391,6 +391,8 @@ class Travel {
       this.trail.clear();
       this.trailFor = '';
       this.bestD = Infinity;
+      // The paused game loop has not copied the arrival pose into the store yet.
+      ctx.player.writeState(ctx.state.mutable.player);
       ctx.save.autosave('travel', true);
     };
     if (skipRealTimeWaits(ctx.loop.manual, ctx.params)) {

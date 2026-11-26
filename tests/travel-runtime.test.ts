@@ -1,17 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deserializeState } from '../src/core/state';
+import { SAVE_KEY } from '../src/core/save';
+import { serializeState } from '../src/core/state';
 import { disposeTravel, setupTravel } from './travel-fixture';
 
 afterEach(disposeTravel);
 
 describe('travel discoveries', () => {
-  it('grants lore XP on foot once and keeps the find when loading the save', () => {
+  it('grants lore XP once on foot per slot and restores an uncollected find from an older slot', () => {
     const { hooks, events, player, state, step, save } = setupTravel();
     const lore = hooks.pois().find(p => p.chapter === 'prolog' && p.era === 'today' && p.kind === 'lore')!;
     const xp = vi.fn();
     events.on('xp:grant', xp);
     expect(hooks.state().seen).not.toContain(lore.id);
     player.position.set(lore.x, 0, lore.z);
+    player.writeState(state.mutable.player);
+    expect(save.save('1')).toBe(true);
     player.flying = true;
     step();
     expect(hooks.state().seen).toContain(lore.id);
@@ -20,14 +23,19 @@ describe('travel discoveries', () => {
     step();
     expect(xp).toHaveBeenCalledExactlyOnceWith({ reason: 'lore', amount: 15, x: lore.x, z: lore.z });
     expect(save.autosave).toHaveBeenCalledWith('lore');
-    state.replace(deserializeState(state.toJSON()));
+    expect(state.state.systems.travel?.done).toContain(lore.id);
+    expect(save.load('1')).toBe(true);
+    expect(hooks.pois().find(p => p.id === lore.id)?.state).toBe('hidden');
     step();
+    expect(xp).toHaveBeenCalledTimes(2);
+    expect(state.state.systems.travel?.done).toContain(lore.id);
     expect(hooks.pois().find(p => p.id === lore.id)).toMatchObject({ state: 'done', built: false });
-    expect(xp).toHaveBeenCalledTimes(1);
+    step();
+    expect(xp).toHaveBeenCalledTimes(2);
   });
 
   it('uses saved play seconds for a shrine cooldown, including a first heal at time zero', () => {
-    const { hooks, events, player, step, state, heal } = setupTravel();
+    const { hooks, events, player, step, state, heal, save, storage } = setupTravel();
     const shrine = hooks.pois().find(p => p.chapter === 'prolog' && p.era === 'today' && p.kind === 'shrine')!;
     const refill = vi.fn();
     events.on('lantern:request', refill);
@@ -37,16 +45,21 @@ describe('travel discoveries', () => {
     expect(heal).not.toHaveBeenCalled();
     events.emit('combat:state', { inCombat: false });
     step();
-    expect(hooks.state().shrineT[shrine.id]).toBe(0);
+    expect(state.state.systems.travel?.shrineT[shrine.id]).toBe(0);
     expect(refill).toHaveBeenCalledExactlyOnceWith({ lit: false, refill: true });
-    state.replace(deserializeState(state.toJSON()));
-    state.mutable.meta.playSeconds = 119.99;
+    const saved = structuredClone(state.state);
+    player.writeState(saved.player);
+    saved.systems.travel!.shrineT[shrine.id] = 42;
+    saved.meta.playSeconds = 161.99;
+    storage.setItem(SAVE_KEY('1'), serializeState(saved));
+
+    expect(save.load('1')).toBe(true);
     step();
     expect(heal).toHaveBeenCalledTimes(1);
-    state.mutable.meta.playSeconds = 120;
+    state.mutable.meta.playSeconds = 162;
     step();
     expect(heal).toHaveBeenCalledTimes(2);
-    expect(hooks.state().shrineT[shrine.id]).toBe(120);
+    expect(state.state.systems.travel?.shrineT[shrine.id]).toBe(162);
   });
 
   it.todo('decide whether a full-health traveller with a partly empty lantern uses a shrine charge');

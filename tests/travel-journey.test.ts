@@ -1,15 +1,21 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createInitialState } from '../src/core/state';
 import { pointById } from '../src/systems/travel/points';
 import { disposeTravel, setupTravel } from './travel-fixture';
+
+beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
 
 afterEach(() => {
   disposeTravel();
   vi.useRealTimers();
 });
 
-it('refuses an unknown destination and arrives once beside a known point during manual play', () => {
-  const { hooks, events, player, pauseReasons, save } = setupTravel();
+it.each([true, false])('autosaves the arrival pose with manual play set to %s', (manual) => {
+  const { hooks, events, player, pauseReasons, save, loop, state, body } = setupTravel();
+  loop.manual = manual;
+  player.setStance('crouch');
+  player.pitch = 0.3;
+  player.writeState(state.mutable.player);
   const arrived = vi.fn();
   events.on('travel:arrived', arrived);
   expect(hooks.go('zwinger')).toBe(false);
@@ -17,28 +23,38 @@ it('refuses an unknown destination and arrives once beside a known point during 
   const home = pointById('karlsbergquelle')!;
   const { x, z } = player.position;
   expect(hooks.go(home.id)).toBe(true);
+  const [curtain] = body.append.mock.lastCall!;
+  if (!manual) {
+    expect(save.has()).toBe(false);
+    vi.advanceTimersByTime(450);
+    expect(pauseReasons.has('travel')).toBe(true);
+  }
   expect(player.position.x).toBeCloseTo(home.x + 2.2);
   expect(player.position.z).toBeCloseTo(home.z + 2.2);
   expect(arrived).toHaveBeenCalledExactlyOnceWith({ id: home.id, from: { x, z } });
   expect(save.autosave).toHaveBeenCalledExactlyOnceWith('travel', true);
+  expect(save.peek()?.player).toMatchObject({
+    x: home.x + 2.2, y: 0, z: home.z + 2.2, yaw: player.yaw, pitch: 0, stance: 'stand',
+  });
+  vi.runAllTimers();
   expect(pauseReasons.size).toBe(0);
+  expect(curtain.remove).toHaveBeenCalledTimes(1);
 });
 
 it('abandons a pending arrival when a different game is loaded under the curtain', () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const { hooks, events, player, pauseReasons, save, loop, state } = setupTravel();
   loop.manual = false;
+  player.teleport(75, 20);
+  player.writeState(state.mutable.player);
+  expect(save.save('1')).toBe(true);
+  player.teleport(-2000, -2000);
+  player.writeState(state.mutable.player);
   const arrived = vi.fn();
   events.on('travel:arrived', arrived);
   expect(hooks.go('karlsbergquelle')).toBe(true);
   expect(pauseReasons.has('travel')).toBe(true);
   expect(hooks.go('karlsbergquelle')).toBe(false);
-  const loaded = createInitialState();
-  loaded.player.x = 75;
-  loaded.player.z = 20;
-  state.replace(loaded);
-  player.position.set(loaded.player.x, 0, loaded.player.z);
-  events.emit('save:loaded', { slot: '1' });
+  expect(save.load('1')).toBe(true);
   vi.runAllTimers();
   expect(player.position.toArray()).toEqual([75, 0, 20]);
   expect(arrived).not.toHaveBeenCalled();
@@ -48,7 +64,6 @@ it('abandons a pending arrival when a different game is loaded under the curtain
 });
 
 it('keeps a replacement journey paused when the earlier curtain would have opened', () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const { hooks, player, pauseReasons, save, loop, state } = setupTravel();
   loop.manual = false;
   hooks.go('karlsbergquelle');
