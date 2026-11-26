@@ -110,7 +110,7 @@ _Status: approved 2026-11-26_
 - [x] 6. Touch / mobile: 44 px targets, portrait and landscape layouts, check in the touch e2e sizes.
 - [x] 7. e2e in `e2e/photo.spec.ts`; run `photo` and `touch` with one worker.
 - [x] 8. Manual check in the dev build (desktop and a phone-sized viewport); after shots; docs.
-- [ ] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/photo.spec.ts e2e/touch.spec.ts --workers=1`.
+- [x] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/photo.spec.ts e2e/touch.spec.ts --workers=1`.
 
 **Test plan:**
 - Unit: `pnpm exec vitest run tests/photo-gallery.test.ts tests/photo.test.ts`.
@@ -164,6 +164,14 @@ _Status: approved 2026-11-26_
   - The in-place reload under SwiftShader takes 12–51 s here, and Playwright aborted it (`ERR_ABORTED`) in the test. The e2e therefore checks the stored Blobs directly. A real-GPU script (Iris Xe, `vite preview`) shows a reload + boot of about 3 s, the gallery still holding its photo (`count` 1 → 1), with or without gallery use first.
   - The existing „N at the car park“ test fails here because the pack catches the player before the shutter („Die Meute hat dich gestellt“). The same happens on untouched `main` (`1bd1597`, run the same day), so it is unrelated.
 - 2026-11-26: step 8 - checked by script in the dev build (real GPU), not hand-played. After shots: `after-1-phone.png` (the bar „1× 2× | Galerie“, hint „G: Galerie“), `after-2-gallery.png`, `after-3-viewer.png`, `after-4-gallery-mobile.png` and `after-5-viewer-mobile.png` (landscape phone 844 × 390, touch). Docs: ARCHITECTURE (photo → Gallery), ACTION-RPG §14, PRD changelog.
+- 2026-11-26: step 9 - gates on the final state (Windows 11, Node 22.18):
+  - `pnpm typecheck`, `pnpm validate`, `pnpm build` green.
+  - `pnpm test`: 1,684 passed, 4 failed, the same 4 Windows-only files as on `main` (`content-packs`, `voice-moss`, `voice-assets`, `voice-service`).
+  - e2e, one worker, `photo` + `touch`: 10 passed, 4 failed. Every failure fails the same way on untouched `main` (`1bd1597`, run the same day) or is flaky:
+    - `photo` „N at the car park“: the pack catches the player before the shutter; fails on `main` too.
+    - `touch` „ipad-pro-11“ and „notices on a small landscape phone“: fail on `main` too (tap timing under SwiftShader).
+    - `touch` „survey tools“: failed once here and passed on `main`. Re-run twice on this branch: green both times, so flaky; it never touches the photo code.
+  - Gates green except these pre-existing local failures; expected green on CI (Linux, Node 24), not verified there.
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
