@@ -440,7 +440,7 @@ class StoryRuntime {
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
       if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) {
         this.presenter.clear();
-        this.engine.resume(false);
+        this.resumeFromSave();
       }
     });
     ctx.events.on('player:caught', ({ by, soft, family, boss }) => {
@@ -539,7 +539,16 @@ class StoryRuntime {
       return;
     }
     this.resync();
-    if (resumed && this.slice.active) this.engine.resume(false);
+    if (resumed && this.slice.active) this.resumeFromSave();
+  }
+
+  private resumeFromSave(): void {
+    this.engine.resume(false);
+    const s = this.slice;
+    // The modal is transient, but e2 already saved the ending and is waiting for its button.
+    if (s.chapter === 'enden' && s.beat === 'e2' && s.ending && !s.finished && !this.ctx.state.state.flags['story.party']) {
+      this.endings.showEpilogue(s.ending);
+    }
   }
 
   /** Re-apply persistent presentation after a load. */
