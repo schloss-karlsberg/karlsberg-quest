@@ -390,8 +390,30 @@ html[data-kq-touch] .kq-crosshair {
     width: 50px;
     height: 50px;
   }
+  /* The skill row sat in the second row, under the survey button (Wirbel on Erkunden) and the
+     dialogue band (Ausfall hidden by a line). On a landscape phone the survey button moves into the
+     top row, left of the phone (Erkunden · Handy · Pause), and the skills take the second row,
+     right-aligned under it (Ausfall · Erdstoß · Wirbel), 15 px above the Aktion pill. The dialogue
+     band and the survey menu make room for both (below). Every slot sits clear of the centre of the
+     screen, the subtitles and the HUD prompt pill. */
+  .kq-t-survey {
+    top: calc(10px + var(--kq-safe-t));
+    right: calc(112px + var(--kq-safe-r));
+  }
+  /* the menu opens below the top row, over the skill row and the top of the arc (both step back
+     while it is open), instead of across the dialogue band to its left */
+  .kq-t-pop {
+    top: 54px;
+    right: -100px;
+  }
+  html[data-kq-touch]:has(.kq-t-btn.survey[aria-expanded='true']) .kq-t-skills {
+    visibility: hidden;
+  }
   .kq-t-skills {
-    bottom: calc(250px + var(--kq-safe-b));
+    top: calc(64px + var(--kq-safe-t));
+    right: calc(12px + var(--kq-safe-r));
+    bottom: auto;
+    gap: 6px;
   }
   .kq-t-skills .kq-t-btn {
     width: 44px;
@@ -547,8 +569,8 @@ html[data-kq-touch] .kqp-q-key {
 @media (max-height: 500px) {
   html[data-kq-touch] body .kqs-dlg {
     left: calc(8px + var(--kq-safe-l));
-    /* Leave room for the phone, Pause, and the survey button below them. */
-    right: calc(112px + var(--kq-safe-r));
+    /* Leave room for the top row (Erkunden, phone, Pause) and the skill row under it (§8.3). */
+    right: calc(170px + var(--kq-safe-r));
     top: calc(6px + var(--kq-safe-t));
     bottom: auto;
     width: auto;
@@ -559,8 +581,9 @@ html[data-kq-touch] .kqp-q-key {
   html[data-kq-touch] body .kqs-dlg.kqs-show {
     transform: none;
   }
+  /* the open survey menu hangs below the top row (about 250 px wide, from the Pause button's edge) */
   html[data-kq-touch]:has(.kq-t-btn.survey[aria-expanded='true']) body .kqs-dlg {
-    right: calc(300px + var(--kq-safe-r));
+    right: calc(270px + var(--kq-safe-r));
   }
   /* no portrait on a landscape phone: the name in the card says who speaks, the text gets the
      width (the radio sat on the era label), and the torn tab has nothing to point at */
@@ -896,8 +919,10 @@ html[data-kq-touch] .kq-title {
     flex-wrap: wrap;
     gap: 8px 10px;
   }
+  /* 8 px between the buttons and the 44 px link row: with no gap the two rows of tap targets touched,
+     and the card's -1.2° tilt made their boxes overlap (§8.3) */
   html .kq-title-links {
-    margin-top: 0;
+    margin-top: 8px;
   }
   html .kq-title-version {
     margin-top: 0;

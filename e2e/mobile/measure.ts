@@ -72,10 +72,20 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
   const INTERACTIVE = 'button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [role=radio], [role=checkbox], [role=slider], [role=link], [tabindex]:not([tabindex="-1"])';
   const seen = new Set<Element>();
   const taps: UiMeasure['taps'] = [];
+  /**
+   * The game's full-screen WebGL canvas takes keyboard focus (tabIndex 0, src/boot.ts) but is the
+   * play surface, not a tap target: a finger on it looks / aims through the touch layer, and every
+   * control sits on top of it by design. Counted as a target it "overlapped" each button as an S1.
+   */
+  const playSurface = (el: Element): boolean => {
+    if (el.tagName !== 'CANVAS') return false;
+    const r = el.getBoundingClientRect();
+    return r.width >= vw * 0.98 && r.height >= vh * 0.98;
+  };
   for (const raw of document.querySelectorAll(INTERACTIVE)) {
     // a radio / checkbox inside its label: the label is what the finger hits
     const el = raw.matches('input[type=radio], input[type=checkbox]') && raw.closest('label') ? raw.closest('label')! : raw;
-    if (seen.has(el) || !shown(el) || covered(el)) continue;
+    if (seen.has(el) || playSurface(el) || !shown(el) || covered(el)) continue;
     seen.add(el);
     const r = el.getBoundingClientRect();
     const small = r.width < 44 || r.height < 44;
@@ -89,6 +99,25 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
     '.kq-compass, .kq-tl, .kq-dock, .kq-toast, .kq-prompt, .kq-subtitles, .kq-stance, .kq-oil, .kq-crosshair, [data-testid=quest-tracker], [data-testid=dialogue], [data-testid=story-card], [data-testid=hud-xp], [data-testid=hud-quick], [data-testid=quest-banner], [data-testid=quest-reward], [data-testid=level-card], [data-testid=skill-card], [data-testid=npc-talk], [data-testid=objective], .kqt-card, .kq-t-btn, .kq-t-stick, .kq-t-pop, .kq-modal, .kq-rotate';
   const regions = [...new Set([...document.querySelectorAll(REGIONS), ...seen])].filter((el) => shown(el));
   const interactive = (el: Element) => seen.has(el) || el.matches('.kq-t-btn, .kq-t-stick');
+  /**
+   * The part of an element that can be seen and hit: its box cut by every ancestor that clips
+   * (overflow other than visible). A row scrolled under a page's edge or under its sticky footer
+   * („Zurück“) is not there for the finger; its full box used to "overlap" the footer.
+   */
+  const visibleRect = (el: Element): DOMRect => {
+    let r = el.getBoundingClientRect();
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+      const c = p.getBoundingClientRect();
+      const l = Math.max(r.left, c.left);
+      const t = Math.max(r.top, c.top);
+      r = new DOMRect(l, t, Math.max(0, Math.min(r.right, c.right) - l), Math.max(0, Math.min(r.bottom, c.bottom) - t));
+    }
+    return r;
+  };
+  /** An open touch pop-up (the survey menu) lies over the thumb arc like a modal over the HUD. */
+  const inPop = (el: Element) => !!el.closest('.kq-t-pop');
   for (let i = 0; i < regions.length; i++) {
     for (let j = i + 1; j < regions.length; j++) {
       const a = regions[i]!;
@@ -96,12 +125,14 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
       if (a.contains(b) || b.contains(a)) continue;
       // full-screen layers (rotate overlay, modal backdrop) cover everything by design: reported once as a state, not as pairs
       if (a.matches('.kq-rotate') || b.matches('.kq-rotate')) continue;
-      const ra = a.getBoundingClientRect();
-      const rb = b.getBoundingClientRect();
+      const ra = visibleRect(a);
+      const rb = visibleRect(b);
       const x = inter(ra, rb);
       if (!x || x.area < 24) continue;
       // a modal covers the HUD on purpose; only what lies on top of a modal counts
       if (a.matches('.kq-modal') !== b.matches('.kq-modal') && covered(a.matches('.kq-modal') ? b : a)) continue;
+      // the same for an open pop-up: a button it hides (covered at its centre) is not a rival target
+      if (inPop(a) !== inPop(b) && covered(inPop(a) ? b : a)) continue;
       const both = interactive(a) && interactive(b);
       const text = (el: Element) => el.matches('.kq-subtitles, [data-testid=dialogue], [data-testid=quest-tracker], .kq-prompt, [data-testid=npc-talk], .kq-modal, .kqt-card');
       const sev: Issue['sev'] = both ? 'S1' : (interactive(a) && text(b)) || (interactive(b) && text(a)) ? 'S2' : 'S3';

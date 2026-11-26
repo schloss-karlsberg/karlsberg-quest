@@ -471,3 +471,37 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 - The first prompt („Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen“) is long enough that the HUD pill runs under Balsam and Ausweichen on a small phone (`small-landscape/06-lantern-first-frame.png`). The touch wording at kq-story fixes it; if it stays long, cap the pill's width on phones.
 - The combat callout („Nebelling duckt sich – Ausfall!“) touches the unlit Aktion pill on small-landscape (`17-combat-lock-on.png`).
 - The level card („Stufe VIII“) covers most of a landscape phone (seen in an intermediate run, after the banner released the slot); it is progression's card.
+
+### 8.3 S1 pass, small phone landscape (2026-11-26)
+
+**Branch** `fix/mobile-s1`, from main fd18dcd. Unit `small-landscape` (667×375, insets 0/47/21/47), full unit before and after (82 shots each, 0 failed states). Shots and `findings.json`: `test-results/mobile-tour/_before/small-landscape/` and `_after/small-landscape/`, same file names.
+
+**Result.** S1 386 → 0. S2 249 → 186 (no new S2 from this pass; the five S2 left on `13-pause*` were already in the before set, with another line up). Changed: `src/ui/touch.css` (phone rules only) and the measurer `e2e/mobile/measure.ts`.
+
+| screen (shot) | S1 before → after | real or false | why |
+|---|---|---|---|
+| `01-title` | 3 → 0 | real | The link row („Neuigkeiten“, „Lizenzen & Quellen“, both 44 px tall on touch) touched the button row with no gap, and the card's −1.2° tilt made the boxes overlap by 2–5 px. |
+| `06-tour-map-first-frame`, `08-hud-idle`, `09-toasts`, `11-touch-buttons-attack-held / cue-interact / cue-shift`, `12-dialogue`, `12-dialogue-xl`, `17-combat-approach / lock-on / bannlicht / hit` | 11 each → 0 | false | Every finding was „button ∩ canvas“: the game's full-screen WebGL canvas has `tabIndex 0` (`src/boot.ts`, keyboard focus), so the measurer took it for a tap target that every touch button overlaps. It is the play surface. |
+| `10-touch-stick-walk / sprint / walk-look` | 12 each → 0 | false | The same, plus the stick ∩ canvas. |
+| `12-dialogue-tap-photo`, `22-photo-open`, `22-photo-shutter` | 4 each → 0 | false | The canvas again (shutter, phone button, 1× / 2× lens buttons). |
+| `11-touch-buttons-relief-pop` | 2 → 0 | false | „Zurück“ ∩ Epoche button and „Aus“ ∩ Aktion pill: the open survey menu (opaque, on top) covers those arc buttons, as a modal covers the HUD. A tap lands on the menu. The menu also moved (below). |
+| `15-map`, `15-map-bottom`, `16-journal-karte`, `16-journal-karte-bottom` | 1 each → 0 | false | The map canvas ∩ „Zurück“: the canvas runs on below its scroll box, and that part is cut off (not visible, not hittable). |
+| `16-journal-talents`, `16-journal-gear-bottom` | 1 each → 0 | false | „Lernen“ ∩ „Zurück“ and `×` ∩ „Benutzen“: rows scrolled under the page's bottom or top edge, the same clipping case. |
+| `17-combat-skills`, `17-combat-skill-used`, `18-level-card`, `19-era-shift-mid / 1789`, `20-travel-card`, `20-travel-card-shown`, `21-death-curtain / wake`, `22-photo-hud`, `23-k1-card`, `23-k1-card-hud`, `24-k1-court` | 15 each → 0 | 14 false (canvas, as above), 1 real | Wirbel (skill 3) sat on the survey button („Erkunden“), 36×40 px. Ausfall (skill 1) was also hidden under the dialogue band whenever a line was up; the measurer skips covered targets, so that one was not even counted. |
+
+**What changed (real problems).**
+- Title: on short screens the link row has `margin-top: 8px` (it was 0).
+- Skills and survey on a landscape phone (`@media (max-height: 500px)`): the survey button moved into the top row, left of the phone (Erkunden · Handy · Pause), and the skill row takes the second row, right-aligned under it (Ausfall · Erdstoß · Wirbel, 6 px gaps like the top row), 15 px above the Aktion pill. The dialogue band ends at `right: 170px + inset` (was 112), clear of both rows; on this phone it is about 395 px wide instead of 453. The survey menu now opens below the top row, over the skill row (hidden while the menu is open) and the top of the arc, so with the menu open the dialogue band only gives up 270 px instead of 300. Tablets keep the old layout.
+- Tried first and dropped: a 2 × 2 skill block left of the arc. It cleared the S1 but sat on the sound subtitles (S2) and on the centre cards, and the Aktion pill grows into that space with a long prompt.
+
+**Measurer changes (`e2e/mobile/measure.ts`).** Each one is limited to a case the shots show is not a problem:
+1. *Play surface.* A `canvas` that covers ≥ 98 % of the viewport is not a tap target. Only the 3D view matches; the travel map canvas inside a page is still measured.
+2. *Visible part only.* Overlaps use an element's box cut by every ancestor that clips (overflow other than `visible`). What is scrolled out of a page cannot be seen or tapped. Tap sizes still use the full box.
+3. *Open pop-up.* As with modals, a button that an open `.kq-t-pop` hides (something else at its centre) is not counted against the pop-up's chips. Buttons the pop-up only grazes are still counted.
+
+**E2E, one spec per lock hold, port 5340:** `touch` 7/7 (including the survey menu on a landscape phone), `smoke` 7/7, plus the full `small-landscape` tour unit (82 shots, 0 failed states). Gates: `pnpm typecheck`, `pnpm test` (114 files, 1537 tests), `pnpm validate`, `pnpm build`, all green.
+
+**Still open (not S1):**
+- The level card („Stufe VIII“) still covers most of a landscape phone and runs off the bottom edge (`17-combat-skills.png`, `18-level-card.png`). Not touched here.
+- `13-pause*`: the measurer pairs the dialogue card with the pause menu (S2) while a line is up behind the modal. These were already in the before set; not investigated.
+- In the full-unit runs, the `20-travel-card-shown` sub-shot went missing twice („the banner did not show within 20 s“). A `combat,level-card,era-shift,travel-card` subset run and the final full run both shot it. The cause is the order and timing of the story lines; layout is not involved.
