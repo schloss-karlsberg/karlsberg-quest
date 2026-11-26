@@ -115,8 +115,8 @@ interface Ctx {
   page: Page;
   cdp: CDPSession;
   f: Findings;
-  /** Screenshot + measurements of the current screen as <NN>-<state>[-<sub>].png. */
-  shot(sub?: string, note?: string): Promise<void>;
+  /** Screenshot + measurements of the current screen as <NN>-<state>[-<sub>].png; `again` re-takes the previous shot (same file). */
+  shot(sub?: string, note?: string, again?: boolean): Promise<void>;
   /** Tap the centre of a test id (real touch). */
   tap(testid: string, finger?: number): Promise<void>;
   /** Tap the centre of a locator (real touch). */
@@ -555,13 +555,50 @@ const STATES: State[] = [
     id: 'level-card',
     run: async (c) => {
       await c.tidy();
-      await c.page.evaluate(() => {
-        const k = window.kq!;
-        const lvl = k.progression!.state().level;
-        k.progression!.level(lvl + 1);
-      });
-      await c.page.waitForTimeout(500);
-      await c.shot();
+      const levelUp = () =>
+        c.page.evaluate(() => {
+          const k = window.kq!;
+          k.progression!.level(k.progression!.state().level + 1);
+        });
+      await levelUp();
+      // The card steps aside while a line is spoken (a soft hold that gives up after 8 s of lines),
+      // so wait until it is up, tapping lines away; a line can start during the 2 s shot, so it is
+      // re-shot when the card was no longer up at the end.
+      const up = () => c.page.evaluate(() => !!document.querySelector('.kqp-card.kqp-in:not(.kqp-held):not(.kqp-out)'));
+      const waitUp = async (): Promise<boolean> => {
+        const until = Date.now() + 15_000;
+        while (!(await up()) && Date.now() < until) {
+          if (await c.page.evaluate(() => !!document.querySelector('.kqs-dlg.kqs-show'))) await c.tapSel('.kqs-dlg.kqs-show .kqs-dlg-body').catch(() => undefined);
+          await c.page.waitForTimeout(250);
+        }
+        return up();
+      };
+      let shotUp = false;
+      for (let i = 0; i < 3 && !shotUp; i++) {
+        if (!(await waitUp())) break;
+        await c.shot(undefined, undefined, i > 0);
+        shotUp = await up();
+      }
+      if (!shotUp) c.f.notes.push('level-card: the card was not up for a whole shot (lines kept it aside)');
+      // on touch a tap on the play surface sends it off (§8.4): mid-screen, right of the stick zone
+      const vp = c.page.viewportSize()!;
+      let gone = false;
+      const noCard = () => c.page.evaluate(() => !document.querySelector('[data-testid="level-card"]'));
+      for (let i = 0; i < 3 && !gone; i++) {
+        // a fresh card, so it cannot run out by itself (5.6 s) inside the check: the old one first
+        // finishes, the new one is tapped about 1 s after it came up
+        const until = Date.now() + 12_000;
+        while (!(await noCard()) && Date.now() < until) await c.page.waitForTimeout(250);
+        await levelUp();
+        if (!(await waitUp())) break;
+        await c.page.waitForTimeout(1000);
+        if (!(await up())) continue;
+        await new Finger(c.cdp, 1).tap(Math.round(vp.width * 0.5), Math.round(vp.height * 0.62));
+        await c.page.waitForTimeout(900);
+        gone = await c.page.evaluate(() => !document.querySelector('[data-testid="level-card"]'));
+      }
+      if (gone) await c.shot('dismissed', 'a tap on the play surface sent the card off');
+      else c.f.notes.push('level-card: a tap on the play surface did not send the card off');
       await c.tidy();
     },
   },
@@ -588,28 +625,70 @@ const STATES: State[] = [
     id: 'travel-card',
     run: async (c) => {
       await c.tidy();
-      const ok = await c.page.evaluate(() => {
-        const t = window.kq!.travel;
-        const p = t?.points().find((x) => !x.activated) ?? t?.points()[0];
-        if (!t || !p) return false;
-        t.activate(p.id);
-        return true;
-      });
-      if (!ok) return c.na('no travel point');
-      await c.page.waitForTimeout(400);
+      // Activates the next point that is not activated yet; returns false when there is none.
+      const activate = () =>
+        c.page.evaluate(() => {
+          const t = window.kq!.travel;
+          const p = t?.points().find((x) => !x.activated);
+          if (!t || !p) return false;
+          // a frame watcher: when the banner first shows (no longer aside) and when it goes, in ms
+          // since the activation. The first shot takes 3–4 s (settle, frame sample, screenshot); a
+          // banner released by a short line can come and go (4.5 s) inside it (§8.4).
+          const w = { t0: performance.now(), shownAt: -1, goneAt: -1 };
+          (window as unknown as { __kqTravelWatch: typeof w }).__kqTravelWatch = w;
+          const tick = () => {
+            const b = document.querySelector('.kqt-banner');
+            if (b && !b.classList.contains('kqt-aside') && w.shownAt < 0) w.shownAt = Math.round(performance.now() - w.t0);
+            if (w.shownAt >= 0 && !b) w.goneAt = Math.round(performance.now() - w.t0);
+            else requestAnimationFrame(tick);
+          };
+          t.activate(p.id);
+          requestAnimationFrame(tick);
+          return true;
+        });
+      const watch = () =>
+        c.page.evaluate(() => {
+          const w = (window as unknown as { __kqTravelWatch: { t0: number; shownAt: number; goneAt: number } }).__kqTravelWatch;
+          return { now: Math.round(performance.now() - w.t0), shownAt: w.shownAt, goneAt: w.goneAt };
+        });
       const shown = () => c.page.evaluate(() => !!document.querySelector('.kqt-banner:not(.kqt-aside)'));
+      /** Taps the lines away until the banner shows, it came and went, or 20 s passed. */
+      const waitShown = async (): Promise<'shown' | 'gone' | 'timeout'> => {
+        const until = Date.now() + 20_000;
+        while (Date.now() < until) {
+          if (await shown()) return 'shown';
+          if ((await watch()).goneAt >= 0) return 'gone';
+          if (await c.page.evaluate(() => !!document.querySelector('.kqs-dlg.kqs-show'))) await c.tapSel('.kqs-dlg.kqs-show .kqs-dlg-body').catch(() => undefined);
+          await c.page.waitForTimeout(300);
+        }
+        return (await shown()) ? 'shown' : 'timeout';
+      };
+      if (!(await activate())) return c.na('no travel point left to activate');
+      await c.page.waitForTimeout(400);
       const upAtOnce = await shown();
       await c.shot();
       if (upAtOnce) return c.tidy();
       // the banner waits while another centre card or (on a phone) a line is up: tap the lines
       // away until it shows, then shoot it
-      const until = Date.now() + 20_000;
-      while (!(await shown()) && Date.now() < until) {
-        if (await c.page.evaluate(() => !!document.querySelector('.kqs-dlg.kqs-show'))) await c.tapSel('.kqs-dlg.kqs-show .kqs-dlg-body').catch(() => undefined);
-        await c.page.waitForTimeout(700);
+      let res = await waitShown();
+      if (res === 'gone') {
+        // the game showed it, but during the first shot: a test race, not a game fault
+        const g = await watch();
+        c.f.notes.push(`travel-card: the banner showed ${g.shownAt} ms after the activation and went at ${g.goneAt} ms, during the first shot; shot a second activation`);
+        if (await activate()) res = await waitShown();
       }
-      if (await shown()) await c.shot('shown', 'the banner once nothing holds it back');
-      else c.f.notes.push('travel-card: the banner did not show within 20 s');
+      const w = await watch();
+      console.log(`  travel-card: ${res}; banner up at ${w.shownAt} ms, gone at ${w.goneAt} ms, now ${w.now} ms`);
+      if (res === 'shown') await c.shot('shown', 'the banner once nothing holds it back');
+      else {
+        const why = await c.page.evaluate(() => {
+          const cards = window.kq!.ctx.ui.cards as unknown as { showing: string | null; holdReasons(): string[] };
+          const b = document.querySelector('.kqt-banner');
+          const line = document.querySelector('.kqs-dlg.kqs-show .kqs-dlg-text')?.textContent ?? null;
+          return `banner ${b ? (b.classList.contains('kqt-aside') ? 'aside' : 'up') : 'absent'}, slot ${cards.showing ?? 'free'}, holds [${cards.holdReasons().join(', ')}], line ${line ? `„${line.slice(0, 60)}“` : 'none'}`;
+        });
+        c.f.notes.push(`travel-card: the banner did not show within 20 s (${why})`);
+      }
       await c.tidy();
     },
   },
@@ -916,8 +995,10 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
     c.na = (reason) => {
       na = reason;
     };
-    c.shot = async (name?: string, note?: string) => {
-      const key = name ? `-${name}` : sub++ ? `-${sub}` : '';
+    let lastKey = '';
+    c.shot = async (name?: string, note?: string, again = false) => {
+      const key = again ? lastKey : name ? `-${name}` : sub++ ? `-${sub}` : '';
+      lastKey = key;
       const png = `${OUT}/${nn(s)}-${s.id}${key}.png`;
       await page.waitForTimeout(SETTLE);
       const frames = await page.evaluate(sampleFrames, SAMPLE);
@@ -931,7 +1012,11 @@ test(`mobile tour: ${unit.label}`, async ({ page }) => {
       });
       const ui = await page.evaluate(measureUi, unit.insets);
       await page.screenshot({ path: png, timeout: 60_000 });
-      f.shots.push({ file: png.replace(`${OUT}/`, ''), state: s.id, sub: name ?? null, frames, perf, ui, note });
+      const file = png.replace(`${OUT}/`, '');
+      const prev = again ? f.shots.findIndex((x) => x.file === file) : -1;
+      const entry = { file, state: s.id, sub: name ?? null, frames, perf, ui, note };
+      if (prev >= 0) f.shots[prev] = entry;
+      else f.shots.push(entry);
       save();
       const worst = ui.issues.filter((i) => i.sev === 'S1').length;
       console.log(`  ${png.split('/').pop()} · p95 ${frames.p95} ms · ${ui.issues.length} issues (${worst} S1)`);
