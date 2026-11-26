@@ -191,8 +191,7 @@ export class Input {
   private mdy = 0;
   /** Accumulated wheel notches since the last `takeWheel()` (+ = towards you / zoom out). */
   private wheel = 0;
-  /** False while a menu/modal has focus: gameplay input is ignored. */
-  enabled = true;
+  private gameplayEnabled = true;
   /**
    * Actions hidden from every reader while a mode owns their keys (photo mode: the click is the
    * shutter, the right click puts the phone away). The owner reads them with `raw = true`.
@@ -217,7 +216,10 @@ export class Input {
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
     });
     on(window, 'keyup', (e) => this.down.delete((e as KeyboardEvent).code));
-    on(window, 'blur', () => this.down.clear());
+    on(window, 'blur', () => {
+      this.down.clear();
+      this.clearPending();
+    });
     on(document, 'mousemove', (e) => {
       if (!this.locked || !this.enabled) return;
       const ev = e as MouseEvent;
@@ -248,6 +250,22 @@ export class Input {
     on(window, 'mouseup', (e) => this.down.delete(`Mouse${(e as MouseEvent).button}`));
     // the right button is the Bannlicht: no context menu over the game
     on(canvas, 'contextmenu', (e) => e.preventDefault());
+  }
+
+  /** False while a menu/modal has focus. Each change starts a fresh batch of input. */
+  get enabled(): boolean {
+    return this.gameplayEnabled;
+  }
+
+  set enabled(value: boolean) {
+    if (value === this.gameplayEnabled) return;
+    this.gameplayEnabled = value;
+    this.clearPending();
+  }
+
+  private clearPending(): void {
+    this.endStep();
+    this.mdx = this.mdy = this.wheel = 0;
   }
 
   get locked(): boolean {
@@ -356,9 +374,11 @@ export class Input {
     this.simulate(virtualCode(a), down, edge);
   }
 
-  /** Release every touch-held action (modal opened, touch cancelled, tab hidden). */
+  /** Cancel virtual holds and undelivered taps when the touch overlay stops accepting input. */
   releaseVirtual(): void {
-    for (const c of [...this.down]) if (c.startsWith('@')) this.down.delete(c);
+    for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
+      for (const code of codes) if (code.startsWith('@')) codes.delete(code);
+    }
   }
 
   /**

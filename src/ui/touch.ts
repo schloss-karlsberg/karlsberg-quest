@@ -162,8 +162,8 @@ export class TouchControls {
   private held: Action[] = [];
   private readonly looks = new Map<number, { x: number; y: number }>();
   private surfaceTap: PointerTap | null = null;
-  /** pointerId → actions that button holds. */
-  private readonly btnHeld = new Map<number, Action[]>();
+  /** The button held by each active pointer. */
+  private readonly btnHeld = new Map<number, Btn>();
   /** Called whenever the active state flips (boot: pointer lock, click-to-play chip). */
   onActiveChange: ((on: boolean) => void) | null = null;
 
@@ -409,6 +409,7 @@ export class TouchControls {
 
   /** A pressable button: holds its actions while the finger is down. */
   private wire(b: Btn, after?: () => void): void {
+    const held = () => [...this.btnHeld.values()].includes(b);
     b.el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -417,18 +418,20 @@ export class TouchControls {
       } catch {
         /* synthetic pointer */
       }
-      for (const a of b.actions) this.deps.input.press(a, true);
-      this.btnHeld.set(e.pointerId, b.actions);
+      if (!held()) {
+        for (const a of b.actions) this.deps.input.press(a, true);
+      }
+      this.btnHeld.set(e.pointerId, b);
       b.el.classList.add('down');
     });
     const up = (e: PointerEvent) => {
       e.stopPropagation();
-      const acts = this.btnHeld.get(e.pointerId);
-      if (!acts) return;
+      if (this.btnHeld.get(e.pointerId) !== b) return;
       this.btnHeld.delete(e.pointerId);
-      for (const a of acts) this.deps.input.press(a, false);
-      b.el.classList.remove('down');
       if (e.type === 'pointerup') swallowNextClick(b.el);
+      if (held()) return;
+      for (const a of b.actions) this.deps.input.press(a, false);
+      b.el.classList.remove('down');
       after?.();
     };
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.el.addEventListener(ev, up);

@@ -471,6 +471,8 @@ Loading merges onto defaults (new fields appear automatically, extra keys are ke
 are rejected). Bump `STATE_VERSION` and add a migration in `deserializeState` for structural changes.
 Surveyor saves resume at the Chapter 1 checkpoint. The migration uses the archived quest history
 and reward data in `src/core/legacy-prologue-quests.ts` to retain deeds and settle pending payouts.
+The live `meta.savedAt` and the five-second autosave cooldown advance on successful writes.
+A storage failure leaves the previous checkpoint available and an eligible autosave can retry immediately.
 
 ## 8. Eras and world look
 
@@ -603,6 +605,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
+  Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
 - Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
   reactions, dialogue queues and the echo director. `content-validation-cli.test.ts` verifies pack
   discovery and terrain bounds with temporary files.
@@ -2286,9 +2290,11 @@ Rules that came out of it:
 - **Actions, not keys.** Features read `input.isDown(action)` / `input.wasPressed(action)`. Keys come
   from `effectiveBindings` (defaults plus the player's remaps). Mouse look comes from pointer-locked
   `movementX/Y`, `addLook(dx, dy)` (the pilot and touch) and ← / → (`keyTurn.ts`).
+  Changing modal input ownership or losing window focus clears pending presses, look and wheel movement.
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
-  the touch layer says per button which actions it means. `releaseVirtual()` drops every `@` hold.
+  the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds
+  and queued virtual presses. A button held by several fingers releases when the last finger leaves.
 - **Touch mode** (`input.touchMode`): `requestLock()` is a no-op, the "Ins Bild klicken" chip stays
   hidden, and the pause menu comes from a button, since Esc and losing the lock do not exist on touch.
 - **`TouchControls` (`src/ui/touch.ts`)** is created in boot after the input.

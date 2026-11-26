@@ -190,15 +190,21 @@ export class SaveManager {
   }
 
   save(slot = 'auto', reason = 'manual'): boolean {
+    return this.write(slot, reason);
+  }
+
+  private write(slot: string, reason: string, autoTime?: number): boolean {
     if (!this.enabled) return false;
     const s = this.store.mutable;
-    s.meta.savedAt = new Date(this.now()).toISOString();
+    const savedAt = new Date(autoTime ?? this.now()).toISOString();
     try {
-      this.storage.setItem(SAVE_KEY(slot), serializeState(s));
+      this.storage.setItem(SAVE_KEY(slot), serializeState({ ...s, meta: { ...s.meta, savedAt } }));
     } catch (err) {
       console.warn('[save] write failed', err);
       return false;
     }
+    s.meta.savedAt = savedAt;
+    if (autoTime !== undefined) this.lastAuto = autoTime;
     this.events?.emit('save:written', { slot, reason });
     return true;
   }
@@ -230,8 +236,7 @@ export class SaveManager {
     }
     const t = this.now();
     if (!force && t - this.lastAuto < this.minIntervalMs) return false;
-    this.lastAuto = t;
-    return this.save('auto', reason);
+    return this.write('auto', reason, t);
   }
 
   /** Load a slot into the store. Returns false when the slot is empty or unreadable. */
