@@ -48,6 +48,15 @@ export class Hud {
   private bulletTime = false;
   /** The world waymark over the tracked objective (./waymark.ts; the quests system drives it). */
   readonly waymark = new Waymark();
+  /** World coordinates behind the story and quest compass markers, for the minimap. */
+  storyTarget: Readonly<{ x?: number; z?: number }> | null = null;
+  questTarget: Readonly<{ x: number; z: number }> | null = null;
+
+  get objectiveTarget() {
+    const story = this.storyTarget;
+    return story?.x !== undefined && story.z !== undefined ? story : this.questTarget;
+  }
+
   /** Top-left column: era label, status, then feature lines (room, objective, gauges) — never overlapping. */
   private readonly tl: HTMLElement;
   /** Action-RPG docks (docs/ACTION-RPG.md §10): features put their own elements here. */

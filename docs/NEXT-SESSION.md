@@ -394,14 +394,15 @@ Design goes into [`docs/IDEAS-ROUND11.md`](IDEAS-ROUND11.md). Nothing is built y
 
 Owner of the tour systems (`src/systems/walk/` etc.) and of the mobile/UI follow-ups is now kq-story.
 
-### 7.1 Minimap (deferred; the owner asked for a corner minimap)
+### 7.1 Minimap (implemented in TASK-015, browser checks pending)
 
-- A small 2D canvas in a corner, drawn from the map data the Karte view already uses
-  (`src/systems/travel/map.ts`). No extra 3D render pass: 0–1 extra draw calls, redrawn at ~10 Hz.
-- Shows the player arrow, the guide and group dots, the objective marker and nearby paths.
-- Drawn in the game's own map style; works in both eras.
-- A settings toggle (`src/ui/settings.ts`), on by default; smaller on phones and clear of the touch buttons.
-- Follow the genre convention only, not any specific game's look.
+- The north-up corner map shares the Karte artwork and shows nearby paths, the heading arrow, the
+  current objective and the tour group. It switches between the present-day walk graph and the
+  historic sheet with the era.
+- „Minikarte“ under Spiel is on by default. On landscape phones the map fits beside the controls
+  and the dialogue band. Reduced motion snaps the arrow to compass headings.
+- Canvas 2D redraws at about 10 Hz with zero additional 3D draw calls. See
+  [the unit-level measurement](PERFORMANCE.md#38-minimap-task-015).
 
 ### 7.2 Tour playtest findings still open
 

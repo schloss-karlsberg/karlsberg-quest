@@ -72,6 +72,7 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
   const rows: SettingsRow[] = [
     // Spiel
     [t('settings.gentle'), check(s.gentleMode, (v) => set((d) => (d.gentleMode = v), 'gentleMode'), t('settings.gentle'), 'set-gentle'), 'game', t('settings.gentle.help')],
+    [t('settings.minimap'), check(s.minimap, (v) => set((d) => (d.minimap = v), 'minimap'), t('settings.minimap'), 'set-minimap'), 'game'],
     // accessibility (bible 09 ui.set.one_key; declared by the hunt system): lying flat lights the lantern too
     [t('ui.set.one_key'), check(s.oneKey === true, (v) => set((d) => (d.oneKey = v), 'oneKey'), t('ui.set.one_key')), 'game'],
     // Steuerung

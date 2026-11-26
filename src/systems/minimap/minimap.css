@@ -1,0 +1,64 @@
+.kq-root > .kq-minimap {
+  --kq-minimap-size: 144px;
+  position: absolute;
+  top: 52px;
+  right: 18px;
+  width: var(--kq-minimap-size);
+  height: var(--kq-minimap-size);
+  box-sizing: border-box;
+  border: 2px solid #6b5033;
+  border-radius: 9px;
+  background: #e8dcc0;
+  box-shadow: 0 2px 12px #1c140e99;
+  pointer-events: none;
+}
+
+html[data-kq-contrast] .kq-minimap {
+  border-color: #2a2118;
+  box-shadow: 0 0 0 1px #f3ead6;
+}
+
+.kq-minimap[hidden],
+.kq-root:has(> .kq-hud.kq-hidden) > .kq-minimap,
+html:is([data-kq-photo], [data-kq-cinematic], [data-kq-credits], [data-kq-rotate]) .kq-minimap {
+  display: none;
+}
+
+.kq-root:has(> .kq-minimap:not([hidden])) .kq-hud .kq-toasts {
+  top: 206px;
+}
+
+html[data-kq-touch] .kq-minimap {
+  --kq-minimap-size: 104px;
+  top: calc(44px + var(--kq-safe-t));
+  right: calc(170px + var(--kq-safe-r));
+}
+
+html[data-kq-touch]:has(.kq-t-btn.survey[aria-expanded='true']) .kq-minimap {
+  display: none;
+}
+
+@media (max-height: 500px) {
+  html[data-kq-touch] .kq-minimap {
+    --kq-minimap-size: 72px;
+    top: calc(40px + var(--kq-safe-t));
+    right: calc(174px + var(--kq-safe-r));
+  }
+
+  /* The map sits to the left of the two touch rows and above the thumb arc. */
+  html[data-kq-touch] .kq-root:has(> .kq-minimap:not([hidden])) .kq-hud .kq-toasts {
+    top: calc(156px + var(--kq-safe-t) / 3);
+  }
+
+  /* Leave the map's slot clear while the dialogue uses the top band. */
+  html[data-kq-touch]:not(:has(.kq-t-btn.survey[aria-expanded='true'])) .kq-root:has(> .kq-minimap:not([hidden])) .kqs-dlg {
+    right: calc(254px + var(--kq-safe-r));
+  }
+}
+
+@media (max-height: 365px) {
+  /* There is less vertical room above a long action prompt on the shortest screens. */
+  html[data-kq-touch]:has(.kq-t-btn.interact.lit) .kq-minimap {
+    display: none;
+  }
+}

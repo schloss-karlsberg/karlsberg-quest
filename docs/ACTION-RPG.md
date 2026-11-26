@@ -1048,6 +1048,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| The next turn or the tour group is hard to find at a glance (TASK-015, 2026-11-26) | The local minimap uses a steady north-up view, live tour dots and the compass objective. Map layers follow the era, distant markers retain their bearing along the edge, and reduced motion snaps the heading arrow. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |

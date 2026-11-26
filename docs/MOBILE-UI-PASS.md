@@ -529,3 +529,10 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 **E2E, one spec per lock hold, port 5340:** `progression` 3/3, `touch` 7/7, `smoke` 7/7, plus the full `small-landscape` tour unit and a `level-card,era-shift,travel-card` subset after the last runner change. Gates: `pnpm typecheck`, `pnpm test` (117 files, 1559 tests), `pnpm validate`, `pnpm build`, all green.
 
 **Still open:** the skill unlock card (`.kqk-card`) on its own (without a level card to ride on) was not looked at on phones.
+### 8.4 Minimap (TASK-015)
+
+On short landscape touch screens the 72 px map sits below the compass, left of the top and skill
+rows and above the thumb arc. The dialogue band leaves room for this slot while the map is up.
+The survey pop-up takes the slot while open. On very short screens a long action prompt gets
+priority. `e2e/minimap.spec.ts` checks the 667 × 375 layout against the live touch targets and
+dialogue with the §8.3 safe-area insets. Browser verification is pending.

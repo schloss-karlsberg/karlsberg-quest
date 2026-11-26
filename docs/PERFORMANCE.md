@@ -430,6 +430,15 @@ The phone route (Niedrig, 667 × 375, ANGLE Metal) held 59.9–60 fps at all fiv
 0–1 draw calls.
 Hoch transferred 19,837,246 bytes before first input against a 20,971,520-byte budget.
 
+### 3.8 Minimap (TASK-015)
+
+The minimap draws into a 144 × 144 Canvas 2D backing at about 10 Hz with zero additional 3D draw
+calls. A local Node 24 run of `pnpm exec vitest run tests/minimap.test.ts --silent=false` measured
+0.012 ms per redraw after 500 warm-up iterations, averaged over 1,000 present-day redraws with the
+shipped 3,161 path edges and building footprints. The counting canvas measures JavaScript path
+filtering, projection and draw submission and excludes browser rasterization and compositing.
+The sheet image comes from the same cache as Karte. Each tick reuses the view and marker coordinates.
+
 ## 4. Loading
 
 On the fresh present-day title, the historic palace mesh and the architecture pairs for ashlar,

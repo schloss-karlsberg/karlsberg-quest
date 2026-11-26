@@ -227,6 +227,7 @@ class QuestRuntime {
       }),
       ev.on('era:change', () => {
         this.availIn = 0;
+        this.markIn = 0;
         this.dirty = true;
       }),
       ev.on('level:up', () => (this.availIn = 0)),
@@ -748,6 +749,7 @@ class QuestRuntime {
     // the headline follows the tracker (playtest round 3): the lead goal is where the Bussole
     // points (story reads it from the tracker's data-tx / data-tz)
     const tx = lead?.target ?? null;
+    ctx.ui.hud.questTarget = tx;
     const tel = this.tracker.el;
     if (tx) {
       tel.dataset.tx = String(Math.round(tx.x * 10) / 10);
