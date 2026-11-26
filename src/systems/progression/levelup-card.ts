@@ -6,6 +6,7 @@
  * aside (`kqp-held`, its clock stops) while a story title card, the curtain, a modal or a skill
  * unlock card is on screen. Skill unlocks that wait while the level card comes up ride along on it
  * (`absorb`, playtest round 4: one card, not two): "Freigeschaltet: Relief-Blick II · [2] …".
+ * On touch a tap on the play surface sends it off early (`dismiss`, docs/MOBILE-UI-PASS.md §8.4).
  */
 import { charmSlots } from '../../rpg/stats';
 import { h, svg } from '../../ui/dom';
@@ -39,12 +40,19 @@ export interface MergedSkillRow {
   desc: string;
 }
 
+/** The card's clock after a dismissal: straight into its fade-out (never back in time). */
+export function dismissedClock(t: number, duration: number): number {
+  return Math.max(t, duration - LevelCards.FADE);
+}
+
 export class LevelCards {
   readonly root: HTMLElement;
   private queued: LevelCardRequest | null = null;
   private current: { el: HTMLElement; t: number; req: LevelCardRequest } | null = null;
   private stamped = false;
   static readonly DURATION = 5.6;
+  /** Seconds of fade-out at the end. */
+  static readonly FADE = 0.6;
   onStamp: ((req: LevelCardRequest) => void) | null = null;
   /** The level now (a card that waited shows the level the player has, not the one it was queued at). */
   levelNow: (() => number) | null = null;
@@ -101,11 +109,19 @@ export class LevelCards {
       c.el.classList.add('kqp-stamped');
       this.onStamp?.(c.req);
     }
-    if (c.t >= this.duration - 0.6) c.el.classList.add('kqp-out');
+    if (c.t >= this.duration - LevelCards.FADE) c.el.classList.add('kqp-out');
     if (c.t >= this.duration) {
       c.el.remove();
       this.current = null;
     }
+  }
+
+  /** The player sent the card away (a tap on touch): it fades out now; a stamp still to come is skipped. */
+  dismiss(): void {
+    const c = this.current;
+    if (!c) return;
+    this.stamped = true;
+    c.t = dismissedClock(c.t, this.duration);
   }
 
   clear(): void {

@@ -443,7 +443,10 @@ class Progression {
     this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight);
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
     let hold = ctx.pause.reasons.has('title') || skillCard || ctx.ui.cards.held;
-    if (this.cards.wants && !hold && !ctx.ui.cards.claim('level')) hold = true;
+    // on touch a tap on the play surface sends the card off (CardDirector.dismissNotice); on a
+    // desktop Escape keeps opening the pause menu
+    const dismiss = ctx.input.touchMode ? () => this.cards.dismiss() : undefined;
+    if (this.cards.wants && !hold && !ctx.ui.cards.claim('level', dismiss)) hold = true;
     this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
     if (!this.cards.wants) ctx.ui.cards.release('level');
   }
