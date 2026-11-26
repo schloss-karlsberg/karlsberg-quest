@@ -33,8 +33,8 @@ text, design, or balance. Do not redo fixes assigned to other tasks.
 - [x] Trace side quests and objectives, bottles, Chronik echoes, free-roam hints, and chapter replay across interruptions and older saves.
 - [x] Reproduce 3–6 confirmed bugs with failing Vitest cases; fix them and recover affected saves where possible.
 - [x] Keep German text, touch and reduced motion intact; update the behaviour docs and PRD changelog.
-- [ ] Pass all four gates with zero failed unit tests; run locked smoke E2E on port 5434 or record the blocker and command.
-- [ ] Record repros, root causes, fixes, tests, and follow-ups; commit the review fixes locally.
+- [x] Pass all four gates with zero failed unit tests; run locked smoke E2E on port 5434 or record the blocker and command.
+- [x] Record repros, root causes, fixes, tests, and follow-ups; commit the review fixes locally.
 - [x] Recover previously collected Pacht slips on retry, and honour the scheduled live deadline.
 - [x] Keep Peter's Lehnstuhl offer reachable when replaying K3 while retaining earned rewards.
 - [x] Restore the complete free-roam hint when the ending slot exists, and verify the auto slot written by the save manager.
@@ -60,7 +60,7 @@ ordering, duplicate events, travel/era changes, interruption, reload, and replay
 - [x] Track main-quest completion for the current replay and exercise chapter selection through Peter's offer and the era shift.
 - [x] Exercise the real story runtime and in-memory save manager for completed-ending restore and autosave.
 - [x] Update behaviour docs, attempt the four gates and locked browser checks, and record the results.
-- [ ] Commit the review fixes locally. Staging all files was blocked by `EPERM` on the worktree's `index.lock`.
+- [x] Commit the review fixes locally (`1b8a735`).
 
 **Test plan:** Focused Vitest, `pnpm typecheck && pnpm test && pnpm validate && pnpm build`, then
 `KQ_E2E_PORT=5434 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
@@ -96,9 +96,17 @@ removed. The browser regression is in `e2e/chapter-k3.spec.ts`.
   by `EPERM` when tsx tried to open its IPC socket.
 - Locked runs of `e2e/chapter-k3.spec.ts` and `e2e/smoke.spec.ts` both stopped before the
   browser started because the preview server could not bind `127.0.0.1:5434` (`EPERM`).
-- The review changes are in the worktree, with some files staged. Stage the full review diff
-  before committing. Intended commit: `fix(story): recover quest replay and ending saves`
-  with trailer `Co-Authored-By: Codex <noreply@openai.com>`.
+- The review fixes were committed as `1b8a735`.
+
+### Integration (2026-11-26)
+
+- The four branch commits were squashed into one and rebased onto main after #69 (TASK-040).
+  The quest chapter cleanup had moved to `QuestBook.dropEarlier`, so the side-quest `close` rule
+  now lives there. TASK-040's saved-calm credit (`settleCalm`) runs for every calm objective, and
+  the cassowary receipt stays as the fallback once its spawn record is gone. Restore settles saved
+  progress and repairs deadlines while recovered payouts are collected, then reasserts spawns.
+- Gates after the rebase: typecheck, `pnpm test` (2002 passed, 0 failed), `pnpm validate` and
+  `pnpm build` passed. The locked e2e runs on port 5434 cover `quests`, `chronik`, `chapter-k3` and `smoke`.
 
 ### Audit trail
 
@@ -125,13 +133,6 @@ Root-cause line numbers refer to the original checkout (`d2d1f48`).
 | Finish credits, save between ending completion and the delayed hint, and reload into inactive free roam; the hint is gone. | `content/story/05-enden.story.json:285` schedules the hint after the story has already stopped; `src/systems/story/index.ts:547` only forces the earlier credits save. | Install and save the Pause hint at completion; repair old missing hints (no voice changes). `sets the free-roam hint before a save can capture an inactive ending`; `restores the missing free-roam hint in an older completed ending save`. |
 
 ### Follow-ups
-
-- Run `pnpm validate` and the locked E2E commands from a shell that can open the required sockets:
-
-  ```sh
-  KQ_E2E_PORT=5434 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/chapter-k3.spec.ts --workers=1 --reporter=line
-  KQ_E2E_PORT=5434 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-  ```
 
 - Browser-check party scenery and ending flag lifetime when going backwards through Kapitel after credits; the epilogue Continue issue is tracked separately in TASK-039.
 - Once TASK-029 lands, exercise full echo discovery and immediate auto-slot reload together, including the detached listening path; this patch does not change Chronik.
