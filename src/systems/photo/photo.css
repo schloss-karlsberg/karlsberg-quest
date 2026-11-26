@@ -393,8 +393,10 @@ html[data-kq-reduced-motion] .kq-photo-card {
 }
 img.kq-gallery-full {
   display: block;
+  /* a fixed box (aspect from the width / height attributes): the bar does not move when the picture decodes */
+  width: auto;
+  height: 56vh;
   max-width: 100%;
-  max-height: 56vh;
   margin: 0 auto;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -440,6 +442,12 @@ img.kq-gallery-full {
   background: #8b2f22;
   color: #fff;
 }
+/* two quick taps are two presses (Löschen, then „Wirklich löschen?“), not a double-tap zoom */
+.kq-gallery-modal button,
+.kq-album-gallery,
+.kq-photo-zoom button {
+  touch-action: manipulation;
+}
 .kq-album-gallery {
   margin-top: 14px;
   min-height: 44px;
@@ -450,11 +458,11 @@ img.kq-gallery-full {
     gap: 8px;
   }
   img.kq-gallery-full {
-    max-height: 48vh;
+    height: 48vh;
   }
 }
 @media (max-height: 500px) {
   img.kq-gallery-full {
-    max-height: 52vh;
+    height: 52vh;
   }
 }

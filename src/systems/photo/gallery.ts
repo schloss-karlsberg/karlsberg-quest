@@ -30,8 +30,6 @@ export interface GalleryState {
 }
 
 const SWIPE_PX = 50;
-/** A second press on Löschen within this time deletes. */
-const ARM_MS = 4000;
 
 export class GalleryView {
   private handle: ModalHandle | null = null;
@@ -40,7 +38,8 @@ export class GalleryView {
   private lib: PhotoLibrary | null = null;
   private index = -1;
   private current: { id: number; file: File } | null = null;
-  private armed = 0;
+  /** Löschen was pressed once on this photo: the button asks „Wirklich löschen?“ and the next press deletes. */
+  private armed = false;
   private cap = 100;
   private readonly onKey = (e: KeyboardEvent) => {
     if (!this.handle || this.index < 0 || e.repeat) return;
@@ -153,9 +152,11 @@ export class GalleryView {
       return;
     }
     this.index = i;
-    this.armed = 0;
+    // moving to another photo (or back here) asks again
+    this.armed = false;
     this.current = { id: p.id, file: new File([blob], photoFileName(p.at), { type: blob.type || 'image/jpeg' }) };
-    const img = h('img.kq-gallery-full', { src: this.url(blob), alt: t('photo.gallery.item', { when: this.when(p.at), era: this.d.eraLabel(p.era) }), 'data-testid': 'gallery-full', draggable: 'false' });
+    // width / height from the metadata: the layout stands before the picture has decoded (the buttons do not jump)
+    const img = h('img.kq-gallery-full', { src: this.url(blob), alt: t('photo.gallery.item', { when: this.when(p.at), era: this.d.eraLabel(p.era) }), 'data-testid': 'gallery-full', draggable: 'false', width: p.width || undefined, height: p.height || undefined });
     let x0: number | null = null;
     img.addEventListener('pointerdown', (e) => (x0 = e.clientX));
     img.addEventListener('pointerup', (e) => {
@@ -229,14 +230,15 @@ export class GalleryView {
     const c = this.current;
     const lib = this.lib;
     if (!c || !lib) return;
-    const now = Date.now();
-    if (now - this.armed > ARM_MS) {
-      this.armed = now;
+    // the first press only asks; the label and the state always agree (no silent expiry)
+    if (!this.armed) {
+      this.armed = true;
       btn.textContent = t('photo.gallery.deleteSure');
+      btn.setAttribute('aria-label', t('photo.gallery.deleteSureLabel'));
       btn.classList.add('armed');
       return;
     }
-    this.armed = 0;
+    this.armed = false;
     if (!(await lib.remove(c.id))) {
       this.d.toast(t('photo.gallery.fail'));
       return;

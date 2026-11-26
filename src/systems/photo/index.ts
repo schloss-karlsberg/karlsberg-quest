@@ -63,7 +63,9 @@ addStrings('de', {
   'photo.gallery.share': 'Teilen',
   'photo.gallery.download': 'Herunterladen',
   'photo.gallery.delete': 'Löschen',
-  'photo.gallery.deleteSure': 'Wirklich löschen?',
+  // short on the button, so the bar keeps its layout on a phone; the full question for screen readers
+  'photo.gallery.deleteSure': 'Wirklich?',
+  'photo.gallery.deleteSureLabel': 'Wirklich löschen?',
   'photo.gallery.deleted': 'Foto gelöscht.',
   'photo.gallery.back': 'Alle Fotos',
   'photo.nonet': 'Kein Netz',
