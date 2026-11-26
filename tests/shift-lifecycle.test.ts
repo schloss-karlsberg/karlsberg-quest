@@ -1,4 +1,9 @@
-import { Color, Group, PerspectiveCamera, Scene, Vector3, type WebGLRenderer, WebGLRenderTarget } from 'three';
+import { Color, Group, Line, Mesh, PerspectiveCamera, Points, Scene, Vector3, type WebGLRenderer, WebGLRenderTarget } from 'three';
+import { WebGLAttributes } from 'three/src/renderers/webgl/WebGLAttributes.js';
+import { WebGLBindingStates } from 'three/src/renderers/webgl/WebGLBindingStates.js';
+import { WebGLGeometries } from 'three/src/renderers/webgl/WebGLGeometries.js';
+import { WebGLInfo } from 'three/src/renderers/webgl/WebGLInfo.js';
+import { WebGLObjects } from 'three/src/renderers/webgl/WebGLObjects.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
@@ -7,6 +12,7 @@ import { SunShadows } from '../src/render/shadows';
 import { Quality } from '../src/systems/fx/quality';
 import { ShiftEffect } from '../src/systems/fx/shift/shift';
 import { SHIFT_DURATION, SHIFT_DURATION_REDUCED, SHIFT_MID, SHIFT_MID_REDUCED } from '../src/systems/fx/shift/timeline';
+import { ShiftWarmer } from '../src/systems/fx/shift/warm';
 import type { FxUI } from '../src/systems/fx/ui';
 import { Heightfield } from '../src/world/heightfield';
 import { disposalCounts } from './disposal-counts';
@@ -22,14 +28,14 @@ function setup(frozen = false) {
     events, player, era, scene, audio: {}, state: { mutable: { meta } },
     camera: new PerspectiveCamera(), renderer: { domElement: { height: 360 } }, settings: { state: { reducedFlash: true } },
     world: {
-      palace: { object: new Group(), setMode: vi.fn(), uniforms: { uRuin: { value: 0 } } },
+      palace: { object: new Group(), triangles: 1, setMode: vi.fn(), uniforms: { uRuin: { value: 0 } } },
       forest: { object: new Group() }, heightfields: { '1789': flat, '2025': flat },
     },
     post: { uniforms: { uShift: { value: 0 }, uFlash: { value: new Color() }, uDesaturate: { value: 0 } } },
   };
   const ui = { caption: vi.fn(), setCompass: vi.fn() };
   const effect = new ShiftEffect(ctx as unknown as GameContext, ui as unknown as FxUI, new Quality('low'));
-  return { effect, events, era, player, meta, scene };
+  return { ctx, effect, events, era, player, meta, scene };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -106,6 +112,64 @@ it('retires the point clouds on full shifts and releases reusable passes only at
   expect(scene.children).toHaveLength(0);
   expect(counts.repeated()).toEqual([]);
   expect(counts.live()).toBe(0);
+});
+
+it('deletes every shift buffer uploaded during warm-up when disposed before the first shift', async () => {
+  vi.spyOn(performance, 'now').mockReturnValue(0);
+  const { ctx, effect } = setup();
+  const createBuffer = vi.fn(() => ({}));
+  const deleteBuffer = vi.fn<(buffer: WebGLBuffer) => void>();
+  const gl = {
+    ARRAY_BUFFER: 0x8892, ELEMENT_ARRAY_BUFFER: 0x8893, FLOAT: 0x1406,
+    UNSIGNED_SHORT: 0x1403, MAX_VERTEX_ATTRIBS: 0x8869,
+    createBuffer, deleteBuffer, getParameter: () => 8, bindBuffer() {}, bufferData() {},
+  } as unknown as WebGLRenderingContext;
+  const attributes = new WebGLAttributes(gl);
+  const info = new WebGLInfo(gl);
+  const bindingStates = new WebGLBindingStates(gl, attributes);
+  // three.js takes bindingStates as its fourth argument, which its declaration omits.
+  const geometries = Reflect.construct(WebGLGeometries, [gl, attributes, info, bindingStates]) as WebGLGeometries;
+  const objects = new WebGLObjects(gl, geometries, attributes, bindingStates, info);
+  const effectGeometries = effect.warmObjects().map((object) => (object as Mesh).geometry);
+  const originalRanges = effectGeometries.map((geometry) => ({ ...geometry.drawRange }));
+  const drawCounts: number[] = [];
+  Object.assign(ctx.renderer, {
+    compileAsync: async () => {},
+    getRenderTarget: () => null,
+    setRenderTarget() {},
+    properties: { get: () => ({}) },
+    render(scene: Scene) {
+      info.render.frame++;
+      scene.traverse((object) => {
+        if (!(object instanceof Mesh || object instanceof Points || object instanceof Line)) return;
+        const geometry = objects.update(object);
+        drawCounts.push(geometry.drawRange.count);
+        // Index buffers are uploaded by the renderer's vertex binding step.
+        if (geometry.index) attributes.update(geometry.index, gl.ELEMENT_ARRAY_BUFFER);
+      });
+    },
+  });
+  const warmer = new ShiftWarmer(ctx as unknown as GameContext, {
+    effect: () => effect.warmObjects(),
+    extraTextures: () => [], templates: async () => [], registered: () => [],
+  });
+
+  for (let frame = 0; frame < 16 && warmer.stats.passes === 0; frame++) {
+    warmer.frame(1, effect.active);
+    await Promise.resolve();
+  }
+  expect(warmer.stats.passes).toBe(1);
+  expect(warmer.stats.drawn).toBe(effect.warmObjects().length);
+  expect(drawCounts).toEqual([1, 1, 1, 2, 3, 3, 3]);
+  expect(effectGeometries.map((geometry) => geometry.drawRange)).toEqual(originalRanges);
+  expect(createBuffer).toHaveBeenCalled();
+  expect(deleteBuffer).not.toHaveBeenCalled();
+
+  effect.dispose();
+  expect(deleteBuffer).toHaveBeenCalledTimes(createBuffer.mock.calls.length);
+  const deleted = new Set(deleteBuffer.mock.calls.map(([buffer]) => buffer));
+  for (const { value } of createBuffer.mock.results) expect(deleted.has(value)).toBe(true);
+  expect(info.memory.geometries).toBe(0);
 });
 
 it('keeps one shadow render target across repeated map reconfigurations', () => {

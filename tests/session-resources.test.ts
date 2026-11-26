@@ -112,6 +112,21 @@ it('reuses a single title menu through animated and reduced-motion start and ret
   }
 });
 
+it('keeps a reopened title visible past the interrupted fade deadline', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  setupDom();
+  const title = new TitleScreen({ onStart() {}, onLicences() {}, confirm: async () => true });
+
+  title.hide();
+  vi.advanceTimersByTime(475);
+  expect(title.el.classList.contains('fade-out')).toBe(true);
+  title.show();
+  expect(title.el.classList.contains('fade-out')).toBe(false);
+  expect(vi.getTimerCount()).toBe(0);
+  vi.advanceTimersByTime(500);
+  expect(title.el.classList.contains('kq-hidden')).toBe(false);
+});
+
 it('reuses the phone chrome and key handler through repeated forced closes', () => {
   const { body, documentElement, kq, window } = setupDom();
   const addKey = vi.spyOn(window, 'addEventListener');
@@ -157,6 +172,7 @@ it('reuses the phone chrome and key handler through repeated forced closes', () 
       expect(body.children.every((node, index) => node === chrome[index])).toBe(true);
       expect(body.children).toHaveLength(chrome.length);
     }
+    expect(addKey).toHaveBeenCalledTimes(1);
   } finally {
     photo.dispose?.();
   }

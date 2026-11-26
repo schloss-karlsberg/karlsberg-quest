@@ -39,7 +39,7 @@ class Source extends Node {
   private endedListeners: (() => void)[] = [];
   frequency = new Param();
   start = vi.fn();
-  stop = vi.fn();
+  stop = vi.fn<(when?: number) => void>();
   addEventListener(_type: string, listener: () => void) { this.endedListeners.push(listener); }
   end() {
     this.onended?.();
@@ -94,7 +94,7 @@ it('disconnects both spatial audio nodes per echo after its tail on completion a
   const audio = new AudioManager();
   audio.unlock();
   const createSpatial = vi.spyOn(audio, 'createSource3D');
-  const { sources } = audio.ctx as unknown as Context;
+  const { sources, currentTime } = audio.ctx as unknown as Context;
   const events = new EventBus();
   const scene = new Scene();
   const onDone = vi.fn();
@@ -104,8 +104,14 @@ it('disconnects both spatial audio nodes per echo after its tail on completion a
     post: { uniforms: { uDesaturate: { value: 0.1 } } }, settings: { state: { reducedMotion: true } },
     content: { speakers: new Map() }, ui: { hud: { subtitle() {} } },
   } as unknown as GameContext;
-  const clue: ChronikClue = { id: 'test.echo', kind: 'echo', title_de: 'Echo', where: { era: '1789', x: 0, z: -5, radius: 4 }, reveals: {} };
-  const lines: DialogueLine[] = [{ id: 'test.line', speaker: 'mannlich', text_de: 'Hallo.', trigger: { event: 'echo:start', id: clue.id } }];
+  const clue: ChronikClue = {
+    id: 'test.echo', kind: 'echo', title_de: 'Echo', fiction: true,
+    where: { era: '1789', x: 0, z: -5, radius: 4 }, reveals: {},
+  };
+  const lines: DialogueLine[] = [{
+    id: 'test.line', speaker: 'test-fictional-speaker', text_de: 'Hallo.',
+    trigger: { event: 'echo:start', id: clue.id },
+  }];
   const echo = new EchoDirector(ctx, () => lines, element as unknown as HTMLElement, onDone);
   const liveConnections = () => createSpatial.mock.results.flatMap(({ value }) => (
     [value.input, value.panner] as Node[]
@@ -124,6 +130,10 @@ it('disconnects both spatial audio nodes per echo after its tail on completion a
     expect(scene.children).toHaveLength(0);
     expect(ctx.post.uniforms.uDesaturate!.value).toBe(0.1);
     expect(vi.getTimerCount()).toBe(2);
+    expect(whisper.stop).toHaveBeenCalledExactlyOnceWith(expect.any(Number));
+    const stopAt = whisper.stop.mock.calls[0]![0];
+    expect(Number.isFinite(stopAt)).toBe(true);
+    expect(stopAt).toBeGreaterThan(currentTime);
     whisper.end();
     vi.runAllTimers();
     expect(liveConnections()).toBe(0);
@@ -131,7 +141,7 @@ it('disconnects both spatial audio nodes per echo after its tail on completion a
     expect(duckGain(audio, 'ambience')).toBe(1);
   }
   expect(onDone).toHaveBeenCalledTimes(2);
-  expect(onDone).toHaveBeenLastCalledWith(clue, [{ speaker: 'mannlich', text: 'Hallo.' }], false);
+  expect(onDone).toHaveBeenLastCalledWith(clue, [{ speaker: 'test-fictional-speaker', text: 'Hallo.' }], false);
   echo.dispose();
 });
 

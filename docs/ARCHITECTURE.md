@@ -426,7 +426,9 @@ toasts when the slot frees. In free play, Escape or a completed outside touch ta
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
 `e2e/pacing.spec.ts` (one visible notice, modal priority, and two queued clue pages in sequence).
 
-**Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
+**Title screen** (`src/ui/title.ts`): Returning to the menu during its start fade cancels the
+pending hide. Reduced motion hides the menu immediately on start.
+`titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
 einmal wählen" (testid `title-ending-again`) once the auto save's story has an ending and the
 `ending` slot exists.
@@ -1015,8 +1017,9 @@ Round-4 (polish: set dressing) integration rules:
   it captures and freezes movement, so the court can release an active escort. The transition
   restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
   increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
-  A shift releases its point clouds and streaks at completion. Its screen passes and shader warm-up
-  stand-ins live until the effect is disposed.
+  A shift releases its point clouds and streaks at completion. The effect owns its screen passes
+  and shader warm-up samples. Warm-up draws with those same geometries, so effect teardown releases
+  their GPU buffers even when play ends before the first shift.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →

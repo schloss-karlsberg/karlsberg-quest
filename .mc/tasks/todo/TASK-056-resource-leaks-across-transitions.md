@@ -34,9 +34,13 @@ transition-owned resources, and verify that repeated transitions keep live count
 - [x] Map the relevant modules, contracts, existing tests and gaps.
 - [x] Add at least 25 meaningful deterministic assertions and keep the focused run under about three seconds.
 - [x] Demonstrate bounded live resource counts through repeated transitions.
-- [x] Reproduce each bug before fixing it and commit each confirmed fix separately.
+- [x] Reproduce each production bug before fixing it.
+- [ ] Commit each confirmed fix separately. The worktree index lock blocked the review commits.
 - [x] Record design ambiguities as test todos and keep concurrent work out of scope.
 - [x] Update the relevant architecture and changelog documentation.
+- [x] Verify that warm-up alone uploads GPU buffers and that effect teardown deletes them all.
+- [x] Verify that returning during the title fade cancels its pending hide.
+- [x] Strengthen the phone and echo lifecycle assertions and use fictional dialogue in the fixture.
 - [ ] Pass all four gates. The validator CLI was blocked by the sandbox.
 - [x] Check smoke eligibility on port 5443 and record the spec for a human run when blocked.
 
@@ -60,6 +64,11 @@ explicit steps. Verify intentional shared and session-wide ownership at teardown
 - [x] Add deterministic checks and run them against the starting implementation.
 - [x] Fix confirmed leaks in reviewable commits and repeat the focused checks.
 - [x] Attempt the four gates, check smoke eligibility, and record results and follow-ups.
+- [x] Reproduce the two production bugs and confirm which behavior predates the branch.
+- [x] Let the warmer draw the shift effect's own geometries and verify buffer deletion with
+  three.js's WebGL resource managers. Fix the title fade race and tighten the phone and echo tests.
+- [x] Update the architecture and changelogs, run the four gate commands, check smoke eligibility,
+  and record each review finding's disposition.
 
 **Test plan**
 
@@ -101,6 +110,29 @@ Record design-dependent ownership decisions only if encountered during the audit
   and 26. A loopback probe returned `EPERM` for `127.0.0.1:5443`, so browser smoke was skipped.
 - 2026-11-26: Documented the test helper and resource lifetimes in the architecture, and added
   changelog rows in the PRD and action-RPG design docs. No voiced lines need new recordings.
+- 2026-11-26: Review-round regressions reproduced 21 GPU buffer uploads and zero deletions after a
+  warm-up-only session, and a reopened title that vanished after its original fade deadline.
+  `origin/main` had both the warm-up ownership gap and the title race. The echo and phone review
+  findings concern tests added by this branch.
+- 2026-11-26: The focused regressions passed in 315 ms. The audio assertion failed when the
+  looping whisper's stop was removed. The phone assertion failed when each open added a listener.
+- 2026-11-26: `pnpm typecheck` and `pnpm build` passed. `pnpm test` reported
+  `Tests  1620 passed | 2 todo (1622)` with zero failures. The `tsx` IPC socket failed with `EPERM`
+  before `pnpm validate` reached the validator. Loopback on port 5443 was denied with `EPERM`, so
+  `e2e/smoke.spec.ts` remains unverified. `mc validate` passed.
+- 2026-11-26: `git add` was denied when creating the worktree's `index.lock`. The review fixes
+  are in the worktree for local staging and commits.
+
+## Review findings
+
+1. **Fixed.** Warm-up draws the effect's own geometries with temporary draw ranges. The WebGL
+   regression verifies that teardown before the first shift deletes every buffer uploaded by the pass.
+2. **Fixed.** `show()` cancels the pending hide. The fake-timer test returns to the title halfway
+   through the fade and checks visibility after the old deadline.
+3. **Fixed.** The echo test verifies a finite future `stop()` time before dispatching `ended`.
+4. **Fixed.** The phone test checks that the keydown registration count remains one after four opens.
+5. **Fixed.** The echo fixture and its expected transcript use a fictional speaker. No voiced line
+   needs new text or recordings.
 
 ## Coverage map
 
@@ -118,5 +150,7 @@ Record design-dependent ownership decisions only if encountered during the audit
 
 - Decide whether Continue after a title round trip should resume a half-heard Chronik echo or
   retire its stage and audio. The question is an `it.todo` in `tests/session-resources.test.ts`.
+- Audit buffer ownership for warm-up stand-ins for hidden scene objects, model templates and
+  registered samples. Their shared attributes and instance buffers have separate owners.
 - Run `pnpm validate` in an environment that permits the CLI's IPC socket.
 - Verify browser smoke with `KQ_E2E_PORT=5443 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
