@@ -269,7 +269,10 @@
     {
       "id": "k4_1",
       "title_de": "Nach 1796",
-      "enter": [{ "do": "anchor", "to": "1796", "x": 497, "z": -900, "r": 25 }],
+      "enter": [
+        { "do": "anchor", "to": "1796", "x": 497, "z": -900, "r": 25 },
+        { "do": "quest", "op": "start", "id": "q.k4.zettel", "onResume": true }
+      ],
       "on": [
         {
           "id": "am-tor",
@@ -450,6 +453,7 @@
       "title_de": "Der Steinbrecher",
       "checkpoint": "k4_5",
       "enter": [
+        { "do": "quest", "op": "start", "id": "q.k4.steinplatz", "onResume": true },
         { "do": "sound", "sound": "crowbar", "x": 1224, "z": -1116, "caption": "[Brecheisen, dann Stille]", "delay": 1 }
       ],
       "complete": { "quest": { "id": "q.k4.steinplatz", "objective": "brecher", "gte": 1 } },
@@ -496,8 +500,7 @@
           "speaker": "laub",
           "text": "Heute, im Relief-Blick drei, ist das eine Rinne mit zwei kleinen Wällen daneben. Wer will, schaut nachher nach. Ich muss jetzt woanders hin. Nach Südosten. Zum Brunnen.",
           "delay": 2
-        },
-        { "do": "quest", "op": "start", "id": "q.k4.standpunkt", "onResume": true, "delay": 3 }
+        }
       ]
     },
     {
@@ -507,7 +510,8 @@
       "enter": [
         { "do": "anchor", "to": "1796", "x": 1386, "z": -1477, "r": 60 },
         { "do": "meter", "id": "vergessen", "active": false },
-        { "do": "flag", "set": { "k4.frass": false } }
+        { "do": "flag", "set": { "k4.frass": false } },
+        { "do": "quest", "op": "start", "id": "q.k4.standpunkt", "onResume": true }
       ],
       "on": [
         {
@@ -548,8 +552,14 @@
           ]
         }
       ],
-      "complete": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } },
-      "exit": [
+      "complete": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } }
+    },
+    {
+      "id": "k4_9",
+      "title_de": "Die Meute treibt",
+      "enter": [
+        { "do": "look", "time": "night" },
+        { "do": "anchor", "to": null },
         { "do": "flag", "set": { "chronik.noLoss": true, "k4.frass": false, "barks.quiet": true } },
         { "do": "meter", "id": "vergessen", "active": false },
         { "do": "say", "line": "laub.k4.gestaendnis_2", "delay": 1.5 },
@@ -562,15 +572,10 @@
           "caption": "[Horn, ganz nah: Anblasen]",
           "delay": 0.5
         },
-        { "do": "shift", "to": "today", "reason": "oblivion", "delay": 1.2 },
+        { "do": "shift", "to": "today", "reason": "oblivion", "delay": 1.2, "onResume": true },
         { "do": "look", "time": "night", "delay": 0.2 },
-        { "do": "quest", "op": "fail", "id": "q.k4.pacht" }
-      ]
-    },
-    {
-      "id": "k4_9",
-      "title_de": "Die Meute treibt",
-      "enter": [{ "do": "look", "time": "night" }, { "do": "anchor", "to": null }],
+        { "do": "quest", "op": "fail", "id": "q.k4.pacht", "onResume": true }
+      ],
       "on": [
         {
           "id": "treiben",
@@ -638,6 +643,8 @@
       "checkpoint": "k4_11",
       "enter": [
         { "do": "flag", "set": { "combat.disabled": true } },
+        { "do": "quest", "op": "start", "id": "q.k4.stellen", "onResume": true },
+        { "do": "quest", "op": "progress", "id": "q.k4.stellen", "objective": "zwinger", "onResume": true },
         { "do": "memorial", "id": "k4.zwinger", "x": 1216, "z": -1571, "r": 80, "era": "today" },
         { "do": "objective", "text": null },
         {
@@ -711,6 +718,9 @@
       "enter": [
         { "do": "flag", "set": { "combat.disabled": true } },
         { "do": "flag", "set": { "flag.k4_finale": true, "npc.owns.clue.k4.jost": true } },
+        { "do": "quest", "op": "start", "id": "q.k4.stellen", "onResume": true },
+        { "do": "quest", "op": "progress", "id": "q.k4.stellen", "objective": "zwinger", "onResume": true },
+        { "do": "quest", "op": "progress", "id": "q.k4.stellen", "objective": "hinlegen", "onResume": true },
         { "do": "cue", "id": "hunt:tableau", "data": { "kind": "rest", "n": 5, "x": 1216, "z": -1571, "r": 5, "face": 30, "near": { "x": 1218.4, "z": -1565.2 }, "nearHeading": 120 }, "onResume": true },
         { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "pose": "kneel", "delay": 1.5 }
       ],
@@ -751,12 +761,12 @@
         { "do": "look", "time": "dawn", "delay": 1 },
         { "do": "cue", "id": "end-prints", "data": { "n": 5, "r": 1.7 } },
         { "do": "card", "title": "Morgengrauen", "sub": "An der Quelle · heute", "seconds": 3.5, "delay": 4.5 },
-        { "do": "teleport", "x": 1059.3, "z": -833.1, "yaw": 50, "delay": 0.6 },
+        { "do": "teleport", "x": 1059.3, "z": -833.1, "yaw": 50, "delay": 0.6, "onResume": true },
         { "do": "npc", "op": "despawn", "npc": "*" },
         { "do": "objective", "text": null },
         { "do": "say", "line": "marlene.end.morgen", "delay": 3 },
         { "do": "say", "line": "laub.end.morgen" },
-        { "do": "grant", "clue": "clue.k4.foto", "delay": 0.5 },
+        { "do": "grant", "clue": "clue.k4.foto", "delay": 0.5, "onResume": true },
         { "do": "say", "line": "marlene.k4.foto" },
         {
           "do": "say",
@@ -765,9 +775,9 @@
           "text": "Die bayerischen Positionsblätter von 1836 bis 1841: „Ruine Carlsberg“. Das Schloss liegt darauf gut fünfzig Meter zu weit im Osten. Den Geometer Laub hat es nie gegeben, sagen Ihre Quellen. Die Quellen haben recht. Ich bestehe trotzdem darauf.",
           "delay": 2.5
         },
-        { "do": "grant", "clue": "clue.k4.nur_steine", "delay": 3 }
+        { "do": "grant", "clue": "clue.k4.nur_steine", "delay": 3, "onResume": true }
       ],
-      "complete": { "have": { "clue": "clue.k4.nur_steine" } }
+      "complete": { "all": [{ "have": { "clue": "clue.k4.foto" } }, { "have": { "clue": "clue.k4.nur_steine" } }] }
     },
     {
       "id": "k4_15",

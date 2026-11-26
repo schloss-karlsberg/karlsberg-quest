@@ -1009,6 +1009,13 @@ return. The combat payout belongs to the original fight.
 | `q.k4.graeben` "Gruslinge im Graben" | side | Laub (after `q.k4.steinplatz`) → auto | clear 3 robbed-out trenches of Grusling swarms (1232/−1188, 1236/−1180, 1226/−1194), compare with Relief 3 today (`clue.k4.graben_heute`) | grusling ×15 | 250 XP | rm.05 Ausbruchgraben (the "walls" of the prologue are trenches) |
 | `q.k4.pacht` "Die Pächter" | side | Soll (after `q.k4.baumagazin`) → Soll | recover 3 lease and demolition notices from Steinfresser lairs on the slope (650/−930, 800/−960, 1000/−1000; they drop them) | steinfresser ×3 | 250 XP | cx.30 Pacht und Abriss (1796) |
 
+**Continue and chapter replay:** The valley entrance, Steinbrecher, well and kennel beats restore
+missing quest starts without resetting accepted quests. The drive resumes the shift into today and
+marks the kennel even if the player is too far from the well for the pack to appear. Reaching Jost's
+beat proves the pack has already calmed; talking to Jost and turning in the quest are still required
+for the horn. A save during dawn resumes the arrival at the spring and records both final clues
+before the chapter can end. Completed quests and clue grants remain idempotent.
+
 ### 11.5 Endings
 
 The [ending design](../content/bible/06-enden.md) covers the choice at the table (museum / burn / keep), the plateau party with credits, and the epilogue assembled from

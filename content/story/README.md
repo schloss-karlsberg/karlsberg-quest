@@ -5,7 +5,9 @@ state machine of **beats**; `pnpm validate` and `tests/story.test.ts` check ever
 (schema: `src/systems/story/types.ts`, validator: `src/systems/story/validate.ts`).
 The [story bible](../bible/00-overview.md) holds the writing and design notes, including the
 [guided tour](../bible/01-prolog.md) and [party endings](../bible/06-enden.md). The story files
-and their generators define the shipped beats and dialogue. Placeholders carry `"placeholder": true`.
+and their generators define the shipped beats and dialogue. For Chapter 4, edit the beat and quest
+JSON directly; `scripts/content-build/kapitel4.mjs` generates the K4 clue and dialogue pack, not those
+files. Placeholders carry `"placeholder": true`.
 
 ```jsonc
 {
