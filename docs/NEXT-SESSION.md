@@ -447,8 +447,9 @@ Slice polish list:
 - Use `photo:good.state` for the „Sie hat dich angesehen“ check.
 - The C prompt's touch text should come from `actionLabel(input, 'crouch')` (`src/ui/actionLabel.ts`).
 
-Mobile/UI leftovers: the credits strip vs the touch buttons on phones (MR 13, unchecked), and MR 9's
-open visual check in [`docs/MOBILE-UI-PASS.md`](MOBILE-UI-PASS.md) §8.2.
+Mobile/UI leftovers (TASK-020): the phone credits, standalone skill card and MR 9 layout fixes are
+implemented. Run the device checks for those states and verify the pause-modal overlap in
+[`docs/MOBILE-UI-PASS.md` §8.5](MOBILE-UI-PASS.md#85-phone-credits-and-standalone-skill-unlocks-2026-11-26).
 
 ### 7.3 Voices
 
