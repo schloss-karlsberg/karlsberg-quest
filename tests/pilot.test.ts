@@ -215,7 +215,7 @@ describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
     expect(skipRealTimeWaits(false, new URLSearchParams('nosave'))).toBe(false);
   });
 
-  it('faststep requires manual mode and preserves frame logic between real draws', () => {
+  it.each(['step', 'renderOnce'] as const)('a synchronous %s replaces the queued fast-step paint', (draw) => {
     for (const query of ['', 'manual', 'faststep', 'manual&idle'])
       expect(fastManualSteps(new URLSearchParams(query))).toBe(false);
     expect(fastManualSteps(new URLSearchParams('manual&faststep'))).toBe(true);
@@ -230,11 +230,11 @@ describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
     loop.pace = () => 0;
     loop.step(60, false);
     loop.step(0, false); // refresh a frame-driven interaction target
-    loop.step(); // default manual hook
-    loop.frame(1); // the next browser paint
-    loop.frame(2); // the requests from both fast steps coalesced
-    expect(ticks).toBe(61);
-    expect(frames).toEqual([[loop.dt, 'prepare'], [loop.dt, 'prepare'], [loop.dt, 'full'], [loop.dt, 'paint']]);
+    loop[draw]();
+    loop.frame(1);
+    loop.frame(2);
+    expect(ticks).toBe(draw === 'step' ? 61 : 60);
+    expect(frames).toEqual([[loop.dt, 'prepare'], [loop.dt, 'prepare'], [loop.dt, 'full']]);
   });
 
   it.each([true, false])('60 manual step(0) calls advance presentation by one second (drawScene=%s)', (drawScene) => {

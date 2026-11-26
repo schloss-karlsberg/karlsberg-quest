@@ -1,13 +1,22 @@
 import type { Page } from '@playwright/test';
 import { afterEach, expect, it, vi } from 'vitest';
-import { playK3 } from '../e2e/helpers/k3';
+
+vi.mock('node:fs', async (importOriginal) => ({
+  ...await importOriginal<typeof import('node:fs')>(),
+  mkdirSync: () => { throw new Error('checkout is read-only'); },
+}));
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
+it('imports the chapter helper in a read-only checkout', async () => {
+  await expect(import('../e2e/helpers/k3')).resolves.toHaveProperty('playK3', expect.any(Function));
+});
+
 it('leaves the K3 station with a skill card still visible when chapter shots are disabled', async () => {
+  const { playK3 } = await import('../e2e/helpers/k3');
   vi.stubEnv('K3_FROM', undefined);
   const reachedEhrenhof = new Error('reached the next station');
   const step = vi.fn();

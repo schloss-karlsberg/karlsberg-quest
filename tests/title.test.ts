@@ -49,6 +49,18 @@ function setup(enabled: boolean, raw: string | null = stored) {
   return { confirm, events, onStart, save, state, storage, title };
 }
 
+function setupReplay(enabled = true) {
+  const finished = createInitialState();
+  finished.systems.story = { ...createStorySlice(), ending: 'burn', finished: true };
+  const game = setup(enabled, JSON.stringify(finished));
+  const { save, storage, title } = game;
+  storage.setItem(SAVE_KEY('ending'), JSON.stringify({ ...createInitialState(), era: '1796' }));
+  const replay = vi.fn(() => save.load('ending'));
+  titleHooks.extraActions = () => [{ label: 'Ende noch einmal wählen', testid: 'title-ending-again', run: replay }];
+  title.setReady();
+  return { ...game, replay, chooseEnding: clicks.get('title-ending-again')! };
+}
+
 afterEach(() => {
   delete titleHooks.beforeNewGame;
   delete titleHooks.extraActions;
@@ -123,16 +135,61 @@ describe('title actions', () => {
     expect(storage.getItem(SAVE_KEY('auto'))).toBe(futureSave);
   });
 
-  it('keeps the state prepared by an extra title action', async () => {
-    const { onStart, save, state, title } = setup(true, null);
-    state.mutable.era = '1796';
-    save.save('ending');
-    state.mutable.era = 'today';
-    titleHooks.extraActions = () => [{ label: 'Ende noch einmal wählen', testid: 'title-ending-again', run: () => save.load('ending') }];
-    title.setReady();
-    await clicks.get('title-ending-again')!();
+  it('keeps the state prepared by an extra title action without prompting for the advertised autosave', async () => {
+    const { confirm, onStart, state, chooseEnding } = setupReplay();
+    await chooseEnding();
+    expect(confirm).not.toHaveBeenCalled();
     expect(onStart).toHaveBeenCalledWith('extra');
     expect(state.state.era).toBe('1796');
+  });
+
+  it.each([true, false])('rechecks a stale ending replay before loading or writing (writes enabled=%s)', async (enabled) => {
+    const { confirm, onStart, save, state, storage, replay, chooseEnding } = setupReplay(enabled);
+    storage.setItem(SAVE_KEY('auto'), futureSave);
+    const latest = futureSave + '\n';
+    confirm.mockImplementationOnce(async () => {
+      storage.setItem(SAVE_KEY('auto'), latest);
+      return true;
+    });
+    onStart.mockImplementation(() => save.autosave('start', true));
+
+    await chooseEnding();
+
+    if (enabled) {
+      expect(confirm).toHaveBeenCalledTimes(2);
+      expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining('überschrieben'));
+      expect(replay).not.toHaveBeenCalled();
+      expect(onStart).not.toHaveBeenCalled();
+      expect(state.state.era).toBe('today');
+      expect(storage.getItem(SAVE_KEY('auto'))).toBe(latest);
+      expect(elements.get('title-continue')!.disabled).toBe(true);
+      expect(elements.get('title-save-status')!.classes.has('kq-hidden')).toBe(false);
+    } else {
+      expect(confirm).not.toHaveBeenCalled();
+      expect(replay).toHaveBeenCalledOnce();
+      expect(onStart).toHaveBeenCalledExactlyOnceWith('extra');
+      expect(state.state.era).toBe('1796');
+      expect(storage.getItem(SAVE_KEY('auto'))).toBe(futureSave);
+    }
+  });
+
+  it('loads the ending and autosaves after replacement is confirmed', async () => {
+    const { confirm, onStart, save, state, storage, replay, chooseEnding } = setupReplay();
+    storage.setItem(SAVE_KEY('auto'), futureSave);
+    confirm.mockImplementationOnce(async () => {
+      expect(replay).not.toHaveBeenCalled();
+      expect(storage.getItem(SAVE_KEY('auto'))).toBe(futureSave);
+      return true;
+    });
+    onStart.mockImplementation(() => save.autosave('start', true));
+
+    await chooseEnding();
+
+    expect(confirm).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('überschrieben'));
+    expect(replay).toHaveBeenCalledOnce();
+    expect(onStart).toHaveBeenCalledExactlyOnceWith('extra');
+    expect(state.state.era).toBe('1796');
+    expect(save.peek()?.era).toBe('1796');
   });
 
   it.each([[false, stored], [true, null]] as const)('opens the new-game flow directly (writes enabled=%s)', async (enabled, raw) => {
@@ -155,6 +212,14 @@ describe('title actions', () => {
     ['a newer version', futureSave],
     ['an occupied slot with an empty value', ''],
     ['a null story slice', '{"version":1,"systems":{"story":null}}'],
+    ['null story reactions', '{"version":1,"systems":{"story":{"active":true,"chapter":"k1","beat":"k1_0","fired":null}}}'],
+    ['a non-string story reaction', '{"version":1,"systems":{"story":{"fired":[null]}}}'],
+    ['malformed story latches', '{"version":1,"systems":{"story":{"latched":[]}}}'],
+    ['a null story meter', '{"version":1,"systems":{"story":{"meters":{"oil":null}}}}'],
+    ['a malformed story objective', '{"version":1,"systems":{"story":{"objective":{"text":42}}}}'],
+    ['an invalid story look', '{"version":1,"systems":{"story":{"look":null}}}'],
+    ['an invalid past story look', '{"version":1,"systems":{"story":{"lookPast":{"era":"1789"}}}}'],
+    ['an invalid story ending', '{"version":1,"systems":{"story":{"ending":"unknown","finished":true}}}'],
     ['an array slice', '{"version":1,"systems":{"travel":[]}}'],
     ['a scalar slice', '{"version":1,"systems":{"combat":1}}'],
     ['a malformed systems record', '{"version":1,"systems":[]}'],
@@ -203,6 +268,15 @@ describe('title actions', () => {
     expect(save.availability()).toBe('readable');
   });
 
+  it('fills missing legacy story fields when loading a saved chapter', async () => {
+    const story = { active: true, chapter: 'k1', beat: 'k1_0', said: ['past-line'] };
+    const raw = JSON.stringify({ version: 1, systems: { story } });
+    const { onStart, state } = setup(true, raw);
+    await clicks.get('title-continue')!();
+    expect(onStart).toHaveBeenCalledExactlyOnceWith('continue');
+    expect(state.state.systems.story).toEqual({ ...createStorySlice(), ...story });
+  });
+
   it('requires confirmation before opening the new-game flow over a writable save', async () => {
     const { confirm, onStart } = setup(true);
     const warning = vi.fn(async () => true);
@@ -235,6 +309,25 @@ describe('title actions', () => {
     expect(onStart).not.toHaveBeenCalled();
     expect(storage.getItem(SAVE_KEY('auto'))).toBe(stored);
     expect(elements.get('title-continue')!.disabled).toBe(false);
+  });
+
+  it('offers Continue after backing out of setup when another tab saved in the meantime', async () => {
+    const { confirm, onStart, state, storage } = setup(true, null);
+    expect(elements.get('title-continue')!.classes.has('kq-hidden')).toBe(true);
+    titleHooks.beforeNewGame = async () => {
+      storage.setItem(SAVE_KEY('auto'), stored);
+      return false;
+    };
+
+    await clicks.get('title-new')!();
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onStart).not.toHaveBeenCalled();
+    expect(storage.getItem(SAVE_KEY('auto'))).toBe(stored);
+    expect(elements.get('title-continue')!.classes.has('kq-hidden')).toBe(false);
+    await clicks.get('title-continue')!();
+    expect(onStart).toHaveBeenCalledExactlyOnceWith('continue');
+    expect(state.state.systems.story?.chapter).toBe('k1');
   });
 
   it('reconfirms changed bytes, including a write while the late prompt is open', async () => {

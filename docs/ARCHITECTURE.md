@@ -209,6 +209,7 @@ visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loo
 the pilot's `act` / `observe` normally render synchronously. With `?manual&faststep`, the step
 and press hooks prepare presentation synchronously and queue a paint. A frame woken solely for
 that paint draws the prepared scene without running the camera, HUD or frame systems again.
+A synchronous full draw satisfies the queued paint. Explicit frame requests still run.
 With nothing to simulate (paused / manual) and nothing to draw the rAF loop parks until a
 request or a `paused` / `manual` change wakes it; the first frame after a held phase advances the
 visuals by one fixed step and restarts the perf clock (`loop.resumed`). Under WebDriver bullet
@@ -315,8 +316,9 @@ Rules
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`). Slices
   are JSON-serialisable objects. The shared save decoder rejects malformed slice containers and
-  still migrates older saves with missing fields. Call `ctx.save.autosave('reason')` at meaningful
-  moments (throttled 5 s, with `autosave(reason, true)` to force a write).
+  invalid story data used during restore. Missing legacy story fields receive defaults. Call
+  `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s, with
+  `autosave(reason, true)` to force a write).
 - UI: `ctx.ui.layer('hunt')` gives you an absolutely positioned DOM layer; `ctx.ui.modals.open({...})`
   pauses the game and frees the mouse; `ctx.ui.hud` has the shared slots (below). Strings via
   `ctx.t('key')`; register them with `addStrings('de', {...})` from `src/i18n`.
@@ -348,7 +350,7 @@ Rules
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
 | `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
-| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has(slot)` (key presence), `availability(slot)` (empty, readable, or unreadable), `peek(slot)` (read a decoded slot without loading it), `readRaw(slot)` (exact stored bytes), `delete`. Keys are `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title offers „Weiter“ when decoding and migration succeed, then loads the autosave again before `game:start` resumes its story beat. „Neues Spiel“ confirms the bytes of an occupied writable slot and rechecks them after successful tour setup. Changed bytes require fresh confirmation. „Ende noch einmal wählen“ loads the ending slot. `?nosave` disables writes and deletion. |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has(slot)` (key presence), `availability(slot)` (empty, readable, or unreadable), `peek(slot)` (read a decoded slot without loading it), `readRaw(slot)` (exact stored bytes), `delete`. Keys are `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title offers „Weiter“ when decoding and migration succeed, then loads the autosave again before `game:start` resumes its story beat. „Neues Spiel“ checks the bytes of an occupied writable slot before and after tour setup. Cancelling setup refreshes the title's save actions. „Ende noch einmal wählen“ checks the autosave against the bytes seen when the menu was drawn before loading the ending slot. Changed bytes in an occupied slot require fresh confirmation, including writes during a prompt. `?nosave` disables writes and deletion. |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
 | `ui` | `hud`, `modals`, `cards` (shared card and notice slot, below), `toast(text)`, `layer(id)`, `add(el)` |

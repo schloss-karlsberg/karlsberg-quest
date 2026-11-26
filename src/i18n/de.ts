@@ -22,6 +22,7 @@ export const de: Record<string, string> = {
   'news.unseen': 'Neue Einträge',
   'news.empty': 'Noch keine Einträge.',
   'title.confirmNew': 'Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?',
+  'title.confirmReplay': 'Der bisherige Spielstand wird überschrieben. Das Ende noch einmal wählen?',
 
   'era.today': 'Heute · 2025',
   'era.1789': 'Sommer 1789',

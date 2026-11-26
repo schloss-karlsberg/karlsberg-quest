@@ -104,6 +104,10 @@ actions reflect save availability, and skip cosmetic waiting in the campaign.
   fix. The focused loop and pilot run passed all 52 tests after it.
 - The title and K3 helper unit regressions passed. The K3 check caught a station
   poll before the wait was removed. The focused run covered 59 tests in total.
+- 2026-11-26 — PR #56 review fix. Imports of the shared chapter helpers now work
+  in a read-only checkout. Playwright creates screenshot directories when it
+  writes the files. Full synchronous draws satisfy a queued fast-step paint,
+  with regressions for both `step()` and `renderOnce()`.
 
 ## Campaign timing
 

@@ -124,8 +124,12 @@ _Status: implementation requested 2026-11-26_
 - 2026-11-26 — `pnpm validate` was blocked by `listen EPERM` on the tsx IPC socket.
   The locked `e2e/smoke.spec.ts` run was blocked by `listen EPERM` on
   `127.0.0.1:5412` before Chromium launched.
-- 2026-11-26 — Git could not create the worktree's `index.lock` for the docs
-  commit. The task file and changelog changes remain in the worktree.
+- 2026-11-26 — PR #56 review fix. The title rechecks autosave bytes before
+  loading the ending slot and asks again if the bytes change during the prompt. Backing
+  out of tour setup refreshes the title. The save decoder fills missing legacy
+  story fields and rejects malformed restore data such as `story.fired: null`.
+  Typecheck, 1,613 unit tests and content validation passed. Playwright listed
+  all 25 cases across the seven affected specs.
 
 ## Follow-ups
 

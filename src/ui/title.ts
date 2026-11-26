@@ -26,15 +26,15 @@ export interface TitleHooks {
   openSettings?(): void;
   /**
    * Extra main-menu entries, asked for each time the title becomes ready (e.g. the story's "Ende
-   * noch einmal wählen" once an ending was reached). `run` prepares the state (e.g. loads a slot);
-   * resolve true to continue into the game, false to stay on the title.
+   * noch einmal wählen" once an ending was reached). After checking the autosave, `run` prepares
+   * the state synchronously and returns true to start play or false to stay on the title.
    */
   extraActions?(): TitleAction[];
 }
 export interface TitleAction {
   label: string;
   testid: string;
-  run(): boolean | Promise<boolean>;
+  run(): boolean;
 }
 export const titleHooks: TitleHooks = {};
 
@@ -82,6 +82,7 @@ export class TitleScreen {
   }
 
   setReady(): void {
+    const autosave = this.cb.save.readRaw();
     const availability = this.cb.save.availability();
     const canContinue = availability === 'readable';
     const unreadable = availability === 'unreadable';
@@ -96,11 +97,11 @@ export class TitleScreen {
     this.saveStatus.textContent = unreadable ? t('title.unreadableSave') : '';
     this.saveStatus.classList.toggle('kq-hidden', !unreadable);
     this.settingsBtn.classList.toggle('kq-hidden', !titleHooks.openSettings);
-    this.renderExtras();
+    this.renderExtras(autosave);
     (canContinue ? this.startBtn : this.newBtn).focus();
   }
 
-  private renderExtras(): void {
+  private renderExtras(autosave: string | null): void {
     const list = titleHooks.extraActions?.() ?? [];
     this.extrasEl.replaceChildren(
       ...list.map((a) =>
@@ -109,12 +110,18 @@ export class TitleScreen {
           onclick: async () => {
             if (this.busy || this.newBtn.disabled) return;
             this.busy = true;
-            const go = await Promise.resolve(a.run()).catch((err) => {
-              console.error('[title] action failed', err);
-              return false;
-            });
-            this.busy = false;
-            if (go) this.start('extra');
+            try {
+              await this.startAfterSaveCheck('extra', autosave, () => {
+                try {
+                  return a.run();
+                } catch (err) {
+                  console.error('[title] action failed', err);
+                  return false;
+                }
+              });
+            } finally {
+              this.busy = false;
+            }
           },
         }, a.label),
       ),
@@ -126,7 +133,7 @@ export class TitleScreen {
     if (this.busy || this.newBtn.disabled) return;
     this.busy = true;
     try {
-      let approved = this.cb.save.enabled ? this.cb.save.readRaw() : null;
+      const approved = this.cb.save.enabled ? this.cb.save.readRaw() : null;
       if (approved !== null && !(await this.cb.confirm(t('title.confirmNew')))) {
         this.setReady();
         return;
@@ -142,25 +149,32 @@ export class TitleScreen {
           this.page.inert = false;
         }
         if (!go) {
-          this.newBtn.focus();
-          return;
-        }
-      }
-      // A different tab can write during the flow or while the confirmation is open.
-      while (this.cb.save.enabled) {
-        const current = this.cb.save.readRaw();
-        if (current === null || current === approved) break;
-        if (!(await this.cb.confirm(t('title.confirmNew')))) {
           this.setReady();
           return;
         }
-        approved = current;
       }
-      if (typeof go === 'function') go();
-      this.start('new');
+      await this.startAfterSaveCheck('new', approved, () => {
+        if (typeof go === 'function') go();
+        return true;
+      });
     } finally {
       this.busy = false;
     }
+  }
+
+  private async startAfterSaveCheck(mode: 'new' | 'extra', approved: string | null, prepare: () => boolean): Promise<void> {
+    // Another tab can write after the title appears, during setup, or during confirmation.
+    while (this.cb.save.enabled) {
+      const current = this.cb.save.readRaw();
+      if (current === null || current === approved) break;
+      if (!(await this.cb.confirm(t(mode === 'new' ? 'title.confirmNew' : 'title.confirmReplay')))) {
+        this.setReady();
+        return;
+      }
+      approved = current;
+    }
+    if (prepare()) this.start(mode);
+    else this.setReady();
   }
 
   private start(mode: TitleStart): void {

@@ -1,13 +1,11 @@
-import { mkdirSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 
 /**
  * Shared glue for the chapter playthroughs (e2e/helpers/<chapter>.ts). Each chapter spec boots
  * its chapter directly and calls its play function; e2e/campaign.spec.ts chains all of them from
- * a new game on the title screen.
+ * a new game on the title screen. Playwright creates the directory when it writes a screenshot.
  */
 export const SCREENS = 'test-results/screens';
-mkdirSync(SCREENS, { recursive: true });
 
 export const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 

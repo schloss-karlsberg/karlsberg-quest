@@ -272,8 +272,10 @@ export class FixedStepLoop {
   /** Run n fixed updates and one presentation frame. Tests can omit the final GPU draw. */
   step(n = 1, drawScene = true): void {
     this.advance(n);
-    this.cb.render(this.dt, 1, drawScene ? 'full' : 'prepare');
-    if (!drawScene) {
+    if (drawScene) {
+      this.renderOnce();
+    } else {
+      this.cb.render(this.dt, 1, 'prepare');
       this.paintPending = true;
       this.wake();
     }
@@ -289,6 +291,7 @@ export class FixedStepLoop {
 
   /** Render once now; `frameDt` (s) is the time the visuals advance by (capped like a real frame). */
   renderOnce(frameDt = this.dt): void {
+    this.paintPending = false;
     this.cb.render(Math.min(0.25, Math.max(0, frameDt)), 1, 'full');
   }
 }
