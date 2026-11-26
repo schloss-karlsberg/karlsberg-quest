@@ -102,8 +102,8 @@ _Status: approved 2026-11-26_
 - `docs/ARCHITECTURE.md` (photo section), `docs/ACTION-RPG.md` §14, `docs/PRD.md` changelog.
 
 **Steps:**
-- [ ] 1. `captureViewBlobs()` in `notes/capture.ts`.
-- [ ] 2. `photo/store.ts` + `photo/gallery-logic.ts`; unit tests on the memory store and the logic.
+- [x] 1. `captureViewBlobs()` in `notes/capture.ts`.
+- [x] 2. `photo/store.ts` + `photo/gallery-logic.ts`; unit tests on the memory store and the logic.
 - [ ] 3. `shoot()` → store (signal only, metadata: time, play seconds, era, x / z, targets, good, stars); cap toast; hooks.
 - [ ] 4. Gallery modal: grid, count, device-only hint (memory fallback: „nur bis zum Neuladen“), viewer with Zurück / Weiter / swipe, Löschen, Herunterladen, Teilen → Download fallback.
 - [ ] 5. Entry points: „Galerie“ on the phone (closes the phone, opens the gallery), button on Pause → Album.
@@ -137,6 +137,12 @@ _Status: approved 2026-11-26_
 ## Progress
 - Branch: `feat/task-006-gallery` (from `main` `1bd1597`)
 - 2026-11-26: plan approved (gallery per device, cap 100 with a toast, optional ideas out). Before shots (real GPU, Iris Xe, dev build): `test-results/contribute/TASK-006/before-1-phone.png` (phone up at the car park, 528 / −795, the board in view, only 1× / 2× on the phone), `before-2-album.png` (Pause → Album after one shot: the entry with this session's thumbnail and „Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte.“).
+
+- 2026-11-26: steps 1-2 done:
+  - `captureViewBlobs()` (`notes/capture.ts`) draws and copies the frame once, then encodes a full JPEG (≤ 1920 px, q 0.88) and a 320 px thumbnail (q 0.75) with `toBlob`. The data-URL `captureView` stays.
+  - `photo/store.ts`: `PhotoStore`, `IdbPhotoStore` (`kq-photos`: `photos` = meta + thumb, autoIncrement; `full` = the picture under the same key; one transaction per add / remove), `MemoryPhotoStore`, `openPhotoStore()` (never throws, memory fallback), `requestPersist()`.
+  - `photo/gallery-logic.ts`: `GALLERY_CAP` 100, `PhotoLibrary` (cap on save, newest first; never throws), `photoFileName()`, `shareMode()`.
+  - `tests/photo-gallery.test.ts`: 7 tests green; typecheck green.
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
