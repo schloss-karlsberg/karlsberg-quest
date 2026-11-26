@@ -8,13 +8,15 @@
  *
  * 1. **in the middle third**: the projected centre lies within |x|, |y| ≤ 1/3 (NDC, the frame is the
  *    whole view; the phone bezel is drawn around it);
- * 2. **big enough**: the sphere's diameter covers ≥ `minFrac` of the frame **height**;
- * 3. **not hidden**: of three sample points on the sphere (top, left, right as seen from the lens)
- *    at least two have a clear sight line (terrain, footprint walls and tree trunks block it);
+ * 2. **big enough**: the sphere's diameter covers ≥ `minFrac` of the frame **height** (or
+ *    `fallbackMinFrac` once the fallback clock has run out, if set);
+ * 3. **not hidden**: at least two of three samples (top, left, right) have a clear sight line.
+ *    Animals also sample the centre and bottom and need three of five clear. Terrain, footprint
+ *    walls and tree trunks block these rays;
  * 4. **near enough**: lens → centre ≤ `maxDist`, or ≤ `fallbackDist` once the fallback clock ran out
  *    (see `PhotoCore.tick`: seconds the player has spent within `fallbackDist` of the target);
  * 5. **steady**: the camera turned slower than `STEADY_RAD_S` on average over the last 0.3 s;
- * 6. **calm**: the target's optional `calm()` returns true (an alerted deer does not count).
+ * 6. **calm**: the target's optional `calm()` returns true (a fleeing deer does not count).
  *
  * A target's optional `state()` (an opaque string, e.g. the deer's 'graze' | 'alert' | 'flee' |
  * 'settled') is read at the moment of the shot for every good target and carried on its judgement
@@ -67,6 +69,8 @@ export interface PhotoTargetDef {
   centre?: 'third' | 'any';
   /** Farther distance that counts once the fallback clock ran out (`fallbackAfterS`). */
   fallbackDist?: number;
+  /** Smaller minimum frame-height fraction allowed once the fallback clock ran out. */
+  fallbackMinFrac?: number;
   /** Seconds within `fallbackDist` of the target (unpaused) before `fallbackDist` counts. */
   fallbackAfterS?: number;
   /** Stars a fallback shot gets (default 2). */
@@ -144,9 +148,9 @@ export interface TargetJudgement {
   ndcX: number;
   ndcY: number;
   frac: number;
-  /** Clear sample sight lines (0..3). */
+  /** Clear sample sight lines (out of 5 for animals, 3 otherwise). */
   clear: number;
-  /** Counted only via the fallback distance. */
+  /** Counted only because the fallback distance or framing threshold applied. */
   fallback: boolean;
   /** The target's `state()` at the shot (good targets with a getter only). */
   state?: string;
@@ -249,7 +253,12 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
   if (!Number.isFinite(dist) || !(p.depth > 0) || Math.abs(p.x) > 1 + frac / v.aspect || Math.abs(p.y) > 1 + frac) return out;
   out.inFrame = true;
   out.stars = 1;
-  // the three sight samples: top, left, right of the sphere as seen from the lens
+  const far = t.fallbackDist !== undefined && fallbackReady ? Math.max(t.maxDist, t.fallbackDist) : t.maxDist;
+  if (dist > far) {
+    out.verdict = 'zu-weit';
+    return out;
+  }
+  // Sample the sphere as seen from the lens. For animals, check the body between the edges too.
   const { r: right, u: up } = basis(v.yaw, v.pitch);
   const k = t.r * 0.6;
   const samples: Vec3[] = [
@@ -257,21 +266,21 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
     { x: c.x - right.x * k, y: c.y - right.y * k, z: c.z - right.z * k },
     { x: c.x + right.x * k, y: c.y + right.y * k, z: c.z + right.z * k },
   ];
+  if (t.kind === 'animal') samples.push(c, { x: c.x - up.x * k, y: c.y - up.y * k, z: c.z - up.z * k });
   const lens = { x: v.x, y: v.y, z: v.z };
   for (const s of samples) if (sightClear(w, lens, s, t.r * 0.7)) out.clear++;
-  const far = t.fallbackDist !== undefined && fallbackReady ? Math.max(t.maxDist, t.fallbackDist) : t.maxDist;
   const centred = t.centre === 'any' ? Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 : Math.abs(p.x) <= MIDDLE && Math.abs(p.y) <= MIDDLE;
+  const minFrac = fallbackReady ? (t.fallbackMinFrac ?? t.minFrac) : t.minFrac;
   // the first reason that fails, in the order a player can fix it
-  if (dist > far) out.verdict = 'zu-weit';
-  else if (dist < (t.minDist ?? 0)) out.verdict = 'zu-nah';
-  else if (out.clear < 2) out.verdict = 'verdeckt';
+  if (dist < (t.minDist ?? 0)) out.verdict = 'zu-nah';
+  else if (out.clear <= samples.length / 2) out.verdict = 'verdeckt';
   else if (!centred) out.verdict = 'nicht-mittig';
-  else if (frac < t.minFrac) out.verdict = 'zu-klein';
+  else if (frac < minFrac) out.verdict = 'zu-klein';
   else if (!(v.angularSpeed <= STEADY_RAD_S)) out.verdict = 'unscharf';
   else if (t.calm && !t.calm()) out.verdict = 'aufgeschreckt';
   else {
     out.good = true;
-    out.fallback = dist > t.maxDist;
+    out.fallback = dist > t.maxDist || frac < t.minFrac;
     if (out.fallback) {
       out.stars = Math.max(1, Math.min(3, Math.round(t.fallbackStars ?? 2)));
       // one rule: good means ≥ 2 stars; a 1-star fallback is only "far, but in the frame"

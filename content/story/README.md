@@ -123,8 +123,8 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 
 | Action | Fields | Effect |
 | --- | --- | --- |
-| `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?, variants?` | a spoken line (`id` lines once; a line that will not be spoken costs no reading time in its run). `text_by_era {era: text}` wins in that era. `variants [text…]` (needs `id` and `speaker`): a running joke, the n-th run speaks the n-th text, then silence (or the last again with `repeat`). Placeholders: `{Name}`/`{name}`, `{jahre:1793}` (years since 1793 in words; "über zweihundert" when the clock is implausible), `{jahr}` |
-| `objective` | `text \| null, x?, z?, id?` | objective + Bussole target |
+| `say` | `id?, speaker, text \| line, text_by_era?, ms?, echo?, repeat?, variants?, wait?, phoneDown?` | a spoken line (`id` lines once; a line that will not be spoken costs no reading time in its run). `wait` waits for the line to finish before the next action. `phoneDown` puts the phone away through the line. `text_by_era {era: text}` wins in that era. `variants [text…]` (needs `id` and `speaker`): a running joke, the n-th run speaks the n-th text, then silence (or the last again with `repeat`). Placeholders: `{Name}`/`{name}`, `{jahre:1793}` (years since 1793 in words; "über zweihundert" when the clock is implausible), `{jahr}` |
+| `objective` | `text \| null, x?, z?, id?, animal?` | Objective and Bussole target. With `animal`, resolve its saved position when the action runs, using x/z as a fallback. |
 | `threat` | `kind, active, intensity?, center?, radius?, seconds?, …` | `threat:configure`; every ThreatConfig field passes through. Pack extras: `mode` patrol \| drive \| finale \| parforce \| follow, `target`, `via`, `from`, `headStart`, `goalRadius`, `heel`, `burst`, `keepPace`, `snow`, `hounds`, `pikeur`, `sight`, `seed` (docs/ARCHITECTURE.md §12) |
 | `flag` | `set {flag: value \| null}` | write / delete flags |
 | `shift`, `anchor` | `to, reason?, instant?` / `to \| null, x, z, r` | era shift / Q anchor |
