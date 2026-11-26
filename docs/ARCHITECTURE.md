@@ -965,7 +965,10 @@ Round-4 (polish: set dressing) integration rules:
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
   The Warner's scripted boot trail is for the player to follow, not the hounds. Its hold extends
-  only its own lifetime. A cue with no valid positive stride uses the usual 1.4 m spacing.
+  only its own lifetime. The pack follows only the player's boots (agent −1) on a segment it has not
+  lost, never the Warner's (agent −2) or its own paw and hoof prints. Calm sentries on `beats` (the
+  K2 sneak) pick up no prints at all; their sight cones and hearing decide the sneak. Once they have
+  noticed you, the searching pack picks your prints up where it lost you (`PackSim.scanForTrail`). A cue with no valid positive stride uses the usual 1.4 m spacing.
   Each segment uses at most 1800 terrain samples, spread across its full length.
 - Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,

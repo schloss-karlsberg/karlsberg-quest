@@ -684,8 +684,8 @@ down) and the Festsaal object (`k3.objekt`, which also becomes a charm).
 | `quests` | `src/systems/quests/` | quest state machine, offers / turn-ins, objective tracking, spawns + pickups for objectives, rewards, codex unlocks, Pause pages (Aufgaben / Codex / Sammlungen), tracker, giver markers, beacons, compass markers | `QuestSlice` |
 
 Pure shared modules (no three.js, no DOM): `src/rpg/types.ts` (all shapes), `src/rpg/enemies.ts`
-(roster), `src/rpg/items.ts` (items, loot, collections), `src/rpg/stats.ts` (level curve, talents,
-`deriveStats`). Systems may import these; they never import each other.
+(roster), `src/rpg/enemy-groups.ts` (group clearance), `src/rpg/items.ts` (items, loot, collections),
+`src/rpg/stats.ts` (level curve, talents, `deriveStats`). Systems may import these; they never import each other.
 
 ### 9.2 Events (`src/systems/contracts.ts`)
 
@@ -938,6 +938,13 @@ spring → Bleiche → lawn → gate ≈ 430 m, about 4–5 min with the talks; 
 e2e `chapter-k1-disguise.spec.ts` (helper `playDisguise`, used by `playK1` and the long walk in
 `openAtSpring`), unit `tests/k1-disguise.test.ts`, `tests/story.test.ts`.
 
+**Die Enge** (`k1_14b`, Kaskade in 1789): three Streuner are followed by four reinforcements.
+On resume, if the first group is cleared and the second is missing, the story schedules the
+reinforcements using the saved kill counts. When the player resumes at the present-day wake point,
+Laub's reinforcement warning and the spawn wait for the return to 1789. If the second group already
+exists, combat restores its survivors. A saved second-wave clear advances to „Zum Wasser“. Combat
+holds autosaves until it has dispatched the tick's kill events and applied their XP and loot rewards.
+
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
@@ -1076,6 +1083,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Interrupted memories affect quest credit and scene-dependent choices (TASK-029, 2026-11-26) | The end event releases the scene and lets Chapter 2's lantern choice resolve as the departure closes. Clue discovery and quest credit require a completed or skipped memory. |
 | A full dialogue queue can swallow the dodge tutorial (TASK-029 review, 2026-11-26) | Urgent tutorials can interrupt a regular line even when all six waiting slots hold a sequence's next lines. The remaining lines keep their places. |
 | Interrupted memories advance quests and story beats (TASK-029, 2026-11-26) | Capture and era changes can interrupt memory playback. The end event releases the scene and signals the interruption so the quest and story engines wait for a heard memory. |
+| The K2 sneak passes only because the pack runs off on the Warner's trail (TASK-065, 2026-11-26) | Since TASK-048 the hounds ignore the Warner's prints, so the sentries walk their beats for the first time. While calm on their beats they notice you only by sight and hearing, as their cones show, and do not pick up your prints. Once they have noticed you, the searching pack picks your prints up where it lost you. The e2e sneak waits for gaps between the cones instead of walking straight. |
 | Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. The reference benchmark checks Hoch p95 at fixed and advancing fire clocks. Hardware timing, matched stills and a physical-phone check are pending (PERFORMANCE §3.8). |
 | Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. Hardware timing and look checks are pending (PERFORMANCE §3.8). |
 | Cache XP raises max HP during a checkpoint (TASK-025, 2026-11-26) | Combat mirrors the live HP after the XP grant and before travel releases the cache's save hold. Reloading preserves the HP from the new level. |
@@ -1098,6 +1106,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Dialogue and bark state after load (TASK-054, 2026-11-26) | Loading ends the previous session's clip and clears its waiting subtitles and bark requests. Saved bark cooldowns resume with the loaded clock. When a recording is unavailable at playback time, the subtitle and murmur start immediately and the recording moves to the head of the preload queue. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| A combat autosave records Die Enge kills before their rewards, or Laub warns from the present-day wake point (TASK-038 review, 2026-11-26) | Combat releases the autosave after all rewards from the tick have been applied. The reinforcement reaction waits for 1789. Unit and browser coverage check the survivors' regular and elite XP. |
+| Saving between the waves of Die Enge strands Chapter 1 (TASK-038, 2026-11-26) | The story restores the wave transition from saved group counts. A partial second wave resumes with its survivors, and a completed second wave advances the beat. Only actual kills award XP and roll loot. Coverage lives in `tests/story-enge.test.ts` and `e2e/enge-save.spec.ts`. |
 | Accepting „Der Jaguar“ while Hanne’s conversation is open delays saved calm credit (TASK-040 review, 2026-11-26) | The acceptance autosave includes the payout. For a save recovered at the title, „Weiter“ presents the reward dialogue and notice. „Neues Spiel“ drops that presentation. A quest finished on acceptance shows no „Nebenaufgabe“ banner after its payout. |
 | Driving the jaguar away early strands Hanne’s quest at 0/1 (TASK-040, 2026-11-26) | „Der Jaguar“ credits the saved calm on acceptance or when an active save loads, and automatically grants its 200 base XP and two Lampenöl once. |
 | A skipped subsecond survival bonus can look complete in Aufgaben (TASK-047) | The journal uses the quest engine's target for ticks and progress counts. Survival targets round to whole seconds with a minimum of one. |
@@ -1468,7 +1478,8 @@ Results: Steinbrecher win 68 → 88 %, Raffschatten pack HP left 39 → 46 %. Th
   308 m crouch-walk is now a ≤ 60 s sneak — three hounds patrol a 34 m area across the trail, each
   casting an amber sight cone on the frost (`flags['hunt.cones']`: as long as the range it would
   notice you at right now, as wide as its view; it deepens to red when it sees you), until the
-  hedge 80 m on: "Sicher. Aufstehen." (toast + Laub), the pack leaves. The Kabinett door (68 s of
+  hedge 80 m on: "Sicher. Aufstehen." (toast + Laub), the pack leaves. Sentries on their beats keep
+  their noses up: only the cones and their ears give you away, never your prints (TASK-065). The Kabinett door (68 s of
   listening) is two short looks through the crack (< 20 s together): E puts your eye to the gap
   between the dark door leaves (DOM frame over the world), behind it the candlelit room plays —
   the Duke at his desk, Schügens, the physician, Pfeffel bursting in; A / D moves your eye to the
