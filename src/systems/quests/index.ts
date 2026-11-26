@@ -151,7 +151,7 @@ class QuestRuntime {
   private here: string | null = null;
   private interest = new Set<string>();
   private dirty = true;
-  /** Set when a quest was accepted or an objective closed: clues found earlier settle next tick (Q-15). */
+  /** Set when a quest was accepted or an objective closed: known progress settles next tick (Q-15). */
   private settle = false;
   private availIn = 0;
   private markIn = 0;
@@ -314,6 +314,12 @@ class QuestRuntime {
     return Array.isArray(p?.good) && p.good.includes(id);
   }
 
+  private settleKnown(): void {
+    const { era, inventory, systems } = this.ctx.state.state;
+    const group = systems.combat?.groups?.['k2.pikeur'];
+    this.book.settleKnown((clue) => inventory.clues.includes(clue), (id) => this.hasPhoto(id), group && { group, era });
+  }
+
   slice(): QuestSlice {
     return normaliseSlice(this.ctx.state.slice('quests', createQuestSlice));
   }
@@ -323,7 +329,7 @@ class QuestRuntime {
     this.book.slice = this.slice();
     this.book.mirror();
     this.book.reassert();
-    this.book.settleKnown((c) => this.ctx.state.state.inventory.clues.includes(c), (id) => this.hasPhoto(id));
+    this.settleKnown();
     this.sentTopics.clear();
     this.sentMarks.clear();
     for (const npc of [...this.following]) this.ctx.events.emit('npc:follow', { npc, follow: false });
@@ -504,9 +510,8 @@ class QuestRuntime {
     const p = ctx.player.position;
     const room = String(ctx.state.state.flags['interior.room'] ?? '');
     if (this.settle) {
-      // examine / echo / photo objectives that open after their clue was found (photo taken) count at once
       this.settle = false;
-      this.book.settleKnown((c) => ctx.state.state.inventory.clues.includes(c), (id) => this.hasPhoto(id));
+      this.settleKnown();
     }
     this.book.tick(dt, { x: p.x, z: p.z, era: ctx.era.current, room }, (npc) => this.npcDistance(npc));
     this.book.chapter = this.chapter();

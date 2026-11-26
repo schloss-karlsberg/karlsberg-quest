@@ -18,7 +18,8 @@
  */
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
-import type { FlagValue, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
+import type { EnemyGroupState, FlagValue, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
+import { isCleared } from '../combat/rules';
 import '../contracts';
 
 export type QuestDefIn = QuestDef & { chapter: string };
@@ -610,12 +611,23 @@ export class QuestBook {
    * of a `photo` objective's target taken before the objective started (`hasPhoto`: the photo
    * system's `has()`, read from its save slice), on accept, on a newly active objective and on load.
    */
-  settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false): void {
+  settleKnown(
+    found: (clue: string) => boolean,
+    hasPhoto: (target: string) => boolean = () => false,
+    pikeur?: { group: EnemyGroupState; era: Era },
+  ): void {
     for (const q of this.running())
       for (const o of this.openObjectives(q)) {
         if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
         else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
       }
+
+    // The story can spawn the Pikeur before the Landremont echo opens his objective.
+    // Settle from the saved clear without replaying the kill event or its rewards.
+    if (!pikeur || pikeur.group.group !== 'k2.pikeur' || pikeur.group.kind !== 'pikeur' || !isCleared(pikeur.group)) return;
+    this.progress('q.k2.parforce', 'pikeur');
+    // A stalled save may already be in the present. The normal prerequisite still applies.
+    if (pikeur.era === 'today') this.progress('q.k2.parforce', 'heim');
   }
 
   /**
