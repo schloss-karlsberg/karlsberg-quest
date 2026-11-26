@@ -157,19 +157,20 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
   return root;
 }
 
-/** Layout-aware key label (Keyboard Map API where available: 'KeyW' → 'Z' on AZERTY). */
-let layoutMap: Map<string, string> | null = null;
-let layoutAsked = false;
-function askLayout(then: () => void): void {
-  if (layoutAsked) return;
-  layoutAsked = true;
-  const kb = (navigator as Navigator & { keyboard?: { getLayoutMap?: () => Promise<Map<string, string>> } }).keyboard;
-  kb?.getLayoutMap?.()
-    .then((m) => {
-      layoutMap = m;
-      then();
-    })
-    .catch(() => {});
+type KeyLayout = ReadonlyMap<string, string>;
+let layoutMap: KeyLayout | undefined;
+let layoutRequest: Promise<void> | undefined;
+
+/** Refresh a newly rendered view when the shared keyboard layout first becomes available. */
+export function refreshOnKeyboardLayout(refresh: () => void): void {
+  if (layoutMap) return;
+  const kb = (globalThis.navigator as (Navigator & { keyboard?: { getLayoutMap?: () => Promise<KeyLayout> } }) | undefined)?.keyboard;
+  layoutRequest ??= Promise.resolve()
+    .then(() => kb?.getLayoutMap?.())
+    .then((map) => { layoutMap = map; }, () => {});
+  void layoutRequest.then(() => {
+    if (layoutMap) refresh();
+  });
 }
 
 const KEY_NAMES: Record<string, string> = {
@@ -196,8 +197,9 @@ const KEY_NAMES: Record<string, string> = {
   Mouse2: 'Maus rechts',
 };
 
-export function keyLabel(code: string): string {
-  const fromLayout = layoutMap?.get(code);
+/** Format a physical key code using the Keyboard Map API where available ('KeyW' → 'Z' on AZERTY). */
+export function keyLabel(code: string, layout = layoutMap): string {
+  const fromLayout = layout?.get(code);
   if (fromLayout && fromLayout.trim() && !KEY_NAMES[code]) return fromLayout.length === 1 ? fromLayout.toUpperCase() : fromLayout;
   if (KEY_NAMES[code]) return KEY_NAMES[code]!;
   const m = /^(Key|Digit)(.)$/.exec(code);
@@ -263,8 +265,8 @@ function keyBindings(settings: SettingsStore): HTMLElement {
     };
     window.addEventListener('keydown', capture, true);
   };
-  askLayout(() => render());
   render();
+  refreshOnKeyboardLayout(render);
   const reset = h(
     'button.kq-link',
     {

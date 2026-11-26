@@ -24,6 +24,10 @@ export function installSettings(_ctx: GameContext): void {
   if (!registered) {
     registered = true;
     addSettingsRows(settingsRows);
-    addControlKeys('relief_off', 'xray', 'plans');
+    addControlKeys(
+      { id: 'relief_off', actions: ['scan0'] },
+      { id: 'xray', actions: ['xray'] },
+      { id: 'plans', actions: ['plans'] },
+    );
   }
 }

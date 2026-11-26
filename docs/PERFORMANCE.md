@@ -723,6 +723,12 @@ open dialog, visible focus outlines.
 | Farbenblind-sichere Farben | relief scan in Okabe-Ito blue ↔ orange instead of blue ↔ red |
 | Gesamtlautstärke, Musik, Geräusche, Stimmen, Umgebung | voices (dialogue, echo whispers) on their own bus; the music slider now also drives the dread drone |
 
+Pause → Steuerung reads the effective bindings each time it opens. It shares the settings
+editor's layout-aware labels and shows alternate keys and unbound actions, including the
+survey tools. Movement and keyboard look retain their direction groups, and relief cycling
+shows the Umschalt shortcut for each currently bound key. Resetting the editor restores the
+current defaults in the reference.
+
 ## 7. Known gaps
 
 - No measurement on a real mid-range laptop (Intel Iris Xe / AMD 680M); the Mittel/Niedrig guess
@@ -733,7 +739,6 @@ open dialog, visible focus outlines.
 - Chapter content packs are bundled into the story chunk (~100 KB gzip), not lazy-loaded per
   chapter.
 - The shader warm-up cannot be verified headless (SwiftShader compiles serially).
-- The key-help page lists the bible's default key names; it does not yet follow remapped keys.
 - Fan round leftovers (research 2026-11-20, wins 6–8): the auto-downgrade still reads only frame
   time (no missed-frame or thermal signal, never steps back up); the first-run guess still gives
   Apple GPUs Hoch; no dynamic resolution. A live dialogue renders 15 fps after its 1.5 s settle:
