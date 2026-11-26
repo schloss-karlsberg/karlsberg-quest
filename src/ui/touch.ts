@@ -164,6 +164,8 @@ export class TouchControls {
   private surfaceTap: PointerTap | null = null;
   /** The button held by each active pointer. */
   private readonly btnHeld = new Map<number, Btn>();
+  /** Brief holds from keyboard or assistive technology activation. */
+  private readonly btnTaps = new Map<Btn, number>();
   /** Called whenever the active state flips (boot: pointer lock, click-to-play chip). */
   onActiveChange: ((on: boolean) => void) | null = null;
 
@@ -409,7 +411,16 @@ export class TouchControls {
 
   /** A pressable button: holds its actions while the finger is down. */
   private wire(b: Btn, after?: () => void): void {
-    const held = () => [...this.btnHeld.values()].includes(b);
+    const pointerHeld = () => [...this.btnHeld.values()].includes(b);
+    const held = () => this.btnTaps.has(b) || pointerHeld();
+    const press = () => {
+      if (held()) return false;
+      for (const a of b.actions) this.deps.input.press(a, true);
+      return true;
+    };
+    const release = () => {
+      if (!held()) for (const a of b.actions) this.deps.input.press(a, false);
+    };
     b.el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -418,9 +429,7 @@ export class TouchControls {
       } catch {
         /* synthetic pointer */
       }
-      if (!held()) {
-        for (const a of b.actions) this.deps.input.press(a, true);
-      }
+      press();
       this.btnHeld.set(e.pointerId, b);
       b.el.classList.add('down');
     });
@@ -429,8 +438,8 @@ export class TouchControls {
       if (this.btnHeld.get(e.pointerId) !== b) return;
       this.btnHeld.delete(e.pointerId);
       if (e.type === 'pointerup') swallowNextClick(b.el);
-      if (held()) return;
-      for (const a of b.actions) this.deps.input.press(a, false);
+      if (pointerHeld()) return;
+      release();
       b.el.classList.remove('down');
       after?.();
     };
@@ -439,9 +448,14 @@ export class TouchControls {
     // keyboard / screen-reader activation still works as a tap
     b.el.addEventListener('click', (e) => {
       if ((e as PointerEvent).pointerType || e.detail > 0) return;
-      for (const a of b.actions) this.deps.input.press(a, true);
-      setTimeout(() => b.actions.forEach((a) => this.deps.input.press(a, false)), 60);
-      after?.();
+      const tap = this.btnTaps.get(b);
+      if (tap !== undefined) clearTimeout(tap);
+      const pressed = press();
+      this.btnTaps.set(b, window.setTimeout(() => {
+        this.btnTaps.delete(b);
+        release();
+      }, 60));
+      if (pressed) after?.();
     });
   }
 
@@ -540,6 +554,8 @@ export class TouchControls {
     this.looks.clear();
     this.surfaceTap = null;
     this.btnHeld.clear();
+    for (const tap of this.btnTaps.values()) clearTimeout(tap);
+    this.btnTaps.clear();
     for (const b of this.el.querySelectorAll('.down')) b.classList.remove('down');
     this.deps.input.releaseVirtual();
   }

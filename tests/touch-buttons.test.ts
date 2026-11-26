@@ -26,7 +26,10 @@ function touchOverlay() {
   function pointer(button: string, type: string, pointerId: number) {
     control(`touch-${button}`).dispatchEvent(Object.assign(new Event(type), { pointerId }));
   }
-  return { overlay, input, pointer, settings };
+  function activate(button: string) {
+    control(`touch-${button}`).dispatchEvent(Object.assign(new Event('click'), { detail: 0 }));
+  }
+  return { overlay, input, pointer, settings, activate };
 }
 
 afterEach(() => {
@@ -49,6 +52,55 @@ it('charges one attack until the last finger leaves the button', () => {
   pointer('attack', 'pointercancel', 2);
   expect(input.isDown('attack')).toBe(false);
   expect(input.isDown('interact')).toBe(false);
+});
+
+it('keeps both attack actions held when a timed activation ends under two fingers', () => {
+  const { input, pointer, activate } = touchOverlay();
+  pointer('attack', 'pointerdown', 1);
+  pointer('attack', 'pointerdown', 2);
+  input.endStep();
+
+  activate('attack');
+  expect.soft(input.wasPressed('attack')).toBe(false);
+  expect.soft(input.wasPressed('interact')).toBe(false);
+  vi.advanceTimersByTime(60);
+  expect.soft(input.isDown('attack')).toBe(true);
+  expect.soft(input.isDown('interact')).toBe(true);
+  pointer('attack', 'pointerup', 1);
+  expect(input.isDown('attack')).toBe(true);
+  pointer('attack', 'pointerup', 2);
+  expect(input.isDown('attack')).toBe(false);
+  expect(input.isDown('interact')).toBe(false);
+});
+
+it('keeps a timed activation held when its overlapping finger leaves first', () => {
+  const { input, pointer, activate } = touchOverlay();
+  activate('attack');
+  expect(input.wasPressed('attack')).toBe(true);
+  input.endStep();
+
+  pointer('attack', 'pointerdown', 1);
+  expect.soft(input.wasPressed('attack')).toBe(false);
+  pointer('attack', 'pointercancel', 1);
+  expect.soft(input.isDown('attack')).toBe(true);
+  vi.advanceTimersByTime(60);
+  expect(input.isDown('attack')).toBe(false);
+});
+
+it('cancels timed activations when gameplay stops so a fresh touch has a new press', () => {
+  const { input, overlay, pointer, activate } = touchOverlay();
+  activate('attack');
+  overlay.setPlaying(false);
+  expect(input.isDown('attack')).toBe(false);
+  expect(input.wasPressed('attack')).toBe(false);
+  overlay.setPlaying(true);
+
+  pointer('attack', 'pointerdown', 1);
+  expect(input.wasPressed('attack')).toBe(true);
+  vi.advanceTimersByTime(60);
+  expect(input.isDown('attack')).toBe(true);
+  pointer('attack', 'pointerup', 1);
+  expect(input.isDown('attack')).toBe(false);
 });
 
 it('drops queued touch actions when controls switch off between ticks and still delivers keyboard input', () => {

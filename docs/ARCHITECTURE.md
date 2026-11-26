@@ -316,6 +316,7 @@ Rules
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`),
   JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments. Passing
+  `true` bypasses the five-second success cooldown and queues a retry if storage is in backoff.
   `true` bypasses the five-second success cooldown. All autosaves respect storage failure backoff.
   JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s;
   `autosave(reason, true)` bypasses the interval and respects active save holds).
@@ -356,6 +357,7 @@ Rules
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
 | `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`. Boot calls `retryAutosave()` during play and `flushAutosave(reason)` on tab hide and return to title. Keys are `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has(slot)` (key presence), `availability(slot)` (empty, readable, or unreadable), `peek(slot)` (read a decoded slot without loading it), `readRaw(slot)` (exact stored bytes), `delete`. Keys are `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title offers „Weiter“ when decoding and migration succeed, then loads the autosave again before `game:start` resumes its story beat. „Neues Spiel“ checks the bytes of an occupied writable slot before and after tour setup. Cancelling setup refreshes the title's save actions. „Ende noch einmal wählen“ checks the autosave against the bytes seen when the menu was drawn before loading the ending slot. Changed bytes in an occupied slot require fresh confirmation, including writes during a prompt. `?nosave` disables writes and deletion. |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
@@ -473,10 +475,12 @@ Loading merges onto defaults (new fields appear automatically, extra keys are ke
 are rejected). Bump `STATE_VERSION` and add a migration in `deserializeState` for structural changes.
 Surveyor saves resume at the Chapter 1 checkpoint. The migration uses the archived quest history
 and reward data in `src/core/legacy-prologue-quests.ts` to retain deeds and settle pending payouts.
-The live `meta.savedAt` and the five-second autosave cooldown advance on successful writes.
-A storage failure leaves the previous checkpoint available and an eligible autosave can retry immediately.
-From the second consecutive failure onward, each failed autosave delays subsequent autosave attempts
-by one second. A successful autosave clears the failure streak. Manual saves can still be attempted.
+Successful writes record wall-clock time in `meta.savedAt`. The five-second autosave cooldown
+and failure backoff use a monotonic clock. The first storage failure permits an immediate retry.
+After two consecutive failures, autosaves back off for one second between attempts. The game loop
+retries pending forced checkpoints with the current state after backoff and any cinematic holds end.
+Tab hide and return to title each get one immediate attempt while no hold is active. A successful
+autosave clears the failure streak. Manual saves can still be attempted.
 
 ## 8. Eras and world look
 
@@ -2298,7 +2302,8 @@ Rules that came out of it:
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
   the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds
-  and queued virtual presses. A button held by several fingers releases when the last finger leaves.
+  and queued virtual presses. Fingers and brief keyboard or assistive technology activations share
+  a single press on each button. The action releases when all fingers leave and any active tap ends.
 - **Touch mode** (`input.touchMode`): `requestLock()` is a no-op, the "Ins Bild klicken" chip stays
   hidden, and the pause menu comes from a button, since Esc and losing the lock do not exist on touch.
 - **`TouchControls` (`src/ui/touch.ts`)** is created in boot after the input.

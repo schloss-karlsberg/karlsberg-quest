@@ -170,12 +170,15 @@ export class SaveManager {
   private readonly holds = new Set<string>();
   /** An autosave asked for while held: written when the last hold ends. */
   private heldReason: { reason: string; force: boolean } | null = null;
+  /** The latest forced checkpoint awaiting a successful write. */
+  private retryReason: string | null = null;
 
   constructor(
     private readonly store: GameStateStore,
     private readonly storage: KeyValueStorage,
     private readonly events?: EventBus,
-    private readonly now: () => number = () => Date.now(),
+    private readonly wallNow: () => number = () => Date.now(),
+    private readonly elapsedNow: () => number = () => performance.now(),
   ) {}
 
   has(slot = 'auto'): boolean {
@@ -199,7 +202,7 @@ export class SaveManager {
   private write(slot: string, reason: string, autoTime?: number): boolean {
     if (!this.enabled) return false;
     const s = this.store.mutable;
-    const savedAt = new Date(autoTime ?? this.now()).toISOString();
+    const savedAt = new Date(this.wallNow()).toISOString();
     try {
       this.storage.setItem(SAVE_KEY(slot), serializeState({ ...s, meta: { ...s.meta, savedAt } }));
     } catch (err) {
@@ -211,6 +214,7 @@ export class SaveManager {
       return false;
     }
     s.meta.savedAt = savedAt;
+    if (slot === 'auto' && !this.held) this.retryReason = null;
     if (autoTime !== undefined) {
       this.lastAuto = autoTime;
       this.autoWriteFailures = 0;
@@ -241,12 +245,28 @@ export class SaveManager {
 
   /** Throttled save to the 'auto' slot. Returns true if written. */
   autosave(reason: string, force = false): boolean {
-    if (this.holds.size > 0) {
+    return this.checkpoint(reason, force);
+  }
+
+  /** Give tab hide or return to title one write attempt even during backoff. */
+  flushAutosave(reason: string): boolean {
+    return this.checkpoint(reason, true, true);
+  }
+
+  /** Retry a pending forced checkpoint from the game loop, subject to backoff and holds. */
+  retryAutosave(): void {
+    if (this.retryReason !== null && !this.held) this.autosave(this.retryReason, true);
+  }
+
+  private checkpoint(reason: string, force: boolean, flush = false): boolean {
+    if (!this.enabled) return false;
+    if (this.held) {
       this.heldReason = { reason, force: force || this.heldReason?.force === true };
       return false;
     }
-    const t = this.now();
-    if (t < this.nextAutoAttempt) return false;
+    if (force) this.retryReason = reason;
+    const t = this.elapsedNow();
+    if (!flush && t < this.nextAutoAttempt) return false;
     if (!force && t - this.lastAuto < this.minIntervalMs) return false;
     return this.write('auto', reason, t);
   }
@@ -258,6 +278,8 @@ export class SaveManager {
       if (result.status === 'unreadable') console.warn('[save] unreadable save, ignoring', result.error);
       return false;
     }
+    this.heldReason = null;
+    this.retryReason = null;
     this.store.replace(result.state, 'load');
     this.events?.emit('save:loaded', { slot });
     return true;
@@ -281,5 +303,9 @@ export class SaveManager {
 
   delete(slot = 'auto'): void {
     if (this.enabled) this.storage.removeItem(SAVE_KEY(slot));
+    if (slot === 'auto') {
+      this.heldReason = null;
+      this.retryReason = null;
+    }
   }
 }

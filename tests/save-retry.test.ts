@@ -11,7 +11,7 @@ describe('save checkpoints', () => {
     const state = new gameState.GameStateStore(gameState.createInitialState());
     const storage = new MemoryStorage();
     const events = new EventBus();
-    const saves = new SaveManager(state, storage, events, () => now);
+    const saves = new SaveManager(state, storage, events, () => now, () => now);
     const written = vi.fn();
     events.on('save:written', written);
     expect(saves.autosave('start')).toBe(true);
@@ -39,7 +39,7 @@ describe('save checkpoints', () => {
     let now = 0;
     const state = new gameState.GameStateStore(gameState.createInitialState());
     const storage = new MemoryStorage();
-    const saves = new SaveManager(state, storage, undefined, () => now);
+    const saves = new SaveManager(state, storage, undefined, () => now, () => now);
     const serialize = vi.spyOn(gameState, 'serializeState');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const write = vi.spyOn(storage, 'setItem');
@@ -71,5 +71,118 @@ describe('save checkpoints', () => {
     vi.spyOn(storage, 'setItem').mockImplementationOnce(fail);
     expect(saves.autosave('new failure')).toBe(false);
     expect(saves.autosave('immediate retry after recovery')).toBe(true);
+  });
+
+  it('uses elapsed time for backoff and throttling after the wall clock moves backwards', () => {
+    let elapsed = 0;
+    const wallClock = vi.spyOn(Date, 'now').mockReturnValue(3_600_000);
+    vi.spyOn(performance, 'now').mockImplementation(() => elapsed);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const state = new gameState.GameStateStore(gameState.createInitialState());
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(state, storage);
+    const fail = () => { throw new Error('quota'); };
+    const write = vi.spyOn(storage, 'setItem').mockImplementationOnce(fail).mockImplementationOnce(fail);
+
+    expect(saves.autosave('start', true)).toBe(false);
+    expect(saves.autosave('retry', true)).toBe(false);
+    wallClock.mockReturnValue(0);
+    elapsed = 999;
+    expect(saves.autosave('before recovery', true)).toBe(false);
+    expect(write).toHaveBeenCalledTimes(2);
+    elapsed = 1000;
+    expect(saves.autosave('era', true)).toBe(true);
+    expect(saves.peek()?.meta.savedAt).toBe(new Date(0).toISOString());
+    wallClock.mockReturnValue(7_200_000);
+    expect(saves.autosave('same step')).toBe(false);
+    elapsed += saves.minIntervalMs;
+    expect(saves.autosave('interval')).toBe(true);
+    expect(saves.peek()?.meta.savedAt).toBe(new Date(7_200_000).toISOString());
+  });
+
+  it('retries a forced checkpoint when backoff expires after a cinematic', () => {
+    let elapsed = 0;
+    const state = new gameState.GameStateStore(gameState.createInitialState());
+    const storage = new MemoryStorage();
+    const events = new EventBus();
+    const saves = new SaveManager(state, storage, events, () => 0, () => elapsed);
+    const written = vi.fn();
+    events.on('save:written', written);
+    expect(saves.autosave('start', true)).toBe(true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fail = () => { throw new Error('quota'); };
+    const write = vi.spyOn(storage, 'setItem').mockImplementationOnce(fail).mockImplementationOnce(fail);
+    saves.autosave('first failure', true);
+    saves.autosave('second failure', true);
+
+    saves.hold('cinematic', true);
+    state.mutable.era = '1789';
+    expect(saves.autosave('era', true)).toBe(false);
+    saves.hold('cinematic', false);
+    expect(saves.peek()?.era).toBe('today');
+    elapsed = 999;
+    saves.retryAutosave();
+    expect(write).toHaveBeenCalledTimes(2);
+
+    elapsed = 1000;
+    state.mutable.player.x = 42;
+    saves.retryAutosave();
+    expect(saves.peek()).toMatchObject({ era: '1789', player: { x: 42 } });
+    expect(written).toHaveBeenLastCalledWith({ slot: 'auto', reason: 'era' });
+    saves.retryAutosave();
+    expect(write).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(['hidden', 'title'])('gives %s one immediate attempt during storage backoff', (reason) => {
+    const state = new gameState.GameStateStore(gameState.createInitialState());
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(state, storage, undefined, () => 0, () => 0);
+    expect(saves.autosave('start', true)).toBe(true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fail = () => { throw new Error('quota'); };
+    const write = vi.spyOn(storage, 'setItem').mockImplementationOnce(fail).mockImplementationOnce(fail);
+    saves.autosave('first failure', true);
+    saves.autosave('second failure', true);
+
+    saves.hold('cinematic', true);
+    state.mutable.era = '1789';
+    expect(saves.flushAutosave(reason)).toBe(false);
+    expect(write).toHaveBeenCalledTimes(2);
+    saves.hold('cinematic', false);
+    expect(saves.peek()?.era).toBe('today');
+    expect(saves.autosave('ending', true)).toBe(false);
+
+    write.mockImplementationOnce(fail);
+    expect(saves.flushAutosave(reason)).toBe(false);
+    expect(write).toHaveBeenCalledTimes(3);
+    saves.retryAutosave();
+    expect(write).toHaveBeenCalledTimes(3);
+    expect(saves.peek()?.era).toBe('today');
+
+    expect(saves.flushAutosave(reason)).toBe(true);
+    expect(write).toHaveBeenCalledTimes(4);
+    expect(saves.peek()?.era).toBe('1789');
+  });
+
+  it.each(['load', 'delete'])('discards pending autosaves on %s before the next session', (transition) => {
+    let elapsed = 0;
+    const state = new gameState.GameStateStore(gameState.createInitialState());
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(state, storage, undefined, () => 0, () => elapsed);
+    expect(saves.autosave('start', true)).toBe(true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fail = () => { throw new Error('quota'); };
+    const write = vi.spyOn(storage, 'setItem').mockImplementationOnce(fail).mockImplementationOnce(fail);
+    saves.autosave('first failure', true);
+    saves.autosave('second failure', true);
+    saves.hold('cinematic', true);
+    saves.autosave('ending', true);
+
+    if (transition === 'load') expect(saves.load()).toBe(true);
+    else saves.delete();
+    elapsed = 1000;
+    saves.hold('cinematic', false);
+    saves.retryAutosave();
+    expect(write).toHaveBeenCalledTimes(2);
   });
 });

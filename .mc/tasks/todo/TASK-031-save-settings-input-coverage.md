@@ -33,7 +33,7 @@ Pin down the behavior players rely on across save slots, state migrations, setti
 - [x] Map important behavior and existing coverage for each module.
 - [x] Add at least 25 meaningful, deterministic assertions across the area. Run the new tests together in about three seconds or less.
 - [x] Reproduce each verified bug before changing behavior. Record unresolved design decisions as test TODOs.
-- [ ] Commit each verified fix separately. The initial implementation was bundled. In review, the pointer-lock test committed and the index lock blocked the remaining commits.
+- [ ] Commit the final review fixes. The earlier review changes are in `7ee2b45` and `d6678fb`.
 - [x] Keep changes focused and respect the concurrent tasks.
 - [x] Update the relevant docs and PRD changelog.
 - [ ] Pass the four gates as written. The sandbox denied the validation launcher's IPC listener.
@@ -52,7 +52,9 @@ Pin down the behavior players rely on across save slots, state migrations, setti
 - [x] Assert the persisted timestamps and the native pointer-lock exit calls in the existing regression tests.
 - [x] Update the autosave contract in the architecture notes, action-RPG log and PRD changelog.
 - [x] Attempt all four gates and the locked smoke spec on the reviewed changes.
-- [ ] Commit the remaining review changes and pass `pnpm validate` on the final HEAD with local socket access.
+- [x] Commit the earlier review changes as `d6678fb`.
+- [x] Retry queued forced checkpoints after backoff and allow one immediate attempt at tab hide or return to title.
+- [x] Use elapsed time for save cooldowns and share touch button ownership across fingers and timed activations.
 
 ## Progress
 
@@ -61,7 +63,9 @@ Pin down the behavior players rely on across save slots, state migrations, setti
 - The review round starts from the implementation commit `d8ff28b` on `dev/task-031`.
 - Before the fix, the injected-clock test reproduced six serializations, writes and warnings from six autosave requests at the same timestamp.
 - Focused save and control checks passed with 38 tests and one existing TODO. Temporary mutations confirmed that the new assertions detect a stale serialized timestamp and a missing native pointer-lock exit call.
-- Committed the pointer-lock regression assertion as `7ee2b45`. Git returned “Operation not permitted” when creating the worktree's `index.lock` for the persisted-timestamp test. The timestamp test, backoff fix, docs and this report remain in the worktree.
+- Committed the pointer-lock regression assertion as `7ee2b45`. The timestamp assertions, backoff fix and docs landed in `d6678fb`.
+- 2026-11-26 — PR #59 review fixes queue forced checkpoints for retry, add one immediate attempt on tab hide and return to title, and use monotonic cooldowns. Timed keyboard and assistive technology activations share holds with pointers on Hieb. The pointer-lock test now checks application behavior after the native request settles. Renamed the PR to `fix: cover saves, settings and input edge cases` for use as the squash summary.
+- 2026-11-26 — Typecheck, build and all 123 Vitest files passed (1,598 tests passed and one existing TODO). Direct content validation passed with one warning. The `pnpm validate` launcher hit `listen EPERM` on its IPC socket. The new story browser cases could not start because preview hit `listen EPERM` on port 5419. Story, cinematic, party, touch and smoke specs remain to be run with one worker.
 
 ## Coverage map
 
@@ -83,7 +87,7 @@ Pin down the behavior players rely on across save slots, state migrations, setti
 - A press, its Shift modifier, a mouse turn and a wheel notch survived a blur or modal transition before the next tick. Returning to play consumed the old input. The input buffer clears on these transitions.
 - With two fingers on Hieb, the second finger produced a new attack press, and lifting the first ended the charge. The button now sends one press and releases when the last pointer leaves.
 - Switching touch off before a tick released holds but delivered both an earlier Balsam tap and an Epoche press on the next tick. Cancelling virtual input clears its queued presses as well as its holds.
-- Review reproduced six repeated writes during a storage outage. The first rejected autosave allows an immediate retry. From the second failure onward, each failed attempt suppresses ordinary and forced autosaves for one second. A successful autosave clears the failure streak.
+- Review reproduced six repeated writes during a storage outage. The first rejected autosave allows an immediate retry. From the second failure onward, each failed attempt starts a one-second backoff. Forced checkpoints queue for retry, and hiding the tab or returning to title gives one immediate attempt outside cinematic holds. A successful autosave clears the failure streak.
 
 ## Review findings
 
@@ -115,19 +119,11 @@ Pin down the behavior players rely on across save slots, state migrations, setti
 ## Follow-ups
 
 - Decide whether an ordinary autosave requested during a hold must bypass the five-second cooldown when the last hold ends. The hold contract promises a write at release, and the throttle contract exempts forced requests. The open case is an `it.todo` in `tests/save-lifecycle.test.ts`.
-- Commit the remaining review changes with write access to the worktree index.
+- Commit the final review changes with write access to the worktree index. Use the updated PR title as the squash summary.
 
-```sh
-trailer='Co-Authored-By: Codex <noreply@openai.com>'
-git add -p tests/save-checkpoints.test.ts  # Stage the initial-save and retry timestamp assertions only.
-git commit -m 'test: assert timestamps stored in autosave checkpoints' -m 'Refs: TASK-031' -m "$trailer"
-git add src/core/save.ts tests/save-checkpoints.test.ts docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md .mc/tasks/todo/TASK-031-save-settings-input-coverage.md
-git commit -m 'fix: back off after repeated autosave failures' -m 'Refs: TASK-031' -m "$trailer"
-```
-
-- Run `pnpm validate` on the final HEAD before merging and rerun the locked smoke spec in a session with local socket access.
+- Run `pnpm validate` on the final HEAD before merging and verify the affected browser specs in a session with local socket access.
 
 ```sh
 pnpm validate
-KQ_E2E_PORT=5419 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
+KQ_E2E_PORT=5419 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/story.spec.ts e2e/cinematic.spec.ts e2e/party.spec.ts e2e/touch.spec.ts e2e/smoke.spec.ts --workers=1 --reporter=line
 ```
