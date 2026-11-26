@@ -34,14 +34,15 @@ density or WebGL context changes. Fix defects demonstrated by the new tests.
 - [x] Inventory every module in `src/render/` and `src/systems/fx/` against existing unit coverage.
 - [x] Add at least 25 deterministic assertions across the area. Run the focused suite in about three seconds or less.
 - [x] Reproduce each defect before fixing it and record design questions as test todos.
-- [ ] Commit each fix separately. The worktree index lock is sandbox-blocked.
+- [ ] Commit each fix separately. Not met: the sandboxed round could not commit, so the first fixes
+  landed together in `2aeeb2e`. History is not rewritten.
 - [x] Update the relevant docs and the PRD changelog.
-- [ ] Pass the four gates as written. The validator CLI could not bind its IPC socket.
-- [x] Run the locked smoke spec on port 5448 if allowed, or record the command and blocker.
-- [ ] Review round: restore the cached tree silhouettes before shadow and scene draws, and restore sky lighting before water reflections.
-- [ ] Review round: build the replacement Steinfraß terrain cloud across frames and keep the existing cloud visible until the swap.
-- [ ] Review round: apply viewport dimensions and pixel ratio in one buffer update and skip unchanged sizes.
-- [ ] Review round: replace the stale commit handoff, verify the findings with regression checks, and rerun the gates and locked smoke spec.
+- [x] Pass the four gates as written.
+- [x] Run the locked `fx` and smoke specs on port 5448.
+- [x] Review round: restore the cached tree silhouettes before shadow and scene draws, and restore sky lighting before water reflections.
+- [x] Review round: build the replacement Steinfraß terrain cloud across frames and keep the existing cloud visible until the swap.
+- [x] Review round: apply viewport dimensions and pixel ratio in one buffer update and skip unchanged sizes.
+- [x] Review round: replace the stale commit handoff, verify the findings with regression checks, and rerun the gates and locked smoke spec.
 
 ## Plan
 
@@ -52,10 +53,10 @@ density or WebGL context changes. Fix defects demonstrated by the new tests.
 
 ### Review round (2026-11-26)
 
-- [ ] Verify the branch and baseline, then cover first-frame WebGL recovery with recorded draws of the tree atlas, shadows, sky and water reflection.
-- [ ] Extend the active Steinfraß test to observe bounded work, staged geometry replacement and cancellation.
-- [ ] Record the drawing-buffer call count for density changes and duplicate resize events.
-- [ ] Update the render docs, replace the stale handoff, and record gates and commits.
+- [x] Verify the branch and baseline, then cover first-frame WebGL recovery with recorded draws of the tree atlas, shadows, sky and water reflection.
+- [x] Extend the active Steinfraß test to observe bounded work, staged geometry replacement and cancellation.
+- [x] Record the drawing-buffer call count for density changes and duplicate resize events.
+- [x] Update the render docs, replace the stale handoff, and record gates and commits.
 
 ## Progress
 
@@ -79,67 +80,42 @@ budgets across eras, an overflowing crowd batch and the four-slot collapse burst
 | FX tier | A low session override over a high preference, or an unsaved low device fallback, built a 29,929-vertex scan. | Use the low 13,456-vertex scan and keep the saved preference available for the next session. |
 | Active Steinfraß | A high-to-low switch kept 2,600 dust slots, 110,000 ruin grains and 106,800 terrain points in the fixture. | Switch to 1,200 dust slots, 45% of the ruin grains and the lower-density terrain cloud. Changing back preserves meter progress and duration. |
 
+### Review round
+
+| Finding | Resolution |
+| --- | --- |
+| Distant trees lose their impostor atlas after WebGL restoration | The restore handler invalidates the atlas. `renderWorldMaps` bakes it again before the shadow, reflection and main passes, but only while the model trees are shown (`75f1580`). |
+| Tier change during the Steinfraß stalls a frame | The replacement terrain cloud is built by `TerrainCloudJob` in 2 ms slices while the old cloud stays visible (`959b331`). |
+| Water reflection samples the erased sky on the first restored frame | `renderWorldMaps` rebuilds the sky lighting before the shadow and reflection passes (`75f1580`). |
+| A density change resizes the drawing buffer twice | One `setDrawingBufferSize` call applies size and pixel ratio, and unchanged sizes are skipped (`959b331`). |
+| Stale commit handoff | Replaced by the commit list below. |
+
 ### Verification
 
 ```text
-Focused Vitest    Test Files  8 passed (8)
-                  Tests  20 passed | 2 todo (22)
-                  Duration  216ms
-pnpm typecheck    $ tsc --noEmit                         exit 0
+pnpm typecheck    exit 0
 pnpm test         Test Files  132 passed (132)
-                  Tests  1625 passed | 3 todo (1628)
-pnpm validate     listen EPERM on the tsx IPC socket     exit 1
-node --import tsx scripts/validate-content.ts
-                  ✓ content valid (1 warning(s))        exit 0
-pnpm build        ✓ 471 modules transformed.
-                  ✓ built in 316ms                      exit 0
+                  Tests  1629 passed | 3 todo (1632)
+pnpm validate     ✓ content valid (1 warning(s))
+pnpm build        ✓ built
+e2e fx            7 passed (3.6m)
+e2e smoke         7 passed (2.1m)
 ```
 
-Both unit runs had 0 failed. The content warning is in the existing one-fact example case.
-The sandbox denied a loopback bind on 127.0.0.1:5448, so smoke and visual WebGL checks were skipped.
-No voiced lines require new text.
+The unit run had 0 failed. The content warning is in the existing one-fact example case. No voiced
+lines require new text.
 
 ### Commits
 
-`e8f9b8a chore(render): track rendering and fx coverage sweep` is the branch HEAD. The next
-`git add` was denied on the worktree's `index.lock`. The fixes, tests and report are in the
-worktree. Use these subjects for the remaining commits and finish each message with a blank line
-and `Co-Authored-By: Codex <noreply@openai.com>`.
+All work is committed on `dev/task-061`:
 
-```sh
-record() { git commit -m "$1" -m 'Co-Authored-By: Codex <noreply@openai.com>'; }
-
-git add src/render/post.ts tests/render-post.test.ts
-record 'fix(render): preserve bloom levels during additive upsampling'
-
-git add -p src/render/quality.ts  # select only the inactive branch of frame()
-git add tests/render-quality-runtime.test.ts
-record 'fix(render): reset the slow frame streak while inactive'
-
-git add -N src/render/viewport.ts tests/render-viewport.test.ts
-git add -p src/boot.ts  # select the viewport import, binding and QualityManager assignment
-git add -p src/render/viewport.ts tests/render-viewport.test.ts  # edit out the empty-size guard and zero-size/recovery assertions
-git add src/render/quality.ts
-record 'fix(render): resize at the active display pixel ratio'
-
-git add src/render/viewport.ts tests/render-viewport.test.ts
-record 'fix(render): preserve the camera projection for empty viewports'
-
-git add src/boot.ts src/render/context.ts src/render/perf.ts src/render/standard.ts tests/render-context.test.ts
-record 'fix(render): rebuild cached lighting after context restoration'
-
-git add src/systems/fx/index.ts tests/fx-render-tier.test.ts
-record 'fix(render): apply the active graphics tier to fx'
-
-git add src/systems/fx/oblivion/oblivion.ts tests/fx-oblivion-tier.test.ts
-record 'fix(render): resize active oblivion effects on tier changes'
-
-git add tests/render-shadows-runtime.test.ts tests/fx-render-pools.test.ts
-record 'test(render): cover shadow targets and fx pool limits'
-
-git add .mc/tasks/todo/TASK-061-render-quality-resize-context-fx.md docs/{ARCHITECTURE,PERFORMANCE,ACTION-RPG,PRD}.md
-record 'docs(render): record rendering regressions and verification'
-```
+- `e8f9b8a chore(render): track rendering and fx coverage sweep`
+- `2aeeb2e fix(render): cover quality tiers, resize and context loss` (bloom, display density, empty
+  viewport, automatic tier, context restoration, FX tier, active Steinfraß, tests and docs)
+- `959b331 fix: address review findings for TASK-061` (sliced Steinfraß relief, single buffer
+  resize, review tests)
+- `75f1580 fix(render): rebake the tree atlas and sky before restored map passes`
+- the commit that adds this report
 
 ### Follow-ups
 
@@ -148,8 +124,6 @@ record 'docs(render): record rendering regressions and verification'
   HDR composite. Both design questions are Vitest todos.
 - The FX sampler and its change listener both call `fire.rebuild()` on an automatic FX downgrade.
   Pass that observation to the palace/fire performance sweep.
-- Run `pnpm validate` outside the sandbox, then run the only required browser spec:
-  `KQ_E2E_PORT=5448 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
 
 ## Coverage inventory at 79c5718
 
