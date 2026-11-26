@@ -41,6 +41,16 @@ export interface PassZone {
   r: number;
 }
 
+/** Distance past each face in box coordinates; beyond both faces the nearest point is a corner. */
+function overlapsBox(x: number, z: number, radius: number, b: Extract<Solid, { kind: 'box' }>): boolean {
+  const dx = x - b.x;
+  const dz = z - b.z;
+  const du = Math.abs(dx * b.ux + dz * b.uz) - b.hu;
+  const dv = Math.abs(-dx * b.uz + dz * b.ux) - b.hv;
+  if (du >= radius || dv >= radius) return false;
+  return du <= 0 || dv <= 0 || du * du + dv * dv < radius * radius;
+}
+
 /** Push a circle out of an oriented box (2D); null when not touching. */
 export function pushOutOfBox(x: number, z: number, radius: number, b: Extract<Solid, { kind: 'box' }>): [number, number] | null {
   const dx = x - b.x;
@@ -197,11 +207,7 @@ export class FootprintCollider {
     for (const q of this.solidFlat) {
       if (q.kind === 'circle') {
         if (Math.hypot(x - q.x, z - q.z) < q.r + radius) return true;
-      } else {
-        const dx = x - q.x;
-        const dz = z - q.z;
-        if (Math.abs(dx * q.ux + dz * q.uz) < q.hu + radius && Math.abs(-dx * q.uz + dz * q.ux) < q.hv + radius) return true;
-      }
+      } else if (overlapsBox(x, z, radius, q)) return true;
     }
     const o = this.overlay;
     if (!o) return false;
@@ -220,11 +226,7 @@ export class FootprintCollider {
       for (const s of list) {
         if (s.kind === 'circle') {
           if (Math.hypot(x - s.x, z - s.z) < s.r + radius) return true;
-        } else {
-          const dx = x - s.x;
-          const dz = z - s.z;
-          if (Math.abs(dx * s.ux + dz * s.uz) < s.hu + radius && Math.abs(-dx * s.uz + dz * s.ux) < s.hv + radius) return true;
-        }
+        } else if (overlapsBox(x, z, radius, s)) return true;
       }
     }
     return false;

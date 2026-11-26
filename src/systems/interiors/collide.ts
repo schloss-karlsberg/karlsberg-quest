@@ -29,6 +29,7 @@ export class PlanQuery {
   private readonly cells = new Map<number, Wall[]>();
   private readonly cell = 4;
   private dynamic: Wall[] = [];
+  private readonly blockedRooms = new Set<number>();
   private readonly blockedDoors = new Set<number>();
   /** Prop outlines of the built buildings (tables, crates, tubs …), by building. */
   private readonly solids = new Map<string, Wall[]>();
@@ -237,11 +238,8 @@ export class PlanQuery {
 
   /** Block (or reopen) every door of a room, e.g. when it collapses in the fire. */
   setRoomBlocked(room: number, blocked: boolean): void {
-    for (const d of this.plan.doors) {
-      if (d.a !== room && d.b !== room) continue;
-      if (blocked) this.blockedDoors.add(d.index);
-      else this.blockedDoors.delete(d.index);
-    }
+    if (blocked) this.blockedRooms.add(room);
+    else this.blockedRooms.delete(room);
     this.rebuildDynamic();
   }
 
@@ -257,7 +255,7 @@ export class PlanQuery {
   }
 
   clearBlocks(): void {
-    this.blockedDoors.clear();
+    this.blockedRooms.clear();
     this.rebuildDynamic();
   }
 
@@ -267,8 +265,10 @@ export class PlanQuery {
 
   private rebuildDynamic(): void {
     this.dynamic = [];
-    for (const i of this.blockedDoors) {
-      const d = this.plan.doors[i]!;
+    this.blockedDoors.clear();
+    for (const d of this.plan.doors) {
+      if (!this.blockedRooms.has(d.a) && !this.blockedRooms.has(d.b)) continue;
+      this.blockedDoors.add(d.index);
       for (const off of [0.05, d.depth - 0.05]) {
         const mx = d.cx + d.nx * off;
         const mz = d.cz + d.nz * off;

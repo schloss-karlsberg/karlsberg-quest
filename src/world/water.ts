@@ -528,6 +528,7 @@ export class Water {
   depthInside(x: number, z: number): number {
     if (this.frozen) return -Infinity;
     const { cell, x0, z0 } = this.grid;
+    let depth = -Infinity;
     for (const bm of this.active) {
       const { body, sd, box } = bm;
       if (x < body.x0 - 6 || x > body.x1 + 6 || z < body.z0 - 6 || z > body.z1 + 6) continue;
@@ -542,9 +543,10 @@ export class Water {
       const a = sd[r * w + c]! * (1 - tx) + sd[r * w + c + 1]! * tx;
       const b2 = sd[(r + 1) * w + c]! * (1 - tx) + sd[(r + 1) * w + c + 1]! * tx;
       const v = a * (1 - tz) + b2 * tz;
-      if (v > -6) return v;
+      // A neighbouring pond's dry shore band can overlap the water we are standing in.
+      if (v > -6) depth = Math.max(depth, v);
     }
-    return -Infinity;
+    return depth;
   }
 
   private frozen = false;

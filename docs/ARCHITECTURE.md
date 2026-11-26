@@ -513,6 +513,11 @@ in the frustum within `reflectDist` (150 m, fading to the tree-line band over th
 `reflectionDistance`), re-rendered off-phase with the shadow map (`ReflectionSchedule`: never on
 the same frame, a cut forces a fresh one; `reflectionSkip` hides the near layers). Stats: `nature.cover.stats`, `nature.props.stats`, `water.stats`.
 
+For wading, `depthInside` takes the greatest signed shore distance where pond shore bands overlap.
+This keeps the upper pond of a cascade wet right beside the lower pond. Frozen water is walkable.
+For scenery obstacles, `FootprintCollider.hits` and `solidAt` use the distance to the nearest
+face or corner of a box, so a circular probe has the same clearance as a moving body.
+
 Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 diverging local
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
 Drawn inside a bubble (`setScanArea`, the `survey` system keeps it at 160 m around the player;
@@ -581,6 +586,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
+  store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
@@ -903,8 +910,8 @@ Round-4 (polish: set dressing) integration rules:
 
 ### fx (`src/systems/fx/`) – era shift, scan pulse, ambience, fire, Steinfraß
 - `shift:request {to, instant?}` → 3.5 s LiDAR transition (1.4 s crossfade in reduced motion,
-  none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`; counts
-  `meta.shifts`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`. Both paths
+  increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -1483,6 +1490,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   smoke creeping in slowly — the Festsaal already threatens on arrival. The player's room drives
   the post heat shimmer (`ctx.post.uniforms.uHeat`). Per-room uniforms `uRoomFire/Smoke/Heat/Floor`.
   `collapsed` → ceiling gone, debris, doors blocked once the player is out (caption for the sound).
+  A shared door reopens when both adjoining rooms are clear.
   A room near the player that catches fire or collapses drops charred beams out of its ceiling
   (`beams.ts`: they tip at one end, swing, fall and lie glowing; no collider; reduced motion: just
   there). The Festsaal choice (K3, `festsaal.ts`): story cue `festsaal:objects {room}` places four
@@ -1602,6 +1610,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
   (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
   goal, `travel:arrived`, autosave (synchronous under `?manual`).
+  Loading another save or starting a game during the curtain cancels the pending arrival and
+  releases the travel pause. The new game keeps its own position and save.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
@@ -1615,7 +1625,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   shows from the last; when the lid springs the column shoots up and goes out.
 - Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
   (1.8 s before playtest round 10) the move scale grows to ×1.45 over 1.4 s (multiplies combat's
-  `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
+  `moveScale`, never compounds). Releasing sprint eases the boost away even after a long run.
+  Entering combat, a hunt or an interior clears the boost and its run-up.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
   set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
   cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m

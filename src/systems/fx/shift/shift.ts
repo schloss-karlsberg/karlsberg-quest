@@ -430,7 +430,7 @@ export class ShiftEffect {
       am.bus('music')?.gain.setTargetAtTime(am.volumes.music, t, 0.6);
       this.savedVol = null;
     }
-    ctx.state.mutable.meta.shifts++;
+    if (this.reason !== 'caught') ctx.state.mutable.meta.shifts++;
     ctx.events.emit('shift:done', { from: this.from, to: this.to, reason: this.reason });
     for (const fn of this.onDone.splice(0)) fn();
   }

@@ -38,7 +38,7 @@ import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
 import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
 import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
-import { laufschrittTarget } from './laufschritt';
+import { LAUF_DELAY, LAUF_RISE, laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
@@ -162,7 +162,8 @@ class Travel {
   private sprint = 0;
   private lastWritten = Number.NaN;
   private lastBase = 1;
-  private journeying = false;
+  private curtain: HTMLElement | null = null;
+  private journeyTimer?: ReturnType<typeof setTimeout>;
   private goalStory: { x: number; z: number } | null = null;
   readonly trail = new Trail();
   private deepToastAt = -1e9;
@@ -234,7 +235,7 @@ class Travel {
       hunt: this.hunt,
       threat: this.storyThreat(),
       locked: ctx.state.state.flags['travel.locked'] === true,
-      busy: this.caughtPending || this.journeying || ctx.post.uniforms.uShift!.value > 0.02 || ctx.player.frozen,
+      busy: this.caughtPending || this.curtain !== null || ctx.post.uniforms.uShift!.value > 0.02 || ctx.player.frozen,
       flying: ctx.player.flying,
     });
     return b ? (TRAVEL_DE.block[b] ?? TRAVEL_DE.block.busy!) : null;
@@ -332,16 +333,30 @@ class Travel {
 
   // ---- journeys ------------------------------------------------------------------------------
 
+  private endJourney(fade = false): void {
+    const curtain = this.curtain;
+    if (!curtain) return;
+    clearTimeout(this.journeyTimer);
+    this.journeyTimer = undefined;
+    this.curtain = null;
+    if (fade) {
+      curtain.classList.remove('on');
+      setTimeout(() => curtain.remove(), 500);
+    } else curtain.remove();
+    this.ctx.pause.pop('travel');
+  }
+
   go(id: string, { force = false, fromMap = false } = {}): boolean {
     const ctx = this.ctx;
     const p = pointById(id);
     if (!p) return false;
     if (!force && (this.blockReason() || !this.known().some((k) => k.id === id))) return false;
+    this.endJourney();
     if (fromMap) ctx.ui.modals.closeAll();
     else this.closeMap();
-    this.journeying = true;
     const from = { x: ctx.player.position.x, z: ctx.player.position.z };
     const curtain = document.createElement('div');
+    this.curtain = curtain;
     curtain.className = 'kqt-travel-curtain';
     curtain.dataset.testid = 'travel-curtain';
     const cross = document.createElement('div');
@@ -372,6 +387,7 @@ class Travel {
       ctx.world.forest.invalidate();
       ctx.quality.hold(2);
       ctx.events.emit('travel:arrived', { id, from });
+      if (this.curtain !== curtain) return;
       this.trail.clear();
       this.trailFor = '';
       this.bestD = Infinity;
@@ -381,26 +397,13 @@ class Travel {
       // deterministic tests and bullet time (also switched on at runtime, playtest round 10): no
       // real-time wait while the game stands still
       arrive();
-      ctx.pause.pop('travel');
-      curtain.remove();
-      this.journeying = false;
+      if (this.curtain === curtain) this.endJourney();
       return true;
     }
-    setTimeout(
-      () => {
-        arrive();
-        setTimeout(
-          () => {
-            ctx.pause.pop('travel');
-            curtain.classList.remove('on');
-            setTimeout(() => curtain.remove(), 500);
-            this.journeying = false;
-          },
-          reduced ? 250 : 650,
-        );
-      },
-      reduced ? 450 : 1100,
-    );
+    this.journeyTimer = setTimeout(() => {
+      arrive();
+      if (this.curtain === curtain) this.journeyTimer = setTimeout(() => this.endJourney(true), reduced ? 250 : 650);
+    }, reduced ? 450 : 1100);
     return true;
   }
 
@@ -670,10 +673,15 @@ class Travel {
     // hunt, the stand and the patrols are tuned to the plain sprint), never in the palace rooms
     const indoors = !!ctx.state.state.flags['interior.room'];
     const free = !this.inCombat && !this.packOut && !indoors && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
-    if (free && moving && inp.isDown('sprint')) this.sprintT += dt;
-    else this.sprintT = Math.max(0, this.sprintT - dt * 4);
-    const target = laufschrittTarget(this.sprintT);
-    this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
+    if (free) {
+      if (moving && inp.isDown('sprint')) this.sprintT = Math.min(LAUF_DELAY + LAUF_RISE, this.sprintT + dt);
+      else this.sprintT = Math.max(0, this.sprintT - dt * 4);
+      const target = laufschrittTarget(this.sprintT);
+      this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
+    } else {
+      this.sprintT = 0;
+      this.sprint = 0;
+    }
     if (this.sprint < 0.002) this.sprint = 0;
     if (this.sprint > 0.3 && !this.slice.tips.includes('sprint')) {
       this.slice.tips.push('sprint');
@@ -927,6 +935,7 @@ class Travel {
       this.trail.clear();
     });
     const reload = (): void => {
+      this.endJourney();
       this.slice = this.loadSlice();
       this.dropAllVisuals();
       this.guards.clear();
@@ -1003,6 +1012,7 @@ class Travel {
   }
 
   dispose(): void {
+    this.endJourney();
     this.quiet.dispose();
     this.closeMap();
     this.hideCard();
