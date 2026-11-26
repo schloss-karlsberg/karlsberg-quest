@@ -54,8 +54,9 @@ let cards: UnlockCards | null = null;
 function tickCards(dt: number, ctx: GameContext): void {
   if (!cards) return;
   let hold = ctx.pause.reasons.has('title') || ctx.ui.cards.held;
-  // one centre card at a time (src/ui/cards.ts)
-  if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
+  // One centre card at a time. A tap on the touch surface dismisses it like a level card.
+  const dismiss = ctx.input.touchMode ? () => cards?.dismiss() : undefined;
+  if (cards.wants && !hold && !ctx.ui.cards.claim('skill', dismiss)) hold = true;
   // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
   cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
   if (!cards.wants) ctx.ui.cards.release('skill');

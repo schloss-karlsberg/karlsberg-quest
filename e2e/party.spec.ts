@@ -257,7 +257,17 @@ test('party (b): Escape dismisses the credits and the dogs lie at the player\'s 
 });
 
 test.describe('landscape phone', () => {
-  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  test.use({ viewport: { width: 667, height: 375 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.addEventListener('DOMContentLoaded', () => {
+        document.documentElement.style.setProperty('--kq-safe-l', '47px');
+        document.documentElement.style.setProperty('--kq-safe-r', '47px');
+        document.documentElement.style.setProperty('--kq-safe-b', '21px');
+      });
+    });
+  });
 
   test('animated credits stay inside the band above the letterbox', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -266,6 +276,7 @@ test.describe('landscape phone', () => {
     await step(page, 300);
     const credits = page.getByRole('marquee');
     await expect(credits).toBeVisible();
+    await expect(page.getByTestId('touch')).toBeHidden();
     const geometry = await credits.evaluate((band) => {
       const track = band.querySelector<HTMLElement>('[data-testid="party-credits-track"]')!;
       const bounds = band.getBoundingClientRect();
@@ -285,10 +296,11 @@ test.describe('landscape phone', () => {
       return {
         clipped,
         insideBand: line.top >= bounds.top && line.bottom <= bounds.bottom,
-        aboveLetterbox: bounds.bottom <= innerHeight * 0.93,
+        insideSafeWidth: bounds.left >= 47 && bounds.right <= innerWidth - 47,
+        aboveLetterbox: bounds.bottom <= innerHeight * 0.93 - 21,
       };
     });
-    expect(geometry).toEqual({ clipped: { left: true, inside: true, right: true }, insideBand: true, aboveLetterbox: true });
+    expect(geometry).toEqual({ clipped: { left: true, inside: true, right: true }, insideBand: true, insideSafeWidth: true, aboveLetterbox: true });
   });
 
   test('OS reduced motion keeps the credits still, swipe scrolls, and tap dismisses', async ({ page }) => {
@@ -310,6 +322,9 @@ test.describe('landscape phone', () => {
     const bounds = await credits.boundingBox();
     expect(bounds).not.toBeNull();
     const { x, y, width, height } = bounds!;
+    expect(x).toBeGreaterThanOrEqual(47);
+    expect(x + width).toBeLessThanOrEqual(667 - 47);
+    expect(y + height).toBeLessThanOrEqual(375 - 21);
     const client = await page.context().newCDPSession(page);
     const point = (delta: number) => ({ x: Math.round(x + width / 2), y: Math.round(y + height * 0.8 - delta) });
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(0)] });
@@ -321,7 +336,7 @@ test.describe('landscape phone', () => {
 
     const skip = page.getByRole('button', { name: 'Überspringen', exact: true });
     expect((await skip.boundingBox())?.height).toBeGreaterThanOrEqual(44);
-    await expect(page.getByTestId('touch')).toBeVisible();
+    await expect(page.getByTestId('touch')).toBeHidden();
     await skip.tap();
     await step(page, 2);
     await expect(credits).toHaveCount(0);

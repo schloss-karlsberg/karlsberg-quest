@@ -66,6 +66,7 @@ export class UnlockCards {
   private current: { el: HTMLElement; t: number; req: CardRequest; extra: CardRequest[]; dur: number } | null = null;
   /** Seconds a card stays (enter + read + exit). */
   static readonly DURATION = 6.2;
+  static readonly FADE = 0.6;
   onStamp: ((req: CardRequest) => void) | null = null;
   private stamped = false;
 
@@ -134,11 +135,19 @@ export class UnlockCards {
       this.onStamp?.(c.req);
       for (const x of c.extra) this.onStamp?.(x);
     }
-    if (c.t >= c.dur - 0.6 && !c.el.classList.contains('kqk-out')) c.el.classList.add('kqk-out');
+    if (c.t >= c.dur - UnlockCards.FADE && !c.el.classList.contains('kqk-out')) c.el.classList.add('kqk-out');
     if (c.t >= c.dur) {
       c.el.remove();
       this.current = null;
     }
+  }
+
+  /** A touch tap skips any pending stamp and starts the fade-out. */
+  dismiss(): void {
+    const c = this.current;
+    if (!c) return;
+    this.stamped = true;
+    c.t = Math.max(c.t, c.dur - UnlockCards.FADE);
   }
 
   /** Remove everything (new game / load). */
