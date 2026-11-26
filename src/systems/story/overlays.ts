@@ -100,6 +100,7 @@ export class StoryOverlays {
   readonly curtain: HTMLElement;
   private readonly curtainText: HTMLElement;
   private readonly curtainSub: HTMLElement;
+  private curtainTimer: number | undefined;
   private choice: OpenChoice | null = null;
   private readonly gauges = new Map<string, { el: HTMLElement; fill: HTMLElement }>();
   private readonly gaugeBox: HTMLElement;
@@ -168,6 +169,7 @@ export class StoryOverlays {
 
   /** Fade to black with a line (the caller moves the player meanwhile and lifts it). */
   curtainDown(text: string, sub: string): void {
+    window.clearTimeout(this.curtainTimer);
     this.curtainText.textContent = text;
     this.curtainSub.textContent = sub;
     // above any title card
@@ -185,11 +187,13 @@ export class StoryOverlays {
       this.curtainSub.textContent = sub ?? '';
     }
     this.curtain.classList.add('kqs-up');
-    window.setTimeout(() => this.curtain.classList.remove('kqs-down', 'kqs-up'), 2600);
+    window.clearTimeout(this.curtainTimer);
+    this.curtainTimer = window.setTimeout(() => this.clearCurtain(), 2600);
   }
 
-  /** Lift the curtain without a wake line (a load replaced the game under it; CSS fades it). */
-  curtainOff(): void {
+  clearCurtain(): void {
+    window.clearTimeout(this.curtainTimer);
+    this.curtainTimer = undefined;
     this.curtain.classList.remove('kqs-down', 'kqs-up');
   }
 
@@ -360,6 +364,6 @@ export class StoryOverlays {
   clear(): void {
     this.cardEl?.remove();
     this.cardEl = null;
-    this.curtain.classList.remove('kqs-down', 'kqs-up');
+    this.clearCurtain();
   }
 }

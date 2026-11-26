@@ -67,6 +67,79 @@ describe('the Warner’s trail (TrackField.addTrail)', () => {
   });
 });
 
+describe('which prints the pack follows in the K2 sneak ("Augen im Nebel")', () => {
+  // the k2_2-augen threat: three sentries on beats across the way, the Warner's trail running
+  // through them, and your own fresh prints crossing every beat on the way to the hedge
+  const BEATS = [
+    { a: { x: 1501, z: -559 }, b: { x: 1485, z: -550 } },
+    { a: { x: 1480, z: -561 }, b: { x: 1496, z: -569 }, speed: 0.8 },
+    { a: { x: 1490, z: -580 }, b: { x: 1474, z: -571 } },
+  ];
+  const meadow: SimWorld = {
+    heightAt: () => 300,
+    surfaceAt: () => 'meadow',
+    coverAt: () => 0,
+    bounds: () => ({ x0: 0, z0: -3000, x1: 3000, z1: 0 }),
+    trailBreakAt: () => null,
+  };
+  /** Unseen and unheard at the hedge: only prints could give you away. */
+  const hidden = player({ x: 1478, z: -584, stance: 'crouch', visibility: 0, noise: 0 });
+
+  function field(): TrackField {
+    const T = new TrackField();
+    T.addTrail(
+      [
+        { x: 1537, z: -476 },
+        { x: 1500, z: -542 },
+        { x: 1423, z: -680 },
+      ],
+      0,
+      1.5,
+      0.85,
+      1500,
+    );
+    // your crouched walk from the Apfelallee to the hedge, 0.55 m strides
+    const from = { x: 1503, z: -536 };
+    const to = { x: 1478, z: -584 };
+    const n = Math.floor(Math.hypot(to.x - from.x, to.z - from.z) / 0.55);
+    for (let i = 0; i <= n; i++) T.addPlayer(from.x + ((to.x - from.x) * i) / n, from.z + ((to.z - from.z) * i) / n, 0.48, 0, i % 2 ? 1 : -1, 0.45, null);
+    return T;
+  }
+  function pack(T: TrackField, beats = true): PackSim {
+    const o = opts({ x: 1488, z: -572, radius: 34, intensity: 0.25, hounds: 3, from: { x: 1500, z: -566 } });
+    return new PackSim(meadow, null, beats ? { ...o, beats: BEATS } : o, hidden, T, makeMode);
+  }
+
+  it('sentries on their beats keep their noses up: neither the Warner’s prints nor yours set them tracking', () => {
+    const T = field();
+    const sim = pack(T);
+    const yours = T.prints.filter((p) => p.agent === -1);
+    let crossed = 0;
+    for (let i = 0; i < 40 / DT; i++) {
+      for (const e of sim.update(DT, hidden)) expect(e.type, JSON.stringify(e)).not.toBe('tracking');
+      for (const h of sim.hounds) if (yours.some((p) => Math.hypot(p.x - h.x, p.z - h.z) < 1.4)) crossed++;
+    }
+    expect(crossed).toBeGreaterThan(0); // they did walk over your prints, more than once
+    expect(sim.state).toBe('calm');
+    expect(sim.trail).toBeNull();
+  });
+
+  it('once they have noticed you, your prints (never the Warner’s) lead them on', () => {
+    const T = field();
+    // a searching pack casts round where it lost you: right where both trails meet
+    const sim = pack(T);
+    sim.setState('searching', true);
+    sim.lastKnown = { x: 1500, z: -542 };
+    for (let i = 0; i < 1 / DT && !sim.trail; i++) sim.update(DT, hidden);
+    expect(sim.trail?.seg).toBe(0);
+    // a roaming pack (no beats) puts its nose down on your prints when a hound crosses them
+    const roam = pack(field(), false);
+    let picked: number | null = null;
+    for (let i = 0; i < 60 / DT && picked === null; i++) for (const e of roam.update(DT, hidden)) if (e.type === 'tracking' && e.on) picked = roam.trail!.seg;
+    expect(picked).toBe(0);
+  });
+});
+
 describe('the scent line: chasing round a wall', () => {
   /** The player runs from the pack's side round the wall's end and stops behind it. */
   const path = [

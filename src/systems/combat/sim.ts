@@ -8,6 +8,7 @@
  * frames; the game loop, the player's walking and every other system keep running.
  */
 import { ELITES, ENEMIES, enemyDef } from '../../rpg/enemies';
+import { isCleared } from '../../rpg/enemy-groups';
 import { BASE_STATS } from '../../rpg/stats';
 import type { CombatSlice, DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
 import { callOf, eliteIndex, escortHost, escortsOf, hazardOf, packWorthy, waveOf } from './packs';
@@ -60,7 +61,6 @@ import {
   heavyCharge,
   hitDamage,
   inCone,
-  isCleared,
   isPerfectDodge,
   leashBroken,
   nextCombo,
