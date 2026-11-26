@@ -36,6 +36,10 @@ the e2e test fails when a scene is over.
   baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader (CPU
   rasteriser): frame times there are 50–100× a real GPU and say little; calls, triangles, CPU
   time and bytes are exact.
+- **Hosted e2e** runs the draw-call, triangle and first-input transfer budgets. Run the timed
+  framerate cases in `e2e/framerate.spec.ts` and the walk sample in `e2e/walk.spec.ts` on a quiet
+  local machine with `scripts/dev/heavy.sh --exclusive`. Use `playwright.gpu.config.ts` for the
+  real-GPU specs.
 - **Real GPU, headless**: Chromium with `--enable-gpu --ignore-gpu-blocklist --use-angle=metal`
   (add `--disable-gpu-vsync --disable-frame-rate-limit` for uncapped timing) and call `kq.bench()`.
 - **Present-day ground cover on Niedrig (TASK-008):** `e2e/gpu/tour-groundcover.gpu.ts` records six

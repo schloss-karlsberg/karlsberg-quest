@@ -47,7 +47,7 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 
 ## The four gates
 
-Run all four before you open a pull request. CI runs the same checks.
+Run all four before you open a pull request. The Pages workflow runs them on pushes to `main`.
 
 ```sh
 pnpm typecheck    # tsc --noEmit
@@ -57,6 +57,22 @@ pnpm build        # production build
 ```
 
 ### End-to-end tests
+
+The GitHub Actions e2e workflow runs on every opened, updated or reopened pull request and on
+pushes to `main`. It builds once and runs the suite on eight hosted runners, each with one
+Chromium worker and SwiftShader. A newer run cancels the previous run for the same PR. Failed
+shards upload their HTML report, traces and screenshots as an `e2e-results-*` artifact.
+
+Use the Actions tab or the command below to run selected spec names on a branch. Leave `specs`
+blank to run the full suite.
+
+```sh
+gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>
+```
+
+Wall-clock framerate checks and the walk performance sample run locally on a quiet machine.
+The real-GPU suite and mobile UI tour have their own local configs. CI still runs the walk
+behaviour, graphics settings, render budgets and first-input transfer budget checks.
 
 The Playwright suites in `e2e/` drive a real browser. The release campaign uses
 `?manual&faststep` on every load, including the mid-chapter save and continue.
@@ -227,7 +243,7 @@ docs(release): how to cut a release
 
 - Open pull requests against `main`. Keep them focused on one topic, with a Conventional Commits
   title (see above).
-- CI runs typecheck, unit tests, content validation and the build.
+- Check the hosted e2e results on your pull request.
 - Fill in the pull request template: gates, asset credits, FIKTION labels.
 - For bugs, include the browser, GPU and URL flags, and if you can, the F8 note from the game.
 
