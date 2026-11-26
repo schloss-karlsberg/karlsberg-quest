@@ -97,7 +97,7 @@
     {"id": "quaternius.adventurer.player-mpfb-clips", "name": "Adventurer animation clips (retargeted)", "author": "Quaternius", "source": "https://poly.pizza/m/5EGWBMpuXq", "licence": "CC0-1.0", "files": ["models/chars/player-head-mpfb.glb"], "modified": "Alle 16 Adventurer-Animationen (models/camera/surveyor.glb) auf das MakeHuman-Skelett game_engine der Spielfigur übertragen (scripts/chars/mpfb/retarget.py). Drehungen mit angepasster Grundhaltung übertragen, Hüftbewegung an die Körpergröße angepasst, Arme mit Abstand zum Rumpf, Beine beim Auftreten gestreckt, aufrechte Haltung, lockere Finger und am Boden verankerte Füße.", "retrieved": "2026-11-21"}
   ],
   "libraries": [
-    {"name": "three.js (3D-Engine mit Ladefunktionen und Hilfsprogrammen aus examples/addons)", "licence": "MIT", "files": [], "source": "https://github.com/mrdoob/three.js (© 2010-2026 Mitwirkende an three.js)"},
+    {"name": "three.js (3D-Engine mit Ladefunktionen und Hilfsprogrammen aus examples/addons)", "licence": "MIT", "files": [], "source": "https://github.com/mrdoob/three.js (© 2010-2026 three.js authors)"},
     {"name": "meshoptimizer-Decoder (komprimierte glTF-Netze)", "licence": "MIT", "files": [], "source": "https://github.com/zeux/meshoptimizer (© 2016-2026 Arseny Kapoulkine; aus den Beispielen von three.js übernommen)"},
     {"name": "KTX-Parse (liest KTX2-Container)", "licence": "MIT", "files": [], "source": "https://github.com/donmccurdy/KTX-Parse (© Don McCurdy; aus den Beispielen von three.js übernommen)"},
     {"name": "zstddec (Zstandard-Decoder für KTX2)", "licence": "MIT", "files": [], "source": "https://github.com/donmccurdy/zstddec (© Don McCurdy; aus den Beispielen von three.js übernommen)"},
