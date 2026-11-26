@@ -442,6 +442,7 @@ Accessibility contract for feature systems:
 
 `game:start {resumed}`, `game:pause {paused}`, `era:change {from,to}` (world already switched),
 `scan:mode {mode}`, `player:stance {stance,previous}`, `player:fly {flying}`,
+`player:restored {}` (a load put the player back on the ground: position, view, stance),
 `player:step {x,z,surface,running}`, `player:teleport {x,z}`, `save:written {slot,reason}`,
 `save:loaded {slot}`, `settings:change {key}`, `ui:toast {text,ms?}`.
 Features add their own via declaration merging (see §4). Naming `<domain>:<what>`.
