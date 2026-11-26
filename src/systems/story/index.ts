@@ -417,6 +417,9 @@ class StoryRuntime {
       if (this.slice.ending && !this.slice.finished) this.finish();
     });
     ctx.events.on('save:loaded', () => {
+      // a curtain that was down belongs to the outgoing game: no wake teleport, meter reset or
+      // shift home in the loaded one
+      this.cancelCaught();
       this.resync();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
@@ -1431,6 +1434,19 @@ class StoryRuntime {
     this.caughtHoldS = Math.max(this.caughtHold / 1000, by === 'combat' ? 3.2 : 0);
     this.caughtHold = 2400;
     this.caughtCombat = by === 'combat';
+  }
+
+  /** A load under the curtain: drop the pending wake (teleport, meter reset, shift home, wake lines). */
+  private cancelCaught(): void {
+    if (!this.caughtBusy) return;
+    this.caughtBusy = false;
+    this.caughtT = 0;
+    this.caughtAt = null;
+    this.caughtCombat = false;
+    this.wakeLines = [];
+    this.ctx.player.frozen = false;
+    this.ctx.ui.hud.busy('caught', false, 0);
+    this.overlays.curtainOff();
   }
 
   private updateCaught(dt: number): void {

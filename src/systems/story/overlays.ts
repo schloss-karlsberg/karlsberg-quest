@@ -185,6 +185,11 @@ export class StoryOverlays {
     window.setTimeout(() => this.curtain.classList.remove('kqs-down', 'kqs-up'), 2600);
   }
 
+  /** Lift the curtain without a wake line (a load replaced the game under it; CSS fades it). */
+  curtainOff(): void {
+    this.curtain.classList.remove('kqs-down', 'kqs-up');
+  }
+
   /**
    * A plain fade to black (`to` 1) or back (0) over `seconds` (the tour's transitions, „Zur
    * Gruppe“). No text; prepended to the layer, so subtitles and cards stay readable on top.

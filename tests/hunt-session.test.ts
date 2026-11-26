@@ -4,8 +4,29 @@ import type { GameContext } from '../src/core/context';
 import hunt from '../src/systems/hunt';
 import story from '../src/systems/story';
 import { createStorySlice } from '../src/systems/story/engine';
+import type { StoryFile } from '../src/systems/story/types';
 import { explorationSession } from './exploration-fixture';
 import { initStory } from './story-session-fixture';
+
+// A two-beat campaign with a checkpoint, no portraits and no rendered objective (story-session-fixture).
+vi.mock('../src/systems/story/stories', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../src/systems/story/stories')>(),
+  loadBundledStories: () => [{
+    file: 'session.story.json',
+    story: {
+      chapter: 'session', order: 0, title_de: 'Test', start: 'gate',
+      checkpoint: { x: 300, z: 500, yaw: 0 },
+      beats: [
+        { id: 'gate', enter: [{ do: 'objective', text: 'Zum Tor' }], complete: { manual: true } },
+        { id: 'yard', enter: [{ do: 'objective', text: 'Zum Hof' }], complete: { manual: true } },
+      ],
+    } satisfies StoryFile,
+  }],
+}));
+vi.mock('../src/systems/story/dialogue/portraits', () => ({ ensurePortraitDefs: vi.fn() }));
+vi.mock('../src/systems/story/objectives', () => ({
+  ObjectiveView: class { set() {} frame() {} },
+}));
 
 function setup() {
   const { events, state, save, era, element } = explorationSession();
