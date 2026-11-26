@@ -1050,6 +1050,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Cache XP raises max HP during a checkpoint (TASK-025, 2026-11-26) | Combat mirrors the live HP after the XP grant and before travel releases the cache's save hold. Reloading preserves the HP from the new level. |
 | Partial consumable or cache saves (TASK-025, 2026-11-26) | Consumable use mirrors the restored resources before it checkpoints. Cache clearing checkpoints the opened flag, seeded pickups and XP together, after any cinematic hold. Both checkpoints bypass the autosave interval. |
 | A second tab writes an autosave during tour setup (TASK-024 review, 2026-11-26) | The title checks the stored bytes when the player selects „Neues Spiel“ and again before the tour starts. An occupied slot with changed bytes needs a fresh confirmation. Cancellation or a failed setup preserves the slot. |
 | An unreadable autosave appears to be resumable (TASK-024, 2026-11-26) | The title tests whether the autosave can be read and shows a German explanation when loading is unavailable. „Neues Spiel“ asks before replacing any occupied writable slot. Cancellation preserves the original bytes. |

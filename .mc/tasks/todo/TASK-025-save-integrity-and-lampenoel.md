@@ -40,8 +40,10 @@ even though its `ItemEffect` specifies 0.5.
 - [x] Immediate save and reload preserve one fewer Kräuterbalsam and 65 HP from a starting 20 HP with a 1× multiplier. A Node test covers Ausrüstung while paused, quick-use, and an empty stack.
 - [x] Riechsalz and Lampenöl persist stamina and Bannlicht within the player's caps.
 - [x] A two-supply cache saves its opened flag, both seeded pickup IDs and XP together, even just after another autosave or when a cinematic holds autosaves. Replaying the clear before or after reload leaves the payout unchanged.
+- [x] Cache XP that raises a full-health player to level 2 immediately saves and reloads 112 HP at the new level.
+- [x] Reload replaces changed live Atem and Bannlicht values, and the restored values survive the next combat step.
 - [x] Lampenöl adds 0.5 oil, lights the lantern, consumes one bottle and grants up to two Bannlicht charges. Tests cover 20% → 70% and 80% → 100%, plus full refills for story, home and Wegsteine.
-- [x] Update documentation and attempt the touched e2e spec and `e2e/smoke.spec.ts` on port 5413 with the machine-wide lock.
+- [x] Update documentation and attempt `e2e/world.spec.ts`, `e2e/progression.spec.ts` and `e2e/smoke.spec.ts` on port 5413 with the machine-wide lock.
 - [ ] Pass all four gates. Content validation needs a shell that allows the `tsx` IPC socket.
 
 ## Plan
@@ -76,6 +78,16 @@ cache checkpoint pending until playback ends. Preserve the existing pickup IDs a
 
 **Open questions:** None.
 
+### Fix round
+
+The cache checkpoint must include the live HP increase from a level-up. Reload coverage must
+verify that saved Atem and Bannlicht replace different live values and survive a combat step.
+Touching a Wegstein with low oil must refill the tank.
+
+- [x] Reproduce the stale HP save at the level 2 threshold, then synchronize combat resources before the cache checkpoint can be released.
+- [x] Exercise live combat restoration and add low-oil Wegstein coverage in the unit and browser tests.
+- [x] Update the architecture and changelogs, rerun the four gates, and attempt the touched browser specs and smoke under the shared lock.
+
 ## Progress
 
 - Branch `dev/task-025`, based on `d2d1f48`.
@@ -83,9 +95,13 @@ cache checkpoint pending until playback ends. Preserve the existing pickup IDs a
 - 2026-11-26. Cache payouts use a single checkpoint. The focused save and travel tests pass (43 tests), including recent autosaves, cinematic release and duplicate clear events after reload.
 - 2026-11-26. Git staging was blocked by a permission error creating the worktree's `index.lock`.
 - 2026-11-26. Updated the architecture, action RPG and PRD docs. Typecheck, unit tests (`Tests  1585 passed (1585)`) and build passed. `pnpm validate` stopped before validation because the sandbox denied the `tsx` IPC socket. Playwright attempted both specs under the lock and stopped before launching Chromium because the preview server could not bind `127.0.0.1:5413`.
+- 2026-11-26. The level-up regression reproduced 100 HP in the slot at level 2 and passes with the cache's combat sync. Temporarily removing live Atem and Bannlicht restoration and the Wegstein refill made all four corresponding unit cases fail. The Wegstein browser case now also starts at 20% oil and checks for a full tank.
+- 2026-11-26. Fix-round typecheck, unit tests (`Tests  1587 passed (1587)`, 0 failed) and build passed on Node 24. `pnpm validate` stopped at `listen EPERM` on the `tsx` IPC socket. The three locked browser runs stopped before launching Chromium at `listen EPERM` on `127.0.0.1:5413`.
+- 2026-11-26. The fix staged successfully. `git commit` and staging this final task note were denied access to the worktree's `index.lock`.
 
 ## Follow-ups
 
-- Run `pnpm validate` and the locked `e2e/progression.spec.ts` and `e2e/smoke.spec.ts` commands in a shell that permits socket listeners.
-- Stage and commit from a shell with write access to this worktree's Git index. The changes are in the worktree.
+- Run `pnpm validate` in a shell that permits the `tsx` IPC listener.
+- Run `e2e/world.spec.ts`, `e2e/progression.spec.ts` and `e2e/smoke.spec.ts` separately under the shared lock in a shell that permits the preview server to listen on port 5413.
+- Stage this final task note and commit the fix from a shell with access to the worktree's Git index lock.
 - Voiced dialogue text changes needed: none.

@@ -9,7 +9,8 @@
  *
  * Contract (src/systems/contracts.ts): listens to enemy:spawn / despawn (quests, story),
  * stats:changed / equip:change / item:use (progression), era:change, hub:enter / leave,
- * memorial:set, npc:spawn / despawn / conversation, game:start, save:loaded, settings:change;
+ * memorial:set, npc:spawn / despawn / conversation, game:start, save:loaded, settings:change,
+ * travel:poi (cache checkpoint);
  * emits enemy:spawned / killed / cleared / aggro, boss:phase, combat:hit / state / bann,
  * player:damaged / healed / died, xp:grant (kills) and player:caught {by:'combat'}.
  * Input actions: attack (LMB / K; hold = Wuchthieb), bannlicht (RMB / G), dodge (Space), the
@@ -326,6 +327,10 @@ class Combat {
     });
     ev.on('talent:learned', () => this.applyStats());
     ev.on('item:use', ({ item }) => this.useItem(item));
+    ev.on('travel:poi', ({ kind }) => {
+      // Cache XP can change live HP before the next combat step. Travel still holds saves here.
+      if (kind === 'cache') this.syncResources();
+    });
     ev.on('settings:change', ({ key }) => {
       if (key === 'gentleMode' || key === 'rauhnacht' || key === 'reducedMotion') this.applyStats();
       if (key === 'graphics') this.visuals.setQuality(ctx.quality.level);

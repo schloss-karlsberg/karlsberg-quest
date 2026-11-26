@@ -572,7 +572,7 @@ class Travel {
   private openCache(poi: Poi): void {
     if (this.slice.done.includes(poi.id)) return;
     const ctx = this.ctx;
-    // Loot placement and XP handlers can autosave. Keep the entire payout in one checkpoint.
+    // Loot placement and XP handlers can autosave. Hold through the combat sync on travel:poi.
     const hold = `travel:cache:${poi.id}`;
     ctx.save.hold(hold, true);
     try {

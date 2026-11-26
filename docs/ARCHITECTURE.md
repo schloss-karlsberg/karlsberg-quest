@@ -1648,7 +1648,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Pause → Sammlungen → Funde) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
   A cache holds autosaves while it records the opening, places every seeded pickup and grants XP.
-  The completed checkpoint bypasses the autosave interval and waits for any cinematic hold.
+  Combat mirrors its live resources on `travel:poi` after the cache grants XP and before travel
+  releases the hold. The checkpoint includes any HP gained when the player levels up, bypasses the
+  autosave interval and waits for any cinematic hold.
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows

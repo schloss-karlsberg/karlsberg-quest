@@ -1,9 +1,11 @@
-import { Scene } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
+import { ERA_INFO } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager, SettingsStore } from '../src/core/save';
 import { createInitialState, GameStateStore } from '../src/core/state';
+import { LEVEL_XP } from '../src/rpg/stats';
 import combat, { createCombatSlice } from '../src/systems/combat';
 import hunt from '../src/systems/hunt';
 import { newLantern } from '../src/systems/hunt/lanternLogic';
@@ -31,6 +33,7 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   vi.useFakeTimers();
   const elements: ElementStub[] = [];
   vi.stubGlobal('Node', ElementStub);
+  vi.stubGlobal('window', { kq: {} });
   vi.stubGlobal('document', {
     createElement: () => {
       const el = new ElementStub();
@@ -72,13 +75,14 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   const ctx = {
     state, events, save, pause,
     params: new URLSearchParams(), settings: new SettingsStore(storage), scene: new Scene(),
-    loop: { tick: 0 }, era: { current: 'today' },
+    loop: { tick: 0 }, era: { current: 'today', info: ERA_INFO.today }, camera: new PerspectiveCamera(),
     world: {
-      heightAt: () => 0, heightfields: { '1789': { slopeDeg: () => 0 } },
+      heightAt: () => 0, heightfields: { '2025': { heightAt: () => 0 }, '1789': { slopeDeg: () => 0 } },
       collider: { footprintAt: () => -1 }, surfaceAt: () => 'grass',
+      look: { disc: 'sun', sky: { stars: 0 }, sun: { elevation: 45 } },
     },
-    player: { flying: true, stats: { lanternLit: false } },
-    input: { touchMode: false, wasPressed: (action: string) => action === 'quickUse' && quickPressed },
+    player: { position: new Vector3(), yaw: 0, stance: 'stand', flying: true, stats: { lanternLit: false, speed: 0 } },
+    input: { touchMode: false, isDown: () => false, wasPressed: (action: string) => action === 'quickUse' && quickPressed },
     audio: { ctx: null, bus: () => null },
     ui: { modals, layer: () => new ElementStub(), hud: { dock() {} }, cards: { source() {} }, toast() {} },
     quality: { level: 'low', listeners: [] }, renderer: { domElement: new ElementStub() },
@@ -89,9 +93,10 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   hunt.init(ctx);
   combat.init(ctx);
   events.emit('game:start', { resumed: true });
+  combat.update(0); // Install the combat debug hooks without advancing game time.
 
   return {
-    ctx, state, events, save, storage, writes,
+    ctx, state, events, save, storage, writes, combatSim: window.kq!.combat!.sim()!,
     advance: (ms: number) => { now += ms; },
     useFromGear(item: string) {
       openPausePage(ctx.ui.modals, 'gear');
@@ -120,6 +125,28 @@ afterEach(() => {
 });
 
 describe('guarded cache checkpoints', () => {
+  it('saves the new full HP when cache XP raises the player to level 2', () => {
+    const level2Xp = LEVEL_XP[1]!;
+    const t = setup((state) => {
+      state.systems.progression!.xp = level2Xp - poiXp('cache', 1);
+      state.systems.combat!.hp = 100;
+    });
+    travel.init(t.ctx);
+    const cache = generatePois().find((poi) => poi.kind === 'cache')!;
+    const player = t.combatSim.p;
+    expect(player).toMatchObject({ hp: 100, max: 100 });
+
+    t.events.emit('enemy:cleared', { group: cache.id, kind: cache.enemy! });
+
+    expect(player).toMatchObject({ hp: 112, max: 112 });
+    const saved = t.save.peek()!;
+    expect(saved.systems.progression).toMatchObject({ level: 2, xp: level2Xp });
+    expect(saved.systems.combat?.hp).toBe(112);
+    expect(t.writes).toEqual(['poi']);
+    expect(t.save.load()).toBe(true);
+    expect(player).toMatchObject({ hp: 112, max: 112 });
+  });
+
   it.each(['idle', 'recent', 'cinematic'])('saves the entire two-supply payout with %s autosaves', (timing) => {
     const t = setup(() => {});
     travel.init(t.ctx);
@@ -192,14 +219,19 @@ describe('consumable checkpoints', () => {
     expect(t.writes).toEqual(['before-use']);
   });
 
-  it('saves restored Atem within the stamina cap', () => {
+  it('restores saved Atem within the stamina cap on the next combat step', () => {
     const t = setup((state) => {
       const prog = state.systems.progression!;
       prog.inventory['item.riechsalz'] = 1;
       prog.quick = 'item.riechsalz';
     });
     t.quickUse();
+    expect(t.save.peek()?.systems.combat?.stamina).toBe(100);
+    const stamina = t.combatSim.p.st;
+    stamina.stamina = 25;
+    stamina.idle = 0;
     expect(t.save.load()).toBe(true);
+    combat.update(1 / 60);
     expect(t.state.state.systems.combat?.stamina).toBe(100);
     expect(t.state.state.systems.progression?.inventory['item.riechsalz']).toBeUndefined();
   });
@@ -211,7 +243,10 @@ describe('consumable checkpoints', () => {
       state.systems.combat!.bann = bann;
     });
     t.useFromGear('item.lampenoel');
+    expect(t.save.peek()?.systems.combat?.bann).toBe(2);
+    t.combatSim.p.bann = 0;
     expect(t.save.load()).toBe(true);
+    combat.update(1 / 60);
     expect(t.state.state.systems.combat?.bann).toBe(2);
     expect(t.state.state.systems.progression?.inventory['item.lampenoel']).toBe(1);
     expect(t.state.state.systems.hunt?.lantern?.oil).toBeCloseTo(expected);
@@ -227,5 +262,20 @@ describe('consumable checkpoints', () => {
     lantern.oil = 0.2;
     t.events.emit('hub:enter', {});
     expect(lantern.oil).toBe(1);
+  });
+
+  it('refills low lantern oil when touching a Wegstein', () => {
+    const t = setup((state) => { state.systems.hunt!.lantern!.oil = 0.2; });
+    travel.init(t.ctx);
+    const shrine = generatePois().find((poi) => poi.kind === 'shrine' && poi.era === 'today' && poi.chapter === 'prolog')!;
+    const lantern = t.state.state.systems.hunt!.lantern!;
+    expect(lantern).toMatchObject({ oil: 0.2, lit: false });
+
+    t.ctx.player.flying = false;
+    t.ctx.player.position.set(shrine.x, 0, shrine.z);
+    travel.update(1 / 60, t.ctx);
+
+    expect(lantern).toMatchObject({ oil: 1, lit: false });
+    expect(t.combatSim.p.hp).toBe(100);
   });
 });
