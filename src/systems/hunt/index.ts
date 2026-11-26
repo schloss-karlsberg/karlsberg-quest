@@ -373,6 +373,11 @@ class Hunt {
       this.syncLantern(true);
       this.endCaught();
       if (this.sim) this.dismissPack('debug', true);
+      // staged (ending) and dissolving hounds belong to the outgoing game; hunt runs before the
+      // story, so a tableau the incoming slot sets again comes after this
+      this.tableau = null;
+      this.fading = null;
+      this.visuals.clear();
       this.restorePending = true;
     });
     // story set pieces (ch. 2): the Warner's trail in the hoarfrost; the pack holds still during W4
