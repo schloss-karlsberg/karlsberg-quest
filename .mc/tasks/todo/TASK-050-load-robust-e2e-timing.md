@@ -35,7 +35,7 @@ preserving failures for gameplay, rendering and pacing regressions.
 - [x] Audit the other specs for similar wall-clock assertions and convert the relevant normal-suite checks.
 - [x] Unit-test the test logic that changes and document the rule in CONTRIBUTING.md and the PRD changelog.
 - [x] Pass typecheck, unit tests and build.
-- [ ] Pass content validation and run the changed specs and smoke with the shared lock on port 5438.
+- [x] Pass content validation and run the changed specs and smoke with the shared lock on port 5438 (see the second review below).
 
 ## Plan
 
@@ -106,3 +106,17 @@ can miss regressions or pick up unrelated streaming work.
 - Run `walk`, `framerate`, `voice`, and `smoke` using the locked port 5438 command above, one spec
   per command. Check the walk deltas and body visibility on all three presets.
 - Verify `pol-flow` from the initial implementation round with the same lock.
+
+## Second review (2026-11-26)
+
+- All five first-round findings are confirmed fixed in `ff3eeb6` and `0ad785c`.
+- The held-frame checks required zero draws in a short window, but streamed assets and the delayed
+  camera-zoom settings save request redraws asynchronously; the old spec allowed one such stray
+  frame. `43f5eec` observes 60 callbacks and allows at most two draws, so a redraw on every frame
+  still fails. CONTRIBUTING.md and the performance guide say so.
+- Gates outside the sandbox: `pnpm typecheck` passed; `pnpm test` reported `Test Files  121 passed (121)`
+  and `Tests  1591 passed (1591)`; `pnpm validate` reported `✓ content valid (1 warning(s))`;
+  `pnpm build` passed.
+- Locked e2e on port 5438: `framerate` 5 passed (after `43f5eec`); `pol-flow` 4 passed, `walk` 4 passed
+  (added work: 346 calls and 247,736 triangles on Hoch/Mittel, 173 and 123,868 on Niedrig) and
+  `smoke` 7 passed at `0ad785c`. `voice` was not run in this round.
