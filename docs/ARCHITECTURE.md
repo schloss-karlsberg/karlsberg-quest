@@ -498,6 +498,25 @@ retries pending forced checkpoints with the current state after backoff and any 
 Tab hide and return to title each get one immediate attempt while no hold is active. A successful
 autosave clears the failure streak. Manual saves can still be attempted.
 
+Save invariants (enforced by the seeded fuzz in `tests/save-fuzz.test.ts`, TASK-053):
+- **Round trip.** Every registered slice survives save → JSON → load → save byte for byte, and the
+  owner's restore code gives back the generated state (200 seeded cases per slice).
+- **Legacy and sparse slices.** A v0 save, a missing field and unknown fields or systems load; known
+  progress and unknown data are kept.
+- **Unreadable.** Bad JSON, a non-object state, `systems` or slice, a newer version and malformed
+  story fields (`readStorySlice`) make the slot unreadable: it is never loaded, the running state and
+  the stored bytes stay untouched.
+- **Owner restore is total.** Any other corrupt field still loads; the owner falls back per field
+  (default, or the entry is dropped) instead of throwing or restoring NaN or a wrong type. The
+  helpers live in `src/core/saved.ts`. Owners that restore without a scene are fuzzed directly:
+  animals, combat resources, bottles, photo, progression, quests and walkers.
+- **Value lists follow their unions.** A list of allowed saved values (look times, endings, quest
+  states, deer and dog states, party variant and credits) is built with `allOf<Union>()`, so adding
+  a union value without the list fails the typecheck instead of rejecting or resetting new saves.
+- **Real saves.** The release fixtures in `tests/fixtures/saves/` load, restore without losing
+  entries and re-save. `KQ_SAVE_DIRS=<dir>[:<dir>…]` adds more slot directories (for example the
+  campaign's `test-results/campaign-saves`); `KQ_FUZZ_CASES` raises the corrupt-slot count.
+
 ## 8. Eras and world look
 
 `ERAS = today | 1789 | 1793-02 | 1793-07 | 1796`. `today` uses the 2025 DTM, all others the
