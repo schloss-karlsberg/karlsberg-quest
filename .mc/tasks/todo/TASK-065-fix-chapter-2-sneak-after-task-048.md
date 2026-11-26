@@ -69,6 +69,13 @@ casts round where it lost you and picks up your prints there.
 - Docs: `docs/ARCHITECTURE.md` (snow tracks), `docs/ACTION-RPG.md` (§14 risks, K2 pacing),
   `docs/PRD.md` changelog.
 
-## Results
+## Results (2026-11-26)
 
-See the PR description for gate and e2e results.
+- Browser, the sneak alone: on main the straight walk was caught at t = 23 s. With the new walker
+  but without the rule it was caught at t = 28 s. With both, the hedge was reached at t = 49 s
+  without being caught, and the pack and cones are gone afterwards.
+- `pnpm typecheck` passed; `pnpm test`: `Test Files  137 passed (137)`,
+  `Tests  1741 passed | 2 todo (1743)`, 0 failed; `pnpm validate`: `✓ content valid (1 warning(s))`;
+  `pnpm build` passed.
+- e2e (heavy.sh, one worker): `chapter-k2` 2 passed (9.1 min), `animals` 4 passed, `hunt` 3 passed,
+  `hunt-ext` 6 passed, `smoke` 9 passed.
