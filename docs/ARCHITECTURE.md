@@ -1618,10 +1618,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   reload. Arrival is synchronous under `?manual`. Returning to the title, loading another save,
   starting a game or disposing the travel system cancels a pending arrival, releases the travel
   pause and removes any curtain immediately, including during its fade. The title autosave runs
-  after this cleanup.
-  (`survey:show-map`). Both Enter and the travel button require an unblocked point at least 25 m away.
-  Travel: a curtain, pause `travel`, teleport beside the tripod facing the
-  goal, `travel:arrived`, autosave (synchronous under `?manual`).
+  after this cleanup. Both Enter and the travel button require an unblocked point at least 25 m away.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
