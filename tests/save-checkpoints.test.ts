@@ -4,7 +4,8 @@ import type { GameContext } from '../src/core/context';
 import { ERA_INFO } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager, SettingsStore } from '../src/core/save';
-import { createInitialState, GameStateStore } from '../src/core/state';
+import { createInitialState, deserializeState, GameStateStore } from '../src/core/state';
+import { enemyDef } from '../src/rpg/enemies';
 import { LEVEL_XP } from '../src/rpg/stats';
 import combat, { createCombatSlice } from '../src/systems/combat';
 import hunt from '../src/systems/hunt';
@@ -21,11 +22,18 @@ class ElementStub extends EventTarget {
   readonly style = {};
   readonly classList = { add() {}, remove() {}, toggle() {} };
   readonly content = { firstElementChild: null };
+  private readonly children: ElementStub[] = [];
+
+  constructor(private text = '') { super(); }
+
+  get textContent(): string { return this.text + this.children.map((el) => el.textContent).join(''); }
+  set textContent(text: string) { this.text = text; }
 
   append() {}
-  appendChild() {}
+  appendChild(el: ElementStub) { this.children.push(el); }
   replaceChildren() {}
   remove() {}
+  querySelector() { return null; }
   setAttribute(key: string, value: string) { this.attributes.set(key, value); }
 }
 
@@ -40,10 +48,10 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
       elements.push(el);
       return el;
     },
-    createTextNode: () => new ElementStub(),
+    createTextNode: (text: string) => new ElementStub(text),
     getElementById: () => null,
     querySelector: () => null,
-    head: new ElementStub(),
+    head: new ElementStub(), body: new ElementStub(),
   });
   const initial = createInitialState();
   initial.systems.progression = createProgressionSlice();
@@ -59,6 +67,7 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   const writes: string[] = [];
   events.on('save:written', ({ reason }) => writes.push(reason));
   let quickPressed = false;
+  let attackPressed = false;
   const pause = { paused: false };
   const modals = {
     count: 0,
@@ -75,16 +84,17 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   const ctx = {
     state, events, save, pause,
     params: new URLSearchParams(), settings: new SettingsStore(storage), scene: new Scene(),
-    loop: { tick: 0 }, era: { current: 'today', info: ERA_INFO.today }, camera: new PerspectiveCamera(),
+    loop: { tick: 0, time: 0 }, era: { current: 'today', info: ERA_INFO.today }, camera: new PerspectiveCamera(),
     world: {
-      heightAt: () => 0, heightfields: { '2025': { heightAt: () => 0 }, '1789': { slopeDeg: () => 0 } },
+      heightAt: () => 0, heightfield: { slopeDeg: () => 0 },
+      heightfields: { '2025': { heightAt: () => 0 }, '1789': { slopeDeg: () => 0 } },
       collider: { footprintAt: () => -1 }, surfaceAt: () => 'grass',
       look: { disc: 'sun', sky: { stars: 0 }, sun: { elevation: 45 } },
     },
-    player: { position: new Vector3(), yaw: 0, stance: 'stand', flying: true, stats: { lanternLit: false, speed: 0 } },
-    input: { touchMode: false, isDown: () => false, wasPressed: (action: string) => action === 'quickUse' && quickPressed },
-    audio: { ctx: null, bus: () => null },
-    ui: { modals, layer: () => new ElementStub(), hud: { dock() {} }, cards: { source() {} }, toast() {} },
+    player: { position: new Vector3(), yaw: 0, stance: 'stand', flying: true, stats: { lanternLit: false, speed: 0 }, impulse() {} },
+    input: { enabled: true, touchMode: false, isDown: () => false, wasPressed: (action: string) => (action === 'quickUse' && quickPressed) || (action === 'attack' && attackPressed) },
+    audio: { ctx: null, unlocked: false, bus: () => null, noise: () => null },
+    ui: { modals, layer: () => new ElementStub(), hud: { el: new ElementStub(), dock() {}, busy() {} }, cards: { source() {} }, toast() {} },
     quality: { level: 'low', listeners: [] }, renderer: { domElement: new ElementStub() },
     t: (key: string) => key,
   } as unknown as GameContext;
@@ -96,8 +106,14 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   combat.update(0); // Install the combat debug hooks without advancing game time.
 
   return {
-    ctx, state, events, save, storage, writes, combatSim: window.kq!.combat!.sim()!,
+    ctx, state, events, save, storage, writes, elements, combatSim: window.kq!.combat!.sim()!,
     advance: (ms: number) => { now += ms; },
+    attack() {
+      attackPressed = true;
+      combat.update(1 / 60);
+      attackPressed = false;
+      for (let i = 0; i < 27; i++) combat.update(1 / 60);
+    },
     useFromGear(item: string) {
       openPausePage(ctx.ui.modals, 'gear');
       expect(pause.paused).toBe(true);
@@ -147,48 +163,96 @@ describe('guarded cache checkpoints', () => {
     expect(player).toMatchObject({ hp: 112, max: 112 });
   });
 
-  it.each(['idle', 'recent', 'cinematic'])('saves the entire two-supply payout with %s autosaves', (timing) => {
-    const t = setup(() => {});
+  it.each(['idle', 'recent', 'cinematic', 'failed write'])('checkpoints the last guard and two-supply payout together with %s autosaves', (timing) => {
+    const t = setup((state) => { state.systems.progression!.equipped.weapon = 'item.stab.esche'; });
     travel.init(t.ctx);
-    const cache = generatePois().find((poi) => poi.kind === 'cache' && cacheLoot(poi.id).length === 2)!;
+    const cache = generatePois().find((poi) => poi.kind === 'cache' && poi.era === 'today' && poi.chapter === 'prolog' && cacheLoot(poi.id).length === 2)!;
     const items = cacheLoot(cache.id);
     const ids = items.map((_item, i) => `${cache.id}.${i}`);
-    const xp = poiXp('cache', 1);
-    const clear = () => t.events.emit('enemy:cleared', { group: cache.id, kind: cache.enemy! });
+    const xp = poiXp('cache', 1) + enemyDef(cache.enemy!)!.xp;
     const grant = vi.fn();
     t.events.on('xp:grant', grant);
 
+    const { player } = t.ctx;
+    player.flying = false;
+    player.position.set(cache.x, 0, cache.z);
+    travel.update(1 / 60, t.ctx);
+    const group = t.combatSim.groups[cache.id]!;
+    group.killed = group.count - 1;
+    combat.update(1 / 60);
+    const guard = t.combatSim.live().find((e) => e.group === cache.id)!;
+    guard.hp = 1;
+    guard.reformed = true; // A reformer has used its one reform, so this hit finishes the fight.
+    player.position.set(guard.x, 0, guard.z + 1.8);
+
     expect(t.save.autosave('before-clear')).toBe(true);
     const before = t.storage.getItem(SAVE_KEY('auto'));
-    t.advance(timing === 'idle' ? t.save.minIntervalMs : 1);
+    t.advance(timing === 'idle' || timing === 'failed write' ? t.save.minIntervalMs : 1);
     if (timing === 'cinematic') t.save.hold('cinematic', true);
-    const payouts: unknown[] = [];
-    t.events.on('save:written', () => {
-      const saved = t.save.peek()!;
-      payouts.push({ done: saved.systems.travel?.done, placed: Object.keys(saved.systems.progression?.placed ?? {}), xp: saved.systems.progression?.xp });
-    });
+    const writes = vi.spyOn(t.storage, 'setItem');
+    if (timing === 'failed write') {
+      // Let a partial write succeed so it would survive a failed final checkpoint.
+      writes.mockImplementation((key, raw) => {
+        if (deserializeState(raw).systems.travel?.done.includes(cache.id)) throw new Error('storage is full');
+        MemoryStorage.prototype.setItem.call(t.storage, key, raw);
+      });
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+    }
 
-    clear();
+    t.attack();
+    expect(group.killed).toBe(group.count);
     if (timing === 'cinematic') {
       expect(t.save.held).toBe(true);
       expect(t.storage.getItem(SAVE_KEY('auto'))).toBe(before);
-      expect(payouts).toEqual([]);
+      expect(writes).not.toHaveBeenCalled();
       t.save.hold('cinematic', false);
     }
-    expect(payouts).toEqual([{ done: [cache.id], placed: ids, xp }]);
+    expect(writes).toHaveBeenCalledTimes(1);
+    const saved = deserializeState(writes.mock.calls[0]![1]);
+    expect(saved.systems.combat?.groups[cache.id]?.killed).toBe(group.count);
+    expect(saved.systems.travel?.done).toEqual([cache.id]);
+    expect(Object.keys(saved.systems.progression?.placed ?? {}).filter((id) => id.startsWith(`${cache.id}.`))).toEqual(ids);
+    expect(saved.systems.progression?.xp).toBe(xp);
+
+    if (timing === 'failed write') {
+      expect(t.storage.getItem(SAVE_KEY('auto'))).toBe(before);
+      expect(t.save.load()).toBe(true);
+      expect(t.combatSim.groups[cache.id]?.killed).toBe(group.count - 1);
+      expect(t.state.state.systems.travel?.done).not.toContain(cache.id);
+      return;
+    }
     const slot = t.storage.getItem(SAVE_KEY('auto'));
 
+    const clear = () => t.events.emit('enemy:cleared', { group: cache.id, kind: cache.enemy! });
     clear();
     expect(t.save.load()).toBe(true);
     clear();
     const prog = t.state.state.systems.progression!;
     expect(t.state.state.systems.travel?.done).toEqual([cache.id]);
-    expect(Object.values(prog.placed!).map(({ id, item }) => [id, item])).toEqual(ids.map((id, i) => [id, items[i]]));
+    expect(ids.map((id) => prog.placed![id]?.item)).toEqual(items);
     expect(prog.xp).toBe(xp);
-    expect(grant).toHaveBeenCalledTimes(1);
+    expect(grant.mock.calls.filter(([event]) => event.reason === 'poi')).toHaveLength(1);
     expect(t.storage.getItem(SAVE_KEY('auto'))).toBe(slot);
     expect(t.writes).toEqual(['before-clear', 'poi']);
   });
+});
+
+it('restarts Bannlicht recharge after loading two of three charges', () => {
+  const t = setup((state) => {
+    state.systems.progression!.talents['laterne.weit'] = 1;
+    state.systems.progression!.talents['laterne.kreis'] = 1;
+    state.systems.combat!.bann = 2;
+  });
+  const { p, opt } = t.combatSim;
+  expect(p).toMatchObject({ bann: 2, bannMax: 3 });
+  expect(t.save.autosave('before-fight')).toBe(true);
+  p.bann = 1;
+  p.bannT = opt.stats.bannRecharge - 1 / 120;
+
+  expect(t.save.load()).toBe(true);
+  combat.update(1 / 60);
+  expect(p.bann).toBe(2);
+  expect(p.bannT).toBeCloseTo(1 / 60);
 });
 
 describe('consumable checkpoints', () => {
@@ -219,6 +283,30 @@ describe('consumable checkpoints', () => {
     expect(t.writes).toEqual(['before-use']);
   });
 
+  it('uses Kalkstaub in combat and keeps its consumption on the regular autosave interval', () => {
+    const t = setup((state) => {
+      state.systems.progression!.inventory['item.kalkstaub'] = 2;
+      state.systems.progression!.quick = 'item.kalkstaub';
+    });
+    const group = window.kq!.combat!.spawn('nebelling', { dist: 3 });
+    const enemy = t.combatSim.live().find((e) => e.group === group)!;
+    expect(enemy.stun).toBe(0);
+    expect(t.save.autosave('before-use')).toBe(true);
+    t.advance(1);
+
+    t.quickUse();
+    expect(enemy.stun).toBeGreaterThan(0);
+    expect(t.state.state.systems.progression?.inventory['item.kalkstaub']).toBe(1);
+    expect(t.writes).toEqual(['before-use']);
+    expect(t.save.load()).toBe(true);
+    expect(t.state.state.systems.progression?.inventory['item.kalkstaub']).toBe(2);
+
+    t.advance(t.save.minIntervalMs);
+    t.quickUse();
+    expect(t.writes).toEqual(['before-use', 'progression-use']);
+    expect(t.save.peek()?.systems.progression?.inventory['item.kalkstaub']).toBe(1);
+  });
+
   it('restores saved Atem within the stamina cap on the next combat step', () => {
     const t = setup((state) => {
       const prog = state.systems.progression!;
@@ -236,13 +324,15 @@ describe('consumable checkpoints', () => {
     expect(t.state.state.systems.progression?.inventory['item.riechsalz']).toBeUndefined();
   });
 
-  it.each([[0.2, 0.7, 0], [0.8, 1, 1]])('saves oil filled from %s to %s and Bannlicht within its cap', (oil, expected, bann) => {
+  it.each([[0, 0.5, 0], [0.2, 0.7, 0], [0.8, 1, 1]])('shows the half-tank refill and saves oil from %s to %s and Bannlicht within its cap', (oil, expected, bann) => {
     const t = setup((state) => {
       state.systems.progression!.inventory['item.lampenoel'] = 2;
       state.systems.hunt!.lantern!.oil = oil;
       state.systems.combat!.bann = bann;
     });
     t.useFromGear('item.lampenoel');
+    const row = t.elements.findLast((el) => el.attributes.get('data-testid') === 'gear-supply-item.lampenoel');
+    expect(row?.textContent).toContain('füllt 50 % des Tanks nach');
     expect(t.save.peek()?.systems.combat?.bann).toBe(2);
     t.combatSim.p.bann = 0;
     expect(t.save.load()).toBe(true);

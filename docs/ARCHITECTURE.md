@@ -1650,7 +1650,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   A cache holds autosaves while it records the opening, places every seeded pickup and grants XP.
   Combat mirrors its live resources on `travel:poi` after the cache grants XP and before travel
   releases the hold. The checkpoint includes any HP gained when the player levels up, bypasses the
-  autosave interval and waits for any cinematic hold.
+  autosave interval and waits for any cinematic hold. Combat also holds autosaves while it handles
+  one simulation step's events, so the last guard's kill (its XP request) and the cache opening on
+  `enemy:cleared` land in one write: no save has the guards cleared and the cache still shut.
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
@@ -2198,7 +2200,10 @@ Rules that came out of it:
   Lebenskraft / Atem / Bannlicht and applies the `ItemEffect` from `src/rpg/items.ts` (heal ×
   `stats.healing`, stamina, bann, Kalkstaub burst). Combat mirrors the resources into its slice during
   that event. Progression requests Lampenöl's oil increment through `lantern:request`, then checkpoints
-  the successful use, including from the gear page while the simulation is paused.
+  the successful use, including from the gear page while the simulation is paused. Kalkstaub is the
+  exception: its stun exists only in the running fight (enemies are rebuilt on load), so its use stays
+  on the throttled autosave like other combat state. The Bannlicht recharge timer is not saved;
+  loading restarts it, so a loaded charge count never refills on the first tick.
 - **Stats**: `stats:changed {stats}` at boot, again on `game:start` (systems registered after
   progression miss the boot one) and whenever `deriveStats(slice, {gentle, rauhnacht})` changes.
 - **Loot**: progression rolls on `enemy:killed`, emits `loot:drop`, then `loot:place` per item

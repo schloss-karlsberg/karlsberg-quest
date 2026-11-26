@@ -38,11 +38,12 @@ even though its `ItemEffect` specifies 0.5.
 ## Acceptance Criteria
 
 - [x] Immediate save and reload preserve one fewer Kräuterbalsam and 65 HP from a starting 20 HP with a 1× multiplier. A Node test covers Ausrüstung while paused, quick-use, and an empty stack.
-- [x] Riechsalz and Lampenöl persist stamina and Bannlicht within the player's caps.
-- [x] A two-supply cache saves its opened flag, both seeded pickup IDs and XP together, even just after another autosave or when a cinematic holds autosaves. Replaying the clear before or after reload leaves the payout unchanged.
+- [x] Riechsalz and Lampenöl persist stamina and Bannlicht within the player's caps. Kalkstaub is excluded from the immediate checkpoint: its stun is not saved, so its use follows the regular autosave interval.
+- [x] Loading restarts the Bannlicht recharge timer, so a loaded partial charge count does not refill on the first combat step.
+- [x] A two-supply cache saves its opened flag, both seeded pickup IDs and XP together, even just after another autosave or when a cinematic holds autosaves. Replaying the clear before or after reload leaves the payout unchanged. Killing the last guard and opening the cache share one write, so a failed write never leaves cleared guards with an unopened cache.
 - [x] Cache XP that raises a full-health player to level 2 immediately saves and reloads 112 HP at the new level.
 - [x] Reload replaces changed live Atem and Bannlicht values, and the restored values survive the next combat step.
-- [x] Lampenöl adds 0.5 oil, lights the lantern, consumes one bottle and grants up to two Bannlicht charges. Tests cover 20% → 70% and 80% → 100%, plus full refills for story, home and Wegsteine.
+- [x] Lampenöl adds 0.5 oil, lights the lantern, consumes one bottle and grants up to two Bannlicht charges. Tests cover 0% → 50%, 20% → 70% and 80% → 100%, plus full refills for story, home and Wegsteine. Ausrüstung shows „füllt 50 % des Tanks nach“.
 - [x] Update documentation and attempt `e2e/world.spec.ts`, `e2e/progression.spec.ts` and `e2e/smoke.spec.ts` on port 5413 with the machine-wide lock.
 - [ ] Pass all four gates. Content validation needs a shell that allows the `tsx` IPC socket.
 

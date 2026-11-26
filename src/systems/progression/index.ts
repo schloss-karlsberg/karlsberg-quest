@@ -339,7 +339,9 @@ class Progression {
   quickUse(item?: string): boolean {
     const id = item ?? this.core.quickItem();
     if (this.core.use(id)) {
-      this.changed('use', true);
+      // Saved resources (HP, Atem, oil, Bannlicht) write at once. Kalkstaub's stun lives only in the
+      // running fight, so its use stays on the throttled autosave like other combat state.
+      this.changed('use', !this.item(id)?.effect?.burst);
       return true;
     }
     this.hud.quickPulse(false);

@@ -444,6 +444,8 @@ class Combat {
     p.hp = s.hp > 0 ? Math.min(p.max, s.hp) : p.max;
     p.st.stamina = Math.min(p.st.max, s.stamina);
     p.bann = Math.min(p.bannMax, s.bann);
+    // The recharge timer is not saved: a loaded charge count starts a fresh recharge.
+    p.bannT = 0;
   }
 
   private syncResources(): void {
@@ -581,7 +583,14 @@ class Combat {
       if (this.revealLeft <= 0) ctx.ui.hud.busy('reveal', false, 0);
     }
     const evs = this.frozenAI ? this.stepFrozen(dt * slowK, inp) : this.sim.step(dt * slowK, inp);
-    for (const e of evs) this.onEvent(e, inp);
+    // One step's events land in one autosave: a last guard's kill XP must not persist a cleared
+    // cache group before travel opens the cache on enemy:cleared.
+    ctx.save.hold('combat:step', true);
+    try {
+      for (const e of evs) this.onEvent(e, inp);
+    } finally {
+      ctx.save.hold('combat:step', false);
+    }
     this.fights.observe(dt, evs, this.viewForFights());
     // the player's movement hooks
     const pl = ctx.player;

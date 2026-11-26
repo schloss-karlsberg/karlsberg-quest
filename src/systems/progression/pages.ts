@@ -34,7 +34,7 @@ function effectText(def: ItemDef | undefined): string {
   if (e.heal) out.push(`heilt ${e.heal} Lebenskraft`);
   if (e.stamina) out.push(e.stamina >= 100 ? 'Atem sofort voll' : `+${e.stamina} Atem`);
   if (e.bann) out.push(`+${e.bann} Bannlicht`);
-  if (e.oil) out.push('füllt die Laterne');
+  if (e.oil) out.push(e.oil >= 1 ? 'füllt die Laterne' : `füllt ${Math.round(e.oil * 100)} % des Tanks nach`);
   if (e.burst) out.push(`geworfen: hält Geister im Umkreis von ${e.burst} m fest`);
   return out.join(' · ');
 }
