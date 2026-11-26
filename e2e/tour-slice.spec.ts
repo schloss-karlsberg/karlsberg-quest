@@ -7,8 +7,8 @@ import { expectHandover } from './helpers/tour';
 /**
  * The tour (content/story/00-tour.story.json, the opening of a new game): a smoke run from the
  * car park to the shift to 1789 and the hand-over into chapter 1. The player keeps behind the guide by debug teleports (as a player
- * walking along would be), talks to Gerold, takes the deer photo from 12 m (calm via
- * kq.animals), steps to the trough and touches the water. Game seconds per beat are written to
+ * walking along would be), talks to Gerold, crouches for a 2× deer photo from about 23 m,
+ * steps to the trough and touches the water. Game seconds per beat are written to
  * test-results/tour/timings.json (the walking pace is the group's, so they approximate a player who
  * keeps up and does not dawdle). Screenshots: test-results/tour/tour-*.png.
  */
@@ -172,41 +172,41 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     k.ctx.loop.requestRender();
     return k.photo!.state().blocked === null;
   });
-  // the deer are there, off the route, and the photo works from 12 m (calm: no flight on teleport)
-  const deer = await page.evaluate(() => window.kq!.animals!.list());
-  const ricke = deer.find((d) => d.id === 'ricke')!;
-  expect(ricke).toBeTruthy();
-  expect(deer.find((d) => d.id === 'kitz')).toBeTruthy();
-  const shotRes = await page.evaluate(
-    ({ x, z }) => {
-      const k = window.kq!;
-      k.animals!.calm('ricke', 60);
-      k.animals!.calm('kitz', 60);
-      const s = k.animals!.list().find((d) => d.id === 'ricke')!;
-      const kz = k.animals!.list().find((d) => d.id === 'kitz')!;
-      // 12 m from the pair, on the side towards the route stop, crouched, looking at their middle
-      const cx = (s.x + kz.x) / 2;
-      const cz = (s.z + kz.z) / 2;
-      const dx = 727.4 - cx;
-      const dz = -751.5 - cz;
-      const l = Math.hypot(dx, dz);
-      const px = cx + (dx / l) * 12;
-      const pz = cz + (dz / l) * 12;
-      const yaw = (Math.atan2(cx - px, -(cz - pz)) * 180) / Math.PI;
-      k.teleport(px, pz, yaw, -4);
-      k.ctx.player.setStance('crouch');
-      k.step(20);
-      const opened = k.photo!.open();
-      k.step(40);
-      return { opened, judge: k.photo!.judge('reh.ricke'), at: { x, z } };
-    },
-    { x: ricke.x, z: ricke.z },
-  );
-  expect(shotRes.opened).toBe(true);
-  console.log(`[tour] deer judge ${JSON.stringify(shotRes.judge)}`);
+  const opened = await page.evaluate(() => {
+    const k = window.kq!;
+    const targets = k.photo!.targets();
+    const ricke = targets.find((d) => d.id === 'reh.ricke')?.at;
+    const kitz = targets.find((d) => d.id === 'reh.kitz')?.at;
+    if (!ricke || !kitz) throw new Error('Both deer must be available for the tour photo');
+    // Frame the pair from the route side at 23 m, with ordinary crouching and the 2× lens.
+    const cx = (ricke.x + kitz.x) / 2;
+    const cz = (ricke.z + kitz.z) / 2;
+    const dx = 727.4 - cx;
+    const dz = -751.5 - cz;
+    const len = Math.hypot(dx, dz);
+    const px = cx + (dx / len) * 23;
+    const pz = cz + (dz / len) * 23;
+    const cy = (ricke.y + kitz.y) / 2;
+    const yaw = (Math.atan2(cx - px, pz - cz) * 180) / Math.PI;
+    k.ctx.player.setStance('crouch');
+    const pitch = (Math.atan2(cy - k.ctx.world.heightAt(px, pz) - 1.05, 23) * 180) / Math.PI;
+    k.teleport(px, pz, yaw, pitch);
+    k.step(20);
+    const opened = k.photo!.open();
+    k.photo!.zoom(2);
+    k.step(40);
+    return opened;
+  });
+  expect(opened).toBe(true);
+  // A bullet-time step advances the simulation but only draws one frame of the zoom animation.
+  await expect.poll(() => page.evaluate(() => window.kq!.ctx.player.rig.fovScale)).toBe(2);
+  const judge = await page.evaluate(() => window.kq!.photo!.judge('reh.ricke'));
+  expect(judge, JSON.stringify(judge)).toMatchObject({ good: true, stars: 2 });
+  expect(judge!.dist).toBeGreaterThanOrEqual(20);
+  expect(judge!.dist).toBeLessThanOrEqual(25);
   await shot(page, '07-reh-handy');
   const res = await page.evaluate(() => window.kq!.photo!.shoot());
-  console.log(`[tour] deer shot ${JSON.stringify(res)}`);
+  expect(res, JSON.stringify(res)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2 });
   await page.evaluate(() => {
     const k = window.kq!;
     k.step(30);

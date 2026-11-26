@@ -12,6 +12,7 @@
  *                  "complete": { "enter": { "x": 524, "z": -770, "r": 7 } } } ] }
  */
 import type { Era } from '../../core/era';
+import type { Action as InputAction } from '../../player/input';
 import type { NpcWatch, ThreatConfig, ThreatKind } from '../contracts';
 import type { AnimalAction as AnimalRequestFields } from '../animals/types';
 import type { CinematicPlay } from '../cinematic/types';
@@ -367,6 +368,8 @@ export interface LookAction extends ActionBase {
 export interface PromptAction extends ActionBase {
   do: 'prompt';
   key?: string | null;
+  /** Resolve the current binding or touch button label for this action. */
+  action?: InputAction;
   text?: string | null;
   /**
    * The text in touch mode (Touch-Steuerung; read when shown and again when the mode switches):

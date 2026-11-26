@@ -39,7 +39,8 @@ import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
 import { h } from '../../ui/dom';
 import { addPausePage } from '../../ui/pause-pages';
-import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type LookTime, type MeterAction, type NpcAction, type StoryFile, isWalkAction } from './types';
+import { actionLabel } from '../../ui/actionLabel';
+import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type LookTime, type MeterAction, type NpcAction, type PromptAction, type StoryFile, isWalkAction } from './types';
 import type { WalkRequest } from '../walk/types';
 import type { AnimalAction } from '../animals/types';
 import type { CinematicPlay } from '../cinematic/types';
@@ -256,7 +257,7 @@ class StoryRuntime {
   private hubToastShown = false;
   private storyPrompt = false;
   /** The story's prompt on screen (re-rendered when Touch-Steuerung switches) and the mode it was shown in. */
-  private promptShown: { key: string | null; text: string; touch?: string } | null = null;
+  private promptShown: PromptAction | null = null;
   private promptTouch = false;
   private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
@@ -412,6 +413,9 @@ class StoryRuntime {
     ctx.events.onAny((name, payload) => this.onEvent(name, payload));
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
+    ctx.events.on('settings:change', ({ key }) => {
+      if (key === 'bindings' && this.promptShown?.action) this.renderPrompt();
+    });
     // the credits over the party ended (naturally, skipped, or a load while they played): the story is finished
     ctx.events.on('credits:done', () => {
       if (this.slice.ending && !this.slice.finished) this.finish();
@@ -852,12 +856,12 @@ class StoryRuntime {
         this.applyLook();
         return;
       case 'prompt':
-        if (!a.key && !a.text) {
+        if (!a.key && !a.text && !a.action) {
           if (this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
           this.storyPrompt = false;
           this.promptShown = null;
         } else {
-          this.promptShown = { key: a.key ?? null, text: a.text ?? '', ...(a.touch ? { touch: a.touch } : {}) };
+          this.promptShown = a;
           this.renderPrompt();
           this.storyPrompt = true;
         }
@@ -1583,8 +1587,8 @@ class StoryRuntime {
     this.updateShiftKey(dt);
     this.updateHome();
     this.updateAfterword();
-    // Touch-Steuerung switched while a prompt with a touch text is up: say it the other way
-    if (this.storyPrompt && this.promptShown?.touch && ctx.input.touchMode !== this.promptTouch) this.renderPrompt();
+    // Refresh prompts with input-specific labels when Touch-Steuerung switches.
+    if (this.storyPrompt && (this.promptShown?.touch || this.promptShown?.action) && ctx.input.touchMode !== this.promptTouch) this.renderPrompt();
     if (this.calmToasts.length && !ctx.ui.hud.inAction) {
       const tt = this.calmToasts.shift()!;
       ctx.ui.toast(tt.text, tt.ms);
@@ -1604,7 +1608,8 @@ class StoryRuntime {
     const p = this.promptShown;
     if (!p) return;
     this.promptTouch = this.ctx.input.touchMode;
-    this.ctx.ui.hud.prompt(p.key, this.promptTouch && p.touch ? p.touch : p.text, 'story');
+    const key = p.action ? actionLabel(this.ctx.input, p.action) : p.key;
+    this.ctx.ui.hud.prompt(key ?? null, this.promptTouch && p.touch ? p.touch : p.text ?? '', 'story');
   }
 
   /** The follow pack of ending C is out (in the era it was configured in). */

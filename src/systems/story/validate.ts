@@ -6,6 +6,7 @@
  */
 import { ERAS } from '../../core/era';
 import type { Issue } from '../../content/validate';
+import { DEFAULT_BINDINGS } from '../../player/input';
 import { ENEMY_IDS } from '../../rpg/enemies';
 import { ITEM_IDS } from '../../rpg/items';
 import { normalize as normalizeCinematic } from '../cinematic/keys';
@@ -405,6 +406,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (!isStr(a.id)) err(file, where, 'cue needs an id');
         break;
       case 'prompt':
+        if (a.action !== undefined && (!isStr(a.action) || !Object.hasOwn(DEFAULT_BINDINGS, a.action))) err(file, where, 'prompt action must name an input action');
         if (a.touch !== undefined) {
           if (!isStr(a.touch)) err(file, where, 'prompt touch must be a text');
           // an interact prompt's text labels the Aktion button on a touch screen

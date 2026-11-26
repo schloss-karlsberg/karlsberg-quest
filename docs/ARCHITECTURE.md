@@ -1477,6 +1477,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   dog bark SFX yet).
 - **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
   sneaking is the skill).
+- **Deer tuning** for the tour is recorded in [the tour slice](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 - **Targets**: photo mode's `attachTarget` (`src/systems/photo/index.ts`, kq-mobile) gets
   `reh.ricke` / `reh.kitz` (`at` = body centre, `calm` false only while fleeing, `state` = the core
   state); the cinematic's `registerTarget` (`src/systems/cinematic/targets.ts`) gets `animal:<id>`
@@ -1937,16 +1938,22 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
+- The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks and minimap
+  while the phone is up. Touch keeps the phone toggle and shutter visible and accepts movement
+  and look gestures. Scene marker roots follow `photo:open` / `photo:close` alongside the
+  independent `world:quiet` reasons. Exiting photo mode reveals the current gameplay overlays.
 - **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
   (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
   `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
   `kq.setCamera` and the coming cinematic use).
 - **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
   era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
-  diameter ≥ `minFrac` of the frame height, ≥ 2 of 3 sample points (top / left / right of the
-  sphere) with a clear line (terrain, footprint walls when the palace stands, `forest.trunksNear`;
-  the last 0.7 r is the subject itself), distance within `minDist`…`maxDist`, the view's mean
-  angular speed < 0.35 rad/s over the last 0.3 s (`SteadyMeter`), and `calm()` true. `needAll`
+  diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
+  the top, left and right of the sphere. Animals also sample the centre and bottom, so they
+  need three of five clear. Terrain, footprint walls when the palace stands and tree trunks
+  block the rays. The last 0.7 r is skipped for the subject itself. The distance must be within
+  `minDist`…`maxDist`. The view's mean angular speed must be at most 0.35 rad/s over the last
+  0.3 s (`SteadyMeter`), and `calm()` must allow the shot. `needAll`
   binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
   the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
   clock lives in the save slice, stops at the first good shot), with `fallbackStars` (2 or 3 = good;

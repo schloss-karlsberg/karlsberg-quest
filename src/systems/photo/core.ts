@@ -9,8 +9,9 @@
  * 1. **in the middle third**: the projected centre lies within |x|, |y| ≤ 1/3 (NDC, the frame is the
  *    whole view; the phone bezel is drawn around it);
  * 2. **big enough**: the sphere's diameter covers ≥ `minFrac` of the frame **height**;
- * 3. **not hidden**: of three sample points on the sphere (top, left, right as seen from the lens)
- *    at least two have a clear sight line (terrain, footprint walls and tree trunks block it);
+ * 3. **not hidden**: at least two of three samples (top, left, right) have a clear sight line.
+ *    Animals also sample the centre and bottom and need three of five clear. Terrain, footprint
+ *    walls and tree trunks block these rays;
  * 4. **near enough**: lens → centre ≤ `maxDist`, or ≤ `fallbackDist` once the fallback clock ran out
  *    (see `PhotoCore.tick`: seconds the player has spent within `fallbackDist` of the target);
  * 5. **steady**: the camera turned slower than `STEADY_RAD_S` on average over the last 0.3 s;
@@ -144,7 +145,7 @@ export interface TargetJudgement {
   ndcX: number;
   ndcY: number;
   frac: number;
-  /** Clear sample sight lines (0..3). */
+  /** Clear sample sight lines (out of 5 for animals, 3 otherwise). */
   clear: number;
   /** Counted only via the fallback distance. */
   fallback: boolean;
@@ -249,7 +250,7 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
   if (!Number.isFinite(dist) || !(p.depth > 0) || Math.abs(p.x) > 1 + frac / v.aspect || Math.abs(p.y) > 1 + frac) return out;
   out.inFrame = true;
   out.stars = 1;
-  // the three sight samples: top, left, right of the sphere as seen from the lens
+  // Sample the sphere as seen from the lens. For animals, check the body between the edges too.
   const { r: right, u: up } = basis(v.yaw, v.pitch);
   const k = t.r * 0.6;
   const samples: Vec3[] = [
@@ -257,6 +258,7 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
     { x: c.x - right.x * k, y: c.y - right.y * k, z: c.z - right.z * k },
     { x: c.x + right.x * k, y: c.y + right.y * k, z: c.z + right.z * k },
   ];
+  if (t.kind === 'animal') samples.push(c, { x: c.x - up.x * k, y: c.y - up.y * k, z: c.z - up.z * k });
   const lens = { x: v.x, y: v.y, z: v.z };
   for (const s of samples) if (sightClear(w, lens, s, t.r * 0.7)) out.clear++;
   const far = t.fallbackDist !== undefined && fallbackReady ? Math.max(t.maxDist, t.fallbackDist) : t.maxDist;
@@ -264,7 +266,7 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
   // the first reason that fails, in the order a player can fix it
   if (dist > far) out.verdict = 'zu-weit';
   else if (dist < (t.minDist ?? 0)) out.verdict = 'zu-nah';
-  else if (out.clear < 2) out.verdict = 'verdeckt';
+  else if (out.clear <= samples.length / 2) out.verdict = 'verdeckt';
   else if (!centred) out.verdict = 'nicht-mittig';
   else if (frac < t.minFrac) out.verdict = 'zu-klein';
   else if (!(v.angularSpeed <= STEADY_RAD_S)) out.verdict = 'unscharf';

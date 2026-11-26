@@ -344,8 +344,43 @@ describe('photo targets data (content/photo/targets.json, contract C3)', () => {
     const ricke = targetFromData(file.targets[1], () => 300);
     expect(ricke.at()).toBeNull();
     expect(ricke.needAll).toEqual(['reh.kitz']);
-    expect(ricke.fallbackDist).toBe(22);
+    expect(ricke.fallbackDist).toBe(32);
     expect(ricke.fallbackAfterS).toBe(90);
+  });
+
+  it.each([20, 23, 25])('both deer can score two stars at %i m with 2×', (dist) => {
+    const deer = file.targets.slice(1).map((data: Parameters<typeof targetFromData>[0], i: number) => ({
+      ...targetFromData(data, flat.heightAt),
+      at: () => ({ x: i === 0 ? -0.75 : 0.75, y: 1.6, z: -dist }),
+    }));
+    const zoomedFov = (360 / Math.PI) * Math.atan(Math.tan((95 * Math.PI) / 360) / 2);
+    expect(judgeShot(deer, 'today', view({ fovV: zoomedFov }), flat)).toMatchObject({
+      good: ['reh.ricke', 'reh.kitz'],
+      stars: 2,
+    });
+    const wide = judgeShot(deer, 'today', view({ fovV: 80 }), flat);
+    expect(wide.good).toEqual([]);
+    expect(wide.verdict).toBe('zu-klein');
+  });
+
+  it('the deer range extends to 27 m and the fallback still needs the framing thresholds', () => {
+    const ricke = { ...targetFromData(file.targets[1], flat.heightAt), at: () => ({ x: 0, y: 1.6, z: -28 }) };
+    const v = view({ fovV: 44 });
+    expect(judgeTarget(ricke, v, flat, false).verdict).toBe('zu-weit');
+    expect(judgeTarget(ricke, v, flat, true)).toMatchObject({ verdict: 'weit-ok', good: true, stars: 2 });
+    expect(judgeTarget(ricke, view({ fovV: 80 }), flat, true).verdict).toBe('zu-klein');
+  });
+
+  it('a clipped edge and lower body can pass, while a mostly hidden deer cannot', () => {
+    const ricke = { ...targetFromData(file.targets[1], flat.heightAt), at: () => ({ x: 0, y: 1.6, z: -20 }) };
+    const v = view({ fovV: 44 });
+    const partial: PhotoWorld = {
+      heightAt: (_x, z) => (Math.abs(z + 10) < 0.2 ? 1.48 : 0),
+      trunks: (_x, _z, _r, fn) => fn(-0.24, -10, 0.05, 3),
+    };
+    expect(judgeTarget(ricke, v, partial, false)).toMatchObject({ clear: 3, good: true });
+    const mostlyHidden: PhotoWorld = { heightAt: (_x, z) => (Math.abs(z + 10) < 0.2 ? 1.7 : 0) };
+    expect(judgeTarget(ricke, v, mostlyHidden, false)).toMatchObject({ clear: 1, verdict: 'verdeckt', good: false });
   });
 });
 

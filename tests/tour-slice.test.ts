@@ -179,10 +179,9 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const deerShot = h.sent.findIndex(({ a }) => a.do === 'cinematic' && a.ref === 'reh');
     expect(rustle).toBeGreaterThanOrEqual(0);
     expect(rustle).toBeLessThan(deerShot);
-    // she looked up, then the good photo: Gerold's „Sie hat dich angesehen.“
-    h.ev('animal:alert', { id: 'ricke' });
-    h.ev('photo:good', { id: 'reh.ricke', stars: 2 });
-    h.ev('photo:good', { id: 'reh.kitz', stars: 2 });
+    // She was looking up when the shutter fired: Gerold's „Sie hat dich angesehen.“
+    h.ev('photo:good', { id: 'reh.ricke', stars: 2, state: 'alert' });
+    h.ev('photo:good', { id: 'reh.kitz', stars: 2, state: 'alert' });
     h.tick();
     expect(h.said).toContain('imhoff.t.reh.alert');
     expect(h.said).not.toContain('imhoff.t.reh3');
@@ -256,9 +255,11 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     };
     const a = harness();
     go(a);
-    a.ev('photo:good', { id: 'reh.ricke', stars: 3 });
+    a.ev('animal:alert', { id: 'ricke' });
+    a.ev('photo:good', { id: 'reh.ricke', stars: 3, state: 'graze' });
     a.tick();
     expect(a.said).toContain('imhoff.t.reh3');
+    expect(a.said).not.toContain('imhoff.t.reh.alert');
     expect(a.beat()).not.toBe('t10');
 
     const b = harness();
@@ -309,6 +310,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const setup = enter.slice(0, enter.findIndex((a) => a.do === 'say'));
     expect(setup.map((a) => a.do)).toEqual(['npc', 'sound', 'cinematic', 'prompt', 'objective']);
     expect(setup.every((a) => (a.delay ?? 0) === 0)).toBe(true);
+    expect(setup.find((a) => a.do === 'prompt')).toMatchObject({ action: 'crouch' });
 
     const h = harness();
     h.engine.goto('tour', 't10');
@@ -318,8 +320,8 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.beat()).toBe('t10');
     expect(h.sent.map(({ a }) => a)).toMatchObject([
       { do: 'npc', op: 'hold', group: 'fuehrung' },
-      { do: 'prompt', key: 'C', touch: 'Langsam heranpirschen' },
-      { do: 'objective', id: 'tour', x: 704, z: -779 },
+      { do: 'prompt', action: 'crouch', touch: 'Langsam heranpirschen' },
+      { do: 'objective', id: 'tour', x: 698, z: -773 },
     ]);
     expect(h.said).toEqual([]);
   });

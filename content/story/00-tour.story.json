@@ -216,7 +216,7 @@
       "enter": [
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "reh", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
-        { "do": "animal", "op": "spawn", "kind": "reh", "look": "ricke", "id": "ricke", "x": 704, "z": -779, "yaw": 300, "era": "today", "shy": { "notice": 30, "flee": 20, "settle": 25 } },
+        { "do": "animal", "op": "spawn", "kind": "reh", "look": "ricke", "id": "ricke", "x": 698, "z": -773, "yaw": 300, "era": "today", "shy": { "notice": 30, "flee": 20, "settle": 25 } },
         { "do": "animal", "op": "spawn", "kind": "reh", "look": "kitz", "id": "kitz", "follow": "animal:ricke", "spacing": 1.5, "era": "today" },
         { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 727.4, "z": -751.5 },
         { "do": "loot", "id": "tour.kastanie.13", "item": "item.kastanie", "x": 637.9, "z": -633.9, "era": "today", "group": "tour.kastanien" },
@@ -235,21 +235,20 @@
         { "do": "npc", "op": "hold", "group": "fuehrung" },
         { "do": "sound", "sound": "deer-rustle", "x": 704, "z": -779, "caption": "[Leises Rascheln im Laub]" },
         { "do": "cinematic", "id": "tour.reh", "ref": "reh", "skippable": true },
-        { "do": "prompt", "key": "C", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: stillhalten", "touch": "Langsam heranpirschen" },
-        { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: anschleichen [C], Handy [N]", "x": 704, "z": -779 },
+        { "do": "prompt", "action": "crouch", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: geduckt stillhalten", "touch": "Langsam heranpirschen" },
+        { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: geduckt anschleichen", "x": 698, "z": -773 },
         { "do": "say", "id": "imhoff.t.reh1", "speaker": "imhoff", "text": "Pssst. Da unten. Nicht bewegen." },
         { "do": "say", "id": "imhoff.t.reh2", "speaker": "imhoff", "text": "Wer ein gutes Foto will: ganz langsam. Geduckt. Und stillhalten, wenn sie guckt." }
       ],
       "on": [
         {
           "id": "handy",
-          "when": { "any": [{ "enter": { "x": 704, "z": -779, "r": 24, "era": "today" } }, { "timer": 20 }] },
+          "when": { "any": [{ "enter": { "x": 698, "z": -773, "r": 26, "era": "today" } }, { "timer": 20 }] },
           "do": [{ "do": "prompt", "key": "N", "text": "Handy-Kamera · Klick: Foto · beide Tiere in die Bildmitte", "touch": "Handy-Knopf oben: Foto" }]
         },
-        { "id": "sichert", "when": { "event": "animal:alert", "match": { "id": "ricke" } }, "do": [{ "do": "flag", "set": { "tour.reh.alert": true } }] },
         {
           "id": "foto-alert",
-          "when": { "all": [{ "event": "photo:good", "match": { "id": "reh.ricke" } }, { "flag": "tour.reh.alert" }] },
+          "when": { "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } },
           "do": [
             { "do": "prompt", "key": null, "text": null },
             { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es." },
@@ -259,7 +258,7 @@
         },
         {
           "id": "foto",
-          "when": { "all": [{ "event": "photo:good", "match": { "id": "reh.ricke" } }, { "not": { "flag": "tour.reh.alert" } }] },
+          "when": { "all": [{ "event": "photo:good", "match": { "id": "reh.ricke" } }, { "not": { "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } } }] },
           "do": [
             { "do": "prompt", "key": null, "text": null },
             { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es." },

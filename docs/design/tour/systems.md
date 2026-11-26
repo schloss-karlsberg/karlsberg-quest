@@ -18,7 +18,7 @@ The exact interfaces are in **"Story contracts"** below; where a sketch in §1�
 
 ## 1. Photo mode (smartphone)
 
-**What it does.** Hold **N** (decided; P is pause, see `src/player/input.ts:79`) to raise the phone: a phone frame overlay, a slight zoom (1×/2×), click to shoot. A shot is **judged geometrically, not by pixels**: for each registered photo target in range, project its bounding sphere into the frame; "good" = centre in the middle third, projected size ≥ the target's minimum, a line-of-sight ray from the camera to ≥ 2 of 3 sample points is clear (`world.collider` / trunks), distance within limits (animals: max distance; inscriptions: ≤ 4 m). A good shot saves a JPEG thumbnail into the **album** (journal tab „Album“) and may unlock a codex card or a photo card. In a past era the frame shows „Kein Netz“ and the image comes out white (running joke; no targets judged). Owner decision 2026-11-20: present-only, key N, no XP for photos, codex/photo cards for good photos.
+**What it does.** Press **N** or the touch camera button to toggle the phone. Gameplay overlays step away. The phone has 1×/2× zoom and a click or tap shutter. A good shot requires framing, size, distance and a clear majority of sight rays (three of five for animals, two of three for other targets). A good shot adds an **album** entry and can unlock a codex card or a photo card. In the past the phone shows „Kein Netz“ and the image comes out white. See the [tour tuning](slice-v0.md#deer-photo-and-sneak-tuning-task-017) and [runtime details](../../ARCHITECTURE.md#photo-srcsystemsphoto--fotomodus-the-smartphone-camera-present-day-only).
 
 **Reusable code (audit §8).** The capture core is `src/systems/notes/index.ts:252–270` `screenshot()` (re-render via `post.render`, draw to a 2D canvas, JPEG data URL). `preserveDrawingBuffer` is only on with `?preserve` (`boot.ts:48`), but the notes path re-renders, so no flag is needed. Lantern / camera FOV live in `src/player/camera.ts` (camera owner kq-mobile: report the zoom hook). Journal tabs: `src/systems/progression/journal-tabs.ts`.
 
@@ -26,7 +26,7 @@ The exact interfaces are in **"Story contracts"** below; where a sketch in §1�
 ```ts
 // src/systems/photo/index.ts
 registerTarget({ id: 'photo.p.reh', era: 'today', at: () => ({ x, y, z }), r: 0.8,
-  minFrac: 0.12, maxDist: 14, fallbackDist: 22, fallbackAfterS: 90,
+  minFrac: 0.055, maxDist: 27, fallbackDist: 32, fallbackAfterS: 90,
   needAll?: string[] /* both deer */, grants?: { codex?: 'cx.T4', card?: 'ph.insel', flag?: string } });
 // events: 'photo:open' | 'photo:close' | 'photo:shot' {targets, good, stars, noSignal} | 'photo:good' {id, stars}
 // story waits with { "event": "photo:good", "match": { "id": "photo.p.reh" } }  (no new condition type; contract C3)
@@ -101,7 +101,7 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 // events: 'animal:alert' {id}, 'animal:fled' {id, by, dist}, 'animal:settled' {id}, 'animal:returned' {id}  (contract C5)
 ```
 
-**Tests.** Unit: shy meter (crouch-slow approach reaches 14 m; standing at 20 m flees; flee distance and settle); fawn keeps within 2 m; dogs return to Jost. e2e: part of `tour.spec.ts` (sneak to the deer and take the photo).
+**Tests.** Unit tests cover the crouched approach, upright alert and flight, settling, and the fawn's gap. The `tour-slice.spec.ts` regression takes the deer photo at 2× from the route side.
 
 ---
 
@@ -316,7 +316,7 @@ declare module '../../debug/hooks' {
 }
 ```
 
-- **Stars:** 1 = in the frame but not good; 2 = good (centre rule, size, ray clear to ≥ 2 of 3 sample points, distance limits, `needAll` present); 3 = good and closer than 0.6 × `maxDist` (or the inscription fully legible). "Good" means ≥ 2.
+- A shot of a target in frame gets one star. It earns two after passing the centre, size, sight, distance and `needAll` checks. A good shot earns three stars when the target is closer than 0.6 × `maxDist`.
 - **Waiting:** `{ "event": "photo:good", "match": { "id": "photo.p.reh" } }`, optionally with `"gte": { "stars": 2 }`. There is **no** `{photo: id}` condition. A quest objective `{ "type": "photo", "target": "photo.p.reh" }` counts the same event.
 - **Kein Netz:** in any era other than `today` the phone shows „Kein Netz“ and the image comes out white. No target is judged, and the system emits `photo:shot { targets: [], good: [], stars: 0, noSignal: true }`, never `photo:good`. Laub's `laub.bark.netz.*` listens to `noSignal`.
 - **Album and codex:** the album (target id, best stars, era, time) persists in the save. It is capped at 60 entries and stores no JPEGs: a pre-rendered card image per target, plus the live JPEG only for the session. `grants.codex` unlocks a codex card through the same entry point quests use. Photos give **no XP**, unless a quest objective carries the card (see the [prologue budget](../../../content/bible/01-prolog.md#5-übergabe-und-ep)). `grants.card` adds a photo card (`ph.*`), which is album-only. Grants fire once per target id.
@@ -324,7 +324,7 @@ declare module '../../debug/hooks' {
 - **Example (target t6):**
 ```json
 { "id": "photo.p.reh", "kind": "animal", "era": "today", "label_de": "Ricke und Kitz", "animal": "ricke", "r": 0.8,
-  "frame": { "minFrac": 0.12, "maxDist": 14, "needAll": ["photo.p.kitz"], "fallback": { "afterS": 90, "maxDist": 22, "stars": 2 } },
+  "frame": { "minFrac": 0.055, "maxDist": 27, "needAll": ["photo.p.kitz"], "fallback": { "afterS": 90, "maxDist": 32, "stars": 2 } },
   "grants": { "codex": "cx.T4" } }
 ```
 
@@ -360,7 +360,7 @@ export interface AnimalAction extends ActionBase {
   era?: 'today';
   /** follow: whom to follow ('npc:double.jost', 'animal:ricke'); spacing in metres. */
   follow?: string; spacing?: number;
-  /** spawn (reh): shy behaviour radii; a crouched, slow player scales notice by 0.35. */
+  /** spawn (reh): shy behaviour radii. Crouching at crouch speed halves notice. */
   shy?: { notice: number; flee: number; settle: number };
   /** run: a path to run (dogs bolting) and whether to come back to the follow target. */
   path?: [number, number][]; bark?: boolean; back?: boolean;
@@ -381,7 +381,7 @@ declare module '../../debug/hooks' {
 }
 ```
 
-- **Shy rule (reh):** the notice meter rises with the player's stance noise and visibility (`STANCES`) inside `notice` m and in line of sight. Crouching at crouch speed scales the radius by 0.35, so a crouched, slow approach reaches 14 m. Standing within `flee`, running, or sprinting fills the meter. When full, both deer bound 25 m along the path away from the player and stop (`animal:settled`). There is no fail state. A `follow` fawn stays within 2 m of the doe.
+- The **deer notice meter** rises with the player's stance noise and visibility (`STANCES`) inside `notice` m and in line of sight. Crouching at crouch speed halves the radius, allowing an approach to photo range. Standing within `flee` builds suspicion even while still. When the meter is full and the warning has played, both deer bound 25 m away and stop (`animal:settled`). A `follow` fawn stays within 2 m of the doe. See the [tour tuning](slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 - **Dogs:** `op: 'follow'` with `follow: 'npc:double.jost'`. `op: 'run'` with `path`, `bark: true`, `back: true` is the t5 bolt, ending in `animal:returned`. `op: 'lie'` is the party pose (keep ending: at the player's feet). Dogs are never hostile and never targetable, and in no era are they the Meute.
 - **Waiting:** `{ "event": "animal:returned", "match": { "id": "bijou" } }` (t5 ends); `{ "event": "animal:fled", "match": { "id": "ricke", "by": "player" } }` (an optional Gerold line „Zu schnell.“).
 - **Validator:** `id` matches `ID_RE`. `spawn` needs `kind` and numeric x/z inside the extent (or `follow`). `era` is `today` when given. `shy` needs `notice > flee > 0` and `settle > 0`. `run` needs a `path` of ≥ 2 points inside the extent. `follow` matches `npc:<roster id>` or `animal:<spawned id>`. The other ops refer to an id spawned earlier in the chapter.
