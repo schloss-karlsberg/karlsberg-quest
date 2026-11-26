@@ -91,13 +91,125 @@ Look and licensing: stylized modern look and CC0 / own assets only (`docs/ART-DI
 each file credited in `public/assets/LICENSES.json`; data licences in `public/data/attribution.json`.
 
 ## Acceptance Criteria
-- [ ] Findings above confirmed or corrected in this task (what's used / unused)
-- [ ] Higher terrain detail around the palace and tour route, data budget kept
-- [ ] Data-driven tree, bush and flower placement in the castle area; new props (benches, ruins / stones, paths)
-- [ ] Frame rate on the mobile profile (Niedrig, phone viewport) does not fall below the target (60 fps cap; bench scenes in `src/debug/bench.ts` within `PERF_BUDGET`); low tier gets a reduced version
-- [ ] Before / after GPU screenshots from 4–6 fixed viewpoints (palace plateau, Ehrenhof, Quelle, tour route, Weiher) in the PR
-- [ ] New assets CC0 / own work with credits; `tests/assets.test.ts` green
-- [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass; `docs/ART-DIRECTION.md` / `docs/PERFORMANCE.md` updated
+- [x] Findings above confirmed or corrected in this task (what's used / unused) — #26, #35, #37, #48.
+- [ ] Higher terrain detail around the palace and tour route, data budget kept — #35 shipped 1 m shading and #37 restored the first-input budget. The 2 m mesh is the remaining gap.
+- [x] Data-driven tree, bush and flower placement in the castle area; new props (benches, ruins / stones, paths) — #26, #32, #41, #48. Present-day trees use the existing canopy-driven scatter.
+- [x] Frame rate on the mobile profile (Niedrig, phone viewport) does not fall below the target (60 fps cap; bench scenes in `src/debug/bench.ts` within `PERF_BUDGET`); low tier gets a reduced version — #26, #32, #41, #48. The latest 667 × 375 ANGLE Metal run held 59.94–59.97 rendered fps and passed all nine bench scenes.
+- [ ] Before / after GPU screenshots from 4–6 fixed viewpoints (palace plateau, Ehrenhof, Quelle, tour route, Weiher) in the PR — the local #48 pair covers all six views. Confirm PR attachments and add the slice 7 pairs.
+- [x] New assets CC0 / own work with credits; `tests/assets.test.ts` green — #26 and #32 use the procedural kit, #41 and #48 credit their new procedural art, and #35 links its derived data to the DGM attribution.
+- [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass; `docs/ART-DIRECTION.md` / `docs/PERFORMANCE.md` updated — #26, #32, #35, #37, #41, #48. The underlying content validator passed via `node --import tsx scripts/validate-content.ts` in the sandbox.
+
+### Slices 1–6 audit
+
+The baseline findings still describe data ingestion. #26 added sparse present-day ground cover on
+Niedrig. #32 dressed three tour stops. #35 added DGM1 normals and relief for the present-day tour and
+palace on Mittel and Hoch. #37 deferred historical assets. #41 used the OSM track and DGM for
+plateau benches, broken masonry and verge stones. #48 used canopy edges and gaps for shrubs and
+seed heads at three sites. The 1 m crown maxima, other sister AOI rasters, separate
+`ground2025.u8` and wider ALS scan remain unused. The shipped 2 m canopy still controls the
+present-day tree scatter and forest edge planting.
+
+The local #48 capture pair contains six matching poses on each tier, including the 1789 control.
+The earlier 55.8 fps Quelle window (#26) did not recur in the three #48 repeat windows
+(59.93–59.96 fps). The #48 Hoch capture measured 19,833,613 bytes before input.
+
+## Slice 7 plan
+
+_Status: approved 2026-11-26 (implementation authorized in the slice request)_
+
+**Approach:** Add 1 m mesh detail on dry banks and terraces near the present-day tour and palace
+on Mittel and Hoch. Bake bounded height offsets from the local DGM1 into a compact stream and
+reuse the terrain's instanced LODs. Keep the walking surface, survey views and placement heights
+on the existing DGM. Preserve the tread, spring, shore, hidden Bauwagen and scenery footprints.
+
+**Files to touch:**
+
+- `scripts/prepare-data.ts`, `scripts/lib/`, `public/data/` — generate and attribute the local DGM offsets.
+- `src/data/`, `src/world/` — load after play starts and tile the nearest terrain at 1 m.
+- `tests/terrain-detail.test.ts`, `e2e/gpu/tour-groundcover.gpu.ts`, `e2e/perf.spec.ts` — verify clearance, seams, tier limits, request timing and paired views.
+- `docs/ART-DIRECTION.md`, `docs/PERFORMANCE.md`, `docs/ACTION-RPG.md`, `docs/PRD.md` — describe the geometry and budgets.
+
+**Steps:**
+
+- [x] 1. Bake and attribute the terrain offsets with deterministic clearance.
+- [x] 2. Stream the crop after play starts and refine the near terrain with bounded instanced batches.
+- [x] 3. Check the shipped data, transitions and cost in Vitest, and prepare matching capture and request checks.
+- [x] 4. Update the guides and pass the local gates.
+- [ ] 5. Compare the six GPU poses, phone route and bench, Hoch transfer and tour playthrough on the coordinator's machine.
+
+**Test plan:** Test the shipped crop against the whole tour, spring brook and paths, shores,
+Bauwagen, plateau fittings and understory. Verify tile seams, geometry caps, era/preset switches
+and fallback with an absent crop. Run typecheck, Vitest with two workers, build and content validation.
+Pair Karlsberger Hof, Felsenpfad, Weiher, Quelle, the palace plateau and 1789 Ehrenhof on
+`origin/main` and the slice. Check Niedrig at 667 × 375 and the nine bench scenes, and Hoch
+before first input with `PERF_LOAD_QUALITY=high`.
+
+**Risks:** Fractional vertices must follow the original terrain triangles and water bed at
+tile seams. A height difference can expose a prop base or clip a path decal. Preserve a padded
+footprint under each feature and cap the remaining offsets. Hoch already has some over-budget
+route peaks, so compare its measured delta with the baseline.
+
+**Open questions:** GPU appearance, updated phone timing and Hoch first-input transfer require a hardware run.
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Used and unused data | full | Audit above. |
+| 2. Higher terrain detail and data budget | partial | Geometry in this slice, with Hoch transfer pending capture. |
+| 3. Trees, bushes, flowers and props | full | Earlier slices, with clearance regression checks in this slice. |
+| 4. Mobile frame rate and reduced version | full on baseline | Niedrig opts out of the new mesh. Repeat the phone bench. |
+| 5. Before/after GPU views in the PR | partial | Existing capture pairs and a matching slice 7 recipe. |
+| 6. Assets and credits | full | New derived data uses the existing DGM attribution. |
+| 7. Gates and docs | full on baseline | Repeat the four gates and update the guides. |
+
+**Follow-up slices:** Review the paired hardware results before closing. The crown-maxima and
+wider Röntgenblick experiments can be tracked separately if needed.
+
+## Slice 7 progress
+
+- Branch `feat/task-008-slice7`, based on `36dbcd6` (`origin/main`, PR #48).
+- 2026-11-26 — Audited all six merged slices and the local GPU artifacts. Selected geometric terrain detail for the remaining feature criterion.
+- 2026-11-26 — Step 1 complete. The mesh-only build produced the attributed DGM1 offsets from the local source. The crop preserves padded corridors and the shipped scenery footprints.
+- 2026-11-26 — Step 2 complete. The optional stream adds two instanced tile batches after play begins on Mittel and Hoch. The crop is 220,832 bytes with neutral samples on 32 m tile seams. Typecheck passed.
+- 2026-11-26 — Step 3 complete. The focused terrain suite passed all nine tests. The matched GPU spec checks terrain activation and controls. The Hoch transfer spec rejects requests for the crop during title loading.
+- 2026-11-26 — Step 4 complete. Typecheck, all 1,571 tests across 118 files (including asset credits), build, the content validator and `mc validate` passed. Content validation emitted existing warnings. The pnpm gates used local dependencies with `--config.verify-deps-before-run=false`. A second bake produced byte-identical offsets. Updated the art and performance guides, action-RPG spec and PRD changelog.
+- 2026-11-26 — Step 5 is pending. Playwright discovered the specs via `--list`. GPU, phone, first-input and browser verification await the coordinator. The worktree sandbox cannot create `index.lock`, so staging and commit are handed over.
+
+### Slice 7 coordinator capture commands
+
+Run on the same ANGLE Metal machine with Chromium installed. Each command uses one worker and
+takes the shared GPU lock. The baseline worktree uses the same test harness and `origin/main` game code.
+
+```sh
+slice7_root=$(mktemp -d /tmp/kq-task-008-slice7.XXXXXX)
+git worktree add --detach "$slice7_root/before" origin/main
+cp e2e/gpu/tour-groundcover.gpu.ts "$slice7_root/before/e2e/gpu/"
+cp e2e/perf.spec.ts "$slice7_root/before/e2e/"
+ln -s "$PWD/node_modules" "$slice7_root/before/node_modules"
+(cd "$slice7_root/before" && pnpm --config.verify-deps-before-run=false build)
+pnpm --config.verify-deps-before-run=false build
+
+slice7_e2e() {
+  CI=1 KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm --config.verify-deps-before-run=false exec playwright test "$@" --workers=1
+}
+slice7_capture() {
+  PERF_LABEL="$1" slice7_e2e -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts
+  PERF_LABEL="$1" PERF_LOAD_QUALITY=high slice7_e2e e2e/perf.spec.ts --grep 'bytes and time before the first input'
+}
+(cd "$slice7_root/before" && slice7_capture slice7-before)
+slice7_capture slice7-after
+
+slice7_e2e e2e/art.spec.ts e2e/scenery.spec.ts e2e/tour-slice.spec.ts e2e/skills.spec.ts
+PERF_LABEL=slice7-after slice7_e2e e2e/perf.spec.ts --grep 'bench route|quality presets'
+
+mkdir -p test-results/contribute/TASK-008 test-results/perf
+cp -R "$slice7_root/before/test-results/contribute/TASK-008/slice7-before" test-results/contribute/TASK-008/
+cp "$slice7_root/before/test-results/perf/load-slice7-before.json" test-results/perf/
+```
+
+Attach the six matching poses, including the 1789 control. Inspect the dry banks, spring decals,
+shoreline and plateau seams. Compare all-pass route peaks and per-window fps, the nine-scene phone
+bench and both Hoch transfer totals.
 
 ## Slice 6 plan
 

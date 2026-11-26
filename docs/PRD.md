@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **LiDAR terrain geometry (TASK-008, slice 7).** Mittel and Hoch stream 1 m terrain detail for dry banks and terrace edges near the present-day tour and palace. Walking, shores, the spring and the ground under existing fittings use the base surface. |
 | unreleased | 2026-11-26 | **Combined Pause pages (TASK-007, slice 10).** Sammlungen includes Funde alongside sets, the bestiary and bottles. I and Pause open one „Ausrüstung & Talente“ screen with both sections and the unspent talent-point badge on the Pause entry. Codex stays dedicated to sourced history and its fiction disclosures. |
 | unreleased | 2026-11-26 | **Castle understory (TASK-008, slice 6).** Low shrubs and dry flower seed heads (FIKTION) follow canopy edges and gaps at the present-day Weiher, Quelle and palace plateau. Trails, the spring and the fittings stay clear. Niedrig shows fewer plants with simpler silhouettes. |
 | unreleased | 2026-11-26 | **Spring interaction and Pause chapters (TASK-007, slice 9).** At the Karlsbergquelle, „Wasser berühren“ appears when the story calls for it and the player can reach the water. Pause provides saving and a „Kapitel“ page for replaying unlocked chapters. Sammlungen shows the bottles collected so far. The spring remains the home and wake point. |

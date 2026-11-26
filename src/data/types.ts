@@ -21,6 +21,8 @@ export interface TerrainMeta {
   };
   /** Optional DGM1 surface shading for the present-day tour and palace. */
   surface2025?: TerrainSurfaceMeta;
+  /** Optional DGM1 mesh offsets for the present-day tour and palace. */
+  relief2025?: TerrainReliefMeta;
   hist1840: { path: string; covered: number };
   /** TK25 1935–40 (Kartograf 2), same crop as hist1840. */
   hist1935?: { path: string; covered: number };
@@ -37,6 +39,17 @@ export interface TerrainSurfaceMeta {
   cols: number;
   rows: number;
 }
+
+export interface TerrainReliefMeta {
+  path: string;
+  /** Position of the first vertex, on the 2 m terrain lattice. Samples are 1 m apart. */
+  x0: number;
+  z0: number;
+  cols: number;
+  rows: number;
+}
+
+export const RELIEF_TILE_M = 32;
 
 export interface PointCloudMeta {
   format: 'kq-pts-v1';

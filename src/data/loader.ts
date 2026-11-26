@@ -1,5 +1,5 @@
 import { decodeCanopy, decodeH1789, decodeH2025, decodeSurface, inflate, quantToMetres } from './decode';
-import type { GameData, PathGraphFile, Poi, Room, TerrainMeta, TerrainSurfaceMeta } from './types';
+import type { GameData, PathGraphFile, Poi, Room, TerrainMeta, TerrainReliefMeta, TerrainSurfaceMeta } from './types';
 
 /** Base URL of the prepared data (Vite `public/data`, works under any sub-path). */
 export const DATA_URL = `${import.meta.env.BASE_URL}data/`;
@@ -50,6 +50,12 @@ const bin = async (url: string, slot: ReturnType<ByteTracker['add']> | null = nu
 /** Optional post-start raster, outside the critical terrain fetches. */
 export async function loadTerrainSurface(baseUrl: string, meta: TerrainSurfaceMeta): Promise<Uint8Array> {
   return decodeSurface(await bin(`${baseUrl}${meta.path}`), meta);
+}
+
+export async function loadTerrainRelief(baseUrl: string, meta: TerrainReliefMeta): Promise<Uint8Array> {
+  const data = await bin(`${baseUrl}${meta.path}`);
+  if (data.length !== meta.cols * meta.rows) throw new Error('terrain relief: size mismatch');
+  return data;
 }
 
 export async function loadGameData(baseUrl = DATA_URL, onProgress?: (done: number, total: number) => void): Promise<GameData> {

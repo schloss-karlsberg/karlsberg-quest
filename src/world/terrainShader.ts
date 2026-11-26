@@ -4,6 +4,9 @@ export const TERRAIN_VERT = /* glsl */ `
 precision highp float;
 precision highp int;
 uniform highp sampler2D uHeight;
+uniform highp sampler2D uRelief;
+uniform vec3 uReliefGrid; // x0, z0, fade-out distance (m)
+uniform vec3 uCamPos;
 uniform vec4 uGrid;      // x0, z0, cell, skirt depth per step (m)
 uniform vec2 uGridSize;  // cols, rows
 uniform sampler2D uCover;
@@ -19,18 +22,41 @@ int mirrorIdx(int i, int n) {
   return i < n ? i : p - i;
 }
 
-void main() {
-  vec2 cr = aChunk.xy + position.xz * aChunk.z;
-  ivec2 ic = ivec2(int(cr.x), int(cr.y));
-  ivec2 n = ivec2(uGridSize);
+float terrainHeight(ivec2 ic, ivec2 n) {
   ivec2 sc = ivec2(mirrorIdx(ic.x, n.x), mirrorIdx(ic.y, n.y));
   float h = texelFetch(uHeight, sc, 0).r;
-  h -= position.y * uGrid.w * aChunk.z;
   // water cells: the LiDAR return is the flat water surface; sink a bed under the water mesh
   // (world/water.ts draws the surface at the old height) so the shore meets it in a soft slope
   float wet = texelFetch(uCover, sc, 0).g;
-  h -= uBedDepth * smoothstep(0.15, 0.85, wet);
-  vec3 wp = vec3(uGrid.x + cr.x * uGrid.z, h, uGrid.y + cr.y * uGrid.z);
+  return h - uBedDepth * smoothstep(0.15, 0.85, wet);
+}
+
+void main() {
+  vec2 cr = aChunk.xy + position.xz * aChunk.z;
+  ivec2 ic = ivec2(cr);
+  ivec2 n = ivec2(uGridSize);
+  vec2 xz = uGrid.xy + cr * uGrid.z;
+  float h;
+  if (aChunk.z < 1.0) {
+    // Each new vertex is the midpoint of a base triangle edge, including its b–c diagonal.
+    // Interpolate the actual rendered height (also for shore triangles) before adding relief.
+    ivec2 odd = ivec2(position.xz) % 2;
+    if (odd.x == 1 && odd.y == 1) {
+      h = 0.5 * (terrainHeight(ic + ivec2(1, 0), n) + terrainHeight(ic + ivec2(0, 1), n));
+    } else {
+      h = terrainHeight(ic, n);
+      if (odd.x + odd.y > 0) h = 0.5 * (h + terrainHeight(ic + odd, n));
+    }
+    if (odd.x + odd.y > 0) {
+      float fade = 1.0 - smoothstep(uReliefGrid.z * 0.5, uReliefGrid.z, distance(xz, uCamPos.xz));
+      float offset = round(texelFetch(uRelief, ivec2(xz - uReliefGrid.xy), 0).r * 255.0) - 128.0;
+      h += offset * 0.01 * fade;
+    }
+  } else {
+    h = terrainHeight(ic, n);
+  }
+  h -= position.y * uGrid.w * max(1.0, aChunk.z);
+  vec3 wp = vec3(xz.x, h, xz.y);
   vec2 lo = uGrid.xy;
   vec2 hi = uGrid.xy + (uGridSize - 1.0) * uGrid.z;
   vec2 o = max(lo - wp.xz, vec2(0.0)) + max(wp.xz - hi, vec2(0.0));

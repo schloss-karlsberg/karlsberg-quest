@@ -24,7 +24,7 @@ import {
   Vector3,
   type PerspectiveCamera,
 } from 'three';
-import type { TerrainSurfaceMeta } from '../data/types';
+import { RELIEF_TILE_M, type TerrainReliefMeta, type TerrainSurfaceMeta } from '../data/types';
 import { atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { TERRAIN_FRAG, TERRAIN_VERT } from './terrainShader';
@@ -37,6 +37,8 @@ const LOD_STEPS = [1, 2, 4, 8];
 const LOD_DIST = [200, 450, 1000, Infinity];
 /** Chunks of mirrored "apron" terrain drawn around the data extent (hides the world edge). */
 const APRON = 6;
+const RELIEF_RANGE_M = 24;
+const TILES_PER_NEAR_CHUNK = 16;
 
 export interface TerrainDataset {
   key: string;
@@ -54,8 +56,16 @@ interface Chunk {
   apron: boolean;
 }
 
-function lodGeometry(step: number): InstancedBufferGeometry {
-  const n = CHUNK / step;
+interface TerrainLod {
+  mesh: Mesh;
+  geo: InstancedBufferGeometry;
+  attr: InstancedBufferAttribute;
+  data: Float32Array;
+  count: number;
+}
+
+function lodGeometry(step: number, cells: number): InstancedBufferGeometry {
+  const n = cells / step;
   const pos: number[] = [];
   const idx: number[] = [];
   const v = (i: number, j: number) => j * (n + 1) + i;
@@ -114,14 +124,15 @@ export function makeHeightTexture(hf: Heightfield): DataTexture {
 }
 
 /**
- * Instanced, chunked heightfield terrain: one InstancedBufferGeometry per LOD (≤ 4 draw calls),
- * heights fetched in the vertex shader from an R32F texture, skirts hide LOD cracks.
+ * Instanced, chunked heightfield terrain with one batch per base LOD and two optional near-tile
+ * batches. Heights are fetched in the vertex shader, and skirts hide LOD cracks.
  */
 export class Terrain {
   readonly object = new Group();
   readonly material: ShaderMaterial;
   private readonly chunks: Chunk[] = [];
-  private readonly lods: { mesh: Mesh; geo: InstancedBufferGeometry; attr: InstancedBufferAttribute; data: Float32Array }[] = [];
+  private readonly lods: TerrainLod[] = [];
+  private relief: { coarse: TerrainLod; fine: TerrainLod; texture: DataTexture; meta: TerrainReliefMeta } | null = null;
   private dataset: TerrainDataset | null = null;
   private readonly frustum = new Frustum();
   private readonly box = new Box3();
@@ -129,7 +140,7 @@ export class Terrain {
   readonly stats = { chunks: 0, triangles: 0 };
   /** LOD distance factor (graphics preset): < 1 switches to coarser chunks sooner. */
   lodScale = 1;
-  private readonly counts = [0, 0, 0, 0];
+  reliefEnabled = false;
   readonly nx: number;
   readonly nz: number;
 
@@ -154,6 +165,8 @@ export class Terrain {
       uniforms: {
         ...atmosphere,
         uHeight: { value: null },
+        uRelief: { value: null },
+        uReliefGrid: { value: [0, 0, RELIEF_RANGE_M] },
         uSurf: { value: null },
         uSurfDetail: { value: null as DataTexture | null },
         uSurfDetailGrid: { value: [0, 0, 0, 0] },
@@ -180,19 +193,24 @@ export class Terrain {
       },
     });
     for (const step of LOD_STEPS) {
-      const geo = lodGeometry(step);
-      const data = new Float32Array(this.chunks.length * 3);
-      const attr = new InstancedBufferAttribute(data, 3);
-      attr.setUsage(DynamicDrawUsage);
-      geo.setAttribute('aChunk', attr);
-      geo.instanceCount = 0;
-      const mesh = new Mesh(geo, this.material);
-      mesh.frustumCulled = false;
-      mesh.matrixAutoUpdate = false;
-      mesh.name = `terrain-lod${step}`;
-      this.object.add(mesh);
-      this.lods.push({ mesh, geo, attr, data });
+      this.lods.push(this.createLod(`terrain-lod${step}`, step, CHUNK, this.chunks.length));
     }
+  }
+
+  private createLod(name: string, step: number, cells: number, capacity: number): TerrainLod {
+    const geo = lodGeometry(step, cells);
+    const data = new Float32Array(capacity * 3);
+    const attr = new InstancedBufferAttribute(data, 3);
+    attr.setUsage(DynamicDrawUsage);
+    geo.setAttribute('aChunk', attr);
+    geo.instanceCount = 0;
+    const mesh = new Mesh(geo, this.material);
+    mesh.frustumCulled = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.name = name;
+    mesh.visible = false;
+    this.object.add(mesh);
+    return { mesh, geo, attr, data, count: 0 };
   }
 
   /** Per-chunk min/max heights (mirrored apron included) for culling. */
@@ -239,6 +257,34 @@ export class Terrain {
     this.uniforms.uSurfDetailGrid!.value = [x0, z0, cols, rows];
   }
 
+  /** The streamed 1 m samples contain bounded offsets from the existing terrain triangles. */
+  setReliefDetail(data: Uint8Array, meta: TerrainReliefMeta): void {
+    const { x0, z0, cols, rows } = meta;
+    if (this.cell !== 2 || (x0 - this.x0) % RELIEF_TILE_M !== 0 || (z0 - this.z0) % RELIEF_TILE_M !== 0
+      || (cols - 1) % RELIEF_TILE_M !== 0 || (rows - 1) % RELIEF_TILE_M !== 0) {
+      throw new Error('terrain relief: expected 32 m tiles on the base lattice');
+    }
+    const cells = RELIEF_TILE_M / this.cell;
+    const texture = new DataTexture(data, cols, rows, RedFormat, UnsignedByteType);
+    texture.needsUpdate = true;
+    if (this.relief) {
+      this.relief.texture.dispose();
+      this.relief.texture = texture;
+      this.relief.meta = meta;
+    } else {
+      // A 48 m diameter intersects at most four 128 m chunks and nine 32 m tiles.
+      this.relief = {
+        coarse: this.createLod('terrain-2m-tiles', 1, cells, 4 * TILES_PER_NEAR_CHUNK),
+        fine: this.createLod('terrain-dgm1', 0.5, cells, 9),
+        texture,
+        meta,
+      };
+      this.lods.push(this.relief.coarse, this.relief.fine);
+    }
+    this.uniforms.uRelief!.value = texture;
+    this.uniforms.uReliefGrid!.value = [x0, z0, RELIEF_RANGE_M];
+  }
+
   /**
    * CC0 ground set (vegetation/strips.ts): splat-blended texture arrays instead of the procedural
    * colours. Off (null) on the low tier; switching recompiles the terrain shader once.
@@ -265,8 +311,9 @@ export class Terrain {
     camera.updateMatrixWorld();
     this.m4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.m4);
-    const counts = this.counts;
-    counts.fill(0);
+    for (const batch of this.lods) batch.count = 0;
+    const u = this.uniforms;
+    const detail = this.reliefEnabled && ds.key === '2025' && u.uScanMix!.value <= 0.001 && u.uMapMix!.value <= 0.001 ? this.relief : null;
     const cam = camera.position;
     const ls = this.lodScale;
     const size = CHUNK * this.cell;
@@ -275,32 +322,41 @@ export class Terrain {
       const ch = this.chunks[k]!;
       const x0 = this.x0 + ch.c0 * this.cell;
       const z0 = this.z0 + ch.r0 * this.cell;
+      const refine = detail && !ch.apron && nearCrop(x0, z0, size, detail.meta, cam);
       this.box.min.set(x0, ds.bounds[k * 2]!, z0);
-      this.box.max.set(x0 + size, ds.bounds[k * 2 + 1]!, z0 + size);
+      this.box.max.set(x0 + size, ds.bounds[k * 2 + 1]! + (refine ? 0.32 : 0), z0 + size);
       if (!this.frustum.intersectsBox(this.box)) continue;
       const d = this.box.distanceToPoint(cam);
       if (d > camera.far) continue;
       let lod = 0;
       while (d > LOD_DIST[lod]! * ls) lod++;
       if (ch.apron) lod = Math.max(lod, 2);
-      const L = this.lods[lod]!;
-      const n = counts[lod]!;
-      L.data[n * 3] = ch.c0;
-      L.data[n * 3 + 1] = ch.r0;
-      L.data[n * 3 + 2] = LOD_STEPS[lod]!;
-      counts[lod] = n + 1;
+      if (refine && lod === 0) {
+        const tileCells = RELIEF_TILE_M / this.cell;
+        for (let r = 0; r < CHUNK; r += tileCells) {
+          for (let c = 0; c < CHUNK; c += tileCells) {
+            const fine = nearCrop(x0 + c * this.cell, z0 + r * this.cell, RELIEF_TILE_M, detail.meta, cam);
+            addTile(fine ? detail.fine : detail.coarse, ch.c0 + c, ch.r0 + r, fine ? 0.5 : 1);
+            const quads = fine ? tileCells * 2 : tileCells;
+            tris += quads * quads * 2;
+          }
+        }
+        continue;
+      }
+      addTile(this.lods[lod]!, ch.c0, ch.r0, LOD_STEPS[lod]!);
       const q = CHUNK / LOD_STEPS[lod]!;
       tris += q * q * 2;
     }
     let total = 0;
-    for (let i = 0; i < this.lods.length; i++) {
-      const L = this.lods[i]!;
-      L.geo.instanceCount = counts[i]!;
-      L.attr.clearUpdateRanges();
-      L.attr.addUpdateRange(0, counts[i]! * 3);
-      L.attr.needsUpdate = true;
-      L.mesh.visible = counts[i]! > 0;
-      total += counts[i]!;
+    for (const batch of this.lods) {
+      batch.geo.instanceCount = batch.count;
+      batch.mesh.visible = batch.count > 0;
+      if (batch.mesh.visible) {
+        batch.attr.clearUpdateRanges();
+        batch.attr.addUpdateRange(0, batch.count * 3);
+        batch.attr.needsUpdate = true;
+      }
+      total += batch.count;
     }
     this.stats.chunks = total;
     this.stats.triangles = tris;
@@ -308,6 +364,25 @@ export class Terrain {
 
   dispose(): void {
     for (const L of this.lods) L.geo.dispose();
+    this.relief?.texture.dispose();
     this.material.dispose();
   }
+}
+
+function addTile(batch: TerrainLod, c: number, r: number, step: number): void {
+  const i = batch.count++ * 3;
+  batch.data[i] = c;
+  batch.data[i + 1] = r;
+  batch.data[i + 2] = step;
+}
+
+function nearCrop(x: number, z: number, size: number, crop: TerrainReliefMeta, camera: Vector3): boolean {
+  const left = Math.max(x, crop.x0);
+  const right = Math.min(x + size, crop.x0 + crop.cols - 1);
+  const north = Math.max(z, crop.z0);
+  const south = Math.min(z + size, crop.z0 + crop.rows - 1);
+  if (left >= right || north >= south) return false;
+  const dx = Math.max(left - camera.x, 0, camera.x - right);
+  const dz = Math.max(north - camera.z, 0, camera.z - south);
+  return dx * dx + dz * dz < RELIEF_RANGE_M * RELIEF_RANGE_M;
 }
