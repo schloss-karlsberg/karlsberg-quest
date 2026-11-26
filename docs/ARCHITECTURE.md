@@ -1938,23 +1938,28 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
-- The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks and minimap
-  while the phone is up. Touch keeps the phone toggle and shutter visible and accepts movement
+- The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks, minimap,
+  measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and shutter visible and accepts movement
   and look gestures. Scene marker roots follow `photo:open` / `photo:close` alongside the
   independent `world:quiet` reasons. Exiting photo mode reveals the current gameplay overlays.
 - **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
   (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
   `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
   `kq.setCamera` and the coming cinematic use).
+- An inline story choice (`story:inline-choice { open }`) lowers the phone and blocks opening it
+  until the choice ends. The story can send the `photo:lower` cue before dialogue, as it does after
+  a good deer photo during the tour.
 - **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
   era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
   diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
   the top, left and right of the sphere. Animals also sample the centre and bottom, so they
   need three of five clear. Terrain, footprint walls when the palace stands and tree trunks
   block the rays. The last 0.7 r is skipped for the subject itself. The distance must be within
-  `minDist`…`maxDist`. The view's mean angular speed must be at most 0.35 rad/s over the last
+  `minDist`…`maxDist`. Subjects beyond the active range limit get one star in frame and skip
+  sight sampling. The view's mean angular speed must be at most 0.35 rad/s over the last
   0.3 s (`SteadyMeter`), and `calm()` must allow the shot. `needAll`
-  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
+  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` and the
+  optional lower `fallbackMinFrac` apply once
   the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
   clock lives in the save slice, stops at the first good shot), with `fallbackStars` (2 or 3 = good;
   1 = never good: one rule, good means ≥ 2 stars everywhere). **Stars**

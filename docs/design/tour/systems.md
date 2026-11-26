@@ -18,7 +18,7 @@ The exact interfaces are in **"Story contracts"** below; where a sketch in §1�
 
 ## 1. Photo mode (smartphone)
 
-**What it does.** Press **N** or the touch camera button to toggle the phone. Gameplay overlays step away. The phone has 1×/2× zoom and a click or tap shutter. A good shot requires framing, size, distance and a clear majority of sight rays (three of five for animals, two of three for other targets). A good shot adds an **album** entry and can unlock a codex card or a photo card. In the past the phone shows „Kein Netz“ and the image comes out white. See the [tour tuning](slice-v0.md#deer-photo-and-sneak-tuning-task-017) and [runtime details](../../ARCHITECTURE.md#photo-srcsystemsphoto--fotomodus-the-smartphone-camera-present-day-only).
+**What it does.** Press **N** or the touch camera button to toggle the phone. Gameplay overlays step away. An inline choice lowers the phone and keeps it down until the choice ends. The phone has 1×/2× zoom and a click or tap shutter. A good shot requires framing, size, distance and a clear majority of sight rays (three of five for animals, two of three for other targets). A good shot adds an **album** entry and can unlock a codex card or a photo card. In the past the phone shows „Kein Netz“ and the image comes out white. See the [tour tuning](slice-v0.md#deer-photo-and-sneak-tuning-task-017) and [runtime details](../../ARCHITECTURE.md#photo-srcsystemsphoto--fotomodus-the-smartphone-camera-present-day-only).
 
 **Reusable code (audit §8).** The capture core is `src/systems/notes/index.ts:252–270` `screenshot()` (re-render via `post.render`, draw to a 2D canvas, JPEG data URL). `preserveDrawingBuffer` is only on with `?preserve` (`boot.ts:48`), but the notes path re-renders, so no flag is needed. Lantern / camera FOV live in `src/player/camera.ts` (camera owner kq-mobile: report the zoom hook). Journal tabs: `src/systems/progression/journal-tabs.ts`.
 
@@ -26,7 +26,7 @@ The exact interfaces are in **"Story contracts"** below; where a sketch in §1�
 ```ts
 // src/systems/photo/index.ts
 registerTarget({ id: 'photo.p.reh', era: 'today', at: () => ({ x, y, z }), r: 0.8,
-  minFrac: 0.055, maxDist: 27, fallbackDist: 32, fallbackAfterS: 90,
+  minFrac: 0.055, maxDist: 27, fallbackDist: 32, fallbackAfterS: 90, fallbackMinFrac: 0.045,
   needAll?: string[] /* both deer */, grants?: { codex?: 'cx.T4', card?: 'ph.insel', flag?: string } });
 // events: 'photo:open' | 'photo:close' | 'photo:shot' {targets, good, stars, noSignal} | 'photo:good' {id, stars}
 // story waits with { "event": "photo:good", "match": { "id": "photo.p.reh" } }  (no new condition type; contract C3)
@@ -295,7 +295,7 @@ export interface PhotoTarget {
     centre?: 'third' | 'any';                   // default 'third'
     maxDist?: number; minDist?: number;         // inscriptions: maxDist ≤ 4
     needAll?: string[];                         // other targets that must be in the same frame (doe + fawn)
-    fallback?: { afterS: number; maxDist: number; stars: 1 | 2 };   // the easier rule after afterS seconds of trying
+    fallback?: { afterS: number; maxDist: number; minFrac?: number; stars: 1 | 2 | 3 };
   };
   grants?: { codex?: string; card?: string; flag?: string };   // once, on the first good photo
 }
@@ -324,7 +324,7 @@ declare module '../../debug/hooks' {
 - **Example (target t6):**
 ```json
 { "id": "photo.p.reh", "kind": "animal", "era": "today", "label_de": "Ricke und Kitz", "animal": "ricke", "r": 0.8,
-  "frame": { "minFrac": 0.055, "maxDist": 27, "needAll": ["photo.p.kitz"], "fallback": { "afterS": 90, "maxDist": 32, "stars": 2 } },
+  "frame": { "minFrac": 0.055, "maxDist": 27, "needAll": ["photo.p.kitz"], "fallback": { "afterS": 90, "maxDist": 32, "minFrac": 0.045, "stars": 2 } },
   "grants": { "codex": "cx.T4" } }
 ```
 

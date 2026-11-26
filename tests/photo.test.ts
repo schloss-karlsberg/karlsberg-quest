@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { t } from '../src/i18n';
 import '../src/systems/photo';
 import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
@@ -348,13 +348,23 @@ describe('photo targets data (content/photo/targets.json, contract C3)', () => {
     expect(ricke.fallbackAfterS).toBe(90);
   });
 
-  it.each([20, 23, 25])('both deer can score two stars at %i m with 2×', (dist) => {
-    const deer = file.targets.slice(1).map((data: Parameters<typeof targetFromData>[0], i: number) => ({
+  it('rejects a fallback minimum frame fraction above the normal threshold', () => {
+    const [park, ricke, kitz] = file.targets;
+    const invalid = { ...ricke, frame: { ...ricke.frame, fallback: { ...ricke.frame.fallback, minFrac: 0.08 } } };
+    const result = validatePhotoTargets('targets.json', { targets: [park, invalid, kitz] });
+    expect(result.errors).toEqual([expect.objectContaining({ id: 'reh.ricke', message: expect.stringContaining('frame.fallback.minFrac') })]);
+  });
+
+  const deerAt = (dist: number): PhotoTargetDef[] =>
+    file.targets.slice(1).map((data: Parameters<typeof targetFromData>[0], i: number) => ({
       ...targetFromData(data, flat.heightAt),
       at: () => ({ x: i === 0 ? -0.75 : 0.75, y: 1.6, z: -dist }),
     }));
-    const zoomedFov = (360 / Math.PI) * Math.atan(Math.tan((95 * Math.PI) / 360) / 2);
-    expect(judgeShot(deer, 'today', view({ fovV: zoomedFov }), flat)).toMatchObject({
+  const zoomed95 = (360 / Math.PI) * Math.atan(Math.tan((95 * Math.PI) / 360) / 2);
+
+  it.each([20, 23, 25])('both deer can score two stars at %i m with 2×', (dist) => {
+    const deer = deerAt(dist);
+    expect(judgeShot(deer, 'today', view({ fovV: zoomed95 }), flat)).toMatchObject({
       good: ['reh.ricke', 'reh.kitz'],
       stars: 2,
     });
@@ -363,12 +373,28 @@ describe('photo targets data (content/photo/targets.json, contract C3)', () => {
     expect(wide.verdict).toBe('zu-klein');
   });
 
-  it('the deer range extends to 27 m and the fallback still needs the framing thresholds', () => {
-    const ricke = { ...targetFromData(file.targets[1], flat.heightAt), at: () => ({ x: 0, y: 1.6, z: -28 }) };
-    const v = view({ fovV: 44 });
-    expect(judgeTarget(ricke, v, flat, false).verdict).toBe('zu-weit');
-    expect(judgeTarget(ricke, v, flat, true)).toMatchObject({ verdict: 'weit-ok', good: true, stars: 2 });
-    expect(judgeTarget(ricke, view({ fovV: 80 }), flat, true).verdict).toBe('zu-klein');
+  it.each([26.8, 28, 31.9])('both deer at %s m pass at 95° and 2× after 90 s nearby', (dist) => {
+    const save = emptySlice();
+    const core = new PhotoCore(() => save);
+    for (const deer of deerAt(dist)) core.register(deer);
+    const v = view({ fovV: zoomed95 });
+    core.tick(89, 'today', v);
+    expect(core.judge('today', v, flat)).toMatchObject({ good: [], verdict: dist > 27 ? 'zu-weit' : 'nicht-alle' });
+    core.tick(1, 'today', v);
+    const shot = core.judge('today', v, flat);
+    expect(shot).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'weit-ok' });
+    expect(shot.details[0]).toMatchObject({ fallback: true, stars: 2 });
+    expect(core.judge('today', view({ fovV: 95 }), flat).verdict).toBe('zu-klein');
+  });
+
+  it('reports the pair in frame at the tour stop without sampling any sight rays', () => {
+    const terrain = vi.fn(flat.heightAt);
+    const walls = vi.fn(() => false);
+    const trunks = vi.fn();
+    const shot = judgeShot(deerAt(36), 'today', view({ fovV: zoomed95 }), { heightAt: terrain, blocked: walls, trunks }, () => true);
+    expect(shot).toMatchObject({ targets: ['reh.ricke', 'reh.kitz'], good: [], stars: 1, verdict: 'zu-weit' });
+    for (const detail of shot.details) expect(detail).toMatchObject({ inFrame: true, verdict: 'zu-weit', clear: 0 });
+    for (const sample of [terrain, walls, trunks]) expect(sample).not.toHaveBeenCalled();
   });
 
   it('a clipped edge and lower body can pass, while a mostly hidden deer cannot', () => {

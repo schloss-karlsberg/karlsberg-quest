@@ -199,7 +199,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   });
   expect(opened).toBe(true);
   // A bullet-time step advances the simulation but only draws one frame of the zoom animation.
-  await expect.poll(() => page.evaluate(() => window.kq!.ctx.player.rig.fovScale)).toBe(2);
+  const scale = await page.evaluate(() => {
+    const { loop, player: { rig } } = window.kq!.ctx;
+    const fixedDt = loop.dt;
+    for (let i = 0; i < 32 && rig.fovScale !== 2; i++) loop.renderOnce(fixedDt);
+    return rig.fovScale;
+  });
+  expect(scale).toBe(2);
   const judge = await page.evaluate(() => window.kq!.photo!.judge('reh.ricke'));
   expect(judge, JSON.stringify(judge)).toMatchObject({ good: true, stars: 2 });
   expect(judge!.dist).toBeGreaterThanOrEqual(20);
@@ -207,12 +213,23 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await shot(page, '07-reh-handy');
   const res = await page.evaluate(() => window.kq!.photo!.shoot());
   expect(res, JSON.stringify(res)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2 });
-  await page.evaluate(() => {
+  const reaction = await page.evaluate(() => {
     const k = window.kq!;
-    k.step(30);
-    k.photo!.close();
+    const praise = ['imhoff.t.reh3', 'imhoff.t.reh.alert'];
+    const master = k.ctx.audio.volumes.master;
+    k.ctx.audio.setVolumes({ master: 0 });
+    let viewfinderUp: boolean | null = null;
+    const off = k.ctx.events.on('dialogue:say', ({ id }) => {
+      if (id && praise.includes(id)) viewfinderUp = k.photo!.state().open;
+    });
+    // Leave the phone controls alone for several dialogue-lengths after taking the shot.
+    k.step(900);
+    off();
+    k.ctx.audio.setVolumes({ master });
     k.ctx.player.setStance('stand');
+    return { viewfinderUp, shown: k.story!.shown().some((id) => praise.includes(id)) };
   });
+  expect(reaction).toEqual({ viewfinderUp: false, shown: true });
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
   const tDeer = await time(page);
   await follow(page, 't12', 120);

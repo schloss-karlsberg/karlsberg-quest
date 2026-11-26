@@ -1051,6 +1051,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Photo mode hides story choices and reactions (TASK-017, 2026-11-26) | An inline choice lowers the phone and keeps it down until resolution. A good tour photo lowers the phone before the reaction plays. The measuring UI and quest giver glyphs return when the phone is down. |
 | HUD clutter and short deer photo range (TASK-017, 2026-11-26) | Photo mode hides gameplay overlays until the phone closes. A steady 2× shot of the pair works at about 20–25 m. Upright players build suspicion faster and crouching gives room to aim. [Tour tuning](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017) |
 | A full dialogue queue can swallow the dodge tutorial or break a sequence (TASK-029 review, 2026-11-26) | Urgent tutorials can interrupt without a waiting slot and have eviction priority over unplayed ordinary lines. An interrupted sequence keeps its place until it resumes. |
 | Interrupted memories affect quest credit and scene-dependent choices (TASK-029, 2026-11-26) | The end event releases the scene and lets Chapter 2's lantern choice resolve as the departure closes. Clue discovery and quest credit require a completed or skipped memory. |

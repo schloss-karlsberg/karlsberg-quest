@@ -34,20 +34,24 @@ Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'n
 
 ## Deer photo and sneak tuning (TASK-017)
 
-- The phone hides gameplay overlays and world markers on desktop and touch. Touch shows the
-  camera toggle, shutter and zoom controls. The gameplay overlays reappear when the phone closes.
+- The phone hides gameplay overlays and world markers on desktop and touch, including the
+  measuring reticle and sheet and quest giver glyphs. Touch shows the camera toggle, shutter and
+  zoom controls. The gameplay overlays reappear when the phone closes.
 - With 2× zoom, a steady shot of both animals in the middle third works from about 20–25 m. The
   doe's sphere must cover at least 5.5% of frame height and the fawn's at least 4.4%. Each needs
   three clear samples out of five (top, left, right, centre, bottom). Range is 27 m per target,
-  or 32 m for a two-star fallback after 90 s nearby if both still meet the framing rules.
+  or 32 m for a two-star fallback after 90 s nearby. The fallback lowers the minimum frame
+  height to 4.5% for the doe and 3.6% for the fawn so both can pass at 95° FOV and 2× zoom.
 - In line of sight, deer notice an upright player within 30 m. Crouching or going prone at up to
   1.7 m/s reduces that to 15 m. Inside 20 m, standing still adds 0.75 meter units/s and walking
   upright adds 1.5/s. Running above 3.7 m/s adds 1.5/s, and sprinting above 5.2 m/s adds 2.5/s
   within the notice radius. Moving at crouch speed at 13 m adds about 0.14/s. Holding still while
   crouched in range drains 0.5/s. The head-up tell starts at 0.5 and lasts at least 1.5 s before a
   full meter can trigger a 25 m flight.
-- Gerold's reaction uses the doe's `photo:good.state` at the instant of the shot. The phone
-  prompt comes up within 26 m horizontally of the spawn or after 20 s.
+- A good photo lowers the phone before the reaction plays. Gerold responds to the doe's
+  `photo:good.state` at the instant of the shot, and the tour waits for the reaction to finish.
+  The phone prompt comes up within 26 m horizontally of the spawn or after 20 s. On Continue,
+  the objective points to the doe's restored position, including in saves with the old clearing.
 
 ## Chestnuts along the way (TASK-002)
 
