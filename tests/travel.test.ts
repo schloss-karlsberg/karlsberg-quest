@@ -179,8 +179,46 @@ describe('way-finding (world/route.ts)', () => {
 
   it('goes straight when the line is free', () => {
     const r = findRoute(-10, 30, 10, 30, wall);
-    expect(r.straight).toBe(true);
-    expect(r.points).toHaveLength(2);
+    expect(r).toEqual({ points: [[-10, 30], [10, 30]], complete: true, straight: true, expanded: 0 });
+  });
+
+  it('returns only the start when the player is enclosed', () => {
+    const enclosure = (x: number, z: number) => {
+      const d = Math.max(Math.abs(x), Math.abs(z));
+      return d >= 0.75 && d <= 2;
+    };
+    const r = findRoute(0, 0, 8, 0, enclosure);
+    expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
+  });
+
+  it('does not complete a straight route to a blocked goal half a metre away', () => {
+    const blocked = (x: number, z: number) => Math.hypot(x - 0.5, z) < 0.1;
+    const r = findRoute(0, 0, 0.5, 0, blocked);
+    expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
+  });
+
+  it('stops at the reachable approach to a blocked goal', () => {
+    const barrier = (x: number) => x >= 5 && x <= 7;
+    const r = findRoute(0, 0, 6, 0, barrier);
+    expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
+  });
+
+  it('ends a partial route at the closest reachable point on its side of a wall', () => {
+    const barrier = (x: number) => x >= 5 && x <= 7;
+    const r = findRoute(0, 0, 10, 0, barrier);
+    expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
+  });
+
+  it('checks the last leg from the search grid to an off-grid goal', () => {
+    const barrier = (x: number) => x >= 4.2 && x <= 4.8;
+    const r = findRoute(0, 0, 4.9, 0, barrier);
+    expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
+  });
+
+  it('checks the only available grid leg when a thin wall misses its midpoint', () => {
+    const thin = (x: number) => x >= 0.3 && x <= 0.7;
+    const r = findRoute(0, 0, 8, 0, thin, { margin: 0 });
+    expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
   });
 
   it('walks round a wall instead of through it, and every leg is free', () => {
