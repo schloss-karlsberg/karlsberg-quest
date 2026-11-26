@@ -187,7 +187,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   world.attachAssets(assets, renderer);
   const env = new EnvLight(world.sky.mesh);
   bindRenderContext(renderer.domElement, {
-    env, shadows: world.shadows.reuse, reflections: world.water.schedule, perf,
+    env, shadows: world.shadows.reuse, reflections: world.water.schedule, nature: world.nature, perf,
     redraw: () => loopRef?.requestRender(),
   });
   const shadowFocus = new Vector3();

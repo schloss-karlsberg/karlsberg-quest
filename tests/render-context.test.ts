@@ -25,7 +25,10 @@ class TimerGL {
   getQueryParameter = vi.fn(() => false);
 }
 
-function context(shadows = new ShadowReuse(), reflections = new ReflectionSchedule()) {
+function context(
+  shadows = new ShadowReuse(), reflections = new ReflectionSchedule(),
+  nature: { invalidateTrees(): void } = { invalidateTrees: vi.fn() },
+) {
   vi.stubGlobal('WebGL2RenderingContext', TimerGL);
   const gl = new TimerGL();
   const canvas = new EventTarget();
@@ -47,7 +50,7 @@ function context(shadows = new ShadowReuse(), reflections = new ReflectionSchedu
   const perf = new PerfMonitor(renderer);
   const env = new EnvLight(new Mesh());
   const redraw = vi.fn();
-  bindRenderContext(canvas, { env, shadows, reflections, perf, redraw });
+  bindRenderContext(canvas, { env, shadows, reflections, nature, perf, redraw });
   const lose = () => canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
   const restore = () => canvas.dispatchEvent(new Event('webglcontextrestored'));
   return { renderer, env, shadows, reflections, perf, gl, redraw, lose, restore };
@@ -71,7 +74,8 @@ async function mapFixture() {
   const shadows = new SunShadows();
   shadows.configure(256, 75, 9);
   shadows.every = 2;
-  const ctx = context(shadows.reuse, water.schedule);
+  let nature: Nature | null = null;
+  const ctx = context(shadows.reuse, water.schedule, { invalidateTrees: () => nature?.invalidateTrees() });
   const root = new Group();
   const trunk = new BoxGeometry(0.25, 2, 0.25).translate(0, 1, 0);
   const bark = new MeshStandardMaterial();
@@ -85,7 +89,7 @@ async function mapFixture() {
   const setModels = vi.fn();
   const terrain = { setGroundSet: vi.fn() } as unknown as Terrain;
   const forest = { sharedUniforms: {}, setModels, setBark: vi.fn() } as unknown as Forest;
-  const nature = new Nature(terrain, forest, scene, { height: () => 0, cover: () => {}, inside: () => true });
+  nature = new Nature(terrain, forest, scene, { height: () => 0, cover: () => {}, inside: () => true });
   const assets = {
     model: (id: string) => Promise.resolve({ scene: id === 'nature2.trees' ? root : new Group() }),
     texture: () => new Promise<Texture>(() => {}), // Keep the unrelated texture streams pending.

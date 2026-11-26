@@ -62,6 +62,16 @@ export class Nature {
     return this.trees;
   }
 
+  /** WebGL context restore (render/context.ts): the baked tree impostors are gone. */
+  invalidateTrees(): void {
+    this.trees?.invalidateAtlas();
+  }
+
+  /** Before the frame's map and scene draws: bake erased tree impostors again while they are shown. */
+  prepareDraw(renderer: WebGLRenderer): void {
+    if (this.level !== 'low') this.trees?.ensureAtlas(renderer);
+  }
+
   /** Quality tier changed (render/quality.ts listener). */
   setLevel(level: GraphicsLevel): void {
     this.level = level;
