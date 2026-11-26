@@ -107,9 +107,9 @@ _Status: approved 2026-11-26_
 - [x] 3. `shoot()` → store (signal only, metadata: time, play seconds, era, x / z, targets, good, stars); cap toast; hooks.
 - [x] 4. Gallery modal: grid, count, device-only hint (memory fallback: „nur bis zum Neuladen“), viewer with Zurück / Weiter / swipe, Löschen, Herunterladen, Teilen → Download fallback.
 - [x] 5. Entry points: „Galerie“ on the phone (closes the phone, opens the gallery), button on Pause → Album.
-- [ ] 6. Touch / mobile: 44 px targets, portrait and landscape layouts, check in the touch e2e sizes.
-- [ ] 7. e2e in `e2e/photo.spec.ts`; run `photo` and `touch` with one worker.
-- [ ] 8. Manual check in the dev build (desktop and a phone-sized viewport); after shots; docs.
+- [x] 6. Touch / mobile: 44 px targets, portrait and landscape layouts, check in the touch e2e sizes.
+- [x] 7. e2e in `e2e/photo.spec.ts`; run `photo` and `touch` with one worker.
+- [x] 8. Manual check in the dev build (desktop and a phone-sized viewport); after shots; docs.
 - [ ] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/photo.spec.ts e2e/touch.spec.ts --workers=1`.
 
 **Test plan:**
@@ -150,6 +150,20 @@ _Status: approved 2026-11-26_
   - Entry points: the phone bar now reads „1× 2× | Galerie“, and Pause → Album has „Galerie öffnen“.
   - **Plan adjusted:** on desktop the phone holds the pointer lock, so a click always reaches the canvas (the shutter). The gallery button is for touch; **G** opens the gallery on desktop. G is the Bannlicht, muted while the phone is up; the phone hint names it.
   - Checked by script in the dev build (real GPU; desktop 1280×720 and a landscape phone 844×390 with touch): three shots, then the gallery, then a photo full-size. On a phone in portrait the game shows its rotate overlay during play (by design), so the phone check is landscape.
+- 2026-11-26: step 6 done (touch / mobile). The touch e2e found two real bugs, both fixed:
+  - **The delete confirmation:** it expired silently after 4 s while the button still read „Wirklich löschen?“. It is now a plain state: the first press asks, the second deletes, and moving to another photo asks again.
+  - **The landscape phone (844 × 342):** the longer label wrapped the bar, and the button left the visible panel, so the second tap hit the page. The armed label is now „Wirklich?“ (red, `aria-label` „Wirklich löschen?“), so nothing moves.
+  - The viewer image gets its width / height from the metadata and a fixed box (56vh, 48 / 52vh on small screens, `object-fit: contain`), so the bar does not jump when the picture decodes.
+  - Gallery and phone-bar buttons have `touch-action: manipulation`; all their targets are ≥ 44 px on touch.
+- 2026-11-26: step 7 done - `e2e/photo.spec.ts`, one worker. 1789: nothing goes to the gallery. The new desktop test covers:
+  - two shots → `list()` (newest first, metadata, ≤ 1920 px), G → grid (count, `idb` hint), full size (`naturalWidth` = stored width), ‹ › / arrow keys;
+  - Herunterladen (download event, `karlsberg-quest-YYYY-MM-DD-HH-MM-SS.jpg`); Teilen falls back to a download without `canShare` and hands the JPEG to `navigator.share` with it;
+  - both photos and thumbnails are Blobs in IndexedDB `kq-photos`; Pause → Album → „Galerie öffnen“; Löschen asks, deletes, then the next photo moves in and the grid ends empty.
+  - The new touch test (iPhone 13 landscape, CDP touch) covers the bar's 44 px buttons, „Galerie“ by tap, full size by tap, viewer buttons on screen, and deleting by two taps.
+  - All three are green.
+  - The in-place reload under SwiftShader takes 12–51 s here, and Playwright aborted it (`ERR_ABORTED`) in the test. The e2e therefore checks the stored Blobs directly. A real-GPU script (Iris Xe, `vite preview`) shows a reload + boot of about 3 s, the gallery still holding its photo (`count` 1 → 1), with or without gallery use first.
+  - The existing „N at the car park“ test fails here because the pack catches the player before the shutter („Die Meute hat dich gestellt“). The same happens on untouched `main` (`1bd1597`, run the same day), so it is unrelated.
+- 2026-11-26: step 8 - checked by script in the dev build (real GPU), not hand-played. After shots: `after-1-phone.png` (the bar „1× 2× | Galerie“, hint „G: Galerie“), `after-2-gallery.png`, `after-3-viewer.png`, `after-4-gallery-mobile.png` and `after-5-viewer-mobile.png` (landscape phone 844 × 390, touch). Docs: ARCHITECTURE (photo → Gallery), ACTION-RPG §14, PRD changelog.
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
