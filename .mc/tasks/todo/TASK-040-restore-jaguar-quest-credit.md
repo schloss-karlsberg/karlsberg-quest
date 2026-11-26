@@ -97,16 +97,14 @@ reuse the normal objective progress and payout paths.
   Chromium could start. The smoke spec uses the same server and was skipped.
 - 2026-11-26. All three review findings are fixed. The unit suite covers the acceptance save,
   the two title choices and the exact payout across reloads. Browser verification is pending.
-- 2026-11-26. The review patch was staged. `git commit` could not create the worktree’s
-  `index.lock` in the sandbox.
+- 2026-11-26. The review patch was committed as `249ab0a`.
+- 2026-11-26. PR review: a quest finished on acceptance still showed its „Nebenaufgabe“ banner
+  after the payout. The banner now shows only while the quest runs. The jaguar spec failed on the
+  stale banner before the guard and passes with it.
+- 2026-11-26. Gates passed: `pnpm typecheck`, `pnpm test` (`Tests  1612 passed | 1 todo`, zero
+  failed), `pnpm validate` and `pnpm build`. Under the shared lock on port 5428,
+  `e2e/jaguar-quest.spec.ts` passed 2/2 and `e2e/smoke.spec.ts` passed 7/7.
 
 ## Follow-ups
 
-- Run `pnpm validate` in an environment that allows the `tsx` IPC socket.
-- Commit the staged review patch from an environment that can create the worktree’s `index.lock`.
-- Run each browser spec with the shared lock and port 5428.
-
-  ```sh
-  KQ_E2E_PORT=5428 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/jaguar-quest.spec.ts --workers=1 --reporter=line
-  KQ_E2E_PORT=5428 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-  ```
+- None.

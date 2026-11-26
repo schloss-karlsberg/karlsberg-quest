@@ -31,6 +31,8 @@ test('accepting after three flares credits the saved calm exactly once', async (
     const k = window.kq!;
     const { events, state } = k.ctx;
     k.setEra('1793-07');
+    // Level 2 already: the +200 EP stays below level 3, so no level card queues before the payout.
+    Object.assign(state.mutable.systems.progression!, { xp: 160, level: 2 });
     events.emit('menagerie:spawn', { id: 'k3.jaguar', animal: 'jaguar', x: 1276, z: -1418 });
     const before = k.menagerie!.state().some((animal) => animal.id === 'k3.jaguar');
     for (let i = 0; i < 3; i++) events.emit('combat:bann', { x: 1276, z: -1418, yaw: 0, range: 8, angle: 60 });
@@ -61,6 +63,37 @@ test('accepting after three flares credits the saved calm exactly once', async (
     return { paused: k.ctx.pause.paused, quest: saved.quests!.quests[id], xp: saved.progression!.xp, oil: saved.progression!.inventory['item.lampenoel'] };
   }, QUEST);
   expect(autosave).toEqual({ paused: true, quest: after.quest, xp: after.xp, oil: after.oil });
+
+  // The payout ends the quest: no „Nebenaufgabe“ banner for it follows the notice.
+  const stamp = await page.evaluate(() => {
+    const k = window.kq!;
+    const banners: string[] = [];
+    const look = () => {
+      const text = document.querySelector('[data-testid="quest-banner"]')?.textContent ?? '';
+      if (text.includes('Der Jaguar')) banners.push(text);
+    };
+    k.npc!.close();
+    let shown = false;
+    let closed = false;
+    for (let i = 0; i < 1200 && !closed; i++) {
+      k.step(1);
+      look();
+      if (!shown && k.quests!.reward()) {
+        shown = true;
+        // read for a moment, then walk away: the notice goes by itself
+        for (let j = 0; j < 90; j++) k.step(1);
+        const p = k.ctx.player.position;
+        k.teleport(p.x + 6, p.z, 0);
+      }
+      closed = shown && !k.quests!.reward();
+    }
+    for (let i = 0; i < 10; i++) {
+      k.step(1);
+      look();
+    }
+    return { shown, closed, pending: k.quests!.rewardPending(), banners };
+  });
+  expect(stamp).toEqual({ shown: true, closed: true, pending: 0, banners: [] });
   expect(errors).toEqual([]);
 });
 

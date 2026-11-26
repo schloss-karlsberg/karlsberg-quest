@@ -420,7 +420,11 @@ class QuestRuntime {
     const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
     const xp = q.rewards?.xp ?? 0;
     const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
-    this.bannerQ.push(() => showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main', sub));
+    this.bannerQ.push(() => {
+      // A saved calm can finish the quest on acceptance: no "Nebenaufgabe" banner after its payout.
+      const st = this.book.state(q.id);
+      if (st === 'active' || st === 'ready') showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main', sub);
+    });
     // voice givers speak their request (the dialogue presenter queues it)
     // (they lose their point once the first step is done: "Geh zum Damm" while you stand on it)
     const until = first ? { quest: { id: q.id, objective: first.id, gte: first.count ?? 1 } } : undefined;
