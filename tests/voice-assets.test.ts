@@ -7,7 +7,7 @@
  * fail above VOICE_SIZE_FAIL_MB (80 MB).
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -124,6 +124,12 @@ describe('public/voice (the committed folder)', () => {
     const r = checkVoiceAssets(VOICE_DIR, credits);
     expect(r.errors).toEqual([]);
     for (const w of r.warnings) console.warn(`voice assets: ${w}`);
+  });
+
+  it(`ships at most ${VOICE_SIZE_FAIL_MB} MB including the voice manifest`, () => {
+    const files = existsSync(VOICE_DIR) ? readdirSync(VOICE_DIR, { recursive: true, withFileTypes: true }) : [];
+    const bytes = files.filter((file) => file.isFile()).reduce((total, file) => total + statSync(join(file.parentPath, file.name)).size, 0);
+    expect(bytes, `public/voice totals ${(bytes / 1e6).toFixed(2)} MB`).toBeLessThanOrEqual(VOICE_SIZE_FAIL_MB * 1e6);
   });
 });
 

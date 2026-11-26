@@ -1,8 +1,19 @@
 import { PerspectiveCamera } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import tourRoute from '../content/routes/p-fuehrung.json';
+import tourStory from '../content/story/00-tour.story.json';
 import { AudioManager, type Bus } from '../src/audio/audio';
+import type { GameContext } from '../src/core/context';
+import { EventBus } from '../src/core/events';
+import { t } from '../src/i18n';
+import ambience from '../src/systems/ambience';
+import footsteps from '../src/systems/footsteps';
 import { speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { Voice } from '../src/systems/story/dialogue/voice';
+import { playStorySoundAction } from '../src/systems/story/sfx';
+import type { StoryFile } from '../src/systems/story/types';
+import { World } from '../src/world/world';
+import { loadWorldData } from './world-data';
 
 class Param {
   value = 1;
@@ -42,6 +53,7 @@ class Panner extends Node {
 class Context {
   currentTime = 1;
   state = 'running';
+  sampleRate = 32;
   destination = new Node();
   listener = { setPosition() {} };
   sources: Source[] = [];
@@ -49,6 +61,7 @@ class Context {
   createDynamicsCompressor() { return Object.assign(new Node(), { threshold: new Param(), ratio: new Param() }); }
   createBiquadFilter() { return Object.assign(new Node(), { frequency: new Param(), Q: new Param() }); }
   createDelay() { return Object.assign(new Node(), { delayTime: new Param() }); }
+  createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
   createBufferSource() { const s = new Source(); this.sources.push(s); return s; }
   createOscillator() { return this.createBufferSource(); }
 }
@@ -57,11 +70,105 @@ const bus = (audio: AudioManager, name: Bus) => audio.bus(name) as unknown as No
 const duckGain = (audio: AudioManager, name: 'music' | 'ambience') => bus(audio, name).connections[0]!.gain.value;
 const buffer = { duration: 4 } as AudioBuffer;
 
+function reaches(source: Node, dest: Node): boolean {
+  return source === dest || (source.connections?.some((node) => reaches(node, dest)) ?? false);
+}
+
 beforeEach(() => {
-  vi.stubGlobal('window', { AudioContext: Context });
+  vi.stubGlobal('window', { AudioContext: Context, setTimeout: vi.fn() });
   vi.stubGlobal('PannerNode', Panner);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe('tour sounds', () => {
+  it('routes scripted cues to SFX, honors mute and captions, and plays during reduced motion', () => {
+    const audio = new AudioManager();
+    audio.unlock();
+    const { sources } = audio.ctx as unknown as Context;
+    const settings = { state: { subtitles: true, reducedMotion: true } };
+    const subtitle = vi.fn();
+    const ctx = { audio, settings, world: { heightAt: () => 280 }, ui: { hud: { subtitle } } } as unknown as GameContext;
+    const cues = (tourStory as StoryFile).beats.flatMap((beat) => beat.enter ?? []).filter((a) => a.do === 'sound');
+    expect(cues.map((a) => a.sound)).toEqual(['wind', 'bark', 'deer-rustle', 'compass']);
+    audio.setVolumes({ sfx: 0.27, master: 0.64 });
+    const release = audio.holdVoice();
+    for (const cue of cues) {
+      const before = sources.length;
+      playStorySoundAction(ctx, cue);
+      expect(sources.slice(before).some((node) => reaches(node, bus(audio, 'sfx'))), cue.sound).toBe(true);
+      expect(subtitle).toHaveBeenLastCalledWith(null, cue.caption, expect.any(Number));
+    }
+    expect(bus(audio, 'sfx').gain.value).toBe(0.27);
+    expect(bus(audio, 'sfx').connections[0]).toBe(audio.master);
+    expect(audio.master?.gain.value).toBe(0.64);
+    expect(duckGain(audio, 'ambience')).toBe(0.38);
+    release();
+
+    audio.setVolumes({ sfx: 0 });
+    playStorySoundAction(ctx, cues[2]!);
+    expect(bus(audio, 'sfx').gain.value).toBe(0);
+    expect(subtitle).toHaveBeenCalledTimes(cues.length + 1);
+    audio.setVolumes({ master: 0 });
+    settings.state.subtitles = false;
+    playStorySoundAction(ctx, cues[2]!);
+    expect(audio.master?.gain.value).toBe(0);
+    expect(subtitle).toHaveBeenCalledTimes(cues.length + 1);
+  });
+
+  it('plays gravel footsteps without captions on the present-day Felsenpfad', () => {
+    const audio = new AudioManager();
+    audio.unlock();
+    const { sources } = audio.ctx as unknown as Context;
+    const events = new EventBus();
+    const subtitle = vi.fn();
+    const loop = { time: 1 };
+    const settings = { state: { subtitles: true } };
+    footsteps.init({ audio, events, loop, settings, player: { stance: 'stand' }, t, ui: { hud: { subtitle } } } as unknown as GameContext);
+    const { grid, ground, pathAt } = loadWorldData();
+    const world = { era: 'today', grid, data: { ground }, pathAt, coverAt: () => 1 } as unknown as World;
+    const { x, z } = tourRoute.stops.find((stop) => stop.id === 'felsen')!;
+    const surface = World.prototype.surfaceAt.call(world, x, z);
+    expect(surface).toBe('gravel');
+    events.emit('player:step', { x, z, surface, running: false });
+    expect(subtitle).not.toHaveBeenCalled();
+    expect(sources).toHaveLength(2);
+    expect(sources.every((node) => reaches(node, bus(audio, 'sfx')))).toBe(true);
+  });
+
+  it('routes the tour beds and 1789 activity through the voice-ducked ambience bus', () => {
+    const audio = new AudioManager();
+    audio.unlock();
+    const position = { x: 897.2, y: 280, z: -845.3 };
+    const { sources } = audio.ctx as unknown as Context;
+    const subtitle = vi.fn(() => () => {});
+    const era = { current: 'today' };
+    ambience.init({ audio, era, player: { position, flying: false }, world: { heightAt: () => 280 },
+      settings: { state: { subtitles: true } }, t, ui: { hud: { subtitle } } } as unknown as GameContext);
+    try {
+      ambience.update(0.2);
+      expect(sources.filter((node) => reaches(node, bus(audio, 'ambience')))).toHaveLength(3); // Wind, pond and brook.
+      expect(duckGain(audio, 'ambience')).toBe(1);
+      audio.setVolumes({ ambience: 0.62 });
+      const release = audio.holdVoice();
+      const before = sources.length;
+      Object.assign(position, { x: 1216, z: -1114 });
+      era.current = '1789';
+      ambience.update(3.2);
+      expect(subtitle).toHaveBeenCalledWith(null, 'In der Ferne klappern Hufe.', 3500, true);
+      const activity = sources.slice(before);
+      expect(activity.length).toBeGreaterThan(0);
+      expect(activity.every((node) => reaches(node, bus(audio, 'ambience')))).toBe(true);
+      expect(bus(audio, 'ambience').gain.value).toBe(0.62);
+      expect(duckGain(audio, 'ambience')).toBe(0.38);
+      audio.setVolumes({ ambience: 0 });
+      release();
+      expect(bus(audio, 'ambience').gain.value).toBe(0);
+      expect(duckGain(audio, 'ambience')).toBe(1);
+    } finally {
+      ambience.dispose();
+    }
+  });
+});
 
 describe('speech mix', () => {
   it('preserves the bus controls, pause and mute while handling overlapping voices', () => {

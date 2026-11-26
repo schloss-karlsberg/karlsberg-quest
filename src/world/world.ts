@@ -1,7 +1,7 @@
 import { Color, LinearSRGBColorSpace, type PerspectiveCamera, type Scene, SRGBColorSpace, type Texture, TextureLoader, Vector3, type WebGLRenderer } from 'three';
 import { ERA_INFO, type Era } from '../core/era';
 import { loadTerrainRelief, loadTerrainSurface } from '../data/loader';
-import { GROUND_NAMES, type GameData } from '../data/types';
+import { GROUND, GROUND_NAMES, type GameData } from '../data/types';
 import type { PostFX } from '../render/post';
 import { SunShadows } from '../render/shadows';
 import { atmosphere } from './atmosphere';
@@ -250,9 +250,10 @@ export class World {
     const o = this.surfaceOverride?.(x, z);
     if (o) return o;
     if (this.era === 'today') {
-      const c = this.coverAt(x, z);
-      if (classAt(this.grid, this.data.ground, x, z) === 5) return 'water';
-      return c > 0.5 ? 'forest' : 'meadow';
+      if (classAt(this.grid, this.data.ground, x, z) === GROUND.water) return 'water';
+      // Present-day paths use the gravel layer in the terrain shader.
+      if (this.pathAt(x, z) > 0.3) return 'gravel';
+      return this.coverAt(x, z) > 0.5 ? 'forest' : 'meadow';
     }
     return GROUND_NAMES[classAt(this.grid, this.data.ground, x, z)] ?? 'meadow';
   }

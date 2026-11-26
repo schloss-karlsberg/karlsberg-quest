@@ -16,6 +16,7 @@ import type { NpcWatch, ThreatConfig, ThreatKind } from '../contracts';
 import type { AnimalAction as AnimalRequestFields } from '../animals/types';
 import type { CinematicPlay } from '../cinematic/types';
 import type { WalkRequest } from '../walk/types';
+import type { HornSignal, StorySound } from './sfx';
 
 export type FlagValue = boolean | number | string;
 
@@ -341,12 +342,12 @@ export interface CardAction extends ActionBase {
 /** A positional / UI sound, always with a caption for players who cannot rely on sound. */
 export interface SoundAction extends ActionBase {
   do: 'sound';
-  sound: 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match' | 'crowbar' | 'wind' | 'bark';
+  sound: StorySound;
   x?: number;
   z?: number;
   caption?: string;
   /** Horn signal: anblasen (one long), fährte (two short), verloren (falling), sammeln (three long). */
-  signal?: 'anblasen' | 'faehrte' | 'verloren' | 'sammeln';
+  signal?: HornSignal;
 }
 /**
  * Times of day a `look` action can set (`dawn`: Morgengrauen, chapter 4's end and the endings;

@@ -183,9 +183,6 @@
       "enter": [
         { "do": "npc", "op": "hold", "group": "fuehrung" },
         { "do": "sound", "sound": "wind", "caption": "[Der Wind frischt auf]" },
-        { "do": "animal", "op": "run", "id": "diane", "path": [[676, -636], [700, -640], [722, -646]], "bark": true, "back": true, "delay": 1.2 },
-        { "do": "animal", "op": "run", "id": "bijou", "path": [[677, -637], [701, -642], [718, -652]], "bark": true, "back": true, "delay": 0.4 },
-        { "do": "sound", "sound": "bark", "caption": "[Hundegebell]" },
         {
           "do": "cinematic",
           "id": "tour.hunde",
@@ -196,7 +193,10 @@
             { "t": 6, "look": { "target": "animal:bijou" }, "fov": 42 }
           ]
         },
-        { "do": "say", "id": "player.t.wind", "speaker": "player", "text": "Was war das denn?", "delay": 0.5 },
+        { "do": "animal", "op": "run", "id": "bijou", "path": [[677, -637], [701, -642], [718, -652]], "bark": true, "back": true, "delay": 0.4 },
+        { "do": "sound", "sound": "bark", "x": 677, "z": -637, "caption": "[Diane und Bijou bellen]" },
+        { "do": "animal", "op": "run", "id": "diane", "path": [[676, -636], [700, -640], [722, -646]], "bark": true, "back": true, "delay": 0.8 },
+        { "do": "say", "id": "player.t.wind", "speaker": "player", "text": "Was war das denn?", "delay": 0.9 },
         { "do": "say", "id": "jostd.t.hunde", "speaker": "jostd", "text": "Diane! Bijou! … Was habt ihr denn? Da ist doch nix." }
       ],
       "complete": {
@@ -233,6 +233,7 @@
       "title_de": "Ricke und Kitz",
       "enter": [
         { "do": "npc", "op": "hold", "group": "fuehrung" },
+        { "do": "sound", "sound": "deer-rustle", "x": 704, "z": -779, "caption": "[Leises Rascheln im Laub]" },
         { "do": "cinematic", "id": "tour.reh", "ref": "reh", "skippable": true },
         { "do": "prompt", "key": "C", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: stillhalten", "touch": "Langsam heranpirschen" },
         { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: anschleichen [C], Handy [N]", "x": 704, "z": -779 },

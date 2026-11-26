@@ -156,11 +156,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't8', 200);
   expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
+  await expect(page.locator('.kq-subtitles').getByText('[Diane und Bijou bellen]')).toBeVisible();
   await shot(page, '05-wind-hunde');
   await follow(page, 't9', 60);
   await follow(page, 't10', 240);
   const tDeer0 = await time(page);
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('tour.reh');
+  await expect(page.locator('.kq-subtitles').getByText('[Leises Rascheln im Laub]')).toBeVisible();
   await page.evaluate(() => window.kq!.step(180));
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
@@ -308,6 +310,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   });
   for (let i = 0; i < 40 && (await beat(page)) !== 't17'; i++) await page.evaluate(() => window.kq!.step(60));
   expect(await beat(page)).toBe('t17');
+  await expect(page.locator('.kq-subtitles').getByText('[Messing klirrt auf Stein]')).toBeVisible();
   await page.evaluate(() => window.kq!.step(240));
   await shot(page, '11-bussole-laub');
   expect(await page.evaluate(() => window.kq!.state().flags['story.compass'])).toBe(true);

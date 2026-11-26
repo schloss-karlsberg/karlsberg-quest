@@ -19,7 +19,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # More tour audio: a real, historically accurate guided tour
@@ -85,12 +85,12 @@ eras) and SFX at the stops.
 6. Generate the voice clips with the repo pipeline (maintainers) and credit them.
 
 ## Acceptance Criteria
-- [ ] Every tour stop has guide narration and an ambience bed
+- [x] Every tour stop has guide narration and an ambience bed
 - [x] Sources documented for every new fact and unverified claims marked (slice 1 script)
-- [ ] Licences and credits in place (`LICENSES.json`, `tests/voice-assets.test.ts`, `tests/assets.test.ts` green)
-- [ ] Subtitles / captions for all new lines and sounds
-- [ ] Audio settings respected (bus volumes, mute); voice ducks ambience
-- [ ] Voice size stays within the budget
+- [x] Licences and credits in place (`LICENSES.json`, `tests/voice-assets.test.ts`, `tests/assets.test.ts` green)
+- [x] Subtitles / captions for all new lines and sounds
+- [x] Audio settings respected (bus volumes, mute), and voice ducks ambience
+- [x] Voice size stays within the budget
 - [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass and docs updated (`docs/ACTION-RPG.md` §14, `docs/PRD.md`) for slice 1
 
 ## Plan · Slice 1
@@ -254,5 +254,52 @@ _Status: approved (2026-11-25, coordinator for the owner)_
 - 2026-11-25 — Step 4 complete. Updated ACTION-RPG §14 and the PRD changelog. `pnpm typecheck`, `pnpm test` (1,512 tests), `pnpm build`, `mc validate` and `git diff --check` passed. The sandbox denied the tsx IPC socket used by `pnpm validate`. The requested `node --import tsx scripts/validate-content.ts` fallback passed with the existing content warnings.
 - Browser specs and listening remain unverified in this session. Run `scripts/dev/heavy.sh -- pnpm exec playwright test e2e/tour-slice.spec.ts e2e/voice.spec.ts e2e/npc.spec.ts e2e/chronik.spec.ts e2e/smoke.spec.ts e2e/touch.spec.ts e2e/perf.spec.ts --workers=1` after building.
 - 2026-11-25 — The sandbox denied creation of the worktree `index.lock` during `git add`. The slice is ready for the local commit `feat(audio): add tour ambience and speech ducking`.
+
+## Plan — slice 4
+
+_Status: approved (2026-11-26, coordinator for the owner)_
+
+**Approach**
+
+Cross-check all 18 beats against the guided route and the ascent. Keep Gerold's recorded script and verify narration at the route stops from their associated beats. Use the existing procedural mixer, story action runner and HUD for the scene sounds and captions.
+
+**Files to touch**
+
+- `content/story/00-tour.story.json` and `src/systems/story/` — time the dog and deer sounds against their shots, verify the compass caption and honor the sound-caption setting.
+- `src/systems/ambience/` and the surface/footstep path as needed — verify the beds in both eras and caption environmental sounds.
+- `tests/` — check route and narration coverage, sound captions, bus routing, ducking and the voice payload.
+- `docs/ACTION-RPG.md` §14 and `docs/PRD.md` — record behavior and the voice size.
+
+**Steps**
+
+- [x] 1. Audit the stops and beats, add coverage tests and fill any audio or narration gaps.
+- [x] 2. Add or align procedural cues and verify their German captions and the existing gravel synthesis.
+- [x] 3. Test audio bus levels, mute, speech ducking, caption settings and reduced motion.
+- [x] 4. Check the deployed voice payload against 80 MB and run the asset and voice credit tests.
+- [x] 5. Update the design docs, run the four requested gates and `mc validate`, and record the browser checks and local commit commands.
+
+**Test plan**
+
+Run targeted Vitest suites as each step lands, then `pnpm typecheck`, `pnpm exec vitest run --maxWorkers=2`, `node --import tsx scripts/validate-content.ts` and `pnpm build`. List the relevant desktop and touch Playwright checks with one worker. Browser playback and listening require a machine that can bind the preview server.
+
+**Risks**
+
+The dog and deer sounds need to work when the cinematic uses stills or the player skips it. Forest wind and birds should remain readable alongside dialogue. The plateau is an ascent destination after Gerold's farewell at the Quelle, where Laub takes over the player story.
+
+**Open questions**
+
+The mix levels need an in-browser listening pass.
+
+## Progress — slice 4
+
+- Branch `feat/task-010-cues`.
+- 2026-11-26 — Step 1. Audited all beats against the nine stops in `p-fuehrung` and the ascent to the plateau. The four gathered stations are at `t1`–`t2`, `t6`, `t13` and `t15`. The branch and shortcut share `t3`–`t4`, the dogs and deer use `t7`–`t10`, and the dam uses `t11`–`t12`. `t14` leads to the Quelle. `t16`–`t18` are the compass and Laub handoff at the spring. Gerold's `t15` farewell sends the group toward the plateau while the player stays at the spring. Existing beds cover both routes in today and 1789, and existing guide lines cover the guided stops. Both focused suites passed (14 tests).
+- 2026-11-26 — Step 2. Aligned the two synthesized barks with the dogs' runs and added a positional leaf rustle at the opening of the `reh` shot. The compass already captions the brass impact. Tour sound actions require a caption in content validation. Wind and birds have German captions alongside water and 1789 activity. The trail raster sends present-day gravel to the existing step synth. Gravel footsteps are audible and uncaptioned like other footsteps, so the guide's subtitle stays on screen.
+- 2026-11-26 — Step 3. The four focused suites passed all 45 tests. Checked positional and direct SFX routing, master and bus mute, voice ducking of the ambience bus, the sound-caption toggle, and cue dispatch independent of the camera's reduced-motion and skip settings.
+- 2026-11-26 — Step 4. The voice directory totals 12,968,959 bytes, including 12,792,299 bytes of audio. Added a check of the complete payload against the 80 MB budget. `tests/assets.test.ts` and `tests/voice-assets.test.ts` passed all 32 tests. The cues are procedural and have no audio files to credit.
+- 2026-11-26 — Step 5. Updated ACTION-RPG §14, the PRD changelog and the voice research notes. The four requested gates passed with 1,581 unit tests across 118 files. The direct content validator reported zero story warnings and the existing pack, quest and photo warnings. `mc validate` and `git diff --check` passed. The worktree's shared dependency link was read-only, so the gates used a local copy of the installed packages with pnpm's automatic reinstall disabled. The built voice directory matches the source size.
+- 2026-11-26 — Gravel caption review. Typecheck passed, and Vitest passed all 1,581 tests across 118 files. The checks used `--config.verify-deps-before-run=false` for pnpm and `--configLoader runner` for Vitest to avoid writes through the shared dependency symlink.
+- Browser playback and listening are unverified under the port and Playwright constraints. After `pnpm build`, run `scripts/dev/heavy.sh -- pnpm exec playwright test "$spec" --workers=1` separately for `e2e/tour-slice.spec.ts`, `e2e/animals.spec.ts`, `e2e/cinematic.spec.ts`, `e2e/voice.spec.ts`, `e2e/walk.spec.ts`, `e2e/quelle.spec.ts`, `e2e/touch.spec.ts`, `e2e/skills.spec.ts`, `e2e/pol-flow.spec.ts`, `e2e/court.spec.ts` and `e2e/chronik.spec.ts`. Listen for the dog timing, deer rustle and gravel footsteps. Check that the guide's subtitles stay visible while walking on gravel and that the caption toggle applies to scene cues and ambient captions.
+- The worktree is ready for the local commit `feat(tour): complete guided tour audio cues` with `Refs: TASK-010`. The coordinator requested a command handoff because the worktree cannot create `index.lock`.
 
 %% mc-links: [[SPR-001]] %%

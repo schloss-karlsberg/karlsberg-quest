@@ -4,6 +4,7 @@ import tour from '../content/routes/p-fuehrung.json';
 import { ERAS } from '../src/core/era';
 import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
+import { t } from '../src/i18n';
 import ambience from '../src/systems/ambience';
 import { ambienceAt } from '../src/systems/ambience/profile';
 
@@ -13,6 +14,17 @@ function atStop(id: string, era: (typeof ERAS)[number] = 'today') {
 }
 
 describe('tour ambience profiles', () => {
+  it.each(['today', '1789'] as const)('keeps a continuous bed at every stop and waypoint in %s', (era) => {
+    for (const route of [tour, ascent]) {
+      for (const { id, x, z } of route.stops) {
+        expect(ambienceAt(era, x, z).wind, `${route.id}/${id}`).toBeGreaterThan(0);
+      }
+      for (const [x, z] of route.points) {
+        expect(ambienceAt(era, x!, z!).wind, `${route.id} (${x}, ${z})`).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('covers the forest stops, the dam and pond, the spring and the plateau', () => {
     for (const stop of tour.stops.slice(0, 6)) {
       const mix = atStop(stop.id);
@@ -53,12 +65,12 @@ describe('ambience captions', () => {
     try {
       scene.move('weiher');
       scene.tick(5);
-      expect(scene.shown).toEqual(['ambience.pond']);
+      expect(scene.shown).toEqual(['Wasser schwappt ans Ufer.']);
       scene.move('felsen');
-      expect(scene.removed).toEqual(['ambience.pond']);
+      expect(scene.removed).toEqual(['Wasser schwappt ans Ufer.']);
       scene.move('weiher');
       scene.move('quelle');
-      expect(scene.shown).toEqual(['ambience.pond', 'ambience.pond', 'ambience.brook']);
+      expect(scene.shown).toEqual(['Wasser schwappt ans Ufer.', 'Wasser schwappt ans Ufer.', 'Ein Bach plätschert.']);
       ambience.dispose();
       expect(scene.removed).toEqual(scene.shown);
     } finally {
@@ -75,13 +87,49 @@ describe('ambience captions', () => {
       scene.era.current = '1789';
       scene.tick(3.3);
       scene.tick(9.3);
-      expect(scene.shown).toEqual(['ambience.hooves (Fiktion)', 'ambience.court (Fiktion)']);
+      expect(scene.shown).toEqual(['In der Ferne klappern Hufe. (Fiktion)', 'Vom Schlosshof dringt leises Stimmengewirr herüber. (Fiktion)']);
       scene.era.current = '1793-02';
       scene.tick(25);
       expect(scene.shown).toHaveLength(2);
-      expect(scene.removed).toContain('ambience.court (Fiktion)');
+      expect(scene.removed).toContain('Vom Schlosshof dringt leises Stimmengewirr herüber. (Fiktion)');
       scene.move('weiher');
       expect(scene.shown).toHaveLength(2);
+    } finally {
+      ambience.dispose();
+    }
+  });
+
+  it('announces wind once per era and captions birds, including with audio unavailable', () => {
+    const scene = captionScene();
+    try {
+      scene.move('parkplatz');
+      scene.move('felsen');
+      expect(scene.outdoor).toEqual(['Wind rauscht.']);
+      scene.tick(3);
+      expect(scene.outdoor).toEqual(['Wind rauscht.', 'Vögel zwitschern.']);
+      scene.era.current = '1789';
+      scene.tick(0.2);
+      expect(scene.outdoor.at(-1)).toBe('Wind rauscht.');
+    } finally {
+      ambience.dispose();
+    }
+  });
+
+  it('hides current captions when disabled and announces the current bed when re-enabled', () => {
+    const scene = captionScene();
+    try {
+      scene.move('weiher');
+      scene.settings.state.subtitles = false;
+      scene.tick(4);
+      expect(scene.removed).toEqual(['Wasser schwappt ans Ufer.']);
+      scene.era.current = '1789';
+      scene.move('plateau');
+      scene.tick(4);
+      expect(scene.outdoor).toEqual(['Wind rauscht.']);
+      expect(scene.shown).toEqual(['Wasser schwappt ans Ufer.']);
+      scene.settings.state.subtitles = true;
+      scene.move('quelle');
+      expect(scene.shown.at(-1)).toBe('Ein Bach plätschert.');
     } finally {
       ambience.dispose();
     }
@@ -90,17 +138,24 @@ describe('ambience captions', () => {
 
 function captionScene() {
   const shown: string[] = [];
+  const outdoor: string[] = [];
   const removed: string[] = [];
   const position = { x: 524, y: 280, z: -770 };
   const era: { current: Era } = { current: 'today' };
+  const settings = { state: { subtitles: true } };
   const ctx = {
     audio: { unlocked: false },
     player: { position, flying: false },
     era,
+    settings,
     world: {},
-    t: (key: string) => key,
-    ui: { hud: { subtitle: (_speaker: null, key: string, _ms: number, fiction?: boolean) => {
-      const caption = key + (fiction ? ' (Fiktion)' : '');
+    t,
+    ui: { hud: { subtitle: (_speaker: null, text: string, _ms: number, fiction?: boolean) => {
+      if (text === 'Wind rauscht.' || text === 'Vögel zwitschern.') {
+        outdoor.push(text);
+        return () => {};
+      }
+      const caption = text + (fiction ? ' (Fiktion)' : '');
       shown.push(caption);
       return () => removed.push(caption);
     } } },
@@ -108,8 +163,10 @@ function captionScene() {
   ambience.init(ctx);
   return {
     shown,
+    outdoor,
     removed,
     era,
+    settings,
     move(id: string) {
       const stop = [...tour.stops, ...ascent.stops].find((stop) => stop.id === id)!;
       Object.assign(position, { x: stop.x, z: stop.z });
