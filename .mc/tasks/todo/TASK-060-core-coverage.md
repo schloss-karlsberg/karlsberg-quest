@@ -35,7 +35,7 @@ Identify untested player-visible contracts in core, debug URL flags, German stri
 - [x] Reproduce each defect before changing behaviour. Keep the six fixes minimal and record the catalog retention question as an `it.todo`.
 - [ ] Commit each initial sweep fix separately. The sweep was committed as one group in `dae7d38`. Each review fix has its own commit.
 - [x] Document behaviour changes and update the PRD changelog.
-- [ ] Pass all four gates as written. Typecheck, unit tests and build passed. All four commands were run. The validator CLI was sandbox-blocked.
+- [x] Pass all four gates as written (see the second review below).
 - [x] Run the locked smoke spec on port 5447 if supported, or identify the human-run command.
 
 ## Plan
@@ -157,3 +157,15 @@ Both unit runs had 0 failed. The sandbox denied binding the smoke preview port w
 ```sh
 KQ_E2E_PORT=5447 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
 ```
+
+## Second review (2026-11-26)
+
+- All three first-round findings are confirmed fixed in `7220c70`, `2915e7b` and `5355f12`.
+- The six sweep fixes were rechecked against their callers. The shipped terrain rasters inflate
+  to exactly `cols × rows` ground and canopy bytes (1 424 375 cells) and even-length height
+  buffers, so the new size checks cannot reject the real data.
+- The missing `story.echo.date` registration is restored on `dev/task-042` (German text sweep);
+  this branch leaves it alone to avoid a conflicting change.
+- Gates outside the sandbox: `pnpm typecheck` passed; `pnpm test` reported
+  `Test Files  131 passed (131)` and `Tests  1642 passed | 2 todo (1644)`; `pnpm validate`
+  reported `✓ content valid (1 warning(s))`; `pnpm build` passed.
