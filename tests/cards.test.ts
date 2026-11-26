@@ -265,6 +265,21 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     expect(d.claim(token)).toBe(true);
     expect(d.dismissNotice()).toBe(false);
   });
+
+  it.each(['level', 'skill'])('a %s card already up follows touch mode switching on and off', (token) => {
+    const { d } = rig();
+    let dismissed = 0;
+    // a touch laptop: the card came up before the first touch turned the touch UI on
+    expect(d.claim(token)).toBe(true);
+    expect(d.dismissNotice()).toBe(false);
+    expect(d.claim(token, () => dismissed++)).toBe(true);
+    expect(d.dismissNotice()).toBe(true);
+    expect(dismissed).toBe(1);
+    // touch switched off again: Escape opens the pause menu instead
+    expect(d.claim(token)).toBe(true);
+    expect(d.dismissNotice()).toBe(false);
+    expect(dismissed).toBe(1);
+  });
 });
 
 describe('level card dismissal', () => {

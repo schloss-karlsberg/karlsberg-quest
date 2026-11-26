@@ -132,7 +132,11 @@ export class CardDirector {
    * Quest payouts and unlock cards can take the slot from a routine toast.
    */
   claim(token: string, dismiss?: () => void): boolean {
-    if (this.owner === token) return true;
+    if (this.owner === token) {
+      // The touch UI can switch on while the card shows (a touch laptop's first tap): follow it.
+      this.dismissOwner = dismiss ?? null;
+      return true;
+    }
     if (this.gap > 0 || this.held || this.queue.length > 0) return false;
     const replacesToast = this.owner === 'toast' && (token === 'skill' || token === 'level' || token === 'reward');
     if (this.owner !== null && !replacesToast) return false;
