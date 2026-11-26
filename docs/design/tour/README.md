@@ -10,6 +10,7 @@ define shipped content.
 
 | File | What |
 |---|---|
+| [Player-facing glossary](../glossary.md) | Canonical German terms for interface copy and content |
 | [`content/bible/00-overview.md`](../../../content/bible/00-overview.md) | Story, chapters, set pieces, unlocks and fiction |
 | [`content/bible/01-prolog.md`](../../../content/bible/01-prolog.md) | Shipped beats, route, handover and optional quest design |
 | [`content/bible/06-enden.md`](../../../content/bible/06-enden.md) | Three choices, epilogue and party at dusk |

@@ -149,7 +149,7 @@ const facts = [
     [src('KNIGGE-BRIEFE', 'Vierter Brief, Zweybrücken, 11. Mai [1792], S. 26–29; Zitat S. 28 f.'), src('M1910', 'Einl. S. XXXIII f. (zitiert den Brief, Anm. 13)'), src('ADB-KNIGGE'), src('WP-KNIGGE', 'kein Benimmbuch'), src('LITSAAR-KNIGGE', 'für den Streitpunkt'), src('SMZW', 'für den Streitpunkt')],
     { licence: OWNQ, contested: 'Der Briefschreiber nennt keinen Namen und stellt sich als jemand vor, der in Lothringen gelebt hat; Knigge steht nur als Herausgeber auf dem Titel. Mannlichs Herausgeber (1910) und das Stadtmuseum Zweibrücken lesen den Brief als Knigges eigenen Besuch, Literaturland Saar nennt die Briefe „auf 1792 vordatiert“.' }),
   f('cx.44', 'Wer hinauf durfte', 'FAKT', 'D',
-    'Den Karlsberg sah kaum ein Fremder von innen. Schon in den ersten Jahren auf dem Berg nahm der Herzog den Platzmangel als Vorwand, niemanden vorzulassen: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die Erlaubnis dazu erhalten zu haben“, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und die musste jeden Begleiter mit Namen nennen. Nur der Herzog fuhr hinauf, alle anderen gingen zu Fuß. Die Eingänge des Schlosses bewachten, so schreibt der Herausgeber von Mannlichs Erinnerungen 1910, hundert Gardisten.',
+    'Kaum ein Fremder sah das Schloss von innen. Schon in den ersten Jahren auf dem Berg nahm der Herzog den Platzmangel als Vorwand, niemanden vorzulassen: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die Erlaubnis dazu erhalten zu haben“, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und die musste jeden Begleiter mit Namen nennen. Nur der Herzog fuhr hinauf, alle anderen gingen zu Fuß. Die Eingänge des Schlosses bewachten, so schreibt der Herausgeber von Mannlichs Erinnerungen 1910, hundert Gardisten.',
     [src('M1910', 'S. 355 (niemand ungerufen) und Einl. S. XXXIII (100 Gardisten, Text des Herausgebers, ohne Beleg)'), src('KNIGGE-BRIEFE', 'S. 26 f. (Erlaubnis, jeder Begleiter namentlich)'), src('RLS', 'nur der Herzog fuhr hinauf')],
     { licence: OWNQ }),
   f('cx.45', 'Der Prinz von Albanien', 'FAKT', 'D',
@@ -162,7 +162,7 @@ const facts = [
   // cx.47 is the
   // Fläschchen card, unlocked by finding all 24 (src/systems/flaschen). No label text in it.
   f('cx.47', 'Treibgut', 'FIKTION', 'D',
-    'Erfunden: Seit Sie die Quelle berührt haben, spült sie kleine Fläschchen an Orte, wo jemand gern war, in jedes Jahr, auch in Jahre, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig haben Sie aufgelesen. Der Wald ist kein Keller.',
+    'Erfunden: Seit du die Quelle berührt hast, spült sie kleine Fläschchen an Orte, an denen jemand gern war. Die Fläschchen tauchen auch in Jahren auf, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig hast du aufgelesen. Der Wald ist kein Keller.',
     []),
   f('cx.48', 'Die letzte Messung', 'FIKTION', 'D',
     'Erfunden: der grüne Bauwagen und die Notiz an seiner Tür. „Letzter Arbeitstag. Messstab eingepackt. Die Laterne kann hierbleiben. Das Stativ mit dem krummen Bein hat sich den Ruhestand genauso verdient wie ich.“',

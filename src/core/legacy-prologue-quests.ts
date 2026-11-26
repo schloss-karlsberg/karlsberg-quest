@@ -189,7 +189,7 @@ export const legacyPrologueQuests: readonly QuestDefIn[] = [
     offer: [],
     objectives: [
       { id: 'wolke', type: 'examine', text_de: 'Die Punktwolke auf dem Tablet ansehen' },
-      { id: 'wechsel', type: 'reach', text_de: 'In der Mitte des Ehrenhofs: Q – Zeitwechsel in den Sommer 1789' },
+      { id: 'wechsel', type: 'reach', text_de: 'In der Mitte des Ehrenhofs: Q – Zeitsprung in den Sommer 1789' },
       { id: 'echo', type: 'echo', text_de: 'Zuhören: der Hof von 1789' },
       { id: 'streuner', type: 'kill', count: 1, text_de: 'Den Streuner bannen (Bannlicht: rechte Maustaste / G) und zurückschlagen' },
       { id: 'heim', type: 'event', text_de: 'Q halten: zurück ins Heute' },

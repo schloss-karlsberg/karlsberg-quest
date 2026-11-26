@@ -472,7 +472,7 @@ class QuestRuntime {
     const g = giverOf(q);
     return {
       title: q.title_de,
-      giver: this.ctx.content.speakers.get(g)?.name_de ?? g,
+      giver: this.ctx.content.speakers.get(g)?.name_de ?? t('common.unknownPerson'),
       pitch: q.summary_de,
       main: q.kind === 'main',
       objectives: q.objectives
@@ -490,7 +490,7 @@ class QuestRuntime {
   }
 
   itemName(id: string): string {
-    return this.items.get(id)?.name_de ?? itemDef(id)?.name_de ?? id;
+    return this.items.get(id)?.name_de ?? itemDef(id)?.name_de ?? t('common.unknownItem');
   }
 
   // ---- per tick -----------------------------------------------------------------------------
@@ -581,7 +581,7 @@ class QuestRuntime {
     const offer = this.book.mainOffer(this.chapter());
     if (offer) {
       const g = giverId(offer);
-      const name = this.ctx.content.speakers.get(g)?.name_de ?? g;
+      const name = this.ctx.content.speakers.get(g)?.name_de ?? t('common.unknownPerson');
       list.push({ id: offer.id, title: offer.title_de, main: false, offer: true, ready: false, objectives: [{ id: 'offer', text: t('quest.offerAt', { name }), count: 0, need: 1, done: false, optional: false }] });
       first = false;
     }
@@ -591,7 +591,7 @@ class QuestRuntime {
       const st = this.book.state(id);
       const ready = st === 'ready';
       const ti = turninOf(q);
-      const who = typeof ti === 'object' ? this.ctx.content.speakers.get('npc' in ti ? ti.npc : ti.voice)?.name_de ?? ('npc' in ti ? ti.npc : ti.voice) : null;
+      const who = typeof ti === 'object' ? this.ctx.content.speakers.get('npc' in ti ? ti.npc : ti.voice)?.name_de ?? t('common.unknownPerson') : null;
       list.push({
         id,
         title: q.title_de,
@@ -682,7 +682,7 @@ class QuestRuntime {
         if (typeof ti === 'object' && 'npc' in ti) {
           const n = this.npcPlaced(ti.npc);
           if (n && n.era === era) {
-            const name = this.ctx.content.speakers.get(ti.npc)?.name_de ?? ti.npc;
+            const name = this.ctx.content.speakers.get(ti.npc)?.name_de ?? t('common.unknownPerson');
             return { quest: q, obj: null, target: { x: n.x, z: n.z, r: 2.5, era: n.era, kind: 'npc' }, label: t('quest.readyAt', { name }) };
           }
         }
@@ -891,7 +891,7 @@ class QuestRuntime {
       otherEra,
       player: { x: p.x, z: p.z },
       scan: clue?.requires?.scanMode,
-      npcName: o.npc ? (ctx.content.speakers.get(o.npc)?.name_de ?? o.npc) : undefined,
+      npcName: o.npc ? (ctx.content.speakers.get(o.npc)?.name_de ?? t('common.unknownPerson')) : undefined,
       itemName: o.item ? this.itemName(o.item) : undefined,
       needsBann: !!(o.enemy && enemyDef(o.enemy)?.needsBann),
     };
@@ -938,7 +938,7 @@ class QuestRuntime {
         if (i >= 0) s.unseen.splice(i, 1);
       },
       bestiary: () => book.slice.bestiary ?? {},
-      speaker: (id) => ctx.content.speakers.get(id)?.name_de ?? id,
+      speaker: (id) => ctx.content.speakers.get(id)?.name_de ?? t('common.unknownPerson'),
       storyStep: () => {
         const so = (ctx.state.state.systems as Record<string, unknown>).story as { objective?: { text?: string | null } | null } | undefined;
         return so?.objective?.text || null;

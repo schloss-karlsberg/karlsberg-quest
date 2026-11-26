@@ -26,6 +26,7 @@ import './progression.css';
 import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
+import { t } from '../../i18n';
 import { effectiveBindings } from '../../player/input';
 import { ENEMIES } from '../../rpg/enemies';
 import { ITEMS, itemDef } from '../../rpg/items';
@@ -164,11 +165,7 @@ class Progression {
   }
 
   name(id: string): string {
-    const def = this.item(id);
-    if (def) return def.name_de;
-    // an opaque quest item: "item.k1.lohn_zettel" → "Lohn Zettel"
-    const tail = id.split('.').pop() ?? id;
-    return tail.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    return this.item(id)?.name_de ?? t('common.unknownItem');
   }
 
   /** "nehmen" for a weapon or a quest thing (the Messstab, a Festplan), "aufheben" for the rest. */
@@ -345,7 +342,7 @@ class Progression {
       return true;
     }
     this.hud.quickPulse(false);
-    this.refuse(this.item(id)?.kind === 'consumable' ? `Kein ${this.name(id)} mehr.` : `${this.name(id)} kann man nicht benutzen.`);
+    this.refuse(this.item(id)?.kind === 'consumable' ? `Vorrat aufgebraucht: ${this.name(id)}.` : `${this.name(id)} kann man nicht benutzen.`);
     return false;
   }
 

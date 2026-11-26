@@ -17,7 +17,7 @@ export function newsUnseen(): boolean {
   return hasUnseen(latestNotesVersion(), readSeen());
 }
 
-/** "Version 0.5.0 · Build abc1234" for the title screen. */
+/** "Version 0.5.0 · Stand abc1234" for the title screen. */
 export function versionLabel(): string {
   return t('title.version', { version: KQ_VERSION, build: KQ_BUILD });
 }

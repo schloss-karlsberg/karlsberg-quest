@@ -48,11 +48,12 @@ addStrings('de', {
   'photo.toast.menu': 'Erst das Menü schließen.',
   'photo.zoom': 'Zoom',
   'photo.album': 'Album',
-  'photo.album.empty': 'Noch keine Fotos. N hebt das Handy, ein Klick macht das Bild. Gute Fotos landen hier.',
-  'photo.album.session': 'Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte.',
+  'photo.album.empty': 'Noch keine Fotos. Öffne den Fotomodus und löse aus. Gute Fotos landen hier.',
+  'photo.album.session': 'Die Bilder sind in dieser Sitzung sichtbar. Nach dem Neuladen bleiben die Fotokarten erhalten.',
   'photo.album.cards': 'Fotokarten',
+  'photo.album.unknown': 'Unbekanntes Fotomotiv',
   'photo.stars': '{n} von 3 Sternen',
-  'ui.keys.photo': 'Handy-Kamera: Foto machen (nur in der Gegenwart)',
+  'ui.keys.photo': 'Fotomodus: Foto machen (nur in der Gegenwart)',
   'ui.keys.photo.key': '[N]',
 });
 
@@ -536,7 +537,7 @@ class Photo {
   }
 
   private label(id: string): string {
-    return core.targets.get(id)?.label_de ?? id;
+    return core.targets.get(id)?.label_de ?? t('photo.album.unknown');
   }
 
   private showCard(r: ShotResult, img: string | null): void {
