@@ -104,9 +104,9 @@ _Status: approved 2026-11-26_
 **Steps:**
 - [x] 1. `captureViewBlobs()` in `notes/capture.ts`.
 - [x] 2. `photo/store.ts` + `photo/gallery-logic.ts`; unit tests on the memory store and the logic.
-- [ ] 3. `shoot()` → store (signal only, metadata: time, play seconds, era, x / z, targets, good, stars); cap toast; hooks.
-- [ ] 4. Gallery modal: grid, count, device-only hint (memory fallback: „nur bis zum Neuladen“), viewer with Zurück / Weiter / swipe, Löschen, Herunterladen, Teilen → Download fallback.
-- [ ] 5. Entry points: „Galerie“ on the phone (closes the phone, opens the gallery), button on Pause → Album.
+- [x] 3. `shoot()` → store (signal only, metadata: time, play seconds, era, x / z, targets, good, stars); cap toast; hooks.
+- [x] 4. Gallery modal: grid, count, device-only hint (memory fallback: „nur bis zum Neuladen“), viewer with Zurück / Weiter / swipe, Löschen, Herunterladen, Teilen → Download fallback.
+- [x] 5. Entry points: „Galerie“ on the phone (closes the phone, opens the gallery), button on Pause → Album.
 - [ ] 6. Touch / mobile: 44 px targets, portrait and landscape layouts, check in the touch e2e sizes.
 - [ ] 7. e2e in `e2e/photo.spec.ts`; run `photo` and `touch` with one worker.
 - [ ] 8. Manual check in the dev build (desktop and a phone-sized viewport); after shots; docs.
@@ -143,6 +143,13 @@ _Status: approved 2026-11-26_
   - `photo/store.ts`: `PhotoStore`, `IdbPhotoStore` (`kq-photos`: `photos` = meta + thumb, autoIncrement; `full` = the picture under the same key; one transaction per add / remove), `MemoryPhotoStore`, `openPhotoStore()` (never throws, memory fallback), `requestPersist()`.
   - `photo/gallery-logic.ts`: `GALLERY_CAP` 100, `PhotoLibrary` (cap on save, newest first; never throws), `photoFileName()`, `shareMode()`.
   - `tests/photo-gallery.test.ts`: 7 tests green; typecheck green.
+
+- 2026-11-26: steps 3-5 done:
+  - `shoot()` copies the frame for the gallery on every shot with signal (`keep()`). Encoding and the write run after it, in order (`settled()` for tests), and never hold up the card. A full gallery or a failed write shows a toast. The first stored photo asks for `navigator.storage.persist()`.
+  - `gallery.ts`: a modal with the grid, the count, the device / session hint and a cap note; the full-size viewer with ‹ ›, arrow keys, swipe, Teilen (share sheet or download), Herunterladen, Löschen (a second press within 4 s) and Alle Fotos. Object URLs are revoked on rebuild and close.
+  - Entry points: the phone bar now reads „1× 2× | Galerie“, and Pause → Album has „Galerie öffnen“.
+  - **Plan adjusted:** on desktop the phone holds the pointer lock, so a click always reaches the canvas (the shutter). The gallery button is for touch; **G** opens the gallery on desktop. G is the Bannlicht, muted while the phone is up; the phone hint names it.
+  - Checked by script in the dev build (real GPU; desktop 1280×720 and a landscape phone 844×390 with touch): three shots, then the gallery, then a photo full-size. On a phone in portrait the game shows its rotate overlay during play (by design), so the phone check is landscape.
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).

@@ -17,6 +17,9 @@
  *   `calm()` to a target by id (`attachTarget`), or register a whole target (`registerTarget`).
  * - The album (Pause → Album) is in the save: one entry per target (best stars, era, time),
  *   max 60, no images; this session's JPEG thumbnails stay in memory.
+ * - The gallery (TASK-006; gallery.ts, gallery-logic.ts, store.ts) keeps every shot with signal on
+ *   this device, not in the save: IndexedDB `kq-photos` (memory when blocked), at most 100. G on the
+ *   phone (its pointer is locked) or the phone's „Galerie“ button (touch), and Pause → Album open it.
  * - Grants once per target: codex (quietly, no XP), photo cards, flags. No XP for photos.
  */
 import './photo.css';
@@ -31,14 +34,38 @@ import { h } from '../../ui/dom';
 import { addPausePage } from '../../ui/pause-pages';
 import { addControlKeys } from '../../ui/menus';
 import { registerEraMaterials } from '../fx/shift/prewarm';
-import { captureView } from '../notes/capture';
+import { captureView, captureViewBlobs } from '../notes/capture';
+import { GalleryView, type GalleryState } from './gallery';
+import { PhotoLibrary } from './gallery-logic';
+import { type PhotoMeta, openPhotoStore, requestPersist } from './store';
 import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, lensDown, SteadyMeter, emptySlice, normaliseSlice } from './core';
 import { type PhotoTargetData, type PhotoTargetFile, targetFromData } from './data';
 import { DebugDeer, buildBoard } from './demo';
 import targetsFile from '../../../content/photo/targets.json';
 
 addStrings('de', {
-  'photo.hint': 'Klick: Foto · Mausrad: 1× / 2× · N, Esc oder Rechtsklick: Handy weg',
+  'photo.hint': 'Klick: Foto · Mausrad: 1× / 2× · G: Galerie · N, Esc oder Rechtsklick: Handy weg',
+  'photo.gallery': 'Galerie',
+  'photo.gallery.open': 'Galerie öffnen',
+  'photo.gallery.photo': 'Foto',
+  'photo.gallery.loading': 'Fotos werden geladen …',
+  'photo.gallery.count': '{n} von {cap} Fotos',
+  'photo.gallery.device': 'Die Fotos liegen nur auf diesem Gerät, nicht im Spielstand. Browser räumen solche Daten manchmal auf (Safari nach etwa sieben Tagen ohne Besuch): Lade die Fotos herunter, die du behalten willst.',
+  'photo.gallery.session': 'Dieser Browser lässt hier keinen Speicher zu: Die Fotos bleiben nur bis zum Neuladen. Lade die herunter, die du behalten willst.',
+  'photo.gallery.empty': 'Noch keine Fotos. N hebt das Handy, ein Klick macht das Bild.',
+  'photo.gallery.fullNote': 'Die Galerie ist voll. Neue Fotos werden erst wieder gespeichert, wenn du welche löschst.',
+  'photo.gallery.full': 'Galerie voll ({cap} Fotos). Lösche Fotos, um neue zu behalten.',
+  'photo.gallery.fail': 'Das Foto konnte nicht gespeichert werden.',
+  'photo.gallery.gone': 'Dieses Foto gibt es nicht mehr.',
+  'photo.gallery.item': 'Foto vom {when} ({era})',
+  'photo.gallery.prev': 'Vorheriges Foto',
+  'photo.gallery.next': 'Nächstes Foto',
+  'photo.gallery.share': 'Teilen',
+  'photo.gallery.download': 'Herunterladen',
+  'photo.gallery.delete': 'Löschen',
+  'photo.gallery.deleteSure': 'Wirklich löschen?',
+  'photo.gallery.deleted': 'Foto gelöscht.',
+  'photo.gallery.back': 'Alle Fotos',
   'photo.nonet': 'Kein Netz',
   'photo.toast.nonet': 'Kein Netz. Das Foto wird nichts.',
   'photo.toast.dialog': 'Nicht während eines Gesprächs.',
@@ -49,7 +76,7 @@ addStrings('de', {
   'photo.zoom': 'Zoom',
   'photo.album': 'Album',
   'photo.album.empty': 'Noch keine Fotos. N hebt das Handy, ein Klick macht das Bild. Gute Fotos landen hier.',
-  'photo.album.session': 'Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte.',
+  'photo.album.session': 'Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte. Alle Fotos findest du in der Galerie.',
   'photo.album.cards': 'Fotokarten',
   'photo.stars': '{n} von 3 Sternen',
   'ui.keys.photo': 'Handy-Kamera öffnen oder wegstecken',
@@ -103,6 +130,20 @@ export interface PhotoHooks {
   zoom(k: 1 | 2): void;
   /** Photo cards unlocked. */
   cards(): string[];
+  /** The device-wide gallery (TASK-006, IndexedDB `kq-photos`). */
+  gallery: {
+    open(): Promise<void>;
+    close(): void;
+    state(): GalleryState;
+    /** Stored photos, newest first, without the image data. */
+    list(): Promise<(PhotoMeta & { id: number })[]>;
+    count(): Promise<number>;
+    remove(id: number): Promise<boolean>;
+    /** 'idb', or 'memory' when IndexedDB is missing or blocked. */
+    kind(): Promise<'idb' | 'memory'>;
+    /** Resolves when every shot taken so far is stored (or refused). */
+    settled(): Promise<void>;
+  };
   /** ?debug only: the test deer pair (reh.ricke / reh.kitz). */
   deer?: {
     /** False (with a dev warning) when the deer targets are already attached or kq.animals reports deer. */
@@ -214,8 +255,23 @@ class Photo {
   private deer: DebugDeer | null = null;
   private board: { remove(): void } | null = null;
   private readonly world: PhotoWorld;
+  /** The device-wide gallery (TASK-006): its store opens at boot, shots are stored in order. */
+  private readonly library: Promise<PhotoLibrary>;
+  private readonly gallery: GalleryView;
+  private readonly galleryBtn: HTMLButtonElement;
+  private saving: Promise<void> = Promise.resolve();
+  private persistAsked = false;
   private readonly onKey = (e: KeyboardEvent) => {
-    if (!this.isOpen || e.code !== 'Escape') return;
+    if (!this.isOpen) return;
+    // G (muted as the Bannlicht while the phone is up): the gallery; the pointer is locked, the button is out of reach
+    if (e.code === 'KeyG' && !e.repeat) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.ctx.input.releaseLock();
+      this.openGallery();
+      return;
+    }
+    if (e.code !== 'Escape') return;
     e.preventDefault();
     e.stopImmediatePropagation();
     if (e.repeat) return;
@@ -246,8 +302,46 @@ class Photo {
     ]);
     this.flash = h('div.kq-photo-flash', { 'aria-hidden': 'true' });
     this.card = h('div.kq-photo-card.kq-hidden', { 'data-testid': 'photo-card', role: 'status', 'aria-live': 'polite' });
-    this.zoomBar = h('div.kq-photo-zoom.kq-hidden', { role: 'group', 'aria-label': t('photo.zoom') }, this.zoomBtns);
+    this.galleryBtn = h('button.kq-photo-gallery-btn', { type: 'button', 'data-testid': 'photo-gallery', onclick: () => this.openGallery() }, t('photo.gallery'));
+    this.zoomBar = h('div.kq-photo-zoom.kq-hidden', [h('span.kq-photo-zoomset', { role: 'group', 'aria-label': t('photo.zoom') }, this.zoomBtns), this.galleryBtn]);
     ctx.ui.root.append(this.el, this.zoomBar, this.flash, this.card);
+    this.library = openPhotoStore().then((s) => new PhotoLibrary(s));
+    this.gallery = new GalleryView({
+      modals: ctx.ui.modals,
+      library: () => this.library,
+      label: (id) => this.label(id),
+      eraLabel: (era) => t(ERA_INFO[era]?.labelKey ?? 'era.today'),
+      toast: (msg) => ctx.ui.toast(msg),
+    });
+  }
+
+  /** The phone goes down and the gallery opens (from the phone's button or G, and from the album). */
+  openGallery(): Promise<void> {
+    if (this.isOpen) this.close();
+    return this.gallery.open();
+  }
+
+  /**
+   * Store a shot in the gallery (signal only). The frame is copied now; encoding and the write run
+   * after, one shot after the other, and never hold up the card. A full gallery or a failed write
+   * says so in a toast. The first stored photo asks the browser to keep the site's storage.
+   */
+  private keep(r: ShotResult, at: string): void {
+    const ctx = this.ctx;
+    const blobs = captureViewBlobs(ctx);
+    const p = ctx.player.position;
+    const meta = { at, playSeconds: ctx.state.state.meta.playSeconds, era: ctx.era.current, x: Math.round(p.x * 10) / 10, z: Math.round(p.z * 10) / 10, targets: [...r.targets], good: [...r.good], stars: r.stars };
+    this.saving = this.saving.then(async () => {
+      const b = await blobs;
+      if (!b) return;
+      const lib = await this.library;
+      const out = await lib.save({ ...meta, width: b.width, height: b.height }, b.full, b.thumb);
+      if (!out.ok) ctx.ui.toast(out.reason === 'full' ? t('photo.gallery.full', { cap: lib.cap }) : t('photo.gallery.fail'));
+      else if (!this.persistAsked && lib.kind === 'idb') {
+        this.persistAsked = true;
+        void requestPersist();
+      }
+    });
   }
 
   init(): void {
@@ -491,7 +585,10 @@ class Photo {
     let img: string | null;
     if (!r.signal) img = this.whiteImage();
     else img = captureView(ctx, THUMB_W, THUMB_Q);
-    const booked = core.book(r, new Date().toISOString(), ctx.state.state.meta.playSeconds, {
+    const at = new Date().toISOString();
+    // every shot with signal goes to the gallery (a past era's white picture does not)
+    if (r.signal) this.keep(r, at);
+    const booked = core.book(r, at, ctx.state.state.meta.playSeconds, {
       knownFact: (id) => ctx.content.facts.has(id),
       knownCard: (id) => ((targetsFile as unknown as PhotoTargetFile).cards ?? []).some((c) => c.id === id),
       codex: (id) => {
@@ -577,8 +674,10 @@ class Photo {
   private renderAlbum(el: HTMLElement): void {
     const rows = slice().album;
     el.replaceChildren();
+    // the gallery (every photo, on this device) opens over the album
+    const galleryBtn = h('button.kq-btn.kq-album-gallery', { type: 'button', 'data-testid': 'album-gallery', onclick: () => void this.openGallery() }, t('photo.gallery.open'));
     if (!rows.length) {
-      el.append(h('p.kq-album-empty', { 'data-testid': 'album-empty' }, t('photo.album.empty')));
+      el.append(h('p.kq-album-empty', { 'data-testid': 'album-empty' }, t('photo.album.empty')), galleryBtn);
       return;
     }
     const grid = h('div.kq-album-grid', { 'data-testid': 'album-grid' });
@@ -598,6 +697,7 @@ class Photo {
     }
     el.append(grid);
     if (rows.some((e) => this.thumbs.has(e.id))) el.append(h('p.kq-album-meta', t('photo.album.session')));
+    el.append(galleryBtn);
   }
 
   hooks(): PhotoHooks {
@@ -622,12 +722,23 @@ class Photo {
       state: () => ({ open: this.isOpen, zoom: this.zoomK, signal: this.ctx.era.current === 'today', steady: this.steady.speed(performance.now() / 1000), blocked: this.blocked(), lastShot: this.lastShot }),
       zoom: (k) => this.setZoom(k),
       cards: () => [...slice().cards],
+      gallery: {
+        open: () => this.openGallery(),
+        close: () => this.gallery.close(),
+        state: () => this.gallery.state(),
+        list: async () => (await (await this.library).list()).map(({ thumb: _thumb, ...m }) => m),
+        count: async () => (await this.library).count(),
+        remove: async (id) => (await this.library).remove(id),
+        kind: async () => (await this.library).kind,
+        settled: () => this.saving,
+      },
       ...(this.ctx.debug ? { deer: this.deerHooks() } : {}),
     };
   }
 
   dispose(): void {
     this.close(true);
+    this.gallery.close();
     for (const off of this.offs) off();
     window.removeEventListener('keydown', this.onKey, { capture: true });
     this.deer?.dispose();
