@@ -1550,7 +1550,13 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
   A shift reports the room left using its original plan. Loading on foot inside a palace room
-  grounds the player on its saved storey once the shell is ready.
+  grounds the player on the saved storey (a room's floor or a doorway's, checked with `floorAt`).
+  While the shell still streams, a plan built from the room catalogue alone (no shell openings,
+  procedural entrances) provides those floors and walls, so the pose an autosave writes keeps the
+  storey and the exterior walls block; the shell's plan replaces it when it arrives.
+- Festsaal choice (K3, cue `festsaal:objects`): shifting away before choosing removes the objects,
+  the E prompt and the card hold; back in the choice's era (nothing in `festsaal.took` yet) they
+  return. A fire that ends or `festsaal:clear` drops the choice; a slot load drops a waiting one.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
