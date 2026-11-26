@@ -698,26 +698,20 @@ html[data-kq-touch] .kqp-q-key {
 /* ---- §8.4: the level card („Stufe VIII“, src/systems/progression/levelup-card.ts) on a landscape
    phone. At its desktop size (442 px wide, about 140 px tall from 170 px down, more with a merged
    skill unlock) it covered the middle of the screen and ran off the bottom edge. Here it is a
-   compact slip in the dialogue card's top band, left of the top-row and skill-row buttons; while a
-   line is up (or a boss bar shows) it sits under the band instead and keeps left of the Epoche
-   button. The thumb arc, the Aktion pill, the skill row and the stick's zone stay clear, and the
-   card takes no taps: a tap on the play surface sends it off (progression passes a dismiss to the
-   card director on touch). */
+   compact slip under the dialogue band (whose card body is capped at the same clamp, M-01), left of
+   the Epoche button. It stays there with no line up too: one place, no jump when a line starts (the
+   base rule's boss-dock case also matches in play: the hidden boss bar always sits in the dock). The thumb arc, the
+   Aktion pill, the skill row and the stick's zone stay clear, and the card takes no taps: a tap on
+   the play surface sends it off (progression passes a dismiss to the card director on touch). */
 @media (max-height: 500px) {
   html[data-kq-touch] body .kqp-cards,
   html[data-kq-touch] body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
     left: calc(8px + var(--kq-safe-l));
-    right: calc(170px + var(--kq-safe-r));
-    top: calc(6px + var(--kq-safe-t));
+    right: calc(220px + var(--kq-safe-r));
+    top: calc(12px + var(--kq-safe-t) + clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh));
     display: flex;
     justify-content: center;
     transform: none;
-  }
-  /* under the dialogue band: its card body is capped at the same clamp (touch.css M-01) */
-  html[data-kq-touch] body:has(.kqs-dlg.kqs-show) .kqp-cards,
-  html[data-kq-touch] body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
-    top: calc(12px + var(--kq-safe-t) + clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh));
-    right: calc(220px + var(--kq-safe-r));
   }
   /* the open survey menu hangs below the top row */
   html[data-kq-touch] body:has(.kq-t-btn.survey[aria-expanded='true']) .kqp-cards {
