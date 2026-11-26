@@ -159,6 +159,15 @@ describe('Input.press (virtual touch actions)', () => {
   it('works after the player remapped the key', () => {
     const inp = make();
     inp.setBindings({ attack: ['KeyZ'] });
+    inp.simulate('KeyK', true);
+    expect(inp.wasPressed('attack')).toBe(false);
+    inp.simulate('KeyZ', true);
+    inp.muted.add('attack');
+    expect(inp.isDown('attack')).toBe(false);
+    expect(inp.wasPressed('attack', true)).toBe(true);
+    inp.muted.delete('attack');
+    inp.simulate('KeyZ', false);
+    expect(inp.isDown('attack')).toBe(false);
     inp.press('attack', true);
     expect(inp.isDown('attack')).toBe(true);
   });

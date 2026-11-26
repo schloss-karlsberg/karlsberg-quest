@@ -71,6 +71,7 @@ export class Player {
   private strideAcc = 0;
   private bob = 0;
   private flyVel = new Vector3();
+  private readonly flyTarget = new Vector3();
   /** Seconds since the player last looked (mouse / keys): the third-person pitch levels after a while. */
   private lookIdle = 0;
   /** Seconds of the automatic climb after the spirit view starts. */
@@ -312,22 +313,21 @@ export class Player {
     // deep water: wade a step or two into the shallows, then the lake holds you back (no
     // walking across the Karlsbergweiher on its bed); slide along the shore like a wall
     this.stats.inWater = 0;
-    const wd = this.world.waterDepth;
-    if (wd) {
-      const deep = (x: number, z: number) => {
-        const d = wd.call(this.world, x, z);
-        return d > WADE_LIMIT_M && d > wd.call(this.world, this.position.x, this.position.z);
-      };
-      if (deep(nx, nz)) {
+    const world = this.world;
+    if (world.waterDepth) {
+      let here = world.waterDepth(nx, nz);
+      // If already in deep water, allow a step towards the bank or along the same depth.
+      const limit = here > WADE_LIMIT_M ? Math.max(WADE_LIMIT_M, world.waterDepth(this.position.x, this.position.z)) : WADE_LIMIT_M;
+      if (here > limit) {
         this.stats.deepWater = true;
-        if (!deep(nx, this.position.z)) nz = this.position.z;
-        else if (!deep(this.position.x, nz)) nx = this.position.x;
+        if (world.waterDepth(nx, this.position.z) <= limit) nz = this.position.z;
+        else if (world.waterDepth(this.position.x, nz) <= limit) nx = this.position.x;
         else {
           nx = this.position.x;
           nz = this.position.z;
         }
+        here = world.waterDepth(nx, nz);
       }
-      const here = wd.call(this.world, nx, nz);
       this.stats.inWater = Math.max(0, Math.min(1, here / WADE_LIMIT_M));
       if (here > 0 && moving) {
         // wading is slower: pull back part of the step
@@ -372,7 +372,7 @@ export class Player {
     const sp = fast ? FLY_FAST : FLY_SPEED;
     // forward/back follow the view pitch, strafing stays level
     const cp = Math.cos(this.pitch);
-    const target = new Vector3(wx, 0, wz).multiplyScalar(sp);
+    const target = this.flyTarget.set(wx, 0, wz).multiplyScalar(sp);
     if (fz !== 0) {
       target.multiplyScalar(cp);
       target.y = Math.sin(this.pitch) * sp * -fz;

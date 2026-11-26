@@ -4,7 +4,7 @@
  *  - The opening lessons (level 1–2): one attacker at a time, bodies keep out from under the camera.
  *  - The player wades into the shallows but deep water holds them back like a wall.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
 import { deriveStats } from '../src/rpg/stats';
 import type { EnemyGroupState } from '../src/rpg/types';
@@ -49,7 +49,7 @@ describe('the opening lessons', () => {
 });
 
 describe('deep water', () => {
-  function walker(): Player {
+  function walker(waterDepth: PlayerWorld['waterDepth'] = lakeDepth): Player {
     const world: PlayerWorld = {
       heightAt: () => 0,
       collide: (x, z) => ({ x, z, hit: false }),
@@ -57,7 +57,7 @@ describe('deep water', () => {
       surfaceAt: () => 'meadow',
       coverAt: () => 0,
       canFly: () => true,
-      waterDepth: (x) => lakeDepth(x),
+      waterDepth,
     };
     const keys = new Set<string>(['right']);
     const inp = {
@@ -69,6 +69,14 @@ describe('deep water', () => {
     p.teleport(0, 0, 0);
     return p;
   }
+
+  it('samples the proposed position once per dry step', () => {
+    const depth = vi.fn(lakeDepth);
+    const p = walker(depth);
+    for (let i = 0; i < 60; i++) p.update(1 / 60);
+    expect(depth).toHaveBeenCalledTimes(60);
+    expect(p.stats.inWater).toBe(0);
+  });
 
   it('the player wades into the shallows and stops at the wading line', () => {
     const p = walker();

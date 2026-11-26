@@ -43,12 +43,22 @@ const ARROW_COLOR: Record<ArrowKind, string> = { horn: '#e3b964', hound: '#e0602
 
 interface Arrow {
   el: HTMLElement;
+  svg: SVGSVGElement | null;
   label: HTMLElement;
   key: string;
   life: number;
   ttl: number;
   angle: number;
   kind: ArrowKind;
+  width: number;
+  height: number;
+  opacity: number;
+}
+
+function setArrowOpacity(arrow: Arrow, opacity: number): void {
+  if (opacity === arrow.opacity) return;
+  arrow.opacity = opacity;
+  arrow.el.style.opacity = opacity.toFixed(2);
 }
 
 export class HuntOverlay {
@@ -60,6 +70,9 @@ export class HuntOverlay {
   private readonly caughtRule: HTMLElement;
   private readonly arrows: Arrow[] = [];
   private pulse = 0;
+  private vignetteOpacity = NaN;
+  private curtainOpacity = NaN;
+  private titleOpacity = NaN;
   private readonly blinkEl: HTMLElement;
   /** Seconds into a fade-out-and-in (−1 = none). */
   private blinkT = -1;
@@ -96,7 +109,7 @@ export class HuntOverlay {
       const label = document.createElement('span');
       el.append(label);
       this.root.append(el);
-      this.arrows.push({ el, label, key: '', life: 0, ttl: 1, angle: 0, kind: 'hound' });
+      this.arrows.push({ el, label, svg: null, key: '', life: 0, ttl: 1, angle: 0, kind: 'hound', width: -1, height: -1, opacity: NaN });
     }
     this.blinkEl = document.createElement('div');
     this.blinkEl.className = 'kq-hunt-blink';
@@ -134,8 +147,13 @@ export class HuntOverlay {
   arrow(key: string, kind: ArrowKind, angleDeg: number, label: string, ttl = 1.8): void {
     let a = this.arrows.find((x) => x.key === key && x.life > 0);
     if (!a) a = this.arrows.reduce((m, x) => (x.life < m.life ? x : m), this.arrows[0]!);
-    if (a.kind !== kind || a.key !== key) a.el.querySelector('svg')?.remove();
-    if (!a.el.querySelector('svg')) a.el.insertAdjacentHTML('afterbegin', ARROW_SVG(ARROW_COLOR[kind]));
+    if (!a.svg || a.kind !== kind || a.key !== key) {
+      a.svg?.remove();
+      a.el.insertAdjacentHTML('afterbegin', ARROW_SVG(ARROW_COLOR[kind]));
+      a.svg = a.el.querySelector('svg');
+      a.width = -1;
+    }
+    if (a.angle !== angleDeg) a.width = -1;
     a.key = key;
     a.kind = kind;
     a.life = ttl;
@@ -149,7 +167,7 @@ export class HuntOverlay {
     for (const a of this.arrows) {
       a.life = 0;
       a.key = '';
-      a.el.style.opacity = '0';
+      setArrowOpacity(a, 0);
     }
   }
 
@@ -172,33 +190,42 @@ export class HuntOverlay {
     this.pulse = Math.max(0, this.pulse - dt * 3.2);
     const base = Math.max(0, (o.alert - 0.25) / 0.75) * 0.75;
     const p = o.reducedMotion ? 0 : this.pulse * this.pulse * 0.35 * Math.min(1, o.alert * 1.5);
-    this.vignette.style.opacity = (base + p).toFixed(3);
+    const vignette = base + p;
+    if (vignette !== this.vignetteOpacity) {
+      this.vignette.style.opacity = vignette.toFixed(3);
+      this.vignetteOpacity = vignette;
+    }
     const w = window.innerWidth;
     const h = window.innerHeight;
     for (const a of this.arrows) {
       if (a.life <= 0 || !o.showArrows) {
-        a.el.style.opacity = '0';
+        setArrowOpacity(a, 0);
         continue;
       }
       a.life -= dt;
-      const r = (a.angle * Math.PI) / 180;
-      const x = w / 2 + Math.sin(r) * w * 0.4;
-      const y = h / 2 - Math.cos(r) * h * 0.36;
-      a.el.style.left = `${x.toFixed(1)}px`;
-      a.el.style.top = `${y.toFixed(1)}px`;
-      const svg = a.el.querySelector('svg');
-      if (svg) svg.style.transform = `rotate(${a.angle.toFixed(1)}deg)`;
-      a.el.style.opacity = Math.min(1, (a.life / a.ttl) * 2).toFixed(2);
+      if (a.width !== w || a.height !== h) {
+        a.width = w;
+        a.height = h;
+        const r = (a.angle * Math.PI) / 180;
+        const x = w / 2 + Math.sin(r) * w * 0.4;
+        const y = h / 2 - Math.cos(r) * h * 0.36;
+        a.el.style.left = `${x.toFixed(1)}px`;
+        a.el.style.top = `${y.toFixed(1)}px`;
+        if (a.svg) a.svg.style.transform = `rotate(${a.angle.toFixed(1)}deg)`;
+      }
+      setArrowOpacity(a, Math.max(0, Math.min(1, (a.life / a.ttl) * 2)));
     }
     // caught: t in seconds since caught (−1 = none). 0..1.0 nothing, then black + title.
     const t = o.caught;
-    if (t < 0) {
-      this.caughtEl.style.opacity = '0';
-      return;
-    }
     const black = t < 0.9 ? 0 : t < 1.7 ? (t - 0.9) / 0.8 : t < 3.4 || o.handoff ? 1 : Math.max(0, 1 - (t - 3.4) / 1.2);
-    this.caughtEl.style.opacity = black.toFixed(3);
+    if (black !== this.curtainOpacity) {
+      this.caughtEl.style.opacity = black.toFixed(3);
+      this.curtainOpacity = black;
+    }
+    if (t < 0) return;
     const title = o.handoff ? 0 : t < 1.3 ? 0 : t < 1.9 ? (t - 1.3) / 0.6 : t < 3.3 ? 1 : Math.max(0, 1 - (t - 3.3) / 0.9);
+    if (title === this.titleOpacity) return;
+    this.titleOpacity = title;
     this.caughtTitle.style.opacity = title.toFixed(3);
     this.caughtTitle.style.transform = o.reducedMotion ? 'none' : `translateY(${((1 - Math.min(1, title)) * 6).toFixed(1)}px)`;
     this.caughtRule.style.opacity = (title * 0.9).toFixed(3);

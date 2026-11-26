@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
-import { ClampToEdgeWrapping, DataTexture, LinearMipmapLinearFilter, PerspectiveCamera, type InstancedBufferGeometry, type Mesh } from 'three';
+import { ClampToEdgeWrapping, DataTexture, Frustum, LinearMipmapLinearFilter, PerspectiveCamera, type InstancedBufferGeometry, type Mesh } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import tour from '../content/routes/p-fuehrung.json';
 import approach from '../content/routes/p-aufstieg.json';
@@ -24,7 +24,10 @@ const crop = meta.surface2025;
 const encoded = [1, 250, 40, 6, 255, 9, 240, 0, 8, 2, 43, 96, 5, 254, 45, 172];
 const decoded = [1, 250, 40, 6, 0, 3, 24, 6, 8, 2, 43, 96, 13, 0, 88, 12];
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('DGM1 terrain shading', () => {
   it('retains a bank that disappears when pairs of metre samples are averaged', () => {
@@ -201,7 +204,8 @@ describe('DGM1 terrain geometry', () => {
       key: hf === h2025 ? '2025' : '1789', hf, heightTex: texture, surfTex: texture, coverTex: texture,
       bounds: terrain.computeBounds(hf),
     });
-    terrain.setDataset(dataset());
+    const today = dataset();
+    terrain.setDataset(today);
     const camera = new PerspectiveCamera(100, 1.5, 0.15, 800);
     const aim = (x: number, z: number, y = h2025.heightAt(x, z) + 3) => {
       camera.position.set(x, y, z);
@@ -213,7 +217,26 @@ describe('DGM1 terrain geometry', () => {
       return { draws: meshes.length, tris: meshes.reduce((sum, { geometry }) => sum + geometry.instanceCount * geometry.index!.count / 3, 0) };
     };
     aim(1199, -1115.2);
+    const cull = vi.spyOn(Frustum.prototype, 'intersectsBox');
     const base = measure();
+    const chunks = today.bounds.length / 2;
+    expect(cull).toHaveBeenCalledTimes(chunks);
+    cull.mockClear();
+    expect(measure()).toEqual(base);
+    expect(cull).not.toHaveBeenCalled();
+    camera.fov -= 10;
+    camera.updateProjectionMatrix();
+    measure();
+    expect(cull).toHaveBeenCalledTimes(chunks);
+    camera.fov += 10;
+    camera.updateProjectionMatrix();
+    terrain.lodScale = 0.6;
+    measure();
+    cull.mockClear();
+    terrain.lodScale = 1;
+    expect(measure()).toEqual(base);
+    expect(cull).toHaveBeenCalledTimes(chunks);
+    cull.mockRestore();
     expect(terrain.object.children).toHaveLength(4);
     terrain.setReliefDetail(data, relief);
     expect(measure()).toEqual(base);
