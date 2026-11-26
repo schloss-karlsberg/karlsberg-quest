@@ -2,19 +2,19 @@
 # heavy.sh: machine-wide lock so only one heavy job (Playwright e2e, real-GPU
 # screenshots, local TTS/model runs) runs at a time across all sessions on this Mac.
 # Waiters queue FIFO by ticket, with a priority lane for the merge gate
-# (KQ_HEAVY_OWNER=kq-integrate[-*]). bash 3.2 compatible (macOS /bin/bash), no flock.
-# See usage() below.
+# (KQ_HEAVY_OWNER=kq-integrate[-*]). Bash 3.2 compatible (macOS /bin/bash).
+# Isolated regression test: bash scripts/dev/heavy.test.sh --stress
 
 set -u
 
 LOCK="${KQ_HEAVY_LOCK:-/tmp/kq-heavy.lock}"
 QUEUE="$LOCK.queue"         # FIFO tickets: <seq>-<pid>-<owner> (dirs)
-BREAKER="$LOCK.breaker"     # short-lived mutex taken only while clearing a stale lock
+GUARD="$LOCK.guard"         # stable file for the kernel lock; never unlink it
 PRIO_STATE="$LOCK.prio"     # consecutive priority holds while others waited (2:1 rule)
 PRIO_MAX_HOLD=15            # priority tickets must pass --max-hold <= this (minutes)
 PRIO_RUN=2                  # after this many priority holds in a row, a waiting normal ticket goes next
 POLL="${KQ_HEAVY_POLL:-2}"  # seconds between acquire attempts
-STALE_AGE=30                # a lock without a pid file older than this is stale
+STALE_AGE="${KQ_HEAVY_STALE_AGE:-30}"  # seconds before a lock without PID metadata is stale
 MIN_FREE_PCT="${KQ_HEAVY_MIN_FREE_PCT:-20}"  # --check-load: below this % free memory = high pressure
 ME="heavy.sh"
 
@@ -58,13 +58,18 @@ Environment:
   KQ_HEAVY_OWNER        Label stored in the lock and ticket (e.g. your session name).
   KQ_HEAVY_TIMEOUT      Give up after this many seconds of waiting (exit 75).
   KQ_HEAVY_LOCK         Lock directory path (default /tmp/kq-heavy.lock; tests use this).
+  KQ_HEAVY_POLL         Seconds between attempts (default 2).
+  KQ_HEAVY_STALE_AGE    Seconds before a lock without PID metadata is stale (default 30).
   KQ_HEAVY_MIN_FREE_PCT Memory threshold for --check-load (default 20).
   KQ_HEAVY_HELD=1       Set for the child; a nested heavy.sh then runs its command directly
                         (no lock, no queue).
 
 Exit codes: the command's own code; 75 = timed out or refused by --strict;
-64 = usage error; 2 = priority owner without --max-hold <= 15. A stale lock (holder pid dead, or no pid file and older
-than 30 s) and tickets of dead waiters are cleared automatically.
+64 = usage error; 2 = priority owner without --max-hold <= 15. Locks with no
+surviving holder or child, old locks without PID metadata, and tickets of dead
+waiters are cleared automatically.
+
+Isolated stress test: bash scripts/dev/heavy.test.sh --stress
 EOF
 }
 
@@ -90,18 +95,45 @@ while [ $# -gt 0 ]; do
 done
 
 now() { date +%s; }
-mtime() { stat -f %m "$1" 2>/dev/null || echo 0; }
+mtime() {
+  local stamp
+  stamp=$(stat -f %m "$1" 2>/dev/null) || stamp=$(stat -c %Y "$1" 2>/dev/null) || return 1
+  case "$stamp" in ''|*[!0-9]*) return 1 ;; esac
+  printf '%s\n' "$stamp"
+}
 fmt_dur() { local s=$1; if [ "$s" -ge 3600 ]; then printf '%dh%02dm' $((s/3600)) $((s%3600/60));
   elif [ "$s" -ge 60 ]; then printf '%dm%02ds' $((s/60)) $((s%60)); else printf '%ds' "$s"; fi; }
-pid_alive() { [ -n "$1" ] && { kill -0 "$1" 2>/dev/null || ps -p "$1" >/dev/null 2>&1; }; }
+pid_alive() {
+  local err
+  case "$1" in ''|0*|*[!0-9]*) return 1 ;; esac
+  kill -0 "$1" 2>/dev/null && return 0
+  # Sandboxed peers can get EPERM for live PIDs and may be unable to run ps.
+  # Only ESRCH (the C-locale diagnostic from Bash's kill) proves absence.
+  err=$(LC_ALL=C kill -0 "$1" 2>&1) && return 0
+  case "$err" in *' - No such process') return 1 ;; esac
+  return 0
+}
 read_f() { cat "$LOCK/$1" 2>/dev/null; }
 min_to_s() { awk -v m="$1" 'BEGIN { s = m * 60; i = int(s); if (i < s) i++; print i }'; }
+
+is_stale() {
+  [ -d "$LOCK" ] || return 1
+  local pid child_pid stamp
+  pid=$(read_f pid) || [ ! -e "$LOCK/pid" ] || return 1
+  pid_alive "$pid" && return 1
+  child_pid=$(read_f child_pid) || [ ! -e "$LOCK/child_pid" ] || return 1
+  pid_alive "$child_pid" && return 1
+  [ -n "$pid$child_pid" ] && return 0
+  stamp=$(mtime "$LOCK") || return 1
+  [ $(( $(now) - stamp )) -gt "$STALE_AGE" ]
+}
 
 holder_line() {
   local pid owner cmd ep el mh mhs extra=""
   pid=$(read_f pid); owner=$(read_f owner); cmd=$(read_f cmd); ep=$(read_f epoch); mh=$(read_f max_hold)
   [ -n "$ep" ] || ep=$(mtime "$LOCK")
-  el=$(( $(now) - ep )); [ "$el" -ge 0 ] || el=0
+  el=0
+  if [ -n "$ep" ]; then el=$(( $(now) - ep )); [ "$el" -ge 0 ] || el=0; fi
   if [ -n "$mh" ]; then
     mhs=$(min_to_s "$mh")
     if [ "$el" -gt "$mhs" ]; then extra=" [max-hold ${mh}m EXCEEDED by $(fmt_dur $((el - mhs)))]"
@@ -221,7 +253,7 @@ if [ "$want_status" = 1 ]; then
   rc=0
   if [ -d "$LOCK" ]; then
     pid=$(read_f pid)
-    if [ -n "$pid" ] && ! pid_alive "$pid"; then
+    if [ -n "$pid" ] && is_stale; then
       echo "stale ($(holder_line); pid dead, will be cleared by the next waiter)"
     else
       holder_line; echo
@@ -237,7 +269,8 @@ if [ "$want_status" = 1 ]; then
     echo "queue:"
     i=0
     for t in $tl; do
-      tp=$(t_pid "$t"); w=$(( $(now) - $(mtime "$QUEUE/$t") ))
+      tp=$(t_pid "$t"); w=0
+      if stamp=$(mtime "$QUEUE/$t"); then w=$(( $(now) - stamp )); fi
       if pid_alive "$tp"; then i=$((i + 1)); pos="$i."; else pos="stale"; fi
       if [ "$(lane_of "$t")" = P ]; then mark="P "; else mark="  "; fi
       printf '  %-6s %s%s (pid %s) waiting %s: %s\n' "$pos" "$mark" "$(t_owner "$t")" "$tp" "$(fmt_dur "$w")" \
@@ -301,53 +334,48 @@ elif [ -n "$max_hold" ] && num_gt "$max_hold" "$PRIO_MAX_HOLD"; then
   echo "$ME: warning: --max-hold ${max_hold} is above the agreed ${PRIO_MAX_HOLD} min; hold the lock for one spec or one screenshot set at a time" >&2
 fi
 
-# ---------- stale-lock clearing ----------
-# Serialised through $BREAKER (mkdir mutex). Under it we re-verify staleness, so
-# the dir we rename away is the dead one, never a lock a peer just acquired: only
-# the (dead) owner or the breaker holder can remove $LOCK, so it cannot change
-# between the re-check and the mv.
-is_stale() {
-  local pid; pid=$(read_f pid)
-  if [ -n "$pid" ]; then
-    ! pid_alive "$pid"
-  else
-    [ -d "$LOCK" ] && [ $(( $(now) - $(mtime "$LOCK") )) -gt "$STALE_AGE" ]
-  fi
+# ---------- guard and stale-lock clearing ----------
+# Hold the same kernel lock from stale re-check and mkdir through release.
+# Closing the last descriptor releases it automatically, even after SIGKILL.
+if command -v lockf >/dev/null 2>&1; then
+  guard_cmd=(lockf -s -t 0)
+elif command -v flock >/dev/null 2>&1; then
+  guard_cmd=(flock -n -E 75)
+else
+  echo "$ME: lockf or flock is required" >&2
+  exit 75
+fi
+
+take_guard() {
+  exec 9>>"$GUARD" || exit 75
+  "${guard_cmd[@]}" 9
+  case $? in
+    0) return 0 ;;
+    75) exec 9>&-; return 1 ;;
+    *) echo "$ME: could not lock $GUARD" >&2; exit 75 ;;
+  esac
 }
 
 try_clear_stale() {
   is_stale || return 1
-  if ! mkdir "$BREAKER" 2>/dev/null; then
-    # A breaker holder that died mid-clear leaves the breaker behind; it is held for ms normally.
-    if [ $(( $(now) - $(mtime "$BREAKER") )) -gt "$STALE_AGE" ]; then
-      local junk="$BREAKER.dead.$$.$RANDOM"
-      mv "$BREAKER" "$junk" 2>/dev/null && rm -rf "$junk"
-    fi
-    return 1
-  fi
-  local cleared=1
-  if [ -d "$LOCK" ] && is_stale; then
-    local junk="$LOCK.stale.$$.$RANDOM"
-    if mv "$LOCK" "$junk" 2>/dev/null; then
-      echo "$ME: cleared stale lock (pid $(cat "$junk/pid" 2>/dev/null || echo none): $(cat "$junk/cmd" 2>/dev/null))" >&2
-      rm -rf "$junk"; cleared=0
-    fi
-  fi
-  rmdir "$BREAKER" 2>/dev/null
-  return $cleared
+  local junk="$LOCK.stale.$$.$RANDOM"
+  mv "$LOCK" "$junk" 2>/dev/null || return 1
+  echo "$ME: cleared stale lock (pid $(cat "$junk/pid" 2>/dev/null || echo none): $(cat "$junk/cmd" 2>/dev/null))" >&2
+  rm -rf "$junk"
 }
 
 # ---------- release + signal forwarding (installed before queueing) ----------
-child=""; watcher=""
+child=""; watcher=""; owns_lock=0; starting_child=0; pending_signal=""
 release() {
   drop_ticket
   [ -n "$watcher" ] && kill "$watcher" 2>/dev/null
-  if [ "$(read_f pid)" = "$$" ]; then
+  if [ "$owns_lock" = 1 ] && { [ "$(read_f pid)" = "$$" ] || [ ! -e "$LOCK/pid" ]; }; then
     local junk="$LOCK.done.$$.$RANDOM"
     mv "$LOCK" "$junk" 2>/dev/null && rm -rf "$junk"
   fi
 }
 forward() {  # $1 = signal name
+  if [ "$starting_child" = 1 ]; then pending_signal=$1; return; fi
   if [ -n "$child" ] && pid_alive "$child"; then
     # child runs in its own process group (set -m): signal the whole group, so
     # grandchildren (pnpm -> node -> browsers) get it too.
@@ -371,7 +399,7 @@ write_meta() {
   printf '%s\n' "${KQ_HEAVY_OWNER:-}" >"$LOCK/owner"
   echo "$my_lane" >"$LOCK/lane"
   [ -n "$max_hold" ] && printf '%s\n' "$max_hold" >"$LOCK/max_hold"
-  echo $$ >"$tmp" && mv "$tmp" "$LOCK/pid"   # pid appears atomically, last
+  echo $$ >"$tmp" && mv "$tmp" "$LOCK/pid"   # publish the wrapper's PID atomically
 }
 
 cmdline=$(printf '%q ' "$@"); cmdline=${cmdline% }
@@ -380,17 +408,21 @@ waited=0; t0=$(now); last_print=-999; is_tty=0; [ -t 2 ] && is_tty=1
 while :; do
   head=$(queue_head)
   nxt=$(next_ticket)
-  if [ -n "$head" ] && [ "$nxt" = "$ticket" ] && mkdir "$LOCK" 2>/dev/null; then
-    write_meta "$cmdline"
-    record_hold
-    drop_ticket
-    break
-  fi
   if [ -z "$head" ] || [ ! -d "$QUEUE/$ticket" ]; then
     # Our ticket vanished (someone cleared the queue dir): draw a new one.
     take_ticket "$cmdline"; continue
   fi
-  try_clear_stale && continue
+  if { [ "$nxt" = "$ticket" ] || is_stale; } && take_guard; then
+    try_clear_stale
+    if [ "$(next_ticket)" = "$ticket" ] && mkdir "$LOCK" 2>/dev/null; then
+      owns_lock=1
+      write_meta "$cmdline" || exit 75
+      record_hold
+      drop_ticket
+      break
+    fi
+    exec 9>&-
+  fi
   el=$(( $(now) - t0 ))
   if [ -n "${KQ_HEAVY_TIMEOUT:-}" ] && [ "$el" -ge "$KQ_HEAVY_TIMEOUT" ]; then
     [ "$is_tty" = 1 ] && printf '\r\033[K' >&2
@@ -417,7 +449,8 @@ if [ "$want_load" = 1 ] && ! check_load; then exit 75; fi
 # --max-hold: a background watcher prints a warning once the hint is exceeded.
 if [ -n "$max_hold" ]; then
   mhs=$(min_to_s "$max_hold")
-  ( trap 'kill $sp 2>/dev/null; exit 0' TERM
+  ( exec 9>&-
+    trap 'kill $sp 2>/dev/null; exit 0' TERM
     sleep "$mhs" & sp=$!; wait "$sp"
     echo "$ME: warning: still holding the lock after ${max_hold} min (--max-hold); others are waiting: $cmdline" >&2
   ) &
@@ -426,8 +459,22 @@ fi
 
 export KQ_HEAVY_HELD=1
 set -m   # job control: the child gets its own process group and default SIGINT handling
-${prefix[@]+"${prefix[@]}"} "$@" &
+starting_child=1
+# Publish the child's real PID before running the command. Until publication it
+# inherits the guard, so a dying wrapper cannot leave an untracked live job.
+/bin/bash -c '
+  lock=$1; shift
+  tmp="$lock/.child_pid.$$"
+  printf "%s\n" "$$" >"$tmp" && mv "$tmp" "$lock/child_pid" || exit 75
+  exec 9>&-
+  case "$(type -t -- "$1")" in
+    builtin|function) "$@" ;;
+    *) exec -- "$@" ;;
+  esac
+' "$ME" "$LOCK" ${prefix[@]+"${prefix[@]}"} "$@" &
 child=$!
+starting_child=0
+[ -z "$pending_signal" ] || forward "$pending_signal"
 set +m
 while :; do
   wait "$child"; rc=$?

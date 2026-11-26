@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests for scripts/dev/heavy.sh. Run: bash scripts/dev/heavy.test.sh (~45 s).
+# Tests for scripts/dev/heavy.sh. Run: bash scripts/dev/heavy.test.sh [--stress].
 # Uses a private lock path (KQ_HEAVY_LOCK) in a temp dir, so it never touches
 # /tmp/kq-heavy.lock and is safe while a real heavy job holds the real lock.
 
@@ -24,6 +24,102 @@ check() { local name=$1; shift; if "$@"; then ok "$name"; else bad "$name"; fi; 
 no_lock() { [ ! -e "$KQ_HEAVY_LOCK" ]; }
 wait_for_lock() { local i=0; while [ ! -f "$KQ_HEAVY_LOCK/pid" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; }
 dead_pid() { sh -c 'echo $$' ; }   # a pid that has already exited
+
+wait_for_file() {
+  local i=0
+  until [ -f "$1" ]; do
+    [ "$i" -lt 100 ] || return 1
+    sleep 0.02
+    i=$((i + 1))
+  done
+}
+
+stress() {
+  local log="$T/stress.log" shim="$T/sandbox.bash" gate="$T/stress.gate"
+  local holder p i pids="" failures=0 order status stress_job ready
+  # Reproduce restricted visibility across agent sessions, even when the test's
+  # wrapper processes actually share a sandbox. All other PID probes are real.
+  cat >"$shim" <<'EOF'
+kill() {
+  if [ "$#" = 2 ] && [ "$1" = -0 ] && [ "$2" = "$STRESS_HOLDER" ]; then
+    printf 'kill: (%s) - Operation not permitted\n' "$2" >&2
+    return 1
+  fi
+  builtin kill "$@"
+}
+ps() { return 126; }
+sleep() {
+  if [ -n "${STRESS_READY:-}" ] && [ "$1" = "$KQ_HEAVY_POLL" ]; then : >"$STRESS_READY"; fi
+  command sleep "$@"
+}
+EOF
+  export KQ_HEAVY_STALE_AGE=1 KQ_HEAVY_POLL=0.05 KQ_HEAVY_TIMEOUT=15
+  stress_job='
+    printf "S\n" >>"$1"
+    [ "${KQ_HEAVY_HELD:-}" = 1 ] || exit 1
+    [ -z "$2" ] || : >"$2"
+    sleep 1.25
+    if [ -n "$3" ]; then
+      while [ ! -f "$3" ]; do sleep 0.02; done
+    fi
+    printf "E\n" >>"$1"
+  '
+  "$HEAVY" -- /bin/sh -c "$stress_job" stress "$log" "$T/stress.started" "$gate" 2>"$T/stress-holder.err" &
+  holder=$!; bgpids="$bgpids $holder"
+  # Keep the first child alive until the first contender is polling or has
+  # incorrectly started. The overlap assertion does not depend on launch speed.
+  check "stress: first child started" wait_for_file "$T/stress.started"
+  status=$(BASH_ENV="$shim" STRESS_HOLDER="$holder" "$HEAVY" --status)
+  check "stress: restricted PID is reported as held" test "${status%% *}" = held
+  for i in 1 2 3; do
+    ready="$T/stress-$i.ready"
+    BASH_ENV="$shim" STRESS_HOLDER="$holder" STRESS_READY="$ready" \
+      "$HEAVY" -- /bin/sh -c "$stress_job" stress "$log" "$ready" "" 2>"$T/stress-$i.err" &
+    pids="$pids $!"
+    if [ "$i" = 1 ]; then check "stress: contender reached the lock" wait_for_file "$ready"; fi
+  done
+  bgpids="$bgpids $pids"
+  : >"$gate"
+  for p in "$holder" $pids; do wait "$p" || failures=$((failures + 1)); done
+  order=$(tr -d '\n' <"$log")
+  check "stress: 4 children finished with KQ_HEAVY_HELD=1" test "$failures" = 0
+  check "stress: at most one child running ($order)" test "$order" = SESESESE
+  check "stress: lock released" no_lock
+  unset KQ_HEAVY_STALE_AGE KQ_HEAVY_POLL KQ_HEAVY_TIMEOUT
+}
+
+orphaned_child() {
+  local wrapper child rc status
+  "$HEAVY" -- /bin/sh -c '
+    echo $$ >"$1"
+    while [ ! -f "$2" ]; do sleep 0.02; done
+    : >"$3"
+  ' orphan "$T/orphan.started" "$T/orphan.gate" "$T/orphan.done" &
+  wrapper=$!; bgpids="$bgpids $wrapper"
+  check "orphan: child started" wait_for_file "$T/orphan.started"
+  child=$(cat "$T/orphan.started")
+  if [ -z "$child" ]; then return; fi
+  bgpids="$bgpids $child"
+  kill -KILL "$wrapper"
+  wait "$wrapper" 2>/dev/null
+  status=$("$HEAVY" --status)
+  check "orphan: status is held while the child lives" test "${status%% *}" = held
+  KQ_HEAVY_TIMEOUT=0 "$HEAVY" true 2>"$T/orphan-wait.err"; rc=$?
+  check "orphan: contender times out while the child lives (rc=$rc)" test "$rc" = 75
+  : >"$T/orphan.gate"
+  check "orphan: child finished" wait_for_file "$T/orphan.done"
+  KQ_HEAVY_POLL=0.05 KQ_HEAVY_TIMEOUT=3 "$HEAVY" true 2>"$T/orphan-recover.err"; rc=$?
+  check "orphan: next job recovers the lock after the child exits (rc=$rc)" test "$rc" = 0
+  check "orphan: lock released" no_lock
+}
+
+if [ "${1:-}" = --stress ]; then
+  stress
+  orphaned_child
+  echo "$pass passed, $fail failed"
+  [ "$fail" = 0 ]
+  exit $?
+fi
 
 # 1. two concurrent `heavy.sh sleep 3` serialise
 log="$T/serial.log"
@@ -248,6 +344,8 @@ kill -TERM $w; wait $w; rc=$?
 check "TERM while holding: exit 143 (rc=$rc), lock released" sh -c "[ $rc = 143 ] && [ ! -e '$KQ_HEAVY_LOCK' ]"
 
 # never leave the real lock behind
+stress
+orphaned_child
 if [ "$real_lock_before" = 0 ]; then check "real /tmp/kq-heavy.lock untouched" [ ! -e /tmp/kq-heavy.lock ]; fi
 
 echo "$pass passed, $fail failed"
