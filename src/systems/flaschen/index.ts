@@ -109,6 +109,8 @@ class Flaschen {
   private readonly live = new Map<string, Live>();
   private readonly memorials = new Map<string, MemorialZone>();
   private readonly threats = new Map<ThreatKind, { x: number; z: number; r: number }>();
+  /** Spot ids inside a memorial or a small arena (null: recompute; the bounds change only on events). */
+  private holds: Set<string> | null = null;
   private bossUp = false;
   private clinkT = 4;
   private promptFor: string | null = null;
@@ -211,13 +213,25 @@ class Flaschen {
 
   /** Is the place held by a memorial, a pack's arena or a boss fight? */
   private held(s: FlaschenSpot): boolean {
-    if (this.bossUp) return true;
-    for (const m of this.memorials.values()) {
-      if (m.era && m.era !== this.ctx.era.current) continue;
-      if (m.x !== undefined && m.z !== undefined && Math.hypot(m.x - s.x, m.z - s.z) < (m.r ?? 20) + 6) return true;
+    return this.bossUp || (this.holds ??= this.computeHolds()).has(s.id);
+  }
+
+  private computeHolds(): Set<string> {
+    const out = new Set<string>();
+    const era = this.ctx.era.current;
+    for (const s of FLASCHEN) {
+      for (const m of this.memorials.values()) {
+        if (m.era && m.era !== era) continue;
+        if (m.x !== undefined && m.z !== undefined && Math.hypot(m.x - s.x, m.z - s.z) < (m.r ?? 20) + 6) out.add(s.id);
+      }
+      for (const t of this.threats.values()) if (t.r <= 100 && Math.hypot(t.x - s.x, t.z - s.z) < t.r) out.add(s.id);
     }
-    for (const t of this.threats.values()) if (t.r <= 100 && Math.hypot(t.x - s.x, t.z - s.z) < t.r) return true;
-    return false;
+    return out;
+  }
+
+  /** The memorials or arenas changed: recompute which spots they hold on the next step. */
+  private boundsChanged(): void {
+    this.holds = null;
   }
 
   private seen(s: FlaschenSpot): boolean {
@@ -417,18 +431,34 @@ class Flaschen {
         this.dropAll();
         this.bossUp = false;
         this.threats.clear();
+        this.boundsChanged();
       }),
       ev.on('memorial:set', (m) => {
         if (m.active === false) this.memorials.delete(m.id);
         else if (m.x !== undefined && m.z !== undefined) this.memorials.set(m.id, m);
+        this.boundsChanged();
       }),
       ev.on('threat:configure', (t) => {
+        // the pack's arena comes from hunt:start / hunt:end only: hunt fills in the defaults (its
+        // radius) and restores a saved pack without a new threat:configure
+        if (t.kind === 'pack') return;
         if (!t.active) this.threats.delete(t.kind);
         else if (t.center) this.threats.set(t.kind, { ...t.center, r: t.radius ?? 60 });
+        this.boundsChanged();
       }),
-      ev.on('hunt:start', ({ x, z, radius }) => this.threats.set('pack', { x, z, r: radius })),
-      ev.on('hunt:end', () => this.threats.delete('pack')),
+      ev.on('hunt:start', ({ x, z, radius }) => {
+        this.threats.set('pack', { x, z, r: radius });
+        this.boundsChanged();
+      }),
+      ev.on('hunt:end', () => {
+        this.threats.delete('pack');
+        this.boundsChanged();
+      }),
       ev.on('boss:phase', () => (this.bossUp = true)),
+      // a boss saved (or undone and rebuilt) in a later phase comes back without a boss:phase
+      ev.on('enemy:spawned', ({ group, boss }) => {
+        if (boss && (this.ctx.state.state.systems.combat?.groups[group]?.bossPhase ?? 1) > 1) this.bossUp = true;
+      }),
       ev.on('enemy:killed', (e) => {
         if (e.boss) this.bossUp = false;
       }),
@@ -453,6 +483,7 @@ class Flaschen {
       this.bossUp = false;
       this.threats.clear();
       this.restoreMemorials();
+      this.boundsChanged();
       if (reason !== 'load') reload();
     }));
   }

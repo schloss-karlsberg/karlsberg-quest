@@ -524,8 +524,11 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
   in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
   (`label.ts`); `tests/flaschen.test.ts` fails if it appears in any other file.
-  On a slot change, saved memorials and the incoming encounter determine bottle visibility.
-  A cover that disappears also releases its collision shape.
+  A bottle stays hidden inside a memorial, inside a threat arena of at most 100 m (the pack's arena
+  as `hunt:start` announces it, Hunt's default radius included) and while a boss is past phase 1,
+  also a boss rebuilt in a later phase after a load or a defeat. On a slot change, saved memorials
+  and the incoming encounter determine bottle visibility. A cover that disappears also releases its
+  collision shape.
 - **Collectibles** (item kind `collectible`, TASK-002): plain things gathered for their count. They
   stack to 99, cannot be used or equipped, and lie in the world as small glowing pickups: no light
   column, ordinary pickup sound. The feed counts them („+ Kastanie ×1 (7)“). The first is

@@ -162,7 +162,7 @@ it.each(['boss', 'pack', 'memorial'])('releases a bottle hidden by a %s when loa
   expect(hooks.prompt()).toBe(spot.id);
   save.save('peaceful');
   if (hold === 'boss') events.emit('boss:phase', { id: 'test', kind: 'test', phase: 1, hp: 30 });
-  if (hold === 'pack') events.emit('threat:configure', { kind: 'pack', active: true, center: spot, radius: 40 });
+  if (hold === 'pack') events.emit('hunt:start', { x: spot.x, z: spot.z, radius: 40, hounds: 3, pikeur: false });
   if (hold === 'memorial') events.emit('memorial:set', { id: 'test', active: true, x: spot.x, z: spot.z });
   step();
   expect(hooks.prompt()).toBeNull();
@@ -198,4 +198,81 @@ it('hides the bottle while a restored pack holds its arena, even if a fire ends'
   events.emit('hunt:end', { reason: 'hub' });
   step();
   expect(hooks.prompt()).toBe(spot.id);
+});
+
+it('hides the bottle again when a saved phase-two boss materialises after a load', () => {
+  const { events, state, save, hooks, visit, step } = setup();
+  const spot = FLASCHEN[0]!;
+  visit(spot);
+  // Combat keeps the phase reached as a checkpoint in its group and rebuilds the boss in it.
+  const group = { group: 'boss', kind: 'test', era: spot.era, x: spot.x, z: spot.z, count: 1, killed: 0, boss: true, bossPhase: 2 };
+  state.mutable.systems.combat = { hp: 100, stamina: 100, bann: 0, deaths: 0, groups: { boss: group } };
+  events.emit('boss:phase', { id: 'boss#0', kind: 'test', phase: 2, hp: 30 });
+  step();
+  expect(hooks.prompt()).toBeNull();
+  save.save('phase2');
+  save.load('phase2');
+  step();
+  // no boss:phase on a restore: Combat only announces the spawn
+  events.emit('enemy:spawned', { id: 'boss#1', group: 'boss', kind: 'test', x: spot.x, z: spot.z, era: spot.era, boss: true });
+  step();
+  expect(hooks.prompt()).toBeNull();
+  events.emit('enemy:killed', { id: 'boss#1', group: 'boss', kind: 'test', x: spot.x, z: spot.z, era: spot.era, boss: true, by: 'light' });
+  step();
+  expect(hooks.prompt()).toBe(spot.id);
+});
+
+it('ignores a phase-one boss spawn', () => {
+  const { events, state, hooks, visit, step } = setup();
+  const spot = FLASCHEN[0]!;
+  visit(spot);
+  state.mutable.systems.combat = { hp: 100, stamina: 100, bann: 0, deaths: 0, groups: { boss: { group: 'boss', kind: 'test', era: spot.era, x: spot.x, z: spot.z, count: 1, killed: 0, boss: true } } };
+  events.emit('enemy:spawned', { id: 'boss#0', group: 'boss', kind: 'test', x: spot.x, z: spot.z, era: spot.era, boss: true });
+  step();
+  expect(hooks.prompt()).toBe(spot.id);
+});
+
+it('takes the pack arena from Hunt, with its default radius, before and after a load', () => {
+  const { events, save, hooks, visit, step } = setup();
+  const spot = FLASCHEN[0]!;
+  visit(spot);
+  const center = { x: spot.x + 40, z: spot.z };
+  // Hunt handles threat:configure first and announces the effective 160 m arena (radius omitted).
+  events.emit('hunt:start', { ...center, radius: 160, hounds: 5, pikeur: false });
+  events.emit('threat:configure', { kind: 'pack', active: true, center });
+  step();
+  expect(hooks.prompt()).toBe(spot.id);
+  save.save('pack');
+  save.load('pack');
+  // the restored pack: only hunt:start, with the same arena
+  events.emit('hunt:start', { ...center, radius: 160, hounds: 5, pikeur: false });
+  step();
+  expect(hooks.prompt()).toBe(spot.id);
+  // a small arena still holds the bottle
+  events.emit('hunt:start', { ...center, radius: 60, hounds: 3, pikeur: false });
+  step();
+  expect(hooks.prompt()).toBeNull();
+});
+
+it('reuses the held spots between steps until a memorial or an arena changes', () => {
+  const { events, hooks, visit, step } = setup();
+  const spot = FLASCHEN[0]!;
+  visit(spot);
+  const hypot = vi.spyOn(Math, 'hypot');
+  const callsPerStep = () => {
+    step();
+    hypot.mockClear();
+    step();
+    return hypot.mock.calls.length;
+  };
+  const quiet = callsPerStep();
+  // far from the bottle: it stays shown, so only the hold check could add work
+  events.emit('hunt:start', { x: spot.x + 500, z: spot.z, radius: 60, hounds: 3, pikeur: false });
+  events.emit('threat:configure', { kind: 'fire', active: true, center: { x: spot.x - 500, z: spot.z }, radius: 30 });
+  events.emit('memorial:set', { id: 'far', active: true, x: spot.x, z: spot.z + 500 });
+  expect(callsPerStep()).toBe(quiet);
+  expect(hooks.prompt()).toBe(spot.id);
+  events.emit('memorial:set', { id: 'near', active: true, x: spot.x, z: spot.z });
+  step();
+  expect(hooks.prompt()).toBeNull();
 });
