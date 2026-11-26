@@ -89,9 +89,6 @@ addStrings('de', {
 
   // key help: tools added by this round (bible style)
   'ui.keys.xray': 'Röntgenblick: Bodenpunkte unter den Bäumen (Röntgenblick)',
-  'ui.keys.xray.key': '[4]',
   'ui.keys.plans': 'Planblatt / Konfidenzansicht der Rekonstruktion (Baumeister)',
-  'ui.keys.plans.key': '[5]',
   'ui.keys.relief_off': 'Relief-Blick aus',
-  'ui.keys.relief_off.key': '[^]',
 });

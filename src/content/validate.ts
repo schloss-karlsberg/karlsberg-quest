@@ -258,7 +258,7 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
   };
 }
 
-export function formatIssues(r: ValidationResult): string {
+export function formatIssues(r: Pick<ValidationResult, 'errors' | 'warnings'>): string {
   const line = (i: Issue) => `${i.level === 'error' ? 'ERROR' : 'warn '} ${i.file}${i.id ? ` [${i.id}]` : ''}: ${i.message}`;
   return [...r.errors, ...r.warnings].map(line).join('\n');
 }
