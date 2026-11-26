@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import jpeg from 'jpeg-js';
-import { trackErrors } from './helpers/common';
+import { SCREENS, trackErrors } from './helpers/common';
 
 /**
  * Bullet-time pilot (`window.kq.pilot`, src/debug/pilot.ts): act / observe / choose in ?manual,
@@ -161,6 +161,6 @@ test('pilot: act, observe, frames, look, telegraph, dialogue', async ({ page }) 
   });
   expect(kept).toEqual({ down: true, after: false });
 
-  await page.screenshot({ path: 'test-results/screens/pilot.png' });
+  await page.screenshot({ path: `${SCREENS}/pilot.png` });
   expect(errors).toEqual([]);
 });

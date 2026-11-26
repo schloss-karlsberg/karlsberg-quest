@@ -33,6 +33,8 @@ The guided tour uses story beats. Surveyor quest history and pending payouts for
   `escort`, `survive`, `use`, `event`, `manual`. `after` orders them; `optional` + `bonus_xp` for bonus
   objectives. Spawns name enemy kinds from `src/rpg/enemies.ts`; positions must be inside the playable
   area (checked) and on walkable ground (check with `scripts/content-build/probe.mjs`).
+- An `echo` objective or an `event` objective for `echo:end` counts a heard or skipped memory.
+  Interrupted playback leaves the objective open.
 - Never an enemy: real people, victims, menagerie animals (use `calm`). No spawns at memorials.
 - Rewards: `xp`, `items` (`src/rpg/items.ts` or this file's `items`), `codex` (fact ids), `skills`
   (`{id, tier}`), `flags`, `talentPoints`.

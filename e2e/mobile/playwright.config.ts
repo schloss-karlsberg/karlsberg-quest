@@ -1,6 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
+import { requireExclusive, slotDir, slotPort } from '../../scripts/dev/heavy-env.mjs';
 
 /**
  * The mobile UI tour (e2e/mobile/tour.pw.ts, docs/MOBILE-UI-PASS.md): its own config so the normal
@@ -8,12 +9,17 @@ import { defineConfig } from '@playwright/test';
  * instead of the suite's SwiftShader. Start it through scripts/dev/mobile-tour.ts (one unit per
  * heavy-lock hold).
  *
- * KQ_MOBILE_PORT (default 5340): the preview server's port. KQ_MOBILE_HEADED=1: a headed window
+ * Real GPU and its own preview server: run it in the EXCLUSIVE lane of scripts/dev/heavy.sh (a normal
+ * slot is refused). KQ_MOBILE_PORT: the preview server's port (default 5340, 5340 + k in heavy.sh
+ * slot k). KQ_MOBILE_HEADED=1: a headed window
  * (if headless Chromium falls back to SwiftShader on this machine; the tour aborts on a software
  * renderer unless KQ_MOBILE_ALLOW_SOFT=1).
  */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const PORT = Number(process.env.KQ_MOBILE_PORT ?? 5340);
+const PORT = slotPort(5340, 'KQ_MOBILE_PORT');
+if (!process.env.TEST_WORKER_INDEX) {
+  requireExclusive('mobile UI tour', 'scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device <unit>');
+}
 
 export default defineConfig({
   testDir: '.',
@@ -24,7 +30,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list']],
-  outputDir: resolve(ROOT, 'test-results/mobile-tour/_pw'),
+  outputDir: resolve(ROOT, slotDir('test-results/mobile-tour/_pw')),
   use: {
     baseURL: `http://127.0.0.1:${PORT}/`,
     headless: process.env.KQ_MOBILE_HEADED !== '1',

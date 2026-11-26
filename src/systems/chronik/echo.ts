@@ -285,7 +285,7 @@ export class EchoDirector {
     this.label.classList.remove('show');
     const walked = this.detached;
     this.detached = false;
-    this.ctx.events.emit('echo:end', { id: clue.id });
+    this.ctx.events.emit('echo:end', aborted ? { id: clue.id, aborted: true } : { id: clue.id });
     if (!aborted) {
       const transcript = this.cues.map((c) => ({ speaker: c.speaker ? (this.ctx.content.speakers.get(c.speaker)?.name_de ?? c.speaker) : null, text: c.text }));
       this.onDone(clue, transcript, walked);

@@ -533,6 +533,7 @@ export class QuestBook {
    */
   handle(name: string, payload: unknown): boolean {
     const p = (payload ?? {}) as Record<string, unknown>;
+    if (name === 'echo:end' && p.aborted === true) return false;
     let hit = false;
     for (const q of this.running()) {
       for (const o of this.openObjectives(q)) {

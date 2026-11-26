@@ -151,7 +151,8 @@ declare module '../core/events' {
     'clue:found': { id: string; kind: string };
     'noun:learned': { id: string };
     'echo:start': { id: string };
-    'echo:end': { id: string };
+    /** Releases the echo scene. `aborted` distinguishes interruptions from heard or skipped echoes. */
+    'echo:end': { id: string; aborted?: true };
     /** A memory's line comes up (subtitle shown): set pieces stage what the line is about. */
     'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
@@ -188,8 +189,8 @@ declare module '../core/events' {
     'clue:grant': { id: string; card?: boolean };
     /** story → barks: a memorial place where nobody jokes (bible: Rondell 1785, Festsaal W5). */
     'memorial:set': { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string };
-    /** story → hunt: light / douse the lantern (oil timer meters), optionally refilled first. */
-    'lantern:request': { lit: boolean; refill?: boolean };
+    /** Light / douse the lantern. `refill: true` fills it, a number adds that fraction of a tank. */
+    'lantern:request': { lit: boolean; refill?: boolean | number };
 
     // ---- interiors (owner: interiors) -----------------------------------------------------
     /**

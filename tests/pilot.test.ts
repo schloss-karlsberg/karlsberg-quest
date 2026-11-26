@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FixedStepLoop } from '../src/core/loop';
-import { skipRealTimeWaits, stepsDriveVisuals } from '../src/core/bullet';
+import { fastManualSteps, skipRealTimeWaits, stepsDriveVisuals } from '../src/core/bullet';
 import {
   ChooseGate,
   attackReady,
@@ -213,6 +213,70 @@ describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
     expect(skipRealTimeWaits(true, new URLSearchParams(''))).toBe(true);
     expect(skipRealTimeWaits(false, new URLSearchParams('manual'))).toBe(true);
     expect(skipRealTimeWaits(false, new URLSearchParams('nosave'))).toBe(false);
+  });
+
+  it.each(['step', 'renderOnce'] as const)('a synchronous %s replaces the queued fast-step paint', (draw) => {
+    for (const query of ['', 'manual', 'faststep', 'manual&idle'])
+      expect(fastManualSteps(new URLSearchParams(query))).toBe(false);
+    expect(fastManualSteps(new URLSearchParams('manual&faststep'))).toBe(true);
+
+    let ticks = 0;
+    const frames: Array<[number, string]> = [];
+    const loop = new FixedStepLoop({
+      update: () => ticks++,
+      render: (dt, _alpha, pass) => frames.push([dt, pass]),
+    });
+    loop.manual = true;
+    loop.pace = () => 0;
+    loop.step(60, false);
+    loop.step(0, false); // refresh a frame-driven interaction target
+    loop[draw]();
+    loop.frame(1);
+    loop.frame(2);
+    expect(ticks).toBe(draw === 'step' ? 61 : 60);
+    expect(frames).toEqual([[loop.dt, 'prepare'], [loop.dt, 'prepare'], [loop.dt, 'full']]);
+  });
+
+  it.each([true, false])('60 manual step(0) calls advance presentation by one second (drawScene=%s)', (drawScene) => {
+    let elapsed = 0;
+    let paints = 0;
+    let nextFrame: FrameRequestCallback | undefined;
+    const loop = new FixedStepLoop(
+      {
+        update: () => { throw new Error('step(0) must not run gameplay ticks'); },
+        render: (dt, _alpha, pass) => {
+          if (pass !== 'paint') elapsed += dt;
+          if (pass !== 'prepare') paints++;
+        },
+      },
+      60,
+      (fn) => { nextFrame = fn; return 1; },
+      () => { nextFrame = undefined; },
+    );
+    loop.manual = true;
+    loop.pace = () => 0;
+    loop.start();
+    nextFrame?.(0);
+    for (let i = 1; i <= 60; i++) {
+      loop.step(0, drawScene);
+      nextFrame?.(i * 1000 / 60);
+    }
+    expect(elapsed).toBeCloseTo(1, 9);
+    expect(paints).toBe(60);
+    expect(loop.tick).toBe(0);
+    expect(nextFrame).toBeUndefined();
+  });
+
+  it.each(['paced', 'requested'])('a deferred paint still presents an independently %s frame', (reason) => {
+    const passes: string[] = [];
+    const loop = new FixedStepLoop({ update: () => {}, render: (_dt, _alpha, pass) => passes.push(pass) });
+    loop.manual = true;
+    loop.pace = () => reason === 'paced' ? 60 : 0;
+    loop.step(0, false);
+    if (reason === 'requested') loop.requestRender(2);
+    loop.frame(0);
+    loop.frame(1 / 60);
+    expect(passes).toEqual(['prepare', 'full', 'full']);
   });
 });
 

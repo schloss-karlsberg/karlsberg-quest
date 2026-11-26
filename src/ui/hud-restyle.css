@@ -324,7 +324,7 @@ body.kq-in-combat .kq-waymark {
 /* ---- toasts and payouts share the right-edge HUD dock ---- */
 .kq-hud .kq-toasts {
   position: absolute;
-  top: 66px;
+  top: calc(66px + 140px * var(--kq-minimap-slot, 0));
   right: 18px;
   max-width: min(360px, 37vw);
 }

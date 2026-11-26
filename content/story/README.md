@@ -40,6 +40,8 @@ and their generators define the shipped beats and dialogue. Placeholders carry `
 | `on?` | chapter-wide reactions `{id, when, do, repeat?, cooldown?}` (`cooldown`: with `repeat`, not again within that many seconds) |
 | `beats` | `{id, title_de?, enter?, complete, exit?, next?, checkpoint?, wake?, on?, placeholder?}` |
 
+Starting or replaying a chapter resets reaction cooldowns and rising-edge state.
+
 **Wake places.** `wake {x, z, yaw?, era: "today", text?}` on a beat: being caught or an empty
 meter while it runs brings you to the present *there* (the resumed beat's `wake` wins, else the
 running beat's, else the chapter `checkpoint`), and `text` replaces the default "Du wachst an der Quelle auf". Chapters 1 and 2 wake you at the anchor of the part you were in (Ehrenhof, Tschifflik
@@ -58,6 +60,9 @@ clue already said it) but reserves its reading time, so the next grant does not 
 ## Conditions
 
 Exactly one key per condition object. Event-like conditions are latched while the beat runs.
+An `echo:end` condition counts a heard or skipped memory by default. Use a separate condition
+with `match: { "aborted": true }` to respond to an interruption, as the Chapter 2 lantern choice
+does when the departure scene closes. Clue discovery and quest credit require a heard or skipped memory.
 
 | Condition | True when |
 | --- | --- |

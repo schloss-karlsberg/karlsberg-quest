@@ -1,4 +1,5 @@
 import type { GameContext } from '../core/context';
+import { fastManualSteps } from '../core/bullet';
 import { type Era, isEra } from '../core/era';
 import type { GameState } from '../core/state';
 import type { Object3D, PerspectiveCamera } from 'three';
@@ -19,7 +20,7 @@ export interface KqHooks {
   setEra(e: Era): void;
   setScanMode(n: number): void;
   setMapMix(v: number): void;
-  /** Advance n fixed steps deterministically and render once. */
+  /** Advance n fixed steps and one presentation frame (GPU draw deferred with ?manual&faststep). */
   step(n?: number): void;
   /** Deep copy of the game state. */
   state(): GameState;
@@ -88,6 +89,7 @@ function nanWatchFor(ctx: GameContext, info: DebugInfo): NanWatchApi {
 
 export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
   const hud = new PerfHud(ctx, info.perf, info.quality);
+  const drawStep = !fastManualSteps(ctx.params);
   let benchRunning = false;
   const hooks: KqHooks = {
     ctx,
@@ -113,7 +115,7 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       ctx.loop.requestRender();
     },
     step(n = 1) {
-      ctx.loop.step(n);
+      ctx.loop.step(n, drawStep);
     },
     state() {
       return structuredClone(ctx.state.state) as GameState;
@@ -130,7 +132,7 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
     },
     press(code, steps = 1) {
       ctx.input.simulate(code, true);
-      ctx.loop.step(steps);
+      ctx.loop.step(steps, drawStep);
       ctx.input.simulate(code, false);
     },
     perf() {

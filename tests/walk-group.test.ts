@@ -134,25 +134,29 @@ describe('stepMember', () => {
     expect(u.x).toBeCloseTo(0.3);
   });
 
-  it('a 16-member group tick loop stays cheap', () => {
+  it('a 16-member group keeps up within its trunk search budget over 1,000 ticks', () => {
     const n = 16;
+    const ticks = 1000;
+    let searches = 0;
+    const countTrunks: TrunksNear = (...args) => {
+      searches++;
+      trunks(...args);
+    };
     const members: XZ[] = Array.from({ length: n }, (_, i) => ({ x: 1000 + (i % 4), z: -1000 + Math.floor(i / 4) }));
     let assign: number[] | undefined;
     const leader = { x: 1000, z: -1000, yaw: 0 };
-    const t0 = performance.now();
-    for (let tick = 0; tick < 1000; tick++) {
+    for (let tick = 0; tick < ticks; tick++) {
       leader.z -= 1.6 / 60;
       const slots = followSlots(n, leader, [1.2, 4], 7);
       assign = assignSlots(members, slots, assign);
       for (let i = 0; i < n; i++) {
         stepMember(members[i]!, slots[assign[i]!]!, 1 / 60);
-        pushOutOfTrunks(members[i]!, trunks);
+        pushOutOfTrunks(members[i]!, countTrunks);
       }
       separate(members, 0.6, 2);
     }
-    const ms = performance.now() - t0;
-    // ~0.05 ms per tick on a laptop; lenient for CI
-    expect(ms).toBeLessThan(1500);
+    expect(searches).toBeGreaterThanOrEqual(n * ticks);
+    expect(searches).toBeLessThanOrEqual(2 * n * ticks);
     // they kept up with the leader
     for (const m of members) expect(Math.hypot(m.x - leader.x, m.z - leader.z)).toBeLessThan(12);
   });

@@ -86,6 +86,22 @@ const chapterA: StoryFile = {
 const chapterB: StoryFile = { chapter: 'b', order: 1, title_de: 'B', start: 'b1', beats: [beat('b1', { manual: true })] };
 
 describe('story engine', () => {
+  it('advances an echo gate only after hearing the required memory', () => {
+    const first = beat('a1', { event: 'echo:end', match: { id: 'clue.test.echo' } });
+    const h = harness([{ ...chapterA, beats: [first, beat('a2', { manual: true })] }, chapterB]);
+    h.engine.goto('a');
+    h.engine.onEvent('echo:end', { id: 'clue.test.echo', aborted: true });
+    h.engine.tick(1, env());
+    expect(h.slice.beat).toBe('a1');
+    h.engine.onEvent('echo:end', { id: 'clue.test.other' });
+    h.engine.tick(1, env());
+    expect(h.slice.beat).toBe('a1');
+    h.engine.onEvent('echo:end', { id: 'clue.test.echo' });
+    h.engine.tick(1, env());
+    expect(h.slice.beat).toBe('a2');
+    expect(h.slice.doneBeats).toEqual(['a/a1']);
+  });
+
   it('runs beats in order: events, zones, timers, chapter completion and unlocks', () => {
     const h = harness([chapterB, chapterA]);
     expect(h.engine.first?.chapter).toBe('a');

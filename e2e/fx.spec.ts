@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * fx system: era shift, scan pulse, fire, Steinfraß, era ambience. Drives everything through
  * window.kq.fx; effect clocks are frozen at chosen times for the screenshots
  * (test-results/screens/fx-*.png).
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

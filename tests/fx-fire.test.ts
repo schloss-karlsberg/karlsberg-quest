@@ -211,7 +211,7 @@ describe('fire map (palace window glow)', () => {
   it('fills burn, split and soot as bytes', () => {
     const map = new FireMap(rasterizeUnits([unit('eg', 1, 100), unit('og', 2, 104)], 1, 1));
     const r = map.r;
-    map.fill((i) => (i === 0 ? 1 : 0.5), () => 0.25);
+    expect(map.fill((i) => (i === 0 ? 1 : 0.5), () => 0.25)).toBe(true);
     const c = Math.floor((5 - r.z0) / r.cell) * r.w + Math.floor((5 - r.x0) / r.cell);
     expect(map.data[c * 4]).toBe(255);
     expect(map.data[c * 4 + 1]).toBe(128);
@@ -222,5 +222,36 @@ describe('fire map (palace window glow)', () => {
     expect(z0).toBe(r.z0);
     expect(w).toBe(r.w * r.cell);
     expect(d).toBe(r.h * r.cell);
+  });
+
+  it('skips an unchanged upload, resolves each unit once and clears previous glow', () => {
+    const map = new FireMap(rasterizeUnits([unit('eg', 1, 100), unit('og', 2, 104)], 1, 1));
+    expect(map.fill(() => 0, () => 0)).toBe(false);
+    const sampled: number[] = [];
+    expect(map.fill((i) => {
+      sampled.push(i);
+      return 0.8;
+    }, (i) => i === 1 ? 0.8 : 0.4)).toBe(true);
+    expect(sampled).toEqual([0, 1]);
+    const before = map.data.slice();
+    expect(map.fill(() => 0.8001, (i) => i === 1 ? 0.8001 : 0.4001)).toBe(false);
+    expect(map.data).toEqual(before);
+    expect(map.fill(() => 0, () => 0)).toBe(true);
+    expect(map.data.every((v, i) => i % 4 === 2 ? v === before[i] : v === 0)).toBe(true);
+  });
+
+  it('rewrites the facade during the advancing benchmark interval', () => {
+    const sim = new FireSim(units, 300);
+    const map = new FireMap(rasterizeUnits(units));
+    const fill = () => map.fill((i) => sim.intensity(i), (i) => sootAt(units[i]!, sim.clock, sim.seconds));
+    sim.setClock(120);
+    expect(fill()).toBe(true);
+    expect(fill()).toBe(false);
+    let rewrites = 0;
+    for (let frame = 1; frame <= 240; frame++) {
+      sim.setClock(120 + frame / 60);
+      if (fill()) rewrites++;
+    }
+    expect(rewrites).toBeGreaterThan(0);
   });
 });

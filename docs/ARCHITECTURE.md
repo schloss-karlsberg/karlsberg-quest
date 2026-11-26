@@ -65,7 +65,7 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
   (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
@@ -206,8 +206,11 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 hooks that change the view ask (`teleport`, `setEra`, `setScanMode`, `setMapMix`, `spawnAsset`,
 `perfHud`, the bench camera), so do modal / pause / settings changes, resize, the tab becoming
 visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loop.renderOnce` and
-the pilot's `act` / `observe` render synchronously as before. With nothing to simulate (paused /
-manual) and nothing to draw the rAF loop parks (no callbacks at the display rate) until a
+the pilot's `act` / `observe` normally render synchronously. With `?manual&faststep`, the step
+and press hooks prepare presentation synchronously and queue a paint. A frame woken solely for
+that paint draws the prepared scene without running the camera, HUD or frame systems again.
+A synchronous full draw satisfies the queued paint. Explicit frame requests still run.
+With nothing to simulate (paused / manual) and nothing to draw the rAF loop parks until a
 request or a `paused` / `manual` change wakes it; the first frame after a held phase advances the
 visuals by one fixed step and restarts the perf clock (`loop.resumed`). Under WebDriver bullet
 time keeps drawing every frame and still menus draw at 15 fps, exactly as before, unless `?idle`
@@ -313,7 +316,12 @@ Rules
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`),
   JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s;
-  `autosave(reason, true)` forces).
+  `autosave(reason, true)` bypasses the interval and respects active save holds).
+- Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`). Slices
+  are JSON-serialisable objects. The shared save decoder rejects malformed slice containers and
+  invalid story data used during restore. Missing legacy story fields receive defaults. Call
+  `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s, with
+  `autosave(reason, true)` to force a write).
 - UI: `ctx.ui.layer('hunt')` gives you an absolutely positioned DOM layer; `ctx.ui.modals.open({...})`
   pauses the game and frees the mouse; `ctx.ui.hud` has the shared slots (below). Strings via
   `ctx.t('key')`; register them with `addStrings('de', {...})` from `src/i18n`.
@@ -345,7 +353,7 @@ Rules
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
 | `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
-| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has(slot)` (key presence), `availability(slot)` (empty, readable, or unreadable), `peek(slot)` (read a decoded slot without loading it), `readRaw(slot)` (exact stored bytes), `delete`. Keys are `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title offers „Weiter“ when decoding and migration succeed, then loads the autosave again before `game:start` resumes its story beat. „Neues Spiel“ checks the bytes of an occupied writable slot before and after tour setup. Cancelling setup refreshes the title's save actions. „Ende noch einmal wählen“ checks the autosave against the bytes seen when the menu was drawn before loading the ending slot. Changed bytes in an occupied slot require fresh confirmation, including writes during a prompt. `?nosave` disables writes and deletion. |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
 | `ui` | `hud`, `modals`, `cards` (shared card and notice slot, below), `toast(text)`, `layer(id)`, `add(el)` |
@@ -588,9 +596,20 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
+- Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
+  small in-memory element tree. Assert control state and text there; use Playwright for layout,
+  browser focus behaviour and canvas drawing. The fixture does not run timers or animation frames.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
+  reactions, dialogue queues and the echo director. `content-validation-cli.test.ts` verifies pack
+  discovery and terrain bounds with temporary files.
+- Campaign encounters: `encounter()` in `tests/npc-encounter.test.ts` and `pen()` in
+  `tests/menagerie-encounter.test.ts` drive real systems with an `EventBus`, a `GameStateStore`
+  and explicit ticks. Replace the store with a JSON snapshot and emit `save:loaded` to test a
+  rewind in the same running game. Despawn the NPC before loading to exercise placement rebuilds.
+  Neither fixture needs a renderer, audio device or real timers.
 - Art polish (`e2e/polish-art.spec.ts`): ghost costumes by day / night, forest LOD stats and the
   eras' seasons, the Festsaal on arrival (heat) and burning, hounds in fog at 30–60 m; screenshots
   `pol-art-*.png`.
@@ -611,7 +630,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
-  `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
+  `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.
@@ -831,6 +850,8 @@ Round-4 (polish: set dressing) integration rules:
   (also refills oil), `era:change` and a par force escape. Gentle mode / Rauhnacht
   (`settings.rauhnacht` or `flags.rauhnacht`) retune it. Re-configuring the same area with another
   `mode` switches the running pack in place (drive → finale at the kennel: they stay where they are).
+- `lantern:request` applies the refill before setting the light. `refill: true` fills the tank for
+  story requests and Wegsteine. A numeric refill adds that fraction of a tank up to capacity.
 - **Modes** (`modes.ts`, pure): `patrol` (default); `drive` (Ch. 4: arc of hounds 12–20 m behind and
   beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
   = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
@@ -875,6 +896,9 @@ Round-4 (polish: set dressing) integration rules:
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
+  The Warner's scripted boot trail is for the player to follow, not the hounds. Its hold extends
+  only its own lifetime. A cue with no valid positive stride uses the usual 1.4 m spacing.
+  Each segment uses at most 1800 terrain samples, spread across its full length.
 - Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
   `player:caught {by:'pack', soft?}` (2.0 s into the caught sequence). Writes `flags.lanternLit`
@@ -902,10 +926,14 @@ Round-4 (polish: set dressing) integration rules:
   path (solid), grumble when shoved, amble aside after ~14 s of calm waiting (`menagerie:yield`).
   Jaguar circles outside the lantern light, creeps in when it's dark, shoves you over, retreats;
   light drives it off. No catching: a knockdown freezes you prone for 1.8–3.2 s (view tips to the
-  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter, the jaguar never shoves.
+  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter; the jaguar never
+  shoves, even if gentle mode is enabled during its pounce. Overlapping animals move apart on
+  walkable ground, using the available side or sliding along the bank when the direct push is blocked.
 - Procedural low-poly rigs (`models.ts`, kqLight / kqFog), eyeshine sprites, Web Audio calls with captions.
-- State `systems.menagerie {animals: [{animal, x, z, id, heading?, count?, era}], calmed?: string[]}`.
-  `calmed` records spawn IDs and suppresses their bodies when the menagerie rebuilds.
+- State `systems.menagerie` stores spawns in `animals`, permanently calmed group ids in `calmed`,
+  and progress by animal id in the optional `misses` and `flares` maps. A load restores the saved
+  counts, with missing entries starting at zero. Three saved misses keep the lead-home action ready.
+  `calmed` also suppresses those bodies when the menagerie rebuilds.
 - Hooks `kq.menagerie.spawn/spawnInView/clear/state/down/setState/place/freeze/events/places`.
 - Example beats (test only, not loaded): `content/test/hunt-menagerie.test.story.json`.
 
@@ -962,6 +990,9 @@ Round-4 (polish: set dressing) integration rules:
   (`kq.chronik.echo()` → `walking`). While it whispers on, E and the prompts are free for other
   clues; starting another echo ends the walking one as heard. Clue cards go through `ctx.ui.cards`
   (one at a time).
+- An interrupted memory emits `echo:end {id, aborted: true}` to release scene and HUD holds.
+  Quest objectives and default story event conditions count completed and skipped memories.
+  Chapter 2 also listens for the interrupted departure to let the lantern choice resolve.
 - Pause and `chronik:open` open the Codex page. `check()` re-evaluates case state for older saves
   (`state.chronik` stays readable). `player:caught` finishes a running echo and preserves progress.
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
@@ -1070,15 +1101,20 @@ Round-4 (polish: set dressing) integration rules:
   delayed actions of other beats retire: presentation (`say`, `toast`, `sound`, `card`, `prompt`,
   `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
   once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
-  caps waiting lines at 6 (barks / skill remarks first), drops barks after 14 s, gives lines of an
-  ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
+  caps waiting lines at 6. It evicts unplayed barks / skill remarks first and ordinary lines ahead
+  of queued `now` lines. A playable `now` line can interrupt ordinary dialogue directly, without
+  taking a waiting slot. Further urgent lines can queue while an urgent line is showing. An
+  interrupted sequence keeps its queue protection until it resumes. The queue drops barks after
+  14 s, gives lines of an ended beat or a left place `STALE_GRACE` = 3 s, beat lines
+  `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
   `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while
   `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held; a beat's own
   non-lore line is queued ahead of waiting lore that has not started (quest history at a turn-in
   never pushes the beat's line past its moment). Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
-  cleared at the credits. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
+  cleared at the credits. Reactions take `cooldown` (s, with `repeat`). Starting or replaying a
+  chapter resets reaction cooldowns and rising-edge state. The `speed {gte, lte}` condition reads the
   player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
   `slice.sayCount`). Beats take `wake {x, z, yaw, era:'today', text}`: being caught / an empty
   meter brings you to the present there instead of the home at the Quelle. Ending choice: the field
@@ -1448,6 +1484,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   absent, active once it lands. `kq.animals.stats()` reports which.
 - State `systems.animals` (`AnimalSave {v: 1, deer, dogs}`), written at 4 Hz and after every
   request. Restore (init, `save:loaded`) re-spawns the bodies and emits nothing.
+  A saved `leave` follows the chain to a departing leader with a saved destination. Cycles and
+  chains without such a leader restore as `gone`.
 - Hooks `kq.animals`: `ready` (true once the `animal:request` listener is attached; kq-story's
   temporary stand-in checks it), `spawn(op)`, `request(a)`, `list()` → `{id, kind, state, x, z,
   dist}`, `state(id)`, `startle(id)`, `calm(id, s)`, `leave(id)`, `clear()`, `demo()` (the deer pair
@@ -1616,11 +1654,17 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   reload. Arrival is synchronous under `?manual`. Returning to the title, loading another save,
   starting a game or disposing the travel system cancels a pending arrival, releases the travel
   pause and removes any curtain immediately, including during its fade. The title autosave runs
-  after this cleanup.
+  after this cleanup. Both Enter and the travel button require an unblocked point at least 25 m away.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
-  guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
-  `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
+  guards via `enemy:spawn`, only with a weapon in hand; `enemy:cleared` opens it), a Fundstück
+  (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Pause → Sammlungen → Funde) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
+  A cache holds autosaves while it records the opening, places every seeded pickup and grants XP.
+  Combat mirrors its live resources on `travel:poi` after the cache grants XP and before travel
+  releases the hold. The checkpoint includes any HP gained when the player levels up, bypasses the
+  autosave interval and waits for any cinematic hold. Combat also holds autosaves while it handles
+  one simulation step's events, so the last guard's kill (its XP request) and the cache opening on
+  `enemy:cleared` land in one write: no save has the guards cleared and the cache still shut.
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
@@ -1659,6 +1703,23 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
   `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
+
+### minimap (`src/systems/minimap/`) – local navigation
+
+- A player-centred 180 m square shares the Karte sheet, inked footprints, player arrow and gold
+  objective diamond via `travel/map-art.ts`. North stays up to match Karte and keep the paths
+  steady while turning. The present day draws the loaded walk graph over a muted sheet. The past
+  overlays the terrain's gravel, cobbles and sand cells on the survey sheet. Both canvases reuse
+  cached footprint bounds to draw only outlines that intersect the view.
+- The arrow follows player yaw and snaps to 45° headings with reduced motion. The diamond uses the
+  active story objective or the quest compass lead. A quest compass lead derived from the active
+  story objective supplies its entrance route, including before the Registratur quest is accepted.
+  The walk runtime supplies the guide and tour member positions in the present day. Distant markers
+  meet the inset edge along their bearing.
+- „Minikarte“ under Spiel is on by default and saved with the other settings. The 144 × 144 Canvas 2D
+  backing redraws at about 10 Hz during play. Pause (including Karte and other modals), title,
+  photo mode, cinematics, staged HUD sequences and the touch survey menu hide it and suspend drawing.
+  The touch layout uses the safe-area insets.
 
 ### walk (`src/systems/walk/`) – the tour group: the guide walks a route, the group follows
 WP-16, design contract C2 (`docs/design/tour/systems.md`). Pure core: `route.ts` (polyline, stops,
@@ -1976,7 +2037,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 `npc:talk {npc, topic}`, `measure:done {building, room}`, `skill:unlocked {skill, level}`,
 `hunt:goal {mode}`, `hunt:finale {outcome}`, `hunt:tracking {on, why}`, `hunt:read`,
 `player:caught {by, soft}`, `menagerie:seen / knockdown / yield {id}`, `clue:found {id}`,
-`echo:end {id}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
+`echo:end {id, aborted?}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
 `story:choice {id, option}`, `story:meter-full {id}`, `bark:idle`.
 
 **Recipes**
@@ -2073,6 +2134,9 @@ Each RPG track adds its own subsection here when it fills its system in.
   (`.kqq-offer`, „Bei <Geber> annehmen“; deliberately not `.kqq-main`, so the story's line keeps
   leading to the giver). The „Laufend“ view in Aufgaben is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
+  Displaying a quest's detail clears its unread mark on that render, including the initial selection.
+  Objective ticks and progress counts use the quest engine's `need()` target, including the
+  one-second minimum for survival objectives.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
   and the chapter title) and payout notice (earned EP, items, skills and a Codex count). The
@@ -2131,7 +2195,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   `lanternPose {side, lift}` — combat holds the lantern on the left and lifts it during a flare.
 - **Menagerie**: attacks pass through animals (combat never targets them). A cassowary that
   charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
-  drive a jaguar off for good → `menagerie:calmed`; calmed ids persist in `MenagerieSlice.calmed`.
+  drive a jaguar off for good → `menagerie:calmed`. The save records the counted misses and flares
+  as well as completed calming.
 - **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
   god(on) groups() enemies() place() windup() freeze() skill(id) hurt() heal() events() shake() sim()`.
 - **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`),
@@ -2141,7 +2206,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 
 | Module | What |
 |---|---|
-| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request {lit, refill}` for oil / bann items); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
+| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request` with the item's oil amount); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
 | `pickups.ts` | three.js pickups: billboard core with a glint (no fog, min. on-screen size, fades past 40 m), spinning token, rising motes, ground pool, light column for quest / lore / weapon / charm items; era tint; pop-in bounce, drops drift towards a player within 3.4 m, take = fly to the bottom of the view + burst (reduced motion: fade only) |
 | `hud.ts` | `hud.dock('vitals', xp, 30)` (level medallion + brass bar with ghost gain, "+50" pop, brass ring pulse on level-up — no flash), `dock('vitals', quick, 40)` (key, glyph, name, count), `dock('feed', lines, 10)` (max 3 lines, fade after 4.2 s), floating "+N EP" at the `xp:grant` x/z |
 | `levelup-card.ts` | "Stufe N" stamp card (centre, `top: max(170px, 24vh)`), merges several level-ups, chime on the stamp; game time; steps aside (`kqp-held`) while a story title card / curtain, a modal or a skill unlock card shows |
@@ -2149,10 +2214,14 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `icons.ts`, `audio.ts`, `progression.css` | procedural glyphs, Web Audio sounds (pickup, level, use, collection), styles incl. high-contrast and reduced-motion rules |
 
 Rules that came out of it:
-- **Consumable split**: progression only decrements and emits `item:use {item}`; **combat** owns
+- **Consumable use**: progression decrements the stack and emits `item:use {item}`. **Combat** owns
   Lebenskraft / Atem / Bannlicht and applies the `ItemEffect` from `src/rpg/items.ts` (heal ×
-  `stats.healing`, stamina, bann, Kalkstaub burst). Lampenöl's lantern refill is the one effect
-  progression sends itself (`lantern:request`).
+  `stats.healing`, stamina, bann, Kalkstaub burst). Combat mirrors the resources into its slice during
+  that event. Progression requests Lampenöl's oil increment through `lantern:request`, then checkpoints
+  the successful use, including from the gear page while the simulation is paused. Kalkstaub is the
+  exception: its stun exists only in the running fight (enemies are rebuilt on load), so its use stays
+  on the throttled autosave like other combat state. The Bannlicht recharge timer is not saved;
+  loading restarts it, so a loaded charge count never refills on the first tick.
 - **Stats**: `stats:changed {stats}` at boot, again on `game:start` (systems registered after
   progression miss the boot one) and whenever `deriveStats(slice, {gentle, rauhnacht})` changes.
 - **Loot**: progression rolls on `enemy:killed`, emits `loot:drop`, then `loot:place` per item

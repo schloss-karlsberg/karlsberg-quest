@@ -350,7 +350,7 @@ class Hunt {
     ev.on('npc:conversation', ({ open }) => (this.talking = open));
     // round 2: the story's oil meter lights (and refills) the lantern for a timed beat
     ev.on('lantern:request', ({ lit, refill }) => {
-      if (refill) this.refill();
+      if (refill) this.refill(refill === true ? undefined : refill);
       this.setLit(lit, false);
     });
     // arriving home (the spring's hub ring, src/systems/home.ts; the story emits hub:enter) ends the
@@ -538,9 +538,9 @@ class Hunt {
     return r;
   }
 
-  refill(): void {
+  refill(amount?: number): void {
     const L = this.slice().lantern;
-    refill(L);
+    refill(L, amount);
     this.lowWarned = false;
     this.ctx.events.emit('lantern:oil', { oil: L.oil });
   }

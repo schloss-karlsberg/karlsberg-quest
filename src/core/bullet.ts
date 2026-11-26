@@ -28,3 +28,8 @@ export function stepsDriveVisualsNow(manual: boolean, params: URLSearchParams): 
 export function skipRealTimeWaits(manual: boolean, params: URLSearchParams): boolean {
   return manual || params.has('manual');
 }
+
+/** Campaign automation opts into subtitle timing and defers painting stepped frames to rAF. */
+export function fastManualSteps(params: URLSearchParams): boolean {
+  return params.has('manual') && params.has('faststep');
+}

@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Hunt extensions + the menagerie: snow tracks (Ch. 2), the driving pack (Ch. 4), the finale at
@@ -7,7 +8,6 @@ import { type Page, expect, test } from '@playwright/test';
  * jaguar). Deterministic stepping with `?manual`. Screenshots: test-results/screens/hunt-ext-*.png
  * and menagerie-*.png — look at them after visual changes.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

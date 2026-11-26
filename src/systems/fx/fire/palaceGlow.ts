@@ -79,8 +79,7 @@ export class PalaceFireGlow {
   }
 
   update(intensity: (i: number) => number, soot: (i: number) => number, on: number): void {
-    this.map.fill(intensity, soot);
-    this.tex.needsUpdate = true;
+    if (this.map.fill(intensity, soot)) this.tex.needsUpdate = true;
     this.material.uniforms.uFireOn!.value = on;
   }
 

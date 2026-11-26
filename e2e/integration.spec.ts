@@ -2,9 +2,9 @@ import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { openPause, waitForHooks } from './helpers/pause';
 import { installQuestPlay, touchSpring } from './helpers/prolog';
+import { SCREENS } from './helpers/common';
 
 // Cross-system play on the tour and K1, with the Chronik test pack enabled.
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 const URL = './?nosave&fresh&manual&placeholder';
 

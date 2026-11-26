@@ -2,7 +2,7 @@
  * pnpm validate — checks every content/**\/*.pack.json (sources, confidence labels, references,
  * case solvability). Exit code 1 on any error.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { type Dirent, type Stats, existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ContentPack } from '../src/content/types.ts';
@@ -14,27 +14,45 @@ import { checkPhotoTargets } from '../src/systems/photo/validate-cli.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-export function findPacks(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { recursive: true, withFileTypes: false })
-    .map(String)
-    .filter((f) => f.endsWith('.pack.json'))
-    .map((f) => join(dir, f))
-    .sort();
+export function findPacks(dir: string): { files: string[]; linkedDirectories: string[] } {
+  const files: string[] = [];
+  const linkedDirectories: string[] = [];
+  const walk = (parent: string) => {
+    for (const entry of readdirSync(parent, { withFileTypes: true })) {
+      const file = join(parent, entry.name);
+      if (entry.isDirectory()) {
+        walk(file);
+        continue;
+      }
+      let type: Dirent | Stats = entry;
+      if (entry.isSymbolicLink()) {
+        try {
+          type = statSync(file);
+        } catch {
+          continue;
+        }
+        if (type.isDirectory()) linkedDirectories.push(file);
+      }
+      if (type.isFile() && entry.name.endsWith('.pack.json')) files.push(file);
+    }
+  };
+  if (existsSync(dir)) walk(dir);
+  return { files: files.sort(), linkedDirectories: linkedDirectories.sort() };
 }
 
-export function loadPacks(root = ROOT): { packs: LoadedPack[]; parseErrors: string[] } {
+export function loadPacks(root = ROOT): { packs: LoadedPack[]; errors: string[] } {
   const packs: LoadedPack[] = [];
-  const parseErrors: string[] = [];
-  for (const file of findPacks(join(root, 'content'))) {
+  const { files, linkedDirectories } = findPacks(join(root, 'content'));
+  const errors = linkedDirectories.map((dir) => `ERROR ${relative(root, dir)}: symbolic links to directories are not supported`);
+  for (const file of files) {
     const rel = relative(root, file);
     try {
       packs.push({ file: rel, pack: JSON.parse(readFileSync(file, 'utf8')) as ContentPack });
     } catch (err) {
-      parseErrors.push(`ERROR ${rel}: invalid JSON (${(err as Error).message})`);
+      errors.push(`ERROR ${rel}: invalid JSON (${(err as Error).message})`);
     }
   }
-  return { packs, parseErrors };
+  return { packs, errors };
 }
 
 export function gameBounds(root = ROOT) {
@@ -46,10 +64,10 @@ export function gameBounds(root = ROOT) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { packs, parseErrors } = loadPacks();
+  const { packs, errors } = loadPacks();
   const r = validateContent(packs, { bounds: gameBounds() });
   const out = formatIssues(r);
-  if (parseErrors.length) console.log(parseErrors.join('\n'));
+  if (errors.length) console.log(errors.join('\n'));
   if (out) console.log(out);
   console.log(`\n${packs.length} pack(s): ${Object.entries(r.stats).map(([k, v]) => `${v} ${k}`).join(', ')}`);
   const verbose = !!process.env.STORY_VERBOSE;
@@ -76,8 +94,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(1);
   }
   console.log(`✓ ${cine.refs.length} cinematic file(s)`);
-  if (!r.ok || parseErrors.length) {
-    console.log(`✗ content invalid: ${r.errors.length + parseErrors.length} error(s), ${r.warnings.length} warning(s)`);
+  if (!r.ok || errors.length) {
+    console.log(`✗ content invalid: ${r.errors.length + errors.length} error(s), ${r.warnings.length} warning(s)`);
     process.exit(1);
   }
   console.log(`✓ content valid (${r.warnings.length} warning(s))`);

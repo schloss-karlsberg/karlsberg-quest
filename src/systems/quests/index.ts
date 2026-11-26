@@ -107,6 +107,7 @@ interface Lead {
   obj: QuestDefIn['objectives'][number] | null;
   target: WayPoint | null;
   label: string;
+  story?: { x?: number; z?: number };
 }
 
 /** The waymark's label: the objective in a few words (up to the first colon or 46 characters). */
@@ -232,6 +233,7 @@ class QuestRuntime {
       }),
       ev.on('era:change', () => {
         this.availIn = 0;
+        this.markIn = 0;
         this.dirty = true;
       }),
       ev.on('level:up', () => (this.availIn = 0)),
@@ -701,10 +703,9 @@ class QuestRuntime {
     const deps = this.wayDeps();
     const era = deps.era;
     const tracked = this.book.tracked().map((id) => this.defs.get(id)).filter((q): q is QuestDefIn => !!q);
-    const story = (this.ctx.state.state.systems as Record<string, unknown>).story as { objective?: { text?: string | null; x?: number; z?: number } | null } | undefined;
-    const so = story?.objective;
+    const so = this.ctx.state.state.systems.story?.objective;
     const storyLead = (q: QuestDefIn | null, obj: Lead['obj']): Lead | null =>
-      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: so.x, z: so.z, r: 6, kind: 'zone' }, label: so.text } : null;
+      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: so.x, z: so.z, r: 6, kind: 'zone' }, label: so.text, story: so } : null;
     for (const q of tracked) {
       // the story's own line (the main path between two main quests: „VAT (3): die Kante im Wald
       // ansehen“) comes before any side quest
@@ -785,6 +786,7 @@ class QuestRuntime {
     // the headline follows the tracker (playtest round 3): the lead goal is where the Bussole
     // points (story reads it from the tracker's data-tx / data-tz)
     const tx = lead?.target ?? null;
+    ctx.ui.hud.questLead = lead;
     const tel = this.tracker.el;
     if (tx) {
       tel.dataset.tx = String(Math.round(tx.x * 10) / 10);
